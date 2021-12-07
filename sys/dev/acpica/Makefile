@@ -1,8 +1,7 @@
 # $FreeBSD: src/sys/modules/acpi/acpi/Makefile,v 1.3 2004/01/08 16:38:32 njl Exp $
 
 SYSDIR?= ${.CURDIR}/../..
-.if ACPI_DEBUG_LOCKS || ACPI_DEBUG_MEMMAP || ACPI_DEBUG_CACHE
-KCFLAGS+=	-I${.OBJDIR}/include
+
 .if ACPI_DEBUG_LOCKS
 KCFLAGS+=	-DACPI_DEBUG_LOCKS
 .endif
@@ -12,12 +11,10 @@ KCFLAGS+=	-DACPI_DEBUG_MEMMAP
 .if ACPI_DEBUG_CACHE
 KCFLAGS+=	-DACPI_DEBUG_CACHE
 .endif
-.endif
 
 .include "Makefile.inc"
 
 .PATH:	${.OBJDIR}					\
-	${.OBJDIR}/include				\
 	${SYSDIR}/${OSACPI_MD_DIR}			\
 	${SYSDIR}/platform/${MACHINE_PLATFORM}/isa	\
 	${SYSDIR}/bus/pci 				\
