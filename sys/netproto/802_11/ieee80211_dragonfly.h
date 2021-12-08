@@ -215,8 +215,6 @@ void	get_random_bytes(void *, size_t);
 
 #define	NET80211_TAG_RECV_PARAMS	2
 
-struct ieee80211com;
-
 void	ieee80211_sysctl_attach(struct ieee80211com *);
 void	ieee80211_sysctl_detach(struct ieee80211com *);
 void	ieee80211_sysctl_vattach(struct ieee80211vap *);

@@ -276,7 +276,6 @@ u_int	 bpf_filter(const struct bpf_insn *, u_char *, u_int, u_int);
  */
 
 #include <sys/eventhandler.h>
-struct ifnet;
 
 typedef void (*bpf_track_fn)(void *, struct ifnet *, int /* dlt */,
     int /* 1 =>'s attach */);

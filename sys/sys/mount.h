@@ -544,7 +544,6 @@ TAILQ_HEAD(mntlist, mount);	/* struct mntlist */
  * Operations supported on mounted file system.
  */
 struct nlookupdata;
-struct nlookupdata;
 struct mbuf;
 
 typedef int vfs_mount_t(struct mount *mp, char *path, caddr_t data,

@@ -51,7 +51,6 @@ struct proc;
 struct vmspace;
 struct vmtotal;
 struct mount;
-struct vmspace;
 struct vnode;
 
 #ifdef _KERNEL

@@ -24,7 +24,6 @@ struct datalink;
 struct bundle;
 struct iovec;
 struct physical;
-struct bundle;
 struct ccp;
 struct cmdargs;
 

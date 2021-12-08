@@ -950,7 +950,6 @@ void	load_cr3(u_int cr3);
 void	load_cr4(u_int cr4);
 void	load_fs(u_int sel);
 void	load_gs(u_int sel);
-struct region_descriptor;
 void	lidt(struct region_descriptor *addr);
 void	lldt(u_short sel);
 void	ltr(u_short sel);
