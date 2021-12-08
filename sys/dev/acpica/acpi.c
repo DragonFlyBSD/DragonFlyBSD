@@ -3427,7 +3427,7 @@ acpiioctl(struct dev_ioctl_args *ap)
 	    error = acpi_call_ioctl(ap->a_data);
 	} else {
 	    device_printf(sc->acpi_dev,
-		"debug.acpi.allow_method_calls must be set\n");
+		"debug.acpi.allow_method_calls tunable must be set\n");
 	    error = ENXIO;
 	}
 	break;
