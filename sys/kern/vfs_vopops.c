@@ -1349,7 +1349,7 @@ vop_allocate(struct vop_ops *ops, struct vnode *vp, off_t offset, off_t len)
 	ap.a_head.a_desc = &vop_allocate_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
-	ap.a_offset = 0;
+	ap.a_offset = offset;
 	ap.a_len = len;
 
 	VFS_MPLOCK(vp->v_mount);

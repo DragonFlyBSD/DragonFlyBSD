@@ -1342,6 +1342,8 @@ vop_stdallocate(struct vop_allocate_args *ap)
 	size_t iosize;
 	int error;
 
+	bzero(&auio, sizeof(auio));
+
 	td = curthread;
 	vap = &vattr;
 	buf = NULL;
