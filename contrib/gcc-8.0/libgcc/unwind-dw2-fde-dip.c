@@ -65,7 +65,7 @@
 
 #if !defined(inhibit_libc) && defined(HAVE_LD_EH_FRAME_HDR) \
     && defined(TARGET_DL_ITERATE_PHDR) \
-    && defined(__FreeBSD__)
+    && (defined(__DragonFly__) || defined(__FreeBSD__))
 #if 0
 # define ElfW __ElfN
 #endif
