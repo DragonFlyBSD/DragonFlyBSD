@@ -1334,12 +1334,9 @@ vfs/isofs/cd9660/cd9660_iconv/cd9660_iconv.c	optional cd9660_iconv
 vfs/udf/osta.c			optional udf
 vfs/udf/udf_vfsops.c		optional udf
 vfs/udf/udf_vnops.c		optional udf
-kern/imgact_aout.c	standard
 kern/imgact_elf.c	standard
 kern/imgact_resident.c	standard
-kern/imgact_gzip.c	optional gzip
 kern/imgact_shell.c	standard
-kern/inflate.c		optional gzip
 kern/init_main.c	standard
 kern/init_sysent.c	standard
 kern/kern_checkpoint.c	standard

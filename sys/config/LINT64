@@ -717,7 +717,6 @@ options 	SES_ENABLE_PASSTHROUGH
 # `xterm', among others.
 
 pseudo-device	pty		# Pseudo ttys
-pseudo-device	gzip		# Exec gzipped a.out's
 pseudo-device	md		# Memory/malloc disk
 pseudo-device	vn		# File image "disks"
 pseudo-device	snp		# Snoop device - to look at pty/vty/etc..

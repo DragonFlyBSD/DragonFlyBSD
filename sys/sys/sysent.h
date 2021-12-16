@@ -78,7 +78,6 @@ struct sysentvec {
 };
 
 #ifdef _KERNEL
-extern struct sysentvec aout_sysvec;
 extern struct sysent sysent[];
 
 #define NO_SYSCALL (-1)

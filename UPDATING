@@ -12,6 +12,11 @@
 +         UPGRADING DRAGONFLY FROM 6.0 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+A.OUT AND GZIPPED A.OUT EXECUTABLE SUPPORT REMOVED
+--------------------------------------------------
+
+These have not been useful for a long time, if ever.
+
 ACPI_NO_SEMAPHORES OPTION REMOVED
 ---------------------------------
 
