@@ -40,7 +40,6 @@
 #include <sys/sysmsg.h>
 #include <sys/exec.h>
 #include <sys/imgact.h>
-#include <sys/imgact_aout.h>
 #include <sys/mman.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
