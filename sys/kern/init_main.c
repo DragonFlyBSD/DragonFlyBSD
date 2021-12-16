@@ -49,9 +49,9 @@
 #include <sys/proc.h>
 #include <sys/resourcevar.h>
 #include <sys/signalvar.h>
+#include <sys/syscall.h>
 #include <sys/systm.h>
 #include <sys/vnode.h>
-#include <sys/sysent.h>
 #include <sys/reboot.h>
 #include <sys/sysmsg.h>
 #include <sys/vmmeter.h>
@@ -337,6 +337,24 @@ endofcoldboot(void *dummy __unused)
 }
 SYSINIT(endofcoldboot, SI_SUB_ISWARM, SI_ORDER_ANY, endofcoldboot, NULL);
 
+struct sysentvec null_sysvec = {
+	.sv_size	= SYS_MAXSYSCALL,
+	.sv_table	= sysent,
+	.sv_sigsize	= 0,
+	.sv_sigtbl	= NULL,
+	.sv_errsize	= 0,
+	.sv_errtbl	= NULL,
+	.sv_transtrap	= NULL,
+	.sv_fixup	= NULL,
+	.sv_sendsig	= sendsig,
+	.sv_sigcode	= sigcode,
+	.sv_szsigcode	= &szsigcode,
+	.sv_name	= "null",
+	.sv_coredump	= NULL,
+	.sv_imgact_try	= NULL,
+	.sv_minsigstksz	= MINSIGSTKSZ
+};
+
 /*
  ***************************************************************************
  ****
@@ -395,7 +413,7 @@ proc0_init(void *dummy __unused)
 	pgref(&pgrp0);
 	p->p_pgrp = &pgrp0;
 
-	p->p_sysent = &aout_sysvec;
+	p->p_sysent = &null_sysvec;
 
 	p->p_flags = P_SYSTEM;
 	p->p_stat = SACTIVE;
