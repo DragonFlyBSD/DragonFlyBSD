@@ -56,7 +56,7 @@
 #if !defined(inhibit_libc) && defined(HAVE_LD_EH_FRAME_HDR) \
     && defined(TARGET_DL_ITERATE_PHDR) \
     && (defined(__FreeBSD__) || defined(__DragonFly__))
-#if 0
+#ifndef ElfW
 # define ElfW __ElfN
 #endif
 # define USE_PT_GNU_EH_FRAME
