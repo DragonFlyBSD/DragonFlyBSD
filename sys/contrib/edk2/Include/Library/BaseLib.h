@@ -2856,6 +2856,55 @@ RemoveEntryList (
 //
 // Math Services
 //
+/**
+  Prototype for comparison function for any two element types.
+
+  @param[in] Buffer1                  The pointer to first buffer.
+  @param[in] Buffer2                  The pointer to second buffer.
+
+  @retval 0                           Buffer1 equal to Buffer2.
+  @return <0                          Buffer1 is less than Buffer2.
+  @return >0                          Buffer1 is greater than Buffer2.
+**/
+typedef
+INTN
+(EFIAPI *BASE_SORT_COMPARE)(
+  IN CONST VOID                 *Buffer1,
+  IN CONST VOID                 *Buffer2
+  );
+
+/**
+  This function is identical to perform QuickSort,
+  except that is uses the pre-allocated buffer so the in place sorting does not need to
+  allocate and free buffers constantly.
+
+  Each element must be equal sized.
+
+  if BufferToSort is NULL, then ASSERT.
+  if CompareFunction is NULL, then ASSERT.
+  if BufferOneElement is NULL, then ASSERT.
+  if ElementSize is < 1, then ASSERT.
+
+  if Count is < 2 then perform no action.
+
+  @param[in, out] BufferToSort   on call a Buffer of (possibly sorted) elements
+                                 on return a buffer of sorted elements
+  @param[in] Count               the number of elements in the buffer to sort
+  @param[in] ElementSize         Size of an element in bytes
+  @param[in] CompareFunction     The function to call to perform the comparison
+                                 of any 2 elements
+  @param[out] BufferOneElement   Caller provided buffer whose size equals to ElementSize.
+                                 It's used by QuickSort() for swapping in sorting.
+**/
+VOID
+EFIAPI
+QuickSort (
+  IN OUT VOID                           *BufferToSort,
+  IN CONST UINTN                        Count,
+  IN CONST UINTN                        ElementSize,
+  IN       BASE_SORT_COMPARE            CompareFunction,
+  OUT VOID                              *BufferOneElement
+  );
 
 /**
   Shifts a 64-bit integer left between 0 and 63 bits. The low bits are filled
@@ -4812,6 +4861,91 @@ EFIAPI
 SpeculationBarrier (
   VOID
   );
+
+#if defined (MDE_CPU_X64)
+//
+// The page size for the PVALIDATE instruction
+//
+typedef enum {
+  PvalidatePageSize4K = 0,
+  PvalidatePageSize2MB,
+} PVALIDATE_PAGE_SIZE;
+
+//
+// PVALIDATE Return Code.
+//
+#define PVALIDATE_RET_SUCCESS         0
+#define PVALIDATE_RET_FAIL_INPUT      1
+#define PVALIDATE_RET_SIZE_MISMATCH   6
+
+//
+// The PVALIDATE instruction did not make any changes to the RMP entry.
+//
+#define PVALIDATE_RET_NO_RMPUPDATE    255
+
+/**
+ Execute a PVALIDATE instruction to validate or to rescinds validation of a guest
+ page's RMP entry.
+
+ The instruction is available only when CPUID Fn8000_001F_EAX[SNP]=1.
+
+ The function is available on X64.
+
+ @param[in]    PageSize         The page size to use.
+ @param[in]    Validate         If TRUE, validate the guest virtual address
+                                otherwise invalidate the guest virtual address.
+ @param[in]    Address          The guest virtual address.
+
+ @retval PVALIDATE_RET_SUCCESS        The PVALIDATE instruction succeeded, and
+                                      updated the RMP entry.
+ @retval PVALIDATE_RET_NO_RMPUPDATE   The PVALIDATE instruction succeeded, but
+                                      did not update the RMP entry.
+ @return                              Failure code from the PVALIDATE
+                                      instruction.
+**/
+UINT32
+EFIAPI
+AsmPvalidate (
+  IN   PVALIDATE_PAGE_SIZE     PageSize,
+  IN   BOOLEAN                 Validate,
+  IN   PHYSICAL_ADDRESS        Address
+  );
+
+//
+// RDX settings for RMPADJUST
+//
+#define RMPADJUST_VMPL_MAX               3
+#define RMPADJUST_VMPL_MASK              0xFF
+#define RMPADJUST_VMPL_SHIFT             0
+#define RMPADJUST_PERMISSION_MASK_MASK   0xFF
+#define RMPADJUST_PERMISSION_MASK_SHIFT  8
+#define RMPADJUST_VMSA_PAGE_BIT          BIT16
+
+/**
+  Adjusts the permissions of an SEV-SNP guest page.
+
+  Executes a RMPADJUST instruction with the register state specified by Rax,
+  Rcx, and Rdx. Returns Eax. This function is only available on X64.
+
+  The instruction is available only when CPUID Fn8000_001F_EAX[SNP]=1.
+
+  @param[in]  Rax   The value to load into RAX before executing the RMPADJUST
+                    instruction.
+  @param[in]  Rcx   The value to load into RCX before executing the RMPADJUST
+                    instruction.
+  @param[in]  Rdx   The value to load into RDX before executing the RMPADJUST
+                    instruction.
+
+  @return     Eax
+**/
+UINT32
+EFIAPI
+AsmRmpAdjust (
+  IN      UINT64                     Rax,
+  IN      UINT64                     Rcx,
+  IN      UINT64                     Rdx
+  );
+#endif
 
 
 #if defined (MDE_CPU_IA32) || defined (MDE_CPU_X64)
