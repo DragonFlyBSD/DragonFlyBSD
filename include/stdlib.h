@@ -280,6 +280,7 @@ int	 cgetset(const char *);
 int	 cgetstr(char *, const char *, char **);
 int	 cgetustr(char *, const char *, char **);
 
+int	 clearenv(void);
 int	 daemon(int, int);
 char	*devname(dev_t, mode_t);
 char	*devname_r(dev_t, mode_t, char *, size_t);

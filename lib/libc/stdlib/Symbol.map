@@ -131,6 +131,10 @@ DF508.0 {
     set_constraint_handler_s;
 };
 
+DF602.0 {
+    clearenv;
+};
+
 /*
  * ignore WEAK:  __pthread_cxa_finalize;
  */
