@@ -266,8 +266,8 @@ int
 nvme_admin_state_make_queues(nvme_softc_t *sc)
 {
 	nvme_request_t *req;
-	uint16_t niosubqs;
-	uint16_t niocomqs;
+	uint16_t niosubqs, subq_err_idx;
+	uint16_t niocomqs, comq_err_idx;
 	uint32_t i;
 	uint16_t qno;
 	int status;
@@ -342,6 +342,7 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 
 	nvme_put_request(req);
 
+tryagain:
 	sc->dumpqno = 0;
 	sc->eventqno = 0;
 
@@ -453,33 +454,65 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 	for (i = 1; i <= sc->niocomqs; ++i) {
 		error += nvme_alloc_comqueue(sc, i);
 		if (error) {
-			device_printf(sc->dev, "Unable to allocate comqs\n");
+			device_printf(sc->dev, "Unable to alloc comq %d/%d\n",
+				      i, sc->niocomqs);
 			break;
 		}
 		error += nvme_create_comqueue(sc, i);
 		if (error) {
-			nvme_delete_comqueue(sc, i);
-			nvme_free_comqueue(sc, i);
+			device_printf(sc->dev, "Unable to create comq %d/%d\n",
+				      i, sc->niocomqs);
+			++i;	/* also delete this one below */
 			break;
 		}
 	}
+	comq_err_idx = i;
+
 	for (i = 1; i <= sc->niosubqs; ++i) {
 		error += nvme_alloc_subqueue(sc, i);
 		if (error) {
-			device_printf(sc->dev, "Unable to allocate subqs\n");
+			device_printf(sc->dev, "Unable to alloc subq %d/%d\n",
+				      i, sc->niosubqs);
 			break;
 		}
 		error += nvme_create_subqueue(sc, i);
 		if (error) {
-			nvme_delete_subqueue(sc, i);
-			nvme_free_subqueue(sc, i);
+			device_printf(sc->dev, "Unable to create subq %d/%d\n",
+				      i, sc->niosubqs);
+			++i;	/* also delete this one below */
 			break;
 		}
 	}
+	subq_err_idx = i;
 
+	/*
+	 * If we are unable to allocate and create the number of queues
+	 * the device told us it could handle.
+	 */
 	if (error) {
 		device_printf(sc->dev, "Failed to initialize device!\n");
+		for (i = subq_err_idx - 1; i >= 1; --i) {
+			nvme_delete_subqueue(sc, i);
+			nvme_free_subqueue(sc, i);
+		}
+		for (i = comq_err_idx - 1; i >= 1; --i) {
+			nvme_delete_comqueue(sc, i);
+			nvme_free_comqueue(sc, i);
+		}
 		sc->admin_func = nvme_admin_state_failed;
+		if (sc->niosubqs > 1 || sc->niocomqs > 1) {
+			int trywith = 1;
+
+			device_printf(sc->dev,
+				      "Retrying with fewer queues (%d/%d) "
+				      "just in case the device lied to us\n",
+				      trywith, trywith);
+			if (sc->niosubqs > trywith)
+				sc->niosubqs = trywith;
+			if (sc->niocomqs > trywith)
+				sc->niocomqs = trywith;
+			goto tryagain;
+		}
 	} else {
 		sc->admin_func = nvme_admin_state_identify_ns;
 	}
