@@ -1030,7 +1030,17 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 				bigmask_get(bmap));
 		}
 
-		hammer2_chain_modify(live_chain, cbinfo->mtid, 0, 0);
+		if (hammer2_chain_modify(live_chain, cbinfo->mtid, 0, 0)) {
+			kprintf("hammer2_bulkfree: unable to modify freemap "
+				"at %016jx for data-block %016jx, error %s\n",
+				live_chain->bref.data_off,
+				(intmax_t)data_off,
+				hammer2_error_str(live_chain->error));
+			hammer2_chain_unlock(live_chain);
+			hammer2_chain_drop(live_chain);
+			live_chain = NULL;
+			goto next;
+		}
 		live_chain->bref.check.freemap.bigmask = -1;
 		cbinfo->hmp->freemap_relaxed = 0;	/* reset heuristic */
 		live = &live_chain->data->bmdata[bmapindex];
