@@ -116,6 +116,7 @@ MAN=	accept_filter.9 \
 	kobj.9 \
 	kprintf.9 \
 	ksignal.9 \
+	ksscanf.9 \
 	kstrdup.9 \
 	ktr.9 \
 	lock.9 \
@@ -633,6 +634,7 @@ MLINKS+=kprintf.9 krateprintf.9 \
 	kprintf.9 uprintf.9
 MLINKS+=ksignal.9 gsignal.9 \
 	ksignal.9 pgsignal.9
+MLINKS+=ksscanf.9 kvsscanf.9
 MLINKS+=kstrdup.9 kstrndup.9
 MLINKS+=ktr.9 KTR_COND_LOG.9 \
 	ktr.9 KTR_INFO.9 \
