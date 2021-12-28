@@ -3372,7 +3372,7 @@ hammer2_chain_create(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 		 * for BREF_TYPE_DATA.  Non-data types *must* be set to
 		 * a non-NONE check algorithm.
 		 */
-		if (methods == -1)
+		if (methods == HAMMER2_METH_DEFAULT)
 			dummy.methods = parent->bref.methods;
 		else
 			dummy.methods = (uint8_t)methods;
