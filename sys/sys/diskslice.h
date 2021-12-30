@@ -96,6 +96,8 @@
 #define	DIOCSYNCSLICEINFO	_IOW('d', 112, int)
 #define DIOCGKERNELDUMP		_IOW('d', 133, u_int)   /* Set/Clear dumps */
 #define DIOCRECLUSTER		_IOWR('d', 134, struct disk_ioc_recluster)
+#define	DIOCGMEDIASIZE		_IOR('d', 135, off_t)
+#define	DIOCGSECTORSIZE		_IOR('d', 136, u_int)
 #define	MAX_SLICES		16
 
 /*

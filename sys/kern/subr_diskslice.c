@@ -443,6 +443,47 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 			bcopy(sp->ds_label.opaque, data, ops->labelsize);
 		return (error);
 
+	case DIOCGMEDIASIZE:
+		/*
+		 * The disk management layer may not have read the
+		 * disklabel yet because simply opening a slice no
+		 * longer 'probes' the disk that way.  Be sure we
+		 * have tried.
+		 *
+		 * We ignore any error.
+		 */
+		if (sp->ds_label.opaque == NULL &&
+		    part == WHOLE_SLICE_PART &&
+		    slice != WHOLE_DISK_SLICE) {
+			dsreadandsetlabel(dev, info->d_dsflags,
+					  ssp, sp, info);
+			ops = sp->ds_ops;	/* may be NULL */
+		}
+
+		*(off_t *)data = 0;
+
+		if (slice != WHOLE_DISK_SLICE && part != WHOLE_SLICE_PART) {
+			u_int64_t start;
+			u_int64_t blocks;
+
+			if (lp.opaque == NULL)
+				return(EINVAL);
+			if (ops->op_getpartbounds(ssp, lp, part,
+						  &start, &blocks)) {
+				return(EINVAL);
+			}
+			*(off_t *)data = blocks * info->d_media_blksize;
+		} else {
+			*(off_t *)data = (u_int64_t)sp->ds_size *
+					 info->d_media_blksize;
+		}
+
+		return 0;
+
+	case DIOCGSECTORSIZE:
+		*(u_int *)data = info->d_media_blksize;
+		return 0;
+
 	case DIOCGPART:
 		{
 			struct partinfo *dpart = (void *)data;
