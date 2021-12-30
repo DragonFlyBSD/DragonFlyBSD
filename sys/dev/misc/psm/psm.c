@@ -2518,16 +2518,11 @@ psmintr(void *arg)
 			sc->lasterr = sc->cmdcount;
 			/*
 			 * The sync byte test is a weak measure of packet
-			 * validity.  Conservatively discard any input yet
-			 * to be seen by userland when we detect a sync
-			 * error since there is a good chance some of
-			 * the queued packets have undetected errors.
+			 * validity.
 			 */
-			dropqueue(sc);
 			if (sc->syncerrors == 0)
 				sc->pkterrors++;
 			++sc->syncerrors;
-			sc->lastinputerr = now;
 			if (sc->syncerrors >= sc->mode.packetsize * 2 ||
 			    sc->pkterrors >= pkterrthresh) {
 				/*
@@ -2544,6 +2539,8 @@ psmintr(void *arg)
 				 */
 				VLOG(3, (LOG_DEBUG,
 				    "psmintr: reset the mouse.\n"));
+				sc->lastinputerr = now;
+				dropqueue(sc);
 				pb->inputbytes = 0;
 				reinitialize(sc, TRUE);
 			} else if (sc->syncerrors == sc->mode.packetsize) {
@@ -2553,6 +2550,8 @@ psmintr(void *arg)
 				 */
 				VLOG(3, (LOG_DEBUG,
 				    "psmintr: re-enable the mouse.\n"));
+				sc->lastinputerr = now;
+				dropqueue(sc);
 				pb->inputbytes = 0;
 				disable_aux_dev(sc->kbdc);
 				enable_aux_dev(sc->kbdc);
