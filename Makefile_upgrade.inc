@@ -3921,6 +3921,7 @@ TO_REMOVE+=/usr/share/man/man2/vmm_guest_ctl.2.gz
 TO_REMOVE+=/usr/share/man/man2/vmm_guest_sync_addr.2.gz
 TO_REMOVE+=/boot/kernel/ext2fs_freebsd.ko
 TO_REMOVE+=/usr/include/gnu
+TO_REMOVE+=/usr/include/sys/dir.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

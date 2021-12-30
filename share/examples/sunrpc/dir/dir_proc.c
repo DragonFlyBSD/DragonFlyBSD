@@ -3,7 +3,7 @@
  * dir_proc.c: remote readdir implementation
  */
 #include <rpc/rpc.h>
-#include <sys/dir.h>
+#include <dirent.h>
 #include "dir.h"
 
 extern int errno;
