@@ -503,6 +503,10 @@ DF510.0 {
     pthread_yield_np;
 };
 
+DF602.0 {
+    getentropy;
+};
+
 DFprivate_1.0 {
 	/* pthread stubs */
     _pthread_atfork;

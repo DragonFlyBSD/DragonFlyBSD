@@ -550,6 +550,7 @@ ssize_t	 extpwrite(int, const void *, size_t, int, off_t);
 ssize_t	 extpwritev(int, const struct iovec *, int, int, off_t);
 char	*fflagstostr(unsigned long);
 int	 getdomainname(char *, int);
+int	 getentropy(void *, size_t);
 int	 getgrouplist(const char *, gid_t, gid_t *, int *);
 mode_t	 getmode(const void *, mode_t);
 int	 getosreldate(void);

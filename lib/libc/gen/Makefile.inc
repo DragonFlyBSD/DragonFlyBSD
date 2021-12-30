@@ -17,6 +17,7 @@ SRCS+=  __errno_location.c _once_stub.c _pthread_stubs.c _rand48.c \
 	fdevname.c fmtcheck.c fmtmsg.c fnmatch.c fpclassify.c \
 	frexp.c fstab.c ftok.c fts.c ftw.c getbootfile.c getbsize.c \
 	getcap.c getcwd.c getdevpath.c getdomainname.c \
+	getentropy.c \
 	getgrent.c getgrouplist.c gethostid.c gethostname.c \
 	getloadavg.c getlogin.c getmntinfo.c getmntvinfo.c \
 	getnetgrent.c getobjformat.c getosreldate.c getpagesize.c \
