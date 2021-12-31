@@ -706,8 +706,9 @@ do { \
 		break;
 
 	case SIOCGIFADDR:
-		bcopy(IFP2AC(ifp)->ac_enaddr,
-		      ((struct sockaddr *)ifr->ifr_data)->sa_data,
+	case SIOCGHWADDR:
+		error = copyout(IFP2AC(ifp)->ac_enaddr,
+			        ((struct sockaddr *)ifr->ifr_data)->sa_data,
 		      ETHER_ADDR_LEN);
 		break;
 
