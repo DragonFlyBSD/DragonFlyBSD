@@ -1101,8 +1101,9 @@ snioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 #ifdef notdef
 	case SIOCGHWADDR:
-		bcopy((caddr_t) sc->sc_addr, (caddr_t) & ifr->ifr_data,
-		      sizeof(sc->sc_addr));
+		error = copyout((caddr_t)sc->sc_addr,
+				(caddr_t)&ifr->ifr_data,
+				sizeof(sc->sc_addr));
 		break;
 #endif
 
