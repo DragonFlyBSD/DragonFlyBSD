@@ -403,8 +403,13 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		if (ifp->if_flags & IFF_UP)
 			error = EBUSY;
 
-		bcopy((caddr_t)ifr->ifr_data, (caddr_t)&cfg, sizeof cfg);
-		if (start_cx28975(sc, cfg) == 0) {
+		bzero(&cfg, sizeof(cfg));
+		error = copyin((caddr_t)ifr->ifr_data,
+			       (caddr_t)&cfg,
+			       sizeof cfg);
+		if (error) {
+			/* fall out */
+		} else if (start_cx28975(sc, cfg) == 0) {
 			static char  *modstr[] = {
 				"TCPAM32", "TCPAM16", "TCPAM8", "TCPAM4" };
 			if_printf(&sc->arpcom.ac_if, "%s, rate %d, %s\n",
@@ -440,15 +445,24 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			for (i = 0; i < 10; ++i)
 				((u_int8_t *) &ds.losw)[i] =
 					sc->cmdp->out_data[i];
-		} else
+		} else {
 			error = EIO;
+		}
 
 		ds.status_1 = ((volatile u_int8_t *)sc->cmdp)[0x3c0];
 		ds.status_3 = ((volatile u_int8_t *)sc->cmdp)[0x3c2];
 
-		bcopy(&sc->in_stats, ifr->ifr_data, sizeof(struct sbni16_stats));
-		bcopy(&ds, (char *)ifr->ifr_data + sizeof(struct sbni16_stats),
-		    sizeof(struct dsl_stats));
+		if (error == 0) {
+			error = copyout(&sc->in_stats,
+					ifr->ifr_data,
+					sizeof(struct sbni16_stats));
+		}
+		if (error == 0) {
+			error = copyout(&ds,
+					(char *)ifr->ifr_data +
+					 sizeof(struct sbni16_stats),
+					sizeof(struct dsl_stats));
+		}
 		break;
 
 	case  SIOCCLRSTATS :
