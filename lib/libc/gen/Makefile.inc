@@ -63,7 +63,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	fmtcheck.3 fmtmsg.3 fnmatch.3 frexp.3 ftok.3 fts.3 ftw.3 \
 	getbootfile.3 getbsize.3 getcap.3 getcontext.3 getcwd.3 \
 	getdevpath.3 getdiskbyname.3 getdisktabbyname.3 getdomainname.3 \
-	getfsent.3 getgrent.3 getgrouplist.3 \
+	getentropy.3 getfsent.3 getgrent.3 getgrouplist.3 \
 	gethostid.3 gethostname.3 getlastlogx.3 getloadavg.3 \
 	getmntinfo.3 getnetgrent.3 getobjformat.3 getosreldate.3 \
 	getpagesize.3 getpass.3 getpeereid.3 getprogname.3 getpwent.3 \
