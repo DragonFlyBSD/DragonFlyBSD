@@ -693,7 +693,7 @@ h2init(struct hammer2_fs *hfs)
 		return(-1);
 	h2lookup(hfs, NULL, 0, 0, NULL, NULL);
 	r = h2lookup(hfs, &hfs->sroot,
-		     HAMMER2_BOOT_KEY, HAMMER2_BOOT_KEY,
+		     HAMMER2_BOOT_KEY, HAMMER2_BOOT_KEY|0xFFFF,
 		     &hfs->sroot, &data);
 	if (r <= 0) {
 		printf("hammer2: 'BOOT' PFS not found\n");
