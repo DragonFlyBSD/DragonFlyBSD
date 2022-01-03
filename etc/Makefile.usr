@@ -9,7 +9,7 @@ GITURL_PROJECTS?=git://git.dragonflybsd.org/projects.git
 # Branch to be fetched & checked out
 # * master - latest development branch
 # * DragonFly_RELEASE_x_y - stable release branch x.y
-BRANCH?=master
+BRANCH?=DragonFly_RELEASE_6_2
 BRANCH_PROJECTS?=master
 
 # DPorts source repository
