@@ -569,6 +569,7 @@ extern const char *LogsPath;
 extern const char *SystemPath;
 extern const char *UsePkgSufx;
 extern const char *Profile;
+extern int MetaVersion;
 extern char *StatsBase;
 extern char *StatsFilePath;
 extern char *StatsLockPath;

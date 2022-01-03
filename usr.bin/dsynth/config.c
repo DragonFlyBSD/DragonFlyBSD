@@ -74,6 +74,7 @@ char *StatsFilePath;
 char *StatsLockPath;
 static const char *ProfileLabel = "[LiveSystem]"; /* with the brackets */
 const char *Profile = "LiveSystem";		/* without the brackets */
+int MetaVersion = 2;
 
 /*
  * Hooks are scripts in ConfigBase
@@ -455,6 +456,8 @@ parseConfigFile(const char *path)
 					strcmp(l2, ".tbz") == 0,
 					"Config: Unknown Package_suffix,"
 					"specify .tgz .tar .txz .tbz or .tzst");
+			} else if (strcmp(l1, "Meta_version") == 0) {
+				MetaVersion = strtol(l2, NULL, 0);
 			} else if (strcmp(l1, "Number_of_builders") == 0) {
 				MaxWorkers = strtol(l2, NULL, 0);
 				if (MaxWorkers == 0)
