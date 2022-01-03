@@ -88,6 +88,7 @@ Directory_logs= /build/synth/logs
 Directory_ccache= disabled
 Directory_system= /
 Package_suffix= .txz
+; Meta_version= 2	(this is the default)
 Number_of_builders= 8
 Max_jobs_per_builder= 8
 Display_with_ncurses= true
@@ -494,6 +495,11 @@ for modest compression and very fast compression and decompression.
 Due to the way the builder works, package dependencies are fresly
 installed into the chroot slot for each package being built, so
 decompression time matters.
+.Pp
+.It 2
+The default setting for
+.Va Meta_version
+is now 2.  You can override it with this configuration variable.
 .El
 .Sh EXIT STATUS
 .Ex -std

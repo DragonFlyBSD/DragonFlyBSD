@@ -94,7 +94,7 @@ DoRebuildRepo(int ask)
 	if (fd < 0)
 		dfatal_errno("Cannot create %s", tpath);
 	fp = fdopen(fd, "w");
-	fprintf(fp, "version = 1;\n");
+	fprintf(fp, "version = %d;\n", MetaVersion);
 	fprintf(fp, "packing_format = \"%s\";\n", sufx + 1);
 	fclose(fp);
 
