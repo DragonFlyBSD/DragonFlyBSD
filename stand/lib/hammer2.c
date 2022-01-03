@@ -41,6 +41,10 @@
 #include "boot2.h"
 #endif
 
+#ifdef LIBSTAND
+#include "stand.h"
+#endif
+
 #ifdef TESTING
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -54,10 +58,6 @@
 #include <string.h>
 #include <strings.h>
 #include <errno.h>
-#endif
-
-#ifdef LIBSTAND
-#include "stand.h"
 #endif
 
 #include <machine/param.h>	/* for DEV_BSHIFT */
@@ -757,7 +757,7 @@ const struct boot2_fsapi boot2_hammer2_api = {
 #endif
 
 /************************************************************************
- * 				BOOT2 SUPPORT				*
+ * 				LIBSTAND SUPPORT			*
  ************************************************************************
  *
  */
