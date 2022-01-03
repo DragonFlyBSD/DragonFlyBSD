@@ -468,7 +468,8 @@ h2resolve(struct hammer2_fs *hfs, const char *path,
 		key = hammer2_dirhash(path, len);
 		for (;;) {
 			bytes = h2lookup(hfs, bref,
-					 key, key | 0xFFFFU,
+					 key,
+					 key | HAMMER2_DIRHASH_LOMASK,
 					 &bres, (void **)&data);
 			if (bytes < 0)
 				break;
@@ -693,7 +694,8 @@ h2init(struct hammer2_fs *hfs)
 		return(-1);
 	h2lookup(hfs, NULL, 0, 0, NULL, NULL);
 	r = h2lookup(hfs, &hfs->sroot,
-		     HAMMER2_BOOT_KEY, HAMMER2_BOOT_KEY|0xFFFF,
+		     HAMMER2_BOOT_KEY,
+		     HAMMER2_BOOT_KEY | HAMMER2_DIRHASH_LOMASK,
 		     &hfs->sroot, &data);
 	if (r <= 0) {
 		printf("hammer2: 'BOOT' PFS not found\n");
