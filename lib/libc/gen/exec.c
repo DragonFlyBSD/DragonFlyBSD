@@ -143,7 +143,7 @@ execvp(const char *name, char * const *argv)
 
 static int
 execvPe(const char *name, const char *path, char * const *argv,
-	char * const *envp __unused)
+	char * const *envp)
 {
 	const char **memp;
 	int cnt;
@@ -156,7 +156,7 @@ execvPe(const char *name, const char *path, char * const *argv,
 	eacces = 0;
 
 	/* If it's an absolute or relative path name, it's easy. */
-	if (index(name, '/')) {
+	if (strchr(name, '/')) {
 		bp = name;
 		cur = NULL;
 		goto retry;
@@ -203,7 +203,7 @@ execvPe(const char *name, const char *path, char * const *argv,
 		bcopy(name, buf + lp + 1, ln);
 		buf[lp + ln + 1] = '\0';
 retry:
-		_execve(bp, argv, environ);
+		_execve(bp, argv, envp);
 		switch (errno) {
 		case E2BIG:
 			goto done;
@@ -222,7 +222,7 @@ retry:
 			memp[0] = "sh";
 			memp[1] = bp;
 			bcopy(argv + 1, memp + 2, cnt * sizeof(char *));
-			_execve(_PATH_BSHELL, __DECONST(char **, memp), environ);
+			_execve(_PATH_BSHELL, __DECONST(char **, memp), envp);
 			goto done;
 		case ENOMEM:
 			goto done;
