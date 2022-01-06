@@ -19,6 +19,6 @@
                 var = _u.v; \
         } while (0)
 
-#define UNUSED(x) (x) = (x)
+#define UNUSED(x) (void)(x)
 
 #endif /* _PORT_BEFORE_H_ */
