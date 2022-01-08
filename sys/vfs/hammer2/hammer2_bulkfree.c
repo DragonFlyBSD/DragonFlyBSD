@@ -74,10 +74,12 @@ typedef struct hammer2_bulkfree_info {
 	long			count_chains_reported;
 	long			bulkfree_calls;
 	int			bulkfree_ticks;
+	int			list_alert;
 	hammer2_off_t		adj_free;
 	hammer2_tid_t		mtid;
 	time_t			save_time;
 	hammer2_chain_save_list_t list;
+	long			list_count;
 	hammer2_dedup_t		*dedup;
 	int			pri;
 } hammer2_bulkfree_info_t;
@@ -240,12 +242,33 @@ hammer2_bulkfree_scan(hammer2_chain_t *parent,
 				 * errors, even in emergency mode.
 				 */
 				/* NOP */
-			} else if (info->depth > 16) {
+			} else if (info->depth > 16 ||
+				   (info->depth > 2 &&
+				    info->list_count >
+				     hammer2_limit_saved_chains) ||
+				   (info->depth > 8 &&
+				    info->list_count >
+				     hammer2_limit_saved_chains / 2))
+			{
+				if (info->list_alert == 0 &&
+				    info->depth <= 16)
+				{
+					kprintf("hammer2: during bulkfree, "
+						"saved chains exceeded %ld "
+						"at depth %d, "
+						"backing off to less-efficient "
+						"operation\n",
+						hammer2_limit_saved_chains,
+						info->depth);
+					info->list_alert = 1;
+				}
+
 				save = kmalloc(sizeof(*save), M_HAMMER2,
 					       M_WAITOK | M_ZERO);
 				save->chain = chain;
 				hammer2_chain_ref(chain);
 				TAILQ_INSERT_TAIL(&info->list, save, entry);
+				++info->list_count;
 
 				/* guess */
 				info->pri += 10;
@@ -297,6 +320,7 @@ hammer2_bulkfree_scan(hammer2_chain_t *parent,
 				break;
 
 			TAILQ_REMOVE(&info->list, save, entry);
+			--info->list_count;
 			opri = info->pri;
 			info->pri = 0;
 			rup_error |= hammer2_bulkfree_scan(save->chain, func, info);
@@ -583,6 +607,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		while ((save = TAILQ_FIRST(&cbinfo.list)) != NULL &&
 		       (error & ~HAMMER2_ERROR_CHECK) == 0) {
 			TAILQ_REMOVE(&cbinfo.list, save, entry);
+			--cbinfo.list_count;
 			cbinfo.pri = 0;
 			error |= hammer2_bulkfree_scan(save->chain,
 						       h2_bulkfree_callback,
@@ -592,6 +617,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		}
 		while (save) {
 			TAILQ_REMOVE(&cbinfo.list, save, entry);
+			--cbinfo.list_count;
 			hammer2_chain_drop(save->chain);
 			kfree(save, M_HAMMER2);
 			save = TAILQ_FIRST(&cbinfo.list);
