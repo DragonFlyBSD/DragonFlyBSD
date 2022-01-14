@@ -80,6 +80,7 @@ typedef struct hammer2_bulkfree_info {
 	time_t			save_time;
 	hammer2_chain_save_list_t list;
 	long			list_count;
+	long			list_count_max;
 	hammer2_dedup_t		*dedup;
 	int			pri;
 } hammer2_bulkfree_info_t;
@@ -117,7 +118,11 @@ hammer2_bulkfree_scan(hammer2_chain_t *parent,
 
 	hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS |
 				   HAMMER2_RESOLVE_SHARED);
-	tail = TAILQ_LAST(&info->list, hammer2_chain_save_list);
+
+	/*
+	 * End of scan if parent is a PFS
+	 */
+	tail = TAILQ_FIRST(&info->list);
 
 	/*
 	 * The parent was previously retrieved NODATA and thus has not
@@ -243,15 +248,23 @@ hammer2_bulkfree_scan(hammer2_chain_t *parent,
 				 */
 				/* NOP */
 			} else if (info->depth > 16 ||
-				   (info->depth > 2 &&
-				    info->list_count >
-				     hammer2_limit_saved_chains) ||
-				   (info->depth > 8 &&
-				    info->list_count >
-				     hammer2_limit_saved_chains / 2))
+				   (info->depth > hammer2_limit_saved_depth &&
+				   info->list_count >=
+				    (hammer2_limit_saved_chains >> 2)))
 			{
-				if (info->list_alert == 0 &&
-				    info->depth <= 16)
+				/*
+				 * We must defer the recursion if it runs
+				 * too deep or if too many saved chains are
+				 * allocated.
+				 *
+				 * In the case of too many saved chains, we
+				 * have to stop recursing ASAP to avoid an
+				 * explosion of memory use since each radix
+				 * level can hold 512 elements.
+				 */
+				if (info->list_count >
+				     hammer2_limit_saved_chains &&
+				    info->list_alert == 0)
 				{
 					kprintf("hammer2: during bulkfree, "
 						"saved chains exceeded %ld "
@@ -263,12 +276,24 @@ hammer2_bulkfree_scan(hammer2_chain_t *parent,
 					info->list_alert = 1;
 				}
 
+				/*
+				 * Must be placed at head so pfsroot scan
+				 * can exhaust saved elements for that pfs
+				 * first.
+				 *
+				 * Must be placed at head for depth-first
+				 * recovery when too many saved chains, to
+				 * limit number of chains saved during
+				 * saved-chain reruns.
+				 */
 				save = kmalloc(sizeof(*save), M_HAMMER2,
 					       M_WAITOK | M_ZERO);
 				save->chain = chain;
 				hammer2_chain_ref(chain);
-				TAILQ_INSERT_TAIL(&info->list, save, entry);
+				TAILQ_INSERT_HEAD(&info->list, save, entry);
 				++info->list_count;
+				if (info->list_count_max < info->list_count)
+					info->list_count_max = info->list_count;
 
 				/* guess */
 				info->pri += 10;
@@ -314,9 +339,8 @@ hammer2_bulkfree_scan(hammer2_chain_t *parent,
 		for (;;) {
 			int opri;
 
-			save = tail ? TAILQ_NEXT(tail, entry) :
-				      TAILQ_FIRST(&info->list);
-			if (save == NULL)
+			save = TAILQ_FIRST(&info->list);
+			if (save == tail)	/* exhaust this PFS only */
 				break;
 
 			TAILQ_REMOVE(&info->list, save, entry);
@@ -695,6 +719,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 			cbinfo.count_linadjusts);
 		kprintf("    dedup factor       %ld\n",
 			cbinfo.count_dedup_factor);
+		kprintf("    max saved chains   %ld\n", cbinfo.list_count_max);
 	}
 
 	return error;
