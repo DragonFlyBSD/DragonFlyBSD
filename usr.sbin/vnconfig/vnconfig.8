@@ -32,9 +32,8 @@
 .\"
 .\"     @(#)vnconfig.8	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/usr.sbin/vnconfig/vnconfig.8,v 1.14.2.8 2003/01/04 22:35:53 keramida Exp $
-.\" $DragonFly: src/usr.sbin/vnconfig/vnconfig.8,v 1.10 2008/07/27 22:36:01 thomas Exp $
 .\"
-.Dd September 28, 2009
+.Dd January 19, 2022
 .Dt VNCONFIG 8
 .Os
 .Sh NAME
@@ -253,6 +252,9 @@ A configuration file contains one line per device/file pair in the form:
 .Ed
 .Pp
 where fields are separated by white space.
+Lines starting with
+.Sq #
+are ignored.
 The previously described action options serve to configure, enable,
 disable or unconfigure all devices in the configuration file.
 .Sh FILES
