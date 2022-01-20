@@ -28,7 +28,7 @@
 .\"	@(#)sysctl.3	8.4 (Berkeley) 5/9/95
 .\" $FreeBSD: src/lib/libc/gen/sysctl.3,v 1.33.2.13 2002/04/07 04:57:14 dd Exp $
 .\"
-.Dd May 25, 2021
+.Dd January 20, 2022
 .Dt SYSCTL 3
 .Os
 .Sh NAME
@@ -80,8 +80,8 @@ length array of integers.
 The
 .Fn sysctlbyname
 function accepts an ASCII representation of the name and internally
-looks up the integer name vector.  Apart from that, it behaves the same
-as the standard
+looks up the integer name vector.
+Apart from that, it behaves the same as the standard
 .Fn sysctl
 function.
 .Pp
@@ -724,13 +724,15 @@ privilege may change the value.
 .It Dv VM_METER Ta struct vmtotal Ta no
 .It Dv VM_PAGEOUT_ALGORITHM Ta integer Ta yes
 .It Dv VM_SWAPPING_ENABLED Ta integer Ta maybe
-.It Dv VM_V_CACHE_MAX Ta integer Ta yes
-.It Dv VM_V_CACHE_MIN Ta integer Ta yes
 .It Dv VM_V_FREE_MIN Ta integer Ta yes
 .It Dv VM_V_FREE_RESERVED Ta integer Ta yes
 .It Dv VM_V_FREE_TARGET Ta integer Ta yes
 .It Dv VM_V_INACTIVE_TARGET Ta integer Ta yes
 .It Dv VM_V_PAGEOUT_FREE_MIN Ta integer Ta yes
+.It Dv VM_V_PAGING_WAIT Ta integer Ta yes
+.It Dv VM_V_PAGING_START Ta integer Ta yes
+.It Dv VM_V_PAGING_TARGET1 Ta integer Ta yes
+.It Dv VM_V_PAGING_TARGET2 Ta integer Ta yes
 .El
 .Bl -tag -width 6n
 .It Dv VM_LOADAVG
@@ -745,13 +747,9 @@ The returned data consists of a
 0 if the statistics-based page management algorithm is in use
 or 1 if the near-LRU algorithm is in use.
 .It Dv VM_SWAPPING_ENABLED
-1 if process swapping is enabled or 0 if disabled.  This variable is
+1 if process swapping is enabled or 0 if disabled.
+This variable is
 permanently set to 0 if the kernel was built with swapping disabled.
-.It Dv VM_V_CACHE_MAX
-Maximum desired size of the cache queue.
-.It Dv VM_V_CACHE_MIN
-Minimum desired size of the cache queue.  If the cache queue size
-falls very far below this value, the pageout daemon is awakened.
 .It Dv VM_V_FREE_MIN
 Minimum amount of memory (cache memory plus free memory)
 required to be available before a process waiting on memory will be
@@ -764,11 +762,26 @@ The total amount of free memory (including cache memory) that the
 pageout daemon tries to maintain.
 .It Dv VM_V_INACTIVE_TARGET
 The desired number of inactive pages that the pageout daemon should
-achieve when it runs.  Inactive pages can be quickly inserted into
+achieve when it runs.
+Inactive pages can be quickly inserted into
 process address space when needed.
 .It Dv VM_V_PAGEOUT_FREE_MIN
 If the amount of free and cache memory falls below this value, the
 pageout daemon will enter "memory conserving mode" to avoid deadlock.
+.It Dv VM_V_PAGING_WAIT
+If the amount of free and cache memory falls below this value, most
+userland processes will begin short stalls on VM allocations and page
+faults, and return to normal operation once the amount of free and
+cache memory goes above this value (that is, as soon as possible).
+.It Dv VM_V_PAGING_START
+The pageout daemon is activated when the amount of free and cache
+memory falls below this value.
+The daemon will free memory up until the amount of free and cache
+memory reaches
+.Dv VM_V_PAGING_TARGET1 ,
+and then continue to free memory up more slowly until the amount of
+free and cache memory reaches
+.Dv VM_V_PAGING_TARGET2 .
 .El
 .Sh RETURN VALUES
 .Rv -std
