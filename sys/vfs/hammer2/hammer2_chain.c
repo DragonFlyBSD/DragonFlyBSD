@@ -244,15 +244,10 @@ hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
  * but is now embedded.
  *
  * The core is not locked.  No additional refs on the chain are made.
- * (trans) must not be NULL if (core) is not NULL.
  */
 void
 hammer2_chain_core_init(hammer2_chain_t *chain)
 {
-	/*
-	 * Fresh core under nchain (no multi-homing of ochain's
-	 * sub-tree).
-	 */
 	RB_INIT(&chain->core.rbtree);	/* live chains */
 	hammer2_mtx_init(&chain->lock, "h2chain");
 }
