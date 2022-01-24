@@ -250,6 +250,7 @@ hammer2_chain_core_init(hammer2_chain_t *chain)
 {
 	RB_INIT(&chain->core.rbtree);	/* live chains */
 	hammer2_mtx_init(&chain->lock, "h2chain");
+	hammer2_spin_init(&chain->core.spin, "h2chain");
 }
 
 /*
