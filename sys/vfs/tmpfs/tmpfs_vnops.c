@@ -1662,7 +1662,7 @@ tmpfs_readdir(struct vop_readdir_args *ap)
 
 	if (uio->uio_offset == TMPFS_DIRCOOKIE_DOT) {
 		error = tmpfs_dir_getdotdent(node, uio);
-		if (error != 0) {
+		if (error && error != EINVAL) {
 			TMPFS_NODE_LOCK_SH(node);
 			goto outok;
 		}
@@ -1672,7 +1672,7 @@ tmpfs_readdir(struct vop_readdir_args *ap)
 	if (uio->uio_offset == TMPFS_DIRCOOKIE_DOTDOT) {
 		/* may lock parent, cannot hold node lock */
 		error = tmpfs_dir_getdotdotdent(tmp, node, uio);
-		if (error != 0) {
+		if (error && error != EINVAL) {
 			TMPFS_NODE_LOCK_SH(node);
 			goto outok;
 		}
@@ -1713,8 +1713,8 @@ outok:
 					de = RB_NEXT(tmpfs_dirtree_cookie,
 					       &node->tn_dir.tn_cookietree, de);
 				} else {
-					de = tmpfs_dir_lookupbycookie(node,
-								      off);
+					de = tmpfs_dir_lookupbycookie(node, off,
+								      1);
 					KKASSERT(de != NULL);
 					de = RB_NEXT(tmpfs_dirtree_cookie,
 					       &node->tn_dir.tn_cookietree, de);
