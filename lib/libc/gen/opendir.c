@@ -114,11 +114,12 @@ __fdopendir2(int fd, int flags)
 		goto fail;
 
 	/*
-	 * Use the system page size if that is a multiple of DIRBLKSIZ.
-	 * Hopefully this can be a big win someday by allowing page
-	 * trades to user space to be done by _getdirentries().
+	 * Use a multiple of DIRBLKSIZ.  Make sure the buffer size is
+	 * decent (at least 16K) to avoid unnecessary excess system calls.
 	 */
-	incr = getpagesize();
+	incr = DIRBLKSIZ * 16;
+	if (incr < 16384)
+		incr = 16384;
 	if ((incr % DIRBLKSIZ) != 0) 
 		incr = DIRBLKSIZ;
 
