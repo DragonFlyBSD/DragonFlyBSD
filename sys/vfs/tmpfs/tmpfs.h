@@ -124,13 +124,25 @@ RB_PROTOTYPE(tmpfs_dirtree_cookie, tmpfs_dirent, rb_cookienode,
 
 #define	TMPFS_DIRCOOKIE_DOT	0
 #define	TMPFS_DIRCOOKIE_DOTDOT	1
-#define	TMPFS_DIRCOOKIE_EOF	2
+#define	TMPFS_DIRCOOKIE_EOF	((off_t)0x7FFFFFFFFFFFFFFFLLU)
 
 static __inline
 off_t
 tmpfs_dircookie(struct tmpfs_dirent *de)
 {
-	return (((off_t)(uintptr_t)de >> 1) & 0x7FFFFFFFFFFFFFFFLLU);
+	return ((off_t)((uintptr_t)de >> 1) & 0x7FFFFFFFFFFFFFFFLLU);
+}
+
+/*
+ * WARNING!  Caller should never try to actually access a tmpfs dirent
+ *	     structure from a cookiedir() conversion.  It is used strictly
+ *	     for RBTREE operations.
+ */
+static __inline
+void *
+tmpfs_cookiedir(off_t off)
+{
+	return ((void *)((uintptr_t)off << 1));
 }
 
 #endif  /* _KERNEL */
@@ -403,7 +415,8 @@ struct tmpfs_dirent *	tmpfs_dir_lookup(struct tmpfs_node *node,
 int	tmpfs_dir_getdotdent(struct tmpfs_node *, struct uio *);
 int	tmpfs_dir_getdotdotdent(struct tmpfs_mount *,
 			    struct tmpfs_node *, struct uio *);
-struct tmpfs_dirent *	tmpfs_dir_lookupbycookie(struct tmpfs_node *, off_t);
+struct tmpfs_dirent *	tmpfs_dir_lookupbycookie(struct tmpfs_node *, off_t,
+			    int);
 int	tmpfs_dir_getdents(struct tmpfs_node *, struct uio *, off_t *);
 int	tmpfs_reg_resize(struct vnode *, off_t, int);
 int	tmpfs_chflags(struct vnode *, u_long, struct ucred *);

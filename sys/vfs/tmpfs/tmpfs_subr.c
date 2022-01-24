@@ -780,6 +780,8 @@ tmpfs_dir_getdotdotdent(struct tmpfs_mount *tmp, struct tmpfs_node *node,
  *
  * Must be called with the directory node locked (shared ok)
  */
+#if 0
+
 struct lubycookie_info {
 	off_t	cookie;
 	struct tmpfs_dirent *de;
@@ -810,9 +812,16 @@ lubycookie_callback(struct tmpfs_dirent *de, void *arg)
 	return(0);
 }
 
+#endif
+
+/*
+ * Find first cookie >= (cookie).  If exact specified, find the exact
+ * cookie.
+ */
 struct tmpfs_dirent *
-tmpfs_dir_lookupbycookie(struct tmpfs_node *node, off_t cookie)
+tmpfs_dir_lookupbycookie(struct tmpfs_node *node, off_t cookie, int exact)
 {
+#if 0
 	struct lubycookie_info info;
 
 	info.cookie = cookie;
@@ -820,6 +829,24 @@ tmpfs_dir_lookupbycookie(struct tmpfs_node *node, off_t cookie)
 	RB_SCAN(tmpfs_dirtree_cookie, &node->tn_dir.tn_cookietree,
 		lubycookie_cmp, lubycookie_callback, &info);
 	return (info.de);
+#endif
+	struct tmpfs_dirent *cdent = tmpfs_cookiedir(cookie);
+	struct tmpfs_dirent *last;
+	struct tmpfs_dirent *tmp;
+
+	last = NULL;
+	tmp = RB_ROOT(&node->tn_dir.tn_cookietree);
+	while (tmp) {
+		if (cdent == tmp)
+			return cdent;
+		if (cdent > tmp) {
+			last = tmp;
+			tmp = RB_RIGHT(tmp, rb_cookienode);
+		} else {
+			tmp = RB_LEFT(tmp, rb_cookienode);
+		}
+	}
+	return (exact ? NULL : last);
 }
 
 /* --------------------------------------------------------------------- */
@@ -846,6 +873,9 @@ tmpfs_dir_getdents(struct tmpfs_node *node, struct uio *uio, off_t *cntp)
 	 * Locate the first directory entry we have to return.  We have cached
 	 * the last readdir in the node, so use those values if appropriate.
 	 * Otherwise do a linear scan to find the requested entry.
+	 *
+	 * If a particular cookie does not exist, locate the first valid
+	 * cookie after that one.
 	 */
 	startcookie = uio->uio_offset;
 	KKASSERT(startcookie != TMPFS_DIRCOOKIE_DOT);
@@ -854,9 +884,15 @@ tmpfs_dir_getdents(struct tmpfs_node *node, struct uio *uio, off_t *cntp)
 	if (startcookie == TMPFS_DIRCOOKIE_EOF)
 		return 0;
 
-	de = tmpfs_dir_lookupbycookie(node, startcookie);
-	if (de == NULL)
-		return EINVAL;
+	/*
+	 * Inexact lookup, find first direntry with a cookie >= startcookie.
+	 * If none found we are at the EOF.
+	 */
+	de = tmpfs_dir_lookupbycookie(node, startcookie, 0);
+	if (de == NULL) {
+		uio->uio_offset = TMPFS_DIRCOOKIE_EOF;
+		return 0;
+	}
 
 	/*
 	 * Read as much entries as possible; i.e., until we reach the end of
