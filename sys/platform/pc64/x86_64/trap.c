@@ -1367,8 +1367,9 @@ bad:
 	KTR_LOG(kernentry_syscall_ret, p->p_pid, lp->lwp_tid, error);
 #ifdef INVARIANTS
 	KASSERT(crit_count == td->td_critcount,
-		("syscall: critical section count mismatch! %d/%d",
-		crit_count, td->td_pri));
+		("syscall: critical section count mismatch! "
+		 "%d/%d in %s sysno=%d",
+		crit_count, td->td_pri, td->td_comm, code));
 	KASSERT(&td->td_toks_base == td->td_toks_stop,
 		("syscall: %ld extra tokens held after trap! syscall %p",
 		td->td_toks_stop - &td->td_toks_base,
@@ -1444,7 +1445,11 @@ sys_xsyscall(struct sysmsg *sysmsg, const struct nosys_args *uap)
 
 #ifdef KTRACE
 	if (KTRPOINTP(p, td, KTR_SYSRET)) {
-		ktrsysret(td->td_lwp, code, error, sysmsg->sysmsg_result);
+		register_t rval;
+
+		rval = (callp->sy_rsize <= 4) ? sysmsg->sysmsg_result :
+						sysmsg->sysmsg_lresult;
+		ktrsysret(td->td_lwp, code, error, rval);
 	}
 #endif
 

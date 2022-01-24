@@ -191,6 +191,7 @@ s/\$//g
 		f=3			# toss number and type
 		argc= 0;
 		argssize = "0"
+		rsize=4
 		if ($NF != "}") {
 			funcalias=$(NF-2)
 			argalias=$(NF-1)
@@ -220,6 +221,7 @@ s/\$//g
 			parserr($end, ")")
 		end--
 
+		rtype=$f
 		f++	#function return type
 
 		funcname=$f
@@ -239,6 +241,15 @@ s/\$//g
 				parserr($f, "argument definition")
 			return
 		}
+
+		if (rtype == "caddr_t")
+			rsize = 8
+		if (rtype == "size_t")
+			rsize = 8
+		if (rtype == "ssize_t")
+			rsize = 8
+		if (rtype == "off_t")
+			rsize = 8
 
 		while (f <= end) {
 			argc++
@@ -298,7 +309,7 @@ s/\$//g
 			nosys = 1
 		if (funcname == "lkmnosys")
 			lkmnosys = 1
-		printf("\t{ %s, (sy_call_t *)", argssize) > sysent
+		printf("\t{ %s, %s, (sy_call_t *)", argssize, rsize) > sysent
 		column = 8 + 2 + length(argssize) + 15
 	 	if ($2 != "NOIMPL") {
 			printf("sys_%s },", funcname) > sysent
@@ -320,7 +331,7 @@ s/\$//g
 		next
 	}
 	$2 == "OBSOL" {
-		printf("\t{ 0, (sy_call_t *)sys_nosys },") > sysent
+		printf("\t{ 0, 4, (sy_call_t *)sys_nosys },") > sysent
 		align_sysent_comment(37)
 		printf("/* %d = obsolete %s */\n", syscall, comment) > sysent
 		printf("\t\"obs_%s\",\t\t\t/* %d = obsolete %s */\n",
@@ -331,7 +342,7 @@ s/\$//g
 		next
 	}
 	$2 == "UNIMPL" {
-		printf("\t{ 0, (sy_call_t *)sys_nosys },\t\t\t/* %d = %s */\n",
+		printf("\t{ 0, 4, (sy_call_t *)sys_nosys },\t\t\t/* %d = %s */\n",
 		    syscall, comment) > sysent
 		printf("\t\"#%d\",\t\t\t/* %d = %s */\n",
 		    syscall, syscall, comment) > sysnames
@@ -345,7 +356,7 @@ s/\$//g
 	END {
 		printf "\n#define AS(name) (sizeof(struct name) / sizeof(register_t))\n" > sysinc
 		if (ncompat != 0)
-			printf "#define compat(n, name) 0, (sy_call_t *)sys_nosys\n" > sysinc
+			printf "#define compat(n, name) 0, 4, (sy_call_t *)sys_nosys\n" > sysinc
 
 		printf("\n#undef PAD_\n") > sysarg
 		printf("\n#endif /* _KERNEL */\n") > syscompatdcl

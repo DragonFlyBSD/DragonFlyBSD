@@ -42,7 +42,8 @@ struct sysmsg;
 typedef	int	sy_call_t (struct sysmsg *sysmsg, const void *);
 
 struct sysent {		/* system call table */
-	int	sy_narg;	/* number of arguments */
+	int32_t	  sy_narg;	/* number of arguments */
+	uint32_t  sy_rsize;	/* sizeof(result) */
 	sy_call_t *sy_call;	/* start function */
 	sy_call_t *sy_abort;	/* abort function (only if start was async) */
 };
