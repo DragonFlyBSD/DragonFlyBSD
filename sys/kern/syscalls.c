@@ -559,6 +559,6 @@ const char *syscallnames[] = {
 	"getrandom",			/* 550 = getrandom */
 	"__realpath",			/* 551 = __realpath */
 	"fexecve",			/* 552 = fexecve */
-	"posix_fallocate"		/* 553 = posix_fallocate */
-	"fdatasync"			/* 554 = fdatasync */
+	"posix_fallocate",			/* 553 = posix_fallocate */
+	"fdatasync",			/* 554 = fdatasync */
 };
