@@ -291,6 +291,12 @@ semundo_clear(int semid, int semnum)
 		PHOLD(p);
 		lwkt_gettoken(&p->p_token);
 
+		/*
+		 * Check for semexit() race
+		 */
+		if (p->p_sem_undo != suptr)
+			goto skip;
+
 		sunptr = &suptr->un_ent[0];
 		i = 0;
 
@@ -315,11 +321,12 @@ semundo_clear(int semid, int semnum)
 			++sunptr;
 		}
 
+skip:
 		lwkt_reltoken(&p->p_token);
 		PRELE(p);
 
 		/*
-		 * Handle deletion races
+		 * Handle deletion and semexit races
 		 */
 		sunext = TAILQ_NEXT(suptr, un_entry);
 		if (--suptr->un_refs == 0 && suptr->un_proc == NULL) {
@@ -1070,9 +1077,15 @@ semexit(struct proc *p)
 	 * scanning it as other semaphore calls might still effect it.
 	 */
 	lwkt_gettoken(&semu_token);
+#if 0
+	/*
+	 * do not disconnect proc yet, doing so prevents RMID
+	 * from cleaning up the structure atomically with SEM_ALLOC
+	 */
 	p->p_sem_undo = NULL;
 	p->p_flags &= ~P_SYSVSEM;
 	suptr->un_proc = NULL;
+#endif
 	++suptr->un_refs;
 	lwkt_reltoken(&semu_token);
 
@@ -1100,7 +1113,7 @@ semexit(struct proc *p)
 		 * operation.  semptr remains valid due to the
 		 * semaptr->lk.
 		 */
-		lockmgr(&semaptr->lk, LK_SHARED);
+		lockmgr(&semaptr->lk, LK_EXCLUSIVE);
 		semptr = &semaptr->ds.sem_base[semnum];
 		lwkt_getpooltoken(semptr);
 
@@ -1132,10 +1145,15 @@ semexit(struct proc *p)
 	}
 
 	/*
-	 * Final cleanup, remove from the list and deallocate on the
-	 * last ref only.
+	 * Final cleanup, remove from the list, remove the process association,
+	 * then deallocate on last ref.
 	 */
 	lwkt_gettoken(&semu_token);
+
+	p->p_sem_undo = NULL;
+	p->p_flags &= ~P_SYSVSEM;
+	suptr->un_proc = NULL;
+
 	if (--suptr->un_refs == 0) {
 		TAILQ_REMOVE(&semu_list, suptr, un_entry);
 		KKASSERT(suptr->un_cnt == 0);
