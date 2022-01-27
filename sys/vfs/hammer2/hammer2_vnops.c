@@ -443,10 +443,10 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 		if (error == 0) {
 			if (ip->meta.uflags != flags) {
 				hammer2_inode_modify(ip);
-				spin_lock_update(&ip->cluster_spin);
+				hammer2_spin_lock_update(&ip->cluster_spin);
 				ip->meta.uflags = flags;
 				ip->meta.ctime = ctime;
-				spin_unlock_update(&ip->cluster_spin);
+				hammer2_spin_unlock_update(&ip->cluster_spin);
 				kflags |= NOTE_ATTRIB;
 			}
 			if (ip->meta.uflags & (IMMUTABLE | APPEND)) {
@@ -478,12 +478,12 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 			    ip->meta.mode != cur_mode
 			) {
 				hammer2_inode_modify(ip);
-				spin_lock_update(&ip->cluster_spin);
+				hammer2_spin_lock_update(&ip->cluster_spin);
 				ip->meta.uid = uuid_uid;
 				ip->meta.gid = uuid_gid;
 				ip->meta.mode = cur_mode;
 				ip->meta.ctime = ctime;
-				spin_unlock_update(&ip->cluster_spin);
+				hammer2_spin_unlock_update(&ip->cluster_spin);
 			}
 			kflags |= NOTE_ATTRIB;
 		}
@@ -532,10 +532,10 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 					 cur_uid, cur_gid, &cur_mode);
 		if (error == 0) {
 			hammer2_inode_modify(ip);
-			spin_lock_update(&ip->cluster_spin);
+			hammer2_spin_lock_update(&ip->cluster_spin);
 			ip->meta.mode = cur_mode;
 			ip->meta.ctime = ctime;
-			spin_unlock_update(&ip->cluster_spin);
+			hammer2_spin_unlock_update(&ip->cluster_spin);
 			kflags |= NOTE_ATTRIB;
 		}
 	}

@@ -141,6 +141,8 @@ typedef struct spinlock			hammer2_spin_t;
 #define hammer2_spin_ex			spin_lock
 #define hammer2_spin_unsh		spin_unlock_shared
 #define hammer2_spin_unex		spin_unlock
+#define hammer2_spin_lock_update	spin_lock_update
+#define hammer2_spin_unlock_update	spin_unlock_update
 
 TAILQ_HEAD(hammer2_xop_list, hammer2_xop_head);
 TAILQ_HEAD(hammer2_chain_list, hammer2_chain);
