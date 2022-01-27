@@ -417,14 +417,14 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 		kmalloc_create_obj(&pmp->minode, "HAMMER2-inodes",
 				   sizeof(struct hammer2_inode));
 		lockinit(&pmp->lock, "pfslk", 0, 0);
-		spin_init(&pmp->inum_spin, "hm2pfsalloc_inum");
-		spin_init(&pmp->xop_spin, "h2xop");
-		spin_init(&pmp->lru_spin, "h2lru");
+		hammer2_spin_init(&pmp->inum_spin, "hm2pfsalloc_inum");
+		hammer2_spin_init(&pmp->xop_spin, "h2xop");
+		hammer2_spin_init(&pmp->lru_spin, "h2lru");
 		RB_INIT(&pmp->inum_tree);
 		TAILQ_INIT(&pmp->syncq);
 		TAILQ_INIT(&pmp->depq);
 		TAILQ_INIT(&pmp->lru_list);
-		spin_init(&pmp->list_spin, "h2pfsalloc_list");
+		hammer2_spin_init(&pmp->list_spin, "h2pfsalloc_list");
 
 		/*
 		 * Save the last media transaction id for the flusher.  Set
@@ -1200,8 +1200,8 @@ next_hmp:
 		kmalloc_create(&hmp->mmsg, "HAMMER2-msg");
 		TAILQ_INSERT_TAIL(&hammer2_mntlist, hmp, mntentry);
 		RB_INIT(&hmp->iotree);
-		spin_init(&hmp->io_spin, "h2mount_io");
-		spin_init(&hmp->list_spin, "h2mount_list");
+		hammer2_spin_init(&hmp->io_spin, "h2mount_io");
+		hammer2_spin_init(&hmp->list_spin, "h2mount_list");
 
 		lockinit(&hmp->vollk, "h2vol", 0, 0);
 		lockinit(&hmp->bulklk, "h2bulk", 0, 0);

@@ -51,7 +51,7 @@ void
 ccms_cst_init(ccms_cst_t *cst)
 {
 	bzero(cst, sizeof(*cst));
-	spin_init(&cst->spin, "ccmscst");
+	hammer2_spin_init(&cst->spin, "ccmscst");
 }
 
 void

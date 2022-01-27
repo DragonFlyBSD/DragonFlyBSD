@@ -886,7 +886,7 @@ again:
 	 * insert it, handle insertion races.
 	 */
 	nip = kmalloc_obj(sizeof(*nip), pmp->minode, M_WAITOK | M_ZERO);
-	spin_init(&nip->cluster_spin, "h2clspin");
+	hammer2_spin_init(&nip->cluster_spin, "h2clspin");
 	atomic_add_long(&pmp->inmem_inodes, 1);
 
 	/*
