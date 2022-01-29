@@ -31,7 +31,6 @@
  *
  * @(#)getnetgrent.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/lib/libc/gen/getnetgrent.c,v 1.35 2007/01/09 00:27:54 imp Exp $
- * $DragonFly: src/lib/libc/gen/getnetgrent.c,v 1.5 2005/04/25 19:03:46 joerg Exp $
  */
 
 #include <ctype.h>
@@ -193,7 +192,7 @@ setnetgrent(const char *group)
 				return;
 			}
 #else
-		if (netf = fopen(_PATH_NETGROUP, "r")) {
+		if ((netf = fopen(_PATH_NETGROUP, "r"))) {
 #endif
 			if (parse_netgrp(group))
 				endnetgrent();
