@@ -61,7 +61,6 @@ ${SPSEUDO}:
 	    > ${.TARGET}
 	printf  ${NOTE_GNU_STACK} >> ${.TARGET}
 
-.if ${LIB} == "c"
 MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 bind.2 \
 	sys_checkpoint.2 chdir.2 chflags.2 \
 	chmod.2 chown.2 chroot.2 clock_gettime.2 close.2 closefrom.2 \
@@ -246,4 +245,3 @@ MLINKS+=write.2 extpwrite.2 \
 	write.2 pwrite.2 \
 	write.2 pwritev.2 \
 	write.2 writev.2
-.endif

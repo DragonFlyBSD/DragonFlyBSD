@@ -3,7 +3,6 @@
 
 .PATH: ${.CURDIR}/../libc/db/man
 
-.if ${LIB} == "c"
 MAN+=	btree.3 dbm.3 dbopen.3 hash.3 mpool.3 recno.3
 
 MLINKS+=dbm.3 dbm_clearerr.3 \
@@ -25,4 +24,3 @@ MLINKS+=mpool.3 mpool_close.3 \
 	mpool.3 mpool_open.3 \
 	mpool.3 mpool_put.3 \
 	mpool.3 mpool_sync.3
-.endif

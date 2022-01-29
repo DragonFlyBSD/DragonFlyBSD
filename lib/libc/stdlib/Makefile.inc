@@ -35,7 +35,6 @@ MISRCS+= nmalloc.c
 .include "${.CURDIR}/../libc/${MACHINE_ARCH}/stdlib/Makefile.inc"
 .endif
 
-.if ${LIB} == "c"
 MAN+=	a64l.3 abort.3 abs.3 alloca.3 atexit.3 atof.3 atoi.3 atol.3 \
 	at_quick_exit.3 \
 	bsearch.3 \
@@ -110,4 +109,3 @@ MLINKS+=strtoul.3 strtoul_l.3 \
 MLINKS+=tsearch.3 tdelete.3 \
 	tsearch.3 tfind.3 \
 	tsearch.3 twalk.3
-.endif

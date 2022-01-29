@@ -31,8 +31,6 @@ SRCS+=	__fpending.c _flock_stub.c \
 	xprintf_hexdump.c xprintf_int.c xprintf_quote.c xprintf_str.c \
 	xprintf_time.c xprintf_vis.c
 
-
-.if ${LIB} == "c"
 MAN+=	fclose.3 ferror.3 fflush.3 fgetln.3 fgets.3 fgetwln.3 fgetws.3 \
 	flockfile.3 fmemopen.3 fopen.3 fparseln.3 fputs.3 fputws.3 \
 	fread.3 fseek.3 funopen.3 fwide.3 \
@@ -155,4 +153,3 @@ MLINKS+=wscanf_l.3 fwscanf_l.3 \
 	wscanf_l.3 vfwscanf_l.3 \
 	wscanf_l.3 vswscanf_l.3 \
 	wscanf_l.3 vwscanf_l.3
-.endif

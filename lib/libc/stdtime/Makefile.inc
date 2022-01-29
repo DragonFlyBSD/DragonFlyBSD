@@ -8,7 +8,6 @@ CMAPS+=	${.CURDIR}/stdtime/Symbol.map
 SRCS+=	asctime.c difftime.c getdate.c localtime.c \
 	strftime.c strptime.c timelocal.c time32.c timespec_get.c
 
-.if ${LIB} == "c"
 MAN+=	ctime.3 getdate.3 offtime.3 strftime.3 strptime.3 \
 	time2posix.3 timespec_get.3
 MAN+=	tzfile.5
@@ -28,4 +27,3 @@ MLINKS+=offtime.3 timelocal.3 \
 MLINKS+=strftime.3 strftime_l.3
 MLINKS+=strptime.3 strptime_l.3
 MLINKS+=time2posix.3 posix2time.3
-.endif

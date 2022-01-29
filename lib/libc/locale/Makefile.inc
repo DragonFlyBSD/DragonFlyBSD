@@ -28,7 +28,6 @@ SRCS+=	ascii.c big5.c btowc.c collate.c collcmp.c euc.c fix_grouping.c \
 
 SRCS+=	c16rtomb_iconv.c c32rtomb_iconv.c mbrtoc16_iconv.c mbrtoc32_iconv.c
 
-.if ${LIB} == "c"
 MAN+=	btowc.3 \
 	ctype_l.3 \
 	ctype.3 digittoint.3 isalnum.3 isalpha.3 isascii.3 isblank.3 iscntrl.3 \
@@ -168,4 +167,3 @@ MLINKS+=wcstombs.3 wcstombs_l.3
 MLINKS+=wctrans.3 towctrans.3
 MLINKS+=wctype.3 iswctype.3
 MLINKS+=wcwidth.3 wcwidth_l.3
-.endif

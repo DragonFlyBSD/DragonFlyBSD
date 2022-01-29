@@ -32,7 +32,6 @@ FLAGS_GROUPS=	yy_buf
 yy_buf_FLAGS=	-DYY_BUF_SIZE=1024
 yy_buf_FLAGS_FILES=nslexer.c
 
-.if ${LIB} == "c"
 MAN+=	byteorder.3 ethers.3 eui64.3 \
 	gai_strerror.3 getaddrinfo.3 gethostbyname.3 \
 	getifaddrs.3 getipnodebyname.3 \
@@ -138,7 +137,6 @@ MLINKS+=resolver.3 dn_comp.3 \
 	resolver.3 res_query.3 \
 	resolver.3 res_search.3 \
 	resolver.3 res_send.3
-.endif
 
 .if defined(WANT_HESIOD)
 SRCS+=	hesiod.c

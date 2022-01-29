@@ -18,7 +18,6 @@ yp_xdr.c: ${RPCSRC}
 yp.h: ${RPCSRC}
 	${RPCGEN} -h -o ${.TARGET} ${RPCSRC}
 
-.if ${LIB} == "c"
 MAN+=	ypclnt.3
 
 MLINKS+=ypclnt.3 yp_all.3 \
@@ -33,4 +32,3 @@ MLINKS+=ypclnt.3 yp_all.3 \
 	ypclnt.3 yp_order.3 \
 	ypclnt.3 ypprot_err.3 \
 	ypclnt.3 yp_unbind.3
-.endif

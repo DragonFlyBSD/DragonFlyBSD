@@ -30,7 +30,6 @@ MISRCS+=bcmp.c bcopy.c bzero.c explicit_bzero.c \
 .include "${.CURDIR}/../libc/${MACHINE_ARCH}/string/Makefile.inc"
 .endif
 
-.if ${LIB} == "c"
 MAN+=	bcopy.3 bstring.3 bzero.3 ffs.3 index.3 memccpy.3 memchr.3 \
 	memcmp.3 memcpy.3 memmem.3 memmove.3 memset.3 \
 	timingsafe_bcmp.3 strcasecmp.3 strcat.3 \
@@ -102,4 +101,3 @@ MLINKS+=wmemchr.3 wcpcpy.3 \
 	wmemchr.3 wmemcpy.3 \
 	wmemchr.3 wmemmove.3 \
 	wmemchr.3 wmemset.3
-.endif

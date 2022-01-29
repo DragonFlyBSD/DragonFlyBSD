@@ -8,7 +8,6 @@ CMAPS+=	${.CURDIR}/xdr/Symbol.map
 SRCS+=	xdr.c xdr_array.c xdr_float.c xdr_mem.c \
 	xdr_rec.c xdr_reference.c xdr_sizeof.c xdr_stdio.c
 
-.if ${LIB} == "c"
 MAN+=	xdr.3
 
 MLINKS+=rpc_xdr.3 xdr_accepted_reply.3 \
@@ -65,4 +64,3 @@ MLINKS+=xdr.3 xdr_array.3 \
 	xdr.3 xdr_vector.3 \
 	xdr.3 xdr_void.3 \
 	xdr.3 xdr_wrapstring.3
-.endif

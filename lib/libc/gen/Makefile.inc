@@ -52,7 +52,6 @@ SRCS+=	tls.c
 # machine-dependent gen sources
 .include "${.CURDIR}/../libc/${MACHINE_ARCH}/gen/Makefile.inc"
 
-.if ${LIB} == "c"
 MAN+=	alarm.3 arc4random.3 clock.3 \
 	basename.3 \
 	clock_getcpuclockid.3 confstr.3 creat.3 ctermid.3 daemon.3 \
@@ -305,4 +304,3 @@ MLINKS+=vis.3 nvis.3 \
 	vis.3 strvisx.3 \
 	vis.3 svis.3
 MLINKS+=wordexp.3 wordfree.3
-.endif

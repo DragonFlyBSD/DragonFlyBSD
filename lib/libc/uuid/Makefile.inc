@@ -10,7 +10,6 @@ SRCS+=	uuid_compare.c uuid_create.c uuid_create_nil.c uuid_equal.c \
 	uuid_stream.c uuid_to_string.c
 CMAPS+=	${.CURDIR}/uuid/Symbol.map
 
-.if ${LIB} == "c"
 MAN+=	uuid.3
 
 MLINKS+=uuid.3 uuid_addr_lookup.3 \
@@ -28,4 +27,3 @@ MLINKS+=uuid.3 uuid_addr_lookup.3 \
 	uuid.3 uuid_name_lookup.3 \
 	uuid.3 uuid_reset_lookup.3 \
 	uuid.3 uuid_to_string.3
-.endif

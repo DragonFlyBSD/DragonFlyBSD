@@ -22,6 +22,8 @@ CFLAGS+=	-DHAVE_CONFIG_H
 
 .if ${LIB} == "c"
 INCS=	${.CURDIR}/../libc/tre-regex/regex.h
+.endif
+
 MAN+=	regex.3
 MAN+=	re_format.7
 
@@ -40,4 +42,3 @@ MLINKS+=regex.3 regcomp.3 \
 	regex.3 regwncomp.3 \
 	regex.3 regwncomp_l.3 \
 	regex.3 regwnexec.3
-.endif

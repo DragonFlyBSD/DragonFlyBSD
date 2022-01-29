@@ -7,12 +7,12 @@ CMAPS+=	${.CURDIR}/nls/Symbol.map
 
 SRCS+=	msgcat.c
 
-.if ${LIB} == "c"
 MAN+=	catclose.3 catgets.3 catopen.3
 
 # NOTE: C.msg should not be processed here, it's used as a template
 #       for translators.
 
+.if ${LIB} == "c"
 .if !defined(NO_SHARE)
 NLSNAME=	libc
 NLS+=	be_BY.UTF-8

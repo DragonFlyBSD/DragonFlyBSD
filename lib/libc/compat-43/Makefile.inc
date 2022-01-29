@@ -6,10 +6,8 @@
 
 SRCS+=	sethostid.c setpgrp.c setrgid.c setruid.c sigcompat.c
 
-.if ${LIB} == "c"
 MAN+=	sigblock.3 sigpause.3 sigsetmask.3 sigvec.3 setruid.3
 
 MLINKS+=setruid.3 setrgid.3
-.endif
 
 CMAPS+=	${.CURDIR}/compat-43/Symbol.map
