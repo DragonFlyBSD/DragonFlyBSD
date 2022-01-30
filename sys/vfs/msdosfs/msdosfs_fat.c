@@ -404,15 +404,15 @@ usemap_free(struct msdosfsmount *pmp, u_long cn)
 	pmp->pm_inusemap[cn / N_INUSEBITS] &= ~(1U << (cn % N_INUSEBITS));
 }
 
-int
-clusterfree(struct msdosfsmount *pmp, u_long cluster, u_long *oldcnp)
+void
+clusterfree(struct msdosfsmount *pmp, u_long cluster)
 {
 	int error;
 	u_long oldcn;
 
 	error = fatentry(FAT_GET_AND_SET, pmp, cluster, &oldcn, MSDOSFSFREE);
-	if (error)
-		return (error);
+	if (error != 0)
+		return;
 	/*
 	 * If the cluster was successfully marked free, then update
 	 * the count of free clusters, and turn off the "allocated"
@@ -421,9 +421,6 @@ clusterfree(struct msdosfsmount *pmp, u_long cluster, u_long *oldcnp)
 	MSDOSFS_LOCK_MP(pmp);
 	usemap_free(pmp, cluster);
 	MSDOSFS_UNLOCK_MP(pmp);
-	if (oldcnp)
-		*oldcnp = oldcn;
-	return (0);
 }
 
 /*
@@ -1028,7 +1025,7 @@ extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
 					 dep->de_fc[FC_LASTFC].fc_fsrcn,
 					 0, cn);
 			if (error) {
-				clusterfree(pmp, cn, NULL);
+				clusterfree(pmp, cn);
 				return (error);
 			}
 			frcn = dep->de_fc[FC_LASTFC].fc_frcn + 1;
