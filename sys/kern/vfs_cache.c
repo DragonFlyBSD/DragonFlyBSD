@@ -288,7 +288,7 @@ sysctl_nchstats(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_vfs_cache, OID_AUTO, nchstats, CTLTYPE_OPAQUE|CTLFLAG_RD,
   0, 0, sysctl_nchstats, "S,nchstats", "VFS cache effectiveness statistics");
 
-static void cache_zap(struct namecache *ncp);
+static int cache_zap(struct namecache *ncp);
 
 /*
  * Cache mount points and namecache records in order to avoid unnecessary
@@ -1875,14 +1875,24 @@ _cache_unlink(struct namecache *ncp)
 
 	/*
 	 * Attempt to trigger a deactivation.  Set VREF_FINALIZE to
-	 * force action on the 1->0 transition.
+	 * force action on the 1->0 transition.  Do not destroy the
+	 * vp association if a vp is present (leave the destroyed ncp
+	 * resolved through the vp finalization).
+	 *
+	 * Cleanup the refs in the resolved-not-found case by setting
+	 * the ncp to an unresolved state.  This improves our ability
+	 * to get rid of dead ncp elements in other cache_*() routines.
 	 */
-	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0 &&
-	    (vp = ncp->nc_vp) != NULL) {
-		atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
-		if (VREFCNT(vp) <= 0) {
-			if (vget(vp, LK_SHARED) == 0)
-				vput(vp);
+	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
+		vp = ncp->nc_vp;
+		if (vp) {
+			atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
+			if (VREFCNT(vp) <= 0) {
+				if (vget(vp, LK_SHARED) == 0)
+					vput(vp);
+			}
+		} else {
+			_cache_setunresolved(ncp);
 		}
 	}
 }
@@ -2565,7 +2575,7 @@ done:
  *	     parent spinlock if child of parent
  *	     (the ncp is unresolved so there is no vnode association)
  */
-static void
+static int
 cache_zap(struct namecache *ncp)
 {
 	struct namecache *par;
@@ -2573,6 +2583,7 @@ cache_zap(struct namecache *ncp)
 	struct nchash_head *nchpp;
 	int refcmp;
 	int nonblock = 1;	/* XXX cleanup */
+	int res = 0;
 
 again:
 	/*
@@ -2613,7 +2624,7 @@ again:
 				    1);
 				_cache_unlock(ncp);
 				_cache_drop(ncp);	/* caller's ref */
-				return;
+				return res;
 			}
 			_cache_hold(par);
 		} else {
@@ -2648,7 +2659,7 @@ again:
 		}
 		_cache_unlock(ncp);
 		_cache_drop(ncp);
-		return;
+		return res;
 	}
 
 	/*
@@ -2697,6 +2708,7 @@ again:
 	if (ncp->nc_name)
 		kfree(ncp->nc_name, M_VFSCACHEAUX);
 	kfree_obj(ncp, M_VFSCACHE);
+	res = 1;
 
 	/*
 	 * Delayed drop (we had to release our spinlocks)
@@ -2714,13 +2726,15 @@ again:
 		par->nc_flag &= ~NCF_DEFEREDZAP;
 		if ((par->nc_flag & NCF_UNRESOLVED) &&
 		    par->nc_refs == refcmp &&
-		    TAILQ_EMPTY(&par->nc_list)) {
+		    TAILQ_EMPTY(&par->nc_list))
+		{
 			ncp = par;
 			goto again;
 		}
 		_cache_unlock(par);
 		_cache_drop(par);
 	}
+	return 1;
 }
 
 /*
@@ -2899,7 +2913,11 @@ restart:
 	else
 		spin_lock_shared(&nchpp->spin);
 
-	TAILQ_FOREACH(ncp, &nchpp->list, nc_hash) {
+	/*
+	 * Do a reverse scan to collect any DESTROYED ncps prior to matching
+	 * an existing entry.
+	 */
+	TAILQ_FOREACH_REVERSE(ncp, &nchpp->list, nchash_list, nc_hash) {
 		/*
 		 * Break out if we find a matching entry.  Note that
 		 * UNRESOLVED entries may match, but DESTROYED entries
@@ -2919,15 +2937,52 @@ restart:
 			}
 			if (bcmp(ncp->nc_name, nlc->nlc_nameptr, ncp->nc_nlen))
 				continue;
+
+			/*
+			 * Matched ncp
+			 */
 			_cache_hold(ncp);
+			if (rep_ncp)
+				_cache_hold(rep_ncp);
+
 			if (use_excl)
 				spin_unlock(&nchpp->spin);
 			else
 				spin_unlock_shared(&nchpp->spin);
+
 			if (par_locked) {
 				_cache_unlock(par_nch->ncp);
 				par_locked = 0;
 			}
+
+			/*
+			 * Really try to destroy rep_ncp if encountered.
+			 * Various edge cases can build up more than one,
+			 * so loop if we succeed.  This isn't perfect, but
+			 * we can't afford to have tons of entries build
+			 * up on a single nhcpp list due to rename-over
+			 * operations.  If that were to happen, the system
+			 * would bog down quickly.
+			 */
+			if (rep_ncp) {
+				if (_cache_lock_nonblock(rep_ncp) == 0) {
+					if (rep_ncp->nc_flag & NCF_DESTROYED) {
+						if (cache_zap(rep_ncp)) {
+							_cache_drop(ncp);
+							goto restart;
+						}
+					} else {
+						_cache_unlock(rep_ncp);
+						_cache_drop(rep_ncp);
+					}
+				} else {
+					_cache_drop(rep_ncp);
+				}
+			}
+
+			/*
+			 * Continue processing the matched entry
+			 */
 			if (_cache_lock_special(ncp) == 0) {
 				/*
 				 * Successfully locked but we must re-test
@@ -4218,7 +4273,8 @@ _cache_cleanneg(long count)
 		 */
 		if (_cache_lock_special(ncp) == 0) {
 			if (ncp->nc_vp == NULL &&
-			    (ncp->nc_flag & NCF_UNRESOLVED) == 0) {
+			    (ncp->nc_flag & NCF_UNRESOLVED) == 0)
+			{
 				cache_zap(ncp);
 			} else {
 				_cache_unlock(ncp);
