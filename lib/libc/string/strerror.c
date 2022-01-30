@@ -40,6 +40,9 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "../locale/xlocale_private.h"
+#include "libc_private.h"
+
 #define	UPREFIX		"Unknown error"
 
 /*
@@ -75,24 +78,25 @@ errstr(int num, char *uprefix, char *buf, size_t len)
 	strlcat(buf, t, len);
 }
 
-int
-strerror_r(int errnum, char *strerrbuf, size_t buflen)
+static int
+strerror_rl(int errnum, char *strerrbuf, size_t buflen, locale_t locale)
 {
 	int retval = 0;
 #if defined(NLS)
 	int saved_errno = errno;
 	nl_catd catd;
-	catd = catopen("libc", NL_CAT_LOCALE);
+
+	catd = __catopen_l("libc", NL_CAT_LOCALE, locale);
 #endif
 
 	if (errnum < 0 || errnum >= sys_nerr) {
 		errstr(errnum,
 #if defined(NLS)
-			catgets(catd, 1, 0xffff, UPREFIX),
+		    catgets(catd, 1, 0xffff, UPREFIX),
 #else
-			UPREFIX,
+		    UPREFIX,
 #endif
-			strerrbuf, buflen);
+		    strerrbuf, buflen);
 		retval = EINVAL;
 	} else {
 		if (strlcpy(strerrbuf,
@@ -113,12 +117,28 @@ strerror_r(int errnum, char *strerrbuf, size_t buflen)
 	return (retval);
 }
 
+int
+strerror_r(int errnum, char *strerrbuf, size_t buflen)
+{
+	return (strerror_rl(errnum, strerrbuf, buflen, __get_locale()));
+}
+
+char *
+strerror_l(int num, locale_t locale)
+{
+	static _Thread_local char ebuf[NL_TEXTMAX];
+
+	if (strerror_rl(num, ebuf, sizeof(ebuf), locale) != 0)
+		errno = EINVAL;
+	return (ebuf);
+}
+
 char *
 strerror(int num)
 {
 	static char ebuf[NL_TEXTMAX];
 
-	if (strerror_r(num, ebuf, sizeof(ebuf)) != 0)
+	if (strerror_rl(num, ebuf, sizeof(ebuf), __get_locale()) != 0)
 		errno = EINVAL;
 	return (ebuf);
 }

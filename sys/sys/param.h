@@ -238,9 +238,10 @@
  * 600107 - remove sys/gnu/vfs/ext2fs
  * 600200 - 6.2 release
  * 600300 - 6.3 development
+ * 600301 - add strerror_l()
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600300	/* propagated to newvers */
+#define __DragonFly_version 600301	/* propagated to newvers */
 
 #include <sys/_null.h>
 

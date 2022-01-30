@@ -104,6 +104,10 @@ DF508.0 {
     memset_s;
 };
 
+DF604.0 {
+    strerror_l;
+};
+
 DFprivate_1.0 {
     __strchrnul;
     __strtok_r;
