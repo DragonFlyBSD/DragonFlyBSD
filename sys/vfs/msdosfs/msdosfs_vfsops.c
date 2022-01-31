@@ -344,8 +344,8 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	b710 = (struct byte_bpb710 *)bsp->bs710.bsBPB;
 
 #ifndef MSDOSFS_NOCHECKSIG
-	if (bsp->bs50.bsBootSectSig0 != BOOTSIG0
-	    || bsp->bs50.bsBootSectSig1 != BOOTSIG1) {
+	if (bsp->bs50.bsBootSectSig0 != BOOTSIG0 ||
+	    bsp->bs50.bsBootSectSig1 != BOOTSIG1) {
 		error = EINVAL;
 		goto error_exit;
 	}
@@ -383,7 +383,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	 * use these anyway, so we're unaffected if they are
 	 * invalid.
 	 */
-	if (!pmp->pm_BytesPerSec || !SecPerClust) {
+	if (pmp->pm_BytesPerSec == 0 || SecPerClust == 0) {
 		error = EINVAL;
 		goto error_exit;
 	}
@@ -397,8 +397,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	}
 
 	if (pmp->pm_RootDirEnts == 0) {
-		if (pmp->pm_FATsecs
-		    || getushort(b710->bpbFSVers)) {
+		if (pmp->pm_FATsecs != 0 || getushort(b710->bpbFSVers) != 0) {
 			error = EINVAL;
 			kprintf("mountmsdosfs(): bad FAT32 filesystem\n");
 			goto error_exit;
@@ -407,7 +406,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 		pmp->pm_fatmult = 4;
 		pmp->pm_fatdiv = 1;
 		pmp->pm_FATsecs = getulong(b710->bpbBigFATsecs);
-		if (getushort(b710->bpbExtFlags) & FATMIRROR)
+		if ((getushort(b710->bpbExtFlags) & FATMIRROR) != 0)
 			pmp->pm_curfat = getushort(b710->bpbExtFlags) & FATNUM;
 		else
 			pmp->pm_flags |= MSDOSFS_FATMIRROR;
@@ -421,13 +420,11 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	 * - number of sectors:   >= 1, <= size of partition
 	 * - number of FAT sectors: >= 1
 	 */
-	if ( (SecPerClust == 0)
-	  || (SecPerClust & (SecPerClust - 1))
-	  || (pmp->pm_BytesPerSec < DEV_BSIZE)
-	  || (pmp->pm_BytesPerSec & (pmp->pm_BytesPerSec - 1))
-	  || (pmp->pm_HugeSectors == 0)
-	  || (pmp->pm_FATsecs == 0)
-	  || (SecPerClust * pmp->pm_BlkPerSec > MAXBSIZE / DEV_BSIZE)) {
+	if (SecPerClust == 0 || (SecPerClust & (SecPerClust - 1)) != 0 ||
+	    pmp->pm_BytesPerSec < DEV_BSIZE ||
+	    (pmp->pm_BytesPerSec & (pmp->pm_BytesPerSec - 1)) != 0 ||
+	    pmp->pm_HugeSectors == 0 || pmp->pm_FATsecs == 0 ||
+	    SecPerClust * pmp->pm_BlkPerSec > MAXBSIZE / DEV_BSIZE) {
 		error = EINVAL;
 		goto error_exit;
 	}
@@ -441,14 +438,14 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 
 	if (FAT32(pmp)) {
 		pmp->pm_rootdirblk = getulong(b710->bpbRootClust);
-		pmp->pm_firstcluster = pmp->pm_fatblk
-			+ (pmp->pm_FATs * pmp->pm_FATsecs);
+		pmp->pm_firstcluster = pmp->pm_fatblk +
+		    pmp->pm_FATs * pmp->pm_FATsecs;
 		pmp->pm_fsinfo = getushort(b710->bpbFSInfo) * pmp->pm_BlkPerSec;
 	} else {
 		pmp->pm_rootdirblk = pmp->pm_fatblk +
-			(pmp->pm_FATs * pmp->pm_FATsecs);
+		    pmp->pm_FATs * pmp->pm_FATsecs;
 		pmp->pm_rootdirsize = howmany(pmp->pm_RootDirEnts *
-			sizeof(struct direntry), DEV_BSIZE); /* in blocks */
+		    sizeof(struct direntry), DEV_BSIZE); /* in blocks */
 		pmp->pm_firstcluster = pmp->pm_rootdirblk + pmp->pm_rootdirsize;
 	}
 
@@ -456,8 +453,8 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	    SecPerClust + 1;
 
 	if (pmp->pm_fatmask == 0) {
-		if (pmp->pm_maxcluster
-		    <= ((CLUST_RSRVD - CLUST_FIRST) & FAT12_MASK)) {
+		if (pmp->pm_maxcluster <= ((CLUST_RSRVD - CLUST_FIRST) &
+		    FAT12_MASK)) {
 			/*
 			 * This will usually be a floppy disk. This size makes
 			 * sure that one FAT entry will not be split across
@@ -502,7 +499,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	 * Check for valid cluster size
 	 * must be a power of 2
 	 */
-	if (pmp->pm_bpcluster ^ (1 << pmp->pm_cnshift)) {
+	if ((pmp->pm_bpcluster ^ (1 << pmp->pm_cnshift)) != 0) {
 		error = EINVAL;
 		goto error_exit;
 	}
@@ -554,9 +551,8 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	 * Allocate memory for the bitmap of allocated clusters, and then
 	 * fill it in.
 	 */
-	pmp->pm_inusemap = kmalloc(howmany(pmp->pm_maxcluster + 1, N_INUSEBITS)
-				   * sizeof(*pmp->pm_inusemap),
-				   M_MSDOSFSFAT, M_WAITOK);
+	pmp->pm_inusemap = kmalloc(howmany(pmp->pm_maxcluster + 1,
+	    N_INUSEBITS) * sizeof(*pmp->pm_inusemap), M_MSDOSFSFAT, M_WAITOK);
 
 	/*
 	 * fillinusemap() needs pm_devvp.
@@ -599,14 +595,14 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	return (0);
 
 error_exit:
-	if (bp) {
+	if (bp != NULL) {
 		bp->b_flags |= B_RELBUF;
 		brelse(bp);
 	}
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	VOP_CLOSE(devvp, ronly ? FREAD : FREAD | FWRITE, NULL);
 	vn_unlock(devvp);
-	if (pmp) {
+	if (pmp != NULL) {
 		if (pmp->pm_inusemap)
 			kfree(pmp->pm_inusemap, M_MSDOSFSFAT);
 		kfree(pmp, M_MSDOSFSMNT);
