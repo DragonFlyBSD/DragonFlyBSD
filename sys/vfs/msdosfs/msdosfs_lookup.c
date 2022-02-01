@@ -534,6 +534,10 @@ foundroot:
 		}
 		*vpp = DETOV(tdp);
 	} else if (dp->de_StartCluster == scn && isadir) {
+		if (cnp->cn_namelen != 1 || cnp->cn_nameptr[0] != '.') {
+			/* fs is corrupted, non-dot lookup returned dvp */
+			return (EBADF);
+		}
 		vref(vdp);	/* we want ourself, ie "." */
 		*vpp = vdp;
 	} else {
