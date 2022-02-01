@@ -387,7 +387,7 @@ usemap_alloc(struct msdosfsmount *pmp, u_long cn)
 	pmp->pm_flags |= MSDOSFS_FSIMOD;
 }
 
-static __inline void
+static int
 usemap_free(struct msdosfsmount *pmp, u_long cn)
 {
 	MSDOSFS_ASSERT_MP_LOCKED(pmp);
@@ -396,12 +396,17 @@ usemap_free(struct msdosfsmount *pmp, u_long cn)
 	    pmp->pm_maxcluster));
 	KASSERT((pmp->pm_flags & MSDOSFSMNT_RONLY) == 0,
 	    ("usemap_free on ro msdosfs mount"));
+	if ((pmp->pm_inusemap[cn / N_INUSEBITS] &
+	    (1U << (cn % N_INUSEBITS))) == 0) {
+		kprintf("%s: Freeing unused sector %ld %ld %x\n",
+		    pmp->pm_mountp->mnt_stat.f_mntonname, cn, cn % N_INUSEBITS,
+		    (unsigned)pmp->pm_inusemap[cn / N_INUSEBITS]);
+		return (EINVAL);
+	}
 	pmp->pm_freeclustercount++;
 	pmp->pm_flags |= MSDOSFS_FSIMOD;
-	KASSERT((pmp->pm_inusemap[cn / N_INUSEBITS] & (1 << (cn % N_INUSEBITS)))
-	    != 0, ("Freeing unused sector %ld %ld %x", cn, cn % N_INUSEBITS,
-		(unsigned)pmp->pm_inusemap[cn / N_INUSEBITS]));
 	pmp->pm_inusemap[cn / N_INUSEBITS] &= ~(1U << (cn % N_INUSEBITS));
+	return (0);
 }
 
 void
@@ -419,7 +424,7 @@ clusterfree(struct msdosfsmount *pmp, u_long cluster)
 	 * bit in the "in use" cluster bit map.
 	 */
 	MSDOSFS_LOCK_MP(pmp);
-	usemap_free(pmp, cluster);
+	error = usemap_free(pmp, cluster);
 	MSDOSFS_UNLOCK_MP(pmp);
 }
 
@@ -693,7 +698,7 @@ chainalloc(struct msdosfsmount *pmp, u_long start, u_long count,
 	error = fatchain(pmp, start, count, fillwith);
 	if (error != 0) {
 		for (cl = start, n = count; n-- > 0;)
-			usemap_free(pmp, cl++);
+			(void)usemap_free(pmp, cl++);
 		return (error);
 	}
 	mprintf("clusteralloc(): allocated cluster chain at %lu (%lu clusters)\n",
@@ -829,7 +834,12 @@ freeclusterchain(struct msdosfsmount *pmp, u_long cluster)
 			}
 			lbn = bn;
 		}
-		usemap_free(pmp, cluster);
+		error = usemap_free(pmp, cluster);
+		if (error != 0) {
+			updatefats(pmp, bp, lbn);
+			MSDOSFS_UNLOCK_MP(pmp);
+			return (error);
+		}
 		switch (pmp->pm_fatmask) {
 		case FAT12_MASK:
 			readcn = getushort(bp->b_data + bo);
@@ -925,8 +935,13 @@ fillinusemap(struct msdosfsmount *pmp)
 			    "does not match FAT ID\n");
 			brelse(bp);
 			return (EINVAL);
-		} else if (readcn == CLUST_FREE)
-			usemap_free(pmp, cn);
+		} else if (readcn == CLUST_FREE) {
+			error = usemap_free(pmp, cn);
+			if (error != 0) {
+				brelse(bp);
+				return (error);
+			}
+		}
 	}
 	if (bp != NULL)
 		brelse(bp);
