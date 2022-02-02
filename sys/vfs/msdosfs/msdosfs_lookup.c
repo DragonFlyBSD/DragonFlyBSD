@@ -66,6 +66,28 @@
 #include <vfs/msdosfs/fat.h>
 #include <vfs/msdosfs/msdosfsmount.h>
 
+static int
+msdosfs_lookup_checker(struct msdosfsmount *pmp, struct vnode *dvp,
+    struct denode *tdp, struct vnode **vpp)
+{
+	struct vnode *vp;
+
+	vp = DETOV(tdp);
+
+	/*
+	 * Lookup assumes that directory cannot be hardlinked.
+	 * Corrupted msdosfs filesystem could break this assumption.
+	 */
+	if (vp == dvp) {
+		vput(vp);
+		*vpp = NULL;
+		return (EBADF);
+	}
+
+	*vpp = vp;
+	return (0);
+}
+
 /*
  * XXX Implement .vop_nresolve and replace old vnops which depend on this.
  */
@@ -456,12 +478,12 @@ foundroot:
 		error = deget(pmp, cluster, blkoff, &tdp);
 		if (error)
 			return (error);
-		*vpp = DETOV(tdp);
+		error = msdosfs_lookup_checker(pmp, vdp, tdp, vpp);
 		if (!lockparent) {
 			vn_unlock(vdp);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
-		return (0);
+		return (error);
 	}
 
 	/*
@@ -487,12 +509,12 @@ foundroot:
 
 		if ((error = deget(pmp, cluster, blkoff, &tdp)) != 0)
 			return (error);
-		*vpp = DETOV(tdp);
+		error = msdosfs_lookup_checker(pmp, vdp, tdp, vpp);
 		if (!lockparent) {
 			vn_unlock(vdp);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
-		return (0);
+		return (error);
 	}
 
 	/*
@@ -532,7 +554,9 @@ foundroot:
 			}
 			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 		}
-		*vpp = DETOV(tdp);
+		error = msdosfs_lookup_checker(pmp, vdp, VTODE(*vpp), vpp);
+		if (error != 0)
+			return (error);
 	} else if (dp->de_StartCluster == scn && isadir) {
 		if (cnp->cn_namelen != 1 || cnp->cn_nameptr[0] != '.') {
 			/* fs is corrupted, non-dot lookup returned dvp */
@@ -547,7 +571,9 @@ foundroot:
 			vn_unlock(pdp);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
-		*vpp = DETOV(tdp);
+		error = msdosfs_lookup_checker(pmp, vdp, tdp, vpp);
+		if (error != 0)
+			return (error);
 	}
 	return (0);
 }
