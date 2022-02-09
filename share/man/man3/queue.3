@@ -28,7 +28,7 @@
 .\"	@(#)queue.3	8.2 (Berkeley) 1/24/94
 .\" $FreeBSD: src/share/man/man3/queue.3,v 1.46 2011/01/11 13:33:42 gavin Exp $
 .\"
-.Dd March 3, 2011
+.Dd February 9, 2022
 .Dt QUEUE 3
 .Os
 .Sh NAME
@@ -36,6 +36,8 @@
 .Nm SLIST_ENTRY ,
 .Nm SLIST_FIRST ,
 .Nm SLIST_FOREACH ,
+.Nm SLIST_FOREACH_FROM ,
+.Nm SLIST_FOREACH_FROM_MUTABLE ,
 .Nm SLIST_FOREACH_MUTABLE ,
 .Nm SLIST_FOREACH_PREVPTR ,
 .Nm SLIST_HEAD ,
@@ -52,6 +54,8 @@
 .Nm STAILQ_ENTRY ,
 .Nm STAILQ_FIRST ,
 .Nm STAILQ_FOREACH ,
+.Nm STAILQ_FOREACH_FROM ,
+.Nm STAILQ_FOREACH_FROM_MUTABLE ,
 .Nm STAILQ_FOREACH_MUTABLE ,
 .Nm STAILQ_HEAD ,
 .Nm STAILQ_HEAD_INITIALIZER ,
@@ -68,6 +72,8 @@
 .Nm LIST_ENTRY ,
 .Nm LIST_FIRST ,
 .Nm LIST_FOREACH ,
+.Nm LIST_FOREACH_FROM ,
+.Nm LIST_FOREACH_FROM_MUTABLE ,
 .Nm LIST_FOREACH_MUTABLE ,
 .Nm LIST_HEAD ,
 .Nm LIST_HEAD_INITIALIZER ,
@@ -83,6 +89,8 @@
 .Nm TAILQ_FIRST ,
 .Nm TAILQ_FOREACH ,
 .Nm TAILQ_FOREACH_MUTABLE ,
+.Nm TAILQ_FOREACH_FROM ,
+.Nm TAILQ_FOREACH_FROM_MUTABLE ,
 .Nm TAILQ_FOREACH_REVERSE ,
 .Nm TAILQ_FOREACH_REVERSE_MUTABLE ,
 .Nm TAILQ_HEAD ,
@@ -105,6 +113,8 @@ lists and tail queues
 .Fn SLIST_ENTRY "TYPE"
 .Fn SLIST_FIRST "SLIST_HEAD *head"
 .Fn SLIST_FOREACH "TYPE *var" "SLIST_HEAD *head" "SLIST_ENTRY NAME"
+.Fn SLIST_FOREACH_FROM "TYPE *var" "SLIST_HEAD *head" "SLIST_ENTRY NAME"
+.Fn SLIST_FOREACH_FROM_MUTABLE "TYPE *var" "SLIST_HEAD *head" "SLIST_ENTRY NAME" "TYPE *temp_var"
 .Fn SLIST_FOREACH_MUTABLE "TYPE *var" "SLIST_HEAD *head" "SLIST_ENTRY NAME" "TYPE *temp_var"
 .Fn SLIST_FOREACH_PREVPTR "TYPE *var" "TYPE *varp" "SLIST_HEAD *head" "SLIST_ENTRY NAME"
 .Fn SLIST_HEAD "HEADNAME" "TYPE"
@@ -122,6 +132,8 @@ lists and tail queues
 .Fn STAILQ_ENTRY "TYPE"
 .Fn STAILQ_FIRST "STAILQ_HEAD *head"
 .Fn STAILQ_FOREACH "TYPE *var" "STAILQ_HEAD *head" "STAILQ_ENTRY NAME"
+.Fn STAILQ_FOREACH_FROM "TYPE *var" "STAILQ_HEAD *head" "STAILQ_ENTRY NAME"
+.Fn STAILQ_FOREACH_FROM_MUTABLE "TYPE *var" "STAILQ_HEAD *head" "STAILQ_ENTRY NAME" "TYPE *temp_var"
 .Fn STAILQ_FOREACH_MUTABLE "TYPE *var" "STAILQ_HEAD *head" "STAILQ_ENTRY NAME" "TYPE *temp_var"
 .Fn STAILQ_HEAD "HEADNAME" "TYPE"
 .Fn STAILQ_HEAD_INITIALIZER "STAILQ_HEAD head"
@@ -139,6 +151,8 @@ lists and tail queues
 .Fn LIST_ENTRY "TYPE"
 .Fn LIST_FIRST "LIST_HEAD *head"
 .Fn LIST_FOREACH "TYPE *var" "LIST_HEAD *head" "LIST_ENTRY NAME"
+.Fn LIST_FOREACH_FROM "TYPE *var" "LIST_HEAD *head" "LIST_ENTRY NAME"
+.Fn LIST_FOREACH_FROM_MUTABLE "TYPE *var" "LIST_HEAD *head" "LIST_ENTRY NAME" "TYPE *temp_var"
 .Fn LIST_FOREACH_MUTABLE "TYPE *var" "LIST_HEAD *head" "LIST_ENTRY NAME" "TYPE *temp_var"
 .Fn LIST_HEAD "HEADNAME" "TYPE"
 .Fn LIST_HEAD_INITIALIZER "LIST_HEAD head"
@@ -154,6 +168,8 @@ lists and tail queues
 .Fn TAILQ_ENTRY "TYPE"
 .Fn TAILQ_FIRST "TAILQ_HEAD *head"
 .Fn TAILQ_FOREACH "TYPE *var" "TAILQ_HEAD *head" "TAILQ_ENTRY NAME"
+.Fn TAILQ_FOREACH_FROM "TYPE *var" "TAILQ_HEAD *head" "TAILQ_ENTRY NAME"
+.Fn TAILQ_FOREACH_FROM_MUTABLE "TYPE *var" "TAILQ_HEAD *head" "TAILQ_ENTRY NAME" "TYPE *temp_var"
 .Fn TAILQ_FOREACH_MUTABLE "TYPE *var" "TAILQ_HEAD *head" "TAILQ_ENTRY NAME" "TYPE *temp_var"
 .Fn TAILQ_FOREACH_REVERSE "TYPE *var" "TAILQ_HEAD *head" "HEADNAME" "TAILQ_ENTRY NAME"
 .Fn TAILQ_FOREACH_REVERSE_MUTABLE "TYPE *var" "TAILQ_HEAD *head" "HEADNAME" "TAILQ_ENTRY NAME" "TYPE *temp_var"
@@ -341,6 +357,19 @@ turn to
 .Fa var .
 .Pp
 The macro
+.Nm SLIST_FOREACH_FROM
+behaves identically to
+.Nm SLIST_FOREACH
+when
+.Fa var
+is NULL, else it treats
+.Fa var
+as a previously found SLIST element and begins the loop at
+.Fa var
+instead of the first element in the SLIST referenced by
+.Fa head .
+.Pp
+The macro
 .Nm SLIST_FOREACH_MUTABLE
 traverses the list referenced by
 .Fa head
@@ -353,6 +382,19 @@ here it is permitted to both remove
 .Fa var
 as well as free it from within the loop safely without interfering with the
 traversal.
+.Pp
+The macro
+.Nm SLIST_FOREACH_FROM_MUTABLE
+behaves identically to
+.Nm SLIST_FOREACH_MUTABLE
+when
+.Fa var
+is NULL, else it treats
+.Fa var
+as a previously found SLIST element and begins the loop at
+.Fa var
+instead of the first element in the SLIST referenced by
+.Fa head .
 .Pp
 The
 .Nm SLIST_FOREACH_PREVPTR
@@ -522,6 +564,19 @@ in turn to
 .Fa var .
 .Pp
 The macro
+.Nm STAILQ_FOREACH_FROM
+behaves identically to
+.Nm STAILQ_FOREACH
+when
+.Fa var
+is NULL, else it treats
+.Fa var
+as a previously found STAILQ element and begins the loop at
+.Fa var
+instead of the first element in the STAILQ referenced by
+.Fa head .
+.Pp
+The macro
 .Nm STAILQ_FOREACH_MUTABLE
 traverses the tail queue referenced by
 .Fa head
@@ -534,6 +589,19 @@ here it is permitted to both remove
 .Fa var
 as well as free it from within the loop safely without interfering with the
 traversal.
+.Pp
+The macro
+.Nm STAILQ_FOREACH_FROM_MUTABLE
+behaves identically to
+.Nm STAILQ_FOREACH_MUTABLE
+when
+.Fa var
+is NULL, else it treats
+.Fa var
+as a previously found STAILQ element and begins the loop at
+.Fa var
+instead of the first element in the STAILQ referenced by
+.Fa head .
 .Pp
 The macro
 .Nm STAILQ_INIT
@@ -704,6 +772,19 @@ in the forward direction, assigning each element in turn to
 .Fa var .
 .Pp
 The macro
+.Nm LIST_FOREACH_FROM
+behaves identically to
+.Nm LIST_FOREACH
+when
+.Fa var
+is NULL, else it treats
+.Fa var
+as a previously found LIST element and begins the loop at
+.Fa var
+instead of the first element in the LIST referenced by
+.Fa head .
+.Pp
+The macro
 .Nm LIST_FOREACH_MUTABLE
 traverses the list referenced by
 .Fa head
@@ -715,6 +796,19 @@ here it is permitted to both remove
 .Fa var
 as well as free it from within the loop safely without interfering with the
 traversal.
+.Pp
+The macro
+.Nm LIST_FOREACH_FROM_MUTABLE
+behaves identically to
+.Nm LIST_FOREACH_MUTABLE
+when
+.Fa var
+is NULL, else it treats
+.Fa var
+as a previously found LIST element and begins the loop at
+.Fa var
+instead of the first element in the LIST referenced by
+.Fa head .
 .Pp
 The macro
 .Nm LIST_INIT
@@ -874,6 +968,19 @@ is set to
 if the loop completes normally, or if there were no elements.
 .Pp
 The macro
+.Nm TAILQ_FOREACH_FROM
+behaves identically to
+.Nm TAILQ_FOREACH
+when
+.Fa var
+is NULL, else it treats
+.Fa var
+as a previously found TAILQ element and begins the loop at
+.Fa var
+instead of the first element in the TAILQ referenced by
+.Fa head .
+.Pp
+The macro
 .Nm TAILQ_FOREACH_REVERSE
 traverses the tail queue referenced by
 .Fa head
@@ -897,6 +1004,19 @@ permit to both remove
 .Fa var
 as well as free it from within the loop safely without interfering with the
 traversal.
+.Pp
+The macro
+.Nm TAILQ_FOREACH_FROM_MUTABLE
+behaves identically to
+.Nm TAILQ_FOREACH_MUTABLE
+when
+.Fa var
+is NULL, else it treats
+.Fa var
+as a previously found TAILQ element and begins the loop at
+.Fa var
+instead of the first element in the TAILQ referenced by
+.Fa head .
 .Pp
 The macro
 .Nm TAILQ_INIT

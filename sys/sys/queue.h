@@ -88,7 +88,9 @@
  * _PREV			-	-	-	+
  * _LAST			-	-	+	+
  * _FOREACH			+	+	+	+
+ * _FOREACH_FROM		+	+	+	+
  * _FOREACH_MUTABLE		+	+	+	+
+ * _FOREACH_FROM_MUTABLE	+	+	+	+
  * _FOREACH_REVERSE		-	-	-	+
  * _FOREACH_REVERSE_MUTABLE	-	-	-	+
  * _INSERT_HEAD			+	+	+	+
@@ -167,8 +169,18 @@ struct {								\
 	    (var);							\
 	    (var) = SLIST_NEXT((var), field))
 
+#define	SLIST_FOREACH_FROM(var, head, field)				\
+	for ((var) = ((var) ? (var) : SLIST_FIRST((head)));		\
+	    (var);							\
+	    (var) = SLIST_NEXT((var), field))
+
 #define	SLIST_FOREACH_MUTABLE(var, head, field, tvar)			\
 	for ((var) = SLIST_FIRST((head));				\
+	    (var) && ((tvar) = SLIST_NEXT((var), field), 1);		\
+	    (var) = (tvar))
+
+#define	SLIST_FOREACH_FROM_MUTABLE(var, head, field, tvar)		\
+	for ((var) = ((var) ? (var) : SLIST_FIRST((head)));		\
 	    (var) && ((tvar) = SLIST_NEXT((var), field), 1);		\
 	    (var) = (tvar))
 
@@ -259,9 +271,18 @@ struct {								\
 	   (var);							\
 	   (var) = STAILQ_NEXT((var), field))
 
+#define	STAILQ_FOREACH_FROM(var, head, field)				\
+	for ((var) = ((var) ? (var) : STAILQ_FIRST((head)));		\
+	   (var);							\
+	   (var) = STAILQ_NEXT((var), field))
 
 #define	STAILQ_FOREACH_MUTABLE(var, head, field, tvar)			\
 	for ((var) = STAILQ_FIRST((head));				\
+	    (var) && ((tvar) = STAILQ_NEXT((var), field), 1);		\
+	    (var) = (tvar))
+
+#define	STAILQ_FOREACH_FROM_MUTABLE(var, head, field, tvar)		\
+	for ((var) = ((var) ? (var) : STAILQ_FIRST((head)));		\
 	    (var) && ((tvar) = STAILQ_NEXT((var), field), 1);		\
 	    (var) = (tvar))
 
@@ -391,8 +412,18 @@ struct {								\
 	    (var);							\
 	    (var) = LIST_NEXT((var), field))
 
+#define	LIST_FOREACH(var, head, field)					\
+	for ((var) = LIST_FIRST((head));				\
+	    (var);							\
+	    (var) = LIST_NEXT((var), field))
+
 #define	LIST_FOREACH_MUTABLE(var, head, field, tvar)			\
 	for ((var) = LIST_FIRST((head));				\
+	    (var) && ((tvar) = LIST_NEXT((var), field), 1);		\
+	    (var) = (tvar))
+
+#define	LIST_FOREACH_FROM_MUTABLE(var, head, field, tvar)		\
+	for ((var) = ((var) ? (var) : LIST_FIRST((head)));		\
 	    (var) && ((tvar) = LIST_NEXT((var), field), 1);		\
 	    (var) = (tvar))
 
@@ -526,8 +557,18 @@ struct {								\
 	    (var);							\
 	    (var) = TAILQ_NEXT((var), field))
 
+#define	TAILQ_FOREACH_FROM(var, head, field)				\
+	for ((var) = ((var) ? (var) : TAILQ_FIRST((head)));		\
+	    (var);							\
+	    (var) = TAILQ_NEXT((var), field))
+
 #define	TAILQ_FOREACH_MUTABLE(var, head, field, tvar)			\
 	for ((var) = TAILQ_FIRST((head));				\
+	    (var) && ((tvar) = TAILQ_NEXT((var), field), 1);		\
+	    (var) = (tvar))
+
+#define	TAILQ_FOREACH_FROM_MUTABLE(var, head, field, tvar)		\
+	for ((var) = ((var) ? (var) : TAILQ_FIRST((head)));		\
 	    (var) && ((tvar) = TAILQ_NEXT((var), field), 1);		\
 	    (var) = (tvar))
 
