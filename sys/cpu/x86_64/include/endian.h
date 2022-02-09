@@ -204,6 +204,10 @@ __bswap16(__uint16_t _x)
 #define	__BIG_ENDIAN	_BIG_ENDIAN
 #define	__PDP_ENDIAN	_PDP_ENDIAN
 #define	__BYTE_ORDER	_BYTE_ORDER
+
+#ifndef __FLOAT_WORD_ORDER
+#define	__FLOAT_WORD_ORDER __BYTE_ORDER
 #endif
+#endif /* !_KERNEL */
 
 #endif /* !_CPU_ENDIAN_H_ */
