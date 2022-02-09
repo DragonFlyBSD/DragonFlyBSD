@@ -145,7 +145,7 @@ YFLAGS		?=	-d
 # prevent buildworld from breaking.
 #
 .if !defined(MACHINE_PLATFORM)
-MACHINE_PLATFORM!=sysctl -n hw.platform
+MACHINE_PLATFORM!=/sbin/sysctl -n hw.platform
 .endif
 
 .if defined(%POSIX)
