@@ -58,7 +58,10 @@ and
 .Xr devfs 5 ,
 through which applications can determine and change the status of
 various laptop components and BIOS settings.
-.Ss Xr devd 8 Ss Events
+.Ss Eo
+.Xr devd 8
+Events
+.Ec
 Devd events received by
 .Xr devd 8
 provide the following information:
@@ -91,7 +94,10 @@ WWAN on air status changed to 0 (not on air)
 .It Li 0xe1
 WWAN on air status changed to 1 (on air)
 .El
-.Ss Xr devfs 5 Ss Device
+.Ss Eo
+.Xr devfs 5
+Device
+.Ec
 You can read /dev/hpcmi to see your current BIOS settings.
 The detail level can be adjusted by setting the sysctl
 .Va cmi_detail
