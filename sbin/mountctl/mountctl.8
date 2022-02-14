@@ -31,8 +31,6 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/sbin/mountctl/mountctl.8,v 1.15 2008/10/16 23:08:30 swildner Exp $
-.\"
 .Dd September 28, 2009
 .Dt MOUNTCTL 8
 .Os
@@ -42,7 +40,7 @@
 .Sh SYNOPSIS
 .Nm
 .Fl l
-.Brq Ar mountpt | tag | mountpt Ns : Ns Ar tag
+.Brq Ar mountpt | tag | mountpt : Ns Ar tag
 .Nm
 .Fl a
 .Op Fl 2
@@ -236,13 +234,13 @@ id acknowledgements will be returned.
 This option is the same as the
 .Fl 2
 option.
-.It Cm memfifo= Ns Ar size Ns Op Cm k Ns , Ns Cm m
+.It Cm memfifo= Ns Ar size Ns Op Cm k , Ns Cm m
 Specify the size of the in-kernel memory FIFO used to buffer the journaling
 stream between processes doing filesystem operations and the worker thread
 writing out the journal.
 Since the kernel has limited virtual memory
 buffers larger than 4MB are not recommended.
-.It Cm swapfifo= Ns Ar size Ns Op Cm k Ns , Ns Cm m Ns , Ns Cm g
+.It Cm swapfifo= Ns Ar size Ns Op Cm k , Ns Cm m , Ns Cm g
 Specify the size of the kernel-managed swap-backed FIFO used to buffer
 overflows.
 .It Cm path= Ns Ar filepath

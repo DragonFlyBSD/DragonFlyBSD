@@ -169,7 +169,7 @@ Specify which, if any, real CPUs to lock virtual CPUs to.
 .Ar cpulock
 is one of
 .Cm any ,
-.Cm map Ns Op Ns , Ns Ar startCPU ,
+.Cm map Ns Op , Ns Ar startCPU ,
 or
 .Ar CPU .
 .Pp
@@ -177,7 +177,7 @@ or
 does not map virtual CPUs to real CPUs.
 This is the default.
 .Pp
-.Cm map Ns Op Ns , Ns Ar startCPU
+.Cm map Ns Op , Ns Ar startCPU
 maps each virtual CPU to a real CPU starting with real CPU 0 or
 .Ar startCPU
 if specified.

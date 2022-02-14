@@ -120,8 +120,8 @@ source address.
 According to RFC 1918, unregistered source addresses are 10.0.0.0/8,
 172.16.0.0/12 and 192.168.0.0/16.
 .It Fl redirect_port Ar proto Xo
-.Ar targetIP Ns : Ns Ar targetPORT Ns Op \- Ns Ar targetPORT
-.Op Ar aliasIP Ns : Ns Ar aliasPORT Ns Op \- Ns Ar aliasPORT
+.Ar targetIP : Ns Ar targetPORT Ns Op \- Ns Ar targetPORT
+.Op Ar aliasIP : Ns Ar aliasPORT Ns Op \- Ns Ar aliasPORT
 .Op Ar remoteIP Ns Op : Ns Ar remotePORT Ns Op \- Ns Ar remotePORT
 .Xc
 Redirect incoming connections arriving to given port(s) to another host
@@ -425,7 +425,7 @@ to put this information into the IP option field or
 .Ar encode_tcp_stream
 to inject the data into the beginning of the TCP stream.
 .It Fl punch_fw Xo
-.Ar basenumber Ns : Ns Ar count
+.Ar basenumber : Ns Ar count
 .Xc
 This option directs
 .Nm
