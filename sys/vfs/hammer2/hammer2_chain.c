@@ -1509,7 +1509,7 @@ hammer2_chain_countbrefs(hammer2_chain_t *chain,
 			 hammer2_blockref_t *base, int count)
 {
 	hammer2_spin_ex(&chain->core.spin);
-        if ((chain->flags & HAMMER2_CHAIN_COUNTEDBREFS) == 0) {
+	if ((chain->flags & HAMMER2_CHAIN_COUNTEDBREFS) == 0) {
 		if (base) {
 			while (--count >= 0) {
 				if (base[count].type != HAMMER2_BREF_TYPE_EMPTY)
@@ -5198,7 +5198,7 @@ hammer2_base_find(hammer2_chain_t *parent,
 	 * Require the live chain's already have their core's counted
 	 * so we can optimize operations.
 	 */
-        KKASSERT(parent->flags & HAMMER2_CHAIN_COUNTEDBREFS);
+	KKASSERT(parent->flags & HAMMER2_CHAIN_COUNTEDBREFS);
 
 	/*
 	 * Degenerate case

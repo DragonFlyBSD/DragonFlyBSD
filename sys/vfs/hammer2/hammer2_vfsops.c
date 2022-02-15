@@ -225,7 +225,7 @@ static struct vfsops hammer2_vfsops = {
 	.vfs_sync	= hammer2_vfs_sync,
 	.vfs_mount	= hammer2_vfs_mount,
 	.vfs_unmount	= hammer2_vfs_unmount,
-	.vfs_root 	= hammer2_vfs_root,
+	.vfs_root	= hammer2_vfs_root,
 	.vfs_statfs	= hammer2_vfs_statfs,
 	.vfs_statvfs	= hammer2_vfs_statvfs,
 	.vfs_vget	= hammer2_vfs_vget,
@@ -263,7 +263,7 @@ hammer2_vfs_init(struct vfsconf *conf)
 	hammer2_xop_nthreads = mod * 2;
 	while (hammer2_xop_nthreads / mod < HAMMER2_XOPGROUPS_MIN ||
 	       hammer2_xop_nthreads < HAMMER2_XOPTHREADS_MIN)
-        {
+	{
 		hammer2_xop_nthreads += mod;
 	}
 	hammer2_xop_sgroups = hammer2_xop_nthreads / mod / 2;
@@ -1471,7 +1471,7 @@ next_hmp:
 	/*
 	 * Finish the mount
 	 */
-        kprintf("hammer2_mount: hmp=%p pmp=%p\n", hmp, pmp);
+	kprintf("hammer2_mount: hmp=%p pmp=%p\n", hmp, pmp);
 
 	if (pmp->mp) {
 		kprintf("hammer2_mount: PFS already mounted!\n");
@@ -1483,29 +1483,29 @@ next_hmp:
 	}
 
 	pmp->hflags = info.hflags;
-        mp->mnt_flag |= MNT_LOCAL;
-        mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;   /* all entry pts are SMP */
-        mp->mnt_kern_flag |= MNTK_THR_SYNC;     /* new vsyncscan semantics */
+	mp->mnt_flag |= MNT_LOCAL;
+	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;   /* all entry pts are SMP */
+	mp->mnt_kern_flag |= MNTK_THR_SYNC;     /* new vsyncscan semantics */
 
-        /*
-         * required mount structure initializations
-         */
-        mp->mnt_stat.f_iosize = HAMMER2_PBUFSIZE;
-        mp->mnt_stat.f_bsize = HAMMER2_PBUFSIZE;
+	/*
+	 * required mount structure initializations
+	 */
+	mp->mnt_stat.f_iosize = HAMMER2_PBUFSIZE;
+	mp->mnt_stat.f_bsize = HAMMER2_PBUFSIZE;
 
-        mp->mnt_vstat.f_frsize = HAMMER2_PBUFSIZE;
-        mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
+	mp->mnt_vstat.f_frsize = HAMMER2_PBUFSIZE;
+	mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
 
-        /*
-         * Optional fields
-         */
-        mp->mnt_iosize_max = MAXPHYS;
+	/*
+	 * Optional fields
+	 */
+	mp->mnt_iosize_max = MAXPHYS;
 
 	/*
 	 * Connect up mount pointers.
 	 */
 	hammer2_mount_helper(mp, pmp);
-        lockmgr(&hammer2_mntlk, LK_RELEASE);
+	lockmgr(&hammer2_mntlk, LK_RELEASE);
 
 	/*
 	 * Finish setup
@@ -1703,7 +1703,7 @@ hammer2_mount_helper(struct mount *mp, hammer2_pfs_t *pmp)
 	hammer2_chain_t *rchain;
 	int i;
 
-        mp->mnt_data = (qaddr_t)pmp;
+	mp->mnt_data = (qaddr_t)pmp;
 	pmp->mp = mp;
 
 	/*
@@ -1724,7 +1724,7 @@ hammer2_mount_helper(struct mount *mp, hammer2_pfs_t *pmp)
 }
 
 /*
- * Mount helper, unhook the system mount from our PFS.
+ * Unmount helper, unhook the system mount from our PFS.
  * The mount lock is held.
  *
  * If hmp is supplied a mount responsible for being the first to open

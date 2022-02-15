@@ -2536,48 +2536,48 @@ struct vop_ops hammer2_vnode_vops = {
 	.vop_write	= hammer2_vop_write,
 	.vop_open	= hammer2_vop_open,
 	.vop_inactive	= hammer2_vop_inactive,
-	.vop_reclaim 	= hammer2_vop_reclaim,
+	.vop_reclaim	= hammer2_vop_reclaim,
 	.vop_nresolve	= hammer2_vop_nresolve,
 	.vop_nlookupdotdot = hammer2_vop_nlookupdotdot,
-	.vop_nmkdir 	= hammer2_vop_nmkdir,
-	.vop_nmknod 	= hammer2_vop_nmknod,
+	.vop_nmkdir	= hammer2_vop_nmkdir,
+	.vop_nmknod	= hammer2_vop_nmknod,
 	.vop_ioctl	= hammer2_vop_ioctl,
 	.vop_mountctl	= hammer2_vop_mountctl,
 	.vop_bmap	= hammer2_vop_bmap,
 	.vop_strategy	= hammer2_vop_strategy,
-        .vop_kqfilter	= hammer2_vop_kqfilter
+	.vop_kqfilter	= hammer2_vop_kqfilter
 };
 
 struct vop_ops hammer2_spec_vops = {
-        .vop_default =          vop_defaultop,
-        .vop_fsync =            hammer2_vop_fsync,
-        .vop_read =             vop_stdnoread,
-        .vop_write =            vop_stdnowrite,
-        .vop_access =           hammer2_vop_access,
-        .vop_close =            hammer2_vop_close,
-        .vop_markatime =        hammer2_vop_markatime,
-        .vop_getattr =          hammer2_vop_getattr,
-        .vop_inactive =         hammer2_vop_inactive,
-        .vop_reclaim =          hammer2_vop_reclaim,
-        .vop_setattr =          hammer2_vop_setattr
+	.vop_default =          vop_defaultop,
+	.vop_fsync =            hammer2_vop_fsync,
+	.vop_read =             vop_stdnoread,
+	.vop_write =            vop_stdnowrite,
+	.vop_access =           hammer2_vop_access,
+	.vop_close =            hammer2_vop_close,
+	.vop_markatime =        hammer2_vop_markatime,
+	.vop_getattr =          hammer2_vop_getattr,
+	.vop_inactive =         hammer2_vop_inactive,
+	.vop_reclaim =          hammer2_vop_reclaim,
+	.vop_setattr =          hammer2_vop_setattr
 };
 
 struct vop_ops hammer2_fifo_vops = {
-        .vop_default =          fifo_vnoperate,
-        .vop_fsync =            hammer2_vop_fsync,
+	.vop_default =          fifo_vnoperate,
+	.vop_fsync =            hammer2_vop_fsync,
 #if 0
-        .vop_read =             hammer2_vop_fiforead,
-        .vop_write =            hammer2_vop_fifowrite,
+	.vop_read =             hammer2_vop_fiforead,
+	.vop_write =            hammer2_vop_fifowrite,
 #endif
-        .vop_access =           hammer2_vop_access,
+	.vop_access =           hammer2_vop_access,
 #if 0
-        .vop_close =            hammer2_vop_fifoclose,
+	.vop_close =            hammer2_vop_fifoclose,
 #endif
-        .vop_markatime =        hammer2_vop_markatime,
-        .vop_getattr =          hammer2_vop_getattr,
-        .vop_inactive =         hammer2_vop_inactive,
-        .vop_reclaim =          hammer2_vop_reclaim,
-        .vop_setattr =          hammer2_vop_setattr,
-        .vop_kqfilter =         hammer2_vop_fifokqfilter
+	.vop_markatime =        hammer2_vop_markatime,
+	.vop_getattr =          hammer2_vop_getattr,
+	.vop_inactive =         hammer2_vop_inactive,
+	.vop_reclaim =          hammer2_vop_reclaim,
+	.vop_setattr =          hammer2_vop_setattr,
+	.vop_kqfilter =         hammer2_vop_fifokqfilter
 };
 
