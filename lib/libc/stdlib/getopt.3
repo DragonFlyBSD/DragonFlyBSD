@@ -31,7 +31,7 @@
 .\" $FreeBSD: src/lib/libc/stdlib/getopt.3,v 1.26 2007/01/09 00:28:10 imp Exp $
 .\" $DragonFly: src/lib/libc/stdlib/getopt.3,v 1.5 2006/05/26 19:39:37 swildner Exp $
 .\"
-.Dd April 27, 1995
+.Dd February 27, 2022
 .Dt GETOPT 3
 .Os
 .Sh NAME
@@ -66,6 +66,17 @@ The option string
 may contain the following elements: individual characters, and
 characters followed by a colon to indicate an option argument
 is to follow.
+If an individual character is followed by two colons, then the
+option argument is optional;
+.Va optarg
+is set to the rest of the current
+.Fa argv
+word, or
+.Dv NULL
+if there were no more characters in the current word.
+This is a
+.Tn GNU
+extension.
 For example, an option string
 .Li \&"x"
 recognizes an option

@@ -30,7 +30,6 @@
  *
  * @(#)getopt.c	8.3 (Berkeley) 4/27/95
  * $FreeBSD: src/lib/libc/stdlib/getopt.c,v 1.8 2007/01/09 00:28:10 imp Exp $
- * $DragonFly: src/lib/libc/stdlib/getopt.c,v 1.7 2005/11/20 12:37:48 swildner Exp $
  */
 
 #include "namespace.h"
@@ -118,6 +117,12 @@ getopt(int nargc, char * const nargv[], const char *ostr)
 		   entire next argument. */
 		if (*place)
 			optarg = place;
+		else if (oli[2] == ':')
+			/*
+			 * GNU Extension, for optional arguments if the rest of
+			 * the argument is empty, we return NULL
+			 */
+			optarg = NULL;
 		else if (nargc > ++optind)
 			optarg = nargv[optind];
 		else {
