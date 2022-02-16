@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1985, 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)date.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/bin/date/date.c,v 1.47 2005/01/10 08:39:21 imp Exp $
  */
@@ -53,42 +52,73 @@
 
 static time_t tval;
 
-static void setthetime(const char *, const char *, int);
 static void badformat(void);
+static void setthetime(const char *, const char *, int);
 static void usage(void);
 
-static const char *rfc2822_format ="%a, %d %b %Y %T %z";
+static const struct iso8601_fmt {
+	const char *refname;
+	const char *format;
+} iso8601_fmts[] = {
+	{ "date", "%Y-%m-%d" },
+	{ "hours", "%Y-%m-%dT%H" },
+	{ "minutes", "%Y-%m-%dT%H:%M" },
+	{ "seconds", "%Y-%m-%dT%H:%M:%S" },
+};
+static const struct iso8601_fmt *iso8601_selected;
+
+static const char *rfc2822_format = "%a, %d %b %Y %T %z";
 
 int
 main(int argc, char **argv)
 {
 	int ch, rflag;
-	int jflag, Rflag;
+	int Iflag, jflag, Rflag;
 	const char *format;
-	char buf[1024];
+	char buf[1024], tzbuf[8];
 	char *fmt;
 	char *tmp;
 	struct vary *v;
 	const struct vary *badv;
 	struct tm lt;
+	size_t i;
 
 	v = NULL;
 	fmt = NULL;
 	setlocale(LC_TIME, "");
 	rflag = 0;
-	jflag = Rflag = 0;
-	while ((ch = getopt(argc, argv, "f:jnRr:uv:")) != -1)
-		switch(ch) {
+	Iflag = jflag = Rflag = 0;
+	while ((ch = getopt(argc, argv, "f:I::jnRr:uv:")) != -1)
+		switch (ch) {
 		case 'f':
 			fmt = optarg;
+			break;
+		case 'I':		/* ISO 8601 datetime format */
+			if (Rflag)
+				errx(1, "multiple output formats specified");
+			Iflag = 1;
+			if (optarg == NULL) {
+				iso8601_selected = iso8601_fmts;
+				break;
+			}
+			for (i = 0; i < nitems(iso8601_fmts); i++) {
+				if (strncmp(optarg, iso8601_fmts[i].refname,
+					    strlen(optarg)) == 0)
+					break;
+			}
+			if (i == nitems(iso8601_fmts))
+				errx(1, "invalid argument '%s' for -I", optarg);
+			iso8601_selected = &iso8601_fmts[i];
 			break;
 		case 'j':
 			jflag = 1;	/* don't set time */
 			break;
 		case 'n':		/* don't set network */
 			break;
-		case 'R':
-			Rflag = 1;	/*RFC 2822 datetime format */
+		case 'R':		/* RFC 2822 datetime format */
+			if (Iflag)
+				errx(1, "multiple output formats specified");
+			Rflag = 1;
 			break;
 		case 'r':		/* user specified seconds */
 			rflag = 1;
@@ -116,9 +146,13 @@ main(int argc, char **argv)
 
 	if (Rflag)
 		format = rfc2822_format;
+	if (Iflag)
+		format = iso8601_selected->format;
 
 	/* allow the operands in any order */
 	if (*argv && **argv == '+') {
+		if (Iflag || Rflag)
+			errx(1, "multiple output formats specified");
 		format = *argv + 1;
 		++argv;
 	}
@@ -129,8 +163,11 @@ main(int argc, char **argv)
 	} else if (fmt != NULL)
 		usage();
 
-	if (*argv && **argv == '+')
+	if (*argv && **argv == '+') {
+		if (Iflag || Rflag)
+			errx(1, "multiple output formats specified");
 		format = *argv + 1;
+	}
 
 	lt = *localtime(&tval);
 	badv = vary_apply(v, &lt);
@@ -151,6 +188,12 @@ main(int argc, char **argv)
 	}
 
 	strftime(buf, sizeof(buf), format, &lt);
+	if (Iflag && iso8601_selected > iso8601_fmts) {
+		strftime(tzbuf, sizeof(tzbuf), "%z", &lt);
+		memmove(&tzbuf[4], &tzbuf[3], 3);
+		tzbuf[3] = ':';
+		strlcat(buf, tzbuf, sizeof(buf));
+	}
 	printf("%s\n", buf);
 	if (fflush(stdout) != 0)
 		err(1, "stdout");
@@ -278,6 +321,8 @@ usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
 	    "usage: date [-jnRu] [-r seconds] [-v[+|-]val[ymwdHMS]] ... ",
+	    "            "
+	    "[-I [date | hours | minutes | seconds]]"
 	    "            "
 	    "[-f fmt date | [[[[[cc]yy]mm]dd]HH]MM[.ss]] [+format]");
 	exit(1);

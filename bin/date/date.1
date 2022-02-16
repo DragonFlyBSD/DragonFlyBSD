@@ -31,7 +31,7 @@
 .\"     @(#)date.1	8.3 (Berkeley) 4/28/95
 .\" $FreeBSD: src/bin/date/date.1,v 1.72 2005/02/13 22:25:09 ru Exp $
 .\"
-.Dd September 11, 2019
+.Dd February 16, 2022
 .Dt DATE 1
 .Os
 .Sh NAME
@@ -60,6 +60,13 @@
 .Op Fl jnu
 .Fl f Ar input_fmt new_date
 .Op Cm + Ns Ar output_fmt
+.Nm
+.Op Fl jnu
+.Op Fl I Ns Op Ar FMT
+.Op Fl f Ar input_fmt
+.Op Fl r Ar ...
+.Op Fl v Ar ...
+.Op Ar new_date
 .Sh DESCRIPTION
 When invoked without arguments, the
 .Nm
@@ -100,6 +107,28 @@ provided rather than using the default
 format.
 Parsing is done using
 .Xr strptime 3 .
+.It Fl I Ns Op Ar FMT
+Use
+.St -iso8601
+output format.
+.Ar FMT
+may be omitted, in which case the default is
+.Sq date .
+Valid
+.Ar FMT
+values are
+.Sq date ,
+.Sq hours ,
+.Sq minutes ,
+and
+.Sq seconds .
+The date and time is formatted to the specified precision.
+The
+.St -iso8601
+format includes the timezone, except when
+.Ar FMT
+is
+.Sq date .
 .It Fl j
 Do not try to set the date.
 This allows you to use the
@@ -360,6 +389,14 @@ sets the time to
 .Li "2:32 PM" ,
 without modifying the date.
 .Pp
+The command:
+.Pp
+.Dl "TZ=America/Los_Angeles date -Iseconds -r 1533415339"
+.Pp
+will display
+.Pp
+.Dl "2018-08-04T13:42:19-07:00"
+.Pp
 Finally the command:
 .Pp
 .Dl "date -j -f ""%a %b %d %T %Z %Y"" ""`date`"" ""+%s"""
@@ -377,8 +414,20 @@ The
 .Nm
 utility is expected to be compatible with
 .St -p1003.2 .
+.Pp
+The format selected by the
+.Fl I
+flag is compatible with
+.St -iso8601 .
 .Sh HISTORY
 A
 .Nm
 command appeared in
 .At v1 .
+.Pp
+The
+.Fl I
+flag was added in
+.Fx 12.0
+and
+.Dx 6.3 .
