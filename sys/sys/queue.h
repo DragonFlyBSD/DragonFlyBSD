@@ -412,8 +412,8 @@ struct {								\
 	    (var);							\
 	    (var) = LIST_NEXT((var), field))
 
-#define	LIST_FOREACH(var, head, field)					\
-	for ((var) = LIST_FIRST((head));				\
+#define	LIST_FOREACH_FROM(var, head, field)				\
+	for ((var) = ((var) ? (var) : LIST_FIRST((head)));		\
 	    (var);							\
 	    (var) = LIST_NEXT((var), field))
 
