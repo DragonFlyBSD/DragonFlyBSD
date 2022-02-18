@@ -429,7 +429,6 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 		goto error_exit;
 	}
 
-	pmp->pm_HugeSectors *= pmp->pm_BlkPerSec;
 	if ((off_t)pmp->pm_HugeSectors * pmp->pm_BytesPerSec <
 	    pmp->pm_HugeSectors /* overflow */) {
 		/* XXX FreeBSD also checks media size in above */
@@ -437,6 +436,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 		goto error_exit;
 	}
 
+	pmp->pm_HugeSectors *= pmp->pm_BlkPerSec;
 	pmp->pm_HiddenSects *= pmp->pm_BlkPerSec;	/* XXX not used? */
 	pmp->pm_FATsecs     *= pmp->pm_BlkPerSec;
 	SecPerClust         *= pmp->pm_BlkPerSec;
