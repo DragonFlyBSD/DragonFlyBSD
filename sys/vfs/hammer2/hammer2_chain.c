@@ -821,6 +821,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ALLOCATED);
 		chain->hmp = NULL;
 		kfree_obj(chain, hmp->mchain);
+		atomic_add_long(&hammer2_chain_allocs, -1);
 	}
 
 	/*
@@ -6065,7 +6066,6 @@ hammer2_chain_bulkdrop(hammer2_chain_t *copy)
 	KKASSERT(copy->data);
 	kfree(copy->data, copy->hmp->mmsg);
 	copy->data = NULL;
-	atomic_add_long(&hammer2_chain_allocs, -1);
 	hammer2_chain_drop(copy);
 }
 
