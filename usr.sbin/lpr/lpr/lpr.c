@@ -2,6 +2,7 @@
  * Copyright (c) 1983, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  * (c) UNIX System Laboratories, Inc.
+ *
  * All or some portions of this file are derived from material licensed
  * to the University of California by American Telephone and Telegraph
  * Co. or Unix System Laboratories, Inc. and are reproduced herein with
@@ -32,7 +33,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1983, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: lpr.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/lpr/lpr.c,v 1.32.2.11 2002/04/28 23:40:23 gad Exp $
  */
@@ -146,7 +146,7 @@ main(int argc, char *argv[])
 	errs = 0;
 	while ((c = getopt(argc, argv,
 			   ":#:1:2:3:4:C:J:L:P:T:U:Z:cdfghi:lnmprstvw:"))
-	       != -1)
+	       != -1) {
 		switch (c) {
 		case '#':		/* n copies */
 			i = strtol(optarg, &p, 10);
@@ -215,6 +215,13 @@ main(int argc, char *argv[])
 
 		case 'i':		/* indent output */
 			iflag++;
+			if (optarg && *optarg == '-') {
+				/* default value if '-i' has no arg */
+				indent = 8;
+				/* don't let getopt(3) slup up other args */
+				optind--;
+				break;
+			}
 			indent = strtol(optarg, &p, 10);
 			if (*p)
 				errx(1, "Bad argument to -i, number expected");
@@ -251,6 +258,7 @@ main(int argc, char *argv[])
 		default:
 			errs++;
 		}
+	}
 	argc -= optind;
 	argv += optind;
 	if (errs)
@@ -813,8 +821,8 @@ usage(void)
 {
 	fprintf(stderr, "%s\n",
 "usage: lpr [-Pprinter] [-#num] [-C class] [-J job] [-T title] [-U user]\n"
-	"\t[-Z daemon-options] [-i[numcols]] [-i[numcols]] [-1234 font]\n"
-	"\t[-L locale] [-wnum] [-cdfghlnmprstv] [name ...]");
+	"\t[-Z daemon-options] [-L locale] [-i [num]] [-1234 font]\n"
+	"\t[-w num] [-cdfghlnmprstv] [name ...]");
 	exit(1);
 }
 

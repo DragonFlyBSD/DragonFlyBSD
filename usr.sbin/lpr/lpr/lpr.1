@@ -28,7 +28,7 @@
 .\"     From @(#)lpr.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.sbin/lpr/lpr/lpr.1,v 1.11.2.6 2002/06/21 16:40:52 charnier Exp $
 .\"
-.Dd June 6, 1993
+.Dd February 19, 2022
 .Dt LPR 1
 .Os
 .Sh NAME
@@ -44,7 +44,7 @@
 .Op Fl T Ar title
 .Op Fl U Ar user
 .Op Fl Z Ar daemon-options
-.Op Fl i Ar numcols
+.Op Fl i Op Ar num
 .Op Fl 1234 Ar font
 .Op Fl w Ar num
 .Op Fl cdfghlnmprstv
@@ -221,9 +221,13 @@ is not requested, the specified
 will be passed to the remote
 .Tn LPRng
 spooler.
-.It Fl i Ar numcols
+.It Fl i Op Ar num
 The output is indented by
-.Pq Ar numcols .
+.Ar num
+columns.
+When
+.Ar num
+is unspecified, the default value of 8 columns is used.
 .It Fl w Ar num
 Uses
 .Ar num
