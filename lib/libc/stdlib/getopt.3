@@ -30,7 +30,7 @@
 .\"     @(#)getopt.3	8.5 (Berkeley) 4/27/95
 .\" $FreeBSD: src/lib/libc/stdlib/getopt.3,v 1.26 2007/01/09 00:28:10 imp Exp $
 .\"
-.Dd February 16, 2022
+.Dd February 19, 2022
 .Dt GETOPT 3
 .Os
 .Sh NAME
@@ -62,13 +62,34 @@ if it has been specified in the string of accepted option characters,
 .Pp
 The option string
 .Fa optstring
-may contain the following elements: individual characters, and
-characters followed by a colon to indicate an option argument
-is to follow.
-If an individual character is followed by two colons, then the
-option argument is optional;
+may contain the following elements:
+.Bl -bullet -offset indent
+.It
+An individual character.
+For example, an option string
+.Li \&"x"
+recognizes an option
+.Dq Fl x .
+.It
+A character followed by a colon, which indicates the option requires
+an argument.
+It does not matter if a following argument has leading white space.
+For example, an option string
+.Li \&"x:"
+recognizes an option and argument
+.Dq Fl x Ar argument
+or
+.Dq Fl x Ns Ar argument .
+.It
+A character followed by two colons, which indicates the option argument
+is optional.
+The following argument must be in the
+.Em same
+word as the option name itself.
+The
 .Va optarg
-is set to the rest of the current
+is set to the rest of the
+.Em current
 .Fa argv
 word, or
 .Dv NULL
@@ -77,16 +98,12 @@ This is a
 .Tn GNU
 extension.
 For example, an option string
-.Li \&"x"
+.Li \&"x::"
 recognizes an option
-.Dq Fl x ,
-and an option string
-.Li \&"x:"
-recognizes an option and argument
-.Dq Fl x Ar argument .
-It does not matter to
-.Fn getopt
-if a following argument has leading white space.
+.Dq Fl x
+or an option and argument
+.Dq Fl x Ns Ar argument .
+.El
 .Pp
 On return from
 .Fn getopt ,
@@ -115,7 +132,9 @@ The
 .Va optind
 variable may be set to another value before a set of calls to
 .Fn getopt
-in order to skip over more or less argv entries.
+in order to skip over more or less
+.Fa argv
+entries.
 .Pp
 In order to use
 .Fn getopt
