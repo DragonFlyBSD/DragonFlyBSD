@@ -224,7 +224,7 @@ hammer2_cluster_drop(hammer2_cluster_t *cluster)
 }
 
 /*
- * Lock a cluster.  Cluster must already be referenced.  Focus is maintained. 
+ * Lock a cluster.  Cluster must already be referenced.  Focus is maintained.
  *
  * WARNING! This function expects the caller to handle resolution of the
  *	    cluster.  We never re-resolve the cluster in this function,
@@ -806,7 +806,7 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	 * Resolve nmasters_keymatch	- master nodes match the passed-in
 	 *				  key and may or may not match
 	 *				  the quorum-agreed tid.
-	 * 
+	 *
 	 * The quorum-agreed TID is the highest matching TID.
 	 */
 	last_best_quorum_tid = HAMMER2_TID_MAX;
@@ -901,7 +901,7 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	if (nmasters < nquorum) {
 		if (nmasters + umasters >= nquorum)
 			return HAMMER2_ERROR_EINPROGRESS;
-		if (nmasters_keymatch < nquorum) 
+		if (nmasters_keymatch < nquorum)
 			return HAMMER2_ERROR_ESRCH;
 		return HAMMER2_ERROR_EDEADLK;
 	}

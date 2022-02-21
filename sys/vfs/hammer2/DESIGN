@@ -654,7 +654,7 @@ The freemap radix allocation mechanism is also the same, meaning that it is
 bottom-up and will not allocate unnecessary intermediate levels for smaller
 filesystems.  The number of blockmap levels not including the volume header
 for various filesystem sizes is as follows:
-	
+
 	up-to		#of freemap levels
 	1GB		1-level
 	256GB		2-level

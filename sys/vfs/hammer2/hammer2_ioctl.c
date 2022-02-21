@@ -672,7 +672,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		hammer2_inode_drop(nip);
 		/* nip is dead */
 
-		/* 
+		/*
 		 * We still have a ref on the chain, relock and associate
 		 * with an appropriate PFS.
 		 */

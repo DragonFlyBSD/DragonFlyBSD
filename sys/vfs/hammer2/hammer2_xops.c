@@ -4,7 +4,7 @@
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
  * by Venkatesh Srinivas <vsrinivas@dragonflybsd.org>
- * by Daniel Flores (GSOC 2013 - mentored by Matthew Dillon, compression) 
+ * by Daniel Flores (GSOC 2013 - mentored by Matthew Dillon, compression)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -163,7 +163,7 @@ hammer2_xop_ipcluster(hammer2_xop_t *arg, void *scratch, int clindex)
 		error = chain->error;
 	else
 		error = HAMMER2_ERROR_EIO;
-		
+
 	hammer2_xop_feed(&xop->head, chain, clindex, error);
 	if (chain) {
 		hammer2_chain_unlock(chain);

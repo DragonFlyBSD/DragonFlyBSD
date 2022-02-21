@@ -428,7 +428,7 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 
 		/*
 		 * Save the last media transaction id for the flusher.  Set
-		 * initial 
+		 * initial
 		 */
 		if (ripdata) {
 			pmp->pfs_clid = ripdata->meta.pfs_clid;

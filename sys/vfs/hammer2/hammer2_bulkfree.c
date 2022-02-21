@@ -940,7 +940,7 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
  *			  10 -> 00	(do nothing if live modified)
  *	   11		  10 -> 11	handles race against live
  *			  ** -> 11	nominally warn of corruption
- * 
+ *
  * We must also fixup the hints in HAMMER2_BREF_TYPE_FREEMAP_LEAF.
  */
 static int
@@ -971,7 +971,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 	else
 		kprintf("%016jx\n",
 			(intmax_t)cbinfo->sstop);
-		
+
 	data_off = cbinfo->sbase;
 	bmap = cbinfo->bmap;
 

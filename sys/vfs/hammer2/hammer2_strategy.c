@@ -4,7 +4,7 @@
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
  * by Venkatesh Srinivas <vsrinivas@dragonflybsd.org>
- * by Daniel Flores (GSOC 2013 - mentored by Matthew Dillon, compression) 
+ * by Daniel Flores (GSOC 2013 - mentored by Matthew Dillon, compression)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -139,7 +139,7 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 /****************************************************************************
  *				READ SUPPORT				    *
  ****************************************************************************/
-/* 
+/*
  * Callback used in read path in case that a block is compressed with LZ4.
  */
 static
@@ -471,7 +471,7 @@ hammer2_strategy_read_completion(hammer2_chain_t *focus, const char *data,
  *				WRITE SUPPORT				    *
  ****************************************************************************/
 
-/* 
+/*
  * Functions for compression in threads,
  * from hammer2_vnops.c
  */
@@ -662,7 +662,7 @@ hammer2_bioq_sync(hammer2_pfs_t *pmp)
 	hammer2_lwinprog_wait(pmp, 0);
 }
 
-/* 
+/*
  * Assign physical storage at (cparent, lbase), returning a suitable chain
  * and setting *errorp appropriately.
  *
@@ -781,7 +781,7 @@ failed:
 	return (chain);
 }
 
-/* 
+/*
  * hammer2_write_file_core()
  *
  * The core write function which determines which path to take
@@ -913,7 +913,7 @@ hammer2_compress_and_write(char *data, hammer2_inode_t *ip,
 	comp_buffer = NULL;
 
 	KKASSERT(pblksize / 2 <= 32768);
-		
+
 	if (ip->comp_heuristic < 8 || (ip->comp_heuristic & 7) == 0 ||
 	    hammer2_always_compress) {
 		z_stream strm_compress;

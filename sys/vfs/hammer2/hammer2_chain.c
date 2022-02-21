@@ -2608,7 +2608,6 @@ hammer2_chain_repchange(hammer2_chain_t *parent, hammer2_chain_t *chain)
  *	  BREF_TYPE_DATA as the device buffer can alias the logical file
  *	  buffer).
  */
-
 hammer2_chain_t *
 hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 		     hammer2_key_t key_beg, hammer2_key_t key_end,
@@ -5284,7 +5283,7 @@ hammer2_base_find(hammer2_chain_t *parent,
  * WARNING!  Must be called with parent's spinlock held.  Spinlock remains
  *	     held through the operation.
  */
-hammer2_chain_t *
+static hammer2_chain_t *
 hammer2_combined_find(hammer2_chain_t *parent,
 		      hammer2_blockref_t *base, int count,
 		      hammer2_key_t *key_nextp,

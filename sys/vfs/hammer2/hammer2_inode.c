@@ -230,7 +230,7 @@ hammer2_inode_lock(hammer2_inode_t *ip, int how)
 	hammer2_inode_ref(ip);
 	pmp = ip->pmp;
 
-	/* 
+	/*
 	 * Inode structure mutex - Shared lock
 	 */
 	if (how & HAMMER2_RESOLVE_SHARED) {
@@ -1158,7 +1158,7 @@ hammer2_inode_create_normal(hammer2_inode_t *pip,
 
 	KKASSERT(nip->meta.inum == inum);
 	nip->meta.iparent = pip_inum;
-	
+
 	/* Inherit parent's inode compression mode. */
 	nip->meta.comp_algo = pip_comp_algo;
 	nip->meta.check_algo = pip_check_algo;

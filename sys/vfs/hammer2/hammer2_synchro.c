@@ -726,7 +726,7 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 #if HAMMER2_SYNCHRO_DEBUG
 	if (hammer2_debug & 1)
 	kprintf("insert rec par=%p/%d.%016jx slave %d %d.%016jx mod=%016jx\n",
-		*parentp, 
+		*parentp,
 		(*parentp)->bref.type,
 		(*parentp)->bref.key,
 		idx,
