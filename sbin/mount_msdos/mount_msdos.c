@@ -163,7 +163,14 @@ main(int argc, char **argv)
 	checkpath(dir, mntpath);
 	rmslashes(dev, dev);
 
-	args.fspec = dev;
+	/*
+	 * If the device path is not absolute then automatically
+	 * add the /dev prefix.
+	 */
+	if (dev[0] != '/')
+		asprintf(&args.fspec, "/dev/%s", dev);
+	else
+		args.fspec = dev;
 	args.export.ex_root = -2;	/* unchecked anyway on DOS fs */
 
 	if (cs_local != NULL) {
