@@ -33,8 +33,6 @@ typedef UINT16  EFI_DEFAULT_ID;
 
 typedef UINT32  EFI_HII_FONT_STYLE;
 
-
-
 #pragma pack(1)
 
 //
@@ -2108,8 +2106,6 @@ typedef struct _EFI_HII_AIBT_SKIP2_BLOCK {
 } EFI_HII_AIBT_SKIP2_BLOCK;
 
 #pragma pack()
-
-
 
 ///
 /// References to string tokens must use this macro to enable scanning for

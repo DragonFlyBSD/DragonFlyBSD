@@ -33,7 +33,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 //
 #define EFI_NETWORK_INTERFACE_IDENTIFIER_PROTOCOL_REVISION    0x00020000
 
-
 ///
 /// Revision defined in EFI1.1.
 ///
@@ -71,7 +70,6 @@ struct _EFI_NETWORK_INTERFACE_IDENTIFIER_PROTOCOL {
   UINT16    IfNum;      ///< The network interface number that is being identified by this Network
                         ///< Interface Identifier Protocol. This field must be less than or
                         ///< equal to the (IFcnt | IFcntExt <<8 ) fields in the !PXE structure.
-
 };
 
 ///

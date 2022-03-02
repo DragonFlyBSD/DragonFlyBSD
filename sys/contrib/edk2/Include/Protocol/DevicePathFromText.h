@@ -35,7 +35,6 @@ EFI_DEVICE_PATH_PROTOCOL*
   IN CONST CHAR16                 *TextDeviceNode
   );
 
-
 /**
   Convert text to the binary representation of a device node.
 

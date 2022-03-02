@@ -11,7 +11,6 @@
 #ifndef __UGA_DRAW_H__
 #define __UGA_DRAW_H__
 
-
 #define EFI_UGA_DRAW_PROTOCOL_GUID \
   { \
     0x982c298b, 0xf4fa, 0x41cb, {0xb8, 0x38, 0x77, 0xaa, 0x68, 0x8f, 0xb8, 0x39 } \
@@ -134,7 +133,7 @@ typedef
 EFI_STATUS
 (EFIAPI *EFI_UGA_DRAW_PROTOCOL_BLT)(
   IN  EFI_UGA_DRAW_PROTOCOL                   * This,
-  IN  EFI_UGA_PIXEL                           * BltBuffer, OPTIONAL
+  IN  EFI_UGA_PIXEL                           *BltBuffer  OPTIONAL,
   IN  EFI_UGA_BLT_OPERATION                   BltOperation,
   IN  UINTN                                   SourceX,
   IN  UINTN                                   SourceY,

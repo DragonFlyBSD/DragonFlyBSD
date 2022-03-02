@@ -75,5 +75,3 @@ typedef struct {
 extern EFI_GUID gEfiDevicePathToTextProtocolGuid;
 
 #endif
-
-

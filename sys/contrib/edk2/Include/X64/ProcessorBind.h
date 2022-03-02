@@ -62,7 +62,6 @@
 
 #endif
 
-
 #if defined(_MSC_EXTENSIONS)
 
 //
@@ -122,7 +121,6 @@
 #endif
 
 #endif
-
 
 #if defined(_MSC_EXTENSIONS)
   //
@@ -235,7 +233,6 @@ typedef UINT64  UINTN;
 ///
 typedef INT64   INTN;
 
-
 //
 // Processor specific defines
 //
@@ -338,4 +335,3 @@ typedef INT64   INTN;
 #endif
 
 #endif
-

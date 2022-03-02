@@ -54,7 +54,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
    (((PXE_UINT64)(n) & 0x00FF000000000000ULL) >> 40) | \
    (((PXE_UINT64)(n) & 0xFF00000000000000ULL) >> 56))
 
-
 #define PXE_CPBSIZE_NOT_USED  0               ///< zero
 #define PXE_DBSIZE_NOT_USED   0               ///< zero
 #define PXE_CPBADDR_NOT_USED  (PXE_UINT64) 0  ///< zero
@@ -909,9 +908,7 @@ typedef union pxe_device {
     PXE_UINT16  Bus;
     PXE_UINT8   Device;
     PXE_UINT8   Function;
-  }
-  PCI, PCC;
-
+  } PCI, PCC;
 } PXE_DEVICE;
 
 ///
@@ -1659,8 +1656,7 @@ typedef struct s_pxe_cpb_fill_header_fragmented {
     ///
     PXE_UINT32  reserved;
   } FragDesc[MAX_XMIT_FRAGMENTS];
-}
-PXE_CPB_FILL_HEADER_FRAGMENTED;
+} PXE_CPB_FILL_HEADER_FRAGMENTED;
 
 typedef struct s_pxe_cpb_transmit {
   ///
@@ -1722,8 +1718,7 @@ typedef struct s_pxe_cpb_transmit_fragments {
     ///
     PXE_UINT32  reserved;
   } FragDesc[MAX_XMIT_FRAGMENTS];
-}
-PXE_CPB_TRANSMIT_FRAGMENTS;
+} PXE_CPB_TRANSMIT_FRAGMENTS;
 
 typedef struct s_pxe_cpb_receive {
   ///
@@ -1778,7 +1773,6 @@ typedef struct s_pxe_db_receive {
   /// Reserved, must be zero.
   ///
   PXE_UINT8           reserved[7];
-
 } PXE_DB_RECEIVE;
 
 #pragma pack()

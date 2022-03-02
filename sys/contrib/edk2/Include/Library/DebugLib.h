@@ -129,7 +129,6 @@ DebugPrint (
   ...
   );
 
-
 /**
   Prints a debug message to the debug output device if the specified
   error level is enabled.
@@ -152,7 +151,6 @@ DebugVPrint (
   IN  CONST CHAR8   *Format,
   IN  VA_LIST       VaListMarker
   );
-
 
 /**
   Prints a debug message to the debug output device if the specified
@@ -178,7 +176,6 @@ DebugBPrint (
   IN  CONST CHAR8   *Format,
   IN  BASE_LIST     BaseListMarker
   );
-
 
 /**
   Prints an assert message containing a filename, line number, and description.
@@ -209,7 +206,6 @@ DebugAssert (
   IN CONST CHAR8  *Description
   );
 
-
 /**
   Fills a target buffer with PcdDebugClearMemoryValue, and returns the target buffer.
 
@@ -232,7 +228,6 @@ DebugClearMemory (
   IN UINTN  Length
   );
 
-
 /**
   Returns TRUE if ASSERT() macros are enabled.
 
@@ -248,7 +243,6 @@ EFIAPI
 DebugAssertEnabled (
   VOID
   );
-
 
 /**
   Returns TRUE if DEBUG() macros are enabled.
@@ -266,7 +260,6 @@ DebugPrintEnabled (
   VOID
   );
 
-
 /**
   Returns TRUE if DEBUG_CODE() macros are enabled.
 
@@ -282,7 +275,6 @@ EFIAPI
 DebugCodeEnabled (
   VOID
   );
-
 
 /**
   Returns TRUE if DEBUG_CLEAR_MEMORY() macro is enabled.
@@ -325,6 +317,7 @@ DebugPrintLevelEnabled (
 
 **/
 #if defined (EDKII_UNIT_TEST_FRAMEWORK_ENABLED)
+
 /**
   Unit test library replacement for DebugAssert() in DebugLib.
 
@@ -448,7 +441,7 @@ UnitTestDebugAssert (
     do {                                                                                 \
       if (DebugAssertEnabled ()) {                                                       \
         if (EFI_ERROR (StatusParameter)) {                                               \
-          DEBUG ((EFI_D_ERROR, "\nASSERT_EFI_ERROR (Status = %r)\n", StatusParameter));  \
+          DEBUG ((DEBUG_ERROR, "\nASSERT_EFI_ERROR (Status = %r)\n", StatusParameter));  \
           _ASSERT (!EFI_ERROR (StatusParameter));                                        \
         }                                                                                \
       }                                                                                  \
@@ -538,7 +531,6 @@ UnitTestDebugAssert (
 **/
 #define DEBUG_CODE_BEGIN()  do { if (DebugCodeEnabled ()) { UINT8  __DebugCodeLocal
 
-
 /**
   The macro that marks the end of debug source code.
 
@@ -549,7 +541,6 @@ UnitTestDebugAssert (
 
 **/
 #define DEBUG_CODE_END()    __DebugCodeLocal = 0; __DebugCodeLocal++; } } while (FALSE)
-
 
 /**
   The macro that declares a section of debug source code.
@@ -563,7 +554,6 @@ UnitTestDebugAssert (
   DEBUG_CODE_BEGIN ();          \
   Expression                    \
   DEBUG_CODE_END ()
-
 
 /**
   The macro that calls DebugClearMemory() to clear a buffer to a default value.
@@ -581,7 +571,6 @@ UnitTestDebugAssert (
       DebugClearMemory (Address, Length);    \
     }                                        \
   } while (FALSE)
-
 
 /**
   Macro that calls DebugAssert() if the containing record does not have a

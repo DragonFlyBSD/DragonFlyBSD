@@ -18,7 +18,6 @@
 #define EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL_GUID \
   {0xdd9e7534, 0x7762, 0x4698, { 0x8c, 0x14, 0xf5, 0x85, 0x17, 0xa6, 0x25, 0xaa } }
 
-
 typedef struct _EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL;
 
 /**
@@ -52,7 +51,6 @@ EFI_STATUS
   IN EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL *This,
   IN BOOLEAN                           ExtendedVerification
 );
-
 
 ///
 /// EFI_KEY_TOGGLE_STATE. The toggle states are defined.
@@ -291,7 +289,6 @@ EFI_STATUS
   IN VOID                               *NotificationHandle
 );
 
-
 ///
 /// The EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL is used on the ConsoleIn
 /// device. It is an extension to the Simple Text Input protocol
@@ -310,8 +307,6 @@ struct _EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL{
   EFI_UNREGISTER_KEYSTROKE_NOTIFY UnregisterKeyNotify;
 };
 
-
 extern EFI_GUID gEfiSimpleTextInputExProtocolGuid;
 
 #endif
-

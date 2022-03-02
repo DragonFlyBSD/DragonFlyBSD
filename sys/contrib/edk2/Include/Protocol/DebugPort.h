@@ -12,7 +12,6 @@
 #ifndef __DEBUG_PORT_H__
 #define __DEBUG_PORT_H__
 
-
 ///
 /// DebugPortIo protocol {EBA4E8D2-3858-41EC-A281-2647BA9660D0}
 ///

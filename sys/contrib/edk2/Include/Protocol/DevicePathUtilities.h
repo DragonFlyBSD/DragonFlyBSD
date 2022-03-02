@@ -33,7 +33,6 @@ UINTN
   IN CONST EFI_DEVICE_PATH_PROTOCOL *DevicePath
   );
 
-
 /**
   Create a duplicate of the specified path.
 

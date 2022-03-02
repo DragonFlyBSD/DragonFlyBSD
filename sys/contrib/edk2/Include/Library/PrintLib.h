@@ -826,7 +826,6 @@ AsciiSPrintUnicodeFormat (
   ...
   );
 
-
 /**
   Converts a decimal value to a Null-terminated Ascii string.
 

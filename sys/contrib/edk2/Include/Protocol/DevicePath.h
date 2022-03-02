@@ -55,7 +55,6 @@ typedef struct {
 
   UINT8 Length[2];  ///< Specific Device Path data. Type and Sub-Type define
                     ///< type of data. Size of data is included in Length.
-
 } EFI_DEVICE_PATH_PROTOCOL;
 
 ///
@@ -1249,7 +1248,6 @@ typedef struct {
 #define BBS_TYPE_BEV              0x80
 #define BBS_TYPE_UNKNOWN          0xFF
 
-
 ///
 /// Union of all possible Device Paths and pointers to Device Paths.
 ///
@@ -1308,8 +1306,6 @@ typedef union {
   MEDIA_RAM_DISK_DEVICE_PATH                 RamDisk;
   BBS_BBS_DEVICE_PATH                        Bbs;
 } EFI_DEV_PATH;
-
-
 
 typedef union {
   EFI_DEVICE_PATH_PROTOCOL                   *DevPath;

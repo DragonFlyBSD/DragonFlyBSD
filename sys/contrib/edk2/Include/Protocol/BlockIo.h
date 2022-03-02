@@ -227,7 +227,6 @@ struct _EFI_BLOCK_IO_PROTOCOL {
   EFI_BLOCK_READ      ReadBlocks;
   EFI_BLOCK_WRITE     WriteBlocks;
   EFI_BLOCK_FLUSH     FlushBlocks;
-
 };
 
 extern EFI_GUID gEfiBlockIoProtocolGuid;

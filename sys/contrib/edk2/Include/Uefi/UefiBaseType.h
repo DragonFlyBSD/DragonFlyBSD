@@ -78,7 +78,6 @@ typedef struct {
   UINT8   Pad2;
 } EFI_TIME;
 
-
 ///
 /// 4-byte buffer. An IPv4 internet protocol address.
 ///
@@ -105,7 +104,6 @@ typedef union {
   EFI_IPv4_ADDRESS  v4;
   EFI_IPv6_ADDRESS  v6;
 } EFI_IP_ADDRESS;
-
 
 ///
 /// Enumeration of EFI_STATUS.

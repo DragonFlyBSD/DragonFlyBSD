@@ -27,7 +27,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 typedef struct _EFI_SIMPLE_NETWORK_PROTOCOL  EFI_SIMPLE_NETWORK_PROTOCOL;
 
-
 ///
 /// Protocol defined in EFI1.1.
 ///
@@ -245,6 +244,7 @@ typedef struct {
 //
 // Protocol Member Functions
 //
+
 /**
   Changes the state of a network interface from "stopped" to "started".
 

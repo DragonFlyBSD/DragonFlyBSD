@@ -344,8 +344,8 @@ typedef
 EFI_STATUS
 (EFIAPI *EFI_CONNECT_CONTROLLER)(
   IN  EFI_HANDLE                    ControllerHandle,
-  IN  EFI_HANDLE                    *DriverImageHandle,   OPTIONAL
-  IN  EFI_DEVICE_PATH_PROTOCOL      *RemainingDevicePath, OPTIONAL
+  IN  EFI_HANDLE                    *DriverImageHandle    OPTIONAL,
+  IN  EFI_DEVICE_PATH_PROTOCOL      *RemainingDevicePath  OPTIONAL,
   IN  BOOLEAN                       Recursive
   );
 
@@ -377,11 +377,9 @@ typedef
 EFI_STATUS
 (EFIAPI *EFI_DISCONNECT_CONTROLLER)(
   IN  EFI_HANDLE                     ControllerHandle,
-  IN  EFI_HANDLE                     DriverImageHandle, OPTIONAL
+  IN  EFI_HANDLE                     DriverImageHandle  OPTIONAL,
   IN  EFI_HANDLE                     ChildHandle        OPTIONAL
   );
-
-
 
 //
 // ConvertPointer DebugDisposition type.
@@ -410,7 +408,6 @@ EFI_STATUS
   IN OUT VOID                       **Address
   );
 
-
 //
 // These types can be ORed together as needed - for example,
 // EVT_TIMER might be Ored with EVT_NOTIFY_WAIT or
@@ -430,7 +427,6 @@ EFI_STATUS
 // The event is deprecated in UEFI2.0 and later specifications.
 //
 #define EVT_RUNTIME_CONTEXT               0x20000000
-
 
 /**
   Invoke a notification event
@@ -611,7 +607,6 @@ EFI_STATUS
   IN EFI_EVENT                Event
   );
 
-
 //
 // Task priority level
 //
@@ -619,7 +614,6 @@ EFI_STATUS
 #define TPL_CALLBACK          8
 #define TPL_NOTIFY            16
 #define TPL_HIGH_LEVEL        31
-
 
 /**
   Raises a task's priority level and returns its previous level.
@@ -676,7 +670,7 @@ EFI_STATUS
 (EFIAPI *EFI_GET_VARIABLE)(
   IN     CHAR16                      *VariableName,
   IN     EFI_GUID                    *VendorGuid,
-  OUT    UINT32                      *Attributes,    OPTIONAL
+  OUT    UINT32                      *Attributes     OPTIONAL,
   IN OUT UINTN                       *DataSize,
   OUT    VOID                        *Data           OPTIONAL
   );
@@ -758,7 +752,6 @@ EFI_STATUS
   IN  UINTN                        DataSize,
   IN  VOID                         *Data
   );
-
 
 ///
 /// This provides the capabilities of the
@@ -1338,12 +1331,11 @@ EFI_STATUS
 (EFIAPI *EFI_OPEN_PROTOCOL)(
   IN  EFI_HANDLE                Handle,
   IN  EFI_GUID                  *Protocol,
-  OUT VOID                      **Interface, OPTIONAL
+  OUT VOID                      **Interface  OPTIONAL,
   IN  EFI_HANDLE                AgentHandle,
   IN  EFI_HANDLE                ControllerHandle,
   IN  UINT32                    Attributes
   );
-
 
 /**
   Closes a protocol on a handle that was opened using OpenProtocol().
@@ -1506,8 +1498,8 @@ typedef
 EFI_STATUS
 (EFIAPI *EFI_LOCATE_HANDLE)(
   IN     EFI_LOCATE_SEARCH_TYPE   SearchType,
-  IN     EFI_GUID                 *Protocol,    OPTIONAL
-  IN     VOID                     *SearchKey,   OPTIONAL
+  IN     EFI_GUID                 *Protocol     OPTIONAL,
+  IN     VOID                     *SearchKey    OPTIONAL,
   IN OUT UINTN                    *BufferSize,
   OUT    EFI_HANDLE               *Buffer
   );
@@ -1579,8 +1571,8 @@ typedef
 EFI_STATUS
 (EFIAPI *EFI_LOCATE_HANDLE_BUFFER)(
   IN     EFI_LOCATE_SEARCH_TYPE       SearchType,
-  IN     EFI_GUID                     *Protocol,      OPTIONAL
-  IN     VOID                         *SearchKey,     OPTIONAL
+  IN     EFI_GUID                     *Protocol       OPTIONAL,
+  IN     VOID                         *SearchKey      OPTIONAL,
   OUT    UINTN                        *NoHandles,
   OUT    EFI_HANDLE                   **Buffer
   );
@@ -1606,7 +1598,7 @@ typedef
 EFI_STATUS
 (EFIAPI *EFI_LOCATE_PROTOCOL)(
   IN  EFI_GUID  *Protocol,
-  IN  VOID      *Registration, OPTIONAL
+  IN  VOID      *Registration  OPTIONAL,
   OUT VOID      **Interface
   );
 
@@ -1861,7 +1853,6 @@ typedef struct {
   //
   EFI_QUERY_VARIABLE_INFO         QueryVariableInfo;
 } EFI_RUNTIME_SERVICES;
-
 
 #define EFI_BOOT_SERVICES_SIGNATURE   SIGNATURE_64 ('B','O','O','T','S','E','R','V')
 #define EFI_BOOT_SERVICES_REVISION    EFI_SPECIFICATION_VERSION

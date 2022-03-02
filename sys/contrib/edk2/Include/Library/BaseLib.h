@@ -156,7 +156,6 @@ typedef struct {
 // String Services
 //
 
-
 /**
   Returns the length of a Null-terminated Unicode string.
 
@@ -405,7 +404,7 @@ RETURN_STATUS
 EFIAPI
 StrDecimalToUintnS (
   IN  CONST CHAR16             *String,
-  OUT       CHAR16             **EndPointer,  OPTIONAL
+  OUT       CHAR16  **EndPointer   OPTIONAL,
   OUT       UINTN              *Data
   );
 
@@ -456,7 +455,7 @@ RETURN_STATUS
 EFIAPI
 StrDecimalToUint64S (
   IN  CONST CHAR16             *String,
-  OUT       CHAR16             **EndPointer,  OPTIONAL
+  OUT       CHAR16  **EndPointer   OPTIONAL,
   OUT       UINT64             *Data
   );
 
@@ -512,7 +511,7 @@ RETURN_STATUS
 EFIAPI
 StrHexToUintnS (
   IN  CONST CHAR16             *String,
-  OUT       CHAR16             **EndPointer,  OPTIONAL
+  OUT       CHAR16  **EndPointer   OPTIONAL,
   OUT       UINTN              *Data
   );
 
@@ -568,7 +567,7 @@ RETURN_STATUS
 EFIAPI
 StrHexToUint64S (
   IN  CONST CHAR16             *String,
-  OUT       CHAR16             **EndPointer,  OPTIONAL
+  OUT       CHAR16  **EndPointer   OPTIONAL,
   OUT       UINT64             *Data
   );
 
@@ -802,7 +801,7 @@ RETURN_STATUS
 EFIAPI
 AsciiStrDecimalToUintnS (
   IN  CONST CHAR8              *String,
-  OUT       CHAR8              **EndPointer,  OPTIONAL
+  OUT       CHAR8  **EndPointer   OPTIONAL,
   OUT       UINTN              *Data
   );
 
@@ -851,7 +850,7 @@ RETURN_STATUS
 EFIAPI
 AsciiStrDecimalToUint64S (
   IN  CONST CHAR8              *String,
-  OUT       CHAR8              **EndPointer,  OPTIONAL
+  OUT       CHAR8   **EndPointer   OPTIONAL,
   OUT       UINT64             *Data
   );
 
@@ -904,7 +903,7 @@ RETURN_STATUS
 EFIAPI
 AsciiStrHexToUintnS (
   IN  CONST CHAR8              *String,
-  OUT       CHAR8              **EndPointer,  OPTIONAL
+  OUT       CHAR8  **EndPointer   OPTIONAL,
   OUT       UINTN              *Data
   );
 
@@ -957,10 +956,9 @@ RETURN_STATUS
 EFIAPI
 AsciiStrHexToUint64S (
   IN  CONST CHAR8              *String,
-  OUT       CHAR8              **EndPointer,  OPTIONAL
+  OUT       CHAR8   **EndPointer   OPTIONAL,
   OUT       UINT64             *Data
   );
-
 
 /**
   Returns the length of a Null-terminated Unicode string.
@@ -985,7 +983,6 @@ StrLen (
   IN      CONST CHAR16              *String
   );
 
-
 /**
   Returns the size of a Null-terminated Unicode string in bytes, including the
   Null terminator.
@@ -1009,7 +1006,6 @@ EFIAPI
 StrSize (
   IN      CONST CHAR16              *String
   );
-
 
 /**
   Compares two Null-terminated Unicode strings, and returns the difference
@@ -1045,7 +1041,6 @@ StrCmp (
   IN      CONST CHAR16              *FirstString,
   IN      CONST CHAR16              *SecondString
   );
-
 
 /**
   Compares up to a specified length the contents of two Null-terminated Unicode strings,
@@ -1086,7 +1081,6 @@ StrnCmp (
   IN      CONST CHAR16              *SecondString,
   IN      UINTN                     Length
   );
-
 
 /**
   Returns the first occurrence of a Null-terminated Unicode sub-string
@@ -1200,7 +1194,6 @@ StrDecimalToUint64 (
   IN      CONST CHAR16              *String
   );
 
-
 /**
   Convert a Null-terminated Unicode hexadecimal string to a value of type UINTN.
 
@@ -1241,7 +1234,6 @@ EFIAPI
 StrHexToUintn (
   IN      CONST CHAR16              *String
   );
-
 
 /**
   Convert a Null-terminated Unicode hexadecimal string to a value of type UINT64.
@@ -1338,7 +1330,7 @@ RETURN_STATUS
 EFIAPI
 StrToIpv6Address (
   IN  CONST CHAR16       *String,
-  OUT CHAR16             **EndPointer, OPTIONAL
+  OUT CHAR16        **EndPointer  OPTIONAL,
   OUT IPv6_ADDRESS       *Address,
   OUT UINT8              *PrefixLength OPTIONAL
   );
@@ -1388,7 +1380,7 @@ RETURN_STATUS
 EFIAPI
 StrToIpv4Address (
   IN  CONST CHAR16       *String,
-  OUT CHAR16             **EndPointer, OPTIONAL
+  OUT CHAR16        **EndPointer  OPTIONAL,
   OUT IPv4_ADDRESS       *Address,
   OUT UINT8              *PrefixLength OPTIONAL
   );
@@ -1485,7 +1477,6 @@ StrHexToBytes (
   OUT UINT8              *Buffer,
   IN  UINTN              MaxBufferSize
   );
-
 
 /**
   Convert a Null-terminated Unicode string to a Null-terminated
@@ -1588,7 +1579,6 @@ UnicodeStrnToAsciiStrS (
   OUT     UINTN                     *DestinationLength
   );
 
-
 /**
   Returns the length of a Null-terminated ASCII string.
 
@@ -1612,7 +1602,6 @@ AsciiStrLen (
   IN      CONST CHAR8               *String
   );
 
-
 /**
   Returns the size of a Null-terminated ASCII string in bytes, including the
   Null terminator.
@@ -1635,7 +1624,6 @@ EFIAPI
 AsciiStrSize (
   IN      CONST CHAR8               *String
   );
-
 
 /**
   Compares two Null-terminated ASCII strings, and returns the difference
@@ -1669,7 +1657,6 @@ AsciiStrCmp (
   IN      CONST CHAR8               *FirstString,
   IN      CONST CHAR8               *SecondString
   );
-
 
 /**
   Performs a case insensitive comparison of two Null-terminated ASCII strings,
@@ -1706,7 +1693,6 @@ AsciiStriCmp (
   IN      CONST CHAR8               *FirstString,
   IN      CONST CHAR8               *SecondString
   );
-
 
 /**
   Compares two Null-terminated ASCII strings with maximum lengths, and returns
@@ -1746,7 +1732,6 @@ AsciiStrnCmp (
   IN      UINTN                     Length
   );
 
-
 /**
   Returns the first occurrence of a Null-terminated ASCII sub-string
   in a Null-terminated ASCII string.
@@ -1777,7 +1762,6 @@ AsciiStrStr (
   IN      CONST CHAR8               *String,
   IN      CONST CHAR8               *SearchString
   );
-
 
 /**
   Convert a Null-terminated ASCII decimal string to a value of type
@@ -1815,7 +1799,6 @@ AsciiStrDecimalToUintn (
   IN      CONST CHAR8               *String
   );
 
-
 /**
   Convert a Null-terminated ASCII decimal string to a value of type
   UINT64.
@@ -1851,7 +1834,6 @@ EFIAPI
 AsciiStrDecimalToUint64 (
   IN      CONST CHAR8               *String
   );
-
 
 /**
   Convert a Null-terminated ASCII hexadecimal string to a value of type UINTN.
@@ -1892,7 +1874,6 @@ EFIAPI
 AsciiStrHexToUintn (
   IN      CONST CHAR8               *String
   );
-
 
 /**
   Convert a Null-terminated ASCII hexadecimal string to a value of type UINT64.
@@ -1986,7 +1967,7 @@ RETURN_STATUS
 EFIAPI
 AsciiStrToIpv6Address (
   IN  CONST CHAR8        *String,
-  OUT CHAR8              **EndPointer, OPTIONAL
+  OUT CHAR8         **EndPointer  OPTIONAL,
   OUT IPv6_ADDRESS       *Address,
   OUT UINT8              *PrefixLength OPTIONAL
   );
@@ -2034,7 +2015,7 @@ RETURN_STATUS
 EFIAPI
 AsciiStrToIpv4Address (
   IN  CONST CHAR8        *String,
-  OUT CHAR8              **EndPointer, OPTIONAL
+  OUT CHAR8         **EndPointer  OPTIONAL,
   OUT IPv4_ADDRESS       *Address,
   OUT UINT8              *PrefixLength OPTIONAL
   );
@@ -2125,7 +2106,6 @@ AsciiStrHexToBytes (
   OUT UINT8              *Buffer,
   IN  UINTN              MaxBufferSize
   );
-
 
 /**
   Convert one Null-terminated ASCII string to a Null-terminated
@@ -2401,7 +2381,6 @@ DecimalToBcd8 (
   IN      UINT8                     Value
   );
 
-
 /**
   Converts an 8-bit BCD value to an 8-bit value.
 
@@ -2532,7 +2511,6 @@ IsNodeInList (
   IN      CONST LIST_ENTRY      *SecondEntry
   );
 
-
 /**
   Initializes the head node of a doubly linked list, and returns the pointer to
   the head node of the doubly linked list.
@@ -2554,7 +2532,6 @@ EFIAPI
 InitializeListHead (
   IN OUT  LIST_ENTRY                *ListHead
   );
-
 
 /**
   Adds a node to the beginning of a doubly linked list, and returns the pointer
@@ -2585,7 +2562,6 @@ InsertHeadList (
   IN OUT  LIST_ENTRY                *Entry
   );
 
-
 /**
   Adds a node to the end of a doubly linked list, and returns the pointer to
   the head node of the doubly linked list.
@@ -2615,7 +2591,6 @@ InsertTailList (
   IN OUT  LIST_ENTRY                *Entry
   );
 
-
 /**
   Retrieves the first node of a doubly linked list.
 
@@ -2641,7 +2616,6 @@ EFIAPI
 GetFirstNode (
   IN      CONST LIST_ENTRY          *List
   );
-
 
 /**
   Retrieves the next node of a doubly linked list.
@@ -2671,7 +2645,6 @@ GetNextNode (
   IN      CONST LIST_ENTRY          *Node
   );
 
-
 /**
   Retrieves the previous node of a doubly linked list.
 
@@ -2700,7 +2673,6 @@ GetPreviousNode (
   IN      CONST LIST_ENTRY          *Node
   );
 
-
 /**
   Checks to see if a doubly linked list is empty or not.
 
@@ -2725,7 +2697,6 @@ EFIAPI
 IsListEmpty (
   IN      CONST LIST_ENTRY          *ListHead
   );
-
 
 /**
   Determines if a node in a doubly linked list is the head node of a the same
@@ -2760,7 +2731,6 @@ IsNull (
   IN      CONST LIST_ENTRY          *Node
   );
 
-
 /**
   Determines if a node the last node in a doubly linked list.
 
@@ -2790,7 +2760,6 @@ IsNodeAtEnd (
   IN      CONST LIST_ENTRY          *List,
   IN      CONST LIST_ENTRY          *Node
   );
-
 
 /**
   Swaps the location of two nodes in a doubly linked list, and returns the
@@ -2825,7 +2794,6 @@ SwapListEntries (
   IN OUT  LIST_ENTRY                *SecondEntry
   );
 
-
 /**
   Removes a node from a doubly linked list, and returns the node that follows
   the removed node.
@@ -2856,6 +2824,7 @@ RemoveEntryList (
 //
 // Math Services
 //
+
 /**
   Prototype for comparison function for any two element types.
 
@@ -2928,7 +2897,6 @@ LShiftU64 (
   IN      UINTN                     Count
   );
 
-
 /**
   Shifts a 64-bit integer right between 0 and 63 bits. This high bits are
   filled with zeros. The shifted value is returned.
@@ -2951,7 +2919,6 @@ RShiftU64 (
   IN      UINTN                     Count
   );
 
-
 /**
   Shifts a 64-bit integer right between 0 and 63 bits. The high bits are filled
   with original integer's bit 63. The shifted value is returned.
@@ -2973,7 +2940,6 @@ ARShiftU64 (
   IN      UINT64                    Operand,
   IN      UINTN                     Count
   );
-
 
 /**
   Rotates a 32-bit integer left between 0 and 31 bits, filling the low bits
@@ -2998,7 +2964,6 @@ LRotU32 (
   IN      UINTN                     Count
   );
 
-
 /**
   Rotates a 32-bit integer right between 0 and 31 bits, filling the high bits
   with the low bits that were rotated.
@@ -3021,7 +2986,6 @@ RRotU32 (
   IN      UINT32                    Operand,
   IN      UINTN                     Count
   );
-
 
 /**
   Rotates a 64-bit integer left between 0 and 63 bits, filling the low bits
@@ -3046,7 +3010,6 @@ LRotU64 (
   IN      UINTN                     Count
   );
 
-
 /**
   Rotates a 64-bit integer right between 0 and 63 bits, filling the high bits
   with the high low bits that were rotated.
@@ -3070,7 +3033,6 @@ RRotU64 (
   IN      UINTN                     Count
   );
 
-
 /**
   Returns the bit position of the lowest bit set in a 32-bit value.
 
@@ -3089,7 +3051,6 @@ EFIAPI
 LowBitSet32 (
   IN      UINT32                    Operand
   );
-
 
 /**
   Returns the bit position of the lowest bit set in a 64-bit value.
@@ -3111,7 +3072,6 @@ LowBitSet64 (
   IN      UINT64                    Operand
   );
 
-
 /**
   Returns the bit position of the highest bit set in a 32-bit value. Equivalent
   to log2(x).
@@ -3131,7 +3091,6 @@ EFIAPI
 HighBitSet32 (
   IN      UINT32                    Operand
   );
-
 
 /**
   Returns the bit position of the highest bit set in a 64-bit value. Equivalent
@@ -3153,7 +3112,6 @@ HighBitSet64 (
   IN      UINT64                    Operand
   );
 
-
 /**
   Returns the value of the highest bit set in a 32-bit value. Equivalent to
   1 << log2(x).
@@ -3172,7 +3130,6 @@ EFIAPI
 GetPowerOfTwo32 (
   IN      UINT32                    Operand
   );
-
 
 /**
   Returns the value of the highest bit set in a 64-bit value. Equivalent to
@@ -3193,7 +3150,6 @@ GetPowerOfTwo64 (
   IN      UINT64                    Operand
   );
 
-
 /**
   Switches the endianness of a 16-bit integer.
 
@@ -3211,7 +3167,6 @@ EFIAPI
 SwapBytes16 (
   IN      UINT16                    Value
   );
-
 
 /**
   Switches the endianness of a 32-bit integer.
@@ -3231,7 +3186,6 @@ SwapBytes32 (
   IN      UINT32                    Value
   );
 
-
 /**
   Switches the endianness of a 64-bit integer.
 
@@ -3249,7 +3203,6 @@ EFIAPI
 SwapBytes64 (
   IN      UINT64                    Value
   );
-
 
 /**
   Multiples a 64-bit unsigned integer by a 32-bit unsigned integer and
@@ -3272,7 +3225,6 @@ MultU64x32 (
   IN      UINT32                    Multiplier
   );
 
-
 /**
   Multiples a 64-bit unsigned integer by a 64-bit unsigned integer and
   generates a 64-bit unsigned result.
@@ -3294,7 +3246,6 @@ MultU64x64 (
   IN      UINT64                    Multiplier
   );
 
-
 /**
   Multiples a 64-bit signed integer by a 64-bit signed integer and generates a
   64-bit signed result.
@@ -3315,7 +3266,6 @@ MultS64x64 (
   IN      INT64                     Multiplicand,
   IN      INT64                     Multiplier
   );
-
 
 /**
   Divides a 64-bit unsigned integer by a 32-bit unsigned integer and generates
@@ -3340,7 +3290,6 @@ DivU64x32 (
   IN      UINT32                    Divisor
   );
 
-
 /**
   Divides a 64-bit unsigned integer by a 32-bit unsigned integer and generates
   a 32-bit unsigned remainder.
@@ -3363,7 +3312,6 @@ ModU64x32 (
   IN      UINT64                    Dividend,
   IN      UINT32                    Divisor
   );
-
 
 /**
   Divides a 64-bit unsigned integer by a 32-bit unsigned integer and generates
@@ -3392,7 +3340,6 @@ DivU64x32Remainder (
   OUT     UINT32                    *Remainder  OPTIONAL
   );
 
-
 /**
   Divides a 64-bit unsigned integer by a 64-bit unsigned integer and generates
   a 64-bit unsigned result and an optional 64-bit unsigned remainder.
@@ -3419,7 +3366,6 @@ DivU64x64Remainder (
   IN      UINT64                    Divisor,
   OUT     UINT64                    *Remainder  OPTIONAL
   );
-
 
 /**
   Divides a 64-bit signed integer by a 64-bit signed integer and generates a
@@ -3452,7 +3398,6 @@ DivS64x64Remainder (
   OUT     INT64                     *Remainder  OPTIONAL
   );
 
-
 /**
   Reads a 16-bit value from memory that may be unaligned.
 
@@ -3471,7 +3416,6 @@ EFIAPI
 ReadUnaligned16 (
   IN CONST UINT16              *Buffer
   );
-
 
 /**
   Writes a 16-bit value to memory that may be unaligned.
@@ -3495,7 +3439,6 @@ WriteUnaligned16 (
   IN  UINT16                    Value
   );
 
-
 /**
   Reads a 24-bit value from memory that may be unaligned.
 
@@ -3514,7 +3457,6 @@ EFIAPI
 ReadUnaligned24 (
   IN CONST UINT32              *Buffer
   );
-
 
 /**
   Writes a 24-bit value to memory that may be unaligned.
@@ -3538,7 +3480,6 @@ WriteUnaligned24 (
   IN  UINT32                    Value
   );
 
-
 /**
   Reads a 32-bit value from memory that may be unaligned.
 
@@ -3557,7 +3498,6 @@ EFIAPI
 ReadUnaligned32 (
   IN CONST UINT32              *Buffer
   );
-
 
 /**
   Writes a 32-bit value to memory that may be unaligned.
@@ -3581,7 +3521,6 @@ WriteUnaligned32 (
   IN  UINT32                    Value
   );
 
-
 /**
   Reads a 64-bit value from memory that may be unaligned.
 
@@ -3600,7 +3539,6 @@ EFIAPI
 ReadUnaligned64 (
   IN CONST UINT64              *Buffer
   );
-
 
 /**
   Writes a 64-bit value to memory that may be unaligned.
@@ -3623,7 +3561,6 @@ WriteUnaligned64 (
   OUT UINT64                    *Buffer,
   IN  UINT64                    Value
   );
-
 
 //
 // Bit Field Functions
@@ -3656,7 +3593,6 @@ BitFieldRead8 (
   IN      UINTN                     EndBit
   );
 
-
 /**
   Writes a bit field to an 8-bit value, and returns the result.
 
@@ -3688,7 +3624,6 @@ BitFieldWrite8 (
   IN      UINTN                     EndBit,
   IN      UINT8                     Value
   );
-
 
 /**
   Reads a bit field from an 8-bit value, performs a bitwise OR, and returns the
@@ -3723,7 +3658,6 @@ BitFieldOr8 (
   IN      UINT8                     OrData
   );
 
-
 /**
   Reads a bit field from an 8-bit value, performs a bitwise AND, and returns
   the result.
@@ -3756,7 +3690,6 @@ BitFieldAnd8 (
   IN      UINTN                     EndBit,
   IN      UINT8                     AndData
   );
-
 
 /**
   Reads a bit field from an 8-bit value, performs a bitwise AND followed by a
@@ -3795,7 +3728,6 @@ BitFieldAndThenOr8 (
   IN      UINT8                     OrData
   );
 
-
 /**
   Returns a bit field from a 16-bit value.
 
@@ -3822,7 +3754,6 @@ BitFieldRead16 (
   IN      UINTN                     StartBit,
   IN      UINTN                     EndBit
   );
-
 
 /**
   Writes a bit field to a 16-bit value, and returns the result.
@@ -3855,7 +3786,6 @@ BitFieldWrite16 (
   IN      UINTN                     EndBit,
   IN      UINT16                    Value
   );
-
 
 /**
   Reads a bit field from a 16-bit value, performs a bitwise OR, and returns the
@@ -3890,7 +3820,6 @@ BitFieldOr16 (
   IN      UINT16                    OrData
   );
 
-
 /**
   Reads a bit field from a 16-bit value, performs a bitwise AND, and returns
   the result.
@@ -3923,7 +3852,6 @@ BitFieldAnd16 (
   IN      UINTN                     EndBit,
   IN      UINT16                    AndData
   );
-
 
 /**
   Reads a bit field from a 16-bit value, performs a bitwise AND followed by a
@@ -3962,7 +3890,6 @@ BitFieldAndThenOr16 (
   IN      UINT16                    OrData
   );
 
-
 /**
   Returns a bit field from a 32-bit value.
 
@@ -3989,7 +3916,6 @@ BitFieldRead32 (
   IN      UINTN                     StartBit,
   IN      UINTN                     EndBit
   );
-
 
 /**
   Writes a bit field to a 32-bit value, and returns the result.
@@ -4022,7 +3948,6 @@ BitFieldWrite32 (
   IN      UINTN                     EndBit,
   IN      UINT32                    Value
   );
-
 
 /**
   Reads a bit field from a 32-bit value, performs a bitwise OR, and returns the
@@ -4057,7 +3982,6 @@ BitFieldOr32 (
   IN      UINT32                    OrData
   );
 
-
 /**
   Reads a bit field from a 32-bit value, performs a bitwise AND, and returns
   the result.
@@ -4090,7 +4014,6 @@ BitFieldAnd32 (
   IN      UINTN                     EndBit,
   IN      UINT32                    AndData
   );
-
 
 /**
   Reads a bit field from a 32-bit value, performs a bitwise AND followed by a
@@ -4129,7 +4052,6 @@ BitFieldAndThenOr32 (
   IN      UINT32                    OrData
   );
 
-
 /**
   Returns a bit field from a 64-bit value.
 
@@ -4156,7 +4078,6 @@ BitFieldRead64 (
   IN      UINTN                     StartBit,
   IN      UINTN                     EndBit
   );
-
 
 /**
   Writes a bit field to a 64-bit value, and returns the result.
@@ -4189,7 +4110,6 @@ BitFieldWrite64 (
   IN      UINTN                     EndBit,
   IN      UINT64                    Value
   );
-
 
 /**
   Reads a bit field from a 64-bit value, performs a bitwise OR, and returns the
@@ -4224,7 +4144,6 @@ BitFieldOr64 (
   IN      UINT64                    OrData
   );
 
-
 /**
   Reads a bit field from a 64-bit value, performs a bitwise AND, and returns
   the result.
@@ -4257,7 +4176,6 @@ BitFieldAnd64 (
   IN      UINTN                     EndBit,
   IN      UINT64                    AndData
   );
-
 
 /**
   Reads a bit field from a 64-bit value, performs a bitwise AND followed by a
@@ -4381,7 +4299,6 @@ CalculateSum8 (
   IN      UINTN                     Length
   );
 
-
 /**
   Returns the two's complement checksum of all elements in a buffer
   of 8-bit values.
@@ -4406,7 +4323,6 @@ CalculateCheckSum8 (
   IN      CONST UINT8              *Buffer,
   IN      UINTN                     Length
   );
-
 
 /**
   Returns the sum of all elements in a buffer of 16-bit values.  During
@@ -4433,7 +4349,6 @@ CalculateSum16 (
   IN      CONST UINT16             *Buffer,
   IN      UINTN                     Length
   );
-
 
 /**
   Returns the two's complement checksum of all elements in a buffer of
@@ -4462,7 +4377,6 @@ CalculateCheckSum16 (
   IN      UINTN                     Length
   );
 
-
 /**
   Returns the sum of all elements in a buffer of 32-bit values. During
   calculation, the carry bits are dropped.
@@ -4488,7 +4402,6 @@ CalculateSum32 (
   IN      CONST UINT32             *Buffer,
   IN      UINTN                     Length
   );
-
 
 /**
   Returns the two's complement checksum of all elements in a buffer of
@@ -4517,7 +4430,6 @@ CalculateCheckSum32 (
   IN      UINTN                     Length
   );
 
-
 /**
   Returns the sum of all elements in a buffer of 64-bit values.  During
   calculation, the carry bits are dropped.
@@ -4543,7 +4455,6 @@ CalculateSum64 (
   IN      CONST UINT64             *Buffer,
   IN      UINTN                     Length
   );
-
 
 /**
   Returns the two's complement checksum of all elements in a buffer of
@@ -4606,10 +4517,9 @@ CalculateCrc32(
 typedef
 VOID
 (EFIAPI *SWITCH_STACK_ENTRY_POINT)(
-  IN      VOID                      *Context1,  OPTIONAL
+  IN      VOID                      *Context1   OPTIONAL,
   IN      VOID                      *Context2   OPTIONAL
   );
-
 
 /**
   Used to serialize load and store operations.
@@ -4623,7 +4533,6 @@ EFIAPI
 MemoryFence (
   VOID
   );
-
 
 /**
   Saves the current CPU context that can be restored with a call to LongJump()
@@ -4653,7 +4562,6 @@ SetJump (
   OUT     BASE_LIBRARY_JUMP_BUFFER  *JumpBuffer
   );
 
-
 /**
   Restores the CPU context that was saved with SetJump().
 
@@ -4677,7 +4585,6 @@ LongJump (
   IN      UINTN                     Value
   );
 
-
 /**
   Enables CPU interrupts.
 
@@ -4688,7 +4595,6 @@ EnableInterrupts (
   VOID
   );
 
-
 /**
   Disables CPU interrupts.
 
@@ -4698,7 +4604,6 @@ EFIAPI
 DisableInterrupts (
   VOID
   );
-
 
 /**
   Disables CPU interrupts and returns the interrupt state prior to the disable
@@ -4714,7 +4619,6 @@ SaveAndDisableInterrupts (
   VOID
   );
 
-
 /**
   Enables CPU interrupts for the smallest window required to capture any
   pending interrupts.
@@ -4725,7 +4629,6 @@ EFIAPI
 EnableDisableInterrupts (
   VOID
   );
-
 
 /**
   Retrieves the current CPU interrupt state.
@@ -4742,7 +4645,6 @@ EFIAPI
 GetInterruptState (
   VOID
   );
-
 
 /**
   Set the current CPU interrupt state.
@@ -4764,7 +4666,6 @@ SetInterruptState (
   IN      BOOLEAN                   InterruptState
   );
 
-
 /**
   Requests CPU to pause for a short period of time.
 
@@ -4777,7 +4678,6 @@ EFIAPI
 CpuPause (
   VOID
   );
-
 
 /**
   Transfers control to a function starting with a new stack.
@@ -4812,12 +4712,11 @@ VOID
 EFIAPI
 SwitchStack (
   IN      SWITCH_STACK_ENTRY_POINT  EntryPoint,
-  IN      VOID                      *Context1,  OPTIONAL
-  IN      VOID                      *Context2,  OPTIONAL
+  IN      VOID                      *Context1   OPTIONAL,
+  IN      VOID                      *Context2   OPTIONAL,
   IN      VOID                      *NewStack,
   ...
   );
-
 
 /**
   Generates a breakpoint on the CPU.
@@ -4831,7 +4730,6 @@ EFIAPI
 CpuBreakpoint (
   VOID
   );
-
 
 /**
   Executes an infinite loop.
@@ -4847,7 +4745,6 @@ EFIAPI
 CpuDeadLoop (
   VOID
   );
-
 
 /**
   Uses as a barrier to stop speculative execution.
@@ -4945,8 +4842,8 @@ AsmRmpAdjust (
   IN      UINT64                     Rcx,
   IN      UINT64                     Rdx
   );
-#endif
 
+#endif
 
 #if defined (MDE_CPU_IA32) || defined (MDE_CPU_X64)
 ///
@@ -5354,7 +5251,9 @@ typedef struct {
 /// edk2 coding style for function (or pointer-to-function) typedefs. The VOID
 /// return type and the VOID argument list are merely artifacts.
 ///
-typedef VOID (X86_ASSEMBLY_PATCH_LABEL) (VOID);
+typedef VOID (X86_ASSEMBLY_PATCH_LABEL) (
+  VOID
+  );
 
 /**
   Retrieves CPUID information.
@@ -5385,12 +5284,11 @@ UINT32
 EFIAPI
 AsmCpuid (
   IN      UINT32                    Index,
-  OUT     UINT32                    *Eax,  OPTIONAL
-  OUT     UINT32                    *Ebx,  OPTIONAL
-  OUT     UINT32                    *Ecx,  OPTIONAL
+  OUT     UINT32  *Eax   OPTIONAL,
+  OUT     UINT32  *Ebx   OPTIONAL,
+  OUT     UINT32  *Ecx   OPTIONAL,
   OUT     UINT32                    *Edx   OPTIONAL
   );
-
 
 /**
   Retrieves CPUID information using an extended leaf identifier.
@@ -5429,12 +5327,11 @@ EFIAPI
 AsmCpuidEx (
   IN      UINT32                    Index,
   IN      UINT32                    SubIndex,
-  OUT     UINT32                    *Eax,  OPTIONAL
-  OUT     UINT32                    *Ebx,  OPTIONAL
-  OUT     UINT32                    *Ecx,  OPTIONAL
+  OUT     UINT32  *Eax   OPTIONAL,
+  OUT     UINT32  *Ebx   OPTIONAL,
+  OUT     UINT32  *Ecx   OPTIONAL,
   OUT     UINT32                    *Edx   OPTIONAL
   );
-
 
 /**
   Set CD bit and clear NW bit of CR0 followed by a WBINVD.
@@ -5449,7 +5346,6 @@ AsmDisableCache (
   VOID
   );
 
-
 /**
   Perform a WBINVD and clear both the CD and NW bits of CR0.
 
@@ -5462,7 +5358,6 @@ EFIAPI
 AsmEnableCache (
   VOID
   );
-
 
 /**
   Returns the lower 32-bits of a Machine Specific Register(MSR).
@@ -5483,7 +5378,6 @@ EFIAPI
 AsmReadMsr32 (
   IN      UINT32                    Index
   );
-
 
 /**
   Writes a 32-bit value to a Machine Specific Register(MSR), and returns the value.
@@ -5508,7 +5402,6 @@ AsmWriteMsr32 (
   IN      UINT32                    Index,
   IN      UINT32                    Value
   );
-
 
 /**
   Reads a 64-bit MSR, performs a bitwise OR on the lower 32-bits, and
@@ -5536,7 +5429,6 @@ AsmMsrOr32 (
   IN      UINT32                    OrData
   );
 
-
 /**
   Reads a 64-bit MSR, performs a bitwise AND on the lower 32-bits, and writes
   the result back to the 64-bit MSR.
@@ -5562,7 +5454,6 @@ AsmMsrAnd32 (
   IN      UINT32                    Index,
   IN      UINT32                    AndData
   );
-
 
 /**
   Reads a 64-bit MSR, performs a bitwise AND followed by a bitwise OR
@@ -5594,7 +5485,6 @@ AsmMsrAndThenOr32 (
   IN      UINT32                    OrData
   );
 
-
 /**
   Reads a bit field of an MSR.
 
@@ -5624,7 +5514,6 @@ AsmMsrBitFieldRead32 (
   IN      UINTN                     StartBit,
   IN      UINTN                     EndBit
   );
-
 
 /**
   Writes a bit field to an MSR.
@@ -5659,7 +5548,6 @@ AsmMsrBitFieldWrite32 (
   IN      UINTN                     EndBit,
   IN      UINT32                    Value
   );
-
 
 /**
   Reads a bit field in a 64-bit MSR, performs a bitwise OR, and writes the
@@ -5697,7 +5585,6 @@ AsmMsrBitFieldOr32 (
   IN      UINT32                    OrData
   );
 
-
 /**
   Reads a bit field in a 64-bit MSR, performs a bitwise AND, and writes the
   result back to the bit field in the 64-bit MSR.
@@ -5733,7 +5620,6 @@ AsmMsrBitFieldAnd32 (
   IN      UINTN                     EndBit,
   IN      UINT32                    AndData
   );
-
 
 /**
   Reads a bit field in a 64-bit MSR, performs a bitwise AND followed by a
@@ -5776,7 +5662,6 @@ AsmMsrBitFieldAndThenOr32 (
   IN      UINT32                    OrData
   );
 
-
 /**
   Returns a 64-bit Machine Specific Register(MSR).
 
@@ -5796,7 +5681,6 @@ EFIAPI
 AsmReadMsr64 (
   IN      UINT32                    Index
   );
-
 
 /**
   Writes a 64-bit value to a Machine Specific Register(MSR), and returns the
@@ -5821,7 +5705,6 @@ AsmWriteMsr64 (
   IN      UINT32                    Index,
   IN      UINT64                    Value
   );
-
 
 /**
   Reads a 64-bit MSR, performs a bitwise OR, and writes the result
@@ -5848,7 +5731,6 @@ AsmMsrOr64 (
   IN      UINT64                    OrData
   );
 
-
 /**
   Reads a 64-bit MSR, performs a bitwise AND, and writes the result back to the
   64-bit MSR.
@@ -5873,7 +5755,6 @@ AsmMsrAnd64 (
   IN      UINT32                    Index,
   IN      UINT64                    AndData
   );
-
 
 /**
   Reads a 64-bit MSR, performs a bitwise AND followed by a bitwise
@@ -5904,7 +5785,6 @@ AsmMsrAndThenOr64 (
   IN      UINT64                    OrData
   );
 
-
 /**
   Reads a bit field of an MSR.
 
@@ -5934,7 +5814,6 @@ AsmMsrBitFieldRead64 (
   IN      UINTN                     StartBit,
   IN      UINTN                     EndBit
   );
-
 
 /**
   Writes a bit field to an MSR.
@@ -5968,7 +5847,6 @@ AsmMsrBitFieldWrite64 (
   IN      UINTN                     EndBit,
   IN      UINT64                    Value
   );
-
 
 /**
   Reads a bit field in a 64-bit MSR, performs a bitwise OR, and
@@ -6006,7 +5884,6 @@ AsmMsrBitFieldOr64 (
   IN      UINT64                    OrData
   );
 
-
 /**
   Reads a bit field in a 64-bit MSR, performs a bitwise AND, and writes the
   result back to the bit field in the 64-bit MSR.
@@ -6042,7 +5919,6 @@ AsmMsrBitFieldAnd64 (
   IN      UINTN                     EndBit,
   IN      UINT64                    AndData
   );
-
 
 /**
   Reads a bit field in a 64-bit MSR, performs a bitwise AND followed by a
@@ -6084,7 +5960,6 @@ AsmMsrBitFieldAndThenOr64 (
   IN      UINT64                    OrData
   );
 
-
 /**
   Reads the current value of the EFLAGS register.
 
@@ -6100,7 +5975,6 @@ EFIAPI
 AsmReadEflags (
   VOID
   );
-
 
 /**
   Reads the current value of the Control Register 0 (CR0).
@@ -6118,7 +5992,6 @@ AsmReadCr0 (
   VOID
   );
 
-
 /**
   Reads the current value of the Control Register 2 (CR2).
 
@@ -6134,7 +6007,6 @@ EFIAPI
 AsmReadCr2 (
   VOID
   );
-
 
 /**
   Reads the current value of the Control Register 3 (CR3).
@@ -6152,7 +6024,6 @@ AsmReadCr3 (
   VOID
   );
 
-
 /**
   Reads the current value of the Control Register 4 (CR4).
 
@@ -6168,7 +6039,6 @@ EFIAPI
 AsmReadCr4 (
   VOID
   );
-
 
 /**
   Writes a value to Control Register 0 (CR0).
@@ -6187,7 +6057,6 @@ AsmWriteCr0 (
   UINTN  Cr0
   );
 
-
 /**
   Writes a value to Control Register 2 (CR2).
 
@@ -6204,7 +6073,6 @@ EFIAPI
 AsmWriteCr2 (
   UINTN  Cr2
   );
-
 
 /**
   Writes a value to Control Register 3 (CR3).
@@ -6223,7 +6091,6 @@ AsmWriteCr3 (
   UINTN  Cr3
   );
 
-
 /**
   Writes a value to Control Register 4 (CR4).
 
@@ -6241,7 +6108,6 @@ AsmWriteCr4 (
   UINTN  Cr4
   );
 
-
 /**
   Reads the current value of Debug Register 0 (DR0).
 
@@ -6257,7 +6123,6 @@ EFIAPI
 AsmReadDr0 (
   VOID
   );
-
 
 /**
   Reads the current value of Debug Register 1 (DR1).
@@ -6275,7 +6140,6 @@ AsmReadDr1 (
   VOID
   );
 
-
 /**
   Reads the current value of Debug Register 2 (DR2).
 
@@ -6291,7 +6155,6 @@ EFIAPI
 AsmReadDr2 (
   VOID
   );
-
 
 /**
   Reads the current value of Debug Register 3 (DR3).
@@ -6309,7 +6172,6 @@ AsmReadDr3 (
   VOID
   );
 
-
 /**
   Reads the current value of Debug Register 4 (DR4).
 
@@ -6325,7 +6187,6 @@ EFIAPI
 AsmReadDr4 (
   VOID
   );
-
 
 /**
   Reads the current value of Debug Register 5 (DR5).
@@ -6343,7 +6204,6 @@ AsmReadDr5 (
   VOID
   );
 
-
 /**
   Reads the current value of Debug Register 6 (DR6).
 
@@ -6360,7 +6220,6 @@ AsmReadDr6 (
   VOID
   );
 
-
 /**
   Reads the current value of Debug Register 7 (DR7).
 
@@ -6376,7 +6235,6 @@ EFIAPI
 AsmReadDr7 (
   VOID
   );
-
 
 /**
   Writes a value to Debug Register 0 (DR0).
@@ -6395,7 +6253,6 @@ AsmWriteDr0 (
   UINTN  Dr0
   );
 
-
 /**
   Writes a value to Debug Register 1 (DR1).
 
@@ -6412,7 +6269,6 @@ EFIAPI
 AsmWriteDr1 (
   UINTN  Dr1
   );
-
 
 /**
   Writes a value to Debug Register 2 (DR2).
@@ -6431,7 +6287,6 @@ AsmWriteDr2 (
   UINTN  Dr2
   );
 
-
 /**
   Writes a value to Debug Register 3 (DR3).
 
@@ -6448,7 +6303,6 @@ EFIAPI
 AsmWriteDr3 (
   UINTN  Dr3
   );
-
 
 /**
   Writes a value to Debug Register 4 (DR4).
@@ -6467,7 +6321,6 @@ AsmWriteDr4 (
   UINTN  Dr4
   );
 
-
 /**
   Writes a value to Debug Register 5 (DR5).
 
@@ -6484,7 +6337,6 @@ EFIAPI
 AsmWriteDr5 (
   UINTN  Dr5
   );
-
 
 /**
   Writes a value to Debug Register 6 (DR6).
@@ -6503,7 +6355,6 @@ AsmWriteDr6 (
   UINTN  Dr6
   );
 
-
 /**
   Writes a value to Debug Register 7 (DR7).
 
@@ -6521,7 +6372,6 @@ AsmWriteDr7 (
   UINTN  Dr7
   );
 
-
 /**
   Reads the current value of Code Segment Register (CS).
 
@@ -6536,7 +6386,6 @@ EFIAPI
 AsmReadCs (
   VOID
   );
-
 
 /**
   Reads the current value of Data Segment Register (DS).
@@ -6553,7 +6402,6 @@ AsmReadDs (
   VOID
   );
 
-
 /**
   Reads the current value of Extra Segment Register (ES).
 
@@ -6568,7 +6416,6 @@ EFIAPI
 AsmReadEs (
   VOID
   );
-
 
 /**
   Reads the current value of FS Data Segment Register (FS).
@@ -6585,7 +6432,6 @@ AsmReadFs (
   VOID
   );
 
-
 /**
   Reads the current value of GS Data Segment Register (GS).
 
@@ -6600,7 +6446,6 @@ EFIAPI
 AsmReadGs (
   VOID
   );
-
 
 /**
   Reads the current value of Stack Segment Register (SS).
@@ -6617,7 +6462,6 @@ AsmReadSs (
   VOID
   );
 
-
 /**
   Reads the current value of Task Register (TR).
 
@@ -6632,7 +6476,6 @@ EFIAPI
 AsmReadTr (
   VOID
   );
-
 
 /**
   Reads the current Global Descriptor Table Register(GDTR) descriptor.
@@ -6651,7 +6494,6 @@ AsmReadGdtr (
   OUT     IA32_DESCRIPTOR           *Gdtr
   );
 
-
 /**
   Writes the current Global Descriptor Table Register (GDTR) descriptor.
 
@@ -6668,7 +6510,6 @@ EFIAPI
 AsmWriteGdtr (
   IN      CONST IA32_DESCRIPTOR     *Gdtr
   );
-
 
 /**
   Reads the current Interrupt Descriptor Table Register(IDTR) descriptor.
@@ -6687,7 +6528,6 @@ AsmReadIdtr (
   OUT     IA32_DESCRIPTOR           *Idtr
   );
 
-
 /**
   Writes the current Interrupt Descriptor Table Register(IDTR) descriptor.
 
@@ -6705,7 +6545,6 @@ AsmWriteIdtr (
   IN      CONST IA32_DESCRIPTOR     *Idtr
   );
 
-
 /**
   Reads the current Local Descriptor Table Register(LDTR) selector.
 
@@ -6721,7 +6560,6 @@ AsmReadLdtr (
   VOID
   );
 
-
 /**
   Writes the current Local Descriptor Table Register (LDTR) selector.
 
@@ -6736,7 +6574,6 @@ EFIAPI
 AsmWriteLdtr (
   IN      UINT16                    Ldtr
   );
-
 
 /**
   Save the current floating point/SSE/SSE2 context to a buffer.
@@ -6756,7 +6593,6 @@ EFIAPI
 AsmFxSave (
   OUT     IA32_FX_BUFFER            *Buffer
   );
-
 
 /**
   Restores the current floating point/SSE/SSE2 context from a buffer.
@@ -6778,7 +6614,6 @@ AsmFxRestore (
   IN      CONST IA32_FX_BUFFER      *Buffer
   );
 
-
 /**
   Reads the current value of 64-bit MMX Register #0 (MM0).
 
@@ -6793,7 +6628,6 @@ EFIAPI
 AsmReadMm0 (
   VOID
   );
-
 
 /**
   Reads the current value of 64-bit MMX Register #1 (MM1).
@@ -6810,7 +6644,6 @@ AsmReadMm1 (
   VOID
   );
 
-
 /**
   Reads the current value of 64-bit MMX Register #2 (MM2).
 
@@ -6825,7 +6658,6 @@ EFIAPI
 AsmReadMm2 (
   VOID
   );
-
 
 /**
   Reads the current value of 64-bit MMX Register #3 (MM3).
@@ -6842,7 +6674,6 @@ AsmReadMm3 (
   VOID
   );
 
-
 /**
   Reads the current value of 64-bit MMX Register #4 (MM4).
 
@@ -6857,7 +6688,6 @@ EFIAPI
 AsmReadMm4 (
   VOID
   );
-
 
 /**
   Reads the current value of 64-bit MMX Register #5 (MM5).
@@ -6874,7 +6704,6 @@ AsmReadMm5 (
   VOID
   );
 
-
 /**
   Reads the current value of 64-bit MMX Register #6 (MM6).
 
@@ -6889,7 +6718,6 @@ EFIAPI
 AsmReadMm6 (
   VOID
   );
-
 
 /**
   Reads the current value of 64-bit MMX Register #7 (MM7).
@@ -6906,7 +6734,6 @@ AsmReadMm7 (
   VOID
   );
 
-
 /**
   Writes the current value of 64-bit MMX Register #0 (MM0).
 
@@ -6921,7 +6748,6 @@ EFIAPI
 AsmWriteMm0 (
   IN      UINT64                    Value
   );
-
 
 /**
   Writes the current value of 64-bit MMX Register #1 (MM1).
@@ -6938,7 +6764,6 @@ AsmWriteMm1 (
   IN      UINT64                    Value
   );
 
-
 /**
   Writes the current value of 64-bit MMX Register #2 (MM2).
 
@@ -6953,7 +6778,6 @@ EFIAPI
 AsmWriteMm2 (
   IN      UINT64                    Value
   );
-
 
 /**
   Writes the current value of 64-bit MMX Register #3 (MM3).
@@ -6970,7 +6794,6 @@ AsmWriteMm3 (
   IN      UINT64                    Value
   );
 
-
 /**
   Writes the current value of 64-bit MMX Register #4 (MM4).
 
@@ -6985,7 +6808,6 @@ EFIAPI
 AsmWriteMm4 (
   IN      UINT64                    Value
   );
-
 
 /**
   Writes the current value of 64-bit MMX Register #5 (MM5).
@@ -7002,7 +6824,6 @@ AsmWriteMm5 (
   IN      UINT64                    Value
   );
 
-
 /**
   Writes the current value of 64-bit MMX Register #6 (MM6).
 
@@ -7017,7 +6838,6 @@ EFIAPI
 AsmWriteMm6 (
   IN      UINT64                    Value
   );
-
 
 /**
   Writes the current value of 64-bit MMX Register #7 (MM7).
@@ -7034,7 +6854,6 @@ AsmWriteMm7 (
   IN      UINT64                    Value
   );
 
-
 /**
   Reads the current value of Time Stamp Counter (TSC).
 
@@ -7049,7 +6868,6 @@ EFIAPI
 AsmReadTsc (
   VOID
   );
-
 
 /**
   Reads the current value of a Performance Counter (PMC).
@@ -7067,7 +6885,6 @@ EFIAPI
 AsmReadPmc (
   IN      UINT32                    Index
   );
-
 
 /**
   Sets up a monitor buffer that is used by AsmMwait().
@@ -7093,7 +6910,6 @@ AsmMonitor (
   IN      UINTN                     Edx
   );
 
-
 /**
   Executes an MWAIT instruction.
 
@@ -7115,7 +6931,6 @@ AsmMwait (
   IN      UINTN                     Ecx
   );
 
-
 /**
   Executes a WBINVD instruction.
 
@@ -7129,7 +6944,6 @@ AsmWbinvd (
   VOID
   );
 
-
 /**
   Executes a INVD instruction.
 
@@ -7142,7 +6956,6 @@ EFIAPI
 AsmInvd (
   VOID
   );
-
 
 /**
   Flushes a cache line from all the instruction and data caches within the
@@ -7164,7 +6977,6 @@ EFIAPI
 AsmFlushCacheLine (
   IN      VOID                      *LinearAddress
   );
-
 
 /**
   Enables the 32-bit paging mode on the CPU.
@@ -7207,11 +7019,10 @@ VOID
 EFIAPI
 AsmEnablePaging32 (
   IN      SWITCH_STACK_ENTRY_POINT  EntryPoint,
-  IN      VOID                      *Context1,  OPTIONAL
-  IN      VOID                      *Context2,  OPTIONAL
+  IN      VOID                      *Context1   OPTIONAL,
+  IN      VOID                      *Context2   OPTIONAL,
   IN      VOID                      *NewStack
   );
-
 
 /**
   Disables the 32-bit paging mode on the CPU.
@@ -7251,11 +7062,10 @@ VOID
 EFIAPI
 AsmDisablePaging32 (
   IN      SWITCH_STACK_ENTRY_POINT  EntryPoint,
-  IN      VOID                      *Context1,  OPTIONAL
-  IN      VOID                      *Context2,  OPTIONAL
+  IN      VOID                      *Context1   OPTIONAL,
+  IN      VOID                      *Context2   OPTIONAL,
   IN      VOID                      *NewStack
   );
-
 
 /**
   Enables the 64-bit paging mode on the CPU.
@@ -7294,11 +7104,10 @@ EFIAPI
 AsmEnablePaging64 (
   IN      UINT16                    Cs,
   IN      UINT64                    EntryPoint,
-  IN      UINT64                    Context1,  OPTIONAL
-  IN      UINT64                    Context2,  OPTIONAL
+  IN      UINT64  Context1   OPTIONAL,
+  IN      UINT64  Context2   OPTIONAL,
   IN      UINT64                    NewStack
   );
-
 
 /**
   Disables the 64-bit paging mode on the CPU.
@@ -7335,11 +7144,10 @@ EFIAPI
 AsmDisablePaging64 (
   IN      UINT16                    Cs,
   IN      UINT32                    EntryPoint,
-  IN      UINT32                    Context1,  OPTIONAL
-  IN      UINT32                    Context2,  OPTIONAL
+  IN      UINT32  Context1   OPTIONAL,
+  IN      UINT32  Context2   OPTIONAL,
   IN      UINT32                    NewStack
   );
-
 
 //
 // 16-bit thunking services
@@ -7373,7 +7181,6 @@ AsmGetThunk16Properties (
   OUT     UINT32                    *ExtraStackSize
   );
 
-
 /**
   Prepares all structures a code required to use AsmThunk16().
 
@@ -7393,7 +7200,6 @@ EFIAPI
 AsmPrepareThunk16 (
   IN OUT  THUNK_CONTEXT             *ThunkContext
   );
-
 
 /**
   Transfers control to a 16-bit real mode entry point and returns the results.
@@ -7453,7 +7259,6 @@ EFIAPI
 AsmThunk16 (
   IN OUT  THUNK_CONTEXT             *ThunkContext
   );
-
 
 /**
   Prepares all structures and code for a 16-bit real mode thunk, transfers
@@ -7608,7 +7413,6 @@ EFIAPI
 AsmVmgExit (
   VOID
   );
-
 
 /**
   Patch the immediate operand of an IA32 or X64 instruction such that the byte,

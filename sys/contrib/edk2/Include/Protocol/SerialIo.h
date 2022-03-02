@@ -29,7 +29,6 @@
 
 typedef struct _EFI_SERIAL_IO_PROTOCOL EFI_SERIAL_IO_PROTOCOL;
 
-
 ///
 /// Backward-compatible with EFI1.1.
 ///
@@ -87,6 +86,7 @@ typedef enum {
 //
 // Serial IO Member Functions
 //
+
 /**
   Reset the serial device.
 

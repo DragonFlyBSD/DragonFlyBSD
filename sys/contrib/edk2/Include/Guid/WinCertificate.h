@@ -61,7 +61,6 @@ typedef struct {
   UINT8     Signature[256];
 } EFI_CERT_BLOCK_RSA_2048_SHA256;
 
-
 ///
 /// Certificate which encapsulates a GUID-specific digital signature
 ///
@@ -84,7 +83,6 @@ typedef struct {
   ///
   UINT8            CertData[1];
 } WIN_CERTIFICATE_UEFI_GUID;
-
 
 ///
 /// Certificate which encapsulates the RSASSA_PKCS1-v1_5 digital signature.

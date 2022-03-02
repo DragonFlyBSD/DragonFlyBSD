@@ -12,7 +12,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-
 #ifndef __BASE_H__
 #define __BASE_H__
 
@@ -592,7 +591,9 @@ struct _LIST_ENTRY {
   typedef int         *va_list[1];
   #define VA_LIST     va_list
 #else
-  typedef struct __va_list { void *__ap; } va_list;
+typedef struct __va_list {
+  void    *__ap;
+} va_list;
   #define VA_LIST                          va_list
 #endif
 
@@ -913,7 +914,6 @@ STATIC_ASSERT (sizeof (__VERIFY_UINT32_ENUM_SIZE) == 4, "Size of enum does not m
 **/
 #define ALIGN_VARIABLE(Value)  ALIGN_VALUE ((Value), sizeof (UINTN))
 
-
 /**
   Return the maximum of two operands.
 
@@ -1206,7 +1206,6 @@ typedef UINTN RETURN_STATUS;
 ///
 #define RETURN_WARN_FILE_SYSTEM      ENCODE_WARNING (6)
 
-
 /**
   Returns a 16-bit signature built from 2 ASCII characters.
 
@@ -1261,8 +1260,13 @@ typedef UINTN RETURN_STATUS;
     (SIGNATURE_32 (A, B, C, D) | ((UINT64) (SIGNATURE_32 (E, F, G, H)) << 32))
 
 #if defined(_MSC_EXTENSIONS) && !defined (__INTEL_COMPILER) && !defined (MDE_CPU_EBC)
-  void * _ReturnAddress(void);
+void *
+_ReturnAddress (
+  void
+  );
+
   #pragma intrinsic(_ReturnAddress)
+
   /**
     Get the return address of the calling function.
 
@@ -1277,6 +1281,7 @@ typedef UINTN RETURN_STATUS;
   **/
   #define RETURN_ADDRESS(L)     ((L == 0) ? _ReturnAddress() : (VOID *) 0)
 #elif defined (__GNUC__) || defined (__clang__)
+
   /**
     Get the return address of the calling function.
 
@@ -1290,6 +1295,7 @@ typedef UINTN RETURN_STATUS;
   **/
   #define RETURN_ADDRESS(L)     __builtin_return_address (L)
 #else
+
   /**
     Get the return address of the calling function.
 
@@ -1315,4 +1321,3 @@ typedef UINTN RETURN_STATUS;
 #define ARRAY_SIZE(Array) (sizeof (Array) / sizeof ((Array)[0]))
 
 #endif
-
