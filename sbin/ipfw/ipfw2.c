@@ -3725,6 +3725,8 @@ inet_makenetandmask(in_addr_t net, struct sockaddr_in *in,
 		while (*--cp == 0 && cp > (char *)in_mask)
 			;
 		in_mask->sin_len = 1 + cp - (char *)in_mask;
+	} else {
+		in_mask->sin_len = 0;	/* mask as 'host mask' */
 	}
 }
 
@@ -3787,6 +3789,7 @@ table_alt(int ac, char **av, int opt)
 			}
 			te->key.sin_family = AF_INET;
 			te->key.sin_len = sizeof(struct sockaddr_in);
+			te->netmask.sin_len = 0;	/* mark as 'host mask' */
 		}
 
 		if (setsockopt(s, IPPROTO_IP, opt, &ent, sizeof(ent)) < 0) {
