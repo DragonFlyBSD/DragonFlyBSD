@@ -824,7 +824,7 @@ out2:	;
 #ifdef INVARIANTS
 	KASSERT(crit_count == td->td_critcount,
 		("trap: critical section count mismatch! %d/%d",
-		crit_count, td->td_pri));
+		crit_count, td->td_critcount));
 	KASSERT(curstop == td->td_toks_stop,
 		("trap: extra tokens held after trap! %ld/%ld (%s)",
 		curstop - &td->td_toks_base,
@@ -1369,7 +1369,7 @@ bad:
 	KASSERT(crit_count == td->td_critcount,
 		("syscall: critical section count mismatch! "
 		 "%d/%d in %s sysno=%d",
-		crit_count, td->td_pri, td->td_comm, code));
+		crit_count, td->td_critcount, td->td_comm, code));
 	KASSERT(&td->td_toks_base == td->td_toks_stop,
 		("syscall: %ld extra tokens held after trap! syscall %p",
 		td->td_toks_stop - &td->td_toks_base,
