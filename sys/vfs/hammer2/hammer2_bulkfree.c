@@ -81,6 +81,7 @@ typedef struct hammer2_bulkfree_info {
 	hammer2_chain_save_list_t list;
 	long			list_count;
 	long			list_count_max;
+	hammer2_chain_save_t	*backout;	/* ins pt while backing out */
 	hammer2_dedup_t		*dedup;
 	int			pri;
 } hammer2_bulkfree_info_t;
@@ -248,6 +249,7 @@ hammer2_bulkfree_scan(hammer2_chain_t *parent,
 				 */
 				/* NOP */
 			} else if (info->depth > 16 ||
+				   info->backout ||
 				   (info->depth > hammer2_limit_saved_depth &&
 				   info->list_count >=
 				    (hammer2_limit_saved_chains >> 2)))
@@ -261,6 +263,10 @@ hammer2_bulkfree_scan(hammer2_chain_t *parent,
 				 * have to stop recursing ASAP to avoid an
 				 * explosion of memory use since each radix
 				 * level can hold 512 elements.
+				 *
+				 * If we had to defer at a deeper level
+				 * backout is non-NULL.  We must backout
+				 * completely before resuming.
 				 */
 				if (info->list_count >
 				     hammer2_limit_saved_chains &&
@@ -284,13 +290,39 @@ hammer2_bulkfree_scan(hammer2_chain_t *parent,
 				 * Must be placed at head for depth-first
 				 * recovery when too many saved chains, to
 				 * limit number of chains saved during
-				 * saved-chain reruns.
+				 * saved-chain reruns.  The worst-case excess
+				 * is (maximum_depth * 512) saved chains above
+				 * the threshold.
+				 *
+				 * The maximum_depth generally occurs in the
+				 * inode index and can be fairly deep once
+				 * the radix tree becomes a bit fragmented.
+				 * nominally 100M inodes would be only 4 deep,
+				 * plus a maximally sized file would be another
+				 * 8 deep, but with fragmentation it can wind
+				 * up being a lot more.
+				 *
+				 * However, when backing out, we have to place
+				 * all the entries in each parent node not
+				 * yet processed on the list too, and because
+				 * these entries are shallower they must be
+				 * placed after each other in order to maintain
+				 * our depth-first processing.
 				 */
 				save = kmalloc(sizeof(*save), M_HAMMER2,
 					       M_WAITOK | M_ZERO);
 				save->chain = chain;
 				hammer2_chain_ref(chain);
-				TAILQ_INSERT_HEAD(&info->list, save, entry);
+
+				if (info->backout) {
+					TAILQ_INSERT_AFTER(&info->list,
+							   info->backout,
+							   save, entry);
+				} else {
+					TAILQ_INSERT_HEAD(&info->list,
+							  save, entry);
+				}
+				info->backout = save;
 				++info->list_count;
 				if (info->list_count_max < info->list_count)
 					info->list_count_max = info->list_count;
@@ -344,6 +376,7 @@ hammer2_bulkfree_scan(hammer2_chain_t *parent,
 				break;
 
 			TAILQ_REMOVE(&info->list, save, entry);
+			info->backout = NULL;
 			--info->list_count;
 			opri = info->pri;
 			info->pri = 0;
@@ -633,6 +666,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 			TAILQ_REMOVE(&cbinfo.list, save, entry);
 			--cbinfo.list_count;
 			cbinfo.pri = 0;
+			cbinfo.backout = NULL;
 			error |= hammer2_bulkfree_scan(save->chain,
 						       h2_bulkfree_callback,
 						       &cbinfo);
@@ -646,6 +680,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 			kfree(save, M_HAMMER2);
 			save = TAILQ_FIRST(&cbinfo.list);
 		}
+		cbinfo.backout = NULL;
 
 		/*
 		 * If the complete scan succeeded we can synchronize our
