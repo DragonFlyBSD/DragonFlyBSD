@@ -20,6 +20,8 @@ INCS=	magic.h
 # only when __EMX__ (prog env for DOS and OS/2)
 #SRCS+=	apptype.c
 
+WARNS?=	4
+
 CFLAGS+= -DHAVE_CONFIG_H -DMAGIC=\"${MAGIC}\"
 CFLAGS+= -I${.CURDIR} -I${.OBJDIR} -I${CONTRIBDIR}
 
