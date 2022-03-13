@@ -32,7 +32,7 @@
 #include "file.h"
 
 #ifndef	lint
-FILE_RCSID("@(#)$File: softmagic.c,v 1.309 2021/02/05 22:29:07 christos Exp $")
+FILE_RCSID("@(#)$File: softmagic.c,v 1.315 2021/09/03 13:17:52 christos Exp $")
 #endif	/* lint */
 
 #include "magic.h"
@@ -292,8 +292,8 @@ flush:
 		 */
 		if (*m->desc) {
 			*found_match = 1;
-			*returnval = 1;
 			if (print) {
+				*returnval = 1;
 				*need_separator = 1;
 				*printed_something = 1;
 				if (print_sep(ms, firstline) == -1)
@@ -401,9 +401,9 @@ flush:
 				}
 				if (*m->desc) {
 					*found_match = 1;
-					*returnval = 1;
 				}
 				if (print && *m->desc) {
+					*returnval = 1;
 					/*
 					 * This continuation matched.  Print
 					 * its message, with a blank before it
@@ -427,7 +427,6 @@ flush:
 						if (file_printf(ms, " ") == -1)
 							return -1;
 					}
-					*need_separator = 0;
 					if (mprint(ms, m) == -1)
 						return -1;
 					*need_separator = 1;
@@ -459,23 +458,14 @@ flush:
 		}
 		if (*found_match) {
 			if ((ms->flags & MAGIC_CONTINUE) == 0)
-				goto out;
+				return *returnval;
 			// So that we print a separator
 			*printed_something = 0;
 			firstline = 0;
 		}
 		cont_level = 0;
 	}
-out:
-	/*
-	 * If we are not printing (we are doing mime etc.)
-	 * and we did not find a mime entry, and we are at 0 level
-	 * we want to return 0 so that the default mime printer
-	 * takes over and prints "application/octet-stream"
-	 */
-	if (! print && ! *printed_something && ! *name_count)
-		return 0;
-	return *returnval;  /* This is hit if -k is set or there is no match */
+	return *returnval;
 }
 
 private int
@@ -636,14 +626,12 @@ mprint(struct magic_set *ms, struct magic *m)
   	case FILE_LELONG:
   	case FILE_MELONG:
 		PRINTER(p->l, "", int32_t, uint32_t);
-  		break;
 
   	case FILE_QUAD:
   	case FILE_BEQUAD:
   	case FILE_LEQUAD:
 	case FILE_OFFSET:
 		PRINTER(p->q, INT64_T_FORMAT, long long, unsigned long long);
-  		break;
 
   	case FILE_STRING:
   	case FILE_PSTRING:
@@ -651,7 +639,7 @@ mprint(struct magic_set *ms, struct magic *m)
   	case FILE_LESTRING16:
 		if (m->reln == '=' || m->reln == '!') {
 			if (file_printf(ms, F(ms, desc, "%s"),
-			    file_printable(sbuf, sizeof(sbuf), m->value.s,
+			    file_printable(ms, sbuf, sizeof(sbuf), m->value.s,
 			    sizeof(m->value.s))) == -1)
 				return -1;
 			t = ms->offset + m->vallen;
@@ -669,7 +657,7 @@ mprint(struct magic_set *ms, struct magic *m)
 				str = file_strtrim(str);
 					
 			if (file_printf(ms, F(ms, desc, "%s"),
-			    file_printable(sbuf, sizeof(sbuf), str,
+			    file_printable(ms, sbuf, sizeof(sbuf), str,
 				sizeof(p->s) - (str - p->s))) == -1)
 				return -1;
 
@@ -783,8 +771,8 @@ mprint(struct magic_set *ms, struct magic *m)
 		}
 		scp = (m->str_flags & STRING_TRIM) ? file_strtrim(cp) : cp;
 					
-		rval = file_printf(ms, F(ms, desc, "%s"),
-		    file_printable(sbuf, sizeof(sbuf), scp, ms->search.rm_len));
+		rval = file_printf(ms, F(ms, desc, "%s"), file_printable(ms,
+		    sbuf, sizeof(sbuf), scp, ms->search.rm_len));
 		free(cp);
 
 		if (rval == -1)
@@ -811,7 +799,7 @@ mprint(struct magic_set *ms, struct magic *m)
 		break;
 	case FILE_DER:
 		if (file_printf(ms, F(ms, desc, "%s"),
-		    file_printable(sbuf, sizeof(sbuf), ms->ms_value.s,
+		    file_printable(ms, sbuf, sizeof(sbuf), ms->ms_value.s,
 			sizeof(ms->ms_value.s))) == -1)
 			return -1;
 		t = ms->offset;
@@ -1561,7 +1549,7 @@ mget(struct magic_set *ms, struct magic *m, const struct buffer *b,
 	int rv, oneed_separator, in_type, nfound_match;
 	char *rbuf;
 	union VALUETYPE *p = &ms->ms_value;
-	struct mlist ml;
+	struct mlist ml, *mlp;
 	struct cont c;
 
 	if (*indir_count >= ms->indir_max) {
@@ -1831,8 +1819,15 @@ mget(struct magic_set *ms, struct magic *m, const struct buffer *b,
 		bb = *b;
 		bb.fbuf = s + offset;
 		bb.flen = nbytes - offset;
-		rv = file_softmagic(ms, &bb,
-		    indir_count, name_count, BINTEST, text);
+		for (mlp = ms->mlist[0]->next; mlp != ms->mlist[0];
+		    mlp = mlp->next)
+		{
+			if ((rv = match(ms, mlp->magic, mlp->nmagic, &bb, 0,
+			    BINTEST, text, 0, indir_count, name_count,
+			    printed_something, need_separator, NULL,
+			    NULL)) != 0)
+				break;
+		}
 
 		if ((ms->flags & MAGIC_DEBUG) != 0)
 			fprintf(stderr, "indirect @offs=%u[%d]\n", offset, rv);
@@ -1935,13 +1930,14 @@ file_strncmp(const char *s1, const char *s2, size_t len, size_t maxlen,
 	 * but ignoring any nulls.
 	 */
 	v = 0;
+	len++;
 	if (0L == flags) { /* normal string: do it fast */
-		while (len-- > 0)
+		while (--len > 0)
 			if ((v = *b++ - *a++) != '\0')
 				break;
 	}
 	else { /* combine the others */
-		while (len-- > 0) {
+		while (--len > 0) {
 			if (b >= eb) {
 				v = 1;
 				break;
@@ -1959,7 +1955,8 @@ file_strncmp(const char *s1, const char *s2, size_t len, size_t maxlen,
 			else if ((flags & STRING_COMPACT_WHITESPACE) &&
 			    isspace(*a)) {
 				a++;
-				if (isspace(*b++)) {
+				if (isspace(*b)) {
+					b++;
 					if (!isspace(*a))
 						while (b < eb && isspace(*b))
 							b++;
@@ -1979,6 +1976,10 @@ file_strncmp(const char *s1, const char *s2, size_t len, size_t maxlen,
 				if ((v = *b++ - *a++) != '\0')
 					break;
 			}
+		}
+		if (len == 0 && v == 0 && (flags & STRING_FULL_WORD)) {
+			if (*b && !isspace(*b))
+				v = 1;
 		}
 	}
 	return v;
@@ -2152,8 +2153,10 @@ magiccheck(struct magic_set *ms, struct magic *m)
 				idx = ms->search.s_len;
 			found = CAST(const char *, memmem(ms->search.s, idx,
 			    m->value.s, slen));
-			if (!found)
-				return 0;
+			if (!found) {
+				v = 1;
+				break;
+			}
 			idx = found - ms->search.s;
 			ms->search.offset += idx;
 			ms->search.rm_len = ms->search.s_len - idx;
@@ -2162,8 +2165,10 @@ magiccheck(struct magic_set *ms, struct magic *m)
 #endif
 
 		for (idx = 0; m->str_range == 0 || idx < m->str_range; idx++) {
-			if (slen + idx > ms->search.s_len)
-				return 0;
+			if (slen + idx > ms->search.s_len) {
+				v = 1;
+				break;
+			}
 
 			v = file_strncmp(m->value.s, ms->search.s + idx, slen,
 			    ms->search.s_len - idx, m->str_flags);

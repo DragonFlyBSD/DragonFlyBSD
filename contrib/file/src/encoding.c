@@ -35,7 +35,7 @@
 #include "file.h"
 
 #ifndef	lint
-FILE_RCSID("@(#)$File: encoding.c,v 1.27 2021/02/05 21:33:49 christos Exp $")
+FILE_RCSID("@(#)$File: encoding.c,v 1.32 2021/04/27 19:37:14 christos Exp $")
 #endif	/* lint */
 
 #include "magic.h"
@@ -265,9 +265,7 @@ private int \
 looks_ ## NAME(const unsigned char *buf, size_t nbytes, file_unichar_t *ubuf, \
     size_t *ulen) \
 { \
-	size_t i, u; \
-	unsigned char dist[256]; \
-	memset(dist, 0, sizeof(dist)); \
+	size_t i; \
 \
 	*ulen = 0; \
 \
@@ -278,16 +276,7 @@ looks_ ## NAME(const unsigned char *buf, size_t nbytes, file_unichar_t *ubuf, \
 			return 0; \
 \
 		ubuf[(*ulen)++] = buf[i]; \
-		dist[buf[i]]++; \
 	} \
-	u = 0; \
-	for (i = 0; i < __arraycount(dist); i++) { \
-		if (dist[i]) \
-			u++; \
-	} \
-	if (u < 3) \
-		return 0; \
-\
 	return 1; \
 }
 
@@ -387,7 +376,8 @@ file_looks_utf8(const unsigned char *buf, size_t nbytes, file_unichar_t *ubuf,
 		} else {			   /* 11xxxxxx begins UTF-8 */
 			int following;
 			uint8_t x = first[buf[i]];
-			const struct accept_range *ar = &accept_ranges[x >> 4];
+			const struct accept_range *ar =
+			    &accept_ranges[(unsigned int)x >> 4];
 			if (x == XX)
 				return -1;
 

@@ -27,7 +27,7 @@
 #include "file.h"
 
 #ifndef lint
-FILE_RCSID("@(#)$File: readelf.c,v 1.175 2020/12/17 20:43:37 christos Exp $")
+FILE_RCSID("@(#)$File: readelf.c,v 1.178 2021/06/30 10:08:48 christos Exp $")
 #endif
 
 #ifdef BUILTIN_ELF
@@ -784,7 +784,7 @@ do_core_note(struct magic_set *ms, unsigned char *nbuf, uint32_t type,
 
 			if (file_printf(ms, ", from '%.31s', pid=%u, uid=%u, "
 			    "gid=%u, nlwps=%u, lwp=%u (signal %u/code %u)",
-			    file_printable(sbuf, sizeof(sbuf),
+			    file_printable(ms, sbuf, sizeof(sbuf),
 			    RCAST(char *, pi.cpi_name), sizeof(pi.cpi_name)),
 			    elf_getu32(swap, CAST(uint32_t, pi.cpi_pid)),
 			    elf_getu32(swap, pi.cpi_euid),
@@ -918,7 +918,7 @@ do_core_note(struct magic_set *ms, unsigned char *nbuf, uint32_t type,
 				if (file_printf(ms, ", from '%s'",
 				    file_copystr(buf, sizeof(buf),
 				    CAST(size_t, cp - cname),
-				    CAST(const char *, cname))) == -1)
+				    RCAST(char *, cname))) == -1)
 					return -1;
 				*flags |= FLAGS_DID_CORE;
 				return 1;
@@ -982,9 +982,8 @@ get_string_on_virtaddr(struct magic_set *ms,
 	    fsize, virtaddr);
 	if (offset < 0 ||
 	    (buflen = pread(fd, buf, CAST(size_t, buflen), offset)) <= 0) {
-		if (file_printf(ms, ", can't read elf string at %jd",
-		    (intmax_t)offset) == -1)
-			return -1;
+		(void)file_printf(ms, ", can't read elf string at %jd",
+		    (intmax_t)offset);
 		return 0;
 	}
 
@@ -1185,17 +1184,15 @@ donote(struct magic_set *ms, void *vbuf, size_t offset, size_t size,
 	}
 
 	if (namesz & 0x80000000) {
-		if (file_printf(ms, ", bad note name size %#lx",
-		    CAST(unsigned long, namesz)) == -1)
-			return -1;
+	    (void)file_printf(ms, ", bad note name size %#lx",
+		CAST(unsigned long, namesz));
 	    return 0;
 	}
 
 	if (descsz & 0x80000000) {
-		if (file_printf(ms, ", bad note description size %#lx",
-		    CAST(unsigned long, descsz)) == -1)
-		    	return -1;
-	    return 0;
+		(void)file_printf(ms, ", bad note description size %#lx",
+		    CAST(unsigned long, descsz));
+		return 0;
 	}
 
 	noff = offset;
@@ -1793,9 +1790,8 @@ dophn_exec(struct magic_set *ms, int clazz, int swap, int fd, off_t off,
 	if (file_printf(ms, ", %s linked", linking_style) == -1)
 		return -1;
 	if (interp[0])
-		if (file_printf(ms, ", interpreter %s",
-		    file_printable(ibuf, sizeof(ibuf), interp, sizeof(interp)))
-			== -1)
+		if (file_printf(ms, ", interpreter %s", file_printable(ms,
+		    ibuf, sizeof(ibuf), interp, sizeof(interp))) == -1)
 			return -1;
 	return 0;
 }
