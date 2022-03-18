@@ -223,7 +223,8 @@ hammer2_cleanup_devvp(hammer2_devvp_list_t *devvpl)
 		TAILQ_REMOVE(devvpl, e, entry);
 		/* devvp */
 		KKASSERT(e->devvp);
-		e->devvp->v_rdev->si_mountpoint = NULL;
+		if (e->devvp->v_rdev)
+			e->devvp->v_rdev->si_mountpoint = NULL;
 		vrele(e->devvp);
 		e->devvp = NULL;
 		/* path */
