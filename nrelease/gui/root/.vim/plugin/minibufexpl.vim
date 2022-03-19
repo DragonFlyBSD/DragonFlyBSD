@@ -1466,7 +1466,7 @@ function! <SID>MBEDeleteBuffer()
             " that is in an open window.
             let l:winNum = -1
         else
-            " see if we have anymore windows with our selected buffer
+            " see if we have any more windows with our selected buffer
             let l:winNum = (bufwinnr(l:selBufName) + 0)
         endif
     endwhile

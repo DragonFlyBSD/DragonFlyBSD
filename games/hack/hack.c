@@ -474,7 +474,7 @@ pickup(int all)
 				else {
 					/*
 					 * Note: perhaps the 1st pickup
-					 * failed: you cannot carry anymore,
+					 * failed: you cannot carry any more,
 					 * and so we never dropped it - let's
 					 * assume that treading on it twice
 					 * also destroys the scroll
@@ -524,7 +524,7 @@ pickup(int all)
 			}
 	lift_some:
 			if (inv_cnt() >= 52) {
-				pline("Your knapsack cannot accommodate anymore items.");
+				pline("Your knapsack cannot accommodate any more items.");
 				break;
 			}
 			if (wt > -5)
