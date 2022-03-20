@@ -18,6 +18,7 @@ CFLAGS+=	-fno-lto
 LDFLAGS+=	-flto
 .endif
 
+.if ${LIB} == "c"
 .include "${.CURDIR}/../libc/${MACHINE_ARCH}/Makefile.inc"
 
 .include "${.CURDIR}/../libc/citrus/Makefile.inc"
@@ -55,6 +56,20 @@ CFLAGS+= -DHESIOD
 .endif
 .if !defined(NO_NS_CACHING)
 CFLAGS+= -DNS_CACHING
+.endif
+.elif ${LIB} == "c_rtld"
+.include "${.CURDIR}/../libc/${MACHINE_ARCH}/Makefile.inc"
+
+.include "${.CURDIR}/../libc/gdtoa/Makefile.inc"
+.include "${.CURDIR}/../libc/gen/Makefile.inc"
+.include "${.CURDIR}/../libc/locale/Makefile.inc"
+.include "${.CURDIR}/../libc/net/Makefile.inc"
+.include "${.CURDIR}/../libc/stdio/Makefile.inc"
+.include "${.CURDIR}/../libc/stdlib/Makefile.inc"
+.include "${.CURDIR}/../libc/stdtime/Makefile.inc"
+.include "${.CURDIR}/../libc/string/Makefile.inc"
+.include "${.CURDIR}/../libc/sys/Makefile.inc"
+.include "${.CURDIR}/../libc/upmap/Makefile.inc"
 .endif
 
 # If there are no machine dependent sources, append all the
