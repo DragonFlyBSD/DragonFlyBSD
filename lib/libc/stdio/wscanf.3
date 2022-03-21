@@ -33,7 +33,7 @@
 .\" FreeBSD: src/lib/libc/stdio/scanf.3,v 1.24 2003/06/28 09:03:25 das Exp
 .\" $FreeBSD: head/lib/libc/stdio/wscanf.3 235363 2012-05-12 20:27:13Z joel $
 .\"
-.Dd July 5, 2003
+.Dd March 21, 2022
 .Dt WSCANF 3
 .Os
 .Sh NAME
@@ -193,14 +193,30 @@ or
 and the next pointer is a pointer to a
 .Vt "long long int"
 (rather than
-.Vt int ) .
+.Vt int ) ,
+or that the conversion will be one of
+.Cm a , e , f ,
+or
+.Cm g
+and the next pointer is a pointer to
+.Vt "long double"
+(non-standard).
 .It Cm L
 Indicates that the conversion will be one of
 .Cm a , e , f ,
 or
 .Cm g
 and the next pointer is a pointer to
-.Vt "long double" .
+.Vt "long double" ,
+or that the conversion will be one of
+.Cm dioux
+or
+.Cm n
+and the next pointer is a pointer to a
+.Vt "long long int"
+(rather than
+.Vt int )
+(non-standard).
 .It Cm j
 Indicates that the conversion will be one of
 .Cm dioux
@@ -303,9 +319,10 @@ Matches a floating-point number in the style of
 The next pointer must be a pointer to
 .Vt float
 (unless
-.Cm l
-or
+.Cm l ,
 .Cm L
+or
+.Cm ll
 is specified.)
 .It Cm s
 Matches a sequence of non-white-space wide characters;
@@ -468,6 +485,22 @@ and
 functions
 conform to
 .St -isoC-99 .
+.Pp
+As an extension,
+.Dx
+treats the length modifiers
+.Cm ll
+and
+.Cm L
+as synonyms, so that the non-standard
+.Cm %Ld
+is equivalent to
+.Cm %ld
+and the non-standard
+.Cm %llg
+is equivalent
+to
+.Cm %Lg .
 .Sh BUGS
 In addition to the bugs documented in
 .Xr scanf 3 ,

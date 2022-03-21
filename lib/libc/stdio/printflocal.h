@@ -39,7 +39,11 @@
 #define	LADJUST		0x004		/* left adjustment */
 #define	LONGDBL		0x008		/* long double */
 #define	LONGINT		0x010		/* long integer */
+#ifdef __DragonFly__ /* Non-standard extension: L and ll are equivalent */
+#define	LLONGINT	LONGDBL		/* long double / long long integer */
+#else
 #define	LLONGINT	0x020		/* long long integer */
+#endif
 #define	SHORTINT	0x040		/* short integer */
 #define	ZEROPAD		0x080		/* zero (as opposed to blank) pad */
 #define	FPT		0x100		/* Floating point number */

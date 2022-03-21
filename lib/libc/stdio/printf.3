@@ -32,7 +32,7 @@
 .\"     @(#)printf.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/lib/libc/stdio/printf.3 303524 2016-07-30 01:00:16Z bapt $
 .\"
-.Dd June 30, 2021
+.Dd March 21, 2022
 .Dt PRINTF 3
 .Os
 .Sh NAME
@@ -325,12 +325,13 @@ The following length modifiers are valid for the
 or
 .Cm X
 conversion:
-.Bl -column ".Cm q Em (deprecated)" ".Vt signed char" ".Vt unsigned long long" ".Vt long long *"
+.Bl -column ".Cm q Em (non-standard)" ".Vt signed char" ".Vt unsigned long long" ".Vt long long *"
 .It Sy Modifier Ta Cm d , i Ta Cm o , u , x , X Ta Cm n
 .It Cm hh Ta Vt "signed char" Ta Vt "unsigned char" Ta Vt "signed char *"
 .It Cm h Ta Vt short Ta Vt "unsigned short" Ta Vt "short *"
 .It Cm l No (ell) Ta Vt long Ta Vt "unsigned long" Ta Vt "long *"
 .It Cm ll No (ell ell) Ta Vt "long long" Ta Vt "unsigned long long" Ta Vt "long long *"
+.It Cm L Em (non-standard) Ta Vt "long long" Ta Vt "unsigned long long" Ta Vt "long long *"
 .It Cm j Ta Vt intmax_t Ta Vt uintmax_t Ta Vt "intmax_t *"
 .It Cm t Ta Vt ptrdiff_t Ta (see note) Ta Vt "ptrdiff_t *"
 .It Cm z Ta (see note) Ta Vt size_t Ta (see note)
@@ -367,11 +368,12 @@ The following length modifier is valid for the
 or
 .Cm G
 conversion:
-.Bl -column ".Sy Modifier" ".Cm a , A , e , E , f , F , g , G"
+.Bl -column ".Cm ll Em (non-standard)" ".Cm a , A , e , E , f , F , g , G"
 .It Sy Modifier Ta Cm a , A , e , E , f , F , g , G
 .It Cm l No (ell) Ta Vt double
 (ignored, same behavior as without it)
 .It Cm L Ta Vt "long double"
+.It Cm ll Em (non-standard) Ta Vt "long double"
 .El
 .Pp
 The following length modifier is valid for the
@@ -801,6 +803,22 @@ and
 .Fn vdprintf
 conform to
 .St -p1003.1-2008 .
+.Pp
+As an extension,
+.Dx
+treats the length modifiers
+.Cm ll
+and
+.Cm L
+as synonyms, so that the non-standard
+.Cm %Ld
+is equivalent to
+.Cm %ld
+and the non-standard
+.Cm %llg
+is equivalent
+to
+.Cm %Lg .
 .Sh HISTORY
 The functions
 .Fn asprintf

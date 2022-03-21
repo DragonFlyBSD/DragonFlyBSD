@@ -66,7 +66,12 @@
 #define	SUPPRESS	0x08	/* *: suppress assignment */
 #define	POINTER		0x10	/* p: void * (as hex) */
 #define	NOSKIP		0x20	/* [ or c: do not skip blanks */
+#ifdef __DragonFly__ /* Non-standard extension: L and ll are equivalent */
+#define	LONGLONG	LONGDBL	/* ll/L: long long, long double */
+				/* (+ deprecated q: quad) */
+#else
 #define	LONGLONG	0x400	/* ll: long long (+ deprecated q: quad) */
+#endif
 #define	INTMAXT		0x800	/* j: intmax_t */
 #define	PTRDIFFT	0x1000	/* t: ptrdiff_t */
 #define	SIZET		0x2000	/* z: size_t */
