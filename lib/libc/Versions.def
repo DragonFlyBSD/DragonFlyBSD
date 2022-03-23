@@ -57,7 +57,7 @@ DF510.0 {
 DF602.0 {
 } DF510.0;
 
-# version for DragonFly 6.1
+# version for DragonFly 6.3
 DF604.0 {
 } DF602.0;
 
