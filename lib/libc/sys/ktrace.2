@@ -59,7 +59,9 @@ The file must exist and be a regular file writable by the calling process.
 All trace records are always appended to the file,
 so the file must be truncated to zero length to discard
 previous trace data.
-If tracing points are being disabled (see KTROP_CLEAR below),
+If tracing points are being disabled (see
+.Dv KTROP_CLEAR
+below),
 .Fa tracefile
 may be NULL.
 .Pp
@@ -67,13 +69,18 @@ The
 .Fa ops
 parameter specifies the requested ktrace operation.
 The defined operations are:
-.Bl -column KTRFLAG_DESCENDXXX -offset indent
-.It "KTROP_SET	Enable trace points specified in"
+.Pp
+.Bl -tag -width KTRFAC_SYSCALLXXXXXX -compact -offset indent
+.It Dv KTROP_SET
+Enable trace points specified in
 .Fa trpoints .
-.It "KTROP_CLEAR	Disable trace points specified in"
+.It Dv KTROP_CLEAR
+Disable trace points specified in
 .Fa trpoints .
-.It "KTROP_CLEARFILE	Stop all tracing."
-.It "KTRFLAG_DESCEND	The tracing change should apply to the"
+.It Dv KTROP_CLEARFILE
+Stop all tracing.
+.It Dv KTRFLAG_DESCEND
+The tracing change should apply to the
 specified process and all its current children.
 .El
 .Pp
@@ -81,15 +88,23 @@ The
 .Fa trpoints
 parameter specifies the trace points of interest.
 The defined trace points are:
-.Bl -column KTRFAC_SYSCALLXXX -offset indent
-.It "KTRFAC_SYSCALL	Trace system calls."
-.It "KTRFAC_SYSRET	Trace return values from system calls."
-.It "KTRFAC_NAMEI	Trace name lookup operations."
-.It "KTRFAC_GENIO	Trace all I/O (note that this option can"
+.Pp
+.Bl -tag -width KTRFAC_SYSCALLXXXXXX -compact -offset indent
+.It Dv KTRFAC_SYSCALL
+Trace system calls.
+.It Dv KTRFAC_SYSRET
+Trace return values from system calls.
+.It Dv KTRFAC_NAMEI
+Trace name lookup operations.
+.It Dv KTRFAC_GENIO
+Trace all I/O (note that this option can
 generate much output).
-.It "KTRFAC_PSIG	Trace posted signals."
-.It "KTRFAC_CSW	Trace context switch points."
-.It "KTRFAC_INHERIT	Inherit tracing to future children."
+.It Dv KTRFAC_PSIG
+Trace posted signals.
+.It Dv KTRFAC_CSW
+Trace context switch points.
+.It Dv KTRFAC_INHERIT
+Inherit tracing to future children.
 .El
 .Pp
 Each tracing event outputs a record composed of a generic header
