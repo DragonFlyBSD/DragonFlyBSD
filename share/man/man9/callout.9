@@ -27,8 +27,8 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd December 1, 2021
-.Dt TIMEOUT 9
+.Dd April 15, 2022
+.Dt CALLOUT 9
 .Os
 .Sh NAME
 .Nm callout_active ,
@@ -59,11 +59,11 @@ typedef void timeout_t (void *);
 .Ft int
 .Fn callout_drain "struct callout *c"
 .Ft void
-.Fn callout_init "struct callout *c" "int mpsafe"
-.Ft void
-.Fn callout_init_lk "struct callout *c" "struct lock *lk"
+.Fn callout_init "struct callout *c"
 .Ft void
 .Fn callout_init_mp "struct callout *c"
+.Ft void
+.Fn callout_init_lk "struct callout *c" "struct lock *lk"
 .Ft int
 .Fn callout_pending "struct callout *c"
 .Ft void
@@ -115,8 +115,9 @@ or invoke any other action that might sleep.
 In
 .Dx
 all callout functions are executed from a common kernel thread on the
-target cpu and may block as long as deadlocks are avoided.  But generally
-speaking, callout functions should run in as short a time as possible
+target CPU and may block as long as deadlocks are avoided.
+But generally speaking,
+callout functions should run in as short a time as possible
 as they can add lag to other unrelated callouts.
 .Pp
 Each callout structure must be initialized by
@@ -132,7 +133,8 @@ and
 functions initialize a callout structure in
 .Fa c
 that is not associated with a specific lock.
-The former will hold the mp_lock across callback.  However, it is deprecated
+The former will hold the mplock across callback.
+However, it is deprecated
 and should not be used in new code.
 .Fn callout_init_mp
 should be used for any new code.
@@ -205,7 +207,8 @@ is identical to
 .Fn callout_stop
 but does not block and allows the STOP operation to be asynchronous,
 meaning that the callout structure may still be relevant after the
-function returns.  This situation can occur if the callback was
+function returns.
+This situation can occur if the callback was
 in-progress at the time the stop was issued.
 .Pp
 The function
@@ -219,11 +222,11 @@ overrides all other operations while it is in-progress.
 The function
 .Fn callout_terminate
 synchronously cancels a callout and informs the system that the
-callout structure will no longer be referenced.  This function will
-clear the initialization flag and any further use of the callout structure
-will panic the system until it is next initialized.  The callout structure
-can be safely freed after this function returns, assuming other program
-references to it have been removed.
+callout structure will no longer be referenced.
+This function will clear the initialization flag and any further use of
+the callout structure will panic the system until it is next initialized.
+The callout structure can be safely freed after this function returns,
+assuming other program references to it have been removed.
 .Pp
 The function
 .Fn callout_drain
@@ -253,13 +256,13 @@ already has a pending callout,
 it is cancelled before the new invocation is scheduled.
 In
 .Fx
-these functions return a value of one if a pending callout was cancelled
+this function returns a value of one if a pending callout was cancelled
 and zero if there was no pending callout.
 If the callout has an associated lock,
 then that lock must be held when any of these functions are called.
 In
 .Dx
-these functions return void.
+this function returns void.
 If the callout has an associated lock,
 then that lock should generally be held when any of these functions are
 called, but the API will work either way.
@@ -281,13 +284,11 @@ are silently converted to the value
 .Pp
 The
 .Fn callout_reset_bycpu
-function schedules the callout to occur on the target cpu.  The
-normal
+function schedules the callout to occur on the target CPU.
+The normal
 .Fn callout_reset
-function schedules the callout to occur on the current cpu.
-The
-.Fn callout_reset
-functions accept a
+function schedules the callout to occur on the current CPU.
+These functions accept a
 .Fa func
 argument which identifies the function to be called when the time expires.
 It must be a pointer to a function that takes a single
@@ -302,18 +303,18 @@ as its only argument.
 The callout subsystem provides a softclock thread for each CPU in the system.
 Callouts are assigned to a single CPU and are executed by the softclock thread
 for that CPU.
-The callouts are assigned to the current cpu or to a specific cpu
+The callouts are assigned to the current CPU or to a specific CPU
 depending on the call.
 .Pp
-The macros
+The
 .Fn callout_pending ,
 .Fn callout_active
 and
 .Fn callout_deactivate
-provide access to the current state of the callout.
+functions provide access to the current state of the callout.
 The
 .Fn callout_pending
-macro checks whether a callout is
+function checks whether a callout is
 .Em pending ;
 a callout is considered
 .Em pending
@@ -328,11 +329,11 @@ even though the callout function may not have finished
 executing.
 The
 .Fn callout_active
-macro checks whether a callout is marked as
+function checks whether a callout is marked as
 .Em active ,
 and the
 .Fn callout_deactivate
-macro clears the callout's
+function clears the callout's
 .Em active
 flag.
 The callout subsystem marks a callout as
@@ -348,7 +349,7 @@ but it
 clear it when a callout expires normally via the execution of the
 callout function.
 .Pp
-There are three main techniques for addressing these
+There are two main techniques for addressing these
 synchronization concerns.
 The first approach is preferred as it is the simplest:
 .Bl -enum -offset indent
@@ -374,7 +375,7 @@ The
 .Fn callout_active
 and
 .Fn callout_deactivate
-macros can be used together to work around the race conditions,
+functions can be used together to work around the race conditions,
 but the interpretation of these calls can be confusing and it
 is recommended that a different, caller-specific method be used to
 determine whether a race condition is present.
@@ -396,9 +397,8 @@ flag even after the callout function returns.
 The mechanism described here requires the callout function itself to
 clear the
 .Em active
-flag using the
-.Fn callout_deactivate
-macro.
+flag using
+.Fn callout_deactivate .
 The
 .Fn callout_stop
 and
@@ -492,17 +492,18 @@ should be used.
 .Sh RETURN VALUES
 The
 .Fn callout_active
-macro returns the state of a callout's
+function returns the state of a callout's
 .Em active
 flag.
 .Pp
 The
 .Fn callout_pending
-macro returns the state of a callout's
+function returns the state of a callout's
 .Em pending
 flag.
 .Pp
 The
+.Fn callout_cancel ,
 .Fn callout_stop
 and
 .Fn callout_drain
@@ -528,5 +529,5 @@ but did not generate or require handles for untimeout operations.
 In
 .Dx
 the entire API was reformulated by Matthew Dillon for optimal SMP
-operation, uses much larger rings, and is capable of queueing one
+operation, uses much larger rings, and is capable of queuing one
 operation concurrent with an in-progress callback without blocking.
