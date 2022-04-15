@@ -95,6 +95,7 @@ uint64_t karc4random64(void);
 void	 karc4rand(void *, size_t);
 void	 arc4_init_pcpu(int cpuid);
 int	 bcmp(const void *, const void *, size_t);
+int	 timingsafe_bcmp(const void *, const void *, size_t);
 void	*kbsearch(const void *, const void *, size_t,
 		     size_t, int (*)(const void *, const void *));
 #ifndef HAVE_INLINE_FFS

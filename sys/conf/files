@@ -2216,6 +2216,7 @@ libkern/strtol.c			standard
 libkern/strtoq.c			standard
 libkern/strtoul.c			standard
 libkern/strtouq.c			standard
+libkern/timingsafe_bcmp.c		standard
 #libkern/stack_protector.c		standard
 libiconv/iconv.c			optional libiconv
 libiconv/iconv_converter_if.m		optional libiconv
