@@ -1161,8 +1161,13 @@ childGetBinaryDistInfo(bulk_t *bulk)
 			pkg = pkg_find(buf);
 		}
 		if (pkg) {
-			pkg->flags |= PKGF_PACKAGED;
-			deleteme = 0;
+			if (FetchOnlyOpt) {
+			    ddprintf(0, "Note: Package is already packaged, ignore for -f: %s\n", ptr);
+			    deleteme = 0;
+			} else {
+			    pkg->flags |= PKGF_PACKAGED;
+			    deleteme = 0;
+			}
 		} else {
 			ddprintf(0, "Note: package scan, not in list, "
 				    "skipping %s{.%s,.pkg}\n", ptr, UsePkgSufx);

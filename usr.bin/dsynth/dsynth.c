@@ -41,6 +41,7 @@ static void DoInit(void);
 static void usage(int ecode) __dead2;
 
 int OverridePkgDeleteOpt;
+int FetchOnlyOpt;
 int YesOpt;
 int DebugOpt;
 int MaskProbeAbort;
@@ -311,6 +312,23 @@ main(int ac, char **av)
 	} else if (strcmp(av[0], "configure") == 0) {
 		DoCleanBuild(0);
 		DoConfigure();
+	} else if (strcmp(av[0], "fetch-only") == 0) {
+		if (SlowStartOpt == -1)
+			SlowStartOpt = 999;
+		if (PkgDepScaleTarget == 100)
+			PkgDepScaleTarget = 999;
+		++FetchOnlyOpt;
+		++YesOpt;
+		WorkerProcFlags |= WORKER_PROC_FETCHONLY;
+		DoCleanBuild(1);
+		OptimizeEnv();
+		if (ac == 2 && strcmp(av[1], "everything") == 0) {
+			MaskProbeAbort = 1;
+			pkgs = GetFullPackageList();
+		} else {
+			pkgs = ParsePackageList(ac - 1, av + 1, 0);
+		}
+		DoBuild(pkgs);
 	} else if (strcmp(av[0], "upgrade-system") == 0) {
 		DoCleanBuild(1);
 		OptimizeEnv();

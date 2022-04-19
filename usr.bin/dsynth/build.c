@@ -214,7 +214,9 @@ DoBuild(pkg_t *pkgs)
 	 * Create our template.  The template will be missing pkg
 	 * and pkg-static.
 	 */
-	if ((scan->flags & (PKGF_SUCCESS | PKGF_PACKAGED)) == 0) {
+	if (FetchOnlyOpt) {
+		newtemplate = DoCreateTemplate(0);
+	} else if ((scan->flags & (PKGF_SUCCESS | PKGF_PACKAGED)) == 0) {
 		/* force a fresh template */
 		newtemplate = DoCreateTemplate(1);
 	} else {
@@ -235,7 +237,7 @@ DoBuild(pkg_t *pkgs)
 	/*
 	 * Build pkg/pkg-static
 	 */
-	if ((scan->flags & (PKGF_SUCCESS | PKGF_PACKAGED)) == 0) {
+	if ((scan->flags & (PKGF_SUCCESS | PKGF_PACKAGED)) == 0 && FetchOnlyOpt == 0) {
 		build_list = scan;
 		build_tail = &scan->build_next;
 		startbuild(&build_list, &build_tail);
@@ -254,7 +256,7 @@ DoBuild(pkg_t *pkgs)
 	/*
 	 * Install pkg/pkg-static into the template
 	 */
-	if (newtemplate) {
+	if (newtemplate && FetchOnlyOpt == 0) {
 		char *buf;
 		int rc;
 
@@ -1952,6 +1954,8 @@ WorkerProcess(int ac, char **av)
 	}
 	WorkerProcFlags = strtol(av[5], NULL, 0);
 
+	if (WorkerProcFlags & WORKER_PROC_FETCHONLY)
+		FetchOnlyOpt = 1;
 	if (WorkerProcFlags & WORKER_PROC_PKGV17)
 		PkgVersionPkgSuffix = 1;
 
@@ -2153,6 +2157,8 @@ WorkerProcess(int ac, char **av)
 	if (status < 0 || wmsg.cmd != WMSG_RES_INSTALL_PKGS)
 		dfatal("pkg installation handshake failed");
 	do_install_phase = wmsg.status;
+	if (FetchOnlyOpt)
+		do_install_phase = 0;
 
 	wmsg.cmd = WMSG_CMD_STATUS_UPDATE;
 	wmsg.phase = PHASE_INSTALL_PKGS;
@@ -2160,7 +2166,7 @@ WorkerProcess(int ac, char **av)
 
 	status = ipcwritemsg(fd, &wmsg);
 
-	if (pkgpkg) {
+	if (pkgpkg && FetchOnlyOpt == 0) {
 		dophase(work, &wmsg,
 			WDOG5, PHASE_PACKAGE, "package");
 	} else {
@@ -2198,53 +2204,57 @@ WorkerProcess(int ac, char **av)
 		}
 		dophase(work, &wmsg,
 			WDOG2, PHASE_CHECK_SANITY, "check-sanity");
-		dophase(work, &wmsg,
-			WDOG2, PHASE_PKG_DEPENDS, "pkg-depends");
+		if (FetchOnlyOpt == 0) {
+			dophase(work, &wmsg,
+				WDOG2, PHASE_PKG_DEPENDS, "pkg-depends");
+		}
 		dophase(work, &wmsg,
 			WDOG7, PHASE_FETCH_DEPENDS, "fetch-depends");
 		dophase(work, &wmsg,
 			WDOG7, PHASE_FETCH, "fetch");
 		dophase(work, &wmsg,
 			WDOG2, PHASE_CHECKSUM, "checksum");
-		dophase(work, &wmsg,
-			WDOG3, PHASE_EXTRACT_DEPENDS, "extract-depends");
-		dophase(work, &wmsg,
-			WDOG3, PHASE_EXTRACT, "extract");
-		dophase(work, &wmsg,
-			WDOG2, PHASE_PATCH_DEPENDS, "patch-depends");
-		dophase(work, &wmsg,
-			WDOG2, PHASE_PATCH, "patch");
-		dophase(work, &wmsg,
-			WDOG5, PHASE_BUILD_DEPENDS, "build-depends");
-		dophase(work, &wmsg,
-			WDOG5, PHASE_LIB_DEPENDS, "lib-depends");
-		dophase(work, &wmsg,
-			WDOG3, PHASE_CONFIGURE, "configure");
-		dophase(work, &wmsg,
-			WDOG9, PHASE_BUILD, "build");
-		dophase(work, &wmsg,
-			WDOG5, PHASE_RUN_DEPENDS, "run-depends");
-		dophase(work, &wmsg,
-			WDOG5, PHASE_STAGE, "stage");
+		if (FetchOnlyOpt == 0) {
+			dophase(work, &wmsg,
+				WDOG3, PHASE_EXTRACT_DEPENDS, "extract-depends");
+			dophase(work, &wmsg,
+				WDOG3, PHASE_EXTRACT, "extract");
+			dophase(work, &wmsg,
+				WDOG2, PHASE_PATCH_DEPENDS, "patch-depends");
+			dophase(work, &wmsg,
+				WDOG2, PHASE_PATCH, "patch");
+			dophase(work, &wmsg,
+				WDOG5, PHASE_BUILD_DEPENDS, "build-depends");
+			dophase(work, &wmsg,
+				WDOG5, PHASE_LIB_DEPENDS, "lib-depends");
+			dophase(work, &wmsg,
+				WDOG3, PHASE_CONFIGURE, "configure");
+			dophase(work, &wmsg,
+				WDOG9, PHASE_BUILD, "build");
+			dophase(work, &wmsg,
+				WDOG5, PHASE_RUN_DEPENDS, "run-depends");
+			dophase(work, &wmsg,
+				WDOG5, PHASE_STAGE, "stage");
 #if 0
-		dophase(work, &wmsg,
-			WDOG5, PHASE_TEST, "test");
+			dophase(work, &wmsg,
+				WDOG5, PHASE_TEST, "test");
 #endif
-		if (WorkerProcFlags & WORKER_PROC_CHECK_PLIST) {
+			if (WorkerProcFlags & WORKER_PROC_CHECK_PLIST) {
+				dophase(work, &wmsg,
+					WDOG1, PHASE_CHECK_PLIST, "check-plist");
+			}
 			dophase(work, &wmsg,
-				WDOG1, PHASE_CHECK_PLIST, "check-plist");
-		}
-		dophase(work, &wmsg,
-			WDOG5, PHASE_PACKAGE, "package");
+				WDOG5, PHASE_PACKAGE, "package");
 
-		if (WorkerProcFlags & WORKER_PROC_INSTALL) {
-			dophase(work, &wmsg,
-			    WDOG5, PHASE_INSTALL, "install");
-		}
+			if (WorkerProcFlags & WORKER_PROC_INSTALL) {
+				dophase(work, &wmsg,
+				    WDOG5, PHASE_INSTALL, "install");
+			}
 
-		if (WorkerProcFlags & WORKER_PROC_DEINSTALL) {
-			dophase(work, &wmsg,
-			    WDOG5, PHASE_DEINSTALL, "deinstall");
+			if (WorkerProcFlags & WORKER_PROC_DEINSTALL) {
+				dophase(work, &wmsg,
+				    WDOG5, PHASE_DEINSTALL, "deinstall");
+			}
 		}
 	}
 
@@ -2259,7 +2269,7 @@ WorkerProcess(int ac, char **av)
 	/*
 	 * Copy the package to the repo.
 	 */
-	if (work->accum_error == 0) {
+	if (work->accum_error == 0 && FetchOnlyOpt == 0) {
 		char *b1;
 		char *b2;
 

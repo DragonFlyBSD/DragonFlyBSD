@@ -269,6 +269,14 @@ attempts to clean up all processes and mounts when you interrupt
 a build but doesn't always succeed.
 .It Cm configure
 NOT CURRENTLY IMPLEMENTED
+.It Cm fetch-only Op Ar ports/everything
+Fetch all source distributions required to build
+the specified target.  Specifying 'everything' fetches
+all source distributions required to build the whole
+of dports.
+.Pp
+Any existing distfiles which do not match the expected
+signature will be re-fetched.
 .It Cm upgrade-system
 NOT CURRENTLY IMPLEMENTED.
 Incrementally build and upgrade your locally
