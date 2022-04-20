@@ -45,6 +45,7 @@ static int RunningWorkers;
 int DynamicMaxWorkers;
 static int FailedWorkers;
 static long RunningPkgDepSize;
+static pthread_mutex_t DbmMutex;
 static pthread_mutex_t WorkerMutex;
 static pthread_cond_t WorkerCond;
 
@@ -113,6 +114,7 @@ DoInitBuild(int slot_override)
 
 	bzero(WorkerAry, MaxWorkers * sizeof(worker_t));
 	pthread_mutex_init(&WorkerMutex, NULL);
+	pthread_mutex_init(&DbmMutex, NULL);
 
 	for (i = 0; i < MaxWorkers; ++i) {
 		work = &WorkerAry[i];
@@ -1205,7 +1207,13 @@ workercomplete(worker_t *work)
 			key.dsize = strlen(pkg->portdir);
 			data.dptr = &pkg->crc32;
 			data.dsize = sizeof(pkg->crc32);
+#ifndef __DB_IS_THREADSAFE
+			pthread_mutex_lock(&DbmMutex);
+#endif
 			dbm_store(CheckDBM, key, data, DBM_REPLACE);
+#ifndef __DB_IS_THREADSAFE
+			pthread_mutex_unlock(&DbmMutex);
+#endif
 		}
 		pkg->flags |= PKGF_SUCCESS;
 		++BuildSuccessCount;
