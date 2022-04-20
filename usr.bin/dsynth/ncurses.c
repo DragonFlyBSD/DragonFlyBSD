@@ -154,14 +154,14 @@ NCursesUpdateTop(topinfo_t *info)
 	if (UseNCurses == 0)
 		return;
 
-	mvwprintw(CWin, 0, TOTAL_COL, "%-5d", info->total);
-	mvwprintw(CWin, 0, BUILT_COL, "%-5d", info->successful);
-	mvwprintw(CWin, 0, IGNORED_COL, "%-5d", info->ignored);
+	mvwprintw(CWin, 0, TOTAL_COL, "%-6d", info->total);
+	mvwprintw(CWin, 0, BUILT_COL, "%-6d", info->successful);
+	mvwprintw(CWin, 0, IGNORED_COL, "%-6d", info->ignored);
 	if (info->dload[0] > 999.9)
 		mvwprintw(CWin, 0, LOAD_COL, "%5.0f", info->dload[0]);
 	else
 		mvwprintw(CWin, 0, LOAD_COL, "%5.1f", info->dload[0]);
-	mvwprintw(CWin, 0, GPKGRATE_COL, "%-5d", info->pkgrate);
+	mvwprintw(CWin, 0, GPKGRATE_COL, "%-6d", info->pkgrate);
 
 	/*
 	 * If dynamic worker reduction is active include a field,
@@ -176,14 +176,14 @@ NCursesUpdateTop(topinfo_t *info)
 				  LastReduce);
 	}
 
-	mvwprintw(CWin, 1, LEFT_COL, "%-5d", info->remaining);
-	mvwprintw(CWin, 1, FAILED_COL, "%-5d", info->failed);
-	mvwprintw(CWin, 1, SKIPPED_COL, "%-5d", info->skipped);
+	mvwprintw(CWin, 1, LEFT_COL, "%-6d", info->remaining);
+	mvwprintw(CWin, 1, FAILED_COL, "%-6d", info->failed);
+	mvwprintw(CWin, 1, SKIPPED_COL, "%-6d", info->skipped);
 	if (info->noswap)
 		mvwprintw(CWin, 1, SWAP_COL, "-   ");
 	else
 		mvwprintw(CWin, 1, SWAP_COL, "%5.1f", info->dswap);
-	mvwprintw(CWin, 1, IMPULSE_COL, "%-5d", info->pkgimpulse);
+	mvwprintw(CWin, 1, IMPULSE_COL, "%-6d", info->pkgimpulse);
 	if (info->h > 99)
 		mvwprintw(CWin, 1, TIME_COL-1, "%3d:%02d:%02d",
 			  info->h, info->m, info->s);
