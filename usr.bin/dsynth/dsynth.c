@@ -541,6 +541,7 @@ usage(int ecode)
     "    test       [ports]   - 'build' w/DEVELOPER=yes and pre-deletes pkgs\n"
     "				(also infers -P)\n"
     "    debug      [ports]   - like 'test' but leaves mounts intact\n"
+    "    fetch-only [ports]   - Fetch src dists only ('everything' ok)\n"
     "    monitor    [datfile] - Monitor a running dsynth\n"
     "\n"
     "    [ports] is a space-delimited list of origins, e.g. editors/joe.  It\n"
