@@ -149,7 +149,9 @@ char	*strtok_r(char * __restrict, const char * __restrict,
 #endif
 size_t	 strxfrm(char * __restrict, const char * __restrict, size_t);
 #if __BSD_VISIBLE
+#if !defined(_KERNEL_VIRTUAL)
 int	 timingsafe_bcmp(const void *, const void *, size_t) __pure;
+#endif
 int	 timingsafe_memcmp(const void *, const void *, size_t) __pure;
 #endif /* __BSD_VISIBLE */
 
