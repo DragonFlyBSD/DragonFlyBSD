@@ -56,6 +56,9 @@
 static MALLOC_DEFINE(M_SYSCTL, "sysctl", "sysctl internal magic");
 static MALLOC_DEFINE(M_SYSCTLOID, "sysctloid", "sysctl dynamic oids");
 
+int sysctl_debugx = 0;
+SYSCTL_INT(_debug, OID_AUTO, sysctl, CTLFLAG_RW, &sysctl_debugx, 0, "");
+
 /*
  * The sysctllock protects the MIB tree.  It also protects sysctl
  * contexts used with dynamic sysctls.  The sysctl_register_oid() and
@@ -1411,6 +1414,12 @@ sysctl_root(SYSCTL_HANDLER_ARGS)
 	error = sysctl_find_oid(arg1, arg2, &oid, &indx, req);
 	if (error)
 		return (error);
+
+	if (sysctl_debugx & 1) {
+		kprintf("pid %d oid %p %s\n",
+			(p ? p->p_pid : -1), oid, oid->oid_name);
+	}
+
 
 	if ((oid->oid_kind & CTLTYPE) == CTLTYPE_NODE) {
 		/*
