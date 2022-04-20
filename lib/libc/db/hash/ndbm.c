@@ -38,11 +38,13 @@
  * package described in db(3).
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <pthread.h>
 
 #include <ndbm.h>
 #include "hash.h"
@@ -57,6 +59,7 @@ dbm_open(const char *file, int flags, mode_t mode)
 {
 	HASHINFO info;
 	char path[MAXPATHLEN];
+	DBM *db;
 
 	info.bsize = 4096;
 	info.ffactor = 40;
@@ -71,12 +74,18 @@ dbm_open(const char *file, int flags, mode_t mode)
 	}
 	strcpy(path, file);
 	strcat(path, DBM_SUFFIX);
-	return ((DBM *)__hash_open(path, flags, mode, &info, 0));
+	db = ((DBM *)__hash_open(path, flags, mode, &info, 0));
+	if (db)
+		pthread_mutex_init((void *)&db->mutex, NULL);
+
+	return db;
 }
 
 void
 dbm_close(DBM *db)
 {
+	if (db)
+		pthread_mutex_destroy((void *)&db->mutex);
 	(db->close)(db);
 }
 
@@ -92,6 +101,7 @@ dbm_fetch(DBM *db, datum key)
 	int status;
 	DBT dbtkey, dbtretdata;
 
+	pthread_mutex_lock((void *)&db->mutex);
 	dbtkey.data = key.dptr;
 	dbtkey.size = key.dsize;
 	status = (db->get)(db, &dbtkey, &dbtretdata, 0);
@@ -101,6 +111,8 @@ dbm_fetch(DBM *db, datum key)
 	}
 	retdata.dptr = dbtretdata.data;
 	retdata.dsize = dbtretdata.size;
+	pthread_mutex_unlock((void *)&db->mutex);
+
 	return (retdata);
 }
 
@@ -116,11 +128,14 @@ dbm_firstkey(DBM *db)
 	datum retkey;
 	DBT dbtretkey, dbtretdata;
 
+	pthread_mutex_lock((void *)&db->mutex);
 	status = (db->seq)(db, &dbtretkey, &dbtretdata, R_FIRST);
 	if (status)
 		dbtretkey.data = NULL;
 	retkey.dptr = dbtretkey.data;
 	retkey.dsize = dbtretkey.size;
+	pthread_mutex_unlock((void *)&db->mutex);
+
 	return (retkey);
 }
 
@@ -136,11 +151,14 @@ dbm_nextkey(DBM *db)
 	datum retkey;
 	DBT dbtretkey, dbtretdata;
 
+	pthread_mutex_lock((void *)&db->mutex);
 	status = (db->seq)(db, &dbtretkey, &dbtretdata, R_NEXT);
 	if (status)
 		dbtretkey.data = NULL;
 	retkey.dptr = dbtretkey.data;
 	retkey.dsize = dbtretkey.size;
+	pthread_mutex_unlock((void *)&db->mutex);
+
 	return (retkey);
 }
 
@@ -155,9 +173,14 @@ dbm_delete(DBM *db, datum key)
 	int status;
 	DBT dbtkey;
 
+	pthread_mutex_lock((void *)&db->mutex);
 	dbtkey.data = key.dptr;
 	dbtkey.size = key.dsize;
+	sigblockall();
 	status = (db->del)(db, &dbtkey, 0);
+	sigunblockall();
+	pthread_mutex_unlock((void *)&db->mutex);
+
 	if (status)
 		return (-1);
 	else
@@ -174,24 +197,38 @@ int
 dbm_store(DBM *db, datum key, datum data, int flags)
 {
 	DBT dbtkey, dbtdata;
+	int status;
 
+	pthread_mutex_lock((void *)&db->mutex);
 	dbtkey.data = key.dptr;
 	dbtkey.size = key.dsize;
 	dbtdata.data = data.dptr;
 	dbtdata.size = data.dsize;
-	return ((db->put)(db, &dbtkey, &dbtdata,
-	    (flags == DBM_INSERT) ? R_NOOVERWRITE : 0));
+	sigblockall();
+	status = ((db->put)(db, &dbtkey, &dbtdata,
+			    (flags == DBM_INSERT) ? R_NOOVERWRITE : 0));
+	sigunblockall();
+	pthread_mutex_unlock((void *)&db->mutex);
+
+	return status;
 }
 
+/*
+ * XXX not thread safe
+ */
 int
 dbm_error(DBM *db)
 {
 	HTAB *hp;
 
 	hp = (HTAB *)db->internal;
+
 	return (hp->error);
 }
 
+/*
+ * XXX not thread safe
+ */
 int
 dbm_clearerr(DBM *db)
 {
@@ -199,6 +236,7 @@ dbm_clearerr(DBM *db)
 
 	hp = (HTAB *)db->internal;
 	hp->error = 0;
+
 	return (0);
 }
 

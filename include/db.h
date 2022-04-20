@@ -104,7 +104,10 @@ typedef struct __db {
 	int (*sync)(const struct __db *, unsigned int);
 	void *internal;			/* Access method private. */
 	int (*fd)(const struct __db *);
+	void *mutex;
 } DB;
+
+#define __DB_IS_THREADSAFE	1
 
 #define	BTREEMAGIC	0x053162
 #define	BTREEVERSION	3
