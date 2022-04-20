@@ -1148,7 +1148,15 @@ workercomplete(worker_t *work)
 		char skipbuf[16];
 		int scount;
 
-		pkg->flags |= PKGF_FAILURE;
+		/*
+		 * Normally mark the package as failed, but if we are doing
+		 * a fetch-only, mark it as successful so dependant ports
+		 * still get fetched.
+		 */
+		if (FetchOnlyOpt)
+			pkg->flags |= PKGF_SUCCESS;
+		else
+			pkg->flags |= PKGF_FAILURE;
 
 		scount = buildskipcount_dueto(pkg, 1);
 		buildskipcount_dueto(pkg, 0);
