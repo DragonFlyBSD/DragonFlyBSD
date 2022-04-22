@@ -919,7 +919,7 @@ loop:
 
 	/*
 	 * Determine whether the lowest collected key meets clustering
-	 * requirements.  Returns:
+	 * requirements.  Returns HAMMER2_ERROR_*:
 	 *
 	 * 0	 	 - key valid, cluster can be returned.
 	 *
@@ -935,6 +935,8 @@ loop:
 	 *
 	 * EINPROGRESS	 - insufficient elements collected to resolve, wait
 	 *		   for event and loop.
+	 *
+	 * EIO/ECHECK	 - IO error or CRC check error from hammer2_cluster_check()
 	 */
 	if ((flags & HAMMER2_XOP_COLLECT_WAITALL) &&
 	    (mask & HAMMER2_XOPMASK_ALLDONE) != HAMMER2_XOPMASK_VOP) {
