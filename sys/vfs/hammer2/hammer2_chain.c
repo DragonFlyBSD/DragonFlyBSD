@@ -5958,13 +5958,18 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
  *
  * The flags passed in are LOOKUP flags, not RESOLVE flags.
  *
- * If we are unable to locate the inode, HAMMER2_ERROR_EIO is returned and
- * *chainp will be NULL.  *parentp may still be set error or not, or NULL
- * if the parent itself could not be resolved.
+ * If we are unable to locate the inode, HAMMER2_ERROR_EIO or HAMMER2_ERROR_CHECK
+ * is returned.  In case of error, *chainp and/or *parentp may still be returned
+ * non-NULL.
  *
  * The caller may pass-in a locked *parentp and/or *chainp, or neither.
  * They will be unlocked and released by this function.  The *parentp and
  * *chainp representing the located inode are returned locked.
+ *
+ * The returned error includes any error on the returned chain in addition to
+ * errors incurred while trying to lookup the inode.  However, a chain->error
+ * might not be recognized if HAMMER2_LOOKUP_NODATA is passed.  This flag may
+ * not be passed to this function.
  */
 int
 hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
@@ -5977,6 +5982,8 @@ hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
 	hammer2_inode_t *ip;
 	int resolve_flags;
 	int error;
+
+	KKASSERT((flags & HAMMER2_LOOKUP_NODATA) == 0);
 
 	resolve_flags = (flags & HAMMER2_LOOKUP_SHARED) ?
 			HAMMER2_RESOLVE_SHARED : 0;
@@ -6008,7 +6015,7 @@ hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
 						       resolve_flags);
 		hammer2_inode_drop(ip);
 		if (*chainp)
-			return 0;
+			return (*chainp)->error;
 		hammer2_chain_unlock(*chainp);
 		hammer2_chain_drop(*chainp);
 		*chainp = NULL;
@@ -6026,9 +6033,33 @@ hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
 	parent = hammer2_inode_chain(pmp->iroot, clindex, resolve_flags);
 	rchain = NULL;
 	if (parent) {
+		/*
+		 * NOTE: rchain can be returned as NULL even if error == 0
+		 *	 (i.e. not found)
+		 */
 		rchain = hammer2_chain_lookup(&parent, &key_dummy,
 					      inum, inum,
 					      &error, flags);
+		/*
+		 * Propagate a chain-specific error to caller.
+		 *
+		 * If the chain is not errored, we must still validate that the inode
+		 * number is correct, because all hell will break loose if it isn't
+		 * correct.  It should always be correct so print to the console and
+		 * simulate a CHECK error if it is not.
+		 */
+		if (error == 0 && rchain) {
+			error = rchain->error;
+			if (error == 0 && rchain->data) {
+				if (inum != rchain->data->ipdata.meta.inum) {
+					kprintf("hammer2_chain_inode_find: lookup inum %ld, "
+						"got valid inode but with inum %ld\n",
+						inum, rchain->data->ipdata.meta.inum);
+					error = HAMMER2_ERROR_CHECK;
+					rchain->error = error;
+				}
+			}
+		}
 	} else {
 		error = HAMMER2_ERROR_EIO;
 	}
