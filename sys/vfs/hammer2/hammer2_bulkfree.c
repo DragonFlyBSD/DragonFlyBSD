@@ -1176,6 +1176,18 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 				 */
 				switch (lmask & 3) {
 				case 0:	/* 00 */
+					/*
+					 * This case is not supposed to
+					 * happen.  If it does, it means
+					 * that an allocated block was
+					 * thought by the filesystem to be
+					 * free.
+					 */
+					kprintf("hammer2_bulkfree: "
+						"00->11 critical freemap "
+						"transition for datablock "
+						"%016jx\n",
+						tmp_off);
 					++cbinfo->count_00_11;
 					cbinfo->adj_free -=
 						HAMMER2_FREEMAP_BLOCK_SIZE;
