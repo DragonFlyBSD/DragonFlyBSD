@@ -2466,8 +2466,6 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 int
 hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 {
-	struct mount *mp;
-	/*hammer2_xop_flush_t *xop;*/
 	hammer2_inode_t *ip;
 	hammer2_depend_t *depend;
 	hammer2_depend_t *depend_next;
@@ -2476,8 +2474,6 @@ hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 	int error;
 	int wakecount;
 	int dorestart;
-
-	mp = pmp->mp;
 
 	/*
 	 * Move all inodes on sideq to syncq.  This will clear sideq.
@@ -2575,7 +2571,8 @@ restart:
 			      pass2,
 			      (pass2 & ~(HAMMER2_INODE_SYNCQ |
 					 HAMMER2_INODE_SYNCQ_WAKEUP)) |
-			      HAMMER2_INODE_SYNCQ_PASS2) == 0) {
+			      HAMMER2_INODE_SYNCQ_PASS2) == 0)
+		{
 			continue;
 		}
 		TAILQ_REMOVE(&pmp->syncq, ip, entry);
@@ -2797,61 +2794,6 @@ restart:
 	 */
 	hammer2_bioq_sync(pmp);
 
-#if 0
-	/*
-	 * Generally speaking we now want to flush the media topology from
-	 * the iroot through to the inodes.  The flush stops at any inode
-	 * boundary, which allows the frontend to continue running concurrent
-	 * modifying operations on inodes (including kernel flushes of
-	 * buffers) without interfering with the main sync.
-	 *
-	 * Use the XOP interface to concurrently flush all nodes to
-	 * synchronize the PFSROOT subtopology to the media.  A standard
-	 * end-of-scan ENOENT error indicates cluster sufficiency.
-	 *
-	 * Note that this flush will not be visible on crash recovery until
-	 * we flush the super-root topology in the next loop.
-	 *
-	 * XXX For now wait for all flushes to complete.
-	 */
-	if (mp && (ip = pmp->iroot) != NULL) {
-		/*
-		 * If unmounting try to flush everything including any
-		 * sub-trees under inodes, just in case there is dangling
-		 * modified data, as a safety.  Otherwise just flush up to
-		 * the inodes in this stage.
-		 */
-		kprintf("MP & IROOT\n");
-#ifdef HAMMER2_DEBUG_SYNC
-		kprintf("FILESYSTEM SYNC STAGE 3 IROOT BEGIN\n");
-#endif
-		if (mp->mnt_kern_flag & MNTK_UNMOUNT) {
-			xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING |
-						    HAMMER2_XOP_VOLHDR |
-						    HAMMER2_XOP_FSSYNC |
-						    HAMMER2_XOP_INODE_STOP);
-		} else {
-			xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING |
-						    HAMMER2_XOP_INODE_STOP |
-						    HAMMER2_XOP_VOLHDR |
-						    HAMMER2_XOP_FSSYNC |
-						    HAMMER2_XOP_INODE_STOP);
-		}
-		hammer2_xop_start(&xop->head, &hammer2_inode_flush_desc);
-		error = hammer2_xop_collect(&xop->head,
-					    HAMMER2_XOP_COLLECT_WAITALL);
-		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-#ifdef HAMMER2_DEBUG_SYNC
-		kprintf("FILESYSTEM SYNC STAGE 3 IROOT END\n");
-#endif
-		if (error == HAMMER2_ERROR_ENOENT)
-			error = 0;
-		else
-			error = hammer2_error_to_errno(error);
-	} else {
-		error = 0;
-	}
-#endif
 	error = 0;	/* XXX */
 	hammer2_trans_done(pmp, HAMMER2_TRANS_ISFLUSH);
 

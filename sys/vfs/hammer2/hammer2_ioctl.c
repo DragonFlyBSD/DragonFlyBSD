@@ -1076,11 +1076,12 @@ hammer2_ioctl_emerg_mode(hammer2_inode_t *ip, u_int mode)
 }
 
 /*
- * Executes one flush/free pass per call.  If trying to recover
- * data we just freed up a moment ago it can take up to six passes
- * to fully free the blocks.  Note that passes occur automatically based
- * on free space as the storage fills up, but manual passes may be needed
- * if storage becomes almost completely full.
+ * Do a bulkfree scan on media related to the PFS.  This routine will
+ * flush all PFSs associated with the media before doing the bulkfree
+ * scan.
+ *
+ * This version can only run on non-clustered media.  A new ioctl or a
+ * temporary mount of @LOCAL will be needed to run on clustered media.
  */
 static
 int
@@ -1111,15 +1112,24 @@ hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data)
 		return error;
 
 	/*
-	 * sync the filesystem and obtain a snapshot of the synchronized
-	 * hmp volume header.  We treat the snapshot as an independent
-	 * entity.
-	 *
-	 * If ENOSPC occurs we should continue, because bulkfree is the only
-	 * way to fix that.  The flush will have flushed everything it could
-	 * and not left any modified chains.  Otherwise an error is fatal.
+	 * Sync all mounts related to the media
 	 */
-	error = hammer2_vfs_sync(pmp->mp, MNT_WAIT);
+	lockmgr(&hammer2_mntlk, LK_EXCLUSIVE);
+	TAILQ_FOREACH(pmp, &hammer2_pfslist, mntentry) {
+		int etmp;
+		int i;
+
+		for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
+			if (pmp->pfs_hmps[i] != hmp)
+				continue;
+			etmp = hammer2_vfs_sync_pmp(pmp, MNT_WAIT);
+			if (etmp && (error == 0 || error == ENOSPC))
+				error = etmp;
+			break;
+		}
+	}
+	lockmgr(&hammer2_mntlk, LK_RELEASE);
+
 	if (error && error != ENOSPC)
 		goto failed;
 
@@ -1129,7 +1139,7 @@ hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data)
 	 */
 	if (error) {
 		kprintf("hammer2: WARNING! Bulkfree forced to use live "
-			"topology\n");
+			"topology due to ENOSPC\n");
 		vchain = &hmp->vchain;
 		hammer2_chain_ref(vchain);
 		didsnap = 0;
@@ -1139,15 +1149,15 @@ hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data)
 	}
 
 	/*
-	 * Bulkfree on a snapshot does not need a transaction, which allows
-	 * it to run concurrently with any operation other than another
-	 * bulkfree.
+	 * Normal bulkfree operations do not require a transaction because
+	 * they operate on a snapshot, and so can run concurrently with
+	 * any operation except another bulkfree.
 	 *
 	 * If we are running bulkfree on the live topology we have to be
 	 * in a FLUSH transaction.
 	 */
 	if (didsnap == 0)
-		hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
+		hammer2_trans_init(hmp->spmp, HAMMER2_TRANS_ISFLUSH);
 
 	if (bfi) {
 		hammer2_thr_freeze(&hmp->bfthr);
@@ -1158,7 +1168,7 @@ hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data)
 		hammer2_chain_bulkdrop(vchain);
 	} else {
 		hammer2_chain_drop(vchain);
-		hammer2_trans_done(pmp, HAMMER2_TRANS_ISFLUSH |
+		hammer2_trans_done(hmp->spmp, HAMMER2_TRANS_ISFLUSH |
 					HAMMER2_TRANS_SIDEQ);
 	}
 	error = hammer2_error_to_errno(error);
