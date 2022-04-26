@@ -1518,9 +1518,10 @@ hammer2_inode_inode_count(const hammer2_inode_t *ip)
  * left intact with nlinks == 0;
  */
 int
-hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen)
+hammer2_inode_unlink_finisher(hammer2_inode_t *ip)
 {
 	hammer2_pfs_t *pmp;
+	struct vnode *vp;
 	int error;
 
 	pmp = ip->pmp;
@@ -1532,9 +1533,27 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen)
 	 */
 	if (ip->meta.nlinks == 1) {
 		atomic_set_int(&ip->flags, HAMMER2_INODE_ISUNLINKED);
-		if (isopen == 0)
-			goto killit;
+		hammer2_spin_ex(&ip->cluster_spin);
+
+		/*
+		 * If the inode is not referenced by the system vnode,
+		 * we can avoid unnecessary media updates by not changing
+		 * meta.nlinks to 0.  Just delete the infrastructure.
+		 */
+		if (ip->vp == NULL || VREFCNT(ip->vp) == 0) {
+			hammer2_spin_unex(&ip->cluster_spin);
+			atomic_set_int(&ip->flags, HAMMER2_INODE_DELETING);
+			hammer2_inode_delayed_sideq(ip);
+			return 0;
+		}
+		hammer2_spin_unex(&ip->cluster_spin);
 	}
+
+	/*
+	 * Decrement nlinks, silently zero out any negative
+	 * ref-count for now.  This can reduce nlinks to 0
+	 * if the file is still referenced by the system.
+	 */
 
 	hammer2_inode_modify(ip);
 	--ip->meta.nlinks;
@@ -1547,7 +1566,8 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen)
 	 * hardlink nlinks should have dropped to zero, warn and proceed
 	 * with the next step.
 	 */
-	if (ip->meta.nlinks) {
+	if (ip->meta.nlinks != 0) {
+		KKASSERT(ip->meta.nlinks > 0);
 		if ((ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0)
 			return 0;
 		kprintf("hammer2_inode_unlink: nlinks was not 0 (%jd)\n",
@@ -1555,13 +1575,12 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen)
 		return 0;
 	}
 
-	if (ip->vp)
-		hammer2_knote(ip->vp, NOTE_DELETE);
-
 	/*
-	 * nlinks is now an implied zero, delete the inode if not open.
-	 * We avoid unnecessary media updates by not bothering to actually
-	 * decrement nlinks for the 1->0 transition
+	 * nlinks is zero with the file possibly still open.  Because
+	 * ISUNLINKED is set, any non-NULL vp we pull off of ip->vp
+	 * will remain valid (though possibly entering a reclaimed state),
+	 * even if ip->vp becomes NULL concurrently.  see
+	 * hammer2_vop_reclaim()).
 	 *
 	 * Put the inode on the sideq to ensure that any disconnected chains
 	 * get properly flushed (so they can be freed).  Defer the deletion
@@ -1571,21 +1590,23 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen)
 	 * NOTE: killit can be reached without modifying the inode, so
 	 *	 make sure that it is on the SIDEQ.
 	 */
-	if (isopen == 0) {
-#if 0
-		hammer2_xop_destroy_t *xop;
-#endif
-
-killit:
+	hammer2_spin_ex(&ip->cluster_spin);
+	vp = ip->vp;
+	cpu_ccfence();
+	if (vp == NULL || VREFCNT(vp) == 0) {
+		hammer2_spin_unex(&ip->cluster_spin);
 		atomic_set_int(&ip->flags, HAMMER2_INODE_DELETING);
 		hammer2_inode_delayed_sideq(ip);
-#if 0
-		xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
-		hammer2_xop_start(&xop->head, &hammer2_inode_destroy_desc);
-		error = hammer2_xop_collect(&xop->head, 0);
-		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-#endif
+	} else {
+		hammer2_spin_unex(&ip->cluster_spin);
 	}
+
+	/*
+	 * This knote operation should be safe
+	 */
+	if (vp)
+		hammer2_knote(vp, NOTE_DELETE);
+
 	error = 0;	/* XXX */
 
 	return error;

@@ -133,6 +133,12 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	pmp = ip->pmp;
 
 	/*
+	 * NOTE! We do not attempt to flush chains here, flushing is
+	 *	 really fragile and could also deadlock.
+	 */
+	vclrisdirty(vp);
+
+	/*
 	 * The final close of a deleted file or directory marks it for
 	 * destruction.  The DELETED flag allows the flusher to shortcut
 	 * any modified blocks still unflushed (that is, just ignore them).
@@ -140,24 +146,20 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 * HAMMER2 usually does not try to optimize the freemap by returning
 	 * deleted blocks to it as it does not usually know how many snapshots
 	 * might be referencing portions of the file/dir.
+	 *
+	 * Modified inodes will already be on SIDEQ or SYNCQ.  However,
+	 * unlinked-but-open inodes may already have been synced and might
+	 * still require deletion-on-reclaim.  We must interlock ISUNLINKED
+	 * against hammer2_inode_unlink_finisher()'s test of ip->vp, but
+	 * we only have to deal with the sideq if DELETING is not already
+	 * set.
 	 */
+	hammer2_spin_ex(&ip->cluster_spin);
 	vp->v_data = NULL;
 	ip->vp = NULL;
 
-	/*
-	 * NOTE! We do not attempt to flush chains here, flushing is
-	 *	 really fragile and could also deadlock.
-	 */
-	vclrisdirty(vp);
-
-	/*
-	 * Modified inodes will already be on SIDEQ or SYNCQ.  However,
-	 * unlinked-but-open inodes may already have been synced and might
-	 * still require deletion-on-reclaim.
-	 */
-	if ((ip->flags & (HAMMER2_INODE_ISUNLINKED |
-			  HAMMER2_INODE_DELETING)) ==
-	    HAMMER2_INODE_ISUNLINKED) {
+	if (ip->flags & HAMMER2_INODE_ISUNLINKED) {
+		hammer2_spin_unex(&ip->cluster_spin);
 		hammer2_inode_lock(ip, 0);
 		if ((ip->flags & (HAMMER2_INODE_ISUNLINKED |
 				  HAMMER2_INODE_DELETING)) ==
@@ -166,6 +168,8 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 			hammer2_inode_delayed_sideq(ip);
 		}
 		hammer2_inode_unlock(ip);
+	} else {
+		hammer2_spin_unex(&ip->cluster_spin);
 	}
 
 	/*
@@ -1478,7 +1482,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	}
 	if (error) {
 		if (nip) {
-			hammer2_inode_unlink_finisher(nip, 0);
+			hammer2_inode_unlink_finisher(nip);
 			hammer2_inode_unlock(nip);
 			nip = NULL;
 		}
@@ -1691,7 +1695,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	}
 	if (error) {
 		if (nip) {
-			hammer2_inode_unlink_finisher(nip, 0);
+			hammer2_inode_unlink_finisher(nip);
 			hammer2_inode_unlock(nip);
 			nip = NULL;
 		}
@@ -1768,7 +1772,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	}
 	if (error) {
 		if (nip) {
-			hammer2_inode_unlink_finisher(nip, 0);
+			hammer2_inode_unlink_finisher(nip);
 			hammer2_inode_unlock(nip);
 			nip = NULL;
 		}
@@ -1848,7 +1852,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	}
 	if (error) {
 		if (nip) {
-			hammer2_inode_unlink_finisher(nip, 0);
+			hammer2_inode_unlink_finisher(nip);
 			hammer2_inode_unlock(nip);
 			nip = NULL;
 		}
@@ -1927,7 +1931,6 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	hammer2_inode_t *ip;
 	struct namecache *ncp;
 	int error;
-	int isopen;
 
 	dip = VTOI(ap->a_dvp);
 	if (dip->pmp->ronly)
@@ -1960,15 +1963,6 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	xop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
 	hammer2_xop_setname(&xop->head, ncp->nc_name, ncp->nc_nlen);
 
-	/*
-	 * The namecache entry is locked so nobody can use this namespace.
-	 * Calculate isopen to determine if this namespace has an open vp
-	 * associated with it and resolve the vp only if it does.
-	 *
-	 * We try to avoid resolving the vnode if nobody has it open, but
-	 * note that the test is via this namespace only.
-	 */
-	isopen = cache_isopen(ap->a_nch);
 	xop->isdir = 0;
 	xop->dopermanent = 0;
 	hammer2_xop_start(&xop->head, &hammer2_unlink_desc);
@@ -1995,7 +1989,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 					       "h2debug", hz*5);
 				}
 			}
-			hammer2_inode_unlink_finisher(ip, isopen);
+			hammer2_inode_unlink_finisher(ip);
 			hammer2_inode_depend(dip, ip); /* after modified */
 			hammer2_inode_unlock(ip);
 		}
@@ -2036,7 +2030,6 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	hammer2_inode_t *dip;
 	hammer2_inode_t *ip;
 	struct namecache *ncp;
-	int isopen;
 	int error;
 
 	dip = VTOI(ap->a_dvp);
@@ -2055,7 +2048,6 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 
 	ncp = ap->a_nch->ncp;
 	hammer2_xop_setname(&xop->head, ncp->nc_name, ncp->nc_nlen);
-	isopen = cache_isopen(ap->a_nch);
 	xop->isdir = 1;
 	xop->dopermanent = 0;
 	hammer2_xop_start(&xop->head, &hammer2_unlink_desc);
@@ -2072,7 +2064,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 		ip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (ip) {
-			hammer2_inode_unlink_finisher(ip, isopen);
+			hammer2_inode_unlink_finisher(ip);
 			hammer2_inode_depend(dip, ip);	/* after modified */
 			hammer2_inode_unlock(ip);
 		}
@@ -2278,10 +2270,7 @@ done2:
 	 * We must adjust nlinks on the original replace target if it exists.
 	 */
 	if (error == 0 && tip) {
-		int isopen;
-
-		isopen = cache_isopen(ap->a_tnch);
-		hammer2_inode_unlink_finisher(tip, isopen);
+		hammer2_inode_unlink_finisher(tip);
 	}
 
 	/*
