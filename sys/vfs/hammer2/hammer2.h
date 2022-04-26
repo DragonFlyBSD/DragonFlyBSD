@@ -1505,7 +1505,7 @@ int hammer2_inode_chain_ins(hammer2_inode_t *ip);
 int hammer2_inode_chain_des(hammer2_inode_t *ip);
 int hammer2_inode_chain_sync(hammer2_inode_t *ip);
 int hammer2_inode_chain_flush(hammer2_inode_t *ip, int flags);
-int hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen);
+int hammer2_inode_unlink_finisher(hammer2_inode_t *ip);
 int hammer2_dirent_create(hammer2_inode_t *dip, const char *name,
 			size_t name_len, hammer2_key_t inum, uint8_t type);
 
