@@ -1518,99 +1518,90 @@ hammer2_inode_inode_count(const hammer2_inode_t *ip)
  * left intact with nlinks == 0;
  */
 int
-hammer2_inode_unlink_finisher(hammer2_inode_t *ip)
+hammer2_inode_unlink_finisher(hammer2_inode_t *ip, struct vnode **vprecyclep)
 {
 	hammer2_pfs_t *pmp;
 	struct vnode *vp;
 	int error;
 
 	pmp = ip->pmp;
+	error = 0;
 
 	/*
-	 * Decrement nlinks.  If this is the last link and the file is
-	 * not open we can just delete the inode and not bother dropping
-	 * nlinks to 0 (avoiding unnecessary block updates).
+	 * Decrement nlinks.  Catch a bad nlinks count here too (e.g. 0 or
+	 * negative), and just assume a transition to 0.
 	 */
-	if (ip->meta.nlinks == 1) {
+	if ((int64_t)ip->meta.nlinks <= 1) {
 		atomic_set_int(&ip->flags, HAMMER2_INODE_ISUNLINKED);
-		hammer2_spin_ex(&ip->cluster_spin);
 
 		/*
-		 * If the inode is not referenced by the system vnode,
-		 * we can avoid unnecessary media updates by not changing
-		 * meta.nlinks to 0.  Just delete the infrastructure.
+		 * Scrap the vnode as quickly as possible.  The vp association
+		 * stays intact while we hold the inode locked.  However, vp
+		 * can be NULL here.
 		 */
-		if (ip->vp == NULL || VREFCNT(ip->vp) == 0) {
-			hammer2_spin_unex(&ip->cluster_spin);
-			atomic_set_int(&ip->flags, HAMMER2_INODE_DELETING);
-			hammer2_inode_delayed_sideq(ip);
+		vp = ip->vp;
+		cpu_ccfence();
+
+		/*
+		 * If no vp is associated there is no high-level state to
+		 * deal with and we can scrap the inode immediately.
+		 */
+		if (vp == NULL) {
+			if ((ip->flags & HAMMER2_INODE_DELETING) == 0) {
+				atomic_set_int(&ip->flags,
+					       HAMMER2_INODE_DELETING);
+				hammer2_inode_delayed_sideq(ip);
+			}
 			return 0;
 		}
-		hammer2_spin_unex(&ip->cluster_spin);
+
+		/*
+		 * Because INODE_ISUNLINKED is set with the inode lock
+		 * held, the vnode cannot be ripped up from under us.
+		 * There may still be refs so knote anyone waiting for
+		 * a delete notification.
+		 *
+		 * The vnode is not necessarily ref'd due to the unlinking
+		 * itself, so we have to defer handling to the end of the
+		 * VOP, which will then call hammer2_inode_vprecycle().
+		 */
+		vhold(vp);
+		*vprecyclep = vp;
 	}
 
 	/*
-	 * Decrement nlinks, silently zero out any negative
-	 * ref-count for now.  This can reduce nlinks to 0
-	 * if the file is still referenced by the system.
+	 * Adjust nlinks and retain the inode on the media for now
 	 */
-
 	hammer2_inode_modify(ip);
-	--ip->meta.nlinks;
-	if ((int64_t)ip->meta.nlinks < 0)
-		ip->meta.nlinks = 0;	/* safety */
+	if ((int64_t)ip->meta.nlinks > 1)
+		--ip->meta.nlinks;
+	else
+		ip->meta.nlinks = 0;
 
-	/*
-	 * If nlinks is not zero we are done.  However, this should only be
-	 * possible with a hardlink target.  If the inode is an embedded
-	 * hardlink nlinks should have dropped to zero, warn and proceed
-	 * with the next step.
-	 */
-	if (ip->meta.nlinks != 0) {
-		KKASSERT(ip->meta.nlinks > 0);
-		if ((ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0)
-			return 0;
-		kprintf("hammer2_inode_unlink: nlinks was not 0 (%jd)\n",
-			(intmax_t)ip->meta.nlinks);
-		return 0;
-	}
-
-	/*
-	 * nlinks is zero with the file possibly still open.  Because
-	 * ISUNLINKED is set, any non-NULL vp we pull off of ip->vp
-	 * will remain valid (though possibly entering a reclaimed state),
-	 * even if ip->vp becomes NULL concurrently.  see
-	 * hammer2_vop_reclaim()).
-	 *
-	 * Put the inode on the sideq to ensure that any disconnected chains
-	 * get properly flushed (so they can be freed).  Defer the deletion
-	 * to the sync code, doing it now will desynchronize the inode from
-	 * related directory entries (which is bad).
-	 *
-	 * NOTE: killit can be reached without modifying the inode, so
-	 *	 make sure that it is on the SIDEQ.
-	 */
-	hammer2_spin_ex(&ip->cluster_spin);
-	vp = ip->vp;
-	cpu_ccfence();
-	if (vp == NULL || VREFCNT(vp) == 0) {
-		hammer2_spin_unex(&ip->cluster_spin);
-		atomic_set_int(&ip->flags, HAMMER2_INODE_DELETING);
-		hammer2_inode_delayed_sideq(ip);
-	} else {
-		hammer2_spin_unex(&ip->cluster_spin);
-	}
-
-	/*
-	 * This knote operation should be safe
-	 */
-	if (vp)
-		hammer2_knote(vp, NOTE_DELETE);
-
-	error = 0;	/* XXX */
-
-	return error;
+	return 0;
 }
+
+/*
+ * Called at the end of a VOP that removes a file with a vnode that
+ * we want to try to dispose of quickly due to a file deletion.  If
+ * we don't do this, the vnode can hang around with 0 refs for a very
+ * long time and prevent reclamation of the underlying file and inode
+ * (inode remains on-media with nlinks == 0 until the vnode is recycled
+ * due to random system activity or a umount).
+ */
+void
+hammer2_inode_vprecycle(struct vnode *vp)
+{
+	if (vget(vp, LK_EXCLUSIVE) == 0) {
+		vfinalize(vp);
+		hammer2_knote(vp, NOTE_DELETE);
+		vdrop(vp);
+		vput(vp);
+	} else {
+		vdrop(vp);
+	}
+}
+
 
 /*
  * Mark an inode as being modified, meaning that the caller will modify

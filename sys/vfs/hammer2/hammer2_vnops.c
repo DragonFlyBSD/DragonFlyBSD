@@ -87,28 +87,40 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	}
 
 	/*
-	 * Check for deleted inodes and recycle immediately on the last
-	 * release.  Be sure to destroy any left-over buffer cache buffers
-	 * so we do not waste time trying to flush them.
-	 *
-	 * Note that deleting the file block chains under the inode chain
-	 * would just be a waste of energy, so don't do it.
-	 *
-	 * WARNING: nvtruncbuf() can only be safely called without the inode
-	 *	    lock held due to the way our write thread works.
+	 * Aquire the inode lock to interlock against vp updates via
+	 * the inode path and file deletions and such (which can be
+	 * namespace-only operations that might not hold the vnode).
 	 */
+	hammer2_inode_lock(ip, 0);
 	if (ip->flags & HAMMER2_INODE_ISUNLINKED) {
 		hammer2_key_t lbase;
 		int nblksize;
 
 		/*
-		 * Detect updates to the embedded data which may be
-		 * synchronized by the strategy code.  Simply mark the
-		 * inode modified so it gets picked up by our normal flush.
+		 * If the inode has been unlinked we can throw away all
+		 * buffers (dirty or not) and clean the file out.
+		 *
+		 * Because vrecycle() calls are not guaranteed, try to
+		 * dispose of the inode as much as possible right here.
 		 */
 		nblksize = hammer2_calc_logical(ip, 0, &lbase, NULL);
 		nvtruncbuf(vp, 0, nblksize, 0, 0);
+
+		/*
+		 * Delete the file on-media.
+		 */
+		if ((ip->flags & HAMMER2_INODE_DELETING) == 0) {
+			atomic_set_int(&ip->flags, HAMMER2_INODE_DELETING);
+			hammer2_inode_delayed_sideq(ip);
+		}
+		hammer2_inode_unlock(ip);
+
+		/*
+		 * Recycle immediately if possible
+		 */
 		vrecycle(vp);
+	} else {
+		hammer2_inode_unlock(ip);
 	}
 	return (0);
 }
@@ -127,9 +139,9 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 
 	vp = ap->a_vp;
 	ip = VTOI(vp);
-	if (ip == NULL) {
+	if (ip == NULL)
 		return(0);
-	}
+
 	pmp = ip->pmp;
 
 	/*
@@ -139,38 +151,26 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	vclrisdirty(vp);
 
 	/*
-	 * The final close of a deleted file or directory marks it for
-	 * destruction.  The DELETED flag allows the flusher to shortcut
-	 * any modified blocks still unflushed (that is, just ignore them).
-	 *
-	 * HAMMER2 usually does not try to optimize the freemap by returning
-	 * deleted blocks to it as it does not usually know how many snapshots
-	 * might be referencing portions of the file/dir.
-	 *
-	 * Modified inodes will already be on SIDEQ or SYNCQ.  However,
-	 * unlinked-but-open inodes may already have been synced and might
-	 * still require deletion-on-reclaim.  We must interlock ISUNLINKED
-	 * against hammer2_inode_unlink_finisher()'s test of ip->vp, but
-	 * we only have to deal with the sideq if DELETING is not already
-	 * set.
+	 * The inode lock is required to disconnect it.
 	 */
-	hammer2_spin_ex(&ip->cluster_spin);
+	hammer2_inode_lock(ip, 0);
 	vp->v_data = NULL;
 	ip->vp = NULL;
 
-	if (ip->flags & HAMMER2_INODE_ISUNLINKED) {
-		hammer2_spin_unex(&ip->cluster_spin);
-		hammer2_inode_lock(ip, 0);
-		if ((ip->flags & (HAMMER2_INODE_ISUNLINKED |
-				  HAMMER2_INODE_DELETING)) ==
-		    HAMMER2_INODE_ISUNLINKED) {
-			atomic_set_int(&ip->flags, HAMMER2_INODE_DELETING);
-			hammer2_inode_delayed_sideq(ip);
-		}
-		hammer2_inode_unlock(ip);
-	} else {
-		hammer2_spin_unex(&ip->cluster_spin);
+	/*
+	 * Delete the file on-media.  This should have been handled by the
+	 * inactivation.  The operation is likely still queued on the inode
+	 * though so only complain if the stars don't align.
+	 */
+	if ((ip->flags & (HAMMER2_INODE_ISUNLINKED | HAMMER2_INODE_DELETING)) ==
+	    HAMMER2_INODE_ISUNLINKED)
+	{
+		atomic_set_int(&ip->flags, HAMMER2_INODE_DELETING);
+		hammer2_inode_delayed_sideq(ip);
+		kprintf("hammer2: vp=%p ip=%p unlinked but not disposed\n",
+			vp, ip);
 	}
+	hammer2_inode_unlock(ip);
 
 	/*
 	 * Modified inodes will already be on SIDEQ or SYNCQ, no further
@@ -1482,7 +1482,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	}
 	if (error) {
 		if (nip) {
-			hammer2_inode_unlink_finisher(nip);
+			hammer2_inode_unlink_finisher(nip, NULL);
 			hammer2_inode_unlock(nip);
 			nip = NULL;
 		}
@@ -1695,7 +1695,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	}
 	if (error) {
 		if (nip) {
-			hammer2_inode_unlink_finisher(nip);
+			hammer2_inode_unlink_finisher(nip, NULL);
 			hammer2_inode_unlock(nip);
 			nip = NULL;
 		}
@@ -1772,7 +1772,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	}
 	if (error) {
 		if (nip) {
-			hammer2_inode_unlink_finisher(nip);
+			hammer2_inode_unlink_finisher(nip, NULL);
 			hammer2_inode_unlock(nip);
 			nip = NULL;
 		}
@@ -1852,7 +1852,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	}
 	if (error) {
 		if (nip) {
-			hammer2_inode_unlink_finisher(nip);
+			hammer2_inode_unlink_finisher(nip, NULL);
 			hammer2_inode_unlock(nip);
 			nip = NULL;
 		}
@@ -1929,6 +1929,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	hammer2_xop_unlink_t *xop;
 	hammer2_inode_t *dip;
 	hammer2_inode_t *ip;
+	struct vnode *vprecycle;
 	struct namecache *ncp;
 	int error;
 
@@ -1974,6 +1975,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	 */
 	error = hammer2_xop_collect(&xop->head, 0);
 	error = hammer2_error_to_errno(error);
+	vprecycle = NULL;
 
 	if (error == 0) {
 		ip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
@@ -1989,7 +1991,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 					       "h2debug", hz*5);
 				}
 			}
-			hammer2_inode_unlink_finisher(ip);
+			hammer2_inode_unlink_finisher(ip, &vprecycle);
 			hammer2_inode_depend(dip, ip); /* after modified */
 			hammer2_inode_unlock(ip);
 		}
@@ -2016,6 +2018,9 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 		cache_unlink(ap->a_nch);
 		hammer2_knote(ap->a_dvp, NOTE_WRITE);
 	}
+	if (vprecycle)
+		hammer2_inode_vprecycle(vprecycle);
+
 	return (error);
 }
 
@@ -2030,6 +2035,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	hammer2_inode_t *dip;
 	hammer2_inode_t *ip;
 	struct namecache *ncp;
+	struct vnode *vprecycle;
 	int error;
 
 	dip = VTOI(ap->a_dvp);
@@ -2059,12 +2065,13 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	 */
 	error = hammer2_xop_collect(&xop->head, 0);
 	error = hammer2_error_to_errno(error);
+	vprecycle = NULL;
 
 	if (error == 0) {
 		ip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (ip) {
-			hammer2_inode_unlink_finisher(ip);
+			hammer2_inode_unlink_finisher(ip, &vprecycle);
 			hammer2_inode_depend(dip, ip);	/* after modified */
 			hammer2_inode_unlock(ip);
 		}
@@ -2091,6 +2098,8 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 		cache_unlink(ap->a_nch);
 		hammer2_knote(ap->a_dvp, NOTE_WRITE | NOTE_LINK);
 	}
+	if (vprecycle)
+		hammer2_inode_vprecycle(vprecycle);
 	return (error);
 }
 
@@ -2107,6 +2116,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	hammer2_inode_t *tdip;	/* target directory */
 	hammer2_inode_t *ip;	/* file being renamed */
 	hammer2_inode_t *tip;	/* replaced target during rename or NULL */
+	struct vnode *vprecycle;
 	const uint8_t *fname;
 	size_t fname_len;
 	const uint8_t *tname;
@@ -2269,8 +2279,9 @@ done2:
 	 * If no error, the backend has replaced the target directory entry.
 	 * We must adjust nlinks on the original replace target if it exists.
 	 */
+	vprecycle = NULL;
 	if (error == 0 && tip) {
-		hammer2_inode_unlink_finisher(tip);
+		hammer2_inode_unlink_finisher(tip, &vprecycle);
 	}
 
 	/*
@@ -2328,6 +2339,8 @@ done2:
 		hammer2_knote(ap->a_tdvp, NOTE_WRITE);
 		hammer2_knote(fncp->nc_vp, NOTE_RENAME);
 	}
+	if (vprecycle)
+		hammer2_inode_vprecycle(vprecycle);
 
 	return (error);
 }
