@@ -446,6 +446,22 @@ vdrop(struct vnode *vp)
 }
 
 /*
+ * Set VREF_FINALIZE to request that the vnode be inactivated
+ * as soon as possible (on the 1->0 transition of its refs).
+ *
+ * Caller must have a ref on the vnode.
+ *
+ * This function has no effect if the vnode is already in termination
+ * processing.
+ */
+void
+vfinalize(struct vnode *vp)
+{
+	if ((vp->v_refcnt & VREF_MASK) > 0)
+		atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
+}
+
+/*
  * This function is called on the 1->0 transition (which is actually
  * 1->VREF_TERMINATE) when VREF_FINALIZE is set, forcing deactivation
  * of the vnode.

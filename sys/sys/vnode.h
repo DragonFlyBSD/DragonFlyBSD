@@ -569,6 +569,7 @@ void	vref_special (struct vnode *vp);
 void	vrele (struct vnode *vp);
 void	vsetflags (struct vnode *vp, int flags);
 void	vclrflags (struct vnode *vp, int flags);
+void	vfinalize (struct vnode *vp);
 
 /*#define DEBUG_VPUT*/
 #ifdef DEBUG_VPUT
