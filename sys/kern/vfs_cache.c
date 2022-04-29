@@ -175,6 +175,7 @@ struct pcpu_ncache {
 	long			vfscache_negs;
 	long			vfscache_count;
 	long			vfscache_leafs;
+	long			vfscache_unres;
 	long			numdefered;
 } __cachealign;
 
@@ -210,7 +211,11 @@ SYSCTL_INT(_debug, OID_AUTO, ncposflush, CTLFLAG_RW, &ncposflush, 0,
 
 __read_mostly static int ncnegfactor = 16;	/* ratio of negative entries */
 SYSCTL_INT(_debug, OID_AUTO, ncnegfactor, CTLFLAG_RW, &ncnegfactor, 0,
-    "Ratio of namecache negative entries");
+    "Ratio of negative namecache entries");
+
+__read_mostly static int ncposfactor = 16;    /* ratio of unres+leaf entries */
+SYSCTL_INT(_debug, OID_AUTO, ncposfactor, CTLFLAG_RW, &ncposfactor, 0,
+    "Ratio of unresolved leaf namecache entries");
 
 __read_mostly static int nclockwarn;	/* warn on locked entries in ticks */
 SYSCTL_INT(_debug, OID_AUTO, nclockwarn, CTLFLAG_RW, &nclockwarn, 0,
@@ -255,7 +260,10 @@ SYSCTL_LONG(_vfs_cache, OID_AUTO, numcache, CTLFLAG_RD, &vfscache_count, 0,
     "Number of namecaches entries");
 static long vfscache_leafs;
 SYSCTL_LONG(_vfs_cache, OID_AUTO, numleafs, CTLFLAG_RD, &vfscache_leafs, 0,
-    "Number of namecaches entries");
+    "Number of leaf namecaches entries");
+static long vfscache_unres;
+SYSCTL_LONG(_vfs_cache, OID_AUTO, numunres, CTLFLAG_RD, &vfscache_unres, 0,
+    "Number of unresolved leaf namecaches entries");
 static long	numdefered;
 SYSCTL_LONG(_debug, OID_AUTO, numdefered, CTLFLAG_RD, &numdefered, 0,
     "Number of cache entries allocated");
@@ -742,12 +750,25 @@ _cache_link_parent(struct namecache *ncp, struct namecache *par,
 	 */
 	TAILQ_INSERT_HEAD(&nchpp->list, ncp, nc_hash);
 	atomic_add_long(&pn->vfscache_count, 1);
-	if (TAILQ_EMPTY(&ncp->nc_list))
+
+	/*
+	 * ncp is a new leaf being added to the tree
+	 */
+	if (TAILQ_EMPTY(&ncp->nc_list)) {
 		atomic_add_long(&pn->vfscache_leafs, 1);
+		if (ncp->nc_flag & NCF_UNRESOLVED)
+			atomic_add_long(&pn->vfscache_unres, 1);
+	}
 
 	if (TAILQ_EMPTY(&par->nc_list)) {
+		/*
+		 * Parent was, but now is no longer a leaf
+		 */
 		TAILQ_INSERT_HEAD(&par->nc_list, ncp, nc_entry);
+		if (par->nc_flag & NCF_UNRESOLVED)
+			atomic_add_long(&pn->vfscache_unres, -1);
 		atomic_add_long(&pn->vfscache_leafs, -1);
+
 		/*
 		 * Any vp associated with an ncp which has children must
 		 * be held to prevent it from being recycled.
@@ -798,11 +819,23 @@ _cache_unlink_parent(struct namecache *ncp)
 		TAILQ_REMOVE(&ncp->nc_head->list, ncp, nc_hash);
 		TAILQ_REMOVE(&par->nc_list, ncp, nc_entry);
 		atomic_add_long(&pn->vfscache_count, -1);
-		if (TAILQ_EMPTY(&ncp->nc_list))
-			atomic_add_long(&pn->vfscache_leafs, -1);
 
+		/*
+		 * Removing leaf from tree
+		 */
+		if (TAILQ_EMPTY(&ncp->nc_list)) {
+			if (ncp->nc_flag & NCF_UNRESOLVED)
+				atomic_add_long(&pn->vfscache_unres, -1);
+			atomic_add_long(&pn->vfscache_leafs, -1);
+		}
+
+		/*
+		 * Parent is now a leaf?
+		 */
 		dropvp = NULL;
 		if (TAILQ_EMPTY(&par->nc_list)) {
+			if (par->nc_flag & NCF_UNRESOLVED)
+				atomic_add_long(&pn->vfscache_unres, 1);
 			atomic_add_long(&pn->vfscache_leafs, 1);
 			if (par->nc_vp)
 				dropvp = par->nc_vp;
@@ -1220,6 +1253,8 @@ static
 void
 _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 {
+	struct pcpu_ncache *pn = &pcpu_ncache[mycpu->gd_cpuid];
+
 	KKASSERT((ncp->nc_flag & NCF_UNRESOLVED) &&
 		 (_cache_lockstatus(ncp) == LK_EXCLUSIVE) &&
 		 ncp->nc_vp == NULL);
@@ -1272,8 +1307,6 @@ _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 		 * has changed.  Used by devfs, could also be used by
 		 * other remote FSs.
 		 */
-		struct pcpu_ncache *pn = &pcpu_ncache[mycpu->gd_cpuid];
-
 		ncp->nc_vp = NULL;
 		ncp->nc_negcpu = mycpu->gd_cpuid;
 		spin_lock(&pn->neg_spin);
@@ -1287,6 +1320,13 @@ _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 		if (mp)
 			VFS_NCPGEN_SET(mp, ncp);
 	}
+
+	/*
+	 * Previously unresolved leaf is now resolved.
+	 */
+	if (TAILQ_EMPTY(&ncp->nc_list))
+		atomic_add_long(&pn->vfscache_unres, -1);
+
 	ncp->nc_flag &= ~(NCF_UNRESOLVED | NCF_DEFEREDZAP);
 }
 
@@ -1330,6 +1370,16 @@ _cache_setunresolved(struct namecache *ncp)
 	struct vnode *vp;
 
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
+		struct pcpu_ncache *pn;
+
+		/*
+		 * Is a resolbed leaf now becoming unresolved?
+		 */
+		if (TAILQ_EMPTY(&ncp->nc_list)) {
+			pn = &pcpu_ncache[mycpu->gd_cpuid];
+			atomic_add_long(&pn->vfscache_unres, 1);
+		}
+
 		ncp->nc_flag |= NCF_UNRESOLVED;
 		ncp->nc_timeout = 0;
 		ncp->nc_error = ENOTCONN;
@@ -1350,8 +1400,6 @@ _cache_setunresolved(struct namecache *ncp)
 				vdrop(vp);
 			vdrop(vp);
 		} else {
-			struct pcpu_ncache *pn;
-
 			pn = &pcpu_ncache[ncp->nc_negcpu];
 
 			atomic_add_long(&pn->vfscache_negs, -1);
@@ -2674,14 +2722,29 @@ again:
 	if (par) {
 		struct pcpu_ncache *pn = &pcpu_ncache[mycpu->gd_cpuid];
 
+		/*
+		 * Remove and destroy ncp, one less ncp (vfscache_count)
+		 */
 		KKASSERT(nchpp == ncp->nc_head);
 		TAILQ_REMOVE(&ncp->nc_head->list, ncp, nc_hash);
 		TAILQ_REMOVE(&par->nc_list, ncp, nc_entry);
 		atomic_add_long(&pn->vfscache_count, -1);
-		if (TAILQ_EMPTY(&ncp->nc_list))
-			atomic_add_long(&pn->vfscache_leafs, -1);
 
+		/*
+		 * Removing leaf from tree?
+		 */
+		if (TAILQ_EMPTY(&ncp->nc_list)) {
+			if (ncp->nc_flag & NCF_UNRESOLVED)
+				atomic_add_long(&pn->vfscache_unres, -1);
+			atomic_add_long(&pn->vfscache_leafs, -1);
+		}
+
+		/*
+		 * Is parent now a leaf?
+		 */
 		if (TAILQ_EMPTY(&par->nc_list)) {
+			if (par->nc_flag & NCF_UNRESOLVED)
+				atomic_add_long(&pn->vfscache_unres, 1);
 			atomic_add_long(&pn->vfscache_leafs, 1);
 			if (par->nc_vp)
 				dropvp = par->nc_vp;
@@ -2750,13 +2813,16 @@ typedef enum { CHI_LOW, CHI_HIGH } cache_hs_t;
 
 static cache_hs_t neg_cache_hysteresis_state[2] = { CHI_LOW, CHI_LOW };
 static cache_hs_t pos_cache_hysteresis_state[2] = { CHI_LOW, CHI_LOW };
+static cache_hs_t exc_cache_hysteresis_state[2] = { CHI_LOW, CHI_LOW };
 
 void
 cache_hysteresis(int critpath)
 {
 	long poslimit;
+	long exclimit;
 	long neglimit = maxvnodes / ncnegfactor;
-	long xnumcache = vfscache_leafs;
+	long xnumunres;
+	long xnumleafs;
 
 	if (critpath == 0)
 		neglimit = neglimit * 8 / 10;
@@ -2793,38 +2859,75 @@ cache_hysteresis(int critpath)
 	}
 
 	/*
-	 * Don't cache too many positive hits.  We use hysteresis to reduce
-	 * the impact on the critical path.
-	 *
-	 * Excessive positive hits can accumulate due to large numbers of
-	 * hardlinks (the vnode cache will not prevent hl ncps from growing
-	 * into infinity).
+	 * Don't cache too many unresolved elements.  We use hysteresis to
+	 * reduce the impact on the critical path.
 	 */
 	if ((poslimit = ncposlimit) == 0)
-		poslimit = maxvnodes * 2;
+		poslimit = maxvnodes / ncposfactor;
 	if (critpath == 0)
 		poslimit = poslimit * 8 / 10;
 
+	/*
+	 * Number of unresolved leaf elements in the namecache.  These
+	 * can build-up for various reasons and may have to be disposed
+	 * of to allow the inactive list to be cleaned out by vnlru_proc()
+	 */
+	xnumunres = vfscache_unres;
+
 	switch(pos_cache_hysteresis_state[critpath]) {
 	case CHI_LOW:
-		if (xnumcache > poslimit && xnumcache > MINPOS) {
+		if (xnumunres > poslimit && xnumunres > MINPOS) {
 			if (critpath)
 				_cache_cleanpos(ncposflush);
 			else
 				_cache_cleanpos(ncposflush +
-						xnumcache - poslimit);
+						xnumunres - poslimit);
 			pos_cache_hysteresis_state[critpath] = CHI_HIGH;
 		}
 		break;
 	case CHI_HIGH:
-		if (xnumcache > poslimit * 5 / 6 && xnumcache > MINPOS) {
+		if (xnumunres > poslimit * 5 / 6 && xnumunres > MINPOS) {
 			if (critpath)
 				_cache_cleanpos(ncposflush);
 			else
 				_cache_cleanpos(ncposflush +
-						xnumcache - poslimit * 5 / 6);
+						xnumunres - poslimit * 5 / 6);
 		} else {
 			pos_cache_hysteresis_state[critpath] = CHI_LOW;
+		}
+		break;
+	}
+
+	/*
+	 * Excessive positive hits can accumulate due to large numbers of
+	 * hardlinks (the vnode cache will not prevent ncps representing
+	 * hardlinks from growing into infinity).
+	 */
+	exclimit = maxvnodes * 2;
+	if (critpath == 0)
+		exclimit = exclimit * 8 / 10;
+	xnumleafs = vfscache_leafs;
+
+	switch(exc_cache_hysteresis_state[critpath]) {
+	case CHI_LOW:
+		if (xnumleafs > exclimit && xnumleafs > MINPOS) {
+			if (critpath)
+				_cache_cleanpos(ncposflush);
+			else
+				_cache_cleanpos(ncposflush +
+						xnumleafs - exclimit);
+			exc_cache_hysteresis_state[critpath] = CHI_HIGH;
+		}
+		break;
+	case CHI_HIGH:
+		if (xnumleafs > exclimit * 5 / 6 && xnumleafs > MINPOS) {
+			if (critpath)
+				_cache_cleanpos(ncposflush);
+			else
+				_cache_cleanpos(ncposflush +
+						xnumleafs - exclimit * 5 / 6);
+		} else {
+			exc_cache_hysteresis_state[critpath] = CHI_LOW;
 		}
 		break;
 	}
@@ -3031,7 +3134,8 @@ restart:
 			if (rep_ncp->nc_parent == par_nch->ncp &&
 			    rep_ncp->nc_nlen == nlc->nlc_namelen &&
 			    (rep_ncp->nc_flag & NCF_DESTROYED) &&
-			    rep_ncp->nc_refs == 2) {
+			    rep_ncp->nc_refs == 2)
+			{
 				/*
 				 * Update nc_name.
 				 */
@@ -3204,7 +3308,8 @@ cache_nlookup_maybe_shared(struct nchandle *par_nch,
 					 ncp->nc_nlen) == 0 &&
 				    (ncp->nc_flag & NCF_DESTROYED) == 0 &&
 				    (ncp->nc_flag & NCF_UNRESOLVED) == 0 &&
-				    _cache_auto_unresolve_test(mp, ncp) == 0) {
+				    _cache_auto_unresolve_test(mp, ncp) == 0)
+				{
 					goto found;
 				}
 				_cache_unlock(ncp);
@@ -4289,6 +4394,8 @@ _cache_cleanneg(long count)
 
 /*
  * Clean out positive cache entries when too many have accumulated.
+ * Only leafs are cleaned out.  LRU order is maintained and we rove
+ * available cpus.
  */
 static void
 _cache_cleanpos(long count)
@@ -4441,11 +4548,19 @@ nchinit(void)
 
 /*
  * Called from start_init() to bootstrap the root filesystem.  Returns
- * a referenced, unlocked namecache record.
+ * a referenced, unlocked namecache record to serve as a root or the
+ * root of the system.
+ *
+ * Adjust our namecache counts
  */
 void
 cache_allocroot(struct nchandle *nch, struct mount *mp, struct vnode *vp)
 {
+	struct pcpu_ncache *pn = &pcpu_ncache[mycpu->gd_cpuid];
+
+	atomic_add_long(&pn->vfscache_leafs, 1);
+	atomic_add_long(&pn->vfscache_unres, 1);
+
 	nch->ncp = cache_alloc(0);
 	nch->mount = mp;
 	_cache_mntref(mp);
@@ -4827,6 +4942,10 @@ vfscache_rollup_cpu(struct globaldata *gd)
 	if (pn->vfscache_leafs) {
 		count = atomic_swap_long(&pn->vfscache_leafs, 0);
 		atomic_add_long(&vfscache_leafs, count);
+	}
+	if (pn->vfscache_unres) {
+		count = atomic_swap_long(&pn->vfscache_unres, 0);
+		atomic_add_long(&vfscache_unres, count);
 	}
 	if (pn->vfscache_negs) {
 		count = atomic_swap_long(&pn->vfscache_negs, 0);

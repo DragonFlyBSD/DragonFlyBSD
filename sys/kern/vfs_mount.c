@@ -566,6 +566,12 @@ vnlru_proc(void)
 			tsleep(vnlruthread, 0, "vlruwt", hz);
 			continue;
 		}
+
+		/*
+		 * Do not allow this thread to become cpu-bound if something
+		 * goes wrong.
+		 */
+		tsleep(vnlruthread, 0, "vlruwt", 1);
 	}
 }
 
