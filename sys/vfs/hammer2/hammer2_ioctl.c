@@ -672,7 +672,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		hammer2_inode_drop(nip);
 		/* nip is dead */
 
-		/* 
+		/*
 		 * We still have a ref on the chain, relock and associate
 		 * with an appropriate PFS.
 		 */
@@ -776,16 +776,16 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	hammer2_inode_unlock(dip);
 
 #if 0
-        if (error == 0) {
-                ip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
-                hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-                if (ip) {
-                        hammer2_inode_unlink_finisher(ip, 0);
-                        hammer2_inode_unlock(ip);
-                }
-        } else {
-                hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-        }
+	if (error == 0) {
+	        ip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
+	        hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+	        if (ip) {
+	                hammer2_inode_unlink_finisher(ip, NULL);
+	                hammer2_inode_unlock(ip);
+	        }
+	} else {
+	        hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+	}
 #endif
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 
