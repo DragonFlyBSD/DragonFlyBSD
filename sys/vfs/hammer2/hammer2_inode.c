@@ -1565,8 +1565,10 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, struct vnode **vprecyclep)
 		 * itself, so we have to defer handling to the end of the
 		 * VOP, which will then call hammer2_inode_vprecycle().
 		 */
-		vhold(vp);
-		*vprecyclep = vp;
+		if (vprecyclep) {
+			vhold(vp);
+			*vprecyclep = vp;
+		}
 	}
 
 	/*

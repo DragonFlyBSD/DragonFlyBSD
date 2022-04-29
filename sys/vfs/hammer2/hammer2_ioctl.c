@@ -780,7 +780,7 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	        ip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
 	        hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	        if (ip) {
-	                hammer2_inode_unlink_finisher(ip, 0);
+	                hammer2_inode_unlink_finisher(ip, NULL);
 	                hammer2_inode_unlock(ip);
 	        }
 	} else {
