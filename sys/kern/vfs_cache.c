@@ -795,63 +795,60 @@ _cache_link_parent(struct namecache *ncp, struct namecache *par,
  * ncp must be locked, which means that there won't be any nc_parent
  * removal races.  This routine will acquire a temporary lock on
  * the parent as well as the appropriate hash chain.
+ *
+ * par must be locked and will remain locked on return.
+ *
+ * nhcpp must be spin-locked.  This routine eats the spin-lock.
  */
-static void
-_cache_unlink_parent(struct namecache *ncp)
+static __inline void
+_cache_unlink_parent(struct namecache *par, struct namecache *ncp,
+		     struct nchash_head *nchpp)
 {
 	struct pcpu_ncache *pn = &pcpu_ncache[mycpu->gd_cpuid];
-	struct namecache *par;
 	struct vnode *dropvp;
-	struct nchash_head *nchpp;
 
-	if ((par = ncp->nc_parent) != NULL) {
-		cpu_ccfence();
-		KKASSERT(ncp->nc_parent == par);
+	KKASSERT(ncp->nc_parent == par);
+	cpu_ccfence();
 
-		/* don't add a ref, we drop the nchpp ref later */
-		_cache_lock(par);
-		nchpp = ncp->nc_head;
-		spin_lock(&nchpp->spin);
+	/* don't add a ref, we drop the nchpp ref later */
 
-		/*
-		 * Remove from hash table and parent, adjust accounting
-		 */
-		TAILQ_REMOVE(&ncp->nc_head->list, ncp, nc_hash);
-		TAILQ_REMOVE(&par->nc_list, ncp, nc_entry);
-		atomic_add_long(&pn->vfscache_count, -1);
+	/*
+	 * Remove from hash table and parent, adjust accounting
+	 */
+	TAILQ_REMOVE(&ncp->nc_head->list, ncp, nc_hash);
+	TAILQ_REMOVE(&par->nc_list, ncp, nc_entry);
+	atomic_add_long(&pn->vfscache_count, -1);
 
-		/*
-		 * Removing leaf from tree
-		 */
-		if (TAILQ_EMPTY(&ncp->nc_list)) {
-			if (ncp->nc_flag & NCF_UNRESOLVED)
-				atomic_add_long(&pn->vfscache_unres, -1);
-			atomic_add_long(&pn->vfscache_leafs, -1);
-		}
-
-		/*
-		 * Parent is now a leaf?
-		 */
-		dropvp = NULL;
-		if (TAILQ_EMPTY(&par->nc_list)) {
-			if (par->nc_flag & NCF_UNRESOLVED)
-				atomic_add_long(&pn->vfscache_unres, 1);
-			atomic_add_long(&pn->vfscache_leafs, 1);
-			if (par->nc_vp)
-				dropvp = par->nc_vp;
-		}
-		ncp->nc_parent = NULL;
-		ncp->nc_head = NULL;
-		spin_unlock(&nchpp->spin);
-		_cache_unlock(par);
-		_cache_drop(par);	/* drop nc_parent ref */
-
-		/*
-		 * We can only safely vdrop with no spinlocks held.
-		 */
-		if (dropvp)
-			vdrop(dropvp);
+	/*
+	 * Removing leaf from tree
+	 */
+	if (TAILQ_EMPTY(&ncp->nc_list)) {
+		if (ncp->nc_flag & NCF_UNRESOLVED)
+			atomic_add_long(&pn->vfscache_unres, -1);
+		atomic_add_long(&pn->vfscache_leafs, -1);
 	}
+
+	/*
+	 * Parent is now a leaf?
+	 */
+	dropvp = NULL;
+	if (TAILQ_EMPTY(&par->nc_list)) {
+		if (par->nc_flag & NCF_UNRESOLVED)
+			atomic_add_long(&pn->vfscache_unres, 1);
+		atomic_add_long(&pn->vfscache_leafs, 1);
+		if (par->nc_vp)
+			dropvp = par->nc_vp;
+	}
+	ncp->nc_parent = NULL;
+	ncp->nc_head = NULL;
+	spin_unlock(&nchpp->spin);
+	_cache_drop(par);	/* drop nc_parent ref from ncp */
+
+	/*
+	 * We can only safely vdrop with no spinlocks held.
+	 */
+	if (dropvp)
+		vdrop(dropvp);
 }
 
 /*
@@ -1809,6 +1806,108 @@ done:
 }
 
 /*
+ * Attempt to quickly invalidate the vnode's namecache entry.  This function
+ * will also dive the ncp and free its children but only if they are trivial.
+ * All locks are non-blocking and the function will fail if required locks
+ * cannot be obtained.
+ *
+ * We want this sort of function to be able to guarantee progress when vnlru
+ * wants to recycle a vnode.  Directories could otherwise get stuck and not
+ * be able to recycle due to destroyed or unresolved children in the
+ * namecache.
+ */
+void
+cache_inval_vp_quick(struct vnode *vp)
+{
+        struct namecache *ncp;
+        struct namecache *kid;
+
+        spin_lock(&vp->v_spin);
+        while ((ncp = TAILQ_FIRST(&vp->v_namecache)) != NULL) {
+                _cache_hold(ncp);
+                spin_unlock(&vp->v_spin);
+                if (_cache_lock_nonblock(ncp)) {
+                        _cache_drop(ncp);
+			return;
+                }
+
+		/*
+		 * Try to trivially destroy any children.
+		 */
+		while ((kid = TAILQ_FIRST(&ncp->nc_list)) != NULL) {
+			struct nchash_head *nchpp;
+
+			/*
+			 * Early test without the lock
+			 */
+			if (TAILQ_FIRST(&kid->nc_list) ||
+			    kid->nc_vp ||
+			    kid->nc_refs != 1)
+			{
+				_cache_put(ncp);
+				return;
+			}
+
+			_cache_hold(kid);
+			if (_cache_lock_nonblock(kid)) {
+				_cache_drop(kid);
+				_cache_put(ncp);
+				return;
+			}
+
+			/*
+			 * A destruction/free test requires the parent,
+			 * the child, and the hash table to be locked.
+			 */
+			nchpp = kid->nc_head;
+			spin_lock(&nchpp->spin);
+
+			/*
+			 * Give up if the child isn't trivial.
+			 */
+			if (kid->nc_parent != ncp ||
+			    kid->nc_vp ||
+			    kid->nc_refs != 2 ||
+			    TAILQ_FIRST(&kid->nc_list))
+			{
+				spin_unlock(&nchpp->spin);
+				_cache_put(kid);
+				_cache_put(ncp);
+				return;
+			}
+
+			/*
+			 * Kaboom (eats nchpp)
+			 *
+			 * Call eats nhcpp spin-lock
+			 */
+			_cache_unlink_parent(ncp, kid, nchpp);
+
+			/* _cache_unlock(kid) not required */
+			kid->nc_refs = -1;      /* safety */
+			if (kid->nc_name)
+				kfree(kid->nc_name, M_VFSCACHEAUX);
+			kfree_obj(kid, M_VFSCACHE);
+		}
+
+		/*
+		 * Success, disassociate and release the ncp.  Do not
+		 * try to zap it here.
+		 *
+		 * NOTE: Releasing the ncp here leaves it in the tree,
+		 *	 but since we have disassociated the vnode this
+		 *	 ncp entry becomes 'trivial' and successive calls
+		 *	 to cache_inval_vp_quick() will be able to continue
+		 *	 to make progress.
+		 */
+		_cache_setunresolved(ncp);
+                _cache_put(ncp);
+                spin_lock(&vp->v_spin);
+        }
+        spin_unlock(&vp->v_spin);
+}
+
+/*
  * Clears the universal directory search 'ok' flag.  This flag allows
  * nlookup() to bypass normal vnode checks.  This flag is a cached flag
  * so clearing it simply forces revalidation.
@@ -1842,7 +1941,7 @@ cache_rename(struct nchandle *fnch, struct nchandle *tnch)
 {
 	struct namecache *fncp = fnch->ncp;
 	struct namecache *tncp = tnch->ncp;
-	struct namecache *tncp_par;
+	struct namecache *par;
 	struct nchash_head *nchpp;
 	u_int32_t hash;
 	char *oname;
@@ -1861,25 +1960,36 @@ cache_rename(struct nchandle *fnch, struct nchandle *tnch)
 	/*
 	 * Rename fncp (unlink)
 	 */
-	_cache_unlink_parent(fncp);
+	if (fncp->nc_parent) {
+		par = fncp->nc_parent;
+		_cache_hold(par);
+		_cache_lock(par);
+		nchpp = fncp->nc_head;
+		spin_lock(&nchpp->spin);
+		_cache_unlink_parent(par, fncp, nchpp); /* eats nchpp */
+		_cache_put(par);
+	} else {
+		par = NULL;
+		nchpp = NULL;
+	}
 	oname = fncp->nc_name;
 	fncp->nc_name = nname;
 	fncp->nc_nlen = tncp->nc_nlen;
 	if (oname)
 		kfree(oname, M_VFSCACHEAUX);
 
-	tncp_par = tncp->nc_parent;
-	KKASSERT(tncp_par->nc_lock.lk_lockholder == curthread);
+	par = tncp->nc_parent;
+	KKASSERT(par->nc_lock.lk_lockholder == curthread);
 
 	/*
 	 * Rename fncp (relink)
 	 */
 	hash = fnv_32_buf(fncp->nc_name, fncp->nc_nlen, FNV1_32_INIT);
-	hash = fnv_32_buf(&tncp_par, sizeof(tncp_par), hash);
+	hash = fnv_32_buf(&par, sizeof(par), hash);
 	nchpp = NCHHASH(hash);
 
 	spin_lock(&nchpp->spin);
-	_cache_link_parent(fncp, tncp_par, nchpp);
+	_cache_link_parent(fncp, par, nchpp);
 	spin_unlock(&nchpp->spin);
 
 	/*
@@ -2627,7 +2737,6 @@ static int
 cache_zap(struct namecache *ncp)
 {
 	struct namecache *par;
-	struct vnode *dropvp;
 	struct nchash_head *nchpp;
 	int refcmp;
 	int nonblock = 1;	/* XXX cleanup */
@@ -2718,42 +2827,11 @@ again:
 	 * drop a ref on the parent's vp if the parent's list becomes
 	 * empty.
 	 */
-	dropvp = NULL;
 	if (par) {
-		struct pcpu_ncache *pn = &pcpu_ncache[mycpu->gd_cpuid];
-
-		/*
-		 * Remove and destroy ncp, one less ncp (vfscache_count)
-		 */
 		KKASSERT(nchpp == ncp->nc_head);
-		TAILQ_REMOVE(&ncp->nc_head->list, ncp, nc_hash);
-		TAILQ_REMOVE(&par->nc_list, ncp, nc_entry);
-		atomic_add_long(&pn->vfscache_count, -1);
-
-		/*
-		 * Removing leaf from tree?
-		 */
-		if (TAILQ_EMPTY(&ncp->nc_list)) {
-			if (ncp->nc_flag & NCF_UNRESOLVED)
-				atomic_add_long(&pn->vfscache_unres, -1);
-			atomic_add_long(&pn->vfscache_leafs, -1);
-		}
-
-		/*
-		 * Is parent now a leaf?
-		 */
-		if (TAILQ_EMPTY(&par->nc_list)) {
-			if (par->nc_flag & NCF_UNRESOLVED)
-				atomic_add_long(&pn->vfscache_unres, 1);
-			atomic_add_long(&pn->vfscache_leafs, 1);
-			if (par->nc_vp)
-				dropvp = par->nc_vp;
-		}
-		ncp->nc_parent = NULL;
-		ncp->nc_head = NULL;
-		spin_unlock(&nchpp->spin);
-		_cache_drop(par);	/* removal of ncp from par->nc_list */
+		_cache_unlink_parent(par, ncp, nchpp); /* eats nhcpp */
 		/*_cache_unlock(par);*/
+		/* &nchpp->spin is unlocked by call */
 	} else {
 		KKASSERT(ncp->nc_head == NULL);
 	}
@@ -2772,12 +2850,6 @@ again:
 		kfree(ncp->nc_name, M_VFSCACHEAUX);
 	kfree_obj(ncp, M_VFSCACHE);
 	res = 1;
-
-	/*
-	 * Delayed drop (we had to release our spinlocks)
-	 */
-	if (dropvp)
-		vdrop(dropvp);
 
 	/*
 	 * Loop up if we can recursively clean out the parent.

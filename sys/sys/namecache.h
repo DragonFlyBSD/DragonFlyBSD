@@ -205,6 +205,7 @@ void	cache_unmounting(struct mount *mp);
 int	cache_inval(struct nchandle *nch, int flags);
 int	cache_inval_vp(struct vnode *vp, int flags);
 int	cache_inval_vp_nonblock(struct vnode *vp);
+void	cache_inval_vp_quick(struct vnode *vp);
 void	cache_inval_wxok(struct vnode *vp);
 void	vfs_cache_setroot(struct vnode *vp, struct nchandle *nch);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004,2013-2017 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2004,2013-2022 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -105,6 +105,14 @@ SYSCTL_INT(_debug, OID_AUTO, inactivevnodes, CTLFLAG_RD,
 static int batchfreevnodes = 5;
 SYSCTL_INT(_debug, OID_AUTO, batchfreevnodes, CTLFLAG_RW,
 	&batchfreevnodes, 0, "Number of vnodes to free at once");
+
+static long auxrecovervnodes1;
+SYSCTL_INT(_debug, OID_AUTO, auxrecovervnodes1, CTLFLAG_RW,
+        &auxrecovervnodes1, 0, "vnlru auxillary vnodes recovered");
+static long auxrecovervnodes2;
+SYSCTL_INT(_debug, OID_AUTO, auxrecovervnodes2, CTLFLAG_RW,
+        &auxrecovervnodes2, 0, "vnlru auxillary vnodes recovered");
+
 #ifdef TRACKVNODE
 static u_long trackvnode;
 SYSCTL_ULONG(_debug, OID_AUTO, trackvnode, CTLFLAG_RW,
@@ -780,11 +788,14 @@ cleanfreevnode(int maxcount)
 	int trigger = (long)vmstats.v_page_count / (activevnodes * 2 + 1);
 	int ri;
 	int cpu_count;
+	int cachedvnodes;
 
 	/*
-	 * Try to deactivate some vnodes cached on the active list.
+	 * Try to deactivate some vnodes cached on the active list.  We
+	 * generally want a 50-50 balance active vs inactive.
 	 */
-	if (countcachedvnodes() < inactivevnodes)
+	cachedvnodes = countcachedvnodes();
+	if (cachedvnodes < inactivevnodes)
 		goto skip;
 
 	ri = vnode_list_hash[mycpu->gd_cpuid].deac_rover + 1;
@@ -807,6 +818,10 @@ cleanfreevnode(int maxcount)
 			spin_unlock(&vi->spin);
 			continue;
 		}
+
+		/*
+		 * Don't try to deactivate if someone has the vp referenced.
+		 */
 		if ((vp->v_refcnt & VREF_MASK) != 0) {
 			spin_unlock(&vi->spin);
 			vp->v_act += VACT_INC;
@@ -816,13 +831,17 @@ cleanfreevnode(int maxcount)
 		}
 
 		/*
-		 * decrement by less if the vnode's object has a lot of
-		 * VM pages.  XXX possible SMP races.
+		 * Calculate the deactivation weight.  Reduce v_act less
+		 * if the vnode's object has a lot of VM pages.
+		 *
+		 * XXX obj race
 		 */
 		if (vp->v_act > 0) {
 			vm_object_t obj;
+
 			if ((obj = vp->v_object) != NULL &&
-			    obj->resident_page_count >= trigger) {
+			    obj->resident_page_count >= trigger)
+			{
 				vp->v_act -= 1;
 			} else {
 				vp->v_act -= VACT_INC;
@@ -834,7 +853,39 @@ cleanfreevnode(int maxcount)
 		}
 
 		/*
-		 * Try to deactivate the vnode.
+		 * If v_auxrefs is not the expected value the vnode might
+		 * reside in the namecache topology on an internal node and
+		 * not at a leaf.  v_auxrefs can be wrong for other reasons,
+		 * but this is the most likely.
+		 *
+		 * Such vnodes will not be recycled by vnlru later on in
+		 * its inactive scan, so try to make the vnode presentable
+		 * and only move it to the inactive queue if we can.
+		 *
+		 * On success, the vnode is disconnected from the namecache
+		 * topology entirely, making vnodes above it in the topology
+		 * recycleable.  This will allow the active scan to continue
+		 * to make progress in balancing the active and inactive
+		 * lists.
+		 */
+		if (vp->v_auxrefs != vp->v_namecache_count) {
+			if (vx_get_nonblock(vp) == 0) {
+				spin_unlock(&vi->spin);
+				if ((vp->v_refcnt & VREF_MASK) == 1)
+					cache_inval_vp_quick(vp);
+				if (vp->v_auxrefs == vp->v_namecache_count)
+					++auxrecovervnodes1;
+				vx_put(vp);
+			} else {
+				spin_unlock(&vi->spin);
+			}
+			continue;
+		}
+
+		/*
+		 * Try to deactivate the vnode.  It is ok if v_auxrefs
+		 * races every once in a while, we just don't want an
+		 * excess of unreclaimable vnodes on the inactive list.
 		 */
 		if ((atomic_fetchadd_int(&vp->v_refcnt, 1) & VREF_MASK) == 0)
 			atomic_add_int(&mycpu->gd_cachedvnodes, -1);
@@ -893,6 +944,19 @@ skip:
 		if ((u_long)vp == trackvnode)
 			kprintf("cleanfreevnode %p %08x\n", vp, vp->v_flag);
 #endif
+
+		/*
+		 * The active scan already did this, but some leakage can
+		 * happen.  Don't let an easily recycleable vnode go to
+		 * waste!
+		 */
+		if (vp->v_auxrefs != vp->v_namecache_count &&
+		    (vp->v_refcnt & ~VREF_FINALIZE) == VREF_TERMINATE + 1)
+		{
+			cache_inval_vp_quick(vp);
+			if (vp->v_auxrefs == vp->v_namecache_count)
+				++auxrecovervnodes2;
+		}
 
 		/*
 		 * Do not reclaim/reuse a vnode while auxillary refs exists.
@@ -1190,7 +1254,8 @@ void
 allocvnode_gc(void)
 {
 	if (numvnodes >= maxvnodes &&
-	    countcachedandinactivevnodes() >= maxvnodes * 5 / 10) {
+	    countcachedandinactivevnodes() >= maxvnodes * 5 / 10)
+	{
 		freesomevnodes(batchfreevnodes);
 	}
 }
