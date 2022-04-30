@@ -32,7 +32,7 @@ FLAGS_GROUPS=	yy_buf
 yy_buf_FLAGS=	-DYY_BUF_SIZE=1024
 yy_buf_FLAGS_FILES=nslexer.c
 
-MAN+=	byteorder.3 ethers.3 eui64.3 \
+MAN+=	base64.3 byteorder.3 ethers.3 eui64.3 \
 	gai_strerror.3 getaddrinfo.3 gethostbyname.3 \
 	getifaddrs.3 getipnodebyname.3 \
 	getnameinfo.3 getnetent.3 getprotoent.3 getservent.3 if_indextoname.3 \
@@ -40,6 +40,8 @@ MAN+=	byteorder.3 ethers.3 eui64.3 \
 	inet6_rthdr_space.3 linkaddr.3 nsdispatch.3 \
 	rcmd.3 rcmdsh.3 resolver.3 sockatmark.3
 
+MLINKS+=base64.3 b64_ntop.3 \
+	base64.3 b64_pton.3
 MLINKS+=byteorder.3 htonl.3 \
 	byteorder.3 htons.3 \
 	byteorder.3 ntohl.3 \
