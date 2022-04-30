@@ -189,7 +189,7 @@ b64_pton(const char *src, unsigned char *target, size_t targsize)
 {
 	int state;
 	size_t tarindex;
-	unsigned char ch;
+	unsigned char ch, nextbyte;
 	char *pos;
 
 	state = 0;
@@ -217,22 +217,28 @@ b64_pton(const char *src, unsigned char *target, size_t targsize)
 			break;
 		case 1:
 			if (target) {
-				if (tarindex + 1 >= targsize)
+				if (tarindex >= targsize)
 					return (-1);
-				target[tarindex]   |=  (pos - Base64) >> 4;
-				target[tarindex+1]  = ((pos - Base64) & 0x0f)
-							<< 4 ;
+				target[tarindex] |= (pos - Base64) >> 4;
+				nextbyte = ((pos - Base64) & 0x0f) << 4;
+				if (tarindex + 1 < targsize)
+					target[tarindex+1] = nextbyte;
+				else if (nextbyte)
+					return (-1);
 			}
 			tarindex++;
 			state = 2;
 			break;
 		case 2:
 			if (target) {
-				if (tarindex + 1 >= targsize)
+				if (tarindex >= targsize)
 					return (-1);
-				target[tarindex]   |=  (pos - Base64) >> 2;
-				target[tarindex+1]  = ((pos - Base64) & 0x03)
-							<< 6;
+				target[tarindex] |= (pos - Base64) >> 2;
+				nextbyte = ((pos - Base64) & 0x03) << 6;
+				if (tarindex + 1 < targsize)
+					target[tarindex+1] = nextbyte;
+				else if (nextbyte)
+					return (-1);
 			}
 			tarindex++;
 			state = 3;
@@ -290,7 +296,8 @@ b64_pton(const char *src, unsigned char *target, size_t targsize)
 			 * zeros.  If we don't check them, they become a
 			 * subliminal channel.
 			 */
-			if (target && target[tarindex] != 0)
+			if (target && tarindex < targsize &&
+			    target[tarindex] != 0)
 				return (-1);
 		}
 	} else {
