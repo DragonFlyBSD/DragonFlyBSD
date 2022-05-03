@@ -299,6 +299,10 @@ fmttime(time_t t, int flags)
 	static char tbuf[TBUFLEN];
 
 	tm = (flags & GMT) ? gmtime(&t) : localtime(&t);
+	if (tm == NULL) {
+		strcpy(tbuf, "????");
+		return tbuf;
+	}
 	strftime(tbuf, sizeof(tbuf),
 	    (flags & TIMEONLY)
 	     ? (flags & FULLTIME ? LTFMTS : TFMTS)
