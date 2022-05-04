@@ -346,17 +346,17 @@ list below.
 Hooks are run via
 .Xr execve 2 .
 .Bl -tag -width indent
-.It Cm hook_run_start
+.It Pa hook_run_start
 This hook triggers when the overall build process starts.
-.It Cm hook_run_end
+.It Pa hook_run_end
 This hook is called when the overall build process ends.
-.It Cm hook_pkg_success
+.It Pa hook_pkg_success
 For each successful port built this hook will trigger.
-.It Cm hook_pkg_failure
+.It Pa hook_pkg_failure
 This hook will trigger for each port that fails to build.
-.It Cm hook_pkg_ignored
+.It Pa hook_pkg_ignored
 Each port that is marked as ignored will make this hook to trigger.
-.It Cm hook_pkg_skipped
+.It Pa hook_pkg_skipped
 Each skipped port will trigger this hook.
 .El
 .Pp
@@ -382,25 +382,34 @@ The logs directory, which is also where the html Report is generated.
 .It Ev DIR_BUILDBASE
 The build base directory.
 .It Ev PORTS_QUEUED
-The number of ports queued to be built (only for hook_run_start).
+The number of ports queued to be built (only for
+.Pa hook_run_start ) .
 .It Ev PORTS_BUILT
-The number of successfully built ports (only for hook_run_end).
+The number of successfully built ports (only for
+.Pa hook_run_end ) .
 .It Ev PORTS_FAILED
-The number of ports for which the build failed (only for hook_run_end).
+The number of ports for which the build failed (only for
+.Pa hook_run_end ) .
 .It Ev PORTS_IGNORED
 The number of ports that where ignored and, hence, not built
-(only for hook_run_end).
+(only for
+.Pa hook_run_end ) .
 .It Ev PORTS_SKIPPED
-The number of ports that were skipped in the build (only for hook_run_end).
+The number of ports that were skipped in the build (only for
+.Pa hook_run_end ) .
 .It Ev RESULT
 The result (success, failure, ignored, skipped) for the build of an individual
-port (only for port specific hooks).
+port (only for
+.Pa hook_pkg_* ) .
 .It Ev ORIGIN
-The origin of a port (only for port specific hooks).
+The origin of a port (only for
+.Pa hook_pkg_* ) .
 .It Ev FLAVOR
-The flavor of a port (only for port specific hooks).
+The flavor of a port (only for
+.Pa hook_pkg_* ) .
 .It Ev PKGNAME
-The port name (only for port specific hooks).
+The port name (only for
+.Pa hook_pkg_* ) .
 .El
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/abc/defghi/<name>" -compact
