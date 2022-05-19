@@ -1045,14 +1045,41 @@ sys_mlockall(struct sysmsg *sysmsg, const struct mlockall_args *uap)
 	do {
 		if (how & MCL_CURRENT) {
 			RB_FOREACH(entry, vm_map_rb_tree, &map->rb_root) {
-				; /* NOT IMPLEMENTED YET */
+				/* Only writeable VM_MAPTYPE_NORMAL entries handled */
+				if ((entry->eflags & MAP_ENTRY_USER_WIRED) ||
+					entry->maptype != VM_MAPTYPE_NORMAL ||
+					(entry->max_protection & VM_PROT_WRITE) == 0) {
+					continue;
+				}
+
+				if (entry->wired_count != 0) {
+					entry->wired_count++;
+					entry->eflags |= MAP_ENTRY_USER_WIRED;
+					continue;
+				}
+
+				entry->wired_count++;
+				rc = vm_fault_wire(map, entry, TRUE, 0);
+				if (rc)
+					goto done;
+				entry->eflags |= MAP_ENTRY_USER_WIRED;
 			}
-			rc = ENOSYS;
-			break;
 		}
 		if (how & MCL_FUTURE)
 			map->flags |= MAP_WIREFUTURE;
 	} while(0);
+
+done:
+	RB_FOREACH(entry, vm_map_rb_tree, &map->rb_root) {
+		if ((entry->eflags & MAP_ENTRY_USER_WIRED) == 0)
+			continue;
+
+		entry->eflags &= ~MAP_ENTRY_USER_WIRED;
+		entry->wired_count--;
+		if (entry->wired_count == 0)
+			vm_fault_unwire(map, entry);
+	}
+
 	vm_map_unlock(map);
 
 	return (rc);

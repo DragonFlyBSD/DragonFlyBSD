@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
- * Copyright (c) 2003-2019 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003-2022 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
  * The Mach Operating System project at Carnegie-Mellon University.
@@ -2668,7 +2668,7 @@ vm_map_user_wiring(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 	}
 done:
 	vm_map_unclip_range(map, start_entry, start, real_end, &count,
-		MAP_CLIP_NO_HOLES);
+			    MAP_CLIP_NO_HOLES);
 	vm_map_unlock(map);
 	vm_map_entry_release(count);
 
@@ -4420,13 +4420,23 @@ RetryLookup:
 	}
 
 	/*
-	 * If this page is not pageable, we have to get it for all possible
-	 * accesses.
+	 * Flag regular pages that are supposed to be wired.  Remove prior
+	 * semantics that disallowed protection changes for such pages.
+	 *
+	 * The prior semantics are not used by modern systems.  Applications
+	 * do not assume an inability to change protection modes and may
+	 * operate incorrectly if we try to prevent protection changes.
+	 *
+	 * Modern applications are aware that even for locked memory,
+	 * changing protection modes, modifying MAP_PRIVATE mappings,
+	 * or fork() may still cause page faults on the locked memory.
 	 */
 	*wflags = 0;
 	if (entry->wired_count) {
 		*wflags |= FW_WIRED;
+#if 0
 		prot = fault_type = entry->protection;
+#endif
 	}
 
 	if (curthread->td_lwp && curthread->td_lwp->lwp_vmspace &&

@@ -57,14 +57,15 @@ The
 .Fn mlockall
 system call locks into memory the physical pages associated with the
 address space of a process until the address space is unlocked, the
-process exits, or execs another program image.
+process exits, fork()s, or execs another program image.  Any pages which
+are copy-on-write at the time of the function call will be force faulted.
+Locked pages will not be paged to swap backing store.
 .Pp
 The following flags affect the behavior of
 .Fn mlockall :
 .Bl -tag -width ".Dv MCL_CURRENT"
 .It Dv MCL_CURRENT
 Lock all pages currently mapped into the process's address space.
-This is currently not implemented.
 .It Dv MCL_FUTURE
 Lock all pages mapped into the process's address space in the future,
 at the time the mapping is established.
@@ -79,6 +80,23 @@ A single process can lock the minimum of a system-wide
 limit and the per-process
 .Dv RLIMIT_MEMLOCK
 resource limit.
+.Pp
+.Fn mlockall
+has two limitations, necessary to keep it functional on modern systems.
+The first is that writable file-backed MAP_PRIVATE pages (such as shared
+library mappings) which have not yet been write-faulted will retain their
+read-only mapping to the file backing store and not be force-copied.
+If we were to force copy these pages, it would cause immense unnecessary
+overheads for the program.
+So any unmodified but writable pages which are currently in
+the pmap read-only will still take a COW fault if written to.
+.Pp
+The second limitation is that when a fork() is issued, all writable pages
+will be made copy-on-write (COW) in both the parent and the child.  The child
+of course does not inherit the locked memory state, but this action will
+cause any locked pages in the parent to become copy-on-write and they will
+be faulted if written to.  So they will not be quite as locked as might have
+been intended in this situation.
 .Pp
 The
 .Fn munlockall
@@ -128,8 +146,15 @@ and
 functions first appeared in
 .Dx 2.9 .
 .Sh BUGS
-The
-.Dv MCL_CURRENT
-flag does not function in
-.Dx
-currently.
+How could there be any bugs?  This is soooo simple...
+.Pp
+These system calls are not recommended for general use.  They are obviously
+not thread-safe, and the larger application context from which they are
+called might be hostile to such actions due to non-deterministic resource
+limits in the system.  In a modern system, even semi-realtime and interactive
+processes are already detected and handled by the system schedule.
+Please use
+.Fn mlock
+and
+.Fn munlock
+to lock specific address ranges instead of locking the entire address space.

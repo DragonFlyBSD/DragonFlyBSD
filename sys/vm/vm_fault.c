@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003-2020 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003-2022 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -483,7 +483,7 @@ RetryFault:
 		 * XXX Try to allow the above by specifying OVERRIDE_WRITE.
 		 */
 		result = vm_map_lookup(&fs.map, vaddr,
-				       VM_PROT_READ|VM_PROT_WRITE|
+				       VM_PROT_READ | VM_PROT_WRITE |
 				        VM_PROT_OVERRIDE_WRITE,
 				       &fs.entry, &fs.first_ba,
 				       &first_pindex, &first_count,
@@ -502,7 +502,7 @@ RetryFault:
 		 * XXX We have a shared lock, this will have a MP race but
 		 * I don't see how it can hurt anything.
 		 */
-		if ((fs.entry->protection & VM_PROT_WRITE) == 0) {
+		if ((fs.first_prot & VM_PROT_WRITE) == 0) {
 			atomic_clear_char(&fs.entry->max_protection,
 					  VM_PROT_WRITE);
 		}
@@ -589,7 +589,12 @@ RetryFault:
 	}
 
 	/*
-	 * If the entry is wired we cannot change the page protection.
+	 * If the entry is wired the page protection level is limited to
+	 * what the vm_map_lookup() allowed us.
+	 *
+	 * XXX it is unclear if this code is still needed as vm_map_lookup()
+	 * no longer prevents protection changes on locked memory.  REMOVE
+	 * IF WE DETERMINE THAT THIS CODE IS NO LONGER NEEDED.
 	 */
 	if (fs.wflags & FW_WIRED)
 		fault_type = fs.first_prot;
@@ -1123,7 +1128,7 @@ RetryFault:
 		 * and take the heat that one cannot debug wired .text sections.
 		 */
 		result = vm_map_lookup(&fs.map, vaddr,
-				       VM_PROT_READ|VM_PROT_WRITE|
+				       VM_PROT_READ | VM_PROT_WRITE |
 				        VM_PROT_OVERRIDE_WRITE,
 				       &fs.entry, &fs.first_ba,
 				       &first_pindex, &first_count,
@@ -1143,7 +1148,7 @@ RetryFault:
 		 * XXX We have a shared lock, this will have a MP race but
 		 * I don't see how it can hurt anything.
 		 */
-		if ((fs.entry->protection & VM_PROT_WRITE) == 0) {
+		if ((fs.first_prot & VM_PROT_WRITE) == 0) {
 			atomic_clear_char(&fs.entry->max_protection,
 					  VM_PROT_WRITE);
 		}
@@ -1224,7 +1229,12 @@ RetryFault:
 	}
 
 	/*
-	 * If the entry is wired we cannot change the page protection.
+	 * If the entry is wired the page protection level is limited to
+	 * what the vm_map_lookup() allowed us.
+	 *
+	 * XXX it is unclear if this code is still needed as vm_map_lookup()
+	 * no longer prevents protection changes on locked memory.  REMOVE
+	 * IF WE DETERMINE THAT THIS CODE IS NO LONGER NEEDED.
 	 */
 	if (fs.wflags & FW_WIRED)
 		fault_type = fs.first_prot;
