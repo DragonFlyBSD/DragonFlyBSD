@@ -4235,11 +4235,16 @@ cache_resolve_mp(struct mount *mp)
 	}
 
 	if (ncp->nc_flag & NCF_UNRESOLVED) {
+		/*
+		 * ncp must be unlocked across the vfs_busy(), but
+		 * once busied lock ordering is ncp(s), then vnodes,
+		 * so we must relock the ncp before issuing the VFS_ROOT().
+		 */
 		_cache_unlock(ncp);
 		while (vfs_busy(mp, 0))
 			;
-		error = VFS_ROOT(mp, &vp);
 		_cache_lock(ncp);
+		error = VFS_ROOT(mp, &vp);
 
 		/*
 		 * recheck the ncp state after relocking.
