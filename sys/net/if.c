@@ -161,6 +161,12 @@ static int if_ringmap_dumprdr = 0;
 SYSCTL_INT(_net_link_ringmap, OID_AUTO, dump_rdr, CTLFLAG_RW,
     &if_ringmap_dumprdr, 0, "dump redirect table");
 
+/* Interface description */
+static unsigned int ifdescr_maxlen = 1024;
+SYSCTL_UINT(_net, OID_AUTO, ifdescr_maxlen, CTLFLAG_RW,
+	&ifdescr_maxlen, 0,
+	"administrative maximum length for interface description");
+
 SYSINIT(interfaces, SI_SUB_PROTO_IF, SI_ORDER_FIRST, ifinit, NULL);
 SYSINIT(ifnet, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, ifnetinit, NULL);
 
@@ -170,6 +176,7 @@ static if_com_free_t *if_com_free[256];
 MALLOC_DEFINE(M_IFADDR, "ifaddr", "interface address");
 MALLOC_DEFINE(M_IFMADDR, "ether_multi", "link-level multicast address");
 MALLOC_DEFINE(M_IFNET, "ifnet", "interface structure");
+MALLOC_DEFINE(M_IFDESCR, "ifdescr", "ifnet descriptions");
 
 int			ifqmaxlen = IFQ_MAXLEN;
 struct ifnethead	ifnet = TAILQ_HEAD_INITIALIZER(ifnet);
@@ -1911,6 +1918,8 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	short oif_flags;
 	int new_flags;
 	size_t namelen, onamelen;
+	size_t descrlen;
+	char *descrbuf, *odescrbuf;
 	char new_name[IFNAMSIZ];
 	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
@@ -1998,6 +2007,59 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 
 	case SIOCSIFPOLLCPU:
 		break;
+
+	case SIOCGIFDESCR:
+		error = 0;
+		ifnet_lock();
+		if (ifp->if_description == NULL) {
+			ifr->ifr_buffer.length = 0;
+			error = ENOMSG;
+		} else {
+			/* space for terminating nul */
+			descrlen = strlen(ifp->if_description) + 1;
+			if (ifr->ifr_buffer.length < descrlen)
+				error = ENAMETOOLONG;
+			else
+				error = copyout(ifp->if_description,
+				    ifr->ifr_buffer.buffer, descrlen);
+			ifr->ifr_buffer.length = descrlen;
+		}
+		ifnet_unlock();
+		break;
+
+	case SIOCSIFDESCR:
+		error = priv_check_cred(cred, PRIV_ROOT, 0);
+		if (error)
+			break;
+
+		/*
+		 * Copy only (length-1) bytes to make sure that
+		 * if_description is always nul terminated.  The
+		 * length parameter is supposed to count the
+		 * terminating nul in.
+		 */
+		if (ifr->ifr_buffer.length > ifdescr_maxlen)
+			return (ENAMETOOLONG);
+		else if (ifr->ifr_buffer.length == 0)
+			descrbuf = NULL;
+		else {
+			descrbuf = kmalloc(ifr->ifr_buffer.length, M_IFDESCR,
+			    M_WAITOK | M_ZERO);
+			error = copyin(ifr->ifr_buffer.buffer, descrbuf,
+			    ifr->ifr_buffer.length - 1);
+			if (error) {
+				kfree(descrbuf, M_IFDESCR);
+				break;
+			}
+		}
+
+		ifnet_lock();
+		odescrbuf = ifp->if_description;
+		ifp->if_description = descrbuf;
+		ifnet_unlock();
+
+		if (odescrbuf)
+			kfree(odescrbuf, M_IFDESCR);
 
 	case SIOCSIFFLAGS:
 		error = priv_check_cred(cred, PRIV_ROOT, 0);
@@ -2929,6 +2991,8 @@ if_alloc(uint8_t type)
 void
 if_free(struct ifnet *ifp)
 {
+	if (ifp->if_description != NULL)
+		kfree(ifp->if_description, M_IFDESCR);
 	kfree(ifp, M_IFNET);
 }
 

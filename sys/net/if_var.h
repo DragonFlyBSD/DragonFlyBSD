@@ -364,7 +364,7 @@ struct ifnet {
 		(void *);
 	int	(*if_resolvemulti)	/* validate/resolve multicast */
 		(struct ifnet *, struct sockaddr **, struct sockaddr *);
-	void	*if_unused5;
+	char	*if_description;	/* interface description */
 	int	(*if_mapsubq)		/* cpuid to if_snd subqueue map */
 		(struct ifaltq *, int);
 	int	if_unused2;

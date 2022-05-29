@@ -28,7 +28,7 @@
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.124 2006/10/10 09:44:08 ru Exp $
 .\"
-.Dd June 26, 2020
+.Dd May 29, 2022
 .Dt IFCONFIG 8
 .Os
 .Sh NAME
@@ -341,6 +341,12 @@ Disable permanently promiscuous mode.
 Another name for the
 .Fl alias
 parameter.
+.It Cm description Ar value , Cm descr Ar value
+Specify a description of the interface.
+This can be used to label interfaces in situations where they may
+otherwise be difficult to distinguish.
+.It Cm -description , Cm -descr
+Clear the interface description.
 .It Cm down
 Mark an interface
 .Dq down .
