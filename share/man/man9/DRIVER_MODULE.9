@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/DRIVER_MODULE.9,v 1.1.2.5 2001/12/17 11:30:18 ru Exp $
 .\"
-.Dd August 21, 2012
+.Dd May 31, 2022
 .Dt DRIVER_MODULE 9
 .Os
 .Sh NAME
@@ -38,7 +38,7 @@
 .In sys/bus.h
 .In sys/module.h
 .Fn DRIVER_MODULE name busname "driver_t driver" "devclass_t devclass" "modeventhand_t evh" "void *arg"
-.Fn DRIVER_MODULE_ORDERED name busname "driver_t driver" "devclass_t devclass" "modeventhand_t evh" "void *arg" "int order"
+.Fn DRIVER_MODULE_ORDERED name busname "driver_t driver" "devclass_t *devclass" "modeventhand_t evh" "void *arg" "int order"
 .Sh DESCRIPTION
 The
 .Fn DRIVER_MODULE
