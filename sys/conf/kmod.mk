@@ -117,7 +117,12 @@ CFLAGS+=	-nostdinc ${_ICFLAGS}
 # <machine_base/blah.h>.  An explicit cross-platform path must
 # operate relative to /usr/src/sys using e.g. <platform/pc64/isa/blah.h>
 #
-CFLAGS+=	-I. -I@
+CFLAGS+=	-I.
+.if defined(FREEBSD_COMPAT)
+CFLAGS+=	-Idragonfly/freebsd_compat
+CFLAGS+=	-DFREEBSD_COMPAT=1
+.endif
+CFLAGS+=	-Idragonfly
 
 # Add -I paths for headers in the kernel build directory
 #
@@ -137,18 +142,18 @@ CFLAGS+=	-I${_MACHINE_FWD}/include
 .include "kern.fwd.mk"
 
 # Add a -I path to standard headers like <stddef.h>.  Use a relative
-# path to src/include if possible.  If the @ symlink hasn't been built
-# yet, then we can't tell if the relative path exists.  Add both the
+# path to src/include if possible.  If the dragonfly symlink hasn't been
+# built yet, then we can't tell if the relative path exists.  Add both the
 # potential relative path and an absolute path in that case.
-.if exists(@)
-.if exists(@/../include)
-CFLAGS+=	-I@/../include
+.if exists(dragonfly)
+.if exists(dragonfly/../include)
+CFLAGS+=	-Idragonfly/../include
 .else
 CFLAGS+=	-I${DESTDIR}/usr/include
 .endif
-.else # !@
-CFLAGS+=	-I@/../include -I${DESTDIR}/usr/include
-.endif # @
+.else
+CFLAGS+=	-Idragonfly/../include -I${DESTDIR}/usr/include
+.endif
 
 .if defined(KERNBUILDDIR) && \
     exists(${KERNBUILDDIR}/opt_global.h)
@@ -162,12 +167,12 @@ CFLAGS+=	-fno-omit-frame-pointer
 
 .if defined(FIRMWS)
 #AWK=/usr/bin/awk
-.if !exists(@)
-${KMOD:S/$/.c/}: @
+.if !exists(dragonfly)
+${KMOD:S/$/.c/}: dragonfly
 .else
-${KMOD:S/$/.c/}: @/tools/fw_stub.awk
+${KMOD:S/$/.c/}: dragonfly/tools/fw_stub.awk
 .endif
-	${AWK} -f @/tools/fw_stub.awk ${FIRMWS} -m ${KMOD} -c ${KMOD:S/$/.c/g} \
+	${AWK} -f dragonfly/tools/fw_stub.awk ${FIRMWS} -m ${KMOD} -c ${KMOD:S/$/.c/g} \
 	    ${FIRMWARE_LICENSE:C/.+/-l/}${FIRMWARE_LICENSE}
 
 SRCS+=	${KMOD:S/$/.c/}
@@ -218,12 +223,20 @@ ${PROG}: ${OBJS}
 .endif
 
 # links to platform and cpu architecture include files.  If we are
-# building with a kernel these already exist in the kernel build dir.
-# '@' is a link to the system source.
+# building with a kernel most of these already exist in the kernel build
+# dir.
+#
+# 'dragonfly' is a link to system sources.
+#
+# Note that 'dragonfly', 'machine_base', and 'cpu_base' primarily exist
+# when source files need to reference sources in the dragonfly codebase or
+# when header files need to differentiate between compat headers and base
+# system headers (e.g. when forwarding headers)
+#
 .if defined(KERNBUILDDIR)
-_ILINKS=@
+_ILINKS=dragonfly
 .else
-_ILINKS=@ machine_base machine cpu_base cpu
+_ILINKS=dragonfly machine_base machine cpu_base cpu
 .endif
 
 .if defined(ARCH)
@@ -265,7 +278,7 @@ ${_ILINKS}:
 		path=${SYSDIR}/cpu/${MACHINE_ARCH}/include ;; \
 	cpu_base) \
 		path=${SYSDIR}/cpu/${MACHINE_ARCH} ;; \
-	@) \
+	dragonfly) \
 		path=${SYSDIR} ;; \
 	arch_*) \
 		path=${.CURDIR}/${MACHINE_ARCH} ;; \
@@ -341,22 +354,23 @@ MFILES?= kern/bus_if.m kern/device_if.m bus/iicbus/iicbb_if.m \
     bus/mmc/mmcbus_if.m bus/mmc/mmcbr_if.m \
     dev/virtual/virtio/virtio/virtio_bus_if.m \
     dev/misc/coremctl/coremctl_if.m kern/cpu_if.m \
-    bus/gpio/gpio_if.m
+    bus/gpio/gpio_if.m \
+    freebsd/net/ifdi_if.m
 
 .for _srcsrc in ${MFILES}
 .for _ext in c h
 .for _src in ${SRCS:M${_srcsrc:T:R}.${_ext}}
 CLEANFILES+=	${_src}
 .if !target(${_src})
-${_src}: @
-.if exists(@)
-${_src}: @/tools/makeobjops.awk @/${_srcsrc}
+${_src}: dragonfly
+.if exists(dragonfly)
+${_src}: dragonfly/tools/makeobjops.awk dragonfly/${_srcsrc}
 .endif
 
 .if defined(KERNBUILDDIR) && \
     exists(${KERNBUILDDIR}/${_src})
 .else
-	awk -f @/tools/makeobjops.awk -- -${_ext} @/${_srcsrc}
+	awk -f dragonfly/tools/makeobjops.awk -- -${_ext} dragonfly/${_srcsrc}
 .endif
 .endif
 .endfor # _src
@@ -365,62 +379,62 @@ ${_src}: @/tools/makeobjops.awk @/${_srcsrc}
 
 .if !empty(SRCS:Mmiidevs.h)
 CLEANFILES+=	miidevs.h
-.if !exists(@)
-miidevs.h: @
+.if !exists(dragonfly)
+miidevs.h: dragonfly
 .else
-miidevs.h: @/tools/miidevs2h.awk @/dev/netif/mii_layer/miidevs
+miidevs.h: dragonfly/tools/miidevs2h.awk dragonfly/dev/netif/mii_layer/miidevs
 .endif
-	${AWK} -f @/tools/miidevs2h.awk @/dev/netif/mii_layer/miidevs
+	${AWK} -f dragonfly/tools/miidevs2h.awk dragonfly/dev/netif/mii_layer/miidevs
 .endif
 
 .if !empty(SRCS:Mpccarddevs.h)
 CLEANFILES+=	pccarddevs.h
-.if !exists(@)
-pccarddevs.h: @
+.if !exists(dragonfly)
+pccarddevs.h: dragonfly
 .else
-pccarddevs.h: @/tools/pccarddevs2h.awk @/bus/pccard/pccarddevs
+pccarddevs.h: dragonfly/tools/pccarddevs2h.awk dragonfly/bus/pccard/pccarddevs
 .endif
-	${AWK} -f @/tools/pccarddevs2h.awk @/bus/pccard/pccarddevs
+	${AWK} -f dragonfly/tools/pccarddevs2h.awk dragonfly/bus/pccard/pccarddevs
 .endif
 
 .if !empty(SRCS:Mpcidevs.h)
 CLEANFILES+=	pcidevs.h
-.if !exists(@)
-pcidevs.h: @
+.if !exists(dragonfly)
+pcidevs.h: dragonfly
 .else
-pcidevs.h: @/tools/pcidevs2h.awk @/bus/pci/pcidevs
+pcidevs.h: dragonfly/tools/pcidevs2h.awk dragonfly/bus/pci/pcidevs
 .endif
-	${AWK} -f @/tools/pcidevs2h.awk @/bus/pci/pcidevs
+	${AWK} -f dragonfly/tools/pcidevs2h.awk dragonfly/bus/pci/pcidevs
 .endif
 
 .if !empty(SRCS:Musbdevs.h)
 CLEANFILES+=	usbdevs.h
-.if !exists(@)
-usbdevs.h: @
+.if !exists(dragonfly)
+usbdevs.h: dragonfly
 .else
-usbdevs.h: @/tools/usbdevs2h.awk @/bus/u4b/usbdevs
+usbdevs.h: dragonfly/tools/usbdevs2h.awk dragonfly/bus/u4b/usbdevs
 .endif
-	${AWK} -f @/tools/usbdevs2h.awk @/bus/u4b/usbdevs -h
+	${AWK} -f dragonfly/tools/usbdevs2h.awk dragonfly/bus/u4b/usbdevs -h
 .endif
 
 .if !empty(SRCS:Musbdevs_data.h)
 CLEANFILES+=	usbdevs_data.h
-.if !exists(@)
-usbdevs_data.h: @
+.if !exists(dragonfly)
+usbdevs_data.h: dragonfly
 .else
-usbdevs_data.h: @/tools/usbdevs2h.awk @/bus/u4b/usbdevs
+usbdevs_data.h: dragonfly/tools/usbdevs2h.awk dragonfly/bus/u4b/usbdevs
 .endif
-	${AWK} -f @/tools/usbdevs2h.awk @/bus/u4b/usbdevs -d
+	${AWK} -f dragonfly/tools/usbdevs2h.awk dragonfly/bus/u4b/usbdevs -d
 .endif
 
 .if !empty(SRCS:Macpi_quirks.h)
 CLEANFILES+=	acpi_quirks.h
-.if !exists(@)
-acpi_quirks.h: @
+.if !exists(dragonfly)
+acpi_quirks.h: dragonfly
 .else
-acpi_quirks.h: @/tools/acpi_quirks2h.awk @/dev/acpica/acpi_quirks
+acpi_quirks.h: dragonfly/tools/acpi_quirks2h.awk dragonfly/dev/acpica/acpi_quirks
 .endif
-	${AWK} -f @/tools/acpi_quirks2h.awk @/dev/acpica/acpi_quirks
+	${AWK} -f dragonfly/tools/acpi_quirks2h.awk dragonfly/dev/acpica/acpi_quirks
 .endif
 
 .if !empty(SRCS:Massym.s)
@@ -429,18 +443,18 @@ assym.s: genassym.o
 .if defined(KERNBUILDDIR)
 genassym.o: opt_global.h
 .endif
-.if !exists(@)
-assym.s: @
+.if !exists(dragonfly)
+assym.s: dragonfly
 .else
-assym.s: @/kern/genassym.sh
+assym.s: dragonfly/kern/genassym.sh
 .endif
-	sh @/kern/genassym.sh genassym.o > ${.TARGET}
-.if exists(@)
-genassym.o: @/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c
+	sh dragonfly/kern/genassym.sh genassym.o > ${.TARGET}
+.if exists(dragonfly)
+genassym.o: dragonfly/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c
 .endif
-genassym.o: @ ${SRCS:Mopt_*.h}
+genassym.o: dragonfly ${SRCS:Mopt_*.h}
 	${CC} -c ${CFLAGS:N-fno-common:N-flto:N-mcmodel=small} -fcommon \
-	${WERROR} @/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c
+	${WERROR} dragonfly/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c
 .endif
 
 regress:
@@ -457,22 +471,22 @@ ${OBJS}: ${SRCS:M*.h}
 # Behaves like MODULE_OVERRIDE
 .if defined(KLD_DEPS)
 all: _kdeps_all
-_kdeps_all: @
+_kdeps_all: dragonfly
 .for _mdep in ${KLD_DEPS}
 	cd ${SYSDIR}/${_mdep} && make all
 .endfor
 depend: _kdeps_depend
-_kdeps_depend: @
+_kdeps_depend: dragonfly
 .for _mdep in ${KLD_DEPS}
 	cd ${SYSDIR}/${_mdep} && make depend
 .endfor
 install: _kdeps_install
-_kdeps_install: @
+_kdeps_install: dragonfly
 .for _mdep in ${KLD_DEPS}
 	cd ${SYSDIR}/${_mdep} && make install
 .endfor
 clean: _kdeps_clean
-_kdeps_clean: @
+_kdeps_clean: dragonfly
 .for _mdep in ${KLD_DEPS}
 	cd ${SYSDIR}/${_mdep} && make clean
 .endfor

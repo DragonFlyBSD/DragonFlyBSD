@@ -4,8 +4,8 @@
 %VERSREQ=	400026
 
 .if !defined(S)
-.if exists(./@/.)
-S=	./@
+.if exists(./dragonfly/.)
+S=	./dragonfly
 .else
 S=	../..
 .endif

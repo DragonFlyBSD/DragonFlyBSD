@@ -18,26 +18,26 @@ SRCS+=	ac97.c ac97_patch.c buffer.c channel.c clone.c dsp.c
 SRCS+=	mixer.c sndstat.c sound.c unit.c vchan.c
 SRCS+=	midi.c mpu401.c sequencer.c
 
-.if !exists(@)
-feeder_eq_gen.h:	@
+.if !exists(dragonfly)
+feeder_eq_gen.h:	dragonfly
 .else
-feeder_eq_gen.h:	@/tools/sound/feeder_eq_mkfilter.awk
+feeder_eq_gen.h:	dragonfly/tools/sound/feeder_eq_mkfilter.awk
 .endif
-	${AWK} -f @/tools/sound/feeder_eq_mkfilter.awk -- ${FEEDER_EQ_PRESETS} > ${.TARGET}
+	${AWK} -f dragonfly/tools/sound/feeder_eq_mkfilter.awk -- ${FEEDER_EQ_PRESETS} > ${.TARGET}
 
-.if !exists(@)
-feeder_rate_gen.h:	@
+.if !exists(dragonfly)
+feeder_rate_gen.h:	dragonfly
 .else
-feeder_rate_gen.h:	@/tools/sound/feeder_rate_mkfilter.awk
+feeder_rate_gen.h:	dragonfly/tools/sound/feeder_rate_mkfilter.awk
 .endif
-	${AWK} -f @/tools/sound/feeder_rate_mkfilter.awk -- ${FEEDER_RATE_PRESETS} > ${.TARGET}
+	${AWK} -f dragonfly/tools/sound/feeder_rate_mkfilter.awk -- ${FEEDER_RATE_PRESETS} > ${.TARGET}
 
-.if !exists(@)
-snd_fxdiv_gen.h:	@
+.if !exists(dragonfly)
+snd_fxdiv_gen.h:	dragonfly
 .else
-snd_fxdiv_gen.h:	@/tools/sound/snd_fxdiv_gen.awk
+snd_fxdiv_gen.h:	dragonfly/tools/sound/snd_fxdiv_gen.awk
 .endif
-	${AWK} -f @/tools/sound/snd_fxdiv_gen.awk -- > ${.TARGET}
+	${AWK} -f dragonfly/tools/sound/snd_fxdiv_gen.awk -- > ${.TARGET}
 
 CLEANFILES+=	feeder_eq_gen.h feeder_rate_gen.h snd_fxdiv_gen.h
 
