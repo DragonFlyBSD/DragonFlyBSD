@@ -114,7 +114,7 @@ _gtaskqueue_create(const char *name, int mflags,
 	queue = kmalloc(sizeof(struct gtaskqueue),
 			M_GTASKQUEUE, mflags | M_ZERO);
 	if (!queue) {
-		kprintf("_gtaskqueue_create: kmallo failed %08x\n", mflags);
+		kprintf("_gtaskqueue_create: kmalloc failed %08x\n", mflags);
 		return (NULL);
 	}
 
