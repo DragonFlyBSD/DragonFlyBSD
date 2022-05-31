@@ -788,7 +788,7 @@ module_init(radeon_init);
 module_exit(radeon_exit);
 
 extern devclass_t drm_devclass;
-DRIVER_MODULE_ORDERED(radeon, vgapci, radeon_driver, drm_devclass,
+DRIVER_MODULE_ORDERED(radeon, vgapci, radeon_driver, &drm_devclass,
     NULL, NULL, SI_ORDER_ANY);
 MODULE_DEPEND(radeon, drm, 1, 1, 1);
 #ifdef CONFIG_ACPI

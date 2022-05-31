@@ -1335,7 +1335,7 @@ static driver_t amdgpu_driver = {
 };
 
 extern devclass_t drm_devclass;
-DRIVER_MODULE_ORDERED(amdgpu, vgapci, amdgpu_driver, drm_devclass, NULL, NULL, SI_ORDER_ANY);
+DRIVER_MODULE_ORDERED(amdgpu, vgapci, amdgpu_driver, &drm_devclass, NULL, NULL, SI_ORDER_ANY);
 MODULE_DEPEND(amdgpu, drm, 1, 1, 1);
 #ifdef CONFIG_ACPI
 MODULE_DEPEND(amdgpu, acpi, 1, 1, 1);
