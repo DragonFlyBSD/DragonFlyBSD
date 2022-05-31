@@ -171,6 +171,7 @@ enum sysinit_sub_id {
 	 * abstraction.
 	 */
 	SI_BOOT2_MACHDEP	= 0x1d80000,
+	SI_BOOT2_TASKQ		= 0x1dc0000,
 	SI_BOOT2_KLD		= 0x1e00000,
 	SI_BOOT2_USCHED		= 0x1e80000,
 	SI_BOOT2_PROC0		= 0x1f00000,
