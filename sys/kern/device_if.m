@@ -49,6 +49,16 @@ CODE {
 	{
 	    return 0;
 	}
+
+	static int null_quiesce(device_t dev)
+	{
+	    return 0;
+	}
+
+	static void * null_register(device_t dev)
+	{
+		return NULL;
+        }
 };
 
 #
@@ -137,3 +147,14 @@ METHOD int suspend {
 METHOD int resume {
 	device_t dev;
 } DEFAULT null_resume;
+
+#
+# Additions for FreeBSD compat
+#
+METHOD int quiesce {
+	device_t dev;
+} DEFAULT null_quiesce;
+
+METHOD void * register {
+	device_t dev;
+} DEFAULT null_register;
