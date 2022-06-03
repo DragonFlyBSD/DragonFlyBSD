@@ -330,8 +330,6 @@ hammer2_verify_volumes_1(hammer2_ondisk_t *fsp,
 	}
 	if (nvolumes != 1)
 		errx(1, "Only 1 volume supported");
-	if (fsp->nvolumes)
-		errx(1, "Volume count %d must be 0", fsp->nvolumes);
 	fsp->nvolumes = nvolumes; /* adjust with actual count */
 
 	/* check volume header */
