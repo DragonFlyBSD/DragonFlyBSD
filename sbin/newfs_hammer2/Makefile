@@ -1,5 +1,5 @@
 PROG=	newfs_hammer2
-SRCS=	newfs_hammer2.c
+SRCS=	newfs_hammer2.c mkfs_hammer2.c
 MAN=	newfs_hammer2.8
 
 CFLAGS+= -I${.CURDIR}/../../sys -I${.CURDIR}/../hammer2

@@ -116,13 +116,15 @@ brelse(struct buf *bp)
 		return;
 	}
 
-	TAILQ_REMOVE(&buftail, bp, b_tailq);
+	assert(bp->b_vp);
+	if (!bp->b_vp->logical)
+		TAILQ_REMOVE(&buftail, bp, b_tailq);
 	free(bp->b_data);
 	free(bp);
 }
 
-int
-bwrite(struct buf *bp)
+static int
+bwrite_impl(struct buf *bp)
 {
 	off_t	offset;
 	ssize_t	rv;
@@ -148,6 +150,21 @@ bwrite(struct buf *bp)
 		return (EAGAIN);
 }
 
+int
+bwrite(struct buf *bp)
+{
+	int error = bwrite_impl(bp);
+
+	/*
+	 * XXX	currently limited to HAMMER2, but this is the way bwrite
+	 *	and its variants work, otherwise bufs may be leaked.
+	 */
+	if (bp->b_is_hammer2)
+		brelse(bp);
+
+	return (error);
+}
+
 void
 bcleanup(void)
 {
@@ -159,14 +176,24 @@ bcleanup(void)
 	 *	aren't brelse()d
 	 */
 
-	if (TAILQ_EMPTY(&buftail))
+	if (TAILQ_EMPTY(&buftail)) {
+		printf("bcleanup: clean\n");
 		return;
+	}
 
 	printf("bcleanup: unflushed buffers:\n");
 	TAILQ_FOREACH(bp, &buftail, b_tailq) {
-		printf("\tlblkno %10lld  blkno %10lld  count %6ld  bufsize %6ld\n",
-		    (long long)bp->b_lblkno, (long long)bp->b_blkno,
-		    bp->b_bcount, bp->b_bufsize);
+		printf("\t%p  lblkno %10lld  blkno %10lld  count %6ld  bufsize %6ld  "
+		    "loffset %016lx  cmd %d  [vp %p  data %p  type %d  logical %d  vflushed %d]\n",
+		    bp, (long long)bp->b_lblkno, (long long)bp->b_blkno,
+		    bp->b_bcount, bp->b_bufsize,
+		    bp->b_loffset, bp->b_cmd, bp->b_vp,
+		    bp->b_vp ? bp->b_vp->v_data : NULL,
+		    bp->b_vp ? bp->b_vp->v_type : -1,
+		    bp->b_vp ? bp->b_vp->logical : -1,
+		    bp->b_vp ? bp->b_vp->vflushed : -1);
+		if (bp->b_vp)
+			assert(!bp->b_vp->logical);
 	}
 	printf("bcleanup: done\n");
 }
@@ -179,10 +206,13 @@ getblk(struct vnode *vp, makefs_daddr_t blkno, int size, int u1 __unused,
 	struct buf *bp;
 	void *n;
 
+	bp = NULL;
+	if (vp->logical)
+		goto skip_lookup;
+
 	if (debug & DEBUG_BUF_GETBLK)
 		printf("getblk: blkno %lld size %d\n", (long long)blkno, size);
 
-	bp = NULL;
 	if (!buftailinitted) {
 		if (debug & DEBUG_BUF_GETBLK)
 			printf("getblk: initialising tailq\n");
@@ -195,13 +225,17 @@ getblk(struct vnode *vp, makefs_daddr_t blkno, int size, int u1 __unused,
 			break;
 		}
 	}
+skip_lookup:
 	if (bp == NULL) {
 		bp = ecalloc(1, sizeof(*bp));
 		bp->b_bufsize = 0;
 		bp->b_blkno = bp->b_lblkno = blkno;
 		bp->b_fs = vp->fs;
 		bp->b_data = NULL;
-		TAILQ_INSERT_HEAD(&buftail, bp, b_tailq);
+		bp->b_vp = vp;
+		assert(bp->b_vp);
+		if (!bp->b_vp->logical)
+			TAILQ_INSERT_HEAD(&buftail, bp, b_tailq);
 	}
 	bp->b_bcount = size;
 	if (bp->b_data == NULL || bp->b_bcount > bp->b_bufsize) {

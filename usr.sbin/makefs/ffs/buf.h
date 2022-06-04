@@ -44,6 +44,7 @@
 
 #include <sys/param.h>
 #include <sys/queue.h>
+#include <sys/vfscache.h>
 
 #include "ffs.h"	/* XXX swildner: for compat defines */
 
@@ -53,7 +54,17 @@ struct ucred;
 struct vnode {
 	struct makefs_fsinfo *fs;
 	void *v_data;
+	enum vtype v_type; /* DragonFly */
+	int logical; /* DragonFly */
+	int vflushed; /* DragonFly */
+	int malloced; /* DragonFly */
 };
+
+typedef enum buf_cmd {
+	BUF_CMD_READ = 1,
+	BUF_CMD_WRITE,
+	BUF_CMD_FLUSH,
+} buf_cmd_t;
 
 struct buf {
 	void *		b_data;
@@ -61,6 +72,10 @@ struct buf {
 	long		b_bcount;
 	makefs_daddr_t	b_blkno;
 	makefs_daddr_t	b_lblkno;
+	makefs_daddr_t	b_loffset; /* DragonFly */
+	buf_cmd_t	b_cmd; /* DragonFly */
+	int		b_is_hammer2; /* DragonFly */
+	struct vnode	*b_vp; /* DragonFly */
 	struct makefs_fsinfo *b_fs;
 
 	TAILQ_ENTRY(buf)	b_tailq;
