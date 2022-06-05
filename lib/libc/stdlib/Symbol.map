@@ -135,6 +135,11 @@ DF602.0 {
     clearenv;
 };
 
+DF604.0 {
+    __malloc_usable_size;
+    malloc_usable_size;
+};
+
 /*
  * ignore WEAK:  __pthread_cxa_finalize;
  */

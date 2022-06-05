@@ -138,6 +138,7 @@ void *__malloc(size_t);
 void *__calloc(size_t, size_t);
 void *__realloc(void *, size_t);
 void *__aligned_alloc(size_t, size_t);
+size_t __malloc_usable_size(const void *ptr);
 int __posix_memalign(void **, size_t, size_t);
 
 /*
@@ -351,6 +352,7 @@ static size_t excess_alloc;				/* excess big allocs */
 
 static void *_slaballoc(size_t size, int flags);
 static void *_slabrealloc(void *ptr, size_t size);
+static size_t _slabusablesize(const void *ptr);
 static void _slabfree(void *ptr, int, bigalloc_t *);
 static int _slabmemalign(void **memptr, size_t alignment, size_t size);
 static void *_vmem_alloc(size_t bytes, size_t align, int flags);
@@ -540,7 +542,7 @@ swap_mags(magazine_pair *mp)
  * Return an unmasked hash code for the passed pointer.
  */
 static __inline int
-_bigalloc_hash(void *ptr)
+_bigalloc_hash(const void *ptr)
 {
 	int hv;
 
@@ -574,7 +576,7 @@ bigalloc_lock(void *ptr)
  * to lock anything.
  */
 static __inline bigalloc_t *
-bigalloc_check_and_lock(void *ptr)
+bigalloc_check_and_lock(const void *ptr)
 {
 	int hv = _bigalloc_hash(ptr);
 	bigalloc_t *bigp;
@@ -589,7 +591,7 @@ bigalloc_check_and_lock(void *ptr)
 }
 
 static __inline void
-bigalloc_unlock(void *ptr)
+bigalloc_unlock(const void *ptr)
 {
 	int hv;
 
@@ -848,6 +850,15 @@ __realloc(void *ptr, size_t size)
 	nmalloc_sigunblockall();
 
 	return(ret);
+}
+
+/*
+ * malloc_usable_size() (SLAB ALLOCATOR)
+ */
+size_t
+__malloc_usable_size(const void *ptr)
+{
+	return _slabusablesize(ptr);
 }
 
 /*
@@ -1510,6 +1521,58 @@ _slabrealloc(void *ptr, size_t size)
 }
 
 /*
+ * Returns the usable area of an allocated pointer
+ */
+static size_t
+_slabusablesize(const void *ptr)
+{
+	size_t size;
+	bigalloc_t *bigp;
+	slzone_t z;
+
+	if (ptr == NULL)
+		return 0;
+
+	/*
+	 * Handle oversized allocations.
+	 */
+	if ((bigp = bigalloc_check_and_lock(ptr)) != NULL) {
+		bigalloc_t big;
+
+		while ((big = *bigp) != NULL) {
+			const char *base = big->base;
+
+			if ((const char *)ptr >= base &&
+			    (const char *)ptr < base + big->bytes)
+			{
+				size = base + big->bytes - (const char *)ptr;
+
+				return size;
+			}
+			bigp = &big->next;
+		}
+		bigalloc_unlock(ptr);
+		handle_excess_big();
+	}
+
+	/*
+	 * Get the original allocation's zone.  If the new request winds
+	 * up using the same chunk size we do not have to do anything.
+	 *
+	 * NOTE: We don't have to lock the globaldata here, the fields we
+	 * access here will not change at least as long as we have control
+	 * over the allocation.
+	 */
+	z = (slzone_t)((uintptr_t)ptr & ~(uintptr_t)ZoneMask);
+	MASSERT(z->z_Magic == ZALLOC_SLAB_MAGIC);
+
+	size = z->z_ChunkSize -
+	       ((const char *)ptr - (const char *)z->z_BasePtr) %
+	       z->z_ChunkSize;
+	return size;
+}
+
+/*
  * free (SLAB ALLOCATOR)
  *
  * Free a memory block previously allocated by malloc.  Note that we do not
@@ -2102,3 +2165,4 @@ __weak_reference(__calloc, calloc);
 __weak_reference(__posix_memalign, posix_memalign);
 __weak_reference(__realloc, realloc);
 __weak_reference(__free, free);
+__weak_reference(__malloc_usable_size, malloc_usable_size);
