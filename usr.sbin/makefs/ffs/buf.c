@@ -117,7 +117,7 @@ brelse(struct buf *bp)
 	}
 
 	assert(bp->b_vp);
-	if (!bp->b_vp->logical)
+	if (!bp->b_vp->v_logical)
 		TAILQ_REMOVE(&buftail, bp, b_tailq);
 	free(bp->b_data);
 	free(bp);
@@ -190,10 +190,10 @@ bcleanup(void)
 		    bp->b_loffset, bp->b_cmd, bp->b_vp,
 		    bp->b_vp ? bp->b_vp->v_data : NULL,
 		    bp->b_vp ? bp->b_vp->v_type : -1,
-		    bp->b_vp ? bp->b_vp->logical : -1,
-		    bp->b_vp ? bp->b_vp->vflushed : -1);
+		    bp->b_vp ? bp->b_vp->v_logical : -1,
+		    bp->b_vp ? bp->b_vp->v_vflushed : -1);
 		if (bp->b_vp)
-			assert(!bp->b_vp->logical);
+			assert(!bp->b_vp->v_logical);
 	}
 	printf("bcleanup: done\n");
 }
@@ -207,7 +207,7 @@ getblk(struct vnode *vp, makefs_daddr_t blkno, int size, int u1 __unused,
 	void *n;
 
 	bp = NULL;
-	if (vp->logical)
+	if (vp->v_logical)
 		goto skip_lookup;
 
 	if (debug & DEBUG_BUF_GETBLK)
@@ -234,7 +234,7 @@ skip_lookup:
 		bp->b_data = NULL;
 		bp->b_vp = vp;
 		assert(bp->b_vp);
-		if (!bp->b_vp->logical)
+		if (!bp->b_vp->v_logical)
 			TAILQ_INSERT_HEAD(&buftail, bp, b_tailq);
 	}
 	bp->b_bcount = size;

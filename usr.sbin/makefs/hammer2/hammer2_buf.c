@@ -42,7 +42,6 @@ struct buf *
 getblkx(struct vnode *vp, off_t loffset, int size, int blkflags, int slptimeo)
 {
 	struct buf *bp;
-
 	makefs_daddr_t blkno = loffset / DEV_BSIZE;
 
 	bp = getblk(vp, blkno, size, 0, 0, 0);
@@ -70,7 +69,7 @@ breadx(struct vnode *vp, off_t loffset, int size, struct buf **bpp)
 	assert(bp->b_blkno * DEV_BSIZE == bp->b_loffset);
 	assert(bp->b_bcount == size);
 	assert(bp->b_vp);
-	assert(!bp->b_vp->logical);
+	assert(!bp->b_vp->v_logical);
 	*bpp = bp;
 
 	if (lseek(bp->b_fs->fd, bp->b_loffset, SEEK_SET) == -1)

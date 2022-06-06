@@ -627,7 +627,7 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 				 * so directly free vnode before inode.
 				 */
 				if (ip->vp) {
-					if (ip->vp->malloced)
+					if (ip->vp->v_malloced)
 						freevnode(ip->vp);
 				} else {
 					/* PFS inode ? */
@@ -1831,14 +1831,14 @@ vflush(struct mount *mp, int rootrefs, int flags)
 	RB_FOREACH_SAFE(ip, hammer2_inode_tree, &pmp->inum_tree, tmp) {
 		vp = ip->vp;
 		assert(vp);
-		if (!vp->vflushed) {
+		if (!vp->v_vflushed) {
 			/*
 			printf("%s: drop ip=%p inum=%ld refs=%d\n",
 			    __func__, ip, ip->meta.inum, ip->refs);
 			*/
 			assert(ip->refs > 1);
 			hammer2_inode_drop(ip);
-			vp->vflushed = 1;
+			vp->v_vflushed = 1;
 		}
 	}
 

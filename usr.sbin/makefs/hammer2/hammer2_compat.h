@@ -547,8 +547,8 @@ getnewvnode(enum vtagtype tag, struct mount *mp, struct vnode **vpp,
 	struct vnode *vp;
 
 	vp = ecalloc(1, sizeof(*vp));
-	vp->logical = 1;
-	vp->malloced = 1;
+	vp->v_logical = 1;
+	vp->v_malloced = 1;
 	*vpp = vp;
 
 	vnode_count++;
@@ -561,7 +561,7 @@ static __inline
 void
 freevnode(struct vnode *vp)
 {
-	assert(vp->malloced);
+	assert(vp->v_malloced);
 	free(vp);
 
 	vnode_count--;

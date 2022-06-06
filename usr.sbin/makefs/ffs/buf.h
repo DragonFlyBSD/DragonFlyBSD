@@ -55,9 +55,9 @@ struct vnode {
 	struct makefs_fsinfo *fs;
 	void *v_data;
 	enum vtype v_type; /* DragonFly */
-	int logical; /* DragonFly */
-	int vflushed; /* DragonFly */
-	int malloced; /* DragonFly */
+	int v_logical; /* DragonFly */
+	int v_vflushed; /* DragonFly */
+	int v_malloced; /* DragonFly */
 };
 
 typedef enum buf_cmd {
