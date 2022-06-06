@@ -929,9 +929,6 @@ getdiskinfo(int fd, const char *fname, const char *dtype, __unused int oflag,
     /* Maybe it's a floppy drive */
     if (lp == NULL) {
 	if (ioctl(fd, DIOCGPART, &pi) == -1) {
-	    struct stat st;
-	    if (fstat(fd, &st))
-		err(1, "cannot get disk size");
 	    /* create a fake geometry for a file image */
 	    compute_geometry_from_file(fd, fname, &dlp);
 	    lp = &dlp;
