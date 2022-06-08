@@ -34,7 +34,7 @@
 .\"     @(#)malloc.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdlib/malloc.3,v 1.73 2007/06/15 22:32:33 jasone Exp $
 .\"
-.Dd May 5, 2019
+.Dd June 8, 2022
 .Dt MALLOC 3
 .Os
 .Sh NAME
@@ -43,7 +43,8 @@
 .Nm realloc ,
 .Nm reallocf ,
 .Nm free ,
-.Nm freezero
+.Nm freezero ,
+.Nm malloc_usable_size
 .Nd general purpose memory allocation functions
 .Sh LIBRARY
 .Lb libc
@@ -61,6 +62,9 @@
 .Fn free "void *ptr"
 .Ft void
 .Fn freezero "void *ptr" "size_t size"
+.In malloc_np.h
+.Ft size_t
+.Fn malloc_usable_size "const void *ptr"
 .Sh DESCRIPTION
 The
 .Fn malloc
@@ -150,6 +154,22 @@ Cached free objects are cleared with
 The
 .Fa size
 argument must be equal to or smaller than the size of the earlier allocation.
+.Pp
+The
+.Fn malloc_usable_size
+function returns the usable size of the allocation pointed to by
+.Fa ptr .
+The return value may be larger than the size that was requested during
+allocation.
+The
+.Fn malloc_usable_size
+function is not a mechanism for in-place
+.Fn realloc ;
+rather it is provided solely as a tool for introspection purposes.
+Any discrepancy between the requested allocation size and the size reported by
+.Fn malloc_usable_size
+should not be depended on, since such behavior is entirely
+implementation-dependent.
 .Sh IMPLEMENTATION NOTES
 .Dx Ap s
 .Nm
@@ -250,6 +270,22 @@ deallocates it in this case.
 The
 .Fn free
 function returns no value.
+.Pp
+If
+.Fn malloc ,
+.Fn calloc ,
+.Fn realloc
+or
+.Fn free
+detect an error, a message will be printed to file descriptor
+.Dv STDERR_FILENO
+and the process will dump core.
+.Pp
+The
+.Fn malloc_usable_size
+function returns the usable area for the specified pointer or 0 if the
+pointer is
+.Dv NULL .
 .Sh EXAMPLES
 When using
 .Fn malloc ,
@@ -307,16 +343,6 @@ if ((p2 = realloc(p, newsize)) == NULL) {
 p = p2;
 size = newsize;
 .Ed
-.Sh RETURN VALUES
-If
-.Fn malloc ,
-.Fn calloc ,
-.Fn realloc
-or
-.Fn free
-detect an error, a message will be printed to file descriptor
-.Dv STDERR_FILENO
-and the process will dump core.
 .Sh SEE ALSO
 .Xr madvise 2 ,
 .Xr mmap 2 ,

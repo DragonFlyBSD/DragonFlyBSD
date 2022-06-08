@@ -68,6 +68,7 @@ MLINKS+=lsearch.3 lfind.3
 MLINKS+=malloc.3 calloc.3 \
 	malloc.3 free.3 \
 	malloc.3 freezero.3 \
+	malloc.3 malloc_usable_size.3 \
 	malloc.3 realloc.3 \
 	malloc.3 reallocf.3
 MLINKS+=posix_memalign.3 aligned_alloc.3
