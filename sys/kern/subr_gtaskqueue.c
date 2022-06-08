@@ -421,7 +421,7 @@ gtaskqueue_drain_all(struct gtaskqueue *queue)
 	TQ_UNLOCK(queue);
 }
 
-static int
+static int __printflike(4, 0)
 _gtaskqueue_start_threads(struct gtaskqueue **tqp, int count, int pri,
 			  const char *name, __va_list ap)
 {
@@ -471,7 +471,7 @@ _gtaskqueue_start_threads(struct gtaskqueue **tqp, int count, int pri,
 	return (0);
 }
 
-static int
+static int __printflike(4, 5)
 gtaskqueue_start_threads(struct gtaskqueue **tqp, int count, int pri,
 			 const char *name, ...)
 {
