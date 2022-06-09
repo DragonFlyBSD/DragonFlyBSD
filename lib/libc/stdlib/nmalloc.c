@@ -1547,6 +1547,8 @@ _slabusablesize(const void *ptr)
 			{
 				size = base + big->bytes - (const char *)ptr;
 
+				bigalloc_unlock(ptr);
+
 				return size;
 			}
 			bigp = &big->next;
