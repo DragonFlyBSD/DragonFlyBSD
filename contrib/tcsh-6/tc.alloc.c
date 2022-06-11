@@ -456,6 +456,8 @@ realloc(ptr_t cp, size_t nbytes)
  */
 #ifdef __linux__
 #define M_U_S_CONST
+#elif defined(__DragonFly__)
+#define M_U_S_CONST const
 #else
 #define M_U_S_CONST
 #endif
