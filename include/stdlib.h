@@ -39,7 +39,9 @@
 #ifndef __cplusplus
 #include <machine/wchar.h>		/* for ___wchar_t */
 #endif
+#if __BSD_VISIBLE
 #include <malloc_np.h>			/* for malloc_usable_size */
+#endif
 
 #ifndef _SIZE_T_DECLARED
 typedef	__size_t	size_t;		/* _GCC_SIZE_T OK */
