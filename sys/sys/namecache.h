@@ -109,6 +109,10 @@ TAILQ_HEAD(namecache_list, namecache);
  *
  * Many new API VOP operations do not pass vnodes.  In these cases the
  * operations vector is typically obtained via nc_mount->mnt_vn_use_ops.
+ *
+ * nc_refs - This is naturally 1, plus 1 more if resolved (either positively
+ *	     or negatively), plus 1 ref for each child in ncp->nc_list, plus
+ *	     thread-held and mountcache refs.
  */
 struct namecache {
     TAILQ_ENTRY(namecache) nc_hash;	/* hash chain (nc_parent,name) */

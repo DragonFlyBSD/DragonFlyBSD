@@ -177,6 +177,10 @@ struct pcpu_ncache {
 	long			vfscache_leafs;
 	long			vfscache_unres;
 	long			numdefered;
+	long			inv_kid_quick_count;
+	long			inv_ncp_quick_count;
+	long			clean_pos_count;
+	long			clean_neg_count;
 } __cachealign;
 
 __read_mostly static struct nchash_head	*nchashtbl;
@@ -243,7 +247,7 @@ static int cache_resolve_mp(struct mount *mp);
 static int cache_findmount_callback(struct mount *mp, void *data);
 static void _cache_setunresolved(struct namecache *ncp);
 static void _cache_cleanneg(long count);
-static void _cache_cleanpos(long count);
+static void _cache_cleanpos(long ucount, long xcount);
 static void _cache_cleandefered(void);
 static void _cache_unlink(struct namecache *ncp);
 
@@ -264,10 +268,38 @@ SYSCTL_LONG(_vfs_cache, OID_AUTO, numleafs, CTLFLAG_RD, &vfscache_leafs, 0,
 static long vfscache_unres;
 SYSCTL_LONG(_vfs_cache, OID_AUTO, numunres, CTLFLAG_RD, &vfscache_unres, 0,
     "Number of unresolved leaf namecaches entries");
+
+static long	inv_kid_quick_count;
+SYSCTL_LONG(_vfs_cache, OID_AUTO, inv_kid_quick_count, CTLFLAG_RD,
+	    &inv_kid_quick_count, 0,
+	    "quick kid invalidations");
+static long	inv_ncp_quick_count;
+SYSCTL_LONG(_vfs_cache, OID_AUTO, inv_ncp_quick_count, CTLFLAG_RD,
+	    &inv_ncp_quick_count, 0,
+	    "quick ncp invalidations");
+static long	clean_pos_count;
+SYSCTL_LONG(_vfs_cache, OID_AUTO, clean_pos_count, CTLFLAG_RD,
+	    &clean_pos_count, 0,
+	    "positive ncp cleanings");
+static long	clean_neg_count;
+SYSCTL_LONG(_vfs_cache, OID_AUTO, clean_neg_count, CTLFLAG_RD,
+	    &clean_neg_count, 0,
+	    "negative ncp cleanings");
+
 static long	numdefered;
 SYSCTL_LONG(_debug, OID_AUTO, numdefered, CTLFLAG_RD, &numdefered, 0,
     "Number of cache entries allocated");
 
+/*
+ * Returns the number of basic references expected on the ncp, not
+ * including any children.  1 for the natural ref, and an addition ref
+ * if the ncp is resolved (representing a positive or negative hit).
+ */
+static __inline int
+ncpbaserefs(struct namecache *ncp)
+{
+	return (1 + ((ncp->nc_flag & NCF_UNRESOLVED) == 0));
+}
 
 struct nchstats nchstats[SMP_MAXCPU];
 /*
@@ -641,6 +673,12 @@ _cache_lock_shared_special(struct namecache *ncp)
 	return(0);
 }
 
+/*
+ * Returns:
+ *	-1	Locked by other
+ *	 0	Not locked
+ *	(v)	LK_SHARED or LK_EXCLUSIVE
+ */
 static __inline
 int
 _cache_lockstatus(struct namecache *ncp)
@@ -648,7 +686,7 @@ _cache_lockstatus(struct namecache *ncp)
 	int status;
 
 	status = lockstatus(&ncp->nc_lock, curthread);
-	if (status == 0 || status == LK_EXCLOTHER)
+	if (status == LK_EXCLOTHER)
 		status = -1;
 	return status;
 }
@@ -686,23 +724,17 @@ _cache_hold(struct namecache *ncp)
 /*
  * Drop a cache entry.
  *
- * The 1->0 transition is special and requires the caller to destroy the
- * entry.  It means that the ncp is no longer on a nchpp list (since that
- * would mean there was stilla ref).  The ncp could still be on a nc_list
- * but will not have any child of its own, again because nc_refs is now 0
- * and children would have a ref to their parent.
- *
- * Once the 1->0 transition is made, nc_refs cannot be incremented again.
+ * The 1->0 transition can only occur after or because the natural ref
+ * is being dropped.  If another thread had a temporary ref during the
+ * ncp's destruction, then that other thread might wind up being the
+ * one to drop the last ref.
  */
 static __inline
 void
 _cache_drop(struct namecache *ncp)
 {
 	if (atomic_fetchadd_int(&ncp->nc_refs, -1) == 1) {
-		/*
-		 * Executed unlocked (no need to lock on last drop)
-		 */
-		_cache_setunresolved(ncp);
+		KKASSERT(ncp->nc_flag & NCF_UNRESOLVED);
 
 		/*
 		 * Scrap it.
@@ -842,7 +874,7 @@ _cache_unlink_parent(struct namecache *par, struct namecache *ncp,
 	ncp->nc_parent = NULL;
 	ncp->nc_head = NULL;
 	spin_unlock(&nchpp->spin);
-	_cache_drop(par);	/* drop nc_parent ref from ncp */
+	_cache_drop(par);	/* drop ncp's nc_parent ref from (par) */
 
 	/*
 	 * We can only safely vdrop with no spinlocks held.
@@ -869,7 +901,7 @@ cache_alloc(int nlen)
 	ncp->nc_nlen = nlen;
 	ncp->nc_flag = NCF_UNRESOLVED;
 	ncp->nc_error = ENOTCONN;	/* needs to be resolved */
-	ncp->nc_refs = 1;
+	ncp->nc_refs = 1;		/* natural ref */
 	TAILQ_INIT(&ncp->nc_list);
 	lockinit(&ncp->nc_lock, "ncplk", hz, LK_CANRECURSE);
 	lockmgr(&ncp->nc_lock, LK_EXCLUSIVE);
@@ -1025,6 +1057,12 @@ cache_drop(struct nchandle *nch)
 	nch->mount = NULL;
 }
 
+/*
+ * Returns:
+ *	-1	Locked by other
+ *	 0	Not locked
+ *	(v)	LK_SHARED or LK_EXCLUSIVE
+ */
 int
 cache_lockstatus(struct nchandle *nch)
 {
@@ -1037,6 +1075,10 @@ cache_lock(struct nchandle *nch)
 	_cache_lock(nch->ncp);
 }
 
+/*
+ * Returns a shared or exclusive-locked ncp.  The ncp will only be
+ * shared-locked if it is already resolved.
+ */
 void
 cache_lock_maybe_shared(struct nchandle *nch, int excl)
 {
@@ -1180,7 +1222,8 @@ struct namecache *
 _cache_get_maybe_shared(struct namecache *ncp, int excl)
 {
 	if (ncp_shared_lock_disable || excl ||
-	    (ncp->nc_flag & NCF_UNRESOLVED)) {
+	    (ncp->nc_flag & NCF_UNRESOLVED))
+	{
 		return(_cache_get(ncp));
 	}
 	_cache_hold(ncp);
@@ -1320,10 +1363,12 @@ _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 
 	/*
 	 * Previously unresolved leaf is now resolved.
+	 *
+	 * Clear the NCF_UNRESOLVED flag last (see cache_nlookup_nonlocked()).
 	 */
 	if (TAILQ_EMPTY(&ncp->nc_list))
 		atomic_add_long(&pn->vfscache_unres, -1);
-
+	cpu_sfence();
 	ncp->nc_flag &= ~(NCF_UNRESOLVED | NCF_DEFEREDZAP);
 }
 
@@ -1370,7 +1415,7 @@ _cache_setunresolved(struct namecache *ncp)
 		struct pcpu_ncache *pn;
 
 		/*
-		 * Is a resolbed leaf now becoming unresolved?
+		 * Is a resolved leaf now becoming unresolved?
 		 */
 		if (TAILQ_EMPTY(&ncp->nc_list)) {
 			pn = &pcpu_ncache[mycpu->gd_cpuid];
@@ -1766,9 +1811,11 @@ cache_inval_vp_nonblock(struct vnode *vp)
 	struct namecache *next;
 
 	spin_lock(&vp->v_spin);
+
 	ncp = TAILQ_FIRST(&vp->v_namecache);
 	if (ncp)
 		_cache_hold(ncp);
+
 	while (ncp) {
 		/* loop entered with ncp held */
 		if ((next = TAILQ_NEXT(ncp, nc_vnode)) != NULL)
@@ -1819,6 +1866,7 @@ done:
 void
 cache_inval_vp_quick(struct vnode *vp)
 {
+	struct pcpu_ncache *pn = &pcpu_ncache[mycpu->gd_cpuid];
         struct namecache *ncp;
         struct namecache *kid;
 
@@ -1838,11 +1886,14 @@ cache_inval_vp_quick(struct vnode *vp)
 			struct nchash_head *nchpp;
 
 			/*
-			 * Early test without the lock
+			 * Early test without the lock.  Give-up if the
+			 * child has children of its own, the child is
+			 * positively-resolved, or the ref-count is
+			 * unexpected.
 			 */
 			if (TAILQ_FIRST(&kid->nc_list) ||
 			    kid->nc_vp ||
-			    kid->nc_refs != 1)
+			    kid->nc_refs != ncpbaserefs(kid))
 			{
 				_cache_put(ncp);
 				return;
@@ -1857,18 +1908,21 @@ cache_inval_vp_quick(struct vnode *vp)
 
 			/*
 			 * A destruction/free test requires the parent,
-			 * the child, and the hash table to be locked.
+			 * the kid, and the hash table to be locked.  Note
+			 * that the kid may still be on the negative cache
+			 * list.
 			 */
 			nchpp = kid->nc_head;
 			spin_lock(&nchpp->spin);
 
 			/*
-			 * Give up if the child isn't trivial.
+			 * Give up if the child isn't trivial.  It can be
+			 * resolved or unresolved but must not have a vp.
 			 */
 			if (kid->nc_parent != ncp ||
 			    kid->nc_vp ||
-			    kid->nc_refs != 2 ||
-			    TAILQ_FIRST(&kid->nc_list))
+			    TAILQ_FIRST(&kid->nc_list) ||
+			    kid->nc_refs != 1 + ncpbaserefs(kid))
 			{
 				spin_unlock(&nchpp->spin);
 				_cache_put(kid);
@@ -1876,19 +1930,50 @@ cache_inval_vp_quick(struct vnode *vp)
 				return;
 			}
 
+			++pn->inv_kid_quick_count;
+
 			/*
-			 * Kaboom (eats nchpp)
+			 * We can safely destroy the kid.  It may still
+			 * have extra refs due to ncneglist races, but since
+			 * we checked above with the lock held those races
+			 * will self-resolve.
 			 *
-			 * Call eats nhcpp spin-lock
+			 * With these actions the kid should nominally
+			 * have just its natural ref plus our ref.
+			 *
+			 * This is only safe because we hold locks on
+			 * the parent, the kid, and the nchpp.  The only
+			 * lock we don't have is on the ncneglist and that
+			 * can race a ref, but as long as we unresolve the
+			 * kid before executing our final drop the ncneglist
+			 * code path(s) will just drop their own ref so all
+			 * is good.
 			 */
 			_cache_unlink_parent(ncp, kid, nchpp);
-
-			/* _cache_unlock(kid) not required */
-			kid->nc_refs = -1;      /* safety */
-			if (kid->nc_name)
-				kfree(kid->nc_name, M_VFSCACHEAUX);
-			kfree_obj(kid, M_VFSCACHE);
+			_cache_setunresolved(kid);
+			if (kid->nc_refs != 2) {
+				kprintf("Warning: kid %p unexpected refs=%d "
+					"%08x %s\n",
+					kid, kid->nc_refs,
+					kid->nc_flag, kid->nc_name);
+			}
+			_cache_put(kid);    /* drop our ref and lock */
+			_cache_drop(kid);   /* drop natural ref to destroy */
 		}
+
+		/*
+		 * Now check ncp itself against our expectations.  With
+		 * no children left we have our ref plus whether it is
+		 * resolved or not (which it has to be, actually, since it
+		 * is hanging off the vp->v_namecache).
+		 */
+		if (ncp->nc_refs != 1 + ncpbaserefs(ncp)) {
+			_cache_put(ncp);
+			spin_lock(&vp->v_spin);
+			break;
+		}
+
+		++pn->inv_ncp_quick_count;
 
 		/*
 		 * Success, disassociate and release the ncp.  Do not
@@ -2368,17 +2453,18 @@ cache_fromdvp(struct vnode *dvp, struct ucred *cred, int makeit,
 			nch->ncp = _cache_get(nch->mount->mnt_ncmountpt.ncp);
 			error = cache_resolve_mp(nch->mount);
 			_cache_put(nch->ncp);
-			if (ncvp_debug) {
-				kprintf("cache_fromdvp: resolve root of mount %p error %d", 
+			if (ncvp_debug & 1) {
+				kprintf("cache_fromdvp: resolve root of "
+					"mount %p error %d",
 					dvp->v_mount, error);
 			}
 			if (error) {
-				if (ncvp_debug)
+				if (ncvp_debug & 1)
 					kprintf(" failed\n");
 				nch->ncp = NULL;
 				break;
 			}
-			if (ncvp_debug)
+			if (ncvp_debug & 1)
 				kprintf(" succeeded\n");
 			continue;
 		}
@@ -2440,7 +2526,7 @@ cache_fromdvp(struct vnode *dvp, struct ucred *cred, int makeit,
 			nch->mount = dvp->v_mount;
 			break;
 		}
-		if (ncvp_debug) {
+		if (ncvp_debug & 1) {
 			kprintf("cache_fromdvp: scan %p (%s) succeeded\n",
 				pvp, nch->ncp->nc_name);
 		}
@@ -2597,7 +2683,7 @@ cache_inefficient_scan(struct nchandle *nch, struct ucred *cred,
 	cache_unlock(nch);
 	if (error)
 		return (error);
-	if (ncvp_debug) {
+	if (ncvp_debug & 1) {
 		kprintf("inefficient_scan of (%p,%s): directory iosize %ld "
 			"vattr fileid = %lld\n",
 			nch->ncp, nch->ncp->nc_name,
@@ -2634,7 +2720,7 @@ again:
 	uio.uio_rw = UIO_READ;
 	uio.uio_td = curthread;
 
-	if (ncvp_debug >= 2)
+	if (ncvp_debug & 2)
 		kprintf("cache_inefficient_scan: readdir @ %08x\n", (int)uio.uio_offset);
 	error = VOP_READDIR(pvp, &uio, cred, &eofflag, NULL, NULL);
 	if (error == 0) {
@@ -2642,14 +2728,14 @@ again:
 		bytes = blksize - uio.uio_resid;
 
 		while (bytes > 0) {
-			if (ncvp_debug >= 2) {
+			if (ncvp_debug & 2) {
 				kprintf("cache_inefficient_scan: %*.*s\n",
 					den->d_namlen, den->d_namlen, 
 					den->d_name);
 			}
 			if (den->d_type != DT_WHT &&
 			    den->d_ino == vat.va_fileid) {
-				if (ncvp_debug) {
+				if (ncvp_debug & 1) {
 					kprintf("cache_inefficient_scan: "
 					       "MATCHED inode %lld path %s/%*.*s\n",
 					       (long long)vat.va_fileid,
@@ -2675,12 +2761,12 @@ done:
 	if (rncp.ncp) {
 		if (rncp.ncp->nc_flag & NCF_UNRESOLVED) {
 			_cache_setvp(rncp.mount, rncp.ncp, dvp);
-			if (ncvp_debug >= 2) {
+			if (ncvp_debug & 2) {
 				kprintf("cache_inefficient_scan: setvp %s/%s = %p\n",
 					nch->ncp->nc_name, rncp.ncp->nc_name, dvp);
 			}
 		} else {
-			if (ncvp_debug >= 2) {
+			if (ncvp_debug & 2) {
 				kprintf("cache_inefficient_scan: setvp %s/%s already set %p/%p\n", 
 					nch->ncp->nc_name, rncp.ncp->nc_name, dvp,
 					rncp.ncp->nc_vp);
@@ -2892,10 +2978,17 @@ cache_hysteresis(int critpath)
 {
 	long poslimit;
 	long exclimit;
-	long neglimit = maxvnodes / ncnegfactor;
+	long neglimit;
 	long xnumunres;
 	long xnumleafs;
+	long clean_neg;
+	long clean_unres;
+	long clean_excess;
 
+	/*
+	 * Calculate negative ncp limit
+	 */
+	neglimit = maxvnodes / ncnegfactor;
 	if (critpath == 0)
 		neglimit = neglimit * 8 / 10;
 
@@ -2903,14 +2996,16 @@ cache_hysteresis(int critpath)
 	 * Don't cache too many negative hits.  We use hysteresis to reduce
 	 * the impact on the critical path.
 	 */
+	clean_neg = 0;
+
 	switch(neg_cache_hysteresis_state[critpath]) {
 	case CHI_LOW:
 		if (vfscache_negs > MINNEG && vfscache_negs > neglimit) {
 			if (critpath)
-				_cache_cleanneg(ncnegflush);
+				clean_neg = ncnegflush;
 			else
-				_cache_cleanneg(ncnegflush +
-						vfscache_negs - neglimit);
+				clean_neg = ncnegflush +
+					    vfscache_negs - neglimit;
 			neg_cache_hysteresis_state[critpath] = CHI_HIGH;
 		}
 		break;
@@ -2919,16 +3014,18 @@ cache_hysteresis(int critpath)
 		    vfscache_negs * 9 / 10 > neglimit
 		) {
 			if (critpath)
-				_cache_cleanneg(ncnegflush);
+				clean_neg = ncnegflush;
 			else
-				_cache_cleanneg(ncnegflush +
-						vfscache_negs * 9 / 10 -
-						neglimit);
+				clean_neg = ncnegflush +
+					    vfscache_negs * 9 / 10 -
+					    neglimit;
 		} else {
 			neg_cache_hysteresis_state[critpath] = CHI_LOW;
 		}
 		break;
 	}
+	if (clean_neg)
+		_cache_cleanneg(clean_neg);
 
 	/*
 	 * Don't cache too many unresolved elements.  We use hysteresis to
@@ -2943,27 +3040,30 @@ cache_hysteresis(int critpath)
 	 * Number of unresolved leaf elements in the namecache.  These
 	 * can build-up for various reasons and may have to be disposed
 	 * of to allow the inactive list to be cleaned out by vnlru_proc()
+	 *
+	 * Collect count
 	 */
 	xnumunres = vfscache_unres;
+	clean_unres = 0;
 
 	switch(pos_cache_hysteresis_state[critpath]) {
 	case CHI_LOW:
 		if (xnumunres > poslimit && xnumunres > MINPOS) {
 			if (critpath)
-				_cache_cleanpos(ncposflush);
+				clean_unres = ncposflush;
 			else
-				_cache_cleanpos(ncposflush +
-						xnumunres - poslimit);
+				clean_unres = ncposflush + xnumunres -
+					      poslimit;
 			pos_cache_hysteresis_state[critpath] = CHI_HIGH;
 		}
 		break;
 	case CHI_HIGH:
 		if (xnumunres > poslimit * 5 / 6 && xnumunres > MINPOS) {
 			if (critpath)
-				_cache_cleanpos(ncposflush);
+				clean_unres = ncposflush;
 			else
-				_cache_cleanpos(ncposflush +
-						xnumunres - poslimit * 5 / 6);
+				clean_unres = ncposflush + xnumunres -
+					      poslimit * 5 / 6;
 		} else {
 			pos_cache_hysteresis_state[critpath] = CHI_LOW;
 		}
@@ -2979,30 +3079,34 @@ cache_hysteresis(int critpath)
 	if (critpath == 0)
 		exclimit = exclimit * 8 / 10;
 	xnumleafs = vfscache_leafs;
+	clean_excess = 0;
 
 	switch(exc_cache_hysteresis_state[critpath]) {
 	case CHI_LOW:
 		if (xnumleafs > exclimit && xnumleafs > MINPOS) {
 			if (critpath)
-				_cache_cleanpos(ncposflush);
+				clean_excess = ncposflush;
 			else
-				_cache_cleanpos(ncposflush +
-						xnumleafs - exclimit);
+				clean_excess = ncposflush + xnumleafs -
+					       exclimit;
 			exc_cache_hysteresis_state[critpath] = CHI_HIGH;
 		}
 		break;
 	case CHI_HIGH:
 		if (xnumleafs > exclimit * 5 / 6 && xnumleafs > MINPOS) {
 			if (critpath)
-				_cache_cleanpos(ncposflush);
+				clean_excess = ncposflush;
 			else
-				_cache_cleanpos(ncposflush +
-						xnumleafs - exclimit * 5 / 6);
+				clean_excess = ncposflush + xnumleafs -
+					       exclimit * 5 / 6;
 		} else {
 			exc_cache_hysteresis_state[critpath] = CHI_LOW;
 		}
 		break;
 	}
+
+	if (clean_unres || clean_excess)
+		_cache_cleanpos(clean_unres, clean_excess);
 
 	/*
 	 * Clean out dangling defered-zap ncps which could not be cleanly
@@ -3555,10 +3659,14 @@ failed:
 }
 
 /*
- * This version is non-locking.  The caller must validate the result
- * for parent-to-child continuity.
+ * This is a non-locking optimized lookup that depends on adding a ref
+ * to prevent normal eviction.  nch.ncp can be returned as NULL for any
+ * reason and the caller will retry with normal locking in that case.
  *
- * It can fail for any reason and will return nch.ncp == NULL in that case.
+ * This function only returns resolved entries so callers do not accidentally
+ * race doing out of order / unfenced field checks.
+ *
+ * The caller must validate the result for parent-to-child continuity.
  */
 struct nchandle
 cache_nlookup_nonlocked(struct nchandle *par_nch, struct nlcomponent *nlc)
@@ -3585,26 +3693,64 @@ cache_nlookup_nonlocked(struct nchandle *par_nch, struct nlcomponent *nlc)
 		/*
 		 * Break out if we find a matching entry.  Note that
 		 * UNRESOLVED entries may match, but DESTROYED entries
-		 * do not.
-		 *
-		 * Resolved NFS entries which have timed out fail so the
-		 * caller can rerun with normal locking.
+		 * do not.  However, UNRESOLVED entries still return failure.
 		 */
 		if (ncp->nc_parent == par_nch->ncp &&
 		    ncp->nc_nlen == nlc->nlc_namelen &&
 		    bcmp(ncp->nc_name, nlc->nlc_nameptr, ncp->nc_nlen) == 0 &&
 		    (ncp->nc_flag & NCF_DESTROYED) == 0
 		) {
+			/*
+			 * Test NFS timeout for auto-unresolve.  Give up if
+			 * the entry is not resolved.
+			 *
+			 * Getting the ref with the nchpp locked prevents
+			 * any transition to NCF_DESTROYED.
+			 */
 			if (_cache_auto_unresolve_test(par_nch->mount, ncp))
+				break;
+			if (ncp->nc_flag & NCF_UNRESOLVED)
 				break;
 			_cache_hold(ncp);
 			spin_unlock_shared(&nchpp->spin);
+
+			/*
+			 * We need an additional test to ensure that the ref
+			 * we got above prevents transitions to NCF_UNRESOLVED.
+			 * This can occur if another thread is currently
+			 * holding the ncp exclusively locked or (if we raced
+			 * that and it unlocked before our test) the flag
+			 * has been set.
+			 */
+			if (_cache_lockstatus(ncp) < 0 ||
+			    (ncp->nc_flag & (NCF_DESTROYED | NCF_UNRESOLVED)))
+			{
+				if ((ncvp_debug & 4) &&
+				    (ncp->nc_flag &
+				     (NCF_DESTROYED | NCF_UNRESOLVED)))
+				{
+				    kprintf("ncp state change: %p %08x %d %s\n",
+					    ncp, ncp->nc_flag, ncp->nc_error,
+					    ncp->nc_name);
+				}
+				_cache_drop(ncp);
+				spin_lock_shared(&nchpp->spin);
+				break;
+			}
+
+			/*
+			 * Return the ncp bundled into a nch on success.
+			 * The ref should passively prevent the ncp from
+			 * becoming unresolved without having to hold a lock.
+			 * (XXX this may not be entirely true)
+			 */
 			goto found;
 		}
 	}
 	spin_unlock_shared(&nchpp->spin);
 	nch.mount = NULL;
 	nch.ncp = NULL;
+
 	return nch;
 found:
 	/*
@@ -4122,8 +4268,11 @@ restart:
 		 * directory which is then rmdir'd.  If the parent is marked
 		 * destroyed there is no point trying to resolve it.
 		 */
-		if (ncp->nc_parent->nc_flag & NCF_DESTROYED)
+		if (ncp->nc_parent->nc_flag & NCF_DESTROYED) {
+			kprintf("nc_parent destroyed: %s/%s\n",
+				ncp->nc_parent->nc_name, ncp->nc_name);
 			return(ENOENT);
+		}
 		par = ncp->nc_parent;
 		_cache_hold(par);
 		_cache_lock(par);
@@ -4195,6 +4344,7 @@ restart:
 	} else {
 		ncp->nc_error = EPERM;
 	}
+
 	if (ncp->nc_error == EAGAIN) {
 		kprintf("[diagnostic] cache_resolve: EAGAIN ncp %p %*.*s\n",
 			ncp, ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
@@ -4452,11 +4602,28 @@ _cache_cleanneg(long count)
 		/*
 		 * This can race, so we must re-check that the ncp
 		 * is on the ncneg.list after successfully locking it.
+		 *
+		 * Don't scrap actively referenced ncps.  There should be
+		 * 3 refs.  The natural ref, one from being on the neg list,
+		 * and one from us.
+		 *
+		 * Recheck fields after successfully locking to ensure
+		 * that it is in-fact still on the negative list with no
+		 * extra refs.
+		 *
+		 * WARNING! On the ncneglist scan any race against other
+		 *	    destructors (zaps or cache_inval_vp_quick() calls)
+		 *	    will have already unresolved the ncp and cause
+		 *	    us to drop instead of zap.  This fine, if
+		 *	    our drop winds up being the last one it will
+		 *	    kfree() the ncp.
 		 */
 		if (_cache_lock_special(ncp) == 0) {
 			if (ncp->nc_vp == NULL &&
+			    ncp->nc_refs == 3 &&
 			    (ncp->nc_flag & NCF_UNRESOLVED) == 0)
 			{
+				++pcpu_ncache[mycpu->gd_cpuid].clean_neg_count;
 				cache_zap(ncp);
 			} else {
 				_cache_unlock(ncp);
@@ -4470,23 +4637,29 @@ _cache_cleanneg(long count)
 }
 
 /*
- * Clean out positive cache entries when too many have accumulated.
- * Only leafs are cleaned out.  LRU order is maintained and we rove
- * available cpus.
+ * Clean out unresolved cache entries when too many have accumulated.
+ * Resolved cache entries are cleaned out via the vnode reclamation
+ * mechanism and by _cache_cleanneg().
  */
 static void
-_cache_cleanpos(long count)
+_cache_cleanpos(long ucount, long xcount)
 {
 	static volatile int rover;
 	struct nchash_head *nchpp;
 	struct namecache *ncp;
+	long count;
 	int rover_copy;
 
 	/*
-	 * Attempt to clean out the specified number of negative cache
-	 * entries.
+	 * Don't burn too much cpu looking for stuff
 	 */
-	while (count > 0) {
+	count = (ucount > xcount) ? ucount : xcount;
+	count = count * 4;
+
+	/*
+	 * Attempt to clean out the specified number of cache entries.
+	 */
+	while (count > 0 && (ucount > 0 || xcount > 0)) {
 		rover_copy = ++rover;	/* MPSAFEENOUGH */
 		cpu_ccfence();
 		nchpp = NCHHASH(rover_copy);
@@ -4497,27 +4670,71 @@ _cache_cleanpos(long count)
 		}
 
 		/*
-		 * Cycle ncp on list, ignore and do not move DUMMY
-		 * ncps.  These are temporary list iterators.
-		 *
-		 * We must cycle the ncp to the end of the list to
-		 * ensure that all ncp's have an equal chance of
-		 * being removed.
+		 * Get the next ncp
 		 */
 		spin_lock(&nchpp->spin);
 		ncp = TAILQ_FIRST(&nchpp->list);
+
+		/*
+		 * Skip placeholder ncp's.  Do not shift their
+		 * position in the list.
+		 */
 		while (ncp && (ncp->nc_flag & NCF_DUMMY))
 			ncp = TAILQ_NEXT(ncp, nc_hash);
+
 		if (ncp) {
+			/*
+			 * Move to end of list
+			 */
 			TAILQ_REMOVE(&nchpp->list, ncp, nc_hash);
 			TAILQ_INSERT_TAIL(&nchpp->list, ncp, nc_hash);
-			_cache_hold(ncp);
+
+			if (ncp->nc_refs != ncpbaserefs(ncp)) {
+				/*
+				 * Do not destroy internal nodes that have
+				 * children or nodes which have thread
+				 * references.
+				 */
+				ncp = NULL;
+			} else if (ucount > 0 &&
+				   (ncp->nc_flag & NCF_UNRESOLVED))
+			{
+				/*
+				 * Destroy unresolved nodes if asked.
+				 */
+				--ucount;
+				--xcount;
+				_cache_hold(ncp);
+			} else if (xcount > 0) {
+				/*
+				 * Destroy any other node if asked.
+				 */
+				--xcount;
+				_cache_hold(ncp);
+			} else {
+				/*
+				 * Otherwise don't
+				 */
+				ncp = NULL;
+			}
 		}
 		spin_unlock(&nchpp->spin);
 
+		/*
+		 * Try to scap the ncp if we can do so non-blocking.
+		 * We must re-check nc_refs after locking, and it will
+		 * have one additional ref from above.
+		 */
 		if (ncp) {
 			if (_cache_lock_special(ncp) == 0) {
-				cache_zap(ncp);
+				if (ncp->nc_refs == 1 + ncpbaserefs(ncp)) {
+					++pcpu_ncache[mycpu->gd_cpuid].
+						clean_pos_count;
+					cache_zap(ncp);
+				} else {
+					_cache_unlock(ncp);
+					_cache_drop(ncp);
+				}
 			} else {
 				_cache_drop(ncp);
 			}
@@ -5012,6 +5229,9 @@ vfscache_rollup_cpu(struct globaldata *gd)
 		return;
 	pn = &pcpu_ncache[gd->gd_cpuid];
 
+	/*
+	 * namecache statistics
+	 */
 	if (pn->vfscache_count) {
 		count = atomic_swap_long(&pn->vfscache_count, 0);
 		atomic_add_long(&vfscache_count, count);
@@ -5028,6 +5248,27 @@ vfscache_rollup_cpu(struct globaldata *gd)
 		count = atomic_swap_long(&pn->vfscache_negs, 0);
 		atomic_add_long(&vfscache_negs, count);
 	}
+
+	/*
+	 * hysteresis based cleanings
+	 */
+	if (pn->inv_kid_quick_count) {
+		count = atomic_swap_long(&pn->inv_kid_quick_count, 0);
+		atomic_add_long(&inv_kid_quick_count, count);
+	}
+	if (pn->inv_ncp_quick_count) {
+		count = atomic_swap_long(&pn->inv_ncp_quick_count, 0);
+		atomic_add_long(&inv_ncp_quick_count, count);
+	}
+	if (pn->clean_pos_count) {
+		count = atomic_swap_long(&pn->clean_pos_count, 0);
+		atomic_add_long(&clean_pos_count, count);
+	}
+	if (pn->clean_neg_count) {
+		count = atomic_swap_long(&pn->clean_neg_count, 0);
+		atomic_add_long(&clean_neg_count, count);
+	}
+
 	if (pn->numdefered) {
 		count = atomic_swap_long(&pn->numdefered, 0);
 		atomic_add_long(&numdefered, count);

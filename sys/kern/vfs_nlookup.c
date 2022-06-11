@@ -879,8 +879,8 @@ nlookup_start:
 	 */
 	if (last_element) {
 	    if (error == ENOENT &&
-		(nd->nl_flags & (NLC_CREATE | NLC_RENAME_DST))
-	    ) {
+		(nd->nl_flags & (NLC_CREATE | NLC_RENAME_DST)))
+	    {
 		if (nd->nl_flags & NLC_NFS_RDONLY) {
 			error = EROFS;
 		} else {
@@ -890,7 +890,8 @@ nlookup_start:
 	    }
 	    if (error == 0 && wasdotordotdot &&
 		(nd->nl_flags & (NLC_CREATE | NLC_DELETE |
-				 NLC_RENAME_SRC | NLC_RENAME_DST))) {
+				 NLC_RENAME_SRC | NLC_RENAME_DST)))
+	    {
 		/*
 		 * POSIX junk
 		 */
@@ -1380,20 +1381,68 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp,
     struct namecache *ncp;
     int error;
     int cflags;
+    int ls = cache_lockstatus(nch);
 
-    KKASSERT(nchislocked == 0 || cache_lockstatus(nch) > 0);
+    /*
+     * nchislocked: 0 not locked by caller, might not be resolved
+     *		    1 locked by caller shared or exclusive & resolved
+     *		    2 locked by us shared or exclusive & resolved
+     */
+    KKASSERT(nchislocked == 0 || ls > 0);
 
     ncp = nch->ncp;
+
+    /*
+     * If the ncp is exclusively held by another process our ref may
+     * have raced an eviction and we cannot safely test the fields
+     * unlocked.
+     */
+    if (ls < 0 && nchislocked == 0) {
+	cache_lock(nch);
+	nchislocked = 2;
+	ls = LK_EXCLUSIVE;
+    }
+
 again:
+    /*
+     * We need a resolved entry.  If the entry is not resolved we need
+     * to lock and resolve it.  If it is already resolved, our ref should
+     * prevent normal evictions (as long as we tested the lock race above).
+     *
+     * If the ncp was locked by the caller and left unresolved, it must
+     * have been locked exclusively.
+     */
     if (ncp->nc_flag & NCF_UNRESOLVED) {
 	if (nchislocked == 0) {
-		cache_lock(nch);
-		nchislocked = 2;
+	    cache_lock(nch);
+	    nchislocked = 2;
+	    ls = LK_EXCLUSIVE;
 	}
+	KKASSERT(ls == LK_EXCLUSIVE);
 	cache_resolve(nch, cred);
 	ncp = nch->ncp;
     }
     error = ncp->nc_error;
+
+    /*
+     * Only unresolved entries should return this error (though maybe
+     * in-filesystem sockets can too).   XXX check filetype for VSOCK.
+     */
+    if (error == ENOTCONN) {
+	if (nchislocked == 0) {
+	    kprintf("ncp %p %08x %d %s: Warning, unexpected state, "
+		    "forcing lock\n",
+		    ncp, ncp->nc_flag, ncp->nc_error, ncp->nc_name);
+	    print_backtrace(-1);
+	    cache_lock(nch);
+	    nchislocked = 2;
+	    ls = LK_EXCLUSIVE;
+	    goto again;
+	}
+	kprintf("ncp %p %08x %d %s: Warning, unexpected state\n",
+		ncp, ncp->nc_flag, ncp->nc_error, ncp->nc_name);
+	print_backtrace(-1);
+    }
 
     /*
      * Directory permissions checks.  Silently ignore ENOENT if these
@@ -1413,12 +1462,12 @@ again:
 	    if (nchislocked == 0) {
 		cache_lock_maybe_shared(nch, 0);
 		nchislocked = 2;
-		if (ncp->nc_flag & NCF_UNRESOLVED)
-			goto again;
+		ls = LK_EXCLUSIVE;
+		goto again;
 	    }
 	    if ((par.ncp = ncp->nc_parent) == NULL) {
 		if (error != EAGAIN)
-			error = EINVAL;
+		    error = EINVAL;
 	    } else if (error == 0 || error == ENOENT) {
 		par.mount = nch->mount;
 		cache_hold(&par);
