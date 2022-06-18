@@ -28,6 +28,7 @@ MAN=	aac.4 \
 	alpm.4 \
 	altq.4 \
 	amd.4 \
+	amdgpu.4 \
 	amdpm.4 \
 	amdsbwd.4 \
 	amdsmb.4 \
