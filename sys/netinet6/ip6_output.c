@@ -1348,10 +1348,25 @@ do { \
 						error = EINVAL;
 						break;
 					}
+
+					/*
+					 * Since we don't support v6->v4
+					 * mapping any more this option does
+					 * nothing.  But apparently some
+					 * ports and libraries (e.g. libuv)
+					 * actually try to set the value to
+					 * 0 so just silently ignore the value
+					 * entirely.
+					 *
+					 * (also fixes named which uses libuv,
+					 * and a few other apps)
+					 */
+#if 0
 					if (!optval) {
 						/* Don't allow v4-mapped */
 						error = EOPNOTSUPP;
 					}
+#endif
 					break;
 				}
 				break;
