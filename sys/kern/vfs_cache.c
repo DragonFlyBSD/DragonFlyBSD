@@ -197,7 +197,7 @@ static struct ncmount_cache	ncmount_cache[NCMOUNT_NUMCACHE];
  * 3	Force the directory scan code run as if the parent vnode did not
  *	have a namecache record, even if it does have one.
  */
-__read_mostly static int	ncvp_debug;
+__read_mostly int	ncvp_debug;
 SYSCTL_INT(_debug, OID_AUTO, ncvp_debug, CTLFLAG_RW, &ncvp_debug, 0,
     "Namecache debug level (0-3)");
 
@@ -1365,8 +1365,9 @@ _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 	 * Previously unresolved leaf is now resolved.
 	 *
 	 * Clear the NCF_UNRESOLVED flag last (see cache_nlookup_nonlocked()).
+	 * We only adjust vfscache_unres for ncp's that are in the tree.
 	 */
-	if (TAILQ_EMPTY(&ncp->nc_list))
+	if (TAILQ_EMPTY(&ncp->nc_list) && ncp->nc_parent)
 		atomic_add_long(&pn->vfscache_unres, -1);
 	cpu_sfence();
 	ncp->nc_flag &= ~(NCF_UNRESOLVED | NCF_DEFEREDZAP);
@@ -1415,9 +1416,10 @@ _cache_setunresolved(struct namecache *ncp)
 		struct pcpu_ncache *pn;
 
 		/*
-		 * Is a resolved leaf now becoming unresolved?
+		 * Is a resolved or destroyed leaf now becoming unresolved?
+		 * Only adjust vfscache_unres for linked ncp's.
 		 */
-		if (TAILQ_EMPTY(&ncp->nc_list)) {
+		if (TAILQ_EMPTY(&ncp->nc_list) && ncp->nc_parent) {
 			pn = &pcpu_ncache[mycpu->gd_cpuid];
 			atomic_add_long(&pn->vfscache_unres, 1);
 		}
@@ -4269,8 +4271,10 @@ restart:
 		 * destroyed there is no point trying to resolve it.
 		 */
 		if (ncp->nc_parent->nc_flag & NCF_DESTROYED) {
-			kprintf("nc_parent destroyed: %s/%s\n",
-				ncp->nc_parent->nc_name, ncp->nc_name);
+			if (ncvp_debug & 8) {
+				kprintf("nc_parent destroyed: %s/%s\n",
+					ncp->nc_parent->nc_name, ncp->nc_name);
+			}
 			return(ENOENT);
 		}
 		par = ncp->nc_parent;
