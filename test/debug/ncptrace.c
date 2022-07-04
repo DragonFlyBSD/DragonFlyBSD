@@ -75,9 +75,15 @@ struct nlist Nl[] = {
 };
 
 static char *getncppath(kvm_t *kd, struct nchandle *nch, char *buf, int bytes);
-static void printvfc(kvm_t *kd, struct vfsconf *vfc);
+static int printvfc(kvm_t *kd, struct vfsconf *vfc);
 static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
-static void dumpncp(kvm_t *kd, int tab, struct namecache *, const char *);
+static void dumpncp(kvm_t *kd, int isnull, int tab, struct namecache *,
+			const char *);
+
+static long num_unres;
+static long num_leafs;
+static long num_neg;
+static long num_cache;
 
 int
 main(int ac, char **av)
@@ -93,6 +99,7 @@ main(int ac, char **av)
     int ch;
     int i;
     int n;
+    int isnull;
     char mntpath[1024];
 
     while ((ch = getopt(ac, av, "M:N:")) != -1) {
@@ -127,29 +134,38 @@ main(int ac, char **av)
 	kkread(kd, (long)mntptr, &mntinfo, sizeof(mntinfo));
 	printf("MOUNT %p ", mntptr);
 	if (mntinfo.mnt_vfc) {
-	    printvfc(kd, mntinfo.mnt_vfc);
+	    isnull = printvfc(kd, mntinfo.mnt_vfc);
 	    printf(" ");
+	} else {
+	    isnull = 0;
 	}
 	mntpath[sizeof(mntpath)-1] = 0;
 	path = getncppath(kd, &mntinfo.mnt_ncmounton,
 			  mntpath, sizeof(mntpath) - 1);
 	printf("ON %s\n", path);
 	if (ac == 0) {
-	    dumpncp(kd, 0, mntinfo.mnt_ncmountpt.ncp, NULL);
+	    dumpncp(kd, isnull, 0, mntinfo.mnt_ncmountpt.ncp, NULL);
 	} else {
 	    n = strlen(path);
 	    for (i = 0; i < ac; ++i) {
 		if (strncmp(path, av[i], n) == 0) {
-		    dumpncp(kd, 0, mntinfo.mnt_ncmountpt.ncp, av[i] + n);
+		    dumpncp(kd, isnull, 0,
+			    mntinfo.mnt_ncmountpt.ncp, av[i] + n);
 		}
 	    }
 	}
 	mntptr = TAILQ_NEXT(&mntinfo, mnt_list);
     }
+
+    printf("numunres = %ld\n", num_unres);
+    printf("numleafs = %ld\n", num_leafs);
+    printf("numcache = %ld\n", num_cache);
+    printf("numneg   = %ld\n", num_neg);
 }
 
 static void
-dumpncp(kvm_t *kd, int tab, struct namecache *ncptr, const char *path)
+dumpncp(kvm_t *kd, int isnull, int tab,
+	struct namecache *ncptr, const char *path)
 {
     struct namecache ncp;
     struct namecache *ncscan;
@@ -164,6 +180,19 @@ dumpncp(kvm_t *kd, int tab, struct namecache *ncptr, const char *path)
     } else {
 	name[0] = 0;
     }
+
+    if (isnull == 0) {
+	if (ncp.nc_parent) {
+	    if ((ncp.nc_flag & NCF_UNRESOLVED) && ncp.nc_list.tqh_first == NULL)
+		++num_unres;
+	    if (ncp.nc_list.tqh_first == NULL)
+		++num_leafs;
+	    ++num_cache;
+	}
+	if ((ncp.nc_flag & NCF_UNRESOLVED) == 0 && ncp.nc_vp == NULL)
+	    ++num_neg;
+    }
+
     if (tab == 0) {
 	strcpy(name, "FSROOT");
 	if (path && *path == '/')
@@ -221,7 +250,7 @@ dumpncp(kvm_t *kd, int tab, struct namecache *ncptr, const char *path)
     }
     for (ncscan = ncp.nc_list.tqh_first; ncscan; ncscan = ncp.nc_entry.tqe_next) {
 	kkread(kd, (u_long)ncscan, &ncp, sizeof(ncp));
-	dumpncp(kd, (path ? (tab ? tab : 4) : tab + 4), ncscan, path);
+	dumpncp(kd, isnull, (path ? (tab ? tab : 4) : tab + 4), ncscan, path);
     }
     if (haschildren && path == NULL)
 	printf("%*.*s}\n", tab, tab, "");
@@ -258,13 +287,15 @@ getncppath(kvm_t *kd, struct nchandle *nch, char *base, int bytes)
 }
 
 static
-void
+int
 printvfc(kvm_t *kd, struct vfsconf *vfc)
 {
     struct vfsconf vfcinfo;
 
     kkread(kd, (long)vfc, &vfcinfo, sizeof(vfcinfo));
     printf("%s [type %d]", vfcinfo.vfc_name, vfcinfo.vfc_typenum);
+
+    return (strcmp(vfcinfo.vfc_name, "null") == 0);
 }
 
 static void
