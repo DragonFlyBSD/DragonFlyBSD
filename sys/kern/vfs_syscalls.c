@@ -4223,13 +4223,16 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	 * If the namecache generation changed for either fromnd or tond,
 	 * we must retry.
 	 */
-	if (fromnd->nl_nch.ncp->nc_generation != fncp_gen ||
-	    tond->nl_nch.ncp->nc_generation != tncp_gen) {
+	if (((fromnd->nl_nch.ncp->nc_generation - fncp_gen) & ~1) ||
+	    ((tond->nl_nch.ncp->nc_generation - tncp_gen) & ~1))
+	{
 		krateprintf(&krate_rename,
 			"kern_rename: retry due to race on: "
-			"\"%s\" -> \"%s\"\n",
+			"\"%s\" -> \"%s\" (%d,%d)\n",
 			fromnd->nl_nch.ncp->nc_name,
-			tond->nl_nch.ncp->nc_name);
+			tond->nl_nch.ncp->nc_name,
+			fromnd->nl_nch.ncp->nc_generation - fncp_gen,
+			tond->nl_nch.ncp->nc_generation - tncp_gen);
 		error = EAGAIN;
 		goto finish;
 	}
