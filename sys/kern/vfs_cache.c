@@ -820,9 +820,11 @@ _cache_link_parent(struct namecache *ncp, struct namecache *par,
 		 */
 		/*_cache_ncp_gen_enter(par);*/
 		TAILQ_INSERT_HEAD(&par->nc_list, ncp, nc_entry);
-		if (par->nc_flag & NCF_UNRESOLVED)
-			atomic_add_long(&pn->vfscache_unres, -1);
-		atomic_add_long(&pn->vfscache_leafs, -1);
+		if (par->nc_parent) {
+			if (par->nc_flag & NCF_UNRESOLVED)
+				atomic_add_long(&pn->vfscache_unres, -1);
+			atomic_add_long(&pn->vfscache_leafs, -1);
+		}
 
 		/*
 		 * Any vp associated with an ncp which has children must
@@ -896,9 +898,11 @@ _cache_unlink_parent(struct namecache *par, struct namecache *ncp,
 		 * unnecessary nlookup retries (though not many)
 		 */
 		/*_cache_ncp_gen_enter(par);*/
-		if (par->nc_flag & NCF_UNRESOLVED)
-			atomic_add_long(&pn->vfscache_unres, 1);
-		atomic_add_long(&pn->vfscache_leafs, 1);
+		if (par->nc_parent) {
+			if (par->nc_flag & NCF_UNRESOLVED)
+				atomic_add_long(&pn->vfscache_unres, 1);
+			atomic_add_long(&pn->vfscache_leafs, 1);
+		}
 		if (par->nc_vp)
 			dropvp = par->nc_vp;
 		/*_cache_ncp_gen_exit(par);*/
@@ -4946,10 +4950,11 @@ nchinit(void)
 void
 cache_allocroot(struct nchandle *nch, struct mount *mp, struct vnode *vp)
 {
-	struct pcpu_ncache *pn = &pcpu_ncache[mycpu->gd_cpuid];
+	/*struct pcpu_ncache *pn = &pcpu_ncache[mycpu->gd_cpuid];*/
 
-	atomic_add_long(&pn->vfscache_leafs, 1);
-	atomic_add_long(&pn->vfscache_unres, 1);
+	/* nc_parent is NULL, doesn't count as a leaf or unresolved */
+	/*atomic_add_long(&pn->vfscache_leafs, 1);*/
+	/*atomic_add_long(&pn->vfscache_unres, 1);*/
 
 	nch->ncp = cache_alloc(0);
 	nch->mount = mp;
