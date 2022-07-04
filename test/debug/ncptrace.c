@@ -202,6 +202,8 @@ dumpncp(kvm_t *kd, int tab, struct namecache *ncptr, const char *path)
 	printf(" timo=%d", ncp.nc_timeout);
     if (ncp.nc_refs)
 	printf(" refs=%d", ncp.nc_refs);
+    if (ncp.nc_generation)
+	printf(" gen=%d", ncp.nc_generation);
     if ((ncp.nc_flag & NCF_UNRESOLVED) == 0 && ncp.nc_error)
 	printf(" error=%d", ncp.nc_error);
     if (ncp.nc_flag & NCF_ISMOUNTPT)
