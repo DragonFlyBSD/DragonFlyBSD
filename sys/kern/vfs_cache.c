@@ -814,7 +814,11 @@ _cache_link_parent(struct namecache *ncp, struct namecache *par,
 		/*
 		 * Parent was, but now is no longer a leaf
 		 */
-		_cache_ncp_gen_enter(par);
+		/*
+		 * XXX for now don't mess with par's gen, it causes
+		 * unnecessary nlookup retries (though not many)
+		 */
+		/*_cache_ncp_gen_enter(par);*/
 		TAILQ_INSERT_HEAD(&par->nc_list, ncp, nc_entry);
 		if (par->nc_flag & NCF_UNRESOLVED)
 			atomic_add_long(&pn->vfscache_unres, -1);
@@ -826,7 +830,7 @@ _cache_link_parent(struct namecache *ncp, struct namecache *par,
 		 */
 		if (par->nc_vp)
 			vhold(par->nc_vp);
-		_cache_ncp_gen_exit(par);
+		/*_cache_ncp_gen_exit(par);*/
 	} else {
 		TAILQ_INSERT_HEAD(&par->nc_list, ncp, nc_entry);
 	}
@@ -887,13 +891,17 @@ _cache_unlink_parent(struct namecache *par, struct namecache *ncp,
 	 */
 	dropvp = NULL;
 	if (TAILQ_EMPTY(&par->nc_list)) {
-		_cache_ncp_gen_enter(par);
+		/*
+		 * XXX for now don't mess with par's gen, it causes
+		 * unnecessary nlookup retries (though not many)
+		 */
+		/*_cache_ncp_gen_enter(par);*/
 		if (par->nc_flag & NCF_UNRESOLVED)
 			atomic_add_long(&pn->vfscache_unres, 1);
 		atomic_add_long(&pn->vfscache_leafs, 1);
 		if (par->nc_vp)
 			dropvp = par->nc_vp;
-		_cache_ncp_gen_exit(par);
+		/*_cache_ncp_gen_exit(par);*/
 	}
 	ncp->nc_parent = NULL;
 	ncp->nc_head = NULL;
@@ -1144,6 +1152,7 @@ cache_lock4_tondlocked(struct nchandle *fncpd, struct nchandle *fncp,
 		       struct ucred *fcred, struct ucred *tcred)
 {
 	int tlocked = 1;
+	u_int dummy_gen = 0;
 
 	/*
 	 * Lock tncp and tncpd
@@ -1201,13 +1210,13 @@ again:
 	}
 
 	if (__predict_true((fncpd->ncp->nc_flag & NCF_DESTROYED) == 0))
-		cache_resolve(fncpd, fcred);
+		cache_resolve(fncpd, &dummy_gen, fcred);
 	if (__predict_true((tncpd->ncp->nc_flag & NCF_DESTROYED) == 0))
-		cache_resolve(tncpd, tcred);
+		cache_resolve(tncpd, &dummy_gen, tcred);
 	if (__predict_true((fncp->ncp->nc_flag & NCF_DESTROYED) == 0))
-		cache_resolve(fncp, fcred);
+		cache_resolve(fncp, &dummy_gen, fcred);
 	if (__predict_true((tncp->ncp->nc_flag & NCF_DESTROYED) == 0))
-		cache_resolve(tncp, tcred);
+		cache_resolve(tncp, &dummy_gen, tcred);
 }
 
 int
@@ -2240,12 +2249,13 @@ cache_vget(struct nchandle *nch, struct ucred *cred,
 	struct namecache *ncp;
 	struct vnode *vp;
 	int error;
+	u_int dummy_gen = 0;
 
 	ncp = nch->ncp;
 again:
 	vp = NULL;
 	if (ncp->nc_flag & NCF_UNRESOLVED)
-		error = cache_resolve(nch, cred);
+		error = cache_resolve(nch, &dummy_gen, cred);
 	else
 		error = 0;
 
@@ -2309,12 +2319,13 @@ cache_vref(struct nchandle *nch, struct ucred *cred, struct vnode **vpp)
 	struct vnode *vp;
 	int error;
 	int v;
+	u_int dummy_gen = 0;
 
 	ncp = nch->ncp;
 again:
 	vp = NULL;
 	if (ncp->nc_flag & NCF_UNRESOLVED)
-		error = cache_resolve(nch, cred);
+		error = cache_resolve(nch, &dummy_gen, cred);
 	else
 		error = 0;
 
@@ -4240,9 +4251,12 @@ cache_unmounting(struct mount *mp)
  * Note that successful resolution does not necessarily return an error
  * code of 0.  If the ncp resolves to a negative cache hit then ENOENT
  * will be returned.
+ *
+ * (*genp) is adjusted based on our resolution operation.  If it is already
+ * wrong, that's ok... it will still be wrong on return.
  */
 int
-cache_resolve(struct nchandle *nch, struct ucred *cred)
+cache_resolve(struct nchandle *nch, u_int *genp, struct ucred *cred)
 {
 	struct namecache *par_tmp;
 	struct namecache *par;
@@ -4268,6 +4282,7 @@ restart:
 			_cache_setunresolved(ncp, 0);
 			if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
 				_cache_ncp_gen_exit(ncp);
+				*genp += 4;
 				return (ncp->nc_error);
 			}
 		} else if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
@@ -4279,6 +4294,7 @@ restart:
 		_cache_ncp_gen_enter(ncp);
 	}
 	/* in gen_enter state */
+	*genp += 4;
 
 	/*
 	 * If the ncp was destroyed it will never resolve again.  This
@@ -4416,6 +4432,7 @@ restart:
 	if (dvp) {
 		nctmp.mount = mp;
 		nctmp.ncp = ncp;
+		*genp += 4;	/* setvp bumps the generation */
 		ncp->nc_error = VOP_NRESOLVE(&nctmp, dvp, cred);
 		vrele(dvp);
 	} else {
