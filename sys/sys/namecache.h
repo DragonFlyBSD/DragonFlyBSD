@@ -110,9 +110,17 @@ TAILQ_HEAD(namecache_list, namecache);
  * Many new API VOP operations do not pass vnodes.  In these cases the
  * operations vector is typically obtained via nc_mount->mnt_vn_use_ops.
  *
- * nc_refs - This is naturally 1, plus 1 more if resolved (either positively
- *	     or negatively), plus 1 ref for each child in ncp->nc_list, plus
- *	     thread-held and mountcache refs.
+ * nc_refs -
+ *	This is naturally 1, plus 1 more if resolved (either positively
+ *	or negatively), plus 1 ref for each child in ncp->nc_list, plus
+ *	thread-held and mountcache refs.
+ *
+ * nc_generation -
+ *	This is adjusted by 2 whenever a locked ncp's resolve state,
+ *	destroyed state, name/association, or link state changes, and
+ *	then adjusted by 2 again when the operation is complete.  Thus,
+ *	if (nc_generation & 2) != 0 or (nc_generation & ~1) has changed,
+ *	an unlocked accessor should cycle a lock and retry.
  */
 struct namecache {
     TAILQ_ENTRY(namecache) nc_hash;	/* hash chain (nc_parent,name) */
@@ -131,7 +139,7 @@ struct namecache {
     int			nc_negcpu;	/* which ncneg list are we on? */
     struct {
 	    u_int	nc_namecache_gen; /* mount generation (autoclear) */
-	    u_int	nc_generation;	/* rename/unlink generation */
+	    u_int	nc_generation;	/* see notes above */
 	    int		nc_refs;	/* ref count prevents deletion */
     } __cachealign;
     struct {
@@ -182,7 +190,8 @@ struct mount;
 void	cache_clearmntcache(struct mount *mp);
 void	cache_lock(struct nchandle *nch);
 void	cache_lock_maybe_shared(struct nchandle *nch, int excl);
-void	cache_lock4_tondlocked(struct nchandle *fncpd, struct nchandle *fncp,
+void	cache_lock4_tondlocked(
+		    struct nchandle *fncpd, struct nchandle *fncp,
 		    struct nchandle *tncpd, struct nchandle *tncp,
 		    struct ucred *fcred, struct ucred *tcred);
 int	cache_lock_nonblock(struct nchandle *nch);

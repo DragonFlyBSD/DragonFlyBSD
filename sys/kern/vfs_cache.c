@@ -243,9 +243,9 @@ SYSCTL_INT(_debug, OID_AUTO, ncmount_cache_enable, CTLFLAG_RW,
 	   &ncmount_cache_enable, 0, "mount point cache");
 
 static __inline void _cache_drop(struct namecache *ncp);
-static int cache_resolve_mp(struct mount *mp);
+static int cache_resolve_mp(struct mount *mp, int adjgen);
 static int cache_findmount_callback(struct mount *mp, void *data);
-static void _cache_setunresolved(struct namecache *ncp);
+static void _cache_setunresolved(struct namecache *ncp, int adjgen);
 static void _cache_cleanneg(long count);
 static void _cache_cleanpos(long ucount, long xcount);
 static void _cache_cleandefered(void);
@@ -353,6 +353,23 @@ struct mntcache {
 } __cachealign;
 
 static struct mntcache	pcpu_mntcache[MAXCPU];
+
+static __inline
+void
+_cache_ncp_gen_enter(struct namecache *ncp)
+{
+	ncp->nc_generation += 2;
+	cpu_sfence();
+}
+
+static __inline
+void
+_cache_ncp_gen_exit(struct namecache *ncp)
+{
+	cpu_sfence();
+	ncp->nc_generation += 2;
+	cpu_sfence();
+}
 
 static __inline
 struct mntcache_elm *
@@ -560,7 +577,7 @@ _cache_lock_special(struct namecache *ncp)
 	if (_cache_lock_nonblock(ncp) == 0) {
 		if (lockmgr_oneexcl(&ncp->nc_lock)) {
 			if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
-				_cache_setunresolved(ncp);
+				_cache_setunresolved(ncp, 1);
 			return 0;
 		}
 		_cache_unlock(ncp);
@@ -763,6 +780,7 @@ _cache_link_parent(struct namecache *ncp, struct namecache *par,
 	struct pcpu_ncache *pn = &pcpu_ncache[mycpu->gd_cpuid];
 
 	KKASSERT(ncp->nc_parent == NULL);
+	_cache_ncp_gen_enter(ncp);
 	ncp->nc_parent = par;
 	ncp->nc_head = nchpp;
 
@@ -796,6 +814,7 @@ _cache_link_parent(struct namecache *ncp, struct namecache *par,
 		/*
 		 * Parent was, but now is no longer a leaf
 		 */
+		_cache_ncp_gen_enter(par);
 		TAILQ_INSERT_HEAD(&par->nc_list, ncp, nc_entry);
 		if (par->nc_flag & NCF_UNRESOLVED)
 			atomic_add_long(&pn->vfscache_unres, -1);
@@ -807,10 +826,12 @@ _cache_link_parent(struct namecache *ncp, struct namecache *par,
 		 */
 		if (par->nc_vp)
 			vhold(par->nc_vp);
+		_cache_ncp_gen_exit(par);
 	} else {
 		TAILQ_INSERT_HEAD(&par->nc_list, ncp, nc_entry);
 	}
 	_cache_hold(par);	/* add nc_parent ref */
+	_cache_ncp_gen_exit(ncp);
 }
 
 /*
@@ -841,6 +862,7 @@ _cache_unlink_parent(struct namecache *par, struct namecache *ncp,
 
 	KKASSERT(ncp->nc_parent == par);
 	cpu_ccfence();
+	_cache_ncp_gen_enter(ncp);
 
 	/* don't add a ref, we drop the nchpp ref later */
 
@@ -865,11 +887,13 @@ _cache_unlink_parent(struct namecache *par, struct namecache *ncp,
 	 */
 	dropvp = NULL;
 	if (TAILQ_EMPTY(&par->nc_list)) {
+		_cache_ncp_gen_enter(par);
 		if (par->nc_flag & NCF_UNRESOLVED)
 			atomic_add_long(&pn->vfscache_unres, 1);
 		atomic_add_long(&pn->vfscache_leafs, 1);
 		if (par->nc_vp)
 			dropvp = par->nc_vp;
+		_cache_ncp_gen_exit(par);
 	}
 	ncp->nc_parent = NULL;
 	ncp->nc_head = NULL;
@@ -881,6 +905,7 @@ _cache_unlink_parent(struct namecache *par, struct namecache *ncp,
 	 */
 	if (dropvp)
 		vdrop(dropvp);
+	_cache_ncp_gen_exit(ncp);
 }
 
 /*
@@ -902,6 +927,7 @@ cache_alloc(int nlen)
 	ncp->nc_flag = NCF_UNRESOLVED;
 	ncp->nc_error = ENOTCONN;	/* needs to be resolved */
 	ncp->nc_refs = 1;		/* natural ref */
+	ncp->nc_generation = 0;		/* link/unlink/res/unres op */
 	TAILQ_INIT(&ncp->nc_list);
 	lockinit(&ncp->nc_lock, "ncplk", hz, LK_CANRECURSE);
 	lockmgr(&ncp->nc_lock, LK_EXCLUSIVE);
@@ -1137,7 +1163,8 @@ again:
 	}
 	if (__predict_false(cache_lock_nonblock(tncpd) != 0)) {
 		cache_unlock(tncp);
-		cache_lock(tncpd); cache_unlock(tncpd); /* cycle */
+		cache_lock(tncpd);	/* cycle tncpd lock */
+		cache_unlock(tncpd);
 		tlocked = 0;
 		goto again;
 	}
@@ -1157,18 +1184,22 @@ again:
 	if (__predict_false(cache_lock_nonblock(fncp) != 0)) {
 		cache_unlock(tncpd);
 		cache_unlock(tncp);
-		cache_lock(fncp); cache_unlock(fncp); /* cycle */
+		cache_lock(fncp);	/* cycle fncp lock */
+		cache_unlock(fncp);
 		tlocked = 0;
 		goto again;
 	}
+
 	if (__predict_false(cache_lock_nonblock(fncpd) != 0)) {
 		cache_unlock(fncp);
 		cache_unlock(tncpd);
 		cache_unlock(tncp);
-		cache_lock(fncpd); cache_unlock(fncpd); /* cycle */
+		cache_lock(fncpd);
+		cache_unlock(fncpd);	/* cycle fncpd lock */
 		tlocked = 0;
 		goto again;
 	}
+
 	if (__predict_true((fncpd->ncp->nc_flag & NCF_DESTROYED) == 0))
 		cache_resolve(fncpd, fcred);
 	if (__predict_true((tncpd->ncp->nc_flag & NCF_DESTROYED) == 0))
@@ -1208,7 +1239,7 @@ _cache_get(struct namecache *ncp)
 	_cache_hold(ncp);
 	_cache_lock(ncp);
 	if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
-		_cache_setunresolved(ncp);
+		_cache_setunresolved(ncp, 1);
 	return(ncp);
 }
 
@@ -1291,13 +1322,17 @@ cache_put(struct nchandle *nch)
  */
 static
 void
-_cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
+_cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp,
+	     int adjgen)
 {
 	struct pcpu_ncache *pn = &pcpu_ncache[mycpu->gd_cpuid];
 
 	KKASSERT((ncp->nc_flag & NCF_UNRESOLVED) &&
 		 (_cache_lockstatus(ncp) == LK_EXCLUSIVE) &&
 		 ncp->nc_vp == NULL);
+
+	if (adjgen)
+		_cache_ncp_gen_enter(ncp);
 
 	if (vp) {
 		/*
@@ -1369,14 +1404,15 @@ _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 	 */
 	if (TAILQ_EMPTY(&ncp->nc_list) && ncp->nc_parent)
 		atomic_add_long(&pn->vfscache_unres, -1);
-	cpu_sfence();
 	ncp->nc_flag &= ~(NCF_UNRESOLVED | NCF_DEFEREDZAP);
+	if (adjgen)
+		_cache_ncp_gen_exit(ncp);
 }
 
 void
 cache_setvp(struct nchandle *nch, struct vnode *vp)
 {
-	_cache_setvp(nch->mount, nch->ncp, vp);
+	_cache_setvp(nch->mount, nch->ncp, vp, 1);
 }
 
 /*
@@ -1408,12 +1444,15 @@ cache_settimeout(struct nchandle *nch, int nticks)
  */
 static
 void
-_cache_setunresolved(struct namecache *ncp)
+_cache_setunresolved(struct namecache *ncp, int adjgen)
 {
 	struct vnode *vp;
 
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
 		struct pcpu_ncache *pn;
+
+		if (adjgen)
+			_cache_ncp_gen_enter(ncp);
 
 		/*
 		 * Is a resolved or destroyed leaf now becoming unresolved?
@@ -1453,6 +1492,9 @@ _cache_setunresolved(struct namecache *ncp)
 			spin_unlock(&pn->neg_spin);
 		}
 		ncp->nc_flag &= ~(NCF_WHITEOUT|NCF_ISDIR|NCF_ISSYMLINK);
+
+		if (adjgen)
+			_cache_ncp_gen_exit(ncp);
 		_cache_drop(ncp);	/* from v_namecache or neg_list */
 	}
 }
@@ -1499,14 +1541,14 @@ _cache_auto_unresolve(struct mount *mp, struct namecache *ncp)
 	 */
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
 		if (_cache_auto_unresolve_test(mp, ncp))
-			_cache_setunresolved(ncp);
+			_cache_setunresolved(ncp, 1);
 	}
 }
 
 void
 cache_setunresolved(struct nchandle *nch)
 {
-	_cache_setunresolved(nch->ncp);
+	_cache_setunresolved(nch->ncp, 1);
 }
 
 /*
@@ -1652,10 +1694,11 @@ _cache_inval_internal(struct namecache *ncp, int flags, struct cinvtrack *track)
 
 	KKASSERT(_cache_lockstatus(ncp) == LK_EXCLUSIVE);
 
-	_cache_setunresolved(ncp);
+	_cache_ncp_gen_enter(ncp);
+	_cache_setunresolved(ncp, 0);
 	if (flags & CINV_DESTROY) {
 		ncp->nc_flag |= NCF_DESTROYED;
-		++ncp->nc_generation;
+		cpu_sfence();
 	}
 
 	while ((flags & CINV_CHILDREN) &&
@@ -1739,6 +1782,8 @@ _cache_inval_internal(struct namecache *ncp, int flags, struct cinvtrack *track)
 	 */
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0)
 		++rcnt;
+	_cache_ncp_gen_exit(ncp);
+
 	return (rcnt);
 }
 
@@ -1952,7 +1997,7 @@ cache_inval_vp_quick(struct vnode *vp)
 			 * is good.
 			 */
 			_cache_unlink_parent(ncp, kid, nchpp);
-			_cache_setunresolved(kid);
+			_cache_setunresolved(kid, 1);
 			if (kid->nc_refs != 2) {
 				kprintf("Warning: kid %p unexpected refs=%d "
 					"%08x %s\n",
@@ -1987,7 +2032,7 @@ cache_inval_vp_quick(struct vnode *vp)
 		 *	 to cache_inval_vp_quick() will be able to continue
 		 *	 to make progress.
 		 */
-		_cache_setunresolved(ncp);
+		_cache_setunresolved(ncp, 1);
                 _cache_put(ncp);
                 spin_lock(&vp->v_spin);
         }
@@ -2034,8 +2079,6 @@ cache_rename(struct nchandle *fnch, struct nchandle *tnch)
 	char *oname;
 	char *nname;
 
-	++fncp->nc_generation;
-	++tncp->nc_generation;
 	if (tncp->nc_nlen) {
 		nname = kmalloc(tncp->nc_nlen + 1, M_VFSCACHEAUX, M_WAITOK);
 		bcopy(tncp->nc_name, nname, tncp->nc_nlen);
@@ -2115,8 +2158,8 @@ _cache_unlink(struct namecache *ncp)
 	 * Causes lookups to fail and allows another ncp with the same
 	 * name to be created under ncp->nc_parent.
 	 */
+	_cache_ncp_gen_enter(ncp);
 	ncp->nc_flag |= NCF_DESTROYED;
-	++ncp->nc_generation;
 
 	/*
 	 * Attempt to trigger a deactivation.  Set VREF_FINALIZE to
@@ -2137,9 +2180,10 @@ _cache_unlink(struct namecache *ncp)
 					vput(vp);
 			}
 		} else {
-			_cache_setunresolved(ncp);
+			_cache_setunresolved(ncp, 0);
 		}
 	}
+	_cache_ncp_gen_exit(ncp);
 }
 
 /*
@@ -2220,7 +2264,7 @@ again:
 					vp, ncp->nc_name);
 				_cache_unlock(ncp);
 				_cache_lock(ncp);
-				_cache_setunresolved(ncp);
+				_cache_setunresolved(ncp, 1);
 				goto again;
 			}
 
@@ -2313,7 +2357,7 @@ again:
 					vp, ncp->nc_name);
 				_cache_unlock(ncp);
 				_cache_lock(ncp);
-				_cache_setunresolved(ncp);
+				_cache_setunresolved(ncp, 1);
 				goto again;
 			}
 
@@ -2453,7 +2497,7 @@ cache_fromdvp(struct vnode *dvp, struct ucred *cred, int makeit,
 		 */
 		if (dvp->v_flag & VROOT) {
 			nch->ncp = _cache_get(nch->mount->mnt_ncmountpt.ncp);
-			error = cache_resolve_mp(nch->mount);
+			error = cache_resolve_mp(nch->mount, 1);
 			_cache_put(nch->ncp);
 			if (ncvp_debug & 1) {
 				kprintf("cache_fromdvp: resolve root of "
@@ -2595,7 +2639,7 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
 		spin_unlock_shared(&pvp->v_spin);
 		if (pvp->v_flag & VROOT) {
 			nch.ncp = _cache_get(pvp->v_mount->mnt_ncmountpt.ncp);
-			error = cache_resolve_mp(nch.mount);
+			error = cache_resolve_mp(nch.mount, 1);
 			_cache_unlock(nch.ncp);
 			vrele(pvp);
 			if (error) {
@@ -2762,7 +2806,7 @@ done:
 	vrele(pvp);
 	if (rncp.ncp) {
 		if (rncp.ncp->nc_flag & NCF_UNRESOLVED) {
-			_cache_setvp(rncp.mount, rncp.ncp, dvp);
+			_cache_setvp(rncp.mount, rncp.ncp, dvp, 1);
 			if (ncvp_debug & 2) {
 				kprintf("cache_inefficient_scan: setvp %s/%s = %p\n",
 					nch->ncp->nc_name, rncp.ncp->nc_name, dvp);
@@ -2836,7 +2880,7 @@ again:
 	 * This gets rid of any vp->v_namecache list or negative list and
 	 * the related ref.
 	 */
-	_cache_setunresolved(ncp);
+	_cache_setunresolved(ncp, 1);
 
 	/*
 	 * Try to scrap the entry and possibly tail-recurse on its parent.
@@ -3318,6 +3362,9 @@ restart:
 				 * Update nc_name.
 				 */
 				ncp = rep_ncp;
+
+				_cache_ncp_gen_enter(ncp);
+
 				bcopy(nlc->nlc_nameptr, ncp->nc_name,
 				      nlc->nlc_namelen);
 
@@ -3335,9 +3382,12 @@ restart:
 				ncp->nc_flag &= ~NCF_DESTROYED;
 				spin_unlock(&nchpp->spin);	/* use_excl */
 
-				_cache_setunresolved(ncp);
+				_cache_setunresolved(ncp, 0);
 				ncp->nc_flag = NCF_UNRESOLVED;
 				ncp->nc_error = ENOTCONN;
+
+				_cache_ncp_gen_exit(ncp);
+
 				if (par_locked) {
 					_cache_unlock(par_nch->ncp);
 					par_locked = 0;
@@ -3723,6 +3773,8 @@ cache_nlookup_nonlocked(struct nchandle *par_nch, struct nlcomponent *nlc)
 			 * holding the ncp exclusively locked or (if we raced
 			 * that and it unlocked before our test) the flag
 			 * has been set.
+			 *
+			 * XXX check if superceeded by nc_generation XXX
 			 */
 			if (_cache_lockstatus(ncp) < 0 ||
 			    (ncp->nc_flag & (NCF_DESTROYED | NCF_UNRESOLVED)))
@@ -4203,6 +4255,7 @@ cache_resolve(struct nchandle *nch, struct ucred *cred)
 	ncp = nch->ncp;
 	mp = nch->mount;
 	KKASSERT(_cache_lockstatus(ncp) == LK_EXCLUSIVE);
+
 restart:
 	/*
 	 * If the ncp is already resolved we have nothing to do.  However,
@@ -4210,11 +4263,22 @@ restart:
 	 * a vnode is present, so make sure it hasn't been reclaimed.
 	 */
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
-		if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
-			_cache_setunresolved(ncp);
-		if ((ncp->nc_flag & NCF_UNRESOLVED) == 0)
+		if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED)) {
+			_cache_ncp_gen_enter(ncp);
+			_cache_setunresolved(ncp, 0);
+			if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
+				_cache_ncp_gen_exit(ncp);
+				return (ncp->nc_error);
+			}
+		} else if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
 			return (ncp->nc_error);
+		} else {
+			_cache_ncp_gen_enter(ncp);
+		}
+	} else {
+		_cache_ncp_gen_enter(ncp);
 	}
+	/* in gen_enter state */
 
 	/*
 	 * If the ncp was destroyed it will never resolve again.  This
@@ -4224,15 +4288,20 @@ restart:
 	 * have a way to re-resolve the disconnected ncp, which will
 	 * result in inconsistencies in the cdir/nch for proc->p_fd.
 	 */
-	if (ncp->nc_flag & NCF_DESTROYED)
+	if (ncp->nc_flag & NCF_DESTROYED) {
+		_cache_ncp_gen_exit(ncp);
 		return(EINVAL);
+	}
 
 	/*
 	 * Mount points need special handling because the parent does not
 	 * belong to the same filesystem as the ncp.
 	 */
-	if (ncp == mp->mnt_ncmountpt.ncp)
-		return (cache_resolve_mp(mp));
+	if (ncp == mp->mnt_ncmountpt.ncp) {
+		error = cache_resolve_mp(mp, 0);
+		_cache_ncp_gen_exit(ncp);
+		return error;
+	}
 
 	/*
 	 * We expect an unbroken chain of ncps to at least the mount point,
@@ -4243,6 +4312,7 @@ restart:
 		kprintf("EXDEV case 1 %p %*.*s\n", ncp,
 			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
 		ncp->nc_error = EXDEV;
+		_cache_ncp_gen_exit(ncp);
 		return(ncp->nc_error);
 	}
 
@@ -4275,6 +4345,7 @@ restart:
 				kprintf("nc_parent destroyed: %s/%s\n",
 					ncp->nc_parent->nc_name, ncp->nc_name);
 			}
+			_cache_ncp_gen_exit(ncp);
 			return(ENOENT);
 		}
 		par = ncp->nc_parent;
@@ -4291,6 +4362,7 @@ restart:
 			kprintf("EXDEV case 2 %*.*s\n",
 				par->nc_nlen, par->nc_nlen, par->nc_name);
 			_cache_put(par);
+			_cache_ncp_gen_exit(ncp);
 			return (EXDEV);
 		}
 		/*
@@ -4303,7 +4375,7 @@ restart:
 		_cache_get(par);	/* additional hold/lock */
 		_cache_put(par);	/* from earlier hold/lock */
 		if (par == nch->mount->mnt_ncmountpt.ncp) {
-			cache_resolve_mp(nch->mount);
+			cache_resolve_mp(nch->mount, 0);
 		} else if ((dvp = cache_dvpref(par)) == NULL) {
 			kprintf("[diagnostic] cache_resolve: raced on %*.*s\n",
 				par->nc_nlen, par->nc_nlen, par->nc_name);
@@ -4323,6 +4395,7 @@ restart:
 				    par->nc_nlen, par->nc_nlen, par->nc_name,
 				    par->nc_error);
 				_cache_put(par);
+				_cache_ncp_gen_exit(ncp);
 				return(error);
 			}
 			kprintf("[diagnostic] cache_resolve: EAGAIN par %p %*.*s\n",
@@ -4354,6 +4427,8 @@ restart:
 			ncp, ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
 		goto restart;
 	}
+	_cache_ncp_gen_exit(ncp);
+
 	return(ncp->nc_error);
 }
 
@@ -4370,7 +4445,7 @@ restart:
  * the unlock we have to recheck the flags after we relock.
  */
 static int
-cache_resolve_mp(struct mount *mp)
+cache_resolve_mp(struct mount *mp, int adjgen)
 {
 	struct namecache *ncp = mp->mnt_ncmountpt.ncp;
 	struct vnode *vp;
@@ -4385,7 +4460,7 @@ cache_resolve_mp(struct mount *mp)
 	 */
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
 		if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
-			_cache_setunresolved(ncp);
+			_cache_setunresolved(ncp, adjgen);
 	}
 
 	if (ncp->nc_flag & NCF_UNRESOLVED) {
@@ -4406,13 +4481,13 @@ cache_resolve_mp(struct mount *mp)
 		if (ncp->nc_flag & NCF_UNRESOLVED) {
 			ncp->nc_error = error;
 			if (error == 0) {
-				_cache_setvp(mp, ncp, vp);
+				_cache_setvp(mp, ncp, vp, adjgen);
 				vput(vp);
 			} else {
 				kprintf("[diagnostic] cache_resolve_mp: failed"
 					" to resolve mount %p err=%d ncp=%p\n",
 					mp, error, ncp);
-				_cache_setvp(mp, ncp, NULL);
+				_cache_setvp(mp, ncp, NULL, adjgen);
 			}
 		} else if (error == 0) {
 			vput(vp);
@@ -4518,7 +4593,7 @@ cache_resolve_dvp(struct nchandle *nch, struct ucred *cred, struct vnode **dvpp)
 		_cache_get(par);	/* additional hold/lock */
 		_cache_put(par);	/* from earlier hold/lock */
 		if (par == nch->mount->mnt_ncmountpt.ncp) {
-			cache_resolve_mp(nch->mount);
+			cache_resolve_mp(nch->mount, 1);
 		} else if ((dvp = cache_dvpref(par)) == NULL) {
 			kprintf("[diagnostic] cache_resolve: raced on %*.*s\n",
 				par->nc_nlen, par->nc_nlen, par->nc_name);
@@ -4863,7 +4938,7 @@ cache_allocroot(struct nchandle *nch, struct mount *mp, struct vnode *vp)
 	nch->mount = mp;
 	_cache_mntref(mp);
 	if (vp)
-		_cache_setvp(nch->mount, nch->ncp, vp);
+		_cache_setvp(nch->mount, nch->ncp, vp, 1);
 }
 
 /*
