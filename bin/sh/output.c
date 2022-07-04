@@ -56,6 +56,7 @@ __FBSDID("$FreeBSD: head/bin/sh/output.c 344306 2019-02-19 21:27:30Z jilles $");
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <poll.h>
 #include <wchar.h>
 #include <wctype.h>
 
@@ -247,8 +248,10 @@ flushout(struct output *dest)
 
 	if (dest->buf == NULL || dest->nextc == dest->buf || dest->fd < 0)
 		return;
-	if (xwrite(dest->fd, dest->buf, dest->nextc - dest->buf) < 0)
+	if (xwrite(dest->fd, dest->buf, dest->nextc - dest->buf) < 0) {
 		dest->flags |= OUTPUT_ERR;
+		dest->error = errno;
+	}
 	dest->nextc = dest->buf;
 }
 
@@ -369,8 +372,30 @@ xwrite(int fd, const char *buf, int nbytes)
 		} else if (i == 0) {
 			if (++ntry > 10)
 				return nbytes - n;
-		} else if (errno != EINTR) {
-			return -1;
+		} else {
+			struct pollfd pfd;
+
+			switch(errno) {
+			case EINTR:
+				/* retry */
+				break;
+			case EAGAIN:
+				/*
+				 * If stdout is non-blocking, use poll
+				 * to wait, then retry.
+				 */
+				pfd.fd = fd;
+				pfd.events = POLLOUT;
+				pfd.revents = 0;
+				poll(&pfd, 1, -1);
+				if (pfd.revents & (POLLERR | POLLNVAL))
+					return -1;
+				/* retry */
+				break;
+			default:
+				return -1;
+				/* not reached */
+			}
 		}
 	}
 }

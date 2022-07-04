@@ -48,6 +48,7 @@ struct output {
 	int bufsize;
 	short fd;
 	short flags;
+	int error;
 };
 
 extern struct output output; /* to fd 1 */
