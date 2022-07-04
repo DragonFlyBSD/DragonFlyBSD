@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2020 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2004-2022 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -72,12 +72,17 @@
 #include <sys/ktrace.h>
 #endif
 
+__read_mostly static int nlookup_max_retries = 4;
+SYSCTL_INT(_debug, OID_AUTO, nlookup_max_retries, CTLFLAG_RW,
+	&nlookup_max_retries, 0,
+	"retries on generation mismatch");
 __read_mostly static int nlookup_debug;
-SYSCTL_INT(_debug, OID_AUTO, nlookup_debug, CTLFLAG_RW, &nlookup_debug, 0,
+SYSCTL_INT(_debug, OID_AUTO, nlookup_debug, CTLFLAG_RW,
+	&nlookup_debug, 0,
 	"Force retry test");
 
-static int naccess(struct nchandle *nch, int vmode, struct ucred *cred,
-			int *stickyp, int nchislocked);
+static int naccess(struct nchandle *nch, u_int *genp, int vmode,
+			struct ucred *cred, int *stickyp, int nchislocked);
 
 /*
  * unmount operations flag NLC_IGNBADDIR in order to allow the
@@ -516,6 +521,9 @@ wantsexcllock(struct nlookupdata *nd, int last_element)
  * NOTE: As an optimization we attempt to obtain a shared namecache lock
  *	 on any intermediate elements.  On success, the returned element
  *	 is ALWAYS locked exclusively.
+ *
+ * NOTE: If for any reason the nc_generation number of the ncp's being
+ *	 evaluated changes, the lookup is retried.
  */
 int
 nlookup(struct nlookupdata *nd)
@@ -534,13 +542,13 @@ nlookup(struct nlookupdata *nd)
     int dflags;
     int hit = 1;
     int saveflag = nd->nl_flags;
+    int max_retries = nlookup_max_retries;
+    u_int nl_gen;
+    u_int nch_gen;
+    int gen_changed;
     boolean_t doretry = FALSE;
     boolean_t inretry = FALSE;
 
-    if (nlookup_debug > 0) {
-	--nlookup_debug;
-	doretry = 1;
-    }
     path_reset = NULL;
 
 nlookup_start:
@@ -562,6 +570,10 @@ nlookup_start:
 	nd->nl_dvp = NULL;
     }
     ptr = nd->nl_path;
+
+    nl_gen = nd->nl_nch.ncp ? nd->nl_nch.ncp->nc_generation : 0;
+    nl_gen &= ~3;
+    gen_changed = 0;
 
     /*
      * Loop on the path components.  At the top of the loop nd->nl_nch
@@ -591,6 +603,7 @@ nlookup_start:
 		nd->nl_nch.ncp != nd->nl_rootnch.ncp) {
 		cache_drop_and_cache(&nd->nl_nch, 0);
 		cache_copy(&nd->nl_rootnch, &nd->nl_nch);
+		nl_gen = nd->nl_nch.ncp->nc_generation & ~3;
 	    }
 
 	    /*
@@ -636,13 +649,16 @@ nlookup_start:
 	 * the related vnode if cached perms are sufficient.
 	 */
 	dflags = 0;
-	if (*nptr == '/' || (saveflag & NLC_MODIFYING_MASK) == 0)
-	    error = naccess(&nd->nl_nch, NLC_EXEC, nd->nl_cred, NULL, 0);
-	else
-	    error = naccess(&nd->nl_nch, NLC_EXEC, nd->nl_cred, &dflags, 0);
+	if (*nptr == '/' || (saveflag & NLC_MODIFYING_MASK) == 0) {
+	    error = naccess(&nd->nl_nch, &nl_gen, NLC_EXEC,
+			    nd->nl_cred, NULL, 0);
+	} else {
+	    error = naccess(&nd->nl_nch, &nl_gen, NLC_EXEC,
+			    nd->nl_cred, &dflags, 0);
+	}
 	if (error) {
 	    if (keeperror(nd, error))
-		    break;
+		break;
 	    error = 0;
 	}
 
@@ -689,6 +705,7 @@ nlookup_start:
 	    } else {
 		cache_copy(&nd->nl_nch, &nch);
 	    }
+	    nch_gen = nch.ncp->nc_generation & ~3;
 	    wasdotordotdot = 1;
 	} else if (nlc.nlc_namelen == 2 && 
 		   nlc.nlc_nameptr[0] == '.' && nlc.nlc_nameptr[1] == '.') {
@@ -745,6 +762,7 @@ nlookup_start:
 		    cache_copy(&nctmp, &nch);
 		}
 	    }
+	    nch_gen = nch.ncp->nc_generation & ~3;
 	    wasdotordotdot = 2;
 	} else {
 	    /*
@@ -776,7 +794,7 @@ nlookup_start:
 		if (nch.ncp->nc_flag & NCF_UNRESOLVED)
 		    hit = 0;
 		for (;;) {
-		    error = cache_resolve(&nch, nd->nl_cred);
+		    error = cache_resolve(&nch, &nch_gen, nd->nl_cred);
 		    if (error != EAGAIN &&
 			(nch.ncp->nc_flag & NCF_DESTROYED) == 0) {
 			    if (error == ESTALE) {
@@ -795,6 +813,7 @@ nlookup_start:
 		    nch = cache_nlookup(&nd->nl_nch, &nlc);
 		}
 	    }
+	    nch_gen = nch.ncp->nc_generation & ~3;
 	    wasdotordotdot = 0;
 	}
 
@@ -815,9 +834,11 @@ nlookup_start:
 		cache_lock_maybe_shared(&nch, wantsexcllock(nd, 0));
 
 	    if ((par.ncp = nch.ncp->nc_parent) != NULL) {
+		u_int dummy_gen = 0;
+
 		par.mount = nch.mount;
 		cache_hold(&par);
-		error = naccess(&par, 0, nd->nl_cred, &dflags, 0);
+		error = naccess(&par, &dummy_gen, 0, nd->nl_cred, &dflags, 0);
 		cache_drop_and_cache(&par, nd->nl_elmno - 1);
 		if (error) {
 		    if (!keeperror(nd, error))
@@ -839,6 +860,7 @@ nlookup_start:
 	 *
 	 * nch is referenced and locked according to (last_element).
 	 * nd->nl_nch is unlocked and referenced.
+	 * nl_gen and nch_gen are both set.
 	 */
 	KKASSERT((nd->nl_flags & NLC_NCPISLOCKED) == 0);
 
@@ -854,7 +876,7 @@ nlookup_start:
 	    if (last_element == 0)
 		cache_lock(&nch);
 	    hit = 0;
-	    error = cache_resolve(&nch, nd->nl_cred);
+	    error = cache_resolve(&nch, &nch_gen, nd->nl_cred);
 	    if (error == ESTALE) {
 		if (!inretry)
 		    error = ENOENT;
@@ -884,7 +906,7 @@ nlookup_start:
 		if (nd->nl_flags & NLC_NFS_RDONLY) {
 			error = EROFS;
 		} else {
-			error = naccess(&nch, nd->nl_flags | dflags,
+			error = naccess(&nch, &nch_gen, nd->nl_flags | dflags,
 					nd->nl_cred, NULL, last_element);
 		}
 	    }
@@ -929,8 +951,24 @@ nlookup_start:
 		cache_drop_and_cache(&nch, nd->nl_elmno);
 		break;
 	    }
+
+	    /*
+	     * Check for a generation change.
+	     *
+	     * NOTE: On generation changes we must at a minimum cycle
+	     *	     the lock.  Here we get or have the lock so we are
+	     *	     ok.
+	     */
 	    if (last_element == 0)
 		cache_lock_maybe_shared(&nch, 1);
+
+	    if ((nch.ncp->nc_generation - nch_gen) & ~1) {
+		if (nlookup_debug & 1) {
+		    kprintf("nlookup: symlink: GEN CHANGE %d\n",
+			    (nch.ncp->nc_generation - nch_gen));
+		}
+		gen_changed = 1;
+	    }
 
 	    error = nreadsymlink(nd, &nch, &nlc);
 	    cache_put(&nch);
@@ -961,6 +999,7 @@ nlookup_start:
 	    nd->nl_path = nlc.nlc_nameptr;
 	    nd->nl_flags |= NLC_HASBUF;
 	    ptr = nd->nl_path;
+	    /* nl_gen has not changed */
 
 	    /*
 	     * Go back up to the top to resolve any initial '/'s in the
@@ -986,6 +1025,24 @@ nlookup_start:
 	     * mount point is already resolved.
 	     */
 again:
+	    /*
+	     * Check for a generation change.
+	     *
+	     * NOTE: On generation changes we must at a minimum cycle
+	     *	     the lock.  So get and release the lock if we
+	     *	     do not have it.
+	     */
+	    if ((nch.ncp->nc_generation - nch_gen) & ~1) {
+		if (last_element == 0) {
+		    cache_lock_maybe_shared(&nch, 1);
+		    cache_unlock(&nch);
+		}
+		if (nlookup_debug & 1) {
+		    kprintf("nlookup: mountpt: GEN CHANGE %d\n",
+			    (nch.ncp->nc_generation - nch_gen));
+		}
+		gen_changed = 1;
+	    }
 	    if (last_element)
 		    cache_unlock(&nch);
 	    cache_drop_and_cache(&nch, nd->nl_elmno);
@@ -1011,6 +1068,7 @@ again:
 				       wantsexcllock(nd, 1));
 	    else
 		cache_copy(&mp->mnt_ncmountpt, &nch);
+	    nch_gen = nch.ncp->nc_generation & ~3;
 
 	    if (nch.ncp->nc_flag & NCF_UNRESOLVED) {
 		if (last_element == 0)
@@ -1033,6 +1091,7 @@ again:
 		    }
 		    if (error == 0) {
 			cache_setvp(&nch, tdp);
+			nch_gen = nch.ncp->nc_generation & ~3;
 			vput(tdp);
 		    }
 		}
@@ -1076,13 +1135,51 @@ double_break:
 	 * element is a directory.
 	 */
 	if (*ptr && (nch.ncp->nc_flag & NCF_ISDIR)) {
+	    /*
+	     * Check for a generation change.
+	     *
+	     * NOTE: On generation changes we must at a minimum cycle
+	     *	     the lock.  So get and release the lock if we
+	     *	     do not have it.
+	     */
+	    if ((nch.ncp->nc_generation - nch_gen) & ~1) {
+		if (last_element == 0) {
+		    cache_lock_maybe_shared(&nch, 1);
+		    cache_unlock(&nch);
+		}
+		if (nlookup_debug & 1) {
+		    kprintf("nlookup: next: GEN CHANGE %d\n",
+			    (nch.ncp->nc_generation - nch_gen));
+		}
+		gen_changed = 1;
+	    }
 	    cache_drop_and_cache(&nd->nl_nch, nd->nl_elmno);
 	    if (last_element)
 		    cache_unlock(&nch);
 	    /*nchislocked = 0; not needed */
 	    KKASSERT((nd->nl_flags & NLC_NCPISLOCKED) == 0);
 	    nd->nl_nch = nch;
+	    nl_gen = nch_gen;
 	    continue;
+	}
+
+	/*
+	 * Check for a generation change.
+	 *
+	 * NOTE: On generation changes we must at a minimum cycle
+	 *	     the lock.  So get and release the lock if we
+	 *	     do not have it.
+	 */
+	if ((nch.ncp->nc_generation - nch_gen) & ~1) {
+	    if (nlookup_debug & 1) {
+		if (last_element == 0) {
+		    cache_lock_maybe_shared(&nch, 1);
+		    cache_unlock(&nch);
+		}
+		kprintf("nlookup: final: GEN CHANGE %d\n",
+			(nch.ncp->nc_generation - nch_gen));
+		gen_changed = 1;
+	    }
 	}
 
 	/*
@@ -1111,7 +1208,7 @@ double_break:
 	KKASSERT(last_element);
 
 	if (nch.ncp->nc_vp && (nd->nl_flags & NLC_ALLCHKS)) {
-	    error = naccess(&nch, nd->nl_flags | dflags,
+	    error = naccess(&nch, &nch_gen, nd->nl_flags | dflags,
 			    nd->nl_cred, NULL, 1);
 	    if (keeperror(nd, error)) {
 		cache_put(&nch);
@@ -1153,12 +1250,14 @@ double_break:
 			error = cache_resolve_dvp(&nch, nd->nl_cred,
 						  &nd->nl_dvp);
 			if (error) {
-				kprintf("Parent directory lost during "
-					"nlookup: %s/%s (%08x/%08x)\n",
-					nch.ncp->nc_parent->nc_name,
-					nch.ncp->nc_name,
-					nch.ncp->nc_parent->nc_flag,
-					nch.ncp->nc_flag);
+				if (nlookup_debug & 1) {
+				    kprintf("Parent directory lost during "
+					    "nlookup: %s/%s (%08x/%08x)\n",
+					    nch.ncp->nc_parent->nc_name,
+					    nch.ncp->nc_name,
+					    nch.ncp->nc_parent->nc_flag,
+					    nch.ncp->nc_flag);
+				}
 				cache_put(&nch);
 				error = EINVAL;
 				break;
@@ -1197,8 +1296,36 @@ double_break:
 	cache_drop_and_cache(&nd->nl_nch, nd->nl_elmno);
 	nd->nl_nch = nch;
 	nd->nl_flags |= NLC_NCPISLOCKED;
+	nl_gen = nch_gen;
 	error = 0;
 	break;
+    }
+
+    /*
+     * Force a retry (up to max_retries) if nl_gen is incorrect
+     *
+     * NOTE: On generation changes we must at a minimum cycle
+     *	     the lock.   In this case we have one so we are ok.
+     */
+    if (nd->nl_nch.ncp && (nd->nl_nch.ncp->nc_generation - nl_gen) & ~1) {
+	if (nlookup_debug & 1) {
+	    kprintf("nlookup: DONE error %d: GEN CHANGE ON \"%s\" "
+		    "%d (retries %d)\n",
+		    error,
+		    nd->nl_nch.ncp->nc_name,
+		    (nd->nl_nch.ncp->nc_generation - nl_gen),
+		    max_retries);
+	}
+	gen_changed = 1;
+    }
+    if (gen_changed) {
+	if (max_retries) {
+	    --max_retries;
+	    doretry = TRUE;
+	    inretry = FALSE;
+	} else {
+	    error = EINVAL;
+	}
     }
 
     /*
@@ -1235,7 +1362,8 @@ double_break:
      * NFS might return ESTALE
      */
     if (doretry && !inretry) {
-	kprintf("nlookup: errno %d retry %s\n", error, nd->nl_path);
+	if (nlookup_debug & 2)
+	    kprintf("nlookup: errno %d retry %s\n", error, nd->nl_path);
 	inretry = TRUE;
 
 	/*
@@ -1373,35 +1501,16 @@ fail:
 #define S_XOK_MASK	(S_IXUSR|S_IXGRP|S_IXOTH)
 
 static int
-naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp,
-	int nchislocked)
+naccess(struct nchandle *nch, u_int *genp, int nflags,
+	struct ucred *cred, int *nflagsp, int nchislocked)
 {
     struct vnode *vp;
     struct vattr_lite lva;
     struct namecache *ncp;
     int error;
     int cflags;
-    int ls = cache_lockstatus(nch);
-
-    /*
-     * nchislocked: 0 not locked by caller, might not be resolved
-     *		    1 locked by caller shared or exclusive & resolved
-     *		    2 locked by us shared or exclusive & resolved
-     */
-    KKASSERT(nchislocked == 0 || ls > 0);
 
     ncp = nch->ncp;
-
-    /*
-     * If the ncp is exclusively held by another process our ref may
-     * have raced an eviction and we cannot safely test the fields
-     * unlocked.
-     */
-    if (ls < 0 && nchislocked == 0) {
-	cache_lock(nch);
-	nchislocked = 2;
-	ls = LK_EXCLUSIVE;
-    }
 
 again:
     /*
@@ -1416,10 +1525,8 @@ again:
 	if (nchislocked == 0) {
 	    cache_lock(nch);
 	    nchislocked = 2;
-	    ls = LK_EXCLUSIVE;
 	}
-	KKASSERT(ls == LK_EXCLUSIVE);
-	cache_resolve(nch, cred);
+	cache_resolve(nch, genp, cred);
 	ncp = nch->ncp;
     }
     error = ncp->nc_error;
@@ -1430,18 +1537,21 @@ again:
      */
     if (error == ENOTCONN) {
 	if (nchislocked == 0) {
-	    kprintf("ncp %p %08x %d %s: Warning, unexpected state, "
-		    "forcing lock\n",
-		    ncp, ncp->nc_flag, ncp->nc_error, ncp->nc_name);
-	    print_backtrace(-1);
+	    if (nlookup_debug & 4) {
+		kprintf("ncp %p %08x %d %s: Warning, unexpected state, "
+			"forcing lock\n",
+			ncp, ncp->nc_flag, ncp->nc_error, ncp->nc_name);
+		print_backtrace(-1);
+	    }
 	    cache_lock(nch);
 	    nchislocked = 2;
-	    ls = LK_EXCLUSIVE;
 	    goto again;
 	}
-	kprintf("ncp %p %08x %d %s: Warning, unexpected state\n",
-		ncp, ncp->nc_flag, ncp->nc_error, ncp->nc_name);
-	print_backtrace(-1);
+	if (nlookup_debug & 4) {
+	    kprintf("ncp %p %08x %d %s: Warning, unexpected state\n",
+		    ncp, ncp->nc_flag, ncp->nc_error, ncp->nc_name);
+	    print_backtrace(-1);
+	}
     }
 
     /*
@@ -1462,17 +1572,18 @@ again:
 	    if (nchislocked == 0) {
 		cache_lock_maybe_shared(nch, 0);
 		nchislocked = 2;
-		ls = LK_EXCLUSIVE;
 		goto again;
 	    }
 	    if ((par.ncp = ncp->nc_parent) == NULL) {
 		if (error != EAGAIN)
 		    error = EINVAL;
 	    } else if (error == 0 || error == ENOENT) {
+		u_int dummy_gen = 0;
+
 		par.mount = nch->mount;
 		cache_hold(&par);
 		cache_lock_maybe_shared(&par, 0);
-		error = naccess(&par, NLC_WRITE, cred, NULL, 1);
+		error = naccess(&par, &dummy_gen, NLC_WRITE, cred, NULL, 1);
 		cache_put(&par);
 	    }
 	}

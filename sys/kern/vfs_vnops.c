@@ -280,6 +280,8 @@ again:
 				 * vnode.
 				 */
 				if (error == ESTALE) {
+					u_int dummy_gen = 0;
+
 					vput(vp);
 					vp = NULL;
 					if (vpexcl == 0) {
@@ -288,6 +290,7 @@ again:
 					}
 					cache_setunresolved(&nd->nl_nch);
 					error = cache_resolve(&nd->nl_nch,
+							      &dummy_gen,
 							      cred);
 					if (error == 0)
 						goto again;

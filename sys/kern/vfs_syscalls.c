@@ -2879,11 +2879,15 @@ retry:
 		 * at the moment.
 		 */
 		if (error == ESTALE) {
+			u_int dummy_gen;
+
 			vput(vp);
 			cache_unlock(&nd->nl_nch);
 			cache_lock(&nd->nl_nch);
+			dummy_gen = nd->nl_nch.ncp->nc_generation;
 			cache_setunresolved(&nd->nl_nch);
-			error = cache_resolve(&nd->nl_nch, nd->nl_cred);
+			error = cache_resolve(&nd->nl_nch, &dummy_gen,
+					      nd->nl_cred);
 			if (error == 0) {
 				vp = NULL;
 				goto retry;
@@ -2981,6 +2985,7 @@ again:
 	 * at the moment.
 	 */
 	if (error == ESTALE) {
+		u_int dummy_gen;
 #if 1
 		vrele(vp);
 #else
@@ -2988,8 +2993,9 @@ again:
 #endif
 		cache_unlock(&nd->nl_nch);
 		cache_lock(&nd->nl_nch);
+		dummy_gen = nd->nl_nch.ncp->nc_generation;
 		cache_setunresolved(&nd->nl_nch);
-		error = cache_resolve(&nd->nl_nch, nd->nl_cred);
+		error = cache_resolve(&nd->nl_nch, &dummy_gen, nd->nl_cred);
 		if (error == 0)
 			goto again;
 	} else {
