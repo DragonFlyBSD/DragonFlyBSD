@@ -73,10 +73,11 @@ static int ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
 			goto out_unlock;
 
 		ttm_bo_get(bo);
-		up_read(&vmf->vma->vm_mm->mmap_sem);
+		up_read(&vmf->vma->vm_mm->mmap_sem);		/* release */
 		(void) dma_fence_wait(bo->moving, true);
 		ttm_bo_unreserve(bo);
 		ttm_bo_put(bo);
+		down_read(&vmf->vma->vm_mm->mmap_sem);		/* acquire */
 		goto out_unlock;
 	}
 
@@ -533,6 +534,8 @@ ttm_bo_vm_fault_dfly(vm_object_t vm_obj, vm_ooffset_t offset,
 
 	vma->vm_mm = current->mm;
 	vmf->vma = vma;
+
+	int retry_count = 0;
 #endif
 
 	vm_object_pip_add(vm_obj, 1);
@@ -565,6 +568,7 @@ retry:
 			if (!(vmf->flags & FAULT_FLAG_RETRY_NOWAIT)) {
 				up_read(&vma->vm_mm->mmap_sem);
 				(void) ttm_bo_wait_unreserved(bo);
+				down_read(&vma->vm_mm->mmap_sem);
 			}
 
 #ifndef __DragonFly__
@@ -609,8 +613,18 @@ retry:
 	 */
 	ret = ttm_bo_vm_fault_idle(bo, vma, vmf);
 	if (unlikely(ret != 0)) {
-		retval = VM_PAGER_ERROR;
-		goto out_unlock1;
+		if (retry_count >= 100) {
+			retval = VM_PAGER_ERROR;
+			goto out_unlock1;
+		} else {
+			retry_count++;
+			ttm_bo_unreserve(bo);
+			up_read(&vma->vm_mm->mmap_sem);
+			int dummy;
+			tsleep(&dummy, 0, "blah", 1);
+
+			goto retry;
+		}
 	}
 
 	ret = ttm_mem_io_lock(man, true);
@@ -713,6 +727,8 @@ out_unlock1:
 	ttm_bo_unreserve(bo);
 out_unlock2:
 	vm_object_pip_wakeup(vm_obj);
+	up_read(&vma->vm_mm->mmap_sem);
+
 	return (retval);
 }
 
