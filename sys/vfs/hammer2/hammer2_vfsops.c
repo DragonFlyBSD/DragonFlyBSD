@@ -1552,7 +1552,6 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 	hammer2_blockref_t bref;
 	hammer2_dev_t *force_local;
 	hammer2_pfs_t *spmp;
-	hammer2_pfs_t *pmp;
 	hammer2_key_t key_next;
 	int error;
 
@@ -1583,7 +1582,7 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 		} else {
 			ripdata = &chain->data->ipdata;
 			bref = chain->bref;
-			pmp = hammer2_pfsalloc(chain, ripdata,
+			hammer2_pfsalloc(chain, ripdata,
 					       bref.modify_tid, force_local);
 		}
 		chain = hammer2_chain_next(&parent, chain, &key_next,
