@@ -89,9 +89,10 @@ static pid_t	 pgrp;		/*        our process group */
 static long	 w_secs;	/*    -w: retry delay */
 static int	 family = PF_UNSPEC;	/* -[46]: address family to use */
 
-static int	 sigalrm;	/* SIGALRM received */
-static int	 siginfo;	/* SIGINFO received */
-static int	 sigint;	/* SIGINT received */
+static volatile int sigalrm_enable; /* interlock */
+static volatile int sigalrm;	/* SIGALRM received */
+static volatile int siginfo;	/* SIGINFO received */
+static volatile int sigint;	/* SIGINT received */
 
 static long	 ftp_timeout = TIMEOUT;	/* default timeout for FTP transfers */
 static long	 http_timeout = TIMEOUT;/* default timeout for HTTP transfers */
@@ -176,7 +177,14 @@ sig_handler(int sig)
 {
 	switch (sig) {
 	case SIGALRM:
-		sigalrm = 1;
+		/*
+		 * Realarm every second after the first alarm just in case
+		 * we do not catch the code in a blocking condition.
+		 */
+		if (sigalrm_enable) {
+			sigalrm = 1;
+			alarm(1);
+		}
 		break;
 	case SIGINFO:
 		siginfo = 1;
@@ -518,11 +526,15 @@ fetch(char *URL, const char *path)
 
 	/* just print size */
 	if (s_flag) {
-		if (timeout)
+		if (timeout) {
+			sigalrm_enable = 1;
 			alarm(timeout);
+		}
 		r = fetchStat(url, &us, flags);
-		if (timeout)
+		if (timeout) {
+			sigalrm_enable = 0;
 			alarm(0);
+		}
 		if (sigalrm || sigint)
 			goto signal;
 		if (r == -1) {
@@ -569,11 +581,15 @@ fetch(char *URL, const char *path)
 	}
 
 	/* start the transfer */
-	if (timeout)
+	if (timeout) {
+		sigalrm_enable = 1;
 		alarm(timeout);
+	}
 	f = fetchXGet(url, &us, flags);
-	if (timeout)
+	if (timeout) {
+		sigalrm_enable = 0;
 		alarm(0);
+	}
 	if (sigalrm || sigint)
 		goto signal;
 	if (f == NULL) {
@@ -759,7 +775,17 @@ fetch(char *URL, const char *path)
 		if (size == 0)
 			break;
 
-		if ((readcnt = fread(buf, 1, size, f)) < size) {
+		if (timeout) {
+			sigalrm_enable = 1;
+			alarm(timeout);
+		}
+		readcnt = fread(buf, 1, size, f);
+		if (timeout) {
+			sigalrm_enable = 0;
+			alarm(0);
+		}
+
+		if (readcnt < size) {
 			if (ferror(f) && errno == EINTR && !sigint)
 				clearerr(f);
 			else if (readcnt == 0)
@@ -767,13 +793,14 @@ fetch(char *URL, const char *path)
 		}
 
 		stat_update(&xs, count += readcnt);
-		for (ptr = buf; readcnt > 0; ptr += wr, readcnt -= wr)
+		for (ptr = buf; readcnt > 0; ptr += wr, readcnt -= wr) {
 			if ((wr = fwrite(ptr, 1, readcnt, of)) < readcnt) {
 				if (ferror(of) && errno == EINTR && !sigint)
 					clearerr(of);
 				else
 					break;
 			}
+		}
 		if (readcnt != 0)
 			break;
 	}

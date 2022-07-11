@@ -302,6 +302,8 @@ Overrides the environment variables
 for FTP transfers or
 .Ev HTTP_TIMEOUT
 for HTTP transfers if set.
+The timeout applies to connection and blocking during reads.
+Any progress during the bulk read resets the timeout.
 .It Fl U , -passive-portrange-default
 When using passive FTP, allocate the port for the data connection from
 the low (default) port range.
