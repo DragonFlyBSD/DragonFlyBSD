@@ -72,7 +72,10 @@ wcstol_l(const wchar_t * __restrict nptr, wchar_t ** __restrict endptr, int
 			c = *s++;
 	}
 	if ((base == 0 || base == 16) &&
-	    c == L'0' && (*s == L'x' || *s == L'X')) {
+	    c == L'0' &&
+	    (*s == L'x' || *s == L'X') &&
+	    iswxdigit_l(s[1], locale))
+	{
 		c = s[1];
 		s += 2;
 		base = 16;

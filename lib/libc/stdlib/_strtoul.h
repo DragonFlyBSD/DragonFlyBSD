@@ -81,7 +81,10 @@ _FUNCNAME_L(const char * __restrict nptr, char ** __restrict endptr, int base,
 			c = *s++;
 	}
 	if ((base == 0 || base == 16) &&
-	    c == '0' && (*s == 'x' || *s == 'X')) {
+	    c == '0' &&
+	    (*s == 'x' || *s == 'X') &&
+	    isxdigit_l((unsigned char)s[1], locale))
+	{
 		c = s[1];
 		s += 2;
 		base = 16;

@@ -45,6 +45,9 @@
 #undef isspace
 #define isspace(c)	_bcs_isspace(c)
 
+#undef isxdigit
+#define isxdigit(c)	_bcs_isxdigit(c)
+
 #undef isdigit
 #define isdigit(c)	_bcs_isdigit(c)
 
