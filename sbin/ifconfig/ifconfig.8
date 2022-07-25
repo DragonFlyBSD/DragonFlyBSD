@@ -2169,11 +2169,20 @@ The minimum is 0 and the maximum is 255.
 .Pp
 The priority is used to select which interface out of all
 forwarding and bonded interfaces with the same MAC
-to output a packet on whe
+to output a packet on.
+The interface with the highest priority will be
+selected.
+When multiple interfaces are valid and share the same (highest) priority,
+the
 .Cm link2
-mode is not being used.
-Note that interfaces in the 'blocking' state do not participate
-in the priority selection.
+flag on the bridge interface determines determines operation.
+If not set, packets will only be output on one interface.
+If set, packets will be round-robined on all valid interfaces sharing the
+same priority by counting
+.Cm ifbondweight
+packets on each interface, then moving to the next.
+Note that interfaces in the 'blocking' or any other less-than-good state
+does not participate in the priority selection.
 If the priorities are the same on a non-bonded member, the
 designated member will be used.
 .It Cm ifpathcost Ar interface Ar value
@@ -2211,9 +2220,11 @@ This option is implemented by sending CFG updates on the hello interval
 to the remote.
 The link is considered lost after 10 intervals (typically 20 seconds).
 .It Cm link2
-The link2 option enables channel bonding (see also ifbondweight).
+The link2 option enables channel bonding (see also ifbondweight, ifpriority).
 All member interfaces with the same mac address are considered to
-be in a bonding group.
+be in a bonding group.  If multiple interfaces in the bonding group share
+the highest priority via ifpriority, packets will be round-robined between
+them.
 When something like
 .Xr tap 4
 is used, you can manually control or copy the mac to create bonding groups.

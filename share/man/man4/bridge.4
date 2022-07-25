@@ -98,9 +98,11 @@ This option is implemented by sending CFG updates on the hello interval
 to the remote.
 The link is considered lost after 10 intervals (typically 20 seconds).
 .It Cm link2
-The link2 option enables channel bonding (see also ifbondweight).
+The link2 option enables channel bonding (see also ifbondweight, ifpriority).
 All member interfaces with the same mac address are considered to
-be in a bonding group.
+be in a bonding group.  Packets will be sent on the highest priority
+interface(s) in the bonding group, and will round-robin output interfaces
+when multiple (highest priority) interfaces have the same priority.
 When something like
 .Xr tap 4
 is used, you can manually control or copy the mac to create bonding groups.
