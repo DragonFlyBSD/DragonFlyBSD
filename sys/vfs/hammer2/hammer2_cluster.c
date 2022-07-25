@@ -333,7 +333,6 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	int nslaves;
 	int nquorum;
 	int umasters;	/* unknown masters (still in progress) */
-	int smpresent;
 	int error;
 	int i;
 
@@ -347,7 +346,6 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	 * Calculate quorum
 	 */
 	nquorum = pmp ? pmp->pfs_nmasters / 2 + 1 : 0;
-	smpresent = 0;
 	nflags = 0;
 	ttlmasters = 0;
 	ttlslaves = 0;
@@ -396,7 +394,6 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 		case HAMMER2_PFSTYPE_SOFT_MASTER:
 			nflags |= HAMMER2_CLUSTER_WRSOFT;
 			nflags |= HAMMER2_CLUSTER_RDSOFT;
-			smpresent = 1;
 			break;
 		case HAMMER2_PFSTYPE_SOFT_SLAVE:
 			nflags |= HAMMER2_CLUSTER_RDSOFT;
