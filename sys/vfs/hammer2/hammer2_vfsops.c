@@ -402,10 +402,10 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 			if (force_local == NULL &&
 			    bcmp(&pmp->pfs_clid, &ripdata->meta.pfs_clid,
 				 sizeof(pmp->pfs_clid)) == 0) {
-					break;
+				break;
 			} else if (force_local && pmp->pfs_names[0] &&
 			    strcmp(pmp->pfs_names[0], ripdata->filename) == 0) {
-					break;
+				break;
 			}
 		}
 	}
