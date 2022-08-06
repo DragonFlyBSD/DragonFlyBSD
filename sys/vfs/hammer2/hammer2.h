@@ -1896,7 +1896,6 @@ void hammer2_cluster_rehold(hammer2_cluster_t *cluster);
 void hammer2_cluster_lock(hammer2_cluster_t *cluster, int how);
 int hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t lokey,
 			int flags);
-void hammer2_cluster_forcegood(hammer2_cluster_t *cluster);
 void hammer2_cluster_unlock(hammer2_cluster_t *cluster);
 
 void hammer2_bulkfree_init(hammer2_dev_t *hmp);
