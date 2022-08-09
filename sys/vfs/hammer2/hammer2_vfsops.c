@@ -950,7 +950,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	char devstr[MNAMELEN];
 	size_t size;
 	size_t done;
-	char *dev;
 	char *label;
 	int ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
 	int error;
@@ -958,7 +957,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 
 	hmp = NULL;
 	pmp = NULL;
-	dev = NULL;
 	label = NULL;
 	bzero(&info, sizeof(info));
 
@@ -1025,9 +1023,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 *	 has already been mounted from that device.  This makes
 	 *	 mounting snapshots a lot easier.
 	 */
-	dev = devstr;
 	label = strchr(devstr, '@');
-	if (label && ((label + 1) - dev) > done) {
+	if (label && ((label + 1) - devstr) > done) {
 		kprintf("hammer2_mount: bad label %s/%zd\n", devstr, done);
 		return (EINVAL);
 	}
@@ -1056,16 +1053,16 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		label++;
 	}
 
-	kprintf("hammer2_mount: dev=\"%s\" label=\"%s\" rdonly=%d\n",
-		dev, label, ronly);
+	kprintf("hammer2_mount: device=\"%s\" label=\"%s\" rdonly=%d\n",
+		devstr, label, ronly);
 
 	/*
 	 * Initialize all device vnodes.
 	 */
 	TAILQ_INIT(&devvpl);
-	error = hammer2_init_devvp(dev, path == NULL, &devvpl);
+	error = hammer2_init_devvp(devstr, path == NULL, &devvpl);
 	if (error) {
-		kprintf("hammer2: failed to initialize devvp in %s\n", dev);
+		kprintf("hammer2: failed to initialize devvp in %s\n", devstr);
 		hammer2_cleanup_devvp(&devvpl);
 		return error;
 	}
@@ -1190,7 +1187,7 @@ next_hmp:
 			return EINVAL;
 		}
 
-		ksnprintf(hmp->devrepname, sizeof(hmp->devrepname), "%s", dev);
+		ksnprintf(hmp->devrepname, sizeof(hmp->devrepname), "%s", devstr);
 		hmp->ronly = ronly;
 		hmp->hflags = info.hflags & HMNT2_DEVFLAGS;
 		kmalloc_create_obj(&hmp->mchain, "HAMMER2-chains",
