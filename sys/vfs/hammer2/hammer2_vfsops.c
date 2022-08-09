@@ -2817,11 +2817,9 @@ int
 hammer2_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 	       struct fid *fhp, struct vnode **vpp)
 {
-	hammer2_pfs_t *pmp;
 	hammer2_tid_t inum;
 	int error;
 
-	pmp = MPTOPMP(mp);
 	inum = ((hammer2_tid_t *)fhp->fid_data)[0] & HAMMER2_DIRHASH_USERMSK;
 	if (vpp) {
 		if (inum == 1)
