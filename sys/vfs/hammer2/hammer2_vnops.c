@@ -246,8 +246,7 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 		error1 = error2;
 
 	/*
-	 * We may be able to clear the vnode dirty flag.  The
-	 * hammer2_pfs_moderate() code depends on this usually working.
+	 * We may be able to clear the vnode dirty flag.
 	 */
 	if ((ip->flags & (HAMMER2_INODE_MODIFIED |
 			  HAMMER2_INODE_RESIZED |
