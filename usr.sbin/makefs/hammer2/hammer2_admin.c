@@ -1125,15 +1125,11 @@ void
 hammer2_primary_xops_thread(void *arg)
 {
 	hammer2_thread_t *thr = arg;
-	hammer2_pfs_t *pmp;
 	hammer2_xop_head_t *xop;
 	uint64_t mask;
 	uint32_t flags;
 	uint32_t nflags;
-	hammer2_xop_desc_t *last_desc = NULL;
 
-	pmp = thr->pmp;
-	/*xgrp = &pmp->xop_groups[thr->repidx]; not needed */
 	mask = 1LLU << thr->clindex;
 
 	for (;;) {
@@ -1198,14 +1194,12 @@ hammer2_primary_xops_thread(void *arg)
 		}
 		while ((xop = hammer2_xop_next(thr)) != NULL) {
 			if (hammer2_xop_active(xop)) {
-				last_desc = xop->desc;
 				xop->desc->storage_func((hammer2_xop_t *)xop,
 							thr->scratch,
 							thr->clindex);
 				hammer2_xop_dequeue(thr, xop);
 				hammer2_xop_retire(xop, mask);
 			} else {
-				last_desc = xop->desc;
 				hammer2_xop_feed(xop, NULL, thr->clindex,
 						 ECONNABORTED);
 				hammer2_xop_dequeue(thr, xop);

@@ -429,10 +429,10 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 			if (force_local == NULL &&
 			    bcmp(&pmp->pfs_clid, &ripdata->meta.pfs_clid,
 				 sizeof(pmp->pfs_clid)) == 0) {
-					break;
+				break;
 			} else if (force_local && pmp->pfs_names[0] &&
 			    strcmp(pmp->pfs_names[0], ripdata->filename) == 0) {
-					break;
+				break;
 			}
 		}
 	}
@@ -988,17 +988,17 @@ hammer2_vfs_mount(struct vnode *makefs_devvp, struct mount *mp,
 	hammer2_blockref_t bref;
 	hammer2_devvp_list_t devvpl;
 	hammer2_devvp_t *e, *e_tmp;
-	char *dev;
+	char *devstr;
 	int ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
 	int error;
 	int i;
 
 	hmp = NULL;
 	pmp = NULL;
-	dev = NULL;
+	devstr = NULL;
 
-	kprintf("hammer2_mount: dev=\"%s\" label=\"%s\" rdonly=%d\n",
-		dev, label, ronly);
+	kprintf("hammer2_mount: device=\"%s\" label=\"%s\" rdonly=%d\n",
+		devstr, label, ronly);
 
 	/*
 	 * Initialize all device vnodes.
@@ -1006,7 +1006,7 @@ hammer2_vfs_mount(struct vnode *makefs_devvp, struct mount *mp,
 	TAILQ_INIT(&devvpl);
 	error = hammer2_init_devvp(makefs_devvp, &devvpl);
 	if (error) {
-		kprintf("hammer2: failed to initialize devvp in %s\n", dev);
+		kprintf("hammer2: failed to initialize devvp in %s\n", devstr);
 		hammer2_cleanup_devvp(&devvpl);
 		return error;
 	}
@@ -1133,7 +1133,7 @@ next_hmp:
 			return EINVAL;
 		}
 
-		ksnprintf(hmp->devrepname, sizeof(hmp->devrepname), "%s", dev);
+		ksnprintf(hmp->devrepname, sizeof(hmp->devrepname), "%s", devstr);
 		hmp->ronly = ronly;
 		hmp->hflags = info.hflags & HMNT2_DEVFLAGS;
 		kmalloc_create_obj(&hmp->mchain, "HAMMER2-chains",
@@ -1500,7 +1500,6 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 	hammer2_blockref_t bref;
 	hammer2_dev_t *force_local;
 	hammer2_pfs_t *spmp;
-	hammer2_pfs_t *pmp;
 	hammer2_key_t key_next;
 	int error;
 
@@ -1531,7 +1530,7 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 		} else {
 			ripdata = &chain->data->ipdata;
 			bref = chain->bref;
-			pmp = hammer2_pfsalloc(chain, ripdata,
+			hammer2_pfsalloc(chain, ripdata,
 					       bref.modify_tid, force_local);
 		}
 		chain = hammer2_chain_next(&parent, chain, &key_next,
@@ -2770,11 +2769,9 @@ int
 hammer2_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 	       struct fid *fhp, struct vnode **vpp)
 {
-	hammer2_pfs_t *pmp;
 	hammer2_tid_t inum;
 	int error;
 
-	pmp = MPTOPMP(mp);
 	inum = ((hammer2_tid_t *)fhp->fid_data)[0] & HAMMER2_DIRHASH_USERMSK;
 	if (vpp) {
 		if (inum == 1)

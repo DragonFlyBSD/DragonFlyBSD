@@ -1344,7 +1344,6 @@ void
 hammer2_xop_inode_destroy(hammer2_xop_t *arg, void *scratch, int clindex)
 {
 	hammer2_xop_destroy_t *xop = &arg->xop_destroy;
-	hammer2_pfs_t *pmp;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_inode_t *ip;
@@ -1354,7 +1353,6 @@ hammer2_xop_inode_destroy(hammer2_xop_t *arg, void *scratch, int clindex)
 	 * We need the precise parent chain to issue the deletion.
 	 */
 	ip = xop->head.ip1;
-	pmp = ip->pmp;
 
 	chain = hammer2_inode_chain(ip, clindex, HAMMER2_RESOLVE_ALWAYS);
 	if (chain == NULL) {

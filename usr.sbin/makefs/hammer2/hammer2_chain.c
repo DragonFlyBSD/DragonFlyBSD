@@ -1662,7 +1662,6 @@ int
 hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 		     hammer2_off_t dedup_off, int flags)
 {
-	hammer2_blockref_t obref;
 	hammer2_dev_t *hmp;
 	hammer2_io_t *dio;
 	int error;
@@ -1673,7 +1672,6 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 	char *bdata;
 
 	hmp = chain->hmp;
-	obref = chain->bref;
 	KKASSERT(chain->lock.mtx_lock & MTX_EXCLUSIVE);
 
 	/*
@@ -2619,7 +2617,6 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 		     hammer2_key_t key_beg, hammer2_key_t key_end,
 		     int *errorp, int flags)
 {
-	hammer2_dev_t *hmp;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_blockref_t *base;
@@ -2633,7 +2630,6 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 	int how;
 	int generation;
 	int maxloops = 300000;
-	volatile hammer2_mtx_t save_mtx;
 
 	if (flags & HAMMER2_LOOKUP_ALWAYS) {
 		how_maybe = how_always;
@@ -2657,7 +2653,6 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 	 * way back up by continuing to recurse upward past the deletion.
 	 */
 	parent = *parentp;
-	hmp = parent->hmp;
 	*errorp = 0;
 
 	while (parent->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
@@ -2915,7 +2910,6 @@ again:
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
 	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
-		save_mtx = parent->lock;
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
 		*parentp = parent = chain;
@@ -3057,28 +3051,23 @@ hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t **chainp,
 		   hammer2_blockref_t *bref, int *firstp,
 		   int flags)
 {
-	hammer2_dev_t *hmp;
 	hammer2_blockref_t *base;
 	hammer2_blockref_t *bref_ptr;
 	hammer2_key_t key;
 	hammer2_key_t next_key;
 	hammer2_chain_t *chain = NULL;
 	int count = 0;
-	int how_always = HAMMER2_RESOLVE_ALWAYS;
-	int how_maybe = HAMMER2_RESOLVE_MAYBE;
 	int how;
 	int generation;
 	int maxloops = 300000;
 	int error;
 
-	hmp = parent->hmp;
 	error = 0;
 
 	/*
 	 * Scan flags borrowed from lookup.
 	 */
 	if (flags & HAMMER2_LOOKUP_ALWAYS) {
-		how_maybe = how_always;
 		how = HAMMER2_RESOLVE_ALWAYS;
 	} else if (flags & HAMMER2_LOOKUP_NODATA) {
 		how = HAMMER2_RESOLVE_NEVER;
@@ -3086,8 +3075,6 @@ hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t **chainp,
 		how = HAMMER2_RESOLVE_MAYBE;
 	}
 	if (flags & HAMMER2_LOOKUP_SHARED) {
-		how_maybe |= HAMMER2_RESOLVE_SHARED;
-		how_always |= HAMMER2_RESOLVE_SHARED;
 		how |= HAMMER2_RESOLVE_SHARED;
 	}
 
@@ -3659,7 +3646,6 @@ hammer2_chain_rename(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 		     hammer2_tid_t mtid, int flags)
 {
 	hammer2_blockref_t *bref;
-	hammer2_dev_t *hmp;
 	hammer2_chain_t *parent;
 
 	/*
@@ -3673,7 +3659,6 @@ hammer2_chain_rename(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 	 *	     is good and can be renamed.  The content, however, may
 	 *	     be inaccessible.
 	 */
-	hmp = chain->hmp;
 	KKASSERT(chain->parent == NULL);
 	/*KKASSERT(chain->error == 0); allow */
 	bref = &chain->bref;
@@ -3765,12 +3750,10 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 			     hammer2_tid_t mtid, int flags,
 			     hammer2_blockref_t *obref)
 {
-	hammer2_dev_t *hmp;
 	int error = 0;
 
 	KKASSERT((chain->flags & HAMMER2_CHAIN_DELETED) == 0);
 	KKASSERT(chain->parent == parent);
-	hmp = chain->hmp;
 
 	if (chain->flags & HAMMER2_CHAIN_BLKMAPPED) {
 		/*
@@ -4518,13 +4501,9 @@ hammer2_chain_indkey_freemap(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	hammer2_key_t key_beg;
 	hammer2_key_t key_end;
 	hammer2_key_t key_next;
-	int locount;
-	int hicount;
 	int maxloops = 300000;
 
 	key = *keyp;
-	locount = 0;
-	hicount = 0;
 	keybits = 64;
 
 	/*
@@ -4637,13 +4616,9 @@ hammer2_chain_indkey_file(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	hammer2_key_t key_end;
 	hammer2_key_t key_next;
 	int nradix;
-	int locount;
-	int hicount;
 	int maxloops = 300000;
 
 	key = *keyp;
-	locount = 0;
-	hicount = 0;
 	keybits = 64;
 
 	/*
