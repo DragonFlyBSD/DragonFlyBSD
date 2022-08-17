@@ -108,7 +108,7 @@ main(int ac, char **av)
 			break;
 		case 't':
 			/*
-			 * set node type for mkpfs
+			 * set node type for pfs-create
 			 */
 			if (strcasecmp(optarg, "CACHE") == 0) {
 				pfs_type = HAMMER2_PFSTYPE_CACHE;
@@ -129,7 +129,7 @@ main(int ac, char **av)
 			break;
 		case 'u':
 			/*
-			 * set uuid for mkpfs, else one will be generated
+			 * set uuid for pfs-create, else one will be generated
 			 * (required for all except the MASTER node_type)
 			 */
 			uuid_str = optarg;
