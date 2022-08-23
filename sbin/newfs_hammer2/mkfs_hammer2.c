@@ -322,6 +322,7 @@ format_hammer2_inode(hammer2_volume_t *vol, hammer2_mkfs_options_t *opt,
 	size_t n;
 	int i;
 
+	bzero(buf, HAMMER2_PBUFSIZE);
 	bzero(&sroot_blockref, sizeof(sroot_blockref));
 	bzero(root_blockref, sizeof(root_blockref));
 	now = nowtime();
