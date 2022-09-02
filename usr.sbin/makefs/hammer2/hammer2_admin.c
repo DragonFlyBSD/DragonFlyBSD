@@ -781,6 +781,16 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 	 */
 	fifo = &xop->collect[clindex];
 
+	/*
+	 * makefs HAMMER2 has no dedicated XOP threads,
+	 * so nothing we can do once fifo reaches HAMMER2_XOPFIFO.
+	 * Fortunately, readdir VOP is the only VOP causes this,
+	 * and makefs HAMMER2 doesn't implement it.
+	 */
+	if (fifo->ri == fifo->wi - HAMMER2_XOPFIFO)
+		panic("hammer2: \"%s\" reached fifo limit %d",
+			xop->desc->id, HAMMER2_XOPFIFO);
+
 	if (fifo->ri == fifo->wi - HAMMER2_XOPFIFO)
 		lwkt_yield();
 	while (fifo->ri == fifo->wi - HAMMER2_XOPFIFO) {
