@@ -90,7 +90,7 @@ extern int autofs_debug;
  */
 #define APRINTF(X, ...)					\
 	kprintf("### %s(%s): " X,			\
-	    __func__, curproc->p_comm, ## __VA_ARGS__)
+	    __func__, curproc ? curproc->p_comm : "-", ## __VA_ARGS__)
 
 struct autofs_node {
 	RB_ENTRY(autofs_node)		an_link;
