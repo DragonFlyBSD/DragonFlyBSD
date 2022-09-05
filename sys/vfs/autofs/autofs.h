@@ -51,6 +51,7 @@
 #include <sys/callout.h>
 #include <sys/taskqueue.h>
 #include <sys/conf.h>
+#include <sys/proc.h>
 
 #define AUTOFS_ROOTINO	((ino_t)1)
 #define VFSTOAUTOFS(mp)	((struct autofs_mount *)((mp)->mnt_data))
