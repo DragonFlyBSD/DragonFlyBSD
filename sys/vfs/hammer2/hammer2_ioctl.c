@@ -1039,7 +1039,8 @@ hammer2_ioctl_debug_dump(hammer2_inode_t *ip, u_int flags)
 		chain = ip->cluster.array[i].chain;
 		if (chain == NULL)
 			continue;
-		hammer2_dump_chain(chain, 0, i, &count, 'i', flags);
+		kprintf("cluster #%d\n", i);
+		hammer2_dump_chain(chain, 0, 0, &count, 'i', flags);
 	}
 	return 0;
 }
