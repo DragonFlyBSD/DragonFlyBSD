@@ -766,6 +766,7 @@ resolveDepString(pkg_t *pkg, char *depstr, int gentopo, int dep_type)
 	char *copy_base;
 	char *copy;
 	char *dep;
+	char *log_component;
 	char *sep;
 	char *tag;
 	char *flavor;
@@ -776,6 +777,7 @@ resolveDepString(pkg_t *pkg, char *depstr, int gentopo, int dep_type)
 
 	copy_base = strdup(depstr);
 	copy = copy_base;
+	log_component = copy;
 
 	for (;;) {
 		do {
@@ -790,10 +792,15 @@ resolveDepString(pkg_t *pkg, char *depstr, int gentopo, int dep_type)
 		if (strncmp(dep, "/nonexistent:", 13) == 0)
 			continue;
 
+		log_component = dep;
 		dep = strchr(dep, ':');
 		if (dep == NULL || *dep != ':') {
-			printf("Error parsing dependency for %s: %s\n",
-			       pkg->portdir, copy_base);
+			printf("Error parsing dependency for "
+			       "%s: '%s' at index %zd '%s' "
+			       "(looking for ':')\n",
+			       pkg->portdir, copy_base,
+			       log_component - copy_base,
+			       log_component);
 			continue;
 		}
 		++dep;
@@ -815,6 +822,7 @@ resolveDepString(pkg_t *pkg, char *depstr, int gentopo, int dep_type)
 		tag = strchr(dep, ':');
 		if (tag)
 			*tag++ = 0;
+		log_component = dep;
 
 		/*
 		 * Locate the dependency
@@ -865,8 +873,12 @@ resolveDepString(pkg_t *pkg, char *depstr, int gentopo, int dep_type)
 		 */
 		sep = strchr(dep, '/');
 		if (sep == NULL) {
-			printf("Error parsing dependency for %s: %s\n",
-			       pkg->portdir, copy_base);
+			printf("Error parsing dependency for "
+			       "%s: '%s' at index %zd '%s' "
+			       "(looking for '/')\n",
+			       pkg->portdir, copy_base,
+			       log_component - copy_base,
+			       log_component);
 			continue;
 		}
 		*sep++ = 0;
