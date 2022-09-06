@@ -92,6 +92,27 @@ pkghash(const char *str)
 	return (hv & PKG_HMASK);
 }
 
+static __inline const char *
+deptype2str(int dep_type)
+{
+    switch (dep_type) {
+    case DEP_TYPE_FETCH:
+	return("FETCH_DEPENDS");
+    case DEP_TYPE_EXT:
+	return("EXTRACT_DEPENDS");
+    case DEP_TYPE_PATCH:
+	return("PATCH_DEPENDS");
+    case DEP_TYPE_BUILD:
+	return("BUILD_DEPENDS");
+    case DEP_TYPE_LIB:
+	return("LIB_DEPENDS");
+    case DEP_TYPE_RUN:
+	return("RUN_DEPENDS");
+    default:
+	return("UNKOWN");
+    }
+}
+
 static void
 pkg_enter(pkg_t *pkg)
 {
@@ -795,9 +816,10 @@ resolveDepString(pkg_t *pkg, char *depstr, int gentopo, int dep_type)
 		log_component = dep;
 		dep = strchr(dep, ':');
 		if (dep == NULL || *dep != ':') {
-			printf("Error parsing dependency for "
+			printf("Error parsing %s dependency for "
 			       "%s: '%s' at index %zd '%s' "
 			       "(looking for ':')\n",
+			       deptype2str(dep_type),
 			       pkg->portdir, depstr,
 			       log_component - copy_base,
 			       log_component);
@@ -873,9 +895,10 @@ resolveDepString(pkg_t *pkg, char *depstr, int gentopo, int dep_type)
 		 */
 		sep = strchr(dep, '/');
 		if (sep == NULL) {
-			printf("Error parsing dependency for "
+			printf("Error parsing %s dependency for "
 			       "%s: '%s' at index %zd '%s' "
 			       "(looking for '/')\n",
+			       deptype2str(dep_type),
 			       pkg->portdir, depstr,
 			       log_component - copy_base,
 			       log_component);
