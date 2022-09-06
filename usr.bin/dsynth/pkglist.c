@@ -798,7 +798,7 @@ resolveDepString(pkg_t *pkg, char *depstr, int gentopo, int dep_type)
 			printf("Error parsing dependency for "
 			       "%s: '%s' at index %zd '%s' "
 			       "(looking for ':')\n",
-			       pkg->portdir, dep_str,
+			       pkg->portdir, depstr,
 			       log_component - copy_base,
 			       log_component);
 			continue;
@@ -876,7 +876,7 @@ resolveDepString(pkg_t *pkg, char *depstr, int gentopo, int dep_type)
 			printf("Error parsing dependency for "
 			       "%s: '%s' at index %zd '%s' "
 			       "(looking for '/')\n",
-			       pkg->portdir, dep_str,
+			       pkg->portdir, depstr,
 			       log_component - copy_base,
 			       log_component);
 			continue;
