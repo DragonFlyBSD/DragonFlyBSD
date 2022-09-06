@@ -329,6 +329,23 @@ main(int ac, char **av)
 			pkgs = ParsePackageList(ac - 1, av + 1, 0);
 		}
 		DoBuild(pkgs);
+	} else if (strcmp(av[0], "list-system") == 0) {
+		FILE *fp;
+
+		DoCleanBuild(1);
+		OptimizeEnv();
+		pkgs = GetLocalPackageList();
+		if ((fp = fopen("build.txt", "w")) != NULL) {
+			while (pkgs) {
+				fprintf(fp, "%s\n", pkgs->portdir);
+				pkgs = pkgs->bnext;
+			}
+			fclose(fp);
+			printf("list written to build.txt\n");
+		} else {
+			fprintf(stderr, "Cannot create 'build.txt'\n");
+			exit(1);
+		}
 	} else if (strcmp(av[0], "upgrade-system") == 0) {
 		DoCleanBuild(1);
 		OptimizeEnv();
@@ -519,6 +536,7 @@ usage(int ecode)
     "    status               - Dry-run of 'upgrade-system'\n"
     "    cleanup              - Clean-up mounts\n"
     "    configure            - Bring up configuration menu\n"
+    "    list-system          - Just generate the build list to build.txt\n"
     "    upgrade-system       - Incremental build and upgrade using pkg list\n"
     "                           from local system, then upgrade the local\n"
     "                           system.\n"

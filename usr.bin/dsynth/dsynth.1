@@ -244,7 +244,10 @@ specified.
 This list should be space-delimited in DIR/SUBDIR format, for example:
 .Ar www/chromium .
 For directives with an optional ports list, your current installed set
-of ports will be used if you do not specify a list.
+of ports will be used if you do not specify a list.  You may also
+specify a filename instead of a port to have dsynth read the ports list
+from a text file.  Ports are specified by dports directory and subdirectory.
+For example "www/chromium".
 .Bl -tag -width indent
 .It Cm init
 Creates and initializes the
@@ -281,6 +284,10 @@ signature will be re-fetched.
 NOT CURRENTLY IMPLEMENTED.
 Incrementally build and upgrade your locally
 installed packages, then upgrade your local system with them.
+.It Cm list-system
+Write a build list to the file "build.txt".  Do not build anything.
+This is typically used on your target system to generate a list for
+dsynth to use as a build list on another system.
 .It Cm prepare-system
 Incrementally build and upgrade your locally installed packages, but
 do not upgrade your system with them.
