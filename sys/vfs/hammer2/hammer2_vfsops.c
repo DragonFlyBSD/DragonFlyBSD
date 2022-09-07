@@ -1350,6 +1350,7 @@ next_hmp:
 		spmp->spmp_hmp = hmp;
 		spmp->pfs_types[0] = ripdata->meta.pfs_type;
 		spmp->pfs_hmps[0] = hmp;
+		spmp->ronly = ronly;
 		hammer2_inode_ref(spmp->iroot);
 		hammer2_inode_unlock(spmp->iroot);
 		hammer2_cluster_unlock(&xop.cluster);
@@ -1479,6 +1480,7 @@ next_hmp:
 		return EBUSY;
 	}
 
+	pmp->ronly = ronly;
 	pmp->hflags = info.hflags;
 	mp->mnt_flag |= MNT_LOCAL;
 	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;   /* all entry pts are SMP */
