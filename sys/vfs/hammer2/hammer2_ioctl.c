@@ -681,8 +681,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		hammer2_chain_lock(nchain, HAMMER2_RESOLVE_ALWAYS);
 		nipdata = &nchain->data->ipdata;
 		kprintf("ADD LOCAL PFS (IOCTL): %s\n", nipdata->filename);
-		hammer2_pfsalloc(nchain, nipdata,
-				 nchain->bref.modify_tid, force_local);
+		hammer2_pfsalloc(nchain, nipdata, force_local);
 
 		hammer2_chain_unlock(nchain);
 		hammer2_chain_drop(nchain);
@@ -934,8 +933,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		hammer2_chain_lock(nchain, HAMMER2_RESOLVE_ALWAYS);
 		wipdata = &nchain->data->ipdata;
 		kprintf("SNAPSHOT LOCAL PFS (IOCTL): %s\n", wipdata->filename);
-		hammer2_pfsalloc(nchain, wipdata, nchain->bref.modify_tid,
-				 force_local);
+		hammer2_pfsalloc(nchain, wipdata, force_local);
 		nchain->pmp->inode_tid = starting_inum;
 
 		hammer2_chain_unlock(nchain);
