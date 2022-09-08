@@ -194,6 +194,8 @@ DoWorkerMounts(worker_t *work)
 		fprintf(stderr, "Command failed: mkdir %s\n", buf);
 		++work->mount_error;
 	}
+	free(buf);
+
 	domount(work, NULLFS_RO, "$/boot", "/boot", NULL);
 	domount(work, TMPFS_RW,  "dummy", "/boot/modules.local", NULL);
 	domount(work, DEVFS_RW,  "dummy", "/dev", NULL);
