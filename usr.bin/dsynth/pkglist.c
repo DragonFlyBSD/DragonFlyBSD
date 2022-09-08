@@ -109,7 +109,7 @@ deptype2str(int dep_type)
     case DEP_TYPE_RUN:
 	return("RUN_DEPENDS");
     default:
-	return("UNKOWN");
+	return("UNKNOWN");
     }
 }
 
