@@ -59,6 +59,33 @@ static int blkrefary_cmp(const void *b1, const void *b2);
 static void alloc_direct(hammer2_off_t *basep, hammer2_blockref_t *bref,
 				size_t bytes);
 
+static int
+get_hammer2_version(void)
+{
+	int version = HAMMER2_VOL_VERSION_DEFAULT;
+	size_t olen = sizeof(version);
+
+	if (sysctlbyname("vfs.hammer2.supported_version",
+			 &version, &olen, NULL, 0) == 0) {
+		if (version >= HAMMER2_VOL_VERSION_WIP) {
+			version = HAMMER2_VOL_VERSION_WIP - 1;
+			fprintf(stderr,
+				"newfs_hammer2: WARNING: HAMMER2 VFS "
+				"supports higher version than I "
+				"understand.\n"
+				"Using default version %d\n",
+				version);
+		}
+	} else {
+		fprintf(stderr,
+			"newfs_hammer2: WARNING: HAMMER2 VFS not "
+			"loaded, cannot get version info.\n"
+			"Using default version %d\n",
+			version);
+	}
+	return(version);
+}
+
 void
 hammer2_mkfs_init(hammer2_mkfs_options_t *opt)
 {
@@ -66,8 +93,7 @@ hammer2_mkfs_init(hammer2_mkfs_options_t *opt)
 
 	memset(opt, 0, sizeof(*opt));
 
-	assert(HAMMER2_VOL_VERSION_MIN > 0);
-	opt->Hammer2Version = 0;
+	opt->Hammer2Version = get_hammer2_version();
 	opt->Label[opt->NLabels++] = strdup("LOCAL");
 	opt->CompType = HAMMER2_COMP_NEWFS_DEFAULT; /* LZ4 */
 	opt->CheckType = HAMMER2_CHECK_XXHASH64;
@@ -100,33 +126,6 @@ hammer2_mkfs_cleanup(hammer2_mkfs_options_t *opt)
 static void
 adjust_options(hammer2_ondisk_t *fso, hammer2_mkfs_options_t *opt)
 {
-	/*
-	 * Check Hammer2 version.
-	 */
-	if (!opt->Hammer2Version) {
-		int Hammer2Version = HAMMER2_VOL_VERSION_DEFAULT;
-		size_t olen = sizeof(Hammer2Version);
-		if (sysctlbyname("vfs.hammer2.supported_version",
-				 &Hammer2Version, &olen, NULL, 0) == 0) {
-			if (Hammer2Version >= HAMMER2_VOL_VERSION_WIP) {
-				Hammer2Version = HAMMER2_VOL_VERSION_WIP - 1;
-				fprintf(stderr,
-					"newfs_hammer2: WARNING: HAMMER2 VFS "
-					"supports higher version than I "
-					"understand,\n"
-					"using version %d\n",
-					Hammer2Version);
-			}
-		} else {
-			fprintf(stderr,
-				"newfs_hammer2: WARNING: HAMMER2 VFS not "
-				"loaded, cannot get version info.\n"
-				"Using version %d\n",
-				HAMMER2_VOL_VERSION_DEFAULT);
-		}
-		opt->Hammer2Version = Hammer2Version;
-	}
-
 	/*
 	 * Adjust Label[] and NLabels.
 	 */
