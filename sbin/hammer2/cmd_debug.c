@@ -47,7 +47,7 @@ static hammer2_tid_t show_min_modify_tid = 0;
 
 static void shell_msghandler(dmsg_msg_t *msg, int unmanaged);
 static void shell_ttymsg(dmsg_iocom_t *iocom);
-static void CountBlocks(hammer2_bmap_data_t *bmap, int value,
+static void count_blocks(hammer2_bmap_data_t *bmap, int value,
 		hammer2_off_t *accum16, hammer2_off_t *accum64);
 
 /************************************************************************
@@ -1172,7 +1172,7 @@ skip_data:
 			    data_off < hammer2_get_total_size()) {
 				int j;
 				for (j = 0; j < 4; ++j)
-					CountBlocks(&media.bmdata[i], j,
+					count_blocks(&media.bmdata[i], j,
 						    &TotalAccum16[j],
 						    &TotalAccum64[j]);
 			} else
@@ -1211,8 +1211,8 @@ skip_data:
 
 static
 void
-CountBlocks(hammer2_bmap_data_t *bmap, int value,
-	    hammer2_off_t *accum16, hammer2_off_t *accum64)
+count_blocks(hammer2_bmap_data_t *bmap, int value,
+	     hammer2_off_t *accum16, hammer2_off_t *accum64)
 {
 	int i, j, bits;
 	hammer2_bitmap_t value16, value64;
