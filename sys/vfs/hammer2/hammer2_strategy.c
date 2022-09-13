@@ -220,7 +220,7 @@ hammer2_decompress_ZLIB_callback(const char *data, u_int bytes, struct bio *bio)
 
 	ret = inflate(&strm_decompress, Z_FINISH);
 	if (ret != Z_STREAM_END) {
-		kprintf("HAMMER2 ZLIB: Fatar error during decompression.\n");
+		kprintf("HAMMER2 ZLIB: Fatal error during decompression.\n");
 		bzero(compressed_buffer, bp->b_bufsize);
 	}
 	bcopy(compressed_buffer, bp->b_data, bp->b_bufsize);
