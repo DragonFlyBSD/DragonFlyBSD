@@ -85,6 +85,7 @@ typedef struct {
 	uint32_t	 nlink;		/* number of links to this entry */
 	enum fi_flags	 flags;		/* flags used by fs specific code */
 	struct stat	 st;		/* stat entry */
+	void		 *priv;		/* DragonFly: fs specific */
 } fsinode;
 
 typedef struct _fsnode {

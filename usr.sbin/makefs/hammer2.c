@@ -665,6 +665,7 @@ hammer2_populate_dir(struct vnode *dvp, const char *dir, fsnode *root,
 	struct stat st;
 	char f[MAXPATHLEN];
 	const char *path;
+	int hardlink;
 	int error;
 
 	assert(dvp != NULL);
@@ -712,8 +713,13 @@ hammer2_populate_dir(struct vnode *dvp, const char *dir, fsnode *root,
 				cur->parent = parent;
 		}
 
-		if (cur->inode->flags & FI_WRITTEN)
-			continue; /* hard link */
+		/* detect hardlink */
+		if (cur->inode->flags & FI_WRITTEN) {
+			assert(!S_ISDIR(cur->type));
+			hardlink = 1;
+		} else {
+			hardlink = 0;
+		}
 		cur->inode->flags |= FI_WRITTEN;
 
 		/* make sure it doesn't exist yet */
@@ -743,11 +749,12 @@ hammer2_populate_dir(struct vnode *dvp, const char *dir, fsnode *root,
 			if (error)
 				errx(1, "failed to populate %s: %s",
 				    path, strerror(error));
+			cur->inode->priv = vp;
 			continue;
 		}
 
 		/* if regular file, creat and write its data */
-		if (S_ISREG(cur->type)) {
+		if (S_ISREG(cur->type) && !hardlink) {
 			assert(cur->child == NULL);
 
 			vp = NULL;
@@ -763,6 +770,34 @@ hammer2_populate_dir(struct vnode *dvp, const char *dir, fsnode *root,
 			if (error)
 				errx(1, "hammer2_write_file(\"%s\") failed: %s",
 				    path, strerror(error));
+			cur->inode->priv = vp;
+			continue;
+		}
+
+		/* if hardlink, creat a hardlink */
+		if (S_ISREG(cur->type) && hardlink) {
+			char buf[64];
+			assert(cur->child == NULL);
+
+			/* source vnode must not be NULL */
+			vp = cur->inode->priv;
+			assert(vp);
+			/* currently these conditions must be true */
+			assert(vp->v_data);
+			assert(vp->v_type == VREG);
+			assert(vp->v_logical);
+			assert(!vp->v_vflushed);
+			assert(vp->v_malloced);
+			assert(VTOI(vp)->refs > 0);
+
+			error = hammer2_nlink(dvp, vp, cur->name,
+			    strlen(cur->name));
+			if (error)
+				errx(1, "hammer2_nlink(\"%s\") failed: %s",
+				    cur->name, strerror(error));
+			snprintf(buf, sizeof(buf), "nlink=%ld",
+			    VTOI(vp)->meta.nlinks);
+			hammer2_print(dvp, vp, cur, depth, buf);
 			continue;
 		}
 
@@ -778,6 +813,7 @@ hammer2_populate_dir(struct vnode *dvp, const char *dir, fsnode *root,
 				    cur->name, strerror(error));
 			assert(vp);
 			hammer2_print(dvp, vp, cur, depth, "nsymlink");
+			cur->inode->priv = vp;
 			continue;
 		}
 
@@ -793,6 +829,7 @@ hammer2_populate_dir(struct vnode *dvp, const char *dir, fsnode *root,
 				    cur->name, strerror(error));
 			assert(vp);
 			hammer2_print(dvp, vp, cur, depth, "nmknod");
+			cur->inode->priv = vp;
 			continue;
 		}
 
