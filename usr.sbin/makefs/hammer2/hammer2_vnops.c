@@ -1961,7 +1961,6 @@ static
 int
 hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 {
-#if 0
 	hammer2_inode_t *dip;
 	hammer2_inode_t *nip;
 	struct namecache *ncp;
@@ -2030,8 +2029,35 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 		hammer2_knote(ap->a_dvp, NOTE_WRITE);
 	}
 	return error;
-#endif
-	return (EOPNOTSUPP);
+}
+
+int
+hammer2_nmknod(struct vnode *dvp, struct vnode **vpp, char *name, int nlen,
+		int type)
+{
+	struct namecache nc = {
+		.nc_name = name,
+		.nc_nlen = nlen,
+	};
+	struct nchandle nch = {
+		.ncp = &nc,
+	};
+	uid_t va_uid = VNOVAL; //getuid();
+	uid_t va_gid = VNOVAL; //getgid();
+	struct vattr va = {
+		.va_type = type,
+		.va_mode = 0644, /* should be tunable */
+		.va_uid = va_uid,
+		.va_gid = va_gid,
+	};
+	struct vop_nmknod_args ap = {
+		.a_nch = &nch,
+		.a_dvp = dvp,
+		.a_vpp = vpp,
+		.a_vap = &va,
+	};
+
+	return hammer2_vop_nmknod(&ap);
 }
 
 /*

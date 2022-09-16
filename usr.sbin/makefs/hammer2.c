@@ -629,6 +629,8 @@ hammer2_print(const struct vnode *dvp, const struct vnode *vp,
 				type = "reg";
 			else if (S_ISLNK(node->type))
 				type = "lnk";
+			else if (S_ISFIFO(node->type))
+				type = "fifo";
 			else
 				type = "???";
 			printf("%*.*s", indent, indent, "");
@@ -644,6 +646,8 @@ hammer2_print(const struct vnode *dvp, const struct vnode *vp,
 				type = 'r';
 			else if (S_ISLNK(node->type))
 				type = 'l';
+			else if (S_ISFIFO(node->type))
+				type = 'f';
 			else
 				type = '?';
 			printf("%c", type);
@@ -774,6 +778,21 @@ hammer2_populate_dir(struct vnode *dvp, const char *dir, fsnode *root,
 				    cur->name, strerror(error));
 			assert(vp);
 			hammer2_print(dvp, vp, cur, depth, "nsymlink");
+			continue;
+		}
+
+		/* if fifo, create a fifo */
+		if (S_ISFIFO(cur->type)) {
+			assert(cur->child == NULL);
+
+			vp = NULL;
+			error = hammer2_nmknod(dvp, &vp, cur->name,
+			    strlen(cur->name), VFIFO);
+			if (error)
+				errx(1, "hammer2_nmknod(\"%s\") failed: %s",
+				    cur->name, strerror(error));
+			assert(vp);
+			hammer2_print(dvp, vp, cur, depth, "nmknod");
 			continue;
 		}
 

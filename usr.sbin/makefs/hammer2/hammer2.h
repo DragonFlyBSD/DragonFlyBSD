@@ -2001,6 +2001,8 @@ int hammer2_nresolve(struct vnode *dvp, struct vnode **vpp, char *name, int nlen
 int hammer2_nmkdir(struct vnode *dvp, struct vnode **vpp, char *name, int nlen);
 int hammer2_nlink(struct vnode *dvp, struct vnode *vp, char *name, int nlen);
 int hammer2_ncreate(struct vnode *dvp, struct vnode **vpp, char *name, int nlen);
+int hammer2_nmknod(struct vnode *dvp, struct vnode **vpp, char *name, int nlen,
+			int type);
 int hammer2_nsymlink(struct vnode *dvp, struct vnode **vpp, char *name, int nlen,
 			char *target);
 
