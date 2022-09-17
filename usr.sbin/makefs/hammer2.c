@@ -774,33 +774,6 @@ hammer2_populate_dir(struct vnode *dvp, const char *dir, fsnode *root,
 			continue;
 		}
 
-		/* if hardlink, creat a hardlink */
-		if (S_ISREG(cur->type) && hardlink) {
-			char buf[64];
-			assert(cur->child == NULL);
-
-			/* source vnode must not be NULL */
-			vp = cur->inode->priv;
-			assert(vp);
-			/* currently these conditions must be true */
-			assert(vp->v_data);
-			assert(vp->v_type == VREG);
-			assert(vp->v_logical);
-			assert(!vp->v_vflushed);
-			assert(vp->v_malloced);
-			assert(VTOI(vp)->refs > 0);
-
-			error = hammer2_nlink(dvp, vp, cur->name,
-			    strlen(cur->name));
-			if (error)
-				errx(1, "hammer2_nlink(\"%s\") failed: %s",
-				    cur->name, strerror(error));
-			snprintf(buf, sizeof(buf), "nlink=%ld",
-			    VTOI(vp)->meta.nlinks);
-			hammer2_print(dvp, vp, cur, depth, buf);
-			continue;
-		}
-
 		/* if symlink, create a symlink against target */
 		if (S_ISLNK(cur->type)) {
 			assert(cur->child == NULL);
@@ -818,7 +791,7 @@ hammer2_populate_dir(struct vnode *dvp, const char *dir, fsnode *root,
 		}
 
 		/* if fifo, create a fifo */
-		if (S_ISFIFO(cur->type)) {
+		if (S_ISFIFO(cur->type) && !hardlink) {
 			assert(cur->child == NULL);
 
 			vp = NULL;
@@ -830,6 +803,33 @@ hammer2_populate_dir(struct vnode *dvp, const char *dir, fsnode *root,
 			assert(vp);
 			hammer2_print(dvp, vp, cur, depth, "nmknod");
 			cur->inode->priv = vp;
+			continue;
+		}
+
+		/* if hardlink, creat a hardlink */
+		if ((S_ISREG(cur->type) || S_ISFIFO(cur->type)) && hardlink) {
+			char buf[64];
+			assert(cur->child == NULL);
+
+			/* source vnode must not be NULL */
+			vp = cur->inode->priv;
+			assert(vp);
+			/* currently these conditions must be true */
+			assert(vp->v_data);
+			assert(vp->v_type == VREG || vp->v_type == VFIFO);
+			assert(vp->v_logical);
+			assert(!vp->v_vflushed);
+			assert(vp->v_malloced);
+			assert(VTOI(vp)->refs > 0);
+
+			error = hammer2_nlink(dvp, vp, cur->name,
+			    strlen(cur->name));
+			if (error)
+				errx(1, "hammer2_nlink(\"%s\") failed: %s",
+				    cur->name, strerror(error));
+			snprintf(buf, sizeof(buf), "nlink=%ld",
+			    VTOI(vp)->meta.nlinks);
+			hammer2_print(dvp, vp, cur, depth, buf);
 			continue;
 		}
 
