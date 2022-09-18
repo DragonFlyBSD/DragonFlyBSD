@@ -1900,7 +1900,6 @@ int hammer2_vfs_enospace(hammer2_inode_t *ip, off_t bytes, struct ucred *cred);
 
 hammer2_pfs_t *hammer2_pfsalloc(hammer2_chain_t *chain,
 				const hammer2_inode_data_t *ripdata,
-				hammer2_tid_t modify_tid,
 				hammer2_dev_t *force_local);
 void hammer2_pfsdealloc(hammer2_pfs_t *pmp, int clindex, int destroying);
 int hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,

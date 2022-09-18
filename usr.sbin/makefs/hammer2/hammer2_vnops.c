@@ -832,7 +832,6 @@ hammer2_vop_read(struct vop_read_args *ap)
 	struct uio *uio;
 	int error;
 	int seqcount;
-	int bigread;
 
 	/*
 	 * Read operations supported on this vnode?
@@ -851,7 +850,6 @@ hammer2_vop_read(struct vop_read_args *ap)
 	error = 0;
 
 	seqcount = ap->a_ioflag >> IO_SEQSHIFT;
-	bigread = (uio->uio_resid > 100 * 1024 * 1024);
 
 	error = hammer2_read_file(ip, uio, seqcount);
 	return (error);

@@ -405,7 +405,7 @@ hammer2_vfs_uninit(void)
 hammer2_pfs_t *
 hammer2_pfsalloc(hammer2_chain_t *chain,
 		 const hammer2_inode_data_t *ripdata,
-		 hammer2_tid_t modify_tid, hammer2_dev_t *force_local)
+		 hammer2_dev_t *force_local)
 {
 	hammer2_pfs_t *pmp;
 	hammer2_inode_t *iroot;
@@ -985,7 +985,6 @@ hammer2_vfs_mount(struct vnode *makefs_devvp, struct mount *mp,
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	const hammer2_inode_data_t *ripdata;
-	hammer2_blockref_t bref;
 	hammer2_devvp_list_t devvpl;
 	hammer2_devvp_t *e, *e_tmp;
 	char *devstr;
@@ -1220,7 +1219,7 @@ next_hmp:
 		 * Really important to get these right or the flush and
 		 * teardown code will get confused.
 		 */
-		hmp->spmp = hammer2_pfsalloc(NULL, NULL, 0, NULL);
+		hmp->spmp = hammer2_pfsalloc(NULL, NULL, NULL);
 		spmp = hmp->spmp;
 		spmp->pfs_hmps[0] = hmp;
 
@@ -1406,9 +1405,7 @@ next_hmp:
 		kprintf("hammer2_mount: PFS label I/O error\n");
 	} else {
 		ripdata = &chain->data->ipdata;
-		bref = chain->bref;
-		pmp = hammer2_pfsalloc(NULL, ripdata,
-				       bref.modify_tid, force_local);
+		pmp = hammer2_pfsalloc(NULL, ripdata, force_local);
 	}
 	hammer2_chain_unlock(chain);
 	hammer2_chain_drop(chain);
@@ -1497,7 +1494,6 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 	const hammer2_inode_data_t *ripdata;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
-	hammer2_blockref_t bref;
 	hammer2_dev_t *force_local;
 	hammer2_pfs_t *spmp;
 	hammer2_key_t key_next;
@@ -1529,9 +1525,7 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 				chain->bref.type);
 		} else {
 			ripdata = &chain->data->ipdata;
-			bref = chain->bref;
-			hammer2_pfsalloc(chain, ripdata,
-					       bref.modify_tid, force_local);
+			hammer2_pfsalloc(chain, ripdata, force_local);
 		}
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next, HAMMER2_KEY_MAX,

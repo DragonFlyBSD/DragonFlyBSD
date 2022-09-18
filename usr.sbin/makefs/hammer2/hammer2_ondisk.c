@@ -663,8 +663,14 @@ hammer2_init_vfsvolumes(struct mount *mp, const hammer2_devvp_list_t *devvpl,
 			(intmax_t)vol->size);
 	}
 done:
-	if (!error)
-		error = hammer2_verify_vfsvolumes(volumes, rootvoldata);
+	if (!error) {
+		if (!rootvoldata->version) {
+			hprintf("root volume not found\n");
+			error = EINVAL;
+		}
+		if (!error)
+			error = hammer2_verify_vfsvolumes(volumes, rootvoldata);
+	}
 	kfree(voldata, M_HAMMER2);
 
 	return error;
