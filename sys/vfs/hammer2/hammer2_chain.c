@@ -345,9 +345,9 @@ hammer2_chain_insert(hammer2_chain_t *parent, hammer2_chain_t *chain,
 	 * Insert chain
 	 */
 	xchain = RB_INSERT(hammer2_chain_tree, &parent->core.rbtree, chain);
-	KASSERT(xchain == NULL,
-		("hammer2_chain_insert: collision %p %p (key=%016jx)",
-		chain, xchain, chain->bref.key));
+	if (xchain)
+		panic("hammer2_chain_insert: collision %p %p (key=%016jx)",
+			chain, xchain, chain->bref.key);
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
 	chain->parent = parent;
 	++parent->core.chain_count;
