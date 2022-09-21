@@ -326,7 +326,7 @@ int
 hammer2_chain_insert(hammer2_chain_t *parent, hammer2_chain_t *chain,
 		     int flags, int generation)
 {
-	hammer2_chain_t *xchain;
+	hammer2_chain_t *xchain __debugvar;
 	int error = 0;
 
 	if (flags & HAMMER2_CHAIN_INSERT_SPIN)
@@ -345,9 +345,9 @@ hammer2_chain_insert(hammer2_chain_t *parent, hammer2_chain_t *chain,
 	 * Insert chain
 	 */
 	xchain = RB_INSERT(hammer2_chain_tree, &parent->core.rbtree, chain);
-	if (xchain)
-		panic("hammer2_chain_insert: collision %p %p (key=%016jx)",
-			chain, xchain, chain->bref.key);
+	KASSERT(xchain == NULL,
+		("hammer2_chain_insert: collision %p %p (key=%016jx)",
+		chain, xchain, chain->bref.key));
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
 	chain->parent = parent;
 	++parent->core.chain_count;
