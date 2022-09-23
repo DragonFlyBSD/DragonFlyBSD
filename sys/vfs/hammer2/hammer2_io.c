@@ -614,7 +614,7 @@ int
 hammer2_io_cleanup_callback(hammer2_io_t *dio, void *arg)
 {
 	struct hammer2_cleanupcb_info *info = arg;
-	hammer2_io_t *xio;
+	hammer2_io_t *xio __debugvar;
 
 	if ((dio->refs & (HAMMER2_DIO_MASK | HAMMER2_DIO_INPROG)) == 0) {
 		if (dio->act > 0) {
