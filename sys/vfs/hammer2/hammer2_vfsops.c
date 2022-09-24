@@ -1215,7 +1215,7 @@ next_hmp:
 		hmp->vchain.bref.type = HAMMER2_BREF_TYPE_VOLUME;
 		hmp->vchain.bref.data_off = 0 | HAMMER2_PBUFRADIX;
 		hmp->vchain.bref.mirror_tid = hmp->voldata.mirror_tid;
-		hammer2_chain_core_init(&hmp->vchain);
+		hammer2_chain_init(&hmp->vchain);
 
 		/*
 		 * fchain setup.  fchain.data is embedded.
@@ -1236,7 +1236,7 @@ next_hmp:
 		hmp->fchain.bref.methods =
 			HAMMER2_ENC_CHECK(HAMMER2_CHECK_FREEMAP) |
 			HAMMER2_ENC_COMP(HAMMER2_COMP_NONE);
-		hammer2_chain_core_init(&hmp->fchain);
+		hammer2_chain_init(&hmp->fchain);
 
 		/*
 		 * Initialize volume header related fields.

@@ -234,19 +234,16 @@ hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
 	 */
 	if (bref->flags & HAMMER2_BREF_FLAG_PFSROOT)
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_PFSBOUNDARY);
-	hammer2_chain_core_init(chain);
+	hammer2_chain_init(chain);
 
 	return (chain);
 }
 
 /*
- * Initialize a chain's core structure.  This structure used to be allocated
- * but is now embedded.
- *
- * The core is not locked.  No additional refs on the chain are made.
+ * A common function to initialize chains including fchain and vchain.
  */
 void
-hammer2_chain_core_init(hammer2_chain_t *chain)
+hammer2_chain_init(hammer2_chain_t *chain)
 {
 	RB_INIT(&chain->core.rbtree);	/* live chains */
 	hammer2_mtx_init(&chain->lock, "h2chain");

@@ -1516,7 +1516,7 @@ int hammer2_dirent_create(hammer2_inode_t *dip, const char *name,
 hammer2_chain_t *hammer2_chain_alloc(hammer2_dev_t *hmp,
 				hammer2_pfs_t *pmp,
 				hammer2_blockref_t *bref);
-void hammer2_chain_core_init(hammer2_chain_t *chain);
+void hammer2_chain_init(hammer2_chain_t *chain);
 void hammer2_chain_ref(hammer2_chain_t *chain);
 void hammer2_chain_ref_hold(hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_chain_t *chain);
