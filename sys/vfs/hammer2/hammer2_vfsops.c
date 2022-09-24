@@ -134,7 +134,7 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, flush_pipe, CTLFLAG_RW,
 	   &hammer2_flush_pipe, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, bulkfree_tps, CTLFLAG_RW,
 	   &hammer2_bulkfree_tps, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, chain_allocs, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, chain_allocs, CTLFLAG_RD,
 	   &hammer2_chain_allocs, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, limit_saved_chains, CTLFLAG_RW,
 	   &hammer2_limit_saved_chains, 0, "");
@@ -144,48 +144,48 @@ SYSCTL_LONG(_vfs_hammer2, OID_AUTO, limit_dirty_chains, CTLFLAG_RW,
 	   &hammer2_limit_dirty_chains, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, limit_dirty_inodes, CTLFLAG_RW,
 	   &hammer2_limit_dirty_inodes, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, count_modified_chains, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, count_modified_chains, CTLFLAG_RD,
 	   &hammer2_count_modified_chains, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, dio_count, CTLFLAG_RD,
 	   &hammer2_dio_count, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, dio_limit, CTLFLAG_RW,
 	   &hammer2_dio_limit, 0, "");
 
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_read, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_read, CTLFLAG_RD,
 	   &hammer2_iod_file_read, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_meta_read, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_meta_read, CTLFLAG_RD,
 	   &hammer2_iod_meta_read, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_indr_read, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_indr_read, CTLFLAG_RD,
 	   &hammer2_iod_indr_read, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_fmap_read, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_fmap_read, CTLFLAG_RD,
 	   &hammer2_iod_fmap_read, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_volu_read, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_volu_read, CTLFLAG_RD,
 	   &hammer2_iod_volu_read, 0, "");
 
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_write, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_write, CTLFLAG_RD,
 	   &hammer2_iod_file_write, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_wembed, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_wembed, CTLFLAG_RD,
 	   &hammer2_iod_file_wembed, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_wzero, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_wzero, CTLFLAG_RD,
 	   &hammer2_iod_file_wzero, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_wdedup, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_wdedup, CTLFLAG_RD,
 	   &hammer2_iod_file_wdedup, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_meta_write, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_meta_write, CTLFLAG_RD,
 	   &hammer2_iod_meta_write, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_indr_write, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_indr_write, CTLFLAG_RD,
 	   &hammer2_iod_indr_write, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_fmap_write, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_fmap_write, CTLFLAG_RD,
 	   &hammer2_iod_fmap_write, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_volu_write, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_volu_write, CTLFLAG_RD,
 	   &hammer2_iod_volu_write, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_inode_creates, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_inode_creates, CTLFLAG_RD,
 	   &hammer2_iod_inode_creates, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_inode_deletes, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_inode_deletes, CTLFLAG_RD,
 	   &hammer2_iod_inode_deletes, 0, "");
 
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, process_icrc32, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, process_icrc32, CTLFLAG_RD,
 	   &hammer2_process_icrc32, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, process_xxhash64, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, process_xxhash64, CTLFLAG_RD,
 	   &hammer2_process_xxhash64, 0, "");
 
 static int hammer2_vfs_init(struct vfsconf *conf);
