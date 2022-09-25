@@ -212,7 +212,7 @@ hammer2_dirhash(const unsigned char *name, size_t len)
 	/*
 	 * l16 - crc of entire filename
 	 *
-	 * This crc reduces degenerate hash collision conditions
+	 * This crc reduces degenerate hash collision conditions.
 	 */
 	crcx = hammer2_icrc32(aname, len);
 	crcx = crcx ^ (crcx << 16);
