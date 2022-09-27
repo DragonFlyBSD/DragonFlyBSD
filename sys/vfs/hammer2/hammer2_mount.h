@@ -56,4 +56,4 @@ struct hammer2_mount_info {
 #define HMNT2_USERFLAGS		(HMNT2_LOCAL)
 #define HMNT2_DEVFLAGS		(HMNT2_LOCAL)
 
-#endif
+#endif /* !_VFS_HAMMER2_MOUNT_H_ */
