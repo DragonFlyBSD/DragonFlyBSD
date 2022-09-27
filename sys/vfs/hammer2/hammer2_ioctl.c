@@ -962,11 +962,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 static int
 hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 {
-	hammer2_ioc_inode_t *ino;
-	int error;
-
-	ino = data;
-	error = 0;
+	hammer2_ioc_inode_t *ino = data;
 
 	hammer2_inode_lock(ip, HAMMER2_RESOLVE_SHARED);
 	ino->data_count = hammer2_inode_data_count(ip);
@@ -976,7 +972,7 @@ hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 	ino->ip_data.meta = ip->meta;
 	hammer2_inode_unlock(ip);
 
-	return hammer2_error_to_errno(error);
+	return 0;
 }
 
 /*
@@ -987,7 +983,6 @@ static int
 hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_inode_t *ino = data;
-	int error = 0;
 
 	hammer2_trans_init(ip->pmp, 0);
 	hammer2_inode_lock(ip, 0);
@@ -1022,7 +1017,7 @@ hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 	hammer2_inode_unlock(ip);
 	hammer2_trans_done(ip->pmp, HAMMER2_TRANS_SIDEQ);
 
-	return (hammer2_error_to_errno(error));
+	return (0);
 }
 
 static
