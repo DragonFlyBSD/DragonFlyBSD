@@ -1463,6 +1463,17 @@ next_hmp:
 	hammer2_chain_drop(chain);
 
 	/*
+	 * PFS to mount must exist at this point.
+	 */
+	if (pmp == NULL) {
+		kprintf("hammer2_mount: Failed to acquire PFS structure\n");
+		hammer2_unmount_helper(mp, NULL, hmp);
+		lockmgr(&hammer2_mntlk, LK_RELEASE);
+		hammer2_vfs_unmount(mp, MNT_FORCE);
+		return EINVAL;
+	}
+
+	/*
 	 * Finish the mount
 	 */
 	kprintf("hammer2_mount: hmp=%p pmp=%p\n", hmp, pmp);
@@ -1472,7 +1483,6 @@ next_hmp:
 		hammer2_unmount_helper(mp, NULL, hmp);
 		lockmgr(&hammer2_mntlk, LK_RELEASE);
 		hammer2_vfs_unmount(mp, MNT_FORCE);
-
 		return EBUSY;
 	}
 
