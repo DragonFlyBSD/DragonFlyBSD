@@ -838,7 +838,7 @@ again:
 			}
 			rchain = iroot->cluster.array[i].chain;
 			iroot->cluster.array[i].chain = NULL;
-			pmp->pfs_types[i] = 0;
+			pmp->pfs_types[i] = HAMMER2_PFSTYPE_NONE;
 			if (pmp->pfs_names[i]) {
 				kfree(pmp->pfs_names[i], M_HAMMER2);
 				pmp->pfs_names[i] = NULL;
