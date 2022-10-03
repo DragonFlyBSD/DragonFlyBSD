@@ -1591,6 +1591,8 @@ void hammer2_base_insert(hammer2_chain_t *parent,
 				hammer2_blockref_t *base, int count,
 				hammer2_chain_t *chain,
 				hammer2_blockref_t *elm);
+void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int bi, int *countp,
+				char pfx, u_int flags);
 
 /*
  * hammer2_flush.c
@@ -1851,8 +1853,6 @@ int hammer2_msg_adhoc_input(kdmsg_msg_t *msg);
 /*
  * hammer2_vfsops.c
  */
-void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int bi, int *countp,
-				char pfx, u_int flags);
 int hammer2_vfs_sync(struct mount *mp, int waitflags);
 int hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor);
 int hammer2_vfs_enospace(hammer2_inode_t *ip, off_t bytes, struct ucred *cred);
