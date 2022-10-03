@@ -1082,6 +1082,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	return 0;
 }
 
+#if 0
 /*
  * Lock the chain, retain the hold, and drop the data persistence count.
  * The data should remain valid because we never transitioned lockcnt
@@ -1094,7 +1095,6 @@ hammer2_chain_lock_unhold(hammer2_chain_t *chain, int how)
 	atomic_add_int(&chain->lockcnt, -1);
 }
 
-#if 0
 /*
  * Downgrade an exclusive chain lock to a shared chain lock.
  *
@@ -1404,6 +1404,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	hammer2_mtx_unlock(&chain->lock);
 }
 
+#if 0
 /*
  * Unlock and hold chain data intact
  */
@@ -1413,6 +1414,7 @@ hammer2_chain_unlock_hold(hammer2_chain_t *chain)
 	atomic_add_int(&chain->lockcnt, 1);
 	hammer2_chain_unlock(chain);
 }
+#endif
 
 /*
  * Helper to obtain the blockref[] array base and count for a chain.

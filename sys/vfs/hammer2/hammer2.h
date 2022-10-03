@@ -1524,7 +1524,7 @@ void hammer2_chain_drop_unhold(hammer2_chain_t *chain);
 void hammer2_chain_unhold(hammer2_chain_t *chain);
 void hammer2_chain_rehold(hammer2_chain_t *chain);
 int hammer2_chain_lock(hammer2_chain_t *chain, int how);
-void hammer2_chain_lock_unhold(hammer2_chain_t *chain, int how);
+//void hammer2_chain_lock_unhold(hammer2_chain_t *chain, int how);
 void hammer2_chain_load_data(hammer2_chain_t *chain);
 
 int hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
@@ -1539,7 +1539,7 @@ int hammer2_chain_resize(hammer2_chain_t *chain,
 				hammer2_tid_t mtid, hammer2_off_t dedup_off,
 				int nradix, int flags);
 void hammer2_chain_unlock(hammer2_chain_t *chain);
-void hammer2_chain_unlock_hold(hammer2_chain_t *chain);
+//void hammer2_chain_unlock_hold(hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_get(hammer2_chain_t *parent, int generation,
 				hammer2_blockref_t *bref, int how);
 hammer2_chain_t *hammer2_chain_lookup_init(hammer2_chain_t *parent, int flags);
