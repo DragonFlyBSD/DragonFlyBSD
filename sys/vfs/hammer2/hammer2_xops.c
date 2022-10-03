@@ -870,7 +870,7 @@ done:
 void
 hammer2_xop_lookup(hammer2_xop_t *arg, void *scratch, int clindex)
 {
-	hammer2_xop_scanlhc_t *xop = &arg->xop_scanlhc;
+	hammer2_xop_lookup_t *xop = &arg->xop_lookup;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
@@ -916,7 +916,7 @@ done:
 void
 hammer2_xop_delete(hammer2_xop_t *arg, void *scratch, int clindex)
 {
-	hammer2_xop_scanlhc_t *xop = &arg->xop_scanlhc;
+	hammer2_xop_lookup_t *xop = &arg->xop_lookup;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
