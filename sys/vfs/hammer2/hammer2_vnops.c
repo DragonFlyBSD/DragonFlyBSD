@@ -661,12 +661,6 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	if (error)
 		goto done;
 
-	/*
-	 * Use XOP for cluster scan.
-	 *
-	 * parent is the inode cluster, already locked for us.  Don't
-	 * double lock shared locks as this will screw up upgrades.
-	 */
 	xop = hammer2_xop_alloc(ip, 0);
 	xop->lkey = lkey;
 	hammer2_xop_start(&xop->head, &hammer2_readdir_desc);
