@@ -467,11 +467,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 /*
  * Flags passed to hammer2_chain_lock()
  *
- * NOTE: RDONLY is set to optimize cluster operations when *no* modifications
- *	 will be made to either the cluster being locked or any underlying
- *	 cluster.  It allows the cluster to lock and access data for a subset
- *	 of available nodes instead of all available nodes.
- *
  * NOTE: NONBLOCK is only used for hammer2_chain_repparent() and getparent(),
  *	 other functions (e.g. hammer2_chain_lookup(), etc) can't handle its
  *	 operation.

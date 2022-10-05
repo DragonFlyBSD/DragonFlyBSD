@@ -192,8 +192,7 @@ hammer2_inode_delayed_sideq(hammer2_inode_t *ip)
  * HAMMER2 offers shared and exclusive locks on inodes.  Pass a mask of
  * flags for options:
  *
- *	- pass HAMMER2_RESOLVE_SHARED if a shared lock is desired.  The
- *	  inode locking function will automatically set the RDONLY flag.
+ *	- pass HAMMER2_RESOLVE_SHARED if a shared lock is desired.
  *	  shared locks are not subject to SYNCQ semantics, exclusive locks
  *	  are.
  *
