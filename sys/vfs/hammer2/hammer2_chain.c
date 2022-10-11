@@ -2194,10 +2194,6 @@ hammer2_chain_find_callback(hammer2_chain_t *child, void *data)
 	hammer2_chain_t *best;
 	hammer2_key_t child_end;
 
-	/*
-	 * WARNING! Layerq is scanned forwards, exact matches should keep
-	 *	    the existing info->best.
-	 */
 	if ((best = info->best) == NULL) {
 		/*
 		 * No previous best.  Assign best

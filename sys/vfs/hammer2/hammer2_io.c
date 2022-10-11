@@ -494,10 +494,7 @@ _hammer2_io_putblk(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS)
 	 * have been cleared.  iofree_count has not yet been incremented,
 	 * note that another accessor race will decrement iofree_count so
 	 * we have to increment it regardless.
-	 *
-	 * We can now dispose of the buffer, and should do it before calling
-	 * io_complete() in case there's a race against a new reference
-	 * which causes io_complete() to chain and instantiate the bp again.
+	 * We can now dispose of the buffer.
 	 */
 	pbase = dio->pbase;
 	psize = dio->psize;

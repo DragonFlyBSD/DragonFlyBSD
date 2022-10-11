@@ -821,12 +821,6 @@ done:
  *				  fake the frontend collection and complete
  *				  the BIO as soon as possible.
  *
- * HAMMER2_XOP_SYNCHRONIZER	- Reqeuest synchronization with a particular
- *				  cluster index, prevents looping when that
- *				  index is out of sync so caller can act on
- *				  the out of sync element.  ESRCH and EDEADLK
- *				  can be returned if this flag is specified.
- *
  * Returns 0 on success plus a filled out xop->cluster structure.
  * Return ENOENT on normal termination.
  * Otherwise return an error.
@@ -936,7 +930,7 @@ loop:
 	 * EINPROGRESS	 - insufficient elements collected to resolve, wait
 	 *		   for event and loop.
 	 *
-	 * EIO/ECHECK	 - IO error or CRC check error from hammer2_cluster_check()
+	 * EIO		 - IO error or CRC check error from hammer2_cluster_check()
 	 */
 	if ((flags & HAMMER2_XOP_COLLECT_WAITALL) &&
 	    (mask & HAMMER2_XOPMASK_ALLDONE) != HAMMER2_XOPMASK_VOP) {
