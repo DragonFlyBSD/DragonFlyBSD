@@ -1875,6 +1875,11 @@ again:
 		atomic_clear_int(&hmp->fchain.flags, HAMMER2_CHAIN_UPDATE);
 	}
 
+	dumpcnt = 50;
+	hammer2_dump_chain(&hmp->vchain, 0, 0, &dumpcnt, 'v', (u_int)-1);
+	dumpcnt = 50;
+	hammer2_dump_chain(&hmp->fchain, 0, 0, &dumpcnt, 'f', (u_int)-1);
+
 	/*
 	 * Final drop of embedded freemap root chain to
 	 * clean up fchain.core (fchain structure is not
@@ -1889,11 +1894,6 @@ again:
 	 * ALLOCATED so it is cleaned out and then left to
 	 * rot).
 	 */
-	dumpcnt = 50;
-	hammer2_dump_chain(&hmp->vchain, 0, 0, &dumpcnt, 'v', (u_int)-1);
-	dumpcnt = 50;
-	hammer2_dump_chain(&hmp->fchain, 0, 0, &dumpcnt, 'f', (u_int)-1);
-
 	hammer2_chain_drop(&hmp->vchain);
 
 	hammer2_io_cleanup(hmp, &hmp->iotree);
