@@ -979,6 +979,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 */
 		hammer2_cluster_t *cluster;
 
+		error = 0;
 		pmp = MPTOPMP(mp);
 		pmp->hflags = info.hflags;
 		cluster = &pmp->iroot->cluster;
@@ -1153,14 +1154,12 @@ next_hmp:
 		 * Now open the device
 		 */
 		KKASSERT(!TAILQ_EMPTY(&devvpl));
-		if (error == 0) {
-			error = hammer2_open_devvp(&devvpl, ronly);
-			if (error) {
-				hammer2_close_devvp(&devvpl, ronly);
-				hammer2_cleanup_devvp(&devvpl);
-				lockmgr(&hammer2_mntlk, LK_RELEASE);
-				return error;
-			}
+		error = hammer2_open_devvp(&devvpl, ronly);
+		if (error) {
+			hammer2_close_devvp(&devvpl, ronly);
+			hammer2_cleanup_devvp(&devvpl);
+			lockmgr(&hammer2_mntlk, LK_RELEASE);
+			return error;
 		}
 
 		/*
