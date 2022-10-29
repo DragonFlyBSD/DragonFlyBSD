@@ -388,7 +388,7 @@
  * representing INDEX_SIZE bytes worth of storage per element.
  */
 
-typedef uint64_t			hammer2_bitmap_t;
+typedef uint64_t hammer2_bitmap_t;
 
 #define HAMMER2_BMAP_ALLONES		((hammer2_bitmap_t)-1)
 #define HAMMER2_BMAP_ELEMENTS		8
@@ -724,9 +724,8 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_BREF_FLAG_EMERG_MIP	0x04	/* emerg modified-in-place */
 
 /*
- * Encode/decode check mode and compression mode for
- * bref.methods.  The compression level is not encoded in
- * bref.methods.
+ * Encode/decode check mode and compression mode for bref.methods.
+ * The compression level is not encoded in bref.methods.
  */
 #define HAMMER2_ENC_CHECK(n)		(((n) & 15) << 4)
 #define HAMMER2_DEC_CHECK(n)		(((n) >> 4) & 15)
