@@ -996,7 +996,7 @@ struct hammer2_inode_meta {
 	 * (not yet implemented)
 	 */
 	uint64_t	decrypt_check;	/* 00E0 decryption validator */
-	hammer2_off_t	reservedE0[3];	/* 00E8/F0/F8 */
+	hammer2_off_t	reservedE8[3];	/* 00E8/F0/F8 */
 } __packed;
 
 typedef struct hammer2_inode_meta hammer2_inode_meta_t;
@@ -1068,7 +1068,7 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 
 #define HAMMER2_PFSTRAN_NONE		0x00	/* no transition in progress */
 #define HAMMER2_PFSTRAN_CACHE		0x10
-#define HAMMER2_PFSTRAN_UNMUSED20	0x20
+#define HAMMER2_PFSTRAN_UNUSED20	0x20
 #define HAMMER2_PFSTRAN_SLAVE		0x30
 #define HAMMER2_PFSTRAN_SOFT_SLAVE	0x40
 #define HAMMER2_PFSTRAN_SOFT_MASTER	0x50
@@ -1205,7 +1205,7 @@ struct hammer2_volume_data {
 	 * cannot be reused until it is 100% removed from the hierarchy.
 	 */
 	uint32_t	copyexists[8];		/* 00C8-00E7 copy exists bmap */
-	char		reserved0140[248];	/* 00E8-01DF */
+	char		reserved00E8[248];	/* 00E8-01DF */
 
 	/*
 	 * 32 bit CRC array at the end of the first 512 byte sector.
@@ -1259,7 +1259,7 @@ struct hammer2_volume_data {
 	/*
 	 * Remaining sections are reserved for future use.
 	 */
-	char		reserved0400[0x6FFC];	/* 9000-FFFB reserved */
+	char		reserved9000[0x6FFC];	/* 9000-FFFB reserved */
 
 	/*
 	 * icrc on entire volume header
