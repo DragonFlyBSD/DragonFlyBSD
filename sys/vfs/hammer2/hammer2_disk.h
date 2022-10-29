@@ -742,11 +742,6 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 
 #define HAMMER2_CHECK_DEFAULT		HAMMER2_CHECK_XXHASH64
 
-/* user-specifiable check modes only */
-#define HAMMER2_CHECK_STRINGS		{ "none", "disabled", "crc32", \
-					  "xxhash64", "sha192" }
-#define HAMMER2_CHECK_STRINGS_COUNT	5
-
 /*
  * Encode/decode check or compression algorithm request in
  * ipdata->meta.check_algo and ipdata->meta.comp_algo.
@@ -762,8 +757,6 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_COMP_ZLIB		3
 
 #define HAMMER2_COMP_NEWFS_DEFAULT	HAMMER2_COMP_LZ4
-#define HAMMER2_COMP_STRINGS		{ "none", "autozero", "lz4", "zlib" }
-#define HAMMER2_COMP_STRINGS_COUNT	4
 
 /*
  * HAMMER2 block references are collected into sets of 4 blockrefs.  These
