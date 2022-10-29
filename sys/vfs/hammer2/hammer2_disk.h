@@ -766,12 +766,6 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_COMP_STRINGS_COUNT	4
 
 /*
- * Passed to hammer2_chain_create(), causes methods to be inherited from
- * parent.
- */
-#define HAMMER2_METH_DEFAULT		-1
-
-/*
  * HAMMER2 block references are collected into sets of 4 blockrefs.  These
  * sets are fully associative, meaning the elements making up a set may
  * contain duplicate entries, holes, but valid elements are always sorted.

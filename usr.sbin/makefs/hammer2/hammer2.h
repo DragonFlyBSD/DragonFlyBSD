@@ -366,6 +366,12 @@ int hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2);
 RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
 /*
+ * Passed to hammer2_chain_create(), causes methods to be inherited from
+ * parent.
+ */
+#define HAMMER2_METH_DEFAULT		-1
+
+/*
  * Special notes on flags:
  *
  * INITIAL	- This flag allows a chain to be created and for storage to
