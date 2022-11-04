@@ -37,6 +37,8 @@
 
 #include "dsynth.h"
 
+static int CheckAddReExec(int lkfd);
+static void DoAddReExec(int lkfd, int ac, char **oldav);
 static void DoInit(void);
 static void usage(int ecode) __dead2;
 
@@ -57,10 +59,13 @@ int NiceOpt = 10;
 int
 main(int ac, char **av)
 {
+	char *lkpath;
 	pkg_t *pkgs;
+	int lkfd;
 	int isworker;
 	int c;
 	int sopt;
+	int doadds;
 
 	/*
 	 * Get our exec path so we can self-exec clean WORKER
@@ -193,6 +198,12 @@ main(int ac, char **av)
 	ParseConfiguration(isworker);
 
 	/*
+	 * Lock file path (also contains any 'add' directives thrown in
+	 * during a build).
+	 */
+	asprintf(&lkpath, "%s/.lock", BuildBase);
+
+	/*
 	 * Setup some environment for bulk operations (pkglist scan).
 	 * These are not used by the builder (the builder will replicate
 	 * all of these).
@@ -272,6 +283,26 @@ main(int ac, char **av)
 		}
 		exit(0);
 		/* NOT REACHED */
+	} else if (strcmp(av[0], "add") == 0) {
+		char *buf;
+		int fd;
+		int i;
+
+		/*
+		 * The lock check is a bit racey XXX
+		 */
+		fd = open(lkpath, O_RDWR | O_CREAT | O_APPEND, 0644);
+		if (flock(fd, LOCK_EX | LOCK_NB) == 0) {
+			dfatal("No dsynth running to add ports to");
+			flock(fd, LOCK_UN);
+		}
+		for (i = 1; i < ac; ++i) {
+			asprintf(&buf, "%s\n", av[i]);
+			write(fd, buf, strlen(buf));
+			printf("added to run: %s\n", av[i]);
+		}
+		close(fd);
+		exit(0);
 	}
 
 	/*
@@ -279,20 +310,22 @@ main(int ac, char **av)
 	 * the configuration so the first thing we need to do is check
 	 * the lock file.
 	 */
-	{
-		char *lkpath;
-		int fd;
-
-		asprintf(&lkpath, "%s/.lock", BuildBase);
-		fd = open(lkpath, O_RDWR | O_CREAT | O_CLOEXEC, 0644);
-		if (fd < 0)
-			dfatal_errno("Unable to create %s", lkpath);
-		if (flock(fd, LOCK_EX | LOCK_NB) < 0) {
-			dfatal("Another dsynth is using %s, exiting",
-			       BuildBase);
-		}
-		/* leave descriptor open */
+	lkfd = open(lkpath, O_RDWR | O_CREAT | O_CLOEXEC, 0644);
+	if (lkfd < 0)
+		dfatal_errno("Unable to create %s", lkpath);
+	if (flock(lkfd, LOCK_EX | LOCK_NB) < 0) {
+		dfatal("Another dsynth is using %s, exiting",
+		       BuildBase);
 	}
+
+	/*
+	 * Starting a new run cleans out any prior add directives
+	 * that may have been pending.
+	 */
+	ftruncate(lkfd, 0);
+	/* leave descriptor open */
+
+	doadds = 0;
 
 	if (strcmp(av[0], "debug") == 0) {
 		DoCleanBuild(1);
@@ -300,6 +333,7 @@ main(int ac, char **av)
 		pkgs = ParsePackageList(ac - 1, av + 1, 1);
 		RemovePackages(pkgs);
 		DoBuild(pkgs);
+		doadds = 1;
 	} else if (strcmp(av[0], "status") == 0) {
 		OptimizeEnv();
 		if (ac - 1)
@@ -329,6 +363,7 @@ main(int ac, char **av)
 			pkgs = ParsePackageList(ac - 1, av + 1, 0);
 		}
 		DoBuild(pkgs);
+		doadds = 1;
 	} else if (strcmp(av[0], "list-system") == 0) {
 		FILE *fp;
 
@@ -353,6 +388,7 @@ main(int ac, char **av)
 		DoBuild(pkgs);
 		DoRebuildRepo(0);
 		DoUpgradePkgs(pkgs, 0);
+		dfatal("NOTE: you have to pkg upgrade manually");
 	} else if (strcmp(av[0], "prepare-system") == 0) {
 		DeleteObsoletePkgs = 1;
 		DoCleanBuild(1);
@@ -388,19 +424,21 @@ main(int ac, char **av)
 		OptimizeEnv();
 		pkgs = GetFullPackageList();
 		DoBuild(pkgs);
-		DoRebuildRepo(1);
+		DoRebuildRepo(!CheckAddReExec(lkfd));
 	} else if (strcmp(av[0], "build") == 0) {
 		DoCleanBuild(1);
 		OptimizeEnv();
 		pkgs = ParsePackageList(ac - 1, av + 1, 0);
 		DoBuild(pkgs);
-		DoRebuildRepo(1);
+		DoRebuildRepo(!CheckAddReExec(lkfd));
 		DoUpgradePkgs(pkgs, 1);
+		doadds = 1;
 	} else if (strcmp(av[0], "just-build") == 0) {
 		DoCleanBuild(1);
 		OptimizeEnv();
 		pkgs = ParsePackageList(ac - 1, av + 1, 0);
 		DoBuild(pkgs);
+		doadds = 1;
 	} else if (strcmp(av[0], "install") == 0) {
 		DoCleanBuild(1);
 		OptimizeEnv();
@@ -408,27 +446,111 @@ main(int ac, char **av)
 		DoBuild(pkgs);
 		DoRebuildRepo(0);
 		DoUpgradePkgs(pkgs, 0);
+		doadds = 1;
 	} else if (strcmp(av[0], "force") == 0) {
 		DoCleanBuild(1);
 		OptimizeEnv();
 		pkgs = ParsePackageList(ac - 1, av + 1, 0);
 		RemovePackages(pkgs);
 		DoBuild(pkgs);
-		DoRebuildRepo(1);
+		DoRebuildRepo(!CheckAddReExec(lkfd));
 		DoUpgradePkgs(pkgs, 1);
+		doadds = 1;
 	} else if (strcmp(av[0], "test") == 0) {
-		WorkerProcFlags |= WORKER_PROC_CHECK_PLIST | WORKER_PROC_INSTALL | WORKER_PROC_DEINSTALL;
+		WorkerProcFlags |= WORKER_PROC_CHECK_PLIST |
+				   WORKER_PROC_INSTALL |
+				   WORKER_PROC_DEINSTALL;
 		DoCleanBuild(1);
 		OptimizeEnv();
 		pkgs = ParsePackageList(ac - 1, av + 1, 0);
 		RemovePackages(pkgs);
 		WorkerProcFlags |= WORKER_PROC_DEVELOPER;
 		DoBuild(pkgs);
+		doadds = 1;
 	} else {
 		fprintf(stderr, "Unknown directive '%s'\n", av[0]);
 		usage(2);
 	}
+
+	/*
+	 * For directives that support the 'add' directive, check for
+	 * additions and re-exec.
+	 *
+	 * Note that the lockfile is O_CLOEXEC and will be remade on exec.
+	 *
+	 * XXX a bit racey vs adds done just as we are finishing
+	 */
+	if (doadds && CheckAddReExec(lkfd))
+		DoAddReExec(lkfd, optind + 1, av - optind);
+
 	return 0;
+}
+
+/*
+ * If the 'add' directive was issued while a dsynth build was in
+ * progress, we re-exec dsynth with its original options and
+ * directive along with the added ports.
+ */
+static int
+CheckAddReExec(int lkfd)
+{
+	struct stat st;
+
+	if (fstat(lkfd, &st) < 0 || st.st_size == 0)
+		return 0;
+	return 1;
+}
+
+static void
+DoAddReExec(int lkfd, int ac, char **oldav)
+{
+	struct stat st;
+	char *buf;
+	char **av;
+	size_t bi;
+	size_t i;
+	int nadd;
+	int n;
+
+	if (fstat(lkfd, &st) < 0 || st.st_size == 0)
+		return;
+	buf = malloc(st.st_size + 1);
+	if (read(lkfd, buf, st.st_size) != st.st_size) {
+		free(buf);
+		return;
+	}
+	buf[st.st_size] = 0;
+
+	nadd = 0;
+	for (i = 0; i < (size_t)st.st_size; ++i) {
+		if (buf[i] == '\n' || buf[i] == 0) {
+			buf[i] = 0;
+			++nadd;
+		}
+	}
+
+	av = calloc(ac + nadd + 1, sizeof(char *));
+
+	for (n = 0; n < ac; ++n)
+		av[n] = oldav[n];
+
+	nadd = 0;
+	bi = 0;
+	for (i = 0; i < (size_t)st.st_size; ++i) {
+		if (buf[i] == 0) {
+			av[ac + nadd] = buf + bi;
+			bi = i + 1;
+			++nadd;
+		}
+	}
+
+	printf("dsynth re-exec'ing additionally added packages\n");
+	for (n = 0; n < ac + nadd; ++n)
+		printf(" %s", av[n]);
+	printf("\n");
+	fflush(stdout);
+	sleep(2);
+	execv(DSynthExecPath, av);
 }
 
 static void

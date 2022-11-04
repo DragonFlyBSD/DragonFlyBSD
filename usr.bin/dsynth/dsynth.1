@@ -320,6 +320,27 @@ will be printed and the program will exit.
 Output a synopsis of options and directives and exit.
 .It Cm status Op Ar ports
 Do a dry-run with 'build' of the given list.
+.It Cm add Op Ar ports
+This directive may be used when the user wishes to add additional
+ports to an existing dsynth run without interrupting and restarting
+the dsynth.
+It can be useful when the user intends to leave dsynth unattended for
+a long period of time and does not wish to interrupt potentially very
+long builds that are already in progress.
+.Pp
+When dsynth completes the current run it will re-exec itself with
+the same primary directive along with all ports specified by any
+.Cm add
+directives made in the interim.
+.Nm
+will still rebuild the repository after the initial run if it would
+normally have done so, but if so it will do it without asking first.
+Only the last rebuild request will potentially be interactive.
+.Pp
+Note that interrupting or killing the running dsynth cleans out any
+ports that might have been added while it was running.  This directive
+also has numerous exit/exec lock-file races and is intended to only be used
+manually by the user.
 .It Cm build Op Ar ports
 Incrementally build dports based on the given list.
 When done, ask whether the repository should be rebuilt or not.

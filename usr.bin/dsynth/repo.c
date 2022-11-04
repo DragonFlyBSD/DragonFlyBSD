@@ -269,7 +269,6 @@ repackage(const char *basepath, const char *basefile,
 void
 DoUpgradePkgs(pkg_t *pkgs __unused, int ask __unused)
 {
-	dfatal("Not Implemented");
 }
 
 void
