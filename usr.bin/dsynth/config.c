@@ -498,6 +498,11 @@ parseConfigFile(const char *path)
 				dassert(LeveragePrebuilt == 0,
 					"Config: leverage_prebuilt not "
 					"supported and must be set to false");
+			} else if (strcmp(l1, "Check_plist") == 0) {
+				if (truefalse(l2)) {
+					WorkerProcFlags |=
+						WORKER_PROC_CHECK_PLIST;
+				}
 			} else {
 				dfatal("Unknown directive in profile section "
 				       "line %d: %s\n", lineno, buf);

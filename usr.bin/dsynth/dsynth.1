@@ -89,6 +89,7 @@ Directory_ccache= disabled
 Directory_system= /
 Package_suffix= .txz
 ; Meta_version= 2	(this is the default)
+; Check_plist= false	(this is the default)
 Number_of_builders= 8
 Max_jobs_per_builder= 8
 Display_with_ncurses= true
@@ -220,7 +221,12 @@ Turn on DEVELOPER mode when building ports.
 Include the check-plist stage.
 This is the default for the
 .Cm everything
-directive.
+and
+.Cm test
+directives.
+This feature may also be turned on via the
+.Va Check_plist
+option in the configuration file.
 .It Fl S[S]
 Turn off curses for script friendliness.
 The output will be log 00 and
@@ -418,6 +424,17 @@ The flavor of a port (only for
 The port name (only for
 .Pa hook_pkg_* ) .
 .El
+.Sh MISC
+.Pp
+The default setting for
+.Va Meta_version
+is now 2.  You can override it with this configuration variable.
+.Pp
+The default setting for
+.Va Check_plist
+is false.  You can override it with the
+.Fl P
+option or by setting this configuration variable to true.
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/abc/defghi/<name>" -compact
 .It Pa /etc/dsynth/dsynth.ini
@@ -520,10 +537,6 @@ Due to the way the builder works, package dependencies are fresly
 installed into the chroot slot for each package being built, so
 decompression time matters.
 .Pp
-.It 2
-The default setting for
-.Va Meta_version
-is now 2.  You can override it with this configuration variable.
 .El
 .Sh EXIT STATUS
 .Ex -std
