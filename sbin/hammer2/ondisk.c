@@ -223,7 +223,7 @@ hammer2_add_volume(const char *path, int rdonly)
 			errx(1, "%s has bad volume id %d", path, i);
 		vol = &fso.volumes[i];
 		if (vol->id != -1)
-			errx(1, "%s already initialized", path);
+			errx(1, "volume id %d already initialized", i);
 		/* all headers must have the same version, nvolumes and uuid */
 		if (!fso.nvolumes) {
 			fso.version = voldata.version;
