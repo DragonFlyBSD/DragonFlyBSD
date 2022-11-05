@@ -570,7 +570,7 @@ parsecolors(const char *cs)
 			else if (c[j] >= 'A' && c[j] <= 'H') {
 				colors[i].num[j] = c[j] - 'A';
 				colors[i].bold = 1;
-			} else if (tolower((unsigned char)c[j] == 'x'))
+			} else if (tolower((unsigned char)c[j]) == 'x')
 				colors[i].num[j] = -1;
 			else {
 				warnx("invalid character '%c' in LSCOLORS"
