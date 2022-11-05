@@ -1369,11 +1369,6 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	 *	 entry to NULL, otherwise we just return the error and
 	 *	 leave the namecache unresolved.
 	 *
-	 * NOTE: multiple hammer2_inode structures can be aliased to the
-	 *	 same chain element, for example for hardlinks.  This
-	 *	 use case does not 'reattach' inode associations that
-	 *	 might already exist, but always allocates a new one.
-	 *
 	 * WARNING: inode structure is locked exclusively via inode_get
 	 *	    but chain was locked shared.  inode_unlock()
 	 *	    will handle it properly.

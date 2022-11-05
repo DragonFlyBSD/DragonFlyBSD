@@ -1205,8 +1205,6 @@ next_hmp:
 		/*
 		 * vchain setup. vchain.data is embedded.
 		 * vchain.refs is initialized and will never drop to 0.
-		 *
-		 * NOTE! voldata is not yet loaded.
 		 */
 		hmp->vchain.hmp = hmp;
 		hmp->vchain.refs = 1;
@@ -1446,11 +1444,7 @@ next_hmp:
 
 	/*
 	 * Acquire the pmp structure (it should have already been allocated
-	 * via hammer2_update_pmps() so do not pass cluster in to add to
-	 * available chains).
-	 *
-	 * Check if the cluster has already been mounted.  A cluster can
-	 * only be mounted once, use null mounts to mount additional copies.
+	 * via hammer2_update_pmps()).
 	 */
 	if (chain->error) {
 		kprintf("hammer2_mount: PFS label I/O error\n");
@@ -1477,6 +1471,7 @@ next_hmp:
 	 */
 	kprintf("hammer2_mount: hmp=%p pmp=%p\n", hmp, pmp);
 
+	/* Check if the pmp has already been mounted. */
 	if (pmp->mp) {
 		kprintf("hammer2_mount: PFS already mounted!\n");
 		hammer2_unmount_helper(mp, NULL, hmp);

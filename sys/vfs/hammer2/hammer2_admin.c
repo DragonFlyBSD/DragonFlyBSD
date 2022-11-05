@@ -797,7 +797,7 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 	error = 0;
 
 	/*
-	 * Cleanup.  If an error occurred we eat the lock.  If no error
+	 * Cleanup.  If no error
 	 * occurred the fifo inherits the lock and gains an additional ref.
 	 *
 	 * The caller's ref remains in both cases.

@@ -1197,7 +1197,7 @@ struct hammer2_pfs {
 	hammer2_spin_t		inum_spin;	/* inumber lookup */
 	struct hammer2_inode_tree inum_tree;	/* (not applicable to spmp) */
 	long			inum_count;	/* #of inodes in inum_tree */
-	hammer2_spin_t		lru_spin;	/* inumber lookup */
+	hammer2_spin_t		lru_spin;
 	struct hammer2_chain_list lru_list;	/* basis for LRU tests */
 	int			lru_count;	/* #of chains on LRU */
 	int			flags;

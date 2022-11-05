@@ -737,7 +737,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 		 * new lookups, chain spinlock held to protect parent field.
 		 * Remove chain from the parent.
 		 *
-		 * If the chain is being removed from the parent's btree but
+		 * If the chain is being removed from the parent's rbtree but
 		 * is not blkmapped, we have to adjust live_count downward.  If
 		 * it is blkmapped then the blockref is retained in the parent
 		 * as is its associated live_count.  This case can occur when
@@ -1284,23 +1284,13 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 	}
 
 	/*
-	 * Setup the data pointer, either pointing it to an embedded data
-	 * structure and copying the data from the buffer, or pointing it
-	 * into the buffer.
-	 *
-	 * The buffer is not retained when copying to an embedded data
-	 * structure in order to avoid potential deadlocks or recursions
-	 * on the same physical buffer.
-	 *
+	 * Setup the data pointer by pointing it into the buffer.
 	 * WARNING! Other threads can start using the data the instant we
 	 *	    set chain->data non-NULL.
 	 */
 	switch (bref->type) {
 	case HAMMER2_BREF_TYPE_VOLUME:
 	case HAMMER2_BREF_TYPE_FREEMAP:
-		/*
-		 * Copy data from bp to embedded buffer
-		 */
 		panic("hammer2_chain_load_data: unresolved volume header");
 		break;
 	case HAMMER2_BREF_TYPE_DIRENT:

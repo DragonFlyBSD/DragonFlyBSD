@@ -602,9 +602,6 @@ _hammer2_io_putblk(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS)
 
 /*
  * Cleanup any dio's with (INPROG | refs) == 0.
- *
- * Called to clean up cached DIOs on umount after all activity has been
- * flushed.
  */
 static
 int
