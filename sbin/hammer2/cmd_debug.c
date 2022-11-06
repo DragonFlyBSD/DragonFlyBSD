@@ -874,8 +874,9 @@ show_bref(hammer2_volume_data_t *voldata, int tab, int bi,
 		printf("flags=%02x ", bref->flags);
 	if (bref->type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
 	    bref->type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
-		printf("bigmask=%08x avail=%ld ",
-			bref->check.freemap.bigmask, bref->check.freemap.avail);
+		printf("bigmask=%08x avail=%ju ",
+			bref->check.freemap.bigmask,
+			(uintmax_t)bref->check.freemap.avail);
 	}
 
 	/*
