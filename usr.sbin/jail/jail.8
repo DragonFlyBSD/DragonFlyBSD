@@ -182,7 +182,7 @@ zone, etc.
 To set the jail up for real you need to ifconfig some interface aliases.
 and set jail defaults.  Here is an example:
 .Pp
-.Dl "sysctl jail.defaults.net_raw_sockets=1"
+.Dl "sysctl jail.defaults.allow_raw_sockets=1"
 .Dl "sysctl jail.defaults.allow_listen_override=1"
 .Dl "ifconfig lo0 127.0.0.2 alias"
 .Dl "ifconfig em0 192.168.11.100 netmask 255.255.255.0 alias"
@@ -278,7 +278,7 @@ Please see the management reasons why this is a good idea.
 If you do decide to set this variable,
 it must be set before starting any jails, and once each boot.
 .Bd -literal -offset indent
-sysctl jail.defaults.net_raw_sockets=1
+sysctl jail.defaults.allow_raw_sockets=1
 sysctl jail.defaults.allow_listen_override=1
 ifconfig em0 inet alias 192.168.11.100/32
 ifconfig lo0 inet alias 127.0.0.2
