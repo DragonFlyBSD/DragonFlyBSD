@@ -1,4 +1,4 @@
-/* $Id: lalr.c,v 1.13 2020/09/10 17:26:21 tom Exp $ */
+/* $Id: lalr.c,v 1.14 2021/05/20 23:57:23 tom Exp $ */
 
 #include "defs.h"
 
@@ -41,7 +41,7 @@ Value_t *to_state;
 
 static Value_t infinity;
 static int maxrhs;
-static int ngotos;
+static Value_t ngotos;
 static unsigned *F;
 static Value_t **includes;
 static shorts **lookback;

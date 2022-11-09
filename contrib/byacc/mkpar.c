@@ -1,4 +1,4 @@
-/* $Id: mkpar.c,v 1.17 2020/09/10 17:37:33 tom Exp $ */
+/* $Id: mkpar.c,v 1.18 2021/05/20 23:57:23 tom Exp $ */
 
 #include "defs.h"
 
@@ -220,7 +220,7 @@ unused_rules(void)
 	if (nunused == 1)
 	    fprintf(stderr, "%s: 1 rule never reduced\n", myname);
 	else
-	    fprintf(stderr, "%s: %d rules never reduced\n", myname, nunused);
+	    fprintf(stderr, "%s: %ld rules never reduced\n", myname, (long)nunused);
     }
 }
 
