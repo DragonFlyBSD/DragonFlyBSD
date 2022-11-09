@@ -16,8 +16,5 @@ WARNS?=	6
 
 CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 CFLAGS+=	-DNCURSES_WIDECHAR
-CFLAGS+=	-D'GCC_NORETURN=__dead2'
-CFLAGS+=	-D'GCC_PRINTFLIKE(fmt,var)=__printflike(fmt,var)'
-CFLAGS+=	-D'GCC_UNUSED=__unused'
 
 .include <bsd.lib.mk>
