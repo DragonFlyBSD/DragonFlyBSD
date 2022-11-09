@@ -9,7 +9,6 @@ SRCS=	\
 	compat.c	\
 	cond.c		\
 	dir.c		\
-	enum.c		\
 	for.c		\
 	hash.c		\
 	job.c		\
@@ -32,7 +31,7 @@ SRCS=	\
 srcdir= ${.CURDIR}/../../contrib/bmake
 
 # Base version on src date
-MAKE_VERSION= 20210206
+MAKE_VERSION= 20220928
 .if defined(BOOTSTRAPPING)
 DEFAULT_SYS_PATH = ${.CURDIR}/../../share/mk
 .else
