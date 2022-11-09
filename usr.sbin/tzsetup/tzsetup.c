@@ -137,8 +137,9 @@ xdialog_menu(const char *title, const char *cprompt, int height, int width,
 	dlg_save_vars(&save_vars);
 
 	/* initialize list items */
-	listitems = dlg_calloc(DIALOG_LISTITEM, item_no + 1);
-	assert_ptr(listitems, "xdialog_menu");
+	listitems = calloc(item_no + 1, sizeof(DIALOG_LISTITEM));
+	if (listitems == NULL)
+		errx(1, "Failed to allocate memory in xdialog_menu");
 	for (i = 0; i < item_no; i++) {
 		listitems[i].name = ditems[i].prompt;
 		listitems[i].text = ditems[i].title;
