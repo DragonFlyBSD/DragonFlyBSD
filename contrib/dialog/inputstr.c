@@ -1,9 +1,9 @@
 /*
- *  $Id: inputstr.c,v 1.90 2019/07/24 23:42:20 tom Exp $
+ *  $Id: inputstr.c,v 1.95 2022/04/06 08:03:09 tom Exp $
  *
  *  inputstr.c -- functions for input/display of a string
  *
- *  Copyright 2000-2018,2019	Thomas E. Dickey
+ *  Copyright 2000-2021,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -21,24 +21,8 @@
  *	Boston, MA 02110, USA.
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 #include <dlg_keys.h>
-
-#include <errno.h>
-
-#ifdef HAVE_SETLOCALE
-#include <locale.h>
-#endif
-
-#if defined(HAVE_SEARCH_H) && defined(HAVE_TSEARCH)
-#include <search.h>
-#else
-#undef HAVE_TSEARCH
-#endif
-
-#ifdef NEED_WCHAR_H
-#include <wchar.h>
-#endif
 
 #if defined(USE_WIDE_CURSES)
 #define USE_CACHING 1
@@ -410,11 +394,11 @@ dlg_index_columns(const char *string)
     CACHE *cache = load_cache(cInxCols, string);
 
     if (!same_cache2(cache, string, len)) {
-	unsigned inx;
 
 	cache->list[0] = 0;
 #ifdef USE_WIDE_CURSES
 	if (have_locale()) {
+	    unsigned inx;
 	    size_t num_bytes = strlen(string);
 	    const int *inx_wchars = dlg_index_wchars(string);
 	    mbstate_t state;
@@ -454,6 +438,8 @@ dlg_index_columns(const char *string)
 	} else
 #endif /* USE_WIDE_CURSES */
 	{
+	    unsigned inx;
+
 	    for (inx = 0; inx < len; ++inx) {
 		chtype ch = UCH(string[inx]);
 
@@ -524,7 +510,6 @@ dlg_edit_string(char *string, int *chr_offset, int key, int fkey, bool force)
     int limit = dlg_count_wchars(string);
     const int *indx = dlg_index_wchars(string);
     int offset = dlg_find_index(indx, limit, *chr_offset);
-    int max_len = dlg_max_input(MAX_LEN);
     bool edit = TRUE;
 
     /* transform editing characters into equivalent function-keys */
@@ -627,7 +612,7 @@ dlg_edit_string(char *string, int *chr_offset, int key, int fkey, bool force)
 	if (key == ESC || key == ERR) {
 	    edit = 0;
 	} else {
-	    if (len < max_len) {
+	    if (len < dlg_max_input(-1)) {
 		for (i = ++len; i > *chr_offset; i--)
 		    string[i] = string[i - 1];
 		string[*chr_offset] = (char) key;

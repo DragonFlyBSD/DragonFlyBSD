@@ -1,9 +1,9 @@
 /*
- * $Id: timebox.c,v 1.67 2020/03/27 20:26:21 tom Exp $
+ * $Id: timebox.c,v 1.72 2022/04/03 22:39:10 tom Exp $
  *
  *  timebox.c -- implements the timebox dialog
  *
- *  Copyright 2001-2019,2020   Thomas E. Dickey
+ *  Copyright 2001-2021,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -23,8 +23,6 @@
 
 #include <dlg_internals.h>
 #include <dlg_keys.h>
-
-#include <time.h>
 
 #define ONE_HIGH 1
 #define ONE_WIDE 2
@@ -105,12 +103,11 @@ init_object(BOX * data,
     data->period = period;
     data->value = value % period;
 
-    data->window = derwin(data->parent,
-			  data->height, data->width,
-			  data->y, data->x);
+    data->window = dlg_der_window(data->parent,
+				  data->height, data->width,
+				  data->y, data->x);
     if (data->window == 0)
 	return -1;
-    (void) keypad(data->window, TRUE);
 
     dlg_mouse_setbase(getbegx(parent), getbegy(parent));
     dlg_mouse_mkregion(y, x, height, width, code);
@@ -210,8 +207,12 @@ dialog_timebox(const char *title,
 #endif
 
     prompt = dlg_strclone(subtitle);
+    if (height > 0)
+	height += MIN_HIGH;
     dlg_auto_size(title, prompt, &height, &width, MIN_HIGH, MIN_WIDE);
 
+    if (width < MIN_WIDE)
+	width = MIN_WIDE;
     dlg_button_layout(buttons, &width);
     dlg_print_size(height, width);
     dlg_ctl_size(height, width);
@@ -316,6 +317,9 @@ dialog_timebox(const char *title,
 		    break;
 		case DLGK_TOGGLE:
 		case DLGK_ENTER:
+		    result = dlg_enter_buttoncode(button);
+		    break;
+		case DLGK_LEAVE:
 		    result = dlg_ok_buttoncode(button);
 		    break;
 		case DLGK_FIELD_PREV:

@@ -1,9 +1,9 @@
 /*
- * $Id: mouse.c,v 1.24 2017/01/31 00:27:21 tom Exp $
+ * $Id: mouse.c,v 1.25 2022/04/03 22:38:16 tom Exp $
  *
- * mouse.c -- mouse support for dialog
+ *  mouse.c -- mouse support for dialog
  *
- * Copyright 2002-2016,2017	Thomas E. Dickey
+ *  Copyright 2002-2017,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -21,7 +21,7 @@
  *	Boston, MA 02110, USA.
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 #include <dlg_keys.h>
 
 #if USE_MOUSE

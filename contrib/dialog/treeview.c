@@ -1,9 +1,9 @@
 /*
- *  $Id: treeview.c,v 1.42 2020/03/27 20:23:03 tom Exp $
+ *  $Id: treeview.c,v 1.46 2022/04/05 00:15:15 tom Exp $
  *
  *  treeview.c -- implements the treeview dialog
  *
- *  Copyright 2012-2019,2020	Thomas E. Dickey
+ *  Copyright 2012-2021,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -101,7 +101,8 @@ static void
 print_list(ALL_DATA * data,
 	   int choice,
 	   int scrollamt,
-	   int max_choice)
+	   int max_choice,
+	   int max_items)
 {
     int i;
     int cur_y, cur_x;
@@ -109,11 +110,13 @@ print_list(ALL_DATA * data,
     getyx(data->dialog, cur_y, cur_x);
 
     for (i = 0; i < max_choice; i++) {
-	print_item(data,
-		   &data->items[scrollamt + i],
-		   data->states,
-		   data->depths[scrollamt + i],
-		   i, i == choice);
+	int ii = i + scrollamt;
+	if (ii < max_items)
+	    print_item(data,
+		       &data->items[ii],
+		       data->states,
+		       data->depths[ii],
+		       i, i == choice);
     }
     (void) wnoutrefresh(data->list);
 
@@ -350,7 +353,9 @@ dlg_treeview(const char *title,
     all.box_y = box_y;
     all.use_height = use_height;
     all.list = list;
-    print_list(&all, choice, scrollamt, max_choice);
+#define PrintList() \
+    print_list(&all, choice, scrollamt, max_choice, item_no)
+    PrintList();
 
     dlg_draw_buttons(dialog, height - 2, 0, buttons, button, FALSE, width);
 
@@ -376,7 +381,7 @@ dlg_treeview(const char *title,
 	    i = (key - KEY_MAX);
 	    if (i < max_choice) {
 		choice = (key - KEY_MAX);
-		print_list(&all, choice, scrollamt, max_choice);
+		PrintList();
 
 		key = DLGK_TOGGLE;	/* force the selected item to toggle */
 	    } else {
@@ -412,7 +417,7 @@ dlg_treeview(const char *title,
 		    items[current].state = 1;
 		}
 	    }
-	    print_list(&all, choice, scrollamt, max_choice);
+	    PrintList();
 	    continue;		/* wait for another key press */
 	}
 
@@ -509,10 +514,10 @@ dlg_treeview(const char *title,
 			choice = max_choice - 1;
 			scrollamt += (i - max_choice + 1);
 		    }
-		    print_list(&all, choice, scrollamt, max_choice);
+		    PrintList();
 		} else {
 		    choice = i;
-		    print_list(&all, choice, scrollamt, max_choice);
+		    PrintList();
 		}
 	    }
 	    continue;		/* wait for another key press */
@@ -522,6 +527,9 @@ dlg_treeview(const char *title,
 	    switch (key) {
 	    case DLGK_ENTER:
 		result = dlg_enter_buttoncode(button);
+		break;
+	    case DLGK_LEAVE:
+		result = dlg_ok_buttoncode(button);
 		break;
 	    case DLGK_FIELD_PREV:
 		button = dlg_prev_button(buttons, button);
@@ -541,6 +549,9 @@ dlg_treeview(const char *title,
 		width = old_width;
 		/* repaint */
 		_dlg_resize_cleanup(dialog);
+		/* keep position */
+		choice += scrollamt;
+		scrollamt = 0;
 		goto retry;
 #endif
 	    default:

@@ -1,9 +1,9 @@
 /*
- *  $Id: help.c,v 1.3 2012/12/04 02:01:10 tom Exp $
+ *  $Id: help.c,v 1.4 2022/04/03 22:38:16 tom Exp $
  *
  *  help.c -- implements the help dialog
  *
- *  Copyright 2011,2012	Thomas E. Dickey
+ *  Copyright 2011-2012,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -21,7 +21,7 @@
  *	Boston, MA 02110, USA.
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 
 /*
  * Display a help-file as a textbox widget.

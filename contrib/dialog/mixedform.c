@@ -1,9 +1,9 @@
 /*
- *  $Id: mixedform.c,v 1.13 2018/06/15 01:23:33 tom Exp $
+ *  $Id: mixedform.c,v 1.14 2022/04/03 22:38:16 tom Exp $
  *
  *  mixedform.c -- implements the mixed form (i.e, typed pairs label/editbox)
  *
- *  Copyright 2007-2013,2018	Thomas E. Dickey
+ *  Copyright 2007-2018,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -24,7 +24,7 @@
  *  (but different interface design).
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 
 #define LLEN(n) ((n) * MIXEDFORM_TAGS)
 

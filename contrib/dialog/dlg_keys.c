@@ -1,9 +1,9 @@
 /*
- *  $Id: dlg_keys.c,v 1.56 2019/09/25 08:58:48 tom Exp $
+ *  $Id: dlg_keys.c,v 1.62 2022/04/14 22:08:43 tom Exp $
  *
  *  dlg_keys.c -- runtime binding support for dialog
  *
- *  Copyright 2006-2018,2019 Thomas E. Dickey
+ *  Copyright 2006-2020,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -21,9 +21,8 @@
  *	Boston, MA 02110, USA.
  */
 
-#include <dialog.h>
-#include <dlg_keys.h>
 #include <dlg_internals.h>
+#include <dlg_keys.h>
 
 #define LIST_BINDINGS struct _list_bindings
 
@@ -83,6 +82,48 @@ dlg_register_window(WINDOW *win, const char *name, DLG_KEYS_BINDING * binding)
 }
 
 /*
+ * A few CHR_xxx symbols in the default bindings are provided to fill in for
+ * incomplete terminal descriptions, or for consistency.
+ *
+ * A terminal description normally has an appropriate setting for kbs, which
+ * dialog assumes is the same as the curses value for KEY_BACKSPACE.  But just
+ * in case, dialog supplies both.
+ *
+ * Also, while a terminal description may have KEY_DC, that normally is not the
+ * same as the shifted-backspace key provided with rxvt/xterm and imitators of
+ * those.  Accommodate that by checking the return value of erasechar().
+ *
+ * The killchar() function's return value need not correspond to any of the
+ * KEY_xxx symbols.  Just map CHR_KILL to that.
+ */
+static int
+actual_curses_key(DLG_KEYS_BINDING * p)
+{
+    int result = p->curses_key;
+    int checks;
+
+    switch (p->curses_key) {
+    case CHR_KILL:
+	if ((checks = killchar()) > 0) {
+	    result = checks;
+	}
+	break;
+    case CHR_BACKSPACE:
+	if ((checks = erasechar()) > 0) {
+	    result = checks;
+	}
+	break;
+    case CHR_DELETE:
+	if ((checks = erasechar()) > 0 &&
+	    (checks == result)) {
+	    result = CHR_BACKSPACE;
+	}
+	break;
+    }
+    return result;
+}
+
+/*
  * Unlike dlg_lookup_key(), this looks for either widget-builtin or rc-file
  * definitions, depending on whether 'win' is null.
  */
@@ -95,7 +136,7 @@ key_is_bound(WINDOW *win, const char *name, int curses_key, int function_key)
 	if (p->win == win && !dlg_strcmp(p->name, name)) {
 	    int n;
 	    for (n = 0; p->binding[n].is_function_key >= 0; ++n) {
-		if (p->binding[n].curses_key == curses_key
+		if (actual_curses_key(&(p->binding[n])) == curses_key
 		    && p->binding[n].is_function_key == function_key) {
 		    return TRUE;
 		}
@@ -128,6 +169,10 @@ dlg_register_buttons(WINDOW *win, const char *name, const char **buttons)
 
     for (n = 0; buttons[n] != 0; ++n) {
 	int curses_key = dlg_button_to_char(buttons[n]);
+
+	/* ignore binding if there is no key to bind */
+	if (curses_key < 0)
+	    continue;
 
 	/* ignore multibyte characters */
 	if (curses_key >= KEY_MIN)
@@ -244,11 +289,11 @@ dlg_lookup_key(WINDOW *win, int curses_key, int *fkey)
 		for (q = p->binding; q->is_function_key >= 0; ++q) {
 		    if (p->buttons
 			&& !function_key
-			&& q->curses_key == (int) dlg_toupper(curses_key)) {
+			&& actual_curses_key(q) == (int) dlg_toupper(curses_key)) {
 			*fkey = 0;
 			return q->dialog_key;
 		    }
-		    if (q->curses_key == curses_key
+		    if (actual_curses_key(q) == curses_key
 			&& q->is_function_key == function_key) {
 			*fkey = q->dialog_key;
 			return *fkey;
@@ -541,7 +586,8 @@ static const CODENAME dialog_names[] =
     DIALOG_NAME(SELECT),
     DIALOG_NAME(HELPFILE),
     DIALOG_NAME(TRACE),
-    DIALOG_NAME(TOGGLE)
+    DIALOG_NAME(TOGGLE),
+    DIALOG_NAME(LEAVE)
 };
 
 #define MAP2(letter,actual) { letter, actual }
@@ -591,7 +637,7 @@ find_binding(char *widget, int curses_key)
     for (p = all_bindings; p != 0; p = p->link) {
 	if (p->win == 0
 	    && !dlg_strcmp(p->name, widget)
-	    && p->binding->curses_key == curses_key) {
+	    && actual_curses_key(p->binding) == curses_key) {
 	    result = p->binding;
 	    break;
 	}
@@ -613,7 +659,7 @@ compare_bindings(LIST_BINDINGS * a, LIST_BINDINGS * b)
     int result = 0;
     if (a->win == b->win) {
 	if (!strcmp(a->name, b->name)) {
-	    result = a->binding[0].curses_key - b->binding[0].curses_key;
+	    result = actual_curses_key(a->binding) - actual_curses_key(b->binding);
 	} else if (!strcmp(b->name, WILDNAME)) {
 	    result = -1;
 	} else if (!strcmp(a->name, WILDNAME)) {
@@ -896,15 +942,15 @@ dump_one_binding(FILE *fp,
 		 DLG_KEYS_BINDING * binding)
 {
     int actual;
-    int fkey = (binding->curses_key > 255);
+    int fkey = (actual_curses_key(binding) > 255);
 
     fprintf(fp, "bindkey %s ", widget);
-    dump_curses_key(fp, binding->curses_key);
+    dump_curses_key(fp, actual_curses_key(binding));
     fputc(' ', fp);
     dump_dialog_key(fp, binding->dialog_key);
-    actual = dlg_lookup_key(win, binding->curses_key, &fkey);
+    actual = dlg_lookup_key(win, actual_curses_key(binding), &fkey);
 #ifdef KEY_MOUSE
-    if (is_DLGK_MOUSE(binding->curses_key) && is_DLGK_MOUSE(actual)) {
+    if (is_DLGK_MOUSE(actual_curses_key(binding)) && is_DLGK_MOUSE(actual)) {
 	;			/* EMPTY */
     } else
 #endif

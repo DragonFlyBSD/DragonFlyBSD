@@ -1,9 +1,9 @@
 /*
- * $Id: argv.c,v 1.13 2020/03/26 02:55:37 tom Exp $
+ * $Id: argv.c,v 1.14 2022/04/03 22:38:16 tom Exp $
  *
  *  argv - Reusable functions for argv-parsing.
  *
- *  Copyright 2011-2018,2020	Thomas E. Dickey
+ *  Copyright 2011-2020,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -21,8 +21,7 @@
  *	Boston, MA 02110, USA.
  */
 
-#include <dialog.h>
-#include <string.h>
+#include <dlg_internals.h>
 
 /*
  * Convert a string to an argv[], returning a char** index (which must be

@@ -1,9 +1,9 @@
 /*
- *  $Id: guage.c,v 1.83 2020/03/27 20:54:43 tom Exp $
+ *  $Id: guage.c,v 1.85 2022/04/03 22:38:16 tom Exp $
  *
  *  guage.c -- implements the gauge dialog
  *
- *  Copyright 2000-2019,2020	Thomas E. Dickey
+ *  Copyright 2000-2021,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -24,9 +24,7 @@
  *	Marc Ewing, Red Hat Software
  */
 
-#include <dialog.h>
-
-#include <errno.h>
+#include <dlg_internals.h>
 
 #define MY_LEN (MAX_LEN)/2
 
@@ -182,15 +180,18 @@ static bool
 handle_input(DIALOG_CALLBACK * cb)
 {
     MY_OBJ *obj = (MY_OBJ *) cb;
+    FILE *my_input = ((obj != NULL && obj->obj.input != NULL)
+		      ? obj->obj.input
+		      : dialog_state.pipe_input);
     bool result;
     bool cleanup = FALSE;
     int status;
     char buf[MY_LEN + 1];
 
-    if (dialog_state.pipe_input == 0) {
+    if (my_input == NULL) {
 	status = -1;
 	cleanup = TRUE;
-    } else if ((status = read_data(buf, dialog_state.pipe_input)) > 0) {
+    } else if ((status = read_data(buf, my_input)) > 0) {
 
 	if (isMarker(buf)) {
 	    /*
@@ -198,7 +199,7 @@ handle_input(DIALOG_CALLBACK * cb)
 	     * worse-written clones of 'dialog' assumes the number is missing.
 	     * (Gresham's Law applied to software).
 	     */
-	    if ((status = read_data(buf, dialog_state.pipe_input)) > 0) {
+	    if ((status = read_data(buf, my_input)) > 0) {
 
 		obj->prompt_buf[0] = '\0';
 		if (decode_percent(buf))
@@ -207,7 +208,7 @@ handle_input(DIALOG_CALLBACK * cb)
 		    strcpy(obj->prompt_buf, buf);
 
 		/* Rest is message text */
-		while ((status = read_data(buf, dialog_state.pipe_input)) > 0
+		while ((status = read_data(buf, my_input)) > 0
 		       && !isMarker(buf)) {
 		    if (strlen(obj->prompt_buf) + strlen(buf) <
 			sizeof(obj->prompt_buf) - 1) {
@@ -223,8 +224,8 @@ handle_input(DIALOG_CALLBACK * cb)
 	    obj->percent = atoi(buf);
 	}
     } else {
-	if (feof(dialog_state.pipe_input) ||
-	    (ferror(dialog_state.pipe_input) && errno != EINTR)) {
+	if (feof(my_input) ||
+	    (ferror(my_input) && errno != EINTR)) {
 	    cleanup = TRUE;
 	}
     }

@@ -1,9 +1,9 @@
 /*
- *  $Id: ttysize.c,v 1.2 2019/07/25 00:07:15 tom Exp $
+ *  $Id: ttysize.c,v 1.3 2022/04/03 22:38:16 tom Exp $
  *
  *  ttysize.c -- obtain terminal-size for dialog
  *
- *  Copyright 2018,2019	Thomas E. Dickey
+ *  Copyright 2018-2019,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -24,7 +24,7 @@
  *	Savio Lam (lam836@cs.cuhk.hk)
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 
 /*
  * This is based on work I did for ncurses in 1997, and improved/extended for

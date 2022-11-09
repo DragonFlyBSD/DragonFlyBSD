@@ -1,9 +1,9 @@
 /*
- *  $Id: rc.c,v 1.59 2020/03/27 21:10:34 tom Exp $
+ *  $Id: rc.c,v 1.62 2022/07/28 08:17:21 tom Exp $
  *
  *  rc.c -- routines for processing the configuration file
  *
- *  Copyright 2000-2019,2020	Thomas E. Dickey
+ *  Copyright 2000-2020,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -24,13 +24,11 @@
  *	Savio Lam (lam836@cs.cuhk.hk)
  */
 
-#include <dialog.h>
-
+#include <dlg_internals.h>
 #include <dlg_keys.h>
 
 #ifdef HAVE_COLOR
 #include <dlg_colors.h>
-#include <dlg_internals.h>
 
 #define L_PAREN '('
 #define R_PAREN ')'
@@ -123,6 +121,11 @@ static const vars_st vars[] =
      &dialog_state.visit_items,
      VAL_BOOL,
      "Make tab-traversal for checklist, etc., include the list."},
+
+    {"use_scrollbar",
+     &dialog_state.use_scrollbar,
+     VAL_BOOL,
+     "Show scrollbar in dialog boxes?"},
 
 #ifdef HAVE_COLOR
     {"use_shadow",
@@ -555,12 +558,12 @@ dlg_parse_rc(void)
      */
 
     /* try step (a) */
-    if ((filename = getenv("DIALOGRC")) != NULL)
+    if ((filename = dlg_getenv_str("DIALOGRC")) != NULL)
 	rc_file = fopen(filename, "rt");
 
     if (rc_file == NULL) {	/* step (a) failed? */
 	/* try step (b) */
-	if ((filename = getenv("HOME")) != NULL
+	if ((filename = dlg_getenv_str("HOME")) != NULL
 	    && strlen(filename) < MAX_LEN - (sizeof(DIALOGRC) + 3)) {
 	    if (filename[0] == '\0' || lastch(filename) == '/')
 		sprintf(str, "%s%s", filename, DIALOGRC);

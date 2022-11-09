@@ -1,9 +1,9 @@
 /*
- *  $Id: editbox.c,v 1.79 2020/03/27 21:04:47 tom Exp $
+ *  $Id: editbox.c,v 1.85 2022/04/06 08:01:23 tom Exp $
  *
  *  editbox.c -- implements the edit box
  *
- *  Copyright 2007-2019,2020 Thomas E. Dickey
+ *  Copyright 2007-2020,2022 Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -21,10 +21,8 @@
  *	Boston, MA 02110, USA.
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 #include <dlg_keys.h>
-
-#include <sys/stat.h>
 
 #define sTEXT -1
 
@@ -287,7 +285,7 @@ col_to_chr_offset(const char *text, int col)
 static int
 widest_line(char **list)
 {
-    int result = MAX_LEN;
+    int result = dlg_max_input(-1);
 
     if (list != 0) {
 	char *value;
@@ -642,6 +640,8 @@ dlg_editbox(const char *title,
 		}
 	    }
 	    strncpy(buffer, input, max_len - 1)[max_len - 1] = '\0';
+	    if (chr_offset > (int) (max_len - 1))
+		chr_offset = (int) (max_len - 1);
 	    edit = dlg_edit_string(buffer, &chr_offset, key, fkey, FALSE);
 
 	    if (edit) {
@@ -699,8 +699,12 @@ dlg_editbox(const char *title,
 		    (void) Scroll_To(thisrow);
 		    show_all = TRUE;
 		} else {
-		    result = dlg_ok_buttoncode(state);
+		    result = dlg_enter_buttoncode(state);
 		}
+		break;
+	    case DLGK_LEAVE:
+		if (state >= 0)
+		    result = dlg_ok_buttoncode(state);
 		break;
 #ifdef KEY_RESIZE
 	    case KEY_RESIZE:

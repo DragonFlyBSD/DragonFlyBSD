@@ -1,9 +1,9 @@
 /*
- *  $Id: ui_getc.c,v 1.75 2020/03/27 21:49:03 tom Exp $
+ *  $Id: ui_getc.c,v 1.84 2022/04/08 21:01:51 tom Exp $
  *
  *  ui_getc.c - user interface glue for getc()
  *
- *  Copyright 2001-2019,2020	Thomas E. Dickey
+ *  Copyright 2001-2021,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -21,23 +21,8 @@
  *	Boston, MA 02110, USA.
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 #include <dlg_keys.h>
-
-#ifdef NEED_WCHAR_H
-#include <wchar.h>
-#endif
-
-#if TIME_WITH_SYS_TIME
-# include <sys/time.h>
-# include <time.h>
-#else
-# if HAVE_SYS_TIME_H
-#  include <sys/time.h>
-# else
-#  include <time.h>
-# endif
-#endif
 
 #ifdef HAVE_SYS_WAIT_H
 #include <sys/wait.h>
@@ -150,9 +135,11 @@ handle_inputs(WINDOW *win)
 	    }
 	}
     }
-    if (result) {
+    if (result && _dlg_find_window(win)) {
 	(void) wmove(win, cur_y, cur_x);	/* Restore cursor position */
 	wrefresh(win);
+    } else {
+	result = FALSE;
     }
     if (state != ERR)
 	curs_set(state);
@@ -254,10 +241,12 @@ dlg_getc_callbacks(int ch, int fkey, int *result)
 static void
 dlg_raise_window(WINDOW *win)
 {
-    touchwin(win);
-    wmove(win, getcury(win), getcurx(win));
-    wnoutrefresh(win);
-    doupdate();
+    if (_dlg_find_window(win)) {
+	touchwin(win);
+	wmove(win, getcury(win), getcurx(win));
+	wnoutrefresh(win);
+	doupdate();
+    }
 }
 
 /*
@@ -375,7 +364,7 @@ really_getch(WINDOW *win, int *fkey)
 		have_last_getc = used_last_getc = 0;
 		last_getc_bytes[0] = (char) my_wchar;
 	    }
-	    ch = (int) CharOf(last_getc_bytes[used_last_getc++]);
+	    ch = (int) UCH(last_getc_bytes[used_last_getc++]);
 	    last_getc = my_wchar;
 	    break;
 	case ERR:
@@ -386,7 +375,7 @@ really_getch(WINDOW *win, int *fkey)
 	    break;
 	}
     } else {
-	ch = (int) CharOf(last_getc_bytes[used_last_getc++]);
+	ch = (int) UCH(last_getc_bytes[used_last_getc++]);
     }
 #else
     ch = wgetch(win);
@@ -452,6 +441,9 @@ dlg_getc(WINDOW *win, int *fkey)
     while (!done) {
 	bool handle_others = FALSE;
 
+	if (_dlg_find_window(win) == NULL)
+	    break;
+
 	/*
 	 * If there was no pending file-input, check the keyboard.
 	 */
@@ -480,13 +472,19 @@ dlg_getc(WINDOW *win, int *fkey)
 		keypad(win, FALSE);
 		continue;
 	    case CHR_REPAINT:
-		(void) touchwin(win);
-		(void) wrefresh(curscr);
+		if (_dlg_find_window(win)) {
+		    (void) touchwin(win);
+		    (void) wrefresh(curscr);
+		}
 		break;
 	    case ERR:		/* wtimeout() in effect; check for file I/O */
 		if (interval > 0
 		    && current >= expired) {
+		    int status;
 		    DLG_TRACE(("# dlg_getc: timeout expired\n"));
+		    if (dlg_getenv_num("DIALOG_TIMEOUT", &status)) {
+			dlg_exiterr("timeout");
+		    }
 		    ch = ESC;
 		    done = TRUE;
 		} else if (!valid_file(stdin)
@@ -495,7 +493,7 @@ dlg_getc(WINDOW *win, int *fkey)
 		    ch = ESC;
 		    done = TRUE;
 		} else if (check_inputs()) {
-		    if (handle_inputs(win))
+		    if (_dlg_find_window(win) && handle_inputs(win))
 			dlg_raise_window(win);
 		    else
 			done = TRUE;
@@ -504,7 +502,7 @@ dlg_getc(WINDOW *win, int *fkey)
 		}
 		break;
 	    case DLGK_HELPFILE:
-		if (dialog_vars.help_file) {
+		if (dialog_vars.help_file && _dlg_find_window(win)) {
 		    int yold, xold;
 		    getyx(win, yold, xold);
 		    dialog_helpfile("HELP", dialog_vars.help_file, 0, 0);
@@ -574,7 +572,7 @@ dlg_getc(WINDOW *win, int *fkey)
 	    }
 	}
     }
-    if (literal)
+    if (literal && _dlg_find_window(win))
 	keypad(win, TRUE);
     return ch;
 }
