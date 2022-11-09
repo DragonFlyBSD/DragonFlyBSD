@@ -1,7 +1,7 @@
-#	$Id: prog.mk,v 1.36 2020/08/19 17:51:53 sjg Exp $
+#	$Id: prog.mk,v 1.38 2022/07/22 20:08:56 sjg Exp $
 
 .if !target(__${.PARSEFILE}__)
-__${.PARSEFILE}__:
+__${.PARSEFILE}__: .NOTMAIN
 
 .include <init.mk>
 
@@ -73,6 +73,13 @@ ${CXX_SUFFIXES:%=%.o}:
 	@rm -f x.cc
 .endif
 
+.if defined(PROG_CXX)
+PROG=		${PROG_CXX}
+_CCLINK=	${CXX}
+_SUPCXX?=	-lstdc++ -lm
+.endif
+
+_CCLINK?=	${CC}
 
 .if defined(PROG)
 BINDIR ?= ${prefix}/bin
@@ -100,14 +107,7 @@ _PROGLDOPTS+=	-Wl,-rpath-link,${DESTDIR}${SHLIBDIR}:${DESTDIR}/usr/lib \
 		-L${DESTDIR}${SHLIBDIR}
 .endif
 _PROGLDOPTS+=	-Wl,-rpath,${SHLIBDIR}:/usr/lib
-
-.if defined(PROG_CXX)
-_CCLINK=	${CXX}
-_SUPCXX=	-lstdc++ -lm
-.endif
 .endif	# NetBSD
-
-_CCLINK?=	${CC}
 
 .if ${MK_PROG_LDORDER_MK} != "no"
 ${PROG}: ldorder

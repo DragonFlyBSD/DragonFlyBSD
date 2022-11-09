@@ -1,4 +1,4 @@
-# $Id: sys.vars.mk,v 1.6 2020/10/28 20:50:04 sjg Exp $
+# $Id: sys.vars.mk,v 1.10 2022/09/03 17:52:48 sjg Exp $
 #
 #	@(#) Copyright (c) 2003-2009, Simon J. Gerraty
 #
@@ -19,7 +19,7 @@
 #
 # _this ?= ${.PARSEFILE}
 # .if !target(__${_this}__)
-# __${_this}__:
+# __${_this}__: .NOTMAIN
 #
 .if ${MAKE_VERSION:U0} > 20100408
 _this = ${.PARSEDIR:tA}/${.PARSEFILE}
@@ -57,12 +57,26 @@ _type_sh = which
 M_type = @x@(${_type_sh:Utype} $$x) 2> /dev/null; echo;@:sh:[0]:N* found*:[@]:C,[()],,g
 M_whence = ${M_type}:M/*:[1]
 
-# produce similar output to jot(1)
+# produce similar output to jot(1) or seq(1)
 # eg. ${LIST:[#]:${M_JOT}}
 # would be 1 2 3 4 5 if LIST has 5 words
 # ${9:L:${M_JOT}}
 # would be 1 2 3 4 5 6 7 8 9
-M_JOT = @x@i=1;while [ $$$$i -le $$x ]; do echo $$$$i; i=$$$$((i + 1)); done;@:sh
+.if ${.MAKE.LEVEL} == 0
+.for x in jot seq
+.if empty(JOT_CMD)
+JOT_CMD := ${$x:L:${M_whence}}
+.endif
+.endfor
+.if !empty(JOT_CMD)
+.export JOT_CMD
+.endif
+.endif
+.if !empty(JOT_CMD)
+M_JOT = [1]:S,^,${JOT_CMD} ,:sh
+.else
+M_JOT = [1]:@x@i=1;while [ $$$$i -le $$x ]; do echo $$$$i; i=$$$$((i + 1)); done;@:sh
+.endif
 
 # ${LIST:${M_RANGE}} is 1 2 3 4 5 if LIST has 5 words
 .if ${MAKE_VERSION} >= 20170130
@@ -86,8 +100,8 @@ M_tA = C,.*,('cd' & \&\& 'pwd') 2> /dev/null || echo &,:sh
 # ${3.1.2:L:${M_cmpv}} -> 3001002
 # we use big jumps to handle 3 digits per dot:
 # ${123.456.789:L:${M_cmpv}} -> 123456789
-M_cmpv.units = 1 1000 1000000
-M_cmpv = S,., ,g:_:range:@i@+ $${_:[-$$i]} \* $${M_cmpv.units:[$$i]}@:S,^,expr 0 ,1:sh
+M_cmpv.units = 1 1000 1000000 1000000000 1000000000000
+M_cmpv = S,., ,g:C,^0*([0-9]),\1,:_:range:@i@+ $${_:[-$$i]} \* $${M_cmpv.units:[$$i]}@:S,^,expr 0 ,1:sh
 .endif
 
 # absoulte path to what we are reading.

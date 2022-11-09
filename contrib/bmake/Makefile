@@ -1,4 +1,4 @@
-#	$Id: Makefile,v 1.114 2020/11/13 21:47:25 sjg Exp $
+#	$Id: Makefile,v 1.122 2022/10/08 02:53:30 sjg Exp $
 
 PROG=	bmake
 
@@ -8,7 +8,6 @@ SRCS= \
 	compat.c \
 	cond.c \
 	dir.c \
-	enum.c \
 	for.c \
 	hash.c \
 	job.c \
@@ -89,13 +88,14 @@ OS := ${.MAKE.OS:U${uname -s:L:sh}}
 # are we 4.4BSD ?
 isBSD44:=${BSD44_LIST:M${OS}}
 
-.if ${isBSD44} == ""
+.if ${isBSD44} == "" && ${OS:NDarwin:NLinux} != ""
 MANTARGET= cat
 INSTALL?=${srcdir}/install-sh
-.if (${MACHINE} == "sun386")
+.if ${MACHINE} == "sun386"
 # even I don't have one of these anymore :-)
 CFLAGS+= -DPORTAR
-.elif (${MACHINE} != "sunos")
+.elif ${OS} != "SunOS"
+# assume the worst
 SRCS+= sigcompat.c
 CFLAGS+= -DSIGNAL_FLAGS=SA_RESTART
 .endif
@@ -131,7 +131,7 @@ EXTRACT_MAN=no
 MAN= ${PROG}.1
 MAN1= ${MAN}
 
-.if (${PROG} != "make")
+.if ${PROG} != "make"
 CLEANFILES+= my.history
 .if make(${MAN}) || !exists(${srcdir}/${MAN})
 my.history:
@@ -189,11 +189,12 @@ main.o: ${srcdir}/VERSION
 CONFIGURE_DEPS += ${.CURDIR}/VERSION
 # we do not need or want the generated makefile
 CONFIGURE_ARGS += --without-makefile
+AUTOCONF_GENERATED_MAKEFILE = Makefile.config
 .include <autoconf.mk>
 .endif
-SHARE_MK?=${SHAREDIR}/mk
-MKSRC=${srcdir}/mk
-INSTALL?=${srcdir}/install-sh
+SHARE_MK ?= ${SHAREDIR}/mk
+MKSRC = ${srcdir}/mk
+INSTALL ?= ${srcdir}/install-sh
 
 .if ${MK_INSTALL_MK} == "yes"
 install: install-mk
@@ -214,7 +215,24 @@ install-mk:
 
 # A simple unit-test driver to help catch regressions
 TEST_MAKE ?= ${.OBJDIR}/${PROG:T}
-accept test:
+accept test: .NOMETA
 	cd ${.CURDIR}/unit-tests && \
 	MAKEFLAGS= ${TEST_MAKE} -r -m / ${.TARGET} ${TESTS:DTESTS=${TESTS:Q}}
 
+
+.if make(test) && ${MK_AUTO_OBJ} == "yes"
+# The test target above visits unit-tests with -r -m /
+# which prevents MK_AUTO_OBJ doing its job
+# so do it here
+.if defined(MAKEOBJDIRPREFIX) || ${MAKEOBJDIR:U:M*/*} != ""
+_utobj = ${.OBJDIR}/unit-tests
+.else
+_utobj = ${.CURDIR}/unit-tests/${MAKEOBJDIR:Uobj}
+.endif
+utobj: .NOMETA
+	@test -d ${_utobj} && exit 0; \
+	echo "[Creating ${_utobj}...]"; \
+	umask ${OBJDIR_UMASK:U002}; \
+	mkdir -p ${_utobj}
+test: utobj
+.endif

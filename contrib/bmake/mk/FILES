@@ -6,6 +6,7 @@ auto.obj.mk
 autoconf.mk
 autodep.mk
 auto.dep.mk
+cc-wrap.mk
 compiler.mk
 cython.mk
 dep.mk
@@ -32,6 +33,7 @@ nls.mk
 obj.mk
 options.mk
 own.mk
+posix.mk
 prlist.mk
 prog.mk
 progs.mk
@@ -54,6 +56,7 @@ sys/Linux.mk
 sys/NetBSD.mk
 sys/OSF1.mk
 sys/OpenBSD.mk
+sys/SCO_SV.mk
 sys/SunOS.mk
 sys/UnixWare.mk
 target-flags.mk
