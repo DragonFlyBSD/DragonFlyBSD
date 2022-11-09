@@ -35,7 +35,7 @@ in `FIXES`.  If you distribute this code further, please please please
 distribute `FIXES` with it.
 
 If you find errors, please report them
-to bwk@cs.princeton.edu.
+to the current maintainer, ozan.yigit@gmail.com.
 Please _also_ open an issue in the GitHub issue tracker, to make
 it easy to track issues.
 Thanks.
@@ -90,7 +90,7 @@ move this to some place like `/usr/bin/awk`.
 If your system does not have `yacc` or `bison` (the GNU
 equivalent), you need to install one of them first.
 
-NOTE: This version uses ANSI C (C 99), as you should also.  We have
+NOTE: This version uses ISO/IEC C99, as you should also.  We have
 compiled this without any changes using `gcc -Wall` and/or local C
 compilers on a variety of systems, but new systems or compilers
 may raise some new complaint; reports of difficulties are
@@ -99,21 +99,26 @@ welcome.
 This compiles without change on Macintosh OS X using `gcc` and
 the standard developer tools.
 
+You can also use `make CC=g++` to build with the GNU C++ compiler,
+should you choose to do so.
+
 The version of `malloc` that comes with some systems is sometimes
 astonishly slow.  If `awk` seems slow, you might try fixing that.
 More generally, turning on optimization can significantly improve
 `awk`'s speed, perhaps by 1/3 for highest levels.
 
+## A Note About Releases
+
+We don't usually do releases. 
+
 ## A Note About Maintenance
 
-NOTICE! Maintenance of this program is on a ``best effort''
+NOTICE! Maintenance of this program is on a ''best effort''
 basis.  We try to get to issues and pull requests as quickly
 as we can.  Unfortunately, however, keeping this program going
 is not at the top of our priority list.
 
-_If_ you (yes, you!) are interested in taking over active maintenance of
-`awk`, please open an issue to indicate that fact, give a little bit of
-your background and some idea of your plans and dreams.  Thanks!
-
 #### Last Updated
-Thu Jul  2 21:39:31 IDT 2020
+
+Sun 23 Jan 2022 03:48:01 PM EST
+
