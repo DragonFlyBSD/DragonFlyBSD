@@ -23,7 +23,120 @@ THIS SOFTWARE.
 ****************************************************************/
 
 This file lists all bug fixes, changes, etc., made since the AWK book
-was sent to the printers in August, 1987.
+was sent to the printers in August 1987.
+
+Sep 12, 2022:
+	adjbuf minlen error (cannot be 0) in cat, resulting in NULL pbuf.
+	discovered by todd miller. also use-after-free issue with
+	tempfree in cat, thanks to Miguel Pineiro Jr and valgrind.
+
+Aug 30, 2022:
+	Various leaks and use-after-free issues plugged/fixed.
+	Thanks to Miguel Pineiro Jr. <mpj@pineiro.cc>.
+
+May 23, 2022:
+	Memory leak when assigning a string to some of the built-in
+	variables. allocated string erroneously marked DONTFREE.
+	Thanks to Miguel Pineiro Jr. <mpj@pineiro.cc>.
+
+Mar 14, 2022:
+	Historic bug: command-line "name=value" assignment had been
+	truncating its entry in ARGV. (circa 1989) Thanks to 
+	Miguel Pineiro Jr. <mpj@pineiro.cc>.
+
+Mar 3, 2022:
+	Fixed file management memory leak that appears to have been
+	there since the files array was first initialized with stdin,
+	stdout, and stderr (circa 1992). Thanks to Miguel Pineiro Jr.
+	<mpj@pineiro.cc>.
+
+December 8, 2021:
+	The error handling in closefile and closeall was mangled. Long
+	standing warnings had been made fatal and some fatal errors went
+	undetected. Thanks to Miguel Pineiro Jr. <mpj@pineiro.cc>.
+
+Nov 03, 2021:
+        getline accesses uninitialized data after getrec()
+	returns 0 on EOF and leaves the contents of buf unchanged.
+	Thanks to Volodymyr Gubarkov, and Todd C Miller.
+
+Oct 12, 2021:
+	The fix for #83 changed the code to insert 2 chars, but the
+	call to adjbuf just above it only allows for 1 char. This can
+	cause a heap buffer overflow.
+
+July 27, 2021:
+	As per IEEE Std 1003.1-2008, -F "str" is now consistent with
+	-v FS="str" when str is null. Thanks to Warner Losh.
+
+July 24, 2021:
+	Fix readrec's definition of a record. This fixes an issue
+	with NetBSD's RS regular expression support that can cause
+	an infinite read loop. Thanks to Miguel Pineiro Jr.
+
+	Fix regular expression RS ^-anchoring. RS ^-anchoring needs to
+	know if it is reading the first record of a file. This change
+	restores a missing line that was overlooked when porting NetBSD's
+	RS regex functionality. Thanks to Miguel Pineiro Jr.
+
+	Fix size computation in replace_repeat() for special case
+	REPEAT_WITH_Q. Thanks to Todd C. Miller.
+
+February 15, 2021:
+	Small fix so that awk will compile again with g++. Thanks to
+	Arnold Robbins.
+
+January 06, 2021:
+	Fix a decision bug with trailing stuff in lib.c:is_valid_number
+	after recent changes. Thanks to Ozan Yigit.
+
+December 18, 2020:
+	Fix problems converting inf and NaN values in lib.c:is_valid_number.
+	Enhance number to string conversion to do the right thing for
+	NaN and inf values.  Things are now pretty much the same as in
+	gawk.  (Found a gawk bug while we're at it.) Added a torture
+	test for these values.  Thanks to Arnold Robbins.  Allows closing
+	of PR #101.
+
+December 15, 2020:
+	Merge PR #99, which gets the right header for strcasecmp.
+	Thanks to GitHub user michaelforney.
+
+December 8, 2020:
+	Merge PR #98: Disallow hex data. Allow only +nan, -nan,
+	+inf, -inf (case independent) to give NaN and infinity values.
+	Improve things so that string to double conversion is only
+	done once, yielding something of a speedup.  This obviate
+	PR #95. Thanks to Arnold Robbins.
+
+December 3, 2020:
+	Fix to argument parsing to avoid printing spurious newlines.
+	Thanks to Todd Miller. Merges PR #97.
+
+October 13, 2020:
+	Add casts before all the calls to malloc/calloc/realloc in order
+	to get it to compile with g++. Thanks to Arnold Robbins.
+
+August 16, 2020:
+	Additional fixes for DJGPP. Thanks to Eli Zaretskii for
+	the testing.
+
+August 7, 2020:
+	Merge PR #93, which adds casts to (void*) for debug prints
+	using the %p format specifier. Thanks to GitHub user YongHaoWu
+	("Chris") for the fixes.
+
+August 4, 2020:
+	In run.c, use non-restartable multibyte routines to attain
+	portability to DJGPP. Should fix Issue 92. Thanks to Albert Wik
+	for the report and to Todd Miller for the suggested fix.
+
+July 30, 2020:
+	Merge PRs 88-91 which fix small bugs. Thanks to Todd Miller and
+	Tim van der Molen for the fixes.
+
+	In order to make life easier, we move exclusively to bison
+	as the parser generator.
 
 July 2, 2020:
 	Merge PRs 85 and 86 which fix regressions. Thanks to
@@ -221,7 +334,7 @@ Mar 3, 2019:
 	#12: Avoid undefined behaviour when using ctype(3) functions in
 	     relex(). Thanks to GitHub user iamleot.
 	#31: Make getline handle numeric strings, and update FIXES. Thanks
-	     to GitHub user arnoldrobbins.
+	     to GitHub user Arnold Robbins (arnoldrobbins)
 	#32: maketab: support build systems with read-only source. Thanks
 	     to GitHub user enh.
 

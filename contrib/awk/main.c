@@ -22,7 +22,7 @@ ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 ****************************************************************/
 
-const char	*version = "version 20200702";
+const char	*version = "version 20220912";
 
 #define DEBUG
 #include <stdio.h>
@@ -32,7 +32,6 @@ const char	*version = "version 20200702";
 #include <string.h>
 #include <signal.h>
 #include "awk.h"
-#include "ytab.h"
 
 extern	char	**environ;
 extern	int	nfields;
@@ -92,9 +91,7 @@ setfs(char *p)
 	/* wart: t=>\t */
 	if (p[0] == 't' && p[1] == '\0')
 		return "\t";
-	else if (p[0] != '\0')
-		return p;
-	return NULL;
+	return p;
 }
 
 static char *
@@ -162,7 +159,7 @@ int main(int argc, char *argv[])
 			fn = getarg(&argc, &argv, "no program filename");
 			if (npfile >= maxpfile) {
 				maxpfile += 20;
-				pfile = realloc(pfile, maxpfile * sizeof(*pfile));
+				pfile = (char **) realloc(pfile, maxpfile * sizeof(*pfile));
 				if (pfile == NULL)
 					FATAL("error allocating space for -f options");
  			}
@@ -170,8 +167,6 @@ int main(int argc, char *argv[])
  			break;
 		case 'F':	/* set field separator */
 			fs = setfs(getarg(&argc, &argv, "no field separator"));
-			if (fs == NULL)
-				WARNING("field separator FS is empty");
 			break;
 		case 'v':	/* -v a=1 to be done NOW.  one -v for each */
 			vn = getarg(&argc, &argv, "no variable name");
@@ -256,7 +251,7 @@ int pgetc(void)		/* get 1 character from awk program */
 char *cursource(void)	/* current source file name */
 {
 	if (npfile > 0)
-		return pfile[curpfile];
+		return pfile[curpfile < npfile ? curpfile : curpfile - 1];
 	else
 		return NULL;
 }
