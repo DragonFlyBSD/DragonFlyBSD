@@ -1,4 +1,4 @@
-# $Id: sys.clean-env.mk,v 1.23 2020/08/19 17:51:53 sjg Exp $
+# $Id: sys.clean-env.mk,v 1.25 2022/09/09 17:44:29 sjg Exp $
 #
 #	@(#) Copyright (c) 2009, Simon J. Gerraty
 #
@@ -52,7 +52,7 @@ MAKE_ENV_SAVE_PREFIX_LIST += \
 
 
 # This could be a list of vars or patterns to explicitly exclude.
-MAKE_ENV_SAVE_EXCLUDE_LIST ?= _
+MAKE_ENV_SAVE_EXCLUDE_LIST += _
 
 # This is the actual list that we will save
 # HOME is probably something worth clobbering eg.
@@ -68,7 +68,7 @@ MAKE_ENV_SAVE_VAR_LIST += \
 	USER \
 	${_env_vars:${MAKE_ENV_SAVE_EXCLUDE_LIST:${M_ListToSkip}}}
 
-_env_vars != env | egrep '^(${MAKE_ENV_SAVE_PREFIX_LIST:ts|})' | sed 's,=.*,,'; echo
+_env_vars != env | ${EGREP:Uegrep} '^(${MAKE_ENV_SAVE_PREFIX_LIST:ts|})' | sed 's,=.*,,'; echo
 
 _export_list =
 .for v in ${MAKE_ENV_SAVE_VAR_LIST:O:u}
@@ -115,7 +115,7 @@ MAKEOBJDIR = $${.CURDIR:S,${_srctop},$${OBJTOP},}
 $v := ${$v}
 .endfor
 .else
-# we cannot use the '$$' trick, anymore
+# we cannot rely on the '$$' trick (depending on .MAKE.SAVE_DOLLARS)
 # but we can export a literal (unexpanded) value
 SRCTOP := ${_srctop}
 OBJROOT := ${_objroot}
@@ -125,6 +125,6 @@ MAKEOBJDIR = ${.CURDIR:S,${SRCTOP},${OBJTOP},}
 .endif
 #.info ${_tricky_env_vars:@v@${.newline}$v=${$v}@}
 #showenv:
-#	@env | egrep 'OBJ|SRC'
+#	@env | ${EGREP:Uegrep} 'OBJ|SRC'
 .endif				# MAKEOBJDIR
 .endif				# level 0

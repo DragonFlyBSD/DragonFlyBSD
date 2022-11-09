@@ -17,7 +17,7 @@
 #	Simon J. Gerraty <sjg@crufty.net>
 
 # RCSid:
-#	$Id: os.sh,v 1.56 2020/08/05 23:25:22 sjg Exp $
+#	$Id: os.sh,v 1.61 2022/10/05 19:10:55 sjg Exp $
 #
 #	@(#) Copyright (c) 1994 Simon J. Gerraty
 #
@@ -172,7 +172,7 @@ Interix)
 	MACHINE=i386
 	MACHINE_ARCH=i386
 	;;
-UnixWare)
+UnixWare|SCO_SV)
 	OSREL=`uname -v`
 	OSMAJOR=`IFS=.; set $OSREL; echo $1`
 	MACHINE_ARCH=`uname -m`
@@ -229,15 +229,20 @@ HOST_TARGET=`echo ${OS}${OSMAJOR}-$HOST_ARCH | tr -d / | toLower`
 HOST_TARGET32=`echo ${OS}${OSMAJOR}-$HOST_ARCH32 | tr -d / | toLower`
 export HOST_TARGET HOST_TARGET32
 
-case `echo -n .` in -n*) N=; C="\c";; *) N=-n; C=;; esac
+case `echo -n .` in -n*) echo_n=; echo_c="\c";; *) echo_n=-n; echo_c=;; esac
 
 Echo() {
 	case "$1" in
-	-n) _n=$N _c=$C; shift;;
-	*) _n= _c=;;
+	-n) shift; echo $echo_n "$@$echo_c";;
+	*)  echo "$@";;
 	esac
-	echo $_n "$@" $_c
 }
+
+# for systems that deprecate egrep
+case "`echo egrep | egrep 'e|g' 2>&1`" in
+egrep) ;;
+*) egrep() { grep -E "$@"; };;
+esac
 
 export HOSTNAME HOST	    
 export OS MACHINE MACHINE_ARCH OSREL OSMAJOR LOCAL_FS TMP_DIRS MAILER N C K PS_AXC

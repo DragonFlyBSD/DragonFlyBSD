@@ -4,11 +4,12 @@ _MAKE_VERSION?=@_MAKE_VERSION@
 
 prefix?= @prefix@
 srcdir= @srcdir@
-CC?= @CC@
+CC= @CC@
 @force_machine@MACHINE?= @machine@
 @force_machine_arch@MACHINE_ARCH?= @machine_arch@
 DEFAULT_SYS_PATH?= @default_sys_path@
 
+EGREP = @egrep@
 CPPFLAGS+= @CPPFLAGS@
 CFLAGS+= ${CPPFLAGS} @DEFS@
 LDFLAGS+= @LDFLAGS@

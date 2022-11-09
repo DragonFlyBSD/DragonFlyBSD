@@ -1,4 +1,4 @@
-/*	$NetBSD: str.c,v 1.81 2021/02/01 22:36:28 rillig Exp $	*/
+/*	$NetBSD: str.c,v 1.93 2022/06/11 09:24:07 rillig Exp $	*/
 
 /*
  * Copyright (c) 1988, 1989, 1990, 1993
@@ -71,7 +71,11 @@
 #include "make.h"
 
 /*	"@(#)str.c	5.8 (Berkeley) 6/1/90"	*/
-MAKE_RCSID("$NetBSD: str.c,v 1.81 2021/02/01 22:36:28 rillig Exp $");
+MAKE_RCSID("$NetBSD: str.c,v 1.93 2022/06/11 09:24:07 rillig Exp $");
+
+
+static HashTable interned_strings;
+
 
 /* Return the concatenation of s1 and s2, freshly allocated. */
 char *
@@ -99,39 +103,23 @@ str_concat3(const char *s1, const char *s2, const char *s3)
 	return result;
 }
 
-/* Return the concatenation of s1, s2, s3 and s4, freshly allocated. */
-char *
-str_concat4(const char *s1, const char *s2, const char *s3, const char *s4)
-{
-	size_t len1 = strlen(s1);
-	size_t len2 = strlen(s2);
-	size_t len3 = strlen(s3);
-	size_t len4 = strlen(s4);
-	char *result = bmake_malloc(len1 + len2 + len3 + len4 + 1);
-	memcpy(result, s1, len1);
-	memcpy(result + len1, s2, len2);
-	memcpy(result + len1 + len2, s3, len3);
-	memcpy(result + len1 + len2 + len3, s4, len4 + 1);
-	return result;
-}
-
 /*
  * Fracture a string into an array of words (as delineated by tabs or spaces)
  * taking quotation marks into account.
  *
- * If expand is TRUE, quotes are removed and escape sequences such as \r, \t,
+ * If expand is true, quotes are removed and escape sequences such as \r, \t,
  * etc... are expanded. In this case, return NULL on parse errors.
  *
  * Returns the fractured words, which must be freed later using Words_Free,
  * unless the returned Words.words was NULL.
  */
-Words
-Str_Words(const char *str, Boolean expand)
+SubstringWords
+Substring_Words(const char *str, bool expand)
 {
 	size_t str_len;
 	char *words_buf;
 	size_t words_cap;
-	char **words;
+	Substring *words;
 	size_t words_len;
 	char inquote;
 	char *word_start;
@@ -146,7 +134,7 @@ Str_Words(const char *str, Boolean expand)
 	words_buf = bmake_malloc(str_len + 1);
 
 	words_cap = str_len / 5 > 50 ? str_len / 5 : 50;
-	words = bmake_malloc((words_cap + 1) * sizeof(char *));
+	words = bmake_malloc((words_cap + 1) * sizeof(words[0]));
 
 	/*
 	 * copy the string; at the same time, parse backslashes,
@@ -204,18 +192,24 @@ Str_Words(const char *str, Boolean expand)
 
 			*word_end++ = '\0';
 			if (words_len == words_cap) {
-				size_t new_size;
-				words_cap *= 2;		/* ramp up fast */
-				new_size = (words_cap + 1) * sizeof(char *);
-				words = bmake_realloc(words, new_size);
+				words_cap *= 2;
+				words = bmake_realloc(words,
+				    (words_cap + 1) * sizeof(words[0]));
 			}
-			words[words_len++] = word_start;
+			words[words_len++] =
+			    Substring_Init(word_start, word_end - 1);
 			word_start = NULL;
 			if (ch == '\n' || ch == '\0') {
 				if (expand && inquote != '\0') {
+					SubstringWords res;
+
 					free(words);
 					free(words_buf);
-					return (Words){ NULL, 0, NULL };
+
+					res.words = NULL;
+					res.len = 0;
+					res.freeIt = NULL;
+					return res;
 				}
 				goto done;
 			}
@@ -225,7 +219,7 @@ Str_Words(const char *str, Boolean expand)
 				if (word_start == NULL)
 					word_start = word_end;
 				*word_end++ = '\\';
-				/* catch '\' at end of line */
+				/* catch lonely '\' at end of string */
 				if (str_p[1] == '\0')
 					continue;
 				ch = *++str_p;
@@ -262,8 +256,60 @@ Str_Words(const char *str, Boolean expand)
 		*word_end++ = ch;
 	}
 done:
-	words[words_len] = NULL;	/* useful for argv */
-	return (Words){ words, words_len, words_buf };
+	words[words_len] = Substring_Init(NULL, NULL);	/* useful for argv */
+
+	{
+		SubstringWords result;
+
+		result.words = words;
+		result.len = words_len;
+		result.freeIt = words_buf;
+		return result;
+	}
+}
+
+Words
+Str_Words(const char *str, bool expand)
+{
+	SubstringWords swords;
+	Words words;
+	size_t i;
+
+	swords = Substring_Words(str, expand);
+	if (swords.words == NULL) {
+		words.words = NULL;
+		words.len = 0;
+		words.freeIt = NULL;
+		return words;
+	}
+
+	words.words = bmake_malloc((swords.len + 1) * sizeof(words.words[0]));
+	words.len = swords.len;
+	words.freeIt = swords.freeIt;
+	for (i = 0; i < swords.len + 1; i++)
+		words.words[i] = UNCONST(swords.words[i].start);
+	free(swords.words);
+	return words;
+}
+
+/*
+ * XXX: In the extreme edge case that one of the characters is from the basic
+ * execution character set and the other isn't, the result of the comparison
+ * differs depending on whether plain char is signed or unsigned.
+ *
+ * An example is the character range from \xE4 to 'a', where \xE4 may come
+ * from U+00E4 'Latin small letter A with diaeresis'.
+ *
+ * If char is signed, \xE4 evaluates to -28, the first half of the condition
+ * becomes -28 <= '0' && '0' <= 'a', which evaluates to true.
+ *
+ * If char is unsigned, \xE4 evaluates to 228, the second half of the
+ * condition becomes 'a' <= '0' && '0' <= 228, which evaluates to false.
+ */
+static bool
+in_range(char e1, char c, char e2)
+{
+	return (e1 <= c && c <= e2) || (e2 <= c && c <= e1);
 }
 
 /*
@@ -271,105 +317,87 @@ done:
  * The following special characters are known *?\[] (as in fnmatch(3)).
  *
  * XXX: this function does not detect or report malformed patterns.
+ *
+ * See varmod-match.mk for examples and edge cases.
  */
-Boolean
+bool
 Str_Match(const char *str, const char *pat)
 {
-	for (;;) {
-		/*
-		 * See if we're at the end of both the pattern and the
-		 * string. If so, we succeeded.  If we're at the end of the
-		 * pattern but not at the end of the string, we failed.
-		 */
-		if (*pat == '\0')
-			return *str == '\0';
-		if (*str == '\0' && *pat != '*')
-			return FALSE;
-
-		/*
-		 * A '*' in the pattern matches any substring.  We handle this
-		 * by calling ourselves for each suffix of the string.
-		 */
-		if (*pat == '*') {
+	for (; *pat != '\0'; pat++, str++) {
+		if (*pat == '*') {	/* match any substring */
 			pat++;
 			while (*pat == '*')
 				pat++;
 			if (*pat == '\0')
-				return TRUE;
-			while (*str != '\0') {
+				return true;
+			for (; *str != '\0'; str++)
 				if (Str_Match(str, pat))
-					return TRUE;
-				str++;
-			}
-			return FALSE;
+					return true;
+			return false;
 		}
 
-		/* A '?' in the pattern matches any single character. */
-		if (*pat == '?')
-			goto thisCharOK;
+		if (*str == '\0')
+			return false;
 
-		/*
-		 * A '[' in the pattern matches a character from a list.
-		 * The '[' is followed by the list of acceptable characters,
-		 * or by ranges (two characters separated by '-'). In these
-		 * character lists, the backslash is an ordinary character.
-		 */
-		if (*pat == '[') {
-			Boolean neg = pat[1] == '^';
+		if (*pat == '?')	/* match any single character */
+			continue;
+
+		if (*pat == '[') {	/* match a character from a list */
+			bool neg = pat[1] == '^';
 			pat += neg ? 2 : 1;
 
 			for (;;) {
 				if (*pat == ']' || *pat == '\0') {
 					if (neg)
 						break;
-					return FALSE;
+					return false;
 				}
-				/*
-				 * XXX: This naive comparison makes the
-				 * control flow of the pattern parser
-				 * dependent on the actual value of the
-				 * string.  This is unpredictable.  It may be
-				 * though that the code only looks wrong but
-				 * actually all code paths result in the same
-				 * behavior.  This needs further tests.
-				 */
 				if (*pat == *str)
 					break;
 				if (pat[1] == '-') {
 					if (pat[2] == '\0')
 						return neg;
-					if (*pat <= *str && pat[2] >= *str)
-						break;
-					if (*pat >= *str && pat[2] <= *str)
+					if (in_range(pat[0], *str, pat[2]))
 						break;
 					pat += 2;
 				}
 				pat++;
 			}
 			if (neg && *pat != ']' && *pat != '\0')
-				return FALSE;
+				return false;
 			while (*pat != ']' && *pat != '\0')
 				pat++;
 			if (*pat == '\0')
 				pat--;
-			goto thisCharOK;
+			continue;
 		}
 
-		/*
-		 * A backslash in the pattern matches the character following
-		 * it exactly.
-		 */
-		if (*pat == '\\') {
+		if (*pat == '\\')	/* match the next character exactly */
 			pat++;
-			if (*pat == '\0')
-				return FALSE;
-		}
 
 		if (*pat != *str)
-			return FALSE;
-
-	thisCharOK:
-		pat++;
-		str++;
+			return false;
 	}
+	return *str == '\0';
+}
+
+void
+Str_Intern_Init(void)
+{
+	HashTable_Init(&interned_strings);
+}
+
+void
+Str_Intern_End(void)
+{
+#ifdef CLEANUP
+	HashTable_Done(&interned_strings);
+#endif
+}
+
+/* Return a canonical instance of str, with unlimited lifetime. */
+const char *
+Str_Intern(const char *str)
+{
+	return HashTable_CreateEntry(&interned_strings, str, NULL)->key;
 }
