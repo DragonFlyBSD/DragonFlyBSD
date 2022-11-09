@@ -52,6 +52,9 @@
 /* Define if you have the <stdlib.h> header file. */
 #define HAVE_STDLIB_H 1
 
+/* Define if <stdnoreturn.h> header is available and working */
+/* #undef HAVE_STDNORETURN_H */
+
 /* Define if you have the <strings.h> header file. */
 #define HAVE_STRINGS_H 1
 
@@ -85,8 +88,11 @@
 /* Define if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
+/* Define if C11 _Noreturn keyword is supported */
+/* #undef STDC_NORETURN */
+
 /* Define to the system name. */
-#define SYSTEM_NAME "dragonfly5.9"
+#define SYSTEM_NAME "dragonfly6.3"
 
 /* "Define to 1 if you want to use dbmalloc for testing." */
 /* #undef USE_DBMALLOC */
@@ -98,7 +104,7 @@
 /* #undef USE_VALGRIND */
 
 /* Define to 1 to enable backtracking extension */
-/* #undef YYBTYACC */
+#define YYBTYACC 1
 
 /* Define to 1 if you want to perform memory-leak testing. */
 /* #undef YY_NO_LEAKS */

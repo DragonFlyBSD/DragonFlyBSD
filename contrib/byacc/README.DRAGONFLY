@@ -1,13 +1,13 @@
-BYACC 20200910
+BYACC 20221106
 ==============
 
 Original source can be downloaded from:
 ftp://ftp.invisible-island.net/byacc
 
-file = byacc-20200910.tgz
-date = September 10, 2020
-size = 871242
-sha1 = ebdf2d1a8d1a558f8c2fb7cc372435ca0f5c21df
+file = byacc-20221106.tgz
+date = November 07, 2022
+size = 896951
+sha1 = a2febacda79b7d25bfb475a5e214d3d97ae548e7
 
 A list of deleted files is in README.DELETED.
 
