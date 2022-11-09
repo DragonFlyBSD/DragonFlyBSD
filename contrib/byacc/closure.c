@@ -1,4 +1,4 @@
-/* $Id: closure.c,v 1.12 2020/09/10 17:22:08 tom Exp $ */
+/* $Id: closure.c,v 1.14 2022/01/09 16:22:58 tom Exp $ */
 
 #include "defs.h"
 
@@ -6,7 +6,6 @@ Value_t *itemset;
 Value_t *itemsetend;
 unsigned *ruleset;
 
-static unsigned *first_base;
 static unsigned *first_derives;
 static unsigned *EFF;
 
@@ -66,12 +65,11 @@ set_first_derives(void)
 
     rulesetsize = WORDSIZE(nrules);
     varsetsize = WORDSIZE(nvars);
-    first_base = NEW2(nvars * rulesetsize, unsigned);
-    first_derives = first_base - ntokens * rulesetsize;
+    first_derives = NEW2(nvars * rulesetsize, unsigned);
 
     set_EFF();
 
-    rrow = first_derives + ntokens * rulesetsize;
+    rrow = first_derives;
     for (i = start_symbol; i < nsyms; i++)
     {
 	unsigned *vrow = EFF + ((i - ntokens) * varsetsize);
@@ -85,7 +83,7 @@ set_first_derives(void)
 		k = 0;
 	    }
 
-	    if (cword & (unsigned)(1 << k))
+	    if (cword & (1U << k))
 	    {
 		rp = derives[j];
 		while ((rule = *rp++) >= 0)
@@ -131,7 +129,7 @@ closure(Value_t *nucleus, int n)
 
 	if (ISVAR(symbol))
 	{
-	    dsp = first_derives + symbol * rulesetsize;
+	    dsp = first_derives + (symbol - ntokens) * rulesetsize;
 	    rsp = ruleset;
 	    while (rsp < rsend)
 		*rsp++ |= *dsp++;
@@ -149,7 +147,7 @@ closure(Value_t *nucleus, int n)
 	{
 	    for (i = 0; i < BITS_PER_WORD; ++i)
 	    {
-		if (word & (unsigned)(1 << i))
+		if (word & (1U << i))
 		{
 		    itemno = rrhs[ruleno + i];
 		    while (csp < csend && *csp < itemno)
@@ -176,7 +174,7 @@ finalize_closure(void)
 {
     FREE(itemset);
     FREE(ruleset);
-    FREE(first_base);
+    FREE(first_derives);
 }
 
 #ifdef	DEBUG
@@ -236,7 +234,7 @@ print_first_derives(void)
     for (i = start_symbol; i < nsyms; i++)
     {
 	printf("\n%s derives\n", symbol_name[i]);
-	rp = first_derives + i * WORDSIZE(nrules);
+	rp = first_derives + (i - ntokens) * WORDSIZE(nrules);
 	k = BITS_PER_WORD;
 	for (j = 0; j <= nrules; k++, j++)
 	{

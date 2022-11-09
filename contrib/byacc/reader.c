@@ -1,4 +1,4 @@
-/* $Id: reader.c,v 1.84 2020/09/10 20:26:13 tom Exp $ */
+/* $Id: reader.c,v 1.91 2022/01/09 18:04:58 tom Exp $ */
 
 #include "defs.h"
 
@@ -19,6 +19,13 @@
 /* the maximum number of arguments (inherited attributes) to a non-terminal */
 /* this is a hard limit, but seems more than adequate */
 #define MAXARGS	20
+
+#define begin_case(f,n) fprintf(f, "case %d:\n", (int)(n))
+
+#define end_case(f) \
+	    fprintf(f, "\n"); \
+	    fprintf_lineno(f, 1, ""); \
+	    fprintf(f, "break;\n")
 
 static void start_rule(bucket *bp, int s_lineno);
 #if defined(YYBTYACC)
@@ -223,7 +230,7 @@ line_directive(void)
 
     if (ld == ldOK)
     {
-	size_t need = (size_t) (name_end - name_1st);
+	size_t need = (size_t)(name_end - name_1st);
 	if ((long)need > (long)input_file_name_len)
 	{
 	    input_file_name_len = ((need + 1) * 3) / 2;
@@ -451,7 +458,7 @@ static struct keyword
 keywords[] = {
     { "binary",      NONASSOC },
     { "code",        XCODE },
-    { "debug",       XXXDEBUG },
+    { "debug",       NONPOSIX_DEBUG },
 #if defined(YYBTYACC)
     { "destructor",  DESTRUCTOR },
 #endif
@@ -749,7 +756,8 @@ copy_code(void)
 	code_mstr = msnew();
     }
     cline++;
-    msprintf(code_mstr, line_format, lineno, input_file_name);
+    if (!lflag)
+	msprintf(code_mstr, line_format, lineno, input_file_name);
     for (;;)
     {
 	c = *cptr++;
@@ -779,7 +787,7 @@ copy_code(void)
 		    cline++;
 		}
 		code_lines[pos].lines = msdone(code_mstr);
-		code_lines[pos].num = (size_t) cline;
+		code_lines[pos].num = (size_t)cline;
 		return;
 	    }
 	    break;
@@ -808,8 +816,7 @@ copy_text(void)
 	if (line == NULL)
 	    unterminated_text(&a);
     }
-    if (!lflag)
-	fprintf(f, line_format, lineno, input_file_name);
+    fprintf_lineno(f, lineno, input_file_name);
 
   loop:
     c = *cptr++;
@@ -900,9 +907,8 @@ copy_union(void)
     puts_both("#ifndef YYSTYPE_IS_DECLARED\n");
     puts_both("#define YYSTYPE_IS_DECLARED 1\n");
 
-    if (!lflag)
-	fprintf(text_file, line_format, lineno, input_file_name);
-    puts_both("typedef union");
+    fprintf_lineno(text_file, lineno, input_file_name);
+    puts_both("typedef union YYSTYPE");
 
     depth = 0;
   loop:
@@ -1142,7 +1148,7 @@ copy_param(int k)
 	}
 	if (buf == 0)
 	{
-	    buf_size = (size_t) linesize;
+	    buf_size = (size_t)linesize;
 	    buf = TMALLOC(char, buf_size);
 	    NO_SPACE(buf);
 	}
@@ -1154,7 +1160,7 @@ copy_param(int k)
 	    if (line == NULL)
 		unexpected_EOF();
 	    --cptr;
-	    buf_size += (size_t) linesize;
+	    buf_size += (size_t)linesize;
 	    tmp = TREALLOC(char, buf, buf_size);
 	    NO_SPACE(tmp);
 	    buf = tmp;
@@ -1567,7 +1573,7 @@ get_tag(void)
 
     FREE(t_line);
     havetags = 1;
-    return cache_tag(cache, (size_t) cinc);
+    return cache_tag(cache, (size_t)cinc);
 }
 
 #if defined(YYBTYACC)
@@ -1578,7 +1584,7 @@ scan_id(void)
 
     while (IS_NAME2(UCH(*cptr)))
 	cptr++;
-    return cache_tag(b, (size_t) (cptr - b));
+    return cache_tag(b, (size_t)(cptr - b));
 }
 #endif
 
@@ -1890,8 +1896,8 @@ read_declarations(void)
 	    break;
 #endif
 
-	case XXXDEBUG:
-	    /* XXX: FIXME */
+	case NONPOSIX_DEBUG:
+	    tflag = 1;
 	    break;
 
 	case POSIX_YACC:
@@ -2042,7 +2048,7 @@ parse_id(char *p, char **save)
 	p++;
     if (save)
     {
-	*save = cache_tag(b, (size_t) (p - b));
+	*save = cache_tag(b, (size_t)(p - b));
     }
     return p;
 }
@@ -2156,7 +2162,7 @@ compile_arg(char **theptr, char *yyvaltag)
     {
 	int j;
 
-	offsets = TMALLOC(Value_t, maxoffset + 1);
+	offsets = TCMALLOC(Value_t, maxoffset + 1);
 	NO_SPACE(offsets);
 
 	for (j = 0, i++; i < nitems; i++)
@@ -2267,7 +2273,7 @@ can_elide_arg(char **theptr, char *yyvaltag)
     {
 	int j;
 
-	offsets = TMALLOC(Value_t, maxoffset + 1);
+	offsets = TCMALLOC(Value_t, maxoffset + 1);
 	NO_SPACE(offsets);
 
 	for (j = 0, i++; i < nitems; i++)
@@ -2547,11 +2553,10 @@ insert_arg_rule(char *arg, char *tag)
 	rule = nrules;
 	insert_arg_cache(code, rule);
 	trialaction = 1;	/* arg rules always run in trial mode */
-	fprintf(f, "case %d:\n", rule - 2);
-	if (!lflag)
-	    fprintf(f, line_format, line_number, input_file_name);
-	fprintf(f, "%s;\n", code);
-	fprintf(f, "break;\n");
+	begin_case(f, rule - 2);
+	fprintf_lineno(f, line_number, input_file_name);
+	fprintf(f, "%s;", code);
+	end_case(f);
 	insert_empty_rule();
 	plhs[rule]->tag = cache_tag(tag, strlen(tag));
 	plhs[rule]->class = ARGUMENT;
@@ -2687,7 +2692,7 @@ copy_action(void)
     trialaction = (*cptr == L_BRAC);
 #endif
 
-    fprintf(f, "case %d:\n", nrules - 2);
+    begin_case(f, nrules - 2);
 #if defined(YYBTYACC)
     if (backtrack)
     {
@@ -2695,8 +2700,7 @@ copy_action(void)
 	    fprintf(f, "  if (!yytrial)\n");
     }
 #endif
-    if (!lflag)
-	fprintf(f, line_format, lineno, input_file_name);
+    fprintf_lineno(f, lineno, input_file_name);
     if (*cptr == '=')
 	++cptr;
 
@@ -2759,10 +2763,12 @@ copy_action(void)
 		else if (i > maxoffset)
 		{
 		    dollar_warning(d_lineno, i);
-		    fprintf(f, "yystack.l_mark[%d].%s", i - maxoffset, tag);
+		    fprintf(f, "yystack.l_mark[%ld].%s",
+			    (long)(i - maxoffset), tag);
 		}
 		else if (offsets)
-		    fprintf(f, "yystack.l_mark[%d].%s", offsets[i], tag);
+		    fprintf(f, "yystack.l_mark[%ld].%s",
+			    (long)offsets[i], tag);
 		FREE(d_line);
 		goto loop;
 	    }
@@ -2820,7 +2826,7 @@ copy_action(void)
 		tag = rhs[offsets[i]]->tag;
 		if (tag == 0)
 		    untyped_rhs(i, rhs[offsets[i]]->name);
-		fprintf(f, "yystack.l_mark[%d].%s", offsets[i], tag);
+		fprintf(f, "yystack.l_mark[%ld].%s", (long)offsets[i], tag);
 	    }
 	    else
 	    {
@@ -2829,10 +2835,10 @@ copy_action(void)
 		else if (i > maxoffset)
 		{
 		    dollar_warning(lineno, i);
-		    fprintf(f, "yystack.l_mark[%d]", i - maxoffset);
+		    fprintf(f, "yystack.l_mark[%ld]", (long)(i - maxoffset));
 		}
 		else if (offsets)
-		    fprintf(f, "yystack.l_mark[%d]", offsets[i]);
+		    fprintf(f, "yystack.l_mark[%ld]", (long)offsets[i]);
 	    }
 	    goto loop;
 	}
@@ -2938,12 +2944,11 @@ copy_action(void)
 	    if (c == L_CURL && !haveyyval)
 	    {
 		fprintf(f, "  if (!yytrial)\n");
-		if (!lflag)
-		    fprintf(f, line_format, lineno, input_file_name);
+		fprintf_lineno(f, lineno, input_file_name);
 		trialaction = 0;
 		goto loop;
 	    }
-	    fprintf(f, "\nbreak;\n");
+	    end_case(f);
 	    FREE(a.a_line);
 	    if (maxoffset > 0)
 		FREE(offsets);
@@ -2963,7 +2968,7 @@ copy_action(void)
     case ';':
 	if (depth > 0)
 	    goto loop;
-	fprintf(f, "\nbreak;\n");
+	end_case(f);
 	free(a.a_line);
 	if (maxoffset > 0)
 	    FREE(offsets);
@@ -3000,13 +3005,12 @@ copy_action(void)
 	    if (c == L_CURL && !haveyyval)
 	    {
 		fprintf(f, "  if (!yytrial)\n");
-		if (!lflag)
-		    fprintf(f, line_format, lineno, input_file_name);
+		fprintf_lineno(f, lineno, input_file_name);
 		goto loop;
 	    }
 	}
 #endif
-	fprintf(f, "\nbreak;\n");
+	end_case(f);
 	free(a.a_line);
 	if (maxoffset > 0)
 	    FREE(offsets);
@@ -3354,6 +3358,16 @@ mark_symbol(void)
 	     ((c = cptr[4]) == 'c' || c == 'C') &&
 	     ((c = cptr[5], !IS_IDENT(c))))
 	cptr += 5;
+    else if ((c == 'e' || c == 'E') &&
+	     ((c = cptr[2]) == 'm' || c == 'M') &&
+	     ((c = cptr[3]) == 'p' || c == 'P') &&
+	     ((c = cptr[4]) == 't' || c == 'T') &&
+	     ((c = cptr[5]) == 'y' || c == 'Y') &&
+	     ((c = cptr[6], !IS_IDENT(c))))
+    {
+	cptr += 6;
+	return (1);
+    }
     else
 	syntax_error(lineno, line, cptr);
 
@@ -3394,13 +3408,17 @@ read_grammar(void)
 	    || c == '$'
 	    || c == '\''
 	    || c == '"')
+	{
 	    add_symbol();
+	}
+	else if (c == L_CURL || c == '='
 #if defined(YYBTYACC)
-	else if (c == L_CURL || c == '=' || (backtrack && c == L_BRAC))
-#else
-	else if (c == L_CURL || c == '=')
+		 || (backtrack && c == L_BRAC)
 #endif
+	    )
+	{
 	    copy_action();
+	}
 	else if (c == '|')
 	{
 	    end_rule();
@@ -3868,8 +3886,10 @@ finalize_destructors(void)
 	}
 	else
 	{			/* replace "$$" with "(*val)[.tag]" in destructor code */
+	    char *destructor_source = symbol_destructor[i];
 	    symbol_destructor[i]
-		= process_destructor_XX(symbol_destructor[i], tag);
+		= process_destructor_XX(destructor_source, tag);
+	    FREE(destructor_source);
 	}
     }
     /* 'symbol_type_tag[]' elements are freed by 'free_tags()' */

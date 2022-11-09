@@ -1,4 +1,4 @@
-/* $Id: warshall.c,v 1.8 2020/09/10 17:31:42 tom Exp $ */
+/* $Id: warshall.c,v 1.9 2020/09/22 20:17:00 tom Exp $ */
 
 #include "defs.h"
 
@@ -28,7 +28,7 @@ transitive_closure(unsigned *R, int n)
 
 	while (rowj < relend)
 	{
-	    if (*ccol & (unsigned)(1 << i))
+	    if (*ccol & (1U << i))
 	    {
 		rp = rowi;
 		rend = rowj + rowsize;
@@ -70,7 +70,7 @@ reflexive_transitive_closure(unsigned *R, int n)
     rp = R;
     while (rp < relend)
     {
-	*rp |= (unsigned)(1 << i);
+	*rp |= (1U << i);
 	if (++i >= BITS_PER_WORD)
 	{
 	    i = 0;
