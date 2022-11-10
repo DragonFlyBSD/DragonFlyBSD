@@ -1341,7 +1341,6 @@ next_hmp:
 		 */
 		hammer2_dummy_xop_from_chain(&xop, schain);
 		hammer2_inode_drop(spmp->iroot);
-		spmp->iroot = NULL;
 		spmp->iroot = hammer2_inode_get(spmp, &xop, -1, -1);
 		spmp->spmp_hmp = hmp;
 		spmp->pfs_types[0] = ripdata->meta.pfs_type;
