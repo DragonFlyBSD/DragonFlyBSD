@@ -1,9 +1,9 @@
 /*
- *  $Id: pause.c,v 1.46 2020/03/27 20:32:55 tom Exp $
+ *  $Id: pause.c,v 1.49 2022/04/03 22:38:16 tom Exp $
  *
  *  pause.c -- implements the pause dialog
  *
- *  Copyright 2004-2019,2020	Thomas E. Dickey
+ *  Copyright 2004-2020,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -24,7 +24,7 @@
  *	Yura Kalinichenko
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 #include <dlg_keys.h>
 
 #define MY_TIMEOUT 50
@@ -88,8 +88,9 @@ dialog_pause(const char *title,
 
     curs_set(0);
 
-    dialog_vars.timeout_secs = 0;
     seconds_orig = (seconds > 0) ? seconds : 1;
+    dialog_vars.pause_secs = seconds_orig;
+    dialog_vars.timeout_secs = 0;
 
 #ifdef KEY_RESIZE
   retry:
@@ -229,6 +230,9 @@ dialog_pause(const char *title,
 		break;
 	    case DLGK_ENTER:
 		result = dlg_enter_buttoncode(button);
+		break;
+	    case DLGK_LEAVE:
+		result = dlg_ok_buttoncode(button);
 		break;
 	    case ERR:
 		break;

@@ -1,9 +1,9 @@
 /*
- *  $Id: msgbox.c,v 1.88 2020/03/27 20:38:45 tom Exp $
+ *  $Id: msgbox.c,v 1.90 2022/04/03 22:38:16 tom Exp $
  *
  *  msgbox.c -- implements the message box and info box
  *
- *  Copyright 2000-2019,2020	Thomas E. Dickey
+ *  Copyright 2000-2020,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -24,7 +24,7 @@
  *	Savio Lam (lam836@cs.cuhk.hk)
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 #include <dlg_keys.h>
 
 /*
@@ -161,6 +161,9 @@ dialog_msgbox(const char *title, const char *cprompt, int height, int width,
 				     FALSE, width);
 		    break;
 		case DLGK_ENTER:
+		    result = dlg_enter_buttoncode(button);
+		    break;
+		case DLGK_LEAVE:
 		    result = dlg_ok_buttoncode(button);
 		    break;
 		default:

@@ -1,9 +1,9 @@
 /*
- *  $Id: buttons.c,v 1.101 2019/08/05 20:46:00 tom Exp $
+ *  $Id: buttons.c,v 1.109 2022/04/05 23:45:54 tom Exp $
  *
  *  buttons.c -- draw buttons, e.g., OK/Cancel
  *
- *  Copyright 2000-2018,2019	Thomas E. Dickey
+ *  Copyright 2000-2021,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -21,12 +21,8 @@
  *	Boston, MA 02110, USA.
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 #include <dlg_keys.h>
-
-#ifdef NEED_WCHAR_H
-#include <wchar.h>
-#endif
 
 #define MIN_BUTTON (-dialog_state.visit_cols)
 #define CHR_BUTTON (!dialog_state.plain_buttons)
@@ -225,7 +221,9 @@ print_button(WINDOW *win, char *label, int hotkey, int y, int x, int selected)
 		? button_active_attr
 		: button_inactive_attr);
     (void) waddstr(win, ">");
-    (void) wmove(win, y, x + ((int) (strspn) (label, " ")) + 1);
+    if (!dialog_vars.cursor_off_label) {
+	(void) wmove(win, y, x + ((int) (strspn) (label, " ")) + 1);
+    }
 }
 
 /*
@@ -420,19 +418,21 @@ dlg_draw_buttons(WINDOW *win,
 int
 dlg_match_char(int ch, const char *string)
 {
-    if (string != 0) {
-	int cmp2 = string_to_char(&string);
+    if (!dialog_vars.no_hot_list) {
+	if (string != 0) {
+	    int cmp2 = string_to_char(&string);
 #ifdef USE_WIDE_CURSES
-	wint_t cmp1 = dlg_toupper(ch);
-	if (cmp2 != 0 && (wchar_t) cmp1 == (wchar_t) dlg_toupper(cmp2)) {
-	    return TRUE;
-	}
-#else
-	if (ch > 0 && ch < 256) {
-	    if (dlg_toupper(ch) == dlg_toupper(cmp2))
+	    wint_t cmp1 = dlg_toupper(ch);
+	    if (cmp2 != 0 && (wchar_t) cmp1 == (wchar_t) dlg_toupper(cmp2)) {
 		return TRUE;
-	}
+	    }
+#else
+	    if (ch > 0 && ch < 256) {
+		if (dlg_toupper(ch) == dlg_toupper(cmp2))
+		    return TRUE;
+	    }
 #endif
+	}
     }
     return FALSE;
 }
@@ -447,8 +447,9 @@ dlg_button_to_char(const char *label)
     int cmp = -1;
 
     while (*label != 0) {
-	cmp = string_to_char(&label);
-	if (dlg_isupper(cmp)) {
+	int ch = string_to_char(&label);
+	if (dlg_isupper(ch)) {
+	    cmp = ch;
 	    break;
 	}
     }
@@ -593,23 +594,42 @@ dlg_exit_buttoncode(int button)
     return result;
 }
 
+static const char **
+finish_ok_label(const char **labels, int n)
+{
+    if (n == 0) {
+	labels[n++] = my_ok_label();
+	dialog_vars.nook = FALSE;
+	DLG_TRACE(("# ignore --nook, since at least one button is needed\n"));
+    }
+
+    labels[n] = NULL;
+    return labels;
+}
+
+/*
+ * Return a list of button labels for the OK (no Cancel) group, used in msgbox
+ * and progressbox.
+ */
 const char **
 dlg_ok_label(void)
 {
     static const char *labels[4];
     int n = 0;
 
-    labels[n++] = my_ok_label();
+    if (!dialog_vars.nook)
+	labels[n++] = my_ok_label();
     if (dialog_vars.extra_button)
 	labels[n++] = my_extra_label();
     if (dialog_vars.help_button)
 	labels[n++] = my_help_label();
-    labels[n] = 0;
-    return labels;
+
+    return finish_ok_label(labels, n);
 }
 
 /*
- * Return a list of button labels for the OK/Cancel group.
+ * Return a list of button labels for the OK/Cancel group, used in most widgets
+ * that select an option or data.
  */
 const char **
 dlg_ok_labels(void)
@@ -625,8 +645,8 @@ dlg_ok_labels(void)
 	labels[n++] = my_cancel_label();
     if (dialog_vars.help_button)
 	labels[n++] = my_help_label();
-    labels[n] = 0;
-    return labels;
+
+    return finish_ok_label(labels, n);
 }
 
 /*
@@ -732,22 +752,19 @@ dlg_default_button(void)
 const char **
 dlg_yes_labels(void)
 {
+    static const char *labels[5];
+    int n = 0;
     const char **result;
 
-    if (dialog_vars.extra_button) {
-	result = dlg_ok_labels();
-    } else {
-	static const char *labels[4];
-	int n = 0;
+    labels[n++] = my_yes_label();
+    if (dialog_vars.extra_button)
+	labels[n++] = my_extra_label();
+    labels[n++] = my_no_label();
+    if (dialog_vars.help_button)
+	labels[n++] = my_help_label();
+    labels[n] = NULL;
 
-	labels[n++] = my_yes_label();
-	labels[n++] = my_no_label();
-	if (dialog_vars.help_button)
-	    labels[n++] = my_help_label();
-	labels[n] = 0;
-
-	result = labels;
-    }
+    result = labels;
 
     return result;
 }

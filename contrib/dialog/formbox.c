@@ -1,9 +1,9 @@
 /*
- *  $Id: formbox.c,v 1.101 2020/03/27 20:42:19 tom Exp $
+ *  $Id: formbox.c,v 1.106 2022/04/06 08:04:48 tom Exp $
  *
  *  formbox.c -- implements the form (i.e., some pairs label/editbox)
  *
- *  Copyright 2003-2019,2020	Thomas E. Dickey
+ *  Copyright 2003-2021,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -24,7 +24,7 @@
  *	Valery Reznic (valery_reznic@users.sourceforge.net)
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 #include <dlg_keys.h>
 
 #define LLEN(n) ((n) * FORMBOX_TAGS)
@@ -394,7 +394,6 @@ make_FORM_ELTs(DIALOG_FORMITEM * item,
 	    sprintf(item[i].text, "%.*s", item[i].text_ilen, old_text);
 
 	    if (item[i].text_free) {
-		item[i].text_free = FALSE;
 		free(old_text);
 	    }
 	    item[i].text_free = TRUE;
@@ -491,6 +490,7 @@ dlg_form(const char *title,
 #ifdef KEY_RESIZE
     int old_height = height;
     int old_width = width;
+    int old_fhigh = form_height;
 #endif
 
     int form_width;
@@ -646,7 +646,6 @@ dlg_form(const char *title,
 	    if (field_changed)
 		chr_offset = 0;
 	    current = &items[choice];
-	    dialog_vars.max_input = current->text_ilen;
 	    dlg_item_help(current->help);
 	    dlg_show_string(form, current->text, chr_offset,
 			    form_active_text_attr,
@@ -700,6 +699,10 @@ dlg_form(const char *title,
 		dlg_del_window(dialog);
 		result = (state >= 0) ? dlg_enter_buttoncode(state) : DLG_EXIT_OK;
 		continue;
+	    case DLGK_LEAVE:
+		if (state >= 0)
+		    result = dlg_ok_buttoncode(state);
+		break;
 
 	    case DLGK_GRID_LEFT:
 		if (state == sTEXT)
@@ -782,6 +785,7 @@ dlg_form(const char *title,
 		/* reset data */
 		height = old_height;
 		width = old_width;
+		form_height = old_fhigh;
 		free(prompt);
 		_dlg_resize_cleanup(dialog);
 		dlg_unregister_window(form);

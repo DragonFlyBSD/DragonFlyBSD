@@ -1,9 +1,9 @@
 /*
- *  $Id: fselect.c,v 1.111 2020/03/27 20:58:52 tom Exp $
+ *  $Id: fselect.c,v 1.119 2022/04/03 22:38:16 tom Exp $
  *
  *  fselect.c -- implements the file-selector box
  *
- *  Copyright 2000-2019,2020	Thomas E. Dickey
+ *  Copyright 2000-2021,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -23,36 +23,6 @@
 
 #include <dlg_internals.h>
 #include <dlg_keys.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-
-#if HAVE_DIRENT_H
-# include <dirent.h>
-# define NAMLEN(dirent) strlen((dirent)->d_name)
-#else
-# define dirent direct
-# define NAMLEN(dirent) (dirent)->d_namlen
-# if HAVE_SYS_NDIR_H
-#  include <sys/ndir.h>
-# endif
-# if HAVE_SYS_DIR_H
-#  include <sys/dir.h>
-# endif
-# if HAVE_NDIR_H
-#  include <ndir.h>
-# endif
-#endif
-
-# if defined(_FILE_OFFSET_BITS) && defined(HAVE_STRUCT_DIRENT64)
-#  if !defined(_LP64) && (_FILE_OFFSET_BITS == 64)
-#   define      DIRENT  struct dirent64
-#  else
-#   define      DIRENT  struct dirent
-#  endif
-# else
-#  define       DIRENT  struct dirent
-# endif
 
 #define EXT_WIDE 1
 #define HDR_HIGH 1
@@ -292,6 +262,7 @@ fix_arrows(LIST * list)
 			: KEY_NPAGE));
     }
 }
+
 #else
 #define fix_arrows(list)	/* nothing */
 #endif
@@ -407,6 +378,7 @@ complete(char *name, LIST * d_list, LIST * f_list, char **buff_ptr)
 
     match(name, d_list, f_list, &match_list);
     if (match_list.length == 0) {
+	free(match_list.data);
 	*buff_ptr = NULL;
 	return 0;
     }
@@ -423,6 +395,7 @@ complete(char *name, LIST * d_list, LIST * f_list, char **buff_ptr)
 	}
     } else {
 	int j;
+	char *next;
 
 	for (i = 0; i < test_len; i++) {
 	    char test_char = test[i];
@@ -438,7 +411,13 @@ complete(char *name, LIST * d_list, LIST * f_list, char **buff_ptr)
 	    } else
 		break;
 	}
-	buff = dlg_realloc(char, i + 1, buff);
+	next = dlg_realloc(char, i + 1, buff);
+	if (next == NULL) {
+	    free(buff);
+	    *buff_ptr = NULL;
+	    return 0;
+	}
+	buff = next;
     }
     free_match(&match_list);
     buff[i] = '\0';
@@ -643,6 +622,8 @@ dlg_fselect(const char *title, const char *path, int height, int width, int dsel
 #ifdef KEY_RESIZE
   retry:
 #endif
+    if (height > 0)
+	height += MIN_HIGH;
     dlg_auto_size(title, "", &height, &width, MIN_HIGH + min_items, min_wide);
 
     dlg_print_size(height, width);
@@ -668,13 +649,12 @@ dlg_fselect(const char *title, const char *path, int height, int width, int dsel
     tbox_y = height - (BTN_HIGH * 2) + MARGIN;
     tbox_x = (width - tbox_width) / 2;
 
-    w_text = derwin(dialog, tbox_height, tbox_width, tbox_y, tbox_x);
+    w_text = dlg_der_window(dialog, tbox_height, tbox_width, tbox_y, tbox_x);
     if (w_text == 0) {
 	result = DLG_EXIT_ERROR;
 	goto finish;
     }
 
-    (void) keypad(w_text, TRUE);
     dlg_draw_box(dialog, tbox_y - MARGIN, tbox_x - MARGIN,
 		 (2 * MARGIN + 1), tbox_width + (MARGIN + EXT_WIDE),
 		 menubox_border_attr, menubox_border2_attr);
@@ -695,13 +675,12 @@ dlg_fselect(const char *title, const char *path, int height, int width, int dsel
     dbox_y = (2 * MARGIN + 1);
     dbox_x = tbox_x;
 
-    w_work = derwin(dialog, dbox_height, dbox_width, dbox_y, dbox_x);
+    w_work = dlg_der_window(dialog, dbox_height, dbox_width, dbox_y, dbox_x);
     if (w_work == 0) {
 	result = DLG_EXIT_ERROR;
 	goto finish;
     }
 
-    (void) keypad(w_work, TRUE);
     (void) mvwaddstr(dialog, dbox_y - (MARGIN + 1), dbox_x - MARGIN, d_label);
     dlg_draw_box(dialog,
 		 dbox_y - MARGIN, dbox_x - MARGIN,
@@ -716,13 +695,12 @@ dlg_fselect(const char *title, const char *path, int height, int width, int dsel
 	fbox_y = dbox_y;
 	fbox_x = tbox_x + dbox_width + (2 * MARGIN);
 
-	w_work = derwin(dialog, fbox_height, fbox_width, fbox_y, fbox_x);
+	w_work = dlg_der_window(dialog, fbox_height, fbox_width, fbox_y, fbox_x);
 	if (w_work == 0) {
 	    result = DLG_EXIT_ERROR;
 	    goto finish;
 	}
 
-	(void) keypad(w_work, TRUE);
 	(void) mvwaddstr(dialog, fbox_y - (MARGIN + 1), fbox_x - MARGIN, f_label);
 	dlg_draw_box(dialog,
 		     fbox_y - MARGIN, fbox_x - MARGIN,
@@ -870,6 +848,10 @@ dlg_fselect(const char *title, const char *path, int height, int width, int dsel
 	    case DLGK_ENTER:
 		result = (state > 0) ? dlg_enter_buttoncode(state) : DLG_EXIT_OK;
 		continue;
+	    case DLGK_LEAVE:
+		if (state >= 0)
+		    result = dlg_ok_buttoncode(state);
+		break;
 #ifdef KEY_RESIZE
 	    case KEY_RESIZE:
 		dlg_will_resize(dialog);
@@ -921,8 +903,7 @@ dlg_fselect(const char *title, const char *path, int height, int width, int dsel
 		first = FALSE;
 		state = sTEXT;
 	    }
-	} else if (state >= 0 &&
-		   (code = dlg_char_to_button(key, buttons)) >= 0) {
+	} else if ((code = dlg_char_to_button(key, buttons)) >= 0) {
 	    result = dlg_ok_buttoncode(code);
 	    break;
 	}

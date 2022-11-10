@@ -1,9 +1,9 @@
 /*
- *  $Id: progressbox.c,v 1.53 2020/03/27 21:10:23 tom Exp $
+ *  $Id: progressbox.c,v 1.55 2022/04/03 22:38:16 tom Exp $
  *
  *  progressbox.c -- implements the progress box
  *
- *  Copyright 2006-2019,2020	Thomas E. Dickey
+ *  Copyright 2006-2020,2022	Thomas E. Dickey
  *  Copyright 2005		Valery Reznic
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -22,12 +22,8 @@
  *	Boston, MA 02110, USA.
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 #include <dlg_keys.h>
-
-#ifdef KEY_RESIZE
-#include <errno.h>
-#endif
 
 #define MIN_HIGH (4)
 #define MIN_WIDE (10 + 2 * (2 + MARGIN))
@@ -68,6 +64,7 @@ free_obj(MY_OBJ * obj)
     free(obj);
 }
 
+#ifdef KEY_RESIZE
 static void
 restart_obj(MY_OBJ * obj)
 {
@@ -77,6 +74,7 @@ restart_obj(MY_OBJ * obj)
     dlg_clear();
     dlg_del_window(obj->obj.win);
 }
+#endif
 
 static void
 start_obj(MY_OBJ * obj, const char *title, const char *cprompt)
@@ -290,6 +288,9 @@ pause_for_ok(MY_OBJ * obj, const char *title, const char *cprompt)
     const char **buttons = dlg_ok_label();
     bool save_nocancel = dialog_vars.nocancel;
     bool redraw = TRUE;
+
+    (void) title;
+    (void) cprompt;
 
     dialog_vars.nocancel = TRUE;
     button = dlg_default_button();

@@ -1,9 +1,9 @@
 /*
- *  $Id: tailbox.c,v 1.78 2020/03/27 19:31:03 tom Exp $
+ *  $Id: tailbox.c,v 1.80 2022/04/03 22:38:16 tom Exp $
  *
  *  tailbox.c -- implements the tail box
  *
- *  Copyright 2000-2019,2020	Thomas E. Dickey
+ *  Copyright 2000-2020,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -24,9 +24,8 @@
  *	Pasquale De Marco (demarco_p@abramo.it)
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 #include <dlg_keys.h>
-#include <sys/stat.h>
 
 typedef struct {
     DIALOG_CALLBACK obj;
@@ -331,7 +330,7 @@ dialog_tailbox(const char *title,
     int old_width = width;
 #endif
     int fkey;
-    int x, y, result, thigh;
+    int x, y, result = DLG_EXIT_UNKNOWN, thigh;
     WINDOW *dialog, *text;
     const char **buttons = 0;
     MY_OBJ *obj;

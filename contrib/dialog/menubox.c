@@ -1,9 +1,9 @@
 /*
- *  $Id: menubox.c,v 1.169 2020/03/27 20:53:31 tom Exp $
+ *  $Id: menubox.c,v 1.175 2022/04/05 00:14:56 tom Exp $
  *
  *  menubox.c -- implements the menu box
  *
- *  Copyright 2000-2019,2020	Thomas E. Dickey
+ *  Copyright 2000-2021,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public Licens, version 2.1e
@@ -241,17 +241,24 @@ dlg_dummy_menutext(DIALOG_LISTITEM * items, int current, char *newtext)
 }
 
 static void
-print_menu(ALL_DATA * data, int choice, int scrollamt, int max_choice, bool is_inputmenu)
+print_menu(ALL_DATA * data,
+	   int choice,
+	   int scrollamt,
+	   int max_choice,
+	   int max_items,
+	   bool is_inputmenu)
 {
     int i;
 
     for (i = 0; i < max_choice; i++) {
-	print_item(data,
-		   data->menu,
-		   &data->items[i + scrollamt],
-		   i,
-		   (i == choice) ? Selected : Unselected,
-		   is_inputmenu);
+	int ii = i + scrollamt;
+	if (ii < max_items)
+	    print_item(data,
+		       data->menu,
+		       &data->items[ii],
+		       i,
+		       (i == choice) ? Selected : Unselected,
+		       is_inputmenu);
     }
 
     /* Clean bottom lines */
@@ -509,8 +516,9 @@ dlg_menu(const char *title,
 	scrollamt = choice - (max_choice - 1);
 	choice = max_choice - 1;
     }
-
-    print_menu(&all, choice, scrollamt, max_choice, is_inputmenu);
+#define PrintMenu() \
+    print_menu(&all, choice, scrollamt, max_choice, item_no, is_inputmenu)
+    PrintMenu();
 
     /* register the new window, along with its borders */
     dlg_mouse_mkbigregion(all.box_y + 1, all.box_x,
@@ -651,10 +659,10 @@ dlg_menu(const char *title,
 			choice = max_choice - 1;
 			scrollamt += (i - max_choice + 1);
 		    }
-		    print_menu(&all, choice, scrollamt, max_choice, is_inputmenu);
+		    PrintMenu();
 		} else {
 		    choice = i;
-		    print_menu(&all, choice, scrollamt, max_choice, is_inputmenu);
+		    PrintMenu();
 		    (void) wmove(dialog, cur_y, cur_x);
 		    wrefresh(dialog);
 		}
@@ -669,17 +677,19 @@ dlg_menu(const char *title,
 		dlg_draw_buttons(dialog, height - 2, 0, buttons, button,
 				 FALSE, width);
 		break;
+
 	    case DLGK_FIELD_NEXT:
 		button = dlg_next_button(buttons, button);
 		dlg_draw_buttons(dialog, height - 2, 0, buttons, button,
 				 FALSE, width);
 		break;
+
 	    case DLGK_TOGGLE:
 	    case DLGK_ENTER:
-		if (is_inputmenu)
-		    result = dlg_ok_buttoncode(button);
-		else
-		    result = dlg_enter_buttoncode(button);
+	    case DLGK_LEAVE:
+		result = ((key == DLGK_LEAVE)
+			  ? dlg_ok_buttoncode(button)
+			  : dlg_enter_buttoncode(button));
 
 		/*
 		 * If dlg_menu() is called from dialog_menu(), we want to
@@ -742,6 +752,11 @@ dlg_menu(const char *title,
 		resizeit(width, COLS);
 		free(prompt);
 		_dlg_resize_cleanup(dialog);
+		dlg_unregister_window(menu);
+		dlg_unregister_window(dialog);
+		/* keep position */
+		choice += scrollamt;
+		scrollamt = 0;
 		/* repaint */
 		goto retry;
 #endif

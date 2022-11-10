@@ -1,9 +1,9 @@
 /*
- *  $Id: util.c,v 1.289 2020/03/27 23:53:01 tom Exp $
+ *  $Id: util.c,v 1.308 2022/04/08 21:01:51 tom Exp $
  *
  *  util.c -- miscellaneous utilities for dialog
  *
- *  Copyright 2000-2019,2020	Thomas E. Dickey
+ *  Copyright 2000-2021,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -24,24 +24,21 @@
  *	Savio Lam (lam836@cs.cuhk.hk)
  */
 
-#include <dialog.h>
-#include <dlg_keys.h>
 #include <dlg_internals.h>
+#include <dlg_keys.h>
 
-#include <sys/time.h>
-
-#ifdef HAVE_SETLOCALE
-#include <locale.h>
+#if defined(NCURSES_VERSION)
+#define CAN_KEEP_TITE 1
+#elif defined(__NetBSD_Version__) && (__NetBSD_Version__ >= 800000000)
+#define CAN_KEEP_TITE 1
+#else
+#define CAN_KEEP_TITE 0
 #endif
 
-#ifdef NEED_WCHAR_H
-#include <wchar.h>
-#endif
-
-#ifdef NCURSES_VERSION
-#if defined(HAVE_NCURSESW_TERM_H)
+#if CAN_KEEP_TITE
+#if defined(NCURSES_VERSION) && defined(HAVE_NCURSESW_TERM_H)
 #include <ncursesw/term.h>
-#elif defined(HAVE_NCURSES_TERM_H)
+#elif defined(NCURSES_VERSION) && defined(HAVE_NCURSES_TERM_H)
 #include <ncurses/term.h>
 #else
 #include <term.h>
@@ -264,14 +261,7 @@ _dlg_resize_cleanup(WINDOW *w)
  * option to be given, but some scripts were written making use of the
  * behavior of dialog which tried opening the terminal anyway. 
  */
-static char *
-dialog_tty(void)
-{
-    char *result = getenv("DIALOG_TTY");
-    if (result != 0 && atoi(result) == 0)
-	result = 0;
-    return result;
-}
+#define dialog_tty() (dlg_getenv_num("DIALOG_TTY", (int *)0) > 0)
 
 /*
  * Open the terminal directly.  If one of stdin, stdout or stderr really points
@@ -295,7 +285,7 @@ open_terminal(char **result, int mode)
     return open(device, mode);
 }
 
-#ifdef NCURSES_VERSION
+#if CAN_KEEP_TITE
 static int
 my_putc(int ch)
 {
@@ -326,8 +316,10 @@ init_dialog(FILE *input, FILE *output)
     setlocale(LC_ALL, "");
 
     dialog_state.output = output;
-    dialog_state.tab_len = TAB_LEN;
-    dialog_state.aspect_ratio = DEFAULT_ASPECT_RATIO;
+    if (dialog_state.tab_len == 0)
+	dialog_state.tab_len = TAB_LEN;
+    if (dialog_state.aspect_ratio == 0)
+	dialog_state.aspect_ratio = DEFAULT_ASPECT_RATIO;
 #ifdef HAVE_COLOR
     dialog_state.use_colors = USE_COLORS;	/* use colors by default? */
     dialog_state.use_shadow = USE_SHADOW;	/* shadow dialog boxes by default? */
@@ -408,40 +400,7 @@ init_dialog(FILE *input, FILE *output)
 	dialog_state.screen_output = stdout;
 	(void) initscr();
     }
-#ifdef NCURSES_VERSION
-    /*
-     * Cancel xterm's alternate-screen mode.
-     */
-    if (!dialog_vars.keep_tite
-	&& (fileno(dialog_state.screen_output) != fileno(stdout)
-	    || isatty(fileno(dialog_state.screen_output)))
-	&& key_mouse != 0	/* xterm and kindred */
-	&& isprivate(enter_ca_mode)
-	&& isprivate(exit_ca_mode)) {
-	/*
-	 * initscr() or newterm() already wrote enter_ca_mode as a side
-	 * effect of initializing the screen.  It would be nice to not even
-	 * do that, but we do not really have access to the correct copy of
-	 * the terminfo description until those functions have been invoked.
-	 */
-	(void) refresh();
-	(void) tputs(exit_ca_mode, 0, my_putc);
-	(void) tputs(clear_screen, 0, my_putc);
-	/*
-	 * Prevent ncurses from switching "back" to the normal screen when
-	 * exiting from dialog.  That would move the cursor to the original
-	 * location saved in xterm.  Normally curses sets the cursor position
-	 * to the first line after the display, but the alternate screen
-	 * switching is done after that point.
-	 *
-	 * Cancelling the strings altogether also works around the buggy
-	 * implementation of alternate-screen in rxvt, etc., which clear
-	 * more of the display than they should.
-	 */
-	enter_ca_mode = 0;
-	exit_ca_mode = 0;
-    }
-#endif
+    dlg_keep_tite(dialog_state.screen_output);
 #ifdef HAVE_FLUSHINP
     (void) flushinp();
 #endif
@@ -462,6 +421,60 @@ init_dialog(FILE *input, FILE *output)
 
     /* Set screen to screen attribute */
     dlg_clear();
+}
+
+void
+dlg_keep_tite(FILE *output)
+{
+    if (!dialog_vars.keep_tite) {
+#if CAN_KEEP_TITE
+	/*
+	 * Cancel xterm's alternate-screen mode.
+	 */
+	if ((fileno(output) != fileno(stdout)
+	     || isatty(fileno(output)))
+	    && key_mouse != 0	/* xterm and kindred */
+	    && isprivate(enter_ca_mode)
+	    && isprivate(exit_ca_mode)) {
+	    FILE *save = dialog_state.screen_output;
+
+	    /*
+	     * initscr() or newterm() already wrote enter_ca_mode as a side
+	     * effect of initializing the screen.  It would be nice to not even
+	     * do that, but we do not really have access to the correct copy of
+	     * the terminfo description until those functions have been
+	     * invoked.
+	     */
+	    (void) refresh();
+	    dialog_state.screen_output = output;
+	    (void) tputs(exit_ca_mode, 0, my_putc);
+	    (void) tputs(clear_screen, 0, my_putc);
+	    dialog_state.screen_output = save;
+
+	    /*
+	     * Prevent ncurses from switching "back" to the normal screen when
+	     * exiting from dialog.  That would move the cursor to the original
+	     * location saved in xterm.  Normally curses sets the cursor
+	     * position to the first line after the display, but the alternate
+	     * screen switching is done after that point.
+	     *
+	     * Cancelling the strings altogether also works around the buggy
+	     * implementation of alternate-screen in rxvt, etc., which clear
+	     * more of the display than they should.
+	     */
+	    enter_ca_mode = 0;
+	    exit_ca_mode = 0;
+	}
+#else
+	/*
+	 * For other implementations, there are no useful answers:
+	 * + SVr4 curses "could" support a similar approach, but the clue about
+	 *   xterm is absent from its terminal database.
+	 * + PDCurses does not provide terminfo.
+	 */
+	(void) output;
+#endif
+    }
 }
 
 #ifdef HAVE_COLOR
@@ -607,6 +620,14 @@ end_dialog(void)
 {
     if (dialog_state.screen_initialized) {
 	dialog_state.screen_initialized = FALSE;
+	if (dialog_vars.erase_on_exit) {
+	    /*
+	     * Clear the screen to the native background color, and leave the
+	     * terminal cursor at the lower-left corner of the screen.
+	     */
+	    werase(stdscr);
+	    wrefresh(stdscr);
+	}
 	mouse_close();
 	(void) endwin();
 	(void) fflush(stdout);
@@ -625,7 +646,7 @@ dlg_count_real_columns(const char *text)
 	if (result && dialog_vars.colors) {
 	    int hidden = 0;
 	    while (*text) {
-		if (dialog_vars.colors && isOurEscape(text)) {
+		if (isOurEscape(text)) {
 		    hidden += ESCAPE_LEN;
 		    text += ESCAPE_LEN;
 		} else {
@@ -696,7 +717,7 @@ dlg_print_listitem(WINDOW *win,
     if (text == 0)
 	text = "";
 
-    if (first) {
+    if (first && !dialog_vars.no_hot_list) {
 	const int *indx = dlg_index_wchars(text);
 	attrs[3] = tag_key_selected_attr;
 	attrs[2] = tag_key_attr;
@@ -766,7 +787,7 @@ dlg_print_text(WINDOW *win, const char *txt, int cols, chtype *attr)
 		int code;
 
 		txt += 2;
-		switch (code = CharOf(*txt)) {
+		switch (code = UCH(*txt)) {
 #ifdef HAVE_COLOR
 		case '0':
 		case '1':
@@ -834,9 +855,8 @@ dlg_print_text(WINDOW *win, const char *txt, int cols, chtype *attr)
 	 * tabs are nonprinting, and curses will expand tabs to one or
 	 * more blanks.
 	 */
-	thisTab = (CharOf(*txt) == TAB);
+	thisTab = (UCH(*txt) == TAB);
 	if (dialog_state.text_only) {
-	    y_before = y_after;
 	    x_before = x_after;
 	} else {
 	    if (thisTab) {
@@ -845,7 +865,7 @@ dlg_print_text(WINDOW *win, const char *txt, int cols, chtype *attr)
 	    }
 	}
 	if (dialog_state.text_only) {
-	    int ch = CharOf(*txt++);
+	    int ch = UCH(*txt++);
 	    if (thisTab) {
 		while ((x_after++) % 8) {
 		    fputc(' ', dialog_state.output);
@@ -855,7 +875,7 @@ dlg_print_text(WINDOW *win, const char *txt, int cols, chtype *attr)
 		x_after++;	/* FIXME: handle meta per locale */
 	    }
 	} else {
-	    (void) waddch(win, CharOf(*txt++) | useattr);
+	    (void) waddch(win, UCH(*txt++) | useattr);
 	    getyx(win, y_after, x_after);
 	}
 	if (thisTab && (y_after == y_origin))
@@ -1538,18 +1558,49 @@ dlg_draw_box(WINDOW *win, int y, int x, int height, int width,
     dlg_draw_box2(win, y, x, height, width, boxchar, borderchar, boxchar);
 }
 
+/*
+ * Search the given 'list' for the given window 'win'.  Typically 'win' is an
+ * input-window, i.e., a window where we might use wgetch.
+ *
+ * The all-windows list has normal- and shadow-windows.  Since we never use the
+ * shadow as an input window, normally we just look for the normal-window.
+ *
+ * However, the all-subwindows list stores parent/child windows rather than
+ * normal/shadow windows.  When searching that list, we look for the child
+ * window (in the .shadow field).
+ */
 static DIALOG_WINDOWS *
-find_window(WINDOW *win)
+find_window(DIALOG_WINDOWS * list, WINDOW *win, bool normal)
 {
     DIALOG_WINDOWS *result = 0;
     DIALOG_WINDOWS *p;
 
-    for (p = dialog_state.all_windows; p != 0; p = p->next) {
-	if (p->normal == win) {
+    for (p = list; p != 0; p = p->next) {
+	WINDOW *check = normal ? p->normal : p->shadow;
+	if (check == win) {
 	    result = p;
 	    break;
 	}
     }
+    return result;
+}
+
+#define SearchTopWindows(win) find_window(dialog_state.all_windows, win, TRUE)
+#define SearchSubWindows(win) find_window(dialog_state.all_subwindows, win, FALSE)
+
+/*
+ * Check for the existence of a window, e.g., when used for input or updating
+ * the display.  This is used in dlg_getc() and related functions, to guard
+ * against an asynchronous window-deletion that might invalidate the input
+ * window used in dlg_getc().
+ */
+DIALOG_WINDOWS *
+_dlg_find_window(WINDOW *win)
+{
+    DIALOG_WINDOWS *result = 0;
+
+    if ((result = SearchTopWindows(win)) == NULL)
+	result = SearchSubWindows(win);
     return result;
 }
 
@@ -1751,7 +1802,7 @@ erase_childs_shadow(DIALOG_WINDOWS * dw)
 void
 dlg_draw_shadow(WINDOW *win, int y, int x, int height, int width)
 {
-    repaint_shadow(find_window(win), TRUE, y, x, height, width);
+    repaint_shadow(SearchTopWindows(win), TRUE, y, x, height, width);
 }
 #endif /* HAVE_COLOR */
 
@@ -1774,24 +1825,18 @@ dlg_exit(int code)
 	{ DLG_EXIT_HELP,   	"DIALOG_HELP" },
 	{ DLG_EXIT_OK,	   	"DIALOG_OK" },
 	{ DLG_EXIT_ITEM_HELP,	"DIALOG_ITEM_HELP" },
+	{ DLG_EXIT_TIMEOUT,	"DIALOG_TIMEOUT" },
     };
     /* *INDENT-ON* */
 
     unsigned n;
-    char *name;
-    char *temp;
-    long value;
     bool overridden = FALSE;
 
   retry:
     for (n = 0; n < TableSize(table); n++) {
 	if (table[n].code == code) {
-	    if ((name = getenv(table[n].name)) != 0) {
-		value = strtol(name, &temp, 0);
-		if (temp != 0 && temp != name && *temp == '\0') {
-		    code = (int) value;
-		    overridden = TRUE;
-		}
+	    if (dlg_getenv_num(table[n].name, &code)) {
+		overridden = TRUE;
 	    }
 	    break;
 	}
@@ -1812,8 +1857,8 @@ dlg_exit(int code)
 
 #ifdef NO_LEAKS
     _dlg_inputstr_leaks();
-#if defined(NCURSES_VERSION) && (defined(HAVE_CURSES_EXIT) || defined(HAVE__NC_FREE_AND_EXIT))
-    curses_exit(code);
+#if defined(NCURSES_VERSION) && (defined(HAVE_EXIT_CURSES) || defined(HAVE__NC_FREE_AND_EXIT))
+    exit_curses(code);
 #endif
 #endif
 
@@ -1912,7 +1957,51 @@ dlg_exiterr(const char *fmt, ...)
 
     (void) fflush(stderr);
     (void) fflush(stdout);
-    dlg_exit(DLG_EXIT_ERROR);
+    dlg_exit(strcmp(fmt, "timeout") == 0 ? DLG_EXIT_TIMEOUT : DLG_EXIT_ERROR);
+}
+
+/*
+ * Get a string from the environment, rejecting those which are entirely blank.
+ */
+char *
+dlg_getenv_str(const char *name)
+{
+    char *result = getenv(name);
+    if (result != NULL) {
+	while (*result != '\0' && isspace(UCH(*result)))
+	    ++result;
+	if (*result == '\0')
+	    result = NULL;
+    }
+    return result;
+}
+
+/*
+ * Get a number from the environment:
+ * + If the caller provides a pointer in the second parameter, return
+ *   success/failure for the function return, and the actual value via the
+ *   pointer.  Use this for decoding arbitrary numbers, e.g., negative or zero.
+ * + If the caller does not provide a pointer, return the decoded value for
+ *   the function-return.  Use this when only values greater than zero are
+ *   useful.
+ */
+int
+dlg_getenv_num(const char *name, int *value)
+{
+    int result = 0;
+    char *data = getenv(name);
+    if (data != NULL) {
+	char *temp = NULL;
+	long check = strtol(data, &temp, 0);
+	if (temp != 0 && temp != data && *temp == '\0') {
+	    result = (int) check;
+	    if (value != NULL) {
+		*value = result;
+		result = 1;
+	    }
+	}
+    }
+    return result;
 }
 
 void
@@ -2269,12 +2358,11 @@ dlg_set_timeout(WINDOW *win, bool will_getc)
 {
     DIALOG_WINDOWS *p;
     int result = 0;
-    int interval;
 
-    if ((p = find_window(win)) != NULL) {
-	interval = (dialog_vars.timeout_secs * 1000);
+    if ((p = SearchTopWindows(win)) != NULL) {
+	int interval = (dialog_vars.timeout_secs * 1000);
 
-	if (will_getc) {
+	if (will_getc || dialog_vars.pause_secs) {
 	    interval = WTIMEOUT_VAL;
 	} else {
 	    result = interval;
@@ -2293,7 +2381,7 @@ dlg_reset_timeout(WINDOW *win)
 {
     DIALOG_WINDOWS *p;
 
-    if ((p = find_window(win)) != NULL) {
+    if ((p = SearchTopWindows(win)) != NULL) {
 	wtimeout(win, p->getc_timeout);
     } else {
 	wtimeout(win, WTIMEOUT_OFF);
@@ -2312,7 +2400,7 @@ dlg_move_window(WINDOW *win, int height, int width, int y, int x)
 
 	dlg_ctl_size(height, width);
 
-	if ((p = find_window(win)) != 0) {
+	if ((p = SearchTopWindows(win)) != 0) {
 	    (void) wresize(win, height, width);
 	    (void) mvwin(win, y, x);
 #ifdef HAVE_COLOR
@@ -2366,6 +2454,21 @@ dlg_will_resize(WINDOW *win)
 	       caught == 1 ? "" : "s"));
 }
 #endif /* KEY_RESIZE */
+
+WINDOW *
+dlg_der_window(WINDOW *parent, int height, int width, int y, int x)
+{
+    WINDOW *win;
+
+    /* existing uses of derwin are (almost) guaranteed to succeed, and the
+     * caller has to allow for failure.
+     */
+    if ((win = derwin(parent, height, width, y, x)) != 0) {
+	add_subwindow(parent, win);
+	(void) keypad(win, TRUE);
+    }
+    return win;
+}
 
 WINDOW *
 dlg_sub_window(WINDOW *parent, int height, int width, int y, int x)
@@ -2579,13 +2682,19 @@ dlg_set_focus(WINDOW *parent, WINDOW *win)
 }
 
 /*
- * Returns the nominal maximum buffer size.
+ * Returns the nominal maximum buffer size, given the caller's estimate of
+ * the needed size.  If the parameter is not greater than zero, return the
+ * configured buffer size.
  */
 int
 dlg_max_input(int max_len)
 {
-    if (dialog_vars.max_input != 0 && dialog_vars.max_input < MAX_LEN)
-	max_len = dialog_vars.max_input;
+    int limit = ((dialog_vars.max_input > 0)
+		 ? dialog_vars.max_input
+		 : MAX_LEN);
+
+    if (max_len > limit || max_len <= 0)
+	max_len = limit;
 
     return max_len;
 }
@@ -2846,6 +2955,7 @@ dlg_getbegx(WINDOW *win)
 {
     int y, x;
     getbegyx(win, y, x);
+    (void) y;
     return x;
 }
 int
@@ -2853,6 +2963,7 @@ dlg_getbegy(WINDOW *win)
 {
     int y, x;
     getbegyx(win, y, x);
+    (void) x;
     return y;
 }
 #endif
@@ -2863,6 +2974,7 @@ dlg_getcurx(WINDOW *win)
 {
     int y, x;
     getyx(win, y, x);
+    (void) y;
     return x;
 }
 int
@@ -2870,6 +2982,7 @@ dlg_getcury(WINDOW *win)
 {
     int y, x;
     getyx(win, y, x);
+    (void) x;
     return y;
 }
 #endif
@@ -2880,6 +2993,7 @@ dlg_getmaxx(WINDOW *win)
 {
     int y, x;
     getmaxyx(win, y, x);
+    (void) y;
     return x;
 }
 int
@@ -2887,6 +3001,7 @@ dlg_getmaxy(WINDOW *win)
 {
     int y, x;
     getmaxyx(win, y, x);
+    (void) x;
     return y;
 }
 #endif
@@ -2897,6 +3012,7 @@ dlg_getparx(WINDOW *win)
 {
     int y, x;
     getparyx(win, y, x);
+    (void) y;
     return x;
 }
 int
@@ -2904,6 +3020,7 @@ dlg_getpary(WINDOW *win)
 {
     int y, x;
     getparyx(win, y, x);
+    (void) x;
     return y;
 }
 #endif

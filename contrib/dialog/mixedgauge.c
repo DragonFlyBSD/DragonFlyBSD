@@ -1,9 +1,9 @@
 /*
- *  $Id: mixedgauge.c,v 1.36 2020/03/26 03:22:44 tom Exp $
+ *  $Id: mixedgauge.c,v 1.38 2022/04/03 22:38:16 tom Exp $
  *
  *  mixedgauge.c -- implements the mixedgauge dialog
  *
- *  Copyright 2007-2019,2020	Thomas E. Dickey
+ *  Copyright 2007-2021,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -24,7 +24,7 @@
  *  (but different interface design).
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 
 #define LLEN(n) ((n) * MIXEDGAUGE_TAGS)
 #define ItemData(i)    &items[LLEN(i)]
@@ -130,8 +130,10 @@ myprint_status(DIALOG_MIXEDGAUGE * dlg)
 	    break;
 
 	status = status_string(dlg->list[item].text, &freeMe);
-	if (status == 0 || *status == 0)
+	if (status == 0 || *status == 0) {
+	    free(freeMe);
 	    continue;
+	}
 
 	(void) wmove(win, y, 2 * MARGIN);
 	dlg_attrset(win, dialog_attr);

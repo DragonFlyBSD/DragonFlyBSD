@@ -1,9 +1,9 @@
 /*
- * $Id: calendar.c,v 1.104 2020/03/27 20:20:18 tom Exp $
+ * $Id: calendar.c,v 1.110 2022/04/03 22:38:16 tom Exp $
  *
  *  calendar.c -- implements the calendar box
  *
- *  Copyright 2001-2019,2020	Thomas E. Dickey
+ *  Copyright 2001-2021,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -23,14 +23,6 @@
 
 #include <dlg_internals.h>
 #include <dlg_keys.h>
-
-#include <time.h>
-
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#else
-#define intptr_t long
-#endif
 
 #define ONE_DAY  (60 * 60 * 24)
 
@@ -512,12 +504,11 @@ init_object(BOX * data,
     data->box_draw = box_draw;
     data->week_start = key_offset;
 
-    data->window = derwin(data->parent,
-			  data->height, data->width,
-			  data->y, data->x);
+    data->window = dlg_der_window(data->parent,
+				  data->height, data->width,
+				  data->y, data->x);
     if (data->window == 0)
 	return -1;
-    (void) keypad(data->window, TRUE);
 
     dlg_mouse_setbase(getbegx(parent), getbegy(parent));
     if (code == 'D') {
@@ -749,7 +740,7 @@ dialog_calendar(const char *title,
     now_time = time((time_t *) 0);
     current = *localtime(&now_time);
 
-#if HAVE_MKTIME
+#ifdef HAVE_MKTIME
     current.tm_isdst = -1;
     if (year >= 1900) {
 	current.tm_year = year - 1900;
@@ -758,7 +749,7 @@ dialog_calendar(const char *title,
 	current.tm_mon = month - 1;
     }
     if (day > 0 && day <= days_per_month(current.tm_year + 1900,
-					 current.tm_mon + 1)) {
+					 current.tm_mon)) {
 	current.tm_mday = day;
     }
     now_time = mktime(&current);
@@ -884,7 +875,6 @@ dialog_calendar(const char *title,
 	    if (!dlg_button_key(result, &button, &key, &fkey))
 		break;
 	}
-
 #define Mouse2Key(key) (key - M_EVENT)
 	if (fkey && (key >= DLGK_MOUSE(KEY_MIN) && key <= DLGK_MOUSE(KEY_MAX))) {
 	    key = dlg_lookup_key(dialog, Mouse2Key(key), &fkey);
@@ -907,6 +897,9 @@ dialog_calendar(const char *title,
 	    case DLGK_TOGGLE:
 	    case DLGK_ENTER:
 		result = dlg_enter_buttoncode(button);
+		break;
+	    case DLGK_LEAVE:
+		result = dlg_ok_buttoncode(button);
 		break;
 	    case DLGK_FIELD_PREV:
 		state = dlg_prev_ok_buttonindex(state, sMONTH);

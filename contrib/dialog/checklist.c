@@ -1,9 +1,9 @@
 /*
- *  $Id: checklist.c,v 1.166 2020/03/27 20:19:51 tom Exp $
+ *  $Id: checklist.c,v 1.170 2022/04/04 22:25:11 tom Exp $
  *
  *  checklist.c -- implements the checklist box
  *
- *  Copyright 2000-2019,2020	Thomas E. Dickey
+ *  Copyright 2000-2020,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -26,7 +26,7 @@
  *	Alessandro Rubini - rubini@ipvvis.unipv.it: merged the two
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 #include <dlg_keys.h>
 
 #define MIN_HIGH  (1 + (5 * MARGIN))
@@ -98,18 +98,20 @@ print_item(ALL_DATA * data,
 }
 
 static void
-print_list(ALL_DATA * data, int choice, int scrollamt, int max_choice)
+print_list(ALL_DATA * data, int choice, int scrollamt, int max_choice, int max_items)
 {
     int i;
     int cur_y, cur_x;
 
     getyx(data->dialog, cur_y, cur_x);
     for (i = 0; i < max_choice; i++) {
-	print_item(data,
-		   data->list,
-		   &data->items[i + scrollamt],
-		   data->states,
-		   i, i == choice);
+	int ii = i + scrollamt;
+	if (ii < max_items)
+	    print_item(data,
+		       data->list,
+		       &data->items[ii],
+		       data->states,
+		       i, i == choice);
     }
     (void) wnoutrefresh(data->list);
 
@@ -367,7 +369,7 @@ dlg_checklist(const char *title,
 	scrollamt = MAX(0, choice - max_choice + 1);
 	choice = max_choice - 1;
     }
-    print_list(&all, choice, scrollamt, max_choice);
+    print_list(&all, choice, scrollamt, max_choice, item_no);
 
     /* register the new window, along with its borders */
     dlg_mouse_mkbigregion(all.box_y + 1, all.box_x,
@@ -399,7 +401,7 @@ dlg_checklist(const char *title,
 	    i = (key - KEY_MAX);
 	    if (i < max_choice) {
 		choice = (key - KEY_MAX);
-		print_list(&all, choice, scrollamt, max_choice);
+		print_list(&all, choice, scrollamt, max_choice, item_no);
 
 		key = DLGK_TOGGLE;	/* force the selected item to toggle */
 	    } else {
@@ -449,7 +451,7 @@ dlg_checklist(const char *title,
 		    (void) wmove(dialog, cur_y, cur_x);
 		} else {
 		    items[current].state = 1;
-		    print_list(&all, choice, scrollamt, max_choice);
+		    print_list(&all, choice, scrollamt, max_choice, item_no);
 		}
 	    }
 	    continue;		/* wait for another key press */
@@ -549,10 +551,10 @@ dlg_checklist(const char *title,
 			choice = max_choice - 1;
 			scrollamt += (i - max_choice + 1);
 		    }
-		    print_list(&all, choice, scrollamt, max_choice);
+		    print_list(&all, choice, scrollamt, max_choice, item_no);
 		} else {
 		    choice = i;
-		    print_list(&all, choice, scrollamt, max_choice);
+		    print_list(&all, choice, scrollamt, max_choice, item_no);
 		}
 	    }
 	    continue;		/* wait for another key press */
@@ -562,6 +564,9 @@ dlg_checklist(const char *title,
 	    switch (key) {
 	    case DLGK_ENTER:
 		result = dlg_enter_buttoncode(button);
+		break;
+	    case DLGK_LEAVE:
+		result = dlg_ok_buttoncode(button);
 		break;
 	    case DLGK_FIELD_PREV:
 		button = dlg_prev_button(buttons, button);
@@ -581,6 +586,9 @@ dlg_checklist(const char *title,
 		width = old_width;
 		free(prompt);
 		_dlg_resize_cleanup(dialog);
+		/* keep position */
+		choice += scrollamt;
+		scrollamt = 0;
 		/* repaint */
 		goto retry;
 #endif

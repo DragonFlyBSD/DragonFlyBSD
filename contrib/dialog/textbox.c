@@ -1,9 +1,9 @@
 /*
- *  $Id: textbox.c,v 1.124 2020/03/27 20:29:49 tom Exp $
+ *  $Id: textbox.c,v 1.128 2022/04/03 22:38:16 tom Exp $
  *
  *  textbox.c -- implements the text box
  *
- *  Copyright 2000-2019,2020	Thomas E.  Dickey
+ *  Copyright 2000-2021,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -24,7 +24,7 @@
  *	Savio Lam (lam836@cs.cuhk.hk)
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 #include <dlg_keys.h>
 
 #define PAGE_LENGTH	(height - 4)
@@ -133,7 +133,7 @@ read_high(MY_OBJ * obj, size_t size_read)
     buftab = xalloc(size_read + 1);
 
     if ((obj->fd_bytes_read = read(obj->fd, buftab, size_read)) != -1) {
-	int i = 0, j, n, tmpint;
+	int j;
 	long begin_line;
 
 	buftab[obj->fd_bytes_read] = '\0';	/* mark end of valid data */
@@ -179,22 +179,28 @@ read_high(MY_OBJ * obj, size_t size_read)
 
 	j = 0;
 	begin_line = 0;
-	while (j < obj->fd_bytes_read) {
-	    char ch;
+	if (obj->buf != NULL) {
+	    int i = 0;
 
-	    if (((ch = buftab[j++]) == TAB) && (dialog_vars.tab_correct != 0)) {
-		tmpint = (dialog_state.tab_len
-			  - ((int) ((long) i - begin_line) % dialog_state.tab_len));
-		for (n = 0; n < tmpint; n++)
-		    obj->buf[i++] = ' ';
-	    } else {
-		if (ch == '\n')
-		    begin_line = i + 1;
-		obj->buf[i++] = ch;
+	    while (j < obj->fd_bytes_read) {
+		char ch;
+
+		if (((ch = buftab[j++]) == TAB)
+		    && (dialog_vars.tab_correct != 0)) {
+		    int n;
+		    int tmpint = (dialog_state.tab_len
+				  - ((int) ((long) i - begin_line) % dialog_state.tab_len));
+		    for (n = 0; n < tmpint; n++)
+			obj->buf[i++] = ' ';
+		} else {
+		    if (ch == '\n')
+			begin_line = i + 1;
+		    obj->buf[i++] = ch;
+		}
 	    }
-	}
 
-	obj->buf[i] = '\0';	/* mark end of valid data */
+	    obj->buf[i] = '\0';	/* mark end of valid data */
+	}
 
     }
     if (obj->bytes_read == -1)
@@ -205,17 +211,19 @@ read_high(MY_OBJ * obj, size_t size_read)
 static long
 find_first(MY_OBJ * obj, char *buffer, long length)
 {
-    long recount = obj->page_length;
     long result = 0;
 
-    while (length > 0) {
-	if (buffer[length] == '\n') {
-	    if (--recount < 0) {
-		result = length;
-		break;
+    if (buffer != NULL) {
+	long recount = obj->page_length;
+	while (length > 0) {
+	    if (buffer[length] == '\n') {
+		if (--recount < 0) {
+		    result = length;
+		    break;
+		}
 	    }
+	    --length;
 	}
-	--length;
     }
     return result;
 }
@@ -272,30 +280,31 @@ static char *
 get_line(MY_OBJ * obj)
 {
     int i = 0;
-    long fpos;
 
     obj->end_reached = FALSE;
-    while (obj->buf[obj->in_buf] != '\n') {
-	if (obj->buf[obj->in_buf] == '\0') {	/* Either end of file or end of buffer reached */
-	    fpos = ftell_obj(obj);
+    if (obj->buf != NULL) {
+	while (obj->buf[obj->in_buf] != '\n') {
+	    if (obj->buf[obj->in_buf] == '\0') {	/* Either end of file or end of buffer reached */
+		long fpos = ftell_obj(obj);
 
-	    if (fpos < obj->file_size) {	/* Not end of file yet */
-		/* We've reached end of buffer, but not end of file yet, so
-		 * read next part of file into buffer
-		 */
-		read_high(obj, BUF_SIZE);
-		obj->in_buf = 0;
-	    } else {
-		if (!obj->end_reached)
-		    obj->end_reached = TRUE;
-		break;
+		if (fpos < obj->file_size) {	/* Not end of file yet */
+		    /* We've reached end of buffer, but not end of file yet, so
+		     * read next part of file into buffer
+		     */
+		    read_high(obj, BUF_SIZE);
+		    obj->in_buf = 0;
+		} else {
+		    if (!obj->end_reached)
+			obj->end_reached = TRUE;
+		    break;
+		}
+	    } else if (i < MAX_LEN)
+		obj->line[i++] = obj->buf[obj->in_buf++];
+	    else {
+		if (i == MAX_LEN)	/* Truncate lines longer than MAX_LEN characters */
+		    obj->line[i++] = '\0';
+		obj->in_buf++;
 	    }
-	} else if (i < MAX_LEN)
-	    obj->line[i++] = obj->buf[obj->in_buf++];
-	else {
-	    if (i == MAX_LEN)	/* Truncate lines longer than MAX_LEN characters */
-		obj->line[i++] = '\0';
-	    obj->in_buf++;
 	}
     }
     if (i <= MAX_LEN)
@@ -360,7 +369,10 @@ back_lines(MY_OBJ * obj, long n)
 	    }
 	}
 	obj->in_buf--;
-	if (obj->buf[obj->in_buf] != '\n')
+	if (obj->buf == NULL
+	    || obj->in_buf < 0
+	    || obj->in_buf >= obj->bytes_read
+	    || obj->buf[obj->in_buf] != '\n')
 	    /* Something's wrong... */
 	    dlg_exiterr("Internal error in back_lines().");
     }
@@ -867,10 +879,10 @@ dialog_textbox(const char *title, const char *filename, int height, int width)
 				 FALSE, width);
 		break;
 	    case DLGK_ENTER:
-		if (dialog_vars.nook)
-		    result = DLG_EXIT_OK;
-		else
-		    result = dlg_exit_buttoncode(button);
+		result = dlg_enter_buttoncode(button);
+		break;
+	    case DLGK_LEAVE:
+		result = dlg_ok_buttoncode(button);
 		break;
 	    case DLGK_PAGE_FIRST:
 		if (!obj.begin_reached) {

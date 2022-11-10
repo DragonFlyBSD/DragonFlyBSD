@@ -1,5 +1,5 @@
 /*
- *  $Id: rangebox.c,v 1.31 2020/03/27 20:30:54 tom Exp $
+ *  $Id: rangebox.c,v 1.32 2020/11/22 23:25:09 tom Exp $
  *
  *  rangebox.c -- implements the rangebox dialog
  *
@@ -323,6 +323,9 @@ dialog_rangebox(const char *title,
 		switch (key) {
 		case DLGK_TOGGLE:
 		case DLGK_ENTER:
+		    result = dlg_enter_buttoncode(button);
+		    break;
+		case DLGK_LEAVE:
 		    result = dlg_ok_buttoncode(button);
 		    break;
 		case DLGK_FIELD_PREV:

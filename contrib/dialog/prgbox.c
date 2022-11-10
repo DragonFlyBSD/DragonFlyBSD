@@ -1,9 +1,9 @@
 /*
- *  $Id: prgbox.c,v 1.14 2019/07/25 00:07:15 tom Exp $
+ *  $Id: prgbox.c,v 1.15 2022/04/03 22:38:16 tom Exp $
  *
  *  prgbox.c -- implements the prg box
  *
- *  Copyright 2011-2016,2019	Thomas E. Dickey
+ *  Copyright 2011-2019,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -21,7 +21,7 @@
  *	Boston, MA 02110, USA.
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 
 static void
 reapchild(int sig)

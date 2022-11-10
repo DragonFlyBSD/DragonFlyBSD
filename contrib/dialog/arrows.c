@@ -1,9 +1,9 @@
 /*
- *  $Id: arrows.c,v 1.53 2019/07/24 23:04:14 tom Exp $
+ *  $Id: arrows.c,v 1.54 2022/04/03 22:38:16 tom Exp $
  *
  *  arrows.c -- draw arrows to indicate end-of-range for lists
  *
- *  Copyright 2000-2018,2019	Thomas E. Dickey
+ *  Copyright 2000-2019,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -21,7 +21,7 @@
  *	Boston, MA 02110, USA.
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 
 #ifdef USE_WIDE_CURSES
 #if defined(CURSES_WACS_ARRAY) && !defined(CURSES_WACS_SYMBOLS)

@@ -1,9 +1,9 @@
 /*
- *  $Id: columns.c,v 1.11 2019/07/25 00:06:38 tom Exp $
+ *  $Id: columns.c,v 1.12 2022/04/03 22:38:16 tom Exp $
  *
  *  columns.c -- implements column-alignment
  *
- *  Copyright 2008-2011,2019	Thomas E. Dickey
+ *  Copyright 2008-2019,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -21,7 +21,7 @@
  *	Boston, MA 02110, USA.
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 
 #define each(row, data) \
  		row = 0, data = target; \

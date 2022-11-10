@@ -1,9 +1,9 @@
 /*
- *  $Id: mousewget.c,v 1.25 2019/07/25 00:06:38 tom Exp $
+ *  $Id: mousewget.c,v 1.26 2022/04/03 22:39:39 tom Exp $
  *
  *  mousewget.c -- mouse/wgetch support for dialog
  *
- *  Copyright 2000-2017,2019   Thomas E. Dickey
+ *  Copyright 2000-2019,2022	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -21,7 +21,7 @@
  *	Boston, MA 02110, USA.
  */
 
-#include <dialog.h>
+#include <dlg_internals.h>
 #include <dlg_keys.h>
 
 static int
