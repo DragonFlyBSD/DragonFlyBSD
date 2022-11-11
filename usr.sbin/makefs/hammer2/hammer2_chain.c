@@ -240,19 +240,16 @@ hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
 	 */
 	if (bref->flags & HAMMER2_BREF_FLAG_PFSROOT)
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_PFSBOUNDARY);
-	hammer2_chain_core_init(chain);
+	hammer2_chain_init(chain);
 
 	return (chain);
 }
 
 /*
- * Initialize a chain's core structure.  This structure used to be allocated
- * but is now embedded.
- *
- * The core is not locked.  No additional refs on the chain are made.
+ * A common function to initialize chains including fchain and vchain.
  */
 void
-hammer2_chain_core_init(hammer2_chain_t *chain)
+hammer2_chain_init(hammer2_chain_t *chain)
 {
 	RB_INIT(&chain->core.rbtree);	/* live chains */
 	hammer2_mtx_init(&chain->lock, "h2chain");
@@ -332,7 +329,7 @@ int
 hammer2_chain_insert(hammer2_chain_t *parent, hammer2_chain_t *chain,
 		     int flags, int generation)
 {
-	hammer2_chain_t *xchain;
+	hammer2_chain_t *xchain __debugvar;
 	int error = 0;
 
 	if (flags & HAMMER2_CHAIN_INSERT_SPIN)
@@ -746,7 +743,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 		 * new lookups, chain spinlock held to protect parent field.
 		 * Remove chain from the parent.
 		 *
-		 * If the chain is being removed from the parent's btree but
+		 * If the chain is being removed from the parent's rbtree but
 		 * is not blkmapped, we have to adjust live_count downward.  If
 		 * it is blkmapped then the blockref is retained in the parent
 		 * as is its associated live_count.  This case can occur when
@@ -1091,6 +1088,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	return 0;
 }
 
+#if 0
 /*
  * Lock the chain, retain the hold, and drop the data persistence count.
  * The data should remain valid because we never transitioned lockcnt
@@ -1103,7 +1101,6 @@ hammer2_chain_lock_unhold(hammer2_chain_t *chain, int how)
 	atomic_add_int(&chain->lockcnt, -1);
 }
 
-#if 0
 /*
  * Downgrade an exclusive chain lock to a shared chain lock.
  *
@@ -1293,23 +1290,13 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 	}
 
 	/*
-	 * Setup the data pointer, either pointing it to an embedded data
-	 * structure and copying the data from the buffer, or pointing it
-	 * into the buffer.
-	 *
-	 * The buffer is not retained when copying to an embedded data
-	 * structure in order to avoid potential deadlocks or recursions
-	 * on the same physical buffer.
-	 *
+	 * Setup the data pointer by pointing it into the buffer.
 	 * WARNING! Other threads can start using the data the instant we
 	 *	    set chain->data non-NULL.
 	 */
 	switch (bref->type) {
 	case HAMMER2_BREF_TYPE_VOLUME:
 	case HAMMER2_BREF_TYPE_FREEMAP:
-		/*
-		 * Copy data from bp to embedded buffer
-		 */
 		panic("hammer2_chain_load_data: unresolved volume header");
 		break;
 	case HAMMER2_BREF_TYPE_DIRENT:
@@ -1413,6 +1400,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	hammer2_mtx_unlock(&chain->lock);
 }
 
+#if 0
 /*
  * Unlock and hold chain data intact
  */
@@ -1422,6 +1410,7 @@ hammer2_chain_unlock_hold(hammer2_chain_t *chain)
 	atomic_add_int(&chain->lockcnt, 1);
 	hammer2_chain_unlock(chain);
 }
+#endif
 
 /*
  * Helper to obtain the blockref[] array base and count for a chain.
@@ -2201,10 +2190,6 @@ hammer2_chain_find_callback(hammer2_chain_t *child, void *data)
 	hammer2_chain_t *best;
 	hammer2_key_t child_end;
 
-	/*
-	 * WARNING! Layerq is scanned forwards, exact matches should keep
-	 *	    the existing info->best.
-	 */
 	if ((best = info->best) == NULL) {
 		/*
 		 * No previous best.  Assign best
@@ -6115,4 +6100,71 @@ hammer2_chain_dirent_test(hammer2_chain_t *chain, const char *name,
 		}
 	}
 	return 0;
+}
+
+/*
+ * Debugging
+ */
+void
+hammer2_dump_chain(hammer2_chain_t *chain, int tab, int bi, int *countp,
+		   char pfx, u_int flags)
+{
+	hammer2_chain_t *scan;
+	hammer2_chain_t *parent;
+
+	--*countp;
+	if (*countp == 0) {
+		kprintf("%*.*s...\n", tab, tab, "");
+		return;
+	}
+	if (*countp < 0)
+		return;
+	kprintf("%*.*s%c-chain %p %s.%-3d %016jx %016jx/%-2d mir=%016jx\n",
+		tab, tab, "", pfx, chain,
+		hammer2_bref_type_str(chain->bref.type), bi,
+		chain->bref.data_off, chain->bref.key, chain->bref.keybits,
+		chain->bref.mirror_tid);
+
+	kprintf("%*.*s      [%08x] (%s) refs=%d",
+		tab, tab, "",
+		chain->flags,
+		((chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
+		chain->data) ?  (char *)chain->data->ipdata.filename : "?"),
+		chain->refs);
+
+	parent = chain->parent;
+	if (parent)
+		kprintf("\n%*.*s      p=%p [pflags %08x prefs %d]",
+			tab, tab, "",
+			parent, parent->flags, parent->refs);
+	if (RB_EMPTY(&chain->core.rbtree)) {
+		kprintf("\n");
+	} else {
+		int bi = 0;
+		kprintf(" {\n");
+		RB_FOREACH(scan, hammer2_chain_tree, &chain->core.rbtree) {
+			if ((scan->flags & flags) || flags == (u_int)-1) {
+				hammer2_dump_chain(scan, tab + 4, bi, countp,
+						   'a', flags);
+			}
+			bi++;
+		}
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE && chain->data)
+			kprintf("%*.*s}(%s)\n", tab, tab, "",
+				chain->data->ipdata.filename);
+		else
+			kprintf("%*.*s}\n", tab, tab, "");
+	}
+}
+
+void
+hammer2_dump_chains(hammer2_dev_t *hmp, char vpfx, char fpfx)
+{
+	int dumpcnt;
+
+	dumpcnt = 50;
+	hammer2_dump_chain(&hmp->vchain, 0, 0, &dumpcnt, vpfx, (u_int)-1);
+
+	dumpcnt = 50;
+	hammer2_dump_chain(&hmp->fchain, 0, 0, &dumpcnt, fpfx, (u_int)-1);
 }

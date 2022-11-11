@@ -509,11 +509,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 /*
  * Flags passed to hammer2_chain_lock()
  *
- * NOTE: RDONLY is set to optimize cluster operations when *no* modifications
- *	 will be made to either the cluster being locked or any underlying
- *	 cluster.  It allows the cluster to lock and access data for a subset
- *	 of available nodes instead of all available nodes.
- *
  * NOTE: NONBLOCK is only used for hammer2_chain_repparent() and getparent(),
  *	 other functions (e.g. hammer2_chain_lookup(), etc) can't handle its
  *	 operation.
@@ -1238,7 +1233,7 @@ struct hammer2_pfs {
 	hammer2_spin_t		inum_spin;	/* inumber lookup */
 	struct hammer2_inode_tree inum_tree;	/* (not applicable to spmp) */
 	long			inum_count;	/* #of inodes in inum_tree */
-	hammer2_spin_t		lru_spin;	/* inumber lookup */
+	hammer2_spin_t		lru_spin;
 	struct hammer2_chain_list lru_list;	/* basis for LRU tests */
 	int			lru_count;	/* #of chains on LRU */
 	int			flags;
@@ -1561,7 +1556,7 @@ int vflush(struct mount *mp, int rootrefs, int flags);
 hammer2_chain_t *hammer2_chain_alloc(hammer2_dev_t *hmp,
 				hammer2_pfs_t *pmp,
 				hammer2_blockref_t *bref);
-void hammer2_chain_core_init(hammer2_chain_t *chain);
+void hammer2_chain_init(hammer2_chain_t *chain);
 void hammer2_chain_ref(hammer2_chain_t *chain);
 void hammer2_chain_ref_hold(hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_chain_t *chain);
@@ -1569,7 +1564,7 @@ void hammer2_chain_drop_unhold(hammer2_chain_t *chain);
 void hammer2_chain_unhold(hammer2_chain_t *chain);
 void hammer2_chain_rehold(hammer2_chain_t *chain);
 int hammer2_chain_lock(hammer2_chain_t *chain, int how);
-void hammer2_chain_lock_unhold(hammer2_chain_t *chain, int how);
+//void hammer2_chain_lock_unhold(hammer2_chain_t *chain, int how);
 void hammer2_chain_load_data(hammer2_chain_t *chain);
 
 int hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
@@ -1584,7 +1579,7 @@ int hammer2_chain_resize(hammer2_chain_t *chain,
 				hammer2_tid_t mtid, hammer2_off_t dedup_off,
 				int nradix, int flags);
 void hammer2_chain_unlock(hammer2_chain_t *chain);
-void hammer2_chain_unlock_hold(hammer2_chain_t *chain);
+//void hammer2_chain_unlock_hold(hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_get(hammer2_chain_t *parent, int generation,
 				hammer2_blockref_t *bref, int how);
 hammer2_chain_t *hammer2_chain_lookup_init(hammer2_chain_t *parent, int flags);
@@ -1636,6 +1631,9 @@ void hammer2_base_insert(hammer2_chain_t *parent,
 				hammer2_blockref_t *base, int count,
 				hammer2_chain_t *chain,
 				hammer2_blockref_t *elm);
+void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int bi, int *countp,
+				char pfx, u_int flags);
+void hammer2_dump_chains(hammer2_dev_t *hmp, char vpfx, char fpfx);
 
 /*
  * hammer2_flush.c
@@ -1898,8 +1896,6 @@ int hammer2_msg_adhoc_input(kdmsg_msg_t *msg);
 /*
  * hammer2_vfsops.c
  */
-void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int bi, int *countp,
-				char pfx, u_int flags);
 int hammer2_vfs_sync(struct mount *mp, int waitflags);
 int hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor);
 int hammer2_vfs_enospace(hammer2_inode_t *ip, off_t bytes, struct ucred *cred);
@@ -1930,8 +1926,6 @@ int hammer2_vfs_uninit(void);
 int hammer2_vfs_mount(struct vnode *makefs_devvp, struct mount *mp,
 			const char *label, const struct hammer2_mount_info *mi);
 int hammer2_vfs_unmount(struct mount *mp, int mntflags);
-
-void hammer2_dump_chains(hammer2_dev_t *hmp, char vpfx, char fpfx);
 
 /*
  * hammer2_freemap.c

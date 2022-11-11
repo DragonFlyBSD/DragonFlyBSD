@@ -604,7 +604,8 @@ hammer2_init_vfsvolumes(struct mount *mp, const hammer2_devvp_list_t *devvpl,
 		}
 		vol = &volumes[voldata->volu_id];
 		if (vol->id != -1) {
-			hprintf("%s already initialized\n", path);
+			hprintf("volume id %d already initialized\n",
+				voldata->volu_id);
 			error = EINVAL;
 			goto done;
 		}

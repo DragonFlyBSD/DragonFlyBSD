@@ -696,12 +696,6 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	if (error)
 		goto done;
 
-	/*
-	 * Use XOP for cluster scan.
-	 *
-	 * parent is the inode cluster, already locked for us.  Don't
-	 * double lock shared locks as this will screw up upgrades.
-	 */
 	xop = hammer2_xop_alloc(ip, 0);
 	xop->lkey = lkey;
 	hammer2_xop_start(&xop->head, &hammer2_readdir_desc);
@@ -1486,11 +1480,6 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	 * NOTE: For error processing, only ENOENT resolves the namecache
 	 *	 entry to NULL, otherwise we just return the error and
 	 *	 leave the namecache unresolved.
-	 *
-	 * NOTE: multiple hammer2_inode structures can be aliased to the
-	 *	 same chain element, for example for hardlinks.  This
-	 *	 use case does not 'reattach' inode associations that
-	 *	 might already exist, but always allocates a new one.
 	 *
 	 * WARNING: inode structure is locked exclusively via inode_get
 	 *	    but chain was locked shared.  inode_unlock()

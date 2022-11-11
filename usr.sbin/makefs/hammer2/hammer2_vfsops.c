@@ -142,7 +142,7 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, flush_pipe, CTLFLAG_RW,
 	   &hammer2_flush_pipe, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, bulkfree_tps, CTLFLAG_RW,
 	   &hammer2_bulkfree_tps, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, chain_allocs, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, chain_allocs, CTLFLAG_RD,
 	   &hammer2_chain_allocs, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, limit_saved_chains, CTLFLAG_RW,
 	   &hammer2_limit_saved_chains, 0, "");
@@ -152,48 +152,48 @@ SYSCTL_LONG(_vfs_hammer2, OID_AUTO, limit_dirty_chains, CTLFLAG_RW,
 	   &hammer2_limit_dirty_chains, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, limit_dirty_inodes, CTLFLAG_RW,
 	   &hammer2_limit_dirty_inodes, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, count_modified_chains, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, count_modified_chains, CTLFLAG_RD,
 	   &hammer2_count_modified_chains, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, dio_count, CTLFLAG_RD,
 	   &hammer2_dio_count, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, dio_limit, CTLFLAG_RW,
 	   &hammer2_dio_limit, 0, "");
 
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_read, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_read, CTLFLAG_RD,
 	   &hammer2_iod_file_read, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_meta_read, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_meta_read, CTLFLAG_RD,
 	   &hammer2_iod_meta_read, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_indr_read, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_indr_read, CTLFLAG_RD,
 	   &hammer2_iod_indr_read, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_fmap_read, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_fmap_read, CTLFLAG_RD,
 	   &hammer2_iod_fmap_read, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_volu_read, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_volu_read, CTLFLAG_RD,
 	   &hammer2_iod_volu_read, 0, "");
 
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_write, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_write, CTLFLAG_RD,
 	   &hammer2_iod_file_write, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_wembed, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_wembed, CTLFLAG_RD,
 	   &hammer2_iod_file_wembed, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_wzero, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_wzero, CTLFLAG_RD,
 	   &hammer2_iod_file_wzero, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_wdedup, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_wdedup, CTLFLAG_RD,
 	   &hammer2_iod_file_wdedup, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_meta_write, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_meta_write, CTLFLAG_RD,
 	   &hammer2_iod_meta_write, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_indr_write, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_indr_write, CTLFLAG_RD,
 	   &hammer2_iod_indr_write, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_fmap_write, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_fmap_write, CTLFLAG_RD,
 	   &hammer2_iod_fmap_write, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_volu_write, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_volu_write, CTLFLAG_RD,
 	   &hammer2_iod_volu_write, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_inode_creates, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_inode_creates, CTLFLAG_RD,
 	   &hammer2_iod_inode_creates, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_inode_deletes, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_inode_deletes, CTLFLAG_RD,
 	   &hammer2_iod_inode_deletes, 0, "");
 
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, process_icrc32, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, process_icrc32, CTLFLAG_RD,
 	   &hammer2_process_icrc32, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, process_xxhash64, CTLFLAG_RW,
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, process_xxhash64, CTLFLAG_RD,
 	   &hammer2_process_xxhash64, 0, "");
 
 /*
@@ -879,7 +879,7 @@ again:
 			*/
 			rchain = iroot->cluster.array[i].chain;
 			iroot->cluster.array[i].chain = NULL;
-			pmp->pfs_types[i] = 0;
+			pmp->pfs_types[i] = HAMMER2_PFSTYPE_NONE;
 			if (pmp->pfs_names[i]) {
 				kfree(pmp->pfs_names[i], M_HAMMER2);
 				pmp->pfs_names[i] = NULL;
@@ -1099,14 +1099,12 @@ next_hmp:
 		 * Now open the device
 		 */
 		KKASSERT(!TAILQ_EMPTY(&devvpl));
-		if (error == 0) {
-			error = hammer2_open_devvp(&devvpl, ronly);
-			if (error) {
-				hammer2_close_devvp(&devvpl, ronly);
-				hammer2_cleanup_devvp(&devvpl);
-				lockmgr(&hammer2_mntlk, LK_RELEASE);
-				return error;
-			}
+		error = hammer2_open_devvp(&devvpl, ronly);
+		if (error) {
+			hammer2_close_devvp(&devvpl, ronly);
+			hammer2_cleanup_devvp(&devvpl);
+			lockmgr(&hammer2_mntlk, LK_RELEASE);
+			return error;
 		}
 
 		/*
@@ -1152,8 +1150,6 @@ next_hmp:
 		/*
 		 * vchain setup. vchain.data is embedded.
 		 * vchain.refs is initialized and will never drop to 0.
-		 *
-		 * NOTE! voldata is not yet loaded.
 		 */
 		hmp->vchain.hmp = hmp;
 		hmp->vchain.refs = 1;
@@ -1161,7 +1157,7 @@ next_hmp:
 		hmp->vchain.bref.type = HAMMER2_BREF_TYPE_VOLUME;
 		hmp->vchain.bref.data_off = 0 | HAMMER2_PBUFRADIX;
 		hmp->vchain.bref.mirror_tid = hmp->voldata.mirror_tid;
-		hammer2_chain_core_init(&hmp->vchain);
+		hammer2_chain_init(&hmp->vchain);
 
 		/*
 		 * fchain setup.  fchain.data is embedded.
@@ -1182,7 +1178,7 @@ next_hmp:
 		hmp->fchain.bref.methods =
 			HAMMER2_ENC_CHECK(HAMMER2_CHECK_FREEMAP) |
 			HAMMER2_ENC_COMP(HAMMER2_COMP_NONE);
-		hammer2_chain_core_init(&hmp->fchain);
+		hammer2_chain_init(&hmp->fchain);
 
 		/*
 		 * Initialize volume header related fields.
@@ -1290,7 +1286,6 @@ next_hmp:
 		 */
 		hammer2_dummy_xop_from_chain(&xop, schain);
 		hammer2_inode_drop(spmp->iroot);
-		spmp->iroot = NULL;
 		spmp->iroot = hammer2_inode_get(spmp, &xop, -1, -1);
 		spmp->spmp_hmp = hmp;
 		spmp->pfs_types[0] = ripdata->meta.pfs_type;
@@ -1395,11 +1390,7 @@ next_hmp:
 
 	/*
 	 * Acquire the pmp structure (it should have already been allocated
-	 * via hammer2_update_pmps() so do not pass cluster in to add to
-	 * available chains).
-	 *
-	 * Check if the cluster has already been mounted.  A cluster can
-	 * only be mounted once, use null mounts to mount additional copies.
+	 * via hammer2_update_pmps()).
 	 */
 	if (chain->error) {
 		kprintf("hammer2_mount: PFS label I/O error\n");
@@ -1411,16 +1402,27 @@ next_hmp:
 	hammer2_chain_drop(chain);
 
 	/*
+	 * PFS to mount must exist at this point.
+	 */
+	if (pmp == NULL) {
+		kprintf("hammer2_mount: Failed to acquire PFS structure\n");
+		hammer2_unmount_helper(mp, NULL, hmp);
+		lockmgr(&hammer2_mntlk, LK_RELEASE);
+		hammer2_vfs_unmount(mp, MNT_FORCE);
+		return EINVAL;
+	}
+
+	/*
 	 * Finish the mount
 	 */
 	kprintf("hammer2_mount: hmp=%p pmp=%p\n", hmp, pmp);
 
+	/* Check if the pmp has already been mounted. */
 	if (pmp->mp) {
 		kprintf("hammer2_mount: PFS already mounted!\n");
 		hammer2_unmount_helper(mp, NULL, hmp);
 		lockmgr(&hammer2_mntlk, LK_RELEASE);
 		hammer2_vfs_unmount(mp, MNT_FORCE);
-
 		return EBUSY;
 	}
 
@@ -1817,6 +1819,11 @@ again:
 		atomic_clear_int(&hmp->fchain.flags, HAMMER2_CHAIN_UPDATE);
 	}
 
+	dumpcnt = 50;
+	hammer2_dump_chain(&hmp->vchain, 0, 0, &dumpcnt, 'v', (u_int)-1);
+	dumpcnt = 50;
+	hammer2_dump_chain(&hmp->fchain, 0, 0, &dumpcnt, 'f', (u_int)-1);
+
 	/*
 	 * Final drop of embedded freemap root chain to
 	 * clean up fchain.core (fchain structure is not
@@ -1831,11 +1838,6 @@ again:
 	 * ALLOCATED so it is cleaned out and then left to
 	 * rot).
 	 */
-	dumpcnt = 50;
-	hammer2_dump_chain(&hmp->vchain, 0, 0, &dumpcnt, 'v', (u_int)-1);
-	dumpcnt = 50;
-	hammer2_dump_chain(&hmp->fchain, 0, 0, &dumpcnt, 'f', (u_int)-1);
-
 	hammer2_chain_drop(&hmp->vchain);
 
 	hammer2_io_cleanup(hmp, &hmp->iotree);
@@ -3057,74 +3059,4 @@ hammer2_vfs_enospace(hammer2_inode_t *ip, off_t bytes, struct ucred *cred)
 	if ((int64_t)(free_nominal - bytes) < (int64_t)free_reserved * 2)
 		return 1;
 	return 0;
-}
-
-/*
- * Debugging
- */
-void
-hammer2_dump_chain(hammer2_chain_t *chain, int tab, int bi, int *countp,
-		   char pfx, u_int flags)
-{
-	hammer2_chain_t *scan;
-	hammer2_chain_t *parent;
-
-	if (hammer2_debug & 0x80000000)
-		*countp = INT_MAX;
-
-	--*countp;
-	if (*countp == 0) {
-		kprintf("%*.*s...\n", tab, tab, "");
-		return;
-	}
-	if (*countp < 0)
-		return;
-	kprintf("%*.*s%c-chain %p %s.%-3d %016jx %016jx/%-2d mir=%016jx\n",
-		tab, tab, "", pfx, chain,
-		hammer2_bref_type_str(chain->bref.type), bi,
-		chain->bref.data_off, chain->bref.key, chain->bref.keybits,
-		chain->bref.mirror_tid);
-
-	kprintf("%*.*s      [%08x] (%s) refs=%d",
-		tab, tab, "",
-		chain->flags,
-		((chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
-		chain->data) ?  (char *)chain->data->ipdata.filename : "?"),
-		chain->refs);
-
-	parent = chain->parent;
-	if (parent)
-		kprintf("\n%*.*s      p=%p [pflags %08x prefs %d]",
-			tab, tab, "",
-			parent, parent->flags, parent->refs);
-	if (RB_EMPTY(&chain->core.rbtree)) {
-		kprintf("\n");
-	} else {
-		int bi = 0;
-		kprintf(" {\n");
-		RB_FOREACH(scan, hammer2_chain_tree, &chain->core.rbtree) {
-			if ((scan->flags & flags) || flags == (u_int)-1) {
-				hammer2_dump_chain(scan, tab + 4, bi, countp,
-						   'a', flags);
-			}
-			bi++;
-		}
-		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE && chain->data)
-			kprintf("%*.*s}(%s)\n", tab, tab, "",
-				chain->data->ipdata.filename);
-		else
-			kprintf("%*.*s}\n", tab, tab, "");
-	}
-}
-
-void
-hammer2_dump_chains(hammer2_dev_t *hmp, char vpfx, char fpfx)
-{
-	int dumpcnt;
-
-	dumpcnt = 50;
-	hammer2_dump_chain(&hmp->vchain, 0, 0, &dumpcnt, vpfx, (u_int)-1);
-
-	dumpcnt = 50;
-	hammer2_dump_chain(&hmp->fchain, 0, 0, &dumpcnt, fpfx, (u_int)-1);
 }

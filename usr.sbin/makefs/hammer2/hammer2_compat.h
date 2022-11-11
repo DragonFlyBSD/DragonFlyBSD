@@ -87,6 +87,8 @@
 //#define KASSERT(exp, msg)	assert(exp)
 #define KKASSERT(exp)		assert(exp)
 
+#define	__debugvar
+
 #define panic(s, ...)		errx(1, s, ## __VA_ARGS__)
 
 #define ERESTART	(-1)
