@@ -1,6 +1,6 @@
 /*
  * a error2str function to make sense of all the
- * error codes we have laying ardoun
+ * error codes we have laying around
  *
  * a Net::DNS like library for C
  * LibDNS Team @ NLnet Labs
@@ -157,6 +157,33 @@ ldns_lookup_table ldns_error_str[] = {
 		"X509_STORE_CTX_set0_dane() functions within OpenSSL >= 1.1.0 "
 		"to be able to verify the DANE-TA usage type." },
 #endif
+	{ LDNS_STATUS_ZONEMD_DOUBLE_OCCURRENCE, "A ZONEMD with the same "
+		"<scheme> and hash algorithm occurred more than once." },
+	{ LDNS_STATUS_ZONEMD_UNKNOWN_SCHEME, "Unknown ZONEMD <scheme>" },
+	{ LDNS_STATUS_ZONEMD_UNKNOWN_HASH, "Unknown ZONEMD hash algorithm" },
+	{ LDNS_STATUS_ZONEMD_INVALID_SOA,
+		"Missing or invalid SOA to associate with ZONEMD RR" },
+	{ LDNS_STATUS_NO_ZONEMD,
+		"NSEC(3) RRs indicate that a ZONEMD exists, "
+	        "but it is not found in the zone" },
+	{ LDNS_STATUS_NO_VALID_ZONEMD,
+		"No ZONEMD matching the zone data was found" },
+	{ LDNS_STATUS_SYNTAX_SVCPARAM_KEY_ERR, "Syntax error in a key in "
+		"the ServiceParam rdata field of SVCB or HTTPS RR" },
+	{ LDNS_STATUS_SYNTAX_SVCPARAM_VALUE_ERR, "Syntax error in a value in "
+		"the ServiceParam rdata field of SVCB or HTTPS RR" },
+	{ LDNS_STATUS_RESERVED_SVCPARAM_KEY,
+		"key65535 is reserved and MUST NOT be used "
+		"in the ServiceParam rdata field of SVCB or HTTPS RR" },
+	{ LDNS_STATUS_NO_SVCPARAM_VALUE_EXPECTED,
+		"A value was found for a key that SHOULD not have a value "
+		"in the ServiceParam rdata field of SVCB or HTTPS RR" },
+	{ LDNS_STATUS_SVCPARAM_KEY_MORE_THAN_ONCE,
+		"A key was found more than once "
+		"in the ServiceParam rdata field of SVCB or HTTPS RR" },
+	{ LDNS_STATUS_INVALID_SVCPARAM_VALUE,
+		"Invalid wireformat of a value "
+		"in the ServiceParam rdata field of SVCB or HTTPS RR" },
 	{ 0, NULL }
 };
 

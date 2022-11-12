@@ -463,7 +463,7 @@ ldns_udp_send_from(uint8_t **result, ldns_buffer *qbin,
 	}
 
         /* set to nonblocking, so if the checksum is bad, it becomes
-         * an EGAIN error and the ldns_udp_send function does not block,
+         * an EAGAIN error and the ldns_udp_send function does not block,
          * but returns a 'NETWORK_ERROR' much like a timeout. */
         ldns_sock_nonblock(sockfd);
 

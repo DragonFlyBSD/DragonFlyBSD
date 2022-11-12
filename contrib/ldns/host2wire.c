@@ -375,6 +375,20 @@ compression_node_free(ldns_rbnode_t *node, void *arg)
 ldns_status
 ldns_pkt2buffer_wire(ldns_buffer *buffer, const ldns_pkt *packet)
 {
+	ldns_status status;
+	ldns_rbtree_t *compression_data = ldns_rbtree_create((int (*)(const void *, const void *))ldns_dname_compare);
+
+	status = ldns_pkt2buffer_wire_compress(buffer, packet, compression_data);
+
+	ldns_traverse_postorder(compression_data,compression_node_free,NULL);
+	ldns_rbtree_free(compression_data);
+
+	return status;
+}
+
+ldns_status
+ldns_pkt2buffer_wire_compress(ldns_buffer *buffer, const ldns_pkt *packet, ldns_rbtree_t *compression_data)
+{
 	ldns_rr_list *rr_list;
 	uint16_t i;
 
@@ -382,8 +396,9 @@ ldns_pkt2buffer_wire(ldns_buffer *buffer, const ldns_pkt *packet)
 	ldns_rr *edns_rr;
 	uint8_t edata[4];
 
-	ldns_rbtree_t *compression_data = ldns_rbtree_create((int (*)(const void *, const void *))ldns_dname_compare);
-	
+	ldns_buffer *edns_buf = NULL;
+	ldns_rdf    *edns_rdf = NULL;
+
 	(void) ldns_hdr2buffer_wire(buffer, packet);
 
 	rr_list = ldns_pkt_question(packet);
@@ -428,11 +443,22 @@ ldns_pkt2buffer_wire(ldns_buffer *buffer, const ldns_pkt *packet)
 		ldns_write_uint16(&edata[2], ldns_pkt_edns_z(packet));
 		ldns_rr_set_ttl(edns_rr, ldns_read_uint32(edata));
 		/* don't forget to add the edns rdata (if any) */
-		if (packet->_edns_data)
-			ldns_rr_push_rdf (edns_rr, packet->_edns_data);
+		if ((edns_buf = ldns_edns_option_list2wireformat_buffer(packet->_edns_list))) {
+			edns_rdf = ldns_rdf_new( LDNS_RDF_TYPE_UNKNOWN
+			                       , ldns_buffer_limit(edns_buf)
+			                       , ldns_buffer_export(edns_buf));
+			ldns_buffer_free(edns_buf);
+		}
+		if (edns_rdf)
+			ldns_rr_push_rdf(edns_rr, edns_rdf);
+		else if (packet->_edns_data)
+			ldns_rr_push_rdf(edns_rr, packet->_edns_data);
 		(void)ldns_rr2buffer_wire_compress(buffer, edns_rr, LDNS_SECTION_ADDITIONAL, compression_data);
-		/* take the edns rdata back out of the rr before we free rr */
-		if (packet->_edns_data)
+		/* if the rdata of the OPT came from packet->_edns_data
+		 * we need to take it back out of the edns_rr before we free it
+		 * so packet->_edns_data doesn't get freed
+		 */
+		if (!edns_rdf && packet->_edns_data)
 			(void)ldns_rr_pop_rdf (edns_rr);
 		ldns_rr_free(edns_rr);
 	}
@@ -442,9 +468,6 @@ ldns_pkt2buffer_wire(ldns_buffer *buffer, const ldns_pkt *packet)
 		(void) ldns_rr2buffer_wire_compress(buffer,
 		                           ldns_pkt_tsig(packet), LDNS_SECTION_ADDITIONAL, compression_data);
 	}
-
-	ldns_traverse_postorder(compression_data,compression_node_free,NULL);
-	ldns_rbtree_free(compression_data);
 
 	return LDNS_STATUS_OK;
 }
