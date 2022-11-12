@@ -46,11 +46,13 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <getopt.h>
 #include <langinfo.h>
 #include <limits.h>
 #include <locale.h>
 #include <paths.h>
 #include <regex.h>
+#include <stdbool.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -67,7 +69,7 @@ static int	prompt(void);
 #endif
 static void	run(char **);
 static void	usage(void);
-void		strnsubst(char **, const char *, const char *, size_t);
+bool		strnsubst(char **, const char *, const char *, size_t);
 static pid_t	xwait(int block, int *status);
 static void	xexit(const char *, const int);
 static void	waitchildren(const char *, int);
@@ -92,6 +94,22 @@ static pid_t *childpids;
 static volatile int childerr;
 
 extern char **environ;
+
+static const char *optstr = "+0E:I:J:L:n:oP:pR:S:s:rtx";
+
+static const struct option long_options[] =
+{
+	{"exit",		no_argument,		NULL,	'x'},
+	{"interactive",		no_argument,		NULL,	'p'},
+	{"max-args",		required_argument,	NULL,	'n'},
+	{"max-chars",		required_argument,	NULL,	's'},
+	{"max-procs",		required_argument,	NULL,	'P'},
+	{"no-run-if-empty",	no_argument,		NULL,	'r'},
+	{"null",		no_argument,		NULL,	'0'},
+	{"verbose",		no_argument,		NULL,	't'},
+
+	{NULL,			no_argument,		NULL,	0},
+};
 
 int
 main(int argc, char *argv[])
@@ -136,7 +154,7 @@ main(int argc, char *argv[])
 		nline -= strlen(*ep++) + 1 + sizeof(*ep);
 	}
 	maxprocs = 1;
-	while ((ch = getopt(argc, argv, "0E:I:J:L:n:oP:pR:S:s:rtx")) != -1)
+	while ((ch = getopt_long(argc, argv, optstr, long_options, NULL)) != -1)
 		switch (ch) {
 		case 'E':
 			eofstr = optarg;
@@ -298,8 +316,10 @@ parse_input(int argc, char *argv[])
 	switch (ch = getchar()) {
 	case EOF:
 		/* No arguments since last exec. */
-		if (p == bbp)
-			xexit(*av, rval);
+		if (p == bbp) {
+			waitchildren(*av, 1);
+			exit(rval);
+		}
 		goto arg1;
 	case ' ':
 	case '\t':
@@ -389,8 +409,10 @@ arg2:
 					*xp++ = *avj;
 			}
 			prerun(argc, av);
-			if (ch == EOF || foundeof)
-				xexit(*av, rval);
+			if (ch == EOF || foundeof) {
+				waitchildren(*av, 1);
+				exit(rval);
+			}
 			p = bbp;
 			xp = bxp;
 			count = 0;
@@ -501,7 +523,10 @@ prerun(int argc, char *argv[])
 	while (--argc) {
 		*tmp = *avj++;
 		if (repls && strstr(*tmp, replstr) != NULL) {
-			strnsubst(tmp++, replstr, inpline, (size_t)Sflag);
+			if (strnsubst(tmp++, replstr, inpline, (size_t)Sflag)) {
+				warnx("comamnd line cannot be assembled, too long");
+				xexit(*argv, 1);
+			}
 			if (repls > 0)
 				repls--;
 		} else {
@@ -778,7 +803,7 @@ prompt(void)
 	(void)fprintf(stderr, "?...");
 	(void)fflush(stderr);
 	if ((response = fgetln(ttyfp, &rsize)) == NULL ||
-	    regcomp(&cre, nl_langinfo(YESEXPR), REG_BASIC) != 0) {
+	    regcomp(&cre, nl_langinfo(YESEXPR), REG_EXTENDED) != 0) {
 		(void)fclose(ttyfp);
 		return (0);
 	}
