@@ -1,4 +1,4 @@
-FILE 5.41
+FILE 5.43
 =========
 
 This directory contains a selected set of files from file 5.41
@@ -6,10 +6,10 @@ This directory contains a selected set of files from file 5.41
 Original source can be downloaded from:
 http://ftp.astron.com/pub/file/
 
-file = file-5.41.tar.gz
-date = 18 Oct 2021
-size = 1064097
-sha1 = 8d80d2d50f4000e087aa60ffae4f099c63376762
+file = file-5.43.tar.gz
+date = 13 September 2022
+size = 1162786
+sha1 = 8cb1a01257e9d9b15bb58dae409e1cb6710c5947
 
 A list of the omitted files and directories can be found in
 README.DELETED.
