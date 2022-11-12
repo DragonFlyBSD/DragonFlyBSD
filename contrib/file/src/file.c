@@ -32,7 +32,7 @@
 #include "file.h"
 
 #ifndef	lint
-FILE_RCSID("@(#)$File: file.c,v 1.190 2021/09/24 14:14:26 christos Exp $")
+FILE_RCSID("@(#)$File: file.c,v 1.204 2022/09/13 18:46:07 christos Exp $")
 #endif	/* lint */
 
 #include "magic.h"
@@ -56,6 +56,15 @@ FILE_RCSID("@(#)$File: file.c,v 1.190 2021/09/24 14:14:26 christos Exp $")
 #endif
 #ifdef HAVE_WCHAR_H
 #include <wchar.h>
+#endif
+#ifdef HAVE_WCTYPE_H
+#include <wctype.h>
+#endif
+#if defined(HAVE_WCHAR_H) && defined(HAVE_MBRTOWC) && defined(HAVE_WCWIDTH) && \
+   defined(HAVE_WCTYPE_H)
+#define FILE_WIDE_SUPPORT
+#else
+#include <ctype.h>
 #endif
 
 #if defined(HAVE_GETOPT_H) && defined(HAVE_STRUCT_OPTION)
@@ -182,7 +191,7 @@ int
 main(int argc, char *argv[])
 {
 	int c;
-	size_t i;
+	size_t i, j, wid, nw;
 	int action = 0, didsomefiles = 0, errflg = 0;
 	int flags = 0, e = 0;
 #ifdef HAVE_LIBSECCOMP
@@ -408,27 +417,30 @@ main(int argc, char *argv[])
 	if (optind == argc) {
 		if (!didsomefiles)
 			usage();
-	}
-	else {
-		size_t j, wid, nw;
-		for (wid = 0, j = CAST(size_t, optind); j < CAST(size_t, argc);
-		    j++) {
-			nw = file_mbswidth(argv[j]);
-			if (nw > wid)
-				wid = nw;
-		}
-		/*
-		 * If bflag is only set twice, set it depending on
-		 * number of files [this is undocumented, and subject to change]
-		 */
-		if (bflag == 2) {
-			bflag = optind >= argc - 1;
-		}
-		for (; optind < argc; optind++)
-			e |= process(magic, argv[optind], wid);
+		goto out;
 	}
 
+	for (wid = 0, j = CAST(size_t, optind); j < CAST(size_t, argc);
+	    j++) {
+		nw = file_mbswidth(magic, argv[j]);
+		if (nw > wid)
+			wid = nw;
+	}
+
+	/*
+	 * If bflag is only set twice, set it depending on
+	 * number of files [this is undocumented, and subject to change]
+	 */
+	if (bflag == 2) {
+		bflag = optind >= argc - 1;
+	}
+	for (; optind < argc; optind++)
+		e |= process(magic, argv[optind], wid);
+
 out:
+	if (!nobuffer)
+		e |= fflush(stdout) != 0;
+
 	if (magic)
 		magic_close(magic);
 	return e;
@@ -453,7 +465,7 @@ setparam(const char *p)
 	size_t i;
 	char *s;
 
-	if ((s = strchr(p, '=')) == NULL)
+	if ((s = CCAST(char *, strchr(p, '='))) == NULL)
 		goto badparm;
 
 	for (i = 0; i < __arraycount(pm); i++) {
@@ -500,36 +512,102 @@ unwrap(struct magic_set *ms, const char *fn)
 	size_t llen = 0;
 	int wid = 0, cwid;
 	int e = 0;
+	size_t fi = 0, fimax = 100;
+	char **flist = CAST(char **, malloc(sizeof(*flist) * fimax));
 
-	if (strcmp("-", fn) == 0) {
+	if (flist == NULL)
+out:		file_err(EXIT_FAILURE, "Cannot allocate memory for file list");
+
+	if (strcmp("-", fn) == 0)
 		f = stdin;
-		wid = 1;
-	} else {
+	else {
 		if ((f = fopen(fn, "r")) == NULL) {
 			file_warn("Cannot open `%s'", fn);
 			return 1;
 		}
-
-		while ((len = getline(&line, &llen, f)) > 0) {
-			if (line[len - 1] == '\n')
-				line[len - 1] = '\0';
-			cwid = file_mbswidth(line);
-			if (cwid > wid)
-				wid = cwid;
-		}
-
-		rewind(f);
 	}
 
 	while ((len = getline(&line, &llen, f)) > 0) {
 		if (line[len - 1] == '\n')
 			line[len - 1] = '\0';
-		e |= process(ms, line, wid);
+		if (fi >= fimax) {
+			fimax += 100;
+			char **nf = CAST(char **,
+			    realloc(flist, fimax * sizeof(*flist)));
+			if (nf == NULL)
+				goto out;
+			flist = nf;
+		}
+		flist[fi++] = line;
+		cwid = file_mbswidth(ms, line);
+		if (cwid > wid)
+			wid = cwid;
+		line = NULL;
+		llen = 0;
 	}
 
-	free(line);
-	(void)fclose(f);
+	fimax = fi;
+	for (fi = 0; fi < fimax; fi++) {
+		e |= process(ms, flist[fi], wid);
+		free(flist[fi]);
+	}
+	free(flist);
+
+	if (f != stdin)
+		(void)fclose(f);
 	return e;
+}
+
+private void
+file_octal(unsigned char c)
+{
+	putc('\\', stdout);
+	putc(((c >> 6) & 7) + '0', stdout);
+	putc(((c >> 3) & 7) + '0', stdout);
+	putc(((c >> 0) & 7) + '0', stdout);
+}
+
+private void
+fname_print(const char *inname)
+{
+	size_t n = strlen(inname);
+#ifdef FILE_WIDE_SUPPORT
+	mbstate_t state;
+	wchar_t nextchar;
+	size_t bytesconsumed;
+
+
+	(void)memset(&state, 0, sizeof(state));
+	while (n > 0) {
+		bytesconsumed = mbrtowc(&nextchar, inname, n, &state);
+		if (bytesconsumed == CAST(size_t, -1) ||
+		    bytesconsumed == CAST(size_t, -2))  {
+			nextchar = *inname++;
+			n--;
+			(void)memset(&state, 0, sizeof(state));
+			file_octal(CAST(unsigned char, nextchar));
+			continue;
+		}
+		inname += bytesconsumed;
+		n -= bytesconsumed;
+		if (iswprint(nextchar)) {
+			printf("%lc", nextchar);
+			continue;
+		}
+		/* XXX: What if it is > 255? */
+		file_octal(CAST(unsigned char, nextchar));
+	}
+#else
+	size_t i;
+	for (i = 0; i < n; i++) {
+		unsigned char c = CAST(unsigned char, inname[i]);
+		if (isprint(c)) {
+			putc(c);
+			continue;
+		}
+		file_octal(c);
+	}
+#endif
 }
 
 /*
@@ -540,65 +618,70 @@ process(struct magic_set *ms, const char *inname, int wid)
 {
 	const char *type, c = nulsep > 1 ? '\0' : '\n';
 	int std_in = strcmp(inname, "-") == 0;
+	int haderror = 0;
 
 	if (wid > 0 && !bflag) {
-		(void)printf("%s", std_in ? "/dev/stdin" : inname);
+		const char *pname = std_in ? "/dev/stdin" : inname;
+		if ((ms->flags & MAGIC_RAW) == 0)
+			fname_print(pname);
+		else
+			(void)printf("%s", pname);
 		if (nulsep)
 			(void)putc('\0', stdout);
 		if (nulsep < 2) {
 			(void)printf("%s", separator);
 			(void)printf("%*s ", CAST(int, nopad ? 0
-			    : (wid - file_mbswidth(inname))), "");
+			    : (wid - file_mbswidth(ms, inname))), "");
 		}
 	}
 
 	type = magic_file(ms, std_in ? NULL : inname);
 
 	if (type == NULL) {
-		(void)printf("ERROR: %s%c", magic_error(ms), c);
+		haderror |= printf("ERROR: %s%c", magic_error(ms), c);
 	} else {
-		(void)printf("%s%c", type, c);
+		haderror |= printf("%s%c", type, c) < 0;
 	}
 	if (nobuffer)
-		(void)fflush(stdout);
-	return type == NULL;
+		haderror |= fflush(stdout) != 0;
+	return haderror || type == NULL;
 }
 
 protected size_t
-file_mbswidth(const char *s)
+file_mbswidth(struct magic_set *ms, const char *s)
 {
-#if defined(HAVE_WCHAR_H) && defined(HAVE_MBRTOWC) && defined(HAVE_WCWIDTH)
-	size_t bytesconsumed, old_n, n, width = 0;
+	size_t width = 0;
+#ifdef FILE_WIDE_SUPPORT
+	size_t bytesconsumed, n;
 	mbstate_t state;
 	wchar_t nextchar;
-	(void)memset(&state, 0, sizeof(mbstate_t));
-	old_n = n = strlen(s);
+
+	(void)memset(&state, 0, sizeof(state));
+	n = strlen(s);
 
 	while (n > 0) {
 		bytesconsumed = mbrtowc(&nextchar, s, n, &state);
 		if (bytesconsumed == CAST(size_t, -1) ||
 		    bytesconsumed == CAST(size_t, -2)) {
-			/* Something went wrong, return something reasonable */
-			return old_n;
-		}
-		if (s[0] == '\n') {
-			/*
-			 * do what strlen() would do, so that caller
-			 * is always right
-			 */
-			width++;
+			nextchar = *s;
+			bytesconsumed = 1;
+			(void)memset(&state, 0, sizeof(state));
+			width += 4;
 		} else {
 			int w = wcwidth(nextchar);
-			if (w > 0)
-				width += w;
+			width += ((ms->flags & MAGIC_RAW) != 0
+			    || iswprint(nextchar)) ? (w > 0 ? w : 1) : 4;
 		}
 
 		s += bytesconsumed, n -= bytesconsumed;
 	}
-	return width;
 #else
-	return strlen(s);
+	for (; *s; s++) {
+		width += (ms->flags & MAGIC_RAW) != 0
+		    || isprint(CAST(unsigned char, *s)) ? 1 : 4;
+	}
 #endif
+	return width;
 }
 
 private void
@@ -626,7 +709,7 @@ docprint(const char *opts, int def)
 	int comma, pad;
 	char *sp, *p;
 
-	p = strchr(opts, '%');
+	p = CCAST(char *, strchr(opts, '%'));
 	if (p == NULL) {
 		fprintf(stdout, "%s", opts);
 		defprint(def);
