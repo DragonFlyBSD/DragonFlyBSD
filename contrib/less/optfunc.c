@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2019  Mark Nudelman
+ * Copyright (C) 1984-2022  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -19,9 +19,9 @@
  * Each handling function is passed a "type" and, if it is a string
  * option, the string which should be "assigned" to the option.
  * The type may be one of:
- *	INIT	The option is being initialized from the command line.
- *	TOGGLE	The option is being changed from within the program.
- *	QUERY	The setting of the option is merely being queried.
+ *      INIT    The option is being initialized from the command line.
+ *      TOGGLE  The option is being changed from within the program.
+ *      QUERY   The setting of the option is merely being queried.
  */
 
 #include "less.h"
@@ -36,7 +36,7 @@ extern int sc_width;
 extern int sc_height;
 extern int secure;
 extern int dohelp;
-extern int any_display;
+extern int is_tty;
 extern char openquote;
 extern char closequote;
 extern char *prproto[];
@@ -55,6 +55,14 @@ extern int rscroll_attr;
 extern int mousecap;
 extern int wheel_lines;
 extern int less_is_more;
+extern int linenum_width;
+extern int status_col_width;
+extern int use_color;
+extern int want_filesize;
+extern int header_lines;
+extern int header_cols;
+extern int def_search_type;
+extern int chopline;
 #if LOGFILE
 extern char *namelogfile;
 extern int force_logfile;
@@ -65,6 +73,10 @@ public char *tagoption = NULL;
 extern char *tags;
 extern char ztags[];
 #endif
+#if LESSTEST
+extern char *ttyin_name;
+extern int rstat_file;
+#endif /*LESSTEST*/
 #if MSDOS_COMPILER
 extern int nm_fg_color, nm_bg_color;
 extern int bo_fg_color, bo_bg_color;
@@ -156,7 +168,6 @@ opt_j(type, s)
 	char *s;
 {
 	PARG parg;
-	char buf[16];
 	int len;
 	int err;
 
@@ -191,8 +202,8 @@ opt_j(type, s)
 			error("Position target at screen line %d", &parg);
 		} else
 		{
-
-			sprintf(buf, ".%06ld", jump_sline_fraction);
+			char buf[24];
+			SNPRINTF1(buf, sizeof(buf), ".%06ld", jump_sline_fraction);
 			len = (int) strlen(buf);
 			while (len > 2 && buf[len-1] == '0')
 				len--;
@@ -221,7 +232,6 @@ opt_shift(type, s)
 	char *s;
 {
 	PARG parg;
-	char buf[16];
 	int len;
 	int err;
 
@@ -256,8 +266,8 @@ opt_shift(type, s)
 			error("Horizontal shift %d columns", &parg);
 		} else
 		{
-
-			sprintf(buf, ".%06ld", shift_count_fraction);
+			char buf[24];
+			SNPRINTF1(buf, sizeof(buf), ".%06ld", shift_count_fraction);
 			len = (int) strlen(buf);
 			while (len > 2 && buf[len-1] == '0')
 				len--;
@@ -268,6 +278,7 @@ opt_shift(type, s)
 		break;
 	}
 }
+
 	public void
 calc_shift_count(VOID_PARAM)
 {
@@ -295,7 +306,28 @@ opt_k(type, s)
 		break;
 	}
 }
-#endif
+
+#if HAVE_LESSKEYSRC 
+	public void
+opt_ks(type, s)
+	int type;
+	char *s;
+{
+	PARG parg;
+
+	switch (type)
+	{
+	case INIT:
+		if (lesskey_src(s, 0))
+		{
+			parg.p_string = s;
+			error("Cannot use lesskey source file \"%s\"", &parg);
+		}
+		break;
+	}
+}
+#endif /* HAVE_LESSKEYSRC */
+#endif /* USERFILE */
 
 #if TAGS
 /*
@@ -395,13 +427,13 @@ opt_p(type, s)
 		} else
 		{
 			plusoption = TRUE;
-			ungetcc(CHAR_END_COMMAND);
-			ungetsc(s);
 			 /*
 			  * {{ This won't work if the "/" command is
 			  *    changed or invalidated by a .lesskey file. }}
 			  */
 			ungetsc("/");
+			ungetsc(s);
+			ungetcc_back(CHAR_END_COMMAND);
 		}
 		break;
 	}
@@ -427,13 +459,13 @@ opt__P(type, s)
 		 */
 		switch (*s)
 		{
-		case 's':  proto = &prproto[PR_SHORT];	s++;	break;
-		case 'm':  proto = &prproto[PR_MEDIUM];	s++;	break;
-		case 'M':  proto = &prproto[PR_LONG];	s++;	break;
-		case '=':  proto = &eqproto;		s++;	break;
-		case 'h':  proto = &hproto;		s++;	break;
-		case 'w':  proto = &wproto;		s++;	break;
-		default:   proto = &prproto[PR_SHORT];		break;
+		case 's':  proto = &prproto[PR_SHORT];  s++;    break;
+		case 'm':  proto = &prproto[PR_MEDIUM]; s++;    break;
+		case 'M':  proto = &prproto[PR_LONG];   s++;    break;
+		case '=':  proto = &eqproto;            s++;    break;
+		case 'h':  proto = &hproto;             s++;    break;
+		case 'w':  proto = &wproto;             s++;    break;
+		default:   proto = &prproto[PR_SHORT];          break;
 		}
 		free(*proto);
 		*proto = save(s);
@@ -504,20 +536,27 @@ opt__V(type, s)
 		dispversion();
 		break;
 	case INIT:
-		/*
-		 * Force output to stdout per GNU standard for --version output.
-		 */
-		any_display = 1;
+		set_output(1); /* Force output to stdout per GNU standard for --version output. */
 		putstr("less ");
 		putstr(version);
 		putstr(" (");
 		putstr(pattern_lib_name());
 		putstr(" regular expressions)\n");
-		putstr("Copyright (C) 1984-2019  Mark Nudelman\n\n");
+		{
+			char constant *copyright = 
+				"Copyright (C) 1984-2022  Mark Nudelman\n\n";
+			putstr(copyright);
+		}
+		if (version[strlen(version)-1] == 'x')
+		{
+			putstr("** This is an EXPERIMENTAL build of the 'less' software,\n");
+			putstr("** and may not function correctly.\n");
+			putstr("** Obtain release builds from the web page below.\n\n");
+		}
 		putstr("less comes with NO WARRANTY, to the extent permitted by law.\n");
 		putstr("For information about the terms of redistribution,\n");
 		putstr("see the file named README in the less distribution.\n");
-		putstr("Home page: http://www.greenwoodsoftware.com/less\n");
+		putstr("Home page: https://greenwoodsoftware.com/less\n");
 		quit(QUIT_OK);
 		break;
 	}
@@ -527,60 +566,71 @@ opt__V(type, s)
 /*
  * Parse an MSDOS color descriptor.
  */
-   	static void
+	static void
 colordesc(s, fg_color, bg_color)
 	char *s;
 	int *fg_color;
 	int *bg_color;
 {
 	int fg, bg;
-	int err;
 #if MSDOS_COMPILER==WIN32C
 	int ul = 0;
- 	
+ 
 	if (*s == 'u')
 	{
 		ul = COMMON_LVB_UNDERSCORE;
-		++s;
-	}
-#endif
-	fg = getnum(&s, "D", &err);
-	if (err)
-	{
-#if MSDOS_COMPILER==WIN32C
-		if (ul)
-			fg = nm_fg_color;
-		else
-#endif
-		{
-			error("Missing fg color in -D", NULL_PARG);
-			return;
-		}
-	}
-	if (*s != '.')
-		bg = nm_bg_color;
-	else
-	{
 		s++;
-		bg = getnum(&s, "D", &err);
-		if (err)
+		if (*s == '\0')
 		{
-			error("Missing bg color in -D", NULL_PARG);
+			*fg_color = nm_fg_color | ul;
+			*bg_color = nm_bg_color;
 			return;
 		}
 	}
-#if MSDOS_COMPILER==WIN32C
-	if (*s == 'u')
-	{
-		ul = COMMON_LVB_UNDERSCORE;
-		++s;
-	}
-	fg |= ul;
 #endif
-	if (*s != '\0')
-		error("Extra characters at end of -D option", NULL_PARG);
-	*fg_color = fg;
-	*bg_color = bg;
+	if (parse_color(s, &fg, &bg) == CT_NULL)
+	{
+		PARG p;
+		p.p_string = s;
+		error("Invalid color string \"%s\"", &p);
+	} else
+	{
+		if (fg == CV_NOCHANGE)
+			fg = nm_fg_color;
+		if (bg == CV_NOCHANGE)
+			bg = nm_bg_color;
+#if MSDOS_COMPILER==WIN32C
+		fg |= ul;
+#endif
+		*fg_color = fg;
+		*bg_color = bg;
+	}
+}
+#endif
+
+	static int
+color_from_namechar(namechar)
+	char namechar;
+{
+	switch (namechar)
+	{
+	case 'B': return AT_COLOR_BIN;
+	case 'C': return AT_COLOR_CTRL;
+	case 'E': return AT_COLOR_ERROR;
+	case 'H': return AT_COLOR_HEADER;
+	case 'M': return AT_COLOR_MARK;
+	case 'N': return AT_COLOR_LINENUM;
+	case 'P': return AT_COLOR_PROMPT;
+	case 'R': return AT_COLOR_RSCROLL;
+	case 'S': return AT_COLOR_SEARCH;
+	case 'W': case 'A': return AT_COLOR_ATTN;
+	case 'n': return AT_NORMAL;
+	case 's': return AT_STANDOUT;
+	case 'd': return AT_BOLD;
+	case 'u': return AT_UNDERLINE;
+	case 'k': return AT_BLINK;
+	default:  return -1;
+	}
 }
 
 /*
@@ -593,48 +643,75 @@ opt_D(type, s)
 	char *s;
 {
 	PARG p;
+	int attr;
 
 	switch (type)
 	{
 	case INIT:
 	case TOGGLE:
-		switch (*s++)
+#if MSDOS_COMPILER
+		if (*s == 'a')
 		{
-		case 'n':
-			colordesc(s, &nm_fg_color, &nm_bg_color);
-			break;
-		case 'd':
-			colordesc(s, &bo_fg_color, &bo_bg_color);
-			break;
-		case 'u':
-			colordesc(s, &ul_fg_color, &ul_bg_color);
-			break;
-		case 'k':
-			colordesc(s, &bl_fg_color, &bl_bg_color);
-			break;
-		case 's':
-			colordesc(s, &so_fg_color, &so_bg_color);
-			break;
-		case 'a':
 			sgr_mode = !sgr_mode;
 			break;
-		default:
-			error("-D must be followed by n, d, u, k, s or a", NULL_PARG);
-			break;
 		}
-		if (type == TOGGLE)
+#endif
+		attr = color_from_namechar(s[0]);
+		if (attr < 0)
 		{
-			at_enter(AT_STANDOUT);
-			at_exit();
+			p.p_char = s[0];
+			error("Invalid color specifier '%c'", &p);
+			return;
+		}
+		if (!use_color && (attr & AT_COLOR))
+		{
+			error("Set --use-color before changing colors", NULL_PARG);
+			return;
+		}
+		s++;
+#if MSDOS_COMPILER
+		if (!(attr & AT_COLOR))
+		{
+			switch (attr)
+			{
+			case AT_NORMAL:
+				colordesc(s, &nm_fg_color, &nm_bg_color);
+				break;
+			case AT_BOLD:
+				colordesc(s, &bo_fg_color, &bo_bg_color);
+				break;
+			case AT_UNDERLINE:
+				colordesc(s, &ul_fg_color, &ul_bg_color);
+				break;
+			case AT_BLINK:
+				colordesc(s, &bl_fg_color, &bl_bg_color);
+				break;
+			case AT_STANDOUT:
+				colordesc(s, &so_fg_color, &so_bg_color);
+				break;
+			}
+			if (type == TOGGLE)
+			{
+				at_enter(AT_STANDOUT);
+				at_exit();
+			}
+		} else
+#endif
+		if (set_color_map(attr, s) < 0)
+		{
+			p.p_string = s;
+			error("Invalid color string \"%s\"", &p);
+			return;
 		}
 		break;
+#if MSDOS_COMPILER
 	case QUERY:
 		p.p_string = (sgr_mode) ? "on" : "off";
 		error("SGR mode is %s", &p);
 		break;
+#endif
 	}
 }
-#endif
 
 /*
  * Handler for the -x option.
@@ -647,7 +724,7 @@ opt_x(type, s)
 	extern int tabstops[];
 	extern int ntabstops;
 	extern int tabdefault;
-	char msg[60+(4*TABSTOP_MAX)];
+	char msg[60+((INT_STRLEN_BOUND(int)+1)*TABSTOP_MAX)];
 	int i;
 	PARG p;
 
@@ -759,7 +836,7 @@ opt_rscroll(type, s)
 		} else
 		{
 			rscroll_char = *fmt ? *fmt : '>';
-			rscroll_attr = attr;
+			rscroll_attr = attr|AT_COLOR_RSCROLL;
 		}
 		break; }
 	case QUERY: {
@@ -835,6 +912,232 @@ opt_wheel_lines(type, s)
 }
 
 /*
+ * Handler for the --line-number-width option.
+ */
+	/*ARGSUSED*/
+	public void
+opt_linenum_width(type, s)
+	int type;
+	char *s;
+{
+	PARG parg;
+
+	switch (type)
+	{
+	case INIT:
+	case TOGGLE:
+		if (linenum_width > MAX_LINENUM_WIDTH)
+		{
+			parg.p_int = MAX_LINENUM_WIDTH;
+			error("Line number width must not be larger than %d", &parg);
+			linenum_width = MIN_LINENUM_WIDTH;
+		} 
+		break;
+	case QUERY:
+		break;
+	}
+}
+
+/*
+ * Handler for the --status-column-width option.
+ */
+	/*ARGSUSED*/
+	public void
+opt_status_col_width(type, s)
+	int type;
+	char *s;
+{
+	PARG parg;
+
+	switch (type)
+	{
+	case INIT:
+	case TOGGLE:
+		if (status_col_width > MAX_STATUSCOL_WIDTH)
+		{
+			parg.p_int = MAX_STATUSCOL_WIDTH;
+			error("Status column width must not be larger than %d", &parg);
+			status_col_width = 2;
+		}
+		break;
+	case QUERY:
+		break;
+	}
+}
+
+/*
+ * Handler for the --file-size option.
+ */
+	/*ARGSUSED*/
+	public void
+opt_filesize(type, s)
+	int type;
+	char *s;
+{
+	switch (type)
+	{
+	case INIT:
+	case TOGGLE:
+		if (want_filesize && curr_ifile != NULL && ch_length() == NULL_POSITION)
+			scan_eof();
+		break;
+	case QUERY:
+		break;
+	}
+}
+
+/*
+ * Handler for the --header option.
+ */
+	/*ARGSUSED*/
+	public void
+opt_header(type, s)
+	int type;
+	char *s;
+{
+	int err;
+	int n;
+
+	switch (type)
+	{
+	case INIT:
+	case TOGGLE:
+		n = getnum(&s, "header", &err);
+		if (err)
+			error("invalid number of lines", NULL_PARG);
+		else
+		{
+			header_lines = n;
+			header_cols = 0;
+			if (*s == ',')
+			{
+				++s;
+				n = getnum(&s, "header", &err);
+				if (err)
+					error("invalid number of columns", NULL_PARG);
+				else
+					header_cols = n;
+			}
+		}
+		break;
+	case QUERY:
+		{
+			char buf[2*INT_STRLEN_BOUND(int)+2];
+			PARG parg;
+			SNPRINTF2(buf, sizeof(buf), "%d,%d", header_lines, header_cols);
+			parg.p_string = buf;
+			error("header (lines,columns) is %s", &parg);
+		}
+		break;
+	}
+}
+
+/*
+ * Handler for the --search-options option.
+ */
+	/*ARGSUSED*/
+	public void
+opt_search_type(type, s)
+	int type;
+	char *s;
+{
+	int st;
+	PARG parg;
+	char buf[16];
+	char *bp;
+
+	switch (type)
+	{
+	case INIT:
+	case TOGGLE:
+		st = 0;
+		for (;  *s != '\0';  s++)
+		{
+			switch (*s)
+			{
+			case 'E': case 'e': case CONTROL('E'): st |= SRCH_PAST_EOF;   break;
+			case 'F': case 'f': case CONTROL('F'): st |= SRCH_FIRST_FILE; break;
+			case 'K': case 'k': case CONTROL('K'): st |= SRCH_NO_MOVE;    break;
+			case 'N': case 'n': case CONTROL('N'): st |= SRCH_NO_MATCH;   break;
+			case 'R': case 'r': case CONTROL('R'): st |= SRCH_NO_REGEX;   break;
+			case 'W': case 'w': case CONTROL('W'): st |= SRCH_WRAP;       break;
+			case '-': st = 0; break;
+			case '^': break;
+			default:
+				parg.p_char = *s;
+				error("invalid search option '%c'", &parg);
+				return;
+			}
+		}
+		def_search_type = norm_search_type(st);
+		break;
+	case QUERY:
+		bp = buf;
+		if (def_search_type & SRCH_PAST_EOF)   *bp++ = 'E'; 
+		if (def_search_type & SRCH_FIRST_FILE) *bp++ = 'F'; 
+		if (def_search_type & SRCH_NO_MOVE)    *bp++ = 'K'; 
+		if (def_search_type & SRCH_NO_MATCH)   *bp++ = 'N'; 
+		if (def_search_type & SRCH_NO_REGEX)   *bp++ = 'R'; 
+		if (def_search_type & SRCH_WRAP)       *bp++ = 'W'; 
+		if (bp == buf)
+			*bp++ = '-';
+		*bp = '\0';
+		parg.p_string = buf;
+		error("search options: %s", &parg);
+		break;
+	}
+}
+
+#if LESSTEST
+/*
+ * Handler for the --tty option.
+ */
+	/*ARGSUSED*/
+	public void
+opt_ttyin_name(type, s)
+	int type;
+	char *s;
+{
+	switch (type)
+	{
+	case INIT:
+		ttyin_name = s;
+		is_tty = 1;
+		break;
+	}
+}
+
+/*
+ * Handler for the --rstat option.
+ */
+	/*ARGSUSED*/
+	public void
+opt_rstat(type, s)
+	int type;
+	char *s;
+{
+	switch (type)
+	{
+	case INIT:
+		rstat_file = open(s, O_WRONLY|O_CREAT, 0664);
+		if (rstat_file < 0)
+		{
+			PARG parg;
+			parg.p_string = s;
+			error("Cannot create rstat file \"%s\"", &parg);
+		}
+		break;
+	}
+}
+#endif /*LESSTEST*/
+
+	public int
+chop_line(VOID_PARAM)
+{
+	return (chopline || header_cols > 0 || header_lines > 0);
+}
+
+/*
  * Get the "screen window" size.
  */
 	public int
@@ -842,6 +1145,6 @@ get_swindow(VOID_PARAM)
 {
 	if (swindow > 0)
 		return (swindow);
-	return (sc_height + swindow);
+	return (sc_height - header_lines + swindow);
 }
 

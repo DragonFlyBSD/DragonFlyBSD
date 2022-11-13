@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2019  Mark Nudelman
+ * Copyright (C) 1984-2022  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -880,6 +880,80 @@ v549  2/10/19   Support X11 mouse extension 1006;
                 Win32 fixes (thanks to Jason Hood).
 v550  2/16/19   Fix Win32 build; don't enable mouse unless --mouse is set.
 v551  6/10/19   Doc changes.
+-----------------------------------------------------------------
+v552  7/8/19    Update Unicode tables.
+v553  10/17/19  Support tinfow; handle zero-width Hangul chars.
+v554  1/19/20   Remove erroneous free().
+v555  3/15/20   Display error msg immediately when toggle -o without stdin.
+v556  3/15/20   Update copyright.
+v557  3/21/20   Fix memory corruption with libtermcap.
+v558  4/17/20   Don't init terminal if -F and file fits on one screen (WIN32).
+v559  4/19/20   Handle deinit correctly on WIN32.
+v560  5/3/20    Fix regression when command results in no movement;
+                fix some less.nro issues (thanks to Bjarni I. Gislason).
+v561  5/11/20   Fix erroneous EOF calculation when F command is interrupted.
+v562  5/19/20   Update Unicode tables; minor doc formatting.
+v563  6/13/20   Fix crash due to realpath() incompatibility.
+v564  8/25/20   Handle realpath consistently; update docs.
+v565  11/3/20   Add ESC-U command, optimize calls to realpath().
+v566  11/25/20  Fix crash when reopening a file while using LESSOPEN;
+                support OSC 8 hyperlinks.
+v567  11/25/20  Fix typo.
+v568  11/29/20  Fix some hyperlink bugs; add ^W search modifier
+                (thanks to Arminius); allow Makefile.aut to use Python 
+                instead of Perl (thanks to Charlie Lin).
+v569  12/1/20   Allow multiple & filters (thanks to Mattias Johansson),
+                allow ^X to exit F command.
+v570  12/12/20  Better handling of multiple + or -p options;
+                fix bugs in horizontal scrolling.
+v571  12/30/20  Add --line-num-width and --status-col-width options.
+v572  1/4/21    Save lastmark in history file; don't toggle mouse reporting;
+                implement termcap delays.
+v573  1/9/21    Limit eof bell to 1 per second.
+v574  1/13/21   Add incremental search.
+v575  1/17/21   Fix build without HILITE_SEARCH;
+                fix bug with ^K in lesskey extra string.
+v576  2/4/21    Make sure search result is visible; add --use-color and --color.
+v577  2/9/21    Use ttyname to get name of tty device.
+v578  2/9/21    Doc
+v579  2/14/21   Fix double-width char bugs and non-match search crash.
+v580  3/2/21    Some color fixes; fix compiler warnings; some lesstest support.
+v581  4/6/21    Ignore SIGTSTP in secure mode; don't print "skipping" when filtering.
+v582  4/21/21   Less now reads lesskey source file rather than binary;
+                fix bug in finding tags with backslashes.
+v583  4/21/21   Use XDG_CONFIG_HOME and XDG_DATA_HOME to find files.
+v584  4/30/21   Add --file-size option.
+v585  5/2/21    Allow color desc W per man page.
+v586  5/7/21    Doc changes.
+v587  5/27/21   Fix --with-secure; fix --file-size message on Windows; 
+                fix colored search hilite in colored text; don't exit
+                if -F and screen is resized; fix memcpy usage.
+v588  5/27/21   Fix release.
+v589  5/29/21   Copyright & build changes.
+v590  6/3/21    Fix non-autoconf Makefiles.
+v591  8/8/21    Use \kB for backspace key in lesskey; add more \k codes;
+                handle multibyte chars in prompt.
+v592  8/24/21   Add --status-line option; limit use of /proc kludge; add --header.
+v593  8/30/21   Add header columns, --no-number-headers.
+v594  10/1/21   Let regex library handle caseless; add --redraw-on-quit option;
+                add #version to lesskey.
+v595  10/12/21  Add H color type; add += to lesskey var section; 
+                add --search-options.
+v596  11/8/21   Look for lesskey in $HOME/.config.
+v597  11/16/21  Fix bugs in --header.
+v598  12/6/21   Look for lesshst in $XDG_STATE_HOME and $HOME/.local/state.
+v599  12/28/21  Defer moving to lower left in some cases; 
+                suppress TAB expansion in some cases.
+v600  1/7/22    Use /dev/tty if cannot open ttyname().
+v601  1/31/22   Add --exit-follow-on-close option.
+v602  3/1/22    Doc changes.
+v603  3/14/22   Fix --header.
+v604  5/14/22   Fix termlib detection; fix non-ASCII input on Windows.
+v605  6/14/22   Update version number.
+v606  7/17/22   Fix bug with multibyte chars and --incsearch;
+                escape filenames in LESSCLOSE; fix bin_file overrun.
+v607  7/19/22   Update Unicode tables.
+v608  7/22/22   Fix highlighting on colored text boundaries.
 */
 
-char version[] = "551";
+char version[] = "608";

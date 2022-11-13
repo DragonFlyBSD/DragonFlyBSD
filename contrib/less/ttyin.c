@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2019  Mark Nudelman
+ * Copyright (C) 1984-2022  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -23,14 +23,61 @@
 #define _WIN32_WINNT 0x400
 #endif
 #include <windows.h>
-static DWORD console_mode;
+public DWORD console_mode;
 public HANDLE tty;
 #else
 public int tty;
 #endif
+#if LESSTEST
+public char *ttyin_name = NULL;
+public int rstat_file = -1;
+#endif /*LESSTEST*/
 extern int sigs;
 extern int utf_mode;
 extern int wheel_lines;
+
+#if !MSDOS_COMPILER
+	static int
+open_tty_device(dev)
+	constant char* dev;
+{
+#if OS2
+	/* The __open() system call translates "/dev/tty" to "con". */
+	return __open(dev, OPEN_READ);
+#else
+	return open(dev, OPEN_READ);
+#endif
+}
+
+/*
+ * Open the tty device.
+ * Try ttyname(), then try /dev/tty, then use file descriptor 2.
+ * In Unix, file descriptor 2 is usually attached to the screen,
+ * but also usually lets you read from the keyboard.
+ */
+	public int
+open_tty(VOID_PARAM)
+{
+	int fd = -1;
+#if LESSTEST
+	if (ttyin_name != NULL)
+		fd = open_tty_device(ttyin_name);
+#endif /*LESSTEST*/
+#if HAVE_TTYNAME
+	if (fd < 0)
+	{
+		constant char *dev = ttyname(2);
+		if (dev != NULL)
+			fd = open_tty_device(dev);
+	}
+#endif
+	if (fd < 0)
+		fd = open_tty_device("/dev/tty");
+	if (fd < 0)
+		fd = 2;
+	return fd;
+}
+#endif /* MSDOS_COMPILER */
 
 /*
  * Open keyboard for input.
@@ -68,20 +115,7 @@ open_getchr(VOID_PARAM)
 	(void) __djgpp_set_ctrl_c(1);
 #endif
 #else
-	/*
-	 * Try /dev/tty.
-	 * If that doesn't work, use file descriptor 2,
-	 * which in Unix is usually attached to the screen,
-	 * but also usually lets you read from the keyboard.
-	 */
-#if OS2
-	/* The __open() system call translates "/dev/tty" to "con". */
-	tty = __open("/dev/tty", OPEN_READ);
-#else
-	tty = open("/dev/tty", OPEN_READ);
-#endif
-	if (tty < 0)
-		tty = 2;
+	tty = open_tty();
 #endif
 #endif
 }
@@ -131,6 +165,18 @@ default_wheel_lines(VOID_PARAM)
 	return lines;
 }
 
+#if LESSTEST
+	public void
+rstat(st)
+	char st;
+{
+	if (rstat_file < 0)
+		return;
+	lseek(rstat_file, SEEK_SET, 0);
+	write(rstat_file, &st, 1);
+}
+#endif /*LESSTEST*/
+
 /*
  * Get a character from the keyboard.
  */
@@ -142,11 +188,11 @@ getchr(VOID_PARAM)
 
 	do
 	{
+		flush();
 #if MSDOS_COMPILER && MSDOS_COMPILER != DJGPPC
 		/*
 		 * In raw read, we don't see ^C so look here for it.
 		 */
-		flush();
 #if MSDOS_COMPILER==WIN32C
 		if (ABORT_SIGS())
 			return (READ_INTR);
@@ -158,11 +204,17 @@ getchr(VOID_PARAM)
 		if (c == '\003')
 			return (READ_INTR);
 #else
+#if LESSTEST
+		rstat('R');
+#endif /*LESSTEST*/
 		{
 			unsigned char uc;
 			result = iread(tty, &uc, sizeof(char));
 			c = (char) uc;
 		}
+#if LESSTEST
+		rstat('B');
+#endif /*LESSTEST*/
 		if (result == READ_INTR)
 			return (READ_INTR);
 		if (result < 0)

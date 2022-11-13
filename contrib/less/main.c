@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2019  Mark Nudelman
+ * Copyright (C) 1984-2022  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -18,50 +18,52 @@
 #include <windows.h>
 #endif
 
-public char *	every_first_cmd = NULL;
-public int	new_file;
-public int	is_tty;
-public IFILE	curr_ifile = NULL_IFILE;
-public IFILE	old_ifile = NULL_IFILE;
+public char *   every_first_cmd = NULL;
+public int      new_file;
+public int      is_tty;
+public IFILE    curr_ifile = NULL_IFILE;
+public IFILE    old_ifile = NULL_IFILE;
 public struct scrpos initial_scrpos;
-public int	any_display = FALSE;
-public POSITION	start_attnpos = NULL_POSITION;
-public POSITION	end_attnpos = NULL_POSITION;
-public int	wscroll;
-public char *	progname;
-public int	quitting;
-public int	secure;
-public int	dohelp;
+public POSITION start_attnpos = NULL_POSITION;
+public POSITION end_attnpos = NULL_POSITION;
+public int      wscroll;
+public char *   progname;
+public int      quitting;
+public int      secure;
+public int      dohelp;
 
 #if LOGFILE
-public int	logfile = -1;
-public int	force_logfile = FALSE;
-public char *	namelogfile = NULL;
+public int      logfile = -1;
+public int      force_logfile = FALSE;
+public char *   namelogfile = NULL;
 #endif
 
 #if EDITOR
-public char *	editor;
-public char *	editproto;
+public char *   editor;
+public char *   editproto;
 #endif
 
 #if TAGS
-extern char *	tags;
-extern char *	tagoption;
-extern int	jump_sline;
+extern char *   tags;
+extern char *   tagoption;
+extern int      jump_sline;
 #endif
 
 #ifdef WIN32
 static char consoleTitle[256];
 #endif
 
-public int	one_screen;
-extern int	less_is_more;
-extern int	missing_cap;
-extern int	know_dumb;
-extern int	pr_type;
-extern int	quit_if_one_screen;
-extern int	no_init;
-
+public int      one_screen;
+extern int      less_is_more;
+extern int      missing_cap;
+extern int      know_dumb;
+extern int      pr_type;
+extern int      quit_if_one_screen;
+extern int      no_init;
+extern int      errmsgs;
+extern int      redraw_on_quit;
+extern int      term_init_done;
+extern int      first_time;
 
 /*
  * Entry point.
@@ -82,10 +84,14 @@ main(argc, argv)
 	progname = *argv++;
 	argc--;
 
+#if SECURE
+	secure = 1;
+#else
 	secure = 0;
 	s = lgetenv("LESSSECURE");
 	if (!isnullenv(s))
 		secure = 1;
+#endif
 
 #ifdef WIN32
 	if (getenv("HOME") == NULL)
@@ -117,7 +123,6 @@ main(argc, argv)
 	init_mark();
 	init_cmds();
 	get_term();
-	expand_cmd_tables();
 	init_charset();
 	init_line();
 	init_cmdhist();
@@ -136,9 +141,9 @@ main(argc, argv)
 
 	s = lgetenv(less_is_more ? "MORE" : "LESS");
 	if (s != NULL)
-		scan_option(save(s));
+		scan_option(s);
 
-#define	isoptstring(s)	(((s)[0] == '-' || (s)[0] == '+') && (s)[1] != '\0')
+#define isoptstring(s)  (((s)[0] == '-' || (s)[0] == '+') && (s)[1] != '\0')
 	while (argc > 0 && (isoptstring(*argv) || isoptpending()))
 	{
 		s = *argv++;
@@ -158,6 +163,8 @@ main(argc, argv)
 		nopendopt();
 		quit(QUIT_OK);
 	}
+
+	expand_cmd_tables();
 
 #if EDITOR
 	editor = lgetenv("VISUAL");
@@ -218,6 +225,7 @@ main(argc, argv)
 		 * Output is not a tty.
 		 * Just copy the input file(s) to output.
 		 */
+		set_output(1); /* write to stdout */
 		SET_BINARY(1);
 		if (edit_first() == 0)
 		{
@@ -281,6 +289,18 @@ main(argc, argv)
 		}
 	}
 
+	if (errmsgs > 0)
+	{
+		/*
+		 * We displayed some messages on error output
+		 * (file descriptor 2; see flush()).
+		 * Before erasing the screen contents, wait for a keystroke.
+		 */
+		less_printf("Press RETURN to continue ", NULL_PARG);
+		get_return();
+		putchr('\n');
+	}
+	set_output(1);
 	init();
 	commands();
 	quit(QUIT_OK);
@@ -330,7 +350,7 @@ ecalloc(count, size)
 skipsp(s)
 	char *s;
 {
-	while (*s == ' ' || *s == '\t')	
+	while (*s == ' ' || *s == '\t')
 		s++;
 	return (s);
 }
@@ -387,13 +407,27 @@ quit(status)
 		status = save_status;
 	else
 		save_status = status;
+#if LESSTEST
+	rstat('Q');
+#endif /*LESSTEST*/
 	quitting = 1;
-	edit((char*)NULL);
-	save_cmdhist();
-	if (any_display && is_tty)
+	if (interactive())
 		clear_bot();
 	deinit();
 	flush();
+	if (redraw_on_quit && term_init_done)
+	{
+		/*
+		 * The last file text displayed might have been on an 
+		 * alternate screen, which now (since deinit) cannot be seen.
+		 * redraw_on_quit tells us to redraw it on the main screen.
+		 */
+		first_time = 1; /* Don't print "skipping" or tildes */
+		repaint();
+		flush();
+	}
+	edit((char*)NULL);
+	save_cmdhist();
 	raw_mode(0);
 #if MSDOS_COMPILER && MSDOS_COMPILER != DJGPPC
 	/* 

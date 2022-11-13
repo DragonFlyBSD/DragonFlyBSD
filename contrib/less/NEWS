@@ -3,11 +3,173 @@
 
 ======================================================================
 
-  For the latest news about less, see the "less" Web page:
-      http://www.greenwoodsoftware.com/less
+  For the latest news about less, see https://greenwoodsoftware.com/less
   You can also download the latest version of less from there.
 
-  To report bugs, suggestions or comments, send email to bug-less@gnu.org
+  Report bugs, suggestions or comments at 
+  https://github.com/gwsw/less/issues.
+
+======================================================================
+
+	Major changes between "less" versions 590 and 608
+
+* Add the --header option (github #43).
+
+* Add the --no-number-headers option (github #178).
+
+* Add the --status-line option.
+
+* Add the --redraw-on-quit option (github #36).
+
+* Add the --search-options option (github #213).
+
+* Add the --exit-follow-on-close option (github #244).
+
+* Add 'H' color type to set color of header lines.
+
+* Add #version conditional to lesskey.
+
+* Add += syntax to variable section in lesskey files.
+
+* Allow option name in -- command to end with '=' in addition to '\n'.
+
+* Add $HOME/.config to possible locations of lesskey file (github #153).
+
+* Add $XDG_STATE_HOME and $HOME/.local/state to possible locations
+  of history file (github #223).
+
+* Don't read or write history file in secure mode (github #201).
+
+* Fix display of multibyte and double-width chars in prompt.
+
+* Fix ESC-BACKSPACE command when BACKSPACE key does not send 0x08
+  (github #188).
+
+* Add more \k codes to lesskey format.
+
+* Fix bug when empty file is modified while viewing it.
+
+* Fix bug when parsing a malformed lesskey file (githb #234).
+
+* Fix bug scrolling history when --incsearch is set (github #214).
+
+* Fix buffer overflow when invoking lessecho with more than 63 -m/-n 
+  options (github #198).
+
+* Fix buffer overflow in bin_file (github #271).
+
+* Fix bug restoring color at end of highlighted text.
+
+* Fix bug in parsing lesskey file.
+
+* Defer moving cursor to lower left in some more cases.
+
+* Suppress TAB filename expansion in some cases where it doesn't make sense.
+
+* Fix termlib detection when compiler doesn't accept 
+  calls to undeclared functions.
+
+* Fix bug in input of non-ASCII characters on Windows (github #247)
+
+* Escape filenames when invoking LESSCLOSE.
+
+* Fix bug using multibyte UTF-8 char in search string 
+  with --incsearch (github #273).
+
+======================================================================
+
+	Major changes between "less" versions 581 and 590
+
+* Make less able to read lesskey source files (deprecating lesskey).
+
+* If XDG_CONFIG_HOME is set, find lesskey source file 
+  in $XDG_CONFIG_HOME/lesskey rather than $HOME/.lesskey.
+
+* If XDG_DATA_HOME is set, find and store history file 
+  in $XDG_DATA_HOME/lesshst rather than $HOME/.lesshst.
+
+* Add the --lesskey-src option.
+
+* Add the --file-size option.
+
+* With -F, if screen is resized to make file fit on one screen, don't exit.
+
+* Fix bug which could leave terminal in mouse-reporting mode 
+  after exiting less.
+
+* Fix bug which caused failure to respond to window resize.
+
+* Fix backslash bug searching in tag file.
+
+======================================================================
+
+	Major changes between "less" versions 563 and 581
+
+* Change ESC-u command to toggle, not disable, highlighting per man page.
+
+* Add ESC-U command. 
+
+* Add ctrl-W search modifier for wrapping search.
+
+* F command can be interrupted by ^X.
+
+* Support OSC 8 hyperlinks when -R is in effect.
+
+* g command with no number will ignore -j and put first line at top of screen.
+
+* Multiple + or -p command line options are handled better.
+
+* Add the --incsearch option.
+
+* Add the --line-num-width option.
+
+* Add the --status-col-width option.
+
+* Add the --use-color and --color options.
+
+* Display -w highlight even if highlighted line is empty.
+
+* If search result is in a long line, scroll to ensure it is visible.
+
+* Editing the same file under different names now creates only
+  one entry in the file list.
+
+* Make visual bell more visible on some terminals.
+
+* Ring end-of-file bell no more than once per second.
+
+* Build can use either Python or Perl for Makefile.aut operations.
+
+* Fix crash when using the @ search modifier.
+
+* Fix crash in the 's' command due to duplicate free.
+
+* Fix realpath crash on Darwin.
+
+======================================================================
+
+	Major changes between "less" versions 551 and 563
+
+* Update Unicode tables.
+
+* Treat Hangul Jamo medial vowels and final consonants as zero width.
+
+* Display error message immediately when -o is toggled and 
+  input is not a pipe.
+
+* Fix regression: make screen repaint when "squished" and 
+  a no-movement command is given.
+
+* Fix erroneous EOF calculation when F command is interrupted.
+
+* Make WIN32C version include this fix from 551:
+  Don't count lines in initial screen if using -X with -F.
+
+* Fix display bug in WIN32C version.
+
+* Fix memory corruption when built with libtermcap.
+
+* Support libtinfow.
 
 ======================================================================
 

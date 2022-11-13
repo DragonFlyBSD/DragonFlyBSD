@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2019  Mark Nudelman
+ * Copyright (C) 1984-2022  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -23,7 +23,7 @@
 #if MSDOS_COMPILER==DJGPPC
 #include <glob.h>
 #include <dir.h>
-#define _MAX_PATH	PATH_MAX
+#define _MAX_PATH      PATH_MAX
 #endif
 #endif
 #ifdef _OSK
@@ -36,10 +36,10 @@
 #if HAVE_STAT
 #include <sys/stat.h>
 #ifndef S_ISDIR
-#define	S_ISDIR(m)	(((m) & S_IFMT) == S_IFDIR)
+#define S_ISDIR(m)      (((m) & S_IFMT) == S_IFDIR)
 #endif
 #ifndef S_ISREG
-#define	S_ISREG(m)	(((m) & S_IFMT) == S_IFREG)
+#define S_ISREG(m)      (((m) & S_IFMT) == S_IFREG)
 #endif
 #endif
 
@@ -216,10 +216,11 @@ shell_quote(s)
  * Return a pathname that points to a specified file in a specified directory.
  * Return NULL if the file does not exist in the directory.
  */
-	static char *
-dirfile(dirname, filename)
+	public char *
+dirfile(dirname, filename, must_exist)
 	char *dirname;
 	char *filename;
+	int must_exist;
 {
 	char *pathname;
 	int len;
@@ -235,17 +236,20 @@ dirfile(dirname, filename)
 	if (pathname == NULL)
 		return (NULL);
 	SNPRINTF3(pathname, len, "%s%s%s", dirname, PATHNAME_SEP, filename);
-	/*
-	 * Make sure the file exists.
-	 */
-	f = open(pathname, OPEN_READ);
-	if (f < 0)
+	if (must_exist)
 	{
-		free(pathname);
-		pathname = NULL;
-	} else
-	{
-		close(f);
+		/*
+		 * Make sure the file exists.
+		 */
+		f = open(pathname, OPEN_READ);
+		if (f < 0)
+		{
+			free(pathname);
+			pathname = NULL;
+		} else
+		{
+			close(f);
+		}
 	}
 	return (pathname);
 }
@@ -259,25 +263,19 @@ homefile(filename)
 {
 	char *pathname;
 
-	/*
-	 * Try $HOME/filename.
-	 */
-	pathname = dirfile(lgetenv("HOME"), filename);
+	/* Try $HOME/filename. */
+	pathname = dirfile(lgetenv("HOME"), filename, 1);
 	if (pathname != NULL)
 		return (pathname);
 #if OS2
-	/*
-	 * Try $INIT/filename.
-	 */
-	pathname = dirfile(lgetenv("INIT"), filename);
+	/* Try $INIT/filename. */
+	pathname = dirfile(lgetenv("INIT"), filename, 1);
 	if (pathname != NULL)
 		return (pathname);
 #endif
 #if MSDOS_COMPILER || OS2
-	/*
-	 * Look for the file anywhere on search path.
-	 */
-	pathname = (char *) calloc(_MAX_PATH, sizeof(char));
+	/* Look for the file anywhere on search path. */
+	pathname = (char *) ecalloc(_MAX_PATH, sizeof(char));
 #if MSDOS_COMPILER==DJGPPC
 	{
 		char *res = searchpath(filename);
@@ -312,7 +310,7 @@ fexpand(s)
 	char *e;
 	IFILE ifile;
 
-#define	fchar_ifile(c) \
+#define fchar_ifile(c) \
 	((c) == '%' ? curr_ifile : \
 	 (c) == '#' ? old_ifile : NULL_IFILE)
 
@@ -479,16 +477,19 @@ bin_file(f)
 	edata = &data[n];
 	for (p = data;  p < edata;  )
 	{
-		if (utf_mode && !is_utf8_well_formed(p, edata-data))
+		if (utf_mode && !is_utf8_well_formed(p, edata-p))
 		{
 			bin_count++;
 			utf_skip_to_lead(&p, edata);
 		} else 
 		{
 			LWCHAR c = step_char(&p, +1, edata);
-			if (ctldisp == OPT_ONPLUS && IS_CSI_START(c))
-				skip_ansi(&p, edata);
-			else if (binary_char(c))
+			struct ansi_state *pansi;
+			if (ctldisp == OPT_ONPLUS && (pansi = ansi_start(c)) != NULL)
+			{
+				skip_ansi(pansi, &p, edata);
+				ansi_done(pansi);
+			} else if (binary_char(c))
 				bin_count++;
 		}
 	}
@@ -514,6 +515,7 @@ seek_filesize(f)
 	return ((POSITION) spos);
 }
 
+#if HAVE_POPEN
 /*
  * Read a string from a file.
  * Return a pointer to the string in memory.
@@ -556,10 +558,6 @@ readfd(fd)
 	*p = '\0';
 	return (buf);
 }
-
-
-
-#if HAVE_POPEN
 
 /*
  * Execute a shell command.
@@ -648,7 +646,7 @@ lglob(filename)
 		qfilename = shell_quote(p);
 		if (qfilename != NULL)
 		{
-	  		length += strlen(qfilename) + 1;
+			length += strlen(qfilename) + 1;
 			free(qfilename);
 		}
 	}
@@ -759,10 +757,11 @@ lglob(filename)
 	 */
 	len = (int) (strlen(lessecho) + strlen(filename) + (7*strlen(metachars())) + 24);
 	cmd = (char *) ecalloc(len, sizeof(char));
-	SNPRINTF4(cmd, len, "%s -p0x%x -d0x%x -e%s ", lessecho, openquote, closequote, esc);
+	SNPRINTF4(cmd, len, "%s -p0x%x -d0x%x -e%s ", lessecho,
+		(unsigned char) openquote, (unsigned char) closequote, esc);
 	free(esc);
 	for (s = metachars();  *s != '\0';  s++)
-		sprintf(cmd + strlen(cmd), "-n0x%x ", *s);
+		sprintf(cmd + strlen(cmd), "-n0x%x ", (unsigned char) *s);
 	sprintf(cmd + strlen(cmd), "-- %s", filename);
 	fd = shellcmd(cmd);
 	free(cmd);
@@ -795,7 +794,7 @@ lglob(filename)
 }
 
 /*
- * @@@
+ * Return canonical pathname.
  */
 	public char *
 lrealpath(path)
@@ -809,6 +808,7 @@ lrealpath(path)
 	return (save(path));
 }
 
+#if HAVE_POPEN
 /*
  * Return number of %s escapes in a string.
  * Return a large number if there are any other % escapes besides %s.
@@ -834,6 +834,7 @@ num_pct_s(lessopen)
 	}
 	return (num);
 }
+#endif
 
 /*
  * See if we should open a "replacement file" 
@@ -914,7 +915,7 @@ open_altfile(filename, pf, pfd)
 		int f;
 
 		/*
-		 * The first time we open the file, read one char 
+		 * The alt file is a pipe. Read one char 
 		 * to see if the pipe will produce any data.
 		 * If it does, push the char back on the pipe.
 		 */
@@ -931,25 +932,32 @@ open_altfile(filename, pf, pfd)
 			 */
 			int status = pclose(fd);
 			if (returnfd > 1 && status == 0) {
+				/* File is empty. */
 				*pfd = NULL;
 				*pf = -1;
 				return (save(FAKE_EMPTYFILE));
 			}
+			/* No alt file. */
 			return (NULL);
 		}
+		/* Alt pipe contains data, so use it. */
 		ch_ungetchar(c);
 		*pfd = (void *) fd;
 		*pf = f;
 		return (save("-"));
 	}
 #endif
+	/* The alt file is a regular file. Read its name from LESSOPEN. */
 	cmd = readfd(fd);
 	pclose(fd);
 	if (*cmd == '\0')
+	{
 		/*
 		 * Pipe is empty.  This means there is no alt file.
 		 */
+		free(cmd);
 		return (NULL);
+	}
 	return (cmd);
 #endif /* HAVE_POPEN */
 }
@@ -964,6 +972,8 @@ close_altfile(altfilename, filename)
 {
 #if HAVE_POPEN
 	char *lessclose;
+	char *qfilename;
+	char *qaltfilename;
 	FILE *fd;
 	char *cmd;
 	int len;
@@ -972,15 +982,19 @@ close_altfile(altfilename, filename)
 		return;
 	ch_ungetchar(-1);
 	if ((lessclose = lgetenv("LESSCLOSE")) == NULL)
-	     	return;
+		return;
 	if (num_pct_s(lessclose) > 2) 
 	{
 		error("LESSCLOSE ignored; must contain no more than 2 %%s", NULL_PARG);
 		return;
 	}
-	len = (int) (strlen(lessclose) + strlen(filename) + strlen(altfilename) + 2);
+	qfilename = shell_quote(filename);
+	qaltfilename = shell_quote(altfilename);
+	len = (int) (strlen(lessclose) + strlen(qfilename) + strlen(qaltfilename) + 2);
 	cmd = (char *) ecalloc(len, sizeof(char));
-	SNPRINTF2(cmd, len, lessclose, filename, altfilename);
+	SNPRINTF2(cmd, len, lessclose, qfilename, qaltfilename);
+	free(qaltfilename);
+	free(qfilename);
 	fd = shellcmd(cmd);
 	free(cmd);
 	if (fd != NULL)
@@ -1115,4 +1129,3 @@ last_component(name)
 	}
 	return (name);
 }
-

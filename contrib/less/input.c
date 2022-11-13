@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2019  Mark Nudelman
+ * Copyright (C) 1984-2022  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -20,7 +20,6 @@
 #include "less.h"
 
 extern int squeeze;
-extern int chopline;
 extern int hshift;
 extern int quit_if_one_screen;
 extern int sigs;
@@ -31,6 +30,7 @@ extern POSITION end_attnpos;
 #if HILITE_SEARCH
 extern int hilite_search;
 extern int size_linebuf;
+extern int show_attn;
 #endif
 
 /*
@@ -41,8 +41,11 @@ extern int size_linebuf;
  * of the NEXT line.  The line obtained is the line starting at curr_pos.
  */
 	public POSITION
-forw_line(curr_pos)
+forw_line_seg(curr_pos, skipeol, rscroll, nochop)
 	POSITION curr_pos;
+	int skipeol;
+	int rscroll;
+	int nochop;
 {
 	POSITION base_pos;
 	POSITION new_pos;
@@ -104,8 +107,8 @@ get_forw_line:
 	/*
 	 * Read forward again to the position we should start at.
 	 */
- 	prewind();
-	plinenum(base_pos);
+	prewind();
+	plinestart(base_pos);
 	(void) ch_seek(base_pos);
 	new_pos = base_pos;
 	while (new_pos < curr_pos)
@@ -158,7 +161,7 @@ get_forw_line:
 			 */
 			backchars = pflushmbc();
 			new_pos = ch_tell();
-			if (backchars > 0 && !chopline && hshift == 0)
+			if (backchars > 0 && (nochop || !chop_line()) && hshift == 0)
 			{
 				new_pos -= backchars + 1;
 				endline = FALSE;
@@ -180,8 +183,9 @@ get_forw_line:
 			 * is too long to print in the screen width.
 			 * End the line here.
 			 */
-			if (chopline || hshift > 0)
+			if (skipeol)
 			{
+				/* Read to end of line. */
 				do
 				{
 					if (ABORT_SIGS())
@@ -205,7 +209,14 @@ get_forw_line:
 		c = ch_forw_get();
 	}
 
-	pdone(endline, chopped, 1);
+#if HILITE_SEARCH
+	if (blankline && show_attn)
+	{
+		/* Add spurious space to carry possible attn hilite. */
+		pappend(' ', ch_tell()-1);
+	}
+#endif
+	pdone(endline, rscroll && chopped, 1);
 
 #if HILITE_SEARCH
 	if (is_filtered(base_pos))
@@ -218,8 +229,12 @@ get_forw_line:
 		goto get_forw_line;
 	}
 
-	if (status_col && is_hilited(base_pos, ch_tell()-1, 1, NULL))
-		set_status_col('*');
+	if (status_col)
+	{
+		int attr = is_hilited_attr(base_pos, ch_tell()-1, 1, NULL);
+		if (attr)
+			set_status_col('*', attr);
+	}
 #endif
 
 	if (squeeze && blankline)
@@ -241,6 +256,14 @@ get_forw_line:
 	}
 
 	return (new_pos);
+}
+
+	public POSITION
+forw_line(curr_pos)
+	POSITION curr_pos;
+{
+
+	return forw_line_seg(curr_pos, (chop_line() || hshift > 0), TRUE, FALSE);
 }
 
 /*
@@ -358,7 +381,7 @@ get_back_line:
 	}
 	endline = FALSE;
 	prewind();
-	plinenum(new_pos);
+	plinestart(new_pos);
     loop:
 	begin_new_pos = new_pos;
 	(void) ch_seek(new_pos);
@@ -376,7 +399,7 @@ get_back_line:
 		if (c == '\n')
 		{
 			backchars = pflushmbc();
-			if (backchars > 0 && !chopline && hshift == 0)
+			if (backchars > 0 && !chop_line() && hshift == 0)
 			{
 				backchars++;
 				goto shift;
@@ -392,7 +415,7 @@ get_back_line:
 			 * reached our curr_pos yet.  Discard the line
 			 * and start a new one.
 			 */
-			if (chopline || hshift > 0)
+			if (chop_line() || hshift > 0)
 			{
 				endline = TRUE;
 				chopped = TRUE;
@@ -423,8 +446,12 @@ get_back_line:
 		goto get_back_line;
 	}
 
-	if (status_col && curr_pos > 0 && is_hilited(base_pos, curr_pos-1, 1, NULL))
-		set_status_col('*');
+	if (status_col && curr_pos > 0)
+	{
+		int attr = is_hilited_attr(base_pos, curr_pos-1, 1, NULL);
+		if (attr)
+			set_status_col('*', attr);
+	}
 #endif
 
 	return (begin_new_pos);
