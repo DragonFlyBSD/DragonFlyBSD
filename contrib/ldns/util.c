@@ -293,23 +293,33 @@ ldns_gmtime64_r(int64_t clock, struct tm *result)
 #endif /* SIZEOF_TIME_T <= 4 */
 
 static int64_t
-ldns_serial_arithmitics_time(int32_t time, time_t now)
+ldns_serial_arithmetics_time(int32_t time, time_t now)
 {
-	int32_t offset = time - (int32_t) now;
+	/* Casting due to https://github.com/NLnetLabs/ldns/issues/71 */
+	int32_t offset = (int32_t) ((uint32_t) time - (uint32_t) now);
 	return (int64_t) now + offset;
 }
 
+struct tm *
+ldns_serial_arithmetics_gmtime_r(int32_t time, time_t now, struct tm *result)
+{
+#if SIZEOF_TIME_T <= 4
+	int64_t secs_since_epoch = ldns_serial_arithmetics_time(time, now);
+	return  ldns_gmtime64_r(secs_since_epoch, result);
+#else
+	time_t  secs_since_epoch = ldns_serial_arithmetics_time(time, now);
+	return  gmtime_r(&secs_since_epoch, result);
+#endif
+}
 
+#ifdef ldns_serial_arithmitics_gmtime_r
+#undef ldns_serial_arithmitics_gmtime_r
+#endif
+/* alias function because of previously used wrong spelling */
 struct tm *
 ldns_serial_arithmitics_gmtime_r(int32_t time, time_t now, struct tm *result)
 {
-#if SIZEOF_TIME_T <= 4
-	int64_t secs_since_epoch = ldns_serial_arithmitics_time(time, now);
-	return  ldns_gmtime64_r(secs_since_epoch, result);
-#else
-	time_t  secs_since_epoch = ldns_serial_arithmitics_time(time, now);
-	return  gmtime_r(&secs_since_epoch, result);
-#endif
+	return ldns_serial_arithmetics_gmtime_r(time, now, result);
 }
 
 /**
@@ -377,7 +387,7 @@ ldns_init_random(FILE *fd, unsigned int size)
 		RAND_seed(seed, (int) size);
 #else
 		/* Seed the standard prng, only uses the first
-		 * unsigned sizeof(unsiged int) bytes found in the entropy pool
+		 * unsigned sizeof(unsigned int) bytes found in the entropy pool
 		 */
 		memcpy(&seed_i, seed, sizeof(seed_i));
 		srandom(seed_i);

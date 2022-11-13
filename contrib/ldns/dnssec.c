@@ -332,6 +332,7 @@ uint16_t ldns_calc_keytag_raw(const uint8_t* key, size_t keysize)
 }
 
 #ifdef HAVE_SSL
+#ifdef USE_DSA
 DSA *
 ldns_key_buf2dsa(const ldns_buffer *key)
 {
@@ -380,7 +381,7 @@ ldns_key_buf2dsa_raw(const unsigned char* key, size_t len)
 		BN_free(Y);
 		return NULL;
 	}
-#if OPENSSL_VERSION_NUMBER < 0x10100000 || defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER < 0x10100000 || (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER < 0x20700000)
 #ifndef S_SPLINT_S
 	dsa->p = P;
 	dsa->q = Q;
@@ -407,6 +408,7 @@ ldns_key_buf2dsa_raw(const unsigned char* key, size_t len)
 #endif /* OPENSSL_VERSION_NUMBER */
 	return dsa;
 }
+#endif /* USE_DSA */
 
 RSA *
 ldns_key_buf2rsa(const ldns_buffer *key)
@@ -432,7 +434,7 @@ ldns_key_buf2rsa_raw(const unsigned char* key, size_t len)
 			return NULL;
 		/* need some smart comment here XXX*/
 		/* the exponent is too large so it's places
-		 * futher...???? */
+		 * further...???? */
 		memmove(&int16, key+1, 2);
 		exp = ntohs(int16);
 		offset = 3;
@@ -466,7 +468,7 @@ ldns_key_buf2rsa_raw(const unsigned char* key, size_t len)
 		BN_free(modulus);
 		return NULL;
 	}
-#if OPENSSL_VERSION_NUMBER < 0x10100000 || defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER < 0x10100000 || (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER < 0x20700000)
 #ifndef S_SPLINT_S
 	rsa->n = modulus;
 	rsa->e = exponent;
@@ -910,7 +912,7 @@ ldns_dnssec_create_nsec3(const ldns_dnssec_name *from,
 	cur_rrsets = from->rrsets;
 	while (cur_rrsets) {
 		/* Do not include non-authoritative rrsets on the delegation point
-		 * in the type bitmap. Potentionally not skipping insecure
+		 * in the type bitmap. Potentially not skipping insecure
 		 * delegation should have been done earlier, in function
 		 * ldns_dnssec_zone_create_nsec3s, or even earlier in:
 		 * ldns_dnssec_zone_sign_nsec3_flg .
@@ -1332,6 +1334,8 @@ ldns_nsec3_salt_data(const ldns_rr *nsec3_rr)
 	ldns_rdf *salt_rdf = ldns_nsec3_salt(nsec3_rr);
 	if (salt_rdf && ldns_rdf_size(salt_rdf) > 0) {
 	    	salt_length = ldns_rdf_data(salt_rdf)[0];
+		if((size_t)salt_length+1 > ldns_rdf_size(salt_rdf))
+			return NULL;
 		salt = LDNS_XMALLOC(uint8_t, salt_length);
                 if(!salt) return NULL;
 		memcpy(salt, &ldns_rdf_data(salt_rdf)[1], salt_length);
@@ -1904,7 +1908,7 @@ ldns_convert_ecdsa_rrsig_rdf2asn1(ldns_buffer *target_buffer,
         const ldns_rdf *sig_rdf)
 {
         /* convert from two BIGNUMs in the rdata buffer, to ASN notation.
-	 * ASN preable:  30440220 <R 32bytefor256> 0220 <S 32bytefor256>
+	 * ASN preamble:  30440220 <R 32bytefor256> 0220 <S 32bytefor256>
 	 * the '20' is the length of that field (=bnsize).
 	 * the '44' is the total remaining length.
 	 * if negative, start with leading zero.

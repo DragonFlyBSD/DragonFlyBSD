@@ -355,7 +355,7 @@ uint8_t ldns_nsec3_salt_length(const ldns_rr *nsec3_rr);
 /**
  * Returns the salt bytes used in the given NSEC3 RR
  * \param[in] *nsec3_rr The RR to read from
- * \return The salt in bytes, this is alloced, so you need to free it
+ * \return The salt in bytes, this is alloc'ed, so you need to free it
  */
 uint8_t *ldns_nsec3_salt_data(const ldns_rr *nsec3_rr);
 

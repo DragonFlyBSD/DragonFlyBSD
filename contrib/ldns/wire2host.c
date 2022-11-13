@@ -273,6 +273,7 @@ ldns_wire2rdf(ldns_rr *rr, const uint8_t *wire, size_t max, size_t *pos)
 		case LDNS_RDF_TYPE_IPSECKEY:
 		case LDNS_RDF_TYPE_LONG_STR:
 		case LDNS_RDF_TYPE_AMTRELAY:
+		case LDNS_RDF_TYPE_SVCPARAMS:
 		case LDNS_RDF_TYPE_NONE:
 			/*
 			 * Read to end of rr rdata
@@ -309,7 +310,6 @@ ldns_wire2rdf(ldns_rr *rr, const uint8_t *wire, size_t max, size_t *pos)
 
 	return LDNS_STATUS_OK;
 }
-
 
 /* TODO:
          can *pos be incremented at READ_INT? or maybe use something like

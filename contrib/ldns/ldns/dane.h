@@ -43,7 +43,7 @@ enum ldns_enum_tlsa_certificate_usage
 	/** CA constraint */
 	LDNS_TLSA_USAGE_PKIX_TA				=   0,
 	LDNS_TLSA_USAGE_CA_CONSTRAINT			=   0,
-	/** Sevice certificate constraint */
+	/** Service certificate constraint */
 	LDNS_TLSA_USAGE_PKIX_EE				=   1,
 	LDNS_TLSA_USAGE_SERVICE_CERTIFICATE_CONSTRAINT	=   1,
 	/** Trust anchor assertion */

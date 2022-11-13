@@ -592,7 +592,7 @@ ldns_status ldns_dnssec_verify_denial_nsec3(ldns_rr *rr,
  * \param[in] packet_qtype The original query RR type
  * \param[in] packet_nodata True if the providing packet had an empty ANSWER
  *                          section
- * \param[in] match On match, the given (reference to a) pointer will be set 
+ * \param[out] match On match, the given (reference to a) pointer will be set 
  *                  to point to the matching nsec resource record.
  * \return LDNS_STATUS_OK if the NSEC3 RRs deny the existence, error code
  *                        containing the reason they do not otherwise
