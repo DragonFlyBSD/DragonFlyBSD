@@ -2275,6 +2275,7 @@ TO_REMOVE+=/usr/lib/libedit.so
 TO_REMOVE+=/usr/lib/profile/libedit.a
 TO_REMOVE+=/lib/libedit.so.5
 TO_REMOVE+=/usr/lib/libprivate_ldns.so.1
+TO_REMOVE+=/usr/lib/libprivate_ldns.so.2
 TO_REMOVE+=/usr/lib/profile/libprivate_ldns.a
 TO_REMOVE+=/usr/lib/libprivate_ssh.so.4
 TO_REMOVE+=/usr/lib/profile/libprivate_ssh.a

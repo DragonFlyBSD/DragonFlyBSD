@@ -3,14 +3,14 @@
 LDNS=		${.CURDIR}/../../contrib/ldns
 
 LIB=		private_ldns
-SHLIB_MAJOR=	2
+SHLIB_MAJOR=	3
 PRIVATELIB=	shpub
 
 NO_STRICT_ALIASING=
 
 SRCS+=		buffer.c dname.c dnssec.c dnssec_verify.c dnssec_zone.c \
 		error.c higher.c host2str.c host2wire.c keys.c net.c \
-		packet.c parse.c rbtree.c rdata.c resolver.c \
+		edns.c packet.c parse.c rbtree.c rdata.c resolver.c \
 		rr.c rr_functions.c sha1.c sha2.c \
 		str2host.c tsig.c util.c wire2host.c zone.c
 # not needed in base but included:

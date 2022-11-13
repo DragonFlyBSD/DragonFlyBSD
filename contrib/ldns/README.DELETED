@@ -5,6 +5,7 @@ Makefile.in
 README
 README.git
 README.snapshots
+README-Travis.md
 aclocal.m4
 acx_nlnetlabs.m4
 ax_pkg_swig.m4
@@ -45,6 +46,7 @@ ldns/net.h.in
 ldns/util.h.in
 libdns.doxygen
 libdns.vim
+libdns.doxygen.in
 linktest.c
 ltmain.sh
 m4/
