@@ -58,6 +58,9 @@ __FBSDID("$FreeBSD: head/lib/libarchive/archive_read_support_format_zip.c 201102
 #ifdef HAVE_LZMA_H
 #include <lzma.h>
 #endif
+#ifdef HAVE_ZSTD_H
+#include <zstd.h>
+#endif
 
 #include "archive.h"
 #include "archive_digest_private.h"
@@ -142,6 +145,7 @@ struct zip {
 	/* Structural information about the archive. */
 	struct archive_string	format_name;
 	int64_t			central_directory_offset;
+	int64_t			central_directory_offset_adjusted;
 	size_t			central_directory_entries_total;
 	size_t			central_directory_entries_on_this_disk;
 	int			has_encrypted_entries;
@@ -188,6 +192,11 @@ struct zip {
 #ifdef HAVE_BZLIB_H
 	bz_stream		bzstream;
 	char            bzstream_valid;
+#endif
+
+#if HAVE_ZSTD_H && HAVE_LIBZSTD
+	ZSTD_DStream	*zstdstream;
+	char            zstdstream_valid;
 #endif
 
 	IByteIn			zipx_ppmd_stream;
@@ -245,6 +254,17 @@ struct zip {
 
 /* Many systems define min or MIN, but not all. */
 #define	zipmin(a,b) ((a) < (b) ? (a) : (b))
+
+#ifdef HAVE_ZLIB_H
+static int
+zip_read_data_deflate(struct archive_read *a, const void **buff,
+	size_t *size, int64_t *offset);
+#endif
+#if HAVE_LZMA_H && HAVE_LIBLZMA
+static int
+zip_read_data_zipx_lzma_alone(struct archive_read *a, const void **buff,
+	size_t *size, int64_t *offset);
+#endif
 
 /* This function is used by Ppmd8_DecodeSymbol during decompression of Ppmd8
  * streams inside ZIP files. It has 2 purposes: one is to fetch the next
@@ -423,6 +443,7 @@ static const struct {
 	{17, "reserved"}, /* Reserved by PKWARE */
 	{18, "ibm-terse-new"}, /* File is compressed using IBM TERSE (new) */
 	{19, "ibm-lz777"},/* IBM LZ77 z Architecture (PFS) */
+	{93, "zstd"},     /*  Zstandard (zstd) Compression */
 	{95, "xz"},       /* XZ compressed data */
 	{96, "jpeg"},     /* JPEG compressed data */
 	{97, "wav-pack"}, /* WavPack compressed data */
@@ -1132,7 +1153,8 @@ zip_read_local_file_header(struct archive_read *a, struct archive_entry *entry,
 			    (intmax_t)zip_entry->compressed_size);
 			ret = ARCHIVE_WARN;
 		}
-		if (zip_entry->uncompressed_size == 0) {
+		if (zip_entry->uncompressed_size == 0 ||
+			zip_entry->uncompressed_size == 0xffffffff) {
 			zip_entry->uncompressed_size
 			    = zip_entry_central_dir.uncompressed_size;
 		} else if (zip_entry->uncompressed_size
@@ -1167,7 +1189,55 @@ zip_read_local_file_header(struct archive_read *a, struct archive_entry *entry,
 		linkname_length = (size_t)zip_entry->compressed_size;
 
 		archive_entry_set_size(entry, 0);
-		p = __archive_read_ahead(a, linkname_length, NULL);
+
+		// take into account link compression if any
+		size_t linkname_full_length = linkname_length;
+		if (zip->entry->compression != 0)
+		{
+			// symlink target string appeared to be compressed
+			int status = ARCHIVE_FATAL;
+			const void *uncompressed_buffer = NULL;
+
+			switch (zip->entry->compression)
+			{
+#if HAVE_ZLIB_H
+				case 8: /* Deflate compression. */
+					zip->entry_bytes_remaining = zip_entry->compressed_size;
+					status = zip_read_data_deflate(a, &uncompressed_buffer,
+						&linkname_full_length, NULL);
+					break;
+#endif
+#if HAVE_LZMA_H && HAVE_LIBLZMA
+				case 14: /* ZIPx LZMA compression. */
+					/*(see zip file format specification, section 4.4.5)*/
+					zip->entry_bytes_remaining = zip_entry->compressed_size;
+					status = zip_read_data_zipx_lzma_alone(a, &uncompressed_buffer,
+						&linkname_full_length, NULL);
+					break;
+#endif
+				default: /* Unsupported compression. */
+					break;
+			}
+			if (status == ARCHIVE_OK)
+			{
+				p = uncompressed_buffer;
+			}
+			else
+			{
+				archive_set_error(&a->archive,
+					ARCHIVE_ERRNO_FILE_FORMAT,
+					"Unsupported ZIP compression method "
+					"during decompression of link entry (%d: %s)",
+					zip->entry->compression,
+					compression_name(zip->entry->compression));
+				return ARCHIVE_FAILED;
+			}
+		}
+		else
+		{
+			p = __archive_read_ahead(a, linkname_length, NULL);
+		}
+
 		if (p == NULL) {
 			archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
 			    "Truncated Zip file");
@@ -1179,12 +1249,12 @@ zip_read_local_file_header(struct archive_read *a, struct archive_entry *entry,
 			sconv = zip->sconv_utf8;
 		if (sconv == NULL)
 			sconv = zip->sconv_default;
-		if (archive_entry_copy_symlink_l(entry, p, linkname_length,
+		if (archive_entry_copy_symlink_l(entry, p, linkname_full_length,
 		    sconv) != 0) {
 			if (errno != ENOMEM && sconv == zip->sconv_utf8 &&
 			    (zip->entry->zip_flags & ZIP_UTF8_NAME))
 			    archive_entry_copy_symlink_l(entry, p,
-				linkname_length, NULL);
+				linkname_full_length, NULL);
 			if (errno == ENOMEM) {
 				archive_set_error(&a->archive, ENOMEM,
 				    "Can't allocate memory for Symlink");
@@ -1542,7 +1612,8 @@ zipx_lzma_alone_init(struct archive_read *a, struct zip *zip)
 	/* To unpack ZIPX's "LZMA" (id 14) stream we can use standard liblzma
 	 * that is a part of XZ Utils. The stream format stored inside ZIPX
 	 * file is a modified "lzma alone" file format, that was used by the
-	 * `lzma` utility which was later deprecated in favour of `xz` utility. 	 * Since those formats are nearly the same, we can use a standard
+	 * `lzma` utility which was later deprecated in favour of `xz` utility.
+ 	 * Since those formats are nearly the same, we can use a standard
 	 * "lzma alone" decoder from XZ Utils. */
 
 	memset(&zip->zipx_lzma_stream, 0, sizeof(zip->zipx_lzma_stream));
@@ -1596,7 +1667,7 @@ zipx_lzma_alone_init(struct archive_read *a, struct zip *zip)
 	 */
 
 	/* Read magic1,magic2,lzma_params from the ZIPX stream. */
-	if((p = __archive_read_ahead(a, 9, NULL)) == NULL) {
+	if(zip->entry_bytes_remaining < 9 || (p = __archive_read_ahead(a, 9, NULL)) == NULL) {
 		archive_set_error(&a->archive, ARCHIVE_ERRNO_FILE_FORMAT,
 		    "Truncated lzma data");
 		return (ARCHIVE_FATAL);
@@ -1901,15 +1972,15 @@ zipx_ppmd8_init(struct archive_read *a, struct zip *zip)
 
 	if(order < 2 || restore_method > 2) {
 		archive_set_error(&a->archive, ARCHIVE_ERRNO_FILE_FORMAT,
-		    "Invalid parameter set in PPMd8 stream (order=%d, "
-		    "restore=%d)", order, restore_method);
+		    "Invalid parameter set in PPMd8 stream (order=%" PRId32 ", "
+		    "restore=%" PRId32 ")", order, restore_method);
 		return (ARCHIVE_FAILED);
 	}
 
 	/* Allocate the memory needed to properly decompress the file. */
 	if(!__archive_ppmd8_functions.Ppmd8_Alloc(&zip->ppmd8, mem << 20)) {
 		archive_set_error(&a->archive, ENOMEM,
-		    "Unable to allocate memory for PPMd8 stream: %d bytes",
+		    "Unable to allocate memory for PPMd8 stream: %" PRId32 " bytes",
 		    mem << 20);
 		return (ARCHIVE_FATAL);
 	}
@@ -2175,6 +2246,140 @@ zip_read_data_zipx_bzip2(struct archive_read *a, const void **buff,
 	return ARCHIVE_OK;
 }
 
+#endif
+
+#if HAVE_ZSTD_H && HAVE_LIBZSTD
+static int
+zipx_zstd_init(struct archive_read *a, struct zip *zip)
+{
+	size_t r;
+
+	/* Deallocate already existing Zstd decompression context if it
+	 * exists. */
+	if(zip->zstdstream_valid) {
+		ZSTD_freeDStream(zip->zstdstream);
+		zip->zstdstream_valid = 0;
+	}
+
+	/* Allocate a new Zstd decompression context. */
+	zip->zstdstream = ZSTD_createDStream();
+
+	r = ZSTD_initDStream(zip->zstdstream);
+	if (ZSTD_isError(r)) {
+		 archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
+			"Error initializing zstd decompressor: %s",
+			ZSTD_getErrorName(r));
+
+		return ARCHIVE_FAILED;
+	}
+
+	/* Mark the zstdstream field to be released in cleanup phase. */
+	zip->zstdstream_valid = 1;
+
+	/* (Re)allocate the buffer that will contain decompressed bytes. */
+	free(zip->uncompressed_buffer);
+
+	zip->uncompressed_buffer_size = ZSTD_DStreamOutSize();
+	zip->uncompressed_buffer =
+	    (uint8_t*) malloc(zip->uncompressed_buffer_size);
+	if (zip->uncompressed_buffer == NULL) {
+		archive_set_error(&a->archive, ENOMEM,
+			"No memory for Zstd decompression");
+
+		return ARCHIVE_FATAL;
+	}
+
+	/* Initialization done. */
+	zip->decompress_init = 1;
+	return ARCHIVE_OK;
+}
+
+static int
+zip_read_data_zipx_zstd(struct archive_read *a, const void **buff,
+    size_t *size, int64_t *offset)
+{
+	struct zip *zip = (struct zip *)(a->format->data);
+	ssize_t bytes_avail = 0, in_bytes, to_consume;
+	const void *compressed_buff;
+	int r;
+	size_t ret;
+	uint64_t total_out;
+	ZSTD_outBuffer out;
+	ZSTD_inBuffer in;
+
+	(void) offset; /* UNUSED */
+
+	/* Initialize decompression context if we're here for the first time. */
+	if(!zip->decompress_init) {
+		r = zipx_zstd_init(a, zip);
+		if(r != ARCHIVE_OK)
+			return r;
+	}
+
+	/* Fetch more compressed bytes */
+	compressed_buff = __archive_read_ahead(a, 1, &bytes_avail);
+	if(bytes_avail < 0) {
+		archive_set_error(&a->archive, ARCHIVE_ERRNO_FILE_FORMAT,
+		    "Truncated zstd file body");
+		return (ARCHIVE_FATAL);
+	}
+
+	in_bytes = zipmin(zip->entry_bytes_remaining, bytes_avail);
+	if(in_bytes < 1) {
+		/* zstd doesn't complain when caller feeds avail_in == 0.
+		 * It will actually return success in this case, which is
+		 * undesirable. This is why we need to make this check
+		 * manually. */
+		archive_set_error(&a->archive, ARCHIVE_ERRNO_FILE_FORMAT,
+		    "Truncated zstd file body");
+		return (ARCHIVE_FATAL);
+	}
+
+	/* Setup buffer boundaries */
+	in.src = compressed_buff;
+	in.size = in_bytes;
+	in.pos = 0;
+	out = (ZSTD_outBuffer) { zip->uncompressed_buffer, zip->uncompressed_buffer_size, 0 };
+
+	/* Perform the decompression. */
+	ret = ZSTD_decompressStream(zip->zstdstream, &out, &in);
+	if (ZSTD_isError(ret)) {
+		archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
+			"Error during zstd decompression: %s",
+			ZSTD_getErrorName(ret));
+		return (ARCHIVE_FATAL);
+	}
+
+	/* Check end of the stream. */
+	if (ret == 0) {
+		if ((in.pos == in.size) && (out.pos < out.size)) {
+			zip->end_of_entry = 1;
+			ZSTD_freeDStream(zip->zstdstream);
+			zip->zstdstream_valid = 0;
+		}
+	}
+
+	/* Update the pointers so decompressor can continue decoding. */
+	to_consume = in.pos;
+	__archive_read_consume(a, to_consume);
+
+	total_out = out.pos;
+
+	zip->entry_bytes_remaining -= to_consume;
+	zip->entry_compressed_bytes_read += to_consume;
+	zip->entry_uncompressed_bytes_read += total_out;
+
+	/* Give libarchive its due. */
+	*size = total_out;
+	*buff = zip->uncompressed_buffer;
+
+	/* Seek for optional marker, like in other entries. */
+	r = consume_optional_marker(a, zip);
+	if(r != ARCHIVE_OK)
+		return r;
+
+	return ARCHIVE_OK;
+}
 #endif
 
 #ifdef HAVE_ZLIB_H
@@ -2797,6 +3002,11 @@ archive_read_format_zip_read_data(struct archive_read *a,
 		r = zip_read_data_zipx_xz(a, buff, size, offset);
 		break;
 #endif
+#if HAVE_ZSTD_H && HAVE_LIBZSTD
+	case 93: /* ZIPx Zstd compression. */
+		r = zip_read_data_zipx_zstd(a, buff, size, offset);
+		break;
+#endif
 	/* PPMd support is built-in, so we don't need any #if guards. */
 	case 98: /* ZIPx PPMd compression. */
 		r = zip_read_data_zipx_ppmd(a, buff, size, offset);
@@ -2884,6 +3094,12 @@ archive_read_format_zip_cleanup(struct archive_read *a)
 #ifdef HAVE_BZLIB_H
 	if (zip->bzstream_valid) {
 		BZ2_bzDecompressEnd(&zip->bzstream);
+	}
+#endif
+
+#if HAVE_ZSTD_H && HAVE_LIBZSTD
+	if (zip->zstdstream_valid) {
+		ZSTD_freeDStream(zip->zstdstream);
 	}
 #endif
 
@@ -3294,24 +3510,31 @@ archive_read_support_format_zip_capabilities_seekable(struct archive_read * a)
 static int
 read_eocd(struct zip *zip, const char *p, int64_t current_offset)
 {
+	uint16_t disk_num;
+	uint32_t cd_size, cd_offset;
+	
+	disk_num = archive_le16dec(p + 4);
+	cd_size = archive_le32dec(p + 12);
+	cd_offset = archive_le32dec(p + 16);
+
 	/* Sanity-check the EOCD we've found. */
 
 	/* This must be the first volume. */
-	if (archive_le16dec(p + 4) != 0)
+	if (disk_num != 0)
 		return 0;
 	/* Central directory must be on this volume. */
-	if (archive_le16dec(p + 4) != archive_le16dec(p + 6))
+	if (disk_num != archive_le16dec(p + 6))
 		return 0;
 	/* All central directory entries must be on this volume. */
 	if (archive_le16dec(p + 10) != archive_le16dec(p + 8))
 		return 0;
 	/* Central directory can't extend beyond start of EOCD record. */
-	if (archive_le32dec(p + 16) + archive_le32dec(p + 12)
-	    > current_offset)
+	if (cd_offset + cd_size > current_offset)
 		return 0;
 
 	/* Save the central directory location for later use. */
-	zip->central_directory_offset = archive_le32dec(p + 16);
+	zip->central_directory_offset = cd_offset;
+	zip->central_directory_offset_adjusted = current_offset - cd_size;
 
 	/* This is just a tiny bit higher than the maximum
 	   returned by the streaming Zip bidder.  This ensures
@@ -3363,6 +3586,8 @@ read_zip64_eocd(struct archive_read *a, struct zip *zip, const char *p)
 
 	/* Save the central directory offset for later use. */
 	zip->central_directory_offset = archive_le64dec(p + 48);
+	/* TODO: Needs scanning backwards to find the eocd64 instead of assuming */
+	zip->central_directory_offset_adjusted = zip->central_directory_offset;
 
 	return 32;
 }
@@ -3534,7 +3759,8 @@ slurp_central_directory(struct archive_read *a, struct archive_entry* entry,
 	 * know the correction we need to apply to account for leading
 	 * padding.
 	 */
-	if (__archive_read_seek(a, zip->central_directory_offset, SEEK_SET) < 0)
+	if (__archive_read_seek(a, zip->central_directory_offset_adjusted, SEEK_SET)
+		< 0)
 		return ARCHIVE_FATAL;
 
 	found = 0;

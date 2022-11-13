@@ -287,6 +287,7 @@ struct _7zip {
 		const unsigned char	*next_in;
 		int64_t			 avail_in;
 		int64_t			 total_in;
+		int64_t			 stream_in;
 		unsigned char		*next_out;
 		int64_t			 avail_out;
 		int64_t			 total_out;
@@ -808,8 +809,12 @@ archive_read_format_7zip_read_data(struct archive_read *a,
 	if (zip->end_of_entry)
 		return (ARCHIVE_EOF);
 
-	bytes = read_stream(a, buff,
-		(size_t)zip->entry_bytes_remaining, 0);
+	const uint64_t max_read_size = 16 * 1024 * 1024;  // Don't try to read more than 16 MB at a time
+	size_t bytes_to_read = max_read_size;
+	if ((uint64_t)bytes_to_read > zip->entry_bytes_remaining) {
+		bytes_to_read = zip->entry_bytes_remaining;
+	}
+	bytes = read_stream(a, buff, bytes_to_read, 0);
 	if (bytes < 0)
 		return ((int)bytes);
 	if (bytes == 0) {
@@ -982,15 +987,30 @@ ppmd_read(void *p)
 	struct _7zip *zip = (struct _7zip *)(a->format->data);
 	Byte b;
 
-	if (zip->ppstream.avail_in == 0) {
-		archive_set_error(&a->archive, ARCHIVE_ERRNO_FILE_FORMAT,
-		    "Truncated RAR file data");
-		zip->ppstream.overconsumed = 1;
-		return (0);
+	if (zip->ppstream.avail_in <= 0) {
+		/*
+		 * Ppmd7_DecodeSymbol might require reading multiple bytes
+		 * and we are on boundary;
+		 * last resort to read using __archive_read_ahead.
+		 */
+		ssize_t bytes_avail = 0;
+		const uint8_t* data = __archive_read_ahead(a,
+		    zip->ppstream.stream_in+1, &bytes_avail);
+		if(bytes_avail < zip->ppstream.stream_in+1) {
+			archive_set_error(&a->archive,
+			    ARCHIVE_ERRNO_FILE_FORMAT,
+			    "Truncated 7z file data");
+			zip->ppstream.overconsumed = 1;
+			return (0);
+		}
+		zip->ppstream.next_in++;
+		b = data[zip->ppstream.stream_in];
+	} else {
+		b = *zip->ppstream.next_in++;
 	}
-	b = *zip->ppstream.next_in++;
 	zip->ppstream.avail_in--;
 	zip->ppstream.total_in++;
+	zip->ppstream.stream_in++;
 	return (b);
 }
 
@@ -1481,6 +1501,7 @@ decompress(struct archive_read *a, struct _7zip *zip,
 		}
 		zip->ppstream.next_in = t_next_in;
 		zip->ppstream.avail_in = t_avail_in;
+		zip->ppstream.stream_in = 0;
 		zip->ppstream.next_out = t_next_out;
 		zip->ppstream.avail_out = t_avail_out;
 		if (zip->ppmd7_stat == 0) {
@@ -1493,7 +1514,7 @@ decompress(struct archive_read *a, struct _7zip *zip,
 				zip->ppmd7_stat = -1;
 				archive_set_error(&a->archive,
 				    ARCHIVE_ERRNO_MISC,
-				    "Failed to initialize PPMd range decorder");
+				    "Failed to initialize PPMd range decoder");
 				return (ARCHIVE_FAILED);
 			}
 			if (zip->ppstream.overconsumed) {
@@ -3031,10 +3052,10 @@ extract_pack_stream(struct archive_read *a, size_t minimum)
 			    "Truncated 7-Zip file body");
 			return (ARCHIVE_FATAL);
 		}
-		if (bytes_avail > (ssize_t)zip->pack_stream_inbytes_remaining)
+		if ((uint64_t)bytes_avail > zip->pack_stream_inbytes_remaining)
 			bytes_avail = (ssize_t)zip->pack_stream_inbytes_remaining;
 		zip->pack_stream_inbytes_remaining -= bytes_avail;
-		if (bytes_avail > (ssize_t)zip->folder_outbytes_remaining)
+		if ((uint64_t)bytes_avail > zip->folder_outbytes_remaining)
 			bytes_avail = (ssize_t)zip->folder_outbytes_remaining;
 		zip->folder_outbytes_remaining -= bytes_avail;
 		zip->uncompressed_buffer_bytes_remaining = bytes_avail;
