@@ -21,7 +21,7 @@ ldns_dnssec_data_chain_new(void)
 	ldns_dnssec_data_chain *nc = LDNS_CALLOC(ldns_dnssec_data_chain, 1);
         if(!nc) return NULL;
 	/* 
-	 * not needed anymore because CALLOC initalizes everything to zero.
+	 * not needed anymore because CALLOC initializes everything to zero.
 
 	nc->rrset = NULL;
 	nc->parent_type = 0;
@@ -597,7 +597,9 @@ ldns_dnssec_trust_tree_print_sm_fmt(FILE *out,
 						if (tree->parent_status[i]
 						    == LDNS_STATUS_SSL_ERR) {
 							printf("; SSL Error: ");
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(HAVE_LIBRESSL)
 							ERR_load_crypto_strings();
+#endif
 							ERR_print_errors_fp(stdout);
 							printf("\n");
 						}
@@ -1501,7 +1503,7 @@ ldns_dnssec_verify_denial(ldns_rr *rr,
                           ldns_rr_list *rrsigs)
 {
 	ldns_rdf *rr_name;
-	ldns_rdf *wildcard_name;
+	ldns_rdf *wildcard_name = NULL;
 	ldns_rdf *chopped_dname;
 	ldns_rr *cur_nsec;
 	size_t i;
@@ -1512,14 +1514,19 @@ ldns_dnssec_verify_denial(ldns_rr *rr,
 	bool type_covered = false;
 	bool wildcard_covered = false;
 	bool wildcard_type_covered = false;
+	bool rr_name_is_root = false;
 
-	wildcard_name = ldns_dname_new_frm_str("*");
 	rr_name = ldns_rr_owner(rr);
-	chopped_dname = ldns_dname_left_chop(rr_name);
-	result = ldns_dname_cat(wildcard_name, chopped_dname);
-	ldns_rdf_deep_free(chopped_dname);
-	if (result != LDNS_STATUS_OK) {
-		return result;
+	rr_name_is_root =     ldns_rdf_size(rr_name) == 1
+	                  && *ldns_rdf_data(rr_name) == 0;
+	if (!rr_name_is_root) {
+		wildcard_name = ldns_dname_new_frm_str("*");
+		chopped_dname = ldns_dname_left_chop(rr_name);
+		result = ldns_dname_cat(wildcard_name, chopped_dname);
+		ldns_rdf_deep_free(chopped_dname);
+		if (result != LDNS_STATUS_OK) {
+			return result;
+		}
 	}
 	
 	for  (i = 0; i < ldns_rr_list_rr_count(nsecs); i++) {
@@ -1546,6 +1553,9 @@ ldns_dnssec_verify_denial(ldns_rr *rr,
 			name_covered = true;
 		}
 		
+		if (rr_name_is_root)
+			continue;
+
 		if (ldns_dname_compare(wildcard_name,
 						   ldns_rr_owner(cur_nsec)) == 0) {
 			if (ldns_nsec_bitmap_covers_type(ldns_nsec_get_bitmap(cur_nsec),
@@ -1566,6 +1576,9 @@ ldns_dnssec_verify_denial(ldns_rr *rr,
 		return LDNS_STATUS_DNSSEC_NSEC_RR_NOT_COVERED;
 	}
 	
+	if (rr_name_is_root)
+		return LDNS_STATUS_OK;
+
 	if (wildcard_type_covered || !wildcard_covered) {
 		return LDNS_STATUS_DNSSEC_NSEC_WILDCARD_NOT_COVERED;
 	}
@@ -2390,8 +2403,12 @@ ldns_verify_rrsig_keylist_time(
 		ldns_rr_list *good_keys)
 {
 	ldns_status result;
-	ldns_rr_list *valid = ldns_rr_list_new();
-	if (!valid)
+	ldns_rr_list *valid;
+
+	if (!good_keys)
+		valid = NULL;
+
+	else if (!(valid = ldns_rr_list_new()))
 		return LDNS_STATUS_MEM_ERR;
 
 	result = ldns_verify_rrsig_keylist_notime(rrset, rrsig, keys, valid);

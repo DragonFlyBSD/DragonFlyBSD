@@ -180,7 +180,20 @@ ldns_verify_denial(ldns_pkt *pkt, ldns_rdf *name, ldns_rr_type type, ldns_rr_lis
 
 	ldns_rr_list *nsecs;
 	ldns_status result;
-	
+	const ldns_rr_descriptor *descriptor;
+
+	if (!pkt) {
+		descriptor = ldns_rr_descript(type);
+
+		printf("NETWORk ERROR! Cannot verify denial for: ");
+		ldns_rdf_print(stdout, name);
+		printf(" type ");
+		if (descriptor && descriptor->_name)
+			printf("%s", descriptor->_name);
+		else
+			printf("TYPE%u", type);
+		return LDNS_STATUS_CRYPTO_NO_RRSIG;
+	}
 	if (verbosity >= 5) {
 		printf("VERIFY DENIAL FROM:\n");
 		ldns_pkt_print(stdout, pkt);

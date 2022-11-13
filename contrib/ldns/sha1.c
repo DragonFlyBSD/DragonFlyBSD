@@ -168,7 +168,7 @@ ldns_sha1_final(unsigned char digest[LDNS_SHA1_DIGEST_LENGTH], ldns_sha1_ctx *co
 }
 
 unsigned char *
-ldns_sha1(unsigned char *data, unsigned int data_len, unsigned char *digest)
+ldns_sha1(const unsigned char *data, unsigned int data_len, unsigned char *digest)
 {
     ldns_sha1_ctx ctx;
     ldns_sha1_init(&ctx);

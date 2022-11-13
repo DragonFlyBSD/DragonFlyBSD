@@ -156,7 +156,7 @@ enum ldns_enum_rr_type
 	LDNS_RR_TYPE_DNAME = 39,
 	/**  dnsind-kitchen-sink-02.txt */
 	LDNS_RR_TYPE_SINK = 40,
-	/**  Pseudo OPT record... */
+	/**  OPT record RFC 6891 */
 	LDNS_RR_TYPE_OPT = 41,
 	/**  RFC3123 */
 	LDNS_RR_TYPE_APL = 42,
@@ -191,7 +191,9 @@ enum ldns_enum_rr_type
 	LDNS_RR_TYPE_CDNSKEY = 60, /* RFC 7344 */
 	LDNS_RR_TYPE_OPENPGPKEY = 61, /* RFC 7929 */
 	LDNS_RR_TYPE_CSYNC = 62, /* RFC 7477 */
-	LDNS_RR_TYPE_ZONEMD = 63, /* draft-wessels-dns-zone-digest */
+	LDNS_RR_TYPE_ZONEMD = 63, /* draft-ietf-dnsop-dns-zone-digest */
+	LDNS_RR_TYPE_SVCB = 64, /* draft-ietf-dnsop-svcb-https */
+	LDNS_RR_TYPE_HTTPS = 65, /* draft-ietf-dnsop-svcb-https */
 
 	LDNS_RR_TYPE_SPF = 99, /* RFC 4408 */
 
@@ -525,7 +527,7 @@ void ldns_rr_set_class(ldns_rr *rr, ldns_rr_class rr_class);
  * \param[in] *rr the rr to operate on
  * \param[in] *f the rdf to set
  * \param[in] position the position the set the rdf
- * \return  the old value in the rr, NULL on failyre
+ * \return  the old value in the rr, NULL on failure
  */
 ldns_rdf* ldns_rr_set_rdf(ldns_rr *rr, const ldns_rdf *f, size_t position);
 
@@ -815,7 +817,7 @@ int ldns_rr_compare_wire(const ldns_buffer *rr1_buf, const ldns_buffer *rr2_buf)
 bool ldns_rr_compare_ds(const ldns_rr *rr1, const ldns_rr *rr2);
 
 /**
- * compares two rr listss.
+ * compares two rr lists.
  * \param[in] rrl1 the first one
  * \param[in] rrl2 the second one
  * \return 0 if equal

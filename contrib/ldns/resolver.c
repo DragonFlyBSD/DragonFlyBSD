@@ -780,7 +780,7 @@ ldns_resolver_new_frm_fp_l(ldns_resolver **res, FILE *fp, int *line_nr)
         if(!line_nr) line_nr = &lnr;
 
 	if(!fp) {
-		myfp = fopen("/etc/resolv.conf", "r");
+		myfp = fopen(LDNS_RESOLV_CONF, "r");
 		if(!myfp)
 			return LDNS_STATUS_FILE_ERR;
 	}
