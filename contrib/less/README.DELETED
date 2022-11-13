@@ -9,6 +9,7 @@ Makefile.o9c
 Makefile.o9u
 Makefile.wnb
 Makefile.wnm
+Makefile.wng
 README
 configure
 configure.ac
@@ -23,7 +24,9 @@ less.man
 lessecho.man
 lesskey.man
 mkfuncs.pl
+mkfuncs.py
 mkhelp.pl
+mkhelp.py
 mkinstalldirs
 regexp.c
 regexp.h
