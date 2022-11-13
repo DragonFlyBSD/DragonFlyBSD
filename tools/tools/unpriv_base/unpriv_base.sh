@@ -23,11 +23,16 @@ then
 	ln -sv priv/openssl  "$DESTDIR"/usr/include/openssl
 	ln -sv priv/readline "$DESTDIR"/usr/include/readline
 	ln -sv priv/histedit.h "$DESTDIR"/usr/include/histedit.h
+	ln -sv priv/zstd "$DESTDIR"/usr/include/zstd
 	# ncurses
 	ln -sv priv/libprivate_ncurses.a   "$DESTDIR"/usr/lib/libncurses.a
 	ln -sv priv/libprivate_ncurses.so  "$DESTDIR"/usr/lib/libncurses.so
 	ln -sv priv/libprivate_ncursesw.a  "$DESTDIR"/usr/lib/libncursesw.a
 	ln -sv priv/libprivate_ncursesw.so "$DESTDIR"/usr/lib/libncursesw.so
+	ln -sv priv/libprivate_panel.a  "$DESTDIR"/usr/lib/libpanel.a
+	ln -sv priv/libprivate_panel.so "$DESTDIR"/usr/lib/libpanel.so
+	ln -sv priv/libprivate_panelw.a  "$DESTDIR"/usr/lib/libpanelw.a
+	ln -sv priv/libprivate_panelw.so "$DESTDIR"/usr/lib/libpanelw.so
 	# LibreSSL
 	ln -sv priv/libprivate_crypto.a  "$DESTDIR"/usr/lib/libcrypto.a
 	ln -sv priv/libprivate_crypto.so "$DESTDIR"/usr/lib/libcrypto.so
@@ -36,6 +41,9 @@ then
 	# libedit
 	ln -sv priv/libprivate_edit.a  "$DESTDIR"/usr/lib/libedit.a
 	ln -sv priv/libprivate_edit.so "$DESTDIR"/usr/lib/libedit.so
+	# zstd
+	ln -sv priv/libprivate_zstd.a  "$DESTDIR"/usr/lib/libzstd.a
+	ln -sv priv/libprivate_zstd.so "$DESTDIR"/usr/lib/libzstd.so
 	# warn
 	echo "Done. Later DO NOT forget to run '$0 restore'"
 fi
@@ -52,6 +60,10 @@ then
 	rm -fv "$DESTDIR"/usr/lib/libncurses.so
 	rm -fv "$DESTDIR"/usr/lib/libncursesw.a
 	rm -fv "$DESTDIR"/usr/lib/libncursesw.so
+	rm -fv "$DESTDIR"/usr/lib/libpanel.a
+	rm -fv "$DESTDIR"/usr/lib/libpanel.so
+	rm -fv "$DESTDIR"/usr/lib/libpanelw.a
+	rm -fv "$DESTDIR"/usr/lib/libpanelw.so
 	# LibreSSL
 	rm -fv "$DESTDIR"/usr/lib/libcrypto.a
 	rm -fv "$DESTDIR"/usr/lib/libcrypto.so
@@ -60,6 +72,9 @@ then
 	# libedit
 	rm -fv "$DESTDIR"/usr/lib/libedit.a
 	rm -fv "$DESTDIR"/usr/lib/libedit.so
+	# ztsd
+	rm -fv "$DESTDIR"/usr/lib/libzstd.a
+	rm -fv "$DESTDIR"/usr/lib/libzstd.so
 	# warn
 	echo "Done."
 fi
