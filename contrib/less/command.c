@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2019  Mark Nudelman
+ * Copyright (C) 1984-2022  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -48,6 +48,9 @@ extern IFILE curr_ifile;
 extern void *ml_search;
 extern void *ml_examine;
 extern int wheel_lines;
+extern int header_lines;
+extern int def_search_type;
+extern int updown_match;
 #if SHELL_ESCAPE || PIPEC
 extern void *ml_shell;
 #endif
@@ -55,21 +58,22 @@ extern void *ml_shell;
 extern char *editor;
 extern char *editproto;
 #endif
-extern int screen_trashed;	/* The screen has been overwritten */
+extern int screen_trashed;      /* The screen has been overwritten */
 extern int shift_count;
 extern int oldbot;
 extern int forw_prompt;
+extern int incr_search;
 #if MSDOS_COMPILER==WIN32C
 extern int utf_mode;
 #endif
 
 #if SHELL_ESCAPE
-static char *shellcmd = NULL;	/* For holding last shell command for "!!" */
+static char *shellcmd = NULL;   /* For holding last shell command for "!!" */
 #endif
-static int mca;			/* The multicharacter command (action) */
-static int search_type;		/* The previous type of search */
-static LINENUM number;		/* The number typed by the user */
-static long fraction;		/* The fractional part of the number */
+static int mca;                 /* The multicharacter command (action) */
+static int search_type;         /* The previous type of search */
+static LINENUM number;          /* The number typed by the user */
+static long fraction;           /* The fractional part of the number */
 static struct loption *curropt;
 static int opt_lower;
 static int optflag;
@@ -88,7 +92,7 @@ struct ungot {
 };
 static struct ungot* ungot = NULL;
 
-static void multi_search();
+static void multi_search LESSPARAMS((char *pattern, int n, int silent));
 
 /*
  * Move the cursor to start of prompt line before executing a command.
@@ -111,7 +115,6 @@ set_mca(action)
 	int action;
 {
 	mca = action;
-	deinit_mouse(); /* we don't want mouse events while entering a cmd */
 	clear_bot();
 	clear_cmd();
 }
@@ -125,7 +128,6 @@ clear_mca(VOID_PARAM)
 	if (mca == 0)
 		return;
 	mca = 0;
-	init_mouse();
 }
 
 /*
@@ -153,7 +155,7 @@ in_mca(VOID_PARAM)
  * Set up the display to start a new search command.
  */
 	static void
-mca_search(VOID_PARAM)
+mca_search1(VOID_PARAM)
 {
 #if HILITE_SEARCH
 	if (search_type & SRCH_FILTER)
@@ -175,6 +177,8 @@ mca_search(VOID_PARAM)
 		cmd_putstr("Keep-pos ");
 	if (search_type & SRCH_NO_REGEX)
 		cmd_putstr("Regex-off ");
+	if (search_type & SRCH_WRAP)
+		cmd_putstr("Wrap ");
 
 #if HILITE_SEARCH
 	if (search_type & SRCH_FILTER)
@@ -186,6 +190,12 @@ mca_search(VOID_PARAM)
 	else
 		cmd_putstr("?");
 	forw_prompt = 0;
+}
+
+	static void
+mca_search(VOID_PARAM)
+{
+	mca_search1();
 	set_mlist(ml_search, 0);
 }
 
@@ -232,6 +242,8 @@ exec_mca(VOID_PARAM)
 
 	cmd_exec();
 	cbuf = get_cmdbuf();
+	if (cbuf == NULL)
+		return;
 
 	switch (mca)
 	{
@@ -339,6 +351,7 @@ is_newline_char(c)
 mca_opt_first_char(c)
 	int c;
 {
+	int no_prompt = (optflag & OPT_NO_PROMPT);
 	int flag = (optflag & ~OPT_NO_PROMPT);
 	if (flag == OPT_NO_TOGGLE)
 	{
@@ -356,14 +369,14 @@ mca_opt_first_char(c)
 		{
 		case '+':
 			/* "-+" = UNSET. */
-			optflag = (flag == OPT_UNSET) ?
-				OPT_TOGGLE : OPT_UNSET;
+			optflag = no_prompt | ((flag == OPT_UNSET) ?
+				OPT_TOGGLE : OPT_UNSET);
 			mca_opt_toggle();
 			return (MCA_MORE);
 		case '!':
 			/* "-!" = SET */
-			optflag = (flag == OPT_SET) ?
-				OPT_TOGGLE : OPT_SET;
+			optflag = no_prompt | ((flag == OPT_SET) ?
+				OPT_TOGGLE : OPT_SET);
 			mca_opt_toggle();
 			return (MCA_MORE);
 		case CONTROL('P'):
@@ -412,6 +425,8 @@ mca_opt_nonfirst_char(c)
 	if (cmd_char(c) == CC_QUIT)
 		return (MCA_DONE);
 	p = get_cmdbuf();
+	if (p == NULL)
+		return (MCA_MORE);
 	opt_lower = ASCII_IS_LOWER(p[0]);
 	err = 0;
 	curropt = findopt_name(&p, &oname, &err);
@@ -462,11 +477,13 @@ mca_opt_char(c)
 	if (optgetname)
 	{
 		/* We're getting a long option name.  */
-		if (!is_newline_char(c))
+		if (!is_newline_char(c) && c != '=')
 			return (mca_opt_nonfirst_char(c));
 		if (curropt == NULL)
 		{
 			parg.p_string = get_cmdbuf();
+			if (parg.p_string == NULL)
+				return (MCA_MORE);
 			error("There is no --%s option", &parg);
 			return (MCA_DONE);
 		}
@@ -507,6 +524,19 @@ mca_opt_char(c)
 }
 
 /*
+ * Normalize search type.
+ */
+	public int
+norm_search_type(st)
+	int st;
+{
+	/* WRAP and PAST_EOF are mutually exclusive. */
+	if ((st & (SRCH_PAST_EOF|SRCH_WRAP)) == (SRCH_PAST_EOF|SRCH_WRAP))
+		st ^= SRCH_PAST_EOF;
+	return st;
+}
+
+/*
  * Handle a char of a search command.
  */
 	static int
@@ -518,9 +548,9 @@ mca_search_char(c)
 	/*
 	 * Certain characters as the first char of 
 	 * the pattern have special meaning:
-	 *	!  Toggle the NO_MATCH flag
-	 *	*  Toggle the PAST_EOF flag
-	 *	@  Toggle the FIRST_FILE flag
+	 *      !  Toggle the NO_MATCH flag
+	 *      *  Toggle the PAST_EOF flag
+	 *      @  Toggle the FIRST_FILE flag
 	 */
 	if (len_cmdbuf() > 0)
 		return (NO_MCA);
@@ -541,6 +571,10 @@ mca_search_char(c)
 		if (mca != A_FILTER)
 			flag = SRCH_NO_MOVE;
 		break;
+	case CONTROL('W'): /* WRAP around */
+		if (mca != A_FILTER)
+			flag = SRCH_WRAP;
+		break;
 	case CONTROL('R'): /* Don't use REGULAR EXPRESSIONS */
 		flag = SRCH_NO_REGEX;
 		break;
@@ -552,7 +586,7 @@ mca_search_char(c)
 
 	if (flag != 0)
 	{
-		search_type ^= flag;
+		search_type = norm_search_type(search_type ^ flag);
 		mca_search();
 		return (MCA_MORE);
 	}
@@ -590,9 +624,16 @@ mca_char(c)
 		 * Entering digits of a number.
 		 * Terminated by a non-digit.
 		 */
-		if (!((c >= '0' && c <= '9') || c == '.') && 
-		  editchar(c, EC_PEEK|EC_NOHISTORY|EC_NOCOMPLETE|EC_NORIGHTLEFT) == A_INVALID)
+		if ((c >= '0' && c <= '9') || c == '.')
+			break;
+		switch (editchar(c, ECF_PEEK|ECF_NOHISTORY|ECF_NOCOMPLETE|ECF_NORIGHTLEFT))
 		{
+		case A_NOACTION:
+			/*
+			 * Ignore this char and get another one.
+			 */
+			return (MCA_MORE);
+		case A_INVALID:
 			/*
 			 * Not part of the number.
 			 * End the number and treat this char 
@@ -645,15 +686,53 @@ mca_char(c)
 		 */
 		return (MCA_DONE);
 
-	if ((mca == A_F_BRACKET || mca == A_B_BRACKET) && len_cmdbuf() >= 2)
+	switch (mca)
 	{
-		/*
-		 * Special case for the bracket-matching commands.
-		 * Execute the command after getting exactly two
-		 * characters from the user.
-		 */
-		exec_mca();
-		return (MCA_DONE);
+	case A_F_BRACKET:
+	case A_B_BRACKET:
+		if (len_cmdbuf() >= 2)
+		{
+			/*
+			 * Special case for the bracket-matching commands.
+			 * Execute the command after getting exactly two
+			 * characters from the user.
+			 */
+			exec_mca();
+			return (MCA_DONE);
+		}
+		break;
+	case A_F_SEARCH:
+	case A_B_SEARCH:
+		if (incr_search)
+		{
+			/* Incremental search: do a search after every input char. */
+			int st = (search_type & (SRCH_FORW|SRCH_BACK|SRCH_NO_MATCH|SRCH_NO_REGEX|SRCH_NO_MOVE|SRCH_WRAP));
+			char *pattern = get_cmdbuf();
+			if (pattern == NULL)
+				return (MCA_MORE);
+			/*
+			 * Must save updown_match because mca_search
+			 * reinits it. That breaks history scrolling.
+			 * {{ This is ugly. mca_search probably shouldn't call set_mlist. }}
+			 */
+			int save_updown_match = updown_match;
+			cmd_exec();
+			if (*pattern == '\0')
+			{
+				/* User has backspaced to an empty pattern. */
+				undo_search(1);
+			} else
+			{
+				if (search(st | SRCH_INCR, pattern, 1) != 0)
+					/* No match, invalid pattern, etc. */
+					undo_search(1);
+			}
+			/* Redraw the search prompt and search string. */
+			mca_search1();
+			updown_match = save_updown_match;
+			cmd_repaint(NULL);
+		}
+		break;
 	}
 
 	/*
@@ -689,12 +768,6 @@ make_display(VOID_PARAM)
 	if (empty_screen())
 	{
 		if (initial_scrpos.pos == NULL_POSITION)
-			/*
-			 * {{ Maybe this should be:
-			 *    jump_loc(ch_zero(), jump_sline);
-			 *    but this behavior seems rather unexpected 
-			 *    on the first screen. }}
-			 */
 			jump_loc(ch_zero(), 1);
 		else
 			jump_loc(initial_scrpos.pos, initial_scrpos.ln);
@@ -755,6 +828,7 @@ prompt(VOID_PARAM)
 	    entire_file_displayed() && !(ch_getflags() & CH_HELPFILE) && 
 	    next_ifile(curr_ifile) == NULL_IFILE)
 		quit(QUIT_OK);
+	quit_if_one_screen = FALSE; /* only get one chance at this */
 
 #if MSDOS_COMPILER==WIN32C
 	/* 
@@ -763,7 +837,7 @@ prompt(VOID_PARAM)
 	if (!(ch_getflags() & CH_HELPFILE))
 	{
 		WCHAR w[MAX_PATH+16];
-		p = pr_expand("Less?f - %f.", 0);
+		p = pr_expand("Less?f - %f.");
 		MultiByteToWideChar(CP_ACP, 0, p, -1, w, sizeof(w)/sizeof(*w));
 		SetConsoleTitleW(w);
 	}
@@ -787,11 +861,16 @@ prompt(VOID_PARAM)
 	clear_cmd();
 	forw_prompt = 0;
 	p = pr_string();
+#if HILITE_SEARCH
 	if (is_filtering())
 		putstr("& ");
+#endif
 	if (p == NULL || *p == '\0')
+	{
+		at_enter(AT_NORMAL|AT_COLOR_PROMPT);
 		putchr(':');
-	else
+		at_exit();
+	} else
 	{
 #if MSDOS_COMPILER==WIN32C
 		WCHAR w[MAX_PATH*2];
@@ -801,9 +880,8 @@ prompt(VOID_PARAM)
 		                    0, w, -1, a, sizeof(a), NULL, NULL);
 		p = a;
 #endif
-		at_enter(AT_STANDOUT);
-		putstr(p);
-		at_exit();
+		load_line(p);
+		put_line();
 	}
 	clear_eol();
 }
@@ -837,7 +915,7 @@ getcc_end_command(VOID_PARAM)
 		return ('\n'); 
 	default:
 		/* Some other incomplete command.  Let user complete it. */
-		return (getchr());
+		return ((ungot == NULL) ? getchr() : 0);
 	}
 }
 
@@ -850,23 +928,26 @@ getcc_end_command(VOID_PARAM)
 	static LWCHAR
 getccu(VOID_PARAM)
 {
-	LWCHAR c;
-	if (ungot == NULL)
+	LWCHAR c = 0;
+	while (c == 0)
 	{
-		/* Normal case: no ungotten chars.
-		 * Get char from the user. */
-		c = getchr();
-	} else
-	{
-		/* Ungotten chars available:
-		 * Take the top of stack (most recent). */
-		struct ungot *ug = ungot;
-		c = ug->ug_char;
-		ungot = ug->ug_next;
-		free(ug);
+		if (ungot == NULL)
+		{
+			/* Normal case: no ungotten chars.
+			 * Get char from the user. */
+			c = getchr();
+		} else
+		{
+			/* Ungotten chars available:
+			 * Take the top of stack (most recent). */
+			struct ungot *ug = ungot;
+			c = ug->ug_char;
+			ungot = ug->ug_next;
+			free(ug);
 
-		if (c == CHAR_END_COMMAND)
-			c = getcc_end_command();
+			if (c == CHAR_END_COMMAND)
+				c = getcc_end_command();
+		}
 	}
 	return (c);
 }
@@ -877,8 +958,8 @@ getccu(VOID_PARAM)
  */
 	static LWCHAR
 getcc_repl(orig, repl, gr_getc, gr_ungetc)
-	char const* orig;
-	char const* repl;
+	char constant* orig;
+	char constant* repl;
 	LWCHAR (*gr_getc)(VOID_PARAM);
 	void (*gr_ungetc)(LWCHAR);
 {
@@ -942,6 +1023,28 @@ ungetcc(c)
 }
 
 /*
+ * "Unget" a command character.
+ * If any other chars are already ungotten, put this one after those.
+ */
+	public void
+ungetcc_back(c)
+	LWCHAR c;
+{
+	struct ungot *ug = (struct ungot *) ecalloc(1, sizeof(struct ungot));
+	ug->ug_char = c;
+	ug->ug_next = NULL;
+	if (ungot == NULL)
+		ungot = ug;
+	else
+	{
+		struct ungot *pu;
+		for (pu = ungot; pu->ug_next != NULL; pu = pu->ug_next)
+			continue;
+		pu->ug_next = ug;
+	}
+}
+
+/*
  * Unget a whole string of command characters.
  * The next sequence of getcc()'s will return this string.
  */
@@ -949,10 +1052,8 @@ ungetcc(c)
 ungetsc(s)
 	char *s;
 {
-	char *p;
-
-	for (p = s + strlen(s) - 1;  p >= s;  p--)
-		ungetcc(*p);
+	while (*s != '\0')
+		ungetcc_back(*s++);
 }
 
 /*
@@ -1116,6 +1217,7 @@ commands(VOID_PARAM)
 	int action;
 	char *cbuf;
 	int newaction;
+	int save_jump_sline;
 	int save_search_type;
 	char *extra;
 	char tbuf[2];
@@ -1214,6 +1316,8 @@ commands(VOID_PARAM)
 				if (cmd_char(c) == CC_QUIT || len_cmdbuf() == 0)
 					continue;
 				cbuf = get_cmdbuf();
+				if (cbuf == NULL)
+					continue;
 			} else
 			{
 				/*
@@ -1417,11 +1521,18 @@ commands(VOID_PARAM)
 		case A_GOLINE:
 			/*
 			 * Go to line N, default beginning of file.
+			 * If N <= 0, ignore jump_sline in order to avoid
+			 * empty lines before the beginning of the file.
 			 */
+			save_jump_sline = jump_sline;
 			if (number <= 0)
+			{
 				number = 1;
+				jump_sline = 0;
+			}
 			cmd_exec();
 			jump_back(number);
+			jump_sline = save_jump_sline;
 			break;
 
 		case A_PERCENT:
@@ -1487,7 +1598,7 @@ commands(VOID_PARAM)
 
 		case A_VERSION:
 			/*
-			 * Print version number, without the "@(#)".
+			 * Print version number.
 			 */
 			cmd_exec();
 			dispversion();
@@ -1518,10 +1629,10 @@ commands(VOID_PARAM)
 /*
  * Define abbreviation for a commonly used sequence below.
  */
-#define	DO_SEARCH() \
-			if (number <= 0) number = 1;	\
-			mca_search();			\
-			cmd_exec();			\
+#define DO_SEARCH() \
+			if (number <= 0) number = 1;    \
+			mca_search();                   \
+			cmd_exec();                     \
 			multi_search((char *)NULL, (int) number, 0);
 
 
@@ -1530,7 +1641,7 @@ commands(VOID_PARAM)
 			 * Search forward for a pattern.
 			 * Get the first char of the pattern.
 			 */
-			search_type = SRCH_FORW;
+			search_type = SRCH_FORW | def_search_type;
 			if (number <= 0)
 				number = 1;
 			mca_search();
@@ -1542,7 +1653,7 @@ commands(VOID_PARAM)
 			 * Search backward for a pattern.
 			 * Get the first char of the pattern.
 			 */
-			search_type = SRCH_BACK;
+			search_type = SRCH_BACK | def_search_type;
 			if (number <= 0)
 				number = 1;
 			mca_search();
@@ -1598,10 +1709,11 @@ commands(VOID_PARAM)
 			break;
 
 		case A_UNDO_SEARCH:
+		case A_CLR_SEARCH:
 			/*
 			 * Clear search string highlighting.
 			 */
-			undo_search();
+			undo_search(action == A_CLR_SEARCH);
 			break;
 
 		case A_HELP:
@@ -1661,7 +1773,7 @@ commands(VOID_PARAM)
 				 */
 				make_display();
 				cmd_exec();
-				lsystem(pr_expand(editproto, 0), (char*)NULL);
+				lsystem(pr_expand(editproto), (char*)NULL);
 				break;
 			}
 #endif
@@ -1800,6 +1912,12 @@ commands(VOID_PARAM)
 			optgetname = FALSE;
 			mca_opt_toggle();
 			c = getcc();
+			cbuf = opt_toggle_disallowed(c);
+			if (cbuf != NULL)
+			{
+				error(cbuf, NULL_PARG);
+				break;
+			}
 			goto again;
 
 		case A_DISP_OPTION:

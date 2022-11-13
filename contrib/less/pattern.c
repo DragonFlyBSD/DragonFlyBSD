@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2019  Mark Nudelman
+ * Copyright (C) 1984-2022  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -14,6 +14,7 @@
 #include "less.h"
 
 extern int caseless;
+extern int is_caseless;
 extern int utf_mode;
 
 /*
@@ -49,7 +50,7 @@ compile_pattern2(pattern, search_type, comp_pattern, show_error)
 #endif
 #if HAVE_POSIX_REGCOMP
 	regex_t *comp = (regex_t *) ecalloc(1, sizeof(regex_t));
-	if (regcomp(comp, pattern, REGCOMP_FLAG))
+	if (regcomp(comp, pattern, REGCOMP_FLAG | (is_caseless ? REG_ICASE : 0)))
 	{
 		free(comp);
 		if (show_error)
@@ -68,7 +69,8 @@ compile_pattern2(pattern, search_type, comp_pattern, show_error)
 	int erroffset;
 	PARG parg;
 	pcre *comp = pcre_compile(pattern,
-			(utf_mode) ? PCRE_UTF8 | PCRE_NO_UTF8_CHECK : 0,
+			((utf_mode) ? PCRE_UTF8 | PCRE_NO_UTF8_CHECK : 0) |
+			(is_caseless ? PCRE_CASELESS : 0),
 			&errstring, &erroffset, NULL);
 	if (comp == NULL)
 	{
@@ -84,7 +86,8 @@ compile_pattern2(pattern, search_type, comp_pattern, show_error)
 	PCRE2_SIZE erroffset;
 	PARG parg;
 	pcre2_code *comp = pcre2_compile((PCRE2_SPTR)pattern, strlen(pattern),
-			0, &errcode, &erroffset, NULL);
+			(is_caseless ? PCRE2_CASELESS : 0),
+			&errcode, &erroffset, NULL);
 	if (comp == NULL)
 	{
 		if (show_error)
@@ -145,22 +148,23 @@ compile_pattern2(pattern, search_type, comp_pattern, show_error)
  * Like compile_pattern2, but convert the pattern to lowercase if necessary.
  */
 	public int
-compile_pattern(pattern, search_type, comp_pattern)
+compile_pattern(pattern, search_type, show_error, comp_pattern)
 	char *pattern;
 	int search_type;
+	int show_error;
 	PATTERN_TYPE *comp_pattern;
 {
 	char *cvt_pattern;
 	int result;
 
-	if (caseless != OPT_ONPLUS)
+	if (caseless != OPT_ONPLUS || re_handles_caseless)
 		cvt_pattern = pattern;
 	else
 	{
 		cvt_pattern = (char*) ecalloc(1, cvt_length(strlen(pattern), CVT_TO_LC));
 		cvt_text(cvt_pattern, pattern, (int *)NULL, (int *)NULL, CVT_TO_LC);
 	}
-	result = compile_pattern2(cvt_pattern, search_type, comp_pattern, 1);
+	result = compile_pattern2(cvt_pattern, search_type, comp_pattern, show_error);
 	if (cvt_pattern != pattern)
 		free(cvt_pattern);
 	return (result);
@@ -214,6 +218,7 @@ uncompile_pattern(pattern)
 #endif
 }
 
+#if 0
 /*
  * Can a pattern be successfully compiled?
  */
@@ -224,13 +229,14 @@ valid_pattern(pattern)
 	PATTERN_TYPE comp_pattern;
 	int result;
 
-	CLEAR_PATTERN(comp_pattern);
+	SET_NULL_PATTERN(comp_pattern);
 	result = compile_pattern2(pattern, 0, &comp_pattern, 0);
 	if (result != 0)
 		return (0);
 	uncompile_pattern(&comp_pattern);
 	return (1);
 }
+#endif
 
 /*
  * Is a compiled pattern null?

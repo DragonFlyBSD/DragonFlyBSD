@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2019  Mark Nudelman
+ * Copyright (C) 1984-2022  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -20,13 +20,14 @@
 public int fd0 = 0;
 
 extern int new_file;
-extern int errmsgs;
 extern int cbufs;
 extern char *every_first_cmd;
-extern int any_display;
 extern int force_open;
 extern int is_tty;
 extern int sigs;
+extern int hshift;
+extern int want_filesize;
+extern int consecutive_nulls;
 extern IFILE curr_ifile;
 extern IFILE old_ifile;
 extern struct scrpos initial_scrpos;
@@ -46,7 +47,6 @@ extern char *namelogfile;
 public dev_t curr_dev;
 public ino_t curr_ino;
 #endif
-
 
 /*
  * Textlist functions deal with a list of words separated by spaces.
@@ -242,7 +242,6 @@ edit_ifile(ifile)
 {
 	int f;
 	int answer;
-	int no_display;
 	int chflags;
 	char *filename;
 	char *open_filename;
@@ -440,6 +439,7 @@ edit_ifile(ifile)
 	get_pos(curr_ifile, &initial_scrpos);
 	new_file = TRUE;
 	ch_init(f, chflags);
+	consecutive_nulls = 0;
 
 	if (!(chflags & CH_HELPFILE))
 	{
@@ -462,14 +462,12 @@ edit_ifile(ifile)
 #endif
 		if (every_first_cmd != NULL)
 		{
-			ungetcc(CHAR_END_COMMAND);
 			ungetsc(every_first_cmd);
+			ungetcc_back(CHAR_END_COMMAND);
 		}
 	}
 
-	no_display = !any_display;
 	flush();
-	any_display = TRUE;
 
 	if (is_tty)
 	{
@@ -485,24 +483,15 @@ edit_ifile(ifile)
 #if HILITE_SEARCH
 		clr_hilite();
 #endif
+		hshift = 0;
 		if (strcmp(filename, FAKE_HELPFILE) && strcmp(filename, FAKE_EMPTYFILE))
 		{
 			char *qfilename = shell_quote(filename);
 			cmd_addhist(ml_examine, qfilename, 1);
 			free(qfilename);
 		}
-
-		if (no_display && errmsgs > 0)
-		{
-			/*
-			 * We displayed some messages on error output
-			 * (file descriptor 2; see error() function).
-			 * Before erasing the screen contents,
-			 * display the file name and wait for a keystroke.
-			 */
-			parg.p_string = filename;
-			error("%s", &parg);
-		}
+		if (want_filesize)
+			scan_eof();
 	}
 	free(filename);
 	return (0);
@@ -784,6 +773,8 @@ cat_file(VOID_PARAM)
 
 #if LOGFILE
 
+#define OVERWRITE_OPTIONS "Overwrite, Append, Don't log, or Quit?"
+
 /*
  * If the user asked for a log file and our input file
  * is standard input, create the log file.  
@@ -827,7 +818,7 @@ use_logfile(filename)
 		 * Ask user what to do.
 		 */
 		parg.p_string = filename;
-		answer = query("Warning: \"%s\" exists; Overwrite, Append or Don't log? ", &parg);
+		answer = query("Warning: \"%s\" exists; "OVERWRITE_OPTIONS" ", &parg);
 	}
 
 loop:
@@ -854,16 +845,13 @@ loop:
 		/*
 		 * Don't do anything.
 		 */
-		free(filename);
 		return;
-	case 'q':
-		quit(QUIT_OK);
-		/*NOTREACHED*/
 	default:
 		/*
 		 * Eh?
 		 */
-		answer = query("Overwrite, Append, or Don't log? (Type \"O\", \"A\", \"D\" or \"q\") ", NULL_PARG);
+
+		answer = query(OVERWRITE_OPTIONS" (Type \"O\", \"A\", \"D\" or \"Q\") ", NULL_PARG);
 		goto loop;
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2019  Mark Nudelman
+ * Copyright (C) 1984-2022  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -40,11 +40,11 @@
  */
 struct linenum_info
 {
-	struct linenum_info *next;	/* Link to next in the list */
-	struct linenum_info *prev;	/* Line to previous in the list */
-	POSITION pos;			/* File position */
-	POSITION gap;			/* Gap between prev and next */
-	LINENUM line;			/* Line number */
+	struct linenum_info *next;      /* Link to next in the list */
+	struct linenum_info *prev;      /* Line to previous in the list */
+	POSITION pos;                   /* File position */
+	POSITION gap;                   /* Gap between prev and next */
+	LINENUM line;                   /* Line number */
 };
 /*
  * "gap" needs some explanation: the gap of any particular line number
@@ -55,19 +55,21 @@ struct linenum_info
  * when we have a new one to insert and the table is full.
  */
 
-#define	NPOOL	200			/* Size of line number pool */
+#define NPOOL   200                     /* Size of line number pool */
 
-#define	LONGTIME	(2)		/* In seconds */
+#define LONGTIME        (2)             /* In seconds */
 
-static struct linenum_info anchor;	/* Anchor of the list */
-static struct linenum_info *freelist;	/* Anchor of the unused entries */
-static struct linenum_info pool[NPOOL];	/* The pool itself */
-static struct linenum_info *spare;		/* We always keep one spare entry */
+static struct linenum_info anchor;      /* Anchor of the list */
+static struct linenum_info *freelist;   /* Anchor of the unused entries */
+static struct linenum_info pool[NPOOL]; /* The pool itself */
+static struct linenum_info *spare;              /* We always keep one spare entry */
 
 extern int linenums;
 extern int sigs;
 extern int sc_height;
 extern int screen_trashed;
+extern int header_lines;
+extern int nonum_headers;
 
 /*
  * Initialize the line number structures.
@@ -248,6 +250,8 @@ longish(VOID_PARAM)
 	static void
 abort_long(VOID_PARAM)
 {
+	if (loopcount >= 0)
+		return;
 	if (linenums == OPT_ONPLUS)
 		/*
 		 * We were displaying line numbers, so need to repaint.
@@ -308,6 +312,7 @@ find_linenum(pos)
 #if HAVE_TIME
 	startime = get_time();
 #endif
+	loopcount = 0;
 	if (p == &anchor || pos - p->prev->pos < p->pos - pos)
 	{
 		/*
@@ -316,7 +321,6 @@ find_linenum(pos)
 		p = p->prev;
 		if (ch_seek(p->pos))
 			return (0);
-		loopcount = 0;
 		for (linenum = p->line, cpos = p->pos;  cpos < pos;  linenum++)
 		{
 			/*
@@ -348,7 +352,6 @@ find_linenum(pos)
 		 */
 		if (ch_seek(p->pos))
 			return (0);
-		loopcount = 0;
 		for (linenum = p->line, cpos = p->pos;  cpos > pos;  linenum--)
 		{
 			/*
@@ -368,7 +371,7 @@ find_linenum(pos)
 		 */
 		add_lnum(linenum, cpos);
 	}
-
+	loopcount = 0;
 	return (linenum);
 }
 
@@ -467,4 +470,40 @@ currline(where)
 	if (pos == len)
 		linenum--;
 	return (linenum);
+}
+
+/*
+ * Scan entire file, counting line numbers.
+ */
+	public void
+scan_eof(VOID_PARAM)
+{
+	POSITION pos = 0;
+	LINENUM linenum = 0;
+
+	if (ch_seek(0))
+		return;
+	ierror("Determining length of file", NULL_PARG);
+	while (pos != NULL_POSITION)
+	{
+		/* For efficiency, only add one every 256 line numbers. */
+		if ((linenum++ % 256) == 0)
+			add_lnum(linenum, pos);
+		pos = forw_raw_line(pos, (char **)NULL, (int *)NULL);
+		if (ABORT_SIGS())
+			break;
+	}
+}
+
+/*
+ * Return a line number adjusted for display
+ * (handles the --no-number-headers option).
+ */
+	public LINENUM
+vlinenum(linenum)
+	LINENUM linenum;
+{
+	if (nonum_headers)
+		linenum = (linenum < header_lines) ? 0 : linenum - header_lines;
+	return linenum;
 }
