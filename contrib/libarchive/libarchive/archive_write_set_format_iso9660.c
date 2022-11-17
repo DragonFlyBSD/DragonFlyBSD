@@ -2178,7 +2178,8 @@ get_system_identitier(char *system_id, size_t size)
 	strncpy(system_id, "Windows", size-1);
 	system_id[size-1] = '\0';
 #else
-#error no way to get the system identifier on your platform.
+	strncpy(system_id, "Unknown", size-1);
+	system_id[size-1] = '\0';
 #endif
 }
 
@@ -6801,6 +6802,7 @@ isoent_rr_move(struct archive_write *a)
  * This comparing rule is according to ISO9660 Standard 6.9.1
  */
 static int
+__LA_LIBC_CC
 _compare_path_table(const void *v1, const void *v2)
 {
 	const struct isoent *p1, *p2;
@@ -6843,6 +6845,7 @@ _compare_path_table(const void *v1, const void *v2)
 }
 
 static int
+__LA_LIBC_CC
 _compare_path_table_joliet(const void *v1, const void *v2)
 {
 	const struct isoent *p1, *p2;

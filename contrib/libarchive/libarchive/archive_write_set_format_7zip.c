@@ -755,6 +755,10 @@ _7z_close(struct archive_write *a)
 		 */
 #if HAVE_LZMA_H
 		header_compression = _7Z_LZMA1;
+		if(zip->opt_compression == _7Z_LZMA2 ||
+		   zip->opt_compression == _7Z_COPY)
+			header_compression = zip->opt_compression;
+
 		/* If the stored file is only one, do not encode the header.
 		 * This is the same way 7z command does. */
 		if (zip->total_number_entry == 1)
@@ -762,7 +766,8 @@ _7z_close(struct archive_write *a)
 #else
 		header_compression = _7Z_COPY;
 #endif
-		r = _7z_compression_init_encoder(a, header_compression, 6);
+		r = _7z_compression_init_encoder(a, header_compression,
+		                                 zip->opt_compression_level);
 		if (r < 0)
 			return (r);
 		zip->crc32flg = PRECODE_CRC32;
@@ -1927,8 +1932,8 @@ compression_init_encoder_lzma(struct archive *a,
 		return (ARCHIVE_FATAL);
 	}
 	lzmafilters = (lzma_filter *)(strm+1);
-	if (level > 6)
-		level = 6;
+	if (level > 9)
+		level = 9;
 	if (lzma_lzma_preset(&lzma_opt, level)) {
 		free(strm);
 		lastrm->real_stream = NULL;
