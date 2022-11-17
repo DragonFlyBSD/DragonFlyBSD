@@ -1594,20 +1594,21 @@ sysctl_out_proc(struct proc *p, struct sysctl_req *req, int flags)
 {
 	struct kinfo_proc ki;
 	struct lwp *lp;
-	int skp = 0, had_output = 0;
+	int skip_lwp = 0;
+	int had_output = 0;
 	int error;
 
 	bzero(&ki, sizeof(ki));
 	lwkt_gettoken_shared(&p->p_token);
 	fill_kinfo_proc(p, &ki);
 	if ((flags & KERN_PROC_FLAG_LWP) == 0)
-		skp = 1;
+		skip_lwp = 1;
 	error = 0;
 	FOREACH_LWP_IN_PROC(lp, p) {
 		LWPHOLD(lp);
 		fill_kinfo_lwp(lp, &ki.kp_lwp);
 		had_output = 1;
-		if (skp == 0) {
+		if (skip_lwp == 0) {
 			error = SYSCTL_OUT(req, &ki, sizeof(ki));
 			bzero(&ki.kp_lwp, sizeof(ki.kp_lwp));
 		}
@@ -1620,15 +1621,15 @@ sysctl_out_proc(struct proc *p, struct sysctl_req *req, int flags)
 	/*
 	 * If aggregating threads, set the tid field to -1.
 	 */
-	if (skp)
+	if (skip_lwp)
 		ki.kp_lwp.kl_tid = -1;
 
 	/*
 	 * We need to output at least the proc, even if there is no lwp.
-	 * If skp is non-zero we aggregated the lwps and need to output
+	 * If skip_lwp is non-zero we aggregated the lwps and need to output
 	 * the result.
 	 */
-	if (had_output == 0 || skp) {
+	if (had_output == 0 || skip_lwp) {
 		error = SYSCTL_OUT(req, &ki, sizeof(ki));
 	}
 	return (error);
@@ -1645,9 +1646,8 @@ sysctl_out_proc_kthread(struct thread *td, struct sysctl_req *req)
 
 	fill_kinfo_proc_kthread(td, &ki);
 	error = SYSCTL_OUT(req, &ki, sizeof(ki));
-	if (error)
-		return error;
-	return(0);
+
+	return (error);
 }
 
 /*
@@ -1673,7 +1673,8 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 	oid &= ~KERN_PROC_FLAGMASK;
 
 	if ((oid == KERN_PROC_ALL && namelen != 0) ||
-	    (oid != KERN_PROC_ALL && namelen != 1)) {
+	    (oid != KERN_PROC_ALL && namelen != 1))
+	{
 		return (EINVAL);
 	}
 
@@ -1724,6 +1725,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			 */
 			if (p->p_stat == SIDL)
 				continue;
+
 			/*
 			 * TODO - make more efficient (see notes below).
 			 * do by session.
@@ -1791,7 +1793,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 	marker->td_flags = TDF_MARKER;
 	error = 0;
 
-	for (n = 1; n <= ncpus; ++n) {
+	for (n = 1; (flags & KERN_PROC_FLAG_LWKT) && n <= ncpus; ++n) {
 		globaldata_t rgd;
 		int nid;
 
@@ -2148,53 +2150,58 @@ sysctl_kern_proc_sigtramp(SYSCTL_HANDLER_ARGS)
 
 SYSCTL_NODE(_kern, KERN_PROC, proc, CTLFLAG_RD,  0, "Process table");
 
-SYSCTL_PROC(_kern_proc, KERN_PROC_ALL, all,
+#define SYSCTL_KERN_PROC_ALLFLAGS(which, affix)				\
+    SYSCTL_NODE(_kern_proc,						\
+	which,								\
+	affix,								\
+	CTLFLAG_RD | CTLFLAG_NOLOCK,					\
+	sysctl_kern_proc, "Process Table");				\
+    SYSCTL_NODE(_kern_proc,						\
+	(which | KERN_PROC_FLAG_LWP),					\
+	affix ## _lwp,							\
+	CTLFLAG_RD | CTLFLAG_NOLOCK,					\
+	sysctl_kern_proc, "Process Table");				\
+    SYSCTL_NODE(_kern_proc,						\
+	(which | KERN_PROC_FLAG_LWKT),					\
+	affix ## _lwkt,							\
+	CTLFLAG_RD | CTLFLAG_NOLOCK,					\
+	sysctl_kern_proc, "Process Table");				\
+    SYSCTL_NODE(_kern_proc, 						\
+	(which | KERN_PROC_FLAG_LWP | KERN_PROC_FLAG_LWKT),		\
+	affix ## _lwp_lwkt,						\
+	CTLFLAG_RD | CTLFLAG_NOLOCK,					\
+	sysctl_kern_proc, "Process Table")
+
+SYSCTL_PROC(_kern_proc,
+	KERN_PROC_ALL,
+	all,
 	CTLFLAG_RD | CTLTYPE_STRUCT | CTLFLAG_NOLOCK,
 	0, 0, sysctl_kern_proc, "S,proc", "Return entire process table");
 
-SYSCTL_NODE(_kern_proc, KERN_PROC_PGRP, pgrp,
+SYSCTL_NODE(_kern_proc,
+	(KERN_PROC_ALL | KERN_PROC_FLAG_LWP),
+	all_lwp,
 	CTLFLAG_RD | CTLFLAG_NOLOCK,
 	sysctl_kern_proc, "Process table");
 
-SYSCTL_NODE(_kern_proc, KERN_PROC_TTY, tty,
+SYSCTL_NODE(_kern_proc,
+	(KERN_PROC_ALL | KERN_PROC_FLAG_LWKT),
+	all_lwkt,
 	CTLFLAG_RD | CTLFLAG_NOLOCK,
 	sysctl_kern_proc, "Process table");
 
-SYSCTL_NODE(_kern_proc, KERN_PROC_UID, uid,
+SYSCTL_NODE(_kern_proc,
+	(KERN_PROC_ALL | KERN_PROC_FLAG_LWP | KERN_PROC_FLAG_LWKT),
+	all_lwp_lwkt,
 	CTLFLAG_RD | CTLFLAG_NOLOCK,
 	sysctl_kern_proc, "Process table");
 
-SYSCTL_NODE(_kern_proc, KERN_PROC_RUID, ruid,
-	CTLFLAG_RD | CTLFLAG_NOLOCK,
-	sysctl_kern_proc, "Process table");
+SYSCTL_KERN_PROC_ALLFLAGS(KERN_PROC_PGRP, pgrp);
+SYSCTL_KERN_PROC_ALLFLAGS(KERN_PROC_TTY, tty);
+SYSCTL_KERN_PROC_ALLFLAGS(KERN_PROC_UID, uid);
+SYSCTL_KERN_PROC_ALLFLAGS(KERN_PROC_RUID, ruid);
+SYSCTL_KERN_PROC_ALLFLAGS(KERN_PROC_PID, pid);
 
-SYSCTL_NODE(_kern_proc, KERN_PROC_PID, pid,
-	CTLFLAG_RD | CTLFLAG_NOLOCK,
-	sysctl_kern_proc, "Process table");
-
-SYSCTL_NODE(_kern_proc, (KERN_PROC_ALL | KERN_PROC_FLAG_LWP), all_lwp,
-	CTLFLAG_RD | CTLFLAG_NOLOCK,
-	sysctl_kern_proc, "Process table");
-
-SYSCTL_NODE(_kern_proc, (KERN_PROC_PGRP | KERN_PROC_FLAG_LWP), pgrp_lwp,
-	CTLFLAG_RD | CTLFLAG_NOLOCK,
-	sysctl_kern_proc, "Process table");
-
-SYSCTL_NODE(_kern_proc, (KERN_PROC_TTY | KERN_PROC_FLAG_LWP), tty_lwp,
-	CTLFLAG_RD | CTLFLAG_NOLOCK,
-	sysctl_kern_proc, "Process table");
-
-SYSCTL_NODE(_kern_proc, (KERN_PROC_UID | KERN_PROC_FLAG_LWP), uid_lwp,
-	CTLFLAG_RD | CTLFLAG_NOLOCK,
-	sysctl_kern_proc, "Process table");
-
-SYSCTL_NODE(_kern_proc, (KERN_PROC_RUID | KERN_PROC_FLAG_LWP), ruid_lwp,
-	CTLFLAG_RD | CTLFLAG_NOLOCK,
-	sysctl_kern_proc, "Process table");
-
-SYSCTL_NODE(_kern_proc, (KERN_PROC_PID | KERN_PROC_FLAG_LWP), pid_lwp,
-	CTLFLAG_RD | CTLFLAG_NOLOCK,
-	sysctl_kern_proc, "Process table");
 
 SYSCTL_NODE(_kern_proc, KERN_PROC_ARGS, args,
 	CTLFLAG_RW | CTLFLAG_ANYBODY | CTLFLAG_NOLOCK,

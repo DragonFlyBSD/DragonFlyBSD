@@ -239,9 +239,10 @@
  * 600200 - 6.2 release
  * 600300 - 6.3 development
  * 600301 - add strerror_l()
+ * 600302 - change sysctl KERN_PROC behavior
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600301	/* propagated to newvers */
+#define __DragonFly_version 600302	/* propagated to newvers */
 
 #include <sys/_null.h>
 

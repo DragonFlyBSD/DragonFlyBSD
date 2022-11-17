@@ -511,12 +511,20 @@ get_process_info(struct system_info *si, struct process_select *sel,
 	int show_system;
 	int show_uid;
 	int show_threads;
+	int kvmflags;
 	char *match_command;
 
 	show_threads = sel->threads;
+	show_system = sel->system;
 
-	pbase = kvm_getprocs(kd,
-	    KERN_PROC_ALL | (show_threads ? KERN_PROC_FLAG_LWP : 0), 0, &nproc);
+	kvmflags = 0;
+	if (show_threads)
+		kvmflags |= KERN_PROC_FLAG_LWP;
+#ifdef KERN_PROC_FLAG_LWKT
+	if (show_system)
+		kvmflags |= KERN_PROC_FLAG_LWKT;
+#endif
+	pbase = kvm_getprocs(kd, KERN_PROC_ALL | kvmflags, 0, &nproc);
 	if (nproc > onproc)
 		pref = (struct kinfo_proc **)realloc(pref, sizeof(struct kinfo_proc *)
 		    * (onproc = nproc));
@@ -535,7 +543,6 @@ get_process_info(struct system_info *si, struct process_select *sel,
 
 	/* set up flags which define what we are going to select */
 	show_idle = sel->idle;
-	show_system = sel->system;
 	show_uid = sel->uid != -1;
 	show_fullcmd = sel->fullcmd;
 	match_command = sel->command;

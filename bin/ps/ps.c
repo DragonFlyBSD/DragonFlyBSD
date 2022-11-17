@@ -395,6 +395,10 @@ main(int argc, char **argv)
 		what = KERN_PROC_ALL;
 		flag = 0;
 	}
+#ifdef KERN_PROC_FLAG_LWKT
+	if (all)
+	    what |= KERN_PROC_FLAG_LWKT;
+#endif
 	what |= showtid;
 
 	/*
