@@ -40,8 +40,8 @@
 #ifndef _h_sys
 #define	_h_sys
 
-#ifdef HAVE_SYS_CDEFS_H
-#include <sys/cdefs.h>
+#if defined(HAVE_SYS_TYPES_H) && defined(__sun)
+#include <sys/types.h>
 #endif
 
 #if !defined(__attribute__) && (defined(__cplusplus) || !defined(__GNUC__)  || __GNUC__ == 2 && __GNUC_MINOR__ < 8)
@@ -82,18 +82,26 @@ typedef void	*ioctl_t;
 #include <stdio.h>
 
 #ifndef HAVE_STRLCAT
-#define	strlcat libedit_strlcat
+//#define	strlcat libedit_strlcat
 size_t	strlcat(char *dst, const char *src, size_t size);
 #endif
 
 #ifndef HAVE_STRLCPY
-#define	strlcpy libedit_strlcpy
+//#define	strlcpy libedit_strlcpy
 size_t	strlcpy(char *dst, const char *src, size_t size);
 #endif
 
 #ifndef HAVE_GETLINE
-#define	getline libedit_getline
+//#define	getline libedit_getline
 ssize_t	getline(char **line, size_t *len, FILE *fp);
+#endif
+
+#ifndef HAVE_HAVE_REALLOCARR
+int reallocarr(void *ptr, size_t number, size_t size);
+#endif
+
+#ifndef HAVE_WCSDUP
+wchar_t * wcsdup(const wchar_t *str);
 #endif
 
 #ifndef _DIAGASSERT

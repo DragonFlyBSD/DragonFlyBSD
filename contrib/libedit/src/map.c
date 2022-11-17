@@ -1,4 +1,4 @@
-/*	$NetBSD: map.c,v 1.52 2019/07/23 10:18:52 christos Exp $	*/
+/*	$NetBSD: map.c,v 1.54 2021/08/29 09:41:59 christos Exp $	*/
 
 /*-
  * Copyright (c) 1992, 1993
@@ -37,7 +37,7 @@
 #if 0
 static char sccsid[] = "@(#)map.c	8.1 (Berkeley) 6/4/93";
 #else
-__RCSID("$NetBSD: map.c,v 1.52 2019/07/23 10:18:52 christos Exp $");
+__RCSID("$NetBSD: map.c,v 1.54 2021/08/29 09:41:59 christos Exp $");
 #endif
 #endif /* not lint && not SCCSID */
 
@@ -85,12 +85,12 @@ static const el_action_t  el_map_emacs[] = {
 	/*  15 */	ED_IGNORE,		/* ^O */
 	/*  16 */	ED_PREV_HISTORY,	/* ^P */
 	/*  17 */	ED_IGNORE,		/* ^Q */
-	/*  18 */	ED_REDISPLAY,		/* ^R */
+	/*  18 */	EM_INC_SEARCH_PREV,	/* ^R */
 	/*  19 */	ED_IGNORE,		/* ^S */
 	/*  20 */	ED_TRANSPOSE_CHARS,	/* ^T */
 	/*  21 */	EM_KILL_LINE,		/* ^U */
 	/*  22 */	ED_QUOTED_INSERT,	/* ^V */
-	/*  23 */	EM_KILL_REGION,		/* ^W */
+	/*  23 */	ED_DELETE_PREV_WORD,	/* ^W */
 	/*  24 */	ED_SEQUENCE_LEAD_IN,	/* ^X */
 	/*  25 */	EM_YANK,		/* ^Y */
 	/*  26 */	ED_IGNORE,		/* ^Z */
@@ -906,11 +906,11 @@ map_init(EditLine *el)
          */
 #ifdef MAP_DEBUG
 	if (sizeof(el_map_emacs) != N_KEYS * sizeof(el_action_t))
-		EL_ABORT((el->errfile, "Emacs map incorrect\n"));
+		EL_ABORT((el->el_errfile, "Emacs map incorrect\n"));
 	if (sizeof(el_map_vi_command) != N_KEYS * sizeof(el_action_t))
-		EL_ABORT((el->errfile, "Vi command map incorrect\n"));
+		EL_ABORT((el->el_errfile, "Vi command map incorrect\n"));
 	if (sizeof(el_map_vi_insert) != N_KEYS * sizeof(el_action_t))
-		EL_ABORT((el->errfile, "Vi insert map incorrect\n"));
+		EL_ABORT((el->el_errfile, "Vi insert map incorrect\n"));
 #endif
 
 	el->el_map.alt = el_calloc(N_KEYS, sizeof(*el->el_map.alt));

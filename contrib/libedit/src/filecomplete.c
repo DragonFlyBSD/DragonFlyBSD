@@ -1,4 +1,4 @@
-/*	$NetBSD: filecomplete.c,v 1.62 2019/12/10 19:42:09 christos Exp $	*/
+/*	$NetBSD: filecomplete.c,v 1.70 2022/03/12 15:29:17 christos Exp $	*/
 
 /*-
  * Copyright (c) 1997 The NetBSD Foundation, Inc.
@@ -32,7 +32,7 @@
 #include "config.h"
 
 #if !defined(lint) && !defined(SCCSID)
-__RCSID("$NetBSD: filecomplete.c,v 1.62 2019/12/10 19:42:09 christos Exp $");
+__RCSID("$NetBSD: filecomplete.c,v 1.70 2022/03/12 15:29:17 christos Exp $");
 #endif /* not lint && not SCCSID */
 
 #include <sys/types.h>
@@ -70,20 +70,21 @@ fn_tilde_expand(const char *txt)
 	char pwbuf[1024];
 #endif
 	struct passwd *pass;
+	const char *pos;
 	char *temp;
 	size_t len = 0;
 
 	if (txt[0] != '~')
 		return strdup(txt);
 
-	temp = strchr(txt + 1, '/');
-	if (temp == NULL) {
+	pos = strchr(txt + 1, '/');
+	if (pos == NULL) {
 		temp = strdup(txt + 1);
 		if (temp == NULL)
 			return NULL;
 	} else {
 		/* text until string after slash */
-		len = (size_t)(temp - txt + 1);
+		len = (size_t)(pos - txt + 1);
 		temp = el_calloc(len, sizeof(*temp));
 		if (temp == NULL)
 			return NULL;
@@ -127,7 +128,7 @@ fn_tilde_expand(const char *txt)
 }
 
 static int
-needs_escaping(char c)
+needs_escaping(wchar_t c)
 {
 	switch (c) {
 	case '\'':
@@ -213,9 +214,10 @@ escape_filename(EditLine * el, const char *filename, int single_match,
 	while (temp != el->el_line.cursor) {
 		/*
 		 * If we see a single quote but have not seen a double quote
-		 * so far set/unset s_quote
+		 * so far set/unset s_quote, unless it is already quoted
 		 */
-		if (temp[0] == '\'' && !d_quoted)
+		if (temp[0] == '\'' && !d_quoted &&
+		    (temp == el->el_line.buffer || temp[-1] != '\\'))
 			s_quoted = !s_quoted;
 		/*
 		 * vice versa to the above condition
@@ -292,7 +294,7 @@ escape_filename(EditLine * el, const char *filename, int single_match,
 
 	if (single_match && app_func) {
 		escaped_str[offset] = 0;
-		append_char = app_func(escaped_str);
+		append_char = app_func(filename);
 		/* we want to append space only if we are not inside quotes */
 		if (append_char[0] == ' ') {
 			if (!s_quoted && !d_quoted)
@@ -328,14 +330,15 @@ fn_filename_completion_function(const char *text, int state)
 	static size_t filename_len = 0;
 	struct dirent *entry;
 	char *temp;
+	const char *pos;
 	size_t len;
 
 	if (state == 0 || dir == NULL) {
-		temp = strrchr(text, '/');
-		if (temp) {
+		pos = strrchr(text, '/');
+		if (pos) {
 			char *nptr;
-			temp++;
-			nptr = el_realloc(filename, (strlen(temp) + 1) *
+			pos++;
+			nptr = el_realloc(filename, (strlen(pos) + 1) *
 			    sizeof(*nptr));
 			if (nptr == NULL) {
 				el_free(filename);
@@ -343,8 +346,8 @@ fn_filename_completion_function(const char *text, int state)
 				return NULL;
 			}
 			filename = nptr;
-			(void)strcpy(filename, temp);
-			len = (size_t)(temp - text);	/* including last slash */
+			(void)strcpy(filename, pos);
+			len = (size_t)(pos - text);	/* including last slash */
 
 			nptr = el_realloc(dirname, (len + 1) *
 			    sizeof(*nptr));
@@ -578,10 +581,12 @@ fn_display_match_list(EditLine * el, char **matches, size_t num, size_t width,
 
 static wchar_t *
 find_word_to_complete(const wchar_t * cursor, const wchar_t * buffer,
-    const wchar_t * word_break, const wchar_t * special_prefixes, size_t * length)
+    const wchar_t * word_break, const wchar_t * special_prefixes, size_t * length,
+	int do_unescape)
 {
 	/* We now look backwards for the start of a filename/variable word */
 	const wchar_t *ctemp = cursor;
+	wchar_t *temp;
 	size_t len;
 
 	/* if the cursor is placed at a slash or a quote, we need to find the
@@ -602,17 +607,13 @@ find_word_to_complete(const wchar_t * cursor, const wchar_t * buffer,
 	for (;;) {
 		if (ctemp <= buffer)
 			break;
-		if (wcschr(word_break, ctemp[-1])) {
-			if (ctemp - buffer >= 2 && ctemp[-2] == '\\') {
-				ctemp -= 2;
-				continue;
-			} else if (ctemp - buffer >= 2 &&
-			    (ctemp[-2] == '\'' || ctemp[-2] == '"')) {
-				ctemp--;
-				continue;
-			} else
-				break;
+		if (ctemp - buffer >= 2 && ctemp[-2] == '\\' &&
+		    needs_escaping(ctemp[-1])) {
+			ctemp -= 2;
+			continue;
 		}
+		if (wcschr(word_break, ctemp[-1]))
+			break;
 		if (special_prefixes && wcschr(special_prefixes, ctemp[-1]))
 			break;
 		ctemp--;
@@ -624,10 +625,16 @@ find_word_to_complete(const wchar_t * cursor, const wchar_t * buffer,
 		ctemp++;
 	}
 	*length = len;
-	wchar_t *unescaped_word = unescape_string(ctemp, len);
-	if (unescaped_word == NULL)
-		return NULL;
-	return unescaped_word;
+	if (do_unescape) {
+		wchar_t *unescaped_word = unescape_string(ctemp, len);
+		if (unescaped_word == NULL)
+			return NULL;
+		return unescaped_word;
+	}
+	temp = el_malloc((len + 1) * sizeof(*temp));
+	(void) wcsncpy(temp, ctemp, len);
+	temp[len] = '\0';
+	return temp;
 }
 
 /*
@@ -643,12 +650,13 @@ find_word_to_complete(const wchar_t * cursor, const wchar_t * buffer,
  *       '!' could never be invoked
  */
 int
-fn_complete(EditLine *el,
-	char *(*complet_func)(const char *, int),
-	char **(*attempted_completion_function)(const char *, int, int),
-	const wchar_t *word_break, const wchar_t *special_prefixes,
-	const char *(*app_func)(const char *), size_t query_items,
-	int *completion_type, int *over, int *point, int *end)
+fn_complete2(EditLine *el,
+    char *(*complete_func)(const char *, int),
+    char **(*attempted_completion_function)(const char *, int, int),
+    const wchar_t *word_break, const wchar_t *special_prefixes,
+    const char *(*app_func)(const char *), size_t query_items,
+    int *completion_type, int *over, int *point, int *end,
+    unsigned int flags)
 {
 	const LineInfoW *li;
 	wchar_t *temp;
@@ -657,6 +665,7 @@ fn_complete(EditLine *el,
 	size_t len;
 	int what_to_do = '\t';
 	int retval = CC_NORM;
+	int do_unescape = flags & FN_QUOTE_MATCH;
 
 	if (el->el_state.lastcmd == el->el_state.thiscmd)
 		what_to_do = '?';
@@ -665,14 +674,14 @@ fn_complete(EditLine *el,
 	if (completion_type != NULL)
 		*completion_type = what_to_do;
 
-	if (!complet_func)
-		complet_func = fn_filename_completion_function;
+	if (!complete_func)
+		complete_func = fn_filename_completion_function;
 	if (!app_func)
 		app_func = append_char_function;
 
 	li = el_wline(el);
 	temp = find_word_to_complete(li->cursor,
-	    li->buffer, word_break, special_prefixes, &len);
+	    li->buffer, word_break, special_prefixes, &len, do_unescape);
 	if (temp == NULL)
 		goto out;
 
@@ -693,7 +702,7 @@ fn_complete(EditLine *el,
 	if (!attempted_completion_function ||
 	    (over != NULL && !*over && !matches))
 		matches = completion_matches(
-		    ct_encode_string(temp, &el->el_scratch), complet_func);
+		    ct_encode_string(temp, &el->el_scratch), complete_func);
 
 	if (over != NULL)
 		*over = 0;
@@ -710,13 +719,13 @@ fn_complete(EditLine *el,
 
 	if (matches[0][0] != '\0') {
 		el_deletestr(el, (int)len);
-		if (!attempted_completion_function)
+		if (flags & FN_QUOTE_MATCH)
 			completion = escape_filename(el, matches[0],
 			    single_match, app_func);
 		else
 			completion = strdup(matches[0]);
 		if (completion == NULL)
-			goto out;
+			goto out2;
 
 		/*
 		 * Replace the completed string with the common part of
@@ -725,7 +734,9 @@ fn_complete(EditLine *el,
 		el_winsertstr(el,
 		    ct_decode_string(completion, &el->el_scratch));
 
-		if (single_match && attempted_completion_function) {
+		if (single_match && attempted_completion_function &&
+		    !(flags & FN_QUOTE_MATCH))
+		{
 			/*
 			 * We found an exact match. Add a space after
 			 * it, unless we do filename completion and the
@@ -797,6 +808,7 @@ fn_complete(EditLine *el,
 	}
 
 	/* free elements of array and the array itself */
+out2:
 	for (i = 0; matches[i]; i++)
 		el_free(matches[i]);
 	el_free(matches);
@@ -805,6 +817,20 @@ fn_complete(EditLine *el,
 out:
 	el_free(temp);
 	return retval;
+}
+
+int
+fn_complete(EditLine *el,
+    char *(*complete_func)(const char *, int),
+    char **(*attempted_completion_function)(const char *, int, int),
+    const wchar_t *word_break, const wchar_t *special_prefixes,
+    const char *(*app_func)(const char *), size_t query_items,
+    int *completion_type, int *over, int *point, int *end)
+{
+	return fn_complete2(el, complete_func, attempted_completion_function,
+	    word_break, special_prefixes, app_func, query_items,
+	    completion_type, over, point, end,
+	    attempted_completion_function ? 0 : FN_QUOTE_MATCH);
 }
 
 /*
