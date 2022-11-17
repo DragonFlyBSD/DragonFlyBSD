@@ -55,6 +55,7 @@ then
 	rm -fv "$DESTDIR"/usr/include/openssl
 	rm -fv "$DESTDIR"/usr/include/readline
 	rm -fv "$DESTDIR"/usr/include/histedit.h
+	rm -fv "$DESTDIR"/usr/include/zstd
 	# ncurses
 	rm -fv "$DESTDIR"/usr/lib/libncurses.a
 	rm -fv "$DESTDIR"/usr/lib/libncurses.so
