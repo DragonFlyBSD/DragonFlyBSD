@@ -1,4 +1,4 @@
-/*	$NetBSD: el.c,v 1.99 2019/07/23 10:18:52 christos Exp $	*/
+/*	$NetBSD: el.c,v 1.100 2021/08/15 10:08:41 christos Exp $	*/
 
 /*-
  * Copyright (c) 1992, 1993
@@ -37,7 +37,7 @@
 #if 0
 static char sccsid[] = "@(#)el.c	8.2 (Berkeley) 1/3/94";
 #else
-__RCSID("$NetBSD: el.c,v 1.99 2019/07/23 10:18:52 christos Exp $");
+__RCSID("$NetBSD: el.c,v 1.100 2021/08/15 10:08:41 christos Exp $");
 #endif
 #endif /* not lint && not SCCSID */
 
@@ -327,6 +327,14 @@ el_wset(EditLine *el, int op, ...)
 		break;
 	}
 
+	case EL_SAFEREAD:
+		if (va_arg(ap, int))
+			el->el_flags |= FIXIO;
+		else
+			el->el_flags &= ~FIXIO;
+		rv = 0;
+		break;
+
 	case EL_EDITMODE:
 		if (va_arg(ap, int))
 			el->el_flags &= ~EDIT_DISABLED;
@@ -456,6 +464,11 @@ el_wget(EditLine *el, int op, ...)
 		rv = 0;
 		break;
 
+	case EL_SAFEREAD:
+		*va_arg(ap, int *) = (el->el_flags & FIXIO);
+		rv = 0;
+		break;
+
 	case EL_TERMINAL:
 		terminal_get(el, va_arg(ap, const char **));
 		rv = 0;
@@ -548,15 +561,15 @@ el_source(EditLine *el, const char *fname)
 
 	fp = NULL;
 	if (fname == NULL) {
-#ifdef HAVE_ISSETUGID
-		if (issetugid())
-			return -1;
 
-		if ((fname = getenv("EDITRC")) == NULL) {
+		/* secure_getenv is guaranteed to be defined and do the right thing here */
+		/* because of the defines above which take into account issetugid, */
+		/* secure_getenv and __secure_getenv availability. */
+		if ((fname = secure_getenv("EDITRC")) == NULL) {
 			static const char elpath[] = "/.editrc";
 			size_t plen = sizeof(elpath);
 
-			if ((ptr = getenv("HOME")) == NULL)
+			if ((ptr = secure_getenv("HOME")) == NULL)
 				return -1;
 			plen += strlen(ptr);
 			if ((path = el_calloc(plen, sizeof(*path))) == NULL)
@@ -565,14 +578,7 @@ el_source(EditLine *el, const char *fname)
 				elpath + (*ptr == '\0'));
 			fname = path;
 		}
-#else
-		/*
-		 * If issetugid() is missing, always return an error, in order
-		 * to keep from inadvertently opening up the user to a security
-		 * hole.
-		 */
-		return -1;
-#endif
+
 	}
 	if (fname[0] == '\0')
 		return -1;
