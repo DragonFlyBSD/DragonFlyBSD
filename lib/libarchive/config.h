@@ -170,13 +170,13 @@
 /* #undef ARCHIVE_XATTR_LINUX */
 
 /* Version number of bsdcat */
-#define BSDCAT_VERSION_STRING "3.4.3"
+#define BSDCAT_VERSION_STRING "3.6.1"
 
 /* Version number of bsdcpio */
-#define BSDCPIO_VERSION_STRING "3.4.3"
+#define BSDCPIO_VERSION_STRING "3.6.1"
 
 /* Version number of bsdtar */
-#define BSDTAR_VERSION_STRING "3.4.3"
+#define BSDTAR_VERSION_STRING "3.6.1"
 
 /* Define to 1 if the system has the type `ace_t'. */
 /* #undef HAVE_ACE_T */
@@ -585,16 +585,10 @@
 #define HAVE_GRP_H 1
 
 /* Define if you have the iconv() function and it works. */
-/*
- * Shared libraries only
- * #define HAVE_ICONV 1
- */
+#define HAVE_ICONV 1
 
 /* Define to 1 if you have the <iconv.h> header file. */
-/*
- * Shared libraries only
- * #define HAVE_ICONV_H 1
- */
+#define HAVE_ICONV_H 1
 
 /* Define to 1 if the system has the type `intmax_t'. */
 #define HAVE_INTMAX_T 1
@@ -690,13 +684,20 @@
 #define HAVE_LIBZ 1
 
 /* Define to 1 if you have the `zstd' library (-lzstd). */
-#define HAVE_LIBZSTD 1
+/* #undef HAVE_LIBZSTD */
+
+/* Define to 1 if you have the `zstd' library (-lzstd) with compression
+   support. */
+/* #undef HAVE_LIBZSTD_COMPRESSOR */
 
 /* Define to 1 if you have the <limits.h> header file. */
 #define HAVE_LIMITS_H 1
 
 /* Define to 1 if you have the `link' function. */
 #define HAVE_LINK 1
+
+/* Define to 1 if you have the `linkat' function. */
+#define HAVE_LINKAT 1
 
 /* Define to 1 if you have the <linux/fiemap.h> header file. */
 /* #undef HAVE_LINUX_FIEMAP_H */
@@ -763,10 +764,7 @@
 #define HAVE_LZMA_H 1
 
 /* Define to 1 if you have the `lzma_stream_encoder_mt' function. */
-/*
- * Brings in pthread dependency
- * #define HAVE_LZMA_STREAM_ENCODER_MT 1
- */
+/* #undef HAVE_LZMA_STREAM_ENCODER_MT */
 
 /* Define to 1 if you have the <lzo/lzo1x.h> header file. */
 /* #undef HAVE_LZO_LZO1X_H */
@@ -796,7 +794,7 @@
 /* #undef HAVE_MBR_UUID_TO_ID */
 
 /* Define to 1 if you have the <md5.h> header file. */
-#define HAVE_MD5_H 1
+/* #undef HAVE_MD5_H */
 
 /* Define to 1 if you have the <membership.h> header file. */
 /* #undef HAVE_MEMBERSHIP_H */
@@ -919,7 +917,7 @@
 /* #undef HAVE_RICHACL_SET_FILE */
 
 /* Define to 1 if you have the <ripemd.h> header file. */
-#define HAVE_RIPEMD_H 1
+/* #undef HAVE_RIPEMD_H */
 
 /* Define to 1 if you have the `select' function. */
 #define HAVE_SELECT 1
@@ -934,13 +932,13 @@
 /* #undef HAVE_SETXATTR */
 
 /* Define to 1 if you have the <sha256.h> header file. */
-#define HAVE_SHA256_H 1
+/* #undef HAVE_SHA256_H */
 
 /* Define to 1 if you have the <sha512.h> header file. */
-#define HAVE_SHA512_H 1
+/* #undef HAVE_SHA512_H */
 
 /* Define to 1 if you have the <sha.h> header file. */
-#define HAVE_SHA_H 1
+/* #undef HAVE_SHA_H */
 
 /* Define to 1 if you have the `sigaction' function. */
 #define HAVE_SIGACTION 1
@@ -994,6 +992,9 @@
 /* Define to 1 if you have the `strncpy_s' function. */
 /* #undef HAVE_STRNCPY_S */
 
+/* Define to 1 if you have the `strnlen' function. */
+#define HAVE_STRNLEN 1
+
 /* Define to 1 if you have the `strrchr' function. */
 #define HAVE_STRRCHR 1
 
@@ -1002,6 +1003,12 @@
 
 /* Define to 1 if the system has the type `struct richacl'. */
 /* #undef HAVE_STRUCT_RICHACL */
+
+/* Define to 1 if the system has the type `struct statfs'. */
+#define HAVE_STRUCT_STATFS 1
+
+/* Define to 1 if `f_iosize' is a member of `struct statfs'. */
+#define HAVE_STRUCT_STATFS_F_IOSIZE 1
 
 /* Define to 1 if `f_namemax' is a member of `struct statfs'. */
 /* #undef HAVE_STRUCT_STATFS_F_NAMEMAX */
@@ -1222,7 +1229,7 @@
 #define HAVE_ZLIB_H 1
 
 /* Define to 1 if you have the <zstd.h> header file. */
-#define HAVE_ZSTD_H 1
+/* #undef HAVE_ZSTD_H */
 
 /* Define to 1 if you have the `_ctime64_s' function. */
 /* #undef HAVE__CTIME64_S */
@@ -1246,10 +1253,10 @@
 #define ICONV_CONST 
 
 /* Version number of libarchive as a single integer */
-#define LIBARCHIVE_VERSION_NUMBER "3004003"
+#define LIBARCHIVE_VERSION_NUMBER "3006001"
 
 /* Version number of libarchive */
-#define LIBARCHIVE_VERSION_STRING "3.4.3"
+#define LIBARCHIVE_VERSION_STRING "3.6.1"
 
 /* Define to 1 if `lstat' dereferences a symlink specified with a trailing
    slash. */
@@ -1279,7 +1286,7 @@
 #define PACKAGE_NAME "libarchive"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "libarchive 3.4.3"
+#define PACKAGE_STRING "libarchive 3.6.1"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "libarchive"
@@ -1288,10 +1295,16 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "3.4.3"
+#define PACKAGE_VERSION "3.6.1"
 
 /* Define to 1 if PCRE_STATIC needs to be defined. */
 /* #undef PCRE_STATIC */
+
+/* The number of bytes in type int */
+#define SIZEOF_INT 4
+
+/* The number of bytes in type long */
+#define SIZEOF_LONG 8
 
 /* The size of `wchar_t', as computed by sizeof. */
 #define SIZEOF_WCHAR_T 4
@@ -1328,7 +1341,7 @@
 
 
 /* Version number of package */
-#define VERSION "3.4.3"
+#define VERSION "3.6.1"
 
 /* Define to '0x0502' for Windows Server 2003 APIs. */
 /* #undef WINVER */
@@ -1374,6 +1387,9 @@
 
 /* Define to '0x0502' for Windows Server 2003 APIs. */
 /* #undef _WIN32_WINNT */
+
+/* Internal macro for sanity checks */
+#define __LIBARCHIVE_CONFIG_H_INCLUDED 1
 
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */

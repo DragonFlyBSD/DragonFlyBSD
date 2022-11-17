@@ -62,6 +62,7 @@ SRCS=	archive_acl.c					\
 	archive_read_set_format.c			\
 	archive_read_set_options.c			\
 	archive_read_support_filter_all.c		\
+	archive_read_support_filter_by_code.c		\
 	archive_read_support_filter_bzip2.c		\
 	archive_read_support_filter_compress.c		\
 	archive_read_support_filter_grzip.c		\
@@ -124,7 +125,9 @@ SRCS=	archive_acl.c					\
 	archive_write_set_format_ar.c			\
 	archive_write_set_format_by_name.c		\
 	archive_write_set_format_cpio.c			\
+	archive_write_set_format_cpio_binary.c		\
 	archive_write_set_format_cpio_newc.c		\
+	archive_write_set_format_cpio_odc.c		\
 	archive_write_set_format_filter_by_ext.c	\
 	archive_write_set_format_gnutar.c		\
 	archive_write_set_format_iso9660.c		\

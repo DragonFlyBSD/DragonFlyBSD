@@ -10,5 +10,9 @@ ARCHIVE_3.3.3 {
 ARCHIVE_3.4.3 {
 } ARCHIVE_3.3.3;
 
-ARCHIVEprivate_1.0 {
+ARCHIVE_3.6.1 {
 } ARCHIVE_3.4.3;
+
+
+ARCHIVEprivate_1.0 {
+} ARCHIVE_3.6.1;

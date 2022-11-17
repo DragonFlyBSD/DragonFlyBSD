@@ -465,6 +465,14 @@ ARCHIVE_3.4.3 {
     archive_read_support_format_rar5;
 };
 
+ARCHIVE_3.6.1 {
+    archive_read_support_filter_by_code;
+    archive_write_open2;
+    archive_write_set_format_cpio_bin;
+    archive_write_set_format_cpio_odc;
+    archive_write_set_format_cpio_pwb;
+};
+
 ARCHIVEprivate_1.0 {
     __archive_check_child;
     __archive_check_magic;

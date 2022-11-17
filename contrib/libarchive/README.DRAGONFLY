@@ -1,13 +1,13 @@
-LIBARCHIVE 3.4.3
+LIBARCHIVE 3.6.1
 ================
 
 Original source can be downloaded from:
 http://www.libarchive.org/
 
-file = libarchive-3.4.3.tar.xz
-date = 20 May 2020
-size = 4811508
-sha1 = 53f1400ac71778d14615a66f89e04403548fae76
+file = libarchive-3.6.1.tar.gz
+date = 8 April 2022
+size = 7431598
+sha1 = f1d2fa288d7afd30a83e76d524db7a6c90b6c966
 
 A list of deleted files is in README.DELETED.
 
