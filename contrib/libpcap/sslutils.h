@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2002 - 2005 NetGroup, Politecnico di Torino (Italy)
- * Copyright (c) 2005 - 2009 CACE Technologies, Inc. Davis (California)
+ * Copyright (c) 2002 - 2003
+ * NetGroup, Politecnico di Torino (Italy)
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,23 +27,40 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
-#ifndef pcap_types_h
-#define pcap_types_h
+
+#ifndef __SSLUTILS_H__
+#define __SSLUTILS_H__
+
+#ifdef HAVE_OPENSSL
+#include "pcap/socket.h"  // for SOCKET
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 /*
- * Get u_int defined, by hook or by crook.
+ * Utility functions
  */
-#ifdef _WIN32
-  /*
-   * This defines u_int.
-   */
-  #include <winsock2.h>
-#else /* _WIN32 */
-  /*
-   * This defines u_int, among other types.
-   */
-  #include <sys/types.h>
-#endif
 
-#endif /* pcap_types_h */
+void ssl_set_certfile(const char *certfile);
+void ssl_set_keyfile(const char *keyfile);
+int ssl_init_once(int is_server, int enable_compression, char *errbuf, size_t errbuflen);
+SSL *ssl_promotion(int is_server, SOCKET s, char *errbuf, size_t errbuflen);
+void ssl_finish(SSL *ssl);
+int ssl_send(SSL *, char const *buffer, int size, char *errbuf, size_t errbuflen);
+int ssl_recv(SSL *, char *buffer, int size, char *errbuf, size_t errbuflen);
+
+// The SSL parameters are used
+#define _U_NOSSL_
+
+#else   // HAVE_OPENSSL
+
+// This saves us from a lot of ifdefs:
+#define SSL void const
+
+// The SSL parameters are unused
+#define _U_NOSSL_	_U_
+
+#endif  // HAVE_OPENSSL
+
+#endif  // __SSLUTILS_H__
