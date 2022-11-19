@@ -1,5 +1,6 @@
+/* -*- Mode: c; tab-width: 8; indent-tabs-mode: 1; c-basic-offset: 8; -*- */
 /*
- * Copyright (c) 1994, 1996
+ * Copyright (c) 1993, 1994, 1995, 1996, 1997
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,54 +32,13 @@
  * SUCH DAMAGE.
  */
 
-#ifndef lib_pcap_namedb_h
-#define lib_pcap_namedb_h
+#ifndef charonv_h
+#define charonv_h
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/*
- * As returned by the pcap_next_etherent()
- * XXX this stuff doesn't belong in this interface, but this
- * library already must do name to address translation, so
- * on systems that don't have support for /etc/ethers, we
- * export these hooks since they're already being used by
- * some applications (such as tcpdump) and already being
- * marked as exported in some OSes offering libpcap (such
- * as Debian).
- */
-struct pcap_etherent {
-	u_char addr[6];
-	char name[122];
-};
-#ifndef PCAP_ETHERS_FILE
-#define PCAP_ETHERS_FILE "/etc/ethers"
-#endif
-PCAP_API struct	pcap_etherent *pcap_next_etherent(FILE *);
-PCAP_API u_char *pcap_ether_hostton(const char*);
-PCAP_API u_char *pcap_ether_aton(const char *);
-
-PCAP_API bpf_u_int32 **pcap_nametoaddr(const char *)
-PCAP_DEPRECATED(pcap_nametoaddr, "this is not reentrant; use 'pcap_nametoaddrinfo' instead");
-PCAP_API struct addrinfo *pcap_nametoaddrinfo(const char *);
-PCAP_API bpf_u_int32 pcap_nametonetaddr(const char *);
-
-PCAP_API int	pcap_nametoport(const char *, int *, int *);
-PCAP_API int	pcap_nametoportrange(const char *, int *, int *, int *);
-PCAP_API int	pcap_nametoproto(const char *);
-PCAP_API int	pcap_nametoeproto(const char *);
-PCAP_API int	pcap_nametollc(const char *);
-/*
- * If a protocol is unknown, PROTO_UNDEF is returned.
- * Also, pcap_nametoport() returns the protocol along with the port number.
- * If there are ambiguous entried in /etc/services (i.e. domain
- * can be either tcp or udp) PROTO_UNDEF is returned.
- */
-#define PROTO_UNDEF		-1
-
-#ifdef __cplusplus
-}
+#ifdef _WIN32
+extern wchar_t *cp_to_utf_16le(UINT codepage, const char *cp_string, DWORD flags);
+extern char *utf_16le_to_cp(UINT codepage, const wchar_t *utf16le_string);
+extern void utf_8_to_acp_truncated(char *);
 #endif
 
 #endif
