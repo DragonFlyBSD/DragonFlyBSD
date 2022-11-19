@@ -76,8 +76,8 @@
 #ifdef HAVE_NET_PFVAR_H
 #include <sys/socket.h>
 #include <net/if.h>
-#include <net/pf/pfvar.h>
-#include <net/pf/if_pflog.h>
+#include <net/pfvar.h>
+#include <net/if_pflog.h>
 #endif
 
 #ifndef offsetof
@@ -6955,15 +6955,11 @@ gen_mcode(compiler_state_t *cstate, const char *s1, const char *s2,
 		return (NULL);
 
 	nlen = __pcap_atoin(s1, &n);
-	if (nlen < 0)
-		bpf_error(cstate, "invalid IPv4 address '%s'", s1);
 	/* Promote short ipaddr */
 	n <<= 32 - nlen;
 
 	if (s2 != NULL) {
 		mlen = __pcap_atoin(s2, &m);
-		if (mlen < 0)
-			bpf_error(cstate, "invalid IPv4 address '%s'", s2);
 		/* Promote short ipaddr */
 		m <<= 32 - mlen;
 		if ((n & ~m) != 0)
@@ -7021,11 +7017,8 @@ gen_ncode(compiler_state_t *cstate, const char *s, bpf_u_int32 v, struct qual q)
 		vlen = __pcap_atodn(s, &v);
 		if (vlen == 0)
 			bpf_error(cstate, "malformed decnet address '%s'", s);
-	} else {
+	} else
 		vlen = __pcap_atoin(s, &v);
-		if (vlen < 0)
-			bpf_error(cstate, "invalid IPv4 address '%s'", s);
-	}
 
 	switch (q.addr) {
 
