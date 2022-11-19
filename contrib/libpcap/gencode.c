@@ -48,7 +48,12 @@
 #include "pcap-dos.h"
 #endif
 
-#ifdef HAVE_NET_PFVAR_H
+/*
+ * TODO(tuxillo): Upstream this change to libpcap since our pfvar.h headers
+ * are in a different path.
+ *
+ */
+#ifdef HAVE_NET_PF_PFVAR_H
 /*
  * In NetBSD <net/if.h> includes <net/dlt.h>, which is an older version of
  * "pcap/dlt.h" with a lower value of DLT_MATCHING_MAX. Include the headers
@@ -58,9 +63,9 @@
  */
 #include <sys/socket.h>
 #include <net/if.h>
-#include <net/pfvar.h>
-#include <net/if_pflog.h>
-#endif /* HAVE_NET_PFVAR_H */
+#include <net/pf/pfvar.h>
+#include <net/pf/if_pflog.h>
+#endif /* HAVE_NET_PF_PFVAR_H */
 
 #include "pcap-int.h"
 

@@ -4,10 +4,10 @@ LIBPCAP
 Original source can be downloaded from:
 https://www.tcpdump.org/release/
 
-file = libpcap-1.9.1.tar.gz
-date = 2019-10-01
-size = 861228
-sha1 = 04d6e619defad5bb17af15f6d2304e79b649786c
+file = libpcap-1.10.1.tar.gz
+date = 23 October 2021
+size = 935221 
+sha1 = 4343528176e0402cce807a09a97191069a1e3dd9
 
 A list of files and directories removed is in README.DELETED.
 

@@ -96,10 +96,15 @@ struct rtentry;
 #include "grammar.h"
 #include "scanner.h"
 
-#ifdef HAVE_NET_PFVAR_H
+/*
+ * TODO(tuxillo): Upstream this change to libpcap since our pfvar.h headers
+ * are in a different path.
+ *
+ */
+#ifdef HAVE_NET_PF_PFVAR_H
 #include <net/if.h>
-#include <net/pfvar.h>
-#include <net/if_pflog.h>
+#include <net/pf/pfvar.h>
+#include <net/pf/if_pflog.h>
 #endif
 #include "llc.h"
 #include "ieee80211.h"

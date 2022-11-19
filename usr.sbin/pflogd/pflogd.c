@@ -347,7 +347,8 @@ try_reset_dump(int nomove)
 		hdr.magic = TCPDUMP_MAGIC;
 		hdr.version_major = PCAP_VERSION_MAJOR;
 		hdr.version_minor = PCAP_VERSION_MINOR;
-		hdr.thiszone = hpcap->tzoff;
+		/* https://www.tcpdump.org/manpages/pcap-savefile.5.txt */
+		hdr.thiszone = 0;
 		hdr.snaplen = hpcap->snapshot;
 		hdr.sigfigs = 0;
 		hdr.linktype = hpcap->linktype;

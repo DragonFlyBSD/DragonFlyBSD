@@ -85,6 +85,7 @@ MAN=	pcap.3 \
 	pcap_get_selectable_fd.3 \
 	pcap_get_tstamp_precision.3 \
 	pcap_geterr.3 \
+	pcap_init.3 \
 	pcap_inject.3 \
 	pcap_is_swapped.3 \
 	pcap_lib_version.3 \

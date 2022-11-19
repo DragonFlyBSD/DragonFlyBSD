@@ -6,6 +6,7 @@ INCS=	ipfw3_layer4.h
 .if !defined(NOINET6)
 CFLAGS+=-DINET6
 .endif
+CFLAGS+=-DPCAP_DONT_INCLUDE_PCAP_BPF_H
 
 LDADD=-lpcap
 DPADD=${LIBPCAP}

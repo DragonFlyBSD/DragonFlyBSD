@@ -40,6 +40,13 @@
  */
 #include <stdarg.h>	/* we declare varargs functions on some platforms */
 
+/* Take the OS definitions early for timeradd and others so that the guards
+ * below have an effect.
+ */
+#ifndef _WIN32
+#include <sys/time.h>
+#endif
+
 #include "pcap/funcattrs.h"
 
 #ifdef __cplusplus
