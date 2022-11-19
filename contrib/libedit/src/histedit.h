@@ -255,9 +255,13 @@ int		 tok_str(Tokenizer *, const char *,
 #include <wchar.h>
 #include <wctype.h>
 
-#ifndef HAVE_WCSDUP
+/* This is going to fail to compile in any OS that has wcsdup defined and
+ * includes histedit.h wihtout including libedit's config.h
+ */ 
+#if !defined(HAVE_WCSDUP) && !defined(__DragonFly__)
 wchar_t * wcsdup(const wchar_t *str);
 #endif
+
 
 /*
  * ==== Editing ====

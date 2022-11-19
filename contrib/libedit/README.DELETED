@@ -18,8 +18,11 @@ m4/
 Makefile.am
 Makefile.in
 missing
+src/ChangeLog
 src/Makefile.am
 src/Makefile.in
+src/getline.c
+src/reallocarr.c
 src/strlcat.c
 src/strlcpy.c
 src/unvis.c

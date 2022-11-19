@@ -4,10 +4,10 @@ LIBEDIT
 Original source can be downloaded from:
 http://www.thrysoee.dk/editline
 
-file = libedit-20191231-3.1.tar.gz
-date = 31 December 2019
-size = 516801
-sha1 = 44891b6ceb0429fec0a118a1245c605410571d7d
+file = libedit-20221030-3.1.tar.gz
+date = 30 October 2022
+size = 533261
+sha1 = 2a178c4a09b11651427a9e911c56bb9fed811597
 
 A list of files and directories removed is in README.DELETED
 
