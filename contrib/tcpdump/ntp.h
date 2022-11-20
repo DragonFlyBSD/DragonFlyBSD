@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997
+ * Copyright (c) 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -17,9 +17,38 @@
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ *
  */
-#ifndef gmt2local_h
-#define gmt2local_h
 
-int32_t gmt2local(time_t);
-#endif
+#include "netdissect-stdinc.h"
+
+#include "netdissect.h"
+
+/*
+ * Structure definitions for NTP fixed point values
+ *
+ *    0			  1		      2			  3
+ *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   |			       Integer Part			     |
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   |			       Fraction Part			     |
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ *    0			  1		      2			  3
+ *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   |		  Integer Part	     |	   Fraction Part	     |
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+*/
+struct l_fixedpt {
+	nd_uint32_t int_part;
+	nd_uint32_t fraction;
+};
+
+struct s_fixedpt {
+	nd_uint16_t int_part;
+	nd_uint16_t fraction;
+};
+
+void p_ntp_time(netdissect_options *, const struct l_fixedpt *);
