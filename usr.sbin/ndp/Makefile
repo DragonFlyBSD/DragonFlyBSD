@@ -17,7 +17,7 @@
 .PATH:	${.CURDIR}/../../contrib/tcpdump
 
 PROG=	ndp
-SRCS=	ndp.c gmt2local.c
+SRCS=	ndp.c
 MAN=	ndp.8
 WARNS?=	2
 NO_STRICT_ALIASING=
