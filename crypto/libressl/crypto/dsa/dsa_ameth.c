@@ -1,4 +1,4 @@
-/* $OpenBSD: dsa_ameth.c,v 1.28 2019/11/01 15:15:35 jsing Exp $ */
+/* $OpenBSD: dsa_ameth.c,v 1.37 2022/06/27 12:36:05 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -10,7 +10,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -69,6 +69,8 @@
 
 #include "asn1_locl.h"
 #include "bn_lcl.h"
+#include "dsa_locl.h"
+#include "evp_locl.h"
 
 static int
 dsa_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey)
@@ -88,7 +90,7 @@ dsa_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey)
 	X509_ALGOR_get0(NULL, &ptype, &pval, palg);
 
 	if (ptype == V_ASN1_SEQUENCE) {
-		pstr = pval;	
+		pstr = pval;
 		pm = pstr->data;
 		pmlen = pstr->length;
 
@@ -100,13 +102,13 @@ dsa_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey)
 		if (!(dsa = DSA_new())) {
 			DSAerror(ERR_R_MALLOC_FAILURE);
 			goto err;
-			}
+		}
 	} else {
 		DSAerror(DSA_R_PARAMETER_ENCODING_ERROR);
 		goto err;
 	}
 
-	if (!(public_key=d2i_ASN1_INTEGER(NULL, &p, pklen))) {
+	if (!(public_key = d2i_ASN1_INTEGER(NULL, &p, pklen))) {
 		DSAerror(DSA_R_DECODE_ERROR);
 		goto err;
 	}
@@ -131,47 +133,46 @@ static int
 dsa_pub_encode(X509_PUBKEY *pk, const EVP_PKEY *pkey)
 {
 	DSA *dsa;
-	void *pval = NULL;
-	int ptype;
+	ASN1_INTEGER *pubint = NULL;
+	ASN1_STRING *str = NULL;
+	int ptype = V_ASN1_UNDEF;
 	unsigned char *penc = NULL;
 	int penclen;
 
 	dsa = pkey->pkey.dsa;
 	if (pkey->save_parameters && dsa->p && dsa->q && dsa->g) {
-		ASN1_STRING *str;
-
-		str = ASN1_STRING_new();
-		if (str == NULL) {
+		if ((str = ASN1_STRING_new()) == NULL) {
 			DSAerror(ERR_R_MALLOC_FAILURE);
 			goto err;
 		}
 		str->length = i2d_DSAparams(dsa, &str->data);
 		if (str->length <= 0) {
 			DSAerror(ERR_R_MALLOC_FAILURE);
-			ASN1_STRING_free(str);
 			goto err;
 		}
-		pval = str;
 		ptype = V_ASN1_SEQUENCE;
-	} else
-		ptype = V_ASN1_UNDEF;
+	}
 
-	dsa->write_params = 0;
+	if ((pubint = BN_to_ASN1_INTEGER(dsa->pub_key, NULL)) == NULL) {
+		DSAerror(ERR_R_MALLOC_FAILURE);
+		goto err;
+	}
 
-	penclen = i2d_DSAPublicKey(dsa, &penc);
+	penclen = i2d_ASN1_INTEGER(pubint, &penc);
+	ASN1_INTEGER_free(pubint);
 
 	if (penclen <= 0) {
 		DSAerror(ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
 
-	if (X509_PUBKEY_set0_param(pk, OBJ_nid2obj(EVP_PKEY_DSA), ptype, pval,
+	if (X509_PUBKEY_set0_param(pk, OBJ_nid2obj(EVP_PKEY_DSA), ptype, str,
 	    penc, penclen))
 		return 1;
 
-err:
+ err:
 	free(penc);
-	ASN1_STRING_free(pval);
+	ASN1_STRING_free(str);
 
 	return 0;
 }
@@ -305,6 +306,12 @@ dsa_bits(const EVP_PKEY *pkey)
 }
 
 static int
+dsa_security_bits(const EVP_PKEY *pkey)
+{
+	return DSA_security_bits(pkey->pkey.dsa);
+}
+
+static int
 dsa_missing_parameters(const EVP_PKEY *pkey)
 {
 	DSA *dsa;
@@ -433,7 +440,7 @@ do_dsa_print(BIO *bp, const DSA *x, int off, int ptype)
 	ret = 1;
 err:
 	free(m);
-	return(ret);
+	return ret;
 }
 
 static int
@@ -478,11 +485,30 @@ old_dsa_priv_decode(EVP_PKEY *pkey, const unsigned char **pder, int derlen)
 {
 	DSA *dsa;
 	BN_CTX *ctx = NULL;
-	BIGNUM *j, *p1, *newp1;
+	BIGNUM *j, *p1, *newp1, *powg;
+	int qbits;
 
 	if (!(dsa = d2i_DSAPrivateKey(NULL, pder, derlen))) {
 		DSAerror(ERR_R_DSA_LIB);
 		return 0;
+	}
+
+	/* FIPS 186-3 allows only three different sizes for q. */
+	qbits = BN_num_bits(dsa->q);
+	if (qbits != 160 && qbits != 224 && qbits != 256) {
+		DSAerror(DSA_R_BAD_Q_VALUE);
+		goto err;
+	}
+	if (BN_num_bits(dsa->p) > OPENSSL_DSA_MAX_MODULUS_BITS) {
+		DSAerror(DSA_R_MODULUS_TOO_LARGE);
+		goto err;
+	}
+
+	/* Check that 1 < g < p. */
+	if (BN_cmp(dsa->g, BN_value_one()) <= 0 ||
+	    BN_cmp(dsa->g, dsa->p) >= 0) {
+		DSAerror(DSA_R_PARAMETER_ENCODING_ERROR); /* XXX */
+		goto err;
 	}
 
 	ctx = BN_CTX_new();
@@ -496,7 +522,8 @@ old_dsa_priv_decode(EVP_PKEY *pkey, const unsigned char **pder, int derlen)
 	j = BN_CTX_get(ctx);
 	p1 = BN_CTX_get(ctx);
 	newp1 = BN_CTX_get(ctx);
-	if (j == NULL || p1 == NULL || newp1 == NULL)
+	powg = BN_CTX_get(ctx);
+	if (j == NULL || p1 == NULL || newp1 == NULL || powg == NULL)
 		goto err;
 	/* p1 = p - 1 */
 	if (BN_sub(p1, dsa->p, BN_value_one()) == 0)
@@ -509,6 +536,19 @@ old_dsa_priv_decode(EVP_PKEY *pkey, const unsigned char **pder, int derlen)
 		goto err;
 	if (BN_cmp(newp1, p1) != 0) {
 		DSAerror(DSA_R_BAD_Q_VALUE);
+		goto err;
+	}
+
+	/*
+	 * Check that g generates a multiplicative subgroup of order q.
+	 * We only check that g^q == 1, so the order is a divisor of q.
+	 * Once we know that q is prime, this is enough.
+	 */
+
+	if (!BN_mod_exp_ct(powg, dsa->g, dsa->q, dsa->p, ctx))
+		goto err;
+	if (BN_cmp(powg, BN_value_one()) != 0) {
+		DSAerror(DSA_R_PARAMETER_ENCODING_ERROR); /* XXX */
 		goto err;
 	}
 
@@ -599,7 +639,7 @@ dsa_pkey_ctrl(EVP_PKEY *pkey, int op, long arg1, void *arg2)
 				return -1;
 			if (!OBJ_find_sigid_by_algs(&snid, hnid,
 			    EVP_PKEY_id(pkey)))
-				return -1; 
+				return -1;
 			X509_ALGOR_set0(alg2, OBJ_nid2obj(snid), V_ASN1_UNDEF,
 			    0);
 		}
@@ -682,6 +722,7 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meths[] = {
 
 		.pkey_size = int_dsa_size,
 		.pkey_bits = dsa_bits,
+		.pkey_security_bits = dsa_security_bits,
 
 		.param_decode = dsa_param_decode,
 		.param_encode = dsa_param_encode,

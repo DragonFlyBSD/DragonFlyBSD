@@ -1,4 +1,4 @@
-/* $OpenBSD: tasn_enc.c,v 1.22.10.1 2020/12/08 15:08:47 tb Exp $ */
+/* $OpenBSD: tasn_enc.c,v 1.25.2.1 2022/10/20 09:47:01 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2000.
  */
@@ -63,6 +63,8 @@
 #include <openssl/asn1t.h>
 #include <openssl/err.h>
 #include <openssl/objects.h>
+
+#include "asn1_locl.h"
 
 static int asn1_i2d_ex_primitive(ASN1_VALUE **pval, unsigned char **out,
     const ASN1_ITEM *it, int tag, int aclass);
@@ -492,7 +494,7 @@ static int
 asn1_i2d_ex_primitive(ASN1_VALUE **pval, unsigned char **out,
     const ASN1_ITEM *it, int tag, int aclass)
 {
-	int len;
+	int olen, len;
 	int utype;
 	int usetag;
 	int ndef = 0;
@@ -503,7 +505,7 @@ asn1_i2d_ex_primitive(ASN1_VALUE **pval, unsigned char **out,
 	 * out the underlying type.
 	 */
 
-	len = asn1_ex_i2c(pval, NULL, &utype, it);
+	olen = len = asn1_ex_i2c(pval, NULL, &utype, it);
 
 	/* If SEQUENCE, SET or OTHER then header is
 	 * included in pseudo content octets so don't
@@ -527,6 +529,10 @@ asn1_i2d_ex_primitive(ASN1_VALUE **pval, unsigned char **out,
 		len = 0;
 	}
 
+	/* Treat any other negative value as an error. */
+	if (len < 0)
+		return -1;
+
 	/* If not implicitly tagged get tag from underlying type */
 	if (tag == -1)
 		tag = utype;
@@ -535,7 +541,8 @@ asn1_i2d_ex_primitive(ASN1_VALUE **pval, unsigned char **out,
 	if (out) {
 		if (usetag)
 			ASN1_put_object(out, ndef, len, tag, aclass);
-		asn1_ex_i2c(pval, *out, &utype, it);
+		if (asn1_ex_i2c(pval, *out, &utype, it) != olen)
+			return -1;
 		if (ndef)
 			ASN1_put_eoc(out);
 		else

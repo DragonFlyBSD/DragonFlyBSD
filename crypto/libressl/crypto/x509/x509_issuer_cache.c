@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_issuer_cache.c,v 1.1 2020/09/11 14:30:51 beck Exp $ */
+/* $OpenBSD: x509_issuer_cache.c,v 1.3 2022/06/27 14:23:40 beck Exp $ */
 /*
  * Copyright (c) 2020 Bob Beck <beck@openbsd.org>
  *
@@ -74,12 +74,46 @@ x509_issuer_cache_set_max(size_t max)
 }
 
 /*
+ * Free the oldest entry in the issuer cache. Returns 1
+ * if an entry was successfuly freed, 0 otherwise. Must
+ * be called with x509_issuer_tree_mutex held.
+ */
+void
+x509_issuer_cache_free_oldest()
+{
+	struct x509_issuer *old;
+
+	if (x509_issuer_cache_count == 0)
+		return;
+	old = TAILQ_LAST(&x509_issuer_lru, lruqueue);
+	TAILQ_REMOVE(&x509_issuer_lru, old, queue);
+	RB_REMOVE(x509_issuer_tree, &x509_issuer_cache, old);
+	free(old->parent_md);
+	free(old->child_md);
+	free(old);
+	x509_issuer_cache_count--;
+}
+
+/*
+ * Free the entire issuer cache, discarding all entries.
+ */
+void
+x509_issuer_cache_free()
+{
+	if (pthread_mutex_lock(&x509_issuer_tree_mutex) != 0)
+		return;
+	while (x509_issuer_cache_count > 0)
+		x509_issuer_cache_free_oldest();
+	(void) pthread_mutex_unlock(&x509_issuer_tree_mutex);
+}
+
+/*
  * Find a previous result of checking if parent signed child
  *
  * Returns:
- * 	-1 : No entry exists in the cache. signature must be checked.
- * 	0 : The signature of parent signing child is invalid.
- * 	1 : The signature of parent signing child is valid.
+ *	-1 : No entry exists in the cache. signature must be checked.
+ *	0 : The signature of parent signing child is invalid.
+ *	1 : The signature of parent signing child is valid.
  */
 int
 x509_issuer_cache_find(unsigned char *parent_md, unsigned char *child_md)
@@ -98,7 +132,7 @@ x509_issuer_cache_find(unsigned char *parent_md, unsigned char *child_md)
 		return -1;
 	if ((found = RB_FIND(x509_issuer_tree, &x509_issuer_cache,
 	    &candidate)) != NULL) {
-	 	TAILQ_REMOVE(&x509_issuer_lru, found, queue);
+		TAILQ_REMOVE(&x509_issuer_lru, found, queue);
 		TAILQ_INSERT_HEAD(&x509_issuer_lru, found, queue);
 		ret = found->valid;
 	}
@@ -111,7 +145,7 @@ x509_issuer_cache_find(unsigned char *parent_md, unsigned char *child_md)
  * Attempt to add a validation result to the cache.
  *
  * valid must be:
- * 	0: The signature of parent signing child is invalid.
+ *	0: The signature of parent signing child is invalid.
  *	1: The signature of parent signing child is valid.
  *
  * Previously added entries for the same parent and child are *not* replaced.
@@ -140,24 +174,16 @@ x509_issuer_cache_add(unsigned char *parent_md, unsigned char *child_md,
 
 	if (pthread_mutex_lock(&x509_issuer_tree_mutex) != 0)
 		goto err;
-	while (x509_issuer_cache_count >= x509_issuer_cache_max) {
-		struct x509_issuer *old;
-		if ((old = TAILQ_LAST(&x509_issuer_lru, lruqueue)) == NULL)
-			goto err;
-		TAILQ_REMOVE(&x509_issuer_lru, old, queue);
-		RB_REMOVE(x509_issuer_tree, &x509_issuer_cache, old);
-		free(old->parent_md);
-		free(old->child_md);
-		free(old);
-		x509_issuer_cache_count--;
-	}
+	while (x509_issuer_cache_count >= x509_issuer_cache_max)
+		x509_issuer_cache_free_oldest();
 	if (RB_INSERT(x509_issuer_tree, &x509_issuer_cache, new) == NULL) {
 		TAILQ_INSERT_HEAD(&x509_issuer_lru, new, queue);
 		x509_issuer_cache_count++;
 		new = NULL;
 	}
- err:
 	(void) pthread_mutex_unlock(&x509_issuer_tree_mutex);
+
+ err:
 	if (new != NULL) {
 		free(new->parent_md);
 		free(new->child_md);

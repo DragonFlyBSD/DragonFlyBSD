@@ -1,4 +1,4 @@
-/* $OpenBSD: dsaparam.c,v 1.11 2019/07/14 03:30:45 guenther Exp $ */
+/* $OpenBSD: dsaparam.c,v 1.13 2022/01/14 09:24:20 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -156,7 +156,7 @@ dsaparam_usage(void)
 	options_usage(dsaparam_options);
 }
 
-static int dsa_cb(int p, int n, BN_GENCB * cb);
+static int dsa_cb(int p, int n, BN_GENCB *cb);
 
 int
 dsaparam_main(int argc, char **argv)
@@ -164,6 +164,7 @@ dsaparam_main(int argc, char **argv)
 	DSA *dsa = NULL;
 	int i;
 	BIO *in = NULL, *out = NULL;
+	BN_GENCB *cb = NULL;
 	int ret = 1;
 	int numbits = -1;
 	char *strbits = NULL;
@@ -218,8 +219,14 @@ dsaparam_main(int argc, char **argv)
 	}
 
 	if (numbits > 0) {
-		BN_GENCB cb;
-		BN_GENCB_set(&cb, dsa_cb, bio_err);
+		if ((cb = BN_GENCB_new()) == NULL) {
+			BIO_printf(bio_err,
+			    "Error allocating BN_GENCB object\n");
+			goto end;
+		}
+
+		BN_GENCB_set(cb, dsa_cb, bio_err);
+
 		dsa = DSA_new();
 		if (!dsa) {
 			BIO_printf(bio_err, "Error allocating DSA object\n");
@@ -227,7 +234,7 @@ dsaparam_main(int argc, char **argv)
 		}
 		BIO_printf(bio_err, "Generating DSA parameters, %d bit long prime\n", numbits);
 		BIO_printf(bio_err, "This could take some time\n");
-		if (!DSA_generate_parameters_ex(dsa, numbits, NULL, 0, NULL, NULL, &cb)) {
+		if (!DSA_generate_parameters_ex(dsa, numbits, NULL, 0, NULL, NULL, cb)) {
 			ERR_print_errors(bio_err);
 			BIO_printf(bio_err, "Error, DSA key generation failed\n");
 			goto end;
@@ -252,14 +259,14 @@ dsaparam_main(int argc, char **argv)
 		unsigned char *data;
 		int l, len, bits_p;
 
-		len = BN_num_bytes(dsa->p);
-		bits_p = BN_num_bits(dsa->p);
+		len = BN_num_bytes(DSA_get0_p(dsa));
+		bits_p = BN_num_bits(DSA_get0_p(dsa));
 		data = malloc(len + 20);
 		if (data == NULL) {
 			perror("malloc");
 			goto end;
 		}
-		l = BN_bn2bin(dsa->p, data);
+		l = BN_bn2bin(DSA_get0_p(dsa), data);
 		printf("static unsigned char dsa%d_p[] = {", bits_p);
 		for (i = 0; i < l; i++) {
 			if ((i % 12) == 0)
@@ -268,7 +275,7 @@ dsaparam_main(int argc, char **argv)
 		}
 		printf("\n\t};\n");
 
-		l = BN_bn2bin(dsa->q, data);
+		l = BN_bn2bin(DSA_get0_q(dsa), data);
 		printf("static unsigned char dsa%d_q[] = {", bits_p);
 		for (i = 0; i < l; i++) {
 			if ((i % 12) == 0)
@@ -277,7 +284,7 @@ dsaparam_main(int argc, char **argv)
 		}
 		printf("\n\t};\n");
 
-		l = BN_bn2bin(dsa->g, data);
+		l = BN_bn2bin(DSA_get0_g(dsa), data);
 		printf("static unsigned char dsa%d_g[] = {", bits_p);
 		for (i = 0; i < l; i++) {
 			if ((i % 12) == 0)
@@ -288,16 +295,18 @@ dsaparam_main(int argc, char **argv)
 		printf("\n\t};\n\n");
 
 		printf("DSA *get_dsa%d()\n\t{\n", bits_p);
+		printf("\tBIGNUM *p = NULL, *q = NULL, *g = NULL;\n");
 		printf("\tDSA *dsa;\n\n");
 		printf("\tif ((dsa = DSA_new()) == NULL) return(NULL);\n");
-		printf("\tdsa->p = BN_bin2bn(dsa%d_p, sizeof(dsa%d_p), NULL);\n",
+		printf("\tp = BN_bin2bn(dsa%d_p, sizeof(dsa%d_p), NULL);\n",
 		    bits_p, bits_p);
-		printf("\tdsa->q = BN_bin2bn(dsa%d_q, sizeof(dsa%d_q), NULL);\n",
+		printf("\tq = BN_bin2bn(dsa%d_q, sizeof(dsa%d_q), NULL);\n",
 		    bits_p, bits_p);
-		printf("\tdsa->g = BN_bin2bn(dsa%d_g, sizeof(dsa%d_g), NULL);\n",
+		printf("\tg = BN_bin2bn(dsa%d_g, sizeof(dsa%d_g), NULL);\n",
 		    bits_p, bits_p);
-		printf("\tif ((dsa->p == NULL) || (dsa->q == NULL) || (dsa->g == NULL))\n");
-		printf("\t\t{ DSA_free(dsa); return(NULL); }\n");
+		printf("\tif (p == NULL || q == NULL || g == NULL)\n");
+		printf("\t\t{ BN_free(p); BN_free(q); BN_free(g); DSA_free(dsa); return(NULL); }\n");
+		printf("\tDSA_set0_pqg(dsa, p, q, g);\n");
 		printf("\treturn(dsa);\n\t}\n");
 	}
 	if (!dsaparam_config.noout) {
@@ -341,13 +350,14 @@ dsaparam_main(int argc, char **argv)
  end:
 	BIO_free(in);
 	BIO_free_all(out);
+	BN_GENCB_free(cb);
 	DSA_free(dsa);
 
 	return (ret);
 }
 
 static int
-dsa_cb(int p, int n, BN_GENCB * cb)
+dsa_cb(int p, int n, BN_GENCB *cb)
 {
 	char c = '*';
 
@@ -359,8 +369,8 @@ dsa_cb(int p, int n, BN_GENCB * cb)
 		c = '*';
 	if (p == 3)
 		c = '\n';
-	BIO_write(cb->arg, &c, 1);
-	(void) BIO_flush(cb->arg);
+	BIO_write(BN_GENCB_get_arg(cb), &c, 1);
+	(void) BIO_flush(BN_GENCB_get_arg(cb));
 #ifdef GENCB_TEST
 	if (stop_keygen_flag)
 		return 0;

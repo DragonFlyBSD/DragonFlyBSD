@@ -1,4 +1,4 @@
-/* $OpenBSD: ecp_nist.c,v 1.15 2018/11/05 20:18:21 tb Exp $ */
+/* $OpenBSD: ecp_nist.c,v 1.19 2022/06/30 11:14:47 tb Exp $ */
 /*
  * Written by Nils Larsch for the OpenSSL project.
  */
@@ -64,7 +64,8 @@
 #include <limits.h>
 
 #include <openssl/err.h>
-#include <openssl/obj_mac.h>
+#include <openssl/objects.h>
+
 #include "ec_lcl.h"
 
 const EC_METHOD *
@@ -80,21 +81,22 @@ EC_GFp_nist_method(void)
 		.group_set_curve = ec_GFp_nist_group_set_curve,
 		.group_get_curve = ec_GFp_simple_group_get_curve,
 		.group_get_degree = ec_GFp_simple_group_get_degree,
+		.group_order_bits = ec_group_simple_order_bits,
 		.group_check_discriminant =
-		ec_GFp_simple_group_check_discriminant,
+		    ec_GFp_simple_group_check_discriminant,
 		.point_init = ec_GFp_simple_point_init,
 		.point_finish = ec_GFp_simple_point_finish,
 		.point_clear_finish = ec_GFp_simple_point_clear_finish,
 		.point_copy = ec_GFp_simple_point_copy,
 		.point_set_to_infinity = ec_GFp_simple_point_set_to_infinity,
-		.point_set_Jprojective_coordinates_GFp =
-		ec_GFp_simple_set_Jprojective_coordinates_GFp,
-		.point_get_Jprojective_coordinates_GFp =
-		ec_GFp_simple_get_Jprojective_coordinates_GFp,
+		.point_set_Jprojective_coordinates =
+		    ec_GFp_simple_set_Jprojective_coordinates,
+		.point_get_Jprojective_coordinates =
+		    ec_GFp_simple_get_Jprojective_coordinates,
 		.point_set_affine_coordinates =
-		ec_GFp_simple_point_set_affine_coordinates,
+		    ec_GFp_simple_point_set_affine_coordinates,
 		.point_get_affine_coordinates =
-		ec_GFp_simple_point_get_affine_coordinates,
+		    ec_GFp_simple_point_get_affine_coordinates,
 		.add = ec_GFp_simple_add,
 		.dbl = ec_GFp_simple_dbl,
 		.invert = ec_GFp_simple_invert,
@@ -114,7 +116,7 @@ EC_GFp_nist_method(void)
 	return &ret;
 }
 
-int 
+int
 ec_GFp_nist_group_copy(EC_GROUP * dest, const EC_GROUP * src)
 {
 	dest->field_mod_func = src->field_mod_func;
@@ -122,7 +124,7 @@ ec_GFp_nist_group_copy(EC_GROUP * dest, const EC_GROUP * src)
 	return ec_GFp_simple_group_copy(dest, src);
 }
 
-int 
+int
 ec_GFp_nist_group_set_curve(EC_GROUP *group, const BIGNUM *p,
     const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx)
 {
@@ -162,7 +164,7 @@ ec_GFp_nist_group_set_curve(EC_GROUP *group, const BIGNUM *p,
 }
 
 
-int 
+int
 ec_GFp_nist_field_mul(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
     const BIGNUM *b, BN_CTX *ctx)
 {
@@ -189,7 +191,7 @@ ec_GFp_nist_field_mul(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
 }
 
 
-int 
+int
 ec_GFp_nist_field_sqr(const EC_GROUP * group, BIGNUM * r, const BIGNUM * a,
     BN_CTX * ctx)
 {

@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_sqrt.c,v 1.9 2017/01/29 17:49:22 beck Exp $ */
+/* $OpenBSD: bn_sqrt.c,v 1.11 2022/06/20 15:02:21 tb Exp $ */
 /* Written by Lenka Fibikova <fibikova@exp-math.uni-essen.de>
  * and Bodo Moeller for the OpenSSL project. */
 /* ====================================================================
@@ -217,8 +217,9 @@ BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 
 	/* e > 2, so we really have to use the Tonelli/Shanks algorithm.
 	 * First, find some  y  that is not a square. */
-	if (!BN_copy(q, p)) goto end; /* use 'q' as temp */
-		q->neg = 0;
+	if (!BN_copy(q, p)) /* use 'q' as temp */
+		goto end;
+	q->neg = 0;
 	i = 2;
 	do {
 		/* For efficiency, try small numbers first;
@@ -253,10 +254,9 @@ BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 			BNerror(BN_R_P_IS_NOT_PRIME);
 			goto end;
 		}
-	}
-	while (r == 1 && ++i < 82);
+	} while (r == 1 && ++i < 82);
 
-		if (r != -1) {
+	if (r != -1) {
 		/* Many rounds and still no non-square -- this is more likely
 		 * a bug than just bad luck.
 		 * Even if  p  is not prime, we should have found some  y
@@ -302,8 +302,7 @@ BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 		goto end;
 
 	/* x := a^((q-1)/2) */
-	if (BN_is_zero(t)) /* special case: p = 2^e + 1 */
-	{
+	if (BN_is_zero(t)) { /* special case: p = 2^e + 1 */
 		if (!BN_nnmod(t, A, p, ctx))
 			goto end;
 		if (BN_is_zero(t)) {
@@ -351,21 +350,22 @@ BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 			goto vrfy;
 		}
 
-
-		/* find smallest  i  such that  b^(2^i) = 1 */
-		i = 1;
-		if (!BN_mod_sqr(t, b, p, ctx))
-			goto end;
-		while (!BN_is_one(t)) {
-			i++;
-			if (i == e) {
-				BNerror(BN_R_NOT_A_SQUARE);
-				goto end;
+		/* Find the smallest i with 0 < i < e such that b^(2^i) = 1. */
+		for (i = 1; i < e; i++) {
+			if (i == 1) {
+				if (!BN_mod_sqr(t, b, p, ctx))
+					goto end;
+			} else {
+				if (!BN_mod_sqr(t, t, p, ctx))
+					goto end;
 			}
-			if (!BN_mod_mul(t, t, t, p, ctx))
-				goto end;
+			if (BN_is_one(t))
+				break;
 		}
-
+		if (i >= e) {
+			BNerror(BN_R_NOT_A_SQUARE);
+			goto end;
+		}
 
 		/* t := y^2^(e - i - 1) */
 		if (!BN_copy(t, y))

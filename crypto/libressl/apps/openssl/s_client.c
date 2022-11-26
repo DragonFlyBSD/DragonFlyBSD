@@ -1,4 +1,4 @@
-/* $OpenBSD: s_client.c,v 1.51 2020/07/10 12:25:57 inoguchi Exp $ */
+/* $OpenBSD: s_client.c,v 1.58 2022/02/03 17:44:04 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -219,6 +219,7 @@ static struct {
 	int msg;
 	int nbio;
 	int nbio_test;
+	int no_servername;
 	char *npn_in;
 	unsigned int off;
 	char *passarg;
@@ -260,7 +261,7 @@ s_client_opt_keymatexportlen(char *arg)
 	return (0);
 }
 
-#ifndef OPENSSL_NO_DTLS1
+#ifndef OPENSSL_NO_DTLS
 static int
 s_client_opt_mtu(char *arg)
 {
@@ -285,11 +286,35 @@ s_client_opt_port(char *arg)
 	return (0);
 }
 
+#ifndef OPENSSL_NO_DTLS
+static int
+s_client_opt_protocol_version_dtls(void)
+{
+	s_client_config.meth = DTLS_client_method();
+	s_client_config.socket_type = SOCK_DGRAM;
+	return (0);
+}
+#endif
+
 #ifndef OPENSSL_NO_DTLS1
 static int
 s_client_opt_protocol_version_dtls1(void)
 {
 	s_client_config.meth = DTLS_client_method();
+	s_client_config.min_version = DTLS1_VERSION;
+	s_client_config.max_version = DTLS1_VERSION;
+	s_client_config.socket_type = SOCK_DGRAM;
+	return (0);
+}
+#endif
+
+#ifndef OPENSSL_NO_DTLS1_2
+static int
+s_client_opt_protocol_version_dtls1_2(void)
+{
+	s_client_config.meth = DTLS_client_method();
+	s_client_config.min_version = DTLS1_2_VERSION;
+	s_client_config.max_version = DTLS1_2_VERSION;
 	s_client_config.socket_type = SOCK_DGRAM;
 	return (0);
 }
@@ -472,12 +497,28 @@ static const struct option s_client_options[] = {
 		.type = OPTION_FLAG,
 		.opt.flag = &s_client_config.debug,
 	},
+#ifndef OPENSSL_NO_DTLS
+	{
+		.name = "dtls",
+		.desc = "Use any version of DTLS",
+		.type = OPTION_FUNC,
+		.opt.func = s_client_opt_protocol_version_dtls,
+	},
+#endif
 #ifndef OPENSSL_NO_DTLS1
 	{
 		.name = "dtls1",
 		.desc = "Just use DTLSv1",
 		.type = OPTION_FUNC,
 		.opt.func = s_client_opt_protocol_version_dtls1,
+	},
+#endif
+#ifndef OPENSSL_NO_DTLS1_2
+	{
+		.name = "dtls1_2",
+		.desc = "Just use DTLSv1.2",
+		.type = OPTION_FUNC,
+		.opt.func = s_client_opt_protocol_version_dtls1_2,
 	},
 #endif
 	{
@@ -546,7 +587,7 @@ static const struct option s_client_options[] = {
 		.type = OPTION_FLAG,
 		.opt.flag = &s_client_config.msg,
 	},
-#ifndef OPENSSL_NO_DTLS1
+#ifndef OPENSSL_NO_DTLS
 	{
 		.name = "mtu",
 		.argname = "mtu",
@@ -594,6 +635,12 @@ static const struct option s_client_options[] = {
 		.value = SSL_OP_LEGACY_SERVER_CONNECT,
 	},
 	{
+		.name = "no_servername",
+		.desc = "Do not send a Server Name Indication (SNI) extension",
+		.type = OPTION_FLAG,
+		.opt.value = &s_client_config.no_servername,
+	},
+	{
 		.name = "no_ssl2",
 		.type = OPTION_VALUE_OR,
 		.opt.value = &s_client_config.off,
@@ -639,6 +686,11 @@ static const struct option s_client_options[] = {
 		.type = OPTION_VALUE_OR,
 		.opt.value = &s_client_config.off,
 		.value = SSL_OP_NO_TLSv1_3,
+	},
+	{
+		.name = "noservername",
+		.type = OPTION_FLAG,
+		.opt.value = &s_client_config.no_servername,
 	},
 	{
 		.name = "pass",
@@ -745,7 +797,7 @@ static const struct option s_client_options[] = {
 		.type = OPTION_FLAG,
 		.opt.flag = &s_client_config.status_req,
 	},
-#ifndef OPENSSL_NO_DTLS1
+#ifndef OPENSSL_NO_DTLS
 	{
 		.name = "timeout",
 		.desc = "Enable send/receive timeout on DTLS connections",
@@ -828,7 +880,7 @@ sc_usage(void)
 	    "[-4 | -6] [-alpn protocols] [-bugs] [-CAfile file]\n"
 	    "    [-CApath directory] [-cert file] [-certform der | pem] [-check_ss_sig]\n"
 	    "    [-cipher cipherlist] [-connect host[:port]] [-crl_check]\n"
-	    "    [-crl_check_all] [-crlf] [-debug] [-dtls1] [-extended_crl]\n"
+	    "    [-crl_check_all] [-crlf] [-debug] [-dtls] [-dtls1] [-dtls1_2] [-extended_crl]\n"
 	    "    [-groups list] [-host host] [-ign_eof] [-ignore_critical]\n"
 	    "    [-issuer_checks] [-key keyfile] [-keyform der | pem]\n"
 	    "    [-keymatexport label] [-keymatexportlen len] [-legacy_server_connect]\n"
@@ -854,8 +906,8 @@ s_client_main(int argc, char **argv)
 	char *cbuf = NULL, *sbuf = NULL, *mbuf = NULL, *pbuf = NULL;
 	int cbuf_len, cbuf_off;
 	int sbuf_len, sbuf_off;
-	int pbuf_len, pbuf_off;
 	int full_log = 1;
+	const char *servername;
 	char *pass = NULL;
 	X509 *cert = NULL;
 	EVP_PKEY *key = NULL;
@@ -985,12 +1037,6 @@ s_client_main(int argc, char **argv)
 
 	if (s_client_config.clr)
 		SSL_CTX_clear_options(ctx, s_client_config.clr);
-	/*
-	 * DTLS: partial reads end up discarding unread UDP bytes :-( Setting
-	 * read ahead solves this problem.
-	 */
-	if (s_client_config.socket_type == SOCK_DGRAM)
-		SSL_CTX_set_read_ahead(ctx, 1);
 
 	if (s_client_config.alpn_in) {
 		unsigned short alpn_len;
@@ -1033,12 +1079,6 @@ s_client_main(int argc, char **argv)
 	if (!SSL_CTX_set_default_verify_paths(ctx))
 		ERR_print_errors(bio_err);
 
-	if (s_client_config.servername != NULL) {
-		tlsextcbp.biodebug = bio_err;
-		SSL_CTX_set_tlsext_servername_callback(ctx, ssl_servername_cb);
-		SSL_CTX_set_tlsext_servername_arg(ctx, &tlsextcbp);
-	}
-
 	con = SSL_new(ctx);
 	if (s_client_config.sess_in) {
 		SSL_SESSION *sess;
@@ -1060,15 +1100,32 @@ s_client_main(int argc, char **argv)
 		SSL_set_session(con, sess);
 		SSL_SESSION_free(sess);
 	}
-	if (s_client_config.servername != NULL) {
-		if (!SSL_set_tlsext_host_name(con, s_client_config.servername)) {
+
+	/* Attempt to opportunistically use the host name for SNI. */
+	servername = s_client_config.servername;
+	if (servername == NULL)
+		servername = s_client_config.host;
+
+	if (!s_client_config.no_servername && servername != NULL &&
+	    !SSL_set_tlsext_host_name(con, servername)) {
+		long ssl_err = ERR_peek_error();
+
+		if (s_client_config.servername != NULL ||
+		    ERR_GET_LIB(ssl_err) != ERR_LIB_SSL ||
+		    ERR_GET_REASON(ssl_err) != SSL_R_SSL3_EXT_INVALID_SERVERNAME) {
 			BIO_printf(bio_err,
 			    "Unable to set TLS servername extension.\n");
 			ERR_print_errors(bio_err);
 			goto end;
 		}
+		servername = NULL;
+		ERR_clear_error();
 	}
-/*	SSL_set_cipher_list(con,"RC4-MD5"); */
+	if (!s_client_config.no_servername && servername != NULL) {
+		tlsextcbp.biodebug = bio_err;
+		SSL_CTX_set_tlsext_servername_callback(ctx, ssl_servername_cb);
+		SSL_CTX_set_tlsext_servername_arg(ctx, &tlsextcbp);
+	}
 
  re_start:
 
@@ -1090,8 +1147,7 @@ s_client_main(int argc, char **argv)
 	if (s_client_config.pause & 0x01)
 		SSL_set_debug(con, 1);
 
-	if (SSL_version(con) == DTLS1_VERSION) {
-
+	if (SSL_is_dtls(con)) {
 		sbio = BIO_new_dgram(s, BIO_NOCLOSE);
 		if (getsockname(s, (struct sockaddr *)&peer,
 		    (void *)&peerlen) == -1) {
@@ -1162,8 +1218,6 @@ s_client_main(int argc, char **argv)
 	cbuf_off = 0;
 	sbuf_len = 0;
 	sbuf_off = 0;
-	pbuf_len = 0;
-	pbuf_off = 0;
 
 	/* This is an ugly hack that does a lot of assumptions */
 	/*
@@ -1290,8 +1344,7 @@ s_client_main(int argc, char **argv)
 		struct pollfd pfd[3];	/* stdin, stdout, socket */
 		int ptimeout = -1;
 
-		if ((SSL_version(con) == DTLS1_VERSION) &&
-		    DTLSv1_get_timeout(con, &timeout))
+		if (SSL_is_dtls(con) && DTLSv1_get_timeout(con, &timeout))
 			ptimeout = timeout.tv_sec * 1000 +
 			    timeout.tv_usec / 1000;
 
@@ -1370,10 +1423,9 @@ s_client_main(int argc, char **argv)
 				/* goto end; */
 			}
 		}
-		if ((SSL_version(con) == DTLS1_VERSION) &&
-		    DTLSv1_handle_timeout(con) > 0) {
+		if (SSL_is_dtls(con) &&
+		    DTLSv1_handle_timeout(con) > 0)
 			BIO_printf(bio_err, "TIMEOUT occured\n");
-		}
 		if (!ssl_pending &&
 		    (pfd[2].revents & (POLLOUT|POLLERR|POLLNVAL))) {
 			if (pfd[2].revents & (POLLERR|POLLNVAL)) {
@@ -1472,8 +1524,6 @@ s_client_main(int argc, char **argv)
 				if (SSL_get_error(con, p) == SSL_ERROR_NONE) {
 					if (p <= 0)
 						goto end;
-					pbuf_off = 0;
-					pbuf_len = p;
 
 					k = SSL_read(con, sbuf, p);
 				}
@@ -1607,6 +1657,7 @@ s_client_main(int argc, char **argv)
 	X509_VERIFY_PARAM_free(s_client_config.vpm);
 	freezero(cbuf, BUFSIZZ);
 	freezero(sbuf, BUFSIZZ);
+	freezero(pbuf, BUFSIZZ);
 	freezero(mbuf, BUFSIZZ);
 	BIO_free(bio_c_out);
 
@@ -1721,10 +1772,10 @@ print_stuff(BIO *bio, SSL *s, int full)
 	    SSL_CIPHER_get_name(c));
 	if (peer != NULL) {
 		EVP_PKEY *pktmp;
-		pktmp = X509_get_pubkey(peer);
+
+		pktmp = X509_get0_pubkey(peer);
 		BIO_printf(bio, "Server public key is %d bit\n",
 		    EVP_PKEY_bits(pktmp));
-		EVP_PKEY_free(pktmp);
 	}
 	BIO_printf(bio, "Secure Renegotiation IS%s supported\n",
 	    SSL_get_secure_renegotiation_support(s) ? "" : " NOT");

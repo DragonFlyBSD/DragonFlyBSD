@@ -1,4 +1,4 @@
-/* $OpenBSD: ec_curve.c,v 1.20 2020/06/05 17:12:09 jsing Exp $ */
+/* $OpenBSD: ec_curve.c,v 1.22 2022/06/30 11:14:47 tb Exp $ */
 /*
  * Written by Nils Larsch for the OpenSSL project.
  */
@@ -73,9 +73,10 @@
 
 #include <openssl/opensslconf.h>
 
-#include "ec_lcl.h"
 #include <openssl/err.h>
-#include <openssl/obj_mac.h>
+#include <openssl/objects.h>
+
+#include "ec_lcl.h"
 
 typedef struct {
 	int field_type,		/* either NID_X9_62_prime_field or
@@ -3373,7 +3374,7 @@ ec_group_new_from_data(const ec_list_element curve)
 		ECerror(ERR_R_BN_LIB);
 		goto err;
 	}
-	if (!EC_POINT_set_affine_coordinates_GFp(group, P, x, y, ctx)) {
+	if (!EC_POINT_set_affine_coordinates(group, P, x, y, ctx)) {
 		ECerror(ERR_R_EC_LIB);
 		goto err;
 	}

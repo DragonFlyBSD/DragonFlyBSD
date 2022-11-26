@@ -1,4 +1,4 @@
-/* $OpenBSD: speed.c,v 1.23 2018/07/13 18:36:56 cheloha Exp $ */
+/* $OpenBSD: speed.c,v 1.28 2022/01/14 09:27:30 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -1048,24 +1048,37 @@ speed_main(int argc, char **argv)
 
 #if !defined(OPENSSL_NO_MD5) && !defined(OPENSSL_NO_HMAC)
 	if (doit[D_HMAC]) {
-		HMAC_CTX hctx;
+		HMAC_CTX *hctx;
 
-		HMAC_CTX_init(&hctx);
-		HMAC_Init_ex(&hctx, (unsigned char *) "This is a key...",
+		if ((hctx = HMAC_CTX_new()) == NULL) {
+			BIO_printf(bio_err, "Failed to allocate HMAC context.\n");
+			goto end;
+		}
+
+		HMAC_Init_ex(hctx, (unsigned char *) "This is a key...",
 		    16, EVP_md5(), NULL);
 
 		for (j = 0; j < SIZE_NUM; j++) {
 			print_message(names[D_HMAC], c[D_HMAC][j], lengths[j]);
 			Time_F(START);
 			for (count = 0, run = 1; COND(c[D_HMAC][j]); count++) {
-				HMAC_Init_ex(&hctx, NULL, 0, NULL, NULL);
-				HMAC_Update(&hctx, buf, lengths[j]);
-				HMAC_Final(&hctx, &(hmac[0]), NULL);
+				if (!HMAC_Init_ex(hctx, NULL, 0, NULL, NULL)) {
+					HMAC_CTX_free(hctx);
+					goto end;
+				}
+				if (!HMAC_Update(hctx, buf, lengths[j])) {
+					HMAC_CTX_free(hctx);
+					goto end;
+				}
+				if (!HMAC_Final(hctx, &(hmac[0]), NULL)) {
+					HMAC_CTX_free(hctx);
+					goto end;
+				}
 			}
 			d = Time_F(STOP);
 			print_result(D_HMAC, j, count, d);
 		}
-		HMAC_CTX_cleanup(&hctx);
+		HMAC_CTX_free(hctx);
 	}
 #endif
 #ifndef OPENSSL_NO_SHA
@@ -1260,9 +1273,15 @@ speed_main(int argc, char **argv)
 		const EVP_AEAD *aead = EVP_aead_aes_128_gcm();
 		static const unsigned char nonce[32] = {0};
 		size_t buf_len, nonce_len;
-		EVP_AEAD_CTX ctx;
+		EVP_AEAD_CTX *ctx;
 
-		EVP_AEAD_CTX_init(&ctx, aead, key32, EVP_AEAD_key_length(aead),
+		if ((ctx = EVP_AEAD_CTX_new()) == NULL) {
+			BIO_printf(bio_err,
+			    "Failed to allocate aead context.\n");
+			goto end;
+		}
+
+		EVP_AEAD_CTX_init(ctx, aead, key32, EVP_AEAD_key_length(aead),
 		    EVP_AEAD_DEFAULT_TAG_LENGTH, NULL);
 		nonce_len = EVP_AEAD_nonce_length(aead);
 
@@ -1270,21 +1289,27 @@ speed_main(int argc, char **argv)
 			print_message(names[D_AES_128_GCM],c[D_AES_128_GCM][j],lengths[j]);
 			Time_F(START);
 			for (count = 0, run = 1; COND(c[D_AES_128_GCM][j]); count++)
-				EVP_AEAD_CTX_seal(&ctx, buf, &buf_len, BUFSIZE, nonce,
+				EVP_AEAD_CTX_seal(ctx, buf, &buf_len, BUFSIZE, nonce,
 				    nonce_len, buf, lengths[j], NULL, 0);
 			d=Time_F(STOP);
 			print_result(D_AES_128_GCM,j,count,d);
 		}
-		EVP_AEAD_CTX_cleanup(&ctx);
+		EVP_AEAD_CTX_free(ctx);
 	}
 
 	if (doit[D_AES_256_GCM]) {
 		const EVP_AEAD *aead = EVP_aead_aes_256_gcm();
 		static const unsigned char nonce[32] = {0};
 		size_t buf_len, nonce_len;
-		EVP_AEAD_CTX ctx;
+		EVP_AEAD_CTX *ctx;
 
-		EVP_AEAD_CTX_init(&ctx, aead, key32, EVP_AEAD_key_length(aead),
+		if ((ctx = EVP_AEAD_CTX_new()) == NULL) {
+			BIO_printf(bio_err,
+			    "Failed to allocate aead context.\n");
+			goto end;
+		}
+
+		EVP_AEAD_CTX_init(ctx, aead, key32, EVP_AEAD_key_length(aead),
 		EVP_AEAD_DEFAULT_TAG_LENGTH, NULL);
 		nonce_len = EVP_AEAD_nonce_length(aead);
 
@@ -1292,12 +1317,12 @@ speed_main(int argc, char **argv)
 			print_message(names[D_AES_256_GCM],c[D_AES_256_GCM][j],lengths[j]);
 			Time_F(START);
 			for (count = 0, run = 1; COND(c[D_AES_256_GCM][j]); count++)
-				EVP_AEAD_CTX_seal(&ctx, buf, &buf_len, BUFSIZE, nonce,
+				EVP_AEAD_CTX_seal(ctx, buf, &buf_len, BUFSIZE, nonce,
 				    nonce_len, buf, lengths[j], NULL, 0);
 			d=Time_F(STOP);
 			print_result(D_AES_256_GCM, j, count, d);
 		}
-		EVP_AEAD_CTX_cleanup(&ctx);
+		EVP_AEAD_CTX_free(ctx);
 	}
 #endif
 #if !defined(OPENSSL_NO_CHACHA) && !defined(OPENSSL_NO_POLY1305)
@@ -1305,9 +1330,15 @@ speed_main(int argc, char **argv)
 		const EVP_AEAD *aead = EVP_aead_chacha20_poly1305();
 		static const unsigned char nonce[32] = {0};
 		size_t buf_len, nonce_len;
-		EVP_AEAD_CTX ctx;
+		EVP_AEAD_CTX *ctx;
 
-		EVP_AEAD_CTX_init(&ctx, aead, key32, EVP_AEAD_key_length(aead),
+		if ((ctx = EVP_AEAD_CTX_new()) == NULL) {
+			BIO_printf(bio_err,
+			    "Failed to allocate aead context.\n");
+			goto end;
+		}
+
+		EVP_AEAD_CTX_init(ctx, aead, key32, EVP_AEAD_key_length(aead),
 		    EVP_AEAD_DEFAULT_TAG_LENGTH, NULL);
 		nonce_len = EVP_AEAD_nonce_length(aead);
 
@@ -1316,12 +1347,12 @@ speed_main(int argc, char **argv)
 			    c[D_CHACHA20_POLY1305][j], lengths[j]);
 			Time_F(START);
 			for (count = 0, run = 1; COND(c[D_CHACHA20_POLY1305][j]); count++)
-				EVP_AEAD_CTX_seal(&ctx, buf, &buf_len, BUFSIZE, nonce,
+				EVP_AEAD_CTX_seal(ctx, buf, &buf_len, BUFSIZE, nonce,
 				    nonce_len, buf, lengths[j], NULL, 0);
 			d=Time_F(STOP);
 			print_result(D_CHACHA20_POLY1305, j, count, d);
 		}
-		EVP_AEAD_CTX_cleanup(&ctx);
+		EVP_AEAD_CTX_free(ctx);
 	}
 #endif
 #ifndef OPENSSL_NO_CAMELLIA
@@ -1422,10 +1453,11 @@ speed_main(int argc, char **argv)
 	if (doit[D_EVP]) {
 		for (j = 0; j < SIZE_NUM; j++) {
 			if (evp_cipher) {
-				EVP_CIPHER_CTX ctx;
+				EVP_CIPHER_CTX *ctx;
 				int outl;
 
-				names[D_EVP] = OBJ_nid2ln(evp_cipher->nid);
+				names[D_EVP] =
+				    OBJ_nid2ln(EVP_CIPHER_nid(evp_cipher));
 				/*
 				 * -O3 -fschedule-insns messes up an
 				 * optimization here!  names[D_EVP] somehow
@@ -1434,29 +1466,33 @@ speed_main(int argc, char **argv)
 				print_message(names[D_EVP], save_count,
 				    lengths[j]);
 
-				EVP_CIPHER_CTX_init(&ctx);
+				if ((ctx = EVP_CIPHER_CTX_new()) == NULL) {
+					BIO_printf(bio_err, "Failed to "
+					    "allocate cipher context.\n");
+					goto end;
+				}
 				if (decrypt)
-					EVP_DecryptInit_ex(&ctx, evp_cipher, NULL, key16, iv);
+					EVP_DecryptInit_ex(ctx, evp_cipher, NULL, key16, iv);
 				else
-					EVP_EncryptInit_ex(&ctx, evp_cipher, NULL, key16, iv);
-				EVP_CIPHER_CTX_set_padding(&ctx, 0);
+					EVP_EncryptInit_ex(ctx, evp_cipher, NULL, key16, iv);
+				EVP_CIPHER_CTX_set_padding(ctx, 0);
 
 				Time_F(START);
 				if (decrypt)
 					for (count = 0, run = 1; COND(save_count * 4 * lengths[0] / lengths[j]); count++)
-						EVP_DecryptUpdate(&ctx, buf, &outl, buf, lengths[j]);
+						EVP_DecryptUpdate(ctx, buf, &outl, buf, lengths[j]);
 				else
 					for (count = 0, run = 1; COND(save_count * 4 * lengths[0] / lengths[j]); count++)
-						EVP_EncryptUpdate(&ctx, buf, &outl, buf, lengths[j]);
+						EVP_EncryptUpdate(ctx, buf, &outl, buf, lengths[j]);
 				if (decrypt)
-					EVP_DecryptFinal_ex(&ctx, buf, &outl);
+					EVP_DecryptFinal_ex(ctx, buf, &outl);
 				else
-					EVP_EncryptFinal_ex(&ctx, buf, &outl);
+					EVP_EncryptFinal_ex(ctx, buf, &outl);
 				d = Time_F(STOP);
-				EVP_CIPHER_CTX_cleanup(&ctx);
+				EVP_CIPHER_CTX_free(ctx);
 			}
 			if (evp_md) {
-				names[D_EVP] = OBJ_nid2ln(evp_md->type);
+				names[D_EVP] = OBJ_nid2ln(EVP_MD_type(evp_md));
 				print_message(names[D_EVP], save_count,
 				    lengths[j]);
 

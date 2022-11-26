@@ -1,4 +1,4 @@
-/* $OpenBSD: tls13_internal.h,v 1.86.4.1 2021/02/03 07:06:14 tb Exp $ */
+/* $OpenBSD: tls13_internal.h,v 1.101 2022/07/24 14:28:16 jsing Exp $ */
 /*
  * Copyright (c) 2018 Bob Beck <beck@openbsd.org>
  * Copyright (c) 2018 Theo Buehler <tb@openbsd.org>
@@ -24,6 +24,7 @@
 #include <openssl/ssl.h>
 
 #include "bytestring.h"
+#include "tls_internal.h"
 
 __BEGIN_HIDDEN_DECLS
 
@@ -81,30 +82,28 @@ __BEGIN_HIDDEN_DECLS
 
 #define TLS13_INFO_HANDSHAKE_STARTED			SSL_CB_HANDSHAKE_START
 #define TLS13_INFO_HANDSHAKE_COMPLETED			SSL_CB_HANDSHAKE_DONE
+#define TLS13_INFO_ACCEPT_LOOP				SSL_CB_ACCEPT_LOOP
+#define TLS13_INFO_CONNECT_LOOP				SSL_CB_CONNECT_LOOP
+#define TLS13_INFO_ACCEPT_EXIT				SSL_CB_ACCEPT_EXIT
+#define TLS13_INFO_CONNECT_EXIT				SSL_CB_CONNECT_EXIT
 
 typedef void (*tls13_alert_cb)(uint8_t _alert_desc, void *_cb_arg);
-typedef ssize_t (*tls13_phh_recv_cb)(void *_cb_arg, CBS *_cbs);
+typedef ssize_t (*tls13_phh_recv_cb)(void *_cb_arg);
 typedef void (*tls13_phh_sent_cb)(void *_cb_arg);
-typedef ssize_t (*tls13_read_cb)(void *_buf, size_t _buflen, void *_cb_arg);
-typedef ssize_t (*tls13_write_cb)(const void *_buf, size_t _buflen,
-    void *_cb_arg);
 typedef void (*tls13_handshake_message_cb)(void *_cb_arg);
 typedef void (*tls13_info_cb)(void *_cb_arg, int _state, int _ret);
 typedef int (*tls13_ocsp_status_cb)(void *_cb_arg);
 
 /*
- * Buffers.
+ * PSK support.
  */
-struct tls13_buffer;
 
-struct tls13_buffer *tls13_buffer_new(size_t init_size);
-int tls13_buffer_set_data(struct tls13_buffer *buf, CBS *data);
-void tls13_buffer_free(struct tls13_buffer *buf);
-ssize_t tls13_buffer_extend(struct tls13_buffer *buf, size_t len,
-    tls13_read_cb read_cb, void *cb_arg);
-void tls13_buffer_cbs(struct tls13_buffer *buf, CBS *cbs);
-int tls13_buffer_finish(struct tls13_buffer *buf, uint8_t **out,
-    size_t *out_len);
+/*
+ * Known PskKeyExchangeMode values.
+ * https://www.iana.org/assignments/tls-parameters/#tls-pskkeyexchangemode
+ */
+#define TLS13_PSK_KE					0
+#define TLS13_PSK_DHE_KE				1
 
 /*
  * Secrets.
@@ -141,6 +140,8 @@ struct tls13_secrets {
 	struct tls13_secret resumption_master;
 };
 
+int tls13_secret_init(struct tls13_secret *secret, size_t len);
+void tls13_secret_cleanup(struct tls13_secret *secret);
 struct tls13_secrets *tls13_secrets_create(const EVP_MD *digest,
     int resumption);
 void tls13_secrets_destroy(struct tls13_secrets *secrets);
@@ -153,7 +154,7 @@ int tls13_hkdf_expand_label_with_length(struct tls13_secret *out,
     const uint8_t *label, size_t label_len, const struct tls13_secret *context);
 
 int tls13_derive_secret(struct tls13_secret *out, const EVP_MD *digest,
-    const struct tls13_secret *secret, const char *label,   
+    const struct tls13_secret *secret, const char *label,
     const struct tls13_secret *context);
 int tls13_derive_secret_with_label_length(struct tls13_secret *out,
     const EVP_MD *digest, const struct tls13_secret *secret,
@@ -169,31 +170,24 @@ int tls13_update_client_traffic_secret(struct tls13_secrets *secrets);
 int tls13_update_server_traffic_secret(struct tls13_secrets *secrets);
 
 /*
- * Key shares.
- */
-struct tls13_key_share;
-
-struct tls13_key_share *tls13_key_share_new(uint16_t group_id);
-struct tls13_key_share *tls13_key_share_new_nid(int nid);
-void tls13_key_share_free(struct tls13_key_share *ks);
-
-uint16_t tls13_key_share_group(struct tls13_key_share *ks);
-int tls13_key_share_peer_pkey(struct tls13_key_share *ks, EVP_PKEY *pkey);
-int tls13_key_share_generate(struct tls13_key_share *ks);
-int tls13_key_share_public(struct tls13_key_share *ks, CBB *cbb);
-int tls13_key_share_peer_public(struct tls13_key_share *ks, uint16_t group,
-    CBS *cbs);
-int tls13_key_share_derive(struct tls13_key_share *ks, uint8_t **shared_key,
-    size_t *shared_key_len);
-
-/*
  * Record Layer.
  */
 struct tls13_record_layer;
 
 struct tls13_record_layer_callbacks {
-	tls13_read_cb wire_read;
-	tls13_write_cb wire_write;
+	/* Wire callbacks. */
+	tls_read_cb wire_read;
+	tls_write_cb wire_write;
+	tls_flush_cb wire_flush;
+
+	/* Interceptors. */
+	tls_handshake_read_cb handshake_read;
+	tls_handshake_write_cb handshake_write;
+	tls_traffic_key_cb set_read_traffic_key;
+	tls_traffic_key_cb set_write_traffic_key;
+	tls_alert_send_cb alert_send;
+
+	/* Notification callbacks. */
 	tls13_alert_cb alert_recv;
 	tls13_alert_cb alert_sent;
 	tls13_phh_recv_cb phh_recv;
@@ -203,9 +197,11 @@ struct tls13_record_layer_callbacks {
 struct tls13_record_layer *tls13_record_layer_new(
     const struct tls13_record_layer_callbacks *callbacks, void *cb_arg);
 void tls13_record_layer_free(struct tls13_record_layer *rl);
+void tls13_record_layer_set_callbacks(struct tls13_record_layer *rl,
+    const struct tls13_record_layer_callbacks *callbacks, void *cb_arg);
 void tls13_record_layer_allow_ccs(struct tls13_record_layer *rl, int allow);
 void tls13_record_layer_allow_legacy_alerts(struct tls13_record_layer *rl, int allow);
-void tls13_record_layer_rbuf(struct tls13_record_layer *rl, CBS *cbs);
+void tls13_record_layer_rcontent(struct tls13_record_layer *rl, CBS *cbs);
 void tls13_record_layer_set_aead(struct tls13_record_layer *rl,
     const EVP_AEAD *aead);
 void tls13_record_layer_set_hash(struct tls13_record_layer *rl,
@@ -215,11 +211,12 @@ void tls13_record_layer_set_legacy_version(struct tls13_record_layer *rl,
 void tls13_record_layer_set_retry_after_phh(struct tls13_record_layer *rl, int retry);
 void tls13_record_layer_handshake_completed(struct tls13_record_layer *rl);
 int tls13_record_layer_set_read_traffic_key(struct tls13_record_layer *rl,
-    struct tls13_secret *read_key);
+    struct tls13_secret *read_key, enum ssl_encryption_level_t read_level);
 int tls13_record_layer_set_write_traffic_key(struct tls13_record_layer *rl,
-    struct tls13_secret *write_key);
+    struct tls13_secret *write_key, enum ssl_encryption_level_t write_level);
 ssize_t tls13_record_layer_send_pending(struct tls13_record_layer *rl);
 ssize_t tls13_record_layer_phh(struct tls13_record_layer *rl, CBS *cbs);
+ssize_t tls13_record_layer_flush(struct tls13_record_layer *rl);
 
 ssize_t tls13_read_handshake_data(struct tls13_record_layer *rl, uint8_t *buf, size_t n);
 ssize_t tls13_write_handshake_data(struct tls13_record_layer *rl, const uint8_t *buf,
@@ -241,7 +238,6 @@ struct tls13_handshake_msg;
 struct tls13_handshake_msg *tls13_handshake_msg_new(void);
 void tls13_handshake_msg_free(struct tls13_handshake_msg *msg);
 void tls13_handshake_msg_data(struct tls13_handshake_msg *msg, CBS *cbs);
-int tls13_handshake_msg_set_buffer(struct tls13_handshake_msg *msg, CBS *cbs);
 uint8_t tls13_handshake_msg_type(struct tls13_handshake_msg *msg);
 int tls13_handshake_msg_content(struct tls13_handshake_msg *msg, CBS *cbs);
 int tls13_handshake_msg_start(struct tls13_handshake_msg *msg, CBB *body,
@@ -272,11 +268,12 @@ struct tls13_ctx {
 	struct tls13_error error;
 
 	SSL *ssl;
-	struct ssl_handshake_tls13_st *hs;
+	struct ssl_handshake_st *hs;
 	uint8_t	mode;
 	struct tls13_handshake_stage handshake_stage;
 	int handshake_started;
 	int handshake_completed;
+	int need_flush;
 	int middlebox_compat;
 	int send_dummy_ccs;
 	int send_dummy_ccs_after;
@@ -306,11 +303,18 @@ struct tls13_ctx {
 #define TLS13_PHH_LIMIT 100
 #endif
 
-struct tls13_ctx *tls13_ctx_new(int mode);
+struct tls13_ctx *tls13_ctx_new(int mode, SSL *ssl);
 void tls13_ctx_free(struct tls13_ctx *ctx);
 
 const EVP_AEAD *tls13_cipher_aead(const SSL_CIPHER *cipher);
 const EVP_MD *tls13_cipher_hash(const SSL_CIPHER *cipher);
+
+void tls13_alert_received_cb(uint8_t alert_desc, void *arg);
+void tls13_alert_sent_cb(uint8_t alert_desc, void *arg);
+ssize_t tls13_phh_received_cb(void *cb_arg);
+void tls13_phh_done_cb(void *cb_arg);
+
+int tls13_quic_init(struct tls13_ctx *ctx);
 
 /*
  * Legacy interfaces.
@@ -322,6 +326,7 @@ int tls13_legacy_connect(SSL *ssl);
 int tls13_legacy_return_code(SSL *ssl, ssize_t ret);
 ssize_t tls13_legacy_wire_read_cb(void *buf, size_t n, void *arg);
 ssize_t tls13_legacy_wire_write_cb(const void *buf, size_t n, void *arg);
+ssize_t tls13_legacy_wire_flush_cb(void *arg);
 int tls13_legacy_pending(const SSL *ssl);
 int tls13_legacy_read_bytes(SSL *ssl, int type, unsigned char *buf, int len,
     int peek);

@@ -1,4 +1,4 @@
-/* $OpenBSD: t1_lib.c,v 1.176 2020/09/12 17:25:11 tb Exp $ */
+/* $OpenBSD: t1_lib.c,v 1.195 2022/08/17 18:45:25 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -116,34 +116,20 @@
 #include <openssl/objects.h>
 #include <openssl/ocsp.h>
 
-#include "ssl_locl.h"
-
 #include "bytestring.h"
+#include "ssl_locl.h"
 #include "ssl_sigalgs.h"
 #include "ssl_tlsext.h"
 
 static int tls_decrypt_ticket(SSL *s, CBS *ticket, int *alert,
     SSL_SESSION **psess);
 
-SSL3_ENC_METHOD TLSv1_enc_data = {
-	.enc_flags = 0,
-};
-
-SSL3_ENC_METHOD TLSv1_1_enc_data = {
-	.enc_flags = SSL_ENC_FLAG_EXPLICIT_IV,
-};
-
-SSL3_ENC_METHOD TLSv1_2_enc_data = {
-	.enc_flags = SSL_ENC_FLAG_EXPLICIT_IV|SSL_ENC_FLAG_SIGALGS|
-	    SSL_ENC_FLAG_SHA256_PRF|SSL_ENC_FLAG_TLS1_2_CIPHERS,
-};
-
 int
 tls1_new(SSL *s)
 {
 	if (!ssl3_new(s))
 		return (0);
-	s->method->internal->ssl_clear(s);
+	s->method->ssl_clear(s);
 	return (1);
 }
 
@@ -161,40 +147,138 @@ void
 tls1_clear(SSL *s)
 {
 	ssl3_clear(s);
-	s->version = s->method->internal->version;
+	s->version = s->method->version;
 }
 
-static int nid_list[] = {
-	NID_sect163k1,		/* sect163k1 (1) */
-	NID_sect163r1,		/* sect163r1 (2) */
-	NID_sect163r2,		/* sect163r2 (3) */
-	NID_sect193r1,		/* sect193r1 (4) */
-	NID_sect193r2,		/* sect193r2 (5) */
-	NID_sect233k1,		/* sect233k1 (6) */
-	NID_sect233r1,		/* sect233r1 (7) */
-	NID_sect239k1,		/* sect239k1 (8) */
-	NID_sect283k1,		/* sect283k1 (9) */
-	NID_sect283r1,		/* sect283r1 (10) */
-	NID_sect409k1,		/* sect409k1 (11) */
-	NID_sect409r1,		/* sect409r1 (12) */
-	NID_sect571k1,		/* sect571k1 (13) */
-	NID_sect571r1,		/* sect571r1 (14) */
-	NID_secp160k1,		/* secp160k1 (15) */
-	NID_secp160r1,		/* secp160r1 (16) */
-	NID_secp160r2,		/* secp160r2 (17) */
-	NID_secp192k1,		/* secp192k1 (18) */
-	NID_X9_62_prime192v1,	/* secp192r1 (19) */
-	NID_secp224k1,		/* secp224k1 (20) */
-	NID_secp224r1,		/* secp224r1 (21) */
-	NID_secp256k1,		/* secp256k1 (22) */
-	NID_X9_62_prime256v1,	/* secp256r1 (23) */
-	NID_secp384r1,		/* secp384r1 (24) */
-	NID_secp521r1,		/* secp521r1 (25) */
-	NID_brainpoolP256r1,	/* brainpoolP256r1 (26) */
-	NID_brainpoolP384r1,	/* brainpoolP384r1 (27) */
-	NID_brainpoolP512r1,	/* brainpoolP512r1 (28) */
-	NID_X25519,		/* X25519 (29) */
+struct supported_group {
+	int nid;
+	int bits;
 };
+
+/*
+ * Supported groups (formerly known as named curves)
+ * https://www.iana.org/assignments/tls-parameters/#tls-parameters-8
+ */
+static const struct supported_group nid_list[] = {
+	[1] = {
+		.nid = NID_sect163k1,
+		.bits = 80,
+	},
+	[2] = {
+		.nid = NID_sect163r1,
+		.bits = 80,
+	},
+	[3] = {
+		.nid = NID_sect163r2,
+		.bits = 80,
+	},
+	[4] = {
+		.nid = NID_sect193r1,
+		.bits = 80,
+	},
+	[5] = {
+		.nid = NID_sect193r2,
+		.bits = 80,
+	},
+	[6] = {
+		.nid = NID_sect233k1,
+		.bits = 112,
+	},
+	[7] = {
+		.nid = NID_sect233r1,
+		.bits = 112,
+	},
+	[8] = {
+		.nid = NID_sect239k1,
+		.bits = 112,
+	},
+	[9] = {
+		.nid = NID_sect283k1,
+		.bits = 128,
+	},
+	[10] = {
+		.nid = NID_sect283r1,
+		.bits = 128,
+	},
+	[11] = {
+		.nid = NID_sect409k1,
+		.bits = 192,
+	},
+	[12] = {
+		.nid = NID_sect409r1,
+		.bits = 192,
+	},
+	[13] = {
+		.nid = NID_sect571k1,
+		.bits = 256,
+	},
+	[14] = {
+		.nid = NID_sect571r1,
+		.bits = 256,
+	},
+	[15] = {
+		.nid = NID_secp160k1,
+		.bits = 80,
+	},
+	[16] = {
+		.nid = NID_secp160r1,
+		.bits = 80,
+	},
+	[17] = {
+		.nid = NID_secp160r2,
+		.bits = 80,
+	},
+	[18] = {
+		.nid = NID_secp192k1,
+		.bits = 80,
+	},
+	[19] = {
+		.nid = NID_X9_62_prime192v1,	/* aka secp192r1 */
+		.bits = 80,
+	},
+	[20] = {
+		.nid = NID_secp224k1,
+		.bits = 112,
+	},
+	[21] = {
+		.nid = NID_secp224r1,
+		.bits = 112,
+	},
+	[22] = {
+		.nid = NID_secp256k1,
+		.bits = 128,
+	},
+	[23] = {
+		.nid = NID_X9_62_prime256v1,	/* aka secp256r1 */
+		.bits = 128,
+	},
+	[24] = {
+		.nid = NID_secp384r1,
+		.bits = 192,
+	},
+	[25] = {
+		.nid = NID_secp521r1,
+		.bits = 256,
+	},
+	[26] = {
+		.nid = NID_brainpoolP256r1,
+		.bits = 128,
+	},
+	[27] = {
+		.nid = NID_brainpoolP384r1,
+		.bits = 192,
+	},
+	[28] = {
+		.nid = NID_brainpoolP512r1,
+		.bits = 256,
+	},
+	[29] = {
+		.nid = NID_X25519,
+		.bits = 128,
+	},
+};
+
+#define NID_LIST_LEN (sizeof(nid_list) / sizeof(nid_list[0]))
 
 #if 0
 static const uint8_t ecformats_list[] = {
@@ -209,7 +293,7 @@ static const uint8_t ecformats_default[] = {
 };
 
 #if 0
-static const uint16_t eccurves_list[] = {
+static const uint16_t ecgroups_list[] = {
 	29,			/* X25519 (29) */
 	14,			/* sect571r1 (14) */
 	13,			/* sect571k1 (13) */
@@ -242,95 +326,67 @@ static const uint16_t eccurves_list[] = {
 };
 #endif
 
-static const uint16_t eccurves_client_default[] = {
+static const uint16_t ecgroups_client_default[] = {
 	29,			/* X25519 (29) */
 	23,			/* secp256r1 (23) */
 	24,			/* secp384r1 (24) */
 	25,			/* secp521r1 (25) */
 };
 
-static const uint16_t eccurves_server_default[] = {
+static const uint16_t ecgroups_server_default[] = {
 	29,			/* X25519 (29) */
 	23,			/* secp256r1 (23) */
 	24,			/* secp384r1 (24) */
 };
 
 int
-tls1_ec_curve_id2nid(const uint16_t curve_id)
+tls1_ec_group_id2nid(uint16_t group_id, int *out_nid)
 {
-	/* ECC curves from draft-ietf-tls-ecc-12.txt (Oct. 17, 2005) */
-	if ((curve_id < 1) ||
-	    ((unsigned int)curve_id > sizeof(nid_list) / sizeof(nid_list[0])))
+	int nid;
+
+	if (group_id >= NID_LIST_LEN)
 		return 0;
-	return nid_list[curve_id - 1];
+
+	if ((nid = nid_list[group_id].nid) == 0)
+		return 0;
+
+	*out_nid = nid;
+
+	return 1;
 }
 
-uint16_t
-tls1_ec_nid2curve_id(const int nid)
+int
+tls1_ec_group_id2bits(uint16_t group_id, int *out_bits)
 {
-	/* ECC curves from draft-ietf-tls-ecc-12.txt (Oct. 17, 2005) */
-	switch (nid) {
-	case NID_sect163k1: /* sect163k1 (1) */
-		return 1;
-	case NID_sect163r1: /* sect163r1 (2) */
-		return 2;
-	case NID_sect163r2: /* sect163r2 (3) */
-		return 3;
-	case NID_sect193r1: /* sect193r1 (4) */
-		return 4;
-	case NID_sect193r2: /* sect193r2 (5) */
-		return 5;
-	case NID_sect233k1: /* sect233k1 (6) */
-		return 6;
-	case NID_sect233r1: /* sect233r1 (7) */
-		return 7;
-	case NID_sect239k1: /* sect239k1 (8) */
-		return 8;
-	case NID_sect283k1: /* sect283k1 (9) */
-		return 9;
-	case NID_sect283r1: /* sect283r1 (10) */
-		return 10;
-	case NID_sect409k1: /* sect409k1 (11) */
-		return 11;
-	case NID_sect409r1: /* sect409r1 (12) */
-		return 12;
-	case NID_sect571k1: /* sect571k1 (13) */
-		return 13;
-	case NID_sect571r1: /* sect571r1 (14) */
-		return 14;
-	case NID_secp160k1: /* secp160k1 (15) */
-		return 15;
-	case NID_secp160r1: /* secp160r1 (16) */
-		return 16;
-	case NID_secp160r2: /* secp160r2 (17) */
-		return 17;
-	case NID_secp192k1: /* secp192k1 (18) */
-		return 18;
-	case NID_X9_62_prime192v1: /* secp192r1 (19) */
-		return 19;
-	case NID_secp224k1: /* secp224k1 (20) */
-		return 20;
-	case NID_secp224r1: /* secp224r1 (21) */
-		return 21;
-	case NID_secp256k1: /* secp256k1 (22) */
-		return 22;
-	case NID_X9_62_prime256v1: /* secp256r1 (23) */
-		return 23;
-	case NID_secp384r1: /* secp384r1 (24) */
-		return 24;
-	case NID_secp521r1: /* secp521r1 (25) */
-		return 25;
-	case NID_brainpoolP256r1: /* brainpoolP256r1 (26) */
-		return 26;
-	case NID_brainpoolP384r1: /* brainpoolP384r1 (27) */
-		return 27;
-	case NID_brainpoolP512r1: /* brainpoolP512r1 (28) */
-		return 28;
-	case NID_X25519:		/* X25519 (29) */
-		return 29;
-	default:
+	int bits;
+
+	if (group_id >= NID_LIST_LEN)
 		return 0;
+
+	if ((bits = nid_list[group_id].bits) == 0)
+		return 0;
+
+	*out_bits = bits;
+
+	return 1;
+}
+
+int
+tls1_ec_nid2group_id(int nid, uint16_t *out_group_id)
+{
+	uint16_t group_id;
+
+	if (nid == 0)
+		return 0;
+
+	for (group_id = 0; group_id < NID_LIST_LEN; group_id++) {
+		if (nid_list[group_id].nid == nid) {
+			*out_group_id = group_id;
+			return 1;
+		}
 	}
+
+	return 0;
 }
 
 /*
@@ -339,12 +395,12 @@ tls1_ec_nid2curve_id(const int nid)
  * exists, or the default formats if a custom list has not been specified.
  */
 void
-tls1_get_formatlist(SSL *s, int client_formats, const uint8_t **pformats,
+tls1_get_formatlist(const SSL *s, int client_formats, const uint8_t **pformats,
     size_t *pformatslen)
 {
 	if (client_formats != 0) {
-		*pformats = SSI(s)->tlsext_ecpointformatlist;
-		*pformatslen = SSI(s)->tlsext_ecpointformatlist_length;
+		*pformats = s->session->tlsext_ecpointformatlist;
+		*pformatslen = s->session->tlsext_ecpointformatlist_length;
 		return;
 	}
 
@@ -362,12 +418,12 @@ tls1_get_formatlist(SSL *s, int client_formats, const uint8_t **pformats,
  * exists, or the default groups if a custom list has not been specified.
  */
 void
-tls1_get_group_list(SSL *s, int client_groups, const uint16_t **pgroups,
+tls1_get_group_list(const SSL *s, int client_groups, const uint16_t **pgroups,
     size_t *pgroupslen)
 {
 	if (client_groups != 0) {
-		*pgroups = SSI(s)->tlsext_supportedgroups;
-		*pgroupslen = SSI(s)->tlsext_supportedgroups_length;
+		*pgroups = s->session->tlsext_supportedgroups;
+		*pgroupslen = s->session->tlsext_supportedgroups_length;
 		return;
 	}
 
@@ -377,12 +433,106 @@ tls1_get_group_list(SSL *s, int client_groups, const uint16_t **pgroups,
 		return;
 
 	if (!s->server) {
-		*pgroups = eccurves_client_default;
-		*pgroupslen = sizeof(eccurves_client_default) / 2;
+		*pgroups = ecgroups_client_default;
+		*pgroupslen = sizeof(ecgroups_client_default) / 2;
 	} else {
-		*pgroups = eccurves_server_default;
-		*pgroupslen = sizeof(eccurves_server_default) / 2;
+		*pgroups = ecgroups_server_default;
+		*pgroupslen = sizeof(ecgroups_server_default) / 2;
 	}
+}
+
+static int
+tls1_get_group_lists(const SSL *ssl, const uint16_t **pref, size_t *preflen,
+    const uint16_t **supp, size_t *supplen)
+{
+	unsigned long server_pref;
+
+	/* Cannot do anything on the client side. */
+	if (!ssl->server)
+		return 0;
+
+	server_pref = (ssl->internal->options & SSL_OP_CIPHER_SERVER_PREFERENCE);
+	tls1_get_group_list(ssl, (server_pref == 0), pref, preflen);
+	tls1_get_group_list(ssl, (server_pref != 0), supp, supplen);
+
+	return 1;
+}
+
+static int
+tls1_group_id_present(uint16_t group_id, const uint16_t *list, size_t list_len)
+{
+	size_t i;
+
+	for (i = 0; i < list_len; i++) {
+		if (group_id == list[i])
+			return 1;
+	}
+
+	return 0;
+}
+
+int
+tls1_count_shared_groups(const SSL *ssl, size_t *out_count)
+{
+	size_t count, preflen, supplen, i;
+	const uint16_t *pref, *supp;
+
+	if (!tls1_get_group_lists(ssl, &pref, &preflen, &supp, &supplen))
+		return 0;
+
+	count = 0;
+	for (i = 0; i < preflen; i++) {
+		if (!tls1_group_id_present(pref[i], supp, supplen))
+			continue;
+
+		if (!ssl_security_shared_group(ssl, pref[i]))
+			continue;
+
+		count++;
+	}
+
+	*out_count = count;
+
+	return 1;
+}
+
+static int
+tls1_group_by_index(const SSL *ssl, size_t n, int *out_nid,
+    int (*ssl_security_fn)(const SSL *, uint16_t))
+{
+	size_t count, preflen, supplen, i;
+	const uint16_t *pref, *supp;
+
+	if (!tls1_get_group_lists(ssl, &pref, &preflen, &supp, &supplen))
+		return 0;
+
+	count = 0;
+	for (i = 0; i < preflen; i++) {
+		if (!tls1_group_id_present(pref[i], supp, supplen))
+			continue;
+
+		if (!ssl_security_fn(ssl, pref[i]))
+			continue;
+
+		if (count++ == n)
+			return tls1_ec_group_id2nid(pref[i], out_nid);
+	}
+
+	return 0;
+}
+
+int
+tls1_get_shared_group_by_index(const SSL *ssl, size_t index, int *out_nid)
+{
+	return tls1_group_by_index(ssl, index, out_nid,
+	    ssl_security_shared_group);
+}
+
+int
+tls1_get_supported_group(const SSL *ssl, int *out_nid)
+{
+	return tls1_group_by_index(ssl, 0, out_nid,
+	    ssl_security_supported_group);
 }
 
 int
@@ -392,13 +542,11 @@ tls1_set_groups(uint16_t **out_group_ids, size_t *out_group_ids_len,
 	uint16_t *group_ids;
 	size_t i;
 
-	group_ids = calloc(ngroups, sizeof(uint16_t));
-	if (group_ids == NULL)
+	if ((group_ids = calloc(ngroups, sizeof(uint16_t))) == NULL)
 		return 0;
 
 	for (i = 0; i < ngroups; i++) {
-		group_ids[i] = tls1_ec_nid2curve_id(groups[i]);
-		if (group_ids[i] == 0) {
+		if (!tls1_ec_nid2group_id(groups[i], &group_ids[i])) {
 			free(group_ids);
 			return 0;
 		}
@@ -438,8 +586,7 @@ tls1_set_group_list(uint16_t **out_group_ids, size_t *out_group_ids_len,
 			goto err;
 		group_ids = new_group_ids;
 
-		group_ids[ngroups] = tls1_ec_nid2curve_id(nid);
-		if (group_ids[ngroups] == 0)
+		if (!tls1_ec_nid2group_id(nid, &group_ids[ngroups]))
 			goto err;
 
 		ngroups++;
@@ -459,9 +606,9 @@ tls1_set_group_list(uint16_t **out_group_ids, size_t *out_group_ids_len,
 	return 0;
 }
 
-/* Check that a curve is one of our preferences. */
+/* Check that a group is one of our preferences. */
 int
-tls1_check_curve(SSL *s, const uint16_t curve_id)
+tls1_check_group(SSL *s, uint16_t group_id)
 {
 	const uint16_t *groups;
 	size_t groupslen, i;
@@ -469,40 +616,17 @@ tls1_check_curve(SSL *s, const uint16_t curve_id)
 	tls1_get_group_list(s, 0, &groups, &groupslen);
 
 	for (i = 0; i < groupslen; i++) {
-		if (groups[i] == curve_id)
-			return (1);
+		if (!ssl_security_supported_group(s, groups[i]))
+			continue;
+		if (groups[i] == group_id)
+			return 1;
 	}
-	return (0);
-}
-
-int
-tls1_get_shared_curve(SSL *s)
-{
-	size_t preflen, supplen, i, j;
-	const uint16_t *pref, *supp;
-	unsigned long server_pref;
-
-	/* Cannot do anything on the client side. */
-	if (s->server == 0)
-		return (NID_undef);
-
-	/* Return first preference shared curve. */
-	server_pref = (s->internal->options & SSL_OP_CIPHER_SERVER_PREFERENCE);
-	tls1_get_group_list(s, (server_pref == 0), &pref, &preflen);
-	tls1_get_group_list(s, (server_pref != 0), &supp, &supplen);
-
-	for (i = 0; i < preflen; i++) {
-		for (j = 0; j < supplen; j++) {
-			if (pref[i] == supp[j])
-				return (tls1_ec_curve_id2nid(pref[i]));
-		}
-	}
-	return (NID_undef);
+	return 0;
 }
 
 /* For an EC key set TLS ID and required compression based on parameters. */
 static int
-tls1_set_ec_id(uint16_t *curve_id, uint8_t *comp_id, EC_KEY *ec)
+tls1_set_ec_id(uint16_t *group_id, uint8_t *comp_id, EC_KEY *ec)
 {
 	const EC_GROUP *grp;
 	const EC_METHOD *meth;
@@ -512,18 +636,18 @@ tls1_set_ec_id(uint16_t *curve_id, uint8_t *comp_id, EC_KEY *ec)
 	if (ec == NULL)
 		return (0);
 
-	/* Determine whether the curve is defined over a prime field. */
+	/* Determine whether the group is defined over a prime field. */
 	if ((grp = EC_KEY_get0_group(ec)) == NULL)
 		return (0);
 	if ((meth = EC_GROUP_method_of(grp)) == NULL)
 		return (0);
 	prime_field = (EC_METHOD_get_field_type(meth) == NID_X9_62_prime_field);
 
-	/* Determine curve ID - NID_undef results in a curve ID of zero. */
+	/* Determine group ID. */
 	nid = EC_GROUP_get_curve_name(grp);
-	/* If we have an ID set it, otherwise set arbitrary explicit curve. */
-	if ((*curve_id = tls1_ec_nid2curve_id(nid)) == 0)
-		*curve_id = prime_field ? 0xff01 : 0xff02;
+	/* If we have an ID set it, otherwise set arbitrary explicit group. */
+	if (!tls1_ec_nid2group_id(nid, group_id))
+		*group_id = prime_field ? 0xff01 : 0xff02;
 
 	if (comp_id == NULL)
 		return (1);
@@ -543,7 +667,7 @@ tls1_set_ec_id(uint16_t *curve_id, uint8_t *comp_id, EC_KEY *ec)
 
 /* Check that an EC key is compatible with extensions. */
 static int
-tls1_check_ec_key(SSL *s, const uint16_t *curve_id, const uint8_t *comp_id)
+tls1_check_ec_key(SSL *s, const uint16_t *group_id, const uint8_t *comp_id)
 {
 	size_t groupslen, formatslen, i;
 	const uint16_t *groups;
@@ -564,12 +688,12 @@ tls1_check_ec_key(SSL *s, const uint16_t *curve_id, const uint8_t *comp_id)
 	}
 
 	/*
-	 * Check curve list if present, otherwise everything is supported.
+	 * Check group list if present, otherwise everything is supported.
 	 */
 	tls1_get_group_list(s, 1, &groups, &groupslen);
-	if (curve_id != NULL && groups != NULL) {
+	if (group_id != NULL && groups != NULL) {
 		for (i = 0; i < groupslen; i++) {
-			if (groups[i] == *curve_id)
+			if (groups[i] == *group_id)
 				break;
 		}
 		if (i == groupslen)
@@ -583,22 +707,22 @@ tls1_check_ec_key(SSL *s, const uint16_t *curve_id, const uint8_t *comp_id)
 int
 tls1_check_ec_server_key(SSL *s)
 {
-	CERT_PKEY *cpk = s->cert->pkeys + SSL_PKEY_ECC;
-	uint16_t curve_id;
+	SSL_CERT_PKEY *cpk = s->cert->pkeys + SSL_PKEY_ECC;
+	uint16_t group_id;
 	uint8_t comp_id;
+	EC_KEY *eckey;
 	EVP_PKEY *pkey;
-	int rv;
 
 	if (cpk->x509 == NULL || cpk->privatekey == NULL)
 		return (0);
-	if ((pkey = X509_get_pubkey(cpk->x509)) == NULL)
+	if ((pkey = X509_get0_pubkey(cpk->x509)) == NULL)
 		return (0);
-	rv = tls1_set_ec_id(&curve_id, &comp_id, pkey->pkey.ec);
-	EVP_PKEY_free(pkey);
-	if (rv != 1)
+	if ((eckey = EVP_PKEY_get0_EC_KEY(pkey)) == NULL)
+		return (0);
+	if (!tls1_set_ec_id(&group_id, &comp_id, eckey))
 		return (0);
 
-	return tls1_check_ec_key(s, &curve_id, &comp_id);
+	return tls1_check_ec_key(s, &group_id, &comp_id);
 }
 
 int
@@ -648,7 +772,7 @@ ssl_check_clienthello_tlsext_late(SSL *s)
 	if ((s->tlsext_status_type != -1) &&
 	    s->ctx && s->ctx->internal->tlsext_status_cb) {
 		int r;
-		CERT_PKEY *certpkey;
+		SSL_CERT_PKEY *certpkey;
 		certpkey = ssl_get_server_send_pkey(s);
 		/* If no certificate can't return certificate status */
 		if (certpkey == NULL) {
@@ -682,7 +806,7 @@ ssl_check_clienthello_tlsext_late(SSL *s)
 	} else
 		s->internal->tlsext_status_expected = 0;
 
-err:
+ err:
 	switch (ret) {
 	case SSL_TLSEXT_ERR_ALERT_FATAL:
 		ssl3_send_alert(s, SSL3_AL_FATAL, al);

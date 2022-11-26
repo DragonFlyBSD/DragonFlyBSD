@@ -1,4 +1,4 @@
-/* $OpenBSD: pkcs12.c,v 1.14 2019/07/26 12:35:59 inoguchi Exp $ */
+/* $OpenBSD: pkcs12.c,v 1.23 2022/09/14 16:31:36 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
  */
@@ -77,18 +77,18 @@
 #define CLCERTS		0x8
 #define CACERTS		0x10
 
-int get_cert_chain(X509 *cert, X509_STORE *store, STACK_OF(X509) **chain);
-int dump_certs_keys_p12(BIO *out, PKCS12 *p12, char *pass, int passlen,
+static int get_cert_chain(X509 *cert, X509_STORE *store,
+    STACK_OF(X509) **chain);
+static int dump_certs_keys_p12(BIO *out, PKCS12 *p12, char *pass, int passlen,
     int options, char *pempass);
-int dump_certs_pkeys_bags(BIO *out, STACK_OF(PKCS12_SAFEBAG) *bags, char *pass,
+static int dump_certs_pkeys_bags(BIO *out, const STACK_OF(PKCS12_SAFEBAG) *bags,
+    char *pass, int passlen, int options, char *pempass);
+static int dump_certs_pkeys_bag(BIO *out, PKCS12_SAFEBAG *bags, char *pass,
     int passlen, int options, char *pempass);
-int dump_certs_pkeys_bag(BIO *out, PKCS12_SAFEBAG *bags, char *pass,
-    int passlen, int options, char *pempass);
-int print_attribs(BIO *out, STACK_OF(X509_ATTRIBUTE) *attrlst,
+static int print_attribs(BIO *out, const STACK_OF(X509_ATTRIBUTE) *attrlst,
     const char *name);
-void hex_prin(BIO *out, unsigned char *buf, int len);
-int alg_print(BIO *x, X509_ALGOR *alg);
-int cert_load(BIO *in, STACK_OF(X509) *sk);
+static void hex_prin(BIO *out, unsigned char *buf, int len);
+static int alg_print(BIO *x, const X509_ALGOR *alg);
 static int set_pbe(BIO *err, int *ppbe, const char *str);
 
 static struct {
@@ -556,7 +556,7 @@ pkcs12_main(int argc, char **argv)
 		goto end;
 	}
 
-	if (pkcs12_config.passarg) {
+	if (pkcs12_config.passarg != NULL) {
 		if (pkcs12_config.export_cert)
 			pkcs12_config.passargout = pkcs12_config.passarg;
 		else
@@ -567,13 +567,13 @@ pkcs12_main(int argc, char **argv)
 		BIO_printf(bio_err, "Error getting passwords\n");
 		goto end;
 	}
-	if (!cpass) {
+	if (cpass == NULL) {
 		if (pkcs12_config.export_cert)
 			cpass = passout;
 		else
 			cpass = passin;
 	}
-	if (cpass) {
+	if (cpass != NULL) {
 		mpass = cpass;
 		pkcs12_config.noprompt = 1;
 	} else {
@@ -581,22 +581,22 @@ pkcs12_main(int argc, char **argv)
 		mpass = macpass;
 	}
 
-	if (!pkcs12_config.infile)
+	if (pkcs12_config.infile == NULL)
 		in = BIO_new_fp(stdin, BIO_NOCLOSE);
 	else
 		in = BIO_new_file(pkcs12_config.infile, "rb");
-	if (!in) {
+	if (in == NULL) {
 		BIO_printf(bio_err, "Error opening input file %s\n",
 		    pkcs12_config.infile ? pkcs12_config.infile : "<stdin>");
 		perror(pkcs12_config.infile);
 		goto end;
 	}
 
-	if (!pkcs12_config.outfile) {
+	if (pkcs12_config.outfile == NULL) {
 		out = BIO_new_fp(stdout, BIO_NOCLOSE);
 	} else
 		out = BIO_new_file(pkcs12_config.outfile, "wb");
-	if (!out) {
+	if (out == NULL) {
 		BIO_printf(bio_err, "Error opening output file %s\n",
 		    pkcs12_config.outfile ? pkcs12_config.outfile : "<stdout>");
 		perror(pkcs12_config.outfile);
@@ -637,10 +637,10 @@ pkcs12_main(int argc, char **argv)
 		if (!(pkcs12_config.options & NOCERTS)) {
 			certs = load_certs(bio_err, pkcs12_config.infile,
 			    FORMAT_PEM, NULL, "certificates");
-			if (!certs)
+			if (certs == NULL)
 				goto export_end;
 
-			if (key) {
+			if (key != NULL) {
 				/* Look for matching private key */
 				for (i = 0; i < sk_X509_num(certs); i++) {
 					x = sk_X509_value(certs, i);
@@ -654,7 +654,7 @@ pkcs12_main(int argc, char **argv)
 						break;
 					}
 				}
-				if (!ucert) {
+				if (ucert == NULL) {
 					BIO_printf(bio_err,
 					    "No certificate matches private key\n");
 					goto export_end;
@@ -663,11 +663,11 @@ pkcs12_main(int argc, char **argv)
 		}
 
 		/* Add any more certificates asked for */
-		if (pkcs12_config.certfile) {
+		if (pkcs12_config.certfile != NULL) {
 			STACK_OF(X509) *morecerts = NULL;
-			if (!(morecerts = load_certs(bio_err,
+			if ((morecerts = load_certs(bio_err,
 			    pkcs12_config.certfile, FORMAT_PEM, NULL,
-			    "certificates from certfile")))
+			    "certificates from certfile")) == NULL)
 				goto export_end;
 			while (sk_X509_num(morecerts) > 0)
 				sk_X509_push(certs, sk_X509_shift(morecerts));
@@ -680,7 +680,7 @@ pkcs12_main(int argc, char **argv)
 			int vret;
 			STACK_OF(X509) *chain2;
 			X509_STORE *store = X509_STORE_new();
-			if (!store) {
+			if (store == NULL) {
 				BIO_printf(bio_err,
 				    "Memory allocation error\n");
 				goto export_end;
@@ -692,7 +692,7 @@ pkcs12_main(int argc, char **argv)
 			vret = get_cert_chain(ucert, store, &chain2);
 			X509_STORE_free(store);
 
-			if (!vret) {
+			if (vret == X509_V_OK) {
 				/* Exclude verified certificate */
 				for (i = 1; i < sk_X509_num(chain2); i++)
 					sk_X509_push(certs, sk_X509_value(
@@ -701,7 +701,7 @@ pkcs12_main(int argc, char **argv)
 				X509_free(sk_X509_value(chain2, 0));
 				sk_X509_free(chain2);
 			} else {
-				if (vret >= 0)
+				if (vret != X509_V_ERR_UNSPECIFIED)
 					BIO_printf(bio_err,
 					    "Error %s getting chain.\n",
 					    X509_verify_cert_error_string(
@@ -720,12 +720,12 @@ pkcs12_main(int argc, char **argv)
 			X509_alias_set1(sk_X509_value(certs, i), catmp, -1);
 		}
 
-		if (pkcs12_config.csp_name && key)
+		if (pkcs12_config.csp_name != NULL && key != NULL)
 			EVP_PKEY_add1_attr_by_NID(key, NID_ms_csp_name,
 			    MBSTRING_ASC,
 			    (unsigned char *) pkcs12_config.csp_name, -1);
 
-		if (pkcs12_config.add_lmk && key)
+		if (pkcs12_config.add_lmk && key != NULL)
 			EVP_PKEY_add1_attr_by_NID(key, NID_LocalKeySet, 0, NULL,
 			    -1);
 
@@ -743,13 +743,13 @@ pkcs12_main(int argc, char **argv)
 		    certs, pkcs12_config.key_pbe, pkcs12_config.cert_pbe,
 		    pkcs12_config.iter, -1, pkcs12_config.keytype);
 
-		if (!p12) {
+		if (p12 == NULL) {
 			ERR_print_errors(bio_err);
 			goto export_end;
 		}
-		if (pkcs12_config.macalg) {
+		if (pkcs12_config.macalg != NULL) {
 			macmd = EVP_get_digestbyname(pkcs12_config.macalg);
-			if (!macmd) {
+			if (macmd == NULL) {
 				BIO_printf(bio_err,
 				    "Unknown digest algorithm %s\n",
 				    pkcs12_config.macalg);
@@ -771,7 +771,7 @@ pkcs12_main(int argc, char **argv)
 		goto end;
 
 	}
-	if (!(p12 = d2i_PKCS12_bio(in, NULL))) {
+	if ((p12 = d2i_PKCS12_bio(in, NULL)) == NULL) {
 		ERR_print_errors(bio_err);
 		goto end;
 	}
@@ -784,9 +784,13 @@ pkcs12_main(int argc, char **argv)
 	if (!pkcs12_config.twopass)
 		strlcpy(macpass, pass, sizeof macpass);
 
-	if ((pkcs12_config.options & INFO) && p12->mac)
+	if ((pkcs12_config.options & INFO) != 0 && PKCS12_mac_present(p12)) {
+		const ASN1_INTEGER *iter;
+
+		PKCS12_get0_mac(NULL, NULL, NULL, &iter, p12);
 		BIO_printf(bio_err, "MAC Iteration %ld\n",
-		    p12->mac->iter ? ASN1_INTEGER_get(p12->mac->iter) : 1);
+		    iter != NULL ? ASN1_INTEGER_get(iter) : 1);
+	}
 	if (pkcs12_config.macver) {
 		/* If we enter empty password try no password first */
 		if (!mpass[0] && PKCS12_verify_mac(p12, NULL, 0)) {
@@ -819,9 +823,9 @@ pkcs12_main(int argc, char **argv)
 	return (ret);
 }
 
-int
-dump_certs_keys_p12(BIO *out, PKCS12 *p12, char *pass,
-    int passlen, int options, char *pempass)
+static int
+dump_certs_keys_p12(BIO *out, PKCS12 *p12, char *pass, int passlen, int options,
+    char *pempass)
 {
 	STACK_OF(PKCS7) *asafes = NULL;
 	STACK_OF(PKCS12_SAFEBAG) *bags;
@@ -829,7 +833,7 @@ dump_certs_keys_p12(BIO *out, PKCS12 *p12, char *pass,
 	int ret = 0;
 	PKCS7 *p7;
 
-	if (!(asafes = PKCS12_unpack_authsafes(p12)))
+	if ((asafes = PKCS12_unpack_authsafes(p12)) == NULL)
 		return 0;
 	for (i = 0; i < sk_PKCS7_num(asafes); i++) {
 		p7 = sk_PKCS7_value(asafes, i);
@@ -847,7 +851,7 @@ dump_certs_keys_p12(BIO *out, PKCS12 *p12, char *pass,
 			bags = PKCS12_unpack_p7encdata(p7, pass, passlen);
 		} else
 			continue;
-		if (!bags)
+		if (bags == NULL)
 			goto err;
 		if (!dump_certs_pkeys_bags(out, bags, pass, passlen,
 			options, pempass)) {
@@ -864,11 +868,12 @@ dump_certs_keys_p12(BIO *out, PKCS12 *p12, char *pass,
 	return ret;
 }
 
-int
-dump_certs_pkeys_bags(BIO *out, STACK_OF(PKCS12_SAFEBAG) *bags,
+static int
+dump_certs_pkeys_bags(BIO *out, const STACK_OF(PKCS12_SAFEBAG) *bags,
     char *pass, int passlen, int options, char *pempass)
 {
 	int i;
+
 	for (i = 0; i < sk_PKCS12_SAFEBAG_num(bags); i++) {
 		if (!dump_certs_pkeys_bag(out,
 			sk_PKCS12_SAFEBAG_value(bags, i),
@@ -879,65 +884,82 @@ dump_certs_pkeys_bags(BIO *out, STACK_OF(PKCS12_SAFEBAG) *bags,
 	return 1;
 }
 
-int
-dump_certs_pkeys_bag(BIO *out, PKCS12_SAFEBAG *bag, char *pass,
-    int passlen, int options, char *pempass)
+static int
+dump_certs_pkeys_bag(BIO *out, PKCS12_SAFEBAG *bag, char *pass, int passlen,
+    int options, char *pempass)
 {
 	EVP_PKEY *pkey;
-	PKCS8_PRIV_KEY_INFO *p8;
+	const STACK_OF(X509_ATTRIBUTE) *attrs;
 	X509 *x509;
 
-	switch (OBJ_obj2nid(bag->type)) {
+	attrs = PKCS12_SAFEBAG_get0_attrs(bag);
+
+	switch (PKCS12_SAFEBAG_get_nid(bag)) {
 	case NID_keyBag:
+	    {
+		const PKCS8_PRIV_KEY_INFO *p8;
+
 		if (options & INFO)
 			BIO_printf(bio_err, "Key bag\n");
 		if (options & NOKEYS)
 			return 1;
-		print_attribs(out, bag->attrib, "Bag Attributes");
-		p8 = bag->value.keybag;
-		if (!(pkey = EVP_PKCS82PKEY(p8)))
+		print_attribs(out, attrs, "Bag Attributes");
+		if ((p8 = PKCS12_SAFEBAG_get0_p8inf(bag)) == NULL)
 			return 0;
-		print_attribs(out, p8->attributes, "Key Attributes");
+		if ((pkey = EVP_PKCS82PKEY(p8)) == NULL)
+			return 0;
+		print_attribs(out, PKCS8_pkey_get0_attrs(p8), "Key Attributes");
 		PEM_write_bio_PrivateKey(out, pkey, pkcs12_config.enc, NULL, 0,
 		    NULL, pempass);
 		EVP_PKEY_free(pkey);
 		break;
+	    }
 
 	case NID_pkcs8ShroudedKeyBag:
+	    {
+		PKCS8_PRIV_KEY_INFO *p8;
+
 		if (options & INFO) {
+			const X509_SIG *tp8;
+			const X509_ALGOR *tp8alg;
+
 			BIO_printf(bio_err, "Shrouded Keybag: ");
-			alg_print(bio_err, bag->value.shkeybag->algor);
+			if ((tp8 = PKCS12_SAFEBAG_get0_pkcs8(bag)) == NULL)
+				return 0;
+			X509_SIG_get0(tp8, &tp8alg, NULL);
+			alg_print(bio_err, tp8alg);
 		}
 		if (options & NOKEYS)
 			return 1;
-		print_attribs(out, bag->attrib, "Bag Attributes");
-		if (!(p8 = PKCS12_decrypt_skey(bag, pass, passlen)))
+		print_attribs(out, attrs, "Bag Attributes");
+		if ((p8 = PKCS12_decrypt_skey(bag, pass, passlen)) == NULL)
 			return 0;
-		if (!(pkey = EVP_PKCS82PKEY(p8))) {
+		if ((pkey = EVP_PKCS82PKEY(p8)) == NULL) {
 			PKCS8_PRIV_KEY_INFO_free(p8);
 			return 0;
 		}
-		print_attribs(out, p8->attributes, "Key Attributes");
+		print_attribs(out, PKCS8_pkey_get0_attrs(p8), "Key Attributes");
 		PKCS8_PRIV_KEY_INFO_free(p8);
 		PEM_write_bio_PrivateKey(out, pkey, pkcs12_config.enc, NULL, 0,
 		    NULL, pempass);
 		EVP_PKEY_free(pkey);
 		break;
+	    }
 
 	case NID_certBag:
 		if (options & INFO)
 			BIO_printf(bio_err, "Certificate bag\n");
 		if (options & NOCERTS)
 			return 1;
-		if (PKCS12_get_attr(bag, NID_localKeyID)) {
+		if (PKCS12_SAFEBAG_get0_attr(bag, NID_localKeyID) != NULL) {
 			if (options & CACERTS)
 				return 1;
 		} else if (options & CLCERTS)
 			return 1;
-		print_attribs(out, bag->attrib, "Bag Attributes");
-		if (OBJ_obj2nid(bag->value.bag->type) != NID_x509Certificate)
+		print_attribs(out, attrs, "Bag Attributes");
+		if (PKCS12_SAFEBAG_get_bag_nid(bag) != NID_x509Certificate)
 			return 1;
-		if (!(x509 = PKCS12_certbag2x509(bag)))
+		if ((x509 = PKCS12_certbag2x509(bag)) == NULL)
 			return 0;
 		dump_cert_text(out, x509);
 		PEM_write_bio_X509(out, x509);
@@ -947,13 +969,13 @@ dump_certs_pkeys_bag(BIO *out, PKCS12_SAFEBAG *bag, char *pass,
 	case NID_safeContentsBag:
 		if (options & INFO)
 			BIO_printf(bio_err, "Safe Contents bag\n");
-		print_attribs(out, bag->attrib, "Bag Attributes");
-		return dump_certs_pkeys_bags(out, bag->value.safes, pass,
-		    passlen, options, pempass);
+		print_attribs(out, attrs, "Bag Attributes");
+		return dump_certs_pkeys_bags(out, PKCS12_SAFEBAG_get0_safes(bag),
+		    pass, passlen, options, pempass);
 
 	default:
 		BIO_printf(bio_err, "Warning unsupported bag type: ");
-		i2a_ASN1_OBJECT(bio_err, bag->type);
+		i2a_ASN1_OBJECT(bio_err, PKCS12_SAFEBAG_get0_type(bag));
 		BIO_printf(bio_err, "\n");
 		return 1;
 		break;
@@ -962,49 +984,40 @@ dump_certs_pkeys_bag(BIO *out, PKCS12_SAFEBAG *bag, char *pass,
 }
 
 /* Given a single certificate return a verified chain or NULL if error */
-
-/* Hope this is OK .... */
-
-int
-get_cert_chain(X509 *cert, X509_STORE *store, STACK_OF(X509) **chain)
+static int
+get_cert_chain(X509 *cert, X509_STORE *store, STACK_OF(X509) **out_chain)
 {
-	X509_STORE_CTX store_ctx;
-	STACK_OF(X509) *chn;
-	int i = 0;
+	X509_STORE_CTX *store_ctx = NULL;
+	STACK_OF(X509) *chain = NULL;
+	int ret = X509_V_ERR_UNSPECIFIED;
 
-	/*
-	 * FIXME: Should really check the return status of
-	 * X509_STORE_CTX_init for an error, but how that fits into the
-	 * return value of this function is less obvious.
-	 */
-	X509_STORE_CTX_init(&store_ctx, store, cert, NULL);
-	if (X509_verify_cert(&store_ctx) <= 0) {
-		i = X509_STORE_CTX_get_error(&store_ctx);
-		if (i == 0)
-			/*
-			 * avoid returning 0 if X509_verify_cert() did not
-			 * set an appropriate error value in the context
-			 */
-			i = -1;
-		chn = NULL;
+	if ((store_ctx = X509_STORE_CTX_new()) == NULL)
 		goto err;
-	} else
-		chn = X509_STORE_CTX_get1_chain(&store_ctx);
- err:
-	X509_STORE_CTX_cleanup(&store_ctx);
-	*chain = chn;
+	if (!X509_STORE_CTX_init(store_ctx, store, cert, NULL))
+		goto err;
 
-	return i;
+	if (X509_verify_cert(store_ctx) > 0) {
+		if ((chain = X509_STORE_CTX_get1_chain(store_ctx)) == NULL)
+			goto err;
+	}
+	ret = X509_STORE_CTX_get_error(store_ctx);
+
+ err:
+	X509_STORE_CTX_free(store_ctx);
+	*out_chain = chain;
+
+	return ret;
 }
 
-int
-alg_print(BIO *x, X509_ALGOR *alg)
+static int
+alg_print(BIO *x, const X509_ALGOR *alg)
 {
 	PBEPARAM *pbe;
 	const unsigned char *p;
+
 	p = alg->parameter->value.sequence->data;
 	pbe = d2i_PBEPARAM(NULL, &p, alg->parameter->value.sequence->length);
-	if (!pbe)
+	if (pbe == NULL)
 		return 1;
 	BIO_printf(bio_err, "%s, Iteration %ld\n",
 	    OBJ_nid2ln(OBJ_obj2nid(alg->algorithm)),
@@ -1013,33 +1026,49 @@ alg_print(BIO *x, X509_ALGOR *alg)
 	return 1;
 }
 
-/* Load all certificates from a given file */
-
-int
-cert_load(BIO *in, STACK_OF(X509) *sk)
+/* Generalised attribute print: handle PKCS#8 and bag attributes */
+static void
+print_attribute(BIO *out, const ASN1_TYPE *av)
 {
-	int ret;
-	X509 *cert;
-	ret = 0;
-	while ((cert = PEM_read_bio_X509(in, NULL, NULL, NULL))) {
-		ret = 1;
-		sk_X509_push(sk, cert);
+	char *value;
+
+	switch (av->type) {
+	case V_ASN1_BMPSTRING:
+		value = OPENSSL_uni2asc(
+		    av->value.bmpstring->data,
+		    av->value.bmpstring->length);
+		BIO_printf(out, "%s\n", value);
+		free(value);
+		break;
+
+	case V_ASN1_OCTET_STRING:
+		hex_prin(out, av->value.octet_string->data,
+		    av->value.octet_string->length);
+		BIO_printf(out, "\n");
+		break;
+
+	case V_ASN1_BIT_STRING:
+		hex_prin(out, av->value.bit_string->data,
+		    av->value.bit_string->length);
+		BIO_printf(out, "\n");
+		break;
+
+	default:
+		BIO_printf(out, "<Unsupported tag %d>\n",
+		    av->type);
+		break;
 	}
-	if (ret)
-		ERR_clear_error();
-	return ret;
 }
 
-/* Generalised attribute print: handle PKCS#8 and bag attributes */
-
-int
-print_attribs(BIO *out, STACK_OF(X509_ATTRIBUTE) *attrlst, const char *name)
+static int
+print_attribs(BIO *out, const STACK_OF(X509_ATTRIBUTE) *attrlst,
+    const char *name)
 {
 	X509_ATTRIBUTE *attr;
 	ASN1_TYPE *av;
-	char *value;
-	int i, attr_nid;
-	if (!attrlst) {
+	int i, j, attr_nid;
+
+	if (attrlst == NULL) {
 		BIO_printf(out, "%s: <No Attributes>\n", name);
 		return 1;
 	}
@@ -1049,42 +1078,22 @@ print_attribs(BIO *out, STACK_OF(X509_ATTRIBUTE) *attrlst, const char *name)
 	}
 	BIO_printf(out, "%s\n", name);
 	for (i = 0; i < sk_X509_ATTRIBUTE_num(attrlst); i++) {
+		ASN1_OBJECT *obj;
+
 		attr = sk_X509_ATTRIBUTE_value(attrlst, i);
-		attr_nid = OBJ_obj2nid(attr->object);
+		obj = X509_ATTRIBUTE_get0_object(attr);
+		attr_nid = OBJ_obj2nid(X509_ATTRIBUTE_get0_object(attr));
 		BIO_printf(out, "    ");
 		if (attr_nid == NID_undef) {
-			i2a_ASN1_OBJECT(out, attr->object);
+			i2a_ASN1_OBJECT(out, obj);
 			BIO_printf(out, ": ");
 		} else
 			BIO_printf(out, "%s: ", OBJ_nid2ln(attr_nid));
 
-		if (sk_ASN1_TYPE_num(attr->value.set)) {
-			av = sk_ASN1_TYPE_value(attr->value.set, 0);
-			switch (av->type) {
-			case V_ASN1_BMPSTRING:
-				value = OPENSSL_uni2asc(
-				    av->value.bmpstring->data,
-				    av->value.bmpstring->length);
-				BIO_printf(out, "%s\n", value);
-				free(value);
-				break;
-
-			case V_ASN1_OCTET_STRING:
-				hex_prin(out, av->value.octet_string->data,
-				    av->value.octet_string->length);
-				BIO_printf(out, "\n");
-				break;
-
-			case V_ASN1_BIT_STRING:
-				hex_prin(out, av->value.bit_string->data,
-				    av->value.bit_string->length);
-				BIO_printf(out, "\n");
-				break;
-
-			default:
-				BIO_printf(out, "<Unsupported tag %d>\n",
-				    av->type);
-				break;
+		if (X509_ATTRIBUTE_count(attr)) {
+			for (j = 0; j < X509_ATTRIBUTE_count(attr); j++) {
+				av = X509_ATTRIBUTE_get0_type(attr, j);
+				print_attribute(out, av);
 			}
 		} else
 			BIO_printf(out, "<No Values>\n");
@@ -1092,10 +1101,11 @@ print_attribs(BIO *out, STACK_OF(X509_ATTRIBUTE) *attrlst, const char *name)
 	return 1;
 }
 
-void
+static void
 hex_prin(BIO *out, unsigned char *buf, int len)
 {
 	int i;
+
 	for (i = 0; i < len; i++)
 		BIO_printf(out, "%02X ", buf[i]);
 }
@@ -1103,9 +1113,9 @@ hex_prin(BIO *out, unsigned char *buf, int len)
 static int
 set_pbe(BIO *err, int *ppbe, const char *str)
 {
-	if (!str)
+	if (str == NULL)
 		return 0;
-	if (!strcmp(str, "NONE")) {
+	if (strcmp(str, "NONE") == 0) {
 		*ppbe = -1;
 		return 1;
 	}

@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_prime.c,v 1.18 2017/01/29 17:49:22 beck Exp $ */
+/* $OpenBSD: bn_prime.c,v 1.22 2022/07/19 16:19:19 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -116,6 +116,8 @@
 
 #include "bn_lcl.h"
 
+#define LIBRESSL_HAS_BPSW
+
 /* NB: these functions have been "upgraded", the deprecated versions (which are
  * compatibility wrappers using these functions) are in bn_depr.c.
  * - Geoff
@@ -166,7 +168,7 @@ BN_generate_prime_ex(BIGNUM *ret, int bits, int safe, const BIGNUM *add,
 	int found = 0;
 	int i, j, c1 = 0;
 	BN_CTX *ctx;
-	int checks;
+	int checks = 1;
 
 	if (bits < 2 || (bits == 2 && safe)) {
 		/*
@@ -184,7 +186,9 @@ BN_generate_prime_ex(BIGNUM *ret, int bits, int safe, const BIGNUM *add,
 	if ((t = BN_CTX_get(ctx)) == NULL)
 		goto err;
 
+#ifndef LIBRESSL_HAS_BPSW
 	checks = BN_prime_checks_for_size(bits);
+#endif
 
 loop:
 	/* make a random number and set the top and bottom bits */
@@ -259,12 +263,22 @@ int
 BN_is_prime_fasttest_ex(const BIGNUM *a, int checks, BN_CTX *ctx_passed,
     int do_trial_division, BN_GENCB *cb)
 {
-	int i, j, ret = -1;
-	int k;
 	BN_CTX *ctx = NULL;
 	BIGNUM *A1, *A1_odd, *check; /* taken from ctx */
 	BN_MONT_CTX *mont = NULL;
 	const BIGNUM *A = NULL;
+	int i, j, k;
+	int ret = -1;
+
+#ifdef LIBRESSL_HAS_BPSW
+	int is_prime;
+
+	/* XXX - tickle BN_GENCB in bn_is_prime_bpsw(). */
+	if (!bn_is_prime_bpsw(&is_prime, a, ctx_passed))
+		return -1;
+
+	return is_prime;
+#endif
 
 	if (BN_cmp(a, BN_value_one()) <= 0)
 		return 0;
@@ -282,7 +296,7 @@ BN_is_prime_fasttest_ex(const BIGNUM *a, int checks, BN_CTX *ctx_passed,
 			if (mod == (BN_ULONG)-1)
 				goto err;
 			if (mod == 0)
-				return 0;
+				return BN_is_word(a, primes[i]);
 		}
 		if (!BN_GENCB_call(cb, 1, -1))
 			goto err;

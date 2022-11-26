@@ -1,4 +1,4 @@
-/* $OpenBSD: p12_asn.c,v 1.9 2015/07/25 17:08:40 jsing Exp $ */
+/* $OpenBSD: p12_asn.c,v 1.12 2022/08/20 09:16:18 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -60,6 +60,8 @@
 
 #include <openssl/asn1t.h>
 #include <openssl/pkcs12.h>
+
+#include "pkcs12_local.h"
 
 /* PKCS#12 ASN1 module */
 
@@ -230,7 +232,6 @@ static const ASN1_ADB_TABLE PKCS12_BAGS_adbtbl[] = {
 static const ASN1_ADB PKCS12_BAGS_adb = {
 	.flags = 0,
 	.offset = offsetof(PKCS12_BAGS, type),
-	.app_items = 0,
 	.tbl = PKCS12_BAGS_adbtbl,
 	.tblcount = sizeof(PKCS12_BAGS_adbtbl) / sizeof(ASN1_ADB_TABLE),
 	.default_tt = &bag_default_tt,
@@ -324,7 +325,7 @@ static const ASN1_ADB_TABLE PKCS12_SAFEBAG_adbtbl[] = {
 	{
 		.value = NID_safeContentsBag,
 		.tt = {
-			.flags = ASN1_TFLG_EXPLICIT | ASN1_TFLG_SET_OF,
+			.flags = ASN1_TFLG_EXPLICIT | ASN1_TFLG_SEQUENCE_OF,
 			.tag = 0,
 			.offset = offsetof(PKCS12_SAFEBAG, value.safes),
 			.field_name = "value.safes",
@@ -369,7 +370,6 @@ static const ASN1_ADB_TABLE PKCS12_SAFEBAG_adbtbl[] = {
 static const ASN1_ADB PKCS12_SAFEBAG_adb = {
 	.flags = 0,
 	.offset = offsetof(PKCS12_SAFEBAG, type),
-	.app_items = 0,
 	.tbl = PKCS12_SAFEBAG_adbtbl,
 	.tblcount = sizeof(PKCS12_SAFEBAG_adbtbl) / sizeof(ASN1_ADB_TABLE),
 	.default_tt = &safebag_default_tt,

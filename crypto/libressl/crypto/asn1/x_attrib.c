@@ -1,4 +1,4 @@
-/* $OpenBSD: x_attrib.c,v 1.14 2020/06/04 21:21:03 schwarze Exp $ */
+/* $OpenBSD: x_attrib.c,v 1.17 2022/05/09 19:19:33 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -62,48 +62,16 @@
 #include <openssl/objects.h>
 #include <openssl/x509.h>
 
-/* X509_ATTRIBUTE: this has the following form:
- *
- * typedef struct x509_attributes_st
- *	{
- *	ASN1_OBJECT *object;
- *	int single;
- *	union	{
- *		char		*ptr;
- * 		STACK_OF(ASN1_TYPE) *set;
- * 		ASN1_TYPE	*single;
- *		} value;
- *	} X509_ATTRIBUTE;
- *
- * this needs some extra thought because the CHOICE type is
- * merged with the main structure and because the value can
- * be anything at all we *must* try the SET OF first because
- * the ASN1_ANY type will swallow anything including the whole
- * SET OF structure.
+#include "x509_lcl.h"
+
+/*
+ * XXX - remove X509_ATTRIBUTE_SET_it with next major bump.
  */
-
-static const ASN1_TEMPLATE X509_ATTRIBUTE_SET_ch_tt[] = {
-	{
-		.flags = ASN1_TFLG_SET_OF,
-		.tag = 0,
-		.offset = offsetof(X509_ATTRIBUTE, value.set),
-		.field_name = "value.set",
-		.item = &ASN1_ANY_it,
-	},
-	{
-		.flags = 0,
-		.tag = 0,
-		.offset = offsetof(X509_ATTRIBUTE, value.single),
-		.field_name = "value.single",
-		.item = &ASN1_ANY_it,
-	},
-};
-
 const ASN1_ITEM X509_ATTRIBUTE_SET_it = {
 	.itype = ASN1_ITYPE_CHOICE,
-	.utype = offsetof(X509_ATTRIBUTE, single),
-	.templates = X509_ATTRIBUTE_SET_ch_tt,
-	.tcount = sizeof(X509_ATTRIBUTE_SET_ch_tt) / sizeof(ASN1_TEMPLATE),
+	.utype = 0,
+	.templates = NULL,
+	.tcount = 0,
 	.funcs = NULL,
 	.size = sizeof(X509_ATTRIBUTE),
 	.sname = "X509_ATTRIBUTE",
@@ -117,13 +85,12 @@ static const ASN1_TEMPLATE X509_ATTRIBUTE_seq_tt[] = {
 		.field_name = "object",
 		.item = &ASN1_OBJECT_it,
 	},
-	/* CHOICE type merged with parent */
 	{
-		.flags = 0 | ASN1_TFLG_COMBINE,
+		.flags = ASN1_TFLG_SET_OF,
 		.tag = 0,
-		.offset = 0,
-		.field_name = NULL,
-		.item = &X509_ATTRIBUTE_SET_it,
+		.offset = offsetof(X509_ATTRIBUTE, set),
+		.field_name = "set",
+		.item = &ASN1_ANY_it,
 	},
 };
 
@@ -181,18 +148,15 @@ X509_ATTRIBUTE_create(int nid, int atrtype, void *value)
 	if ((ret = X509_ATTRIBUTE_new()) == NULL)
 		return (NULL);
 	ret->object = oid;
-	ret->single = 0;
-	if ((ret->value.set = sk_ASN1_TYPE_new_null()) == NULL)
-		goto err;
 	if ((val = ASN1_TYPE_new()) == NULL)
 		goto err;
-	if (!sk_ASN1_TYPE_push(ret->value.set, val))
+	if (!sk_ASN1_TYPE_push(ret->set, val))
 		goto err;
 
 	ASN1_TYPE_set(val, atrtype, value);
 	return (ret);
 
-err:
+ err:
 	if (ret != NULL)
 		X509_ATTRIBUTE_free(ret);
 	if (val != NULL)

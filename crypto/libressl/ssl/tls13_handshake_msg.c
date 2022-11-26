@@ -1,4 +1,4 @@
-/* $OpenBSD: tls13_handshake_msg.c,v 1.2 2019/11/20 16:21:20 beck Exp $ */
+/* $OpenBSD: tls13_handshake_msg.c,v 1.6 2022/07/22 19:33:53 jsing Exp $ */
 /*
  * Copyright (c) 2018, 2019 Joel Sing <jsing@openbsd.org>
  *
@@ -16,7 +16,6 @@
  */
 
 #include "bytestring.h"
-#include "ssl_locl.h"
 #include "tls13_internal.h"
 
 #define TLS13_HANDSHAKE_MSG_HEADER_LEN	4
@@ -29,7 +28,7 @@ struct tls13_handshake_msg {
 	uint8_t *data;
 	size_t data_len;
 
-	struct tls13_buffer *buf;
+	struct tls_buffer *buf;
 	CBS cbs;
 	CBB cbb;
 };
@@ -41,7 +40,7 @@ tls13_handshake_msg_new()
 
 	if ((msg = calloc(1, sizeof(struct tls13_handshake_msg))) == NULL)
 		goto err;
-	if ((msg->buf = tls13_buffer_new(0)) == NULL)
+	if ((msg->buf = tls_buffer_new(0)) == NULL)
 		goto err;
 
 	return msg;
@@ -58,7 +57,7 @@ tls13_handshake_msg_free(struct tls13_handshake_msg *msg)
 	if (msg == NULL)
 		return;
 
-	tls13_buffer_free(msg->buf);
+	tls_buffer_free(msg->buf);
 
 	CBB_cleanup(&msg->cbb);
 
@@ -70,12 +69,6 @@ void
 tls13_handshake_msg_data(struct tls13_handshake_msg *msg, CBS *cbs)
 {
 	CBS_init(cbs, msg->data, msg->data_len);
-}
-
-int
-tls13_handshake_msg_set_buffer(struct tls13_handshake_msg *msg, CBS *cbs)
-{
-	return tls13_buffer_set_data(msg->buf, cbs);
 }
 
 uint8_t
@@ -138,12 +131,13 @@ tls13_handshake_msg_recv(struct tls13_handshake_msg *msg,
 		return TLS13_IO_FAILURE;
 
 	if (msg->msg_type == 0) {
-		if ((ret = tls13_buffer_extend(msg->buf,
+		if ((ret = tls_buffer_extend(msg->buf,
 		    TLS13_HANDSHAKE_MSG_HEADER_LEN,
 		    tls13_handshake_msg_read_cb, rl)) <= 0)
 			return ret;
 
-		tls13_buffer_cbs(msg->buf, &cbs);
+		if (!tls_buffer_data(msg->buf, &cbs))
+			return TLS13_IO_FAILURE;
 
 		if (!CBS_get_u8(&cbs, &msg_type))
 			return TLS13_IO_FAILURE;
@@ -158,12 +152,12 @@ tls13_handshake_msg_recv(struct tls13_handshake_msg *msg,
 		msg->msg_len = msg_len;
 	}
 
-	if ((ret = tls13_buffer_extend(msg->buf,
+	if ((ret = tls_buffer_extend(msg->buf,
 	    TLS13_HANDSHAKE_MSG_HEADER_LEN + msg->msg_len,
 	    tls13_handshake_msg_read_cb, rl)) <= 0)
 		return ret;
 
-	if (!tls13_buffer_finish(msg->buf, &msg->data, &msg->data_len))
+	if (!tls_buffer_finish(msg->buf, &msg->data, &msg->data_len))
 		return TLS13_IO_FAILURE;
 
 	return TLS13_IO_SUCCESS;

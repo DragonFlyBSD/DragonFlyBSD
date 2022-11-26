@@ -1,4 +1,4 @@
-/* $OpenBSD: hmac.c,v 1.25 2018/02/17 14:53:58 jsing Exp $ */
+/* $OpenBSD: hmac.c,v 1.28 2022/05/05 18:29:34 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -62,6 +62,9 @@
 
 #include <openssl/err.h>
 #include <openssl/hmac.h>
+
+#include "evp_locl.h"
+#include "hmac_local.h"
 
 int
 HMAC_Init_ex(HMAC_CTX *ctx, const void *key, int len, const EVP_MD *md,
@@ -258,11 +261,16 @@ HMAC(const EVP_MD *evp_md, const void *key, int key_len, const unsigned char *d,
 {
 	HMAC_CTX c;
 	static unsigned char m[EVP_MAX_MD_SIZE];
+	const unsigned char dummy_key[1] = { 0 };
 
 	if (md == NULL)
 		md = m;
+	if (key == NULL) {
+		key = dummy_key;
+		key_len = 0;
+	}
 	HMAC_CTX_init(&c);
-	if (!HMAC_Init(&c, key, key_len, evp_md))
+	if (!HMAC_Init_ex(&c, key, key_len, evp_md, NULL))
 		goto err;
 	if (!HMAC_Update(&c, d, n))
 		goto err;

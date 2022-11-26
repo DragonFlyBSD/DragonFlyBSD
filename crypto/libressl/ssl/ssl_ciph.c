@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_ciph.c,v 1.119 2020/09/13 16:49:05 jsing Exp $ */
+/* $OpenBSD: ssl_ciph.c,v 1.134 2022/09/08 15:31:12 millert Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -143,6 +143,7 @@
 #include <stdio.h>
 
 #include <openssl/objects.h>
+#include <openssl/opensslconf.h>
 
 #ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
@@ -447,7 +448,7 @@ ssl_cipher_get_evp(const SSL_SESSION *ss, const EVP_CIPHER **enc,
 
 	/*
 	 * This function does not handle EVP_AEAD.
-	 * See ssl_cipher_get_aead_evp instead.
+	 * See ssl_cipher_get_evp_aead instead.
 	 */
 	if (ss->cipher->algorithm_mac & SSL_AEAD)
 		return 0;
@@ -559,9 +560,21 @@ ssl_cipher_get_evp_aead(const SSL_SESSION *ss, const EVP_AEAD **aead)
 int
 ssl_get_handshake_evp_md(SSL *s, const EVP_MD **md)
 {
+	unsigned long handshake_mac;
+
 	*md = NULL;
 
-	switch (ssl_get_algorithm2(s) & SSL_HANDSHAKE_MAC_MASK) {
+	if (s->s3->hs.cipher == NULL)
+		return 0;
+
+	handshake_mac = s->s3->hs.cipher->algorithm2 &
+	    SSL_HANDSHAKE_MAC_MASK;
+
+	/* For TLSv1.2 we upgrade the default MD5+SHA1 MAC to SHA256. */
+	if (SSL_USE_SHA256_PRF(s) && handshake_mac == SSL_HANDSHAKE_MAC_DEFAULT)
+		handshake_mac = SSL_HANDSHAKE_MAC_SHA256;
+
+	switch (handshake_mac) {
 	case SSL_HANDSHAKE_MAC_DEFAULT:
 		*md = EVP_md5_sha1();
 		return 1;
@@ -668,7 +681,10 @@ ssl_cipher_collect_ciphers(const SSL_METHOD *ssl_method, int num_of_ciphers,
 	co_list_num = 0;	/* actual count of ciphers */
 	for (i = 0; i < num_of_ciphers; i++) {
 		c = ssl_method->get_cipher(i);
-		/* drop those that use any of that is not available */
+		/*
+		 * Drop any invalid ciphers and any which use unavailable
+		 * algorithms.
+		 */
 		if ((c != NULL) && c->valid &&
 		    !(c->algorithm_mkey & disabled_mkey) &&
 		    !(c->algorithm_auth & disabled_auth) &&
@@ -680,9 +696,6 @@ ssl_cipher_collect_ciphers(const SSL_METHOD *ssl_method, int num_of_ciphers,
 			co_list[co_list_num].prev = NULL;
 			co_list[co_list_num].active = 0;
 			co_list_num++;
-			/*
-			if (!sk_push(ca_list,(char *)c)) goto err;
-			*/
 		}
 	}
 
@@ -929,7 +942,8 @@ ssl_cipher_strength_sort(CIPHER_ORDER **head_p, CIPHER_ORDER **tail_p)
 
 static int
 ssl_cipher_process_rulestr(const char *rule_str, CIPHER_ORDER **head_p,
-    CIPHER_ORDER **tail_p, const SSL_CIPHER **ca_list, int *tls13_seen)
+    CIPHER_ORDER **tail_p, const SSL_CIPHER **ca_list, SSL_CERT *cert,
+    int *tls13_seen)
 {
 	unsigned long alg_mkey, alg_auth, alg_enc, alg_mac, alg_ssl;
 	unsigned long algo_strength;
@@ -984,7 +998,7 @@ ssl_cipher_process_rulestr(const char *rule_str, CIPHER_ORDER **head_p,
 			    ((ch >= '0') && (ch <= '9')) ||
 			    ((ch >= 'a') && (ch <= 'z')) ||
 			    (ch == '-') || (ch == '.') ||
-			    (ch == '_')) {
+			    (ch == '_') || (ch == '=')) {
 				ch = *(++l);
 				buflen++;
 			}
@@ -996,9 +1010,7 @@ ssl_cipher_process_rulestr(const char *rule_str, CIPHER_ORDER **head_p,
 				 * alphanumeric, so we call this an error.
 				 */
 				SSLerrorx(SSL_R_INVALID_COMMAND);
-				retval = found = 0;
-				l++;
-				break;
+				return 0;
 			}
 
 			if (rule == CIPHER_SPECIAL) {
@@ -1140,18 +1152,24 @@ ssl_cipher_process_rulestr(const char *rule_str, CIPHER_ORDER **head_p,
 		if (rule == CIPHER_SPECIAL) {
 			/* special command */
 			ok = 0;
-			if ((buflen == 8) && !strncmp(buf, "STRENGTH", 8))
+			if (buflen == 8 && strncmp(buf, "STRENGTH", 8) == 0) {
 				ok = ssl_cipher_strength_sort(head_p, tail_p);
-			else
+			} else if (buflen == 10 &&
+			    strncmp(buf, "SECLEVEL=", 9) == 0) {
+				int level = buf[9] - '0';
+
+				if (level >= 0 && level <= 5) {
+					cert->security_level = level;
+					ok = 1;
+				} else {
+					SSLerrorx(SSL_R_INVALID_COMMAND);
+				}
+			} else {
 				SSLerrorx(SSL_R_INVALID_COMMAND);
+			}
 			if (ok == 0)
 				retval = 0;
-			/*
-			 * We do not support any "multi" options
-			 * together with "@", so throw away the
-			 * rest of the command, if any left, until
-			 * end or ':' is found.
-			 */
+
 			while ((*l != '\0') && !ITEM_SEP(*l))
 				l++;
 		} else if (found) {
@@ -1185,11 +1203,11 @@ STACK_OF(SSL_CIPHER) *
 ssl_create_cipher_list(const SSL_METHOD *ssl_method,
     STACK_OF(SSL_CIPHER) **cipher_list,
     STACK_OF(SSL_CIPHER) *cipher_list_tls13,
-    const char *rule_str)
+    const char *rule_str, SSL_CERT *cert)
 {
 	int ok, num_of_ciphers, num_of_alias_max, num_of_group_aliases;
 	unsigned long disabled_mkey, disabled_auth, disabled_enc, disabled_mac, disabled_ssl;
-	STACK_OF(SSL_CIPHER) *cipherstack;
+	STACK_OF(SSL_CIPHER) *cipherstack = NULL, *ret = NULL;
 	const char *rule_p;
 	CIPHER_ORDER *co_list = NULL, *head = NULL, *tail = NULL, *curr;
 	const SSL_CIPHER **ca_list = NULL;
@@ -1202,7 +1220,7 @@ ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 	 * Return with error if nothing to do.
 	 */
 	if (rule_str == NULL || cipher_list == NULL)
-		return NULL;
+		goto err;
 
 	/*
 	 * To reduce the work to do we only want to process the compiled
@@ -1215,11 +1233,11 @@ ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 	 * in ciphers. We cannot get more than the number compiled in, so
 	 * it is used for allocation.
 	 */
-	num_of_ciphers = ssl_method->num_ciphers();
+	num_of_ciphers = ssl3_num_ciphers();
 	co_list = reallocarray(NULL, num_of_ciphers, sizeof(CIPHER_ORDER));
 	if (co_list == NULL) {
 		SSLerrorx(ERR_R_MALLOC_FAILURE);
-		return(NULL);	/* Failure */
+		goto err;
 	}
 
 	ssl_cipher_collect_ciphers(ssl_method, num_of_ciphers,
@@ -1272,10 +1290,8 @@ ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 
 	/* Now sort by symmetric encryption strength.  The above ordering remains
 	 * in force within each class */
-	if (!ssl_cipher_strength_sort(&head, &tail)) {
-		free(co_list);
-		return NULL;
-	}
+	if (!ssl_cipher_strength_sort(&head, &tail))
+		goto err;
 
 	/* Now disable everything (maintaining the ordering!) */
 	ssl_cipher_apply_rule(0, 0, 0, 0, 0, 0, 0, CIPHER_DEL, -1, &head, &tail);
@@ -1296,9 +1312,8 @@ ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 	num_of_alias_max = num_of_ciphers + num_of_group_aliases + 1;
 	ca_list = reallocarray(NULL, num_of_alias_max, sizeof(SSL_CIPHER *));
 	if (ca_list == NULL) {
-		free(co_list);
 		SSLerrorx(ERR_R_MALLOC_FAILURE);
-		return(NULL);	/* Failure */
+		goto err;
 	}
 	ssl_cipher_collect_aliases(ca_list, num_of_group_aliases, disabled_mkey,
 	    disabled_auth, disabled_enc, disabled_mac, disabled_ssl, head);
@@ -1311,7 +1326,7 @@ ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 	rule_p = rule_str;
 	if (strncmp(rule_str, "DEFAULT", 7) == 0) {
 		ok = ssl_cipher_process_rulestr(SSL_DEFAULT_CIPHER_LIST,
-		    &head, &tail, ca_list, &tls13_seen);
+		    &head, &tail, ca_list, cert, &tls13_seen);
 		rule_p += 7;
 		if (*rule_p == ':')
 			rule_p++;
@@ -1319,14 +1334,11 @@ ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 
 	if (ok && (strlen(rule_p) > 0))
 		ok = ssl_cipher_process_rulestr(rule_p, &head, &tail, ca_list,
-		    &tls13_seen);
-
-	free((void *)ca_list);	/* Not needed anymore */
+		    cert, &tls13_seen);
 
 	if (!ok) {
 		/* Rule processing failure */
-		free(co_list);
-		return (NULL);
+		goto err;
 	}
 
 	/*
@@ -1334,15 +1346,18 @@ ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 	 * if we cannot get one.
 	 */
 	if ((cipherstack = sk_SSL_CIPHER_new_null()) == NULL) {
-		free(co_list);
-		return (NULL);
+		SSLerrorx(ERR_R_MALLOC_FAILURE);
+		goto err;
 	}
 
 	/* Prefer TLSv1.3 cipher suites. */
 	if (cipher_list_tls13 != NULL) {
 		for (i = 0; i < sk_SSL_CIPHER_num(cipher_list_tls13); i++) {
 			cipher = sk_SSL_CIPHER_value(cipher_list_tls13, i);
-			sk_SSL_CIPHER_push(cipherstack, cipher);
+			if (!sk_SSL_CIPHER_push(cipherstack, cipher)) {
+				SSLerrorx(ERR_R_MALLOC_FAILURE);
+				goto err;
+			}
 		}
 		tls13_seen = 1;
 	}
@@ -1361,19 +1376,29 @@ ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 	any_active = 0;
 	for (curr = head; curr != NULL; curr = curr->next) {
 		if (curr->active ||
-		    (!tls13_seen && curr->cipher->algorithm_ssl == SSL_TLSV1_3))
-			sk_SSL_CIPHER_push(cipherstack, curr->cipher);
+		    (!tls13_seen && curr->cipher->algorithm_ssl == SSL_TLSV1_3)) {
+			if (!sk_SSL_CIPHER_push(cipherstack, curr->cipher)) {
+				SSLerrorx(ERR_R_MALLOC_FAILURE);
+				goto err;
+			}
+		}
 		any_active |= curr->active;
 	}
 	if (!any_active)
 		sk_SSL_CIPHER_zero(cipherstack);
 
-	free(co_list);	/* Not needed any longer */
-
 	sk_SSL_CIPHER_free(*cipher_list);
 	*cipher_list = cipherstack;
+	cipherstack = NULL;
 
-	return (cipherstack);
+	ret = *cipher_list;
+
+ err:
+	sk_SSL_CIPHER_free(cipherstack);
+	free((void *)ca_list);
+	free(co_list);
+
+	return ret;
 }
 
 const SSL_CIPHER *
@@ -1585,6 +1610,20 @@ uint16_t
 SSL_CIPHER_get_value(const SSL_CIPHER *c)
 {
 	return ssl3_cipher_get_value(c);
+}
+
+const SSL_CIPHER *
+SSL_CIPHER_find(SSL *ssl, const unsigned char *ptr)
+{
+	uint16_t cipher_value;
+	CBS cbs;
+
+	/* This API is documented with ptr being an array of length two. */
+	CBS_init(&cbs, ptr, 2);
+	if (!CBS_get_u16(&cbs, &cipher_value))
+		return NULL;
+
+	return ssl3_get_cipher_by_value(cipher_value);
 }
 
 int
