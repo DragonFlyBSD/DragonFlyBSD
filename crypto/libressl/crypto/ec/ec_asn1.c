@@ -1,4 +1,4 @@
-/* $OpenBSD: ec_asn1.c,v 1.31 2018/09/01 16:23:15 tb Exp $ */
+/* $OpenBSD: ec_asn1.c,v 1.37 2022/05/24 20:06:32 tb Exp $ */
 /*
  * Written by Nils Larsch for the OpenSSL project.
  */
@@ -60,10 +60,12 @@
 
 #include <openssl/opensslconf.h>
 
-#include "ec_lcl.h"
 #include <openssl/err.h>
 #include <openssl/asn1t.h>
 #include <openssl/objects.h>
+
+#include "asn1_locl.h"
+#include "ec_lcl.h"
 
 int 
 EC_GROUP_get_basis_type(const EC_GROUP * group)
@@ -295,7 +297,6 @@ static const ASN1_ADB_TABLE X9_62_CHARACTERISTIC_TWO_adbtbl[] = {
 static const ASN1_ADB X9_62_CHARACTERISTIC_TWO_adb = {
 	.flags = 0,
 	.offset = offsetof(X9_62_CHARACTERISTIC_TWO, type),
-	.app_items = 0,
 	.tbl = X9_62_CHARACTERISTIC_TWO_adbtbl,
 	.tblcount = sizeof(X9_62_CHARACTERISTIC_TWO_adbtbl) / sizeof(ASN1_ADB_TABLE),
 	.default_tt = &char_two_def_tt,
@@ -387,7 +388,6 @@ static const ASN1_ADB_TABLE X9_62_FIELDID_adbtbl[] = {
 static const ASN1_ADB X9_62_FIELDID_adb = {
 	.flags = 0,
 	.offset = offsetof(X9_62_FIELDID, fieldType),
-	.app_items = 0,
 	.tbl = X9_62_FIELDID_adbtbl,
 	.tblcount = sizeof(X9_62_FIELDID_adbtbl) / sizeof(ASN1_ADB_TABLE),
 	.default_tt = &fieldID_def_tt,
@@ -709,7 +709,7 @@ ec_asn1_group2fieldid(const EC_GROUP * group, X9_62_FIELDID * field)
 			goto err;
 		}
 		/* the parameters are specified by the prime number p */
-		if (!EC_GROUP_get_curve_GFp(group, tmp, NULL, NULL, NULL)) {
+		if (!EC_GROUP_get_curve(group, tmp, NULL, NULL, NULL)) {
 			ECerror(ERR_R_EC_LIB);
 			goto err;
 		}
@@ -801,12 +801,12 @@ ec_asn1_group2fieldid(const EC_GROUP * group, X9_62_FIELDID * field)
 static int 
 ec_asn1_group2curve(const EC_GROUP * group, X9_62_CURVE * curve)
 {
-	int ok = 0, nid;
 	BIGNUM *tmp_1 = NULL, *tmp_2 = NULL;
 	unsigned char *buffer_1 = NULL, *buffer_2 = NULL, *a_buf = NULL,
 	*b_buf = NULL;
 	size_t len_1, len_2;
 	unsigned char char_zero = 0;
+	int ok = 0;
 
 	if (!group || !curve || !curve->a || !curve->b)
 		return 0;
@@ -815,23 +815,12 @@ ec_asn1_group2curve(const EC_GROUP * group, X9_62_CURVE * curve)
 		ECerror(ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
-	nid = EC_METHOD_get_field_type(EC_GROUP_method_of(group));
 
 	/* get a and b */
-	if (nid == NID_X9_62_prime_field) {
-		if (!EC_GROUP_get_curve_GFp(group, NULL, tmp_1, tmp_2, NULL)) {
-			ECerror(ERR_R_EC_LIB);
-			goto err;
-		}
+	if (!EC_GROUP_get_curve(group, NULL, tmp_1, tmp_2, NULL)) {
+		ECerror(ERR_R_EC_LIB);
+		goto err;
 	}
-#ifndef OPENSSL_NO_EC2M
-	else {			/* nid == NID_X9_62_characteristic_two_field */
-		if (!EC_GROUP_get_curve_GF2m(group, NULL, tmp_1, tmp_2, NULL)) {
-			ECerror(ERR_R_EC_LIB);
-			goto err;
-		}
-	}
-#endif
 	len_1 = (size_t) BN_num_bytes(tmp_1);
 	len_2 = (size_t) BN_num_bytes(tmp_2);
 
@@ -873,24 +862,24 @@ ec_asn1_group2curve(const EC_GROUP * group, X9_62_CURVE * curve)
 		ECerror(ERR_R_ASN1_LIB);
 		goto err;
 	}
+
+	ASN1_BIT_STRING_free(curve->seed);
+	curve->seed = NULL;
+
 	/* set the seed (optional) */
-	if (group->seed) {
-		if (!curve->seed)
-			if ((curve->seed = ASN1_BIT_STRING_new()) == NULL) {
-				ECerror(ERR_R_MALLOC_FAILURE);
-				goto err;
-			}
-		curve->seed->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07);
-		curve->seed->flags |= ASN1_STRING_FLAG_BITS_LEFT;
+	if (group->seed != NULL) {
+		if ((curve->seed = ASN1_BIT_STRING_new()) == NULL) {
+			ECerror(ERR_R_MALLOC_FAILURE);
+			goto err;
+		}
 		if (!ASN1_BIT_STRING_set(curve->seed, group->seed,
 			(int) group->seed_len)) {
 			ECerror(ERR_R_ASN1_LIB);
 			goto err;
 		}
-	} else {
-		if (curve->seed) {
-			ASN1_BIT_STRING_free(curve->seed);
-			curve->seed = NULL;
+		if (!asn1_abs_set_unused_bits(curve->seed, 0)) {
+			ECerror(ERR_R_ASN1_LIB);
+			goto err;
 		}
 	}
 
@@ -1028,7 +1017,7 @@ ec_asn1_group2pkparameters(const EC_GROUP * group, ECPKPARAMETERS * params)
 			if ((ret->value.named_curve = OBJ_nid2obj(tmp)) == NULL)
 				ok = 0;
 		} else
-			/* we don't kmow the nid => ERROR */
+			/* we don't know the group => ERROR */
 			ok = 0;
 	} else {
 		/* use the ECPARAMETERS structure */
@@ -1298,7 +1287,7 @@ EC_GROUP *
 d2i_ECPKParameters(EC_GROUP ** a, const unsigned char **in, long len)
 {
 	EC_GROUP *group = NULL;
-	ECPKPARAMETERS *params = NULL;
+	ECPKPARAMETERS *params;
 
 	if ((params = d2i_ECPKPARAMETERS(NULL, in, len)) == NULL) {
 		ECerror(EC_R_D2I_ECPKPARAMETERS_FAILURE);
@@ -1345,13 +1334,8 @@ d2i_ECPrivateKey(EC_KEY ** a, const unsigned char **in, long len)
 	EC_KEY *ret = NULL;
 	EC_PRIVATEKEY *priv_key = NULL;
 
-	if ((priv_key = EC_PRIVATEKEY_new()) == NULL) {
-		ECerror(ERR_R_MALLOC_FAILURE);
-		return NULL;
-	}
-	if ((priv_key = d2i_EC_PRIVATEKEY(&priv_key, in, len)) == NULL) {
+	if ((priv_key = d2i_EC_PRIVATEKEY(NULL, in, len)) == NULL) {
 		ECerror(ERR_R_EC_LIB);
-		EC_PRIVATEKEY_free(priv_key);
 		return NULL;
 	}
 	if (a == NULL || *a == NULL) {
@@ -1499,10 +1483,11 @@ i2d_ECPrivateKey(EC_KEY * a, unsigned char **out)
 			ECerror(ERR_R_EC_LIB);
 			goto err;
 		}
-		priv_key->publicKey->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07);
-		priv_key->publicKey->flags |= ASN1_STRING_FLAG_BITS_LEFT;
-		if (!ASN1_STRING_set(priv_key->publicKey, buffer,
-			buf_len)) {
+		if (!ASN1_STRING_set(priv_key->publicKey, buffer, buf_len)) {
+			ECerror(ERR_R_ASN1_LIB);
+			goto err;
+		}
+		if (!asn1_abs_set_unused_bits(priv_key->publicKey, 0)) {
 			ECerror(ERR_R_ASN1_LIB);
 			goto err;
 		}

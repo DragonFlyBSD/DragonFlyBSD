@@ -1,4 +1,4 @@
-/* $OpenBSD: req.c,v 1.19 2020/08/09 16:38:24 jsing Exp $ */
+/* $OpenBSD: req.c,v 1.23 2022/02/03 17:44:04 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -143,7 +143,6 @@ struct {
 	char *keyfile;
 	int keyform;
 	char *keyout;
-	int kludge;
 	int modulus;
 	int multirdn;
 	int newhdr;
@@ -296,12 +295,6 @@ static const struct option req_options[] = {
 		.opt.argfunc = req_opt_addext,
 	},
 	{
-		.name = "asn1-kludge",
-		.type = OPTION_VALUE,
-		.opt.value = &req_config.kludge,
-		.value = 1,
-	},
-	{
 		.name = "batch",
 		.desc = "Operate in batch mode",
 		.type = OPTION_FLAG,
@@ -400,12 +393,6 @@ static const struct option req_options[] = {
 		.desc = "Generate a new key using given parameters",
 		.type = OPTION_ARG_FUNC,
 		.opt.argfunc = req_opt_newkey,
-	},
-	{
-		.name = "no-asn1-kludge",
-		.type = OPTION_VALUE,
-		.opt.value = &req_config.kludge,
-		.value = 0,
 	},
 	{
 		.name = "nodes",
@@ -544,12 +531,12 @@ static void
 req_usage(void)
 {
 	fprintf(stderr,
-	    "usage: req [-addext ext] [-asn1-kludge] [-batch] [-config file]\n"
+	    "usage: req [-addext ext] [-batch] [-config file]\n"
 	    "    [-days n] [-extensions section] [-in file]\n"
 	    "    [-inform der | pem] [-key keyfile] [-keyform der | pem]\n"
 	    "    [-keyout file] [-md4 | -md5 | -sha1] [-modulus]\n"
 	    "    [-multivalue-rdn] [-nameopt option] [-new] [-newhdr]\n"
-	    "    [-newkey arg] [-no-asn1-kludge] [-nodes] [-noout]\n"
+	    "    [-newkey arg] [-nodes] [-noout]\n"
 	    "    [-out file] [-outform der | pem] [-passin arg]\n"
 	    "    [-passout arg] [-pkeyopt opt:value] [-pubkey]\n"
 	    "    [-reqexts section] [-reqopt option] [-set_serial n]\n"
@@ -851,11 +838,6 @@ req_main(int argc, char **argv)
 		BIO_printf(bio_err, "-----\n");
 	}
 	if (!req_config.newreq) {
-		/*
-		 * Since we are using a pre-existing certificate request, the
-		 * kludge 'format' info should not be changed.
-		 */
-		req_config.kludge = -1;
 		if (req_config.infile == NULL)
 			BIO_set_fp(in, stdin, BIO_NOCLOSE);
 		else {
@@ -890,10 +872,6 @@ req_main(int argc, char **argv)
 			}
 			i = make_REQ(req, pkey, req_config.subj, req_config.multirdn, !req_config.x509, req_config.chtype);
 			req_config.subj = NULL;	/* done processing '-subj' option */
-			if ((req_config.kludge > 0) && !sk_X509_ATTRIBUTE_num(req->req_info->attributes)) {
-				sk_X509_ATTRIBUTE_free(req->req_info->attributes);
-				req->req_info->attributes = NULL;
-			}
 			if (!i) {
 				BIO_printf(bio_err, "problems making Certificate Request\n");
 				goto end;
@@ -901,6 +879,7 @@ req_main(int argc, char **argv)
 		}
 		if (req_config.x509) {
 			EVP_PKEY *tmppkey;
+
 			X509V3_CTX ext_ctx;
 			if ((x509ss = X509_new()) == NULL)
 				goto end;
@@ -926,10 +905,10 @@ req_main(int argc, char **argv)
 				goto end;
 			if (!X509_set_subject_name(x509ss, X509_REQ_get_subject_name(req)))
 				goto end;
-			tmppkey = X509_REQ_get_pubkey(req);
-			if (!tmppkey || !X509_set_pubkey(x509ss, tmppkey))
+			if ((tmppkey = X509_REQ_get0_pubkey(req)) == NULL)
 				goto end;
-			EVP_PKEY_free(tmppkey);
+			if (!X509_set_pubkey(x509ss, tmppkey))
+				goto end;
 
 			/* Set up V3 context struct */
 
@@ -1000,26 +979,19 @@ req_main(int argc, char **argv)
 			ex = 1;
 			goto end;
 		}
-		req->req_info->enc.modified = 1;
 
 		if (req_config.verbose) {
 			print_name(bio_err, "new subject=", X509_REQ_get_subject_name(req), req_config.nmflag);
 		}
 	}
 	if (req_config.verify && !req_config.x509) {
-		int tmp = 0;
+		EVP_PKEY *pubkey = pkey;
 
-		if (pkey == NULL) {
-			pkey = X509_REQ_get_pubkey(req);
-			tmp = 1;
-			if (pkey == NULL)
-				goto end;
-		}
-		i = X509_REQ_verify(req, pkey);
-		if (tmp) {
-			EVP_PKEY_free(pkey);
-			pkey = NULL;
-		}
+		if (pubkey == NULL)
+			pubkey = X509_REQ_get0_pubkey(req);
+		if (pubkey == NULL)
+			goto end;
+		i = X509_REQ_verify(req, pubkey);
 		if (i < 0) {
 			goto end;
 		} else if (i == 0) {
@@ -1047,14 +1019,13 @@ req_main(int argc, char **argv)
 
 	if (req_config.pubkey) {
 		EVP_PKEY *tpubkey;
-		tpubkey = X509_REQ_get_pubkey(req);
-		if (tpubkey == NULL) {
+
+		if ((tpubkey = X509_REQ_get0_pubkey(req)) == NULL) {
 			BIO_printf(bio_err, "Error getting public key\n");
 			ERR_print_errors(bio_err);
 			goto end;
 		}
 		PEM_write_bio_PUBKEY(out, tpubkey);
-		EVP_PKEY_free(tpubkey);
 	}
 	if (req_config.text) {
 		if (req_config.x509)
@@ -1072,19 +1043,22 @@ req_main(int argc, char **argv)
 		EVP_PKEY *tpubkey;
 
 		if (req_config.x509)
-			tpubkey = X509_get_pubkey(x509ss);
+			tpubkey = X509_get0_pubkey(x509ss);
 		else
-			tpubkey = X509_REQ_get_pubkey(req);
+			tpubkey = X509_REQ_get0_pubkey(req);
 		if (tpubkey == NULL) {
 			fprintf(stdout, "Modulus=unavailable\n");
 			goto end;
 		}
 		fprintf(stdout, "Modulus=");
-		if (EVP_PKEY_base_id(tpubkey) == EVP_PKEY_RSA)
-			BN_print(out, tpubkey->pkey.rsa->n);
-		else
+		if (EVP_PKEY_base_id(tpubkey) == EVP_PKEY_RSA) {
+			const BIGNUM *n = NULL;
+
+			RSA_get0_key(EVP_PKEY_get0_RSA(tpubkey), &n, NULL, NULL);
+
+			BN_print(out, n);
+		} else
 			fprintf(stdout, "Wrong Algorithm type");
-		EVP_PKEY_free(tpubkey);
 		fprintf(stdout, "\n");
 	}
 	if (!req_config.noout && !req_config.x509) {
@@ -1783,14 +1757,19 @@ int
 do_X509_sign(BIO * err, X509 * x, EVP_PKEY * pkey, const EVP_MD * md,
     STACK_OF(OPENSSL_STRING) * sigopts)
 {
+	EVP_MD_CTX *mctx;
 	int rv;
-	EVP_MD_CTX mctx;
-	EVP_MD_CTX_init(&mctx);
-	rv = do_sign_init(err, &mctx, pkey, md, sigopts);
+
+	if ((mctx = EVP_MD_CTX_new()) == NULL)
+		return 0;
+
+	rv = do_sign_init(err, mctx, pkey, md, sigopts);
 	if (rv > 0)
-		rv = X509_sign_ctx(x, &mctx);
-	EVP_MD_CTX_cleanup(&mctx);
-	return rv > 0 ? 1 : 0;
+		rv = X509_sign_ctx(x, mctx);
+
+	EVP_MD_CTX_free(mctx);
+
+	return rv > 0;
 }
 
 
@@ -1798,14 +1777,19 @@ int
 do_X509_REQ_sign(BIO * err, X509_REQ * x, EVP_PKEY * pkey, const EVP_MD * md,
     STACK_OF(OPENSSL_STRING) * sigopts)
 {
+	EVP_MD_CTX *mctx;
 	int rv;
-	EVP_MD_CTX mctx;
-	EVP_MD_CTX_init(&mctx);
-	rv = do_sign_init(err, &mctx, pkey, md, sigopts);
+
+	if ((mctx = EVP_MD_CTX_new()) == NULL)
+		return 0;
+
+	rv = do_sign_init(err, mctx, pkey, md, sigopts);
 	if (rv > 0)
-		rv = X509_REQ_sign_ctx(x, &mctx);
-	EVP_MD_CTX_cleanup(&mctx);
-	return rv > 0 ? 1 : 0;
+		rv = X509_REQ_sign_ctx(x, mctx);
+
+	EVP_MD_CTX_free(mctx);
+
+	return rv > 0;
 }
 
 
@@ -1815,13 +1799,18 @@ do_X509_CRL_sign(BIO * err, X509_CRL * x, EVP_PKEY * pkey, const EVP_MD * md,
     STACK_OF(OPENSSL_STRING) * sigopts)
 {
 	int rv;
-	EVP_MD_CTX mctx;
-	EVP_MD_CTX_init(&mctx);
-	rv = do_sign_init(err, &mctx, pkey, md, sigopts);
+	EVP_MD_CTX *mctx;
+
+	if ((mctx = EVP_MD_CTX_new()) == NULL)
+		return 0;
+
+	rv = do_sign_init(err, mctx, pkey, md, sigopts);
 	if (rv > 0)
-		rv = X509_CRL_sign_ctx(x, &mctx);
-	EVP_MD_CTX_cleanup(&mctx);
-	return rv > 0 ? 1 : 0;
+		rv = X509_CRL_sign_ctx(x, mctx);
+
+	EVP_MD_CTX_free(mctx);
+
+	return rv > 0;
 }
 
 static unsigned long

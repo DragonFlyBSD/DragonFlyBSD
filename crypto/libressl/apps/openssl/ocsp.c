@@ -1,4 +1,4 @@
-/* $OpenBSD: ocsp.c,v 1.19 2020/09/09 13:57:36 inoguchi Exp $ */
+/* $OpenBSD: ocsp.c,v 1.21 2020/10/13 18:25:35 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2000.
  */
@@ -97,7 +97,8 @@ static int do_responder(OCSP_REQUEST **preq, BIO **pcbio, BIO *acbio,
     char *port);
 static int send_ocsp_response(BIO *cbio, OCSP_RESPONSE *resp);
 static OCSP_RESPONSE *query_responder(BIO *err, BIO *cbio, char *path,
-    STACK_OF(CONF_VALUE) *headers, OCSP_REQUEST *req, int req_timeout);
+    STACK_OF(CONF_VALUE) *headers, const char *host, OCSP_REQUEST *req,
+    int req_timeout);
 
 static struct {
 	int accept_count;
@@ -1328,6 +1329,7 @@ init_responder(char *port)
 	acbio = BIO_new_accept(port);
 	if (!acbio)
 		goto err;
+	BIO_set_bind_mode(acbio, BIO_BIND_REUSEADDR);
 	BIO_set_accept_bios(acbio, bufbio);
 	bufbio = NULL;
 
@@ -1407,11 +1409,12 @@ send_ocsp_response(BIO *cbio, OCSP_RESPONSE *resp)
 
 static OCSP_RESPONSE *
 query_responder(BIO *err, BIO *cbio, char *path, STACK_OF(CONF_VALUE) *headers,
-    OCSP_REQUEST *req, int req_timeout)
+    const char *host, OCSP_REQUEST *req, int req_timeout)
 {
 	int fd;
 	int rv;
 	int i;
+	int have_host = 0;
 	OCSP_REQ_CTX *ctx = NULL;
 	OCSP_RESPONSE *rsp = NULL;
 	struct pollfd pfd[1];
@@ -1448,7 +1451,14 @@ query_responder(BIO *err, BIO *cbio, char *path, STACK_OF(CONF_VALUE) *headers,
 
 	for (i = 0; i < sk_CONF_VALUE_num(headers); i++) {
 		CONF_VALUE *hdr = sk_CONF_VALUE_value(headers, i);
+		if (strcasecmp("host", hdr->name) == 0)
+			have_host = 1;
 		if (!OCSP_REQ_CTX_add1_header(ctx, hdr->name, hdr->value))
+			goto err;
+	}
+
+	if (!have_host) {
+		if (!OCSP_REQ_CTX_add1_header(ctx, "Host", host))
 			goto err;
 	}
 
@@ -1512,7 +1522,7 @@ process_responder(BIO *err, OCSP_REQUEST *req, char *host, char *path,
 		sbio = BIO_new_ssl(ctx, 1);
 		cbio = BIO_push(sbio, cbio);
 	}
-	resp = query_responder(err, cbio, path, headers, req, req_timeout);
+	resp = query_responder(err, cbio, path, headers, host, req, req_timeout);
 	if (!resp)
 		BIO_printf(bio_err, "Error querying OCSP responder\n");
 

@@ -1,4 +1,4 @@
-/* $OpenBSD: ts_rsp_sign.c,v 1.23 2019/07/03 03:24:04 deraadt Exp $ */
+/* $OpenBSD: ts_rsp_sign.c,v 1.29 2022/07/24 20:02:04 tb Exp $ */
 /* Written by Zoltan Glozik (zglozik@stones.com) for the OpenSSL
  * project 2002.
  */
@@ -64,6 +64,10 @@
 #include <openssl/objects.h>
 #include <openssl/pkcs7.h>
 #include <openssl/ts.h>
+
+#include "evp_locl.h"
+#include "ts_local.h"
+#include "x509_lcl.h"
 
 /* Private function declarations. */
 
@@ -137,6 +141,13 @@ def_extension_cb(struct TS_resp_ctx *ctx, X509_EXTENSION *ext, void *data)
 	    "Unsupported extension.");
 	TS_RESP_CTX_add_failure_info(ctx, TS_INFO_UNACCEPTED_EXTENSION);
 	return 0;
+}
+
+void
+TS_RESP_CTX_set_time_cb(TS_RESP_CTX *ctx, TS_time_cb cb, void *data)
+{
+	ctx->time_cb = cb;
+	ctx->time_cb_data = data;
 }
 
 /* TS_RESP_CTX management functions. */
@@ -651,7 +662,7 @@ TS_RESP_create_tst_info(TS_RESP_CTX *ctx, ASN1_OBJECT *policy)
 			goto end;
 		tsa_name->type = GEN_DIRNAME;
 		tsa_name->d.dirn =
-		    X509_NAME_dup(ctx->signer_cert->cert_info->subject);
+		    X509_NAME_dup(X509_get_subject_name(ctx->signer_cert));
 		if (!tsa_name->d.dirn)
 			goto end;
 		if (!TS_TST_INFO_set_tsa(tst_info, tsa_name))
@@ -847,14 +858,18 @@ ESS_CERT_ID_new_init(X509 *cert, int issuer_needed)
 {
 	ESS_CERT_ID *cid = NULL;
 	GENERAL_NAME *name = NULL;
+	unsigned char cert_hash[TS_HASH_LEN];
 
 	/* Recompute SHA1 hash of certificate if necessary (side effect). */
 	X509_check_purpose(cert, -1, 0);
 
 	if (!(cid = ESS_CERT_ID_new()))
 		goto err;
-	if (!ASN1_OCTET_STRING_set(cid->hash, cert->sha1_hash,
-	    sizeof(cert->sha1_hash)))
+
+	if (!X509_digest(cert, TS_HASH_EVP, cert_hash, NULL))
+		goto err;
+
+	if (!ASN1_OCTET_STRING_set(cid->hash, cert_hash, sizeof(cert_hash)))
 		goto err;
 
 	/* Setting the issuer/serial if requested. */
@@ -867,7 +882,7 @@ ESS_CERT_ID_new_init(X509 *cert, int issuer_needed)
 		if (!(name = GENERAL_NAME_new()))
 			goto err;
 		name->type = GEN_DIRNAME;
-		if (!(name->d.dirn = X509_NAME_dup(cert->cert_info->issuer)))
+		if ((name->d.dirn = X509_NAME_dup(X509_get_issuer_name(cert))) == NULL)
 			goto err;
 		if (!sk_GENERAL_NAME_push(cid->issuer_serial->issuer, name))
 			goto err;
@@ -875,7 +890,7 @@ ESS_CERT_ID_new_init(X509 *cert, int issuer_needed)
 		/* Setting the serial number. */
 		ASN1_INTEGER_free(cid->issuer_serial->serial);
 		if (!(cid->issuer_serial->serial =
-		    ASN1_INTEGER_dup(cert->cert_info->serialNumber)))
+		    ASN1_INTEGER_dup(X509_get_serialNumber(cert))))
 			goto err;
 	}
 

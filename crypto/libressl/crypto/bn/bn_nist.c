@@ -1,4 +1,4 @@
-/* $OpenBSD: bn_nist.c,v 1.18 2016/07/18 01:04:52 bcook Exp $ */
+/* $OpenBSD: bn_nist.c,v 1.22 2022/07/31 14:38:38 jsing Exp $ */
 /*
  * Written by Nils Larsch for the OpenSSL project
  */
@@ -56,12 +56,14 @@
  *
  */
 
-#include <machine/endian.h>
-
+#include <endian.h>
 #include <stdint.h>
 #include <string.h>
 
 #include "bn_lcl.h"
+
+#define CTASSERT(x)	extern char  _ctassert[(x) ? 1 : -1 ]   \
+			    __attribute__((__unused__))
 
 #define BN_NIST_192_TOP	(192+BN_BITS2-1)/BN_BITS2
 #define BN_NIST_224_TOP	(224+BN_BITS2-1)/BN_BITS2
@@ -285,45 +287,84 @@ static const BN_ULONG _nist_p_521_sqr[] = {
 #endif
 
 static const BIGNUM _bignum_nist_p_192 = {
-	(BN_ULONG *)_nist_p_192[0],
-	BN_NIST_192_TOP,
-	BN_NIST_192_TOP,
-	0,
-	BN_FLG_STATIC_DATA
+	.d = (BN_ULONG *)_nist_p_192[0],
+	.top = BN_NIST_192_TOP,
+	.dmax = BN_NIST_192_TOP,
+	.neg = 0,
+	.flags = BN_FLG_STATIC_DATA,
+};
+
+static const BIGNUM _bignum_nist_p_192_sqr = {
+	.d = (BN_ULONG *)_nist_p_192_sqr,
+	.top = sizeof(_nist_p_192_sqr) / sizeof(_nist_p_192_sqr[0]),
+	.dmax = sizeof(_nist_p_192_sqr) / sizeof(_nist_p_192_sqr[0]),
+	.neg = 0,
+	.flags = BN_FLG_STATIC_DATA,
 };
 
 static const BIGNUM _bignum_nist_p_224 = {
-	(BN_ULONG *)_nist_p_224[0],
-	BN_NIST_224_TOP,
-	BN_NIST_224_TOP,
-	0,
-	BN_FLG_STATIC_DATA
+	.d = (BN_ULONG *)_nist_p_224[0],
+	.top = BN_NIST_224_TOP,
+	.dmax = BN_NIST_224_TOP,
+	.neg = 0,
+	.flags = BN_FLG_STATIC_DATA,
+};
+
+static const BIGNUM _bignum_nist_p_224_sqr = {
+	.d = (BN_ULONG *)_nist_p_224_sqr,
+	.top = sizeof(_nist_p_224_sqr) / sizeof(_nist_p_224_sqr[0]),
+	.dmax = sizeof(_nist_p_224_sqr) / sizeof(_nist_p_224_sqr[0]),
+	.neg = 0,
+	.flags = BN_FLG_STATIC_DATA,
 };
 
 static const BIGNUM _bignum_nist_p_256 = {
-	(BN_ULONG *)_nist_p_256[0],
-	BN_NIST_256_TOP,
-	BN_NIST_256_TOP,
-	0,
-	BN_FLG_STATIC_DATA
+	.d = (BN_ULONG *)_nist_p_256[0],
+	.top = BN_NIST_256_TOP,
+	.dmax = BN_NIST_256_TOP,
+	.neg = 0,
+	.flags = BN_FLG_STATIC_DATA,
+};
+
+static const BIGNUM _bignum_nist_p_256_sqr = {
+	.d = (BN_ULONG *)_nist_p_256_sqr,
+	.top = sizeof(_nist_p_256_sqr) / sizeof(_nist_p_256_sqr[0]),
+	.dmax = sizeof(_nist_p_256_sqr) / sizeof(_nist_p_256_sqr[0]),
+	.neg = 0,
+	.flags = BN_FLG_STATIC_DATA,
 };
 
 static const BIGNUM _bignum_nist_p_384 = {
-	(BN_ULONG *)_nist_p_384[0],
-	BN_NIST_384_TOP,
-	BN_NIST_384_TOP,
-	0,
-	BN_FLG_STATIC_DATA
+	.d = (BN_ULONG *)_nist_p_384[0],
+	.top = BN_NIST_384_TOP,
+	.dmax = BN_NIST_384_TOP,
+	.neg = 0,
+	.flags = BN_FLG_STATIC_DATA,
+};
+
+static const BIGNUM _bignum_nist_p_384_sqr = {
+	.d = (BN_ULONG *)_nist_p_384_sqr,
+	.top = sizeof(_nist_p_384_sqr) / sizeof(_nist_p_384_sqr[0]),
+	.dmax = sizeof(_nist_p_384_sqr) / sizeof(_nist_p_384_sqr[0]),
+	.neg = 0,
+	.flags = BN_FLG_STATIC_DATA,
 };
 
 static const BIGNUM _bignum_nist_p_521 = {
-	(BN_ULONG *)_nist_p_521,
-	BN_NIST_521_TOP,
-	BN_NIST_521_TOP,
-	0,
-	BN_FLG_STATIC_DATA
+	.d = (BN_ULONG *)_nist_p_521,
+	.top = BN_NIST_521_TOP,
+	.dmax = BN_NIST_521_TOP,
+	.neg = 0,
+	.flags = BN_FLG_STATIC_DATA,
 };
 
+static const BIGNUM _bignum_nist_p_521_sqr = {
+	.d = (BN_ULONG *)_nist_p_521_sqr,
+	.top = sizeof(_nist_p_521_sqr) / sizeof(_nist_p_521_sqr[0]),
+	.dmax = sizeof(_nist_p_521_sqr) / sizeof(_nist_p_521_sqr[0]),
+	.neg = 0,
+	.flags = BN_FLG_STATIC_DATA,
+};
 
 const BIGNUM *
 BN_get0_nist_prime_192(void)
@@ -423,23 +464,13 @@ static void nist_cp_bn(BN_ULONG *dst, const BN_ULONG *src, int top)
 int
 BN_nist_mod_192(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 {
-	int top = a->top, i;
-	int carry;
-	BN_ULONG *r_d, *a_d = a->d;
-	union {
-		BN_ULONG bn[BN_NIST_192_TOP];
-		unsigned int ui[BN_NIST_192_TOP *
-		    sizeof(BN_ULONG) / sizeof(unsigned int)];
-	} buf;
-	BN_ULONG c_d[BN_NIST_192_TOP], *res;
+	BN_ULONG bnbuf[BN_NIST_192_TOP] = { 0 };
+	BN_ULONG c_d[BN_NIST_192_TOP] = { 0 };
+	BN_ULONG *a_d = a->d;
+	BN_ULONG *r_d, *res;
 	uintptr_t mask;
-	static const BIGNUM _bignum_nist_p_192_sqr = {
-		(BN_ULONG *)_nist_p_192_sqr,
-		sizeof(_nist_p_192_sqr) / sizeof(_nist_p_192_sqr[0]),
-		sizeof(_nist_p_192_sqr) / sizeof(_nist_p_192_sqr[0]),
-		0,
-		BN_FLG_STATIC_DATA
-	};
+	int top = a->top;
+	int carry, i;
 
 	field = &_bignum_nist_p_192; /* just to make sure */
 
@@ -461,14 +492,31 @@ BN_nist_mod_192(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 	} else
 		r_d = a_d;
 
-	nist_cp_bn_0(buf.bn, a_d + BN_NIST_192_TOP, top - BN_NIST_192_TOP,
+	nist_cp_bn_0(bnbuf, a_d + BN_NIST_192_TOP, top - BN_NIST_192_TOP,
 	    BN_NIST_192_TOP);
 
 #if defined(NIST_INT64)
 	{
 		NIST_INT64 acc;	/* accumulator */
-		unsigned int *rp = (unsigned int *)r_d;
-		const unsigned int *bp = (const unsigned int *)buf.ui;
+		unsigned int bbuf[BN_NIST_192_TOP *
+		    sizeof(BN_ULONG) / sizeof(unsigned int)];
+		unsigned int rbuf[BN_NIST_192_TOP *
+		    sizeof(BN_ULONG) / sizeof(unsigned int)];
+		const unsigned int *bp = bbuf;
+		unsigned int *rp = rbuf;
+
+		CTASSERT(sizeof(bbuf) == sizeof(bnbuf));
+		CTASSERT(sizeof(rbuf) == sizeof(bnbuf));
+
+		/*
+		 * Avoid strict aliasing violations by copying from an unsigned
+		 * long array to an unsigned int array, then copying back the
+		 * result. Any sensible compiler will omit the copies, while
+		 * avoiding undefined behaviour that would result from unsafe
+		 * type punning via pointer type casting.
+		 */
+		memcpy(bbuf, bnbuf, sizeof(bbuf));
+		memcpy(rbuf, r_d, sizeof(rbuf));
 
 		acc = rp[0];
 		acc += bp[3 * 2 - 6];
@@ -507,17 +555,19 @@ BN_nist_mod_192(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 		acc += bp[5 * 2 - 5];
 		rp[5] = (unsigned int)acc;
 
+		memcpy(r_d, rbuf, sizeof(rbuf));
+
 		carry = (int)(acc >> 32);
 	}
 #else
 	{
 		BN_ULONG t_d[BN_NIST_192_TOP] = {0};
 
-		nist_set_192(t_d, buf.bn, 0, 3, 3);
+		nist_set_192(t_d, bnbuf, 0, 3, 3);
 		carry = (int)bn_add_words(r_d, r_d, t_d, BN_NIST_192_TOP);
-		nist_set_192(t_d, buf.bn, 4, 4, 0);
+		nist_set_192(t_d, bnbuf, 4, 4, 0);
 		carry += (int)bn_add_words(r_d, r_d, t_d, BN_NIST_192_TOP);
-		nist_set_192(t_d, buf.bn, 5, 5, 5)
+		nist_set_192(t_d, bnbuf, 5, 5, 5)
 		carry += (int)bn_add_words(r_d, r_d, t_d, BN_NIST_192_TOP);
 	}
 #endif
@@ -562,27 +612,14 @@ typedef BN_ULONG (*bn_addsub_f)(BN_ULONG *, const BN_ULONG *,
 int
 BN_nist_mod_224(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 {
-	int top = a->top, i;
-	int carry;
-	BN_ULONG *r_d, *a_d = a->d;
-	union {
-		BN_ULONG bn[BN_NIST_224_TOP];
-		unsigned int ui[BN_NIST_224_TOP *
-		    sizeof(BN_ULONG) / sizeof(unsigned int)];
-	} buf;
-	BN_ULONG c_d[BN_NIST_224_TOP], *res;
+	BN_ULONG bnbuf[BN_NIST_224_TOP] = { 0 };
+	BN_ULONG c_d[BN_NIST_224_TOP] = { 0 };
+	BN_ULONG *a_d = a->d;
+	BN_ULONG *r_d, *res;
+	bn_addsub_f addsubf;
 	uintptr_t mask;
-	union {
-		bn_addsub_f f;
-		uintptr_t p;
-	} u;
-	static const BIGNUM _bignum_nist_p_224_sqr = {
-		(BN_ULONG *)_nist_p_224_sqr,
-		sizeof(_nist_p_224_sqr) / sizeof(_nist_p_224_sqr[0]),
-		sizeof(_nist_p_224_sqr) / sizeof(_nist_p_224_sqr[0]),
-		0,
-		BN_FLG_STATIC_DATA
-	};
+	int top = a->top;
+	int carry, i;
 
 	field = &_bignum_nist_p_224; /* just to make sure */
 
@@ -604,26 +641,43 @@ BN_nist_mod_224(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 	} else
 		r_d = a_d;
 
-	memset(&buf, 0, sizeof(buf));
+	memset(&bnbuf, 0, sizeof(bnbuf));
 
 #if BN_BITS2==64
 	/* copy upper 256 bits of 448 bit number ... */
 	nist_cp_bn_0(c_d, a_d + (BN_NIST_224_TOP - 1),
 	    top - (BN_NIST_224_TOP - 1), BN_NIST_224_TOP);
 	/* ... and right shift by 32 to obtain upper 224 bits */
-	nist_set_224(buf.bn, c_d, 14, 13, 12, 11, 10, 9, 8);
+	nist_set_224(bnbuf, c_d, 14, 13, 12, 11, 10, 9, 8);
 	/* truncate lower part to 224 bits too */
 	r_d[BN_NIST_224_TOP - 1] &= BN_MASK2l;
 #else
-	nist_cp_bn_0(buf.bn, a_d + BN_NIST_224_TOP,
+	nist_cp_bn_0(bnbuf, a_d + BN_NIST_224_TOP,
 	    top - BN_NIST_224_TOP, BN_NIST_224_TOP);
 #endif
 
 #if defined(NIST_INT64) && BN_BITS2!=64
 	{
 		NIST_INT64 acc;	/* accumulator */
-		unsigned int *rp = (unsigned int *)r_d;
-		const unsigned int *bp = (const unsigned int *)buf.ui;
+		unsigned int bbuf[BN_NIST_224_TOP *
+		    sizeof(BN_ULONG) / sizeof(unsigned int)];
+		unsigned int rbuf[BN_NIST_224_TOP *
+		    sizeof(BN_ULONG) / sizeof(unsigned int)];
+		const unsigned int *bp = bbuf;
+		unsigned int *rp = rbuf;
+
+		CTASSERT(sizeof(bbuf) == sizeof(bnbuf));
+		CTASSERT(sizeof(rbuf) == sizeof(bnbuf));
+
+		/*
+		 * Avoid strict aliasing violations by copying from an unsigned
+		 * long array to an unsigned int array, then copying back the
+		 * result. Any sensible compiler will omit the copies, while
+		 * avoiding undefined behaviour that would result from unsafe
+		 * type punning via pointer type casting.
+		 */
+		memcpy(bbuf, bnbuf, sizeof(bbuf));
+		memcpy(rbuf, r_d, sizeof(rbuf));
 
 		acc = rp[0];
 		acc -= bp[7 - 7];
@@ -669,6 +723,8 @@ BN_nist_mod_224(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 		acc -= bp[13 - 7];
 		rp[6] = (unsigned int)acc;
 
+		memcpy(r_d, rbuf, sizeof(rbuf));
+
 		carry = (int)(acc >> 32);
 # if BN_BITS2==64
 		rp[7] = carry;
@@ -678,13 +734,13 @@ BN_nist_mod_224(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 	{
 		BN_ULONG t_d[BN_NIST_224_TOP] = {0};
 
-		nist_set_224(t_d, buf.bn, 10, 9, 8, 7, 0, 0, 0);
+		nist_set_224(t_d, bnbuf, 10, 9, 8, 7, 0, 0, 0);
 		carry = (int)bn_add_words(r_d, r_d, t_d, BN_NIST_224_TOP);
-		nist_set_224(t_d, buf.bn, 0, 13, 12, 11, 0, 0, 0);
+		nist_set_224(t_d, bnbuf, 0, 13, 12, 11, 0, 0, 0);
 		carry += (int)bn_add_words(r_d, r_d, t_d, BN_NIST_224_TOP);
-		nist_set_224(t_d, buf.bn, 13, 12, 11, 10, 9, 8, 7);
+		nist_set_224(t_d, bnbuf, 13, 12, 11, 10, 9, 8, 7);
 		carry -= (int)bn_sub_words(r_d, r_d, t_d, BN_NIST_224_TOP);
-		nist_set_224(t_d, buf.bn, 0, 0, 0, 0, 13, 12, 11);
+		nist_set_224(t_d, bnbuf, 0, 0, 0, 0, 13, 12, 11);
 		carry -= (int)bn_sub_words(r_d, r_d, t_d, BN_NIST_224_TOP);
 
 #if BN_BITS2==64
@@ -692,7 +748,7 @@ BN_nist_mod_224(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 #endif
 	}
 #endif
-	u.f = bn_sub_words;
+	addsubf = bn_sub_words;
 	if (carry > 0) {
 		carry = (int)bn_sub_words(r_d, r_d, _nist_p_224[carry - 1],
 		    BN_NIST_224_TOP);
@@ -708,14 +764,13 @@ BN_nist_mod_224(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 		 * adjusted by *subtracting* the latter. */
 		carry = (int)bn_add_words(r_d, r_d, _nist_p_224[-carry - 1],
 		    BN_NIST_224_TOP);
-		mask = 0 - (uintptr_t)carry;
-		u.p = ((uintptr_t)bn_sub_words & mask) |
-		    ((uintptr_t)bn_add_words & ~mask);
+		if (carry == 0)
+			addsubf = bn_add_words;
 	} else
 		carry = 1;
 
 	/* otherwise it's effectively same as in BN_nist_mod_192... */
-	mask = 0 - (uintptr_t)(*u.f)(c_d, r_d, _nist_p_224[0], BN_NIST_224_TOP);
+	mask = 0 - (uintptr_t)(*addsubf)(c_d, r_d, _nist_p_224[0], BN_NIST_224_TOP);
 	mask &= 0 - (uintptr_t)carry;
 	res = c_d;
 	res = (BN_ULONG *)(((uintptr_t)res & ~mask) | ((uintptr_t)r_d & mask));
@@ -741,27 +796,14 @@ BN_nist_mod_224(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 int
 BN_nist_mod_256(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 {
-	int i, top = a->top;
-	int carry = 0;
-	BN_ULONG *a_d = a->d, *r_d;
-	union {
-		BN_ULONG bn[BN_NIST_256_TOP];
-		unsigned int ui[BN_NIST_256_TOP *
-		    sizeof(BN_ULONG) / sizeof(unsigned int)];
-	} buf;
-	BN_ULONG c_d[BN_NIST_256_TOP] = {0}, *res;
+	BN_ULONG bnbuf[BN_NIST_256_TOP] = { 0 };
+	BN_ULONG c_d[BN_NIST_256_TOP] = { 0 };
+	BN_ULONG *a_d = a->d;
+	BN_ULONG *r_d, *res;
+	bn_addsub_f addsubf;
 	uintptr_t mask;
-	union {
-		bn_addsub_f f;
-		uintptr_t p;
-	} u;
-	static const BIGNUM _bignum_nist_p_256_sqr = {
-		(BN_ULONG *)_nist_p_256_sqr,
-		sizeof(_nist_p_256_sqr) / sizeof(_nist_p_256_sqr[0]),
-		sizeof(_nist_p_256_sqr) / sizeof(_nist_p_256_sqr[0]),
-		0,
-		BN_FLG_STATIC_DATA
-	};
+	int top = a->top;
+	int carry, i;
 
 	field = &_bignum_nist_p_256; /* just to make sure */
 
@@ -783,14 +825,31 @@ BN_nist_mod_256(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 	} else
 		r_d = a_d;
 
-	nist_cp_bn_0(buf.bn, a_d + BN_NIST_256_TOP,
+	nist_cp_bn_0(bnbuf, a_d + BN_NIST_256_TOP,
 	    top - BN_NIST_256_TOP, BN_NIST_256_TOP);
 
 #if defined(NIST_INT64)
 	{
 		NIST_INT64 acc;	/* accumulator */
-		unsigned int *rp = (unsigned int *)r_d;
-		const unsigned int *bp = (const unsigned int *)buf.ui;
+		unsigned int bbuf[BN_NIST_256_TOP *
+		    sizeof(BN_ULONG) / sizeof(unsigned int)];
+		unsigned int rbuf[BN_NIST_256_TOP *
+		    sizeof(BN_ULONG) / sizeof(unsigned int)];
+		const unsigned int *bp = bbuf;
+		unsigned int *rp = rbuf;
+
+		CTASSERT(sizeof(bbuf) == sizeof(bnbuf));
+		CTASSERT(sizeof(rbuf) == sizeof(bnbuf));
+
+		/*
+		 * Avoid strict aliasing violations by copying from an unsigned
+		 * long array to an unsigned int array, then copying back the
+		 * result. Any sensible compiler will omit the copies, while
+		 * avoiding undefined behaviour that would result from unsafe
+		 * type punning via pointer type casting.
+		 */
+		memcpy(bbuf, bnbuf, sizeof(bbuf));
+		memcpy(rbuf, r_d, sizeof(rbuf));
 
 		acc = rp[0];
 		acc += bp[8 - 8];
@@ -878,6 +937,8 @@ BN_nist_mod_256(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 		acc -= bp[13 - 8];
 		rp[7] = (unsigned int)acc;
 
+		memcpy(r_d, rbuf, sizeof(rbuf));
+
 		carry = (int)(acc >> 32);
 	}
 #else
@@ -885,9 +946,9 @@ BN_nist_mod_256(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 		BN_ULONG t_d[BN_NIST_256_TOP] = {0};
 
 		/*S1*/
-		nist_set_256(t_d, buf.bn, 15, 14, 13, 12, 11, 0, 0, 0);
+		nist_set_256(t_d, bnbuf, 15, 14, 13, 12, 11, 0, 0, 0);
 		/*S2*/
-		nist_set_256(c_d, buf.bn, 0, 15, 14, 13, 12, 0, 0, 0);
+		nist_set_256(c_d, bnbuf, 0, 15, 14, 13, 12, 0, 0, 0);
 		carry = (int)bn_add_words(t_d, t_d, c_d, BN_NIST_256_TOP);
 		/* left shift */
 		{
@@ -904,41 +965,40 @@ BN_nist_mod_256(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 		}
 		carry += (int)bn_add_words(r_d, r_d, t_d, BN_NIST_256_TOP);
 		/*S3*/
-		nist_set_256(t_d, buf.bn, 15, 14, 0, 0, 0, 10, 9, 8);
+		nist_set_256(t_d, bnbuf, 15, 14, 0, 0, 0, 10, 9, 8);
 		carry += (int)bn_add_words(r_d, r_d, t_d, BN_NIST_256_TOP);
 		/*S4*/
-		nist_set_256(t_d, buf.bn, 8, 13, 15, 14, 13, 11, 10, 9);
+		nist_set_256(t_d, bnbuf, 8, 13, 15, 14, 13, 11, 10, 9);
 		carry += (int)bn_add_words(r_d, r_d, t_d, BN_NIST_256_TOP);
 		/*D1*/
-		nist_set_256(t_d, buf.bn, 10, 8, 0, 0, 0, 13, 12, 11);
+		nist_set_256(t_d, bnbuf, 10, 8, 0, 0, 0, 13, 12, 11);
 		carry -= (int)bn_sub_words(r_d, r_d, t_d, BN_NIST_256_TOP);
 		/*D2*/
-		nist_set_256(t_d, buf.bn, 11, 9, 0, 0, 15, 14, 13, 12);
+		nist_set_256(t_d, bnbuf, 11, 9, 0, 0, 15, 14, 13, 12);
 		carry -= (int)bn_sub_words(r_d, r_d, t_d, BN_NIST_256_TOP);
 		/*D3*/
-		nist_set_256(t_d, buf.bn, 12, 0, 10, 9, 8, 15, 14, 13);
+		nist_set_256(t_d, bnbuf, 12, 0, 10, 9, 8, 15, 14, 13);
 		carry -= (int)bn_sub_words(r_d, r_d, t_d, BN_NIST_256_TOP);
 		/*D4*/
-		nist_set_256(t_d, buf.bn, 13, 0, 11, 10, 9, 0, 15, 14);
+		nist_set_256(t_d, bnbuf, 13, 0, 11, 10, 9, 0, 15, 14);
 		carry -= (int)bn_sub_words(r_d, r_d, t_d, BN_NIST_256_TOP);
 
 	}
 #endif
 	/* see BN_nist_mod_224 for explanation */
-	u.f = bn_sub_words;
+	addsubf = bn_sub_words;
 	if (carry > 0)
 		carry = (int)bn_sub_words(r_d, r_d, _nist_p_256[carry - 1],
 		    BN_NIST_256_TOP);
 	else if (carry < 0) {
 		carry = (int)bn_add_words(r_d, r_d, _nist_p_256[-carry - 1],
 		    BN_NIST_256_TOP);
-		mask = 0 - (uintptr_t)carry;
-		u.p = ((uintptr_t)bn_sub_words & mask) |
-		    ((uintptr_t)bn_add_words & ~mask);
+		if (carry == 0)
+			addsubf = bn_add_words;
 	} else
 		carry = 1;
 
-	mask = 0 - (uintptr_t)(*u.f)(c_d, r_d, _nist_p_256[0], BN_NIST_256_TOP);
+	mask = 0 - (uintptr_t)(*addsubf)(c_d, r_d, _nist_p_256[0], BN_NIST_256_TOP);
 	mask &= 0 - (uintptr_t)carry;
 	res = c_d;
 	res = (BN_ULONG *)(((uintptr_t)res & ~mask) | ((uintptr_t)r_d & mask));
@@ -968,27 +1028,14 @@ BN_nist_mod_256(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 int
 BN_nist_mod_384(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 {
-	int i, top = a->top;
-	int carry = 0;
-	BN_ULONG *r_d, *a_d = a->d;
-	union {
-		BN_ULONG bn[BN_NIST_384_TOP];
-		unsigned int ui[BN_NIST_384_TOP *
-		    sizeof(BN_ULONG) / sizeof(unsigned int)];
-	} buf;
-	BN_ULONG c_d[BN_NIST_384_TOP], *res;
+	BN_ULONG bnbuf[BN_NIST_384_TOP] = { 0 };
+	BN_ULONG c_d[BN_NIST_384_TOP] = { 0 };
+	BN_ULONG *a_d = a->d;
+	BN_ULONG *r_d, *res;
+	bn_addsub_f addsubf;
 	uintptr_t mask;
-	union {
-		bn_addsub_f f;
-		uintptr_t p;
-	} u;
-	static const BIGNUM _bignum_nist_p_384_sqr = {
-		(BN_ULONG *)_nist_p_384_sqr,
-		sizeof(_nist_p_384_sqr) / sizeof(_nist_p_384_sqr[0]),
-		sizeof(_nist_p_384_sqr) / sizeof(_nist_p_384_sqr[0]),
-		0,
-		BN_FLG_STATIC_DATA
-	};
+	int top = a->top;
+	int carry, i;
 
 	field = &_bignum_nist_p_384; /* just to make sure */
 
@@ -1010,14 +1057,31 @@ BN_nist_mod_384(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 	} else
 		r_d = a_d;
 
-	nist_cp_bn_0(buf.bn, a_d + BN_NIST_384_TOP,
+	nist_cp_bn_0(bnbuf, a_d + BN_NIST_384_TOP,
 	    top - BN_NIST_384_TOP, BN_NIST_384_TOP);
 
 #if defined(NIST_INT64)
 	{
 		NIST_INT64 acc;	/* accumulator */
-		unsigned int *rp = (unsigned int *)r_d;
-		const unsigned int *bp = (const unsigned int *)buf.ui;
+		unsigned int bbuf[BN_NIST_384_TOP *
+		    sizeof(BN_ULONG) / sizeof(unsigned int)];
+		unsigned int rbuf[BN_NIST_384_TOP *
+		    sizeof(BN_ULONG) / sizeof(unsigned int)];
+		const unsigned int *bp = bbuf;
+		unsigned int *rp = rbuf;
+
+		CTASSERT(sizeof(bbuf) == sizeof(bnbuf));
+		CTASSERT(sizeof(rbuf) == sizeof(bnbuf));
+
+		/*
+		 * Avoid strict aliasing violations by copying from an unsigned
+		 * long array to an unsigned int array, then copying back the
+		 * result. Any sensible compiler will omit the copies, while
+		 * avoiding undefined behaviour that would result from unsafe
+		 * type punning via pointer type casting.
+		 */
+		memcpy(bbuf, bnbuf, sizeof(bbuf));
+		memcpy(rbuf, r_d, sizeof(rbuf));
 
 		acc = rp[0];
 		acc += bp[12 - 12];
@@ -1132,6 +1196,8 @@ BN_nist_mod_384(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 		acc -= bp[22 - 12];
 		rp[11] = (unsigned int)acc;
 
+		memcpy(r_d, rbuf, sizeof(rbuf));
+
 		carry = (int)(acc >> 32);
 	}
 #else
@@ -1139,7 +1205,7 @@ BN_nist_mod_384(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 		BN_ULONG t_d[BN_NIST_384_TOP] = {0};
 
 		/*S1*/
-		nist_set_256(t_d, buf.bn, 0, 0, 0, 0, 0, 23 - 4, 22 - 4,
+		nist_set_256(t_d, bnbuf, 0, 0, 0, 0, 0, 23 - 4, 22 - 4,
 		    21 - 4);
 		/* left shift */
 		{
@@ -1156,49 +1222,48 @@ BN_nist_mod_384(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 		carry = (int)bn_add_words(r_d + (128 / BN_BITS2),
 		    r_d + (128 / BN_BITS2), t_d, BN_NIST_256_TOP);
 		/*S2 */
-		carry += (int)bn_add_words(r_d, r_d, buf.bn, BN_NIST_384_TOP);
+		carry += (int)bn_add_words(r_d, r_d, bnbuf, BN_NIST_384_TOP);
 		/*S3*/
-		nist_set_384(t_d, buf.bn, 20, 19, 18, 17, 16, 15, 14, 13, 12,
+		nist_set_384(t_d, bnbuf, 20, 19, 18, 17, 16, 15, 14, 13, 12,
 		    23, 22, 21);
 		carry += (int)bn_add_words(r_d, r_d, t_d, BN_NIST_384_TOP);
 		/*S4*/
-		nist_set_384(t_d, buf.bn, 19, 18, 17, 16, 15, 14, 13, 12, 20,
+		nist_set_384(t_d, bnbuf, 19, 18, 17, 16, 15, 14, 13, 12, 20,
 		    0, 23, 0);
 		carry += (int)bn_add_words(r_d, r_d, t_d, BN_NIST_384_TOP);
 		/*S5*/
-		nist_set_384(t_d, buf.bn, 0,0, 0,0, 23, 22, 21, 20, 0,0, 0, 0);
+		nist_set_384(t_d, bnbuf, 0,0, 0,0, 23, 22, 21, 20, 0,0, 0, 0);
 		carry += (int)bn_add_words(r_d, r_d, t_d, BN_NIST_384_TOP);
 		/*S6*/
-		nist_set_384(t_d, buf.bn, 0,0, 0,0, 0,0, 23, 22, 21, 0,0, 20);
+		nist_set_384(t_d, bnbuf, 0,0, 0,0, 0,0, 23, 22, 21, 0,0, 20);
 		carry += (int)bn_add_words(r_d, r_d, t_d, BN_NIST_384_TOP);
 		/*D1*/
-		nist_set_384(t_d, buf.bn, 22, 21, 20, 19, 18, 17, 16, 15, 14,
+		nist_set_384(t_d, bnbuf, 22, 21, 20, 19, 18, 17, 16, 15, 14,
 		    13, 12, 23);
 		carry -= (int)bn_sub_words(r_d, r_d, t_d, BN_NIST_384_TOP);
 		/*D2*/
-		nist_set_384(t_d, buf.bn, 0,0, 0,0, 0,0, 0,23, 22, 21, 20, 0);
+		nist_set_384(t_d, bnbuf, 0,0, 0,0, 0,0, 0,23, 22, 21, 20, 0);
 		carry -= (int)bn_sub_words(r_d, r_d, t_d, BN_NIST_384_TOP);
 		/*D3*/
-		nist_set_384(t_d, buf.bn, 0,0, 0,0, 0,0, 0,23, 23, 0,0, 0);
+		nist_set_384(t_d, bnbuf, 0,0, 0,0, 0,0, 0,23, 23, 0,0, 0);
 		carry -= (int)bn_sub_words(r_d, r_d, t_d, BN_NIST_384_TOP);
 
 	}
 #endif
 	/* see BN_nist_mod_224 for explanation */
-	u.f = bn_sub_words;
+	addsubf = bn_sub_words;
 	if (carry > 0)
 		carry = (int)bn_sub_words(r_d, r_d, _nist_p_384[carry - 1],
 		    BN_NIST_384_TOP);
 	else if (carry < 0) {
 		carry = (int)bn_add_words(r_d, r_d, _nist_p_384[-carry - 1],
 		    BN_NIST_384_TOP);
-		mask = 0 - (uintptr_t)carry;
-		u.p = ((uintptr_t)bn_sub_words & mask) |
-		    ((uintptr_t)bn_add_words & ~mask);
+		if (carry == 0)
+			addsubf = bn_add_words;
 	} else
 		carry = 1;
 
-	mask = 0 - (uintptr_t)(*u.f)(c_d, r_d, _nist_p_384[0], BN_NIST_384_TOP);
+	mask = 0 - (uintptr_t)(*addsubf)(c_d, r_d, _nist_p_384[0], BN_NIST_384_TOP);
 	mask &= 0 - (uintptr_t)carry;
 	res = c_d;
 	res = (BN_ULONG *)(((uintptr_t)res & ~mask) | ((uintptr_t)r_d & mask));
@@ -1216,16 +1281,13 @@ BN_nist_mod_384(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 int
 BN_nist_mod_521(BIGNUM *r, const BIGNUM *a, const BIGNUM *field, BN_CTX *ctx)
 {
-	int top = a->top, i;
-	BN_ULONG *r_d, *a_d = a->d, t_d[BN_NIST_521_TOP], val, tmp, *res;
+	BN_ULONG t_d[BN_NIST_521_TOP] = { 0 };
+	BN_ULONG *a_d = a->d;
+	BN_ULONG *r_d, *res;
+	BN_ULONG tmp, val;
 	uintptr_t mask;
-	static const BIGNUM _bignum_nist_p_521_sqr = {
-		(BN_ULONG *)_nist_p_521_sqr,
-		sizeof(_nist_p_521_sqr) / sizeof(_nist_p_521_sqr[0]),
-		sizeof(_nist_p_521_sqr) / sizeof(_nist_p_521_sqr[0]),
-		0,
-		BN_FLG_STATIC_DATA
-	};
+	int top = a->top;
+	int i;
 
 	field = &_bignum_nist_p_521; /* just to make sure */
 

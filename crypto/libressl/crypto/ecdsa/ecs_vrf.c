@@ -1,4 +1,4 @@
-/* $OpenBSD: ecs_vrf.c,v 1.7 2019/01/19 01:12:48 tb Exp $ */
+/* $OpenBSD: ecs_vrf.c,v 1.9 2022/01/27 20:30:29 tb Exp $ */
 /*
  * Written by Nils Larsch for the OpenSSL project
  */
@@ -60,11 +60,15 @@
 #include <openssl/err.h>	/* for EVP_R_METHOD_NOT_SUPPORTED */
 #include <openssl/evp.h>	/* for ECDSAerror() */
 
-#include "ecs_locl.h"
-#include "ec_lcl.h"
 #ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
 #endif
+#include <openssl/err.h>
+#include <openssl/evp.h>
+
+#include "bn_lcl.h"
+#include "ecs_locl.h"
+#include "ec_lcl.h"
 
 /* returns
  *      1: correct signature

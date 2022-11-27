@@ -1,4 +1,4 @@
-/*	$OpenBSD: dsa_meth.c,v 1.1 2018/03/17 15:19:12 tb Exp $	*/
+/*	$OpenBSD: dsa_meth.c,v 1.5 2022/07/11 05:33:14 bcook Exp $	*/
 /*
  * Copyright (c) 2018 Theo Buehler <tb@openbsd.org>
  *
@@ -21,6 +21,8 @@
 #include <openssl/dsa.h>
 #include <openssl/err.h>
 
+#include "dsa_locl.h"
+
 DSA_METHOD *
 DSA_meth_new(const char *name, int flags)
 {
@@ -40,10 +42,11 @@ DSA_meth_new(const char *name, int flags)
 void
 DSA_meth_free(DSA_METHOD *meth)
 {
-	if (meth != NULL) {
-		free((char *)meth->name);
-		free(meth);
-	}
+	if (meth == NULL)
+		return;
+
+	free(meth->name);
+	free(meth);
 }
 
 DSA_METHOD *
@@ -58,8 +61,30 @@ DSA_meth_dup(const DSA_METHOD *meth)
 		free(copy);
 		return NULL;
 	}
-	
+
 	return copy;
+}
+
+const char *
+DSA_meth_get0_name(const DSA_METHOD *meth)
+{
+	return meth->name;
+}
+
+int
+DSA_meth_set1_name(DSA_METHOD *meth, const char *name)
+{
+	char *new_name;
+
+	if ((new_name = strdup(name)) == NULL) {
+		DSAerror(ERR_R_MALLOC_FAILURE);
+		return 0;
+	}
+
+	free(meth->name);
+	meth->name = new_name;
+
+	return 1;
 }
 
 int

@@ -1,4 +1,4 @@
-.\" $OpenBSD: openssl.1,v 1.125 2020/07/14 09:52:46 inoguchi Exp $
+.\" $OpenBSD: openssl.1,v 1.139 2022/07/19 16:08:09 tb Exp $
 .\" ====================================================================
 .\" Copyright (c) 1998-2002 The OpenSSL Project.  All rights reserved.
 .\"
@@ -110,7 +110,7 @@
 .\" copied and put under another distribution licence
 .\" [including the GNU Public Licence.]
 .\"
-.Dd $Mdocdate: July 14 2020 $
+.Dd $Mdocdate: July 19 2022 $
 .Dt OPENSSL 1
 .Os
 .Sh NAME
@@ -272,7 +272,7 @@ If an OID
 .Pq object identifier
 is not part of
 .Nm openssl Ns 's
-internal table it will be represented in
+internal table, it will be represented in
 numerical form
 .Pq for example 1.2.3.4 .
 .Pp
@@ -843,6 +843,11 @@ is given,
 several valid certificate entries may have the exact same subject.
 The default value is
 .Cm yes .
+.Pp
+Note that it is valid in some circumstances for certificates to be created
+without any subject.
+In cases where there are multiple certificates without
+subjects this does not count as a duplicate.
 .It Cm x509_extensions
 The same as
 .Fl extensions .
@@ -905,7 +910,11 @@ Specify the directories to process.
 .Tg ciphers
 .Sh CIPHERS
 .Nm openssl ciphers
-.Op Fl hVv
+.Op Fl hsVv
+.Op Fl tls1
+.Op Fl tls1_1
+.Op Fl tls1_2
+.Op Fl tls1_3
 .Op Ar control
 .Pp
 The
@@ -925,6 +934,13 @@ The options are as follows:
 .Bl -tag -width Ds
 .It Fl h , \&?
 Print a brief usage message.
+.It Fl s
+Only list ciphers that are supported by the TLS method.
+.It Fl tls1 | tls1_1 | tls1_2 | tls1_3
+In combination with the
+.Fl s
+option, list the ciphers which could be used
+if the specified protocol version were negotiated.
 .It Fl V
 Verbose.
 List ciphers with cipher suite code in hex format,
@@ -1121,7 +1137,7 @@ commands.
 .It Fl binary
 Normally the input message is converted to "canonical" format which is
 effectively using CR/LF as end of line, as required by the S/MIME specification.
-When this option is present no translation occurs.
+When this option is present, no translation occurs.
 This is useful when handling binary data which may not be in MIME format.
 .It Fl CAfile Ar file
 A file containing trusted CA certificates, used with
@@ -1141,8 +1157,8 @@ should be linked to each certificate.
 One or more certificates of message recipients: used when encrypting a message.
 .It Fl certfile Ar file
 Allows additional certificates to be specified.
-When signing these will be included with the message.
-When verifying these will be searched for the signer's certificates.
+When signing, these will be included with the message.
+When verifying, these will be searched for the signer's certificates.
 The certificates should be in PEM format.
 .It Fl certsout Ar file
 A file that any certificates contained in the message are written to.
@@ -1193,7 +1209,7 @@ email address matches that specified in the From: address.
 .It Fl econtent_type Ar type
 Set the encapsulated content type, used with
 .Fl sign .
-If not supplied the Data type is used.
+If not supplied, the Data type is used.
 The type argument can be any valid OID name in either text or numerical format.
 .It Fl in Ar file
 The input message to be encrypted or signed or the message to be decrypted or
@@ -1222,7 +1238,7 @@ the certificate file specified with the
 or
 .Fl signer
 file.
-When signing this option can be used multiple times to specify successive keys.
+When signing, this option can be used multiple times to specify successive keys.
 .It Fl keyform Cm der | pem
 Input private key format.
 The default is
@@ -1265,7 +1281,7 @@ the
 .Fl certfile
 option for example).
 .It Fl nodetach
-When signing a message use opaque signing.
+When signing a message, use opaque signing.
 This form is more resistant to translation by mail relays but it cannot be
 read by mail agents that do not support S/MIME.
 Without this option cleartext signing with the MIME type multipart/signed is
@@ -1274,7 +1290,7 @@ used.
 Only the certificates specified in the
 .Fl certfile
 option are used.
-When verifying a message normally certificates (if any) included in the
+When verifying a message, normally certificates (if any) included in the
 message are searched for the signing certificate.
 The supplied certificates can still be used as untrusted CAs however.
 .It Fl nooldmime
@@ -1349,10 +1365,10 @@ operation.
 Add an explicit email address where signed receipts should be sent to.
 This option must be supplied if a signed receipt is requested.
 .It Fl recip Ar file
-When decrypting a message this specifies the recipient's certificate.
+When decrypting a message, this specifies the recipient's certificate.
 The certificate must match one of the recipients of the message or an
 error occurs.
-When encrypting a message this option may be used multiple times to
+When encrypting a message, this option may be used multiple times to
 specify each recipient.
 This form must be used if customised parameters are required (for example to
 specify RSA-OAEP).
@@ -1372,7 +1388,7 @@ operations.
 When used with
 .Fl encrypt
 or
-.Fl decrypt
+.Fl decrypt ,
 the supplied key is used to wrap or unwrap the content encryption key
 using an AES key in the KEKRecipientInfo type.
 .It Fl secretkeyid Ar id
@@ -1413,7 +1429,7 @@ This option currently has no effect.
 .It Fl text
 Add plain text (text/plain) MIME headers to the supplied message if
 encrypting or signing.
-If decrypting or verifying it strips off text headers: if the decrypted
+If decrypting or verifying, it strips off text headers: if the decrypted
 or verified message is not of MIME type text/plain then an error occurs.
 .It Fl verify_retcode
 Set verification error code to exit code to indicate what verification error
@@ -1940,7 +1956,7 @@ forms and their components printed out.
 .Nm openssl
 uses the private key format specified in
 .Dq SEC 1: Elliptic Curve Cryptography
-.Pq Lk http://www.secg.org/ .
+.Pq Lk https://www.secg.org/ .
 To convert an
 EC private key into the PKCS#8 private key format use the
 .Nm pkcs8
@@ -1971,7 +1987,7 @@ Encrypt the private key with DES, triple DES, or
 any other cipher supported by
 .Nm openssl .
 A pass phrase is prompted for.
-If none of these options is specified the key is written in plain text.
+If none of these options are specified, the key is written in plain text.
 This means that using the
 .Nm ec
 utility to read in an encrypted key with no
@@ -1982,7 +1998,7 @@ These options can only be used with PEM format output files.
 .It Fl in Ar file
 The input file to read a key from,
 or standard input if not specified.
-If the key is encrypted a pass phrase will be prompted for.
+If the key is encrypted, a pass phrase will be prompted for.
 .It Fl inform Cm der | pem
 The input format.
 .It Fl noout
@@ -2275,7 +2291,7 @@ to use:
 this must be represented as a string comprised only of hex digits.
 .It Fl salt
 Use a salt in the key derivation routines (the default).
-When the salt is being used
+When the salt is being used,
 the first eight bytes of the encrypted data are reserved for the salt:
 it is randomly generated when encrypting a file and read from the
 encrypted file when it is decrypted.
@@ -2418,7 +2434,7 @@ The output format.
 .It Fl paramfile Ar file
 Some public key algorithms generate a private key based on a set of parameters,
 which can be supplied using this option.
-If this option is used the public key
+If this option is used, the public key
 algorithm used is determined by the parameters.
 This option must precede any
 .Fl pkeyopt
@@ -2491,7 +2507,10 @@ A
 .Sq \&.
 represents each number which has passed an initial sieve test;
 .Sq +
-means a number has passed a single round of the Miller-Rabin primality test.
+means a number has passed a single round of the Miller-Rabin primality test;
+.Sq *
+means the number has failed primality testing
+and needs to be generated afresh.
 A newline means that the number has passed all the prime tests
 (the actual number depends on the key size).
 .Pp
@@ -2702,7 +2721,7 @@ If an OCSP request is being created (using the
 .Fl cert
 and
 .Fl serial
-options)
+options),
 a nonce is automatically added; specifying
 .Fl no_nonce
 overrides this.
@@ -3298,7 +3317,7 @@ The MAC is used to check the file integrity but since it will normally
 have the same password as the keys and certificates it could also be attacked.
 By default, both MAC and encryption iteration counts are set to 2048;
 using these options the MAC and encryption iteration counts can be set to 1.
-Since this reduces the file security you should not use these options
+Since this reduces the file security, you should not use these options
 unless you really have to.
 Most software supports both MAC and key iteration counts.
 .It Fl out Ar file
@@ -3324,6 +3343,7 @@ is equivalent to
 .Bl -hang -width "openssl pkey"
 .It Nm openssl pkey
 .Bk -words
+.Op Fl check
 .Op Ar cipher
 .Op Fl in Ar file
 .Op Fl inform Cm der | pem
@@ -3332,6 +3352,7 @@ is equivalent to
 .Op Fl outform Cm der | pem
 .Op Fl passin Ar arg
 .Op Fl passout Ar arg
+.Op Fl pubcheck
 .Op Fl pubin
 .Op Fl pubout
 .Op Fl text
@@ -3347,6 +3368,8 @@ and their components printed out.
 .Pp
 The options are as follows:
 .Bl -tag -width Ds
+.It Fl check
+Check the validity of a key pair.
 .It Ar cipher
 Encrypt the private key with the specified cipher.
 Any algorithm name accepted by
@@ -3356,7 +3379,7 @@ is acceptable, such as
 .It Fl in Ar file
 The input file to read from,
 or standard input if not specified.
-If the key is encrypted a pass phrase will be prompted for.
+If the key is encrypted, a pass phrase will be prompted for.
 .It Fl inform Cm der | pem
 The input format.
 .It Fl noout
@@ -3372,6 +3395,9 @@ The output format.
 The key password source.
 .It Fl passout Ar arg
 The output file password source.
+.It Fl pubcheck
+Check the validity of a public key
+or the public component of a key pair.
 .It Fl pubin
 Read in a public key, not a private key.
 .It Fl pubout
@@ -3386,6 +3412,7 @@ even if a private key is being processed.
 .Tg pkeyparam
 .Sh PKEYPARAM
 .Cm openssl pkeyparam
+.Op Fl check
 .Op Fl in Ar file
 .Op Fl noout
 .Op Fl out Ar file
@@ -3398,6 +3425,8 @@ The key type is determined by the PEM headers.
 .Pp
 The options are as follows:
 .Bl -tag -width Ds
+.It Fl check
+check the correctness of parameters.
 .It Fl in Ar file
 The input file to read from,
 or standard input if not specified.
@@ -3529,8 +3558,8 @@ For pss
 mode only this option specifies the salt length.
 Two special values are supported:
 -1 sets the salt length to the digest length.
-When signing -2 sets the salt length to the maximum permissible value.
-When verifying -2 causes the salt length to be automatically determined
+When signing, -2 sets the salt length to the maximum permissible value.
+When verifying, -2 causes the salt length to be automatically determined
 based on the PSS block structure.
 .El
 .Pp
@@ -3641,7 +3670,6 @@ or standard output if not specified.
 .It Nm openssl req
 .Bk -words
 .Op Fl addext Ar ext
-.Op Fl asn1-kludge
 .Op Fl batch
 .Op Fl config Ar file
 .Op Fl days Ar n
@@ -3658,7 +3686,6 @@ or standard output if not specified.
 .Op Fl new
 .Op Fl newhdr
 .Op Fl newkey Ar arg
-.Op Fl no-asn1-kludge
 .Op Fl nodes
 .Op Fl noout
 .Op Fl out Ar file
@@ -3697,9 +3724,6 @@ option is present) or certificate request.
 The argument must have the form of a key=value pair as it would appear in a
 config file.
 This option can be given multiple times.
-.It Fl asn1-kludge
-Produce requests in an invalid format for certain picky CAs.
-Very few CAs still require the use of this option.
 .It Fl batch
 Non-interactive mode.
 .It Fl config Ar file
@@ -3789,7 +3813,7 @@ generates an RSA key
 in size.
 If
 .Ar nbits
-is omitted
+is omitted,
 the default key size is used.
 .Pp
 .No dsa : Ns Ar file
@@ -3811,9 +3835,6 @@ can be omitted,
 in which case any parameters can be specified via the
 .Fl pkeyopt
 option.
-.It Fl no-asn1-kludge
-Reverse the effect of
-.Fl asn1-kludge .
 .It Fl nodes
 Do not encrypt the private key.
 .It Fl noout
@@ -4105,7 +4126,6 @@ Any additional fields will be treated as though they were a
 .Op Fl pvk-none | pvk-strong | pvk-weak
 .Op Fl RSAPublicKey_in
 .Op Fl RSAPublicKey_out
-.Op Fl sgckey
 .Op Fl text
 .Ek
 .El
@@ -4177,9 +4197,6 @@ and
 except
 .Cm RSAPublicKey
 format is used instead.
-.It Fl sgckey
-Use the modified NET algorithm used with some versions of Microsoft IIS
-and SGC keys.
 .It Fl text
 Print the public/private key components in plain text.
 .El
@@ -4277,7 +4294,9 @@ Verify the input data and output the recovered data.
 .Op Fl crl_check_all
 .Op Fl crlf
 .Op Fl debug
+.Op Fl dtls
 .Op Fl dtls1
+.Op Fl dtls1_2
 .Op Fl extended_crl
 .Op Fl groups Ar list
 .Op Fl host Ar host
@@ -4421,8 +4440,12 @@ Translate a line feed from the terminal into CR+LF,
 as required by some servers.
 .It Fl debug
 Print extensive debugging information, including a hex dump of all traffic.
+.It Fl dtls
+Permit any version of DTLS.
 .It Fl dtls1
 Permit only DTLS1.0.
+.It Fl dtls1_2
+Permit only DTLS1.2.
 .It Fl groups Ar list
 Set the supported elliptic curve groups to the colon separated
 .Ar list
@@ -4585,7 +4608,9 @@ will be used.
 .Op Fl dkey Ar file
 .Op Fl dkeyform Cm der | pem
 .Op Fl dpass Ar arg
+.Op Fl dtls
 .Op Fl dtls1
+.Op Fl dtls1_2
 .Op Fl groups Ar list
 .Op Fl HTTP
 .Op Fl id_prefix Ar arg
@@ -4596,6 +4621,7 @@ will be used.
 .Op Fl keymatexportlen Ar len
 .Op Fl msg
 .Op Fl mtu Ar mtu
+.Op Fl naccept Ar num
 .Op Fl named_curve Ar arg
 .Op Fl nbio
 .Op Fl nbio_test
@@ -4751,8 +4777,12 @@ load the parameters from the server certificate file.
 If this fails, a static set of parameters hard coded into the
 .Nm s_server
 program will be used.
+.It Fl dtls
+Permit any version of DTLS.
 .It Fl dtls1
 Permit only DTLS1.0.
+.It Fl dtls1_2
+Permit only DTLS1.2.
 .It Fl groups Ar list
 Set the supported elliptic curve groups to the colon separated
 .Ar list
@@ -4792,6 +4822,10 @@ Export len bytes of keying material (default 20).
 Show all protocol messages with hex dump.
 .It Fl mtu Ar mtu
 Set the link layer MTU.
+.It Fl naccept Ar num
+Terminate server after
+.Ar num
+connections.
 .It Fl named_curve Ar arg
 Specify the elliptic curve name to use for ephemeral ECDH keys.
 This option is deprecated; use
@@ -5202,7 +5236,7 @@ Normally, the input message is converted to
 .Qq canonical
 format which uses CR/LF as end of line,
 as required by the S/MIME specification.
-When this option is present no translation occurs.
+When this option is present, no translation occurs.
 This is useful when handling binary data which may not be in MIME format.
 .It Fl CAfile Ar file
 A
@@ -5304,7 +5338,7 @@ option, for example).
 Do not do chain verification of signers' certificates: that is,
 don't use the certificates in the signed message as untrusted CAs.
 .It Fl nodetach
-When signing a message use opaque signing: this form is more resistant
+When signing a message, use opaque signing: this form is more resistant
 to translation by mail relays but it cannot be read by mail agents that
 do not support S/MIME.
 Without this option cleartext signing with the MIME type
@@ -5601,7 +5635,7 @@ The policy that the client expects the TSA to use for creating the
 time stamp token.
 Either dotted OID notation or OID names defined
 in the config file can be used.
-If no policy is requested the TSA uses its own default policy.
+If no policy is requested, the TSA uses its own default policy.
 .It Fl text
 Output in human-readable text format instead of DER.
 .El
@@ -5641,7 +5675,7 @@ This option does not require a request;
 it is useful, for example,
 to examine the content of a response or token
 or to extract the time stamp token from a response.
-If the input is a token and the output is a time stamp response a default
+If the input is a token and the output is a time stamp response, a default
 .Qq granted
 status info is added to the token.
 .It Fl inkey Ar private.pem
@@ -5662,7 +5696,7 @@ The key password source.
 The default policy to use for the response.
 Either dotted OID notation or OID names defined
 in the config file can be used.
-If no policy is requested the TSA uses its own default policy.
+If no policy is requested, the TSA uses its own default policy.
 .It Fl queryfile Ar request.tsq
 The file containing a DER-encoded time stamp request.
 .It Fl section Ar tsa_section
@@ -5772,7 +5806,7 @@ for a description.
 The file containing the hexadecimal serial number of the
 last time stamp response created.
 This number is incremented by 1 for each response.
-If the file does not exist at the time of response generation
+If the file does not exist at the time of response generation,
 a new file is created with serial number 1.
 This parameter is mandatory.
 .It Cm signer_cert
@@ -5859,6 +5893,7 @@ The default is no.
 .Op Fl inhibit_any
 .Op Fl inhibit_map
 .Op Fl issuer_checks
+.Op Fl legacy_verify
 .Op Fl policy_check
 .Op Fl purpose Ar purpose
 .Op Fl trusted Ar file
@@ -5907,7 +5942,7 @@ The
 should contain one or more CRLs in PEM format.
 .It Fl crl_check
 Check end entity certificate validity by attempting to look up a valid CRL.
-If a valid CRL cannot be found an error occurs.
+If a valid CRL cannot be found, an error occurs.
 .It Fl crl_check_all
 Check the validity of all certificates in the chain by attempting
 to look up valid CRLs.
@@ -5931,6 +5966,8 @@ showing why each candidate issuer certificate was rejected.
 The presence of rejection messages
 does not itself imply that anything is wrong:
 during the normal verify process several rejections may take place.
+.It Fl legacy_verify
+Use the legacy X.509 certificate chain verification code.
 .It Fl policy_check
 Enable certificate policy processing.
 .It Fl purpose Ar purpose
@@ -6560,7 +6597,7 @@ Print the full certificate in text form.
 A trusted certificate is a certificate which has several
 additional pieces of information attached to it such as the permitted
 and prohibited uses of the certificate and an alias.
-When a certificate is being verified at least one certificate must be trusted.
+When a certificate is being verified, at least one certificate must be trusted.
 By default, a trusted certificate must be stored locally and be a root CA.
 The following are x509 trust settings options:
 .Bl -tag -width "XXXX"

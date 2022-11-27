@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl_asn1.c,v 1.57 2018/08/27 16:42:48 jsing Exp $ */
+/* $OpenBSD: ssl_asn1.c,v 1.65 2022/06/07 17:53:42 tb Exp $ */
 /*
  * Copyright (c) 2016 Joel Sing <jsing@openbsd.org>
  *
@@ -20,9 +20,8 @@
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
 
-#include "ssl_locl.h"
-
 #include "bytestring.h"
+#include "ssl_locl.h"
 
 #define SSLASN1_TAG	(CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC)
 #define SSLASN1_TIME_TAG		(SSLASN1_TAG | 1)
@@ -72,7 +71,7 @@ SSL_SESSION_encode(SSL_SESSION *s, unsigned char **out, size_t *out_len,
 
 	/* Cipher suite ID. */
 	/* XXX - require cipher to be non-NULL or always/only use cipher_id. */
-	cid = (uint16_t)(s->cipher_id & 0xffff);
+	cid = (uint16_t)(s->cipher_id & SSL3_CK_VALUE_MASK);
 	if (s->cipher != NULL)
 		cid = ssl3_cipher_get_value(s->cipher);
 	if (!CBB_add_asn1(&session, &cipher_suite, CBS_ASN1_OCTETSTRING))
@@ -114,8 +113,8 @@ SSL_SESSION_encode(SSL_SESSION *s, unsigned char **out, size_t *out_len,
 	}
 
 	/* Peer certificate [3]. */
-	if (s->peer != NULL) {
-		if ((len = i2d_X509(s->peer, &peer_cert_bytes)) <= 0)
+	if (s->peer_cert != NULL) {
+		if ((len = i2d_X509(s->peer_cert, &peer_cert_bytes)) <= 0)
 			goto err;
 		if (!CBB_add_asn1(&session, &peer_cert, SSLASN1_PEER_CERT_TAG))
 			goto err;
@@ -296,21 +295,15 @@ d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp, long length)
 	if (!CBS_get_asn1(&session, &session_id, CBS_ASN1_OCTETSTRING))
 		goto err;
 	if (!CBS_write_bytes(&session_id, s->session_id, sizeof(s->session_id),
-	    &data_len))
+	    &s->session_id_length))
 		goto err;
-	if (data_len > UINT_MAX)
-		goto err;
-	s->session_id_length = (unsigned int)data_len;
 
 	/* Master key. */
 	if (!CBS_get_asn1(&session, &master_key, CBS_ASN1_OCTETSTRING))
 		goto err;
 	if (!CBS_write_bytes(&master_key, s->master_key, sizeof(s->master_key),
-	    &data_len))
+	    &s->master_key_length))
 		goto err;
-	if (data_len > INT_MAX)
-		goto err;
-	s->master_key_length = (int)data_len;
 
 	/* Time [1]. */
 	s->time = time(NULL);
@@ -331,10 +324,10 @@ d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp, long length)
 		goto err;
 	if (timeout != 0)
 		s->timeout = (long)timeout;
-	
+
 	/* Peer certificate [3]. */
-	X509_free(s->peer);
-	s->peer = NULL;
+	X509_free(s->peer_cert);
+	s->peer_cert = NULL;
 	if (!CBS_get_optional_asn1(&session, &peer_cert, &present,
 	    SSLASN1_PEER_CERT_TAG))
 		goto err;
@@ -343,7 +336,7 @@ d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp, long length)
 		if (data_len > LONG_MAX)
 			goto err;
 		peer_cert_bytes = CBS_data(&peer_cert);
-		if (d2i_X509(&s->peer, &peer_cert_bytes,
+		if (d2i_X509(&s->peer_cert, &peer_cert_bytes,
 		    (long)data_len) == NULL)
 			goto err;
 	}
@@ -355,11 +348,8 @@ d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp, long length)
 		goto err;
 	if (present) {
 		if (!CBS_write_bytes(&session_id, (uint8_t *)&s->sid_ctx,
-		    sizeof(s->sid_ctx), &data_len))
+		    sizeof(s->sid_ctx), &s->sid_ctx_length))
 			goto err;
-		if (data_len > UINT_MAX)
-			goto err;
-		s->sid_ctx_length = (unsigned int)data_len;
 	}
 
 	/* Verify result [5]. */
@@ -383,22 +373,19 @@ d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp, long length)
 		if (!CBS_strdup(&hostname, &s->tlsext_hostname))
 			goto err;
 	}
-	
+
 	/* PSK identity hint [7]. */
 	/* PSK identity [8]. */
 
 	/* Ticket lifetime [9]. */
 	s->tlsext_tick_lifetime_hint = 0;
-	/* XXX - tlsext_ticklen is not yet set... */
-	if (s->tlsext_ticklen > 0 && s->session_id_length > 0)
-		s->tlsext_tick_lifetime_hint = -1;
 	if (!CBS_get_optional_asn1_uint64(&session, &lifetime,
 	    SSLASN1_LIFETIME_TAG, 0))
 		goto err;
-	if (lifetime > LONG_MAX)
+	if (lifetime > UINT32_MAX)
 		goto err;
 	if (lifetime > 0)
-		s->tlsext_tick_lifetime_hint = (long)lifetime;
+		s->tlsext_tick_lifetime_hint = (uint32_t)lifetime;
 
 	/* Ticket [10]. */
 	free(s->tlsext_tick);
@@ -421,7 +408,7 @@ d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp, long length)
 
 	return (s);
 
-err:
+ err:
 	ERR_asprintf_error_data("offset=%d", (int)(CBS_data(&cbs) - *pp));
 
 	if (s != NULL && (a == NULL || *a != s))

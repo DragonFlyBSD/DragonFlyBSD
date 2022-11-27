@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_lib.c,v 1.2 2020/09/14 11:35:32 beck Exp $ */
+/* $OpenBSD: x509_lib.c,v 1.4 2022/07/24 21:41:29 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -64,6 +64,7 @@
 #include <openssl/x509v3.h>
 
 #include "ext_dat.h"
+#include "x509_lcl.h"
 
 static STACK_OF(X509V3_EXT_METHOD) *ext_list = NULL;
 
@@ -313,8 +314,9 @@ X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid, void *value,
 		}
 		/* If delete, just delete it */
 		if (ext_op == X509V3_ADD_DELETE) {
-			if (!sk_X509_EXTENSION_delete(*x, extidx))
+			if ((extmp = sk_X509_EXTENSION_delete(*x, extidx)) == NULL)
 				return -1;
+			X509_EXTENSION_free(extmp);
 			return 1;
 		}
 	} else {

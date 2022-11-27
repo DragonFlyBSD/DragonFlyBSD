@@ -1,4 +1,4 @@
-/* $OpenBSD: asn1_locl.h,v 1.12 2019/10/24 16:36:10 jsing Exp $ */
+/* $OpenBSD: asn1_locl.h,v 1.39 2022/09/11 17:22:52 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -56,12 +56,28 @@
  *
  */
 
+#include "bytestring.h"
+
 __BEGIN_HIDDEN_DECLS
 
 /* Internal ASN1 structures and functions: not for application use */
 
 ASN1_TYPE *ASN1_TYPE_pack_sequence(const ASN1_ITEM *it, void *s, ASN1_TYPE **t);
 void *ASN1_TYPE_unpack_sequence(const ASN1_ITEM *it, const ASN1_TYPE *t);
+
+/* These are used internally in the ASN1_OBJECT to keep track of
+ * whether the names and data need to be free()ed */
+#define ASN1_OBJECT_FLAG_DYNAMIC	 0x01	/* internal use */
+#define ASN1_OBJECT_FLAG_CRITICAL	 0x02	/* critical x509v3 object id */
+#define ASN1_OBJECT_FLAG_DYNAMIC_STRINGS 0x04	/* internal use */
+#define ASN1_OBJECT_FLAG_DYNAMIC_DATA	 0x08	/* internal use */
+struct asn1_object_st {
+	const char *sn, *ln;
+	int nid;
+	int length;
+	const unsigned char *data;	/* data remains const after init */
+	int flags;	/* Should we free this one */
+} /* ASN1_OBJECT */;
 
 /* ASN1 print context structure */
 
@@ -96,6 +112,7 @@ struct evp_pkey_asn1_method_st {
 
 	int (*pkey_size)(const EVP_PKEY *pk);
 	int (*pkey_bits)(const EVP_PKEY *pk);
+	int (*pkey_security_bits)(const EVP_PKEY *pk);
 
 	int (*param_decode)(EVP_PKEY *pkey, const unsigned char **pder,
 	    int derlen);
@@ -122,6 +139,9 @@ struct evp_pkey_asn1_method_st {
 	int (*item_sign)(EVP_MD_CTX *ctx, const ASN1_ITEM *it, void *asn,
 	    X509_ALGOR *alg1, X509_ALGOR *alg2, ASN1_BIT_STRING *sig);
 
+	int (*pkey_check)(const EVP_PKEY *pk);
+	int (*pkey_public_check)(const EVP_PKEY *pk);
+	int (*pkey_param_check)(const EVP_PKEY *pk);
 } /* EVP_PKEY_ASN1_METHOD */;
 
 /* Method to handle CRL access.
@@ -142,6 +162,23 @@ struct x509_crl_method_st {
 	int (*crl_verify)(X509_CRL *crl, EVP_PKEY *pk);
 };
 
+int asn1_get_choice_selector(ASN1_VALUE **pval, const ASN1_ITEM *it);
+int asn1_set_choice_selector(ASN1_VALUE **pval, int value, const ASN1_ITEM *it);
+
+ASN1_VALUE ** asn1_get_field_ptr(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt);
+
+const ASN1_TEMPLATE *asn1_do_adb(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt, int nullerr);
+
+int asn1_do_lock(ASN1_VALUE **pval, int op, const ASN1_ITEM *it);
+
+void asn1_enc_init(ASN1_VALUE **pval, const ASN1_ITEM *it);
+void asn1_enc_cleanup(ASN1_VALUE **pval, const ASN1_ITEM *it);
+int asn1_enc_save(ASN1_VALUE **pval, CBS *cbs, const ASN1_ITEM *it);
+int asn1_enc_restore(int *len, unsigned char **out, ASN1_VALUE **pval, const ASN1_ITEM *it);
+
+int i2d_ASN1_BOOLEAN(int a, unsigned char **pp);
+int d2i_ASN1_BOOLEAN(int *a, const unsigned char **pp, long length);
+
 /*
  * Unicode codepoint constants
  */
@@ -154,5 +191,47 @@ struct x509_crl_method_st {
 
 int UTF8_getc(const unsigned char *str, int len, unsigned long *val);
 int UTF8_putc(unsigned char *str, int len, unsigned long value);
+
+int asn1_d2i_read_bio(BIO *in, BUF_MEM **pb);
+
+int asn1_get_identifier_cbs(CBS *cbs, int der_mode, uint8_t *out_class,
+    int *out_constructed, uint32_t *out_tag_number);
+int asn1_get_length_cbs(CBS *cbs, int der_mode, int *out_indefinite,
+    size_t *out_length);
+int asn1_get_object_cbs(CBS *cbs, int der_mode, uint8_t *out_class,
+    int *out_constructed, uint32_t *out_tag_number, int *out_indefinite,
+    size_t *out_length);
+int asn1_get_primitive(CBS *cbs, int der_mode, uint32_t *out_tag_number,
+    CBS *out_content);
+
+int asn1_must_be_constructed(int tag);
+int asn1_must_be_primitive(int tag);
+int asn1_tag2charwidth(int tag);
+
+int asn1_abs_set_unused_bits(ASN1_BIT_STRING *abs, uint8_t unused_bits);
+int c2i_ASN1_BIT_STRING_cbs(ASN1_BIT_STRING **out_abs, CBS *cbs);
+
+int c2i_ASN1_ENUMERATED_cbs(ASN1_ENUMERATED **out_aenum, CBS *cbs);
+
+int asn1_aint_get_uint64(CBS *cbs, uint64_t *out_val);
+int asn1_aint_set_uint64(uint64_t val, uint8_t **out_data, int *out_len);
+int asn1_aint_get_int64(CBS *cbs, int negative, int64_t *out_val);
+int c2i_ASN1_INTEGER_cbs(ASN1_INTEGER **out_aint, CBS *cbs);
+
+int c2i_ASN1_OBJECT_cbs(ASN1_OBJECT **out_aobj, CBS *content);
+int i2t_ASN1_OBJECT_internal(const ASN1_OBJECT *aobj, char *buf, int buf_len,
+    int no_name);
+ASN1_OBJECT *t2i_ASN1_OBJECT_internal(const char *oid);
+
+int asn1_time_parse_cbs(const CBS *cbs, int is_gentime, struct tm *out_tm);
+
+ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
+    long length);
+int i2c_ASN1_BIT_STRING(ASN1_BIT_STRING *a, unsigned char **pp);
+ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
+    const unsigned char **pp, long length);
+int i2c_ASN1_INTEGER(ASN1_INTEGER *a, unsigned char **pp);
+ASN1_INTEGER *c2i_ASN1_INTEGER(ASN1_INTEGER **a, const unsigned char **pp,
+    long length);
 
 __END_HIDDEN_DECLS

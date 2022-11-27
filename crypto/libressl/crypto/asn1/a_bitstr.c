@@ -1,4 +1,4 @@
-/* $OpenBSD: a_bitstr.c,v 1.30 2020/09/03 17:19:27 tb Exp $ */
+/* $OpenBSD: a_bitstr.c,v 1.36 2022/05/17 09:17:20 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -56,16 +56,180 @@
  * [including the GNU Public Licence.]
  */
 
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
 #include <openssl/asn1.h>
+#include <openssl/asn1t.h>
+#include <openssl/conf.h>
 #include <openssl/err.h>
+#include <openssl/x509v3.h>
+
+#include "bytestring.h"
+
+const ASN1_ITEM ASN1_BIT_STRING_it = {
+	.itype = ASN1_ITYPE_PRIMITIVE,
+	.utype = V_ASN1_BIT_STRING,
+	.sname = "ASN1_BIT_STRING",
+};
+
+ASN1_BIT_STRING *
+ASN1_BIT_STRING_new(void)
+{
+	return (ASN1_BIT_STRING *)ASN1_item_new(&ASN1_BIT_STRING_it);
+}
+
+void
+ASN1_BIT_STRING_free(ASN1_BIT_STRING *a)
+{
+	ASN1_item_free((ASN1_VALUE *)a, &ASN1_BIT_STRING_it);
+}
+
+static void
+asn1_abs_clear_unused_bits(ASN1_BIT_STRING *abs)
+{
+	abs->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07);
+}
+
+int
+asn1_abs_set_unused_bits(ASN1_BIT_STRING *abs, uint8_t unused_bits)
+{
+	if (unused_bits > 7)
+		return 0;
+
+	asn1_abs_clear_unused_bits(abs);
+
+	abs->flags |= ASN1_STRING_FLAG_BITS_LEFT | unused_bits;
+
+	return 1;
+}
 
 int
 ASN1_BIT_STRING_set(ASN1_BIT_STRING *x, unsigned char *d, int len)
 {
 	return ASN1_STRING_set(x, d, len);
+}
+
+int
+ASN1_BIT_STRING_set_bit(ASN1_BIT_STRING *a, int n, int value)
+{
+	int w, v, iv;
+	unsigned char *c;
+
+	w = n/8;
+	v = 1 << (7 - (n & 0x07));
+	iv = ~v;
+	if (!value)
+		v = 0;
+
+	if (a == NULL)
+		return 0;
+
+	asn1_abs_clear_unused_bits(a);
+
+	if ((a->length < (w + 1)) || (a->data == NULL)) {
+		if (!value)
+			return(1); /* Don't need to set */
+		if ((c = recallocarray(a->data, a->length, w + 1, 1)) == NULL) {
+			ASN1error(ERR_R_MALLOC_FAILURE);
+			return 0;
+		}
+		a->data = c;
+		a->length = w + 1;
+	}
+	a->data[w] = ((a->data[w]) & iv) | v;
+	while ((a->length > 0) && (a->data[a->length - 1] == 0))
+		a->length--;
+
+	return (1);
+}
+
+int
+ASN1_BIT_STRING_get_bit(const ASN1_BIT_STRING *a, int n)
+{
+	int w, v;
+
+	w = n / 8;
+	v = 1 << (7 - (n & 0x07));
+	if ((a == NULL) || (a->length < (w + 1)) || (a->data == NULL))
+		return (0);
+	return ((a->data[w] & v) != 0);
+}
+
+/*
+ * Checks if the given bit string contains only bits specified by
+ * the flags vector. Returns 0 if there is at least one bit set in 'a'
+ * which is not specified in 'flags', 1 otherwise.
+ * 'len' is the length of 'flags'.
+ */
+int
+ASN1_BIT_STRING_check(const ASN1_BIT_STRING *a, const unsigned char *flags,
+    int flags_len)
+{
+	int i, ok;
+
+	/* Check if there is one bit set at all. */
+	if (!a || !a->data)
+		return 1;
+
+	/* Check each byte of the internal representation of the bit string. */
+	ok = 1;
+	for (i = 0; i < a->length && ok; ++i) {
+		unsigned char mask = i < flags_len ? ~flags[i] : 0xff;
+		/* We are done if there is an unneeded bit set. */
+		ok = (a->data[i] & mask) == 0;
+	}
+	return ok;
+}
+
+int
+ASN1_BIT_STRING_name_print(BIO *out, ASN1_BIT_STRING *bs,
+    BIT_STRING_BITNAME *tbl, int indent)
+{
+	BIT_STRING_BITNAME *bnam;
+	char first = 1;
+
+	BIO_printf(out, "%*s", indent, "");
+	for (bnam = tbl; bnam->lname; bnam++) {
+		if (ASN1_BIT_STRING_get_bit(bs, bnam->bitnum)) {
+			if (!first)
+				BIO_puts(out, ", ");
+			BIO_puts(out, bnam->lname);
+			first = 0;
+		}
+	}
+	BIO_puts(out, "\n");
+	return 1;
+}
+
+int
+ASN1_BIT_STRING_set_asc(ASN1_BIT_STRING *bs, const char *name, int value,
+    BIT_STRING_BITNAME *tbl)
+{
+	int bitnum;
+
+	bitnum = ASN1_BIT_STRING_num_asc(name, tbl);
+	if (bitnum < 0)
+		return 0;
+	if (bs) {
+		if (!ASN1_BIT_STRING_set_bit(bs, bitnum, value))
+			return 0;
+	}
+	return 1;
+}
+
+int
+ASN1_BIT_STRING_num_asc(const char *name, BIT_STRING_BITNAME *tbl)
+{
+	BIT_STRING_BITNAME *bnam;
+
+	for (bnam = tbl; bnam->lname; bnam++) {
+		if (!strcmp(bnam->sname, name) ||
+		    !strcmp(bnam->lname, name))
+			return bnam->bitnum;
+	}
+	return -1;
 }
 
 int
@@ -127,138 +291,101 @@ i2c_ASN1_BIT_STRING(ASN1_BIT_STRING *a, unsigned char **pp)
 	return (ret);
 }
 
-ASN1_BIT_STRING *
-c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a, const unsigned char **pp, long len)
+int
+c2i_ASN1_BIT_STRING_cbs(ASN1_BIT_STRING **out_abs, CBS *cbs)
 {
-	ASN1_BIT_STRING *ret = NULL;
-	const unsigned char *p;
-	unsigned char *s;
-	int i;
+	ASN1_BIT_STRING *abs = NULL;
+	uint8_t *data = NULL;
+	size_t data_len = 0;
+	uint8_t unused_bits;
+	int ret = 0;
 
-	if (len < 1) {
+	if (out_abs == NULL)
+		goto err;
+
+	if (*out_abs != NULL) {
+		ASN1_BIT_STRING_free(*out_abs);
+		*out_abs = NULL;
+	}
+
+	if (!CBS_get_u8(cbs, &unused_bits)) {
 		ASN1error(ASN1_R_STRING_TOO_SHORT);
 		goto err;
 	}
 
-	if (a == NULL || *a == NULL) {
-		if ((ret = ASN1_BIT_STRING_new()) == NULL)
-			return (NULL);
-	} else
-		ret = *a;
-
-	p = *pp;
-	i = *(p++);
-	if (i > 7) {
-		ASN1error(ASN1_R_INVALID_BIT_STRING_BITS_LEFT);
+	if (!CBS_stow(cbs, &data, &data_len))
 		goto err;
-	}
+	if (data_len > INT_MAX)
+		goto err;
+
+	if ((abs = ASN1_BIT_STRING_new()) == NULL)
+		goto err;
+
+	abs->data = data;
+	abs->length = (int)data_len;
+	data = NULL;
 
 	/*
 	 * We do this to preserve the settings. If we modify the settings,
 	 * via the _set_bit function, we will recalculate on output.
 	 */
-	ret->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07); /* clear */
-	ret->flags |= (ASN1_STRING_FLAG_BITS_LEFT | i); /* set */
+	if (!asn1_abs_set_unused_bits(abs, unused_bits)) {
+		ASN1error(ASN1_R_INVALID_BIT_STRING_BITS_LEFT);
+		goto err;
+	}
+	if (abs->length > 0)
+		abs->data[abs->length - 1] &= 0xff << unused_bits;
 
-	/* using one because of the bits left byte */
-	if (len-- > 1) {
-		if ((s = malloc(len)) == NULL) {
-			ASN1error(ERR_R_MALLOC_FAILURE);
-			goto err;
-		}
-		memcpy(s, p, len);
-		s[len - 1] &= (0xff << i);
-		p += len;
-	} else
-		s = NULL;
+	*out_abs = abs;
+	abs = NULL;
 
-	free(ret->data);
-	ret->data = s;
-	ret->length = (int)len;
-	ret->type = V_ASN1_BIT_STRING;
-
-	if (a != NULL)
-		*a = ret;
-
-	*pp = p;
-
-	return (ret);
+	ret = 1;
 
  err:
-	if (a == NULL || *a != ret)
-		ASN1_BIT_STRING_free(ret);
+	ASN1_BIT_STRING_free(abs);
+	freezero(data, data_len);
 
-	return (NULL);
+	return ret;
 }
 
-int
-ASN1_BIT_STRING_set_bit(ASN1_BIT_STRING *a, int n, int value)
+ASN1_BIT_STRING *
+c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **out_abs, const unsigned char **pp, long len)
 {
-	int w, v, iv;
-	unsigned char *c;
+	ASN1_BIT_STRING *abs = NULL;
+	CBS content;
 
-	w = n/8;
-	v = 1 << (7 - (n & 0x07));
-	iv = ~v;
-	if (!value)
-		v = 0;
-
-	if (a == NULL)
-		return 0;
-
-	a->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07); /* clear, set on write */
-
-	if ((a->length < (w + 1)) || (a->data == NULL)) {
-		if (!value)
-			return(1); /* Don't need to set */
-		if ((c = recallocarray(a->data, a->length, w + 1, 1)) == NULL) {
-			ASN1error(ERR_R_MALLOC_FAILURE);
-			return 0;
-		}
-		a->data = c;
-		a->length = w + 1;
+	if (out_abs != NULL) {
+		ASN1_BIT_STRING_free(*out_abs);
+		*out_abs = NULL;
 	}
-	a->data[w] = ((a->data[w]) & iv) | v;
-	while ((a->length > 0) && (a->data[a->length - 1] == 0))
-		a->length--;
 
-	return (1);
-}
-
-int
-ASN1_BIT_STRING_get_bit(const ASN1_BIT_STRING *a, int n)
-{
-	int w, v;
-
-	w = n / 8;
-	v = 1 << (7 - (n & 0x07));
-	if ((a == NULL) || (a->length < (w + 1)) || (a->data == NULL))
-		return (0);
-	return ((a->data[w] & v) != 0);
-}
-
-/*
- * Checks if the given bit string contains only bits specified by
- * the flags vector. Returns 0 if there is at least one bit set in 'a'
- * which is not specified in 'flags', 1 otherwise.
- * 'len' is the length of 'flags'.
- */
-int
-ASN1_BIT_STRING_check(const ASN1_BIT_STRING *a, const unsigned char *flags,
-    int flags_len)
-{
-	int i, ok;
-
-	/* Check if there is one bit set at all. */
-	if (!a || !a->data)
-		return 1;
-
-	/* Check each byte of the internal representation of the bit string. */
-	ok = 1;
-	for (i = 0; i < a->length && ok; ++i) {
-		unsigned char mask = i < flags_len ? ~flags[i] : 0xff;
-		/* We are done if there is an unneeded bit set. */
-		ok = (a->data[i] & mask) == 0;
+	if (len < 0) {
+		ASN1error(ASN1_R_LENGTH_ERROR);
+		return NULL;
 	}
-	return ok;
+
+	CBS_init(&content, *pp, len);
+
+	if (!c2i_ASN1_BIT_STRING_cbs(&abs, &content))
+		return NULL;
+
+	*pp = CBS_data(&content);
+
+	if (out_abs != NULL)
+		*out_abs = abs;
+
+	return abs;
+}
+
+int
+i2d_ASN1_BIT_STRING(ASN1_BIT_STRING *a, unsigned char **out)
+{
+	return ASN1_item_i2d((ASN1_VALUE *)a, out, &ASN1_BIT_STRING_it);
+}
+
+ASN1_BIT_STRING *
+d2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a, const unsigned char **in, long len)
+{
+	return (ASN1_BIT_STRING *)ASN1_item_d2i((ASN1_VALUE **)a, in, len,
+	    &ASN1_BIT_STRING_it);
 }

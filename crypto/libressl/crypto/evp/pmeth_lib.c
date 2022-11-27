@@ -1,4 +1,4 @@
-/* $OpenBSD: pmeth_lib.c,v 1.16 2019/11/01 15:08:57 jsing Exp $ */
+/* $OpenBSD: pmeth_lib.c,v 1.22 2022/05/05 08:51:21 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -56,6 +56,7 @@
  *
  */
 
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -65,6 +66,7 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/objects.h>
+#include <openssl/x509v3.h>
 
 #ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
@@ -82,6 +84,7 @@ extern const EVP_PKEY_METHOD rsa_pkey_meth, rsa_pss_pkey_meth;
 extern const EVP_PKEY_METHOD dh_pkey_meth, dsa_pkey_meth;
 extern const EVP_PKEY_METHOD ec_pkey_meth, hmac_pkey_meth, cmac_pkey_meth;
 extern const EVP_PKEY_METHOD gostimit_pkey_meth, gostr01_pkey_meth;
+extern const EVP_PKEY_METHOD hkdf_pkey_meth;
 
 static const EVP_PKEY_METHOD *standard_methods[] = {
 #ifndef OPENSSL_NO_RSA
@@ -105,6 +108,7 @@ static const EVP_PKEY_METHOD *standard_methods[] = {
 #ifndef OPENSSL_NO_RSA
 	&rsa_pss_pkey_meth,
 #endif
+	&hkdf_pkey_meth,
 };
 
 static int pmeth_cmp_BSEARCH_CMP_FN(const void *, const void *);
@@ -224,38 +228,11 @@ EVP_PKEY_meth_new(int id, int flags)
 {
 	EVP_PKEY_METHOD *pmeth;
 
-	pmeth = calloc(1, sizeof(EVP_PKEY_METHOD));
-	if (!pmeth)
+	if ((pmeth = calloc(1, sizeof(EVP_PKEY_METHOD))) == NULL)
 		return NULL;
 
 	pmeth->pkey_id = id;
 	pmeth->flags = flags | EVP_PKEY_FLAG_DYNAMIC;
-
-	pmeth->init = 0;
-	pmeth->copy = 0;
-	pmeth->cleanup = 0;
-	pmeth->paramgen_init = 0;
-	pmeth->paramgen = 0;
-	pmeth->keygen_init = 0;
-	pmeth->keygen = 0;
-	pmeth->sign_init = 0;
-	pmeth->sign = 0;
-	pmeth->verify_init = 0;
-	pmeth->verify = 0;
-	pmeth->verify_recover_init = 0;
-	pmeth->verify_recover = 0;
-	pmeth->signctx_init = 0;
-	pmeth->signctx = 0;
-	pmeth->verifyctx_init = 0;
-	pmeth->verifyctx = 0;
-	pmeth->encrypt_init = 0;
-	pmeth->encrypt = 0;
-	pmeth->decrypt_init = 0;
-	pmeth->decrypt = 0;
-	pmeth->derive_init = 0;
-	pmeth->derive = 0;
-	pmeth->ctrl = 0;
-	pmeth->ctrl_str = 0;
 
 	return pmeth;
 }
@@ -272,42 +249,15 @@ EVP_PKEY_meth_get0_info(int *ppkey_id, int *pflags, const EVP_PKEY_METHOD *meth)
 void
 EVP_PKEY_meth_copy(EVP_PKEY_METHOD *dst, const EVP_PKEY_METHOD *src)
 {
-	dst->init = src->init;
-	dst->copy = src->copy;
-	dst->cleanup = src->cleanup;
+	EVP_PKEY_METHOD preserve;
 
-	dst->paramgen_init = src->paramgen_init;
-	dst->paramgen = src->paramgen;
+	preserve.pkey_id = dst->pkey_id;
+	preserve.flags = dst->flags;
 
-	dst->keygen_init = src->keygen_init;
-	dst->keygen = src->keygen;
+	*dst = *src;
 
-	dst->sign_init = src->sign_init;
-	dst->sign = src->sign;
-
-	dst->verify_init = src->verify_init;
-	dst->verify = src->verify;
-
-	dst->verify_recover_init = src->verify_recover_init;
-	dst->verify_recover = src->verify_recover;
-
-	dst->signctx_init = src->signctx_init;
-	dst->signctx = src->signctx;
-
-	dst->verifyctx_init = src->verifyctx_init;
-	dst->verifyctx = src->verifyctx;
-
-	dst->encrypt_init = src->encrypt_init;
-	dst->encrypt = src->encrypt;
-
-	dst->decrypt_init = src->decrypt_init;
-	dst->decrypt = src->decrypt;
-
-	dst->derive_init = src->derive_init;
-	dst->derive = src->derive;
-
-	dst->ctrl = src->ctrl;
-	dst->ctrl_str = src->ctrl_str;
+	dst->pkey_id = preserve.pkey_id;
+	dst->flags = preserve.flags;
 }
 
 void
@@ -446,6 +396,38 @@ EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, const char *name, const char *value)
 		    EVP_PKEY_CTRL_MD, value);
 	}
 	return ctx->pmeth->ctrl_str(ctx, name, value);
+}
+
+int
+EVP_PKEY_CTX_str2ctrl(EVP_PKEY_CTX *ctx, int cmd, const char *str)
+{
+	size_t len;
+
+	if ((len = strlen(str)) > INT_MAX)
+		return -1;
+
+	return ctx->pmeth->ctrl(ctx, cmd, len, (void *)str);
+}
+
+int
+EVP_PKEY_CTX_hex2ctrl(EVP_PKEY_CTX *ctx, int cmd, const char *hexstr)
+{
+	unsigned char *hex = NULL;
+	long length;
+	int ret = 0;
+
+	if ((hex = string_to_hex(hexstr, &length)) == NULL)
+		goto err;
+	if (length < 0 || length > INT_MAX) {
+		ret = -1;
+		goto err;
+	}
+
+	ret = ctx->pmeth->ctrl(ctx, cmd, length, hex);
+
+ err:
+	free(hex);
+	return ret;
 }
 
 int
@@ -635,4 +617,24 @@ EVP_PKEY_meth_set_ctrl(EVP_PKEY_METHOD *pmeth,
 {
 	pmeth->ctrl = ctrl;
 	pmeth->ctrl_str = ctrl_str;
+}
+
+void
+EVP_PKEY_meth_set_check(EVP_PKEY_METHOD *pmeth, int (*check)(EVP_PKEY *pkey))
+{
+	pmeth->check = check;
+}
+
+void
+EVP_PKEY_meth_set_public_check(EVP_PKEY_METHOD *pmeth,
+    int (*public_check)(EVP_PKEY *pkey))
+{
+	pmeth->public_check = public_check;
+}
+
+void
+EVP_PKEY_meth_set_param_check(EVP_PKEY_METHOD *pmeth,
+    int (*param_check)(EVP_PKEY *pkey))
+{
+	pmeth->param_check = param_check;
 }

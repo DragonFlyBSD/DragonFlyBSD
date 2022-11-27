@@ -1,4 +1,4 @@
-/* $OpenBSD: rsa_lib.c,v 1.40 2020/01/17 10:40:03 inoguchi Exp $ */
+/* $OpenBSD: rsa_lib.c,v 1.43 2022/06/27 12:30:28 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -68,6 +68,7 @@
 #include <openssl/rsa.h>
 
 #include "evp_locl.h"
+#include "rsa_locl.h"
 
 #ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
@@ -240,6 +241,12 @@ RSA_get_ex_data(const RSA *r, int idx)
 	return CRYPTO_get_ex_data(&r->ex_data, idx);
 }
 
+int
+RSA_security_bits(const RSA *rsa)
+{
+	return BN_security_bits(RSA_bits(rsa), -1);
+}
+
 void
 RSA_get0_key(const RSA *r, const BIGNUM **n, const BIGNUM **e, const BIGNUM **d)
 {
@@ -334,6 +341,60 @@ RSA_set0_factors(RSA *r, BIGNUM *p, BIGNUM *q)
 	}
 
 	return 1;
+}
+
+const BIGNUM *
+RSA_get0_n(const RSA *r)
+{
+	return r->n;
+}
+
+const BIGNUM *
+RSA_get0_e(const RSA *r)
+{
+	return r->e;
+}
+
+const BIGNUM *
+RSA_get0_d(const RSA *r)
+{
+	return r->d;
+}
+
+const BIGNUM *
+RSA_get0_p(const RSA *r)
+{
+	return r->p;
+}
+
+const BIGNUM *
+RSA_get0_q(const RSA *r)
+{
+	return r->q;
+}
+
+const BIGNUM *
+RSA_get0_dmp1(const RSA *r)
+{
+	return r->dmp1;
+}
+
+const BIGNUM *
+RSA_get0_dmq1(const RSA *r)
+{
+	return r->dmq1;
+}
+
+const BIGNUM *
+RSA_get0_iqmp(const RSA *r)
+{
+	return r->iqmp;
+}
+
+const RSA_PSS_PARAMS *
+RSA_get0_pss_params(const RSA *r)
+{
+	return r->pss;
 }
 
 void

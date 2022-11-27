@@ -1,4 +1,4 @@
-/*	$OpenBSD: rsa_meth.c,v 1.3 2019/06/05 15:41:33 gilles Exp $	*/
+/*	$OpenBSD: rsa_meth.c,v 1.5 2022/07/04 12:23:30 tb Exp $	*/
 /*
  * Copyright (c) 2018 Theo Buehler <tb@openbsd.org>
  *
@@ -21,6 +21,8 @@
 #include <openssl/err.h>
 #include <openssl/rsa.h>
 
+#include "rsa_locl.h"
+
 RSA_METHOD *
 RSA_meth_new(const char *name, int flags)
 {
@@ -40,10 +42,11 @@ RSA_meth_new(const char *name, int flags)
 void
 RSA_meth_free(RSA_METHOD *meth)
 {
-	if (meth != NULL) {
-		free((char *)meth->name);
-		free(meth);
-	}
+	if (meth == NULL)
+		return;
+
+	free(meth->name);
+	free(meth);
 }
 
 RSA_METHOD *
@@ -65,12 +68,12 @@ RSA_meth_dup(const RSA_METHOD *meth)
 int
 RSA_meth_set1_name(RSA_METHOD *meth, const char *name)
 {
-	char *copy;
+	char *new_name;
 
-	if ((copy = strdup(name)) == NULL)
+	if ((new_name = strdup(name)) == NULL)
 		return 0;
-	free((char *)meth->name);
-	meth->name = copy;
+	free(meth->name);
+	meth->name = new_name;
 	return 1;
 }
 

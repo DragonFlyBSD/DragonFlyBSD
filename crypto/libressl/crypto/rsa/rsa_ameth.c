@@ -1,4 +1,4 @@
-/* $OpenBSD: rsa_ameth.c,v 1.24 2019/11/20 10:46:17 inoguchi Exp $ */
+/* $OpenBSD: rsa_ameth.c,v 1.26 2022/06/27 12:36:06 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006.
  */
@@ -269,6 +269,12 @@ static int
 rsa_bits(const EVP_PKEY *pkey)
 {
 	return BN_num_bits(pkey->pkey.rsa->n);
+}
+
+static int
+rsa_security_bits(const EVP_PKEY *pkey)
+{
+	return RSA_security_bits(pkey->pkey.rsa);
 }
 
 static void
@@ -916,6 +922,12 @@ rsa_item_sign(EVP_MD_CTX *ctx, const ASN1_ITEM *it, void *asn,
 	return 2;
 }
 
+static int
+rsa_pkey_check(const EVP_PKEY *pkey)
+{
+	return RSA_check_key(pkey->pkey.rsa);
+}
+
 #ifndef OPENSSL_NO_CMS
 static RSA_OAEP_PARAMS *
 rsa_oaep_decode(const X509_ALGOR *alg)
@@ -1097,6 +1109,7 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meths[] = {
 
 		.pkey_size = int_rsa_size,
 		.pkey_bits = rsa_bits,
+		.pkey_security_bits = rsa_security_bits,
 
 		.sig_print = rsa_sig_print,
 
@@ -1105,14 +1118,18 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meths[] = {
 		.old_priv_decode = old_rsa_priv_decode,
 		.old_priv_encode = old_rsa_priv_encode,
 		.item_verify = rsa_item_verify,
-		.item_sign = rsa_item_sign
+		.item_sign = rsa_item_sign,
+
+		.pkey_check = rsa_pkey_check,
 	},
 
 	{
 		.pkey_id = EVP_PKEY_RSA2,
 		.pkey_base_id = EVP_PKEY_RSA,
-		.pkey_flags = ASN1_PKEY_ALIAS
-	}
+		.pkey_flags = ASN1_PKEY_ALIAS,
+
+		.pkey_check = rsa_pkey_check,
+	},
 };
 
 const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth = {
