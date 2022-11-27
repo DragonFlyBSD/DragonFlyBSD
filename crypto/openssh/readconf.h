@@ -1,4 +1,4 @@
-/* $OpenBSD: readconf.h,v 1.145 2021/09/15 06:56:01 djm Exp $ */
+/* $OpenBSD: readconf.h,v 1.148 2022/09/17 10:33:18 djm Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
@@ -124,10 +124,10 @@ typedef struct {
 	int	server_alive_interval;
 	int	server_alive_count_max;
 
-	int     num_send_env;
-	char   **send_env;
-	int     num_setenv;
-	char   **setenv;
+	u_int	num_send_env;
+	char	**send_env;
+	u_int	num_setenv;
+	char	**setenv;
 
 	char	*control_path;
 	int	control_master;
@@ -176,8 +176,15 @@ typedef struct {
 
 	char   *known_hosts_command;
 
+	int	required_rsa_size;	/* minimum size of RSA keys */
+
 	char	*ignored_unknown; /* Pattern list of unknown tokens to ignore */
 }       Options;
+
+#define SSH_PUBKEY_AUTH_NO	0x00
+#define SSH_PUBKEY_AUTH_UNBOUND	0x01
+#define SSH_PUBKEY_AUTH_HBOUND	0x02
+#define SSH_PUBKEY_AUTH_ALL	0x03
 
 #define SSH_CANONICALISE_NO	0
 #define SSH_CANONICALISE_YES	1

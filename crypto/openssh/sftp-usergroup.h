@@ -1,6 +1,5 @@
-/* $OpenBSD: sftp-server-main.c,v 1.6 2019/06/06 05:13:13 otto Exp $ */
 /*
- * Copyright (c) 2008 Markus Friedl.  All rights reserved.
+ * Copyright (c) 2022 Damien Miller <djm@mindrot.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,38 +14,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "includes.h"
+/* sftp client user/group lookup and caching */
 
-#include <sys/types.h>
-#include <pwd.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <unistd.h>
+/* Lookup uids/gids and populate cache */
+void get_remote_user_groups_from_glob(struct sftp_conn *conn, glob_t *g);
+void get_remote_user_groups_from_dirents(struct sftp_conn *conn, SFTP_DIRENT **d);
 
-#include "log.h"
-#include "sftp.h"
-#include "misc.h"
-#include "xmalloc.h"
-
-void
-cleanup_exit(int i)
-{
-	sftp_server_cleanup_exit(i);
-}
-
-int
-main(int argc, char **argv)
-{
-	struct passwd *user_pw;
-
-	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
-	sanitise_stdfd();
-
-	if ((user_pw = getpwuid(getuid())) == NULL) {
-		fprintf(stderr, "No user found for uid %lu\n",
-		    (u_long)getuid());
-		return 1;
-	}
-
-	return (sftp_server_main(argc, argv, user_pw));
-}
+/* Return user/group name from cache or NULL if not found */
+const char *ruser_name(uid_t uid);
+const char *rgroup_name(uid_t gid);

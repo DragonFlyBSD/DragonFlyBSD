@@ -1,4 +1,4 @@
-/* $OpenBSD: sshkey.h,v 1.50 2021/07/23 03:37:52 djm Exp $ */
+/* $OpenBSD: sshkey.h,v 1.52 2022/09/17 10:30:45 djm Exp $ */
 
 /*
  * Copyright (c) 2000, 2001 Markus Friedl.  All rights reserved.
@@ -192,6 +192,10 @@ int	 sshkey_is_cert(const struct sshkey *);
 int	 sshkey_is_sk(const struct sshkey *);
 int	 sshkey_type_is_cert(int);
 int	 sshkey_type_plain(int);
+
+/* Returns non-zero if key name match sigalgs pattern list. (handles RSA) */
+int	 sshkey_match_keyname_to_sigalgs(const char *, const char *);
+
 int	 sshkey_to_certified(struct sshkey *);
 int	 sshkey_drop_cert(struct sshkey *);
 int	 sshkey_cert_copy(const struct sshkey *, struct sshkey *);
@@ -269,6 +273,7 @@ int	sshkey_parse_private_fileblob_type(struct sshbuf *blob, int type,
 int	sshkey_parse_pubkey_from_private_fileblob_type(struct sshbuf *blob,
     int type, struct sshkey **pubkeyp);
 
+int sshkey_check_rsa_length(const struct sshkey *, int);
 /* XXX should be internal, but used by ssh-keygen */
 int ssh_rsa_complete_crt_parameters(struct sshkey *, const BIGNUM *);
 

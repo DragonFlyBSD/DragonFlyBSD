@@ -1,4 +1,4 @@
-/* $OpenBSD: mux.c,v 1.91 2021/07/23 04:00:59 djm Exp $ */
+/* $OpenBSD: mux.c,v 1.94 2022/06/03 04:30:47 djm Exp $ */
 /*
  * Copyright (c) 2002-2008 Damien Miller <djm@openbsd.org>
  *
@@ -240,9 +240,10 @@ mux_master_control_cleanup_cb(struct ssh *ssh, int cid, void *unused)
 
 /* Check mux client environment variables before passing them to mux master. */
 static int
-env_permitted(char *env)
+env_permitted(const char *env)
 {
-	int i, ret;
+	u_int i;
+	int ret;
 	char name[1024], *cp;
 
 	if ((cp = strchr(env, '=')) == NULL || cp == env)
@@ -1865,9 +1866,9 @@ mux_client_request_session(int fd)
 	struct sshbuf *m;
 	char *e;
 	const char *term = NULL;
-	u_int echar, rid, sid, esid, exitval, type, exitval_seen;
+	u_int i, echar, rid, sid, esid, exitval, type, exitval_seen;
 	extern char **environ;
-	int r, i, rawmode;
+	int r, rawmode;
 
 	debug3_f("entering");
 
@@ -2037,7 +2038,7 @@ mux_client_request_session(int fd)
 	} else
 		debug2("Received exit status from master %d", exitval);
 
-	if (tty_flag && options.log_level != SYSLOG_LEVEL_QUIET)
+	if (tty_flag && options.log_level >= SYSLOG_LEVEL_INFO)
 		fprintf(stderr, "Shared connection to %s closed.\r\n", host);
 
 	exit(exitval);
