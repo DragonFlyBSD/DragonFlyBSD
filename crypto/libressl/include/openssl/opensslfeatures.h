@@ -59,7 +59,7 @@
 /* #define OPENSSL_NO_EC2M */
 #define OPENSSL_NO_EC_NISTP_64_GCC_128
 #define OPENSSL_NO_EGD
-#define OPENSSL_NO_ENGINE
+/* #define OPENSSL_NO_ENGINE */
 /* #define OPENSSL_NO_ERR */
 /* #define OPENSSL_NO_FUZZ_AFL */
 /* #define OPENSSL_NO_FUZZ_LIBFUZZER */

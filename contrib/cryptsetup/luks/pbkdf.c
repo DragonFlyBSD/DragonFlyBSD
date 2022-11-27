@@ -72,7 +72,7 @@ static int pkcs5_pbkdf2(const char *hash,
 	char U[MAX_PRF_BLOCK_LEN];
 	char T[MAX_PRF_BLOCK_LEN];
 	const EVP_MD *PRF;
-	HMAC_CTX ctx;
+	HMAC_CTX *ctx;
 	int i, k, rc = -EINVAL;
 	unsigned int u, hLen, l, r;
 	unsigned char *p;
@@ -169,8 +169,7 @@ static int pkcs5_pbkdf2(const char *hash,
 	 *  into a small set of values.
 	 *
 	 */
-	HMAC_CTX_init(&ctx);
-
+	ctx = HMAC_CTX_new();
 	for (i = 1; (uint) i <= l; i++) {
 		memset(T, 0, hLen);
 
@@ -181,9 +180,9 @@ static int pkcs5_pbkdf2(const char *hash,
 				tmp[Slen + 1] = (i & 0x00ff0000) >> 16;
 				tmp[Slen + 2] = (i & 0x0000ff00) >> 8;
 				tmp[Slen + 3] = (i & 0x000000ff) >> 0;
-				HMAC_Init_ex(&ctx, P, Plen, PRF, NULL);
-				HMAC_Update(&ctx, tmp, tmplen);				
-				HMAC_Final(&ctx, U, NULL);
+				HMAC_Init_ex(ctx, P, Plen, PRF, NULL);
+				HMAC_Update(ctx, tmp, tmplen);
+				HMAC_Final(ctx, U, NULL);
 			} else {
 				HMAC(PRF, P, Plen, U, hLen, U, NULL);
 			}
@@ -204,7 +203,7 @@ static int pkcs5_pbkdf2(const char *hash,
 	}
 	rc = 0;
 out:
-	HMAC_CTX_cleanup(&ctx);
+	HMAC_CTX_free(ctx);
 	return rc;
 }
 

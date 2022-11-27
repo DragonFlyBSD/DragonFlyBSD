@@ -16,7 +16,7 @@ int hash(const char *backend_name, const char *hash_name,
          char *result, size_t size,
          const char *passphrase, size_t sizep)
 {
-	EVP_MD_CTX mdctx;
+	EVP_MD_CTX *mdctx;
 	const EVP_MD *md;
 	size_t pad = 0;
 	int r = -ENOENT;
@@ -35,13 +35,16 @@ int hash(const char *backend_name, const char *hash_name,
 
 	pad = size - EVP_MD_size(md);
 
-	EVP_DigestInit(&mdctx, md);
-	EVP_DigestUpdate(&mdctx, passphrase, sizep);
-	r = !EVP_DigestFinal(&mdctx, result, NULL);
+	mdctx = EVP_MD_CTX_new();
+	EVP_DigestInit(mdctx, md);
+	EVP_DigestUpdate(mdctx, passphrase, sizep);
+	r = !EVP_DigestFinal(mdctx, result, NULL);
 
 	if (pad) {
 		memset(result+size, 0, pad);
 	}
+
+	EVP_MD_CTX_free(mdctx);
 
 out:
 	return r;

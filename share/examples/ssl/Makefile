@@ -1,4 +1,4 @@
-.PATH: ${.CURDIR}/../../../crypto/libressl/apps/openssl
+.PATH: ${.CURDIR}/../../../crypto/libressl/
 
 NOOBJ=	noobj
 FILES=	cert.pem openssl.cnf

@@ -109,7 +109,7 @@
 #define HAVE_EVP_CLEANUP 1
 
 /* Define to 1 if you have the `EVP_dss1' function. */
-#define HAVE_EVP_DSS1 1
+/* #undef HAVE_EVP_DSS1 */
 
 /* Define to 1 if you have the `EVP_MD_CTX_new' function. */
 #define HAVE_EVP_MD_CTX_NEW 1

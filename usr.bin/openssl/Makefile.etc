@@ -5,5 +5,5 @@ FILESGRP=	${BINGRP}
 FILESMODE=	644
 
 .include "../../lib/librecrypto/Makefile.inc"
-.PATH: ${LIBRESSL_SRC}/apps/openssl
+.PATH: ${LIBRESSL_SRC}/
 .include <bsd.prog.mk>

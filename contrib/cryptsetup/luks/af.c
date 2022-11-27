@@ -38,16 +38,19 @@ static void XORblock(char const *src1, char const *src2, char *dst, size_t n)
 
 static int hash_buf(char *src, char *dst, uint32_t iv, int len, const EVP_MD *hash_id)
 {
-	EVP_MD_CTX mdctx;
+	EVP_MD_CTX *mdctx;
 	unsigned char digest[128];
 
 	iv = htonl(iv);
 
-	EVP_DigestInit(&mdctx, hash_id);
-	EVP_DigestUpdate(&mdctx, (unsigned char *)&iv, sizeof(iv));
-	EVP_DigestUpdate(&mdctx, src, len);
-	EVP_DigestFinal(&mdctx, digest, NULL);
+	mdctx = EVP_MD_CTX_new();
+	EVP_DigestInit_ex(mdctx, hash_id, NULL);
+	EVP_DigestUpdate(mdctx, (unsigned char *)&iv, sizeof(iv));
+	EVP_DigestUpdate(mdctx, src, len);
+	EVP_DigestFinal(mdctx, digest, NULL);
 	memcpy(dst, digest, len);
+
+	EVP_MD_CTX_free(mdctx);
 
 	return 0;
 }
