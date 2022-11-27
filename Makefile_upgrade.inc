@@ -3957,7 +3957,9 @@ TO_REMOVE_LATE+=/usr/lib/gcc50
 TO_REMOVE_LATE+=/lib/priv/libprivate_crypto.so.38
 TO_REMOVE_LATE+=/lib/priv/libprivate_ssl.so.39
 TO_REMOVE_LATE+=/lib/libprivate_crypto.so.45
+TO_REMOVE_LATE+=/lib/libprivate_crypto.so.46
 TO_REMOVE_LATE+=/lib/libprivate_ssl.so.47
+TO_REMOVE_LATE+=/lib/libprivate_ssl.so.48
 
 # XXX Remove when pfsync(4) has been fixed
 TO_REMOVE+=/usr/share/man/man4/pfsync.4.gz
