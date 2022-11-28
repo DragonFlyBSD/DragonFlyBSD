@@ -1,4 +1,4 @@
-/* $OpenBSD: auth2-hostbased.c,v 1.47 2021/07/23 03:37:52 djm Exp $ */
+/* $OpenBSD: auth2-hostbased.c,v 1.50 2022/09/17 10:34:29 djm Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  *
@@ -57,7 +57,7 @@
 extern ServerOptions options;
 
 static int
-userauth_hostbased(struct ssh *ssh)
+userauth_hostbased(struct ssh *ssh, const char *method)
 {
 	Authctxt *authctxt = ssh->authctxt;
 	struct sshbuf *b;
@@ -108,8 +108,8 @@ userauth_hostbased(struct ssh *ssh)
 		goto done;
 	}
 	if (match_pattern_list(pkalg, options.hostbased_accepted_algos, 0) != 1) {
-		logit_f("key type %s not in HostbasedAcceptedAlgorithms",
-		    sshkey_type(key));
+		logit_f("signature algorithm %s not in "
+		    "HostbasedAcceptedAlgorithms", pkalg);
 		goto done;
 	}
 	if ((r = sshkey_check_cert_sigtype(key,
@@ -117,6 +117,11 @@ userauth_hostbased(struct ssh *ssh)
 		logit_fr(r, "certificate signature algorithm %s",
 		    (key->cert == NULL || key->cert->signature_type == NULL) ?
 		    "(null)" : key->cert->signature_type);
+		goto done;
+	}
+	if ((r = sshkey_check_rsa_length(key,
+	    options.required_rsa_size)) != 0) {
+		logit_r(r, "refusing %s key", sshkey_type(key));
 		goto done;
 	}
 
@@ -132,7 +137,7 @@ userauth_hostbased(struct ssh *ssh)
 	    (r = sshbuf_put_u8(b, SSH2_MSG_USERAUTH_REQUEST)) != 0 ||
 	    (r = sshbuf_put_cstring(b, authctxt->user)) != 0 ||
 	    (r = sshbuf_put_cstring(b, authctxt->service)) != 0 ||
-	    (r = sshbuf_put_cstring(b, "hostbased")) != 0 ||
+	    (r = sshbuf_put_cstring(b, method)) != 0 ||
 	    (r = sshbuf_put_string(b, pkalg, alen)) != 0 ||
 	    (r = sshbuf_put_string(b, pkblob, blen)) != 0 ||
 	    (r = sshbuf_put_cstring(b, chost)) != 0 ||
@@ -255,6 +260,7 @@ hostbased_key_allowed(struct ssh *ssh, struct passwd *pw,
 
 Authmethod method_hostbased = {
 	"hostbased",
+	NULL,
 	userauth_hostbased,
 	&options.hostbased_authentication
 };

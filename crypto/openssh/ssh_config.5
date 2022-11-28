@@ -33,8 +33,8 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $OpenBSD: ssh_config.5,v 1.366 2021/09/25 09:40:33 kn Exp $
-.Dd $Mdocdate: September 25 2021 $
+.\" $OpenBSD: ssh_config.5,v 1.374 2022/09/17 10:33:18 djm Exp $
+.Dd $Mdocdate: September 17 2022 $
 .Dt SSH_CONFIG 5
 .Os
 .Sh NAME
@@ -435,7 +435,7 @@ directives will add to the list of certificates used for
 authentication.
 .It Cm CheckHostIP
 If set to
-.Cm yes
+.Cm yes ,
 .Xr ssh 1
 will additionally check the host IP address in the
 .Pa known_hosts
@@ -1012,13 +1012,13 @@ section.
 Specifies a file from which the user's DSA, ECDSA, authenticator-hosted ECDSA,
 Ed25519, authenticator-hosted Ed25519 or RSA authentication identity is read.
 The default is
-.Pa ~/.ssh/id_dsa ,
+.Pa ~/.ssh/id_rsa ,
 .Pa ~/.ssh/id_ecdsa ,
 .Pa ~/.ssh/id_ecdsa_sk ,
 .Pa ~/.ssh/id_ed25519 ,
 .Pa ~/.ssh/id_ed25519_sk
 and
-.Pa ~/.ssh/id_rsa .
+.Pa ~/.ssh/id_dsa .
 Additionally, any identities represented by the authentication agent
 will be used for authentication unless
 .Cm IdentitiesOnly
@@ -1165,6 +1165,7 @@ character, then the specified algorithms will be placed at the head of the
 default set.
 The default is:
 .Bd -literal -offset indent
+sntrup761x25519-sha512@openssh.com,
 curve25519-sha256,curve25519-sha256@libssh.org,
 ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,
 diffie-hellman-group-exchange-sha256,
@@ -1520,13 +1521,20 @@ The list of available signature algorithms may also be obtained using
 Specifies whether to try public key authentication.
 The argument to this keyword must be
 .Cm yes
-(the default)
+(the default),
+.Cm no ,
+.Cm unbound
 or
-.Cm no .
+.Cm host-bound .
+The final two options enable public key authentication while respectively
+disabling or enabling the OpenSSH host-bound authentication protocol
+extension required for restricted
+.Xr ssh-agent 1
+forwarding.
 .It Cm RekeyLimit
-Specifies the maximum amount of data that may be transmitted before the
-session key is renegotiated, optionally followed by a maximum amount of
-time that may pass before the session key is renegotiated.
+Specifies the maximum amount of data that may be transmitted or received
+before the session key is renegotiated, optionally followed by a maximum
+amount of time that may pass before the session key is renegotiated.
 The first argument is specified in bytes and may have a suffix of
 .Sq K ,
 .Sq M ,
@@ -1573,7 +1581,7 @@ If forwarding to a specific destination then the second argument must be
 or a Unix domain socket path,
 otherwise if no destination argument is specified then the remote forwarding
 will be established as a SOCKS proxy.
-When acting as a SOCKS proxy the destination of the connection can be
+When acting as a SOCKS proxy, the destination of the connection can be
 restricted by
 .Cm PermitRemoteOpen .
 .Pp
@@ -1626,6 +1634,17 @@ and
 .Fl T
 flags for
 .Xr ssh 1 .
+.It Cm RequiredRSASize
+Specifies the minimum RSA key size (in bits) that
+.Xr ssh 1
+will accept.
+User authentication keys smaller than this limit will be ignored.
+Servers that present host keys smaller than this limit will cause the
+connection to be terminated.
+The default is
+.Cm 1024
+bits.
+Note that this limit may only be raised from the default.
 .It Cm RevokedHostKeys
 Specifies revoked host public keys.
 Keys listed in this file will be refused for host authentication.
@@ -2115,7 +2134,9 @@ accepts the tokens %% and %h.
 accepts all tokens.
 .Pp
 .Cm ProxyCommand
-accepts the tokens %%, %h, %n, %p, and %r.
+and
+.Cm ProxyJump
+accept the tokens %%, %h, %n, %p, and %r.
 .Sh ENVIRONMENT VARIABLES
 Arguments to some keywords can be expanded at runtime from environment
 variables on the client by enclosing them in

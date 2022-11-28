@@ -1,5 +1,5 @@
 
-/* $OpenBSD: servconf.c,v 1.382 2021/09/06 00:36:01 millert Exp $ */
+/* $OpenBSD: servconf.c,v 1.386 2022/09/17 10:34:29 djm Exp $ */
 /*
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
  *                    All rights reserved
@@ -195,6 +195,7 @@ initialize_server_options(ServerOptions *options)
 	options->fingerprint_hash = -1;
 	options->disable_forwarding = -1;
 	options->expose_userauth_info = -1;
+	options->required_rsa_size = -1;
 }
 
 /* Returns 1 if a string option is unset or set to "none" or 0 otherwise. */
@@ -452,6 +453,8 @@ fill_default_server_options(ServerOptions *options)
 		options->expose_userauth_info = 0;
 	if (options->sk_provider == NULL)
 		options->sk_provider = xstrdup("internal");
+	if (options->required_rsa_size == -1)
+		options->required_rsa_size = SSH_RSA_MINIMUM_MODULUS_SIZE;
 
 	assemble_algorithms(options);
 
@@ -528,6 +531,7 @@ typedef enum {
 	sStreamLocalBindMask, sStreamLocalBindUnlink,
 	sAllowStreamLocalForwarding, sFingerprintHash, sDisableForwarding,
 	sExposeAuthInfo, sRDomain, sPubkeyAuthOptions, sSecurityKeyProvider,
+	sRequiredRSASize,
 	sDeprecated, sIgnore, sUnsupported
 } ServerOpCodes;
 
@@ -687,6 +691,7 @@ static struct {
 	{ "rdomain", sRDomain, SSHCFG_ALL },
 	{ "casignaturealgorithms", sCASignatureAlgorithms, SSHCFG_ALL },
 	{ "securitykeyprovider", sSecurityKeyProvider, SSHCFG_GLOBAL },
+	{ "requiredrsasize", sRequiredRSASize, SSHCFG_ALL },
 	{ NULL, sBadOption, 0 }
 };
 
@@ -906,7 +911,7 @@ process_permitopen_list(struct ssh *ssh, ServerOpCodes opcode,
 {
 	u_int i;
 	int port;
-	char *host, *arg, *oarg, ch;
+	char *host, *arg, *oarg;
 	int where = opcode == sPermitOpen ? FORWARD_LOCAL : FORWARD_REMOTE;
 	const char *what = lookup_opcode_name(opcode);
 
@@ -924,9 +929,8 @@ process_permitopen_list(struct ssh *ssh, ServerOpCodes opcode,
 	/* Otherwise treat it as a list of permitted host:port */
 	for (i = 0; i < num_opens; i++) {
 		oarg = arg = xstrdup(opens[i]);
-		ch = '\0';
-		host = hpdelim2(&arg, &ch);
-		if (host == NULL || ch == '/')
+		host = hpdelim(&arg);
+		if (host == NULL)
 			fatal_f("missing host in %s", what);
 		host = cleanhostname(host);
 		if (arg == NULL || ((port = permitopen_port(arg)) < 0))
@@ -1272,7 +1276,7 @@ process_server_config_line_depth(ServerOptions *options, char *line,
     struct connection_info *connectinfo, int *inc_flags, int depth,
     struct include_list *includes)
 {
-	char ch, *str, ***chararrayptr, **charptr, *arg, *arg2, *p, *keyword;
+	char *str, ***chararrayptr, **charptr, *arg, *arg2, *p, *keyword;
 	int cmdline = 0, *intptr, value, value2, n, port, oactive, r, found;
 	SyslogFacility *log_facility_ptr;
 	LogLevel *log_level_ptr;
@@ -1391,9 +1395,8 @@ process_server_config_line_depth(ServerOptions *options, char *line,
 			p = arg;
 		} else {
 			arg2 = NULL;
-			ch = '\0';
-			p = hpdelim2(&arg, &ch);
-			if (p == NULL || ch == '/')
+			p = hpdelim(&arg);
+			if (p == NULL)
 				fatal("%s line %d: bad address:port usage",
 				    filename, linenum);
 			p = cleanhostname(p);
@@ -2046,6 +2049,12 @@ process_server_config_line_depth(ServerOptions *options, char *line,
 				    filename, linenum);
 			if (!*activep || uvalue != 0)
 				continue;
+			if (lookup_setenv_in_list(arg, options->setenv,
+			    options->num_setenv) != NULL) {
+				debug2("%s line %d: ignoring duplicate env "
+				    "name \"%.64s\"", filename, linenum, arg);
+				continue;
+			}
 			opt_array_append(filename, linenum, keyword,
 			    &options->setenv, &options->num_setenv, arg);
 		}
@@ -2222,9 +2231,8 @@ process_server_config_line_depth(ServerOptions *options, char *line,
 				xasprintf(&arg2, "*:%s", arg);
 			} else {
 				arg2 = xstrdup(arg);
-				ch = '\0';
-				p = hpdelim2(&arg, &ch);
-				if (p == NULL || ch == '/') {
+				p = hpdelim(&arg);
+				if (p == NULL) {
 					fatal("%s line %d: %s missing host",
 					    filename, linenum, keyword);
 				}
@@ -2446,6 +2454,10 @@ process_server_config_line_depth(ServerOptions *options, char *line,
 			*charptr = xstrdup(arg);
 		break;
 
+	case sRequiredRSASize:
+		intptr = &options->required_rsa_size;
+		goto parse_int;
+
 	case sDeprecated:
 	case sIgnore:
 	case sUnsupported:
@@ -2534,7 +2546,7 @@ parse_server_match_config(ServerOptions *options,
 
 	initialize_server_options(&mo);
 	parse_server_config(&mo, "reprocess config", cfg, includes,
-	    connectinfo);
+	    connectinfo, 0);
 	copy_set_server_options(options, &mo, 0);
 }
 
@@ -2618,6 +2630,7 @@ copy_set_server_options(ServerOptions *dst, ServerOptions *src, int preauth)
 	M_CP_INTOPT(rekey_limit);
 	M_CP_INTOPT(rekey_interval);
 	M_CP_INTOPT(log_level);
+	M_CP_INTOPT(required_rsa_size);
 
 	/*
 	 * The bind_mask is a mode_t that may be unsigned, so we can't use
@@ -2712,12 +2725,13 @@ parse_server_config_depth(ServerOptions *options, const char *filename,
 void
 parse_server_config(ServerOptions *options, const char *filename,
     struct sshbuf *conf, struct include_list *includes,
-    struct connection_info *connectinfo)
+    struct connection_info *connectinfo, int reexec)
 {
 	int active = connectinfo ? 0 : 1;
 	parse_server_config_depth(options, filename, conf, includes,
 	    connectinfo, (connectinfo ? SSHCFG_MATCH_ONLY : 0), &active, 0);
-	process_queued_listen_addrs(options);
+	if (!reexec)
+		process_queued_listen_addrs(options);
 }
 
 static const char *
@@ -2881,6 +2895,7 @@ dump_config(ServerOptions *o)
 	dump_cfg_int(sMaxSessions, o->max_sessions);
 	dump_cfg_int(sClientAliveInterval, o->client_alive_interval);
 	dump_cfg_int(sClientAliveCountMax, o->client_alive_count_max);
+	dump_cfg_int(sRequiredRSASize, o->required_rsa_size);
 	dump_cfg_oct(sStreamLocalBindMask, o->fwd_opts.streamlocal_bind_mask);
 
 	/* formatted integer arguments */

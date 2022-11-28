@@ -1,4 +1,4 @@
-/* $OpenBSD: channels.c,v 1.408 2021/09/14 11:04:21 mbuhl Exp $ */
+/* $OpenBSD: channels.c,v 1.420 2022/09/19 08:49:50 djm Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -57,6 +57,9 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <netdb.h>
+#ifdef HAVE_POLL_H
+#include <poll.h>
+#endif
 #include <stdarg.h>
 #ifdef HAVE_STDINT_H
 # include <stdint.h>
@@ -84,6 +87,9 @@
 #include "pathnames.h"
 #include "match.h"
 
+/* XXX remove once we're satisfied there's no lurking bugs */
+/* #define DEBUG_CHANNEL_POLL 1 */
+
 /* -- agent forwarding */
 #define	NUM_SOCKS	10
 
@@ -98,9 +104,8 @@
 /* Maximum number of fake X11 displays to try. */
 #define MAX_DISPLAYS  1000
 
-/* Per-channel callback for pre/post select() actions */
-typedef void chan_fn(struct ssh *, Channel *c,
-    fd_set *readset, fd_set *writeset);
+/* Per-channel callback for pre/post IO actions */
+typedef void chan_fn(struct ssh *, Channel *c);
 
 /*
  * Data structure for storing which hosts are permitted for forward requests.
@@ -161,17 +166,11 @@ struct ssh_channels {
 	u_int channels_alloc;
 
 	/*
-	 * Maximum file descriptor value used in any of the channels.  This is
-	 * updated in channel_new.
-	 */
-	int channel_max_fd;
-
-	/*
-	 * 'channel_pre*' are called just before select() to add any bits
-	 * relevant to channels in the select bitmasks.
+	 * 'channel_pre*' are called just before IO to add any bits
+	 * relevant to channels in the c->io_want bitmasks.
 	 *
 	 * 'channel_post*': perform any appropriate operations for
-	 * channels which have events pending.
+	 * channels which have c->io_ready events pending.
 	 */
 	chan_fn **channel_pre;
 	chan_fn **channel_post;
@@ -305,12 +304,7 @@ static void
 channel_register_fds(struct ssh *ssh, Channel *c, int rfd, int wfd, int efd,
     int extusage, int nonblock, int is_tty)
 {
-	struct ssh_channels *sc = ssh->chanctxt;
-
-	/* Update the maximum file descriptor value. */
-	sc->channel_max_fd = MAXIMUM(sc->channel_max_fd, rfd);
-	sc->channel_max_fd = MAXIMUM(sc->channel_max_fd, wfd);
-	sc->channel_max_fd = MAXIMUM(sc->channel_max_fd, efd);
+	int val;
 
 	if (rfd != -1)
 		fcntl(rfd, F_SETFD, FD_CLOEXEC);
@@ -341,15 +335,18 @@ channel_register_fds(struct ssh *ssh, Channel *c, int rfd, int wfd, int efd,
 		 * restore their blocking state on exit to avoid interfering
 		 * with other programs that follow.
 		 */
-		if (rfd != -1 && !isatty(rfd) && fcntl(rfd, F_GETFL) == 0) {
+		if (rfd != -1 && !isatty(rfd) &&
+		    (val = fcntl(rfd, F_GETFL)) != -1 && !(val & O_NONBLOCK)) {
 			c->restore_block |= CHANNEL_RESTORE_RFD;
 			set_nonblock(rfd);
 		}
-		if (wfd != -1 && !isatty(wfd) && fcntl(wfd, F_GETFL) == 0) {
+		if (wfd != -1 && !isatty(wfd) &&
+		    (val = fcntl(wfd, F_GETFL)) != -1 && !(val & O_NONBLOCK)) {
 			c->restore_block |= CHANNEL_RESTORE_WFD;
 			set_nonblock(wfd);
 		}
-		if (efd != -1 && !isatty(efd) && fcntl(efd, F_GETFL) == 0) {
+		if (efd != -1 && !isatty(efd) &&
+		    (val = fcntl(efd, F_GETFL)) != -1 && !(val & O_NONBLOCK)) {
 			c->restore_block |= CHANNEL_RESTORE_EFD;
 			set_nonblock(efd);
 		}
@@ -364,15 +361,15 @@ channel_register_fds(struct ssh *ssh, Channel *c, int rfd, int wfd, int efd,
 }
 
 /*
- * Allocate a new channel object and set its type and socket. This will cause
- * remote_name to be freed.
+ * Allocate a new channel object and set its type and socket.
  */
 Channel *
 channel_new(struct ssh *ssh, char *ctype, int type, int rfd, int wfd, int efd,
-    u_int window, u_int maxpack, int extusage, char *remote_name, int nonblock)
+    u_int window, u_int maxpack, int extusage, const char *remote_name,
+    int nonblock)
 {
 	struct ssh_channels *sc = ssh->chanctxt;
-	u_int i, found;
+	u_int i, found = 0;
 	Channel *c;
 	int r;
 
@@ -423,28 +420,9 @@ channel_new(struct ssh *ssh, char *ctype, int type, int rfd, int wfd, int efd,
 	return c;
 }
 
-static void
-channel_find_maxfd(struct ssh_channels *sc)
-{
-	u_int i;
-	int max = 0;
-	Channel *c;
-
-	for (i = 0; i < sc->channels_alloc; i++) {
-		c = sc->channels[i];
-		if (c != NULL) {
-			max = MAXIMUM(max, c->rfd);
-			max = MAXIMUM(max, c->wfd);
-			max = MAXIMUM(max, c->efd);
-		}
-	}
-	sc->channel_max_fd = max;
-}
-
 int
 channel_close_fd(struct ssh *ssh, Channel *c, int *fdp)
 {
-	struct ssh_channels *sc = ssh->chanctxt;
 	int ret, fd = *fdp;
 
 	if (fd == -1)
@@ -455,10 +433,33 @@ channel_close_fd(struct ssh *ssh, Channel *c, int *fdp)
 	   (*fdp == c->efd && (c->restore_block & CHANNEL_RESTORE_EFD) != 0))
 		(void)fcntl(*fdp, F_SETFL, 0);	/* restore blocking */
 
+	if (*fdp == c->rfd) {
+		c->io_want &= ~SSH_CHAN_IO_RFD;
+		c->io_ready &= ~SSH_CHAN_IO_RFD;
+		c->rfd = -1;
+		c->pfds[0] = -1;
+	}
+	if (*fdp == c->wfd) {
+		c->io_want &= ~SSH_CHAN_IO_WFD;
+		c->io_ready &= ~SSH_CHAN_IO_WFD;
+		c->wfd = -1;
+		c->pfds[1] = -1;
+	}
+	if (*fdp == c->efd) {
+		c->io_want &= ~SSH_CHAN_IO_EFD;
+		c->io_ready &= ~SSH_CHAN_IO_EFD;
+		c->efd = -1;
+		c->pfds[2] = -1;
+	}
+	if (*fdp == c->sock) {
+		c->io_want &= ~SSH_CHAN_IO_SOCK;
+		c->io_ready &= ~SSH_CHAN_IO_SOCK;
+		c->sock = -1;
+		c->pfds[3] = -1;
+	}
+
 	ret = close(fd);
-	*fdp = -1;
-	if (fd == sc->channel_max_fd)
-		channel_find_maxfd(sc);
+	*fdp = -1; /* probably redundant */
 	return ret;
 }
 
@@ -543,7 +544,7 @@ permission_set_get_array(struct ssh *ssh, int who, int where,
 	}
 }
 
-/* Adds an entry to the spcified forwarding list */
+/* Adds an entry to the specified forwarding list */
 static int
 permission_set_add(struct ssh *ssh, int who, int where,
     const char *host_to_connect, int port_to_connect,
@@ -680,7 +681,6 @@ channel_free_all(struct ssh *ssh)
 	free(sc->channels);
 	sc->channels = NULL;
 	sc->channels_alloc = 0;
-	sc->channel_max_fd = 0;
 
 	free(sc->x11_saved_display);
 	sc->x11_saved_display = NULL;
@@ -872,13 +872,14 @@ channel_format_status(const Channel *c)
 	char *ret = NULL;
 
 	xasprintf(&ret, "t%d %s%u i%u/%zu o%u/%zu e[%s]/%zu "
-	    "fd %d/%d/%d sock %d cc %d",
+	    "fd %d/%d/%d sock %d cc %d io 0x%02x/0x%02x",
 	    c->type,
 	    c->have_remote_id ? "r" : "nr", c->remote_id,
 	    c->istate, sshbuf_len(c->input),
 	    c->ostate, sshbuf_len(c->output),
 	    channel_format_extended_usage(c), sshbuf_len(c->extended),
-	    c->rfd, c->wfd, c->efd, c->sock, c->ctl_chan);
+	    c->rfd, c->wfd, c->efd, c->sock, c->ctl_chan,
+	    c->io_want, c->io_ready);
 	return ret;
 }
 
@@ -1096,33 +1097,31 @@ channel_set_fds(struct ssh *ssh, int id, int rfd, int wfd, int efd,
 }
 
 static void
-channel_pre_listener(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_pre_listener(struct ssh *ssh, Channel *c)
 {
-	FD_SET(c->sock, readset);
+	c->io_want = SSH_CHAN_IO_SOCK_R;
 }
 
 static void
-channel_pre_connecting(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_pre_connecting(struct ssh *ssh, Channel *c)
 {
 	debug3("channel %d: waiting for connection", c->self);
-	FD_SET(c->sock, writeset);
+	c->io_want = SSH_CHAN_IO_SOCK_W;
 }
 
 static void
-channel_pre_open(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_pre_open(struct ssh *ssh, Channel *c)
 {
+	c->io_want = 0;
 	if (c->istate == CHAN_INPUT_OPEN &&
 	    c->remote_window > 0 &&
 	    sshbuf_len(c->input) < c->remote_window &&
 	    sshbuf_check_reserve(c->input, CHAN_RBUF) == 0)
-		FD_SET(c->rfd, readset);
+		c->io_want |= SSH_CHAN_IO_RFD;
 	if (c->ostate == CHAN_OUTPUT_OPEN ||
 	    c->ostate == CHAN_OUTPUT_WAIT_DRAIN) {
 		if (sshbuf_len(c->output) > 0) {
-			FD_SET(c->wfd, writeset);
+			c->io_want |= SSH_CHAN_IO_WFD;
 		} else if (c->ostate == CHAN_OUTPUT_WAIT_DRAIN) {
 			if (CHANNEL_EFD_OUTPUT_ACTIVE(c))
 				debug2("channel %d: "
@@ -1137,12 +1136,12 @@ channel_pre_open(struct ssh *ssh, Channel *c,
 	    c->ostate == CHAN_OUTPUT_CLOSED)) {
 		if (c->extended_usage == CHAN_EXTENDED_WRITE &&
 		    sshbuf_len(c->extended) > 0)
-			FD_SET(c->efd, writeset);
+			c->io_want |= SSH_CHAN_IO_EFD_W;
 		else if (c->efd != -1 && !(c->flags & CHAN_EOF_SENT) &&
 		    (c->extended_usage == CHAN_EXTENDED_READ ||
 		    c->extended_usage == CHAN_EXTENDED_IGNORE) &&
 		    sshbuf_len(c->extended) < c->remote_window)
-			FD_SET(c->efd, readset);
+			c->io_want |= SSH_CHAN_IO_EFD_R;
 	}
 	/* XXX: What about efd? races? */
 }
@@ -1224,8 +1223,7 @@ x11_open_helper(struct ssh *ssh, struct sshbuf *b)
 }
 
 static void
-channel_pre_x11_open(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_pre_x11_open(struct ssh *ssh, Channel *c)
 {
 	int ret = x11_open_helper(ssh, c->output);
 
@@ -1233,7 +1231,7 @@ channel_pre_x11_open(struct ssh *ssh, Channel *c,
 
 	if (ret == 1) {
 		c->type = SSH_CHANNEL_OPEN;
-		channel_pre_open(ssh, c, readset, writeset);
+		channel_pre_open(ssh, c);
 	} else if (ret == -1) {
 		logit("X11 connection rejected because of wrong authentication.");
 		debug2("X11 rejected %d i%d/o%d",
@@ -1248,12 +1246,12 @@ channel_pre_x11_open(struct ssh *ssh, Channel *c,
 }
 
 static void
-channel_pre_mux_client(struct ssh *ssh,
-    Channel *c, fd_set *readset, fd_set *writeset)
+channel_pre_mux_client(struct ssh *ssh, Channel *c)
 {
+	c->io_want = 0;
 	if (c->istate == CHAN_INPUT_OPEN && !c->mux_pause &&
 	    sshbuf_check_reserve(c->input, CHAN_RBUF) == 0)
-		FD_SET(c->rfd, readset);
+		c->io_want |= SSH_CHAN_IO_RFD;
 	if (c->istate == CHAN_INPUT_WAIT_DRAIN) {
 		/* clear buffer immediately (discard any partial packet) */
 		sshbuf_reset(c->input);
@@ -1264,7 +1262,7 @@ channel_pre_mux_client(struct ssh *ssh,
 	if (c->ostate == CHAN_OUTPUT_OPEN ||
 	    c->ostate == CHAN_OUTPUT_WAIT_DRAIN) {
 		if (sshbuf_len(c->output) > 0)
-			FD_SET(c->wfd, writeset);
+			c->io_want |= SSH_CHAN_IO_WFD;
 		else if (c->ostate == CHAN_OUTPUT_WAIT_DRAIN)
 			chan_obuf_empty(ssh, c);
 	}
@@ -1543,20 +1541,20 @@ channel_connect_stdio_fwd(struct ssh *ssh,
 
 /* dynamic port forwarding */
 static void
-channel_pre_dynamic(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_pre_dynamic(struct ssh *ssh, Channel *c)
 {
 	const u_char *p;
 	u_int have;
 	int ret;
 
+	c->io_want = 0;
 	have = sshbuf_len(c->input);
 	debug2("channel %d: pre_dynamic: have %d", c->self, have);
 	/* sshbuf_dump(c->input, stderr); */
 	/* check if the fixed size part of the packet is in buffer. */
 	if (have < 3) {
 		/* need more */
-		FD_SET(c->sock, readset);
+		c->io_want |= SSH_CHAN_IO_RFD;
 		return;
 	}
 	/* try to guess the protocol */
@@ -1578,9 +1576,9 @@ channel_pre_dynamic(struct ssh *ssh, Channel *c,
 	} else if (ret == 0) {
 		debug2("channel %d: pre_dynamic: need more", c->self);
 		/* need more */
-		FD_SET(c->sock, readset);
+		c->io_want |= SSH_CHAN_IO_RFD;
 		if (sshbuf_len(c->output))
-			FD_SET(c->sock, writeset);
+			c->io_want |= SSH_CHAN_IO_WFD;
 	} else {
 		/* switch to the next state */
 		c->type = SSH_CHANNEL_OPENING;
@@ -1602,7 +1600,7 @@ rdynamic_close(struct ssh *ssh, Channel *c)
 
 /* reverse dynamic port forwarding */
 static void
-channel_before_prepare_select_rdynamic(struct ssh *ssh, Channel *c)
+channel_before_prepare_io_rdynamic(struct ssh *ssh, Channel *c)
 {
 	const u_char *p;
 	u_int have, len;
@@ -1660,8 +1658,7 @@ channel_before_prepare_select_rdynamic(struct ssh *ssh, Channel *c)
 
 /* This is our fake X11 server socket. */
 static void
-channel_post_x11_listener(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_post_x11_listener(struct ssh *ssh, Channel *c)
 {
 	Channel *nc;
 	struct sockaddr_storage addr;
@@ -1669,7 +1666,7 @@ channel_post_x11_listener(struct ssh *ssh, Channel *c,
 	socklen_t addrlen;
 	char buf[16384], *remote_ipaddr;
 
-	if (!FD_ISSET(c->sock, readset))
+	if ((c->io_ready & SSH_CHAN_IO_SOCK_R) == 0)
 		return;
 
 	debug("X11 connection requested.");
@@ -1778,8 +1775,7 @@ channel_set_x11_refuse_time(struct ssh *ssh, u_int refuse_time)
  * This socket is listening for connections to a forwarded TCP/IP port.
  */
 static void
-channel_post_port_listener(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_post_port_listener(struct ssh *ssh, Channel *c)
 {
 	Channel *nc;
 	struct sockaddr_storage addr;
@@ -1787,7 +1783,7 @@ channel_post_port_listener(struct ssh *ssh, Channel *c,
 	socklen_t addrlen;
 	char *rtype;
 
-	if (!FD_ISSET(c->sock, readset))
+	if ((c->io_ready & SSH_CHAN_IO_SOCK_R) == 0)
 		return;
 
 	debug("Connection to port %d forwarding to %.100s port %d requested.",
@@ -1838,15 +1834,14 @@ channel_post_port_listener(struct ssh *ssh, Channel *c,
  * clients.
  */
 static void
-channel_post_auth_listener(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_post_auth_listener(struct ssh *ssh, Channel *c)
 {
 	Channel *nc;
 	int r, newsock;
 	struct sockaddr_storage addr;
 	socklen_t addrlen;
 
-	if (!FD_ISSET(c->sock, readset))
+	if ((c->io_ready & SSH_CHAN_IO_SOCK_R) == 0)
 		return;
 
 	addrlen = sizeof(addr);
@@ -1867,13 +1862,12 @@ channel_post_auth_listener(struct ssh *ssh, Channel *c,
 }
 
 static void
-channel_post_connecting(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_post_connecting(struct ssh *ssh, Channel *c)
 {
 	int err = 0, sock, isopen, r;
 	socklen_t sz = sizeof(err);
 
-	if (!FD_ISSET(c->sock, writeset))
+	if ((c->io_ready & SSH_CHAN_IO_SOCK_W) == 0)
 		return;
 	if (!c->have_remote_id)
 		fatal_f("channel %d: no remote id", c->self);
@@ -1907,7 +1901,6 @@ channel_post_connecting(struct ssh *ssh, Channel *c,
 		if ((sock = connect_next(&c->connect_ctx)) > 0) {
 			close(c->sock);
 			c->sock = c->rfd = c->wfd = sock;
-			channel_find_maxfd(ssh->chanctxt);
 			return;
 		}
 		/* Exhausted all addresses */
@@ -1932,31 +1925,64 @@ channel_post_connecting(struct ssh *ssh, Channel *c,
 }
 
 static int
-channel_handle_rfd(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_handle_rfd(struct ssh *ssh, Channel *c)
 {
 	char buf[CHAN_RBUF];
 	ssize_t len;
 	int r, force;
+	size_t have, avail, maxlen = CHANNEL_MAX_READ;
+	int pty_zeroread = 0;
+
+#ifdef PTY_ZEROREAD
+	/* Bug on AIX: read(1) can return 0 for a non-closed fd */
+	pty_zeroread = c->isatty;
+#endif
 
 	force = c->isatty && c->detach_close && c->istate != CHAN_INPUT_CLOSED;
 
-	if (c->rfd == -1 || (!force && !FD_ISSET(c->rfd, readset)))
+	if (!force && (c->io_ready & SSH_CHAN_IO_RFD) == 0)
 		return 1;
+	if ((avail = sshbuf_avail(c->input)) == 0)
+		return 1; /* Shouldn't happen */
+
+	/*
+	 * For "simple" channels (i.e. not datagram or filtered), we can
+	 * read directly to the channel buffer.
+	 */
+	if (!pty_zeroread && c->input_filter == NULL && !c->datagram) {
+		/* Only OPEN channels have valid rwin */
+		if (c->type == SSH_CHANNEL_OPEN) {
+			if ((have = sshbuf_len(c->input)) >= c->remote_window)
+				return 1; /* shouldn't happen */
+			if (maxlen > c->remote_window - have)
+				maxlen = c->remote_window - have;
+		}
+		if (maxlen > avail)
+			maxlen = avail;
+		if ((r = sshbuf_read(c->rfd, c->input, maxlen, NULL)) != 0) {
+			if (errno == EINTR || (!force &&
+			    (errno == EAGAIN || errno == EWOULDBLOCK)))
+				return 1;
+			debug2("channel %d: read failed rfd %d maxlen %zu: %s",
+			    c->self, c->rfd, maxlen, ssh_err(r));
+			goto rfail;
+		}
+		return 1;
+	}
 
 	errno = 0;
 	len = read(c->rfd, buf, sizeof(buf));
+	/* fixup AIX zero-length read with errno set to look more like errors */
+	if (pty_zeroread && len == 0 && errno != 0)
+		len = -1;
 	if (len == -1 && (errno == EINTR ||
 	    ((errno == EAGAIN || errno == EWOULDBLOCK) && !force)))
 		return 1;
-#ifndef PTY_ZEROREAD
-	if (len <= 0) {
-#else
-	if ((!c->isatty && len <= 0) ||
-	    (c->isatty && (len < 0 || (len == 0 && errno != 0)))) {
-#endif
-		debug2("channel %d: read<=0 rfd %d len %zd",
-		    c->self, c->rfd, len);
+	if (len < 0 || (!pty_zeroread && len == 0)) {
+		debug2("channel %d: read<=0 rfd %d len %zd: %s",
+		    c->self, c->rfd, len,
+		    len == 0 ? "closed" : strerror(errno));
+ rfail:
 		if (c->type != SSH_CHANNEL_OPEN) {
 			debug2("channel %d: not open", c->self);
 			chan_mark_dead(ssh, c);
@@ -1976,20 +2002,21 @@ channel_handle_rfd(struct ssh *ssh, Channel *c,
 			fatal_fr(r, "channel %i: put datagram", c->self);
 	} else if ((r = sshbuf_put(c->input, buf, len)) != 0)
 		fatal_fr(r, "channel %i: put data", c->self);
+
 	return 1;
 }
 
 static int
-channel_handle_wfd(struct ssh *ssh, Channel *c,
-   fd_set *readset, fd_set *writeset)
+channel_handle_wfd(struct ssh *ssh, Channel *c)
 {
 	struct termios tio;
 	u_char *data = NULL, *buf; /* XXX const; need filter API change */
 	size_t dlen, olen = 0;
 	int r, len;
 
-	if (c->wfd == -1 || !FD_ISSET(c->wfd, writeset) ||
-	    sshbuf_len(c->output) == 0)
+	if ((c->io_ready & SSH_CHAN_IO_WFD) == 0)
+		return 1;
+	if (sshbuf_len(c->output) == 0)
 		return 1;
 
 	/* Send buffered output data to the socket. */
@@ -2027,7 +2054,7 @@ channel_handle_wfd(struct ssh *ssh, Channel *c,
 #ifdef _AIX
 	/* XXX: Later AIX versions can't push as much data to tty */
 	if (c->wfd_isatty)
-		dlen = MIN(dlen, 8*1024);
+		dlen = MINIMUM(dlen, 8*1024);
 #endif
 
 	len = write(c->wfd, buf, dlen);
@@ -2070,13 +2097,14 @@ channel_handle_wfd(struct ssh *ssh, Channel *c,
 }
 
 static int
-channel_handle_efd_write(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_handle_efd_write(struct ssh *ssh, Channel *c)
 {
 	int r;
 	ssize_t len;
 
-	if (!FD_ISSET(c->efd, writeset) || sshbuf_len(c->extended) == 0)
+	if ((c->io_ready & SSH_CHAN_IO_EFD_W) == 0)
+		return 1;
+	if (sshbuf_len(c->extended) == 0)
 		return 1;
 
 	len = write(c->efd, sshbuf_ptr(c->extended),
@@ -2097,8 +2125,7 @@ channel_handle_efd_write(struct ssh *ssh, Channel *c,
 }
 
 static int
-channel_handle_efd_read(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_handle_efd_read(struct ssh *ssh, Channel *c)
 {
 	char buf[CHAN_RBUF];
 	ssize_t len;
@@ -2106,7 +2133,7 @@ channel_handle_efd_read(struct ssh *ssh, Channel *c,
 
 	force = c->isatty && c->detach_close && c->istate != CHAN_INPUT_CLOSED;
 
-	if (c->efd == -1 || (!force && !FD_ISSET(c->efd, readset)))
+	if (!force && (c->io_ready & SSH_CHAN_IO_EFD_R) == 0)
 		return 1;
 
 	len = read(c->efd, buf, sizeof(buf));
@@ -2125,8 +2152,7 @@ channel_handle_efd_read(struct ssh *ssh, Channel *c,
 }
 
 static int
-channel_handle_efd(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_handle_efd(struct ssh *ssh, Channel *c)
 {
 	if (c->efd == -1)
 		return 1;
@@ -2134,10 +2160,10 @@ channel_handle_efd(struct ssh *ssh, Channel *c,
 	/** XXX handle drain efd, too */
 
 	if (c->extended_usage == CHAN_EXTENDED_WRITE)
-		return channel_handle_efd_write(ssh, c, readset, writeset);
+		return channel_handle_efd_write(ssh, c);
 	else if (c->extended_usage == CHAN_EXTENDED_READ ||
 	    c->extended_usage == CHAN_EXTENDED_IGNORE)
-		return channel_handle_efd_read(ssh, c, readset, writeset);
+		return channel_handle_efd_read(ssh, c);
 
 	return 1;
 }
@@ -2171,12 +2197,11 @@ channel_check_window(struct ssh *ssh, Channel *c)
 }
 
 static void
-channel_post_open(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_post_open(struct ssh *ssh, Channel *c)
 {
-	channel_handle_rfd(ssh, c, readset, writeset);
-	channel_handle_wfd(ssh, c, readset, writeset);
-	channel_handle_efd(ssh, c, readset, writeset);
+	channel_handle_rfd(ssh, c);
+	channel_handle_wfd(ssh, c);
+	channel_handle_efd(ssh, c);
 	channel_check_window(ssh, c);
 }
 
@@ -2205,12 +2230,11 @@ read_mux(struct ssh *ssh, Channel *c, u_int need)
 }
 
 static void
-channel_post_mux_client_read(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_post_mux_client_read(struct ssh *ssh, Channel *c)
 {
 	u_int need;
 
-	if (c->rfd == -1 || !FD_ISSET(c->rfd, readset))
+	if ((c->io_ready & SSH_CHAN_IO_RFD) == 0)
 		return;
 	if (c->istate != CHAN_INPUT_OPEN && c->istate != CHAN_INPUT_WAIT_DRAIN)
 		return;
@@ -2242,14 +2266,14 @@ channel_post_mux_client_read(struct ssh *ssh, Channel *c,
 }
 
 static void
-channel_post_mux_client_write(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_post_mux_client_write(struct ssh *ssh, Channel *c)
 {
 	ssize_t len;
 	int r;
 
-	if (c->wfd == -1 || !FD_ISSET(c->wfd, writeset) ||
-	    sshbuf_len(c->output) == 0)
+	if ((c->io_ready & SSH_CHAN_IO_WFD) == 0)
+		return;
+	if (sshbuf_len(c->output) == 0)
 		return;
 
 	len = write(c->wfd, sshbuf_ptr(c->output), sshbuf_len(c->output));
@@ -2264,16 +2288,14 @@ channel_post_mux_client_write(struct ssh *ssh, Channel *c,
 }
 
 static void
-channel_post_mux_client(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_post_mux_client(struct ssh *ssh, Channel *c)
 {
-	channel_post_mux_client_read(ssh, c, readset, writeset);
-	channel_post_mux_client_write(ssh, c, readset, writeset);
+	channel_post_mux_client_read(ssh, c);
+	channel_post_mux_client_write(ssh, c);
 }
 
 static void
-channel_post_mux_listener(struct ssh *ssh, Channel *c,
-    fd_set *readset, fd_set *writeset)
+channel_post_mux_listener(struct ssh *ssh, Channel *c)
 {
 	Channel *nc;
 	struct sockaddr_storage addr;
@@ -2282,7 +2304,7 @@ channel_post_mux_listener(struct ssh *ssh, Channel *c,
 	uid_t euid;
 	gid_t egid;
 
-	if (!FD_ISSET(c->sock, readset))
+	if ((c->io_ready & SSH_CHAN_IO_SOCK_R) == 0)
 		return;
 
 	debug("multiplexing control connection");
@@ -2388,8 +2410,7 @@ channel_garbage_collect(struct ssh *ssh, Channel *c)
 enum channel_table { CHAN_PRE, CHAN_POST };
 
 static void
-channel_handler(struct ssh *ssh, int table,
-    fd_set *readset, fd_set *writeset, time_t *unpause_secs)
+channel_handler(struct ssh *ssh, int table, time_t *unpause_secs)
 {
 	struct ssh_channels *sc = ssh->chanctxt;
 	chan_fn **ftab = table == CHAN_PRE ? sc->channel_pre : sc->channel_post;
@@ -2404,6 +2425,9 @@ channel_handler(struct ssh *ssh, int table,
 		c = sc->channels[i];
 		if (c == NULL)
 			continue;
+		/* Try to keep IO going while rekeying */
+		if (ssh_packet_is_rekeying(ssh) && c->type != SSH_CHANNEL_OPEN)
+			continue;
 		if (c->delayed) {
 			if (table == CHAN_PRE)
 				c->delayed = 0;
@@ -2415,7 +2439,7 @@ channel_handler(struct ssh *ssh, int table,
 			 * Run handlers that are not paused.
 			 */
 			if (c->notbefore <= now)
-				(*ftab[c->type])(ssh, c, readset, writeset);
+				(*ftab[c->type])(ssh, c);
 			else if (unpause_secs != NULL) {
 				/*
 				 * Collect the time that the earliest
@@ -2437,12 +2461,13 @@ channel_handler(struct ssh *ssh, int table,
 }
 
 /*
- * Create sockets before allocating the select bitmasks.
+ * Create sockets before preparing IO.
  * This is necessary for things that need to happen after reading
- * the network-input but before channel_prepare_select().
+ * the network-input but need to be completed before IO event setup, e.g.
+ * because they may create new channels.
  */
 static void
-channel_before_prepare_select(struct ssh *ssh)
+channel_before_prepare_io(struct ssh *ssh)
 {
 	struct ssh_channels *sc = ssh->chanctxt;
 	Channel *c;
@@ -2453,53 +2478,277 @@ channel_before_prepare_select(struct ssh *ssh)
 		if (c == NULL)
 			continue;
 		if (c->type == SSH_CHANNEL_RDYNAMIC_OPEN)
-			channel_before_prepare_select_rdynamic(ssh, c);
+			channel_before_prepare_io_rdynamic(ssh, c);
 	}
 }
 
-/*
- * Allocate/update select bitmasks and add any bits relevant to channels in
- * select bitmasks.
- */
-void
-channel_prepare_select(struct ssh *ssh, fd_set **readsetp, fd_set **writesetp,
-    int *maxfdp, u_int *nallocp, time_t *minwait_secs)
+static void
+dump_channel_poll(const char *func, const char *what, Channel *c,
+    u_int pollfd_offset, struct pollfd *pfd)
 {
-	u_int n, sz, nfdset;
+#ifdef DEBUG_CHANNEL_POLL
+	debug3("%s: channel %d: %s r%d w%d e%d s%d c->pfds [ %d %d %d %d ] "
+	    "io_want 0x%02x io_ready 0x%02x pfd[%u].fd=%d "
+	    "pfd.ev 0x%02x pfd.rev 0x%02x", func, c->self, what,
+	    c->rfd, c->wfd, c->efd, c->sock,
+	    c->pfds[0], c->pfds[1], c->pfds[2], c->pfds[3],
+	    c->io_want, c->io_ready,
+	    pollfd_offset, pfd->fd, pfd->events, pfd->revents);
+#endif
+}
 
-	channel_before_prepare_select(ssh); /* might update channel_max_fd */
+/* Prepare pollfd entries for a single channel */
+static void
+channel_prepare_pollfd(Channel *c, u_int *next_pollfd,
+    struct pollfd *pfd, u_int npfd)
+{
+	u_int ev, p = *next_pollfd;
 
-	n = MAXIMUM(*maxfdp, ssh->chanctxt->channel_max_fd);
-
-	nfdset = howmany(n+1, NFDBITS);
-	/* Explicitly test here, because xrealloc isn't always called */
-	if (nfdset && SIZE_MAX / nfdset < sizeof(fd_mask))
-		fatal("channel_prepare_select: max_fd (%d) is too large", n);
-	sz = nfdset * sizeof(fd_mask);
-
-	/* perhaps check sz < nalloc/2 and shrink? */
-	if (*readsetp == NULL || sz > *nallocp) {
-		*readsetp = xreallocarray(*readsetp, nfdset, sizeof(fd_mask));
-		*writesetp = xreallocarray(*writesetp, nfdset, sizeof(fd_mask));
-		*nallocp = sz;
+	if (c == NULL)
+		return;
+	if (p + 4 > npfd) {
+		/* Shouldn't happen */
+		fatal_f("channel %d: bad pfd offset %u (max %u)",
+		    c->self, p, npfd);
 	}
-	*maxfdp = n;
-	memset(*readsetp, 0, sz);
-	memset(*writesetp, 0, sz);
+	c->pfds[0] = c->pfds[1] = c->pfds[2] = c->pfds[3] = -1;
+	/*
+	 * prepare c->rfd
+	 *
+	 * This is a special case, since c->rfd might be the same as
+	 * c->wfd, c->efd and/or c->sock. Handle those here if they want
+	 * IO too.
+	 */
+	if (c->rfd != -1) {
+		ev = 0;
+		if ((c->io_want & SSH_CHAN_IO_RFD) != 0)
+			ev |= POLLIN;
+		/* rfd == wfd */
+		if (c->wfd == c->rfd) {
+			if ((c->io_want & SSH_CHAN_IO_WFD) != 0)
+				ev |= POLLOUT;
+		}
+		/* rfd == efd */
+		if (c->efd == c->rfd) {
+			if ((c->io_want & SSH_CHAN_IO_EFD_R) != 0)
+				ev |= POLLIN;
+			if ((c->io_want & SSH_CHAN_IO_EFD_W) != 0)
+				ev |= POLLOUT;
+		}
+		/* rfd == sock */
+		if (c->sock == c->rfd) {
+			if ((c->io_want & SSH_CHAN_IO_SOCK_R) != 0)
+				ev |= POLLIN;
+			if ((c->io_want & SSH_CHAN_IO_SOCK_W) != 0)
+				ev |= POLLOUT;
+		}
+		/* Pack a pfd entry if any event armed for this fd */
+		if (ev != 0) {
+			c->pfds[0] = p;
+			pfd[p].fd = c->rfd;
+			pfd[p].events = ev;
+			dump_channel_poll(__func__, "rfd", c, p, &pfd[p]);
+			p++;
+		}
+	}
+	/* prepare c->wfd if wanting IO and not already handled above */
+	if (c->wfd != -1 && c->rfd != c->wfd) {
+		ev = 0;
+		if ((c->io_want & SSH_CHAN_IO_WFD))
+			ev |= POLLOUT;
+		/* Pack a pfd entry if any event armed for this fd */
+		if (ev != 0) {
+			c->pfds[1] = p;
+			pfd[p].fd = c->wfd;
+			pfd[p].events = ev;
+			dump_channel_poll(__func__, "wfd", c, p, &pfd[p]);
+			p++;
+		}
+	}
+	/* prepare c->efd if wanting IO and not already handled above */
+	if (c->efd != -1 && c->rfd != c->efd) {
+		ev = 0;
+		if ((c->io_want & SSH_CHAN_IO_EFD_R) != 0)
+			ev |= POLLIN;
+		if ((c->io_want & SSH_CHAN_IO_EFD_W) != 0)
+			ev |= POLLOUT;
+		/* Pack a pfd entry if any event armed for this fd */
+		if (ev != 0) {
+			c->pfds[2] = p;
+			pfd[p].fd = c->efd;
+			pfd[p].events = ev;
+			dump_channel_poll(__func__, "efd", c, p, &pfd[p]);
+			p++;
+		}
+	}
+	/* prepare c->sock if wanting IO and not already handled above */
+	if (c->sock != -1 && c->rfd != c->sock) {
+		ev = 0;
+		if ((c->io_want & SSH_CHAN_IO_SOCK_R) != 0)
+			ev |= POLLIN;
+		if ((c->io_want & SSH_CHAN_IO_SOCK_W) != 0)
+			ev |= POLLOUT;
+		/* Pack a pfd entry if any event armed for this fd */
+		if (ev != 0) {
+			c->pfds[3] = p;
+			pfd[p].fd = c->sock;
+			pfd[p].events = 0;
+			dump_channel_poll(__func__, "sock", c, p, &pfd[p]);
+			p++;
+		}
+	}
+	*next_pollfd = p;
+}
 
-	if (!ssh_packet_is_rekeying(ssh))
-		channel_handler(ssh, CHAN_PRE, *readsetp, *writesetp,
-		    minwait_secs);
+/* * Allocate/prepare poll structure */
+void
+channel_prepare_poll(struct ssh *ssh, struct pollfd **pfdp, u_int *npfd_allocp,
+    u_int *npfd_activep, u_int npfd_reserved, time_t *minwait_secs)
+{
+	struct ssh_channels *sc = ssh->chanctxt;
+	u_int i, oalloc, p, npfd = npfd_reserved;
+
+	channel_before_prepare_io(ssh); /* might create a new channel */
+	/* clear out I/O flags from last poll */
+	for (i = 0; i < sc->channels_alloc; i++) {
+		if (sc->channels[i] == NULL)
+			continue;
+		sc->channels[i]->io_want = sc->channels[i]->io_ready = 0;
+	}
+	/* Allocate 4x pollfd for each channel (rfd, wfd, efd, sock) */
+	if (sc->channels_alloc >= (INT_MAX / 4) - npfd_reserved)
+		fatal_f("too many channels"); /* shouldn't happen */
+	npfd += sc->channels_alloc * 4;
+	if (npfd > *npfd_allocp) {
+		*pfdp = xrecallocarray(*pfdp, *npfd_allocp,
+		    npfd, sizeof(**pfdp));
+		*npfd_allocp = npfd;
+	}
+	*npfd_activep = npfd_reserved;
+	oalloc = sc->channels_alloc;
+
+	channel_handler(ssh, CHAN_PRE, minwait_secs);
+
+	if (oalloc != sc->channels_alloc) {
+		/* shouldn't happen */
+		fatal_f("channels_alloc changed during CHAN_PRE "
+		    "(was %u, now %u)", oalloc, sc->channels_alloc);
+	}
+
+	/* Prepare pollfd */
+	p = npfd_reserved;
+	for (i = 0; i < sc->channels_alloc; i++)
+		channel_prepare_pollfd(sc->channels[i], &p, *pfdp, npfd);
+	*npfd_activep = p;
+}
+
+static void
+fd_ready(Channel *c, int p, struct pollfd *pfds, u_int npfd, int fd,
+    const char *what, u_int revents_mask, u_int ready)
+{
+	struct pollfd *pfd = &pfds[p];
+
+	if (fd == -1)
+		return;
+	if (p == -1 || (u_int)p >= npfd)
+		fatal_f("channel %d: bad pfd %d (max %u)", c->self, p, npfd);
+	dump_channel_poll(__func__, what, c, p, pfd);
+	if (pfd->fd != fd) {
+		fatal("channel %d: inconsistent %s fd=%d pollfd[%u].fd %d "
+		    "r%d w%d e%d s%d", c->self, what, fd, p, pfd->fd,
+		    c->rfd, c->wfd, c->efd, c->sock);
+	}
+	if ((pfd->revents & POLLNVAL) != 0) {
+		fatal("channel %d: invalid %s pollfd[%u].fd %d r%d w%d e%d s%d",
+		    c->self, what, p, pfd->fd, c->rfd, c->wfd, c->efd, c->sock);
+	}
+	if ((pfd->revents & (revents_mask|POLLHUP|POLLERR)) != 0)
+		c->io_ready |= ready & c->io_want;
 }
 
 /*
- * After select, perform any appropriate operations for channels which have
+ * After poll, perform any appropriate operations for channels which have
  * events pending.
  */
 void
-channel_after_select(struct ssh *ssh, fd_set *readset, fd_set *writeset)
+channel_after_poll(struct ssh *ssh, struct pollfd *pfd, u_int npfd)
 {
-	channel_handler(ssh, CHAN_POST, readset, writeset, NULL);
+	struct ssh_channels *sc = ssh->chanctxt;
+	u_int i;
+	int p;
+	Channel *c;
+
+#ifdef DEBUG_CHANNEL_POLL
+	for (p = 0; p < (int)npfd; p++) {
+		if (pfd[p].revents == 0)
+			continue;
+		debug_f("pfd[%u].fd %d rev 0x%04x",
+		    p, pfd[p].fd, pfd[p].revents);
+	}
+#endif
+
+	/* Convert pollfd into c->io_ready */
+	for (i = 0; i < sc->channels_alloc; i++) {
+		c = sc->channels[i];
+		if (c == NULL)
+			continue;
+		/* if rfd is shared with efd/sock then wfd should be too */
+		if (c->rfd != -1 && c->wfd != -1 && c->rfd != c->wfd &&
+		    (c->rfd == c->efd || c->rfd == c->sock)) {
+			/* Shouldn't happen */
+			fatal_f("channel %d: unexpected fds r%d w%d e%d s%d",
+			    c->self, c->rfd, c->wfd, c->efd, c->sock);
+		}
+		c->io_ready = 0;
+		/* rfd, potentially shared with wfd, efd and sock */
+		if (c->rfd != -1 && (p = c->pfds[0]) != -1) {
+			fd_ready(c, p, pfd, npfd, c->rfd,
+			    "rfd", POLLIN, SSH_CHAN_IO_RFD);
+			if (c->rfd == c->wfd) {
+				fd_ready(c, p, pfd, npfd, c->wfd,
+				    "wfd/r", POLLOUT, SSH_CHAN_IO_WFD);
+			}
+			if (c->rfd == c->efd) {
+				fd_ready(c, p, pfd, npfd, c->efd,
+				    "efdr/r", POLLIN, SSH_CHAN_IO_EFD_R);
+				fd_ready(c, p, pfd, npfd, c->efd,
+				    "efdw/r", POLLOUT, SSH_CHAN_IO_EFD_W);
+			}
+			if (c->rfd == c->sock) {
+				fd_ready(c, p, pfd, npfd, c->sock,
+				    "sockr/r", POLLIN, SSH_CHAN_IO_SOCK_R);
+				fd_ready(c, p, pfd, npfd, c->sock,
+				    "sockw/r", POLLOUT, SSH_CHAN_IO_SOCK_W);
+			}
+			dump_channel_poll(__func__, "rfd", c, p, pfd);
+		}
+		/* wfd */
+		if (c->wfd != -1 && c->wfd != c->rfd &&
+		    (p = c->pfds[1]) != -1) {
+			fd_ready(c, p, pfd, npfd, c->wfd,
+			    "wfd", POLLOUT, SSH_CHAN_IO_WFD);
+			dump_channel_poll(__func__, "wfd", c, p, pfd);
+		}
+		/* efd */
+		if (c->efd != -1 && c->efd != c->rfd &&
+		    (p = c->pfds[2]) != -1) {
+			fd_ready(c, p, pfd, npfd, c->efd,
+			    "efdr", POLLIN, SSH_CHAN_IO_EFD_R);
+			fd_ready(c, p, pfd, npfd, c->efd,
+			    "efdw", POLLOUT, SSH_CHAN_IO_EFD_W);
+			dump_channel_poll(__func__, "efd", c, p, pfd);
+		}
+		/* sock */
+		if (c->sock != -1 && c->sock != c->rfd &&
+		    (p = c->pfds[3]) != -1) {
+			fd_ready(c, p, pfd, npfd, c->sock,
+			    "sockr", POLLIN, SSH_CHAN_IO_SOCK_R);
+			fd_ready(c, p, pfd, npfd, c->sock,
+			    "sockw", POLLOUT, SSH_CHAN_IO_SOCK_W);
+			dump_channel_poll(__func__, "sock", c, p, pfd);
+		}
+	}
+	channel_handler(ssh, CHAN_POST, NULL);
 }
 
 /*
@@ -4154,13 +4403,15 @@ connect_next(struct channel_connect *cctx)
 			if (getnameinfo(cctx->ai->ai_addr, cctx->ai->ai_addrlen,
 			    ntop, sizeof(ntop), strport, sizeof(strport),
 			    NI_NUMERICHOST|NI_NUMERICSERV) != 0) {
-				error("connect_next: getnameinfo failed");
+				error_f("getnameinfo failed");
 				continue;
 			}
 			break;
 		default:
 			continue;
 		}
+		debug_f("start for host %.100s ([%.100s]:%s)",
+		    cctx->host, ntop, strport);
 		if ((sock = socket(cctx->ai->ai_family, cctx->ai->ai_socktype,
 		    cctx->ai->ai_protocol)) == -1) {
 			if (cctx->ai->ai_next == NULL)
@@ -4173,9 +4424,8 @@ connect_next(struct channel_connect *cctx)
 			fatal_f("set_nonblock(%d)", sock);
 		if (connect(sock, cctx->ai->ai_addr,
 		    cctx->ai->ai_addrlen) == -1 && errno != EINPROGRESS) {
-			debug("connect_next: host %.100s ([%.100s]:%s): "
-			    "%.100s", cctx->host, ntop, strport,
-			    strerror(errno));
+			debug_f("host %.100s ([%.100s]:%s): %.100s",
+			    cctx->host, ntop, strport, strerror(errno));
 			saved_errno = errno;
 			close(sock);
 			errno = saved_errno;
@@ -4183,8 +4433,8 @@ connect_next(struct channel_connect *cctx)
 		}
 		if (cctx->ai->ai_family != AF_UNIX)
 			set_nodelay(sock);
-		debug("connect_next: host %.100s ([%.100s]:%s) "
-		    "in progress, fd=%d", cctx->host, ntop, strport, sock);
+		debug_f("connect host %.100s ([%.100s]:%s) in progress, fd=%d",
+		    cctx->host, ntop, strport, sock);
 		cctx->ai = cctx->ai->ai_next;
 		return sock;
 	}

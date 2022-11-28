@@ -1,4 +1,4 @@
-/* $OpenBSD: misc.h,v 1.98 2021/08/09 23:47:44 djm Exp $ */
+/* $OpenBSD: misc.h,v 1.100 2022/06/03 04:30:47 djm Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
@@ -82,7 +82,7 @@ void	 xextendf(char **s, const char *sep, const char *fmt, ...)
     __attribute__((__format__ (printf, 3, 4))) __attribute__((__nonnull__ (3)));
 void	 sanitise_stdfd(void);
 void	 ms_subtract_diff(struct timeval *, int *);
-void	 ms_to_timeval(struct timeval *, int);
+void	 ms_to_timespec(struct timespec *, int);
 void	 monotime_ts(struct timespec *);
 void	 monotime_tv(struct timeval *);
 time_t	 monotime(void);
@@ -178,6 +178,8 @@ void mktemp_proto(char *, size_t);
 void	 child_set_env(char ***envp, u_int *envsizep, const char *name,
 	    const char *value);
 const char *lookup_env_in_list(const char *env,
+	    char * const *envs, size_t nenvs);
+const char *lookup_setenv_in_list(const char *env,
 	    char * const *envs, size_t nenvs);
 
 int	 argv_split(const char *, int *, char ***, int);
