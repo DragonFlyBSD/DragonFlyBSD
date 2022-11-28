@@ -65,7 +65,15 @@ enum evdev_sparse_result
 
 MALLOC_DEFINE(M_EVDEV, "evdev", "evdev memory");
 
+/*
+ * By default, to avoid duplicate events (in particular for mouse movement),
+ * make evdev only collect events from actual hardware devices and not from
+ * sysmouse or kbdmux.
+ */
+#if 0
 int evdev_rcpt_mask = EVDEV_RCPT_SYSMOUSE | EVDEV_RCPT_KBDMUX;
+#endif
+int evdev_rcpt_mask = EVDEV_RCPT_HW_MOUSE | EVDEV_RCPT_HW_KBD;
 int evdev_sysmouse_t_axis = 0;
 
 /*
