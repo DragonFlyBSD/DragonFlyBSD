@@ -69,7 +69,7 @@ typedef struct {
 	 * and lstat(2).
 	 */
 	void (*gl_closedir)(void *);
-	struct dirent *(*gl_readdir)(void *);
+	struct dirent *(*gl_readdir)(void *);	
 	void *(*gl_opendir)(const char *);
 	int (*gl_lstat)(const char *, struct stat *);
 	int (*gl_stat)(const char *, struct stat *);
@@ -105,3 +105,4 @@ void	globfree(glob_t *);
 
 #endif /* !defined(HAVE_GLOB_H) || !defined(GLOB_HAS_ALTDIRFUNC)  ||
 	  !defined(GLOB_HAS_GL_MATCHC) || !defined(GLOH_HAS_GL_STATV) */
+

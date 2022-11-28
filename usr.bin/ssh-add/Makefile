@@ -2,6 +2,7 @@
 .PATH: ${.CURDIR}/../../crypto/openssh
 
 PROG=	ssh-add
+SRCS=	ssh-add.c ssh-sk-client.c
 WARNS?=	3
 
 CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh

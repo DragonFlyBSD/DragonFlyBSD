@@ -4,10 +4,10 @@ OPENSSH
 Original source can be downloaded from OpenBSD at
 ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/
 
-file = openssh-8.8p1.tar.gz
-date = 26 Sep 2021
-size = 1815060
-sha1 = 1eb964897a4372f6fb96c7effeb509ec71c379c9
+file = openssh-9.1p1.tar.gz
+date = 04 October 2022
+size = 1838747
+sha1 = 15545440268967511d3194ebf20bcd0c7ff3fcc9
 
 A list of deleted files is in README.DELETED.
 

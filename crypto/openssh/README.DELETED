@@ -1,6 +1,8 @@
 .depend
 .github/
 .gitignore
+.git_allowed_signers
+.git_allowed_signers.asc
 .skipped-commit-ids
 ChangeLog
 INSTALL
@@ -8,6 +10,7 @@ Makefile.in
 OVERVIEW
 PROTOCOL.u2f
 README.md
+SECURITY.md
 README.platform
 README.privsep
 TODO

@@ -3,7 +3,7 @@
 
 PROG=	ssh-keysign
 SRCS=	ssh-keysign.c
-SRCS+=	readconf.c uidswap.c
+SRCS+=	misc.c readconf.c uidswap.c
 MAN=	ssh-keysign.8
 .if defined(ENABLE_SUID_SSH)
 BINMODE=4511

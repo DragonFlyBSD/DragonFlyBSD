@@ -20,6 +20,9 @@
 /* The system has incomplete BSM API */
 /* #undef BROKEN_BSM_API */
 
+/* broken in chroots on older kernels */
+/* #undef BROKEN_CLOSEFROM */
+
 /* Define if cmsg_type is not passed correctly */
 /* #undef BROKEN_CMSG_TYPE */
 
@@ -28,6 +31,9 @@
 
 /* getgroups(0,NULL) will return -1 */
 /* #undef BROKEN_GETGROUPS */
+
+/* getline is not what we expect */
+/* #undef BROKEN_GETLINE */
 
 /* FreeBSD glob does not do what we need */
 /* #undef BROKEN_GLOB */
@@ -38,6 +44,9 @@
 /* Define if your struct dirent expects you to allocate extra space for d_name
    */
 /* #undef BROKEN_ONE_BYTE_DIRENT_D_NAME */
+
+/* System poll(2) implementation is broken */
+/* #undef BROKEN_POLL */
 
 /* Can't do comparisons on readv */
 /* #undef BROKEN_READV_COMPARISON */
@@ -100,7 +109,7 @@
 /* Define if you want to specify the path to your wtmp file */
 /* #undef CONF_WTMP_FILE */
 
-/* Define if your platform needs to skip post auth file descriptor passing */
+/* Need to call setpgrp as root */
 /* #undef DISABLE_FD_PASSING */
 
 /* Define if you don't want to use lastlog */
@@ -110,7 +119,7 @@
 #define DISABLE_LOGIN 1
 
 /* Define if you don't want to use pututline() etc. to write [uw]tmp */
-#define DISABLE_PUTUTLINE 1
+/* #undef DISABLE_PUTUTLINE */
 
 /* Define if you don't want to use pututxline() etc. to write [uw]tmpx */
 /* #undef DISABLE_PUTUTXLINE */
@@ -268,6 +277,12 @@
 /* calloc(0, x) returns NULL */
 #define HAVE_CALLOC 1
 
+/* Define if you have caph_cache_tzdata */
+/* #undef HAVE_CAPH_CACHE_TZDATA */
+
+/* Define to 1 if you have the <capsicum_helpers.h> header file. */
+/* #undef HAVE_CAPSICUM_HELPERS_H */
+
 /* Define to 1 if you have the `cap_rights_limit' function. */
 /* #undef HAVE_CAP_RIGHTS_LIMIT */
 
@@ -282,6 +297,9 @@
 
 /* Define to 1 if you have the `closefrom' function. */
 #define HAVE_CLOSEFROM 1
+
+/* Define to 1 if you have the `close_range' function. */
+/* #undef HAVE_CLOSE_RANGE */
 
 /* Define if gai_strerror() returns const char * */
 #define HAVE_CONST_GAI_STRERROR_PROTO 1
@@ -315,6 +333,14 @@
 /* Define to 1 if you have the declaration of `bzero', and to 0 if you don't.
    */
 #define HAVE_DECL_BZERO 1
+
+/* Define to 1 if you have the declaration of `ftruncate', and to 0 if you
+   don't. */
+#define HAVE_DECL_FTRUNCATE 1
+
+/* Define to 1 if you have the declaration of `getentropy', and to 0 if you
+   don't. */
+#define HAVE_DECL_GETENTROPY 1
 
 /* Define to 1 if you have the declaration of `getpeereid', and to 0 if you
    don't. */
@@ -496,9 +522,6 @@
 /* Define to 1 if you have the `EVP_chacha20' function. */
 #define HAVE_EVP_CHACHA20 1
 
-/* Define to 1 if you have the `EVP_CIPHER_CTX_ctrl' function. */
-#define HAVE_EVP_CIPHER_CTX_CTRL 1
-
 /* Define to 1 if you have the `EVP_CIPHER_CTX_get_iv' function. */
 #define HAVE_EVP_CIPHER_CTX_GET_IV 1
 
@@ -580,8 +603,14 @@
 /* Define to 1 if you have the <features.h> header file. */
 /* #undef HAVE_FEATURES_H */
 
+/* Define to 1 if you have the `fido_assert_set_clientdata' function. */
+/* #undef HAVE_FIDO_ASSERT_SET_CLIENTDATA */
+
 /* Define to 1 if you have the `fido_cred_prot' function. */
 /* #undef HAVE_FIDO_CRED_PROT */
+
+/* Define to 1 if you have the `fido_cred_set_clientdata' function. */
+/* #undef HAVE_FIDO_CRED_SET_CLIENTDATA */
 
 /* Define to 1 if you have the `fido_cred_set_prot' function. */
 /* #undef HAVE_FIDO_CRED_SET_PROT */
@@ -591,6 +620,9 @@
 
 /* Define to 1 if you have the `fido_dev_get_touch_status' function. */
 /* #undef HAVE_FIDO_DEV_GET_TOUCH_STATUS */
+
+/* Define to 1 if you have the `fido_dev_is_winhello' function. */
+/* #undef HAVE_FIDO_DEV_IS_WINHELLO */
 
 /* Define to 1 if you have the `fido_dev_supports_cred_prot' function. */
 /* #undef HAVE_FIDO_DEV_SUPPORTS_CRED_PROT */
@@ -645,6 +677,9 @@
 
 /* Define to 1 if you have the `getcwd' function. */
 #define HAVE_GETCWD 1
+
+/* Define to 1 if you have the `getentropy' function. */
+#define HAVE_GETENTROPY 1
 
 /* Define to 1 if you have the `getgrouplist' function. */
 #define HAVE_GETGROUPLIST 1
@@ -767,7 +802,7 @@
 #define HAVE_HEADER_AD 1
 
 /* Define to 1 if you have the `HMAC_CTX_init' function. */
-#define HAVE_HMAC_CTX_INIT 1
+/* #undef HAVE_HMAC_CTX_INIT */
 
 /* Define if you have ut_host in utmp.h */
 /* #undef HAVE_HOST_IN_UTMP */
@@ -823,6 +858,9 @@
 /* Define if you have isblank(3C). */
 #define HAVE_ISBLANK 1
 
+/* Define to 1 if you have the `killpg' function. */
+#define HAVE_KILLPG 1
+
 /* Define to 1 if you have the `krb5_cc_new_unique' function. */
 /* #undef HAVE_KRB5_CC_NEW_UNIQUE */
 
@@ -846,9 +884,6 @@
 
 /* Define to 1 if you have the `bsm' library (-lbsm). */
 /* #undef HAVE_LIBBSM */
-
-/* Define to 1 if you have the `crypt' library (-lcrypt). */
-/* #undef HAVE_LIBCRYPT */
 
 /* Define to 1 if you have the `dl' library (-ldl). */
 /* #undef HAVE_LIBDL */
@@ -944,20 +979,11 @@
 /* Define to 1 if you have the `mbtowc' function. */
 #define HAVE_MBTOWC 1
 
-/* Define to 1 if you have the `md5_crypt' function. */
-/* #undef HAVE_MD5_CRYPT */
-
-/* Define if you want to allow MD5 passwords */
-/* #undef HAVE_MD5_PASSWORDS */
-
 /* Define to 1 if you have the `memmem' function. */
 #define HAVE_MEMMEM 1
 
 /* Define to 1 if you have the `memmove' function. */
 #define HAVE_MEMMOVE 1
-
-/* Define to 1 if you have the <memory.h> header file. */
-#define HAVE_MEMORY_H 1
 
 /* Define to 1 if you have the `memset_s' function. */
 #define HAVE_MEMSET_S 1
@@ -988,6 +1014,9 @@
 
 /* Define if you are on NeXT */
 /* #undef HAVE_NEXT */
+
+/* Define to 1 if the system has the type `nfds_t'. */
+#define HAVE_NFDS_T 1
 
 /* Define to 1 if you have the `ngetaddrinfo' function. */
 /* #undef HAVE_NGETADDRINFO */
@@ -1052,6 +1081,9 @@
 
 /* Define to 1 if you have the <poll.h> header file. */
 #define HAVE_POLL_H 1
+
+/* Define to 1 if you have the `ppoll' function. */
+#define HAVE_PPOLL 1
 
 /* Define to 1 if you have the `prctl' function. */
 /* #undef HAVE_PRCTL */
@@ -1324,6 +1356,9 @@
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
 
+/* Define to 1 if you have the <stdio.h> header file. */
+#define HAVE_STDIO_H 1
+
 /* Define to 1 if you have the <stdlib.h> header file. */
 #define HAVE_STDLIB_H 1
 
@@ -1401,6 +1436,9 @@
 
 /* Define to 1 if `pw_gecos' is a member of `struct passwd'. */
 #define HAVE_STRUCT_PASSWD_PW_GECOS 1
+
+/* Define to 1 if `fd' is a member of `struct pollfd'. */
+#define HAVE_STRUCT_POLLFD_FD 1
 
 /* define if you have struct sockaddr_in6 data type */
 #define HAVE_STRUCT_SOCKADDR_IN6 1
@@ -1481,7 +1519,10 @@
 /* #undef HAVE_SYS_NDIR_H */
 
 /* Define if your system defines sys_nerr */
-#define HAVE_SYS_NERR 1
+/* #undef HAVE_SYS_NERR */
+
+/* Define to 1 if you have the <sys/param.h> header file. */
+#define HAVE_SYS_PARAM_H 1
 
 /* Define to 1 if you have the <sys/poll.h> header file. */
 #define HAVE_SYS_POLL_H 1
@@ -1554,6 +1595,9 @@
 
 /* Define to 1 if you have the `time' function. */
 #define HAVE_TIME 1
+
+/* Define to 1 if you have the `timegm' function. */
+#define HAVE_TIMEGM 1
 
 /* Define to 1 if you have the <time.h> header file. */
 #define HAVE_TIME_H 1
@@ -1760,7 +1804,7 @@
 /* Set this to your mail directory if you do not have _PATH_MAILDIR */
 /* #undef MAIL_DIRECTORY */
 
-/* Need setpgrp to acquire controlling tty */
+/* Need setpgrp to for controlling tty */
 /* #undef NEED_SETPGRP */
 
 /* compiler does not accept __attribute__ on prototype args */
@@ -1792,12 +1836,6 @@
 
 /* libcrypto has NID_secp521r1 */
 #define OPENSSL_HAS_NISTP521 1
-
-/* libcrypto has EVP AES CTR */
-#define OPENSSL_HAVE_EVPCTR 1
-
-/* libcrypto has EVP AES GCM */
-#define OPENSSL_HAVE_EVPGCM 1
 
 /* libcrypto is missing AES 192 and 256 bit functions */
 /* #undef OPENSSL_LOBOTOMISED_AES */
@@ -1939,7 +1977,9 @@
 /* Prepend the address family to IP tunnel traffic */
 /* #undef SSH_TUN_PREPEND_AF */
 
-/* Define to 1 if you have the ANSI C header files. */
+/* Define to 1 if all of the C90 standard headers exist (not just the ones
+   required in a freestanding environment). This macro is provided for
+   backward compatibility; new code need not use it. */
 #define STDC_HEADERS 1
 
 /* Define if you want a different $PATH for the superuser */
@@ -2039,11 +2079,6 @@
 /* Define if xauth is found in your path */
 #ifndef XAUTH_PATH
 #define XAUTH_PATH "/usr/local/bin/xauth"
-#endif
-
-/* Enable large inode numbers on Mac OS X 10.5.  */
-#ifndef _DARWIN_USE_64_BIT_INODE
-# define _DARWIN_USE_64_BIT_INODE 1
 #endif
 
 /* Number of bits in a file offset, on hosts where this is settable. */

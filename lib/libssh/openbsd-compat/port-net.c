@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -67,7 +68,7 @@ sys_set_rdomain(int fd, const char *name)
 	if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE,
 	    name, strlen(name)) == -1) {
 		error("%s: setsockopt(%d, SO_BINDTODEVICE, %s): %s",
-		      __func__, fd, name, strerror(errno));
+		    __func__, fd, name, strerror(errno));
 		return -1;
 	}
 	return 0;
@@ -203,17 +204,17 @@ sys_tun_open(int tun, int mode, char **ifname)
 #ifdef HAVE_NET_IF_TUN_H
 #include <net/if_tun.h>
 #endif
-#ifdef __DragonFly__
-#include <net/tun/if_tun.h>
-#endif
 
 int
 sys_tun_open(int tun, int mode, char **ifname)
 {
 	struct ifreq ifr;
 	char name[100];
-	int fd = -1, sock, flag;
+	int fd = -1, sock;
 	const char *tunbase = "tun";
+#if defined(TUNSIFHEAD) && !defined(SSH_TUN_PREPEND_AF)
+	int flag;
+#endif
 
 	if (ifname != NULL)
 		*ifname = NULL;
@@ -250,8 +251,8 @@ sys_tun_open(int tun, int mode, char **ifname)
 	}
 
 	/* Turn on tunnel headers */
-	flag = 1;
 #if defined(TUNSIFHEAD) && !defined(SSH_TUN_PREPEND_AF)
+	flag = 1;
 	if (mode != SSH_TUNMODE_ETHERNET &&
 	    ioctl(fd, TUNSIFHEAD, &flag) == -1) {
 		debug("%s: ioctl(%d, TUNSIFHEAD, 1): %s", __func__, fd,

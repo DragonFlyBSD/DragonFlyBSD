@@ -3,7 +3,8 @@
 
 PROG=	sftp
 SRCS=	sftp.c
-SRCS+=	progressmeter.c sftp-client.c sftp-common.c sftp-glob.c
+SRCS+=	progressmeter.c sftp-client.c sftp-common.c sftp-glob.c \
+	sftp-usergroup.c
 WARNS?=	3
 
 CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh

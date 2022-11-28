@@ -4,10 +4,11 @@ SRCS=	sshd.c
 .PATH: ${.CURDIR}/../../crypto/openssh
 SRCS+=	auth.c auth-options.c auth-pam.c auth-passwd.c auth-rhosts.c \
 	auth2.c auth2-chall.c auth2-hostbased.c auth2-kbdint.c auth2-none.c \
-	auth2-passwd.c auth2-pubkey.c groupaccess.c loginrec.c \
-	monitor.c monitor_wrap.c platform.c \
-	sandbox-rlimit.c servconf.c serverloop.c session.c \
-	sftp-common.c sftp-realpath.c sftp-server.c sshlogin.c sshpty.c uidswap.c
+	auth2-passwd.c auth2-pubkey.c auth2-pubkeyfile.c channels.c \
+	groupaccess.c loginrec.c misc.c monitor.c monitor_wrap.c packet.c \
+	platform.c sandbox-rlimit.c servconf.c serverloop.c session.c \
+	sftp-common.c sftp-realpath.c sftp-server.c sshbuf-misc.c sshlogin.c \
+	sshpty.c sshkey.c uidswap.c
 
 # not needed:
 # audit-bsm.c audit-linux.c audit.c auth-bsdauth.c auth-krb5.c auth-shadow.c auth-sia.c
