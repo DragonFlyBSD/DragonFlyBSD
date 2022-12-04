@@ -233,10 +233,10 @@ loop:
 #    define HAVEwait3
     pid = waitpid(-1, &w,
  	    (setintr && (intty || insource) ? WNOHANG | WUNTRACED : WNOHANG));
-#   endif /* ODT */	    
+#   endif /* ODT */
 #   if defined(aiws) || defined(uts)
 #    define HAVEwait3
-    pid = wait3(&w.w_status, 
+    pid = wait3(&w.w_status,
 	(setintr && (intty || insource) ? WNOHANG | WUNTRACED : WNOHANG), 0);
 #   endif /* aiws || uts */
 #   ifndef HAVEwait3
@@ -245,8 +245,8 @@ loop:
      /* on Sys V, this may hang.  I hope it's not going to be a problem */
     pid = wait(&w);
 #    else /* BSDWAIT */
-     /* 
-      * XXX: for greater than 3 we should use waitpid(). 
+     /*
+      * XXX: for greater than 3 we should use waitpid().
       * but then again, SVR4 falls into the POSIX/BSDJOBS category.
       */
     pid = wait(&w.w_status);
@@ -443,7 +443,7 @@ pnote(void)
 
 static void
 pfree(struct process *pp)
-{	
+{
     xfree(pp->p_command);
     if (pp->p_cwd && --pp->p_cwd->di_count == 0)
 	if (pp->p_cwd->di_next == 0)
@@ -568,15 +568,15 @@ pjwait(struct process *pp)
 		fp->p_reason | META : fp->p_reason;
     } while ((fp = fp->p_friends) != pp);
     /*
-     * Don't report on backquoted jobs, cause it will mess up 
+     * Don't report on backquoted jobs, cause it will mess up
      * their output.
      */
-    if ((reason != 0) && (adrof(STRprintexitvalue)) && 
+    if ((reason != 0) && (adrof(STRprintexitvalue)) &&
 	(pp->p_flags & PBACKQ) == 0)
 	xprintf(CGETS(17, 2, "Exit %d\n"), reason);
     reason_str = putn((tcsh_number_t)reason);
     cleanup_push(reason_str, xfree);
-    setv(STRstatus, reason_str, VAR_READWRITE);
+    setstrstatus(reason_str);
     cleanup_ignore(reason_str);
     cleanup_until(reason_str);
     if (reason && exiterr)
@@ -734,7 +734,7 @@ morecommand(size_t s)
 }
 
 /* GrP
- * unparse - Export padd() functionality 
+ * unparse - Export padd() functionality
  */
 Char *
 unparse(struct command *t)
@@ -1015,7 +1015,7 @@ pprint(struct process *pp, int flag)
 	if ((pp->p_friends->p_flags & PPOU) && !inpipe && (flag & NAME)) {
 	    inpipe = 1;
 	    pipetail = pp;
-	    do 
+	    do
 		pp = pp->p_friends;
 	    while (pp->p_friends->p_flags & PPOU);
 	    pipehead = pp;
@@ -1028,7 +1028,7 @@ pprint(struct process *pp, int flag)
 	pcond = (tp != pp || (inpipe && tp == pp));
 #else /* !BACKPIPE */
 	pcond = (tp != pp);
-#endif /* BACKPIPE */	    
+#endif /* BACKPIPE */
 
 	jobflags |= pp->p_flags;
 	pstatus = (int) (pp->p_flags & PALLSTATES);
@@ -1133,7 +1133,7 @@ pprint(struct process *pp, int flag)
 	}
 prcomd:
 	if (flag & NAME) {
-	    xprintf("%S", pp->p_command);
+	    xprintf("%" TCSH_S, pp->p_command);
 	    if (pp->p_flags & PPOU)
 		xprintf(" |");
 	    if (pp->p_flags & PDIAG)
@@ -1320,8 +1320,22 @@ dojobs(Char **v, struct command *c)
     if (chkstop)
 	chkstop = 2;
     if (*++v) {
-	if (v[1] || !eq(*v, STRml))
-	    stderror(ERR_JOBS);
+	if (v[1]) {
+	    if (eq(*v, STRml)) {
+		flag |= FANCY | JOBDIR;
+	    } else if (eq(*v, STRmZ)) {
+#ifdef HAVE_SETPROCTITLE
+		if (v[1] && v[1][0]) {
+		    setproctitle("%s", short2str(v[1]));
+		} else {
+		    setproctitle(NULL);
+		}
+#endif
+		return;
+	    } else {
+		stderror(ERR_JOBS);
+	    }
+	}
 	flag |= FANCY | JOBDIR;
     }
     for (i = 1; i <= pmaxindex; i++)
@@ -1526,9 +1540,11 @@ pkill(Char **v, int signum)
 	    case SIGTTOU:
 		if ((jobflags & PRUNNING) == 0) {
 # ifdef SUSPENDED
-		    xprintf(CGETS(17, 12, "%S: Already suspended\n"), cp);
+		    xprintf(CGETS(17, 12, "%" TCSH_S ": Already suspended\n"),
+			cp);
 # else /* !SUSPENDED */
-		    xprintf(CGETS(17, 13, "%S: Already stopped\n"), cp);
+		    xprintf(CGETS(17, 13, "%" TCSH_S ": Already stopped\n"),
+			cp);
 # endif /* !SUSPENDED */
 		    err1++;
 		    goto cont;
@@ -1550,7 +1566,7 @@ pkill(Char **v, int signum)
 	    }
 #endif /* BSDJOBS */
 	    if (killpg(pp->p_jobid, signum) < 0) {
-		xprintf("%S: %s\n", cp, strerror(errno));
+		xprintf("%" TCSH_S ": %s\n", cp, strerror(errno));
 		err1++;
 	    }
 #ifdef BSDJOBS
@@ -1822,7 +1838,7 @@ pfork(struct command *t, int wanttty)
 	pgrp = pcurrjob ? pcurrjob->p_jobid : getpid();
 	pflushall();
 	pcurrjob = NULL;
-#if !defined(BSDTIMES) && !defined(_SEQUENT_) 
+#if !defined(BSDTIMES) && !defined(_SEQUENT_)
 	timesdone = 0;
 #endif /* !defined(BSDTIMES) && !defined(_SEQUENT_) */
 	child++;
@@ -1896,7 +1912,7 @@ pfork(struct command *t, int wanttty)
 	    pgrp = pcurrjob ? pcurrjob->p_jobid : pid;
 	    if (setpgid(pid, pgrp) == -1 && errno == EPERM) {
 		pcurrjob = NULL;
-		/* 
+		/*
 		 * We don't care if this causes an error here;
 		 * then we are already in the right process group
 		 */
@@ -1965,7 +1981,7 @@ setttypgrp(int pgrp)
 	struct sigaction old;
 
         /*
-	 * tcsetpgrp will set SIGTTOU to all the the processes in 
+	 * tcsetpgrp will set SIGTTOU to all the the processes in
 	 * the background according to POSIX... We ignore this here.
 	 */
 	sigaction(SIGTTOU, NULL, &old);
@@ -1984,7 +2000,7 @@ setttypgrp(int pgrp)
  * if we don't have vfork(), things can still go in the wrong order
  * resulting in the famous 'Stopped (tty output)'. But some systems
  * don't permit the setpgid() call, (these are more recent secure
- * systems such as ibm's aix), when they do. Then we'd rather print 
+ * systems such as ibm's aix), when they do. Then we'd rather print
  * an error message than hang the shell!
  * I am open to suggestions how to fix that.
  */

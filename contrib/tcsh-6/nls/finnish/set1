@@ -56,7 +56,7 @@ $set 1
 54 Putkea ei voida luoda
 55 %s: %s
 56 %s
-57 Käyttö: jobs [ -l ]
+57 Käyttö: jobs [ -lZ ]
 58 Argumenttien on oltava töiden tai prosessien tunnisteita
 59 Ei tämänhetkistä työtä
 60 Ei edellistä työtä

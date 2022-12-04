@@ -78,27 +78,29 @@ typedef unsigned long intptr_t;
 #if defined(KANJI) && defined(WIDE_STRINGS) && defined(HAVE_NL_LANGINFO) && defined(CODESET)
 #define AUTOSET_KANJI
 #endif
+
 /*
  * Sanity
  */
 #if defined(_POSIX_SOURCE) && !defined(POSIX)
 # define POSIX
-#endif 
+#endif
 
 #if defined(POSIXJOBS) && !defined(BSDJOBS)
 # define BSDJOBS
-#endif 
+#endif
 
 #define TMP_TEMPLATE ".XXXXXX"
 
 #ifdef SHORT_STRINGS
+# define TCSH_S "S"
 # ifdef WIDE_STRINGS
 #include <wchar.h>
 #  ifdef UTF16_STRINGS
 typedef wint_t Char;
 #  else
 typedef wchar_t Char;
-#endif
+#  endif
 typedef unsigned long uChar;
 typedef wint_t eChar; /* Can contain any Char value or CHAR_ERR */
 #define CHAR_ERR WEOF /* Pretty please, use bit 31... */
@@ -114,6 +116,7 @@ typedef int eChar;
 # endif
 # define SAVE(a) (Strsave(str2short(a)))
 #else
+#define TCSH_S "s"
 typedef char Char;
 typedef unsigned char uChar;
 typedef int eChar;
@@ -211,7 +214,7 @@ static __inline void tcsh_ignore(intptr_t a)
 
 #ifdef PROF
 #define	xexit(n)	done(n)
-#endif 
+#endif
 
 #ifdef cray
 # define word word_t           /* sys/types.h defines word.. bad move! */
@@ -221,9 +224,9 @@ static __inline void tcsh_ignore(intptr_t a)
 
 #ifdef cray
 # undef word
-#endif 
+#endif
 
-/* 
+/*
  * Path separator in environment variables
  */
 #ifndef PATHSEP
@@ -248,7 +251,7 @@ typedef long tcsh_number_t;
 #endif
 /*
  * This macro compares the st_dev field of struct stat. On aix on ibmESA
- * st_dev is a structure, so comparison does not work. 
+ * st_dev is a structure, so comparison does not work.
  */
 #ifndef DEV_DEV_COMPARE
 # define DEV_DEV_COMPARE(x,y)   ((x) == (y))
@@ -319,7 +322,7 @@ typedef long tcsh_number_t;
  * redefines malloc(), so we define the following
  * to avoid it.
  */
-# if defined(SYSMALLOC) || defined(__linux__) || defined(__GNU__) || defined(__GLIBC__) || defined(sgi) || defined(_OSD_POSIX)
+# if defined(SYSMALLOC) || defined(__linux__) || defined(__GNU__) || defined(__GLIBC__) || defined(sgi) || defined(_OSD_POSIX) || defined(__OpenBSD__)
 #  define NO_FIX_MALLOC
 #  include <stdlib.h>
 # else /* glibc */
@@ -359,7 +362,7 @@ typedef long tcsh_number_t;
 #   define CSWTCH _POSIX_VDISABLE	/* So job control works */
 #  endif /* SYSVREL > 3 */
 # endif
-#endif 
+#endif
 
 #if (defined(__DGUX__) && defined(POSIX)) || defined(DGUX)
 #undef CSWTCH
@@ -376,7 +379,7 @@ typedef long tcsh_number_t;
 
 #if !defined(O_RDONLY) || !defined(O_NDELAY)
 # include <fcntl.h>
-#endif 
+#endif
 
 #include <errno.h>
 
@@ -484,7 +487,7 @@ typedef union {
 # define free		lint_free
 # define realloc	lint_realloc
 # define calloc		lint_calloc
-#endif 
+#endif
 
 #ifdef SYSMALLOC
 # define xmalloc(i)	smalloc(i)
@@ -637,7 +640,7 @@ EXTERN pid_t   backpid;		/* pid of the last background job */
 
 /*
  * Ideally these should be uid_t, gid_t, pid_t. I cannot do that right now
- * cause pid's could be unsigned and that would break our -1 flag, and 
+ * cause pid's could be unsigned and that would break our -1 flag, and
  * uid_t and gid_t are not defined in all the systems so I would have to
  * make special cases for them. In the future...
  */
@@ -666,7 +669,7 @@ EXTERN int   OLDSTD IZERO;	/* Old standard input (def for cmds) */
 
 
 #if (SYSVREL == 4 && defined(_UTS)) || defined(__linux__)
-/* 
+/*
  * From: fadden@uts.amdahl.com (Andy McFadden)
  * we need sigsetjmp for UTS4, but not UTS2.1
  */
@@ -887,14 +890,14 @@ struct command {
     unsigned char   t_nice;	/* Nice value			 */
 #ifdef apollo
     unsigned char   t_systype;	/* System environment		 */
-#endif 
+#endif
     unsigned long   t_dflg;	/* Flags, e.g. F_AMPERSAND|... 	 */
 /* save these when re-doing 	 */
 #ifndef apollo
-#define	F_SAVE	(F_NICE|F_TIME|F_NOHUP|F_HUP)	
+#define	F_SAVE	(F_NICE|F_TIME|F_NOHUP|F_HUP)
 #else
 #define	F_SAVE	(F_NICE|F_TIME|F_NOHUP||F_HUP|F_VER)
-#endif 
+#endif
 #define	F_AMPERSAND	(1<<0)	/* executes in background	 */
 #define	F_APPEND	(1<<1)	/* output is redirected >>	 */
 #define	F_PIPEIN	(1<<2)	/* input is a pipe		 */
@@ -913,7 +916,7 @@ struct command {
 #define F_HUP		(1<<15)	/* hup this command		 */
 #ifdef apollo
 #define F_VER		(1<<16)	/* execute command under SYSTYPE */
-#endif 
+#endif
     union {
 	Char   *T_dlef;		/* Input redirect word 		 */
 	struct command *T_dcar;	/* Left part of list/pipe 	 */
@@ -1010,6 +1013,7 @@ EXTERN struct varent {
 #define VAR_READONLY	1
 #define VAR_READWRITE	2
 #define VAR_NOGLOB	4
+#define VAR_NOERROR	8
 #define VAR_FIRST       32
 #define VAR_LAST        64
     struct varent *v_link[3];	/* The links, see below */
@@ -1027,6 +1031,7 @@ EXTERN struct varent {
  * The following are for interfacing redo substitution in
  * aliases to the lexical routines.
  */
+#define HIST_PURGE	-500000
 EXTERN struct wordent *alhistp IZERO_STRUCT;/* Argument list (first) */
 EXTERN struct wordent *alhistt IZERO_STRUCT;/* Node after last in arg list */
 EXTERN Char  **alvec IZERO_STRUCT,
@@ -1121,7 +1126,7 @@ EXTERN Char    PRCHROOT;	/* Prompt symbol for root */
 #define Strend(a)		strend(a)
 #define Strstr(a, b)		strstr(a, b)
 
-#define str2short(a) 		(a)
+#define str2short(a) 		((void *)(intptr_t)(a))
 #define blk2short(a) 		saveblk(a)
 #define short2blk(a) 		saveblk(a)
 #define short2str(a) 		caching_strip(a)
@@ -1154,7 +1159,9 @@ EXTERN Char    PRCHROOT;	/* Prompt symbol for root */
 #define Strsave(a)		s_strsave(a)
 #define Strend(a)		s_strend(a)
 #define Strstr(a, b)		s_strstr(a, b)
-#endif 
+#endif
+
+#define TCSH_MODIFIERS	"ehlqrstuxQ"
 
 /*
  * setname is a macro to save space (see sh.err.c)
@@ -1191,7 +1198,7 @@ EXTERN Char   *STR_SHELLPATH;
 
 #ifdef _PATH_BSHELL
 EXTERN Char   *STR_BSHELL;
-#endif 
+#endif
 EXTERN Char   *STR_WORD_CHARS;
 EXTERN Char   *STR_WORD_CHARS_VI;
 EXTERN Char  **STR_environ IZERO;
@@ -1248,7 +1255,7 @@ EXTERN nl_catd catd;
 # else
 #  define CGETS(b, c, d)	d
 #  define CSAVS(b, c, d)	d
-# endif 
+# endif
 #else /* WINNT_NATIVE */
 # define CGETS(b, c, d)	nt_cgets( b, c, d)
 # define CSAVS(b, c, d)	strsave(CGETS(b, c, d))
@@ -1293,5 +1300,9 @@ extern int    filec;
 \nSee the tcsh(1) manual page for detailed information.\n"
 
 #include "tc.nls.h"
+
+#define TEXP_IGNORE 1	/* in ignore, it means to ignore value, just parse */
+#define TEXP_NOGLOB 2	/* in ignore, it means not to globone */
+
 
 #endif /* _h_sh */

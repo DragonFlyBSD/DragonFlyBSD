@@ -56,7 +56,7 @@ $set 1
 54 Impossible de créer un tube
 55 %s: %s
 56 %s
-57 Syntaxe: jobs [ -l ]
+57 Syntaxe: jobs [ -lZ ]
 58 Les arguments doivent être des ID de processus ou des numéros de travaux
 59 Pas de travail en cours
 60 Pas de travail précédent

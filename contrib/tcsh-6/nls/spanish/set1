@@ -56,7 +56,7 @@ $set 1
 54 No se puede crear la tubería
 55 %s: %s
 56 %s
-57 Uso: jobs [ -l ]
+57 Uso: jobs [ -lZ ]
 58 Los argumentos deben ser trabajos o identificadores de proceso
 59 No hay trabajo en curso
 60 No hay trabajo previo

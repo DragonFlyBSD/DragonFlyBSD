@@ -60,7 +60,7 @@ static void
 update_vars(Char *vp)
 {
     if (eq(vp, STRpath)) {
-	struct varent *p = adrof(STRpath); 
+	struct varent *p = adrof(STRpath);
 	if (p == NULL)
 	    stderror(ERR_NAME | ERR_UNDVAR);
 	else {
@@ -145,14 +145,10 @@ update_vars(Char *vp)
 	Char *cp, *canon;
 
 	cp = Strsave(varval(vp));	/* get the old value back */
-	cleanup_push(cp, xfree);
-
 	/*
 	 * convert to cononical pathname (possibly resolving symlinks)
 	 */
 	canon = dcanon(cp, cp);
-	cleanup_ignore(cp);
-	cleanup_until(cp);
 	cleanup_push(canon, xfree);
 
 	setcopy(vp, canon, VAR_READWRITE);	/* have to save the new val */
@@ -186,7 +182,7 @@ update_vars(Char *vp)
 	    numeof = numeof * 10 + *cp - '0';
 	}
 	if (numeof <= 0) numeof = 26;	/* Sanity check */
-    } 
+    }
     else if (eq(vp, STRbackslash_quote)) {
 	bslash_quote = 1;
     }
@@ -222,7 +218,7 @@ update_vars(Char *vp)
     }
 #endif /* COLOR_LS_F */
 #if defined(KANJI) && defined(SHORT_STRINGS) && defined(DSPMBYTE)
-    else if(eq(vp, CHECK_MBYTEVAR) || eq(vp, STRnokanji)) {
+    else if (eq(vp, CHECK_MBYTEVAR) || eq(vp, STRnokanji)) {
 	update_dspmbyte_vars();
     }
 #endif
@@ -275,7 +271,7 @@ doset(Char **v, struct command *c)
 	    v++;
 	    changed = 1;
 	}
-    } while(changed);
+    } while (changed);
     p = *v++;
     if (p == 0) {
 	plist(&shvhed, flags);
@@ -614,7 +610,7 @@ adrof1(const Char *name, struct varent *v)
     int cmp;
 
     v = v->v_left;
-    while (v && ((cmp = *name - *v->v_name) != 0 || 
+    while (v && ((cmp = *name - *v->v_name) != 0 ||
 		 (cmp = Strcmp(name, v->v_name)) != 0))
 	if (cmp < 0)
 	    v = v->v_left;
@@ -659,7 +655,7 @@ set1(const Char *var, Char **vec, struct varent *head, int flags)
 	gflag = tglob(oldv);
 	if (gflag) {
 	    vec = globall(oldv, gflag);
-	    if (vec == 0) {
+	    if (vec == NULL) {
 		blkfree(oldv);
 		stderror(ERR_NAME | ERR_NOMATCH);
 	    }
@@ -676,7 +672,7 @@ set1(const Char *var, Char **vec, struct varent *head, int flags)
 	 *  Delete all duplicate words leaving "holes" in the word array (vec).
 	 *  Then remove the "holes", keeping the order of the words unchanged.
 	 */
-	if (vec && vec[0] && vec[1]) { /* more than one word ? */
+	if (vec[0] && vec[1]) { /* more than one word ? */
 	    int i, j;
 	    int num_items;
 
@@ -705,7 +701,7 @@ set1(const Char *var, Char **vec, struct varent *head, int flags)
 	    }
 	    /* Compress items - remove empty items */
 	    for (j = i = 0; i < num_items; i++)
-	       if (vec[i]) 
+	       if (vec[i])
 		  vec[j++] = vec[i];
 
 	    /* NULL-fy remaining items */
@@ -714,7 +710,7 @@ set1(const Char *var, Char **vec, struct varent *head, int flags)
 	}
 	/* don't let the attribute propagate */
 	flags &= ~(VAR_FIRST|VAR_LAST);
-    } 
+    }
     setq(var, vec, head, flags);
 }
 
@@ -729,8 +725,11 @@ setq(const Char *name, Char **vec, struct varent *p, int flags)
     while ((c = p->v_link[f]) != 0) {
 	if ((f = *name - *c->v_name) == 0 &&
 	    (f = Strcmp(name, c->v_name)) == 0) {
-	    if (c->v_flags & VAR_READONLY)
+	    if (c->v_flags & VAR_READONLY) {
+		if (flags & VAR_NOERROR)
+		    return;
 		stderror(ERR_READONLY|ERR_NAME, c->v_name);
+	    }
 	    blkfree(c->vec);
 	    c->v_flags = flags;
 	    trim(c->vec = vec);
@@ -1126,7 +1125,7 @@ x:
 		cleanup_until(&old_pintr_disabled);
 	    }
 	    len = blklen(p->vec);
-	    xprintf("%S\t", p->v_name);
+	    xprintf("%" TCSH_S "\t", p->v_name);
 	    if (len != 1)
 		xputchar('(');
 	    blkpr(p->vec);
@@ -1156,12 +1155,12 @@ update_dspmbyte_vars(void)
     int lp, iskcode;
     Char *dstr1;
     struct varent *vp;
-    
+
     /* if variable "nokanji" is set, multi-byte display is disabled */
     if ((vp = adrof(CHECK_MBYTEVAR)) && !adrof(STRnokanji)) {
 	_enable_mbdisp = 1;
 	dstr1 = vp->vec[0];
-	if(eq (dstr1, STRsjis))
+	if (eq (dstr1, STRsjis))
 	    iskcode = 1;
 	else if (eq(dstr1, STReuc))
 	    iskcode = 2;
@@ -1309,7 +1308,7 @@ autoset_dspmbyte(const Char *pcp)
 	}
     }
 #endif
-    
+
     if (*pcp == '\0')
 	return;
 
@@ -1327,7 +1326,7 @@ void
 autoset_kanji(void)
 {
     char *codeset = nl_langinfo(CODESET);
-    
+
     if (*codeset == '\0') {
 	if (adrof(STRnokanji) == NULL)
 	    setNS(STRnokanji);
@@ -1352,4 +1351,22 @@ update_wordchars(void)
     if ((word_chars == STR_WORD_CHARS) || (word_chars == STR_WORD_CHARS_VI)) {
 	word_chars = (VImode ? STR_WORD_CHARS_VI : STR_WORD_CHARS);
     }
+}
+
+void
+setstrstatus(Char *str)
+{
+	setv(STRstatus, str, VAR_READWRITE|VAR_NOERROR);
+}
+
+void
+setstatus(int n)
+{
+	setcopy(STRstatus, n ? STR1 : STR0, VAR_READWRITE|VAR_NOERROR);
+}
+
+int
+getstatus(void)
+{
+	return getn(varval(STRstatus));
 }

@@ -56,7 +56,7 @@ $set 1
 54 Non posso creare una pipe
 55 %s: %s
 56 %s
-57 Utilizzo: jobs [ -l ]
+57 Utilizzo: jobs [ -lZ ]
 58 Gli argomenti devono essere lavori o identificativi di processo
 59 Non esiste un lavoro predefinito
 60 Non esiste un lavoro precedente

@@ -114,7 +114,7 @@ Inputl(void)
 # ifdef SUNOS4
 	long chrs = 0;
 # else /* !SUNOS4 */
-	/* 
+	/*
 	 * *Everyone* else has an int, but SunOS wants long!
 	 * This breaks where int != long (alpha)
 	 */
@@ -384,7 +384,7 @@ Inputl(void)
 	    }
 	    if (InputBuf[curlen] && rotate) {
 		newlen = (int) (LastChar - InputBuf);
-		for (idx = (int) (Cursor - InputBuf); 
+		for (idx = (int) (Cursor - InputBuf);
 		     idx <= newlen; idx++)
 			InputBuf[idx - newlen + curlen] =
 			InputBuf[idx];
@@ -439,13 +439,13 @@ Inputl(void)
 		    else
 			SoundBeep();
 		    /*
-		     * Addition by David C Lawrence <tale@pawl.rpi.edu>: If an 
-		     * attempted completion is ambiguous, list the choices.  
-		     * (PWP: this is the best feature addition to tcsh I have 
+		     * Addition by David C Lawrence <tale@pawl.rpi.edu>: If an
+		     * attempted completion is ambiguous, list the choices.
+		     * (PWP: this is the best feature addition to tcsh I have
 		     * seen in many months.)
 		     */
-		    if (autol && autol->vec != NULL && 
-			(Strcmp(*(autol->vec), STRambiguous) != 0 || 
+		    if (autol && autol->vec != NULL &&
+			(Strcmp(*(autol->vec), STRambiguous) != 0 ||
 					 expnum == Cursor - InputBuf)) {
 			if (adrof(STRhighlight) && MarkIsSet) {
 			    /* clear highlighting before showing completions */
@@ -477,7 +477,7 @@ Inputl(void)
 	case CC_LIST_ALL:
 	    if (InputBuf[curlen] && rotate) {
 		newlen = (int) (LastChar - InputBuf);
-		for (idx = (int) (Cursor - InputBuf); 
+		for (idx = (int) (Cursor - InputBuf);
 		     idx <= newlen; idx++)
 			InputBuf[idx - newlen + curlen] =
 			InputBuf[idx];
@@ -667,10 +667,10 @@ RunCommand(Char *str)
 int
 GetCmdChar(Char ch)
 {
-#ifndef WINNT_NATIVE // We use more than 256 for various extended keys 
-    wint_t c = ch & CHAR;
+#ifndef WINNT_NATIVE // We use more than 256 for various extended keys
+    eChar c = ch & CHAR;
 #else
-    wint_t c = ch;
+    eChar c = ch;
 #endif
     return c < NT_NUM_KEYS ? CurrentKeyMap[c] : F_INSERT;
 }
@@ -725,7 +725,7 @@ GetNextCommand(KEYCMD *cmdnum, Char *ch)
 		break;
 	    }
 	}
-	if (!AltKeyMap) 
+	if (!AltKeyMap)
 	    CurrentKeyMap = CcKeyMap;
     }
     *cmdnum = cmd;
@@ -862,7 +862,7 @@ SpellLine(int cmdonly)
 	    /*
 	     * This hack avoids correcting drive letter changes
 	     */
-	    if((Cursor - InputBuf) != 2 || (char)InputBuf[1] != ':')
+	    if ((Cursor - InputBuf) != 2 || (char)InputBuf[1] != ':')
 #endif /* WINNT_NATIVE */
 	    {
 #ifdef HASH_SPELL_CHECK

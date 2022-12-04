@@ -1,8 +1,8 @@
 $ sh.lex.c
 $set 16 
 1 Päätteen prosessiryhmä vaihdettu arvosta %d %d:ksi.\n
-2 \nSano "logout" kirjoittautuaksesi ulos järjestelmästä.\n
-3 \nSano "exit" lopettaaksesi %s:n\n
+2 \nKomenna "logout" kirjautuaksesi ulos järjestelmästä.\n
+3 \nKomenna "exit" poistuaksesi %s:sta\n
 4 seek to eval %x %x\n
 5 seek to alias %x %x\n
 6 seek to file %x\n

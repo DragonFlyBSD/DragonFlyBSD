@@ -305,7 +305,9 @@ doprnt(void (*addchar) (int), const char *sfmt, va_list ap)
 	    case 's':
 	    case 'q':
 		bp = va_arg(ap, char *);
+#ifdef SHORT_STRINGS
 lcase_s:
+#endif
 		if (!bp)
 		    bp = snil;
 		f_width = f_width - strlen(bp);
@@ -457,7 +459,7 @@ xasprintf(const char *fmt, ...)
 #ifndef FILE
 #define FILE int
 #endif
-int 
+int
 fprintf(FILE *fp, const char* fmt, ...)
 {
     int count;
@@ -468,7 +470,7 @@ fprintf(FILE *fp, const char* fmt, ...)
     return count;
 }
 
-int 
+int
 vfprintf(FILE *fp, const char *fmt, va_list va)
 {
     return doprnt(xputchar, fmt, va);

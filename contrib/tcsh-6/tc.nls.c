@@ -136,8 +136,10 @@ NLSClassify(Char c, int nocomb, int drawPrompt)
 	if (c >= 0x100000)		/*   U+100000 = F4 80 80 80 */
 	    return NLSCLASS_ILLEGAL3;
 #endif
+#ifdef SHORT_STRINGS
 	if (c >= 0x10000)		/*    U+10000 = F0 90 80 80 */
 	    return NLSCLASS_ILLEGAL2;
+#endif
     }
     if (Iscntrl(c) && (c & CHAR) < 0x100) {
 	if (c == '\n')

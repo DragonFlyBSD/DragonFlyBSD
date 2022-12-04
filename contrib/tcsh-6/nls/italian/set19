@@ -13,10 +13,10 @@ $set 19
 11 \tAllocata memoria da 0x%lx a 0x%lx.  Limite superiore effettivo a 0x%lx\n
 12 Allocata memoria da 0x%lx a 0x%lx (%ld).\n
 13 %s current memory allocation:\n
-14 Total space allocated from system: %d\n
-15 Number of non-inuse chunks: %d\n
-16 Number of mmapped regions: %d\n
-17 Total space in mmapped regions: %d\n
-18 Total allocated space: %d\n
-19 Total non-inuse space: %d\n
-20 Top-most, releasable space: %d\n
+14 Total space allocated from system: %zu\n
+15 Number of non-inuse chunks: %zu\n
+16 Number of mmapped regions: %zu\n
+17 Total space in mmapped regions: %zu\n
+18 Total allocated space: %zu\n
+19 Total non-inuse space: %zu\n
+20 Top-most, releasable space: %zu\n

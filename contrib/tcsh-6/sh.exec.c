@@ -451,7 +451,7 @@ texec(Char *sf, Char **st)
 		vp[0] = adrof(STRshell) ? varval(STRshell) : STR_SHELLPATH;
 		vp[1] = NULL;
 #ifdef _PATH_BSHELL
-		if (fd != -1 
+		if (fd != -1
 # ifndef ISC	/* Compatible with ISC's /bin/csh */
 		    && pref[0] != '#'
 # endif /* ISC */
@@ -653,8 +653,8 @@ dohash(Char **vv, struct command *c)
         uhashlength = atoi(short2str(vv[1]));
         if (vv[2]) {
 	    uhashwidth = atoi(short2str(vv[2]));
-	    if ((uhashwidth != sizeof(unsigned char)) && 
-	        (uhashwidth != sizeof(unsigned short)) && 
+	    if ((uhashwidth != sizeof(unsigned char)) &&
+	        (uhashwidth != sizeof(unsigned short)) &&
 	        (uhashwidth != sizeof(unsigned long)))
 	        uhashwidth = 0;
 	    if (vv[3])
@@ -779,7 +779,7 @@ hashstat(Char **v, struct command *c)
 {
     USE(c);
     USE(v);
-#ifdef FASTHASH 
+#ifdef FASTHASH
    if (havhash && hashlength && hashwidth)
       xprintf(CGETS(13, 2, "%d hash buckets of %d bits each\n"),
 	      hashlength, hashwidth*8);
@@ -972,7 +972,7 @@ tellmewhat(struct wordent *lexp, Char **str)
 	    if (str == NULL) {
 		if (aliased)
 		    prlex(lexp);
-		xprintf(CGETS(13, 5, "%S: shell built-in command.\n"),
+		xprintf(CGETS(13, 5, "%" TCSH_S ": shell built-in command.\n"),
 			      sp->word);
 		flush();
 	    }
@@ -988,7 +988,7 @@ tellmewhat(struct wordent *lexp, Char **str)
 	    if (str == NULL) {
 		if (aliased)
 		    prlex(lexp);
-		xprintf(CGETS(13, 5, "%S: shell built-in command.\n"),
+		xprintf(CGETS(13, 5, "%" TCSH_S ": shell built-in command.\n"),
 			      sp->word);
 		flush();
 	    }
@@ -1042,7 +1042,8 @@ tellmewhat(struct wordent *lexp, Char **str)
 	if (str == NULL) {
 	    if (aliased)
 		prlex(lexp);
-	    xprintf(CGETS(13, 6, "%S: Command not found.\n"), sp->word);
+	    xprintf(CGETS(13, 6, "%" TCSH_S ": Command not found.\n"),
+		sp->word);
 	    flush();
 	}
 	else
@@ -1074,7 +1075,7 @@ dowhere(Char **v, struct command *c)
 	found &= find_cmd(*v, 1);
     /* Make status nonzero if any command is not found. */
     if (!found)
-	setcopy(STRstatus, STR1, VAR_READWRITE);
+	setstatus(1);
 }
 
 int
@@ -1095,7 +1096,7 @@ find_cmd(Char *cmd, int prt)
 
     if (prt && adrof1(cmd, &aliases)) {
 	if ((var = adrof1(cmd, &aliases)) != NULL) {
-	    xprintf(CGETS(13, 8, "%S is aliased to "), cmd);
+	    xprintf(CGETS(13, 8, "%" TCSH_S " is aliased to "), cmd);
 	    if (var->vec != NULL)
 		blkpr(var->vec);
 	    xputchar('\n');
@@ -1109,7 +1110,7 @@ find_cmd(Char *cmd, int prt)
 	if (eq(cmd, str2short(bptr->bname))) {
 	    rval = 1;
 	    if (prt)
-		xprintf(CGETS(13, 9, "%S is a shell built-in\n"), cmd);
+		xprintf(CGETS(13, 9, "%" TCSH_S " is a shell built-in\n"), cmd);
 	    else
 		return rval;
 	}
@@ -1119,7 +1120,7 @@ find_cmd(Char *cmd, int prt)
 	if (eq(cmd, str2short(bptr->bname))) {
 	    rval = 1;
 	    if (prt)
-		xprintf(CGETS(13, 9, "%S is a shell built-in\n"), cmd);
+		xprintf(CGETS(13, 9, "%" TCSH_S " is a shell built-in\n"), cmd);
 	    else
 		return rval;
 	}
@@ -1159,15 +1160,15 @@ retry:
 	if (ex) {
 	    rval = 1;
 	    if (prt) {
-		xprintf("%S/", *pv);
-		xprintf("%S\n", cmd);
+		xprintf("%" TCSH_S "/", *pv);
+		xprintf("%" TCSH_S "\n", cmd);
 	    }
 	    else
 		return rval;
 	}
     }
     /*
-     * If we are printing, we are being called from dowhere() which it 
+     * If we are printing, we are being called from dowhere() which it
      * has rehashed already
      */
     if (!prt && adrof(STRautorehash) && !rehashed && havhash) {
