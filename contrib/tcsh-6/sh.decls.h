@@ -37,7 +37,7 @@
  */
 extern	Char	 	 *gethdir	(const Char *);
 extern	void		  dosource	(Char **, struct command *);
-extern	void		  exitstat	(void);
+extern	void		  exitstat	(void) __attribute__((__noreturn__));
 extern	void		  goodbye	(Char **, struct command *);
 extern	void		  importpath	(Char *);
 extern	void		  initdesc	(void);
@@ -217,6 +217,7 @@ extern  int	  	  t_pmatch	(const Char *, const Char *,
  */
 extern	void	 	  dohist	(Char **, struct command *);
 extern  struct Hist 	 *enthist	(int, struct wordent *, int, int, int);
+extern  void		  cleanhist	(void);
 extern	void	 	  savehist	(struct wordent *, int);
 extern	char		 *fmthist	(int, ptr_t);
 extern	void		  rechist	(Char *, int);
@@ -402,6 +403,9 @@ extern	void		  autoset_dspmbyte	(const Char *);
 extern	void		  autoset_kanji	(void);
 #endif
 extern	void		  update_wordchars	(void);
+extern	void		  setstrstatus	(Char *);
+extern	void		  setstatus	(int);
+extern	int		  getstatus	(void);
 
 /*
  * sh.time.c
@@ -410,31 +414,31 @@ extern	void		  donice	(Char **, struct command *);
 extern	void		  dotime	(Char **, struct command *);
 #ifdef BSDTIMES
 extern	void		  prusage	(struct sysrusage *,
-					 struct sysrusage *, 
+					 struct sysrusage *,
 					 timeval_t *, timeval_t *);
 extern	void		  ruadd		(struct sysrusage *,
 					 struct sysrusage *);
 #else /* BSDTIMES */
 # ifdef _SEQUENT_
 extern	void		  prusage	(struct process_stats *,
-					 struct process_stats *, 
+					 struct process_stats *,
 					 timeval_t *, timeval_t *);
 extern	void		  ruadd		(struct process_stats *,
 					 struct process_stats *);
 # else /* !_SEQUENT_ */
 #  ifdef POSIX
-extern	void		  prusage	(struct tms *, struct tms *, 
+extern	void		  prusage	(struct tms *, struct tms *,
 					 clock_t, clock_t);
 #  else	/* !POSIX */
-extern	void		  prusage	(struct tms *, struct tms *, 
+extern	void		  prusage	(struct tms *, struct tms *,
 					 time_t, time_t);
 #  endif /* !POSIX */
 # endif	/* !_SEQUENT_ */
 #endif /* BSDTIMES */
 extern	void		  settimes	(void);
 #if defined(BSDTIMES) || defined(_SEQUENT_)
-extern	void		  tvsub		(struct timeval *, 
-					 struct timeval *, 
+extern	void		  tvsub		(struct timeval *,
+					 struct timeval *,
 					 struct timeval *);
 #endif /* BSDTIMES || _SEQUENT_ */
 

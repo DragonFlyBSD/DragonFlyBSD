@@ -98,7 +98,7 @@ expand_lex(const struct wordent *sp0, int from, int to)
     const struct wordent *sp;
     Char *s;
     Char prev_c;
-    int i;
+    int i, dolsq = 0;
 
     prev_c = '\0';
 
@@ -113,11 +113,29 @@ expand_lex(const struct wordent *sp0, int from, int to)
 		 * character {(PWP) and backslash} seem to be dealt with
 		 * elsewhere.
 		 */
-		if ((*s & QUOTE)
-		    && (((*s & TRIM) == HIST && HIST != '\0') ||
-			(((*s & TRIM) == '\'') && (prev_c != '\\')) ||
-			(((*s & TRIM) == '\"') && (prev_c != '\\')))) {
-		    Strbuf_append1(&buf, '\\');
+		if (*s & QUOTE) {
+		    if ((*s & TRIM) == HIST && HIST != '\0')
+			Strbuf_append1(&buf, '\\');
+		    else
+			switch (*s & TRIM) {
+			case '\'':
+			    if (prev_c == '\\') break;
+			    if (dolsq) {
+				dolsq = 0;
+				break;
+			    }
+			    if (prev_c == '$') {
+				dolsq++;
+				break;
+			    }
+			    Strbuf_append1(&buf, '\\');
+			    break;
+			case '\"':
+			    if (prev_c == '\\') break;
+			    if (dolsq) break;
+			    Strbuf_append1(&buf, '\\');
+			    break;
+			}
 		}
 #if INVALID_BYTE != 0
 		if ((*s & INVALID_BYTE) != INVALID_BYTE) /* *s < INVALID_BYTE */
@@ -336,7 +354,7 @@ dolist(Char **v, struct command *c)
 		    print_by_column(STRNULL, &v[i], k - i, FALSE);
 		}
 		haderr = 1;
-		xprintf("%S: %s.\n", tmp, strerror(err));
+		xprintf("%" TCSH_S ": %s.\n", tmp, strerror(err));
 		haderr = 0;
 		i = k + 1;
 		ret = 1;
@@ -351,7 +369,7 @@ dolist(Char **v, struct command *c)
 		}
 		if (k != 0 && v[1] != NULL)
 		    xputchar('\n');
-		xprintf("%S:\n", tmp);
+		xprintf("%" TCSH_S ":\n", tmp);
 		buf.len = 0;
 		for (cp = tmp; *cp; cp++)
 		    Strbuf_append1(&buf, (*cp | QUOTE));
@@ -364,7 +382,7 @@ dolist(Char **v, struct command *c)
 		    (*dp != (Char) ('/' | QUOTE))) {
 		    Strbuf_append1(&buf, '/');
 		    Strbuf_terminate(&buf);
-		} else 
+		} else
 		    *dp &= TRIM;
 		(void) t_search(&buf, LIST, TW_ZERO, 0, STRNULL, 0);
 		i = k + 1;
@@ -453,7 +471,7 @@ cmd_expand(Char *cmd, Char **str)
 
     if ((vp = adrof1(cmd, &aliases)) != NULL && vp->vec != NULL) {
 	if (str == NULL) {
-	    xprintf(CGETS(22, 1, "%S: \t aliased to "), cmd);
+	    xprintf(CGETS(22, 1, "%" TCSH_S ": \t aliased to "), cmd);
 	    blkpr(vp->vec);
 	    xputchar('\n');
 	}
@@ -481,11 +499,11 @@ dowhich(Char **v, struct command *c)
      * we glob here.
      */
 
-    while (*++v) 
+    while (*++v)
 	rv &= cmd_expand(*v, NULL);
 
     if (!rv)
-	setcopy(STRstatus, STR1, VAR_READWRITE);
+	setstatus(1);
 }
 
 static int
@@ -563,7 +581,7 @@ find_stop_ed(void)
 	    for (cp = p; *cp && !isspace((unsigned char) *cp); cp++)
 		continue;
 	    *cp = '\0';
-		
+
 	    if ((cp = strrchr(p, '/')) != NULL)	/* and it has a path */
 		cp = cp + 1;		/* then we want only the last part */
 	    else
@@ -658,7 +676,7 @@ xgetpass(const char *prm)
     for (;;)  {
 	char c;
 
-	if (xread(fd, &c, 1) < 1 || c == '\n') 
+	if (xread(fd, &c, 1) < 1 || c == '\n')
 	    break;
 	strbuf_append1(&pass, c);
     }
@@ -680,7 +698,7 @@ xgetpass(const char *prm)
 
 /*
  * Ask the user for his login password to continue working
- * On systems that have a shadow password, this will only 
+ * On systems that have a shadow password, this will only
  * work for root, but what can we do?
  *
  * If we fail to get the password, then we log the user out
@@ -889,7 +907,7 @@ leave:
 }
 
 /*
- * Joachim Hoenig  07/16/91  Added beep_cmd, run every time tcsh wishes 
+ * Joachim Hoenig  07/16/91  Added beep_cmd, run every time tcsh wishes
  * to beep the terminal bell. Useful for playing nice sounds instead.
  */
 void
@@ -951,11 +969,11 @@ leave:
 }
 
 
-/* 
+/*
  * GrP Greg Parker May 2001
- * Added job_cmd(), which is run every time a job is started or 
- * foregrounded. The command is passed a single argument, the string 
- * used to start the job originally. With precmd, useful for setting 
+ * Added job_cmd(), which is run every time a job is started or
+ * foregrounded. The command is passed a single argument, the string
+ * used to start the job originally. With precmd, useful for setting
  * xterm titles.
  * Cloned from cwd_cmd().
  */
@@ -999,6 +1017,7 @@ aliasrun(int cnt, Char *s1, Char *s2)
 
     getexit(osetexit);
     if (seterr) {
+	cleanhist();
 	xfree(seterr);
 	seterr = NULL;	/* don't repeatedly print err msg. */
     }
@@ -1021,7 +1040,7 @@ aliasrun(int cnt, Char *s1, Char *s2)
     cleanup_push(&w, lex_cleanup);
 
     /* Save the old status */
-    status = getn(varval(STRstatus));
+    status = getstatus();
 
     /* expand aliases like process() does. */
     alias(&w);
@@ -1075,8 +1094,9 @@ aliasrun(int cnt, Char *s1, Char *s2)
     }
     cleanup_until(&w);
     pendjob();
+    cleanhist();
     /* Restore status */
-    setv(STRstatus, putn((tcsh_number_t)status), VAR_READWRITE);
+    setstrstatus(putn((tcsh_number_t)status));
 }
 
 void
@@ -1162,7 +1182,7 @@ rmstar(struct wordent *cp)
 	    cmd++;
 #ifdef RMDEBUG
 	if (*tag)
-	    xprintf(CGETS(22, 7, "parsing command line [%S]\n"), cmd);
+	    xprintf(CGETS(22, 7, "parsing command line [%" TCSH_S "]\n"), cmd);
 #endif /* RMDEBUG */
 	if (!StrQcmp(cmd, STRrm)) {
 	    args = we->next;
@@ -1223,7 +1243,7 @@ rmstar(struct wordent *cp)
     if (*tag) {
 	xprintf(CGETS(22, 10, "command line now is:\n"));
 	for (we = cp->next; we != cp; we = we->next)
-	    xprintf("[%S] ", we->word);
+	    xprintf("[%" TCSH_S "] ", we->word);
     }
 #endif /* RMDEBUG */
     pintr_disabled = opintr_disabled;
@@ -1298,7 +1318,7 @@ continue_jobs(struct wordent *cp)
     if (*tag) {
 	xprintf(CGETS(22, 13, "command line now is:\n"));
 	for (we = cp->next; we != cp; we = we->next)
-	    xprintf("%S ", we->word);
+	    xprintf("%" TCSH_S " ", we->word);
     }
 #endif /* CNDEBUG */
     return;
@@ -1467,7 +1487,7 @@ gethomedir(const Char *us)
     char **res, **res1, *cp;
     Char *rp;
 #endif /* HESIOD */
-    
+
     pp = xgetpwnam(short2str(us));
 #ifdef YPBUGS
     fix_yp_bugs();
@@ -1719,7 +1739,7 @@ fixio(int fd, int e)
 	       FNDELAY|_FNDELAY|FNDLEAY);	/* whew! */
 	if (fcntl(fd, F_SETFL, e) == -1)
 	    return -1;
-	else 
+	else
 	    e = 0;
 # endif /* F_SETFL */
 
@@ -1763,7 +1783,7 @@ collate(const Char *a, const Char *b)
 
     /*
      * We should be checking for errno != 0, but some systems
-     * forget to reset errno to 0. So we only check for the 
+     * forget to reset errno to 0. So we only check for the
      * only documented valid errno value for strcoll [EINVAL]
      */
     if (errno == EINVAL) {
@@ -1858,7 +1878,7 @@ hashbang(int fd, Char ***vp)
 
 	default:
 	    if (!ws)	/* Start a new word? */
-		ws = p; 
+		ws = p;
 	    p++;
 	    break;
 	}
@@ -2102,15 +2122,15 @@ dotermname(Char **v, struct command *c)
     /* try to find which entry we should be looking for */
     termtype = (v[1] == NULL ? getenv("TERM") : short2str(v[1]));
     if (termtype == NULL) {
-	/* no luck - the user didn't provide one and none is 
+	/* no luck - the user didn't provide one and none is
 	 * specified in the environment
 	 */
-	setcopy(STRstatus, STR1, VAR_READWRITE);
+	setstatus(1);
 	return;
     }
 
     /*
-     * we use the termcap function - if we are using terminfo we 
+     * we use the termcap function - if we are using terminfo we
      * will end up with it's compatibility function
      * terminfo/termcap will be initialized with the new
      * type but we don't care because tcsh has cached all the things
@@ -2118,8 +2138,8 @@ dotermname(Char **v, struct command *c)
      */
     if (tgetent(termcap_buffer, termtype) == 1) {
 	xprintf("%s\n", termtype);
-	setcopy(STRstatus, STR0, VAR_READWRITE);
+	setstatus(0);
     } else
-	setcopy(STRstatus, STR1, VAR_READWRITE);
+	setstatus(1);
 }
 #endif /* WINNT_NATIVE */

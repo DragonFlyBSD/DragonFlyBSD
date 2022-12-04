@@ -77,8 +77,8 @@ out_of_memory (void)
 extern void* sbrk();
 #endif
 /*
- * Lots of os routines are busted and try to free invalid pointers. 
- * Although our free routine is smart enough and it will pick bad 
+ * Lots of os routines are busted and try to free invalid pointers.
+ * Although our free routine is smart enough and it will pick bad
  * pointers most of the time, in cases where we know we are going to get
  * a bad pointer, we'd rather leak.
  */
@@ -190,7 +190,7 @@ malloc(size_t nbytes)
     /*
      * SunOS localtime() overwrites the 9th byte on an 8 byte malloc()....
      * so we get one more...
-     * From Michael Schroeder: This is not true. It depends on the 
+     * From Michael Schroeder: This is not true. It depends on the
      * timezone string. In Europe it can overwrite the 13th byte on a
      * 12 byte malloc.
      * So we punt and we always allocate an extra byte.
@@ -379,7 +379,7 @@ calloc(size_t i, size_t j)
  */
 #ifndef lint
 /* 4 should be plenty, -1 =>'s whole list */
-static int     realloc_srchlen = 4;	
+static int     realloc_srchlen = 4;
 #endif /* lint */
 
 memalign_t
@@ -402,7 +402,7 @@ realloc(ptr_t cp, size_t nbytes)
     else
 	/*
 	 * Already free, doing "compaction".
-	 * 
+	 *
 	 * Search for the old block of memory on the free list.  First, check the
 	 * most common case (last element free'd), then (this failing) the last
 	 * ``realloc_srchlen'' items free'd. If all lookups fail, then assume
@@ -416,7 +416,7 @@ realloc(ptr_t cp, size_t nbytes)
     onb = MEMALIGN(nbytes + MEMALIGN(sizeof(union overhead)) + RSLOP);
 
     /* avoid the copy if same size block */
-    if (was_alloced && (onb <= (U_int) (1 << (i + 3))) && 
+    if (was_alloced && (onb <= (U_int) (1 << (i + 3))) &&
 	(onb > (U_int) (1 << (i + 2)))) {
 #ifdef RCHECK
 	/* JMR: formerly this wasn't updated ! */
@@ -430,8 +430,8 @@ realloc(ptr_t cp, size_t nbytes)
     if ((res = malloc(nbytes)) == NULL)
 	return ((memalign_t) NULL);
     if (cp != res) {		/* common optimization */
-	/* 
-	 * christos: this used to copy nbytes! It should copy the 
+	/*
+	 * christos: this used to copy nbytes! It should copy the
 	 * smaller of the old and new size
 	 */
 	onb = (1 << (i + 3)) - MEMALIGN(sizeof(union overhead)) - RSLOP;
@@ -631,27 +631,50 @@ showall(Char **v, struct command *c)
 	    (unsigned long) membot, (unsigned long) memtop,
 	    (unsigned long) sbrk(0));
 #else /* SYSMALLOC */
-#ifndef HAVE_MALLINFO
+#if !defined(HAVE_MALLINFO) && !defined(HAVE_MALLINFO2)
 #ifdef USE_SBRK
     memtop = sbrk(0);
 #endif /* USE_SBRK */
     xprintf(CGETS(19, 12, "Allocated memory from 0x%lx to 0x%lx (%ld).\n"),
-	    (unsigned long) membot, (unsigned long) memtop, 
+	    (unsigned long) membot, (unsigned long) memtop,
 	    (unsigned long) (memtop - membot));
-#else /* HAVE_MALLINFO */
+#else
+# if defined(HAVE_MALLINFO2)
+    struct mallinfo2 mi;
+
+    mi = mallinfo2();
+# else
     struct mallinfo mi;
 
     mi = mallinfo();
+# endif
     xprintf(CGETS(19, 13, "%s current memory allocation:\n"), progname);
-    xprintf(CGETS(19, 14, "Total space allocated from system: %d\n"), mi.arena);
-    xprintf(CGETS(19, 15, "Number of non-inuse chunks: %d\n"), mi.ordblks);
-    xprintf(CGETS(19, 16, "Number of mmapped regions: %d\n"), mi.hblks);
-    xprintf(CGETS(19, 17, "Total space in mmapped regions: %d\n"), mi.hblkhd);
-    xprintf(CGETS(19, 18, "Total allocated space: %d\n"), mi.uordblks);
-    xprintf(CGETS(19, 19, "Total non-inuse space: %d\n"), mi.fordblks);
-    xprintf(CGETS(19, 20, "Top-most, releasable space: %d\n"), mi.keepcost);
-#endif /* HAVE_MALLINFO */
+    xprintf(CGETS(19, 14, "Total space allocated from system: %zu\n"),
+	(size_t)mi.arena);
+    xprintf(CGETS(19, 15, "Number of non-inuse chunks: %zu\n"),
+	(size_t)mi.ordblks);
+    xprintf(CGETS(19, 16, "Number of mmapped regions: %zu\n"),
+	(size_t)mi.hblks);
+    xprintf(CGETS(19, 17, "Total space in mmapped regions: %zu\n"),
+	(size_t)mi.hblkhd);
+    xprintf(CGETS(19, 18, "Total allocated space: %zu\n"),
+	(size_t)mi.uordblks);
+    xprintf(CGETS(19, 19, "Total non-inuse space: %zu\n"),
+	(size_t)mi.fordblks);
+    xprintf(CGETS(19, 20, "Top-most, releasable space: %zu\n"),
+	(size_t)mi.keepcost);
+#endif /* HAVE_MALLINFO || HAVE_MALLINFO2 */
 #endif /* SYSMALLOC */
     USE(c);
     USE(v);
 }
+
+#ifndef SYSMALLOC
+/* jemalloc defines these */
+void _malloc_prefork(void);
+void _malloc_postfork(void);
+void _malloc_postfork_child(void);
+void _malloc_prefork(void) {}
+void _malloc_postfork(void) {}
+void _malloc_postfork_child(void) {}
+#endif

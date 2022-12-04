@@ -32,6 +32,7 @@
 #include "sh.h"
 #include "ed.h"
 #include "ed.defns.h"
+#include "tw.h"
 
 static	void   printkey		(const KEYCMD *, CStr *);
 static	KEYCMD parsecmd		(Char *);
@@ -68,13 +69,13 @@ dobindkey(Char **v, struct command *c)
     map = CcKeyMap;
     ntype = XK_CMD;
     key = removeb = bindk = 0;
-    for (no = 1, par = v[no]; 
+    for (no = 1, par = v[no];
 	 par != NULL && (*par++ & CHAR) == '-'; no++, par = v[no]) {
 	if ((p = (*par & CHAR)) == '-') {
 	    no++;
 	    break;
 	}
-	else 
+	else
 	    switch (p) {
 	    case 'b':
 		bindk = 1;
@@ -139,7 +140,7 @@ dobindkey(Char **v, struct command *c)
     }
     cleanup_push(in.buf, xfree);
 
-#ifndef WINNT_NATIVE
+#if !defined(WINNT_NATIVE) && defined(SHORT_STRINGS)
     if (in.buf[0] > 0xFF) {
 	bad_spec(in.buf);
 	cleanup_until(in.buf);
@@ -385,7 +386,7 @@ parsestring(const Char *str, CStr *buf)
     cleanup_push(&b, Strbuf_cleanup);
     for (p = str; *p != 0; p++) {
 	if ((*p & CHAR) == '\\' || (*p & CHAR) == '^') {
-	    if ((es = parseescape(&p)) == CHAR_ERR) {
+	    if ((es = parseescape(&p, TRUE)) == CHAR_ERR) {
 		cleanup_until(&b);
 		return 0;
 	    } else

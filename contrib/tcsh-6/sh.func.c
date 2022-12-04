@@ -74,7 +74,7 @@ isbfunc(struct command *t)
 
     /*
      * We never match a builtin that has quoted the first
-     * character; this has been the traditional way to escape 
+     * character; this has been the traditional way to escape
      * builtin commands.
      */
     if (*cp & QUOTE)
@@ -227,9 +227,9 @@ dofiletest(Char **v, struct command *c)
     cleanup_push(globbed, blk_cleanup);
 
     while (*(fileptr = v++) != NULL) {
-	res = filetest(ftest, &fileptr, 0);
+	res = filetest(ftest, &fileptr, TEXP_NOGLOB);
 	cleanup_push(res, xfree);
-	xprintf("%S", res);
+	xprintf("%" TCSH_S, res);
 	cleanup_until(res);
 	if (*v)
 	    xprintf(" ");
@@ -493,7 +493,7 @@ doexit(Char **v, struct command *c)
      */
     v++;
     if (*v) {
-	setv(STRstatus, putn(expr(&v)), VAR_READWRITE);
+	setstrstatus(putn(expr(&v)));
 	if (*v)
 	    stderror(ERR_NAME | ERR_EXPRESSION);
     }
@@ -559,7 +559,7 @@ void
 dowhile(Char **v, struct command *c)
 {
     int status;
-    int again = whyles != 0 && 
+    int again = whyles != 0 &&
 			  SEEKEQ(&whyles->w_start, &lineloc) &&
 			  whyles->w_fename == 0;
 
@@ -765,7 +765,7 @@ search(int type, int level, Char *goal)
     }
     cleanup_push(&word, Strbuf_cleanup);
     do {
-	    
+
 	if (intty) {
 	    histent = xmalloc(sizeof(*histent));
 	    ohistent = xmalloc(sizeof(*histent));
@@ -804,7 +804,7 @@ search(int type, int level, Char *goal)
 		}
 		continue;
 	    }
-	    
+
 	    if ((type == TC_IF || type == TC_ELSE) &&
 		eq(word.s, STRthen))
 		level++;
@@ -887,7 +887,7 @@ search(int type, int level, Char *goal)
 	    savehist(ohistent, 0);
 	    freelex(ohistent);
 	    xfree(ohistent);
-	} else 
+	} else
 	    (void) getword(NULL);
     } while (level >= 0);
  end:
@@ -895,7 +895,7 @@ search(int type, int level, Char *goal)
 }
 
 static struct wordent *
-histgetword(struct wordent *histent) 
+histgetword(struct wordent *histent)
 {
     int first;
     eChar c, d;
@@ -918,7 +918,7 @@ histgetword(struct wordent *histent)
 	    while (c != CHAR_ERR && c != '\n');
 	if (c == CHAR_ERR)
 	    goto past;
-	if (c == '\n') 
+	if (c == '\n')
 	    goto nl;
 	unreadc(c);
 	first = 1;
@@ -942,9 +942,9 @@ histgetword(struct wordent *histent)
 	    }
 	    if (c == CHAR_ERR)
 		goto past;
-	    
+
 	    Strbuf_append1(tmp, (Char) c);
-	    
+
 	    if (!first && !d && c == '(' && !e) {
 		break;
 	    }
@@ -967,7 +967,7 @@ histgetword(struct wordent *histent)
 	    return histent;
 	}
     }
-    
+
 past:
     switch (Stype) {
 
@@ -1055,7 +1055,7 @@ getword(struct Strbuf *wp)
 	    if (!first && !d && c == '(') {
 		if (wp)
 		    goto past_word_end;
-		else 
+		else
 		    break;
 	    }
 	    first = 0;
@@ -1152,7 +1152,7 @@ wfree(void)
 
 #ifdef FDEBUG
 	xprintf("start->type %c start->a_seek %d start->f_seek %d\n",
-		foo[wp->w_start.type+1], 
+		foo[wp->w_start.type+1],
 		wp->w_start.a_seek, wp->w_start.f_seek);
 	xprintf("end->type %c end->a_seek %d end->f_seek %d\n",
 		foo[wp->w_end.type + 1], wp->w_end.a_seek, wp->w_end.f_seek);
@@ -1164,12 +1164,12 @@ wfree(void)
 	if (wp->w_end.type != TCSH_I_SEEK && wp->w_start.type == wp->w_end.type &&
 	    wp->w_start.type == o.type) {
 	    if (wp->w_end.type == TCSH_F_SEEK) {
-		if (o.f_seek >= wp->w_start.f_seek && 
+		if (o.f_seek >= wp->w_start.f_seek &&
 		    (wp->w_end.f_seek == 0 || o.f_seek < wp->w_end.f_seek))
 		    break;
 	    }
 	    else {
-		if (o.a_seek >= wp->w_start.a_seek && 
+		if (o.a_seek >= wp->w_start.a_seek &&
 		    (wp->w_end.a_seek == 0 || o.a_seek < wp->w_end.a_seek))
 		    break;
 	    }
@@ -1199,7 +1199,8 @@ doglob(Char **v, struct command *c)
 static void
 xecho(int sep, Char **v)
 {
-    Char *cp, **globbed = NULL;
+    Char **globbed = NULL;
+    const Char *cp;
     int     nonl = 0;
     int	    echo_style = ECHO_STYLE;
     struct varent *vp;
@@ -1235,7 +1236,7 @@ xecho(int sep, Char **v)
 	nonl++, v++;
 
     while ((cp = *v++) != 0) {
-	Char c;
+	eChar c;
 
 	if (setintr) {
 	    int old_pintr_disabled;
@@ -1243,63 +1244,12 @@ xecho(int sep, Char **v)
 	    pintr_push_enable(&old_pintr_disabled);
 	    cleanup_until(&old_pintr_disabled);
 	}
-	while ((c = *cp++) != 0) {
+	for (; (c = *cp) != 0; cp++) {
 	    if ((echo_style & SYSV_ECHO) != 0 && c == '\\') {
-		switch (c = *cp++) {
-		case 'a':
-		    c = '\a';
-		    break;
-		case 'b':
-		    c = '\b';
-		    break;
-		case 'c':
-		    nonl = 1;
-		    goto done;
-		case 'e':
-#if 0			/* Windows does not understand \e */
-		    c = '\e';
-#else
-		    c = CTL_ESC('\033');
-#endif
-		    break;
-		case 'f':
-		    c = '\f';
-		    break;
-		case 'n':
-		    c = '\n';
-		    break;
-		case 'r':
-		    c = '\r';
-		    break;
-		case 't':
-		    c = '\t';
-		    break;
-		case 'v':
-		    c = '\v';
-		    break;
-		case '\\':
+		if ((c = parseescape(&cp, FALSE)) == CHAR_ERR)
 		    c = '\\';
-		    break;
-		case '0':
-		    c = 0;
-		    if (*cp >= '0' && *cp < '8')
-			c = c * 8 + *cp++ - '0';
-		    if (*cp >= '0' && *cp < '8')
-			c = c * 8 + *cp++ - '0';
-		    if (*cp >= '0' && *cp < '8')
-			c = c * 8 + *cp++ - '0';
-		    break;
-		case '\0':
-		    c = '\\';
-		    cp--;
-		    break;
-		default:
-		    xputchar('\\' | QUOTE);
-		    break;
-		}
 	    }
 	    xputwchar(c | QUOTE);
-
 	}
 	if (*v)
 	    xputchar(sep | QUOTE);
@@ -1338,7 +1288,7 @@ xlate_cr_cleanup(void *dummy)
 
 /*ARGSUSED*/
 void
-doprintenv(Char **v, struct command *c) 
+doprintenv(Char **v, struct command *c)
 {
     Char   *e;
 
@@ -1356,7 +1306,7 @@ doprintenv(Char **v, struct command *c)
 		pintr_push_enable(&old_pintr_disabled);
 		cleanup_until(&old_pintr_disabled);
 	    }
-	    xprintf("%S\n", *ep);
+	    xprintf("%" TCSH_S "\n", *ep);
 	}
 	cleanup_until(&xlate_cr);
     }
@@ -1366,11 +1316,11 @@ doprintenv(Char **v, struct command *c)
 	old_output_raw = output_raw;
 	output_raw = 1;
 	cleanup_push(&old_output_raw, output_raw_restore);
-	xprintf("%S\n", e);
+	xprintf("%" TCSH_S "\n", e);
 	cleanup_until(&old_output_raw);
     }
     else
-	setcopy(STRstatus, STR1, VAR_READWRITE);
+	setstatus(1);
 }
 
 /* from "Karl Berry." <karl%mote.umb.edu@relay.cs.net> -- for NeXT things
@@ -1423,7 +1373,7 @@ dosetenv(Char **v, struct command *c)
     /* dspkanji/dspmbyte autosetting */
     /* PATCH IDEA FROM Issei.Suzuki VERY THANKS */
 #if defined(DSPMBYTE)
-    if(eq(vp, STRLANG) && !adrof(CHECK_MBYTEVAR)) {
+    if (eq(vp, STRLANG) && !adrof(CHECK_MBYTEVAR)) {
 	autoset_dspmbyte(lp);
     }
 #endif
@@ -1517,9 +1467,8 @@ dosetenv(Char **v, struct command *c)
 	/*
 	 * convert to canonical pathname (possibly resolving symlinks)
 	 */
-	canon = dcanon(lp, lp);
 	cleanup_ignore(lp);
-	cleanup_until(lp);
+	canon = dcanon(lp, lp);
 	cleanup_push(canon, xfree);
 	setv(STRhome, quote(canon), VAR_READWRITE); /* lp memory used here */
 	cleanup_ignore(canon);
@@ -1611,7 +1560,7 @@ dounsetenv(Char **v, struct command *c)
     name = xmalloc((maxi + 1) * sizeof(Char));
     cleanup_push(name, xfree);
 
-    while (++v && *v) 
+    while (++v && *v)
 	for (maxi = 1; maxi;)
 	    for (maxi = 0, ep = STR_environ; *ep; ep++) {
 		for (n = name, p = *ep; *p && *p != '='; *n++ = *p++)
@@ -1898,7 +1847,7 @@ doumask(Char **v, struct command *c)
 #  endif
 # endif
 
-struct limits limits[] = 
+struct limits limits[] =
 {
 # ifdef RLIMIT_CPU
     { RLIMIT_CPU, 	"cputime",	1,	"seconds"	},
@@ -1980,37 +1929,37 @@ struct limits limits[] =
     { RLIMIT_SBSIZE,	"sbsize",	1,	""		},
 # endif /* RLIMIT_SBSIZE */
 
-# ifdef RLIMIT_SWAP 
-    { RLIMIT_SWAP,	"swapsize",	1024,	"kbytes"	}, 
-# endif /* RLIMIT_SWAP */ 
+# ifdef RLIMIT_SWAP
+    { RLIMIT_SWAP,	"swapsize",	1024,	"kbytes"	},
+# endif /* RLIMIT_SWAP */
 
-# ifdef RLIMIT_LOCKS 
-    { RLIMIT_LOCKS,	"maxlocks",	1,	""		}, 
-# endif /* RLIMIT_LOCKS */ 
+# ifdef RLIMIT_LOCKS
+    { RLIMIT_LOCKS,	"maxlocks",	1,	""		},
+# endif /* RLIMIT_LOCKS */
 
 # ifdef RLIMIT_POSIXLOCKS
     { RLIMIT_POSIXLOCKS,"posixlocks",	1,	""		},
 # endif /* RLIMIT_POSIXLOCKS */
 
-# ifdef RLIMIT_SIGPENDING 
-    { RLIMIT_SIGPENDING,"maxsignal",	1,	""		}, 
-# endif /* RLIMIT_SIGPENDING */ 
+# ifdef RLIMIT_SIGPENDING
+    { RLIMIT_SIGPENDING,"maxsignal",	1,	""		},
+# endif /* RLIMIT_SIGPENDING */
 
-# ifdef RLIMIT_MSGQUEUE 
-    { RLIMIT_MSGQUEUE,	"maxmessage",	1,	""		}, 
-# endif /* RLIMIT_MSGQUEUE */ 
+# ifdef RLIMIT_MSGQUEUE
+    { RLIMIT_MSGQUEUE,	"maxmessage",	1,	""		},
+# endif /* RLIMIT_MSGQUEUE */
 
-# ifdef RLIMIT_NICE 
-    { RLIMIT_NICE,	"maxnice",	1,	""		}, 
-# endif /* RLIMIT_NICE */ 
+# ifdef RLIMIT_NICE
+    { RLIMIT_NICE,	"maxnice",	1,	""		},
+# endif /* RLIMIT_NICE */
 
-# ifdef RLIMIT_RTPRIO 
-    { RLIMIT_RTPRIO,	"maxrtprio",	1,	""		}, 
-# endif /* RLIMIT_RTPRIO */ 
+# ifdef RLIMIT_RTPRIO
+    { RLIMIT_RTPRIO,	"maxrtprio",	1,	""		},
+# endif /* RLIMIT_RTPRIO */
 
-# ifdef RLIMIT_RTTIME 
-    { RLIMIT_RTTIME,	"maxrttime",	1,	"usec"		}, 
-# endif /* RLIMIT_RTTIME */ 
+# ifdef RLIMIT_RTTIME
+    { RLIMIT_RTTIME,	"maxrttime",	1,	"usec"		},
+# endif /* RLIMIT_RTTIME */
 
     { -1, 		NULL, 		0, 	NULL		}
 };
@@ -2626,11 +2575,11 @@ iconv_catgets(nl_catd ctd, int set_id, int msg_id, const char *s)
 {
     static char *buf = NULL;
     static size_t buf_size = 0;
-  
+
     char *orig, *dest, *p;
     ICONV_CONST char *src;
     size_t src_size, dest_size;
-  
+
     orig = xcatgets(ctd, set_id, msg_id, s);
     if (catgets_iconv == (iconv_t)-1 || orig == s)
         return orig;
@@ -2651,7 +2600,7 @@ iconv_catgets(nl_catd ctd, int set_id, int msg_id, const char *s)
 		dest = p + (dest - buf);
 		buf = p;
 		break;
-		
+
 	    case EILSEQ: case EINVAL: default:
 		return orig;
 	    }
@@ -2736,7 +2685,7 @@ getYN(const char *prompt)
     xprintf("%s", prompt);
     flush();
     (void) force_read(SHIN, &c, sizeof(c));
-    /* 
+    /*
      * Perhaps we should use the yesexpr from the
      * actual locale
      */

@@ -59,7 +59,6 @@ typedef enum {
 static	void	 setup_tty		(int);
 static	void	 back_to_col_1		(void);
 static	void	 pushback		(const Char *);
-static	int	 filetype		(const Char *, const Char *);
 static	void	 print_by_column	(const Char *, Char *[], size_t);
 static	Char 	*tilde			(const Char *);
 static	void	 retype			(void);
@@ -112,7 +111,7 @@ setup_tty(int on)
 	    on = TCSETAF;
 # endif /* POSIX */
 	    tchars.c_lflag |= ICANON;
-    
+
 	}
     }
     else {
@@ -327,7 +326,7 @@ print_by_column(const Char *dir, Char *items[], size_t count)
 	    if (i < count) {
 		int w;
 
-		xprintf("%S", items[i]);
+		xprintf("%" TCSH_S, items[i]);
 		xputchar(dir ? filetype(dir, items[i]) : ' ');
 		if (c < columns - 1) {	/* last column? */
 		    w = Strlen(items[i]) + 1;
@@ -441,13 +440,13 @@ print_recognized_stuff(const Char *recognized_part)
 	break;
 
     case 1:			/* overstrike the ^, erase the [ */
-	xprintf("%S", recognized_part);
+	xprintf("%" TCSH_S, recognized_part);
 	(void) putraw(' ');
 	(void) putraw('\b');
 	break;
 
     default:			/* overstrike both Characters ^[ */
-	xprintf("%S", recognized_part);
+	xprintf("%" TCSH_S, recognized_part);
 	break;
     }
     flush();

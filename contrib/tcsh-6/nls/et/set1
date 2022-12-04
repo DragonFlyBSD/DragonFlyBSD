@@ -56,7 +56,7 @@ $set 1
 54 Toru ei saa luua
 55 %s: %s
 56 %s
-57 Kasuta: jobs [ -l ]
+57 Kasuta: jobs [ -lZ ]
 58 Argumendid peavad olema tööde või protsesside identifikaatorid
 59 Käesolevat tööd pole
 60 Pole eelmist tööd

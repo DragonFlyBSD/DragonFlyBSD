@@ -17,7 +17,7 @@
  *	      Looks up *ch in map and then reads characters until a
  *	      complete match is found or a mismatch occurs. Returns the
  *	      type of the match found (XK_STR, XK_CMD, or XK_EXE).
- *	      Returns NULL in val.str and XK_STR for no match.  
+ *	      Returns NULL in val.str and XK_STR for no match.
  *	      The last character read is returned in *ch.
  *
  *		void AddXkey(Xkey, val, ntype);
@@ -227,7 +227,7 @@ AddXkey(const CStr *Xkey, XmapVal *val, int ntype)
 	Xmap = GetFreeNode(&cs);	/* it is properly initialized */
 
     /* Now recurse through Xmap */
-    (void) TryNode(Xmap, &cs, val, ntype);	
+    (void) TryNode(Xmap, &cs, val, ntype);
     return;
 }
 
@@ -421,7 +421,7 @@ GetFreeNode(CStr *ch)
     ptr->sibling = NULL;
     return (ptr);
 }
- 
+
 
 /* PrintXKey():
  *	Print the binding associated with Xkey key.
@@ -543,7 +543,7 @@ printOne(const Char *key, const XmapVal *val, int ntype)
     struct KeyFuncs *fp;
     static const char *fmt = "%s\n";
 
-    xprintf("%-15S-> ", key);
+    xprintf("%-15" TCSH_S "-> ", key);
     if (val != NULL)
 	switch (ntype) {
 	case XK_STR:
@@ -560,7 +560,7 @@ printOne(const Char *key, const XmapVal *val, int ntype)
 	    for (fp = FuncNames; fp->name; fp++)
 		if (val->cmd == fp->func)
 		    xprintf(fmt, fp->name);
-		break;
+	    break;
 	default:
 	    abort();
 	    break;
@@ -604,8 +604,39 @@ unparsech(struct Strbuf *buf, Char ch)
     }
 }
 
+static Char
+parse_hex_range(const Char **cp, size_t l)
+{
+    size_t ui = 0;
+    Char r = 0, c;
+
+    if (l > 8)
+	abort();
+
+    for (; (c = (**cp & CHAR)) != '\0' && ui < l && Isxdigit(c); (*cp)++, ui++) {
+	Char x = Isdigit(c) ? '0' : ((Isupper(c) ? 'A' : 'a') - 10);
+#ifndef IS_ASCII
+	c = _toascii(c);
+#endif
+	r <<= 4;
+	r |= c - x;
+    }
+    (*cp)--;
+#ifndef IS_ASCII
+    return _toebcdic[r & 0xff];
+#else
+    return r;
+#endif
+}
+
+/*
+ * The e parameter is false when we are doing echo and true when we are
+ * using it to parse other escaped strings. For echo, we don't print errors
+ * and we don't unescape backslashes that we don't understand. Perhaps we
+ * always not unescape backslashes we don't understand...
+ */
 eChar
-parseescape(const Char **ptr)
+parseescape(const Char **ptr, int e)
 {
     const Char *p;
     Char c;
@@ -613,7 +644,8 @@ parseescape(const Char **ptr)
     p = *ptr;
 
     if ((p[1] & CHAR) == 0) {
-	xprintf(CGETS(9, 8, "Something must follow: %c\n"), (char)*p);
+	if (e)
+	    xprintf(CGETS(9, 8, "Something must follow: %c\n"), (char)*p);
 	return CHAR_ERR;
     }
     if ((*p & CHAR) == '\\') {
@@ -624,6 +656,33 @@ parseescape(const Char **ptr)
 	    break;
 	case 'b':
 	    c = CTL_ESC('\010');         /* Backspace */
+	    break;
+	case 'c':
+	    p++;
+	    if ((*p & CHAR) == '\\') {
+		p++;
+		if ((*p & CHAR) != '\\') {
+		    *ptr = p;
+		    if (e)
+			xprintf(/*CGETS(9, 9, */
+			    "Invalid escape sequence: %s%c\n"/*)*/, "\\c\\", (char)*p);
+		    return CHAR_ERR;
+		}
+		c = (*p & CHAR) & 0237;
+	    } else if ((Isalpha(*p & CHAR) || strchr("@^_?\\|[{]}", *p & CHAR))) {
+		/* XXX: Duplicate code from ^ below */
+#ifdef IS_ASCII
+		c = ((*p & CHAR) == '?') ? CTL_ESC('\177') : ((*p & CHAR) & 0237);
+#else
+		c = ((*p & CHAR) == '?') ? CTL_ESC('\177') : _toebcdic[_toascii[*p & CHAR] & 0237];
+		if (adrof(STRwarnebcdic))
+		    xprintf(/*CGETS(9, 9, no NLS-String yet!*/
+			"Warning: Control character %s%c may be interpreted differently in EBCDIC.\n", "\\c", *p & CHAR /*)*/);
+#endif
+	    } else { /* backward compat */
+		c = '\\';
+		p -= 2;
+	    }
 	    break;
 	case 'e':
 	    c = CTL_ESC('\033');         /* Escape */
@@ -646,6 +705,41 @@ parseescape(const Char **ptr)
 	case '\\':
 	    c = '\\';
 	    break;
+	case 'x':
+	    p++;
+	    if ((*p & CHAR) == '{' && Isxdigit(*(p + 1) & CHAR)) { /* \x{20ac} */
+		const Char *q = p - 2;
+		p++;
+		c = parse_hex_range(&p, 8);
+		if ((p[1] & CHAR) != '}') {
+		    if (e)
+			xprintf("%s", /* CGETS(9, 9, */
+			    "Missing closing brace");
+		    p = q;
+		    c = '\\';
+		    break;
+		}
+		p++;
+	    } else if (Isxdigit(*p & CHAR)) {	/* \x9f */
+		c = parse_hex_range(&p, 2);
+	    } else { /* backward compat */
+		c = '\\';
+		p -= 2;
+	    }
+	    break;
+	case 'u':
+	case 'U':
+	    {
+		size_t limit = (*p & CHAR) == 'u' ? 4 : 8;
+		p++;
+		if (Isxdigit(*p & CHAR)) {	/* \u20ac or \U000020ac */
+		    c = parse_hex_range(&p, limit);
+		} else { /* backward compat */
+		    c = '\\';
+		    p -= 2;
+		}
+	    }
+	    break;
 	case '0':
 	case '1':
 	case '2':
@@ -667,25 +761,30 @@ parseescape(const Char **ptr)
 		    val = (val << 3) | (ch - '0');
 		}
 		if ((val & ~0xff) != 0) {
-		    xprintf("%s", CGETS(9, 9,
+		    if (e)
+			xprintf("%s", CGETS(9, 9,
 			    "Octal constant does not fit in a char.\n"));
-		    return 0;
+		    *ptr = p;
+		    return CHAR_ERR;
 		}
 #ifndef IS_ASCII
 		if (CTL_ESC(val) != val && adrof(STRwarnebcdic))
 		    xprintf(/*CGETS(9, 9, no NLS-String yet!*/
-			    "Warning: Octal constant \\%3.3o is interpreted as EBCDIC value.\n", val/*)*/);
+			"Warning: Octal constant \\%3.3o is interpreted as "
+			"EBCDIC value.\n", val/*)*/);
 #endif
 		c = (Char) val;
 		--p;
 	    }
 	    break;
 	default:
+	    if (!e)
+		--p;
 	    c = *p;
 	    break;
 	}
     }
-    else if ((*p & CHAR) == '^' && (Isalpha(p[1] & CHAR) || 
+    else if ((*p & CHAR) == '^' && (Isalpha(p[1] & CHAR) ||
 				    strchr("@^_?\\|[{]}", p[1] & CHAR))) {
 	p++;
 #ifdef IS_ASCII
@@ -694,11 +793,11 @@ parseescape(const Char **ptr)
 	c = ((*p & CHAR) == '?') ? CTL_ESC('\177') : _toebcdic[_toascii[*p & CHAR] & 0237];
 	if (adrof(STRwarnebcdic))
 	    xprintf(/*CGETS(9, 9, no NLS-String yet!*/
-		"Warning: Control character ^%c may be interpreted differently in EBCDIC.\n", *p & CHAR /*)*/);
+		"Warning: Control character %s%c may be interpreted differently in EBCDIC.\n", "^", *p & CHAR /*)*/);
 #endif
     }
     else
-	c = *p;
+	c = *p & CHAR;
     *ptr = p;
     return (c);
 }

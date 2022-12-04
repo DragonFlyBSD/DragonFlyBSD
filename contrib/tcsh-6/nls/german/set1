@@ -56,7 +56,7 @@ $set 1
 54 Kann keine Pipe erzeugen
 55 %s: %s
 56 %s
-57 Benutzung: jobs [ -l ]
+57 Benutzung: jobs [ -lZ ]
 58 Argumente können Job- oder Prozeß-ID's sein
 59 Kein aktueller Job
 60 Kein vorhergehender Job

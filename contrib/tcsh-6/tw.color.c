@@ -146,7 +146,7 @@ enum ansi {
     ANSI_BG_DEFAULT = 49,	/* bg default (black) */
 };
 #define TCSH_BOLD	0x80
-	
+
 typedef struct {
     Str	    extension;	/* file extension */
     Str	    color;	/* color string */
@@ -157,7 +157,8 @@ static size_t nextensions = 0;
 
 static char *colors = NULL;
 int	     color_context_ls = FALSE;	/* do colored ls */
-static int  color_context_lsmF = FALSE; /* do colored ls-F */
+static int   color_context_lsmF = FALSE; /* do colored ls-F */
+int 	     color_as_referent = FALSE; /* ln=target in LS_COLORS */
 
 static int getstring (char **, const Char **, Str *, int);
 static void put_color (const Str *);
@@ -201,7 +202,7 @@ getstring(char **dp, const Char **sp, Str *pd, int f)
 
     while (*s && (*s & CHAR) != (Char)f && (*s & CHAR) != ':') {
 	if ((*s & CHAR) == '\\' || (*s & CHAR) == '^') {
-	    if ((sc = parseescape(&s)) == CHAR_ERR)
+	    if ((sc = parseescape(&s, TRUE)) == CHAR_ERR)
 		return 0;
 	}
 	else
@@ -252,11 +253,13 @@ static void
 makecolor(char **c, int fg, int bg, Str *v)
 {
     int l;
-    if (fg & 0x80)
+    if (fg & 0x80) {
 	l = xsnprintf(*c, 12, "%.2d;%.2d;%.2d;%.2d", ANSI_BOLD_ON,
 	    fg & ~TCSH_BOLD, (10 + bg) & ~TCSH_BOLD, ANSI_BOLD_OFF);
+    } else {
 	l = xsnprintf(*c, 6, "%.2d;%.2d",
 	    fg & ~TCSH_BOLD, (10 + bg) & ~TCSH_BOLD);
+    }
 
     v->s = *c;
     v->len = l;
@@ -381,6 +384,9 @@ parseLS_COLORS(const Char *value)
 		    if (i < nvariables) {
 			v += 3;
 			getstring(&c, &v, &variables[i].color, ':');
+			if (i == VSym)
+			    color_as_referent = strcasecmp(
+				variables[VSym].color.s, "target") == 0;
 			continue;
 		    }
 		    else
@@ -469,8 +475,28 @@ print_with_color(const Char *filename, size_t len, Char suffix)
     if (color_context_lsmF &&
 	(haderr ? (didfds ? is2atty : isdiagatty) :
 	 (didfds ? is1atty : isoutatty))) {
-	print_color(filename, len, suffix);
-	xprintf("%S", filename);
+
+	if (suffix == '@' && color_as_referent) {
+	    char *f = short2str(filename);
+	    Char c = suffix;
+	    char buf[MAXPATHLEN + 1];
+
+	    while (c == '@') {
+		ssize_t b = readlink(f, buf, MAXPATHLEN);
+		if (b == -1) {
+		    c = '&';
+		    break;
+		}
+		buf[b] = '\0';
+
+		c = filetype(STRNULL, str2short(buf));
+		f = buf;
+	    }
+
+	    print_color(filename, len, c);
+	} else
+	    print_color(filename, len, suffix);
+	xprintf("%" TCSH_S, filename);
 	if (0 < variables[VEnd].color.len)
 	    put_color(&variables[VEnd].color);
 	else {
@@ -478,9 +504,8 @@ print_with_color(const Char *filename, size_t len, Char suffix)
 	    put_color(&variables[VNormal].color);
 	    put_color(&variables[VRight].color);
 	}
-    }
-    else
-	xprintf("%S", filename);
+    } else
+	xprintf("%" TCSH_S, filename);
     xputwchar(suffix);
 }
 

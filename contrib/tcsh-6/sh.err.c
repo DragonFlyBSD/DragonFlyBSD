@@ -1,5 +1,5 @@
 /*
- * sh.err.c: Error printing routines. 
+ * sh.err.c: Error printing routines.
  */
 /*-
  * Copyright (c) 1980, 1991 The Regents of the University of California.
@@ -266,7 +266,7 @@ errinit(void)
     elst[ERR_PIPE] = CSAVS(1, 54, "Can't make pipe");
     elst[ERR_SYSTEM] = CSAVS(1, 55, "%s: %s");
     elst[ERR_STRING] = CSAVS(1, 56, "%s");
-    elst[ERR_JOBS] = CSAVS(1, 57, "Usage: jobs [ -l ]");
+    elst[ERR_JOBS] = CSAVS(1, 57, "Usage: jobs [ -lZ ]");
     elst[ERR_JOBARGS] = CSAVS(1, 58, "Arguments should be jobs or process id's");
     elst[ERR_JOBCUR] = CSAVS(1, 59, "No current job");
     elst[ERR_JOBPREV] = CSAVS(1, 60, "No previous job");
@@ -573,7 +573,7 @@ fixerror(void)
      */
     btoeof();
 
-    setcopy(STRstatus, STR1, VAR_READWRITE);/*FIXRESET*/
+    setstatus(1);
 #ifdef BSDJOBS
     if (tpgrp > 0)
 	(void) tcsetpgrp(FSHTTY, tpgrp);

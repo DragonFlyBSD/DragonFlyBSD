@@ -615,9 +615,6 @@ complete gmake		'c/{--directory=,--include-dir=}/d/' \
 			'n@*@`cat -s GNUMakefile Makefile makefile |& sed -n -e "/No such file/d" -e "s/^\([A-Za-z0-9-]*\):.*/\1/p"`@' \
 			'n/=/f/' \
 			'n/-f/f/'
-complete mixer		p/1/'(vol bass treble synth pcm speaker mic cd mix \
-			      pcm2 rec igain ogain line1 line2 line3)'/ \
-			p@2@'`mixer $:-1 | awk \{\ print\ \$7\ \}`'@
 
 complete mpg123		'c/--/(2to1 4to1 8bit aggressive au audiodevice auth \
 			      buffer cdr check doublespeed equalizer frames \

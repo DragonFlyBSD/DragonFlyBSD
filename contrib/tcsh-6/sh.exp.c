@@ -36,9 +36,6 @@
  * C shell
  */
 
-#define TEXP_IGNORE 1	/* in ignore, it means to ignore value, just parse */
-#define TEXP_NOGLOB 2	/* in ignore, it means not to globone */
-
 #define	ADDOP	1
 #define	MULOP	2
 #define	EQOP	4
@@ -96,21 +93,21 @@ sh_access(const Char *fname, int mode)
 #else /* POSIX */
 
     /*
-     * POSIX 1003.2-d11.2 
-     *	-r file		True if file exists and is readable. 
-     *	-w file		True if file exists and is writable. 
-     *			True shall indicate only that the write flag is on. 
+     * POSIX 1003.2-d11.2
+     *	-r file		True if file exists and is readable.
+     *	-w file		True if file exists and is writable.
+     *			True shall indicate only that the write flag is on.
      *			The file shall not be writable on a read-only file
      *			system even if this test indicates true.
-     *	-x file		True if file exists and is executable. 
-     *			True shall indicate only that the execute flag is on. 
-     *			If file is a directory, true indicates that the file 
+     *	-x file		True if file exists and is executable.
+     *			True shall indicate only that the execute flag is on.
+     *			If file is a directory, true indicates that the file
      *			can be searched.
      */
     if (mode != W_OK && mode != X_OK)
 	return access(name, mode);
 
-    if (stat(name, &statb) == -1) 
+    if (stat(name, &statb) == -1)
 	return 1;
 
     if (access(name, mode) == 0) {
@@ -132,7 +129,7 @@ sh_access(const Char *fname, int mode)
 	    break;
 	}
 
-    } 
+    }
 
     else if (euid == statb.st_uid)
 	mode <<= 6;
@@ -197,7 +194,7 @@ exp0(Char ***vp, int ignore)
 
 	(*vp)++;
 
-	p2 = compat_expr ? 
+	p2 = compat_expr ?
 	    exp0(vp, (ignore & TEXP_IGNORE) || p1) :
 	    exp1(vp, (ignore & TEXP_IGNORE) || p1);
 	if (compat_expr || !(ignore & TEXP_IGNORE))
@@ -478,7 +475,7 @@ exp5(Char ***vp, int ignore)
 	}
 
 	cleanup_push(p1, xfree);
-	p2 = compat_expr ? 
+	p2 = compat_expr ?
 	    exp5(vp, ignore) :
 	    exp6(vp, ignore);
 	cleanup_push(p2, xfree);
@@ -579,8 +576,8 @@ exp6(Char ***vp, int ignore)
 	}
 	pwait();
 	cleanup_until(&faket);
-	etraci("exp6 {} status", egetn(varval(STRstatus)), vp);
-	return (putn(egetn(varval(STRstatus)) == 0));
+	etraci("exp6 {} status", getstatus(), vp);
+	return putn(getstatus() == 0);
     }
     if (isa(**vp, ANYOP))
 	return (Strsave(STRNULL));
@@ -598,7 +595,7 @@ exp6(Char ***vp, int ignore)
 }
 
 
-/* 
+/*
  * Extended file tests
  * From: John Rowe <rowe@excc.exeter.ac.uk>
  */
@@ -634,7 +631,7 @@ filetest(Char *cp, Char ***vp, int ignore)
     struct passwd *pw;
     struct group *gr;
 
-    while(any(FILETESTS, *++ft))
+    while (any(FILETESTS, *++ft))
 	continue;
 
     if (!*ft && *(ft - 1) == 'L')
@@ -677,10 +674,14 @@ filetest(Char *cp, Char ***vp, int ignore)
     dp = *(*vp)++;
     if (ignore & TEXP_IGNORE)
 	return (Strsave(STRNULL));
-    ep = globone(dp, G_APPEND);
+    if ((ignore & TEXP_NOGLOB) == 0) {
+	ep = globone(dp, G_APPEND);
+    } else {
+	ep = Strsave(dp);
+    }
     cleanup_push(ep, xfree);
     ft = &cp[1];
-    do 
+    do
 	switch (*ft) {
 
 	case 'r':
@@ -696,7 +697,7 @@ filetest(Char *cp, Char ***vp, int ignore)
 	    break;
 
 	case 'X':	/* tcsh extension, name is an executable in the path
-			 * or a tcsh builtin command 
+			 * or a tcsh builtin command
 			 */
 	    i = find_cmd(ep, 0);
 	    break;
@@ -709,7 +710,7 @@ filetest(Char *cp, Char ***vp, int ignore)
 
 #ifdef S_IFLNK
 	    if (tolower(*ft) == 'l') {
-		/* 
+		/*
 		 * avoid convex compiler bug.
 		 */
 		if (!lst) {
@@ -722,9 +723,9 @@ filetest(Char *cp, Char ***vp, int ignore)
 		if (*ft == 'L')
 		    st = lst;
 	    }
-	    else 
+	    else
 #endif /* S_IFLNK */
-		/* 
+		/*
 		 * avoid convex compiler bug.
 		 */
 		if (!st) {
@@ -776,7 +777,7 @@ filetest(Char *cp, Char ***vp, int ignore)
 	      i = 0;
 #endif /* S_ISOFL */
 	      break ;
-  
+
 
 	    case 'l':
 #ifdef S_ISLNK
@@ -855,7 +856,7 @@ filetest(Char *cp, Char ***vp, int ignore)
 	    case 'I':
 		i = (tcsh_number_t) st->st_ino;
 		break;
-		
+
 	    case 'F':
 		strdev = putn( (int) st->st_dev);
 		strino = putn( (int) st->st_ino);
@@ -866,7 +867,7 @@ filetest(Char *cp, Char ***vp, int ignore)
 		xfree(strino);
 		cleanup_until(ep);
 		return(strF);
-		
+
 	    case 'L':
 		if ( *(ft + 1) ) {
 		    i = 1;
@@ -884,7 +885,7 @@ filetest(Char *cp, Char ***vp, int ignore)
 		i = 0;
 		break;
 #endif /* S_ISLNK */
-		
+
 
 	    case 'N':
 		i = (tcsh_number_t) st->st_nlink;
@@ -893,7 +894,7 @@ filetest(Char *cp, Char ***vp, int ignore)
 	    case 'P':
 		string = string0 + 1;
 		(void) xsnprintf(string, sizeof(string0) - 1, "%o",
-		    pmask & (unsigned int) 
+		    pmask & (unsigned int)
 		    ((S_IRWXU|S_IRWXG|S_IRWXO|S_ISUID|S_ISGID) & st->st_mode));
 		if (altout && *string != '0')
 		    *--string = '0';
@@ -950,7 +951,7 @@ evalav(Char **v)
     struct command *t;
     struct wordent *wdp = hp;
 
-    setcopy(STRstatus, STR0, VAR_READWRITE);
+    setstatus(0);
     initlex(hp);
     while (*v) {
 	struct wordent *new = xcalloc(1, sizeof *wdp);

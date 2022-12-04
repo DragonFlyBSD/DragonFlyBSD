@@ -62,7 +62,7 @@ $set 2
 60 Virtual time alarm
 61 Profiling time alarm
 62 DIL signal
-63 Pollable event occured
+63 Pollable event occurred
 64 Process's lwps are blocked
 65 Special LWP signal
 66 Special CPR Signal

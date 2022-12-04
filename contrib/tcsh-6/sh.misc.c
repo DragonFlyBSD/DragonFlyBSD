@@ -99,7 +99,7 @@ blkpr(Char *const *av)
 {
 
     for (; *av; av++) {
-	xprintf("%S", *av);
+	xprintf("%" TCSH_S, *av);
 	if (av[1])
 	    xprintf(" ");
     }
@@ -270,7 +270,7 @@ closem(void)
     num_files = NOFILE;
     for (f = 0; f < num_files; f++)
 	if (f != SHIN && f != SHOUT && f != SHDIAG && f != OLDSTD &&
-	    f != FSHTTY 
+	    f != FSHTTY
 #ifdef MALLOC_TRACE
 	    && f != 25
 #endif /* MALLOC_TRACE */
@@ -282,13 +282,13 @@ closem(void)
 	     * Not closing sockets does not make the cleanup use of closem()
 	     * less reliable because tcsh never creates sockets.
 	     */
-	    && fstat(f, &st) == 0 && !S_ISSOCK(st.st_mode)	
+	    && fstat(f, &st) == 0 && !S_ISSOCK(st.st_mode)
 #endif
 	    )
 	  {
 	    xclose(f);
 #ifdef NISPLUS
-	    if(f < 3)
+	    if (f < 3)
 		(void) xopen(_PATH_DEVNULL, O_RDONLY|O_LARGEFILE);
 #endif /* NISPLUS */
 	  }
@@ -342,7 +342,7 @@ donefds(void)
 	(void)dcopy(fd, 2);
 	(void)dmove(fd, 0);
     }
-#endif /*NISPLUS*/    
+#endif /*NISPLUS*/
 }
 
 /*
@@ -531,6 +531,25 @@ areadlink(const char *path)
     char *buf;
     size_t size;
     ssize_t res;
+#ifdef __IBMC__
+    /*
+     * Prevent infinite recursion. Someone should tell me how to expand
+     * these...
+     */
+    size_t i;
+    static const char *vars[] = {
+	"/$VERSION",
+	"/$SYSNAME",
+	"/$SYSSYMR",
+	"/$SYSSYMA",
+    };
+    for (i = 0; i < sizeof(vars) / sizeof(vars[0]); i++) {
+	if (strcmp(vars[i], path) == 0) {
+	    return NULL;
+	}
+    }
+#endif
+
 
     size = MAXPATHLEN + 1;
     buf = xmalloc(size);

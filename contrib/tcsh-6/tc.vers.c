@@ -47,57 +47,57 @@ fix_version(void)
 # define SSSTR "8b"
 #else
 # define SSSTR "7b"
-#endif 
+#endif
 #ifdef NLS
 # define NLSSTR ",nls"
 #else
 # define NLSSTR ""
-#endif 
+#endif
 #ifdef LOGINFIRST
 # define LFSTR ",lf"
 #else
 # define LFSTR ""
-#endif 
+#endif
 #ifdef DOTLAST
 # define DLSTR ",dl"
 #else
 # define DLSTR ""
-#endif 
+#endif
 #ifdef VIDEFAULT
 # define VISTR ",vi"
 #else
 # define VISTR ""
-#endif 
+#endif
 #ifdef TESLA
 # define DTRSTR ",dtr"
 #else
 # define DTRSTR ""
-#endif 
+#endif
 #ifdef KAI
 # define BYESTR ",bye"
 #else
 # define BYESTR ""
-#endif 
+#endif
 #ifdef AUTOLOGOUT
 # define ALSTR ",al"
 #else
 # define ALSTR ""
-#endif 
+#endif
 #ifdef KANJI
 # define KANSTR ",kan"
 #else
 # define KANSTR ""
-#endif 
+#endif
 #ifdef SYSMALLOC
 # define SMSTR	",sm"
 #else
 # define SMSTR  ""
-#endif 
+#endif
 #ifdef HASHBANG
 # define HBSTR	",hb"
 #else
 # define HBSTR  ""
-#endif 
+#endif
 #ifdef NEWGRP
 # define NGSTR	",ng"
 #else
@@ -156,7 +156,7 @@ fix_version(void)
 
 
     version = xasprintf(
-"tcsh %d.%.2d.%.2d (%s) %s (%S-%S-%S) options %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+"tcsh %d.%.2d.%.2d (%s) %s (%" TCSH_S "-%" TCSH_S "-%" TCSH_S ") options %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
 	     REV, VERS, PATCHLEVEL, ORIGIN, DATE, machtype, vendor, ostype,
 	     SSSTR, NLSSTR, LFSTR, DLSTR, VISTR, DTRSTR, BYESTR,
 	     ALSTR, KANSTR, SMSTR, HBSTR, NGSTR, RHSTR, AFSSTR, NDSTR,

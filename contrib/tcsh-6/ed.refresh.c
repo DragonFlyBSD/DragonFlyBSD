@@ -76,7 +76,7 @@ dprintstr(char *str, const Char *f, const Char *t)
 #endif /* DEBUG_UPDATE */
 
 /* reprintf():
- *	Print to $DEBUGTTY, so that we can test editing on one pty, and 
+ *	Print to $DEBUGTTY, so that we can test editing on one pty, and
  *      print debugging stuff on another. Don't interrupt the shell while
  *	debugging cause you'll mangle up the file descriptors!
  */
@@ -461,7 +461,7 @@ GotoBottom(void)
     MoveToLine(OldvcV);
 }
 
-#endif 
+#endif
 
 void
 PastBottom(void)
@@ -602,7 +602,7 @@ update_line(Char *old, Char *new, int cur_line)
      */
     o = Strend(o);
 
-    /* 
+    /*
      * Remove any trailing blanks off of the end, being careful not to
      * back up past the beginning.
      */
@@ -628,7 +628,7 @@ update_line(Char *old, Char *new, int cur_line)
     }
     ne = n;
     *ne = (Char) 0;
-  
+
     /*
      * if no diff, continue to next line of redraw
      */
@@ -824,14 +824,14 @@ update_line(Char *old, Char *new, int cur_line)
 
     /*
      * at this point we have something like this:
-     * 
+     *
      * /old                  /ofd    /osb               /ose    /ols     /oe
      * v.....................v       v..................v       v........v
      * eddie> Oh, my fredded gruntle-buggy is to me, as foo var lurgid as
      * eddie> Oh, my fredded quiux buggy is to me, as gruntle-lurgid as
-     * ^.....................^     ^..................^       ^........^ 
+     * ^.....................^     ^..................^       ^........^
      * \new                  \nfd  \nsb               \nse     \nls    \ne
-     * 
+     *
      * fx is the difference in length between the the chars between nfd and
      * nsb, and the chars between ofd and osb, and is thus the number of
      * characters to delete if < 0 (new is shorter than old, as above),
@@ -1040,7 +1040,7 @@ update_line(Char *old, Char *new, int cur_line)
 #ifdef DEBUG_UPDATE
 	    reprintf("with stuff to keep at end\r\n");
 #endif /* DEBUG_UPDATE */
-	    /* 
+	    /*
 	     * We have to recalculate fx here because we set it
 	     * to zero above as a flag saying that we hadn't done
 	     * an early first insert.
@@ -1136,6 +1136,39 @@ cpy_pad_spaces(Char *dst, Char *src, int width)
     *dst = (Char) 0;
 }
 
+static void
+CalcPosition(int w, int th, int *h, int *v)
+{
+    switch(w) {
+	case NLSCLASS_NL:
+	    *h = 0;
+	    (*v)++;
+	    break;
+	case NLSCLASS_TAB:
+	    while (++(*h) & 07)
+		;
+	    break;
+	case NLSCLASS_CTRL:
+	    *h += 2;
+	    break;
+	case NLSCLASS_ILLEGAL:
+	    *h += 4;
+	    break;
+	case NLSCLASS_ILLEGAL2:
+	case NLSCLASS_ILLEGAL3:
+	case NLSCLASS_ILLEGAL4:
+	case NLSCLASS_ILLEGAL5:
+	    *h += 4 + 2 * NLSCLASS_ILLEGAL_SIZE(w);
+	    break;
+	default:
+	    *h += w;
+    }
+    if (*h >= th) {		/* check, extra long tabs picked up here also */
+	*h -= th;
+	(*v)++;
+    }
+}
+
 void
 RefCursor(void)
 {				/* only move to new cursor pos */
@@ -1154,65 +1187,13 @@ RefCursor(void)
 	}
 	w = NLSClassify(*cp & CHAR, cp == Prompt, 0);
 	cp++;
-	switch(w) {
-	    case NLSCLASS_NL:
-		h = 0;
-		v++;
-		break;
-	    case NLSCLASS_TAB:
-		while (++h & 07)
-		    ;
-		break;
-	    case NLSCLASS_CTRL:
-		h += 2;
-		break;
-	    case NLSCLASS_ILLEGAL:
-		h += 4;
-		break;
-	    case NLSCLASS_ILLEGAL2:
-	    case NLSCLASS_ILLEGAL3:
-	    case NLSCLASS_ILLEGAL4:
-		h += 3 + 2 * NLSCLASS_ILLEGAL_SIZE(w);
-		break;
-	    default:
-		h += w;
-	}
-	if (h >= th) {		/* check, extra long tabs picked up here also */
-	    h -= th;
-	    v++;
-	}
+	CalcPosition(w, th, &h, &v);
     }
 
     for (cp = InputBuf; cp < Cursor;) {	/* do input buffer to Cursor */
 	w = NLSClassify(*cp & CHAR, cp == InputBuf, 0);
 	cp++;
-	switch(w) {
-	    case NLSCLASS_NL:
-		h = 0;
-		v++;
-		break;
-	    case NLSCLASS_TAB:
-		while (++h & 07)
-		    ;
-		break;
-	    case NLSCLASS_CTRL:
-		h += 2;
-		break;
-	    case NLSCLASS_ILLEGAL:
-		h += 4;
-		break;
-	    case NLSCLASS_ILLEGAL2:
-	    case NLSCLASS_ILLEGAL3:
-	    case NLSCLASS_ILLEGAL4:
-		h += 3 + 2 * NLSCLASS_ILLEGAL_SIZE(w);
-		break;
-	    default:
-		h += w;
-	}
-	if (h >= th) {		/* check, extra long tabs picked up here also */
-	    h -= th;
-	    v++;
-	}
+	CalcPosition(w, th, &h, &v);
     }
 
     /* now go there */

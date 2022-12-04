@@ -153,8 +153,7 @@ lex(struct wordent *hp)
 
     if (!postcmd_active)
 	btell(&lineloc);
-    hp->next = hp->prev = hp;
-    hp->word = STRNULL;
+    initlex(hp);
     hadhist = 0;
     do
 	c = readc(0);
@@ -182,8 +181,9 @@ lex(struct wordent *hp)
 	wdp = new;
 	wdp->word = word(parsehtime);
 	parsehtime = 0;
-	if (enterhist && toolong++ > 10 * 1024)
+	if (enterhist && toolong++ > 10 * 1024) {
 	    stderror(ERR_LTOOLONG);
+	}
     } while (wdp->word[0] != '\n');
     cleanup_ignore(hp);
     cleanup_until(hp);
@@ -226,7 +226,7 @@ prlex(struct wordent *sp0)
     struct wordent *sp = sp0->next;
 
     for (;;) {
-	xprintf("%S", sp->word);
+	xprintf("%" TCSH_S, sp->word);
 	sp = sp->next;
 	if (sp == sp0)
 	    break;
@@ -300,8 +300,9 @@ word(int parsehtime)
 
     cleanup_push(&wbuf, Strbuf_cleanup);
 loop:
-    if (enterhist && toolong++ > 256 * 1024)
-	seterror(ERR_WTOOLONG);
+    if (enterhist && toolong++ > 256 * 1024) {
+	stderror(ERR_WTOOLONG);
+    }
     while ((c = getC(DOALL)) == ' ' || c == '\t')
 	continue;
     if (cmap(c, _META | _ESC))
@@ -331,7 +332,7 @@ loop:
 	    } while (c != '\n');
 	    if (parsehtime) {
 		hbuf[11] = '\0';
-		Htime = a2time_t(hbuf); 
+		Htime = a2time_t(hbuf);
 	    }
 	    if (c1 == '\\')
 		goto loop;
@@ -360,8 +361,9 @@ loop:
     c1 = 0;
     dolflg = DOALL;
     for (;;) {
-	if (enterhist && toolong++ > 256 * 1024)
-	    seterror(ERR_WTOOLONG);
+	if (enterhist && toolong++ > 256 * 1024) {
+	    stderror(ERR_WTOOLONG);
+	}
 	if (c1) {
 	    if (c == c1) {
 		c1 = 0;
@@ -509,6 +511,24 @@ getdol(void)
     }
     cleanup_push(&name, Strbuf_cleanup);
     Strbuf_append1(&name, '$');
+    if (c == '\'') {
+	for (;;) {
+	    Strbuf_append1(&name, c);
+	    c = getC(DOEXCL);
+	    if (c == '\'') break;
+	    if (c == '\\') {
+		Strbuf_append1(&name, c);
+		c = getC(DOEXCL);
+	    }
+	    if (c == '\n') {
+		ungetD(c);
+		seterror(ERR_MISSING, '\'');
+		goto end;
+	    }
+	}
+	Strbuf_append1(&name, c);
+	goto end;
+    }
     if (c == '{')
 	Strbuf_append1(&name, c), c = getC(DOEXCL);
     if (c == '#' || c == '?' || c == '%')
@@ -596,7 +616,7 @@ getdol(void)
 	int     gmodflag = 0, amodflag = 0;
 
 	do {
-	    Strbuf_append1(&name, c), c = getC(DOEXCL);
+	    Strbuf_append1(&name, c), c = getC(DOEXCL), gmodflag = 0, amodflag = 0;
 	    if (c == 'g' || c == 'a') {
 		if (c == 'g')
 		    gmodflag++;
@@ -615,6 +635,7 @@ getdol(void)
 	    /* scan s// [eichin:19910926.0512EST] */
 	    if (c == 's') {
 		int delimcnt = 2;
+		int esc = 0;
 		eChar delim = getC(0);
 
 		Strbuf_append1(&name, delim);
@@ -624,17 +645,23 @@ getdol(void)
 		    break;
 		}
 		while ((c = getC(0)) != CHAR_ERR) {
+		    if (esc == 0 && c == '\\') {
+			esc = 1;
+			Strbuf_append1(&name, c);
+			continue;
+		    }
 		    Strbuf_append1(&name, c);
-		    if(c == delim) delimcnt--;
-		    if(!delimcnt) break;
+		    if (!esc && c == delim) delimcnt--;
+		    if (!delimcnt) break;
+		    esc = 0;
 		}
-		if(delimcnt) {
+		if (delimcnt) {
 		    seterror(ERR_BADSUBST);
 		    break;
 		}
 		c = 's';
 	    }
-	    if (!any("htrqxesul", c)) {
+	    if (!any(TCSH_MODIFIERS, c)) {
 		if ((amodflag || gmodflag) && c == '\n')
 		    stderror(ERR_VARSYN);	/* strike */
 		seterror(ERR_BADMOD, c);
@@ -701,7 +728,7 @@ getexcl(Char sc)
 
     lastev = eventno;
     hp = gethent(sc);
-    if (hp == 0)
+    if (hp == NULL)
 	return;
     hadhist = 1;
     dol = 0;
@@ -882,7 +909,7 @@ getsub(struct wordent *en)
 }
 
 /*
- * 
+ *
  * From Beto Appleton (beto@aixwiz.austin.ibm.com)
  *
  * when using history substitution, and the variable
@@ -891,7 +918,6 @@ getsub(struct wordent *en)
  * We raise the limit to 50000000
  */
 
-#define HIST_PURGE -50000000
 static struct wordent *
 dosub(Char sc, struct wordent *en, int global)
 {
@@ -943,7 +969,7 @@ dosub(Char sc, struct wordent *en, int global)
     if (didsub == 0)
 	seterror(ERR_MODFAIL);
     hp->prev = wdp;
-    /* 
+    /*
      * ANSI mode HP/UX compiler chokes on
      * return &enthist(HIST_PURGE, &lexi, 0)->Hlex;
      */
@@ -991,7 +1017,7 @@ subword(Char *cp, Char type, int *adid, size_t *start_pos)
 		    case '\\':
 			if (np[1] == '&')
 			    np++;
-			/* fall into ... */
+			/* FALLTHROUGH */
 
 		    default:
 			Strbuf_append1(&wbuf, *np);
@@ -1019,12 +1045,15 @@ domod(Char *cp, Char type)
     int c;
 
     switch (type) {
-
+    case 'Q':
+	if (*cp == '\0')
+		return Strsave(STRQNULL);
+	/*FALLTHROUGH*/
     case 'q':
     case 'x':
 	wp = Strsave(cp);
 	for (xp = wp; (c = *xp) != 0; xp++)
-	    if ((c != ' ' && c != '\t') || type == 'q')
+	    if ((c != ' ' && c != '\t') || type == 'q' || type == 'Q')
 		*xp |= QUOTE;
 	return (wp);
 
@@ -1038,13 +1067,13 @@ domod(Char *cp, Char type)
 
     case 'h':
     case 't':
-	if (!any(short2str(cp), '/'))
-	    return (type == 't' ? Strsave(cp) : 0);
 	wp = Strrchr(cp, '/');
-	if (type == 'h')
-	    xp = Strnsave(cp, wp - cp);
-	else
+	if (wp == NULL)
+	    return NULL;
+	if (type == 't')
 	    xp = Strsave(wp + 1);
+	else
+	    xp = Strnsave(cp, wp - cp);
 	return (xp);
 
     case 'e':
@@ -1059,6 +1088,7 @@ domod(Char *cp, Char type)
 		return (xp);
 	    }
 	return (Strsave(type == 'e' ? STRNULL : cp));
+
     default:
 	break;
     }
@@ -1198,7 +1228,7 @@ gethent(Char sc)
 	case '-':
 	    back = 1;
 	    c = getC(0);
-	    /* FALLSTHROUGH */
+	    /* FALLTHROUGH */
 
 	default:
 	    if (any("(=~", c)) {
@@ -1572,9 +1602,9 @@ wide_read(int fildes, Char *buf, size_t nchars, int use_fclens)
 
 	if (partial + len >= sizeof(cbuf) / sizeof(*cbuf))
 	    break;
-	
+
 	r = xread(fildes, cbuf + partial, len);
-		  
+
 	if (partial == 0 && r <= 0)
 	    break;
 	partial += r;
@@ -1652,7 +1682,7 @@ bgetc(void)
 	do {
 	    ch = fbuf[0][fseekp - fbobp];
 	    fseekp++;
-	} while(ch == '\r');
+	} while (ch == '\r');
 #endif /* !WINNT_NATIVE && !__CYGWIN__ */
 	return (ch);
     }
@@ -1705,7 +1735,7 @@ bgetc(void)
     do {
 	ch = fbuf[(int) fseekp / BUFSIZE][(int) fseekp % BUFSIZE];
 	fseekp++;
-    } while(ch == '\r');
+    } while (ch == '\r');
 #endif /* !WINNT_NATIVE && !__CYGWIN__ */
     return (ch);
 }
@@ -1748,7 +1778,7 @@ bseek(struct Ain *l)
 	xprintf(CGETS(16, 5, "seek to alias %x %x\n"), alvec, alvecp);
 #endif
 	return;
-    case TCSH_F_SEEK:	
+    case TCSH_F_SEEK:
 #ifdef DEBUG_SEEK
 	xprintf(CGETS(16, 6, "seek to file %x\n"), fseekp);
 #endif

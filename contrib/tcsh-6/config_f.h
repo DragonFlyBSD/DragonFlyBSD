@@ -47,7 +47,16 @@
  *	         of nls...
  *
  */
-#define SHORT_STRINGS
+#if defined(__NetBSD__)
+# include <sys/param.h>
+# if defined(__NetBSD_Version__) && (__NetBSD_Version__ >= 200000000)
+#  define SHORT_STRINGS
+# else
+#  undef SHORT_STRINGS
+# endif
+#else
+# define SHORT_STRINGS
+#endif
 
 /*
  * WIDE_STRINGS	Represent strings using wide characters
@@ -138,7 +147,7 @@
  *		This can be much slower and no memory statistics will be
  *		provided.
  */
-#if defined(__MACHTEN__) || defined(PURIFY) || defined(MALLOC_TRACE) || defined(_OSD_POSIX) || defined(__MVS__) || defined (__CYGWIN__) || defined(__GLIBC__) || defined(__OpenBSD__) || defined(__APPLE__) || defined (__ANDROID__)
+#if defined(__MACHTEN__) || defined(PURIFY) || defined(MALLOC_TRACE) || defined(_OSD_POSIX) || defined(__MVS__) || defined (__CYGWIN__) || defined(__GLIBC__) || defined(__OpenBSD__) || defined(__APPLE__) || defined (__ANDROID__) || defined(__NetBSD__)
 # define SYSMALLOC
 #else
 # undef SYSMALLOC

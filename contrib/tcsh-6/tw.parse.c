@@ -54,25 +54,25 @@
 /*  TW_BINDING,        TW_WORDLIST,    TW_LIMIT,       TW_SIGNAL	*/
 /*  TW_JOB,	       TW_EXPLAIN,     TW_TEXT,	       TW_GRPNAME	*/
 static void (*const tw_start_entry[]) (DIR *, const Char *) = {
-    tw_file_start,     tw_cmd_start,   tw_var_start,   tw_logname_start, 
-    tw_file_start,     tw_file_start,  tw_vl_start,    tw_logname_start, 
-    tw_complete_start, tw_alias_start, tw_var_start,   tw_var_start,     
+    tw_file_start,     tw_cmd_start,   tw_var_start,   tw_logname_start,
+    tw_file_start,     tw_file_start,  tw_vl_start,    tw_logname_start,
+    tw_complete_start, tw_alias_start, tw_var_start,   tw_var_start,
     tw_bind_start,     tw_wl_start,    tw_limit_start, tw_sig_start,
     tw_job_start,      tw_file_start,  tw_file_start,  tw_grpname_start
 };
 
 static int (*const tw_next_entry[]) (struct Strbuf *, struct Strbuf *,
 				     int *) = {
-    tw_file_next,      tw_cmd_next,    tw_var_next,    tw_logname_next,  
-    tw_file_next,      tw_file_next,   tw_var_next,    tw_logname_next,  
-    tw_var_next,       tw_var_next,    tw_shvar_next,  tw_envvar_next,   
+    tw_file_next,      tw_cmd_next,    tw_var_next,    tw_logname_next,
+    tw_file_next,      tw_file_next,   tw_var_next,    tw_logname_next,
+    tw_var_next,       tw_var_next,    tw_shvar_next,  tw_envvar_next,
     tw_bind_next,      tw_wl_next,     tw_limit_next,  tw_sig_next,
     tw_job_next,       tw_file_next,   tw_file_next,   tw_grpname_next
 };
 
 static void (*const tw_end_entry[]) (void) = {
     tw_dir_end,        tw_dir_end,     tw_dir_end,    tw_logname_end,
-    tw_dir_end,        tw_dir_end,     tw_dir_end,    tw_logname_end, 
+    tw_dir_end,        tw_dir_end,     tw_dir_end,    tw_logname_end,
     tw_dir_end,        tw_dir_end,     tw_dir_end,    tw_dir_end,
     tw_dir_end,        tw_dir_end,     tw_dir_end,    tw_dir_end,
     tw_dir_end,	       tw_dir_end,     tw_dir_end,    tw_grpname_end
@@ -103,8 +103,7 @@ static	int	 insert_meta		(const Char *, const Char *,
 static	int	 tilde			(struct Strbuf *, Char *);
 static  int      expand_dir		(const Char *, struct Strbuf *, DIR **,
 					 COMMAND);
-static	int	 nostat			(Char *);
-static	Char	 filetype		(Char *, Char *);
+static	int	 nostat			(const Char *);
 static	int	 t_glob			(Char ***, int);
 static	int	 c_glob			(Char ***);
 static	int	 is_prefix		(Char *, Char *);
@@ -235,13 +234,13 @@ tenematch(Char *inputline, int num_read, COMMAND command)
 	const Char *p;
 
 	xprintf(CGETS(30, 1, "starting_a_command %d\n"), looking);
-	xprintf("\ncmd_start:%S:\n", qline.s + cmd_start);
-	xprintf("qline:%S:\n", qline.s);
+	xprintf("\ncmd_start:%" TCSH_S ":\n", qline.s + cmd_start);
+	xprintf("qline:%" TCSH_S ":\n", qline.s);
 	xprintf("qline:");
 	for (p = qline.s; *p; p++)
 	    xprintf("%c", *p & QUOTE ? '-' : ' ');
 	xprintf(":\n");
-	xprintf("word:%S:\n", qline.s + word);
+	xprintf("word:%" TCSH_S ":\n", qline.s + word);
 	xprintf("word:");
 	for (p = qline.s + word; *p; p++)
 	    xprintf("%c", *p & QUOTE ? '-' : ' ');
@@ -261,7 +260,7 @@ tenematch(Char *inputline, int num_read, COMMAND command)
 	looking = tw_complete(qline.s + cmd_start, &p, &pat, looking, &suf);
 	wordp = p - qline.s;
 #ifdef TDEBUG
-	xprintf(CGETS(30, 3, "complete %d %S\n"), looking, pat);
+	xprintf(CGETS(30, 3, "complete %d %" TCSH_S "\n"), looking, pat);
 #endif
     }
 
@@ -447,7 +446,7 @@ tenematch(Char *inputline, int num_read, COMMAND command)
 	int found;
 
 	found = cmd_expand(qline.s + wordp, &p);
-	
+
 	if (!found) {
 	    xfree(p);
 	    search_ret = 0;
@@ -527,14 +526,14 @@ t_glob(Char ***v, int cmd)
 	Char **av = *v, *p;
 	int fwd, i;
 
-	for (i = 0, fwd = 0; av[i] != NULL; i++) 
+	for (i = 0, fwd = 0; av[i] != NULL; i++)
 	    if (!executable(NULL, av[i], 0)) {
-		fwd++;		
+		fwd++;
 		p = av[i];
 		av[i] = NULL;
 		xfree(p);
 	    }
-	    else if (fwd) 
+	    else if (fwd)
 		av[i - fwd] = av[i];
 
 	if (fwd)
@@ -714,13 +713,13 @@ is_prefixmatch(Char *check, Char *template, int enhanced)
 	if ((*check & TRIM) != (*template & TRIM)) {
 	    MCH1 = (*check & TRIM);
 	    MCH2 = (*template & TRIM);
-            LCH1 = Isupper(MCH1) ? Tolower(MCH1) : 
+            LCH1 = Isupper(MCH1) ? Tolower(MCH1) :
 		enhanced == 2 && MCH1 == '_' ? '-' : MCH1;
             LCH2 = Isupper(MCH2) ? Tolower(MCH2) :
 		enhanced == 2 && MCH2 == '_' ? '-' : MCH2;
 	    if (MCH1 != MCH2 && MCH1 != LCH2 &&
 		(LCH1 != MCH2 || enhanced == 2)) {
-		if (enhanced && ((*check & TRIM) == '-' || 
+		if (enhanced && ((*check & TRIM) == '-' ||
 				 (*check & TRIM) == '.' ||
 				 (*check & TRIM) == '_')) {
 		    MCH1 = MCH2 = (*check & TRIM);
@@ -814,7 +813,7 @@ starting_a_command(Char *wordstart, Char *inputline)
      * look for the characters previous to this word if we find a command
      * starting delimiter we break. if we find whitespace and another previous
      * word then we are not a command
-     * 
+     *
      * count is our state machine: 0 looking for anything 1 found white-space
      * looking for non-ws
      */
@@ -952,7 +951,7 @@ tw_collect_items(COMMAND command, int looking, struct Strbuf *exp_dir,
 
     showdots = DOT_NONE;
     if ((ptr = varval(STRlistflags)) != STRNULL)
-	while (*ptr) 
+	while (*ptr)
 	    switch (*ptr++) {
 	    case 'a':
 		showdots = DOT_ALL;
@@ -982,7 +981,7 @@ tw_collect_items(COMMAND command, int looking, struct Strbuf *exp_dir,
 	    tw_next_entry[looking](&item, exp_dir, &flags) != 0)) {
 	Strbuf_terminate(&item);
 #ifdef TDEBUG
-	xprintf("item = %S\n", item.s);
+	xprintf("item = %" TCSH_S "\n", item.s);
 #endif
 	switch (looking) {
 	case TW_FILE:
@@ -1159,7 +1158,7 @@ tw_collect_items(COMMAND command, int looking, struct Strbuf *exp_dir,
 			numitems++;
 		}
 	    }
-		    
+
 	    if (command == RECOGNIZE || command == RECOGNIZE_ALL ||
 		command == RECOGNIZE_SCROLL) {
 		if (ignoring && ignored(item.s)) {
@@ -1198,7 +1197,7 @@ tw_collect_items(COMMAND command, int looking, struct Strbuf *exp_dir,
 	    break;
 	}
 #ifdef TDEBUG
-	xprintf("done item = %S\n", item.s);
+	xprintf("done item = %" TCSH_S "\n", item.s);
 #endif
     }
     cleanup_until(&item);
@@ -1220,7 +1219,7 @@ tw_collect_items(COMMAND command, int looking, struct Strbuf *exp_dir,
     if (command == SPELL)
 	return d;
     else {
-	if (ignoring && numitems == 0 && nignored > 0) 
+	if (ignoring && numitems == 0 && nignored > 0)
 	    return -nignored;
 	else
 	    return numitems;
@@ -1252,13 +1251,13 @@ tw_suffix(int looking, struct Strbuf *word, const Char *exp_dir, Char *exp_name)
 	 */
 	if ((vp = adrof(exp_name)) != NULL && vp->vec != NULL) {
 	    if ((ptr = vp->vec[0]) == NULL || *ptr == '\0' ||
-		vp->vec[1] != NULL) 
+		vp->vec[1] != NULL)
 		return ' ';
 	}
 	else if ((ptr = tgetenv(exp_name)) == NULL || *ptr == '\0')
 	    return ' ';
 
-	if ((dol = Strrchr(word->s, '$')) != 0 && 
+	if ((dol = Strrchr(word->s, '$')) != 0 &&
 	    dol[1] == '{' && Strchr(dol, '}') == NULL)
 	  return '}';
 
@@ -1350,7 +1349,7 @@ tw_collect(COMMAND command, int looking, struct Strbuf *exp_dir,
     jmp_buf_t osetexit;
 
 #ifdef TDEBUG
-    xprintf("target = %S\n", target);
+    xprintf("target = %" TCSH_S "\n", target);
 #endif
     ni = 0;
     getexit(osetexit);
@@ -1488,7 +1487,7 @@ tw_list_items(int looking, int numitems, int list_max)
 	Char **w = tw_item_get();
 
 	for (i = 0; i < numitems; i++) {
-	    xprintf("%S", w[i]);
+	    xprintf("%" TCSH_S "", w[i]);
 	    if (Tty_raw_mode)
 		xputchar('\r');
 	    xputchar('\n');
@@ -1544,7 +1543,7 @@ t_search(struct Strbuf *word, COMMAND command, int looking, int list_max,
 	target = name;
 	gpat = 0;	/* Override pattern mechanism */
     }
-    else if ((target = Strrchr(name, '$')) != 0 && 
+    else if ((target = Strrchr(name, '$')) != 0 &&
 	     (target[1] != '{' || Strchr(target, '}') == NULL) &&
 	     (Strchr(name, '/') == NULL)) {
 	target++;
@@ -1600,7 +1599,7 @@ t_search(struct Strbuf *word, COMMAND command, int looking, int list_max,
 
     case TW_EXPLAIN:
 	if (command == LIST && pat != NULL) {
-	    xprintf("%S", pat);
+	    xprintf("%" TCSH_S "", pat);
 	    if (Tty_raw_mode)
 		xputchar('\r');
 	    xputchar('\n');
@@ -1696,7 +1695,7 @@ t_search(struct Strbuf *word, COMMAND command, int looking, int list_max,
 	if ((dir_fd = opendir(short2str(exp_dir.s))) == NULL) {
  	    if (command == RECOGNIZE)
  		xprintf("\n");
- 	    xprintf("%S: %s", exp_dir.s, strerror(errno));
+	    xprintf("%" TCSH_S ": %s", exp_dir.s, strerror(errno));
  	    if (command != RECOGNIZE)
  		xprintf("\n");
  	    NeedsRedraw = 1;
@@ -1781,7 +1780,7 @@ t_search(struct Strbuf *word, COMMAND command, int looking, int list_max,
     case RECOGNIZE:
     case RECOGNIZE_ALL:
     case RECOGNIZE_SCROLL:
-	if (numitems <= 0) 
+	if (numitems <= 0)
 	    break;
 
 	Strbuf_terminate(&exp_name);
@@ -1957,7 +1956,7 @@ expand_dir(const Char *dir, struct Strbuf *edir, DIR **dfd, COMMAND cmd)
 	 * From: Amos Shapira <amoss@cs.huji.ac.il>
 	 * Print a better message when completion fails
 	 */
-	xprintf("\n%S %s\n", edir->len ? edir->s : (tdir ? tdir : dir),
+	xprintf("\n%" TCSH_S " %s\n", edir->len ? edir->s : (tdir ? tdir : dir),
 		(errno == ENOTDIR ? CGETS(30, 10, "not a directory") :
 		(errno == ENOENT ? CGETS(30, 11, "not found") :
 		 CGETS(30, 12, "unreadable"))));
@@ -1993,7 +1992,7 @@ expand_dir(const Char *dir, struct Strbuf *edir, DIR **dfd, COMMAND cmd)
  *	or very large directories.
  */
 static int
-nostat(Char *dir)
+nostat(const Char *dir)
 {
     struct varent *vp;
     Char **cp;
@@ -2014,81 +2013,82 @@ nostat(Char *dir)
  *	Return a character that signifies a filetype
  *	symbology from 4.3 ls command.
  */
-static  Char
-filetype(Char *dir, Char *file)
+Char
+filetype(const Char *dir, const Char *file)
 {
-    if (dir) {
-	Char *path;
-	char   *ptr;
-	struct stat statb;
+    Char *path;
+    char   *ptr;
+    struct stat statb;
 
-	if (nostat(dir)) return(' ');
+    if (!dir || nostat(dir))
+	goto out;
 
-	path = Strspl(dir, file);
-	ptr = short2str(path);
-	xfree(path);
+    path = Strspl(dir, file);
+    ptr = short2str(path);
+    xfree(path);
 
-	if (lstat(ptr, &statb) != -1) {
+    if (lstat(ptr, &statb) == -1)
+	goto out;
+
 #ifdef S_ISLNK
-	    if (S_ISLNK(statb.st_mode)) {	/* Symbolic link */
-		if (adrof(STRlistlinks)) {
-		    if (stat(ptr, &statb) == -1)
-			return ('&');
-		    else if (S_ISDIR(statb.st_mode))
-			return ('>');
-		    else
-			return ('@');
-		}
-		else
-		    return ('@');
-	    }
+    if (S_ISLNK(statb.st_mode)) {	/* Symbolic link */
+	if (adrof(STRlistlinks)) {
+	    if (stat(ptr, &statb) == -1)
+		return '&';
+	    else if (S_ISDIR(statb.st_mode))
+		return '>';
+	    else
+		return '@';
+	}
+	else
+	    return '@';
+    }
 #endif
 #ifdef S_ISSOCK
-	    if (S_ISSOCK(statb.st_mode))	/* Socket */
-		return ('=');
+    if (S_ISSOCK(statb.st_mode))	/* Socket */
+	return '=';
 #endif
 #ifdef S_ISFIFO
-	    if (S_ISFIFO(statb.st_mode)) /* Named Pipe */
-		return ('|');
+    if (S_ISFIFO(statb.st_mode)) /* Named Pipe */
+	return '|';
 #endif
 #ifdef S_ISHIDDEN
-	    if (S_ISHIDDEN(statb.st_mode)) /* Hidden Directory [aix] */
-		return ('+');
+    if (S_ISHIDDEN(statb.st_mode)) /* Hidden Directory [aix] */
+	return '+';
 #endif
 #ifdef S_ISCDF
-	    {
-		struct stat hpstatb;
-		char *p2;
+    {
+	struct stat hpstatb;
+	char *p2;
 
-		p2 = strspl(ptr, "+");	/* Must append a '+' and re-stat(). */
-		if ((stat(p2, &hpstatb) != -1) && S_ISCDF(hpstatb.st_mode)) {
-		    xfree(p2);
-		    return ('+');	/* Context Dependent Files [hpux] */
-		}
-		xfree(p2);
-	    }
+	p2 = strspl(ptr, "+");	/* Must append a '+' and re-stat(). */
+	if ((stat(p2, &hpstatb) != -1) && S_ISCDF(hpstatb.st_mode)) {
+	    xfree(p2);
+	    return '+';	/* Context Dependent Files [hpux] */
+	}
+	xfree(p2);
+    }
 #endif
 #ifdef S_ISNWK
-	    if (S_ISNWK(statb.st_mode)) /* Network Special [hpux] */
-		return (':');
+    if (S_ISNWK(statb.st_mode)) /* Network Special [hpux] */
+	return ':';
 #endif
 #ifdef S_ISCHR
-	    if (S_ISCHR(statb.st_mode))	/* char device */
-		return ('%');
+    if (S_ISCHR(statb.st_mode))	/* char device */
+	return '%';
 #endif
 #ifdef S_ISBLK
-	    if (S_ISBLK(statb.st_mode))	/* block device */
-		return ('#');
+    if (S_ISBLK(statb.st_mode))	/* block device */
+	return '#';
 #endif
 #ifdef S_ISDIR
-	    if (S_ISDIR(statb.st_mode))	/* normal Directory */
-		return ('/');
+    if (S_ISDIR(statb.st_mode))	/* normal Directory */
+	return '/';
 #endif
-	    if (statb.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH))
-		return ('*');
-	}
-    }
-    return (' ');
+    if (statb.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH))
+	return '*';
+out:
+    return ' ';
 } /* end filetype */
 
 
@@ -2164,8 +2164,8 @@ print_by_column(Char *dir, Char *items[], int count, int no_file_suffix)
 
     lbuffed = 0;		/* turn off line buffering */
 
-    
-    across = ((val = varval(STRlistflags)) != STRNULL) && 
+
+    across = ((val = varval(STRlistflags)) != STRNULL) &&
 	     (Strchr(val, 'x') != NULL);
 
     for (i = 0; i < count; i++)	{ /* find widest string */
@@ -2203,11 +2203,12 @@ print_by_column(Char *dir, Char *items[], int count, int no_file_suffix)
 #else /* ifndef COLOR_LS_F */
 		if (no_file_suffix) {
 		    /* Print the command name */
-		    xprintf("%S", items[i]);
+		    xprintf("%" TCSH_S, items[i]);
 		}
 		else {
 		    /* Print filename followed by '/' or '*' or ' ' */
-		    xprintf("%-S%c", items[i], filetype(dir, items[i]));
+		    xprintf("%-" TCSH_S "%c", items[i],
+			filetype(dir, items[i]));
 		    wx++;
 		}
 #endif /* COLOR_LS_F */
@@ -2237,7 +2238,7 @@ print_by_column(Char *dir, Char *items[], int count, int no_file_suffix)
 int
 StrQcmp(const Char *str1, const Char *str2)
 {
-    for (; *str1 && samecase(*str1 & TRIM) == samecase(*str2 & TRIM); 
+    for (; *str1 && samecase(*str1 & TRIM) == samecase(*str2 & TRIM);
 	 str1++, str2++)
 	continue;
     /*
@@ -2350,7 +2351,7 @@ choose_scroll_tab(struct Strbuf *exp_name, int cnt)
     ptr = xmalloc(sizeof(Char *) * cnt);
     cleanup_push(ptr, xfree);
 
-    for(loop = scroll_tab; loop && (tmp >= 0); loop = loop->next)
+    for (loop = scroll_tab; loop && (tmp >= 0); loop = loop->next)
 	ptr[--tmp] = loop->element;
 
     qsort(ptr, cnt, sizeof(Char *), fcompare);
@@ -2366,7 +2367,7 @@ free_scroll_tab(void)
 {
     struct scroll_tab_list *loop;
 
-    while(scroll_tab) {
+    while (scroll_tab) {
 	loop = scroll_tab;
 	scroll_tab = scroll_tab->next;
 	xfree(loop->element);
