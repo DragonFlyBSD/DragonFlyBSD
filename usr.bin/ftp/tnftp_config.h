@@ -4,26 +4,11 @@
 /* Define to 1 if the `closedir' function returns void instead of `int'. */
 /* #undef CLOSEDIR_VOID */
 
-/* Define to one of `_getb67', `GETB67', `getb67' for Cray-2 and Cray-YMP
-   systems. This function is required for `alloca.c' support on those systems.
-   */
-/* #undef CRAY_STACKSEG_END */
-
-/* Define to 1 if using `alloca.c'. */
-/* #undef C_ALLOCA */
-
 /* Define to 1 if the `getpgrp' function requires zero arguments. */
 #define GETPGRP_VOID 1
 
 /* Define to 1 if `TIOCGWINSZ' requires <sys/ioctl.h>. */
 /* #undef GWINSZ_IN_SYS_IOCTL */
-
-/* Define to 1 if you have `alloca', as a function or macro. */
-#define HAVE_ALLOCA 1
-
-/* Define to 1 if you have <alloca.h> and it should be used (not on Ultrix).
-   */
-/* #undef HAVE_ALLOCA_H */
 
 /* Define to 1 if you have the <arpa/ftp.h> header file. */
 #define HAVE_ARPA_FTP_H 1
@@ -422,6 +407,12 @@
 /* Define to 1 if you have the <utime.h> header file. */
 #define HAVE_UTIME_H 1
 
+/* Define to 1 if you have the `vasprintf' function. */
+#define HAVE_VASPRINTF 1
+
+/* Define to 1 if the 'va_copy' function is supported. */
+#define HAVE_VA_COPY 1
+
 /* Define to 1 if you have the `vfork' function. */
 #define HAVE_VFORK 1
 
@@ -437,9 +428,14 @@
 /* Define to 1 if `vfork' works. */
 #define HAVE_WORKING_VFORK 1
 
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
+/* Define to 1 if the '__builtin_va_copy' function is supported. */
+#define HAVE___BUILTIN_VA_COPY 1
+
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
 #define LT_OBJDIR ".libs/"
+
+/* Define if disabling command-line editing and completion. */
+/* #undef NO_EDITCOMPLETE */
 
 /* Name of package */
 #define PACKAGE "tnftp"
@@ -451,7 +447,7 @@
 #define PACKAGE_NAME "tnftp"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "tnftp 20151004"
+#define PACKAGE_STRING "tnftp 20210827"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "tnftp"
@@ -460,18 +456,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "20151004"
-
-/* Define as the return type of signal handlers (`int' or `void'). */
-#define RETSIGTYPE void
-
-/* If using the C implementation of alloca, define if you know the
-   direction of stack growth for your system; otherwise it will be
-   automatically deduced at runtime.
-	STACK_DIRECTION > 0 => grows toward higher addresses
-	STACK_DIRECTION < 0 => grows toward lower addresses
-	STACK_DIRECTION = 0 => direction of growth unknown */
-/* #undef STACK_DIRECTION */
+#define PACKAGE_VERSION "20210827"
 
 /* Define to 1 if the `S_IS*' macros in <sys/stat.h> do not work properly. */
 /* #undef STAT_MACROS_BROKEN */
@@ -485,6 +470,9 @@
 /* Define to 1 if your <sys/time.h> declares `struct tm'. */
 /* #undef TM_IN_SYS_TIME */
 
+/* Define if using system <glob.h> instead of local glob. */
+#define USE_GLOB_H 1
+
 /* Define if using IPv6 support. */
 #define USE_INET6 1
 
@@ -492,7 +480,7 @@
 /* #undef USE_SOCKS */
 
 /* Version number of package */
-#define VERSION "20151004"
+#define VERSION "20210827"
 
 /* Define if enabling SSL support. */
 #define WITH_SSL 1
@@ -510,6 +498,16 @@
 
 /* Define for large files, on AIX-style hosts. */
 /* #undef _LARGE_FILES */
+
+/* Define to 1 if on MINIX. */
+/* #undef _MINIX */
+
+/* Define to 2 if the system does not provide POSIX.1 features except with
+   this defined. */
+/* #undef _POSIX_1_SOURCE */
+
+/* Define to 1 if you need to in order for `stat' and other things to work. */
+/* #undef _POSIX_SOURCE */
 
 /* Define for Solaris 2.5.1 so the uint32_t typedef from <sys/synch.h>,
    <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the
