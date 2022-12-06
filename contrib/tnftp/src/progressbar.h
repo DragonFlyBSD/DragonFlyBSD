@@ -1,8 +1,8 @@
-/*	$NetBSD: progressbar.h,v 1.9 2009/05/20 12:53:47 lukem Exp $	*/
-/*	from	NetBSD: progressbar.h,v 1.8 2009/04/12 10:18:52 lukem Exp	*/
+/*	$NetBSD: progressbar.h,v 1.10 2021/04/25 07:50:37 lukem Exp $	*/
+/*	from	NetBSD: progressbar.h,v 1.9 2021/01/06 04:43:14 lukem Exp	*/
 
 /*-
- * Copyright (c) 1996-2009 The NetBSD Foundation, Inc.
+ * Copyright (c) 1996-2021 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
@@ -69,7 +69,6 @@ int	foregroundproc(void);
 void	alarmtimer(int);
 void	progressmeter(int);
 sigfunc	xsignal(int, sigfunc);
-sigfunc	xsignal_restart(int, sigfunc, int);
 
 #ifndef STANDALONE_PROGRESS
 void	psummary(int);

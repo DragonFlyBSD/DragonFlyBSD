@@ -1,8 +1,8 @@
-/*	$NetBSD: ftp.c,v 1.19 2013/05/05 11:17:31 lukem Exp $	*/
-/*	from	NetBSD: ftp.c,v 1.164 2012/07/04 06:09:37 is Exp	*/
+/*	$NetBSD: ftp.c,v 1.24 2021/08/27 01:38:49 lukem Exp $	*/
+/*	from	NetBSD: ftp.c,v 1.174 2021/08/26 06:23:24 lukem Exp	*/
 
 /*-
- * Copyright (c) 1996-2009 The NetBSD Foundation, Inc.
+ * Copyright (c) 1996-2021 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
@@ -98,7 +98,7 @@
 #if 0
 static char sccsid[] = "@(#)ftp.c	8.6 (Berkeley) 10/27/94";
 #else
-__RCSID(" NetBSD: ftp.c,v 1.164 2012/07/04 06:09:37 is Exp  ");
+__RCSID(" NetBSD: ftp.c,v 1.174 2021/08/26 06:23:24 lukem Exp  ");
 #endif
 #endif /* not lint */
 
@@ -208,7 +208,17 @@ hookup(const char *host, const char *port)
 		}
 		if (verbose && res0->ai_next) {
 				/* if we have multiple possibilities */
-			fprintf(ttyout, "Trying %s:%s ...\n", hname, sname);
+#ifdef INET6
+			if(res->ai_family == AF_INET6) {
+				fprintf(ttyout, "Trying [%s]:%s ...\n", hname,
+				    sname);
+			} else {
+#endif
+				fprintf(ttyout, "Trying %s:%s ...\n", hname,
+				    sname);
+#ifdef INET6
+			}
+#endif
 		}
 		s = socket(res->ai_family, SOCK_STREAM, res->ai_protocol);
 		if (s < 0) {
@@ -278,6 +288,11 @@ hookup(const char *host, const char *port)
 		goto bad;
 	}
 
+	if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE,
+			(void *)&on, sizeof(on)) == -1) {
+		DWARN("setsockopt %s (ignored)", "SO_KEEPALIVE");
+	}
+
 	if (setsockopt(s, SOL_SOCKET, SO_OOBINLINE,
 			(void *)&on, sizeof(on)) == -1) {
 		DWARN("setsockopt %s (ignored)", "SO_OOBINLINE");
@@ -316,6 +331,17 @@ cmdtimeout(int notused)
 	if (ptflag)
 		siglongjmp(ptabort, 1);
 	errno = oerrno;
+}
+
+static int
+issighandler(sigfunc func)
+{
+	return (func != SIG_IGN &&
+		func != SIG_DFL &&
+#ifdef SIG_HOLD
+		func != SIG_HOLD &&
+#endif
+		func != SIG_ERR);
 }
 
 /*VARARGS*/
@@ -357,8 +383,9 @@ command(const char *fmt, ...)
 	(void)fflush(cout);
 	cpend = 1;
 	r = getreply(!strcmp(fmt, "QUIT"));
-	if (abrtflag && oldsigint != SIG_IGN)
+	if (abrtflag && issighandler(oldsigint)) {
 		(*oldsigint)(SIGINT);
+	}
 	(void)xsignal(SIGINT, oldsigint);
 	return (r);
 }
@@ -508,11 +535,14 @@ getreply(int expecteof)
 		(void)xsignal(SIGALRM, oldsigalrm);
 		if (code == 421 || originalcode == 421)
 			lostpeer(0);
-		if (abrtflag && oldsigint != cmdabort && oldsigint != SIG_IGN)
+		if (abrtflag && oldsigint != cmdabort &&
+		    issighandler(oldsigint)) {
 			(*oldsigint)(SIGINT);
+		}
 		if (timeoutflag && oldsigalrm != cmdtimeout &&
-		    oldsigalrm != SIG_IGN)
+		    issighandler(oldsigalrm)) {
 			(*oldsigalrm)(SIGINT);
+		}
 		return (n - '0');
 	}
 }
@@ -576,7 +606,7 @@ abortxfer(int notused)
 
 /*
  * Read data from infd & write to outfd, using buf/bufsize as the temporary
- * buffer, dealing with short writes.
+ * buffer, dealing with short reads or writes.
  * If rate_limit != 0, rate-limit the transfer.
  * If hash_interval != 0, fputc('c', ttyout) every hash_interval bytes.
  * Updates global variables: bytes.
@@ -610,15 +640,25 @@ copy_bytes(int infd, int outfd, char *buf, size_t bufsize,
 		bufrem = bufchunk;
 		while (bufrem > 0) {
 			inc = read(infd, buf, MIN((off_t)bufsize, bufrem));
-			if (inc <= 0)
+			if (inc < 0) {
+				if (errno == EINTR || errno == EAGAIN) {
+					continue;
+				}
 				goto copy_done;
+			} else if (inc == 0) {
+				goto copy_done;
+			}
 			bytes += inc;
 			bufrem -= inc;
 			bufp = buf;
 			while (inc > 0) {
 				outc = write(outfd, bufp, inc);
-				if (outc < 0)
+				if (outc < 0) {
+					if (errno == EINTR || errno == EAGAIN) {
+						continue;
+					}
 					goto copy_done;
+				}
 				inc -= outc;
 				bufp += outc;
 			}
@@ -668,7 +708,7 @@ sendrequest(const char *cmd, const char *local, const char *remote,
 	FILE *volatile dout;
 	int (*volatile closefunc)(FILE *);
 	sigfunc volatile oldintr;
-	sigfunc volatile oldintp;
+	sigfunc volatile oldpipe;
 	off_t volatile hashbytes;
 	int hash_interval;
 	const char *lmode;
@@ -695,8 +735,8 @@ sendrequest(const char *cmd, const char *local, const char *remote,
 	if (curtype != type)
 		changetype(type, 0);
 	closefunc = NULL;
-	oldintr = NULL;
-	oldintp = NULL;
+	oldintr = SIG_ERR;
+	oldpipe = SIG_ERR;
 	lmode = "w";
 	if (sigsetjmp(xferabort, 1)) {
 		while (cpend)
@@ -710,7 +750,7 @@ sendrequest(const char *cmd, const char *local, const char *remote,
 		fin = stdin;
 		progress = 0;
 	} else if (*local == '|') {
-		oldintp = xsignal(SIGPIPE, SIG_IGN);
+		oldpipe = xsignal(SIGPIPE, SIG_IGN);
 		fin = popen(local + 1, "r");
 		if (fin == NULL) {
 			warn("Can't execute `%s'", local + 1);
@@ -784,7 +824,9 @@ sendrequest(const char *cmd, const char *local, const char *remote,
 	}
 
 	progressmeter(-1);
-	oldintp = xsignal(SIGPIPE, SIG_IGN);
+	if (oldpipe == SIG_ERR) {
+		oldpipe = xsignal(SIGPIPE, SIG_IGN);
+	}
 	hash_interval = (hash && (!progress || filesize < 0)) ? mark : 0;
 
 	switch (curtype) {
@@ -853,7 +895,7 @@ sendrequest(const char *cmd, const char *local, const char *remote,
 
  abort:
 	(void)xsignal(SIGINT, oldintr);
-	oldintr = NULL;
+	oldintr = SIG_ERR;
 	if (!cpend) {
 		code = -1;
 		goto cleanupsend;
@@ -872,10 +914,10 @@ sendrequest(const char *cmd, const char *local, const char *remote,
 		ptransfer(0);
 
  cleanupsend:
-	if (oldintr)
+	if (oldintr != SIG_ERR)
 		(void)xsignal(SIGINT, oldintr);
-	if (oldintp)
-		(void)xsignal(SIGPIPE, oldintp);
+	if (oldpipe != SIG_ERR)
+		(void)xsignal(SIGPIPE, oldpipe);
 	if (data >= 0) {
 		(void)close(data);
 		data = -1;
@@ -897,7 +939,7 @@ recvrequest(const char *cmd, const char *volatile local, const char *remote,
 	FILE *volatile din;
 	int (*volatile closefunc)(FILE *);
 	sigfunc volatile oldintr;
-	sigfunc volatile oldintp;
+	sigfunc volatile oldpipe;
 	int c, d;
 	int volatile is_retr;
 	int volatile tcrflag;
@@ -933,8 +975,8 @@ recvrequest(const char *cmd, const char *volatile local, const char *remote,
 		return;
 	}
 	closefunc = NULL;
-	oldintr = NULL;
-	oldintp = NULL;
+	oldintr = SIG_ERR;
+	oldpipe = SIG_ERR;
 	tcrflag = !crflag && is_retr;
 	if (sigsetjmp(xferabort, 1)) {
 		while (cpend)
@@ -1015,7 +1057,7 @@ recvrequest(const char *cmd, const char *volatile local, const char *remote,
 		progress = 0;
 		preserve = 0;
 	} else if (!ignorespecial && *local == '|') {
-		oldintp = xsignal(SIGPIPE, SIG_IGN);
+		oldpipe = xsignal(SIGPIPE, SIG_IGN);
 		fout = popen(local + 1, "w");
 		if (fout == NULL) {
 			warn("Can't execute `%s'", local+1);
@@ -1181,10 +1223,10 @@ recvrequest(const char *cmd, const char *volatile local, const char *remote,
 		ptransfer(0);
 
  cleanuprecv:
-	if (oldintr)
+	if (oldintr != SIG_ERR)
 		(void)xsignal(SIGINT, oldintr);
-	if (oldintp)
-		(void)xsignal(SIGPIPE, oldintp);
+	if (oldpipe != SIG_ERR)
+		(void)xsignal(SIGPIPE, oldpipe);
 	if (data >= 0) {
 		(void)close(data);
 		data = -1;
@@ -1347,13 +1389,11 @@ initconn(void)
 			if (data_addr.su_family != AF_INET) {
 				fputs(
     "Passive mode AF mismatch. Shouldn't happen!\n", ttyout);
-				error = 1;
 				goto bad;
 			}
 			if (code / 10 == 22 && code != 227) {
 				fputs("wrong server: return code must be 227\n",
 					ttyout);
-				error = 1;
 				goto bad;
 			}
 			error = sscanf(pasv, "%u,%u,%u,%u,%u,%u",
@@ -1362,21 +1402,24 @@ initconn(void)
 			if (error != 6) {
 				fputs(
 "Passive mode address scan failure. Shouldn't happen!\n", ttyout);
-				error = 1;
 				goto bad;
 			}
-			error = 0;
 			memset(&data_addr, 0, sizeof(data_addr));
 			data_addr.su_family = AF_INET;
 			data_addr.su_len = sizeof(struct sockaddr_in);
 			data_addr.si_su.su_sin.sin_addr.s_addr =
 			    htonl(pack4(addr, 0));
 			data_addr.su_port = htons(pack2(port, 0));
+			if (data_addr.si_su.su_sin.sin_addr.s_addr !=
+			    hisctladdr.si_su.su_sin.sin_addr.s_addr) {
+				fputs("Passive mode address mismatch.\n",
+				    ttyout);
+				goto bad;
+			}
 		} else if (strcmp(pasvcmd, "LPSV") == 0) {
 			if (code / 10 == 22 && code != 228) {
 				fputs("wrong server: return code must be 228\n",
 					ttyout);
-				error = 1;
 				goto bad;
 			}
 			switch (data_addr.su_family) {
@@ -1389,23 +1432,26 @@ initconn(void)
 				if (error != 9) {
 					fputs(
 "Passive mode address scan failure. Shouldn't happen!\n", ttyout);
-					error = 1;
 					goto bad;
 				}
 				if (af != 4 || hal != 4 || pal != 2) {
 					fputs(
 "Passive mode AF mismatch. Shouldn't happen!\n", ttyout);
-					error = 1;
 					goto bad;
 				}
 
-				error = 0;
 				memset(&data_addr, 0, sizeof(data_addr));
 				data_addr.su_family = AF_INET;
 				data_addr.su_len = sizeof(struct sockaddr_in);
 				data_addr.si_su.su_sin.sin_addr.s_addr =
 				    htonl(pack4(addr, 0));
 				data_addr.su_port = htons(pack2(port, 0));
+				if (data_addr.si_su.su_sin.sin_addr.s_addr !=
+				    hisctladdr.si_su.su_sin.sin_addr.s_addr) {
+					fputs("Passive mode address mismatch.\n",
+					    ttyout);
+					goto bad;
+				}
 				break;
 #ifdef INET6
 			case AF_INET6:
@@ -1421,17 +1467,14 @@ initconn(void)
 				if (error != 21) {
 					fputs(
 "Passive mode address scan failure. Shouldn't happen!\n", ttyout);
-					error = 1;
 					goto bad;
 				}
 				if (af != 6 || hal != 16 || pal != 2) {
 					fputs(
 "Passive mode AF mismatch. Shouldn't happen!\n", ttyout);
-					error = 1;
 					goto bad;
 				}
 
-				error = 0;
 				memset(&data_addr, 0, sizeof(data_addr));
 				data_addr.su_family = AF_INET6;
 				data_addr.su_len = sizeof(struct sockaddr_in6);
@@ -1443,10 +1486,19 @@ initconn(void)
 				}
 			    }
 				data_addr.su_port = htons(pack2(port, 0));
+				if (memcmp(
+				    &data_addr.si_su.su_sin6.sin6_addr,
+				    &hisctladdr.si_su.su_sin6.sin6_addr,
+				    sizeof(data_addr.si_su.su_sin6.sin6_addr))) {
+					fputs("Passive mode address mismatch.\n",
+					    ttyout);
+					goto bad;
+				}
 				break;
 #endif
 			default:
-				error = 1;
+				fputs("Unknown passive mode AF.\n", ttyout);
+				goto bad;
 			}
 		} else if (strcmp(pasvcmd, "EPSV") == 0) {
 			char delim[4];
@@ -1455,20 +1507,17 @@ initconn(void)
 			if (code / 10 == 22 && code != 229) {
 				fputs("wrong server: return code must be 229\n",
 					ttyout);
-				error = 1;
 				goto bad;
 			}
 			if (sscanf(pasv, "%c%c%c%d%c", &delim[0],
 					&delim[1], &delim[2], &port[1],
 					&delim[3]) != 5) {
 				fputs("parse error!\n", ttyout);
-				error = 1;
 				goto bad;
 			}
 			if (delim[0] != delim[1] || delim[0] != delim[2]
 			 || delim[0] != delim[3]) {
 				fputs("parse error!\n", ttyout);
-				error = 1;
 				goto bad;
 			}
 			data_addr = hisctladdr;
@@ -1551,8 +1600,8 @@ initconn(void)
 				result = COMPLETE + 1;
 				break;
 			}
-			/* FALLTHROUGH */
 #ifdef INET6
+			/* FALLTHROUGH */
 		case AF_INET6:
 			if (!epsv6 || epsv6bad) {
 				result = COMPLETE + 1;
@@ -1854,7 +1903,7 @@ proxtrans(const char *cmd, const char *local, const char *remote)
 	int volatile secndflag;
 	const char *volatile cmd2;
 
-	oldintr = NULL;
+	oldintr = SIG_ERR;
 	secndflag = 0;
 	if (strcmp(cmd, "RETR"))
 		cmd2 = "RETR";
@@ -2045,7 +2094,7 @@ gunique(const char *local)
  *	needs to get back to a known state.
  */
 static void
-abort_squared(int dummy)
+abort_squared(int signo)
 {
 	char msgbuf[100];
 	size_t len;
@@ -2055,14 +2104,14 @@ abort_squared(int dummy)
 	len = strlcpy(msgbuf, "\nremote abort aborted; closing connection.\n",
 	    sizeof(msgbuf));
 	write(fileno(ttyout), msgbuf, len);
-	lostpeer(0);
+	lostpeer(signo);
 	siglongjmp(xferabort, 1);
 }
 
 void
 abort_remote(FILE *din)
 {
-	char buf[BUFSIZ];
+	unsigned char buf[BUFSIZ];
 	int nfnd;
 
 	if (cout == NULL) {
