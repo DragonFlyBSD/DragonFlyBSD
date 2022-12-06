@@ -1,5 +1,5 @@
-/*	$NetBSD: ftp_var.h,v 1.12 2015/10/04 04:53:26 lukem Exp $	*/
-/*	from	NetBSD: ftp_var.h,v 1.83 2015/01/12 14:17:08 christos Exp	*/
+/*	$NetBSD: ftp_var.h,v 1.13 2020/07/04 09:59:07 lukem Exp $	*/
+/*	from	NetBSD: ftp_var.h,v 1.85 2017/11/20 21:11:36 kre Exp	*/
 
 /*-
  * Copyright (c) 1996-2009 The NetBSD Foundation, Inc.
@@ -274,6 +274,7 @@ GLOBAL	int	unix_server;	/* server is unix, can use binary for ascii */
 GLOBAL	int	unix_proxy;	/* proxy is unix, can use binary for ascii */
 GLOBAL	char	localcwd[MAXPATHLEN];	/* local dir */
 GLOBAL	char	remotecwd[MAXPATHLEN];	/* remote dir */
+GLOBAL	int	remcwdvalid;		/* remotecwd has been updated */
 GLOBAL	char   *username;	/* name of user logged in as. (dynamic) */
 
 GLOBAL	sa_family_t family;	/* address family to use for connections */
@@ -342,11 +343,12 @@ extern	struct option	optiontab[];
 #endif
 
 #ifdef NO_DEBUG
-#define DPRINTF(...)
-#define DWARN(...)
+#define DPRINTF(...)	(void)0
+#define DWARN(...)	(void)0
 #else
-#define DPRINTF(...)	if (ftp_debug) (void)fprintf(ttyout, __VA_ARGS__)
-#define DWARN(...)	if (ftp_debug) warn(__VA_ARGS__)
+#define DWFTP(a)	do a; while (/*CONSTCOND*/0)
+#define DPRINTF(...)	DWFTP(if (ftp_debug) (void)fprintf(ttyout, __VA_ARGS__))
+#define DWARN(...)	DWFTP(if (ftp_debug) warn(__VA_ARGS__))
 #endif
 
 #define STRorNULL(s)	((s) ? (s) : "<null>")

@@ -1,8 +1,8 @@
-/*	$NetBSD: cmds.c,v 1.18 2013/05/05 11:17:30 lukem Exp $	*/
-/*	from	NetBSD: cmds.c,v 1.135 2012/12/22 16:57:09 christos Exp	*/
+/*	$NetBSD: cmds.c,v 1.20 2021/04/25 07:50:37 lukem Exp $	*/
+/*	from	NetBSD: cmds.c,v 1.141 2021/01/06 09:15:59 lukem Exp	*/
 
 /*-
- * Copyright (c) 1996-2009 The NetBSD Foundation, Inc.
+ * Copyright (c) 1996-2021 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
@@ -101,7 +101,7 @@
 #if 0
 static char sccsid[] = "@(#)cmds.c	8.6 (Berkeley) 10/9/94";
 #else
-__RCSID(" NetBSD: cmds.c,v 1.135 2012/12/22 16:57:09 christos Exp  ");
+__RCSID(" NetBSD: cmds.c,v 1.141 2021/01/06 09:15:59 lukem Exp  ");
 #endif
 #endif /* not lint */
 
@@ -1138,7 +1138,7 @@ setdebug(int argc, char *argv[])
 		options |= SO_DEBUG;
 	else
 		options &= ~SO_DEBUG;
-	fprintf(ttyout, "Debugging %s (ftp_debug=%d).\n", onoff(ftp_debug), ftp_debug);
+	fprintf(ttyout, "Debugging %s (debug=%d).\n", onoff(ftp_debug), ftp_debug);
 	code = ftp_debug > 0;
 }
 
@@ -1165,7 +1165,8 @@ cd(int argc, char *argv[])
 	}
 	if (r == COMPLETE) {
 		dirchange = 1;
-		updateremotecwd();
+		remotecwd[0] = '\0';
+		remcwdvalid = 0;
 	}
 }
 
@@ -1551,9 +1552,9 @@ pwd(int argc, char *argv[])
 		UPRINTF("usage: %s\n", argv[0]);
 		return;
 	}
-	if (! remotecwd[0])
+	if (!remcwdvalid || remotecwd[0] == '\0')
 		updateremotecwd();
-	if (! remotecwd[0])
+	if (remotecwd[0] == '\0')
 		fprintf(ttyout, "Unable to determine remote directory\n");
 	else {
 		fprintf(ttyout, "Remote directory: %s\n", remotecwd);
@@ -1782,6 +1783,18 @@ quit(int argc, char *argv[])
 	exit(0);
 }
 
+void __dead
+justquit(void)
+{
+
+	quit(0, NULL);
+	/*
+	 * quit is not __dead, but for our invocation it never will return,
+	 * but some compilers are not smart enough to find this out.
+	 */
+	exit(0);
+}
+
 /*
  * Terminate session, but don't exit.
  * May be called with 0, NULL.
@@ -1974,15 +1987,15 @@ dotrans(char *dst, size_t dlen, const char *src)
 	char *cp2 = dst;
 	size_t i, ostop;
 
-	for (ostop = 0; *(ntout + ostop) && ostop < 16; ostop++)
+	for (ostop = 0; ntout[ostop] && ostop < sizeof(ntout); ostop++)
 		continue;
 	for (cp1 = src; *cp1; cp1++) {
 		int found = 0;
-		for (i = 0; *(ntin + i) && i < 16; i++) {
-			if (*cp1 == *(ntin + i)) {
+		for (i = 0; i < sizeof(ntin) && ntin[i]; i++) {
+			if (*cp1 == ntin[i]) {
 				found++;
 				if (i < ostop) {
-					*cp2++ = *(ntout + i);
+					*cp2++ = ntout[i];
 					if (cp2 - dst >= (ptrdiff_t)(dlen - 1))
 						goto out;
 				}
@@ -2191,7 +2204,7 @@ LOOP:
 					}
 					break;
 				}
-				/* intentional drop through */
+				/* FALLTHROUGH */
 			default:
 				*cp2++ = *cp1;
 				break;
@@ -2366,7 +2379,8 @@ cdup(int argc, char *argv[])
 	}
 	if (r == COMPLETE) {
 		dirchange = 1;
-		updateremotecwd();
+		remotecwd[0] = '\0';
+		remcwdvalid = 0;
 	}
 }
 
