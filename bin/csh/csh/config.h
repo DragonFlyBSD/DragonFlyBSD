@@ -70,6 +70,9 @@
 /* Define to 1 if you have the `mallinfo' function. */
 /* #undef HAVE_MALLINFO */
 
+/* Define to 1 if you have the `mallinfo2' function. */
+/* #undef HAVE_MALLINFO2 */
+
 /* Define to 1 if you have the `mblen' function. */
 #define HAVE_MBLEN 1
 
@@ -78,9 +81,6 @@
 
 /* Define to 1 if you have the `memmove' function. */
 #define HAVE_MEMMOVE 1
-
-/* Define to 1 if you have the <memory.h> header file. */
-#define HAVE_MEMORY_H 1
 
 /* Define to 1 if you have the `memset' function. */
 #define HAVE_MEMSET 1
@@ -109,11 +109,17 @@
 /* Define to 1 if you have the `setpriority' function. */
 #define HAVE_SETPRIORITY 1
 
+/* Define to 1 if you have the `setproctitle' function. */
+#define HAVE_SETPROCTITLE 1
+
 /* Define to 1 if you have the <shadow.h> header file. */
 /* #undef HAVE_SHADOW_H */
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
+
+/* Define to 1 if you have the <stdio.h> header file. */
+#define HAVE_STDIO_H 1
 
 /* Define to 1 if you have the <stdlib.h> header file. */
 #define HAVE_STDLIB_H 1
@@ -215,7 +221,7 @@
 #define PACKAGE_NAME "tcsh"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "tcsh 6.22.02"
+#define PACKAGE_STRING "tcsh 6.24.02"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "tcsh"
@@ -224,9 +230,9 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "6.22.02"
+#define PACKAGE_VERSION "6.24.02"
 
-/* Define to 1 if the `setpgrp' function takes no argument. */
+/* Define to 1 if the `setpgrp' function requires zero arguments. */
 /* #undef SETPGRP_VOID */
 
 /* The size of `wchar_t', as computed by sizeof. */
@@ -235,7 +241,9 @@
 /* Define to 1 if the `S_IS*' macros in <sys/stat.h> do not work properly. */
 /* #undef STAT_MACROS_BROKEN */
 
-/* Define to 1 if you have the ANSI C header files. */
+/* Define to 1 if all of the C90 standard headers exist (not just the ones
+   required in a freestanding environment). This macro is provided for
+   backward compatibility; new code need not use it. */
 #define STDC_HEADERS 1
 
 /* Define for Solaris 2.5.1 so the uint32_t typedef from <sys/synch.h>,

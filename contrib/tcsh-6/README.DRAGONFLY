@@ -4,10 +4,10 @@ TCSH
 Original source is availale from:
 https://ftp.astron.com/pub/tcsh/
 
-file = tcsh-6.22.02.tar.gz
-date = December 4, 2019
-size = 1006405
-sha1 = d3c916c82eec7e20c49dedf660edd51a7971f8ab
+file = tcsh-6.24.02.tar.gz
+date = 23 November 2022
+size = 945889
+sha1 = 6eb313ab89c93b17c146777eedae8f7e37179260
 
 A list of files removed is in README.DELETED
 

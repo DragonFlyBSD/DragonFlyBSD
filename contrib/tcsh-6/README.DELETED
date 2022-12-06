@@ -138,6 +138,9 @@ config.sub
 configure
 configure.ac
 cygwin/
+debian/
+dot.login
+dot.tcshrc
 eight-bit.me
 glob.3
 host.defs
@@ -170,5 +173,6 @@ tcsh.man.new
 tcsh.man2html
 termcap.vms
 tests/
+TOOLS.md
 vms.termcap.c
 win32/

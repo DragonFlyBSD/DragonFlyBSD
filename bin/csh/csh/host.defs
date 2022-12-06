@@ -526,6 +526,7 @@ enddef	:
 
 newdef	: defined(NetBSD)
 comment : NetBSD
+vendor	: defined(aarch64)				: "arm"
 vendor	: defined(algor)				: "algoritmics"
 vendor	: defined(arm32) || defined(arm)		: "acorn"
 vendor	: defined(alpha)				: "digital"
@@ -546,6 +547,7 @@ vendor	: defined(vax)					: "digital"
 vendor	: defined(M_amd64)				: "amd"
 hosttype:						: "NetBSD"
 ostype	:						: "NetBSD"
+machtype: defined(aarch64)				: "aarch64"
 machtype: defined(alpha)				: "alpha"
 machtype: defined(algor)				: "algor"
 machtype: defined(arm32) || defined(APCS_32)		: "arm32"
@@ -566,6 +568,7 @@ enddef	:
 
 newdef : defined(OpenBSD)
 comment        : OpenBSD
+vendor	: defined(aarch64)				: "arm"
 vendor : defined(alpha)					: "digital"
 vendor : defined(M_amd64)				: "amd"
 vendor : defined(arm)					: "arm"
@@ -580,6 +583,7 @@ vendor : defined(sparc) || defined(sparc64)		: "sun"
 vendor : defined(vax)					: "digital"
 hosttype:						: "OpenBSD"
 ostype :						: "OpenBSD"
+machtype: defined(aarch64)				: "aarch64"
 machtype: defined(alpha)				: "alpha"
 machtype: defined(M_amd64)				: "amd64"
 machtype: defined(arm)					: "arm"
@@ -599,6 +603,7 @@ enddef :
 
 newdef	: defined(FreeBSD)
 comment : FreeBSD
+vendor	: defined(aarch64)				: "arm"
 vendor	: defined(alpha)				: "digital"
 vendor	: defined(arm32) || defined(arm)		: "acorn"
 vendor	: defined(M_intel)				: "intel"
@@ -610,6 +615,7 @@ vendor	: defined(sparc64)				: "sun"
 vendor	: defined(M_amd64)				: "amd"
 hosttype:						: "FreeBSD"
 ostype	:						: "FreeBSD"
+machtype: defined(aarch64)				: "aarch64"
 machtype: defined(alpha)				: "alpha"
 machtype: defined(arm32) || defined(APCS_32)		: "arm32"
 machtype: defined(arm)					: "arm"
@@ -865,12 +871,14 @@ newdef	: defined(APPLE)
 comment : OS X
 vendor	:						: "apple"
 hosttype: defined(i386)					: "intel-mac"
-hosttype: defined(ppc)					: "powermac"
 hosttype: defined(M_amd64)				: "intel-mac"
+hosttype: defined(ppc)					: "powermac"
+hosttype: defined(aarch64)				: "arm64mac"
 ostype	:						: "darwin"
 machtype: defined(i386)					: "i386"
 machtype: defined(M_amd64)				: "x86_64"
 machtype: defined(ppc)					: "powerpc"
+machtype: defined(aarch64)				: "aarch64"
 enddef	:
 
 
