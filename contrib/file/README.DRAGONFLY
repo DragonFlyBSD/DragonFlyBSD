@@ -16,3 +16,9 @@ README.DELETED.
 
 This is used in lib/libmagic and usr.bin/file.  When upgrading, remember
 to update config.h in lib/libmagic/libmagic.
+
+NOTE: Not all current header files are present in older versions of DFly,
+      which may present bootstrapping issues when building from sources.
+      The generated config.h may not be able to be used as-is.  See
+      conditionals around (for example) HAVE_BYTESWAP_H, which themselves
+      may also require <sys/param.h> to be included.

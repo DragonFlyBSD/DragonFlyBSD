@@ -224,7 +224,7 @@
  * 500906 - add struct ip_mreqn for IPPROTO_IP/IP_MULTICAST_IF,
  *          IP_ADD_MEMBERSHIP and IP_DROP_MEMBERSHIP.
  * 500907 - add clock_nanosleep()
- * 500908 - add fexecve()
+ * 500908 - add fexecve() (also byteswap.h exists as of this vers)
  * 500909 - add AF_ARP
  * 600000 - 6.0 release
  * 600100 - 6.1 development

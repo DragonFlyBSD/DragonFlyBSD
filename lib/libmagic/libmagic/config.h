@@ -1,6 +1,8 @@
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+#include <sys/param.h>
+
 /* Define if building universal (internal helper macro) */
 /* #undef AC_APPLE_UNIVERSAL_BUILD */
 
@@ -20,7 +22,9 @@
 #define HAVE_ASPRINTF 1
 
 /* Define to 1 if you have the <byteswap.h> header file. */
+#if __DragonFly_version >= 500908
 #define HAVE_BYTESWAP_H 1
+#endif
 
 /* Define to 1 if you have the <bzlib.h> header file. */
 #define HAVE_BZLIB_H 1
