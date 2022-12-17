@@ -932,6 +932,7 @@ childGetPackageInfo(bulk_t *bulk)
 	size_t len;
 	char *portpath;
 	char *flavarg;
+	char *localbase;
 	const char *cav[MAXCAC];
 	pid_t pid;
 	int cac;
@@ -957,6 +958,19 @@ childGetPackageInfo(bulk_t *bulk)
 	cav[cac++] = portpath;
 	if (flavarg)
 		cav[cac++] = flavarg;
+
+	/*
+	 * Prevent postgresql, mysql, and other package Makefile tests
+	 * from accessing the host system's /usr/local by setting LOCALBASE
+	 * to an empty directory.
+	 */
+	asprintf(&localbase, "LOCALBASE=%s/empty", BuildBase);
+	cav[cac++] = localbase;
+
+	/*
+	 * Variables we need to retrieve (order is specific to the switch
+	 * below)
+	 */
 	cav[cac++] = "-VPKGVERSION";
 	cav[cac++] = "-VPKGFILE:T";
 	cav[cac++] = "-VALLFILES";
@@ -978,6 +992,7 @@ childGetPackageInfo(bulk_t *bulk)
 	fp = dexec_open(portpath + strlen(DPortsPath) + 1, cav, cac,
 			&pid, NULL, 1, 1);
 	freestrp(&flavarg);
+	freestrp(&localbase);
 
 	pkg = allocpkg();
 	if (flavor)
@@ -1183,6 +1198,7 @@ static void
 childOptimizeEnv(bulk_t *bulk)
 {
 	char *portpath;
+	char *localbase;
 	char *ptr;
 	FILE *fp;
 	int line;
@@ -1193,14 +1209,23 @@ childOptimizeEnv(bulk_t *bulk)
 
 	asprintf(&portpath, "%s/%s/%s", DPortsPath, bulk->s1, bulk->s2);
 
+	/*
+	 * Prevent postgresql, mysql, and other package Makefile tests
+	 * from accessing the host system's /usr/local by setting LOCALBASE
+	 * to an empty directory.
+	 */
+	asprintf(&localbase, "LOCALBASE=%s/empty", BuildBase);
+
 	cac = 0;
 	cav[cac++] = MAKE_BINARY;
 	cav[cac++] = "-C";
 	cav[cac++] = portpath;
+	cav[cac++] = localbase;
 	cav[cac++] = "-V_PERL5_FROM_BIN";
 
 	fp = dexec_open(portpath + strlen(DPortsPath) + 1, cav, cac,
 			&pid, NULL, 1, 1);
+	free(localbase);
 	free(portpath);
 
 	line = 1;

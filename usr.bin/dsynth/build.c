@@ -107,6 +107,7 @@ DoInitBuild(int slot_override)
 {
 	worker_t *work;
 	struct stat st;
+	char *path;
 	int i;
 
 	ddassert(slot_override < 0 || MaxWorkers == 1);
@@ -131,6 +132,16 @@ DoInitBuild(int slot_override)
 		if (mkdir(RepositoryPath, 0755) < 0)
 			dfatal("Cannot mkdir %s\n", RepositoryPath);
 	}
+
+	/*
+	 * An empty directory for LOCALBASE= in the pkg scan.
+	 */
+	asprintf(&path, "%s/empty", BuildBase);
+	if (stat(path, &st) < 0) {
+		if (mkdir(path, 0755) < 0)
+			dfatal("Cannot mkdir %s\n", path);
+	}
+	free(path);
 
 	BuildInitialized = 1;
 
