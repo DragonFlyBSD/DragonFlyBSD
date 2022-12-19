@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
 .\"
-.Dd November 15, 2019
+.Dd December 19, 2022
 .Dt MAKE.CONF 5
 .Os
 .Sh NAME
@@ -212,6 +212,14 @@ value, use
 .Dq Li +=
 instead of
 .Dq Li = .
+.It Va CSTD
+.Pq Vt str
+The default C standard to use when compiling world and kernel C code.
+Defaults are
+.Li gnu99
+for world and
+.Li c99
+for the kernel.
 .It Va INSTALL
 .Pq Vt str
 the default install command.

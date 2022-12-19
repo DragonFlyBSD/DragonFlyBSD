@@ -84,7 +84,7 @@ INCLUDES+= -I$S/dev/drm/include/uapi
 INCLUDES+= -I$S/dev/drm/amd/include
 
 COPTS=	${INCLUDES} ${IDENT} -D_KERNEL -DHAVE_KERNEL_OPTION_HEADERS -include opt_global.h
-CFLAGS=	${COPTFLAGS} ${KCFLAGS} ${CWARNFLAGS} ${DEBUG} ${COPTS}
+CFLAGS=	${COPTFLAGS} ${KCFLAGS} ${CWARNFLAGS} -std=${CSTD} ${DEBUG} ${COPTS}
 
 # XXX LOCORE means "don't declare C stuff" not "for locore.s".
 ASM_CFLAGS= -x assembler-with-cpp -DLOCORE ${CFLAGS:N-flto}
