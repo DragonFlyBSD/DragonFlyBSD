@@ -96,7 +96,7 @@ COPTFLAGS+=	-no-integrated-as
 
 WORLD_CCOPTLEVEL=	# XXX prevent world opt level affecting kernel modules
 CFLAGS=		${COPTFLAGS} ${KCFLAGS} ${COPTS} -D_KERNEL
-CFLAGS+=	${CWARNFLAGS} ${WERROR}
+CFLAGS+=	${CWARNFLAGS} -std=${CSTD} ${WERROR}
 CFLAGS+=	-DKLD_MODULE
 
 # Don't use any standard include directories.
