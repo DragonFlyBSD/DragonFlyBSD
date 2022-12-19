@@ -10,7 +10,7 @@ _WCCVER=	${HOST_CCVER}
 _WCCVER=	${CCVER}
 .endif
 
-CSTD?=	gnu99
+CSTD?=	gnu11
 
 .if ${CSTD} == "k&r"
 CFLAGS		+= -traditional

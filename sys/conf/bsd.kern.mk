@@ -7,7 +7,7 @@
 # command line) should be of material assistance.
 #
 
-CSTD?=		c99
+CSTD?=		gnu11
 
 CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wmissing-prototypes -Wpointer-arith -Wcast-qual \
