@@ -2737,7 +2737,8 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		bif = bridge_lookup_member_if(sc, ifp);
 		if ((bif->bif_flags & IFBIF_LEARNING) &&
 		    ((bif->bif_flags & IFBIF_STP) == 0 ||
-		     bif->bif_state != BSTP_IFSTATE_BLOCKING)) {
+		     bif->bif_state != BSTP_IFSTATE_BLOCKING))
+		{
 			bridge_rtupdate(sc, eh->ether_shost,
 					ifp, IFBAF_DYNAMIC);
 		}

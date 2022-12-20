@@ -6769,7 +6769,9 @@ done:
 	    (s->nat_rule.ptr->action == PF_RDR ||
 	    s->nat_rule.ptr->action == PF_BINAT) &&
 	    (ntohl(pd.dst->v4.s_addr) >> IN_CLASSA_NSHIFT) == IN_LOOPBACKNET)
+	{
 		m->m_pkthdr.pf.flags |= PF_TAG_TRANSLATE_LOCALHOST;
+	}
 
 	if (dir == PF_IN && action == PF_PASS && r->divert.port) {
 		struct pf_divert *divert;
