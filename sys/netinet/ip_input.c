@@ -461,8 +461,16 @@ ip_input(struct mbuf *m)
 	ASSERT_NETISR_NCPUS(mycpuid);
 	M_ASSERTPKTHDR(m);
 
+	if (m->m_len < sizeof(struct ip)) {
+		kprintf("Issuer to ip_input failed to check IP header atomicy (%d)\n",
+			m->m_len);
+		ipstat.ips_badlen++;
+		goto bad;
+	}
+#if 0
 	/* length checks already done in ip_hashfn() */
 	KASSERT(m->m_len >= sizeof(struct ip), ("IP header not in one mbuf"));
+#endif
 
 	/*
 	 * This routine is called from numerous places which may not have
