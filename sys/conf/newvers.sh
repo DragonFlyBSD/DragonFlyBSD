@@ -39,7 +39,7 @@ fi
 
 # Set the branch
 #
-BRANCH="DEVELOPMENT_6_3"
+BRANCH="DEVELOPMENT_6_5"
 
 TYPE="DragonFly"
 
