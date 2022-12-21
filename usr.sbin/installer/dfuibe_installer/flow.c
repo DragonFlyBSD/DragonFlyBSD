@@ -67,7 +67,6 @@ extern int _nl_msg_cat_cntr;
 #include "libinstaller/confed.h"
 #include "libinstaller/diskutil.h"
 #include "libinstaller/functions.h"
-#include "libinstaller/package.h"
 #include "libinstaller/uiutil.h"
 
 #include "flow.h"
@@ -470,12 +469,6 @@ state_configure_menu(struct i_fn_args *a)
 		    "a", "set_scrnmap",
 		    _("Set screen map"),
 		    _("Set how characters are translated before console display"), "",
-		    /*
-		    "a", "install_pkgs", _("Install extra software packages"),
-		    _("Install third-party software packages from the LiveCD"), "",
-		    */
-		    "a", "remove_pkgs",	_("Remove software packages"),
-		    _("Remove third-party software packages from the installed system"), "",
 
 		    "a", "cancel", _("Return to Welcome Menu"), "", "",
 		    "p", "accelerator", "ESC",
@@ -492,10 +485,6 @@ state_configure_menu(struct i_fn_args *a)
 			fn_root_passwd(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "add_user") == 0) {
 			fn_add_user(a);
-		} else if (strcmp(dfui_response_get_action_id(r), "install_pkgs") == 0) {
-			fn_install_packages(a);
-		} else if (strcmp(dfui_response_get_action_id(r), "remove_pkgs") == 0) {
-			fn_remove_packages(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "assign_ip") == 0) {
 			fn_assign_ip(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "assign_hostname_domain") == 0) {
