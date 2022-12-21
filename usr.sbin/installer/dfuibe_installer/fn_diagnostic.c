@@ -61,7 +61,6 @@
 #include "libinstaller/confed.h"
 #include "libinstaller/diskutil.h"
 #include "libinstaller/functions.h"
-#include "libinstaller/package.h"
 #include "libinstaller/uiutil.h"
 
 #include "fn.h"
