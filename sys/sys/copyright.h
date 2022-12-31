@@ -35,7 +35,7 @@
 
 /* DragonFly */
 #define COPYRIGHT_DragonFly \
-	"Copyright (c) 2003-2022 The DragonFly Project.\n"
+	"Copyright (c) 2003-2023 The DragonFly Project.\n"
 
 /* Berkeley */
 #define COPYRIGHT_UCB \
