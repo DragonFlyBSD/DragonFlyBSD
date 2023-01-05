@@ -1229,8 +1229,10 @@ vtnet_alloc_rxbuf(struct vtnet_softc *sc, int nbufs, struct mbuf **m_tailp)
 	clsize = sc->vtnet_rx_mbuf_size;
 
 	/*use getcl instead of getjcl. see  if_mxge.c comment line 2398*/
-	//m_head = m_getjcl(M_DONTWAIT, MT_DATA, M_PKTHDR, clsize);
-	m_head = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR );
+	if (clsize > MCLBYTES)
+		m_head = m_getjcl(M_NOWAIT, MT_DATA, M_PKTHDR, clsize);
+	else
+		m_head = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR );
 	if (m_head == NULL)
 		goto fail;
 
@@ -1242,8 +1244,10 @@ vtnet_alloc_rxbuf(struct vtnet_softc *sc, int nbufs, struct mbuf **m_tailp)
 			("chained Rx mbuf requested without LRO_NOMRG"));
 
 		for (i = 0; i < nbufs - 1; i++) {
-			//m = m_getjcl(M_DONTWAIT, MT_DATA, 0, clsize);
-			m = m_getcl(M_NOWAIT, MT_DATA, 0);
+			if (clsize > MCLBYTES)
+				m = m_getjcl(M_NOWAIT, MT_DATA, 0, clsize);
+			else
+				m = m_getcl(M_NOWAIT, MT_DATA, 0);
 			if (m == NULL)
 				goto fail;
 
