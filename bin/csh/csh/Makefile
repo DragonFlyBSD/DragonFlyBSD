@@ -15,6 +15,7 @@ CONTRIBDIR=${TCSHDIR}
 PROG=	csh
 DFLAGS= -D_PATH_TCSHELL='"/bin/${PROG}"'
 CFLAGS+= -I. -I${.CURDIR} -I${TCSHDIR} ${DFLAGS}
+
 SRCS=	sh.c sh.dir.c sh.dol.c sh.err.c sh.exec.c sh.char.c \
 	sh.exp.c sh.file.c sh.func.c sh.glob.c sh.hist.c sh.init.c \
 	sh.lex.c sh.misc.c sh.parse.c sh.print.c sh.proc.c sh.sem.c \
@@ -28,6 +29,7 @@ SRCS+=	tc.alloc.c tc.bind.c tc.const.c tc.decls.h tc.disc.c \
 	tc.func.c tc.nls.c tc.os.c tc.os.h tc.printf.c tc.prompt.c \
 	tc.sched.c tc.sig.c tc.sig.h tc.str.c sh.types.h tc.vers.c tc.wait.h \
 	tc.who.c tc.h
+
 GENHDRS= ed.defns.h sh.err.h tc.const.h tc.defs.c
 SRCS+=	${GENHDRS}
 
@@ -131,3 +133,10 @@ tc.const.h: tc.const.c sh.char.h config.h config_f.h sh.types.h sh.err.h
 	@echo '#endif /* _h_tc_const */' >> ${.TARGET}
 
 .include <bsd.prog.mk>
+
+# Make all objects depend on our generated headers to fix Makefile
+# concurrency
+#
+.for obs in ${OBJS}
+${obs}: ${GENHDRS}
+.endfor
