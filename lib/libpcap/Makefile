@@ -26,8 +26,10 @@ CLEANFILES+=scanner.h
 LFLAGS+=-Ppcap_ --header-file=${.OBJDIR}/scanner.h --nounput
 scanner.h: scanner.c
 
-SRCS+=	grammar.y
+SRCS+=	grammar.y grammar.h
 YFLAGS+=-p pcap_
+CLEANFILES+=grammar.h
+grammar.h: grammar.c
 
 CFLAGS+=-DHAVE_CONFIG_H -I${.CURDIR} -I${.OBJDIR} -I${SRCDIR}
 CFLAGS+=-D_U_="__attribute__((unused))"
