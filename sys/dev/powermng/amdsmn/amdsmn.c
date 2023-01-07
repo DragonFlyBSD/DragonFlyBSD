@@ -27,7 +27,7 @@
  */
 
 /*
- * Driver for the AMD Family 15h and 17h CPU System Management Network.
+ * Driver for the AMD Family 15h, 17h, 19h CPU System Management Network.
  */
 
 #include <sys/param.h>
@@ -52,14 +52,30 @@
 
 #define	F15H_SMN_ADDR_REG	0xb8
 #define	F15H_SMN_DATA_REG	0xbc
+
 #define	F17H_SMN_ADDR_REG	0x60
 #define	F17H_SMN_DATA_REG	0x64
+
+#define	F19H_SMN_ADDR_REG	0x60
+#define	F19H_SMN_DATA_REG	0x64
 
 #define	PCI_DEVICE_ID_AMD_15H_M60H_ROOT		0x1576
 #define	PCI_DEVICE_ID_AMD_17H_ROOT		0x1450
 #define	PCI_DEVICE_ID_AMD_17H_M10H_ROOT		0x15d0
 #define	PCI_DEVICE_ID_AMD_17H_M30H_ROOT		0x1480	/* Also M70H. */
 #define	PCI_DEVICE_ID_AMD_17H_M60H_ROOT		0x1630
+#define	PCI_DEVICE_ID_AMD_17H_MA0H_ROOT		0x14b5
+
+#if 0
+#define	PCI_DEVICE_ID_AMD_19H_M10H_ROOT		0x14b1
+#define	PCI_DEVICE_ID_AMD_19H_M40H_ROOT		0x14b5
+#define	PCI_DEVICE_ID_AMD_19H_M50H_ROOT		0x166e
+#define	PCI_DEVICE_ID_AMD_19H_M60H_ROOT		0x14e4
+#define	PCI_DEVICE_ID_AMD_19H_M70H_ROOT		0x14f4
+#endif
+#define	PCI_DEVICE_ID_AMD_19H_M10H_ROOT		0x14a4
+#define	PCI_DEVICE_ID_AMD_19H_M60H_ROOT		0x14d8
+#define	PCI_DEVICE_ID_AMD_19H_M70H_ROOT		0x14e8
 
 struct pciid;
 struct amdsmn_softc {
@@ -103,6 +119,44 @@ static const struct pciid {
 		.amdsmn_addr_reg = F17H_SMN_ADDR_REG,
 		.amdsmn_data_reg = F17H_SMN_DATA_REG,
 	},
+	{
+		.amdsmn_vendorid = CPU_VENDOR_AMD,
+		.amdsmn_deviceid = PCI_DEVICE_ID_AMD_17H_MA0H_ROOT,
+		.amdsmn_addr_reg = F17H_SMN_ADDR_REG,
+		.amdsmn_data_reg = F17H_SMN_DATA_REG,
+	},
+	{
+		.amdsmn_vendorid = CPU_VENDOR_AMD,
+		.amdsmn_deviceid = PCI_DEVICE_ID_AMD_19H_M10H_ROOT,
+		.amdsmn_addr_reg = F19H_SMN_ADDR_REG,
+		.amdsmn_data_reg = F19H_SMN_DATA_REG,
+	},
+#if 0
+	{
+		.amdsmn_vendorid = CPU_VENDOR_AMD,
+		.amdsmn_deviceid = PCI_DEVICE_ID_AMD_19H_M40H_ROOT,
+		.amdsmn_addr_reg = F19H_SMN_ADDR_REG,
+		.amdsmn_data_reg = F19H_SMN_DATA_REG,
+	},
+	{
+		.amdsmn_vendorid = CPU_VENDOR_AMD,
+		.amdsmn_deviceid = PCI_DEVICE_ID_AMD_19H_M50H_ROOT,
+		.amdsmn_addr_reg = F19H_SMN_ADDR_REG,
+		.amdsmn_data_reg = F19H_SMN_DATA_REG,
+	},
+#endif
+	{
+		.amdsmn_vendorid = CPU_VENDOR_AMD,
+		.amdsmn_deviceid = PCI_DEVICE_ID_AMD_19H_M60H_ROOT,
+		.amdsmn_addr_reg = F19H_SMN_ADDR_REG,
+		.amdsmn_data_reg = F19H_SMN_DATA_REG,
+	},
+	{
+		.amdsmn_vendorid = CPU_VENDOR_AMD,
+		.amdsmn_deviceid = PCI_DEVICE_ID_AMD_19H_M70H_ROOT,
+		.amdsmn_addr_reg = F19H_SMN_ADDR_REG,
+		.amdsmn_data_reg = F19H_SMN_DATA_REG,
+	},
 };
 
 /*
@@ -129,7 +183,8 @@ static driver_t amdsmn_driver = {
 };
 
 static devclass_t amdsmn_devclass;
-DRIVER_MODULE(amdsmn, hostb, amdsmn_driver, amdsmn_devclass, NULL, NULL);
+DRIVER_MODULE_ORDERED(amdsmn, hostb, amdsmn_driver,
+			&amdsmn_devclass, NULL, NULL, SI_ORDER_EARLIER);
 MODULE_VERSION(amdsmn, 1);
 #if !defined(__DragonFly__)
 MODULE_PNP_INFO("U16:vendor;U16:device", pci, amdsmn, amdsmn_ids,
