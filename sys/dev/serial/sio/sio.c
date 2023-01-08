@@ -733,12 +733,17 @@ sioprobe(device_t dev, int xrid, u_long rclk)
 		 * not have to clear the sio0 console flag if sio0 does
 		 * not exist and the user wants the console on another
 		 * sio).
+		 *
+		 * Also set the sioN.disabled resource to prevent console
+		 * probing of the non-existent serial port.  sio0.flags
+		 * typically defaults to 0x10 (from the kernel config).
 		 */
 		com_unlock();
 		lwkt_reltoken(&tty_token);
 		kprintf("sio%d: can't drain, serial port might "
 			"not exist, disabling\n", device_get_unit(dev));
 		com->flags &= ~0x30;
+		resource_set_int("sio", device_get_unit(dev), "disabled", 1);
 
 		return (ENXIO);
 	}
@@ -2966,6 +2971,7 @@ siocnprobe(struct consdev *cp)
 	u_char			cfcr;
 	u_int			divisor;
 	int			unit;
+	int			fn;
 	struct siocnstate	sp;
 
 	/*
@@ -3050,6 +3056,28 @@ siocnprobe(struct consdev *cp)
 			outb(iobase + com_dlbl, divisor & 0xff);
 			outb(iobase + com_dlbh, divisor >> 8);
 			outb(iobase + com_cfcr, cfcr);
+
+			/*
+			 * Make sure we can drain the receiver.  If we can't,
+			 * the serial port may not exist and making it the
+			 * console will implode the kernel.
+			 *
+			 * This is a failsafe, the main sio probe should have
+			 * already forced sioN.disabled to 1 and not reached
+			 * here.
+			 */
+			for (fn = 0; fn < 256; ++fn) {
+				if ((inb(iobase + com_lsr) & LSR_RXRDY) == 0)
+					break;
+				(void)inb(iobase + com_data);
+			}
+			if (fn == 256) {
+				kprintf("sio%d: does not exist, "
+					"cannot make console\n", unit);
+				com_unlock();
+				crit_exit();
+				continue;
+			}
 
 			/*
 			 * We want ttyopen
