@@ -72,7 +72,7 @@ if ! [ -e /firstboot ]; then
 	skip_firstboot="-s firstboot"
 fi
 
-files=`rcorder ${skip} ${skip_firstboot} /etc/rc.d/* 2>/dev/null`
+files=`rcorder ${skip} ${skip_firstboot} /etc/rc.d/* /etc/rc.local.d/* 2>/dev/null`
 
 for _rc_elem in ${files}; do
 	run_rc_script ${_rc_elem} ${_boot}

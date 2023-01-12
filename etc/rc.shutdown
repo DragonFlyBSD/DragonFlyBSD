@@ -77,7 +77,7 @@ if [ -n "$rcshutdown_timeout" ]; then
 	_rcshutdown_watchdog=$!
 fi
 
-files=`rcorder -k shutdown /etc/rc.d/* 2>/dev/null`
+files=`rcorder -k shutdown /etc/rc.d/* /etc/rc.local.d/* 2>/dev/null`
 
 for _rc_elem in `reverse_list $files`; do
 	debug "run_rc_script $_rc_elem stop"

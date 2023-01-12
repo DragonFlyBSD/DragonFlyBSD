@@ -42,6 +42,7 @@
 .Nm rc.conf
 .Nm rc.conf.local
 .Nm rc.d/
+.Nm rc.local.d/
 .Nm rc.firewall
 .Nm rc.local
 .Nm rc.shutdown
@@ -90,6 +91,11 @@ The
 .Nm rc.d/
 directories contain scripts which will be automatically
 executed at boot time and shutdown time.
+This directory is typically maintained by the system.
+.Nm rc.local.d/
+directories contain scripts which will be automatically
+executed at boot time and shutdown time.
+This directory is typically maintained by the sysadmin.
 .Ss Operation of Nm
 .Bl -enum
 .It
@@ -124,6 +130,8 @@ Invoke
 .Xr rcorder 8
 to order the files in
 .Pa /etc/rc.d/
+and
+.Pa /etc/rc.local.d/
 that do not have a
 .Dq Li nostart
 keyword (refer to
@@ -162,6 +170,8 @@ Invoke
 .Xr rcorder 8
 to order the files in
 .Pa /etc/rc.d/
+and
+.Pa /etc/rc.local.d/
 that have a
 .Dq Li shutdown
 keyword (refer to

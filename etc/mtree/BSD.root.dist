@@ -54,6 +54,8 @@
         ..
         rc.d
         ..
+        rc.local.d
+        ..
         skel
         ..
         ssh
