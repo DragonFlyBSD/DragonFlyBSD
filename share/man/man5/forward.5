@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/forward.5,v 1.4.2.3 2001/07/21 09:16:52 schweikh Exp $
 .\"
-.Dd July 2, 1996
+.Dd January 17, 2023
 .Dt FORWARD 5
 .Os
 .Sh NAME
@@ -41,8 +41,12 @@
 The
 .Nm .forward
 file contains a list of mail addresses or programs
-that the user's mail should be redirected to.  If the
-file is not present, then no mail forwarding will be done.
+that the user's mail should be redirected to.
+.Pp
+If the file is not present, then no mail forwarding will be done.
+Additionally, the manual page of the currently installed MTA should
+be consulted about the MTA's mail forwarding support.
+.Pp
 Mail may also be forwarded as the standard input to a program
 by prefixing the line
 with the normal shell pipe symbol (|).  If arguments
@@ -90,4 +94,5 @@ The user's forwarding instructions.
 .El
 .Sh SEE ALSO
 .Xr aliases 5 ,
+.Xr dma 8 ,
 .Xr sendmail 8
