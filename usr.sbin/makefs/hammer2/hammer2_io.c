@@ -686,7 +686,7 @@ hammer2_io_data(hammer2_io_t *dio, off_t lbase)
 	lbase -= dio->dbase;
 	off = (lbase & ~HAMMER2_OFF_MASK_RADIX) - bp->b_loffset;
 	KKASSERT(off >= 0 && off < bp->b_bufsize);
-	return(bp->b_data + off);
+	return((char *)bp->b_data + off);
 }
 
 int

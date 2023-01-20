@@ -1210,7 +1210,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 		 * Ok, copy the data in
 		 */
 		bkvasync(bp);
-		error = uiomovebp(bp, bp->b_data + loff, n, uio);
+		error = uiomovebp(bp, (char *)bp->b_data + loff, n, uio);
 		kflags |= NOTE_WRITE;
 		modified = 1;
 		if (error) {
