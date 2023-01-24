@@ -1489,7 +1489,7 @@ hammer2_xop_inode_flush(hammer2_xop_t *arg, void *scratch __unused, int clindex)
 	 */
 	if (fsync_error == 0 && flush_error == 0 &&
 	    (hmp->vchain.flags & HAMMER2_CHAIN_VOLUMESYNC)) {
-		struct buf *bp;
+		struct m_buf *bp;
 		int vol_error = 0;
 
 		/*

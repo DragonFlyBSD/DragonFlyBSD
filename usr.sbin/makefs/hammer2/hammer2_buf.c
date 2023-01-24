@@ -38,10 +38,10 @@
 #include "hammer2.h"
 #include "makefs.h"
 
-struct buf *
+struct m_buf *
 getblkx(struct m_vnode *vp, off_t loffset, int size, int blkflags, int slptimeo)
 {
-	struct buf *bp;
+	struct m_buf *bp;
 	makefs_daddr_t blkno = loffset / DEV_BSIZE;
 
 	bp = getblk(vp, blkno, size, 0, 0, 0);
@@ -55,9 +55,9 @@ getblkx(struct m_vnode *vp, off_t loffset, int size, int blkflags, int slptimeo)
 }
 
 int
-breadx(struct m_vnode *vp, off_t loffset, int size, struct buf **bpp)
+breadx(struct m_vnode *vp, off_t loffset, int size, struct m_buf **bpp)
 {
-	struct buf *bp;
+	struct m_buf *bp;
 	ssize_t ret;
 
 	assert(bpp != NULL);
@@ -97,19 +97,19 @@ breadx(struct m_vnode *vp, off_t loffset, int size, struct buf **bpp)
 }
 
 int
-bread_kvabio(struct m_vnode *vp, off_t loffset, int size, struct buf **bpp)
+bread_kvabio(struct m_vnode *vp, off_t loffset, int size, struct m_buf **bpp)
 {
 	return (breadx(vp, loffset, size, bpp));
 }
 
 void
-bqrelse(struct buf *bp)
+bqrelse(struct m_buf *bp)
 {
 	brelse(bp);
 }
 
 int
-bawrite(struct buf *bp)
+bawrite(struct m_buf *bp)
 {
 	return (bwrite(bp));
 }
@@ -170,7 +170,7 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 }
 
 int
-uiomovebp(struct buf *bp, caddr_t cp, size_t n, struct uio *uio)
+uiomovebp(struct m_buf *bp, caddr_t cp, size_t n, struct uio *uio)
 {
 	return (uiomove(cp, n, uio));
 }

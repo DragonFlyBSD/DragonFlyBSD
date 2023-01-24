@@ -97,7 +97,7 @@ int
 hammer2_vop_strategy(struct vop_strategy_args *ap)
 {
 	struct bio *biop;
-	struct buf *bp;
+	struct m_buf *bp;
 	int error;
 
 	biop = ap->a_bio;
@@ -157,7 +157,7 @@ static
 void
 hammer2_decompress_LZ4_callback(const char *data, u_int bytes, struct bio *bio)
 {
-	struct buf *bp;
+	struct m_buf *bp;
 	char *compressed_buffer;
 	int compressed_size;
 	int result;
@@ -204,7 +204,7 @@ static
 void
 hammer2_decompress_ZLIB_callback(const char *data, u_int bytes, struct bio *bio)
 {
-	struct buf *bp;
+	struct m_buf *bp;
 	char *compressed_buffer;
 	z_stream strm_decompress;
 	int result;
@@ -292,7 +292,7 @@ hammer2_xop_strategy_read(hammer2_xop_t *arg, void *scratch, int clindex)
 	hammer2_key_t key_dummy;
 	hammer2_key_t lbase;
 	struct bio *bio;
-	struct buf *bp;
+	struct m_buf *bp;
 	const char *data;
 	int error;
 
@@ -423,7 +423,7 @@ void
 hammer2_strategy_read_completion(hammer2_chain_t *focus, const char *data,
 				 struct bio *bio)
 {
-	struct buf *bp = bio->bio_buf;
+	struct m_buf *bp = bio->bio_buf;
 
 	if (focus->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		/*
@@ -564,7 +564,7 @@ hammer2_xop_strategy_write(hammer2_xop_t *arg, void *scratch, int clindex)
 	hammer2_key_t lbase;
 	hammer2_inode_t *ip;
 	struct bio *bio;
-	struct buf *bp;
+	struct m_buf *bp;
 	int error;
 	int lblksize;
 	int pblksize;

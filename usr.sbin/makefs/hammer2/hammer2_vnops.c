@@ -970,7 +970,7 @@ int
 hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 {
 	hammer2_off_t size;
-	struct buf *bp;
+	struct m_buf *bp;
 	int error;
 
 	error = 0;
@@ -1065,7 +1065,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 {
 	hammer2_key_t old_eof;
 	hammer2_key_t new_eof;
-	struct buf *bp;
+	struct m_buf *bp;
 	int kflags;
 	int error;
 	int modified;
@@ -1413,7 +1413,7 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	if (osize <= HAMMER2_EMBEDDED_BYTES && nsize > HAMMER2_EMBEDDED_BYTES) {
 		if (osize) {
 			assert(0); /* no such transition in makefs */
-			struct buf *bp;
+			struct m_buf *bp;
 
 			oblksize = hammer2_calc_logical(ip, 0, NULL, NULL);
 			error = bread_kvabio(ip->vp, 0, oblksize, &bp);

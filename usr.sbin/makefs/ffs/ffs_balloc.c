@@ -54,9 +54,9 @@
 #include "ffs/ufs_inode.h"
 #include "ffs/ffs_extern.h"
 
-static int ffs_balloc_ufs1(struct inode *, off_t, int, struct buf **);
+static int ffs_balloc_ufs1(struct inode *, off_t, int, struct m_buf **);
 #ifndef __DragonFly__ /* XXX UFS2 */
-static int ffs_balloc_ufs2(struct inode *, off_t, int, struct buf **);
+static int ffs_balloc_ufs2(struct inode *, off_t, int, struct m_buf **);
 #endif
 
 /*
@@ -68,7 +68,7 @@ static int ffs_balloc_ufs2(struct inode *, off_t, int, struct buf **);
  */
 
 int
-ffs_balloc(struct inode *ip, off_t offset, int bufsize, struct buf **bpp)
+ffs_balloc(struct inode *ip, off_t offset, int bufsize, struct m_buf **bpp)
 {
 #ifndef __DragonFly__ /* XXX UFS2 */
 	if (ip->i_fs->fs_magic == FS_UFS2_MAGIC)
@@ -79,12 +79,12 @@ ffs_balloc(struct inode *ip, off_t offset, int bufsize, struct buf **bpp)
 }
 
 static int
-ffs_balloc_ufs1(struct inode *ip, off_t offset, int bufsize, struct buf **bpp)
+ffs_balloc_ufs1(struct inode *ip, off_t offset, int bufsize, struct m_buf **bpp)
 {
 	makefs_daddr_t lbn, lastlbn;
 	int size;
 	int32_t nb;
-	struct buf *bp, *nbp;
+	struct m_buf *bp, *nbp;
 	struct fs *fs = ip->i_fs;
 	struct indir indirs[UFS_NIADDR + 2];
 	makefs_daddr_t newb, pref;
@@ -332,11 +332,11 @@ ffs_balloc_ufs1(struct inode *ip, off_t offset, int bufsize, struct buf **bpp)
 
 #ifndef __DragonFly__ /* XXX UFS2 */
 static int
-ffs_balloc_ufs2(struct inode *ip, off_t offset, int bufsize, struct buf **bpp)
+ffs_balloc_ufs2(struct inode *ip, off_t offset, int bufsize, struct m_buf **bpp)
 {
 	daddr_t lbn, lastlbn;
 	int size;
-	struct buf *bp, *nbp;
+	struct m_buf *bp, *nbp;
 	struct fs *fs = ip->i_fs;
 	struct indir indirs[UFS_NIADDR + 2];
 	daddr_t newb, pref, nb;

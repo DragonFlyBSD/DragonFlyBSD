@@ -66,7 +66,7 @@ typedef enum buf_cmd {
 	BUF_CMD_FLUSH,
 } buf_cmd_t;
 
-struct buf {
+struct m_buf {
 	void *		b_data;
 	long		b_bufsize;
 	long		b_bcount;
@@ -78,15 +78,15 @@ struct buf {
 	struct m_vnode	*b_vp; /* DragonFly */
 	struct makefs_fsinfo *b_fs;
 
-	TAILQ_ENTRY(buf)	b_tailq;
+	TAILQ_ENTRY(m_buf)	b_tailq;
 };
 
 void		bcleanup(void);
 int		bread(struct m_vnode *, makefs_daddr_t, int, struct ucred *,
-    struct buf **);
-void		brelse(struct buf *);
-int		bwrite(struct buf *);
-struct buf *	getblk(struct m_vnode *, makefs_daddr_t, int, int, int, int);
+    struct m_buf **);
+void		brelse(struct m_buf *);
+int		bwrite(struct m_buf *);
+struct m_buf *	getblk(struct m_vnode *, makefs_daddr_t, int, int, int, int);
 
 #define	bdwrite(bp)	bwrite(bp)
 #define	clrbuf(bp)	memset((bp)->b_data, 0, (u_int)(bp)->b_bcount)

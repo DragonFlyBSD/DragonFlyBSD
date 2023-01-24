@@ -1241,7 +1241,7 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 	 * across the kernel disposal of the original buffer.
 	 */
 	if ((dio = chain->dio) != NULL && dio->bp) {
-		//struct buf *bp = dio->bp;
+		//struct m_buf *bp = dio->bp;
 
 		if (dio->psize == chain->bytes //&&
 		    /*(bp->b_flags & B_IOISSUED)*/) {

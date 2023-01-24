@@ -157,7 +157,7 @@ struct mount {
 };
 
 struct bio {
-	struct buf *bio_buf;
+	struct m_buf *bio_buf;
 	off_t bio_offset;
 };
 
@@ -658,7 +658,7 @@ vclrisdirty(struct m_vnode *vp)
 static __inline
 int
 vfsync(struct m_vnode *vp, int waitfor, int passes,
-	int (*checkdef)(struct buf *),
+	int (*checkdef)(struct m_buf *),
 	int (*waitoutput)(struct m_vnode *, struct thread *))
 {
 	return (0);
@@ -687,13 +687,13 @@ addaliasu(struct m_vnode *vp, int x, int y)
 
 static __inline
 void
-bheavy(struct buf *bp)
+bheavy(struct m_buf *bp)
 {
 }
 
 static __inline
 void
-bkvasync(struct buf *bp)
+bkvasync(struct m_buf *bp)
 {
 }
 
@@ -705,7 +705,7 @@ bwillwrite(int bytes)
 
 static __inline
 void
-BUF_KERNPROC(struct buf *bp)
+BUF_KERNPROC(struct m_buf *bp)
 {
 }
 

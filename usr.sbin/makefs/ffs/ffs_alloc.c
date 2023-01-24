@@ -65,7 +65,7 @@
 static int scanc(u_int, const u_char *, const u_char *, int);
 
 static makefs_daddr_t ffs_alloccg(struct inode *, int, makefs_daddr_t, int);
-static makefs_daddr_t ffs_alloccgblk(struct inode *, struct buf *, makefs_daddr_t);
+static makefs_daddr_t ffs_alloccgblk(struct inode *, struct m_buf *, makefs_daddr_t);
 static makefs_daddr_t ffs_hashalloc(struct inode *, u_int, makefs_daddr_t, int,
 		     makefs_daddr_t (*)(struct inode *, int, makefs_daddr_t, int));
 static int32_t ffs_mapsearch(struct fs *, struct cg *, makefs_daddr_t, int);
@@ -298,7 +298,7 @@ static makefs_daddr_t
 ffs_alloccg(struct inode *ip, int cg, makefs_daddr_t bpref, int size)
 {
 	struct cg *cgp;
-	struct buf *bp;
+	struct m_buf *bp;
 	makefs_daddr_t bno, blkno;
 	int error, frags, allocsiz, i;
 	struct fs *fs = ip->i_fs;
@@ -381,7 +381,7 @@ ffs_alloccg(struct inode *ip, int cg, makefs_daddr_t bpref, int size)
  * blocks may be fragmented by the routine that allocates them.
  */
 static makefs_daddr_t
-ffs_alloccgblk(struct inode *ip, struct buf *bp, makefs_daddr_t bpref)
+ffs_alloccgblk(struct inode *ip, struct m_buf *bp, makefs_daddr_t bpref)
 {
 	struct cg *cgp;
 	makefs_daddr_t blkno;
@@ -437,7 +437,7 @@ void
 ffs_blkfree(struct inode *ip, makefs_daddr_t bno, long size)
 {
 	struct cg *cgp;
-	struct buf *bp;
+	struct m_buf *bp;
 	int32_t fragno, cgbno;
 	int i, error, cg, blk, frags, bbase;
 	struct fs *fs = ip->i_fs;

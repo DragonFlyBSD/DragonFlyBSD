@@ -939,7 +939,7 @@ ffs_write_file(union dinode *din, uint32_t ino, void *buf, fsinfo_t *fsopts)
 	off_t	bufleft, chunk, offset;
 	ssize_t nread;
 	struct inode	in;
-	struct buf *	bp;
+	struct m_buf *	bp;
 	ffs_opt_t	*ffs_opts = fsopts->fs_specific;
 	struct m_vnode vp = { fsopts, NULL };
 

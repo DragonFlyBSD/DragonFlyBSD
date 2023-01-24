@@ -52,7 +52,7 @@
  * feature is used to keep track of dedupable blocks.
  */
 static int hammer2_io_cleanup_callback(hammer2_io_t *dio, void *arg);
-static void dio_write_stats_update(hammer2_io_t *dio, struct buf *bp);
+static void dio_write_stats_update(hammer2_io_t *dio, struct m_buf *bp);
 
 static int
 hammer2_io_cmp(hammer2_io_t *io1, hammer2_io_t *io2)
@@ -441,7 +441,7 @@ _hammer2_io_putblk(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS)
 {
 	hammer2_dev_t *hmp;
 	hammer2_io_t *dio;
-	struct buf *bp;
+	struct m_buf *bp;
 	off_t pbase;
 	int psize;
 	int dio_limit;
@@ -677,7 +677,7 @@ hammer2_io_cleanup(hammer2_dev_t *hmp, struct hammer2_io_tree *tree)
 char *
 hammer2_io_data(hammer2_io_t *dio, off_t lbase)
 {
-	struct buf *bp;
+	struct m_buf *bp;
 	int off;
 
 	bp = dio->bp;
@@ -885,7 +885,7 @@ hammer2_io_dedup_assert(hammer2_dev_t *hmp, hammer2_off_t data_off, u_int bytes)
 
 static
 void
-dio_write_stats_update(hammer2_io_t *dio, struct buf *bp)
+dio_write_stats_update(hammer2_io_t *dio, struct m_buf *bp)
 {
 	/*
 	if (bp->b_flags & B_DELWRI)

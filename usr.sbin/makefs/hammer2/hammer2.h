@@ -301,7 +301,7 @@ struct hammer2_io {
 	RB_ENTRY(hammer2_io) rbnode;	/* indexed by device offset */
 	struct hammer2_dev *hmp;
 	struct m_vnode	*devvp;
-	struct buf	*bp;
+	struct m_buf	*bp;
 	off_t		dbase;		/* offset of devvp within volumes */
 	off_t		pbase;
 	uint64_t	refs;
@@ -2008,13 +2008,13 @@ int hammer2_nsymlink(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int 
 /*
  * hammer2_buf.c
  */
-struct buf *getblkx(struct m_vnode *vp, off_t loffset, int size, int blkflags,
+struct m_buf *getblkx(struct m_vnode *vp, off_t loffset, int size, int blkflags,
 			int slptimeo);
-int breadx(struct m_vnode *vp, off_t loffset, int size, struct buf **bpp);
-int bread_kvabio(struct m_vnode *vp, off_t loffset, int size, struct buf **bpp);
-void bqrelse(struct buf *bp);
-int bawrite(struct buf *bp);
-int uiomovebp(struct buf *bp, caddr_t cp, size_t n, struct uio *uio);
+int breadx(struct m_vnode *vp, off_t loffset, int size, struct m_buf **bpp);
+int bread_kvabio(struct m_vnode *vp, off_t loffset, int size, struct m_buf **bpp);
+void bqrelse(struct m_buf *bp);
+int bawrite(struct m_buf *bp);
+int uiomovebp(struct m_buf *bp, caddr_t cp, size_t n, struct uio *uio);
 
 /*
  * More complex inlines

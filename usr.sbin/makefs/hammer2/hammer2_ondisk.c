@@ -453,7 +453,7 @@ hammer2_read_volume_header(struct m_vnode *devvp, const char *path,
 			   hammer2_volume_data_t *voldata)
 {
 	hammer2_volume_data_t *vd;
-	struct buf *bp = NULL;
+	struct m_buf *bp = NULL;
 	hammer2_crc32_t crc0, crc1;
 	int zone = -1;
 	int i;
