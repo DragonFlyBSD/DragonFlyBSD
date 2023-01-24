@@ -67,7 +67,7 @@ typedef enum buf_cmd {
 } buf_cmd_t;
 
 struct m_buf {
-	void *		b_data;
+	char *		b_data;
 	long		b_bufsize;
 	long		b_bcount;
 	makefs_daddr_t	b_blkno;
