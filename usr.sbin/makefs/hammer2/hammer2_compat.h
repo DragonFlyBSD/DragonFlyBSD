@@ -178,57 +178,57 @@ struct vop_generic_args {
 };
 
 struct vop_open_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	int a_mode;
 	struct ucred *a_cred;
 	struct file **a_fpp;
 };
 
 struct vop_close_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	int a_fflag;
 	struct file *a_fp;
 };
 
 struct vop_access_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	int a_mode;
 	int a_flags;
 	struct ucred *a_cred;
 };
 
 struct vop_getattr_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	struct vattr *a_vap;
 };
 
 struct vop_getattr_lite_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	struct vattr_lite *a_lvap;
 };
 
 struct vop_setattr_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	struct vattr *a_vap;
 	struct ucred *a_cred;
 };
 
 struct vop_read_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	struct uio *a_uio;
 	int a_ioflag;
 	struct ucred *a_cred;
 };
 
 struct vop_write_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	struct uio *a_uio;
 	int a_ioflag;
 	struct ucred *a_cred;
 };
 
 struct vop_ioctl_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	u_long a_command;
 	caddr_t a_data;
 	int a_fflag;
@@ -237,18 +237,18 @@ struct vop_ioctl_args {
 };
 
 struct vop_kqfilter_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	struct knote *a_kn;
 };
 
 struct vop_fsync_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	int a_waitfor;
 	int a_flags;
 };
 
 struct vop_readdir_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	struct uio *a_uio;
 	struct ucred *a_cred;
 	int *a_eofflag;
@@ -257,21 +257,21 @@ struct vop_readdir_args {
 };
 
 struct vop_readlink_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	struct uio *a_uio;
 	struct ucred *a_cred;
 };
 
 struct vop_inactive_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 };
 
 struct vop_reclaim_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 };
 
 struct vop_bmap_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	off_t a_loffset;
 	off_t *a_doffsetp;
 	int *a_runp;
@@ -280,12 +280,12 @@ struct vop_bmap_args {
 };
 
 struct vop_strategy_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	struct bio *a_bio;
 };
 
 struct vop_advlock_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	caddr_t a_id;
 	int a_op;
 	struct flock *a_fl;
@@ -293,7 +293,7 @@ struct vop_advlock_args {
 };
 
 struct vop_getpages_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	int a_count;
 	int a_reqpage;
 	//vm_ooffset_t a_offset;
@@ -301,7 +301,7 @@ struct vop_getpages_args {
 };
 
 struct vop_putpages_args {
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	int a_count;
 	int a_flags;
 	int *a_rtvals;
@@ -316,64 +316,64 @@ struct vop_mountctl_args {
 	void *a_buf;
 	int a_buflen;
 	int *a_res;
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 };
 
 struct vop_markatime_args {
 	int a_op;
-	struct vnode *a_vp;
+	struct m_vnode *a_vp;
 	struct ucred *a_cred;
 };
 
 struct vop_nresolve_args {
 	struct nchandle *a_nch;
-	struct vnode *a_dvp;
+	struct m_vnode *a_dvp;
 	struct ucred *a_cred;
-	struct vnode **a_vpp; /* makefs */
+	struct m_vnode **a_vpp; /* makefs */
 };
 
 struct vop_nlookupdotdot_args {
-	struct vnode *a_dvp;
-	struct vnode **a_vpp;
+	struct m_vnode *a_dvp;
+	struct m_vnode **a_vpp;
 	struct ucred *a_cred;
 	char **a_fakename;
 };
 
 struct vop_ncreate_args {
 	struct nchandle *a_nch;
-	struct vnode *a_dvp;
-	struct vnode **a_vpp;
+	struct m_vnode *a_dvp;
+	struct m_vnode **a_vpp;
 	struct ucred *a_cred;
 	struct vattr *a_vap;
 };
 
 struct vop_nmkdir_args {
 	struct nchandle *a_nch;
-	struct vnode *a_dvp;
-	struct vnode **a_vpp;
+	struct m_vnode *a_dvp;
+	struct m_vnode **a_vpp;
 	struct ucred *a_cred;
 	struct vattr *a_vap;
 };
 
 struct vop_nmknod_args {
 	struct nchandle *a_nch;
-	struct vnode *a_dvp;
-	struct vnode **a_vpp;
+	struct m_vnode *a_dvp;
+	struct m_vnode **a_vpp;
 	struct ucred *a_cred;
 	struct vattr *a_vap;
 };
 
 struct vop_nlink_args {
 	struct nchandle *a_nch;
-	struct vnode *a_dvp;
-	struct vnode *a_vp;
+	struct m_vnode *a_dvp;
+	struct m_vnode *a_vp;
 	struct ucred *a_cred;
 };
 
 struct vop_nsymlink_args {
 	struct nchandle *a_nch;
-	struct vnode *a_dvp;
-	struct vnode **a_vpp;
+	struct m_vnode *a_dvp;
+	struct m_vnode **a_vpp;
 	struct ucred *a_cred;
 	struct vattr *a_vap;
 	char *a_target;
@@ -381,21 +381,21 @@ struct vop_nsymlink_args {
 
 struct vop_nremove_args {
 	struct nchandle *a_nch;
-	struct vnode *a_dvp;
+	struct m_vnode *a_dvp;
 	struct ucred *a_cred;
 };
 
 struct vop_nrmdir_args {
 	struct nchandle *a_nch;
-	struct vnode *a_dvp;
+	struct m_vnode *a_dvp;
 	struct ucred *a_cred;
 };
 
 struct vop_nrename_args {
 	struct nchandle *a_fnch;
 	struct nchandle *a_tnch;
-	struct vnode *a_fdvp;
-	struct vnode *a_tdvp;
+	struct m_vnode *a_fdvp;
+	struct m_vnode *a_tdvp;
 	struct ucred *a_cred;
 };
 
@@ -521,7 +521,7 @@ trigger_syncer(struct mount *mp)
 
 static __inline
 int
-vfs_mountedon(struct vnode *vp)
+vfs_mountedon(struct m_vnode *vp)
 {
 	return (0);
 }
@@ -536,17 +536,17 @@ vop_helper_create_uid(struct mount *mp, mode_t dmode, uid_t duid,
 
 static __inline
 int
-vinitvmio(struct vnode *vp, off_t filesize, int blksize, int boff)
+vinitvmio(struct m_vnode *vp, off_t filesize, int blksize, int boff)
 {
 	return (0);
 }
 
 static __inline
 int
-getnewvnode(enum vtagtype tag, struct mount *mp, struct vnode **vpp,
+getnewvnode(enum vtagtype tag, struct mount *mp, struct m_vnode **vpp,
 		int lktimeout, int lkflags)
 {
-	struct vnode *vp;
+	struct m_vnode *vp;
 
 	vp = ecalloc(1, sizeof(*vp));
 	vp->v_logical = 1;
@@ -561,7 +561,7 @@ getnewvnode(enum vtagtype tag, struct mount *mp, struct vnode **vpp,
 /* not freesomevnodes() */
 static __inline
 void
-freevnode(struct vnode *vp)
+freevnode(struct m_vnode *vp)
 {
 	assert(vp->v_malloced);
 	free(vp);
@@ -571,109 +571,109 @@ freevnode(struct vnode *vp)
 
 static __inline
 int
-vn_lock(struct vnode *vp, int flags)
+vn_lock(struct m_vnode *vp, int flags)
 {
 	return (0);
 }
 
 static __inline
 void
-vn_unlock(struct vnode *vp)
+vn_unlock(struct m_vnode *vp)
 {
 }
 
 static __inline
 int
-vget(struct vnode *vp, int flags)
+vget(struct m_vnode *vp, int flags)
 {
 	return (0);
 }
 
 static __inline
 void
-vput(struct vnode *vp)
+vput(struct m_vnode *vp)
 {
 }
 
 static __inline
 void
-vrele(struct vnode *vp)
+vrele(struct m_vnode *vp)
 {
 }
 
 static __inline
 void
-vhold(struct vnode *vp)
+vhold(struct m_vnode *vp)
 {
 }
 
 static __inline
 void
-vdrop(struct vnode *vp)
+vdrop(struct m_vnode *vp)
 {
 }
 
 static __inline
 void
-vx_put(struct vnode *vp)
+vx_put(struct m_vnode *vp)
 {
 }
 
 static __inline
 void
-vx_downgrade(struct vnode *vp)
+vx_downgrade(struct m_vnode *vp)
 {
 }
 
 static __inline
 void
-vfinalize(struct vnode *vp)
+vfinalize(struct m_vnode *vp)
 {
 }
 
 static __inline
 void
-vsetflags(struct vnode *vp, int flags)
+vsetflags(struct m_vnode *vp, int flags)
 {
 }
 
 static __inline
 void
-vclrflags(struct vnode *vp, int flags)
+vclrflags(struct m_vnode *vp, int flags)
 {
 }
 
 static __inline
 void
-vsetisdirty(struct vnode *vp)
+vsetisdirty(struct m_vnode *vp)
 {
 }
 
 static __inline
 void
-vclrisdirty(struct vnode *vp)
+vclrisdirty(struct m_vnode *vp)
 {
 }
 
 static __inline
 int
-vfsync(struct vnode *vp, int waitfor, int passes,
+vfsync(struct m_vnode *vp, int waitfor, int passes,
 	int (*checkdef)(struct buf *),
-	int (*waitoutput)(struct vnode *, struct thread *))
+	int (*waitoutput)(struct m_vnode *, struct thread *))
 {
 	return (0);
 }
 
 static __inline
 int
-nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff, int flags)
+nvtruncbuf(struct m_vnode *vp, off_t length, int blksize, int boff, int flags)
 {
 	return (0);
 }
 
 static __inline
 int
-nvextendbuf(struct vnode *vp, off_t olength, off_t nlength, int oblksize,
+nvextendbuf(struct m_vnode *vp, off_t olength, off_t nlength, int oblksize,
 		int nblksize, int oboff, int nboff, int flags)
 {
 	return (0);
@@ -681,7 +681,7 @@ nvextendbuf(struct vnode *vp, off_t olength, off_t nlength, int oblksize,
 
 static __inline
 void
-addaliasu(struct vnode *vp, int x, int y)
+addaliasu(struct m_vnode *vp, int x, int y)
 {
 }
 
@@ -718,7 +718,7 @@ bio_track_wait(struct bio_track *track, int slp_flags, int slp_timo)
 
 static __inline
 void
-cache_setvp(struct nchandle *nch, struct vnode *vp)
+cache_setvp(struct nchandle *nch, struct m_vnode *vp)
 {
 }
 

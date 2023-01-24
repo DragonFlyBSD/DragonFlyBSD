@@ -128,7 +128,7 @@ hammer2_vop_strategy(struct vop_strategy_args *ap)
  * Return the largest contiguous physical disk range for the logical
  * request, in bytes.
  *
- * (struct vnode *vp, off_t loffset, off_t *doffsetp, int *runp, int *runb)
+ * (struct m_vnode *vp, off_t loffset, off_t *doffsetp, int *runp, int *runb)
  *
  * Basically disabled, the logical buffer write thread has to deal with
  * buffers one-at-a-time.  Note that this should not prevent cluster_read()

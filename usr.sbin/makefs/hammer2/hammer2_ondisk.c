@@ -55,9 +55,9 @@
 
 #if 0
 static int
-hammer2_lookup_device(const char *path, int rootmount, struct vnode **devvp)
+hammer2_lookup_device(const char *path, int rootmount, struct m_vnode **devvp)
 {
-	struct vnode *vp = NULL;
+	struct m_vnode *vp = NULL;
 	struct nlookupdata nd;
 	int error = 0;
 
@@ -102,7 +102,7 @@ hammer2_open_devvp(const hammer2_devvp_list_t *devvpl, int ronly)
 {
 #if 0
 	hammer2_devvp_t *e;
-	struct vnode *devvp;
+	struct m_vnode *devvp;
 	const char *path;
 	int count, error;
 
@@ -141,7 +141,7 @@ hammer2_close_devvp(const hammer2_devvp_list_t *devvpl, int ronly)
 {
 #if 0
 	hammer2_devvp_t *e;
-	struct vnode *devvp;
+	struct m_vnode *devvp;
 
 	TAILQ_FOREACH(e, devvpl, entry) {
 		devvp = e->devvp;
@@ -160,7 +160,7 @@ hammer2_close_devvp(const hammer2_devvp_list_t *devvpl, int ronly)
 }
 
 int
-hammer2_init_devvp(struct vnode *devvp, hammer2_devvp_list_t *devvpl)
+hammer2_init_devvp(struct m_vnode *devvp, hammer2_devvp_list_t *devvpl)
 {
 	hammer2_devvp_t *e;
 	int error = 0;
@@ -449,7 +449,7 @@ hammer2_verify_vfsvolumes(const hammer2_vfsvolume_t *volumes,
  * Returns zone# of returned volume header or < 0 on failure.
  */
 static int
-hammer2_read_volume_header(struct vnode *devvp, const char *path,
+hammer2_read_volume_header(struct m_vnode *devvp, const char *path,
 			   hammer2_volume_data_t *voldata)
 {
 	hammer2_volume_data_t *vd;
@@ -558,12 +558,12 @@ hammer2_init_vfsvolumes(struct mount *mp, const hammer2_devvp_list_t *devvpl,
 		     hammer2_vfsvolume_t *volumes,
 		     hammer2_volume_data_t *rootvoldata,
 		     int *rootvolzone,
-		     struct vnode **rootvoldevvp)
+		     struct m_vnode **rootvoldevvp)
 {
 	hammer2_devvp_t *e;
 	hammer2_volume_data_t *voldata;
 	hammer2_vfsvolume_t *vol;
-	struct vnode *devvp;
+	struct m_vnode *devvp;
 	const char *path;
 	uuid_t fsid, fstype;
 	int i, zone, error = 0, version = -1, nvolumes = 0;

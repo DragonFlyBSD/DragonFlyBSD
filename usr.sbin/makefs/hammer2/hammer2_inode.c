@@ -659,11 +659,11 @@ hammer2_inode_drop(hammer2_inode_t *ip)
  * Great care must be taken to avoid deadlocks and vnode acquisition/reclaim
  * races.
  */
-struct vnode *
+struct m_vnode *
 hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 {
 	hammer2_pfs_t *pmp;
-	struct vnode *vp;
+	struct m_vnode *vp;
 
 	pmp = ip->pmp;
 	KKASSERT(pmp != NULL);
@@ -1535,10 +1535,10 @@ hammer2_inode_inode_count(const hammer2_inode_t *ip)
  * left intact with nlinks == 0;
  */
 int
-hammer2_inode_unlink_finisher(hammer2_inode_t *ip, struct vnode **vprecyclep)
+hammer2_inode_unlink_finisher(hammer2_inode_t *ip, struct m_vnode **vprecyclep)
 {
 	hammer2_pfs_t *pmp;
-	struct vnode *vp;
+	struct m_vnode *vp;
 	int error;
 
 	pmp = ip->pmp;
@@ -1609,7 +1609,7 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, struct vnode **vprecyclep)
  * due to random system activity or a umount).
  */
 void
-hammer2_inode_vprecycle(struct vnode *vp)
+hammer2_inode_vprecycle(struct m_vnode *vp)
 {
 	if (vget(vp, LK_EXCLUSIVE) == 0) {
 		vfinalize(vp);
@@ -1819,7 +1819,7 @@ vflush(struct mount *mp, int rootrefs, int flags)
 {
 	hammer2_pfs_t *pmp = MPTOPMP(mp);
 	struct hammer2_inode *ip, *tmp;
-	struct vnode *vp;
+	struct m_vnode *vp;
 	hammer2_key_t count_before, count_after, count_delta;
 
 	hammer2_spin_ex(&pmp->inum_spin);

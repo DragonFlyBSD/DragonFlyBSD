@@ -941,7 +941,7 @@ ffs_write_file(union dinode *din, uint32_t ino, void *buf, fsinfo_t *fsopts)
 	struct inode	in;
 	struct buf *	bp;
 	ffs_opt_t	*ffs_opts = fsopts->fs_specific;
-	struct vnode vp = { fsopts, NULL };
+	struct m_vnode vp = { fsopts, NULL };
 
 	assert (din != NULL);
 	assert (buf != NULL);

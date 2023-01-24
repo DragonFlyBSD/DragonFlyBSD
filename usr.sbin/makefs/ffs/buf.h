@@ -51,7 +51,7 @@
 struct makefs_fsinfo;
 struct ucred;
 
-struct vnode {
+struct m_vnode {
 	struct makefs_fsinfo *fs;
 	void *v_data;
 	enum vtype v_type; /* DragonFly */
@@ -75,18 +75,18 @@ struct buf {
 	makefs_daddr_t	b_loffset; /* DragonFly */
 	buf_cmd_t	b_cmd; /* DragonFly */
 	int		b_is_hammer2; /* DragonFly */
-	struct vnode	*b_vp; /* DragonFly */
+	struct m_vnode	*b_vp; /* DragonFly */
 	struct makefs_fsinfo *b_fs;
 
 	TAILQ_ENTRY(buf)	b_tailq;
 };
 
 void		bcleanup(void);
-int		bread(struct vnode *, makefs_daddr_t, int, struct ucred *,
+int		bread(struct m_vnode *, makefs_daddr_t, int, struct ucred *,
     struct buf **);
 void		brelse(struct buf *);
 int		bwrite(struct buf *);
-struct buf *	getblk(struct vnode *, makefs_daddr_t, int, int, int, int);
+struct buf *	getblk(struct m_vnode *, makefs_daddr_t, int, int, int, int);
 
 #define	bdwrite(bp)	bwrite(bp)
 #define	clrbuf(bp)	memset((bp)->b_data, 0, (u_int)(bp)->b_bcount)

@@ -60,11 +60,11 @@
 
 static void hammer2_dump_fsinfo(fsinfo_t *);
 static int hammer2_create_image(const char *, fsinfo_t *);
-static int hammer2_populate_dir(struct vnode *, const char *, fsnode *,
+static int hammer2_populate_dir(struct m_vnode *, const char *, fsnode *,
     fsnode *, fsinfo_t *, int);
 static void hammer2_validate(const char *, fsnode *, fsinfo_t *);
 static void hammer2_size_dir(fsnode *, fsinfo_t *);
-static int hammer2_write_file(struct vnode *, const char *, fsnode *);
+static int hammer2_write_file(struct m_vnode *, const char *, fsnode *);
 
 void
 hammer2_prep_opts(fsinfo_t *fsopts)
@@ -190,7 +190,7 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	hammer2_makefs_options_t *h2_opt = fsopts->fs_specific;
 	struct mount mp;
 	struct hammer2_mount_info info;
-	struct vnode devvp, *vroot;
+	struct m_vnode devvp, *vroot;
 	hammer2_inode_t *iroot;
 	struct timeval start;
 	int error;
@@ -616,7 +616,7 @@ hammer2_size_dir(fsnode *root, fsinfo_t *fsopts)
 }
 
 static void
-hammer2_print(const struct vnode *dvp, const struct vnode *vp,
+hammer2_print(const struct m_vnode *dvp, const struct m_vnode *vp,
     const fsnode *node, int depth, const char *msg)
 {
 	if (debug & DEBUG_FS_POPULATE) {
@@ -657,11 +657,11 @@ hammer2_print(const struct vnode *dvp, const struct vnode *vp,
 }
 
 static int
-hammer2_populate_dir(struct vnode *dvp, const char *dir, fsnode *root,
+hammer2_populate_dir(struct m_vnode *dvp, const char *dir, fsnode *root,
     fsnode *parent, fsinfo_t *fsopts, int depth)
 {
 	fsnode *cur;
-	struct vnode *vp;
+	struct m_vnode *vp;
 	struct stat st;
 	char f[MAXPATHLEN];
 	const char *path;
@@ -841,7 +841,7 @@ hammer2_populate_dir(struct vnode *dvp, const char *dir, fsnode *root,
 }
 
 static int
-hammer2_write_file(struct vnode *vp, const char *path, fsnode *node)
+hammer2_write_file(struct m_vnode *vp, const char *path, fsnode *node)
 {
 	struct stat *st = &node->inode->st;
 	size_t nsize, bufsize;

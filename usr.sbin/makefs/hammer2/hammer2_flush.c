@@ -1307,7 +1307,7 @@ hammer2_xop_inode_flush(hammer2_xop_t *arg, void *scratch __unused, int clindex)
 	hammer2_dev_t *hmp;
 	hammer2_pfs_t *pmp;
 	hammer2_devvp_t *e;
-	struct vnode *devvp;
+	struct m_vnode *devvp;
 	int flush_error = 0;
 	int fsync_error = 0;
 	int total_error = 0;

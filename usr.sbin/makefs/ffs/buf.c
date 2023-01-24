@@ -56,7 +56,7 @@
 static TAILQ_HEAD(buftailhead,buf) buftail;
 
 int
-bread(struct vnode *vp, makefs_daddr_t blkno, int size, struct ucred *u1 __unused,
+bread(struct m_vnode *vp, makefs_daddr_t blkno, int size, struct ucred *u1 __unused,
     struct buf **bpp)
 {
 	off_t	offset;
@@ -199,7 +199,7 @@ bcleanup(void)
 }
 
 struct buf *
-getblk(struct vnode *vp, makefs_daddr_t blkno, int size, int u1 __unused,
+getblk(struct m_vnode *vp, makefs_daddr_t blkno, int size, int u1 __unused,
     int u2 __unused, int u3 __unused)
 {
 	static int buftailinitted;

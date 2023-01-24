@@ -39,7 +39,7 @@
 #include "makefs.h"
 
 struct buf *
-getblkx(struct vnode *vp, off_t loffset, int size, int blkflags, int slptimeo)
+getblkx(struct m_vnode *vp, off_t loffset, int size, int blkflags, int slptimeo)
 {
 	struct buf *bp;
 	makefs_daddr_t blkno = loffset / DEV_BSIZE;
@@ -55,7 +55,7 @@ getblkx(struct vnode *vp, off_t loffset, int size, int blkflags, int slptimeo)
 }
 
 int
-breadx(struct vnode *vp, off_t loffset, int size, struct buf **bpp)
+breadx(struct m_vnode *vp, off_t loffset, int size, struct buf **bpp)
 {
 	struct buf *bp;
 	ssize_t ret;
@@ -97,7 +97,7 @@ breadx(struct vnode *vp, off_t loffset, int size, struct buf **bpp)
 }
 
 int
-bread_kvabio(struct vnode *vp, off_t loffset, int size, struct buf **bpp)
+bread_kvabio(struct m_vnode *vp, off_t loffset, int size, struct buf **bpp)
 {
 	return (breadx(vp, loffset, size, bpp));
 }

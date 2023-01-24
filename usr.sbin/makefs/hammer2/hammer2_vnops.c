@@ -79,7 +79,7 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 {
 #if 0
 	hammer2_inode_t *ip;
-	struct vnode *vp;
+	struct m_vnode *vp;
 
 	vp = ap->a_vp;
 	ip = VTOI(vp);
@@ -143,7 +143,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 {
 	hammer2_inode_t *ip;
 	hammer2_pfs_t *pmp;
-	struct vnode *vp;
+	struct m_vnode *vp;
 
 	vp = ap->a_vp;
 	ip = VTOI(vp);
@@ -202,7 +202,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 }
 
 int
-hammer2_reclaim(struct vnode *vp)
+hammer2_reclaim(struct m_vnode *vp)
 {
 	struct vop_reclaim_args ap = {
 		.a_vp = vp,
@@ -223,7 +223,7 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 {
 #if 0
 	hammer2_inode_t *ip;
-	struct vnode *vp;
+	struct m_vnode *vp;
 	int error1;
 	int error2;
 
@@ -326,7 +326,7 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 #if 0
 	hammer2_pfs_t *pmp;
 	hammer2_inode_t *ip;
-	struct vnode *vp;
+	struct m_vnode *vp;
 	struct vattr *vap;
 	int update;
 
@@ -386,7 +386,7 @@ hammer2_vop_getattr_lite(struct vop_getattr_lite_args *ap)
 #if 0
 	hammer2_pfs_t *pmp;
 	hammer2_inode_t *ip;
-	struct vnode *vp;
+	struct m_vnode *vp;
 	struct vattr_lite *lvap;
 	int update;
 
@@ -439,7 +439,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 {
 #if 0
 	hammer2_inode_t *ip;
-	struct vnode *vp;
+	struct m_vnode *vp;
 	struct vattr *vap;
 	int error;
 	int kflags = 0;
@@ -801,7 +801,7 @@ int
 hammer2_vop_readlink(struct vop_readlink_args *ap)
 {
 #if 0
-	struct vnode *vp;
+	struct m_vnode *vp;
 	hammer2_inode_t *ip;
 	int error;
 
@@ -821,7 +821,7 @@ int
 hammer2_vop_read(struct vop_read_args *ap)
 {
 #if 0
-	struct vnode *vp;
+	struct m_vnode *vp;
 	hammer2_inode_t *ip;
 	struct uio *uio;
 	int error;
@@ -857,7 +857,7 @@ hammer2_vop_write(struct vop_write_args *ap)
 {
 	hammer2_inode_t *ip;
 	//thread_t td;
-	struct vnode *vp;
+	struct m_vnode *vp;
 	struct uio *uio;
 	int error;
 	int seqcount;
@@ -929,7 +929,7 @@ hammer2_vop_write(struct vop_write_args *ap)
 }
 
 int
-hammer2_write(struct vnode *vp, void *buf, size_t size, off_t offset)
+hammer2_write(struct m_vnode *vp, void *buf, size_t size, off_t offset)
 {
 	assert(buf);
 	assert(size > 0);
@@ -1288,7 +1288,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 			hammer2_inode_chain_sync(ip);
 		hammer2_mtx_unlock(&ip->lock);
 	} else if (modified) {
-		struct vnode *vp = ip->vp;
+		struct m_vnode *vp = ip->vp;
 
 		hammer2_mtx_ex(&ip->lock);
 		hammer2_inode_modify(ip);
@@ -1450,7 +1450,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	hammer2_inode_t *ip;
 	hammer2_inode_t *dip;
 	struct namecache *ncp;
-	struct vnode *vp;
+	struct m_vnode *vp;
 	int error;
 
 	dip = VTOI(ap->a_dvp);
@@ -1518,7 +1518,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 }
 
 int
-hammer2_nresolve(struct vnode *dvp, struct vnode **vpp, char *name, int nlen)
+hammer2_nresolve(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen)
 {
 	*vpp = NULL;
 	struct namecache nc = {
@@ -1649,7 +1649,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 }
 
 int
-hammer2_nmkdir(struct vnode *dvp, struct vnode **vpp, char *name, int nlen)
+hammer2_nmkdir(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen)
 {
 	struct namecache nc = {
 		.nc_name = name,
@@ -1810,7 +1810,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 }
 
 int
-hammer2_nlink(struct vnode *dvp, struct vnode *vp, char *name, int nlen)
+hammer2_nlink(struct m_vnode *dvp, struct m_vnode *vp, char *name, int nlen)
 {
 	struct namecache nc = {
 		.nc_name = name,
@@ -1914,7 +1914,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 }
 
 int
-hammer2_ncreate(struct vnode *dvp, struct vnode **vpp, char *name, int nlen)
+hammer2_ncreate(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen)
 {
 	struct namecache nc = {
 		.nc_name = name,
@@ -2019,7 +2019,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 }
 
 int
-hammer2_nmknod(struct vnode *dvp, struct vnode **vpp, char *name, int nlen,
+hammer2_nmknod(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen,
 		int type)
 {
 	struct namecache nc = {
@@ -2160,7 +2160,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 }
 
 int
-hammer2_nsymlink(struct vnode *dvp, struct vnode **vpp, char *name, int nlen,
+hammer2_nsymlink(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen,
 			char *target)
 {
 	struct namecache nc = {
@@ -2200,7 +2200,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	hammer2_xop_unlink_t *xop;
 	hammer2_inode_t *dip;
 	hammer2_inode_t *ip;
-	struct vnode *vprecycle;
+	struct m_vnode *vprecycle;
 	struct namecache *ncp;
 	int error;
 
@@ -2309,7 +2309,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	hammer2_inode_t *dip;
 	hammer2_inode_t *ip;
 	struct namecache *ncp;
-	struct vnode *vprecycle;
+	struct m_vnode *vprecycle;
 	int error;
 
 	dip = VTOI(ap->a_dvp);
@@ -2393,7 +2393,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	hammer2_inode_t *tdip;	/* target directory */
 	hammer2_inode_t *ip;	/* file being renamed */
 	hammer2_inode_t *tip;	/* replaced target during rename or NULL */
-	struct vnode *vprecycle;
+	struct m_vnode *vprecycle;
 	const uint8_t *fname;
 	size_t fname_len;
 	const uint8_t *tname;
@@ -2698,7 +2698,7 @@ int
 hammer2_vop_kqfilter(struct vop_kqfilter_args *ap)
 {
 #if 0
-	struct vnode *vp = ap->a_vp;
+	struct m_vnode *vp = ap->a_vp;
 	struct knote *kn = ap->a_kn;
 
 	switch (kn->kn_filter) {
@@ -2728,7 +2728,7 @@ hammer2_vop_kqfilter(struct vop_kqfilter_args *ap)
 static void
 filt_hammer2detach(struct knote *kn)
 {
-	struct vnode *vp = (void *)kn->kn_hook;
+	struct m_vnode *vp = (void *)kn->kn_hook;
 
 	knote_remove(&vp->v_pollinfo.vpi_kqinfo.ki_note, kn);
 }
@@ -2736,7 +2736,7 @@ filt_hammer2detach(struct knote *kn)
 static int
 filt_hammer2read(struct knote *kn, long hint)
 {
-	struct vnode *vp = (void *)kn->kn_hook;
+	struct m_vnode *vp = (void *)kn->kn_hook;
 	hammer2_inode_t *ip = VTOI(vp);
 	off_t off;
 
@@ -2783,7 +2783,7 @@ hammer2_vop_markatime(struct vop_markatime_args *ap)
 {
 #if 0
 	hammer2_inode_t *ip;
-	struct vnode *vp;
+	struct m_vnode *vp;
 
 	vp = ap->a_vp;
 	ip = VTOI(vp);

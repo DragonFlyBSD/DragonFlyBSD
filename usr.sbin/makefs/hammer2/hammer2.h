@@ -300,7 +300,7 @@ RB_HEAD(hammer2_io_tree, hammer2_io);
 struct hammer2_io {
 	RB_ENTRY(hammer2_io) rbnode;	/* indexed by device offset */
 	struct hammer2_dev *hmp;
-	struct vnode	*devvp;
+	struct m_vnode	*devvp;
 	struct buf	*bp;
 	off_t		dbase;		/* offset of devvp within volumes */
 	off_t		pbase;
@@ -715,7 +715,7 @@ struct hammer2_inode {
 	hammer2_mtx_t		lock;		/* inode lock */
 	hammer2_mtx_t		truncate_lock;	/* prevent truncates */
 	struct hammer2_pfs	*pmp;		/* PFS mount */
-	struct vnode		*vp;
+	struct m_vnode		*vp;
 	hammer2_spin_t		cluster_spin;	/* update cluster */
 	hammer2_cluster_t	cluster;
 	//struct lockf		advlock;
@@ -1103,7 +1103,7 @@ typedef struct hammer2_xop_group hammer2_xop_group_t;
  */
 struct hammer2_devvp {
 	TAILQ_ENTRY(hammer2_devvp) entry;
-	struct vnode	*devvp;		/* device vnode */
+	struct m_vnode	*devvp;		/* device vnode */
 	char		*path;		/* device vnode path */
 	int		open;		/* 1 if devvp open */
 };
@@ -1138,7 +1138,7 @@ typedef struct hammer2_vfsvolume hammer2_vfsvolume_t;
  * the set of available clusters.
  */
 struct hammer2_dev {
-	struct vnode	*devvp;		/* device vnode for root volume */
+	struct m_vnode	*devvp;		/* device vnode for root volume */
 	int		ronly;		/* read-only mount */
 	int		mount_count;	/* number of actively mounted PFSs */
 	TAILQ_ENTRY(hammer2_dev) mntentry; /* hammer2_mntlist */
@@ -1504,7 +1504,7 @@ void hammer2_adjwritecounter(int btype, size_t bytes);
 /*
  * hammer2_inode.c
  */
-struct vnode *hammer2_igetv(hammer2_inode_t *ip, int *errorp);
+struct m_vnode *hammer2_igetv(hammer2_inode_t *ip, int *errorp);
 hammer2_inode_t *hammer2_inode_lookup(hammer2_pfs_t *pmp,
 			hammer2_tid_t inum);
 hammer2_inode_t *hammer2_inode_get(hammer2_pfs_t *pmp,
@@ -1542,8 +1542,8 @@ int hammer2_inode_chain_ins(hammer2_inode_t *ip);
 int hammer2_inode_chain_des(hammer2_inode_t *ip);
 int hammer2_inode_chain_sync(hammer2_inode_t *ip);
 int hammer2_inode_chain_flush(hammer2_inode_t *ip, int flags);
-int hammer2_inode_unlink_finisher(hammer2_inode_t *ip, struct vnode **vpp);
-void hammer2_inode_vprecycle(struct vnode *vp);
+int hammer2_inode_unlink_finisher(hammer2_inode_t *ip, struct m_vnode **vpp);
+void hammer2_inode_vprecycle(struct m_vnode *vp);
 int hammer2_dirent_create(hammer2_inode_t *dip, const char *name,
 			size_t name_len, hammer2_key_t inum, uint8_t type);
 
@@ -1904,9 +1904,9 @@ hammer2_pfs_t *hammer2_pfsalloc(hammer2_chain_t *chain,
 				const hammer2_inode_data_t *ripdata,
 				hammer2_dev_t *force_local);
 void hammer2_pfsdealloc(hammer2_pfs_t *pmp, int clindex, int destroying);
-int hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
-				ino_t ino, struct vnode **vpp);
-int hammer2_vfs_root(struct mount *mp, struct vnode **vpp);
+int hammer2_vfs_vget(struct mount *mp, struct m_vnode *dvp,
+				ino_t ino, struct m_vnode **vpp);
+int hammer2_vfs_root(struct mount *mp, struct m_vnode **vpp);
 
 void hammer2_lwinprog_ref(hammer2_pfs_t *pmp);
 void hammer2_lwinprog_drop(hammer2_pfs_t *pmp);
@@ -1923,7 +1923,7 @@ void hammer2_voldata_modify(hammer2_dev_t *hmp);
 int hammer2_vfs_init(void);
 int hammer2_vfs_uninit(void);
 
-int hammer2_vfs_mount(struct vnode *makefs_devvp, struct mount *mp,
+int hammer2_vfs_mount(struct m_vnode *makefs_devvp, struct mount *mp,
 			const char *label, const struct hammer2_mount_info *mi);
 int hammer2_vfs_unmount(struct mount *mp, int mntflags);
 
@@ -1982,36 +1982,36 @@ void hammer2_dedup_clear(hammer2_dev_t *hmp);
  */
 int hammer2_open_devvp(const hammer2_devvp_list_t *devvpl, int ronly);
 int hammer2_close_devvp(const hammer2_devvp_list_t *devvpl, int ronly);
-int hammer2_init_devvp(struct vnode *devvp, hammer2_devvp_list_t *devvpl);
+int hammer2_init_devvp(struct m_vnode *devvp, hammer2_devvp_list_t *devvpl);
 void hammer2_cleanup_devvp(hammer2_devvp_list_t *devvpl);
 int hammer2_init_vfsvolumes(struct mount *mp, const hammer2_devvp_list_t *devvpl,
 			hammer2_vfsvolume_t *volumes,
 			hammer2_volume_data_t *rootvoldata,
 			int *rootvolzone,
-			struct vnode **rootvoldevvp);
+			struct m_vnode **rootvoldevvp);
 hammer2_vfsvolume_t *hammer2_get_volume(hammer2_dev_t *hmp, hammer2_off_t offset);
 
 /*
  * hammer2_vnops.c
  */
-int hammer2_reclaim(struct vnode *vp);
-int hammer2_write(struct vnode *vp, void *buf, size_t size, off_t offset);
-int hammer2_nresolve(struct vnode *dvp, struct vnode **vpp, char *name, int nlen);
-int hammer2_nmkdir(struct vnode *dvp, struct vnode **vpp, char *name, int nlen);
-int hammer2_nlink(struct vnode *dvp, struct vnode *vp, char *name, int nlen);
-int hammer2_ncreate(struct vnode *dvp, struct vnode **vpp, char *name, int nlen);
-int hammer2_nmknod(struct vnode *dvp, struct vnode **vpp, char *name, int nlen,
+int hammer2_reclaim(struct m_vnode *vp);
+int hammer2_write(struct m_vnode *vp, void *buf, size_t size, off_t offset);
+int hammer2_nresolve(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen);
+int hammer2_nmkdir(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen);
+int hammer2_nlink(struct m_vnode *dvp, struct m_vnode *vp, char *name, int nlen);
+int hammer2_ncreate(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen);
+int hammer2_nmknod(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen,
 			int type);
-int hammer2_nsymlink(struct vnode *dvp, struct vnode **vpp, char *name, int nlen,
+int hammer2_nsymlink(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen,
 			char *target);
 
 /*
  * hammer2_buf.c
  */
-struct buf *getblkx(struct vnode *vp, off_t loffset, int size, int blkflags,
+struct buf *getblkx(struct m_vnode *vp, off_t loffset, int size, int blkflags,
 			int slptimeo);
-int breadx(struct vnode *vp, off_t loffset, int size, struct buf **bpp);
-int bread_kvabio(struct vnode *vp, off_t loffset, int size, struct buf **bpp);
+int breadx(struct m_vnode *vp, off_t loffset, int size, struct buf **bpp);
+int bread_kvabio(struct m_vnode *vp, off_t loffset, int size, struct buf **bpp);
 void bqrelse(struct buf *bp);
 int bawrite(struct buf *bp);
 int uiomovebp(struct buf *bp, caddr_t cp, size_t n, struct uio *uio);
@@ -2057,7 +2057,7 @@ _hammer2_xop_pdata(hammer2_xop_head_t *xop, const char *file, int line)
 
 static __inline
 void
-hammer2_knote(struct vnode *vp, int flags)
+hammer2_knote(struct m_vnode *vp, int flags)
 {
 	if (flags)
 		KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, flags);

@@ -207,16 +207,16 @@ static int hammer2_remount(hammer2_dev_t *, struct mount *, char *,
 static int hammer2_recovery(hammer2_dev_t *hmp);
 /*
 static int hammer2_vfs_unmount(struct mount *mp, int mntflags);
-static int hammer2_vfs_root(struct mount *mp, struct vnode **vpp);
+static int hammer2_vfs_root(struct mount *mp, struct m_vnode **vpp);
 */
 static int hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp,
 				struct ucred *cred);
 static int hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp,
 				struct ucred *cred);
 /*
-static int hammer2_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
-				struct fid *fhp, struct vnode **vpp);
-static int hammer2_vfs_vptofh(struct vnode *vp, struct fid *fhp);
+static int hammer2_vfs_fhtovp(struct mount *mp, struct m_vnode *rootvp,
+				struct fid *fhp, struct m_vnode **vpp);
+static int hammer2_vfs_vptofh(struct m_vnode *vp, struct fid *fhp);
 static int hammer2_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 				int *exflagsp, struct ucred **credanonp);
 static int hammer2_vfs_modifying(struct mount *mp);
@@ -971,7 +971,7 @@ again:
  *		!0	error number
  */
 int
-hammer2_vfs_mount(struct vnode *makefs_devvp, struct mount *mp,
+hammer2_vfs_mount(struct m_vnode *makefs_devvp, struct mount *mp,
 		  const char *label, const struct hammer2_mount_info *mi)
 {
 	struct hammer2_mount_info info = *mi;
@@ -1051,7 +1051,7 @@ next_hmp:
 		 */
 		if (hmp == NULL) {
 			TAILQ_FOREACH(e, &devvpl, entry) {
-				struct vnode *devvp = e->devvp;
+				struct m_vnode *devvp = e->devvp;
 				KKASSERT(devvp);
 				error = vfs_mountedon(devvp);
 				if (error) {
@@ -1547,7 +1547,7 @@ hammer2_remount(hammer2_dev_t *hmp, struct mount *mp, char *path __unused,
 		struct ucred *cred)
 {
 	hammer2_volume_t *vol;
-	struct vnode *devvp;
+	struct m_vnode *devvp;
 	int i, error, result = 0;
 
 	if (!(hmp->ronly && (mp->mnt_kern_flag & MNTK_WANTRDWR)))
@@ -1854,8 +1854,8 @@ again:
 }
 
 int
-hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
-		 ino_t ino, struct vnode **vpp)
+hammer2_vfs_vget(struct mount *mp, struct m_vnode *dvp,
+		 ino_t ino, struct m_vnode **vpp)
 {
 	hammer2_xop_lookup_t *xop;
 	hammer2_pfs_t *pmp;
@@ -1904,10 +1904,10 @@ hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
 }
 
 int
-hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
+hammer2_vfs_root(struct mount *mp, struct m_vnode **vpp)
 {
 	hammer2_pfs_t *pmp;
-	struct vnode *vp;
+	struct m_vnode *vp;
 	int error;
 
 	pmp = MPTOPMP(mp);
@@ -2412,7 +2412,7 @@ hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 	hammer2_inode_t *ip;
 	hammer2_depend_t *depend;
 	hammer2_depend_t *depend_next;
-	struct vnode *vp;
+	struct m_vnode *vp;
 	uint32_t pass2;
 	int error;
 	int wakecount;
@@ -2746,7 +2746,7 @@ restart:
 #if 0
 static
 int
-hammer2_vfs_vptofh(struct vnode *vp, struct fid *fhp)
+hammer2_vfs_vptofh(struct m_vnode *vp, struct fid *fhp)
 {
 	hammer2_inode_t *ip;
 
@@ -2762,8 +2762,8 @@ hammer2_vfs_vptofh(struct vnode *vp, struct fid *fhp)
 
 static
 int
-hammer2_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
-	       struct fid *fhp, struct vnode **vpp)
+hammer2_vfs_fhtovp(struct mount *mp, struct m_vnode *rootvp,
+	       struct fid *fhp, struct m_vnode **vpp)
 {
 	hammer2_tid_t inum;
 	int error;
