@@ -134,15 +134,12 @@ int
 hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 {
 	hammer2_inode_t *ip;
-	hammer2_pfs_t *pmp;
 	struct vnode *vp;
 
 	vp = ap->a_vp;
 	ip = VTOI(vp);
 	if (ip == NULL)
 		return(0);
-
-	pmp = ip->pmp;
 
 	/*
 	 * NOTE! We do not attempt to flush chains here, flushing is

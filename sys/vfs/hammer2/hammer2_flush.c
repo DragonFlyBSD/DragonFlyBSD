@@ -361,7 +361,6 @@ int
 hammer2_flush(hammer2_chain_t *chain, int flags)
 {
 	hammer2_flush_info_t info;
-	hammer2_dev_t *hmp;
 	int loops;
 
 	/*
@@ -388,7 +387,6 @@ hammer2_flush(hammer2_chain_t *chain, int flags)
 	 * chain.
 	 */
 	hammer2_chain_ref(chain);
-	hmp = chain->hmp;
 	loops = 0;
 
 	for (;;) {

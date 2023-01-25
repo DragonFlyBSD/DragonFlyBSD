@@ -551,7 +551,6 @@ hammer2_xop_strategy_write(hammer2_xop_t *arg, void *scratch, int clindex)
 	int error;
 	int lblksize;
 	int pblksize;
-	hammer2_off_t bio_offset;
 	char *bio_data;
 
 	/*
@@ -570,7 +569,6 @@ hammer2_xop_strategy_write(hammer2_xop_t *arg, void *scratch, int clindex)
 	bio = xop->bio;			/* ephermal */
 	bp = bio->bio_buf;		/* ephermal */
 	ip = xop->head.ip1;		/* retained by ref */
-	bio_offset = bio->bio_offset;
 	bio_data = scratch;
 
 	/* hammer2_trans_init(parent->hmp->spmp, HAMMER2_TRANS_BUFCACHE); */
