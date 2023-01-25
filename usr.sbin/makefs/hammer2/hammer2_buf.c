@@ -74,21 +74,21 @@ breadx(struct m_vnode *vp, off_t loffset, int size, struct m_buf **bpp)
 
 	if (lseek(bp->b_fs->fd, bp->b_loffset, SEEK_SET) == -1)
 		err(1, "%s: lseek vp %p offset 0x%016jx",
-			__func__, vp, bp->b_loffset);
+			__func__, vp, (intmax_t)bp->b_loffset);
 
 	ret = read(bp->b_fs->fd, bp->b_data, bp->b_bcount);
 	if (debug & DEBUG_BUF_BREAD)
 		printf("%s: read vp %p offset 0x%016jx size 0x%jx -> 0x%jx\n",
-			__func__, vp, bp->b_loffset, bp->b_bcount, ret);
+			__func__, vp, (intmax_t)bp->b_loffset, bp->b_bcount, ret);
 
 	if (ret == -1) {
 		err(1, "%s: read vp %p offset 0x%016jx size 0x%jx",
-			__func__, vp, bp->b_loffset, bp->b_bcount);
+			__func__, vp, (intmax_t)bp->b_loffset, bp->b_bcount);
 	} else if (ret != bp->b_bcount) {
 		if (debug)
 			printf("%s: read vp %p offset 0x%016jx size 0x%jx -> "
 				"0x%jx != 0x%jx\n",
-				__func__, vp, bp->b_loffset, bp->b_bcount, ret,
+				__func__, vp, (intmax_t)bp->b_loffset, bp->b_bcount, ret,
 				bp->b_bcount);
 		return (EINVAL);
 	}
