@@ -391,7 +391,7 @@ hammer2_xop_strategy_read(hammer2_xop_t *arg, void *scratch, int clindex)
 		break;
 	default:
 		kprintf("xop_strategy_read: error %08x loff=%016jx\n",
-			error, bp->b_loffset);
+			error, (intmax_t)bp->b_loffset);
 		xop->finished = 1;
 		hammer2_mtx_unlock(&xop->lock);
 		bp->b_flags |= B_ERROR;
@@ -640,7 +640,7 @@ hammer2_xop_strategy_write(hammer2_xop_t *arg, void *scratch, int clindex)
 		biodone(bio);
 	} else {
 		kprintf("xop_strategy_write: error %d loff=%016jx\n",
-			error, bp->b_loffset);
+			error, (intmax_t)bp->b_loffset);
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EIO;
 		biodone(bio);

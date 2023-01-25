@@ -5895,7 +5895,7 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 					kprintf("dio %p buf %016jx,%d "
 						"bdata %p/%p\n",
 						chain->dio,
-						chain->dio->bp->b_loffset,
+						(intmax_t)chain->dio->bp->b_loffset,
 						chain->dio->bp->b_bufsize,
 						bdata,
 						chain->dio->bp->b_data);
