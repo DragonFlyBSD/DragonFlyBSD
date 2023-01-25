@@ -975,9 +975,6 @@ hammer2_inode_create_pfs(hammer2_pfs_t *spmp,
 	hammer2_inode_t *pip;
 	hammer2_inode_t *nip;
 	int error;
-	uuid_t pip_uid;
-	uuid_t pip_gid;
-	uint32_t pip_mode;
 	uint8_t pip_comp_algo;
 	uint8_t pip_check_algo;
 	hammer2_tid_t pip_inum;
@@ -1001,9 +998,6 @@ hammer2_inode_create_pfs(hammer2_pfs_t *spmp,
 	 */
 	hammer2_inode_lock(pip, 0);
 
-	pip_uid = pip->meta.uid;
-	pip_gid = pip->meta.gid;
-	pip_mode = pip->meta.mode;
 	pip_comp_algo = pip->meta.comp_algo;
 	pip_check_algo = pip->meta.check_algo;
 	pip_inum = (pip == pip->pmp->iroot) ? 1 : pip->meta.inum;
@@ -1130,7 +1124,6 @@ hammer2_inode_create_normal(hammer2_inode_t *pip,
 	uint8_t pip_comp_algo;
 	uint8_t pip_check_algo;
 	hammer2_tid_t pip_inum;
-	uint8_t type;
 
 	dip = pip->pmp->iroot;
 	KKASSERT(dip != NULL);
@@ -1171,7 +1164,6 @@ hammer2_inode_create_normal(hammer2_inode_t *pip,
 	default:
 		break;
 	}
-	type = nip->meta.type;
 
 	KKASSERT(nip->meta.inum == inum);
 	nip->meta.iparent = pip_inum;
@@ -1537,12 +1529,7 @@ hammer2_inode_inode_count(const hammer2_inode_t *ip)
 int
 hammer2_inode_unlink_finisher(hammer2_inode_t *ip, struct m_vnode **vprecyclep)
 {
-	hammer2_pfs_t *pmp;
 	struct m_vnode *vp;
-	int error;
-
-	pmp = ip->pmp;
-	error = 0;
 
 	/*
 	 * Decrement nlinks.  Catch a bad nlinks count here too (e.g. 0 or

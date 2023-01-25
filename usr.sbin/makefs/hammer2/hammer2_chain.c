@@ -4269,7 +4269,7 @@ next_key_spinlocked:
 	/*
 	 * Figure out what to return.
 	 */
-	if (rounddown2(create_key ^ key, (hammer2_key_t)1 << keybits)) {
+	if (rounddown2(create_key ^ key, (hammer2_key_t)1 << keybits) != 0) {
 		/*
 		 * Key being created is outside the key range,
 		 * return the original parent.
@@ -5907,7 +5907,7 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 					kprintf("dio %p buf %016jx,%ld "
 						"bdata %p/%p\n",
 						chain->dio,
-						chain->dio->bp->b_loffset,
+						(intmax_t)chain->dio->bp->b_loffset,
 						chain->dio->bp->b_bufsize,
 						bdata,
 						chain->dio->bp->b_data);

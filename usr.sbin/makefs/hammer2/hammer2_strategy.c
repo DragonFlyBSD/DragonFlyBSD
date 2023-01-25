@@ -405,7 +405,7 @@ hammer2_xop_strategy_read(hammer2_xop_t *arg, void *scratch, int clindex)
 		break;
 	default:
 		kprintf("xop_strategy_read: error %08x loff=%016jx\n",
-			error, bp->b_loffset);
+			error, (intmax_t)bp->b_loffset);
 		xop->finished = 1;
 		hammer2_mtx_unlock(&xop->lock);
 		bp->b_flags |= B_ERROR;
@@ -568,7 +568,6 @@ hammer2_xop_strategy_write(hammer2_xop_t *arg, void *scratch, int clindex)
 	int error;
 	int lblksize;
 	int pblksize;
-	hammer2_off_t bio_offset;
 	char *bio_data;
 
 	/*
@@ -587,7 +586,6 @@ hammer2_xop_strategy_write(hammer2_xop_t *arg, void *scratch, int clindex)
 	bio = xop->bio;			/* ephermal */
 	bp = bio->bio_buf;		/* ephermal */
 	ip = xop->head.ip1;		/* retained by ref */
-	bio_offset = bio->bio_offset;
 	bio_data = scratch;
 
 	/* hammer2_trans_init(parent->hmp->spmp, HAMMER2_TRANS_BUFCACHE); */
@@ -661,7 +659,7 @@ hammer2_xop_strategy_write(hammer2_xop_t *arg, void *scratch, int clindex)
 		*/
 	} else {
 		kprintf("xop_strategy_write: error %d loff=%016jx\n",
-			error, bp->b_loffset);
+			error, (intmax_t)bp->b_loffset);
 		assert(0);
 		/*
 		bp->b_flags |= B_ERROR;
