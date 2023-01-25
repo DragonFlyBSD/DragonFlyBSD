@@ -575,7 +575,6 @@ static void
 hammer2_size_dir(fsnode *root, fsinfo_t *fsopts)
 {
 	fsnode *node;
-	int curdirsize;
 
 	assert(fsopts != NULL);
 
@@ -583,7 +582,6 @@ hammer2_size_dir(fsnode *root, fsinfo_t *fsopts)
 		APRINTF("entry: bytes %lld inodes %lld\n",
 		    (long long)fsopts->size, (long long)fsopts->inodes);
 
-	curdirsize = 0;
 	for (node = root; node != NULL; node = node->next) {
 		if (node == root) { /* we're at "." */
 			assert(strcmp(node->name, ".") == 0);
