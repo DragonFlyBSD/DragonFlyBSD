@@ -1427,7 +1427,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	hammer2_inode_t *dip;
 	hammer2_inode_t *nip;
 	struct namecache *ncp;
-	const uint8_t *name;
+	const char *name;
 	size_t name_len;
 	hammer2_tid_t inum;
 	int error;
@@ -1547,7 +1547,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	hammer2_inode_t *tdip;	/* target directory to create link in */
 	hammer2_inode_t *ip;	/* inode we are hardlinking to */
 	struct namecache *ncp;
-	const uint8_t *name;
+	const char *name;
 	size_t name_len;
 	int error;
 	uint64_t cmtime;
@@ -1641,7 +1641,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	hammer2_inode_t *dip;
 	hammer2_inode_t *nip;
 	struct namecache *ncp;
-	const uint8_t *name;
+	const char *name;
 	size_t name_len;
 	hammer2_tid_t inum;
 	int error;
@@ -1723,7 +1723,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	hammer2_inode_t *dip;
 	hammer2_inode_t *nip;
 	struct namecache *ncp;
-	const uint8_t *name;
+	const char *name;
 	size_t name_len;
 	hammer2_tid_t inum;
 	int error;
@@ -1800,7 +1800,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	hammer2_inode_t *dip;
 	hammer2_inode_t *nip;
 	struct namecache *ncp;
-	const uint8_t *name;
+	const char *name;
 	size_t name_len;
 	hammer2_tid_t inum;
 	int error;
@@ -2100,9 +2100,9 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	hammer2_inode_t *ip;	/* file being renamed */
 	hammer2_inode_t *tip;	/* replaced target during rename or NULL */
 	struct vnode *vprecycle;
-	const uint8_t *fname;
+	const char *fname;
 	size_t fname_len;
-	const uint8_t *tname;
+	const char *tname;
 	size_t tname_len;
 	int error;
 	int update_tdip;
