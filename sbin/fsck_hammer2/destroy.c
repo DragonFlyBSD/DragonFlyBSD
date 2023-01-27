@@ -333,8 +333,7 @@ modify_dirent_embedded(int bi, hammer2_blockref_t *prev_bref)
 		memset(bscan->check.buf, 0, sizeof(bscan->check.buf));
 		memcpy(bscan->check.buf, dst_dirent, strlen(dst_dirent));
 		bscan->embed.dirent.namlen = strlen(dst_dirent);
-		bscan->key = dirhash((const unsigned char*)dst_dirent,
-		    strlen(dst_dirent));
+		bscan->key = dirhash(dst_dirent, strlen(dst_dirent));
 		if (write_media(prev_bref, &bscan_media, bytes) == -1)
 			return -1;
 	}
@@ -393,8 +392,7 @@ modify_dirent(int bi, hammer2_blockref_t *prev_bref,
 		memset(media->buf, 0, sizeof(media->buf));
 		memcpy(media->buf, dst_dirent, strlen(dst_dirent));
 		bscan->embed.dirent.namlen = strlen(dst_dirent);
-		bscan->key = dirhash((const unsigned char*)dst_dirent,
-		    strlen(dst_dirent));
+		bscan->key = dirhash(dst_dirent, strlen(dst_dirent));
 		if (write_media(bref, media, media_bytes) == -1)
 			return -1;
 		if (write_media(prev_bref, &bscan_media, bytes) == -1) {

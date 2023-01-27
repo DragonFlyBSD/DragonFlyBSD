@@ -951,7 +951,7 @@ again:
  */
 hammer2_inode_t *
 hammer2_inode_create_pfs(hammer2_pfs_t *spmp,
-		     const uint8_t *name, size_t name_len,
+		     const char *name, size_t name_len,
 		     int *errorp)
 {
 	hammer2_xop_create_t *xop;

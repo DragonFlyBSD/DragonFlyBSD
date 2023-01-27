@@ -71,7 +71,7 @@ const char *hammer2_breftype_to_str(uint8_t type);
 const char *sizetostr(hammer2_off_t size);
 const char *counttostr(hammer2_off_t size);
 hammer2_off_t check_volume(int fd);
-hammer2_key_t dirhash(const unsigned char *name, size_t len);
+hammer2_key_t dirhash(const char *aname, size_t len);
 
 #define hammer2_icrc32(buf, size)	iscsi_crc32((buf), (size))
 #define hammer2_icrc32c(buf, size, crc)	iscsi_crc32_ext((buf), (size), (crc))

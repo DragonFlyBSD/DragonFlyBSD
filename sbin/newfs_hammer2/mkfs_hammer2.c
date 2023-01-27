@@ -355,7 +355,7 @@ format_hammer2_inode(hammer2_volume_t *vol, hammer2_mkfs_options_t *opt,
 		rawip->meta.name_len = strlen(opt->Label[i]);
 		bcopy(opt->Label[i], rawip->filename, rawip->meta.name_len);
 		rawip->meta.name_key =
-				dirhash(rawip->filename, rawip->meta.name_len);
+				dirhash((char *)rawip->filename, rawip->meta.name_len);
 
 		/*
 		 * Compression mode and supported copyids.

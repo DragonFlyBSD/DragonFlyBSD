@@ -1255,7 +1255,7 @@ cmd_hash(int ac, const char **av)
 
 	for (i = 0; i < ac; ++i) {
 		printf("%016jx %s\n",
-		       dirhash((const unsigned char*)av[i], strlen(av[i])),
+		       dirhash(av[i], strlen(av[i])),
 		       av[i]);
 	}
 	return(0);

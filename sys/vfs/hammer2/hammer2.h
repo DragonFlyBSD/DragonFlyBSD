@@ -1455,7 +1455,7 @@ uint64_t hammer2_timespec_to_time(const struct timespec *ts);
 uint32_t hammer2_to_unix_xid(const uuid_t *uuid);
 void hammer2_guid_to_uuid(uuid_t *uuid, uint32_t guid);
 
-hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
+hammer2_key_t hammer2_dirhash(const char *aname, size_t len);
 int hammer2_getradix(size_t bytes);
 
 int hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
@@ -1500,7 +1500,7 @@ hammer2_inode_t *hammer2_inode_create_normal(hammer2_inode_t *pip,
 			struct vattr *vap, struct ucred *cred,
 			hammer2_key_t inum, int *errorp);
 hammer2_inode_t *hammer2_inode_create_pfs(hammer2_pfs_t *spmp,
-			const uint8_t *name, size_t name_len,
+			const char *name, size_t name_len,
 			int *errorp);
 int hammer2_inode_chain_ins(hammer2_inode_t *ip);
 int hammer2_inode_chain_des(hammer2_inode_t *ip);
