@@ -431,7 +431,7 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 				 sizeof(pmp->pfs_clid)) == 0) {
 				break;
 			} else if (force_local && pmp->pfs_names[0] &&
-			    strcmp(pmp->pfs_names[0], ripdata->filename) == 0) {
+			    strcmp(pmp->pfs_names[0], (const char *)ripdata->filename) == 0) {
 				break;
 			}
 		}
@@ -521,7 +521,7 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 			pmp->pfs_types[j] = HAMMER2_PFSTYPE_MASTER;
 		else
 			pmp->pfs_types[j] = ripdata->meta.pfs_type;
-		pmp->pfs_names[j] = kstrdup(ripdata->filename, M_HAMMER2);
+		pmp->pfs_names[j] = kstrdup((const char *)ripdata->filename, M_HAMMER2);
 		pmp->pfs_hmps[j] = chain->hmp;
 		hammer2_spin_ex(&pmp->inum_spin);
 		pmp->pfs_iroot_blocksets[j] = chain->data->ipdata.u.blockset;
@@ -1356,7 +1356,7 @@ next_hmp:
 				     &error, 0);
 	while (chain) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
-		    strcmp(label, chain->data->ipdata.filename) == 0) {
+		    strcmp(label, (char *)chain->data->ipdata.filename) == 0) {
 			break;
 		}
 		chain = hammer2_chain_next(&parent, chain, &key_next,
