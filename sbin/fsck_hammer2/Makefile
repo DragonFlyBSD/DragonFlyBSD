@@ -3,7 +3,7 @@ SRCS= fsck_hammer2.c test.c
 MAN=  fsck_hammer2.8
 
 CFLAGS+= -I${.CURDIR}/../../sys -I${.CURDIR}/../hammer2
-CFLAGS+= -DXXH_NAMESPACE=h2_
+#CFLAGS+= -DXXH_NAMESPACE=h2_
 CFLAGS+= -DHAMMER2_USE_OPENSSL
 CFLAGS+= ${PRIVATELIB_CFLAGS}
 

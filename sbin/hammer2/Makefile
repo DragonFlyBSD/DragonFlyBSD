@@ -8,7 +8,7 @@ SRCS+=	cmd_emergency.c cmd_growfs.c cmd_volume.c
 SRCS+=	print_inode.c
 MAN=	hammer2.8
 
-CFLAGS+= -DXXH_NAMESPACE=h2_
+#CFLAGS+= -DXXH_NAMESPACE=h2_
 CFLAGS+= -I${.CURDIR}/../../sys
 CFLAGS+= -pthread
 
