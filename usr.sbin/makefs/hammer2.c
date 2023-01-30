@@ -735,7 +735,7 @@ hammer2_populate_dir(struct m_vnode *dvp, const char *dir, fsnode *root,
 
 			vp = NULL;
 			error = hammer2_nmkdir(dvp, &vp, cur->name,
-			    strlen(cur->name));
+			    strlen(cur->name), cur->inode->st.st_mode);
 			if (error)
 				errx(1, "hammer2_nmkdir(\"%s\") failed: %s",
 				    cur->name, strerror(error));
@@ -757,7 +757,7 @@ hammer2_populate_dir(struct m_vnode *dvp, const char *dir, fsnode *root,
 
 			vp = NULL;
 			error = hammer2_ncreate(dvp, &vp, cur->name,
-			    strlen(cur->name));
+			    strlen(cur->name), cur->inode->st.st_mode);
 			if (error)
 				errx(1, "hammer2_ncreate(\"%s\") failed: %s",
 				    cur->name, strerror(error));
@@ -778,7 +778,8 @@ hammer2_populate_dir(struct m_vnode *dvp, const char *dir, fsnode *root,
 
 			vp = NULL;
 			error = hammer2_nsymlink(dvp, &vp, cur->name,
-			    strlen(cur->name), cur->symlink);
+			    strlen(cur->name), cur->symlink,
+			    cur->inode->st.st_mode);
 			if (error)
 				errx(1, "hammer2_nsymlink(\"%s\") failed: %s",
 				    cur->name, strerror(error));
@@ -794,7 +795,7 @@ hammer2_populate_dir(struct m_vnode *dvp, const char *dir, fsnode *root,
 
 			vp = NULL;
 			error = hammer2_nmknod(dvp, &vp, cur->name,
-			    strlen(cur->name), VFIFO);
+			    strlen(cur->name), VFIFO, cur->inode->st.st_mode);
 			if (error)
 				errx(1, "hammer2_nmknod(\"%s\") failed: %s",
 				    cur->name, strerror(error));

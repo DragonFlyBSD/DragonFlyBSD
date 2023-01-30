@@ -1646,7 +1646,8 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 }
 
 int
-hammer2_nmkdir(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen)
+hammer2_nmkdir(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen,
+		mode_t mode)
 {
 	struct namecache nc = {
 		.nc_name = name,
@@ -1659,7 +1660,7 @@ hammer2_nmkdir(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen)
 	uid_t va_gid = VNOVAL; //getgid();
 	struct vattr va = {
 		.va_type = VDIR,
-		.va_mode = 0755, /* should be tunable */
+		.va_mode = mode & ~S_IFMT,
 		.va_uid = va_uid,
 		.va_gid = va_gid,
 	};
@@ -1911,7 +1912,8 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 }
 
 int
-hammer2_ncreate(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen)
+hammer2_ncreate(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen,
+		mode_t mode)
 {
 	struct namecache nc = {
 		.nc_name = name,
@@ -1924,7 +1926,7 @@ hammer2_ncreate(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen)
 	uid_t va_gid = VNOVAL; //getgid();
 	struct vattr va = {
 		.va_type = VREG,
-		.va_mode = 0644, /* should be tunable */
+		.va_mode = mode & ~S_IFMT,
 		.va_uid = va_uid,
 		.va_gid = va_gid,
 	};
@@ -2017,7 +2019,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 
 int
 hammer2_nmknod(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen,
-		int type)
+		int type, mode_t mode)
 {
 	struct namecache nc = {
 		.nc_name = name,
@@ -2030,7 +2032,7 @@ hammer2_nmknod(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen,
 	uid_t va_gid = VNOVAL; //getgid();
 	struct vattr va = {
 		.va_type = type,
-		.va_mode = 0644, /* should be tunable */
+		.va_mode = mode & ~S_IFMT,
 		.va_uid = va_uid,
 		.va_gid = va_gid,
 	};
@@ -2158,7 +2160,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 
 int
 hammer2_nsymlink(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen,
-			char *target)
+			char *target, mode_t mode)
 {
 	struct namecache nc = {
 		.nc_name = name,
@@ -2171,7 +2173,7 @@ hammer2_nsymlink(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen
 	uid_t va_gid = VNOVAL; //getgid();
 	struct vattr va = {
 		.va_type = VDIR,
-		.va_mode = 0755, /* should be tunable */
+		.va_mode = mode & ~S_IFMT,
 		.va_uid = va_uid,
 		.va_gid = va_gid,
 	};

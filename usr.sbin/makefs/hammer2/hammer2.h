@@ -1997,13 +1997,15 @@ hammer2_vfsvolume_t *hammer2_get_volume(hammer2_dev_t *hmp, hammer2_off_t offset
 int hammer2_reclaim(struct m_vnode *vp);
 int hammer2_write(struct m_vnode *vp, void *buf, size_t size, off_t offset);
 int hammer2_nresolve(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen);
-int hammer2_nmkdir(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen);
+int hammer2_nmkdir(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen,
+			mode_t mode);
 int hammer2_nlink(struct m_vnode *dvp, struct m_vnode *vp, char *name, int nlen);
-int hammer2_ncreate(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen);
+int hammer2_ncreate(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen,
+			mode_t mode);
 int hammer2_nmknod(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen,
-			int type);
+			int type, mode_t mode);
 int hammer2_nsymlink(struct m_vnode *dvp, struct m_vnode **vpp, char *name, int nlen,
-			char *target);
+			char *target, mode_t mode);
 
 /*
  * hammer2_buf.c
