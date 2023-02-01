@@ -369,6 +369,26 @@ upon completion.
 .It Cm monitor Op Ar datfile
 Monitors a running dsynth instance.
 .El
+.Sh PER-PORT OPTIONS
+The
+.Va Directory_options
+configuration variable in
+.Pa /etc/dsynth/dsynth.ini
+points to the configured options directory tree.
+In the base system dports this would be
+.Pa /var/db/ports ,
+but you can supply an independent set of ports options for your dsynth
+build if you like.
+The format of the structure in this directory is best described simply by
+CD'ing into a dport, say www/chromium, typing 'make config', and it will
+create a sub-directory and write out a file called
+.Pa /var/db/ports/www_chromium/options .
+.Pp
+For
+.Nm
+you can either point your configuration variable to the system default,
+or you can point it at a dsynth-specific directory and copy the options
+to or construct the options in your dsynth-specific directory tree.
 .Sh HOOKS
 .Nm
 provides several hooks that trigger at specific stages during the
@@ -517,6 +537,9 @@ form subdir____portname.log, with three underscores.
 Recommended setting for
 .Va Directory_options ,
 where options overrides for specific ports may be located.
+Then either null-mount the system /var/db/ports to this location, or
+construct your own dsynth-specific options.
+See the PER-PORT OPTIONS section above for more information.
 .Pp
 .It Pa /
 Recommended setting for
