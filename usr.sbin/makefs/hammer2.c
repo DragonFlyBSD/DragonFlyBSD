@@ -693,11 +693,11 @@ hammer2_populate_dir(struct m_vnode *dvp, const char *dir, fsnode *root,
 				/* this should be same as root/path/name */
 				if (snprintf(f, sizeof(f), "%s/%s",
 				    dir, cur->name) >= (int)sizeof(f))
-					errx(1, "pathname too long");
+					errx(1, "path %s too long", f);
 			} else {
 				if (snprintf(f, sizeof(f), "%s/%s/%s",
 				    cur->root, cur->path, cur->name) >= (int)sizeof(f))
-					errx(1, "pathname too long");
+					errx(1, "path %s too long", f);
 			}
 			path = f;
 		}
