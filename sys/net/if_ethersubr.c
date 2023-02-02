@@ -1225,6 +1225,17 @@ ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 	}
 
 	/*
+	 * A vlan tagged packet must be processed by ether_demux_oncpu()
+	 * immediately, before any bridging or packet filtering.  If
+	 * the vlan decides to process it, this function will be called
+	 * again w/ the vlan interface for normal processing.
+	 */
+	if (m->m_flags & M_VLANTAG) {
+		ether_demux_oncpu(ifp, m);
+		return;
+	}
+
+	/*
 	 * Tap the packet off here for a bridge.  bridge_input()
 	 * will return NULL if it has consumed the packet, otherwise
 	 * it gets processed as normal.  Note that bridge_input()
