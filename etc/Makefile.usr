@@ -187,28 +187,27 @@ dports-replace:
 	rm -f ${DPTBALL}
 .endif
 
-pkg-bootstrap-fetch:
-.if exists(/etc/ssl/cert.pem) || exists(/usr/local/etc/ssl/cert.pem)
-	fetch -o ${PKGBALL} ${PKGBOOT}
-.else
-	@echo "Warning: /etc/ssl/cert.pem and /usr/local/etc/ssl/cert.pem do not exist."
-	@echo "Disable certificate verification for fetch(1)."
-	fetch --no-verify-peer -o ${PKGBALL} ${PKGBOOT}
+PKG_ENV=
+.if !exists(/etc/ssl/cert.pem)  # from port 'security/ca_root_nss'
+# Disable SSL verification for fetch(1) and pkg-static(8)
+PKG_ENV+=	SSL_NO_VERIFY_PEER=1
 .endif
+.if defined(ABIVERS)
+PKG_ENV+=	ABI=${ABIVERS}
+.endif
+
+pkg-bootstrap-fetch:
+	${PKG_ENV} fetch -o ${PKGBALL} ${PKGBOOT}
 	tar -xJf ${PKGBALL} -C ${.CURDIR}/local
 	@rm -f ${PKGBALL}
 
 # This is a bit problematic
 #
 pkg-bootstrap-install:
-.if defined(ABIVERS)
-	ABI=${ABIVERS} ${.CURDIR}/local/sbin/pkg-static \
-	    install -y ${PKG_FLAGS} pkg
-.else
-	${.CURDIR}/local/sbin/pkg-static install -y ${PKG_FLAGS} pkg
-.endif
-	${.CURDIR}/local/sbin/pkg-static install -y ${PKG_FLAGS} ca_root_nss
-	cp -f ${.CURDIR}/local/etc/pkg/repos/df-latest.conf.sample \
+	${PKG_ENV} ${.CURDIR}/local/sbin/pkg-static \
+		install -y ${PKG_FLAGS} pkg ca_root_nss
+	[ -f ${.CURDIR}/local/etc/pkg/repos/df-latest.conf ] || \
+		cp -f ${.CURDIR}/local/etc/pkg/repos/df-latest.conf.sample \
 		${.CURDIR}/local/etc/pkg/repos/df-latest.conf \
 
 pkg-bootstrap:
