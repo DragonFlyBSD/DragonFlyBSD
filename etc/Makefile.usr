@@ -18,13 +18,10 @@ GITURL_DPORTS?=git://mirror-master.dragonflybsd.org/dports.git
 # Mirror from which to fetch the pkg bootstrap
 MIRROR?=https://mirror-master.dragonflybsd.org
 
-DPTBALL=/tmp/dports.tar.gz
-PKGBALL=/tmp/pkgboot.tar.xz
 DPDLURL=https://api.github.com/repos/DragonFlyBSD/DPorts/tarball/
 PKGBOOT_VERSION=04
 PKGBOOT_x86_64=bootstrap_pkg_${PKGBOOT_VERSION}_x86-64.tar.xz
 PKGBOOT=${MIRROR}/dports/bootstraps/${PKGBOOT_${MACHINE_ARCH}}
-ERRPKG="Error: Bootstrap not necessary, ${.CURDIR}/local/sbin/pkg already exists"
 WSTARS="***************************************************************"
 WARNPS="  Warning: Delete or move ${.CURDIR}/pkg before building any dport!"
 LPATT="   make %-23s- %s\n"
@@ -126,12 +123,6 @@ dports-check-hasdir: git-check
 	@/bin/test -d ${.CURDIR}/dports/.git || \
 		   (echo "Error: ${.CURDIR}/dports does not exist"; /usr/bin/false)
 
-dports-download-check:
-	@/bin/test ! -d ${.CURDIR}/dports || \
-		   (echo "Error: ${.CURDIR}/dports already exists"; /usr/bin/false)
-	@/bin/test ! -d ${.CURDIR}/DragonFlyBSD-DPorts-* || \
-		   (echo "Error: ${.CURDIR}/DragonFlyBSD-DPorts-* already exists"; /usr/bin/false)
-
 dports-create: dports-check
 	@echo "If problems occur you may have to 'rm -rf dports' and try again."
 	@echo
@@ -157,12 +148,14 @@ dports-update: dports-check-hasdir
 	@echo
 	@echo "To automate, feel free to run this task from cron(8)."
 
-dports-download: dports-download-check
-	rm -f ${DPTBALL}
-	fetch -o ${DPTBALL} ${DPDLURL}
-	tar -xf ${DPTBALL} -C ${.CURDIR}
-	mv /usr/DragonFlyBSD-DPorts-* ${.CURDIR}/dports
-	rm -f ${DPTBALL}
+dports-download:
+.if exists(${.CURDIR}/dports)
+	@echo "Error: ${.CURDIR}/dports already exists"
+	@/usr/bin/false
+.endif
+	mkdir ${.CURDIR}/dports
+	fetch -o - ${DPDLURL} | \
+		tar -xf - -C ${.CURDIR}/dports --strip-components 1
 .if exists(${.CURDIR}/pkg)
 	@echo ${WSTARS}
 	@echo ${WARNPS}
@@ -179,12 +172,10 @@ dports-replace:
 	@echo "to convert to a non-git version."
 	@/usr/bin/false
 .else
-	rm -f ${DPTBALL}
-	fetch -o ${DPTBALL} ${DPDLURL}
 	-rm -rf ${.CURDIR}/dports
-	tar -xf ${DPTBALL} -C ${.CURDIR}
-	mv /usr/DragonFlyBSD-DPorts-* ${.CURDIR}/dports
-	rm -f ${DPTBALL}
+	[ -d "${.CURDIR}/dports" ] || mkdir ${.CURDIR}/dports
+	fetch -o - ${DPDLURL} | \
+		tar -xf - -C ${.CURDIR}/dports --strip-components 1
 .endif
 
 PKG_ENV=
@@ -197,9 +188,8 @@ PKG_ENV+=	ABI=${ABIVERS}
 .endif
 
 pkg-bootstrap-fetch:
-	${PKG_ENV} fetch -o ${PKGBALL} ${PKGBOOT}
-	tar -xJf ${PKGBALL} -C ${.CURDIR}/local
-	@rm -f ${PKGBALL}
+	${PKG_ENV} fetch -o - ${PKGBOOT} | \
+		tar -xf - -C ${.CURDIR}/local
 
 # This is a bit problematic
 #
@@ -212,7 +202,7 @@ pkg-bootstrap-install:
 
 pkg-bootstrap:
 .if exists(${.CURDIR}/local/sbin/pkg)
-	@echo ${ERRPKG}
+	@echo "Error: Bootstrap not necessary, ${.CURDIR}/local/sbin/pkg already exists"
 	@/usr/bin/false
 .elif exists(${.CURDIR}/local/etc/pkg.conf)
 	@echo "Error: ${.CURDIR}/local/etc/pkg.conf will be overwritten"
