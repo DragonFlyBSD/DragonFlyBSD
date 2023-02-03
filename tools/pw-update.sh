@@ -66,12 +66,17 @@ add_users() {
 			continue
 		fi
 		echo "   * ${_name}: ${_uid}, ${_gid}, ${_gecos}, ${_home}, ${_shell}"
-		# Assign to the 'nogroup' group, and then adjust later.
+		# NOTE: The shell field can be empty (e.g., user 'toor') and
+		#       would default to '/bin/sh'.
+		# NOTE: Use '-o' option to allow to create user of duplicate
+		#       UID, which is required by the 'toor' user (same UID
+		#       as 'root').
 		pw -V ${etcdir} useradd ${_name} \
+			-o \
 			-u ${_uid} \
 			-g nogroup \
-			-d ${_home} \
-			-s ${_shell} \
+			-d "${_home}" \
+			-s "${_shell}" \
 			-L "${_class}" \
 			-c "${_gecos}"
 		_gids="${_gids} ${_name}:${_gid}"
