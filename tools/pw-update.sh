@@ -43,16 +43,11 @@ set -u
 #
 # NOTE: Existing users and groups are not modified.
 #
-# NOTE: There is circular dependence: 'groupadd' requires the members
-#       already exist, while 'useradd' requires the group exists.
-#       So first assign new users to the 'nogroup' group, and then make
-#       adjustments after group creation.
-#
 add_users() {
 	local etcdir="$1"
 	local fpasswd="$2"
 	local fgroup="$3"
-	local _name _pw _uid _gid _gids item
+	local _name _pw _uid _gid _gids _group item
 	local _class _change _expire _gecos _home _shell _members
 
 	echo "===> Adding new users ..."
@@ -66,6 +61,16 @@ add_users() {
 			continue
 		fi
 		echo "   * ${_name}: ${_uid}, ${_gid}, ${_gecos}, ${_home}, ${_shell}"
+
+		_group=${_gid}
+		if ! pw -V ${etcdir} groupshow ${_gid} -q >/dev/null; then
+			# Primary group doesn't exist yet, so first assign to
+			# the 'nogroup' group, and then adjust it after
+			# creating the group.
+			_group="nogroup"
+			_gids="${_gids} ${_name}:${_gid}"
+		fi
+
 		# NOTE: The shell field can be empty (e.g., user 'toor') and
 		#       would default to '/bin/sh'.
 		# NOTE: Use '-o' option to allow to create user of duplicate
@@ -74,12 +79,11 @@ add_users() {
 		pw -V ${etcdir} useradd ${_name} \
 			-o \
 			-u ${_uid} \
-			-g nogroup \
+			-g ${_group} \
 			-d "${_home}" \
 			-s "${_shell}" \
 			-L "${_class}" \
 			-c "${_gecos}"
-		_gids="${_gids} ${_name}:${_gid}"
 	done < ${fpasswd}
 
 	echo "===> Adding new groups ..."
