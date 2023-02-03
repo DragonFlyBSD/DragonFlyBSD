@@ -462,7 +462,9 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 				warnx("WARNING: account `%s' will have a uid of 0 (superuser access!)", pwd->pw_name);
 		}
 
-		if ((arg = getarg(args, 'g')) != NULL && pwd->pw_uid != 0) {	/* Already checked this */
+		if ((arg = getarg(args, 'g')) != NULL) {	/* Already checked this */
+			if (strcmp(pwd->pw_name, "root") == 0)
+				errx(EX_DATAERR, "can't change gid of `root' account");
 			gid_t newgid = (gid_t) GETGRNAM(cnf->default_group)->gr_gid;
 			if (newgid != pwd->pw_gid) {
 				edited = 1;
