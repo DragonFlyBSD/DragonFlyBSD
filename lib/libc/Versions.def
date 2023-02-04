@@ -61,6 +61,10 @@ DF602.0 {
 DF604.0 {
 } DF602.0;
 
+# version for DragonFly 6.5
+DF606.0 {
+} DF604.0;
+
 # This is our private namespace.  Any global interfaces that are
 # strictly for use only by other DragonFly applications and libraries
 # are listed here.  We use a separate namespace so we can write
@@ -68,4 +72,4 @@ DF604.0 {
 #
 # Please do NOT increment the version of this namespace.
 DFprivate_1.0 {
-} DF604.0;
+} DF606.0;

@@ -170,6 +170,10 @@ DF510.0 {
     fwrite_unlocked;
 };
 
+DF606.0 {
+    fopencookie;
+};
+
 DFprivate_1.0 {
     __fcloseall;
     __fflush;

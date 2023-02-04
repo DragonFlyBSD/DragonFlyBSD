@@ -11,7 +11,7 @@ SRCS+=	__fpending.c _flock_stub.c \
 	fclose.c fcloseall.c fcookie.c fdopen.c feof.c ferror.c \
 	fflush.c fgetc.c fgetln.c fgetpos.c fgets.c fgetwc.c fgetwln.c \
 	fgetws.c fileno.c findfp.c flags.c fmemopen.c \
-	fopen.c fparseln.c fprintf.c fpurge.c \
+	fopen.c fparseln.c fopencookie.c fprintf.c fpurge.c \
 	fputc.c fputs.c fputwc.c fputws.c fread.c freopen.c fscanf.c \
 	fseek.c fsetpos.c ftell.c funopen.c fvwrite.c fwalk.c fwide.c \
 	fwprintf.c fwrite.c fwscanf.c getc.c getchar.c \
@@ -55,6 +55,7 @@ MLINKS+=flockfile.3 ftrylockfile.3 \
 	flockfile.3 funlockfile.3
 MLINKS+=fopen.3 fdopen.3 \
 	fopen.3 freopen.3
+MLINKS+=fopencookie.3
 MLINKS+=fputs.3 fputs_unlocked.3 \
 	fputs.3 puts.3
 MLINKS+=fputws.3 fputws_l.3
