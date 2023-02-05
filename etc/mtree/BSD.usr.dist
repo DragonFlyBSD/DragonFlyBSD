@@ -219,6 +219,8 @@
             ..
             libvgl
             ..
+            mailwrapper
+            ..
             mdoc
             ..
             netgraph

@@ -1,4 +1,4 @@
-SUBDIR=	dma dma-mbox-create default-conf mailer-conf
+SUBDIR=	dma dma-mbox-create default-conf
 
 # maximum parallelism
 #

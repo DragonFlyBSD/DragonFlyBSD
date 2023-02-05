@@ -3923,6 +3923,10 @@ TO_REMOVE+=/usr/share/man/man2/vmm_guest_sync_addr.2.gz
 TO_REMOVE+=/boot/kernel/ext2fs_freebsd.ko
 TO_REMOVE+=/usr/include/gnu
 TO_REMOVE+=/usr/include/sys/dir.h
+TO_REMOVE+=/etc/mail/mailer.conf.dma
+TO_REMOVE+=/etc/mail/mailer.conf.opensmtpd
+TO_REMOVE+=/etc/mail/mailer.conf.postfix
+TO_REMOVE+=/etc/mail/mailer.conf.sendmail
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
