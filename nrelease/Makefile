@@ -117,15 +117,15 @@ PACKAGES+=	${PORT}
 #########################################################################
 
 release:	check clean buildworld1 buildkernel1 \
-		buildiso customizeiso pkgs srcs mkiso mkimg
+		buildiso pkgs customizeiso srcs mkiso mkimg
 
 quickrel:	check clean buildworld2 buildkernel2 \
-		buildiso customizeiso pkgs srcs mkiso mkimg
+		buildiso pkgs customizeiso srcs mkiso mkimg
 
 realquickrel:	check clean \
-		buildiso customizeiso pkgs srcs mkiso mkimg
+		buildiso pkgs customizeiso srcs mkiso mkimg
 
-restartpkgs:	check pkgs srcs mkiso mkimg
+restartpkgs:	check pkgs customizeiso srcs mkiso mkimg
 
 quick:		quickrel
 
@@ -192,7 +192,6 @@ buildiso:
 			make -m ${SRCDIR}/share/mk \
 			DESTDIR=${ISOROOT} distribution && \
 		rm -rf $${tmpdir} )
-	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
 	( cd ${SRCDIR}; make DESTDIR=${ISOROOT} reinstallkernel )
 	rm -rf ${ISOROOT}/boot/kernel.old
 	ln -sf kernel ${ISOROOT}/boot/kernel/kernel.BOOTP
@@ -224,7 +223,13 @@ srcs:
 
 # Customize the ISO by copying rootskels in reverse priority order.
 #
+# NOTE: Perform this target *after* the 'pkgs' target, because the latter
+#       can make changes to '/etc' (e.g., new users/groups/shells).
+#
 customizeiso:
+	pwd_mkdb -p -d ${ISOROOT}/etc ${ISOROOT}/etc/master.passwd
+	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
+
 	# Copy the rootskels.  Allow sources to be owned by someone other
 	# than root (as is common when checked out via git).
 	#
@@ -234,7 +239,6 @@ customizeiso:
 	@test -O ${.CURDIR} || ((cd ${ROOTSKEL} && find .) | fgrep -v cpignore | (cd ${ISOROOT} && xargs chown root:wheel))
 .endfor
 
-	pwd_mkdb -p -d ${ISOROOT}/etc ${ISOROOT}/etc/master.passwd
 	pw -V ${ISOROOT}/etc useradd installer -o -u 0 -g 0 \
 		-c "DragonFly Installer" -d /root -s /usr/sbin/installer
 	${CHROOT_CMD} "chpass -p '' root"
@@ -322,13 +326,6 @@ pkgs:
 .if exists(${ISOROOT}/usr/local/etc)
 	echo "dummy /usr/local/etc tmpfs rw,-C 0 0" >> ${ISOROOT}/etc/fstab
 .endif
-
-	# Recopy files that dports may have updated in /etc into /etc.hdd
-	#
-	cpdup ${ISOROOT}/etc/shells ${ISOROOT}/etc.hdd/shells
-	cpdup ${ISOROOT}/etc/group ${ISOROOT}/etc.hdd/group
-	cpdup ${ISOROOT}/etc/passwd ${ISOROOT}/etc.hdd/passwd
-	cpdup ${ISOROOT}/etc/master.passwd ${ISOROOT}/etc.hdd/master.passwd
 .endif  # !empty(DPORTS_PACKAGES)
 
 mkiso:
