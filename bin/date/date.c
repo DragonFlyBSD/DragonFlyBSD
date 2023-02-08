@@ -88,7 +88,7 @@ main(int argc, char **argv)
 	setlocale(LC_TIME, "");
 	rflag = 0;
 	Iflag = jflag = Rflag = 0;
-	while ((ch = getopt(argc, argv, "f:I::jnRr:uv:")) != -1)
+	while ((ch = getopt(argc, argv, "d:f:I::jnRr:uv:")) != -1) {
 		switch (ch) {
 		case 'f':
 			fmt = optarg;
@@ -130,12 +130,33 @@ main(int argc, char **argv)
 			if (setenv("TZ", "UTC0", 1) != 0)
 				err(1, "setenv: cannot set TZ=UTC0");
 			break;
+		case 'd':
 		case 'v':
-			v = vary_append(v, optarg);
+			if (strncmp(optarg, "TZ=", 3) == 0) {
+				tmp = strdup(optarg);
+				size_t tzlen;
+
+				for (tzlen = 0; !isspace(tmp[tzlen]); ++tzlen)
+					;
+				if (tmp[0] == '"' && tmp[tzlen - 1] == '"') {
+					tmp[tzlen - 1] = 0;
+					setenv("TZ", tmp + 1, 1);
+				} else {
+					tmp[tzlen] = 0;
+					setenv("TZ", tmp, 1);
+				}
+				while (isspace(tmp[tzlen]))
+					++tzlen;
+				if (tmp[tzlen])
+					v = vary_append(v, optarg + tzlen);
+			} else {
+				v = vary_append(v, optarg);
+			}
 			break;
 		default:
 			usage();
 		}
+	}
 	argc -= optind;
 	argv += optind;
 
@@ -169,8 +190,7 @@ main(int argc, char **argv)
 		format = *argv + 1;
 	}
 
-	lt = *localtime(&tval);
-	badv = vary_apply(v, &lt);
+	badv = vary_apply(v, tval, &lt);
 	if (badv) {
 		fprintf(stderr, "%s: Cannot apply date adjustment\n",
 			badv->arg);
