@@ -42,7 +42,7 @@
 .Op Fl jRu
 .Op Fl r Ar seconds
 .Oo
-.Fl v
+.Fl v/d
 .Sm off
 .Op Cm + | -
 .Ar val Op Ar ymwdHMS
@@ -65,7 +65,7 @@
 .Op Fl I Ns Op Ar FMT
 .Op Fl f Ar input_fmt
 .Op Fl r Ar ...
-.Op Fl v Ar ...
+.Op Fl v/d Ar ...
 .Op Ar new_date
 .Sh DESCRIPTION
 When invoked without arguments, the
@@ -162,6 +162,23 @@ and can be specified in decimal, octal, or hex.
 Display or set the date in
 .Tn UTC
 (Coordinated Universal) time.
+.It Fl d
+For some compatibility with gnu date, the
+.Fl d
+option is an alias for the
+.Fl v
+option.
+In addition to the formats already supported, we now support
+.Ar +/-Ndays
+(seconds, minutes, hours, months, years, and abbreviations of same),
+.Ar next ... ,
+.Ar last ...
+several month, day, and year arrangements, h:m[:s], and a few other
+things.
+Not all of these can be combined with prefixes and there is still a lot
+of missing support for gnu date compatibility.
+In particular the handling of TZ= timezone specifications is mis-applied
+and support for the "Z" suffix is missing.
 .It Fl v
 Adjust (i.e., take the current date and display the result of the
 adjustment; not actually set the date) the second, minute, hour, month

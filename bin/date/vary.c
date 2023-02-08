@@ -31,10 +31,12 @@
 #include <time.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
+#include <stdio.h>
 #include "vary.h"
 
 struct trans {
-  int val;
+  long val;
   const char *str;
 };
 
@@ -51,8 +53,7 @@ static struct trans trans_wday[] = {
   { -1, NULL }
 };
 
-static char digits[] = "0123456789";
-static int adjhour(struct tm *, char, int, int);
+static int adjhour(struct tm *, char, long, int);
 
 static int
 domktime(struct tm *t, char type)
@@ -125,7 +126,7 @@ daysinmonth(const struct tm *t)
 
 
 static int
-adjyear(struct tm *t, char type, int val, int mk)
+adjyear(struct tm *t, char type, long val, int mk)
 {
   switch (type) {
     case '+':
@@ -146,7 +147,7 @@ adjyear(struct tm *t, char type, int val, int mk)
 }
 
 static int
-adjmon(struct tm *t, char type, int val, int istext, int mk)
+adjmon(struct tm *t, char type, long val, int istext, int mk)
 {
   int lmdays;
   if (val < 0)
@@ -205,7 +206,7 @@ adjmon(struct tm *t, char type, int val, int istext, int mk)
 }
 
 static int
-adjday(struct tm *t, char type, int val, int mk)
+adjday(struct tm *t, char type, long val, int mk)
 {
   int daycount;
 
@@ -249,7 +250,7 @@ adjday(struct tm *t, char type, int val, int mk)
 }
 
 static int
-adjwday(struct tm *t, char type, int val, int istext, int mk)
+adjwday(struct tm *t, char type, long val, int istext, int mk)
 {
   if (val < 0)
     return 0;
@@ -285,7 +286,7 @@ adjwday(struct tm *t, char type, int val, int istext, int mk)
 }
 
 static int
-adjhour(struct tm *t, char type, int val, int mk)
+adjhour(struct tm *t, char type, long val, int mk)
 {
   if (val < 0)
     return 0;
@@ -330,7 +331,7 @@ adjhour(struct tm *t, char type, int val, int mk)
 }
 
 static int
-adjmin(struct tm *t, char type, int val, int mk)
+adjmin(struct tm *t, char type, long val, int mk)
 {
   if (val < 0)
     return 0;
@@ -371,7 +372,7 @@ adjmin(struct tm *t, char type, int val, int mk)
 }
 
 static int
-adjsec(struct tm *t, char type, int val, int mk)
+adjsec(struct tm *t, char type, long val, int mk)
 {
   if (val < 0)
     return 0;
@@ -411,83 +412,231 @@ adjsec(struct tm *t, char type, int val, int mk)
   return !mk || domktime(t, type) != -1;
 }
 
-const struct vary *
-vary_apply(const struct vary *v, struct tm *t)
-{
-  char type;
-  char which;
-  char *arg;
-  size_t len;
-  int val;
+/*
+ * WARNING!  Severely deficient relative to gnu date's -d option
+ *
+ * - timezone handling is all wrong (see also TZ= test in date.c)
+ * - doesn't check for 'Z' suffix
+ * - doesn't handle a multitude of formats that gnu date handles
+ * - is generally a mess
+ */
 
-  for (; v; v = v->next) {
-    type = *v->arg;
+const struct vary *
+vary_apply(const struct vary *vb, time_t tval, struct tm *t)
+{
+  const struct vary *v;
+  char type;
+  char *arg;
+  char *tmp;
+  size_t len;
+  long val;
+
+  *t = *localtime(&tval);
+
+  for (v = vb; v; v = v->next) {
+    //int domonth = 1;
+    //int doday = 1;
+    int dohms = 1;
+    int doyear = 1;
+    int dotzone = 1;
+
     arg = v->arg;
-    if (type == '+' || type == '-')
+
+    type = *arg;
+
+    /*
+     * Unix time stamp
+     */
+    if (type == '@') {
+      time_t tt;
+      tt = strtoul(arg + 1, NULL, 10);
+      *t = *gmtime(&tt);
+      continue;
+    }
+
+    /*
+     * Delta verses absolute
+     */
+    if (type == '+' || type == '-') {
       arg++;
-    else
+    } else if (strncmp(arg, "next", 4) == 0) {
+      type = '+';
+      arg += 4;
+    } else if (strncmp(arg, "last", 4) == 0) {
+      type = '-';
+      arg += 4;
+    } else {
       type = '\0';
+    }
+
+    /*
+     * At least 2 chars
+     */
+    while (isspace(arg[0]))
+	++arg;
     len = strlen(arg);
     if (len < 2)
       return v;
 
+    /*
+     * Reset dst calculation for absolute specifications so
+     * it gets recalculated.
+     */
     if (type == '\0')
       t->tm_isdst = -1;
 
-    if (strspn(arg, digits) != len-1) {
-      val = trans(trans_wday, arg);
-      if (val != -1) {
-          if (!adjwday(t, type, val, 1, 1))
-            return v;
+    /*
+     * N{S,M,H,m,d,y,w}
+     */
+    val = strtoul(arg, &tmp, 10);
+    if (tmp != arg && isalpha(tmp[0])) {
+      if (strcmp(tmp, "S") == 0 || strncmp(tmp, "sec", 3) == 0) {
+	  if (!adjsec(t, type, val, 1))
+	    return v;
+      } else if (strcmp(tmp, "M") == 0 || strncmp(tmp, "min", 3) == 0) {
+	  if (!adjmin(t, type, val, 1))
+	    return v;
+      } else if (strcmp(tmp, "H") == 0 || strncmp(tmp, "hour", 4) == 0) {
+	  if (!adjhour(t, type, val, 1))
+	    return v;
+      } else if (strcmp(tmp, "d") == 0 || strncmp(tmp, "day", 3) == 0) {
+	  t->tm_isdst = -1;
+	  if (!adjday(t, type, val, 1))
+	    return v;
+      } else if (strcmp(tmp, "w") == 0 || strncmp(tmp, "week", 4) == 0) {
+	  t->tm_isdst = -1;
+	  if (!adjwday(t, type, val, 0, 1))
+	    return v;
+      } else if (strcmp(tmp, "m") == 0 || strncmp(tmp, "mon", 3) == 0) {
+	  t->tm_isdst = -1;
+	  if (!adjmon(t, type, val, 0, 1))
+	    return v;
+      } else if (strcmp(tmp, "y") == 0 || strncmp(tmp, "year", 4) == 0) {
+	  t->tm_isdst = -1;
+	  if (!adjyear(t, type, val, 1))
+	    return v;
       } else {
-        val = trans(trans_mon, arg);
-        if (val != -1) {
-          if (!adjmon(t, type, val, 1, 1))
-            return v;
-        } else
-          return v;
+	  return v;
       }
-    } else {
-      val = atoi(arg);
-      which = arg[len-1];
-      
-      switch (which) {
-        case 'S':
-          if (!adjsec(t, type, val, 1))
-            return v;
-          break;
-        case 'M':
-          if (!adjmin(t, type, val, 1))
-            return v;
-          break;
-        case 'H':
-          if (!adjhour(t, type, val, 1))
-            return v;
-          break;
-        case 'd':
-          t->tm_isdst = -1;
-          if (!adjday(t, type, val, 1))
-            return v;
-          break;
-        case 'w':
-          t->tm_isdst = -1;
-          if (!adjwday(t, type, val, 0, 1))
-            return v;
-          break;
-        case 'm':
-          t->tm_isdst = -1;
-          if (!adjmon(t, type, val, 0, 1))
-            return v;
-          break;
-        case 'y':
-          t->tm_isdst = -1;
-          if (!adjyear(t, type, val, 1))
-            return v;
-          break;
-        default:
-          return v;
+      continue;
+    }
+
+    /*
+     * wdayname
+     * monthname
+     * [wdayname[,]] monthname day h:m:s tzone yyyy
+     * [wdayname[,]] monthname day h:m:s YYYY tzone
+     * year-month-day h:m:s[Z]
+     */
+
+    /*
+     * Weekday_string
+     */
+    if ((val = trans(trans_wday, arg)) != -1) {
+	if (!adjwday(t, type, val, 1, 1))
+	  return v;
+	while (isalpha(*arg))
+	  ++arg;
+	while (isspace(arg[0]))
+	    ++arg;
+    }
+
+    /*
+     * Month_string [day ]
+     */
+    if ((val = trans(trans_mon, arg)) != -1) {
+	if (!adjmon(t, type, val, 1, 1))
+	  return v;
+	//domonth = 0;
+	while (isalpha(*arg))
+	  ++arg;
+	while (isspace(*arg))
+	  ++arg;
+
+	val = strtoul(arg, &tmp, 10);
+	if (tmp != arg && (isspace(*tmp) || *tmp == 0)) {
+	  t->tm_isdst = -1;
+	  if (!adjday(t, 0, val, 1))
+	    return v;
+	  arg = tmp;
+	  //doday = 0;
+	  while (isspace(arg[0]))
+	    ++arg;
+	}
+    }
+
+    /*
+     * h:m:s or year
+     * year or h:m:s
+     */
+    if (doyear) {
+      val = strtol(arg, &tmp, 10);
+      if (tmp != arg && (*tmp == 0 || isspace(*tmp))) {
+	if (!adjyear(t, type, val, 1))
+	  return v;
+	arg = tmp;
+	doyear = 0;
+	while (isspace(arg[0]))
+	    ++arg;
       }
     }
+
+    val = strtol(arg, &tmp, 10);
+    if (dohms && tmp != arg && *tmp == ':') {
+      int hr = -1;
+      int mi = -1;
+      int se = -1;
+      char zflag = 0;
+
+      sscanf(arg, "%d:%d:%d%c", &hr, &mi, &se, &zflag);
+      if (hr >= 0) {
+	if (!adjhour(t, type, hr, 1))
+	  return v;
+      }
+      if (mi >= 0) {
+	if (!adjmin(t, type, mi, 1))
+	  return v;
+      }
+      if (se >= 0) {
+	if (!adjsec(t, type, se, 1))
+	  return v;
+      }
+      arg = tmp;
+      dohms = 0;
+      if (zflag) {
+	/* XXX */
+      }
+      while (arg[0] && !isspace(arg[0]))
+	  ++arg;
+      while (isspace(arg[0]))
+	  ++arg;
+    }
+
+    if (doyear) {
+      val = strtol(arg, &tmp, 10);
+      if (tmp != arg && *tmp == 0) {
+	if (!adjyear(t, type, val, 1))
+	  return v;
+	arg = tmp;
+	doyear = 0;
+	while (isspace(arg[0]))
+	    ++arg;
+      }
+    }
+
+    if (dotzone) {
+	/* XXX */
+    }
+
+
+#if 0
+    /*
+     * Date adjustment
+     */
+    val = strtol(arg, NULL, 10);
+    which = arg[len-1];
+#endif
+
   }
   return 0;
 }
