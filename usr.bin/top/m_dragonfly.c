@@ -115,13 +115,23 @@ static struct kinfo_cputime *cp_time, *cp_old;
 
 /* these are for detailing the process states */
 
-#define MAXPSTATES	6
+enum {
+	PS_STARTING = 0,
+	PS_RUNNING,
+	PS_STOPPED,
+	PS_SLEEPING,
+	PS_ZOMBIE,
+	PS_MAX,
+};
 
-int process_states[MAXPSTATES];
-
+int process_states[PS_MAX + 1];
 char *procstatenames[] = {
-	" running, ", " idle, ", " active, ", " stopped, ", " zombie, ",
-	NULL
+	[PS_STARTING]	= " starting, ",
+	[PS_RUNNING]	= " running, ",
+	[PS_STOPPED]	= " stopped, ",
+	[PS_SLEEPING]	= " sleeping, ",
+	[PS_ZOMBIE]	= " zombie, ",
+	[PS_MAX]	= NULL,
 };
 
 /* these are for detailing the cpu states */
@@ -563,12 +573,47 @@ get_process_info(struct system_info *si, struct process_select *sel,
 		    (show_system || ((PP(pp, flags) & P_SYSTEM) == 0))) {
 			int lpstate = LP(pp, stat);
 			int pstate = PP(pp, stat);
+			int state;
 
 			total_procs++;
-			if (lpstate == LSRUN)
-				process_states[0]++;
-			if (pstate >= 0 && pstate < MAXPSTATES - 1)
-				process_states[pstate]++;
+
+			switch (pstate) {
+			case SIDL:
+				state = PS_STARTING;
+				break;
+			case SACTIVE:
+				switch (lpstate) {
+				case LSRUN:
+					state = PS_RUNNING;
+					break;
+				case LSSTOP:
+					state = PS_STOPPED;
+					break;
+				case LSSLEEP:
+					state = PS_SLEEPING;
+					break;
+				default:
+					fprintf(stderr, "top: unknown LWP "
+						"state: %d\n", lpstate);
+					break;
+				}
+				break;
+			case SSTOP:
+				state = PS_STOPPED;
+				break;
+			case SZOMB:
+				state = PS_ZOMBIE;
+				break;
+			case SCORE:
+				state = PS_MAX; /* ignore */
+				break;
+			default:
+				fprintf(stderr, "top: unknown process "
+					"state: %d\n", pstate);
+				break;
+			}
+			if (state < PS_MAX)
+				process_states[state]++;
 
 			if (match_command != NULL &&
 			    strstr(PP(pp, comm), match_command) == NULL) {
