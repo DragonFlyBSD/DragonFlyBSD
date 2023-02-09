@@ -688,7 +688,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	char status[16];
 	int state;
 	int xnice;
-	char *comm;
+	char *wmesg, *comm;
 	char cputime_fmt[10], ccputime_fmt[10];
 
 	/* find and remember the next proc structure */
@@ -749,13 +749,13 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 			strcpy(status, "RUN");
 		break;
 	case LSSLEEP:
-		if (LP(pp, wmesg) != NULL) {
-			sprintf(status, "%.8s", LP(pp, wmesg)); /* WMESGLEN */
+		wmesg = LP(pp, wmesg);
+		if (wmesg[0] != '\0') {
+			sprintf(status, "%.8s", wmesg); /* WMESGLEN */
 			break;
 		}
 		/* fall through */
 	default:
-
 		if (state >= 0 && (unsigned)state < NELEM(state_abbrev))
 			sprintf(status, "%.6s", state_abbrev[(unsigned char)state]);
 		else
