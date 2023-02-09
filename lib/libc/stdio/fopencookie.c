@@ -117,7 +117,7 @@ static fpos_t
 _fopencookie_seek(void *cookie, fpos_t offset, int whence)
 {
 	struct fopencookie_thunk *thunk;
-	off64_t off64;
+	off_t off64;
 	int res;
 
 	switch (whence) {
@@ -142,7 +142,7 @@ _fopencookie_seek(void *cookie, fpos_t offset, int whence)
 		return (-1);
 	}
 
-	off64 = (off64_t)offset;
+	off64 = (off_t)offset;
 	res = thunk->foc_io.seek(thunk->foc_cookie, &off64, whence);
 	if (res < 0)
 		return (res);
