@@ -92,16 +92,6 @@ static char smp_header[] =
 #define smp_Proc_format \
 	"%6d %-*.*s %3d%7s %6s %8.8s %3d %6s %7s %5.2f%% %.*s"
 
-/* process state names for the "STATE" column of the display */
-/*
- * the extra nulls in the string "run" are for adding a slash and the
- * processor number when needed
- */
-
-const char *state_abbrev[] = {
-	"", "RUN\0\0\0", "STOP", "SLEEP",
-};
-
 
 static kvm_t *kd;
 
@@ -131,6 +121,16 @@ char *procstatenames[] = {
 	[PS_STOPPED]	= " stopped, ",
 	[PS_SLEEPING]	= " sleeping, ",
 	[PS_ZOMBIE]	= " zombie, ",
+	[PS_MAX]	= NULL,
+};
+
+/* process state names for the "STATE" column of the display */
+const char *state_abbrev[] = {
+	[PS_STARTING]	= "START",
+	[PS_RUNNING]	= "RUN",
+	[PS_STOPPED]	= "STOP",
+	[PS_SLEEPING]	= "SLEEP",
+	[PS_ZOMBIE]	= "ZOMBIE",
 	[PS_MAX]	= NULL,
 };
 
@@ -741,30 +741,47 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	pct = pctdouble(LP(pp, pctcpu));
 
 	/* generate "STATE" field */
-	switch (state = LP(pp, stat)) {
-	case LSRUN:
-		if (LP(pp, tdflags) & TDF_RUNNING)
-			sprintf(status, "CPU%d", LP(pp, cpuid));
-		else
-			strcpy(status, "RUN");
+	state = PS_MAX;
+	switch (PP(pp, stat)) {
+	case SIDL:
+		state = PS_STARTING;
 		break;
-	case LSSLEEP:
-		wmesg = LP(pp, wmesg);
-		if (wmesg[0] != '\0') {
-			sprintf(status, "%.8s", wmesg); /* WMESGLEN */
+	case SACTIVE:
+		switch (LP(pp, stat)) {
+		case LSRUN:
+			if (LP(pp, tdflags) & TDF_RUNNING)
+				sprintf(status, "CPU%d", LP(pp, cpuid));
+			else
+				state = PS_RUNNING;
+			break;
+		case LSSTOP:
+			state = PS_STOPPED;
+			break;
+		case LSSLEEP:
+			wmesg = LP(pp, wmesg);
+			if (wmesg[0] != '\0')
+				sprintf(status, "%.8s", wmesg); /* WMESGLEN */
+			else
+				state = PS_SLEEPING;
+			break;
+		default:
+			sprintf(status, "?LP/%d", LP(pp, stat));
 			break;
 		}
-		/* fall through */
+		break;
+	case SSTOP:
+		state = PS_STOPPED;
+		break;
+	case SZOMB:
+		state = PS_ZOMBIE;
+		break;
+	case SCORE:
 	default:
-		if (state >= 0 && (unsigned)state < NELEM(state_abbrev))
-			sprintf(status, "%.6s", state_abbrev[(unsigned char)state]);
-		else
-			sprintf(status, "?%5d", state);
+		sprintf(status, "?P/%d", PP(pp, stat));
 		break;
 	}
-
-	if (PP(pp, stat) == SZOMB)
-		strcpy(status, "ZOMB");
+	if (state < PS_MAX)
+		sprintf(status, "%.8s", state_abbrev[state]);
 
 	/*
 	 * idle time 0 - 31 -> nice value +21 - +52 normal time      -> nice
