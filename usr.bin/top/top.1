@@ -1,4 +1,4 @@
-.Dd July 26, 2015
+.Dd February 9, 2023
 .Dt TOP 1
 .Os
 .Sh NAME
@@ -385,13 +385,17 @@ Total size of the process (text, data, and stack) given in kilobytes.
 Resident memory: current amount of process memory that resides in physical
 memory, given in kilobytes, megabytes or gigabytes depending on the size to be reported.
 .It STATE
-Current state (typically one of
-.Sq sleep ,
-.Sq run ,
-.Sq idl ,
-.Sq zomb ,
+Current state, may be:
+.Sq START ,
+.Sq RUN
+(shown as
+.Sq CPUn
+on SMP systems),
+.Sq SLEEP
+(generally shown as the event on which the process waits),
+.Sq STOP ,
 or
-.Sq stop ) .
+.Sq ZOMBIE .
 .It C
 Number of CPU the process is currently running on (only on multi-CPU machines).
 .It TIME
