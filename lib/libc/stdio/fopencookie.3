@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD$
 .\"
-.Dd May 9, 2016
+.Dd February 4, 2023
 .Dt FOPENCOOKIE 3
 .Os
 .Sh NAME
@@ -39,7 +39,7 @@
 .Ft typedef ssize_t
 .Fn (*cookie_write_function_t) "void *cookie" "const char *buf" "size_t size"
 .Ft typedef int
-.Fn (*cookie_seek_function_t) "void *cookie" "off64_t *offset" "int whence"
+.Fn (*cookie_seek_function_t) "void *cookie" "off_t *offset" "int whence"
 .Ft typedef int
 .Fn (*cookie_close_function_t) "void *cookie"
 .Bd -literal
