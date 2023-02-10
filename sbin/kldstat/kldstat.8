@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/sbin/kldstat/kldstat.8,v 1.17 2007/02/13 17:06:15 brueffer Exp $
 .\"
-.Dd September 23, 2005
+.Dd February 10, 2023
 .Dt KLDSTAT 8
 .Os
 .Sh NAME
@@ -33,6 +33,7 @@
 .Nd display status of dynamic kernel linker
 .Sh SYNOPSIS
 .Nm
+.Op Fl h
 .Op Fl v
 .Op Fl i Ar id
 .Op Fl n Ar filename
@@ -47,6 +48,9 @@ kernel.
 .Pp
 The following options are available:
 .Bl -tag -width indentXX
+.It Fl h
+Display the size field in a human-readable form, using unit suffixes
+instead of hexdecimal values.
 .It Fl v
 Be more verbose.
 .It Fl i Ar id

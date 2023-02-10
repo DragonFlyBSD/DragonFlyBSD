@@ -27,7 +27,7 @@
  */
 
 #include <err.h>
-#include <stdint.h>
+#include <libutil.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -37,6 +37,10 @@
 #include <sys/linker.h>
 
 #define	POINTER_WIDTH	((int)(sizeof(void *) * 2 + 2))
+
+static int humanize = 0;
+static int verbose = 0;
+
 
 static void
 printmod(int modid)
@@ -51,32 +55,44 @@ printmod(int modid)
 }
 
 static void
-printfile(int fileid, int verbose)
+printfile(int fileid)
 {
     struct kld_file_stat stat;
     int modid;
+    char buf[5];
 
     stat.version = sizeof(struct kld_file_stat);
-    if (kldstat(fileid, &stat) < 0)
+    if (kldstat(fileid, &stat) < 0) {
 	warn("can't stat file id %d", fileid);
-    else
-	printf("%2d %4d %p %-8jx %s\n",
-	       stat.id, stat.refs, stat.address, (uintmax_t)stat.size, 
-	       stat.name);
+    } else {
+	if (humanize) {
+	    humanize_number(buf, sizeof(buf), stat.size, "",
+			    HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE);
+	    printf("%2d %4d %*p %5s %s",
+		   stat.id, stat.refs, POINTER_WIDTH, stat.address,
+		   buf, stat.name);
+	} else {
+	    printf("%2d %4d %*p %8zx %s",
+		   stat.id, stat.refs, POINTER_WIDTH, stat.address,
+		   stat.size, stat.name);
+	}
+    }
 
     if (verbose) {
+	printf(" (%s)\n", stat.pathname);
 	printf("\tContains modules:\n");
 	printf("\t\tId Name\n");
-	for (modid = kldfirstmod(fileid); modid > 0;
-	     modid = modfnext(modid))
+	for (modid = kldfirstmod(fileid); modid > 0; modid = modfnext(modid))
 	    printmod(modid);
+    } else {
+	printf("\n");
     }
 }
 
-static void
+static void __dead2
 usage(void)
 {
-    fprintf(stderr, "usage: kldstat [-v] [-i id] [-n filename]\n");
+    fprintf(stderr, "usage: kldstat [-hv] [-i id] [-n filename]\n");
     fprintf(stderr, "       kldstat [-q] [-m modname]\n");
     exit(1);
 }
@@ -85,15 +101,17 @@ int
 main(int argc, char** argv)
 {
     int c;
-    int verbose = 0;
     int fileid = 0;
     int quiet = 0;
     char* filename = NULL;
     char* modname = NULL;
     char* p;
 
-    while ((c = getopt(argc, argv, "i:m:n:qv")) != -1)
+    while ((c = getopt(argc, argv, "hi:m:n:qv")) != -1) {
 	switch (c) {
+	case 'h':
+	    humanize = 1;
+	    break;
 	case 'i':
 	    fileid = (int)strtoul(optarg, &p, 10);
 	    if (*p != '\0')
@@ -114,6 +132,7 @@ main(int argc, char** argv)
 	default:
 	    usage();
 	}
+    }
     argc -= optind;
     argv += optind;
 
@@ -148,12 +167,14 @@ main(int argc, char** argv)
 	    err(1, "can't find file %s", filename);
     }
 
-    printf("Id Refs Address%*c Size     Name\n", POINTER_WIDTH - 7, ' ');
-    if (fileid != 0)
-	printfile(fileid, verbose);
-    else
+    printf("Id Refs Address%*c %*s Name\n", POINTER_WIDTH - 7, ' ',
+	   (humanize ? 5 : 8), "Size");
+    if (fileid != 0) {
+	printfile(fileid);
+    } else {
 	for (fileid = kldnext(0); fileid > 0; fileid = kldnext(fileid))
-	    printfile(fileid, verbose);
+	    printfile(fileid);
+    }
 
     return 0;
 }
