@@ -302,7 +302,7 @@ linker_load_file(const char *filename, linker_file_t *result)
 
     /* Refuse to load modules if securelevel raised */
     if (securelevel > 0 || kernel_mem_readonly)
-	return EPERM; 
+	return EPERM;
 
     lf = linker_find_file_by_name(filename);
     if (lf) {
@@ -440,13 +440,15 @@ linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
     else
 	filename = pathname;
 
-    KLD_DPF(FILE, ("linker_make_file: new file, filename=%s\n", filename));
+    KLD_DPF(FILE, ("linker_make_file: new file, filename=%s, pathname=%s\n",
+		   filename, pathname));
     lockmgr(&llf_lock, LK_EXCLUSIVE);
     lf = kmalloc(sizeof(struct linker_file), M_LINKER, M_WAITOK | M_ZERO);
     lf->refs = 1;
     lf->userrefs = 0;
     lf->flags = 0;
     lf->filename = linker_strdup(filename);
+    lf->pathname = linker_strdup(pathname);
     lf->id = next_file_id++;
     lf->ndeps = 0;
     lf->deps = NULL;
@@ -473,7 +475,7 @@ linker_file_unload(linker_file_t file)
 
     /* Refuse to unload modules if securelevel raised */
     if (securelevel > 0 || kernel_mem_readonly)
-	return EPERM; 
+	return EPERM;
 
     KLD_DPF(FILE, ("linker_file_unload: lf->refs=%d\n", file->refs));
 
@@ -547,6 +549,10 @@ linker_file_unload(linker_file_t file)
     if (file->filename) {
 	kfree(file->filename, M_LINKER);
 	file->filename = NULL;
+    }
+    if (file->pathname) {
+	kfree(file->pathname, M_LINKER);
+	file->pathname = NULL;
     }
 
     kfree(file, M_LINKER);
@@ -895,19 +901,19 @@ sys_kldnext(struct sysmsg *sysmsg, const struct kldnext_args *uap)
 
     lockmgr(&kld_lock, LK_EXCLUSIVE);
     if (uap->fileid == 0) {
-	    lf = TAILQ_FIRST(&linker_files);
+	lf = TAILQ_FIRST(&linker_files);
     } else {
-	    lf = linker_find_file_by_id(uap->fileid);
-	    if (lf == NULL) {
-		    error = ENOENT;
-		    goto out;
-	    }
-	    lf = TAILQ_NEXT(lf, link);
+	lf = linker_find_file_by_id(uap->fileid);
+	if (lf == NULL) {
+	    error = ENOENT;
+	    goto out;
+	}
+	lf = TAILQ_NEXT(lf, link);
     }
 
     /* Skip partially loaded files. */
     while (lf != NULL && !(lf->flags & LINKER_FILE_LINKED)) {
-	    lf = TAILQ_NEXT(lf, link);
+	lf = TAILQ_NEXT(lf, link);
     }
 
     if (lf)
@@ -955,8 +961,15 @@ sys_kldstat(struct sysmsg *sysmsg, const struct kldstat_args *uap)
     namelen = strlen(lf->filename) + 1;
     if (namelen > MAXPATHLEN)
 	namelen = MAXPATHLEN;
-    if ((error = copyout(lf->filename, &stat->name[0], namelen)) != 0)
+    if ((error = copyout(lf->filename, stat->name, namelen)) != 0)
 	goto out;
+
+    namelen = strlen(lf->pathname) + 1;
+    if (namelen > MAXPATHLEN)
+	namelen = MAXPATHLEN;
+    if ((error = copyout(lf->pathname, stat->pathname, namelen)) != 0)
+	goto out;
+
     if ((error = copyout(&lf->refs, &stat->refs, sizeof(int))) != 0)
 	goto out;
     if ((error = copyout(&lf->id, &stat->id, sizeof(int))) != 0)

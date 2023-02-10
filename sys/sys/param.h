@@ -244,9 +244,10 @@
  * 600500 - 6.5 development
  * 600501 - add fopencookie(3)
  * 600502 - WIFSIGNALED(x) excludes SIGCONT
+ * 600503 - kldstat(2) supports module's full path
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600502	/* propagated to newvers */
+#define __DragonFly_version 600503	/* propagated to newvers */
 
 #include <sys/_null.h>
 

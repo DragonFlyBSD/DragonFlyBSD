@@ -111,6 +111,7 @@ struct linker_file {
 #define LINKER_FILE_LINKED	0x1	/* file has been fully linked */
     TAILQ_ENTRY(linker_file) link;	/* list of all loaded files */
     char*		filename;	/* file which was loaded */
+    char*		pathname;	/* file name with full path */
     int			id;		/* unique id */
     caddr_t		address;	/* load address */
     size_t		size;		/* size of file */
@@ -131,7 +132,7 @@ typedef struct linker_class *linker_class_t;
 typedef TAILQ_HEAD(, linker_class) linker_class_list_t;
 
 struct linker_class_ops {
-    /* 
+    /*
      * Load a file, returning the new linker_file_t in *result.  If
      * the class does not recognise the file type, zero should be
      * returned, without modifying *result.  If the file is
@@ -339,6 +340,7 @@ Elf_Addr elf_relocaddr(linker_file_t, Elf_Addr);
 struct kld_file_stat {
     int		version;	/* set to sizeof(linker_file_stat) */
     char        name[MAXPATHLEN];
+    char        pathname[MAXPATHLEN];
     int		refs;
     int		id;
     caddr_t	address;	/* load address */
