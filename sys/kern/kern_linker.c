@@ -95,6 +95,19 @@ linker_strdup(const char *str)
     return(result);
 }
 
+static const char *
+linker_basename(const char *path)
+{
+    const char	*filename;
+
+    filename = strrchr(path, '/');
+    if (filename == NULL)
+	return path;
+    if (filename[1])
+	filename++;
+    return (filename);
+}
+
 static void
 linker_init(void* arg)
 {
@@ -434,14 +447,10 @@ linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
     linker_file_t lf = NULL;
     const char *filename;
 
-    filename = rindex(pathname, '/');
-    if (filename && filename[1])
-	filename++;
-    else
-	filename = pathname;
-
+    filename = linker_basename(pathname);
     KLD_DPF(FILE, ("linker_make_file: new file, filename=%s, pathname=%s\n",
 		   filename, pathname));
+
     lockmgr(&llf_lock, LK_EXCLUSIVE);
     lf = kmalloc(sizeof(struct linker_file), M_LINKER, M_WAITOK | M_ZERO);
     lf->refs = 1;
@@ -795,7 +804,7 @@ sys_kldload(struct sysmsg *sysmsg, const struct kldload_args *uap)
      * (kldname.ko, or kldname.ver.ko) treat it as an interface
      * name.
      */
-    if (index(file, '/') || index(file, '.')) {
+    if (strchr(file, '/') || strchr(file, '.')) {
 	kldname = file;
 	modname = NULL;
     } else {
@@ -862,22 +871,21 @@ out:
 int
 sys_kldfind(struct sysmsg *sysmsg, const struct kldfind_args *uap)
 {
-    char *filename = NULL, *modulename;
+    char *pathname;
+    const char *filename;
     linker_file_t lf;
     int error;
 
     sysmsg->sysmsg_result = -1;
 
-    filename = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
-    if ((error = copyinstr(uap->file, filename, MAXPATHLEN, NULL)) != 0)
+    pathname = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
+    if ((error = copyinstr(uap->file, pathname, MAXPATHLEN, NULL)) != 0)
 	goto out;
 
-    modulename = rindex(filename, '/');
-    if (modulename == NULL)
-	modulename = filename;
+    filename = linker_basename(pathname);
 
     lockmgr(&kld_lock, LK_EXCLUSIVE);
-    lf = linker_find_file_by_name(modulename);
+    lf = linker_find_file_by_name(filename);
     if (lf)
 	sysmsg->sysmsg_result = lf->id;
     else
@@ -885,8 +893,8 @@ sys_kldfind(struct sysmsg *sysmsg, const struct kldfind_args *uap)
     lockmgr(&kld_lock, LK_RELEASE);
 
 out:
-    if (filename)
-	kfree(filename, M_TEMP);
+    if (pathname)
+	kfree(pathname, M_TEMP);
     return error;
 }
 
@@ -1420,7 +1428,7 @@ linker_search_path(const char *name)
     const char **ext;
 
     /* qualified at all? */
-    if (index(name, '/'))
+    if (strchr(name, '/'))
 	return(linker_strdup(name));
 
     /* traverse the linker path */
@@ -1528,11 +1536,7 @@ linker_load_module(const char *kldname, const char *modname,
      * the same basename but different path because they can
      * provide different versions of the same modules.
      */
-    filename = rindex(pathname, '/');
-    if (filename == NULL)
-	filename = pathname;
-    else
-	filename++;
+    filename = linker_basename(pathname);
     if (linker_find_file_by_name(filename))
 	error = EEXIST;
     else
