@@ -852,10 +852,16 @@ bus_dmamap_load_ccb(bus_dma_tag_t dmat, bus_dmamap_t map, union ccb *ccb,
     bus_dmamap_callback_t *callback, void *callback_arg, int flags)
 {
 	const struct ccb_scsiio *csio;
+	struct ccb_hdr *ccb_h;
 
-	KASSERT(ccb->ccb_h.func_code == XPT_SCSI_IO ||
-	    ccb->ccb_h.func_code == XPT_CONT_TARGET_IO,
-	    ("invalid ccb func_code %u", ccb->ccb_h.func_code));
+	ccb_h = &ccb->ccb_h;
+	KASSERT(ccb_h->func_code == XPT_SCSI_IO ||
+	    ccb_h->func_code == XPT_CONT_TARGET_IO,
+	    ("invalid ccb func_code %u", ccb_h->func_code));
+	if ((ccb_h->flags & CAM_DIR_MASK) == CAM_DIR_NONE) {
+		callback(callback_arg, NULL, 0, 0);
+		return 0;
+	}
 	csio = &ccb->csio;
 
 	return (bus_dmamap_load(dmat, map, csio->data_ptr, csio->dxfer_len,
