@@ -1401,9 +1401,6 @@ SYSINIT(preload, SI_BOOT2_KLD, SI_ORDER_MIDDLE, linker_preload, 0);
  * - preloaded (result is just the module name)
  * - on disk (result is full path to module)
  *
- * If the module name is qualified in any way (contains path, etc.)
- * the we simply return a copy of it.
- *
  * The search path can be manipulated via sysctl.  Note that we use the ';'
  * character as a separator to be consistent with the bootloader.
  */
@@ -1419,6 +1416,7 @@ linker_search_path(const char *name)
 {
     struct nlookupdata	nd;
     char		*cp, *ep, *result;
+    char		*buf, *retbuf, *freebuf;
     size_t		name_len, prefix_len;
     size_t		result_len;
     int			sep;
@@ -1427,15 +1425,42 @@ linker_search_path(const char *name)
     const char *exts[] = { "", ".ko", NULL };
     const char **ext;
 
-    /* qualified at all? */
-    if (strchr(name, '/'))
-	return(linker_strdup(name));
+    /* already full path */
+    if (name[0] == '/')
+	return linker_strdup(name);
+
+    /* resolve to full path */
+    if (strchr(name, '/') != NULL) {
+	result = NULL;
+
+	/* adapted from sys___realpath() */
+	error = nlookup_init(&nd, name, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0) {
+	    nd.nl_flags |= NLC_SHAREDLOCK;
+	    error = nlookup(&nd);
+	}
+	if (error == 0) {
+	    if (nd.nl_flags & NLC_NCPISLOCKED) {
+		nd.nl_flags &= ~NLC_NCPISLOCKED;
+		cache_unlock(&nd.nl_nch);
+	    }
+	    error = cache_fullpath(curproc, &nd.nl_nch, NULL,
+				   &retbuf, &freebuf, 0);
+	    if (error == 0) {
+		result = linker_strdup(retbuf);
+		kfree(freebuf, M_TEMP);
+	    }
+	}
+	nlookup_done(&nd);
+
+	return (result);
+    }
 
     /* traverse the linker path */
+    buf = kmalloc(MAXPATHLEN, M_LINKER, M_WAITOK);
     cp = linker_path;
     name_len = strlen(name);
     for (;;) {
-
 	/* find the end of this component */
 	for (ep = cp; (*ep != 0) && (*ep != ';'); ep++)
 	    ;
@@ -1446,11 +1471,7 @@ linker_search_path(const char *name)
 	else
 	    sep = 0;
 
-	/*
-	 * +2+3 : possible separator, plus terminator + possible extension.
-	 */
-	result = kmalloc(prefix_len + name_len + 2+3, M_LINKER, M_WAITOK);
-
+	result = buf;
 	strncpy(result, cp, prefix_len);
 	if (sep)
 	    result[prefix_len++] = '/';
@@ -1477,12 +1498,12 @@ linker_search_path(const char *name)
 	    nlookup_done(&nd);
 	}
 
-	kfree(result, M_LINKER);
-
 	if (*ep == 0)
 	    break;
 	cp = ep + 1;
     }
+
+    kfree(buf, M_LINKER);
     return(NULL);
 }
 
