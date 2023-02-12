@@ -1408,7 +1408,7 @@ SYSINIT(preload, SI_BOOT2_KLD, SI_ORDER_MIDDLE, linker_preload, 0);
  * character as a separator to be consistent with the bootloader.
  */
 
-static char linker_path[MAXPATHLEN] = "/boot;/boot/modules;/;/modules";
+static char linker_path[MAXPATHLEN] = "/boot/kernel;/boot/modules.local";
 
 SYSCTL_STRING(_kern, OID_AUTO, module_path, CTLFLAG_RW, linker_path,
 	      sizeof(linker_path), "module load search path");
