@@ -61,14 +61,14 @@ static struct kernel_module *	file_findmodule(struct preloaded_file *fp, char *m
 static int			file_havepath(const char *name);
 static char			*mod_searchmodule(char *name, struct mod_depend *verinfo);
 static void			file_insert_tail(struct preloaded_file *mp);
-struct file_metadata*		metadata_next(struct file_metadata *base_mp, int type);
+static struct file_metadata*	metadata_next(struct file_metadata *base_mp, int type);
 static void			moduledir_readhints(struct moduledir *mdp);
 static void			moduledir_rebuild(void);
 
 /* load address should be tweaked by first module loaded (kernel) */
 static vm_offset_t	loadaddr = 0;
 
-static const char	*default_searchpath ="modules;KERNEL";
+static const char	*default_searchpath = "modules;KERNEL";
 static const char	*local_module_path = "../modules.local";
 
 static STAILQ_HEAD(, moduledir) moduledir_list = STAILQ_HEAD_INITIALIZER(moduledir_list);
@@ -223,43 +223,43 @@ command_crc(int argc, char *argv[])
     error = 0;
     printf("size\tcrc\t name\n");
     for (i = 1; i < argc; ++i) {
-	    /* locate the file on the load path */
-	    cp = file_search(argv[i], NULL);
-	    if (cp == NULL) {
-		snprintf(command_errbuf, sizeof(command_errbuf),
-		    "can't find '%s'", argv[i]);
-		error = CMD_ERROR;
-		break;
-	    }
-	    name = cp;
+	/* locate the file on the load path */
+	cp = file_search(argv[i], NULL);
+	if (cp == NULL) {
+	    snprintf(command_errbuf, sizeof(command_errbuf),
+		"can't find '%s'", argv[i]);
+	    error = CMD_ERROR;
+	    break;
+	}
+	name = cp;
 
-	    if ((fd = rel_open(name, NULL, O_RDONLY)) < 0) {
-		snprintf(command_errbuf, sizeof(command_errbuf),
-		    "can't open '%s': %s", name, strerror(errno));
-		free(name);
-		error = CMD_ERROR;
+	if ((fd = rel_open(name, NULL, O_RDONLY)) < 0) {
+	    snprintf(command_errbuf, sizeof(command_errbuf),
+		"can't open '%s': %s", name, strerror(errno));
+	    free(name);
+	    error = CMD_ERROR;
+	    break;
+	}
+	tot = 0;
+	crc = 0;
+	for (;;) {
+	    got = read(fd, buf, 8192);
+	    if (got == 0)
+		break;
+	    if (got < 0) {
+		printf("error reading '%s': %s\n",
+		    name, strerror(errno));
 		break;
 	    }
-	    tot = 0;
-	    crc = 0;
-	    for (;;) {
-		got = read(fd, buf, 8192);
-		if (got == 0)
-			break;
-		if (got < 0) {
-			printf("error reading '%s': %s\n",
-				name, strerror(errno));
-			break;
-		}
-		if (crc == 0)
-			crc = iscsi_crc32(buf, got);
-		else
-			crc = iscsi_crc32_ext(buf, got, crc);
-		tot += got;
-	    }
-	    printf("%7d %08x %s\n", tot, crc, name);
-	    free(name);
-	    close(fd);
+	    if (crc == 0)
+		crc = iscsi_crc32(buf, got);
+	    else
+		crc = iscsi_crc32_ext(buf, got, crc);
+	    tot += got;
+	}
+	printf("%7d %08x %s\n", tot, crc, name);
+	free(name);
+	close(fd);
     }
     free (buf);
     if (error == 0)
@@ -326,7 +326,7 @@ command_lsmod(int argc, char *argv[])
 /*
  * File level interface, functions file_*
  */
-int
+static int
 file_load(char *filename, vm_offset_t dest, struct preloaded_file **result)
 {
     struct preloaded_file *fp;
@@ -365,6 +365,7 @@ file_load_dependencies(struct preloaded_file *base_file)
     md = file_findmetadata(base_file, MODINFOMD_DEPLIST);
     if (md == NULL)
 	return (0);
+
     error = 0;
     do {
 	verinfo = (struct mod_depend*)md->md_data;
@@ -391,11 +392,12 @@ file_load_dependencies(struct preloaded_file *base_file)
     } while (md);
     if (!error)
 	return (0);
+
     /* Load failed; discard everything */
     while (base_file != NULL) {
-        fp = base_file;
-        base_file = base_file->f_next;
-        file_discard(fp);
+	fp = base_file;
+	base_file = base_file->f_next;
+	file_discard(fp);
     }
     return (error);
 }
@@ -404,7 +406,7 @@ file_load_dependencies(struct preloaded_file *base_file)
  * We've been asked to load (name) as (type), so just suck it in,
  * no arguments or anything.
  */
-int
+static int
 file_loadraw(char *type, char *name)
 {
     struct preloaded_file	*fp;
@@ -413,7 +415,7 @@ file_loadraw(char *type, char *name)
     vm_offset_t			laddr;
 
     /* We can't load first */
-    if ((file_findfile(NULL, NULL)) == NULL) {
+    if (file_findfile(NULL, NULL) == NULL) {
 	command_errmsg = "can't load file before kernel";
 	return(CMD_ERROR);
     }
@@ -597,7 +599,7 @@ file_findfile(char *name, char *type)
  * Find a module matching (name) inside of given file.
  * NULL may be passed as a wildcard.
  */
-struct kernel_module *
+static struct kernel_module *
 file_findmodule(struct preloaded_file *fp, char *modname,
 	struct mod_depend *verinfo)
 {
@@ -612,6 +614,7 @@ file_findmodule(struct preloaded_file *fp, char *modname,
 	}
 	return (NULL);
     }
+
     best = NULL;
     bestver = 0;
     for (mp = fp->f_modules; mp; mp = mp->m_next) {
@@ -662,7 +665,7 @@ file_findmetadata(struct preloaded_file *fp, int type)
     return(md);
 }
 
-struct file_metadata *
+static struct file_metadata *
 metadata_next(struct file_metadata *md, int type)
 {
     if (md == NULL)
@@ -748,11 +751,8 @@ file_search(const char *name, char **extlist)
     int			namelen;
 
     /* Don't look for nothing */
-    if (name == NULL)
+    if (name == NULL || *name == 0)
 	return(NULL);
-
-    if (*name == 0)
-	return(strdup(name));
 
     /*
      * Qualified name.  If it is a directory tag on
@@ -771,6 +771,7 @@ file_search(const char *name, char **extlist)
 	}
 	return(NULL);
     }
+
     moduledir_rebuild();
     result = NULL;
     namelen = strlen(name);
@@ -910,28 +911,36 @@ file_discard(struct preloaded_file *fp)
 {
     struct file_metadata	*md, *md1;
     struct kernel_module	*mp, *mp1;
+
     if (fp == NULL)
 	return;
+
     md = fp->f_metadata;
     while (md) {
 	md1 = md;
 	md = md->md_next;
 	free(md1);
     }
+
     mp = fp->f_modules;
     while (mp) {
 	if (mp->m_name)
 	    free(mp->m_name);
+#ifdef moduleargs
+	if (mp->m_args)
+	    free(mp->m_args);
+#endif
 	mp1 = mp;
 	mp = mp->m_next;
 	free(mp1);
     }
+
     if (fp->f_name != NULL)
 	free(fp->f_name);
     if (fp->f_type != NULL)
-        free(fp->f_type);
+	free(fp->f_type);
     if (fp->f_args != NULL)
-        free(fp->f_args);
+	free(fp->f_args);
     free(fp);
 }
 
@@ -1016,6 +1025,7 @@ moduledir_readhints(struct moduledir *mdp)
     mdp->d_hintsz = size;
     close(fd);
     return;
+
 bad:
     close(fd);
     if (mdp->d_hints) {

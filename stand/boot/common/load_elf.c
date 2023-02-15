@@ -104,7 +104,7 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
     bzero(&ef, sizeof(struct elf_file));
 
     /*
-     * Open the image, read and validate the ELF header 
+     * Open the image, read and validate the ELF header
      */
     if (filename == NULL)	/* can't handle nameless */
 	return(EFTYPE);
@@ -138,7 +138,6 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
 	goto oerr;
     }
 
-
     /*
      * Check to see what sort of module we are.
      */
@@ -171,8 +170,8 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
 	    err = EPERM;
 	    goto oerr;
 	}
-	/* 
-	 * Calculate destination address based on kernel entrypoint 	
+	/*
+	 * Calculate destination address based on kernel entrypoint
 	 */
 	dest = ehdr->e_entry;
 	if (dest == 0) {
@@ -187,14 +186,14 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
 	goto oerr;
     }
 
-    /* 
+    /*
      * Ok, we think we should handle this.
      */
     fp = file_alloc();
     if (fp == NULL) {
-	    printf("elf" __XSTRING(__ELF_WORD_SIZE) "_loadfile: cannot allocate module info\n");
-	    err = EPERM;
-	    goto out;
+	printf("elf" __XSTRING(__ELF_WORD_SIZE) "_loadfile: cannot allocate module info\n");
+	err = EPERM;
+	goto out;
     }
 
     /*
@@ -209,19 +208,19 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
 
 	mptr = malloc(256);
 	if (strncmp(fullpath, "/boot/", 6) != 0)
-		prefix = "/boot";
+	    prefix = "/boot"
 	snprintf(mptr, 256, "%s%s", prefix, fullpath);
 	setenv("kernelname", mptr, 1);
 
 	fpend = strrchr(mptr, '/');
 	*fpend = 0;
 	if (strcmp(mptr, "/boot") == 0)
-		snprintf(mptr, 256, "/boot/modules");
+	    snprintf(mptr, 256, "/boot/modules");
 
 	/* Append modules.local for kernel if requested */
 	modlocal = getenv("local_modules");
 	if (modlocal != NULL && strcmp(modlocal, "YES") == 0)
-		strncat(mptr, ";/boot/modules.local", 255);
+	    strncat(mptr, ";/boot/modules.local", 255);
 
 	/* this will be moved to "module_path" on boot */
 	setenv("exported_module_path", mptr, 1);
@@ -248,7 +247,7 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
     *result = (struct preloaded_file *)fp;
     err = 0;
     goto out;
-    
+
  ioerr:
     err = EIO;
  oerr:
@@ -574,7 +573,7 @@ fake_modname(const char *name)
 	    if (ep == name) {
 		sp = invalid_name;
 		ep = invalid_name + sizeof(invalid_name) - 1;
-	    } 
+	    }
     } else
 	ep = name + strlen(name);
     len = ep - sp;
@@ -588,7 +587,7 @@ fake_modname(const char *name)
 
 #if defined(__i386__) && __ELF_WORD_SIZE == 64
 struct mod_metadata64 {
-	int		md_version;	/* structure version MDTV_* */  
+	int		md_version;	/* structure version MDTV_* */
 	int		md_type;	/* type of entry MDT_* */
 	u_int64_t	md_data;	/* specific data */
 	u_int64_t	md_cval;	/* common string label */
