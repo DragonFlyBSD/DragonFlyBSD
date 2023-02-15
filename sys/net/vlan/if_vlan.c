@@ -421,7 +421,9 @@ vlan_ifdetach_dispatch(netmsg_t msg)
 
 	while (ifp_p->if_vlantrunks &&
 	       (ifve = LIST_FIRST(&trunk->vlan_list)) != NULL)
+	{
 		vlan_unconfig(ifve->ifv);
+	}
 reply:
 	lwkt_replymsg(&vmsg->base.lmsg, 0);
 }
@@ -588,8 +590,8 @@ vlan_input(struct mbuf *m)
 	rcvif = m->m_pkthdr.rcvif;
 	KKASSERT(m->m_flags & M_VLANTAG);
 
-	vlantrunks = rcvif->if_vlantrunks;
 	/* Make sure 'vlantrunks' is really used. */
+	vlantrunks = rcvif->if_vlantrunks;
 	cpu_ccfence();
 	if (vlantrunks == NULL) {
 		IFNET_STAT_INC(rcvif, noproto, 1);
@@ -597,21 +599,21 @@ vlan_input(struct mbuf *m)
 		return;
 	}
 
-	crit_enter();	/* XXX Necessary? */
+	/*
+	 * Locate the associated vlan
+	 */
 	LIST_FOREACH(entry, &vlantrunks[cpuid].vlan_list, ifv_link) {
 		if (entry->ifv->ifv_tag ==
-		    EVL_VLANOFTAG(m->m_pkthdr.ether_vlantag)) {
+		    EVL_VLANOFTAG(m->m_pkthdr.ether_vlantag))
+		{
 			ifv = entry->ifv;
 			break;
 		}
 	}
-	crit_exit();
 
 	/*
-	 * Packet is discarded if:
-	 * - no corresponding vlan(4) interface
-	 * - vlan(4) interface has not been completely set up yet,
-	 *   or is being destroyed (ifv->ifv_p != rcvif)
+	 * Discard packets to unknown vlans, if the vlan interface is
+	 * not completely initialized yet, or it is being destroyed.
 	 */
 	if (ifv == NULL || ifv->ifv_p != rcvif) {
 		IFNET_STAT_INC(rcvif, noproto, 1);
@@ -620,8 +622,8 @@ vlan_input(struct mbuf *m)
 	}
 
 	/*
-	 * Clear M_VLANTAG, before the packet is handed to
-	 * vlan(4) interface
+	 * Clear M_VLANTAG, then hand the vlan-stripped packet to the
+	 * vlan(4) interface.
 	 */
 	m->m_flags &= ~M_VLANTAG;
 
@@ -645,6 +647,9 @@ vlan_link_dispatch(netmsg_t msg)
 	entry = &ifv->ifv_entries[cpu];
 	trunk = &vlantrunks[cpu];
 
+	/*
+	 * Critical section protects per-cpu list
+	 */
 	crit_enter();
 	LIST_INSERT_HEAD(&trunk->vlan_list, entry, ifv_link);
 	crit_exit();
@@ -664,7 +669,8 @@ vlan_link(struct ifvlan *ifv, struct ifnet *ifp_p)
 		struct vlan_trunk *vlantrunks;
 		int i;
 
-		vlantrunks = kmalloc(sizeof(*vlantrunks) * netisr_ncpus, M_VLAN,
+		vlantrunks = kmalloc(sizeof(*vlantrunks) * netisr_ncpus,
+				     M_VLAN,
 				     M_WAITOK | M_ZERO);
 		for (i = 0; i < netisr_ncpus; ++i)
 			LIST_INIT(&vlantrunks[i].vlan_list);

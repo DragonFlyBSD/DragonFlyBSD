@@ -1315,7 +1315,8 @@ ether_reinput_oncpu(struct ifnet *ifp, struct mbuf *m, int reinput_flags)
 	 * side.
 	 */
 	if ((reinput_flags & REINPUT_KEEPRCVIF) == 0 ||
-	    m->m_pkthdr.rcvif == NULL) {
+	    m->m_pkthdr.rcvif == NULL)
+	{
 		m->m_pkthdr.rcvif = ifp;
 	}
 
