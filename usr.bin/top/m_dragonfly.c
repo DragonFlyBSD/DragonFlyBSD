@@ -111,6 +111,7 @@ enum {
 	PS_STOPPED,
 	PS_SLEEPING,
 	PS_ZOMBIE,
+	PS_DUMPING,
 	PS_MAX,
 };
 
@@ -121,6 +122,7 @@ char *procstatenames[] = {
 	[PS_STOPPED]	= " stopped, ",
 	[PS_SLEEPING]	= " sleeping, ",
 	[PS_ZOMBIE]	= " zombie, ",
+	[PS_DUMPING]	= " dumping, ",
 	[PS_MAX]	= NULL,
 };
 
@@ -131,6 +133,7 @@ const char *state_abbrev[] = {
 	[PS_STOPPED]	= "STOP",
 	[PS_SLEEPING]	= "SLEEP",
 	[PS_ZOMBIE]	= "ZOMBIE",
+	[PS_DUMPING]	= "DUMP",
 	[PS_MAX]	= NULL,
 };
 
@@ -503,7 +506,7 @@ fixup_pctcpu(struct kinfo_proc *fixit, uint64_t d)
 	LP(fixit, pctcpu) = (ticks * (uint64_t)fscale) / d;
 }
 
-caddr_t 
+caddr_t
 get_process_info(struct system_info *si, struct process_select *sel,
     int compare_index)
 {
@@ -605,7 +608,7 @@ get_process_info(struct system_info *si, struct process_select *sel,
 				state = PS_ZOMBIE;
 				break;
 			case SCORE:
-				state = PS_MAX; /* ignore */
+				state = PS_DUMPING;
 				break;
 			default:
 				fprintf(stderr, "top: unknown process "
@@ -727,7 +730,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	} else {
 		snprintf(cmdfield, sizeof cmdfield, "%s", comm);
 	}
-	
+
 	/*
 	 * Convert the process's runtime from microseconds to seconds.  This
 	 * time includes the interrupt time to be in compliance with ps output.
@@ -776,6 +779,8 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 		state = PS_ZOMBIE;
 		break;
 	case SCORE:
+		state = PS_DUMPING;
+		break;
 	default:
 		sprintf(status, "?P/%d", PP(pp, stat));
 		break;
@@ -931,8 +936,8 @@ proc_compare(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 	ORDERKEY_PRIO
 	ORDERKEY_RSSIZE
 	ORDERKEY_MEM
-	{} 
-	
+	{}
+
 	return (result);
 }
 
@@ -1050,7 +1055,7 @@ compare_ctime(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 	struct kinfo_proc *p2;
 	int result;
 	pctcpu lresult;
-	
+
 	/* remove one level of indirection */
 	p1 = *(struct kinfo_proc **) pp1;
 	p2 = *(struct kinfo_proc **) pp2;
@@ -1065,7 +1070,7 @@ compare_ctime(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 	ORDERKEY_RSSIZE
 	ORDERKEY_MEM
 	{}
-	
+
 	return (result);
 }
 
@@ -1134,10 +1139,10 @@ compare_pid(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 	/* remove one level of indirection */
 	p1 = *(struct kinfo_proc **) pp1;
 	p2 = *(struct kinfo_proc **) pp2;
-	
+
 	ORDERKEY_PID
 	;
-	
+
 	return(result);
 }
 
