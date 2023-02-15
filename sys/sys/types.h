@@ -64,6 +64,8 @@ typedef	__uint64_t	u_quad_t;	/* quads */
 typedef	__int64_t	quad_t;
 typedef	quad_t *	qaddr_t;
 
+typedef __int64_t	sbintime_t;	/* 64-bit global ticks since boot */
+
 #ifndef _BLKCNT_T_DECLARED
 typedef	__int64_t	blkcnt_t;	/* file block count */
 #define	_BLKCNT_T_DECLARED

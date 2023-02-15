@@ -307,6 +307,8 @@
 #define PDOMAIN_MASK	0xFFFF0000	/* address domains for wakeup */
 #define PDOMAIN_UMTX	0x00010000	/* independant domain for UMTX */
 #define PDOMAIN_XLOCK	0x00020000	/* independant domain for fifo_lock */
+#define PDOMAIN_FBSD0	0x01000000	/* freebsd sleepq queues */
+#define PDOMAIN_FBSDINC	0x00010000	/* freebsd sleepq queue 1 */
 #define PWAKEUP_ENCODE(domain, cpu)	((domain) | (cpu))
 #define PWAKEUP_DECODE(domain)		((domain) & PWAKEUP_CPUMASK)
 

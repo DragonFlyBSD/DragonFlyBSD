@@ -296,6 +296,7 @@ static void getnanotime_nbt(struct timespec *nbt, struct timespec *tsp);
  * Use __read_mostly for ticks and sched_ticks because these variables are
  * used all over the kernel and only updated once per tick.
  */
+__read_mostly sbintime_t sbticks;	/* system master ticks at hz (64bit) */
 __read_mostly int ticks;		/* system master ticks at hz */
 __read_mostly int sched_ticks;		/* global schedule clock ticks */
 __read_mostly int clocks_running;	/* tsleep/timeout clocks operational */
@@ -614,6 +615,7 @@ hardclock(systimer_t info, int in_ipi, struct intrframe *frame)
 	     * Update system-wide ticks
 	     */
 	    ++ticks;
+	    ++sbticks;
 
 	    /*
 	     * Update system-wide ticktime for getnanotime() and getmicrotime()

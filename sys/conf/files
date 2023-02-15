@@ -1441,6 +1441,7 @@ kern/subr_power.c	standard
 # XXX drhodus
 kern/subr_prf.c		standard
 kern/subr_prof.c	standard
+kern/subr_sleepqueue.c	standard
 kern/subr_alist.c	standard
 kern/subr_blist.c	standard
 kern/subr_sbuf.c	standard

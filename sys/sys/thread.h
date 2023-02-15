@@ -49,6 +49,8 @@ struct lwkt_cpusync;
 struct fdnode;
 union sysunion;
 
+struct sleepqueue_wchan;
+
 typedef struct lwkt_queue	*lwkt_queue_t;
 typedef struct lwkt_token	*lwkt_token_t;
 typedef struct lwkt_tokref	*lwkt_tokref_t;
@@ -301,7 +303,18 @@ struct thread {
     int		td_fairq_count;		/* fairq */
     struct globaldata *td_migrate_gd;	/* target gd for thread migration */
     struct fdcache    td_fdcache[NFDCACHE];
+
+    /*
+     * Linux and FreeBSD compat fields
+     */
     void	*td_linux_task;		/* drm/linux support */
+    struct sleepqueue_wchan *td_sqwc;	/* freebsd sleepq*() API */
+    sbintime_t	td_sqtimo;		/* freebsd sleepq*() API */
+    int		td_sqqueue;		/* freebsd sleepq*() API */
+
+    /*
+     * Debugging
+     */
 #ifdef DEBUG_CRIT_SECTIONS
 #define CRIT_DEBUG_ARRAY_SIZE   32
 #define CRIT_DEBUG_ARRAY_MASK   (CRIT_DEBUG_ARRAY_SIZE - 1)
@@ -309,7 +322,15 @@ struct thread {
     int		td_crit_debug_index;
     int		td_in_crit_report;
 #endif
+
+    /*
+     * machine-specific
+     */
     struct md_thread td_mach;
+
+    /*
+     * Debugging
+     */
 #ifdef DEBUG_LOCKS
 #define SPINLOCK_DEBUG_ARRAY_SIZE	32
    int 	td_spinlock_stack_id[SPINLOCK_DEBUG_ARRAY_SIZE];

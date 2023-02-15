@@ -83,6 +83,7 @@ extern int psratio;			/* ratio: prof / stat */
 extern int stathz;			/* statistics clock's frequency */
 extern int profhz;			/* profiling clock's frequency */
 extern int ticks;
+extern sbintime_t sbticks;		/* 64-bit ticks since boot / mono */
 extern int lbolt;			/* once a second sleep address */
 extern void *lbolt_syncer;		/* approx 1 hz but may be sped up */
 extern char vmm_vendor[16];

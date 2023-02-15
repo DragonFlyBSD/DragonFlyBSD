@@ -248,28 +248,28 @@ skip:
 static boolean_t
 _lwkt_thread_ctor(void *obj, void *privdata, int ocflags)
 {
-	struct thread *td = (struct thread *)obj;
+    struct thread *td = (struct thread *)obj;
 
-	td->td_kstack = NULL;
-	td->td_kstack_size = 0;
-	td->td_flags = TDF_ALLOCATED_THREAD;
-	td->td_mpflags = 0;
-	return (1);
+    td->td_kstack = NULL;
+    td->td_kstack_size = 0;
+    td->td_flags = TDF_ALLOCATED_THREAD;
+    td->td_mpflags = 0;
+    return (1);
 }
 
 static void
 _lwkt_thread_dtor(void *obj, void *privdata)
 {
-	struct thread *td = (struct thread *)obj;
+    struct thread *td = (struct thread *)obj;
 
-	KASSERT(td->td_flags & TDF_ALLOCATED_THREAD,
-	    ("_lwkt_thread_dtor: not allocated from objcache"));
-	KASSERT((td->td_flags & TDF_ALLOCATED_STACK) && td->td_kstack &&
-		td->td_kstack_size > 0,
-	    ("_lwkt_thread_dtor: corrupted stack"));
-	kmem_free(kernel_map, (vm_offset_t)td->td_kstack, td->td_kstack_size);
-	td->td_kstack = NULL;
-	td->td_flags = 0;
+    KASSERT(td->td_flags & TDF_ALLOCATED_THREAD,
+	("_lwkt_thread_dtor: not allocated from objcache"));
+    KASSERT((td->td_flags & TDF_ALLOCATED_STACK) && td->td_kstack &&
+	    td->td_kstack_size > 0,
+	("_lwkt_thread_dtor: corrupted stack"));
+    kmem_free(kernel_map, (vm_offset_t)td->td_kstack, td->td_kstack_size);
+    td->td_kstack = NULL;
+    td->td_flags = 0;
 }
 
 /*
@@ -460,6 +460,7 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
 	lwkt_initport_thread(&td->td_msgport, td);
     }
     pmap_init_thread(td);
+
     /*
      * Normally initializing a thread for a remote cpu requires sending an
      * IPI.  However, the idlethread is setup before the other cpus are
