@@ -29,6 +29,10 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/linker.h>
+#include <sys/sbuf.h>
+#include <sys/sysctl.h>
+
+#include <machine/metadata.h>
 
 /*
  * Preloaded module support
@@ -287,3 +291,173 @@ preload_bootstrap_relocate(vm_offset_t offset)
 	}
     }
 }
+
+/*
+ * Parse the modinfo type and append to the sbuf.
+ */
+static void
+preload_modinfo_type(struct sbuf *sbp, int type)
+{
+    if ((type & MODINFO_METADATA) == 0) {
+	switch (type) {
+	case MODINFO_END:
+	    sbuf_cat(sbp, "MODINFO_END");
+	    break;
+	case MODINFO_NAME:
+	    sbuf_cat(sbp, "MODINFO_NAME");
+	    break;
+	case MODINFO_TYPE:
+	    sbuf_cat(sbp, "MODINFO_TYPE");
+	    break;
+	case MODINFO_ADDR:
+	    sbuf_cat(sbp, "MODINFO_ADDR");
+	    break;
+	case MODINFO_SIZE:
+	    sbuf_cat(sbp, "MODINFO_SIZE");
+	    break;
+	case MODINFO_EMPTY:
+	    sbuf_cat(sbp, "MODINFO_EMPTY");
+	    break;
+	case MODINFO_ARGS:
+	    sbuf_cat(sbp, "MODINFO_ARGS");
+	    break;
+	default:
+	    sbuf_cat(sbp, "unrecognized modinfo attribute");
+	}
+
+	return;
+    }
+
+    sbuf_cat(sbp, "MODINFO_METADATA | ");
+    switch (type & ~MODINFO_METADATA) {
+    case MODINFOMD_ELFHDR:
+	sbuf_cat(sbp, "MODINFOMD_ELFHDR");
+	break;
+    case MODINFOMD_SSYM:
+	sbuf_cat(sbp, "MODINFOMD_SSYM");
+	break;
+    case MODINFOMD_ESYM:
+	sbuf_cat(sbp, "MODINFOMD_ESYM");
+	break;
+    case MODINFOMD_DYNAMIC:
+	sbuf_cat(sbp, "MODINFOMD_DYNAMIC");
+	break;
+    case MODINFOMD_ENVP:
+	sbuf_cat(sbp, "MODINFOMD_ENVP");
+	break;
+    case MODINFOMD_HOWTO:
+	sbuf_cat(sbp, "MODINFOMD_HOWTO");
+	break;
+    case MODINFOMD_KERNEND:
+	sbuf_cat(sbp, "MODINFOMD_KERNEND");
+	break;
+    case MODINFOMD_SHDR:
+	sbuf_cat(sbp, "MODINFOMD_SHDR");
+	break;
+    case MODINFOMD_FW_HANDLE:
+	sbuf_cat(sbp, "MODINFOMD_FW_HANDLE");
+	break;
+    case MODINFOMD_SMAP:
+	sbuf_cat(sbp, "MODINFOMD_SMAP");
+	break;
+    case MODINFOMD_EFI_MAP:
+	sbuf_cat(sbp, "MODINFOMD_EFI_MAP");
+	break;
+    case MODINFOMD_EFI_FB:
+	sbuf_cat(sbp, "MODINFOMD_EFI_FB");
+	break;
+    default:
+	sbuf_cat(sbp, "unrecognized metadata type");
+    }
+}
+
+/*
+ * Print the modinfo value, depending on type.
+ */
+static void
+preload_modinfo_value(struct sbuf *sbp, uint32_t *bptr, int type, int len)
+{
+    switch (type) {
+    case MODINFO_NAME:
+    case MODINFO_TYPE:
+    case MODINFO_ARGS:
+	sbuf_printf(sbp, "%s", (char *)bptr);
+	break;
+    case MODINFO_SIZE:
+	sbuf_printf(sbp, "%lu", *(u_long *)bptr);
+	break;
+    case MODINFO_ADDR:
+    case MODINFO_METADATA | MODINFOMD_SSYM:
+    case MODINFO_METADATA | MODINFOMD_ESYM:
+    case MODINFO_METADATA | MODINFOMD_DYNAMIC:
+    case MODINFO_METADATA | MODINFOMD_KERNEND:
+    case MODINFO_METADATA | MODINFOMD_ENVP:
+    case MODINFO_METADATA | MODINFOMD_SMAP:
+    case MODINFO_METADATA | MODINFOMD_EFI_FB:
+	sbuf_printf(sbp, "0x%016lx", *(vm_offset_t *)bptr);
+	break;
+    case MODINFO_METADATA | MODINFOMD_HOWTO:
+	sbuf_printf(sbp, "0x%08x", *bptr);
+	break;
+    case MODINFO_METADATA | MODINFOMD_SHDR:
+    case MODINFO_METADATA | MODINFOMD_ELFHDR:
+    case MODINFO_METADATA | MODINFOMD_FW_HANDLE:
+    case MODINFO_METADATA | MODINFOMD_EFI_MAP:
+	/* Don't print data buffers. */
+	sbuf_cat(sbp, "buffer contents omitted");
+	break;
+    default:
+	break;
+    }
+}
+
+static void
+preload_dump_internal(struct sbuf *sbp)
+{
+    uint32_t *bptr, type, len;
+
+    sbuf_putc(sbp, '\n');
+
+    /* Iterate through the TLV-encoded sections. */
+    bptr = (uint32_t *)preload_metadata;
+    while (bptr[0] != MODINFO_END) {
+	sbuf_printf(sbp, " %p:\n", bptr);
+
+	type = *bptr++;
+	sbuf_printf(sbp, "\ttype:\t(%#04x) ", type);
+	preload_modinfo_type(sbp, type);
+	sbuf_putc(sbp, '\n');
+
+	len = *bptr++;
+	sbuf_printf(sbp, "\tlen:\t%u\n", len);
+
+	sbuf_cat(sbp, "\tvalue:\t");
+	preload_modinfo_value(sbp, bptr, type, len);
+	sbuf_putc(sbp, '\n');
+
+	bptr += roundup(len, sizeof(u_long)) / sizeof(uint32_t);
+    }
+}
+
+static int
+sysctl_preload_dump(SYSCTL_HANDLER_ARGS)
+{
+    struct sbuf sb;
+    int error;
+
+    if (preload_metadata == NULL)
+	return (EINVAL);
+
+    sbuf_new_for_sysctl(&sb, NULL, 512, req);
+    preload_dump_internal(&sb);
+
+    error = sbuf_finish(&sb);
+    sbuf_delete(&sb);
+
+    return (error);
+}
+
+SYSCTL_PROC(_debug, OID_AUTO, dump_modinfo,
+	    CTLTYPE_STRING | CTLFLAG_RD,
+	    NULL, 0, sysctl_preload_dump, "A",
+	    "pretty-print the bootloader metadata");
