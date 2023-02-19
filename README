@@ -65,6 +65,8 @@ sbin		System commands.
 
 share		Shared resources.
 
+stand		Boot loader sources.
+
 sys		Kernel sources.
 
 test		System tests.
