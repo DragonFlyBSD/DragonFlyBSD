@@ -96,8 +96,6 @@ void	bcache_flush(void);
 int	bcache_strategy(void *devdata, int unit, int rw, daddr_t blk,
 			size_t size, char *buf, size_t *rsize);
 
-void slowprint(char c);
-
 /*
  * Disk block cache
  */

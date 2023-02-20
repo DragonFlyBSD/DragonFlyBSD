@@ -81,29 +81,6 @@ static char *kld_ext_list[] = {
     NULL
 };
 
-COMMAND_SET(slow, "slow", "slow print", command_slow);
-
-static int slomode;
-
-static int
-command_slow(int argc, char *argv[])
-{
-	slomode = 1;
-	return CMD_OK;
-}
-
-void
-slowprint(char c)
-{
-    int i;
-
-    if (slomode) {
-	printf("SP-%c\n", c);
-	for (i = 0; i < 10; ++i)
-	    delay(100000);
-    }
-}
-
 /*
  * load an object, either a disk file or code module.
  *
