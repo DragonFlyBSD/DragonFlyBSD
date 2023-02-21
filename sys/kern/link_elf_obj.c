@@ -877,8 +877,8 @@ link_elf_obj_unload_file(linker_file_t file)
 			kfree(ef->ctfoff, M_LINKER);
 		if (ef->typoff)
 			kfree(ef->typoff, M_LINKER);
-		if (file->filename != NULL)
-			preload_delete_name(file->filename);
+		if (file->pathname != NULL)
+			preload_delete_name(file->pathname);
 		kfree(ef, M_LINKER);
 		/* XXX reclaim module memory? */
 		return;

@@ -223,7 +223,7 @@ int linker_file_foreach(linker_predicate_t *_predicate, void *_context);
  * if not found in file.  The symbol's value is returned in the
  * caddr_t.  An error is returned, 0 if no error occured.
  */
-int linker_file_lookup_symbol(linker_file_t _file, const char* _name, 
+int linker_file_lookup_symbol(linker_file_t _file, const char* _name,
 			    int _deps, caddr_t *);
 
 
@@ -261,7 +261,7 @@ int linker_ddb_symbol_values(c_linker_sym_t _sym, linker_symval_t *_symval);
  * Module information subtypes
  */
 #define MODINFO_END		0x0000		/* End of list */
-#define MODINFO_NAME		0x0001		/* Name of module (string) */
+#define MODINFO_NAME		0x0001		/* Full path name of module (string) */
 #define MODINFO_TYPE		0x0002		/* Type of module (string) */
 #define MODINFO_ADDR		0x0003		/* Loaded address */
 #define MODINFO_SIZE		0x0004		/* Size of module */

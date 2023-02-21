@@ -1243,7 +1243,7 @@ linker_preload(void* arg)
 	}
 
 	if (bootverbose)
-		kprintf("Preloaded %s \"%s\" at %p.\n", modtype, modname, modptr);
+	    kprintf("Preloaded %s \"%s\" at %p.\n", modtype, modname, modptr);
 	lf = NULL;
 	TAILQ_FOREACH(lc, &classes, link) {
 	    error = lc->ops->preload_file(modname, &lf);
@@ -1530,14 +1530,11 @@ linker_load_module(const char *kldname, const char *modname,
     } else {
 	if (modlist_lookup2(modname, verinfo) != NULL)
 	    return (EEXIST);
-	if (kldname != NULL)
-	{
+	if (kldname != NULL) {
 	    pathname = linker_strdup(kldname);
-	}
-	else if (rootvnode == NULL)
+	} else if (rootvnode == NULL) {
 	    pathname = NULL;
-	else
-	{
+	} else {
 	    pathname = linker_search_path(modname);
 	}
 #if 0

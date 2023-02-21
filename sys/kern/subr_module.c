@@ -207,12 +207,7 @@ preload_search_info(caddr_t mod, int inf)
 }
 
 /*
- * Delete a preload record by name.
- *
- * XXX we should really pass the base of the preloaded module here and not
- * require rematching of the name.  If the wrong module (or no module) is
- * deleted, the original preloaded module might be loaded again, causing it's
- * data to be relocated twice.
+ * Delete a preload record by path name.
  */
 void
 preload_delete_name(const char *name)
@@ -221,8 +216,6 @@ preload_delete_name(const char *name)
     u_int32_t	*hdr;
     int		next;
     int		clearing;
-    int		i;
-    char	*scanname;
 
     if (preload_metadata != NULL) {
 	clearing = 0;
@@ -234,15 +227,9 @@ preload_delete_name(const char *name)
 
 	    /* Search for a MODINFO_NAME field */
 	    if (hdr[0] == MODINFO_NAME) {
-		scanname = curp + sizeof(u_int32_t) * 2;
-		i = strlen(scanname);
-		while (i > 0 && scanname[i-1] != '/')
-		    --i;
-		if (strcmp(name, scanname) == 0)
-		    clearing = 1;
-		else if (strcmp(name, scanname + i) == 0)
-		    clearing = 1;
-		else
+		if (strcmp(name, curp + sizeof(u_int32_t) * 2) == 0)
+		    clearing = 1;	/* start clearing */
+		else if (clearing)
 		    clearing = 0;	/* at next module now, stop clearing */
 	    }
 	    if (clearing)

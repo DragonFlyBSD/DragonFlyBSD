@@ -684,8 +684,8 @@ link_elf_unload_module(linker_file_t file)
 
     if (ef)
 	kfree(ef, M_LINKER);
-    if (file->filename)
-	preload_delete_name(file->filename);
+    if (file->pathname)
+	preload_delete_name(file->pathname);
 }
 
 static const char *
