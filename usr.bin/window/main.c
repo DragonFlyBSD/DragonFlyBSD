@@ -45,7 +45,7 @@
 #include "char.h"
 #include "local.h"
 
-void	usage(void) __dead2;
+static void	usage(void) __dead2;
 
 int
 main(int argc, char **argv)
@@ -176,11 +176,11 @@ bad:
 	return 0;
 }
 
-void
+static void
 usage(void)
 {
 	(void) fprintf(stderr,
-	    "usage: %s [-e escape-char] [-c command] [-t] [-f] [-d]\n",
+	    "usage: %s [-dft] [-c command] [-e escape-char]\n",
 	    getprogname());
 	exit(1);
 }

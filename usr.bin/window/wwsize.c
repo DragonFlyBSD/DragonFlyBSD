@@ -68,7 +68,7 @@ wwsize(struct ww *w, int nrow, int ncol)
 		if (buf == NULL)
 			goto bad;
 	}
-	nvis = (short *)malloc((unsigned) nrow * sizeof (short));
+	nvis = malloc((unsigned) nrow * sizeof (short));
 	if (nvis == NULL) {
 		wwerrno = WWE_NOMEM;
 		goto bad;

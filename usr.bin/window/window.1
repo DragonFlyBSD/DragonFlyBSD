@@ -32,7 +32,7 @@
 .\"
 .\"	@(#)window.1	8.2 (Berkeley) 12/30/93
 .\"
-.Dd December 30, 1993
+.Dd February 21, 2023
 .Dt WINDOW 1
 .Os
 .Sh NAME
@@ -40,11 +40,9 @@
 .Nd window environment
 .Sh SYNOPSIS
 .Nm
-.Op Fl t
-.Op Fl f
-.Op Fl d
-.Op Fl e Ar escape-char
+.Op Fl dft
 .Op Fl c Ar command
+.Op Fl e Ar escape-char
 .Sh DESCRIPTION
 .Nm
 implements a window environment on
@@ -75,15 +73,13 @@ executed.
 If it does not exist, two equal sized windows spanning
 the terminal screen are created by default.
 .Pp
-The command line options are
+The command-line options are:
 .Bl -tag -width Fl
-.It Fl t
-Turn on terse mode (see
-.Ic terse
-command below).
-.It Fl f
-Fast.
-Don't perform any startup action.
+.It Fl c Ar command
+Execute the string
+.Ar command
+as a long command (see below)
+before doing anything else.
 .It Fl d
 Ignore
 .Pa .windowrc
@@ -99,11 +95,13 @@ where
 .Ar X
 is any character, meaning
 .No control- Ns Ar X .
-.It Fl c Ar command
-Execute the string
-.Ar command
-as a long command (see below)
-before doing anything else.
+.It Fl f
+Fast.
+Don't perform any startup action.
+.It Fl t
+Turn on terse mode (see
+.Ic terse
+command below).
 .El
 .Pp
 Windows can overlap and are framed as necessary.
@@ -720,7 +718,7 @@ with
 obvious meanings, or it can be a numeric expression,
 in which case a non-zero value is true.
 .Bl -tag -width Fl
-.It Ic alias Po Bo Ao Ar string Ac Bc , Bo Ao Ar string-list Ac Bc Pc
+.It Ic alias Ns Po Bo Ao Ar string Ac Bc , Bo Ao Ar string-list Ac Bc Pc
 If no argument is given, all currently defined alias macros are
 listed.
 Otherwise,
@@ -918,7 +916,7 @@ No value is returned.
 .Bq Ar mapnl ,
 .Bq Ar keepopen ,
 .Bq Ar smooth ,
-.Bq Ar shell ) .
+.Bq Ar shell )
 .Xc
 Open a window with upper left corner at
 .Ar row ,
@@ -1045,6 +1043,18 @@ startup command file.
 .It Pa /dev/[pt]ty[pq]?
 pseudo-terminal devices.
 .El
+.Sh EXAMPLES
+The following example
+.Pa ~/.windowrc
+will open two windows.
+The upper one will take one third of the screen
+and run tcpdump, the lower one will take
+the remaining two thirds of the screen and run
+the default shell:
+.Bd -literal
+window r=1, nr=$nrow/3-1, l=tcpdump\e pcn0, sh=tcpdump \e-ni pcn0
+window r=$nrow/3, nr=2*$nrow/3+1
+.Ed
 .Sh DIAGNOSTICS
 Should be self explanatory.
 .Sh HISTORY

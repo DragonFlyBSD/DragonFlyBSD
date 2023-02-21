@@ -62,9 +62,6 @@ struct string {
 
 EXTERN struct string str_head;
 
-#define str_offset ((uintptr_t)str_head.s_data - (uintptr_t)&str_head)
-#define str_stos(s) ((struct string *)((unsigned)(s) - str_offset))
-
 char	*str_alloc(size_t);
 void	str_free(char *);
 #else

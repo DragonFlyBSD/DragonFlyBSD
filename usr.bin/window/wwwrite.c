@@ -61,9 +61,6 @@ wwwrite(struct ww *w, const char *p, int n)
 	const char *r = NULL;
 	const char *s = NULL;
 
-#ifdef lint
-	s = NULL;			/* define it before possible use */
-#endif
 	hascursor = ISSET(w->ww_wflags, WWW_HASCURSOR);
 	if (hascursor)
 		wwcursor(w, 0);

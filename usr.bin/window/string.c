@@ -116,7 +116,7 @@ str_alloc(size_t l)
 {
 	struct string *s;
 
-	s = (struct string *) malloc(l + str_offset);
+	s = malloc(offsetof(struct string, s_data[l]));
 	if (s == NULL)
 		return 0;
 	if (str_head.s_forw == 0)
