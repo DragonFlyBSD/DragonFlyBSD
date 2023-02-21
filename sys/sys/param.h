@@ -243,9 +243,10 @@
  * 600400 - 6.4 release
  * 600500 - 6.5 development
  * 600501 - add fopencookie(3)
+ * 600502 - WIFSIGNALED(x) excludes SIGCONT
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600501	/* propagated to newvers */
+#define __DragonFly_version 600502	/* propagated to newvers */
 
 #include <sys/_null.h>
 
