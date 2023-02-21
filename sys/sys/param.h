@@ -241,10 +241,11 @@
  * 600301 - add strerror_l()
  * 600302 - change sysctl KERN_PROC behavior
  * 600400 - 6.4 release
+ * 600401 - WIFSIGNALED(x) excludes SIGCONT
  * 600500 - 6.5 development
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600400	/* propagated to newvers */
+#define __DragonFly_version 600401	/* propagated to newvers */
 
 #include <sys/_null.h>
 
