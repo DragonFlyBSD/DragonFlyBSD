@@ -78,6 +78,7 @@ int	getrootmount(char *rootdev);
 
 /* rel_open.c */
 int	rel_open(const char *path, char **abspathp, int flags);
+char *	rel_rootpath(const char *path);
 int	rel_stat(const char *path, struct stat *st);
 int	chdir(const char *path);
 
@@ -209,8 +210,10 @@ struct kernel_module
  */
 struct preloaded_file
 {
-    char			*f_name;	/* file name */
-    char			*f_type;	/* verbose file type, eg 'ELF kernel', 'pnptable', etc. */
+    char			*f_name;	/* file name with full path,
+						   e.g., '/boot/kernel/kernel' */
+    char			*f_type;	/* verbose file type, e.g.,
+						   'elf kernel', 'elf obj module' */
     char			*f_args;	/* arguments for the file */
     struct file_metadata	*f_metadata;	/* metadata that will be placed in the module directory */
     int				f_loader;	/* index of the loader that read the file */

@@ -440,7 +440,7 @@ file_loadraw(char *type, char *name)
 
     /* Looks OK so far; create & populate control structure */
     fp = file_alloc();
-    fp->f_name = name;
+    fp->f_name = rel_rootpath(name);
     fp->f_type = strdup(type);
     fp->f_args = NULL;
     fp->f_metadata = NULL;
@@ -563,12 +563,20 @@ struct preloaded_file *
 file_findfile(char *name, char *type)
 {
     struct preloaded_file *fp;
+    char *rootpath;
+
+    rootpath = NULL;
+    if (name != NULL)
+	rootpath = rel_rootpath(name);
 
     for (fp = preloaded_files; fp != NULL; fp = fp->f_next) {
-	if (((name == NULL) || !strcmp(name, fp->f_name)) &&
+	if (((rootpath == NULL) || !strcmp(rootpath, fp->f_name)) &&
 	    ((type == NULL) || !strcmp(type, fp->f_type)))
 	    break;
     }
+
+    if (rootpath != NULL)
+	free(rootpath);
     return (fp);
 }
 

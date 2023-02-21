@@ -84,7 +84,7 @@ __elfN(obj_loadfile)(char *filename, u_int64_t dest,
     struct preloaded_file **result)
 {
 	struct preloaded_file *fp, *kfp;
-	struct elf_file	ef;
+	struct elf_file ef;
 	Elf_Ehdr *hdr;
 	int err;
 	ssize_t bytes_read;
@@ -156,7 +156,7 @@ __elfN(obj_loadfile)(char *filename, u_int64_t dest,
 		err = EPERM;
 		goto out;
 	}
-	fp->f_name = strdup(filename);
+	fp->f_name = rel_rootpath(filename);
 	fp->f_type = strdup(__elfN(obj_moduletype));
 
 	printf("%s ", filename);

@@ -201,3 +201,30 @@ rel_stat(const char *path, struct stat *st)
 	}
 	return(res);
 }
+
+/*
+ * Return the root path of (path) with the "/boot" prefix prepended if
+ * not present.  This is required by the kernel after bootstrap, e.g.,
+ * kldstat(), preload_delete_name().
+ */
+char *
+rel_rootpath(const char *path)
+{
+	char *rootpath;
+
+	if (DirBase == NULL)
+		DirBase = strdup("/");
+
+	if (strncmp(path, "/boot/", sizeof("/boot/")-1) == 0) {
+		rootpath = strdup(path);
+	} else if (path[0] == '/') {
+		rootpath = malloc(strlen(path) + sizeof("/boot"));
+		sprintf(rootpath, "/boot%s", path);
+	} else {
+		rootpath = malloc(strlen(DirBase) + strlen(path) +
+				  sizeof("/boot"));
+		sprintf(rootpath, "/boot%s%s", DirBase, path);
+	}
+
+	return (rootpath);
+}

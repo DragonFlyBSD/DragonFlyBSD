@@ -98,7 +98,6 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
     int				err;
     u_int			pad;
     ssize_t			bytes_read;
-    char			*fullpath;
 
     fp = NULL;
     bzero(&ef, sizeof(struct elf_file));
@@ -108,12 +107,11 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
      */
     if (filename == NULL)	/* can't handle nameless */
 	return(EFTYPE);
-    if ((ef.fd = rel_open(filename, &fullpath, O_RDONLY)) == -1)
+    if ((ef.fd = rel_open(filename, NULL, O_RDONLY)) == -1)
 	return(errno);
     ef.firstpage = malloc(PAGE_SIZE);
     if (ef.firstpage == NULL) {
 	close(ef.fd);
-	free(fullpath);
 	return(ENOMEM);
     }
     bytes_read = read(ef.fd, ef.firstpage, PAGE_SIZE);
@@ -196,26 +194,24 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
 	goto out;
     }
 
+    fp->f_name = rel_rootpath(filename);
+    fp->f_type = strdup(ef.kernel ? __elfN(kerneltype) : __elfN(moduletype));
+
     /*
      * Set the kernel name and module path correctly for the kernel's
-     * consumption.  Always prepend a /boot if we don't have one.
+     * consumption.
      */
     if (ef.kernel) {
 	char *mptr;
 	char *fpend;
 	char *modlocal;
-	const char *prefix = "";
+
+	setenv("kernelname", fp->f_name, 1);
 
 	mptr = malloc(256);
-	if (strncmp(fullpath, "/boot/", 6) != 0)
-	    prefix = "/boot"
-	snprintf(mptr, 256, "%s%s", prefix, fullpath);
-	setenv("kernelname", mptr, 1);
-
+	snprintf(mptr, 256, "%s", fp->f_name);
 	fpend = strrchr(mptr, '/');
 	*fpend = 0;
-	if (strcmp(mptr, "/boot") == 0)
-	    snprintf(mptr, 256, "/boot/modules");
 
 	/* Append modules.local for kernel if requested */
 	modlocal = getenv("local_modules");
@@ -226,9 +222,6 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
 	setenv("exported_module_path", mptr, 1);
 	free(mptr);
     }
-    fp->f_name = strdup(filename);
-    fp->f_type = strdup(ef.kernel ? __elfN(kerneltype) : __elfN(moduletype));
-
 #ifdef ELF_VERBOSE
     if (ef.kernel)
 	printf("%s entry at 0x%jx\n", filename, (uintmax_t)dest);
@@ -256,8 +249,6 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
     if (ef.firstpage)
 	free(ef.firstpage);
     close(ef.fd);
-    if (fullpath)
-	free(fullpath);
     return(err);
 }
 
