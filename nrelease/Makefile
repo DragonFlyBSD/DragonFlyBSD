@@ -260,7 +260,7 @@ customizeiso:
 pkgs:
 .if !empty(DPORTS_PACKAGES)
 	cp /etc/resolv.conf ${ISOROOT}/etc
-	cp /etc/ssl/cert.pem ${ISOROOT}/etc/ssl
+	-cp /etc/ssl/cert.pem ${ISOROOT}/etc/ssl
 	-@umount ${ISOROOT}/dev
 	mount_null /dev ${ISOROOT}/dev
 
