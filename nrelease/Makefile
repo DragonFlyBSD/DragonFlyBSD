@@ -314,6 +314,8 @@ pkgs:
 	rm -rf ${ISOROOT}/usr/obj/dports
 .endif  # make(binpkgs)
 
+	${CHROOT_CMD} "pkg clean --yes --all"
+
 	# Update the locate(8) and whatis(1) databases, allow ISODIR
 	# to be on tmpfs (fails to create locate database then)
 	#
