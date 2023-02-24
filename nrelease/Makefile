@@ -365,10 +365,14 @@ mkimg:
 	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
 	-if [ -f ${ISODIR}/vn.which ]; then umount ${IMGMNT}; 		\
 	    vnconfig -u `cat ${ISODIR}/vn.which`; fi
+	rm -f ${IMGFILE}
 .ifdef IMGSIZE
 	@echo "STEP: use an image size of ${IMGSIZE} 512-byte sectors"
-	rm -f ${IMGFILE}
-	sz=`bc -e "((${IMGSIZE}) * 512)" -equit`; truncate -s $${sz} ${IMGFILE}
+	sz=`bc -e "((${IMGSIZE}) * 512)" -equit`; \
+	    truncate -s $${sz} ${IMGFILE}
+.elifdef IMGSIZE_MB
+	@echo "STEP: use an image size of ${IMGSIZE_MB} MB"
+	truncate -s ${IMGSIZE_MB}M ${IMGFILE}
 .else
 	@echo "STEP: Determine required image size in 1GB steps"
 	@echo "      Leave ~600MB of unused space"
@@ -376,8 +380,7 @@ mkimg:
 	    sz=`bc -e "(($${sz}) * 1.15 + 999999 + 600000) / 1000000" -equit | \
 	    cut -f1 -d.`;						\
 	    sz=`bc -e "(($${sz}) * 953)" -equit | cut -f1 -d.`;		\
-	    rm -f ${IMGFILE};						\
-	    truncate -s $${sz}M ${IMGFILE};
+	    truncate -s $${sz}M ${IMGFILE}
 .endif
 	@echo "STEP: determine free vn device"
 	vnconfig -l | grep "not in use" | head -n 1 | 			\
@@ -472,6 +475,7 @@ help:
 	@echo "  GITURL_SRC: override the Git URL to source repository"
 	@echo "  GITURL_DPORTS: override the Git URL to dports repository"
 	@echo "  IMGSIZE: override the size of .img (in 512-byte sectors)"
+	@echo "  IMGSIZE_MB: override the size of .img (in units of MB)"
 	@echo "  NREL_MAKE_JOBS: override the default value (sysctl hw.ncpu)"
 	@echo "  PKG_<port>: specify the package name for port <port>"
 	@echo "  WITHOUT_SRCS: do not package source code if set"
