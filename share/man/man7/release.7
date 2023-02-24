@@ -30,7 +30,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man7/release.7,v 1.3.2.6 2003/04/12 20:42:30 murray Exp $
 .\"
-.Dd March 3, 2020
+.Dd February 24, 2023
 .Dt NRELEASE 7
 .Os
 .Sh NAME
@@ -152,6 +152,10 @@ The mount point for the image (default is
 The size of the IMG file (in units of 512-byte sector).
 The default size is determined from the actual content by leaving about
 600 MB free space.
+.It Va IMGSIZE_MB
+Same as
+.Va IMGSIZE
+but specify the size in units of MB.
 .It Va ISODIR
 Default prefix of
 .Va ISOFILE
