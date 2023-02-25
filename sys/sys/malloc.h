@@ -342,6 +342,7 @@ char	*kstrndup(const char *, size_t maxlen, struct malloc_type *)
 
 void	_kfree(void *addr, struct malloc_type *type) __nonnull(2);
 void	_kfree_obj(void *addr, struct malloc_type *type) __nonnull(2);
+size_t	kmalloc_usable_size(const void *ptr);
 long	kmalloc_limit(struct malloc_type *type);
 void	slab_cleanup(void);
 

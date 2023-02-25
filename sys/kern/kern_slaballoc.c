@@ -1243,6 +1243,37 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
     return(nptr);
 }
 
+size_t
+kmalloc_usable_size(const void *ptr)
+{
+    unsigned long size;
+    SLZone *z;
+    int *kup;
+
+    if (ptr == NULL)
+	return 0;
+    if (ptr == ZERO_LENGTH_PTR)
+	return 0;
+
+    /*
+     * Check to see if the pointer blongs to an oversized segment
+     */
+    kup = btokup(ptr);
+    if (*kup > 0) {
+	size = *kup << PAGE_SHIFT;
+	return size;
+    }
+
+    /*
+     * Zone case.  Figure out the zone based on the fact that it is
+     * ZoneSize aligned.
+     */
+    z = (SLZone *)((uintptr_t)ptr & ZoneMask);
+    KKASSERT(z->z_Magic == ZALLOC_SLAB_MAGIC);
+
+    return (z->z_ChunkSize);
+}
+
 /*
  * Return the kmalloc limit for this type, in bytes.
  */
