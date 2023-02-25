@@ -1,6 +1,10 @@
+/*	$OpenBSD: arc4random.c,v 1.58 2022/07/31 13:41:45 tb Exp $	*/
+
 /*
  * Copyright (c) 1996, David Mazieres <dm@uun.org>
  * Copyright (c) 2008, Damien Miller <djm@openbsd.org>
+ * Copyright (c) 2013, Markus Friedl <markus@openbsd.org>
+ * Copyright (c) 2014, Theo de Raadt <deraadt@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,308 +20,233 @@
  */
 
 /*
- * Arc4 random number generator for OpenBSD.
- *
- * This code is derived from section 17.1 of Applied Cryptography,
- * second edition, which describes a stream cipher allegedly
- * compatible with RSA Labs "RC4" cipher (the actual description of
- * which is a trade secret).  The same algorithm is used as a stream
- * cipher called "arcfour" in Tatu Ylonen's ssh package.
- *
- * RC4 is a registered trademark of RSA Laboratories.
- *
- * $OpenBSD: arc4random.c,v 1.24 2013/06/11 16:59:50 deraadt Exp $
- * $FreeBSD: src/lib/libc/gen/arc4random.c,v 1.25 2008/09/09 09:46:36 ache Exp $
+ * ChaCha based random number generator for OpenBSD.
  */
 
+#include <sys/cdefs.h>
 #include "namespace.h"
+#if defined(__FreeBSD__)
+#include <assert.h>
+#endif
+#include <fcntl.h>
+#include <limits.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/time.h>
-#include <sys/sysctl.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <pthread.h>
 
 #include "libc_private.h"
 #include "un-namespace.h"
 
-/*
- * Misc constants
- */
-#define	RANDOMDEV	"/dev/random"
-#define	KEYSIZE		128
-#define	_ARC4_LOCK()						\
-	do {							\
-		if (__isthreaded)				\
-			_pthread_mutex_lock(&arc4random_mtx);	\
-	} while (0)
+#define CHACHA_EMBED
+#define KEYSTREAM_ONLY
+#if defined(__FreeBSD__)
+#define ARC4RANDOM_FXRNG 1
+#else
+#define ARC4RANDOM_FXRNG 0
+#endif
+#include "chacha.c"
 
-#define	_ARC4_UNLOCK()						\
-	do {							\
-		if (__isthreaded)				\
-			_pthread_mutex_unlock(&arc4random_mtx);	\
-	} while (0)
+#define minimum(a, b) ((a) < (b) ? (a) : (b))
 
-struct arc4_stream {
-	u_int8_t i;
-	u_int8_t j;
-	u_int8_t s[KEYSIZE * 2];
-};
+#if defined(__GNUC__) || defined(_MSC_VER)
+#define inline __inline
+#else				/* __GNUC__ || _MSC_VER */
+#define inline
+#endif				/* !__GNUC__ && !_MSC_VER */
 
-static pthread_mutex_t	arc4random_mtx = PTHREAD_MUTEX_INITIALIZER;
+#define KEYSZ	32
+#define IVSZ	8
+#define BLOCKSZ	64
+#define RSBUFSZ	(16*BLOCKSZ)
 
-static struct arc4_stream rs;
-static pid_t arc4_stir_pid;
-static int rs_initialized;
-static int rs_stired;
-static int arc4_count;
+#define REKEY_BASE	(1024*1024) /* NB. should be a power of 2 */
 
-static u_int8_t arc4_getbyte(void);
-static void arc4_stir(void);
+/* Marked INHERIT_ZERO, so zero'd out in fork children. */
+static struct _rs {
+	size_t		rs_have;	/* valid bytes at end of rs_buf */
+	size_t		rs_count;	/* bytes till reseed */
+} *rs;
+
+/* Maybe be preserved in fork children, if _rs_allocate() decides. */
+static struct _rsx {
+	chacha_ctx	rs_chacha;	/* chacha context for random keystream */
+	u_char		rs_buf[RSBUFSZ];	/* keystream blocks */
+#ifdef __FreeBSD__
+	uint32_t	rs_seed_generation;	/* 32-bit userspace RNG version */
+#endif
+} *rsx;
+
+static inline int _rs_allocate(struct _rs **, struct _rsx **);
+static inline void _rs_forkdetect(void);
+#include "arc4random.h"
+
+static inline void _rs_rekey(u_char *dat, size_t datlen);
 
 static inline void
-arc4_init(void)
+_rs_init(u_char *buf, size_t n)
 {
-	int     n;
+	if (n < KEYSZ + IVSZ)
+		return;
 
-	for (n = 0; n < KEYSIZE * 2; n++)
-		rs.s[n] = n;
-	rs.i = 0;
-	rs.j = 0;
-}
-
-static inline void
-arc4_addrandom(u_char *dat, size_t datlen)
-{
-	size_t n;
-	u_int8_t si;
-
-	rs.i--;
-	for (n = 0; n < KEYSIZE * 2; n++) {
-		rs.i = (rs.i + 1);
-		si = rs.s[rs.i];
-		rs.j = (rs.j + si + dat[n % datlen]);
-		rs.s[rs.i] = rs.s[rs.j];
-		rs.s[rs.j] = si;
-	}
-	rs.j = rs.i;
-}
-
-struct pray {
-	struct timeval	tv;
-	pid_t		pid;
-};
-
-static void
-arc4_stir(void)
-{
-	u_int8_t rnd[KEYSIZE*2];
-	size_t n;
-	int fd;
-
-	/*
-	 * NOTE: Don't assume that the garbage on the stack is actually
-	 *	 random.
-	 */
-	n = 0;
-	fd = _open(RANDOMDEV, O_RDONLY | O_CLOEXEC, 0);
-	if (fd >= 0) {
-		n = _read(fd, rnd, sizeof(rnd));
-		_close(fd);
-		if ((ssize_t)n < 0)
-			n = 0;
+	if (rs == NULL) {
+		if (_rs_allocate(&rs, &rsx) == -1)
+			_exit(1);
 	}
 
-	/*
-	 * Align for added entropy, sysctl back-off for chroots that might
-	 * not have access to /dev/random.
-	 */
-	n = n & ~15;	/* align for added entropy */
-	if (n < sizeof(rnd)) {
-		size_t r = sizeof(rnd) - n;
-		if (sysctlbyname("kern.random", rnd + n, &r, NULL, 0) == 0)
-			n += r;
-	}
-
-	/*
-	 * Pray if this code ever gets triggered.
-	 */
-	n = n & ~15;
-	if (n <= sizeof(rnd) - sizeof(struct pray)) {
-		struct pray *pray = (void *)(rnd + n);
-		gettimeofday(&pray->tv, NULL);
-		pray->pid = getpid();
-		n += sizeof(struct pray);
-	}
-	arc4_addrandom((u_char *)rnd, n);
-
-	/*
-	 * Discard early keystream, as per recommendations in:
-	 * "(Not So) Random Shuffles of RC4" by Ilya Mironov.
-	 */
-	for (n = 0; n < 3072; n++)
-		arc4_getbyte();
-
-	/*
-	 * Theoretically we can set arc4_count to 1600000.  Realistically,
-	 * it makes no sense to use a number that high.  Use something
-	 * reasonable.
-	 */
-	arc4_count = 65539;
-}
-
-static u_int8_t
-arc4_getbyte(void)
-{
-	u_int8_t si, sj;
-
-	rs.i = (rs.i + 1);
-	si = rs.s[rs.i];
-	rs.j = (rs.j + si);
-	sj = rs.s[rs.j];
-	rs.s[rs.i] = sj;
-	rs.s[rs.j] = si;
-
-	return (rs.s[(si + sj) & 0xff]);
-}
-
-static u_int32_t
-arc4_getword(void)
-{
-	u_int32_t val;
-
-	val = arc4_getbyte() << 24;
-	val |= arc4_getbyte() << 16;
-	val |= arc4_getbyte() << 8;
-	val |= arc4_getbyte();
-
-	return (val);
+	chacha_keysetup(&rsx->rs_chacha, buf, KEYSZ * 8);
+	chacha_ivsetup(&rsx->rs_chacha, buf + KEYSZ, NULL);
 }
 
 static void
-arc4_check_init(void)
+_rs_stir(void)
 {
-	if (!rs_initialized) {
-		arc4_init();
-		rs_initialized = 1;
+	u_char rnd[KEYSZ + IVSZ];
+	uint32_t rekey_fuzz = 0;
+
+#if defined(__FreeBSD__)
+	bool need_init;
+
+	/*
+	 * De-couple allocation (which locates the vdso_fxrngp pointer in
+	 * auxinfo) from initialization.  This allows us to read the root seed
+	 * version before we fetch system entropy, maintaining the invariant
+	 * that the PRF was seeded with entropy from rs_seed_generation or a
+	 * later generation.  But never seeded from an earlier generation.
+	 * This invariant prevents us from missing a root reseed event.
+	 */
+	need_init = false;
+	if (rs == NULL) {
+		if (_rs_allocate(&rs, &rsx) == -1)
+			abort();
+		need_init = true;
 	}
+	/*
+	 * Transition period: new userspace on old kernel.  This should become
+	 * a hard error at some point, if the scheme is adopted.
+	 */
+	if (vdso_fxrngp != NULL)
+		rsx->rs_seed_generation =
+		    fxrng_load_acq_generation(&vdso_fxrngp->fx_generation32);
+#endif
+
+	if (getentropy(rnd, sizeof rnd) == -1)
+		_getentropy_fail();
+
+#if !defined(__FreeBSD__)
+	if (!rs)
+		_rs_init(rnd, sizeof(rnd));
+#else /* __FreeBSD__ */
+	assert(rs != NULL);
+	if (need_init)
+		_rs_init(rnd, sizeof(rnd));
+#endif
+	else
+		_rs_rekey(rnd, sizeof(rnd));
+	explicit_bzero(rnd, sizeof(rnd));	/* discard source seed */
+
+	/* invalidate rs_buf */
+	rs->rs_have = 0;
+	memset(rsx->rs_buf, 0, sizeof(rsx->rs_buf));
+
+	/* rekey interval should not be predictable */
+	chacha_encrypt_bytes(&rsx->rs_chacha, (uint8_t *)&rekey_fuzz,
+	    (uint8_t *)&rekey_fuzz, sizeof(rekey_fuzz));
+	rs->rs_count = REKEY_BASE + (rekey_fuzz % REKEY_BASE);
 }
 
 static inline void
-arc4_check_stir(void)
+_rs_stir_if_needed(size_t len)
 {
-	pid_t pid = getpid();	/* optimized by upmap */
+	_rs_forkdetect();
+	if (!rs || rs->rs_count <= len)
+		_rs_stir();
+	if (rs->rs_count <= len)
+		rs->rs_count = 0;
+	else
+		rs->rs_count -= len;
+}
 
-	if (!rs_stired || arc4_count <= 0 || arc4_stir_pid != pid) {
-		arc4_stir_pid = pid;
-		arc4_stir();
-		rs_stired = 1;
+static inline void
+_rs_rekey(u_char *dat, size_t datlen)
+{
+#ifndef KEYSTREAM_ONLY
+	memset(rsx->rs_buf, 0, sizeof(rsx->rs_buf));
+#endif
+	/* fill rs_buf with the keystream */
+	chacha_encrypt_bytes(&rsx->rs_chacha, rsx->rs_buf,
+	    rsx->rs_buf, sizeof(rsx->rs_buf));
+	/* mix in optional user provided data */
+	if (dat) {
+		size_t i, m;
+
+		m = minimum(datlen, KEYSZ + IVSZ);
+		for (i = 0; i < m; i++)
+			rsx->rs_buf[i] ^= dat[i];
 	}
+	/* immediately reinit for backtracking resistance */
+	_rs_init(rsx->rs_buf, KEYSZ + IVSZ);
+	memset(rsx->rs_buf, 0, KEYSZ + IVSZ);
+	rs->rs_have = sizeof(rsx->rs_buf) - KEYSZ - IVSZ;
 }
 
-void
-arc4random_stir(void)
-{
-	_ARC4_LOCK();
-	arc4_check_init();
-	arc4_stir();
-	rs_stired = 1;
-	_ARC4_UNLOCK();
-}
-
-void
-arc4random_addrandom(uint8_t *dat, size_t datlen)
-{
-	_ARC4_LOCK();
-	arc4_check_init();
-	arc4_check_stir();
-	arc4_addrandom(dat, datlen);
-	_ARC4_UNLOCK();
-}
-
-u_int32_t
-arc4random(void)
-{
-	u_int32_t rnd;
-
-	_ARC4_LOCK();
-	arc4_check_init();
-	arc4_check_stir();
-	rnd = arc4_getword();
-	arc4_count -= 4;
-	_ARC4_UNLOCK();
-
-	return (rnd);
-}
-
-void
-arc4random_buf(void *_buf, size_t n)
+static inline void
+_rs_random_buf(void *_buf, size_t n)
 {
 	u_char *buf = (u_char *)_buf;
+	u_char *keystream;
+	size_t m;
+
+	_rs_stir_if_needed(n);
+	while (n > 0) {
+		if (rs->rs_have > 0) {
+			m = minimum(n, rs->rs_have);
+			keystream = rsx->rs_buf + sizeof(rsx->rs_buf)
+			    - rs->rs_have;
+			memcpy(buf, keystream, m);
+			memset(keystream, 0, m);
+			buf += m;
+			n -= m;
+			rs->rs_have -= m;
+		}
+		if (rs->rs_have == 0)
+			_rs_rekey(NULL, 0);
+	}
+}
+
+static inline void
+_rs_random_u32(uint32_t *val)
+{
+	u_char *keystream;
+
+	_rs_stir_if_needed(sizeof(*val));
+	if (rs->rs_have < sizeof(*val))
+		_rs_rekey(NULL, 0);
+	keystream = rsx->rs_buf + sizeof(rsx->rs_buf) - rs->rs_have;
+	memcpy(val, keystream, sizeof(*val));
+	memset(keystream, 0, sizeof(*val));
+	rs->rs_have -= sizeof(*val);
+}
+
+uint32_t
+arc4random(void)
+{
+	uint32_t val;
 
 	_ARC4_LOCK();
-	arc4_check_init();
-	while (n--) {
-		arc4_check_stir();
-		buf[n] = arc4_getbyte();
-		arc4_count--;
-	}
+	_rs_random_u32(&val);
+	_ARC4_UNLOCK();
+	return val;
+}
+
+void
+arc4random_buf(void *buf, size_t n)
+{
+	_ARC4_LOCK();
+	_rs_random_buf(buf, n);
 	_ARC4_UNLOCK();
 }
-
-/*
- * Calculate a uniformly distributed random number less than upper_bound
- * avoiding "modulo bias".
- *
- * Uniformity is achieved by generating new random numbers until the one
- * returned is outside the range [0, 2**32 % upper_bound).  This
- * guarantees the selected random number will be inside
- * [2**32 % upper_bound, 2**32) which maps back to [0, upper_bound)
- * after reduction modulo upper_bound.
- */
-u_int32_t
-arc4random_uniform(u_int32_t upper_bound)
-{
-	u_int32_t r, min;
-
-	if (upper_bound < 2)
-		return 0;
-
-	/* 2**32 % x == (2**32 - x) % x */
-	min = -upper_bound % upper_bound;
-	/*
-	 * This could theoretically loop forever but each retry has
-	 * p > 0.5 (worst case, usually far better) of selecting a
-	 * number inside the range we need, so it should rarely need
-	 * to re-roll.
-	 */
-	for (;;) {
-		r = arc4random();
-		if (r >= min)
-			break;
-	}
-
-	return (r % upper_bound);
-}
-
-#if 0
-/*-------- Test code for i386 --------*/
-#include <stdio.h>
-#include <machine/pctr.h>
-int
-main(int argc, char **argv)
-{
-	const int iter = 1000000;
-	int     i;
-	pctrval v;
-
-	v = rdtsc();
-	for (i = 0; i < iter; i++)
-		arc4random();
-	v = rdtsc() - v;
-	v /= iter;
-
-	printf("%qd cycles\n", v);
-}
-#endif
