@@ -330,7 +330,7 @@ fn_root_passwd(struct i_fn_args *a)
 }
 
 void
-fn_get_passphrase(struct i_fn_args *a)
+fn_get_passphrase(struct i_fn_args *a, int confirm)
 {
 	struct dfui_dataset *ds, *new_ds;
 	struct dfui_form *f;
@@ -339,33 +339,57 @@ fn_get_passphrase(struct i_fn_args *a)
 	int fd;
 	int done = 0;
 
-	f = dfui_form_create(
-	    "crypt_passphrase",
-	    _("Set Passphrase For Encryption"),
-	    _("Please specify the passphrase to be used for the encrypted "
-	    "filesystems.\n\n"
-	    "Please note that in the LiveCD environment the keymap is set to "
-	    "\"US ISO\". "
-	    "If you prefer a different keymap for entering the passphrase "
-	    "here, you will need to set it manually using kbdcontrol(1)."),
-	    "",
+	if (confirm) {
+		f = dfui_form_create(
+		    "crypt_passphrase",
+		    _("Set Passphrase for Encryption"),
+		    _("Please specify the passphrase to be used for the encrypted "
+			"filesystems.\n\n"
+			"Please note that in the LiveCD environment the keymap is "
+			"set to \"US ISO\". "
+			"If you prefer a different keymap for entering the passphrase "
+			"here, you will need to set it manually using kbdcontrol(1)."),
+		    "",
 
-	    "f", "passphrase_1", _("Passphrase"),
-	    _("Enter the passphrase you would like to use for encryption"), "",
-	    "p", "obscured", "true",
-	    "f", "passphrase_2", _("Passphrase again"),
-	    _("Enter the passphrase again to confirm"), "",
-	    "p", "obscured", "true",
+		    "f", "passphrase_1", _("Passphrase"),
+		    _("Enter the passphrase you would like to use for encryption"), "",
+		    "p", "obscured", "true",
+		    "f", "passphrase_2", _("Passphrase again"),
+		    _("Enter the passphrase again to confirm"), "",
+		    "p", "obscured", "true",
 
-	    "a", "ok", _("Accept and Set Passphrase"), "", "",
-	    "p", "accelerator", "ESC",
+		    "a", "ok", _("Accept and Set Passphrase"), "", "",
+		    "p", "accelerator", "ESC",
 
-	    NULL
-	);
+		    NULL
+		);
+	} else {
+		f = dfui_form_create(
+		    "crypt_passphrase",
+		    _("Specify Decryption Passphrase"),
+		    _("Please enter the passphrase to decrypt and mount the "
+			"filesystems.\n\n"
+			"Please note that in the LiveCD environment the keymap is "
+			"set to \"US ISO\". "
+			"If you prefer a different keymap for entering the passphrase "
+			"here, you will need to set it manually using kbdcontrol(1)."),
+		    "",
+
+		    "f", "passphrase_1", _("Passphrase"),
+		    _("Enter the passphrase"), "",
+		    "p", "obscured", "true",
+
+		    "a", "ok", _("OK"), "", "",
+		    "p", "accelerator", "ESC",
+
+		    NULL
+		);
+	}
 
 	ds = dfui_dataset_new();
 	dfui_dataset_celldata_add(ds, "passphrase_1", "");
-	dfui_dataset_celldata_add(ds, "passphrase_2", "");
+	if (confirm)
+		dfui_dataset_celldata_add(ds, "passphrase_2", "");
 	dfui_form_dataset_add(f, ds);
 
 	while (!done) {
@@ -382,7 +406,9 @@ fn_get_passphrase(struct i_fn_args *a)
 			 */
 
 			passphrase_1 = dfui_dataset_get_value(new_ds, "passphrase_1");
-			passphrase_2 = dfui_dataset_get_value(new_ds, "passphrase_2");
+			passphrase_2 = passphrase_1;
+			if (confirm)
+				passphrase_2 = dfui_dataset_get_value(new_ds, "passphrase_2");
 
 			if (strlen(passphrase_1) == 0 && strlen(passphrase_2) == 0) {
 				done = 0;
@@ -1214,7 +1240,7 @@ mount_target_system(struct i_fn_args *a)
 			command_add(cmds, "%s%s %sboot",
 			    a->os_root, cmd_name(a, "UMOUNT"),
 			    a->os_root);
-			fn_get_passphrase(a);
+			fn_get_passphrase(a, 0);
 			command_add(cmds,
 			    "%s%s -d /tmp/t1 luksOpen /dev/`%s%s \"^vfs\\.root\\.realroot=\" %st2 |"
 			    "%s%s -F%s: '{print $2;}' |"

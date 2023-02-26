@@ -50,7 +50,7 @@
 
 void		 fn_select_disk(struct i_fn_args *);
 void		 fn_select_slice(struct i_fn_args *);
-void		 fn_get_passphrase(struct i_fn_args *);
+void		 fn_get_passphrase(struct i_fn_args *, int);
 
 /* Configure an Installed System (only) */
 
