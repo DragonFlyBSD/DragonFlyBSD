@@ -223,12 +223,12 @@ create_subpartitions(int which, struct i_fn_args *a)
 	    slice_get_device_name(storage_get_selected_slice(a->s)));
 
 	/*
-	 * If encryption was specified, load dm(4).
+	 * If encryption was specified, read the passphrase.
 	 */
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
 		if (subpartition_is_encrypted(sp)) {
-			fn_get_passphrase(a);
+			fn_get_passphrase(a, 1);
 			break;
 		}
 	}
