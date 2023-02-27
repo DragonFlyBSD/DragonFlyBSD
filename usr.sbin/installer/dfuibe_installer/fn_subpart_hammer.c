@@ -294,6 +294,8 @@ create_subpartitions(int which, struct i_fn_args *a)
 
 	result = commands_execute(a, cmds);
 	commands_free(cmds);
+	unlink("/tmp/t1");
+
 	return(result);
 }
 

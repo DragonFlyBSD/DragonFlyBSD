@@ -1278,6 +1278,7 @@ mount_target_system(struct i_fn_args *a)
 	}
 	if (!commands_execute(a, cmds)) {
 		commands_free(cmds);
+		unlink("/tmp/t1");
 		return(0);
 	}
 	commands_free(cmds);
@@ -1332,9 +1333,11 @@ mount_target_system(struct i_fn_args *a)
 	}
 	if (!commands_execute(a, cmds)) {
 		commands_free(cmds);
+		unlink("/tmp/t1");
 		return(0);
 	}
 	commands_free(cmds);
+	unlink("/tmp/t1");
 
 	/*
 	 * (current we do not mount the other partitions, everything needed
