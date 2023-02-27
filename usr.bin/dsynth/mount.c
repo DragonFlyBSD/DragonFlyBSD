@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2019-2022 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -188,6 +188,7 @@ DoWorkerMounts(worker_t *work)
 	 * directory if necessary and prefix spath with SystemPath if
 	 * it starts with $/
 	 */
+	setNumaDomain(work->index);
 	domount(work, TMPFS_RW, "dummy", "", NULL);
 	asprintf(&buf, "%s/usr", work->basedir);
 	if (mkdir(buf, 0755) != 0) {
@@ -236,6 +237,7 @@ DoWorkerMounts(worker_t *work)
 			 "Template copy failed");
 	}
 	free(buf);
+	setNumaDomain(-1);
 }
 
 /*
@@ -252,6 +254,7 @@ DoWorkerUnmounts(worker_t *work)
 {
 	int retries;
 
+	setNumaDomain(work->index);
 	work->mount_error = 0;
 	for (retries = 0; retries < 10; ++retries) {
 		dounmount(work, "/proc");
@@ -289,6 +292,7 @@ DoWorkerUnmounts(worker_t *work)
 		snprintf(work->status, sizeof(work->status),
 			 "Unable to unmount slot");
 	}
+	setNumaDomain(-1);
 }
 
 static
@@ -429,6 +433,7 @@ makeDiscreteCopies(const char *spath, const char *discretefmt)
 	int rc;
 
 	for (i = 0; i < MaxWorkers; ++i) {
+		setNumaDomain(i);
 		if (spath[0] == '$') {
 			if (strcmp(SystemPath, "/") == 0)
 				asprintf(&src, "%s%s",
@@ -462,5 +467,6 @@ makeDiscreteCopies(const char *spath, const char *discretefmt)
 		free(buf);
 		free(src);
 		free(dst);
+		setNumaDomain(-1);
 	}
 }

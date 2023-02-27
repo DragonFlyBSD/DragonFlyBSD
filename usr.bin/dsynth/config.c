@@ -503,6 +503,9 @@ parseConfigFile(const char *path)
 					WorkerProcFlags |=
 						WORKER_PROC_CHECK_PLIST;
 				}
+			} else if (strcmp(l1, "Numa_setsize") == 0) {
+				NumaSetSize = strtol(l2, NULL, 0);
+				free(l2);
 			} else {
 				dfatal("Unknown directive in profile section "
 				       "line %d: %s\n", lineno, buf);

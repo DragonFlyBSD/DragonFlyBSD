@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2019-2022 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -1457,7 +1457,7 @@ waitbuild(int whilematch, int dynamicmax)
 /*
  * Worker pthread (WorkerAry)
  *
- * This thread belongs to the dsynth master process and handled a worker slot.
+ * This thread belongs to the dsynth master process and handles a worker slot.
  * (this_thread) -> WORKER fork/exec (WorkerPocess) -> (pty) -> sub-processes.
  */
 static void *
@@ -1475,7 +1475,9 @@ childBuilderThread(void *arg)
 	char fdbuf[8];
 	char flagsbuf[16];
 
+	setNumaDomain(work->index);
 	pthread_mutex_lock(&WorkerMutex);
+
 	while (work->terminate == 0) {
 		dowait = 1;
 
@@ -1969,9 +1971,12 @@ WorkerProcess(int ac, char **av)
 		exit(1);
 	}
 	slot = strtol(av[1], NULL, 0);
+	setNumaDomain(slot);
+
 	fd = strtol(av[2], NULL, 0);	/* master<->slave messaging */
 	portdir = av[3];
 	pkgfile = av[4];
+
 	flavor = strchr(portdir, '@');
 	if (flavor) {
 		*flavor++ = 0;

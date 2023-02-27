@@ -600,6 +600,7 @@ DoInit(void)
 	    "leverage_prebuilt= false\n"
 	    "; Meta_version= 2\n"
 	    "; Check_plist= false\n"
+	    "; Numa_setsize= 2\n"
 	    "\n");
 	if (fclose(fp))
 		dfatal_errno("Unable to write to %s\n", ConfigBase1);

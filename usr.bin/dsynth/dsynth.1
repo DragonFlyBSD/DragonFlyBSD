@@ -90,6 +90,7 @@ Directory_system= /
 Package_suffix= .txz
 ; Meta_version= 2	(this is the default)
 ; Check_plist= false	(this is the default)
+; Numa_setsize= 0	(this is the default. 0, 2, or 4)
 Number_of_builders= 8
 Max_jobs_per_builder= 8
 Display_with_ncurses= true
@@ -476,6 +477,14 @@ The default setting for
 is false.  You can override it with the
 .Fl P
 option or by setting this configuration variable to true.
+.Pp
+The default setting for
+.Va Numa_setsize
+is 0, disabling any NUMA related CPU partitioning.  This is the recommended
+setting as it allows the scheduler the freedom to maximize CPU utilization,
+particularly when doing incremental bulks.  The only other values that have
+a decent chance of improving full bulk performance are 2 or 4.  Any higher
+and CPU utilization will suffer from periods of high idle.
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/abc/defghi/<name>" -compact
 .It Pa /etc/dsynth/dsynth.ini

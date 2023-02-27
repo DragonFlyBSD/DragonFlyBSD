@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2019-2022 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -61,6 +61,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
+#include <pthread_np.h>
 #include <dirent.h>
 #include <termios.h>
 #include <time.h>
@@ -531,6 +532,7 @@ extern int OverridePkgDeleteOpt;
 extern int FetchOnlyOpt;
 extern int YesOpt;
 extern int NullStdinOpt;
+extern int NumaSetSize;
 extern int DeleteObsoletePkgs;
 extern int UseCCache;
 extern int UseUsrSrc;
@@ -646,6 +648,8 @@ void RunStatsUpdateLogs(void);
 void RunStatsSync(void);
 void RunStatsUpdateCompletion(worker_t *work, int logid, pkg_t *pkg,
 			const char *reason, const char *skipbuf);
+
+void setNumaDomain(int slot);
 
 int copyfile(char *src, char *dst);
 int ipcreadmsg(int fd, wmsg_t *msg);
