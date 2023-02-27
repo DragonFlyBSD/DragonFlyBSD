@@ -4269,9 +4269,19 @@ bio_page_alloc(struct buf *bp, vm_object_t obj, vm_pindex_t pg, int deficit)
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(obj));
 
 	/*
-	 * Randomize
+	 * Avoid localized page-queue exhaustion by rotating the effective
+	 * cpu-base for the BIO page allocation.  Remember we are trying to
+	 * avoid contention, so we want all the cpus to be in lockstep with
+	 * different cpuids.  Really serious contention in the kernel page
+	 * allocator can occur without this.
+	 *
+	 * This is kinda anti-NUMA, but localizing file data is a really hard
+	 * call.  It works great in some situations (temporary files in tmpfs),
+	 * and horribly in other situations.
+	 *
+	 * XXX add some NUMA relocalization (2 zones or 4 zones).
 	 */
-	vmflags |= VM_ALLOC_CPU(obj->pg_color % ncpus);
+	vmflags |= VM_ALLOC_CPU((mycpu->gd_cpuid + (u_short)ticks) % ncpus);
 
 	/*
 	 * Try a normal allocation first.

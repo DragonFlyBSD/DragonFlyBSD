@@ -261,6 +261,11 @@ vm_object_assert_held(vm_object_t obj)
 	ASSERT_LWKT_TOKEN_HELD(&obj->token);
 }
 
+/*
+ * Aquire a semi-random base page color for a new object.  Our main concern
+ * is that the color be spread out a bit.  Further spreading out occurs in
+ * bio_page_alloc().
+ */
 int
 vm_quickcolor(void)
 {
