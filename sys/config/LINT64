@@ -2141,6 +2141,8 @@ device		vtnet		# VirtIO Ethernet device
 
 # VMware support
 #
+device		pvscsi		# VMware PVSCSI
+options		PVSCSI_DEBUG_LOGGING
 device		vmx		# VMware VMXNET3 Ethernet
 
 #

@@ -144,6 +144,7 @@ device		virtio_scsi	# VirtIO SCSI driver
 device		vtnet		# VirtIO network driver
 
 # VMware support
+device		pvscsi		# VMware PVSCSI
 device		vmx		# VMware VMXNET3 Ethernet
 
 # atkbdc0 controls both the keyboard and the PS/2 mouse

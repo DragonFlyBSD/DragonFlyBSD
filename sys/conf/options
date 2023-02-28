@@ -226,6 +226,8 @@ ATA_NO_SILICONIMAGE	opt_ata.h
 ATA_NO_SIS		opt_ata.h
 ATA_NO_VIA		opt_ata.h
 
+PVSCSI_DEBUG_LOGGING	opt_pvscsi.h
+
 # Net stuff.
 # altq stuff
 ALTQ			opt_global.h

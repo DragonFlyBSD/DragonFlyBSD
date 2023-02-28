@@ -3048,6 +3048,7 @@ dev/virtual/virtio/virtio/virtqueue.c	optional virtio
 #
 # VMware support
 #
+dev/virtual/vmware/pvscsi/pvscsi.c	optional pvscsi
 dev/virtual/vmware/vmxnet3/if_vmx.c	optional vmx
 
 #
