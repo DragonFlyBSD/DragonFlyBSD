@@ -41,6 +41,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#include <unistd.h>
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
