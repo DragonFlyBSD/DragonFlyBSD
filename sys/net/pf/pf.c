@@ -106,15 +106,9 @@ extern int debug_pfugidhack;
  *	      exclusive lock otherwise.
  *
  * pf_gtoken- exclusive lock used for initialization.
- *
- * pf_spin  - only used to atomically fetch and increment stateid
- *	      on 32-bit systems.
  */
 struct lwkt_token pf_token = LWKT_TOKEN_INITIALIZER(pf_token);
 struct lwkt_token pf_gtoken = LWKT_TOKEN_INITIALIZER(pf_gtoken);
-#if __SIZEOF_LONG__ != 8
-struct spinlock pf_spin = SPINLOCK_INITIALIZER(pf_spin, "pf_spin");
-#endif
 
 #define DPFPRINTF(n, x)	if (pf_status.debug >= (n)) kprintf x
 
@@ -1093,13 +1087,7 @@ pf_state_insert(struct pfi_kif *kif, struct pf_state_key *skw,
 	if (s->id == 0 && s->creatorid == 0) {
 		u_int64_t sid;
 
-#if __SIZEOF_LONG__ == 8
 		sid = atomic_fetchadd_long(&pf_status.stateid, 1);
-#else
-		spin_lock(&pf_spin);
-		sid = pf_status.stateid++;
-		spin_unlock(&pf_spin);
-#endif
 		s->id = htobe64(sid);
 		s->creatorid = pf_status.hostid;
 	}
