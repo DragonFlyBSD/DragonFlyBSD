@@ -177,7 +177,7 @@ _maninstall: ${MAN}
 		${DESTDIR}${CATDIR}${page:E}${MANSUBDIR}/${page}
 .endif
 .endfor
-.else
+.else	# !defined(MANFILTER)
 	@set ${.ALLSRC:C/\.([^.]*)$/.\1 \1/}; \
 	while : ; do \
 		case $$# in \
@@ -195,8 +195,8 @@ _maninstall: ${MAN}
 		${DESTDIR}${CATDIR}${page:E}${MANSUBDIR}/${page:T}
 .endfor
 .endif
-.endif
-.else
+.endif	# defined(MANFILTER)
+.else	# !defined(NOMANCOMPRESS)
 .for page in ${MAN}
 	${MINSTALL} ${page:T:S/$/${MCOMPRESS_EXT}/g} \
 		${DESTDIR}${MANDIR}${page:E}${MANSUBDIR}
@@ -205,7 +205,7 @@ _maninstall: ${MAN}
 		${DESTDIR}${CATDIR}${page:E}${MANSUBDIR}/${page:T:S/$/${MCOMPRESS_EXT}/}
 .endif
 .endfor
-.endif
+.endif	# defined(NOMANCOMPRESS)
 .endif
 
 .if !defined(NOMLINKS) && defined(MLINKS) && !empty(MLINKS)
