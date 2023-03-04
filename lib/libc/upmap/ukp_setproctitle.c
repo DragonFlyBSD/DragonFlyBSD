@@ -62,13 +62,20 @@ __ukp_spt(const char *fmt, va_list ap)
 	size_t n;
 	size_t t;
 
+	if (fmt == NULL)
+		return -1;
 	if (fast_spt_state == 0 && fast_spt_count++ >= 10) {
 		__upmap_map(&sptbuf, &fast_spt_state, UPTYPE_PROC_TITLE);
 		__upmap_map(NULL, &fast_spt_state, 0);
 	}
 	if (fast_spt_state > 0) {
 		t = UKPLEN_DECODE(UPTYPE_PROC_TITLE);
-		n = snprintf(sptbuf, t, "%s: ", _getprogname());
+		if (fmt[0] == '-') {
+			fmt++;
+			n = 0;
+		} else {
+			n = snprintf(sptbuf, t, "%s: ", _getprogname());
+		}
 		vsnprintf(sptbuf + n, t - n, fmt, ap);
 		return 0;
 	} else {
