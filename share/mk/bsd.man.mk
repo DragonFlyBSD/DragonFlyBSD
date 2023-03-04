@@ -163,6 +163,17 @@ ${target}: ${page}
 
 .endif
 
+.if !defined(NOMLINKS) && defined(MLINKS) && !empty(MLINKS)
+.for _oname _osect _dname _dsect in ${MLINKS:C/\.([^.]*)$/.\1 \1/}
+_MANLINKS+=	${MANDIR}${_osect}${MANSUBDIR}/${_oname} \
+		${MANDIR}${_dsect}${MANSUBDIR}/${_dname}
+.if defined(MANBUILDCAT) && !empty(MANBUILDCAT)
+_MANLINKS+=	${CATDIR}${_osect}${MANSUBDIR}/${_oname} \
+		${CATDIR}${_dsect}${MANSUBDIR}/${_dname}
+.endif
+.endfor
+.endif
+
 maninstall: _maninstall
 _maninstall:
 .if defined(MAN) && !empty(MAN)
@@ -207,39 +218,10 @@ _maninstall: ${MAN}
 .endfor
 .endif	# defined(NOMANCOMPRESS)
 .endif
-
-.if !defined(NOMLINKS) && defined(MLINKS) && !empty(MLINKS)
-	@set ${MLINKS:C/\.([^.]*)$/.\1 \1/}; \
-	while : ; do \
-		case $$# in \
-			0) break;; \
-			[123]) echo "warn: empty MLINK: $$1 $$2 $$3"; break;; \
-		esac; \
-		name=$$1; shift; sect=$$1; shift; \
-		l=${DESTDIR}${MANDIR}$${sect}${MANSUBDIR}/$$name; \
-		name=$$1; shift; sect=$$1; shift; \
-		t=${DESTDIR}${MANDIR}$${sect}${MANSUBDIR}/$$name; \
-		${ECHO} $${t}${ZEXT} -\> $${l}${ZEXT}; \
-		rm -f $${t} $${t}${MCOMPRESS_EXT}; \
-		${LN} $${l}${ZEXT} $${t}${ZEXT}; \
-	done
-.if defined(MANBUILDCAT) && !empty(MANBUILDCAT)
-	@set ${MLINKS:C/\.([^.]*)$/.\1 \1/}; \
-	while : ; do \
-		case $$# in \
-			0) break;; \
-			[123]) echo "warn: empty MLINK: $$1 $$2 $$3"; break;; \
-		esac; \
-		name=$$1; shift; sect=$$1; shift; \
-		l=${DESTDIR}${CATDIR}$${sect}${MANSUBDIR}/$$name; \
-		name=$$1; shift; sect=$$1; shift; \
-		t=${DESTDIR}${CATDIR}$${sect}${MANSUBDIR}/$$name; \
-		${ECHO} $${t}${ZEXT} -\> $${l}${ZEXT}; \
-		rm -f $${t} $${t}${MCOMPRESS_EXT}; \
-		${LN} $${l}${ZEXT} $${t}${ZEXT}; \
-	done
-.endif
-.endif
+.for l t in ${_MANLINKS}
+	@rm -f ${DESTDIR}${t} ${DESTDIR}${t}${MCOMPRESS_EXT}
+	${LN} ${DESTDIR}${l}${ZEXT} ${DESTDIR}${t}${ZEXT}
+.endfor
 
 manlint:
 #mandiff:
