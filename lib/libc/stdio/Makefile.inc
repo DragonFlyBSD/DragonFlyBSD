@@ -32,7 +32,8 @@ SRCS+=	__fpending.c _flock_stub.c \
 	xprintf_time.c xprintf_vis.c
 
 MAN+=	fclose.3 ferror.3 fflush.3 fgetln.3 fgets.3 fgetwln.3 fgetws.3 \
-	flockfile.3 fmemopen.3 fopen.3 fparseln.3 fputs.3 fputws.3 \
+	flockfile.3 fmemopen.3 fopen.3 fopencookie.3 \
+	fparseln.3 fputs.3 fputws.3 \
 	fread.3 fseek.3 funopen.3 fwide.3 \
 	getc.3 getline.3 gets.3 getwc.3 mktemp.3 open_memstream.3 \
 	printf.3 printf_l.3 putc.3 putwc.3 remove.3 \
@@ -55,7 +56,6 @@ MLINKS+=flockfile.3 ftrylockfile.3 \
 	flockfile.3 funlockfile.3
 MLINKS+=fopen.3 fdopen.3 \
 	fopen.3 freopen.3
-MLINKS+=fopencookie.3
 MLINKS+=fputs.3 fputs_unlocked.3 \
 	fputs.3 puts.3
 MLINKS+=fputws.3 fputws_l.3
