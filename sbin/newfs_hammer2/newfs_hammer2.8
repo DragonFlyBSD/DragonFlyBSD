@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd November 29, 2020
+.Dd March 6, 2023
 .Dt NEWFS_HAMMER2 8
 .Os
 .Sh NAME
@@ -42,6 +42,7 @@
 .Op Fl r Ar auxsize
 .Op Fl V Ar version
 .Op Fl L Ar label ...
+.Op Fl s Ar size
 .Ar special ...
 .Sh DESCRIPTION
 The
@@ -195,19 +196,34 @@ is used for more complex filesystem, followed by mounting device@LOCAL
 and using
 .Nm hammer2
 directives to create the desired cluster.
+.It Fl s Ar size
+The size of the file system in bytes.
+This value defaults to the total size of the raw partitions specified in
+.Ar special
+(in other words,
+.Nm
+will use the entire partition for the file system).
+The
+.Ar size
+must be 1GiB or larger.
 .El
 .Pp
 The
-.Ar bootsize
-and
+.Ar bootsize ,
 .Ar auxsize
+and
+.Ar size
 must be given with a suffix of
 .Cm K , M , G
 or
 .Cm T
 meaning kilobyte, megabyte, gigabyte and terabyte.
 Lower case can also be used for suffix.
-These options create reserved blocks of space on the target volume
+The
+.Ar bootsize
+and
+.Ar auxsize
+create reserved blocks of space on the target volume
 but are not currently used by the filesystem for anything.
 .Sh EXIT STATUS
 .Ex -std

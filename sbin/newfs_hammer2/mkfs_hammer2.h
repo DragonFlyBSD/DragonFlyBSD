@@ -59,6 +59,7 @@ typedef struct {
 	uuid_t Hammer2_PfsFSID[MAXLABELS];
 	hammer2_off_t BootAreaSize;
 	hammer2_off_t AuxAreaSize;
+	hammer2_off_t FileSystemSize;
 	char *Label[MAXLABELS];
 	int NLabels;
 	int CompType; /* default LZ4 */

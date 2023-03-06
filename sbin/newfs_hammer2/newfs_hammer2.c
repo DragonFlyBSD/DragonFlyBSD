@@ -61,7 +61,7 @@ main(int ac, char **av)
 	/*
 	 * Parse arguments.
 	 */
-	while ((ch = getopt(ac, av, "L:b:r:V:d")) != -1) {
+	while ((ch = getopt(ac, av, "L:b:r:V:s:d")) != -1) {
 		switch(ch) {
 		case 'b':
 			opt.BootAreaSize = getsize(optarg,
@@ -102,6 +102,12 @@ main(int ac, char **av)
 					HAMMER2_INODE_MAXNAME - 1);
 			}
 			opt.Label[opt.NLabels++] = strdup(optarg);
+			break;
+		case 's':
+			/* XXX 0x7fffffffffffffff isn't limitation of HAMMER2 */
+			opt.FileSystemSize = getsize(optarg,
+					 HAMMER2_FREEMAP_LEVEL1_SIZE,
+					 0x7fffffffffffffff, 2);
 			break;
 		case 'd':
 			opt.DebugOpt = 1;
@@ -153,7 +159,7 @@ usage(void)
 {
 	fprintf(stderr,
 		"usage: newfs_hammer2 [-b bootsize] [-r auxsize] "
-		"[-V version] [-L label ...] special ...\n"
+		"[-V version] [-L label ...] [-s size] special ...\n"
 	);
 	exit(1);
 }
