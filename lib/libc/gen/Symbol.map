@@ -678,7 +678,7 @@ DFprivate_1.0 {
     __signbit;
     __signbitf;
 
-	/* thread locale storage */
+	/* thread local storage */
     _init_tls;
     _libc_allocate_tls;
     _rtld_allocate_tls;
