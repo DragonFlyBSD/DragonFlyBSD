@@ -1647,6 +1647,9 @@ device		corepower
 device		amdtemp
 device		coretemp
 
+# Generic panel backlight support
+device		backlight
+
 # Memory thermal sensor
 device		memtemp
 

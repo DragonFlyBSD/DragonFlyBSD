@@ -2088,6 +2088,8 @@ bus/isa/isa_common.c		optional isa
 bus/isa/isahint.c		optional isa
 bus/isa/pnpeat.c		optional isa
 dev/misc/amdsbwd/amdsbwd.c	optional amdsbwd
+dev/misc/backlight/backlight.c	optional backlight
+dev/misc/backlight/backlight_if.m	optional backlight
 dev/misc/coremctl/coremctl.c	optional coremctl
 dev/misc/coremctl/coremctl_if.m	optional coremctl
 dev/misc/dimm/dimm.c		optional dimm

@@ -10,6 +10,7 @@ SUBDIR=	alias \
 	asa \
 	at \
 	awk \
+	backlight \
 	banner \
 	basename \
 	bc \
