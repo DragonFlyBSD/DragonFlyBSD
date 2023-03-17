@@ -674,7 +674,7 @@ blkrefary_cmp(const void *b1, const void *b2)
 void
 hammer2_mkfs(int ac, char **av, hammer2_mkfs_options_t *opt)
 {
-	hammer2_off_t resid, reserved_size;
+	hammer2_off_t resid = 0, reserved_size;
 	hammer2_ondisk_t fso;
 	int i;
 	char *vol_fsid = NULL;
@@ -700,7 +700,16 @@ hammer2_mkfs(int ac, char **av, hammer2_mkfs_options_t *opt)
 	hammer2_init_ondisk(&fso);
 	fso.version = opt->Hammer2Version;
 	fso.nvolumes = ac;
-	resid = opt->FileSystemSize;
+
+	assert(ac >= 1);
+	if (opt->NFileSystemSizes == 1) {
+		resid = opt->FileSystemSize[0];
+		assert(resid >= HAMMER2_FREEMAP_LEVEL1_SIZE);
+	} else if (opt->NFileSystemSizes > 1) {
+		if (ac != opt->NFileSystemSizes)
+			errx(1, "Invalid filesystem size count %d vs %d",
+			    opt->NFileSystemSizes, ac);
+	}
 
 	for (i = 0; i < fso.nvolumes; ++i) {
 		hammer2_volume_t *vol = &fso.volumes[i];
@@ -709,14 +718,24 @@ hammer2_mkfs(int ac, char **av, hammer2_mkfs_options_t *opt)
 		if (fd < 0)
 			err(1, "Unable to open %s R+W", av[i]);
 		size = check_volume(fd);
-		if (opt->FileSystemSize > 0) {
+
+		/*
+		 * Limit size if a smaller filesystem size is specified.
+		 */
+		if (opt->NFileSystemSizes == 1) {
 			if (resid == 0)
 				errx(1, "No remaining filesystem size for %s",
 				    av[i]);
 			if (size > resid)
 				size = resid;
 			resid -= size;
+		} else if (opt->NFileSystemSizes > 1) {
+			resid = opt->FileSystemSize[i];
+			assert(resid >= HAMMER2_FREEMAP_LEVEL1_SIZE);
+			if (size > resid)
+				size = resid;
 		}
+
 		assert(size > 0);
 		if (i == fso.nvolumes - 1)
 			size &= ~HAMMER2_VOLUME_ALIGNMASK64;
