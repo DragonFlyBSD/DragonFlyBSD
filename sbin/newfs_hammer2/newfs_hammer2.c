@@ -167,6 +167,8 @@ parse_fs_size(hammer2_mkfs_options_t *opt, const char *arg)
 		opt->FileSystemSize[opt->NFileSystemSizes++] = getsize(s,
 				 HAMMER2_FREEMAP_LEVEL1_SIZE,
 				 0x7fffffffffffffff, 2);
+		if (opt->NFileSystemSizes >= HAMMER2_MAX_VOLUMES)
+			break;
 	}
 	free(o);
 }
