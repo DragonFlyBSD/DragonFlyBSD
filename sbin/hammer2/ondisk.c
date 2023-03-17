@@ -491,7 +491,7 @@ void
 hammer2_init_volumes(const char *blkdevs, int rdonly)
 {
 	hammer2_volume_data_t *rootvoldata;
-	char *p, *devpath;
+	char *o, *p, *devpath;
 
 	if (hammer2_volumes_initialized)
 		errx(1, "Already initialized");
@@ -499,7 +499,7 @@ hammer2_init_volumes(const char *blkdevs, int rdonly)
 		errx(1, "NULL blkdevs");
 
 	hammer2_init_ondisk(&fso);
-	p = strdup(blkdevs);
+	o = p = strdup(blkdevs);
 	while ((devpath = p) != NULL) {
 		if ((p = strchr(p, ':')) != NULL)
 			*p++ = 0;
@@ -510,7 +510,7 @@ hammer2_init_volumes(const char *blkdevs, int rdonly)
 			hammer2_add_volume(devpath, rdonly);
 		free(devpath);
 	}
-	free(p);
+	free(o);
 	hammer2_volumes_initialized = 1;
 
 	rootvoldata = hammer2_read_root_volume_header();
