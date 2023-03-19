@@ -483,10 +483,15 @@ dexec_open(const char *logid, const char **cav, int cac,
 	}
 
 	env_basei = 0;
+#if 0
+	/*
+	 * For now we are ignoring the passed-in environment, so don't
+	 * copy the existing environment into the exec environment.
+	 */
 	while (environ[env_basei])
 		++env_basei;
+#endif
 	cenv = calloc(env_basei + MAXCAC, sizeof(char *));
-	env_basei = 0;
 	for (envi = 0; envi < env_basei; ++envi)
 		cenv[envi] = environ[envi];
 
