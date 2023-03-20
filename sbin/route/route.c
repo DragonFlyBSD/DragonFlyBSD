@@ -1570,11 +1570,14 @@ print_rtmsg(struct rt_msghdr *rtm, int msglen __unused)
 		printf("\n");
 		break;
 
-	default:
+	case RTM_ADD:
+	case RTM_DELETE:
+	case RTM_GET:
 		printf("pid: %ld, seq %d, errno %d, flags:",
 			(long)rtm->rtm_pid, rtm->rtm_seq, rtm->rtm_errno);
 		bprintf(stdout, rtm->rtm_flags, routeflags);
 		pmsg_common(rtm);
+		break;
 	}
 }
 
