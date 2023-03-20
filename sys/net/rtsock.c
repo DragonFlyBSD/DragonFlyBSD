@@ -62,6 +62,8 @@
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
  */
 
+#include "opt_inet6.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -85,6 +87,10 @@
 #include <net/raw_cb.h>
 #include <net/netmsg2.h>
 #include <net/netisr2.h>
+
+#ifdef INET6
+#include <netinet/in_var.h>
+#endif
 
 /* sa_family is after sa_len, rest is data */
 #define	_SA_MINSIZE	(offsetof(struct sockaddr, sa_family) + \
