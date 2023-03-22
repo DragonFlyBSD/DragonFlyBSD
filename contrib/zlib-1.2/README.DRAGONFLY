@@ -2,11 +2,11 @@ ZLIB
 ====
 
 Original source can be downloaded from:
-http://www.zlib.net
+https://www.zlib.net
 
-file = zlib-1.2.11.tar.gz
-date = January 15, 2017
-size = 607698
-sha1 = e6d119755acdf9104d7ba236b1242696940ed6dd
+file = zlib-1.2.13.tar.gz
+date = October 13, 2022
+size = 1497445
+sha1 = 55eaa84906f31ac20d725aa26cd20839196b6ba6
 
-A list of files and directories removed is in README.DELETED
+A list of files and directories removed is in README.DELETED.
