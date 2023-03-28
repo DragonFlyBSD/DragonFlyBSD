@@ -76,7 +76,7 @@ struct knote_cache_list {
 } __cachealign;
 
 static int	kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
-		    struct knote *marker, int closedcounter, int scan_flags);
+		    struct knote *marker, int closedcounter, int flags);
 static int 	kqueue_read(struct file *fp, struct uio *uio,
 		    struct ucred *cred, int flags);
 static int	kqueue_write(struct file *fp, struct uio *uio,
@@ -803,7 +803,6 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	int lres;
 	int limit = kq_checkloop;
 	int closedcounter;
-	int scan_flags;
 	struct kevent kev[KQ_NEVENTS];
 	struct knote marker;
 	struct lwkt_token *tok;
@@ -895,7 +894,7 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	marker.kn_status = KN_PROCESSING;
 
 	tok = lwkt_token_pool_lookup(kq);
-	scan_flags = KEVENT_SCAN_INSERT_MARKER;
+	flags = (flags & ~KEVENT_SCAN_MASK) | KEVENT_SCAN_INSERT_MARKER;
 
 	while ((n = nevents - total) > 0) {
 		if (n > KQ_NEVENTS)
@@ -905,8 +904,8 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 		 * Process all received events
 		 * Account for all non-spurious events in our total
 		 */
-		i = kqueue_scan(kq, kev, n, &marker, closedcounter, scan_flags);
-		scan_flags = KEVENT_SCAN_KEEP_MARKER;
+		i = kqueue_scan(kq, kev, n, &marker, closedcounter, flags);
+		flags = (flags & ~KEVENT_SCAN_MASK) | KEVENT_SCAN_KEEP_MARKER;
 		if (i) {
 			lres = *res;
 			error = kevent_copyoutfn(uap, kev, i, res);
@@ -1006,7 +1005,8 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 					lwkt_reltoken(tok);
 					break;
 				}
-				scan_flags = KEVENT_SCAN_RELOAD_MARKER;
+				flags = (flags & ~KEVENT_SCAN_MASK) |
+					KEVENT_SCAN_RELOAD_MARKER;
 			}
 			lwkt_reltoken(tok);
 		}
@@ -1024,14 +1024,16 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 		 *	 that case could result in duplicates for the
 		 *	 same event.
 		 */
-		if (i == 0)
-			scan_flags = KEVENT_SCAN_RELOAD_MARKER;
+		if (i == 0) {
+			flags = (flags & ~KEVENT_SCAN_MASK) |
+				KEVENT_SCAN_RELOAD_MARKER;
+		}
 	}
 
 	/*
 	 * Remove the marker
 	 */
-	if (scan_flags != KEVENT_SCAN_INSERT_MARKER) {
+	if ((flags & KEVENT_SCAN_INSERT_MARKER) == 0) {
 		lwkt_gettoken(tok);
 		TAILQ_REMOVE(&kq->kq_knpend, &marker, kn_tqe);
 		lwkt_reltoken(tok);
@@ -1450,7 +1452,7 @@ done:
  */
 static int
 kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
-            struct knote *marker, int closedcounter, int scan_flags)
+            struct knote *marker, int closedcounter, int flags)
 {
 	struct knote *kn, local_marker;
 	thread_t td = curthread;
@@ -1467,7 +1469,7 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 	 *
 	 * Also setup our local_marker.
 	 */
-	switch(scan_flags) {
+	switch(flags & KEVENT_SCAN_MASK) {
 	case KEVENT_SCAN_RELOAD_MARKER:
 		TAILQ_REMOVE(&kq->kq_knpend, marker, kn_tqe);
 		/* fall through */
@@ -1514,18 +1516,32 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		kq->kq_count--;
 
 		/*
-		 * We have to deal with an extremely important race against
-		 * file descriptor close()s here.  The file descriptor can
-		 * disappear MPSAFE, and there is a small window of
-		 * opportunity between that and the call to knote_fdclose().
+		 * Kernel select() and poll() functions cache previous
+		 * operations on the assumption that future operations
+		 * will use similr descriptor sets.  This removes any
+		 * stale entries in a way that does not require a descriptor
+		 * lookup and is thus not affected by close() races.
 		 *
-		 * If we hit that window here while doselect or dopoll is
-		 * trying to delete a spurious event they will not be able
-		 * to match up the event against a knote and will go haywire.
+		 * Do not report to *_copyout()
+		 */
+		if (flags & KEVENT_AUTO_STALE) {
+			if ((uint64_t)kn->kn_kevent.udata <
+			    curthread->td_lwp->lwp_kqueue_serial)
+			{
+				kn->kn_status |= KN_DELETING | KN_REPROCESS |
+						 KN_DISABLED;
+			}
+		}
+
+		/*
+		 * If a descriptor is close()d out from under a poll/select,
+		 * we want to report the event but delete the note because
+		 * the note can wind up being 'stuck' on kq_knpend.
 		 */
 		if ((kn->kn_fop->f_flags & FILTEROP_ISFD) &&
 		    checkfdclosed(td, kq->kq_fdp, kn->kn_kevent.ident,
-				  kn->kn_fp, closedcounter)) {
+				  kn->kn_fp, closedcounter))
+		{
 			kn->kn_status |= KN_DELETING | KN_REPROCESS;
 		}
 
@@ -1572,7 +1588,9 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 					kn->kn_status &= ~(KN_QUEUED |
 							   KN_ACTIVE);
 				} else {
-					TAILQ_INSERT_TAIL(&kq->kq_knpend, kn, kn_tqe);
+					TAILQ_INSERT_TAIL(&kq->kq_knpend,
+							  kn,
+							  kn_tqe);
 					kq->kq_count++;
 				}
 			}

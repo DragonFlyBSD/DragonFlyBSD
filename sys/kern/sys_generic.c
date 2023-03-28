@@ -991,7 +991,9 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 		 * Filter out and delete spurious events
 		 */
 		if ((uint64_t)(uintptr_t)kevp[i].udata !=
-		    skap->lwp->lwp_kqueue_serial) {
+		    skap->lwp->lwp_kqueue_serial)
+		{
+			panic("select_copyout: unexpected udata");
 deregister:
 			kev = kevp[i];
 			kev.flags = EV_DISABLE|EV_DELETE;
@@ -1181,7 +1183,8 @@ doselect(int nd, fd_set *read, fd_set *write, fd_set *except,
 	 *	 loaded in.
 	 */
 	error = kern_kevent(&kap->lwp->lwp_kqueue, 0x7FFFFFFF, res, kap,
-			    select_copyin, select_copyout, ts, 0);
+			    select_copyin, select_copyout, ts,
+			    KEVENT_AUTO_STALE);
 	if (error == 0)
 		error = putbits(bytes, kap->read_set, read);
 	if (error == 0)
@@ -1399,8 +1402,8 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 		 */
 		pi = (uint64_t)(uintptr_t)kevp[i].udata -
 		     pkap->lwp->lwp_kqueue_serial;
-
 		if (pi >= pkap->nfds) {
+			panic("poll_copyout: unexpected udata");
 deregister:
 			kev = kevp[i];
 			kev.flags = EV_DISABLE|EV_DELETE;
@@ -1572,6 +1575,8 @@ dopoll(int nfds, struct pollfd *fds, struct timespec *ts, int *res, int flags)
 	struct pollfd sfds[64];
 	int bytes;
 	int error;
+
+	flags |= KEVENT_AUTO_STALE;
 
         *res = 0;
         if (nfds < 0)

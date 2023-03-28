@@ -236,11 +236,13 @@ struct thread;
 struct filedesc;
 struct kevent_args;
 
-#define KEVENT_TIMEOUT_PRECISE	0x01
+#define KEVENT_TIMEOUT_PRECISE		0x01
+#define KEVENT_AUTO_STALE		0x02	/* used by poll/select */
 
-#define KEVENT_SCAN_KEEP_MARKER		0
-#define KEVENT_SCAN_RELOAD_MARKER	1
-#define KEVENT_SCAN_INSERT_MARKER	2
+#define KEVENT_SCAN_MASK		0xF0
+#define KEVENT_SCAN_KEEP_MARKER		0x10
+#define KEVENT_SCAN_RELOAD_MARKER	0x20
+#define KEVENT_SCAN_INSERT_MARKER	0x40
 
 typedef int	(*k_copyout_fn)(void *arg, struct kevent *kevp, int count,
     int *res);
