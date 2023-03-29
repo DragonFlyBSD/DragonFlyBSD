@@ -322,7 +322,7 @@ hammer2_verify_volumes_1(const hammer2_volume_t *volumes,
 	}
 
 	/* check volume */
-	vol = &volumes[0];
+	vol = &volumes[HAMMER2_ROOT_VOLUME];
 	path = vol->dev->path;
 	if (vol->id) {
 		hprintf("%s has non zero id %d\n", path, vol->id);

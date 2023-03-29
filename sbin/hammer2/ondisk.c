@@ -351,7 +351,7 @@ hammer2_verify_volumes_1(hammer2_ondisk_t *fsp,
 	}
 
 	/* check volume */
-	vol = &fsp->volumes[0];
+	vol = &fsp->volumes[HAMMER2_ROOT_VOLUME];
 	path = vol->path;
 	if (vol->id)
 		errx(1, "%s has non zero id %d", path, vol->id);
