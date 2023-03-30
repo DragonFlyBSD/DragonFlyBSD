@@ -51,10 +51,6 @@
 #include <net/if.h>
 #include <net/pf/pfvar.h>
 
-#ifdef INET6
-#include <netinet/ip6.h>
-#endif /* INET6 */
-
 
 #ifdef _KERNEL
 # define DPFPRINTF(format, x...)		\

@@ -17,6 +17,10 @@
  *
  */
 
+#ifdef _KERNEL
+#include "opt_inet6.h"
+#endif
+
 #include <sys/param.h>
 #include <sys/socket.h>
 #ifdef _KERNEL
@@ -160,8 +164,7 @@ pf_osfp_fingerprint_hdr(const struct ip *ip, const struct ip6_hdr *ip6, const st
 		fp.fp_flags |= PF_OSFP_DF;
 		fp.fp_flags |= PF_OSFP_INET6;
 #ifdef _KERNEL
-		strlcpy(srcname, ip6_sprintf((struct in6_addr *)&ip6->ip6_src),
-		    sizeof(srcname));
+		strlcpy(srcname, ip6_sprintf(&ip6->ip6_src), sizeof(srcname));
 #else
 		memset(&sin6, 0, sizeof(sin6));
 		sin6.sin6_family = AF_INET6;
