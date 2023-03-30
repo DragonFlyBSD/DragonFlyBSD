@@ -104,13 +104,6 @@
 #include <net/if_types.h>
 #include <net/if_mib.h>
 
-#ifdef INET
-#include <netinet/in.h>
-#include <netinet/in_systm.h>
-#include <netinet/in_var.h>
-#include <netinet/ip.h>
-#endif
-
 #include <net/bpf.h>
 #include <net/bpfdesc.h>
 
