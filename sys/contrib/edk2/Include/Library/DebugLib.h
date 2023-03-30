@@ -48,7 +48,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define DEBUG_CACHE     0x00200000  // Memory range cachability changes
 #define DEBUG_VERBOSE   0x00400000  // Detailed debug messages that may
                                     // significantly impact boot performance
-#define DEBUG_ERROR     0x80000000  // Error
+#define DEBUG_ERROR  0x80000000     // Error
 
 //
 // Aliases of debug message mask bits
@@ -147,9 +147,9 @@ DebugPrint (
 VOID
 EFIAPI
 DebugVPrint (
-  IN  UINTN         ErrorLevel,
-  IN  CONST CHAR8   *Format,
-  IN  VA_LIST       VaListMarker
+  IN  UINTN        ErrorLevel,
+  IN  CONST CHAR8  *Format,
+  IN  VA_LIST      VaListMarker
   );
 
 /**
@@ -172,9 +172,9 @@ DebugVPrint (
 VOID
 EFIAPI
 DebugBPrint (
-  IN  UINTN         ErrorLevel,
-  IN  CONST CHAR8   *Format,
-  IN  BASE_LIST     BaseListMarker
+  IN  UINTN        ErrorLevel,
+  IN  CONST CHAR8  *Format,
+  IN  BASE_LIST    BaseListMarker
   );
 
 /**
@@ -304,7 +304,7 @@ DebugClearMemoryEnabled (
 BOOLEAN
 EFIAPI
 DebugPrintLevelEnabled (
-  IN  CONST UINTN        ErrorLevel
+  IN  CONST UINTN  ErrorLevel
   );
 
 /**
@@ -337,17 +337,20 @@ UnitTestDebugAssert (
   IN CONST CHAR8  *Description
   );
 
-#if defined(__clang__) && defined(__FILE_NAME__)
+  #if defined (_ASSERT)
+    #undef _ASSERT
+  #endif
+  #if defined (__clang__) && defined (__FILE_NAME__)
 #define _ASSERT(Expression)  UnitTestDebugAssert (__FILE_NAME__, DEBUG_LINE_NUMBER, DEBUG_EXPRESSION_STRING (Expression))
-#else
+  #else
 #define _ASSERT(Expression)  UnitTestDebugAssert (__FILE__, DEBUG_LINE_NUMBER, DEBUG_EXPRESSION_STRING (Expression))
-#endif
+  #endif
 #else
-#if defined(__clang__) && defined(__FILE_NAME__)
+  #if defined (__clang__) && defined (__FILE_NAME__)
 #define _ASSERT(Expression)  DebugAssert (__FILE_NAME__, DEBUG_LINE_NUMBER, DEBUG_EXPRESSION_STRING (Expression))
-#else
+  #else
 #define _ASSERT(Expression)  DebugAssert (__FILE__, DEBUG_LINE_NUMBER, DEBUG_EXPRESSION_STRING (Expression))
-#endif
+  #endif
 #endif
 
 /**
@@ -363,16 +366,16 @@ UnitTestDebugAssert (
 
 **/
 
-#if !defined(MDE_CPU_EBC) && (!defined (_MSC_VER) || _MSC_VER > 1400)
-  #define _DEBUG_PRINT(PrintLevel, ...)              \
+#if !defined (MDE_CPU_EBC) && (!defined (_MSC_VER) || _MSC_VER > 1400)
+#define _DEBUG_PRINT(PrintLevel, ...)              \
     do {                                             \
       if (DebugPrintLevelEnabled (PrintLevel)) {     \
         DebugPrint (PrintLevel, ##__VA_ARGS__);      \
       }                                              \
     } while (FALSE)
-  #define _DEBUG(Expression)   _DEBUG_PRINT Expression
+#define _DEBUG(Expression)  _DEBUG_PRINT Expression
 #else
-#define _DEBUG(Expression)   DebugPrint Expression
+#define _DEBUG(Expression)  DebugPrint Expression
 #endif
 
 /**
@@ -387,8 +390,8 @@ UnitTestDebugAssert (
   @param  Expression  Boolean expression.
 
 **/
-#if !defined(MDEPKG_NDEBUG)
-  #define ASSERT(Expression)        \
+#if !defined (MDEPKG_NDEBUG)
+#define ASSERT(Expression)        \
     do {                            \
       if (DebugAssertEnabled ()) {  \
         if (!(Expression)) {        \
@@ -398,7 +401,7 @@ UnitTestDebugAssert (
       }                             \
     } while (FALSE)
 #else
-  #define ASSERT(Expression)
+#define ASSERT(Expression)
 #endif
 
 /**
@@ -413,15 +416,15 @@ UnitTestDebugAssert (
 
 
 **/
-#if !defined(MDEPKG_NDEBUG)
-  #define DEBUG(Expression)        \
+#if !defined (MDEPKG_NDEBUG)
+#define DEBUG(Expression)        \
     do {                           \
       if (DebugPrintEnabled ()) {  \
         _DEBUG (Expression);       \
       }                            \
     } while (FALSE)
 #else
-  #define DEBUG(Expression)
+#define DEBUG(Expression)
 #endif
 
 /**
@@ -436,8 +439,8 @@ UnitTestDebugAssert (
   @param  StatusParameter  EFI_STATUS value to evaluate.
 
 **/
-#if !defined(MDEPKG_NDEBUG)
-  #define ASSERT_EFI_ERROR(StatusParameter)                                              \
+#if !defined (MDEPKG_NDEBUG)
+#define ASSERT_EFI_ERROR(StatusParameter)                                              \
     do {                                                                                 \
       if (DebugAssertEnabled ()) {                                                       \
         if (EFI_ERROR (StatusParameter)) {                                               \
@@ -447,7 +450,7 @@ UnitTestDebugAssert (
       }                                                                                  \
     } while (FALSE)
 #else
-  #define ASSERT_EFI_ERROR(StatusParameter)
+#define ASSERT_EFI_ERROR(StatusParameter)
 #endif
 
 /**
@@ -462,8 +465,8 @@ UnitTestDebugAssert (
   @param  StatusParameter  RETURN_STATUS value to evaluate.
 
 **/
-#if !defined(MDEPKG_NDEBUG)
-  #define ASSERT_RETURN_ERROR(StatusParameter)                          \
+#if !defined (MDEPKG_NDEBUG)
+#define ASSERT_RETURN_ERROR(StatusParameter)                          \
     do {                                                                \
       if (DebugAssertEnabled ()) {                                      \
         if (RETURN_ERROR (StatusParameter)) {                           \
@@ -474,7 +477,7 @@ UnitTestDebugAssert (
       }                                                                 \
     } while (FALSE)
 #else
-  #define ASSERT_RETURN_ERROR(StatusParameter)
+#define ASSERT_RETURN_ERROR(StatusParameter)
 #endif
 
 /**
@@ -499,8 +502,8 @@ UnitTestDebugAssert (
   @param  Guid    The pointer to a protocol GUID.
 
 **/
-#if !defined(MDEPKG_NDEBUG)
-  #define ASSERT_PROTOCOL_ALREADY_INSTALLED(Handle, Guid)                               \
+#if !defined (MDEPKG_NDEBUG)
+#define ASSERT_PROTOCOL_ALREADY_INSTALLED(Handle, Guid)                               \
     do {                                                                                \
       if (DebugAssertEnabled ()) {                                                      \
         VOID  *Instance;                                                                \
@@ -517,7 +520,7 @@ UnitTestDebugAssert (
       }                                                                                 \
     } while (FALSE)
 #else
-  #define ASSERT_PROTOCOL_ALREADY_INSTALLED(Handle, Guid)
+#define ASSERT_PROTOCOL_ALREADY_INSTALLED(Handle, Guid)
 #endif
 
 /**
@@ -540,7 +543,7 @@ UnitTestDebugAssert (
   are not included in a module.
 
 **/
-#define DEBUG_CODE_END()    __DebugCodeLocal = 0; __DebugCodeLocal++; } } while (FALSE)
+#define DEBUG_CODE_END()  __DebugCodeLocal = 0; __DebugCodeLocal++; } } while (FALSE)
 
 /**
   The macro that declares a section of debug source code.
@@ -614,13 +617,13 @@ UnitTestDebugAssert (
   @param  TestSignature  The 32-bit signature value to match.
 
 **/
-#if !defined(MDEPKG_NDEBUG)
-  #define CR(Record, TYPE, Field, TestSignature)                                              \
+#if !defined (MDEPKG_NDEBUG)
+#define CR(Record, TYPE, Field, TestSignature)                                              \
     (DebugAssertEnabled () && (BASE_CR (Record, TYPE, Field)->Signature != TestSignature)) ?  \
     (TYPE *) (_ASSERT (CR has Bad Signature), Record) :                                       \
     BASE_CR (Record, TYPE, Field)
 #else
-  #define CR(Record, TYPE, Field, TestSignature)                                              \
+#define CR(Record, TYPE, Field, TestSignature)                                              \
     BASE_CR (Record, TYPE, Field)
 #endif
 

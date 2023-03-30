@@ -6,6 +6,7 @@ Copyright (c) 2006 - 2021, Intel Corporation. All rights reserved.<BR>
 Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
 Copyright (c) Microsoft Corporation.<BR>
 Portions Copyright (c) 2020, Hewlett Packard Enterprise Development LP. All rights reserved.<BR>
+Portions Copyright (c) 2022, Loongson Technology Corporation Limited. All rights reserved.<BR>
 
 SPDX-License-Identifier: BSD-2-Clause-Patent
 
@@ -22,16 +23,16 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 /// The IA-32 architecture context buffer used by SetJump() and LongJump().
 ///
 typedef struct {
-  UINT32                            Ebx;
-  UINT32                            Esi;
-  UINT32                            Edi;
-  UINT32                            Ebp;
-  UINT32                            Esp;
-  UINT32                            Eip;
-  UINT32                            Ssp;
+  UINT32    Ebx;
+  UINT32    Esi;
+  UINT32    Edi;
+  UINT32    Ebp;
+  UINT32    Esp;
+  UINT32    Eip;
+  UINT32    Ssp;
 } BASE_LIBRARY_JUMP_BUFFER;
 
-#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 4
+#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT  4
 
 #endif // defined (MDE_CPU_IA32)
 
@@ -40,22 +41,22 @@ typedef struct {
 /// The x64 architecture context buffer used by SetJump() and LongJump().
 ///
 typedef struct {
-  UINT64                            Rbx;
-  UINT64                            Rsp;
-  UINT64                            Rbp;
-  UINT64                            Rdi;
-  UINT64                            Rsi;
-  UINT64                            R12;
-  UINT64                            R13;
-  UINT64                            R14;
-  UINT64                            R15;
-  UINT64                            Rip;
-  UINT64                            MxCsr;
-  UINT8                             XmmBuffer[160]; ///< XMM6-XMM15.
-  UINT64                            Ssp;
+  UINT64    Rbx;
+  UINT64    Rsp;
+  UINT64    Rbp;
+  UINT64    Rdi;
+  UINT64    Rsi;
+  UINT64    R12;
+  UINT64    R13;
+  UINT64    R14;
+  UINT64    R15;
+  UINT64    Rip;
+  UINT64    MxCsr;
+  UINT8     XmmBuffer[160];                         ///< XMM6-XMM15.
+  UINT64    Ssp;
 } BASE_LIBRARY_JUMP_BUFFER;
 
-#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 8
+#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT  8
 
 #endif // defined (MDE_CPU_X64)
 
@@ -64,14 +65,14 @@ typedef struct {
 /// The EBC context buffer used by SetJump() and LongJump().
 ///
 typedef struct {
-  UINT64                            R0;
-  UINT64                            R1;
-  UINT64                            R2;
-  UINT64                            R3;
-  UINT64                            IP;
+  UINT64    R0;
+  UINT64    R1;
+  UINT64    R2;
+  UINT64    R3;
+  UINT64    IP;
 } BASE_LIBRARY_JUMP_BUFFER;
 
-#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 8
+#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT  8
 
 #endif // defined (MDE_CPU_EBC)
 
@@ -91,9 +92,9 @@ typedef struct {
   UINT32    R14;
 } BASE_LIBRARY_JUMP_BUFFER;
 
-#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 4
+#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT  4
 
-#endif  // defined (MDE_CPU_ARM)
+#endif // defined (MDE_CPU_ARM)
 
 #if defined (MDE_CPU_AARCH64)
 typedef struct {
@@ -123,34 +124,107 @@ typedef struct {
   UINT64    D15;
 } BASE_LIBRARY_JUMP_BUFFER;
 
-#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 8
+#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT  8
 
-#endif  // defined (MDE_CPU_AARCH64)
+#endif // defined (MDE_CPU_AARCH64)
 
 #if defined (MDE_CPU_RISCV64)
 ///
 /// The RISC-V architecture context buffer used by SetJump() and LongJump().
 ///
 typedef struct {
-  UINT64                            RA;
-  UINT64                            S0;
-  UINT64                            S1;
-  UINT64                            S2;
-  UINT64                            S3;
-  UINT64                            S4;
-  UINT64                            S5;
-  UINT64                            S6;
-  UINT64                            S7;
-  UINT64                            S8;
-  UINT64                            S9;
-  UINT64                            S10;
-  UINT64                            S11;
-  UINT64                            SP;
+  UINT64    RA;
+  UINT64    S0;
+  UINT64    S1;
+  UINT64    S2;
+  UINT64    S3;
+  UINT64    S4;
+  UINT64    S5;
+  UINT64    S6;
+  UINT64    S7;
+  UINT64    S8;
+  UINT64    S9;
+  UINT64    S10;
+  UINT64    S11;
+  UINT64    SP;
 } BASE_LIBRARY_JUMP_BUFFER;
 
-#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT 8
+#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT  8
+
+VOID
+RiscVSetSupervisorScratch (
+  IN UINT64
+  );
+
+UINT64
+RiscVGetSupervisorScratch (
+  VOID
+  );
+
+VOID
+RiscVSetSupervisorStvec (
+  IN UINT64
+  );
+
+UINT64
+RiscVGetSupervisorStvec (
+  VOID
+  );
+
+UINT64
+RiscVGetSupervisorTrapCause (
+  VOID
+  );
+
+VOID
+RiscVSetSupervisorAddressTranslationRegister (
+  IN UINT64
+  );
+
+UINT64
+RiscVReadTimer (
+  VOID
+  );
+
+VOID
+RiscVEnableTimerInterrupt (
+  VOID
+  );
+
+VOID
+RiscVDisableTimerInterrupt (
+  VOID
+  );
+
+VOID
+RiscVClearPendingTimerInterrupt (
+  VOID
+  );
 
 #endif // defined (MDE_CPU_RISCV64)
+
+#if defined (MDE_CPU_LOONGARCH64)
+///
+/// The LoongArch architecture context buffer used by SetJump() and LongJump()
+///
+typedef struct {
+  UINT64    S0;
+  UINT64    S1;
+  UINT64    S2;
+  UINT64    S3;
+  UINT64    S4;
+  UINT64    S5;
+  UINT64    S6;
+  UINT64    S7;
+  UINT64    S8;
+  UINT64    SP;
+  UINT64    FP;
+  UINT64    RA;
+} BASE_LIBRARY_JUMP_BUFFER;
+
+#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT  8
+
+#endif // defined (MDE_CPU_LOONGARCH64)
 
 //
 // String Services
@@ -175,8 +249,8 @@ typedef struct {
 UINTN
 EFIAPI
 StrnLenS (
-  IN CONST CHAR16              *String,
-  IN UINTN                     MaxSize
+  IN CONST CHAR16  *String,
+  IN UINTN         MaxSize
   );
 
 /**
@@ -203,8 +277,8 @@ StrnLenS (
 UINTN
 EFIAPI
 StrnSizeS (
-  IN CONST CHAR16              *String,
-  IN UINTN                     MaxSize
+  IN CONST CHAR16  *String,
+  IN UINTN         MaxSize
   );
 
 /**
@@ -236,9 +310,9 @@ StrnSizeS (
 RETURN_STATUS
 EFIAPI
 StrCpyS (
-  OUT CHAR16       *Destination,
-  IN  UINTN        DestMax,
-  IN  CONST CHAR16 *Source
+  OUT CHAR16        *Destination,
+  IN  UINTN         DestMax,
+  IN  CONST CHAR16  *Source
   );
 
 /**
@@ -273,10 +347,10 @@ StrCpyS (
 RETURN_STATUS
 EFIAPI
 StrnCpyS (
-  OUT CHAR16       *Destination,
-  IN  UINTN        DestMax,
-  IN  CONST CHAR16 *Source,
-  IN  UINTN        Length
+  OUT CHAR16        *Destination,
+  IN  UINTN         DestMax,
+  IN  CONST CHAR16  *Source,
+  IN  UINTN         Length
   );
 
 /**
@@ -311,9 +385,9 @@ StrnCpyS (
 RETURN_STATUS
 EFIAPI
 StrCatS (
-  IN OUT CHAR16       *Destination,
-  IN     UINTN        DestMax,
-  IN     CONST CHAR16 *Source
+  IN OUT CHAR16        *Destination,
+  IN     UINTN         DestMax,
+  IN     CONST CHAR16  *Source
   );
 
 /**
@@ -351,10 +425,10 @@ StrCatS (
 RETURN_STATUS
 EFIAPI
 StrnCatS (
-  IN OUT CHAR16       *Destination,
-  IN     UINTN        DestMax,
-  IN     CONST CHAR16 *Source,
-  IN     UINTN        Length
+  IN OUT CHAR16        *Destination,
+  IN     UINTN         DestMax,
+  IN     CONST CHAR16  *Source,
+  IN     UINTN         Length
   );
 
 /**
@@ -403,9 +477,9 @@ StrnCatS (
 RETURN_STATUS
 EFIAPI
 StrDecimalToUintnS (
-  IN  CONST CHAR16             *String,
+  IN  CONST CHAR16  *String,
   OUT       CHAR16  **EndPointer   OPTIONAL,
-  OUT       UINTN              *Data
+  OUT       UINTN   *Data
   );
 
 /**
@@ -454,9 +528,9 @@ StrDecimalToUintnS (
 RETURN_STATUS
 EFIAPI
 StrDecimalToUint64S (
-  IN  CONST CHAR16             *String,
+  IN  CONST CHAR16  *String,
   OUT       CHAR16  **EndPointer   OPTIONAL,
-  OUT       UINT64             *Data
+  OUT       UINT64  *Data
   );
 
 /**
@@ -510,9 +584,9 @@ StrDecimalToUint64S (
 RETURN_STATUS
 EFIAPI
 StrHexToUintnS (
-  IN  CONST CHAR16             *String,
+  IN  CONST CHAR16  *String,
   OUT       CHAR16  **EndPointer   OPTIONAL,
-  OUT       UINTN              *Data
+  OUT       UINTN   *Data
   );
 
 /**
@@ -566,9 +640,9 @@ StrHexToUintnS (
 RETURN_STATUS
 EFIAPI
 StrHexToUint64S (
-  IN  CONST CHAR16             *String,
+  IN  CONST CHAR16  *String,
   OUT       CHAR16  **EndPointer   OPTIONAL,
-  OUT       UINT64             *Data
+  OUT       UINT64  *Data
   );
 
 /**
@@ -588,8 +662,8 @@ StrHexToUint64S (
 UINTN
 EFIAPI
 AsciiStrnLenS (
-  IN CONST CHAR8               *String,
-  IN UINTN                     MaxSize
+  IN CONST CHAR8  *String,
+  IN UINTN        MaxSize
   );
 
 /**
@@ -614,8 +688,8 @@ AsciiStrnLenS (
 UINTN
 EFIAPI
 AsciiStrnSizeS (
-  IN CONST CHAR8               *String,
-  IN UINTN                     MaxSize
+  IN CONST CHAR8  *String,
+  IN UINTN        MaxSize
   );
 
 /**
@@ -800,9 +874,9 @@ AsciiStrnCatS (
 RETURN_STATUS
 EFIAPI
 AsciiStrDecimalToUintnS (
-  IN  CONST CHAR8              *String,
+  IN  CONST CHAR8  *String,
   OUT       CHAR8  **EndPointer   OPTIONAL,
-  OUT       UINTN              *Data
+  OUT       UINTN  *Data
   );
 
 /**
@@ -849,9 +923,9 @@ AsciiStrDecimalToUintnS (
 RETURN_STATUS
 EFIAPI
 AsciiStrDecimalToUint64S (
-  IN  CONST CHAR8              *String,
+  IN  CONST CHAR8   *String,
   OUT       CHAR8   **EndPointer   OPTIONAL,
-  OUT       UINT64             *Data
+  OUT       UINT64  *Data
   );
 
 /**
@@ -902,9 +976,9 @@ AsciiStrDecimalToUint64S (
 RETURN_STATUS
 EFIAPI
 AsciiStrHexToUintnS (
-  IN  CONST CHAR8              *String,
+  IN  CONST CHAR8  *String,
   OUT       CHAR8  **EndPointer   OPTIONAL,
-  OUT       UINTN              *Data
+  OUT       UINTN  *Data
   );
 
 /**
@@ -955,9 +1029,9 @@ AsciiStrHexToUintnS (
 RETURN_STATUS
 EFIAPI
 AsciiStrHexToUint64S (
-  IN  CONST CHAR8              *String,
+  IN  CONST CHAR8   *String,
   OUT       CHAR8   **EndPointer   OPTIONAL,
-  OUT       UINT64             *Data
+  OUT       UINT64  *Data
   );
 
 /**
@@ -980,7 +1054,7 @@ AsciiStrHexToUint64S (
 UINTN
 EFIAPI
 StrLen (
-  IN      CONST CHAR16              *String
+  IN      CONST CHAR16  *String
   );
 
 /**
@@ -1004,7 +1078,7 @@ StrLen (
 UINTN
 EFIAPI
 StrSize (
-  IN      CONST CHAR16              *String
+  IN      CONST CHAR16  *String
   );
 
 /**
@@ -1038,8 +1112,8 @@ StrSize (
 INTN
 EFIAPI
 StrCmp (
-  IN      CONST CHAR16              *FirstString,
-  IN      CONST CHAR16              *SecondString
+  IN      CONST CHAR16  *FirstString,
+  IN      CONST CHAR16  *SecondString
   );
 
 /**
@@ -1077,9 +1151,9 @@ StrCmp (
 INTN
 EFIAPI
 StrnCmp (
-  IN      CONST CHAR16              *FirstString,
-  IN      CONST CHAR16              *SecondString,
-  IN      UINTN                     Length
+  IN      CONST CHAR16  *FirstString,
+  IN      CONST CHAR16  *SecondString,
+  IN      UINTN         Length
   );
 
 /**
@@ -1110,8 +1184,8 @@ StrnCmp (
 CHAR16 *
 EFIAPI
 StrStr (
-  IN      CONST CHAR16              *String,
-  IN      CONST CHAR16              *SearchString
+  IN      CONST CHAR16  *String,
+  IN      CONST CHAR16  *SearchString
   );
 
 /**
@@ -1151,7 +1225,7 @@ StrStr (
 UINTN
 EFIAPI
 StrDecimalToUintn (
-  IN      CONST CHAR16              *String
+  IN      CONST CHAR16  *String
   );
 
 /**
@@ -1191,7 +1265,7 @@ StrDecimalToUintn (
 UINT64
 EFIAPI
 StrDecimalToUint64 (
-  IN      CONST CHAR16              *String
+  IN      CONST CHAR16  *String
   );
 
 /**
@@ -1232,7 +1306,7 @@ StrDecimalToUint64 (
 UINTN
 EFIAPI
 StrHexToUintn (
-  IN      CONST CHAR16              *String
+  IN      CONST CHAR16  *String
   );
 
 /**
@@ -1273,7 +1347,7 @@ StrHexToUintn (
 UINT64
 EFIAPI
 StrHexToUint64 (
-  IN      CONST CHAR16             *String
+  IN      CONST CHAR16  *String
   );
 
 /**
@@ -1329,10 +1403,10 @@ StrHexToUint64 (
 RETURN_STATUS
 EFIAPI
 StrToIpv6Address (
-  IN  CONST CHAR16       *String,
+  IN  CONST CHAR16  *String,
   OUT CHAR16        **EndPointer  OPTIONAL,
-  OUT IPv6_ADDRESS       *Address,
-  OUT UINT8              *PrefixLength OPTIONAL
+  OUT IPv6_ADDRESS  *Address,
+  OUT UINT8         *PrefixLength OPTIONAL
   );
 
 /**
@@ -1379,10 +1453,10 @@ StrToIpv6Address (
 RETURN_STATUS
 EFIAPI
 StrToIpv4Address (
-  IN  CONST CHAR16       *String,
+  IN  CONST CHAR16  *String,
   OUT CHAR16        **EndPointer  OPTIONAL,
-  OUT IPv4_ADDRESS       *Address,
-  OUT UINT8              *PrefixLength OPTIONAL
+  OUT IPv4_ADDRESS  *Address,
+  OUT UINT8         *PrefixLength OPTIONAL
   );
 
 #define GUID_STRING_LENGTH  36
@@ -1432,8 +1506,8 @@ StrToIpv4Address (
 RETURN_STATUS
 EFIAPI
 StrToGuid (
-  IN  CONST CHAR16       *String,
-  OUT GUID               *Guid
+  IN  CONST CHAR16  *String,
+  OUT GUID          *Guid
   );
 
 /**
@@ -1472,10 +1546,10 @@ StrToGuid (
 RETURN_STATUS
 EFIAPI
 StrHexToBytes (
-  IN  CONST CHAR16       *String,
-  IN  UINTN              Length,
-  OUT UINT8              *Buffer,
-  IN  UINTN              MaxBufferSize
+  IN  CONST CHAR16  *String,
+  IN  UINTN         Length,
+  OUT UINT8         *Buffer,
+  IN  UINTN         MaxBufferSize
   );
 
 /**
@@ -1521,9 +1595,9 @@ StrHexToBytes (
 RETURN_STATUS
 EFIAPI
 UnicodeStrToAsciiStrS (
-  IN      CONST CHAR16              *Source,
-  OUT     CHAR8                     *Destination,
-  IN      UINTN                     DestMax
+  IN      CONST CHAR16  *Source,
+  OUT     CHAR8         *Destination,
+  IN      UINTN         DestMax
   );
 
 /**
@@ -1572,11 +1646,11 @@ UnicodeStrToAsciiStrS (
 RETURN_STATUS
 EFIAPI
 UnicodeStrnToAsciiStrS (
-  IN      CONST CHAR16              *Source,
-  IN      UINTN                     Length,
-  OUT     CHAR8                     *Destination,
-  IN      UINTN                     DestMax,
-  OUT     UINTN                     *DestinationLength
+  IN      CONST CHAR16  *Source,
+  IN      UINTN         Length,
+  OUT     CHAR8         *Destination,
+  IN      UINTN         DestMax,
+  OUT     UINTN         *DestinationLength
   );
 
 /**
@@ -1599,7 +1673,7 @@ UnicodeStrnToAsciiStrS (
 UINTN
 EFIAPI
 AsciiStrLen (
-  IN      CONST CHAR8               *String
+  IN      CONST CHAR8  *String
   );
 
 /**
@@ -1622,7 +1696,7 @@ AsciiStrLen (
 UINTN
 EFIAPI
 AsciiStrSize (
-  IN      CONST CHAR8               *String
+  IN      CONST CHAR8  *String
   );
 
 /**
@@ -1654,8 +1728,8 @@ AsciiStrSize (
 INTN
 EFIAPI
 AsciiStrCmp (
-  IN      CONST CHAR8               *FirstString,
-  IN      CONST CHAR8               *SecondString
+  IN      CONST CHAR8  *FirstString,
+  IN      CONST CHAR8  *SecondString
   );
 
 /**
@@ -1690,8 +1764,8 @@ AsciiStrCmp (
 INTN
 EFIAPI
 AsciiStriCmp (
-  IN      CONST CHAR8               *FirstString,
-  IN      CONST CHAR8               *SecondString
+  IN      CONST CHAR8  *FirstString,
+  IN      CONST CHAR8  *SecondString
   );
 
 /**
@@ -1727,9 +1801,9 @@ AsciiStriCmp (
 INTN
 EFIAPI
 AsciiStrnCmp (
-  IN      CONST CHAR8               *FirstString,
-  IN      CONST CHAR8               *SecondString,
-  IN      UINTN                     Length
+  IN      CONST CHAR8  *FirstString,
+  IN      CONST CHAR8  *SecondString,
+  IN      UINTN        Length
   );
 
 /**
@@ -1759,8 +1833,8 @@ AsciiStrnCmp (
 CHAR8 *
 EFIAPI
 AsciiStrStr (
-  IN      CONST CHAR8               *String,
-  IN      CONST CHAR8               *SearchString
+  IN      CONST CHAR8  *String,
+  IN      CONST CHAR8  *SearchString
   );
 
 /**
@@ -1796,7 +1870,7 @@ AsciiStrStr (
 UINTN
 EFIAPI
 AsciiStrDecimalToUintn (
-  IN      CONST CHAR8               *String
+  IN      CONST CHAR8  *String
   );
 
 /**
@@ -1832,7 +1906,7 @@ AsciiStrDecimalToUintn (
 UINT64
 EFIAPI
 AsciiStrDecimalToUint64 (
-  IN      CONST CHAR8               *String
+  IN      CONST CHAR8  *String
   );
 
 /**
@@ -1872,7 +1946,7 @@ AsciiStrDecimalToUint64 (
 UINTN
 EFIAPI
 AsciiStrHexToUintn (
-  IN      CONST CHAR8               *String
+  IN      CONST CHAR8  *String
   );
 
 /**
@@ -1912,7 +1986,7 @@ AsciiStrHexToUintn (
 UINT64
 EFIAPI
 AsciiStrHexToUint64 (
-  IN      CONST CHAR8                *String
+  IN      CONST CHAR8  *String
   );
 
 /**
@@ -1966,10 +2040,10 @@ AsciiStrHexToUint64 (
 RETURN_STATUS
 EFIAPI
 AsciiStrToIpv6Address (
-  IN  CONST CHAR8        *String,
+  IN  CONST CHAR8   *String,
   OUT CHAR8         **EndPointer  OPTIONAL,
-  OUT IPv6_ADDRESS       *Address,
-  OUT UINT8              *PrefixLength OPTIONAL
+  OUT IPv6_ADDRESS  *Address,
+  OUT UINT8         *PrefixLength OPTIONAL
   );
 
 /**
@@ -2014,10 +2088,10 @@ AsciiStrToIpv6Address (
 RETURN_STATUS
 EFIAPI
 AsciiStrToIpv4Address (
-  IN  CONST CHAR8        *String,
+  IN  CONST CHAR8   *String,
   OUT CHAR8         **EndPointer  OPTIONAL,
-  OUT IPv4_ADDRESS       *Address,
-  OUT UINT8              *PrefixLength OPTIONAL
+  OUT IPv4_ADDRESS  *Address,
+  OUT UINT8         *PrefixLength OPTIONAL
   );
 
 /**
@@ -2063,8 +2137,8 @@ AsciiStrToIpv4Address (
 RETURN_STATUS
 EFIAPI
 AsciiStrToGuid (
-  IN  CONST CHAR8        *String,
-  OUT GUID               *Guid
+  IN  CONST CHAR8  *String,
+  OUT GUID         *Guid
   );
 
 /**
@@ -2101,10 +2175,10 @@ AsciiStrToGuid (
 RETURN_STATUS
 EFIAPI
 AsciiStrHexToBytes (
-  IN  CONST CHAR8        *String,
-  IN  UINTN              Length,
-  OUT UINT8              *Buffer,
-  IN  UINTN              MaxBufferSize
+  IN  CONST CHAR8  *String,
+  IN  UINTN        Length,
+  OUT UINT8        *Buffer,
+  IN  UINTN        MaxBufferSize
   );
 
 /**
@@ -2146,9 +2220,9 @@ AsciiStrHexToBytes (
 RETURN_STATUS
 EFIAPI
 AsciiStrToUnicodeStrS (
-  IN      CONST CHAR8               *Source,
-  OUT     CHAR16                    *Destination,
-  IN      UINTN                     DestMax
+  IN      CONST CHAR8  *Source,
+  OUT     CHAR16       *Destination,
+  IN      UINTN        DestMax
   );
 
 /**
@@ -2196,11 +2270,11 @@ AsciiStrToUnicodeStrS (
 RETURN_STATUS
 EFIAPI
 AsciiStrnToUnicodeStrS (
-  IN      CONST CHAR8               *Source,
-  IN      UINTN                     Length,
-  OUT     CHAR16                    *Destination,
-  IN      UINTN                     DestMax,
-  OUT     UINTN                     *DestinationLength
+  IN      CONST CHAR8  *Source,
+  IN      UINTN        Length,
+  OUT     CHAR16       *Destination,
+  IN      UINTN        DestMax,
+  OUT     UINTN        *DestinationLength
   );
 
 /**
@@ -2221,7 +2295,7 @@ AsciiStrnToUnicodeStrS (
 CHAR16
 EFIAPI
 CharToUpper (
-  IN      CHAR16                    Char
+  IN      CHAR16  Char
   );
 
 /**
@@ -2240,7 +2314,7 @@ CharToUpper (
 CHAR8
 EFIAPI
 AsciiCharToUpper (
-  IN      CHAR8                     Chr
+  IN      CHAR8  Chr
   );
 
 /**
@@ -2266,7 +2340,7 @@ RETURN_STATUS
 EFIAPI
 Base64Encode (
   IN  CONST UINT8  *Source,
-  IN        UINTN   SourceLength,
+  IN        UINTN  SourceLength,
   OUT       CHAR8  *Destination  OPTIONAL,
   IN OUT    UINTN  *DestinationSize
   );
@@ -2356,10 +2430,10 @@ Base64Encode (
 RETURN_STATUS
 EFIAPI
 Base64Decode (
-  IN     CONST CHAR8 *Source          OPTIONAL,
-  IN     UINTN       SourceSize,
-  OUT    UINT8       *Destination     OPTIONAL,
-  IN OUT UINTN       *DestinationSize
+  IN     CONST CHAR8  *Source          OPTIONAL,
+  IN     UINTN        SourceSize,
+  OUT    UINT8        *Destination     OPTIONAL,
+  IN OUT UINTN        *DestinationSize
   );
 
 /**
@@ -2378,7 +2452,7 @@ Base64Decode (
 UINT8
 EFIAPI
 DecimalToBcd8 (
-  IN      UINT8                     Value
+  IN      UINT8  Value
   );
 
 /**
@@ -2398,7 +2472,7 @@ DecimalToBcd8 (
 UINT8
 EFIAPI
 BcdToDecimal8 (
-  IN      UINT8                     Value
+  IN      UINT8  Value
   );
 
 //
@@ -2415,8 +2489,8 @@ BcdToDecimal8 (
 **/
 BOOLEAN
 EFIAPI
-PathRemoveLastItem(
-  IN OUT CHAR16 *Path
+PathRemoveLastItem (
+  IN OUT CHAR16  *Path
   );
 
 /**
@@ -2432,10 +2506,10 @@ PathRemoveLastItem(
 
   @return       Returns Path, otherwise returns NULL to indicate that an error has occurred.
 **/
-CHAR16*
+CHAR16 *
 EFIAPI
-PathCleanUpDirectories(
-  IN CHAR16 *Path
+PathCleanUpDirectories (
+  IN CHAR16  *Path
   );
 
 //
@@ -2507,8 +2581,8 @@ PathCleanUpDirectories(
 BOOLEAN
 EFIAPI
 IsNodeInList (
-  IN      CONST LIST_ENTRY      *FirstEntry,
-  IN      CONST LIST_ENTRY      *SecondEntry
+  IN      CONST LIST_ENTRY  *FirstEntry,
+  IN      CONST LIST_ENTRY  *SecondEntry
   );
 
 /**
@@ -2530,7 +2604,7 @@ IsNodeInList (
 LIST_ENTRY *
 EFIAPI
 InitializeListHead (
-  IN OUT  LIST_ENTRY                *ListHead
+  IN OUT  LIST_ENTRY  *ListHead
   );
 
 /**
@@ -2558,8 +2632,8 @@ InitializeListHead (
 LIST_ENTRY *
 EFIAPI
 InsertHeadList (
-  IN OUT  LIST_ENTRY                *ListHead,
-  IN OUT  LIST_ENTRY                *Entry
+  IN OUT  LIST_ENTRY  *ListHead,
+  IN OUT  LIST_ENTRY  *Entry
   );
 
 /**
@@ -2587,8 +2661,8 @@ InsertHeadList (
 LIST_ENTRY *
 EFIAPI
 InsertTailList (
-  IN OUT  LIST_ENTRY                *ListHead,
-  IN OUT  LIST_ENTRY                *Entry
+  IN OUT  LIST_ENTRY  *ListHead,
+  IN OUT  LIST_ENTRY  *Entry
   );
 
 /**
@@ -2614,7 +2688,7 @@ InsertTailList (
 LIST_ENTRY *
 EFIAPI
 GetFirstNode (
-  IN      CONST LIST_ENTRY          *List
+  IN      CONST LIST_ENTRY  *List
   );
 
 /**
@@ -2641,8 +2715,8 @@ GetFirstNode (
 LIST_ENTRY *
 EFIAPI
 GetNextNode (
-  IN      CONST LIST_ENTRY          *List,
-  IN      CONST LIST_ENTRY          *Node
+  IN      CONST LIST_ENTRY  *List,
+  IN      CONST LIST_ENTRY  *Node
   );
 
 /**
@@ -2669,8 +2743,8 @@ GetNextNode (
 LIST_ENTRY *
 EFIAPI
 GetPreviousNode (
-  IN      CONST LIST_ENTRY          *List,
-  IN      CONST LIST_ENTRY          *Node
+  IN      CONST LIST_ENTRY  *List,
+  IN      CONST LIST_ENTRY  *Node
   );
 
 /**
@@ -2695,7 +2769,7 @@ GetPreviousNode (
 BOOLEAN
 EFIAPI
 IsListEmpty (
-  IN      CONST LIST_ENTRY          *ListHead
+  IN      CONST LIST_ENTRY  *ListHead
   );
 
 /**
@@ -2727,8 +2801,8 @@ IsListEmpty (
 BOOLEAN
 EFIAPI
 IsNull (
-  IN      CONST LIST_ENTRY          *List,
-  IN      CONST LIST_ENTRY          *Node
+  IN      CONST LIST_ENTRY  *List,
+  IN      CONST LIST_ENTRY  *Node
   );
 
 /**
@@ -2757,8 +2831,8 @@ IsNull (
 BOOLEAN
 EFIAPI
 IsNodeAtEnd (
-  IN      CONST LIST_ENTRY          *List,
-  IN      CONST LIST_ENTRY          *Node
+  IN      CONST LIST_ENTRY  *List,
+  IN      CONST LIST_ENTRY  *Node
   );
 
 /**
@@ -2790,8 +2864,8 @@ IsNodeAtEnd (
 LIST_ENTRY *
 EFIAPI
 SwapListEntries (
-  IN OUT  LIST_ENTRY                *FirstEntry,
-  IN OUT  LIST_ENTRY                *SecondEntry
+  IN OUT  LIST_ENTRY  *FirstEntry,
+  IN OUT  LIST_ENTRY  *SecondEntry
   );
 
 /**
@@ -2818,7 +2892,7 @@ SwapListEntries (
 LIST_ENTRY *
 EFIAPI
 RemoveEntryList (
-  IN      CONST LIST_ENTRY          *Entry
+  IN      CONST LIST_ENTRY  *Entry
   );
 
 //
@@ -2868,11 +2942,11 @@ INTN
 VOID
 EFIAPI
 QuickSort (
-  IN OUT VOID                           *BufferToSort,
-  IN CONST UINTN                        Count,
-  IN CONST UINTN                        ElementSize,
-  IN       BASE_SORT_COMPARE            CompareFunction,
-  OUT VOID                              *BufferOneElement
+  IN OUT VOID                 *BufferToSort,
+  IN CONST UINTN              Count,
+  IN CONST UINTN              ElementSize,
+  IN       BASE_SORT_COMPARE  CompareFunction,
+  OUT VOID                    *BufferOneElement
   );
 
 /**
@@ -2893,8 +2967,8 @@ QuickSort (
 UINT64
 EFIAPI
 LShiftU64 (
-  IN      UINT64                    Operand,
-  IN      UINTN                     Count
+  IN      UINT64  Operand,
+  IN      UINTN   Count
   );
 
 /**
@@ -2915,8 +2989,8 @@ LShiftU64 (
 UINT64
 EFIAPI
 RShiftU64 (
-  IN      UINT64                    Operand,
-  IN      UINTN                     Count
+  IN      UINT64  Operand,
+  IN      UINTN   Count
   );
 
 /**
@@ -2937,8 +3011,8 @@ RShiftU64 (
 UINT64
 EFIAPI
 ARShiftU64 (
-  IN      UINT64                    Operand,
-  IN      UINTN                     Count
+  IN      UINT64  Operand,
+  IN      UINTN   Count
   );
 
 /**
@@ -2960,8 +3034,8 @@ ARShiftU64 (
 UINT32
 EFIAPI
 LRotU32 (
-  IN      UINT32                    Operand,
-  IN      UINTN                     Count
+  IN      UINT32  Operand,
+  IN      UINTN   Count
   );
 
 /**
@@ -2983,8 +3057,8 @@ LRotU32 (
 UINT32
 EFIAPI
 RRotU32 (
-  IN      UINT32                    Operand,
-  IN      UINTN                     Count
+  IN      UINT32  Operand,
+  IN      UINTN   Count
   );
 
 /**
@@ -3006,8 +3080,8 @@ RRotU32 (
 UINT64
 EFIAPI
 LRotU64 (
-  IN      UINT64                    Operand,
-  IN      UINTN                     Count
+  IN      UINT64  Operand,
+  IN      UINTN   Count
   );
 
 /**
@@ -3029,8 +3103,8 @@ LRotU64 (
 UINT64
 EFIAPI
 RRotU64 (
-  IN      UINT64                    Operand,
-  IN      UINTN                     Count
+  IN      UINT64  Operand,
+  IN      UINTN   Count
   );
 
 /**
@@ -3049,7 +3123,7 @@ RRotU64 (
 INTN
 EFIAPI
 LowBitSet32 (
-  IN      UINT32                    Operand
+  IN      UINT32  Operand
   );
 
 /**
@@ -3069,7 +3143,7 @@ LowBitSet32 (
 INTN
 EFIAPI
 LowBitSet64 (
-  IN      UINT64                    Operand
+  IN      UINT64  Operand
   );
 
 /**
@@ -3089,7 +3163,7 @@ LowBitSet64 (
 INTN
 EFIAPI
 HighBitSet32 (
-  IN      UINT32                    Operand
+  IN      UINT32  Operand
   );
 
 /**
@@ -3109,7 +3183,7 @@ HighBitSet32 (
 INTN
 EFIAPI
 HighBitSet64 (
-  IN      UINT64                    Operand
+  IN      UINT64  Operand
   );
 
 /**
@@ -3128,7 +3202,7 @@ HighBitSet64 (
 UINT32
 EFIAPI
 GetPowerOfTwo32 (
-  IN      UINT32                    Operand
+  IN      UINT32  Operand
   );
 
 /**
@@ -3147,7 +3221,7 @@ GetPowerOfTwo32 (
 UINT64
 EFIAPI
 GetPowerOfTwo64 (
-  IN      UINT64                    Operand
+  IN      UINT64  Operand
   );
 
 /**
@@ -3165,7 +3239,7 @@ GetPowerOfTwo64 (
 UINT16
 EFIAPI
 SwapBytes16 (
-  IN      UINT16                    Value
+  IN      UINT16  Value
   );
 
 /**
@@ -3183,7 +3257,7 @@ SwapBytes16 (
 UINT32
 EFIAPI
 SwapBytes32 (
-  IN      UINT32                    Value
+  IN      UINT32  Value
   );
 
 /**
@@ -3201,7 +3275,7 @@ SwapBytes32 (
 UINT64
 EFIAPI
 SwapBytes64 (
-  IN      UINT64                    Value
+  IN      UINT64  Value
   );
 
 /**
@@ -3221,8 +3295,8 @@ SwapBytes64 (
 UINT64
 EFIAPI
 MultU64x32 (
-  IN      UINT64                    Multiplicand,
-  IN      UINT32                    Multiplier
+  IN      UINT64  Multiplicand,
+  IN      UINT32  Multiplier
   );
 
 /**
@@ -3242,8 +3316,8 @@ MultU64x32 (
 UINT64
 EFIAPI
 MultU64x64 (
-  IN      UINT64                    Multiplicand,
-  IN      UINT64                    Multiplier
+  IN      UINT64  Multiplicand,
+  IN      UINT64  Multiplier
   );
 
 /**
@@ -3263,8 +3337,8 @@ MultU64x64 (
 INT64
 EFIAPI
 MultS64x64 (
-  IN      INT64                     Multiplicand,
-  IN      INT64                     Multiplier
+  IN      INT64  Multiplicand,
+  IN      INT64  Multiplier
   );
 
 /**
@@ -3286,8 +3360,8 @@ MultS64x64 (
 UINT64
 EFIAPI
 DivU64x32 (
-  IN      UINT64                    Dividend,
-  IN      UINT32                    Divisor
+  IN      UINT64  Dividend,
+  IN      UINT32  Divisor
   );
 
 /**
@@ -3309,8 +3383,8 @@ DivU64x32 (
 UINT32
 EFIAPI
 ModU64x32 (
-  IN      UINT64                    Dividend,
-  IN      UINT32                    Divisor
+  IN      UINT64  Dividend,
+  IN      UINT32  Divisor
   );
 
 /**
@@ -3335,9 +3409,9 @@ ModU64x32 (
 UINT64
 EFIAPI
 DivU64x32Remainder (
-  IN      UINT64                    Dividend,
-  IN      UINT32                    Divisor,
-  OUT     UINT32                    *Remainder  OPTIONAL
+  IN      UINT64  Dividend,
+  IN      UINT32  Divisor,
+  OUT     UINT32  *Remainder  OPTIONAL
   );
 
 /**
@@ -3362,9 +3436,9 @@ DivU64x32Remainder (
 UINT64
 EFIAPI
 DivU64x64Remainder (
-  IN      UINT64                    Dividend,
-  IN      UINT64                    Divisor,
-  OUT     UINT64                    *Remainder  OPTIONAL
+  IN      UINT64  Dividend,
+  IN      UINT64  Divisor,
+  OUT     UINT64  *Remainder  OPTIONAL
   );
 
 /**
@@ -3393,9 +3467,9 @@ DivU64x64Remainder (
 INT64
 EFIAPI
 DivS64x64Remainder (
-  IN      INT64                     Dividend,
-  IN      INT64                     Divisor,
-  OUT     INT64                     *Remainder  OPTIONAL
+  IN      INT64  Dividend,
+  IN      INT64  Divisor,
+  OUT     INT64  *Remainder  OPTIONAL
   );
 
 /**
@@ -3414,7 +3488,7 @@ DivS64x64Remainder (
 UINT16
 EFIAPI
 ReadUnaligned16 (
-  IN CONST UINT16              *Buffer
+  IN CONST UINT16  *Buffer
   );
 
 /**
@@ -3435,8 +3509,8 @@ ReadUnaligned16 (
 UINT16
 EFIAPI
 WriteUnaligned16 (
-  OUT UINT16                    *Buffer,
-  IN  UINT16                    Value
+  OUT UINT16  *Buffer,
+  IN  UINT16  Value
   );
 
 /**
@@ -3455,7 +3529,7 @@ WriteUnaligned16 (
 UINT32
 EFIAPI
 ReadUnaligned24 (
-  IN CONST UINT32              *Buffer
+  IN CONST UINT32  *Buffer
   );
 
 /**
@@ -3476,8 +3550,8 @@ ReadUnaligned24 (
 UINT32
 EFIAPI
 WriteUnaligned24 (
-  OUT UINT32                    *Buffer,
-  IN  UINT32                    Value
+  OUT UINT32  *Buffer,
+  IN  UINT32  Value
   );
 
 /**
@@ -3496,7 +3570,7 @@ WriteUnaligned24 (
 UINT32
 EFIAPI
 ReadUnaligned32 (
-  IN CONST UINT32              *Buffer
+  IN CONST UINT32  *Buffer
   );
 
 /**
@@ -3517,8 +3591,8 @@ ReadUnaligned32 (
 UINT32
 EFIAPI
 WriteUnaligned32 (
-  OUT UINT32                    *Buffer,
-  IN  UINT32                    Value
+  OUT UINT32  *Buffer,
+  IN  UINT32  Value
   );
 
 /**
@@ -3537,7 +3611,7 @@ WriteUnaligned32 (
 UINT64
 EFIAPI
 ReadUnaligned64 (
-  IN CONST UINT64              *Buffer
+  IN CONST UINT64  *Buffer
   );
 
 /**
@@ -3558,8 +3632,8 @@ ReadUnaligned64 (
 UINT64
 EFIAPI
 WriteUnaligned64 (
-  OUT UINT64                    *Buffer,
-  IN  UINT64                    Value
+  OUT UINT64  *Buffer,
+  IN  UINT64  Value
   );
 
 //
@@ -3588,9 +3662,9 @@ WriteUnaligned64 (
 UINT8
 EFIAPI
 BitFieldRead8 (
-  IN      UINT8                     Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit
+  IN      UINT8  Operand,
+  IN      UINTN  StartBit,
+  IN      UINTN  EndBit
   );
 
 /**
@@ -3619,10 +3693,10 @@ BitFieldRead8 (
 UINT8
 EFIAPI
 BitFieldWrite8 (
-  IN      UINT8                     Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT8                     Value
+  IN      UINT8  Operand,
+  IN      UINTN  StartBit,
+  IN      UINTN  EndBit,
+  IN      UINT8  Value
   );
 
 /**
@@ -3652,10 +3726,10 @@ BitFieldWrite8 (
 UINT8
 EFIAPI
 BitFieldOr8 (
-  IN      UINT8                     Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT8                     OrData
+  IN      UINT8  Operand,
+  IN      UINTN  StartBit,
+  IN      UINTN  EndBit,
+  IN      UINT8  OrData
   );
 
 /**
@@ -3685,10 +3759,10 @@ BitFieldOr8 (
 UINT8
 EFIAPI
 BitFieldAnd8 (
-  IN      UINT8                     Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT8                     AndData
+  IN      UINT8  Operand,
+  IN      UINTN  StartBit,
+  IN      UINTN  EndBit,
+  IN      UINT8  AndData
   );
 
 /**
@@ -3721,11 +3795,11 @@ BitFieldAnd8 (
 UINT8
 EFIAPI
 BitFieldAndThenOr8 (
-  IN      UINT8                     Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT8                     AndData,
-  IN      UINT8                     OrData
+  IN      UINT8  Operand,
+  IN      UINTN  StartBit,
+  IN      UINTN  EndBit,
+  IN      UINT8  AndData,
+  IN      UINT8  OrData
   );
 
 /**
@@ -3750,9 +3824,9 @@ BitFieldAndThenOr8 (
 UINT16
 EFIAPI
 BitFieldRead16 (
-  IN      UINT16                    Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit
+  IN      UINT16  Operand,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit
   );
 
 /**
@@ -3781,10 +3855,10 @@ BitFieldRead16 (
 UINT16
 EFIAPI
 BitFieldWrite16 (
-  IN      UINT16                    Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT16                    Value
+  IN      UINT16  Operand,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT16  Value
   );
 
 /**
@@ -3814,10 +3888,10 @@ BitFieldWrite16 (
 UINT16
 EFIAPI
 BitFieldOr16 (
-  IN      UINT16                    Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT16                    OrData
+  IN      UINT16  Operand,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT16  OrData
   );
 
 /**
@@ -3847,10 +3921,10 @@ BitFieldOr16 (
 UINT16
 EFIAPI
 BitFieldAnd16 (
-  IN      UINT16                    Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT16                    AndData
+  IN      UINT16  Operand,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT16  AndData
   );
 
 /**
@@ -3883,11 +3957,11 @@ BitFieldAnd16 (
 UINT16
 EFIAPI
 BitFieldAndThenOr16 (
-  IN      UINT16                    Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT16                    AndData,
-  IN      UINT16                    OrData
+  IN      UINT16  Operand,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT16  AndData,
+  IN      UINT16  OrData
   );
 
 /**
@@ -3912,9 +3986,9 @@ BitFieldAndThenOr16 (
 UINT32
 EFIAPI
 BitFieldRead32 (
-  IN      UINT32                    Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit
+  IN      UINT32  Operand,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit
   );
 
 /**
@@ -3943,10 +4017,10 @@ BitFieldRead32 (
 UINT32
 EFIAPI
 BitFieldWrite32 (
-  IN      UINT32                    Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT32                    Value
+  IN      UINT32  Operand,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT32  Value
   );
 
 /**
@@ -3976,10 +4050,10 @@ BitFieldWrite32 (
 UINT32
 EFIAPI
 BitFieldOr32 (
-  IN      UINT32                    Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT32                    OrData
+  IN      UINT32  Operand,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT32  OrData
   );
 
 /**
@@ -4009,10 +4083,10 @@ BitFieldOr32 (
 UINT32
 EFIAPI
 BitFieldAnd32 (
-  IN      UINT32                    Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT32                    AndData
+  IN      UINT32  Operand,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT32  AndData
   );
 
 /**
@@ -4045,11 +4119,11 @@ BitFieldAnd32 (
 UINT32
 EFIAPI
 BitFieldAndThenOr32 (
-  IN      UINT32                    Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT32                    AndData,
-  IN      UINT32                    OrData
+  IN      UINT32  Operand,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT32  AndData,
+  IN      UINT32  OrData
   );
 
 /**
@@ -4074,9 +4148,9 @@ BitFieldAndThenOr32 (
 UINT64
 EFIAPI
 BitFieldRead64 (
-  IN      UINT64                    Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit
+  IN      UINT64  Operand,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit
   );
 
 /**
@@ -4105,10 +4179,10 @@ BitFieldRead64 (
 UINT64
 EFIAPI
 BitFieldWrite64 (
-  IN      UINT64                    Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT64                    Value
+  IN      UINT64  Operand,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT64  Value
   );
 
 /**
@@ -4138,10 +4212,10 @@ BitFieldWrite64 (
 UINT64
 EFIAPI
 BitFieldOr64 (
-  IN      UINT64                    Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT64                    OrData
+  IN      UINT64  Operand,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT64  OrData
   );
 
 /**
@@ -4171,10 +4245,10 @@ BitFieldOr64 (
 UINT64
 EFIAPI
 BitFieldAnd64 (
-  IN      UINT64                    Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT64                    AndData
+  IN      UINT64  Operand,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT64  AndData
   );
 
 /**
@@ -4207,11 +4281,11 @@ BitFieldAnd64 (
 UINT64
 EFIAPI
 BitFieldAndThenOr64 (
-  IN      UINT64                    Operand,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT64                    AndData,
-  IN      UINT64                    OrData
+  IN      UINT64  Operand,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT64  AndData,
+  IN      UINT64  OrData
   );
 
 /**
@@ -4237,9 +4311,9 @@ BitFieldAndThenOr64 (
 UINT8
 EFIAPI
 BitFieldCountOnes32 (
-  IN       UINT32                   Operand,
-  IN       UINTN                    StartBit,
-  IN       UINTN                    EndBit
+  IN       UINT32  Operand,
+  IN       UINTN   StartBit,
+  IN       UINTN   EndBit
   );
 
 /**
@@ -4265,9 +4339,9 @@ BitFieldCountOnes32 (
 UINT8
 EFIAPI
 BitFieldCountOnes64 (
-  IN       UINT64                   Operand,
-  IN       UINTN                    StartBit,
-  IN       UINTN                    EndBit
+  IN       UINT64  Operand,
+  IN       UINTN   StartBit,
+  IN       UINTN   EndBit
   );
 
 //
@@ -4295,8 +4369,8 @@ BitFieldCountOnes64 (
 UINT8
 EFIAPI
 CalculateSum8 (
-  IN      CONST UINT8              *Buffer,
-  IN      UINTN                     Length
+  IN      CONST UINT8  *Buffer,
+  IN      UINTN        Length
   );
 
 /**
@@ -4320,8 +4394,8 @@ CalculateSum8 (
 UINT8
 EFIAPI
 CalculateCheckSum8 (
-  IN      CONST UINT8              *Buffer,
-  IN      UINTN                     Length
+  IN      CONST UINT8  *Buffer,
+  IN      UINTN        Length
   );
 
 /**
@@ -4346,8 +4420,8 @@ CalculateCheckSum8 (
 UINT16
 EFIAPI
 CalculateSum16 (
-  IN      CONST UINT16             *Buffer,
-  IN      UINTN                     Length
+  IN      CONST UINT16  *Buffer,
+  IN      UINTN         Length
   );
 
 /**
@@ -4373,8 +4447,8 @@ CalculateSum16 (
 UINT16
 EFIAPI
 CalculateCheckSum16 (
-  IN      CONST UINT16             *Buffer,
-  IN      UINTN                     Length
+  IN      CONST UINT16  *Buffer,
+  IN      UINTN         Length
   );
 
 /**
@@ -4399,8 +4473,8 @@ CalculateCheckSum16 (
 UINT32
 EFIAPI
 CalculateSum32 (
-  IN      CONST UINT32             *Buffer,
-  IN      UINTN                     Length
+  IN      CONST UINT32  *Buffer,
+  IN      UINTN         Length
   );
 
 /**
@@ -4426,8 +4500,8 @@ CalculateSum32 (
 UINT32
 EFIAPI
 CalculateCheckSum32 (
-  IN      CONST UINT32             *Buffer,
-  IN      UINTN                     Length
+  IN      CONST UINT32  *Buffer,
+  IN      UINTN         Length
   );
 
 /**
@@ -4452,8 +4526,8 @@ CalculateCheckSum32 (
 UINT64
 EFIAPI
 CalculateSum64 (
-  IN      CONST UINT64             *Buffer,
-  IN      UINTN                     Length
+  IN      CONST UINT64  *Buffer,
+  IN      UINTN         Length
   );
 
 /**
@@ -4479,8 +4553,8 @@ CalculateSum64 (
 UINT64
 EFIAPI
 CalculateCheckSum64 (
-  IN      CONST UINT64             *Buffer,
-  IN      UINTN                     Length
+  IN      CONST UINT64  *Buffer,
+  IN      UINTN         Length
   );
 
 /**
@@ -4498,9 +4572,43 @@ CalculateCheckSum64 (
 **/
 UINT32
 EFIAPI
-CalculateCrc32(
-  IN  VOID                         *Buffer,
-  IN  UINTN                        Length
+CalculateCrc32 (
+  IN  VOID   *Buffer,
+  IN  UINTN  Length
+  );
+
+/**
+   Calculates the CRC16-ANSI checksum of the given buffer.
+
+   @param[in]      Buffer        Pointer to the buffer.
+   @param[in]      Length        Length of the buffer, in bytes.
+   @param[in]      InitialValue  Initial value of the CRC.
+
+   @return The CRC16-ANSI checksum.
+**/
+UINT16
+EFIAPI
+CalculateCrc16Ansi (
+  IN  CONST VOID  *Buffer,
+  IN  UINTN       Length,
+  IN  UINT16      InitialValue
+  );
+
+/**
+   Calculates the CRC32c checksum of the given buffer.
+
+   @param[in]      Buffer        Pointer to the buffer.
+   @param[in]      Length        Length of the buffer, in bytes.
+   @param[in]      InitialValue  Initial value of the CRC.
+
+   @return The CRC32c checksum.
+**/
+UINT32
+EFIAPI
+CalculateCrc32c (
+  IN CONST VOID  *Buffer,
+  IN UINTN       Length,
+  IN UINT32      InitialValue
   );
 
 //
@@ -4512,7 +4620,6 @@ CalculateCrc32(
 
   @param  Context1        Context1 parameter passed into SwitchStack().
   @param  Context2        Context2 parameter passed into SwitchStack().
-
 **/
 typedef
 VOID
@@ -4663,7 +4770,7 @@ GetInterruptState (
 BOOLEAN
 EFIAPI
 SetInterruptState (
-  IN      BOOLEAN                   InterruptState
+  IN      BOOLEAN  InterruptState
   );
 
 /**
@@ -4759,6 +4866,72 @@ SpeculationBarrier (
   VOID
   );
 
+#if defined (MDE_CPU_X64) || defined (MDE_CPU_IA32)
+
+/**
+  The TDCALL instruction causes a VM exit to the Intel TDX module.  It is
+  used to call guest-side Intel TDX functions, either local or a TD exit
+  to the host VMM, as selected by Leaf.
+
+  @param[in]      Leaf        Leaf number of TDCALL instruction
+  @param[in]      Arg1        Arg1
+  @param[in]      Arg2        Arg2
+  @param[in]      Arg3        Arg3
+  @param[in,out]  Results  Returned result of the Leaf function
+
+  @return 0               A successful call
+  @return Other           See individual leaf functions
+**/
+UINTN
+EFIAPI
+TdCall (
+  IN UINT64    Leaf,
+  IN UINT64    Arg1,
+  IN UINT64    Arg2,
+  IN UINT64    Arg3,
+  IN OUT VOID  *Results
+  );
+
+/**
+  TDVMALL is a leaf function 0 for TDCALL. It helps invoke services from the
+  host VMM to pass/receive information.
+
+  @param[in]     Leaf        Number of sub-functions
+  @param[in]     Arg1        Arg1
+  @param[in]     Arg2        Arg2
+  @param[in]     Arg3        Arg3
+  @param[in]     Arg4        Arg4
+  @param[in,out] Results     Returned result of the sub-function
+
+  @return 0               A successful call
+  @return Other           See individual sub-functions
+
+**/
+UINTN
+EFIAPI
+TdVmCall (
+  IN UINT64    Leaf,
+  IN UINT64    Arg1,
+  IN UINT64    Arg2,
+  IN UINT64    Arg3,
+  IN UINT64    Arg4,
+  IN OUT VOID  *Results
+  );
+
+/**
+  Probe if TD is enabled.
+
+  @return TRUE    TD is enabled.
+  @return FALSE   TD is not enabled.
+**/
+BOOLEAN
+EFIAPI
+TdIsEnabled (
+  VOID
+  );
+
+#endif
+
 #if defined (MDE_CPU_X64)
 //
 // The page size for the PVALIDATE instruction
@@ -4771,14 +4944,14 @@ typedef enum {
 //
 // PVALIDATE Return Code.
 //
-#define PVALIDATE_RET_SUCCESS         0
-#define PVALIDATE_RET_FAIL_INPUT      1
-#define PVALIDATE_RET_SIZE_MISMATCH   6
+#define PVALIDATE_RET_SUCCESS        0
+#define PVALIDATE_RET_FAIL_INPUT     1
+#define PVALIDATE_RET_SIZE_MISMATCH  6
 
 //
 // The PVALIDATE instruction did not make any changes to the RMP entry.
 //
-#define PVALIDATE_RET_NO_RMPUPDATE    255
+#define PVALIDATE_RET_NO_RMPUPDATE  255
 
 /**
  Execute a PVALIDATE instruction to validate or to rescinds validation of a guest
@@ -4803,9 +4976,9 @@ typedef enum {
 UINT32
 EFIAPI
 AsmPvalidate (
-  IN   PVALIDATE_PAGE_SIZE     PageSize,
-  IN   BOOLEAN                 Validate,
-  IN   PHYSICAL_ADDRESS        Address
+  IN   PVALIDATE_PAGE_SIZE  PageSize,
+  IN   BOOLEAN              Validate,
+  IN   PHYSICAL_ADDRESS     Address
   );
 
 //
@@ -4838,9 +5011,9 @@ AsmPvalidate (
 UINT32
 EFIAPI
 AsmRmpAdjust (
-  IN      UINT64                     Rax,
-  IN      UINT64                     Rcx,
-  IN      UINT64                     Rdx
+  IN      UINT64  Rax,
+  IN      UINT64  Rcx,
+  IN      UINT64  Rdx
   );
 
 #endif
@@ -4852,21 +5025,21 @@ AsmRmpAdjust (
 ///
 typedef union {
   struct {
-    UINT32  CF:1;           ///< Carry Flag.
-    UINT32  Reserved_0:1;   ///< Reserved.
-    UINT32  PF:1;           ///< Parity Flag.
-    UINT32  Reserved_1:1;   ///< Reserved.
-    UINT32  AF:1;           ///< Auxiliary Carry Flag.
-    UINT32  Reserved_2:1;   ///< Reserved.
-    UINT32  ZF:1;           ///< Zero Flag.
-    UINT32  SF:1;           ///< Sign Flag.
-    UINT32  TF:1;           ///< Trap Flag.
-    UINT32  IF:1;           ///< Interrupt Enable Flag.
-    UINT32  DF:1;           ///< Direction Flag.
-    UINT32  OF:1;           ///< Overflow Flag.
-    UINT32  IOPL:2;         ///< I/O Privilege Level.
-    UINT32  NT:1;           ///< Nested Task.
-    UINT32  Reserved_3:1;   ///< Reserved.
+    UINT32    CF         : 1; ///< Carry Flag.
+    UINT32    Reserved_0 : 1; ///< Reserved.
+    UINT32    PF         : 1; ///< Parity Flag.
+    UINT32    Reserved_1 : 1; ///< Reserved.
+    UINT32    AF         : 1; ///< Auxiliary Carry Flag.
+    UINT32    Reserved_2 : 1; ///< Reserved.
+    UINT32    ZF         : 1; ///< Zero Flag.
+    UINT32    SF         : 1; ///< Sign Flag.
+    UINT32    TF         : 1; ///< Trap Flag.
+    UINT32    IF         : 1; ///< Interrupt Enable Flag.
+    UINT32    DF         : 1; ///< Direction Flag.
+    UINT32    OF         : 1; ///< Overflow Flag.
+    UINT32    IOPL       : 2; ///< I/O Privilege Level.
+    UINT32    NT         : 1; ///< Nested Task.
+    UINT32    Reserved_3 : 1; ///< Reserved.
   } Bits;
   UINT16    Uint16;
 } IA32_FLAGS16;
@@ -4878,30 +5051,30 @@ typedef union {
 ///
 typedef union {
   struct {
-    UINT32  CF:1;           ///< Carry Flag.
-    UINT32  Reserved_0:1;   ///< Reserved.
-    UINT32  PF:1;           ///< Parity Flag.
-    UINT32  Reserved_1:1;   ///< Reserved.
-    UINT32  AF:1;           ///< Auxiliary Carry Flag.
-    UINT32  Reserved_2:1;   ///< Reserved.
-    UINT32  ZF:1;           ///< Zero Flag.
-    UINT32  SF:1;           ///< Sign Flag.
-    UINT32  TF:1;           ///< Trap Flag.
-    UINT32  IF:1;           ///< Interrupt Enable Flag.
-    UINT32  DF:1;           ///< Direction Flag.
-    UINT32  OF:1;           ///< Overflow Flag.
-    UINT32  IOPL:2;         ///< I/O Privilege Level.
-    UINT32  NT:1;           ///< Nested Task.
-    UINT32  Reserved_3:1;   ///< Reserved.
-    UINT32  RF:1;           ///< Resume Flag.
-    UINT32  VM:1;           ///< Virtual 8086 Mode.
-    UINT32  AC:1;           ///< Alignment Check.
-    UINT32  VIF:1;          ///< Virtual Interrupt Flag.
-    UINT32  VIP:1;          ///< Virtual Interrupt Pending.
-    UINT32  ID:1;           ///< ID Flag.
-    UINT32  Reserved_4:10;  ///< Reserved.
+    UINT32    CF         : 1;  ///< Carry Flag.
+    UINT32    Reserved_0 : 1;  ///< Reserved.
+    UINT32    PF         : 1;  ///< Parity Flag.
+    UINT32    Reserved_1 : 1;  ///< Reserved.
+    UINT32    AF         : 1;  ///< Auxiliary Carry Flag.
+    UINT32    Reserved_2 : 1;  ///< Reserved.
+    UINT32    ZF         : 1;  ///< Zero Flag.
+    UINT32    SF         : 1;  ///< Sign Flag.
+    UINT32    TF         : 1;  ///< Trap Flag.
+    UINT32    IF         : 1;  ///< Interrupt Enable Flag.
+    UINT32    DF         : 1;  ///< Direction Flag.
+    UINT32    OF         : 1;  ///< Overflow Flag.
+    UINT32    IOPL       : 2;  ///< I/O Privilege Level.
+    UINT32    NT         : 1;  ///< Nested Task.
+    UINT32    Reserved_3 : 1;  ///< Reserved.
+    UINT32    RF         : 1;  ///< Resume Flag.
+    UINT32    VM         : 1;  ///< Virtual 8086 Mode.
+    UINT32    AC         : 1;  ///< Alignment Check.
+    UINT32    VIF        : 1;  ///< Virtual Interrupt Flag.
+    UINT32    VIP        : 1;  ///< Virtual Interrupt Pending.
+    UINT32    ID         : 1;  ///< ID Flag.
+    UINT32    Reserved_4 : 10; ///< Reserved.
   } Bits;
-  UINTN     UintN;
+  UINTN    UintN;
 } IA32_EFLAGS32;
 
 ///
@@ -4911,22 +5084,22 @@ typedef union {
 ///
 typedef union {
   struct {
-    UINT32  PE:1;           ///< Protection Enable.
-    UINT32  MP:1;           ///< Monitor Coprocessor.
-    UINT32  EM:1;           ///< Emulation.
-    UINT32  TS:1;           ///< Task Switched.
-    UINT32  ET:1;           ///< Extension Type.
-    UINT32  NE:1;           ///< Numeric Error.
-    UINT32  Reserved_0:10;  ///< Reserved.
-    UINT32  WP:1;           ///< Write Protect.
-    UINT32  Reserved_1:1;   ///< Reserved.
-    UINT32  AM:1;           ///< Alignment Mask.
-    UINT32  Reserved_2:10;  ///< Reserved.
-    UINT32  NW:1;           ///< Mot Write-through.
-    UINT32  CD:1;           ///< Cache Disable.
-    UINT32  PG:1;           ///< Paging.
+    UINT32    PE         : 1;  ///< Protection Enable.
+    UINT32    MP         : 1;  ///< Monitor Coprocessor.
+    UINT32    EM         : 1;  ///< Emulation.
+    UINT32    TS         : 1;  ///< Task Switched.
+    UINT32    ET         : 1;  ///< Extension Type.
+    UINT32    NE         : 1;  ///< Numeric Error.
+    UINT32    Reserved_0 : 10; ///< Reserved.
+    UINT32    WP         : 1;  ///< Write Protect.
+    UINT32    Reserved_1 : 1;  ///< Reserved.
+    UINT32    AM         : 1;  ///< Alignment Mask.
+    UINT32    Reserved_2 : 10; ///< Reserved.
+    UINT32    NW         : 1;  ///< Mot Write-through.
+    UINT32    CD         : 1;  ///< Cache Disable.
+    UINT32    PG         : 1;  ///< Paging.
   } Bits;
-  UINTN     UintN;
+  UINTN    UintN;
 } IA32_CR0;
 
 ///
@@ -4936,36 +5109,36 @@ typedef union {
 ///
 typedef union {
   struct {
-    UINT32  VME:1;          ///< Virtual-8086 Mode Extensions.
-    UINT32  PVI:1;          ///< Protected-Mode Virtual Interrupts.
-    UINT32  TSD:1;          ///< Time Stamp Disable.
-    UINT32  DE:1;           ///< Debugging Extensions.
-    UINT32  PSE:1;          ///< Page Size Extensions.
-    UINT32  PAE:1;          ///< Physical Address Extension.
-    UINT32  MCE:1;          ///< Machine Check Enable.
-    UINT32  PGE:1;          ///< Page Global Enable.
-    UINT32  PCE:1;          ///< Performance Monitoring Counter
-                            ///< Enable.
-    UINT32  OSFXSR:1;       ///< Operating System Support for
-                            ///< FXSAVE and FXRSTOR instructions
-    UINT32  OSXMMEXCPT:1;   ///< Operating System Support for
-                            ///< Unmasked SIMD Floating Point
-                            ///< Exceptions.
-    UINT32  UMIP:1;         ///< User-Mode Instruction Prevention.
-    UINT32  LA57:1;         ///< Linear Address 57bit.
-    UINT32  VMXE:1;         ///< VMX Enable.
-    UINT32  SMXE:1;         ///< SMX Enable.
-    UINT32  Reserved_3:1;   ///< Reserved.
-    UINT32  FSGSBASE:1;     ///< FSGSBASE Enable.
-    UINT32  PCIDE:1;        ///< PCID Enable.
-    UINT32  OSXSAVE:1;      ///< XSAVE and Processor Extended States Enable.
-    UINT32  Reserved_4:1;   ///< Reserved.
-    UINT32  SMEP:1;         ///< SMEP Enable.
-    UINT32  SMAP:1;         ///< SMAP Enable.
-    UINT32  PKE:1;          ///< Protection-Key Enable.
-    UINT32  Reserved_5:9;   ///< Reserved.
+    UINT32    VME        : 1; ///< Virtual-8086 Mode Extensions.
+    UINT32    PVI        : 1; ///< Protected-Mode Virtual Interrupts.
+    UINT32    TSD        : 1; ///< Time Stamp Disable.
+    UINT32    DE         : 1; ///< Debugging Extensions.
+    UINT32    PSE        : 1; ///< Page Size Extensions.
+    UINT32    PAE        : 1; ///< Physical Address Extension.
+    UINT32    MCE        : 1; ///< Machine Check Enable.
+    UINT32    PGE        : 1; ///< Page Global Enable.
+    UINT32    PCE        : 1; ///< Performance Monitoring Counter
+                              ///< Enable.
+    UINT32    OSFXSR     : 1; ///< Operating System Support for
+                              ///< FXSAVE and FXRSTOR instructions
+    UINT32    OSXMMEXCPT : 1; ///< Operating System Support for
+                              ///< Unmasked SIMD Floating Point
+                              ///< Exceptions.
+    UINT32    UMIP       : 1; ///< User-Mode Instruction Prevention.
+    UINT32    LA57       : 1; ///< Linear Address 57bit.
+    UINT32    VMXE       : 1; ///< VMX Enable.
+    UINT32    SMXE       : 1; ///< SMX Enable.
+    UINT32    Reserved_3 : 1; ///< Reserved.
+    UINT32    FSGSBASE   : 1; ///< FSGSBASE Enable.
+    UINT32    PCIDE      : 1; ///< PCID Enable.
+    UINT32    OSXSAVE    : 1; ///< XSAVE and Processor Extended States Enable.
+    UINT32    Reserved_4 : 1; ///< Reserved.
+    UINT32    SMEP       : 1; ///< SMEP Enable.
+    UINT32    SMAP       : 1; ///< SMAP Enable.
+    UINT32    PKE        : 1; ///< Protection-Key Enable.
+    UINT32    Reserved_5 : 9; ///< Reserved.
   } Bits;
-  UINTN     UintN;
+  UINTN    UintN;
 } IA32_CR4;
 
 ///
@@ -4973,32 +5146,32 @@ typedef union {
 ///
 typedef union {
   struct {
-    UINT32  LimitLow:16;
-    UINT32  BaseLow:16;
-    UINT32  BaseMid:8;
-    UINT32  Type:4;
-    UINT32  S:1;
-    UINT32  DPL:2;
-    UINT32  P:1;
-    UINT32  LimitHigh:4;
-    UINT32  AVL:1;
-    UINT32  L:1;
-    UINT32  DB:1;
-    UINT32  G:1;
-    UINT32  BaseHigh:8;
+    UINT32    LimitLow  : 16;
+    UINT32    BaseLow   : 16;
+    UINT32    BaseMid   : 8;
+    UINT32    Type      : 4;
+    UINT32    S         : 1;
+    UINT32    DPL       : 2;
+    UINT32    P         : 1;
+    UINT32    LimitHigh : 4;
+    UINT32    AVL       : 1;
+    UINT32    L         : 1;
+    UINT32    DB        : 1;
+    UINT32    G         : 1;
+    UINT32    BaseHigh  : 8;
   } Bits;
-  UINT64  Uint64;
+  UINT64    Uint64;
 } IA32_SEGMENT_DESCRIPTOR;
 
 ///
 /// Byte packed structure for an IDTR, GDTR, LDTR descriptor.
 ///
-#pragma pack (1)
+  #pragma pack (1)
 typedef struct {
-  UINT16  Limit;
-  UINTN   Base;
+  UINT16    Limit;
+  UINTN     Base;
 } IA32_DESCRIPTOR;
-#pragma pack ()
+  #pragma pack ()
 
 #define IA32_IDT_GATE_TYPE_TASK          0x85
 #define IA32_IDT_GATE_TYPE_INTERRUPT_16  0x86
@@ -5006,25 +5179,25 @@ typedef struct {
 #define IA32_IDT_GATE_TYPE_INTERRUPT_32  0x8E
 #define IA32_IDT_GATE_TYPE_TRAP_32       0x8F
 
-#define IA32_GDT_TYPE_TSS               0x9
-#define IA32_GDT_ALIGNMENT              8
+#define IA32_GDT_TYPE_TSS   0x9
+#define IA32_GDT_ALIGNMENT  8
 
-#if defined (MDE_CPU_IA32)
+  #if defined (MDE_CPU_IA32)
 ///
 /// Byte packed structure for an IA-32 Interrupt Gate Descriptor.
 ///
 typedef union {
   struct {
-    UINT32  OffsetLow:16;   ///< Offset bits 15..0.
-    UINT32  Selector:16;    ///< Selector.
-    UINT32  Reserved_0:8;   ///< Reserved.
-    UINT32  GateType:8;     ///< Gate Type.  See #defines above.
-    UINT32  OffsetHigh:16;  ///< Offset bits 31..16.
+    UINT32    OffsetLow  : 16; ///< Offset bits 15..0.
+    UINT32    Selector   : 16; ///< Selector.
+    UINT32    Reserved_0 : 8;  ///< Reserved.
+    UINT32    GateType   : 8;  ///< Gate Type.  See #defines above.
+    UINT32    OffsetHigh : 16; ///< Offset bits 31..16.
   } Bits;
-  UINT64  Uint64;
+  UINT64    Uint64;
 } IA32_IDT_GATE_DESCRIPTOR;
 
-#pragma pack (1)
+    #pragma pack (1)
 //
 // IA32 Task-State Segment Definition
 //
@@ -5071,46 +5244,46 @@ typedef struct {
 
 typedef union {
   struct {
-    UINT32  LimitLow:16;    ///< Segment Limit 15..00
-    UINT32  BaseLow:16;     ///< Base Address  15..00
-    UINT32  BaseMid:8;      ///< Base Address  23..16
-    UINT32  Type:4;         ///< Type (1 0 B 1)
-    UINT32  Reserved_43:1;  ///< 0
-    UINT32  DPL:2;          ///< Descriptor Privilege Level
-    UINT32  P:1;            ///< Segment Present
-    UINT32  LimitHigh:4;    ///< Segment Limit 19..16
-    UINT32  AVL:1;          ///< Available for use by system software
-    UINT32  Reserved_52:2;  ///< 0 0
-    UINT32  G:1;            ///< Granularity
-    UINT32  BaseHigh:8;     ///< Base Address 31..24
+    UINT32    LimitLow    : 16; ///< Segment Limit 15..00
+    UINT32    BaseLow     : 16; ///< Base Address  15..00
+    UINT32    BaseMid     : 8;  ///< Base Address  23..16
+    UINT32    Type        : 4;  ///< Type (1 0 B 1)
+    UINT32    Reserved_43 : 1;  ///< 0
+    UINT32    DPL         : 2;  ///< Descriptor Privilege Level
+    UINT32    P           : 1;  ///< Segment Present
+    UINT32    LimitHigh   : 4;  ///< Segment Limit 19..16
+    UINT32    AVL         : 1;  ///< Available for use by system software
+    UINT32    Reserved_52 : 2;  ///< 0 0
+    UINT32    G           : 1;  ///< Granularity
+    UINT32    BaseHigh    : 8;  ///< Base Address 31..24
   } Bits;
-  UINT64  Uint64;
+  UINT64    Uint64;
 } IA32_TSS_DESCRIPTOR;
-#pragma pack ()
+    #pragma pack ()
 
-#endif // defined (MDE_CPU_IA32)
+  #endif // defined (MDE_CPU_IA32)
 
-#if defined (MDE_CPU_X64)
+  #if defined (MDE_CPU_X64)
 ///
 /// Byte packed structure for an x64 Interrupt Gate Descriptor.
 ///
 typedef union {
   struct {
-    UINT32  OffsetLow:16;   ///< Offset bits 15..0.
-    UINT32  Selector:16;    ///< Selector.
-    UINT32  Reserved_0:8;   ///< Reserved.
-    UINT32  GateType:8;     ///< Gate Type.  See #defines above.
-    UINT32  OffsetHigh:16;  ///< Offset bits 31..16.
-    UINT32  OffsetUpper:32; ///< Offset bits 63..32.
-    UINT32  Reserved_1:32;  ///< Reserved.
+    UINT32    OffsetLow   : 16; ///< Offset bits 15..0.
+    UINT32    Selector    : 16; ///< Selector.
+    UINT32    Reserved_0  : 8;  ///< Reserved.
+    UINT32    GateType    : 8;  ///< Gate Type.  See #defines above.
+    UINT32    OffsetHigh  : 16; ///< Offset bits 31..16.
+    UINT32    OffsetUpper : 32; ///< Offset bits 63..32.
+    UINT32    Reserved_1  : 32; ///< Reserved.
   } Bits;
   struct {
-    UINT64  Uint64;
-    UINT64  Uint64_1;
+    UINT64    Uint64;
+    UINT64    Uint64_1;
   } Uint128;
 } IA32_IDT_GATE_DESCRIPTOR;
 
-#pragma pack (1)
+    #pragma pack (1)
 //
 // IA32 Task-State Segment Definition
 //
@@ -5128,116 +5301,116 @@ typedef struct {
 
 typedef union {
   struct {
-    UINT32  LimitLow:16;    ///< Segment Limit 15..00
-    UINT32  BaseLow:16;     ///< Base Address  15..00
-    UINT32  BaseMidl:8;     ///< Base Address  23..16
-    UINT32  Type:4;         ///< Type (1 0 B 1)
-    UINT32  Reserved_43:1;  ///< 0
-    UINT32  DPL:2;          ///< Descriptor Privilege Level
-    UINT32  P:1;            ///< Segment Present
-    UINT32  LimitHigh:4;    ///< Segment Limit 19..16
-    UINT32  AVL:1;          ///< Available for use by system software
-    UINT32  Reserved_52:2;  ///< 0 0
-    UINT32  G:1;            ///< Granularity
-    UINT32  BaseMidh:8;     ///< Base Address  31..24
-    UINT32  BaseHigh:32;    ///< Base Address  63..32
-    UINT32  Reserved_96:32; ///< Reserved
+    UINT32    LimitLow    : 16; ///< Segment Limit 15..00
+    UINT32    BaseLow     : 16; ///< Base Address  15..00
+    UINT32    BaseMidl    : 8;  ///< Base Address  23..16
+    UINT32    Type        : 4;  ///< Type (1 0 B 1)
+    UINT32    Reserved_43 : 1;  ///< 0
+    UINT32    DPL         : 2;  ///< Descriptor Privilege Level
+    UINT32    P           : 1;  ///< Segment Present
+    UINT32    LimitHigh   : 4;  ///< Segment Limit 19..16
+    UINT32    AVL         : 1;  ///< Available for use by system software
+    UINT32    Reserved_52 : 2;  ///< 0 0
+    UINT32    G           : 1;  ///< Granularity
+    UINT32    BaseMidh    : 8;  ///< Base Address  31..24
+    UINT32    BaseHigh    : 32; ///< Base Address  63..32
+    UINT32    Reserved_96 : 32; ///< Reserved
   } Bits;
   struct {
-    UINT64  Uint64;
-    UINT64  Uint64_1;
+    UINT64    Uint64;
+    UINT64    Uint64_1;
   } Uint128;
 } IA32_TSS_DESCRIPTOR;
-#pragma pack ()
+    #pragma pack ()
 
-#endif // defined (MDE_CPU_X64)
+  #endif // defined (MDE_CPU_X64)
 
 ///
 /// Byte packed structure for an FP/SSE/SSE2 context.
 ///
 typedef struct {
-  UINT8  Buffer[512];
+  UINT8    Buffer[512];
 } IA32_FX_BUFFER;
 
 ///
 /// Structures for the 16-bit real mode thunks.
 ///
 typedef struct {
-  UINT32                            Reserved1;
-  UINT32                            Reserved2;
-  UINT32                            Reserved3;
-  UINT32                            Reserved4;
-  UINT8                             BL;
-  UINT8                             BH;
-  UINT16                            Reserved5;
-  UINT8                             DL;
-  UINT8                             DH;
-  UINT16                            Reserved6;
-  UINT8                             CL;
-  UINT8                             CH;
-  UINT16                            Reserved7;
-  UINT8                             AL;
-  UINT8                             AH;
-  UINT16                            Reserved8;
+  UINT32    Reserved1;
+  UINT32    Reserved2;
+  UINT32    Reserved3;
+  UINT32    Reserved4;
+  UINT8     BL;
+  UINT8     BH;
+  UINT16    Reserved5;
+  UINT8     DL;
+  UINT8     DH;
+  UINT16    Reserved6;
+  UINT8     CL;
+  UINT8     CH;
+  UINT16    Reserved7;
+  UINT8     AL;
+  UINT8     AH;
+  UINT16    Reserved8;
 } IA32_BYTE_REGS;
 
 typedef struct {
-  UINT16                            DI;
-  UINT16                            Reserved1;
-  UINT16                            SI;
-  UINT16                            Reserved2;
-  UINT16                            BP;
-  UINT16                            Reserved3;
-  UINT16                            SP;
-  UINT16                            Reserved4;
-  UINT16                            BX;
-  UINT16                            Reserved5;
-  UINT16                            DX;
-  UINT16                            Reserved6;
-  UINT16                            CX;
-  UINT16                            Reserved7;
-  UINT16                            AX;
-  UINT16                            Reserved8;
+  UINT16    DI;
+  UINT16    Reserved1;
+  UINT16    SI;
+  UINT16    Reserved2;
+  UINT16    BP;
+  UINT16    Reserved3;
+  UINT16    SP;
+  UINT16    Reserved4;
+  UINT16    BX;
+  UINT16    Reserved5;
+  UINT16    DX;
+  UINT16    Reserved6;
+  UINT16    CX;
+  UINT16    Reserved7;
+  UINT16    AX;
+  UINT16    Reserved8;
 } IA32_WORD_REGS;
 
 typedef struct {
-  UINT32                            EDI;
-  UINT32                            ESI;
-  UINT32                            EBP;
-  UINT32                            ESP;
-  UINT32                            EBX;
-  UINT32                            EDX;
-  UINT32                            ECX;
-  UINT32                            EAX;
-  UINT16                            DS;
-  UINT16                            ES;
-  UINT16                            FS;
-  UINT16                            GS;
-  IA32_EFLAGS32                     EFLAGS;
-  UINT32                            Eip;
-  UINT16                            CS;
-  UINT16                            SS;
+  UINT32           EDI;
+  UINT32           ESI;
+  UINT32           EBP;
+  UINT32           ESP;
+  UINT32           EBX;
+  UINT32           EDX;
+  UINT32           ECX;
+  UINT32           EAX;
+  UINT16           DS;
+  UINT16           ES;
+  UINT16           FS;
+  UINT16           GS;
+  IA32_EFLAGS32    EFLAGS;
+  UINT32           Eip;
+  UINT16           CS;
+  UINT16           SS;
 } IA32_DWORD_REGS;
 
 typedef union {
-  IA32_DWORD_REGS                   E;
-  IA32_WORD_REGS                    X;
-  IA32_BYTE_REGS                    H;
+  IA32_DWORD_REGS    E;
+  IA32_WORD_REGS     X;
+  IA32_BYTE_REGS     H;
 } IA32_REGISTER_SET;
 
 ///
 /// Byte packed structure for an 16-bit real mode thunks.
 ///
 typedef struct {
-  IA32_REGISTER_SET                 *RealModeState;
-  VOID                              *RealModeBuffer;
-  UINT32                            RealModeBufferSize;
-  UINT32                            ThunkAttributes;
+  IA32_REGISTER_SET    *RealModeState;
+  VOID                 *RealModeBuffer;
+  UINT32               RealModeBufferSize;
+  UINT32               ThunkAttributes;
 } THUNK_CONTEXT;
 
-#define THUNK_ATTRIBUTE_BIG_REAL_MODE             0x00000001
-#define THUNK_ATTRIBUTE_DISABLE_A20_MASK_INT_15   0x00000002
-#define THUNK_ATTRIBUTE_DISABLE_A20_MASK_KBD_CTRL 0x00000004
+#define THUNK_ATTRIBUTE_BIG_REAL_MODE              0x00000001
+#define THUNK_ATTRIBUTE_DISABLE_A20_MASK_INT_15    0x00000002
+#define THUNK_ATTRIBUTE_DISABLE_A20_MASK_KBD_CTRL  0x00000004
 
 ///
 /// Type definition for representing labels in NASM source code that allow for
@@ -5283,11 +5456,11 @@ typedef VOID (X86_ASSEMBLY_PATCH_LABEL) (
 UINT32
 EFIAPI
 AsmCpuid (
-  IN      UINT32                    Index,
+  IN      UINT32  Index,
   OUT     UINT32  *Eax   OPTIONAL,
   OUT     UINT32  *Ebx   OPTIONAL,
   OUT     UINT32  *Ecx   OPTIONAL,
-  OUT     UINT32                    *Edx   OPTIONAL
+  OUT     UINT32  *Edx   OPTIONAL
   );
 
 /**
@@ -5325,12 +5498,12 @@ AsmCpuid (
 UINT32
 EFIAPI
 AsmCpuidEx (
-  IN      UINT32                    Index,
-  IN      UINT32                    SubIndex,
+  IN      UINT32  Index,
+  IN      UINT32  SubIndex,
   OUT     UINT32  *Eax   OPTIONAL,
   OUT     UINT32  *Ebx   OPTIONAL,
   OUT     UINT32  *Ecx   OPTIONAL,
-  OUT     UINT32                    *Edx   OPTIONAL
+  OUT     UINT32  *Edx   OPTIONAL
   );
 
 /**
@@ -5376,7 +5549,7 @@ AsmEnableCache (
 UINT32
 EFIAPI
 AsmReadMsr32 (
-  IN      UINT32                    Index
+  IN      UINT32  Index
   );
 
 /**
@@ -5399,8 +5572,8 @@ AsmReadMsr32 (
 UINT32
 EFIAPI
 AsmWriteMsr32 (
-  IN      UINT32                    Index,
-  IN      UINT32                    Value
+  IN      UINT32  Index,
+  IN      UINT32  Value
   );
 
 /**
@@ -5425,8 +5598,8 @@ AsmWriteMsr32 (
 UINT32
 EFIAPI
 AsmMsrOr32 (
-  IN      UINT32                    Index,
-  IN      UINT32                    OrData
+  IN      UINT32  Index,
+  IN      UINT32  OrData
   );
 
 /**
@@ -5451,8 +5624,8 @@ AsmMsrOr32 (
 UINT32
 EFIAPI
 AsmMsrAnd32 (
-  IN      UINT32                    Index,
-  IN      UINT32                    AndData
+  IN      UINT32  Index,
+  IN      UINT32  AndData
   );
 
 /**
@@ -5480,9 +5653,9 @@ AsmMsrAnd32 (
 UINT32
 EFIAPI
 AsmMsrAndThenOr32 (
-  IN      UINT32                    Index,
-  IN      UINT32                    AndData,
-  IN      UINT32                    OrData
+  IN      UINT32  Index,
+  IN      UINT32  AndData,
+  IN      UINT32  OrData
   );
 
 /**
@@ -5510,9 +5683,9 @@ AsmMsrAndThenOr32 (
 UINT32
 EFIAPI
 AsmMsrBitFieldRead32 (
-  IN      UINT32                    Index,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit
+  IN      UINT32  Index,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit
   );
 
 /**
@@ -5543,10 +5716,10 @@ AsmMsrBitFieldRead32 (
 UINT32
 EFIAPI
 AsmMsrBitFieldWrite32 (
-  IN      UINT32                    Index,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT32                    Value
+  IN      UINT32  Index,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT32  Value
   );
 
 /**
@@ -5579,10 +5752,10 @@ AsmMsrBitFieldWrite32 (
 UINT32
 EFIAPI
 AsmMsrBitFieldOr32 (
-  IN      UINT32                    Index,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT32                    OrData
+  IN      UINT32  Index,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT32  OrData
   );
 
 /**
@@ -5615,10 +5788,10 @@ AsmMsrBitFieldOr32 (
 UINT32
 EFIAPI
 AsmMsrBitFieldAnd32 (
-  IN      UINT32                    Index,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT32                    AndData
+  IN      UINT32  Index,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT32  AndData
   );
 
 /**
@@ -5655,11 +5828,11 @@ AsmMsrBitFieldAnd32 (
 UINT32
 EFIAPI
 AsmMsrBitFieldAndThenOr32 (
-  IN      UINT32                    Index,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT32                    AndData,
-  IN      UINT32                    OrData
+  IN      UINT32  Index,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT32  AndData,
+  IN      UINT32  OrData
   );
 
 /**
@@ -5679,7 +5852,7 @@ AsmMsrBitFieldAndThenOr32 (
 UINT64
 EFIAPI
 AsmReadMsr64 (
-  IN      UINT32                    Index
+  IN      UINT32  Index
   );
 
 /**
@@ -5702,8 +5875,8 @@ AsmReadMsr64 (
 UINT64
 EFIAPI
 AsmWriteMsr64 (
-  IN      UINT32                    Index,
-  IN      UINT64                    Value
+  IN      UINT32  Index,
+  IN      UINT64  Value
   );
 
 /**
@@ -5727,8 +5900,8 @@ AsmWriteMsr64 (
 UINT64
 EFIAPI
 AsmMsrOr64 (
-  IN      UINT32                    Index,
-  IN      UINT64                    OrData
+  IN      UINT32  Index,
+  IN      UINT64  OrData
   );
 
 /**
@@ -5752,8 +5925,8 @@ AsmMsrOr64 (
 UINT64
 EFIAPI
 AsmMsrAnd64 (
-  IN      UINT32                    Index,
-  IN      UINT64                    AndData
+  IN      UINT32  Index,
+  IN      UINT64  AndData
   );
 
 /**
@@ -5780,9 +5953,9 @@ AsmMsrAnd64 (
 UINT64
 EFIAPI
 AsmMsrAndThenOr64 (
-  IN      UINT32                    Index,
-  IN      UINT64                    AndData,
-  IN      UINT64                    OrData
+  IN      UINT32  Index,
+  IN      UINT64  AndData,
+  IN      UINT64  OrData
   );
 
 /**
@@ -5810,9 +5983,9 @@ AsmMsrAndThenOr64 (
 UINT64
 EFIAPI
 AsmMsrBitFieldRead64 (
-  IN      UINT32                    Index,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit
+  IN      UINT32  Index,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit
   );
 
 /**
@@ -5842,10 +6015,10 @@ AsmMsrBitFieldRead64 (
 UINT64
 EFIAPI
 AsmMsrBitFieldWrite64 (
-  IN      UINT32                    Index,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT64                    Value
+  IN      UINT32  Index,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT64  Value
   );
 
 /**
@@ -5878,10 +6051,10 @@ AsmMsrBitFieldWrite64 (
 UINT64
 EFIAPI
 AsmMsrBitFieldOr64 (
-  IN      UINT32                    Index,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT64                    OrData
+  IN      UINT32  Index,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT64  OrData
   );
 
 /**
@@ -5914,10 +6087,10 @@ AsmMsrBitFieldOr64 (
 UINT64
 EFIAPI
 AsmMsrBitFieldAnd64 (
-  IN      UINT32                    Index,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT64                    AndData
+  IN      UINT32  Index,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT64  AndData
   );
 
 /**
@@ -5953,11 +6126,11 @@ AsmMsrBitFieldAnd64 (
 UINT64
 EFIAPI
 AsmMsrBitFieldAndThenOr64 (
-  IN      UINT32                    Index,
-  IN      UINTN                     StartBit,
-  IN      UINTN                     EndBit,
-  IN      UINT64                    AndData,
-  IN      UINT64                    OrData
+  IN      UINT32  Index,
+  IN      UINTN   StartBit,
+  IN      UINTN   EndBit,
+  IN      UINT64  AndData,
+  IN      UINT64  OrData
   );
 
 /**
@@ -6491,7 +6664,7 @@ AsmReadTr (
 VOID
 EFIAPI
 AsmReadGdtr (
-  OUT     IA32_DESCRIPTOR           *Gdtr
+  OUT     IA32_DESCRIPTOR  *Gdtr
   );
 
 /**
@@ -6508,7 +6681,7 @@ AsmReadGdtr (
 VOID
 EFIAPI
 AsmWriteGdtr (
-  IN      CONST IA32_DESCRIPTOR     *Gdtr
+  IN      CONST IA32_DESCRIPTOR  *Gdtr
   );
 
 /**
@@ -6525,7 +6698,7 @@ AsmWriteGdtr (
 VOID
 EFIAPI
 AsmReadIdtr (
-  OUT     IA32_DESCRIPTOR           *Idtr
+  OUT     IA32_DESCRIPTOR  *Idtr
   );
 
 /**
@@ -6542,7 +6715,7 @@ AsmReadIdtr (
 VOID
 EFIAPI
 AsmWriteIdtr (
-  IN      CONST IA32_DESCRIPTOR     *Idtr
+  IN      CONST IA32_DESCRIPTOR  *Idtr
   );
 
 /**
@@ -6572,7 +6745,7 @@ AsmReadLdtr (
 VOID
 EFIAPI
 AsmWriteLdtr (
-  IN      UINT16                    Ldtr
+  IN      UINT16  Ldtr
   );
 
 /**
@@ -6591,7 +6764,7 @@ AsmWriteLdtr (
 VOID
 EFIAPI
 AsmFxSave (
-  OUT     IA32_FX_BUFFER            *Buffer
+  OUT     IA32_FX_BUFFER  *Buffer
   );
 
 /**
@@ -6611,7 +6784,7 @@ AsmFxSave (
 VOID
 EFIAPI
 AsmFxRestore (
-  IN      CONST IA32_FX_BUFFER      *Buffer
+  IN      CONST IA32_FX_BUFFER  *Buffer
   );
 
 /**
@@ -6746,7 +6919,7 @@ AsmReadMm7 (
 VOID
 EFIAPI
 AsmWriteMm0 (
-  IN      UINT64                    Value
+  IN      UINT64  Value
   );
 
 /**
@@ -6761,7 +6934,7 @@ AsmWriteMm0 (
 VOID
 EFIAPI
 AsmWriteMm1 (
-  IN      UINT64                    Value
+  IN      UINT64  Value
   );
 
 /**
@@ -6776,7 +6949,7 @@ AsmWriteMm1 (
 VOID
 EFIAPI
 AsmWriteMm2 (
-  IN      UINT64                    Value
+  IN      UINT64  Value
   );
 
 /**
@@ -6791,7 +6964,7 @@ AsmWriteMm2 (
 VOID
 EFIAPI
 AsmWriteMm3 (
-  IN      UINT64                    Value
+  IN      UINT64  Value
   );
 
 /**
@@ -6806,7 +6979,7 @@ AsmWriteMm3 (
 VOID
 EFIAPI
 AsmWriteMm4 (
-  IN      UINT64                    Value
+  IN      UINT64  Value
   );
 
 /**
@@ -6821,7 +6994,7 @@ AsmWriteMm4 (
 VOID
 EFIAPI
 AsmWriteMm5 (
-  IN      UINT64                    Value
+  IN      UINT64  Value
   );
 
 /**
@@ -6836,7 +7009,7 @@ AsmWriteMm5 (
 VOID
 EFIAPI
 AsmWriteMm6 (
-  IN      UINT64                    Value
+  IN      UINT64  Value
   );
 
 /**
@@ -6851,7 +7024,7 @@ AsmWriteMm6 (
 VOID
 EFIAPI
 AsmWriteMm7 (
-  IN      UINT64                    Value
+  IN      UINT64  Value
   );
 
 /**
@@ -6883,7 +7056,7 @@ AsmReadTsc (
 UINT64
 EFIAPI
 AsmReadPmc (
-  IN      UINT32                    Index
+  IN      UINT32  Index
   );
 
 /**
@@ -6905,9 +7078,9 @@ AsmReadPmc (
 UINTN
 EFIAPI
 AsmMonitor (
-  IN      UINTN                     Eax,
-  IN      UINTN                     Ecx,
-  IN      UINTN                     Edx
+  IN      UINTN  Eax,
+  IN      UINTN  Ecx,
+  IN      UINTN  Edx
   );
 
 /**
@@ -6927,8 +7100,8 @@ AsmMonitor (
 UINTN
 EFIAPI
 AsmMwait (
-  IN      UINTN                     Eax,
-  IN      UINTN                     Ecx
+  IN      UINTN  Eax,
+  IN      UINTN  Ecx
   );
 
 /**
@@ -6975,7 +7148,7 @@ AsmInvd (
 VOID *
 EFIAPI
 AsmFlushCacheLine (
-  IN      VOID                      *LinearAddress
+  IN      VOID  *LinearAddress
   );
 
 /**
@@ -7102,11 +7275,11 @@ AsmDisablePaging32 (
 VOID
 EFIAPI
 AsmEnablePaging64 (
-  IN      UINT16                    Cs,
-  IN      UINT64                    EntryPoint,
+  IN      UINT16  Cs,
+  IN      UINT64  EntryPoint,
   IN      UINT64  Context1   OPTIONAL,
   IN      UINT64  Context2   OPTIONAL,
-  IN      UINT64                    NewStack
+  IN      UINT64  NewStack
   );
 
 /**
@@ -7142,11 +7315,11 @@ AsmEnablePaging64 (
 VOID
 EFIAPI
 AsmDisablePaging64 (
-  IN      UINT16                    Cs,
-  IN      UINT32                    EntryPoint,
+  IN      UINT16  Cs,
+  IN      UINT32  EntryPoint,
   IN      UINT32  Context1   OPTIONAL,
   IN      UINT32  Context2   OPTIONAL,
-  IN      UINT32                    NewStack
+  IN      UINT32  NewStack
   );
 
 //
@@ -7177,8 +7350,8 @@ AsmDisablePaging64 (
 VOID
 EFIAPI
 AsmGetThunk16Properties (
-  OUT     UINT32                    *RealModeBufferSize,
-  OUT     UINT32                    *ExtraStackSize
+  OUT     UINT32  *RealModeBufferSize,
+  OUT     UINT32  *ExtraStackSize
   );
 
 /**
@@ -7198,7 +7371,7 @@ AsmGetThunk16Properties (
 VOID
 EFIAPI
 AsmPrepareThunk16 (
-  IN OUT  THUNK_CONTEXT             *ThunkContext
+  IN OUT  THUNK_CONTEXT  *ThunkContext
   );
 
 /**
@@ -7257,7 +7430,7 @@ AsmPrepareThunk16 (
 VOID
 EFIAPI
 AsmThunk16 (
-  IN OUT  THUNK_CONTEXT             *ThunkContext
+  IN OUT  THUNK_CONTEXT  *ThunkContext
   );
 
 /**
@@ -7283,7 +7456,7 @@ AsmThunk16 (
 VOID
 EFIAPI
 AsmPrepareAndThunk16 (
-  IN OUT  THUNK_CONTEXT             *ThunkContext
+  IN OUT  THUNK_CONTEXT  *ThunkContext
   );
 
 /**
@@ -7300,7 +7473,7 @@ AsmPrepareAndThunk16 (
 BOOLEAN
 EFIAPI
 AsmRdRand16 (
-  OUT     UINT16                    *Rand
+  OUT     UINT16  *Rand
   );
 
 /**
@@ -7317,7 +7490,7 @@ AsmRdRand16 (
 BOOLEAN
 EFIAPI
 AsmRdRand32 (
-  OUT     UINT32                    *Rand
+  OUT     UINT32  *Rand
   );
 
 /**
@@ -7334,7 +7507,7 @@ AsmRdRand32 (
 BOOLEAN
 EFIAPI
 AsmRdRand64  (
-  OUT     UINT64                    *Rand
+  OUT     UINT64  *Rand
   );
 
 /**
@@ -7345,7 +7518,7 @@ AsmRdRand64  (
 VOID
 EFIAPI
 AsmWriteTr (
-  IN UINT16 Selector
+  IN UINT16  Selector
   );
 
 /**
@@ -7451,9 +7624,9 @@ AsmVmgExit (
 VOID
 EFIAPI
 PatchInstructionX86 (
-  OUT X86_ASSEMBLY_PATCH_LABEL *InstructionEnd,
-  IN  UINT64                   PatchValue,
-  IN  UINTN                    ValueSize
+  OUT X86_ASSEMBLY_PATCH_LABEL  *InstructionEnd,
+  IN  UINT64                    PatchValue,
+  IN  UINTN                     ValueSize
   );
 
 #endif // defined (MDE_CPU_IA32) || defined (MDE_CPU_X64)
