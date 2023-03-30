@@ -48,14 +48,6 @@
 #include <net/if_media.h>
 #include <net/if_types.h>
 
-#ifdef INET
-#include <netinet/in.h>
-#include <netinet/in_systm.h>
-#include <netinet/in_var.h>
-#include <netinet/if_ether.h>
-#include <netinet/ip.h>
-#endif
-
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_regdomain.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
