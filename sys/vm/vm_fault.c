@@ -100,6 +100,8 @@
  *	Page fault handling module.
  */
 
+#include "opt_vm.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -389,7 +391,9 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	vm_pindex_t first_count;
 	struct faultstate fs;
 	struct lwp *lp;
+#if !defined(NO_SWAPPING)
 	struct proc *p;
+#endif
 	thread_t td;
 	int mextcount;
 	int growstack;
