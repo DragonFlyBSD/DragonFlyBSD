@@ -53,10 +53,6 @@
  * SUCH DAMAGE.
  */
 
-#ifdef __DragonFly__
-#include "opt_vm.h"
-#endif
-
 #include <linux/types.h>
 #include <linux/slab.h>
 #include <linux/mm.h>

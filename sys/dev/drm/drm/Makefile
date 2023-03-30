@@ -112,7 +112,6 @@ SRCS	= \
 SRCS	+= \
 	opt_ddb.h \
 	opt_drm.h \
-	opt_vm.h \
 	bus_if.h \
 	device_if.h \
 	pci_if.h

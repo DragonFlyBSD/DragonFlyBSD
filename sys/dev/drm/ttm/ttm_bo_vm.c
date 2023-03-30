@@ -498,8 +498,6 @@ EXPORT_SYMBOL(ttm_fbdev_mmap);
  * DragonFlyBSD Interface
  */
 
-#include "opt_vm.h"
-
 /*
  * NOTE: This code is fragile.  This code can only be entered with *mres
  *	 not NULL when *mres is a placeholder page allocated by the kernel.
