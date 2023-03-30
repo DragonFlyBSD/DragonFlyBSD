@@ -38,6 +38,9 @@
 
 /* $FreeBSD: src/sys/dev/oce/oce_hw.c,v 1.8 2013/07/07 00:30:13 svnexp Exp $ */
 
+#include "opt_inet6.h"
+#include "opt_inet.h"
+
 #include "oce_if.h"
 
 static int oce_POST(POCE_SOFTC sc);
@@ -341,8 +344,10 @@ oce_hw_shutdown(POCE_SOFTC sc)
 	/* disable hardware interrupts */
 	oce_hw_intr_disable(sc);
 #if defined(INET6) || defined(INET)
+#if 0 /* XXX swildner: LRO */
 	/* Free LRO resources */
 	oce_free_lro(sc);
+#endif
 #endif
 	/* Release queue*/
 	oce_queue_release_all(sc);
