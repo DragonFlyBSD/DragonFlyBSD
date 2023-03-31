@@ -1806,7 +1806,7 @@ options 	PANIC_REBOOT_WAIT_TIME=16
 
 # Specify a lower limit for the number of swap I/O buffers.
 #
-#options		NSWBUF_MIN=120
+options		NSWBUF_MIN=120
 
 # The 'asr' driver provides support for current DPT/Adaptec SCSI RAID
 # controllers (SmartRAID V and VI and later).
