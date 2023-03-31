@@ -44,6 +44,8 @@
  * $FreeBSD$
  */
 
+#include "opt_suiddir.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
