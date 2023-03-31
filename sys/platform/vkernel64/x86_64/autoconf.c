@@ -47,6 +47,7 @@
 #include "opt_nfs.h"
 #include "opt_nfsroot.h"
 #include "opt_rootdevname.h"
+#include "opt_swap.h"
 
 #include "use_isa.h"
 
