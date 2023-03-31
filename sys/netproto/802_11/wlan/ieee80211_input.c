@@ -57,11 +57,6 @@ __FBSDID("$FreeBSD$");
 
 #include <net/bpf.h>
 
-#ifdef INET
-#include <netinet/in.h>
-#include <net/ethernet.h>
-#endif
-
 static void
 ieee80211_process_mimo(struct ieee80211_node *ni, struct ieee80211_rx_stats *rx)
 {

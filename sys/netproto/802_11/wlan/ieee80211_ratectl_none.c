@@ -41,11 +41,6 @@ __FBSDID("$FreeBSD$");
 #include <net/if_media.h>
 #include <net/ethernet.h>
 
-#ifdef INET
-#include <netinet/in.h>
-#include <netinet/if_ether.h>
-#endif
-
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_ratectl.h>
 
