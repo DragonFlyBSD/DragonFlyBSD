@@ -117,7 +117,7 @@ legacy_identify(driver_t *driver, device_t parent)
 static int
 legacy_probe(device_t dev)
 {
-#ifdef ACPI_ENABLE_PCI
+#if 0 /* ACPI_ENABLE_PCI */
 	device_t acpi;
 
 	/*

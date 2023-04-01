@@ -62,8 +62,6 @@
 #include <bus/firewire/fwohcivar.h>
 #include <bus/firewire/firewire_phy.h>
 
-#undef OHCI_DEBUG
-
 static char dbcode[16][0x10]={"OUTM", "OUTL","INPM","INPL",
 		"STOR","LOAD","NOP ","STOP",};
 
@@ -1749,7 +1747,7 @@ fwohci_intr_body(struct fwohci_softc *sc, u_int32_t stat, int count)
 	u_int i;
 	struct firewire_comm *fc = (struct firewire_comm *)sc;
 
-#ifdef OHCI_DEBUG
+#ifdef FWOHCI_DEBUG
 	if(stat & OREAD(sc, FWOHCI_INTMASK))
 		device_printf(fc->dev, "INTERRUPT < %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s> 0x%08x, 0x%08x\n",
 			stat & OHCI_INT_EN ? "DMA_EN ":"",
