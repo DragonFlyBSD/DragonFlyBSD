@@ -194,7 +194,6 @@ hammer2_init_devvp(const char *blkdevs, int rootmount,
 			}
 		}
 		/* lookup path from above */
-		KKASSERT(strncmp(path, "/dev/", 5) == 0);
 		devvp = NULL;
 		error = hammer2_lookup_device(path, rootmount, &devvp);
 		if (error) {
