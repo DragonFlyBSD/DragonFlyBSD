@@ -565,14 +565,14 @@ options 	_KPOSIX_PRIORITY_SCHEDULING
 #####################################################################
 # CLOCK OPTIONS
 
-# The granularity of operation is controlled by the kernel option HZ whose
-# default value (100) means a granularity of 10ms (1s/HZ).
+# The granularity of operation is controlled by the kernel option HZ_DEFAULT
+# whose default value (100) means a granularity of 10ms (1s/HZ_DEFAULT).
 # Consider, however, that reducing the granularity too much might
 # cause excessive overhead in clock interrupt processing,
 # potentially causing ticks to be missed and thus actually reducing
 # the accuracy of operation.
 
-options 	HZ=100
+options 	HZ_DEFAULT=100
 
 #####################################################################
 # SCSI DEVICES
@@ -2275,7 +2275,7 @@ options 	ALTQ_FAIRQ	#fair queue
 options 	ALTQ_DEBUG	#for debugging
 # you might want to set kernel timer to 1kHz if you use CBQ,
 # especially with 100baseT
-#options 	HZ=1000
+#options 	HZ_DEFAULT=1000
 
 # WATCHDOG
 options		WDOG_DISABLE_ON_PANIC	# Automatically disable watchdogs on panic

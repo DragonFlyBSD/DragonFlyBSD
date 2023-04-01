@@ -1,7 +1,7 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
 .\"
-.Dd January 7, 2019
+.Dd April 1, 2023
 .Dt IPFW3 8
 .Os
 .Sh NAME
@@ -1305,7 +1305,7 @@ Propagation delay, measured in milliseconds.
 The value is rounded to the next multiple of the clock tick
 (typically 10ms, but it is a good practice to run kernels
 with
-.Cd "options HZ=1000"
+.Cd "options HZ_DEFAULT=1000"
 to reduce
 the granularity to 1ms or less).
 Default value is 0, meaning no delay.
