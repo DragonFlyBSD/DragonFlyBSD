@@ -195,22 +195,22 @@ struct ktr_csw {
 #define KTRFAC_ACTIVE	0x20000000	/* ktrace logging in progress, ignore */
 
 #ifdef	_KERNEL
-void	ktrnamei (struct lwp *,char *);
-void	ktrcsw (struct lwp *,int,int);
-void	ktrpsig (struct lwp *, int, sig_t, sigset_t *, int);
-void	ktrgenio (struct lwp *, int, enum uio_rw, struct uio *, int);
-void	ktrsyscall (struct lwp *, int, int narg, union sysunion *args);
-void	ktrsysret (struct lwp *, int, int, register_t);
-void	ktrdestroy (struct ktrace_node **);
-struct ktrace_node *ktrinherit (struct ktrace_node *);
+void	ktrnamei(struct lwp *, char *);
+void	ktrcsw(struct lwp *, int, int);
+void	ktrpsig(struct lwp *, int, sig_t, sigset_t *, int);
+void	ktrgenio(struct lwp *, int, enum uio_rw, struct uio *, int);
+void	ktrsyscall(struct lwp *, int, int, union sysunion *);
+void	ktrsysret(struct lwp *, int, int, register_t);
+void	ktrdestroy(struct ktrace_node **);
+struct ktrace_node *ktrinherit(struct ktrace_node *);
 
 #else
 
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	ktrace (const char *, int, int, pid_t);
-int	utrace (const void *, size_t);
+int	ktrace(const char *, int, int, pid_t);
+int	utrace(const void *, size_t);
 __END_DECLS
 
 #endif
