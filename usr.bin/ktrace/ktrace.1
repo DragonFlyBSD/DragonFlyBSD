@@ -28,7 +28,7 @@
 .\"	@(#)ktrace.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/ktrace/ktrace.1,v 1.8.2.8 2002/06/21 15:27:30 charnier Exp $
 .\"
-.Dd October 5, 2017
+.Dd April 4, 2023
 .Dt KTRACE 1
 .Os
 .Sh NAME
@@ -116,9 +116,13 @@ trace signal processing
 userland traces
 .It Cm w
 context switches
+.It Cm y
+trace
+.Xr sysctl 3
+requests
 .It Cm +
 trace the default set of trace points -
-.Cm c , n , i , s , u
+.Cm c , n , i , s , u , y
 .El
 .It Ar command
 Execute

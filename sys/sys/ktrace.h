@@ -177,6 +177,12 @@ struct ktr_csw {
 #define KTR_USER	7
 
 /*
+ * KTR_SYSCTL - name of a sysctl MIB
+ */
+#define	KTR_SYSCTL	9
+	/* record contains null-terminated MIB name */
+
+/*
  * kernel trace points (in p_traceflag)
  */
 #define KTRFAC_MASK	0x00ffffff
@@ -187,6 +193,8 @@ struct ktr_csw {
 #define	KTRFAC_PSIG	(1<<KTR_PSIG)
 #define KTRFAC_CSW	(1<<KTR_CSW)
 #define KTRFAC_USER	(1<<KTR_USER)
+#define KTRFAC_SYSCTL	(1<<KTR_SYSCTL)
+
 /*
  * trace flags (also in p_traceflags)
  */
@@ -200,6 +208,7 @@ void	ktrcsw(struct lwp *, int, int);
 void	ktrpsig(struct lwp *, int, sig_t, sigset_t *, int);
 void	ktrgenio(struct lwp *, int, enum uio_rw, struct uio *, int);
 void	ktrsyscall(struct lwp *, int, int, union sysunion *);
+void	ktrsysctl(struct lwp *, int *, u_int);
 void	ktrsysret(struct lwp *, int, int, register_t);
 void	ktrdestroy(struct ktrace_node **);
 struct ktrace_node *ktrinherit(struct ktrace_node *);

@@ -36,6 +36,9 @@
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
  */
 
+#include "opt_ktrace.h"
+#include "opt_sysctl.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -47,11 +50,12 @@
 #include <sys/sysmsg.h>
 #include <sys/lock.h>
 #include <sys/sbuf.h>
+#ifdef KTRACE
+#include <sys/ktrace.h>
+#endif
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
-
-#include "opt_sysctl.h"
 
 static MALLOC_DEFINE(M_SYSCTL, "sysctl", "sysctl internal magic");
 static MALLOC_DEFINE(M_SYSCTLOID, "sysctloid", "sysctl dynamic oids");
@@ -1514,12 +1518,14 @@ userland_sysctl(int *name, u_int namelen,
 		void *old, size_t *oldlenp, int inkernel,
 		void *new, size_t newlen, size_t *retval)
 {
+	struct thread *td = curthread;
+	struct lwp *lp = td->td_lwp;
 	int error = 0;
 	struct sysctl_req req;
 
 	bzero(&req, sizeof req);
 
-	req.td = curthread;
+	req.td = td;
 	req.flags = 0;
 
 	if (oldlenp) {
@@ -1552,8 +1558,8 @@ userland_sysctl(int *name, u_int namelen,
 #endif
 
 #ifdef KTRACE
-	if (KTRPOINT(curthread, KTR_SYSCTL))
-		ktrsysctl(name, namelen);
+	if (KTRPOINT(td, KTR_SYSCTL))
+		ktrsysctl(lp, name, namelen);
 #endif
 
 	for (;;) {

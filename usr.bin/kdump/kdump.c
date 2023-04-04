@@ -169,6 +169,7 @@ main(int argc, char **argv)
 			ktrsysret((struct ktr_sysret *)m);
 			break;
 		case KTR_NAMEI:
+		case KTR_SYSCTL:
 			ktrnamei(m, ktrlen);
 			break;
 		case KTR_GENIO:
@@ -231,6 +232,9 @@ dumpheader(struct ktr_header *kth)
 		break;
 	case KTR_USER:
 		type = "USER";
+		break;
+	case KTR_SYSCTL:
+		type = "SCTL";
 		break;
 	default:
 		sprintf(unknown, "UNKNOWN(%d)", kth->ktr_type);

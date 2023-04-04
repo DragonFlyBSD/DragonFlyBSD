@@ -28,7 +28,7 @@
 .\"	@(#)kdump.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/kdump/kdump.1,v 1.5.2.2 2001/08/16 13:16:51 ru Exp $
 .\"
-.Dd October 5, 2017
+.Dd April 4, 2023
 .Dt KDUMP 1
 .Os
 .Sh NAME
@@ -39,7 +39,7 @@
 .Op Fl acdjnlRT
 .Op Fl f Ar file
 .Op Fl m Ar maxdata
-.Op Fl t Op cnisuw
+.Op Fl t Op cnisuwy
 .Op Fl p Ar pid
 .Sh DESCRIPTION
 The
@@ -100,7 +100,7 @@ easily amenable to further processing.
 Display relative timestamps (time since previous entry).
 .It Fl T
 Display absolute timestamps for each entry (seconds since epoch).
-.It Fl t Ar cnisuw
+.It Fl t Ar cnisuwy
 See the
 .Fl t
 option of

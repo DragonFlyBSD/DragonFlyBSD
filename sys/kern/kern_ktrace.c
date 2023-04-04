@@ -44,6 +44,7 @@
 #include <sys/vnode.h>
 #include <sys/ktrace.h>
 #include <sys/malloc.h>
+#include <sys/sysctl.h>
 #include <sys/syslog.h>
 #include <sys/sysent.h>
 
@@ -169,6 +170,37 @@ ktrnamei(struct lwp *lp, char *path)
 	kth.ktr_len = (int)strlen(path);
 	kth.ktr_buf = path;
 
+	ktrwrite(lp, &kth, NULL);
+	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
+}
+
+void
+ktrsysctl(struct lwp *lp, int *name, u_int namelen)
+{
+	struct ktr_header kth;
+	u_int mib[CTL_MAXNAME + 2];
+	char *mibname;
+	size_t mibnamelen;
+	int error;
+
+	lp->lwp_traceflag |= KTRFAC_ACTIVE;
+	/* Lookup name of mib. */
+	KASSERT(namelen <= CTL_MAXNAME, ("sysctl MIB too long"));
+	mib[0] = 0;
+	mib[1] = 1;
+	bcopy(name, mib + 2, namelen * sizeof(*name));
+	mibnamelen = 128;
+	mibname = kmalloc(mibnamelen, M_KTRACE, M_WAITOK);
+	error = kernel_sysctl(mib, namelen + 2, mibname, &mibnamelen,
+	    NULL, 0, &mibnamelen);
+	if (error) {
+		kfree(mibname, M_KTRACE);
+		lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
+		return;
+	}
+	ktrgetheader(&kth, KTR_SYSCTL);
+	kth.ktr_len = mibnamelen;
+	kth.ktr_buf = mibname;
 	ktrwrite(lp, &kth, NULL);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }

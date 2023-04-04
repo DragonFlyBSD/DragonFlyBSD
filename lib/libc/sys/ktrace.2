@@ -28,7 +28,7 @@
 .\"     @(#)ktrace.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/ktrace.2,v 1.9.2.7 2001/12/14 18:34:01 ru Exp $
 .\"
-.Dd November 24, 2019
+.Dd April 4, 2023
 .Dt KTRACE 2
 .Os
 .Sh NAME
@@ -103,6 +103,8 @@ generate much output).
 Trace posted signals.
 .It Dv KTRFAC_CSW
 Trace context switch points.
+.It Dv KTRFAC_SYSCTL
+Trace sysctls.
 .It Dv KTRFAC_INHERIT
 Inherit tracing to future children.
 .El
@@ -175,7 +177,8 @@ support.
 .Sh SEE ALSO
 .Xr kdump 1 ,
 .Xr ktrace 1 ,
-.Xr utrace 2
+.Xr utrace 2 ,
+.Xr sysctl 8
 .Sh HISTORY
 A
 .Fn ktrace
