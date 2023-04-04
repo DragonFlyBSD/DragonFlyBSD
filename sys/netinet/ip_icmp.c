@@ -30,6 +30,8 @@
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
  */
 
+#include "opt_icmpprintfs.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>	/* for M_NOWAIT */
