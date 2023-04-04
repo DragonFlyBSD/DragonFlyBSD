@@ -27,12 +27,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $
- * $DragonFly: src/sys/net/gif/if_gif.c,v 1.21 2008/05/14 11:59:23 sephe Exp $
  * $KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $
  */
 
 #include "opt_inet.h"
 #include "opt_inet6.h"
+#include "opt_xbonehack.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
