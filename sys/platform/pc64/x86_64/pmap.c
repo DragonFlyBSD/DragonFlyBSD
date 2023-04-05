@@ -52,9 +52,7 @@
  *	  want user access to.
  */
 
-#if 0 /* JG */
-#include "opt_pmap.h"
-#endif
+#include "opt_ddb.h"
 #include "opt_msgbuf.h"
 
 #include <sys/param.h>
@@ -5048,14 +5046,14 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		kprintf("Warning: pmap_enter called on UVA with "
 			"kernel_pmap\n");
 #ifdef DDB
-		db_print_backtrace();
+		print_backtrace(-1);
 #endif
 	}
 	if (va >= UPT_MAX_ADDRESS && pmap != kernel_pmap) {
 		kprintf("Warning: pmap_enter called on KVA without"
 			"kernel_pmap\n");
 #ifdef DDB
-		db_print_backtrace();
+		print_backtrace(-1);
 #endif
 	}
 
