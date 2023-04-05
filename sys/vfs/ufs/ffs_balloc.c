@@ -30,6 +30,8 @@
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
  */
 
+#include "opt_quota.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
