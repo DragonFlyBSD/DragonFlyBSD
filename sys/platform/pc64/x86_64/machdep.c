@@ -44,6 +44,7 @@
 #include "opt_cpu.h"
 #include "opt_ddb.h"
 #include "opt_inet.h"
+#include "opt_maxmem.h"
 #include "opt_msgbuf.h"
 #include "opt_swap.h"
 
