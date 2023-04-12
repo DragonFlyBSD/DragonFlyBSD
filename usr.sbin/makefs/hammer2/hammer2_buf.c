@@ -119,7 +119,6 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 {
 	struct iovec *iov;
 	size_t cnt;
-	size_t tot = 0;
 	int error = 0;
 
 	KASSERT(uio->uio_rw == UIO_READ || uio->uio_rw == UIO_WRITE,
@@ -135,7 +134,6 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 		}
 		if (cnt > n)
 			cnt = n;
-		tot += cnt;
 
 		switch (uio->uio_segflg) {
 		case UIO_USERSPACE:
