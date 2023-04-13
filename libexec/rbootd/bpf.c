@@ -82,17 +82,12 @@ int
 BpfOpen(void)
 {
 	struct ifreq ifr;
-	char bpfdev[32];
 	int n = 0;
 
 	/*
-	 *  Open the first available BPF device.
+	 *  Open the BPF device.
 	 */
-	do {
-		(void) sprintf(bpfdev, _PATH_BPF, n++);
-		BpfFd = open(bpfdev, O_RDWR);
-	} while (BpfFd < 0 && (errno == EBUSY || errno == EPERM));
-
+	BpfFd = open(_PATH_BPF, O_RDWR);
 	if (BpfFd < 0) {
 		syslog(LOG_ERR, "bpf: no available devices: %m");
 		Exit(0);
