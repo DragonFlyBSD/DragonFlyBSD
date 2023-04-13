@@ -40,7 +40,7 @@
  * Author: Jeff Forys, University of Utah CSS
  */
 
-#define	_PATH_BPF		"/dev/bpf%d"
+#define	_PATH_BPF		"/dev/bpf"
 #define	_PATH_RBOOTDCONF	"/etc/rbootd.conf"
 #define	_PATH_RBOOTDDBG		"/tmp/rbootd.dbg"
 #define	_PATH_RBOOTDLIB		"/usr/mdec/rbootd"
