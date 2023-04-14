@@ -965,8 +965,8 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 	hammer2_tid_t mtid;
 	hammer2_bitmap_t *bitmap;
 	const hammer2_bitmap_t bmmask00 = 0;
-	hammer2_bitmap_t bmmask01;
-	hammer2_bitmap_t bmmask10;
+	//hammer2_bitmap_t bmmask01;
+	//hammer2_bitmap_t bmmask10;
 	hammer2_bitmap_t bmmask11;
 	size_t bytes;
 	uint16_t class;
@@ -1079,8 +1079,8 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 	 * Calculate the bitmask (runs in 2-bit pairs).
 	 */
 	start = ((int)(data_off >> HAMMER2_FREEMAP_BLOCK_RADIX) & 15) * 2;
-	bmmask01 = (hammer2_bitmap_t)1 << start;
-	bmmask10 = (hammer2_bitmap_t)2 << start;
+	//bmmask01 = (hammer2_bitmap_t)1 << start;
+	//bmmask10 = (hammer2_bitmap_t)2 << start;
 	bmmask11 = (hammer2_bitmap_t)3 << start;
 
 	/*
@@ -1189,8 +1189,8 @@ again:
 		}
 #endif
 		--count;
-		bmmask01 <<= 2;
-		bmmask10 <<= 2;
+		//bmmask01 <<= 2;
+		//bmmask10 <<= 2;
 		bmmask11 <<= 2;
 	}
 #if 0

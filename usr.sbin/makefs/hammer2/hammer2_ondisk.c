@@ -300,7 +300,7 @@ hammer2_verify_volumes_1(const hammer2_vfsvolume_t *volumes,
 	}
 
 	/* check volume */
-	vol = &volumes[0];
+	vol = &volumes[HAMMER2_ROOT_VOLUME];
 	path = vol->dev->path;
 	if (vol->id) {
 		hprintf("%s has non zero id %d\n", path, vol->id);
@@ -494,7 +494,7 @@ hammer2_read_volume_header(struct m_vnode *devvp, const char *path,
 
 		/* verify volume header CRC's */
 		crc0 = vd->icrc_sects[HAMMER2_VOL_ICRC_SECT0];
-		crc1 = hammer2_icrc32((char *)bp->b_data + HAMMER2_VOLUME_ICRC0_OFF,
+		crc1 = hammer2_icrc32(bp->b_data + HAMMER2_VOLUME_ICRC0_OFF,
 				      HAMMER2_VOLUME_ICRC0_SIZE);
 		if (crc0 != crc1) {
 			hprintf("%s #%d: volume header crc mismatch sect0 %08x/%08x\n",
@@ -504,7 +504,7 @@ hammer2_read_volume_header(struct m_vnode *devvp, const char *path,
 			continue;
 		}
 		crc0 = vd->icrc_sects[HAMMER2_VOL_ICRC_SECT1];
-		crc1 = hammer2_icrc32((char *)bp->b_data + HAMMER2_VOLUME_ICRC1_OFF,
+		crc1 = hammer2_icrc32(bp->b_data + HAMMER2_VOLUME_ICRC1_OFF,
 				      HAMMER2_VOLUME_ICRC1_SIZE);
 		if (crc0 != crc1) {
 			hprintf("%s #%d: volume header crc mismatch sect1 %08x/%08x\n",
@@ -514,7 +514,7 @@ hammer2_read_volume_header(struct m_vnode *devvp, const char *path,
 			continue;
 		}
 		crc0 = vd->icrc_volheader;
-		crc1 = hammer2_icrc32((char *)bp->b_data + HAMMER2_VOLUME_ICRCVH_OFF,
+		crc1 = hammer2_icrc32(bp->b_data + HAMMER2_VOLUME_ICRCVH_OFF,
 				      HAMMER2_VOLUME_ICRCVH_SIZE);
 		if (crc0 != crc1) {
 			hprintf("%s #%d: volume header crc mismatch vh %08x/%08x\n",

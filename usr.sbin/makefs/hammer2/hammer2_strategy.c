@@ -189,7 +189,7 @@ hammer2_decompress_LZ4_callback(const char *data, u_int bytes, struct bio *bio)
 	KKASSERT(result <= bp->b_bufsize);
 	bcopy(compressed_buffer, bp->b_data, bp->b_bufsize);
 	if (result < bp->b_bufsize)
-		bzero((char *)bp->b_data + result, bp->b_bufsize - result);
+		bzero(bp->b_data + result, bp->b_bufsize - result);
 	objcache_put(cache_buffer_read, compressed_buffer);
 	bp->b_resid = 0;
 	bp->b_flags |= B_AGE;
@@ -237,7 +237,7 @@ hammer2_decompress_ZLIB_callback(const char *data, u_int bytes, struct bio *bio)
 	bcopy(compressed_buffer, bp->b_data, bp->b_bufsize);
 	result = bp->b_bufsize - strm_decompress.avail_out;
 	if (result < bp->b_bufsize)
-		bzero((char *)bp->b_data + result, strm_decompress.avail_out);
+		bzero(bp->b_data + result, strm_decompress.avail_out);
 	objcache_put(cache_buffer_read, compressed_buffer);
 	ret = inflateEnd(&strm_decompress);
 
@@ -431,7 +431,7 @@ hammer2_strategy_read_completion(hammer2_chain_t *focus, const char *data,
 		 */
 		bcopy(((const hammer2_inode_data_t *)data)->u.data,
 		      bp->b_data, HAMMER2_EMBEDDED_BYTES);
-		bzero((char *)bp->b_data + HAMMER2_EMBEDDED_BYTES,
+		bzero(bp->b_data + HAMMER2_EMBEDDED_BYTES,
 		      bp->b_bcount - HAMMER2_EMBEDDED_BYTES);
 		bp->b_resid = 0;
 		bp->b_error = 0;
@@ -468,7 +468,7 @@ hammer2_strategy_read_completion(hammer2_chain_t *focus, const char *data,
 			KKASSERT(focus->bytes <= bp->b_bcount);
 			bcopy(data, bp->b_data, focus->bytes);
 			if (focus->bytes < bp->b_bcount) {
-				bzero((char *)bp->b_data + focus->bytes,
+				bzero(bp->b_data + focus->bytes,
 				      bp->b_bcount - focus->bytes);
 			}
 			bp->b_resid = 0;

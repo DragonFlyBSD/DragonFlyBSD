@@ -1040,7 +1040,7 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 		if (n > size - uio->uio_offset)
 			n = (int)(size - uio->uio_offset);
 		bp->b_flags |= B_AGE;
-		uiomovebp(bp, (char *)bp->b_data + loff, n, uio);
+		uiomovebp(bp, bp->b_data + loff, n, uio);
 		bqrelse(bp);
 	}
 	hammer2_mtx_unlock(&ip->truncate_lock);
@@ -1207,7 +1207,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 		 * Ok, copy the data in
 		 */
 		bkvasync(bp);
-		error = uiomovebp(bp, (char *)bp->b_data + loff, n, uio);
+		error = uiomovebp(bp, bp->b_data + loff, n, uio);
 		kflags |= NOTE_WRITE;
 		modified = 1;
 		if (error) {
