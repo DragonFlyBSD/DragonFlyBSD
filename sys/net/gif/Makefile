@@ -3,7 +3,7 @@
 .PATH: ${.CURDIR}/../../net ${.CURDIR}/../../netinet ${.CURDIR}/../../netinet6
 
 KMOD=	if_gif
-SRCS=	if_gif.c in_gif.c in6_gif.c opt_inet.h opt_inet6.h
+SRCS=	if_gif.c in_gif.c in6_gif.c opt_inet.h opt_inet6.h opt_xbonehack.h
 SRCS+=	device_if.h bus_if.h
 
 .if !defined(KERNBUILDDIR)
