@@ -80,7 +80,9 @@ main(int ac, char **av)
 	sched_cpustr = strdup(av[0]);
 	sched = strsep(&sched_cpustr, ":");
 	if (strcmp(sched, "default") == 0)
-		fprintf(stderr, "Ignoring scheduler == \"default\": not implemented\n");
+		fprintf(stderr,
+			"Ignoring scheduler == \"default\": "
+			"not implemented\n");
 	cpustr = strsep(&sched_cpustr, "");
 	if (strlen(sched) == 0 && cpustr == NULL) {
 		usage();
@@ -92,27 +94,50 @@ main(int ac, char **av)
 	 */
 	if (cpustr != NULL) {
 		uint64_t v;
+		int baseid;
+		char *ptr = cpustr;
 
-		v = (uint64_t)strtoull(cpustr, NULL, 0);
-		for (cpuid = 0; cpuid < (int)sizeof(v) * 8; ++cpuid) {
-			if (v & (1LU << cpuid))
-				CPUMASK_ORBIT(cpumask, cpuid);
+		baseid = 0;
+		for (;;) {
+			if (baseid >= CPU_SETSIZE) {
+				fprintf(stderr, "cpumask too large\n");
+				usage();
+			}
+			v = (uint64_t)strtoull(ptr, &ptr, 0);
+			for (cpuid = 0; cpuid < (int)sizeof(v) * 8; ++cpuid) {
+				if (v & (1LU << cpuid))
+					CPUMASK_ORBIT(cpumask, baseid + cpuid);
+			}
+			if (*ptr == 0)
+				break;
+			if (*ptr != ',') {
+				fprintf(stderr, "cpumask format error\n");
+				usage();
+			}
+			++ptr;
+			baseid += (int)sizeof(v) * 8;
 		}
 	}
 
 	if (strlen(sched) != 0) {
-		if (DebugOpt)
-			fprintf(stderr, "DEBUG: USCHED_SET_SCHEDULER: scheduler: %s\n", sched);
-		res = usched_set(pid, USCHED_SET_SCHEDULER, sched, strlen(sched));
+		if (DebugOpt) {
+			fprintf(stderr,
+				"DEBUG: USCHED_SET_SCHEDULER: scheduler: %s\n",
+				sched);
+		}
+		res = usched_set(pid, USCHED_SET_SCHEDULER,
+				 sched, strlen(sched));
 		if (res != 0) {
-			asprintf(&p, "usched_set(%d, USCHED_SET_SCHEDULER, \"%s\", %d)",
+			asprintf(&p,
+				"usched_set(%d, USCHED_SET_SCHEDULER, "
+				"\"%s\", %d)",
 				pid, sched, (int)strlen(sched));
 			perror(p);
 			exit(1);
 		}
 	}
 	if (CPUMASK_TESTNZERO(cpumask)) {
-		for (cpuid = 0; cpuid < (int)sizeof(cpumask) * 8; ++cpuid) {
+		for (cpuid = 0; cpuid < CPU_SETSIZE; ++cpuid) {
 			if (CPUMASK_TESTBIT(cpumask, cpuid))
 				break;
 		}
@@ -138,9 +163,12 @@ main(int ac, char **av)
 					"DEBUG: USCHED_ADD_CPU: cpuid: %d\n",
 					cpuid);
 			}
-			res = usched_set(pid, USCHED_ADD_CPU, &cpuid, sizeof(int));
+			res = usched_set(pid, USCHED_ADD_CPU,
+					 &cpuid, sizeof(int));
 			if (res != 0) {
-				asprintf(&p, "usched_set(%d, USCHED_ADD_CPU, &%d, %d)",
+				asprintf(&p,
+					"usched_set(%d, USCHED_ADD_CPU, "
+					"&%d, %d)",
 					pid, cpuid, (int)sizeof(int));
 				perror(p);
 				exit(1);
@@ -158,5 +186,8 @@ usage(void)
 	fprintf(stderr,
 		"usage: usched [-d] {scheduler[:cpumask] | :cpumask} "
 		"program [argument ...]\n");
+	fprintf(stderr,
+		"cpumask format: val[,val[,val[,val]]] in 64-bit chunks, "
+		"lsb chunk first\n");
 	exit(1);
 }
