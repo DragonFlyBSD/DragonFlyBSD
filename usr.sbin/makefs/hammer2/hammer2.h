@@ -137,6 +137,7 @@
 #include <mkfs_hammer2.h>
 
 #include "hammer2_compat.h"
+#include "makefs.h"
 
 struct hammer2_io;
 struct hammer2_chain;
@@ -1497,7 +1498,7 @@ int hammer2_getradix(size_t bytes);
 int hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 			hammer2_key_t *lbasep, hammer2_key_t *leofp);
 int hammer2_calc_physical(hammer2_inode_t *ip, hammer2_key_t lbase);
-void hammer2_update_time(uint64_t *timep);
+void hammer2_update_time(uint64_t *timep, bool is_mtime);
 void hammer2_adjreadcounter(int btype, size_t bytes);
 void hammer2_adjwritecounter(int btype, size_t bytes);
 
@@ -2088,6 +2089,8 @@ void
 hammer2_iocom_uninit(hammer2_dev_t *hmp)
 {
 }
+
+extern fsnode *hammer2_curnode;
 
 //#endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */

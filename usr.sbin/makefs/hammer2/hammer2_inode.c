@@ -1048,7 +1048,7 @@ hammer2_inode_create_pfs(hammer2_pfs_t *spmp,
 	xop->meta.comp_algo = pip_comp_algo;
 	xop->meta.check_algo = pip_check_algo;
 	xop->meta.version = HAMMER2_INODE_VERSION_ONE;
-	hammer2_update_time(&xop->meta.ctime);
+	hammer2_update_time(&xop->meta.ctime, false);
 	xop->meta.mtime = xop->meta.ctime;
 	xop->meta.mode = 0755;
 	xop->meta.nlinks = 1;
@@ -1172,7 +1172,7 @@ hammer2_inode_create_normal(hammer2_inode_t *pip,
 	nip->meta.comp_algo = pip_comp_algo;
 	nip->meta.check_algo = pip_check_algo;
 	nip->meta.version = HAMMER2_INODE_VERSION_ONE;
-	hammer2_update_time(&nip->meta.ctime);
+	hammer2_update_time(&nip->meta.ctime, false);
 	nip->meta.mtime = nip->meta.ctime;
 	nip->meta.mode = vap->va_mode;
 	nip->meta.nlinks = 1;

@@ -309,14 +309,16 @@ hammer2_calc_physical(hammer2_inode_t *ip, hammer2_key_t lbase)
 }
 
 void
-hammer2_update_time(uint64_t *timep)
+hammer2_update_time(uint64_t *timep, bool is_mtime)
 {
-	struct timeval ts;
-	int error;
+	struct timespec *ts;
+	struct stat *st;
 
-	error = gettimeofday(&ts, NULL);
-	KKASSERT(error == 0);
-	*timep = (unsigned long)ts.tv_sec * 1000000 + ts.tv_usec;
+	assert(hammer2_curnode);
+	st = stampst.st_ino != 0 ? &stampst : &hammer2_curnode->inode->st;
+	ts = is_mtime ? &st->st_mtim : &st->st_ctim;
+
+	*timep = (uint64_t)ts->tv_sec * 1000000 + ts->tv_nsec / 1000;
 }
 
 void

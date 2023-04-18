@@ -66,6 +66,8 @@ static void hammer2_validate(const char *, fsnode *, fsinfo_t *);
 static void hammer2_size_dir(fsnode *, fsinfo_t *);
 static int hammer2_write_file(struct m_vnode *, const char *, fsnode *);
 
+fsnode *hammer2_curnode;
+
 void
 hammer2_prep_opts(fsinfo_t *fsopts)
 {
@@ -685,6 +687,9 @@ hammer2_populate_dir(struct m_vnode *dvp, const char *dir, fsnode *root,
 		errx(1, "no such dir %s", dir);
 
 	for (cur = root->next; cur != NULL; cur = cur->next) {
+		/* global variable for HAMMER2 vnops */
+		hammer2_curnode = cur;
+
 		/* construct source path */
 		if (cur->contents) {
 			path = cur->contents;

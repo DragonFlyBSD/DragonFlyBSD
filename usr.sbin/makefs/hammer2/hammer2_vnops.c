@@ -1300,7 +1300,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 			}
 			*/
 		} else {
-			hammer2_update_time(&ip->meta.mtime);
+			hammer2_update_time(&ip->meta.mtime, true);
 			vclrflags(vp, VLASTWRITETS);
 		}
 
@@ -1628,7 +1628,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 		uint64_t mtime;
 
 		/*hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);*/
-		hammer2_update_time(&mtime);
+		hammer2_update_time(&mtime, true);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
 		/*hammer2_inode_unlock(dip);*/
@@ -1773,7 +1773,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 */
 	hammer2_inode_lock4(tdip, ip, NULL, NULL);
 
-	hammer2_update_time(&cmtime);
+	hammer2_update_time(&cmtime, true);
 
 	/*
 	 * Create the directory entry and bump nlinks.
@@ -1894,7 +1894,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 		uint64_t mtime;
 
 		/*hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);*/
-		hammer2_update_time(&mtime);
+		hammer2_update_time(&mtime, true);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
 		/*hammer2_inode_unlock(dip);*/
@@ -2000,7 +2000,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 		uint64_t mtime;
 
 		/*hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);*/
-		hammer2_update_time(&mtime);
+		hammer2_update_time(&mtime, true);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
 		/*hammer2_inode_unlock(dip);*/
@@ -2138,7 +2138,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 		uint64_t mtime;
 
 		/*hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);*/
-		hammer2_update_time(&mtime);
+		hammer2_update_time(&mtime, true);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
 		/*hammer2_inode_unlock(dip);*/
