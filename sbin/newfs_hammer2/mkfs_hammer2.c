@@ -103,9 +103,9 @@ hammer2_mkfs_init(hammer2_mkfs_options_t *opt)
 	 * Generate a filesystem id and lookup the filesystem type
 	 */
 	srandomdev();
-	uuidgen(&opt->Hammer2_VolFSID, 1);
-	uuidgen(&opt->Hammer2_SupCLID, 1);
-	uuidgen(&opt->Hammer2_SupFSID, 1);
+	uuid_create(&opt->Hammer2_VolFSID, NULL);
+	uuid_create(&opt->Hammer2_SupCLID, NULL);
+	uuid_create(&opt->Hammer2_SupFSID, NULL);
 	uuid_from_string(HAMMER2_UUID_STRING, &opt->Hammer2_FSType, &status);
 	/*uuid_name_lookup(&Hammer2_FSType, "DragonFly HAMMER2", &status);*/
 	if (status != uuid_s_ok) {
@@ -329,8 +329,8 @@ format_hammer2_inode(hammer2_volume_t *vol, hammer2_mkfs_options_t *opt,
 	alloc_direct(&alloc_base, &sroot_blockref, HAMMER2_INODE_BYTES);
 
 	for (i = 0; i < opt->NLabels; ++i) {
-		uuidgen(&opt->Hammer2_PfsCLID[i], 1);
-		uuidgen(&opt->Hammer2_PfsFSID[i], 1);
+		uuid_create(&opt->Hammer2_PfsCLID[i], NULL);
+		uuid_create(&opt->Hammer2_PfsFSID[i], NULL);
 
 		alloc_direct(&alloc_base, &root_blockref[i],
 			     HAMMER2_INODE_BYTES);
