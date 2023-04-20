@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2023.02.23
-#	Date:    2023-02-23 03:15:02
+#	Version: 2023.04.10
+#	Date:    2023-04-10 20:08:02
 #
 #	Maintained by Albert Pool, Martin Mares, and other volunteers from
 #	the PCI ID Project at https://pci-ids.ucw.cz/.
@@ -49,6 +49,8 @@
 	7a19  PCI-to-PCI Bridge
 	7a24  OHCI USB Controller
 	7a29  PCI-to-PCI Bridge
+0018  Fn-Link Technology Limited
+	6252  6252CPUB 802.11ax PCIe Wireless Network Adapter
 001c  PEAK-System Technik GmbH
 	0001  PCAN-PCI CAN-Bus controller
 		001c 0004  2 Channel CAN Bus SJC1000
@@ -80,7 +82,13 @@
 	8139  HNE-300 (RealTek RTL8139c) [iPaq Networking]
 025e  Solidigm
 	0b60  NVMe DC SSD [Sentinel Rock Plus controller]
-# Solidigm SSD Product
+		025e 8208  NVMe DC SSD U.2 15mm [D7-P5810]
+		025e d408  NVMe DC SSD U.2 15mm [D5-P5430]
+		025e d40c  NVMe DC SSD E1.S 9.5mm [D5-P5430]
+		025e d419  NVMe DC SSD E3.S 7.5mm [D5-P5430]
+		025e d808  NVMe DC SSD U.2 15mm [D5-P5336]
+		025e d819  NVMe DC SSD E3.S 7.5mm [D5-P5336]
+		025e d81d  NVMe DC SSD E1.L 9.5mm [D5-P5336]
 	0b70  NVMe DC SSD [Yorktown controller]
 0270  Hauppauge computer works Inc. (Wrong ID)
 0291  Davicom Semiconductor, Inc. (Wrong ID)
@@ -400,8 +408,7 @@
 		103c 3108  Single Channel Ultra320 SCSI HBA G2
 		103c 322a  SC11Xe Ultra320 Single Channel PCIe x4 SCSI Host Bus Adapter (412911-B21)
 		124b 1170  PMC-USCSI320
-# VMware's emulation of this device. Was missing from the list.
-		15ad 1976  LSI Logic Parallel SCSI Controller
+		15ad 1976  LSI Logic Parallel SCSI Controller (emulated)
 		1734 1052  PRIMERGY BX/RX/TX S2 series onboard SCSI(IME)
 	0031  53c1030ZC PCI-X Fusion-MPT Dual Ultra320 SCSI
 	0032  53c1035 PCI-X Fusion-MPT Dual Ultra320 SCSI
@@ -765,6 +772,9 @@
 		1028 2142  HBA465e Adapter
 		1028 2209  HBA465i Adapter
 		1028 220a  HBA465i Front
+		15d9 1d03  AOC-S4116L-H16IR (16DD/96DD) RAID Adapter
+		15d9 1d07  AOC-S4016L-L16IT Storage Adapter
+		15d9 1d08  AOC-S4016L-L16IR Storage Adapter
 		1d49 020a  ThinkSystem 450W-16e SAS/SATA PCIe Gen4 24Gb HBA
 	00ab  SAS3516 Fusion-MPT Tri-Mode RAID On Chip (ROC)
 # 8 Internal and 8 External port channel 9400 HBA
@@ -864,6 +874,9 @@
 		1028 2175  HBA350i Adapter
 		1028 2197  HBA350i MM LP
 		1028 2212  HBA355e-s Adapter
+		15d9 1b64  SCC-B8SB80-B1 (NI22) Storage Controller Card
+		15d9 1b65  AOC-S3816L-L16iT (NI22) Storage Adapter
+		15d9 1b99  AOC-S3808L-L8iT Storage Adapter
 		1d49 0205  ThinkSystem 440-16i SAS/SATA PCIe Gen4 12Gb Internal HBA
 		1d49 0206  ThinkSystem 440-16e SAS/SATA PCIe Gen4 12Gb HBA
 		1d49 0207  ThinkSystem 440-8i SAS/SATA PCIe Gen4 12Gb HBA
@@ -992,6 +1005,9 @@
 		1028 1ae3  PERC H755 MX
 		1028 2171  PERC H750 Mini
 		1028 2176  PERC H750 Adapter
+		15d9 1b66  AOC-S3908L-H8iR RAID Adapter
+		15d9 1b67  AOC-S3916L-H16iR RAID Adapter
+		15d9 1c06  AOC-S3916L-H16iR-32DD+ RAID Adapter
 		1d49 060a  ThinkSystem RAID 940-8i 4GB Flash PCIe Gen4 12Gb Adapter
 		1d49 060b  ThinkSystem RAID 940-8i 8GB Flash PCIe Gen4 12Gb Adapter
 		1d49 060c  ThinkSystem RAID 940-16i 8GB Flash PCIe Gen4 12Gb Adapter
@@ -1015,6 +1031,10 @@
 		1028 2174  PERC H350 Mini
 		1028 2177  PERC H350 Adapter
 		1028 2199  PERC H350 Mini LP
+		15d9 1b9d  AOC-S3816L-L16IR Storage Adapter
+		15d9 1b9f  AOC-S3816L-L8IR Storage Adapter
+		15d9 1c6d  AOC-S3808L-L8IR Storage Adapter
+		15d9 1c6e  AOC-SLG4-2H8M2 Storage Adapter
 		1d49 0505  ThinkSystem RAID 540-8i PCIe Gen4 12Gb Adapter
 		1d49 0506  ThinkSystem RAID 540-16i PCIe Gen4 12Gb Adapter
 	10e7  MegaRAID 12GSAS/PCIe Unsupported SAS38xx
@@ -1354,7 +1374,7 @@
 		1043 8445  M5A78L LE
 		105b 0e13  N15235/A74MX mainboard / AMD SB700
 		1179 ff50  Satellite P305D-S8995E
-		1458 a022  GA-MA770-DS3rev2.0 Motherboard
+		1458 a022  GA-770/78-series motherboard
 		1458 a102  GA-880GMA-USB3
 		1462 7596  760GM-E51(MS-7596) Motherboard
 		17f2 5000  KI690-AM2 Motherboard
@@ -1367,7 +1387,7 @@
 		1043 8389  M4A785TD Motherboard
 		105b 0e13  N15235/A74MX mainboard / AMD SB700
 		1179 ff50  Satellite P305D-S8995E
-		1458 4385  GA-MA770-DS3rev2.0 Motherboard
+		1458 4385  GA-770/78-series motherboard
 		1462 7368  K9AG Neo2
 		1462 7596  760GM-E51(MS-7596) Motherboard
 		15d9 a811  H8DGU
@@ -1429,7 +1449,7 @@
 		1043 8443  M5A88-V EVO
 		1043 84dd  M5A99X EVO (R1.0) SB950
 		105b 0e13  N15235/A74MX mainboard / AMD SB700
-		1458 b002  GA-880GMA-USB3
+		1458 b002  GA-78/880-series motherboard
 		174b 1001  PURE Fusion Mini
 	4392  SB7x0/SB8x0/SB9x0 SATA Controller [Non-RAID5 mode]
 		105b 0e13  N15235/A74MX mainboard / AMD SB700
@@ -1443,7 +1463,7 @@
 		1043 82ef  M3A78-EH Motherboard
 		1043 8443  M5A88-V EVO
 		105b 0e13  N15235/A74MX mainboard / AMD SB700
-		1458 5004  GA-880GMA-USB3
+		1458 5004  GA-78/880-series motherboard
 		1462 7596  760GM-E51(MS-7596) Motherboard
 		15d9 a811  H8DGU
 		174b 1001  PURE Fusion Mini
@@ -1454,7 +1474,7 @@
 		1043 82ef  M3A78-EH Motherboard
 		1043 8443  M5A88-V EVO
 		105b 0e13  N15235/A74MX mainboard / AMD SB700
-		1458 5004  GA-880GMA-USB3
+		1458 5004  GA-78/880-series motherboard
 		1462 7596  760GM-E51(MS-7596) Motherboard
 		15d9 a811  H8DGU
 		174b 1001  PURE Fusion Mini
@@ -1462,6 +1482,7 @@
 		1019 2120  A785GM-M
 		1043 82ef  M3A78-EH Motherboard
 		105b 0e13  N15235/A74MX mainboard / AMD SB700
+		1458 5004  GA-MA78GM-S2H motherboard
 		1462 7596  760GM-E51(MS-7596) Motherboard
 		15d9 a811  H8DGU
 	4399  SB7x0/SB8x0/SB9x0 USB OHCI2 Controller
@@ -1469,7 +1490,7 @@
 		1043 82ef  M3A78-EH Motherboard
 		1043 8443  M5A88-V EVO
 		105b 0e13  N15235/A74MX mainboard / AMD SB700
-		1458 5004  GA-880GMA-USB3
+		1458 5004  GA-78/880-series motherboard
 		1462 7596  760GM-E51(MS-7596) Motherboard
 		174b 1001  PURE Fusion Mini
 	439c  SB7x0/SB8x0/SB9x0 IDE Controller
@@ -1478,6 +1499,7 @@
 		103c 1609  ProLiant MicroServer N36L
 		1043 82ef  M3A78-EH Motherboard
 		105b 0e13  N15235/A74MX mainboard / AMD SB700
+		1458 5002  GA-MA78GM-S2H motherboard
 		1462 7596  760GM-E51(MS-7596) Motherboard
 	439d  SB7x0/SB8x0/SB9x0 LPC host controller
 		1019 2120  A785GM-M
@@ -2749,7 +2771,7 @@
 # FX-797A-TNBC
 		1682 3213  HD 7970 Black Edition
 		1682 3214  Double D HD 7970
-		1787 201c  HD 7970 IceQ XÂ²
+		1787 201c  HD 7970 IceQ X²
 # Radeon HD 7970 X2
 		1787 2317  Radeon HD 7990
 		1787 3000  Tahiti XT2 [Radeon HD 7970 GHz Edition]
@@ -2812,7 +2834,7 @@
 		174b e282  Vapor-X R9 290X Tri-X OC
 		174b e285  R9 290X Tri-X OC
 		174b e324  Grenada XT2 [Radeon R9 390X]
-		1787 2020  R9 290X IceQ XÂ² Turbo
+		1787 2020  R9 290X IceQ X² Turbo
 		1787 2357  Grenada XT [Radeon R9 390X]
 	67b1  Hawaii PRO [Radeon R9 290/390]
 		1043 04dd  STRIX R9 390
@@ -2837,7 +2859,6 @@
 		1002 0b37  Radeon RX 480
 		1028 1722  Radeon RX 570X
 		1028 1723  Radeon RX 580X
-# OEM card found in desktops sold by HP.
 		103c 840e  Radeon RX 580 4GB
 		1043 04a8  Radeon RX 480
 		1043 04b0  Radeon RX 470
@@ -2860,7 +2881,6 @@
 		148c 2372  Radeon RX 480 [Red Dragon]
 		148c 2373  Radeon RX 470
 		148c 2377  Red Devil RX 580 8G Golden
-# https://www.techpowerup.com/vgabios/?manufacturer=Powercolor&model=RX+580
 		148c 2378  Radeon RX 580
 		148c 2379  Radeon RX 570 4G [Red Dragon]
 		148c 2391  Radeon RX 590 [Red Devil]
@@ -3656,6 +3676,7 @@
 	692b  Tonga PRO GL [FirePro W7100]
 		13cc 3d2b  MXRT-7600
 	692f  Tonga XTV GL [FirePro S7150V]
+	6930  Tonga PRO [Radeon R9 380 4GB]
 	6938  Tonga XT / Amethyst XT [Radeon R9 380X / R9 M295X]
 		1043 04f5  Radeon R9 380X
 		1043 04f7  Radeon R9 380X
@@ -3668,7 +3689,6 @@
 	6939  Tonga PRO [Radeon R9 285/380]
 		1462 2015  Radeon R9 380 Gaming 4G
 		148c 9380  Radeon R9 380
-# Make naming scheme consistent
 		174b e308  Radeon R9 380 Nitro 4G D5
 		174b e315  Radeon R9 285
 	693b  Tonga PRO GL [FirePro W7100 / Barco MXRT-7600]
@@ -3703,7 +3723,7 @@
 		1002 0322  All-in-Wonder X1800XL
 		1002 0d02  Radeon X1800 CrossFire Edition
 	710a  R520 [Radeon X1800 GTO]
-		1002 0b12  Radeon X1800 GTOÂ²
+		1002 0b12  Radeon X1800 GTO²
 	710b  R520 [Radeon X1800 GTO]
 	710e  R520 GL [FireGL V7300]
 		13cc 3d0c  MXRT-5150
@@ -3866,6 +3886,7 @@
 	73a3  Navi 21 GL-XL [Radeon PRO W6800]
 	73a4  Navi 21 USB
 	73a5  Navi 21 [Radeon RX 6950 XT]
+		1849 5230  Navi 21 [ASRock OC Forumla Radeon RX 6950XT]
 		1da2 441d  Navi 21 [Sapphire Nitro+ Radeon RX 6950 XT]
 	73ab  Navi 21 Pro-XLA [Radeon Pro W6800X/Radeon Pro W6800X Duo]
 	73ae  Navi 21 [Radeon Pro V620 MxGPU]
@@ -3874,6 +3895,7 @@
 	73bf  Navi 21 [Radeon RX 6800/6800 XT / 6900 XT]
 		1002 0e3a  Radeon RX 6900 XT
 		148c 2408  Red Devil AMD Radeon RX 6900 XT
+		1da2 438e  NITRO+ Radeon RX 6800 XT
 		1da2 440f  TOXIC RX 6900 XT
 		1da2 e437  Pulse Radeon RX 6800
 		1eae 6701  Speedster MERC 319 AMD Radeon RX 6800 XT Black
@@ -3896,7 +3918,6 @@
 	73ff  Navi 23 [Radeon RX 6600/6600 XT/6600M]
 		1462 5022  RX 6600 MECH 2X
 		148c 2412  PowerColor Red Devil RX 6600 XT
-# This is the non-XT version
 		1849 5218  Radeon RX 6600 Challenger ITX 8GB
 	7408  Aldebaran/MI200 [Instinct MI250X]
 	740c  Aldebaran/MI200 [Instinct MI250X/MI250]
@@ -3910,7 +3931,7 @@
 	744c  Navi 31 [Radeon RX 7900 XT/7900 XTX]
 		1da2 e471  NITRO+ RX 7900 XTX Vapor-X
 		1eae 7901  RX-79XMERCB9 [SPEEDSTER MERC 310 RX 7900 XTX]
-	7480  Navi 33 [Radeon RX 7600S]
+	7480  Navi 33 [Radeon RX 7700S/7600S]
 	7483  Navi 33 [Radeon RX 7600M/7600M XT]
 	7833  RS350 Host Bridge
 	7834  RS350 [Radeon 9100 PRO/XT IGP]
@@ -4083,7 +4104,6 @@
 	9588  RV630 XT [Radeon HD 2600 XT]
 		1458 216c  Radeon HD 2600 XT, 256MB GDDR3, 2x DVI, TV-out, PCIe (GV-RX26T256H)
 	9589  RV630 PRO [Radeon HD 2600 PRO]
-# Rebranded HD 2600 PRO
 		1787 3000  Radeon HD 3610
 	958a  RV630 [Radeon HD 2600 X2]
 	958b  RV630/M76 [Mobility Radeon HD 2600 XT]
@@ -5887,7 +5907,6 @@
 		110a 001e  MGA-G100 AGP
 	2007  MGA Mistral
 	2527  Millennium G550
-# PCI\VEN_102B&DEV_2527&SUBSYS_0F42102B&REV_01
 		102b 0f42  Matrox G550 Low Profile PCI
 		102b 0f83  Millennium G550
 		102b 0f84  Millennium G550 Dual Head DDR 32Mb
@@ -6569,7 +6588,6 @@
 	0009  STG 1764X
 	0010  STG4000 [3D Prophet Kyro Series]
 		104a 4018  ST PowerVR Kyro (64MB AGP TVO)
-# 64MB AGP
 		1681 0010  PowerVR Kyro II [3D Prophet 4500]
 		1681 0028  3D Prophet 4000XT
 		1681 c010  3D Prophet 4500 TV-Out
@@ -7495,7 +7513,7 @@
 		1077 02f2  QLogic 1x32Gb QLE2770 FC HBA
 		1077 02f3  QLogic 2x32Gb QLE2772 FC HBA
 		1590 02d3  SN1610Q - 1P Enhanced 32GFC Single Port Fibre Channel Host Bus Adapter
-		1590 02d4  SN1610Q â€“ 2P Enhanced 32GFC Dual Port Fibre Channel Host Bus Adapter
+		1590 02d4  SN1610Q - 2P Enhanced 32GFC Dual Port Fibre Channel Host Bus Adapter
 	2289  ISP2852-based 64/32G Fibre Channel to PCIe Controller with StorCryption
 		1077 02e9  QLE2882 Dual Port 64GFC PCIe Gen4 x8 Adapter with StorCryption
 		1077 02eb  QLE2782 Dual Port 32GFC PCIe Gen4 x8 Adapter with StorCryption
@@ -12525,7 +12543,7 @@
 		10de 1349  GRID RTX T10-2
 		10de 1370  Tesla T10 16GB
 		10de 13a5  GRID RTX T10-8
-	1e38  TU102GL [Tesla T10 24GB]
+	1e38  TU102GL [Tesla T40 24GB]
 	1e3c  TU102GL
 	1e3d  TU102GL
 	1e3e  TU102GL
@@ -12636,6 +12654,7 @@
 	20f3  GA100 [A800-SXM4-80GB]
 	20f5  GA100 [A800 80GB PCIe]
 	20f6  GA100 [A800 40GB PCIe]
+	20fd  GA100 [A100T]
 	2182  TU116 [GeForce GTX 1660 Ti]
 	2183  TU116
 	2184  TU116 [GeForce GTX 1660]
@@ -12681,10 +12700,12 @@
 	2302  GH100
 	2313  GH100 [H100 CNX]
 	2321  GH100
-	2322  GH100 [H800]
+	2322  GH100 [H800 PCIe]
+	2324  GH100 [H800]
 	2330  GH100[H100 SXM5 80GB]
 	2331  GH100 [H100 PCIe]
 	2336  GH100 [H100]
+	2339  GH100 [H100]
 	2414  GA103 [GeForce RTX 3060 Ti]
 	2420  GA103M [GeForce RTX 3080 Ti Mobile]
 	2438  GA103GLM [RTX A5500 Laptop GPU]
@@ -12717,7 +12738,9 @@
 	24ba  GA104GLM [RTX A4500 Laptop GPU]
 	24bb  GA104GLM [RTX A3000 Laptop GPU]
 	24bf  GA104 [GeForce RTX 3070 Engineering Sample]
-	24c9  GA104 [GeForce RTX 3060 Ti]
+	24c7  GA104 [GeForce RTX 3060 GDDR6X]
+	24c8  GA104 [GeForce RTX 3070 GDDR6X]
+	24c9  GA104 [GeForce RTX 3060 Ti GDDR6X]
 	24dc  GA104M [GeForce RTX 3080 Mobile / Max-Q 8GB/16GB]
 	24dd  GA104M [GeForce RTX 3070 Mobile / Max-Q]
 	24df  GA104M
@@ -12763,6 +12786,7 @@
 	25ba  GA107GLM [RTX A2000 8GB Laptop GPU]
 	25bb  GA107GLM [RTX A500 Laptop GPU]
 	25bc  GA107GLM [RTX A1000 6GB Laptop GPU]
+	25bd  GA107GLM [RTX A500 Laptop GPU]
 	25e0  GA107BM [GeForce RTX 3050 Ti Mobile]
 	25e2  GA107BM [GeForce RTX 3050 Mobile]
 	25e5  GA107BM [GeForce RTX 3050 Mobile]
@@ -12785,10 +12809,13 @@
 	2785  AD104
 	2786  AD104 [GeForce RTX 4070]
 	27a0  AD104M [GeForce RTX 4080 Max-Q / Mobile]
+	27b0  AD104GL [RTX 4000 SFF Ada Generation]
+	27b7  AD104GL [L16]
 	27b8  AD104GL [L4]
-	27ba  AD104
+	27ba  AD104GLM [RTX 4000 Ada Generation Laptop GPU]
 	27bb  AD104GLM [RTX 3500 Ada Generation Laptop GPU]
 	27e0  AD104M [GeForce RTX 4080 Max-Q / Mobile]
+	2803  AD106 [GeForce RTX 4060 Ti]
 	2820  AD106M [GeForce RTX 4070 Max-Q / Mobile]
 	2838  AD106GLM [RTX 3000 Ada Generation Laptop GPU]
 	2860  AD106M [GeForce RTX 4070 Max-Q / Mobile]
@@ -13006,6 +13033,7 @@
 10ec  Realtek Semiconductor Co., Ltd.
 	0139  RTL-8139/8139C/8139C+ Ethernet Controller
 	3000  Killer E3000 2.5GbE Controller
+	4321  RTL8852BE 802.11ax PCIe Wireless Network Adapter
 	5208  RTS5208 PCI Express Card Reader
 	5209  RTS5209 PCI Express Card Reader
 	5227  RTS5227 PCI Express Card Reader
@@ -13227,7 +13255,7 @@
 		10ec 8739  Dell Wireless 1801
 		17aa b736  Z50-75
 	b822  RTL8822BE 802.11a/b/g/n/ac WiFi adapter
-		103c 831b  Realtek RTL8822BE 802.11ac 2 Ã— 2 Wi-Fi + Bluetooth 4.2 Combo Adapter (MU-MIMO supported)
+		103c 831b  Realtek RTL8822BE 802.11ac 2x2 Wi-Fi + Bluetooth 4.2 Combo Adapter (MU-MIMO supported)
 		17aa 5124  ThinkPad E595
 		17aa b023  ThinkPad E595
 	c821  RTL8821CE 802.11ac PCIe Wireless Network Adapter
@@ -13254,16 +13282,11 @@
 	3fc4  RME Digi9652 (Hammerfall)
 	3fc5  RME Hammerfall DSP
 	3fc6  RME Hammerfall DSP MADI
-# Reference: https://xilinx.github.io/Alveo-Cards/master/management-specification/appendix_a.html
 	5000  Alveo U200 XDMA Platform
-# Reference: https://xilinx.github.io/Alveo-Cards/master/management-specification/appendix_a.html
 	5004  Alveo U250 XDMA Platform
 	5005  Alveo U250
-# Reference: https://xilinx.github.io/Alveo-Cards/master/management-specification/appendix_a.html
 	500c  Alveo U280 XDMA Platform
-# Reference: https://xilinx.github.io/Alveo-Cards/master/management-specification/appendix_a.html
 	5020  Alveo U50 XMDA Platform
-# Reference: https://xilinx.github.io/Alveo-Cards/master/management-specification/appendix_a.html
 	505c  Alveo U55C
 	6987  SmartSSD
 	6988  SmartSSD
@@ -13277,13 +13300,9 @@
 	9134  SmartSSD
 	9234  SmartSSD
 	9434  SmartSSD
-# Reference: https://xilinx.github.io/Alveo-Cards/master/management-specification/appendix_a.html
 	d000  Alveo U200 Golden Image
-# Reference: https://xilinx.github.io/Alveo-Cards/master/management-specification/appendix_a.html
 	d004  Alveo U250 Golden Image
-# Reference: https://xilinx.github.io/Alveo-Cards/master/management-specification/appendix_a.html
 	d00c  Alveo U280 Golden Image
-# Reference: https://xilinx.github.io/Alveo-Cards/master/management-specification/appendix_a.html
 	d020  Alveo U50 Golden Image
 	d154  Copley Controls CAN card (PCI-CAN-02)
 # SED is assigned Xilinx PCI device IDs ebf0 through ebff
@@ -13793,6 +13812,7 @@
 		147b 1407  KV8-MAX3 motherboard
 		1695 300c  Realtek ALC655 audio on EP-8KRA series mainboard
 		16f3 4170  J7F2 motherboard
+		1734 1078  Amilo L7300T notebook
 		1849 0850  ASRock 775Dual-880 Pro onboard audio (Realtek ALC850)
 		1849 9739  P4VT8 Mainboard (C-Media CMI9739A codec)
 # probably all K7VT2/4*/6
@@ -14075,8 +14095,7 @@
 	9082  Standard AHCI 1.0 SATA Controller
 	9140  HDMI Audio Device
 	9201  USB3.0 Controller
-# Centaur CNS Coprocessor
-	9380  Ncore Coprocessor
+	9380  Ncore Coprocessor for Centaur CNS
 	9530  VX800/820/900 Series Secure Digital Memory Card Controller
 	95d0  VX800/820/900 Series SDIO Host Controller
 	a208  PT890 PCI to PCI Bridge Controller
@@ -14622,8 +14641,7 @@
 		153b 1157  Cinergy 1200 DVB-T
 		153b 1176  Cinergy 1200 DVB-C (MK3)
 		1894 0020  KNC One DVB-C V1.0
-		1894 0023  TVStation DVB-C plus
-# http://www.knc1.com/gb.htm
+		1894 0023  TV-Station DVB-C plus
 		1894 0054  TV-Station DVB-S
 	7160  SAA7160
 		1458 9009  E8000 DVB-T/Analog TV/FM tuner
@@ -16482,6 +16500,13 @@
 	0000  EasyConnect 8/32
 	0002  EasyConnect 8/64
 	0003  EasyIO
+	0047  PCIe4 CDa
+	004b  PCIe4 CDa 16
+	009d  VisionLink F1
+	00a0  PCIe8g3 S5 (10G/40G)
+	00a3  VisionLink F4
+	00a9  VisionLink CLS
+	00ab  PCIe8g3 A5 10G
 123e  Simutech, Inc.
 # nee C-Cube Microsystems / acquired by Magnum Semiconductor
 123f  LSI Logic
@@ -16628,11 +16653,11 @@
 		14fe 0429  ES56-PI Data Fax Modem
 125e  Specialvideo Engineering SRL
 125f  Concurrent Technologies, Inc.
-# 4 x serial ports, 2 x printer ports
+# 4x serial ports, 2x printer ports
 	2071  CC PMC/232
-# 4 x serial ports, 2 x printer ports
+# 4x serial ports, 2x printer ports
 	2084  CC PMC/23P
-# 4 x serial ports, RS422
+# 4x serial ports, RS422
 	2091  CC PMC/422
 1260  Intersil Corporation
 	3872  ISL3872 [Prism 3]
@@ -18026,7 +18051,7 @@
 		1043 8180  NX1101
 13f1  Oce' - Technologies B.V.
 13f2  Ford Microelectronics Inc
-13f3  Mcdata Corporation
+13f3  Brocade Communications Systems, Inc.
 13f4  Troika Networks, Inc.
 	1401  Zentai Fibre Channel Adapter
 13f5  Kansai Electric Co. Ltd
@@ -19427,7 +19452,6 @@
 	e836  M115S Hybrid Analog/DVB PAL/SECAM/NTSC Tuner
 	f436  AVerTV Hybrid+FM
 1462  Micro-Star International Co., Ltd. [MSI]
-# VIA Driver-inf
 	3483  MSI USB 3.0 (VIA VL80x-based xHCI USB Controller)
 	7c56  Realtek Ethernet controller RTL8111H
 	aaf0  Radeon RX 580 Gaming X 8G
@@ -20474,7 +20498,7 @@
 	5850  BCM5850 Crypto Accelerator
 	5e87  Valkyrie offload engine
 	5e88  Viper Offload Engine
-# bluetooth PCI function of the BRCM4378 Wireless Network Adapter
+# Bluetooth PCI function of the BRCM4378 Wireless Network Adapter
 	5f69  BRCM4378 Bluetooth Controller
 # Bluetooth PCI function of the BRCM4387 Wireless Network Adapter
 	5f71  BRCM4387 Bluetooth Controller
@@ -20500,20 +20524,15 @@
 	b472  BCM56472 SWITCH ASIC
 	b800  BCM56800 StrataXGS 10GE Switch Controller
 	b842  BCM56842 Trident 10GE Switch Controller
-# Trident2
-	b850  Broadcom BCM56850 Switch ASIC
+	b850  BCM56850 Switch ASIC [Trident2]
 	b880  BCM56880 Switch ASIC
-# Tomahawk
-	b960  Broadcom BCM56960 Switch ASIC
-# Tomahawk4
-	b990  BCM56990 Switch ASIC
-# Tomahawk4G
-	b996  BCM56996 Tomahawk4G 106G Switch ASIC
-# Tomahawk4GT
-	b998  BCM56998 Tomahawk4GT 106G Switch ASIC
-# Tomahawk4D
-	b999  BCM56999 Tomahawk4D 106G Switch ASIC
+	b960  BCM56960 Switch ASIC [Tomahawk]
+	b990  BCM56990 Switch ASIC [Tomahawk4]
+	b996  BCM56996 106G Switch ASIC [Tomahawk4G]
+	b998  BCM56998 106G Switch ASIC [Tomahawk4GT]
+	b999  BCM56999 106G Switch ASIC [Tomahawk4D]
 	c909  BCM78909 Switch ASIC
+	c914  BCM78914 Switch ASIC [Tomahawk6C]
 	d802  BCM58802 Stingray 50Gb Ethernet SoC
 		14e4 8021  Stingray Dual-Port 25Gb Ethernet PCIe SmartNIC w16GB DRAM (Part No BCM958802A8046C)
 		14e4 8023  PS410T-H04 NetXtreme-S 4x10G 10GBaseT PCIe SmartNIC
@@ -20521,8 +20540,7 @@
 		14e4 8028  Stingray Dual-Port 25Gb Ethernet PCIe SmartNIC w8GB DRAM (Part No BCM958802A8048C)
 		1bb0 0021  HPE SimpliVity Accelerator
 	d804  BCM58804 Stingray 100Gb Ethernet SoC
-# Trident5-X12 Switch ASIC
-	f800  BCM78800 switch ASIC for f800
+	f800  BCM78800 Switch ASIC [Trident5-X12]
 14e5  Pixelfusion Ltd
 14e6  SHINING Technology Inc
 14e7  3CX
@@ -21062,7 +21080,7 @@
 156d  Alpha-Top Corp
 156e  Alfa Inc
 156f  M-Systems Flash Disk Pioneers Ltd
-1570  Lecroy Corp
+1570  Teledyne Lecroy
 1571  Contemporary Controls
 	a001  CCSI PCI20-485 ARCnet
 	a002  CCSI PCI20-485D ARCnet
@@ -21239,9 +21257,7 @@
 	0281  NPS-600 Flash Recovery
 	0282  ArcusE Flash recovery
 	0283  ArcusE RMA
-# Sagitta ID
 	0284  Sagitta
-# Sagitta RMA
 	0285  Sagitta RMA
 	1002  MT25400 Family [ConnectX-2 Virtual Function]
 	1003  MT27500 Family [ConnectX-3]
@@ -21261,10 +21277,8 @@
 		15b3 0066  ConnectX-3 IB FDR10 Dual Port Mezzanine Card
 		15b3 0067  ConnectX-3 VPI IB FDR/40 GbE Single Port QSFP+ Adapter
 		15b3 0071  ConnectX-3 VPI IB FDR/40 GbE Dual Port QSFP+ Mezzanine Card
-# SVID = 15B3 SSID = 0078
 		15b3 0078  ConnectX-3 10 GbE Dual Port KR Mezzanine Card
 		15b3 0079  ConnectX-3 40 GbE Dual Port QSFP+ Adapter
-# SVID = 15B3 SSID = 0080
 		15b3 0080  ConnectX-3 10 GbE Dual Port SFP+ Adapter
 	1004  MT27500/MT27520 Family [ConnectX-3/ConnectX-3 Pro Virtual Function]
 	1005  MT27510 Family
@@ -21323,10 +21337,10 @@
 		193d 1084  NIC-ETH540F-3S-2P
 	1016  MT27710 Family [ConnectX-4 Lx Virtual Function]
 	1017  MT27800 Family [ConnectX-5]
-		15b3 0006  ConnectXÂ®-5 EN network interface card, 100GbE single-port QSFP28, PCIe3.0 x16, tall bracket; MCX515A-CCAT
-		15b3 0007  Mellanox ConnectXÂ®-5 MCX516A-CCAT
-		15b3 0020  ConnectXÂ®-5 EN network interface card, 10/25GbE dual-port SFP28, PCIe3.0 x8, tall bracket ; MCX512A-ACAT
-		15b3 0068  ConnectXÂ®-5 EN network interface card for OCP2.0, Type 1, with host management, 25GbE dual-port SFP28, PCIe3.0 x8, no bracket Halogen free ; MCX542B-ACAN
+		15b3 0006  ConnectX-5 EN network interface card, 100GbE single-port QSFP28, PCIe3.0 x16, tall bracket; MCX515A-CCAT
+		15b3 0007  Mellanox ConnectX-5 MCX516A-CCAT
+		15b3 0020  ConnectX-5 EN network interface card, 10/25GbE dual-port SFP28, PCIe3.0 x8, tall bracket ; MCX512A-ACAT
+		15b3 0068  ConnectX-5 EN network interface card for OCP2.0, Type 1, with host management, 25GbE dual-port SFP28, PCIe3.0 x8, no bracket Halogen free ; MCX542B-ACAN
 		193d 1051  NIC-IB1040i-Mb-2P
 	1018  MT27800 Family [ConnectX-5 Virtual Function]
 	1019  MT28800 Family [ConnectX-5 Ex]
@@ -21419,6 +21433,7 @@
 	a2de  BF4 Family Crypto disabled [BlueField-4 SoC Crypto disabled]
 	a2df  BF4 Family integrated network controller [BlueField-4 integrated network controller]
 	b200  ArcusE
+	c2d1  BlueField DPU Family Auxiliary Communication Channel [BlueField Family]
 	c2d2  MT416842 BlueField SoC management interfac
 	c2d3  MT42822 BlueField-2 SoC Management Interface
 	c2d4  MT43162 BlueField-3 Lx SoC Management Interface
@@ -21475,7 +21490,10 @@
 		1414 500b  Xbox Series X
 	500d  WD Ultrastar DC SN340 NVMe SSD
 	5011  WD PC SN810 / Black SN850 NVMe SSD
-	501a  WD Blue SN570 NVMe SSD
+	5017  WD Black SN770 NVMe SSD
+	501a  WD Blue SN570 NVMe SSD 1TB
+	5025  WD Blue SN570 NVMe SSD 2TB
+	5030  Western Digital WD Black SN850X NVMe SSD
 15b8  ADDI-DATA GmbH
 	1001  APCI1516 SP controller (16 digi outputs)
 	1003  APCI1032 SP controller (32 digi inputs w/ opto coupler)
@@ -21521,8 +21539,7 @@
 15cc  Hotrail Inc
 15cd  Dreamtech Co Ltd
 15ce  Genrad Inc
-# https://www.hilscher.com/imprint/
-15cf  Hilscher Gesellschaft fÃ¼r Systemautomation mbH
+15cf  Hilscher Gesellschaft für Systemautomation mbH
 	0000  CIFX PCI/PCIe
 15d1  Infineon Technologies AG
 15d2  FIC (First International Computer Inc)
@@ -21533,7 +21550,10 @@
 15d7  Rockwell-Collins Inc
 15d8  Cybernetics Technology Co Ltd
 15d9  Super Micro Computer Inc
+	1b64  SCC-B8SB80-B1
 	1b67  AOC-S3916L-H16iR-32DD
+	1b9d  Supermicro AOC-S3816L-L16IR
+	1c6e  Supermicro AOC-SLG4-2H8M2
 15da  Cyberfirm Inc
 15db  Applied Computing Systems Inc
 15dc  Litronic Inc
@@ -21993,14 +22013,14 @@
 	002e  AR9287 Wireless Network Adapter (PCI-Express)
 		105b e034  T77H167.00
 	0030  AR93xx Wireless Network Adapter
-		103c 1627  AR9380/HB112 802.11abgn 3Ã—3 Wi-Fi Adapter
+		103c 1627  AR9380/HB112 802.11abgn 3x3 Wi-Fi Adapter
 		106b 009a  AirPort Extreme
 		1186 3a7e  DWA-566 Wireless N 300 Dual Band PCIe Desktop Adapter
 		1a56 2000  Killer Wireless-N 1102 Half-size Mini PCIe Card [AR9382]
 		1a56 2001  Killer Wireless-N 1103 Half-size Mini PCIe Card [AR9380]
 	0032  AR9485 Wireless Network Adapter
 		1028 0208  Wireless 1506 WLAN Half Mini-Card
-		103c 1838  AR9485/HB125 802.11bgn 1Ã—1 Wi-Fi Adapter
+		103c 1838  AR9485/HB125 802.11bgn 1x1 Wi-Fi Adapter
 		105b e044  Unex DHXA-225
 		144d 410e  AR9485WB-EG 802.11b/g/n mini-PCIe card on a series 3 laptop
 		1a3b 1186  AW-NE186H
@@ -22752,6 +22772,7 @@
 	2012  M2012/R3308 VGA-compatible graphics adapter
 # IGP = on-chip integrated in the Vortex86DX3. Basic 2D accel. UMA architecture.
 	2015  RDC M2015 VGA-compatible graphics adapter
+	3010  R3010 HD Audio Controller
 # Found in the Vortex86EX SoC
 	6011  R6011 ISA Bridge
 # Found in the Vortex86EX2 SoC
@@ -23388,6 +23409,10 @@
 	0408  P4040E
 	0409  P4040
 	041f  P3041
+	0420  QorIQ P5020 Communications Processor with security engine
+	0421  QorIQ P5020 Communications Processor without security engine
+	0428  QorIQ P5010 Communications Processor with security engine
+	0429  QorIQ P5010 Communications Processor without security engine
 	0440  T4240 with security
 	0441  T4240 without security
 	0446  T4160 with security
@@ -23591,7 +23616,6 @@
 	5808  DDRdrive X8
 	dd52  DDRdrive X1-30
 19e5  Huawei Technologies Co., Ltd.
-# subvendor
 	0123  ES3000 V3 NVMe PCIe SSD
 		19e5 3022  NVMe SSD ES3600P V3 800GB 2.5" U.2
 		19e5 3023  NVMe SSD ES3600P V3 1200GB 2.5" U.2
@@ -23957,26 +23981,16 @@
 	1004  Virtio SCSI
 	1005  Virtio RNG
 	1009  Virtio filesystem
-# virtio 1.0
-	1041  Virtio network device
-# virtio 1.0
-	1042  Virtio block device
-# virtio 1.0
-	1043  Virtio console
-# virtio 1.0
-	1044  Virtio RNG
-# virtio 1.0
-	1045  Virtio memory balloon
-# virtio 1.0
-	1048  Virtio SCSI
-# virtio 1.0
-	1049  Virtio filesystem
-# virtio 1.0
-	1050  Virtio GPU
-# virtio 1.0
-	1052  Virtio input
-# virtio 1.0
-	1053  Virtio socket
+	1041  Virtio 1.0 network device
+	1042  Virtio 1.0 block device
+	1043  Virtio 1.0 console
+	1044  Virtio 1.0 RNG
+	1045  Virtio 1.0 memory balloon
+	1048  Virtio 1.0 SCSI
+	1049  Virtio 1.0 filesystem
+	1050  Virtio 1.0 GPU
+	1052  Virtio 1.0 input
+	1053  Virtio 1.0 socket
 	105a  Virtio file system
 	1110  Inter-VM shared memory
 		1af4 1100  QEMU Virtual Machine
@@ -24119,7 +24133,6 @@
 		1028 2010  BOSS-S2 Adapter
 		1028 2260  BOSS-S1 Modular
 		1028 2261  BOSS-S2 Adapter
-# RS0200L6R2iM2
 		1bd4 0073  RS0200L6R2iM2
 		1d49 0300  ThinkSystem M.2 with Mirroring Enablement Kit
 		1d49 0301  ThinkSystem SR630 x16 PCIE with 4 SATA ports Riser
@@ -24279,6 +24292,10 @@
 		1bb1 0173  Nytro 5060M E1.S
 # Nytro 5060M (Rocinante Mainstream Performance) - E1.S TCG
 		1bb1 0174  Nytro 5060M E1.S TCG
+# Nytro 5350S (Ebonhawk Single Port) - 15mm
+		1bb1 0175  Nytro 5350S - 15mm
+# Nytro 5350S (Ebonhawk Single Port) TCG - 15mm
+		1bb1 0176  Nytro 5350S TCG - 15mm
 		1bb1 01a1  Nytro XP7102
 	5012  FireCuda 510 SSD
 	5016  FireCuda 520 SSD
@@ -24361,6 +24378,8 @@
 	001d  Vega
 	001f  FD940
 	0020  FD2110
+	0021  FD722
+	0022  FD788
 1c28  Lite-On IT Corp. / Plextor
 	0122  M6e PCI Express SSD [Marvell 88SS9183]
 # previously Fiberblaze
@@ -24509,15 +24528,12 @@
 		1c5f 4b41  NVMe SSD PBlaze6 6936 6400GB 2.5" U.3
 		1c5f 4b51  NVMe SSD PBlaze6 6936 12800GB 2.5" U.3
 		1c5f 4b61  NVMe SSD PBlaze6 6936 25600GB 2.5" U.3
-# Gen5 NVMe SSD
-	003f  PBlaze7 7940/7946
+	003f  PBlaze7 7940/7946 Gen5 NVMe SSD
 	0540  PBlaze4 NVMe SSD
 	0550  PBlaze5 700/900
 	0555  PBlaze5 510/516
 	0557  PBlaze5 910/916
-# http://www.nicevt.ru/ (in Russian)
 1c63  Science and Research Centre of Computer Technology (JSC "NICEVT")
-# http://www.radiotec.ru/catalog.php?cat=jr8&art=14109
 	0008  K1927BB1Ya [EC8430] Angara Interconnection Network Adapter
 1c7e  TTTech Computertechnik AG
 	0200  zFAS Debug Port
@@ -25253,6 +25269,38 @@
 		1028 2193  NVMe CD7 E3.S 1.92TB
 		1028 2194  NVMe CD7 E3.S 3.84TB
 		1028 2195  NVMe CD7 E3.S 7.68TB
+	0013  NVMe SSD Controller CM7 2.5"
+		1028 222d  Ent NVMe CM7 FIPS U.2 RI 30.72TB
+		1028 222e  Ent NVMe CM7 FIPS U.2 RI 15.36TB
+		1028 222f  Ent NVMe CM7 FIPS U.2 RI 7.68TB
+		1028 2230  Ent NVMe CM7 FIPS U.2 RI 3.84TB
+		1028 2231  Ent NVMe CM7 FIPS U.2 RI 1.92TB
+		1028 2232  Ent NVMe CM7 U.2 RI 30.72TB
+		1028 2233  Ent NVMe CM7 U.2 RI 15.36TB
+		1028 2234  Ent NVMe CM7 U.2 RI 7.68TB
+		1028 2235  Ent NVMe CM7 U.2 RI 3.84TB
+		1028 2236  Ent NVMe CM7 U.2 RI 1.92TB
+		1028 2237  Ent NVMe CM7 FIPS U.2 MU 12.8TB
+		1028 2238  Ent NVMe CM7 FIPS U.2 MU 6.4TB
+		1028 2239  Ent NVMe CM7 FIPS U.2 MU 3.2TB
+		1028 223a  Ent NVMe CM7 FIPS U.2 MU 1.6TB
+		1028 223b  Ent NVMe CM7 U.2 MU 12.8TB
+		1028 223c  Ent NVMe CM7 U.2 MU 6.4TB
+		1028 223d  Ent NVMe CM7 U.2 MU 3.2TB
+		1028 223e  Ent NVMe CM7 U.2 MU 1.6TB
+		1028 228c  Ent NVMe CM7 U.2 MU 6.4TB
+	0014  NVMe SSD Controller CM7 EDSFF
+		1028 223f  Ent NVMe CM7 FIPS E3.S RI 15.36TB
+		1028 2240  Ent NVMe CM7 FIPS E3.S RI 7.68TB
+		1028 2241  Ent NVMe CM7 FIPS E3.S RI 3.84TB
+		1028 2242  Ent NVMe CM7 E3.S RI 15.36TB
+		1028 2243  Ent NVMe CM7 E3.S RI 7.68TB
+		1028 2244  Ent NVMe CM7 E3.S RI 3.84TB
+		1028 2245  Ent NVMe CM7 E3.S RI 1.92TB
+		1028 2246  Ent NVMe CM7 E3.S MU 12.8TB
+		1028 2247  Ent NVMe CM7 E3.S MU 6.4TB
+		1028 2248  Ent NVMe CM7 E3.S MU 3.2TB
+		1028 2249  Ent NVMe CM7 E3.S MU 1.6TB
 	001f  NVMe SSD Controller CD8
 		1028 2223  DC NVMe CD8 U.2 SED 15.36TB
 		1028 2224  DC NVMe CD8 U.2 SED 7.68TB
@@ -25265,6 +25313,7 @@
 		1028 222b  DC NVMe CD8 U.2 1.92TB
 		1028 222c  DC NVMe CD8 U.2 960GB
 1e17  Arnold & Richter Cine Technik GmbH & Co. Betriebs KG
+1e18  Beijing GuangRunTong Technology Development Co.,Ltd
 1e24  Squirrels Research Labs
 	0101  Acorn CLE-101
 	0215  Acorn CLE-215
@@ -25291,7 +25340,6 @@
 # nee Thinci, Inc
 1e38  Blaize, Inc
 	0102  Xplorer X1600
-# https://www.medion.com/
 1e39  MEDION AG
 1e3b  DapuStor Corporation
 	0600  NVMe SSD Controller DP600
@@ -25382,8 +25430,7 @@
 	1202  NVMe SSD Controller MAP1202
 	1601  NVMe SSD Controller MAP1601
 1e4c  GSI Technology
-# Associative Processing Unit (APU)
-	0010  APU [Leda]
+	0010  Associative Processing Unit [Leda]
 		1e4c 0120  SE120
 1e50  IP3 Tech (HK) Limited
 1e57  Beijing Panyi Technology Co., Ltd
@@ -25410,13 +25457,13 @@
 	1203  NVMe SSD Controller UHXXXa series
 		1e81 a121  NVMe SSD UHXXXa series U.2 960GB
 		1e81 a122  NVMe SSD UHXXXa series U.2 1920GB
-		1e81 a123  NVMe SSD UHXXXa series U.2 3840GBÂ 
-		1e81 a124  NVMe SSD UHXXXa series U.2 7680GBÂ 
+		1e81 a123  NVMe SSD UHXXXa series U.2 3840GB
+		1e81 a124  NVMe SSD UHXXXa series U.2 7680GB
 		1e81 a125  NVMe SSD UHXXXa series U.2 15360GB
-		1e81 a211  NVMe SSD UHXXXa series U.2 800GBÃ‚Â 
-		1e81 a212  NVMe SSD UHXXXa series U.2 1600GBÂ 
-		1e81 a213  NVMe SSD UHXXXa series U.2 3200GBÂ 
-		1e81 a214  NVMe SSD UHXXXa series U.2 6400GBÂ 
+		1e81 a211  NVMe SSD UHXXXa series U.2 800GB
+		1e81 a212  NVMe SSD UHXXXa series U.2 1600GB
+		1e81 a213  NVMe SSD UHXXXa series U.2 3200GB
+		1e81 a214  NVMe SSD UHXXXa series U.2 6400GB
 		1e81 f123  NVMe SSD TP6500 series U.2 3840GB
 1e83  Huaqin Technology Co.Ltd
 1e85  Heitec AG
@@ -25504,18 +25551,32 @@
 1eed  XDX Computing Technology Ltd.
 	10a0  XDX110 Graphic/VGA Controller
 	10a1  XDX110 Audio Controller
-	1140  XDX120 Graphic/VGA Controller
-	1141  XDX120 Audio Controller
-	1320  XDX150 Graphic/VGA Controller
-	1321  XDX150 Audio Controller
-	13c0  XDX160 Graphic/VGA Controller
-	13c1  XDX160 Audio Controller
-	13d0  XDX161 Graphic/VGA Controller
-	13d1  XDX161 Audio Controller
-	1500  XDX180 Graphic/VGA Controller
-	1501  XDX180 Audio Controller
-	15a0  XDX190 Graphic/VGA Controller
-	15a1  XDX190 Audio Controller
+	10a2  XDX110M
+	10a4  XDX E1100
+	1140  XDX120
+	1142  XDX120M
+	1144  XDX E1200
+	1150  XDX120S
+	11e4  XDX E1300
+	1320  XDX150
+	1324  XDX X1500
+	1330  XDX150S
+	1340  XDX150T
+	1350  XDX150U
+	13c0  XDX160
+	13d0  XDX160S
+	1500  XDX180
+	1503  XDX R1800
+	1504  XDX X1800
+	1510  XDX180S
+	15a0  XDX190
+	15a3  XDX R1900
+	15a4  XDX X1900
+	15a5  XDX X1900M2
+	15b0  XDX190S
+	1810  XDX TJ01 Audio
+	1820  XDX TJ02 Audio
+	1830  XDX TJ03 Audio
 1ef6  GrAI Matter Labs
 1ef7  Shenzhen Gunnir Technology Development Co., Ltd
 1efb  Flexxon Pte Ltd
@@ -25600,6 +25661,7 @@
 1f44  VVDN Technologies Private Limited
 1f4b  Axera Semiconductor Co., Ltd
 1f52  MangoBoost Inc.
+1f56  SAPEON Inc.
 1f60  Accelecom
 	0001  XELE-NIC 25K5
 	0054  XELE-NIC 25K5
@@ -25750,10 +25812,8 @@
 3513  ARCOM Control Systems Ltd
 37d9  ITD Firm ltd.
 	1138  SCHD-PH-8 Phase detector
-# 12-ch Relay Actuator Card
-	1140  VR-12-PCI
-# multiport serial board
-	1141  PCI-485(422)
+	1140  VR-12-PCI 12-ch Relay Actuator Card
+	1141  PCI-485(422) Multi-port Serial Board
 	1142  PCI-CAN2
 3842  eVga.com. Corp.
 38ef  4Links
@@ -25938,7 +25998,6 @@
 	adc1  ADC200ME High speed ADC
 	de01  DL200ME High resolution delay line PCI based card
 	de02  DL200ME Middle resolution delay line PCI based card
-# Can't find any information on this company
 4651  TXIC
 4680  Umax Computer Corp
 4843  Hercules Computer Technology Inc
@@ -26319,9 +26378,7 @@
 5853  XenSource, Inc.
 	0001  Xen Platform Device
 	c000  Citrix XenServer PCI Device for Windows Update
-# Virtual device surfaced in guests to provide HID events.
 	c110  Virtualized HID
-# Device surfaced in guests to provide 2d graphics capabilities
 	c147  Virtualized Graphics Device
 	c200  XCP-ng Project PCI Device for Windows Update
 5854  GoTView
@@ -26703,6 +26760,7 @@
 	06ed  Comet Lake USB 3.1 xHCI Host Controller
 	06ef  Comet Lake PCH Shared SRAM
 	06f0  Comet Lake PCH CNVi WiFi
+		1a56 1651  Wi-Fi 6 AX1650s 160MHz (201D2W) [Killer]
 		8086 0034  Wireless-AC 9560
 		8086 0074  Wi-Fi 6 AX201 160MHz
 		8086 02a4  Wireless-AC 9462
@@ -26811,193 +26869,101 @@
 		8086 1015  Centrino Wireless-N 100 BGN
 		8086 1017  Centrino Wireless-N 100 BG
 	08b1  Wireless 7260
-# Wilkins Peak 2
-		8086 4020  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 402a  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 4060  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 4062  Wireless-N 7260
-# Wilkins Peak 2
-		8086 406a  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 4070  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 4072  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 4160  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 4162  Wireless-N 7260
-# Wilkins Peak 2
-		8086 4170  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 4420  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 4460  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 4462  Wireless-N 7260
-# Wilkins Peak 2
-		8086 446a  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 4470  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 4472  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 4560  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 4570  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 486e  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 4870  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 4a6c  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 4a6e  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 4a70  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 4c60  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 4c70  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 5070  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 5072  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 5170  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 5770  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 c020  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 c02a  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 c060  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 c062  Wireless-N 7260
-# Wilkins Peak 2
-		8086 c06a  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 c070  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 c072  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 c160  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 c162  Wireless-N 7260
-# Wilkins Peak 2
-		8086 c170  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 c360  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 c420  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 c460  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 c462  Wireless-N 7260
-# Wilkins Peak 2
-		8086 c470  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 c472  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 c560  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 c570  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 c760  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 c770  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 cc60  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 cc70  Dual Band Wireless-AC 7260
+		8086 4020  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 402a  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 4060  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 4062  Wireless-N 7260 [Wilkins Peak 2]
+		8086 406a  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 4070  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 4072  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 4160  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 4162  Wireless-N 7260 [Wilkins Peak 2]
+		8086 4170  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 4420  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 4460  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 4462  Wireless-N 7260 [Wilkins Peak 2]
+		8086 446a  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 4470  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 4472  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 4560  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 4570  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 486e  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 4870  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 4a6c  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 4a6e  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 4a70  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 4c60  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 4c70  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 5070  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 5072  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 5170  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 5770  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 c020  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 c02a  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 c060  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 c062  Wireless-N 7260 [Wilkins Peak 2]
+		8086 c06a  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 c070  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 c072  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 c160  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 c162  Wireless-N 7260 [Wilkins Peak 2]
+		8086 c170  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 c360  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 c420  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 c460  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 c462  Wireless-N 7260 [Wilkins Peak 2]
+		8086 c470  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 c472  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 c560  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 c570  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 c760  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 c770  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 cc60  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 cc70  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
 	08b2  Wireless 7260
-# Wilkins Peak 2
-		8086 4220  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 4260  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 4262  Wireless-N 7260
-# Wilkins Peak 2
-		8086 426a  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 4270  Wireless-N 7260
-# Wilkins Peak 2
-		8086 4272  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 4360  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 4370  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 c220  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 c260  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 c262  Wireless-N 7260
-# Wilkins Peak 2
-		8086 c26a  Dual Band Wireless-N 7260
-# Wilkins Peak 2
-		8086 c270  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 c272  Dual Band Wireless-AC 7260
-# Wilkins Peak 2
-		8086 c370  Dual Band Wireless-AC 7260
+		8086 4220  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 4260  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 4262  Wireless-N 7260 [Wilkins Peak 2]
+		8086 426a  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 4270  Wireless-N 7260 [Wilkins Peak 2]
+		8086 4272  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 4360  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 4370  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 c220  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 c260  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 c262  Wireless-N 7260 [Wilkins Peak 2]
+		8086 c26a  Dual Band Wireless-N 7260 [Wilkins Peak 2]
+		8086 c270  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 c272  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
+		8086 c370  Dual Band Wireless-AC 7260 [Wilkins Peak 2]
 	08b3  Wireless 3160
-# Wilkins Peak 1
-		8086 0060  Dual Band Wireless-N 3160
-# Wilkins Peak 1
-		8086 0062  Wireless-N 3160
-# Wilkins Peak 1
-		8086 0070  Dual Band Wireless-AC 3160
-# Wilkins Peak 1
-		8086 0072  Dual Band Wireless-AC 3160
-# Wilkins Peak 1
-		8086 0170  Dual Band Wireless-AC 3160
-# Wilkins Peak 1
-		8086 0172  Dual Band Wireless-AC 3160
-# Wilkins Peak 1
-		8086 0260  Dual Band Wireless-N 3160
-# Wilkins Peak 1
-		8086 0470  Dual Band Wireless-AC 3160
-# Wilkins Peak 1
-		8086 0472  Dual Band Wireless-AC 3160
-# Wilkins Peak 1
-		8086 1070  Dual Band Wireless-AC 3160
-# Wilkins Peak 1
-		8086 1170  Dual Band Wireless-AC 3160
-# Wilkins Peak 1
-		8086 8060  Dual Band Wireless N-3160
-# Wilkins Peak 1
-		8086 8062  Wireless N-3160
-# Wilkins Peak 1
-		8086 8070  Dual Band Wireless AC 3160
-# Wilkins Peak 1
-		8086 8072  Dual Band Wireless AC 3160
-# Wilkins Peak 1
-		8086 8170  Dual Band Wireless AC 3160
-# Wilkins Peak 1
-		8086 8172  Dual Band Wireless AC 3160
-# Wilkins Peak 1
-		8086 8470  Dual Band Wireless AC 3160
-# Wilkins Peak 1
-		8086 8570  Dual Band Wireless AC 3160
+		8086 0060  Dual Band Wireless-N 3160 [Wilkins Peak 1]
+		8086 0062  Wireless-N 3160 [Wilkins Peak 1]
+		8086 0070  Dual Band Wireless-AC 3160 [Wilkins Peak 1]
+		8086 0072  Dual Band Wireless-AC 3160 [Wilkins Peak 1]
+		8086 0170  Dual Band Wireless-AC 3160 [Wilkins Peak 1]
+		8086 0172  Dual Band Wireless-AC 3160 [Wilkins Peak 1]
+		8086 0260  Dual Band Wireless-N 3160 [Wilkins Peak 1]
+		8086 0470  Dual Band Wireless-AC 3160 [Wilkins Peak 1]
+		8086 0472  Dual Band Wireless-AC 3160 [Wilkins Peak 1]
+		8086 1070  Dual Band Wireless-AC 3160 [Wilkins Peak 1]
+		8086 1170  Dual Band Wireless-AC 3160 [Wilkins Peak 1]
+		8086 8060  Dual Band Wireless N-3160 [Wilkins Peak 1]
+		8086 8062  Wireless N-3160 [Wilkins Peak 1]
+		8086 8070  Dual Band Wireless AC 3160 [Wilkins Peak 1]
+		8086 8072  Dual Band Wireless AC 3160 [Wilkins Peak 1]
+		8086 8170  Dual Band Wireless AC 3160 [Wilkins Peak 1]
+		8086 8172  Dual Band Wireless AC 3160 [Wilkins Peak 1]
+		8086 8470  Dual Band Wireless AC 3160 [Wilkins Peak 1]
+		8086 8570  Dual Band Wireless AC 3160 [Wilkins Peak 1]
 	08b4  Wireless 3160
-# Wilkins Peak 1
-		8086 0270  Dual Band Wireless-AC 3160
-# Wilkins Peak 1
-		8086 0272  Dual Band Wireless-AC 3160
-# Wilkins Peak 1
-		8086 0370  Dual Band Wireless-AC 3160
-# Wilkins Peak 1
-		8086 8260  Dual Band Wireless AC 3160
-# Wilkins Peak 1
-		8086 8270  Dual Band Wireless AC 3160
-# Wilkins Peak 1
-		8086 8272  Dual Band Wireless AC 3160
-# Wilkins Peak 1
-		8086 8370  Dual Band Wireless AC 3160
+		8086 0270  Dual Band Wireless-AC 3160 [Wilkins Peak 1]
+		8086 0272  Dual Band Wireless-AC 3160 [Wilkins Peak 1]
+		8086 0370  Dual Band Wireless-AC 3160 [Wilkins Peak 1]
+		8086 8260  Dual Band Wireless AC 3160 [Wilkins Peak 1]
+		8086 8270  Dual Band Wireless AC 3160 [Wilkins Peak 1]
+		8086 8272  Dual Band Wireless AC 3160 [Wilkins Peak 1]
+		8086 8370  Dual Band Wireless AC 3160 [Wilkins Peak 1]
 # PowerVR SGX 545
 	08cf  Atom Processor Z2760 Integrated Graphics Controller
 	0931  Atom Processor CE 2600 [Puma 6]
@@ -27018,91 +26984,49 @@
 		8086 370e  SSD 750 Series [2.5" SFF]
 	0958  Quark SoC X1000 Host Bridge
 	095a  Wireless 7265
-# Stone Peak 2 AC
-		8086 1010  Dual Band Wireless-AC 7265
-# Stone Peak 2 AGN
-		8086 5000  Dual Band Wireless-N 7265
-# Stone Peak 2 BGN
-		8086 5002  Wireless-N 7265
-# Stone Peak 2 AGN
-		8086 500a  Dual Band Wireless-N 7265
-# Stone Peak 2 AC
-		8086 5010  Dual Band Wireless-AC 7265
-# Stone Peak 2 AC
-		8086 5012  Dual Band Wireless-AC 7265
-# Stone Peak 2 AGN
-		8086 5020  Dual Band Wireless-N 7265
-# Stone Peak 2 AGN
-		8086 502a  Dual Band Wireless-N 7265
-# Maple Peak AC
-		8086 5090  Dual Band Wireless-AC 7265
-# Stone Peak 2 AGN
-		8086 5100  Dual Band Wireless-AC 7265
-# Stone Peak 2 BGN
-		8086 5102  Wireless-N 7265
-# Stone Peak 2 AGN
-		8086 510a  Dual Band Wireless-AC 7265
-# Stone Peak 2 AC
-		8086 5110  Dual Band Wireless-AC 7265
-# Stone Peak 2 AC
-		8086 5112  Dual Band Wireless-AC 7265
-# Maple Peak AC
-		8086 5190  Dual Band Wireless-AC 7265
-# Stone Peak 2 AGN
-		8086 5400  Dual Band Wireless-AC 7265
-# Stone Peak 2 AC
-		8086 5410  Dual Band Wireless-AC 7265
-# Stone Peak 2 AC
-		8086 5412  Dual Band Wireless-AC 7265
-# Stone Peak 2 AGN
-		8086 5420  Dual Band Wireless-N 7265
-# Maple Peak AC
-		8086 5490  Dual Band Wireless-AC 7265
-# Stone Peak 2 AC
-		8086 5510  Dual Band Wireless-AC 7265
-# Maple Peak AC
-		8086 5590  Dual Band Wireless-AC 7265
-# Stone Peak 2 AGN
-		8086 9000  Dual Band Wireless-AC 7265
-# Stone Peak 2 AGN
-		8086 900a  Dual Band Wireless-AC 7265
-# Stone Peak 2 AC
-		8086 9010  Dual Band Wireless-AC 7265
-# Stone Peak 2 AC
-		8086 9012  Dual Band Wireless-AC 7265
-# Stone Peak 2 AC
-		8086 9110  Dual Band Wireless-AC 7265
-# Stone Peak 2 AC
-		8086 9112  Dual Band Wireless-AC 7265
-# Stone Peak 2 AC
-		8086 9210  Dual Band Wireless-AC 7265
-# Stone Peak 2 AC
-		8086 9310  Dual Band Wireless-AC 7265
-# Stone Peak 2 AGN
-		8086 9400  Dual Band Wireless-AC 7265
-# Stone Peak 2 AC
-		8086 9410  Dual Band Wireless-AC 7265
-# Stone Peak 2 AC
-		8086 9510  Dual Band Wireless-AC 7265
+		8086 1010  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 5000  Dual Band Wireless-N 7265 [Stone Peak 2 AGN]
+		8086 5002  Wireless-N 7265 [Stone Peak 2 BGN]
+		8086 500a  Dual Band Wireless-N 7265 [Stone Peak 2 AGN]
+		8086 5010  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 5012  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 5020  Dual Band Wireless-N 7265 [Stone Peak 2 AGN]
+		8086 502a  Dual Band Wireless-N 7265 [Stone Peak 2 AGN]
+		8086 5090  Dual Band Wireless-AC 7265 [Maple Peak AC]
+		8086 5100  Dual Band Wireless-AC 7265 [Stone Peak 2 AGN]
+		8086 5102  Wireless-N 7265 [Stone Peak 2 BGN]
+		8086 510a  Dual Band Wireless-AC 7265 [Stone Peak 2 AGN]
+		8086 5110  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 5112  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 5190  Dual Band Wireless-AC 7265 [Maple Peak AC]
+		8086 5400  Dual Band Wireless-AC 7265 [Stone Peak 2 AGN]
+		8086 5410  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 5412  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 5420  Dual Band Wireless-N 7265 [Stone Peak 2 AGN]
+		8086 5490  Dual Band Wireless-AC 7265 [Maple Peak AC]
+		8086 5510  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 5590  Dual Band Wireless-AC 7265 [Maple Peak AC]
+		8086 9000  Dual Band Wireless-AC 7265 [Stone Peak 2 AGN]
+		8086 900a  Dual Band Wireless-AC 7265 [Stone Peak 2 AGN]
+		8086 9010  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 9012  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 9110  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 9112  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 9210  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 9310  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 9400  Dual Band Wireless-AC 7265 [Stone Peak 2 AGN]
+		8086 9410  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 9510  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
 	095b  Wireless 7265
-# Stone Peak 2 AGN
-		8086 5200  Dual Band Wireless-N 7265
-# Stone Peak 2 BGN
-		8086 5202  Wireless-N 7265
-# Stone Peak 2 AGN
-		8086 520a  Dual Band Wireless-N 7265
-# Stone Peak 2 AC
-		8086 5210  Dual Band Wireless-AC 7265
-# Stone Peak 2 AC
-		8086 5212  Dual Band Wireless-AC 7265
-# Maple Peak AC
-		8086 5290  Dual Band Wireless-AC 7265
-# Stone Peak 2 BGN
-		8086 5302  Wireless-N 7265
-# Stone Peak 2 AC
-		8086 5310  Dual Band Wireless-AC 7265
-# Stone Peak 2 AGN
-		8086 9200  Dual Band Wireless-AC 7265
+		8086 5200  Dual Band Wireless-N 7265 [Stone Peak 2 AGN]
+		8086 5202  Wireless-N 7265 [Stone Peak 2 BGN]
+		8086 520a  Dual Band Wireless-N 7265 [Stone Peak 2 AGN]
+		8086 5210  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 5212  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 5290  Dual Band Wireless-AC 7265 [Maple Peak AC]
+		8086 5302  Wireless-N 7265 [Stone Peak 2 BGN]
+		8086 5310  Dual Band Wireless-AC 7265 [Stone Peak 2 AC]
+		8086 9200  Dual Band Wireless-AC 7265 [Stone Peak 2 AGN]
 	095e  Quark SoC X1000 Legacy Bridge
 	0960  80960RP (i960RP) Microprocessor/Bridge
 	0962  80960RM (i960RM) Bridge
@@ -28077,6 +28001,7 @@
 	11a5  Merrifield Serial IO PWM Controller
 	11c3  Quark SoC X1000 PCIe Root Port 0
 	11c4  Quark SoC X1000 PCIe Root Port 1
+	11eb  Simics NVMe Controller
 	1200  IXP1200 Network Processor
 		172a 0000  AEP SSL Accelerator
 	1209  8255xER/82551IT Fast Ethernet Controller
@@ -30324,16 +30249,13 @@
 		8086 262d  Omni-Path HFI Adapter 100 Series, 1 Port, PCIe x16, IO Module AHWKPTP100HF
 	24f1  Omni-Path HFI Silicon 100 Series [integrated]
 	24f3  Wireless 8260
-# Snow Field Peak AC
-		8086 0010  Dual Band Wireless-AC 8260
+		8086 0010  Dual Band Wireless-AC 8260 [Snow Field Peak AC]
 		8086 1010  Dual Band Wireless-AC 8260
 	24f4  Wireless 8260
-# Snow Field Peak AC
-		8086 0030  Dual Band Wireless-AC 8260
+		8086 0030  Dual Band Wireless-AC 8260 [Snow Field Peak AC]
 	24fb  Dual Band Wireless-AC 3168NGW [Stone Peak]
 	24fd  Wireless 8265 / 8275
-# Windstorm Peak
-		8086 0010  Dual Band Wireless-AC 8265
+		8086 0010  Dual Band Wireless-AC 8265 [Windstorm Peak]
 		8086 0150  Dual Band Wireless-AC 8265
 		8086 1010  Dual Band Wireless-AC 8265
 		8086 1130  Dual Band Wireless-AC 8265
@@ -30857,7 +30779,7 @@
 		8086 3904  NVMe Datacenter SSD [Optane] x4 AIC (P4800X)
 		8086 3905  NVMe Datacenter SSD [Optane] 15mm 2.5" U.2 (P4800X)
 	2723  Wi-Fi 6 AX200
-		1a56 1654  Killerâ„¢ Wi-Fi 6 AX1650x (AX200NGW)
+		1a56 1654  Killer Wi-Fi 6 AX1650x (AX200NGW)
 		8086 0084  Wi-Fi 6 AX200NGW
 	2725  Wi-Fi 6 AX210/AX211/AX411 160MHz
 		8086 0020  Wi-Fi 6 AX210 160MHz
@@ -32335,10 +32257,8 @@
 	2ffe  Xeon E7 v3/Xeon E5 v3/Core i7 System Address Decoder & Broadcast Registers
 	3140  Easel/Monette Hill Image Processor [Pixel Visual Core]
 	3165  Wireless 3165
-# Stone Peak 1x1
-		8086 4010  Dual Band Wireless AC 3165
-# Stone Peak 1x1
-		8086 4210  Dual Band Wireless AC 3165
+		8086 4010  Dual Band Wireless AC 3165 [Stone Peak 1x1]
+		8086 4210  Dual Band Wireless AC 3165 [Stone Peak 1x1]
 	3166  Dual Band Wireless-AC 3165 Plus Bluetooth
 		8086 4210  Dual Band Wireless-AC 3165
 	3184  GeminiLake [UHD Graphics 605]
@@ -33873,7 +33793,6 @@
 	7abc  Alder Lake-S PCH PCI Express Root Port #5
 	7abd  Alder Lake-S PCH PCI Express Root Port #6
 	7abf  Alder Lake-S PCH PCI Express Root Port #8
-# As documented in Chipset datasheet
 	7ac8  Alder Lake-S PCH PCI Express Root Port #25
 	7acc  Alder Lake-S PCH Serial IO I2C Controller #0
 	7acd  Alder Lake-S PCH Serial IO I2C Controller #1
@@ -34949,6 +34868,7 @@
 	a620  6400/6402 Advanced Memory Buffer (AMB)
 	a720  Raptor Lake-P [UHD Graphics]
 	a721  Raptor Lake-P [UHD Graphics]
+	a74f  GNA Scoring Accelerator module
 	a77f  Volume Management Device NVMe RAID Controller Intel Corporation
 	a780  Raptor Lake-S GT1 [UHD Graphics 770]
 	a781  Raptor Lake-S UHD Graphics
@@ -35001,7 +34921,6 @@
 	d157  Core Processor System Control and Status Registers
 	d158  Core Processor Miscellaneous Registers
 	f1a5  SSD 600P Series
-# M.2 22 x 80mm, NVMe
 		8086 390a  SSDPEKKW256G7 256GB
 	f1a6  SSD Pro 7600p/760p/E 6100p Series
 		8086 390b  SSD Pro 7600p/760p/E 6100p Series [NVM Express]
@@ -35039,7 +34958,6 @@
 		8088 0420  Qual-Port Ethernet Network Adaptor SF400HT-S
 	0109  WX1860-LC Gigabit Ethernet Controller
 	010a  WX1860A1 Gigabit Ethernet Controller
-# add new device ID
 	010b  WX1860AL1 Gigabit Ethernet Controller
 		8088 0102  Single-Port Ethernet Network Adaptor SF100HT
 		8088 4102  Single-Port Ethernet Network Adaptor SF100HT (WOL)
@@ -35631,7 +35549,7 @@
 # 2-port Serial 1-port Parallel Adaptor
 	9912  PCIe 9912 Multi-I/O Controller
 	9922  MCS9922 PCIe Multi-I/O Controller
-	9990  MCS9990 PCIe to 4â€Port USB 2.0 Host Controller
+	9990  MCS9990 PCIe to 4-Port USB 2.0 Host Controller
 # Subsystem ID on a 3c985B-SX network card
 9850  3Com (wrong ID)
 9902  Stargen Inc.
@@ -35651,6 +35569,7 @@
 	1502  STAR1500E NVMe SSD
 	2000  STAR2000 NVMe Controller
 	2001  STAR2000E NVMe SSD
+	2002  STAR2000C NVMe SSD
 a000  Asix Electronics Corporation (Wrong ID)
 a0a0  AOPEN Inc.
 a0f1  UNISYS Corporation
@@ -35745,11 +35664,9 @@ c0a9  Micron/Crucial Technology
 c0de  Motorola
 c0fe  Motion Engineering, Inc.
 ca01  I-TEK OptoElectronics Co., LTD.
-# CameraLink Frame Grabber
-	0212  Vulcan-CL
+	0212  Vulcan-CL CameraLink Frame Grabber
 ca02  I-TEK OptoElectronics Co., LTD.
-# VulcanCXP-CXP frame grabber.
-	0213  Vulcan-CXP
+	0213  Vulcan-CXP Frame Grabber
 ca3b  Cambrionix Ltd.
 ca50  Varian Australia Pty Ltd
 cace  CACE Technologies, Inc.
@@ -35768,10 +35685,14 @@ ccec  Curtiss-Wright Controls Embedded Computing
 cddd  Tyzx, Inc.
 	0101  DeepSea 1 High Speed Stereo Vision Frame Grabber
 	0200  DeepSea 2 High Speed Stereo Vision Frame Grabber
+cdfa  NextSilicon Ltd
+	0007  Maverick
 ceba  KEBA AG
 cf86  Spectrum-4TOR
 	0276  Spectrum-4TOR in Flash Recovery Mode
 d063  SolidRun
+	1000  SolidNET DPU
+	1500  Emulated NVMe
 d161  Digium, Inc.
 	0120  Wildcard TE120P single-span T1/E1/J1 card
 	0205  Wildcard TE205P/TE207P dual-span T1/E1/J1 card 5.0V
@@ -36029,6 +35950,7 @@ f849  ASRock Incorporation (Wrong ID)
 fa57  Interagon AS
 	0001  PMC [Pattern Matching Chip]
 fab7  Fabric7 Systems, Inc.
+fe19  TenaFe, Inc.
 febd  Ultraview Corp.
 # Nee Epigram
 feda  Broadcom Inc
@@ -36081,6 +36003,9 @@ C 01  Mass storage controller
 	08  Non-Volatile memory controller
 		01  NVMHCI
 		02  NVM Express
+	09  Universal Flash Storage controller
+		00  Vendor specific
+		01  UFSHCI
 	80  Mass storage controller
 C 02  Network controller
 	00  Ethernet controller
