@@ -35,9 +35,10 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/usr.sbin/makefs/ffs/buf.c 336736 2018-07-26 13:33:10Z emaste $
  */
+
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -53,7 +54,7 @@
 #include "makefs.h"
 #include "buf.h"
 
-static TAILQ_HEAD(buftailhead,m_buf) buftail;
+static TAILQ_HEAD(buftailhead, m_buf) buftail;
 
 int
 bread(struct m_vnode *vp, makefs_daddr_t blkno, int size, struct ucred *u1 __unused,
@@ -77,7 +78,7 @@ bread(struct m_vnode *vp, makefs_daddr_t blkno, int size, struct ucred *u1 __unu
 	if (lseek((*bpp)->b_fs->fd, offset, SEEK_SET) == -1)
 		err(1, "%s: lseek %lld (%lld)", __func__,
 		    (long long)(*bpp)->b_blkno, (long long)offset);
-	rv = read((*bpp)->b_fs->fd, (*bpp)->b_data, (*bpp)->b_bcount);
+	rv = read((*bpp)->b_fs->fd, (*bpp)->b_data, (size_t)(*bpp)->b_bcount);
 	if (debug & DEBUG_BUF_BREAD)
 		printf("%s: read %ld (%lld) returned %d\n", __func__,
 		    (*bpp)->b_bcount, (long long)offset, (int)rv);
@@ -128,26 +129,31 @@ bwrite_impl(struct m_buf *bp)
 {
 	off_t	offset;
 	ssize_t	rv;
+	size_t	bytes;
+	int	e;
 	fsinfo_t *fs = bp->b_fs;
 
 	assert (bp != NULL);
 	offset = (off_t)bp->b_blkno * fs->sectorsize + fs->offset;
+	bytes = (size_t)bp->b_bcount;
 	if (debug & DEBUG_BUF_BWRITE)
-		printf("bwrite: blkno %lld offset %lld bcount %ld\n",
-		    (long long)bp->b_blkno, (long long) offset,
-		    bp->b_bcount);
-	if (lseek(bp->b_fs->fd, offset, SEEK_SET) == -1)
+		printf("%s: blkno %lld offset %lld bcount %zu\n", __func__,
+		    (long long)bp->b_blkno, (long long) offset, bytes);
+	if (lseek(bp->b_fs->fd, offset, SEEK_SET) == -1) {
+		brelse(bp);
 		return (errno);
-	rv = write(bp->b_fs->fd, bp->b_data, bp->b_bcount);
+	}
+	rv = write(bp->b_fs->fd, bp->b_data, bytes);
+	e = errno;
 	if (debug & DEBUG_BUF_BWRITE)
-		printf("bwrite: write %ld (offset %lld) returned %lld\n",
+		printf("%s: write %ld (offset %lld) returned %lld\n", __func__,
 		    bp->b_bcount, (long long)offset, (long long)rv);
-	if (rv == bp->b_bcount)
+	brelse(bp);
+	if (rv == (ssize_t)bytes)
 		return (0);
-	else if (rv == -1)		/* write error */
-		return (errno);
-	else				/* short write ? */
-		return (EAGAIN);
+	if (rv == -1)		/* write error */
+		return (e);
+	return (EAGAIN);
 }
 
 int
@@ -177,11 +183,11 @@ bcleanup(void)
 	 */
 
 	if (TAILQ_EMPTY(&buftail)) {
-		printf("bcleanup: clean\n");
+		printf("%s: clean\n", __func__);
 		return;
 	}
 
-	printf("bcleanup: unflushed buffers:\n");
+	printf("%s: unflushed buffers:\n", __func__);
 	TAILQ_FOREACH(bp, &buftail, b_tailq) {
 		printf("\t%p  lblkno %10lld  blkno %10lld  count %6ld  bufsize %6ld  "
 		    "loffset %016lx  cmd %d  [vp %p  data %p  type %d  logical %d  vflushed %d]\n",
@@ -195,7 +201,7 @@ bcleanup(void)
 		if (bp->b_vp)
 			assert(!bp->b_vp->v_logical);
 	}
-	printf("bcleanup: done\n");
+	printf("%s: done\n", __func__);
 }
 
 struct m_buf *
@@ -211,11 +217,12 @@ getblk(struct m_vnode *vp, makefs_daddr_t blkno, int size, int u1 __unused,
 		goto skip_lookup;
 
 	if (debug & DEBUG_BUF_GETBLK)
-		printf("getblk: blkno %lld size %d\n", (long long)blkno, size);
+		printf("%s: blkno %lld size %d\n", __func__, (long long)blkno,
+		    size);
 
 	if (!buftailinitted) {
 		if (debug & DEBUG_BUF_GETBLK)
-			printf("getblk: initialising tailq\n");
+			printf("%s: initialising tailq\n", __func__);
 		TAILQ_INIT(&buftail);
 		buftailinitted = 1;
 	} else {
@@ -239,8 +246,8 @@ skip_lookup:
 	}
 	bp->b_bcount = size;
 	if (bp->b_data == NULL || bp->b_bcount > bp->b_bufsize) {
-		n = erealloc(bp->b_data, size);
-		memset(n, 0, size);
+		n = erealloc(bp->b_data, (size_t)size);
+		memset(n, 0, (size_t)size);
 		bp->b_data = n;
 		bp->b_bufsize = size;
 	}
