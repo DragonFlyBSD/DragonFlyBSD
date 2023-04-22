@@ -752,7 +752,7 @@ hammer2_populate_dir(struct m_vnode *dvp, const char *dir, fsnode *root,
 			if (error)
 				errx(1, "failed to populate %s: %s",
 				    path, strerror(error));
-			cur->inode->priv = vp;
+			cur->inode->param = vp;
 			continue;
 		}
 
@@ -773,7 +773,7 @@ hammer2_populate_dir(struct m_vnode *dvp, const char *dir, fsnode *root,
 			if (error)
 				errx(1, "hammer2_write_file(\"%s\") failed: %s",
 				    path, strerror(error));
-			cur->inode->priv = vp;
+			cur->inode->param = vp;
 			continue;
 		}
 
@@ -790,7 +790,7 @@ hammer2_populate_dir(struct m_vnode *dvp, const char *dir, fsnode *root,
 				    cur->name, strerror(error));
 			assert(vp);
 			hammer2_print(dvp, vp, cur, depth, "nsymlink");
-			cur->inode->priv = vp;
+			cur->inode->param = vp;
 			continue;
 		}
 
@@ -806,7 +806,7 @@ hammer2_populate_dir(struct m_vnode *dvp, const char *dir, fsnode *root,
 				    cur->name, strerror(error));
 			assert(vp);
 			hammer2_print(dvp, vp, cur, depth, "nmknod");
-			cur->inode->priv = vp;
+			cur->inode->param = vp;
 			continue;
 		}
 
@@ -816,7 +816,7 @@ hammer2_populate_dir(struct m_vnode *dvp, const char *dir, fsnode *root,
 			assert(cur->child == NULL);
 
 			/* source vnode must not be NULL */
-			vp = cur->inode->priv;
+			vp = cur->inode->param;
 			assert(vp);
 			/* currently these conditions must be true */
 			assert(vp->v_data);
