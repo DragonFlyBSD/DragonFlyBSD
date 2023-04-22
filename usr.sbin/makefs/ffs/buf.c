@@ -124,8 +124,8 @@ brelse(struct m_buf *bp)
 	free(bp);
 }
 
-static int
-bwrite_impl(struct m_buf *bp)
+int
+bwrite(struct m_buf *bp)
 {
 	off_t	offset;
 	ssize_t	rv;
@@ -154,21 +154,6 @@ bwrite_impl(struct m_buf *bp)
 	if (rv == -1)		/* write error */
 		return (e);
 	return (EAGAIN);
-}
-
-int
-bwrite(struct m_buf *bp)
-{
-	int error = bwrite_impl(bp);
-
-	/*
-	 * XXX	currently limited to HAMMER2, but this is the way bwrite
-	 *	and its variants work, otherwise bufs may be leaked.
-	 */
-	if (bp->b_is_hammer2)
-		brelse(bp);
-
-	return (error);
 }
 
 void

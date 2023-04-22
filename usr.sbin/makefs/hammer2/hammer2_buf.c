@@ -49,7 +49,6 @@ getblkx(struct m_vnode *vp, off_t loffset, int size, int blkflags, int slptimeo)
 	assert(bp->b_data);
 
 	bp->b_loffset = loffset;
-	bp->b_is_hammer2 = 1;
 
 	return (bp);
 }
