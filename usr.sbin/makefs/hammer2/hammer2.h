@@ -138,7 +138,6 @@
 #include <mkfs_hammer2.h>
 
 #include "hammer2_compat.h"
-#include "makefs.h"
 
 struct hammer2_io;
 struct hammer2_chain;
@@ -2090,8 +2089,6 @@ void
 hammer2_iocom_uninit(hammer2_dev_t *hmp)
 {
 }
-
-extern fsnode *hammer2_curnode;
 
 //#endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */
