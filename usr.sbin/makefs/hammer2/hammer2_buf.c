@@ -42,7 +42,12 @@ struct m_buf *
 getblkx(struct m_vnode *vp, off_t loffset, int size, int blkflags, int slptimeo)
 {
 	struct m_buf *bp;
-	makefs_daddr_t blkno = loffset / DEV_BSIZE;
+	makefs_daddr_t blkno;
+
+	if (vp->v_logical)
+		blkno = -1;
+	else
+		blkno = loffset / DEV_BSIZE; /* fsopts->sectorsize */
 
 	bp = getblk(vp, blkno, size, 0, 0, 0);
 	assert(bp);
