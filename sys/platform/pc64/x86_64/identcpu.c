@@ -179,14 +179,14 @@ printcpuinfo(void)
 	}
 	kprintf("-class CPU)\n");
 	if (*cpu_vendor)
-		kprintf("  Origin = \"%s\"", cpu_vendor);
+		kprintf("  Origin=\"%s\"", cpu_vendor);
 	if (cpu_id)
-		kprintf("  Id = 0x%x", cpu_id);
+		kprintf("  Id=0x%x", cpu_id);
 
 	if (cpu_vendor_id == CPU_VENDOR_INTEL ||
 	    cpu_vendor_id == CPU_VENDOR_AMD ||
 	    cpu_vendor_id == CPU_VENDOR_CENTAUR) {
-		kprintf("  Stepping = %u", cpu_id & 0xf);
+		kprintf("  Stepping=%u", cpu_id & 0xf);
 		if (cpu_high > 0) {
 #if 0
 			u_int cmp = 1, htt = 1;
