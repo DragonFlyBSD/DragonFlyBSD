@@ -371,7 +371,7 @@ printcpuinfo(void)
 				"\034PTSC"	/* Performance TSC */
 				"\035PCX_L2I"	/* L2I Performance Counter */
 		       	        "\036MWAITX"	/* MONITORX/MWAITX instructions */
-				"\037ADMSKX"
+				"\037ADMSKX"	/* Address Mask Extension */
 				"\040<b31>"
 				, amd_feature2);
 			}
@@ -382,6 +382,7 @@ printcpuinfo(void)
 				        "\020"
 				        /* RDFSBASE/RDGSBASE/WRFSBASE/WRGSBASE */
 				        "\001GSFSBASE"
+				        /* IA32_TSC_ADJUST MSR */
 				        "\002TSCADJ"
 				        /* Bit Manipulation Instructions */
 				        "\004BMI1"
@@ -391,20 +392,25 @@ printcpuinfo(void)
 				        "\006AVX2"
 				        /* Supervisor Mode Execution Prot. */
 				        "\010SMEP"
-				        /* Bit Manipulation Instructions */
+				        /* Bit Manipulation Instructions 2 */
 				        "\011BMI2"
+				        /* Enhanced REP MOVSB/STOSB */
 				        "\012ENHMOVSB"
 				        /* Invalidate Processor Context ID */
 				        "\013INVPCID"
 				        /* Restricted Transactional Memory */
 				        "\014RTM"
+				        /* Platform QoS Monitoring */
 				        "\015PQM"
+				        /* Deprecate FPU CS/DS values */
 				        "\016NFPUSG"
 				        /* Intel Memory Protection Extensions */
 				        "\017MPX"
+				        /* Platform QoS Enforcement */
 				        "\020PQE"
 				        /* AVX512 Foundation */
 				        "\021AVX512F"
+				        /* AVX512 Double/Quadword */
 				        "\022AVX512DQ"
 				        /* Enhanced NRBG */
 				        "\023RDSEED"
@@ -412,17 +418,27 @@ printcpuinfo(void)
 				        "\024ADX"
 				        /* Supervisor Mode Access Prevention */
 				        "\025SMAP"
+				        /* AVX512 Integer Fused Multiply Add */
 				        "\026AVX512IFMA"
 				        /* Formerly PCOMMIT */
 				        "\027<b22>"
+				        /* Cache Line FLUSH OPTimized */
 				        "\030CLFLUSHOPT"
+				        /* Cache Line Write Back */
 				        "\031CLWB"
+				        /* Processor Trace */
 				        "\032PROCTRACE"
+				        /* AVX512 Prefetch */
 				        "\033AVX512PF"
+				        /* AVX512 Exponential and Reciprocal */
 				        "\034AVX512ER"
+				        /* AVX512 Conflict Detection */
 				        "\035AVX512CD"
+				        /* SHA Extension */
 				        "\036SHA"
+				        /* AVX512 Byte and Word */
 				        "\037AVX512BW"
+				        /* AVX512 Vector Length */
 				        "\040AVX512VL",
 				        cpu_stdext_feature
 				);
