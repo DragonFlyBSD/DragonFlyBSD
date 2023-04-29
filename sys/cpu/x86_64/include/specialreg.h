@@ -275,14 +275,14 @@
 #define	CPUID_STDEXT2_VPCLMULQDQ	0x00000400 /* CLMUL instruction set */
 #define	CPUID_STDEXT2_AVX512VNNI	0x00000800 /* Vector Neural Network instructions */
 #define	CPUID_STDEXT2_AVX512BITALG	0x00001000 /* BITALG instructions */
-/* Bit 13: reserved */
+#define	CPUID_STDEXT2_TME		0x00002000 /* Total Memory Encryption */
 #define	CPUID_STDEXT2_AVX512VPOPCNTDQ	0x00004000 /* Vector Population Count Double/Quadword */
 /* Bit 15: reserved */
 #define	CPUID_STDEXT2_LA57		0x00010000 /* 57-bit linear addr & 5-level paging */
 /* Bits 21-17: MAWAU value for BNDLDX/BNDSTX */
 #define	CPUID_STDEXT2_RDPID		0x00400000 /* RDPID and IA32_TSC_AUX */
 #define	CPUID_STDEXT2_KL		0x00800000 /* Key Locker */
-/* Bit 24: reserved */
+#define	CPUID_STDEXT2_BUS_LOCK_DETECT	0x01000000 /* Bus-Lock Detection */
 #define	CPUID_STDEXT2_CLDEMOTE		0x02000000 /* Cache line demote */
 /* Bit 26: reserved */
 #define	CPUID_STDEXT2_MOVDIRI		0x08000000 /* MOVDIRI instruction */
@@ -295,6 +295,7 @@
 #define	CPUID_STDEXT3_AVX5124VNNIW	0x00000004 /* AVX512 4-reg Neural Network instructions */
 #define	CPUID_STDEXT3_AVX5124FMAPS	0x00000008 /* AVX512 4-reg Multiply Accumulation Single precision */
 #define	CPUID_STDEXT3_FSRM		0x00000010 /* Fast Short REP MOVE */
+#define	CPUID_STDEXT3_UINTR		0x00000020 /* User Interrupts */
 #define	CPUID_STDEXT3_AVX512VP2INTERSECT 0x00000100 /* AVX512 VP2INTERSECT */
 #define	CPUID_STDEXT3_MCUOPT		0x00000200 /* IA32_MCU_OPT_CTRL */
 #define	CPUID_STDEXT3_MD_CLEAR		0x00000400 /* VERW clears CPU buffers */
@@ -406,6 +407,7 @@
 #define	CPUID_PTSC	0x08000000	/* (AMD) Performance time-stamp counter */
 #define	CPUID_L2IPERFC	0x10000000	/* (AMD) L2I performance counter extension */
 #define	CPUID_MWAITX	0x20000000	/* (AMD) MWAITX/MONITORX support */
+#define	CPUID_ADDRMASKEXT 0x40000000	/* (AMD) Breakpoint Addressing Mask Extension */
 	/* compatibility defines */
 #define	AMDID2_LAHF	CPUID_LAHF
 #define	AMDID2_CMP	CPUID_CMPLEGACY
@@ -467,10 +469,12 @@
 #define	CPUID_CAPEX_CLZERO	0x00000001	/* CLZERO instruction */
 #define	CPUID_CAPEX_IRPERF	0x00000002	/* InstRetCntMsr */
 #define	CPUID_CAPEX_XSAVEERPTR	0x00000004	/* RstrFpErrPtrs by XRSTOR */
+#define	CPUID_CAPEX_INVLPGB	0x00000008	/* INVLPGB and TLBSYNC instructions */
 #define	CPUID_CAPEX_RDPRU	0x00000010	/* RDPRU instruction */
 #define	CPUID_CAPEX_MCOMMIT	0x00000100	/* MCOMMIT instruction */
 #define	CPUID_CAPEX_WBNOINVD	0x00000200	/* WBNOINVD instruction */
 #define	CPUID_CAPEX_IBPB	0x00001000	/* Speculation Control IBPB */
+#define	CPUID_CAPEX_INT_WBINVD	0x00002000	/* Interruptable WB[NO]INVD */
 #define	CPUID_CAPEX_IBRS	0x00004000	/* Speculation Control IBRS */
 #define	CPUID_CAPEX_STIBP	0x00008000	/* Speculation Control STIBP */
 #define	CPUID_CAPEX_IBRS_ALWAYSON  0x00010000	/* IBRS always on mode */
