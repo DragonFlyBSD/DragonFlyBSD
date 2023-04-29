@@ -71,15 +71,15 @@ static void print_via_padlock_info(void);
 
 int	cpu_class;
 char machine[] = "x86_64";
-SYSCTL_STRING(_hw, HW_MACHINE, machine, CTLFLAG_RD, 
+SYSCTL_STRING(_hw, HW_MACHINE, machine, CTLFLAG_RD,
     machine, 0, "Machine class");
 
 static char cpu_model[128];
-SYSCTL_STRING(_hw, HW_MODEL, model, CTLFLAG_RD, 
+SYSCTL_STRING(_hw, HW_MODEL, model, CTLFLAG_RD,
     cpu_model, 0, "Machine model");
 
 static int hw_clockrate;
-SYSCTL_INT(_hw, OID_AUTO, clockrate, CTLFLAG_RD, 
+SYSCTL_INT(_hw, OID_AUTO, clockrate, CTLFLAG_RD,
     &hw_clockrate, 0, "CPU instruction clock rate");
 
 static char cpu_brand[48];
@@ -272,7 +272,7 @@ printcpuinfo(void)
 				"\035AVX"	/* Advanced Vector Extensions */
 				"\036F16C"	/* Half-precision conversions */
 				"\037RDRND"	/* RDRAND RNG function */
-				"\040VMM"	/*  Running on a hypervisor */
+				"\040VMM"	/* Running on a hypervisor */
 				, cpu_feature2);
 			}
 
@@ -380,7 +380,7 @@ printcpuinfo(void)
 				kprintf("\n  Structured Extended "
 					"Features=0x%pb%i",
 				        "\020"
-				        /*RDFSBASE/RDGSBASE/WRFSBASE/WRGSBASE*/
+				        /* RDFSBASE/RDGSBASE/WRFSBASE/WRGSBASE */
 				        "\001GSFSBASE"
 				        "\002TSCADJ"
 				        /* Bit Manipulation Instructions */
@@ -394,7 +394,7 @@ printcpuinfo(void)
 				        /* Bit Manipulation Instructions */
 				        "\011BMI2"
 				        "\012ENHMOVSB"
-				       /* Invalidate Processor Context ID */
+				        /* Invalidate Processor Context ID */
 				        "\013INVPCID"
 				        /* Restricted Transactional Memory */
 				        "\014RTM"
@@ -512,9 +512,10 @@ printcpuinfo(void)
 
 			if (cpu_vendor_id == CPU_VENDOR_CENTAUR)
 				print_via_padlock_info();
+
 			/*
 			 * INVALID CPU TOPOLOGY INFORMATION PRINT
-			 * DEPRECATED - CPU_TOPOLOGY_DETECTION moved to 
+			 * DEPRECATED - CPU_TOPOLOGY_DETECTION moved to
 			 * - sys/platform/pc64/x86_64/mp_machdep.c
 			 * - sys/kern/subr_cpu_topology
 			 */
@@ -720,7 +721,7 @@ identify_cpu(void)
 	if (cpu_feature2 & CPUID2_MON)
 		cpu_mi_feature |= CPU_MI_MONITOR;
 
-	/* 
+	/*
 	 * We do assume that all CPUs have the same
 	 * SSE/FXSR features
 	 */
@@ -824,7 +825,7 @@ print_AMD_info(void)
 		kprintf("L2 unified cache: %d kbytes", regs[2] >> 16);
 		kprintf(", %d bytes/line", regs[2] & 0xff);
 		kprintf(", %d lines/tag", (regs[2] >> 8) & 0x0f);
-		print_AMD_l2_assoc((regs[2] >> 12) & 0x0f);	
+		print_AMD_l2_assoc((regs[2] >> 12) & 0x0f);
 	}
 }
 
