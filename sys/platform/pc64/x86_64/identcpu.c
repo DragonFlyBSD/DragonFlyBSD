@@ -68,6 +68,7 @@ static u_int find_cpu_vendor_id(void);
 static void print_AMD_info(void);
 static void print_AMD_assoc(int i);
 static void print_via_padlock_info(void);
+static void print_xsave_info(void);
 
 int	cpu_class;
 char machine[] = "x86_64";
@@ -275,6 +276,9 @@ printcpuinfo(void)
 				"\040VMM"	/* Running on a hypervisor */
 				, cpu_feature2);
 			}
+
+			if ((cpu_feature2 & CPUID2_XSAVE) != 0)
+				print_xsave_info();
 
 			if (cpu_ia32_arch_caps != 0) {
 				kprintf("\n  IA32_ARCH_CAPS=0x%pb%i",
@@ -889,3 +893,22 @@ print_via_padlock_info(void)
 	"\015RSA"		/* PMM */
 	, regs[3]);
 }
+
+static void
+print_xsave_info(void)
+{
+	u_int regs[4];
+
+	cpuid_count(0xd, 0x1, regs);
+	if (regs[0] == 0)
+		return;
+
+	kprintf("\n  XSAVE Features=0x%pb%i",
+		"\020"
+		"\001XSAVEOPT"
+		"\002XSAVEC"
+		"\003XGETBV"
+		"\004XSAVES"
+		, regs[0]);
+}
+
