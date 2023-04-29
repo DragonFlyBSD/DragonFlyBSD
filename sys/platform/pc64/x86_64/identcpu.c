@@ -285,6 +285,7 @@ printcpuinfo(void)
 				       "\004SKIP_L1DFL_VME"
 				       "\005SSB_NO"
 				       "\006MDS_NO"
+				       "\007IF_PSCHANGE_MC_NO"
 				       "\010TSX_CTRL"
 				       "\011TAA_NO",
 				       (u_int)cpu_ia32_arch_caps
@@ -390,6 +391,8 @@ printcpuinfo(void)
 				        "\005HLE"
 				        /* Advanced Vector Instructions 2 */
 				        "\006AVX2"
+				        /* FDP_EXCPTN_ONLY */
+				        "\007FDPEXC"
 				        /* Supervisor Mode Execution Prot. */
 				        "\010SMEP"
 				        /* Bit Manipulation Instructions 2 */
@@ -455,6 +458,7 @@ printcpuinfo(void)
 				        "\005OSPKE"
 				        "\006WAITPKG"
 				        "\007AVX512VBMI2"
+				        "\010CET_SS"
 				        "\011GFNI"
 				        "\012VAES"
 				        "\013VPCLMULQDQ"
@@ -464,11 +468,14 @@ printcpuinfo(void)
 				        "\017AVX512VPOPCNTDQ"
 				        "\021LA57"
 				        "\027RDPID"
+				        "\030KL"
+				        "\031BUS_LOCK_DETECT"
 				        "\032CLDEMOTE"
 				        "\034MOVDIRI"
 				        "\035MOVDIR64B"
 				        "\036ENQCMD"
-				        "\037SGXLC",
+				        "\037SGXLC"
+				        "\040PKS",
 				        cpu_stdext_feature2
 			       );
 			}
@@ -480,10 +487,14 @@ printcpuinfo(void)
 				        "\003AVX512_4VNNIW"
 				        "\004AVX512_4FMAPS"
 				        "\005FSRM"
+				        "\006UINTR"
 				        "\011AVX512VP2INTERSECT"
 				        "\012MCUOPT"
 				        "\013MD_CLEAR"
 				        "\016TSXFA"
+				        "\017SERIALIZE"
+				        "\020HYBRID"
+				        "\021TSXLDTRK"
 				        "\023PCONFIG"
 				        "\025IBT"
 				        "\033IBPB"
