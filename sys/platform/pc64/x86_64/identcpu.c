@@ -186,7 +186,9 @@ printcpuinfo(void)
 	if (cpu_vendor_id == CPU_VENDOR_INTEL ||
 	    cpu_vendor_id == CPU_VENDOR_AMD ||
 	    cpu_vendor_id == CPU_VENDOR_CENTAUR) {
-		kprintf("  Stepping=%u", cpu_id & 0xf);
+		kprintf("  Family=0x%x", CPUID_TO_FAMILY(cpu_id));
+		kprintf("  Model=0x%x", CPUID_TO_MODEL(cpu_id));
+		kprintf("  Stepping=%u", cpu_id & CPUID_STEPPING);
 		if (cpu_high > 0) {
 #if 0
 			u_int cmp = 1, htt = 1;
