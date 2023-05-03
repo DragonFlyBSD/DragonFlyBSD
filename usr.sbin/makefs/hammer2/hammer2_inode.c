@@ -1809,6 +1809,9 @@ vflush(struct mount *mp, int rootrefs, int flags)
 	struct m_vnode *vp;
 	hammer2_key_t count_before, count_after, count_delta;
 
+	printf("%s: total chain %ld\n", __func__, hammer2_chain_allocs);
+	printf("%s: total dio %d\n", __func__, hammer2_dio_count);
+
 	hammer2_spin_ex(&pmp->inum_spin);
 	count_before = 0;
 	RB_FOREACH(ip, hammer2_inode_tree, &pmp->inum_tree)
