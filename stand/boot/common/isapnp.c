@@ -25,11 +25,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/isapnp.c,v 1.7 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/isapnp.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
  */
 
 /*
- * Machine-independant ISA PnP enumerator implementing a subset of the
+ * Machine-independent ISA PnP enumerator implementing a subset of the
  * ISA PnP specification.
  */
 #include <stand.h>

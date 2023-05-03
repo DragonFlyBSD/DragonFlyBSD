@@ -13,7 +13,7 @@ SRCS+=	load_elf64.c load_elf64_obj.c reloc_elf64.c
 SRCS+=	dev_net.c
 .endif
 
-# Machine-independant ISA PnP
+# Machine-independent ISA PnP
 .if HAVE_ISABUS
 SRCS+=	isapnp.c
 .endif

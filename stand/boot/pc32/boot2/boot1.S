@@ -45,7 +45,6 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot1.s,v 1.23 2003/08/22 01:59:28 imp Exp $
- * $DragonFly: src/sys/boot/pc32/boot2/boot1.S,v 1.10 2008/09/13 11:45:45 corecode Exp $
  */
 
 #include "../bootasm.h"
@@ -302,8 +301,8 @@ nread_alt:
 		callw xread.1	 		//  disk
 		jnc return			// If success, return
 
-// Print that an error occured (no room to determine which error
-// occured) and the prompt.  Then wait for a keypress, then reboot the
+// Print that an error occurred (no room to determine which error
+// occurred) and the prompt.  Then wait for a keypress, then reboot the
 // machine.
 // 
 error:

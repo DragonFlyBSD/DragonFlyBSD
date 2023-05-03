@@ -106,7 +106,7 @@ nodes_match(EFI_DEVICE_PATH *imgpath, EFI_DEVICE_PATH *devpath)
 
 /*
  * device_paths_match returns TRUE if the imgpath isn't NULL and all nodes
- * in imgpath and devpath match up to their respect occurances of a media
+ * in imgpath and devpath match up to their respect occurrences of a media
  * node, FALSE otherwise.
  */
 static BOOLEAN
