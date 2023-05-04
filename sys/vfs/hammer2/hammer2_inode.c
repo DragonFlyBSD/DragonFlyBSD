@@ -1698,7 +1698,7 @@ hammer2_inode_chain_ins(hammer2_inode_t *ip)
 			error = 0;
 		if (error) {
 			kprintf("hammer2: backend unable to "
-				"insert inode %p %ld\n", ip, ip->meta.inum);
+				"insert inode %p %ld\n", ip, (long)ip->meta.inum);
 			/* XXX return error somehow? */
 		}
 	}
@@ -1737,7 +1737,7 @@ hammer2_inode_chain_des(hammer2_inode_t *ip)
 			error = 0;
 		if (error) {
 			kprintf("hammer2: backend unable to "
-				"delete inode %p %ld\n", ip, ip->meta.inum);
+				"delete inode %p %ld\n", ip, (long)ip->meta.inum);
 			/* XXX return error somehow? */
 		}
 	}
