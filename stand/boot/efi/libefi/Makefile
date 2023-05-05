@@ -13,6 +13,7 @@ CFLAGS+= -I${.CURDIR}/../../../contrib/edk2/MdePkg/Include/X64
 .endif
 CFLAGS+= -I${.CURDIR}/../include
 CFLAGS+= -I${.CURDIR}/../../../contrib/edk2/MdePkg/Include
+CFLAGS+= -I${.CURDIR}/../../../contrib/edk2/MdeModulePkg/Include
 CFLAGS+= -I${.CURDIR}/../../../lib
 
 # Pick up the bootstrap header for some interface items

@@ -15,6 +15,7 @@ CFLAGS+=	-fno-stack-protector
 CFLAGS+=	-fPIC
 CFLAGS+=	-I${.CURDIR}/../../../contrib/edk2/MdePkg/Include
 CFLAGS+=	-I${.CURDIR}/../../../contrib/edk2/MdePkg/Include/X64
+CFLAGS+=	-I${.CURDIR}/../../../contrib/edk2/MdeModulePkg/Include
 LDFLAGS+=	-Wl,-znocombreloc
 
 FLAGS_GROUPS=	inttypes
