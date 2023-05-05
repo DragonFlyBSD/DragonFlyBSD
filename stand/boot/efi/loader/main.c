@@ -58,12 +58,16 @@ EFI_GUID imgid = LOADED_IMAGE_PROTOCOL;
 EFI_GUID mps = EFI_MPS_TABLE_GUID;
 EFI_GUID netid = EFI_SIMPLE_NETWORK_PROTOCOL_GUID;
 EFI_GUID smbios = SMBIOS_TABLE_GUID;
+EFI_GUID smbios3 = SMBIOS3_TABLE_GUID;
 EFI_GUID dxe = DXE_SERVICES_TABLE_GUID;
 EFI_GUID hoblist = HOB_LIST_GUID;
 EFI_GUID memtype = MEMORY_TYPE_INFORMATION_TABLE_GUID;
 EFI_GUID debugimg = EFI_DEBUG_IMAGE_INFO_TABLE_GUID;
 EFI_GUID fdtdtb = FDT_TABLE_GUID;
 EFI_GUID inputid = SIMPLE_INPUT_PROTOCOL;
+EFI_GUID esrt = EFI_SYSTEM_RESOURCE_TABLE_GUID;
+EFI_GUID lzmadecomp = LZMA_CUSTOM_DECOMPRESS_GUID;
+EFI_GUID amiromlayout = AMI_ROM_LAYOUT_GUID;
 
 /*
  * Need this because EFI uses UTF-16 unicode string constants, but we
@@ -111,7 +115,7 @@ has_keyboard(void)
 	EFI_HANDLE *hin, *hin_end, *walker;
 	UINTN sz;
 	int retval = 0;
-	
+
 	/*
 	 * Find all the handles that support the SIMPLE_TEXT_INPUT_PROTOCOL and
 	 * do the typical dance to get the right sized buffer.
@@ -168,7 +172,7 @@ has_keyboard(void)
 			} else if (DevicePathType(path) == MESSAGING_DEVICE_PATH &&
 			    DevicePathSubType(path) == MSG_USB_CLASS_DP) {
 				USB_CLASS_DEVICE_PATH *usb;
-			       
+
 				usb = (USB_CLASS_DEVICE_PATH *)(void *)path;
 				if (usb->DeviceClass == 3 && /* HID */
 				    usb->DeviceSubClass == 1 && /* Boot devices */
@@ -558,6 +562,8 @@ command_configuration(int argc, char *argv[])
 			printf("ACPI 2.0 Table");
 		else if (!memcmp(guid, &smbios, sizeof(EFI_GUID)))
 			printf("SMBIOS Table");
+		else if (!memcmp(guid, &smbios3, sizeof(EFI_GUID)))
+			printf("SMBIOS3 Table");
 		else if (!memcmp(guid, &dxe, sizeof(EFI_GUID)))
 			printf("DXE Table");
 		else if (!memcmp(guid, &hoblist, sizeof(EFI_GUID)))
@@ -568,6 +574,12 @@ command_configuration(int argc, char *argv[])
 			printf("Debug Image Info Table");
 		else if (!memcmp(guid, &fdtdtb, sizeof(EFI_GUID)))
 			printf("FDT Table");
+		else if (!memcmp(guid, &esrt, sizeof(EFI_GUID)))
+			printf("System Resource Table");
+		else if (!memcmp(guid, &lzmadecomp, sizeof(EFI_GUID)))
+			printf("LZMA-compressed Filesystem");
+		else if (!memcmp(guid, &amiromlayout, sizeof(EFI_GUID)))
+			printf("AMI ROM Layout");
 		else
 			printf("Unknown Table (%s)", guid_to_string(guid));
 		snprintf(line, sizeof(line), " at %p\n",
