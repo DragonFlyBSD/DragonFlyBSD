@@ -244,8 +244,8 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 
 	iroot = VTOI(vroot);
 	assert(iroot);
-	printf("root inode inum %ld, mode 0%o, refs %d\n",
-	    iroot->meta.inum, iroot->meta.mode, iroot->refs);
+	printf("root inode inum %lld, mode 0%o, refs %d\n",
+	    (long long)iroot->meta.inum, iroot->meta.mode, iroot->refs);
 
 	/* populate image */
 	printf("populating `%s'\n", image);
@@ -261,7 +261,7 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 
 	/* check leaked resource */
 	if (vnode_count)
-		printf("XXX %ld vnode left\n", vnode_count);
+		printf("XXX %lld vnode left\n", (long long)vnode_count);
 	if (hammer2_chain_allocs)
 		printf("XXX %ld chain left\n", hammer2_chain_allocs);
 	bcleanup();
@@ -327,8 +327,8 @@ hammer2_image_size(fsinfo_t *fsopts)
 		    sizetostr(image_size));
 
 		if (used_size > image_size)
-			errx(1, "invalid used_size %ld > image_size %ld",
-			    used_size, image_size);
+			errx(1, "invalid used_size %lld > image_size %lld",
+			    (long long)used_size, (long long)image_size);
 	}
 
 	return image_size;
@@ -405,8 +405,8 @@ hammer2_validate(const char *dir, fsnode *root, fsinfo_t *fsopts)
 	if (image_size < minsize)
 		image_size = minsize;
 	else if (maxsize > 0 && image_size > maxsize)
-		errx(1, "`%s' size of %ld is larger than the maxsize of %ld",
-		    dir, image_size, maxsize);
+		errx(1, "`%s' size of %lld is larger than the maxsize of %lld",
+		    dir, (long long)image_size, (long long)maxsize);
 
 	assert((image_size & HAMMER2_FREEMAP_LEVEL1_MASK) == 0);
 	h2_opt->image_size = image_size;
@@ -441,7 +441,7 @@ hammer2_dump_fsinfo(fsinfo_t *fsopts)
 	printf("\tlabel_specified %d\n", h2_opt->label_specified);
 	printf("\tmount_label \"%s\"\n", h2_opt->mount_label);
 	printf("\tnum_volhdr %d\n", h2_opt->num_volhdr);
-	printf("\timage_size 0x%lx\n", h2_opt->image_size);
+	printf("\timage_size 0x%llx\n", (long long)h2_opt->image_size);
 
 	printf("\tHammer2Version %d\n", opt->Hammer2Version);
 	printf("\tBootAreaSize 0x%jx\n", opt->BootAreaSize);
@@ -831,8 +831,8 @@ hammer2_populate_dir(struct m_vnode *dvp, const char *dir, fsnode *root,
 			if (error)
 				errx(1, "hammer2_nlink(\"%s\") failed: %s",
 				    cur->name, strerror(error));
-			snprintf(buf, sizeof(buf), "nlink=%ld",
-			    VTOI(vp)->meta.nlinks);
+			snprintf(buf, sizeof(buf), "nlink=%lld",
+			    (long long)VTOI(vp)->meta.nlinks);
 			hammer2_print(dvp, vp, cur, depth, buf);
 			continue;
 		}

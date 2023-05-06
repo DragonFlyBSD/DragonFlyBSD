@@ -5796,7 +5796,7 @@ hammer2_characterize_failed_chain(hammer2_chain_t *chain, uint64_t check,
 	    ((chain->bref.flags & HAMMER2_BREF_FLAG_PFSROOT) == 0 ||
 	     (lchain->bref.key & HAMMER2_DIRHASH_VISIBLE))) {
 		kprintf("   Resides at/in inode %ld\n",
-			chain->bref.key);
+			(long)chain->bref.key);
 	} else if (chain && chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		kprintf("   Resides in inode index - CRITICAL!!!\n");
 	} else {
@@ -6026,7 +6026,7 @@ hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
 				if (inum != rchain->data->ipdata.meta.inum) {
 					kprintf("hammer2_chain_inode_find: lookup inum %ld, "
 						"got valid inode but with inum %ld\n",
-						inum, rchain->data->ipdata.meta.inum);
+						(long)inum, (long)rchain->data->ipdata.meta.inum);
 					error = HAMMER2_ERROR_CHECK;
 					rchain->error = error;
 				}

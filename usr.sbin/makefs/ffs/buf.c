@@ -175,10 +175,10 @@ bcleanup(void)
 	printf("%s: unflushed buffers:\n", __func__);
 	TAILQ_FOREACH(bp, &buftail, b_tailq) {
 		printf("\t%p  lblkno %10lld  blkno %10lld  count %6ld  bufsize %6ld  "
-		    "loffset %016lx  cmd %d  [vp %p  data %p  type %d  logical %d  vflushed %d]\n",
+		    "loffset %016llx  cmd %d  [vp %p  data %p  type %d  logical %d  vflushed %d]\n",
 		    bp, (long long)bp->b_lblkno, (long long)bp->b_blkno,
 		    bp->b_bcount, bp->b_bufsize,
-		    bp->b_loffset, bp->b_cmd, bp->b_vp,
+		    (long long)bp->b_loffset, bp->b_cmd, bp->b_vp,
 		    bp->b_vp ? bp->b_vp->v_data : NULL,
 		    bp->b_vp ? bp->b_vp->v_type : -1,
 		    bp->b_vp ? bp->b_vp->v_logical : -1,
