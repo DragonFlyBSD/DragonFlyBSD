@@ -301,7 +301,7 @@ smbios_parse_table(const caddr_t addr, const int ver)
 void
 smbios_detect(const caddr_t addr)
 {
-	char		buf[16];
+	char		buf[32];
 	caddr_t		vaddr, dmi, smbios;
 	size_t		count, length;
 	uint32_t	paddr;
@@ -313,6 +313,14 @@ smbios_detect(const caddr_t addr)
 	    SMBIOS_LENGTH);
 	if (smbios == NULL)
 		return;
+
+	/*
+	 * Export the SMBIOS entry point via kenv so that the SMBIOS table can
+	 * be found (e.g., by dmidecode(8)) in UEFI-only mode, where the BIOS
+	 * is not mapped into the standard address space.
+	 */
+	sprintf(buf, "%p", smbios);
+	setenv("hint.smbios.0.mem", buf, 1);
 
 	length = SMBIOS_GET16(smbios, 0x16);	/* Structure Table Length */
 	paddr = SMBIOS_GET32(smbios, 0x18);	/* Structure Table Address */
