@@ -1325,6 +1325,8 @@ next_hmp:
 		}
 		*/
 	} else {
+		/* hmp->devvp_list is already constructed. */
+		hammer2_cleanup_devvp(&devvpl);
 		spmp = hmp->spmp;
 		if (info.hflags & HMNT2_DEVFLAGS) {
 			kprintf("hammer2_mount: Warning: mount flags pertaining "
