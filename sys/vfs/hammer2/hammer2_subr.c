@@ -240,7 +240,7 @@ hammer2_getradix(size_t bytes)
 	int radix;
 
 	/*
-	 * Optimize the iteration by pre-checking commonly used radii.
+	 * Optimize the iteration by pre-checking commonly used radix.
 	 */
 	if (bytes == HAMMER2_PBUFSIZE)
 		radix = HAMMER2_PBUFRADIX;
