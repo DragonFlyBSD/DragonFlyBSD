@@ -200,8 +200,3 @@ DF404.0 {
 	wcwidth;
 	wcwidth_l;
 };
-
-/*
-DFprivate_1.0 {
-};
-*/

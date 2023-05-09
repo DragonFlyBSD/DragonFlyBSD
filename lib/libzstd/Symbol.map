@@ -362,6 +362,3 @@ ZSTDLIB_1.1.1 {
     ZDICT_trainFromBuffer_legacy;
     ZDICT_trainFromBuffer_unsafe_legacy;
 };
-
-ZSTDLIBprivate_1.0 {
-};
