@@ -16,6 +16,7 @@ SRCS+=	gzwrite.c infback.c
 SRCS+=	inffast.c inflate.c inftrees.c trees.c uncompr.c zutil.c
 
 CFLAGS+=-I${CONTRIBDIR} -I${.CURDIR}
+CFLAGS+=-DHAVE_HIDDEN
 #CFLAGS+=-DZLIB_DEBUG
 
 INCS=		zconf.h zlib.h
