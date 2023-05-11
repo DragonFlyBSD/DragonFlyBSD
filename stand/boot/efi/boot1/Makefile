@@ -16,12 +16,12 @@ CFLAGS+=	-I.
 CFLAGS+=	-I${.CURDIR}/../include
 CFLAGS+=	-I${.CURDIR}/../../../lib
 CFLAGS+=	-I${.CURDIR}/../../../../sys/contrib/dev/acpica/source/include
-CFLAGS+=	-I${.CURDIR}/../../../../sys/contrib/edk2/Include
+CFLAGS+=	-I${.CURDIR}/../../../contrib/edk2/MdePkg/Include
 CFLAGS+=	-I${.CURDIR}/../../../../sys
 CFLAGS+=	-DEFI_UFS_BOOT
 
 .if ${MACHINE_ARCH} == "x86_64"
-CFLAGS+=	-I${.CURDIR}/../../../../sys/contrib/edk2/Include/X64
+CFLAGS+=	-I${.CURDIR}/../../../contrib/edk2/MdePkg/Include/X64
 .endif
 
 # Disable stack protector

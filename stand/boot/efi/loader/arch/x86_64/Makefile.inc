@@ -13,8 +13,8 @@ SRCS+=	nullconsole.c \
 CFLAGS+=	-fno-stack-protector
 
 CFLAGS+=	-fPIC
-CFLAGS+=	-I${.CURDIR}/../../../../sys/contrib/edk2/Include
-CFLAGS+=	-I${.CURDIR}/../../../../sys/contrib/edk2/Include/X64
+CFLAGS+=	-I${.CURDIR}/../../../contrib/edk2/MdePkg/Include
+CFLAGS+=	-I${.CURDIR}/../../../contrib/edk2/MdePkg/Include/X64
 LDFLAGS+=	-Wl,-znocombreloc
 
 FLAGS_GROUPS=	inttypes

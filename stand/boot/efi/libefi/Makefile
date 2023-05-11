@@ -9,10 +9,10 @@ SRCS=	delay.c efi_console.c efinet.c efipart.c errno.c handles.c \
 
 .if ${MACHINE_ARCH} == "x86_64"
 CFLAGS+= -fPIC -mno-red-zone
-CFLAGS+= -I${.CURDIR}/../../../../sys/contrib/edk2/Include/X64
+CFLAGS+= -I${.CURDIR}/../../../contrib/edk2/MdePkg/Include/X64
 .endif
 CFLAGS+= -I${.CURDIR}/../include
-CFLAGS+= -I${.CURDIR}/../../../../sys/contrib/edk2/Include
+CFLAGS+= -I${.CURDIR}/../../../contrib/edk2/MdePkg/Include
 CFLAGS+= -I${.CURDIR}/../../../lib
 
 # Pick up the bootstrap header for some interface items
