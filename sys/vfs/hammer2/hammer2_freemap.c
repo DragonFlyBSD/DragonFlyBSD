@@ -227,29 +227,6 @@ hammer2_freemap_alloc(hammer2_chain_t *chain, size_t bytes)
 	KKASSERT(bytes >= HAMMER2_ALLOC_MIN && bytes <= HAMMER2_ALLOC_MAX);
 
 	/*
-	 * Calculate the starting point for our allocation search.
-	 *
-	 * Each freemap leaf is dedicated to a specific freemap_radix.
-	 * The freemap_radix can be more fine-grained than the device buffer
-	 * radix which results in inodes being grouped together in their
-	 * own segment, terminal-data (16K or less) and initial indirect
-	 * block being grouped together, and then full-indirect and full-data
-	 * blocks (64K) being grouped together.
-	 *
-	 * The single most important aspect of this is the inode grouping
-	 * because that is what allows 'find' and 'ls' and other filesystem
-	 * topology operations to run fast.
-	 */
-#if 0
-	if (bref->data_off & ~HAMMER2_OFF_MASK_RADIX)
-		bpref = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
-	else if (trans->tmp_bpref)
-		bpref = trans->tmp_bpref;
-	else if (trans->tmp_ip)
-		bpref = trans->tmp_ip->chain->bref.data_off;
-	else
-#endif
-	/*
 	 * Heuristic tracking index.  We would like one for each distinct
 	 * bref type if possible.  heur_freemap[] has room for two classes
 	 * for each type.  At a minimum we have to break-up our heuristic
