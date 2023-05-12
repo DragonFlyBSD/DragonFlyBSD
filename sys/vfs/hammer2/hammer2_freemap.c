@@ -1221,7 +1221,7 @@ again:
 	 * operations later on.
 	 *
 	 * We could calculate the largest possible allocation and set the
-	 * radix that could fit, but its easier just to set bigmask to -1.
+	 * radixes that could fit, but its easier just to set bigmask to -1.
 	 */
 	if (modified) {
 		chain->bref.check.freemap.bigmask = -1;

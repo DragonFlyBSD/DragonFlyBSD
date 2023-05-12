@@ -339,7 +339,7 @@ underlying files are not arranged under it in the radix tree.
 The copy-on-write design implements a block table as a radix-tree,
 with a small fan-out in the volume header and inode (typically 4x) and
 a large fan-out for indirect blocks (typically 128x and 512x depending).
-The table is built bottom-up.  Intermediate radix are only created when
+The table is built bottom-up.  Intermediate radixes are only created when
 necessary so small files and directories will have a much shallower radix
 tree.
 
