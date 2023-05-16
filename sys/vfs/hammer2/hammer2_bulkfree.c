@@ -210,24 +210,22 @@ hammer2_bulkfree_scan(hammer2_chain_t *parent,
 		if (chain == NULL)
 			continue;
 
-		if (chain) {
-			info->count_bytes_scanned += chain->bytes;
-			++info->count_chains_scanned;
+		info->count_bytes_scanned += chain->bytes;
+		++info->count_chains_scanned;
 
-			if (info->count_chains_scanned >=
-			    info->count_chains_reported + 1000000 ||
-			    (info->count_chains_scanned < 1000000 &&
-			     info->count_chains_scanned >=
-			     info->count_chains_reported + 100000)) {
-				kprintf(" chains %-7ld inodes %-7ld "
-					"dirents %-7ld bytes %5ldMB\n",
-					info->count_chains_scanned,
-					info->count_inodes_scanned,
-					info->count_dirents_scanned,
-					info->count_bytes_scanned / 1000000);
-				info->count_chains_reported =
-					info->count_chains_scanned;
-			}
+		if (info->count_chains_scanned >=
+		    info->count_chains_reported + 1000000 ||
+		    (info->count_chains_scanned < 1000000 &&
+		     info->count_chains_scanned >=
+		     info->count_chains_reported + 100000)) {
+			kprintf(" chains %-7ld inodes %-7ld "
+				"dirents %-7ld bytes %5ldMB\n",
+				info->count_chains_scanned,
+				info->count_inodes_scanned,
+				info->count_dirents_scanned,
+				info->count_bytes_scanned / 1000000);
+			info->count_chains_reported =
+				info->count_chains_scanned;
 		}
 
 		/*
