@@ -175,8 +175,7 @@ hammer2_freemap_reserve(hammer2_chain_t *chain, int radix)
  * allocations using the iterator as allocated, instantiating new 2GB zones,
  * and dealing with the end-of-media edge case).
  *
- * ip and bpref are only used as a heuristic to determine locality of
- * reference.  bref->key may also be used heuristically.
+ * bpref is only used as a heuristic to determine locality of reference.
  *
  * This function is a NOP if bytes is 0.
  */
@@ -287,12 +286,7 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 	int error;
 
 	/*
-	 * Calculate the number of bytes being allocated, the number
-	 * of contiguous bits of bitmap being allocated, and the bitmap
-	 * mask.
-	 *
-	 * WARNING! cpu hardware may mask bits == 64 -> 0 and blow up the
-	 *	    mask calculation.
+	 * Calculate the number of bytes being allocated.
 	 */
 	bytes = (size_t)1 << radix;
 	class = (bref->type << 8) | HAMMER2_PBUFRADIX;
