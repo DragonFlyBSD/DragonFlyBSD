@@ -565,7 +565,7 @@ hammer2_bmap_alloc(hammer2_dev_t *hmp, hammer2_bmap_data_t *bmap,
 	} else {
 		bmradix = (hammer2_bitmap_t)2 <<
 			  (radix - HAMMER2_FREEMAP_BLOCK_RADIX);
-		/* (32K-256K) 4, 8, 16, 32 bits per allocation block */
+		/* (32K-64K) 4, 8 bits per allocation block */
 	}
 
 	/*
