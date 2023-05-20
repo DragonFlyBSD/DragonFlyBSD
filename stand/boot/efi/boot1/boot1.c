@@ -327,7 +327,7 @@ devpath_str(EFI_DEVICE_PATH *devpath)
  */
 static EFI_STATUS
 load_loader(const boot_module_t **modp, dev_info_t **devinfop, void **bufp,
-    size_t *bufsize, BOOLEAN preferred)
+	    size_t *bufsize, BOOLEAN preferred)
 {
 	UINTN i;
 	dev_info_t *dev;
@@ -345,7 +345,7 @@ load_loader(const boot_module_t **modp, dev_info_t **devinfop, void **bufp,
 			status = mod->load(PATH_LOADER, dev, bufp, bufsize);
 			if (status == EFI_NOT_FOUND) {
 				status = mod->load(PATH_LOADER_ALT, dev, bufp,
-				    bufsize);
+						   bufsize);
 			}
 			if (status == EFI_SUCCESS) {
 				*devinfop = dev;
@@ -366,37 +366,49 @@ static EFI_STATUS
 try_boot(void)
 {
 	size_t bufsize, loadersize, cmdsize;
-	void *buf, *loaderbuf;
 	char *cmd;
+	void *buf;
+	void *loaderbuf;
 	dev_info_t *dev;
 	const boot_module_t *mod;
 	EFI_HANDLE loaderhandle;
 	EFI_LOADED_IMAGE *loaded_image;
 	EFI_STATUS status;
 
+	loaderbuf = NULL;
+	loadersize = 0;
+
 	status = load_loader(&mod, &dev, &loaderbuf, &loadersize, TRUE);
 	if (status != EFI_SUCCESS) {
-		status = load_loader(&mod, &dev, &loaderbuf, &loadersize,
-		    FALSE);
+		status = load_loader(&mod, &dev, &loaderbuf,
+				     &loadersize, FALSE);
 		if (status != EFI_SUCCESS) {
 			printf("Failed to load '%s' or '%s'\n",
-			    PATH_LOADER, PATH_LOADER_ALT);
+			       PATH_LOADER, PATH_LOADER_ALT);
 			return (status);
 		}
 	}
 
 	/*
-	 * Read in and parse the command line from /boot.config or /boot/config,
-	 * if present. We'll pass it the next stage via a simple ASCII
-	 * string. loader.efi has a hack for ASCII strings, so we'll use that to
-	 * keep the size down here. We only try to read the alternate file if
-	 * we get EFI_NOT_FOUND because all other errors mean that the boot_module
-	 * had troubles with the filesystem. We could return early, but we'll let
-	 * loading the actual kernel sort all that out. Since these files are
-	 * optional, we don't report errors in trying to read them.
+	 * Funcions might not initialize response variables on error, make
+	 * sure we have sanity.
 	 */
 	cmd = NULL;
+	buf = NULL;
 	cmdsize = 0;
+	bufsize = 0;
+
+	/*
+	 * Read in and parse the command line from /boot.config or
+	 * /boot/config, if present.  We'll pass it the next stage via a
+	 * simple ASCII string. loader.efi has a hack for ASCII strings, so
+	 * we'll use that to keep the size down here. We only try to read the
+	 * alternate file if we get EFI_NOT_FOUND because all other errors
+	 * mean that the boot_module had troubles with the filesystem. We
+	 * could return early, but we'll let loading the actual kernel sort
+	 * all that out. Since these files are optional, we don't report
+	 * errors in trying to read them.
+	 */
 	status = mod->load(PATH_DOTCONFIG, dev, &buf, &bufsize);
 	if (status == EFI_NOT_FOUND)
 		status = mod->load(PATH_CONFIG, dev, &buf, &bufsize);
@@ -411,16 +423,19 @@ try_boot(void)
 		buf = NULL;
 	}
 
-	if ((status = BS->LoadImage(TRUE, IH, devpath_last(dev->devpath),
-	    loaderbuf, loadersize, &loaderhandle)) != EFI_SUCCESS) {
-		printf("Failed to load image provided by %s, size: %zu, (%llu)\n",
-		     mod->name, loadersize, status);
+	status = BS->LoadImage(TRUE, IH, devpath_last(dev->devpath),
+			       loaderbuf, loadersize, &loaderhandle);
+	if (status != EFI_SUCCESS) {
+		printf("Failed to load image provided by %s, "
+		       "size: %zu, (0x%llx)\n",
+		       mod->name, loadersize, status);
 		goto errout;
 	}
 
-	if ((status = OpenProtocolByHandle(loaderhandle, &LoadedImageGUID,
-	    (VOID**)&loaded_image)) != EFI_SUCCESS) {
-		printf("Failed to query LoadedImage provided by %s (%llu)\n",
+	status = OpenProtocolByHandle(loaderhandle, &LoadedImageGUID,
+				      (VOID**)&loaded_image);
+	if (status != EFI_SUCCESS) {
+		printf("Failed to query LoadedImage provided by %s (0x%llx)\n",
 		    mod->name, status);
 		goto errout;
 	}
@@ -444,21 +459,25 @@ try_boot(void)
 	DSTALL(1000000);
 	DPRINTF(".\n");
 
-	if ((status = BS->StartImage(loaderhandle, NULL, NULL)) !=
-	    EFI_SUCCESS) {
-		printf("Failed to start image provided by %s (%llu)\n",
-		    mod->name, status);
+	status = BS->StartImage(loaderhandle, NULL, NULL);
+	if (status != EFI_SUCCESS) {
+		printf("Failed to start image provided by %s (0x%llx)\n",
+		       mod->name, status);
 		loaded_image->LoadOptionsSize = 0;
 		loaded_image->LoadOptions = NULL;
 	}
 
+	/*
+	 * Note that buf and loaderbuf were allocated via boot services,
+	 * not our local allocator.
+	 */
 errout:
 	if (cmd != NULL)
 		free(cmd);
 	if (buf != NULL)
-		free(buf);
+		 (void)BS->FreePool(buf);
 	if (loaderbuf != NULL)
-		free(loaderbuf);
+		 (void)BS->FreePool(loaderbuf);
 
 	return (status);
 }
@@ -483,7 +502,7 @@ probe_handle(EFI_HANDLE h, EFI_DEVICE_PATH *imgpath, BOOLEAN *preferred)
 		return (status);
 
 	if (status != EFI_SUCCESS) {
-		DPRINTF("\nFailed to query DevicePath (%llu)\n",
+		DPRINTF("\nFailed to query DevicePath (0x%llx)\n",
 		    status);
 		return (status);
 	}
@@ -491,12 +510,12 @@ probe_handle(EFI_HANDLE h, EFI_DEVICE_PATH *imgpath, BOOLEAN *preferred)
 	DPRINTF("probing: %s\n", devpath_str(devpath));
 
 	status = OpenProtocolByHandle(h, &BlockIoProtocolGUID,
-	    (void **)&blkio);
+				      (void **)&blkio);
 	if (status == EFI_UNSUPPORTED)
 		return (status);
 
 	if (status != EFI_SUCCESS) {
-		DPRINTF("\nFailed to query BlockIoProtocol (%llu)\n",
+		DPRINTF("\nFailed to query BlockIoProtocol (0x%llx)\n",
 		    status);
 		return (status);
 	}
@@ -511,10 +530,10 @@ probe_handle(EFI_HANDLE h, EFI_DEVICE_PATH *imgpath, BOOLEAN *preferred)
 		if (boot_modules[i] == NULL)
 			continue;
 
-		if ((status = BS->AllocatePool(EfiLoaderData,
-		    sizeof(*devinfo), (void **)&devinfo)) !=
-		    EFI_SUCCESS) {
-			DPRINTF("\nFailed to allocate devinfo (%llu)\n",
+		status = BS->AllocatePool(EfiLoaderData, sizeof(*devinfo),
+					  (void **)&devinfo);
+		if (status != EFI_SUCCESS) {
+			DPRINTF("\nFailed to allocate devinfo (0x%llx)\n",
 			    status);
 			continue;
 		}
@@ -564,7 +583,7 @@ probe_handle_status(EFI_HANDLE h, EFI_DEVICE_PATH *imgpath)
 		break;
 	default:
 		printf("x");
-		DPRINTF(" error (%llu)\n", status);
+		DPRINTF(" error (0x%llx)\n", status);
 		break;
 	}
 	DSTALL(500000);
@@ -635,7 +654,7 @@ efi_main(EFI_HANDLE Ximage, EFI_SYSTEM_TABLE *Xsystab)
 	hsize = (UINTN)NUM_HANDLES_INIT * sizeof(EFI_HANDLE);
 	if ((status = BS->AllocatePool(EfiLoaderData, hsize, (void **)&handles))
 	    != EFI_SUCCESS)
-		panic("Failed to allocate %d handles (%llu)", NUM_HANDLES_INIT,
+		panic("Failed to allocate %d handles (0x%llx)", NUM_HANDLES_INIT,
 		    status);
 
 	status = BS->LocateHandle(ByProtocol, &BlockIoProtocolGUID, NULL,
@@ -647,17 +666,17 @@ efi_main(EFI_HANDLE Ximage, EFI_SYSTEM_TABLE *Xsystab)
 		(void)BS->FreePool(handles);
 		if ((status = BS->AllocatePool(EfiLoaderData, hsize,
 		    (void **)&handles)) != EFI_SUCCESS) {
-			panic("Failed to allocate %llu handles (%llu)", hsize /
+			panic("Failed to allocate %llu handles (0x%llx)", hsize /
 			    sizeof(*handles), status);
 		}
 		status = BS->LocateHandle(ByProtocol, &BlockIoProtocolGUID,
 		    NULL, &hsize, handles);
 		if (status != EFI_SUCCESS)
-			panic("Failed to get device handles (%llu)\n",
+			panic("Failed to get device handles (0x%llx)\n",
 			    status);
 		break;
 	default:
-		panic("Failed to get device handles (%llu)",
+		panic("Failed to get device handles (0x%llx)",
 		    status);
 	}
 
@@ -671,10 +690,12 @@ efi_main(EFI_HANDLE Ximage, EFI_SYSTEM_TABLE *Xsystab)
 	imgpath = NULL;
 	if (status == EFI_SUCCESS) {
 		status = OpenProtocolByHandle(img->DeviceHandle,
-		    &DevicePathGUID, (void **)&imgpath);
-		if (status != EFI_SUCCESS)
-			DPRINTF("Failed to get image DevicePath (%llu)\n",
+					      &DevicePathGUID,
+					      (void **)&imgpath);
+		if (status != EFI_SUCCESS) {
+			DPRINTF("Failed to get image DevicePath (0x%llx)\n",
 			    status);
+		}
 		DPRINTF("boot1 imagepath: %s\n", devpath_str(imgpath));
 	}
 

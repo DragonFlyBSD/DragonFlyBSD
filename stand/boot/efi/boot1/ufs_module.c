@@ -188,6 +188,7 @@ status(void)
 		break;
 	default:
 		printf("%d partitions\n", i);
+		break;
 	}
 }
 

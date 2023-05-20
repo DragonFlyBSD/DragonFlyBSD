@@ -143,10 +143,8 @@ boot2_ufs_lookup(const char *path)
 		ls = *path == '?' && n == 1 && !*s;
 		memcpy(name, path, n);
 		name[n] = 0;
-		if (dt != DT_DIR) {
-			printf("%s: not a directory.\n", name);
+		if (dt != DT_DIR)
 			return (0);
-		}
 		if ((dt = fsfind(name, &ino)) <= 0)
 			break;
 		path = s;
