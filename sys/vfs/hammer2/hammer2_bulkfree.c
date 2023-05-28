@@ -548,16 +548,13 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 
 #define HAMMER2_FREEMAP_SIZEDIV	\
 	(HAMMER2_FREEMAP_LEVEL1_SIZE / HAMMER2_FREEMAP_LEVELN_PSIZE)
-#define HAMMER2_FREEMAP_SIZEMASK	(HAMMER2_FREEMAP_SIZEDIV - 1)
 
 	/*
 	 * Cap at the size needed to cover the whole volume to avoid
 	 * making an unnecessarily large allocation.
 	 */
-	if (size > hmp->total_size / HAMMER2_FREEMAP_SIZEDIV) {
-		size = (hmp->total_size + HAMMER2_FREEMAP_SIZEMASK) /
-			HAMMER2_FREEMAP_SIZEDIV;
-	}
+	if (size > hmp->total_size / HAMMER2_FREEMAP_SIZEDIV)
+		size = howmany(hmp->total_size, HAMMER2_FREEMAP_SIZEDIV);
 
 	/*
 	 * Minimum bitmap buffer size, then align to a LEVELN_PSIZE (32K)
