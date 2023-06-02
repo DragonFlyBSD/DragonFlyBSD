@@ -1932,11 +1932,8 @@ mtmagazine_free(int zi, void *ptr)
 static void
 mtmagazine_init(void)
 {
-	int error;
-
-	error = _pthread_key_create(&thread_mags_key, mtmagazine_destructor);
-	if (error)
-		abort();
+	/* ignore error from stub if not threaded */
+	_pthread_key_create(&thread_mags_key, mtmagazine_destructor);
 }
 
 /*

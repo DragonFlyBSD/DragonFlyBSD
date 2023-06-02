@@ -473,11 +473,8 @@ _nmalloc_thr_childfork(void)
 static void
 _nmalloc_thr_init_once(void)
 {
-	int error;
-
-	error = pthread_key_create(&thread_malloc_key, _nmalloc_thr_destructor);
-	if (error)
-		abort();
+	/* ignore error from stub if not threaded */
+	pthread_key_create(&thread_malloc_key, _nmalloc_thr_destructor);
 }
 
 /*

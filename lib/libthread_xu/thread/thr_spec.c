@@ -56,8 +56,7 @@ _pthread_key_create(pthread_key_t *key, void (*destructor) (void *))
 
 	/* Lock the key table: */
 	THR_LOCK_ACQUIRE(curthread, &_keytable_lock);
-	for (i = 0; i < PTHREAD_KEYS_MAX; i++) {
-
+	for (i = 1; i < PTHREAD_KEYS_MAX; i++) {
 		if (_thread_keytable[i].allocated == 0) {
 			_thread_keytable[i].allocated = 1;
 			_thread_keytable[i].destructor = destructor;

@@ -295,6 +295,7 @@ static
 void
 _upmap_init_once(void)
 {
+	/* ignore error from stub if not threaded */
 	_pthread_key_create(&lpmap_key, (void (*)(void *))lpmap_unmap);
 }
 
