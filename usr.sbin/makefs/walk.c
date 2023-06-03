@@ -258,7 +258,9 @@ free_fsnodes(fsnode *node)
 {
 	fsnode	*cur, *next;
 
-	assert(node != NULL);
+	/* DragonFly: HAMMER2 bulkfree could pass NULL node */
+	if (node == NULL)
+		return;
 
 	/* for ".", start with actual parent node */
 	if (node->first == node) {

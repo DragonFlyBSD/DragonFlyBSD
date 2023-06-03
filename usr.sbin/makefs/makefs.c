@@ -96,7 +96,7 @@ main(int argc, char *argv[])
 	struct timeval	 start;
 	fstype_t	*fstype;
 	fsinfo_t	 fsoptions;
-	fsnode		*root;
+	fsnode		*root = NULL;
 	int		 ch, i, len;
 	const char	*subtree;
 	const char	*specfile;
@@ -294,9 +294,15 @@ main(int argc, char *argv[])
 		errx(1, "-x requires -F mtree-specfile.");
 
 	/* Accept '-' as meaning "read from standard input". */
-	if (strcmp(argv[1], "-") == 0)
+	/* DragonFly: Accept '--' as meaning none for HAMMER2 bulkfree. */
+	if (strcmp(argv[1], "--") == 0) {
+		if (!strcmp(fstype->type, "hammer2"))
+			goto ignore_walk_dir;
+		else
+			errx(1, "%s: invalid argument", argv[1]);
+	} else if (strcmp(argv[1], "-") == 0) {
 		sb.st_mode = S_IFREG;
-	else {
+	} else {
 		if (stat(argv[1], &sb) == -1)
 			err(1, "Can't stat `%s'", argv[1]);
 	}
@@ -341,7 +347,7 @@ main(int argc, char *argv[])
 		dump_fsnodes(root);
 		putchar('\n');
 	}
-
+ignore_walk_dir:
 				/* build the file system */
 	TIMER_START(start);
 	fstype->make_fs(argv[0], subtree, root, &fsoptions);

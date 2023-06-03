@@ -65,6 +65,7 @@ static int hammer2_populate_dir(struct m_vnode *, const char *, fsnode *,
 static void hammer2_validate(const char *, fsnode *, fsinfo_t *);
 static void hammer2_size_dir(fsnode *, fsinfo_t *);
 static int hammer2_write_file(struct m_vnode *, const char *, fsnode *);
+static int hammer2_bulkfree(struct m_vnode *vp);
 
 fsnode *hammer2_curnode;
 
@@ -85,6 +86,7 @@ hammer2_prep_opts(fsinfo_t *fsopts)
 		{ 'v', "NumVolhdr", &h2_opt->num_volhdr, OPT_INT32,
 		    1, HAMMER2_NUM_VOLHDRS, "number of volume headers" },
 		{ 'd', "Hammer2Debug", NULL, OPT_STRBUF, 0, 0, "debug tunable" },
+		{ 'B', "Bulkfree", &h2_opt->bulkfree, OPT_BOOL, 0, 0, "offline bulkfree" },
 		{ .name = NULL },
 	};
 
@@ -197,9 +199,9 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	struct timeval start;
 	int error;
 
+	/* bulkfree could have NULL root */
 	assert(image != NULL);
 	assert(dir != NULL);
-	assert(root != NULL);
 	assert(fsopts != NULL);
 
 	if (debug & DEBUG_FS_MAKEFS)
@@ -211,11 +213,19 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	hammer2_validate(dir, root, fsopts);
 	TIMER_RESULTS(start, "hammer2_validate");
 
-	/* create image */
-	TIMER_START(start);
-	if (hammer2_create_image(image, fsopts) == -1)
-		errx(1, "image file `%s' not created", image);
-	TIMER_RESULTS(start, "hammer2_create_image");
+	if (!h2_opt->bulkfree) {
+		/* create image */
+		TIMER_START(start);
+		if (hammer2_create_image(image, fsopts) == -1)
+			errx(1, "image file `%s' not created", image);
+		TIMER_RESULTS(start, "hammer2_create_image");
+	} else {
+		/* open existing image */
+		fsopts->fd = open(image, O_RDWR);
+		if (fsopts->fd < 0)
+			err(1, "failed to open %s", image);
+	}
+	assert(fsopts->fd > 0);
 
 	if (debug & DEBUG_FS_MAKEFS)
 		putchar('\n');
@@ -247,12 +257,21 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	printf("root inode inum %lld, mode 0%o, refs %d\n",
 	    (long long)iroot->meta.inum, iroot->meta.mode, iroot->refs);
 
-	/* populate image */
-	printf("populating `%s'\n", image);
-	TIMER_START(start);
-	if (hammer2_populate_dir(vroot, dir, root, root, fsopts, 0))
-		errx(1, "image file `%s' not populated", image);
-	TIMER_RESULTS(start, "hammer2_populate_dir");
+	if (!h2_opt->bulkfree) {
+		/* populate image */
+		printf("populating `%s'\n", image);
+		TIMER_START(start);
+		if (hammer2_populate_dir(vroot, dir, root, root, fsopts, 0))
+			errx(1, "image file `%s' not populated", image);
+		TIMER_RESULTS(start, "hammer2_populate_dir");
+	} else {
+		/* bulkfree image */
+		printf("bulkfree `%s'\n", image);
+		TIMER_START(start);
+		if (hammer2_bulkfree(vroot))
+			errx(1, "bulkfree `%s' failed\n", image);
+		TIMER_RESULTS(start, "hammer2_bulkfree");
+	}
 
 	/* unmount image */
 	error = hammer2_vfs_unmount(&mp, 0);
@@ -361,7 +380,6 @@ hammer2_validate(const char *dir, fsnode *root, fsinfo_t *fsopts)
 	const char *s;
 
 	assert(dir != NULL);
-	assert(root != NULL);
 	assert(fsopts != NULL);
 
 	if (debug & DEBUG_FS_VALIDATE) {
@@ -389,9 +407,15 @@ hammer2_validate(const char *dir, fsnode *root, fsinfo_t *fsopts)
 		printf("using default %d volume headers\n", h2_opt->num_volhdr);
 	}
 
+	/* done if bulkfree */
+	if (h2_opt->bulkfree)
+		goto done;
+
 	/* calculate data size */
 	if (fsopts->size != 0)
 		fsopts->size = 0; /* shouldn't reach here to begin with */
+	if (root == NULL)
+		errx(1, "fsnode tree not constructed");
 	hammer2_size_dir(root, fsopts);
 	printf("estimated data size %s from %lld inode\n",
 	    sizetostr(fsopts->size), (long long)fsopts->inodes);
@@ -411,7 +435,7 @@ hammer2_validate(const char *dir, fsnode *root, fsinfo_t *fsopts)
 	assert((image_size & HAMMER2_FREEMAP_LEVEL1_MASK) == 0);
 	h2_opt->image_size = image_size;
 	printf("using %s image size\n", sizetostr(h2_opt->image_size));
-
+done:
 	if (debug & DEBUG_FS_VALIDATE) {
 		APRINTF("after defaults set:\n");
 		hammer2_dump_fsinfo(fsopts);
@@ -441,6 +465,7 @@ hammer2_dump_fsinfo(fsinfo_t *fsopts)
 	printf("\tlabel_specified %d\n", h2_opt->label_specified);
 	printf("\tmount_label \"%s\"\n", h2_opt->mount_label);
 	printf("\tnum_volhdr %d\n", h2_opt->num_volhdr);
+	printf("\tbulkfree %d\n", h2_opt->bulkfree);
 	printf("\timage_size 0x%llx\n", (long long)h2_opt->image_size);
 
 	printf("\tHammer2Version %d\n", opt->Hammer2Version);
@@ -881,4 +906,23 @@ hammer2_write_file(struct m_vnode *vp, const char *path, fsnode *node)
 	munmap(p, nsize);
 
 	return 0;
+}
+
+static int
+hammer2_bulkfree(struct m_vnode *vp)
+{
+	hammer2_ioc_bulkfree_t bfi;
+	size_t usermem;
+	size_t usermem_size = sizeof(usermem);
+
+	bzero(&bfi, sizeof(bfi));
+	usermem = 0;
+	if (sysctlbyname("hw.usermem", &usermem, &usermem_size, NULL, 0) == 0)
+		bfi.size = usermem / 16;
+	else
+		bfi.size = 0;
+	if (bfi.size < 8192 * 1024)
+		bfi.size = 8192 * 1024;
+
+	return hammer2_ioctl_bulkfree_scan(VTOI(vp), &bfi);
 }

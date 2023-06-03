@@ -42,6 +42,7 @@ typedef struct {
 	int label_specified;
 	char mount_label[HAMMER2_INODE_MAXNAME];
 	int num_volhdr;
+	bool bulkfree;
 	hammer2_off_t image_size;
 } hammer2_makefs_options_t;
 

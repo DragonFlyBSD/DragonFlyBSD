@@ -35,7 +35,7 @@
 .\"
 .\" $FreeBSD: head/usr.sbin/makefs/makefs.8 331843 2018-03-31 15:04:41Z benno $
 .\"
-.Dd May 28, 2022
+.Dd June 3, 2023
 .Dt MAKEFS 8
 .Os
 .Sh NAME
@@ -523,6 +523,12 @@ Defaults to "DATA".
 sysctl vfs.hammer2.debug compatible tunable for debug prints.
 Specify 0xffffffff to enable all debug prints.
 Defaults to 0.
+.It Cm B
+Run offline bulkfree and exit.
+.Ar image-file
+has to be a valid HAMMER2 image file or block device.
+.Ar directory
+is unused, but it needs to be either a valid path or `--'.
 .El
 .Sh SEE ALSO
 .Xr mtree 5 ,

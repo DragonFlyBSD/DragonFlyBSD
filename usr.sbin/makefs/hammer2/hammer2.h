@@ -133,6 +133,7 @@
 #include <string.h>
 
 #include <vfs/hammer2/hammer2_disk.h>
+#include <vfs/hammer2/hammer2_ioctl.h>
 #include <vfs/hammer2/hammer2_mount.h>
 #include <vfs/hammer2/hammer2_xxhash.h>
 #include <mkfs_hammer2.h>
@@ -1654,6 +1655,7 @@ void hammer2_trans_assert_strategy(hammer2_pfs_t *pmp);
  */
 int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
 				int fflag, struct ucred *cred);
+int hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data);
 
 /*
  * hammer2_io.c
@@ -1949,12 +1951,10 @@ int hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t lokey,
 			int flags);
 void hammer2_cluster_unlock(hammer2_cluster_t *cluster);
 
-/*
 void hammer2_bulkfree_init(hammer2_dev_t *hmp);
 void hammer2_bulkfree_uninit(hammer2_dev_t *hmp);
 int hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 			struct hammer2_ioc_bulkfree *bfi);
-*/
 void hammer2_dummy_xop_from_chain(hammer2_xop_head_t *xop,
 			hammer2_chain_t *chain);
 
@@ -2064,18 +2064,6 @@ hammer2_knote(struct m_vnode *vp, int flags)
 {
 	if (flags)
 		KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, flags);
-}
-
-static __inline
-void
-hammer2_bulkfree_init(hammer2_dev_t *hmp)
-{
-}
-
-static __inline
-void
-hammer2_bulkfree_uninit(hammer2_dev_t *hmp)
-{
 }
 
 static __inline

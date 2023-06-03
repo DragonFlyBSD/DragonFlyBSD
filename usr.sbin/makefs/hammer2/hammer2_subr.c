@@ -386,7 +386,6 @@ hammer2_adjwritecounter(int btype, size_t bytes)
 	*counterp += bytes;
 }
 
-#if 0
 /*
  * Check for pending signal to allow interruption.  This function will
  * return immediately if the calling thread is a kernel thread and not
@@ -395,6 +394,7 @@ hammer2_adjwritecounter(int btype, size_t bytes)
 int
 hammer2_signal_check(time_t *timep)
 {
+#if 0
 	thread_t td = curthread;
 	int error = 0;
 
@@ -409,8 +409,9 @@ hammer2_signal_check(time_t *timep)
 		lwkt_yield();
 	}
 	return error;
-}
 #endif
+	return 0;
+}
 
 const char *
 hammer2_error_str(int error)

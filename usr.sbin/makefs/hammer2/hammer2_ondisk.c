@@ -47,6 +47,7 @@
 #include <sys/objcache.h>
 #include <sys/lock.h>
 */
+#include <sys/diskslice.h>
 
 #include "hammer2.h"
 #include "makefs.h"
@@ -206,7 +207,7 @@ static int
 hammer2_verify_volumes_common(const hammer2_vfsvolume_t *volumes)
 {
 	const hammer2_vfsvolume_t *vol;
-	//struct partinfo part;
+	struct partinfo part;
 	struct stat st;
 	const char *path;
 	int i, ret;
@@ -237,17 +238,30 @@ hammer2_verify_volumes_common(const hammer2_vfsvolume_t *volumes)
 			      curthread->td_ucred , NULL) == 0) {
 		*/
 		assert(vol->dev->devvp->fs);
-		ret = fstat(vol->dev->devvp->fs->fd, &st);
-		if (ret == -1) {
-			int error = errno;
-			hprintf("failed to fstat %d\n",
-				vol->dev->devvp->fs->fd);
-			return error;
+		if (ioctl(vol->dev->devvp->fs->fd, DIOCGPART, &part) < 0) {
+			ret = fstat(vol->dev->devvp->fs->fd, &st);
+			if (ret == -1) {
+				int error = errno;
+				hprintf("failed to fstat %d\n",
+					vol->dev->devvp->fs->fd);
+				return error;
+			} else {
+				if (vol->size > st.st_size) {
+					hprintf("%s's size 0x%016jx exceeds "
+						"file size 0x%016jx\n",
+						path, (intmax_t)vol->size,
+						st.st_size);
+					return EINVAL;
+				}
+			}
 		} else {
-			if (vol->size > st.st_size) {
-				hprintf("%s's size 0x%016jx exceeds device size "
-					"0x%016jx\n", path, (intmax_t)vol->size,
-					st.st_size);
+			assert(part.media_blksize <= HAMMER2_PBUFSIZE);
+			assert(HAMMER2_PBUFSIZE % part.media_blksize == 0);
+			if (vol->size > part.media_size) {
+				hprintf("%s's size 0x%016jx exceeds "
+					"device size 0x%016jx\n",
+					path, (intmax_t)vol->size,
+					part.media_size);
 				return EINVAL;
 			}
 		}
