@@ -1262,8 +1262,10 @@ hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred)
 {
 	hammer2_ioc_growfs_t *grow = data;
 	hammer2_dev_t *hmp;
-	hammer2_off_t delta;
+	hammer2_off_t size, delta;
 	hammer2_tid_t mtid;
+	struct partinfo part;
+	struct vattr_lite va;
 	struct buf *bp;
 	int error;
 	int i;
@@ -1275,27 +1277,34 @@ hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred)
 			"with multiple volumes\n");
 		return EOPNOTSUPP;
 	}
+	KKASSERT(hmp->total_size == hmp->voldata.volu_size);
 
 	/*
 	 * Extract from disklabel
 	 */
+	if (VOP_IOCTL(hmp->devvp, DIOCGPART, (void *)&part, 0, cred, NULL) == 0) {
+		size = part.media_size;
+		kprintf("hammer2: growfs partition-auto to %016jx\n",
+			(intmax_t)size);
+	} else if (VOP_GETATTR_LITE(hmp->devvp, &va) == 0) {
+		size = va.va_size;
+		kprintf("hammer2: growfs fstat-auto to %016jx\n",
+			(intmax_t)size);
+	} else {
+		return EINVAL;
+	}
+
+	/*
+	 * Expand to devvp size unless specified.
+	 */
 	grow->modified = 0;
 	if (grow->size == 0) {
-		struct partinfo part;
-		struct vattr_lite va;
-
-		if (VOP_IOCTL(hmp->devvp, DIOCGPART, (void *)&part,
-			      0, cred, NULL) == 0) {
-			grow->size = part.media_size;
-			kprintf("hammer2: growfs partition-auto to %016jx\n",
-				(intmax_t)grow->size);
-		} else if (VOP_GETATTR_LITE(hmp->devvp, &va) == 0) {
-			grow->size = va.va_size;
-			kprintf("hammer2: growfs fstat-auto to %016jx\n",
-				(intmax_t)grow->size);
-		} else {
-			return EINVAL;
-		}
+		grow->size = size;
+	} else if (grow->size > size) {
+		kprintf("hammer2: growfs size %016jx exceeds device size "
+			"%016jx\n",
+			(intmax_t)grow->size, (intmax_t)size);
+		return EINVAL;
 	}
 
 	/*
