@@ -63,10 +63,10 @@ cmd_growfs(const char *sel_path, int ac, const char **av)
 			       sel_path, strerror(errno));
 			ecode = 1;
 		} else if (growfs.modified) {
-			printf("%s grown to %ld\n",
+			printf("%s grown to %016jx\n",
 			       sel_path, (intmax_t)growfs.size);
 		} else {
-			printf("%s no size change - %ld\n",
+			printf("%s no size change - %016jx\n",
 			       sel_path, (intmax_t)growfs.size);
 		}
 		close(fd);
