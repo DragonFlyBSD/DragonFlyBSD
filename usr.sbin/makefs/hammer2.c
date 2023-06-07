@@ -66,6 +66,7 @@ static void hammer2_validate(const char *, fsnode *, fsinfo_t *);
 static void hammer2_size_dir(fsnode *, fsinfo_t *);
 static int hammer2_write_file(struct m_vnode *, const char *, fsnode *);
 static int hammer2_bulkfree(struct m_vnode *vp);
+static int hammer2_growfs(struct m_vnode *vp, hammer2_off_t size);
 
 fsnode *hammer2_curnode;
 
@@ -87,6 +88,7 @@ hammer2_prep_opts(fsinfo_t *fsopts)
 		    1, HAMMER2_NUM_VOLHDRS, "number of volume headers" },
 		{ 'd', "Hammer2Debug", NULL, OPT_STRBUF, 0, 0, "debug tunable" },
 		{ 'B', "Bulkfree", &h2_opt->bulkfree, OPT_BOOL, 0, 0, "offline bulkfree" },
+		{ 'G', "Growfs", &h2_opt->growfs, OPT_BOOL, 0, 0, "offline growfs" },
 		{ .name = NULL },
 	};
 
@@ -199,7 +201,7 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	struct timeval start;
 	int error;
 
-	/* bulkfree could have NULL root */
+	/* bulkfree / growfs could have NULL root */
 	assert(image != NULL);
 	assert(dir != NULL);
 	assert(fsopts != NULL);
@@ -213,7 +215,7 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	hammer2_validate(dir, root, fsopts);
 	TIMER_RESULTS(start, "hammer2_validate");
 
-	if (!h2_opt->bulkfree) {
+	if (!h2_opt->bulkfree && !h2_opt->growfs) {
 		/* create image */
 		TIMER_START(start);
 		if (hammer2_create_image(image, fsopts) == -1)
@@ -257,20 +259,27 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	printf("root inode inum %lld, mode 0%o, refs %d\n",
 	    (long long)iroot->meta.inum, iroot->meta.mode, iroot->refs);
 
-	if (!h2_opt->bulkfree) {
+	if (!h2_opt->bulkfree && !h2_opt->growfs) {
 		/* populate image */
 		printf("populating `%s'\n", image);
 		TIMER_START(start);
 		if (hammer2_populate_dir(vroot, dir, root, root, fsopts, 0))
 			errx(1, "image file `%s' not populated", image);
 		TIMER_RESULTS(start, "hammer2_populate_dir");
-	} else {
+	} else if (h2_opt->bulkfree) {
 		/* bulkfree image */
 		printf("bulkfree `%s'\n", image);
 		TIMER_START(start);
 		if (hammer2_bulkfree(vroot))
-			errx(1, "bulkfree `%s' failed\n", image);
+			errx(1, "bulkfree `%s' failed", image);
 		TIMER_RESULTS(start, "hammer2_bulkfree");
+	} else if (h2_opt->growfs) {
+		/* growfs image */
+		printf("growfs `%s'\n", image);
+		TIMER_START(start);
+		if (hammer2_growfs(vroot, h2_opt->image_size))
+			errx(1, "growfs `%s' failed", image);
+		TIMER_RESULTS(start, "hammer2_growfs");
 	}
 
 	/* unmount image */
@@ -376,7 +385,7 @@ hammer2_validate(const char *dir, fsnode *root, fsinfo_t *fsopts)
 {
 	hammer2_makefs_options_t *h2_opt = fsopts->fs_specific;
 	hammer2_mkfs_options_t *opt = &h2_opt->mkfs_options;
-	hammer2_off_t image_size, minsize, maxsize;
+	hammer2_off_t image_size = 0, minsize, maxsize;
 	const char *s;
 
 	assert(dir != NULL);
@@ -407,9 +416,11 @@ hammer2_validate(const char *dir, fsnode *root, fsinfo_t *fsopts)
 		printf("using default %d volume headers\n", h2_opt->num_volhdr);
 	}
 
-	/* done if bulkfree */
+	/* done if bulkfree / growfs */
 	if (h2_opt->bulkfree)
 		goto done;
+	if (h2_opt->growfs)
+		goto ignore_size_dir;
 
 	/* calculate data size */
 	if (fsopts->size != 0)
@@ -423,7 +434,7 @@ hammer2_validate(const char *dir, fsnode *root, fsinfo_t *fsopts)
 	/* determine image size from data size */
 	image_size = hammer2_image_size(fsopts);
 	assert((image_size & HAMMER2_FREEMAP_LEVEL1_MASK) == 0);
-
+ignore_size_dir:
 	minsize = roundup(fsopts->minsize, HAMMER2_FREEMAP_LEVEL1_SIZE);
 	maxsize = roundup(fsopts->maxsize, HAMMER2_FREEMAP_LEVEL1_SIZE);
 	if (image_size < minsize)
@@ -466,6 +477,7 @@ hammer2_dump_fsinfo(fsinfo_t *fsopts)
 	printf("\tmount_label \"%s\"\n", h2_opt->mount_label);
 	printf("\tnum_volhdr %d\n", h2_opt->num_volhdr);
 	printf("\tbulkfree %d\n", h2_opt->bulkfree);
+	printf("\tgrowfs %d\n", h2_opt->growfs);
 	printf("\timage_size 0x%llx\n", (long long)h2_opt->image_size);
 
 	printf("\tHammer2Version %d\n", opt->Hammer2Version);
@@ -925,4 +937,25 @@ hammer2_bulkfree(struct m_vnode *vp)
 		bfi.size = 8192 * 1024;
 
 	return hammer2_ioctl_bulkfree_scan(VTOI(vp), &bfi);
+}
+
+static int
+hammer2_growfs(struct m_vnode *vp, hammer2_off_t size)
+{
+	hammer2_ioc_growfs_t growfs;
+	int error;
+
+	bzero(&growfs, sizeof(growfs));
+	growfs.size = size;
+
+	error = hammer2_ioctl_growfs(VTOI(vp), &growfs, NULL);
+	if (!error) {
+		if (growfs.modified)
+			printf("grown to %016jx\n", (intmax_t)growfs.size);
+		else
+			printf("no size change - %016jx\n",
+				(intmax_t)growfs.size);
+	}
+
+	return error;
 }

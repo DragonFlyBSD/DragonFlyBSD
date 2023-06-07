@@ -35,7 +35,7 @@
 .\"
 .\" $FreeBSD: head/usr.sbin/makefs/makefs.8 331843 2018-03-31 15:04:41Z benno $
 .\"
-.Dd June 3, 2023
+.Dd June 7, 2023
 .Dt MAKEFS 8
 .Os
 .Sh NAME
@@ -529,6 +529,17 @@ Run offline bulkfree and exit.
 has to be a valid HAMMER2 image file or block device.
 .Ar directory
 is unused, but it needs to be either a valid path or `--'.
+.It Cm G
+Run offline growfs and exit.
+.Ar image-file
+has to be a valid HAMMER2 image file or block device.
+.Ar directory
+is unused, but it needs to be either a valid path or `--'.
+By default expands to
+.Ar image-file
+file or device size, unless size is specified by
+.Fl s
+option.
 .El
 .Sh SEE ALSO
 .Xr mtree 5 ,

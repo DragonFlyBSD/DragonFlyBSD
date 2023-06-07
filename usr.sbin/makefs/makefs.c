@@ -294,7 +294,7 @@ main(int argc, char *argv[])
 		errx(1, "-x requires -F mtree-specfile.");
 
 	/* Accept '-' as meaning "read from standard input". */
-	/* DragonFly: Accept '--' as meaning none for HAMMER2 bulkfree. */
+	/* DragonFly: Accept '--' as meaning none for HAMMER2 bulkfree / growfs. */
 	if (strcmp(argv[1], "--") == 0) {
 		if (!strcmp(fstype->type, "hammer2"))
 			goto ignore_walk_dir;

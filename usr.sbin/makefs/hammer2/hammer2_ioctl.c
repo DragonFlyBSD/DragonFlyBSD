@@ -41,8 +41,10 @@
  *	    to be able to run without deadlock on the volume's chain lock.
  *	    Most of these functions use a separate lock.
  */
+#include <sys/diskslice.h>
 
 #include "hammer2.h"
+#include "makefs.h"
 
 #if 0
 #include <sys/kern_syscall.h>
@@ -1257,11 +1259,12 @@ hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data)
 	}
 	return error;
 }
+#endif
 
 /*
  * Grow a filesystem into its partition size
  */
-static int
+int
 hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred)
 {
 	hammer2_ioc_growfs_t *grow = data;
@@ -1269,8 +1272,8 @@ hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred)
 	hammer2_off_t size, delta;
 	hammer2_tid_t mtid;
 	struct partinfo part;
-	struct vattr_lite va;
-	struct buf *bp;
+	struct stat st;
+	struct m_buf *bp;
 	int error;
 	int i;
 
@@ -1286,12 +1289,12 @@ hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred)
 	/*
 	 * Extract from disklabel
 	 */
-	if (VOP_IOCTL(hmp->devvp, DIOCGPART, (void *)&part, 0, cred, NULL) == 0) {
+	if (ioctl(hmp->devvp->fs->fd, DIOCGPART, &part) == 0) {
 		size = part.media_size;
 		kprintf("hammer2: growfs partition-auto to %016jx\n",
 			(intmax_t)size);
-	} else if (VOP_GETATTR_LITE(hmp->devvp, &va) == 0) {
-		size = va.va_size;
+	} else if (fstat(hmp->devvp->fs->fd, &st) == 0) {
+		size = st.st_size;
 		kprintf("hammer2: growfs fstat-auto to %016jx\n",
 			(intmax_t)size);
 	} else {
@@ -1352,7 +1355,7 @@ hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred)
 		if (i * HAMMER2_ZONE_BYTES64 >= grow->size)
 			break;
 		kprintf("hammer2: growfs - clear volhdr %d ", i);
-		error = bread(hmp->devvp, i * HAMMER2_ZONE_BYTES64,
+		error = breadx(hmp->devvp, i * HAMMER2_ZONE_BYTES64,
 			      HAMMER2_VOLUME_BYTES, &bp);
 		if (error) {
 			brelse(bp);
@@ -1408,6 +1411,7 @@ hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred)
 	return 0;
 }
 
+#if 0
 /*
  * Get a list of volumes.
  */
