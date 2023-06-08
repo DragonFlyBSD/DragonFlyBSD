@@ -210,7 +210,7 @@ hammer2_verify_volumes_common(const hammer2_vfsvolume_t *volumes)
 	struct partinfo part;
 	struct stat st;
 	const char *path;
-	int i, ret;
+	int i;
 
 	for (i = 0; i < HAMMER2_MAX_VOLUMES; ++i) {
 		vol = &volumes[i];
@@ -238,23 +238,7 @@ hammer2_verify_volumes_common(const hammer2_vfsvolume_t *volumes)
 			      curthread->td_ucred , NULL) == 0) {
 		*/
 		assert(vol->dev->devvp->fs);
-		if (ioctl(vol->dev->devvp->fs->fd, DIOCGPART, &part) < 0) {
-			ret = fstat(vol->dev->devvp->fs->fd, &st);
-			if (ret == -1) {
-				int error = errno;
-				hprintf("failed to fstat %d\n",
-					vol->dev->devvp->fs->fd);
-				return error;
-			} else {
-				if (vol->size > st.st_size) {
-					hprintf("%s's size 0x%016jx exceeds "
-						"file size 0x%016jx\n",
-						path, (intmax_t)vol->size,
-						st.st_size);
-					return EINVAL;
-				}
-			}
-		} else {
+		if (ioctl(vol->dev->devvp->fs->fd, DIOCGPART, &part) == 0) {
 			assert(part.media_blksize <= HAMMER2_PBUFSIZE);
 			assert(HAMMER2_PBUFSIZE % part.media_blksize == 0);
 			if (vol->size > part.media_size) {
@@ -264,6 +248,17 @@ hammer2_verify_volumes_common(const hammer2_vfsvolume_t *volumes)
 					part.media_size);
 				return EINVAL;
 			}
+		} else if (fstat(vol->dev->devvp->fs->fd, &st) == 0) {
+			if (vol->size > st.st_size) {
+				hprintf("%s's size 0x%016jx exceeds "
+					"file size 0x%016jx\n",
+					path, (intmax_t)vol->size,
+					st.st_size);
+				return EINVAL;
+			}
+		} else {
+			hprintf("failed to get %s size\n", path);
+			return EINVAL;
 		}
 	}
 
