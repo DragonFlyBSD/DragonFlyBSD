@@ -36,6 +36,8 @@
 
 static void nvme_disk_callback(nvme_request_t *req, struct lock *lk);
 static int nvme_strategy_core(nvme_softns_t *nsc, struct bio *bio, int delay);
+static const char *nvme_status_string(nvme_status_buf_t *buf,
+			int type, int code);
 
 static d_open_t nvme_open;
 static d_close_t nvme_close;
@@ -54,7 +56,9 @@ static struct dev_ops nvme_ops = {
 	.d_strategy =   nvme_strategy,
 };
 
-static int nvme_sync_delay = 0;
+static struct krate krate_nvmeio = { .freq = 1 };
+
+__read_mostly static int nvme_sync_delay = 0;
 SYSCTL_INT(_debug, OID_AUTO, nvme_sync_delay, CTLFLAG_RW, &nvme_sync_delay, 0,
 	   "Enable synchronous delay/completion-check, uS");
 
@@ -392,9 +396,11 @@ nvme_disk_callback(nvme_request_t *req, struct lock *lk)
 	nvme_softns_t *nsc = req->nsc;
 	struct bio *bio;
 	struct buf *bp;
-	int status;
+	int code;
+	int type;
 
-	status = NVME_COMQ_STATUS_CODE_GET(req->res.tail.status);
+	code = NVME_COMQ_STATUS_CODE_GET(req->res.tail.status);
+	type = NVME_COMQ_STATUS_TYPE_GET(req->res.tail.status);
 	bio = req->bio;
 	bp = bio->bio_buf;
 
@@ -402,7 +408,16 @@ nvme_disk_callback(nvme_request_t *req, struct lock *lk)
 		lockmgr(lk, LK_RELEASE);
 	nvme_put_request(req);			/* does not need subq lock */
 	devstat_end_transaction_buf(&nsc->stats, bp);
-	if (status) {
+
+	if (code) {
+		nvme_status_buf_t sb;
+
+		krateprintf(&krate_nvmeio,
+			    "%s%d: %s error nvme-code %s\n",
+			    device_get_name(nsc->sc->dev),
+			    device_get_unit(nsc->sc->dev),
+			    buf_cmd_name(bp),
+			    nvme_status_string(&sb, type, code));
 		bp->b_error = EIO;
 		bp->b_flags |= B_ERROR;
 		biodone(bio);
@@ -502,4 +517,250 @@ nvme_dump(struct dev_dump_args *ap)
 	if (nlba == 0)
 		nvme_issue_shutdown(sc, 1);
 	return 0;
+}
+
+static
+const char *
+nvme_status_string(nvme_status_buf_t *sb, int type, int code)
+{
+	const char *cstr = NULL;
+
+	switch(type) {
+	case NVME_STATUS_TYPE_GENERIC:
+		switch(code) {
+		case NVME_CODE_SUCCESS:
+			cstr = "success";
+			break;
+		case NVME_CODE_BADOP:
+			cstr = "badop";
+			break;
+		case NVME_CODE_BADFIELD:
+			cstr = "badfield";
+			break;
+		case NVME_CODE_IDCONFLICT:
+			cstr = "idconflict";
+			break;
+		case NVME_CODE_BADXFER:
+			cstr = "badxfer";
+			break;
+		case NVME_CODE_ABORTED_PWRLOSS:
+			cstr = "aborted-powerloss";
+			break;
+		case NVME_CODE_INTERNAL:
+			cstr = "internal";
+			break;
+		case NVME_CODE_ABORTED_ONREQ:
+			cstr = "aborted-onreq";
+			break;
+		case NVME_CODE_ABORTED_SQDEL:
+			cstr = "aborted-sqdel";
+			break;
+		case NVME_CODE_ABORTED_FUSEFAIL:
+			cstr = "aborted-fusefail";
+			break;
+		case NVME_CODE_ABORTED_FUSEMISSING:
+			cstr = "aborted-fusemissing";
+			break;
+		case NVME_CODE_BADNAMESPACE:
+			cstr = "badnamespace";
+			break;
+		case NVME_CODE_SEQERROR:
+			cstr = "seqerror";
+			break;
+		case NVME_CODE_BADSGLSEG:
+			cstr = "badsgl-seg";
+			break;
+		case NVME_CODE_BADSGLCNT:
+			cstr = "badsgl-cnt";
+			break;
+		case NVME_CODE_BADSGLLEN:
+			cstr = "badsgl-len";
+			break;
+		case NVME_CODE_BADSGLMLEN:
+			cstr = "badsgl-mlen";
+			break;
+		case NVME_CODE_BADSGLTYPE:
+			cstr = "badsgl-type";
+			break;
+		case NVME_CODE_BADMEMBUFUSE:
+			cstr = "badmem-bufuse";
+			break;
+		case NVME_CODE_BADPRPOFF:
+			cstr = "bad-prpoff";
+			break;
+
+		case NVME_CODE_ATOMICWUOVFL:
+			cstr = "atomic-wuovfl";
+			break;
+		case NVME_CODE_LBA_RANGE:
+			cstr = "lba-range";
+			break;
+		case NVME_CODE_CAP_EXCEEDED:
+			cstr = "cap-exceeded";
+			break;
+		case NVME_CODE_NAM_NOT_READY:
+			cstr = "nam-not-ready";
+			break;
+		case NVME_CODE_RSV_CONFLICT:
+			cstr = "rsv-conflict";
+			break;
+		case NVME_CODE_FMT_IN_PROG:
+			cstr = "fmt-in-prog";
+			break;
+		default:
+			cstr = "unknown";
+			break;
+		}
+		ksnprintf(sb->buf, sizeof(sb->buf),
+			  "type=generic code=%s(%04x)", cstr, code);
+		break;
+	case NVME_STATUS_TYPE_SPECIFIC:
+		switch(code) {
+		case NVME_CSSCODE_BADCOMQ:
+			cstr = "bad-comq";
+			break;
+		case NVME_CSSCODE_BADQID:
+			cstr = "bad-qid";
+			break;
+		case NVME_CSSCODE_BADQSIZE:
+			cstr = "bad-qsize";
+			break;
+		case NVME_CSSCODE_ABORTLIM:
+			cstr = "abort-lim";
+			break;
+		case NVME_CSSCODE_RESERVED04 :
+			cstr = "unknown";
+			break;
+		case NVME_CSSCODE_ASYNCEVENTLIM:
+			cstr = "async-event-lim";
+			break;
+		case NVME_CSSCODE_BADFWSLOT:
+			cstr = "bad-fwslot";
+			break;
+		case NVME_CSSCODE_BADFWIMAGE:
+			cstr = "bad-fwimage";
+			break;
+		case NVME_CSSCODE_BADINTRVECT:
+			cstr = "bad-intrvect";
+			break;
+		case NVME_CSSCODE_BADLOGPAGE:
+			cstr = "bad-logpage";
+			break;
+		case NVME_CSSCODE_BADFORMAT:
+			cstr = "bad-format";
+			break;
+		case NVME_CSSCODE_FW_NEEDSCONVRESET:
+			cstr = "needs-convreset";
+			break;
+		case NVME_CSSCODE_BADQDELETE:
+			cstr = "bad-qdelete";
+			break;
+		case NVME_CSSCODE_FEAT_NOT_SAVEABLE:
+			cstr = "feat-not-saveable";
+			break;
+		case NVME_CSSCODE_FEAT_NOT_CHGABLE:
+			cstr = "feat-not-changeable";
+			break;
+		case NVME_CSSCODE_FEAT_NOT_NSSPEC:
+			cstr = "feat-not-nsspec";
+			break;
+		case NVME_CSSCODE_FW_NEEDSSUBRESET:
+			cstr = "fw-needs-subreset";
+			break;
+		case NVME_CSSCODE_FW_NEEDSRESET:
+			cstr = "fw-needs-reset";
+			break;
+		case NVME_CSSCODE_FW_NEEDSMAXTVIOLATE:
+			cstr = "fw-needsmaxviolate";
+			break;
+		case NVME_CSSCODE_FW_PROHIBITED:
+			cstr = "fw-prohibited";
+			break;
+		case NVME_CSSCODE_RANGE_OVERLAP:
+			cstr = "range-overlap";
+			break;
+		case NVME_CSSCODE_NAM_INSUFF_CAP:
+			cstr = "name-insufficient-cap";
+			break;
+		case NVME_CSSCODE_NAM_ID_UNAVAIL:
+			cstr = "name-id-unavail";
+			break;
+		case NVME_CSSCODE_RESERVED17:
+			cstr = "unknown";
+			break;
+		case NVME_CSSCODE_NAM_ALREADY_ATT:
+			cstr = "name-already-att";
+			break;
+		case NVME_CSSCODE_NAM_IS_PRIVATE:
+			cstr = "name-is-private";
+			break;
+		case NVME_CSSCODE_NAM_NOT_ATT:
+			cstr = "name-not-att";
+			break;
+		case NVME_CSSCODE_NO_THIN_PROVISION:
+			cstr = "no-thin-provision";
+			break;
+		case NVME_CSSCODE_CTLR_LIST_INVALID:
+			cstr = "controller-list-invalid";
+			break;
+
+		case NVME_CSSCODE_ATTR_CONFLICT:
+			cstr = "attr-conflict";
+			break;
+		case NVME_CSSCODE_BADPROTINFO:
+			cstr = "bad-prot-info";
+			break;
+		case NVME_CSSCODE_WRITE_TO_RDONLY:
+			cstr = "write-to-readonly";
+			break;
+		default:
+			cstr = "unknown";
+			break;
+		}
+		ksnprintf(sb->buf, sizeof(sb->buf),
+			  "type=specific code=%s(%04x)", cstr, code);
+		break;
+	case NVME_STATUS_TYPE_MEDIA:
+		switch(code) {
+		case NVME_MEDCODE_WRITE_FAULT:
+			cstr = "write-fault";
+			break;
+		case NVME_MEDCODE_UNRECOV_READ_ERROR:
+			cstr = "unrecoverable-read-error";
+			break;
+		case NVME_MEDCODE_ETOE_GUARD_CHK:
+			cstr = "etoe-guard-check";
+			break;
+		case NVME_MEDCODE_ETOE_APPTAG_CHK:
+			cstr = "etoe-apptag-check";
+			break;
+		case NVME_MEDCODE_ETOE_REFTAG_CHK:
+			cstr = "etoe-reftag-check";
+			break;
+		case NVME_MEDCODE_COMPARE_FAILURE:
+			cstr = "compare-failure";
+			break;
+		case NVME_MEDCODE_ACCESS_DENIED:
+			cstr = "access-denied";
+			break;
+		case NVME_MEDCODE_UNALLOCATED:
+			cstr = "unallocated";
+			break;
+		default:
+			cstr = "unknown";
+			break;
+		}
+		ksnprintf(sb->buf, sizeof(sb->buf),
+			  "type=media code=%s(%04x)", cstr, code);
+		break;
+	case NVME_STATUS_TYPE_VENDOR:
+		ksnprintf(sb->buf, sizeof(sb->buf),
+			  "type=vendor code=%04x", code);
+		break;
+	default:
+		ksnprintf(sb->buf, sizeof(sb->buf),
+			  "type=%02x code=%04x", type, code);
+		break;
+	}
+	return sb->buf;
 }

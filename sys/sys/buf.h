@@ -494,6 +494,7 @@ void	nestiobuf_init(struct bio *mbio);
 void	nestiobuf_add(struct bio *mbio, struct buf *bp, int off, size_t size, struct devstat *stats);
 void	nestiobuf_start(struct bio *mbio);
 void	nestiobuf_error(struct bio *mbio, int error);
+const char *buf_cmd_name(struct buf *bp);
 #endif	/* _KERNEL */
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
 #endif	/* !_SYS_BUF_H_ */

@@ -4587,6 +4587,38 @@ nestiobuf_add(struct bio *mbio, struct buf *bp, int offset, size_t size, struct 
 	bp->b_bio1.bio_caller_info2.ptr = stats;
 }
 
+const char *
+buf_cmd_name(struct buf *bp)
+{
+	const char *name;
+
+	switch(bp->b_cmd) {
+	case BUF_CMD_DONE:
+		name = "(DONE)";
+		break;
+	case BUF_CMD_READ:
+		name = "READ";
+		break;
+	case BUF_CMD_WRITE:
+		name = "WRITE";
+		break;
+	case BUF_CMD_FREEBLKS:
+		name = "FREEBLKS";
+		break;
+	case BUF_CMD_FORMAT:
+		name = "FORMAT";
+		break;
+	case BUF_CMD_FLUSH:
+		name = "FLUSH";
+		break;
+	default:
+		name = "(UNKNOWN)";
+		break;
+	}
+	return name;
+}
+
+
 #ifdef DDB
 
 DB_SHOW_COMMAND(buffer, db_show_buffer)

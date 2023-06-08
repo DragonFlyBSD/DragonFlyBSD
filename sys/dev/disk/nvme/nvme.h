@@ -271,6 +271,10 @@ typedef struct nvme_softc {
 #define NVME_QMAP_RD		0
 #define NVME_QMAP_WR		1
 
+typedef struct nvme_status_buf {
+	char buf[64];
+} nvme_status_buf_t;
+
 /*
  * Prototypes
  */
