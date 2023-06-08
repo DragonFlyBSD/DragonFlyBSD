@@ -258,7 +258,7 @@ free_fsnodes(fsnode *node)
 {
 	fsnode	*cur, *next;
 
-	/* DragonFly: HAMMER2 bulkfree / growfs could pass NULL node */
+	/* DragonFly: HAMMER2 ioctl commands could pass NULL node */
 	if (node == NULL)
 		return;
 

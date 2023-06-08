@@ -66,6 +66,8 @@ static void hammer2_validate(const char *, fsnode *, fsinfo_t *);
 static void hammer2_size_dir(fsnode *, fsinfo_t *);
 static int hammer2_write_file(struct m_vnode *, const char *, fsnode *);
 static int hammer2_bulkfree(struct m_vnode *vp);
+static int hammer2_destroy_path(struct m_vnode *vp, const char *f);
+static int hammer2_destroy_inum(struct m_vnode *vp, hammer2_tid_t inum);
 static int hammer2_growfs(struct m_vnode *vp, hammer2_off_t size);
 
 fsnode *hammer2_curnode;
@@ -88,6 +90,7 @@ hammer2_prep_opts(fsinfo_t *fsopts)
 		    1, HAMMER2_NUM_VOLHDRS, "number of volume headers" },
 		{ 'd', "Hammer2Debug", NULL, OPT_STRBUF, 0, 0, "debug tunable" },
 		{ 'B', "Bulkfree", &h2_opt->bulkfree, OPT_BOOL, 0, 0, "offline bulkfree" },
+		{ 'D', "Destroy", NULL, OPT_STRBUF, 0, 0, "offline destroy" },
 		{ 'G', "Growfs", &h2_opt->growfs, OPT_BOOL, 0, 0, "offline growfs" },
 		{ .name = NULL },
 	};
@@ -182,6 +185,20 @@ hammer2_parse_opts(const char *option, fsinfo_t *fsopts)
 	case 'd':
 		hammer2_debug = strtoll(buf, NULL, 0);
 		break;
+	case 'D':
+		h2_opt->destroy = 1;
+		if (buf[0] == '/') {
+			strlcpy(h2_opt->destroy_path, buf + 1,
+			    sizeof(h2_opt->destroy_path));
+		} else if ((buf[0] == '0' && buf[1] == 'x') ||
+		    (buf[0] >= '0' && buf[0] <= '9')) {
+			h2_opt->destroy_inum = strtoull(buf, NULL, 0);
+			if (errno)
+				err(1, "strtoull");
+		} else {
+			errx(1, "Invalid destroy argument %s", buf);
+		}
+		break;
 	default:
 		break;
 	}
@@ -201,7 +218,7 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	struct timeval start;
 	int error;
 
-	/* bulkfree / growfs could have NULL root */
+	/* ioctl commands could have NULL root */
 	assert(image != NULL);
 	assert(dir != NULL);
 	assert(fsopts != NULL);
@@ -215,7 +232,7 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	hammer2_validate(dir, root, fsopts);
 	TIMER_RESULTS(start, "hammer2_validate");
 
-	if (!h2_opt->bulkfree && !h2_opt->growfs) {
+	if (!h2_opt->bulkfree && !h2_opt->destroy && !h2_opt->growfs) {
 		/* create image */
 		TIMER_START(start);
 		if (hammer2_create_image(image, fsopts) == -1)
@@ -259,7 +276,7 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	printf("root inode inum %lld, mode 0%o, refs %d\n",
 	    (long long)iroot->meta.inum, iroot->meta.mode, iroot->refs);
 
-	if (!h2_opt->bulkfree && !h2_opt->growfs) {
+	if (!h2_opt->bulkfree && !h2_opt->destroy && !h2_opt->growfs) {
 		/* populate image */
 		printf("populating `%s'\n", image);
 		TIMER_START(start);
@@ -273,6 +290,23 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 		if (hammer2_bulkfree(vroot))
 			errx(1, "bulkfree `%s' failed", image);
 		TIMER_RESULTS(start, "hammer2_bulkfree");
+	} else if (h2_opt->destroy) {
+		/* destroy inode */
+		TIMER_START(start);
+		if (strlen(h2_opt->destroy_path)) {
+			printf("destroy `%s' in `%s'\n",
+			    h2_opt->destroy_path, image);
+			if (hammer2_destroy_path(vroot, h2_opt->destroy_path))
+				errx(1, "destroy `%s' in `%s' failed",
+				    h2_opt->destroy_path, image);
+		} else {
+			printf("destroy %lld in `%s'\n",
+			    (long long)h2_opt->destroy_inum, image);
+			if (hammer2_destroy_inum(vroot, h2_opt->destroy_inum))
+				errx(1, "destroy %lld in `%s' failed",
+				    (long long)h2_opt->destroy_inum, image);
+		}
+		TIMER_RESULTS(start, "hammer2_destroy");
 	} else if (h2_opt->growfs) {
 		/* growfs image */
 		printf("growfs `%s'\n", image);
@@ -416,8 +450,8 @@ hammer2_validate(const char *dir, fsnode *root, fsinfo_t *fsopts)
 		printf("using default %d volume headers\n", h2_opt->num_volhdr);
 	}
 
-	/* done if bulkfree / growfs */
-	if (h2_opt->bulkfree)
+	/* done if ioctl commands */
+	if (h2_opt->bulkfree || h2_opt->destroy)
 		goto done;
 	if (h2_opt->growfs)
 		goto ignore_size_dir;
@@ -477,6 +511,9 @@ hammer2_dump_fsinfo(fsinfo_t *fsopts)
 	printf("\tmount_label \"%s\"\n", h2_opt->mount_label);
 	printf("\tnum_volhdr %d\n", h2_opt->num_volhdr);
 	printf("\tbulkfree %d\n", h2_opt->bulkfree);
+	printf("\tdestroy %d\n", h2_opt->destroy);
+	printf("\tdestroy_path \"%s\"\n", h2_opt->destroy_path);
+	printf("\tdestroy_inum %lld\n", (long long)h2_opt->destroy_inum);
 	printf("\tgrowfs %d\n", h2_opt->growfs);
 	printf("\timage_size 0x%llx\n", (long long)h2_opt->image_size);
 
@@ -937,6 +974,50 @@ hammer2_bulkfree(struct m_vnode *vp)
 		bfi.size = 8192 * 1024;
 
 	return hammer2_ioctl_bulkfree_scan(VTOI(vp), &bfi);
+}
+
+static int
+hammer2_destroy_path(struct m_vnode *vp, const char *f)
+{
+	hammer2_ioc_destroy_t destroy;
+	int error = 0;
+
+	bzero(&destroy, sizeof(destroy));
+	destroy.cmd = HAMMER2_DELETE_FILE;
+	snprintf(destroy.path, sizeof(destroy.path), "%s", f);
+
+	printf("%s\t", f);
+	fflush(stdout);
+
+	error = hammer2_ioctl_destroy(VTOI(vp), &destroy);
+	if (error)
+		printf("%s\n", strerror(error));
+	else
+		printf("ok\n");
+
+	return error;
+}
+
+static int
+hammer2_destroy_inum(struct m_vnode *vp, hammer2_tid_t inum)
+{
+	hammer2_ioc_destroy_t destroy;
+	int error = 0;
+
+	bzero(&destroy, sizeof(destroy));
+	destroy.cmd = HAMMER2_DELETE_INUM;
+	destroy.inum = inum;
+
+	printf("%jd\t", (intmax_t)destroy.inum);
+	fflush(stdout);
+
+	error = hammer2_ioctl_destroy(VTOI(vp), &destroy);
+	if (error)
+		printf("%s\n", strerror(error));
+	else
+		printf("ok\n");
+
+	return error;
 }
 
 static int

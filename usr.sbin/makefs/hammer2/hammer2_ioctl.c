@@ -1177,11 +1177,9 @@ failed:
 	return error;
 }
 
-#if 0
 /*
  * Unconditionally delete meta-data in a hammer2 filesystem
  */
-static
 int
 hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data)
 {
@@ -1259,7 +1257,6 @@ hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data)
 	}
 	return error;
 }
-#endif
 
 /*
  * Grow a filesystem into its partition size
