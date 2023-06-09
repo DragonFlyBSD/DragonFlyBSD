@@ -189,10 +189,12 @@ hammer2_parse_opts(const char *option, fsinfo_t *fsopts)
 		break;
 	case 'D':
 		h2_opt->destroy = 1;
+		if (strlen(buf) == 0)
+			errx(1, "Destroy argument '%s' cannot be 0-length", buf);
 		if (buf[0] == '/') {
 			strlcpy(h2_opt->destroy_path, buf + 1,
 			    sizeof(h2_opt->destroy_path));
-		} else if ((buf[0] == '0' && buf[1] == 'x') ||
+		} else if (strncmp(buf, "0x", 2) == 0 ||
 		    (buf[0] >= '0' && buf[0] <= '9')) {
 			h2_opt->destroy_inum = strtoull(buf, NULL, 0);
 			if (errno)
@@ -234,17 +236,17 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	hammer2_validate(dir, root, fsopts);
 	TIMER_RESULTS(start, "hammer2_validate");
 
-	if (!h2_opt->bulkfree && !h2_opt->destroy && !h2_opt->growfs) {
+	if (h2_opt->bulkfree || h2_opt->destroy || h2_opt->growfs) {
+		/* open existing image */
+		fsopts->fd = open(image, O_RDWR);
+		if (fsopts->fd < 0)
+			err(1, "failed to open `%s'", image);
+	} else {
 		/* create image */
 		TIMER_START(start);
 		if (hammer2_create_image(image, fsopts) == -1)
 			errx(1, "image file `%s' not created", image);
 		TIMER_RESULTS(start, "hammer2_create_image");
-	} else {
-		/* open existing image */
-		fsopts->fd = open(image, O_RDWR);
-		if (fsopts->fd < 0)
-			err(1, "failed to open %s", image);
 	}
 	assert(fsopts->fd > 0);
 
@@ -281,14 +283,7 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	if (h2_opt->emergency_mode)
 		hammer2_ioctl_emerg_mode(iroot, 1);
 
-	if (!h2_opt->bulkfree && !h2_opt->destroy && !h2_opt->growfs) {
-		/* populate image */
-		printf("populating `%s'\n", image);
-		TIMER_START(start);
-		if (hammer2_populate_dir(vroot, dir, root, root, fsopts, 0))
-			errx(1, "image file `%s' not populated", image);
-		TIMER_RESULTS(start, "hammer2_populate_dir");
-	} else if (h2_opt->bulkfree) {
+	if (h2_opt->bulkfree) {
 		/* bulkfree image */
 		printf("bulkfree `%s'\n", image);
 		TIMER_START(start);
@@ -319,6 +314,13 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 		if (hammer2_growfs(vroot, h2_opt->image_size))
 			errx(1, "growfs `%s' failed", image);
 		TIMER_RESULTS(start, "hammer2_growfs");
+	} else {
+		/* populate image */
+		printf("populating `%s'\n", image);
+		TIMER_START(start);
+		if (hammer2_populate_dir(vroot, dir, root, root, fsopts, 0))
+			errx(1, "image file `%s' not populated", image);
+		TIMER_RESULTS(start, "hammer2_populate_dir");
 	}
 
 	/* unmount image */
@@ -986,7 +988,7 @@ static int
 hammer2_destroy_path(struct m_vnode *vp, const char *f)
 {
 	hammer2_ioc_destroy_t destroy;
-	int error = 0;
+	int error;
 
 	bzero(&destroy, sizeof(destroy));
 	destroy.cmd = HAMMER2_DELETE_FILE;
@@ -1008,7 +1010,7 @@ static int
 hammer2_destroy_inum(struct m_vnode *vp, hammer2_tid_t inum)
 {
 	hammer2_ioc_destroy_t destroy;
-	int error = 0;
+	int error;
 
 	bzero(&destroy, sizeof(destroy));
 	destroy.cmd = HAMMER2_DELETE_INUM;
@@ -1041,7 +1043,7 @@ hammer2_growfs(struct m_vnode *vp, hammer2_off_t size)
 			printf("grown to %016jx\n", (intmax_t)growfs.size);
 		else
 			printf("no size change - %016jx\n",
-				(intmax_t)growfs.size);
+			    (intmax_t)growfs.size);
 	}
 
 	return error;
