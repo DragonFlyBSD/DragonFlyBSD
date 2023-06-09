@@ -45,6 +45,7 @@ typedef struct {
 	char mount_label[HAMMER2_INODE_MAXNAME];
 	int num_volhdr;
 
+	bool emergency_mode;
 	bool bulkfree;
 	bool destroy;
 	char destroy_path[PATH_MAX];

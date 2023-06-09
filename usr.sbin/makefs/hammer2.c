@@ -89,6 +89,8 @@ hammer2_prep_opts(fsinfo_t *fsopts)
 		{ 'v', "NumVolhdr", &h2_opt->num_volhdr, OPT_INT32,
 		    1, HAMMER2_NUM_VOLHDRS, "number of volume headers" },
 		{ 'd', "Hammer2Debug", NULL, OPT_STRBUF, 0, 0, "debug tunable" },
+		{ 'E', "EmergencyMode", &h2_opt->emergency_mode, OPT_BOOL, 0, 0,
+		    "emergency mode" },
 		{ 'B', "Bulkfree", &h2_opt->bulkfree, OPT_BOOL, 0, 0, "offline bulkfree" },
 		{ 'D', "Destroy", NULL, OPT_STRBUF, 0, 0, "offline destroy" },
 		{ 'G', "Growfs", &h2_opt->growfs, OPT_BOOL, 0, 0, "offline growfs" },
@@ -275,6 +277,9 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	assert(iroot);
 	printf("root inode inum %lld, mode 0%o, refs %d\n",
 	    (long long)iroot->meta.inum, iroot->meta.mode, iroot->refs);
+
+	if (h2_opt->emergency_mode)
+		hammer2_ioctl_emerg_mode(iroot, 1);
 
 	if (!h2_opt->bulkfree && !h2_opt->destroy && !h2_opt->growfs) {
 		/* populate image */
@@ -510,6 +515,7 @@ hammer2_dump_fsinfo(fsinfo_t *fsopts)
 	printf("\tlabel_specified %d\n", h2_opt->label_specified);
 	printf("\tmount_label \"%s\"\n", h2_opt->mount_label);
 	printf("\tnum_volhdr %d\n", h2_opt->num_volhdr);
+	printf("\temergency_mode %d\n", h2_opt->emergency_mode);
 	printf("\tbulkfree %d\n", h2_opt->bulkfree);
 	printf("\tdestroy %d\n", h2_opt->destroy);
 	printf("\tdestroy_path \"%s\"\n", h2_opt->destroy_path);

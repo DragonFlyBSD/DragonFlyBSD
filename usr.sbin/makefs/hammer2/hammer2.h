@@ -1655,6 +1655,7 @@ void hammer2_trans_assert_strategy(hammer2_pfs_t *pmp);
  */
 int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
 				int fflag, struct ucred *cred);
+int hammer2_ioctl_emerg_mode(hammer2_inode_t *ip, u_int mode);
 int hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data);
 int hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data);
 int hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred);

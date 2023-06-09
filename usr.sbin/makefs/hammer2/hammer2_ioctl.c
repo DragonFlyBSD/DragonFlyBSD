@@ -1042,11 +1042,11 @@ hammer2_ioctl_debug_dump(hammer2_inode_t *ip, u_int flags)
 	}
 	return 0;
 }
+#endif
 
 /*
  * Turn on or off emergency mode on a filesystem.
  */
-static
 int
 hammer2_ioctl_emerg_mode(hammer2_inode_t *ip, u_int mode)
 {
@@ -1073,7 +1073,6 @@ hammer2_ioctl_emerg_mode(hammer2_inode_t *ip, u_int mode)
 	}
 	return 0;
 }
-#endif
 
 /*
  * Do a bulkfree scan on media related to the PFS.  This routine will

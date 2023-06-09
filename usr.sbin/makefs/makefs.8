@@ -35,7 +35,7 @@
 .\"
 .\" $FreeBSD: head/usr.sbin/makefs/makefs.8 331843 2018-03-31 15:04:41Z benno $
 .\"
-.Dd June 8, 2023
+.Dd June 9, 2023
 .Dt MAKEFS 8
 .Os
 .Sh NAME
@@ -523,6 +523,8 @@ Defaults to "DATA".
 sysctl vfs.hammer2.debug compatible tunable for debug prints.
 Specify 0xffffffff to enable all debug prints.
 Defaults to 0.
+.It Cm E
+Set emergency mode.
 .It Cm B
 Run offline bulkfree and exit.
 .Ar image-file
