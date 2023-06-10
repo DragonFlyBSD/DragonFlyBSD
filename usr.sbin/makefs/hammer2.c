@@ -58,6 +58,7 @@
 #define APRINTF(X, ...)	\
     printf("%s: " X, __func__, ## __VA_ARGS__)
 
+static void hammer2_parse_pfs_opts(const char *, fsinfo_t *);
 static void hammer2_dump_fsinfo(fsinfo_t *);
 static int hammer2_create_image(const char *, fsinfo_t *);
 static int hammer2_populate_dir(struct m_vnode *, const char *, fsnode *,
@@ -65,10 +66,11 @@ static int hammer2_populate_dir(struct m_vnode *, const char *, fsnode *,
 static void hammer2_validate(const char *, fsnode *, fsinfo_t *);
 static void hammer2_size_dir(fsnode *, fsinfo_t *);
 static int hammer2_write_file(struct m_vnode *, const char *, fsnode *);
-static int hammer2_bulkfree(struct m_vnode *vp);
-static int hammer2_destroy_path(struct m_vnode *vp, const char *f);
-static int hammer2_destroy_inum(struct m_vnode *vp, hammer2_tid_t inum);
-static int hammer2_growfs(struct m_vnode *vp, hammer2_off_t size);
+static int hammer2_pfs(struct m_vnode *, int, const char *, const char *);
+static int hammer2_bulkfree(struct m_vnode *);
+static int hammer2_destroy_path(struct m_vnode *, const char *);
+static int hammer2_destroy_inum(struct m_vnode *, hammer2_tid_t);
+static int hammer2_growfs(struct m_vnode *, hammer2_off_t);
 
 fsnode *hammer2_curnode;
 
@@ -91,6 +93,7 @@ hammer2_prep_opts(fsinfo_t *fsopts)
 		{ 'd', "Hammer2Debug", NULL, OPT_STRBUF, 0, 0, "debug tunable" },
 		{ 'E', "EmergencyMode", &h2_opt->emergency_mode, OPT_BOOL, 0, 0,
 		    "emergency mode" },
+		{ 'P', "PFS", NULL, OPT_STRBUF, 0, 0, "offline PFS" },
 		{ 'B', "Bulkfree", &h2_opt->bulkfree, OPT_BOOL, 0, 0, "offline bulkfree" },
 		{ 'D', "Destroy", NULL, OPT_STRBUF, 0, 0, "offline destroy" },
 		{ 'G', "Growfs", &h2_opt->growfs, OPT_BOOL, 0, 0, "offline growfs" },
@@ -187,6 +190,12 @@ hammer2_parse_opts(const char *option, fsinfo_t *fsopts)
 	case 'd':
 		hammer2_debug = strtoll(buf, NULL, 0);
 		break;
+	case 'P':
+		h2_opt->pfs = 1;
+		if (strlen(buf) == 0)
+			errx(1, "PFS argument '%s' cannot be 0-length", buf);
+		hammer2_parse_pfs_opts(buf, fsopts);
+		break;
 	case 'D':
 		h2_opt->destroy = 1;
 		if (strlen(buf) == 0)
@@ -236,7 +245,8 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	hammer2_validate(dir, root, fsopts);
 	TIMER_RESULTS(start, "hammer2_validate");
 
-	if (h2_opt->bulkfree || h2_opt->destroy || h2_opt->growfs) {
+	if (h2_opt->pfs || h2_opt->bulkfree || h2_opt->destroy ||
+	    h2_opt->growfs) {
 		/* open existing image */
 		fsopts->fd = open(image, O_RDWR);
 		if (fsopts->fd < 0)
@@ -283,7 +293,16 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	if (h2_opt->emergency_mode)
 		hammer2_ioctl_emerg_mode(iroot, 1);
 
-	if (h2_opt->bulkfree) {
+	if (h2_opt->pfs) {
+		/* PFS */
+		printf("PFS %s `%s'\n", h2_opt->pfs_cmd_name, image);
+		TIMER_START(start);
+		if (hammer2_pfs(vroot, h2_opt->pfs_cmd, h2_opt->pfs_name,
+		    h2_opt->mount_label))
+			errx(1, "PFS %s`%s' failed", h2_opt->pfs_cmd_name,
+			    image);
+		TIMER_RESULTS(start, "hammer2_pfs");
+	} else if (h2_opt->bulkfree) {
 		/* bulkfree image */
 		printf("bulkfree `%s'\n", image);
 		TIMER_START(start);
@@ -348,6 +367,51 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 }
 
 /* end of public functions */
+
+static void
+hammer2_parse_pfs_opts(const char *buf, fsinfo_t *fsopts)
+{
+	hammer2_makefs_options_t *h2_opt = fsopts->fs_specific;
+	char *o, *p;
+	size_t n;
+
+	o = p = strdup(buf);
+	p = strchr(p, ':');
+	if (p != NULL) {
+		*p++ = 0;
+		n = strlen(p);
+	} else {
+		n = 0;
+	}
+
+	if (!strcmp(o, "get") || !strcmp(o, "list")) {
+		h2_opt->pfs_cmd = HAMMER2IOC_PFS_GET;
+	} else if (!strcmp(o, "lookup")) {
+		if (n == 0 || n > NAME_MAX)
+			errx(1, "invalid PFS name \"%s\"", p);
+		h2_opt->pfs_cmd = HAMMER2IOC_PFS_LOOKUP;
+	} else if (!strcmp(o, "create")) {
+		if (n == 0 || n > NAME_MAX)
+			errx(1, "invalid PFS name \"%s\"", p);
+		h2_opt->pfs_cmd = HAMMER2IOC_PFS_CREATE;
+	} else if (!strcmp(o, "delete")) {
+		if (n == 0 || n > NAME_MAX)
+			errx(1, "invalid PFS name \"%s\"", p);
+		h2_opt->pfs_cmd = HAMMER2IOC_PFS_DELETE;
+	} else if (!strcmp(o, "snapshot")) {
+		if (n > NAME_MAX)
+			errx(1, "invalid PFS name \"%s\"", p);
+		h2_opt->pfs_cmd = HAMMER2IOC_PFS_SNAPSHOT;
+	} else {
+		errx(1, "invalid PFS command \"%s\"", o);
+	}
+
+	strlcpy(h2_opt->pfs_cmd_name, o, sizeof(h2_opt->pfs_cmd_name));
+	if (n > 0)
+		strlcpy(h2_opt->pfs_name, p, sizeof(h2_opt->pfs_name));
+
+	free(o);
+}
 
 static hammer2_off_t
 hammer2_image_size(fsinfo_t *fsopts)
@@ -458,7 +522,7 @@ hammer2_validate(const char *dir, fsnode *root, fsinfo_t *fsopts)
 	}
 
 	/* done if ioctl commands */
-	if (h2_opt->bulkfree || h2_opt->destroy)
+	if (h2_opt->pfs || h2_opt->bulkfree || h2_opt->destroy)
 		goto done;
 	if (h2_opt->growfs)
 		goto ignore_size_dir;
@@ -518,6 +582,10 @@ hammer2_dump_fsinfo(fsinfo_t *fsopts)
 	printf("\tmount_label \"%s\"\n", h2_opt->mount_label);
 	printf("\tnum_volhdr %d\n", h2_opt->num_volhdr);
 	printf("\temergency_mode %d\n", h2_opt->emergency_mode);
+	printf("\tpfs %d\n", h2_opt->pfs);
+	printf("\tpfs_cmd %d\n", h2_opt->pfs_cmd);
+	printf("\tpfs_cmd_name \"%s\"\n", h2_opt->pfs_cmd_name);
+	printf("\tpfs_name \"%s\"\n", h2_opt->pfs_name);
 	printf("\tbulkfree %d\n", h2_opt->bulkfree);
 	printf("\tdestroy %d\n", h2_opt->destroy);
 	printf("\tdestroy_path \"%s\"\n", h2_opt->destroy_path);
@@ -963,6 +1031,188 @@ hammer2_write_file(struct m_vnode *vp, const char *path, fsnode *node)
 	munmap(p, nsize);
 
 	return 0;
+}
+
+struct pfs_entry {
+	TAILQ_ENTRY(pfs_entry) entry;
+	char name[NAME_MAX+1];
+	char s[NAME_MAX+1];
+};
+
+static int
+hammer2_pfs_get(struct m_vnode *vp)
+{
+	hammer2_ioc_pfs_t pfs;
+	TAILQ_HEAD(, pfs_entry) head;
+	struct pfs_entry *p, *e;
+	char *pfs_id_str;
+	const char *type_str;
+	int error;
+
+	bzero(&pfs, sizeof(pfs));
+	TAILQ_INIT(&head);
+
+	while ((pfs.name_key = pfs.name_next) != (hammer2_key_t)-1) {
+		error = hammer2_ioctl_pfs_get(VTOI(vp), &pfs);
+		if (error)
+			return error;
+
+		pfs_id_str = NULL;
+		hammer2_uuid_to_str(&pfs.pfs_clid, &pfs_id_str);
+
+		if (pfs.pfs_type == HAMMER2_PFSTYPE_MASTER) {
+			if (pfs.pfs_subtype == HAMMER2_PFSSUBTYPE_NONE)
+				type_str = "MASTER";
+			else
+				type_str = hammer2_pfssubtype_to_str(
+				    pfs.pfs_subtype);
+		} else {
+			type_str = hammer2_pfstype_to_str(pfs.pfs_type);
+		}
+		e = calloc(1, sizeof(*e));
+		snprintf(e->name, sizeof(e->name), "%s", pfs.name);
+		snprintf(e->s, sizeof(e->s), "%-11s %s", type_str, pfs_id_str);
+		free(pfs_id_str);
+
+		p = TAILQ_FIRST(&head);
+		while (p) {
+			if (strcmp(e->name, p->name) <= 0) {
+				TAILQ_INSERT_BEFORE(p, e, entry);
+				break;
+			}
+			p = TAILQ_NEXT(p, entry);
+		}
+		if (!p)
+			TAILQ_INSERT_TAIL(&head, e, entry);
+	}
+
+	printf("Type        "
+	    "ClusterId (pfs_clid)                 "
+	    "Label\n");
+	while ((p = TAILQ_FIRST(&head)) != NULL) {
+		printf("%s %s\n", p->s, p->name);
+		TAILQ_REMOVE(&head, p, entry);
+		free(p);
+	}
+
+	return 0;
+}
+
+static int
+hammer2_pfs_lookup(struct m_vnode *vp, const char *pfs_name)
+{
+	hammer2_ioc_pfs_t pfs;
+	char *pfs_id_str;
+	int error;
+
+	bzero(&pfs, sizeof(pfs));
+	strlcpy(pfs.name, pfs_name, sizeof(pfs.name));
+
+	error = hammer2_ioctl_pfs_lookup(VTOI(vp), &pfs);
+	if (error == 0) {
+		printf("name: %s\n", pfs.name);
+		printf("type: %s\n", hammer2_pfstype_to_str(pfs.pfs_type));
+		printf("subtype: %s\n",
+		    hammer2_pfssubtype_to_str(pfs.pfs_subtype));
+
+		pfs_id_str = NULL;
+		hammer2_uuid_to_str(&pfs.pfs_fsid, &pfs_id_str);
+		printf("fsid: %s\n", pfs_id_str);
+		free(pfs_id_str);
+
+		pfs_id_str = NULL;
+		hammer2_uuid_to_str(&pfs.pfs_clid, &pfs_id_str);
+		printf("clid: %s\n", pfs_id_str);
+		free(pfs_id_str);
+	}
+
+	return error;
+}
+
+static int
+hammer2_pfs_create(struct m_vnode *vp, const char *pfs_name)
+{
+	hammer2_ioc_pfs_t pfs;
+	int error;
+
+	bzero(&pfs, sizeof(pfs));
+	strlcpy(pfs.name, pfs_name, sizeof(pfs.name));
+	pfs.pfs_type = HAMMER2_PFSTYPE_MASTER;
+	uuid_create(&pfs.pfs_clid, NULL);
+	uuid_create(&pfs.pfs_fsid, NULL);
+
+	error = hammer2_ioctl_pfs_create(VTOI(vp), &pfs);
+	if (error == EEXIST)
+		fprintf(stderr,
+		    "NOTE: Typically the same name is "
+		    "used for cluster elements on "
+		    "different mounts,\n"
+		    "      but cluster elements on the "
+		    "same mount require unique names.\n"
+		    "hammer2: pfs_create(%s): already present\n",
+		    pfs_name);
+
+	return error;
+}
+
+static int
+hammer2_pfs_delete(struct m_vnode *vp, const char *pfs_name)
+{
+	hammer2_ioc_pfs_t pfs;
+
+	bzero(&pfs, sizeof(pfs));
+	strlcpy(pfs.name, pfs_name, sizeof(pfs.name));
+
+	return hammer2_ioctl_pfs_delete(VTOI(vp), &pfs);
+}
+
+static int
+hammer2_pfs_snapshot(struct m_vnode *vp, const char *pfs_name,
+    const char *mount_label)
+{
+	hammer2_ioc_pfs_t pfs;
+	struct tm *tp;
+	time_t t;
+
+	bzero(&pfs, sizeof(pfs));
+	strlcpy(pfs.name, pfs_name, sizeof(pfs.name));
+
+	if (strlen(pfs.name) == 0) {
+		time(&t);
+		tp = localtime(&t);
+		snprintf(pfs.name, sizeof(pfs.name),
+		    "%s.%04d%02d%02d.%02d%02d%02d",
+		    mount_label,
+		    tp->tm_year + 1900,
+		    tp->tm_mon + 1,
+		    tp->tm_mday,
+		    tp->tm_hour,
+		    tp->tm_min,
+		    tp->tm_sec);
+	}
+
+	return hammer2_ioctl_pfs_snapshot(VTOI(vp), &pfs);
+}
+
+static int
+hammer2_pfs(struct m_vnode *vp, int pfs_cmd, const char *pfs_name,
+    const char *mount_label)
+{
+	switch (pfs_cmd) {
+	case HAMMER2IOC_PFS_GET:
+		return hammer2_pfs_get(vp);
+	case HAMMER2IOC_PFS_LOOKUP:
+		return hammer2_pfs_lookup(vp, pfs_name);
+	case HAMMER2IOC_PFS_CREATE:
+		return hammer2_pfs_create(vp, pfs_name);
+	case HAMMER2IOC_PFS_DELETE:
+		return hammer2_pfs_delete(vp, pfs_name);
+	case HAMMER2IOC_PFS_SNAPSHOT:
+		return hammer2_pfs_snapshot(vp, pfs_name, mount_label);
+	default:
+		assert(0);
+	}
+	return EINVAL;
 }
 
 static int

@@ -311,13 +311,29 @@ hammer2_calc_physical(hammer2_inode_t *ip, hammer2_key_t lbase)
 
 extern fsnode *hammer2_curnode;
 
+static void
+hammer2_get_curtime(uint64_t *timep)
+{
+	struct timeval ts;
+	int error;
+
+	error = gettimeofday(&ts, NULL);
+	KKASSERT(error == 0);
+	*timep = (unsigned long)ts.tv_sec * 1000000 + ts.tv_usec;
+}
+
 void
 hammer2_update_time(uint64_t *timep, bool is_mtime)
 {
 	struct timespec *ts;
 	struct stat *st;
 
-	assert(hammer2_curnode);
+	/* HAMMER2 ioctl commands */
+	if (hammer2_curnode == NULL) {
+		hammer2_get_curtime(timep);
+		return;
+	}
+
 	st = stampst.st_ino != 0 ? &stampst : &hammer2_curnode->inode->st;
 	ts = is_mtime ? &st->st_mtim : &st->st_ctim;
 

@@ -397,6 +397,7 @@ hammer2_ioctl_socket_set(hammer2_inode_t *ip, void *data)
 
 	return(0);
 }
+#endif
 
 /*
  * Used to scan and retrieve PFS information.  PFS's are directories under
@@ -413,7 +414,7 @@ hammer2_ioctl_socket_set(hammer2_inode_t *ip, void *data)
  * To retrieve the PFS associated with the file descriptor, pass
  * name_key set to (hammer2_key_t)-1.
  */
-static int
+int
 hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 {
 	const hammer2_inode_data_t *ripdata;
@@ -532,7 +533,7 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 /*
  * Find a specific PFS by name
  */
-static int
+int
 hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 {
 	const hammer2_inode_data_t *ripdata;
@@ -604,7 +605,7 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 /*
  * Create a new PFS under the super-root
  */
-static int
+int
 hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 {
 	hammer2_inode_data_t *nipdata;
@@ -700,7 +701,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 /*
  * Destroy an existing PFS under the super-root
  */
-static int
+int
 hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_pfs_t *pfs = data;
@@ -798,7 +799,7 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	return (hammer2_error_to_errno(error));
 }
 
-static int
+int
 hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_pfs_t *pfs = data;
@@ -898,7 +899,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		nip->meta.pfs_lsnap_tid = mtid;
 		nchain->bref.embed.stats = chain->bref.embed.stats;
 
-		kern_uuidgen(&nip->meta.pfs_fsid, 1);
+		uuid_create(&nip->meta.pfs_fsid, NULL);
 
 #if 0
 		/*
@@ -909,9 +910,9 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		if (chain->flags & HAMMER2_CHAIN_PFSBOUNDARY)
 			nip->meta.pfs_clid = opfs_clid;
 		else
-			kern_uuidgen(&nip->meta.pfs_clid, 1);
+			uuid_create(&nip->meta.pfs_clid, NULL);
 #endif
-		kern_uuidgen(&nip->meta.pfs_clid, 1);
+		uuid_create(&nip->meta.pfs_clid, NULL);
 		nchain->bref.flags |= HAMMER2_BREF_FLAG_PFSROOT;
 
 		/* XXX hack blockset copy */
@@ -961,6 +962,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	return (hammer2_error_to_errno(error));
 }
 
+#if 0
 /*
  * Retrieve the raw inode structure, non-inclusive of node-specific data.
  */

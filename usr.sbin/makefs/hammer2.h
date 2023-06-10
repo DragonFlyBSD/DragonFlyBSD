@@ -45,11 +45,20 @@ typedef struct {
 	char mount_label[HAMMER2_INODE_MAXNAME];
 	int num_volhdr;
 
+	/* HAMMER2IOC_EMERG_MODE */
 	bool emergency_mode;
+	/* HAMMER2IOC_PFS_xxx */
+	bool pfs;
+	int pfs_cmd;
+	char pfs_cmd_name[NAME_MAX+1];
+	char pfs_name[NAME_MAX+1];
+	/* HAMMER2IOC_BULKFREE_SCAN */
 	bool bulkfree;
+	/* HAMMER2IOC_DESTROY */
 	bool destroy;
 	char destroy_path[PATH_MAX];
 	hammer2_tid_t destroy_inum;
+	/* HAMMER2IOC_GROWFS */
 	bool growfs;
 
 	hammer2_off_t image_size;
