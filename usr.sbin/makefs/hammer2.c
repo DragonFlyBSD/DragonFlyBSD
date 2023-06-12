@@ -1235,23 +1235,51 @@ hammer2_bulkfree(struct m_vnode *vp)
 }
 
 static int
-hammer2_destroy_path(struct m_vnode *vp, const char *f)
+hammer2_destroy_path(struct m_vnode *dvp, const char *f)
 {
 	hammer2_ioc_destroy_t destroy;
+	hammer2_inode_t *ip;
+	struct m_vnode *vp;
+	char *o, *p, *name;
 	int error;
+
+	o = p = strdup(f);
+	name = p;
+
+	while (strlen(p) > 0 && p[strlen(p) - 1] == '/')
+		p[strlen(p) - 1] = 0;
+	if (strlen(p) == 0)
+		return EINVAL;
+
+	while ((p = strchr(p, '/')) != NULL) {
+		*p++ = 0; /* NULL terminate name */
+		vp = NULL;
+		error = hammer2_nresolve(dvp, &vp, name, strlen(name));
+		if (error)
+			return error;
+
+		ip = VTOI(vp);
+		assert(ip->meta.type == HAMMER2_OBJTYPE_DIRECTORY);
+		/* XXX When does (or why does not) ioctl modify this inode ? */
+		hammer2_inode_modify(ip);
+
+		dvp = vp;
+		name = p;
+	}
 
 	bzero(&destroy, sizeof(destroy));
 	destroy.cmd = HAMMER2_DELETE_FILE;
-	snprintf(destroy.path, sizeof(destroy.path), "%s", f);
+	snprintf(destroy.path, sizeof(destroy.path), "%s", name);
 
 	printf("%s\t", f);
 	fflush(stdout);
 
-	error = hammer2_ioctl_destroy(VTOI(vp), &destroy);
+	error = hammer2_ioctl_destroy(VTOI(dvp), &destroy);
 	if (error)
 		printf("%s\n", strerror(error));
 	else
 		printf("ok\n");
+	free(o);
 
 	return error;
 }
