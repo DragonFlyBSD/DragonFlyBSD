@@ -297,17 +297,20 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 		/* PFS */
 		printf("PFS %s `%s'\n", h2_opt->pfs_cmd_name, image);
 		TIMER_START(start);
-		if (hammer2_pfs(vroot, h2_opt->pfs_cmd, h2_opt->pfs_name,
-		    h2_opt->mount_label))
-			errx(1, "PFS %s`%s' failed", h2_opt->pfs_cmd_name,
-			    image);
+		error = hammer2_pfs(vroot, h2_opt->pfs_cmd, h2_opt->pfs_name,
+		    h2_opt->mount_label);
+		if (error)
+			errx(1, "PFS %s`%s' failed '%s'", h2_opt->pfs_cmd_name,
+			    image, strerror(error));
 		TIMER_RESULTS(start, "hammer2_pfs");
 	} else if (h2_opt->bulkfree) {
 		/* bulkfree image */
 		printf("bulkfree `%s'\n", image);
 		TIMER_START(start);
-		if (hammer2_bulkfree(vroot))
-			errx(1, "bulkfree `%s' failed", image);
+		error = hammer2_bulkfree(vroot);
+		if (error)
+			errx(1, "bulkfree `%s' failed '%s'", image,
+			    strerror(error));
 		TIMER_RESULTS(start, "hammer2_bulkfree");
 	} else if (h2_opt->destroy) {
 		/* destroy inode */
@@ -315,23 +318,31 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 		if (strlen(h2_opt->destroy_path)) {
 			printf("destroy `%s' in `%s'\n",
 			    h2_opt->destroy_path, image);
-			if (hammer2_destroy_path(vroot, h2_opt->destroy_path))
-				errx(1, "destroy `%s' in `%s' failed",
-				    h2_opt->destroy_path, image);
+			error = hammer2_destroy_path(vroot,
+			    h2_opt->destroy_path);
+			if (error)
+				errx(1, "destroy `%s' in `%s' failed '%s'",
+				    h2_opt->destroy_path, image,
+				    strerror(error));
 		} else {
 			printf("destroy %lld in `%s'\n",
 			    (long long)h2_opt->destroy_inum, image);
-			if (hammer2_destroy_inum(vroot, h2_opt->destroy_inum))
-				errx(1, "destroy %lld in `%s' failed",
-				    (long long)h2_opt->destroy_inum, image);
+			error = hammer2_destroy_inum(vroot,
+			    h2_opt->destroy_inum);
+			if (error)
+				errx(1, "destroy %lld in `%s' failed '%s'",
+				    (long long)h2_opt->destroy_inum, image,
+				    strerror(error));
 		}
 		TIMER_RESULTS(start, "hammer2_destroy");
 	} else if (h2_opt->growfs) {
 		/* growfs image */
 		printf("growfs `%s'\n", image);
 		TIMER_START(start);
-		if (hammer2_growfs(vroot, h2_opt->image_size))
-			errx(1, "growfs `%s' failed", image);
+		error = hammer2_growfs(vroot, h2_opt->image_size);
+		if (error)
+			errx(1, "growfs `%s' failed '%s'", image,
+			    strerror(error));
 		TIMER_RESULTS(start, "hammer2_growfs");
 	} else {
 		/* populate image */
@@ -1069,7 +1080,7 @@ hammer2_pfs_get(struct m_vnode *vp)
 		} else {
 			type_str = hammer2_pfstype_to_str(pfs.pfs_type);
 		}
-		e = calloc(1, sizeof(*e));
+		e = ecalloc(1, sizeof(*e));
 		snprintf(e->name, sizeof(e->name), "%s", pfs.name);
 		snprintf(e->s, sizeof(e->s), "%-11s %s", type_str, pfs_id_str);
 		free(pfs_id_str);
@@ -1243,11 +1254,17 @@ hammer2_destroy_path(struct m_vnode *dvp, const char *f)
 	char *o, *p, *name;
 	int error;
 
+	assert(strlen(f) > 0);
 	o = p = strdup(f);
-	name = p;
 
-	while (strlen(p) > 0 && p[strlen(p) - 1] == '/')
-		p[strlen(p) - 1] = 0;
+	/* Trim trailing '/'. */
+	p += strlen(p);
+	p--;
+	while (p >= o && *p == '/')
+		p--;
+	*++p = 0;
+
+	name = p = o;
 	if (strlen(p) == 0)
 		return EINVAL;
 

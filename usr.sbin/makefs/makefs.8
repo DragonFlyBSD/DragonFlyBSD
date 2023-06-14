@@ -35,7 +35,7 @@
 .\"
 .\" $FreeBSD: head/usr.sbin/makefs/makefs.8 331843 2018-03-31 15:04:41Z benno $
 .\"
-.Dd June 10, 2023
+.Dd June 13, 2023
 .Dt MAKEFS 8
 .Os
 .Sh NAME
@@ -494,6 +494,8 @@ Note that for offline operations,
 must be a valid HAMMER2 image file or block device.
 .Ar directory
 is unused, but still needs to be either any valid path or `--'.
+Also see
+.Xr hammer2 8 .
 .Pp
 .Bl -tag -width omit-trailing-period -offset indent -compact
 .It Cm b
