@@ -177,11 +177,12 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 	}
 	return (error);
 }
+#endif
 
 /*
  * Retrieve version and basic info
  */
-static int
+int
 hammer2_ioctl_version_get(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_version_t *version = data;
@@ -195,6 +196,7 @@ hammer2_ioctl_version_get(hammer2_inode_t *ip, void *data)
 	return 0;
 }
 
+#if 0
 static int
 hammer2_ioctl_recluster(hammer2_inode_t *ip, void *data)
 {

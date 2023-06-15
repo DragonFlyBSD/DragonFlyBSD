@@ -1656,6 +1656,7 @@ void hammer2_trans_assert_strategy(hammer2_pfs_t *pmp);
  */
 int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
 				int fflag, struct ucred *cred);
+int hammer2_ioctl_version_get(hammer2_inode_t *ip, void *data);
 int hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data);
 int hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data);
 int hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data);

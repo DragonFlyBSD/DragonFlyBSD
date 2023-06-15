@@ -66,6 +66,7 @@ static int hammer2_populate_dir(struct m_vnode *, const char *, fsnode *,
 static void hammer2_validate(const char *, fsnode *, fsinfo_t *);
 static void hammer2_size_dir(fsnode *, fsinfo_t *);
 static int hammer2_write_file(struct m_vnode *, const char *, fsnode *);
+static int hammer2_version_get(struct m_vnode *);
 static int hammer2_pfs_get(struct m_vnode *);
 static int hammer2_pfs_lookup(struct m_vnode *, const char *);
 static int hammer2_pfs_create(struct m_vnode *, const char *);
@@ -163,12 +164,16 @@ hammer2_parse_opts(const char *option, fsinfo_t *fsopts)
 		    HAMMER2_AUX_MAX_BYTES, 2);
 		break;
 	case 'V':
-		opt->Hammer2Version = strtol(buf, NULL, 0);
-		if (opt->Hammer2Version < HAMMER2_VOL_VERSION_MIN ||
-		    opt->Hammer2Version >= HAMMER2_VOL_VERSION_WIP)
-			errx(1, "I don't understand how to format "
-			    "HAMMER2 version %d",
-			    opt->Hammer2Version);
+		if (strlen(buf) == 0) {
+			h2_opt->ioctl_cmd = HAMMER2IOC_VERSION_GET;
+		} else {
+			opt->Hammer2Version = strtol(buf, NULL, 0);
+			if (opt->Hammer2Version < HAMMER2_VOL_VERSION_MIN ||
+			    opt->Hammer2Version >= HAMMER2_VOL_VERSION_WIP)
+				errx(1, "I don't understand how to format "
+				    "HAMMER2 version %d",
+				    opt->Hammer2Version);
+		}
 		break;
 	case 'L':
 		h2_opt->label_specified = 1;
@@ -302,6 +307,15 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 		hammer2_ioctl_emerg_mode(iroot, 1);
 
 	switch (h2_opt->ioctl_cmd) {
+	case HAMMER2IOC_VERSION_GET:
+		printf("version get `%s'\n", image);
+		TIMER_START(start);
+		error = hammer2_version_get(vroot);
+		if (error)
+			errx(1, "version get `%s' failed '%s'", image,
+			    strerror(error));
+		TIMER_RESULTS(start, "hammer2_version_get");
+		break;
 	case HAMMER2IOC_PFS_GET:
 		printf("PFS %s `%s'\n", h2_opt->pfs_cmd_name, image);
 		TIMER_START(start);
@@ -1083,6 +1097,20 @@ hammer2_write_file(struct m_vnode *vp, const char *path, fsnode *node)
 			assert((offset & (HAMMER2_PBUFSIZE - 1)) == 0);
 	}
 	munmap(p, nsize);
+
+	return 0;
+}
+
+static int
+hammer2_version_get(struct m_vnode *vp)
+{
+	hammer2_dev_t *hmp;
+
+	hmp = VTOI(vp)->pmp->pfs_hmps[0];
+	if (hmp == NULL)
+		return EINVAL;
+
+	printf("version: %d\n", hmp->voldata.version);
 
 	return 0;
 }
