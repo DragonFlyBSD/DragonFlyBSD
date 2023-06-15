@@ -66,7 +66,11 @@ static int hammer2_populate_dir(struct m_vnode *, const char *, fsnode *,
 static void hammer2_validate(const char *, fsnode *, fsinfo_t *);
 static void hammer2_size_dir(fsnode *, fsinfo_t *);
 static int hammer2_write_file(struct m_vnode *, const char *, fsnode *);
-static int hammer2_pfs(struct m_vnode *, int, const char *, const char *);
+static int hammer2_pfs_get(struct m_vnode *);
+static int hammer2_pfs_lookup(struct m_vnode *, const char *);
+static int hammer2_pfs_create(struct m_vnode *, const char *);
+static int hammer2_pfs_delete(struct m_vnode *, const char *);
+static int hammer2_pfs_snapshot(struct m_vnode *, const char *, const char *);
 static int hammer2_bulkfree(struct m_vnode *);
 static int hammer2_destroy_path(struct m_vnode *, const char *);
 static int hammer2_destroy_inum(struct m_vnode *, hammer2_tid_t);
@@ -94,9 +98,9 @@ hammer2_prep_opts(fsinfo_t *fsopts)
 		{ 'E', "EmergencyMode", &h2_opt->emergency_mode, OPT_BOOL, 0, 0,
 		    "emergency mode" },
 		{ 'P', "PFS", NULL, OPT_STRBUF, 0, 0, "offline PFS" },
-		{ 'B', "Bulkfree", &h2_opt->bulkfree, OPT_BOOL, 0, 0, "offline bulkfree" },
+		{ 'B', "Bulkfree", NULL, OPT_STRBUF, 0, 0, "offline bulkfree" },
 		{ 'D', "Destroy", NULL, OPT_STRBUF, 0, 0, "offline destroy" },
-		{ 'G', "Growfs", &h2_opt->growfs, OPT_BOOL, 0, 0, "offline growfs" },
+		{ 'G', "Growfs", NULL, OPT_STRBUF, 0, 0, "offline growfs" },
 		{ .name = NULL },
 	};
 
@@ -191,13 +195,15 @@ hammer2_parse_opts(const char *option, fsinfo_t *fsopts)
 		hammer2_debug = strtoll(buf, NULL, 0);
 		break;
 	case 'P':
-		h2_opt->pfs = 1;
 		if (strlen(buf) == 0)
 			errx(1, "PFS argument '%s' cannot be 0-length", buf);
 		hammer2_parse_pfs_opts(buf, fsopts);
 		break;
+	case 'B':
+		h2_opt->ioctl_cmd = HAMMER2IOC_BULKFREE_SCAN;
+		break;
 	case 'D':
-		h2_opt->destroy = 1;
+		h2_opt->ioctl_cmd = HAMMER2IOC_DESTROY;
 		if (strlen(buf) == 0)
 			errx(1, "Destroy argument '%s' cannot be 0-length", buf);
 		if (buf[0] == '/') {
@@ -211,6 +217,9 @@ hammer2_parse_opts(const char *option, fsinfo_t *fsopts)
 		} else {
 			errx(1, "Invalid destroy argument %s", buf);
 		}
+		break;
+	case 'G':
+		h2_opt->ioctl_cmd = HAMMER2IOC_GROWFS;
 		break;
 	default:
 		break;
@@ -245,8 +254,7 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	hammer2_validate(dir, root, fsopts);
 	TIMER_RESULTS(start, "hammer2_validate");
 
-	if (h2_opt->pfs || h2_opt->bulkfree || h2_opt->destroy ||
-	    h2_opt->growfs) {
+	if (h2_opt->ioctl_cmd) {
 		/* open existing image */
 		fsopts->fd = open(image, O_RDWR);
 		if (fsopts->fd < 0)
@@ -293,18 +301,54 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	if (h2_opt->emergency_mode)
 		hammer2_ioctl_emerg_mode(iroot, 1);
 
-	if (h2_opt->pfs) {
-		/* PFS */
+	switch (h2_opt->ioctl_cmd) {
+	case HAMMER2IOC_PFS_GET:
 		printf("PFS %s `%s'\n", h2_opt->pfs_cmd_name, image);
 		TIMER_START(start);
-		error = hammer2_pfs(vroot, h2_opt->pfs_cmd, h2_opt->pfs_name,
+		error = hammer2_pfs_get(vroot);
+		if (error)
+			errx(1, "PFS %s`%s' failed '%s'", h2_opt->pfs_cmd_name,
+			    image, strerror(error));
+		TIMER_RESULTS(start, "hammer2_pfs_get");
+		break;
+	case HAMMER2IOC_PFS_LOOKUP:
+		printf("PFS %s `%s'\n", h2_opt->pfs_cmd_name, image);
+		TIMER_START(start);
+		error = hammer2_pfs_lookup(vroot, h2_opt->pfs_name);
+		if (error)
+			errx(1, "PFS %s`%s' failed '%s'", h2_opt->pfs_cmd_name,
+			    image, strerror(error));
+		TIMER_RESULTS(start, "hammer2_pfs_lookup");
+		break;
+	case HAMMER2IOC_PFS_CREATE:
+		printf("PFS %s `%s'\n", h2_opt->pfs_cmd_name, image);
+		TIMER_START(start);
+		error = hammer2_pfs_create(vroot, h2_opt->pfs_name);
+		if (error)
+			errx(1, "PFS %s`%s' failed '%s'", h2_opt->pfs_cmd_name,
+			    image, strerror(error));
+		TIMER_RESULTS(start, "hammer2_pfs_create");
+		break;
+	case HAMMER2IOC_PFS_DELETE:
+		printf("PFS %s `%s'\n", h2_opt->pfs_cmd_name, image);
+		TIMER_START(start);
+		error = hammer2_pfs_delete(vroot, h2_opt->pfs_name);
+		if (error)
+			errx(1, "PFS %s`%s' failed '%s'", h2_opt->pfs_cmd_name,
+			    image, strerror(error));
+		TIMER_RESULTS(start, "hammer2_pfs_delete");
+		break;
+	case HAMMER2IOC_PFS_SNAPSHOT:
+		printf("PFS %s `%s'\n", h2_opt->pfs_cmd_name, image);
+		TIMER_START(start);
+		error = hammer2_pfs_snapshot(vroot, h2_opt->pfs_name,
 		    h2_opt->mount_label);
 		if (error)
 			errx(1, "PFS %s`%s' failed '%s'", h2_opt->pfs_cmd_name,
 			    image, strerror(error));
-		TIMER_RESULTS(start, "hammer2_pfs");
-	} else if (h2_opt->bulkfree) {
-		/* bulkfree image */
+		TIMER_RESULTS(start, "hammer2_pfs_snapshot");
+		break;
+	case HAMMER2IOC_BULKFREE_SCAN:
 		printf("bulkfree `%s'\n", image);
 		TIMER_START(start);
 		error = hammer2_bulkfree(vroot);
@@ -312,8 +356,8 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 			errx(1, "bulkfree `%s' failed '%s'", image,
 			    strerror(error));
 		TIMER_RESULTS(start, "hammer2_bulkfree");
-	} else if (h2_opt->destroy) {
-		/* destroy inode */
+		break;
+	case HAMMER2IOC_DESTROY:
 		TIMER_START(start);
 		if (strlen(h2_opt->destroy_path)) {
 			printf("destroy `%s' in `%s'\n",
@@ -335,8 +379,8 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 				    strerror(error));
 		}
 		TIMER_RESULTS(start, "hammer2_destroy");
-	} else if (h2_opt->growfs) {
-		/* growfs image */
+		break;
+	case HAMMER2IOC_GROWFS:
 		printf("growfs `%s'\n", image);
 		TIMER_START(start);
 		error = hammer2_growfs(vroot, h2_opt->image_size);
@@ -344,13 +388,14 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 			errx(1, "growfs `%s' failed '%s'", image,
 			    strerror(error));
 		TIMER_RESULTS(start, "hammer2_growfs");
-	} else {
-		/* populate image */
+		break;
+	default:
 		printf("populating `%s'\n", image);
 		TIMER_START(start);
 		if (hammer2_populate_dir(vroot, dir, root, root, fsopts, 0))
 			errx(1, "image file `%s' not populated", image);
 		TIMER_RESULTS(start, "hammer2_populate_dir");
+		break;
 	}
 
 	/* unmount image */
@@ -396,23 +441,23 @@ hammer2_parse_pfs_opts(const char *buf, fsinfo_t *fsopts)
 	}
 
 	if (!strcmp(o, "get") || !strcmp(o, "list")) {
-		h2_opt->pfs_cmd = HAMMER2IOC_PFS_GET;
+		h2_opt->ioctl_cmd = HAMMER2IOC_PFS_GET;
 	} else if (!strcmp(o, "lookup")) {
 		if (n == 0 || n > NAME_MAX)
 			errx(1, "invalid PFS name \"%s\"", p);
-		h2_opt->pfs_cmd = HAMMER2IOC_PFS_LOOKUP;
+		h2_opt->ioctl_cmd = HAMMER2IOC_PFS_LOOKUP;
 	} else if (!strcmp(o, "create")) {
 		if (n == 0 || n > NAME_MAX)
 			errx(1, "invalid PFS name \"%s\"", p);
-		h2_opt->pfs_cmd = HAMMER2IOC_PFS_CREATE;
+		h2_opt->ioctl_cmd = HAMMER2IOC_PFS_CREATE;
 	} else if (!strcmp(o, "delete")) {
 		if (n == 0 || n > NAME_MAX)
 			errx(1, "invalid PFS name \"%s\"", p);
-		h2_opt->pfs_cmd = HAMMER2IOC_PFS_DELETE;
+		h2_opt->ioctl_cmd = HAMMER2IOC_PFS_DELETE;
 	} else if (!strcmp(o, "snapshot")) {
 		if (n > NAME_MAX)
 			errx(1, "invalid PFS name \"%s\"", p);
-		h2_opt->pfs_cmd = HAMMER2IOC_PFS_SNAPSHOT;
+		h2_opt->ioctl_cmd = HAMMER2IOC_PFS_SNAPSHOT;
 	} else {
 		errx(1, "invalid PFS command \"%s\"", o);
 	}
@@ -533,10 +578,12 @@ hammer2_validate(const char *dir, fsnode *root, fsinfo_t *fsopts)
 	}
 
 	/* done if ioctl commands */
-	if (h2_opt->pfs || h2_opt->bulkfree || h2_opt->destroy)
-		goto done;
-	if (h2_opt->growfs)
-		goto ignore_size_dir;
+	if (h2_opt->ioctl_cmd) {
+		if (h2_opt->ioctl_cmd == HAMMER2IOC_GROWFS)
+			goto ignore_size_dir;
+		else
+			goto done;
+	}
 
 	/* calculate data size */
 	if (fsopts->size != 0)
@@ -592,16 +639,12 @@ hammer2_dump_fsinfo(fsinfo_t *fsopts)
 	printf("\tlabel_specified %d\n", h2_opt->label_specified);
 	printf("\tmount_label \"%s\"\n", h2_opt->mount_label);
 	printf("\tnum_volhdr %d\n", h2_opt->num_volhdr);
+	printf("\tioctl_cmd %ld\n", h2_opt->ioctl_cmd);
 	printf("\temergency_mode %d\n", h2_opt->emergency_mode);
-	printf("\tpfs %d\n", h2_opt->pfs);
-	printf("\tpfs_cmd %d\n", h2_opt->pfs_cmd);
 	printf("\tpfs_cmd_name \"%s\"\n", h2_opt->pfs_cmd_name);
 	printf("\tpfs_name \"%s\"\n", h2_opt->pfs_name);
-	printf("\tbulkfree %d\n", h2_opt->bulkfree);
-	printf("\tdestroy %d\n", h2_opt->destroy);
 	printf("\tdestroy_path \"%s\"\n", h2_opt->destroy_path);
 	printf("\tdestroy_inum %lld\n", (long long)h2_opt->destroy_inum);
-	printf("\tgrowfs %d\n", h2_opt->growfs);
 	printf("\timage_size 0x%llx\n", (long long)h2_opt->image_size);
 
 	printf("\tHammer2Version %d\n", opt->Hammer2Version);
@@ -1203,27 +1246,6 @@ hammer2_pfs_snapshot(struct m_vnode *vp, const char *pfs_name,
 	}
 
 	return hammer2_ioctl_pfs_snapshot(VTOI(vp), &pfs);
-}
-
-static int
-hammer2_pfs(struct m_vnode *vp, int pfs_cmd, const char *pfs_name,
-    const char *mount_label)
-{
-	switch (pfs_cmd) {
-	case HAMMER2IOC_PFS_GET:
-		return hammer2_pfs_get(vp);
-	case HAMMER2IOC_PFS_LOOKUP:
-		return hammer2_pfs_lookup(vp, pfs_name);
-	case HAMMER2IOC_PFS_CREATE:
-		return hammer2_pfs_create(vp, pfs_name);
-	case HAMMER2IOC_PFS_DELETE:
-		return hammer2_pfs_delete(vp, pfs_name);
-	case HAMMER2IOC_PFS_SNAPSHOT:
-		return hammer2_pfs_snapshot(vp, pfs_name, mount_label);
-	default:
-		assert(0);
-	}
-	return EINVAL;
 }
 
 static int
