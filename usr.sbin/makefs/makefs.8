@@ -35,7 +35,7 @@
 .\"
 .\" $FreeBSD: head/usr.sbin/makefs/makefs.8 331843 2018-03-31 15:04:41Z benno $
 .\"
-.Dd June 15, 2023
+.Dd June 16, 2023
 .Dt MAKEFS 8
 .Os
 .Sh NAME
@@ -559,6 +559,13 @@ Use
 .Fl o
 m option to specify target PFS for
 .Ar snapshot .
+.It Cm I
+Run offline inode command and exit.
+This option takes inode command name argument.
+Currently available inode command name is
+.Ar get .
+.Ar get
+takes `:<inode_path>' string after command name.
 .It Cm B
 Run offline bulkfree and exit.
 .It Cm D

@@ -964,11 +964,10 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	return (hammer2_error_to_errno(error));
 }
 
-#if 0
 /*
  * Retrieve the raw inode structure, non-inclusive of node-specific data.
  */
-static int
+int
 hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_inode_t *ino = data;
@@ -984,6 +983,7 @@ hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 	return 0;
 }
 
+#if 0
 /*
  * Set various parameters in an inode which cannot be set through
  * normal filesystem VNOPS.

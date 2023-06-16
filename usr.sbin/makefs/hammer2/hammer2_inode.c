@@ -1825,7 +1825,9 @@ vflush(struct mount *mp, int rootrefs, int flags)
 			printf("%s: drop ip=%p inum=%ld refs=%d\n",
 			    __func__, ip, ip->meta.inum, ip->refs);
 			*/
-			assert(ip->refs > 1); /* initial 1 + inode modified */
+			assert(ip->refs > 0); /* initial 1 */
+			/* -o I=get:... option doesn't modify inode */
+			//assert(ip->refs > 1); /* initial 1 + inode modified */
 			hammer2_inode_drop(ip);
 			vp->v_vflushed = 1;
 		}

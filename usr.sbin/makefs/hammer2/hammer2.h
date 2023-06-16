@@ -1662,6 +1662,7 @@ int hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data);
 int hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data);
 int hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data);
 int hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data);
+int hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data);
 int hammer2_ioctl_emerg_mode(hammer2_inode_t *ip, u_int mode);
 int hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data);
 int hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data);
