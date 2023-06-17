@@ -983,12 +983,11 @@ hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 	return 0;
 }
 
-#if 0
 /*
  * Set various parameters in an inode which cannot be set through
  * normal filesystem VNOPS.
  */
-static int
+int
 hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_inode_t *ino = data;
@@ -1029,6 +1028,7 @@ hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 	return (0);
 }
 
+#if 0
 static
 int
 hammer2_ioctl_debug_dump(hammer2_inode_t *ip, u_int flags)

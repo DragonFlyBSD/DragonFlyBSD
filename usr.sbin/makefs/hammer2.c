@@ -45,6 +45,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
@@ -73,7 +74,9 @@ static int hammer2_pfs_lookup(struct m_vnode *, const char *);
 static int hammer2_pfs_create(struct m_vnode *, const char *);
 static int hammer2_pfs_delete(struct m_vnode *, const char *);
 static int hammer2_pfs_snapshot(struct m_vnode *, const char *, const char *);
-static int hammer2_inode_getx(struct m_vnode *vp, const char *);
+static int hammer2_inode_getx(struct m_vnode *, const char *);
+static int hammer2_inode_setcheck(struct m_vnode *, const char *);
+static int hammer2_inode_setcomp(struct m_vnode *, const char *);
 static int hammer2_bulkfree(struct m_vnode *);
 static int hammer2_destroy_path(struct m_vnode *, const char *);
 static int hammer2_destroy_inum(struct m_vnode *, hammer2_tid_t);
@@ -371,13 +374,35 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 		TIMER_RESULTS(start, "hammer2_pfs_snapshot");
 		break;
 	case HAMMER2IOC_INODE_GET:
-		printf("inode get `%s'\n", image);
+		printf("inode %s `%s'\n", h2_opt->inode_cmd_name, image);
 		TIMER_START(start);
 		error = hammer2_inode_getx(vroot, h2_opt->inode_path);
 		if (error)
-			errx(1, "inode get `%s' failed '%s'", image,
-			    strerror(error));
+			errx(1, "inode %s `%s' failed '%s'",
+			    h2_opt->inode_cmd_name, image, strerror(error));
 		TIMER_RESULTS(start, "hammer2_inode_getx");
+		break;
+	case HAMMER2IOC_INODE_SET:
+		printf("inode %s `%s'\n", h2_opt->inode_cmd_name, image);
+		TIMER_START(start);
+		if (!strcmp(h2_opt->inode_cmd_name, "setcheck")) {
+			error = hammer2_inode_setcheck(vroot,
+			    h2_opt->inode_path);
+			if (error)
+				errx(1, "inode %s `%s' failed '%s'",
+				    h2_opt->inode_cmd_name, image,
+				    strerror(error));
+		} else if (!strcmp(h2_opt->inode_cmd_name, "setcomp")) {
+			error = hammer2_inode_setcomp(vroot,
+			    h2_opt->inode_path);
+			if (error)
+				errx(1, "inode %s `%s' failed '%s'",
+				    h2_opt->inode_cmd_name, image,
+				    strerror(error));
+		} else {
+			assert(0);
+		}
+		TIMER_RESULTS(start, "hammer2_inode_setx");
 		break;
 	case HAMMER2IOC_BULKFREE_SCAN:
 		printf("bulkfree `%s'\n", image);
@@ -520,10 +545,19 @@ hammer2_parse_inode_opts(const char *buf, fsinfo_t *fsopts)
 		if (n == 0 || n > PATH_MAX)
 			errx(1, "invalid file path \"%s\"", p);
 		h2_opt->ioctl_cmd = HAMMER2IOC_INODE_GET;
+	} else if (!strcmp(o, "setcheck")) {
+		if (n == 0 || n > PATH_MAX - 10)
+			errx(1, "invalid argument \"%s\"", p);
+		h2_opt->ioctl_cmd = HAMMER2IOC_INODE_SET;
+	} else if (!strcmp(o, "setcomp")) {
+		if (n == 0 || n > PATH_MAX - 10)
+			errx(1, "invalid argument \"%s\"", p);
+		h2_opt->ioctl_cmd = HAMMER2IOC_INODE_SET;
 	} else {
 		errx(1, "invalid inode command \"%s\"", o);
 	}
 
+	strlcpy(h2_opt->inode_cmd_name, o, sizeof(h2_opt->inode_cmd_name));
 	if (n > 0) {
 		if (p[0] == '/')
 			p++;
@@ -707,6 +741,7 @@ hammer2_dump_fsinfo(fsinfo_t *fsopts)
 	printf("\temergency_mode %d\n", h2_opt->emergency_mode);
 	printf("\tpfs_cmd_name \"%s\"\n", h2_opt->pfs_cmd_name);
 	printf("\tpfs_name \"%s\"\n", h2_opt->pfs_name);
+	printf("\tinode_cmd_name \"%s\"\n", h2_opt->inode_cmd_name);
 	printf("\tinode_path \"%s\"\n", h2_opt->inode_path);
 	printf("\tdestroy_path \"%s\"\n", h2_opt->destroy_path);
 	printf("\tdestroy_inum %lld\n", (long long)h2_opt->destroy_inum);
@@ -1423,6 +1458,209 @@ hammer2_inode_getx(struct m_vnode *dvp, const char *f)
 	printf("pfs_lsnap_tid = 0x%jx\n", (uintmax_t)meta->pfs_lsnap_tid);
 	printf("decrypt_check = 0x%jx\n", (uintmax_t)meta->decrypt_check);
 	printf("--------------------\n");
+
+	free(o);
+
+	return error;
+}
+
+static int
+hammer2_inode_setcheck(struct m_vnode *dvp, const char *f)
+{
+	hammer2_ioc_inode_t inode;
+	hammer2_inode_t *ip;
+	struct m_vnode *vp;
+	char *o, *p, *name, *check_algo_str;
+	const char *checks[] = { "none", "disabled", "crc32", "xxhash64",
+	    "sha192", };
+	int check_algo_idx, error;
+	uint8_t check_algo;
+
+	assert(strlen(f) > 0);
+	o = p = strdup(f);
+
+	p = strrchr(p, ':');
+	if (p == NULL)
+		return EINVAL;
+
+	*p++ = 0; /* NULL terminate path */
+	check_algo_str = p;
+	name = p = o;
+
+	if (strlen(p) == 0 || strlen(check_algo_str) == 0)
+		return EINVAL;
+
+	/* convert check_algo_str to check_algo_idx */
+	check_algo_idx = NELEM(checks);
+	while (--check_algo_idx >= 0)
+		if (strcasecmp(check_algo_str, checks[check_algo_idx]) == 0)
+			break;
+	if (check_algo_idx < 0) {
+		if (strcasecmp(check_algo_str, "default") == 0) {
+			check_algo_str = "xxhash64";
+			check_algo_idx = HAMMER2_CHECK_XXHASH64;
+		} else if (strcasecmp(check_algo_str, "disabled") == 0) {
+			check_algo_str = "disabled";
+			check_algo_idx = HAMMER2_CHECK_DISABLED;
+		} else {
+			printf("invalid check_algo_str: %s\n", check_algo_str);
+			return EINVAL;
+		}
+	}
+	check_algo = HAMMER2_ENC_ALGO(check_algo_idx);
+	printf("change %s to algo %d (%s)\n", p, check_algo, check_algo_str);
+
+	while ((p = strchr(p, '/')) != NULL) {
+		*p++ = 0; /* NULL terminate name */
+		vp = NULL;
+		error = hammer2_nresolve(dvp, &vp, name, strlen(name));
+		if (error)
+			return error;
+
+		ip = VTOI(vp);
+		assert(ip->meta.type == HAMMER2_OBJTYPE_DIRECTORY);
+		hammer2_inode_modify(ip);
+
+		dvp = vp;
+		name = p;
+	}
+
+	error = hammer2_nresolve(dvp, &vp, name, strlen(name));
+	if (error)
+		return error;
+	ip = VTOI(vp);
+
+	bzero(&inode, sizeof(inode));
+	error = hammer2_ioctl_inode_get(ip, &inode);
+	if (error)
+		return error;
+
+	inode.flags |= HAMMER2IOC_INODE_FLAG_CHECK;
+	inode.ip_data.meta.check_algo = check_algo;
+	error = hammer2_ioctl_inode_set(ip, &inode);
+	if (error)
+		return error;
+
+	free(o);
+
+	return error;
+}
+
+static int
+hammer2_inode_setcomp(struct m_vnode *dvp, const char *f)
+{
+	hammer2_ioc_inode_t inode;
+	hammer2_inode_t *ip;
+	struct m_vnode *vp;
+	char *o, *p, *name, *comp_algo_str, *comp_level_str;
+	const char *comps[] = { "none", "autozero", "lz4", "zlib", };
+	int comp_algo_idx, comp_level_idx, error;
+	uint8_t comp_algo, comp_level;
+
+	assert(strlen(f) > 0);
+	o = p = strdup(f);
+
+	p = strrchr(p, ':');
+	if (p == NULL)
+		return EINVAL;
+
+	*p++ = 0; /* NULL terminate comp_algo_str */
+	comp_level_str = p;
+	p = o;
+
+	p = strrchr(p, ':');
+	if (p == NULL) {
+		/* comp_level_str not specified */
+		comp_algo_str = comp_level_str;
+		comp_level_str = NULL;
+	} else {
+		*p++ = 0; /* NULL terminate path */
+		comp_algo_str = p;
+	}
+	name = p = o;
+
+	if (strlen(p) == 0 || strlen(comp_algo_str) == 0)
+		return EINVAL;
+
+	/* convert comp_algo_str to comp_algo_idx */
+	comp_algo_idx = NELEM(comps);
+	while (--comp_algo_idx >= 0)
+		if (strcasecmp(comp_algo_str, comps[comp_algo_idx]) == 0)
+			break;
+	if (comp_algo_idx < 0) {
+		if (strcasecmp(comp_algo_str, "default") == 0) {
+			comp_algo_str = "lz4";
+			comp_algo_idx = HAMMER2_COMP_LZ4;
+		} else if (strcasecmp(comp_algo_str, "disabled") == 0) {
+			comp_algo_str = "autozero";
+			comp_algo_idx = HAMMER2_COMP_AUTOZERO;
+		} else {
+			printf("invalid comp_algo_str: %s\n", comp_algo_str);
+			return EINVAL;
+		}
+	}
+	comp_algo = HAMMER2_ENC_ALGO(comp_algo_idx);
+
+	/* convert comp_level_str to comp_level_idx */
+	if (comp_level_str == NULL) {
+		comp_level_idx = 0;
+	} else if (isdigit(comp_level_str[0])) {
+		comp_level_idx = strtol(comp_level_str, NULL, 0);
+	} else if (strcasecmp(comp_level_str, "default") == 0) {
+		comp_level_idx = 0;
+	} else {
+		printf("invalid comp_level_str: %s\n", comp_level_str);
+		return EINVAL;
+	}
+	if (comp_level_idx) {
+		switch (comp_algo) {
+		case HAMMER2_COMP_ZLIB:
+			if (comp_level_idx < 6 || comp_level_idx > 9) {
+				printf("unsupported comp_level %d for %s\n",
+				    comp_level_idx, comp_algo_str);
+				return EINVAL;
+			}
+			break;
+		default:
+			printf("unsupported comp_level %d for %s\n",
+			    comp_level_idx, comp_algo_str);
+			return EINVAL;
+		}
+	}
+	comp_level = HAMMER2_ENC_LEVEL(comp_level_idx);
+	printf("change %s to algo %d (%s) level %d\n",
+	    p, comp_algo, comp_algo_str, comp_level_idx);
+
+	while ((p = strchr(p, '/')) != NULL) {
+		*p++ = 0; /* NULL terminate name */
+		vp = NULL;
+		error = hammer2_nresolve(dvp, &vp, name, strlen(name));
+		if (error)
+			return error;
+
+		ip = VTOI(vp);
+		assert(ip->meta.type == HAMMER2_OBJTYPE_DIRECTORY);
+		hammer2_inode_modify(ip);
+
+		dvp = vp;
+		name = p;
+	}
+
+	error = hammer2_nresolve(dvp, &vp, name, strlen(name));
+	if (error)
+		return error;
+	ip = VTOI(vp);
+
+	bzero(&inode, sizeof(inode));
+	error = hammer2_ioctl_inode_get(ip, &inode);
+	if (error)
+		return error;
+
+	inode.flags |= HAMMER2IOC_INODE_FLAG_COMP;
+	inode.ip_data.meta.comp_algo = comp_algo | comp_level;
+	error = hammer2_ioctl_inode_set(ip, &inode);
+	if (error)
+		return error;
 
 	free(o);
 

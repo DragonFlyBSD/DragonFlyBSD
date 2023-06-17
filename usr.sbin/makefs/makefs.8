@@ -35,7 +35,7 @@
 .\"
 .\" $FreeBSD: head/usr.sbin/makefs/makefs.8 331843 2018-03-31 15:04:41Z benno $
 .\"
-.Dd June 16, 2023
+.Dd June 17, 2023
 .Dt MAKEFS 8
 .Os
 .Sh NAME
@@ -562,10 +562,17 @@ m option to specify target PFS for
 .It Cm I
 Run offline inode command and exit.
 This option takes inode command name argument.
-Currently available inode command name is
-.Ar get .
+Available inode command names are
+.Ar get ,
+.Ar setcheck
+and
+.Ar setcomp .
 .Ar get
 takes `:<inode_path>' string after command name.
+.Ar setcheck
+takes `:<inode_path>:<check_algo>' string after command name.
+.Ar setcomp
+takes `:<inode_path>:<comp_algo>[:<comp_level>]' string after command name.
 .It Cm B
 Run offline bulkfree and exit.
 .It Cm D

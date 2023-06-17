@@ -56,6 +56,7 @@ typedef struct {
 	char pfs_name[NAME_MAX+1];
 
 	/* HAMMER2IOC_INODE_xxx */
+	char inode_cmd_name[NAME_MAX];
 	char inode_path[PATH_MAX];
 
 	/* HAMMER2IOC_DESTROY */
