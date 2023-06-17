@@ -172,9 +172,9 @@ rn_search_m(const char *v, struct radix_node *head, const char *m)
  * NOTE: Non-contiguous netmask is supported.
  */
 boolean_t
-rn_refines(char *m, char *n)
+rn_refines(const char *m, const char *n)
 {
-	char *lim, *lim2;
+	const char *lim, *lim2;
 	int longer;
 	boolean_t masks_are_equal = TRUE;
 
