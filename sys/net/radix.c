@@ -165,14 +165,21 @@ rn_search_m(const char *v, struct radix_node *head, const char *m)
 	return x;
 }
 
+/*
+ * Compare the two netmasks and return true if netmask <m> is strictly more
+ * specific than netmask <n>.
+ *
+ * NOTE: Non-contiguous netmask is supported.
+ */
 boolean_t
 rn_refines(char *m, char *n)
 {
 	char *lim, *lim2;
-	int longer = clen(n++) - clen(m++);
+	int longer;
 	boolean_t masks_are_equal = TRUE;
 
 	lim2 = lim = n + clen(n);
+	longer = clen(n++) - clen(m++);
 	if (longer > 0)
 		lim -= longer;
 	while (n < lim) {
