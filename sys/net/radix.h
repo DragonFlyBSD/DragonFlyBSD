@@ -184,8 +184,8 @@ struct radix_node_head {
 void			 rn_init (void);
 int			 rn_inithead (void **, struct radix_node_head *, int);
 struct radix_node_head	*rn_cpumaskhead(int cpu);
-__boolean_t		 rn_refines (const char *, const char *);
-struct radix_node	*rn_addmask (char *, __boolean_t, int,
+bool			 rn_refines (const char *, const char *);
+struct radix_node	*rn_addmask (char *, bool, int,
 				     struct radix_node_head *),
 			*rn_addroute (char *, char *, struct radix_node_head *,
 				      struct radix_node [2]),
