@@ -342,7 +342,7 @@ arp_rtrequest(int req, struct rtentry *rt)
 		rt->rt_flags &= ~RTF_LLINFO;
 		if (la->la_hold != NULL)
 			m_freem(la->la_hold);
-		Free(la);
+		R_Free(la);
 		break;
 	}
 }

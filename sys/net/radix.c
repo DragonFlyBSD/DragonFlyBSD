@@ -468,7 +468,7 @@ rn_addmask(char *netmask, bool search, int skip,
 	if (mlen <= skip) {
 		if (m0 >= mask_rnh->rnh_last_zeroed)
 			mask_rnh->rnh_last_zeroed = mlen;
-		Free(addmask_key);
+		R_Free(addmask_key);
 		return (mask_rnh->rnh_nodes);
 	}
 	if (m0 < mask_rnh->rnh_last_zeroed)
@@ -493,7 +493,7 @@ rn_addmask(char *netmask, bool search, int skip,
 	x = rn_insert(cp, mask_rnh, &maskduplicated, x);
 	if (maskduplicated) {
 		log(LOG_ERR, "rn_addmask: mask impossibly already in tree");
-		Free(saved_x);
+		R_Free(saved_x);
 		goto out;
 	}
 	/*
@@ -518,7 +518,7 @@ rn_addmask(char *netmask, bool search, int skip,
 	if (isnormal)
 		x->rn_flags |= RNF_NORMAL;
 out:
-	Free(addmask_key);
+	R_Free(addmask_key);
 	return (x);
 }
 

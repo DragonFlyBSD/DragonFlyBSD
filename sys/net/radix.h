@@ -28,7 +28,6 @@
  *
  *	@(#)radix.h	8.2 (Berkeley) 10/31/94
  * $FreeBSD: src/sys/net/radix.h,v 1.16.2.1 2000/05/03 19:17:11 wollman Exp $
- * $DragonFly: src/sys/net/radix.h,v 1.12 2006/09/05 03:48:12 dillon Exp $
  */
 
 #ifndef _NET_RADIX_H_
@@ -36,10 +35,6 @@
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
-#endif
-
-#ifdef MALLOC_DECLARE
-MALLOC_DECLARE(M_RTABLE);
 #endif
 
 /*
@@ -175,10 +170,11 @@ struct radix_node_head {
 
 #ifndef _KERNEL
 #define R_Malloc(p, t, n) (p = (t) malloc((n)))
-#define Free(p) free(p);
+#define R_Free(p) free(p)
 #else
+MALLOC_DECLARE(M_RTABLE);
 #define R_Malloc(p, t, n) (p = (t) kmalloc((n), M_RTABLE, M_INTWAIT | M_NULLOK))
-#define Free(p) kfree(p, M_RTABLE);
+#define R_Free(p) kfree(p, M_RTABLE)
 #endif
 
 void			 rn_init (void);

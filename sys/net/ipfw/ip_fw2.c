@@ -5948,7 +5948,7 @@ ipfw_table_flush_oncpu(struct ipfw_context *ctx, int tableid,
 	rnh = ctx->ipfw_tables[tableid];
 	rnh->rnh_walktree(rnh, ipfw_table_killent, rnh);
 	if (destroy) {
-		Free(rnh);
+		R_Free(rnh);
 		ctx->ipfw_tables[tableid] = NULL;
 	}
 }

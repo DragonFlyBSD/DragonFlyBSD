@@ -302,8 +302,8 @@ rtfree(struct rtentry *rt)
 				IFAFREE(rt->rt_ifa);
 			if (rt->rt_parent != NULL)
 				RTFREE(rt->rt_parent);	/* recursive call! */
-			Free(rt_key(rt));
-			Free(rt);
+			R_Free(rt_key(rt));
+			R_Free(rt);
 		}
 	}
 }
@@ -871,7 +871,7 @@ makeroute:
 
 		error = rt_setgate(rt, dst, rtinfo->rti_info[RTAX_GATEWAY]);
 		if (error != 0) {
-			Free(rt);
+			R_Free(rt);
 			gotoerr(error);
 		}
 
@@ -933,8 +933,8 @@ makeroute:
 			if (rt->rt_gwroute != NULL)
 				rtfree(rt->rt_gwroute);
 			IFAFREE(ifa);
-			Free(rt_key(rt));
-			Free(rt);
+			R_Free(rt_key(rt));
+			R_Free(rt);
 			gotoerr(EEXIST);
 		}
 
@@ -1195,7 +1195,7 @@ rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate)
 		 * and leaves the dst field alone.
 		 */
 		bcopy(dst, space, dlen);
-		Free(oldspace);
+		R_Free(oldspace);
 	}
 
 	/*
@@ -1337,7 +1337,7 @@ rt_purgecloned(struct ifnet *ifp, int af)
 static int
 rt_setshims(struct rtentry *rt, struct sockaddr **rt_shim){
 	int i;
-	
+
 	for (i=0; i<3; i++) {
 		struct sockaddr *shim = rt_shim[RTAX_MPLS1 + i];
 		int shimlen;
@@ -1361,7 +1361,7 @@ rt_setshims(struct rtentry *rt, struct sockaddr **rt_shim){
 void
 rt_print(struct rt_addrinfo *rtinfo, struct rtentry *rn)
 {
-	kprintf("rti %p cpu %d route %p flags %08lx: ", 
+	kprintf("rti %p cpu %d route %p flags %08lx: ",
 		rtinfo, mycpuid, rn, rn->rt_flags);
 	sockaddr_print(rt_key(rn));
 	kprintf(" mask ");
