@@ -712,7 +712,6 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	hammer2_pfs_t	*pmp;
 	hammer2_xop_unlink_t *xop;
 	hammer2_inode_t *dip;
-	hammer2_inode_t *iroot;
 	int error;
 	int i;
 
@@ -757,7 +756,6 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	 * Ok, we found the pmp and we have the index.  Permanently remove
 	 * the PFS from the cluster
 	 */
-	iroot = pmp->iroot;
 	kprintf("FOUND PFS %s CLINDEX %d\n", pfs->name, i);
 	hammer2_pfsdealloc(pmp, i, 1);
 
@@ -811,7 +809,6 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	hammer2_inode_t *nip;
 	hammer2_tid_t	mtid;
 	size_t name_len;
-	hammer2_key_t lhc;
 	int error;
 #if 0
 	uuid_t opfs_clid;
@@ -853,11 +850,6 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	chain = hammer2_inode_chain(ip, 0, HAMMER2_RESOLVE_ALWAYS);
 
 	name_len = strlen(pfs->name);
-	lhc = hammer2_dirhash(pfs->name, name_len);
-
-	/*
-	 * Get the clid
-	 */
 	hmp = chain->hmp;
 
 	/*
