@@ -442,38 +442,29 @@ rn_addmask(char *netmask, bool search, int skip,
 {
 	struct radix_node *x, *saved_x;
 	char *cp, *cplim;
-	int b = 0, mlen, m0, j;
+	int b = 0, mlen, j;
 	bool maskduplicated, isnormal;
-	char *addmask_key;
+	char addmask_key[RN_MAXKEYLEN];
 
 	if ((mlen = clen(netmask)) > RN_MAXKEYLEN)
 		mlen = RN_MAXKEYLEN;
 	if (skip == 0)
 		skip = 1;
 	if (mlen <= skip)
-		return (mask_rnh->rnh_nodes);
-	R_Malloc(addmask_key, char *, RN_MAXKEYLEN);
-	if (addmask_key == NULL)
-		return NULL;
+		return (mask_rnh->rnh_nodes); /* all-zero key */
+
+	bzero(addmask_key, sizeof(addmask_key));
 	if (skip > 1)
 		bcopy(rn_ones + 1, addmask_key + 1, skip - 1);
-	if ((m0 = mlen) > skip)
-		bcopy(netmask + skip, addmask_key + skip, mlen - skip);
-	/*
-	 * Trim trailing zeroes.
-	 */
+	bcopy(netmask + skip, addmask_key + skip, mlen - skip);
+	/* Trim trailing zeroes. */
 	for (cp = addmask_key + mlen; (cp > addmask_key) && cp[-1] == 0;)
 		cp--;
 	mlen = cp - addmask_key;
-	if (mlen <= skip) {
-		if (m0 >= mask_rnh->rnh_last_zeroed)
-			mask_rnh->rnh_last_zeroed = mlen;
-		R_Free(addmask_key);
-		return (mask_rnh->rnh_nodes);
-	}
-	if (m0 < mask_rnh->rnh_last_zeroed)
-		bzero(addmask_key + m0, mask_rnh->rnh_last_zeroed - m0);
-	*addmask_key = mask_rnh->rnh_last_zeroed = mlen;
+	if (mlen <= skip)
+		return (mask_rnh->rnh_nodes); /* all-zero key */
+
+	*addmask_key = mlen;
 	x = rn_search(addmask_key, mask_rnh->rnh_treetop);
 	if (x->rn_key == NULL) {
 		kprintf("WARNING: radix_node->rn_key is NULL rn=%p\n", x);
@@ -483,10 +474,12 @@ rn_addmask(char *netmask, bool search, int skip,
 		x = NULL;
 	}
 	if (x != NULL || search)
-		goto out;
+		return (x);
+
 	R_Malloc(x, struct radix_node *, RN_MAXKEYLEN + 2 * (sizeof *x));
 	if ((saved_x = x) == NULL)
-		goto out;
+		return (NULL);
+
 	bzero(x, RN_MAXKEYLEN + 2 * (sizeof *x));
 	netmask = cp = (char *)(x + 2);
 	bcopy(addmask_key, cp, mlen);
@@ -494,8 +487,9 @@ rn_addmask(char *netmask, bool search, int skip,
 	if (maskduplicated) {
 		log(LOG_ERR, "rn_addmask: mask impossibly already in tree");
 		R_Free(saved_x);
-		goto out;
+		return (x);
 	}
+
 	/*
 	 * Calculate index of mask, and check for normalcy.
 	 */
@@ -517,8 +511,6 @@ rn_addmask(char *netmask, bool search, int skip,
 	x->rn_bit = -1 - b;
 	if (isnormal)
 		x->rn_flags |= RNF_NORMAL;
-out:
-	R_Free(addmask_key);
 	return (x);
 }
 
