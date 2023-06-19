@@ -1191,7 +1191,7 @@ static int
 trim_char(char *p, char c)
 {
 	char *o, tmp[PATH_MAX];
-	bool prev_was_slash;
+	bool prev_was_c;
 	size_t n;
 	int i;
 
@@ -1200,34 +1200,34 @@ trim_char(char *p, char c)
 		return ENOSPC;
 
 	/* trim consecutive */
-	prev_was_slash = false;
+	prev_was_c = false;
 	o = p;
 	n = strlen(p);
 
 	for (i = 0; i < n; i++) {
 		if (tmp[i] == c) {
-			if (!prev_was_slash)
+			if (!prev_was_c)
 				*p++ = tmp[i];
-			prev_was_slash = true;
+			prev_was_c = true;
 		} else {
 			*p++ = tmp[i];
-			prev_was_slash = false;
+			prev_was_c = false;
 		}
 	}
 	*p = 0;
 	assert(strlen(p) <= strlen(tmp));
 
 	/* assert no consecutive */
-	prev_was_slash = false;
+	prev_was_c = false;
 	p = o;
 	n = strlen(p);
 
 	for (i = 0; i < n; i++) {
 		if (p[i] == c) {
-			assert(!prev_was_slash);
-			prev_was_slash = true;
+			assert(!prev_was_c);
+			prev_was_c = true;
 		} else {
-			prev_was_slash = false;
+			prev_was_c = false;
 		}
 	}
 
@@ -1670,7 +1670,7 @@ hammer2_inode_setcomp(struct m_vnode *dvp, const char *f)
 	/* convert comp_level_str to comp_level_idx */
 	if (comp_level_str == NULL) {
 		comp_level_idx = 0;
-	} else if (isdigit(comp_level_str[0])) {
+	} else if (isdigit((int)comp_level_str[0])) {
 		comp_level_idx = strtol(comp_level_str, NULL, 0);
 	} else if (strcasecmp(comp_level_str, "default") == 0) {
 		comp_level_idx = 0;
@@ -1889,5 +1889,5 @@ unittest_trim_slash(void)
 	assert_trim_slash("//sys//vfs//hammer2//", "sys/vfs/hammer2");
 	assert_trim_slash("///sys///vfs///hammer2///", "sys/vfs/hammer2");
 
-	printf("%s: success\n", __func__);
+	APRINTF("success\n");
 }
