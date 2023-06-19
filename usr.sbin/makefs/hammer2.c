@@ -81,6 +81,7 @@ static int hammer2_bulkfree(struct m_vnode *);
 static int hammer2_destroy_path(struct m_vnode *, const char *);
 static int hammer2_destroy_inum(struct m_vnode *, hammer2_tid_t);
 static int hammer2_growfs(struct m_vnode *, hammer2_off_t);
+static void unittest_trim_slash(void);
 
 fsnode *hammer2_curnode;
 
@@ -223,7 +224,7 @@ hammer2_parse_opts(const char *option, fsinfo_t *fsopts)
 		if (strlen(buf) == 0)
 			errx(1, "Destroy argument '%s' cannot be 0-length", buf);
 		if (buf[0] == '/') {
-			strlcpy(h2_opt->destroy_path, buf + 1,
+			strlcpy(h2_opt->destroy_path, buf,
 			    sizeof(h2_opt->destroy_path));
 		} else if (strncmp(buf, "0x", 2) == 0 ||
 		    (buf[0] >= '0' && buf[0] <= '9')) {
@@ -240,6 +241,9 @@ hammer2_parse_opts(const char *option, fsinfo_t *fsopts)
 	default:
 		break;
 	}
+
+	if (hammer2_debug && h2_opt->ioctl_cmd)
+		unittest_trim_slash();
 
 	return 1;
 }
@@ -557,11 +561,8 @@ hammer2_parse_inode_opts(const char *buf, fsinfo_t *fsopts)
 	}
 
 	strlcpy(h2_opt->inode_cmd_name, o, sizeof(h2_opt->inode_cmd_name));
-	if (n > 0) {
-		if (p[0] == '/')
-			p++;
+	if (n > 0)
 		strlcpy(h2_opt->inode_path, p, sizeof(h2_opt->inode_path));
-	}
 
 	free(o);
 }
@@ -1187,6 +1188,71 @@ hammer2_write_file(struct m_vnode *vp, const char *path, fsnode *node)
 }
 
 static int
+trim_char(char *p, char c)
+{
+	char *o, tmp[PATH_MAX];
+	bool prev_was_slash;
+	size_t n;
+	int i;
+
+	strlcpy(tmp, p, sizeof(tmp));
+	if (strncmp(tmp, p, sizeof(tmp)))
+		return ENOSPC;
+
+	/* trim consecutive */
+	prev_was_slash = false;
+	o = p;
+	n = strlen(p);
+
+	for (i = 0; i < n; i++) {
+		if (tmp[i] == c) {
+			if (!prev_was_slash)
+				*p++ = tmp[i];
+			prev_was_slash = true;
+		} else {
+			*p++ = tmp[i];
+			prev_was_slash = false;
+		}
+	}
+	*p = 0;
+	assert(strlen(p) <= strlen(tmp));
+
+	/* assert no consecutive */
+	prev_was_slash = false;
+	p = o;
+	n = strlen(p);
+
+	for (i = 0; i < n; i++) {
+		if (p[i] == c) {
+			assert(!prev_was_slash);
+			prev_was_slash = true;
+		} else {
+			prev_was_slash = false;
+		}
+	}
+
+	/* trim leading */
+	if (*p == c)
+		memmove(p, p + 1, strlen(p + 1) + 1);
+	assert(*p != '/');
+
+	/* trim trailing */
+	p += strlen(p);
+	p--;
+	if (*p == c)
+		*p = 0;
+	assert(p[strlen(p) - 1] != '/');
+
+	return 0;
+}
+
+static int
+trim_slash(char *p)
+{
+	return trim_char(p, '/');
+}
+
+static int
 hammer2_version_get(struct m_vnode *vp)
 {
 	hammer2_dev_t *hmp;
@@ -1373,16 +1439,11 @@ hammer2_inode_getx(struct m_vnode *dvp, const char *f)
 	uuid_t uuid;
 
 	assert(strlen(f) > 0);
-	o = p = strdup(f);
+	o = p = name = strdup(f);
 
-	/* trim trailing '/' */
-	p += strlen(p);
-	p--;
-	while (p >= o && *p == '/')
-		p--;
-	*++p = 0;
-
-	name = p = o;
+	error = trim_slash(p);
+	if (error)
+		return error;
 	if (strlen(p) == 0)
 		return EINVAL;
 
@@ -1486,11 +1547,14 @@ hammer2_inode_setcheck(struct m_vnode *dvp, const char *f)
 	check_algo_str = p;
 	name = p = o;
 
+	error = trim_slash(p);
+	if (error)
+		return error;
 	if (strlen(p) == 0 || strlen(check_algo_str) == 0)
 		return EINVAL;
 
 	/* convert check_algo_str to check_algo_idx */
-	check_algo_idx = NELEM(checks);
+	check_algo_idx = nitems(checks);
 	while (--check_algo_idx >= 0)
 		if (strcasecmp(check_algo_str, checks[check_algo_idx]) == 0)
 			break;
@@ -1578,11 +1642,14 @@ hammer2_inode_setcomp(struct m_vnode *dvp, const char *f)
 	}
 	name = p = o;
 
+	error = trim_slash(p);
+	if (error)
+		return error;
 	if (strlen(p) == 0 || strlen(comp_algo_str) == 0)
 		return EINVAL;
 
 	/* convert comp_algo_str to comp_algo_idx */
-	comp_algo_idx = NELEM(comps);
+	comp_algo_idx = nitems(comps);
 	while (--comp_algo_idx >= 0)
 		if (strcasecmp(comp_algo_str, comps[comp_algo_idx]) == 0)
 			break;
@@ -1695,16 +1762,11 @@ hammer2_destroy_path(struct m_vnode *dvp, const char *f)
 	int error;
 
 	assert(strlen(f) > 0);
-	o = p = strdup(f);
+	o = p = name = strdup(f);
 
-	/* trim trailing '/' */
-	p += strlen(p);
-	p--;
-	while (p >= o && *p == '/')
-		p--;
-	*++p = 0;
-
-	name = p = o;
+	error = trim_slash(p);
+	if (error)
+		return error;
 	if (strlen(p) == 0)
 		return EINVAL;
 
@@ -1782,4 +1844,50 @@ hammer2_growfs(struct m_vnode *vp, hammer2_off_t size)
 	}
 
 	return error;
+}
+
+static void
+assert_trim_slash(const char *input, const char *expected)
+{
+	char tmp[PATH_MAX];
+	int error;
+
+	strlcpy(tmp, input, sizeof(tmp));
+	error = trim_slash(tmp);
+	if (error)
+		errx(1, "input \"%s\" error %d", input, error);
+
+	if (strncmp(tmp, expected, sizeof(tmp)))
+		errx(1, "input \"%s\" result \"%s\" vs expected \"%s\"",
+		    input, tmp, expected);
+}
+
+static void
+unittest_trim_slash(void)
+{
+	assert_trim_slash("", "");
+	assert_trim_slash("/", "");
+	assert_trim_slash("//", "");
+	assert_trim_slash("///", "");
+
+	assert_trim_slash("makefs", "makefs");
+	assert_trim_slash("/makefs", "makefs");
+	assert_trim_slash("//makefs", "makefs");
+	assert_trim_slash("makefs/", "makefs");
+	assert_trim_slash("makefs//", "makefs");
+	assert_trim_slash("/makefs/", "makefs");
+	assert_trim_slash("//makefs//", "makefs");
+
+	assert_trim_slash("sys/vfs/hammer2", "sys/vfs/hammer2");
+	assert_trim_slash("/sys/vfs/hammer2", "sys/vfs/hammer2");
+	assert_trim_slash("//sys/vfs/hammer2", "sys/vfs/hammer2");
+	assert_trim_slash("///sys/vfs/hammer2", "sys/vfs/hammer2");
+	assert_trim_slash("sys/vfs/hammer2/", "sys/vfs/hammer2");
+	assert_trim_slash("sys/vfs/hammer2//", "sys/vfs/hammer2");
+	assert_trim_slash("sys/vfs/hammer2///", "sys/vfs/hammer2");
+	assert_trim_slash("/sys/vfs/hammer2/", "sys/vfs/hammer2");
+	assert_trim_slash("//sys//vfs//hammer2//", "sys/vfs/hammer2");
+	assert_trim_slash("///sys///vfs///hammer2///", "sys/vfs/hammer2");
+
+	printf("%s: success\n", __func__);
 }
