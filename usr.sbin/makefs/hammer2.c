@@ -256,9 +256,8 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 	struct timeval start;
 	int error;
 
-	/* ioctl commands could have NULL root */
+	/* ioctl commands could have NULL dir / root */
 	assert(image != NULL);
-	assert(dir != NULL);
 	assert(fsopts != NULL);
 
 	if (debug & DEBUG_FS_MAKEFS)
@@ -647,7 +646,7 @@ hammer2_validate(const char *dir, fsnode *root, fsinfo_t *fsopts)
 	hammer2_off_t image_size = 0, minsize, maxsize;
 	const char *s;
 
-	assert(dir != NULL);
+	/* ioctl commands could have NULL dir / root */
 	assert(fsopts != NULL);
 
 	if (debug & DEBUG_FS_VALIDATE) {
