@@ -692,6 +692,7 @@ typedef struct hammer2_cluster	hammer2_cluster_t;
 RB_HEAD(hammer2_inode_tree, hammer2_inode);	/* ip->rbnode */
 TAILQ_HEAD(inoq_head, hammer2_inode);		/* ip->entry */
 TAILQ_HEAD(depq_head, hammer2_depend);		/* depend->entry */
+TAILQ_HEAD(recq_head, hammer2_inode);		/* ip->recq_entry */
 
 struct hammer2_depend {
 	TAILQ_ENTRY(hammer2_depend) entry;
@@ -713,6 +714,7 @@ typedef struct hammer2_depend hammer2_depend_t;
 struct hammer2_inode {
 	RB_ENTRY(hammer2_inode) rbnode;		/* inumber lookup (HL) */
 	TAILQ_ENTRY(hammer2_inode) entry;	/* SYNCQ/SIDEQ */
+	TAILQ_ENTRY(hammer2_inode) recq_entry;	/* makefs */
 	hammer2_depend_t	*depend;	/* non-NULL if SIDEQ */
 	hammer2_depend_t	depend_static;	/* (in-place allocation) */
 	hammer2_mtx_t		lock;		/* inode lock */
@@ -1261,6 +1263,7 @@ struct hammer2_pfs {
 	int			has_xop_threads;
 	hammer2_spin_t		xop_spin;	/* xop sequencer */
 	hammer2_xop_group_t	*xop_groups;
+	struct recq_head	recq;		/* makefs */
 };
 
 typedef struct hammer2_pfs hammer2_pfs_t;

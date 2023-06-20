@@ -451,6 +451,7 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 		TAILQ_INIT(&pmp->syncq);
 		TAILQ_INIT(&pmp->depq);
 		TAILQ_INIT(&pmp->lru_list);
+		TAILQ_INIT(&pmp->recq);
 		hammer2_spin_init(&pmp->list_spin, "h2pfsalloc_list");
 
 		/*
@@ -701,7 +702,7 @@ hammer2_pfsdealloc(hammer2_pfs_t *pmp, int clindex, int destroying)
 static void
 hammer2_pfsfree(hammer2_pfs_t *pmp)
 {
-	hammer2_inode_t *iroot;
+	hammer2_inode_t *iroot, *ip;
 	hammer2_chain_t *chain;
 	int chains_still_present = 0;
 	int i;
@@ -769,10 +770,25 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 		kprintf("hammer2: cannot free pmp %p, still in use\n", pmp);
 	} else {
 		/*
-		 * In makefs HAMMER2, all inodes must be gone at this point.
-		 * XXX vnode_count may not be 0 at this point.
+		 * Free inode in reclaim queue.
 		 */
-		assert(hammer2_pfs_inode_count(pmp) == 0);
+		while ((ip = TAILQ_FIRST(&pmp->recq)) != NULL) {
+			TAILQ_REMOVE(&pmp->recq, ip, recq_entry);
+			/*
+			 * VOP_RECLAIM is currently unused,
+			 * so directly free vnode before inode.
+			 */
+			if (ip->vp) {
+				if (ip->vp->v_malloced)
+					freevnode(ip->vp);
+			} else {
+				/* PFS inode ? */
+			}
+			kfree_obj(ip, pmp->minode);
+			atomic_add_long(&pmp->inmem_inodes, -1);
+		}
+		assert(TAILQ_EMPTY(&pmp->recq));
+		assert(pmp->inmem_inodes == 0);
 
 		kmalloc_destroy_obj(&pmp->minode);
 		kfree(pmp, M_HAMMER2);

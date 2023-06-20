@@ -620,20 +620,10 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 				 * trivial.
 				 */
 				hammer2_inode_repoint(ip, NULL);
-
 				/*
-				 * VOP_RECLAIM is currently unused,
-				 * so directly free vnode before inode.
+				 * Add inode to reclaim queue.
 				 */
-				if (ip->vp) {
-					if (ip->vp->v_malloced)
-						freevnode(ip->vp);
-				} else {
-					/* PFS inode ? */
-				}
-
-				kfree_obj(ip, pmp->minode);
-				atomic_add_long(&pmp->inmem_inodes, -1);
+				TAILQ_INSERT_TAIL(&pmp->recq, ip, recq_entry);
 				ip = NULL;	/* will terminate loop */
 			} else {
 				hammer2_spin_unex(&ip->pmp->inum_spin);
@@ -1807,7 +1797,7 @@ vflush(struct mount *mp, int rootrefs, int flags)
 	hammer2_pfs_t *pmp = MPTOPMP(mp);
 	struct hammer2_inode *ip, *tmp;
 	struct m_vnode *vp;
-	hammer2_key_t count_before, count_after, count_delta;
+	hammer2_key_t count_before, count_after, count_recq;
 
 	printf("%s: total chain %ld\n", __func__, hammer2_chain_allocs);
 	printf("%s: total dio %d\n", __func__, hammer2_dio_count);
@@ -1822,12 +1812,10 @@ vflush(struct mount *mp, int rootrefs, int flags)
 		assert(vp);
 		if (!vp->v_vflushed) {
 			/*
-			printf("%s: drop ip=%p inum=%ld refs=%d\n",
-			    __func__, ip, ip->meta.inum, ip->refs);
-			*/
-			assert(ip->refs > 0); /* initial 1 */
-			/* -o I=get:... option doesn't modify inode */
-			//assert(ip->refs > 1); /* initial 1 + inode modified */
+			 * Not all inodes are modified and ref'd,
+			 * so ip->refs requirement here is the initial 1.
+			 */
+			assert(ip->refs > 0);
 			hammer2_inode_drop(ip);
 			vp->v_vflushed = 1;
 		}
@@ -1840,17 +1828,14 @@ vflush(struct mount *mp, int rootrefs, int flags)
 
 	printf("%s: total inode %jd -> %jd\n",
 	    __func__, (intmax_t)count_before, (intmax_t)count_after);
-
 	assert(count_before >= count_after);
-	count_delta = count_before - count_after;
 
-	if (count_delta) {
-		if (hammer2_debug & 0x80000000)
-			assert(0);
-		else
-			printf("%s: %jd inode freed\n", __func__,
-			    (intmax_t)count_delta);
-	}
+	count_recq = 0;
+	TAILQ_FOREACH(ip, &pmp->recq, recq_entry)
+		count_recq++;
+	if (count_recq)
+		printf("%s: %jd inode in reclaim queue\n",
+		    __func__, (intmax_t)count_recq);
 
 	return 0;
 }
