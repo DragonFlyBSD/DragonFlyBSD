@@ -1582,7 +1582,6 @@ hammer2_inode_setcheck(struct m_vnode *dvp, const char *f)
 
 		ip = VTOI(vp);
 		assert(ip->meta.type == HAMMER2_OBJTYPE_DIRECTORY);
-		hammer2_inode_modify(ip);
 
 		dvp = vp;
 		name = p;
@@ -1706,7 +1705,6 @@ hammer2_inode_setcomp(struct m_vnode *dvp, const char *f)
 
 		ip = VTOI(vp);
 		assert(ip->meta.type == HAMMER2_OBJTYPE_DIRECTORY);
-		hammer2_inode_modify(ip);
 
 		dvp = vp;
 		name = p;
@@ -1779,12 +1777,13 @@ hammer2_destroy_path(struct m_vnode *dvp, const char *f)
 
 		ip = VTOI(vp);
 		assert(ip->meta.type == HAMMER2_OBJTYPE_DIRECTORY);
-		/* XXX When does (or why does not) ioctl modify this inode ? */
-		hammer2_inode_modify(ip);
 
 		dvp = vp;
 		name = p;
 	}
+
+	/* XXX When does (or why does not) ioctl modify this inode ? */
+	hammer2_inode_modify(VTOI(dvp));
 
 	bzero(&destroy, sizeof(destroy));
 	destroy.cmd = HAMMER2_DELETE_FILE;
