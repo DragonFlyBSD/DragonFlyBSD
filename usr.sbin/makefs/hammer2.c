@@ -1010,8 +1010,13 @@ hammer2_populate_dir(struct m_vnode *dvp, const char *dir, fsnode *root,
 			}
 			path = f;
 		}
-		if (stat(path, &st) == -1)
-			err(1, "no such file %s", f);
+		if (S_ISLNK(cur->type)) {
+			if (lstat(path, &st) == -1)
+				err(1, "no such symlink %s", path);
+		} else {
+			if (stat(path, &st) == -1)
+				err(1, "no such path %s", path);
+		}
 
 		/* update node state */
 		if ((cur->inode->flags & FI_ALLOCATED) == 0) {
