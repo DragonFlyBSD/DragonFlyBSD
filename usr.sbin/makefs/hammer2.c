@@ -1257,6 +1257,20 @@ trim_slash(char *p)
 	return trim_char(p, '/');
 }
 
+static bool
+is_supported_link(const char *s)
+{
+	/* absolute path can't be supported */
+	if (strlen(s) >= 1 && strncmp(s, "/", 1) == 0)
+		return false;
+
+	/* XXX ".." is currently unsupported */
+	if (strlen(s) >= 3 && strncmp(s, "../", 3) == 0)
+		return false;
+
+	return true;
+}
+
 static int
 hammer2_version_get(struct m_vnode *vp)
 {
@@ -1440,6 +1454,7 @@ hammer2_inode_getx(struct m_vnode *dvp, const char *f)
 	hammer2_inode_meta_t *meta;
 	struct m_vnode *vp;
 	char *o, *p, *name, *str = NULL;
+	char tmp[PATH_MAX];
 	int error;
 	uuid_t uuid;
 
@@ -1454,13 +1469,36 @@ hammer2_inode_getx(struct m_vnode *dvp, const char *f)
 
 	while ((p = strchr(p, '/')) != NULL) {
 		*p++ = 0; /* NULL terminate name */
+		if (!strcmp(name, ".")) {
+			name = p;
+			continue;
+		}
 		vp = NULL;
 		error = hammer2_nresolve(dvp, &vp, name, strlen(name));
 		if (error)
 			return error;
 
 		ip = VTOI(vp);
-		assert(ip->meta.type == HAMMER2_OBJTYPE_DIRECTORY);
+		switch (ip->meta.type) {
+		case HAMMER2_OBJTYPE_DIRECTORY:
+			break;
+		case HAMMER2_OBJTYPE_SOFTLINK:
+			bzero(tmp, sizeof(tmp));
+			error = hammer2_readlink(vp, tmp, sizeof(tmp));
+			if (error)
+				return error;
+			if (!is_supported_link(tmp))
+				return EINVAL;
+			strlcat(tmp, "/", sizeof(tmp));
+			strlcat(tmp, p, sizeof(tmp));
+			error = trim_slash(tmp);
+			if (error)
+				return error;
+			p = name = tmp;
+			continue;
+		default:
+			return EINVAL;
+		}
 
 		dvp = vp;
 		name = p;
@@ -1536,6 +1574,7 @@ hammer2_inode_setcheck(struct m_vnode *dvp, const char *f)
 	hammer2_inode_t *ip;
 	struct m_vnode *vp;
 	char *o, *p, *name, *check_algo_str;
+	char tmp[PATH_MAX];
 	const char *checks[] = { "none", "disabled", "crc32", "xxhash64",
 	    "sha192", };
 	int check_algo_idx, error;
@@ -1580,13 +1619,36 @@ hammer2_inode_setcheck(struct m_vnode *dvp, const char *f)
 
 	while ((p = strchr(p, '/')) != NULL) {
 		*p++ = 0; /* NULL terminate name */
+		if (!strcmp(name, ".")) {
+			name = p;
+			continue;
+		}
 		vp = NULL;
 		error = hammer2_nresolve(dvp, &vp, name, strlen(name));
 		if (error)
 			return error;
 
 		ip = VTOI(vp);
-		assert(ip->meta.type == HAMMER2_OBJTYPE_DIRECTORY);
+		switch (ip->meta.type) {
+		case HAMMER2_OBJTYPE_DIRECTORY:
+			break;
+		case HAMMER2_OBJTYPE_SOFTLINK:
+			bzero(tmp, sizeof(tmp));
+			error = hammer2_readlink(vp, tmp, sizeof(tmp));
+			if (error)
+				return error;
+			if (!is_supported_link(tmp))
+				return EINVAL;
+			strlcat(tmp, "/", sizeof(tmp));
+			strlcat(tmp, p, sizeof(tmp));
+			error = trim_slash(tmp);
+			if (error)
+				return error;
+			p = name = tmp;
+			continue;
+		default:
+			return EINVAL;
+		}
 
 		dvp = vp;
 		name = p;
@@ -1620,6 +1682,7 @@ hammer2_inode_setcomp(struct m_vnode *dvp, const char *f)
 	hammer2_inode_t *ip;
 	struct m_vnode *vp;
 	char *o, *p, *name, *comp_algo_str, *comp_level_str;
+	char tmp[PATH_MAX];
 	const char *comps[] = { "none", "autozero", "lz4", "zlib", };
 	int comp_algo_idx, comp_level_idx, error;
 	uint8_t comp_algo, comp_level;
@@ -1703,13 +1766,36 @@ hammer2_inode_setcomp(struct m_vnode *dvp, const char *f)
 
 	while ((p = strchr(p, '/')) != NULL) {
 		*p++ = 0; /* NULL terminate name */
+		if (!strcmp(name, ".")) {
+			name = p;
+			continue;
+		}
 		vp = NULL;
 		error = hammer2_nresolve(dvp, &vp, name, strlen(name));
 		if (error)
 			return error;
 
 		ip = VTOI(vp);
-		assert(ip->meta.type == HAMMER2_OBJTYPE_DIRECTORY);
+		switch (ip->meta.type) {
+		case HAMMER2_OBJTYPE_DIRECTORY:
+			break;
+		case HAMMER2_OBJTYPE_SOFTLINK:
+			bzero(tmp, sizeof(tmp));
+			error = hammer2_readlink(vp, tmp, sizeof(tmp));
+			if (error)
+				return error;
+			if (!is_supported_link(tmp))
+				return EINVAL;
+			strlcat(tmp, "/", sizeof(tmp));
+			strlcat(tmp, p, sizeof(tmp));
+			error = trim_slash(tmp);
+			if (error)
+				return error;
+			p = name = tmp;
+			continue;
+		default:
+			return EINVAL;
+		}
 
 		dvp = vp;
 		name = p;
@@ -1762,6 +1848,7 @@ hammer2_destroy_path(struct m_vnode *dvp, const char *f)
 	hammer2_inode_t *ip;
 	struct m_vnode *vp;
 	char *o, *p, *name;
+	char tmp[PATH_MAX];
 	int error;
 
 	assert(strlen(f) > 0);
@@ -1775,13 +1862,36 @@ hammer2_destroy_path(struct m_vnode *dvp, const char *f)
 
 	while ((p = strchr(p, '/')) != NULL) {
 		*p++ = 0; /* NULL terminate name */
+		if (!strcmp(name, ".")) {
+			name = p;
+			continue;
+		}
 		vp = NULL;
 		error = hammer2_nresolve(dvp, &vp, name, strlen(name));
 		if (error)
 			return error;
 
 		ip = VTOI(vp);
-		assert(ip->meta.type == HAMMER2_OBJTYPE_DIRECTORY);
+		switch (ip->meta.type) {
+		case HAMMER2_OBJTYPE_DIRECTORY:
+			break;
+		case HAMMER2_OBJTYPE_SOFTLINK:
+			bzero(tmp, sizeof(tmp));
+			error = hammer2_readlink(vp, tmp, sizeof(tmp));
+			if (error)
+				return error;
+			if (!is_supported_link(tmp))
+				return EINVAL;
+			strlcat(tmp, "/", sizeof(tmp));
+			strlcat(tmp, p, sizeof(tmp));
+			error = trim_slash(tmp);
+			if (error)
+				return error;
+			p = name = tmp;
+			continue;
+		default:
+			return EINVAL;
+		}
 
 		dvp = vp;
 		name = p;

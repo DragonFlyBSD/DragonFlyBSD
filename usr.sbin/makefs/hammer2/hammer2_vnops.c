@@ -61,10 +61,8 @@
 
 #include "hammer2.h"
 
-/*
 static int hammer2_read_file(hammer2_inode_t *ip, struct uio *uio,
 				int seqcount);
-*/
 static int hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 				int ioflag, int seqcount);
 static void hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize);
@@ -797,7 +795,6 @@ static
 int
 hammer2_vop_readlink(struct vop_readlink_args *ap)
 {
-#if 0
 	struct m_vnode *vp;
 	hammer2_inode_t *ip;
 	int error;
@@ -809,8 +806,35 @@ hammer2_vop_readlink(struct vop_readlink_args *ap)
 
 	error = hammer2_read_file(ip, ap->a_uio, 0);
 	return (error);
-#endif
-	return (EOPNOTSUPP);
+}
+
+int
+hammer2_readlink(struct m_vnode *vp, void *buf, size_t size)
+{
+	assert(buf);
+	assert(size > 0);
+	assert(size <= HAMMER2_PBUFSIZE);
+
+	struct iovec iov = {
+		.iov_base = buf,
+		.iov_len = size,
+	};
+	struct uio uio = {
+		.uio_iov = &iov,
+		.uio_iovcnt = 1,
+		.uio_offset = 0,
+		.uio_resid = size,
+		.uio_segflg = UIO_USERSPACE,
+		.uio_rw = UIO_READ,
+		.uio_td = NULL,
+	};
+	struct vop_readlink_args ap = {
+		.a_vp = vp,
+		.a_uio = &uio,
+		.a_cred = NULL,
+	};
+
+	return hammer2_vop_readlink(&ap);
 }
 
 static
@@ -955,7 +979,6 @@ hammer2_write(struct m_vnode *vp, void *buf, size_t size, off_t offset)
 	return hammer2_vop_write(&ap);
 }
 
-#if 0
 /*
  * Perform read operations on a file or symlink given an UNLOCKED
  * inode and uio.
@@ -992,7 +1015,7 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 
 		lblksize = hammer2_calc_logical(ip, uio->uio_offset,
 						&lbase, &leof);
-
+#if 0
 #if 1
 		bp = NULL;
 		error = cluster_readx(ip->vp, leof, lbase, lblksize,
@@ -1028,6 +1051,22 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 		}
 		error = bread_kvabio(ip->vp, lbase, lblksize, &bp);
 #endif
+#else
+		bp = getblkx(ip->vp, lbase, lblksize,
+			    GETBLK_BHEAVY | GETBLK_KVABIO, 0);
+		bp->b_cmd = BUF_CMD_READ;
+
+		struct bio bio;
+		bio.bio_buf = bp;
+		bio.bio_offset = lbase;
+
+		struct vop_strategy_args ap;
+		ap.a_vp = ip->vp;
+		ap.a_bio = &bio;
+
+		error = hammer2_vop_strategy(&ap);
+		assert(!error);
+#endif
 		if (error) {
 			brelse(bp);
 			break;
@@ -1039,7 +1078,7 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 			n = uio->uio_resid;
 		if (n > size - uio->uio_offset)
 			n = (int)(size - uio->uio_offset);
-		bp->b_flags |= B_AGE;
+		//bp->b_flags |= B_AGE;
 		uiomovebp(bp, bp->b_data + loff, n, uio);
 		bqrelse(bp);
 	}
@@ -1047,7 +1086,6 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 
 	return (error);
 }
-#endif
 
 /*
  * Write to the file represented by the inode via the logical buffer cache.

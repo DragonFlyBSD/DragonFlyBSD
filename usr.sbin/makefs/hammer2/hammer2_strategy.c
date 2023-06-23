@@ -85,11 +85,9 @@ struct objcache *cache_buffer_write;
  */
 static int hammer2_strategy_read(struct vop_strategy_args *ap);
 static int hammer2_strategy_write(struct vop_strategy_args *ap);
-
-/*
 static void hammer2_strategy_read_completion(hammer2_chain_t *focus,
 				const char *data, struct bio *bio);
-*/
+
 static hammer2_off_t hammer2_dedup_lookup(hammer2_dev_t *hmp,
 			char **datap, int pblksize);
 
@@ -149,7 +147,6 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 /****************************************************************************
  *				READ SUPPORT				    *
  ****************************************************************************/
-#if 0
 /*
  * Callback used in read path in case that a block is compressed with LZ4.
  */
@@ -174,7 +171,7 @@ hammer2_decompress_LZ4_callback(const char *data, u_int bytes, struct bio *bio)
 	compressed_size = *(const int *)data;
 	KKASSERT((uint32_t)compressed_size <= bytes - sizeof(int));
 
-	compressed_buffer = objcache_get(cache_buffer_read, M_INTWAIT);
+	compressed_buffer = ecalloc(1, 65536);
 	result = LZ4_decompress_safe(__DECONST(char *, &data[sizeof(int)]),
 				     compressed_buffer,
 				     compressed_size,
@@ -190,9 +187,11 @@ hammer2_decompress_LZ4_callback(const char *data, u_int bytes, struct bio *bio)
 	bcopy(compressed_buffer, bp->b_data, bp->b_bufsize);
 	if (result < bp->b_bufsize)
 		bzero(bp->b_data + result, bp->b_bufsize - result);
-	objcache_put(cache_buffer_read, compressed_buffer);
+	free(compressed_buffer);
+	/*
 	bp->b_resid = 0;
 	bp->b_flags |= B_AGE;
+	*/
 }
 
 /*
@@ -221,7 +220,7 @@ hammer2_decompress_ZLIB_callback(const char *data, u_int bytes, struct bio *bio)
 	if (ret != Z_OK)
 		kprintf("HAMMER2 ZLIB: Fatal error in inflateInit.\n");
 
-	compressed_buffer = objcache_get(cache_buffer_read, M_INTWAIT);
+	compressed_buffer = ecalloc(1, 65536);
 	strm_decompress.next_in = __DECONST(char *, data);
 
 	/* XXX supply proper size, subset of device bp */
@@ -238,13 +237,14 @@ hammer2_decompress_ZLIB_callback(const char *data, u_int bytes, struct bio *bio)
 	result = bp->b_bufsize - strm_decompress.avail_out;
 	if (result < bp->b_bufsize)
 		bzero(bp->b_data + result, strm_decompress.avail_out);
-	objcache_put(cache_buffer_read, compressed_buffer);
+	free(compressed_buffer);
 	ret = inflateEnd(&strm_decompress);
 
+	/*
 	bp->b_resid = 0;
 	bp->b_flags |= B_AGE;
+	*/
 }
-#endif
 
 /*
  * Logical buffer I/O, async read.
@@ -283,8 +283,6 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 void
 hammer2_xop_strategy_read(hammer2_xop_t *arg, void *scratch, int clindex)
 {
-	assert(0);
-#if 0
 	hammer2_xop_strategy_t *xop = &arg->xop_strategy;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
@@ -382,22 +380,24 @@ hammer2_xop_strategy_read(hammer2_xop_t *arg, void *scratch, int clindex)
 	case 0:
 		xop->finished = 1;
 		hammer2_mtx_unlock(&xop->lock);
-		bp->b_flags |= B_NOTMETA;
+		//bp->b_flags |= B_NOTMETA;
 		focus = xop->head.cluster.focus;
 		data = hammer2_xop_gdata(&xop->head)->buf;
 		hammer2_strategy_read_completion(focus, data, xop->bio);
 		hammer2_xop_pdata(&xop->head);
-		biodone(bio);
+		//biodone(bio);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		break;
 	case HAMMER2_ERROR_ENOENT:
 		xop->finished = 1;
 		hammer2_mtx_unlock(&xop->lock);
+		/*
 		bp->b_flags |= B_NOTMETA;
 		bp->b_resid = 0;
 		bp->b_error = 0;
+		*/
 		bzero(bp->b_data, bp->b_bcount);
-		biodone(bio);
+		//biodone(bio);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		break;
 	case HAMMER2_ERROR_EINPROGRESS:
@@ -408,16 +408,17 @@ hammer2_xop_strategy_read(hammer2_xop_t *arg, void *scratch, int clindex)
 			error, (intmax_t)bp->b_loffset);
 		xop->finished = 1;
 		hammer2_mtx_unlock(&xop->lock);
+		assert(0);
+		/*
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EIO;
 		biodone(bio);
+		*/
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		break;
 	}
-#endif
 }
 
-#if 0
 static
 void
 hammer2_strategy_read_completion(hammer2_chain_t *focus, const char *data,
@@ -433,8 +434,10 @@ hammer2_strategy_read_completion(hammer2_chain_t *focus, const char *data,
 		      bp->b_data, HAMMER2_EMBEDDED_BYTES);
 		bzero(bp->b_data + HAMMER2_EMBEDDED_BYTES,
 		      bp->b_bcount - HAMMER2_EMBEDDED_BYTES);
+		/*
 		bp->b_resid = 0;
 		bp->b_error = 0;
+		*/
 	} else if (focus->bref.type == HAMMER2_BREF_TYPE_DATA) {
 		/*
 		 * Data is on-media, record for live dedup.  Release the
@@ -471,8 +474,10 @@ hammer2_strategy_read_completion(hammer2_chain_t *focus, const char *data,
 				bzero(bp->b_data + focus->bytes,
 				      bp->b_bcount - focus->bytes);
 			}
+			/*
 			bp->b_resid = 0;
 			bp->b_error = 0;
+			*/
 			break;
 		default:
 			panic("hammer2_strategy_read_completion: "
@@ -482,7 +487,6 @@ hammer2_strategy_read_completion(hammer2_chain_t *focus, const char *data,
 		panic("hammer2_strategy_read_completion: unknown bref type");
 	}
 }
-#endif
 
 /****************************************************************************
  *				WRITE SUPPORT				    *
