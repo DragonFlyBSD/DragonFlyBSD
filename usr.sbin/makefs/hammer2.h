@@ -35,9 +35,12 @@
 #ifndef _HAMMER2_H
 #define _HAMMER2_H
 
+#include <sys/ioccom.h>
 #include <limits.h>
 
 #include "hammer2/hammer2.h"
+
+#define HAMMER2IOC_READ		_IOWR('h', 999, int)
 
 typedef struct {
 	hammer2_mkfs_options_t mkfs_options;
@@ -62,6 +65,9 @@ typedef struct {
 	/* HAMMER2IOC_DESTROY */
 	char destroy_path[PATH_MAX];
 	hammer2_tid_t destroy_inum;
+
+	/* HAMMER2IOC_READ */
+	char read_path[PATH_MAX];
 
 	hammer2_off_t image_size;
 } hammer2_makefs_options_t;

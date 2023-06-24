@@ -35,7 +35,7 @@
 .\"
 .\" $FreeBSD: head/usr.sbin/makefs/makefs.8 331843 2018-03-31 15:04:41Z benno $
 .\"
-.Dd June 17, 2023
+.Dd June 23, 2023
 .Dt MAKEFS 8
 .Os
 .Sh NAME
@@ -493,7 +493,7 @@ Note that for offline operations,
 .Ar image-file
 must be a valid HAMMER2 image file or block device.
 .Ar directory
-is unused, but still needs to be either any valid path or `--'.
+is usually unused, but still needs to be either any valid path or `--'.
 Also see
 .Xr hammer2 8 .
 .Pp
@@ -586,6 +586,14 @@ By default expands to
 file or device size, unless size is specified by
 .Fl s
 option.
+.It Cm R
+Run offline read and exit.
+This option takes file path argument within
+.Ar image-file ,
+and retrieves that file under
+.Ar directory .
+.Ar directory
+must exist.
 .El
 .Sh SEE ALSO
 .Xr mtree 5 ,

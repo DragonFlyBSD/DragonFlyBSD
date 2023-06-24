@@ -81,6 +81,7 @@ static int hammer2_bulkfree(struct m_vnode *);
 static int hammer2_destroy_path(struct m_vnode *, const char *);
 static int hammer2_destroy_inum(struct m_vnode *, hammer2_tid_t);
 static int hammer2_growfs(struct m_vnode *, hammer2_off_t);
+static int hammer2_readx(struct m_vnode *, const char *, const char *);
 static void unittest_trim_slash(void);
 
 fsnode *hammer2_curnode;
@@ -109,6 +110,7 @@ hammer2_prep_opts(fsinfo_t *fsopts)
 		{ 'B', "Bulkfree", NULL, OPT_STRBUF, 0, 0, "offline bulkfree" },
 		{ 'D', "Destroy", NULL, OPT_STRBUF, 0, 0, "offline destroy" },
 		{ 'G', "Growfs", NULL, OPT_STRBUF, 0, 0, "offline growfs" },
+		{ 'R', "Read", NULL, OPT_STRBUF, 0, 0, "offline read" },
 		{ .name = NULL },
 	};
 
@@ -237,6 +239,12 @@ hammer2_parse_opts(const char *option, fsinfo_t *fsopts)
 		break;
 	case 'G':
 		h2_opt->ioctl_cmd = HAMMER2IOC_GROWFS;
+		break;
+	case 'R':
+		h2_opt->ioctl_cmd = HAMMER2IOC_READ;
+		if (strlen(buf) == 0)
+			errx(1, "Read argument '%s' cannot be 0-length", buf);
+		strlcpy(h2_opt->read_path, buf, sizeof(h2_opt->read_path));
 		break;
 	default:
 		break;
@@ -447,6 +455,15 @@ hammer2_makefs(const char *image, const char *dir, fsnode *root,
 			errx(1, "growfs `%s' failed '%s'", image,
 			    strerror(error));
 		TIMER_RESULTS(start, "hammer2_growfs");
+		break;
+	case HAMMER2IOC_READ:
+		printf("read `%s'\n", image);
+		TIMER_START(start);
+		error = hammer2_readx(vroot, dir, h2_opt->read_path);
+		if (error)
+			errx(1, "read `%s' failed '%s'", image,
+			    strerror(error));
+		TIMER_RESULTS(start, "hammer2_readx");
 		break;
 	default:
 		printf("populating `%s'\n", image);
@@ -1958,6 +1975,103 @@ hammer2_growfs(struct m_vnode *vp, hammer2_off_t size)
 	}
 
 	return error;
+}
+
+static int
+hammer2_readx(struct m_vnode *dvp, const char *dir, const char *f)
+{
+	hammer2_inode_t *ip;
+	struct m_vnode *vp;
+	char *o, *p, *name;
+	char tmp[PATH_MAX], buf[HAMMER2_PBUFSIZE];
+	size_t resid, n;
+	off_t offset;
+	int fd, error;
+
+	if (dir == NULL)
+		return EINVAL;
+
+	assert(strlen(f) > 0);
+	o = p = name = strdup(f);
+
+	error = trim_slash(p);
+	if (error)
+		return error;
+	if (strlen(p) == 0)
+		return EINVAL;
+
+	while ((p = strchr(p, '/')) != NULL) {
+		*p++ = 0; /* NULL terminate name */
+		if (!strcmp(name, ".")) {
+			name = p;
+			continue;
+		}
+		vp = NULL;
+		error = hammer2_nresolve(dvp, &vp, name, strlen(name));
+		if (error)
+			return error;
+
+		ip = VTOI(vp);
+		switch (ip->meta.type) {
+		case HAMMER2_OBJTYPE_DIRECTORY:
+			break;
+		case HAMMER2_OBJTYPE_SOFTLINK:
+			bzero(tmp, sizeof(tmp));
+			error = hammer2_readlink(vp, tmp, sizeof(tmp));
+			if (error)
+				return error;
+			if (!is_supported_link(tmp))
+				return EINVAL;
+			strlcat(tmp, "/", sizeof(tmp));
+			strlcat(tmp, p, sizeof(tmp));
+			error = trim_slash(tmp);
+			if (error)
+				return error;
+			p = name = tmp;
+			continue;
+		default:
+			return EINVAL;
+		}
+
+		dvp = vp;
+		name = p;
+	}
+
+	error = hammer2_nresolve(dvp, &vp, name, strlen(name));
+	if (error)
+		return error;
+	ip = VTOI(vp);
+
+	snprintf(tmp, sizeof(tmp), "%s/%s", dir, name);
+	fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+	if (fd == -1)
+		err(1, "failed to create %s", tmp);
+
+	resid = ip->meta.size;
+	offset = 0;
+
+	while (resid > 0) {
+		bzero(buf, sizeof(buf));
+		error = hammer2_read(vp, buf, sizeof(buf), offset);
+		if (error)
+			errx(1, "failed to read from %s", tmp);
+
+		n = resid >= sizeof(buf) ? sizeof(buf) : resid;
+		error = write(fd, buf, n);
+		if (error == -1)
+			err(1, "failed to write to %s", tmp);
+		else if (error != n)
+			return EINVAL;
+
+		resid -= n;
+		offset += sizeof(buf);
+	}
+	fsync(fd);
+	close(fd);
+
+	free(o);
+
+	return 0;
 }
 
 static void

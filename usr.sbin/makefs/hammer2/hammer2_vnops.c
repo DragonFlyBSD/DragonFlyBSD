@@ -841,7 +841,6 @@ static
 int
 hammer2_vop_read(struct vop_read_args *ap)
 {
-#if 0
 	struct m_vnode *vp;
 	hammer2_inode_t *ip;
 	struct uio *uio;
@@ -868,8 +867,36 @@ hammer2_vop_read(struct vop_read_args *ap)
 
 	error = hammer2_read_file(ip, uio, seqcount);
 	return (error);
-#endif
-	return (EOPNOTSUPP);
+}
+
+int
+hammer2_read(struct m_vnode *vp, void *buf, size_t size, off_t offset)
+{
+	assert(buf);
+	assert(size > 0);
+	assert(size <= HAMMER2_PBUFSIZE);
+
+	struct iovec iov = {
+		.iov_base = buf,
+		.iov_len = size,
+	};
+	struct uio uio = {
+		.uio_iov = &iov,
+		.uio_iovcnt = 1,
+		.uio_offset = offset,
+		.uio_resid = size,
+		.uio_segflg = UIO_USERSPACE,
+		.uio_rw = UIO_READ,
+		.uio_td = NULL,
+	};
+	struct vop_read_args ap = {
+		.a_vp = vp,
+		.a_uio = &uio,
+		.a_ioflag = 0,
+		.a_cred = NULL,
+	};
+
+	return hammer2_vop_read(&ap);
 }
 
 static
