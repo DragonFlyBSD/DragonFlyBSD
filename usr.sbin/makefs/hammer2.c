@@ -1982,8 +1982,8 @@ hammer2_readx(struct m_vnode *dvp, const char *dir, const char *f)
 {
 	hammer2_inode_t *ip;
 	struct m_vnode *vp;
-	char *o, *p, *name;
-	char tmp[PATH_MAX], buf[HAMMER2_PBUFSIZE];
+	char *o, *p, *name, *buf;
+	char tmp[PATH_MAX], out[PATH_MAX];
 	size_t resid, n;
 	off_t offset;
 	int fd, error;
@@ -2042,33 +2042,35 @@ hammer2_readx(struct m_vnode *dvp, const char *dir, const char *f)
 		return error;
 	ip = VTOI(vp);
 
-	snprintf(tmp, sizeof(tmp), "%s/%s", dir, name);
-	fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+	snprintf(out, sizeof(out), "%s/%s", dir, name);
+	fd = open(out, O_WRONLY | O_CREAT | O_TRUNC, 0666);
 	if (fd == -1)
-		err(1, "failed to create %s", tmp);
+		err(1, "failed to create %s", out);
 
+	buf = calloc(1, HAMMER2_PBUFSIZE);
 	resid = ip->meta.size;
 	offset = 0;
 
 	while (resid > 0) {
-		bzero(buf, sizeof(buf));
-		error = hammer2_read(vp, buf, sizeof(buf), offset);
+		bzero(buf, HAMMER2_PBUFSIZE);
+		error = hammer2_read(vp, buf, HAMMER2_PBUFSIZE, offset);
 		if (error)
-			errx(1, "failed to read from %s", tmp);
+			errx(1, "failed to read from %s", name);
 
-		n = resid >= sizeof(buf) ? sizeof(buf) : resid;
+		n = resid >= HAMMER2_PBUFSIZE ? HAMMER2_PBUFSIZE : resid;
 		error = write(fd, buf, n);
 		if (error == -1)
-			err(1, "failed to write to %s", tmp);
+			err(1, "failed to write to %s", out);
 		else if (error != n)
 			return EINVAL;
 
 		resid -= n;
-		offset += sizeof(buf);
+		offset += HAMMER2_PBUFSIZE;
 	}
 	fsync(fd);
 	close(fd);
 
+	free(buf);
 	free(o);
 
 	return 0;
