@@ -905,8 +905,8 @@ typedef struct hammer2_xop_desc hammer2_xop_desc_t;
 
 struct hammer2_xop_fifo {
 	TAILQ_ENTRY(hammer2_xop_head) entry;
-	hammer2_chain_t		*array[HAMMER2_XOPFIFO];
-	int			errors[HAMMER2_XOPFIFO];
+	hammer2_chain_t		**array;
+	int			*errors;
 	int			ri;
 	int			wi;
 	int			flags;
@@ -927,6 +927,7 @@ struct hammer2_xop_head {
 	struct hammer2_inode	*ip4;
 	uint64_t		run_mask;
 	uint64_t		chk_mask;
+	int			fifo_size;
 	int			flags;
 	int			state;
 	int			error;
@@ -941,6 +942,8 @@ struct hammer2_xop_head {
 };
 
 typedef struct hammer2_xop_head hammer2_xop_head_t;
+
+#define fifo_mask(xop_head)	((xop_head)->fifo_size - 1)
 
 struct hammer2_xop_ipcluster {
 	hammer2_xop_head_t	head;

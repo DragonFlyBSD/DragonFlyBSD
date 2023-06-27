@@ -327,6 +327,39 @@ hammer2_thr_break(hammer2_thread_t *thr)
  ****************************************************************************/
 
 /*
+ * Allocate or reallocate XOP FIFO.  This doesn't exist in sys/vfs/hammer2
+ * where XOP is handled by dedicated kernel threads and when FIFO stalls
+ * threads wait for frontend to collect results.
+ */
+static void
+hammer2_xop_fifo_alloc(hammer2_xop_fifo_t *fifo, size_t nmemb)
+{
+	size_t size;
+
+	/* Assert nmemb requirements. */
+	KKASSERT((nmemb & (nmemb - 1)) == 0);
+	KKASSERT(nmemb >= HAMMER2_XOPFIFO);
+
+	/* malloc or realloc fifo array. */
+	size = nmemb * sizeof(hammer2_chain_t *);
+	if (!fifo->array)
+		fifo->array = kmalloc(size, M_HAMMER2, M_WAITOK | M_ZERO);
+	else
+		fifo->array = krealloc(fifo->array, size, M_HAMMER2,
+		    M_WAITOK | M_ZERO);
+	KKASSERT(fifo->array);
+
+	/* malloc or realloc fifo errors. */
+	size = nmemb * sizeof(int);
+	if (!fifo->errors)
+		fifo->errors = kmalloc(size, M_HAMMER2, M_WAITOK | M_ZERO);
+	else
+		fifo->errors = krealloc(fifo->errors, size, M_HAMMER2,
+		    M_WAITOK | M_ZERO);
+	KKASSERT(fifo->errors);
+}
+
+/*
  * Allocate a XOP request.
  *
  * Once allocated a XOP request can be started, collected, and retired,
@@ -363,6 +396,10 @@ hammer2_xop_alloc(hammer2_inode_t *ip, int flags)
 	 * run_mask - Active thread (or frontend) associated with XOP
 	 */
 	xop->head.run_mask = HAMMER2_XOPMASK_VOP;
+
+	hammer2_xop_fifo_t *fifo = &xop->head.collect[0];
+	xop->head.fifo_size = HAMMER2_XOPFIFO;
+	hammer2_xop_fifo_alloc(fifo, xop->head.fifo_size);
 
 	hammer2_inode_ref(ip);
 
@@ -688,7 +725,7 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint64_t mask)
 	for (i = 0; mask && i < HAMMER2_MAXCLUSTER; ++i) {
 		hammer2_xop_fifo_t *fifo = &xop->collect[i];
 		while (fifo->ri != fifo->wi) {
-			chain = fifo->array[fifo->ri & HAMMER2_XOPFIFO_MASK];
+			chain = fifo->array[fifo->ri & fifo_mask(xop)];
 			if (chain)
 				hammer2_chain_drop_unhold(chain);
 			++fifo->ri;
@@ -781,41 +818,25 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 	 */
 	fifo = &xop->collect[clindex];
 
-	/*
-	 * makefs HAMMER2 has no dedicated XOP threads,
-	 * so nothing we can do once fifo reaches HAMMER2_XOPFIFO.
-	 * Fortunately, readdir VOP is the only VOP causes this,
-	 * and makefs HAMMER2 doesn't implement it.
-	 */
-	if (fifo->ri == fifo->wi - HAMMER2_XOPFIFO)
-		panic("hammer2: \"%s\" reached fifo limit %d",
-			xop->desc->id, HAMMER2_XOPFIFO);
-
 	if (fifo->ri == fifo->wi - HAMMER2_XOPFIFO)
 		lwkt_yield();
-	while (fifo->ri == fifo->wi - HAMMER2_XOPFIFO) {
+	while (fifo->ri == fifo->wi - xop->fifo_size) {
 		atomic_set_int(&fifo->flags, HAMMER2_XOP_FIFO_STALL);
 		mask = xop->run_mask;
 		if ((mask & HAMMER2_XOPMASK_VOP) == 0) {
 			error = HAMMER2_ERROR_ABORTED;
 			goto done;
 		}
-		tsleep_interlock(xop, 0);
-		if (atomic_cmpset_64(&xop->run_mask, mask,
-				     mask | HAMMER2_XOPMASK_FIFOW)) {
-			if (fifo->ri == fifo->wi - HAMMER2_XOPFIFO) {
-				tsleep(xop, PINTERLOCKED, "h2feed", hz*60);
-			}
-		}
-		/* retry */
+		xop->fifo_size *= 2;
+		hammer2_xop_fifo_alloc(fifo, xop->fifo_size);
 	}
 	atomic_clear_int(&fifo->flags, HAMMER2_XOP_FIFO_STALL);
 	if (chain)
 		hammer2_chain_ref_hold(chain);
 	if (error == 0 && chain)
 		error = chain->error;
-	fifo->errors[fifo->wi & HAMMER2_XOPFIFO_MASK] = error;
-	fifo->array[fifo->wi & HAMMER2_XOPFIFO_MASK] = chain;
+	fifo->errors[fifo->wi & fifo_mask(xop)] = error;
+	fifo->array[fifo->wi & fifo_mask(xop)] = chain;
 	cpu_sfence();
 	++fifo->wi;
 
@@ -911,8 +932,8 @@ loop:
 		fifo = &xop->collect[i];
 		if (fifo->ri != fifo->wi) {
 			cpu_lfence();
-			chain = fifo->array[fifo->ri & HAMMER2_XOPFIFO_MASK];
-			error = fifo->errors[fifo->ri & HAMMER2_XOPFIFO_MASK];
+			chain = fifo->array[fifo->ri & fifo_mask(xop)];
+			error = fifo->errors[fifo->ri & fifo_mask(xop)];
 			++fifo->ri;
 			xop->cluster.array[i].chain = chain;
 			xop->cluster.array[i].error = error;

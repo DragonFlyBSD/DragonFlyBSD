@@ -74,6 +74,7 @@
 #define kmalloc_create(typep, descr)	do{}while(0)
 #define kmalloc_destroy(typep)		do{}while(0)
 #define kmalloc(size, type, flags)	ecalloc(1, size)
+#define krealloc(addr, size, type, flags)	realloc(addr, size)
 #define kfree(addr, type)		free(addr)
 
 #define kmalloc_create_obj(typep, descr, objsize)	do{}while(0)
