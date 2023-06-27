@@ -176,17 +176,20 @@ MALLOC_DECLARE(M_RTABLE);
 #define R_Free(p) kfree(p, M_RTABLE)
 #endif
 
-void			 rn_init (void);
-int			 rn_inithead (void **, struct radix_node_head *, int);
+void			 rn_init(void);
+int			 rn_inithead(void **head,
+				     struct radix_node_head *maskhead, int off);
 struct radix_node_head	*rn_cpumaskhead(int cpu);
-bool			 rn_refines (const char *, const char *);
-struct radix_node	*rn_addmask (char *, bool, int,
-				     struct radix_node_head *),
-			*rn_addroute (char *, char *, struct radix_node_head *,
-				      struct radix_node [2]),
-			*rn_delete (char *, char *, struct radix_node_head *),
-			*rn_lookup (char *key, char *mask,
-				    struct radix_node_head *head),
-			*rn_match (char *, struct radix_node_head *);
+bool			 rn_refines(char *m, char *n);
+struct radix_node	*rn_addmask(char *mask, bool search, int skip,
+				    struct radix_node_head *maskhead);
+struct radix_node	*rn_addroute(char *key, char *netmask,
+				     struct radix_node_head *head,
+				     struct radix_node nodes[2]);
+struct radix_node	*rn_delete(char *key, char *netmask,
+				   struct radix_node_head *head);
+struct radix_node	*rn_lookup(char *key, char *mask,
+				   struct radix_node_head *head);
+struct radix_node	*rn_match(char *key, struct radix_node_head *head);
 
 #endif /* _NET_RADIX_H_ */
