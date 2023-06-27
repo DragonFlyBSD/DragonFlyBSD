@@ -122,7 +122,7 @@ extern int	in6_inithead (void **head, int off);
  * Do what we need to do when inserting a route.
  */
 static struct radix_node *
-in6_addroute(char *key, char *mask, struct radix_node_head *head,
+in6_addroute(const char *key, const char *mask, struct radix_node_head *head,
 	     struct radix_node *treenodes)
 {
 	struct rtentry *rt = (struct rtentry *)treenodes;
@@ -223,7 +223,7 @@ in6_addroute(char *key, char *mask, struct radix_node_head *head,
  * back off again.
  */
 static struct radix_node *
-in6_matchroute(char *key, struct radix_node_head *head)
+in6_matchroute(const char *key, struct radix_node_head *head)
 {
 	struct radix_node *rn = rn_match(key, head);
 	struct rtentry *rt = (struct rtentry *)rn;

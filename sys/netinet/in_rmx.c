@@ -89,7 +89,7 @@ static struct in_rtq_pcpu in_rtq_pcpu[MAXCPU];
  * Do what we need to do when inserting a route.
  */
 static struct radix_node *
-in_addroute(char *key, char *mask, struct radix_node_head *head,
+in_addroute(const char *key, const char *mask, struct radix_node_head *head,
 	    struct radix_node *treenodes)
 {
 	struct rtentry *rt = (struct rtentry *)treenodes;
@@ -195,7 +195,7 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
  * back off again.
  */
 static struct radix_node *
-in_matchroute(char *key, struct radix_node_head *head)
+in_matchroute(const char *key, struct radix_node_head *head)
 {
 	struct radix_node *rn = rn_match(key, head);
 	struct rtentry *rt = (struct rtentry *)rn;

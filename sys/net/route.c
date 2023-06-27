@@ -1550,7 +1550,7 @@ rtinit(struct ifaddr *ifa, int cmd, int flags)
 		    (rn = rnh->rnh_lookup((char *)dst,
 					  (char *)netmask, rnh)) == NULL ||
 		    ((struct rtentry *)rn)->rt_ifa != ifa ||
-		    !sa_equal((struct sockaddr *)rn->rn_key, dst)) {
+		    !sa_equal((const struct sockaddr *)rn->rn_key, dst)) {
 			if (m != NULL)
 				m_free(m);
 			return (flags & RTF_HOST ? EHOSTUNREACH : ENETUNREACH);
@@ -1749,13 +1749,14 @@ _rtmask_lookup(struct sockaddr *mask, boolean_t search)
 {
 	struct radix_node *n;
 
-#define	clen(s)	(*(u_char *)(s))
-	n = rn_addmask((char *)mask, search, 1, rn_cpumaskhead(mycpuid));
+#define	clen(s)	(*(const u_char *)(s))
+	n = rn_addmask((const char *)mask, search, true,
+		       rn_cpumaskhead(mycpuid));
 	if (n != NULL &&
 	    mask->sa_len >= clen(n->rn_key) &&
-	    bcmp((char *)mask + 1,
-		 (char *)n->rn_key + 1, clen(n->rn_key) - 1) == 0) {
-		return (struct sockaddr *)n->rn_key;
+	    bcmp((const char *)mask + 1,
+		 n->rn_key + 1, clen(n->rn_key) - 1) == 0) {
+		return __DECONST(struct sockaddr *, n->rn_key);
 	} else {
 		return NULL;
 	}

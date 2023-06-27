@@ -143,8 +143,8 @@ struct mbuf;
 
 struct rtentry {
 	struct	radix_node rt_nodes[2];	/* tree glue, and other values */
-#define	rt_key(r)	((struct sockaddr *)((r)->rt_nodes->rn_key))
-#define	rt_mask(r)	((struct sockaddr *)((r)->rt_nodes->rn_mask))
+#define	rt_key(r)	__DECONST(struct sockaddr *, (r)->rt_nodes->rn_key)
+#define	rt_mask(r)	__DECONST(struct sockaddr *, (r)->rt_nodes->rn_mask)
 	struct	sockaddr *rt_gateway;	/* value */
 	long	rt_refcnt;		/* # held references */
 	u_long	rt_flags;		/* up/down?, host/net */
