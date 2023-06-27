@@ -51,7 +51,9 @@
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <sys/mountctl.h>
+*/
 #include <sys/dirent.h>
+/*
 #include <sys/uio.h>
 #include <sys/objcache.h>
 #include <sys/event.h>
@@ -607,11 +609,35 @@ done:
 	return (EOPNOTSUPP);
 }
 
+static int
+vop_write_dirent(int *error, struct uio *uio, ino_t d_ino, uint8_t d_type,
+		 uint16_t d_namlen, const char *d_name)
+{
+	struct dirent *dp;
+	size_t len;
+
+	len = _DIRENT_RECLEN(d_namlen);
+	if (len > uio->uio_resid)
+		return(1);
+
+	dp = kmalloc(len, M_TEMP, M_WAITOK | M_ZERO);
+
+	dp->d_ino = d_ino;
+	dp->d_namlen = d_namlen;
+	dp->d_type = d_type;
+	bcopy(d_name, dp->d_name, d_namlen);
+
+	*error = uiomove((caddr_t)dp, len, uio);
+
+	kfree(dp, M_TEMP);
+
+	return(0);
+}
+
 static
 int
 hammer2_vop_readdir(struct vop_readdir_args *ap)
 {
-#if 0
 	hammer2_xop_readdir_t *xop;
 	hammer2_blockref_t bref;
 	hammer2_inode_t *ip;
@@ -623,12 +649,14 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	int cookie_index;
 	int ncookies;
 	int error;
+	int ndirent;
 	int eofflag;
 	int r;
 
 	ip = VTOI(ap->a_vp);
 	uio = ap->a_uio;
 	saveoff = uio->uio_offset;
+	ndirent = 0;
 	eofflag = 0;
 	error = 0;
 
@@ -666,6 +694,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 			cookies[cookie_index] = saveoff;
 		++saveoff;
 		++cookie_index;
+		++ndirent;
 		if (cookie_index == ncookies)
 			goto done;
 	}
@@ -681,6 +710,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 			cookies[cookie_index] = saveoff;
 		++saveoff;
 		++cookie_index;
+		++ndirent;
 		if (cookie_index == ncookies)
 			goto done;
 	}
@@ -730,6 +760,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 			if (cookies)
 				cookies[cookie_index] = saveoff;
 			++cookie_index;
+			++ndirent;
 		} else if (bref.type == HAMMER2_BREF_TYPE_DIRENT) {
 			uint16_t namlen;
 
@@ -751,6 +782,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 			if (cookies)
 				cookies[cookie_index] = saveoff;
 			++cookie_index;
+			++ndirent;
 		} else {
 			/* XXX chain error */
 			kprintf("bad chain type readdir %d\n", bref.type);
@@ -783,9 +815,48 @@ done:
 			*ap->a_cookies = cookies;
 		}
 	}
+	*ap->a_ndirent = ndirent;
+
 	return (error);
-#endif
-	return (EOPNOTSUPP);
+}
+
+int
+hammer2_readdir(struct m_vnode *vp, void *buf, size_t size, off_t *offsetp,
+		int *ndirentp, int *eofflagp)
+{
+	int error;
+
+	assert(buf);
+	assert(size > 0);
+	assert(size <= HAMMER2_PBUFSIZE);
+
+	struct iovec iov = {
+		.iov_base = buf,
+		.iov_len = size,
+	};
+	struct uio uio = {
+		.uio_iov = &iov,
+		.uio_iovcnt = 1,
+		.uio_offset = *offsetp,
+		.uio_resid = size,
+		.uio_segflg = UIO_USERSPACE,
+		.uio_rw = UIO_READ,
+		.uio_td = NULL,
+	};
+	struct vop_readdir_args ap = {
+		.a_vp = vp,
+		.a_uio = &uio,
+		.a_cred = NULL,
+		.a_eofflag = eofflagp,
+		.a_ncookies = NULL,
+		.a_cookies = NULL,
+		.a_ndirent = ndirentp,
+	};
+
+	error = hammer2_vop_readdir(&ap);
+	*offsetp = uio.uio_offset;
+
+	return (error);
 }
 
 /*

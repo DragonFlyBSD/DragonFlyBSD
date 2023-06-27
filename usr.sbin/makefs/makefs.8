@@ -35,7 +35,7 @@
 .\"
 .\" $FreeBSD: head/usr.sbin/makefs/makefs.8 331843 2018-03-31 15:04:41Z benno $
 .\"
-.Dd June 23, 2023
+.Dd June 27, 2023
 .Dt MAKEFS 8
 .Os
 .Sh NAME
@@ -594,6 +594,9 @@ and retrieves that file under
 .Ar directory .
 .Ar directory
 must exist.
+If the argument is a directory, recursively retrieve directories and regular files.
+This option currently only supports directory and regular file.
+Other file types are ignored.
 .El
 .Sh SEE ALSO
 .Xr mtree 5 ,

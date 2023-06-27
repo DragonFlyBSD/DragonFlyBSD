@@ -2014,6 +2014,8 @@ hammer2_vfsvolume_t *hammer2_get_volume(hammer2_dev_t *hmp, hammer2_off_t offset
  * hammer2_vnops.c
  */
 int hammer2_reclaim(struct m_vnode *vp);
+int hammer2_readdir(struct m_vnode *vp, void *buf, size_t size, off_t *offsetp,
+			int *ndirentp, int *eofflagp);
 int hammer2_readlink(struct m_vnode *vp, void *buf, size_t size);
 int hammer2_read(struct m_vnode *vp, void *buf, size_t size, off_t offset);
 int hammer2_write(struct m_vnode *vp, void *buf, size_t size, off_t offset);
@@ -2037,6 +2039,7 @@ int breadx(struct m_vnode *vp, off_t loffset, int size, struct m_buf **bpp);
 int bread_kvabio(struct m_vnode *vp, off_t loffset, int size, struct m_buf **bpp);
 void bqrelse(struct m_buf *bp);
 int bawrite(struct m_buf *bp);
+int uiomove(caddr_t cp, size_t n, struct uio *uio);
 int uiomovebp(struct m_buf *bp, caddr_t cp, size_t n, struct uio *uio);
 
 /*

@@ -121,7 +121,7 @@ bawrite(struct m_buf *bp)
 	return (bwrite(bp));
 }
 
-static int
+int
 uiomove(caddr_t cp, size_t n, struct uio *uio)
 {
 	struct iovec *iov;

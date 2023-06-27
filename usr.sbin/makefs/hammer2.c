@@ -40,6 +40,7 @@
 #include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/mman.h>
+#include <sys/dirent.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -81,6 +82,7 @@ static int hammer2_bulkfree(struct m_vnode *);
 static int hammer2_destroy_path(struct m_vnode *, const char *);
 static int hammer2_destroy_inum(struct m_vnode *, hammer2_tid_t);
 static int hammer2_growfs(struct m_vnode *, hammer2_off_t);
+static int hammer2_readx_handle(struct m_vnode *, const char *, const char *);
 static int hammer2_readx(struct m_vnode *, const char *, const char *);
 static void unittest_trim_slash(void);
 
@@ -762,6 +764,7 @@ hammer2_dump_fsinfo(fsinfo_t *fsopts)
 	printf("\tinode_path \"%s\"\n", h2_opt->inode_path);
 	printf("\tdestroy_path \"%s\"\n", h2_opt->destroy_path);
 	printf("\tdestroy_inum %lld\n", (long long)h2_opt->destroy_inum);
+	printf("\tread_path \"%s\"\n", h2_opt->read_path);
 	printf("\timage_size 0x%llx\n", (long long)h2_opt->image_size);
 
 	printf("\tHammer2Version %d\n", opt->Hammer2Version);
@@ -1481,8 +1484,10 @@ hammer2_inode_getx(struct m_vnode *dvp, const char *f)
 	error = trim_slash(p);
 	if (error)
 		return error;
-	if (strlen(p) == 0)
-		return EINVAL;
+	if (strlen(p) == 0) {
+		vp = dvp;
+		goto start_ioctl;
+	}
 
 	while ((p = strchr(p, '/')) != NULL) {
 		*p++ = 0; /* NULL terminate name */
@@ -1524,7 +1529,7 @@ hammer2_inode_getx(struct m_vnode *dvp, const char *f)
 	error = hammer2_nresolve(dvp, &vp, name, strlen(name));
 	if (error)
 		return error;
-
+start_ioctl:
 	bzero(&inode, sizeof(inode));
 	error = hammer2_ioctl_inode_get(VTOI(vp), &inode);
 	if (error)
@@ -1978,15 +1983,123 @@ hammer2_growfs(struct m_vnode *vp, hammer2_off_t size)
 }
 
 static int
+hammer2_readx_directory(struct m_vnode *dvp, const char *dir, const char *name)
+{
+	struct m_vnode *vp;
+	struct dirent *dp;
+	struct stat st;
+	char *buf, tmp[PATH_MAX];
+	off_t offset = 0;
+	int ndirent = 0;
+	int eofflag = 0;
+	int i, error;
+
+	snprintf(tmp, sizeof(tmp), "%s/%s", dir, name);
+	if (stat(tmp, &st) == -1 && mkdir(tmp, 0666) == -1)
+		err(1, "failed to mkdir %s", tmp);
+
+	buf = calloc(1, HAMMER2_PBUFSIZE);
+
+	while (!eofflag) {
+		error = hammer2_readdir(dvp, buf, HAMMER2_PBUFSIZE, &offset,
+		    &ndirent, &eofflag);
+		if (error)
+			errx(1, "failed to readdir");
+		dp = (void *)buf;
+
+		for (i = 0; i < ndirent; i++) {
+			if (strcmp(dp->d_name, ".") &&
+			    strcmp(dp->d_name, "..")) {
+				error = hammer2_nresolve(dvp, &vp, dp->d_name,
+				    strlen(dp->d_name));
+				if (error)
+					return error;
+				error = hammer2_readx_handle(vp, tmp,
+				    dp->d_name);
+				if (error)
+					return error;
+			}
+			dp = (void *)((char *)dp +
+			    _DIRENT_RECLEN(dp->d_namlen));
+		}
+	}
+
+	free(buf);
+
+	return 0;
+}
+
+static int
+hammer2_readx_regfile(struct m_vnode *vp, const char *dir, const char *name)
+{
+	hammer2_inode_t *ip = VTOI(vp);
+	char *buf, out[PATH_MAX];
+	size_t resid, n;
+	off_t offset;
+	int fd, error;
+
+	snprintf(out, sizeof(out), "%s/%s", dir, name);
+	fd = open(out, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+	if (fd == -1)
+		err(1, "failed to create %s", out);
+
+	buf = calloc(1, HAMMER2_PBUFSIZE);
+	resid = ip->meta.size;
+	offset = 0;
+
+	while (resid > 0) {
+		bzero(buf, HAMMER2_PBUFSIZE);
+		error = hammer2_read(vp, buf, HAMMER2_PBUFSIZE, offset);
+		if (error)
+			errx(1, "failed to read from %s", name);
+
+		n = resid >= HAMMER2_PBUFSIZE ? HAMMER2_PBUFSIZE : resid;
+		error = write(fd, buf, n);
+		if (error == -1)
+			err(1, "failed to write to %s", out);
+		else if (error != n)
+			return EINVAL;
+
+		resid -= n;
+		offset += HAMMER2_PBUFSIZE;
+	}
+	fsync(fd);
+	close(fd);
+
+	free(buf);
+
+	return 0;
+}
+
+static int
+hammer2_readx_handle(struct m_vnode *vp, const char *dir, const char *name)
+{
+	hammer2_inode_t *ip = VTOI(vp);
+
+	switch (ip->meta.type) {
+	case HAMMER2_OBJTYPE_DIRECTORY:
+		return hammer2_readx_directory(vp, dir, name);
+	case HAMMER2_OBJTYPE_REGFILE:
+		return hammer2_readx_regfile(vp, dir, name);
+	default:
+		/* XXX */
+		printf("ignore inode %jd %s \"%s\"\n",
+		    (intmax_t)ip->meta.inum,
+		    hammer2_iptype_to_str(ip->meta.type),
+		    name);
+		return 0;
+	}
+	return EINVAL;
+}
+
+static int
 hammer2_readx(struct m_vnode *dvp, const char *dir, const char *f)
 {
 	hammer2_inode_t *ip;
 	struct m_vnode *vp;
-	char *o, *p, *name, *buf;
-	char tmp[PATH_MAX], out[PATH_MAX];
-	size_t resid, n;
-	off_t offset;
-	int fd, error;
+	char *o, *p, *name;
+	char tmp[PATH_MAX];
+	int error;
 
 	if (dir == NULL)
 		return EINVAL;
@@ -1997,8 +2110,10 @@ hammer2_readx(struct m_vnode *dvp, const char *dir, const char *f)
 	error = trim_slash(p);
 	if (error)
 		return error;
-	if (strlen(p) == 0)
-		return EINVAL;
+	if (strlen(p) == 0) {
+		vp = dvp;
+		goto start_ioctl;
+	}
 
 	while ((p = strchr(p, '/')) != NULL) {
 		*p++ = 0; /* NULL terminate name */
@@ -2040,37 +2155,11 @@ hammer2_readx(struct m_vnode *dvp, const char *dir, const char *f)
 	error = hammer2_nresolve(dvp, &vp, name, strlen(name));
 	if (error)
 		return error;
-	ip = VTOI(vp);
+start_ioctl:
+	error = hammer2_readx_handle(vp, dir, name);
+	if (error)
+		return error;
 
-	snprintf(out, sizeof(out), "%s/%s", dir, name);
-	fd = open(out, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-	if (fd == -1)
-		err(1, "failed to create %s", out);
-
-	buf = calloc(1, HAMMER2_PBUFSIZE);
-	resid = ip->meta.size;
-	offset = 0;
-
-	while (resid > 0) {
-		bzero(buf, HAMMER2_PBUFSIZE);
-		error = hammer2_read(vp, buf, HAMMER2_PBUFSIZE, offset);
-		if (error)
-			errx(1, "failed to read from %s", name);
-
-		n = resid >= HAMMER2_PBUFSIZE ? HAMMER2_PBUFSIZE : resid;
-		error = write(fd, buf, n);
-		if (error == -1)
-			err(1, "failed to write to %s", out);
-		else if (error != n)
-			return EINVAL;
-
-		resid -= n;
-		offset += HAMMER2_PBUFSIZE;
-	}
-	fsync(fd);
-	close(fd);
-
-	free(buf);
 	free(o);
 
 	return 0;

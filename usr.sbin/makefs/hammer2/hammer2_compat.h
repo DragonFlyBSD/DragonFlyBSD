@@ -256,6 +256,7 @@ struct vop_readdir_args {
 	int *a_eofflag;
 	int *a_ncookies;
 	off_t **a_cookies;
+	int *a_ndirent; /* makefs */
 };
 
 struct vop_readlink_args {
