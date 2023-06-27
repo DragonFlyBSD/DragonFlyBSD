@@ -56,18 +56,6 @@
  */
 #define clen(c)	(int)(*(const u_char *)(c))
 
-static int rn_walktree_from(struct radix_node_head *h, char *a, char *m,
-			    walktree_f_t *f, void *w);
-static int rn_walktree(struct radix_node_head *, walktree_f_t *, void *);
-static int rn_walktree_at(struct radix_node_head *h, const char *a,
-			    const char *m, walktree_f_t *f, void *w);
-
-static struct radix_node
-    *rn_insert(char *, struct radix_node_head *, bool *,
-	       struct radix_node [2]),
-    *rn_newpair(char *, int, struct radix_node[2]),
-    *rn_search(const char *, struct radix_node *),
-    *rn_search_m(const char *, struct radix_node *, const char *);
 
 static struct radix_mask *rn_mkfreelist[MAXCPU];
 static struct radix_node_head *mask_rnheads[MAXCPU];
@@ -75,11 +63,13 @@ static struct radix_node_head *mask_rnheads[MAXCPU];
 static char rn_zeros[RN_MAXKEYLEN];
 static char rn_ones[RN_MAXKEYLEN] = RN_MAXKEYONES;
 
-static bool rn_lexobetter(char *m, char *n);
-static struct radix_mask *
-    rn_new_radix_mask(struct radix_node *tt, struct radix_mask *nextmask);
-static bool
-    rn_satisfies_leaf(char *trial, struct radix_node *leaf, int skip);
+#ifdef RN_DEBUG
+static int rn_nodenum;
+static struct radix_node *rn_clist;
+static int rn_saveinfo;
+static bool rn_debug = true;
+#endif
+
 
 static __inline struct radix_mask *
 MKGet(struct radix_mask **l)
@@ -334,13 +324,6 @@ on1:
 	} while (t != top);
 	return NULL;
 }
-
-#ifdef RN_DEBUG
-int rn_nodenum;
-struct radix_node *rn_clist;
-int rn_saveinfo;
-bool rn_debug = true;
-#endif
 
 static struct radix_node *
 rn_newpair(char *key, int indexbit, struct radix_node nodes[2])
