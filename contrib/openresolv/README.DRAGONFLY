@@ -2,12 +2,12 @@ OPENRESOLV
 ==========
 
 Original source can be downloaded from:
-https://roy.marples.name/downloads/openresolv/
+https://github.com/NetworkConfiguration/openresolv
 
-file = openresolv-3.12.0.tar.gz
-date = 2020 December 27
-size = 21008
-SHA256 = 42b30508e857a228535c631eaac936862d86eca68c14b5c0bf387ba176b91b97
+file = openresolv-3.13.2.tar.gz
+date = 2023 June 27
+size = 21540
+SHA256 = 36b5bcbe257a940c884f0d74321a47407baabab9e265e38859851c8311f6f0b0
 
 The source is imported via a Makefile target rather than by hand.
 There is no README.DELETED for this import as it's all automated.
