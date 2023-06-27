@@ -52,8 +52,9 @@
 /*
  * The arguments to the radix functions are really counted byte arrays with
  * the length in the first byte.  struct sockaddr's fit this type structurally.
+ * Cast the result to int as this is the dominant usage.
  */
-#define clen(c)	(*(u_char *)(c))
+#define clen(c)	(int)(*(const u_char *)(c))
 
 static int rn_walktree_from(struct radix_node_head *h, char *a, char *m,
 			    walktree_f_t *f, void *w);
