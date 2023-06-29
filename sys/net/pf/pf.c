@@ -816,11 +816,12 @@ pf_state_key_attach(struct pf_state_key *sk, struct pf_state *s, int idx)
 	KKASSERT(s->key[idx] == NULL);	/* XXX handle this? */
 
 	if (pf_status.debug >= PF_DEBUG_MISC) {
-		kprintf("state_key attach cpu %d (%08x:%d) %s (%08x:%d)\n",
-			cpu,
+		kprintf("state_key attach cpu %d(%d) (%08x:%d) %s (%08x:%d) if: %s\n",
+			cpu, mycpu->gd_cpuid,
 			ntohl(sk->addr[0].addr32[0]), ntohs(sk->port[0]),
 			(idx == PF_SK_WIRE ? "->" : "<-"),
-			ntohl(sk->addr[1].addr32[0]), ntohs(sk->port[1]));
+			ntohl(sk->addr[1].addr32[0]), ntohs(sk->port[1]),
+			s->kif->pfik_name);
 	}
 
 	/*
