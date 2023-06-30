@@ -763,6 +763,11 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint64_t mask)
 		xop->name2_len = 0;
 	}
 
+	for (i = 0; i < xop->cluster.nchains; ++i) {
+		kfree(xop->collect[i].array, M_HAMMER2);
+		kfree(xop->collect[i].errors, M_HAMMER2);
+	}
+
 	free(xop);
 }
 
