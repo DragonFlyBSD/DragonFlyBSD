@@ -6570,6 +6570,15 @@ pf_test(int dir, struct ifnet *ifp, struct mbuf **m0,
 	if (m->m_pkthdr.fw_flags & PF_MBUF_TAGGED)
 		return (PF_PASS);
 	m->m_pkthdr.pf.flags = 0;
+	
+	if (m->m_pkthdr.fw_flags & PFIL_WRONG_CPU) {
+		/* Processing on the wrong cpu. Won't cause any issues, as long
+		 * as we put state entries in the global table.
+		 * Can occur on the output side of a nat rule.
+		 */
+		pd.not_cpu_localized = 1;
+	}
+
 	/* Re-Check when updating to > 4.4 */
 	m->m_pkthdr.pf.statekey = NULL;
 

@@ -314,6 +314,10 @@ struct mbuf {
 #define FW_MBUF_REDISPATCH	0x00000200
 #define FW_MBUF_PRIVATE1	0x00000400
 #define FW_MBUF_PRIVATE2	0x00000800
+/* When a packet is re-written on input, it may be on the wrong cpu. Flag the
+ * packet so that later processing will know it is on the wrong cpu.
+ */
+#define PFIL_WRONG_CPU		0x00001000
 #define	IPFW_MBUF_GENERATED	FW_MBUF_GENERATED
 
 /*

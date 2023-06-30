@@ -635,6 +635,22 @@ iphack:
 		return;
 	if (m == NULL)	/* consumed by filter */
 		return;
+	if ((m->m_flags & M_HASH) == 0) {
+		int new_cpu;
+		m = ip_rehashm(m, hlen);
+		if (m == NULL)
+			return;
+		new_cpu = netisr_hashcpu(m->m_pkthdr.hash);
+
+		if (new_cpu != mycpuid) {
+			/* Most of the time, it won't matter that this packet is
+			 * on the wrong cpu. An output rule on a firewall may
+			 * care.
+			 */
+			m->m_pkthdr.fw_flags |= PFIL_WRONG_CPU;
+		}
+	}
+
 	ip = mtod(m, struct ip *);
 	hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 	using_srcrt = (odst.s_addr != ip->ip_dst.s_addr);
