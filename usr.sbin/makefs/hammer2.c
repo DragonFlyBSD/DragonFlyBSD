@@ -83,7 +83,9 @@ static int hammer2_bulkfree(struct m_vnode *);
 static int hammer2_destroy_path(struct m_vnode *, const char *);
 static int hammer2_destroy_inum(struct m_vnode *, hammer2_tid_t);
 static int hammer2_growfs(struct m_vnode *, hammer2_off_t);
-static int hammer2_readx_handle(struct m_vnode *, const char *, const char *);
+struct hammer2_linkq;
+static int hammer2_readx_handle(struct m_vnode *, const char *, const char *,
+    struct hammer2_linkq *);
 static int hammer2_readx(struct m_vnode *, const char *, const char *);
 static void unittest_trim_slash(void);
 
@@ -1983,6 +1985,80 @@ hammer2_growfs(struct m_vnode *vp, hammer2_off_t size)
 	return error;
 }
 
+struct hammer2_link {
+	TAILQ_ENTRY(hammer2_link) entry;
+	hammer2_tid_t inum;
+	uint64_t nlinks;
+	char path[PATH_MAX];
+};
+
+TAILQ_HEAD(hammer2_linkq, hammer2_link);
+
+static void
+hammer2_linkq_init(struct hammer2_linkq *linkq)
+{
+	TAILQ_INIT(linkq);
+}
+
+static void
+hammer2_linkq_cleanup(struct hammer2_linkq *linkq)
+{
+	struct hammer2_link *e;
+	int count = 0;
+
+	/*
+	 * linkq must be empty at this point, or link count is broken.
+	 * Note that if an image was made by makefs, hardlinks in the source
+	 * directory become hardlinks in the image only if all links exist under
+	 * that directory, as makefs doesn't determine hardlink via link count.
+	 */
+	while ((e = TAILQ_FIRST(linkq)) != NULL) {
+		count++;
+		TAILQ_REMOVE(linkq, e, entry);
+		free(e);
+	}
+	assert(TAILQ_EMPTY(linkq));
+
+	if (count)
+		errx(1, "%d link entries remained", count);
+}
+
+static void
+hammer2_linkq_add(struct hammer2_linkq *linkq, hammer2_tid_t inum,
+    uint64_t nlinks, const char *path)
+{
+	struct hammer2_link *e;
+	int count = 0;
+
+	e = ecalloc(1, sizeof(*e));
+	e->inum = inum;
+	e->nlinks = nlinks;
+	strlcpy(e->path, path, sizeof(e->path));
+	TAILQ_INSERT_TAIL(linkq, e, entry);
+
+	TAILQ_FOREACH(e, linkq, entry)
+		if (e->inum == inum)
+			count++;
+	if (count > 1)
+		errx(1, "%d link entries exist for inum %jd",
+		    count, (intmax_t)inum);
+}
+
+static void
+hammer2_linkq_del(struct hammer2_linkq *linkq, hammer2_tid_t inum)
+{
+	struct hammer2_link *e, *next;
+
+	TAILQ_FOREACH_MUTABLE(e, linkq, entry, next)
+		if (e->inum == inum) {
+			e->nlinks--;
+			if (e->nlinks == 1) {
+				TAILQ_REMOVE(linkq, e, entry);
+				free(e);
+			}
+		}
+}
+
 static void
 hammer2_utimes(struct m_vnode *vp, const char *f)
 {
@@ -1996,7 +2072,8 @@ hammer2_utimes(struct m_vnode *vp, const char *f)
 }
 
 static int
-hammer2_readx_directory(struct m_vnode *dvp, const char *dir, const char *name)
+hammer2_readx_directory(struct m_vnode *dvp, const char *dir, const char *name,
+    struct hammer2_linkq *linkq)
 {
 	struct m_vnode *vp;
 	struct dirent *dp;
@@ -2028,7 +2105,7 @@ hammer2_readx_directory(struct m_vnode *dvp, const char *dir, const char *name)
 				if (error)
 					return error;
 				error = hammer2_readx_handle(vp, tmp,
-				    dp->d_name);
+				    dp->d_name, linkq);
 				if (error)
 					return error;
 			}
@@ -2044,15 +2121,57 @@ hammer2_readx_directory(struct m_vnode *dvp, const char *dir, const char *name)
 }
 
 static int
-hammer2_readx_regfile(struct m_vnode *vp, const char *dir, const char *name)
+hammer2_readx_link(struct m_vnode *vp, const char *src, const char *lnk,
+    struct hammer2_linkq *linkq)
 {
 	hammer2_inode_t *ip = VTOI(vp);
+	struct stat st;
+	int error;
+
+	if (!stat(lnk, &st)) {
+		error = unlink(lnk);
+		if (error)
+			return error;
+	}
+
+	error = link(src, lnk);
+	if (error)
+		return error;
+
+	hammer2_linkq_del(linkq, ip->meta.inum);
+
+	return 0;
+}
+
+static int
+hammer2_readx_regfile(struct m_vnode *vp, const char *dir, const char *name,
+    struct hammer2_linkq *linkq)
+{
+	hammer2_inode_t *ip = VTOI(vp);
+	struct hammer2_link *e;
 	char *buf, out[PATH_MAX];
 	size_t resid, n;
 	off_t offset;
 	int fd, error;
+	bool found = false;
 
 	snprintf(out, sizeof(out), "%s/%s", dir, name);
+
+	if (ip->meta.nlinks > 1) {
+		TAILQ_FOREACH(e, linkq, entry)
+			if (e->inum == ip->meta.inum) {
+				found = true;
+				error = hammer2_readx_link(vp, e->path, out,
+				    linkq);
+				if (error == 0)
+					return 0;
+				/* ignore failure */
+			}
+		if (!found)
+			hammer2_linkq_add(linkq, ip->meta.inum, ip->meta.nlinks,
+			    out);
+	}
+
 	fd = open(out, O_WRONLY | O_CREAT | O_TRUNC, 0666);
 	if (fd == -1)
 		err(1, "failed to create %s", out);
@@ -2087,15 +2206,16 @@ hammer2_readx_regfile(struct m_vnode *vp, const char *dir, const char *name)
 }
 
 static int
-hammer2_readx_handle(struct m_vnode *vp, const char *dir, const char *name)
+hammer2_readx_handle(struct m_vnode *vp, const char *dir, const char *name,
+    struct hammer2_linkq *linkq)
 {
 	hammer2_inode_t *ip = VTOI(vp);
 
 	switch (ip->meta.type) {
 	case HAMMER2_OBJTYPE_DIRECTORY:
-		return hammer2_readx_directory(vp, dir, name);
+		return hammer2_readx_directory(vp, dir, name, linkq);
 	case HAMMER2_OBJTYPE_REGFILE:
-		return hammer2_readx_regfile(vp, dir, name);
+		return hammer2_readx_regfile(vp, dir, name, linkq);
 	default:
 		/* XXX */
 		printf("ignore inode %jd %s \"%s\"\n",
@@ -2111,6 +2231,7 @@ static int
 hammer2_readx(struct m_vnode *dvp, const char *dir, const char *f)
 {
 	hammer2_inode_t *ip;
+	struct hammer2_linkq linkq;
 	struct m_vnode *vp;
 	char *o, *p, *name;
 	char tmp[PATH_MAX];
@@ -2171,7 +2292,9 @@ hammer2_readx(struct m_vnode *dvp, const char *dir, const char *f)
 	if (error)
 		return error;
 start_ioctl:
-	error = hammer2_readx_handle(vp, dir, name);
+	hammer2_linkq_init(&linkq);
+	error = hammer2_readx_handle(vp, dir, name, &linkq);
+	hammer2_linkq_cleanup(&linkq);
 	if (error)
 		return error;
 
