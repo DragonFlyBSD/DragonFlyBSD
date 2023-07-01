@@ -40,6 +40,7 @@
 #include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/mman.h>
+#include <sys/time.h>
 #include <sys/dirent.h>
 
 #include <stdio.h>
@@ -1982,6 +1983,18 @@ hammer2_growfs(struct m_vnode *vp, hammer2_off_t size)
 	return error;
 }
 
+static void
+hammer2_utimes(struct m_vnode *vp, const char *f)
+{
+	hammer2_inode_t *ip = VTOI(vp);
+	struct timeval tv[2];
+
+	hammer2_time_to_timeval(ip->meta.atime, &tv[0]);
+	hammer2_time_to_timeval(ip->meta.mtime, &tv[1]);
+
+	utimes(f, tv); /* ignore failure */
+}
+
 static int
 hammer2_readx_directory(struct m_vnode *dvp, const char *dir, const char *name)
 {
@@ -2025,6 +2038,7 @@ hammer2_readx_directory(struct m_vnode *dvp, const char *dir, const char *name)
 	}
 
 	free(buf);
+	hammer2_utimes(dvp, tmp);
 
 	return 0;
 }
@@ -2067,6 +2081,7 @@ hammer2_readx_regfile(struct m_vnode *vp, const char *dir, const char *name)
 	close(fd);
 
 	free(buf);
+	hammer2_utimes(vp, out);
 
 	return 0;
 }

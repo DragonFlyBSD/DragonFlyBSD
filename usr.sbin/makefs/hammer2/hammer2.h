@@ -1497,6 +1497,7 @@ int hammer2_get_vtype(uint8_t type);
 uint8_t hammer2_get_obj_type(enum vtype vtype);
 void hammer2_time_to_timespec(uint64_t xtime, struct timespec *ts);
 uint64_t hammer2_timespec_to_time(const struct timespec *ts);
+void hammer2_time_to_timeval(uint64_t xtime, struct timeval *tv);
 uint32_t hammer2_to_unix_xid(const uuid_t *uuid);
 void hammer2_guid_to_uuid(uuid_t *uuid, uint32_t guid);
 

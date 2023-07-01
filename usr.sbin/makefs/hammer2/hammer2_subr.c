@@ -41,6 +41,7 @@
 #include <sys/types.h>
 #include <sys/uuid.h>
 */
+#include <sys/time.h>
 #include <sys/dirent.h>
 
 #include "hammer2.h"
@@ -150,6 +151,16 @@ hammer2_timespec_to_time(const struct timespec *ts)
 	xtime = (unsigned)(ts->tv_nsec / 1000) +
 		(unsigned long)ts->tv_sec * 1000000ULL;
 	return(xtime);
+}
+
+/*
+ * Convert a hammer2 64-bit time to a timeval.
+ */
+void
+hammer2_time_to_timeval(uint64_t xtime, struct timeval *tv)
+{
+	tv->tv_sec = (unsigned long)(xtime / 1000000);
+	tv->tv_usec = (unsigned int)(xtime % 1000000);
 }
 
 /*
