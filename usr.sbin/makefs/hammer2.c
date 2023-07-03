@@ -1994,15 +1994,15 @@ hammer2_linkq_init(struct hammer2_linkq *linkq)
 }
 
 static void
-hammer2_linkq_cleanup(struct hammer2_linkq *linkq)
+hammer2_linkq_cleanup(struct hammer2_linkq *linkq, bool is_root)
 {
 	struct hammer2_link *e;
 	int count = 0;
 
 	/*
-	 * linkq must be empty at this point, or link count is broken.
+	 * If is_root is true, linkq must be empty, or link count is broken.
 	 * Note that if an image was made by makefs, hardlinks in the source
-	 * directory become hardlinks in the image only if all links exist under
+	 * directory became hardlinks in the image only if >1 links existed under
 	 * that directory, as makefs doesn't determine hardlink via link count.
 	 */
 	while ((e = TAILQ_FIRST(linkq)) != NULL) {
@@ -2012,7 +2012,7 @@ hammer2_linkq_cleanup(struct hammer2_linkq *linkq)
 	}
 	assert(TAILQ_EMPTY(linkq));
 
-	if (count)
+	if (count && is_root)
 		errx(1, "%d link entries remained", count);
 }
 
@@ -2081,7 +2081,7 @@ hammer2_readx_directory(struct m_vnode *dvp, const char *dir, const char *name,
 	if (stat(tmp, &st) == -1 && mkdir(tmp, 0666) == -1)
 		err(1, "failed to mkdir %s", tmp);
 
-	buf = calloc(1, HAMMER2_PBUFSIZE);
+	buf = ecalloc(1, HAMMER2_PBUFSIZE);
 
 	while (!eofflag) {
 		error = hammer2_readdir(dvp, buf, HAMMER2_PBUFSIZE, &offset,
@@ -2169,7 +2169,7 @@ hammer2_readx_regfile(struct m_vnode *vp, const char *dir, const char *name,
 	if (fd == -1)
 		err(1, "failed to create %s", out);
 
-	buf = calloc(1, HAMMER2_PBUFSIZE);
+	buf = ecalloc(1, HAMMER2_PBUFSIZE);
 	resid = ip->meta.size;
 	offset = 0;
 
@@ -2225,7 +2225,7 @@ hammer2_readx(struct m_vnode *dvp, const char *dir, const char *f)
 {
 	hammer2_inode_t *ip;
 	struct hammer2_linkq linkq;
-	struct m_vnode *vp;
+	struct m_vnode *vp, *ovp = dvp;
 	char *o, *p, *name;
 	char tmp[PATH_MAX];
 	int error;
@@ -2241,7 +2241,7 @@ hammer2_readx(struct m_vnode *dvp, const char *dir, const char *f)
 		return error;
 	if (strlen(p) == 0) {
 		vp = dvp;
-		goto start_ioctl;
+		goto start_read;
 	}
 
 	while ((p = strchr(p, '/')) != NULL) {
@@ -2284,10 +2284,10 @@ hammer2_readx(struct m_vnode *dvp, const char *dir, const char *f)
 	error = hammer2_nresolve(dvp, &vp, name, strlen(name));
 	if (error)
 		return error;
-start_ioctl:
+start_read:
 	hammer2_linkq_init(&linkq);
 	error = hammer2_readx_handle(vp, dir, name, &linkq);
-	hammer2_linkq_cleanup(&linkq);
+	hammer2_linkq_cleanup(&linkq, vp == ovp);
 	if (error)
 		return error;
 
