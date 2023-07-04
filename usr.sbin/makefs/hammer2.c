@@ -1216,6 +1216,11 @@ trim_char(char *p, char c)
 	size_t n;
 	int i;
 
+	assert(p);
+	/* nothing to do */
+	if (strlen(p) == 0)
+		return 0;
+
 	strlcpy(tmp, p, sizeof(tmp));
 	if (strncmp(tmp, p, sizeof(tmp)))
 		return ENOSPC;
@@ -1563,7 +1568,7 @@ start_ioctl:
 	printf("name_key = 0x%jx\n", (uintmax_t)meta->name_key);
 	printf("name_len = %u\n", meta->name_len);
 	printf("ncopies = %u\n", meta->ncopies);
-	printf("comp_algo = %u\n", meta->comp_algo);
+	printf("comp_algo = 0x%jx\n", (uintmax_t)meta->comp_algo);
 	printf("target_type = %u\n", meta->target_type);
 	printf("check_algo = %u\n", meta->check_algo);
 	printf("pfs_nmasters = %u\n", meta->pfs_nmasters);
@@ -1609,10 +1614,14 @@ hammer2_inode_setcheck(struct m_vnode *dvp, const char *f)
 	check_algo_str = p;
 	name = p = o;
 
+	/* fail if already empty before trim */
+	if (strlen(p) == 0)
+		return EINVAL;
+
 	error = trim_slash(p);
 	if (error)
 		return error;
-	if (strlen(p) == 0 || strlen(check_algo_str) == 0)
+	if (strlen(check_algo_str) == 0)
 		return EINVAL;
 
 	/* convert check_algo_str to check_algo_idx */
@@ -1634,6 +1643,11 @@ hammer2_inode_setcheck(struct m_vnode *dvp, const char *f)
 	}
 	check_algo = HAMMER2_ENC_ALGO(check_algo_idx);
 	printf("change %s to algo %d (%s)\n", p, check_algo, check_algo_str);
+
+	if (strlen(p) == 0) {
+		vp = dvp;
+		goto start_ioctl;
+	}
 
 	while ((p = strchr(p, '/')) != NULL) {
 		*p++ = 0; /* NULL terminate name */
@@ -1675,6 +1689,7 @@ hammer2_inode_setcheck(struct m_vnode *dvp, const char *f)
 	error = hammer2_nresolve(dvp, &vp, name, strlen(name));
 	if (error)
 		return error;
+start_ioctl:
 	ip = VTOI(vp);
 
 	bzero(&inode, sizeof(inode));
@@ -1727,10 +1742,14 @@ hammer2_inode_setcomp(struct m_vnode *dvp, const char *f)
 	}
 	name = p = o;
 
+	/* fail if already empty before trim */
+	if (strlen(p) == 0)
+		return EINVAL;
+
 	error = trim_slash(p);
 	if (error)
 		return error;
-	if (strlen(p) == 0 || strlen(comp_algo_str) == 0)
+	if (strlen(comp_algo_str) == 0)
 		return EINVAL;
 
 	/* convert comp_algo_str to comp_algo_idx */
@@ -1782,6 +1801,11 @@ hammer2_inode_setcomp(struct m_vnode *dvp, const char *f)
 	printf("change %s to algo %d (%s) level %d\n",
 	    p, comp_algo, comp_algo_str, comp_level_idx);
 
+	if (strlen(p) == 0) {
+		vp = dvp;
+		goto start_ioctl;
+	}
+
 	while ((p = strchr(p, '/')) != NULL) {
 		*p++ = 0; /* NULL terminate name */
 		if (!strcmp(name, ".")) {
@@ -1822,6 +1846,7 @@ hammer2_inode_setcomp(struct m_vnode *dvp, const char *f)
 	error = hammer2_nresolve(dvp, &vp, name, strlen(name));
 	if (error)
 		return error;
+start_ioctl:
 	ip = VTOI(vp);
 
 	bzero(&inode, sizeof(inode));
