@@ -307,6 +307,8 @@ static int		ip_dooptions(struct mbuf *m, int, struct sockaddr_in *);
 static void		ip_freef(struct ipfrag_queue *, struct ipqhead *,
 			    struct ipq *);
 static void		ip_input_handler(netmsg_t);
+static void		ip_forward_redispatch(struct lwkt_port *port,
+			    struct mbuf *m, boolean_t srcrt);
 
 static void		ipfrag_timeo_dispatch(netmsg_t);
 static void		ipfrag_timeo(void *);
@@ -934,6 +936,42 @@ ip_transport_redispatch(struct lwkt_port *port, struct mbuf *m, int hlen)
 	pmsg->nm_packet = m;
 	pmsg->base.lmsg.u.ms_result = hlen;
 	lwkt_sendmsg(port, &pmsg->base.lmsg);
+}
+
+static void
+ip_forward_handler(netmsg_t msg)
+{
+	struct netmsg_forward *fmsg;
+	struct mbuf *m;
+	struct m_tag *mtag;
+	struct sockaddr_in *next_hop = NULL;
+
+	fmsg = &msg->forward;
+	m = fmsg->nm_packet;
+
+	/* Re-extract the next hop if it exists */
+	if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
+		/* Next hop */
+		mtag = m_tag_find(m, PACKET_TAG_IPFORWARD, NULL);
+		KKASSERT(mtag != NULL);
+		next_hop = m_tag_data(mtag);
+	}
+
+	ip_forward(m, fmsg->using_srcrt, next_hop);
+	/* msg was embedded in the mbuf, do not reply! */
+}
+
+static void
+ip_forward_redispatch(struct lwkt_port *port, struct mbuf *m, boolean_t srcrt)
+{
+	struct netmsg_forward *fmsg;
+
+	fmsg = &m->m_hdr.mh_fwdmsg;
+	netmsg_init(&fmsg->base, NULL, &netisr_apanic_rport,
+		    0, ip_forward_handler);
+	fmsg->nm_packet = m;
+	fmsg->using_srcrt = srcrt;
+	lwkt_sendmsg(port, &fmsg->base.lmsg);
 }
 
 /*
@@ -1901,6 +1939,21 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		       ip->ip_src.s_addr, pkt_dst.s_addr, ip->ip_ttl);
 #endif
 
+	if ((m->m_flags & M_HASH) == 0) {
+		lwkt_port_t port;
+
+		m = ip_rehashm(m, 0);
+		if (m == NULL)
+			return;
+
+		port = netisr_hashport(m->m_pkthdr.hash);
+
+		if (port != &curthread->td_msgport) {
+			ip_forward_redispatch(port, m, using_srcrt);
+			/* Requeued to other msgport; done */
+			return;
+		}
+	}
 	if (m->m_flags & (M_BCAST | M_MCAST) || !in_canforward(pkt_dst)) {
 		ipstat.ips_cantforward++;
 		m_freem(m);

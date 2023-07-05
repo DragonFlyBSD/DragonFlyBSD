@@ -73,6 +73,7 @@ typedef struct netmsg_base *netmsg_base_t;
  * - netmsg_inarp is embedded in mbufs.
  * - netmsg_ctlinput is embedded in mbufs.
  * - netmsg_genpkt is embedded in mbufs.
+ * - netmsg_forward is embedded in mbufs.
  */
 TAILQ_HEAD(notifymsglist, netmsg_so_notify);
 
@@ -103,6 +104,12 @@ struct netmsg_genpkt {
 	struct mbuf		*m;
 	void			*arg1;
 	u_long			arg2;
+};
+
+struct netmsg_forward {
+	struct netmsg_base	base;
+	struct mbuf		*nm_packet;
+	__boolean_t		using_srcrt;
 };
 
 struct netmsg_pr_timeout {
@@ -300,6 +307,7 @@ union netmsg {
 	struct netmsg_base		base;		/* base embedded */
 
 	struct netmsg_packet		packet;		/* mbuf embedded */
+	struct netmsg_forward		forward;	/* mbuf embedded */
 	struct netmsg_pr_timeout	timeout;
 	struct netmsg_so_notify		notify;
 	struct netmsg_so_notify_abort	notify_abort;

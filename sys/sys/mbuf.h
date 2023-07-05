@@ -98,6 +98,7 @@ struct m_hdr {
 		struct netmsg_inarp mhm_arp;	/* proto stack arpinput msg */
 		struct netmsg_ctlinput mhm_ctl;	/* proto stack ctlinput msg */
 		struct netmsg_genpkt mhm_gen;	/* generic pkt send/recv msg */
+		struct netmsg_forward mhm_fwd;	/* forwarding msg */
 	} mh_msgu;
 };
 #define mh_netmsg	mh_msgu.mhm_pkt
@@ -105,6 +106,7 @@ struct m_hdr {
 #define mh_arpmsg	mh_msgu.mhm_arp
 #define mh_ctlmsg	mh_msgu.mhm_ctl
 #define mh_genmsg	mh_msgu.mhm_gen
+#define mh_fwdmsg	mh_msgu.mhm_fwd
 
 /* pf stuff */
 struct pkthdr_pf {
