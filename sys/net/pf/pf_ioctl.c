@@ -3198,9 +3198,7 @@ static int
 pf_check_in(void *arg, struct mbuf **m, struct ifnet *ifp, int dir)
 {
 	/*
-	 * DragonFly's version of pf uses FreeBSD's native host byte ordering
-	 * for ip_len/ip_off. This is why we don't have to change byte order
-	 * like the FreeBSD-5 version does.
+	 * NOTE: ip_len and ip_off are left in network byte order
 	 */
 	int chk;
 
@@ -3219,9 +3217,7 @@ static int
 pf_check_out(void *arg, struct mbuf **m, struct ifnet *ifp, int dir)
 {
 	/*
-	 * DragonFly's version of pf uses FreeBSD's native host byte ordering
-	 * for ip_len/ip_off. This is why we don't have to change byte order
-	 * like the FreeBSD-5 version does.
+	 * NOTE: ip_len and ip_off are left in network byte order
 	 */
 	int chk;
 
@@ -3245,9 +3241,6 @@ pf_check_out(void *arg, struct mbuf **m, struct ifnet *ifp, int dir)
 static int
 pf_check6_in(void *arg, struct mbuf **m, struct ifnet *ifp, int dir)
 {
-	/*
-	 * IPv6 is not affected by ip_len/ip_off byte order changes.
-	 */
 	int chk;
 
 	lwkt_gettoken_shared(&pf_token);
@@ -3264,9 +3257,6 @@ pf_check6_in(void *arg, struct mbuf **m, struct ifnet *ifp, int dir)
 static int
 pf_check6_out(void *arg, struct mbuf **m, struct ifnet *ifp, int dir)
 {
-	/*
-	 * IPv6 is not affected by ip_len/ip_off byte order changes.
-	 */
 	int chk;
 
 	lwkt_gettoken_shared(&pf_token);

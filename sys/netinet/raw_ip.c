@@ -247,7 +247,7 @@ rip_output(struct mbuf *m, struct socket *so, ...)
 		ip->ip_tos = inp->inp_ip_tos;
 		ip->ip_off = 0;
 		ip->ip_p = inp->inp_ip_p;
-		ip->ip_len = m->m_pkthdr.len;
+		ip->ip_len = htons(m->m_pkthdr.len);
 		ip->ip_src = inp->inp_laddr;
 		ip->ip_dst.s_addr = dst;
 		ip->ip_ttl = inp->inp_ip_ttl;
@@ -277,7 +277,9 @@ rip_output(struct mbuf *m, struct socket *so, ...)
 		 * Don't allow packet length sizes that will crash.
 		 */
 		if ((hlen != sizeof(struct ip) && inp->inp_options) ||
-		    ip->ip_len > m->m_pkthdr.len || ip->ip_len < hlen) {
+		    ntohs(ip->ip_len) > m->m_pkthdr.len ||
+		    ntohs(ip->ip_len) < hlen)
+		{
 			m_freem(m);
 			return EINVAL;
 		}

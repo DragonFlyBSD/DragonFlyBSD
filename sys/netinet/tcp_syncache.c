@@ -1213,7 +1213,7 @@ syncache_respond(struct syncache *sc, struct mbuf *m)
 		ip = mtod(m, struct ip *);
 		ip->ip_v = IPVERSION;
 		ip->ip_hl = sizeof(struct ip) >> 2;
-		ip->ip_len = tlen;
+		ip->ip_len = htons(tlen);
 		ip->ip_id = 0;
 		ip->ip_off = 0;
 		ip->ip_sum = 0;
@@ -1231,8 +1231,9 @@ syncache_respond(struct syncache *sc, struct mbuf *m)
 		 *	2) the SCF_UNREACH flag has been set
 		 */
 		if (path_mtu_discovery
-		    && ((sc->sc_flags & SCF_UNREACH) == 0)) {
-		       ip->ip_off |= IP_DF;
+		    && ((sc->sc_flags & SCF_UNREACH) == 0))
+		{
+		       ip->ip_off |= htons(IP_DF);
 		}
 
 		th = (struct tcphdr *)(ip + 1);

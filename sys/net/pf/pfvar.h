@@ -506,7 +506,7 @@ struct pf_os_fingerprint {
 	SLIST_HEAD(pf_osfp_enlist, pf_osfp_entry) fp_oses; /* list of matches */
 	pf_tcpopts_t		fp_tcpopts;	/* packed TCP options */
 	u_int16_t		fp_wsize;	/* TCP window size */
-	u_int16_t		fp_psize;	/* ip->ip_len */
+	u_int16_t		fp_psize;	/* ip->ip_len (host order) */
 	u_int16_t		fp_mss;		/* TCP MSS */
 	u_int16_t		fp_flags;
 #define PF_OSFP_WSIZE_MOD	0x0001		/* Window modulus */
@@ -546,7 +546,7 @@ struct pf_osfp_ioctl {
 	struct pf_osfp_entry	fp_os;
 	pf_tcpopts_t		fp_tcpopts;	/* packed TCP options */
 	u_int16_t		fp_wsize;	/* TCP window size */
-	u_int16_t		fp_psize;	/* ip->ip_len */
+	u_int16_t		fp_psize;	/* ip->ip_len (host order) */
 	u_int16_t		fp_mss;		/* TCP MSS */
 	u_int16_t		fp_flags;
 	u_int8_t		fp_optcnt;	/* TCP option count */

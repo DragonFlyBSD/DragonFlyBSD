@@ -373,7 +373,7 @@ struct ip_fw_local {
 	uint16_t		dst_port;	/* NOTE: host format	*/
 	struct in_addr		src_ip;		/* NOTE: network format	*/
 	struct in_addr		dst_ip;		/* NOTE: network format	*/
-	uint16_t		ip_len;
+	uint16_t		ip_len;		/* NOTE: host format	*/
 	struct tcphdr		*tcp;
 };
 
@@ -1495,14 +1495,10 @@ ipfw_log(struct ipfw_context *ctx, struct ip_fw *f, u_int hlen,
 		int ip_off, offset, ip_len;
 		int len;
 
-		if (eh != NULL) { /* layer 2 packets are as on the wire */
-			ip_off = ntohs(ip->ip_off);
-			ip_len = ntohs(ip->ip_len);
-		} else {
-			ip_off = ip->ip_off;
-			ip_len = ip->ip_len;
-		}
+		ip_off = ntohs(ip->ip_off);
+		ip_len = ntohs(ip->ip_len);
 		offset = ip_off & IP_OFFMASK;
+
 		switch (ip->ip_p) {
 		case IPPROTO_TCP:
 			len = ksnprintf(SNPARGS(proto, 0), "TCP %s",
@@ -2952,7 +2948,7 @@ send_pkt(const struct ipfw_flow_id *id, uint32_t seq, uint32_t ack, int flags)
 	 * now fill fields left out earlier
 	 */
 	ip->ip_ttl = ip_defttl;
-	ip->ip_len = m->m_pkthdr.len;
+	ip->ip_len = htons(m->m_pkthdr.len);
 
 	bzero(&sro, sizeof(sro));
 	ip_rtaddr(ip->ip_dst, &sro);
@@ -2970,13 +2966,7 @@ static void
 send_reject(struct ip_fw_args *args, int code, int offset, int ip_len)
 {
 	if (code != ICMP_REJECT_RST) { /* Send an ICMP unreach */
-		/* We need the IP header in host order for icmp_error(). */
-		if (args->eh != NULL) {
-			struct ip *ip = mtod(args->m, struct ip *);
-
-			ip->ip_len = ntohs(ip->ip_len);
-			ip->ip_off = ntohs(ip->ip_off);
-		}
+		/* IP header is always left in network order */
 		icmp_error(args->m, ICMP_UNREACH, code, 0L, 0);
 	} else if (offset == 0 && args->f_id.proto == IPPROTO_TCP) {
 		struct tcphdr *const tcp =
@@ -3168,7 +3158,7 @@ ipfw_xlate(const struct ipfw_xlat *x, struct mbuf *m,
 
 	if (m->m_pkthdr.csum_flags & (CSUM_UDP | CSUM_TCP | CSUM_TSO)) {
 		if ((m->m_pkthdr.csum_flags & CSUM_TSO) == 0)
-			dlen = ip->ip_len - (ip->ip_hl << 2);
+			dlen = ntohs(ip->ip_len) - (ip->ip_hl << 2);
 		pseudo = TRUE;
 	}
 
@@ -3278,18 +3268,10 @@ ipfw_xlate_redispatch(struct mbuf *m, int cpuid, struct ipfw_xlat *x,
 	if (flags & IPFW_XLATE_FORWARD)
 		m->m_pkthdr.fw_flags |= IPFW_MBUF_XLATFWD;
 
-	if ((flags & IPFW_XLATE_OUTPUT) == 0) {
-		struct ip *ip = mtod(m, struct ip *);
-
-		/*
-		 * NOTE:
-		 * ip_input() expects ip_len/ip_off are in network
-		 * byte order.
-		 */
-		ip->ip_len = htons(ip->ip_len);
-		ip->ip_off = htons(ip->ip_off);
-	}
-
+	/*
+	 * NOTE: We always leave ip_len and ip_off in network
+	 *	 order across all network layers.
+	 */
 	nm = &m->m_hdr.mh_genmsg;
 	netmsg_init(&nm->base, NULL, &netisr_apanic_rport, 0,
 	    ipfw_ip_xlate_dispatch);
@@ -3320,13 +3302,8 @@ ipfw_setup_local(struct mbuf *m, const int hlen, struct ip_fw_args *args,
 	local->proto = args->f_id.proto = ip->ip_p;
 	local->src_ip = ip->ip_src;
 	local->dst_ip = ip->ip_dst;
-	if (args->eh != NULL) { /* layer 2 packets are as on the wire */
-		local->offset = ntohs(ip->ip_off) & IP_OFFMASK;
-		local->ip_len = ntohs(ip->ip_len);
-	} else {
-		local->offset = ip->ip_off & IP_OFFMASK;
-		local->ip_len = ip->ip_len;
-	}
+	local->offset = ntohs(ip->ip_off) & IP_OFFMASK;
+	local->ip_len = ntohs(ip->ip_len);
 
 #define PULLUP_TO(len)					\
 do {							\
@@ -3382,11 +3359,6 @@ static struct mbuf *
 ipfw_rehashm(struct mbuf *m, const int hlen, struct ip_fw_args *args,
     struct ip_fw_local *local, struct ip **ip0)
 {
-	struct ip *ip = mtod(m, struct ip *);
-
-	ip->ip_len = htons(ip->ip_len);
-	ip->ip_off = htons(ip->ip_off);
-
 	m->m_flags &= ~M_HASH;
 	ip_hashfn(&m, 0);
 	args->m = m;
@@ -3397,10 +3369,6 @@ ipfw_rehashm(struct mbuf *m, const int hlen, struct ip_fw_args *args,
 	KASSERT(m->m_flags & M_HASH, ("no hash"));
 
 	/* 'm' might be changed by ip_hashfn(). */
-	ip = mtod(m, struct ip *);
-	ip->ip_len = ntohs(ip->ip_len);
-	ip->ip_off = ntohs(ip->ip_off);
-
 	return (ipfw_setup_local(m, hlen, args, local, ip0));
 }
 
@@ -3758,10 +3726,7 @@ check_body:
 				if (hlen > 0) {
 					uint16_t off;
 
-					if (args->eh != NULL)
-						off = ntohs(ip->ip_off);
-					else
-						off = ip->ip_off;
+					off = ntohs(ip->ip_off);
 					if (off & (IP_MF | IP_OFFMASK))
 						match = 1;
 				}
@@ -4049,7 +4014,7 @@ check_body:
 				 * Does _not_ work with layer2 filtering.
 				 */
 				if (oif != NULL || args->eh != NULL ||
-				    (ip->ip_off & (IP_MF | IP_OFFMASK)) ||
+				    (ip->ip_off & htons(IP_MF | IP_OFFMASK)) ||
 				    (lc.proto != IPPROTO_TCP &&
 				     lc.proto != IPPROTO_UDP))
 					break;
@@ -4163,7 +4128,7 @@ check_body:
 				if (s == NULL ||
 				    (s->st_type == O_REDIRECT &&
 				     (args->eh != NULL ||
-				      (ip->ip_off & (IP_MF | IP_OFFMASK)) ||
+				      (ip->ip_off & htons(IP_MF | IP_OFFMASK)) ||
 				      (lc.proto != IPPROTO_TCP &&
 				       lc.proto != IPPROTO_UDP)))) {
 					/*
@@ -4262,7 +4227,7 @@ skip_xlate:
 				 * or non-fragments.
 				 */
 				if (oif != NULL || args->eh != NULL ||
-				    (ip->ip_off & (IP_MF | IP_OFFMASK)) == 0)
+				    (ip->ip_off & htons(IP_MF | IP_OFFMASK)) == 0)
 					goto next_rule;
 
 				ctx->ipfw_frags++;
@@ -4283,10 +4248,7 @@ skip_xlate:
 
 				ip = mtod(m, struct ip *);
 				hlen = ip->ip_hl << 2;
-				ip->ip_len += hlen;
-
-				ip->ip_len = htons(ip->ip_len);
-				ip->ip_off = htons(ip->ip_off);
+				ip->ip_len = htons(ntohs(ip->ip_len) + hlen);
 
 				ip_hashfn(&m, 0);
 				args->m = m;
@@ -4296,11 +4258,6 @@ skip_xlate:
 				KASSERT(m->m_flags & M_HASH, ("no hash"));
 				cpuid = netisr_hashcpu(m->m_pkthdr.hash);
 				if (cpuid != mycpuid) {
-					/*
-					 * NOTE:
-					 * ip_len/ip_off are in network byte
-					 * order.
-					 */
 					ctx->ipfw_defrag_remote++;
 					ipfw_defrag_redispatch(m, cpuid, f);
 					args->m = NULL;
@@ -4309,8 +4266,6 @@ skip_xlate:
 
 				/* 'm' might be changed by ip_hashfn(). */
 				ip = mtod(m, struct ip *);
-				ip->ip_len = ntohs(ip->ip_len);
-				ip->ip_off = ntohs(ip->ip_off);
 
 				m = ipfw_setup_local(m, hlen, args, &lc, &ip);
 				if (m == NULL)

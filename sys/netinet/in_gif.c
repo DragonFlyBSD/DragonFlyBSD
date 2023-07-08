@@ -164,7 +164,7 @@ in_gif_output(struct ifnet *ifp, int family, struct mbuf *m)
 	iphdr.ip_p = proto;
 	/* version will be set in ip_output() */
 	iphdr.ip_ttl = ip_gif_ttl;
-	iphdr.ip_len = m->m_pkthdr.len + sizeof(struct ip);
+	iphdr.ip_len = htons(m->m_pkthdr.len + sizeof(struct ip));
 	if (ifp->if_flags & IFF_LINK1)
 		ip_ecn_ingress(ECN_ALLOWED, &iphdr.ip_tos, &tos);
 	else

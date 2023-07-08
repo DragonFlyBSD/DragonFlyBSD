@@ -320,7 +320,9 @@ sl_compress_tcp(struct mbuf *m, struct ip *ip, struct slcompress *comp,
 		 */
 		if (ip->ip_len != cs->cs_ip.ip_len &&
 		    ntohs(cs->cs_ip.ip_len) == hlen)
+		{
 			break;
+		}
 
 		/* (fall through) */
 
@@ -536,8 +538,9 @@ sl_uncompress_tcp_core(u_char *buf, int buflen, int total_len, u_int type,
 		break;
 
 	case SPECIAL_D:
-		th->th_seq = htonl(ntohl(th->th_seq) + ntohs(cs->cs_ip.ip_len)
-				   - cs->cs_hlen);
+		th->th_seq = htonl(ntohl(th->th_seq) +
+				   ntohs(cs->cs_ip.ip_len) -
+				   cs->cs_hlen);
 		break;
 
 	default:

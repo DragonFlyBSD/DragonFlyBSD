@@ -202,7 +202,7 @@ ip_lengthcheck(struct mbuf **mp, int hoff)
 	 * Fragments other than the first fragment don't have much
 	 * length information.
 	 */
-	if (ntohs(ip->ip_off) & IP_OFFMASK)
+	if (ip->ip_off & htons(IP_OFFMASK))
 		goto ipcheckonly;
 
 	/*
@@ -301,9 +301,9 @@ ip_hashfn(struct mbuf **mptr, int hoff)
 	ip = mtodoff(m, struct ip *, hoff);
 	iphlen = ip->ip_hl << 2;
 
-	if (ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK)) {
+	if (ip->ip_off & htons(IP_MF | IP_OFFMASK)) {
 		hash = toeplitz_hash(toeplitz_rawhash_addr(
-		    ip->ip_src.s_addr, ip->ip_dst.s_addr));
+			    ip->ip_src.s_addr, ip->ip_dst.s_addr));
 		goto back;
 	}
 

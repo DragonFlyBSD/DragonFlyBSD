@@ -119,47 +119,47 @@
 #include <net/ipfw/ip_fw.h>
 #include <net/dummynet/ip_dummynet.h>
 
-int rsvp_on = 0;
-static int ip_rsvp_on;
+__read_mostly int rsvp_on = 0;
+__read_mostly static int ip_rsvp_on;
 struct socket *ip_rsvpd;
 
-int ipforwarding = 0;
+__read_mostly int ipforwarding = 0;
 SYSCTL_INT(_net_inet_ip, IPCTL_FORWARDING, forwarding, CTLFLAG_RW,
     &ipforwarding, 0, "Enable IP forwarding between interfaces");
 
-static int ipsendredirects = 1; /* XXX */
+__read_mostly static int ipsendredirects = 1; /* XXX */
 SYSCTL_INT(_net_inet_ip, IPCTL_SENDREDIRECTS, redirect, CTLFLAG_RW,
     &ipsendredirects, 0, "Enable sending IP redirects");
 
-int ip_defttl = IPDEFTTL;
+__read_mostly int ip_defttl = IPDEFTTL;
 SYSCTL_INT(_net_inet_ip, IPCTL_DEFTTL, ttl, CTLFLAG_RW,
     &ip_defttl, 0, "Maximum TTL on IP packets");
 
-static int ip_dosourceroute = 0;
+__read_mostly static int ip_dosourceroute = 0;
 SYSCTL_INT(_net_inet_ip, IPCTL_SOURCEROUTE, sourceroute, CTLFLAG_RW,
     &ip_dosourceroute, 0, "Enable forwarding source routed IP packets");
 
-static int ip_acceptsourceroute = 0;
+__read_mostly static int ip_acceptsourceroute = 0;
 SYSCTL_INT(_net_inet_ip, IPCTL_ACCEPTSOURCEROUTE, accept_sourceroute,
     CTLFLAG_RW, &ip_acceptsourceroute, 0,
     "Enable accepting source routed IP packets");
 
-static int maxnipq;
+__read_mostly static int maxnipq;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, maxfragpackets, CTLFLAG_RW,
     &maxnipq, 0,
     "Maximum number of IPv4 fragment reassembly queue entries");
 
-static int maxfragsperpacket;
+__read_mostly static int maxfragsperpacket;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, maxfragsperpacket, CTLFLAG_RW,
     &maxfragsperpacket, 0,
     "Maximum number of IPv4 fragments allowed per packet");
 
-static int ip_sendsourcequench = 0;
+__read_mostly static int ip_sendsourcequench = 0;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, sendsourcequench, CTLFLAG_RW,
     &ip_sendsourcequench, 0,
     "Enable the transmission of source quench packets");
 
-int ip_do_randomid = 1;
+__read_mostly int ip_do_randomid = 1;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, random_id, CTLFLAG_RW,
     &ip_do_randomid, 0,
     "Assign random ip_id values");	
@@ -176,13 +176,9 @@ SYSCTL_INT(_net_inet_ip, OID_AUTO, random_id, CTLFLAG_RW,
  * to the loopback interface instead of the interface where the
  * packets for those addresses are received.
  */
-static int ip_checkinterface = 0;
+__read_mostly static int ip_checkinterface = 0;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, check_interface, CTLFLAG_RW,
     &ip_checkinterface, 0, "Verify packet arrives on correct interface");
-
-static u_long ip_hash_count = 0;
-SYSCTL_ULONG(_net_inet_ip, OID_AUTO, hash_count, CTLFLAG_RD,
-    &ip_hash_count, 0, "Number of packets hashed by IP");
 
 #ifdef RSS_DEBUG
 static u_long ip_rehash_count = 0;
@@ -208,7 +204,7 @@ u_char	ip_protox[IPPROTO_MAX];
 struct	in_ifaddrhead in_ifaddrheads[MAXCPU];	/* first inet address */
 struct	in_ifaddrhashhead *in_ifaddrhashtbls[MAXCPU];
 						/* inet addr hash table */
-u_long	in_ifaddrhmask;				/* mask for hash table */
+__read_mostly u_long	in_ifaddrhmask;		/* mask for hash table */
 
 static struct mbuf *ipforward_mtemp[MAXCPU];
 
@@ -389,9 +385,9 @@ ip_init(void)
 
 		callout_init_mp(&fragq->timeo_ch);
 		netmsg_init(&fragq->timeo_netmsg, NULL, &netisr_adone_rport,
-		    MSGF_PRIORITY, ipfrag_timeo_dispatch);
+			    MSGF_PRIORITY, ipfrag_timeo_dispatch);
 		netmsg_init(&fragq->drain_netmsg, NULL, &netisr_adone_rport,
-		    MSGF_PRIORITY, ipfrag_drain_dispatch);
+			    MSGF_PRIORITY, ipfrag_drain_dispatch);
 	}
 
 	netisr_register(NETISR_IP, ip_input_handler, ip_hashfn);
@@ -400,7 +396,7 @@ ip_init(void)
 	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		fragq = &ipfrag_queue_pcpu[cpu];
 		callout_reset_bycpu(&fragq->timeo_ch, IPFRAG_TIMEO,
-		    ipfrag_timeo, NULL, cpu);
+				    ipfrag_timeo, NULL, cpu);
 	}
 
 	ip_porthash_trycount = 2 * netisr_ncpus;
@@ -453,6 +449,7 @@ ip_input(struct mbuf *m)
 	struct in_ifaddr_container *iac;
 	int hlen, checkif;
 	u_short sum;
+	uint16_t ip_len;
 	struct in_addr pkt_dst;
 	boolean_t using_srcrt = FALSE;		/* forward (by PFIL_HOOKS) */
 	struct in_addr odst;			/* original dst address(NAT) */
@@ -480,7 +477,8 @@ ip_input(struct mbuf *m)
 	 */
 	ip = mtod(m, struct ip *);
 	if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr)) ||
-	    (ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK))) {
+	    (ip->ip_off & htons(IP_MF | IP_OFFMASK)))
+	{
 		/*
 		 * Force hash recalculation for fragments and multicast
 		 * packets; hardware may not do it correctly.
@@ -524,8 +522,6 @@ ip_input(struct mbuf *m)
 		 *   be carried out on this cpu.
 		 */
 		ip = mtod(m, struct ip *);
-		ip->ip_len = ntohs(ip->ip_len);
-		ip->ip_off = ntohs(ip->ip_off);
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 		goto iphack;
 	}
@@ -573,22 +569,21 @@ ip_input(struct mbuf *m)
 	/*
 	 * Convert fields to host representation.
 	 */
-	ip->ip_len = ntohs(ip->ip_len);
-	ip->ip_off = ntohs(ip->ip_off);
+	ip_len = ntohs(ip->ip_len);
 
 	/* length checks already done in ip_hashfn() */
-	KASSERT(ip->ip_len >= hlen, ("total length less than header length"));
-	KASSERT(m->m_pkthdr.len >= ip->ip_len, ("mbuf too short"));
+	KASSERT(ip_len >= hlen, ("total length less than header length"));
+	KASSERT(m->m_pkthdr.len >= ip_len, ("mbuf too short"));
 
 	/*
 	 * Trim mbufs if longer than the IP header would have us expect.
 	 */
-	if (m->m_pkthdr.len > ip->ip_len) {
+	if (m->m_pkthdr.len > ip_len) {
 		if (m->m_len == m->m_pkthdr.len) {
-			m->m_len = ip->ip_len;
-			m->m_pkthdr.len = ip->ip_len;
+			m->m_len = ip_len;
+			m->m_pkthdr.len = ip_len;
 		} else {
-			m_adj(m, ip->ip_len - m->m_pkthdr.len);
+			m_adj(m, ip_len - m->m_pkthdr.len);
 		}
 	}
 
@@ -683,7 +678,9 @@ pass:
 	 */
 	if (TAILQ_EMPTY(&in_ifaddrheads[mycpuid]) &&
 	    !(m->m_flags & (M_MCAST | M_BCAST)))
+	{
 		goto ours;
+	}
 
 	/*
 	 * Cache the destination address of the packet; this may be
@@ -724,7 +721,9 @@ pass:
 		 */
 		if (IA_SIN(ia)->sin_addr.s_addr == pkt_dst.s_addr &&
 		    (!checkif || ia->ia_ifp == m->m_pkthdr.rcvif))
+		{
 			goto ours;
+		}
 	}
 	ia = NULL;
 
@@ -831,7 +830,9 @@ ours:
 	if (ipstealth &&
 	    hlen > sizeof(struct ip) &&
 	    ip_dooptions(m, 1, next_hop))
+	{
 		return;
+	}
 
 	/* Count the packet in the ip address stats */
 	if (ia != NULL) {
@@ -846,7 +847,7 @@ ours:
 	 * if the packet was previously fragmented,
 	 * but it's not worth the time; just let them time out.)
 	 */
-	if (ip->ip_off & (IP_MF | IP_OFFMASK)) {
+	if (ip->ip_off & htons(IP_MF | IP_OFFMASK)) {
 		/*
 		 * Attempt reassembly; if it succeeds, proceed.  ip_reass()
 		 * will return a different mbuf.
@@ -862,14 +863,14 @@ ours:
 		/* Get the header length of the reassembled packet */
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 	} else {
-		ip->ip_len -= hlen;
+		ip->ip_len = htons(ntohs(ip->ip_len) - hlen);
 	}
 
 	/*
 	 * We must forward the packet to the correct protocol thread if
 	 * we are not already in it.
 	 *
-	 * NOTE: ip_len is now in host form.  ip_len is not adjusted
+	 * NOTE: ip_len is left in network form.  ip_len is not adjusted
 	 *	 further for protocol processing, instead we pass hlen
 	 *	 to the protosw and let it deal with it.
 	 */
@@ -905,8 +906,8 @@ ip_rehashm(struct mbuf *m, int hlen)
 #ifdef RSS_DEBUG
 	atomic_add_long(&ip_rehash_count, 1);
 #endif
-	ip->ip_len = htons(ip->ip_len + hlen);
-	ip->ip_off = htons(ip->ip_off);
+	if (hlen)
+		ip->ip_len = htons(ntohs(ip->ip_len) + hlen);
 
 	ip_hashfn(&m, 0);
 	if (m == NULL)
@@ -914,8 +915,8 @@ ip_rehashm(struct mbuf *m, int hlen)
 
 	/* 'm' might be changed by ip_hashfn(). */
 	ip = mtod(m, struct ip *);
-	ip->ip_len = ntohs(ip->ip_len) - hlen;
-	ip->ip_off = ntohs(ip->ip_off);
+	if (hlen)
+		ip->ip_len = htons(ntohs(ip->ip_len) - hlen);
 	KASSERT(m->m_flags & M_HASH, ("no hash"));
 
 	return (m);
@@ -991,6 +992,8 @@ ip_reass(struct mbuf *m)
 	int hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 	int i, next;
 	u_short sum;
+	uint16_t ip_off;
+	uint16_t ip_len;
 
 	/* If maxnipq or maxfragsperpacket are 0, never accept fragments. */
 	if (maxnipq == 0 || maxfragsperpacket == 0) {
@@ -1010,7 +1013,9 @@ ip_reass(struct mbuf *m)
 		    ip->ip_src.s_addr == fp->ipq_src.s_addr &&
 		    ip->ip_dst.s_addr == fp->ipq_dst.s_addr &&
 		    ip->ip_p == fp->ipq_p)
+		{
 			goto found;
+		}
 	}
 
 	fp = NULL;
@@ -1032,8 +1037,9 @@ ip_reass(struct mbuf *m)
 			 * so drop from one of the others.
 			 */
 			for (i = 0; i < IPREASS_NHASH; i++) {
-				struct ipq *r = TAILQ_LAST(&fragq->ipq[i],
-				    ipqhead);
+				struct ipq *r;
+
+				r = TAILQ_LAST(&fragq->ipq[i], ipqhead);
 				if (r) {
 					ipstat.ips_fragtimeout += r->ipq_nfrags;
 					ip_freef(fragq, &fragq->ipq[i], r);
@@ -1050,13 +1056,13 @@ found:
 	 * Adjust ip_len to not reflect header,
 	 * convert offset of this to bytes.
 	 */
-	ip->ip_len -= hlen;
-	if (ip->ip_off & IP_MF) {
+	ip->ip_len = htons(ntohs(ip->ip_len) - hlen);
+	if (ip->ip_off & htons(IP_MF)) {
 		/*
 		 * Make sure that fragments have a data length
 		 * that's a non-zero multiple of 8 bytes.
 		 */
-		if (ip->ip_len == 0 || (ip->ip_len & 0x7) != 0) {
+		if (ip->ip_len == 0 || (ip->ip_len & htons(0x7)) != 0) {
 			ipstat.ips_toosmall++; /* XXX */
 			m_freem(m);
 			goto done;
@@ -1065,7 +1071,6 @@ found:
 	} else {
 		m->m_flags &= ~M_FRAG;
 	}
-	ip->ip_off <<= 3;
 
 	ipstat.ips_fragments++;
 	m->m_pkthdr.header = ip;
@@ -1075,14 +1080,14 @@ found:
 	 * then csum_data is not valid at all.
 	 */
 	if ((m->m_pkthdr.csum_flags & (CSUM_FRAG_NOT_CHECKED | CSUM_DATA_VALID))
-	    == (CSUM_FRAG_NOT_CHECKED | CSUM_DATA_VALID)) {
+	    == (CSUM_FRAG_NOT_CHECKED | CSUM_DATA_VALID))
+	{
 		m->m_pkthdr.csum_data = 0;
 		m->m_pkthdr.csum_flags &= ~(CSUM_DATA_VALID | CSUM_PSEUDO_HDR);
 	}
 
 	/*
-	 * Presence of header sizes in mbufs
-	 * would confuse code below.
+	 * Presence of header sizes in mbufs would confuse code below.
 	 */
 	m->m_data += hlen;
 	m->m_len -= hlen;
@@ -1110,12 +1115,27 @@ found:
 #define	GETIP(m)	((struct ip*)((m)->m_pkthdr.header))
 
 	/*
-	 * Find a segment which begins after this one does.
+	 * Find a segment which begins after this one does.  We
+	 * don't have to fully convert the offset field for this
+	 * test.
 	 */
 	for (p = NULL, q = fp->ipq_frags; q; p = q, q = q->m_nextpkt) {
-		if (GETIP(q)->ip_off > ip->ip_off)
+		if ((ntohs(GETIP(q)->ip_off) & IP_OFFMASK) >
+		    (ntohs(ip->ip_off) & IP_OFFMASK))
+		{
 			break;
+		}
 	}
+
+	/*
+	 * Drop fragment if it overflows the maximum allowed IP
+	 * packet size.
+	 */
+	ip_off = (ntohs(ip->ip_off) & IP_OFFMASK) << 3;
+	ip_len = ntohs(ip->ip_len);
+
+	if (ip_off + ip_len > 65535U)
+		goto dropfrag;
 
 	/*
 	 * If there is a preceding segment, it may provide some of
@@ -1126,15 +1146,26 @@ found:
 	 * If some of the data is dropped from the the preceding
 	 * segment, then it's checksum is invalidated.
 	 */
+
 	if (p) {
-		i = GETIP(p)->ip_off + GETIP(p)->ip_len - ip->ip_off;
-		if (i > 0) {
-			if (i >= ip->ip_len)
+		uint16_t fp_off;
+		uint16_t fp_len;
+
+		/* in bytes */
+		fp_off = (ntohs(GETIP(p)->ip_off) & IP_OFFMASK) << 3;
+		fp_len = ntohs(GETIP(p)->ip_len);
+
+		if (fp_off + fp_len > ip_off) {
+			i = fp_off + fp_len - ip_off;
+			if (i >= ip_len)
 				goto dropfrag;
 			m_adj(m, i);
 			m->m_pkthdr.csum_flags = 0;
-			ip->ip_off += i;
-			ip->ip_len -= i;
+			ip_off = fp_off + fp_len;
+			ip_len -= i;
+
+			ip->ip_off = htons(ip_off >> 3);
+			ip->ip_len = htons(ip_len);
 		}
 		m->m_nextpkt = p->m_nextpkt;
 		p->m_nextpkt = m;
@@ -1144,15 +1175,23 @@ found:
 	}
 
 	/*
+	 * Dequeue any later segments that we completely overlap.
 	 * While we overlap succeeding segments trim them or,
 	 * if they are completely covered, dequeue them.
 	 */
-	for (; q != NULL && ip->ip_off + ip->ip_len > GETIP(q)->ip_off;
-	     q = nq) {
-		i = (ip->ip_off + ip->ip_len) - GETIP(q)->ip_off;
-		if (i < GETIP(q)->ip_len) {
-			GETIP(q)->ip_len -= i;
-			GETIP(q)->ip_off += i;
+	while (q) {
+		uint16_t fp_off;
+		uint16_t fp_len;
+
+		fp_off = (ntohs(GETIP(q)->ip_off) & IP_OFFMASK) << 3;
+		fp_len = ntohs(GETIP(q)->ip_len);
+		if (ip_off + ip_len <= fp_off)
+			break;
+		i = ip_off + ip_len - fp_off;	/* bytes overlapped */
+
+		if (i < fp_len) {
+			GETIP(q)->ip_len = htons(fp_len - i);
+			GETIP(q)->ip_off = htons((fp_off + i) >> 3);
 			m_adj(q, i);
 			q->m_pkthdr.csum_flags = 0;
 			break;
@@ -1163,6 +1202,8 @@ found:
 		fp->ipq_nfrags--;
 		q->m_nextpkt = NULL;
 		m_freem(q);
+
+		q = nq;
 	}
 
 inserted:
@@ -1178,14 +1219,19 @@ inserted:
 	 */
 	next = 0;
 	for (p = NULL, q = fp->ipq_frags; q; p = q, q = q->m_nextpkt) {
-		if (GETIP(q)->ip_off != next) {
+		uint16_t fp_off;
+		uint16_t fp_len;
+
+		fp_off = (ntohs(GETIP(q)->ip_off) & IP_OFFMASK) << 3;
+		fp_len = ntohs(GETIP(q)->ip_len);
+		if (fp_off != next) {
 			if (fp->ipq_nfrags > maxfragsperpacket) {
 				ipstat.ips_fragdropped += fp->ipq_nfrags;
 				ip_freef(fragq, head, fp);
 			}
 			goto done;
 		}
-		next += GETIP(q)->ip_len;
+		next += fp_len;
 	}
 	/* Make sure the last packet didn't have the IP_MF flag */
 	if (p->m_flags & M_FRAG) {
@@ -1236,17 +1282,19 @@ inserted:
 		m->m_pkthdr.csum_data -= 0xFFFF;
 
 	/*
-	 * Create header for new ip packet by
-	 * modifying header of first packet;
-	 * dequeue and discard fragment reassembly header.
-	 * Make header visible.
+	 * Create header for new ip packet by modifying the header of the
+	 * first packet.  Dequeue and discard the fragment reassembly header.
+	 * Make the header visible.  Set the offset to 0 and keep only the
+	 * DF flag from the first packet's ip_off field.
 	 */
-	ip->ip_len = next;
+	ip->ip_len = htons(next);
 	ip->ip_src = fp->ipq_src;
 	ip->ip_dst = fp->ipq_dst;
+	ip->ip_off &= htons(IP_DF);
 	TAILQ_REMOVE(head, fp, ipq_list);
 	fragq->nipq--;
 	mpipe_free(&ipq_mpipe, fp);
+
 	m->m_len += (IP_VHL_HL(ip->ip_vhl) << 2);
 	m->m_data -= (IP_VHL_HL(ip->ip_vhl) << 2);
 	/* some debugging cruft by sklower, below, will go away soon */
@@ -1994,7 +2042,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		} else {
 			mtemp->m_type = m->m_type;
 			mtemp->m_len = imin((IP_VHL_HL(ip->ip_vhl) << 2) + 8,
-			    (int)ip->ip_len);
+					    (int)ntohs(ip->ip_len));
 			mtemp->m_pkthdr.len = mtemp->m_len;
 			m_copydata(m, 0, mtemp->m_len, mtod(mtemp, caddr_t));
 		}

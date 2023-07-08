@@ -318,7 +318,7 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			 * RFC2004 specifies that fragmented datagrams shouldn't
 			 * be encapsulated.
 			 */
-			if (ip->ip_off & (IP_MF | IP_OFFMASK)) {
+			if (ip->ip_off & htons(IP_MF | IP_OFFMASK)) {
 				m_freem(m);
 				error = EINVAL;    /* is there better errno? */
 				goto end;
@@ -370,7 +370,7 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			}
 			ip = mtod(m, struct ip *);
 			memcpy((caddr_t)(ip + 1), &mob_h, (unsigned)msiz);
-			ip->ip_len = ntohs(ip->ip_len) + msiz;
+			ip->ip_len = htons(ntohs(ip->ip_len) + msiz);
 		} else {  /* AF_INET */
 			m_freem(m);
 			error = EINVAL;
@@ -415,7 +415,7 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		((struct ip*)gh)->ip_ttl = GRE_TTL;
 		((struct ip*)gh)->ip_tos = ip->ip_tos;
 		((struct ip*)gh)->ip_id = ip->ip_id;
-		gh->gi_len = m->m_pkthdr.len;
+		gh->gi_len = htons(m->m_pkthdr.len);
 	}
 
 	IFNET_STAT_INC(ifp, opackets, 1);

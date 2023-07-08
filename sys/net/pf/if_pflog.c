@@ -280,8 +280,6 @@ pflog_packet(struct pfi_kif *kif, struct mbuf *m, sa_family_t af, u_int8_t dir,
 	if (af == AF_INET) {
 		struct ip *ip;
 		ip = mtod(m, struct ip *);	
-		ip->ip_len = htons(ip->ip_len);
-		ip->ip_off = htons(ip->ip_off);
 
 		if (dir == PF_OUT) {
 			ip->ip_sum = 0;
@@ -300,15 +298,6 @@ pflog_packet(struct pfi_kif *kif, struct mbuf *m, sa_family_t af, u_int8_t dir,
 		}
 		bpf_reltoken();
 	}
-
-#ifdef INET
-	if (af == AF_INET) {
-		struct ip *ip = mtod(m, struct ip *);
-
-		ip->ip_len = ntohs(ip->ip_len);
-		ip->ip_off = ntohs(ip->ip_off);
-	}
-#endif /* INET */
 
 	return (0);
 }

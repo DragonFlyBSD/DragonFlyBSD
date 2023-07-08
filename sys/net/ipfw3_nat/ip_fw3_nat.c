@@ -348,7 +348,7 @@ ip_fw3_nat(struct ip_fw_args *args, struct cfg_nat *nat, struct mbuf *m)
 	/* replace src/dst and fix the checksum */
 	if (m->m_pkthdr.csum_flags & (CSUM_UDP | CSUM_TCP | CSUM_TSO)) {
 		if ((m->m_pkthdr.csum_flags & CSUM_TSO) == 0) {
-			dlen = ip->ip_len - (ip->ip_hl << 2);
+			dlen = ntohs(ip->ip_len) - (ip->ip_hl << 2);
 		}
 		pseudo = TRUE;
 	}
@@ -376,14 +376,8 @@ ip_fw3_nat(struct ip_fw_args *args, struct cfg_nat *nat, struct mbuf *m)
 
 	/* prepare the state for return traffic */
 	if (need_return_state) {
-		ip->ip_len = htons(ip->ip_len);
-		ip->ip_off = htons(ip->ip_off);
-
 		m->m_flags &= ~M_HASH;
 		ip_hashfn(&m, 0);
-
-		ip->ip_len = ntohs(ip->ip_len);
-		ip->ip_off = ntohs(ip->ip_off);
 
 		int nextcpu = netisr_hashcpu(m->m_pkthdr.hash);
 		if (nextcpu != mycpuid) {

@@ -368,13 +368,8 @@ ip_fw3_chk(struct ip_fw_args *args)
 	proto = args->f_id.proto = ip->ip_p;
 	src_ip = ip->ip_src;
 	dst_ip = ip->ip_dst;
-	if (args->eh != NULL) { /* layer 2 packets are as on the wire */
-		offset = ntohs(ip->ip_off) & IP_OFFMASK;
-		ip_len = ntohs(ip->ip_len);
-	} else {
-		offset = ip->ip_off & IP_OFFMASK;
-		ip_len = ip->ip_len;
-	}
+	offset = ntohs(ip->ip_off) & IP_OFFMASK;
+	ip_len = ntohs(ip->ip_len);
 
 #define PULLUP_TO(len)					\
 do {							\

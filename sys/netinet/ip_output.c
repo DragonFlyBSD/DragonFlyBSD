@@ -131,8 +131,6 @@ ip_localforward(struct mbuf *m, const struct sockaddr_in *dst, int hlen)
 			break;
 	}
 	if (iac != NULL) {
-		struct ip *ip;
-
 		if (m->m_pkthdr.rcvif == NULL)
 			m->m_pkthdr.rcvif = loif;
 		if (m->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
@@ -153,10 +151,6 @@ ip_localforward(struct mbuf *m, const struct sockaddr_in *dst, int hlen)
 				return 1;
 			}
 		}
-		ip = mtod(m, struct ip *);
-
-		ip->ip_len = htons(ip->ip_len);
-		ip->ip_off = htons(ip->ip_off);
 		ip_input(m);
 
 		return 1; /* The packet gets forwarded locally */
@@ -264,8 +258,8 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	 */
 	if (!(flags & (IP_FORWARDING|IP_RAWOUTPUT))) {
 		ip->ip_vhl = IP_MAKE_VHL(IPVERSION, hlen >> 2);
-		ip->ip_off &= IP_DF;
-		if (ip_do_rfc6864 && (ip->ip_off & IP_DF))
+		ip->ip_off &= htons(IP_DF);
+		if (ip_do_rfc6864 && (ip->ip_off & htons(IP_DF)))
 			ip->ip_id = 0;
 		else
 			ip->ip_id = ip_newid();
@@ -492,7 +486,7 @@ reroute:
 			goto bad;
 		}
 		/* don't allow broadcast messages to be fragmented */
-		if (ip->ip_len > ifp->if_mtu) {
+		if (ntohs(ip->ip_len) > ifp->if_mtu) {
 			error = EMSGSIZE;
 			goto bad;
 		}
@@ -658,11 +652,11 @@ pass:
 	 * care of the fragmentation or segmentation for us, can just
 	 * send directly.
 	 */
-	if (ip->ip_len <= ifp->if_mtu ||
-	    ((ifp->if_hwassist & CSUM_FRAGMENT) && !(ip->ip_off & IP_DF)) ||
-	    (m->m_pkthdr.csum_flags & CSUM_TSO)) {
-		ip->ip_len = htons(ip->ip_len);
-		ip->ip_off = htons(ip->ip_off);
+	if (ntohs(ip->ip_len) <= ifp->if_mtu ||
+	    ((ifp->if_hwassist & CSUM_FRAGMENT) &&
+	      !(ip->ip_off & htons(IP_DF))) ||
+	    (m->m_pkthdr.csum_flags & CSUM_TSO))
+	{
 		ip->ip_sum = 0;
 		if (sw_csum & CSUM_DELAY_IP) {
 			if (ip->ip_vhl == IP_VHL_BORING)
@@ -706,7 +700,7 @@ pass:
 		goto done;
 	}
 
-	if (ip->ip_off & IP_DF) {
+	if (ip->ip_off & htons(IP_DF)) {
 		error = EMSGSIZE;
 		/*
 		 * This case can happen if the user changed the MTU
@@ -788,7 +782,7 @@ ip_fragment(struct ip *ip, struct mbuf **m_frag, int mtu,
 	struct mbuf **mnext;
 	int nfrags;
 
-	if (ip->ip_off & IP_DF) {	/* Fragmentation not allowed */
+	if (ip->ip_off & htons(IP_DF)) { /* Fragmentation not allowed */
 		ipstat.ips_cantfrag++;
 		return EMSGSIZE;
 	}
@@ -856,7 +850,7 @@ smart_frag_failure:
 	 * The fragments are linked off the m_nextpkt of the original
 	 * packet, which after processing serves as the first fragment.
 	 */
-	for (nfrags = 1; off < ip->ip_len; off += len, nfrags++) {
+	for (nfrags = 1; off < ntohs(ip->ip_len); off += len, nfrags++) {
 		struct ip *mhip;	/* ip header on the fragment */
 		struct mbuf *m;
 		int mhlen = sizeof(struct ip);
@@ -882,12 +876,13 @@ smart_frag_failure:
 		}
 		m->m_len = mhlen;
 		/* XXX do we need to add ip->ip_off below ? */
-		mhip->ip_off = ((off - hlen) >> 3) + ip->ip_off;
-		if (off + len >= ip->ip_len) {	/* last fragment */
-			len = ip->ip_len - off;
+		mhip->ip_off = htons(((off - hlen) >> 3) + ntohs(ip->ip_off));
+		if (off + len >= ntohs(ip->ip_len)) {	/* last fragment */
+			len = ntohs(ip->ip_len) - off;
 			m->m_flags |= M_LASTFRAG;
-		} else
-			mhip->ip_off |= IP_MF;
+		} else {
+			mhip->ip_off |= htons(IP_MF);
+		}
 		mhip->ip_len = htons((u_short)(len + mhlen));
 		m->m_next = m_copy(m0, off, len);
 		if (m->m_next == NULL) {		/* copy failed */
@@ -900,7 +895,6 @@ smart_frag_failure:
 		m->m_pkthdr.rcvif = NULL;
 		m->m_pkthdr.csum_flags = m0->m_pkthdr.csum_flags;
 		m->m_pkthdr.csum_iphlen = mhlen;
-		mhip->ip_off = htons(mhip->ip_off);
 		mhip->ip_sum = 0;
 		if (sw_csum & CSUM_DELAY_IP)
 			mhip->ip_sum = in_cksum(m, mhlen);
@@ -917,11 +911,10 @@ smart_frag_failure:
 	 * Update first fragment by trimming what's been copied out
 	 * and updating header.
 	 */
-	m_adj(m0, hlen + firstlen - ip->ip_len);
+	m_adj(m0, hlen + firstlen - ntohs(ip->ip_len));
 	m0->m_pkthdr.len = hlen + firstlen;
 	ip->ip_len = htons((u_short)m0->m_pkthdr.len);
-	ip->ip_off |= IP_MF;
-	ip->ip_off = htons(ip->ip_off);
+	ip->ip_off |= htons(IP_MF);
 	ip->ip_sum = 0;
 	if (sw_csum & CSUM_DELAY_IP)
 		ip->ip_sum = in_cksum(m0, hlen);
@@ -939,7 +932,7 @@ in_delayed_cksum(struct mbuf *m)
 
 	ip = mtod(m, struct ip *);
 	offset = IP_VHL_HL(ip->ip_vhl) << 2 ;
-	csum = in_cksum_skip(m, ip->ip_len, offset);
+	csum = in_cksum_skip(m, ntohs(ip->ip_len), offset);
 	if (m->m_pkthdr.csum_flags & CSUM_UDP && csum == 0)
 		csum = 0xffff;
 	offset += m->m_pkthdr.csum_data;	/* checksum offset */
@@ -974,7 +967,7 @@ ip_insertoptions(struct mbuf *m, struct mbuf *opt, int *phlen)
 	unsigned optlen;
 
 	optlen = opt->m_len - sizeof p->ipopt_dst;
-	if (optlen + (u_short)ip->ip_len > IP_MAXPACKET) {
+	if (optlen + (u_short)ntohs(ip->ip_len) > IP_MAXPACKET) {
 		*phlen = 0;
 		return (m);		/* XXX should fail */
 	}
@@ -1005,7 +998,7 @@ ip_insertoptions(struct mbuf *m, struct mbuf *opt, int *phlen)
 	bcopy(p->ipopt_list, ip + 1, optlen);
 	*phlen = sizeof(struct ip) + optlen;
 	ip->ip_vhl = IP_MAKE_VHL(IPVERSION, *phlen >> 2);
-	ip->ip_len += optlen;
+	ip->ip_len = htons(ntohs( ip->ip_len) + optlen);
 	return (m);
 }
 
@@ -1896,8 +1889,6 @@ ip_mloopback(struct ifnet *ifp, struct mbuf *m, struct sockaddr_in *dst,
 		 * than the interface's MTU.  Can this possibly matter?
 		 */
 		ip = mtod(copym, struct ip *);
-		ip->ip_len = htons(ip->ip_len);
-		ip->ip_off = htons(ip->ip_off);
 		ip->ip_sum = 0;
 		if (ip->ip_vhl == IP_VHL_BORING) {
 			ip->ip_sum = in_cksum_hdr(ip);

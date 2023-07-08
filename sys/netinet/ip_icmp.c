@@ -164,7 +164,7 @@ icmp_error(struct mbuf *n, int type, int code, n_long dest, int destmtu)
 	 */
 	if (n->m_flags & M_DECRYPTED)
 		goto freeit;
-	if (oip->ip_off &~ (IP_MF|IP_DF))
+	if (oip->ip_off & htons(~(IP_MF|IP_DF)))
 		goto freeit;
 	if (oip->ip_p == IPPROTO_ICMP && type != ICMP_REDIRECT &&
 	  n->m_len >= oiplen + ICMP_MINLEN &&
@@ -181,7 +181,7 @@ icmp_error(struct mbuf *n, int type, int code, n_long dest, int destmtu)
 	m = m_gethdr(M_NOWAIT, MT_HEADER);
 	if (m == NULL)
 		goto freeit;
-	icmplen = min(oiplen + 8, oip->ip_len);
+	icmplen = min(oiplen + 8, ntohs(oip->ip_len));
 	if (icmplen < sizeof(struct ip))
 		panic("icmp_error: bad length");
 	m->m_len = icmplen + ICMP_MINLEN;
@@ -213,12 +213,6 @@ icmp_error(struct mbuf *n, int type, int code, n_long dest, int destmtu)
 	nip = &icp->icmp_ip;
 
 	/*
-	 * Convert fields to network representation.
-	 */
-	nip->ip_len = htons(nip->ip_len);
-	nip->ip_off = htons(nip->ip_off);
-
-	/*
 	 * Now, copy old ip header (without options)
 	 * in front of icmp message.
 	 */
@@ -230,7 +224,7 @@ icmp_error(struct mbuf *n, int type, int code, n_long dest, int destmtu)
 	m->m_pkthdr.rcvif = n->m_pkthdr.rcvif;
 	nip = mtod(m, struct ip *);
 	bcopy(oip, nip, sizeof(struct ip));
-	nip->ip_len = m->m_len;
+	nip->ip_len = htons(m->m_len);
 	nip->ip_vhl = IP_VHL_BORING;
 	nip->ip_p = IPPROTO_ICMP;
 	nip->ip_tos = 0;
@@ -591,7 +585,7 @@ icmp_input(struct mbuf **mp, int *offp, int proto)
 	struct in_ifaddr *ia;
 	struct mbuf *m = *mp;
 	struct ip *ip = mtod(m, struct ip *);
-	int icmplen = ip->ip_len;
+	int icmplen = ntohs(ip->ip_len);
 	int i, hlen;
 	int code;
 
@@ -848,7 +842,9 @@ badcode:
 			    ip->ip_src = satosin(&ia->ia_dstaddr)->sin_addr;
 		}
 reflect:
-		ip->ip_len += hlen;	/* since ip_input deducts this */
+		/* since ip_input deducts this */
+		ip->ip_len = htons(ntohs(ip->ip_len) + hlen);
+
 		icmpstat.icps_reflect++;
 		icmpstat.icps_outhist[icp->icmp_type]++;
 		icmp_reflect(m);
@@ -1092,7 +1088,7 @@ match:
 		 * Now strip out original options by copying rest of first
 		 * mbuf's data back, and adjust the IP length.
 		 */
-		ip->ip_len -= optlen;
+		ip->ip_len = htons(ntohs(ip->ip_len) - optlen);
 		ip->ip_vhl = IP_VHL_BORING;
 		m->m_len -= optlen;
 		if (m->m_flags & M_PKTHDR)
@@ -1127,7 +1123,7 @@ icmp_send(struct mbuf *m, struct mbuf *opts, struct route *rt)
 	m->m_len -= hlen;
 	icp = mtod(m, struct icmp *);
 	icp->icmp_cksum = 0;
-	icp->icmp_cksum = in_cksum(m, ip->ip_len - hlen);
+	icp->icmp_cksum = in_cksum(m, ntohs(ip->ip_len) - hlen);
 	m->m_data -= hlen;
 	m->m_len += hlen;
 	m->m_pkthdr.rcvif = NULL;

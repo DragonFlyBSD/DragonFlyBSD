@@ -356,10 +356,6 @@ div_output(struct socket *so, struct mbuf *m,
 			goto cantsend;
 		}
 
-		/* Convert fields to host order for ip_output() */
-		ip->ip_len = ntohs(ip->ip_len);
-		ip->ip_off = ntohs(ip->ip_off);
-
 		/* Send packet to output processing */
 		ipstat.ips_rawout++;			/* XXX */
 		error = ip_output(m, NULL, NULL,
@@ -556,10 +552,6 @@ ip_divert_out(struct mbuf *m, int tee)
 		m->m_pkthdr.csum_flags &= ~CSUM_DELAY_DATA;
 	}
 
-	/* Restore packet header fields to original values */
-	ip->ip_len = htons(ip->ip_len);
-	ip->ip_off = htons(ip->ip_off);
-
 	/* Deliver packet to divert input routine */
 	divert_packet(m, 0);
 
@@ -574,7 +566,7 @@ ip_divert_in(struct mbuf *m, int tee)
 	struct ip *ip = mtod(m, struct ip *);
 	struct m_tag *mtag;
 
-	if (ip->ip_off & (IP_MF | IP_OFFMASK)) {
+	if (ip->ip_off & htons(IP_MF | IP_OFFMASK)) {
 		const struct divert_info *divinfo;
 		u_short frag_off;
 		int hlen;
@@ -583,7 +575,7 @@ ip_divert_in(struct mbuf *m, int tee)
 		 * Only trust divert info in the fragment
 		 * at offset 0.
 		 */
-		frag_off = ip->ip_off << 3;
+		frag_off = ntohs(ip->ip_off) << 3;
 		if (frag_off != 0) {
 			mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
 			m_tag_delete(m, mtag);
@@ -611,16 +603,12 @@ ip_divert_in(struct mbuf *m, int tee)
 		 * Restore original checksum before diverting
 		 * packet
 		 */
-		ip->ip_len += hlen;
-		ip->ip_len = htons(ip->ip_len);
-		ip->ip_off = htons(ip->ip_off);
+		ip->ip_len = htons(ntohs(ip->ip_len) + hlen);
 		ip->ip_sum = 0;
 		if (hlen == sizeof(struct ip))
 			ip->ip_sum = in_cksum_hdr(ip);
 		else
 			ip->ip_sum = in_cksum(m, hlen);
-		ip->ip_off = ntohs(ip->ip_off);
-		ip->ip_len = ntohs(ip->ip_len);
 
 		/*
 		 * Only use the saved divert info
@@ -644,13 +632,6 @@ ip_divert_in(struct mbuf *m, int tee)
 	/* Clone packet if we're doing a 'tee' */
 	if (tee)
 		clone = m_dup(m, M_NOWAIT);
-
-	/*
-	 * Restore packet header fields to original
-	 * values
-	 */
-	ip->ip_len = htons(ip->ip_len);
-	ip->ip_off = htons(ip->ip_off);
 
 	/* Deliver packet to divert input routine */
 	divert_packet(m, 1);

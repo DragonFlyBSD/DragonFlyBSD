@@ -193,7 +193,7 @@ igmp_input(struct mbuf **mp, int *offp, int proto)
 	++igmpstat.igps_rcv_total;
 
 	ip = mtod(m, struct ip *);
-	igmplen = ip->ip_len;
+	igmplen = ntohs(ip->ip_len);
 
 	/*
 	 * Validate lengths
@@ -519,7 +519,7 @@ igmp_sendpkt(struct in_multi *inm, int type, unsigned long addr)
 	m->m_len += sizeof(struct ip);
 	ip = mtod(m, struct ip *);
 	ip->ip_tos = 0;
-	ip->ip_len = sizeof(struct ip) + IGMP_MINLEN;
+	ip->ip_len = htons(sizeof(struct ip) + IGMP_MINLEN);
 	ip->ip_off = 0;
 	ip->ip_p = IPPROTO_IGMP;
 	ip->ip_src.s_addr = INADDR_ANY;

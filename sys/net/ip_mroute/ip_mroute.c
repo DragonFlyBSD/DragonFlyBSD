@@ -1446,7 +1446,7 @@ ip_mdq(struct mbuf *m, struct ifnet *ifp, struct mfc *rt, vifi_t xmt_vif)
 {
     struct ip  *ip = mtod(m, struct ip *);
     vifi_t vifi;
-    int plen = ip->ip_len;
+    int plen = ntohs(ip->ip_len);
 
 /*
  * Macro to send packet on vif.  Since RSVP packets don't get counted on
@@ -1633,7 +1633,8 @@ phyint_send(struct ip *ip, struct vif *vifp, struct mbuf *m)
     if (vifp->v_rate_limit == 0)
 	tbf_send_packet(vifp, mb_copy);
     else
-	tbf_control(vifp, mb_copy, mtod(mb_copy, struct ip *), ip->ip_len);
+	tbf_control(vifp, mb_copy,
+		    mtod(mb_copy, struct ip *), ntohs(ip->ip_len));
 }
 
 static void
@@ -1641,7 +1642,7 @@ encap_send(struct ip *ip, struct vif *vifp, struct mbuf *m)
 {
     struct mbuf *mb_copy;
     struct ip *ip_copy;
-    int i, len = ip->ip_len;
+    int i, len = ntohs(ip->ip_len);
 
     /* Take care of delayed checksums */
     if (m->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
@@ -1678,7 +1679,7 @@ encap_send(struct ip *ip, struct vif *vifp, struct mbuf *m)
     ip_copy = mtod(mb_copy, struct ip *);
     *ip_copy = multicast_encap_iphdr;
     ip_copy->ip_id = ip_newid();
-    ip_copy->ip_len += len;
+    ip_copy->ip_len = htons(ntohs(ip_copy->ip_len) + len);
     ip_copy->ip_src = vifp->v_lcl_addr;
     ip_copy->ip_dst = vifp->v_rmt_addr;
 
@@ -1687,8 +1688,6 @@ encap_send(struct ip *ip, struct vif *vifp, struct mbuf *m)
      */
     ip = (struct ip *)((caddr_t)ip_copy + sizeof(multicast_encap_iphdr));
     --ip->ip_ttl;
-    ip->ip_len = htons(ip->ip_len);
-    ip->ip_off = htons(ip->ip_off);
     ip->ip_sum = 0;
     mb_copy->m_data += sizeof(multicast_encap_iphdr);
     ip->ip_sum = in_cksum(mb_copy, ip->ip_hl << 2);
@@ -1697,7 +1696,7 @@ encap_send(struct ip *ip, struct vif *vifp, struct mbuf *m)
     if (vifp->v_rate_limit == 0)
 	tbf_send_packet(vifp, mb_copy);
     else
-	tbf_control(vifp, mb_copy, ip, ip_copy->ip_len);
+	tbf_control(vifp, mb_copy, ip, ntohs(ip_copy->ip_len));
 }
 
 /*
@@ -1853,7 +1852,7 @@ tbf_process_q(struct vif *vifp)
      */
     while (t->tbf_q_len > 0) {
 	struct mbuf *m = t->tbf_q;
-	int len = mtod(m, struct ip *)->ip_len;
+	int len = ntohs(mtod(m, struct ip *)->ip_len);
 
 	/* determine if the packet can be sent */
 	if (len > t->tbf_n_tok)	/* not enough tokens, we are done */
@@ -2872,10 +2871,8 @@ pim_register_prepare(struct ip *ip, struct mbuf *m)
     /* Compute the MTU after the PIM Register encapsulation */
     mtu = 0xffff - sizeof(pim_encap_iphdr) - sizeof(pim_encap_pimhdr);
     
-    if (ip->ip_len <= mtu) {
+    if (ntohs(ip->ip_len) <= mtu) {
 	/* Turn the IP header into a valid one */
-	ip->ip_len = htons(ip->ip_len);
-	ip->ip_off = htons(ip->ip_off);
 	ip->ip_sum = 0;
 	ip->ip_sum = in_cksum(mb_copy, ip->ip_hl << 2);
     } else {
@@ -2978,7 +2975,9 @@ pim_register_send_rp(struct ip *ip, struct vif *vifp,
     ip_outer = mtod(mb_first, struct ip *);
     *ip_outer = pim_encap_iphdr;
     ip_outer->ip_id = ip_newid();
-    ip_outer->ip_len = len + sizeof(pim_encap_iphdr) + sizeof(pim_encap_pimhdr);
+    ip_outer->ip_len = htons(len +
+			     sizeof(pim_encap_iphdr) +
+			     sizeof(pim_encap_pimhdr));
     ip_outer->ip_src = viftable[vifi].v_lcl_addr;
     ip_outer->ip_dst = rt->mfc_rp;
     /*
@@ -2986,8 +2985,8 @@ pim_register_send_rp(struct ip *ip, struct vif *vifp,
      * IP_DF bit.
      */
     ip_outer->ip_tos = ip->ip_tos;
-    if (ntohs(ip->ip_off) & IP_DF)
-	ip_outer->ip_off |= IP_DF;
+    if (ip->ip_off & htons(IP_DF))
+	ip_outer->ip_off |= htons(IP_DF);
     pimhdr = (struct pim_encap_pimhdr *)((caddr_t)ip_outer
 					 + sizeof(pim_encap_iphdr));
     *pimhdr = pim_encap_pimhdr;
@@ -3002,7 +3001,7 @@ pim_register_send_rp(struct ip *ip, struct vif *vifp,
     if (vifp->v_rate_limit == 0)
 	tbf_send_packet(vifp, mb_first);
     else
-	tbf_control(vifp, mb_first, ip, ip_outer->ip_len);
+	tbf_control(vifp, mb_first, ip, ntohs(ip_outer->ip_len));
     
     /* Keep statistics */
     pimstat.pims_snd_registers_msgs++;
@@ -3026,7 +3025,7 @@ pim_input(struct mbuf **mp, int *offp, int proto)
     struct ip *ip = mtod(m, struct ip *);
     struct pim *pim;
     int minlen;
-    int datalen = ip->ip_len;
+    int datalen = ntohs(ip->ip_len);
     int ip_tos;
     int iphlen;
 

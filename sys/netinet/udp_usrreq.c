@@ -419,13 +419,13 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 	 * If not enough data to reflect UDP length, drop.
 	 */
 	len = ntohs((u_short)uh->uh_ulen);
-	if (ip->ip_len != len) {
-		if (len > ip->ip_len || len < sizeof(struct udphdr)) {
+	if (ntohs(ip->ip_len) != len) {
+		if (len > ntohs(ip->ip_len) || len < sizeof(struct udphdr)) {
 			udp_stat.udps_badlen++;
 			goto bad;
 		}
-		m_adj(m, len - ip->ip_len);
-		/* ip->ip_len = len; */
+		m_adj(m, len - ntohs(ip->ip_len));
+		/* ip->ip_len = htons(len); */
 	}
 	/*
 	 * Save a copy of the IP header in case we want restore it
@@ -608,7 +608,7 @@ done:
 			goto bad;
 #endif
 		*ip = save_ip;
-		ip->ip_len += iphlen;
+		ip->ip_len = htons(ntohs(ip->ip_len) + iphlen);
 		icmp_error(m, ICMP_UNREACH, ICMP_UNREACH_PORT, 0, 0);
 		return(IPPROTO_DONE);
 	}
@@ -1106,7 +1106,7 @@ udp_send(netmsg_t msg)
 	} else {
 		ui->ui_sum = 0;
 	}
-	((struct ip *)ui)->ip_len = sizeof(struct udpiphdr) + len;
+	((struct ip *)ui)->ip_len = htons(sizeof(struct udpiphdr) + len);
 	((struct ip *)ui)->ip_ttl = inp->inp_ip_ttl;	/* XXX */
 	((struct ip *)ui)->ip_tos = tos;
 	udp_stat.udps_opackets++;

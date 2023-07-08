@@ -108,8 +108,7 @@ ip_fw3_log_start(struct ifnet* ifp, struct ifaltq_subque *subque)
 
 /*
  * bpf_mtap into the ipfw interface.
- * eh == NULL when mbuf is a packet, then use the fake_eh
- * the ip_len need to be twisted before and after bpf copy.
+ * eh == NULL when mbuf is a packet, then use the fake_eh.
  */
 void
 ip_fw3_log(struct mbuf *m, struct ether_header *eh, uint16_t id)
@@ -131,17 +130,10 @@ ip_fw3_log(struct mbuf *m, struct ether_header *eh, uint16_t id)
 			bpf_reltoken();
 
 		} else {
-			struct ip *ip;
-			ip = mtod(m, struct ip *);
-			/* twist the ip_len for the bpf copy */
-			ip->ip_len =htons(ip->ip_len);
-
 			bpf_gettoken();
 			bpf_mtap_hdr(the_if->if_bpf, (caddr_t)fake_eh,
 					ETHER_HDR_LEN, m, 0);
 			bpf_reltoken();
-			ip->ip_len =ntohs(ip->ip_len);
-
 		}
 		LOGIF_RUNLOCK();
 #endif	/* !WITHOUT_BPF */

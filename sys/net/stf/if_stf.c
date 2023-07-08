@@ -395,7 +395,7 @@ stf_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	bcopy(in4, &ip->ip_dst, sizeof(ip->ip_dst));
 	ip->ip_p = IPPROTO_IPV6;
 	ip->ip_ttl = ip_stf_ttl;
-	ip->ip_len = m->m_pkthdr.len;	/*host order*/
+	ip->ip_len = htons(m->m_pkthdr.len);	/* network order */
 	if (ifp->if_flags & IFF_LINK1)
 		ip_ecn_ingress(ECN_ALLOWED, &ip->ip_tos, &tos);
 	else

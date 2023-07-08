@@ -1226,7 +1226,7 @@ after_th:
 
 			KASSERT(!INP_CHECK_SOCKAF(so, AF_INET6), ("inet6 pcb"));
 
-			ip->ip_len = m->m_pkthdr.len;
+			ip->ip_len = htons(m->m_pkthdr.len);
 			ip->ip_ttl = inp->inp_ip_ttl;	/* XXX */
 			ip->ip_tos = inp->inp_ip_tos;	/* XXX */
 			/*
@@ -1240,7 +1240,9 @@ after_th:
 			    (rt = inp->inp_route.ro_rt) &&
 			    (rt->rt_flags & RTF_UP) &&
 			    !(rt->rt_rmx.rmx_locks & RTV_MTU))
-				ip->ip_off |= IP_DF;
+			{
+				ip->ip_off |= htons(IP_DF);
+			}
 
 			KASSERT(inp->inp_flags & INP_HASH,
 			    ("inpcb has no hash"));

@@ -2197,7 +2197,7 @@ pf_send_tcp(const struct pf_rule *r, sa_family_t af,
 
 		/* IP header fields included in the TCP checksum */
 		h->ip_p = IPPROTO_TCP;
-		h->ip_len = tlen;
+		h->ip_len = htons(tlen);
 		h->ip_src.s_addr = saddr->v4.s_addr;
 		h->ip_dst.s_addr = daddr->v4.s_addr;
 
@@ -2246,8 +2246,8 @@ pf_send_tcp(const struct pf_rule *r, sa_family_t af,
 		h->ip_v = 4;
 		h->ip_hl = sizeof(*h) >> 2;
 		h->ip_tos = IPTOS_LOWDELAY;
-		h->ip_len = len;
-		h->ip_off = path_mtu_discovery ? IP_DF : 0;
+		h->ip_len = htons(len);
+		h->ip_off = path_mtu_discovery ? htons(IP_DF) : 0;
 		h->ip_ttl = ttl ? ttl : ip_defttl;
 		h->ip_sum = 0;
 		if (eh == NULL) {
@@ -4030,7 +4030,7 @@ pf_test_rule(struct pf_rule **rm, struct pf_state **sm, int direction,
 			switch (af) {
 			case AF_INET:
 				h4 = mtod(m, struct ip *);
-				len = h4->ip_len - off;
+				len = ntohs(h4->ip_len) - off;
 				break;
 #ifdef INET6
 			case AF_INET6:
@@ -5871,7 +5871,7 @@ pf_pull_hdr(struct mbuf *m, int off, void *p, int len,
 #ifdef INET
 	case AF_INET: {
 		struct ip	*h = mtod(m, struct ip *);
-		u_int16_t	 fragoff = (h->ip_off & IP_OFFMASK) << 3;
+		u_int16_t	 fragoff = (ntohs(h->ip_off) & IP_OFFMASK) << 3;
 
 		if (fragoff) {
 			if (fragoff >= len)
@@ -5883,7 +5883,7 @@ pf_pull_hdr(struct mbuf *m, int off, void *p, int len,
 			return (NULL);
 		}
 		if (m->m_pkthdr.len < off + len ||
-		    h->ip_len < off + len) {
+		    ntohs(h->ip_len) < off + len) {
 			ACTION_SET(actionp, PF_DROP);
 			REASON_SET(reasonp, PFRES_SHORT);
 			return (NULL);
@@ -6155,12 +6155,10 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	 *	     situation we pray that the target interface is
 	 *	     compatible with the originating interface.
 	 */
-	if (ip->ip_len <= ifp->if_mtu ||
+	if (ntohs(ip->ip_len) <= ifp->if_mtu ||
 	    (m0->m_pkthdr.csum_flags & CSUM_TSO) ||
 	    ((ifp->if_hwassist & CSUM_FRAGMENT) &&
-		(ip->ip_off & IP_DF) == 0)) {
-		ip->ip_len = htons(ip->ip_len);
-		ip->ip_off = htons(ip->ip_off);
+		(ip->ip_off & htons(IP_DF)) == 0)) {
 		ip->ip_sum = 0;
 		if (sw_csum & CSUM_DELAY_IP) {
 			/* From KAME */
@@ -6181,7 +6179,7 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	 * Too large for interface; fragment if possible.
 	 * Must be able to put at least 8 bytes per fragment.
 	 */
-	if (ip->ip_off & IP_DF) {
+	if (ip->ip_off & htons(IP_DF)) {
 		ipstat.ips_cantfrag++;
 		if (r->rt != PF_DUPTO) {
 			icmp_error(m0, ICMP_UNREACH, ICMP_UNREACH_NEEDFRAG, 0,
@@ -6599,11 +6597,11 @@ pf_test(int dir, struct ifnet *ifp, struct mbuf **m0,
 	pd.didx = (dir == PF_IN) ? 1 : 0;
 	pd.af = AF_INET;
 	pd.tos = h->ip_tos;
-	pd.tot_len = h->ip_len;
+	pd.tot_len = ntohs(h->ip_len);
 	pd.eh = eh;
 
 	/* handle fragments that didn't get reassembled by normalization */
-	if (h->ip_off & (IP_MF | IP_OFFMASK)) {
+	if (h->ip_off & htons(IP_MF | IP_OFFMASK)) {
 		action = pf_test_fragment(&r, dir, kif, m, h,
 		    &pd, &a, &ruleset);
 		goto done;

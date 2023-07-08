@@ -655,7 +655,7 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 		tlen += sizeof(struct ip6_hdr) + sizeof(struct tcphdr);
 	} else {
 		tlen += sizeof(struct tcpiphdr);
-		ip->ip_len = tlen;
+		ip->ip_len = htons(tlen);
 		ip->ip_ttl = ip_defttl;
 	}
 	m->m_len = tlen;

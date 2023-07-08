@@ -125,7 +125,7 @@ pf_osfp_fingerprint_hdr(const struct ip *ip, const struct ip6_hdr *ip6, const st
 	if ((tcp->th_flags & (TH_SYN|TH_ACK)) != TH_SYN)
 		return (NULL);
 	if (ip) {
-		if ((ip->ip_off & IP_OFFMASK) != 0)
+		if ((ip->ip_off & htons(IP_OFFMASK)) != 0)
 			return (NULL);
 	}
 
@@ -136,9 +136,9 @@ pf_osfp_fingerprint_hdr(const struct ip *ip, const struct ip6_hdr *ip6, const st
 		struct sockaddr_in sin;
 #endif
 
-		fp.fp_psize = ip->ip_len;
+		fp.fp_psize = ntohs(ip->ip_len);
 		fp.fp_ttl = ip->ip_ttl;
-		if (ip->ip_off & IP_DF)
+		if (ip->ip_off & htons(IP_DF))
 			fp.fp_flags |= PF_OSFP_DF;
 #ifdef _KERNEL
 		kinet_ntoa(ip->ip_src, srcname);
