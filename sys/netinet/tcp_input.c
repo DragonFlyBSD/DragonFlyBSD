@@ -725,7 +725,7 @@ tcp_input(struct mbuf **mp, int *offp, int proto)
 		ip = mtod(m, struct ip *);
 		ipov = (struct ipovly *)ip;
 		th = (struct tcphdr *)((caddr_t)ip + off0);
-		tlen = ntohs(ip->ip_len);
+		tlen = ntohs(ip->ip_len) - off0;
 
 		if (m->m_pkthdr.csum_flags & CSUM_DATA_VALID) {
 			if (m->m_pkthdr.csum_flags & CSUM_PSEUDO_HDR)

@@ -339,7 +339,7 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 	struct ip	*ip = frent->fr_ip;
 	int		hlen = ip->ip_hl << 2;
 	u_int16_t	off = (ntohs(ip->ip_off) & IP_OFFMASK) << 3;
-	u_int16_t	ip_len = ntohs(ip->ip_len) - ip->ip_hl * 4;
+	u_int16_t	ip_len = ntohs(ip->ip_len) - hlen;
 	u_int16_t	max = ip_len + off;
 	int		cpu = mycpu->gd_cpuid;
 
@@ -356,7 +356,8 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 				M_PFFRAGPL, M_NOWAIT);
 		if (*frag == NULL) {
 			pf_flush_fragments();
-			*frag = kmalloc(sizeof(struct pf_fragment), M_PFFRAGPL, M_NOWAIT);
+			*frag = kmalloc(sizeof(struct pf_fragment),
+					M_PFFRAGPL, M_NOWAIT);
 			if (*frag == NULL)
 				goto drop_fragment;
 		}
@@ -391,6 +392,10 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 	KASSERT((frep != NULL || frea != NULL),
 	    ("!(frep != NULL || frea != NULL): %s", __func__));
 
+	/*
+	 * Merge with previous fragment by cutting the start of
+	 * the current packet.
+	 */
 	if (frep != NULL &&
 	    (FR_IP_OFF(frep) + ntohs(frep->fr_ip->ip_len) -
 	     frep->fr_ip->ip_hl * 4) > off)
@@ -407,9 +412,12 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 		ip->ip_off = htons(ntohs(ip->ip_off) + (precut >> 3));
 		off = (ntohs(ip->ip_off) & IP_OFFMASK) << 3;
 		ip_len -= precut;
-		ip->ip_len = htons(ip_len);
+		ip->ip_len = htons(ip_len + hlen);
 	}
 
+	/*
+	 * Cut or delete overlapping later fragments.
+	 */
 	for (; frea != NULL && ip_len + off > FR_IP_OFF(frea);
 	    frea = next)
 	{
@@ -421,7 +429,8 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 				frea->fr_ip->ip_hl * 4))
 		{
 			frea->fr_ip->ip_len =
-			    htons(ntohs(frea->fr_ip->ip_len) - aftercut);
+			    htons(ntohs(frea->fr_ip->ip_len) - aftercut +
+				  frea->fr_ip->ip_hl * 4);
 			frea->fr_ip->ip_off =
 			    htons(ntohs(frea->fr_ip->ip_off) + (aftercut >> 3));
 			m_adj(frea->fr_m, aftercut);
@@ -509,6 +518,7 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 
 	hlen = ip->ip_hl << 2;
 	ip->ip_len = htons(off + hlen);
+	ip->ip_off &= htons(IP_DF);
 	m->m_len += hlen;
 	m->m_data -= hlen;
 
@@ -520,6 +530,13 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 			plen += m2->m_len;
 		m->m_pkthdr.len = plen;
 	}
+
+#if 0
+	kprintf("reassembly complete: len=%u\n", ntohs(ip->ip_len));
+	kprintf("ip_src=%08x dst=%08x tos=%u p=%u off=%u len=%u\n",
+		ip->ip_src.s_addr, ip->ip_dst.s_addr, ip->ip_tos, ip->ip_p,
+		ntohs(ip->ip_off), ntohs(ip->ip_len));
+#endif
 
 	DPFPRINTF(("complete: %p(%d)\n", m, ntohs(ip->ip_len)));
 	return (m);

@@ -146,7 +146,7 @@ encap4_input(struct mbuf **mp, int *offp, int proto)
 		 * here.
 		 */
 		m->m_flags &= ~M_HASH;
-		m = ip_rehashm(m, off);
+		m = ip_rehashm(m);
 		if (m != NULL) {
 			lwkt_port_t port = netisr_hashport(m->m_pkthdr.hash);
 

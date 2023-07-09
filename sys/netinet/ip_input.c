@@ -572,7 +572,7 @@ ip_input(struct mbuf *m)
 	ip_len = ntohs(ip->ip_len);
 
 	/* length checks already done in ip_hashfn() */
-	KASSERT(ip_len >= hlen, ("total length less than header length"));
+	KASSERT(ip_len >= hlen, ("total length incl header"));
 	KASSERT(m->m_pkthdr.len >= ip_len, ("mbuf too short"));
 
 	/*
@@ -862,8 +862,6 @@ ours:
 
 		/* Get the header length of the reassembled packet */
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-	} else {
-		ip->ip_len = htons(ntohs(ip->ip_len) - hlen);
 	}
 
 	/*
@@ -877,7 +875,7 @@ ours:
 	ipstat.ips_delivered++;
 
 	if ((m->m_flags & M_HASH) == 0) {
-		m = ip_rehashm(m, hlen);
+		m = ip_rehashm(m);
 		if (m == NULL)
 			return;
 		ip = mtod(m, struct ip *);
@@ -899,24 +897,19 @@ bad:
 }
 
 struct mbuf *
-ip_rehashm(struct mbuf *m, int hlen)
+ip_rehashm(struct mbuf *m)
 {
 	struct ip *ip = mtod(m, struct ip *);
 
 #ifdef RSS_DEBUG
 	atomic_add_long(&ip_rehash_count, 1);
 #endif
-	if (hlen)
-		ip->ip_len = htons(ntohs(ip->ip_len) + hlen);
-
 	ip_hashfn(&m, 0);
 	if (m == NULL)
 		return NULL;
 
 	/* 'm' might be changed by ip_hashfn(). */
 	ip = mtod(m, struct ip *);
-	if (hlen)
-		ip->ip_len = htons(ntohs(ip->ip_len) - hlen);
 	KASSERT(m->m_flags & M_HASH, ("no hash"));
 
 	return (m);
@@ -1053,16 +1046,17 @@ ip_reass(struct mbuf *m)
 	}
 found:
 	/*
-	 * Adjust ip_len to not reflect header,
-	 * convert offset of this to bytes.
+	 * NOTE: ip_len is no longer adjusted to remove the header length.
 	 */
-	ip->ip_len = htons(ntohs(ip->ip_len) - hlen);
 	if (ip->ip_off & htons(IP_MF)) {
 		/*
 		 * Make sure that fragments have a data length
-		 * that's a non-zero multiple of 8 bytes.
+		 * that's a non-zero multiple of 8 bytes.  The
+		 * IP header itself might be in multiples of 4
+		 * bytes and is discounted.
 		 */
-		if (ip->ip_len == 0 || (ip->ip_len & htons(0x7)) != 0) {
+		ip_len = ntohs(ip->ip_len) - hlen;
+		if (ip_len == 0 || (ip_len & 7) != 0) {
 			ipstat.ips_toosmall++; /* XXX */
 			m_freem(m);
 			goto done;
@@ -1088,6 +1082,8 @@ found:
 
 	/*
 	 * Presence of header sizes in mbufs would confuse code below.
+	 * Note that ip->ip_len is not modified and retains the header length,
+	 * but local ip_len and fp_len variables remove the header length.
 	 */
 	m->m_data += hlen;
 	m->m_len -= hlen;
@@ -1137,6 +1133,8 @@ found:
 	if (ip_off + ip_len > 65535U)
 		goto dropfrag;
 
+	ip_len -= hlen;
+
 	/*
 	 * If there is a preceding segment, it may provide some of
 	 * our data already.  If so, drop the data from the incoming
@@ -1151,9 +1149,13 @@ found:
 		uint16_t fp_off;
 		uint16_t fp_len;
 
-		/* in bytes */
+		/*
+		 * Calculations in bytes and ip_len/fp_len do not reflect
+		 * the header size.
+		 */
 		fp_off = (ntohs(GETIP(p)->ip_off) & IP_OFFMASK) << 3;
-		fp_len = ntohs(GETIP(p)->ip_len);
+		fp_len = ntohs(GETIP(p)->ip_len) -
+			 (IP_VHL_HL(GETIP(p)->ip_vhl) << 2);
 
 		if (fp_off + fp_len > ip_off) {
 			i = fp_off + fp_len - ip_off;
@@ -1164,8 +1166,12 @@ found:
 			ip_off = fp_off + fp_len;
 			ip_len -= i;
 
+			/*
+			 * Non-optimal modification of packet content, but
+			 * in this rare case we don't care.
+			 */
 			ip->ip_off = htons(ip_off >> 3);
-			ip->ip_len = htons(ip_len);
+			ip->ip_len = htons(ip_len + hlen);
 		}
 		m->m_nextpkt = p->m_nextpkt;
 		p->m_nextpkt = m;
@@ -1182,15 +1188,21 @@ found:
 	while (q) {
 		uint16_t fp_off;
 		uint16_t fp_len;
+		uint16_t fp_hlen;
 
 		fp_off = (ntohs(GETIP(q)->ip_off) & IP_OFFMASK) << 3;
-		fp_len = ntohs(GETIP(q)->ip_len);
+		fp_hlen = (IP_VHL_HL(GETIP(q)->ip_vhl) << 2);
+		fp_len = ntohs(GETIP(q)->ip_len) - fp_hlen;
 		if (ip_off + ip_len <= fp_off)
 			break;
 		i = ip_off + ip_len - fp_off;	/* bytes overlapped */
 
 		if (i < fp_len) {
-			GETIP(q)->ip_len = htons(fp_len - i);
+			/*
+			 * Non-optimal modification of packet content, but
+			 * in this rare case we don't care.
+			 */
+			GETIP(q)->ip_len = htons(fp_len - i + fp_hlen);
 			GETIP(q)->ip_off = htons((fp_off + i) >> 3);
 			m_adj(q, i);
 			q->m_pkthdr.csum_flags = 0;
@@ -1221,9 +1233,11 @@ inserted:
 	for (p = NULL, q = fp->ipq_frags; q; p = q, q = q->m_nextpkt) {
 		uint16_t fp_off;
 		uint16_t fp_len;
+		uint16_t fp_hlen;
 
 		fp_off = (ntohs(GETIP(q)->ip_off) & IP_OFFMASK) << 3;
-		fp_len = ntohs(GETIP(q)->ip_len);
+		fp_hlen = (IP_VHL_HL(GETIP(q)->ip_vhl) << 2);
+		fp_len = ntohs(GETIP(q)->ip_len) - fp_hlen;
 		if (fp_off != next) {
 			if (fp->ipq_nfrags > maxfragsperpacket) {
 				ipstat.ips_fragdropped += fp->ipq_nfrags;
@@ -1247,6 +1261,7 @@ inserted:
 	 */
 	q = fp->ipq_frags;
 	ip = GETIP(q);
+	hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 	if (next + (IP_VHL_HL(ip->ip_vhl) << 2) > IP_MAXPACKET) {
 		ipstat.ips_toolong++;
 		ipstat.ips_fragdropped += fp->ipq_nfrags;
@@ -1286,8 +1301,10 @@ inserted:
 	 * first packet.  Dequeue and discard the fragment reassembly header.
 	 * Make the header visible.  Set the offset to 0 and keep only the
 	 * DF flag from the first packet's ip_off field.
+	 *
+	 * Note that ip_len includes the header length.
 	 */
-	ip->ip_len = htons(next);
+	ip->ip_len = htons(next + hlen);
 	ip->ip_src = fp->ipq_src;
 	ip->ip_dst = fp->ipq_dst;
 	ip->ip_off &= htons(IP_DF);
@@ -1937,7 +1954,9 @@ ip_stripoptions(struct mbuf *m)
 	m->m_len -= optlen;
 	if (m->m_flags & M_PKTHDR)
 		m->m_pkthdr.len -= optlen;
-	ip->ip_vhl = IP_MAKE_VHL(IPVERSION, sizeof(struct ip) >> 2);
+	/* leave ip version intact */
+	ip->ip_len = htons(ntohs(ip->ip_len) - optlen);
+	ip->ip_vhl = IP_MAKE_VHL(IP_VHL_V(ip->ip_vhl), sizeof(struct ip) >> 2);
 }
 
 u_char inetctlerrmap[PRC_NCMDS] = {
@@ -1990,7 +2009,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 	if ((m->m_flags & M_HASH) == 0) {
 		lwkt_port_t port;
 
-		m = ip_rehashm(m, 0);
+		m = ip_rehashm(m);
 		if (m == NULL)
 			return;
 

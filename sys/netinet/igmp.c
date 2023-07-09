@@ -193,7 +193,7 @@ igmp_input(struct mbuf **mp, int *offp, int proto)
 	++igmpstat.igps_rcv_total;
 
 	ip = mtod(m, struct ip *);
-	igmplen = ntohs(ip->ip_len);
+	igmplen = ntohs(ip->ip_len) - iphlen;
 
 	/*
 	 * Validate lengths

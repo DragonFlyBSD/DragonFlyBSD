@@ -198,7 +198,7 @@ extern int	 (*ip_mforward)(struct ip *, struct ifnet *, struct mbuf *,
 void	 ip_hashfn(struct mbuf **, int);
 void	 ip_hashcheck(struct mbuf *, const struct pktinfo *);
 struct mbuf *
-	 ip_rehashm(struct mbuf *, int);
+	 ip_rehashm(struct mbuf *);
 void	 ip_transport_redispatch(struct lwkt_port *, struct mbuf *, int);
 
 boolean_t

@@ -247,12 +247,13 @@ rip_output(struct mbuf *m, struct socket *so, ...)
 		ip->ip_tos = inp->inp_ip_tos;
 		ip->ip_off = 0;
 		ip->ip_p = inp->inp_ip_p;
-		ip->ip_len = htons(m->m_pkthdr.len);
+		ip->ip_len = htons(m->m_pkthdr.len); /* incls header now */
 		ip->ip_src = inp->inp_laddr;
 		ip->ip_dst.s_addr = dst;
 		ip->ip_ttl = inp->inp_ip_ttl;
 	} else {
 		int hlen;
+		int ip_len;
 
 		if (m->m_pkthdr.len > IP_MAXPACKET) {
 			m_freem(m);
@@ -265,24 +266,24 @@ rip_output(struct mbuf *m, struct socket *so, ...)
 		}
 		ip = mtod(m, struct ip *);
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-
-		/* Don't allow header length less than the minimum. */
-		if (hlen < sizeof(struct ip)) {
-			m_freem(m);
-			return EINVAL;
-		}
+		ip_len = ntohs(ip->ip_len);	/* includes header */
 
 		/*
 		 * Don't allow both user specified and setsockopt options.
 		 * Don't allow packet length sizes that will crash.
 		 */
-		if ((hlen != sizeof(struct ip) && inp->inp_options) ||
-		    ntohs(ip->ip_len) > m->m_pkthdr.len ||
-		    ntohs(ip->ip_len) < hlen)
+		if (hlen < sizeof(struct ip) ||
+		    (hlen != sizeof(struct ip) && inp->inp_options) ||
+		    ip_len > m->m_pkthdr.len ||
+		    ip_len < hlen)
 		{
 			m_freem(m);
 			return EINVAL;
 		}
+
+		/*
+		 * System supplies ip_id if passed as 0.
+		 */
 		if (ip->ip_id == 0)
 			ip->ip_id = ip_newid();
 

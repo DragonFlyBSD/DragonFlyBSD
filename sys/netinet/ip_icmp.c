@@ -584,8 +584,8 @@ icmp_input(struct mbuf **mp, int *offp, int proto)
 	struct icmp *icp;
 	struct in_ifaddr *ia;
 	struct mbuf *m = *mp;
-	struct ip *ip = mtod(m, struct ip *);
-	int icmplen = ntohs(ip->ip_len);
+	struct ip *ip;
+	int icmplen;
 	int i, hlen;
 	int code;
 
@@ -593,6 +593,8 @@ icmp_input(struct mbuf **mp, int *offp, int proto)
 
 	*mp = NULL;
 	hlen = *offp;
+	ip = mtod(m, struct ip *);
+	icmplen = ntohs(ip->ip_len) - hlen;
 
 	/*
 	 * Locate icmp structure in mbuf, and check
@@ -842,9 +844,6 @@ badcode:
 			    ip->ip_src = satosin(&ia->ia_dstaddr)->sin_addr;
 		}
 reflect:
-		/* since ip_input deducts this */
-		ip->ip_len = htons(ntohs(ip->ip_len) + hlen);
-
 		icmpstat.icps_reflect++;
 		icmpstat.icps_outhist[icp->icmp_type]++;
 		icmp_reflect(m);

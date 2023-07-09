@@ -378,7 +378,7 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 	struct inpcb *inp;
 	struct mbuf *m;
 	struct mbuf *opts = NULL;
-	int len, off;
+	int ip_len, len, off;
 	struct ip save_ip;
 	struct inpcbinfo *pcbinfo = &udbinfo[mycpuid];
 
@@ -419,12 +419,13 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 	 * If not enough data to reflect UDP length, drop.
 	 */
 	len = ntohs((u_short)uh->uh_ulen);
-	if (ntohs(ip->ip_len) != len) {
-		if (len > ntohs(ip->ip_len) || len < sizeof(struct udphdr)) {
+	ip_len = ntohs(ip->ip_len) - iphlen;
+	if (ip_len != len) {
+		if (len > ip_len || len < sizeof(struct udphdr)) {
 			udp_stat.udps_badlen++;
 			goto bad;
 		}
-		m_adj(m, len - ntohs(ip->ip_len));
+		m_adj(m, len - ip_len);
 		/* ip->ip_len = htons(len); */
 	}
 	/*
@@ -459,8 +460,9 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 			m_freem(m);
 			return(IPPROTO_DONE);
 		}
-	} else
+	} else {
 		udp_stat.udps_nosum++;
+	}
 
 	if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr)) ||
 	    in_broadcast(ip->ip_dst, m->m_pkthdr.rcvif)) {
@@ -577,8 +579,8 @@ done:
 			udp_stat.udps_noportbcast++;
 			goto bad;
 		}
-		udp_append(last, ip, m, iphlen + sizeof(struct udphdr),
-		    &udp_in);
+		udp_append(last, ip, m,
+			   iphlen + sizeof(struct udphdr), &udp_in);
 		return(IPPROTO_DONE);
 	}
 	/*
@@ -608,7 +610,6 @@ done:
 			goto bad;
 #endif
 		*ip = save_ip;
-		ip->ip_len = htons(ntohs(ip->ip_len) + iphlen);
 		icmp_error(m, ICMP_UNREACH, ICMP_UNREACH_PORT, 0, 0);
 		return(IPPROTO_DONE);
 	}
