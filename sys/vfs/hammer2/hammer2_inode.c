@@ -1755,7 +1755,7 @@ hammer2_inode_chain_des(hammer2_inode_t *ip)
 int
 hammer2_inode_chain_flush(hammer2_inode_t *ip, int flags)
 {
-	hammer2_xop_fsync_t *xop;
+	hammer2_xop_flush_t *xop;
 	int error;
 
 	atomic_clear_int(&ip->flags, HAMMER2_INODE_DIRTYDATA);
