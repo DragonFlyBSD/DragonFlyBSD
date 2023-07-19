@@ -89,8 +89,8 @@ destroy_blockref(uint8_t type)
 		}
 
 		ret = read(hammer2_get_root_volume_fd(), &voldata,
-		    HAMMER2_PBUFSIZE);
-		if (ret == HAMMER2_PBUFSIZE) {
+		    HAMMER2_VOLUME_BYTES);
+		if (ret == HAMMER2_VOLUME_BYTES) {
 			fprintf(stdout, "zone.%d %016jx\n",
 			    i, (uintmax_t)broot.data_off);
 			if (modify_blockref(&voldata, -1, &broot, NULL) == -1)

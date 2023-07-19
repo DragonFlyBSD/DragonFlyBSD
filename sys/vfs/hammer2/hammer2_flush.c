@@ -1520,11 +1520,11 @@ hammer2_xop_inode_flush(hammer2_xop_t *arg, void *scratch __unused, int clindex)
 				j, (intmax_t)hmp->volsync.volu_size);
 		}
 		bp = getblk(hmp->devvp, j * HAMMER2_ZONE_BYTES64,
-			    HAMMER2_PBUFSIZE, GETBLK_KVABIO, 0);
+			    HAMMER2_VOLUME_BYTES, GETBLK_KVABIO, 0);
 		atomic_clear_int(&hmp->vchain.flags,
 				 HAMMER2_CHAIN_VOLUMESYNC);
 		bkvasync(bp);
-		bcopy(&hmp->volsync, bp->b_data, HAMMER2_PBUFSIZE);
+		bcopy(&hmp->volsync, bp->b_data, HAMMER2_VOLUME_BYTES);
 		vol_error = bwrite(bp);
 		hmp->volhdrno = j;
 		if (vol_error)

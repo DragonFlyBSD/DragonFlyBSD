@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  */
 
-// # gcc -Wall -g -I../../sys -I../hammer2 ../../sys/vfs/hammer2/xxhash/xxhash.c ../../sys/libkern/icrc32.c ../hammer2/subs.c ../hammer2/ondisk.c ./reconstruct.c -o reconstruct
+// # gcc -Wall -g -I../../sys -I../hammer2 -I../../crypto/libressl/include ../../sys/vfs/hammer2/xxhash/xxhash.c ../../sys/libkern/icrc32.c ../hammer2/subs.c ../hammer2/ondisk.c ./reconstruct.c -o reconstruct
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -84,8 +84,8 @@ reconstruct_volume_header(void)
 		}
 
 		ret = read(hammer2_get_root_volume_fd(), &voldata,
-		    HAMMER2_PBUFSIZE);
-		if (ret == HAMMER2_PBUFSIZE) {
+		    HAMMER2_VOLUME_BYTES);
+		if (ret == HAMMER2_VOLUME_BYTES) {
 			fprintf(stdout, "zone.%d %016jx\n",
 			    i, (uintmax_t)broot.data_off);
 			if (modify_volume_header(&voldata, &broot) == -1)
@@ -125,8 +125,8 @@ reconstruct_blockref(uint8_t type)
 		}
 
 		ret = read(hammer2_get_root_volume_fd(), &voldata,
-		    HAMMER2_PBUFSIZE);
-		if (ret == HAMMER2_PBUFSIZE) {
+		    HAMMER2_VOLUME_BYTES);
+		if (ret == HAMMER2_VOLUME_BYTES) {
 			fprintf(stdout, "zone.%d %016jx\n",
 			    i, (uintmax_t)broot.data_off);
 			if (modify_blockref(&voldata, -1, &broot, NULL, -1) ==

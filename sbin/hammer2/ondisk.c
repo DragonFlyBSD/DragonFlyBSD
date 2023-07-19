@@ -116,13 +116,13 @@ hammer2_read_volume_header(int fd, const char *path,
 			break;
 		if (lseek(fd, i * HAMMER2_ZONE_BYTES64, SEEK_SET) == -1)
 			break;
-		ret = read(fd, &vd, HAMMER2_PBUFSIZE);
+		ret = read(fd, &vd, HAMMER2_VOLUME_BYTES);
 		if (ret == -1) {
 			fprintf(stderr, "%s #%d: read %s\n",
 				path, i, strerror(errno));
 			continue;
 		}
-		if (ret != HAMMER2_PBUFSIZE) {
+		if (ret != HAMMER2_VOLUME_BYTES) {
 			fprintf(stderr, "%s #%d: read %s\n",
 				path, i, strerror(errno));
 			continue;

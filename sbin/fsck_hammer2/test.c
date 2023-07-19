@@ -223,8 +223,8 @@ find_best_zone(void)
 			break;
 		init_root_blockref(i, HAMMER2_BREF_TYPE_EMPTY, &broot);
 		ret = read(hammer2_get_root_volume_fd(), &voldata,
-		    HAMMER2_PBUFSIZE);
-		if (ret == HAMMER2_PBUFSIZE) {
+		    HAMMER2_VOLUME_BYTES);
+		if (ret == HAMMER2_VOLUME_BYTES) {
 			if ((voldata.magic != HAMMER2_VOLUME_ID_HBO) &&
 			    (voldata.magic != HAMMER2_VOLUME_ID_ABO))
 				continue;
@@ -265,8 +265,8 @@ test_volume_header(void)
 		}
 		init_root_blockref(i, HAMMER2_BREF_TYPE_EMPTY, &broot);
 		ret = read(hammer2_get_root_volume_fd(), &voldata,
-		    HAMMER2_PBUFSIZE);
-		if (ret == HAMMER2_PBUFSIZE) {
+		    HAMMER2_VOLUME_BYTES);
+		if (ret == HAMMER2_VOLUME_BYTES) {
 			tprintf_zone(0, i, &broot);
 			if (verify_volume_header(&voldata) == -1)
 				failed = true;
@@ -304,8 +304,8 @@ test_blockref(uint8_t type)
 		}
 		init_root_blockref(i, type, &broot);
 		ret = read(hammer2_get_root_volume_fd(), &voldata,
-		    HAMMER2_PBUFSIZE);
-		if (ret == HAMMER2_PBUFSIZE) {
+		    HAMMER2_VOLUME_BYTES);
+		if (ret == HAMMER2_VOLUME_BYTES) {
 			blockref_stats_t bstats;
 			init_blockref_stats(&bstats, type);
 			delta_stats_t ds;
@@ -355,8 +355,8 @@ test_pfs_blockref(void)
 		}
 		init_root_blockref(i, type, &broot);
 		ret = read(hammer2_get_root_volume_fd(), &voldata,
-		    HAMMER2_PBUFSIZE);
-		if (ret == HAMMER2_PBUFSIZE) {
+		    HAMMER2_VOLUME_BYTES);
+		if (ret == HAMMER2_VOLUME_BYTES) {
 			struct blockref_list blist;
 			struct blockref_msg *p;
 			int count = 0;
