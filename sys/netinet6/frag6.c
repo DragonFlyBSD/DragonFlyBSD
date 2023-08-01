@@ -455,6 +455,17 @@ insert:
 	/* adjust offset to point where the original next header starts */
 	offset = ip6af->ip6af_offset - sizeof(struct ip6_frag);
 	kfree(ip6af, M_FTABLE);
+
+	/*
+	 * Make sure completed packet does not overflow the max packet length.
+	 */
+	if ((u_int)next + (u_int)offset - sizeof(struct ip6_hdr) >
+	    IPV6_MAXPACKET)
+	{
+		frag6_freef(q6);
+		goto dropfrag;
+	}
+
 	ip6 = mtod(m, struct ip6_hdr *);
 	ip6->ip6_plen = htons((u_short)next + offset - sizeof(struct ip6_hdr));
 	ip6->ip6_src = q6->ip6q_src;
