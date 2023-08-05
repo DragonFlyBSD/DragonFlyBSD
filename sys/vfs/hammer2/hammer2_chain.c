@@ -227,7 +227,6 @@ hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
 	chain->bytes = bytes;
 	chain->refs = 1;
 	chain->flags = HAMMER2_CHAIN_ALLOCATED;
-	lockinit(&chain->diolk, "chdio", 0, 0);
 
 	/*
 	 * Set the PFS boundary flag if this chain represents a PFS root.
@@ -248,6 +247,7 @@ hammer2_chain_init(hammer2_chain_t *chain)
 	RB_INIT(&chain->core.rbtree);	/* live chains */
 	hammer2_mtx_init(&chain->lock, "h2chain");
 	hammer2_spin_init(&chain->core.spin, "h2chain");
+	lockinit(&chain->diolk, "chdio", 0, 0);
 }
 
 /*
