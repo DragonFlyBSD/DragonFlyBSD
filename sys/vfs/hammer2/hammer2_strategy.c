@@ -99,11 +99,9 @@ hammer2_vop_strategy(struct vop_strategy_args *ap)
 	switch(bp->b_cmd) {
 	case BUF_CMD_READ:
 		error = hammer2_strategy_read(ap);
-		++hammer2_iod_file_read;
 		break;
 	case BUF_CMD_WRITE:
 		error = hammer2_strategy_write(ap);
-		++hammer2_iod_file_write;
 		break;
 	default:
 		bp->b_error = error = EINVAL;
