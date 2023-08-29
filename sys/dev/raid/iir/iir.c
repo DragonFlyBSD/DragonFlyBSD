@@ -1917,6 +1917,11 @@ gdt_read_event(int handle, gdt_evt_str *estr)
     int eindex;
 
     GDT_DPRINTF(GDT_D_MISC, ("gdt_read_event(%d)\n", handle));
+
+    /* disallow handles -2, -3 ... */
+    if (handle < -1)
+	return -1;
+
     crit_enter();
     if (handle == -1)
         eindex = eoldidx;
