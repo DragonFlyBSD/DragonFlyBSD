@@ -40,7 +40,7 @@
 .Nd dsynth bulk dports builder utility
 .Sh SYNOPSIS
 .Nm
-.Op Fl dhvxyDNPS
+.Op Fl dfhvxyDNPS
 .Op Fl p Ar profile
 .Op Fl s Ar n
 .Op Fl m Ar gb
@@ -157,6 +157,9 @@ Run in debug mode.
 If specified two or more times this will turn off
 ncurses and output the primary log (00_last_results.log) to the standard
 output, along with additional spew.
+.It Fl f
+Force dangerous directives to run despite pkglist scan errors.  Applies only
+to purge-distfiles at the moment.
 .It Fl h
 Quickly output a synopsis of options and directives and exit.
 .It Fl m Ar gb
@@ -301,7 +304,14 @@ do not upgrade your system with them.
 .It Cm rebuild-repository
 Build or rebuild the database files for the configured repository.
 .It Cm purge-distfiles
-Delete any obsolete source distribution files.
+Delete any obsolete source distribution files.  This command fails if
+the pkglist scan has errors due to corrupt Makefile's or missing
+dependencies in the dports/ tree.
+The
+.Fl f
+option may be used to force the purge to occur anyway, with the provisio
+that it may end up removing distfiles that you actually need and force
+them to be refetched later.
 .It Cm reset-db
 Delete ports_crc.db from the build directory.
 This database is used to detect changes made to the dports tree.

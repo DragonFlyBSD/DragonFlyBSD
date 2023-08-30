@@ -528,6 +528,7 @@ extern int NiceOpt;
 extern int MaskProbeAbort;
 extern int ColorOpt;
 extern int SlowStartOpt;
+extern int ForceOpt;
 extern int OverridePkgDeleteOpt;
 extern int FetchOnlyOpt;
 extern int YesOpt;

@@ -42,6 +42,7 @@ static void DoAddReExec(int lkfd, int ac, char **oldav);
 static void DoInit(void);
 static void usage(int ecode) __dead2;
 
+int ForceOpt;
 int OverridePkgDeleteOpt;
 int FetchOnlyOpt;
 int YesOpt;
@@ -94,8 +95,11 @@ main(int ac, char **av)
 	 * Process options and make sure the directive is present
 	 */
 	sopt = 0;
-	while ((c = getopt(ac, av, "dhm:p:vxys:DPM:NS")) != -1) {
+	while ((c = getopt(ac, av, "dfhm:p:vxys:DPM:NS")) != -1) {
 		switch(c) {
+		case 'f':
+			++ForceOpt;
+			break;
 		case 'x':
 			++OverridePkgDeleteOpt;
 			break;
@@ -642,6 +646,7 @@ usage(int ecode)
 	fprintf(stderr,
     "dsynth [options] directive\n"
     "    -d                   - Debug verbosity (-dd disables ncurses)\n"
+    "    -f                   - Force (for purge-distfiles)\n"
     "    -h                   - Display this screen and exit\n"
     "    -m gb                - Load management based on pkgdep memory\n"
     "    -p profile           - Override profile selected in dsynth.ini\n"

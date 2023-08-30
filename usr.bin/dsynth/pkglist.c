@@ -529,7 +529,13 @@ processPackageListBulk(int total)
   "which could not be found in dports, cannot continue, aborting\n");
 			}
 		} else {
-			printf("unable to continue, aborting\n");
+			if (ForceOpt) {
+				remove_corrupt = 1;
+				printf("continuing despite pkglist "
+				       "errors (-f)\n");
+			} else {
+				printf("unable to continue, aborting\n");
+			}
 		}
 		if (remove_corrupt == 0)
 			exit(1);
