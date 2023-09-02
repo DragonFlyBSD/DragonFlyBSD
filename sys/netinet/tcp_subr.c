@@ -1573,17 +1573,31 @@ tcp6_ctlinput(netmsg_t msg)
 	if (cmd == PRC_QUENCH)
 		notify = tcp_quench;
 	else if (cmd == PRC_MSGSIZE) {
+		/*
+		 * The MTU can be passed via an icmp6 packet or directly
+		 * via ip6c_cmdarg.
+		 */
 		struct ip6ctlparam *ip6cp = d;
-		struct icmp6_hdr *icmp6 = ip6cp->ip6c_icmp6;
 
-		arg = ntohl(icmp6->icmp6_mtu);
+		if (ip6cp->ip6c_icmp6) {
+			struct icmp6_hdr *icmp6 = ip6cp->ip6c_icmp6;
+			arg = ntohl(icmp6->icmp6_mtu);
+		} else if (ip6cp->ip6c_cmdarg) {
+			arg = *(uint32_t *)ip6cp->ip6c_cmdarg;
+		} else {
+			goto out;
+		}
 		notify = tcp_mtudisc;
 	} else if (!PRC_IS_REDIRECT(cmd) &&
 		 ((unsigned)cmd > PRC_NCMDS || inet6ctlerrmap[cmd] == 0)) {
 		goto out;
 	}
 
-	/* if the parameter is from icmp6, decode it. */
+	/*
+	 * If the parameter is from icmp6, decode it.  Note that in the
+	 * mtu shortcut case, the rest of the ip6ctlparam content is
+	 * 0 or NULL.
+	 */
 	if (d != NULL) {
 		ip6cp = (struct ip6ctlparam *)d;
 		m = ip6cp->ip6c_m;
