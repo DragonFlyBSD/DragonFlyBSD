@@ -169,26 +169,33 @@ rn_refines(const char *m, const char *n)
 {
 	const char *lim, *lim2;
 	int longer;
-	bool masks_are_equal = true;
+	bool equal;
 
+	equal = true;
 	lim2 = lim = n + clen(n);
 	longer = clen(n++) - clen(m++);
 	if (longer > 0)
 		lim -= longer;
+
 	while (n < lim) {
 		if (*n & ~(*m))
 			return false;
 		if (*n++ != *m++)
-			masks_are_equal = false;
+			equal = false;
 	}
-	while (n < lim2)
-		if (*n++)
+	while (n < lim2) {
+		if (*n++) /* n is longer and more specific */
 			return false;
-	if (masks_are_equal && (longer < 0))
-		for (lim2 = m - longer; m < lim2; )
-			if (*m++)
+	}
+	if (equal && (longer < 0)) {
+		lim2 = m - longer;
+		while (m < lim2) {
+			if (*m++) /* m is longer and more specific */
 				return true;
-	return (!masks_are_equal);
+		}
+	}
+
+	return (!equal);
 }
 
 struct radix_node *
