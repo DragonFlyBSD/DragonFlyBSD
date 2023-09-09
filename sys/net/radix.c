@@ -529,18 +529,27 @@ rn_addmask(const char *netmask, bool search, int skip,
 	return (x);
 }
 
-/* XXX: arbitrary ordering for non-contiguous masks */
+/*
+ * Compare the two netmasks and return true if netmask <m> is more
+ * specific than netmask <n>.
+ *
+ * NOTE: arbitrary ordering for non-contiguous masks.
+ */
 static bool
 rn_lexobetter(const char *mp, const char *np)
 {
 	const char *lim;
 
-	if ((unsigned) *mp > (unsigned) *np)
+	if (clen(mp) > clen(np))
 		return true; /* not really, but need to check longer one first */
-	if (*mp == *np)
-		for (lim = mp + clen(mp); mp < lim;)
-			if (*mp++ > *np++)
+
+	if (clen(mp) == clen(np)) {
+		for (lim = mp + clen(mp); mp < lim; mp++, np++) {
+			if ((unsigned)*mp > (unsigned)*np)
 				return true;
+		}
+	}
+
 	return false;
 }
 
