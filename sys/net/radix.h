@@ -33,9 +33,7 @@
 #ifndef _NET_RADIX_H_
 #define	_NET_RADIX_H_
 
-#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
-#endif
 
 /*
  * Radix search tree node layout.
@@ -45,7 +43,7 @@ struct radix_node {
 	struct	radix_mask *rn_mklist;	/* masks contained in subtree */
 	struct	radix_node *rn_parent;	/* parent */
 	short	rn_bit;			/* bit offset; -1-index(netmask) */
-	char	rn_bmask;		/* node: mask for bit test*/
+	char	rn_bmask;		/* node: mask for bit test */
 	u_char	rn_flags;		/* enumerated next */
 #define RNF_NORMAL	1		/* leaf contains normal route */
 #define RNF_ROOT	2		/* leaf is root leaf for tree */
@@ -58,8 +56,8 @@ struct radix_node {
 		} rn_leaf;
 		struct {			/* node only data: */
 			int	rn_Off;		/* where to start compare */
-			struct	radix_node *rn_L;/* progeny */
-			struct	radix_node *rn_R;/* progeny */
+			struct	radix_node *rn_L; /* progeny */
+			struct	radix_node *rn_R; /* progeny */
 		} rn_node;
 	}		rn_u;
 #ifdef RN_DEBUG
