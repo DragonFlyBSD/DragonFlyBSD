@@ -363,33 +363,44 @@ on1:
 	return NULL;
 }
 
+/*
+ * Whenever to add a new leaf to the tree, another parant node is needed.
+ * So they are allocated as an array of two elements: the first element is
+ * the leaf, the second one is the parant node.
+ *
+ * This function initializes the given pair of nodes <nodes>, so that the
+ * leaf is the left child of the parent node.
+ */
 static struct radix_node *
-rn_newpair(const char *key, int indexbit, struct radix_node nodes[2])
+rn_newpair(const char *key, int bit, struct radix_node nodes[2])
 {
-	struct radix_node *leaf = &nodes[0], *interior = &nodes[1];
+	struct radix_node *left, *parent;
 
-	interior->rn_bit = indexbit;
-	interior->rn_bmask = 0x80 >> (indexbit & 0x7);
-	interior->rn_offset = indexbit >> 3;
-	interior->rn_left = leaf;
-	interior->rn_flags = RNF_ACTIVE;
-	interior->rn_mklist = NULL;
+	left = &nodes[0];
+	parent = &nodes[1];
 
-	leaf->rn_bit = -1;
-	leaf->rn_key = key;
-	leaf->rn_parent = interior;
-	leaf->rn_flags = interior->rn_flags;
-	leaf->rn_mklist = NULL;
+	parent->rn_bit = (short)bit;
+	parent->rn_bmask = 0x80 >> (bit & 0x7);
+	parent->rn_offset = bit >> 3;
+	parent->rn_left = left;
+	parent->rn_flags = RNF_ACTIVE;
+	parent->rn_mklist = NULL;
+
+	left->rn_bit = -1;
+	left->rn_key = key;
+	left->rn_parent = parent;
+	left->rn_flags = parent->rn_flags;
+	left->rn_mklist = NULL;
 
 #ifdef RN_DEBUG
-	leaf->rn_info = rn_nodenum++;
-	interior->rn_info = rn_nodenum++;
-	leaf->rn_twin = interior;
-	leaf->rn_ybro = rn_clist;
-	rn_clist = leaf;
+	left->rn_info = rn_nodenum++;
+	parent->rn_info = rn_nodenum++;
+	left->rn_twin = parent;
+	left->rn_ybro = rn_clist;
+	rn_clist = left;
 #endif
 
-	return interior;
+	return parent;
 }
 
 static struct radix_node *
