@@ -251,7 +251,7 @@ ip6_input(netmsg_t msg)
 	if (m && m->m_next != NULL && m->m_pkthdr.len < MCLBYTES) {
 		struct mbuf *n;
 
-		n = m_getb(m->m_pkthdr.len, M_NOWAIT, MT_HEADER, M_PKTHDR);
+		n = m_getb(m->m_pkthdr.len, M_NOWAIT, MT_DATA, M_PKTHDR);
 		if (n == NULL)
 			goto bad;
 		M_MOVE_PKTHDR(n, m);
