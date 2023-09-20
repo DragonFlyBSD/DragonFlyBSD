@@ -121,10 +121,12 @@ The command to execute for a window system associated with the line.
 .It Fa ty_group
 A group name to which the tty belongs.
 If no group is specified in the ttys description file,
-then the tty is placed in an anonymous group called "none".
+then the tty is placed in an anonymous group called
+.Dq none .
 .It Fa ty_comment
-Any trailing comment field, with any leading hash marks (``#'') or
-whitespace removed.
+Any trailing comment field, with any leading hash marks
+.Pq #
+or whitespace removed.
 .El
 .Pp
 If any of the fields pointing to character strings are unspecified,
