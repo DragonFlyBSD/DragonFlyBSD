@@ -46,10 +46,13 @@ There is one line in the
 .Nm
 file per special device file.
 Fields are separated by tabs and/or spaces.
-Fields comprised of more than one word should be enclosed in double
-quotes (``"'').
-Blank lines and comments may appear anywhere in the file; comments
-are delimited by hash marks (``#'') and new lines.
+Fields comprised of more than one word should be enclosed in
+double quotes
+.Pq \&" .
+Blank lines and comments may appear anywhere in the file;
+comments are delimited by hash marks
+.Pq #
+and new lines.
 Any unspecified fields will default to null.
 .Pp
 The first field is normally the
@@ -88,7 +91,7 @@ entry (see
 specify a window system process that
 .Xr init 8
 will maintain for the terminal line, optionally determine the
-type of tty (whether dialin, network or otherwise),
+type of tty (whether dialup, network or otherwise),
 or specify a tty group
 name that allows the login class database (see
 .Xr login.conf 5 )
@@ -96,44 +99,63 @@ to refer to many ttys as a group, to selectively allow or
 deny access or enable or disable accounting facilities for
 ttys as a group.
 .Pp
-As flag values, the strings ``on'' and ``off'' specify that
+The following flag values are supported:
+.Bl -tag -width "ifconsole" -offset indent
+.It on
+Enable the tty entry so that
 .Xr init 8
-should (should not) execute the command given in the second field.
-The flag ``ifconsole'' disables the tty entry if it is not the console.
-That is, you can construct a tty entry, set to 'on', that you intend to
-only be active if that tty is the console.
-The flag ``ifexists'' disables the tty entry if it doesn't exist.
-The flag ``secure'' (if the console is enabled) allows users with a
-uid of 0 to login on
-this line.
-The flag ``dialup'' indicates that a tty entry describes a dialup
-line, and ``network'' indicates that a tty entry provides a
-network connection.
-Either of these strings may also be specified in the terminal type
-field.
-The string ``window='' may be followed by a quoted command
-string which
+should execute the command given in the second field.
+.It off
+Disable the tty entry.
+.It ifconsole
+Disable the tty entry if it is not the console.
+That is, you can construct a tty entry with both this flag and the
+.Dq on
+flag to make it only active if that tty is the console.
+.It ifexists
+Disable the tty entry if it doesn't exist.
+.It secure
+If the
+.Dq on
+flag is specified, this flag allows users with a uid of 0
+to login on this line.
+.It dialup
+Indicate that the tty entry describes a dialup line.
+.It network
+Indicate that the tty entry provides a network connection.
+.El
+.Pp
+Either of these flag values may also be specified in the
+terminal type field.
+.Pp
+The string
+.Dq window=
+may be followed by a quoted command string which
 .Xr init 8
 will execute
 .Em before
 starting the command specified by the second field.
 .Pp
-The string ``group='' may be followed by a group name comprised of
+The string
+.Dq group=
+may be followed by a group name comprised of
 alphanumeric characters that can be used by
 .Xr login.conf 5
 to refer to many tty lines as a group to enable or disable access
 and accounting facilities.
 If no group is specified, then the tty becomes a member of the group
-"none".
-For backwards compatibility, the ``group='' should appear last on the
-line, immediately before the optional comment.
+.Dq none .
+For backwards compatibility, the
+.Dq group=
+should appear last on the line, immediately before the optional comment.
 .Pp
-Both the second field and any command specified with ``window=''
+Both the second field and any command specified with
+.Dq window=
 will be split into words and executed using
 .Xr execve 2 .
 Words are separated by any combinations of tabs and spaces.
 Arguments containing whitespace should be enclosed in single quotes
-.Pq Li ' .
+.Pq ' .
 Note that no shell-style globbing or other variable substitution occurs.
 .Sh FILES
 .Bl -tag -width /etc/ttys -compact
@@ -145,12 +167,16 @@ Note that no shell-style globbing or other variable substitution occurs.
 console	"/usr/libexec/getty std.1200"	vt100	on secure
 # dialup at 1200 baud, no root logins
 ttyd0	"/usr/libexec/getty d1200"	dialup	on group=dialup	# 555-1234
+# dialup at 115200 baud, enable only if it's the console
+ttyd1	"/usr/libexec/getty std.115200"	dialup	on secure ifconsole
 # Mike's terminal: hp2621
 ttyh0	"/usr/libexec/getty std.115200"	hp2621-nl	on group=dialup	# 457 Evans
 # John's terminal: vt100
 ttyh1	"/usr/libexec/getty std.115200"	vt100	on group=dialup		# 459 Evans
 # terminal emulate/window system
 ttyv0	"/usr/local/bin/xterm -display :0"	xterm	on window="/usr/local/bin/X :0"
+# enable the video tty only if it exists
+ttyv1	"/usr/libexec/getty Pc"		cons25	on secure ifexists
 # Network pseudo ttys -- don't enable getty
 ttyp0	none	network 	group=pty
 ttyp1	none	network	off	group=pty
