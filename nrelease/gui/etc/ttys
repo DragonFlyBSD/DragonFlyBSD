@@ -1,6 +1,5 @@
 #
 # $FreeBSD: src/etc/etc.i386/ttys,v 1.8 2000/01/29 12:18:03 obrien Exp $
-# $DragonFly: src/nrelease/gui/etc/ttys,v 1.1 2008/09/01 21:20:30 swildner Exp $
 #	@(#)ttys	5.1 (Berkeley) 4/17/89
 #
 # This file specifies various information about terminals on the system.
@@ -31,14 +30,14 @@
 # when going to single-user mode.
 console	none				unknown	off secure
 #
-ttyv0	"/usr/libexec/getty Pc"		cons25	on  secure
+ttyv0	"/usr/libexec/getty Pc"		cons25	on  secure ifexists
 # Virtual terminals
-ttyv2	"/usr/libexec/getty Pc"		cons25	on  secure
-ttyv3	"/usr/libexec/getty Pc"		cons25	on  secure
-ttyv4	"/usr/libexec/getty Pc"		cons25	on  secure
-ttyv5	"/usr/libexec/getty Pc"		cons25	on  secure
-ttyv6	"/usr/libexec/getty Pc"		cons25	on  secure
-ttyv7	"/usr/libexec/getty Pc"		cons25	on  secure
+ttyv2	"/usr/libexec/getty Pc"		cons25	on  secure ifexists
+ttyv3	"/usr/libexec/getty Pc"		cons25	on  secure ifexists
+ttyv4	"/usr/libexec/getty Pc"		cons25	on  secure ifexists
+ttyv5	"/usr/libexec/getty Pc"		cons25	on  secure ifexists
+ttyv6	"/usr/libexec/getty Pc"		cons25	on  secure ifexists
+ttyv7	"/usr/libexec/getty Pc"		cons25	on  secure ifexists
 ttyv8	"/usr/pkg/bin/xdm -nodaemon"	xterm	off secure
 # Serial terminals - keep it simple
 #
