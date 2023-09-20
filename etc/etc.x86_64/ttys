@@ -30,15 +30,15 @@
 # when going to single-user mode.
 console	none				unknown	off secure
 #
-ttyv0	"/usr/libexec/getty Pc"		cons25	on  secure
+ttyv0	"/usr/libexec/getty Pc"		cons25	on  secure ifexists
 # Virtual terminals
-ttyv1	"/usr/libexec/getty Pc"		cons25	on  secure
-ttyv2	"/usr/libexec/getty Pc"		cons25	on  secure
-ttyv3	"/usr/libexec/getty Pc"		cons25	on  secure
-ttyv4	"/usr/libexec/getty Pc"		cons25	on  secure
-ttyv5	"/usr/libexec/getty Pc"		cons25	on  secure
-ttyv6	"/usr/libexec/getty Pc"		cons25	on  secure
-ttyv7	"/usr/libexec/getty Pc"		cons25	on  secure
+ttyv1	"/usr/libexec/getty Pc"		cons25	on  secure ifexists
+ttyv2	"/usr/libexec/getty Pc"		cons25	on  secure ifexists
+ttyv3	"/usr/libexec/getty Pc"		cons25	on  secure ifexists
+ttyv4	"/usr/libexec/getty Pc"		cons25	on  secure ifexists
+ttyv5	"/usr/libexec/getty Pc"		cons25	on  secure ifexists
+ttyv6	"/usr/libexec/getty Pc"		cons25	on  secure ifexists
+ttyv7	"/usr/libexec/getty Pc"		cons25	on  secure ifexists
 ttyv8	"/usr/local/bin/xdm -nodaemon"	xterm	off secure
 # Serial terminals - keep it simple
 #
