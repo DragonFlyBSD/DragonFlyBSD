@@ -337,7 +337,7 @@ invalid:
 	handle(alrm_handler, SIGALRM, 0);
 	sigfillset(&mask);
 	delset(&mask, SIGABRT, SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGSYS,
-		SIGXCPU, SIGXFSZ, SIGHUP, SIGINT, SIGTERM, SIGTSTP, SIGALRM, 
+		SIGXCPU, SIGXFSZ, SIGHUP, SIGINT, SIGTERM, SIGTSTP, SIGALRM,
 		SIGUSR1, SIGUSR2, 0);
 	sigprocmask(SIG_SETMASK, &mask, NULL);
 	sigemptyset(&sa.sa_mask);
@@ -997,6 +997,16 @@ adjttyent(struct ttyent *typ)
 		return;
 
 	/*
+	 * IFEXISTS option forces tty off if it doesn't exist.
+	 */
+	if (typ->ty_status & TTY_IFEXISTS) {
+		asprintf(&devpath, "%s%s", _PATH_DEV, typ->ty_name);
+		if (stat(devpath, &st) < 0)
+			typ->ty_status &= ~TTY_ON;
+		free(devpath);
+	}
+
+	/*
 	 * IFCONSOLE option forces tty off if not the console.
 	 */
 	if (typ->ty_status & TTY_IFCONSOLE) {
@@ -1135,7 +1145,7 @@ f_read_ttys(void)
 		if (stat(_PATH_WTMPX, &st) != -1 && st.st_size != 0) {
 			struct timeval down_time;
 
-			TIMESPEC_TO_TIMEVAL(&down_time, 
+			TIMESPEC_TO_TIMEVAL(&down_time,
 			    st.st_atime > st.st_mtime ?
 			    &st.st_atimespec : &st.st_mtimespec);
 			make_utmpx("", DOWN_MSG, DOWN_TIME, 0, &down_time, 0);
@@ -1407,8 +1417,8 @@ f_clean_ttys(void)
 	if (! sessions)
 		return multi_user;
 
-	/* 
-	 * mark all sessions for death, (!SE_PRESENT) 
+	/*
+	 * mark all sessions for death, (!SE_PRESENT)
 	 * as we find or create new ones they'll be marked as keepers,
 	 * we'll later nuke all the ones not found in /etc/ttys
 	 */
@@ -1535,7 +1545,7 @@ f_death(void)
 
 	/* Try to run the rc.shutdown script within a period of time */
 	runshutdown();
-    
+
 	for (i = 0; i < 2; ++i) {
 		if (kill(-1, death_sigs[i]) == -1 && errno == ESRCH)
 			return single_user;
