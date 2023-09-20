@@ -28,7 +28,7 @@
 .\"     @(#)getttyent.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/gen/getttyent.3,v 1.15 2007/01/09 00:27:54 imp Exp $
 .\"
-.Dd September 10, 2019
+.Dd September 20, 2023
 .Dt GETTTYENT 3
 .Os
 .Sh NAME
@@ -71,10 +71,6 @@ struct ttyent {
 	char	*ty_name;	/* terminal device name */
 	char	*ty_getty;	/* command to execute, usually getty */
 	char	*ty_type;	/* terminal type for termcap */
-#define	TTY_ON		0x01	/* enable logins (start ty_getty program) */
-#define	TTY_SECURE	0x02	/* allow uid of 0 to login */
-#define	TTY_DIALUP	0x04	/* is a dialup tty */
-#define	TTY_NETWORK	0x08	/* is a network tty */
 	int	ty_status;	/* status flags */
 	char	*ty_window;	/* command to start up window manager */
 	char	*ty_comment;	/* comment field */
@@ -96,7 +92,7 @@ The name of the default terminal type connected to this tty line.
 A mask of bit fields which indicate various actions allowed on this
 tty line.
 The possible flags are as follows:
-.Bl -tag -width ".Dv TTY_NETWORK"
+.Bl -tag -width ".Dv TTY_IFCONSOLE"
 .It Dv TTY_ON
 Enables logins (i.e.,
 .Xr init 8
@@ -115,6 +111,10 @@ Identifies a tty used for network connections.
 If this flag is set, then
 .Fn isnettty
 will return a non-zero value.
+.It TTY_IFCONSOLE
+Only enables a tty if it's the console.
+.It TTY_IFEXISTS
+Only enables a tty if it exists.
 .El
 .It Fa ty_window
 The command to execute for a window system associated with the line.

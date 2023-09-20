@@ -28,7 +28,7 @@
 .\"     from: @(#)ttys.5	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/libexec/getty/ttys.5 330277 2018-03-02 14:16:19Z trasz $
 .\"
-.Dd September 10, 2019
+.Dd September 20, 2023
 .Dt TTYS 5
 .Os
 .Sh NAME
@@ -102,6 +102,7 @@ should (should not) execute the command given in the second field.
 The flag ``ifconsole'' disables the tty entry if it is not the console.
 That is, you can construct a tty entry, set to 'on', that you intend to
 only be active if that tty is the console.
+The flag ``ifexists'' disables the tty entry if it doesn't exist.
 The flag ``secure'' (if the console is enabled) allows users with a
 uid of 0 to login on
 this line.
