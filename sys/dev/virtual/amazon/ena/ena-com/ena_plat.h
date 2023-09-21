@@ -240,7 +240,7 @@ static inline long PTR_ERR(const void *ptr)
 		lockmgr(&((waitqueue).lock), LK_EXCLUSIVE);		\
 		cv_timedwait(&((waitqueue).wq), &((waitqueue).lock),	\
 		    timeout_us * hz / 1000 / 1000 );			\
-		lockuninit(&((waitqueue).lock));			\
+		lockmgr(&((waitqueue).lock), LK_RELEASE);		\
 	} while (0)
 #define ENA_WAIT_EVENT_SIGNAL(waitqueue) cv_broadcast(&((waitqueue).wq))
 
