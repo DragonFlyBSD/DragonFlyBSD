@@ -11,7 +11,6 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/socket.h>
 #include <crypto/siphash/siphash.h>
 #include <netinet/in.h>
@@ -50,7 +49,7 @@ struct ratelimit_entry {
 
 struct ratelimit {
 	uint8_t				rl_secret[SIPHASH_KEY_LENGTH];
-	struct mtx			rl_mtx;
+	struct lock			rl_mtx;
 	struct callout			rl_gc;
 	LIST_HEAD(, ratelimit_entry)	rl_table[RATELIMIT_SIZE];
 	size_t				rl_table_num;
@@ -112,14 +111,14 @@ cookie_checker_init(struct cookie_checker *cc)
 	bzero(cc, sizeof(*cc));
 
 	lockinit(&cc->cc_key_lock, "cookie_checker_key", 0, 0);
-	mtx_init(&cc->cc_secret_mtx, "cookie_checker_secret", NULL, MTX_DEF);
+	lockinit(&cc->cc_secret_mtx, "cookie_checker_secret", 0, 0);
 }
 
 void
 cookie_checker_free(struct cookie_checker *cc)
 {
 	lockuninit(&cc->cc_key_lock);
-	mtx_destroy(&cc->cc_secret_mtx);
+	lockuninit(&cc->cc_secret_mtx);
 	explicit_bzero(cc, sizeof(*cc));
 }
 
@@ -312,7 +311,7 @@ make_cookie(struct cookie_checker *cc, uint8_t cookie[COOKIE_COOKIE_SIZE],
 {
 	struct blake2s_state state;
 
-	mtx_lock(&cc->cc_secret_mtx);
+	lockmgr(&cc->cc_secret_mtx, LK_EXCLUSIVE);
 	if (timer_expired(cc->cc_secret_birthdate,
 	    COOKIE_SECRET_MAX_AGE, 0)) {
 		arc4random_buf(cc->cc_secret, COOKIE_SECRET_SIZE);
@@ -320,7 +319,7 @@ make_cookie(struct cookie_checker *cc, uint8_t cookie[COOKIE_COOKIE_SIZE],
 	}
 	blake2s_init_key(&state, COOKIE_COOKIE_SIZE, cc->cc_secret,
 	    COOKIE_SECRET_SIZE);
-	mtx_unlock(&cc->cc_secret_mtx);
+	lockmgr(&cc->cc_secret_mtx, LK_RELEASE);
 
 	if (sa->sa_family == AF_INET) {
 		blake2s_update(&state, (uint8_t *)&satosin(sa)->sin_addr,
@@ -345,7 +344,7 @@ static void
 ratelimit_init(struct ratelimit *rl)
 {
 	size_t i;
-	mtx_init(&rl->rl_mtx, "ratelimit_lock", NULL, MTX_DEF);
+	lockinit(&rl->rl_mtx, "ratelimit_lock", 0, 0);
 	callout_init_mtx(&rl->rl_gc, &rl->rl_mtx, 0);
 	arc4random_buf(rl->rl_secret, sizeof(rl->rl_secret));
 	for (i = 0; i < RATELIMIT_SIZE; i++)
@@ -359,11 +358,11 @@ ratelimit_deinit(struct ratelimit *rl)
 {
 	if (!rl->rl_initialized)
 		return;
-	mtx_lock(&rl->rl_mtx);
+	lockmgr(&rl->rl_mtx, LK_EXCLUSIVE);
 	callout_stop(&rl->rl_gc);
 	ratelimit_gc(rl, true);
-	mtx_unlock(&rl->rl_mtx);
-	mtx_destroy(&rl->rl_mtx);
+	lockmgr(&rl->rl_mtx, LK_RELEASE);
+	lockuninit(&rl->rl_mtx);
 
 	rl->rl_initialized = false;
 }
@@ -396,7 +395,7 @@ ratelimit_gc(struct ratelimit *rl, bool force)
 	struct ratelimit_entry *r, *tr;
 	sbintime_t expiry;
 
-	mtx_assert(&rl->rl_mtx, MA_OWNED);
+	KKASSERT(lockstatus(&rl->rl_mtx, curthread) == LK_EXCLUSIVE);
 
 	if (rl->rl_table_num == 0)
 		return;
@@ -438,7 +437,7 @@ ratelimit_allow(struct ratelimit *rl, struct sockaddr *sa, struct vnet *vnet)
 		return ret;
 
 	bucket = siphash13(rl->rl_secret, &key, len) & RATELIMIT_MASK;
-	mtx_lock(&rl->rl_mtx);
+	lockmgr(&rl->rl_mtx, LK_EXCLUSIVE);
 
 	LIST_FOREACH(r, &rl->rl_table[bucket], r_entry) {
 		if (bcmp(&r->r_key, &key, len) != 0)
@@ -491,7 +490,7 @@ ratelimit_allow(struct ratelimit *rl, struct sockaddr *sa, struct vnet *vnet)
 ok:
 	ret = 0;
 error:
-	mtx_unlock(&rl->rl_mtx);
+	lockmgr(&rl->rl_mtx, LK_RELEASE);
 	return ret;
 }
 

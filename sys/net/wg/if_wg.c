@@ -165,7 +165,7 @@ struct wg_packet {
 STAILQ_HEAD(wg_packet_list, wg_packet);
 
 struct wg_queue {
-	struct mtx		 q_mtx;
+	struct lock		 q_mtx;
 	struct wg_packet_list	 q_queue;
 	size_t			 q_len;
 };
@@ -194,7 +194,7 @@ struct wg_peer {
 	struct callout			 p_zero_key_material;
 	struct callout			 p_persistent_keepalive;
 
-	struct mtx			 p_handshake_mtx;
+	struct lock			 p_handshake_mtx;
 	struct timespec			 p_handshake_complete;	/* nanotime */
 	int				 p_handshake_retries;
 
@@ -410,7 +410,7 @@ wg_peer_alloc(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE])
 	callout_init(&peer->p_persistent_keepalive, true);
 	callout_init(&peer->p_zero_key_material, true);
 
-	mtx_init(&peer->p_handshake_mtx, "peer handshake", NULL, MTX_DEF);
+	lockinit(&peer->p_handshake_mtx, "peer handshake", 0, 0);
 	bzero(&peer->p_handshake_complete, sizeof(peer->p_handshake_complete));
 	peer->p_handshake_retries = 0;
 
@@ -445,7 +445,7 @@ wg_peer_free_deferred(struct noise_remote *r)
 	counter_u64_free(peer->p_tx_bytes);
 	counter_u64_free(peer->p_rx_bytes);
 	lockuninit(&peer->p_endpoint_lock);
-	mtx_destroy(&peer->p_handshake_mtx);
+	lockuninit(&peer->p_handshake_mtx);
 
 	cookie_maker_free(&peer->p_cookie);
 
@@ -977,10 +977,10 @@ wg_timers_set_persistent_keepalive(struct wg_peer *peer, uint16_t interval)
 static void
 wg_timers_get_last_handshake(struct wg_peer *peer, struct wg_timespec64 *time)
 {
-	mtx_lock(&peer->p_handshake_mtx);
+	lockmgr(&peer->p_handshake_mtx, LK_EXCLUSIVE);
 	time->tv_sec = peer->p_handshake_complete.tv_sec;
 	time->tv_nsec = peer->p_handshake_complete.tv_nsec;
-	mtx_unlock(&peer->p_handshake_mtx);
+	lockmgr(&peer->p_handshake_mtx, LK_RELEASE);
 }
 
 static void
@@ -1059,11 +1059,11 @@ wg_timers_event_handshake_complete(struct wg_peer *peer)
 	struct epoch_tracker et;
 	NET_EPOCH_ENTER(et);
 	if (atomic_load_bool(&peer->p_enabled)) {
-		mtx_lock(&peer->p_handshake_mtx);
+		lockmgr(&peer->p_handshake_mtx, LK_EXCLUSIVE);
 		callout_stop(&peer->p_retry_handshake);
 		peer->p_handshake_retries = 0;
 		getnanotime(&peer->p_handshake_complete);
-		mtx_unlock(&peer->p_handshake_mtx);
+		lockmgr(&peer->p_handshake_mtx, LK_RELEASE);
 		wg_timers_run_send_keepalive(peer);
 	}
 	NET_EPOCH_EXIT(et);
@@ -1106,10 +1106,10 @@ wg_timers_run_retry_handshake(void *_peer)
 	struct epoch_tracker et;
 	struct wg_peer *peer = _peer;
 
-	mtx_lock(&peer->p_handshake_mtx);
+	lockmgr(&peer->p_handshake_mtx, LK_EXCLUSIVE);
 	if (peer->p_handshake_retries <= MAX_TIMER_HANDSHAKES) {
 		peer->p_handshake_retries++;
-		mtx_unlock(&peer->p_handshake_mtx);
+		lockmgr(&peer->p_handshake_mtx, LK_RELEASE);
 
 		DPRINTF(peer->p_sc, "Handshake for peer %" PRIu64 " did not complete "
 		    "after %d seconds, retrying (try %d)\n", peer->p_id,
@@ -1117,7 +1117,7 @@ wg_timers_run_retry_handshake(void *_peer)
 		wg_peer_clear_src(peer);
 		wg_timers_run_send_initiation(peer, true);
 	} else {
-		mtx_unlock(&peer->p_handshake_mtx);
+		lockmgr(&peer->p_handshake_mtx, LK_RELEASE);
 
 		DPRINTF(peer->p_sc, "Handshake for peer %" PRIu64 " did not complete "
 		    "after %d retries, giving up\n", peer->p_id,
@@ -1759,7 +1759,7 @@ wg_packet_free(struct wg_packet *pkt)
 static void
 wg_queue_init(struct wg_queue *queue, const char *name)
 {
-	mtx_init(&queue->q_mtx, name, NULL, MTX_DEF);
+	lockinit(&queue->q_mtx, name, 0, 0);
 	STAILQ_INIT(&queue->q_queue);
 	queue->q_len = 0;
 }
@@ -1768,7 +1768,7 @@ static void
 wg_queue_deinit(struct wg_queue *queue)
 {
 	wg_queue_purge(queue);
-	mtx_destroy(&queue->q_mtx);
+	lockuninit(&queue->q_mtx);
 }
 
 static size_t
@@ -1781,14 +1781,14 @@ static int
 wg_queue_enqueue_handshake(struct wg_queue *hs, struct wg_packet *pkt)
 {
 	int ret = 0;
-	mtx_lock(&hs->q_mtx);
+	lockmgr(&hs->q_mtx, LK_EXCLUSIVE);
 	if (hs->q_len < MAX_QUEUED_HANDSHAKES) {
 		STAILQ_INSERT_TAIL(&hs->q_queue, pkt, p_parallel);
 		hs->q_len++;
 	} else {
 		ret = ENOBUFS;
 	}
-	mtx_unlock(&hs->q_mtx);
+	lockmgr(&hs->q_mtx, LK_RELEASE);
 	if (ret != 0)
 		wg_packet_free(pkt);
 	return (ret);
@@ -1798,12 +1798,12 @@ static struct wg_packet *
 wg_queue_dequeue_handshake(struct wg_queue *hs)
 {
 	struct wg_packet *pkt;
-	mtx_lock(&hs->q_mtx);
+	lockmgr(&hs->q_mtx, LK_EXCLUSIVE);
 	if ((pkt = STAILQ_FIRST(&hs->q_queue)) != NULL) {
 		STAILQ_REMOVE_HEAD(&hs->q_queue, p_parallel);
 		hs->q_len--;
 	}
-	mtx_unlock(&hs->q_mtx);
+	lockmgr(&hs->q_mtx, LK_RELEASE);
 	return (pkt);
 }
 
@@ -1812,7 +1812,7 @@ wg_queue_push_staged(struct wg_queue *staged, struct wg_packet *pkt)
 {
 	struct wg_packet *old = NULL;
 
-	mtx_lock(&staged->q_mtx);
+	lockmgr(&staged->q_mtx, LK_EXCLUSIVE);
 	if (staged->q_len >= MAX_STAGED_PKT) {
 		old = STAILQ_FIRST(&staged->q_queue);
 		STAILQ_REMOVE_HEAD(&staged->q_queue, p_parallel);
@@ -1820,7 +1820,7 @@ wg_queue_push_staged(struct wg_queue *staged, struct wg_packet *pkt)
 	}
 	STAILQ_INSERT_TAIL(&staged->q_queue, pkt, p_parallel);
 	staged->q_len++;
-	mtx_unlock(&staged->q_mtx);
+	lockmgr(&staged->q_mtx, LK_RELEASE);
 
 	if (old != NULL)
 		wg_packet_free(old);
@@ -1838,10 +1838,10 @@ static void
 wg_queue_delist_staged(struct wg_queue *staged, struct wg_packet_list *list)
 {
 	STAILQ_INIT(list);
-	mtx_lock(&staged->q_mtx);
+	lockmgr(&staged->q_mtx, LK_EXCLUSIVE);
 	STAILQ_CONCAT(list, &staged->q_queue);
 	staged->q_len = 0;
-	mtx_unlock(&staged->q_mtx);
+	lockmgr(&staged->q_mtx, LK_RELEASE);
 }
 
 static void
@@ -1859,27 +1859,27 @@ wg_queue_both(struct wg_queue *parallel, struct wg_queue *serial, struct wg_pack
 {
 	pkt->p_state = WG_PACKET_UNCRYPTED;
 
-	mtx_lock(&serial->q_mtx);
+	lockmgr(&serial->q_mtx, LK_EXCLUSIVE);
 	if (serial->q_len < MAX_QUEUED_PKT) {
 		serial->q_len++;
 		STAILQ_INSERT_TAIL(&serial->q_queue, pkt, p_serial);
 	} else {
-		mtx_unlock(&serial->q_mtx);
+		lockmgr(&serial->q_mtx, LK_RELEASE);
 		wg_packet_free(pkt);
 		return (ENOBUFS);
 	}
-	mtx_unlock(&serial->q_mtx);
+	lockmgr(&serial->q_mtx, LK_RELEASE);
 
-	mtx_lock(&parallel->q_mtx);
+	lockmgr(&parallel->q_mtx, LK_EXCLUSIVE);
 	if (parallel->q_len < MAX_QUEUED_PKT) {
 		parallel->q_len++;
 		STAILQ_INSERT_TAIL(&parallel->q_queue, pkt, p_parallel);
 	} else {
-		mtx_unlock(&parallel->q_mtx);
+		lockmgr(&parallel->q_mtx, LK_RELEASE);
 		pkt->p_state = WG_PACKET_DEAD;
 		return (ENOBUFS);
 	}
-	mtx_unlock(&parallel->q_mtx);
+	lockmgr(&parallel->q_mtx, LK_RELEASE);
 
 	return (0);
 }
@@ -1888,13 +1888,13 @@ static struct wg_packet *
 wg_queue_dequeue_serial(struct wg_queue *serial)
 {
 	struct wg_packet *pkt = NULL;
-	mtx_lock(&serial->q_mtx);
+	lockmgr(&serial->q_mtx, LK_EXCLUSIVE);
 	if (serial->q_len > 0 && STAILQ_FIRST(&serial->q_queue)->p_state != WG_PACKET_UNCRYPTED) {
 		serial->q_len--;
 		pkt = STAILQ_FIRST(&serial->q_queue);
 		STAILQ_REMOVE_HEAD(&serial->q_queue, p_serial);
 	}
-	mtx_unlock(&serial->q_mtx);
+	lockmgr(&serial->q_mtx, LK_RELEASE);
 	return (pkt);
 }
 
@@ -1902,13 +1902,13 @@ static struct wg_packet *
 wg_queue_dequeue_parallel(struct wg_queue *parallel)
 {
 	struct wg_packet *pkt = NULL;
-	mtx_lock(&parallel->q_mtx);
+	lockmgr(&parallel->q_mtx, LK_EXCLUSIVE);
 	if (parallel->q_len > 0) {
 		parallel->q_len--;
 		pkt = STAILQ_FIRST(&parallel->q_queue);
 		STAILQ_REMOVE_HEAD(&parallel->q_queue, p_parallel);
 	}
-	mtx_unlock(&parallel->q_mtx);
+	lockmgr(&parallel->q_mtx, LK_RELEASE);
 	return (pkt);
 }
 
