@@ -180,7 +180,7 @@ noise_local_alloc(void *arg)
 	struct noise_local *l;
 	size_t i;
 
-	l = malloc(sizeof(*l), M_NOISE, M_WAITOK | M_ZERO);
+	l = kmalloc(sizeof(*l), M_NOISE, M_WAITOK | M_ZERO);
 
 	lockinit(&l->l_identity_lock, "noise_identity", 0, 0);
 	l->l_has_identity = false;
@@ -220,7 +220,8 @@ noise_local_put(struct noise_local *l)
 		lockuninit(&l->l_identity_lock);
 		lockuninit(&l->l_remote_mtx);
 		lockuninit(&l->l_index_mtx);
-		zfree(l, M_NOISE);
+		explicit_bzero(l, sizeof(*l));
+		kfree(l, M_NOISE);
 	}
 }
 
@@ -293,7 +294,7 @@ noise_remote_alloc(struct noise_local *l, void *arg,
 {
 	struct noise_remote *r;
 
-	r = malloc(sizeof(*r), M_NOISE, M_WAITOK | M_ZERO);
+	r = kmalloc(sizeof(*r), M_NOISE, M_WAITOK | M_ZERO);
 	memcpy(r->r_public, public, NOISE_PUBLIC_KEY_LEN);
 
 	lockinit(&r->r_handshake_lock, "noise_handshake", 0, 0);
@@ -468,7 +469,8 @@ noise_remote_smr_free(struct epoch_context *smr)
 	noise_local_put(r->r_local);
 	lockuninit(&r->r_handshake_lock);
 	lockuninit(&r->r_keypair_mtx);
-	zfree(r, M_NOISE);
+	explicit_bzero(r, sizeof(*r));
+	kfree(r, M_NOISE);
 }
 
 void
@@ -647,7 +649,7 @@ noise_begin_session(struct noise_remote *r)
 
 	KKASSERT(lockstatus(&r->r_handshake_lock, curthread) == LK_EXCLUSIVE);
 
-	if ((kp = malloc(sizeof(*kp), M_NOISE, M_NOWAIT | M_ZERO)) == NULL)
+	if ((kp = kmalloc(sizeof(*kp), M_NOISE, M_NOWAIT | M_ZERO)) == NULL)
 		return (ENOSPC);
 
 	refcount_init(&kp->kp_refcnt, 1);
@@ -749,7 +751,8 @@ noise_keypair_smr_free(struct epoch_context *smr)
 	kp = __containerof(smr, struct noise_keypair, kp_smr);
 	noise_remote_put(kp->kp_remote);
 	lockuninit(&kp->kp_nonce_lock);
-	zfree(kp, M_NOISE);
+	explicit_bzero(kp, sizeof(*kp));
+	kfree(kp, M_NOISE);
 }
 
 void

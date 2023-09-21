@@ -389,7 +389,7 @@ wg_peer_alloc(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE])
 
 	sx_assert(&sc->sc_lock, SX_XLOCKED);
 
-	peer = malloc(sizeof(*peer), M_WG, M_WAITOK | M_ZERO);
+	peer = kmalloc(sizeof(*peer), M_WG, M_WAITOK | M_ZERO);
 	peer->p_remote = noise_remote_alloc(sc->sc_local, peer, pub_key);
 	peer->p_tx_bytes = counter_u64_alloc(M_WAITOK);
 	peer->p_rx_bytes = counter_u64_alloc(M_WAITOK);
@@ -452,7 +452,7 @@ wg_peer_free_deferred(struct noise_remote *r)
 
 	cookie_maker_free(&peer->p_cookie);
 
-	free(peer, M_WG);
+	kfree(peer, M_WG);
 }
 
 static void
@@ -524,7 +524,7 @@ wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af, const void
 	struct wg_aip		*aip;
 	int			 ret = 0;
 
-	aip = malloc(sizeof(*aip), M_WG, M_WAITOK | M_ZERO);
+	aip = kmalloc(sizeof(*aip), M_WG, M_WAITOK | M_ZERO);
 	aip->a_peer = peer;
 	aip->a_af = af;
 
@@ -551,7 +551,7 @@ wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af, const void
 		break;
 #endif
 	default:
-		free(aip, M_WG);
+		kfree(aip, M_WG);
 		return (EAFNOSUPPORT);
 	}
 
@@ -563,10 +563,10 @@ wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af, const void
 	} else if (!node)
 		node = root->rnh_lookup(&aip->a_addr, &aip->a_mask, &root->rh);
 	if (!node) {
-		free(aip, M_WG);
+		kfree(aip, M_WG);
 		return (ENOMEM);
 	} else if (node != aip->a_nodes) {
-		free(aip, M_WG);
+		kfree(aip, M_WG);
 		aip = (struct wg_aip *)node;
 		if (aip->a_peer != peer) {
 			LIST_REMOVE(aip, a_entry);
@@ -629,7 +629,7 @@ wg_aip_remove_all(struct wg_softc *sc, struct wg_peer *peer)
 				panic("failed to delete aip %p", aip);
 			LIST_REMOVE(aip, a_entry);
 			peer->p_aips_num--;
-			free(aip, M_WG);
+			kfree(aip, M_WG);
 		}
 	}
 	RADIX_NODE_HEAD_UNLOCK(sc->sc_aip4);
@@ -641,7 +641,7 @@ wg_aip_remove_all(struct wg_softc *sc, struct wg_peer *peer)
 				panic("failed to delete aip %p", aip);
 			LIST_REMOVE(aip, a_entry);
 			peer->p_aips_num--;
-			free(aip, M_WG);
+			kfree(aip, M_WG);
 		}
 	}
 	RADIX_NODE_HEAD_UNLOCK(sc->sc_aip6);
@@ -815,7 +815,7 @@ wg_socket_bind(struct socket **in_so4, struct socket **in_so6, in_port_t *reques
 				return (ret);
 			port = ntohs(bound_sin->sin_port);
 			sin6.sin6_port = bound_sin->sin_port;
-			free(bound_sin, M_SONAME);
+			kfree(bound_sin, M_SONAME);
 		}
 	}
 
@@ -830,7 +830,7 @@ wg_socket_bind(struct socket **in_so4, struct socket **in_so6, in_port_t *reques
 			if (ret)
 				return (ret);
 			port = ntohs(bound_sin6->sin6_port);
-			free(bound_sin6, M_SONAME);
+			kfree(bound_sin6, M_SONAME);
 		}
 	}
 
@@ -2368,7 +2368,7 @@ wgc_set(struct wg_softc *sc, struct wg_data_io *wgd)
 	if (wgd->wgd_size >= UINT32_MAX / 2)
 		return (E2BIG);
 
-	nvlpacked = malloc(wgd->wgd_size, M_TEMP, M_WAITOK | M_ZERO);
+	nvlpacked = kmalloc(wgd->wgd_size, M_TEMP, M_WAITOK | M_ZERO);
 
 	err = copyin(wgd->wgd_data, nvlpacked, wgd->wgd_size);
 	if (err)
@@ -2456,7 +2456,8 @@ out_locked:
 	sx_xunlock(&sc->sc_lock);
 	nvlist_destroy(nvl);
 out:
-	zfree(nvlpacked, M_TEMP);
+	explicit_bzero(nvlpacked, wgd->wgd_size);
+	kfree(nvlpacked, M_TEMP);
 	return (err);
 }
 
@@ -2492,7 +2493,7 @@ wgc_get(struct wg_softc *sc, struct wg_data_io *wgd)
 	}
 	peer_count = sc->sc_peers_num;
 	if (peer_count) {
-		nvl_peers = mallocarray(peer_count, sizeof(void *), M_NVLIST, M_WAITOK | M_ZERO);
+		nvl_peers = kmalloc(peer_count * sizeof(void *), M_NVLIST, M_WAITOK | M_ZERO);
 		i = 0;
 		TAILQ_FOREACH(peer, &sc->sc_peers, p_entry) {
 			if (i >= peer_count)
@@ -2521,7 +2522,7 @@ wgc_get(struct wg_softc *sc, struct wg_data_io *wgd)
 
 			aip_count = peer->p_aips_num;
 			if (aip_count) {
-				nvl_aips = mallocarray(aip_count, sizeof(void *), M_NVLIST, M_WAITOK | M_ZERO);
+				nvl_aips = kmalloc(aip_count * sizeof(void *), M_NVLIST, M_WAITOK | M_ZERO);
 				j = 0;
 				LIST_FOREACH(aip, &peer->p_aips, a_entry) {
 					if (j >= aip_count)
@@ -2547,7 +2548,7 @@ wgc_get(struct wg_softc *sc, struct wg_data_io *wgd)
 			err_aip:
 				for (j = 0; j < aip_count; ++j)
 					nvlist_destroy(nvl_aips[j]);
-				free(nvl_aips, M_NVLIST);
+				kfree(nvl_aips, M_NVLIST);
 				if (err)
 					goto err_peer;
 			}
@@ -2556,7 +2557,7 @@ wgc_get(struct wg_softc *sc, struct wg_data_io *wgd)
 	err_peer:
 		for (i = 0; i < peer_count; ++i)
 			nvlist_destroy(nvl_peers[i]);
-		free(nvl_peers, M_NVLIST);
+		kfree(nvl_peers, M_NVLIST);
 		if (err) {
 			sx_sunlock(&sc->sc_lock);
 			goto err;
@@ -2580,7 +2581,8 @@ wgc_get(struct wg_softc *sc, struct wg_data_io *wgd)
 	wgd->wgd_size = size;
 
 out:
-	zfree(packed, M_NVLIST);
+	explicit_bzero(packed, size);
+	kfree(packed, M_NVLIST);
 err:
 	nvlist_destroy(nvl);
 	return (err);
@@ -2725,13 +2727,13 @@ wg_clone_create(struct if_clone *ifc, char *name, size_t len,
 	struct wg_softc *sc;
 	if_t ifp;
 
-	sc = malloc(sizeof(*sc), M_WG, M_WAITOK | M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_WG, M_WAITOK | M_ZERO);
 
 	sc->sc_local = noise_local_alloc(sc);
 
-	sc->sc_encrypt = mallocarray(sizeof(struct grouptask), mp_ncpus, M_WG, M_WAITOK | M_ZERO);
+	sc->sc_encrypt = kmalloc(sizeof(struct grouptask) * mp_ncpus, M_WG, M_WAITOK | M_ZERO);
 
-	sc->sc_decrypt = mallocarray(sizeof(struct grouptask), mp_ncpus, M_WG, M_WAITOK | M_ZERO);
+	sc->sc_decrypt = kmalloc(sizeof(struct grouptask) * mp_ncpus, M_WG, M_WAITOK | M_ZERO);
 
 	if (!rn_inithead((void **)&sc->sc_aip4, offsetof(struct aip_addr, in) * NBBY))
 		goto free_decrypt;
@@ -2798,12 +2800,12 @@ wg_clone_create(struct if_clone *ifc, char *name, size_t len,
 	return (0);
 free_aip4:
 	RADIX_NODE_HEAD_DESTROY(sc->sc_aip4);
-	free(sc->sc_aip4, M_RTABLE);
+	kfree(sc->sc_aip4, M_RTABLE);
 free_decrypt:
-	free(sc->sc_decrypt, M_WG);
-	free(sc->sc_encrypt, M_WG);
+	kfree(sc->sc_decrypt, M_WG);
+	kfree(sc->sc_encrypt, M_WG);
 	noise_local_free(sc->sc_local, NULL);
-	free(sc, M_WG);
+	kfree(sc, M_WG);
 	return (ENOMEM);
 }
 
@@ -2812,7 +2814,7 @@ wg_clone_deferred_free(struct noise_local *l)
 {
 	struct wg_softc *sc = noise_local_arg(l);
 
-	free(sc, M_WG);
+	kfree(sc, M_WG);
 	atomic_add_int(&clone_count, -1);
 }
 
@@ -2858,8 +2860,8 @@ wg_clone_destroy(struct if_clone *ifc, if_t ifp, uint32_t flags)
 		taskqgroup_detach(qgroup_wg_tqg, &sc->sc_encrypt[i]);
 		taskqgroup_detach(qgroup_wg_tqg, &sc->sc_decrypt[i]);
 	}
-	free(sc->sc_encrypt, M_WG);
-	free(sc->sc_decrypt, M_WG);
+	kfree(sc->sc_encrypt, M_WG);
+	kfree(sc->sc_decrypt, M_WG);
 	wg_queue_deinit(&sc->sc_handshake_queue);
 	wg_queue_deinit(&sc->sc_encrypt_parallel);
 	wg_queue_deinit(&sc->sc_decrypt_parallel);
