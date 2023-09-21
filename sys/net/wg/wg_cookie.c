@@ -12,7 +12,6 @@
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/mutex.h>
-#include <sys/rwlock.h>
 #include <sys/socket.h>
 #include <crypto/siphash/siphash.h>
 #include <netinet/in.h>
@@ -112,14 +111,14 @@ cookie_checker_init(struct cookie_checker *cc)
 {
 	bzero(cc, sizeof(*cc));
 
-	rw_init(&cc->cc_key_lock, "cookie_checker_key");
+	lockinit(&cc->cc_key_lock, "cookie_checker_key", 0, 0);
 	mtx_init(&cc->cc_secret_mtx, "cookie_checker_secret", NULL, MTX_DEF);
 }
 
 void
 cookie_checker_free(struct cookie_checker *cc)
 {
-	rw_destroy(&cc->cc_key_lock);
+	lockuninit(&cc->cc_key_lock);
 	mtx_destroy(&cc->cc_secret_mtx);
 	explicit_bzero(cc, sizeof(*cc));
 }
@@ -128,7 +127,7 @@ void
 cookie_checker_update(struct cookie_checker *cc,
     const uint8_t key[COOKIE_INPUT_SIZE])
 {
-	rw_wlock(&cc->cc_key_lock);
+	lockmgr(&cc->cc_key_lock, LK_EXCLUSIVE);
 	if (key) {
 		precompute_key(cc->cc_mac1_key, key, COOKIE_MAC1_KEY_LABEL);
 		precompute_key(cc->cc_cookie_key, key, COOKIE_COOKIE_KEY_LABEL);
@@ -136,7 +135,7 @@ cookie_checker_update(struct cookie_checker *cc,
 		bzero(cc->cc_mac1_key, sizeof(cc->cc_mac1_key));
 		bzero(cc->cc_cookie_key, sizeof(cc->cc_cookie_key));
 	}
-	rw_wunlock(&cc->cc_key_lock);
+	lockmgr(&cc->cc_key_lock, LK_RELEASE);
 }
 
 void
@@ -149,10 +148,10 @@ cookie_checker_create_payload(struct cookie_checker *cc,
 	make_cookie(cc, cookie, sa);
 	arc4random_buf(nonce, COOKIE_NONCE_SIZE);
 
-	rw_rlock(&cc->cc_key_lock);
+	lockmgr(&cc->cc_key_lock, LK_SHARED);
 	xchacha20poly1305_encrypt(ecookie, cookie, COOKIE_COOKIE_SIZE,
 	    macs->mac1, COOKIE_MAC_SIZE, nonce, cc->cc_cookie_key);
-	rw_runlock(&cc->cc_key_lock);
+	lockmgr(&cc->cc_key_lock, LK_RELEASE);
 
 	explicit_bzero(cookie, sizeof(cookie));
 }
@@ -163,13 +162,13 @@ cookie_maker_init(struct cookie_maker *cm, const uint8_t key[COOKIE_INPUT_SIZE])
 	bzero(cm, sizeof(*cm));
 	precompute_key(cm->cm_mac1_key, key, COOKIE_MAC1_KEY_LABEL);
 	precompute_key(cm->cm_cookie_key, key, COOKIE_COOKIE_KEY_LABEL);
-	rw_init(&cm->cm_lock, "cookie_maker");
+	lockinit(&cm->cm_lock, "cookie_maker", 0, 0);
 }
 
 void
 cookie_maker_free(struct cookie_maker *cm)
 {
-	rw_destroy(&cm->cm_lock);
+	lockuninit(&cm->cm_lock);
 	explicit_bzero(cm, sizeof(*cm));
 }
 
@@ -180,7 +179,7 @@ cookie_maker_consume_payload(struct cookie_maker *cm,
 	uint8_t cookie[COOKIE_COOKIE_SIZE];
 	int ret;
 
-	rw_rlock(&cm->cm_lock);
+	lockmgr(&cm->cm_lock, LK_SHARED);
 	if (!cm->cm_mac1_sent) {
 		ret = ETIMEDOUT;
 		goto error;
@@ -191,18 +190,18 @@ cookie_maker_consume_payload(struct cookie_maker *cm,
 		ret = EINVAL;
 		goto error;
 	}
-	rw_runlock(&cm->cm_lock);
+	lockmgr(&cm->cm_lock, LK_RELEASE);
 
-	rw_wlock(&cm->cm_lock);
+	lockmgr(&cm->cm_lock, LK_EXCLUSIVE);
 	memcpy(cm->cm_cookie, cookie, COOKIE_COOKIE_SIZE);
 	cm->cm_cookie_birthdate = getsbinuptime();
 	cm->cm_cookie_valid = true;
 	cm->cm_mac1_sent = false;
-	rw_wunlock(&cm->cm_lock);
+	lockmgr(&cm->cm_lock, LK_RELEASE);
 
 	return 0;
 error:
-	rw_runlock(&cm->cm_lock);
+	lockmgr(&cm->cm_lock, LK_RELEASE);
 	return ret;
 }
 
@@ -210,7 +209,7 @@ void
 cookie_maker_mac(struct cookie_maker *cm, struct cookie_macs *macs, void *buf,
     size_t len)
 {
-	rw_wlock(&cm->cm_lock);
+	lockmgr(&cm->cm_lock, LK_EXCLUSIVE);
 	macs_mac1(macs, buf, len, cm->cm_mac1_key);
 	memcpy(cm->cm_mac1_last, macs->mac1, COOKIE_MAC_SIZE);
 	cm->cm_mac1_sent = true;
@@ -223,7 +222,7 @@ cookie_maker_mac(struct cookie_maker *cm, struct cookie_macs *macs, void *buf,
 		bzero(macs->mac2, COOKIE_MAC_SIZE);
 		cm->cm_cookie_valid = false;
 	}
-	rw_wunlock(&cm->cm_lock);
+	lockmgr(&cm->cm_lock, LK_RELEASE);
 }
 
 int
@@ -234,9 +233,9 @@ cookie_checker_validate_macs(struct cookie_checker *cc, struct cookie_macs *macs
 	uint8_t cookie[COOKIE_COOKIE_SIZE];
 
 	/* Validate incoming MACs */
-	rw_rlock(&cc->cc_key_lock);
+	lockmgr(&cc->cc_key_lock, LK_SHARED);
 	macs_mac1(&our_macs, buf, len, cc->cc_mac1_key);
-	rw_runlock(&cc->cc_key_lock);
+	lockmgr(&cc->cc_key_lock, LK_RELEASE);
 
 	/* If mac1 is invald, we want to drop the packet */
 	if (timingsafe_bcmp(our_macs.mac1, macs->mac1, COOKIE_MAC_SIZE) != 0)

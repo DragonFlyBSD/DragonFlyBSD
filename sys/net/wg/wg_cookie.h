@@ -28,7 +28,7 @@ struct cookie_maker {
 	uint8_t		cm_mac1_key[COOKIE_KEY_SIZE];
 	uint8_t		cm_cookie_key[COOKIE_KEY_SIZE];
 
-	struct rwlock	cm_lock;
+	struct lock	cm_lock;
 	bool		cm_cookie_valid;
 	uint8_t		cm_cookie[COOKIE_COOKIE_SIZE];
 	sbintime_t	cm_cookie_birthdate;	/* sbinuptime */
@@ -37,7 +37,7 @@ struct cookie_maker {
 };
 
 struct cookie_checker {
-	struct rwlock	cc_key_lock;
+	struct lock	cc_key_lock;
 	uint8_t		cc_mac1_key[COOKIE_KEY_SIZE];
 	uint8_t		cc_cookie_key[COOKIE_KEY_SIZE];
 

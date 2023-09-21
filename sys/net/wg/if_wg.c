@@ -23,7 +23,6 @@
 #include <sys/priv.h>
 #include <sys/protosw.h>
 #include <sys/rmlock.h>
-#include <sys/rwlock.h>
 #include <sys/smp.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -179,7 +178,7 @@ struct wg_peer {
 	struct noise_remote		*p_remote;
 	struct cookie_maker		 p_cookie;
 
-	struct rwlock			 p_endpoint_lock;
+	struct lock			 p_endpoint_lock;
 	struct wg_endpoint		 p_endpoint;
 
 	struct wg_queue	 		 p_stage_queue;
@@ -396,7 +395,7 @@ wg_peer_alloc(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE])
 
 	cookie_maker_init(&peer->p_cookie, pub_key);
 
-	rw_init(&peer->p_endpoint_lock, "wg_peer_endpoint");
+	lockinit(&peer->p_endpoint_lock, "wg_peer_endpoint", 0, 0);
 
 	wg_queue_init(&peer->p_stage_queue, "stageq");
 	wg_queue_init(&peer->p_encrypt_serial, "txq");
@@ -445,7 +444,7 @@ wg_peer_free_deferred(struct noise_remote *r)
 
 	counter_u64_free(peer->p_tx_bytes);
 	counter_u64_free(peer->p_rx_bytes);
-	rw_destroy(&peer->p_endpoint_lock);
+	lockuninit(&peer->p_endpoint_lock);
 	mtx_destroy(&peer->p_handshake_mtx);
 
 	cookie_maker_free(&peer->p_cookie);
@@ -492,25 +491,25 @@ wg_peer_set_endpoint(struct wg_peer *peer, struct wg_endpoint *e)
 	if (memcmp(e, &peer->p_endpoint, sizeof(*e)) == 0)
 		return;
 
-	rw_wlock(&peer->p_endpoint_lock);
+	lockmgr(&peer->p_endpoint_lock, LK_EXCLUSIVE);
 	peer->p_endpoint = *e;
-	rw_wunlock(&peer->p_endpoint_lock);
+	lockmgr(&peer->p_endpoint_lock, LK_RELEASE);
 }
 
 static void
 wg_peer_clear_src(struct wg_peer *peer)
 {
-	rw_wlock(&peer->p_endpoint_lock);
+	lockmgr(&peer->p_endpoint_lock, LK_EXCLUSIVE);
 	bzero(&peer->p_endpoint.e_local, sizeof(peer->p_endpoint.e_local));
-	rw_wunlock(&peer->p_endpoint_lock);
+	lockmgr(&peer->p_endpoint_lock, LK_RELEASE);
 }
 
 static void
 wg_peer_get_endpoint(struct wg_peer *peer, struct wg_endpoint *e)
 {
-	rw_rlock(&peer->p_endpoint_lock);
+	lockmgr(&peer->p_endpoint_lock, LK_SHARED);
 	*e = peer->p_endpoint;
-	rw_runlock(&peer->p_endpoint_lock);
+	lockmgr(&peer->p_endpoint_lock, LK_RELEASE);
 }
 
 /* Allowed IP */
