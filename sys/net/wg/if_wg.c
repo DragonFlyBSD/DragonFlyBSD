@@ -20,6 +20,7 @@
 #include <sys/mbuf.h>
 #include <sys/module.h>
 #include <sys/nv.h>
+#include <sys/objcache.h>
 #include <sys/priv.h>
 #include <sys/protosw.h>
 #include <sys/rmlock.h>
@@ -263,10 +264,12 @@ struct wg_softc {
 	} while (0)
 
 static int clone_count;
-static uma_zone_t wg_packet_zone;
 static volatile unsigned long peer_counter = 0;
 static const char wgname[] = "wg";
 static unsigned wg_osd_jail_slot;
+
+static struct objcache *wg_packet_zone;
+MALLOC_DEFINE(M_WG_PACKET, "WG packet", "wireguard packet");
 
 static struct sx wg_sx;
 SX_SYSINIT(wg_sx, &wg_sx, "wg_sx");
@@ -1740,8 +1743,9 @@ wg_packet_alloc(struct mbuf *m)
 {
 	struct wg_packet *pkt;
 
-	if ((pkt = uma_zalloc(wg_packet_zone, M_NOWAIT | M_ZERO)) == NULL)
+	if ((pkt = objcache_get(wg_packet_zone, M_NOWAIT)) == NULL)
 		return (NULL);
+	bzero(pkt, sizeof(*pkt)); /* objcache_get() doesn't ensure M_ZERO. */
 	pkt->p_mbuf = m;
 	return (pkt);
 }
@@ -1753,7 +1757,7 @@ wg_packet_free(struct wg_packet *pkt)
 		noise_keypair_put(pkt->p_keypair);
 	if (pkt->p_mbuf != NULL)
 		m_freem(pkt->p_mbuf);
-	uma_zfree(wg_packet_zone, pkt);
+	objcache_put(wg_packet_zone, pkt);
 }
 
 static void
@@ -2988,8 +2992,9 @@ wg_module_init(void)
 		[PR_METHOD_REMOVE] = wg_prison_remove,
 	};
 
-	if ((wg_packet_zone = uma_zcreate("wg packet", sizeof(struct wg_packet),
-	     NULL, NULL, NULL, NULL, 0, 0)) == NULL)
+	wg_packet_zone = objcache_create_simple(M_WG_PACKET,
+	    sizeof(struct wg_packet));
+	if (wg_packet_zone == NULL)
 		return (ENOMEM);
 	ret = crypto_init();
 	if (ret != 0)
@@ -3026,7 +3031,7 @@ wg_module_deinit(void)
 	cookie_deinit();
 	crypto_deinit();
 	if (wg_packet_zone != NULL)
-		uma_zdestroy(wg_packet_zone);
+		objcache_destroy(wg_packet_zone);
 }
 
 static int

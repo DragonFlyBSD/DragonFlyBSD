@@ -11,10 +11,10 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
+#include <sys/objcache.h>
 #include <sys/socket.h>
 #include <crypto/siphash/siphash.h>
 #include <netinet/in.h>
-#include <vm/uma.h>
 
 #include "wg_cookie.h"
 
@@ -77,14 +77,17 @@ static struct ratelimit ratelimit_v4;
 #ifdef INET6
 static struct ratelimit ratelimit_v6;
 #endif
-static uma_zone_t ratelimit_zone;
+
+static struct objcache *ratelimit_zone;
+MALLOC_DEFINE(M_WG_RATELIMIT, "WG ratelimit", "wireguard ratelimit");
 
 /* Public Functions */
 int
 cookie_init(void)
 {
-	if ((ratelimit_zone = uma_zcreate("wg ratelimit",
-	    sizeof(struct ratelimit_entry), NULL, NULL, NULL, NULL, 0, 0)) == NULL)
+	ratelimit_zone = objcache_create_simple(M_WG_RATELIMIT,
+	    sizeof(struct ratelimit_entry));
+	if (ratelimit_zone == NULL)
 		return ENOMEM;
 
 	ratelimit_init(&ratelimit_v4);
@@ -102,7 +105,7 @@ cookie_deinit(void)
 	ratelimit_deinit(&ratelimit_v6);
 #endif
 	if (ratelimit_zone != NULL)
-		uma_zdestroy(ratelimit_zone);
+		objcache_destroy(ratelimit_zone);
 }
 
 void
@@ -407,7 +410,7 @@ ratelimit_gc(struct ratelimit *rl, bool force)
 			if (r->r_last_time < expiry || force) {
 				rl->rl_table_num--;
 				LIST_REMOVE(r, r_entry);
-				uma_zfree(ratelimit_zone, r);
+				objcache_put(ratelimit_zone, r);
 			}
 		}
 	}
@@ -474,8 +477,9 @@ ratelimit_allow(struct ratelimit *rl, struct sockaddr *sa, struct vnet *vnet)
 		goto error;
 
 	/* Goto error if out of memory */
-	if ((r = uma_zalloc(ratelimit_zone, M_NOWAIT | M_ZERO)) == NULL)
+	if ((r = objcache_get(ratelimit_zone, M_NOWAIT)) == NULL)
 		goto error;
+	bzero(r, sizeof(*r)); /* objcache_get() doesn't ensure M_ZERO. */
 
 	rl->rl_table_num++;
 
