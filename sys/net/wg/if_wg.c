@@ -23,6 +23,7 @@
 #include <sys/objcache.h>
 #include <sys/priv.h>
 #include <sys/protosw.h>
+#include <sys/queue.h>
 #include <sys/rmlock.h>
 #include <sys/smp.h>
 #include <sys/socket.h>
@@ -481,7 +482,7 @@ static void
 wg_peer_destroy_all(struct wg_softc *sc)
 {
 	struct wg_peer *peer, *tpeer;
-	TAILQ_FOREACH_SAFE(peer, &sc->sc_peers, p_entry, tpeer)
+	TAILQ_FOREACH_MUTABLE(peer, &sc->sc_peers, p_entry, tpeer)
 		wg_peer_destroy(peer);
 }
 
@@ -621,7 +622,7 @@ wg_aip_remove_all(struct wg_softc *sc, struct wg_peer *peer)
 	struct wg_aip		*aip, *taip;
 
 	RADIX_NODE_HEAD_LOCK(sc->sc_aip4);
-	LIST_FOREACH_SAFE(aip, &peer->p_aips, a_entry, taip) {
+	LIST_FOREACH_MUTABLE(aip, &peer->p_aips, a_entry, taip) {
 		if (aip->a_af == AF_INET) {
 			if (sc->sc_aip4->rnh_deladdr(&aip->a_addr, &aip->a_mask, &sc->sc_aip4->rh) == NULL)
 				panic("failed to delete aip %p", aip);
@@ -633,7 +634,7 @@ wg_aip_remove_all(struct wg_softc *sc, struct wg_peer *peer)
 	RADIX_NODE_HEAD_UNLOCK(sc->sc_aip4);
 
 	RADIX_NODE_HEAD_LOCK(sc->sc_aip6);
-	LIST_FOREACH_SAFE(aip, &peer->p_aips, a_entry, taip) {
+	LIST_FOREACH_MUTABLE(aip, &peer->p_aips, a_entry, taip) {
 		if (aip->a_af == AF_INET6) {
 			if (sc->sc_aip6->rnh_deladdr(&aip->a_addr, &aip->a_mask, &sc->sc_aip6->rh) == NULL)
 				panic("failed to delete aip %p", aip);
@@ -1442,7 +1443,7 @@ wg_mbuf_reset(struct mbuf *m)
 #ifdef NUMA
         m->m_pkthdr.numa_domain = M_NODOM;
 #endif
-	SLIST_FOREACH_SAFE(t, &m->m_pkthdr.tags, m_tag_link, tmp) {
+	SLIST_FOREACH_MUTABLE(t, &m->m_pkthdr.tags, m_tag_link, tmp) {
 		if ((t->m_tag_id != 0 || t->m_tag_cookie != MTAG_WGLOOP) &&
 		    t->m_tag_id != PACKET_TAG_MACLABEL)
 			m_tag_delete(m, t);
@@ -1832,7 +1833,7 @@ static void
 wg_queue_enlist_staged(struct wg_queue *staged, struct wg_packet_list *list)
 {
 	struct wg_packet *pkt, *tpkt;
-	STAILQ_FOREACH_SAFE(pkt, list, p_parallel, tpkt)
+	STAILQ_FOREACH_MUTABLE(pkt, list, p_parallel, tpkt)
 		wg_queue_push_staged(staged, pkt);
 }
 
@@ -1852,7 +1853,7 @@ wg_queue_purge(struct wg_queue *staged)
 	struct wg_packet_list list;
 	struct wg_packet *pkt, *tpkt;
 	wg_queue_delist_staged(staged, &list);
-	STAILQ_FOREACH_SAFE(pkt, &list, p_parallel, tpkt)
+	STAILQ_FOREACH_MUTABLE(pkt, &list, p_parallel, tpkt)
 		wg_packet_free(pkt);
 }
 
@@ -2034,7 +2035,7 @@ wg_peer_send_staged(struct wg_peer *peer)
 		if (noise_keypair_nonce_next(keypair, &pkt->p_nonce) != 0)
 			goto error_keypair;
 	}
-	STAILQ_FOREACH_SAFE(pkt, &list, p_parallel, tpkt) {
+	STAILQ_FOREACH_MUTABLE(pkt, &list, p_parallel, tpkt) {
 		pkt->p_keypair = noise_keypair_ref(keypair);
 		if (wg_queue_both(&sc->sc_encrypt_parallel, &peer->p_encrypt_serial, pkt) != 0)
 			if_inc_counter(sc->sc_ifp, IFCOUNTER_OQDROPS, 1);

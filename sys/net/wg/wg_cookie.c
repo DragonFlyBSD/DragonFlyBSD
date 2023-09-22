@@ -12,6 +12,7 @@
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/objcache.h>
+#include <sys/queue.h>
 #include <sys/socket.h>
 #include <crypto/siphash/siphash.h>
 #include <netinet/in.h>
@@ -406,7 +407,7 @@ ratelimit_gc(struct ratelimit *rl, bool force)
 	expiry = getsbinuptime() - ELEMENT_TIMEOUT * SBT_1S;
 
 	for (i = 0; i < RATELIMIT_SIZE; i++) {
-		LIST_FOREACH_SAFE(r, &rl->rl_table[i], r_entry, tr) {
+		LIST_FOREACH_MUTABLE(r, &rl->rl_table[i], r_entry, tr) {
 			if (r->r_last_time < expiry || force) {
 				rl->rl_table_num--;
 				LIST_REMOVE(r, r_entry);
