@@ -12,7 +12,6 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/counter.h>
 #include <sys/gtaskqueue.h>
 #include <sys/jail.h>
 #include <sys/kernel.h>
@@ -202,8 +201,8 @@ struct wg_peer {
 	struct grouptask		 p_send;
 	struct grouptask		 p_recv;
 
-	counter_u64_t			 p_tx_bytes;
-	counter_u64_t			 p_rx_bytes;
+	uint64_t			*p_tx_bytes;
+	uint64_t			*p_rx_bytes;
 
 	LIST_HEAD(, wg_aip)		 p_aips;
 	size_t				 p_aips_num;
@@ -390,8 +389,10 @@ wg_peer_alloc(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE])
 
 	peer = kmalloc(sizeof(*peer), M_WG, M_WAITOK | M_ZERO);
 	peer->p_remote = noise_remote_alloc(sc->sc_local, peer, pub_key);
-	peer->p_tx_bytes = counter_u64_alloc(M_WAITOK);
-	peer->p_rx_bytes = counter_u64_alloc(M_WAITOK);
+	peer->p_tx_bytes = kmalloc(sizeof(*peer->p_tx_bytes) * ncpus,
+	    M_WG, M_WAITOK | M_ZERO);
+	peer->p_rx_bytes = kmalloc(sizeof(*peer->p_rx_bytes) * ncpus,
+	    M_WG, M_WAITOK | M_ZERO);
 	peer->p_id = peer_counter++;
 	peer->p_sc = sc;
 
@@ -444,8 +445,8 @@ wg_peer_free_deferred(struct noise_remote *r)
 	wg_queue_deinit(&peer->p_encrypt_serial);
 	wg_queue_deinit(&peer->p_stage_queue);
 
-	counter_u64_free(peer->p_tx_bytes);
-	counter_u64_free(peer->p_rx_bytes);
+	kfree(peer->p_tx_bytes, M_WG);
+	kfree(peer->p_rx_bytes, M_WG);
 	lockuninit(&peer->p_endpoint_lock);
 	lockuninit(&peer->p_handshake_mtx);
 
@@ -1194,7 +1195,7 @@ wg_peer_send_buf(struct wg_peer *peer, uint8_t *buf, size_t len)
 {
 	struct wg_endpoint endpoint;
 
-	counter_u64_add(peer->p_tx_bytes, len);
+	peer->p_tx_bytes[mycpuid] += len;
 	wg_timers_event_any_authenticated_packet_traversal(peer);
 	wg_timers_event_any_authenticated_packet_sent(peer);
 	wg_peer_get_endpoint(peer, &endpoint);
@@ -1398,7 +1399,7 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 	wg_timers_event_any_authenticated_packet_traversal(peer);
 
 not_authenticated:
-	counter_u64_add(peer->p_rx_bytes, m->m_pkthdr.len);
+	peer->p_rx_bytes[mycpuid] += m->m_pkthdr.len;
 	if_inc_counter(sc->sc_ifp, IFCOUNTER_IPACKETS, 1);
 	if_inc_counter(sc->sc_ifp, IFCOUNTER_IBYTES, m->m_pkthdr.len);
 error:
@@ -1656,7 +1657,7 @@ wg_deliver_out(struct wg_peer *peer)
 		if (rc == 0) {
 			if (len > (sizeof(struct wg_pkt_data) + NOISE_AUTHTAG_LEN))
 				wg_timers_event_data_sent(peer);
-			counter_u64_add(peer->p_tx_bytes, len);
+			peer->p_tx_bytes[mycpuid] += len;
 		} else if (rc == EADDRNOTAVAIL) {
 			wg_peer_clear_src(peer);
 			wg_peer_get_endpoint(peer, &endpoint);
@@ -1698,7 +1699,7 @@ wg_deliver_in(struct wg_peer *peer)
 		wg_timers_event_any_authenticated_packet_traversal(peer);
 		wg_peer_set_endpoint(peer, &pkt->p_endpoint);
 
-		counter_u64_add(peer->p_rx_bytes, m->m_pkthdr.len +
+		peer->p_rx_bytes[mycpuid] += (m->m_pkthdr.len +
 		    sizeof(struct wg_pkt_data) + NOISE_AUTHTAG_LEN);
 		if_inc_counter(sc->sc_ifp, IFCOUNTER_IPACKETS, 1);
 		if_inc_counter(sc->sc_ifp, IFCOUNTER_IBYTES, m->m_pkthdr.len +
@@ -2467,12 +2468,13 @@ wgc_get(struct wg_softc *sc, struct wg_data_io *wgd)
 	uint8_t private_key[WG_KEY_SIZE] = { 0 };
 	uint8_t preshared_key[NOISE_SYMMETRIC_KEY_LEN] = { 0 };
 	nvlist_t *nvl, *nvl_peer, *nvl_aip, **nvl_peers, **nvl_aips;
+	uint64_t rx_bytes, tx_bytes;
 	size_t size, peer_count, aip_count, i, j;
 	struct wg_timespec64 ts64;
 	struct wg_peer *peer;
 	struct wg_aip *aip;
 	void *packed;
-	int err = 0;
+	int cpu, err = 0;
 
 	nvl = nvlist_create(0);
 	if (!nvl)
@@ -2516,8 +2518,15 @@ wgc_get(struct wg_softc *sc, struct wg_data_io *wgd)
 			wg_timers_get_last_handshake(peer, &ts64);
 			nvlist_add_binary(nvl_peer, "last-handshake-time", &ts64, sizeof(ts64));
 			nvlist_add_number(nvl_peer, "persistent-keepalive-interval", peer->p_persistent_keepalive_interval);
-			nvlist_add_number(nvl_peer, "rx-bytes", counter_u64_fetch(peer->p_rx_bytes));
-			nvlist_add_number(nvl_peer, "tx-bytes", counter_u64_fetch(peer->p_tx_bytes));
+
+			rx_bytes = 0;
+			tx_bytes = 0;
+			for (cpu = 0; cpu < ncpus; cpu++) {
+				rx_bytes += peer->p_rx_bytes[cpu];
+				tx_bytes += peer->p_tx_bytes[cpu];
+			}
+			nvlist_add_number(nvl_peer, "rx-bytes", rx_bytes);
+			nvlist_add_number(nvl_peer, "tx-bytes", tx_bytes);
 
 			aip_count = peer->p_aips_num;
 			if (aip_count) {
