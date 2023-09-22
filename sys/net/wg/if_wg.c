@@ -29,7 +29,6 @@
 #include <sys/socketvar.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <machine/_inttypes.h>
 #include <net/bpf.h>
 #include <net/ethernet.h>
@@ -244,7 +243,7 @@ struct wg_softc {
 	u_int			 sc_encrypt_last_cpu;
 	u_int			 sc_decrypt_last_cpu;
 
-	struct sx		 sc_lock;
+	struct lock		 sc_lock;
 };
 
 #define	WGF_DYING	0x0001
@@ -271,8 +270,7 @@ static unsigned wg_osd_jail_slot;
 static struct objcache *wg_packet_zone;
 MALLOC_DEFINE(M_WG_PACKET, "WG packet", "wireguard packet");
 
-static struct sx wg_sx;
-SX_SYSINIT(wg_sx, &wg_sx, "wg_sx");
+static struct lock wg_lock;
 
 static LIST_HEAD(, wg_softc) wg_list = LIST_HEAD_INITIALIZER(wg_list);
 
@@ -387,7 +385,7 @@ wg_peer_alloc(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE])
 {
 	struct wg_peer *peer;
 
-	sx_assert(&sc->sc_lock, SX_XLOCKED);
+	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
 
 	peer = kmalloc(sizeof(*peer), M_WG, M_WAITOK | M_ZERO);
 	peer->p_remote = noise_remote_alloc(sc->sc_local, peer, pub_key);
@@ -459,7 +457,7 @@ static void
 wg_peer_destroy(struct wg_peer *peer)
 {
 	struct wg_softc *sc = peer->p_sc;
-	sx_assert(&sc->sc_lock, SX_XLOCKED);
+	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
 
 	/* Disable remote and timers. This will prevent any new handshakes
 	 * occuring. */
@@ -657,7 +655,7 @@ wg_socket_init(struct wg_softc *sc, in_port_t port)
 	struct socket *so4 = NULL, *so6 = NULL;
 	int rc;
 
-	sx_assert(&sc->sc_lock, SX_XLOCKED);
+	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
 
 	if (!cred)
 		return (EBUSY);
@@ -738,7 +736,7 @@ static int wg_socket_set_cookie(struct wg_softc *sc, uint32_t user_cookie)
 	struct wg_socket *so = &sc->sc_socket;
 	int ret;
 
-	sx_assert(&sc->sc_lock, SX_XLOCKED);
+	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
 	ret = wg_socket_set_sockopt(so->so_so4, so->so_so6, SO_USER_COOKIE, &user_cookie, sizeof(user_cookie));
 	if (!ret)
 		so->so_user_cookie = user_cookie;
@@ -750,7 +748,7 @@ static int wg_socket_set_fibnum(struct wg_softc *sc, int fibnum)
 	struct wg_socket *so = &sc->sc_socket;
 	int ret;
 
-	sx_assert(&sc->sc_lock, SX_XLOCKED);
+	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
 
 	ret = wg_socket_set_sockopt(so->so_so4, so->so_so6, SO_SETFIB, &fibnum, sizeof(fibnum));
 	if (!ret)
@@ -770,7 +768,7 @@ wg_socket_set(struct wg_softc *sc, struct socket *new_so4, struct socket *new_so
 	struct wg_socket *so = &sc->sc_socket;
 	struct socket *so4, *so6;
 
-	sx_assert(&sc->sc_lock, SX_XLOCKED);
+	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
 
 	so4 = atomic_load_ptr(&so->so_so4);
 	so6 = atomic_load_ptr(&so->so_so6);
@@ -2241,7 +2239,7 @@ wg_peer_add(struct wg_softc *sc, const nvlist_t *nvl)
 	struct wg_peer *peer = NULL;
 	bool need_insert = false;
 
-	sx_assert(&sc->sc_lock, SX_XLOCKED);
+	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
 
 	if (!nvlist_exists_binary(nvl, "public-key")) {
 		return (EINVAL);
@@ -2378,7 +2376,7 @@ wgc_set(struct wg_softc *sc, struct wg_data_io *wgd)
 		err = EBADMSG;
 		goto out;
 	}
-	sx_xlock(&sc->sc_lock);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	if (nvlist_exists_bool(nvl, "replace-peers") &&
 		nvlist_get_bool(nvl, "replace-peers"))
 		wg_peer_destroy_all(sc);
@@ -2453,7 +2451,7 @@ wgc_set(struct wg_softc *sc, struct wg_data_io *wgd)
 	}
 
 out_locked:
-	sx_xunlock(&sc->sc_lock);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 	nvlist_destroy(nvl);
 out:
 	explicit_bzero(nvlpacked, wgd->wgd_size);
@@ -2479,7 +2477,7 @@ wgc_get(struct wg_softc *sc, struct wg_data_io *wgd)
 	if (!nvl)
 		return (ENOMEM);
 
-	sx_slock(&sc->sc_lock);
+	lockmgr(&sc->sc_lock, LK_SHARED);
 
 	if (sc->sc_socket.so_port != 0)
 		nvlist_add_number(nvl, "listen-port", sc->sc_socket.so_port);
@@ -2559,11 +2557,11 @@ wgc_get(struct wg_softc *sc, struct wg_data_io *wgd)
 			nvlist_destroy(nvl_peers[i]);
 		kfree(nvl_peers, M_NVLIST);
 		if (err) {
-			sx_sunlock(&sc->sc_lock);
+			lockmgr(&sc->sc_lock, LK_RELEASE);
 			goto err;
 		}
 	}
-	sx_sunlock(&sc->sc_lock);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 	packed = nvlist_pack(nvl, &size);
 	if (!packed) {
 		err = ENOMEM;
@@ -2596,7 +2594,7 @@ wg_ioctl(if_t ifp, u_long cmd, caddr_t data)
 	struct wg_softc *sc;
 	int ret = 0;
 
-	sx_slock(&wg_sx);
+	lockmgr(&wg_lock, LK_SHARED);
 	sc = if_getsoftc(ifp);
 	if (!sc) {
 		ret = ENXIO;
@@ -2644,16 +2642,16 @@ wg_ioctl(if_t ifp, u_long cmd, caddr_t data)
 		ret = priv_check(curthread, PRIV_NET_SETIFFIB);
 		if (ret)
 			break;
-		sx_xlock(&sc->sc_lock);
+		lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 		ret = wg_socket_set_fibnum(sc, ifr->ifr_fib);
-		sx_xunlock(&sc->sc_lock);
+		lockmgr(&sc->sc_lock, LK_RELEASE);
 		break;
 	default:
 		ret = ENOTTY;
 	}
 
 out:
-	sx_sunlock(&wg_sx);
+	lockmgr(&wg_lock, LK_RELEASE);
 	return (ret);
 }
 
@@ -2664,7 +2662,7 @@ wg_up(struct wg_softc *sc)
 	struct wg_peer *peer;
 	int rc = EBUSY;
 
-	sx_xlock(&sc->sc_lock);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	/* Jail's being removed, no more wg_up(). */
 	if ((sc->sc_flags & WGF_DYING) != 0)
 		goto out;
@@ -2685,7 +2683,7 @@ wg_up(struct wg_softc *sc)
 		DPRINTF(sc, "Unable to initialize sockets: %d\n", rc);
 	}
 out:
-	sx_xunlock(&sc->sc_lock);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 	return (rc);
 }
 
@@ -2695,9 +2693,9 @@ wg_down(struct wg_softc *sc)
 	if_t ifp = sc->sc_ifp;
 	struct wg_peer *peer;
 
-	sx_xlock(&sc->sc_lock);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	if (!(if_getdrvflags(ifp) & IFF_DRV_RUNNING)) {
-		sx_xunlock(&sc->sc_lock);
+		lockmgr(&sc->sc_lock, LK_RELEASE);
 		return;
 	}
 	if_setdrvflagbits(ifp, 0, IFF_DRV_RUNNING);
@@ -2717,7 +2715,7 @@ wg_down(struct wg_softc *sc)
 	if_link_state_change(sc->sc_ifp, LINK_STATE_DOWN);
 	wg_socket_uninit(sc);
 
-	sx_xunlock(&sc->sc_lock);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 }
 
 static int
@@ -2772,7 +2770,7 @@ wg_clone_create(struct if_clone *ifc, char *name, size_t len,
 	wg_queue_init(&sc->sc_encrypt_parallel, "encp");
 	wg_queue_init(&sc->sc_decrypt_parallel, "decp");
 
-	sx_init(&sc->sc_lock, "wg softc lock");
+	lockinit(&sc->sc_lock, "wg softc lock", 0, 0);
 
 	if_setsoftc(ifp, sc);
 	if_setcapabilities(ifp, WG_CAPS);
@@ -2793,9 +2791,9 @@ wg_clone_create(struct if_clone *ifc, char *name, size_t len,
 	ND_IFINFO(ifp)->flags &= ~ND6_IFF_AUTO_LINKLOCAL;
 	ND_IFINFO(ifp)->flags |= ND6_IFF_NO_DAD;
 #endif
-	sx_xlock(&wg_sx);
+	lockmgr(&wg_lock, LK_EXCLUSIVE);
 	LIST_INSERT_HEAD(&wg_list, sc, sc_entry);
-	sx_xunlock(&wg_sx);
+	lockmgr(&wg_lock, LK_RELEASE);
 	*ifpp = ifp;
 	return (0);
 free_aip4:
@@ -2824,24 +2822,24 @@ wg_clone_destroy(struct if_clone *ifc, if_t ifp, uint32_t flags)
 	struct wg_softc *sc = if_getsoftc(ifp);
 	struct ucred *cred;
 
-	sx_xlock(&wg_sx);
+	lockmgr(&wg_lock, LK_EXCLUSIVE);
 	if_setsoftc(ifp, NULL);
-	sx_xlock(&sc->sc_lock);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	sc->sc_flags |= WGF_DYING;
 	cred = sc->sc_ucred;
 	sc->sc_ucred = NULL;
-	sx_xunlock(&sc->sc_lock);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 	LIST_REMOVE(sc, sc_entry);
-	sx_xunlock(&wg_sx);
+	lockmgr(&wg_lock, LK_RELEASE);
 
 	if_link_state_change(sc->sc_ifp, LINK_STATE_DOWN);
 	CURVNET_SET(if_getvnet(sc->sc_ifp));
 	if_purgeaddrs(sc->sc_ifp);
 	CURVNET_RESTORE();
 
-	sx_xlock(&sc->sc_lock);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	wg_socket_uninit(sc);
-	sx_xunlock(&sc->sc_lock);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	/*
 	 * No guarantees that all traffic have passed until the epoch has
@@ -2850,11 +2848,11 @@ wg_clone_destroy(struct if_clone *ifc, if_t ifp, uint32_t flags)
 	NET_EPOCH_WAIT();
 
 	taskqgroup_drain_all(qgroup_wg_tqg);
-	sx_xlock(&sc->sc_lock);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	wg_peer_destroy_all(sc);
 	NET_EPOCH_DRAIN_CALLBACKS();
-	sx_xunlock(&sc->sc_lock);
-	sx_destroy(&sc->sc_lock);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
+	lockuninit(&sc->sc_lock);
 	taskqgroup_detach(qgroup_wg_tqg, &sc->sc_handshake);
 	for (int i = 0; i < mp_ncpus; i++) {
 		taskqgroup_detach(qgroup_wg_tqg, &sc->sc_encrypt[i]);
@@ -2953,9 +2951,9 @@ wg_prison_remove(void *obj, void *data __unused)
 	 * the jail that are supposed to be going away.  This will, in turn, let
 	 * the jail die so that we don't end up with Schrödinger's jail.
 	 */
-	sx_slock(&wg_sx);
+	lockmgr(&wg_lock, LK_SHARED);
 	LIST_FOREACH(sc, &wg_list, sc_entry) {
-		sx_xlock(&sc->sc_lock);
+		lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 		if (!(sc->sc_flags & WGF_DYING) && sc->sc_ucred && sc->sc_ucred->cr_prison == pr) {
 			struct ucred *cred = sc->sc_ucred;
 			DPRINTF(sc, "Creating jail exiting\n");
@@ -2965,9 +2963,9 @@ wg_prison_remove(void *obj, void *data __unused)
 			crfree(cred);
 			sc->sc_flags |= WGF_DYING;
 		}
-		sx_xunlock(&sc->sc_lock);
+		lockmgr(&sc->sc_lock, LK_RELEASE);
 	}
-	sx_sunlock(&wg_sx);
+	lockmgr(&wg_lock, LK_RELEASE);
 
 	return (0);
 }
@@ -2993,6 +2991,8 @@ wg_module_init(void)
 	osd_method_t methods[PR_MAXMETHOD] = {
 		[PR_METHOD_REMOVE] = wg_prison_remove,
 	};
+
+	lockinit(&wg_lock, "wg lock", 0, 0);
 
 	wg_packet_zone = objcache_create_simple(M_WG_PACKET,
 	    sizeof(struct wg_packet));
@@ -3034,6 +3034,7 @@ wg_module_deinit(void)
 	crypto_deinit();
 	if (wg_packet_zone != NULL)
 		objcache_destroy(wg_packet_zone);
+	lockuninit(&wg_lock);
 }
 
 static int
