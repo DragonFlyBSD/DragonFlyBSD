@@ -124,14 +124,14 @@ DIO_RECORD(hammer2_io_t *dio HAMMER2_IO_DEBUG_ARGS)
  */
 static __inline
 hammer2_io_t *
-hammer2_io_alloc(hammer2_dev_t *hmp, hammer2_key_t data_off, uint8_t btype,
+hammer2_io_alloc(hammer2_dev_t *hmp, hammer2_off_t data_off, uint8_t btype,
 		 int createit, int *isgoodp)
 {
 	hammer2_io_t *dio;
 	hammer2_io_t *xio;
-	hammer2_key_t lbase;
-	hammer2_key_t pbase;
-	hammer2_key_t pmask;
+	hammer2_off_t lbase;
+	hammer2_off_t pbase;
+	hammer2_off_t pmask;
 	hammer2_volume_t *vol;
 	uint64_t refs;
 	int lsize;
