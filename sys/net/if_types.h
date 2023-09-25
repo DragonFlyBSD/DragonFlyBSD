@@ -248,4 +248,6 @@
 #define	IFT_PFLOG	0xf5		/* Packet filter logging */
 #define	IFT_PFSYNC	0xf6		/* Packet filter state syncing */
 #define	IFT_CARP	0xf8		/* Common Address Redundancy Protocol */
+#define	IFT_WIREGUARD	0xf9		/* WireGuard tunnel */
+
 #endif /* !_NET_IF_TYPES_H_ */
