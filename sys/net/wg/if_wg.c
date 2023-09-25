@@ -891,8 +891,8 @@ wg_send(struct wg_softc *sc, struct wg_endpoint *e, struct mbuf *m)
 	}
 	NET_EPOCH_EXIT(et);
 	if (ret == 0) {
-		if_inc_counter(sc->sc_ifp, IFCOUNTER_OPACKETS, 1);
-		if_inc_counter(sc->sc_ifp, IFCOUNTER_OBYTES, len);
+		IFNET_STAT_INC(sc->sc_ifp, opackets, 1);
+		IFNET_STAT_INC(sc->sc_ifp, obytes, len);
 	}
 	return (ret);
 }
@@ -1398,8 +1398,8 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 
 not_authenticated:
 	peer->p_rx_bytes[mycpuid] += m->m_pkthdr.len;
-	if_inc_counter(sc->sc_ifp, IFCOUNTER_IPACKETS, 1);
-	if_inc_counter(sc->sc_ifp, IFCOUNTER_IBYTES, m->m_pkthdr.len);
+	IFNET_STAT_INC(sc->sc_ifp, ipackets, 1);
+	IFNET_STAT_INC(sc->sc_ifp, ibytes, m->m_pkthdr.len);
 error:
 	if (remote != NULL)
 		noise_remote_put(remote);
@@ -1668,7 +1668,7 @@ wg_deliver_out(struct wg_peer *peer)
 			wg_timers_event_want_initiation(peer);
 		continue;
 error:
-		if_inc_counter(sc->sc_ifp, IFCOUNTER_OERRORS, 1);
+		IFNET_STAT_INC(sc->sc_ifp, oerrors, 1);
 		wg_packet_free(pkt);
 	}
 }
@@ -1699,8 +1699,8 @@ wg_deliver_in(struct wg_peer *peer)
 
 		peer->p_rx_bytes[mycpuid] += (m->m_pkthdr.len +
 		    sizeof(struct wg_pkt_data) + NOISE_AUTHTAG_LEN);
-		if_inc_counter(sc->sc_ifp, IFCOUNTER_IPACKETS, 1);
-		if_inc_counter(sc->sc_ifp, IFCOUNTER_IBYTES, m->m_pkthdr.len +
+		IFNET_STAT_INC(sc->sc_ifp, ipackets, 1);
+		IFNET_STAT_INC(sc->sc_ifp, ibytes, m->m_pkthdr.len +
 		    sizeof(struct wg_pkt_data) + NOISE_AUTHTAG_LEN);
 
 		if (m->m_pkthdr.len == 0)
@@ -1731,7 +1731,7 @@ done:
 		wg_packet_free(pkt);
 		continue;
 error:
-		if_inc_counter(ifp, IFCOUNTER_IERRORS, 1);
+		IFNET_STAT_INC(ifp, ierrors, 1);
 		wg_packet_free(pkt);
 	}
 }
@@ -1936,7 +1936,7 @@ wg_input(struct mbuf *m, int offset, struct inpcb *inpcb,
 		m = defragged;
 	m = m_unshare(m, M_NOWAIT);
 	if (!m) {
-		if_inc_counter(sc->sc_ifp, IFCOUNTER_IQDROPS, 1);
+		IFNET_STAT_INC(sc->sc_ifp, iqdrops, 1);
 		return true;
 	}
 
@@ -1945,12 +1945,12 @@ wg_input(struct mbuf *m, int offset, struct inpcb *inpcb,
 
 	/* Pullup enough to read packet type */
 	if ((m = m_pullup(m, sizeof(uint32_t))) == NULL) {
-		if_inc_counter(sc->sc_ifp, IFCOUNTER_IQDROPS, 1);
+		IFNET_STAT_INC(sc->sc_ifp, iqdrops, 1);
 		return true;
 	}
 
 	if ((pkt = wg_packet_alloc(m)) == NULL) {
-		if_inc_counter(sc->sc_ifp, IFCOUNTER_IQDROPS, 1);
+		IFNET_STAT_INC(sc->sc_ifp, iqdrops, 1);
 		m_freem(m);
 		return true;
 	}
@@ -1983,7 +1983,7 @@ wg_input(struct mbuf *m, int offset, struct inpcb *inpcb,
 		*mtod(m, uint32_t *) == WG_PKT_COOKIE)) {
 
 		if (wg_queue_enqueue_handshake(&sc->sc_handshake_queue, pkt) != 0) {
-			if_inc_counter(sc->sc_ifp, IFCOUNTER_IQDROPS, 1);
+			IFNET_STAT_INC(sc->sc_ifp, iqdrops, 1);
 			DPRINTF(sc, "Dropping handshake packet\n");
 		}
 		GROUPTASK_ENQUEUE(&sc->sc_handshake);
@@ -2001,7 +2001,7 @@ wg_input(struct mbuf *m, int offset, struct inpcb *inpcb,
 		remote = noise_keypair_remote(pkt->p_keypair);
 		peer = noise_remote_arg(remote);
 		if (wg_queue_both(&sc->sc_decrypt_parallel, &peer->p_decrypt_serial, pkt) != 0)
-			if_inc_counter(sc->sc_ifp, IFCOUNTER_IQDROPS, 1);
+			IFNET_STAT_INC(sc->sc_ifp, iqdrops, 1);
 		wg_decrypt_dispatch(sc);
 		noise_remote_put(remote);
 	} else {
@@ -2009,7 +2009,7 @@ wg_input(struct mbuf *m, int offset, struct inpcb *inpcb,
 	}
 	return true;
 error:
-	if_inc_counter(sc->sc_ifp, IFCOUNTER_IERRORS, 1);
+	IFNET_STAT_INC(sc->sc_ifp, ierrors, 1);
 	wg_packet_free(pkt);
 	return true;
 }
@@ -2037,7 +2037,7 @@ wg_peer_send_staged(struct wg_peer *peer)
 	STAILQ_FOREACH_MUTABLE(pkt, &list, p_parallel, tpkt) {
 		pkt->p_keypair = noise_keypair_ref(keypair);
 		if (wg_queue_both(&sc->sc_encrypt_parallel, &peer->p_encrypt_serial, pkt) != 0)
-			if_inc_counter(sc->sc_ifp, IFCOUNTER_OQDROPS, 1);
+			IFNET_STAT_INC(sc->sc_ifp, oqdrops, 1);
 	}
 	wg_encrypt_dispatch(sc);
 	noise_keypair_put(keypair);
@@ -2053,7 +2053,7 @@ error:
 static inline void
 xmit_err(if_t ifp, struct mbuf *m, struct wg_packet *pkt, sa_family_t af)
 {
-	if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
+	IFNET_STAT_INC(ifp, oerrors, 1);
 	switch (af) {
 #ifdef INET
 	case AF_INET:
