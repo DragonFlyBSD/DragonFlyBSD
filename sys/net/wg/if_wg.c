@@ -272,7 +272,7 @@ static struct lock wg_lock;
 
 static LIST_HEAD(, wg_softc) wg_list = LIST_HEAD_INITIALIZER(wg_list);
 
-static TASKQGROUP_DEFINE(wg_tqg, mp_ncpus, 1);
+static TASKQGROUP_DEFINE(wg_tqg, ncpus, 1);
 
 MALLOC_DEFINE(M_WG, "WG", "wireguard");
 
@@ -1616,7 +1616,7 @@ wg_encrypt_dispatch(struct wg_softc *sc)
 	 * reschedule the task for the same CPU multiple times, but
 	 * the race doesn't really matter.
 	 */
-	u_int cpu = (sc->sc_encrypt_last_cpu + 1) % mp_ncpus;
+	u_int cpu = (sc->sc_encrypt_last_cpu + 1) % ncpus;
 	sc->sc_encrypt_last_cpu = cpu;
 	GROUPTASK_ENQUEUE(&sc->sc_encrypt[cpu]);
 }
@@ -1624,7 +1624,7 @@ wg_encrypt_dispatch(struct wg_softc *sc)
 static void
 wg_decrypt_dispatch(struct wg_softc *sc)
 {
-	u_int cpu = (sc->sc_decrypt_last_cpu + 1) % mp_ncpus;
+	u_int cpu = (sc->sc_decrypt_last_cpu + 1) % ncpus;
 	sc->sc_decrypt_last_cpu = cpu;
 	GROUPTASK_ENQUEUE(&sc->sc_decrypt[cpu]);
 }
@@ -2738,9 +2738,9 @@ wg_clone_create(struct if_clone *ifc, char *name, size_t len,
 
 	sc->sc_local = noise_local_alloc(sc);
 
-	sc->sc_encrypt = kmalloc(sizeof(struct grouptask) * mp_ncpus, M_WG, M_WAITOK | M_ZERO);
+	sc->sc_encrypt = kmalloc(sizeof(struct grouptask) * ncpus, M_WG, M_WAITOK | M_ZERO);
 
-	sc->sc_decrypt = kmalloc(sizeof(struct grouptask) * mp_ncpus, M_WG, M_WAITOK | M_ZERO);
+	sc->sc_decrypt = kmalloc(sizeof(struct grouptask) * ncpus, M_WG, M_WAITOK | M_ZERO);
 
 	if (!rn_inithead((void **)&sc->sc_aip4, offsetof(struct aip_addr, in) * NBBY))
 		goto free_decrypt;
@@ -2767,7 +2767,7 @@ wg_clone_create(struct if_clone *ifc, char *name, size_t len,
 	taskqgroup_attach(qgroup_wg_tqg, &sc->sc_handshake, sc, NULL, NULL, "wg tx initiation");
 	wg_queue_init(&sc->sc_handshake_queue, "hsq");
 
-	for (int i = 0; i < mp_ncpus; i++) {
+	for (int i = 0; i < ncpus; i++) {
 		GROUPTASK_INIT(&sc->sc_encrypt[i], 0,
 		     (gtask_fn_t *)wg_softc_encrypt, sc);
 		taskqgroup_attach_cpu(qgroup_wg_tqg, &sc->sc_encrypt[i], sc, i, NULL, NULL, "wg encrypt");
@@ -2863,7 +2863,7 @@ wg_clone_destroy(struct if_clone *ifc, if_t ifp, uint32_t flags)
 	lockmgr(&sc->sc_lock, LK_RELEASE);
 	lockuninit(&sc->sc_lock);
 	taskqgroup_detach(qgroup_wg_tqg, &sc->sc_handshake);
-	for (int i = 0; i < mp_ncpus; i++) {
+	for (int i = 0; i < ncpus; i++) {
 		taskqgroup_detach(qgroup_wg_tqg, &sc->sc_encrypt[i]);
 		taskqgroup_detach(qgroup_wg_tqg, &sc->sc_decrypt[i]);
 	}
