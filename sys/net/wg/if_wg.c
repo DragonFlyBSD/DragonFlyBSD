@@ -13,7 +13,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/gtaskqueue.h>
-#include <sys/jail.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/mbuf.h>
@@ -265,7 +264,6 @@ struct wg_softc {
 static int clone_count;
 static volatile unsigned long peer_counter = 0;
 static const char wgname[] = "wg";
-static unsigned wg_osd_jail_slot;
 
 static struct objcache *wg_packet_zone;
 MALLOC_DEFINE(M_WG_PACKET, "WG packet", "wireguard packet");
@@ -2673,7 +2671,8 @@ wg_up(struct wg_softc *sc)
 	int rc = EBUSY;
 
 	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
-	/* Jail's being removed, no more wg_up(). */
+
+	/* The interface is being removed, no more wg_up(). */
 	if ((sc->sc_flags & WGF_DYING) != 0)
 		goto out;
 
@@ -2898,7 +2897,7 @@ wg_qflush(if_t ifp __unused)
 
 /*
  * Privileged information (private-key, preshared-key) are only exported for
- * root and jailed root by default.
+ * root by default.
  */
 static bool
 wgc_privileged(struct wg_softc *sc)
@@ -2950,36 +2949,6 @@ vnet_wg_uninit(const void *unused __unused)
 VNET_SYSUNINIT(vnet_wg_uninit, SI_SUB_PROTO_IFATTACHDOMAIN, SI_ORDER_ANY,
 	       vnet_wg_uninit, NULL);
 
-static int
-wg_prison_remove(void *obj, void *data __unused)
-{
-	const struct prison *pr = obj;
-	struct wg_softc *sc;
-
-	/*
-	 * Do a pass through all if_wg interfaces and release creds on any from
-	 * the jail that are supposed to be going away.  This will, in turn, let
-	 * the jail die so that we don't end up with Schrödinger's jail.
-	 */
-	lockmgr(&wg_lock, LK_SHARED);
-	LIST_FOREACH(sc, &wg_list, sc_entry) {
-		lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
-		if (!(sc->sc_flags & WGF_DYING) && sc->sc_ucred && sc->sc_ucred->cr_prison == pr) {
-			struct ucred *cred = sc->sc_ucred;
-			DPRINTF(sc, "Creating jail exiting\n");
-			if_link_state_change(sc->sc_ifp, LINK_STATE_DOWN);
-			wg_socket_uninit(sc);
-			sc->sc_ucred = NULL;
-			crfree(cred);
-			sc->sc_flags |= WGF_DYING;
-		}
-		lockmgr(&sc->sc_lock, LK_RELEASE);
-	}
-	lockmgr(&wg_lock, LK_RELEASE);
-
-	return (0);
-}
-
 #ifdef SELFTESTS
 #include "selftest/allowedips.c"
 static bool wg_run_selftests(void)
@@ -2998,9 +2967,6 @@ static int
 wg_module_init(void)
 {
 	int ret;
-	osd_method_t methods[PR_MAXMETHOD] = {
-		[PR_METHOD_REMOVE] = wg_prison_remove,
-	};
 
 	lockinit(&wg_lock, "wg lock", 0, 0);
 
@@ -3014,8 +2980,6 @@ wg_module_init(void)
 	ret = cookie_init();
 	if (ret != 0)
 		return (ret);
-
-	wg_osd_jail_slot = osd_jail_register(NULL, methods);
 
 	if (!wg_run_selftests())
 		return (ENOTRECOVERABLE);
@@ -3038,8 +3002,6 @@ wg_module_deinit(void)
 	VNET_LIST_RUNLOCK();
 	NET_EPOCH_WAIT();
 	MPASS(LIST_EMPTY(&wg_list));
-	if (wg_osd_jail_slot != 0)
-		osd_jail_deregister(wg_osd_jail_slot);
 	cookie_deinit();
 	crypto_deinit();
 	if (wg_packet_zone != NULL)
