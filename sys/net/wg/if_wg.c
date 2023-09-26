@@ -211,7 +211,6 @@ struct wg_socket {
 	struct socket	*so_so4;
 	struct socket	*so_so6;
 	uint32_t	 so_user_cookie;
-	int		 so_fibnum;
 	in_port_t	 so_port;
 };
 
@@ -292,7 +291,6 @@ static void wg_socket_set(struct wg_softc *, struct socket *, struct socket *);
 static void wg_socket_uninit(struct wg_softc *);
 static int wg_socket_set_sockopt(struct socket *, struct socket *, int, void *, size_t);
 static int wg_socket_set_cookie(struct wg_softc *, uint32_t);
-static int wg_socket_set_fibnum(struct wg_softc *, int);
 static int wg_send(struct wg_softc *, struct wg_endpoint *, struct mbuf *);
 static void wg_timers_enable(struct wg_peer *);
 static void wg_timers_disable(struct wg_peer *);
@@ -694,10 +692,6 @@ wg_socket_init(struct wg_softc *sc, in_port_t port)
 		if (rc)
 			goto out;
 	}
-	rc = wg_socket_set_sockopt(so4, so6, SO_SETFIB, &sc->sc_socket.so_fibnum, sizeof(sc->sc_socket.so_fibnum));
-	if (rc)
-		goto out;
-
 	rc = wg_socket_bind(&so4, &so6, &port);
 	if (!rc) {
 		sc->sc_socket.so_port = port;
@@ -740,19 +734,6 @@ static int wg_socket_set_cookie(struct wg_softc *sc, uint32_t user_cookie)
 	ret = wg_socket_set_sockopt(so->so_so4, so->so_so6, SO_USER_COOKIE, &user_cookie, sizeof(user_cookie));
 	if (!ret)
 		so->so_user_cookie = user_cookie;
-	return (ret);
-}
-
-static int wg_socket_set_fibnum(struct wg_softc *sc, int fibnum)
-{
-	struct wg_socket *so = &sc->sc_socket;
-	int ret;
-
-	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
-
-	ret = wg_socket_set_sockopt(so->so_so4, so->so_so6, SO_SETFIB, &fibnum, sizeof(fibnum));
-	if (!ret)
-		so->so_fibnum = fibnum;
 	return (ret);
 }
 
@@ -1715,7 +1696,6 @@ wg_deliver_in(struct wg_peer *peer)
 		BPF_MTAP2_AF(ifp, m, pkt->p_af);
 
 		CURVNET_SET(if_getvnet(ifp));
-		M_SETFIB(m, if_getfib(ifp));
 		if (pkt->p_af == AF_INET)
 			netisr_dispatch(NETISR_IP, m);
 		if (pkt->p_af == AF_INET6)
@@ -2640,20 +2620,6 @@ wg_ioctl(if_t ifp, u_long cmd, caddr_t data)
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
 		break;
-	case SIOCGTUNFIB:
-		ifr->ifr_fib = sc->sc_socket.so_fibnum;
-		break;
-	case SIOCSTUNFIB:
-		ret = priv_check(curthread, PRIV_NET_WG);
-		if (ret)
-			break;
-		ret = priv_check(curthread, PRIV_NET_SETIFFIB);
-		if (ret)
-			break;
-		lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
-		ret = wg_socket_set_fibnum(sc, ifr->ifr_fib);
-		lockmgr(&sc->sc_lock, LK_RELEASE);
-		break;
 	default:
 		ret = ENOTTY;
 	}
@@ -2752,7 +2718,6 @@ wg_clone_create(struct if_clone *ifc, char *name, size_t len,
 	ifp = sc->sc_ifp = if_alloc(IFT_WIREGUARD);
 
 	sc->sc_ucred = crhold(curthread->td_ucred);
-	sc->sc_socket.so_fibnum = curthread->td_proc->p_fibnum;
 	sc->sc_socket.so_port = 0;
 
 	TAILQ_INIT(&sc->sc_peers);
