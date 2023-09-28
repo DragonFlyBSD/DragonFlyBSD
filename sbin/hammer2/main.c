@@ -416,6 +416,17 @@ main(int ac, char **av)
 		} else {
 			cmd_show(av[1], 0);
 		}
+	} else if (strcmp(av[0], "recover") == 0) {
+		/*
+		 * Recover file or (future: directory tree).  Data is
+		 * fully CRC checked.
+		 */
+		if (ac != 4) {
+			fprintf(stderr, "recover device filename destdir\n");
+			usage(1);
+		} else {
+			cmd_recover(av[1], av[2], av[3]);
+		}
 	} else if (strcmp(av[0], "freemap") == 0) {
 		/*
 		 * Raw dump of freemap.  Use -v to check all crc's, and
@@ -579,6 +590,8 @@ usage(int code)
 			"Create a PFS\n"
 		"    pfs-delete <label>                "
 			"Destroy a PFS\n"
+		"    recover <devpath> <filename> <destdir> "
+			"Recover a deleted file\n"
 		"    snapshot <path> [<label>]         "
 			"Snapshot a PFS or directory\n"
 		"    snapshot-debug <path> [<label>]   "

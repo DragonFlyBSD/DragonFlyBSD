@@ -91,6 +91,7 @@ void hammer2_print_volumes(const hammer2_ondisk_t *fsp);
 void hammer2_init_volumes(const char *blkdevs, int rdonly);
 void hammer2_cleanup_volumes(void);
 
+hammer2_volume_t *hammer2_get_volume(hammer2_off_t offset);
 int hammer2_get_volume_fd(hammer2_off_t offset);
 int hammer2_get_root_volume_fd(void);
 int hammer2_get_volume_id(hammer2_off_t offset);

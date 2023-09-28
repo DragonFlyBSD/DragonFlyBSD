@@ -5,6 +5,7 @@ SRCS+=	cmd_service.c cmd_leaf.c cmd_debug.c
 SRCS+=	cmd_rsa.c cmd_stat.c cmd_setcomp.c cmd_setcheck.c
 SRCS+=	cmd_bulkfree.c cmd_cleanup.c cmd_info.c cmd_destroy.c
 SRCS+=	cmd_emergency.c cmd_growfs.c cmd_volume.c
+SRCS+=  cmd_recover.c
 SRCS+=	print_inode.c
 MAN=	hammer2.8
 

@@ -536,6 +536,27 @@ hammer2_cleanup_volumes(void)
 
 typedef void (*callback)(const hammer2_volume_t*, void *data);
 
+hammer2_volume_t *
+hammer2_get_volume(hammer2_off_t offset)
+{
+	hammer2_volume_t *vol;
+	int i;
+
+	assert(hammer2_volumes_initialized == 1);
+	offset &= ~HAMMER2_OFF_MASK_RADIX;
+
+	/* do binary search if users really use this many supported volumes */
+	for (i = 0; i < fso.nvolumes; ++i) {
+		vol = &fso.volumes[i];
+		if ((offset >= vol->offset) &&
+		    (offset < vol->offset + vol->size))
+		{
+			return vol;
+		}
+	}
+	return NULL;
+}
+
 static int
 hammer2_get_volume_attr(hammer2_off_t offset, callback fn, void *data)
 {
