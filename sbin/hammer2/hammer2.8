@@ -382,6 +382,21 @@ iteration suffixes.  Many files and sub-directory trees may wind up glommed
 together in one place.  However, this function will recover mtime, ownership,
 group, modes, and flags.  Recovered files are fully validated and any missing
 data will cause the file to be renamed with a ".corrupted" suffix.
+.\" ==== recover-relaxed ====
+.It Cm recover-relaxed Ar media Ar path Ar destdir
+This version of the recover directive relaxes bref checks.  Under normal
+operation, only brefs with check codes are allowed because we get too many
+false hits otherwise.  In relaxed mode, bref's with the check code disabled
+are also allowed.
+.Pp
+You should only need to use the relaxed version if you have turned off
+CRCs on the files you want to recover.
+.\" ==== recover-file ====
+.It Cm recover-file Ar media Ar path Ar destdir
+This version of recover is the normal strict-mode recover but explicitly
+indicates that the path being recovered is a regular file and not a
+directory.  Prevents junk recursions when entries corresponding to the
+last path element appear to be directories.
 .\" ==== snapshot ====
 .It Cm snapshot Ar path Op label
 Create a snapshot of a directory.

@@ -116,17 +116,20 @@ static void enter_inode_untested(hammer2_inode_data_t *ip, hammer2_off_t loff);
 static inode_entry_t *find_first_inode(hammer2_key_t inum);
 /*static dirent_entry_t *find_first_dirent(hammer2_key_t inum);*/
 static void dump_tree(inode_entry_t *iscan, const char *dest,
-			const char *remain, int depth);
+			const char *remain, int depth, int isafile);
 static int dump_inum_file(inode_entry_t *iscan, const char *path);
 static int dump_inum_softlink(hammer2_inode_data_t *inode, const char *path);
 static int dump_dir_data(const char *dest, const char *remain,
-			hammer2_blockref_t *base, int count, int depth);
+			hammer2_blockref_t *base, int count,
+			int depth, int isafile);
 static int dump_file_data(int wfd, hammer2_off_t fsize,
 			hammer2_blockref_t *bref, int count);
 static int validate_crc(hammer2_blockref_t *bref, void *data, size_t bytes);
 static uint32_t hammer2_to_unix_xid(const uuid_t *uuid);
 
 static long InodeCount;
+static long MediaBytes;
+static int StrictMode = 1;
 
 #define INODES_PER_BLOCK	\
 	(sizeof(union hammer2_media_data) / sizeof(hammer2_inode_data_t))
@@ -144,15 +147,15 @@ static long InodeCount;
  */
 int
 cmd_recover(const char *devpath, const char *pathname,
-	    const char *destdir)
+	    const char *destdir, int strict, int isafile)
 {
 	hammer2_media_data_t data;
 	hammer2_volume_t *vol;
-	int fd;
 	hammer2_off_t loff;
 	hammer2_off_t poff;
 	size_t i;
 
+	StrictMode = strict;
 	hammer2_init_volumes(devpath, 1);
 	DirHash = calloc(INUM_HSIZE, sizeof(dirent_entry_t *));
 	InodeHash = calloc(INUM_HSIZE, sizeof(inode_entry_t *));
@@ -179,8 +182,15 @@ cmd_recover(const char *devpath, const char *pathname,
 
 	loff = 0;
 	while ((vol = hammer2_get_volume(loff)) != NULL) {
+		int fd;
+		int xdisp;
+		hammer2_off_t vol_size;
+
 		fd = vol->fd;
 		poff = loff - vol->offset;
+		vol_size = lseek(fd, 0L, SEEK_END);
+		xdisp = 0;
+
 		while (poff < vol->size) {
 			if (pread(fd, &data, sizeof(data), poff) !=
 			    sizeof(data))
@@ -261,6 +271,23 @@ cmd_recover(const char *devpath, const char *pathname,
 				}
 			}
 			poff += sizeof(data);
+
+			MediaBytes += sizeof(data);
+
+			/*
+			 * Update progress
+			 */
+			if (QuietOpt == 0 &&
+			    (++xdisp == 32 || poff == vol->size - sizeof(data)))
+			{
+				xdisp = 0;
+				printf("%ld inodes scanned, "
+				       "media %6.2f/%-3.2fG\r",
+					InodeCount,
+					MediaBytes / 1e9,
+					vol_size / 1e9);
+				fflush(stdout);
+			}
 		}
 		loff = vol->offset + vol->size;
 	}
@@ -286,7 +313,7 @@ cmd_recover(const char *devpath, const char *pathname,
 	 * references to them, so we use the "iparent" field in the inode
 	 * to detect top-level directories under those roots.
 	 */
-	printf("Inodes Scanned: %ld\n", InodeCount);
+	printf("\nInodes Scanned: %ld\n", InodeCount);
 	printf("RESTORATION PASS\n");
 
 	{
@@ -320,9 +347,15 @@ cmd_recover(const char *devpath, const char *pathname,
 				{
 					continue;
 				}
-				dump_tree(iscan, destdir, pathname, 1);
+				dump_tree(iscan, destdir, pathname,
+					  1, isafile);
+			}
+			if (QuietOpt == 0 && (i & 31) == 31) {
+				printf("Progress %zd/%d\r", i, INUM_HSIZE);
+				fflush(stdout);
 			}
 		}
+		printf("\n");
 	}
 
 	printf("CLEANUP\n");
@@ -417,6 +450,21 @@ check_filename(hammer2_blockref_t *bref, const char *filename, char *buf,
 		psize = 1 << (bref->data_off & 0x1F);
 		if (flen > psize)
 			return 0;
+
+		/*
+		 * In strict mode we disallow bref's set to HAMMER2_CHECK_NONE
+		 * or HAMMER2_CHECK_DISABLED.  Do this check before burning
+		 * time on an I/O.
+		 */
+		if (StrictMode) {
+			if (HAMMER2_DEC_CHECK(bref->methods) ==
+				HAMMER2_CHECK_NONE ||
+			    HAMMER2_DEC_CHECK(bref->methods) ==
+				HAMMER2_CHECK_DISABLED)
+			{
+				return 0;
+			}
+		}
 
 		/*
 		 * Read the data, check CRC and such
@@ -530,6 +578,9 @@ enter_inode(hammer2_blockref_t *bref)
 	hammer2_inode_data_t inode;
 	int vfd;
 
+	/*
+	 * Ignore duplicate inodes.
+	 */
 	for (scan = InodeHash[hv]; scan; scan = scan->next) {
 		if (bref->key == scan->inum &&
 		    bref->data_off == scan->data_off)
@@ -620,7 +671,8 @@ find_first_inode(hammer2_key_t inum)
  * Dump the specified inode
  */
 static void
-dump_tree(inode_entry_t *iscan, const char *dest, const char *remain, int depth)
+dump_tree(inode_entry_t *iscan, const char *dest, const char *remain,
+	  int depth, int isafile)
 {
 	topology_entry_t *topo;
 	struct stat st;
@@ -659,6 +711,13 @@ dump_tree(inode_entry_t *iscan, const char *dest, const char *remain, int depth)
 	switch(iscan->inode.meta.type) {
 	case HAMMER2_OBJTYPE_DIRECTORY:
 		/*
+		 * If we have exhausted the path and isafile is TRUE,
+		 * stop.
+		 */
+		if (isafile && *remain == 0)
+			return;
+
+		/*
 		 * Create / make usable the target directory.  Note that
 		 * it might already exist.
 		 */
@@ -676,7 +735,7 @@ dump_tree(inode_entry_t *iscan, const char *dest, const char *remain, int depth)
 		 */
 		(void)dump_dir_data(dest, remain,
 				    &iscan->inode.u.blockset.blockref[0],
-				    HAMMER2_SET_COUNT, depth);
+				    HAMMER2_SET_COUNT, depth, isafile);
 
 		/*
 		 * Final adjustment to directory inode
@@ -862,7 +921,8 @@ dump_inum_softlink(hammer2_inode_data_t *inode __unused,
  */
 static int
 dump_dir_data(const char *dest, const char *remain,
-	      hammer2_blockref_t *base, int count, int depth)
+	      hammer2_blockref_t *base, int count,
+	      int depth, int isafile)
 {
 	hammer2_media_data_t data;
 	hammer2_volume_t *vol;
@@ -935,10 +995,14 @@ dump_dir_data(const char *dest, const char *remain,
 				asprintf(&path, "%s/%s", dest, filename_buf);
 				iscan = find_first_inode(inum);
 				while (iscan) {
-					if (iscan->inum == inum) {
+					if (iscan->inum == inum &&
+					    iscan->inode.meta.type ==
+					    bref->embed.dirent.type)
+					{
 						dump_tree(iscan, path,
 							  remain + flen,
-							  depth + 1);
+							  depth + 1,
+							  isafile);
 					}
 					iscan = iscan->next;
 				}
@@ -965,7 +1029,7 @@ dump_dir_data(const char *dest, const char *remain,
 			rtmp = dump_dir_data(dest, remain,
 					  &data.npdata[0],
 					  psize / sizeof(hammer2_blockref_t),
-					  depth);
+					  depth, isafile);
 			if (res)
 				res = rtmp;
 			break;
@@ -1063,10 +1127,12 @@ validate_crc(hammer2_blockref_t *bref, void *data, size_t bytes)
 
 	switch(HAMMER2_DEC_CHECK(bref->methods)) {
 	case HAMMER2_CHECK_NONE:
-		success = 1;
+		if (StrictMode == 0)
+			success = 1;
 		break;
 	case HAMMER2_CHECK_DISABLED:
-		success = 1;
+		if (StrictMode == 0)
+			success = 1;
 		break;
 	case HAMMER2_CHECK_ISCSI32:
 		cv = hammer2_icrc32(data, bytes);

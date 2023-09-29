@@ -172,7 +172,8 @@ int cmd_setcomp(const char *comp_str, char **paths);
 int cmd_setcheck(const char *comp_str, char **paths);
 int cmd_bulkfree(const char *dir_path);
 int cmd_cleanup(const char *dir_path);
-int cmd_recover(const char *devpath, const char *filename, const char *destdir);
+int cmd_recover(const char *devpath, const char *filename,
+			const char *destdir, int strict, int isafile);
 #if 0
 int cmd_bulkfree_async(const char *dir_path);
 #endif

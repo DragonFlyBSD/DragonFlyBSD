@@ -416,7 +416,10 @@ main(int ac, char **av)
 		} else {
 			cmd_show(av[1], 0);
 		}
-	} else if (strcmp(av[0], "recover") == 0) {
+	} else if (strcmp(av[0], "recover") == 0 ||
+		   strcmp(av[0], "recover-relaxed") == 0 ||
+		   strcmp(av[0], "recover-file") == 0)
+	{
 		/*
 		 * Recover a relative path (unanchored match), absolute path,
 		 * specific file, or directory sub-tree.  File restorals are
@@ -426,7 +429,9 @@ main(int ac, char **av)
 			fprintf(stderr, "recover device [/]path destdir\n");
 			usage(1);
 		} else {
-			cmd_recover(av[1], av[2], av[3]);
+			int strict = (strcmp(av[0], "recover-relaxed") != 0);
+			int isafile = (strcmp(av[0], "recover-file") == 0);
+			cmd_recover(av[1], av[2], av[3], strict, isafile);
 		}
 	} else if (strcmp(av[0], "freemap") == 0) {
 		/*
@@ -593,6 +598,10 @@ usage(int code)
 			"Destroy a PFS\n"
 		"    recover <devpath> <path> <destdir> "
 			"Recover deleted or corrupt files or trees\n"
+		"    recover-relaxed <devpath> <path> <destdir> "
+			"Recover deleted or corrupt files or trees\n"
+		"    recover-file <devpath> <path> <destdir> "
+			"Recover, target is explicitly a regular file\n"
 		"    snapshot <path> [<label>]         "
 			"Snapshot a PFS or directory\n"
 		"    snapshot-debug <path> [<label>]   "
