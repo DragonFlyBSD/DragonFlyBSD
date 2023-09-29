@@ -720,14 +720,19 @@ dump_tree(inode_entry_t *iscan, const char *dest, const char *remain,
 		/*
 		 * Create / make usable the target directory.  Note that
 		 * it might already exist.
+		 *
+		 * Do not do this for the destination base directory
+		 * (depth 1).
 		 */
-		if (mkdir(dest, 0755) == 0)
-			++iscan->encounters;
-		if (stat(dest, &st) == 0) {
-			if (st.st_flags)
-				chflags(dest, 0);
-			if ((st.st_mode & 0700) != 0700)
-				chmod(dest, 0755);
+		if (depth != 1) {
+			if (mkdir(dest, 0755) == 0)
+				++iscan->encounters;
+			if (stat(dest, &st) == 0) {
+				if (st.st_flags)
+					chflags(dest, 0);
+				if ((st.st_mode & 0700) != 0700)
+					chmod(dest, 0755);
+			}
 		}
 
 		/*
@@ -740,7 +745,7 @@ dump_tree(inode_entry_t *iscan, const char *dest, const char *remain,
 		/*
 		 * Final adjustment to directory inode
 		 */
-		{
+		if (depth != 1) {
 			struct timeval tvs[2];
 
 			tvs[0].tv_sec = iscan->inode.meta.atime / 1000000;
