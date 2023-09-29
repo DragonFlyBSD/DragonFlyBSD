@@ -418,11 +418,12 @@ main(int ac, char **av)
 		}
 	} else if (strcmp(av[0], "recover") == 0) {
 		/*
-		 * Recover file or (future: directory tree).  Data is
-		 * fully CRC checked.
+		 * Recover a relative path (unanchored match), absolute path,
+		 * specific file, or directory sub-tree.  File restorals are
+		 * fully validated.
 		 */
 		if (ac != 4) {
-			fprintf(stderr, "recover device filename destdir\n");
+			fprintf(stderr, "recover device [/]path destdir\n");
 			usage(1);
 		} else {
 			cmd_recover(av[1], av[2], av[3]);
@@ -590,8 +591,8 @@ usage(int code)
 			"Create a PFS\n"
 		"    pfs-delete <label>                "
 			"Destroy a PFS\n"
-		"    recover <devpath> <filename> <destdir> "
-			"Recover a deleted file\n"
+		"    recover <devpath> <path> <destdir> "
+			"Recover deleted or corrupt files or trees\n"
 		"    snapshot <path> [<label>]         "
 			"Snapshot a PFS or directory\n"
 		"    snapshot-debug <path> [<label>]   "

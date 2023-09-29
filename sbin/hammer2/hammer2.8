@@ -1,4 +1,4 @@
-.\" Copyright (c) 2015-2019 The DragonFly Project.  All rights reserved.
+.\" Copyright (c) 2015-2023 The DragonFly Project.  All rights reserved.
 .\"
 .\" This code is derived from software contributed to The DragonFly Project
 .\" by Matthew Dillon <dillon@backplane.com>
@@ -354,6 +354,34 @@ delete a PFS whos name is duplicated on multiple mount points.
 A specific mount point may be specified to restrict the deletion via the
 .Fl s Ar mount
 option.
+.\" ==== recover ====
+.It Cm recover Ar media Ar path Ar destdir
+Recover a file or directory tree by scanning the raw media partition,
+with minimal requirements for an intact topology.  The results are written
+to the destination directory.
+.Pp
+The recovery path can be anchored at (any) root by prefixing it with a "/".
+If not anchored, any matching sub-tree will be recovered and combined into
+one place on the destination (not as separate sub-trees since that requires
+topological knowledge that might not be available).  Roots include all
+PFS roots and snapshot roots, as well as disconnected roots from COW updates
+(aka to be able to undelete a file or directory sub-tree).
+.Pp
+The path may specify a directory or file to restore.  Note that if you
+specify something like ".cshrc", then all ".cshrc" files found in the
+entire filesystem will be recovered.
+.Pp
+This function is meant for catastrophic recovery or corrupted media or
+recovery for deleted files that are not otherwise available in snapshots.
+All possible versions of files will be recovered and suffixed as "*.%05d"
+with an iterator.
+.Pp
+The hammer2 recovery function is not meant to generate a fully operational
+filesystem in the target directory.  All files will be versioned and contain
+iteration suffixes.  Many files and sub-directory trees may wind up glommed
+together in one place.  However, this function will recover mtime, ownership,
+group, modes, and flags.  Recovered files are fully validated and any missing
+data will cause the file to be renamed with a ".corrupted" suffix.
 .\" ==== snapshot ====
 .It Cm snapshot Ar path Op label
 Create a snapshot of a directory.
