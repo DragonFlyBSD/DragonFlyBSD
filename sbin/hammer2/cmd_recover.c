@@ -854,8 +854,6 @@ dump_inum_file(inode_entry_t *iscan, const char *path1)
 		res = dump_file_data(wfd, inode->meta.size,
 				     &inode->u.blockset.blockref[0],
 				     HAMMER2_SET_COUNT);
-		if (res == 0)
-			printf("(corrupted)");
 	}
 
 	/*
