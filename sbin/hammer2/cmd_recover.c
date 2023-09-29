@@ -1049,11 +1049,15 @@ dump_file_data(int wfd, hammer2_off_t fsize,
 	hammer2_volume_t *vol;
 	hammer2_off_t poff;
 	hammer2_off_t psize;
+	hammer2_off_t nsize;
 	int res = 1;
 	int rtmp;
 	int n;
 
 	for (n = 0; n < count; ++n) {
+		char *dptr;
+		int res2;
+
 		bref = &base[n];
 
 		if (bref->type == HAMMER2_BREF_TYPE_EMPTY ||
@@ -1089,11 +1093,40 @@ dump_file_data(int wfd, hammer2_off_t fsize,
 
 		switch(bref->type) {
 		case HAMMER2_BREF_TYPE_DATA:
+			dptr = (void *)&data;
+
+			nsize = 1L << bref->keybits;
+			if (nsize > sizeof(data)) {
+				res = 0;
+				break;
+			}
+
+			switch (HAMMER2_DEC_COMP(bref->methods)) {
+			case HAMMER2_COMP_LZ4:
+				dptr = hammer2_decompress_LZ4(dptr, psize,
+							      nsize, &res2);
+				if (res)
+					res = res2;
+				psize = nsize;
+				break;
+			case HAMMER2_COMP_ZLIB:
+				dptr = hammer2_decompress_ZLIB(dptr, psize,
+							       nsize, &res2);
+				if (res)
+					res = res2;
+				psize = nsize;
+				break;
+			case HAMMER2_COMP_NONE:
+			default:
+				/* leave in current form */
+				break;
+			}
+
 			if (bref->key + psize > fsize)
-				pwrite(wfd, &data, fsize - bref->key,
+				pwrite(wfd, dptr, fsize - bref->key,
 				       bref->key);
 			else
-				pwrite(wfd, &data, psize, bref->key);
+				pwrite(wfd, dptr, psize, bref->key);
 			break;
 		case HAMMER2_BREF_TYPE_INDIRECT:
 			rtmp = dump_file_data(wfd, fsize,

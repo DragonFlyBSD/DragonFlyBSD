@@ -7,6 +7,7 @@ SRCS+=	cmd_bulkfree.c cmd_cleanup.c cmd_info.c cmd_destroy.c
 SRCS+=	cmd_emergency.c cmd_growfs.c cmd_volume.c
 SRCS+=  cmd_recover.c
 SRCS+=	print_inode.c
+
 MAN=	hammer2.8
 
 #CFLAGS+= -DXXH_NAMESPACE=h2_
@@ -24,7 +25,21 @@ LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 DPADD+=		${LIBPTHREAD}
 LDADD+=		-lpthread
 
-.PATH: ${.CURDIR}/../../sys/libkern ${.CURDIR}/../../sys/vfs/hammer2/xxhash
+.PATH: ${.CURDIR}/../../sys/libkern ${.CURDIR}/../../sys/vfs/hammer2/xxhash ${.CURDIR}/zlib ${.CURDIR}/lz4
+
+# Hash functions
+#
 SRCS+= icrc32.c xxhash.c
+
+# Decompressor
+#
+SRCS+=	hammer2_compression.c
+SRCS+=	hammer2_lz4.c
+SRCS+=  hammer2_zlib_adler32.c hammer2_zlib_deflate.c
+SRCS+=  hammer2_zlib_inffast.c hammer2_zlib_inflate.c
+SRCS+=  hammer2_zlib_inftrees.c hammer2_zlib_trees.c
+SRCS+=  hammer2_zlib_zutil.c
+CFLAGS+= -DZLIB_CONST
+
 
 .include <bsd.prog.mk>
