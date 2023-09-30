@@ -136,6 +136,7 @@ static int dump_file_data(int wfd, hammer2_off_t fsize,
 			hammer2_blockref_t *bref, int count);
 static int validate_crc(hammer2_blockref_t *bref, void *data, size_t bytes);
 static uint32_t hammer2_to_unix_xid(const uuid_t *uuid);
+static void *hammer2_cache_read(hammer2_volume_t *vol, hammer2_off_t poff);
 
 static long InodeCount;
 static long MediaBytes;
@@ -220,6 +221,10 @@ cmd_recover(const char *devpath, const char *pathname,
 				 */
 				switch(bref->type) {
 				case HAMMER2_BREF_TYPE_INODE:
+					/*
+					 * Note: preliminary bref filter
+					 * is inside enter_inode().
+					 */
 					enter_inode(bref);
 					break;
 				case HAMMER2_BREF_TYPE_DIRENT:
@@ -666,8 +671,7 @@ enter_inode(hammer2_blockref_t *bref)
 	inode_entry_t *scan;
 	hammer2_volume_t *vol;
 	hammer2_off_t poff;
-	hammer2_inode_data_t inode;
-	int vfd;
+	hammer2_inode_data_t *inode;
 
 	/*
 	 * Ignore duplicate inodes.
@@ -683,18 +687,27 @@ enter_inode(hammer2_blockref_t *bref)
 	/*
 	 * Validate the potential blockref.  Note that this might not be a
 	 * real blockref.  Don't trust anything, really.
+	 *
+	 * - Must be sized for an inode block
+	 * - Must be properly aligned for an inode block
+	 * - Keyspace is 1 (keybits == 0), i.e. a single inode number
 	 */
-	if ((1 << (bref->data_off & 0x1F)) != sizeof(inode))
+	if ((1 << (bref->data_off & 0x1F)) != sizeof(*inode))
 		return;
-	if ((bref->data_off & ~0x1FL & (sizeof(inode) - 1)) != 0)
+	if ((bref->data_off & ~0x1FL & (sizeof(*inode) - 1)) != 0)
+		return;
+	if (bref->keybits != 0)
+		return;
+	if (bref->key == 0)
 		return;
 	vol = hammer2_get_volume(bref->data_off);
 	if (vol == NULL)
 		return;
 
-	vfd = vol->fd;
 	poff = (bref->data_off - vol->offset) & ~0x1FL;
-	if (pread(vfd, &inode, sizeof(inode), poff) != sizeof(inode))
+
+	inode = hammer2_cache_read(vol, poff);
+	if (inode == NULL)
 		return;
 
 	/*
@@ -702,9 +715,9 @@ enter_inode(hammer2_blockref_t *bref)
 	 * inode data it references passes the CRC check.  If it
 	 * does, it is highly likely that we have a valid inode.
 	 */
-	if (validate_crc(bref, &inode, sizeof(inode)) == 0)
+	if (validate_crc(bref, inode, sizeof(*inode)) == 0)
 		return;
-	if (inode.meta.inum != bref->key)
+	if (inode->meta.inum != bref->key)
 		return;
 
 	scan = malloc(sizeof(*scan));
@@ -712,7 +725,7 @@ enter_inode(hammer2_blockref_t *bref)
 
 	scan->inum = bref->key;
 	scan->data_off = bref->data_off;
-	scan->inode = inode;
+	scan->inode = *inode;
 	scan->next = InodeHash[hv];
 	InodeHash[hv] = scan;
 
@@ -1343,4 +1356,56 @@ static uint32_t
 hammer2_to_unix_xid(const uuid_t *uuid)
 {
         return(*(const uint32_t *)&uuid->node[2]);
+}
+
+/*
+ * Read from disk image, with caching to improve performance.
+ *
+ * Use a very simple LRU algo with 16 entries, linearly checked.
+ */
+#define SDCCOUNT	16
+#define SDCMASK		(SDCCOUNT - 1)
+
+typedef struct sdccache {
+	char		buf[HAMMER2_PBUFSIZE];
+	hammer2_off_t	offset;
+	hammer2_volume_t *vol;
+	int64_t		last;
+} sdccache_t;
+
+static sdccache_t SDCCache[SDCCOUNT];
+static int64_t SDCLast;
+
+static void *
+hammer2_cache_read(hammer2_volume_t *vol, hammer2_off_t poff)
+{
+	hammer2_off_t pbase = poff & ~HAMMER2_PBUFMASK64;
+	sdccache_t *sdc;
+	sdccache_t *sdc_worst = NULL;
+	int i;
+
+	for (i = 0; i < SDCCOUNT; ++i) {
+		sdc = &SDCCache[i];
+
+		if (sdc->vol == vol && sdc->offset == pbase) {
+			sdc->last = ++SDCLast;
+			return (&sdc->buf[poff - pbase]);
+		}
+		if (sdc_worst == NULL || sdc_worst->last > sdc->last)
+			sdc_worst = sdc;
+	}
+
+	sdc = sdc_worst;
+	sdc->vol = vol;
+	sdc->offset = pbase;
+	sdc->last = ++SDCLast;
+
+	if (pread(vol->fd, sdc->buf, HAMMER2_PBUFSIZE, pbase) !=
+	    HAMMER2_PBUFSIZE)
+	{
+		sdc->offset = (hammer2_off_t)-1;
+		sdc->last = 0;
+		return NULL;
+	}
+	return (&sdc->buf[poff - pbase]);
 }
