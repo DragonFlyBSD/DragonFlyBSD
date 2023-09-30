@@ -2004,12 +2004,14 @@ int hammer2_open_devvp(const hammer2_devvp_list_t *devvpl, int ronly);
 int hammer2_close_devvp(const hammer2_devvp_list_t *devvpl, int ronly);
 int hammer2_init_devvp(struct m_vnode *devvp, hammer2_devvp_list_t *devvpl);
 void hammer2_cleanup_devvp(hammer2_devvp_list_t *devvpl);
-int hammer2_init_vfsvolumes(struct mount *mp, const hammer2_devvp_list_t *devvpl,
+int hammer2_init_vfsvolumes(struct mount *mp,
+			const hammer2_devvp_list_t *devvpl,
 			hammer2_vfsvolume_t *volumes,
 			hammer2_volume_data_t *rootvoldata,
 			int *rootvolzone,
 			struct m_vnode **rootvoldevvp);
-hammer2_vfsvolume_t *hammer2_get_volume(hammer2_dev_t *hmp, hammer2_off_t offset);
+hammer2_vfsvolume_t *hammer2_get_volume_from_hmp(hammer2_dev_t *hmp,
+			hammer2_off_t offset);
 
 /*
  * hammer2_vnops.c

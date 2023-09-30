@@ -176,7 +176,7 @@ hammer2_io_alloc(hammer2_dev_t *hmp, hammer2_key_t data_off, uint8_t btype,
 	} else if (createit) {
 		refs = 0;
 		hammer2_spin_unsh(&hmp->io_spin);
-		vol = hammer2_get_volume(hmp, pbase);
+		vol = hammer2_get_volume_from_hmp(hmp, pbase);
 		dio = kmalloc_obj(sizeof(*dio), hmp->mio, M_INTWAIT | M_ZERO);
 		dio->hmp = hmp;
 		dio->devvp = vol->dev->devvp;

@@ -687,7 +687,7 @@ done:
 }
 
 hammer2_vfsvolume_t*
-hammer2_get_volume(hammer2_dev_t *hmp, hammer2_off_t offset)
+hammer2_get_volume_from_hmp(hammer2_dev_t *hmp, hammer2_off_t offset)
 {
 	hammer2_vfsvolume_t *vol, *ret = NULL;
 	int i;
