@@ -831,10 +831,15 @@ fail:
 static void
 enter_inode_untested(hammer2_inode_data_t *ip, hammer2_off_t loff)
 {
-	uint32_t hv = (ip->meta.inum ^ (ip->meta.inum >> 16)) & INUM_HMASK;
+	uint32_t hv;
+	uint32_t hv2;
 	inode_entry_t *scan;
 
-	for (scan = InodeHash[hv]; scan; scan = scan->next) {
+	hv = (ip->meta.inum ^ (ip->meta.inum >> 16)) & INUM_HMASK;
+	hv2 = (ip->meta.inum ^ (ip->meta.inum >> 16) ^ (loff >> 10)) &
+	      INUM_HMASK;
+
+	for (scan = InodeHash2[hv2]; scan; scan = scan->next2) {
 		if (ip->meta.inum == scan->inum &&
 		    loff == scan->data_off)
 		{
@@ -848,8 +853,11 @@ enter_inode_untested(hammer2_inode_data_t *ip, hammer2_off_t loff)
 	scan->inum = ip->meta.inum;
 	scan->data_off = loff;
 	scan->inode = *ip;
+
 	scan->next = InodeHash[hv];
 	InodeHash[hv] = scan;
+	scan->next2 = InodeHash2[hv2];
+	InodeHash2[hv2] = scan;
 
 	++InodeCount;
 }
