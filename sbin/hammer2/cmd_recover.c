@@ -78,6 +78,7 @@ typedef struct dirent_entry {
 
 typedef struct inode_entry {
 	struct inode_entry *next;
+	struct inode_entry *next2;	/* secondary (ino ^ data_off) hash */
 	struct inode_entry *first_parent;
 	hammer2_off_t	data_off;
 	hammer2_key_t	inum;
@@ -112,6 +113,7 @@ typedef struct topo_inode_entry {
 
 static dirent_entry_t **DirHash;
 static inode_entry_t **InodeHash;
+static inode_entry_t **InodeHash2;	/* secondary multi-variable hash */
 static topology_entry_t **TopologyHash;
 static neg_entry_t **NegativeHash;
 static topo_bref_entry_t **TopoBRefHash;
@@ -186,6 +188,7 @@ cmd_recover(const char *devpath, const char *pathname,
 	hammer2_init_volumes(devpath, 1);
 	DirHash = calloc(INUM_HSIZE, sizeof(dirent_entry_t *));
 	InodeHash = calloc(INUM_HSIZE, sizeof(inode_entry_t *));
+	InodeHash2 = calloc(INUM_HSIZE, sizeof(inode_entry_t *));
 	TopologyHash = calloc(INUM_HSIZE, sizeof(topology_entry_t *));
 	NegativeHash = calloc(INUM_HSIZE, sizeof(neg_entry_t *));
 	TopoBRefHash = calloc(INUM_HSIZE, sizeof(topo_bref_entry_t *));
@@ -460,23 +463,29 @@ cmd_recover(const char *devpath, const char *pathname,
 			free(dscan->filename);
 			free(dscan);
 		}
+
 		while ((iscan = InodeHash[i]) != NULL) {
 			InodeHash[i] = iscan->next;
 			free(iscan);
 		}
+		/* InodeHash2[] indexes the same structures */
+
 		while ((top_scan = TopologyHash[i]) != NULL) {
 			TopologyHash[i] = top_scan->next;
 			free(top_scan->path);
 			free(top_scan);
 		}
+
 		while ((negscan = NegativeHash[i]) != NULL) {
 			NegativeHash[i] = negscan->next;
 			free(negscan);
 		}
+
 		while ((topo_bref = TopoBRefHash[i]) != NULL) {
 			TopoBRefHash[i] = topo_bref->next;
 			free(topo_bref);
 		}
+
 		while ((topo_inode = TopoInodeHash[i]) != NULL) {
 			TopoInodeHash[i] = topo_inode->next;
 			free(topo_inode);
@@ -488,6 +497,7 @@ cmd_recover(const char *devpath, const char *pathname,
 	free(TopologyHash);
 	free(DirHash);
 	free(InodeHash);
+	free(InodeHash2);
 
 	return 0;
 }
@@ -661,7 +671,7 @@ enter_topology(const char *path)
 static int
 topology_check_duplicate_inode(topology_entry_t *topo, inode_entry_t *inode)
 {
-	int hv = (((intptr_t)topo ^ (intptr_t)inode) >> 6) & INUM_HSIZE;
+	int hv = (((intptr_t)topo ^ (intptr_t)inode) >> 6) & INUM_HMASK;
 	topo_inode_entry_t *scan;
 
 	for (scan = TopoInodeHash[hv]; scan; scan = scan->next) {
@@ -691,7 +701,7 @@ static int
 topology_check_duplicate_indirect(topology_entry_t *topo,
 				  hammer2_blockref_t *bref)
 {
-	int hv = ((intptr_t)topo ^ (bref->data_off >> 8)) & INUM_HSIZE;
+	int hv = ((intptr_t)topo ^ (bref->data_off >> 8)) & INUM_HMASK;
 	topo_bref_entry_t *scan;
 
 	for (scan = TopoBRefHash[hv]; scan; scan = scan->next) {
@@ -720,16 +730,24 @@ topology_check_duplicate_indirect(topology_entry_t *topo,
 static void
 enter_inode(hammer2_blockref_t *bref)
 {
-	uint32_t hv = (bref->key ^ (bref->key >> 16)) & INUM_HMASK;
+	uint32_t hv;
+	uint32_t hv2;
 	inode_entry_t *scan;
 	hammer2_volume_t *vol;
 	hammer2_off_t poff;
 	hammer2_inode_data_t *inode;
 
+	hv = (bref->key ^ (bref->key >> 16)) & INUM_HMASK;
+	hv2 = (bref->key ^ (bref->key >> 16) ^ (bref->data_off >> 10)) &
+	      INUM_HMASK;
+
 	/*
-	 * Ignore duplicate inodes
+	 * Ignore duplicate inodes, use the secondary inode hash table's
+	 * better spread to reduce cpu consumption (there can be many
+	 * copies of the same inode so the primary hash table can have
+	 * very long chains in it).
 	 */
-	for (scan = InodeHash[hv]; scan; scan = scan->next) {
+	for (scan = InodeHash2[hv2]; scan; scan = scan->next2) {
 		if (bref->key == scan->inum &&
 		    bref->data_off == scan->data_off)
 		{
@@ -794,8 +812,11 @@ fail:
 	scan->inum = bref->key;
 	scan->data_off = bref->data_off;
 	scan->inode = *inode;
+
 	scan->next = InodeHash[hv];
 	InodeHash[hv] = scan;
+	scan->next2 = InodeHash2[hv2];
+	InodeHash2[hv2] = scan;
 
 	++InodeCount;
 }
