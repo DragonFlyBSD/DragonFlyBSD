@@ -87,22 +87,10 @@ typedef struct inode_entry {
 	int		path_depth;	/* non-zero already visited at N */
 } inode_entry_t;
 
-typedef struct topology_inode {
-	struct topology_inode *next;
-	struct inode_entry *inode;
-} topology_inode_t;
-
-typedef struct topology_bref {
-	struct topology_bref *next;
-	hammer2_off_t	data_off;
-} topology_bref_t;
-
 typedef struct topology_entry {
 	struct topology_entry *next;
 	char		*path;
 	long		iterator;
-	topology_inode_t *inodes;
-	topology_bref_t  *brefs;
 } topology_entry_t;
 
 typedef struct neg_entry {
@@ -110,10 +98,24 @@ typedef struct neg_entry {
 	hammer2_blockref_t bref;
 } neg_entry_t;
 
+typedef struct topo_bref_entry {
+	struct topo_bref_entry *next;
+	topology_entry_t  *topo;
+	hammer2_off_t	data_off;
+} topo_bref_entry_t;
+
+typedef struct topo_inode_entry {
+	struct topo_inode_entry *next;
+	topology_entry_t  *topo;
+	inode_entry_t *inode;
+} topo_inode_entry_t;
+
 static dirent_entry_t **DirHash;
 static inode_entry_t **InodeHash;
 static topology_entry_t **TopologyHash;
 static neg_entry_t **NegativeHash;
+static topo_bref_entry_t **TopoBRefHash;
+static topo_inode_entry_t **TopoInodeHash;
 
 /*static void resolve_topology(void);*/
 static int check_filename(hammer2_blockref_t *bref,
@@ -147,6 +149,10 @@ static void *hammer2_cache_read(hammer2_volume_t *vol, hammer2_off_t poff,
 				size_t bytes);
 
 static long InodeCount;
+static long TopoBRefCount;
+static long TopoBRefDupCount;
+static long TopoInodeCount;
+static long TopoInodeDupCount;
 static long NegativeCount;
 static long NegativeHits;
 static long MediaBytes;
@@ -182,6 +188,8 @@ cmd_recover(const char *devpath, const char *pathname,
 	InodeHash = calloc(INUM_HSIZE, sizeof(inode_entry_t *));
 	TopologyHash = calloc(INUM_HSIZE, sizeof(topology_entry_t *));
 	NegativeHash = calloc(INUM_HSIZE, sizeof(neg_entry_t *));
+	TopoBRefHash = calloc(INUM_HSIZE, sizeof(topo_bref_entry_t *));
+	TopoInodeHash = calloc(INUM_HSIZE, sizeof(topo_inode_entry_t *));
 
 	/*
 	 * Media Pass
@@ -404,7 +412,7 @@ cmd_recover(const char *devpath, const char *pathname,
 				if (i == 1 && iscan->inum == 1 &&
 				    QuietOpt == 0)
 				{
-					printf("scan root %p 0x%016jx "
+					printf("scan roots %p 0x%016jx "
 					       "(count %ld/%ld)\r",
 						iscan,
 						iscan->data_off,
@@ -429,6 +437,10 @@ cmd_recover(const char *devpath, const char *pathname,
 	}
 
 	printf("CLEANUP\n");
+	printf("TopoBRef stats: count=%ld dups=%ld\n",
+	       TopoBRefCount, TopoBRefDupCount);
+	printf("TopoInode stats: count=%ld dups=%ld\n",
+	       TopoInodeCount, TopoInodeDupCount);
 
 	/*
 	 * Cleanup
@@ -439,9 +451,9 @@ cmd_recover(const char *devpath, const char *pathname,
 		dirent_entry_t *dscan;
 		inode_entry_t *iscan;
 		topology_entry_t *top_scan;
-		topology_inode_t *top_ino;
-		topology_bref_t *top_bref;
 		neg_entry_t *negscan;
+		topo_bref_entry_t *topo_bref;
+		topo_inode_entry_t *topo_inode;
 
 		while ((dscan = DirHash[i]) != NULL) {
 			DirHash[i] = dscan->next;
@@ -454,14 +466,6 @@ cmd_recover(const char *devpath, const char *pathname,
 		}
 		while ((top_scan = TopologyHash[i]) != NULL) {
 			TopologyHash[i] = top_scan->next;
-			while ((top_ino = top_scan->inodes) != NULL) {
-				top_scan->inodes = top_ino->next;
-				free(top_ino);
-			}
-			while ((top_bref = top_scan->brefs) != NULL) {
-				top_scan->brefs = top_bref->next;
-				free(top_bref);
-			}
 			free(top_scan->path);
 			free(top_scan);
 		}
@@ -469,7 +473,17 @@ cmd_recover(const char *devpath, const char *pathname,
 			NegativeHash[i] = negscan->next;
 			free(negscan);
 		}
+		while ((topo_bref = TopoBRefHash[i]) != NULL) {
+			TopoBRefHash[i] = topo_bref->next;
+			free(topo_bref);
+		}
+		while ((topo_inode = TopoInodeHash[i]) != NULL) {
+			TopoInodeHash[i] = topo_inode->next;
+			free(topo_inode);
+		}
 	}
+	free(TopoInodeHash);
+	free(TopoBRefHash);
 	free(NegativeHash);
 	free(TopologyHash);
 	free(DirHash);
@@ -640,40 +654,61 @@ enter_topology(const char *path)
 	return topo;
 }
 
+/*
+ * Determine if an inode at the current topology location is one that we
+ * have already dealt with.
+ */
 static int
 topology_check_duplicate_inode(topology_entry_t *topo, inode_entry_t *inode)
 {
-	topology_inode_t *scan;
+	int hv = (((intptr_t)topo ^ (intptr_t)inode) >> 6) & INUM_HSIZE;
+	topo_inode_entry_t *scan;
 
-	for (scan = topo->inodes; scan; scan = scan->next) {
-		if (scan->inode == inode)
+	for (scan = TopoInodeHash[hv]; scan; scan = scan->next) {
+		if (scan->topo == topo &&
+		    scan->inode == inode)
+		{
+			++TopoInodeDupCount;
 			return 1;
+		}
 	}
 	scan = malloc(sizeof(*scan));
 	bzero(scan, sizeof(*scan));
 	scan->inode = inode;
-	scan->next = topo->inodes;
-	topo->inodes = scan;
+	scan->topo = topo;
+	scan->next = TopoInodeHash[hv];
+	TopoInodeHash[hv] = scan;
+	++TopoInodeCount;
 
 	return 0;
 }
 
+/*
+ * Determine if an indirect block (represented by the bref) at the current
+ * topology level is one that we have already dealt with.
+ */
 static int
 topology_check_duplicate_indirect(topology_entry_t *topo,
 				  hammer2_blockref_t *bref)
 {
-	topology_bref_t *scan;
+	int hv = ((intptr_t)topo ^ (bref->data_off >> 8)) & INUM_HSIZE;
+	topo_bref_entry_t *scan;
 
-	for (scan = topo->brefs; scan; scan = scan->next) {
-		if (scan->data_off == bref->data_off) {
+	for (scan = TopoBRefHash[hv]; scan; scan = scan->next) {
+		if (scan->topo == topo &&
+		    scan->data_off == bref->data_off)
+		{
+			++TopoBRefDupCount;
 			return 1;
 		}
 	}
 	scan = malloc(sizeof(*scan));
 	bzero(scan, sizeof(*scan));
 	scan->data_off = bref->data_off;
-	scan->next = topo->brefs;
-	topo->brefs = scan;
+	scan->topo = topo;
+	scan->next = TopoBRefHash[hv];
+	TopoBRefHash[hv] = scan;
+	++TopoBRefCount;
 
 	return 0;
 }
@@ -813,7 +848,7 @@ find_first_inode(hammer2_key_t inum)
 
 /*
  * Negative bref cache.  A cache of brefs that we have determined
- * to be invalid.
+ * to be invalid.  Used to reduce unnecessary disk I/O.
  *
  * NOTE: Checks must be reasonable and at least encompass checks
  *	 done in enter_inode() after it has decided to read the
