@@ -79,7 +79,6 @@ typedef struct dirent_entry {
 typedef struct inode_entry {
 	struct inode_entry *next;
 	struct inode_entry *first_parent;
-	dirent_entry_t	*first_dirent;
 	hammer2_off_t	data_off;
 	hammer2_key_t	inum;
 	hammer2_inode_data_t inode;
@@ -106,9 +105,15 @@ typedef struct topology_entry {
 	topology_bref_t  *brefs;
 } topology_entry_t;
 
+typedef struct neg_entry {
+	struct neg_entry *next;
+	hammer2_blockref_t bref;
+} neg_entry_t;
+
 static dirent_entry_t **DirHash;
 static inode_entry_t **InodeHash;
 static topology_entry_t **TopologyHash;
+static neg_entry_t **NegativeHash;
 
 /*static void resolve_topology(void);*/
 static int check_filename(hammer2_blockref_t *bref,
@@ -124,6 +129,8 @@ static void enter_inode(hammer2_blockref_t *bref);
 static void enter_inode_untested(hammer2_inode_data_t *ip, hammer2_off_t loff);
 static inode_entry_t *find_first_inode(hammer2_key_t inum);
 /*static dirent_entry_t *find_first_dirent(hammer2_key_t inum);*/
+static int find_neg(hammer2_blockref_t *bref);
+static void enter_neg(hammer2_blockref_t *bref);
 static void dump_tree(inode_entry_t *iscan, const char *dest,
 			const char *remain, int depth, int path_depth,
 			int isafile);
@@ -136,9 +143,12 @@ static int dump_file_data(int wfd, hammer2_off_t fsize,
 			hammer2_blockref_t *bref, int count);
 static int validate_crc(hammer2_blockref_t *bref, void *data, size_t bytes);
 static uint32_t hammer2_to_unix_xid(const uuid_t *uuid);
-static void *hammer2_cache_read(hammer2_volume_t *vol, hammer2_off_t poff);
+static void *hammer2_cache_read(hammer2_volume_t *vol, hammer2_off_t poff,
+				size_t bytes);
 
 static long InodeCount;
+static long NegativeCount;
+static long NegativeHits;
 static long MediaBytes;
 static int StrictMode = 1;
 
@@ -171,6 +181,7 @@ cmd_recover(const char *devpath, const char *pathname,
 	DirHash = calloc(INUM_HSIZE, sizeof(dirent_entry_t *));
 	InodeHash = calloc(INUM_HSIZE, sizeof(inode_entry_t *));
 	TopologyHash = calloc(INUM_HSIZE, sizeof(topology_entry_t *));
+	NegativeHash = calloc(INUM_HSIZE, sizeof(neg_entry_t *));
 
 	/*
 	 * Media Pass
@@ -328,7 +339,8 @@ cmd_recover(const char *devpath, const char *pathname,
 	 * references to them, so we use the "iparent" field in the inode
 	 * to detect top-level directories under those roots.
 	 */
-	printf("\nInodes Scanned: %ld\n", InodeCount);
+	printf("\nInodes=%ld, Invalid_brefs=%ld, Invalid_hits=%ld\n",
+		InodeCount, NegativeCount, NegativeHits);
 	printf("RESTORATION PASS\n");
 
 	{
@@ -429,6 +441,7 @@ cmd_recover(const char *devpath, const char *pathname,
 		topology_entry_t *top_scan;
 		topology_inode_t *top_ino;
 		topology_bref_t *top_bref;
+		neg_entry_t *negscan;
 
 		while ((dscan = DirHash[i]) != NULL) {
 			DirHash[i] = dscan->next;
@@ -452,7 +465,12 @@ cmd_recover(const char *devpath, const char *pathname,
 			free(top_scan->path);
 			free(top_scan);
 		}
+		while ((negscan = NegativeHash[i]) != NULL) {
+			NegativeHash[i] = negscan->next;
+			free(negscan);
+		}
 	}
+	free(NegativeHash);
 	free(TopologyHash);
 	free(DirHash);
 	free(InodeHash);
@@ -674,7 +692,7 @@ enter_inode(hammer2_blockref_t *bref)
 	hammer2_inode_data_t *inode;
 
 	/*
-	 * Ignore duplicate inodes.
+	 * Ignore duplicate inodes
 	 */
 	for (scan = InodeHash[hv]; scan; scan = scan->next) {
 		if (bref->key == scan->inum &&
@@ -683,6 +701,12 @@ enter_inode(hammer2_blockref_t *bref)
 			return;
 		}
 	}
+
+	/*
+	 * Ignore brefs which we have already determined to be bad
+	 */
+	if (find_neg(bref))
+		return;
 
 	/*
 	 * Validate the potential blockref.  Note that this might not be a
@@ -706,9 +730,18 @@ enter_inode(hammer2_blockref_t *bref)
 
 	poff = (bref->data_off - vol->offset) & ~0x1FL;
 
-	inode = hammer2_cache_read(vol, poff);
-	if (inode == NULL)
+	inode = hammer2_cache_read(vol, poff, sizeof(*inode));
+
+	/*
+	 * Any failures which occur after the I/O has been performed
+	 * should enter the bref in the negative cache to avoid unnecessary
+	 * guaranteed-to-fil reissuances of the same (bref, data_off) combo.
+	 */
+	if (inode == NULL) {
+fail:
+		enter_neg(bref);
 		return;
+	}
 
 	/*
 	 * The blockref looks ok but the real test is whether the
@@ -716,9 +749,9 @@ enter_inode(hammer2_blockref_t *bref)
 	 * does, it is highly likely that we have a valid inode.
 	 */
 	if (validate_crc(bref, inode, sizeof(*inode)) == 0)
-		return;
+		goto fail;
 	if (inode->meta.inum != bref->key)
-		return;
+		goto fail;
 
 	scan = malloc(sizeof(*scan));
 	bzero(scan, sizeof(*scan));
@@ -776,6 +809,51 @@ find_first_inode(hammer2_key_t inum)
 			return entry;
 	}
 	return NULL;
+}
+
+/*
+ * Negative bref cache.  A cache of brefs that we have determined
+ * to be invalid.
+ *
+ * NOTE: Checks must be reasonable and at least encompass checks
+ *	 done in enter_inode() after it has decided to read the
+ *	 block at data_off.
+ *
+ *	 Adding a few more match fields in addition won't hurt either.
+ */
+static int
+find_neg(hammer2_blockref_t *bref)
+{
+	int hv = (bref->data_off >> 10) & INUM_HMASK;
+	neg_entry_t *neg;
+
+	for (neg = NegativeHash[hv]; neg; neg = neg->next) {
+		if (bref->data_off == neg->bref.data_off &&
+		    bref->type == neg->bref.type &&
+		    bref->methods == neg->bref.methods &&
+		    bref->key == neg->bref.key &&
+		    bcmp(&bref->check, &neg->bref.check,
+			 sizeof(bref->check)) == 0)
+		{
+			++NegativeHits;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static void
+enter_neg(hammer2_blockref_t *bref)
+{
+	int hv = (bref->data_off >> 10) & INUM_HMASK;
+	neg_entry_t *neg;
+
+	neg = malloc(sizeof(*neg));
+	bzero(neg, sizeof(*neg));
+	neg->next = NegativeHash[hv];
+	neg->bref = *bref;
+	NegativeHash[hv] = neg;
+	++NegativeCount;
 }
 
 /*
@@ -1377,12 +1455,19 @@ static sdccache_t SDCCache[SDCCOUNT];
 static int64_t SDCLast;
 
 static void *
-hammer2_cache_read(hammer2_volume_t *vol, hammer2_off_t poff)
+hammer2_cache_read(hammer2_volume_t *vol, hammer2_off_t poff, size_t bytes)
 {
 	hammer2_off_t pbase = poff & ~HAMMER2_PBUFMASK64;
 	sdccache_t *sdc;
 	sdccache_t *sdc_worst = NULL;
 	int i;
+
+	/*
+	 * I/Os are powers of 2 in size and must be aligned to at least
+	 * the I/O size.
+	 */
+	if (poff & ~0x1FL & (bytes - 1))
+		return NULL;
 
 	for (i = 0; i < SDCCOUNT; ++i) {
 		sdc = &SDCCache[i];
