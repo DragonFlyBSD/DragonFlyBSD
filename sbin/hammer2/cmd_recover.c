@@ -85,6 +85,7 @@ typedef struct inode_entry {
 	hammer2_inode_data_t inode;
 	long		encounters;
 	char		*link_file_path;
+	int		path_depth;	/* non-zero already visited at N */
 } inode_entry_t;
 
 typedef struct topology_inode {
@@ -92,11 +93,17 @@ typedef struct topology_inode {
 	struct inode_entry *inode;
 } topology_inode_t;
 
+typedef struct topology_bref {
+	struct topology_bref *next;
+	hammer2_off_t	data_off;
+} topology_bref_t;
+
 typedef struct topology_entry {
 	struct topology_entry *next;
 	char		*path;
 	long		iterator;
 	topology_inode_t *inodes;
+	topology_bref_t  *brefs;
 } topology_entry_t;
 
 static dirent_entry_t **DirHash;
@@ -111,17 +118,20 @@ static int check_filename(hammer2_blockref_t *bref,
 static topology_entry_t *enter_topology(const char *path);
 static int topology_check_duplicate_inode(topology_entry_t *topo,
 			inode_entry_t *iscan);
+static int topology_check_duplicate_indirect(topology_entry_t *topo,
+			hammer2_blockref_t *bref);
 static void enter_inode(hammer2_blockref_t *bref);
 static void enter_inode_untested(hammer2_inode_data_t *ip, hammer2_off_t loff);
 static inode_entry_t *find_first_inode(hammer2_key_t inum);
 /*static dirent_entry_t *find_first_dirent(hammer2_key_t inum);*/
 static void dump_tree(inode_entry_t *iscan, const char *dest,
-			const char *remain, int depth, int isafile);
+			const char *remain, int depth, int path_depth,
+			int isafile);
 static int dump_inum_file(inode_entry_t *iscan, const char *path);
 static int dump_inum_softlink(hammer2_inode_data_t *inode, const char *path);
 static int dump_dir_data(const char *dest, const char *remain,
 			hammer2_blockref_t *base, int count,
-			int depth, int isafile);
+			int depth, int path_depth, int isafile);
 static int dump_file_data(int wfd, hammer2_off_t fsize,
 			hammer2_blockref_t *bref, int count);
 static int validate_crc(hammer2_blockref_t *bref, void *data, size_t bytes);
@@ -318,6 +328,8 @@ cmd_recover(const char *devpath, const char *pathname,
 
 	{
 		int abspath = 0;
+		long root_count = 0;
+		long root_max = 0;
 
 		/*
 		 * Check for absolute path, else relative
@@ -326,6 +338,21 @@ cmd_recover(const char *devpath, const char *pathname,
 			abspath = 1;
 			while (*pathname == '/')
 				++pathname;
+		}
+
+		/*
+		 * Count root inodes
+		 */
+		{
+			inode_entry_t *iscan;
+
+			for (iscan = InodeHash[1];
+			     iscan;
+			     iscan = iscan->next)
+			{
+				if (iscan->inum == 1)
+					++root_max;
+			}
 		}
 
 		/*
@@ -340,6 +367,11 @@ cmd_recover(const char *devpath, const char *pathname,
 			     iscan;
 			     iscan = iscan->next)
 			{
+				/*
+				 * Absolute paths always start at root inodes,
+				 * otherwise we can start at any directory
+				 * inode.
+				 */
 				if (abspath && iscan->inode.meta.inum != 1)
 					continue;
 				if (iscan->inode.meta.type !=
@@ -347,10 +379,31 @@ cmd_recover(const char *devpath, const char *pathname,
 				{
 					continue;
 				}
+
+				/*
+				 * Progress down root inodes can be slow,
+				 * so print progress for each root inode.
+				 */
+				if (i == 1 && iscan->inum == 1 &&
+				    QuietOpt == 0)
+				{
+					printf("scan root %p 0x%016jx "
+					       "(count %ld/%ld)\r",
+						iscan,
+						iscan->data_off,
+						++root_count, root_max);
+					fflush(stdout);
+				}
+
+				/*
+				 * Primary match/recover recursion
+				 */
 				dump_tree(iscan, destdir, pathname,
-					  1, isafile);
+					  1, 1, isafile);
 			}
 			if (QuietOpt == 0 && (i & 31) == 31) {
+				if (i == 31)
+					printf("\n");
 				printf("Progress %zd/%d\r", i, INUM_HSIZE);
 				fflush(stdout);
 			}
@@ -370,6 +423,7 @@ cmd_recover(const char *devpath, const char *pathname,
 		inode_entry_t *iscan;
 		topology_entry_t *top_scan;
 		topology_inode_t *top_ino;
+		topology_bref_t *top_bref;
 
 		while ((dscan = DirHash[i]) != NULL) {
 			DirHash[i] = dscan->next;
@@ -385,6 +439,10 @@ cmd_recover(const char *devpath, const char *pathname,
 			while ((top_ino = top_scan->inodes) != NULL) {
 				top_scan->inodes = top_ino->next;
 				free(top_ino);
+			}
+			while ((top_bref = top_scan->brefs) != NULL) {
+				top_scan->brefs = top_bref->next;
+				free(top_bref);
 			}
 			free(top_scan->path);
 			free(top_scan);
@@ -522,6 +580,18 @@ enter_dirent(hammer2_blockref_t *bref, hammer2_off_t loff,
 }
 #endif
 
+/*
+ * Topology duplicate scan avoidance helpers.  We associate inodes and
+ * indirect block data offsets, allowing us to avoid re-scanning any
+ * duplicates that we see.  And there will be many due to how the COW
+ * process occurs.
+ *
+ * For example, when a large directory is modified the content update to
+ * the directory entries will cause the directory inode to be COWd, along
+ * with whatever is holding the bref(s) blocks that have undergone
+ * adjustment.  More likely than not, there will be MANY shared indirect
+ * blocks.
+ */
 static topology_entry_t *
 enter_topology(const char *path)
 {
@@ -565,8 +635,29 @@ topology_check_duplicate_inode(topology_entry_t *topo, inode_entry_t *inode)
 	return 0;
 }
 
+static int
+topology_check_duplicate_indirect(topology_entry_t *topo,
+				  hammer2_blockref_t *bref)
+{
+	topology_bref_t *scan;
+
+	for (scan = topo->brefs; scan; scan = scan->next) {
+		if (scan->data_off == bref->data_off) {
+			return 1;
+		}
+	}
+	scan = malloc(sizeof(*scan));
+	bzero(scan, sizeof(*scan));
+	scan->data_off = bref->data_off;
+	scan->next = topo->brefs;
+	topo->brefs = scan;
+
+	return 0;
+}
+
 /*
- * Dump the inode content to a file
+ * Valid and record an inode found on media.  There can be many versions
+ * of the same inode number present on the media.
  */
 static void
 enter_inode(hammer2_blockref_t *bref)
@@ -628,6 +719,13 @@ enter_inode(hammer2_blockref_t *bref)
 	++InodeCount;
 }
 
+/*
+ * This is used to enter possible root inodes.  Root inodes typically hang
+ * off the volume root and thus there might not be a bref reference to the
+ * many old copies of root inodes sitting around on the media.  Without a
+ * bref we can't really validate that the content is ok.  But we need
+ * these inodes as part of our path searches.
+ */
 static void
 enter_inode_untested(hammer2_inode_data_t *ip, hammer2_off_t loff)
 {
@@ -668,15 +766,23 @@ find_first_inode(hammer2_key_t inum)
 }
 
 /*
- * Dump the specified inode
+ * Dump the specified inode (file or directory)
+ *
+ * This function recurses via dump_dir_data().
  */
 static void
 dump_tree(inode_entry_t *iscan, const char *dest, const char *remain,
-	  int depth, int isafile)
+	  int depth, int path_depth, int isafile)
 {
 	topology_entry_t *topo;
 	struct stat st;
 	char *path;
+
+	/*
+	 * Set path depth.  This is typically cleared on the way back
+	 * up and is primarily used to prevent recursion loops.
+	 */
+	iscan->path_depth = path_depth;
 
 	/*
 	 * Try to limit potential infinite loops
@@ -703,10 +809,8 @@ dump_tree(inode_entry_t *iscan, const char *dest, const char *remain,
 	 * laying around.  Directories use unextended names.
 	 */
 	topo = enter_topology(dest);
-
-	if (topology_check_duplicate_inode(topo, iscan)) {
+	if (topology_check_duplicate_inode(topo, iscan))
 		return;
-	}
 
 	switch(iscan->inode.meta.type) {
 	case HAMMER2_OBJTYPE_DIRECTORY:
@@ -740,7 +844,8 @@ dump_tree(inode_entry_t *iscan, const char *dest, const char *remain,
 		 */
 		(void)dump_dir_data(dest, remain,
 				    &iscan->inode.u.blockset.blockref[0],
-				    HAMMER2_SET_COUNT, depth, isafile);
+				    HAMMER2_SET_COUNT, depth, path_depth + 1,
+				    isafile);
 
 		/*
 		 * Final adjustment to directory inode
@@ -911,6 +1016,9 @@ dump_inum_file(inode_entry_t *iscan, const char *path1)
 	return res;
 }
 
+/*
+ * TODO XXX
+ */
 static int
 dump_inum_softlink(hammer2_inode_data_t *inode __unused,
 		   const char *path __unused)
@@ -921,11 +1029,13 @@ dump_inum_softlink(hammer2_inode_data_t *inode __unused,
 /*
  * Scan the directory for a match against the next component in
  * the (remain) path.
+ *
+ * This function is part of the dump_tree() recursion mechanism.
  */
 static int
 dump_dir_data(const char *dest, const char *remain,
 	      hammer2_blockref_t *base, int count,
-	      int depth, int isafile)
+	      int depth, int path_depth, int isafile)
 {
 	hammer2_media_data_t data;
 	hammer2_volume_t *vol;
@@ -950,6 +1060,7 @@ dump_dir_data(const char *dest, const char *remain,
 	for (n = 0; n < count; ++n) {
 		hammer2_blockref_t *bref;
 		char filename_buf[1024+1];
+		topology_entry_t *topo;
 
 		bref = &base[n];
 
@@ -981,6 +1092,10 @@ dump_dir_data(const char *dest, const char *remain,
 			 *
 			 * Locate all matching inodes and continue the
 			 * traversal.
+			 *
+			 * Avoid traversal loops by recording path_depth
+			 * on the way down and clearing it on the way back
+			 * up.
 			 */
 			if ((flen == 0 &&
 			    check_filename(bref, NULL, filename_buf,
@@ -999,13 +1114,20 @@ dump_dir_data(const char *dest, const char *remain,
 				iscan = find_first_inode(inum);
 				while (iscan) {
 					if (iscan->inum == inum &&
+					    iscan->path_depth == 0 &&
 					    iscan->inode.meta.type ==
 					    bref->embed.dirent.type)
 					{
 						dump_tree(iscan, path,
 							  remain + flen,
 							  depth + 1,
+							  path_depth,
 							  isafile);
+
+						/*
+						 * Clear loop check
+						 */
+						iscan->path_depth = 0;
 					}
 					iscan = iscan->next;
 				}
@@ -1017,6 +1139,17 @@ dump_dir_data(const char *dest, const char *remain,
 				res = 0;
 				break;
 			}
+
+			/*
+			 * Due to COW operations, even if the inode is
+			 * replicated, some of the indirect brefs might
+			 * still be shared and allow us to reject duplicate
+			 * scans.
+			 */
+			topo = enter_topology(dest);
+			if (topology_check_duplicate_indirect(topo, bref))
+				break;
+
 			if (pread(vol->fd, &data, psize, poff) !=
 			    (ssize_t)psize)
 			{
@@ -1032,7 +1165,7 @@ dump_dir_data(const char *dest, const char *remain,
 			rtmp = dump_dir_data(dest, remain,
 					  &data.npdata[0],
 					  psize / sizeof(hammer2_blockref_t),
-					  depth, isafile);
+					  depth, path_depth, isafile);
 			if (res)
 				res = rtmp;
 			break;
