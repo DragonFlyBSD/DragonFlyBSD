@@ -63,8 +63,9 @@
  */
 #include "hammer2.h"
 
-#define INUM_HSIZE	(1024*1024)
-#define INUM_HMASK	(INUM_HSIZE - 1)
+#define HTABLE_SIZE	(4*1024*1024)
+#define HTABLE_MASK	(HTABLE_SIZE - 1)
+#define DISPMODULO	(HTABLE_SIZE / 32768)
 
 #include <openssl/sha.h>
 
@@ -79,13 +80,15 @@ typedef struct dirent_entry {
 typedef struct inode_entry {
 	struct inode_entry *next;
 	struct inode_entry *next2;	/* secondary (ino ^ data_off) hash */
-	struct inode_entry *first_parent;
 	hammer2_off_t	data_off;
-	hammer2_key_t	inum;
-	hammer2_inode_data_t inode;
-	long		encounters;
+	hammer2_key_t	inum;		/* from bref or inode meta */
+	//hammer2_inode_data_t inode;	/* (removed, too expensive) */
 	char		*link_file_path;
-	int		path_depth;	/* non-zero already visited at N */
+	uint32_t	inode_crc;
+	uint8_t		type;		/* from inode meta */
+	uint8_t		encountered;	/* copies limit w/REPINODEDEPTH */
+	uint8_t		loopcheck;	/* recursion loop check */
+	uint8_t		unused03;
 } inode_entry_t;
 
 typedef struct topology_entry {
@@ -108,7 +111,7 @@ typedef struct topo_bref_entry {
 typedef struct topo_inode_entry {
 	struct topo_inode_entry *next;
 	topology_entry_t  *topo;
-	inode_entry_t *inode;
+	inode_entry_t *iscan;
 } topo_inode_entry_t;
 
 static dirent_entry_t **DirHash;
@@ -138,7 +141,8 @@ static void enter_neg(hammer2_blockref_t *bref);
 static void dump_tree(inode_entry_t *iscan, const char *dest,
 			const char *remain, int depth, int path_depth,
 			int isafile);
-static int dump_inum_file(inode_entry_t *iscan, const char *path);
+static int dump_inum_file(inode_entry_t *iscan, hammer2_inode_data_t *inode,
+			const char *path);
 static int dump_inum_softlink(hammer2_inode_data_t *inode, const char *path);
 static int dump_dir_data(const char *dest, const char *remain,
 			hammer2_blockref_t *base, int count,
@@ -147,8 +151,7 @@ static int dump_file_data(int wfd, hammer2_off_t fsize,
 			hammer2_blockref_t *bref, int count);
 static int validate_crc(hammer2_blockref_t *bref, void *data, size_t bytes);
 static uint32_t hammer2_to_unix_xid(const uuid_t *uuid);
-static void *hammer2_cache_read(hammer2_volume_t *vol, hammer2_off_t poff,
-				size_t bytes);
+static void *hammer2_cache_read(hammer2_off_t data_off, size_t *bytesp);
 
 static long InodeCount;
 static long TopoBRefCount;
@@ -186,13 +189,13 @@ cmd_recover(const char *devpath, const char *pathname,
 
 	StrictMode = strict;
 	hammer2_init_volumes(devpath, 1);
-	DirHash = calloc(INUM_HSIZE, sizeof(dirent_entry_t *));
-	InodeHash = calloc(INUM_HSIZE, sizeof(inode_entry_t *));
-	InodeHash2 = calloc(INUM_HSIZE, sizeof(inode_entry_t *));
-	TopologyHash = calloc(INUM_HSIZE, sizeof(topology_entry_t *));
-	NegativeHash = calloc(INUM_HSIZE, sizeof(neg_entry_t *));
-	TopoBRefHash = calloc(INUM_HSIZE, sizeof(topo_bref_entry_t *));
-	TopoInodeHash = calloc(INUM_HSIZE, sizeof(topo_inode_entry_t *));
+	DirHash = calloc(HTABLE_SIZE, sizeof(dirent_entry_t *));
+	InodeHash = calloc(HTABLE_SIZE, sizeof(inode_entry_t *));
+	InodeHash2 = calloc(HTABLE_SIZE, sizeof(inode_entry_t *));
+	TopologyHash = calloc(HTABLE_SIZE, sizeof(topology_entry_t *));
+	NegativeHash = calloc(HTABLE_SIZE, sizeof(neg_entry_t *));
+	TopoBRefHash = calloc(HTABLE_SIZE, sizeof(topo_bref_entry_t *));
+	TopoInodeHash = calloc(HTABLE_SIZE, sizeof(topo_inode_entry_t *));
 
 	/*
 	 * Media Pass
@@ -315,7 +318,8 @@ cmd_recover(const char *devpath, const char *pathname,
 			 * Update progress
 			 */
 			if (QuietOpt == 0 &&
-			    (++xdisp == 32 || poff == vol->size - sizeof(data)))
+			    (++xdisp == DISPMODULO ||
+			     poff == vol->size - sizeof(data)))
 			{
 				xdisp = 0;
 				printf("%ld inodes scanned, "
@@ -388,7 +392,7 @@ cmd_recover(const char *devpath, const char *pathname,
 		 * directory entries.  If an absolute path was specified
 		 * we start at root inodes.
 		 */
-		for (i = 0; i < INUM_HSIZE; ++i) {
+		for (i = 0; i < HTABLE_SIZE; ++i) {
 			inode_entry_t *iscan;
 
 			for (iscan = InodeHash[i];
@@ -400,13 +404,10 @@ cmd_recover(const char *devpath, const char *pathname,
 				 * otherwise we can start at any directory
 				 * inode.
 				 */
-				if (abspath && iscan->inode.meta.inum != 1)
+				if (abspath && iscan->inum != 1)
 					continue;
-				if (iscan->inode.meta.type !=
-				    HAMMER2_OBJTYPE_DIRECTORY)
-				{
+				if (iscan->type != HAMMER2_OBJTYPE_DIRECTORY)
 					continue;
-				}
 
 				/*
 				 * Progress down root inodes can be slow,
@@ -429,10 +430,12 @@ cmd_recover(const char *devpath, const char *pathname,
 				dump_tree(iscan, destdir, pathname,
 					  1, 1, isafile);
 			}
-			if (QuietOpt == 0 && (i & 31) == 31) {
-				if (i == 31)
+			if (QuietOpt == 0 &&
+			    (i & (DISPMODULO - 1)) == DISPMODULO - 1)
+			{
+				if (i == DISPMODULO - 1)
 					printf("\n");
-				printf("Progress %zd/%d\r", i, INUM_HSIZE);
+				printf("Progress %zd/%d\r", i, HTABLE_SIZE);
 				fflush(stdout);
 			}
 		}
@@ -450,7 +453,7 @@ cmd_recover(const char *devpath, const char *pathname,
 	 */
 	hammer2_cleanup_volumes();
 
-	for (i = 0; i < INUM_HSIZE; ++i) {
+	for (i = 0; i < HTABLE_SIZE; ++i) {
 		dirent_entry_t *dscan;
 		inode_entry_t *iscan;
 		topology_entry_t *top_scan;
@@ -604,7 +607,7 @@ enter_dirent(hammer2_blockref_t *bref, hammer2_off_t loff,
 {
 	hammer2_key_t inum = bref->embed.dirent.inum;
 	dirent_entry_t *entry;
-	uint32_t hv = (inum ^ (inum >> 16)) & INUM_HMASK;
+	uint32_t hv = (inum ^ (inum >> 16)) & HTABLE_MASK;
 
 	for (entry = DirHash[hv]; entry; entry = entry->next) {
 		if (entry->inum == inum &&
@@ -648,7 +651,7 @@ enter_topology(const char *path)
 
 	for (i = 0; path[i]; ++i)
 		hv = (hv << 5) ^ path[i] ^ (hv >> 24);
-	hv = (hv ^ (hv >> 16)) & INUM_HMASK;
+	hv = (hv ^ (hv >> 16)) & HTABLE_MASK;
 	for (topo = TopologyHash[hv]; topo; topo = topo->next) {
 		if (strcmp(path, topo->path) == 0)
 			return topo;
@@ -669,14 +672,14 @@ enter_topology(const char *path)
  * have already dealt with.
  */
 static int
-topology_check_duplicate_inode(topology_entry_t *topo, inode_entry_t *inode)
+topology_check_duplicate_inode(topology_entry_t *topo, inode_entry_t *iscan)
 {
-	int hv = (((intptr_t)topo ^ (intptr_t)inode) >> 6) & INUM_HMASK;
+	int hv = (((intptr_t)topo ^ (intptr_t)iscan) >> 6) & HTABLE_MASK;
 	topo_inode_entry_t *scan;
 
 	for (scan = TopoInodeHash[hv]; scan; scan = scan->next) {
 		if (scan->topo == topo &&
-		    scan->inode == inode)
+		    scan->iscan == iscan)
 		{
 			++TopoInodeDupCount;
 			return 1;
@@ -684,7 +687,7 @@ topology_check_duplicate_inode(topology_entry_t *topo, inode_entry_t *inode)
 	}
 	scan = malloc(sizeof(*scan));
 	bzero(scan, sizeof(*scan));
-	scan->inode = inode;
+	scan->iscan = iscan;
 	scan->topo = topo;
 	scan->next = TopoInodeHash[hv];
 	TopoInodeHash[hv] = scan;
@@ -701,7 +704,7 @@ static int
 topology_check_duplicate_indirect(topology_entry_t *topo,
 				  hammer2_blockref_t *bref)
 {
-	int hv = ((intptr_t)topo ^ (bref->data_off >> 8)) & INUM_HMASK;
+	int hv = ((intptr_t)topo ^ (bref->data_off >> 8)) & HTABLE_MASK;
 	topo_bref_entry_t *scan;
 
 	for (scan = TopoBRefHash[hv]; scan; scan = scan->next) {
@@ -733,13 +736,12 @@ enter_inode(hammer2_blockref_t *bref)
 	uint32_t hv;
 	uint32_t hv2;
 	inode_entry_t *scan;
-	hammer2_volume_t *vol;
-	hammer2_off_t poff;
 	hammer2_inode_data_t *inode;
+	size_t psize;
 
-	hv = (bref->key ^ (bref->key >> 16)) & INUM_HMASK;
+	hv = (bref->key ^ (bref->key >> 16)) & HTABLE_MASK;
 	hv2 = (bref->key ^ (bref->key >> 16) ^ (bref->data_off >> 10)) &
-	      INUM_HMASK;
+	      HTABLE_MASK;
 
 	/*
 	 * Ignore duplicate inodes, use the secondary inode hash table's
@@ -777,13 +779,14 @@ enter_inode(hammer2_blockref_t *bref)
 		return;
 	if (bref->key == 0)
 		return;
-	vol = hammer2_get_volume(bref->data_off);
-	if (vol == NULL)
+
+	inode = hammer2_cache_read(bref->data_off, &psize);
+
+	/*
+	 * Failure prior to I/O being performed.
+	 */
+	if (psize == 0)
 		return;
-
-	poff = (bref->data_off - vol->offset) & ~0x1FL;
-
-	inode = hammer2_cache_read(vol, poff, sizeof(*inode));
 
 	/*
 	 * Any failures which occur after the I/O has been performed
@@ -806,12 +809,22 @@ fail:
 	if (inode->meta.inum != bref->key)
 		goto fail;
 
+	/*
+	 * Record the inode.  For now we do not record the actual content
+	 * of the inode because if there are more than few million of them
+	 * the memory consumption can get into the dozens of gigabytes.
+	 *
+	 * Instead, the inode will be re-read from media in the recovery
+	 * pass.
+	 */
 	scan = malloc(sizeof(*scan));
 	bzero(scan, sizeof(*scan));
 
 	scan->inum = bref->key;
+	scan->type = inode->meta.type;
 	scan->data_off = bref->data_off;
-	scan->inode = *inode;
+	scan->inode_crc = hammer2_icrc32(inode, sizeof(*inode));
+	//scan->inode = *inode;		/* removed, too expensive */
 
 	scan->next = InodeHash[hv];
 	InodeHash[hv] = scan;
@@ -835,9 +848,9 @@ enter_inode_untested(hammer2_inode_data_t *ip, hammer2_off_t loff)
 	uint32_t hv2;
 	inode_entry_t *scan;
 
-	hv = (ip->meta.inum ^ (ip->meta.inum >> 16)) & INUM_HMASK;
+	hv = (ip->meta.inum ^ (ip->meta.inum >> 16)) & HTABLE_MASK;
 	hv2 = (ip->meta.inum ^ (ip->meta.inum >> 16) ^ (loff >> 10)) &
-	      INUM_HMASK;
+	      HTABLE_MASK;
 
 	for (scan = InodeHash2[hv2]; scan; scan = scan->next2) {
 		if (ip->meta.inum == scan->inum &&
@@ -847,12 +860,22 @@ enter_inode_untested(hammer2_inode_data_t *ip, hammer2_off_t loff)
 		}
 	}
 
+	/*
+	 * Record the inode.  For now we do not record the actual content
+	 * of the inode because if there are more than few million of them
+	 * the memory consumption can get into the dozens of gigabytes.
+	 *
+	 * Instead, the inode will be re-read from media in the recovery
+	 * pass.
+	 */
 	scan = malloc(sizeof(*scan));
 	bzero(scan, sizeof(*scan));
 
 	scan->inum = ip->meta.inum;
+	scan->type = ip->meta.type;
 	scan->data_off = loff;
-	scan->inode = *ip;
+	scan->inode_crc = hammer2_icrc32(ip, sizeof(*ip));
+	//scan->inode = *ip;		/* removed, too expensive */
 
 	scan->next = InodeHash[hv];
 	InodeHash[hv] = scan;
@@ -866,7 +889,7 @@ static inode_entry_t *
 find_first_inode(hammer2_key_t inum)
 {
 	inode_entry_t *entry;
-	uint32_t hv = (inum ^ (inum >> 16)) & INUM_HMASK;
+	uint32_t hv = (inum ^ (inum >> 16)) & HTABLE_MASK;
 
 	for (entry = InodeHash[hv]; entry; entry = entry->next) {
 		if (entry->inum == inum)
@@ -888,7 +911,7 @@ find_first_inode(hammer2_key_t inum)
 static int
 find_neg(hammer2_blockref_t *bref)
 {
-	int hv = (bref->data_off >> 10) & INUM_HMASK;
+	int hv = (bref->data_off >> 10) & HTABLE_MASK;
 	neg_entry_t *neg;
 
 	for (neg = NegativeHash[hv]; neg; neg = neg->next) {
@@ -909,7 +932,7 @@ find_neg(hammer2_blockref_t *bref)
 static void
 enter_neg(hammer2_blockref_t *bref)
 {
-	int hv = (bref->data_off >> 10) & INUM_HMASK;
+	int hv = (bref->data_off >> 10) & HTABLE_MASK;
 	neg_entry_t *neg;
 
 	neg = malloc(sizeof(*neg));
@@ -930,19 +953,32 @@ dump_tree(inode_entry_t *iscan, const char *dest, const char *remain,
 	  int depth, int path_depth, int isafile)
 {
 	topology_entry_t *topo;
+	hammer2_inode_data_t *inode;
+	hammer2_inode_data_t inode_copy;
 	struct stat st;
+	size_t psize;
 	char *path;
 
 	/*
-	 * Set path depth.  This is typically cleared on the way back
-	 * up and is primarily used to prevent recursion loops.
+	 * Re-read the already-validated inode instead of saving it in
+	 * memory from the media pass.  Even though we already validated
+	 * it, the content may have changed if scanning live media, so
+	 * check against a simple crc we recorded earlier.
 	 */
-	iscan->path_depth = path_depth;
+	inode = hammer2_cache_read(iscan->data_off, &psize);
+	if (psize == 0)
+		return;
+	if (inode == NULL || psize != sizeof(*inode))
+		return;
+	if (iscan->inode_crc != hammer2_icrc32(inode, sizeof(*inode)))
+		return;
+	inode_copy = *inode;
+	inode = &inode_copy;
 
 	/*
 	 * Try to limit potential infinite loops
 	 */
-	if (depth > REPINODEDEPTH && iscan->encounters)
+	if (depth > REPINODEDEPTH && iscan->encountered)
 		return;
 
 	/*
@@ -967,7 +1003,7 @@ dump_tree(inode_entry_t *iscan, const char *dest, const char *remain,
 	if (topology_check_duplicate_inode(topo, iscan))
 		return;
 
-	switch(iscan->inode.meta.type) {
+	switch(iscan->type) {
 	case HAMMER2_OBJTYPE_DIRECTORY:
 		/*
 		 * If we have exhausted the path and isafile is TRUE,
@@ -985,7 +1021,7 @@ dump_tree(inode_entry_t *iscan, const char *dest, const char *remain,
 		 */
 		if (depth != 1) {
 			if (mkdir(dest, 0755) == 0)
-				++iscan->encounters;
+				iscan->encountered = 1;
 			if (stat(dest, &st) == 0) {
 				if (st.st_flags)
 					chflags(dest, 0);
@@ -998,7 +1034,7 @@ dump_tree(inode_entry_t *iscan, const char *dest, const char *remain,
 		 * Dump directory contents (scan the directory)
 		 */
 		(void)dump_dir_data(dest, remain,
-				    &iscan->inode.u.blockset.blockref[0],
+				    &inode->u.blockset.blockref[0],
 				    HAMMER2_SET_COUNT, depth, path_depth + 1,
 				    isafile);
 
@@ -1008,19 +1044,19 @@ dump_tree(inode_entry_t *iscan, const char *dest, const char *remain,
 		if (depth != 1) {
 			struct timeval tvs[2];
 
-			tvs[0].tv_sec = iscan->inode.meta.atime / 1000000;
-			tvs[0].tv_usec = iscan->inode.meta.atime % 1000000;
-			tvs[1].tv_sec = iscan->inode.meta.mtime / 1000000;
-			tvs[1].tv_usec = iscan->inode.meta.mtime % 1000000;
+			tvs[0].tv_sec = inode->meta.atime / 1000000;
+			tvs[0].tv_usec = inode->meta.atime % 1000000;
+			tvs[1].tv_sec = inode->meta.mtime / 1000000;
+			tvs[1].tv_usec = inode->meta.mtime % 1000000;
 
 			if (lutimes(dest, tvs) < 0)
 				perror("futimes");
 			lchown(dest,
-			       hammer2_to_unix_xid(&iscan->inode.meta.uid),
-			       hammer2_to_unix_xid(&iscan->inode.meta.gid));
+			       hammer2_to_unix_xid(&inode->meta.uid),
+			       hammer2_to_unix_xid(&inode->meta.gid));
 
-			lchmod(dest, iscan->inode.meta.mode);
-			lchflags(dest, iscan->inode.meta.uflags);
+			lchmod(dest, inode->meta.mode);
+			lchflags(dest, inode->meta.uflags);
 		}
 		break;
 	case HAMMER2_OBJTYPE_REGFILE:
@@ -1037,8 +1073,8 @@ dump_tree(inode_entry_t *iscan, const char *dest, const char *remain,
 				if ((st.st_mode & 0600) != 0600)
 					chmod(path, 0644);
 			}
-			++iscan->encounters;
-			(void)dump_inum_file(iscan, path);
+			iscan->encountered = 1;
+			(void)dump_inum_file(iscan, inode, path);
 			free(path);
 		}
 		break;
@@ -1056,7 +1092,7 @@ dump_tree(inode_entry_t *iscan, const char *dest, const char *remain,
 				if ((st.st_mode & 0600) != 0600)
 					chmod(path, 0644);
 			}
-			(void)dump_inum_softlink(&iscan->inode, path);
+			(void)dump_inum_softlink(inode, path);
 			free(path);
 		}
 		break;
@@ -1071,9 +1107,9 @@ dump_tree(inode_entry_t *iscan, const char *dest, const char *remain,
  * .corrupted.
  */
 static int
-dump_inum_file(inode_entry_t *iscan, const char *path1)
+dump_inum_file(inode_entry_t *iscan, hammer2_inode_data_t *inode,
+	       const char *path1)
 {
-	hammer2_inode_data_t *inode = &iscan->inode;
 	char *path2;
 	int wfd;
 	int res;
@@ -1195,7 +1231,7 @@ dump_dir_data(const char *dest, const char *remain,
 	hammer2_media_data_t data;
 	hammer2_volume_t *vol;
 	hammer2_off_t poff;
-	hammer2_off_t psize;
+	size_t psize;
 	int res = 1;
 	int rtmp;
 	int n;
@@ -1269,10 +1305,11 @@ dump_dir_data(const char *dest, const char *remain,
 				iscan = find_first_inode(inum);
 				while (iscan) {
 					if (iscan->inum == inum &&
-					    iscan->path_depth == 0 &&
-					    iscan->inode.meta.type ==
-					    bref->embed.dirent.type)
+					    iscan->loopcheck == 0 &&
+					    iscan->type ==
+					     bref->embed.dirent.type)
 					{
+						iscan->loopcheck = 1;
 						dump_tree(iscan, path,
 							  remain + flen,
 							  depth + 1,
@@ -1282,7 +1319,7 @@ dump_dir_data(const char *dest, const char *remain,
 						/*
 						 * Clear loop check
 						 */
-						iscan->path_depth = 0;
+						iscan->loopcheck = 0;
 					}
 					iscan = iscan->next;
 				}
@@ -1519,20 +1556,51 @@ static sdccache_t SDCCache[SDCCOUNT];
 static int64_t SDCLast;
 
 static void *
-hammer2_cache_read(hammer2_volume_t *vol, hammer2_off_t poff, size_t bytes)
+hammer2_cache_read(hammer2_off_t data_off, size_t *bytesp)
 {
-	hammer2_off_t pbase = poff & ~HAMMER2_PBUFMASK64;
+	hammer2_off_t poff;
+	hammer2_off_t pbase;
+	hammer2_volume_t *vol;
 	sdccache_t *sdc;
-	sdccache_t *sdc_worst = NULL;
+	sdccache_t *sdc_worst;
 	int i;
+
+	*bytesp = 0;
+
+	/*
+	 * Translate logical offset to volume and physical offset.
+	 * Return NULL with *bytesp set to 0 to indicate pre-I/O
+	 * sanity check failure.
+	 */
+	vol = hammer2_get_volume(data_off);
+        if (vol == NULL)
+                return NULL;
+        poff = (data_off - vol->offset) & ~0x1FL;
+	*bytesp = 1 << (data_off & 0x1F);
+
+	pbase = poff & ~HAMMER2_PBUFMASK64;
+
+	/*
+	 * Must not straddle two full-sized hammer2 blocks
+	 */
+	if ((poff ^ (poff + *bytesp - 1)) & ~HAMMER2_PBUFMASK64) {
+		*bytesp = 0;
+		return NULL;
+	}
 
 	/*
 	 * I/Os are powers of 2 in size and must be aligned to at least
 	 * the I/O size.
 	 */
-	if (poff & ~0x1FL & (bytes - 1))
+	if (poff & ~0x1FL & (*bytesp - 1)) {
+		*bytesp = 0;
 		return NULL;
+	}
 
+	/*
+	 * LRU match lookup
+	 */
+	sdc_worst = NULL;
 	for (i = 0; i < SDCCOUNT; ++i) {
 		sdc = &SDCCache[i];
 
@@ -1544,6 +1612,12 @@ hammer2_cache_read(hammer2_volume_t *vol, hammer2_off_t poff, size_t bytes)
 			sdc_worst = sdc;
 	}
 
+	/*
+	 * Fallback to I/O if not found, using oldest entry
+	 *
+	 * On failure we leave (*bytesp) intact to indicate that an I/O
+	 * was attempted.
+	 */
 	sdc = sdc_worst;
 	sdc->vol = vol;
 	sdc->offset = pbase;

@@ -369,7 +369,8 @@ PFS roots and snapshot roots, as well as disconnected roots from COW updates
 .Pp
 The path may specify a directory or file to restore.  Note that if you
 specify something like ".cshrc", then all ".cshrc" files found in the
-entire filesystem will be recovered.
+entire filesystem will be recovered.  Multiple references to the same
+physical inode with the same filename in the same directory are filtered out.
 .Pp
 This function is meant for catastrophic recovery or corrupted media or
 recovery for deleted files that are not otherwise available in snapshots.
@@ -382,6 +383,15 @@ iteration suffixes.  Many files and sub-directory trees may wind up glommed
 together in one place.  However, this function will recover mtime, ownership,
 group, modes, and flags.  Recovered files are fully validated and any missing
 data will cause the file to be renamed with a ".corrupted" suffix.
+.Pp
+Memory requirements - This function needs to track inodes and paths and
+can eat a considerable amount of ram, and it tends to be random-access
+so while swap can make ends meet, it might slow the scan down drastically
+if it has to eat into it much.
+Ram consumption scales with the number of inodes found.  Call it a few
+gigabytes up to 500GB of media and approaching 64GB on busy 4TB media.
+Busy meaning, say, 50 million topological inodes turning into 1 billion
+inodes located by the media scan.
 .\" ==== recover-relaxed ====
 .It Cm recover-relaxed Ar media Ar path Ar destdir
 This version of the recover directive relaxes bref checks.  Under normal
