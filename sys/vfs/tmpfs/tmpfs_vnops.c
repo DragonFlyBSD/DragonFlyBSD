@@ -1598,6 +1598,7 @@ tmpfs_nrmdir(struct vop_nrmdir_args *ap)
 
 	tmpfs_update(dvp);
 	cache_unlink(ap->a_nch);
+	tmpfs_knote(vp, NOTE_DELETE);
 	tmpfs_knote(dvp, NOTE_WRITE | NOTE_LINK);
 	vrele(vp);
 	return 0;
