@@ -18,6 +18,7 @@
 #include			"compat/consttime_memequal.h"
 #define	TAILQ_FOREACH_SAFE	TAILQ_FOREACH_MUTABLE
 #define	HAVE_SYS_QUEUE_H
+#define	HAVE_NBTOOL_CONFIG_H	0
 #define	RBTEST
 #include			"compat/rbtree.h"
 #define	HAVE_REALLOCARRAY
