@@ -58,7 +58,7 @@ cmd_pfs_snapshot(const char *sel_path, const char *path, const char *label,
 	hammer2_ioc_pfs_t pfs;
 	int ecode = 0;
 	int fd;
-	char filename[HAMMER2_INODE_MAXNAME + 16];
+	char filename[NAME_MAX + 256];
 	time_t t;
 	struct tm *tp;
 
@@ -93,7 +93,7 @@ cmd_pfs_snapshot(const char *sel_path, const char *path, const char *label,
 	}
 
 	bzero(&pfs, sizeof(pfs));
-	snprintf(pfs.name, sizeof(pfs.name), "%s", label);
+	strlcpy(pfs.name, label, sizeof(pfs.name));
 	pfs.pfs_flags = pfs_flags;
 
 	if (ioctl(fd, HAMMER2IOC_PFS_SNAPSHOT, &pfs) < 0) {
