@@ -292,6 +292,23 @@ main(int ac, char **av)
 			usage(1);
 		}
 		ecode = cmd_pfs_delete(sel_path, av, ac);
+	} else if (strcmp(av[0], "recover") == 0 ||
+		   strcmp(av[0], "recover-relaxed") == 0 ||
+		   strcmp(av[0], "recover-file") == 0)
+	{
+		/*
+		 * Recover a relative path (unanchored match), absolute path,
+		 * specific file, or directory sub-tree.  File restorals are
+		 * fully validated.
+		 */
+		if (ac != 4) {
+			fprintf(stderr, "recover device [/]path destdir\n");
+			usage(1);
+		} else {
+			int strict = (strcmp(av[0], "recover-relaxed") != 0);
+			int isafile = (strcmp(av[0], "recover-file") == 0);
+			cmd_recover(av[1], av[2], av[3], strict, isafile);
+		}
 	} else if (strcmp(av[0], "snapshot") == 0 ||
 		   strcmp(av[0], "snapshot-debug") == 0) {
 		/*
@@ -415,23 +432,6 @@ main(int ac, char **av)
 			usage(1);
 		} else {
 			cmd_show(av[1], 0);
-		}
-	} else if (strcmp(av[0], "recover") == 0 ||
-		   strcmp(av[0], "recover-relaxed") == 0 ||
-		   strcmp(av[0], "recover-file") == 0)
-	{
-		/*
-		 * Recover a relative path (unanchored match), absolute path,
-		 * specific file, or directory sub-tree.  File restorals are
-		 * fully validated.
-		 */
-		if (ac != 4) {
-			fprintf(stderr, "recover device [/]path destdir\n");
-			usage(1);
-		} else {
-			int strict = (strcmp(av[0], "recover-relaxed") != 0);
-			int isafile = (strcmp(av[0], "recover-file") == 0);
-			cmd_recover(av[1], av[2], av[3], strict, isafile);
 		}
 	} else if (strcmp(av[0], "freemap") == 0) {
 		/*
