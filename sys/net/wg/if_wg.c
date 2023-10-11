@@ -260,24 +260,27 @@ struct wg_softc {
 		BPF_MTAP2(ifp, &__bpf_tap_af, sizeof(__bpf_tap_af), m); \
 	} while (0)
 
-static int clone_count;
 static volatile unsigned long peer_counter = 0;
-static const char wgname[] = "wg";
 
 static struct objcache *wg_packet_zone;
 MALLOC_DEFINE(M_WG_PACKET, "WG packet", "wireguard packet");
 
 static struct lock wg_lock;
 
+static int clone_count;
 static LIST_HEAD(, wg_softc) wg_list = LIST_HEAD_INITIALIZER(wg_list);
 
 static TASKQGROUP_DEFINE(wg_tqg, ncpus, 1);
 
 MALLOC_DEFINE(M_WG, "WG", "wireguard");
 
-VNET_DEFINE_STATIC(struct if_clone *, wg_cloner);
+static const char wgname[] = "wg";
 
-#define	V_wg_cloner	VNET(wg_cloner)
+static int wg_clone_create(struct if_clone *, int, caddr_t, caddr_t);
+static int wg_clone_destroy(struct ifnet *ifp);
+static struct if_clone wg_cloner = IF_CLONE_INITIALIZER(
+	wgname, wg_clone_create, wg_clone_destroy, 0, IF_MAXUNIT);
+
 #define	WG_CAPS		IFCAP_LINKSTATE
 
 struct wg_timespec64 {
@@ -353,15 +356,11 @@ static struct wg_packet *wg_queue_dequeue_serial(struct wg_queue *);
 static struct wg_packet *wg_queue_dequeue_parallel(struct wg_queue *);
 static bool wg_input(struct mbuf *, int, struct inpcb *, const struct sockaddr *, void *);
 static void wg_peer_send_staged(struct wg_peer *);
-static int wg_clone_create(struct if_clone *ifc, char *name, size_t len,
-	struct ifc_data *ifd, if_t *ifpp);
 static void wg_qflush(if_t);
 static inline int determine_af_and_pullup(struct mbuf **m, sa_family_t *af);
 static int wg_xmit(if_t, struct mbuf *, sa_family_t, uint32_t);
 static int wg_transmit(if_t, struct mbuf *);
 static int wg_output(if_t, struct mbuf *, const struct sockaddr *, struct route *);
-static int wg_clone_destroy(struct if_clone *ifc, if_t ifp,
-	uint32_t flags);
 static bool wgc_privileged(struct wg_softc *);
 static int wgc_get(struct wg_softc *, struct wg_data_io *);
 static int wgc_set(struct wg_softc *, struct wg_data_io *);
@@ -370,10 +369,8 @@ static void wg_down(struct wg_softc *);
 static void wg_reassign(if_t, struct vnet *, char *unused);
 static void wg_init(void *);
 static int wg_ioctl(if_t, u_long, caddr_t);
-static void vnet_wg_init(const void *);
-static void vnet_wg_uninit(const void *);
 static int wg_module_init(void);
-static void wg_module_deinit(void);
+static int wg_module_deinit(void);
 
 /* TODO Peer */
 static struct wg_peer *
@@ -1288,8 +1285,7 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 
 		res = cookie_checker_validate_macs(&sc->sc_cookie, &init->m,
 				init, sizeof(*init) - sizeof(init->m),
-				underload, &e->e_remote.r_sa,
-				if_getvnet(sc->sc_ifp));
+				underload, &e->e_remote.r_sa);
 
 		if (res == EINVAL) {
 			DPRINTF(sc, "Invalid initiation MAC\n");
@@ -1322,8 +1318,7 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 
 		res = cookie_checker_validate_macs(&sc->sc_cookie, &resp->m,
 				resp, sizeof(*resp) - sizeof(resp->m),
-				underload, &e->e_remote.r_sa,
-				if_getvnet(sc->sc_ifp));
+				underload, &e->e_remote.r_sa);
 
 		if (res == EINVAL) {
 			DPRINTF(sc, "Invalid response MAC\n");
@@ -1695,12 +1690,10 @@ wg_deliver_in(struct wg_peer *peer)
 		NET_EPOCH_ENTER(et);
 		BPF_MTAP2_AF(ifp, m, pkt->p_af);
 
-		CURVNET_SET(if_getvnet(ifp));
 		if (pkt->p_af == AF_INET)
 			netisr_dispatch(NETISR_IP, m);
 		if (pkt->p_af == AF_INET6)
 			netisr_dispatch(NETISR_IPV6, m);
-		CURVNET_RESTORE();
 		NET_EPOCH_EXIT(et);
 
 		wg_timers_event_data_received(peer);
@@ -2694,11 +2687,11 @@ wg_down(struct wg_softc *sc)
 }
 
 static int
-wg_clone_create(struct if_clone *ifc, char *name, size_t len,
-    struct ifc_data *ifd, struct ifnet **ifpp)
+wg_clone_create(struct if_clone *ifc __unused, int unit,
+    caddr_t params __unused, caddr_t data __unused)
 {
 	struct wg_softc *sc;
-	if_t ifp;
+	struct ifnet *ifp;
 
 	sc = kmalloc(sizeof(*sc), M_WG, M_WAITOK | M_ZERO);
 
@@ -2749,7 +2742,7 @@ wg_clone_create(struct if_clone *ifc, char *name, size_t len,
 	if_setsoftc(ifp, sc);
 	if_setcapabilities(ifp, WG_CAPS);
 	if_setcapenable(ifp, WG_CAPS);
-	if_initname(ifp, wgname, ifd->unit);
+	if_initname(ifp, wgname, unit);
 
 	if_setmtu(ifp, DEFAULT_MTU);
 	if_setflags(ifp, IFF_NOARP | IFF_MULTICAST);
@@ -2768,7 +2761,6 @@ wg_clone_create(struct if_clone *ifc, char *name, size_t len,
 	lockmgr(&wg_lock, LK_EXCLUSIVE);
 	LIST_INSERT_HEAD(&wg_list, sc, sc_entry);
 	lockmgr(&wg_lock, LK_RELEASE);
-	*ifpp = ifp;
 	return (0);
 free_aip4:
 	RADIX_NODE_HEAD_DESTROY(sc->sc_aip4);
@@ -2791,7 +2783,7 @@ wg_clone_deferred_free(struct noise_local *l)
 }
 
 static int
-wg_clone_destroy(struct if_clone *ifc, if_t ifp, uint32_t flags)
+wg_clone_destroy(struct ifnet *ifp)
 {
 	struct wg_softc *sc = if_getsoftc(ifp);
 	struct ucred *cred;
@@ -2807,9 +2799,7 @@ wg_clone_destroy(struct if_clone *ifc, if_t ifp, uint32_t flags)
 	lockmgr(&wg_lock, LK_RELEASE);
 
 	if_link_state_change(sc->sc_ifp, LINK_STATE_DOWN);
-	CURVNET_SET(if_getvnet(sc->sc_ifp));
 	if_purgeaddrs(sc->sc_ifp);
-	CURVNET_RESTORE();
 
 	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	wg_socket_uninit(sc);
@@ -2892,28 +2882,6 @@ wg_init(void *xsc)
 	wg_up(sc);
 }
 
-static void
-vnet_wg_init(const void *unused __unused)
-{
-	struct if_clone_addreq req = {
-		.create_f = wg_clone_create,
-		.destroy_f = wg_clone_destroy,
-		.flags = IFC_F_AUTOUNIT,
-	};
-	V_wg_cloner = ifc_attach_cloner(wgname, &req);
-}
-VNET_SYSINIT(vnet_wg_init, SI_SUB_PROTO_IFATTACHDOMAIN, SI_ORDER_ANY,
-	     vnet_wg_init, NULL);
-
-static void
-vnet_wg_uninit(const void *unused __unused)
-{
-	if (V_wg_cloner)
-		ifc_detach_cloner(V_wg_cloner);
-}
-VNET_SYSUNINIT(vnet_wg_uninit, SI_SUB_PROTO_IFATTACHDOMAIN, SI_ORDER_ANY,
-	       vnet_wg_uninit, NULL);
-
 #ifdef SELFTESTS
 #include "selftest/allowedips.c"
 static bool wg_run_selftests(void)
@@ -2946,32 +2914,31 @@ wg_module_init(void)
 	if (ret != 0)
 		return (ret);
 
+	ret = if_clone_attach(&wg_cloner);
+	if (ret != 0)
+		return (ret);
+
 	if (!wg_run_selftests())
 		return (ENOTRECOVERABLE);
 
 	return (0);
 }
 
-static void
+static int
 wg_module_deinit(void)
 {
-	VNET_ITERATOR_DECL(vnet_iter);
-	VNET_LIST_RLOCK();
-	VNET_FOREACH(vnet_iter) {
-		struct if_clone *clone = VNET_VNET(vnet_iter, wg_cloner);
-		if (clone) {
-			ifc_detach_cloner(clone);
-			VNET_VNET(vnet_iter, wg_cloner) = NULL;
-		}
-	}
-	VNET_LIST_RUNLOCK();
-	NET_EPOCH_WAIT();
-	MPASS(LIST_EMPTY(&wg_list));
+	if (atomic_load_int(&clone_count) > 0)
+		return (EBUSY);
+
+	if_clone_detach(&wg_cloner);
+
 	cookie_deinit();
 	crypto_deinit();
 	if (wg_packet_zone != NULL)
 		objcache_destroy(wg_packet_zone);
 	lockuninit(&wg_lock);
+
+	return (0);
 }
 
 static int
@@ -2981,8 +2948,7 @@ wg_module_event_handler(module_t mod, int what, void *arg)
 		case MOD_LOAD:
 			return wg_module_init();
 		case MOD_UNLOAD:
-			wg_module_deinit();
-			break;
+			return wg_module_deinit();
 		default:
 			return (EOPNOTSUPP);
 	}

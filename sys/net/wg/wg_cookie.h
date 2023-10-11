@@ -17,8 +17,6 @@
 #define COOKIE_INPUT_SIZE	32
 #define COOKIE_ENCRYPTED_SIZE	(COOKIE_COOKIE_SIZE + COOKIE_MAC_SIZE)
 
-struct vnet;
-
 struct cookie_macs {
 	uint8_t	mac1[COOKIE_MAC_SIZE];
 	uint8_t	mac2[COOKIE_MAC_SIZE];
@@ -62,8 +60,7 @@ int	cookie_maker_consume_payload(struct cookie_maker *,
 void	cookie_maker_mac(struct cookie_maker *, struct cookie_macs *,
 	    void *, size_t);
 int	cookie_checker_validate_macs(struct cookie_checker *,
-	    struct cookie_macs *, void *, size_t, bool, struct sockaddr *,
-	    struct vnet *);
+	    struct cookie_macs *, void *, size_t, bool, struct sockaddr *);
 
 #ifdef SELFTESTS
 bool	cookie_selftest(void);

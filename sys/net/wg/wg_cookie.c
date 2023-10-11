@@ -37,7 +37,6 @@
 #define IPV6_MASK_SIZE		8 /* Use top 8 bytes (/64) of IPv6 address */
 
 struct ratelimit_key {
-	struct vnet *vnet;
 	uint8_t ip[IPV6_MASK_SIZE];
 };
 
@@ -71,7 +70,7 @@ static void	ratelimit_deinit(struct ratelimit *);
 static void	ratelimit_gc_callout(void *);
 static void	ratelimit_gc_schedule(struct ratelimit *);
 static void	ratelimit_gc(struct ratelimit *, bool);
-static int	ratelimit_allow(struct ratelimit *, struct sockaddr *, struct vnet *);
+static int	ratelimit_allow(struct ratelimit *, struct sockaddr *);
 static uint64_t siphash13(const uint8_t [SIPHASH_KEY_LENGTH], const void *, size_t);
 
 static struct ratelimit ratelimit_v4;
@@ -230,7 +229,7 @@ cookie_maker_mac(struct cookie_maker *cm, struct cookie_macs *macs, void *buf,
 
 int
 cookie_checker_validate_macs(struct cookie_checker *cc, struct cookie_macs *macs,
-    void *buf, size_t len, bool check_cookie, struct sockaddr *sa, struct vnet *vnet)
+    void *buf, size_t len, bool check_cookie, struct sockaddr *sa)
 {
 	struct cookie_macs our_macs;
 	uint8_t cookie[COOKIE_COOKIE_SIZE];
@@ -257,10 +256,10 @@ cookie_checker_validate_macs(struct cookie_checker *cc, struct cookie_macs *macs
 		 * implying there is no ratelimiting, or we should ratelimit
 		 * (refuse) respectively. */
 		if (sa->sa_family == AF_INET)
-			return ratelimit_allow(&ratelimit_v4, sa, vnet);
+			return ratelimit_allow(&ratelimit_v4, sa);
 #ifdef INET6
 		else if (sa->sa_family == AF_INET6)
-			return ratelimit_allow(&ratelimit_v6, sa, vnet);
+			return ratelimit_allow(&ratelimit_v6, sa);
 #endif
 		else
 			return EAFNOSUPPORT;
@@ -420,13 +419,13 @@ ratelimit_gc(struct ratelimit *rl, bool force)
 }
 
 static int
-ratelimit_allow(struct ratelimit *rl, struct sockaddr *sa, struct vnet *vnet)
+ratelimit_allow(struct ratelimit *rl, struct sockaddr *sa)
 {
 	uint64_t bucket, tokens;
 	sbintime_t diff, now;
 	struct ratelimit_entry *r;
 	int ret = ECONNREFUSED;
-	struct ratelimit_key key = { .vnet = vnet };
+	struct ratelimit_key key = { 0 };
 	size_t len = sizeof(key);
 
 	if (sa->sa_family == AF_INET) {
