@@ -840,29 +840,29 @@ prison_priv_check(struct ucred *cred, int cap)
 		return (0);
 
 	switch (cap & ~__SYSCAP_XFLAGS) {
-	case SYSCAP_RESTRICTEDROOT:		/* group 0 - variable */
+	case SYSCAP_RESTRICTEDROOT:		/* meta group 1 */
 		/* RESTRICTEDROOT fallbacks disallowed in jails */
 		return EPERM;
-	case SYSCAP_SENSITIVEROOT:
-	case SYSCAP_NOEXEC:
-	case SYSCAP_NOCRED:
+	case SYSCAP_SENSITIVEROOT:		/* meta group 2 */
+	case SYSCAP_NOEXEC:			/* meta group 3 */
+	case SYSCAP_NOCRED:			/* meta group 4 */
 		return 0;
-	case SYSCAP_NOJAIL:
+	case SYSCAP_NOJAIL:			/* meta group 5 */
 		/* all jail ops disallowed in jails */
 		return EPERM;
-	case SYSCAP_NONET:
+	case SYSCAP_NONET:			/* meta group 6 */
 		return 0;
-	case SYSCAP_NONET_SENSITIVE:
+	case SYSCAP_NONET_SENSITIVE:		/* meta group 7 */
 		/* all sensitive network ops disallowed in jails */
 		return EPERM;
-	case SYSCAP_NOVFS:
-	case SYSCAP_NOVFS_SENSITIVE:
-	case SYSCAP_NOMOUNT:
-	case SYSCAP_NO11:
-	case SYSCAP_NO12:
-	case SYSCAP_NO13:
-	case SYSCAP_NO14:
-	case SYSCAP_NO15:
+	case SYSCAP_NOVFS:			/* meta group 8 */
+	case SYSCAP_NOVFS_SENSITIVE:		/* meta group 9 */
+	case SYSCAP_NOMOUNT:			/* meta group 10 */
+	case SYSCAP_NO11:			/* meta group 11 */
+	case SYSCAP_NO12:			/* meta group 12 */
+	case SYSCAP_NO13:			/* meta group 13 */
+	case SYSCAP_NO14:			/* meta group 14 */
+	case SYSCAP_NO15:			/* meta group 15 */
 		return (0);
 
 	/* ----- */				/* group 1 - disallowed */
@@ -942,12 +942,16 @@ prison_priv_check(struct ucred *cred, int cap)
 		else
 			return (EPERM);
 	case SYSCAP_NOMOUNT_DEVFS:
-		return (EPERM);
+		if (PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_VFS_MOUNT_DEVFS))
+			return (0);
+		else
+			return (EPERM);
 	case SYSCAP_NOMOUNT_TMPFS:
 		if (PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_VFS_MOUNT_TMPFS))
 			return (0);
 		else
 			return (EPERM);
+	case SYSCAP_NOMOUNT_PROCFS:
 	case SYSCAP_NOMOUNT_FUSE:
 	case SYSCAP_NOMOUNT_UMOUNT:
 		return (0);
