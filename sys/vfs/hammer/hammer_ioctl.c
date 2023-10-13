@@ -69,7 +69,7 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 	struct hammer_mount *hmp;
 	int error;
 
-	error = priv_check_cred(cred, PRIV_HAMMER_IOCTL, 0);
+	error = caps_priv_check(cred, SYSCAP_NOVFS_IOCTL);
 	hmp = ip->hmp;
 
 	hammer_start_transaction(&trans, hmp);
@@ -194,7 +194,7 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		if (error == 0 && hmp->ronly)
 			error = EROFS;
 		if (error == 0) {
-			error = priv_check_cred(cred, PRIV_HAMMER_VOLUME, 0);
+			error = caps_priv_check(cred, SYSCAP_NOVFS_IOCTL);
 			if (error == 0)
 				error = hammer_ioc_volume_add(&trans, ip,
 					    (struct hammer_ioc_volume *)data);
@@ -204,7 +204,7 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		if (error == 0 && hmp->ronly)
 			error = EROFS;
 		if (error == 0) {
-			error = priv_check_cred(cred, PRIV_HAMMER_VOLUME, 0);
+			error = caps_priv_check(cred, SYSCAP_NOVFS_IOCTL);
 			if (error == 0)
 				error = hammer_ioc_volume_del(&trans, ip,
 					    (struct hammer_ioc_volume *)data);

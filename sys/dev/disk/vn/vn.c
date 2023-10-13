@@ -58,7 +58,7 @@
 #include <sys/uio.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/nlookup.h>
 #include <sys/buf.h>
 #include <sys/malloc.h>
@@ -431,7 +431,7 @@ vnioctl(struct dev_ioctl_args *ap)
 
     vn_specific:
 
-	error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
+	error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT);
 	if (error)
 		return (error);
 

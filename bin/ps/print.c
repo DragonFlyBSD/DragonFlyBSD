@@ -40,6 +40,7 @@
 #include <sys/ucred.h>
 #include <sys/sysctl.h>
 #include <sys/rtprio.h>
+#include <sys/caps.h>
 #include <vm/vm.h>
 
 #include <err.h>
@@ -286,8 +287,21 @@ state(const KINFO *k, const struct varent *vent)
 	if ((flag & P_SYSTEM) || KI_PROC(k, lock) > 0)
 		*cp++ = 'L';
 #endif
+
 	if (flag & P_JAILED)
 		*cp++ = 'J';
+	if (__KP_SYSCAP_GET(KI_PROC(k, syscaps), SYSCAP_RESTRICTEDROOT) ==
+	    (__SYSCAP_SELF | __SYSCAP_EXEC) &&
+	    __KP_SYSCAP_GET(KI_PROC(k, syscaps), SYSCAP_SENSITIVEROOT) ==
+	    (__SYSCAP_SELF | __SYSCAP_EXEC))
+	{
+		*cp++ = 'Y';
+	} else
+	if (__KP_SYSCAP_GET(KI_PROC(k, syscaps), SYSCAP_RESTRICTEDROOT) ==
+	    (__SYSCAP_SELF | __SYSCAP_EXEC))
+	{
+		*cp++ = 'y';
+	}
 	if (KI_PROC(k, auxflags) & KI_SLEADER)
 		*cp++ = 's';
 	if ((flag & P_CONTROLT) && KI_PROC(k, pgid) == KI_PROC(k, tpgid))

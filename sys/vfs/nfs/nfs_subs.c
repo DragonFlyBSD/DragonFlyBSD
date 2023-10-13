@@ -1542,15 +1542,16 @@ nfsrv_setcred(struct ucred *incred, struct ucred *outcred)
 /*
  * Hold a ucred in nfs_node.  Discard prison information, otherwise
  * prisons might stick around indefinitely due to NFS node caching.
+ *
+ * XXX may cause a large number of cred structures in the system
+ * to accumulate.
  */
 struct ucred *
 nfs_crhold(struct ucred *cred)
 {
 	if (cred) {
 		if (cred->cr_prison) {
-			cred = crdup(cred);
-			prison_free(cred->cr_prison);
-			cred->cr_prison = NULL;
+			cred = crdup_nocaps(cred);
 		} else {
 			cred = crhold(cred);
 		}

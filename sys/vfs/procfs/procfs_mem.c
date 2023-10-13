@@ -45,7 +45,7 @@
 #include <sys/systm.h>
 #include <sys/uio.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/vnode.h>
 #include <vfs/procfs/procfs.h>
 #include <vm/vm.h>

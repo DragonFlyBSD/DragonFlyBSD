@@ -35,7 +35,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -192,7 +192,8 @@ raw_uattach(netmsg_t msg)
 
 	rp = sotorawcb(so);
 	if (rp) {
-		error = priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY);
+		error = caps_priv_check(ai->p_ucred, SYSCAP_RESTRICTEDROOT |
+						     __SYSCAP_NULLCRED);
 		if (error == 0)
 			error = raw_attach(so, proto, ai->sb_rlimit);
 	} else {

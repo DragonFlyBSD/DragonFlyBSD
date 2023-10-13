@@ -1376,6 +1376,7 @@ kern/kern_objcache.c	standard
 kern/kern_physio.c	standard
 kern/kern_proc.c	standard
 kern/kern_prot.c	standard
+kern/kern_caps.c	standard
 kern/kern_nrandom.c	standard
 kern/kern_resource.c	standard
 kern/kern_plimit.c	standard

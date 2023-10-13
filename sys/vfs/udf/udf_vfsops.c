@@ -84,7 +84,7 @@
 #include <sys/mount.h>
 #include <sys/nlookup.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/queue.h>
 #include <sys/vnode.h>
 
@@ -176,7 +176,7 @@ udf_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_EACCESS(devvp, VREAD, cred);
 	if (error)
-		error = priv_check_cred(cred, PRIV_ROOT, 0);
+		error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
 	if (error) {
 		vput(devvp);
 		return(error);

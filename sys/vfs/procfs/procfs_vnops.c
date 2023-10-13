@@ -46,7 +46,7 @@
 #include <sys/lock.h>
 #include <sys/fcntl.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/signalvar.h>
 #include <sys/vnode.h>
 #include <sys/uio.h>
@@ -320,8 +320,11 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	   */
 #define NFLAGS	(PF_ISUGID)
 	  flags = (unsigned char)*(unsigned int*)ap->a_data;
-	  if (flags & NFLAGS && (error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)))
+	  if (flags & NFLAGS &&
+	      (error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT)))
+	  {
 	    goto done;
+	  }
 	  procp->p_pfsflags = flags;
 	  break;
 	case PIOCGFL:

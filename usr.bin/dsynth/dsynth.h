@@ -44,6 +44,7 @@
 #include <sys/mount.h>
 #include <sys/procctl.h>
 #include <sys/resource.h>	/* setpriority() */
+#include <sys/caps.h>
 #if defined(__DragonFly__)
 #include <sys/vmmeter.h>
 #endif
@@ -525,6 +526,7 @@ extern buildenv_t *BuildEnv;
 extern int WorkerProcFlags;
 extern int DebugOpt;
 extern int NiceOpt;
+extern int CapabilityRestrictions;
 extern int MaskProbeAbort;
 extern int ColorOpt;
 extern int SlowStartOpt;
@@ -615,6 +617,7 @@ FILE *dexec_open(const char *logid, const char **cav, int cac,
 			int with_env, int with_mvars);
 int dexec_close(FILE *fp, pid_t pid);
 const char *getphasestr(worker_phase_t phase);
+void set_capability_restrictions(void);
 
 void ParseConfiguration(int isworker);
 pkg_t *ParsePackageList(int ac, char **av, int debugstop);

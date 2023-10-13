@@ -26,7 +26,7 @@
 #include <sys/sysmsg.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/msg.h>
 #include <sys/sysent.h>
 #include <sys/sysctl.h>
@@ -287,7 +287,7 @@ sys_msgctl(struct sysmsg *sysmsg, const struct msgctl_args *uap)
 		if ((eval = copyin(user_msqptr, &msqbuf, sizeof(msqbuf))) != 0)
 			break;
 		if (msqbuf.msg_qbytes > msqptr->msg_qbytes) {
-			eval = priv_check(td, PRIV_ROOT);
+			eval = caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT);
 			if (eval)
 				break;
 		}

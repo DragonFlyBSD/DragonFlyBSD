@@ -780,6 +780,13 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 		struct lwp *lp = NULL;
 
 		/*
+		 * Sending a signal to pid 1 as root requires that we
+		 * are not reboot-restricted.
+		 */
+		if (pid == 1 && caps_priv_check_self(SYSCAP_NOREBOOT))
+			return EPERM;
+
+		/*
 		 * Send a signal to a single process.  If the kill() is
 		 * racing an exiting process which has not yet been reaped
 		 * act as though the signal was delivered successfully but

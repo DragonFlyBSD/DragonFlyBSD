@@ -43,7 +43,7 @@
 #include <sys/msgbuf.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/tty.h>
 #include <sys/tprintf.h>
 #include <sys/stdint.h>
@@ -1136,8 +1136,8 @@ sysctl_kern_msgbuf(SYSCTL_HANDLER_ARGS)
 		cred = req->td->td_proc->p_ucred;
 
 		if ((cred->cr_prison || groupmember(0, cred) == 0) &&
-		    priv_check(req->td, PRIV_ROOT) != 0
-		) {
+		    caps_priv_check_td(req->td, SYSCAP_RESTRICTEDROOT) != 0)
+		{
 			return (EPERM);
 		}
 	}

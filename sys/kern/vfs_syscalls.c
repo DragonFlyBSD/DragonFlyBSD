@@ -53,7 +53,7 @@
 #include <sys/unistd.h>
 #include <sys/vnode.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/jail.h>
 #include <sys/namei.h>
 #include <sys/nlookup.h>
@@ -149,21 +149,21 @@ sys_mount(struct sysmsg *sysmsg, const struct mount_args *uap)
 	 */
 	priv = get_fspriv(fstypename);
 
-	if (usermount == 0 && (error = priv_check(td, priv)))
+	if (usermount == 0 && (error = caps_priv_check_td(td, priv)))
 		goto done;
 
 	/*
 	 * Do not allow NFS export by non-root users.
 	 */
 	if (flags & MNT_EXPORTED) {
-		error = priv_check(td, priv);
+		error = caps_priv_check_td(td, priv);
 		if (error)
 			goto done;
 	}
 	/*
 	 * Silently enforce MNT_NOSUID and MNT_NODEV for non-root users
 	 */
-	if (priv_check(td, priv))
+	if (caps_priv_check_td(td, priv))
 		flags |= MNT_NOSUID | MNT_NODEV;
 
 	/*
@@ -251,7 +251,7 @@ sys_mount(struct sysmsg *sysmsg, const struct mount_args *uap)
 		 * permitted to update it.
 		 */
 		if (mp->mnt_stat.f_owner != cred->cr_uid &&
-		    (error = priv_check(td, priv))) {
+		    (error = caps_priv_check_td(td, priv))) {
 			cache_drop(&nch);
 			vput(vp);
 			goto done;
@@ -282,7 +282,7 @@ sys_mount(struct sysmsg *sysmsg, const struct mount_args *uap)
 	 */
 	if ((error = VOP_GETATTR(vp, &va)) ||
 	    (va.va_uid != cred->cr_uid &&
-	     (error = priv_check(td, priv)))) {
+	     (error = caps_priv_check_td(td, priv)))) {
 		cache_drop(&nch);
 		vput(vp);
 		goto done;
@@ -309,7 +309,8 @@ sys_mount(struct sysmsg *sysmsg, const struct mount_args *uap)
 		linker_file_t lf;
 
 		/* Only load modules for root (very important!) */
-		if ((error = priv_check(td, PRIV_ROOT)) != 0) {
+		error = caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT);
+		if (error) {
 			cache_drop(&nch);
 			vput(vp);
 			goto done;
@@ -638,7 +639,7 @@ sys_unmount(struct sysmsg *sysmsg, const struct unmount_args *uap)
 	ksnprintf(fstypename, MFSNAMELEN, "%s", mp->mnt_vfc->vfc_name);
 	priv = get_fspriv(fstypename);
 
-	if (usermount == 0 && (error = priv_check(td, priv))) {
+	if (usermount == 0 && (error = caps_priv_check_td(td, priv))) {
 		nlookup_done(&nd);
 		goto done;
 	}
@@ -648,8 +649,10 @@ sys_unmount(struct sysmsg *sysmsg, const struct unmount_args *uap)
 	 * permitted to unmount this filesystem.
 	 */
 	if ((mp->mnt_stat.f_owner != td->td_ucred->cr_uid) &&
-	    (error = priv_check(td, priv)))
+	    (error = caps_priv_check_td(td, priv)))
+	{
 		goto out;
+	}
 
 	/*
 	 * Don't allow unmounting the root file system.
@@ -1182,8 +1185,10 @@ sys_mountctl(struct sysmsg *sysmsg, const struct mountctl_args *uap)
 	if (td->td_ucred->cr_prison != NULL)
 		return (EPERM);
 	if ((uap->op != MOUNTCTL_MOUNTFLAGS) &&
-	    (error = priv_check(td, PRIV_ROOT)) != 0)
+	    (error = caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT)) != 0)
+	{
 		return (error);
+	}
 
 	/*
 	 * Argument length checks
@@ -1347,7 +1352,7 @@ kern_statfs(struct nlookupdata *nd, struct statfs *buf)
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 	bcopy(sp, buf, sizeof(*buf));
 	/* Only root should have access to the fsid's. */
-	if (priv_check(td, PRIV_ROOT))
+	if (caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT))
 		buf->f_fsid.val[0] = buf->f_fsid.val[1] = 0;
 	return (0);
 }
@@ -1422,7 +1427,7 @@ kern_fstatfs(int fd, struct statfs *buf)
 	bcopy(sp, buf, sizeof(*buf));
 
 	/* Only root should have access to the fsid's. */
-	if (priv_check(td, PRIV_ROOT))
+	if (caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT))
 		buf->f_fsid.val[0] = buf->f_fsid.val[1] = 0;
 	error = 0;
 done:
@@ -1934,7 +1939,7 @@ kern_chroot(struct nchandle *nch)
 	/*
 	 * Only privileged user can chroot
 	 */
-	error = priv_check_cred(td->td_ucred, PRIV_VFS_CHROOT, 0);
+	error = caps_priv_check(td->td_ucred, SYSCAP_NOVFS_CHROOT);
 	if (error)
 		return (error);
 
@@ -2024,7 +2029,7 @@ sys_chroot_kernel(struct sysmsg *sysmsg, const struct chroot_kernel_args *uap)
 
 	nch = &nd.nl_nch;
 
-	error = priv_check_cred(td->td_ucred, PRIV_VFS_CHROOT, 0);
+	error = caps_priv_check(td->td_ucred, SYSCAP_NOVFS_CHROOT);
 	if (error)
 		goto error_out;
 
@@ -2243,23 +2248,23 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 
 	switch (mode & S_IFMT) {
 	case S_IFMT:	/* used by badsect to flag bad sectors */
-		error = priv_check_cred(td->td_ucred, PRIV_VFS_MKNOD_BAD, 0);
+		error = caps_priv_check(td->td_ucred, SYSCAP_NOVFS_MKNOD_BAD);
 		vattr.va_type = VBAD;
 		break;
 	case S_IFCHR:
-		error = priv_check(td, PRIV_VFS_MKNOD_DEV);
+		error = caps_priv_check_td(td, SYSCAP_NOVFS_MKNOD_DEV);
 		vattr.va_type = VCHR;
 		break;
 	case S_IFBLK:
-		error = priv_check(td, PRIV_VFS_MKNOD_DEV);
+		error = caps_priv_check_td(td, SYSCAP_NOVFS_MKNOD_DEV);
 		vattr.va_type = VBLK;
 		break;
 	case S_IFWHT:
-		error = priv_check_cred(td->td_ucred, PRIV_VFS_MKNOD_WHT, 0);
+		error = caps_priv_check(td->td_ucred, SYSCAP_NOVFS_MKNOD_WHT);
 		whiteout = 1;
 		break;
 	case S_IFDIR:	/* special directories support for HAMMER */
-		error = priv_check_cred(td->td_ucred, PRIV_VFS_MKNOD_DIR, 0);
+		error = caps_priv_check(td->td_ucred, SYSCAP_NOVFS_MKNOD_DIR);
 		vattr.va_type = VDIR;
 		break;
 	case S_IFIFO:
@@ -2434,7 +2439,7 @@ can_hardlink(struct vnode *vp, struct thread *td, struct ucred *cred)
 	/*
 	 * Privileged user can always hardlink
 	 */
-	if (priv_check_cred(cred, PRIV_VFS_LINK, 0) == 0)
+	if (caps_priv_check(cred, SYSCAP_NOVFS_LINK) == 0)
 		return (0);
 
 	/*
@@ -3221,8 +3226,11 @@ setfflags(struct vnode *vp, u_long flags)
 	 * chown can't fail when done as root.
 	 */
 	if ((vp->v_type == VCHR || vp->v_type == VBLK) && 
-	    ((error = priv_check_cred(td->td_ucred, PRIV_VFS_CHFLAGS_DEV, 0)) != 0))
+	    ((error =
+		caps_priv_check(td->td_ucred, SYSCAP_NOVFS_CHFLAGS_DEV)) != 0))
+	{
 		return (error);
+	}
 
 	/*
 	 * note: vget is required for any operation that might mod the vnode
@@ -4651,7 +4659,7 @@ sys_revoke(struct sysmsg *sysmsg, const struct revoke_args *uap)
 		if (error == 0)
 			error = VOP_GETATTR(vp, &vattr);
 		if (error == 0 && cred->cr_uid != vattr.va_uid)
-			error = priv_check_cred(cred, PRIV_VFS_REVOKE, 0);
+			error = caps_priv_check(cred, SYSCAP_NOVFS_REVOKE);
 		if (error == 0 && (vp->v_type == VCHR || vp->v_type == VBLK)) {
 			if (vcount(vp) > 0)
 				error = vrevoke(vp, cred);
@@ -4682,7 +4690,6 @@ sys_revoke(struct sysmsg *sysmsg, const struct revoke_args *uap)
 int
 sys_getfh(struct sysmsg *sysmsg, const struct getfh_args *uap)
 {
-	struct thread *td = curthread;
 	struct nlookupdata nd;
 	fhandle_t fh;
 	struct vnode *vp;
@@ -4692,7 +4699,7 @@ sys_getfh(struct sysmsg *sysmsg, const struct getfh_args *uap)
 	/*
 	 * Must be super user
 	 */
-	if ((error = priv_check(td, PRIV_ROOT)) != 0)
+	if ((error = caps_priv_check_self(SYSCAP_RESTRICTEDROOT)) != 0)
 		return (error);
 
 	vp = NULL;
@@ -4720,8 +4727,8 @@ sys_getfh(struct sysmsg *sysmsg, const struct getfh_args *uap)
  * syscall for the rpc.lockd to use to translate a NFS file handle into
  * an open descriptor.
  *
- * warning: do not remove the priv_check() call or this becomes one giant
- * security hole.
+ * WARNING: Do not remove the caps_priv_check() call or this becomes
+ *	    one giant security hole.
  */
 int
 sys_fhopen(struct sysmsg *sysmsg, const struct fhopen_args *uap)
@@ -4742,7 +4749,7 @@ sys_fhopen(struct sysmsg *sysmsg, const struct fhopen_args *uap)
 	/*
 	 * Must be super user
 	 */
-	error = priv_check(td, PRIV_ROOT);
+	error = caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT);
 	if (error)
 		return (error);
 
@@ -4921,7 +4928,7 @@ sys_fhstat(struct sysmsg *sysmsg, const struct fhstat_args *uap)
 	/*
 	 * Must be super user
 	 */
-	error = priv_check(td, PRIV_ROOT);
+	error = caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT);
 	if (error)
 		return (error);
 	
@@ -4964,7 +4971,8 @@ sys_fhstatfs(struct sysmsg *sysmsg, const struct fhstatfs_args *uap)
 	/*
 	 * Must be super user
 	 */
-	if ((error = priv_check(td, PRIV_ROOT)))
+	error = caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT);
+	if (error)
 		return (error);
 
 	if ((error = copyin(uap->u_fhp, &fh, sizeof(fhandle_t))) != 0)
@@ -4995,7 +5003,7 @@ sys_fhstatfs(struct sysmsg *sysmsg, const struct fhstatfs_args *uap)
 	kfree(freepath, M_TEMP);
 
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
-	if (priv_check(td, PRIV_ROOT)) {
+	if (caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT)) {
 		bcopy(sp, &sb, sizeof(sb));
 		sb.f_fsid.val[0] = sb.f_fsid.val[1] = 0;
 		sp = &sb;
@@ -5025,7 +5033,7 @@ sys_fhstatvfs(struct sysmsg *sysmsg, const struct fhstatvfs_args *uap)
 	/*
 	 * Must be super user
 	 */
-	if ((error = priv_check(td, PRIV_ROOT)))
+	if ((error = caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT)))
 		return (error);
 
 	if ((error = copyin(uap->u_fhp, &fh, sizeof(fhandle_t))) != 0)
@@ -5286,18 +5294,19 @@ chroot_visible_mnt(struct mount *mp, struct proc *p)
 	return(0);
 }
 
-/* Sets priv to PRIV_ROOT in case no matching fs */
+/*
+ * Return the appropriate system capability restriction.
+ */
 static int
 get_fspriv(const char *fsname)
 {
 
 	if (strncmp("null", fsname, 5) == 0) {
-		return PRIV_VFS_MOUNT_NULLFS;
+		return SYSCAP_NOMOUNT_NULLFS;
 	} else if (strncmp(fsname, "tmpfs", 6) == 0) {
-		return PRIV_VFS_MOUNT_TMPFS;
+		return SYSCAP_NOMOUNT_TMPFS;
 	}
-
-	return PRIV_ROOT;
+	return SYSCAP_RESTRICTEDROOT;
 }
 
 int

@@ -38,7 +38,7 @@
 #include <sys/sysmsg.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/time.h>
 #include <sys/timex.h>
 #include <sys/timepps.h>
@@ -281,7 +281,6 @@ SYSCTL_OPAQUE(_kern_ntp_pll, OID_AUTO, time_freq, CTLFLAG_RD, &time_freq, sizeof
 int
 sys_ntp_adjtime(struct sysmsg *sysmsg, const struct ntp_adjtime_args *uap)
 {
-	struct thread *td = curthread;
 	struct timex ntv;	/* temporary structure */
 	long freq;		/* frequency ns/s) */
 	int modes;		/* mode bits from structure */
@@ -302,7 +301,7 @@ sys_ntp_adjtime(struct sysmsg *sysmsg, const struct ntp_adjtime_args *uap)
 	 */
 	modes = ntv.modes;
 	if (modes)
-		error = priv_check(td, PRIV_NTP_ADJTIME);
+		error = caps_priv_check_self(SYSCAP_NOSETTIME);
 	if (error)
 		return (error);
 

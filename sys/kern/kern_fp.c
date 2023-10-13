@@ -53,7 +53,7 @@
 #include <sys/sysctl.h>
 #include <sys/vnode.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/nlookup.h>
 #include <sys/file.h>
 #include <sys/stat.h>

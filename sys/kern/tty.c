@@ -79,7 +79,7 @@
 #include <sys/filio.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/tty.h>
 #define	TTYDEFCHARS
 #include <sys/ttydefaults.h>	/* for ttydefchars, CEOT */
@@ -967,7 +967,8 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 				return (EBUSY);
 			}
 #ifndef	UCONSOLE
-			if ((error = priv_check(td, PRIV_ROOT)) != 0) {
+			error = caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT);
+			if (error) {
 				lwkt_reltoken(&p->p_token);
 				lwkt_reltoken(&tp->t_token);
 				return (error);
@@ -1155,12 +1156,16 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		}
 		break;
 	case TIOCSTI:			/* simulate terminal input */
-		if ((flag & FREAD) == 0 && priv_check(td, PRIV_ROOT)) {
+		if ((flag & FREAD) == 0 &&
+		    caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT))
+		{
 			lwkt_reltoken(&p->p_token);
 			lwkt_reltoken(&tp->t_token);
 			return (EPERM);
 		}
-		if (!isctty(p, tp) && priv_check(td, PRIV_ROOT)) {
+		if (!isctty(p, tp) &&
+		    caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT))
+		{
 			lwkt_reltoken(&p->p_token);
 			lwkt_reltoken(&tp->t_token);
 			return (EACCES);
@@ -1238,7 +1243,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		}
 		break;
 	case TIOCSDRAINWAIT:
-		error = priv_check(td, PRIV_ROOT);
+		error = caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT);
 		if (error) {
 			lwkt_reltoken(&p->p_token);
 			lwkt_reltoken(&tp->t_token);

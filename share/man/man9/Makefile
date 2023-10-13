@@ -146,7 +146,6 @@ MAN=	accept_filter.9 \
 	pfind.9 \
 	pgfind.9 \
 	physio.9 \
-	priv.9 \
 	prop_copyin_ioctl.9 \
 	resettodr.9 \
 	rman.9 \
@@ -809,8 +808,6 @@ MLINKS+=pfil.9 pfil_add_hook.9 \
 MLINKS+=pfind.9 zpfind.9
 MLINKS+=physio.9 physread.9 \
 	physio.9 physwrite.9
-MLINKS+=priv.9 priv_check.9 \
-	priv.9 priv_check_cred.9
 MLINKS+=prop_copyin_ioctl.9 prop_array_copyin.9 \
 	prop_copyin_ioctl.9 prop_array_copyout.9 \
 	prop_copyin_ioctl.9 prop_array_copyin_ioctl.9 \

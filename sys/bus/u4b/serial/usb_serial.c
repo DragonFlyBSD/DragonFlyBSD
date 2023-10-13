@@ -87,7 +87,7 @@
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/cons.h>
 #include <sys/serial.h>
 #include <sys/thread2.h>
@@ -1121,7 +1121,8 @@ ucom_dev_ioctl(struct dev_ioctl_args *ap)
 		}
 		switch (ap->a_cmd) {
 		case TIOCSETA:
-			error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
+			error = caps_priv_check(ap->a_cred,
+						SYSCAP_RESTRICTEDROOT);
 			if (error != 0) {
 				lwkt_reltoken(&tp->t_token);
 				UCOM_MTX_UNLOCK(sc);

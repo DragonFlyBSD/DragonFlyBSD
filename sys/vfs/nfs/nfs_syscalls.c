@@ -44,7 +44,7 @@
 #include <sys/malloc.h>
 #include <sys/mount.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/buf.h>
 #include <sys/mbuf.h>
 #include <sys/resourcevar.h>
@@ -141,7 +141,7 @@ sys_nfssvc(struct sysmsg *sysmsg, const struct nfssvc_args *uap)
 	/*
 	 * Must be super user
 	 */
-	error = priv_check(td, PRIV_ROOT);
+	error = caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT);
 	if (error)
 		return (error);
 

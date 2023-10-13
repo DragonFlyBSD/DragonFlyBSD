@@ -36,7 +36,7 @@
 #include <sys/sysmsg.h>
 #include <sys/uio.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/vnode.h>
 #include <sys/ptrace.h>
 #include <sys/reg.h>
@@ -358,7 +358,9 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		/* not owned by you, has done setuid (unless you're root) */
 		if ((p->p_ucred->cr_ruid != curp->p_ucred->cr_ruid) ||
 		     (p->p_flags & P_SUGID)) {
-			if ((error = priv_check_cred(curp->p_ucred, PRIV_ROOT, 0)) != 0) {
+			error = caps_priv_check(curp->p_ucred,
+						SYSCAP_RESTRICTEDROOT);
+			if (error) {
 				lwkt_reltoken(&p->p_token);
 				PRELE(p);
 				return error;

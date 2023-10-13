@@ -58,7 +58,7 @@
 #include <sys/stat.h>
 #include <sys/buf.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/namei.h>
 #include <sys/mount.h>
 #include <sys/unistd.h>
@@ -316,8 +316,11 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != pmp->pm_uid &&
-		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)))
+		    (error = caps_priv_check(cred, SYSCAP_NOVFS_SETATTR)))
+		{
 			return (error);
+		}
+
 		/*
 		 * We are very inconsistent about handling unsupported
 		 * attributes.  We ignored the access time and the
@@ -357,8 +360,10 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 			gid = pmp->pm_gid;
 		if ((cred->cr_uid != pmp->pm_uid || uid != pmp->pm_uid ||
 		    (gid != pmp->pm_gid && !groupmember(gid, cred))) &&
-		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)))
+		    (error = caps_priv_check(cred, SYSCAP_NOVFS_SETATTR)))
+		{
 			return error;
+		}
 		if (uid != pmp->pm_uid || gid != pmp->pm_gid)
 			return EINVAL;
 	}
@@ -396,10 +401,12 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != pmp->pm_uid &&
-		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)) &&
+		    (error = caps_priv_check(cred, SYSCAP_NOVFS_SETATTR)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
 		    (error = VOP_EACCESS(vp, VWRITE, cred))))
+		{
 			return (error);
+		}
 		if (vp->v_type != VDIR) {
 			if ((pmp->pm_flags & MSDOSFSMNT_NOWIN95) == 0 &&
 			    vap->va_atime.tv_sec != VNOVAL) {
@@ -425,8 +432,10 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != pmp->pm_uid &&
-		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)))
+		    (error = caps_priv_check(cred, SYSCAP_NOVFS_SETATTR)))
+		{
 			return (error);
+		}
 		if (vp->v_type != VDIR) {
 			/* We ignore the read and execute bits. */
 			if (vap->va_mode & VWRITE)

@@ -64,7 +64,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/endian.h>
 #include <sys/kthread.h>
 #include <sys/taskqueue.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/module.h>
 #include <sys/ktr.h>
 
@@ -285,7 +285,7 @@ ath_ioctl(struct ieee80211com *ic, u_long cmd, void *data)
 	case SIOCZATHSTATS: {
 		int error;
 
-		error = priv_check(curthread, PRIV_DRIVER);
+		error = caps_priv_check_self(SYSCAP_NODRIVER);
 		if (error == 0) {
 			memset(&sc->sc_stats, 0, sizeof(sc->sc_stats));
 			memset(&sc->sc_aggr_stats, 0,

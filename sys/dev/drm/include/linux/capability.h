@@ -39,16 +39,16 @@
 
 #include <sys/globaldata.h>
 #include <sys/thread.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 
 struct task_struct;
 
-#define CAP_SYS_ADMIN		PRIV_DRIVER
+#define CAP_SYS_ADMIN		SYSCAP_RESTRICTEDROOT
 
 static inline bool
 capable(const int tryme)
 {
-	return (priv_check(curthread, tryme) == 0);
+	return (caps_priv_check_self(tryme) == 0);
 }
 
 #endif /* _LINUX_CAPABILITY_H */

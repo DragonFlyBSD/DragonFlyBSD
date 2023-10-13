@@ -45,7 +45,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/firmware.h>
 #include <sys/limits.h>
 #include <sys/module.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/queue.h>
 #include <sys/taskqueue.h>
 #if defined(__DragonFly__)
@@ -5154,7 +5154,8 @@ iwn_cdev_ioctl(struct cdev *dev, unsigned long cmd, caddr_t data, int fflag,
 	struct iwn_softc *sc = dev->si_drv1;
 	struct iwn_ioctl_data *d;
 
-	rc = priv_check(td, PRIV_DRIVER);
+	rc = caps_priv_check((td ? td->td_ucred : NULL),
+			     SYSCAP_NODRIVER | __SYSCAP_NULLCRED);
 	if (rc != 0)
 		return (0);
 

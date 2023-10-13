@@ -41,7 +41,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/lock.h>
 #include <sys/sysctl.h>
 #include <sys/socketvar.h>

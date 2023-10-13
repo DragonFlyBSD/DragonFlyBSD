@@ -37,7 +37,7 @@
 #include <sys/errno.h>
 #include <sys/globaldata.h>		/* curthread */
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/sysmsg.h>			/* struct usched_set_args */
 #include <sys/systm.h>			/* strcmp() */
 #include <sys/usched.h>
@@ -199,7 +199,7 @@ sys_usched_set(struct sysmsg *sysmsg, const struct usched_set_args *uap)
 
 	switch (uap->cmd) {
 	case USCHED_SET_SCHEDULER:
-		if ((error = priv_check(curthread, PRIV_SCHED_SET)) != 0)
+		if ((error = caps_priv_check_self(SYSCAP_NOSCHED)) != 0)
 			break;
 		error = copyinstr(uap->data, buffer, sizeof(buffer), NULL);
 		if (error)
@@ -232,7 +232,7 @@ sys_usched_set(struct sysmsg *sysmsg, const struct usched_set_args *uap)
 		}
 		break;
 	case USCHED_SET_CPU:
-		if ((error = priv_check(curthread, PRIV_SCHED_CPUSET)) != 0)
+		if ((error = caps_priv_check_self(SYSCAP_NOSCHED_CPUSET)) != 0)
 			break;
 		if (uap->bytes != sizeof(int)) {
 			error = EINVAL;
@@ -274,7 +274,7 @@ sys_usched_set(struct sysmsg *sysmsg, const struct usched_set_args *uap)
 		error = copyout(&mask, uap->data, sizeof(cpumask_t));
 		break;
 	case USCHED_ADD_CPU:
-		if ((error = priv_check(curthread, PRIV_SCHED_CPUSET)) != 0)
+		if ((error = caps_priv_check_self(SYSCAP_NOSCHED_CPUSET)) != 0)
 			break;
 		if (uap->bytes != sizeof(int)) {
 			error = EINVAL;
@@ -325,7 +325,7 @@ sys_usched_set(struct sysmsg *sysmsg, const struct usched_set_args *uap)
 		}
 		break;
 	case USCHED_SET_CPUMASK:
-		if ((error = priv_check(curthread, PRIV_SCHED_CPUSET)) != 0)
+		if ((error = caps_priv_check_self(SYSCAP_NOSCHED_CPUSET)) != 0)
 			break;
 		if (uap->bytes != sizeof(mask)) {
 			error = EINVAL;
@@ -420,9 +420,11 @@ sys_lwp_setaffinity(struct sysmsg *sysmsg,
 	 * NOTE:
 	 * Always allow change self CPU affinity.
 	 */
-	if ((error = priv_check(curthread, PRIV_SCHED_CPUSET)) != 0 &&
+	if ((error = caps_priv_check_self(SYSCAP_NOSCHED_CPUSET)) != 0 &&
 	    uap->pid != 0)
+	{
 		return (error);
+	}
 
 	error = copyin(uap->mask, &mask, sizeof(mask));
 	if (error)

@@ -49,7 +49,7 @@
 #include <sys/sysctl.h>
 #include <sys/file.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/thread.h>
 #include <sys/globaldata.h>
 #include <sys/limits.h>

@@ -49,7 +49,7 @@
 #include <sys/sysctl.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/in_cksum.h>
 #include <sys/lock.h>
 #include <sys/msgport.h>
@@ -386,7 +386,8 @@ div_attach(netmsg_t msg)
 	inp  = so->so_pcb;
 	if (inp)
 		panic("div_attach");
-	error = priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY);
+	error = caps_priv_check(ai->p_ucred, SYSCAP_RESTRICTEDROOT |
+					     __SYSCAP_NULLCRED);
 	if (error)
 		goto out;
 
@@ -536,7 +537,7 @@ static struct mbuf *
 ip_divert_out(struct mbuf *m, int tee)
 {
 	struct mbuf *clone = NULL;
-	struct ip *ip = mtod(m, struct ip *);
+	//struct ip *ip = mtod(m, struct ip *);
 
 	/* Clone packet if we're doing a 'tee' */
 	if (tee)

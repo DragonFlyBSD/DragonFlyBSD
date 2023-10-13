@@ -35,7 +35,7 @@
 #include <sys/sysmsg.h>
 #include <sys/sysent.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/lock.h>
 #include <sys/module.h>
 #include <sys/queue.h>
@@ -781,7 +781,6 @@ linker_ddb_symbol_values(c_linker_sym_t sym, linker_symval_t *symval)
 int
 sys_kldload(struct sysmsg *sysmsg, const struct kldload_args *uap)
 {
-    struct thread *td = curthread;
     char *file;
     char *kldname, *modname;
     linker_file_t lf;
@@ -792,7 +791,7 @@ sys_kldload(struct sysmsg *sysmsg, const struct kldload_args *uap)
     if (securelevel > 0 || kernel_mem_readonly)	/* redundant, but that's OK */
 	return EPERM;
 
-    if ((error = priv_check(td, PRIV_KLD_LOAD)) != 0)
+    if ((error = caps_priv_check_self(SYSCAP_NOKLD)) != 0)
 	return error;
 
     file = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
@@ -833,14 +832,13 @@ out:
 int
 sys_kldunload(struct sysmsg *sysmsg, const struct kldunload_args *uap)
 {
-    struct thread *td = curthread;
     linker_file_t lf;
     int error = 0;
 
     if (securelevel > 0 || kernel_mem_readonly)	/* redundant, but that's OK */
 	return EPERM;
 
-    if ((error = priv_check(td, PRIV_KLD_UNLOAD)) != 0)
+    if ((error = caps_priv_check_self(SYSCAP_NOKLD)) != 0)
 	return error;
 
     lockmgr(&kld_lock, LK_EXCLUSIVE);

@@ -42,7 +42,7 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/mount.h>
 #include <sys/nlookup.h>
 #include <sys/vnode.h>
@@ -948,7 +948,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 
 	sb->st_flags = vap->va_flags;
 
-	error = priv_check_cred(cred, PRIV_VFS_GENERATION, 0);
+	error = caps_priv_check(cred, SYSCAP_NOVFS_GENERATION);
 	if (error)
 		sb->st_gen = 0;
 	else

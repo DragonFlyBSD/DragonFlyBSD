@@ -44,7 +44,7 @@
 #include <sys/cons.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/reboot.h>
 #include <sys/sysctl.h>
 #include <sys/tty.h>
@@ -479,7 +479,8 @@ cnioctl(struct dev_ioctl_args *ap)
 	 */
 	if (ap->a_cmd == TIOCCONS && constty) {
 		if (ap->a_cred) {
-			error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
+			error = caps_priv_check(ap->a_cred,
+						SYSCAP_RESTRICTEDROOT);
 			if (error)
 				return (error);
 		}

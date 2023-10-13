@@ -43,7 +43,7 @@
 #include <sys/ucred.h>
 #include <sys/resourcevar.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/jail.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
@@ -156,8 +156,10 @@ sys_varsym_set(struct sysmsg *sysmsg, const struct varsym_set_args *uap)
 	/* fall through */
     case VARSYM_PRISON:
 	if (lp != NULL &&
-	    (error = priv_check_cred(td->td_ucred, PRIV_VARSYM_SYS, 0)) != 0)
+	    (error = caps_priv_check_td(td, SYSCAP_NOVARSYM_SYS)) != 0)
+	{
 	    break;
+	}
 	/* fall through */
     case VARSYM_USER:
 	/* XXX check jail / implement per-jail user */

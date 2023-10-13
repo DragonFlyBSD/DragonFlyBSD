@@ -40,7 +40,7 @@
 #include <sys/device.h>
 #include <sys/event.h>
 #include <sys/uio.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/vnode.h>
 #include <sys/kernel.h>
 #include <sys/signalvar.h>

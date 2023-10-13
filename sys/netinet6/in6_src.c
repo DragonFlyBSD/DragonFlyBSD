@@ -78,7 +78,7 @@
 #include <sys/errno.h>
 #include <sys/time.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -433,7 +433,8 @@ in6_pcbsetlport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 		first0 = ipport_hifirstauto;	/* sysctl */
 		last0  = ipport_hilastauto;
 	} else if (inp->inp_flags & INP_LOWPORT) {
-		if ((error = priv_check(td, PRIV_ROOT)) != 0)
+		error = caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT);
+		if (error)
 			return error;
 		first0 = ipport_lowfirstauto;	/* 1023 */
 		last0  = ipport_lowlastauto;	/* 600 */

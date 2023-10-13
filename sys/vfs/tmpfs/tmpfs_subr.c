@@ -36,7 +36,7 @@
 
 #include <sys/kernel.h>
 #include <sys/param.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/proc.h>
 #include <sys/stat.h>
 #include <sys/systm.h>

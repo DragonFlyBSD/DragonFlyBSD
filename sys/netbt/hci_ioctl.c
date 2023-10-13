@@ -36,7 +36,7 @@
 #include <sys/kernel.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
 
@@ -133,7 +133,6 @@ int
 hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 {
 	struct btreq *btr = data;
-	struct thread *td = curthread; 
 	struct hci_unit *unit;
 	int err = 0;
 
@@ -222,7 +221,7 @@ hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 		break;
 
 	case SIOCSBTFLAGS:	/* set unit flags (privileged) */
-		err = priv_check(td, PRIV_ROOT);
+		err = caps_priv_check_self(SYSCAP_RESTRICTEDROOT);
 		if (err)
 			break;
 
@@ -247,7 +246,7 @@ hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 		break;
 
 	case SIOCSBTPOLICY:	/* set unit link policy (privileged) */
-		err = priv_check(td, PRIV_ROOT);
+		err = caps_priv_check_self(SYSCAP_RESTRICTEDROOT);
 		if (err)
 			break;
 
@@ -257,7 +256,7 @@ hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 		break;
 
 	case SIOCSBTPTYPE:	/* set unit packet types (privileged) */
-		err = priv_check(td, PRIV_ROOT);
+		err = caps_priv_check_self(SYSCAP_RESTRICTEDROOT);
 		if (err)
 			break;
 
@@ -271,7 +270,7 @@ hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 		break;
 
 	case SIOCZBTSTATS:	/* get & reset unit statistics */
-		err = priv_check(td, PRIV_ROOT);
+		err = caps_priv_check_self(SYSCAP_RESTRICTEDROOT);
 		if (err)
 			break;
 
@@ -285,7 +284,7 @@ hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 		 * sent to USB bluetooth controllers that are not an
 		 * integer number of frame sizes, the USB bus locks up.
 		 */
-		err = priv_check(td, PRIV_ROOT);
+		err = caps_priv_check_self(SYSCAP_RESTRICTEDROOT);
 		if (err)
 			break;
 

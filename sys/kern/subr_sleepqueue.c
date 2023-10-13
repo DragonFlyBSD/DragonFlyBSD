@@ -55,7 +55,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/lock.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
 #include <sys/sleepqueue.h>

@@ -39,7 +39,7 @@
 #include <sys/mbuf.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -1936,12 +1936,14 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	switch (cmd) {
 	case SIOCIFCREATE:
 	case SIOCIFCREATE2:
-		if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
+		error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
+		if (error)
 			return (error);
 		return (if_clone_create(ifr->ifr_name, sizeof(ifr->ifr_name),
 			(cmd == SIOCIFCREATE2 ? ifr->ifr_data : NULL), NULL));
 	case SIOCIFDESTROY:
-		if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
+		error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
+		if (error)
 			return (error);
 		return (if_clone_destroy(ifr->ifr_name));
 	case SIOCIFGCLONERS:
@@ -2028,7 +2030,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		break;
 
 	case SIOCSIFDESCR:
-		error = priv_check_cred(cred, PRIV_ROOT, 0);
+		error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
 		if (error)
 			break;
 
@@ -2062,7 +2064,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			kfree(odescrbuf, M_IFDESCR);
 
 	case SIOCSIFFLAGS:
-		error = priv_check_cred(cred, PRIV_ROOT, 0);
+		error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
 		if (error)
 			break;
 		new_flags = (ifr->ifr_flags & 0xffff) |
@@ -2105,7 +2107,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		break;
 
 	case SIOCSIFCAP:
-		error = priv_check_cred(cred, PRIV_ROOT, 0);
+		error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
 		if (error)
 			break;
 		if (ifr->ifr_reqcap & ~ifp->if_capabilities) {
@@ -2118,7 +2120,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		break;
 
 	case SIOCSIFNAME:
-		error = priv_check_cred(cred, PRIV_ROOT, 0);
+		error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
 		if (error)
 			break;
 		error = copyinstr(ifr->ifr_data, new_name, IFNAMSIZ, NULL);
@@ -2166,7 +2168,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		break;
 
 	case SIOCSIFMETRIC:
-		error = priv_check_cred(cred, PRIV_ROOT, 0);
+		error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
 		if (error)
 			break;
 		ifp->if_metric = ifr->ifr_metric;
@@ -2174,7 +2176,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		break;
 
 	case SIOCSIFPHYS:
-		error = priv_check_cred(cred, PRIV_ROOT, 0);
+		error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
 		if (error)
 			break;
 		if (ifp->if_ioctl == NULL) {
@@ -2192,7 +2194,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	{
 		u_long oldmtu = ifp->if_mtu;
 
-		error = priv_check_cred(cred, PRIV_ROOT, 0);
+		error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
 		if (error)
 			break;
 		if (ifp->if_ioctl == NULL) {
@@ -2222,7 +2224,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	}
 
 	case SIOCSIFTSOLEN:
-		error = priv_check_cred(cred, PRIV_ROOT, 0);
+		error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
 		if (error)
 			break;
 
@@ -2236,7 +2238,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		error = priv_check_cred(cred, PRIV_ROOT, 0);
+		error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
 		if (error)
 			break;
 
@@ -2270,7 +2272,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	case SIOCSLIFPHYADDR:
 	case SIOCSIFMEDIA:
 	case SIOCSIFGENERIC:
-		error = priv_check_cred(cred, PRIV_ROOT, 0);
+		error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
 		if (error)
 			break;
 		if (ifp->if_ioctl == NULL) {
@@ -2304,7 +2306,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		break;
 
 	case SIOCSIFLLADDR:
-		error = priv_check_cred(cred, PRIV_ROOT, 0);
+		error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
 		if (error)
 			break;
 		error = if_setlladdr(ifp, ifr->ifr_addr.sa_data,
@@ -2314,7 +2316,8 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 
 	case SIOCAIFGROUP:
 		ifgr = (struct ifgroupreq *)ifr;
-		if ((error = priv_check_cred(cred, PRIV_NET_ADDIFGROUP, 0)))
+		error = caps_priv_check(cred, SYSCAP_NONET_IFCONFIG);
+		if (error)
 			return (error);
 		if ((error = if_addgroup(ifp, ifgr->ifgr_group)))
 			return (error);
@@ -2322,7 +2325,8 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 
 	case SIOCDIFGROUP:
 		ifgr = (struct ifgroupreq *)ifr;
-		if ((error = priv_check_cred(cred, PRIV_NET_DELIFGROUP, 0)))
+		error = caps_priv_check(cred, SYSCAP_NONET_IFCONFIG);
+		if (error)
 			return (error);
 		if ((error = if_delgroup(ifp, ifgr->ifgr_group)))
 			return (error);

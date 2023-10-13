@@ -48,7 +48,7 @@
 #include <sys/diskslice.h>
 #include <sys/reboot.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/fcntl.h>		/* FREAD	*/
 #include <sys/stat.h>		/* S_IFCHR	*/
 #include <sys/vnode.h>
@@ -181,10 +181,9 @@ SYSINIT(shutdown_conf, SI_BOOT2_MACHDEP, SI_ORDER_ANY, shutdown_conf, NULL);
 int
 sys_reboot(struct sysmsg *sysmsg, const struct reboot_args *uap)
 {
-	struct thread *td = curthread;
 	int error;
 
-	if ((error = priv_check(td, PRIV_REBOOT)))
+	if ((error = caps_priv_check_self(SYSCAP_NOREBOOT)))
 		return (error);
 
 	get_mplock();

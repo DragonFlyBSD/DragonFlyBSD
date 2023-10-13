@@ -117,7 +117,7 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/conf.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/proc.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
@@ -3105,8 +3105,10 @@ asr_open(struct dev_open_args *ap)
 	crit_enter();
 	if (ASR_ctlr_held) {
 		error = EBUSY;
-	} else if ((error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) == 0) {
-		++ASR_ctlr_held;
+	} else {
+		error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT);
+		if (error == 0)
+			++ASR_ctlr_held;
 	}
 	crit_exit();
 	return (error);

@@ -69,7 +69,7 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/syslog.h>
 #include <sys/device.h>
 #include <sys/rman.h>
@@ -2324,7 +2324,7 @@ fdioctl(struct dev_ioctl_args *ap)
 
 	case FD_STYPE:                  /* set drive type */
 		/* this is considered harmful; only allow for superuser */
-		if (priv_check_cred(ap->a_cred, PRIV_ROOT, 0) != 0)
+		if (caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT))
 			return EPERM;
 		fd->ft = *(struct fd_type *)ap->a_data;
 		break;

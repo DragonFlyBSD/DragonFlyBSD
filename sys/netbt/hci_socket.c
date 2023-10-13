@@ -43,7 +43,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -641,7 +641,7 @@ hci_sattach(netmsg_t msg)
 	so->so_pcb = pcb;
 	pcb->hp_socket = so;
 
-	if (curproc == NULL || priv_check(curthread, PRIV_ROOT) == 0)
+	if (curproc == NULL || caps_priv_check_self(SYSCAP_RESTRICTEDROOT) == 0)
 		pcb->hp_flags |= HCI_PRIVILEGED;
 
 	/*

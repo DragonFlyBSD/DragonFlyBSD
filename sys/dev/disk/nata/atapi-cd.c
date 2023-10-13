@@ -43,7 +43,7 @@
 #include <sys/module.h>
 #include <sys/nata.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/systm.h>
 #include <sys/udev.h>
 
@@ -357,7 +357,7 @@ acd_ioctl(struct dev_ioctl_args *ap)
 	break;
 
     case CDIOCRESET:
-	error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
+	error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT);
 	if (error)
 	    break;
 	error = acd_test_ready(dev);

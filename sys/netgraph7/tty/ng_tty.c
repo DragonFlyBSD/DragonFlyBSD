@@ -65,7 +65,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
 #include <sys/tty.h>
@@ -180,13 +180,12 @@ static int ngt_ldisc;
 static int
 ngt_open(struct cdev *dev, struct tty *tp)
 {
-	struct thread *const td = curthread;	/* XXX */
 	char name[sizeof(NG_TTY_NODE_TYPE) + 8];
 	sc_p sc;
 	int error;
 
 	/* Super-user only */
-	error = priv_check(td, PRIV_NETGRAPH_TTY);
+	error = caps_priv_check_self(SYSCAP_NONET_NETGRAPH);
 	if (error)
 		return (error);
 

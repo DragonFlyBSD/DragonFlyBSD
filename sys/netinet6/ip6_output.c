@@ -75,7 +75,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 
 #include <sys/msgport2.h>
 
@@ -1152,7 +1152,9 @@ ip6_ctloutput(struct socket *so, struct sockopt *sopt)
 	error = optval = 0;
 
 	uproto = (int)so->so_proto->pr_protocol;
-	privileged = (td == NULL || priv_check(td, PRIV_ROOT)) ? 0 : 1;
+	privileged = (td == NULL ||
+		      caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT)) ?
+		     0 : 1;
 
 	if (level == IPPROTO_IPV6) {
 		switch (op) {
@@ -2211,7 +2213,6 @@ ip6_setmoptions(int optname, struct ip6_moptions **im6op, struct mbuf *m)
 	struct route_in6 ro;
 	struct sockaddr_in6 *dst;
 	struct in6_multi_mship *imm;
-	struct thread *td = curthread;
 
 	if (im6o == NULL) {
 		/*
@@ -2304,7 +2305,7 @@ ip6_setmoptions(int optname, struct ip6_moptions **im6op, struct mbuf *m)
 			 * all multicast addresses. Only super user is allowed
 			 * to do this.
 			 */
-			if (priv_check(td, PRIV_ROOT)) {
+			if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT)) {
 				error = EACCES;
 				break;
 			}
@@ -2406,7 +2407,7 @@ ip6_setmoptions(int optname, struct ip6_moptions **im6op, struct mbuf *m)
 		}
 		mreq = mtod(m, struct ipv6_mreq *);
 		if (IN6_IS_ADDR_UNSPECIFIED(&mreq->ipv6mr_multiaddr)) {
-			if (priv_check(td, PRIV_ROOT)) {
+			if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT)) {
 				error = EACCES;
 				break;
 			}

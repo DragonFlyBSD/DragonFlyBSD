@@ -49,7 +49,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/endian.h>
 #include <sys/kthread.h>
 #include <sys/taskqueue.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 
 #if defined(__DragonFly__)
 /* empty */

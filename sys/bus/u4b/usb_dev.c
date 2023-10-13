@@ -41,7 +41,7 @@
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/vnode.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
@@ -1822,7 +1822,7 @@ usb_static_ioctl(struct dev_ioctl_args *ap)
 			err = 0;
 			break;
 		case USB_SET_TEMPLATE:
-			err = priv_check(curthread, PRIV_DRIVER);
+			err = caps_priv_check_self(SYSCAP_NODRIVER);
 			if (err)
 				break;
 			usb_template = *(int *)data;

@@ -229,6 +229,8 @@ MIASM =  \
 	varsym_set.o \
 	varsym_get.o \
 	varsym_list.o \
+	syscap_get.o \
+	syscap_set.o \
 	exec_sys_register.o \
 	exec_sys_unregister.o \
 	sys_checkpoint.o \

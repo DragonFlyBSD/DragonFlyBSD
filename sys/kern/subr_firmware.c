@@ -38,7 +38,7 @@
 #include <sys/errno.h>
 #include <sys/linker.h>
 #include <sys/firmware.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/proc.h>
 #include <sys/module.h>
 #include <sys/eventhandler.h>
@@ -305,7 +305,6 @@ const struct firmware *
 firmware_get(const char *imagename)
 {
 	struct task fwload_task;
-	struct thread *td;
 	struct priv_fw *fp;
 
 	lockmgr(&firmware_lock, LK_EXCLUSIVE);
@@ -315,8 +314,7 @@ firmware_get(const char *imagename)
 	/*
 	 * Image not present, try to load the module holding it.
 	 */
-	td = curthread;
-	if (priv_check(td, PRIV_FIRMWARE_LOAD) != 0 || securelevel > 0) {
+	if (caps_priv_check_self(SYSCAP_NOKLD) != 0 || securelevel > 0) {
 		lockmgr(&firmware_lock, LK_RELEASE);
 		kprintf("%s: insufficient privileges to "
 		    "load firmware image %s\n", __func__, imagename);

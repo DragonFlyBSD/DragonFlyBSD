@@ -274,6 +274,8 @@ DF404.0 {
     sys_checkpoint;
     sysarch;
     syscall;
+    syscap_get;
+    syscap_set;
     umask;
     umtx_sleep;
     umtx_wakeup;
@@ -617,6 +619,8 @@ DFprivate_1.0 {
     __sys_sys_checkpoint;
     __sys_sysarch;
     __sys_syscall;
+    __sys_syscap_get;
+    __sys_syscap_set;
     __sys_umask;
     __sys_umtx_sleep;
     __sys_umtx_wakeup;
@@ -922,6 +926,8 @@ DFprivate_1.0 {
     _sys_checkpoint;
     _sysarch;
     _syscall;
+    _syscap_get;
+    _syscap_set;
     _umask;
     _umtx_sleep;
     _umtx_wakeup;

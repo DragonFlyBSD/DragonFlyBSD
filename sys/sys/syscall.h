@@ -290,16 +290,8 @@
 #define	SYS_varsym_list	452
 				/* 453 is obsolete upc_register */
 				/* 454 is obsolete upc_control */
-				/* 455 is obsolete caps_sys_service */
-				/* 456 is obsolete caps_sys_client */
-				/* 457 is obsolete caps_sys_close */
-				/* 458 is obsolete caps_sys_put */
-				/* 459 is obsolete caps_sys_reply */
-				/* 460 is obsolete caps_sys_get */
-				/* 461 is obsolete caps_sys_wait */
-				/* 462 is obsolete caps_sys_abort */
-				/* 463 is obsolete caps_sys_getgen */
-				/* 464 is obsolete caps_sys_setgen */
+#define	SYS_syscap_get	455
+#define	SYS_syscap_set	456
 #define	SYS_exec_sys_register	465
 #define	SYS_exec_sys_unregister	466
 #define	SYS_sys_checkpoint	467

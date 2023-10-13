@@ -46,7 +46,7 @@
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/malloc.h>
 #include <sys/pioctl.h>
 #include <sys/resourcevar.h>
@@ -465,7 +465,7 @@ sys_setuid(struct sysmsg *sysmsg, const struct setuid_args *uap)
 #ifdef POSIX_APPENDIX_B_4_2_2	/* Use BSD-compat clause from B.4.2.2 */
 	    uid != cr->cr_uid &&	/* allow setuid(geteuid()) */
 #endif
-	    (error = priv_check_cred(cr, PRIV_CRED_SETUID, 0)))
+	    (error = caps_priv_check(cr, SYSCAP_NOCRED_SETUID)))
 		goto done;
 
 #ifdef _POSIX_SAVED_IDS
@@ -477,7 +477,7 @@ sys_setuid(struct sysmsg *sysmsg, const struct setuid_args *uap)
 #ifdef POSIX_APPENDIX_B_4_2_2	/* Use the clause from B.4.2.2 */
 	    uid == cr->cr_uid ||
 #endif
-	    priv_check_cred(cr, PRIV_CRED_SETUID, 0) == 0) /* we are using privs */
+	    caps_priv_check(cr, SYSCAP_NOCRED_SETUID, 0) == 0) /* using privs */
 #endif
 	{
 		/*
@@ -528,7 +528,8 @@ sys_seteuid(struct sysmsg *sysmsg, const struct seteuid_args *uap)
 	euid = uap->euid;
 	if (euid != cr->cr_ruid &&		/* allow seteuid(getuid()) */
 	    euid != cr->cr_svuid &&		/* allow seteuid(saved uid) */
-	    (error = priv_check_cred(cr, PRIV_CRED_SETEUID, 0))) {
+	    (error = caps_priv_check(cr, SYSCAP_NOCRED_SETEUID)))
+	{
 		lwkt_reltoken(&p->p_token);
 		return (error);
 	}
@@ -575,7 +576,8 @@ sys_setgid(struct sysmsg *sysmsg, const struct setgid_args *uap)
 #ifdef POSIX_APPENDIX_B_4_2_2	/* Use BSD-compat clause from B.4.2.2 */
 	    gid != cr->cr_groups[0] && /* allow setgid(getegid()) */
 #endif
-	    (error = priv_check_cred(cr, PRIV_CRED_SETGID, 0))) {
+	    (error = caps_priv_check(cr, SYSCAP_NOCRED_SETGID)))
+	{
 		goto done;
 	}
 
@@ -588,7 +590,7 @@ sys_setgid(struct sysmsg *sysmsg, const struct setgid_args *uap)
 #ifdef POSIX_APPENDIX_B_4_2_2	/* use the clause from B.4.2.2 */
 	    gid == cr->cr_groups[0] ||
 #endif
-	    priv_check_cred(cr, PRIV_CRED_SETGID, 0) == 0) /* we are using privs */
+	    cpas_priv_check(cr, SYSCAP_NOCRED_SETGID) == 0) /* using privs */
 #endif
 	{
 		/*
@@ -640,7 +642,8 @@ sys_setegid(struct sysmsg *sysmsg, const struct setegid_args *uap)
 	egid = uap->egid;
 	if (egid != cr->cr_rgid &&		/* allow setegid(getgid()) */
 	    egid != cr->cr_svgid &&		/* allow setegid(saved gid) */
-	    (error = priv_check_cred(cr, PRIV_CRED_SETEGID, 0))) {
+	    (error = caps_priv_check(cr, SYSCAP_NOCRED_SETEGID)))
+	{
 		goto done;
 	}
 	if (cr->cr_groups[0] != egid) {
@@ -665,7 +668,7 @@ sys_setgroups(struct sysmsg *sysmsg, const struct setgroups_args *uap)
 	lwkt_gettoken(&p->p_token);
 	cr = p->p_ucred;
 
-	if ((error = priv_check_cred(cr, PRIV_CRED_SETGROUPS, 0)))
+	if ((error = caps_priv_check(cr, SYSCAP_NOCRED_SETGROUPS)))
 		goto done;
 	ngrp = uap->gidsetsize;
 	if (ngrp > NGROUPS) {
@@ -716,7 +719,8 @@ sys_setreuid(struct sysmsg *sysmsg, const struct setreuid_args *uap)
 	      ruid != cr->cr_svuid) ||
 	     (euid != (uid_t)-1 && euid != cr->cr_uid &&
 	      euid != cr->cr_ruid && euid != cr->cr_svuid)) &&
-	    (error = priv_check_cred(cr, PRIV_CRED_SETREUID, 0)) != 0) {
+	    (error = caps_priv_check(cr, SYSCAP_NOCRED_SETREUID)) != 0)
+	{
 		goto done;
 	}
 
@@ -757,7 +761,8 @@ sys_setregid(struct sysmsg *sysmsg, const struct setregid_args *uap)
 	      rgid != cr->cr_svgid) ||
 	     (egid != (gid_t)-1 && egid != cr->cr_groups[0] &&
 	      egid != cr->cr_rgid && egid != cr->cr_svgid)) &&
-	    (error = priv_check_cred(cr, PRIV_CRED_SETREGID, 0)) != 0) {
+	    (error = caps_priv_check(cr, SYSCAP_NOCRED_SETREGID)) != 0)
+	{
 		goto done;
 	}
 
@@ -807,7 +812,8 @@ sys_setresuid(struct sysmsg *sysmsg, const struct setresuid_args *uap)
 	      euid != cr->cr_svuid && euid != cr->cr_uid) ||
 	     (suid != (uid_t)-1 && suid != cr->cr_ruid &&
 	      suid != cr->cr_svuid && suid != cr->cr_uid)) &&
-	    (error = priv_check_cred(cr, PRIV_CRED_SETRESUID, 0)) != 0) {
+	    (error = caps_priv_check(cr, SYSCAP_NOCRED_SETRESUID)) != 0)
+	{
 		goto done;
 	}
 	if (euid != (uid_t)-1 && cr->cr_uid != euid) {
@@ -852,7 +858,8 @@ sys_setresgid(struct sysmsg *sysmsg, const struct setresgid_args *uap)
 	      egid != cr->cr_svgid && egid != cr->cr_groups[0]) ||
 	     (sgid != (gid_t)-1 && sgid != cr->cr_rgid &&
 	      sgid != cr->cr_svgid && sgid != cr->cr_groups[0])) &&
-	    (error = priv_check_cred(cr, PRIV_CRED_SETRESGID, 0)) != 0) {
+	    (error = caps_priv_check(cr, SYSCAP_NOCRED_SETRESGID)) != 0)
+	{
 		goto done;
 	}
 
@@ -952,6 +959,7 @@ groupmember(gid_t gid, struct ucred *cred)
 	return (0);
 }
 
+#if 0
 /*
  * Test whether the specified credentials have the privilege
  * in question.
@@ -998,21 +1006,42 @@ priv_check_cred(struct ucred *cred, int priv, int flags)
 	error = prison_priv_check(cred, priv);
 	if (error)
 		return (error);
+	error = caps_priv_check(cred, priv);
+	if (error)
+		return (error);
 
 	/* NOTE: accounting for suser access (p_acflag/ASU) removed */
 	return (0);
 }
 
+#endif
+
 /*
- * Return zero if p1 can fondle p2, return errno (EPERM/ESRCH) otherwise.
+ * Return zero if p1 can signal p2, return errno (EPERM/ESRCH) otherwise.
  */
 int
 p_trespass(struct ucred *cr1, struct ucred *cr2)
 {
 	if (cr1 == cr2)
 		return (0);
+
+	/*
+	 * Disallow signals crossing outside of a prison boundary
+	 */
 	if (!PRISON_CHECK(cr1, cr2))
 		return (ESRCH);
+
+	/*
+	 * Processes inside a restricted root cannot signal processes
+	 * outside of a restricted root.  Unless it is also jailed, this will
+	 * still allow cross-signaling between unrelated restricted roots.
+	 */
+	if ((caps_get(cr1, SYSCAP_RESTRICTEDROOT) & __SYSCAP_SELF) &&
+	    (caps_get(cr2, SYSCAP_RESTRICTEDROOT) & __SYSCAP_SELF) == 0)
+	{
+		return (ESRCH);
+	}
+
 	if (cr1->cr_ruid == cr2->cr_ruid)
 		return (0);
 	if (cr1->cr_uid == cr2->cr_ruid)
@@ -1021,7 +1050,9 @@ p_trespass(struct ucred *cr1, struct ucred *cr2)
 		return (0);
 	if (cr1->cr_uid == cr2->cr_uid)
 		return (0);
-	if (priv_check_cred(cr1, PRIV_PROC_TRESPASS, 0) == 0)
+	if (caps_priv_check(cr1, SYSCAP_NOPROC_TRESPASS) == 0)
+		return (0);
+	if (cr1->cr_uid == 0)
 		return (0);
 	return (EPERM);
 }
@@ -1173,6 +1204,26 @@ crdup(struct ucred *cr)
 	if (jailed(newcr))
 		prison_hold(newcr->cr_prison);
 	newcr->cr_ref = 1;
+
+	return (newcr);
+}
+
+/*
+ * Dup cred structure without caps or prison
+ */
+struct ucred *
+crdup_nocaps(struct ucred *cr)
+{
+	struct ucred *newcr;
+
+	newcr = crget();
+	*newcr = *cr;
+	uihold(newcr->cr_uidinfo);
+	uihold(newcr->cr_ruidinfo);
+	newcr->cr_prison = NULL;
+	bzero(&newcr->cr_caps, sizeof(newcr->cr_caps));
+	newcr->cr_ref = 1;
+
 	return (newcr);
 }
 
@@ -1229,7 +1280,7 @@ sys_setlogin(struct sysmsg *sysmsg, const struct setlogin_args *uap)
 	cred = td->td_ucred;
 	p = td->td_proc;
 
-	if ((error = priv_check_cred(cred, PRIV_PROC_SETLOGIN, 0)))
+	if ((error = caps_priv_check(cred, SYSCAP_NOPROC_SETLOGIN)))
 		return (error);
 	bzero(buf, sizeof(buf));
 	error = copyinstr(uap->namebuf, buf, sizeof(buf), NULL);

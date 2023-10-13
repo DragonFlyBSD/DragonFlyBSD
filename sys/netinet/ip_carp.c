@@ -41,7 +41,7 @@
 #include <sys/msgport2.h>
 #include <sys/time.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/sockio.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
@@ -2497,7 +2497,8 @@ carp_ioctl_setvh(struct carp_softc *sc, void *udata, struct ucred *cr)
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 	ifnet_deserialize_all(ifp);
 
-	error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
+	error = caps_priv_check(cr, SYSCAP_RESTRICTEDROOT |
+				    __SYSCAP_NULLCRED);
 	if (error)
 		goto back;
 
@@ -2608,7 +2609,8 @@ carp_ioctl_getvh(struct carp_softc *sc, void *udata, struct ucred *cr)
 
 	lwkt_domsg(netisr_cpuport(0), &cmsg.base.lmsg, 0);
 
-	error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
+	error = caps_priv_check(cr, SYSCAP_RESTRICTEDROOT |
+				    __SYSCAP_NULLCRED);
 	if (error)
 		bzero(carpr.carpr_key, sizeof(carpr.carpr_key));
 

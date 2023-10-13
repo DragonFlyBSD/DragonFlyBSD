@@ -52,7 +52,7 @@
 #include <sys/malloc.h>
 #include <sys/memrange.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/queue.h>
 #include <sys/random.h>
 #include <sys/signalvar.h>
@@ -164,7 +164,7 @@ mmopen(struct dev_open_args *ap)
 		error = 0;
 		break;
 	case 14:
-		error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
+		error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT);
 		if (error != 0)
 			break;
 		if (securelevel > 0 || kernel_mem_readonly) {
@@ -603,7 +603,7 @@ random_ioctl(cdev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred
 		break;
 	case MEM_SETIRQ:
 		intr = *(int16_t *)data;
-		if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
+		if ((error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT)) != 0)
 			break;
 		if (intr < 0 || intr >= MAX_INTS)
 			return (EINVAL);
@@ -611,7 +611,7 @@ random_ioctl(cdev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred
 		break;
 	case MEM_CLEARIRQ:
 		intr = *(int16_t *)data;
-		if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
+		if ((error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT)) != 0)
 			break;
 		if (intr < 0 || intr >= MAX_INTS)
 			return (EINVAL);
@@ -622,7 +622,7 @@ random_ioctl(cdev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred
 		break;
 	case MEM_FINDIRQ:
 		intr = *(int16_t *)data;
-		if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
+		if ((error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT)) != 0)
 			break;
 		if (intr < 0 || intr >= MAX_INTS)
 			return (EINVAL);

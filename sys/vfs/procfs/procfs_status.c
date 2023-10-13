@@ -41,7 +41,7 @@
 #include <sys/uio.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/jail.h>
 #include <sys/vnode.h>
 #include <sys/tty.h>

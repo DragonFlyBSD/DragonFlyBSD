@@ -31,7 +31,7 @@
 #include <sys/uio.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -531,7 +531,7 @@ hpfs_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != hp->h_uid &&
-		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)) &&
+		    (error = caps_priv_check(cred, SYSCAP_NOVFS_SETATTR)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
 		    (error = VOP_EACCESS(vp, VWRITE, cred))))
 			return (error);

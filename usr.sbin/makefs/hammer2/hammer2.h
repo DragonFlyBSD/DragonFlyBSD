@@ -89,7 +89,7 @@
 /*
 #include <sys/vnode.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/stat.h>
 #include <sys/thread.h>
 #include <sys/lockf.h>

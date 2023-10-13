@@ -42,7 +42,7 @@
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usb_ioctl.h>
@@ -810,7 +810,7 @@ usb_quirk_ioctl(unsigned long cmd, caddr_t data,
 		pgq = (void *)data;
 
 		/* check privileges */
-		err = priv_check(curthread, PRIV_DRIVER);
+		err = caps_priv_check_self(SYSCAP_NODRIVER);
 		if (err) {
 			return (err);
 		}
@@ -847,8 +847,9 @@ usb_quirk_ioctl(unsigned long cmd, caddr_t data,
 
 	case USB_DEV_QUIRK_REMOVE:
 		pgq = (void *)data;
+
 		/* check privileges */
-		err = priv_check(curthread, PRIV_DRIVER);
+		err = caps_priv_check_self(SYSCAP_NODRIVER);
 		if (err) {
 			return (err);
 		}

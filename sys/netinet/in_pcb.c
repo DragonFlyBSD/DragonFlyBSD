@@ -74,7 +74,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/jail.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
@@ -386,8 +386,8 @@ in_pcbsetlport(struct inpcb *inp, int wild, struct ucred *cred)
 		last0  = ipport_hilastauto;
 	} else if (inp->inp_flags & INP_LOWPORT) {
 		if (cred &&
-		    (error =
-		     priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))) {
+		    (error = caps_priv_check(cred, SYSCAP_NONET_RESPORT)))
+		{
 			inp->inp_laddr.s_addr = INADDR_ANY;
 			return error;
 		}
@@ -666,8 +666,8 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 		/* GROSS */
 		if (ntohs(lport) < IPPORT_RESERVED && cred &&
-		    (error =
-		     priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))) {
+		    (error = caps_priv_check(cred, SYSCAP_NONET_RESPORT)))
+		 {
 			inp->inp_laddr.s_addr = INADDR_ANY;
 			return (error);
 		}
@@ -856,8 +856,8 @@ in_pcbbind_remote(struct inpcb *inp, const struct sockaddr *remote,
 		last  = ipport_hilastauto;
 	} else if (inp->inp_flags & INP_LOWPORT) {
 		if (cred &&
-		    (error =
-		     priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))) {
+		    (error = caps_priv_check(cred, SYSCAP_NONET_RESPORT)))
+		 {
 			inp->inp_laddr.s_addr = INADDR_ANY;
 			return (error);
 		}

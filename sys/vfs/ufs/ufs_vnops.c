@@ -47,7 +47,7 @@
 #include <sys/stat.h>
 #include <sys/buf.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/namei.h>
 #include <sys/mount.h>
 #include <sys/unistd.h>
@@ -394,8 +394,11 @@ ufs_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != ip->i_uid &&
-		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)))
+		    (error = caps_priv_check(cred, SYSCAP_NOVFS_SETATTR)))
+		{
 			return (error);
+		}
+
 		/*
 		 * Note that a root chflags becomes a user chflags when
 		 * we are jailed, unless the jail vfs_chflags sysctl
@@ -458,10 +461,12 @@ ufs_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != ip->i_uid &&
-		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)) &&
+		    (error = caps_priv_check(cred, SYSCAP_NOVFS_SETATTR)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
 		    (error = VOP_EACCESS(vp, VWRITE, cred))))
+		{
 			return (error);
+		}
 		if (vap->va_atime.tv_sec != VNOVAL)
 			ip->i_flag |= IN_ACCESS;
 		if (vap->va_mtime.tv_sec != VNOVAL)
@@ -509,7 +514,7 @@ ufs_chmod(struct vnode *vp, int mode, struct ucred *cred)
 		return (error);
 #if 0
 	if (cred->cr_uid != ip->i_uid) {
-	    error = priv_check_cred(cred, PRIV_VFS_CHMOD, 0);
+	    error = caps_priv_check(cred, SYSCAP_NOVFS_CHMOD);
 	    if (error)
 		return (error);
 	}
@@ -553,8 +558,10 @@ ufs_chown(struct vnode *vp, uid_t uid, gid_t gid, struct ucred *cred)
 	if ((cred->cr_uid != ip->i_uid || uid != ip->i_uid ||
 	    (gid != ip->i_gid && !(cred->cr_gid == gid ||
 	    groupmember(gid, cred)))) &&
-	    (error = priv_check_cred(cred, PRIV_VFS_CHOWN, 0)))
+	    (error = caps_priv_check(cred, SYSCAP_NOVFS_CHOWN)))
+	{
 		return (error);
+	}
 	ogid = ip->i_gid;
 	ouid = ip->i_uid;
 #ifdef QUOTA
@@ -2057,7 +2064,8 @@ ufs_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	if (DOINGSOFTDEP(tvp))
 		softdep_change_linkcnt(ip);
 	if ((ip->i_mode & ISGID) && !groupmember(ip->i_gid, cnp->cn_cred) &&
-	    priv_check_cred(cnp->cn_cred, PRIV_VFS_SETGID, 0)) {
+	    caps_priv_check(cnp->cn_cred, SYSCAP_NOVFS_SETGID))
+	{
 		ip->i_mode &= ~ISGID;
 	}
 

@@ -50,7 +50,7 @@
 #include <sys/nlookup.h>
 #include <sys/namecache.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/jail.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
@@ -141,6 +141,7 @@ kern_jail_attach(int jid)
 	cr = cratom_proc(p);
 	cr->cr_prison = pr;
 	p->p_flags |= P_JAILED;
+	caps_set_locked(p, SYSCAP_RESTRICTEDROOT, __SYSCAP_ALL);
 	lwkt_reltoken(&p->p_token);
 
 	return(0);
@@ -241,7 +242,6 @@ out:
 int
 sys_jail(struct sysmsg *sysmsg, const struct jail_args *uap)
 {
-	struct thread *td = curthread;
 	struct prison *pr;
 	struct jail_ip_storage *jip;
 	struct jail j;
@@ -250,7 +250,7 @@ sys_jail(struct sysmsg *sysmsg, const struct jail_args *uap)
 
 	sysmsg->sysmsg_result = -1;
 
-	error = priv_check(td, PRIV_JAIL_CREATE);
+	error = caps_priv_check_self(SYSCAP_NOJAIL_CREATE);
 	if (error)
 		return (error);
 
@@ -348,10 +348,9 @@ out:
 int
 sys_jail_attach(struct sysmsg *sysmsg, const struct jail_attach_args *uap)
 {
-	struct thread *td = curthread;
 	int error;
 
-	error = priv_check(td, PRIV_JAIL_ATTACH);
+	error = caps_priv_check_self(SYSCAP_NOJAIL_ATTACH);
 	if (error)
 		return(error);
 	lockmgr(&jail_lock, LK_EXCLUSIVE);
@@ -833,95 +832,88 @@ prison_free(struct prison *pr)
  * MPSAFE
  */
 int
-prison_priv_check(struct ucred *cred, int priv)
+prison_priv_check(struct ucred *cred, int cap)
 {
 	struct prison *pr = cred->cr_prison;
 
 	if (!jailed(cred))
 		return (0);
 
-	switch (priv) {
-	case PRIV_CRED_SETUID:
-	case PRIV_CRED_SETEUID:
-	case PRIV_CRED_SETGID:
-	case PRIV_CRED_SETEGID:
-	case PRIV_CRED_SETGROUPS:
-	case PRIV_CRED_SETREUID:
-	case PRIV_CRED_SETREGID:
-	case PRIV_CRED_SETRESUID:
-	case PRIV_CRED_SETRESGID:
+	switch (cap & ~__SYSCAP_XFLAGS) {
+	case SYSCAP_NOCRED_SETUID:
+	case SYSCAP_NOCRED_SETGID:
+	case SYSCAP_NOCRED_SETEUID:
+	case SYSCAP_NOCRED_SETEGID:
+	case SYSCAP_NOCRED_SETREUID:
+	case SYSCAP_NOCRED_SETREGID:
+	case SYSCAP_NOCRED_SETRESUID:
+	case SYSCAP_NOCRED_SETRESGID:
+	case SYSCAP_NOCRED_SETGROUPS:
 
-	case PRIV_VFS_SYSFLAGS:
-	case PRIV_VFS_CHOWN:
-	case PRIV_VFS_CHMOD:
-	case PRIV_VFS_CHROOT:
-	case PRIV_VFS_LINK:
-	case PRIV_VFS_CHFLAGS_DEV:
-	case PRIV_VFS_REVOKE:
-	case PRIV_VFS_MKNOD_BAD:
-	case PRIV_VFS_MKNOD_WHT:
-	case PRIV_VFS_MKNOD_DIR:
+	case SYSCAP_NOVFS_SYSFLAGS:
+	case SYSCAP_NOVFS_CHOWN:
+	case SYSCAP_NOVFS_CHMOD:
+	case SYSCAP_NOVFS_CHROOT:
+	case SYSCAP_NOVFS_LINK:
+	case SYSCAP_NOVFS_CHFLAGS_DEV:
+	case SYSCAP_NOVFS_REVOKE:
+	case SYSCAP_NOVFS_MKNOD_BAD:
+	case SYSCAP_NOVFS_MKNOD_WHT:
+	case SYSCAP_NOVFS_MKNOD_DIR:
 		return (0);
 
-	case PRIV_VFS_MOUNT_NULLFS:
+	case SYSCAP_NOMOUNT_NULLFS:
 		if (PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_VFS_MOUNT_NULLFS))
 			return (0);
 		else
 			return (EPERM);
-	case PRIV_VFS_MOUNT_DEVFS:
+	case SYSCAP_NOMOUNT_DEVFS:
 		return (EPERM);
-	case PRIV_VFS_MOUNT_TMPFS:
+	case SYSCAP_NOMOUNT_TMPFS:
 		if (PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_VFS_MOUNT_TMPFS))
 			return (0);
 		else
 			return (EPERM);
 
-	case PRIV_VFS_SETATTR:
-	case PRIV_VFS_SETGID:
+	case SYSCAP_NOVFS_SETATTR:
+	case SYSCAP_NOVFS_SETGID:
 
-	case PRIV_PROC_SETRLIMIT:
-	case PRIV_PROC_SETLOGIN:
+	case SYSCAP_NOPROC_SETRLIMIT:
+	case SYSCAP_NOPROC_SETLOGIN:
 
-	case PRIV_SYSCTL_WRITEJAIL:
+	case SYSCAP_NOSYSCTL_WR:
 
-	case PRIV_VARSYM_SYS:
+	case SYSCAP_NOVARSYM_SYS:
 
-	case PRIV_SETHOSTNAME:
+	case SYSCAP_NOSETHOSTNAME:
 
-	case PRIV_PROC_TRESPASS:
-
+	case SYSCAP_NOPROC_TRESPASS:
 		return (0);
 
-	case PRIV_UFS_QUOTAON:
-	case PRIV_UFS_QUOTAOFF:
-	case PRIV_VFS_SETQUOTA:
-	case PRIV_UFS_SETUSE:
-	case PRIV_VFS_GETQUOTA:
+	case SYSCAP_NOQUOTA_WR:
 		return (0);
 
-
-	case PRIV_DEBUG_UNPRIV:
+	case SYSCAP_NODEBUG_UNPRIV:
 		return (0);
-
 
 		/*
 		 * Allow jailed root to bind reserved ports.
 		 */
-	case PRIV_NETINET_RESERVEDPORT:
+	case SYSCAP_NONET_RESPORT:
 		return (0);
 
 
 		/*
 		 * Conditionally allow creating raw sockets in jail.
 		 */
-	case PRIV_NETINET_RAW:
+	case SYSCAP_NONET_RAW:
 		if (PRISON_CAP_ISSET(pr->pr_caps,
 			PRISON_CAP_NET_RAW_SOCKETS))
 			return (0);
 		else
 			return (EPERM);
 
-	case PRIV_HAMMER_IOCTL:
+	case SYSCAP_NOVFS_IOCTL:
 		return (0);
 
 	default:

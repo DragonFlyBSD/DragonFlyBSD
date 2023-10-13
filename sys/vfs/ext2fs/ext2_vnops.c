@@ -56,7 +56,7 @@
 #include <sys/bio.h>
 #include <sys/buf2.h>
 #include <sys/endian.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/mount.h>
 #include <sys/unistd.h>
 #include <sys/time.h>
@@ -279,8 +279,11 @@ ext2_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != ip->i_uid &&
-		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)))
+		    (error = caps_priv_check(cred, SYSCAP_NOVFS_SETATTR)))
+		{
 			return (error);
+		}
+
 		/*
 		 * Note that a root chflags becomes a user chflags when
 		 * we are jailed, unless the jail vfs_chflags sysctl
@@ -342,10 +345,12 @@ ext2_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != ip->i_uid &&
-		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)) &&
+		    (error = caps_priv_check(cred, SYSCAP_NOVFS_SETATTR)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
 		    (error = VOP_EACCESS(vp, VWRITE, cred))))
+		{
 			return (error);
+		}
 		ip->i_flag |= IN_CHANGE | IN_MODIFIED;
 		if (vap->va_atime.tv_sec != VNOVAL) {
 			ip->i_flag &= ~IN_ACCESS;
@@ -381,7 +386,7 @@ ext2_chmod(struct vnode *vp, int mode, struct ucred *cred, struct thread *td)
 	int error;
 
 	if (cred->cr_uid != ip->i_uid) {
-		error = priv_check_cred(cred, PRIV_VFS_CHMOD, 0);
+		error = caps_priv_check(cred, SYSCAP_NOVFS_CHMOD);
 		if (error)
 			return (error);
 	}
@@ -422,15 +427,18 @@ ext2_chown(struct vnode *vp, uid_t uid, gid_t gid, struct ucred *cred,
 	if ((cred->cr_uid != ip->i_uid || uid != ip->i_uid ||
 	    (gid != ip->i_gid && !(cred->cr_gid == gid ||
 	    groupmember(gid, cred)))) &&
-	    (error = priv_check_cred(cred, PRIV_VFS_CHOWN, 0)))
+	    (error = caps_priv_check(cred, SYSCAP_NOVFS_CHOWN)))
+	{
 		return (error);
+	}
+
 	ogid = ip->i_gid;
 	ouid = ip->i_uid;
 	ip->i_gid = gid;
 	ip->i_uid = uid;
 	ip->i_flag |= IN_CHANGE;
 	if ((ip->i_mode & (ISUID | ISGID)) && (ouid != uid || ogid != gid)) {
-		if (priv_check_cred(cred, PRIV_VFS_RETAINSUGID, 0) != 0)
+		if (caps_priv_check(cred, SYSCAP_NOVFS_RETAINSUGID) != 0)
 			ip->i_mode &= ~(ISUID | ISGID);
 	}
 	return (0);
@@ -1752,7 +1760,7 @@ ext2_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	tvp->v_type = IFTOVT(mode);	/* Rest init'd in getnewvnode(). */
 	ip->i_nlink = 1;
 	if ((ip->i_mode & ISGID) && !groupmember(ip->i_gid, cnp->cn_cred)) {
-		if (priv_check_cred(cnp->cn_cred, PRIV_VFS_RETAINSUGID, 0))
+		if (caps_priv_check(cnp->cn_cred, SYSCAP_NOVFS_RETAINSUGID))
 			ip->i_mode &= ~ISGID;
 	}
 
@@ -2076,7 +2084,7 @@ ext2_write(struct vop_write_args *ap)
 	 */
 	if ((ip->i_mode & (ISUID | ISGID)) && resid > uio->uio_resid &&
 	    ap->a_cred) {
-		if (priv_check_cred(ap->a_cred, PRIV_VFS_RETAINSUGID, 0))
+		if (caps_priv_check(ap->a_cred, SYSCAP_NOVFS_RETAINSUGID))
 			ip->i_mode &= ~(ISUID | ISGID);
 	}
 	if (error) {

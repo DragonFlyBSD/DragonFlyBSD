@@ -46,7 +46,7 @@
 #include <sys/systm.h>
 #include <sys/uio.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/tty.h>
 #include <sys/ttydefaults.h>	/* for TTYDEF_* */
 #include <sys/conf.h>
@@ -385,7 +385,8 @@ ptsopen(struct dev_open_args *ap)
 		tp->t_cflag = TTYDEF_CFLAG;
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
 	} else if ((tp->t_state & TS_XCLUDE) &&
-		   priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
+		   caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT))
+	{
 		pti_done(pti);
 		lwkt_reltoken(&pti->pt_tty.t_token);
 		return (EBUSY);

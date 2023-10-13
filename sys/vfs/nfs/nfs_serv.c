@@ -61,7 +61,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/nlookup.h>
 #include <sys/namei.h>
 #include <sys/unistd.h>
@@ -1754,7 +1754,9 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			if (vap->va_type == VCHR && rdev == 0xffffffff)
 				vap->va_type = VFIFO;
                         if (vap->va_type != VFIFO &&
-                            (error = priv_check_cred(cred, PRIV_ROOT, 0))) {
+                            (error = caps_priv_check(cred,
+						     SYSCAP_RESTRICTEDROOT)))
+			{
 				goto nfsmreply0;
                         }
 			vap->va_rmajor = umajor(rdev);
@@ -1963,8 +1965,11 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		vrele(dvp);
 		dvp = NULL;
 	} else {
-		if (vtyp != VFIFO && (error = priv_check_cred(cred, PRIV_ROOT, 0)))
+		if (vtyp != VFIFO &&
+		    (error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT)))
+		{
 			goto out;
+		}
 
 		vn_unlock(dvp);
 		error = VOP_NMKNOD(&nd.nl_nch, dvp, &vp, nd.nl_cred, vap);

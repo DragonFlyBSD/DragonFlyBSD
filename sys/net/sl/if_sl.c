@@ -66,7 +66,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/dkstat.h>
@@ -247,9 +247,8 @@ slopen(cdev_t dev, struct tty *tp)
 	struct sl_softc *sc;
 	int nsl;
 	int error;
-	struct thread *td = curthread;	/* XXX */
 
-	error = priv_check(td, PRIV_ROOT);
+	error = caps_priv_check_self(SYSCAP_RESTRICTEDROOT);
 	if (error)
 		return (error);
 

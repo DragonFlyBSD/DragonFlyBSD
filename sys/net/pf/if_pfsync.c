@@ -34,7 +34,7 @@
 #include <sys/param.h>
 #include <sys/endian.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/systm.h>
 #include <sys/time.h>
 #include <sys/mbuf.h>
@@ -1062,7 +1062,9 @@ pfsyncioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		lwkt_gettoken(&pf_token);
 		break;
 	case SIOCSETPFSYNC:
-		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)) != 0) {
+		error = caps_priv_check(cr, SYSCAP_RESTRICTEDROOT |
+					    __SYSCAP_NULLCRED);
+		if (error) {
 			lwkt_reltoken(&pf_token);
 			return (error);
 		}

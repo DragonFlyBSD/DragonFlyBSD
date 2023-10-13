@@ -234,7 +234,7 @@
 #include <sys/sysctl.h>
 #include <sys/module.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/lock.h>
 #include <sys/thread.h>
 #include <sys/thread2.h>
@@ -880,7 +880,8 @@ bridge_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		}
 
 		if (bc->bc_flags & BC_F_SUSER) {
-			error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
+			error = caps_priv_check(cr, SYSCAP_RESTRICTEDROOT |
+						    __SYSCAP_NULLCRED);
 			if (error)
 				break;
 		}

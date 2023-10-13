@@ -33,7 +33,7 @@
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
 #include <sys/module.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/hash.h>
@@ -1032,7 +1032,6 @@ lagg_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct lagg_port *lp;
 	struct ifnet *tpif;
-	struct thread *td = curthread;
 	char *buf, *outbuf;
 	int count, buflen, len, error = 0;
 
@@ -1076,7 +1075,7 @@ lagg_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		kfree(outbuf, M_TEMP);
 		break;
 	case SIOCSLAGG:
-		error = priv_check(td, PRIV_NET_LAGG);
+		error = caps_priv_check_self(SYSCAP_NONET_LAGG);
 		if (error)
 			break;
 		if (ra->ra_proto >= LAGG_PROTO_MAX) {
@@ -1127,7 +1126,7 @@ lagg_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		rf->rf_flags = sc->sc_flags;
 		break;
 	case SIOCSLAGGHASH:
-		error = priv_check(td, PRIV_NET_LAGG);
+		error = caps_priv_check_self(SYSCAP_NONET_LAGG);
 		if (error)
 			break;
 		if ((rf->rf_flags & LAGG_F_HASHMASK) == 0) {
@@ -1170,7 +1169,7 @@ lagg_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		ifnet_serialize_all(ifp);
 		break;
 	case SIOCSLAGGPORT:
-		error = priv_check(td, PRIV_NET_LAGG);
+		error = caps_priv_check_self(SYSCAP_NONET_LAGG);
 		if (error)
 			break;
 		/*
@@ -1193,7 +1192,7 @@ lagg_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		ifnet_serialize_all(ifp);
 		break;
 	case SIOCSLAGGDELPORT:
-		error = priv_check(td, PRIV_NET_LAGG);
+		error = caps_priv_check_self(SYSCAP_NONET_LAGG);
 		if (error)
 			break;
 		/*

@@ -1,0 +1,324 @@
+.\" Copyright (c) 2023 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd October 11, 2023
+.Dt syscap_get 2
+.Os
+.Sh NAME
+.Nm syscap_get ,
+.Nm syscap_set
+.Nd Get and set a capability restriction
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/caps.h
+.Ft int
+.Fn syscap_get "int cap" "void *data" "size_t bytes"
+.Ft int
+.Fn syscap_set "int cap" "int flags" "void *data" "size_t bytes"
+.Sh DESCRIPTION
+The
+.Fn syscap_get
+function returns the current flags for the requested capability.
+.Pp
+The
+.Fn syscap_set
+function add the specified flags to the restrictions applied to a
+specific capability for the current process.
+The flags are bitwise ORd into the capability.
+Capability restrictions cannot be removed once set.
+.Sh GENERAL
+Capability restrictions mostly apply to the root user.  Capability
+restrictions are grouped in sets of 16.  Group 0 restrictions
+also restrict all capabilities in group N.  For example, the
+SYSCAP_RESTRICTEDROOT capability (group 0 capability 1) also
+restricts all capabilities in group 1.
+.Pp
+Capabillities are applied to the current process or its parent process.
+All threads in a process share the same capabilities.
+.Pp
+One can create a relatively (but not completely) secure root environment
+without jails by combining numerous capability restrictions with a chrooted
+environment into a filesystem topology constructed from null mounts and
+tmpfs mounts.  The following capabilities are commonly employed when
+creating such environments: SYSCAP_RESTRICTEDROOT, SYSCAP_SENSITIVEROOT,
+SYSCAP_NONET_SENSITIVE, SYSCAP_NOVFS_SENSITIVE, SYSCAP_NOMOUNT, and
+possibly also SYSCAP_NOEXEC_SUID and SYSCAP_NOEXEC_SGID.
+.Pp
+.Sh GROUP 0 CAPABILITIES (also disable their related sub-groups)
+.Bl -tag -width Dv
+.It Dv SYSCAP_ANY
+Returns flags that are a wire-or of all other capabilities, indicating that
+some mucking around with capabilities was done.  Generally not explicitly set.
+.It Dv SYSCAP_RESTRICTEDROOT
+Restricts all group 1 capabilities.  These are capabililties which most
+root-run programs should never need to use.
+.Pp
+Most modifying root operations not available as separate capabilities
+are also restricted by this capability.
+.It Dv SYSCAP_SENSITIVEROOT
+Restrict all group 2 capabilities.  These are capabilities that most
+root-run scripts probably don't need.
+.It Dv SYSCAP_NOEXEC
+Restricts ALL exec*() system calls, including the ones in group 3.
+However, it is generally not a good idea to prevent execs entirely except
+in the depths of a well controlled program.
+.It Dv SYSCAP_NOCRED
+Restrict all cred system calls, such as setuid() that are otherwise not
+generally restricted by RESTRICTEDROOT.  These are capabilities that most
+root run scripts do not need to use unless they are messing around
+with pty's and terminal emulation.
+.It Dv SYSCAP_NOJAIL
+Restrict all jail related system calls.
+.It Dv SYSCAP_NONET
+Restrict all network related system calls (if you also do NONET_SENSITIVE in
+addition to this one), generally preventing the use of reserved ports or
+raw sockets.  Note that numerous applications use reserved ports.
+.It Dv SYSCAP_NONET_SENSITIVE
+Restrict all sensitive network related system calls such as ifconfig, packet
+filter, and other related operations that most programs and scripts do not
+need to mess with.
+.It Dv SYSCAP_NOVFS
+Restrict all vfs related system calls (if you also do NOVFS_SENSITIVE in
+addition to this one), generally only allowing basic file open,
+close, read, and write, and disallowing things like chown, chmod, chroot,
+and so forth.
+.It Dv SYSCAP_NOVFS_SENSITIVE
+Restrict all sensitive vfs related system calls such as mknod and filesystem
+control ioctls.
+.It Dv SYSCAP_NOMOUNT
+Restrict all mount and umount operations.  This can be combined with a
+chrooted environment to create secure filesystem topologies.  Read-only
+null mounts are a very powerful tool for creating such environments
+cheaply.
+.El
+.Sh GROUP 1 CAPABILITIES (ALSO DISABLED BY SYSCAP_RESTRICTEDROOT)
+.Bl -tag -width Dv
+.It Dv SYSCAP_NODRIVER
+Restrict most driver-related ioctls.
+.It Dv SYSCAP_NOVM_MLOCK
+Restrict mlock() calls.
+.It Dv SYSCAP_NOVM_RESIDENT
+Restrict access to mechanisms which cache already-relocated dynamic
+binaries in memory.
+.It Dv SYSCAP_NOCPUCTL_WRMSR
+Restrict access to CPUCTL_WRMSR (cpu control registers).
+.It Dv SYSCAP_NOCPUCTL_UPDATE
+Restrict access to CPUCTL_UPDATE (cpu control registers).
+.It Dv SYSCAP_NOACCT
+Restrict access to the acct() system call.
+.It Dv SYSCAP_NOKENV_WR
+Restrict the ability to write to the kernel environment table.
+.It Dv SYSCAP_NOKLD
+Disallow kldload, kldunload, and device firmware loading.
+.It Dv SYSCAP_NOKERN_WR
+Disallow general modifications to kernel space (these are mostly
+covered by the over-arching RESTRICTEDROOT capability).
+.It Dv SYSCAP_NOREBOOT
+Disallow rebooting and also disallow signaling process 1.
+.El
+.Sh GROUP 2 CAPABILITIES (ALSO DISABLED BY SYSCAP_SENSITIVEROOT)
+.Bl -tag -width Dv
+.It Dv SYSCAP_NOPROC_TRESPASS
+Do not allow cross-uid process signaling beyond simple uid checks.
+uid 0 can still signal non-uid-0 processes as long as SYSCAP_RESTRICTEDROOT
+is active for those processes.
+.It Dv SYSCAP_NOPROC_SETLOGIN
+Disallow use of the setlogin() system call.
+.It Dv SYSCAP_NOPROC_SETRLIMIT
+Do not allow root to raise process resource limits.
+.It Dv SYSCAP_NOSYSCTL_WR
+Do not allow modifying global sysctl() calls.
+.It Dv SYSCAP_NOVARSYM_SYS
+Do not allow modifying system-level varsym operations.
+.It Dv SYSCAP_NOSETHOSTNAME
+Disallow use of the sethostname() system call.
+.It Dv SYSCAP_NOQUOTA_WR
+Disallow use of all modifying filesystem quota operations.
+.It Dv SYSCAP_NODEBUG_UNPRIV
+Do not allow the debugger to be entered via sysctl or root access
+via procfs.
+.It Dv SYSCAP_NOSETTIME
+Do not allow the system time to be set or adjusted.
+.It Dv SYSCAP_NOSCHED
+Do not allow the system scheduler to be changed, rtprio, or
+priority raising.
+.It Dv SYSCAP_NOSCHED_CPUSET
+Do not allow the cpuset to be restricted via scheduler calls.
+.El
+.Sh GROUP 3 CAPABILITIES (ALSO DISABLED BY SYSCAP_NOEXEC)
+.Bl -tag -width Dv
+.It Dv SYSCAP_NOEXEC_SUID
+Do not allow suid execs.
+.It Dv SYSCAP_NOEXEC_SGID
+Do not allow sgid execs.
+.El
+.Sh GROUP 4 CAPABILITIES (ALSO DISABLED BY SYSCAP_NOCRED)
+.Bl -tag -width Dv
+.It Dv SYSCAP_NOCRED_SETUID
+.It Dv SYSCAP_NOCRED_SETGID
+.It Dv SYSCAP_NOCRED_SETEUID
+.It Dv SYSCAP_NOCRED_SETEGID
+.It Dv SYSCAP_NOCRED_SETREUID
+.It Dv SYSCAP_NOCRED_SETREGID
+.It Dv SYSCAP_NOCRED_SETRESUID
+.It Dv SYSCAP_NOCRED_SETRESGID
+.It Dv SYSCAP_NOCRED_SETGROUPS
+Do not allow various cred related system calls.
+.El
+.Sh GROUP 5 CAPABILITIES (ALSO DISABLED BY SYSCAP_NOJAIL)
+.Bl -tag -width Dv
+.It Dv SYSCAP_NOJAIL_CREATE
+Do not allow jail creates.
+.It Dv SYSCAP_NOJAIL_ATTACH
+Do not allow jail attachments.
+.El
+.Sh GROUP 6 CAPABILITIES (ALSO DISABLED BY SYSCAP_NONET)
+.Bl -tag -width Dv
+.It Dv SYSCAP_NONET_RESPORT
+Do not allow ports in the reserved ranges to be bound.
+.It Dv SYSCAP_NONET_RAW
+Do not allow use of raw sockets.
+.El
+.Sh GROUP 7 CAPABILITIES (ALSO DISABLED BY SYSCAP_NONET_SENSITIVE)
+.Bl -tag -width Dv
+
+.It Dv SYSCAP_NONET_IFCONFIG
+Do not allow modifications to NICs via ifconfig.
+.It Dv SYSCAP_NONET_ROUTE
+Do not allow modifications to the route table (not implemented yet).
+.It Dv SYSCAP_NONET_LAGG
+Do not allow modifications to LAGG interfaces.
+.It Dv SYSCAP_NONET_NETGRAPH
+Do not allow modifying netgraph operations.
+.It Dv SYSCAP_NONET_BT_RAW
+Do not allow raw bluetooth operations.
+.It Dv SYSCAP_NONET_WIFI
+Do not allow wifi related device ioctls.
+.El
+.Sh GROUP 8 CAPABILITIES (ALSO DISABLED BY SYSCAP_NOVFS)
+.Bl -tag -width Dv
+.It Dv SYSCAP_NOVFS_SYSFLAGS
+Do not allow chflags on files not owned by the user even if modes
+or group allow such operations.
+.It Dv SYSCAP_NOVFS_CHOWN
+Do not allow chown operations on files.
+.It Dv SYSCAP_NOVFS_CHMOD
+Do not allow chmod operations on files.
+.It Dv SYSCAP_NOVFS_LINK
+Do not allow hard links.
+.It Dv SYSCAP_NOVFS_CHFLAGS_DEV
+Do not allow chflags on device nodes.
+.It Dv SYSCAP_NOVFS_SETATTR
+If set, prevents most file attribute changes.  This should be used only
+by programs who know for damn sure that none of the library calls they
+make depend on chflags, chmod(), and other file related functions
+(obsolete).
+.It Dv SYSCAP_NOVFS_SETGID
+If set, clears SGID during certain file operations in UFS (obsolete).
+.It Dv SYSCAP_NOVFS_GENERATION
+File generation number will be reported as 0 in *stat() calls.
+.It Dv SYSCAP_NOVFS_RETAINSUGID
+If restricted, SUID and SGID bits are cleared when a file is written to.
+Otherwise normal unix operation is to not clear the bits.
+.El
+.Sh GROUP 9 CAPABILITIES (ALSO DISABLED BY SYSCAP_NOVFS_SENSITIVE)
+.Bl -tag -width Dv
+.It Dv SYSCAP_NOVFS_MKNOD_BAD
+Do not allow mknod() to create bad entries.
+.It Dv SYSCAP_NOVFS_MKNOD_WHT
+Do not allow mknod() to create whitespace entries.
+.It Dv SYSCAP_NOVFS_MKNOD_DIR
+Do not allow mknod() to create directories.
+.It Dv SYSCAP_NOVFS_MKNOD_DEV
+Do not allow mknod() to create devices.
+.It Dv SYSCAP_NOVFS_IOCTL
+Disallow use of sensitive filesystem related ioctls().
+.It Dv SYSCAP_NOVFS_CHROOT
+Disallow use of the chroot() system call.
+.It Dv SYSCAP_NOVFS_REVOKE
+Disallow use of the revoke() system call.
+.El
+.Sh GROUP 10 CAPABILITIES (ALSO DISABLED BY SYSCAP_NOMOUNT)
+.Bl -tag -width Dv
+.It Dv SYSCAP_NOMOUNT_NULLFS
+Disallow nullfs mounts.
+.It Dv SYSCAP_NOMOUNT_DEVFS
+Disallow devfs mounts.
+.It Dv SYSCAP_NOMOUNT_TMPFS
+Disallow tmpfs mounts.
+.It Dv SYSCAP_NOMOUNT_UMOUNT
+Disallow unmounts.
+.It Dv SYSCAP_NOMOUNT_FUSE
+Disallow fuse mounts and unmounts.
+.El
+.Sh CAPABILITY DIRECTOR FLAGS (or'd with cap, not the flags)
+.Bl -tag -width Dv
+.It Dv __SYSCAP_INPARENT
+Adjusts the capability in the parent process of the calling process.
+If not specified, the capability in the calling process is adjusted.
+The parent process must be in the same jail and have the same uid.
+.El
+.Sh FLAGS (flags argument)
+.Bl -tag -width Dv
+.It Dv __SYSCAP_SELF
+A bit mask indicating the restriction is applied to the calling process
+(or parent process if the capabliity is directed to __SYSCAP_INPARENT ),
+including process fork()s.
+.It Dv __SYSCAP_EXEC
+A bit mask indicating the restriction is applied to any exec performed
+by the process.   This bit is shifted into the __SYSCAP_SELF bit upon a
+successful exec*().  The __SYSCAP_EXEC bit is retained so all deeper
+applications will wind up with both bits set.
+.It Dv __SYSCAP_ALL
+A multi-bit mask that covers both SELF and EXEC
+.El
+.Sh ERRORS
+These functions return the current or post-modified capability flags
+for the specified capability, or returns -1 with errno set as follows.
+.Bl -tag -width Er
+.It Bq Er EOPNOTSUPP
+The requested capability does not exist or is not supported.
+.It Bq Er EINVAL
+An invalid parameter was passed.  This can be an illegal flag,
+improper pointer, unsupported structure size, or unsupported
+content that is not otherwise ignored by the system.
+.El
+.Sh SEE ALSO
+.Xr syscap_set 2
+.Sh HISTORY
+The
+.Fn syscap_get
+and
+.Fn syscap_set
+functions first appeared in
+.Dx 6.5 .

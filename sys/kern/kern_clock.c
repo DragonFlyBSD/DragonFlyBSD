@@ -81,7 +81,7 @@
 #include <sys/resource.h>
 #include <sys/resourcevar.h>
 #include <sys/signalvar.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/timex.h>
 #include <sys/timepps.h>
 #include <sys/upmap.h>
@@ -144,7 +144,7 @@ sysctl_cputime(SYSCTL_HANDLER_ARGS)
 	/*
 	 * NOTE: For security reasons, only root can sniff %rip
 	 */
-	root_error = priv_check_cred(curthread->td_ucred, PRIV_ROOT, 0);
+	root_error = caps_priv_check_self(SYSCAP_RESTRICTEDROOT);
 
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		tmp = cputime_percpu[cpu];

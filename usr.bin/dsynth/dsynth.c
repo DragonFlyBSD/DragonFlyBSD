@@ -51,6 +51,7 @@ int MaskProbeAbort;
 int ColorOpt = 1;
 int NullStdinOpt = 1;
 int SlowStartOpt = -1;
+int CapabilityRestrictions;
 long PkgDepMemoryTarget;
 long PkgDepScaleTarget = 100;	/* 1.00 */
 char *DSynthExecPath;
@@ -67,6 +68,19 @@ main(int ac, char **av)
 	int c;
 	int sopt;
 	int doadds;
+
+#if defined(__DragonFly__)
+	/*
+	 * The system is expected to have capabilities
+	 */
+	{
+		size_t len = sizeof(CapabilityRestrictions);
+		sysctlbyname("kern.caps_available",
+			     &CapabilityRestrictions, &len, NULL, 0);
+		if (CapabilityRestrictions == 0)
+			fprintf(stderr, "caps restrictions unavailable\n");
+	}
+#endif
 
 	/*
 	 * Get our exec path so we can self-exec clean WORKER

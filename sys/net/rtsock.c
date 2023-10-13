@@ -69,7 +69,7 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/protosw.h>
@@ -733,8 +733,10 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	 * is the only operation the non-superuser is allowed.
 	 */
 	if (rtm->rtm_type != RTM_GET &&
-	    priv_check_cred(so->so_cred, PRIV_ROOT, 0) != 0)
+	    caps_priv_check(so->so_cred, SYSCAP_RESTRICTEDROOT) != 0)
+	{
 		gotoerr(EPERM);
+	}
 
 	if (rtinfo.rti_genmask != NULL) {
 		error = rtmask_add_global(rtinfo.rti_genmask,

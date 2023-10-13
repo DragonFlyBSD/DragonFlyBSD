@@ -33,7 +33,7 @@
 #include <sys/fcntl.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/proc.h>
 #include <sys/queue.h>
 #include <sys/sched.h>
@@ -109,7 +109,7 @@ cpuctl_ioctl(struct dev_ioctl_args *ap)
 	case CPUCTL_MSRSBIT:
 	case CPUCTL_MSRCBIT:
 	case CPUCTL_WRMSR:
-		ret = priv_check(curthread, PRIV_CPUCTL_WRMSR);
+		ret = caps_priv_check_self(SYSCAP_NOCPUCTL_WRMSR);
 		if (ret != 0)
 			goto fail;
 		ret = cpuctl_do_msr(cpu, (cpuctl_msr_args_t *)data, cmd);
@@ -119,7 +119,7 @@ cpuctl_ioctl(struct dev_ioctl_args *ap)
 		ret = 0;
 		break;
 	case CPUCTL_UPDATE:
-		ret = priv_check(curthread, PRIV_CPUCTL_UPDATE);
+		ret = caps_priv_check_self(SYSCAP_NOCPUCTL_UPDATE);
 		if (ret != 0)
 			goto fail;
 		ret = cpuctl_do_update(cpu, (cpuctl_update_args_t *)data);

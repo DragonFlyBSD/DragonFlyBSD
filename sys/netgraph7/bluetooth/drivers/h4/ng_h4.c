@@ -47,7 +47,7 @@
 #include <sys/fcntl.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/socket.h>
 #include <sys/tty.h>
 #include <sys/ttycom.h>
@@ -149,13 +149,12 @@ static int	ng_h4_node = 0;
 static int
 ng_h4_open(struct cdev *dev, struct tty *tp)
 {
-	struct thread	*td = curthread;
 	char		 name[NG_NODESIZ];
 	ng_h4_info_p	 sc = NULL;
 	int		 error;
 
 	/* Super-user only */
-	error = priv_check(td, PRIV_NETGRAPH_TTY); /* XXX */
+	error = caps_priv_check_self(SYSCAP_NONET_NETGRAPH);
 	if (error != 0)
 		return (error);
 

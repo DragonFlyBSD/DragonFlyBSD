@@ -42,7 +42,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/queue.h>
 #include <sys/socket.h>
 #include <sys/systm.h>

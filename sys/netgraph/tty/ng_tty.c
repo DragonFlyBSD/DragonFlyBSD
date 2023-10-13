@@ -64,7 +64,7 @@
 #include <sys/kernel.h>
 #include <sys/conf.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/fcntl.h>
@@ -186,13 +186,12 @@ static int ngt_ldisc;
 static int
 ngt_open(cdev_t dev, struct tty *tp)
 {
-	struct thread *td = curthread;	/* XXX */
 	char name[sizeof(NG_TTY_NODE_TYPE) + 8];
 	sc_p sc;
 	int error;
 
 	/* Super-user only */
-	if ((error = priv_check(td, PRIV_ROOT)))
+	if ((error = caps_priv_check_self(SYSCAP_RESTRICTEDROOT)))
 		return (error);
 	lwkt_gettoken(&tp->t_token);
 

@@ -41,6 +41,9 @@
 #ifndef _SYS_PARAM_H_
 #include <sys/param.h>
 #endif
+#ifndef _SYS_CAPS_H_
+#include <sys/caps.h>
+#endif
 #include <sys/resource.h>
 #include <sys/rtprio.h>
 #include <sys/proc_common.h>
@@ -151,7 +154,22 @@ struct kinfo_lwp {
 
 /*
  * KERN_PROC subtype ops return arrays of normalized proc structures:
+ *
+ * NOTE: Access to capability bits beyond __KP_NSYSCAPS not available
+ *	 via this structure.
  */
+#define __KP_NSYSCAPS 	(sizeof(__syscapelm_t) * 8)	/* in structure */
+
+#define __KP_SYSCAP_AVAIL(cap)				\
+		((cap) < __KP_NSYSCAPS)
+
+#define __KP_SYSCAP_GET(base, cap)			\
+		(((base)[__SYSCAP_INDEX(cap)] >>	\
+		  __SYSCAP_SHIFT(cap)) & __SYSCAP_BITS_MASK)
+
+#define __KP_SYSCAP_GET_SELF(base, cap)			\
+		(__KP_SYSCAP_GET(base, cap) & __SYSCAP_SELF)
+
 struct kinfo_proc {
 	uintptr_t	kp_paddr;	/* address of this proc */
 
@@ -217,7 +235,7 @@ struct kinfo_proc {
 	struct kinfo_lwp kp_lwp;
 
 	uintptr_t	kp_ktaddr;	/* address of this kernel thread */
-	int		kp_spare[2];
+	__syscapelm_t	kp_syscaps[__KP_NSYSCAPS / sizeof(__syscapelm_t)];
 };
 
 /*

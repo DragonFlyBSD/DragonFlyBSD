@@ -56,7 +56,7 @@
 #ifdef INVARIANTS
 #include <sys/proc.h>
 #endif
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <machine/atomic.h>
 #include <machine/cpu.h>
 #include <machine/cpufunc.h>
@@ -406,7 +406,7 @@ sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)
 	int value = 0;
 	int i;
 
-	if ((error = priv_check(curthread, PRIV_ROOT)) != 0)
+	if ((error = caps_priv_check_self(SYSCAP_RESTRICTEDROOT)) != 0)
 		return (error);
 	if ((error = SYSCTL_IN(req, &value, sizeof(value))) != 0)
 		return (error);

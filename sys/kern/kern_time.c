@@ -39,7 +39,7 @@
 #include <sys/kernel.h>
 #include <sys/sysent.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/time.h>
 #include <sys/vnode.h>
 #include <sys/sysctl.h>
@@ -284,11 +284,10 @@ sys_clock_gettime(struct sysmsg *sysmsg, const struct clock_gettime_args *uap)
 int
 kern_clock_settime(clockid_t clock_id, struct timespec *ats)
 {
-	struct thread *td = curthread;
 	struct timeval atv;
 	int error;
 
-	if ((error = priv_check(td, PRIV_CLOCK_SETTIME)) != 0)
+	if ((error = caps_priv_check_self(SYSCAP_NOSETTIME)) != 0)
 		return (error);
 	if (clock_id != CLOCK_REALTIME)
 		return (EINVAL);
@@ -678,12 +677,11 @@ sys_gettimeofday(struct sysmsg *sysmsg, const struct gettimeofday_args *uap)
 int
 sys_settimeofday(struct sysmsg *sysmsg, const struct settimeofday_args *uap)
 {
-	struct thread *td = curthread;
 	struct timeval atv;
 	struct timezone atz;
 	int error;
 
-	if ((error = priv_check(td, PRIV_SETTIMEOFDAY)))
+	if ((error = caps_priv_check_self(SYSCAP_NOSETTIME)))
 		return (error);
 	/*
 	 * Verify all parameters before changing time.
@@ -774,12 +772,11 @@ kern_adjfreq(int64_t rate)
 int
 sys_adjtime(struct sysmsg *sysmsg, const struct adjtime_args *uap)
 {
-	struct thread *td = curthread;
 	struct timeval atv;
 	int64_t ndelta, odelta;
 	int error;
 
-	if ((error = priv_check(td, PRIV_ADJTIME)))
+	if ((error = caps_priv_check_self(SYSCAP_NOSETTIME)))
 		return (error);
 	error = copyin(uap->delta, &atv, sizeof(struct timeval));
 	if (error)
@@ -810,7 +807,7 @@ sysctl_adjtime(SYSCTL_HANDLER_ARGS)
 	int error;
 
 	if (req->newptr != NULL) {
-		if (priv_check(curthread, PRIV_ROOT))
+		if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
 			return (EPERM);
 		error = SYSCTL_IN(req, &delta, sizeof(delta));
 		if (error)
@@ -834,7 +831,7 @@ sysctl_delta(SYSCTL_HANDLER_ARGS)
 	int error;
 
 	if (req->newptr != NULL) {
-		if (priv_check(curthread, PRIV_ROOT))
+		if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
 			return (EPERM);
 		error = SYSCTL_IN(req, &delta, sizeof(delta));
 		if (error)
@@ -859,7 +856,7 @@ sysctl_adjfreq(SYSCTL_HANDLER_ARGS)
 	int error;
 
 	if (req->newptr != NULL) {
-		if (priv_check(curthread, PRIV_ROOT))
+		if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
 			return (EPERM);
 		error = SYSCTL_IN(req, &freqdelta, sizeof(freqdelta));
 		if (error)

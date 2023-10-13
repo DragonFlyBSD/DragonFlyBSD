@@ -80,7 +80,7 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 	 * Standard root cred checks, will be selectively ignored below
 	 * for ioctls that do not require root creds.
 	 */
-	error = priv_check_cred(cred, PRIV_HAMMER_IOCTL, 0);
+	error = caps_priv_check(cred, SYSCAP_NOVFS_IOCTL);
 
 	switch(com) {
 	case HAMMER2IOC_VERSION_GET:

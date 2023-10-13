@@ -571,6 +571,11 @@ dexec_open(const char *logid, const char **cav, int cac,
 		if (NiceOpt)
 			setpriority(PRIO_PROCESS, 0, NiceOpt);
 
+		/*
+		 * Throw in some capability restrictions
+		 */
+		set_capability_restrictions();
+
 		execve(cav[0], (void *)cav, (void *)cenv);
 		write(2, "EXEC FAILURE\n", 13);
 		_exit(1);
@@ -992,4 +997,27 @@ failed:
 	free(pav[0]);
 
 	return crc;
+}
+
+void
+set_capability_restrictions(void)
+{
+	if (CapabilityRestrictions) {
+		syscap_set(SYSCAP_RESTRICTEDROOT, __SYSCAP_ALL,
+			   NULL, 0);
+		syscap_set(SYSCAP_SENSITIVEROOT, __SYSCAP_ALL,
+			   NULL, 0);
+		syscap_set(SYSCAP_NONET_SENSITIVE, __SYSCAP_ALL,
+			   NULL, 0);
+		syscap_set(SYSCAP_NOVFS_SENSITIVE, __SYSCAP_ALL,
+			   NULL, 0);
+		syscap_set(SYSCAP_NOMOUNT, __SYSCAP_ALL,
+			   NULL, 0);
+		syscap_set(SYSCAP_NOJAIL, __SYSCAP_ALL,
+			   NULL, 0);
+		syscap_set(SYSCAP_NONET_RESPORT, __SYSCAP_ALL,
+			   NULL, 0);
+		syscap_set(SYSCAP_NONET_RAW, __SYSCAP_ALL,
+			   NULL, 0);
+	}
 }

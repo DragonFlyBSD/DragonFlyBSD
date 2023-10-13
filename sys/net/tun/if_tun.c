@@ -21,7 +21,7 @@
 
 #include <sys/param.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
@@ -281,7 +281,7 @@ tunopen(struct dev_open_args *ap)
 	struct tun_softc *sc;
 	int error;
 
-	if ((error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) != 0)
+	if ((error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT)) != 0)
 		return (error);
 
 	sc = dev->si_drv1;

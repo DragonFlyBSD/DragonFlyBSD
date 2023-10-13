@@ -77,7 +77,7 @@
 #include <sys/errno.h>
 #include <sys/time.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/jail.h>
 
 #include <sys/msgport2.h>
@@ -189,7 +189,8 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 		/* GROSS */
 		if (lport_ho < IPV6PORT_RESERVED && cred &&
-		    priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0)) {
+		    caps_priv_check(cred, SYSCAP_NONET_RESPORT))
+		{
 			inp->in6p_laddr = kin6addr_any;
 			return (EACCES);
 		}

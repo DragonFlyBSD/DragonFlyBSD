@@ -374,7 +374,7 @@ struct	proc {
 #define	P_UNUSED21	0x00200000 /* was: Process is really a kernel thread */
 #define P_IDLESWAP	0x00400000 /* Swapout was due to idleswap, not load */
 
-#define	P_JAILED	0x01000000 /* Process is in jail */
+#define	P_JAILED	0x01000000 /* Process is in a jail */
 #define	P_SIGVTALRM	0x02000000 /* signal SIGVTALRM pending due to itimer */
 #define	P_SIGPROF	0x04000000 /* signal SIGPROF pending due to itimer */
 #define	P_INEXEC	0x08000000 /* Process is in execve(). */
@@ -453,9 +453,6 @@ MALLOC_DECLARE(M_LWP);
 MALLOC_DECLARE(M_SUBPROC);
 MALLOC_DECLARE(M_PARGS);
 #endif
-
-/* for priv_check_cred() */
-#define	NULL_CRED_OKAY	0x2
 
 /*
  * Handy macro to determine if p1 can mangle p2.

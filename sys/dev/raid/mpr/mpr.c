@@ -51,7 +51,7 @@
 #include <sys/endian.h>
 #include <sys/eventhandler.h>
 #include <sys/sbuf.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 
 #include <sys/rman.h>
 #include <sys/proc.h>
@@ -1892,10 +1892,8 @@ mpr_dump_reqs(SYSCTL_HANDLER_ARGS)
 
 	sc = (struct mpr_softc *)arg1;
 
-	if ((error = priv_check(curthread, PRIV_DRIVER)) != 0) {
-		kprintf("priv check error %d\n", error);
+	if ((error = caps_priv_check_self(SYSCAP_NODRIVER)) != 0)
 		return (error);
-	}
 
 	state = MPR_CM_STATE_INQUEUE;
 	smid = 1;

@@ -75,7 +75,7 @@
 #include <sys/stat.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/syslog.h>
 #include <sys/jail.h>
 
@@ -125,7 +125,11 @@ udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
 	int hlen = sizeof(struct ip6_hdr);
 	struct sockaddr_in6 tmp;
 
-	priv = !priv_check(td, PRIV_ROOT);	/* 1 if privileged, 0 if not */
+	/*
+	 * 1 if privileged, 0 if not
+	 */
+	priv = !caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT);
+
 	if (control) {
 		if ((error = ip6_setpktoptions(control, &opt,
 		    in6p->in6p_outputopts, 

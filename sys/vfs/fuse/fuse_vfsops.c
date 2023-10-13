@@ -33,7 +33,7 @@
 #include <sys/file.h>
 #include <sys/sysctl.h>
 #include <sys/statvfs.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 
 int fuse_debug = 0;
 
@@ -146,8 +146,8 @@ fuse_mount(struct mount *mp, char *mntpt, caddr_t data, struct ucred *cred)
 
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_ACCESS(devvp, VREAD | VWRITE, cred);
-	if (error)
-		error = priv_check_cred(cred, PRIV_ROOT, 0);
+	if (error == 0)
+		error = caps_priv_check(cred, SYSCAP_NOMOUNT_FUSE);
 	if (error) {
 		vput(devvp);
 		return error;

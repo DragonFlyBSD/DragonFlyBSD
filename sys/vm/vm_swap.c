@@ -39,7 +39,7 @@
 #include <sys/sysmsg.h>
 #include <sys/buf.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/nlookup.h>
 #include <sys/sysctl.h>
 #include <sys/dmap.h>		/* XXX */
@@ -199,7 +199,7 @@ sys_swapon(struct sysmsg *sysmsg, const struct swapon_args *uap)
 	struct nlookupdata nd;
 	int error;
 
-	error = priv_check(td, PRIV_ROOT);
+	error = caps_priv_check_self(SYSCAP_RESTRICTEDROOT);
 	if (error)
 		return (error);
 
@@ -407,7 +407,7 @@ sys_swapoff(struct sysmsg *sysmsg, const struct swapoff_args *uap)
 	struct swdevt *sp;
 	int error, index;
 
-	error = priv_check(curthread, PRIV_ROOT);
+	error = caps_priv_check_self(SYSCAP_RESTRICTEDROOT);
 	if (error)
 		return (error);
 

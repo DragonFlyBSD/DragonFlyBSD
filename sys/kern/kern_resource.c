@@ -43,7 +43,7 @@
 #include <sys/resourcevar.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/time.h>
 #include <sys/lockf.h>
 
@@ -302,7 +302,7 @@ donice(struct proc *chgp, int n)
 		n = PRIO_MAX;
 	if (n < PRIO_MIN)
 		n = PRIO_MIN;
-	if (n < chgp->p_nice && priv_check_cred(cr, PRIV_SCHED_SETPRIORITY, 0))
+	if (n < chgp->p_nice && caps_priv_check(cr, SYSCAP_NOSCHED))
 		return (EACCES);
 	chgp->p_nice = n;
 	FOREACH_LWP_IN_PROC(lp, chgp) {
@@ -541,8 +541,10 @@ doionice(struct proc *chgp, int n)
 	if (n < IOPRIO_MIN)
 		n = IOPRIO_MIN;
 	if (n < chgp->p_ionice &&
-	    priv_check_cred(cr, PRIV_SCHED_SETPRIORITY, 0))
+	    caps_priv_check(cr, SYSCAP_NOSCHED))
+	{
 		return (EACCES);
+	}
 	chgp->p_ionice = n;
 
 	return (0);
@@ -615,7 +617,7 @@ sys_lwp_rtprio(struct sysmsg *sysmsg, const struct lwp_rtprio_args *uap)
 			break;
 		}
 		/* disallow setting rtprio in most cases if not superuser */
-		if (priv_check_cred(cr, PRIV_SCHED_RTPRIO, 0)) {
+		if (caps_priv_check(cr, SYSCAP_NOSCHED)) {
 			/* can't set someone else's */
 			if (uap->pid) { /* XXX */
 				error = EPERM;
@@ -713,7 +715,7 @@ sys_rtprio(struct sysmsg *sysmsg, const struct rtprio_args *uap)
 			break;
 		}
 		/* disallow setting rtprio in most cases if not superuser */
-		if (priv_check_cred(cr, PRIV_SCHED_RTPRIO, 0)) {
+		if (caps_priv_check(cr, SYSCAP_NOSCHED)) {
 			/* can't set someone else's */
 			if (uap->pid) {
 				error = EPERM;

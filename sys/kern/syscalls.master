@@ -597,16 +597,16 @@
 452	STD	{ int varsym_list(int level, char *buf, int maxsize, int *marker); }
 453	OBSOL	upc_register
 454	OBSOL	upc_control
-455	OBSOL	caps_sys_service
-456	OBSOL	caps_sys_client
-457	OBSOL	caps_sys_close
-458	OBSOL	caps_sys_put
-459	OBSOL	caps_sys_reply
-460	OBSOL	caps_sys_get
-461	OBSOL	caps_sys_wait
-462	OBSOL	caps_sys_abort
-463	OBSOL	caps_sys_getgen
-464	OBSOL	caps_sys_setgen
+455	STD	{ int syscap_get(int cap, void *data, size_t bytes); }
+456	STD	{ int syscap_set(int cap, int flags, const void *data, size_t bytes); }
+457	UNIMPL	nosys
+458	UNIMPL	nosys
+459	UNIMPL	nosys
+460	UNIMPL	nosys
+461	UNIMPL	nosys
+462	UNIMPL	nosys
+463	UNIMPL	nosys
+464	UNIMPL	nosys
 465	STD	{ int exec_sys_register(void *entry); }
 466	STD	{ int exec_sys_unregister(int id); }
 467	STD	{ int sys_checkpoint(int type, int fd, pid_t pid, int retval); }

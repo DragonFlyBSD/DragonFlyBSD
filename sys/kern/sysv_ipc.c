@@ -34,7 +34,7 @@
 #include <sys/param.h>
 #include <sys/ipc.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/ucred.h>
 
 /*
@@ -48,8 +48,11 @@ ipcperm(struct proc *p, struct ipc_perm *perm, int mode)
 
 	/* Check for user match. */
 	if (cred->cr_uid != perm->cuid && cred->cr_uid != perm->uid) {
-		if (mode & IPC_M)
-			return (priv_check_cred(cred, PRIV_ROOT, 0) == 0 ? 0 : EPERM);
+		if (mode & IPC_M) {
+			if (caps_priv_check(cred, SYSCAP_RESTRICTEDROOT))
+				return EPERM;
+			return 0;
+		}
 		/* Check for group match. */
 		mode >>= 3;
 		if (!groupmember(perm->gid, cred) &&
@@ -60,6 +63,7 @@ ipcperm(struct proc *p, struct ipc_perm *perm, int mode)
 
 	if (mode & IPC_M)
 		return (0);
-	return ((mode & perm->mode) == mode || 
-		priv_check_cred(cred, PRIV_ROOT, 0) == 0 ? 0 : EACCES);
+	return (((mode & perm->mode) == mode ||
+		 caps_priv_check(cred, SYSCAP_RESTRICTEDROOT) == 0) ?
+		 0 : EACCES);
 }

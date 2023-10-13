@@ -41,7 +41,7 @@
 #include <sys/kernel.h>
 #include <sys/mount.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/malloc.h>
 #include <sys/vnode.h>
 
@@ -101,26 +101,26 @@ ufs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 	switch (cmd) {
 
 	case Q_QUOTAON:
-		error = priv_check_cred(cred, PRIV_UFS_QUOTAON, 0);
+		error = caps_priv_check(cred, SYSCAP_NOQUOTA_WR);
 		break;
 
 	case Q_QUOTAOFF:
-		error = priv_check_cred(cred, PRIV_UFS_QUOTAOFF, 0);
+		error = caps_priv_check(cred, SYSCAP_NOQUOTA_WR);
 		break;
 
 	case Q_SETQUOTA:
-		error = priv_check_cred(cred, PRIV_VFS_SETQUOTA, 0);
+		error = caps_priv_check(cred, SYSCAP_NOQUOTA_WR);
 		break;
 
 	case Q_SETUSE:
-		error = priv_check_cred(cred, PRIV_UFS_SETUSE, 0);
+		error = caps_priv_check(cred, SYSCAP_NOQUOTA_WR);
 		break;
 
 	case Q_GETQUOTA:
 		if (uid == cred->cr_ruid)
 			error = 0;
 		else
-			error = priv_check_cred(cred, PRIV_VFS_GETQUOTA, 0);
+			error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
 		break;
 
 	case Q_SYNC:

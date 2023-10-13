@@ -995,6 +995,17 @@ struct	varsym_list_args {
 	int	maxsize;	char maxsize_[PAD_(int)];
 	int *	marker;	char marker_[PAD_(int *)];
 };
+struct	syscap_get_args {
+	int	cap;	char cap_[PAD_(int)];
+	void *	data;	char data_[PAD_(void *)];
+	size_t	bytes;	char bytes_[PAD_(size_t)];
+};
+struct	syscap_set_args {
+	int	cap;	char cap_[PAD_(int)];
+	int	flags;	char flags_[PAD_(int)];
+	const void *	data;	char data_[PAD_(const void *)];
+	size_t	bytes;	char bytes_[PAD_(size_t)];
+};
 struct	exec_sys_register_args {
 	void *	entry;	char entry_[PAD_(void *)];
 };
@@ -1679,6 +1690,8 @@ int	sys_sendfile (struct sysmsg *sysmsg, const struct sendfile_args *);
 int	sys_varsym_set (struct sysmsg *sysmsg, const struct varsym_set_args *);
 int	sys_varsym_get (struct sysmsg *sysmsg, const struct varsym_get_args *);
 int	sys_varsym_list (struct sysmsg *sysmsg, const struct varsym_list_args *);
+int	sys_syscap_get (struct sysmsg *sysmsg, const struct syscap_get_args *);
+int	sys_syscap_set (struct sysmsg *sysmsg, const struct syscap_set_args *);
 int	sys_exec_sys_register (struct sysmsg *sysmsg, const struct exec_sys_register_args *);
 int	sys_exec_sys_unregister (struct sysmsg *sysmsg, const struct exec_sys_unregister_args *);
 int	sys_sys_checkpoint (struct sysmsg *sysmsg, const struct sys_checkpoint_args *);

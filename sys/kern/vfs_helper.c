@@ -51,7 +51,7 @@
 #include <sys/vnode.h>
 #include <sys/file.h>		/* XXX */
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/jail.h>
 #include <sys/sysctl.h>
 #include <sys/sfbuf.h>
@@ -178,7 +178,8 @@ vop_helper_setattr_flags(u_int32_t *ino_flags, u_int32_t vaflags,
 	 * If uid doesn't match only a privileged user can change the flags
 	 */
 	if (cred->cr_uid != uid &&
-	    (error = priv_check_cred(cred, PRIV_VFS_SYSFLAGS, 0))) {
+	    (error = caps_priv_check(cred, SYSCAP_NOVFS_SYSFLAGS)))
+	{
 		return(error);
 	}
 	if (cred->cr_uid == 0 &&
@@ -226,7 +227,7 @@ vop_helper_chmod(struct vnode *vp, mode_t new_mode, struct ucred *cred,
 	int error;
 
 	if (cred->cr_uid != cur_uid) {
-		error = priv_check_cred(cred, PRIV_VFS_CHMOD, 0);
+		error = caps_priv_check(cred, SYSCAP_NOVFS_CHMOD);
 		if (error)
 			return (error);
 	}
@@ -266,7 +267,8 @@ vop_helper_chown(struct vnode *vp, uid_t new_uid, gid_t new_gid,
 	if ((cred->cr_uid != *cur_uidp || new_uid != *cur_uidp ||
 	    (new_gid != *cur_gidp && !(cred->cr_gid == new_gid ||
 	    groupmember(new_gid, cred)))) &&
-	    (error = priv_check_cred(cred, PRIV_VFS_CHOWN, 0))) {
+	    (error = caps_priv_check(cred, SYSCAP_NOVFS_CHOWN)))
+	{
 		return (error);
 	}
 	ogid = *cur_gidp;

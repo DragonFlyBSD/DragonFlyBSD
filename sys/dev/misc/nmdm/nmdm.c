@@ -38,7 +38,7 @@
 #include <sys/systm.h>
 #include <sys/uio.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/tty.h>
 #include <sys/ttydefaults.h>	/* for TTYDEF_* */
 #include <sys/conf.h>
@@ -201,7 +201,9 @@ nmdmopen(struct dev_open_args *ap)
 		tp->t_lflag = TTYDEF_LFLAG;
 		tp->t_cflag = TTYDEF_CFLAG;
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
-	} else if (tp->t_state & TS_XCLUDE && priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
+	} else if (tp->t_state & TS_XCLUDE &&
+		   caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT))
+	{
 		lwkt_reltoken(&tp2->t_token);
 		lwkt_reltoken(&tp->t_token);
 

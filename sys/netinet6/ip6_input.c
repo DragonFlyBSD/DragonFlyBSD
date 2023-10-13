@@ -78,7 +78,7 @@
 #include <sys/kernel.h>
 #include <sys/syslog.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -1060,7 +1060,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 	int privileged = 0;
 
 
-	if (priv_check(td, PRIV_ROOT) == 0)
+	if (caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT) == 0)
 		privileged++;
 
 #ifdef SO_TIMESTAMP

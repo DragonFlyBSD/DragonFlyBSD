@@ -172,6 +172,7 @@ SUBDIR=	alias \
 	script \
 	sdpquery \
 	sed \
+	setcaps \
 	seq \
 	sftp \
 	shar \

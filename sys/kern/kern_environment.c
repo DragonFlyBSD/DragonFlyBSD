@@ -46,7 +46,7 @@
 #include <sys/kernel.h>
 #include <sys/libkern.h>
 #include <sys/malloc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
 #include <sys/sysmsg.h>
@@ -113,13 +113,13 @@ sys_kenv(struct sysmsg *sysmsg, const struct kenv_args *uap)
 
 	switch (uap->what) {
 	case KENV_SET:
-		error = priv_check(curthread, PRIV_KENV_SET);
+		error = caps_priv_check_self(SYSCAP_NOKENV_WR);
 		if (error)
 			return (error);
 		break;
 
 	case KENV_UNSET:
-		error = priv_check(curthread, PRIV_KENV_UNSET);
+		error = caps_priv_check_self(SYSCAP_NOKENV_WR);
 		if (error)
 			return (error);
 		break;

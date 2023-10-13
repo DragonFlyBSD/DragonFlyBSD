@@ -46,7 +46,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/signalvar.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
@@ -321,8 +321,10 @@ tapopen(struct dev_open_args *ap)
 	int error;
 
 	if (tapuopen == 0 &&
-	    (error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) != 0)
+	    (error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT)) != 0)
+	{
 		return (error);
+	}
 
 	get_mplock();
 

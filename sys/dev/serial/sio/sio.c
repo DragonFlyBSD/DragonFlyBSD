@@ -55,7 +55,7 @@
 #include <sys/tty.h>
 #include <sys/ttydefaults.h>	/* for TTYDEF_* */
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/module.h>
 #include <sys/conf.h>
 #include <sys/dkstat.h>
@@ -1321,7 +1321,9 @@ open_top:
 				goto open_top;
 			}
 		}
-		if (tp->t_state & TS_XCLUDE && priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
+		if ((tp->t_state & TS_XCLUDE) &&
+		    caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT))
+		{
 			error = EBUSY;
 			goto out;
 		}
@@ -2045,7 +2047,8 @@ sioioctl(struct dev_ioctl_args *ap)
 		}
 		switch (ap->a_cmd) {
 		case TIOCSETA:
-			error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
+			error = caps_priv_check(ap->a_cred,
+						SYSCAP_RESTRICTEDROOT);
 			if (error != 0) {
 				lwkt_reltoken(&tty_token);
 				return (error);
@@ -2138,7 +2141,7 @@ sioioctl(struct dev_ioctl_args *ap)
 		break;
 	case TIOCMSDTRWAIT:
 		/* must be root since the wait applies to following logins */
-		error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
+		error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT);
 		if (error != 0) {
 			crit_exit();
 			lwkt_reltoken(&tty_token);

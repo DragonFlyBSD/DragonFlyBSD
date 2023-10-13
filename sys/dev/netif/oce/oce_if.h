@@ -56,7 +56,7 @@
 #include <sys/random.h>
 #include <sys/firmware.h>
 #include <sys/systm.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/proc.h>
 
 #include <bus/pci/pcireg.h>

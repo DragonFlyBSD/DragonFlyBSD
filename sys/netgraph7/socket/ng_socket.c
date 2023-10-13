@@ -60,7 +60,7 @@
 #include <sys/mutex.h>
 */
 #include <sys/param.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/proc.h>
 #include <sys/protosw.h>
 #include <sys/queue.h>
@@ -179,12 +179,15 @@ ngc_attach(netmsg_t msg)
 	struct ngpcb *const pcbp = sotongpcb(so);
 	int error;
 
-	if (priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY) != 0)
+	if (caps_priv_check(ai->p_ucred,
+			    SYSCAP_RESTRICTEDROOT | __SYSCAP_NULLCRED))
+	{
 		error = EPERM;
-	else if (pcbp != NULL)
+	} else if (pcbp != NULL) {
 		error = EISCONN;
-	else
+	} else {
 		error = ng_attach_cntl(so);
+	}
 	lwkt_replymsg(&msg->attach.base.lmsg, error);
 }
 

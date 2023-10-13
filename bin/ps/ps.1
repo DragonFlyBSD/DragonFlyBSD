@@ -254,6 +254,11 @@ Marks a runnable process and is followed by the CPU number.
 Marks a process that is sleeping for less than about 20 seconds.
 .It Li T
 Marks a stopped process.
+.It Li y
+Marks a process with the RESTRICTEDROOT capability set (both SELF and EXEC).
+.It Li Y
+Marks a process with the RESTRICTEDROOT and the SENSITIVEROOT capabilities
+set (both SELF and EXEC).  Other capabilities are ignored.
 .It Li Z
 Marks a dead process (a
 .Dq zombie ) .

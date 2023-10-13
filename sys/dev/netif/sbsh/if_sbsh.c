@@ -33,7 +33,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/socket.h>
 #include <sys/random.h>
 #include <sys/serialize.h>
@@ -398,7 +398,9 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	switch(cmd) {
 	case SIOCLOADFIRMW:
-		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
+		error = caps_priv_check(cr, SYSCAP_RESTRICTEDROOT |
+					    __SYSCAP_NULLCRED);
+		if (error)
 			break;
 		if (ifp->if_flags & IFF_UP)
 			error = EBUSY;
@@ -423,7 +425,9 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 
 	case  SIOCGETSTATS :
-		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
+		error = caps_priv_check(cr, SYSCAP_RESTRICTEDROOT |
+					    __SYSCAP_NULLCRED);
+		if (error)
 			break;
 
 		t = 0;
@@ -466,7 +470,9 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 
 	case  SIOCCLRSTATS :
-		if (!(error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY))) {
+		error = caps_priv_check(cr, SYSCAP_RESTRICTEDROOT |
+					    __SYSCAP_NULLCRED);
+		if (error == 0) {
 			bzero(&sc->in_stats, sizeof(struct sbni16_stats));
 			t = 2;
 			if (issue_cx28975_cmd(sc, _DSL_CLEAR_ERROR_CTRS, &t, 1))

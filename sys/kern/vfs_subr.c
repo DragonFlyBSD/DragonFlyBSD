@@ -57,7 +57,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/mount.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/proc.h>
 #include <sys/reboot.h>
 #include <sys/socket.h>
@@ -1703,7 +1703,7 @@ vprint(char *label, struct vnode *vp)
  */
 int
 vaccess(enum vtype type, mode_t file_mode, uid_t uid, gid_t gid,
-    mode_t acc_mode, struct ucred *cred)
+	mode_t acc_mode, struct ucred *cred)
 {
 	mode_t mask;
 	int ismember;
@@ -1712,7 +1712,7 @@ vaccess(enum vtype type, mode_t file_mode, uid_t uid, gid_t gid,
 	 * Super-user always gets read/write access, but execute access depends
 	 * on at least one execute bit being set.
 	 */
-	if (priv_check_cred(cred, PRIV_ROOT, 0) == 0) {
+	if (caps_priv_check(cred, SYSCAP_RESTRICTEDROOT) == 0) {
 		if ((acc_mode & VEXEC) && type != VDIR &&
 		    (file_mode & (S_IXUSR|S_IXGRP|S_IXOTH)) == 0)
 			return (EACCES);

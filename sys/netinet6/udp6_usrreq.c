@@ -77,7 +77,7 @@
 #include <sys/systm.h>
 #include <sys/syslog.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/jail.h>
 
 #include <sys/thread2.h>
@@ -455,7 +455,7 @@ udp6_getcred(SYSCTL_HANDLER_ARGS)
 	struct inpcb *inp;
 	int error;
 
-	error = priv_check(req->td, PRIV_ROOT);
+	error = caps_priv_check_td(req->td, SYSCAP_RESTRICTEDROOT);
 	if (error)
 		return (error);
 

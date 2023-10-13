@@ -38,7 +38,7 @@
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 
@@ -876,14 +876,14 @@ ugen_check_request(struct usb_device *udev, struct usb_device_request *req)
 	    ((req->bmRequestType == UT_WRITE_DEVICE) &&
 	    (req->bRequest == UR_SET_CONFIG)) ||
 	    ((req->bmRequestType == UT_WRITE_INTERFACE) &&
-	    (req->bRequest == UR_SET_INTERFACE))) {
+	    (req->bRequest == UR_SET_INTERFACE)))
+	{
 		/*
 		 * These requests can be useful for testing USB drivers.
 		 */
-		error = priv_check(curthread, PRIV_DRIVER);
-		if (error) {
+		error = caps_priv_check_self(SYSCAP_NODRIVER);
+		if (error)
 			return (error);
-		}
 	}
 	/*
 	 * Special case - handle clearing of stall
@@ -949,10 +949,10 @@ ugen_re_enumerate(struct usb_fifo *f)
 	/*
 	 * This request can be useful for testing USB drivers:
 	 */
-	error = priv_check(curthread, PRIV_DRIVER);
-	if (error) {
+	error = caps_priv_check_self(SYSCAP_NODRIVER);
+	if (error)
 		return (error);
-	}
+
 	if (udev->flags.usb_mode != USB_MODE_HOST) {
 		/* not possible in device side mode */
 		DPRINTFN(6, "device mode\n");
@@ -1732,7 +1732,7 @@ ugen_set_power_mode(struct usb_fifo *f, int mode)
 	    (udev->parent_hub == NULL)) {
 		return (EINVAL);
 	}
-	err = priv_check(curthread, PRIV_DRIVER);
+	err = caps_priv_check_self(SYSCAP_NODRIVER);
 	if (err)
 		return (err);
 
@@ -1879,10 +1879,10 @@ ugen_do_port_feature(struct usb_fifo *f, uint8_t port_no,
 	struct usb_hub *hub;
 	int err;
 
-	err = priv_check(curthread, PRIV_DRIVER);
-	if (err) {
+	err = caps_priv_check_self(SYSCAP_NODRIVER);
+	if (err)
 		return (err);
-	}
+
 	if (port_no == 0) {
 		return (EINVAL);
 	}
@@ -2202,8 +2202,7 @@ ugen_ioctl_post(struct usb_fifo *f, u_long cmd, void *addr, int fflags)
 
 	case USB_IFACE_DRIVER_DETACH:
 
-		error = priv_check(curthread, PRIV_DRIVER);
-
+		error = caps_priv_check_self(SYSCAP_NODRIVER);
 		if (error)
 			break;
 

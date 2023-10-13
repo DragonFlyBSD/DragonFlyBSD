@@ -69,7 +69,7 @@
 #include <sys/resource.h>
 #include <sys/spinlock.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/file.h>
 #include <sys/lockf.h>
 #include <sys/kern_syscall.h>
@@ -292,9 +292,10 @@ kern_setrlimit(u_int which, struct rlimit *limp)
 
 	spin_lock(&limit->p_spin);
         if (limp->rlim_cur > alimp->rlim_max ||
-            limp->rlim_max > alimp->rlim_max) {
+            limp->rlim_max > alimp->rlim_max)
+	{
 		spin_unlock(&limit->p_spin);
-                error = priv_check_cred(p->p_ucred, PRIV_PROC_SETRLIMIT, 0);
+                error = caps_priv_check(p->p_ucred, SYSCAP_NOPROC_SETRLIMIT);
                 if (error)
                         return (error);
 	} else {

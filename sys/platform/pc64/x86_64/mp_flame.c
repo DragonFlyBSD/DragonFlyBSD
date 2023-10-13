@@ -38,7 +38,7 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/malloc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/flame_graph.h>
 
 #include <sys/thread2.h>
@@ -152,7 +152,7 @@ sysctl_flame_graph_data(SYSCTL_HANDLER_ARGS)
 	int n;
 	size_t ebytes;
 
-	error = priv_check_cred(curthread->td_ucred, PRIV_ROOT, 0);
+	error = caps_priv_check_self(SYSCAP_RESTRICTEDROOT);
 	if (error)
 		return error;
 	if (flame_graph_array == NULL)
@@ -184,7 +184,7 @@ sysctl_flame_graph_sniff(SYSCTL_HANDLER_ARGS)
 {
 	int error;
 
-	error = priv_check_cred(curthread->td_ucred, PRIV_ROOT, 0);
+	error = caps_priv_check_self(SYSCAP_RESTRICTEDROOT);
 	if (error)
 		return error;
 	if (flame_graph_enable == 0)

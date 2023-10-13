@@ -1,0 +1,92 @@
+.\" Copyright (c) 2023 Matthew Dillon <dillon@backplane.com>
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly$
+.\"
+.Dd October 12, 2023
+.Dt SETCAPS 1
+.Os
+.Sh NAME
+.Nm setcaps
+.Nd set capability restrictions on calling process
+.Sh SYNOPSIS
+.Nm
+.Op Fl lpqh
+.Op cap[:es] ...
+.Sh DESCRIPTION
+The
+.Nm
+utility sets capability restrictions on the parent process, which is
+typically the shell that ran this program.  By default the SELF and EXEC
+flags are both set.
+.Pp
+When specifying capabilities to set, a colon extension may be used to
+override the default restrictions.
+.Pp
+.Sh OPTIONS
+The options are as follows:
+.Bl -tag -width indent
+.It Fl l
+List current capabilities.
+.It Fl p
+Print a list of all available capabilities.
+.It Fl q
+Do not complain if a specified capability is not available.
+.It Fl h
+Print help and exit.
+.El
+.Sh FLAGS
+.Bl -tag -width indent
+.It Li :s
+Sets the SELF flag. The capability restriction is applied to the
+calling process.  However, SELF restrictions are not transfered
+upon exec unless the EXEC flag is also specified.
+.It Li :e
+Sets the EXEC flag.  The capability restriction is applied to any
+programs exec'd by the calling process.  EXEC becomes SELF when a
+program is exec'd.  The EXEC flag remains set.
+Note that fork alone does not activate EXEC flagged restrictions.
+.It Li :se
+Both flags may be specified (this is the default) for each capability
+listed without specified flags).
+.El
+.Sh EXIT STATUS
+.Nm
+will exit 1 on error, and 0 on success.
+.Sh EXAMPLES
+.Li setcaps restricted_root
+.Li setcaps restricted_root:se sensitive_root:se
+.Sh SEE ALSO
+.Xr syscap_set 2 ,
+.Xr syscap_get 2
+.Sh HISTORY
+The
+.Nm
+utility appeared in
+.Dx 6.5
+.Sh AUTHORS
+The
+.Nm
+utility was written by
+Matthew Dillon

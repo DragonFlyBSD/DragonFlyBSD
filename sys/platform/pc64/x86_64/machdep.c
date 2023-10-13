@@ -56,7 +56,7 @@
 #include <sys/linker.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/buf.h>
 #include <sys/reboot.h>
 #include <sys/mbuf.h>
@@ -3177,7 +3177,7 @@ set_dbregs(struct lwp *lp, struct dbreg *dbregs)
 		 * from within kernel mode?
 		 */
 
-		if (priv_check_cred(ucred, PRIV_ROOT, 0) != 0) {
+		if (caps_priv_check(ucred, SYSCAP_RESTRICTEDROOT) != 0) {
 			if (dbregs->dr[7] & 0x3) {
 				/* dr0 is enabled */
 				if (dbregs->dr[0] >= VM_MAX_USER_ADDRESS)

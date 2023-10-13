@@ -42,7 +42,7 @@
 #include <sys/imgact.h>
 #include <sys/mman.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/resourcevar.h>
 #include <sys/sysent.h>
 #include <sys/stat.h>
@@ -129,10 +129,11 @@ sysctl_vm_resident(SYSCTL_HANDLER_ARGS)
 
 	/* only super-user should call this sysctl */
 	td = req->td;
-	if ((priv_check(td, PRIV_VM_RESIDENT)) != 0)
-		return EPERM;
+	error = caps_priv_check_td(td, SYSCAP_NOVM_RESIDENT);
+	if (error)
+		return error;
 
-	error = count = 0;
+	count = 0;
 
 	if (exec_res_id == 0)
 	    return error;
@@ -212,7 +213,7 @@ sys_exec_sys_register(struct sysmsg *sysmsg,
     int error;
 
     p = td->td_proc;
-    error = priv_check_cred(td->td_ucred, PRIV_VM_RESIDENT, 0);
+    error = caps_priv_check_td(td, SYSCAP_NOVM_RESIDENT);
     if (error)
 	return(error);
 
@@ -263,7 +264,7 @@ sys_exec_sys_unregister(struct sysmsg *sysmsg,
     int count;
 
     p = td->td_proc;
-    error = priv_check_cred(td->td_ucred, PRIV_VM_RESIDENT, 0);
+    error = caps_priv_check_td(td, SYSCAP_NOVM_RESIDENT);
     if (error)
 	return(error);
 

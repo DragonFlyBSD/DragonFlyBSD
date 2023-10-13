@@ -68,7 +68,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/endian.h>
 #include <sys/kthread.h>
 #include <sys/taskqueue.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/module.h>
 #include <sys/ktr.h>
 

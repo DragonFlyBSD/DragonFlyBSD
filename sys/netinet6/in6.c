@@ -72,7 +72,7 @@
 #include <sys/sockio.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/time.h>
 #include <sys/kernel.h>
 #include <sys/syslog.h>
@@ -473,7 +473,7 @@ in6_control_internal_dispatch(netmsg_t msg)
 
 static int
 in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
-    struct thread *td)
+		     struct thread *td)
 {
 	struct in6_ifreq *ifr = (struct in6_ifreq *)data;
 	struct in6_ifaddr *ia = NULL;
@@ -483,7 +483,7 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	int error;
 
 	privileged = FALSE;
-	if (priv_check(td, PRIV_ROOT) == 0)
+	if (caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT) == 0)
 		privileged = TRUE;
 
 	switch (cmd) {

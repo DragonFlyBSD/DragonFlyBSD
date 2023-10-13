@@ -40,7 +40,7 @@
 #include <sys/systm.h>
 #include <sys/sysmsg.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <sys/fcntl.h>
@@ -121,12 +121,11 @@ SYSINIT(acct, SI_SUB_DRIVERS, SI_ORDER_ANY, acct_init, NULL);
 int
 sys_acct(struct sysmsg *sysmsg, const struct acct_args *uap)
 {
-	struct thread *td = curthread;
 	struct nlookupdata nd;
 	struct vnode *vp;
 	int error;
 
-	error = priv_check(td, PRIV_ACCT);
+	error = caps_priv_check_self(SYSCAP_NOACCT);
 	if (error)
 		return (error);
 

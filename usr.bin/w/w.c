@@ -89,6 +89,11 @@ static char	**sel_users;	/* login array of particular users selected */
 static char	domain[MAXHOSTNAMELEN];
 static int	maxname = 8, maxline = 3, maxhost = 16;
 
+struct kplist {
+	struct kplist *next;
+	struct kinfo_proc *kp;
+};
+
 /*
  * One of these per active utmpx entry.
  */
@@ -103,11 +108,9 @@ static struct entry {
 	time_t	idle;			/* idle time of terminal in seconds */
 	struct	kinfo_proc *kp;		/* `most interesting' proc */
 	char	*args;			/* arg list of interesting process */
-	struct	kinfo_proc *dkp;	/* debug option proc list */
+	struct	kplist *list;		/* debug option proc list */
 	pid_t	pid;			/* pid or ~0 if not known */
 } *ep, *ehead = NULL, **nextp = &ehead;
-
-#define debugproc(p) *((struct kinfo_proc **)&(p)->kp_spare[0])
 
 static void		 pr_header(time_t *, int);
 static struct stat	*ttystat(char *, int);
@@ -121,7 +124,7 @@ int
 main(int argc, char **argv)
 {
 	struct kinfo_proc *kp;
-	struct kinfo_proc *dkp;
+	struct kplist *scan;
 	struct hostent *hp;
 	in_addr_t l;
 	int ch, i, nentries, nusers, wcmd, longidle, dropgid;
@@ -283,7 +286,9 @@ main(int argc, char **argv)
 				/*
 				 * proc is associated with this terminal
 				 */
-				if (ep->kp == NULL && kp->kp_pgid == kp->kp_tpgid) {
+				if (ep->kp == NULL &&
+				    kp->kp_pgid == kp->kp_tpgid)
+				{
 					/*
 					 * Proc is 'most interesting'
 					 */
@@ -291,14 +296,13 @@ main(int argc, char **argv)
 						ep->kp = kp;
 				}
 				/*
-				 * Proc debug option info; add to debug
-				 * list using kinfo_proc kp_eproc.e_spare
-				 * as next pointer; ptr to ptr avoids the
-				 * ptr = long assumption.
+				 * Retain list of kinfo_proc's for -d
+				 * option.
 				 */
-				dkp = ep->dkp;
-				ep->dkp = kp;
-				debugproc(kp) = dkp;
+				scan = malloc(sizeof(*scan));
+				scan->kp = kp;
+				scan->next = ep->list;
+				ep->list = scan;
 			}
 			if (ep->pid != 0 && ep->pid == kp->kp_pid) {
 				ep->kp = kp;
@@ -404,15 +408,16 @@ main(int argc, char **argv)
 			p = buf;
 		}
 		if (dflag) {
-			for (dkp = ep->dkp; dkp != NULL; dkp = debugproc(dkp)) {
+			for (scan = ep->list; scan; scan = scan->next) {
 				char *ptr;
 
-				ptr = fmt_argv(kvm_getargv(kd, dkp, argwidth),
-				    dkp->kp_comm, MAXCOMLEN);
+				ptr = fmt_argv(kvm_getargv(kd, scan->kp,
+							   argwidth),
+					       scan->kp->kp_comm,
+					       MAXCOMLEN);
 				if (ptr == NULL)
 					ptr = "-";
-				(void)printf("\t\t%-9d %s\n",
-				    dkp->kp_pid, ptr);
+				printf("\t\t%-9d %s\n", scan->kp->kp_pid, ptr);
 			}
 		}
 		(void)printf("%-*.*s %-*.*s %-*.*s ",

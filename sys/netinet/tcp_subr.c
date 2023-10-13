@@ -79,7 +79,7 @@
 #include <sys/domain.h>
 #endif
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/socket.h>
 #include <sys/socketops.h>
 #include <sys/socketvar.h>
@@ -1329,7 +1329,7 @@ tcp_getcred(SYSCTL_HANDLER_ARGS)
 	struct inpcb *inp;
 	int cpu, origcpu, error;
 
-	error = priv_check(req->td, PRIV_ROOT);
+	error = caps_priv_check_td(req->td, SYSCAP_RESTRICTEDROOT);
 	if (error != 0)
 		return (error);
 	error = SYSCTL_IN(req, addrs, sizeof addrs);
@@ -1370,7 +1370,7 @@ tcp6_getcred(SYSCTL_HANDLER_ARGS)
 	struct inpcb *inp;
 	int error;
 
-	error = priv_check(req->td, PRIV_ROOT);
+	error = caps_priv_check_td(req->td, SYSCAP_RESTRICTEDROOT);
 	if (error != 0)
 		return (error);
 	error = SYSCTL_IN(req, addrs, sizeof addrs);

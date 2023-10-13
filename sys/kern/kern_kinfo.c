@@ -155,6 +155,13 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 		kp->kp_svuid = p->p_ucred->cr_svuid;
 		kp->kp_rgid = p->p_ucred->cr_rgid;
 		kp->kp_svgid = p->p_ucred->cr_svgid;
+
+		/*
+		 * Copy just some of the capabilities for now to avoid
+		 * changing the size of the kp structure.
+		 */
+		bcopy(p->p_ucred->cr_caps.caps, kp->kp_syscaps,
+		      sizeof(kp->kp_syscaps));
 	}
 
 	kp->kp_pid = p->p_pid;

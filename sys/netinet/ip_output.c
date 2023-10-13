@@ -46,7 +46,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/sysctl.h>
 #include <sys/in_cksum.h>
 #include <sys/lock.h>

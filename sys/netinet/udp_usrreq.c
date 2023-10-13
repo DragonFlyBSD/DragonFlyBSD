@@ -72,7 +72,7 @@
 #include <sys/mbuf.h>
 #include <sys/domain.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -817,7 +817,7 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 	struct inpcb *inp;
 	int error, cpu, origcpu;
 
-	error = priv_check(req->td, PRIV_ROOT);
+	error = caps_priv_check_td(req->td, SYSCAP_RESTRICTEDROOT);
 	if (error)
 		return (error);
 	error = SYSCTL_IN(req, addrs, sizeof addrs);

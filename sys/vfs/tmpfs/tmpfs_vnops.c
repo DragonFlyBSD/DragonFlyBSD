@@ -40,7 +40,7 @@
 #include <sys/uio.h>
 #include <sys/fcntl.h>
 #include <sys/lockf.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/proc.h>
 #include <sys/resourcevar.h>
 #include <sys/sched.h>
@@ -931,7 +931,7 @@ tmpfs_write(struct vop_write_args *ap)
 		node->tn_status |= TMPFS_NODE_CHANGED;
 
 	if (node->tn_mode & (S_ISUID | S_ISGID)) {
-		if (priv_check_cred(ap->a_cred, PRIV_VFS_RETAINSUGID, 0))
+		if (caps_priv_check(ap->a_cred, SYSCAP_NOVFS_RETAINSUGID))
 			node->tn_mode &= ~(S_ISUID | S_ISGID);
 	}
 done:

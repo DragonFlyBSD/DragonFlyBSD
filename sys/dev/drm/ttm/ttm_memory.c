@@ -190,7 +190,7 @@ static bool ttm_zones_above_swap_target(struct ttm_mem_global *glob,
 
 		if (from_wq)
 			target = zone->swap_limit;
-		else if (priv_check(curthread, PRIV_VM_MLOCK) == 0)
+		else if (caps_priv_check_self(SYSCAP_NOVM_MLOCK) == 0)
 			target = zone->emer_mem;
 		else
 			target = zone->max_mem;
@@ -475,7 +475,7 @@ static int ttm_mem_global_reserve(struct ttm_mem_global *glob,
 		if (single_zone && zone != single_zone)
 			continue;
 
-		limit = (priv_check(curthread, PRIV_VM_MLOCK) == 0) ?
+		limit = (caps_priv_check_self(SYSCAP_NOVM_MLOCK) == 0) ?
 			zone->emer_mem : zone->max_mem;
 
 		if (zone->used_mem > limit)

@@ -2569,6 +2569,11 @@ dophase(worker_t *work, wmsg_t *wmsg, int wdog, int phaseid, const char *phase)
 		}
 
 		/*
+		 * Capability restrictions to make root safer.
+		 */
+		set_capability_restrictions();
+
+		/*
 		 * Execute the appropriate command.
 		 */
 		switch(phaseid) {

@@ -51,7 +51,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/domain.h>
 #include <sys/errno.h>
 #include <sys/kernel.h>
@@ -169,8 +169,11 @@ ngc_attach(netmsg_t msg)
 	struct ngpcb *const pcbp = sotongpcb(so);
 	int error;
 
-	if (priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY) != 0)
+	if (caps_priv_check(ai->p_ucred,
+			    SYSCAP_RESTRICTEDROOT | __SYSCAP_NULLCRED) != 0)
+	{
 		error = EPERM;
+	}
 	else if (pcbp != NULL)
 		error = EISCONN;
 	else

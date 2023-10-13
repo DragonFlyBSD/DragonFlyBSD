@@ -41,7 +41,7 @@
 #include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/protosw.h>
 #include <sys/queue.h>
 #include <sys/socket.h>
@@ -635,8 +635,10 @@ ng_btsocket_l2cap_raw_attach(netmsg_t msg)
 	pcb->so = so;
 
 	if (curproc == NULL ||
-	    priv_check(curthread, PRIV_NETBLUETOOTH_RAW) == 0)
+	    caps_priv_check_self(SYSCAP_NONET_BT_RAW) == 0)
+	{
 		pcb->flags |= NG_BTSOCKET_L2CAP_RAW_PRIVILEGED;
+	}
 
 	lockinit(&pcb->pcb_lock, "btsocks_l2cap_raw_pcb_lock", 0, 0);
 

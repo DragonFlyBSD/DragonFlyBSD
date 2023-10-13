@@ -50,7 +50,7 @@
 #include <sys/filedesc.h>
 #include <sys/kern_syscall.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/resource.h>
 #include <sys/resourcevar.h>
 #include <sys/vnode.h>
@@ -1008,7 +1008,7 @@ sys_mlock(struct sysmsg *sysmsg, const struct mlock_args *uap)
 		return (ENOMEM);
 	}
 #else
-	error = priv_check_cred(td->td_ucred, PRIV_ROOT, 0);
+	error = caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT);
 	if (error) {
 		return (error);
 	}
@@ -1037,7 +1037,7 @@ sys_mlockall(struct sysmsg *sysmsg, const struct mlockall_args *uap)
 	if (((how & MCL_CURRENT) == 0) && ((how & MCL_FUTURE) == 0))
 		return (EINVAL);
 
-	rc = priv_check_cred(td->td_ucred, PRIV_ROOT, 0);
+	rc = caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT);
 	if (rc) 
 		return (rc);
 
@@ -1179,7 +1179,7 @@ sys_munlock(struct sysmsg *sysmsg, const struct munlock_args *uap)
 		return (0);
 
 #ifndef pmap_wired_count
-	error = priv_check(td, PRIV_ROOT);
+	error = caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT);
 	if (error)
 		return (error);
 #endif

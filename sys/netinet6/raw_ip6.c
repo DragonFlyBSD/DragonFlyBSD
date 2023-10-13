@@ -65,7 +65,7 @@
 #include <sys/param.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/jail.h>
@@ -526,7 +526,8 @@ rip6_attach(netmsg_t msg)
 	inp = so->so_pcb;
 	if (inp)
 		panic("rip6_attach");
-	error = priv_check_cred(ai->p_ucred, PRIV_NETINET_RAW, NULL_CRED_OKAY);
+	error = caps_priv_check(ai->p_ucred,
+				SYSCAP_NONET_RAW | __SYSCAP_NULLCRED);
 	if (error)
 		goto out;
 

@@ -93,6 +93,7 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 bind.2 \
 	select.2 semctl.2 semget.2 semop.2 send.2 sendfile.2 \
 	setgroups.2 setpgid.2 setregid.2 setresuid.2 setreuid.2 setsid.2 \
 	setuid.2 shmat.2 shmctl.2 shmget.2 shutdown.2 \
+	syscap_get.2 \
 	sigaction.2 sigaltstack.2 sigpending.2 sigprocmask.2 sigreturn.2 \
 	sigsuspend.2 sigwaitinfo.2 socket.2 socketpair.2 \
 	stat.2 statfs.2 statvfs.2 swapon.2 \
@@ -223,6 +224,7 @@ MLINKS+=statfs.2 fstatfs.2
 MLINKS+=statvfs.2 fstatvfs.2
 MLINKS+=symlink.2 symlinkat.2
 MLINKS+=syscall.2 __syscall.2
+MLINKS+=syscap_get.2 syscap_set.2
 MLINKS+=swapon.2 swapoff.2
 MLINKS+=tls.2 get_tls_area.2 \
 	tls.2 set_tls_area.2

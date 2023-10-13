@@ -46,7 +46,7 @@
 #include <sys/vmmeter.h>
 #include <sys/sysctl.h>
 #include <sys/lock.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/kcollect.h>
 #include <sys/malloc.h>
 #ifdef KTRACE
@@ -141,7 +141,7 @@ sysctl_wakeup(SYSCTL_HANDLER_ARGS)
 	int error = 0;
 
 	if (req->newptr != NULL) {
-		if (priv_check(curthread, PRIV_ROOT))
+		if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
 			return (EPERM);
 		error = SYSCTL_IN(req, &ident, sizeof(ident));
 		if (error)
@@ -162,7 +162,7 @@ sysctl_wakeup_umtx(SYSCTL_HANDLER_ARGS)
 	int error = 0;
 
 	if (req->newptr != NULL) {
-		if (priv_check(curthread, PRIV_ROOT))
+		if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
 			return (EPERM);
 		error = SYSCTL_IN(req, &ident, sizeof(ident));
 		if (error)

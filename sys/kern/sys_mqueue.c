@@ -48,7 +48,7 @@
 #include <sys/file.h>
 #include <sys/filedesc.h>
 #include <sys/ucred.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mqueue.h>
@@ -1104,7 +1104,8 @@ sys_mq_unlink(struct sysmsg *sysmsg, const struct mq_unlink_args *uap)
 
 	/* Check the permissions */
 	if (td->td_ucred->cr_uid != mq->mq_euid &&
-	    priv_check(td, PRIV_ROOT) != 0) {
+	    caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT) != 0)
+	{
 		lockmgr(&mq->mq_mtx, LK_RELEASE);
 		error = EACCES;
 		goto error;

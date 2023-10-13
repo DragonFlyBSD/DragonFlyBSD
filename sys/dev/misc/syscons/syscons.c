@@ -43,7 +43,7 @@
 #include <sys/reboot.h>
 #include <sys/conf.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/signalvar.h>
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
@@ -744,7 +744,9 @@ scopen(struct dev_open_args *ap)
 	(*linesw[tp->t_line].l_modem)(tp, 1);
     }
     else
-	if (tp->t_state & TS_XCLUDE && priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
+	if ((tp->t_state & TS_XCLUDE) &&
+	    caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT))
+	{
 	    lwkt_reltoken(&tp->t_token);
 	    lwkt_reltoken(&vga_token);
 	    return(EBUSY);
@@ -1362,7 +1364,7 @@ scioctl(struct dev_ioctl_args *ap)
 	return 0;
 
     case KDENABIO:      	/* allow io operations */
-	error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
+	error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT);
 	if (error != 0) {
 	    lwkt_reltoken(&vga_token);
 	    return error;

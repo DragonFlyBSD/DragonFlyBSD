@@ -41,7 +41,7 @@
 #include <sys/wait.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
+#include <sys/caps.h>
 #include <sys/ktrace.h>
 #include <sys/signalvar.h>
 #include <sys/pioctl.h>
@@ -492,7 +492,8 @@ interpret:
 		 */
 		setsugid();
 		if (p->p_tracenode && ktrace_suid == 0 &&
-		    priv_check(td, PRIV_ROOT) != 0) {
+		    caps_priv_check_td(td, SYSCAP_RESTRICTEDROOT) != 0)
+		{
 			ktrdestroy(&p->p_tracenode);
 			p->p_traceflag = 0;
 		}
@@ -549,6 +550,11 @@ interpret:
 		cache_drop(&p->p_textnch);
 	if (nch->mount)
 		cache_copy(nch, &p->p_textnch);
+
+	/*
+	 * Adjust capabilities in ucred if necessasry
+	 */
+	caps_exec(p);
 
         /*
          * Notify others that we exec'd, and clear the P_INEXEC flag
@@ -656,6 +662,15 @@ sys_execve(struct sysmsg *sysmsg, const struct execve_args *uap)
 	struct image_args args;
 	int error;
 
+	/*
+	 * General exec ok?
+	 */
+	if (caps_priv_check_self(SYSCAP_NOEXEC))
+		return EACCES;
+
+	/*
+	 * Exec path
+	 */
 	bzero(&args, sizeof(args));
 
 	error = nlookup_init(&nd, uap->fname, UIO_USERSPACE, NLC_FOLLOW);
@@ -698,6 +713,15 @@ sys_fexecve(struct sysmsg *sysmsg, const struct fexecve_args *uap)
 	char fname[32]; /* "/dev/fd/xxx" */
 	int error;
 
+	/*
+	 * General exec ok?
+	 */
+	if (caps_priv_check_self(SYSCAP_NOEXEC))
+		return EACCES;
+
+	/*
+	 * Exec descriptor
+	 */
 	if ((error = holdvnode2(td, uap->fd, &fp, &fileflags)) != 0)
 		return (error);
 
@@ -1272,6 +1296,14 @@ exec_check_permissions(struct image_params *imgp, struct mount *topmnt)
 	    (lvap->va_type != VREG)) {
 		return (EACCES);
 	}
+
+	/*
+	 * Capability restrictions on suid or sgid exec?
+	 */
+	if ((lvap->va_mode & VSUID) && caps_priv_check_self(SYSCAP_NOEXEC_SUID))
+		return EACCES;
+	if ((lvap->va_mode & VSGID) && caps_priv_check_self(SYSCAP_NOEXEC_SGID))
+		return EACCES;
 
 	/*
 	 * Zero length files can't be exec'd

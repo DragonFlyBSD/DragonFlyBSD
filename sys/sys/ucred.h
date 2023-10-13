@@ -40,6 +40,9 @@
 #ifndef _SYS_PARAM_H_
 #include <sys/param.h>
 #endif
+#ifndef _SYS_CAPS_H_
+#include <sys/caps.h>
+#endif
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
 #endif
@@ -72,6 +75,7 @@ struct ucred {
 	uid_t   cr_svuid;		/* Saved effective user id. */
 	gid_t   cr_rgid;		/* Real group id. */
 	gid_t   cr_svgid;		/* Saved effective group id. */
+	__syscaps_t cr_caps;		/* System restrictions */
 } __cachealign;
 
 #define cr_gid cr_groups[0]
@@ -102,6 +106,7 @@ struct ucred	*cratom (struct ucred **pcr);
 struct ucred	*cratom_proc (struct proc *p);
 struct ucred	*crcopy (struct ucred *cr);
 struct ucred	*crdup (struct ucred *cr);
+struct ucred	*crdup_nocaps (struct ucred *cr);
 void		crfree (struct ucred *cr);
 struct ucred	*crget (void);
 struct ucred    *crhold (struct ucred *cr);
