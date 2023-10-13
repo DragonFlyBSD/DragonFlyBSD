@@ -80,7 +80,7 @@ static void mount_warning(struct mount *mp, const char *ctl, ...)
 static int mount_path(struct proc *p, struct mount *mp, char **rb, char **fb);
 static int checkvp_chdir (struct vnode *vn, struct thread *td);
 static void checkdirs (struct nchandle *old_nch, struct nchandle *new_nch);
-static int get_fspriv(const char *);
+static int get_fscap(const char *);
 static int chroot_refuse_vdir_fds (thread_t td, struct filedesc *fdp);
 static int chroot_visible_mnt(struct mount *mp, struct proc *p);
 static int getutimes (struct timeval *, struct timespec *);
@@ -139,15 +139,15 @@ sys_mount(struct sysmsg *sysmsg, const struct mount_args *uap)
 
 	/*
 	 * Extract the file system type. We need to know this early, to take
-	 * appropriate actions for jails and nullfs mounts.
+	 * appropriate actions for jails and the filesystems to mount.
 	 */
         if ((error = copyinstr(uap->type, fstypename, MFSNAMELEN, NULL)) != 0)
 		goto done;
 
 	/*
-	 * Select the correct priv according to the file system type.
+	 * Select the correct cap according to the file system type.
 	 */
-	priv = get_fspriv(fstypename);
+	priv = get_fscap(fstypename);
 
 	if (usermount == 0 && (error = caps_priv_check_td(td, priv)))
 		goto done;
@@ -637,7 +637,7 @@ sys_unmount(struct sysmsg *sysmsg, const struct unmount_args *uap)
 
 	/* Figure out the fsname in order to select proper privs */
 	ksnprintf(fstypename, MFSNAMELEN, "%s", mp->mnt_vfc->vfc_name);
-	priv = get_fspriv(fstypename);
+	priv = get_fscap(fstypename);
 
 	if (usermount == 0 && (error = caps_priv_check_td(td, priv))) {
 		nlookup_done(&nd);
@@ -5298,13 +5298,19 @@ chroot_visible_mnt(struct mount *mp, struct proc *p)
  * Return the appropriate system capability restriction.
  */
 static int
-get_fspriv(const char *fsname)
+get_fscap(const char *fsname)
 {
 
 	if (strncmp("null", fsname, 5) == 0) {
 		return SYSCAP_NOMOUNT_NULLFS;
+	} else if (strncmp(fsname, "devfs", 6) == 0) {
+		return SYSCAP_NOMOUNT_DEVFS;
+	} else if (strncmp(fsname, "procfs", 7) == 0) {
+		return SYSCAP_NOMOUNT_PROCFS;
 	} else if (strncmp(fsname, "tmpfs", 6) == 0) {
 		return SYSCAP_NOMOUNT_TMPFS;
+	} else if (strncmp(fsname, "fusefs", 7) == 0) {
+		return SYSCAP_NOMOUNT_FUSE;
 	}
 	return SYSCAP_RESTRICTEDROOT;
 }

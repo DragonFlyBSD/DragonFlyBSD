@@ -111,6 +111,18 @@ SYSCTL_BIT64(_jail_defaults, OID_AUTO, vfs_mount_tmpfs, CTLFLAG_RW,
     &prison_default_caps, 0, PRISON_CAP_VFS_MOUNT_TMPFS,
     "Process in jail can mount tmpfs(5) filesystems");
 
+SYSCTL_BIT64(_jail_defaults, OID_AUTO, vfs_mount_devfs, CTLFLAG_RW,
+    &prison_default_caps, 0, PRISON_CAP_VFS_MOUNT_DEVFS,
+    "Process in jail can mount devfs(5) filesystems");
+
+SYSCTL_BIT64(_jail_defaults, OID_AUTO, vfs_mount_procfs, CTLFLAG_RW,
+    &prison_default_caps, 0, PRISON_CAP_VFS_MOUNT_PROCFS,
+    "Process in jail can mount procfs(5) filesystems");
+
+SYSCTL_BIT64(_jail_defaults, OID_AUTO, vfs_mount_fusefs, CTLFLAG_RW,
+    &prison_default_caps, 0, PRISON_CAP_VFS_MOUNT_FUSEFS,
+    "Process in jail can mount fuse filesystems");
+
 static int	lastprid = 0;
 static int	prisoncount = 0;
 
@@ -952,7 +964,15 @@ prison_priv_check(struct ucred *cred, int cap)
 		else
 			return (EPERM);
 	case SYSCAP_NOMOUNT_PROCFS:
+		if (PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_VFS_MOUNT_PROCFS))
+			return (0);
+		else
+			return (EPERM);
 	case SYSCAP_NOMOUNT_FUSE:
+		if (PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_VFS_MOUNT_FUSEFS))
+			return (0);
+		else
+			return (EPERM);
 	case SYSCAP_NOMOUNT_UMOUNT:
 		return (0);
 
@@ -1023,6 +1043,21 @@ prison_sysctl_create(struct prison *pr)
 	    OID_AUTO, "vfs_mount_tmpfs", CTLFLAG_RW,
 	    &pr->pr_caps, 0, PRISON_CAP_VFS_MOUNT_TMPFS,
 	    "Processes in jail can mount tmpfs(5) filesystems");
+
+	SYSCTL_ADD_BIT64(pr->pr_sysctl_ctx, SYSCTL_CHILDREN(pr->pr_sysctl_tree),
+	    OID_AUTO, "vfs_mount_devfs", CTLFLAG_RW,
+	    &pr->pr_caps, 0, PRISON_CAP_VFS_MOUNT_DEVFS,
+	    "Processes in jail can mount devfs(5) filesystems");
+
+	SYSCTL_ADD_BIT64(pr->pr_sysctl_ctx, SYSCTL_CHILDREN(pr->pr_sysctl_tree),
+	    OID_AUTO, "vfs_mount_procfs", CTLFLAG_RW,
+	    &pr->pr_caps, 0, PRISON_CAP_VFS_MOUNT_PROCFS,
+	    "Processes in jail can mount procfs(5) filesystems");
+
+	SYSCTL_ADD_BIT64(pr->pr_sysctl_ctx, SYSCTL_CHILDREN(pr->pr_sysctl_tree),
+	    OID_AUTO, "vfs_mount_fusefs", CTLFLAG_RW,
+	    &pr->pr_caps, 0, PRISON_CAP_VFS_MOUNT_FUSEFS,
+	    "Processes in jail can mount fuse filesystems");
 
 	return 0;
 }

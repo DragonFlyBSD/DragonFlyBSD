@@ -84,6 +84,8 @@ MALLOC_DECLARE(M_PRISON);
 #define PRISON_CAP_VFS_MOUNT_NULLFS	45   /* Can mount nullfs(5) */
 #define PRISON_CAP_VFS_MOUNT_DEVFS	46   /* Can mount devfs(5) */
 #define PRISON_CAP_VFS_MOUNT_TMPFS	47   /* Can mount tmpfs(5) */
+#define PRISON_CAP_VFS_MOUNT_PROCFS	48   /* Can mount procfs(5) */
+#define PRISON_CAP_VFS_MOUNT_FUSEFS	49   /* Can mount fuse */
 
 typedef __uint64_t prison_cap_t;
 
