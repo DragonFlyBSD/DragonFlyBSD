@@ -840,7 +840,51 @@ prison_priv_check(struct ucred *cred, int cap)
 		return (0);
 
 	switch (cap & ~__SYSCAP_XFLAGS) {
-	case SYSCAP_NOCRED_SETUID:
+	case SYSCAP_RESTRICTEDROOT:		/* group 0 - variable */
+		/* RESTRICTEDROOT fallbacks disallowed in jails */
+		return EPERM;
+	case SYSCAP_SENSITIVEROOT:
+	case SYSCAP_NOEXEC:
+	case SYSCAP_NOCRED:
+		return 0;
+	case SYSCAP_NOJAIL:
+		/* all jail ops disallowed in jails */
+		return EPERM;
+	case SYSCAP_NONET:
+		return 0;
+	case SYSCAP_NONET_SENSITIVE:
+		/* all sensitive network ops disallowed in jails */
+		return EPERM;
+	case SYSCAP_NOVFS:
+	case SYSCAP_NOVFS_SENSITIVE:
+	case SYSCAP_NOMOUNT:
+	case SYSCAP_NO11:
+	case SYSCAP_NO12:
+	case SYSCAP_NO13:
+	case SYSCAP_NO14:
+	case SYSCAP_NO15:
+		return (0);
+
+	/* ----- */				/* group 1 - disallowed */
+
+	case SYSCAP_NOPROC_TRESPASS:		/* group 2 allowed */
+	case SYSCAP_NOPROC_SETLOGIN:
+	case SYSCAP_NOPROC_SETRLIMIT:
+	case SYSCAP_NOSYSCTL_WR:
+	case SYSCAP_NOVARSYM_SYS:
+	case SYSCAP_NOSETHOSTNAME:
+	case SYSCAP_NOQUOTA_WR:
+	case SYSCAP_NODEBUG_UNPRIV:
+	case SYSCAP_NOSCHED:
+	case SYSCAP_NOSCHED_CPUSET:
+	case SYSCAP_NOSETTIME:
+		return (0);
+
+	case SYSCAP_NOEXEC_SUID:		/* group 3 allowed */
+	case SYSCAP_NOEXEC_SGID:
+		return (0);
+
+	case SYSCAP_NOCRED_SETUID:		/* group 4 allowed */
 	case SYSCAP_NOCRED_SETGID:
 	case SYSCAP_NOCRED_SETEUID:
 	case SYSCAP_NOCRED_SETEGID:
@@ -849,20 +893,50 @@ prison_priv_check(struct ucred *cred, int cap)
 	case SYSCAP_NOCRED_SETRESUID:
 	case SYSCAP_NOCRED_SETRESGID:
 	case SYSCAP_NOCRED_SETGROUPS:
-
-	case SYSCAP_NOVFS_SYSFLAGS:
-	case SYSCAP_NOVFS_CHOWN:
-	case SYSCAP_NOVFS_CHMOD:
-	case SYSCAP_NOVFS_CHROOT:
-	case SYSCAP_NOVFS_LINK:
-	case SYSCAP_NOVFS_CHFLAGS_DEV:
-	case SYSCAP_NOVFS_REVOKE:
-	case SYSCAP_NOVFS_MKNOD_BAD:
-	case SYSCAP_NOVFS_MKNOD_WHT:
-	case SYSCAP_NOVFS_MKNOD_DIR:
 		return (0);
 
-	case SYSCAP_NOMOUNT_NULLFS:
+	case SYSCAP_NOJAIL_CREATE:		/* group 5 disallowed */
+	case SYSCAP_NOJAIL_ATTACH:
+		return EPERM;
+
+	case SYSCAP_NONET_RESPORT:		/* group 6 mostly allowed */
+		/*
+		 * Allow reserved ports
+		 */
+		return 0;
+	case SYSCAP_NONET_RAW:
+		/*
+		 * Conditionally allow creating raw sockets in jail.
+		 */
+		if (PRISON_CAP_ISSET(pr->pr_caps,
+			PRISON_CAP_NET_RAW_SOCKETS))
+			return (0);
+		else
+			return (EPERM);
+
+	/* ----- */				/* group 7 - disallowed */
+
+	case SYSCAP_NOVFS_SYSFLAGS:		/* group 8 - allowed */
+	case SYSCAP_NOVFS_CHOWN:
+	case SYSCAP_NOVFS_CHMOD:
+	case SYSCAP_NOVFS_LINK:
+	case SYSCAP_NOVFS_CHFLAGS_DEV:
+	case SYSCAP_NOVFS_SETATTR:
+	case SYSCAP_NOVFS_SETGID:
+	case SYSCAP_NOVFS_GENERATION:
+	case SYSCAP_NOVFS_RETAINSUGID:
+		return (0);
+
+	case SYSCAP_NOVFS_MKNOD_BAD:		/* group 9 - allowed */
+	case SYSCAP_NOVFS_MKNOD_WHT:
+	case SYSCAP_NOVFS_MKNOD_DIR:
+	case SYSCAP_NOVFS_MKNOD_DEV:
+	case SYSCAP_NOVFS_IOCTL:
+	case SYSCAP_NOVFS_CHROOT:
+	case SYSCAP_NOVFS_REVOKE:
+		return (0);
+
+	case SYSCAP_NOMOUNT_NULLFS:		/* group 10 - conditional */
 		if (PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_VFS_MOUNT_NULLFS))
 			return (0);
 		else
@@ -874,50 +948,12 @@ prison_priv_check(struct ucred *cred, int cap)
 			return (0);
 		else
 			return (EPERM);
-
-	case SYSCAP_NOVFS_SETATTR:
-	case SYSCAP_NOVFS_SETGID:
-
-	case SYSCAP_NOPROC_SETRLIMIT:
-	case SYSCAP_NOPROC_SETLOGIN:
-
-	case SYSCAP_NOSYSCTL_WR:
-
-	case SYSCAP_NOVARSYM_SYS:
-
-	case SYSCAP_NOSETHOSTNAME:
-
-	case SYSCAP_NOPROC_TRESPASS:
-		return (0);
-
-	case SYSCAP_NOQUOTA_WR:
-		return (0);
-
-	case SYSCAP_NODEBUG_UNPRIV:
-		return (0);
-
-		/*
-		 * Allow jailed root to bind reserved ports.
-		 */
-	case SYSCAP_NONET_RESPORT:
-		return (0);
-
-
-		/*
-		 * Conditionally allow creating raw sockets in jail.
-		 */
-	case SYSCAP_NONET_RAW:
-		if (PRISON_CAP_ISSET(pr->pr_caps,
-			PRISON_CAP_NET_RAW_SOCKETS))
-			return (0);
-		else
-			return (EPERM);
-
-	case SYSCAP_NOVFS_IOCTL:
+	case SYSCAP_NOMOUNT_FUSE:
+	case SYSCAP_NOMOUNT_UMOUNT:
 		return (0);
 
 	default:
-
+		/* otherwise disallow */
 		return (EPERM);
 	}
 }
