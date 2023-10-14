@@ -149,29 +149,33 @@ mmopen(struct dev_open_args *ap)
 		/*
 		 * /dev/mem and /dev/kmem
 		 */
-		if (ap->a_oflags & FWRITE) {
-			if (securelevel > 0 || kernel_mem_readonly)
-				return (EPERM);
+		error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT);
+		if (error == 0) {
+			if (ap->a_oflags & FWRITE) {
+				if (securelevel > 0 || kernel_mem_readonly)
+					error = EPERM;
+			}
 		}
-		error = 0;
 		break;
 	case 6:
 		/*
 		 * /dev/kpmap can only be opened for reading.
 		 */
-		if (ap->a_oflags & FWRITE)
-			return (EPERM);
 		error = 0;
+		if (ap->a_oflags & FWRITE)
+			error = EPERM;
 		break;
 	case 14:
+		/*
+		 * /dev/io
+		 */
 		error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT);
-		if (error != 0)
-			break;
-		if (securelevel > 0 || kernel_mem_readonly) {
-			error = EPERM;
-			break;
+		if (error == 0) {
+			if (securelevel > 0 || kernel_mem_readonly)
+				error = EPERM;
+			else
+				error = cpu_set_iopl();
 		}
-		error = cpu_set_iopl();
 		break;
 	default:
 		error = 0;
