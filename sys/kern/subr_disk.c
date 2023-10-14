@@ -82,6 +82,7 @@
 #include <sys/proc.h>
 #include <sys/sysctl.h>
 #include <sys/buf.h>
+#include <sys/caps.h>
 #include <sys/conf.h>
 #include <sys/disklabel.h>
 #include <sys/disklabel32.h>
@@ -1065,6 +1066,13 @@ diskopen(struct dev_open_args *ap)
 	dp = dev->si_disk;
 	if (dp == NULL || dp->d_slice == NULL)
 		return (ENXIO);
+
+	/*
+	 * Disallow access to disk volumes if RESTRICTEDROOT
+	 */
+	if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
+		return (EPERM);
+
 	error = 0;
 
 	/*
