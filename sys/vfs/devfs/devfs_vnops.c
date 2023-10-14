@@ -882,6 +882,8 @@ devfs_spec_open(struct vop_open_args *ap)
 		error = dev_dopen(dev, ap->a_mode, S_IFCHR,
 				  ap->a_cred, ap->a_fpp, vp);
 		vn_lock(vp, LK_SHARED | LK_RETRY);
+		if (error)
+			return error;
 		vop_stdopen(ap);
 		goto skip;
 	}
