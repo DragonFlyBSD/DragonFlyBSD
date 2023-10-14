@@ -1,6 +1,4 @@
-/*-
- * (MPSAFE)
- *
+/*
  * Copyright (c) 1999 Kazutaka YOKOTA <yokota@zodiac.mech.utsunomiya-u.ac.jp>
  * All rights reserved.
  *
@@ -37,6 +35,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
+#include <sys/caps.h>
 #include <sys/conf.h>
 #include <sys/proc.h>
 #include <sys/tty.h>
@@ -660,6 +659,12 @@ genkbdopen(struct dev_open_args *ap)
 	keyboard_t *kbd;
 	genkbd_softc_t sc;
 	int i;
+
+	/*
+	 * Disallow access to disk volumes if RESTRICTEDROOT
+	 */
+	if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
+		return (EPERM);
 
 	lwkt_gettoken(&kbd_token);
 	sc = dev->si_drv1;

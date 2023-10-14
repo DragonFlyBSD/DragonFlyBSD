@@ -32,6 +32,7 @@
 #include <sys/module.h>
 #include <sys/linker.h>
 #include <sys/fcntl.h>
+#include <sys/caps.h>
 #include <sys/conf.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
@@ -74,6 +75,12 @@ static int
 pci_open(struct dev_open_args *ap)
 {
 	int oflags = ap->a_oflags;
+
+	/*
+	 * Disallow access to disk volumes if RESTRICTEDROOT
+	 */
+	if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
+		return (EPERM);
 
 	if (oflags & FWRITE) {
 		if (securelevel > 0)

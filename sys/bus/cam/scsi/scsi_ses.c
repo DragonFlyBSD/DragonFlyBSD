@@ -32,6 +32,7 @@
 #include <sys/types.h>
 #include <sys/malloc.h>
 #include <sys/fcntl.h>
+#include <sys/caps.h>
 #include <sys/conf.h>
 #include <sys/buf.h>
 #include <sys/errno.h>
@@ -389,6 +390,12 @@ sesopen(struct dev_open_args *ap)
 	struct cam_periph *periph;
 	struct ses_softc *softc;
 	int error = 0;
+
+	/*
+	 * Disallow CAM access if RESTRICTEDROOT
+	 */
+	if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
+		return (EPERM);
 
 	periph = cam_extend_get(sesperiphs, SESUNIT(dev));
 	if (periph == NULL) {

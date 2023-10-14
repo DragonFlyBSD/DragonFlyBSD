@@ -41,6 +41,7 @@
 #include <sys/rman.h>
 #include <sys/device.h>
 #include <sys/lock.h>
+#include <sys/caps.h>
 #include <sys/conf.h>
 #include <sys/uio.h>
 #include <sys/filio.h>
@@ -328,6 +329,12 @@ devinit(void)
 static int
 devopen(struct dev_open_args *ap)
 {
+	/*
+	 * Disallow access to disk volumes if RESTRICTEDROOT
+	 */
+	if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
+		return (EPERM);
+
 	lockmgr(&devsoftc.lock, LK_EXCLUSIVE);
 	if (devsoftc.inuse) {
 		lockmgr(&devsoftc.lock, LK_RELEASE);

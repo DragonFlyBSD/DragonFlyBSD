@@ -40,6 +40,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/caps.h>
 #include <sys/conf.h>
 #include <sys/cons.h>
 #include <sys/kernel.h>
@@ -338,6 +339,12 @@ cnopen(struct dev_open_args *ap)
 	cdev_t cndev;
 	cdev_t physdev;
 	int retval = 0;
+
+	/*
+	 * Disallow access to disk volumes if RESTRICTEDROOT
+	 */
+	if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
+		return (EPERM);
 
 	if (cn_tab == NULL || cn_fwd_ops == NULL)
 		return (0);

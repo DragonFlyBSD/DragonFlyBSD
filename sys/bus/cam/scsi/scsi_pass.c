@@ -35,6 +35,7 @@
 #include <sys/malloc.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
+#include <sys/caps.h>
 #include <sys/conf.h>
 #include <sys/errno.h>
 #include <sys/devicestat.h>
@@ -300,6 +301,12 @@ passopen(struct dev_open_args *ap)
 	struct cam_periph *periph;
 	struct pass_softc *softc;
 	int unit, error;
+
+	/*
+	 * Disallow CAM access if RESTRICTEDROOT
+	 */
+	if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
+		return (EPERM);
 
 	error = 0; /* default to no error */
 

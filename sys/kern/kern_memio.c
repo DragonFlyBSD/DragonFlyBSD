@@ -157,6 +157,20 @@ mmopen(struct dev_open_args *ap)
 			}
 		}
 		break;
+	case 3:
+	case 4:
+		/*
+		 * /dev/random
+		 * /dev/urandom
+		 *
+		 * Cannot be written to from RESTRICTEDROOT environments.
+		 */
+		error = 0;
+		if (ap->a_oflags & FWRITE) {
+			error = caps_priv_check(ap->a_cred,
+						SYSCAP_RESTRICTEDROOT);
+		}
+		break;
 	case 6:
 		/*
 		 * /dev/kpmap can only be opened for reading.
@@ -293,7 +307,8 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 				error = uiomove(buf, (int)c, uio);
 				if (error == 0 &&
 				    seedenable &&
-				    securelevel <= 0) {
+				    securelevel <= 0)
+				{
 					error = add_buffer_randomness_src(buf, c, RAND_SRC_SEEDING);
 				} else if (error == 0) {
 					error = EPERM;

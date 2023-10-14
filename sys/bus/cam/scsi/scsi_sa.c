@@ -46,6 +46,7 @@
 #include <sys/proc.h>
 #include <sys/buf2.h>
 #endif
+#include <sys/caps.h>
 #include <sys/fcntl.h>
 #include <sys/devicestat.h>
 #include <machine/limits.h>
@@ -443,6 +444,12 @@ saopen(struct dev_open_args *ap)
 	struct sa_softc *softc;
 	int unit;
 	int error;
+
+	/*
+	 * Disallow CAM access if RESTRICTEDROOT
+	 */
+	if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
+		return (EPERM);
 
 	unit = SAUNIT(dev);
 

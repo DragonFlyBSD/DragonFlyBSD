@@ -76,6 +76,7 @@
 #include <sys/malloc.h>
 #include <sys/fcntl.h>
 #include <sys/conf.h>
+#include <sys/caps.h>
 #include <sys/buf.h>
 #include <sys/chio.h>
 #include <sys/errno.h>
@@ -388,6 +389,12 @@ chopen(struct dev_open_args *ap)
 	struct cam_periph *periph;
 	struct ch_softc *softc;
 	int unit, error;
+
+	/*
+	 * Disallow CAM access if RESTRICTEDROOT
+	 */
+	if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
+		return (EPERM);
 
 	unit = CHUNIT(dev);
 	periph = cam_extend_get(chperiphs, unit);

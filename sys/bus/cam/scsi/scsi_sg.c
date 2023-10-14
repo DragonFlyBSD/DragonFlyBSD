@@ -29,12 +29,13 @@
  * SG passthrough interface for SCSI.
  */
 
-#include <sys/conf.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/types.h>
 #include <sys/bio.h>
+#include <sys/caps.h>
+#include <sys/conf.h>
 #include <sys/malloc.h>
 #include <sys/fcntl.h>
 #include <sys/errno.h>
@@ -377,6 +378,12 @@ sgopen(struct dev_open_args *ap)
 	struct cam_periph *periph;
 	struct sg_softc *softc;
 	int error = 0;
+
+	/*
+	 * Disallow CAM access if RESTRICTEDROOT
+	 */
+	if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
+		return (EPERM);
 
 	periph = (struct cam_periph *)ap->a_head.a_dev->si_drv1;
 	if (periph == NULL)

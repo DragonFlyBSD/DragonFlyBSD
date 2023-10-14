@@ -54,6 +54,7 @@
 #include <sys/buf.h>
 #include <sys/conf.h>
 #include <sys/disk.h>
+#include <sys/caps.h>
 #include <sys/dtype.h>
 #include <sys/malloc.h>
 #include <sys/cdio.h>
@@ -998,6 +999,12 @@ cdopen(struct dev_open_args *ap)
 	struct cam_periph *periph;
 	struct cd_softc *softc;
 	int unit, error;
+
+	/*
+	 * Disallow CAM access if RESTRICTEDROOT
+	 */
+	if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
+		return (EPERM);
 
 	unit = dkunit(dev);
 	periph = cam_extend_get(cdperiphs, unit);

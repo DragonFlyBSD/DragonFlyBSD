@@ -34,6 +34,7 @@
 #include <sys/devfs.h>
 
 #include <sys/param.h>
+#include <sys/caps.h>
 #include <sys/conf.h>
 #include <sys/filio.h>
 #include <sys/fcntl.h>
@@ -102,6 +103,12 @@ evdev_open(struct dev_open_args *ap)
 	struct evdev_client *client;
 	size_t buffer_size;
 	int ret;
+
+	/*
+	 * Disallow access to disk volumes if RESTRICTEDROOT
+	 */
+	if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
+		return (EPERM);
 
 	if (evdev == NULL)
 		return (ENODEV);

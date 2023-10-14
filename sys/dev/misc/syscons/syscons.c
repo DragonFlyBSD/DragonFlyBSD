@@ -41,6 +41,7 @@
 #include <sys/systm.h>
 #include <sys/eventhandler.h>
 #include <sys/reboot.h>
+#include <sys/caps.h>
 #include <sys/conf.h>
 #include <sys/proc.h>
 #include <sys/caps.h>
@@ -706,6 +707,12 @@ scopen(struct dev_open_args *ap)
     scr_stat *scp;
     keyarg_t key;
     int error;
+
+    /*
+     * Disallow access to disk volumes if RESTRICTEDROOT
+     */
+    if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
+	return (EPERM);
 
     lwkt_gettoken(&vga_token);
     unit = scdevtounit(dev);

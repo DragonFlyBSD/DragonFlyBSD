@@ -38,6 +38,7 @@
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
 #include <sys/lock.h>
+#include <sys/caps.h>
 #include <sys/conf.h>
 #include <sys/devicestat.h>
 #include <sys/disk.h>
@@ -497,6 +498,12 @@ daopen(struct dev_open_args *ap)
 	struct disk_info info;
 	int unit;
 	int error;
+
+	/*
+	 * Disallow CAM access if RESTRICTEDROOT
+	 */
+	if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
+		return (EPERM);
 
 	unit = dkunit(dev);
 	periph = cam_extend_get(daperiphs, unit);

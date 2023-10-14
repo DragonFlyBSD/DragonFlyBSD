@@ -33,6 +33,7 @@
 #include <sys/systm.h>
 #include <sys/uio.h>
 #include <sys/kernel.h>
+#include <sys/caps.h>
 #include <sys/conf.h>
 #include <sys/device.h>
 #include <sys/malloc.h>
@@ -170,9 +171,14 @@ targopen(struct dev_open_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct targ_softc *softc;
 
-	if (dev->si_drv1 != 0) {
+	/*
+	 * Disallow CAM access if RESTRICTEDROOT
+	 */
+	if (caps_priv_check_self(SYSCAP_RESTRICTEDROOT))
+		return (EPERM);
+
+	if (dev->si_drv1 != 0)
 		return (EBUSY);
-	}
 	
 	/* Mark device busy before any potentially blocking operations */
 	dev->si_drv1 = (void *)~0;
