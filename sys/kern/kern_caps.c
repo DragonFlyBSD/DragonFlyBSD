@@ -329,7 +329,7 @@ caps_priv_check(struct ucred *cred, int cap)
 	}
 	if (res & __SYSCAP_SELF)
 		return EPERM;
-	return 0;
+	return (prison_priv_check(cred, cap));
 }
 
 int
