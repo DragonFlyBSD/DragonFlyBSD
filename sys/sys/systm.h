@@ -295,6 +295,7 @@ void	*_memmove(void *, const void *, size_t);
 void	*_memset(void *, int, size_t);
 void	_bzero(volatile void *buf, size_t len) __nonnull(1);
 void	bzeront(volatile void *buf, size_t len) __nonnull(1);
+void	explicit_bzero(void *buf, size_t len) __nonnull(1);
 
 long	kreadmem64(const void *addr);
 
@@ -365,7 +366,7 @@ typedef void timeout_t (void *);	/* timeout function type */
 
 /* Interrupt management */
 
-/* 
+/*
  * For the alpha arch, some of these functions are static __inline, and
  * the others should be.
  */
@@ -406,7 +407,7 @@ int	rm_at_fork (forklist_fn function);
 
 extern struct globaldata	*panic_cpu_gd;
 
-/* 
+/*
  * Common `proc' functions are declared here so that proc.h can be included
  * less often.
  */

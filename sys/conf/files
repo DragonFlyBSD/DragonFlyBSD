@@ -2190,6 +2190,7 @@ libkern/arc4random.c			standard
 libkern/bcd.c				standard
 libkern/bsearch.c			standard
 libkern/crc32.c				standard
+libkern/explicit_bzero.c		standard
 libkern/icrc32.c			standard
 libkern/linux_idr.c			standard
 libkern/index.c				standard
