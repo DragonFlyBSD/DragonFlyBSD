@@ -318,8 +318,11 @@ caps_priv_check(struct ucred *cred, int cap)
 		return EPERM;
 	}
 
-	/* uid must be 0 */
-	if (cred->cr_uid != 0)
+	/*
+	 * Uid must be 0 unless NOROOTTEST is requested.  If requested
+	 * it means the caller is depending on e.g. /dev/blah perms.
+	 */
+	if (cred->cr_uid != 0 && (cap & __SYSCAP_NOROOTTEST) == 0)
 		return EPERM;
 
 	res = caps_check_cred(cred, cap);

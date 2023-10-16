@@ -149,7 +149,8 @@ mmopen(struct dev_open_args *ap)
 		/*
 		 * /dev/mem and /dev/kmem
 		 */
-		error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT);
+		error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT |
+						    __SYSCAP_NOROOTTEST);
 		if (error == 0) {
 			if (ap->a_oflags & FWRITE) {
 				if (securelevel > 0 || kernel_mem_readonly)
@@ -168,7 +169,8 @@ mmopen(struct dev_open_args *ap)
 		error = 0;
 		if (ap->a_oflags & FWRITE) {
 			error = caps_priv_check(ap->a_cred,
-						SYSCAP_RESTRICTEDROOT);
+						SYSCAP_RESTRICTEDROOT |
+						__SYSCAP_NOROOTTEST);
 		}
 		break;
 	case 6:

@@ -93,6 +93,7 @@ typedef struct syscap_base {
 #define __SYSCAP_XFLAGS		0x7FFF0000	/* extra flags (in 'cap') */
 #define __SYSCAP_INPARENT	0x00010000	/* set in parent process */
 #define __SYSCAP_NULLCRED	0x00020000	/* null cred ok */
+#define __SYSCAP_NOROOTTEST	0x00040000	/* don't test uid */
 
 #define __SYSCAP_GROUP_0	0x00000000
 #define __SYSCAP_GROUP_1	0x00000010
