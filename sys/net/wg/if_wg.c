@@ -255,10 +255,17 @@ struct wg_softc {
 #define	GROUPTASK_DRAIN(gtask)			\
 	gtaskqueue_drain((gtask)->gt_taskqueue, &(gtask)->gt_task)
 
-#define BPF_MTAP2_AF(ifp, m, af) do { \
-		uint32_t __bpf_tap_af = (af); \
-		BPF_MTAP2(ifp, &__bpf_tap_af, sizeof(__bpf_tap_af), m); \
-	} while (0)
+#define BPF_MTAP_AF(_ifp, _m, _af) do { \
+	if ((_ifp)->if_bpf != NULL) { \
+		bpf_gettoken(); \
+		if ((_ifp)->if_bpf != NULL) { \
+			/* Prepend the AF as a 4-byte field for DLT_NULL. */ \
+			uint32_t __bpf_af = (uint32_t)(_af); \
+			bpf_ptap((_ifp)->if_bpf, (_m), &__bpf_af, 4); \
+		} \
+		bpf_reltoken(); \
+	} \
+} while (0)
 
 static volatile unsigned long peer_counter = 0;
 
@@ -1688,7 +1695,7 @@ wg_deliver_in(struct wg_peer *peer)
 		m->m_pkthdr.rcvif = ifp;
 
 		NET_EPOCH_ENTER(et);
-		BPF_MTAP2_AF(ifp, m, pkt->p_af);
+		BPF_MTAP_AF(ifp, m, pkt->p_af);
 
 		if (pkt->p_af == AF_INET)
 			netisr_dispatch(NETISR_IP, m);
@@ -2082,7 +2089,7 @@ wg_xmit(if_t ifp, struct mbuf *m, sa_family_t af, uint32_t mtu)
 		goto err_xmit;
 	}
 
-	BPF_MTAP2_AF(ifp, m, pkt->p_af);
+	BPF_MTAP_AF(ifp, m, pkt->p_af);
 
 	if (__predict_false(peer == NULL)) {
 		rc = ENOKEY;
