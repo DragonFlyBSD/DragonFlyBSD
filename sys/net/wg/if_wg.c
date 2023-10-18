@@ -35,6 +35,7 @@
 #include <net/if_clone.h>
 #include <net/if_types.h>
 #include <net/if_var.h>
+#include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/radix.h>
 #include <netinet/in.h>
@@ -65,7 +66,9 @@
 #define NEW_HANDSHAKE_TIMEOUT	(REKEY_TIMEOUT + KEEPALIVE_TIMEOUT)
 #define UNDERLOAD_TIMEOUT	1
 
-#define DPRINTF(sc, ...) if (if_getflags(sc->sc_ifp) & IFF_DEBUG) if_printf(sc->sc_ifp, ##__VA_ARGS__)
+#define DPRINTF(sc, ...)	\
+	if (sc->sc_ifp->if_flags & IFF_DEBUG) \
+		if_printf(sc->sc_ifp, ##__VA_ARGS__)
 
 /* First byte indicating packet type on the wire */
 #define WG_PKT_INITIATION htole32(1)
@@ -216,7 +219,7 @@ struct wg_socket {
 
 struct wg_softc {
 	LIST_ENTRY(wg_softc)	 sc_entry;
-	if_t			 sc_ifp;
+	struct ifnet		*sc_ifp;
 	int			 sc_flags;
 
 	struct ucred		*sc_ucred;
@@ -363,19 +366,17 @@ static struct wg_packet *wg_queue_dequeue_serial(struct wg_queue *);
 static struct wg_packet *wg_queue_dequeue_parallel(struct wg_queue *);
 static bool wg_input(struct mbuf *, int, struct inpcb *, const struct sockaddr *, void *);
 static void wg_peer_send_staged(struct wg_peer *);
-static void wg_qflush(if_t);
 static inline int determine_af_and_pullup(struct mbuf **m, sa_family_t *af);
-static int wg_xmit(if_t, struct mbuf *, sa_family_t, uint32_t);
-static int wg_transmit(if_t, struct mbuf *);
-static int wg_output(if_t, struct mbuf *, const struct sockaddr *, struct route *);
+static int wg_xmit(struct ifnet *, struct mbuf *, sa_family_t, uint32_t);
+static int wg_transmit(struct ifnet *, struct mbuf *);
+static int wg_output(struct ifnet *, struct mbuf *, const struct sockaddr *, struct rtentry *);
 static bool wgc_privileged(struct wg_softc *);
 static int wgc_get(struct wg_softc *, struct wg_data_io *);
 static int wgc_set(struct wg_softc *, struct wg_data_io *);
 static int wg_up(struct wg_softc *);
 static void wg_down(struct wg_softc *);
-static void wg_reassign(if_t, struct vnet *, char *unused);
 static void wg_init(void *);
-static int wg_ioctl(if_t, u_long, caddr_t);
+static int wg_ioctl(struct ifnet *, u_long, caddr_t);
 static int wg_module_init(void);
 static int wg_module_deinit(void);
 
@@ -1660,7 +1661,7 @@ static void
 wg_deliver_in(struct wg_peer *peer)
 {
 	struct wg_softc		*sc = peer->p_sc;
-	if_t			 ifp = sc->sc_ifp;
+	struct ifnet		*ifp = sc->sc_ifp;
 	struct wg_packet	*pkt;
 	struct mbuf		*m;
 	struct epoch_tracker	 et;
@@ -2031,7 +2032,7 @@ error:
 }
 
 static inline void
-xmit_err(if_t ifp, struct mbuf *m, struct wg_packet *pkt, sa_family_t af)
+xmit_err(struct ifnet *ifp, struct mbuf *m, struct wg_packet *pkt, sa_family_t af)
 {
 	IFNET_STAT_INC(ifp, oerrors, 1);
 	switch (af) {
@@ -2059,19 +2060,13 @@ xmit_err(if_t ifp, struct mbuf *m, struct wg_packet *pkt, sa_family_t af)
 }
 
 static int
-wg_xmit(if_t ifp, struct mbuf *m, sa_family_t af, uint32_t mtu)
+wg_xmit(struct ifnet *ifp, struct mbuf *m, sa_family_t af, uint32_t mtu)
 {
 	struct wg_packet	*pkt = NULL;
-	struct wg_softc		*sc = if_getsoftc(ifp);
+	struct wg_softc		*sc = ifp->if_softc;
 	struct wg_peer		*peer;
 	int			 rc = 0;
 	sa_family_t		 peer_af;
-
-	/* Work around lifetime issue in the ipv6 mld code. */
-	if (__predict_false((if_getflags(ifp) & IFF_DYING) || !sc)) {
-		rc = ENXIO;
-		goto err_xmit;
-	}
 
 	if ((pkt = wg_packet_alloc(m)) == NULL) {
 		rc = ENOBUFS;
@@ -2145,7 +2140,7 @@ determine_af_and_pullup(struct mbuf **m, sa_family_t *af)
 }
 
 static int
-wg_transmit(if_t ifp, struct mbuf *m)
+wg_transmit(struct ifnet *ifp, struct mbuf *m)
 {
 	sa_family_t af;
 	int ret;
@@ -2165,11 +2160,11 @@ wg_transmit(if_t ifp, struct mbuf *m)
 		xmit_err(ifp, m, NULL, AF_UNSPEC);
 		return (ret);
 	}
-	return (wg_xmit(ifp, m, af, if_getmtu(ifp)));
+	return (wg_xmit(ifp, m, af, ifp->if_mtu));
 }
 
 static int
-wg_output(if_t ifp, struct mbuf *m, const struct sockaddr *dst, struct route *ro)
+wg_output(struct ifnet *ifp, struct mbuf *m, const struct sockaddr *dst, struct rtentry *rt)
 {
 	sa_family_t parsed_af;
 	uint32_t af, mtu;
@@ -2203,7 +2198,7 @@ wg_output(if_t ifp, struct mbuf *m, const struct sockaddr *dst, struct route *ro
 		xmit_err(ifp, m, NULL, AF_UNSPEC);
 		return (EAFNOSUPPORT);
 	}
-	mtu = (ro != NULL && ro->ro_mtu > 0) ? ro->ro_mtu : if_getmtu(ifp);
+	mtu = (ro != NULL && ro->ro_mtu > 0) ? ro->ro_mtu : ifp->if_mtu;
 	return (wg_xmit(ifp, m, parsed_af, mtu));
 }
 
@@ -2313,7 +2308,7 @@ wg_peer_add(struct wg_softc *sc, const nvlist_t *nvl)
 			goto out;
 		TAILQ_INSERT_TAIL(&sc->sc_peers, peer, p_entry);
 		sc->sc_peers_num++;
-		if (if_getlinkstate(sc->sc_ifp) == LINK_STATE_UP)
+		if (sc->sc_ifp->if_link_state == LINK_STATE_UP)
 			wg_timers_enable(peer);
 	}
 	if (remote != NULL)
@@ -2331,7 +2326,7 @@ static int
 wgc_set(struct wg_softc *sc, struct wg_data_io *wgd)
 {
 	uint8_t public[WG_KEY_SIZE], private[WG_KEY_SIZE];
-	if_t ifp;
+	struct ifnet *ifp;
 	void *nvlpacked;
 	nvlist_t *nvl;
 	ssize_t size;
@@ -2367,7 +2362,7 @@ wgc_set(struct wg_softc *sc, struct wg_data_io *wgd)
 			goto out_locked;
 		}
 		if (new_port != sc->sc_socket.so_port) {
-			if ((if_getdrvflags(ifp) & IFF_DRV_RUNNING) != 0) {
+			if ((ifp->if_flags & IFF_RUNNING) != 0) {
 				if ((err = wg_socket_init(sc, new_port)) != 0)
 					goto out_locked;
 			} else
@@ -2575,7 +2570,7 @@ err:
 }
 
 static int
-wg_ioctl(if_t ifp, u_long cmd, caddr_t data)
+wg_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 {
 	struct wg_data_io *wgd = (struct wg_data_io *)data;
 	struct ifreq *ifr = (struct ifreq *)data;
@@ -2583,7 +2578,7 @@ wg_ioctl(if_t ifp, u_long cmd, caddr_t data)
 	int ret = 0;
 
 	lockmgr(&wg_lock, LK_SHARED);
-	sc = if_getsoftc(ifp);
+	sc = ifp->if_softc;
 	if (!sc) {
 		ret = ENXIO;
 		goto out;
@@ -2606,7 +2601,7 @@ wg_ioctl(if_t ifp, u_long cmd, caddr_t data)
 		 */
 		break;
 	case SIOCSIFFLAGS:
-		if (if_getflags(ifp) & IFF_UP)
+		if (ifp->if_flags & IFF_UP)
 			ret = wg_up(sc);
 		else
 			wg_down(sc);
@@ -2615,7 +2610,7 @@ wg_ioctl(if_t ifp, u_long cmd, caddr_t data)
 		if (ifr->ifr_mtu <= 0 || ifr->ifr_mtu > MAX_MTU)
 			ret = EINVAL;
 		else
-			if_setmtu(ifp, ifr->ifr_mtu);
+			ifp->if_mtu = ifr->ifr_mtu;
 		break;
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
@@ -2632,7 +2627,7 @@ out:
 static int
 wg_up(struct wg_softc *sc)
 {
-	if_t ifp = sc->sc_ifp;
+	struct ifnet *ifp = sc->sc_ifp;
 	struct wg_peer *peer;
 	int rc = EBUSY;
 
@@ -2644,17 +2639,18 @@ wg_up(struct wg_softc *sc)
 
 	/* Silent success if we're already running. */
 	rc = 0;
-	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING)
+	if (ifp->if_flags & IFF_RUNNING)
 		goto out;
-	if_setdrvflagbits(ifp, IFF_DRV_RUNNING, 0);
+	ifp->if_flags |= IFF_RUNNING;
 
 	rc = wg_socket_init(sc, sc->sc_socket.so_port);
 	if (rc == 0) {
 		TAILQ_FOREACH(peer, &sc->sc_peers, p_entry)
 			wg_timers_enable(peer);
-		if_link_state_change(sc->sc_ifp, LINK_STATE_UP);
+		ifp->if_link_state = LINK_STATE_UP;
+		if_link_state_change(ifp);
 	} else {
-		if_setdrvflagbits(ifp, 0, IFF_DRV_RUNNING);
+		ifp->if_flags &= ~IFF_RUNNING;
 		DPRINTF(sc, "Unable to initialize sockets: %d\n", rc);
 	}
 out:
@@ -2665,15 +2661,15 @@ out:
 static void
 wg_down(struct wg_softc *sc)
 {
-	if_t ifp = sc->sc_ifp;
+	struct ifnet *ifp = sc->sc_ifp;
 	struct wg_peer *peer;
 
 	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
-	if (!(if_getdrvflags(ifp) & IFF_DRV_RUNNING)) {
+	if ((ifp->if_flags & IFF_RUNNING) == 0) {
 		lockmgr(&sc->sc_lock, LK_RELEASE);
 		return;
 	}
-	if_setdrvflagbits(ifp, 0, IFF_DRV_RUNNING);
+	ifp->if_flags &= ~IFF_RUNNING;
 
 	TAILQ_FOREACH(peer, &sc->sc_peers, p_entry) {
 		wg_queue_purge(&peer->p_stage_queue);
@@ -2687,7 +2683,8 @@ wg_down(struct wg_softc *sc)
 		noise_remote_keypairs_clear(peer->p_remote);
 	}
 
-	if_link_state_change(sc->sc_ifp, LINK_STATE_DOWN);
+	ifp->if_link_state = LINK_STATE_DOWN;
+	if_link_state_change(ifp);
 	wg_socket_uninit(sc);
 
 	lockmgr(&sc->sc_lock, LK_RELEASE);
@@ -2746,25 +2743,22 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 
 	lockinit(&sc->sc_lock, "wg softc lock", 0, 0);
 
-	if_setsoftc(ifp, sc);
-	if_setcapabilities(ifp, WG_CAPS);
-	if_setcapenable(ifp, WG_CAPS);
 	if_initname(ifp, wgname, unit);
+	ifp->if_softc = sc;
+	ifp->if_capabilities = WG_CAPS;
+	ifp->if_capenable = WG_CAPS;
+	ifp->if_mtu = DEFAULT_MTU;
+	ifp->if_flags = IFF_NOARP | IFF_MULTICAST;
+	ifp->if_init = wg_init;
+	ifp->if_output = wg_output;
+	ifp->if_start = wg_start; /* TODO(ALY) */
+	ifp->if_ioctl = wg_ioctl;
+	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
+	ifq_set_ready(&ifp->if_snd);
 
-	if_setmtu(ifp, DEFAULT_MTU);
-	if_setflags(ifp, IFF_NOARP | IFF_MULTICAST);
-	if_setinitfn(ifp, wg_init);
-	if_setreassignfn(ifp, wg_reassign);
-	if_setqflushfn(ifp, wg_qflush);
-	if_settransmitfn(ifp, wg_transmit);
-	if_setoutputfn(ifp, wg_output);
-	if_setioctlfn(ifp, wg_ioctl);
-	if_attach(ifp);
+	if_attach(ifp, NULL);
 	bpfattach(ifp, DLT_NULL, sizeof(uint32_t));
-#ifdef INET6
-	ND_IFINFO(ifp)->flags &= ~ND6_IFF_AUTO_LINKLOCAL;
-	ND_IFINFO(ifp)->flags |= ND6_IFF_NO_DAD;
-#endif
+
 	lockmgr(&wg_lock, LK_EXCLUSIVE);
 	LIST_INSERT_HEAD(&wg_list, sc, sc_entry);
 	lockmgr(&wg_lock, LK_RELEASE);
@@ -2792,11 +2786,11 @@ wg_clone_deferred_free(struct noise_local *l)
 static int
 wg_clone_destroy(struct ifnet *ifp)
 {
-	struct wg_softc *sc = if_getsoftc(ifp);
+	struct wg_softc *sc = ifp->if_softc;
 	struct ucred *cred;
 
 	lockmgr(&wg_lock, LK_EXCLUSIVE);
-	if_setsoftc(ifp, NULL);
+	ifp->if_softc = NULL;
 	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	sc->sc_flags |= WGF_DYING;
 	cred = sc->sc_ucred;
@@ -2805,8 +2799,9 @@ wg_clone_destroy(struct ifnet *ifp)
 	LIST_REMOVE(sc, sc_entry);
 	lockmgr(&wg_lock, LK_RELEASE);
 
-	if_link_state_change(sc->sc_ifp, LINK_STATE_DOWN);
-	if_purgeaddrs(sc->sc_ifp);
+	ifp->if_link_state = LINK_STATE_DOWN;
+	if_link_state_change(ifp);
+	if_purgeaddrs_nolink(ifp);
 
 	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	wg_socket_uninit(sc);
@@ -2854,11 +2849,6 @@ wg_clone_destroy(struct ifnet *ifp)
 	return (0);
 }
 
-static void
-wg_qflush(if_t ifp __unused)
-{
-}
-
 /*
  * Privileged information (private-key, preshared-key) are only exported for
  * root by default.
@@ -2870,16 +2860,6 @@ wgc_privileged(struct wg_softc *sc)
 
 	td = curthread;
 	return (priv_check(td, PRIV_NET_WG) == 0);
-}
-
-static void
-wg_reassign(if_t ifp, struct vnet *new_vnet __unused,
-    char *unused __unused)
-{
-	struct wg_softc *sc;
-
-	sc = if_getsoftc(ifp);
-	wg_down(sc);
 }
 
 static void
