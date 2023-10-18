@@ -490,7 +490,7 @@ wg_peer_destroy_all(struct wg_softc *sc)
 static void
 wg_peer_set_endpoint(struct wg_peer *peer, struct wg_endpoint *e)
 {
-	MPASS(e->e_remote.r_sa.sa_family != 0);
+	KKASSERT(e->e_remote.r_sa.sa_family != 0);
 	if (memcmp(e, &peer->p_endpoint, sizeof(*e)) == 0)
 		return;
 
@@ -680,7 +680,7 @@ wg_socket_init(struct wg_softc *sc, in_port_t port)
 	 * udp_set_kernel_tunneling can only fail if there is already a tunneling function set.
 	 * This should never happen with a new socket.
 	 */
-	MPASS(rc == 0);
+	KKASSERT(rc == 0);
 #endif
 
 #ifdef INET6
@@ -688,7 +688,7 @@ wg_socket_init(struct wg_softc *sc, in_port_t port)
 	if (rc)
 		goto out;
 	rc = udp_set_kernel_tunneling(so6, wg_input, NULL, sc);
-	MPASS(rc == 0);
+	KKASSERT(rc == 0);
 #endif
 
 	if (sc->sc_socket.so_user_cookie) {
@@ -1689,7 +1689,7 @@ wg_deliver_in(struct wg_peer *peer)
 		if (m->m_pkthdr.len == 0)
 			goto done;
 
-		MPASS(pkt->p_af == AF_INET || pkt->p_af == AF_INET6);
+		KKASSERT(pkt->p_af == AF_INET || pkt->p_af == AF_INET6);
 		pkt->p_mbuf = NULL;
 
 		m->m_pkthdr.rcvif = ifp;
