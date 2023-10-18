@@ -1669,7 +1669,6 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	hammer2_inode_lock(dip, 0);
 	nip = hammer2_inode_create_normal(dip, ap->a_vap, ap->a_cred,
 					  inum, &error);
-
 	if (error) {
 		error = hammer2_error_to_errno(error);
 	} else {
@@ -1749,7 +1748,9 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	hammer2_inode_lock(dip, 0);
 	nip = hammer2_inode_create_normal(dip, ap->a_vap, ap->a_cred,
 					  inum, &error);
-	if (error == 0) {
+	if (error) {
+		error = hammer2_error_to_errno(error);
+	} else {
 		error = hammer2_dirent_create(dip, name, name_len,
 					      nip->meta.inum, nip->meta.type);
 	}
@@ -1829,7 +1830,9 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	hammer2_inode_lock(dip, 0);
 	nip = hammer2_inode_create_normal(dip, ap->a_vap, ap->a_cred,
 					  inum, &error);
-	if (error == 0) {
+	if (error) {
+		error = hammer2_error_to_errno(error);
+	} else {
 		error = hammer2_dirent_create(dip, name, name_len,
 					      nip->meta.inum, nip->meta.type);
 	}
