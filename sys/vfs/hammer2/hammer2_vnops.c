@@ -1447,9 +1447,8 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	inum = hammer2_trans_newinum(dip->pmp);
 
 	/*
-	 * Create the actual inode as a hidden file in the iroot, then
-	 * create the directory entry.  The creation of the actual inode
-	 * sets its nlinks to 1 which is the value we desire.
+	 * Create the directory as an inode and then create the directory
+	 * entry.
 	 *
 	 * dip must be locked before nip to avoid deadlock.
 	 */
@@ -1660,9 +1659,8 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	inum = hammer2_trans_newinum(dip->pmp);
 
 	/*
-	 * Create the actual inode as a hidden file in the iroot, then
-	 * create the directory entry.  The creation of the actual inode
-	 * sets its nlinks to 1 which is the value we desire.
+	 * Create the regular file as an inode and then create the directory
+	 * entry.
 	 *
 	 * dip must be locked before nip to avoid deadlock.
 	 */
