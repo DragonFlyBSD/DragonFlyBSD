@@ -1585,12 +1585,6 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 */
 	KKASSERT((ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0);
 
-	error = 0;
-
-	/*
-	 * Can return NULL and error == EXDEV if the common parent
-	 * crosses a directory with the xlink flag set.
-	 */
 	hammer2_inode_lock4(tdip, ip, NULL, NULL);
 
 	hammer2_update_time(&cmtime);
@@ -1599,13 +1593,11 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 * Create the directory entry and bump nlinks.
 	 * Also update ip's ctime.
 	 */
-	if (error == 0) {
-		error = hammer2_dirent_create(tdip, name, name_len,
-					      ip->meta.inum, ip->meta.type);
-		hammer2_inode_modify(ip);
-		++ip->meta.nlinks;
-		ip->meta.ctime = cmtime;
-	}
+	error = hammer2_dirent_create(tdip, name, name_len,
+				      ip->meta.inum, ip->meta.type);
+	hammer2_inode_modify(ip);
+	++ip->meta.nlinks;
+	ip->meta.ctime = cmtime;
 	if (error == 0) {
 		/*
 		 * Update dip's [cm]time
@@ -2150,9 +2142,6 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		hammer2_inode_ref(tip);	/* extra ref */
 
 	/*
-	 * Can return NULL and error == EXDEV if the common parent
-	 * crosses a directory with the xlink flag set.
-	 *
 	 * For now try to avoid deadlocks with a simple pointer address
 	 * test.  (tip) can be NULL.
 	 */
