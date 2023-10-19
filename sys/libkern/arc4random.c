@@ -8,7 +8,6 @@
  * Dan Moschuk
  *
  * $FreeBSD: src/sys/libkern/arc4random.c,v 1.3.2.2 2001/09/17 07:06:50 silby Exp $
- * $DragonFly: src/sys/libkern/arc4random.c,v 1.3 2006/09/03 17:31:55 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -43,7 +42,7 @@ arc4_swap(uint8_t *a, uint8_t *b)
 	c = *a;
 	*a = *b;
 	*b = c;
-}	
+}
 
 /*
  * Stir our S-box.
@@ -160,6 +159,12 @@ karc4rand(void *ptr, size_t len)
 #if 0
 	crit_exit();
 #endif
+}
+
+void
+karc4random_buf(void *ptr, size_t len)
+{
+	karc4rand(ptr, len);
 }
 
 /*
