@@ -291,8 +291,6 @@ static int wg_clone_destroy(struct ifnet *ifp);
 static struct if_clone wg_cloner = IF_CLONE_INITIALIZER(
 	wgname, wg_clone_create, wg_clone_destroy, 0, IF_MAXUNIT);
 
-#define	WG_CAPS		IFCAP_LINKSTATE
-
 struct wg_timespec64 {
 	uint64_t	tv_sec;
 	uint64_t	tv_nsec;
@@ -2745,8 +2743,6 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 
 	if_initname(ifp, wgname, unit);
 	ifp->if_softc = sc;
-	ifp->if_capabilities = WG_CAPS;
-	ifp->if_capenable = WG_CAPS;
 	ifp->if_mtu = DEFAULT_MTU;
 	ifp->if_flags = IFF_NOARP | IFF_MULTICAST;
 	ifp->if_init = wg_init;
