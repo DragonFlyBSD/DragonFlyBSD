@@ -148,7 +148,7 @@ cookie_checker_create_payload(struct cookie_checker *cc,
 	uint8_t cookie[COOKIE_COOKIE_SIZE];
 
 	make_cookie(cc, cookie, sa);
-	arc4random_buf(nonce, COOKIE_NONCE_SIZE);
+	karc4random_buf(nonce, COOKIE_NONCE_SIZE);
 
 	lockmgr(&cc->cc_key_lock, LK_SHARED);
 	xchacha20poly1305_encrypt(ecookie, cookie, COOKIE_COOKIE_SIZE,
@@ -317,7 +317,7 @@ make_cookie(struct cookie_checker *cc, uint8_t cookie[COOKIE_COOKIE_SIZE],
 	lockmgr(&cc->cc_secret_mtx, LK_EXCLUSIVE);
 	if (timer_expired(cc->cc_secret_birthdate,
 	    COOKIE_SECRET_MAX_AGE, 0)) {
-		arc4random_buf(cc->cc_secret, COOKIE_SECRET_SIZE);
+		karc4random_buf(cc->cc_secret, COOKIE_SECRET_SIZE);
 		cc->cc_secret_birthdate = getsbinuptime();
 	}
 	blake2s_init_key(&state, COOKIE_COOKIE_SIZE, cc->cc_secret,
@@ -339,7 +339,7 @@ make_cookie(struct cookie_checker *cc, uint8_t cookie[COOKIE_COOKIE_SIZE],
 		blake2s_final(&state, cookie);
 #endif
 	} else {
-		arc4random_buf(cookie, COOKIE_COOKIE_SIZE);
+		karc4random_buf(cookie, COOKIE_COOKIE_SIZE);
 	}
 }
 
@@ -349,7 +349,7 @@ ratelimit_init(struct ratelimit *rl)
 	size_t i;
 	lockinit(&rl->rl_mtx, "ratelimit_lock", 0, 0);
 	callout_init_mtx(&rl->rl_gc, &rl->rl_mtx, 0);
-	arc4random_buf(rl->rl_secret, sizeof(rl->rl_secret));
+	karc4random_buf(rl->rl_secret, sizeof(rl->rl_secret));
 	for (i = 0; i < RATELIMIT_SIZE; i++)
 		LIST_INIT(&rl->rl_table[i]);
 	rl->rl_table_num = 0;

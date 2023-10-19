@@ -188,7 +188,7 @@ noise_local_alloc(void *arg)
 	bzero(l->l_private, NOISE_PUBLIC_KEY_LEN);
 
 	refcount_init(&l->l_refcnt, 1);
-	arc4random_buf(l->l_hash_key, sizeof(l->l_hash_key));
+	karc4random_buf(l->l_hash_key, sizeof(l->l_hash_key));
 	l->l_arg = arg;
 	l->l_cleanup = NULL;
 
@@ -383,7 +383,7 @@ noise_remote_index_insert(struct noise_local *l, struct noise_remote *r)
 
 	NET_EPOCH_ENTER(et);
 assign_id:
-	r_i->i_local_index = arc4random();
+	r_i->i_local_index = karc4random();
 	idx = r_i->i_local_index & HT_INDEX_MASK;
 	LIST_FOREACH(i, &l->l_index_hash[idx], i_entry) {
 		if (i->i_local_index == r_i->i_local_index)

@@ -976,7 +976,7 @@ wg_timers_event_data_sent(struct wg_peer *peer)
 	    !callout_pending(&peer->p_new_handshake))
 		callout_reset(&peer->p_new_handshake, MSEC_2_TICKS(
 		    NEW_HANDSHAKE_TIMEOUT * 1000 +
-		    arc4random_uniform(REKEY_TIMEOUT_JITTER)),
+		    karc4random_uniform(REKEY_TIMEOUT_JITTER)),
 		    wg_timers_run_new_handshake, peer);
 	NET_EPOCH_EXIT(et);
 }
@@ -1032,7 +1032,7 @@ wg_timers_event_handshake_initiated(struct wg_peer *peer)
 	if (atomic_load_bool(&peer->p_enabled))
 		callout_reset(&peer->p_retry_handshake, MSEC_2_TICKS(
 		    REKEY_TIMEOUT * 1000 +
-		    arc4random_uniform(REKEY_TIMEOUT_JITTER)),
+		    karc4random_uniform(REKEY_TIMEOUT_JITTER)),
 		    wg_timers_run_retry_handshake, peer);
 	NET_EPOCH_EXIT(et);
 }
