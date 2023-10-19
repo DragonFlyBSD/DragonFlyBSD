@@ -38,6 +38,7 @@
 #include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/radix.h>
+#include <net/route.h> /* struct rtentry */
 #include <netinet/in.h>
 #include <netinet6/in6_var.h>
 #include <netinet/ip.h>
@@ -365,9 +366,7 @@ static struct wg_packet *wg_queue_dequeue_parallel(struct wg_queue *);
 static bool wg_input(struct mbuf *, int, struct inpcb *, const struct sockaddr *, void *);
 static void wg_peer_send_staged(struct wg_peer *);
 static inline int determine_af_and_pullup(struct mbuf **m, sa_family_t *af);
-static int wg_xmit(struct ifnet *, struct mbuf *, sa_family_t, uint32_t);
-static int wg_transmit(struct ifnet *, struct mbuf *);
-static int wg_output(struct ifnet *, struct mbuf *, const struct sockaddr *, struct rtentry *);
+static int wg_output(struct ifnet *, struct mbuf *, struct sockaddr *, struct rtentry *);
 static bool wgc_privileged(struct wg_softc *);
 static int wgc_get(struct wg_softc *, struct wg_data_io *);
 static int wgc_set(struct wg_softc *, struct wg_data_io *);
@@ -2057,64 +2056,6 @@ xmit_err(struct ifnet *ifp, struct mbuf *m, struct wg_packet *pkt, sa_family_t a
 		m_freem(m);
 }
 
-static int
-wg_xmit(struct ifnet *ifp, struct mbuf *m, sa_family_t af, uint32_t mtu)
-{
-	struct wg_packet	*pkt = NULL;
-	struct wg_softc		*sc = ifp->if_softc;
-	struct wg_peer		*peer;
-	int			 rc = 0;
-	sa_family_t		 peer_af;
-
-	if ((pkt = wg_packet_alloc(m)) == NULL) {
-		rc = ENOBUFS;
-		goto err_xmit;
-	}
-	pkt->p_mtu = mtu;
-	pkt->p_af = af;
-
-	if (af == AF_INET) {
-		peer = wg_aip_lookup(sc, AF_INET, &mtod(m, struct ip *)->ip_dst);
-	} else if (af == AF_INET6) {
-		peer = wg_aip_lookup(sc, AF_INET6, &mtod(m, struct ip6_hdr *)->ip6_dst);
-	} else {
-		rc = EAFNOSUPPORT;
-		goto err_xmit;
-	}
-
-	BPF_MTAP_AF(ifp, m, pkt->p_af);
-
-	if (__predict_false(peer == NULL)) {
-		rc = ENOKEY;
-		goto err_xmit;
-	}
-
-	if (__predict_false(if_tunnel_check_nesting(ifp, m, MTAG_WGLOOP, MAX_LOOPS))) {
-		DPRINTF(sc, "Packet looped");
-		rc = ELOOP;
-		goto err_peer;
-	}
-
-	peer_af = peer->p_endpoint.e_remote.r_sa.sa_family;
-	if (__predict_false(peer_af != AF_INET && peer_af != AF_INET6)) {
-		DPRINTF(sc, "No valid endpoint has been configured or "
-			    "discovered for peer %" PRIu64 "\n", peer->p_id);
-		rc = EHOSTUNREACH;
-		goto err_peer;
-	}
-
-	wg_queue_push_staged(&peer->p_stage_queue, pkt);
-	wg_peer_send_staged(peer);
-	noise_remote_put(peer->p_remote);
-	return (0);
-
-err_peer:
-	noise_remote_put(peer->p_remote);
-err_xmit:
-	xmit_err(ifp, m, pkt, af);
-	return (rc);
-}
-
 static inline int
 determine_af_and_pullup(struct mbuf **m, sa_family_t *af)
 {
@@ -2138,66 +2079,109 @@ determine_af_and_pullup(struct mbuf **m, sa_family_t *af)
 }
 
 static int
-wg_transmit(struct ifnet *ifp, struct mbuf *m)
+wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst, struct rtentry *rt)
 {
-	sa_family_t af;
-	int ret;
-	struct mbuf *defragged;
+	struct wg_softc		*sc = ifp->if_softc;
+	struct wg_packet	*pkt;
+	struct wg_peer		*peer;
+	struct mbuf		*defragged;
+	sa_family_t		 af, peer_af;
+	int			 error;
 
-	defragged = m_defrag(m, M_NOWAIT);
-	if (defragged)
-		m = defragged;
-	m = m_unshare(m, M_NOWAIT);
-	if (!m) {
-		xmit_err(ifp, m, NULL, AF_UNSPEC);
-		return (ENOBUFS);
+	if (dst->sa_family == AF_UNSPEC) {
+		/*
+		 * Specially handle packets written/injected by BPF.
+		 * The packets have the same DLT_NULL link-layer type
+		 * (i.e., 4-byte link-layer header in host byte order).
+		 */
+		dst->sa_family = *(mtod(m, uint32_t *));
+		m_adj(m, sizeof(uint32_t));
 	}
-
-	ret = determine_af_and_pullup(&m, &af);
-	if (ret) {
-		xmit_err(ifp, m, NULL, AF_UNSPEC);
-		return (ret);
-	}
-	return (wg_xmit(ifp, m, af, ifp->if_mtu));
-}
-
-static int
-wg_output(struct ifnet *ifp, struct mbuf *m, const struct sockaddr *dst, struct rtentry *rt)
-{
-	sa_family_t parsed_af;
-	uint32_t af, mtu;
-	int ret;
-	struct mbuf *defragged;
-
-	if (dst->sa_family == AF_UNSPEC)
-		memcpy(&af, dst->sa_data, sizeof(af));
-	else
-		af = dst->sa_family;
-	if (af == AF_UNSPEC) {
+	if (dst->sa_family == AF_UNSPEC) {
 		xmit_err(ifp, m, NULL, af);
-		return (EAFNOSUPPORT);
+		error = EAFNOSUPPORT;
+		goto err;
 	}
+
+	BPF_MTAP_AF(ifp, m, dst->sa_family);
 
 	defragged = m_defrag(m, M_NOWAIT);
-	if (defragged)
+	if (defragged != NULL)
 		m = defragged;
+
 	m = m_unshare(m, M_NOWAIT);
-	if (!m) {
-		xmit_err(ifp, m, NULL, AF_UNSPEC);
-		return (ENOBUFS);
+	if (m == NULL) {
+		IFNET_STAT_INC(ifp, oqdrops, 1);
+		error = ENOBUFS;
+		goto err;
 	}
 
-	ret = determine_af_and_pullup(&m, &parsed_af);
-	if (ret) {
+	error = determine_af_and_pullup(&m, &af);
+	if (error) {
 		xmit_err(ifp, m, NULL, AF_UNSPEC);
-		return (ret);
+		goto err;
 	}
-	if (parsed_af != af) {
+	if (af != dst->sa_family) {
 		xmit_err(ifp, m, NULL, AF_UNSPEC);
-		return (EAFNOSUPPORT);
+		error = EAFNOSUPPORT;
+		goto err;
 	}
-	mtu = (ro != NULL && ro->ro_mtu > 0) ? ro->ro_mtu : ifp->if_mtu;
-	return (wg_xmit(ifp, m, parsed_af, mtu));
+
+	if ((pkt = wg_packet_alloc(m)) == NULL) {
+		error = ENOBUFS;
+		goto err_xmit;
+	}
+
+	pkt->p_af = af;
+	pkt->p_mtu = ifp->if_mtu;
+	if (rt != NULL && rt->rt_rmx.rmx_mtu > 0 &&
+	    rt->rt_rmx.rmx_mtu < pkt->p_mtu)
+		pkt->p_mtu = rt->rt_rmx.rmx_mtu;
+
+	if (af == AF_INET) {
+		peer = wg_aip_lookup(sc, AF_INET,
+		    &mtod(m, struct ip *)->ip_dst);
+	} else if (af == AF_INET6) {
+		peer = wg_aip_lookup(sc, AF_INET6,
+		    &mtod(m, struct ip6_hdr *)->ip6_dst);
+	} else {
+		error = EAFNOSUPPORT;
+		goto err_xmit;
+	}
+
+	if (__predict_false(peer == NULL)) {
+		error = ENOKEY;
+		goto err_xmit;
+	}
+
+	peer_af = peer->p_endpoint.e_remote.r_sa.sa_family;
+	if (__predict_false(peer_af != AF_INET && peer_af != AF_INET6)) {
+		DPRINTF(sc, "No valid endpoint has been configured or "
+			    "discovered for peer %" PRIu64 "\n", peer->p_id);
+		error = EHOSTUNREACH;
+		goto err_peer;
+	}
+
+#if 0 /* TODO */
+	if (__predict_false(if_tunnel_check_nesting(ifp, m, MTAG_WGLOOP, MAX_LOOPS))) {
+		DPRINTF(sc, "Packet looped");
+		error = ELOOP;
+		goto err_peer;
+	}
+#endif
+
+	wg_queue_push_staged(&peer->p_stage_queue, pkt);
+	wg_peer_send_staged(peer);
+	noise_remote_put(peer->p_remote);
+
+	return (0);
+
+err_peer:
+	noise_remote_put(peer->p_remote);
+err_xmit:
+	xmit_err(ifp, m, pkt, af);
+err:
+	return (error);
 }
 
 static int
@@ -2747,7 +2731,6 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 	ifp->if_flags = IFF_NOARP | IFF_MULTICAST;
 	ifp->if_init = wg_init;
 	ifp->if_output = wg_output;
-	ifp->if_start = wg_start; /* TODO(ALY) */
 	ifp->if_ioctl = wg_ioctl;
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifq_set_ready(&ifp->if_snd);
