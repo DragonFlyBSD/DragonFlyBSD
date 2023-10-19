@@ -2187,6 +2187,7 @@ dev/sound/midi/synth_if.m	optional sound
 # In this case, the files should be moved to platform/<arch>/conf/files.
 #
 libkern/arc4random.c			standard
+libkern/arc4random_uniform.c		standard
 libkern/bcd.c				standard
 libkern/bsearch.c			standard
 libkern/crc32.c				standard

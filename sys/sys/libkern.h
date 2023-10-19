@@ -92,6 +92,7 @@ static __inline quad_t qabs(quad_t a) { return (a < 0 ? -a : a); }
 /* Prototypes for non-quad routines. */
 uint32_t karc4random(void);
 uint64_t karc4random64(void);
+uint32_t karc4random_uniform(uint32_t upper_bound);
 void	 karc4random_buf(void *, size_t);
 void	 karc4rand(void *, size_t);
 void	 arc4_init_pcpu(int cpuid);
