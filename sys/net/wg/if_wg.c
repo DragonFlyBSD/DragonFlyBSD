@@ -935,30 +935,39 @@ wg_send_buf(struct wg_softc *sc, struct wg_endpoint *e, uint8_t *buf, size_t len
 {
 	struct mbuf	*m;
 	int		 ret = 0;
-	bool		 retried = false;
+
+	/*
+	 * This function only sends handshake packets of known lengths that
+	 * are <= MHLEN, so it's safe to just use m_gethdr() and memcpy().
+	 */
+	KKASSERT(len <= MHLEN);
 
 retry:
-	m = m_getl(len, M_NOWAIT, MT_DATA, M_PKTHDR, NULL);
+	m = m_gethdr(M_NOWAIT, MT_DATA);
 	if (m == NULL) {
-		ret = ENOMEM;
-		goto out;
+		DPRINTF(sc, "Unable to allocate mbuf\n");
+		return;
 	}
-	m_copyback(m, 0, len, buf);
+
+	/* Just plain copy as it's a single mbuf. */
+	memcpy(mtod(m, void *), buf, len);
+	m->m_pkthdr.len = m->m_len = len;
+
+	/* Give high priority to the handshake packets. */
+	m->m_flags |= M_PRIO;
 
 	if (ret == 0) {
 		ret = wg_send(sc, e, m);
 		/* Retry if we couldn't bind to e->e_local */
-		if (ret == EADDRNOTAVAIL && !retried) {
+		if (ret == EADDRNOTAVAIL) {
 			bzero(&e->e_local, sizeof(e->e_local));
-			retried = true;
 			goto retry;
 		}
 	} else {
 		ret = wg_send(sc, e, m);
+		if (ret != 0)
+			DPRINTF(sc, "Unable to send packet: %d\n", ret);
 	}
-out:
-	if (ret)
-		DPRINTF(sc, "Unable to send packet: %d\n", ret);
 }
 
 /* Timers */
