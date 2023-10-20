@@ -47,6 +47,7 @@ extern int indefinite_uses_rdtsc;
 
 struct indefinite_info {
 	tsc_uclock_t	base;
+	void		*lock_addr;
 	const char	*ident;
 	int		secs;
 	int		count;

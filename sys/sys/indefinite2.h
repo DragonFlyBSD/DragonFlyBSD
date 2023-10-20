@@ -48,8 +48,10 @@
  * Initialize the indefinite state (only if the TSC is supported)
  */
 static __inline void
-indefinite_init(indefinite_info_t *info, const char *ident, char now, char type)
+indefinite_init(indefinite_info_t *info, void *lock_addr, const char *ident,
+		char now, char type)
 {
+	info->lock_addr = lock_addr;
 	info->ident = ident;
 	info->secs = 0;
 	info->count = 0;
@@ -63,6 +65,7 @@ indefinite_init(indefinite_info_t *info, const char *ident, char now, char type)
 		info->base = 0;
 	}
 	if (now && info->ident) {
+		mycpu->gd_cnt.v_lock_addr = lock_addr;
 		mycpu->gd_cnt.v_lock_name[0] = info->type;
 		strncpy(mycpu->gd_cnt.v_lock_name + 1, info->ident,
 			sizeof(mycpu->gd_cnt.v_lock_name) - 2);
@@ -92,6 +95,7 @@ indefinite_check(indefinite_info_t *info)
 		else
 			info->base = ticks;
 		if (info->reported == 0 && info->ident) {
+			mycpu->gd_cnt.v_lock_addr = info->lock_addr;
 			mycpu->gd_cnt.v_lock_name[0] = info->type;
 			strncpy(mycpu->gd_cnt.v_lock_name + 1, info->ident,
 				sizeof(mycpu->gd_cnt.v_lock_name) - 2);

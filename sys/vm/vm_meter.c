@@ -420,22 +420,18 @@ SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	"Reserved number of pages for int code");
 
 /*
+ * Callback for per-cpu vmmeter structure.  Unlike the global structure,
+ * we don't have to aggregate anything.
+ *
  * No requirements.
  */
 static int
 do_vmmeter_pcpu(SYSCTL_HANDLER_ARGS)
 {
-	int boffset = offsetof(struct vmmeter, vmmeter_uint_begin);
-	int eoffset = offsetof(struct vmmeter, vmmeter_uint_end);
 	struct globaldata *gd = arg1;
 	struct vmmeter vmm;
-	int off;
 
-	bzero(&vmm, sizeof(vmm));
-	for (off = boffset; off <= eoffset; off += sizeof(u_int)) {
-		*(u_int *)((char *)&vmm + off) +=
-			*(u_int *)((char *)&gd->gd_cnt + off);
-	}
+	vmm = gd->gd_cnt;
 	vmm.v_intr += vmm.v_ipi + vmm.v_timer;
 	return (sysctl_handle_opaque(oidp, &vmm, sizeof(vmm), req));
 }

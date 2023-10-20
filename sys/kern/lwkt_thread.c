@@ -710,7 +710,7 @@ lwkt_switch(void)
 	    }
 	    ++ntd->td_contended;	/* overflow ok */
 	    if (gd->gd_indefinite.type == 0)
-		indefinite_init(&gd->gd_indefinite, NULL, 0, 't');
+		indefinite_init(&gd->gd_indefinite, NULL, NULL, 0, 't');
 #ifdef LOOPMASK
 	    if (tsc_frequency && rdtsc() - tsc_base > tsc_frequency) {
 		    kprintf("lwkt_switch: WARNING, excessive token contention "

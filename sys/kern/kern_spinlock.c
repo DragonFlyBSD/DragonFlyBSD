@@ -213,7 +213,7 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 	for (;;) {
 		expbackoff = (expbackoff + 1) * 3 / 2;
 		if (expbackoff == 6)		/* 1, 3, 6, 10, ... */
-			indefinite_init(&info, ident, 0, 'S');
+			indefinite_init(&info, spin, ident, 0, 'S');
 		if (indefinite_uses_rdtsc) {
 			if ((rdtsc() >> spin_window_shift) % ncpus != mycpuid)  {
 				for (loop = expbackoff; loop; --loop)
@@ -284,7 +284,7 @@ _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 	 */
 	ovalue = atomic_fetchadd_int(&spin->lock, -1) - 1;
 
-	indefinite_init(&info, ident, 0, 's');
+	indefinite_init(&info, spin, ident, 0, 's');
 	cpu_pause();
 
 #ifdef DEBUG_LOCKS_LATENCY

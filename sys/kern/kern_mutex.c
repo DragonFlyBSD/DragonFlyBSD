@@ -950,7 +950,7 @@ mtx_wait_link(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 	indefinite_info_t info;
 	int error;
 
-	indefinite_init(&info, mtx->mtx_ident, 1,
+	indefinite_init(&info, mtx, mtx->mtx_ident, 1,
 			((link->state & MTX_LINK_LINKED_SH) ? 'm' : 'M'));
 
 	/*

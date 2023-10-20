@@ -505,6 +505,7 @@ lwkt_getalltokens(thread_t td, int spinning)
 			 */
 			KASSERT(tok->t_desc,
 				("token %p is not initialized", tok));
+			td->td_gd->gd_cnt.v_lock_addr = tok;
 			td->td_gd->gd_cnt.v_lock_name[0] = 't';
 			strncpy(td->td_gd->gd_cnt.v_lock_name + 1,
 				tok->t_desc,
@@ -620,6 +621,7 @@ _lwkt_getalltokens_sorted(thread_t td)
 			 * Otherwise we failed to acquire all the tokens.
 			 * Release whatever we did get.
 			 */
+			td->td_gd->gd_cnt.v_lock_addr = tok;
 			td->td_gd->gd_cnt.v_lock_name[0] = 't';
 			strncpy(td->td_gd->gd_cnt.v_lock_name + 1,
 				tok->t_desc,
