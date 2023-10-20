@@ -57,3 +57,5 @@ struct  cmdtab {
 #define NPTR(indx)  (void *)NVAL((indx))
 #define NREAD(indx, buf, len) kvm_ckread(NPTR((indx)), (buf), (len))
 #define LONG	(sizeof (long))
+
+extern int WideMode;

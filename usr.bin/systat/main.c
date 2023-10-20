@@ -58,6 +58,7 @@ static int     dellave;
 kvm_t *kd;
 sig_t	sigtstpdfl;
 double avenrun[3];
+int	WideMode;
 int     col;
 double	naptime = 5.0;
 int     verbose = 1;                    /* to report kvm read errs */
@@ -75,12 +76,43 @@ int
 main(int argc, char **argv)
 {
 	char errbuf[_POSIX2_LINE_MAX];
+	char *op;
 
-	(void) setlocale(LC_TIME, "");
+	setlocale(LC_TIME, "");
 
 	argc--, argv++;
 	while (argc > 0) {
-		if (argv[0][0] == '-') {
+		op = argv[0];
+
+		if (op[0] == '-' && op[1] && op[2] == 0) {
+			switch(op[1]) {
+			case 'w':
+				WideMode = 1;
+				break;
+			default:
+				fprintf(stderr,
+					"systat [-w] -cmd [interval]\n");
+				fprintf(stderr,
+					"	-pigs\n"
+					"	-swap\n"
+					"	-mb\n"
+					"	-io\n"
+					"	-vm\n"
+					"	-pv\n"
+					"	-netstat\n"
+					"	-netbw\n"
+					"	-pf\n"
+					"	-icmp\n"
+					"	-ip\n"
+					"	-tcp\n"
+					"	-ifstat\n"
+					"	-altqs\n"
+					"	-ip6\n"
+					"	-icmp6\n"
+					"	-sensors\n");
+				exit(1);
+			}
+		} else if (op[0] == '-') {
 			struct cmdtab *p;
 
 			p = lookup(&argv[0][1]);

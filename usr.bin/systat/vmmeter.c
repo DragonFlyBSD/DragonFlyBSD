@@ -159,13 +159,23 @@ showvmm(void)
 				 D(i, v_lock_colls));
 
 		if (D(i, v_lock_colls) == 0) {
-			DRAW_ROW2(n, CPU_START + i, 18, "%*.*s", "");
+			DRAW_ROW2(n, CPU_START + i, (WideMode ? 24 : 16),
+				  "%*.*s", "");
+			if (WideMode)
+				DRAW_ROW2(n, CPU_START + i, 17, "%*.*s", "");
 		} else {
-			DRAW_ROW2(n, CPU_START + i, 18, "%*.*s",
+			DRAW_ROW2(n, CPU_START + i, (WideMode ? 24 : 16),
+				  "%*.*s",
 				  vmm_cur[i].v_lock_name);
+			if (WideMode) {
+				DRAW_ROWX(n, CPU_START + i, 17,
+					  "%016lx",
+					  (uintmax_t)(uintptr_t)
+						vmm_cur[i].v_lock_addr);
+			}
 		}
 
-		if (vmm_cptime_cur[i].cp_sample_pc) {
+		if (WideMode && vmm_cptime_cur[i].cp_sample_pc) {
 			void *rip;
 
 			rip = (void *)(intptr_t)CPUC(i, sample_pc);
@@ -225,8 +235,11 @@ labelvmm(void)
 	DRAW_ROW(n, TOT_START - 1, 6, "%*s", "intr%");
 	DRAW_ROW(n, TOT_START - 1, 6, "%*s", "idle%");
 	DRAW_ROW(n, TOT_START - 1, 8, "%*s", "smpcol");
-	DRAW_ROW(n, TOT_START - 1, 18, "%*s", "label");
-	if (getuid() == 0) {
+	DRAW_ROW(n, TOT_START - 1, (WideMode ? 24 : 16), "%*s", "contention");
+	if (WideMode) {
+		DRAW_ROW(n, TOT_START - 1, 17, "%*s", "lockaddr");
+	}
+	if (WideMode && getuid() == 0) {
 		DRAW_ROW(n, TOT_START - 1, 30, "%*s", "sample_pc");
 	}
 
@@ -239,9 +252,14 @@ labelvmm(void)
 	DRAW_ROW(n, TOT_START + 1, 6, "%*s", "-----");
 	DRAW_ROW(n, TOT_START + 1, 6, "%*s", "-----");
 	DRAW_ROW(n, TOT_START + 1, 8, "%*s", "-------");
-	DRAW_ROW(n, TOT_START + 1, 18, "%*s", "-----------------");
-	if (getuid() == 0) {
-		DRAW_ROW(n, TOT_START - 1, 30, "%*s", "---------");
+	DRAW_ROW(n, TOT_START + 1, (WideMode ? 24 : 16),
+		 "%*s",
+		 (WideMode ? "-----------------------" : "---------------"));
+	if (WideMode)
+		DRAW_ROW(n, TOT_START + 1, 17, "%*s", "---------------");
+	if (WideMode && getuid() == 0) {
+		DRAW_ROW(n, TOT_START + 1, 30,
+			 "%*s", "-----------------------------");
 	}
 
 	mvprintw(TOT_START, X_START, "total");
