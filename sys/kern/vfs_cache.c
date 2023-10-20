@@ -3034,6 +3034,8 @@ static cache_hs_t neg_cache_hysteresis_state[2] = { CHI_LOW, CHI_LOW };
 static cache_hs_t pos_cache_hysteresis_state[2] = { CHI_LOW, CHI_LOW };
 static cache_hs_t exc_cache_hysteresis_state[2] = { CHI_LOW, CHI_LOW };
 
+static int cache_hyst_run[2];
+
 void
 cache_hysteresis(int critpath)
 {
@@ -3045,6 +3047,12 @@ cache_hysteresis(int critpath)
 	long clean_neg;
 	long clean_unres;
 	long clean_excess;
+
+	/*
+	 * Lets not compete for running a general garbage collection
+	 */
+	if (atomic_swap_int(&cache_hyst_run[critpath], 1) != 0)
+		return;
 
 	/*
 	 * Calculate negative ncp limit
@@ -3178,6 +3186,8 @@ cache_hysteresis(int critpath)
 	if (pcpu_ncache[mycpu->gd_cpuid].numdefered + numdefered > neglimit) {
 		_cache_cleandefered();
 	}
+
+	atomic_swap_int(&cache_hyst_run[critpath], 0);
 }
 
 /*
@@ -4760,7 +4770,7 @@ _cache_cleanpos(long ucount, long xcount)
 	 * Attempt to clean out the specified number of cache entries.
 	 */
 	while (count > 0 && (ucount > 0 || xcount > 0)) {
-		rover_copy = ++rover;	/* MPSAFEENOUGH */
+		rover_copy = atomic_fetchadd_int(&rover, 1);
 		cpu_ccfence();
 		nchpp = NCHHASH(rover_copy);
 

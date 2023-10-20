@@ -394,14 +394,18 @@ syncer_thread(void *_ctx)
 		 * If syncer_trigger is set (from trigger_syncer(mp)),
 		 * Immediately do a full filesystem sync and set up the
 		 * following full filesystem sync to occur in 1 second.
+		 *
+		 * The normal syncer_trigger bit 0 is automatically reset.
+		 * If other bits are set, they remain set and cause the
+		 * syncer to keep running.
 		 */
 		if (ctx->syncer_trigger) {
-			ctx->syncer_trigger = 0;
 			if (ctx->sc_mp && ctx->sc_mp->mnt_syncer) {
 				vp = ctx->sc_mp->mnt_syncer;
 				if (vp->v_flag & VONWORKLST) {
 					vn_syncer_add(vp, retrydelay);
 					if (vget(vp, LK_EXCLUSIVE) == 0) {
+						atomic_clear_int(&ctx->syncer_trigger, 1);
 						VOP_FSYNC(vp, MNT_LAZY, 0);
 						vput(vp);
 						vnodes_synced++;
@@ -482,7 +486,8 @@ syncer_thread(void *_ctx)
 			tsleep_interlock(ctx, 0);
 			if (time_uptime == starttime &&
 			    ctx->syncer_trigger == 0 &&
-			    (ctx->sc_flags & SC_FLAG_EXIT) == 0) {
+			    (ctx->sc_flags & SC_FLAG_EXIT) == 0)
+			{
 				tsleep(ctx, PINTERLOCKED, "syncer", hz);
 			}
 		}
@@ -566,7 +571,33 @@ speedup_syncer(struct mount *mp)
 }
 
 /*
- * trigger a full sync
+ * Force continuous full syncs until stopped.  This may be used by
+ * filesystems waiting on dirty data to be flushed to avoid syncer/tsleep
+ * races.
+ */
+void
+trigger_syncer_start(struct mount *mp)
+{
+	struct syncer_ctx *ctx;
+
+	if (mp && (ctx = mp->mnt_syncer_ctx) != NULL) {
+		if (atomic_fetchadd_int(&ctx->syncer_trigger, 2) <= 1)
+			wakeup(ctx);
+	}
+}
+
+void
+trigger_syncer_stop(struct mount *mp)
+{
+	struct syncer_ctx *ctx;
+
+	if (mp && (ctx = mp->mnt_syncer_ctx) != NULL) {
+		atomic_add_int(&ctx->syncer_trigger, -2);
+	}
+}
+
+/*
+ * trigger a full sync (auto-reset)
  */
 void
 trigger_syncer(struct mount *mp)
@@ -574,8 +605,8 @@ trigger_syncer(struct mount *mp)
 	struct syncer_ctx *ctx;
 
 	if (mp && (ctx = mp->mnt_syncer_ctx) != NULL) {
-		if (ctx->syncer_trigger == 0) {
-			ctx->syncer_trigger = 1;
+		if ((ctx->syncer_trigger & 1) == 0) {
+			atomic_set_int(&ctx->syncer_trigger, 1);
 			wakeup(ctx);
 		}
 	}
