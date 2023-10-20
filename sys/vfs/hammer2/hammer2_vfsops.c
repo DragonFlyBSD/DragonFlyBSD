@@ -2600,14 +2600,10 @@ restart:
 				/*
 				 * Failed to get the vnode, requeue the inode
 				 * (PASS2 is already set so it will be found
-				 * again on the restart).
-				 *
-				 * Then unlock, possibly sleep, and retry
-				 * later.  We sleep if PASS2 was *previously*
-				 * set, before we set it again above.
+				 * again on the restart).  Then unlock.
 				 */
 				vp = NULL;
-				dorestart = 1;
+				dorestart |= 1;
 #ifdef HAMMER2_DEBUG_SYNC
 				kprintf("inum %ld (sync delayed by vnode)\n",
 					(long)ip->meta.inum);
@@ -2617,9 +2613,13 @@ restart:
 				hammer2_mtx_unlock(&ip->lock);
 				hammer2_inode_drop(ip);
 
-				if (pass2 & HAMMER2_INODE_SYNCQ_PASS2) {
-					tsleep(&dorestart, 0, "h2syndel", 2);
-				}
+				/*
+				 * If PASS2 was previously set we might
+				 * be looping too hard, ask for a delay
+				 * along with the restart.
+				 */
+				if (pass2 & HAMMER2_INODE_SYNCQ_PASS2)
+					dorestart |= 2;
 				hammer2_spin_ex(&pmp->list_spin);
 				continue;
 			}
@@ -2638,7 +2638,7 @@ restart:
 			hammer2_inode_drop(ip);
 			if (vp)
 				vput(vp);
-			dorestart = 1;
+			dorestart |= 1;
 			hammer2_spin_ex(&pmp->list_spin);
 			continue;
 		}
@@ -2730,6 +2730,19 @@ restart:
 	hammer2_pfs_memory_wakeup(pmp, 0);
 
 	if (dorestart || (pmp->trans.flags & HAMMER2_TRANS_RESCAN)) {
+		/*
+		 * bit 2 is set if something above thinks we might be
+		 * looping too hard, try to unclog the frontend
+		 * dependency and wait a bit before restarting.
+		 *
+		 * NOTE: The frontend could be stuck in h2memw, though
+		 *	 it isn't supposed to be holding vnode locks
+		 *	 in that case.
+		 */
+		if (dorestart & 2) {
+			wakeup(&pmp->inmem_dirty_chains);
+			tsleep(&dorestart, 0, "h2syndel", 2);
+		}
 #ifdef HAMMER2_DEBUG_SYNC
 		kprintf("FILESYSTEM SYNC STAGE 1 RESTART\n");
 		/*tsleep(&dorestart, 0, "h2STG1-R", hz*20);*/
