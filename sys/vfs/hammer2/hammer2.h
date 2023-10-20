@@ -156,6 +156,12 @@ typedef struct hammer2_xop_list	hammer2_xop_list_t;
 #define HAMMER2_LIMIT_DIRTY_CHAINS	(1024*1024)
 #define HAMMER2_LIMIT_DIRTY_INODES	(65536)
 
+#define HAMMER2_IOHASH_SIZE		32768
+#define HAMMER2_IOHASH_MASK		(HAMMER2_IOHASH_SIZE - 1)
+
+#define HAMMER2_INUMHASH_SIZE		32768
+#define HAMMER2_INUMHASH_MASK		(HAMMER2_IOHASH_SIZE - 1)
+
 /*
  * The chain structure tracks a portion of the media topology from the
  * root (volume) down.  Chains represent volumes, inodes, indirect blocks,
@@ -240,8 +246,6 @@ struct hammer2_chain_core {
 
 typedef struct hammer2_chain_core hammer2_chain_core_t;
 
-RB_HEAD(hammer2_io_tree, hammer2_io);
-
 /*
  * DIO - Management structure wrapping system buffer cache.
  *
@@ -262,7 +266,7 @@ RB_HEAD(hammer2_io_tree, hammer2_io);
 #endif
 
 struct hammer2_io {
-	RB_ENTRY(hammer2_io) rbnode;	/* indexed by device offset */
+	struct hammer2_io  *next;
 	struct hammer2_dev *hmp;
 	struct vnode	*devvp;
 	struct buf	*bp;
@@ -291,6 +295,13 @@ struct hammer2_io {
 
 typedef struct hammer2_io hammer2_io_t;
 
+struct hammer2_io_hash {
+	hammer2_spin_t		spin;
+	struct hammer2_io	*base;
+};
+
+typedef struct hammer2_io_hash	hammer2_io_hash_t;
+
 #define HAMMER2_DIO_INPROG	0x8000000000000000LLU	/* bio in progress */
 #define HAMMER2_DIO_GOOD	0x4000000000000000LLU	/* dio->bp is stable */
 #define HAMMER2_DIO_WAITING	0x2000000000000000LLU	/* wait on INPROG */
@@ -298,6 +309,13 @@ typedef struct hammer2_io hammer2_io_t;
 #define HAMMER2_DIO_FLUSH	0x0800000000000000LLU	/* immediate flush */
 
 #define HAMMER2_DIO_MASK	0x00FFFFFFFFFFFFFFLLU
+
+struct hammer2_inum_hash {
+	hammer2_spin_t		spin;
+	struct hammer2_inode	*base;
+};
+
+typedef struct hammer2_inum_hash hammer2_inum_hash_t;
 
 /*
  * Primary chain structure keeps track of the topology in-memory.
@@ -370,7 +388,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_UNUSED1000	0x00001000
 #define HAMMER2_CHAIN_COUNTEDBREFS	0x00002000	/* block table stats */
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
-#define HAMMER2_CHAIN_ONLRU		0x00008000	/* on LRU list */
+#define HAMMER2_CHAIN_UNUSED8000	0x00008000
 #define HAMMER2_CHAIN_UNUSED10000	0x00010000
 #define HAMMER2_CHAIN_RELEASE		0x00020000	/* don't keep around */
 #define HAMMER2_CHAIN_BLKMAPPED		0x00040000	/* present in blkmap */
@@ -379,7 +397,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_IOSIGNAL		0x00200000	/* I/O interlock */
 #define HAMMER2_CHAIN_PFSBOUNDARY	0x00400000	/* super->pfs inode */
 #define HAMMER2_CHAIN_HINT_LEAF_COUNT	0x00800000	/* redo leaf count */
-#define HAMMER2_CHAIN_LRUHINT		0x01000000	/* was reused */
+#define HAMMER2_CHAIN_UNUSED1000000	0x01000000
 
 #define HAMMER2_CHAIN_FLUSH_MASK	(HAMMER2_CHAIN_MODIFIED |	\
 					 HAMMER2_CHAIN_UPDATE |		\
@@ -650,7 +668,6 @@ typedef struct hammer2_cluster	hammer2_cluster_t;
 				  HAMMER2_CLUSTER_MSYNCED |	\
 				  HAMMER2_CLUSTER_SSYNCED)
 
-RB_HEAD(hammer2_inode_tree, hammer2_inode);	/* ip->rbnode */
 TAILQ_HEAD(inoq_head, hammer2_inode);		/* ip->entry */
 TAILQ_HEAD(depq_head, hammer2_depend);		/* depend->entry */
 
@@ -672,7 +689,7 @@ typedef struct hammer2_depend hammer2_depend_t;
  *	 back out if changed.
  */
 struct hammer2_inode {
-	RB_ENTRY(hammer2_inode) rbnode;		/* inumber lookup (HL) */
+	struct hammer2_inode	*next;		/* inode tree */
 	TAILQ_ENTRY(hammer2_inode) entry;	/* SYNCQ/SIDEQ */
 	hammer2_depend_t	*depend;	/* non-NULL if SIDEQ */
 	hammer2_depend_t	depend_static;	/* (in-place allocation) */
@@ -682,6 +699,8 @@ struct hammer2_inode {
 	struct vnode		*vp;
 	hammer2_spin_t		cluster_spin;	/* update cluster */
 	hammer2_cluster_t	cluster;
+	hammer2_cluster_item_t	ccache[HAMMER2_MAXCLUSTER];
+	int			ccache_nchains;
 	struct lockf		advlock;
 	u_int			flags;
 	u_int			refs;		/* +vpref, +flushref */
@@ -747,10 +766,6 @@ typedef struct hammer2_inode hammer2_inode_t;
 					 HAMMER2_INODE_DIRTYDATA |	\
 					 HAMMER2_INODE_DELETING |	\
 					 HAMMER2_INODE_CREATING)
-
-int hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2);
-RB_PROTOTYPE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
-		hammer2_tid_t);
 
 /*
  * Transaction management sub-structure under hammer2_pfs
@@ -1111,10 +1126,11 @@ struct hammer2_dev {
 	struct malloc_type *mio_obj;
 	struct malloc_type *mmsg;
 	kdmsg_iocom_t	iocom;		/* volume-level dmsg interface */
-	hammer2_spin_t	io_spin;	/* iotree, iolruq access */
-	struct hammer2_io_tree iotree;
+	hammer2_io_hash_t iohash[HAMMER2_IOHASH_SIZE];
 	int		iofree_count;
+	int		io_iterator;
 	int		freemap_relaxed;
+	int		unused01;
 	hammer2_chain_t vchain;		/* anchor chain (topology) */
 	hammer2_chain_t fchain;		/* anchor chain (freemap) */
 	hammer2_spin_t	list_spin;
@@ -1187,6 +1203,7 @@ struct hammer2_pfs {
 	char			*pfs_names[HAMMER2_MAXCLUSTER];
 	hammer2_dev_t		*pfs_hmps[HAMMER2_MAXCLUSTER];
 	hammer2_blockset_t	pfs_iroot_blocksets[HAMMER2_MAXCLUSTER];
+	hammer2_spin_t          blockset_spin;
 	hammer2_trans_t		trans;
 	struct lock		lock;		/* PFS lock for certain ops */
 	struct netexport	export;		/* nfs export */
@@ -1194,12 +1211,9 @@ struct hammer2_pfs {
 	int			ronly;		/* read-only mount */
 	int			hflags;		/* pfs-specific mount flags */
 	struct malloc_type	*minode_obj;
-	hammer2_spin_t		inum_spin;	/* inumber lookup */
-	struct hammer2_inode_tree inum_tree;	/* (not applicable to spmp) */
-	long			inum_count;	/* #of inodes in inum_tree */
-	hammer2_spin_t		lru_spin;
-	struct hammer2_chain_list lru_list;	/* basis for LRU tests */
-	int			lru_count;	/* #of chains on LRU */
+	/* note: inumhash not applicable to spmp */
+	hammer2_inum_hash_t inumhash[HAMMER2_INUMHASH_SIZE];
+	long			inum_count;	/* #of inodes in inumhash */
 	int			flags;
 	hammer2_tid_t		modify_tid;	/* modify transaction id */
 	hammer2_tid_t		inode_tid;	/* inode allocator */
@@ -1617,8 +1631,10 @@ int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
 /*
  * hammer2_io.c
  */
+void hammer2_io_hash_init(hammer2_dev_t *hmp);
+void hammer2_inum_hash_init(hammer2_pfs_t *pmp);
 void hammer2_io_inval(hammer2_io_t *dio, hammer2_off_t data_off, u_int bytes);
-void hammer2_io_cleanup(hammer2_dev_t *hmp, struct hammer2_io_tree *tree);
+void hammer2_io_hash_cleanup_all(hammer2_dev_t *hmp);
 char *hammer2_io_data(hammer2_io_t *dio, off_t lbase);
 void hammer2_io_bkvasync(hammer2_io_t *dio);
 void hammer2_io_dedup_set(hammer2_dev_t *hmp, hammer2_blockref_t *bref);

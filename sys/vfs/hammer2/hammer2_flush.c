@@ -1336,10 +1336,10 @@ hammer2_xop_inode_flush(hammer2_xop_t *arg, void *scratch __unused, int clindex)
 
 			/* XXX cluster */
 			if (ip == pmp->iroot && pmp != hmp->spmp) {
-				hammer2_spin_ex(&pmp->inum_spin);
+				hammer2_spin_ex(&pmp->blockset_spin);
 				pmp->pfs_iroot_blocksets[clindex] =
 					chain->data->ipdata.u.blockset;
-				hammer2_spin_unex(&pmp->inum_spin);
+				hammer2_spin_unex(&pmp->blockset_spin);
 			}
 
 #if 0
