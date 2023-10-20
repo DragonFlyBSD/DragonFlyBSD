@@ -3272,10 +3272,13 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 		IFNET_STAT_INC(ifp, oqdrops, 1);
 		if (!ifsq_data_ready(ifsq)) {
 			ALTQ_SQ_UNLOCK(ifsq);
-			crit_exit_quick(td);
-			return error;
+			goto done;
 		}
 		avoid_start = 0;
+	} else {
+		IFNET_STAT_INC(ifp, obytes, len);
+		if (mcast)
+			IFNET_STAT_INC(ifp, omcasts, 1);
 	}
 	if (!ifsq_is_started(ifsq)) {
 		if (avoid_start) {
@@ -3285,11 +3288,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 			if ((stage->stg_flags & IFSQ_STAGE_FLAG_QUED) == 0)
 				ifsq_stage_insert(head, stage);
 
-			IFNET_STAT_INC(ifp, obytes, len);
-			if (mcast)
-				IFNET_STAT_INC(ifp, omcasts, 1);
-			crit_exit_quick(td);
-			return error;
+			goto done;
 		}
 
 		/*
@@ -3300,12 +3299,6 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	}
 	ALTQ_SQ_UNLOCK(ifsq);
 
-	if (!error) {
-		IFNET_STAT_INC(ifp, obytes, len);
-		if (mcast)
-			IFNET_STAT_INC(ifp, omcasts, 1);
-	}
-
 	if (stage != NULL) {
 		if (!start && (stage->stg_flags & IFSQ_STAGE_FLAG_SCHED)) {
 			KKASSERT(stage->stg_flags & IFSQ_STAGE_FLAG_QUED);
@@ -3313,8 +3306,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 				ifsq_stage_remove(head, stage);
 				ifsq_ifstart_schedule(ifsq, 1);
 			}
-			crit_exit_quick(td);
-			return error;
+			goto done;
 		}
 
 		if (stage->stg_flags & IFSQ_STAGE_FLAG_QUED) {
@@ -3325,13 +3317,10 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 		}
 	}
 
-	if (!start) {
-		crit_exit_quick(td);
-		return error;
-	}
+	if (start)
+		ifsq_ifstart_try(ifsq, 0);
 
-	ifsq_ifstart_try(ifsq, 0);
-
+done:
 	crit_exit_quick(td);
 	return error;
 }
