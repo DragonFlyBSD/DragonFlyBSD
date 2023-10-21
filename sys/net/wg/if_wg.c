@@ -62,7 +62,7 @@
 
 #define MAX_QUEUED_HANDSHAKES	4096
 
-#define REKEY_TIMEOUT_JITTER	334 /* 1/3 sec, round for arc4random_uniform */
+#define REKEY_TIMEOUT_JITTER	karc4random_uniform(334) /* msec */
 #define MAX_TIMER_HANDSHAKES	(90 / REKEY_TIMEOUT)
 #define NEW_HANDSHAKE_TIMEOUT	(REKEY_TIMEOUT + KEEPALIVE_TIMEOUT)
 #define UNDERLOAD_TIMEOUT	1
@@ -405,11 +405,11 @@ wg_peer_alloc(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE])
 	peer->p_enabled = false;
 	peer->p_need_another_keepalive = false;
 	peer->p_persistent_keepalive_interval = 0;
-	callout_init(&peer->p_new_handshake, true);
-	callout_init(&peer->p_send_keepalive, true);
-	callout_init(&peer->p_retry_handshake, true);
-	callout_init(&peer->p_persistent_keepalive, true);
-	callout_init(&peer->p_zero_key_material, true);
+	callout_init_mp(&peer->p_new_handshake);
+	callout_init_mp(&peer->p_send_keepalive);
+	callout_init_mp(&peer->p_retry_handshake);
+	callout_init_mp(&peer->p_persistent_keepalive);
+	callout_init_mp(&peer->p_zero_key_material);
 
 	lockinit(&peer->p_handshake_mtx, "peer handshake", 0, 0);
 	bzero(&peer->p_handshake_complete, sizeof(peer->p_handshake_complete));
@@ -974,9 +974,8 @@ wg_timers_event_data_sent(struct wg_peer *peer)
 	NET_EPOCH_ENTER(et);
 	if (atomic_load_bool(&peer->p_enabled) &&
 	    !callout_pending(&peer->p_new_handshake))
-		callout_reset(&peer->p_new_handshake, MSEC_2_TICKS(
-		    NEW_HANDSHAKE_TIMEOUT * 1000 +
-		    karc4random_uniform(REKEY_TIMEOUT_JITTER)),
+		callout_reset(&peer->p_new_handshake,
+		    NEW_HANDSHAKE_TIMEOUT * hz + REKEY_TIMEOUT_JITTER * hz / 1000,
 		    wg_timers_run_new_handshake, peer);
 	NET_EPOCH_EXIT(et);
 }
@@ -989,7 +988,7 @@ wg_timers_event_data_received(struct wg_peer *peer)
 	if (atomic_load_bool(&peer->p_enabled)) {
 		if (!callout_pending(&peer->p_send_keepalive))
 			callout_reset(&peer->p_send_keepalive,
-			    MSEC_2_TICKS(KEEPALIVE_TIMEOUT * 1000),
+			    KEEPALIVE_TIMEOUT * hz,
 			    wg_timers_run_send_keepalive, peer);
 		else
 			atomic_store_bool(&peer->p_need_another_keepalive,
@@ -1018,8 +1017,7 @@ wg_timers_event_any_authenticated_packet_traversal(struct wg_peer *peer)
 	NET_EPOCH_ENTER(et);
 	interval = atomic_load_16(&peer->p_persistent_keepalive_interval);
 	if (atomic_load_bool(&peer->p_enabled) && interval > 0)
-		callout_reset(&peer->p_persistent_keepalive,
-		     MSEC_2_TICKS(interval * 1000),
+		callout_reset(&peer->p_persistent_keepalive, interval * hz,
 		     wg_timers_run_persistent_keepalive, peer);
 	NET_EPOCH_EXIT(et);
 }
@@ -1030,9 +1028,8 @@ wg_timers_event_handshake_initiated(struct wg_peer *peer)
 	struct epoch_tracker et;
 	NET_EPOCH_ENTER(et);
 	if (atomic_load_bool(&peer->p_enabled))
-		callout_reset(&peer->p_retry_handshake, MSEC_2_TICKS(
-		    REKEY_TIMEOUT * 1000 +
-		    karc4random_uniform(REKEY_TIMEOUT_JITTER)),
+		callout_reset(&peer->p_retry_handshake,
+		    REKEY_TIMEOUT * hz + REKEY_TIMEOUT_JITTER * hz / 1000,
 		    wg_timers_run_retry_handshake, peer);
 	NET_EPOCH_EXIT(et);
 }
@@ -1060,7 +1057,7 @@ wg_timers_event_session_derived(struct wg_peer *peer)
 	NET_EPOCH_ENTER(et);
 	if (atomic_load_bool(&peer->p_enabled))
 		callout_reset(&peer->p_zero_key_material,
-		    MSEC_2_TICKS(REJECT_AFTER_TIME * 3 * 1000),
+		    REJECT_AFTER_TIME * 3 * hz,
 		    wg_timers_run_zero_key_material, peer);
 	NET_EPOCH_EXIT(et);
 }
@@ -1113,7 +1110,7 @@ wg_timers_run_retry_handshake(void *_peer)
 		if (atomic_load_bool(&peer->p_enabled) &&
 		    !callout_pending(&peer->p_zero_key_material))
 			callout_reset(&peer->p_zero_key_material,
-			    MSEC_2_TICKS(REJECT_AFTER_TIME * 3 * 1000),
+			    REJECT_AFTER_TIME * 3 * hz,
 			    wg_timers_run_zero_key_material, peer);
 		NET_EPOCH_EXIT(et);
 	}
@@ -1130,8 +1127,7 @@ wg_timers_run_send_keepalive(void *_peer)
 	if (atomic_load_bool(&peer->p_enabled) &&
 	    atomic_load_bool(&peer->p_need_another_keepalive)) {
 		atomic_store_bool(&peer->p_need_another_keepalive, false);
-		callout_reset(&peer->p_send_keepalive,
-		    MSEC_2_TICKS(KEEPALIVE_TIMEOUT * 1000),
+		callout_reset(&peer->p_send_keepalive, KEEPALIVE_TIMEOUT * hz,
 		    wg_timers_run_send_keepalive, peer);
 	}
 	NET_EPOCH_EXIT(et);
