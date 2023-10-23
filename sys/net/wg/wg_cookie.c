@@ -14,6 +14,7 @@
 #include <sys/objcache.h>
 #include <sys/queue.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <crypto/siphash/siphash.h>
 #include <netinet/in.h>
 
@@ -28,9 +29,10 @@
 #define RATELIMIT_SIZE		(1 << 13)
 #define RATELIMIT_MASK		(RATELIMIT_SIZE - 1)
 #define RATELIMIT_SIZE_MAX	(RATELIMIT_SIZE * 8)
+#define NSEC_PER_SEC		1000000000LL
 #define INITIATIONS_PER_SECOND	20
 #define INITIATIONS_BURSTABLE	5
-#define INITIATION_COST		(SBT_1S / INITIATIONS_PER_SECOND)
+#define INITIATION_COST		(NSEC_PER_SEC / INITIATIONS_PER_SECOND)
 #define TOKEN_MAX		(INITIATION_COST * INITIATIONS_BURSTABLE)
 #define ELEMENT_TIMEOUT		1
 #define IPV4_MASK_SIZE		4 /* Use all 4 bytes of IPv4 address */
@@ -43,7 +45,7 @@ struct ratelimit_key {
 struct ratelimit_entry {
 	LIST_ENTRY(ratelimit_entry)	r_entry;
 	struct ratelimit_key		r_key;
-	sbintime_t			r_last_time;	/* sbinuptime */
+	struct timespec			r_last_time;	/* nanouptime */
 	uint64_t			r_tokens;
 };
 
@@ -62,7 +64,7 @@ static void	macs_mac1(struct cookie_macs *, const void *, size_t,
 			const uint8_t[COOKIE_KEY_SIZE]);
 static void	macs_mac2(struct cookie_macs *, const void *, size_t,
 			const uint8_t[COOKIE_COOKIE_SIZE]);
-static int	timer_expired(sbintime_t, uint32_t, uint32_t);
+static int	timer_expired(struct timespec *, time_t, long);
 static void	make_cookie(struct cookie_checker *,
 			uint8_t[COOKIE_COOKIE_SIZE], struct sockaddr *);
 static void	ratelimit_init(struct ratelimit *);
@@ -196,7 +198,7 @@ cookie_maker_consume_payload(struct cookie_maker *cm,
 
 	lockmgr(&cm->cm_lock, LK_EXCLUSIVE);
 	memcpy(cm->cm_cookie, cookie, COOKIE_COOKIE_SIZE);
-	cm->cm_cookie_birthdate = getsbinuptime();
+	getnanouptime(&cm->cm_cookie_birthdate);
 	cm->cm_cookie_valid = true;
 	cm->cm_mac1_sent = false;
 	lockmgr(&cm->cm_lock, LK_RELEASE);
@@ -217,7 +219,7 @@ cookie_maker_mac(struct cookie_maker *cm, struct cookie_macs *macs, void *buf,
 	cm->cm_mac1_sent = true;
 
 	if (cm->cm_cookie_valid &&
-	    !timer_expired(cm->cm_cookie_birthdate,
+	    !timer_expired(&cm->cm_cookie_birthdate,
 	    COOKIE_SECRET_MAX_AGE - COOKIE_SECRET_LATENCY, 0)) {
 		macs_mac2(macs, buf, len, cm->cm_cookie);
 	} else {
@@ -302,10 +304,17 @@ macs_mac2(struct cookie_macs *macs, const void *buf, size_t len,
 }
 
 static __inline int
-timer_expired(sbintime_t timer, uint32_t sec, uint32_t nsec)
+timer_expired(struct timespec *birthdate, time_t sec, long nsec)
 {
-	sbintime_t now = getsbinuptime();
-	return (now > (timer + sec * SBT_1S + nstosbt(nsec))) ? ETIMEDOUT : 0;
+	struct timespec uptime;
+	struct timespec expire = { .tv_sec = sec, .tv_nsec = nsec };
+
+	if (birthdate->tv_sec == 0 && birthdate->tv_nsec == 0)
+		return ETIMEDOUT;
+
+	getnanouptime(&uptime);
+	timespecadd(birthdate, &expire, &expire);
+	return timespeccmp(&uptime, &expire, >) ? ETIMEDOUT : 0;
 }
 
 static void
@@ -315,10 +324,10 @@ make_cookie(struct cookie_checker *cc, uint8_t cookie[COOKIE_COOKIE_SIZE],
 	struct blake2s_state state;
 
 	lockmgr(&cc->cc_secret_mtx, LK_EXCLUSIVE);
-	if (timer_expired(cc->cc_secret_birthdate,
+	if (timer_expired(&cc->cc_secret_birthdate,
 	    COOKIE_SECRET_MAX_AGE, 0)) {
 		karc4random_buf(cc->cc_secret, COOKIE_SECRET_SIZE);
-		cc->cc_secret_birthdate = getsbinuptime();
+		getnanouptime(&cc->cc_secret_birthdate);
 	}
 	blake2s_init_key(&state, COOKIE_COOKIE_SIZE, cc->cc_secret,
 	    COOKIE_SECRET_SIZE);
@@ -396,18 +405,20 @@ ratelimit_gc(struct ratelimit *rl, bool force)
 {
 	size_t i;
 	struct ratelimit_entry *r, *tr;
-	sbintime_t expiry;
+	struct timespec expiry;
 
 	KKASSERT(lockstatus(&rl->rl_mtx, curthread) == LK_EXCLUSIVE);
 
 	if (rl->rl_table_num == 0)
 		return;
 
-	expiry = getsbinuptime() - ELEMENT_TIMEOUT * SBT_1S;
+	getnanouptime(&expiry);
+	expiry.tv_sec -= ELEMENT_TIMEOUT;
 
 	for (i = 0; i < RATELIMIT_SIZE; i++) {
 		LIST_FOREACH_MUTABLE(r, &rl->rl_table[i], r_entry, tr) {
-			if (r->r_last_time < expiry || force) {
+			if (force ||
+			    timespeccmp(&r->r_last_time, &expiry, <)) {
 				rl->rl_table_num--;
 				LIST_REMOVE(r, r_entry);
 				objcache_put(ratelimit_zone, r);
@@ -422,7 +433,7 @@ static int
 ratelimit_allow(struct ratelimit *rl, struct sockaddr *sa)
 {
 	uint64_t bucket, tokens;
-	sbintime_t diff, now;
+	struct timespec diff;
 	struct ratelimit_entry *r;
 	int ret = ECONNREFUSED;
 	struct ratelimit_key key = { 0 };
@@ -453,11 +464,12 @@ ratelimit_allow(struct ratelimit *rl, struct sockaddr *sa)
 		 * left (that is tokens <= INITIATION_COST) then we block the
 		 * request, otherwise we subtract the INITITIATION_COST and
 		 * return OK. */
-		now = getsbinuptime();
-		diff = now - r->r_last_time;
-		r->r_last_time = now;
+		diff = r->r_last_time;
+		getnanouptime(&r->r_last_time);
+		timespecsub(&r->r_last_time, &diff, &diff);
 
-		tokens = r->r_tokens + diff;
+		tokens = r->r_tokens;
+		tokens += diff.tv_sec * NSEC_PER_SEC + diff.tv_nsec;
 
 		if (tokens > TOKEN_MAX)
 			tokens = TOKEN_MAX;
@@ -486,8 +498,8 @@ ratelimit_allow(struct ratelimit *rl, struct sockaddr *sa)
 	/* Insert entry into the hashtable and ensure it's initialised */
 	LIST_INSERT_HEAD(&rl->rl_table[bucket], r, r_entry);
 	r->r_key = key;
-	r->r_last_time = getsbinuptime();
 	r->r_tokens = TOKEN_MAX - INITIATION_COST;
+	getnanouptime(&r->r_last_time);
 
 	/* If we've added a new entry, let's trigger GC. */
 	ratelimit_gc_schedule(rl);

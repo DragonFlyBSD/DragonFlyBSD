@@ -29,7 +29,7 @@ struct cookie_maker {
 	struct lock	cm_lock;
 	bool		cm_cookie_valid;
 	uint8_t		cm_cookie[COOKIE_COOKIE_SIZE];
-	sbintime_t	cm_cookie_birthdate;	/* sbinuptime */
+	struct timespec	cm_cookie_birthdate;	/* nanouptime */
 	bool		cm_mac1_sent;
 	uint8_t		cm_mac1_last[COOKIE_MAC_SIZE];
 };
@@ -40,7 +40,7 @@ struct cookie_checker {
 	uint8_t		cc_cookie_key[COOKIE_KEY_SIZE];
 
 	struct lock	cc_secret_mtx;
-	sbintime_t	cc_secret_birthdate;	/* sbinuptime */
+	struct timespec	cc_secret_birthdate;	/* nanouptime */
 	uint8_t		cc_secret[COOKIE_SECRET_SIZE];
 };
 

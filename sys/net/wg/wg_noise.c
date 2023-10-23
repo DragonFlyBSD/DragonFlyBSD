@@ -14,6 +14,7 @@
 #include <sys/malloc.h>
 #include <sys/queue.h>
 #include <sys/refcount.h>
+#include <sys/time.h>
 #include <crypto/siphash/siphash.h>
 
 #include "crypto.h"
@@ -43,7 +44,6 @@
 #define REJECT_INTERVAL		(1000000000 / 50) /* fifty times per sec */
 /* 24 = floor(log2(REJECT_INTERVAL)) */
 #define REJECT_INTERVAL_MASK	(~((1ull<<24)-1))
-#define TIMER_RESET		(SBT_1S * -(REKEY_TIMEOUT+1))
 
 #define HT_INDEX_SIZE		(1 << 13)
 #define HT_INDEX_MASK		(HT_INDEX_SIZE - 1)
@@ -63,7 +63,7 @@ struct noise_keypair {
 	u_int				 kp_refcnt;
 	bool				 kp_can_send;
 	bool				 kp_is_initiator;
-	sbintime_t			 kp_birthdate; /* sbinuptime */
+	struct timespec			 kp_birthdate; /* nanouptime */
 	struct noise_remote		*kp_remote;
 
 	uint8_t				 kp_send[NOISE_SYMMETRIC_KEY_LEN];
@@ -100,8 +100,8 @@ struct noise_remote {
 	struct lock			 r_handshake_lock;
 	struct noise_handshake		 r_handshake;
 	enum noise_handshake_state	 r_handshake_state;
-	sbintime_t			 r_last_sent; /* sbinuptime */
-	sbintime_t			 r_last_init_recv; /* sbinuptime */
+	struct timespec			 r_last_sent; /* nanouptime */
+	struct timespec			 r_last_init_recv; /* nanouptime */
 	uint8_t				 r_timestamp[NOISE_TIMESTAMP_LEN];
 	uint8_t				 r_psk[NOISE_SYMMETRIC_KEY_LEN];
 	uint8_t		 		 r_ss[NOISE_PUBLIC_KEY_LEN];
@@ -168,7 +168,7 @@ static int	noise_msg_decrypt(uint8_t *, const uint8_t *, size_t,
 static void	noise_msg_ephemeral(uint8_t [NOISE_HASH_LEN], uint8_t [NOISE_HASH_LEN],
 		    const uint8_t [NOISE_PUBLIC_KEY_LEN]);
 static void	noise_tai64n_now(uint8_t [NOISE_TIMESTAMP_LEN]);
-static int	noise_timer_expired(sbintime_t, uint32_t, uint32_t);
+static int	noise_timer_expired(struct timespec *, time_t, long);
 static uint64_t siphash24(const uint8_t [SIPHASH_KEY_LENGTH], const void *, size_t);
 
 MALLOC_DEFINE(M_NOISE, "NOISE", "wgnoise");
@@ -299,8 +299,6 @@ noise_remote_alloc(struct noise_local *l, void *arg,
 
 	lockinit(&r->r_handshake_lock, "noise_handshake", 0, 0);
 	r->r_handshake_state = HANDSHAKE_DEAD;
-	r->r_last_sent = TIMER_RESET;
-	r->r_last_init_recv = TIMER_RESET;
 	noise_precompute_ss(l, r);
 
 	refcount_init(&r->r_refcnt, 1);
@@ -540,7 +538,7 @@ noise_remote_initiation_expired(struct noise_remote *r)
 {
 	int expired;
 	lockmgr(&r->r_handshake_lock, LK_SHARED);
-	expired = noise_timer_expired(r->r_last_sent, REKEY_TIMEOUT, 0);
+	expired = noise_timer_expired(&r->r_last_sent, REKEY_TIMEOUT, 0);
 	lockmgr(&r->r_handshake_lock, LK_RELEASE);
 	return (expired);
 }
@@ -551,7 +549,7 @@ noise_remote_handshake_clear(struct noise_remote *r)
 	lockmgr(&r->r_handshake_lock, LK_EXCLUSIVE);
 	if (noise_remote_index_remove(r->r_local, r))
 		bzero(&r->r_handshake, sizeof(r->r_handshake));
-	r->r_last_sent = TIMER_RESET;
+	bzero(&r->r_last_sent, sizeof(r->r_last_sent));
 	lockmgr(&r->r_handshake_lock, LK_RELEASE);
 }
 
@@ -655,8 +653,8 @@ noise_begin_session(struct noise_remote *r)
 	refcount_init(&kp->kp_refcnt, 1);
 	kp->kp_can_send = true;
 	kp->kp_is_initiator = r->r_handshake_state == HANDSHAKE_INITIATOR;
-	kp->kp_birthdate = getsbinuptime();
 	kp->kp_remote = noise_remote_ref(r);
+	getnanouptime(&kp->kp_birthdate);
 
 	if (kp->kp_is_initiator)
 		noise_kdf(kp->kp_send, kp->kp_recv, NULL, NULL,
@@ -703,7 +701,7 @@ noise_keypair_current(struct noise_remote *r)
 	NET_EPOCH_ENTER(et);
 	kp = atomic_load_ptr(&r->r_current);
 	if (kp != NULL && atomic_load_bool(&kp->kp_can_send)) {
-		if (noise_timer_expired(kp->kp_birthdate, REJECT_AFTER_TIME, 0))
+		if (noise_timer_expired(&kp->kp_birthdate, REJECT_AFTER_TIME, 0))
 			atomic_store_bool(&kp->kp_can_send, false);
 		else if (refcount_acquire_if_not_zero(&kp->kp_refcnt))
 			ret = kp;
@@ -874,7 +872,7 @@ noise_keep_key_fresh_send(struct noise_remote *r)
 	keep_key_fresh = nonce > REKEY_AFTER_MESSAGES;
 	if (keep_key_fresh)
 		goto out;
-	keep_key_fresh = current->kp_is_initiator && noise_timer_expired(current->kp_birthdate, REKEY_AFTER_TIME, 0);
+	keep_key_fresh = current->kp_is_initiator && noise_timer_expired(&current->kp_birthdate, REKEY_AFTER_TIME, 0);
 
 out:
 	NET_EPOCH_EXIT(et);
@@ -891,7 +889,7 @@ noise_keep_key_fresh_recv(struct noise_remote *r)
 	NET_EPOCH_ENTER(et);
 	current = atomic_load_ptr(&r->r_current);
 	keep_key_fresh = current != NULL && atomic_load_bool(&current->kp_can_send) &&
-	    current->kp_is_initiator && noise_timer_expired(current->kp_birthdate,
+	    current->kp_is_initiator && noise_timer_expired(&current->kp_birthdate,
 	    REJECT_AFTER_TIME - KEEPALIVE_TIMEOUT - REKEY_TIMEOUT, 0);
 	NET_EPOCH_EXIT(et);
 
@@ -926,7 +924,7 @@ noise_keypair_decrypt(struct noise_keypair *kp, uint64_t nonce, struct mbuf *m)
 #endif
 
 	if (cur_nonce >= REJECT_AFTER_MESSAGES ||
-	    noise_timer_expired(kp->kp_birthdate, REJECT_AFTER_TIME, 0))
+	    noise_timer_expired(&kp->kp_birthdate, REJECT_AFTER_TIME, 0))
 		return (EINVAL);
 
 	ret = chacha20poly1305_decrypt_mbuf(m, nonce, kp->kp_recv);
@@ -953,7 +951,7 @@ noise_create_initiation(struct noise_remote *r,
 	lockmgr(&r->r_handshake_lock, LK_EXCLUSIVE);
 	if (!l->l_has_identity)
 		goto error;
-	if (!noise_timer_expired(r->r_last_sent, REKEY_TIMEOUT, 0))
+	if (!noise_timer_expired(&r->r_last_sent, REKEY_TIMEOUT, 0))
 		goto error;
 	noise_param_init(hs->hs_ck, hs->hs_hash, r->r_public);
 
@@ -982,7 +980,7 @@ noise_create_initiation(struct noise_remote *r,
 
 	noise_remote_index_insert(l, r);
 	r->r_handshake_state = HANDSHAKE_INITIATOR;
-	r->r_last_sent = getsbinuptime();
+	getnanouptime(&r->r_last_sent);
 	*s_idx = r->r_index.i_local_index;
 	ret = 0;
 error:
@@ -1048,8 +1046,8 @@ noise_consume_initiation(struct noise_local *l, struct noise_remote **rp,
 	else
 		goto error_set;
 	/* Flood attack */
-	if (noise_timer_expired(r->r_last_init_recv, 0, REJECT_INTERVAL))
-		r->r_last_init_recv = getsbinuptime();
+	if (noise_timer_expired(&r->r_last_init_recv, 0, REJECT_INTERVAL))
+		getnanouptime(&r->r_last_init_recv);
 	else
 		goto error_set;
 
@@ -1110,7 +1108,7 @@ noise_create_response(struct noise_remote *r,
 	noise_msg_encrypt(en, NULL, 0, key, hs->hs_hash);
 
 	if ((ret = noise_begin_session(r)) == 0) {
-		r->r_last_sent = getsbinuptime();
+		getnanouptime(&r->r_last_sent);
 		*s_idx = r->r_index.i_local_index;
 		*r_idx = r->r_index.i_remote_index;
 	}
@@ -1390,10 +1388,24 @@ noise_tai64n_now(uint8_t output[NOISE_TIMESTAMP_LEN])
 }
 
 static inline int
-noise_timer_expired(sbintime_t timer, uint32_t sec, uint32_t nsec)
+noise_timer_expired(struct timespec *birthdate, time_t sec, long nsec)
 {
-	sbintime_t now = getsbinuptime();
-	return (now > (timer + sec * SBT_1S + nstosbt(nsec))) ? ETIMEDOUT : 0;
+	struct timespec uptime;
+	struct timespec expire = { .tv_sec = sec, .tv_nsec = nsec };
+
+	/*
+	 * We don't really worry about a zeroed birthdate, to avoid the
+	 * extra check on every encrypt/decrypt.
+	 *
+	 * This does mean that the r_last_init_recv check may fail if
+	 * getnanouptime() < { tv_sec = 0, tv_nsec = REJECT_INTERVAL }.
+	 * However, we don't try to initialize r_last_init_recv with a
+	 * negative value, avoid the risk of time_t may be unsigned.
+	 */
+
+	getnanouptime(&uptime);
+	timespecadd(birthdate, &expire, &expire);
+	return timespeccmp(&uptime, &expire, >) ? ETIMEDOUT : 0;
 }
 
 static uint64_t siphash24(const uint8_t key[SIPHASH_KEY_LENGTH], const void *src, size_t len)

@@ -27,6 +27,7 @@
 #include <sys/socketvar.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
+#include <sys/time.h>
 #include <machine/_inttypes.h>
 #include <net/bpf.h>
 #include <net/ethernet.h>
@@ -1265,24 +1266,27 @@ send:
 static void
 wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 {
+	static struct timespec		 wg_last_underload; /* nanouptime */
 	struct wg_pkt_initiation	*init;
 	struct wg_pkt_response		*resp;
 	struct wg_pkt_cookie		*cook;
 	struct wg_endpoint		*e;
 	struct wg_peer			*peer;
 	struct mbuf			*m;
+	struct timespec			 now;
 	struct noise_remote		*remote = NULL;
 	int				 res;
 	bool				 underload = false;
-	static sbintime_t		 wg_last_underload; /* sbinuptime */
 
 	underload = wg_queue_len(&sc->sc_handshake_queue) >= MAX_QUEUED_HANDSHAKES / 8;
 	if (underload) {
-		wg_last_underload = getsbinuptime();
-	} else if (wg_last_underload) {
-		underload = wg_last_underload + UNDERLOAD_TIMEOUT * SBT_1S > getsbinuptime();
+		getnanouptime(&wg_last_underload);
+	} else if (timespecisset(&wg_last_underload)) {
+		getnanouptime(&now);
+		now.tv_sec -= UNDERLOAD_TIMEOUT;
+		underload = timespeccmp(&wg_last_underload, &now, >);
 		if (!underload)
-			wg_last_underload = 0;
+			timespecclear(&wg_last_underload);
 	}
 
 	m = pkt->p_mbuf;
