@@ -24,6 +24,7 @@
 #include <sys/rmlock.h>
 #include <sys/smp.h>
 #include <sys/socket.h>
+#include <sys/socketops.h> /* so_pru_*() functions */
 #include <sys/socketvar.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
@@ -364,9 +365,10 @@ static void wg_queue_purge(struct wg_queue *);
 static int wg_queue_both(struct wg_queue *, struct wg_queue *, struct wg_packet *);
 static struct wg_packet *wg_queue_dequeue_serial(struct wg_queue *);
 static struct wg_packet *wg_queue_dequeue_parallel(struct wg_queue *);
-static bool wg_input(struct mbuf *, int, struct inpcb *, const struct sockaddr *, void *);
 static void wg_peer_send_staged(struct wg_peer *);
 static inline int determine_af_and_pullup(struct mbuf **m, sa_family_t *af);
+static void wg_upcall(struct socket *, void *, int);
+static bool wg_input(struct wg_softc *, struct mbuf *, const struct sockaddr *);
 static int wg_output(struct ifnet *, struct mbuf *, struct sockaddr *, struct rtentry *);
 static int wg_up(struct wg_softc *);
 static void wg_down(struct wg_softc *);
@@ -674,6 +676,7 @@ wg_socket_init(struct wg_softc *sc, in_port_t port)
 		return (EBUSY);
 
 	/*
+	 * XXX(ALY): how to achieve in dfly ???
 	 * For socket creation, we use the creds of the thread that created the
 	 * tunnel rather than the current thread to maintain the semantics that
 	 * WireGuard has on Linux with network namespaces -- that the sockets
@@ -682,24 +685,23 @@ wg_socket_init(struct wg_softc *sc, in_port_t port)
 	 * to the network.
 	 */
 #ifdef INET
-	rc = socreate(AF_INET, &so4, SOCK_DGRAM, IPPROTO_UDP, cred, curthread);
+	rc = socreate(AF_INET, &so4, SOCK_DGRAM, IPPROTO_UDP, curthread);
 	if (rc)
 		goto out;
 
-	rc = udp_set_kernel_tunneling(so4, wg_input, NULL, sc);
-	/*
-	 * udp_set_kernel_tunneling can only fail if there is already a tunneling function set.
-	 * This should never happen with a new socket.
-	 */
-	KKASSERT(rc == 0);
+	so4->so_upcall = wg_upcall;
+	so4->so_upcallarg = sc;
+	atomic_set_int(&so4->so_rcv.ssb_flags, SSB_UPCALL);
 #endif
 
 #ifdef INET6
-	rc = socreate(AF_INET6, &so6, SOCK_DGRAM, IPPROTO_UDP, cred, curthread);
+	rc = socreate(AF_INET6, &so6, SOCK_DGRAM, IPPROTO_UDP, curthread);
 	if (rc)
 		goto out;
-	rc = udp_set_kernel_tunneling(so6, wg_input, NULL, sc);
-	KKASSERT(rc == 0);
+
+	so6->so_upcall = wg_upcall;
+	so6->so_upcallarg = sc;
+	atomic_set_int(&so6->so_rcv.ssb_flags, SSB_UPCALL);
 #endif
 
 	if (sc->sc_socket.so_user_cookie) {
@@ -877,9 +879,9 @@ wg_send(struct wg_softc *sc, struct wg_endpoint *e, struct mbuf *m)
 	so4 = atomic_load_ptr(&so->so_so4);
 	so6 = atomic_load_ptr(&so->so_so6);
 	if (e->e_remote.r_sa.sa_family == AF_INET && so4 != NULL)
-		ret = sosend(so4, sa, NULL, m, control, 0, curthread);
+		ret = so_pru_sosend(so4, sa, NULL, m, control, 0, curthread);
 	else if (e->e_remote.r_sa.sa_family == AF_INET6 && so6 != NULL)
-		ret = sosend(so6, sa, NULL, m, control, 0, curthread);
+		ret = so_pru_sosend(so6, sa, NULL, m, control, 0, curthread);
 	else {
 		ret = ENOTCONN;
 		m_freem(control);
@@ -1903,9 +1905,34 @@ wg_queue_dequeue_parallel(struct wg_queue *parallel)
 	return (pkt);
 }
 
+static void
+wg_upcall(struct socket *so, void *arg, int waitflag __unused)
+{
+	struct wg_softc		*sc = arg;
+	struct sockaddr		*sa;
+	struct sockbuf		 sio;
+	int			 error, flags;
+
+	/*
+	 * For UDP, soreceive typically pulls just one packet,
+	 * loop to get the whole batch.
+	 */
+	do {
+		sbinit(&sio, 1000000000); /* really large to receive all */
+		flags = MSG_DONTWAIT;
+		error = so_pru_soreceive(so, &sa, NULL, &sio, NULL, &flags);
+		if (error != 0 || sio.sb_mb == NULL) {
+			if (sa != NULL)
+				kfree(sa, M_SONAME);
+			break;
+		}
+		wg_input(sc, sio.sb_mb, sa);
+		kfree(sa, M_SONAME);
+	} while (sio.sb_mb != NULL);
+}
+
 static bool
-wg_input(struct mbuf *m, int offset, struct inpcb *inpcb,
-    const struct sockaddr *sa, void *_sc)
+wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 {
 #ifdef INET
 	const struct sockaddr_in	*sin;
@@ -1917,7 +1944,6 @@ wg_input(struct mbuf *m, int offset, struct inpcb *inpcb,
 	struct wg_pkt_data		*data;
 	struct wg_packet		*pkt;
 	struct wg_peer			*peer;
-	struct wg_softc			*sc = _sc;
 	struct mbuf			*defragged;
 
 	defragged = m_defrag(m, M_NOWAIT);
@@ -1928,9 +1954,6 @@ wg_input(struct mbuf *m, int offset, struct inpcb *inpcb,
 		IFNET_STAT_INC(sc->sc_ifp, iqdrops, 1);
 		return true;
 	}
-
-	/* Caller provided us with `sa`, no need for this header. */
-	m_adj(m, offset + sizeof(struct udphdr));
 
 	/* Pullup enough to read packet type */
 	if ((m = m_pullup(m, sizeof(uint32_t))) == NULL) {
