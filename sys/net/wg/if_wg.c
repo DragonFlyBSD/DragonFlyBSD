@@ -13,7 +13,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/caps.h>
-#include <sys/gtaskqueue.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/mbuf.h>
@@ -28,6 +27,7 @@
 #include <sys/socketvar.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
+#include <sys/taskqueue.h>
 #include <sys/time.h>
 #include <machine/_inttypes.h>
 #include <net/bpf.h>
@@ -207,8 +207,10 @@ struct wg_peer {
 	struct timespec			 p_handshake_complete;	/* nanotime */
 	int				 p_handshake_retries;
 
-	struct grouptask		 p_send;
-	struct grouptask		 p_recv;
+	struct task			 p_send_task;
+	struct task			 p_recv_task;
+	struct taskqueue		*p_send_taskqueue;
+	struct taskqueue		*p_recv_taskqueue;
 
 	uint64_t			*p_tx_bytes;
 	uint64_t			*p_rx_bytes;
@@ -241,11 +243,12 @@ struct wg_softc {
 	struct radix_node_head	*sc_aip4;
 	struct radix_node_head	*sc_aip6;
 
-	struct grouptask	 sc_handshake;
+	struct taskqueue	*sc_handshake_taskqueue;
+	struct task		 sc_handshake_task;
 	struct wg_queue		 sc_handshake_queue;
 
-	struct grouptask	*sc_encrypt;
-	struct grouptask	*sc_decrypt;
+	struct task		*sc_encrypt_tasks; /* one per CPU */
+	struct task		*sc_decrypt_tasks; /* one per CPU */
 	struct wg_queue		 sc_encrypt_parallel;
 	struct wg_queue		 sc_decrypt_parallel;
 	u_int			 sc_encrypt_last_cpu;
@@ -261,9 +264,6 @@ struct wg_softc {
 #ifndef ENOKEY
 #define	ENOKEY	ENOTCAPABLE
 #endif
-
-#define	GROUPTASK_DRAIN(gtask)			\
-	gtaskqueue_drain((gtask)->gt_taskqueue, &(gtask)->gt_task)
 
 #define BPF_MTAP_AF(_ifp, _m, _af) do { \
 	if ((_ifp)->if_bpf != NULL) { \
@@ -287,7 +287,7 @@ static struct lock wg_lock;
 static int clone_count;
 static LIST_HEAD(, wg_softc) wg_list = LIST_HEAD_INITIALIZER(wg_list);
 
-static TASKQGROUP_DEFINE(wg_tqg, ncpus, 1);
+static struct taskqueue **wg_taskqueues; /* one taskqueue per CPU */
 
 MALLOC_DEFINE(M_WG, "WG", "wireguard");
 
@@ -344,13 +344,13 @@ static void wg_send_keepalive(struct wg_peer *);
 static void wg_handshake(struct wg_softc *, struct wg_packet *);
 static void wg_encrypt(struct wg_softc *, struct wg_packet *);
 static void wg_decrypt(struct wg_softc *, struct wg_packet *);
-static void wg_softc_handshake_receive(struct wg_softc *);
-static void wg_softc_decrypt(struct wg_softc *);
-static void wg_softc_encrypt(struct wg_softc *);
+static void wg_softc_handshake_receive(void *, int);
+static void wg_softc_decrypt(void *, int);
+static void wg_softc_encrypt(void *, int);
 static void wg_encrypt_dispatch(struct wg_softc *);
 static void wg_decrypt_dispatch(struct wg_softc *);
-static void wg_deliver_out(struct wg_peer *);
-static void wg_deliver_in(struct wg_peer *);
+static void wg_deliver_out(void *, int);
+static void wg_deliver_in(void *, int);
 static struct wg_packet *wg_packet_alloc(struct mbuf *);
 static void wg_packet_free(struct wg_packet *);
 static void wg_queue_init(struct wg_queue *, const char *);
@@ -423,10 +423,12 @@ wg_peer_create(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE])
 	bzero(&peer->p_handshake_complete, sizeof(peer->p_handshake_complete));
 	peer->p_handshake_retries = 0;
 
-	GROUPTASK_INIT(&peer->p_send, 0, (gtask_fn_t *)wg_deliver_out, peer);
-	taskqgroup_attach(qgroup_wg_tqg, &peer->p_send, peer, NULL, NULL, "wg send");
-	GROUPTASK_INIT(&peer->p_recv, 0, (gtask_fn_t *)wg_deliver_in, peer);
-	taskqgroup_attach(qgroup_wg_tqg, &peer->p_recv, peer, NULL, NULL, "wg recv");
+	TASK_INIT(&peer->p_send_task, 0, wg_deliver_out, peer);
+	TASK_INIT(&peer->p_recv_task, 0, wg_deliver_in, peer);
+
+	/* Randomly choose the taskqueues to distribute the load. */
+	peer->p_send_taskqueue = wg_taskqueues[karc4random() % ncpus];
+	peer->p_recv_taskqueue = wg_taskqueues[karc4random() % ncpus];
 
 	LIST_INIT(&peer->p_aips);
 	peer->p_aips_num = 0;
@@ -446,13 +448,14 @@ wg_peer_free_deferred(struct noise_remote *r)
 {
 	struct wg_peer *peer = noise_remote_arg(r);
 
-	/* While there are no references remaining, we may still have
-	 * p_{send,recv} executing (think empty queue, but wg_deliver_{in,out}
-	 * needs to check the queue. We should wait for them and then free. */
-	GROUPTASK_DRAIN(&peer->p_recv);
-	GROUPTASK_DRAIN(&peer->p_send);
-	taskqgroup_detach(qgroup_wg_tqg, &peer->p_recv);
-	taskqgroup_detach(qgroup_wg_tqg, &peer->p_send);
+	/*
+	 * While there are no references remaining, we may still have
+	 * p_{send,recv}_task executing (think empty queue, but
+	 * wg_deliver_{in,out} needs to check the queue.  We should wait
+	 * for them and then free.
+	 */
+	taskqueue_drain(peer->p_recv_taskqueue, &peer->p_recv_task);
+	taskqueue_drain(peer->p_send_taskqueue, &peer->p_send_task);
 
 	wg_queue_deinit(&peer->p_decrypt_serial);
 	wg_queue_deinit(&peer->p_encrypt_serial);
@@ -1401,9 +1404,11 @@ error:
 }
 
 static void
-wg_softc_handshake_receive(struct wg_softc *sc)
+wg_softc_handshake_receive(void *arg, int pending __unused)
 {
+	struct wg_softc *sc = arg;
 	struct wg_packet *pkt;
+
 	while ((pkt = wg_queue_dequeue_handshake(&sc->sc_handshake_queue)) != NULL)
 		wg_handshake(sc, pkt);
 }
@@ -1507,7 +1512,7 @@ out:
 	pkt->p_mbuf = m;
 	wmb();
 	pkt->p_state = state;
-	GROUPTASK_ENQUEUE(&peer->p_send);
+	taskqueue_enqueue(peer->p_send_taskqueue, &peer->p_send_task);
 	noise_remote_put(remote);
 }
 
@@ -1580,13 +1585,14 @@ out:
 	pkt->p_mbuf = m;
 	wmb();
 	pkt->p_state = state;
-	GROUPTASK_ENQUEUE(&peer->p_recv);
+	taskqueue_enqueue(peer->p_recv_taskqueue, &peer->p_recv_task);
 	noise_remote_put(remote);
 }
 
 static void
-wg_softc_decrypt(struct wg_softc *sc)
+wg_softc_decrypt(void *arg, int pending __unused)
 {
+	struct wg_softc *sc = arg;
 	struct wg_packet *pkt;
 
 	while ((pkt = wg_queue_dequeue_parallel(&sc->sc_decrypt_parallel)) != NULL)
@@ -1594,8 +1600,9 @@ wg_softc_decrypt(struct wg_softc *sc)
 }
 
 static void
-wg_softc_encrypt(struct wg_softc *sc)
+wg_softc_encrypt(void *arg, int pending __unused)
 {
+	struct wg_softc *sc = arg;
 	struct wg_packet *pkt;
 
 	while ((pkt = wg_queue_dequeue_parallel(&sc->sc_encrypt_parallel)) != NULL)
@@ -1612,7 +1619,7 @@ wg_encrypt_dispatch(struct wg_softc *sc)
 	 */
 	u_int cpu = (sc->sc_encrypt_last_cpu + 1) % ncpus;
 	sc->sc_encrypt_last_cpu = cpu;
-	GROUPTASK_ENQUEUE(&sc->sc_encrypt[cpu]);
+	taskqueue_enqueue(wg_taskqueues[cpu], &sc->sc_encrypt_tasks[cpu]);
 }
 
 static void
@@ -1620,14 +1627,15 @@ wg_decrypt_dispatch(struct wg_softc *sc)
 {
 	u_int cpu = (sc->sc_decrypt_last_cpu + 1) % ncpus;
 	sc->sc_decrypt_last_cpu = cpu;
-	GROUPTASK_ENQUEUE(&sc->sc_decrypt[cpu]);
+	taskqueue_enqueue(wg_taskqueues[cpu], &sc->sc_decrypt_tasks[cpu]);
 }
 
 static void
-wg_deliver_out(struct wg_peer *peer)
+wg_deliver_out(void *arg, int pending __unused)
 {
-	struct wg_endpoint	 endpoint;
+	struct wg_peer		*peer = arg;
 	struct wg_softc		*sc = peer->p_sc;
+	struct wg_endpoint	 endpoint;
 	struct wg_packet	*pkt;
 	struct mbuf		*m;
 	int			 rc, len;
@@ -1668,8 +1676,9 @@ error:
 }
 
 static void
-wg_deliver_in(struct wg_peer *peer)
+wg_deliver_in(void *arg, int pending __unused)
 {
+	struct wg_peer		*peer = arg;
 	struct wg_softc		*sc = peer->p_sc;
 	struct ifnet		*ifp = sc->sc_ifp;
 	struct wg_packet	*pkt;
@@ -1998,7 +2007,8 @@ wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 			IFNET_STAT_INC(sc->sc_ifp, iqdrops, 1);
 			DPRINTF(sc, "Dropping handshake packet\n");
 		}
-		GROUPTASK_ENQUEUE(&sc->sc_handshake);
+		taskqueue_enqueue(sc->sc_handshake_taskqueue,
+				  &sc->sc_handshake_task);
 	} else if (m->m_pkthdr.len >= sizeof(struct wg_pkt_data) +
 	    NOISE_AUTHTAG_LEN && *mtod(m, uint32_t *) == WG_PKT_DATA) {
 
@@ -2629,14 +2639,16 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 {
 	struct wg_softc *sc;
 	struct ifnet *ifp;
+	int i;
 
 	sc = kmalloc(sizeof(*sc), M_WG, M_WAITOK | M_ZERO);
 
 	sc->sc_local = noise_local_alloc(sc);
 
-	sc->sc_encrypt = kmalloc(sizeof(struct grouptask) * ncpus, M_WG, M_WAITOK | M_ZERO);
-
-	sc->sc_decrypt = kmalloc(sizeof(struct grouptask) * ncpus, M_WG, M_WAITOK | M_ZERO);
+	sc->sc_encrypt_tasks = kmalloc(sizeof(*sc->sc_encrypt_tasks) * ncpus,
+				       M_WG, M_WAITOK | M_ZERO);
+	sc->sc_decrypt_tasks = kmalloc(sizeof(*sc->sc_decrypt_tasks) * ncpus,
+				       M_WG, M_WAITOK | M_ZERO);
 
 	if (!rn_inithead((void **)&sc->sc_aip4, offsetof(struct aip_addr, in) * NBBY))
 		goto free_decrypt;
@@ -2658,19 +2670,14 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 	RADIX_NODE_HEAD_LOCK_INIT(sc->sc_aip4);
 	RADIX_NODE_HEAD_LOCK_INIT(sc->sc_aip6);
 
-	GROUPTASK_INIT(&sc->sc_handshake, 0, (gtask_fn_t *)wg_softc_handshake_receive, sc);
-	taskqgroup_attach(qgroup_wg_tqg, &sc->sc_handshake, sc, NULL, NULL, "wg tx initiation");
+	sc->sc_handshake_taskqueue = wg_taskqueues[karc4random() % ncpus];
+	TASK_INIT(&sc->sc_handshake_task, 0, wg_softc_handshake_receive, sc);
 	wg_queue_init(&sc->sc_handshake_queue, "hsq");
 
-	for (int i = 0; i < ncpus; i++) {
-		GROUPTASK_INIT(&sc->sc_encrypt[i], 0,
-		     (gtask_fn_t *)wg_softc_encrypt, sc);
-		taskqgroup_attach_cpu(qgroup_wg_tqg, &sc->sc_encrypt[i], sc, i, NULL, NULL, "wg encrypt");
-		GROUPTASK_INIT(&sc->sc_decrypt[i], 0,
-		    (gtask_fn_t *)wg_softc_decrypt, sc);
-		taskqgroup_attach_cpu(qgroup_wg_tqg, &sc->sc_decrypt[i], sc, i, NULL, NULL, "wg decrypt");
+	for (i = 0; i < ncpus; i++) {
+		TASK_INIT(&sc->sc_encrypt_tasks[i], 0, wg_softc_encrypt, sc);
+		TASK_INIT(&sc->sc_decrypt_tasks[i], 0, wg_softc_decrypt, sc);
 	}
-
 	wg_queue_init(&sc->sc_encrypt_parallel, "encp");
 	wg_queue_init(&sc->sc_decrypt_parallel, "decp");
 
@@ -2687,6 +2694,7 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 	ifq_set_ready(&ifp->if_snd);
 
 	if_attach(ifp, NULL);
+
 	bpfattach(ifp, DLT_NULL, sizeof(uint32_t));
 
 	lockmgr(&wg_lock, LK_EXCLUSIVE);
@@ -2697,8 +2705,8 @@ free_aip4:
 	RADIX_NODE_HEAD_DESTROY(sc->sc_aip4);
 	kfree(sc->sc_aip4, M_RTABLE);
 free_decrypt:
-	kfree(sc->sc_decrypt, M_WG);
-	kfree(sc->sc_encrypt, M_WG);
+	kfree(sc->sc_decrypt_tasks, M_WG);
+	kfree(sc->sc_encrypt_tasks, M_WG);
 	noise_local_free(sc->sc_local, NULL);
 	kfree(sc, M_WG);
 	return (ENOMEM);
@@ -2718,6 +2726,7 @@ wg_clone_destroy(struct ifnet *ifp)
 {
 	struct wg_softc *sc = ifp->if_softc;
 	struct ucred *cred;
+	int i;
 
 	lockmgr(&wg_lock, LK_EXCLUSIVE);
 	ifp->if_softc = NULL;
@@ -2743,19 +2752,32 @@ wg_clone_destroy(struct ifnet *ifp)
 	 */
 	NET_EPOCH_WAIT();
 
-	taskqgroup_drain_all(qgroup_wg_tqg);
+	/* Cancel all tasks. */
+	while (taskqueue_cancel(sc->sc_handshake_taskqueue,
+				&sc->sc_handshake_task, NULL) != 0) {
+		taskqueue_drain(sc->sc_handshake_taskqueue,
+				&sc->sc_handshake_task);
+	}
+	for (i = 0; i < ncpus; i++) {
+		while (taskqueue_cancel(wg_taskqueues[i],
+					&sc->sc_encrypt_tasks[i], NULL) != 0) {
+			taskqueue_drain(wg_taskqueues[i],
+					&sc->sc_encrypt_tasks[i]);
+		}
+		while (taskqueue_cancel(wg_taskqueues[i],
+					&sc->sc_decrypt_tasks[i], NULL) != 0) {
+			taskqueue_drain(wg_taskqueues[i],
+					&sc->sc_decrypt_tasks[i]);
+		}
+	}
+
 	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	wg_peer_destroy_all(sc);
 	NET_EPOCH_DRAIN_CALLBACKS();
 	lockmgr(&sc->sc_lock, LK_RELEASE);
 	lockuninit(&sc->sc_lock);
-	taskqgroup_detach(qgroup_wg_tqg, &sc->sc_handshake);
-	for (int i = 0; i < ncpus; i++) {
-		taskqgroup_detach(qgroup_wg_tqg, &sc->sc_encrypt[i]);
-		taskqgroup_detach(qgroup_wg_tqg, &sc->sc_decrypt[i]);
-	}
-	kfree(sc->sc_encrypt, M_WG);
-	kfree(sc->sc_decrypt, M_WG);
+	kfree(sc->sc_encrypt_tasks, M_WG);
+	kfree(sc->sc_decrypt_tasks, M_WG);
 	wg_queue_deinit(&sc->sc_handshake_queue);
 	wg_queue_deinit(&sc->sc_encrypt_parallel);
 	wg_queue_deinit(&sc->sc_decrypt_parallel);
@@ -2805,7 +2827,7 @@ static inline bool wg_run_selftests(void) { return true; }
 static int
 wg_module_init(void)
 {
-	int ret;
+	int i, ret;
 
 	lockinit(&wg_lock, "wg lock", 0, 0);
 
@@ -2813,6 +2835,18 @@ wg_module_init(void)
 	    sizeof(struct wg_packet));
 	if (wg_packet_zone == NULL)
 		return (ENOMEM);
+
+	wg_taskqueues = kmalloc(sizeof(*wg_taskqueues) * ncpus, M_WG,
+				M_WAITOK | M_ZERO);
+	for (i = 0; i < ncpus; i++) {
+		wg_taskqueues[i] = taskqueue_create("wg_taskq", M_WAITOK,
+						    taskqueue_thread_enqueue,
+						    &wg_taskqueues[i]);
+		taskqueue_start_threads(&wg_taskqueues[i], 1,
+					TDPRI_KERN_DAEMON, i,
+					"wg_taskq_cpu_%d", i);
+	}
+
 	ret = crypto_init();
 	if (ret != 0)
 		return (ret);
@@ -2833,6 +2867,8 @@ wg_module_init(void)
 static int
 wg_module_deinit(void)
 {
+	int i;
+
 	if (atomic_load_int(&clone_count) > 0)
 		return (EBUSY);
 
@@ -2840,6 +2876,11 @@ wg_module_deinit(void)
 
 	cookie_deinit();
 	crypto_deinit();
+
+	for (i = 0; i < ncpus; i++)
+		taskqueue_free(wg_taskqueues[i]);
+	kfree(wg_taskqueues, M_WG);
+
 	if (wg_packet_zone != NULL)
 		objcache_destroy(wg_packet_zone);
 	lockuninit(&wg_lock);
