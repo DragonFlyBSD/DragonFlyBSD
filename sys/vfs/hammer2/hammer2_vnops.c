@@ -93,7 +93,6 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	 */
 	hammer2_inode_lock(ip, 0);
 	if (ip->flags & HAMMER2_INODE_ISUNLINKED) {
-		hammer2_key_t lbase;
 		int nblksize;
 
 		/*
@@ -103,7 +102,7 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 		 * Because vrecycle() calls are not guaranteed, try to
 		 * dispose of the inode as much as possible right here.
 		 */
-		nblksize = hammer2_calc_logical(ip, 0, &lbase, NULL);
+		nblksize = hammer2_calc_logical(ip, 0, NULL, NULL);
 		nvtruncbuf(vp, 0, nblksize, 0, 0);
 
 		/*
@@ -1235,12 +1234,11 @@ static
 void
 hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 {
-	hammer2_key_t lbase;
 	int nblksize;
 
 	hammer2_mtx_unlock(&ip->lock);
 	if (ip->vp) {
-		nblksize = hammer2_calc_logical(ip, nsize, &lbase, NULL);
+		nblksize = hammer2_calc_logical(ip, 0, NULL, NULL);
 		nvtruncbuf(ip->vp, nsize,
 			   nblksize, (int)nsize & (nblksize - 1),
 			   0);
@@ -1272,7 +1270,6 @@ static
 void
 hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 {
-	hammer2_key_t lbase;
 	hammer2_key_t osize;
 	int oblksize;
 	int nblksize;
@@ -1317,8 +1314,8 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	}
 	hammer2_mtx_unlock(&ip->lock);
 	if (ip->vp) {
-		oblksize = hammer2_calc_logical(ip, osize, &lbase, NULL);
-		nblksize = hammer2_calc_logical(ip, nsize, &lbase, NULL);
+		oblksize = hammer2_calc_logical(ip, 0, NULL, NULL);
+		nblksize = hammer2_calc_logical(ip, 0, NULL, NULL);
 		nvextendbuf(ip->vp,
 			    osize, nsize,
 			    oblksize, nblksize,
