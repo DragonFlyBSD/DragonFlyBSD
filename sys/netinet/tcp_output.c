@@ -908,7 +908,7 @@ send:
 		m->m_len = hdrlen;
 		if (len <= MHLEN - hdrlen - max_linkhdr) {
 			m_copydata(so->so_snd.ssb_mb, off, (int) len,
-			    mtod(m, caddr_t) + hdrlen);
+				   mtod(m, caddr_t) + hdrlen);
 			m->m_len += len;
 		} else {
 			m->m_next = m_copym(so->so_snd.ssb_mb, off,

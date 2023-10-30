@@ -168,7 +168,7 @@ nb_connect_in(struct nbpcb *nbp, struct sockaddr_in *to, struct thread *td)
 
 	/*
 	 * If signals are allowed nbssn_recv() can wind up in a hard loop
-	 * on EWOULDBLOCK. 
+	 * on EWOULDBLOCK.
 	 */
 	atomic_set_int(&so->so_rcv.ssb_flags, SSB_NOINTR);
 	atomic_set_int(&so->so_snd.ssb_flags, SSB_NOINTR);

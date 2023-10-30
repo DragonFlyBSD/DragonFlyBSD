@@ -3,7 +3,7 @@
  *	The Regents of the University of California.  All rights reserved.
  *
  * sendfile(2) and related extensions:
- * Copyright (c) 1998, David Greenman. All rights reserved. 
+ * Copyright (c) 1998, David Greenman. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1012,7 +1012,7 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 }
 
 /*
- * recvfrom_args(int s, caddr_t buf, size_t len, int flags, 
+ * recvfrom_args(int s, caddr_t buf, size_t len, int flags,
  *			caddr_t from, int *fromlenaddr)
  *
  * MPALMOSTSAFE
@@ -1774,7 +1774,7 @@ retry_lookup:
 		}
 
 		/*
-		 * Attempt to look up the page.  
+		 * Attempt to look up the page.
 		 *
 		 * Try to find the data using a shared vm_object token and
 		 * vm_page_lookup_sbusy_try() first.

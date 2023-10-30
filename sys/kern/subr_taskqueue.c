@@ -138,7 +138,7 @@ taskqueue_create(const char *name, int mflags,
 static void
 taskqueue_terminate(struct thread **pp, struct taskqueue *tq)
 {
-	while(tq->tq_tcount > 0) {
+	while (tq->tq_tcount > 0) {
 		/* Unlock spinlock before wakeup() */
 		TQ_UNLOCK(tq);
 		wakeup(tq);
@@ -578,7 +578,7 @@ taskqueue_start_threads(struct taskqueue **tqp, int count, int pri, int ncpu,
 		 * cpus.
 		 */
 		if ((ncpu <= -1) && (count > 1))
-			cpu = i%ncpus;
+			cpu = i % ncpus;
 
 		if (count == 1) {
 			error = lwkt_create(taskqueue_thread_loop, tqp,
@@ -649,7 +649,7 @@ TASKQUEUE_DEFINE(swi, taskqueue_swi_enqueue, 0,
  * related: platform/XXX/isa/ipl_funcs.c
  */
 TASKQUEUE_DEFINE(swi_mp, taskqueue_swi_enqueue, 0,
-    register_swi_mp(SWI_TQ, taskqueue_swi_mp_run, NULL, "swi_mp_taskq", NULL, 
+    register_swi_mp(SWI_TQ, taskqueue_swi_mp_run, NULL, "swi_mp_taskq", NULL,
 		    -1));
 
 struct taskqueue *taskqueue_thread[MAXCPU];

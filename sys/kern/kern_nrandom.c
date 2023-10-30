@@ -224,12 +224,12 @@ static void IBAA
 )
 {
 	u4 a, b, x, y, i;
- 
+
 	a = *aa;
 	b = *bb + *counter;
 	++*counter;
 	for (i = 0; i < SIZE; ++i) {
-		x = m[i];  
+		x = m[i];
 		a = barrel(a) + m[ind(i + (SIZE / 2))];	/* set a */
 		m[i] = y = m[ind(x)] + a + b;		/* set m */
 		r[i] = b = m[ind(y >> ALPHA)] + x;	/* set r */
@@ -245,7 +245,7 @@ static void	IBAA_Seed(struct ibaa_state *ibaa, u_int32_t val);
 static u_char	IBAA_Byte(struct ibaa_state *ibaa);
 
 /*
- * Initialize IBAA. 
+ * Initialize IBAA.
  */
 static void
 IBAA_Init(struct ibaa_state *ibaa)
@@ -276,7 +276,7 @@ IBAA_Call (struct ibaa_state *ibaa)
 }
 
 /*
- * Add a 32-bit u4 seed value into IBAAs memory.  Mix the low 4 bits 
+ * Add a 32-bit u4 seed value into IBAAs memory.  Mix the low 4 bits
  * with 4 bits of PNG data to reduce the possibility of a seeding-based
  * attack.
  */
@@ -309,7 +309,7 @@ IBAA_Vector (struct ibaa_state *ibaa, const char *buf, int bytes)
 }
 
 /*
- * Extract a byte from IBAAs 256 32-bit u4 results array. 
+ * Extract a byte from IBAAs 256 32-bit u4 results array.
  *
  * NOTE: This code is designed to prevent MP races from taking
  * IBAA_byte_index out of bounds.
@@ -955,7 +955,7 @@ NANOUP_EVENT(struct timespec *last, struct csprng_state *state)
 	if (tsc_present)
 		nsec ^= (rdtsc() & 255) << 8;
 
-	/* 
+	/*
 	 * Ok.
 	 */
 	add_buffer_randomness_state(state,

@@ -41,7 +41,7 @@
  */
 /*
  * Procedures used by NFS_ROOT and BOOTP to do an NFS mount rpc to obtain
- * the nfs root file handle for a NFS-based root mount point.  This module 
+ * the nfs root file handle for a NFS-based root mount point.  This module
  * is not used by normal operating code because the 'mount' command has a
  * far more sophisticated implementation.
  */
@@ -94,7 +94,7 @@ void
 nfs_mountopts(struct nfs_args *args, char *p)
 {
 	char *tmp;
-	
+
 	args->version = NFS_ARGSVERSION;
 	args->rsize = 8192;
 	args->wsize = 8192;
@@ -134,14 +134,14 @@ md_mount(struct sockaddr_in *mdsin,		/* mountd server address */
 	int authunixok;
 	int authcount;
 	int authver;
-	
+
 	/* First try NFS v3 */
 	/* Get port number for MOUNTD. */
 	error = krpc_portmap(mdsin, RPCPROG_MNT, RPCMNT_VER3,
 			     &mdsin->sin_port, td);
 	if (error == 0) {
 		m = xdr_string_encode(path, strlen(path));
-		
+
 		/* Do RPC to mountd. */
 		error = krpc_call(mdsin, RPCPROG_MNT, RPCMNT_VER3,
 				  RPCMNT_MOUNT, &m, NULL, td);
@@ -150,15 +150,15 @@ md_mount(struct sockaddr_in *mdsin,		/* mountd server address */
 		args->flags |= NFSMNT_NFSV3;
 	} else {
 		/* Fallback to NFS v2 */
-		
+
 		/* Get port number for MOUNTD. */
 		error = krpc_portmap(mdsin, RPCPROG_MNT, RPCMNT_VER1,
 				     &mdsin->sin_port, td);
 		if (error != 0)
 			return error;
-		
+
 		m = xdr_string_encode(path, strlen(path));
-		
+
 		/* Do RPC to mountd. */
 		error = krpc_call(mdsin, RPCPROG_MNT, RPCMNT_VER1,
 				  RPCMNT_MOUNT, &m, NULL, td);
@@ -169,7 +169,7 @@ md_mount(struct sockaddr_in *mdsin,		/* mountd server address */
 
 	if (xdr_int_decode(&m, &error) != 0 || error != 0)
 		goto bad;
-	
+
 	if ((args->flags & NFSMNT_NFSV3) != 0) {
 		if (xdr_int_decode(&m, fhsizep) != 0 ||
 		    *fhsizep > NFSX_V3FHMAX ||
@@ -197,18 +197,18 @@ md_mount(struct sockaddr_in *mdsin,		/* mountd server address */
 		if (authunixok == 0)
 			goto bad;
 	}
-	  
+
 	/* Set port number for NFS use. */
 	error = krpc_portmap(mdsin, NFS_PROG,
 			     (args->flags &
 			      NFSMNT_NFSV3) ? NFS_VER3 : NFS_VER2,
 			     &mdsin->sin_port, td);
-	
+
 	goto out;
-	
+
 bad:
 	error = EBADRPC;
-	
+
 out:
 	m_freem(m);
 	return error;
@@ -241,7 +241,7 @@ md_lookup_swap(struct sockaddr_in *mdsin,	/* mountd server address */
 		bcopy(fhp, mtod(m, u_char *), NFSX_V2FH);
 		m->m_len = NFSX_V2FH;
 	}
-	
+
 	m->m_next = xdr_string_encode(path, strlen(path));
 	if (m->m_next == NULL) {
 		error = ENOBUFS;
@@ -264,7 +264,7 @@ md_lookup_swap(struct sockaddr_in *mdsin,	/* mountd server address */
 		error = ENOENT;
 		goto out;
 	}
-	
+
 	if ((args->flags & NFSMNT_NFSV3) != 0) {
 		if (xdr_int_decode(&m, fhsizep) != 0 ||
 		    *fhsizep > NFSX_V3FHMAX ||
@@ -272,10 +272,10 @@ md_lookup_swap(struct sockaddr_in *mdsin,	/* mountd server address */
 			goto bad;
 	} else
 		*fhsizep = NFSX_V2FH;
-	
+
 	if (xdr_opaque_decode(&m, fhp, *fhsizep) != 0)
 		goto bad;
-	
+
 	if ((args->flags & NFSMNT_NFSV3) != 0) {
 		if (xdr_int_decode(&m, &attribs_present) != 0)
 			goto bad;
@@ -291,18 +291,18 @@ md_lookup_swap(struct sockaddr_in *mdsin,	/* mountd server address */
 			goto bad;
 		size = fxdr_unsigned(u_int32_t, fattribs.v2[5]);
 	}
-	  
+
 	if (nfsv3_diskless.swap_nblks == 0 && size != -1) {
 		nfsv3_diskless.swap_nblks = size / 1024;
 		kprintf("md_lookup_swap: Swap size is %d KB\n",
 		       nfsv3_diskless.swap_nblks);
 	}
-	
+
 	goto out;
-	
+
 bad:
 	error = EBADRPC;
-	
+
 out:
 	m_freem(m);
 	return error;
@@ -313,7 +313,7 @@ setfs(struct sockaddr_in *addr, char *path, char *p)
 {
 	unsigned int ip;
 	int val;
-	
+
 	ip = 0;
 	if (((val = getdec(&p)) < 0) || (val > 255))
 		return 0;
@@ -339,11 +339,11 @@ setfs(struct sockaddr_in *addr, char *path, char *p)
 	if (*p != ':')
 		return 0;
 	p++;
-	
+
 	addr->sin_addr.s_addr = htonl(ip);
 	addr->sin_len = sizeof(struct sockaddr_in);
 	addr->sin_family = AF_INET;
-	
+
 	strncpy(path, p, MNAMELEN - 1);
 	return 1;
 }
@@ -371,7 +371,7 @@ substr(char *a, char *b)
 {
 	char *loc1;
 	char *loc2;
-	
+
         while (*a != '\0') {
                 loc1 = a;
                 loc2 = b;
@@ -392,10 +392,10 @@ xdr_opaque_decode(struct mbuf **mptr, u_char *buf, int len)
 {
 	struct mbuf *m;
 	int alignedlen;
-	
+
 	m = *mptr;
 	alignedlen = ( len + 3 ) & ~3;
-	
+
 	if (m->m_len < alignedlen) {
 		m = m_pullup(m, alignedlen);
 		if (m == NULL) {

@@ -69,7 +69,7 @@
 /*
  * The assembly is volatilized to demark potential before-and-after side
  * effects if an interrupt or SMP collision were to occur.  The primary
- * atomic instructions are MP safe, the nonlocked instructions are 
+ * atomic instructions are MP safe, the nonlocked instructions are
  * local-interrupt-safe (so we don't depend on C 'X |= Y' generating an
  * atomic instruction).
  *
@@ -115,24 +115,24 @@ atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v)\
 }
 
 /* egcs 1.1.2+ version */
-ATOMIC_ASM(set,	     char,  "orb %b1,%0",  "iq",   v)
-ATOMIC_ASM(clear,    char,  "andb %b1,%0", "iq",   ~v)
-ATOMIC_ASM(add,	     char,  "addb %b1,%0", "iq",   v)
+ATOMIC_ASM(set,      char,  "orb %b1,%0",  "iq",   v)
+ATOMIC_ASM(clear,    char,  "andb %b1,%0", "iq",  ~v)
+ATOMIC_ASM(add,      char,  "addb %b1,%0", "iq",   v)
 ATOMIC_ASM(subtract, char,  "subb %b1,%0", "iq",   v)
 
-ATOMIC_ASM(set,	     short, "orw %w1,%0",  "iq",   v)
+ATOMIC_ASM(set,      short, "orw %w1,%0",  "iq",   v)
 ATOMIC_ASM(clear,    short, "andw %w1,%0", "iq",  ~v)
-ATOMIC_ASM(add,	     short, "addw %w1,%0", "iq",   v)
+ATOMIC_ASM(add,      short, "addw %w1,%0", "iq",   v)
 ATOMIC_ASM(subtract, short, "subw %w1,%0", "iq",   v)
 
-ATOMIC_ASM(set,	     int,   "orl %1,%0",  "iq",   v)
+ATOMIC_ASM(set,      int,   "orl %1,%0",  "iq",   v)
 ATOMIC_ASM(clear,    int,   "andl %1,%0", "iq",  ~v)
-ATOMIC_ASM(add,	     int,   "addl %1,%0", "iq",   v)
+ATOMIC_ASM(add,      int,   "addl %1,%0", "iq",   v)
 ATOMIC_ASM(subtract, int,   "subl %1,%0", "iq",   v)
 
-ATOMIC_ASM(set,	     long,  "orq %1,%0",  "r",   v)
+ATOMIC_ASM(set,      long,  "orq %1,%0",  "r",   v)
 ATOMIC_ASM(clear,    long,  "andq %1,%0", "r",  ~v)
-ATOMIC_ASM(add,	     long,  "addq %1,%0", "r",   v)
+ATOMIC_ASM(add,      long,  "addq %1,%0", "r",   v)
 ATOMIC_ASM(subtract, long,  "subq %1,%0", "r",   v)
 
 static __inline u_long
@@ -761,11 +761,11 @@ ATOMIC_STORE_LOAD(long, "cmpxchgq %0,%1",  "xchgq %1,%0");
 #define	atomic_cmpset_rel_long		atomic_cmpset_long
 
 /* cpumask_t is 64-bits on x86-64 */
-#define atomic_set_cpumask		atomic_set_long
-#define atomic_clear_cpumask		atomic_clear_long
-#define atomic_cmpset_cpumask		atomic_cmpset_long
-#define atomic_store_rel_cpumask	atomic_store_rel_long
-#define atomic_load_acq_cpumask		atomic_load_acq_long
+#define	atomic_set_cpumask		atomic_set_long
+#define	atomic_clear_cpumask		atomic_clear_long
+#define	atomic_cmpset_cpumask		atomic_cmpset_long
+#define	atomic_store_rel_cpumask	atomic_store_rel_long
+#define	atomic_load_acq_cpumask		atomic_load_acq_long
 
 /* Operations on 8-bit bytes. */
 #define	atomic_set_8		atomic_set_char
@@ -829,10 +829,10 @@ ATOMIC_STORE_LOAD(long, "cmpxchgq %0,%1",  "xchgq %1,%0");
 #define	atomic_swap_64		atomic_swap_long
 #define	atomic_fetchadd_64	atomic_fetchadd_long
 #define	atomic_add_64		atomic_add_long
-#define atomic_cmpset_64	atomic_cmpset_long
-#define atomic_fcmpset_64	atomic_fcmpset_long
-#define atomic_set_64		atomic_set_long
-#define atomic_clear_64		atomic_clear_long
+#define	atomic_cmpset_64	atomic_cmpset_long
+#define	atomic_fcmpset_64	atomic_fcmpset_long
+#define	atomic_set_64		atomic_set_long
+#define	atomic_clear_64		atomic_clear_long
 
 /* Operations on pointers. */
 #define atomic_set_ptr(p, v) \

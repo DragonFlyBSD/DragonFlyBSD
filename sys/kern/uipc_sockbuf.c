@@ -134,7 +134,6 @@ _sbcheck(struct sockbuf *sb)
 	    if (n == NULL && sb->sb_lastrecord != m) {
 		    kprintf("sockbuf %p mismatched lastrecord %p vs %p\n", sb, sb->sb_lastrecord, m);
 		    panic("sbcheck1");
-		
 	    }
 	    for (; m; m = m->m_next) {
 		len += m->m_len;

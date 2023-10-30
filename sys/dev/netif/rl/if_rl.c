@@ -398,7 +398,7 @@ rl_mii_send(struct rl_softc *sc, uint32_t bits, int cnt)
  * Read an PHY register through the MII.
  */
 static int
-rl_mii_readreg(struct rl_softc *sc, struct rl_mii_frame *frame)	
+rl_mii_readreg(struct rl_softc *sc, struct rl_mii_frame *frame)
 {
 	int ack, i;
 
@@ -409,7 +409,7 @@ rl_mii_readreg(struct rl_softc *sc, struct rl_mii_frame *frame)
 	frame->mii_opcode = RL_MII_READOP;
 	frame->mii_turnaround = 0;
 	frame->mii_data = 0;
-	
+
 	CSR_WRITE_2(sc, RL_MII, 0);
 
 	/*
@@ -488,7 +488,7 @@ rl_mii_writereg(struct rl_softc *sc, struct rl_mii_frame *frame)
 	frame->mii_stdelim = RL_MII_STARTDELIM;
 	frame->mii_opcode = RL_MII_WRITEOP;
 	frame->mii_turnaround = RL_MII_TURNAROUND;
-	
+
 	/*
  	 * Turn on data output.
 	 */
@@ -767,7 +767,7 @@ rl_attach(device_t dev)
 
 	pci_enable_busmaster(dev);
 
-	rid = RL_RID; 
+	rid = RL_RID;
 	sc->rl_res = bus_alloc_resource_any(dev, RL_RES, &rid, RF_ACTIVE);
 
 	if (sc->rl_res == NULL) {
@@ -820,7 +820,7 @@ rl_attach(device_t dev)
 	    rl_did == PCI_PRODUCT_ADDTRON_8139 ||
 	    rl_did == PCI_PRODUCT_DLINK_DFE530TXPLUS ||
 	    rl_did == PCI_PRODUCT_REALTEK_RT8139B ||
-	    rl_did == PCI_PRODUCT_DLINK_DFE690TXD || 
+	    rl_did == PCI_PRODUCT_DLINK_DFE690TXD ||
 	    rl_did == PCI_PRODUCT_COREGA_CB_TXD ||
 	    rl_did == PCI_PRODUCT_COREGA_2CB_TXD ||
 	    rl_did == PCI_PRODUCT_PLANEX_FNW_3800_TX) {
@@ -977,8 +977,8 @@ rl_list_tx_init(struct rl_softc *sc)
 static void
 rl_rxeof(struct rl_softc *sc)
 {
-        struct mbuf *m;
-        struct ifnet *ifp;
+	struct mbuf *m;
+	struct ifnet *ifp;
 	int total_len = 0;
 	uint32_t rxstat;
 	caddr_t rxbufpos;
@@ -1023,14 +1023,14 @@ rl_rxeof(struct rl_softc *sc)
 		 */
 		if ((uint16_t)(rxstat >> 16) == RL_RXSTAT_UNFINISHED)
 			break;
-	
+
 		if ((rxstat & RL_RXSTAT_RXOK) == 0) {
 			IFNET_STAT_INC(ifp, ierrors, 1);
 			rl_init(sc);
 			return;
 		}
 
-		/* No errors; receive the packet. */	
+		/* No errors; receive the packet. */
 		total_len = rxstat >> 16;
 		rx_bytes += total_len + 4;
 
@@ -1038,7 +1038,7 @@ rl_rxeof(struct rl_softc *sc)
 		 * XXX The RealTek chip includes the CRC with every
 		 * received frame, and there's no way to turn this
 		 * behavior off (at least, I can't find anything in
-	 	 * the manual that explains how to do it) so we have
+		 * the manual that explains how to do it) so we have
 		 * to trim off the CRC manually.
 		 */
 		total_len -= ETHER_CRC_LEN;
@@ -1071,7 +1071,7 @@ rl_rxeof(struct rl_softc *sc)
 			} else {
 				m_adj(m, RL_ETHER_ALIGN);
 				m_copyback(m, wrap, total_len - wrap,
-					sc->rl_cdata.rl_rx_buf);
+					   sc->rl_cdata.rl_rx_buf);
 			}
 			cur_rx = (total_len - wrap + ETHER_CRC_LEN);
 		} else {
@@ -1188,13 +1188,13 @@ rl_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 		uint16_t status;
 
 		sc->rl_npoll.ifpc_stcount = sc->rl_npoll.ifpc_stfrac;
- 
+
 		status = CSR_READ_2(sc, RL_ISR);
 		if (status == 0xffff)
 			return;
 		if (status)
 			CSR_WRITE_2(sc, RL_ISR, status);
-		 
+
 		/*
 		 * XXX check behaviour on receiver stalls.
 		 */

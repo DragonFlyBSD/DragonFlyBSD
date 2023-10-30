@@ -661,7 +661,7 @@ hbhcheck:
 	} else if (!ours) {
 		ip6_forward(m, srcrt);
 		goto bad2;
-	}	
+	}
 
 	ip6 = mtod(m, struct ip6_hdr *);
 

@@ -86,24 +86,24 @@ discattach(void)
 }
 
 static int
-disc_modevent(module_t mod, int type, void *data) 
-{ 
-	switch (type) { 
-	case MOD_LOAD: 
+disc_modevent(module_t mod, int type, void *data)
+{
+	switch (type) {
+	case MOD_LOAD:
 		discattach();
-		break; 
-	case MOD_UNLOAD: 
-		kprintf("if_disc module unload - not possible for this module type\n"); 
-		return EINVAL; 
-	} 
-	return 0; 
-} 
+		break;
+	case MOD_UNLOAD:
+		kprintf("if_disc module unload - not possible for this module type\n");
+		return EINVAL;
+	}
+	return 0;
+}
 
-static moduledata_t disc_mod = { 
-	"if_disc", 
-	disc_modevent, 
+static moduledata_t disc_mod = {
+	"if_disc",
+	disc_modevent,
 	NULL
-}; 
+};
 
 DECLARE_MODULE(if_disc, disc_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
 

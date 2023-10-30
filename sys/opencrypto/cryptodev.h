@@ -177,7 +177,7 @@ struct session_op {
 	int		mackeylen;	/* mac key */
 	caddr_t		mackey;
 
-  	u_int32_t	ses;		/* returns: session # */ 
+  	u_int32_t	ses;		/* returns: session # */
 };
 
 struct session2_op {

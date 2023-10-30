@@ -1057,7 +1057,7 @@ udp_send(netmsg_t msg)
 	if (laddr.s_addr == INADDR_ANY || IN_MULTICAST(ntohl(laddr.s_addr))) {
 		struct sockaddr_in *if_sin;
 
-		if (dstaddr == NULL) {	
+		if (dstaddr == NULL) {
 			/*
 			 * connect() had (or should have) failed because
 			 * the interface had no IP address, but the

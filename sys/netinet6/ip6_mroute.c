@@ -1841,7 +1841,7 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 
 		if_simloop(mif6table[reg_mif_num].m6_ifp, m,
 		    dst.sin6_family, 0);
-	
+
 		/* prepare the register head to send to the mrouting daemon */
 		m = mcp;
 	}

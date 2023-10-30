@@ -235,7 +235,7 @@ rel:
 	/* Strip away media header */
 	if (hlen > 0)
 		m_adj(m, hlen);
- 
+
 #ifdef ALTQ
 	/*
 	 * altq for loop is just for debugging.
@@ -294,7 +294,7 @@ lo_altqstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	struct mbuf *m;
 	int32_t af, *afp;
 	int isr;
-	
+
 	while (1) {
 		crit_enter();
 		m = ifsq_dequeue(ifsq);

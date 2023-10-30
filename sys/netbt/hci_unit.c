@@ -163,19 +163,19 @@ hci_enable(struct hci_unit *unit)
 	 * Reset the device, this will trigger initialisation
 	 * and wake us up.
 	 */
-	crit_enter(); 
+	crit_enter();
  	unit->hci_flags |= BTF_INIT;
 	crit_exit();
 
 	err = hci_send_cmd(unit, HCI_CMD_RESET, NULL, 0);
 	if (err)
 		goto bad2;
-		
+
 	while (unit->hci_flags & BTF_INIT) {
 		err = tsleep(unit, PCATCH, "hciena", 5 * hz);
 		if (err)
 			goto bad2;
-			
+
 		/* XXX
 		 * "What If", while we were sleeping, the device
 		 * was removed and detached? Ho Hum.
@@ -187,7 +187,7 @@ hci_enable(struct hci_unit *unit)
 	 * Attach Bluetooth Device Hub
 	 */
 	unit->hci_bthub = NULL;
-	
+
 	unit->hci_bthub = device_add_child(unit->hci_softc, "bthub", -1);
 	if (!unit->hci_bthub) {
 		device_printf(unit->hci_softc, "Device creation failed\n");
@@ -363,7 +363,7 @@ another:
 		m->m_flags |= IFF_LINK0;	/* mark incoming packet */
 		hci_mtap(m, unit);
 		hci_sco_recv(m, unit);
-		
+
 		goto another;
 	}
 
@@ -373,7 +373,7 @@ another:
 		lockmgr(&unit->hci_devlock, LK_RELEASE);
 
 		KKASSERT(m != NULL);
-		
+
 		DPRINTFN(10, "(%s) recv ACL, len = %d\n",
 		    device_get_nameunit(unit->hci_dev), m->m_pkthdr.len);
 

@@ -150,13 +150,12 @@ table_append_dispatch(netmsg_t nmsg)
 	if (table_ctx->type != ioc_tbl->type)
 		goto done;
 
-        if (table_ctx->type == 1 ) {
+        if (table_ctx->type == 1) {
                 struct table_ip_entry *ent;
 
                 rnh = table_ctx->node;
                 ent = kmalloc(sizeof(struct table_ip_entry),
                                 M_IPFW3_TABLE, M_NOWAIT | M_ZERO);
-
                 if (ent == NULL)
                         return;
                 mlen = ioc_tbl->ip_ent->masklen;

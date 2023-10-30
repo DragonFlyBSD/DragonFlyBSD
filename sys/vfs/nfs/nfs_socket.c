@@ -145,7 +145,7 @@ static int	nfs_receive (struct nfsmount *nmp, struct nfsreq *rep,
 static void	nfs_softterm (struct nfsreq *rep, int islocked);
 static void	nfs_hardterm (struct nfsreq *rep, int islocked);
 static int	nfs_reconnect (struct nfsmount *nmp, struct nfsreq *rep);
-#ifndef NFS_NOSERVER 
+#ifndef NFS_NOSERVER
 static int	nfsrv_getstream (struct nfssvc_sock *, int, int *);
 static void	nfs_timer_req(struct nfsreq *req);
 static void	nfs_checkpkt(struct mbuf *m, int len);
@@ -340,7 +340,7 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 	atomic_clear_int(&so->so_snd.ssb_flags, SSB_AUTOSIZE);
 
 	/* Initialize other non-zero congestion variables */
-	nmp->nm_srtt[0] = nmp->nm_srtt[1] = nmp->nm_srtt[2] = 
+	nmp->nm_srtt[0] = nmp->nm_srtt[1] = nmp->nm_srtt[2] =
 		nmp->nm_srtt[3] = (NFS_TIMEO << NFS_RTT_SCALE_BITS);
 	nmp->nm_sdrtt[0] = nmp->nm_sdrtt[1] = nmp->nm_sdrtt[2] =
 		nmp->nm_sdrtt[3] = 0;
@@ -2573,7 +2573,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 		return;
 
 	/*
-	 * Do not allow an infinite number of completed RPC records to build 
+	 * Do not allow an infinite number of completed RPC records to build
 	 * up before we stop reading data from the socket.  Otherwise we could
 	 * end up holding onto an unreasonable number of mbufs for requests
 	 * waiting for service.

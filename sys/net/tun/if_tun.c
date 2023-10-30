@@ -558,7 +558,7 @@ tunifoutput_serialized(struct ifnet *ifp, struct mbuf *m0,
 
 	if ((sc->tun_flags & TUN_READY) != TUN_READY) {
 		TUNDEBUG(ifp, "not ready, flags = 0x%x\n", sc->tun_flags);
-		m_freem (m0);
+		m_freem(m0);
 		return (EHOSTDOWN);
 	}
 

@@ -79,9 +79,9 @@ static ng_disconnect_t	ng_btsocket_hci_raw_node_disconnect;
 
 static void 		ng_btsocket_hci_raw_input (void *, int);
 static void 		ng_btsocket_hci_raw_output(node_p, hook_p, void *, int);
-static void		ng_btsocket_hci_raw_savctl(ng_btsocket_hci_raw_pcb_p, 
+static void		ng_btsocket_hci_raw_savctl(ng_btsocket_hci_raw_pcb_p,
 						   struct mbuf **,
-						   struct mbuf *); 
+						   struct mbuf *);
 static int		ng_btsocket_hci_raw_filter(ng_btsocket_hci_raw_pcb_p,
 						   struct mbuf *, int);
 
@@ -120,7 +120,7 @@ static struct lock				ng_btsocket_hci_raw_sockets_lock;
 static u_int32_t				ng_btsocket_hci_raw_token;
 static struct lock				ng_btsocket_hci_raw_token_lock;
 static struct ng_btsocket_hci_raw_sec_filter	*ng_btsocket_hci_raw_sec_filter;
- 
+
 /* Sysctl tree */
 SYSCTL_DECL(_net_bluetooth_hci_sockets);
 SYSCTL_NODE(_net_bluetooth_hci_sockets, OID_AUTO, raw, CTLFLAG_RW,
@@ -247,7 +247,7 @@ ng_btsocket_hci_raw_node_disconnect(hook_p hook)
  */
 
 static int
-ng_btsocket_hci_raw_node_rcvmsg(node_p node, item_p item, hook_p lasthook) 
+ng_btsocket_hci_raw_node_rcvmsg(node_p node, item_p item, hook_p lasthook)
 {
 	struct ng_mesg	*msg = NGI_MSG(item); /* item still has message */
 	int		 error = 0;
@@ -357,17 +357,17 @@ ng_btsocket_hci_raw_node_rcvdata(hook_p hook, item_p item)
  * submits ioctl() message then interrupts ioctl() and re-submits another
  * ioctl() on the same socket *before* first ioctl() complete.
  */
- 
+
 static void
 ng_btsocket_hci_raw_get_token(u_int32_t *token)
 {
 	lockmgr(&ng_btsocket_hci_raw_token_lock, LK_EXCLUSIVE);
-  
+
 	if (++ ng_btsocket_hci_raw_token == 0)
 		ng_btsocket_hci_raw_token = 1;
- 
+
 	*token = ng_btsocket_hci_raw_token;
- 
+
 	lockmgr(&ng_btsocket_hci_raw_token_lock, LK_RELEASE);
 } /* ng_btsocket_hci_raw_get_token */
 
@@ -394,7 +394,7 @@ ng_btsocket_hci_raw_send_ngmsg(char *path, int cmd, void *arg, int arglen)
 } /* ng_btsocket_hci_raw_send_ngmsg */
 
 /*
- * Send Netgraph message to the node (no data) and wait for reply 
+ * Send Netgraph message to the node (no data) and wait for reply
  */
 
 static int
@@ -420,7 +420,7 @@ ng_btsocket_hci_raw_send_sync_ngmsg(ng_btsocket_hci_raw_pcb_p pcb, char *path,
 		return (error);
 	}
 
-	error = lksleep(&pcb->msg, &pcb->pcb_lock, PCATCH, "hcictl", 
+	error = lksleep(&pcb->msg, &pcb->pcb_lock, PCATCH, "hcictl",
 			ng_btsocket_hci_raw_ioctl_timeout * hz);
 	pcb->token = 0;
 
@@ -443,7 +443,7 @@ ng_btsocket_hci_raw_send_sync_ngmsg(ng_btsocket_hci_raw_pcb_p pcb, char *path,
 
 static void
 ng_btsocket_hci_raw_savctl(ng_btsocket_hci_raw_pcb_p pcb, struct mbuf **ctl,
-		struct mbuf *m) 
+		struct mbuf *m)
 {
 	int		dir;
 	struct timeval	tv;
@@ -523,7 +523,7 @@ ng_btsocket_hci_raw_data_input(struct mbuf *nam)
 
 			ng_btsocket_hci_raw_savctl(pcb, &ctl, m);
 
-			if (sbappendaddr(&pcb->so->so_rcv.sb, 
+			if (sbappendaddr(&pcb->so->so_rcv.sb,
 					(struct sockaddr *) sa, m, ctl))
 				sorwakeup(pcb->so);
 			else {
@@ -542,7 +542,7 @@ next:
 
 	NG_FREE_M(nam);
 	NG_FREE_M(m0);
-} /* ng_btsocket_hci_raw_data_input */ 
+} /* ng_btsocket_hci_raw_data_input */
 
 /*
  * Raw HCI sockets message input routine
@@ -609,7 +609,7 @@ ng_btsocket_hci_raw_input(void *context, int pending)
 			} break;
 
 		default:
-			KASSERT(0, 
+			KASSERT(0,
 ("%s: invalid item type=%ld\n", __func__, (item->el_flags & NGQF_TYPE)));
 			break;
 		}
@@ -647,7 +647,7 @@ ng_btsocket_hci_raw_output(node_p node, hook_p hook, void *arg1, int arg2)
 	 */
 
 	LIST_FOREACH(hook, &node->nd_hooks, hk_hooks) {
-		if (hook == NULL || NG_HOOK_NOT_VALID(hook) || 
+		if (hook == NULL || NG_HOOK_NOT_VALID(hook) ||
 		    NG_NODE_NOT_VALID(NG_PEER_NODE(hook)))
 			continue;
 
@@ -662,7 +662,7 @@ ng_btsocket_hci_raw_output(node_p node, hook_p hook, void *arg1, int arg2)
 } /* ng_btsocket_hci_raw_output */
 
 /*
- * Check frame against security and socket filters. 
+ * Check frame against security and socket filters.
  * d (direction bit) == 1 means incoming frame.
  */
 
@@ -677,7 +677,7 @@ ng_btsocket_hci_raw_filter(ng_btsocket_hci_raw_pcb_p pcb, struct mbuf *m, int d)
 	case NG_HCI_CMD_PKT:
 		if (!(pcb->flags & NG_BTSOCKET_HCI_RAW_PRIVILEGED)) {
 			opcode = le16toh(mtod(m, ng_hci_cmd_pkt_t *)->opcode);
-		
+
 			if (!bit_test(
 ng_btsocket_hci_raw_sec_filter->commands[NG_HCI_OGF(opcode) - 1],
 NG_HCI_OCF(opcode) - 1))
@@ -780,7 +780,7 @@ ng_btsocket_hci_raw_init(void)
 	lockinit(&ng_btsocket_hci_raw_token_lock,
 		"btsocks_hci_raw_token_lock", 0, 0);
 
-	/* 
+	/*
 	 * Security filter
 	 * XXX never FREE()ed
 	 */
@@ -796,7 +796,7 @@ ng_btsocket_hci_raw_init(void)
 	}
 
 	/*
-	 * XXX How paranoid can we get? 
+	 * XXX How paranoid can we get?
 	 *
 	 * Initialize security filter. If bit is set in the mask then
 	 * unprivileged socket is allowed to send (receive) this command
@@ -1104,7 +1104,7 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		struct ng_btsocket_hci_raw_node_state	*p =
 			(struct ng_btsocket_hci_raw_node_state *) data;
 
-		error = ng_btsocket_hci_raw_send_sync_ngmsg(pcb, path, 
+		error = ng_btsocket_hci_raw_send_sync_ngmsg(pcb, path,
 				NGM_HCI_NODE_GET_STATE,
 				&p->state, sizeof(p->state));
 		} break;
@@ -1118,7 +1118,7 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		break;
 
 	case SIOC_HCI_RAW_NODE_GET_DEBUG: {
-		struct ng_btsocket_hci_raw_node_debug	*p = 
+		struct ng_btsocket_hci_raw_node_debug	*p =
 			(struct ng_btsocket_hci_raw_node_debug *) data;
 
 		error = ng_btsocket_hci_raw_send_sync_ngmsg(pcb, path,
@@ -1127,7 +1127,7 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		} break;
 
 	case SIOC_HCI_RAW_NODE_SET_DEBUG: {
-		struct ng_btsocket_hci_raw_node_debug	*p = 
+		struct ng_btsocket_hci_raw_node_debug	*p =
 			(struct ng_btsocket_hci_raw_node_debug *) data;
 
 		if (pcb->flags & NG_BTSOCKET_HCI_RAW_PRIVILEGED)
@@ -1139,7 +1139,7 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		} break;
 
 	case SIOC_HCI_RAW_NODE_GET_BUFFER: {
-		struct ng_btsocket_hci_raw_node_buffer	*p = 
+		struct ng_btsocket_hci_raw_node_buffer	*p =
 			(struct ng_btsocket_hci_raw_node_buffer *) data;
 
 		error = ng_btsocket_hci_raw_send_sync_ngmsg(pcb, path,
@@ -1148,7 +1148,7 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		} break;
 
 	case SIOC_HCI_RAW_NODE_GET_BDADDR: {
-		struct ng_btsocket_hci_raw_node_bdaddr	*p = 
+		struct ng_btsocket_hci_raw_node_bdaddr	*p =
 			(struct ng_btsocket_hci_raw_node_bdaddr *) data;
 
 		error = ng_btsocket_hci_raw_send_sync_ngmsg(pcb, path,
@@ -1157,7 +1157,7 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		} break;
 
 	case SIOC_HCI_RAW_NODE_GET_FEATURES: {
-		struct ng_btsocket_hci_raw_node_features	*p = 
+		struct ng_btsocket_hci_raw_node_features	*p =
 			(struct ng_btsocket_hci_raw_node_features *) data;
 
 		error = ng_btsocket_hci_raw_send_sync_ngmsg(pcb, path,
@@ -1166,7 +1166,7 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		} break;
 
 	case SIOC_HCI_RAW_NODE_GET_STAT: {
-		struct ng_btsocket_hci_raw_node_stat	*p = 
+		struct ng_btsocket_hci_raw_node_stat	*p =
 			(struct ng_btsocket_hci_raw_node_stat *) data;
 
 		error = ng_btsocket_hci_raw_send_sync_ngmsg(pcb, path,
@@ -1192,12 +1192,12 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		break;
 
 	case SIOC_HCI_RAW_NODE_GET_NEIGHBOR_CACHE:  {
-		struct ng_btsocket_hci_raw_node_neighbor_cache	*p = 
+		struct ng_btsocket_hci_raw_node_neighbor_cache	*p =
 			(struct ng_btsocket_hci_raw_node_neighbor_cache *) data;
 		ng_hci_node_get_neighbor_cache_ep		*p1 = NULL;
 		ng_hci_node_neighbor_cache_entry_ep		*p2 = NULL;
 
-		if (p->num_entries <= 0 || 
+		if (p->num_entries <= 0 ||
 		    p->num_entries > NG_HCI_MAX_NEIGHBOR_NUM ||
 		    p->entries == NULL) {
 			error = EINVAL;
@@ -1221,7 +1221,7 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		}
 
 		error = lksleep(&pcb->msg, &pcb->pcb_lock,
-				PCATCH, "hcictl", 
+				PCATCH, "hcictl",
 				ng_btsocket_hci_raw_ioctl_timeout * hz);
 		pcb->token = 0;
 
@@ -1238,7 +1238,7 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 
 			p->num_entries = min(p->num_entries, p1->num_entries);
 			if (p->num_entries > 0)
-				error = copyout((caddr_t) p2, 
+				error = copyout((caddr_t) p2,
 						(caddr_t) p->entries,
 						p->num_entries * sizeof(*p2));
 		} else
@@ -1248,7 +1248,7 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		}break;
 
 	case SIOC_HCI_RAW_NODE_GET_CON_LIST: {
-		struct ng_btsocket_hci_raw_con_list	*p = 
+		struct ng_btsocket_hci_raw_con_list	*p =
 			(struct ng_btsocket_hci_raw_con_list *) data;
 		ng_hci_node_con_list_ep			*p1 = NULL;
 		ng_hci_node_con_ep			*p2 = NULL;
@@ -1277,7 +1277,7 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		}
 
 		error = lksleep(&pcb->msg, &pcb->pcb_lock,
-				PCATCH, "hcictl", 
+				PCATCH, "hcictl",
 				ng_btsocket_hci_raw_ioctl_timeout * hz);
 		pcb->token = 0;
 
@@ -1293,7 +1293,7 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 			p->num_connections = min(p->num_connections,
 						p1->num_connections);
 			if (p->num_connections > 0)
-				error = copyout((caddr_t) p2, 
+				error = copyout((caddr_t) p2,
 					(caddr_t) p->connections,
 					p->num_connections * sizeof(*p2));
 		} else
@@ -1303,8 +1303,8 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		} break;
 
 	case SIOC_HCI_RAW_NODE_GET_LINK_POLICY_MASK: {
-		struct ng_btsocket_hci_raw_node_link_policy_mask	*p = 
-			(struct ng_btsocket_hci_raw_node_link_policy_mask *) 
+		struct ng_btsocket_hci_raw_node_link_policy_mask	*p =
+			(struct ng_btsocket_hci_raw_node_link_policy_mask *)
 				data;
 
 		error = ng_btsocket_hci_raw_send_sync_ngmsg(pcb, path,
@@ -1313,8 +1313,8 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		} break;
 
 	case SIOC_HCI_RAW_NODE_SET_LINK_POLICY_MASK: {
-		struct ng_btsocket_hci_raw_node_link_policy_mask	*p = 
-			(struct ng_btsocket_hci_raw_node_link_policy_mask *) 
+		struct ng_btsocket_hci_raw_node_link_policy_mask	*p =
+			(struct ng_btsocket_hci_raw_node_link_policy_mask *)
 				data;
 
 		if (pcb->flags & NG_BTSOCKET_HCI_RAW_PRIVILEGED)
@@ -1327,7 +1327,7 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		} break;
 
 	case SIOC_HCI_RAW_NODE_GET_PACKET_MASK: {
-		struct ng_btsocket_hci_raw_node_packet_mask	*p = 
+		struct ng_btsocket_hci_raw_node_packet_mask	*p =
 			(struct ng_btsocket_hci_raw_node_packet_mask *) data;
 
 		error = ng_btsocket_hci_raw_send_sync_ngmsg(pcb, path,
@@ -1336,7 +1336,7 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		} break;
 
 	case SIOC_HCI_RAW_NODE_SET_PACKET_MASK: {
-		struct ng_btsocket_hci_raw_node_packet_mask	*p = 
+		struct ng_btsocket_hci_raw_node_packet_mask	*p =
 			(struct ng_btsocket_hci_raw_node_packet_mask *) data;
 
 		if (pcb->flags & NG_BTSOCKET_HCI_RAW_PRIVILEGED)
@@ -1349,7 +1349,7 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		} break;
 
 	case SIOC_HCI_RAW_NODE_GET_ROLE_SWITCH: {
-		struct ng_btsocket_hci_raw_node_role_switch	*p = 
+		struct ng_btsocket_hci_raw_node_role_switch	*p =
 			(struct ng_btsocket_hci_raw_node_role_switch *) data;
 
 		error = ng_btsocket_hci_raw_send_sync_ngmsg(pcb, path,
@@ -1358,7 +1358,7 @@ ng_btsocket_hci_raw_control(netmsg_t msg)
 		} break;
 
 	case SIOC_HCI_RAW_NODE_SET_ROLE_SWITCH: {
-		struct ng_btsocket_hci_raw_node_role_switch	*p = 
+		struct ng_btsocket_hci_raw_node_role_switch	*p =
 			(struct ng_btsocket_hci_raw_node_role_switch *) data;
 
 		if (pcb->flags & NG_BTSOCKET_HCI_RAW_PRIVILEGED)
@@ -1688,7 +1688,7 @@ drop:
 	NG_FREE_M(nam);
 	NG_FREE_M(m);
 
-out:	
+out:
 	lwkt_replymsg(&msg->send.base.lmsg, error);
 } /* ng_btsocket_hci_raw_send */
 

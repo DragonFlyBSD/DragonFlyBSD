@@ -963,7 +963,7 @@ pfsync_input(struct mbuf *m, ...)
 			lwkt_reltoken(&pf_token);
 			callout_reset(&sc->sc_bulkfail_tmo,
 			    pf_pool_limits[PF_LIMIT_STATES].limit /
-			    (PFSYNC_BULKPACKETS * sc->sc_maxcount), 
+			    (PFSYNC_BULKPACKETS * sc->sc_maxcount),
 			    pfsync_bulkfail, LIST_FIRST(&pfsync_list));
 			lwkt_gettoken(&pf_token);
 			if (pf_status.debug >= PF_DEBUG_MISC)
@@ -1040,7 +1040,7 @@ pfsyncioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		if (ifr->ifr_mtu < PFSYNC_MINMTU) {
 			lwkt_reltoken(&pf_token);
 			return (EINVAL);
-		}	
+		}
 		if (ifr->ifr_mtu > MCLBYTES)
 			ifr->ifr_mtu = MCLBYTES;
 		crit_enter();

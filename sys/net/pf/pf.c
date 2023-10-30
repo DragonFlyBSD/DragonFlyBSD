@@ -3395,11 +3395,11 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 		/*
 		 * Our netstack runs lockless on MP systems
 		 * (only for TCP connections at the moment).
-		 * 
+		 *
 		 * As we are not allowed to read another CPU's tcbinfo,
 		 * we have to ask that CPU via remote call to search the
 		 * table for us.
-		 * 
+		 *
 		 * Prepare a msg iff data belongs to another CPU.
 		 */
 		if (pi_cpu != mycpu->gd_cpuid) {
@@ -3459,7 +3459,7 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 	case AF_INET6:
 		/*
 		 * Query other CPU, second part
-		 * 
+		 *
 		 * msg only gets initialized when:
 		 * 1) packet is TCP
 		 * 2) the info belongs to another CPU
@@ -3719,7 +3719,7 @@ pf_test_rule(struct pf_rule **rm, struct pf_state **sm, int direction,
 
 	if (inp != NULL)
 		pd->lookup.done = pf_socket_lookup(direction, pd);
-	else if (debug_pfugidhack) { 
+	else if (debug_pfugidhack) {
 		DPFPRINTF(PF_DEBUG_MISC, ("pf: unlocked lookup\n"));
 		pd->lookup.done = pf_socket_lookup(direction, pd);
 	}
@@ -6366,7 +6366,7 @@ bad:
  * FreeBSD supports cksum offload for the following drivers.
  * em(4), gx(4), lge(4), nge(4), ti(4), xl(4)
  * If we can make full use of it we would outperform ipfw/ipfilter in
- * very heavy traffic. 
+ * very heavy traffic.
  * I have not tested 'cause I don't have NICs that supports cksum offload.
  * (There might be problems. Typical phenomena would be
  *   1. No route message for UDP packet.
@@ -6392,7 +6392,7 @@ pf_check_proto_cksum(struct mbuf *m, int off, int len, u_int8_t p,
 			if (m->m_pkthdr.csum_flags & CSUM_PSEUDO_HDR) {
 				sum = m->m_pkthdr.csum_data;
 			} else {
-				ip = mtod(m, struct ip *);	
+				ip = mtod(m, struct ip *);
 				sum = in_pseudo(ip->ip_src.s_addr,
 					ip->ip_dst.s_addr, htonl((u_short)len +
 					m->m_pkthdr.csum_data + p));

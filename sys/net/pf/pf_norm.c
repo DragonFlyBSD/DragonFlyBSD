@@ -1618,8 +1618,8 @@ pf_normalize_tcp_stateful(struct mbuf *m, int off, struct pf_pdesc *pd,
 			/* Copyback the options, caller copys back header */
 			*writeback = 1;
 			m_copyback(m, off + sizeof(struct tcphdr),
-			    (th->th_off << 2) - sizeof(struct tcphdr), hdr +
-			    sizeof(struct tcphdr));
+			    (th->th_off << 2) - sizeof(struct tcphdr),
+			    hdr + sizeof(struct tcphdr));
 		}
 	}
 

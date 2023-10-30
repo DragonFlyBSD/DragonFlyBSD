@@ -100,10 +100,10 @@ chacha_ivsetup(chacha_ctx *x, const u8 *iv, const u8 *counter)
 LOCAL void
 chacha_ctrsave(const chacha_ctx *x, u8 *counter)
 {
-    U32TO8_LITTLE(counter + 0,  x->input[12]);
-    U32TO8_LITTLE(counter + 4,  x->input[13]);
-    U32TO8_LITTLE(counter + 8,  x->input[14]);
-    U32TO8_LITTLE(counter + 12, x->input[15]);
+  U32TO8_LITTLE(counter + 0,  x->input[12]);
+  U32TO8_LITTLE(counter + 4,  x->input[13]);
+  U32TO8_LITTLE(counter + 8,  x->input[14]);
+  U32TO8_LITTLE(counter + 12, x->input[15]);
 }
 #endif
 

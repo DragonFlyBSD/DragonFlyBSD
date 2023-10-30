@@ -162,12 +162,12 @@ sys_nfssvc(struct sysmsg *sysmsg, const struct nfssvc_args *uap)
 		if (error)
 			goto done;
 		vp = NULL;
-		error = nlookup_init(&nd, ncd.ncd_dirp, UIO_USERSPACE, 
+		error = nlookup_init(&nd, ncd.ncd_dirp, UIO_USERSPACE,
 					NLC_FOLLOW);
 		if (error == 0)
 			error = nlookup(&nd);
 		if (error == 0)
-			error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);   
+			error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);
 		nlookup_done(&nd);
 		if (error)
 			goto done;
@@ -280,7 +280,7 @@ sys_nfssvc(struct sysmsg *sysmsg, const struct nfssvc_args *uap)
 					break;
 				    default:
 					nuidp->nu_flag |= NU_NAM;
-					nuidp->nu_nam = 
+					nuidp->nu_nam =
 					  dup_sockaddr(nfsd->nfsd_nd->nd_nam2);
 					break;
 				    };
@@ -608,7 +608,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 		     */
 		    if (nfsd->nfsd_flag & NFSD_NEEDAUTH) {
 			nfsd->nfsd_flag &= ~NFSD_NEEDAUTH;
-			nsd->nsd_haddr = 
+			nsd->nsd_haddr =
 				((struct sockaddr_in *)
 				 nd->nd_nam)->sin_addr.s_addr;
 			nsd->nsd_authlen = nfsd->nfsd_authlen;
@@ -640,7 +640,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 
 			sin = (struct sockaddr_in *)nam;
 			port = ntohs(sin->sin_port);
-			if (port >= IPPORT_RESERVED && 
+			if (port >= IPPORT_RESERVED &&
 			    nd->nd_procnum != NFSPROC_NULL) {
 			    char addr[INET_ADDRSTRLEN];
 

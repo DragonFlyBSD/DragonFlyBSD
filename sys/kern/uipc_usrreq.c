@@ -637,7 +637,7 @@ uipc_send(netmsg_t msg)
 		goto release;
 
 	switch (so->so_type) {
-	case SOCK_DGRAM: 
+	case SOCK_DGRAM:
 	{
 		struct sockaddr *from;
 
@@ -976,7 +976,7 @@ done:
 
 	lwkt_replymsg(&msg->lmsg, error);
 }
-	
+
 /*
  * Both send and receive buffers are allocated PIPSIZ bytes of buffering
  * for stream sockets, although the total for sender and receiver is
@@ -1483,7 +1483,7 @@ unp_pcblist(SYSCTL_HANDLER_ARGS)
 		 * taken.
 		 */
 		if (unp->unp_addr) {
-			bcopy(unp->unp_addr, &xu.xu_addr, 
+			bcopy(unp->unp_addr, &xu.xu_addr,
 			      unp->unp_addr->sun_len);
 		}
 		if (unp->unp_conn && unp->unp_conn->unp_addr) {
@@ -1508,13 +1508,13 @@ unp_pcblist(SYSCTL_HANDLER_ARGS)
 	return error;
 }
 
-SYSCTL_PROC(_net_local_dgram, OID_AUTO, pcblist, CTLFLAG_RD, 
+SYSCTL_PROC(_net_local_dgram, OID_AUTO, pcblist, CTLFLAG_RD,
 	    &unp_dgram_head, 0, unp_pcblist, "S,xunpcb",
 	    "List of active local datagram sockets");
-SYSCTL_PROC(_net_local_stream, OID_AUTO, pcblist, CTLFLAG_RD, 
+SYSCTL_PROC(_net_local_stream, OID_AUTO, pcblist, CTLFLAG_RD,
 	    &unp_stream_head, 0, unp_pcblist, "S,xunpcb",
 	    "List of active local stream sockets");
-SYSCTL_PROC(_net_local_seqpacket, OID_AUTO, pcblist, CTLFLAG_RD, 
+SYSCTL_PROC(_net_local_seqpacket, OID_AUTO, pcblist, CTLFLAG_RD,
 	    &unp_seqpkt_head, 0, unp_pcblist, "S,xunpcb",
 	    "List of active local seqpacket sockets");
 
@@ -1575,7 +1575,7 @@ unp_externalize(struct mbuf *rights, int flags)
 	}
 
 	/*
-	 * now change each pointer to an fd in the global table to 
+	 * now change each pointer to an fd in the global table to
 	 * an integer that is the index to the local fd table entry
 	 * that we set up to point to the global one we are transferring.
 	 * Since the sizeof(struct file *) is bigger than or equal to
@@ -1853,7 +1853,7 @@ unp_gc(void *arg __unused, int pending __unused)
 
 	lwkt_gettoken(&unp_rights_token);
 
-	/* 
+	/*
 	 * Before going through all this, set all FDs to be NOT defered
 	 * and NOT externally accessible (not marked).  During the scan
 	 * a fd can be marked externally accessible but we may or may not
@@ -1920,7 +1920,7 @@ unp_gc(void *arg __unused, int pending __unused)
 		info.index = 0;
 		allfiles_scan_exclusive(unp_gc_checkrefs, &info);
 
-		/* 
+		/*
 		 * For each FD on our hit list, do the following two things
 		 */
 		for (i = info.index, fpp = info.extra_ref; --i >= 0; ++fpp) {
@@ -1950,7 +1950,7 @@ unp_gc_checkrefs(struct file *fp, void *data)
 	if (info->index == info->maxindex)
 		return(-1);
 
-	/* 
+	/*
 	 * If all refs are from msgs, and it's not marked accessible
 	 * then it must be referenced from some unreachable cycle
 	 * of (shut-down) FDs, so include it in our
@@ -2006,14 +2006,14 @@ unp_gc_checkmarks(struct file *fp, void *data)
 		 */
 		if (fp->f_flag & FMARK)
 			return(0);
-		/* 
+		/*
 		 * If all references are from messages
-		 * in transit, then skip it. it's not 
+		 * in transit, then skip it. it's not
 		 * externally accessible.
-		 */ 
+		 */
 		if (fp->f_count == fp->f_msgcount)
 			return(0);
-		/* 
+		/*
 		 * If it got this far then it must be
 		 * externally accessible.
 		 */
@@ -2021,10 +2021,10 @@ unp_gc_checkmarks(struct file *fp, void *data)
 	}
 
 	/*
-	 * either it was defered, or it is externally 
+	 * either it was defered, or it is externally
 	 * accessible and not already marked so.
 	 * Now check if it is possibly one of OUR sockets.
-	 */ 
+	 */
 	if (fp->f_type != DTYPE_SOCKET ||
 	    (so = (struct socket *)fp->f_data) == NULL) {
 		return(0);
@@ -2152,7 +2152,7 @@ unp_gc(void *arg __unused, int pending __unused)
 	 * First clear all gc flags from previous runs.
 	 */
 	for (h = 0; unp_heads[h] != NULL; ++h) {
-		/* 
+		/*
 		 * NOTE: This loop does not block, so it is safe
 		 * to use TAILQ_FOREACH here.
 		 */

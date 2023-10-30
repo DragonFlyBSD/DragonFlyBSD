@@ -11,7 +11,7 @@
  * Driver for Siemens reference design card "Easy321-R1".
  *
  * This card contains a FALC54 E1/T1 framer and a MUNICH32X 32-channel HDLC
- * controller. 
+ * controller.
  *
  * The driver supports E1 mode with up to 31 channels.  We send CRC4 but don't
  * check it coming in.
@@ -52,12 +52,12 @@
 #include <vm/pmap.h>
 
 #include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>  
+#include <netgraph/netgraph.h>
 
 
 static int mn_maxlatency = 1000;
-SYSCTL_INT(_debug, OID_AUTO, mn_maxlatency, CTLFLAG_RW, 
-    &mn_maxlatency, 0, 
+SYSCTL_INT(_debug, OID_AUTO, mn_maxlatency, CTLFLAG_RW,
+    &mn_maxlatency, 0,
 	"The number of milliseconds a packet is allowed to spend in the output queue.  "
 	"If the output queue is longer than this number of milliseconds when the packet "
 	"arrives for output, the packet will be dropped."
@@ -81,7 +81,7 @@ struct m32xreg {
 	u_int32_t gpdir,   gpdata,  gpod,    fill8c;
 	u_int32_t ssccon,  sscbr,   ssctb,   sscrb;
 	u_int32_t ssccse,  sscim,   fillab,  fillac;
-	u_int32_t iomcon1, iomcon2, iomstat, fillbc; 
+	u_int32_t iomcon1, iomcon2, iomstat, fillbc;
 	u_int32_t iomcit0, iomcit1, iomcir0, iomcir1;
 	u_int32_t iomtmo,  iomrmo,  filld8,  filldc;
 	u_int32_t mbcmd,   mbdata1, mbdata2, mbdata3;
@@ -188,7 +188,7 @@ static	ng_disconnect_t ngmn_disconnect;
 static struct ng_type mntypestruct = {
 	NG_VERSION,
 	NG_MN_NODE_TYPE,
-	NULL, 
+	NULL,
 	ngmn_constructor,
 	ngmn_rcvmsg,
 	ngmn_shutdown,
@@ -321,7 +321,7 @@ ngmn_config(node_p node, char *set, char *ret)
 			return;
 		}
 	}
-	
+
 }
 
 static int
@@ -340,7 +340,7 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 		kfree(msg, M_NETGRAPH);
 		return (EINVAL);
 	}
-		
+
 	if (msg->header.cmd != NGM_TEXT_CONFIG &&
 	    msg->header.cmd != NGM_TEXT_STATUS) {
 		if (resp != NULL)
@@ -356,7 +356,7 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 		return (ENOMEM);
 	}
 
-	if (msg->header.arglen) 
+	if (msg->header.arglen)
 		s = (char *)msg->data;
 	else
 		s = NULL;
@@ -382,7 +382,7 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 	    "\4rsp.3\3RSIF\2RS13\1RS15", sc->framer_state);
 	pos += ksprintf(pos + r,"    Framing errors: %lu", sc->cnt_fec);
 	pos += ksprintf(pos + r,"  Code Violations: %lu\n", sc->cnt_cvc);
-	
+
 	pos += ksprintf(pos + r,"    Falc State %pb%i;\n", "\20"
 	    "\40LOS\37AIS\36LFA\35RRA"
 	    "\34AUXP\33NMF\32LMFA\31frs0.0"
@@ -488,7 +488,7 @@ mn_alloc_desc(void)
 	struct trxd *dp;
 
 	dp = mn_desc_free;
-	if (dp) 
+	if (dp)
 		mn_desc_free = dp->vnext;
 	else
 		dp = (struct trxd *)kmalloc(sizeof *dp, M_MN, M_INTWAIT);
@@ -554,7 +554,7 @@ mn_fmt_ts(char *p, u_int32_t ts)
 		ksprintf(p, "%s%d", s, j);
 		p += strlen(p);
 		s = ",";
-		if (!(ts & (1 << (j+1)))) 
+		if (!(ts & (1 << (j+1))))
 			continue;
 		for (; j < 32; j++)
 			if (!(ts & (1 << (j+1))))
@@ -628,9 +628,9 @@ ngmn_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 			dp->m = NULL;
 			m2 = m2->m_next;
 		}
-	} 
+	}
 	if (pitch)
-		kprintf("%s%d: Short on mem, pitched %d packets\n", 
+		kprintf("%s%d: Short on mem, pitched %d packets\n",
 		    sc->name, chan, pitch);
 	else {
 #if 0
@@ -661,7 +661,7 @@ ngmn_connect(hook_p hook)
 	chan = sch->chan;
 	sc = sch->sc;
 
-	if (sch->state == UP) 
+	if (sch->state == UP)
 		return (0);
 	sch->state = UP;
 
@@ -729,10 +729,10 @@ ngmn_connect(hook_p hook)
 	sc->m32_mem.ccb = 0x00008000 + (chan << 8);
 	sc->m32x->cmd = 0x1;
 	DELAY(1000);
-	u = sc->m32x->stat; 
+	u = sc->m32x->stat;
 	if (!(u & 1))
 		kprintf("%s: init chan %d stat %08x\n", sc->name, chan, u);
-	sc->m32x->stat = 1; 
+	sc->m32x->stat = 1;
 
 	return (0);
 }
@@ -752,8 +752,8 @@ ngmn_disconnect(hook_p hook)
 	sch = hook->private;
 	chan = sch->chan;
 	sc = sch->sc;
-	
-	if (sch->state == DOWN) 
+
+	if (sch->state == DOWN)
 		return (0);
 	sch->state = DOWN;
 
@@ -763,18 +763,18 @@ ngmn_disconnect(hook_p hook)
 
 	/* free the timeslots */
 	for (i = 0; i < 32; i++)
-		if (sc->ch[chan]->ts & (1 << i)) 
+		if (sc->ch[chan]->ts & (1 << i))
 			sc->m32_mem.ts[i] = 0x20002000;
 
 	/* Initialize this channel */
 	sc->m32_mem.ccb = 0x00008000 + (chan << 8);
 	sc->m32x->cmd = 0x1;
 	DELAY(30);
-	u = sc->m32x->stat; 
+	u = sc->m32x->stat;
 	if (!(u & 1))
 		kprintf("%s: zap chan %d stat %08x\n", sc->name, chan, u);
-	sc->m32x->stat = 1; 
-	
+	sc->m32x->stat = 1;
+
 	/* Free all receive descriptors and mbufs */
 	for (dp = sc->ch[chan]->r1; dp ; dp = dp2) {
 		if (dp->m)
@@ -804,7 +804,7 @@ mn_create_channel(struct softc *sc, int chan)
 {
 	struct schan *sch;
 
-	sch = sc->ch[chan] = (struct schan *)kmalloc(sizeof *sc->ch[chan], 
+	sch = sc->ch[chan] = (struct schan *)kmalloc(sizeof *sc->ch[chan],
 	    M_MN, M_WAITOK | M_ZERO);
 	sch->sc = sc;
 	sch->state = DOWN;
@@ -834,7 +834,7 @@ m32_dump(struct softc *sc)
 	for(j = 0; j < M32_CHAN; j++) {
 		if (!sc->ch[j])
 			continue;
-		kprintf("CH%d: state %d ts %08x", 
+		kprintf("CH%d: state %d ts %08x",
 			j, sc->ch[j]->state, sc->ch[j]->ts);
 		kprintf("  %08x %08x %08x %08x %08x %08x\n",
 			sc->m32_mem.cs[j].flags,
@@ -902,9 +902,9 @@ f54_init(struct softc *sc)
 
 	sc->f54w->imr0 = 0x18; /* RMB, CASC */
 	sc->f54w->imr1 = 0x08; /* XMB */
-	sc->f54w->imr2 = 0x00; 
+	sc->f54w->imr2 = 0x00;
 	sc->f54w->imr3 = 0x38; /* LMFA16, AIS16, RA16 */
-	sc->f54w->imr4 = 0x00; 
+	sc->f54w->imr4 = 0x00;
 
 	sc->f54w->fmr0 = 0xf0; /* X: HDB3, R: HDB3 */
 	sc->f54w->fmr1 = 0x0e; /* Send CRC4, 2Mbit, ECM */
@@ -960,7 +960,7 @@ mn_reset(struct softc *sc)
 	m32_init(sc);
 	f54_init(sc);
 
-	u = sc->m32x->stat; 
+	u = sc->m32x->stat;
 	sc->m32x->stat = u;
 	sc->m32_mem.ccb = 0x4;
 	sc->m32x->cmd = 0x1;
@@ -1032,15 +1032,15 @@ f54_intr(struct softc *sc)
 			        sp = &sc->ch[i]->ifsppp;
 				if (!(sp->pp_if.if_flags & IFF_UP))
 					continue;
-				if (s) 
+				if (s)
 					timeout((timeout_t *)sp->pp_down, sp, 1 * hz);
-				else 
+				else
 					timeout((timeout_t *)sp->pp_up, sp, 1 * hz);
 			}
 #endif
 			sc->framer_state = s;
 		}
-	} 
+	}
 	/* Once per second check error counters */
 	/* XXX: not clear if this is actually ok */
 	if (!(u & 0x40))
@@ -1065,7 +1065,7 @@ mn_tx_intr(struct softc *sc, u_int32_t vector)
 	struct mbuf *m;
 
 	chan = vector & 0x1f;
-	if (!sc->ch[chan]) 
+	if (!sc->ch[chan])
 		return;
 	if (sc->ch[chan]->state != UP) {
 		kprintf("%s: tx_intr when not UP\n", sc->name);
@@ -1073,7 +1073,7 @@ mn_tx_intr(struct softc *sc, u_int32_t vector)
 	}
 	for (;;) {
 		dp = sc->ch[chan]->x1;
-		if (vtophys(dp) == sc->m32_mem.ctxd[chan]) 
+		if (vtophys(dp) == sc->m32_mem.ctxd[chan])
 			return;
 		m = dp->m;
 		if (m) {
@@ -1115,7 +1115,7 @@ mn_rx_intr(struct softc *sc, u_int32_t vector)
 		sch->rx_error++;
 	for (;;) {
 		dp = sch->r1;
-		if (vtophys(dp) == sc->m32_mem.crxd[chan]) 
+		if (vtophys(dp) == sc->m32_mem.crxd[chan])
 			return;
 		m = dp->m;
 		dp->m = NULL;
@@ -1126,7 +1126,7 @@ mn_rx_intr(struct softc *sc, u_int32_t vector)
 			sch->last_recv = time_uptime;
 			m = NULL;
 			/* we could be down by now... */
-			if (sch->state != UP) 
+			if (sch->state != UP)
 				return;
 		} else if (err & 0x40) {
 			sch->short_error++;
@@ -1192,7 +1192,7 @@ mn_intr(void *xsc)
 	stat =  sc->m32x->stat;
 	lstat =  sc->m32x->lstat;
 #if 0
-	if (!stat && !(lstat & 2)) 
+	if (!stat && !(lstat & 2))
 		return;
 #endif
 
@@ -1200,7 +1200,7 @@ mn_intr(void *xsc)
 		kprintf("%s: I stat=%08x lstat=%08x\n", sc->name, stat, lstat);
 	}
 
-	if ((stat & 0x200) || (lstat & 2)) 
+	if ((stat & 0x200) || (lstat & 2))
 		f54_intr(sc);
 
 	for (j = i = 0; i < 64; i ++) {
@@ -1208,7 +1208,7 @@ mn_intr(void *xsc)
 		if (u) {
 			sc->riqb[i] = 0;
 			mn_rx_intr(sc, u);
-			if ((u & ~0x1f) == 0x30000800 || (u & ~0x1f) == 0x30000b00) 
+			if ((u & ~0x1f) == 0x30000800 || (u & ~0x1f) == 0x30000b00)
 				continue;
 			u &= ~0x30000400;	/* bits we don't care about */
 			if ((u & ~0x1f) == 0x00000900)
@@ -1267,7 +1267,7 @@ mn_probe (device_t self)
 		return (ENXIO);
 	}
 
-	if (id != 0x2101110a) 
+	if (id != 0x2101110a)
 		return (ENXIO);
 
 	device_set_desc_copy(self, "Munich32X E1/T1 HDLC Controller");
@@ -1326,7 +1326,7 @@ mn_attach (device_t self)
 		return(ENXIO);
 	}
 
-	error = bus_setup_intr(self, sc->irq, INTR_MPSAFE, mn_intr, sc, 
+	error = bus_setup_intr(self, sc->irq, INTR_MPSAFE, mn_intr, sc,
 			       &sc->intrhand, NULL);
 
 	if (error) {
@@ -1394,7 +1394,7 @@ mn_attach (device_t self)
 		ng_unref(sc->node);
 		return (0);
 	}
-	
+
 	return (0);
 }
 
@@ -1409,7 +1409,7 @@ static device_method_t mn_methods[] = {
 
         DEVMETHOD_END
 };
- 
+
 static driver_t mn_driver = {
         "mn",
         mn_methods,

@@ -336,7 +336,7 @@ pfr_del_addrs(struct pfr_table *tbl, struct pfr_addr *addr, int size,
 	 *
 	 * one is O(N) and is better for large 'n'
 	 * one is O(n*LOG(N)) and is better for small 'n'
-	 * 
+	 *
 	 * following code try to decide which one is best.
 	 */
 	for (i = kt->pfrkt_cnt; i > 0; i >>= 1)
@@ -1934,7 +1934,7 @@ pfr_destroy_ktable(struct pfr_ktable *kt, int flushaddr)
 
 	if (kt->pfrkt_ip6 != NULL)
 		kfree((caddr_t)kt->pfrkt_ip6, M_RTABLE);
-	if (kt->pfrkt_shadow != NULL) 
+	if (kt->pfrkt_shadow != NULL)
 		pfr_destroy_ktable(kt->pfrkt_shadow, flushaddr);
 	if (kt->pfrkt_rs != NULL) {
 		kt->pfrkt_rs->tables--;

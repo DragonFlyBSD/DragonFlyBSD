@@ -811,7 +811,7 @@ maglist_disassociate(struct magazinedepot *depot, struct magazinelist *maglist,
 		depot->unallocated_objects += mag->rounds;
 	}
 }
-			
+
 /*
  * Deallocate all magazines and their contents from the passed temporary
  * list.  The magazines have already been accounted for by their depots.
@@ -827,7 +827,7 @@ maglist_purge(struct objcache *oc, struct magazinelist *maglist)
 
 	/*
 	 * can't use SLIST_FOREACH because blocking releases the depot
-	 * spinlock 
+	 * spinlock
 	 */
 	crit_enter();
 	while ((mag = SLIST_FIRST(maglist)) != NULL) {

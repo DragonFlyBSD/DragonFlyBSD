@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Jeffrey M. Hsu.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -113,11 +113,11 @@ static int	filt_solisten(struct knote *kn, long hint);
 static int	soclose_sync(struct socket *so, int fflag);
 static void	soclose_fast(struct socket *so);
 
-static struct filterops solisten_filtops = 
+static struct filterops solisten_filtops =
 	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_sordetach, filt_solisten };
 static struct filterops soread_filtops =
 	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_sordetach, filt_soread };
-static struct filterops sowrite_filtops = 
+static struct filterops sowrite_filtops =
 	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_sowdetach, filt_sowrite };
 static struct filterops soexcept_filtops =
 	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_sordetach, filt_soread };
@@ -1337,11 +1337,14 @@ restart:
 	 * we have to do the receive in sections, and thus risk returning
 	 * a short count if a timeout or signal occurs after we start.
 	 */
-	if (m == NULL || (((flags & MSG_DONTWAIT) == 0 &&
-	    (size_t)so->so_rcv.ssb_cc < resid) &&
-	    (so->so_rcv.ssb_cc < so->so_rcv.ssb_lowat ||
-	    ((flags & MSG_WAITALL) && resid <= (size_t)so->so_rcv.ssb_hiwat)) &&
-	    m->m_nextpkt == 0 && (pr->pr_flags & PR_ATOMIC) == 0)) {
+	if (m == NULL ||
+	    (((flags & MSG_DONTWAIT) == 0 &&
+	      (size_t)so->so_rcv.ssb_cc < resid) &&
+	     (so->so_rcv.ssb_cc < so->so_rcv.ssb_lowat ||
+	      ((flags & MSG_WAITALL) &&
+	       resid <= (size_t)so->so_rcv.ssb_hiwat)) &&
+	     m->m_nextpkt == 0 && (pr->pr_flags & PR_ATOMIC) == 0))
+	{
 		KASSERT(m != NULL || !so->so_rcv.ssb_cc, ("receive 1"));
 		if (so->so_error || so->so_rerror) {
 			if (m)
@@ -1464,11 +1467,12 @@ dontblock:
 		if (m->m_type == MT_OOBDATA) {
 			if (type != MT_OOBDATA)
 				break;
-		} else if (type == MT_OOBDATA)
+		} else if (type == MT_OOBDATA) {
 			break;
-		else
-		    KASSERT(m->m_type == MT_DATA || m->m_type == MT_HEADER,
-			("receive 3"));
+		} else {
+			KASSERT(m->m_type == MT_DATA || m->m_type == MT_HEADER,
+				("receive 3"));
+		}
 		soclrstate(so, SS_RCVATMARK);
 		len = (resid > INT_MAX) ? INT_MAX : resid;
 		if (so->so_oobmark && len > so->so_oobmark - offset)
@@ -1502,11 +1506,13 @@ dontblock:
 				moff = 0;
 			} else {
 				if (sio) {
-					n = sbunlinkmbuf(&so->so_rcv.sb, m, NULL);
+					n = sbunlinkmbuf(&so->so_rcv.sb, m,
+							 NULL);
 					sbappend(sio, m);
 					m = n;
 				} else {
-					m = sbunlinkmbuf(&so->so_rcv.sb, m, &free_chain);
+					m = sbunlinkmbuf(&so->so_rcv.sb, m,
+							 &free_chain);
 				}
 			}
 		} else {
@@ -1545,9 +1551,10 @@ dontblock:
 		 * with a short count but without error.
 		 * Keep signalsockbuf locked against other readers.
 		 */
-		while ((flags & MSG_WAITALL) && m == NULL && 
-		       resid > 0 && !sosendallatonce(so) && 
-		       so->so_rcv.ssb_mb == NULL) {
+		while ((flags & MSG_WAITALL) && m == NULL &&
+		       resid > 0 && !sosendallatonce(so) &&
+		       so->so_rcv.ssb_mb == NULL)
+		{
 			if (so->so_error || so->so_rerror ||
 			    so->so_state & SS_CANTRCVMORE)
 				break;
@@ -2001,7 +2008,7 @@ do_setopt_accept_filter(struct socket *so, struct sockopt *sopt)
 	/* removing the filter */
 	if (sopt == NULL) {
 		if (af != NULL) {
-			if (af->so_accept_filter != NULL && 
+			if (af->so_accept_filter != NULL &&
 				af->so_accept_filter->accf_destroy != NULL) {
 				af->so_accept_filter->accf_destroy(so);
 			}
@@ -2338,7 +2345,7 @@ sogetopt(struct socket *so, struct sockopt *sopt)
 			kfree(afap, M_TEMP);
 			break;
 #endif /* INET */
-			
+
 		case SO_LINGER:
 			l.l_onoff = so->so_options & SO_LINGER;
 			l.l_linger = so->so_linger;
@@ -2400,7 +2407,7 @@ integer:
 			tv.tv_sec = optval / hz;
 			tv.tv_usec = (optval % hz) * ustick;
 			error = sooptcopyout(sopt, &tv, sizeof tv);
-			break;			
+			break;
 
 		case SO_SNDSPACE:
 			optval_l = ssb_space(&so->so_snd);
@@ -2609,7 +2616,7 @@ filt_soread(struct knote *kn, long hint __unused)
 		 */
 		if (kn->kn_data == 0)
 			kn->kn_flags |= EV_NODATA;
-		kn->kn_flags |= EV_EOF; 
+		kn->kn_flags |= EV_EOF;
 		kn->kn_fflags = so->so_error;
 		if (so->so_state & SS_CANTSENDMORE) {
 			kn->kn_flags |= EV_HUP;

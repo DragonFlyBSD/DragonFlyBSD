@@ -300,7 +300,7 @@ rip6_output(struct mbuf *m, struct socket *so, ...)
 	dst = &dstsock->sin6_addr;
 	if (control) {
 		if ((error = ip6_setpktoptions(control, &opt,
-		    in6p->in6p_outputopts, 
+		    in6p->in6p_outputopts,
 		    so->so_proto->pr_protocol, priv)) != 0)
 			goto bad;
 		optp = &opt;

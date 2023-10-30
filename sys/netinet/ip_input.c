@@ -162,7 +162,7 @@ SYSCTL_INT(_net_inet_ip, OID_AUTO, sendsourcequench, CTLFLAG_RW,
 __read_mostly int ip_do_randomid = 1;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, random_id, CTLFLAG_RW,
     &ip_do_randomid, 0,
-    "Assign random ip_id values");	
+    "Assign random ip_id values");
 /*
  * XXX - Setting ip_checkinterface mostly implements the receive side of
  * the Strong ES model described in RFC 1122, but since the routing table

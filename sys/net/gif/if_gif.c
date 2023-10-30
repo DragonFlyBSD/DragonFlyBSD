@@ -137,7 +137,7 @@ gif_clone_create(struct if_clone *ifc, int unit,
 		 caddr_t params __unused, caddr_t data __unused)
 {
 	struct gif_softc *sc;
-	
+
 	sc = kmalloc (sizeof(struct gif_softc), M_GIF, M_WAITOK | M_ZERO);
 
 	sc->gif_if.if_softc = sc;
@@ -371,7 +371,7 @@ gif_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		}
 		bpf_reltoken();
 	}
-	IFNET_STAT_INC(ifp, opackets, 1);	
+	IFNET_STAT_INC(ifp, opackets, 1);
 	IFNET_STAT_INC(ifp, obytes, m->m_pkthdr.len);
 
 	/* inner AF-specific encapsulation */
@@ -391,7 +391,7 @@ gif_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		break;
 #endif
 	default:
-		m_freem(m);		
+		m_freem(m);
 		error = ENETDOWN;
 		goto end;
 	}
@@ -430,7 +430,7 @@ gif_input(struct mbuf *m, int af, struct ifnet *ifp)
 	}
 
 	m->m_pkthdr.rcvif = ifp;
-	
+
 	if (ifp->if_bpf) {
 		bpf_gettoken();
 		if (ifp->if_bpf) {
@@ -496,7 +496,7 @@ gif_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	case SIOCSIFADDR:
 		ifp->if_flags |= IFF_UP;
 		break;
-		
+
 	case SIOCSIFDSTADDR:
 		break;
 
@@ -613,7 +613,7 @@ gif_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		gif_delete_tunnel(&sc->gif_if);
 		break;
 #endif
-			
+
 	case SIOCGIFPSRCADDR:
 #ifdef INET6
 	case SIOCGIFPSRCADDR_IN6:
@@ -645,7 +645,7 @@ gif_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			return EINVAL;
 		bcopy((caddr_t)src, (caddr_t)dst, src->sa_len);
 		break;
-			
+
 	case SIOCGIFPDSTADDR:
 #ifdef INET6
 	case SIOCGIFPDSTADDR_IN6:
@@ -721,7 +721,7 @@ gif_set_tunnel(struct ifnet *ifp, struct sockaddr *src, struct sockaddr *dst)
 	struct gif_softc *sc = (struct gif_softc *)ifp;
 	struct gif_softc *sc2;
 	struct sockaddr *osrc, *odst, *sa;
-	int error = 0; 
+	int error = 0;
 
 	crit_enter();
 

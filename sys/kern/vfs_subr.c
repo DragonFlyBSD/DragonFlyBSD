@@ -117,7 +117,7 @@ static struct lwkt_token spechash_token;
 struct nfs_public nfs_pub;	/* publicly exported FS */
 
 __read_mostly int maxvnodes;
-SYSCTL_INT(_kern, KERN_MAXVNODES, maxvnodes, CTLFLAG_RW, 
+SYSCTL_INT(_kern, KERN_MAXVNODES, maxvnodes, CTLFLAG_RW,
 	   &maxvnodes, 0, "Maximum number of vnodes");
 
 static struct radix_node_head *vfs_create_addrlist_af(int af,
@@ -144,7 +144,7 @@ rb_buf_compare(struct buf *b1, struct buf *b2)
 }
 
 /*
- * Initialize the vnode management data structures. 
+ * Initialize the vnode management data structures.
  *
  * Called from vfsinit()
  */
@@ -479,7 +479,7 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 	int count;
 
 	/*
-	 * Round up to the *next* block, then destroy the buffers in question.  
+	 * Round up to the *next* block, then destroy the buffers in question.
 	 * Since we are only removing some of the buffers we must rely on the
 	 * scan count to determine whether a loop is necessary.
 	 */
@@ -492,7 +492,7 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 	lwkt_gettoken(&vp->v_token);
 	do {
 		info.clean = 1;
-		count = RB_SCAN(buf_rb_tree, &vp->v_rbclean_tree, 
+		count = RB_SCAN(buf_rb_tree, &vp->v_rbclean_tree,
 				vtruncbuf_bp_trunc_cmp,
 				vtruncbuf_bp_trunc, &info);
 		info.clean = 0;
@@ -540,7 +540,7 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 	 */
 	do {
 		info.clean = 1;
-		count = RB_SCAN(buf_rb_tree, &vp->v_rbclean_tree, 
+		count = RB_SCAN(buf_rb_tree, &vp->v_rbclean_tree,
 				vtruncbuf_bp_trunc_cmp,
 				vtruncbuf_bp_trunc, &info);
 		info.clean = 0;
@@ -573,8 +573,8 @@ vtruncbuf_bp_trunc_cmp(struct buf *bp, void *data)
 	return(-1);
 }
 
-static 
-int 
+static
+int
 vtruncbuf_bp_trunc(struct buf *bp, void *data)
 {
 	struct vtruncbuf_info *info = data;
@@ -644,7 +644,7 @@ vtruncbuf_bp_metasync(struct buf *bp, void *data)
 
 /*
  * vfsync - implements a multipass fsync on a file which understands
- * dependancies and meta-data.  The passed vnode must be locked.  The 
+ * dependancies and meta-data.  The passed vnode must be locked.  The
  * waitfor argument may be MNT_WAIT or MNT_NOWAIT, or MNT_LAZY.
  *
  * When fsyncing data asynchronously just do one consolidated pass starting
@@ -656,7 +656,7 @@ vtruncbuf_bp_metasync(struct buf *bp, void *data)
  *
  * Caller must ref the vnode but does not have to lock it.
  */
-static int vfsync_wait_output(struct vnode *vp, 
+static int vfsync_wait_output(struct vnode *vp,
 			    int (*waitoutput)(struct vnode *, struct thread *));
 static int vfsync_dummy_cmp(struct buf *bp __unused, void *data __unused);
 static int vfsync_data_only_cmp(struct buf *bp, void *data);
@@ -702,10 +702,10 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 		info.lazylimit = 1024 * 1024;
 		info.syncdeps = 1;
 		info.cmpfunc = vfsync_lazy_range_cmp;
-		error = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, 
+		error = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree,
 				vfsync_lazy_range_cmp, vfsync_bp, &info);
 		info.cmpfunc = vfsync_meta_only_cmp;
-		RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, 
+		RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree,
 			vfsync_meta_only_cmp, vfsync_bp, &info);
 		if (error == 0)
 			vp->v_lazyw = 0;
@@ -719,10 +719,10 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 		 */
 		info.syncdeps = 1;
 		info.cmpfunc = vfsync_data_only_cmp;
-		RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, vfsync_data_only_cmp, 
+		RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, vfsync_data_only_cmp,
 			vfsync_bp, &info);
 		info.cmpfunc = vfsync_meta_only_cmp;
-		RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, vfsync_meta_only_cmp, 
+		RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, vfsync_meta_only_cmp,
 			vfsync_bp, &info);
 		error = 0;
 		break;
@@ -1108,7 +1108,7 @@ reassignbuf(struct buf *bp)
 				break;
 			case VCHR:
 			case VBLK:
-				if (vp->v_rdev && 
+				if (vp->v_rdev &&
 				    vp->v_rdev->si_mountpoint != NULL) {
 					delay = metadelay;
 					break;
@@ -1218,7 +1218,7 @@ v_release_rdev(struct vnode *vp)
 /*
  * Add a vnode to the alias list hung off the cdev_t.  We only associate
  * the device number with the vnode.  The actual device is not associated
- * until the vnode is opened (usually in spec_open()), and will be 
+ * until the vnode is opened (usually in spec_open()), and will be
  * disassociated on last close.
  */
 void
@@ -1253,7 +1253,7 @@ vclean_unlocked(struct vnode *vp)
 }
 
 /*
- * Disassociate a vnode from its underlying filesystem. 
+ * Disassociate a vnode from its underlying filesystem.
  *
  * The vnode must be VX locked and referenced.  In all normal situations
  * there are no active references.  If vclean_vxlocked() is called while
@@ -1305,7 +1305,7 @@ vclean_vxlocked(struct vnode *vp, int flags)
 
 	/*
 	 * Clean out any buffers associated with the vnode and destroy its
-	 * object, if it has one. 
+	 * object, if it has one.
 	 */
 	vinvalbuf(vp, V_SAVE, 0, 0);
 
@@ -1523,7 +1523,7 @@ vmaxiosize(struct vnode *vp)
  * already been deactivated (VOP_INACTIVE), or on a vnode which has
  * already been reclaimed.
  *
- * This routine is not responsible for placing us back on the freelist. 
+ * This routine is not responsible for placing us back on the freelist.
  * Instead, it happens automatically when the caller releases the VX lock
  * (assuming there aren't any other references).
  */
@@ -1538,7 +1538,7 @@ vgone_vxlocked(struct vnode *vp)
 
 	/*
 	 * Clean out the filesystem specific data and set the VRECLAIMED
-	 * bit.  Also deactivate the vnode if necessary. 
+	 * bit.  Also deactivate the vnode if necessary.
 	 *
 	 * The vnode should have automatically been removed from the syncer
 	 * list as syncer/dirty flags cleared during the cleaning.
@@ -1761,7 +1761,7 @@ static int db_show_locked_vnodes(struct mount *mp, void *data);
 DB_SHOW_COMMAND(lockedvnodes, lockedvnodes)
 {
 	kprintf("Locked vnodes\n");
-	mountlist_scan(db_show_locked_vnodes, NULL, 
+	mountlist_scan(db_show_locked_vnodes, NULL,
 			MNTSCAN_FORWARD|MNTSCAN_NOBUSY);
 }
 
@@ -1910,7 +1910,7 @@ vfs_umountall_callback(struct mount *mp, void *data)
 	 */
 	error = dounmount(mp, MNT_FORCE, halting);
 	if (error) {
-		kprintf("unmount of filesystem mounted from %s failed (", 
+		kprintf("unmount of filesystem mounted from %s failed (",
 			mp->mnt_stat.f_mntfromname);
 		if (error == EBUSY)
 			kprintf("BUSY)\n");
@@ -2335,7 +2335,7 @@ static int vfs_msync_scan1(struct mount *mp, struct vnode *vp, void *data);
 static int vfs_msync_scan2(struct mount *mp, struct vnode *vp, void *data);
 
 void
-vfs_msync(struct mount *mp, int flags) 
+vfs_msync(struct mount *mp, int flags)
 {
 	int vmsc_flags;
 
@@ -2536,7 +2536,7 @@ vn_get_namelen(struct vnode *vp, int *namelen)
 }
 
 int
-vop_write_dirent(int *error, struct uio *uio, ino_t d_ino, uint8_t d_type, 
+vop_write_dirent(int *error, struct uio *uio, ino_t d_ino, uint8_t d_type,
 		uint16_t d_namlen, const char *d_name)
 {
 	struct dirent *dp;

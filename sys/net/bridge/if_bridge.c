@@ -4400,7 +4400,7 @@ bridge_fragment(struct ifnet *ifp, struct mbuf *m, struct ether_header *eh,
 				continue;
 			}
 			bcopy(eh, mtod(m0, caddr_t), ETHER_HDR_LEN);
-		} else 
+		} else
 			m_freem(m);
 	}
 

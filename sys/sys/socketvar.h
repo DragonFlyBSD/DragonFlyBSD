@@ -154,7 +154,7 @@ struct socket {
 	void	*so_emuldata;		/* private data for emulators */
 	int	so_refs;		/* shutdown refs */
 	int	so_reserved01;
-	struct	so_accf { 
+	struct	so_accf {
 		struct	accept_filter *so_accept_filter;
 		void	*so_accept_filter_arg;	/* saved filter args */
 		char	*so_accept_filter_str;	/* saved user args */

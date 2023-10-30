@@ -172,7 +172,7 @@ static int  wi_write_appie(struct wi_softc *, int, const struct ieee80211_appie 
 static void wi_scan_start(struct ieee80211com *);
 static void wi_scan_end(struct ieee80211com *);
 static void wi_set_channel(struct ieee80211com *);
-	
+
 static __inline int
 wi_write_val(struct wi_softc *sc, int rid, u_int16_t val)
 {
@@ -284,7 +284,7 @@ wi_attach(device_t dev)
 		    "(type %d, firmware ver %d)\n",
 		    sc->sc_firmware_type, sc->sc_sta_firmware_ver);
 		wi_free(dev);
-		return EOPNOTSUPP; 
+		return EOPNOTSUPP;
 	}
 
 	/* Export info about the device via sysctl */
@@ -906,7 +906,7 @@ wi_newstate_hostap(struct ieee80211vap *vap, enum ieee80211_state nstate, int ar
 		}
 
 		if ((sc->sc_flags & WI_FLAGS_HAS_WPASUPPORT) &&
-		    (vap->iv_flags & IEEE80211_F_WPA) && 
+		    (vap->iv_flags & IEEE80211_F_WPA) &&
 		    vap->iv_appie_wpa != NULL)
 			wi_write_appie(sc, WI_RID_WPA_DATA, vap->iv_appie_wpa);
 
@@ -1081,7 +1081,7 @@ wi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m0,
 	m_copydata(m0, 4, ETHER_ADDR_LEN * 2, &frmhdr.wi_ehdr);
 	frmhdr.wi_ehdr.ether_type = 0;
 	wh = mtod(m0, struct ieee80211_frame *);
-			
+
 	frmhdr.wi_tx_ctl = htole16(WI_ENC_TX_802_11|WI_TXCNTL_TX_EX);
 	if (params && (params->ibp_flags & IEEE80211_BPF_NOACK))
 		frmhdr.wi_tx_ctl |= htole16(WI_TXCNTL_ALTRTRY);
@@ -1615,7 +1615,7 @@ wi_update_promisc(struct ieee80211com *ic)
 
 	WI_LOCK(sc);
 	/* XXX handle WEP special case handling? */
-	wi_write_val(sc, WI_RID_PROMISC, 
+	wi_write_val(sc, WI_RID_PROMISC,
 	    (ic->ic_opmode == IEEE80211_M_MONITOR ||
 	     (ic->ic_promisc > 0)));
 	WI_UNLOCK(sc);

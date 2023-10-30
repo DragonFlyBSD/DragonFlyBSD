@@ -58,6 +58,7 @@ struct ipfw_ioc_table {
 };
 
 #ifdef _KERNEL
+
 struct ipfw3_table_context {
 	struct	radix_node_head *node;
 	struct	radix_node_head *mask;
@@ -66,7 +67,7 @@ struct ipfw3_table_context {
 	int 	type;
 };
 
-struct table_ip_entry{
+struct table_ip_entry {
 	struct radix_node	rn[2];
 	struct sockaddr_in	addr;
 	struct sockaddr_in	mask;
@@ -110,4 +111,5 @@ void ip_fw3_table_init(void);
 void ip_fw3_table_modevent(int type);
 
 #endif	/* _KERNEL */
+
 #endif /* _IP_FW3_TABLE_H_ */

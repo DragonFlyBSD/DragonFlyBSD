@@ -1761,7 +1761,7 @@ ipfw_state_del(struct ipfw_context *ctx, struct ipfw_state *s)
 	 * Free the paired states on the cpu owning the slave xlat.
 	 */
 
-	/* 
+	/*
 	 * Mark the state pair invalid; completely deleting them
 	 * may take some time.
 	 */
@@ -1836,7 +1836,7 @@ ipfw_state_reap(struct ipfw_context *ctx, int reap_max)
 			ipfw_state_del(ctx, s);
 			if (++expired >= reap_max)
 				break;
-			if ((expired & 0xff) == 0 && 
+			if ((expired & 0xff) == 0 &&
 			    ipfw_state_cntcoll() + ipfw_state_headroom <=
 			    ipfw_state_max)
 				break;
@@ -4113,7 +4113,7 @@ check_body:
 			case O_PROBE_STATE:
 			case O_CHECK_STATE:
 				/*
-				 * States are checked at the first keep-state 
+				 * States are checked at the first keep-state
 				 * check-state occurrence, with the result
 				 * being stored in dyn_dir.  The compiler
 				 * introduces a PROBE_STATE instruction for
@@ -5559,7 +5559,7 @@ ipfw_ctl_add_rule(struct sockopt *sopt)
 	int error;
 
 	ASSERT_NETISR0;
-	
+
 	size = sopt->sopt_valsize;
 	if (size > (sizeof(uint32_t) * IPFW_RULE_SIZE_MAX) ||
 	    size < sizeof(*ioc_rule)) {
@@ -5809,7 +5809,7 @@ ipfw_ctl_get_rules(struct sockopt *sopt)
 	if (sopt->sopt_valsize < size) {
 		/* short length, no need to return incomplete rules */
 		/* XXX: if superuser, no need to zero buffer */
-		bzero(sopt->sopt_val, sopt->sopt_valsize); 
+		bzero(sopt->sopt_val, sopt->sopt_valsize);
 		return 0;
 	}
 	bp = sopt->sopt_val;

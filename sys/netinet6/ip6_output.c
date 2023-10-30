@@ -729,7 +729,7 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 		}
 		error = nd6_output(ifp, origifp, m, dst, ro->ro_rt);
 		goto done;
-	} 
+	}
 
 	/*
 	 * try to fragment the packet.  case 1-b and 3
@@ -1234,8 +1234,8 @@ do { \
 		in6p->in6p_flags &= ~(bit); \
 } while (0)
 #define OPTBIT(bit) (in6p->in6p_flags & (bit) ? 1 : 0)
-/* 
- * Although changed to RFC3542, It's better to also support RFC2292 API 
+/*
+ * Although changed to RFC3542, It's better to also support RFC2292 API
  */
 #define OPTSET2292(bit) \
 do { \
@@ -1443,8 +1443,8 @@ do { \
 			case IPV6_RTHDRDSTOPTS:
 			case IPV6_NEXTHOP:
 			{
-				/* 
-				 * New advanced API (RFC3542) 
+				/*
+				 * New advanced API (RFC3542)
 				 */
 				u_char *optbuf;
 				u_char optbuf_storage[MCLBYTES];
@@ -1472,7 +1472,7 @@ do { \
 				error = ip6_pcbopt(optname, optbuf, optlen,
 				    optp, uproto);
 				break;
-			}	
+			}
 #undef OPTSET
 
 			case IPV6_MULTICAST_IF:
@@ -1582,7 +1582,7 @@ do { \
 				} else
 					sopt->sopt_valsize = 0;
 				break;
-		
+
 			case IPV6_RECVHOPOPTS:
 			case IPV6_RECVDSTOPTS:
 			case IPV6_RECVRTHDRDSTOPTS:

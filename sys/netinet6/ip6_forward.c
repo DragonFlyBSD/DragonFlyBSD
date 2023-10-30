@@ -121,7 +121,7 @@ ip6_forward(struct mbuf *m, int srcrt)
 	if (ip6->ip6_hlim <= IPV6_HLIMDEC) {
 		/* XXX in6_ifstat_inc(rt->rt_ifp, ifs6_in_discard) */
 		icmp6_error(m, ICMP6_TIME_EXCEEDED,
-				ICMP6_TIME_EXCEED_TRANSIT, 0);
+			    ICMP6_TIME_EXCEED_TRANSIT, 0);
 		return;
 	}
 	ip6->ip6_hlim -= IPV6_HLIMDEC;

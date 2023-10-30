@@ -336,6 +336,6 @@ init_param2(int physpages)
 static int
 sysctl_kern_vmm_guest(SYSCTL_HANDLER_ARGS)
 {
-	return (SYSCTL_OUT(req, vmm_guest_sysctl_names[vmm_guest], 
+	return (SYSCTL_OUT(req, vmm_guest_sysctl_names[vmm_guest],
 	    strlen(vmm_guest_sysctl_names[vmm_guest])));
 }

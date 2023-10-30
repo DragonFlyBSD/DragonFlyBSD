@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (c) 1995
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 2013-2017
@@ -41,7 +41,7 @@
 
 /*
  * A number of third party programs #include <sys/lock.h> for no good
- * reason.  Don't actually include anything unless we are the kernel. 
+ * reason.  Don't actually include anything unless we are the kernel.
  */
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
@@ -264,7 +264,7 @@ static __inline
 int
 lockmgr(struct lock *lkp, u_int flags)
 {
-	switch(flags & LK_TYPE_MASK) {
+	switch (flags & LK_TYPE_MASK) {
 	case LK_SHARED:
 		return lockmgr_shared(lkp, flags);
 	case LK_EXCLUSIVE:

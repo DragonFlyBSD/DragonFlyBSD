@@ -156,7 +156,7 @@ static void		 pf_clear_srcnodes(void);
 /*
  * XXX - These are new and need to be checked when moveing to a new version
  */
- 
+
 /*
  * Wrapper functions for pfil(9) hooks
  */
@@ -230,7 +230,7 @@ pfattach(void)
 				M_PF, M_WAITOK | M_ZERO);
 	purge_cur = kmalloc(sizeof(*purge_cur) * ncpus,
 				M_PF, M_WAITOK | M_ZERO);
-	
+
 	pfr_initialize();
 	pfi_initialize();
 	pf_osfp_initialize();
@@ -284,7 +284,7 @@ pfattach(void)
 	my_timeout[PFTM_TS_DIFF] = 30;			/* Allowed TS diff */
 	my_timeout[PFTM_ADAPTIVE_START] = PFSTATE_ADAPT_START;
 	my_timeout[PFTM_ADAPTIVE_END] = PFSTATE_ADAPT_END;
-	
+
 	pf_normalize_init();
 	bzero(&pf_status, sizeof(pf_status));
 	pf_status.debug = PF_DEBUG_URGENT;
@@ -3290,7 +3290,7 @@ hook_pf(void)
 		lwkt_reltoken(&pf_token);
 		return (0);
 	}
-	
+
 	pfh_inet = pfil_head_get(PFIL_TYPE_AF, AF_INET);
 	if (pfh_inet == NULL) {
 		lwkt_reltoken(&pf_token);

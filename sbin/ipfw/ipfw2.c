@@ -999,7 +999,7 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 		show_prerequisites(&flags, 0, cmd->opcode);
 
 		switch(cmd->opcode) {
-		case O_PROB:	
+		case O_PROB:
 			break;	/* done already */
 
 		case O_PROBE_STATE:
@@ -2085,7 +2085,7 @@ delete(int ac, char *av[])
  * fill the interface structure. We do not check the name as we can
  * create interfaces dynamically, so checking them at insert time
  * makes relatively little sense.
- * Interface names containing '*', '?', or '[' are assumed to be shell 
+ * Interface names containing '*', '?', or '[' are assumed to be shell
  * patterns which match interfaces.
  */
 static void

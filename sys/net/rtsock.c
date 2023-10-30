@@ -696,7 +696,7 @@ route_output(struct mbuf *m, struct socket *so, ...)
 
 	family = familyof(NULL);
 
-#define gotoerr(e) { error = e; goto flush;}
+#define gotoerr(e) { error = e; goto flush; }
 
 	if (m == NULL ||
 	    (m->m_len < sizeof(long) &&
@@ -1019,7 +1019,7 @@ rt_xaddrs(char *cp, char *cplim, struct rt_addrinfo *rtinfo)
 		/*
 		 * There are no more...  Quit now.
 		 * If there are more bits, they are in error.
-		 * I've seen this.  route(1) can evidently generate these. 
+		 * I've seen this.  route(1) can evidently generate these.
 		 * This causes kernel to core dump.
 		 * For compatibility, if we see this, point to a safe address.
 		 */

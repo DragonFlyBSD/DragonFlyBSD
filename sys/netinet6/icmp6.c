@@ -901,7 +901,7 @@ icmp6_notify_error(struct mbuf *m, int off, int icmp6len, int code)
 					return (-1);
 				}
 #endif
-				
+
 				if (nxt == IPPROTO_AH)
 					eoff += (eh->ip6e_len + 2) << 2;
 				else
@@ -1777,7 +1777,7 @@ again:
 				else
 					ltime = 0;
 			}
-			
+
 			bcopy(&ltime, cp, sizeof(u_int32_t));
 			cp += sizeof(u_int32_t);
 
@@ -1786,7 +1786,7 @@ again:
 			      sizeof(struct in6_addr));
 			in6_clearscope((struct in6_addr *)cp); /* XXX */
 			cp += sizeof(struct in6_addr);
-			
+
 			resid -= (sizeof(struct in6_addr) + sizeof(u_int32_t));
 			copied += (sizeof(struct in6_addr) +
 				   sizeof(u_int32_t));
