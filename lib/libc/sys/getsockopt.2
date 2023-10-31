@@ -28,7 +28,7 @@
 .\"     @(#)getsockopt.2	8.4 (Berkeley) 5/2/95
 .\" $FreeBSD: src/lib/libc/sys/getsockopt.2,v 1.12.2.11 2002/01/09 17:44:15 yar Exp $
 .\"
-.Dd August 7, 2019
+.Dd October 30, 2023
 .Dt GETSOCKOPT 2
 .Os
 .Sh NAME
@@ -157,11 +157,13 @@ and set with
 .Pp
 .Dv SO_DEBUG
 enables debugging in the underlying protocol modules.
+.Pp
 .Dv SO_REUSEADDR
 indicates that the rules used in validating addresses supplied
 in a
 .Xr bind 2
 call should allow reuse of local addresses.
+.Pp
 .Dv SO_REUSEPORT
 allows completely duplicate bindings by multiple processes
 if they all set
@@ -169,6 +171,7 @@ if they all set
 before binding the port.
 This option permits multiple instances of a program to each
 receive UDP/IP multicast or broadcast datagrams destined for the bound port.
+.Pp
 .Dv SO_KEEPALIVE
 enables the
 periodic transmission of messages on a connected socket.  Should the
@@ -176,11 +179,13 @@ connected party fail to respond to these messages, the connection is
 considered broken and processes using the socket are notified via a
 .Dv SIGPIPE
 signal when attempting to send data.
+.Pp
 .Dv SO_DONTROUTE
 indicates that outgoing messages should
 bypass the standard routing facilities.  Instead, messages are directed
 to the appropriate network interface according to the network portion
 of the destination address.
+.Pp
 .Dv SO_RERROR
 indicates that receive buffer overflows should be handled as errors.
 Historically receive buffer overflows have been ignored and programs
@@ -230,6 +235,7 @@ calls without the
 .Dv MSG_OOB
 flag.
 Some protocols always behave as if this option is set.
+.Pp
 .Dv SO_SNDBUF
 and
 .Dv SO_RCVBUF
@@ -259,6 +265,7 @@ only if the low water mark amount could be processed.
 The default value for
 .Dv SO_SNDLOWAT
 is set to a convenient size for network efficiency, often 1024.
+.Pp
 .Dv SO_RCVLOWAT
 is an option to set the minimum count for input operations.
 In general, receive calls will block until any (non-zero) amount of data
@@ -291,6 +298,7 @@ In the current implementation, this timer is restarted each time additional
 data are delivered to the protocol,
 implying that the limit applies to output portions ranging in size
 from the low water mark to the high water mark for output.
+.Pp
 .Dv SO_RCVTIMEO
 is an option to set a timeout value for input operations.
 It accepts a
@@ -320,7 +328,7 @@ trying to install the filter on it,
 or else the
 .Fn setsockopt
 call will fail.
-.Bd -literal
+.Bd -literal -offset indent
 struct  accept_filter_arg {
         char    af_name[16];
         char    af_arg[256-16];
