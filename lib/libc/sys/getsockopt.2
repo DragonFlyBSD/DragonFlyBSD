@@ -150,6 +150,7 @@ and set with
 .It Dv SO_SNDTIMEO Ta "set timeout value for output"
 .It Dv SO_RCVTIMEO Ta "set timeout value for input"
 .It Dv SO_ACCEPTFILTER Ta "set accept filter on listening socket"
+.It Dv SO_USER_COOKIE Ta "set the user cookie (uint32_t value)"
 .It Dv SO_TYPE Ta "get the type of the socket (get only)"
 .It Dv SO_ERROR Ta "get and clear error on the socket (get only)"
 .It Dv SO_RERROR Ta "enables receive error reporting"
@@ -351,6 +352,11 @@ to provide additional configuration options at attach time.
 Passing in an
 .Fa optval
 of NULL will remove the filter.
+.Pp
+.Dv SO_USER_COOKIE
+can be used to attach an arbitrary uint32_t value to the socket.
+The value acts like a user-defined cookie and can be used in the kernel
+code that manipulates traffic related to the socket.
 .Pp
 Finally,
 .Dv SO_TYPE

@@ -2104,6 +2104,7 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 	struct	linger l;
 	struct	timeval tv;
 	u_long  val;
+	uint32_t val32;
 	struct signalsockbuf *sotmp;
 
 	error = 0;
@@ -2243,6 +2244,15 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 				break;
 			}
 			break;
+
+		case SO_USER_COOKIE:
+			error = sooptcopyin(sopt, &val32, sizeof val32,
+					    sizeof val32);
+			if (error)
+				goto bad;
+			so->so_user_cookie = val32;
+			break;
+
 		default:
 			error = ENOPROTOOPT;
 			break;
@@ -2299,6 +2309,7 @@ sogetopt(struct socket *so, struct sockopt *sopt)
 	long	optval_l;
 	struct	linger l;
 	struct	timeval tv;
+	uint32_t val32;
 #ifdef INET
 	struct accept_filter_arg *afap;
 #endif
@@ -2399,6 +2410,11 @@ integer:
 		case SO_CPUHINT:
 			optval = -1; /* no hint */
 			goto integer;
+
+		case SO_USER_COOKIE:
+			val32 = so->so_user_cookie;
+			error = sooptcopyout(sopt, &val32, sizeof(val32));
+			break;
 
 		default:
 			error = ENOPROTOOPT;

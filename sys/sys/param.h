@@ -246,9 +246,10 @@
  * 600502 - WIFSIGNALED(x) excludes SIGCONT
  * 600503 - kldstat(2) supports module's full path
  * 600504 - change m_copyback(9) to forbid mbuf expansion
+ * 600505 - add SO_USER_COOKIE to setsockopt(2)/getsockopt(2)
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600504	/* propagated to newvers */
+#define __DragonFly_version 600505	/* propagated to newvers */
 
 #include <sys/_null.h>
 

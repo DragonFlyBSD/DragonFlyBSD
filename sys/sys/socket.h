@@ -145,7 +145,9 @@ typedef __socklen_t	socklen_t;
 #if __BSD_VISIBLE
 /* 0x1009 reserved for FreeBSD compat */
 #define	SO_SNDSPACE	0x100a		/* get appr. send buffer free space */
-/* 0x1010 ~ 0x102f reserved for FreeBSD compat */
+/* 0x1010 ~ 0x1014 reserved for FreeBSD compat */
+#define	SO_USER_COOKIE	0x1015		/* user cookie */
+/* 0x1016 ~ 0x102f reserved for FreeBSD compat */
 #define	SO_CPUHINT	0x1030		/* get socket's owner cpuid hint */
 #endif
 

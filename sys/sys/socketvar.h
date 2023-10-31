@@ -169,6 +169,8 @@ struct socket {
 	lwkt_port_t so_orig_port;
 
 	long	so_inum;
+
+	uint32_t so_user_cookie;	/* user-specified metadata */
 };
 
 #endif
