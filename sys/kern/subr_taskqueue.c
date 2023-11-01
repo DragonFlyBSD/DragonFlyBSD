@@ -554,13 +554,15 @@ taskqueue_start_threads(struct taskqueue **tqp, int count, int pri, int ncpu,
 	int i, error, cpu;
 	char ktname[MAXCOMLEN];
 
-	if (count <= 0)
-		return EINVAL;
-	/* catch call argument mistakes */
-	KKASSERT(pri > 0 && pri < TDPRI_MAX);
-
 	tq = *tqp;
 	cpu = ncpu;
+
+	/* catch call argument mistakes */
+	KKASSERT(pri > 0 && pri < TDPRI_MAX);
+	KKASSERT(tq->tq_enqueue == taskqueue_thread_enqueue);
+
+	if (count <= 0)
+		return EINVAL;
 
 	__va_start(ap, fmt);
 	kvsnprintf(ktname, MAXCOMLEN, fmt, ap);
