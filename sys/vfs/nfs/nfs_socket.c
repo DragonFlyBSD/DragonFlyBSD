@@ -2615,7 +2615,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 		 */
 		sbinit(&sio, 1000000000);
 		flags = MSG_DONTWAIT;
-		error = so_pru_soreceive(so, &nam, NULL, &sio, NULL, &flags);
+		error = so_pru_soreceive(so, NULL, NULL, &sio, NULL, &flags);
 		if (error || sio.sb_mb == NULL) {
 			if (error != EWOULDBLOCK)
 				slp->ns_flag |= SLP_DISCONN;
