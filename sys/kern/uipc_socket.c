@@ -1257,8 +1257,7 @@ out:
  * the network to access the socket if we block in a uio.
  *
  * The caller may receive the data as a single mbuf chain by supplying
- * an mbuf **mp0 for use in returning the chain.  The uio is then used
- * only for the count in uio_resid.
+ * sio for use in returning the chain.
  */
 int
 soreceive(struct socket *so, struct sockaddr **psa, struct uio *uio,
@@ -1298,6 +1297,7 @@ soreceive(struct socket *so, struct sockaddr **psa, struct uio *uio,
 				sbappend(sio, m);
 				KKASSERT(resid >= (size_t)m->m_len);
 				resid -= (size_t)m->m_len;
+				m = m_free(m);
 			} while (resid > 0 && m);
 		} else {
 			do {
