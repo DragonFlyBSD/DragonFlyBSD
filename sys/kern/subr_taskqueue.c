@@ -74,7 +74,7 @@ _timeout_task_init(struct taskqueue *queue, struct timeout_task *timeout_task,
 {
 
 	TASK_INIT(&timeout_task->t, priority, func, context);
-	callout_init(&timeout_task->c); /* XXX use callout_init_mp() */
+	callout_init_mp(&timeout_task->c);
 	timeout_task->t.ta_queue = queue;
 	timeout_task->f = 0;
 }
