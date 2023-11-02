@@ -107,6 +107,8 @@ hammer2_prep_opts(fsinfo_t *fsopts)
 		{ 'm', "MountLabel", NULL, OPT_STRBUF, 0, 0, "destination PFS label" },
 		{ 'v', "NumVolhdr", &h2_opt->num_volhdr, OPT_INT32,
 		    1, HAMMER2_NUM_VOLHDRS, "number of volume headers" },
+		{ 'c', "CompressionType", NULL, OPT_STRBUF, 0, 0, "compression type" },
+		{ 'C', "CheckType", NULL, OPT_STRBUF, 0, 0, "check type" },
 		{ 'd', "Hammer2Debug", NULL, OPT_STRBUF, 0, 0, "debug tunable" },
 		{ 'E', "EmergencyMode", &h2_opt->emergency_mode, OPT_BOOL, 0, 0,
 		    "emergency mode" },
@@ -121,7 +123,6 @@ hammer2_prep_opts(fsinfo_t *fsopts)
 
 	hammer2_mkfs_init(opt);
 
-	/* make this tunable ? */
 	assert(opt->CompType == HAMMER2_COMP_NEWFS_DEFAULT);
 	assert(opt->CheckType == HAMMER2_CHECK_XXHASH64);
 
@@ -209,6 +210,38 @@ hammer2_parse_opts(const char *option, fsinfo_t *fsopts)
 			errx(1, "Volume label '%s' is too long (%d chars max)",
 			    buf, HAMMER2_INODE_MAXNAME - 1);
 		strlcpy(h2_opt->mount_label, buf, sizeof(h2_opt->mount_label));
+		break;
+	case 'c':
+		if (strlen(buf) == 0)
+			errx(1, "Compression type '%s' cannot be 0-length", buf);
+		if (strcasecmp(buf, "none") == 0)
+			opt->CompType = HAMMER2_COMP_NONE;
+		else if (strcasecmp(buf, "autozero") == 0)
+			opt->CompType = HAMMER2_COMP_AUTOZERO;
+		else if (strcasecmp(buf, "lz4") == 0)
+			opt->CompType = HAMMER2_COMP_LZ4;
+		else if (strcasecmp(buf, "zlib") == 0)
+			opt->CompType = HAMMER2_COMP_ZLIB;
+		else
+			errx(1, "Invalid compression type '%s'", buf);
+		break;
+	case 'C':
+		if (strlen(buf) == 0)
+			errx(1, "Check type '%s' cannot be 0-length", buf);
+		if (strcasecmp(buf, "none") == 0)
+			opt->CheckType = HAMMER2_CHECK_NONE;
+		else if (strcasecmp(buf, "disabled") == 0)
+			opt->CheckType = HAMMER2_CHECK_DISABLED;
+		else if (strcasecmp(buf, "iscsi32") == 0)
+			opt->CheckType = HAMMER2_CHECK_ISCSI32;
+		else if (strcasecmp(buf, "xxhash64") == 0)
+			opt->CheckType = HAMMER2_CHECK_XXHASH64;
+		else if (strcasecmp(buf, "sha192") == 0)
+			opt->CheckType = HAMMER2_CHECK_SHA192;
+		else if (strcasecmp(buf, "freemap") == 0)
+			opt->CheckType = HAMMER2_CHECK_FREEMAP;
+		else
+			errx(1, "Invalid check type '%s'", buf);
 		break;
 	case 'd':
 		hammer2_debug = strtoll(buf, NULL, 0);

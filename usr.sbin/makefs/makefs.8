@@ -35,7 +35,7 @@
 .\"
 .\" $FreeBSD: head/usr.sbin/makefs/makefs.8 331843 2018-03-31 15:04:41Z benno $
 .\"
-.Dd June 27, 2023
+.Dd November 2, 2023
 .Dt MAKEFS 8
 .Os
 .Sh NAME
@@ -530,6 +530,28 @@ Defaults to 4, and the image size will be at least 4 * 2 = 8 GiB.
 .It Cm m
 The PFS label to which to create file system contents.
 Defaults to "DATA".
+.It Cm c
+Compression algorithm type stored in ondisk inode structure.
+Available types are
+.Ar none ,
+.Ar autozero ,
+.Ar lz4
+and
+.Ar zlib .
+Defaults to
+.Ar lz4 .
+.It Cm C
+Check algorithm type stored in ondisk inode structure.
+Available types are
+.Ar none ,
+.Ar disabled ,
+.Ar iscsi32 ,
+.Ar xxhash64 ,
+.Ar sha192
+and
+.Ar freemap .
+Defaults to
+.Ar xxhash64 .
 .It Cm d
 sysctl vfs.hammer2.debug compatible tunable for debug prints.
 Specify 0xffffffff to enable all debug prints.

@@ -372,7 +372,7 @@ format_hammer2_inode(hammer2_volume_t *vol, hammer2_mkfs_options_t *opt,
 			rawip->meta.comp_algo = HAMMER2_ENC_ALGO(
 						    opt->CompType);
 			rawip->meta.check_algo = HAMMER2_ENC_ALGO(
-						    HAMMER2_CHECK_XXHASH64);
+						    opt->CheckType);
 		}
 
 		/*
