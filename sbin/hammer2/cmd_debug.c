@@ -1055,12 +1055,12 @@ show_bref(hammer2_volume_data_t *voldata, int tab, int bi,
 			  media.ipdata.meta.name_len);
 		tabprintf(tab, "ncopies  %u\n",
 			  media.ipdata.meta.ncopies);
-		tabprintf(tab, "compalg  %u\n",
-			  media.ipdata.meta.comp_algo);
+		tabprintf(tab, "compalg  %s\n",
+			  hammer2_compmode_to_str(media.ipdata.meta.comp_algo));
 		tabprintf(tab, "target_t %u\n",
 			  media.ipdata.meta.target_type);
-		tabprintf(tab, "checkalg %u\n",
-			  media.ipdata.meta.check_algo);
+		tabprintf(tab, "checkalg %s\n",
+			  hammer2_checkmode_to_str(media.ipdata.meta.check_algo));
 		if ((media.ipdata.meta.op_flags & HAMMER2_OPFLAG_PFSROOT) ||
 		    media.ipdata.meta.pfs_type == HAMMER2_PFSTYPE_SUPROOT) {
 			tabprintf(tab, "pfs_nmas %u\n",

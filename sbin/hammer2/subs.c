@@ -208,6 +208,59 @@ hammer2_breftype_to_str(uint8_t type)
 }
 
 const char *
+hammer2_compmode_to_str(uint8_t comp_algo)
+{
+	static char buf[64];
+	static const char *comps[] = HAMMER2_COMP_STRINGS;
+	int comp = HAMMER2_DEC_ALGO(comp_algo);
+	int level = HAMMER2_DEC_LEVEL(comp_algo);
+
+	if (level) {
+		if (comp >= 0 && comp < HAMMER2_COMP_STRINGS_COUNT)
+			snprintf(buf, sizeof(buf), "%s:%d",
+				 comps[comp], level);
+		else
+			snprintf(buf, sizeof(buf), "unknown(%d):%d",
+				 comp, level);
+	} else {
+		if (comp >= 0 && comp < HAMMER2_COMP_STRINGS_COUNT)
+			snprintf(buf, sizeof(buf), "%s:default",
+				 comps[comp]);
+		else
+			snprintf(buf, sizeof(buf), "unknown(%d):default",
+				 comp);
+	}
+	return (buf);
+}
+
+const char *
+hammer2_checkmode_to_str(uint8_t check_algo)
+{
+	static char buf[64];
+	static const char *checks[] = HAMMER2_CHECK_STRINGS;
+	int check = HAMMER2_DEC_ALGO(check_algo);
+	int level = HAMMER2_DEC_LEVEL(check_algo);
+
+	/*
+	 * NOTE: Check algorithms normally do not encode any level.
+	 */
+	if (level) {
+		if (check >= 0 && check < HAMMER2_CHECK_STRINGS_COUNT)
+			snprintf(buf, sizeof(buf), "%s:%d",
+				 checks[check], level);
+		else
+			snprintf(buf, sizeof(buf), "unknown(%d):%d",
+				 check, level);
+	} else {
+		if (check >= 0 && check < HAMMER2_CHECK_STRINGS_COUNT)
+			snprintf(buf, sizeof(buf), "%s", checks[check]);
+		else
+			snprintf(buf, sizeof(buf), "unknown(%d)", check);
+	}
+	return (buf);
+}
+
+const char *
 sizetostr(hammer2_off_t size)
 {
 	static char buf[32];

@@ -40,6 +40,14 @@
 
 #include <vfs/hammer2/hammer2_disk.h>
 
+/* user-specifiable check modes only */
+#define HAMMER2_CHECK_STRINGS		{ "none", "disabled", "crc32", \
+					  "xxhash64", "sha192" }
+#define HAMMER2_CHECK_STRINGS_COUNT	5
+
+#define HAMMER2_COMP_STRINGS		{ "none", "autozero", "lz4", "zlib" }
+#define HAMMER2_COMP_STRINGS_COUNT	4
+
 typedef struct hammer2_volume {
 	int fd;
 	int id;
@@ -68,6 +76,8 @@ const char *hammer2_iptype_to_str(uint8_t type);
 const char *hammer2_pfstype_to_str(uint8_t type);
 const char *hammer2_pfssubtype_to_str(uint8_t subtype);
 const char *hammer2_breftype_to_str(uint8_t type);
+const char *hammer2_compmode_to_str(uint8_t comp_algo);
+const char *hammer2_checkmode_to_str(uint8_t check_algo);
 const char *sizetostr(hammer2_off_t size);
 const char *counttostr(hammer2_off_t size);
 hammer2_off_t check_volume(int fd);
