@@ -739,6 +739,8 @@ show_bref(hammer2_volume_data_t *voldata, int tab, int bi,
 	size_t bytes;
 	const char *type_str;
 	char *str = NULL;
+	char check_str[32], comp_str[32];
+	uint8_t check_algo, comp_algo;
 	uint32_t cv;
 	uint64_t cv64;
 	static int init_tab = -1;
@@ -897,37 +899,44 @@ show_bref(hammer2_volume_data_t *voldata, int tab, int bi,
 			}
 		}
 
-		switch(HAMMER2_DEC_CHECK(bref->methods)) {
+		check_algo = HAMMER2_DEC_CHECK(bref->methods);
+		strlcpy(check_str, hammer2_checkmode_to_str(check_algo),
+			sizeof(check_str));
+		comp_algo = HAMMER2_DEC_COMP(bref->methods);
+		strlcpy(comp_str, hammer2_compmode_to_str(comp_algo),
+			sizeof(comp_str));
+
+		switch(check_algo) {
 		case HAMMER2_CHECK_NONE:
-			printf("meth=%02x ", bref->methods);
+			printf("meth=%s|%s ", check_str, comp_str);
 			break;
 		case HAMMER2_CHECK_DISABLED:
-			printf("meth=%02x ", bref->methods);
+			printf("meth=%s|%s ", check_str, comp_str);
 			break;
 		case HAMMER2_CHECK_ISCSI32:
 			cv = hammer2_icrc32(&media, bytes);
 			if (bref->check.iscsi32.value != cv) {
-				printf("(icrc %02x:%08x/%08x failed) ",
-				       bref->methods,
+				printf("(icrc %s|%s %08x/%08x failed) ",
+				       check_str, comp_str,
 				       bref->check.iscsi32.value,
 				       cv);
 				failed = 1;
 			} else {
-				printf("meth=%02x iscsi32=%08x ",
-				       bref->methods, cv);
+				printf("meth=%s|%s iscsi32=%08x ",
+				       check_str, comp_str, cv);
 			}
 			break;
 		case HAMMER2_CHECK_XXHASH64:
 			cv64 = XXH64(&media, bytes, XXH_HAMMER2_SEED);
 			if (bref->check.xxhash64.value != cv64) {
-				printf("(xxhash64 %02x:%016jx/%016jx failed) ",
-				       bref->methods,
+				printf("(xxhash64 %s|%s %016jx/%016jx failed) ",
+				       check_str, comp_str,
 				       bref->check.xxhash64.value,
 				       cv64);
 				failed = 1;
 			} else {
-				printf("meth=%02x xxh=%016jx ",
-				       bref->methods, cv64);
+				printf("meth=%s|%s xxh=%016jx ",
+				       check_str, comp_str, cv64);
 			}
 			break;
 		case HAMMER2_CHECK_SHA192:
@@ -937,23 +946,24 @@ show_bref(hammer2_volume_data_t *voldata, int tab, int bi,
 			u.digest64[2] ^= u.digest64[3];
 			if (memcmp(u.digest, bref->check.sha192.data,
 			    sizeof(bref->check.sha192.data))) {
-				printf("(sha192 failed) ");
+				printf("(sha192 %s:%s failed) ",
+				       check_str, comp_str);
 				failed = 1;
 			} else {
-				printf("meth=%02x ", bref->methods);
+				printf("meth=%s|%s ", check_str, comp_str);
 			}
 			break;
 		case HAMMER2_CHECK_FREEMAP:
 			cv = hammer2_icrc32(&media, bytes);
 			if (bref->check.freemap.icrc32 != cv) {
-				printf("(fcrc %02x:%08x/%08x failed) ",
-					bref->methods,
+				printf("(fcrc %s|%s %08x/%08x failed) ",
+					check_str, comp_str,
 					bref->check.freemap.icrc32,
 					cv);
 				failed = 1;
 			} else {
-				printf("meth=%02x fcrc=%08x ",
-					bref->methods, cv);
+				printf("meth=%s|%s fcrc=%08x ",
+					check_str, comp_str, cv);
 			}
 			break;
 		}
