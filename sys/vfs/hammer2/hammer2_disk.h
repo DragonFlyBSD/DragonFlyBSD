@@ -755,7 +755,7 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_COMP_LZ4		2
 #define HAMMER2_COMP_ZLIB		3
 
-#define HAMMER2_COMP_NEWFS_DEFAULT	HAMMER2_COMP_LZ4
+#define HAMMER2_COMP_DEFAULT		HAMMER2_COMP_LZ4
 
 /*
  * HAMMER2 block references are collected into sets of 4 blockrefs.  These
