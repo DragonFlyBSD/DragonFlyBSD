@@ -724,14 +724,8 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_BREF_FLAG_EMERG_MIP	0x04	/* emerg modified-in-place */
 
 /*
- * Encode/decode check mode and compression mode for bref.methods.
- * The compression level is not encoded in bref.methods.
+ * Check mode defaults to xxhash64.
  */
-#define HAMMER2_ENC_CHECK(n)		(((n) & 15) << 4)
-#define HAMMER2_DEC_CHECK(n)		(((n) >> 4) & 15)
-#define HAMMER2_ENC_COMP(n)		((n) & 15)
-#define HAMMER2_DEC_COMP(n)		((n) & 15)
-
 #define HAMMER2_CHECK_NONE		0
 #define HAMMER2_CHECK_DISABLED		1
 #define HAMMER2_CHECK_ISCSI32		2
@@ -742,6 +736,25 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_CHECK_DEFAULT		HAMMER2_CHECK_XXHASH64
 
 /*
+ * Compression mode defaults to LZ4.
+ */
+#define HAMMER2_COMP_NONE		0
+#define HAMMER2_COMP_AUTOZERO		1
+#define HAMMER2_COMP_LZ4		2
+#define HAMMER2_COMP_ZLIB		3
+
+#define HAMMER2_COMP_DEFAULT		HAMMER2_COMP_LZ4
+
+/*
+ * Encode/decode check mode and compression mode for bref.methods.
+ * The compression level is not encoded in bref.methods.
+ */
+#define HAMMER2_ENC_CHECK(n)		(((n) & 15) << 4)
+#define HAMMER2_DEC_CHECK(n)		(((n) >> 4) & 15)
+#define HAMMER2_ENC_COMP(n)		((n) & 15)
+#define HAMMER2_DEC_COMP(n)		((n) & 15)
+
+/*
  * Encode/decode check or compression algorithm request in
  * ipdata->meta.check_algo and ipdata->meta.comp_algo.
  */
@@ -749,13 +762,6 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_DEC_ALGO(n)		((n) & 15)
 #define HAMMER2_ENC_LEVEL(n)		((n) << 4)
 #define HAMMER2_DEC_LEVEL(n)		(((n) >> 4) & 15)
-
-#define HAMMER2_COMP_NONE		0
-#define HAMMER2_COMP_AUTOZERO		1
-#define HAMMER2_COMP_LZ4		2
-#define HAMMER2_COMP_ZLIB		3
-
-#define HAMMER2_COMP_DEFAULT		HAMMER2_COMP_LZ4
 
 /*
  * HAMMER2 block references are collected into sets of 4 blockrefs.  These
