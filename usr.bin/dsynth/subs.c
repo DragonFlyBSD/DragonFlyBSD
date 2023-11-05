@@ -1003,6 +1003,7 @@ void
 set_capability_restrictions(void)
 {
 	if (CapabilityRestrictions) {
+#if !defined(SYSCAP_UNAVAILABLE)
 		syscap_set(SYSCAP_RESTRICTEDROOT, __SYSCAP_ALL,
 			   NULL, 0);
 		syscap_set(SYSCAP_SENSITIVEROOT, __SYSCAP_ALL,
@@ -1019,5 +1020,6 @@ set_capability_restrictions(void)
 			   NULL, 0);
 		syscap_set(SYSCAP_NONET_RAW, __SYSCAP_ALL,
 			   NULL, 0);
+#endif
 	}
 }

@@ -155,16 +155,17 @@ ParseConfiguration(int isworker)
 	 */
 	ConfigBase = ConfigBase1;
 	asprintf(&synth_config, "%s/dsynth.ini", ConfigBase1);
-	if (stat(synth_config, &st) < 0) {
+	if (stat(synth_config, &st) < 0 && ConfigBase2) {
 		ConfigBase = ConfigBase2;
 		asprintf(&synth_config, "%s/dsynth.ini", ConfigBase2);
 	}
 
 	if (stat(synth_config, &st) < 0) {
 		dfatal("Configuration file missing, "
-		       "could not find %s/dsynth.ini or %s/dsynth.ini\n",
+		       "could not find %s/dsynth.ini%s%s/dsynth.ini\n",
 		       ConfigBase1,
-		       ConfigBase2);
+		       (ConfigBase2 ? " or " : ""),
+		       (ConfigBase2 ? ConfigBase2 : ""));
 	}
 
 	/*
