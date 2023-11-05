@@ -1,0 +1,45 @@
+PROBLEM_FILES=	${WRKSRC}/libpkg/pkg_config.c \
+		${WRKSRC}/src/pkg.conf.sample \
+		${WRKSRC}/docs/pkg-create.8 \
+		${WRKSRC}/docs/pkg-set.8 \
+		${WRKSRC}/docs/pkg-repo.8 \
+		${WRKSRC}/docs/pkg.conf.5 \
+		${WRKSRC}/docs/pkg-version.8 \
+		${WRKSRC}/docs/pkg.8
+
+CFLAGS+=	-I/usr/include/priv
+LDFLAGS+=	-L/usr/lib/priv -R/lib/priv
+
+# zrj: our base libs do not fetch any deps on -lpthread (even -larchive, -lzma)
+
+dfly-patch:
+	${REINPLACE_CMD} -e 's@ -pthread@@g' \
+		${WRKSRC}/src/Makefile.autosetup \
+		${WRKSRC}/tests/Makefile.autosetup
+.if defined(PACKAGE_BUILDING)
+	@${REINPLACE_CMD} -e "s|/usr/ports|/usr/dports|g" ${PROBLEM_FILES}
+.else
+	@${REINPLACE_CMD} -e "s|/usr/ports|${PORTSDIR}|g" ${PROBLEM_FILES}
+.endif
+# use the private LibreSSL base libraries if available
+.if exists(/usr/lib/priv/libprivate_ssl.so)
+	${REINPLACE_CMD} \
+		-e 's|lssl|lprivate_ssl|' \
+		-e 's|lcrypto|lprivate_crypto|' \
+		${WRKSRC}/libpkg/Makefile.autosetup \
+		${WRKSRC}/src/Makefile.autosetup \
+		${WRKSRC}/tests/Makefile.autosetup
+.endif
+
+post-stage:
+	${INSTALL_SCRIPT} ${WRKSRC}/scripts/periodic/411.pkg-backup \
+		${WRKSRC}/scripts/periodic/490.status-pkg-changes \
+		${STAGEDIR}${PREFIX}/etc/periodic/daily/
+	${INSTALL_SCRIPT} ${WRKSRC}/scripts/periodic/460.pkg-checksum \
+		${WRKSRC}/scripts/periodic/410.pkg-audit \
+		${STAGEDIR}${PREFIX}/etc/periodic/security/
+	${INSTALL_SCRIPT} ${WRKSRC}/scripts/periodic/400.status-pkg \
+		${STAGEDIR}${PREFIX}/etc/periodic/weekly/
+	${MKDIR} ${STAGEDIR}${PREFIX}/etc/pkg/repos
+	${INSTALL_DATA} ${DFLY_FILESDIR}/df-latest.conf.sample \
+		${STAGEDIR}${PREFIX}/etc/pkg/repos

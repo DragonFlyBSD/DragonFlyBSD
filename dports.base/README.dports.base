@@ -1,0 +1,41 @@
+USING DPORTS SOFTWARE IN DRAGONFLY BSD BASE
+
+* GOALS
+
+- Improving and/or replacing our VENDOR software procedure.
+- Integrating software from DPorts into DragonFly without needing to modify 
+  the base system. 
+
+* APPROACH
+
+In DragonFly's src repo there is going to be a directory called 'dports.base' which will 
+contain all the DPorts Mk files, which would then be periodically synced on a
+quarterly basis (probably) to keep it current. 
+
+It will also contain all the DPorts to be included in 'world' and their dependencies,
+which will then be built by dsynth and installed by pkg. 
+
+A set of bootstrap programs/libraries are available now in DragonFly's base (lex, yacc) and
+that won't change but they'll be only used for bootstrapping and won't be installed in DESTDIR
+as they'll be marked as WORLD_NOTINSTALLED in their respective Makefiles.
+Those tools will then be built and installed according to their dports.base definitions.
+
+The 'buildworld' target will be adapted to include the steps required to build dports.base.
+During this build stage, software will be downloaded from DragonFly's mirrors (avalon) and
+stored in /usr/distfiles.base, although those distfiles will also be distributed in the ISO
+images we distribute to keep the build process self-contained.
+
+The list of software to be installed will be managed by a meta package called 'dragonfly/base'
+which will have all the required software as dependencies.
+
+Every port to be included would need to be checked and verified so that only the minimun set
+of options required is enabled.
+
+dports.base installed software will use '/' as LOCALBASE as to not interfere with DPorts
+installed software, which can override what's installed by dports.base.
+
+--- DEVELOPER NOTES ---
+
+dsynth -y -C /usr/src/dports.base build dragonfly/base
+pkg -R /usr/src/dports.base install dragonfly-base
+

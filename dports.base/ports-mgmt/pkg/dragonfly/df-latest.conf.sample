@@ -1,0 +1,224 @@
+# If multiple repositories are enabled, they are ordered by their priorities
+# and then listing orders.
+
+# United States, California
+Avalon: {
+	url		: https://mirror-master.dragonflybsd.org/dports/${ABI}/LATEST,
+	mirror_type	: NONE,
+	signature_type	: NONE,
+	pubkey		: NONE,
+	fingerprints	: /usr/share/fingerprints,
+	priority	: 0,
+	enabled		: yes
+}
+
+#
+# America
+#
+
+# Canada
+# Manitoba Unix User Group
+MUUG: {
+	url		: https://muug.ca/mirror/dragonflybsd/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Ecuador
+# Escuela Politecnica Nacional
+EPN: {
+	url		: https://mirror.epn.edu.ec/dragonflybsd/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Ecuador
+# RED CEDIA
+REDCEDIA: {
+	url		: https://mirror.cedia.org.ec/dragonflybsd/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Ecuador
+# Universidad Técnica de Ambato
+UTA: {
+	url		: https://mirror.uta.edu.ec/dragonflybsd/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# United States, New York
+# New York BSD User Group
+NYCBUG: {
+	url		: https://mirrors.nycbug.org/pub/DragonflyBSD/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+#
+# Asia
+#
+
+# China, Shanghai
+# SJTU *NIX User Group (SJTUG)
+SJTUG: {
+	url		: https://mirror.sjtu.edu.cn/dragonflybsd/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Hong Kong
+# KoDDoS HK
+KoDDoS_HK: {
+	url		: https://mirror-hk.koddos.net/dragonflybsd/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Japan
+# AllBSD.org
+AllBSD: {
+	url		: https://pub.allbsd.org/DragonFly/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Japan
+# Japan Advanced Institute of Science and Technology (JAIST)
+JAIST: {
+	url		: https://ftp.jaist.ac.jp/pub/DragonFly/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# South Korea
+# Korea FreeBSD Users Group
+KFBUG: {
+	url		: https://ftp.kr.freebsd.org/pub/dragonflybsd/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Taiwan
+# TaiWan Advanced Research and Education Network (TWAREN)
+TWAREN: {
+	url		: http://ftp.twaren.net/BSD/DragonFlyBSD/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+#
+# Australia
+#
+
+# Australia
+# 'Yes' Optus*
+YesOptus: {
+	url		: http://mirror.optusnet.com.au/dragonflybsd/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+#
+# Europe
+#
+
+# Belarus
+# RUE Beltelecom
+Beltelecom: {
+	url		: https://mirror.datacenter.by/pub/DragonFlyBSD/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Denmark
+# Aalborg University, Aalborg
+Aalborg: {
+	url		: https://mirrors.dotsrc.org/dragonflybsd/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# France
+# Institut de Recherche et Coordination Acoustique/Musique
+IRCAM: {
+	url		: https://mirrors.ircam.fr/pub/DragonFlyBSD/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# France
+Wolfpond: {
+	url		: http://pkg.wolfpond.org/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Germany
+# Checkdomain GmbH
+GmbH: {
+	url		: https://mirror.checkdomain.de/dragonflybsd/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Germany
+# RWTH Aachen
+Aachen: {
+	url		: https://ftp.halifax.rwth-aachen.de/dragonflybsd/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Germany
+# Technical University Clausthal
+Clausthal: {
+	url		: http://ftp.tu-clausthal.de/pub/DragonFly/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Greece
+# University of Crete
+UOC: {
+	url		: https://ftp.cc.uoc.gr/mirrors/DragonFly/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Netherlands
+# KoDDoS
+KoDDoS: {
+	url		: https://mirror.koddos.net/dragonflybsd/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Poland
+# ICM, Warsaw University
+ICM: {
+	url		: https://ftp.icm.edu.pl/pub/BSD/dragonflybsd/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Russia
+# Macomnet JSC
+Macomnet: {
+	url		: http://mirror.macomnet.net/pub/DragonFlyBSD/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Russia
+# Tochansky Lab
+TochLab: {
+	url		: https://mirror.tochlab.net/pub/DragonFlyBSD/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# Sweden
+# Academic Computer Club, Umeå University
+ACCUMU: {
+	url		: https://ftp.acc.umu.se/mirror/dragonflybsd.org/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# United Kingdom
+# Bytemark Hosting
+Bytemark: {
+	url		: https://mirror.bytemark.co.uk/dragonflybsd/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# United Kingdom
+# Coreix LTD
+Coreix: {
+	url		: http://mirrors.coreix.net/dragonflybsd/dports/${ABI}/LATEST,
+	enabled		: no
+}
+
+# United Kingdom
+# University Of Kent UK Mirror Service
+UOK: {
+	url		: https://www.mirrorservice.org/sites/ftp.dragonflybsd.org/dports/${ABI}/LATEST,
+	enabled		: no
+}
