@@ -1,0 +1,11 @@
+--- Modules/CMakeFortranCompilerId.F.in.orig	2017-07-18 18:22:54.000000000 +0300
++++ Modules/CMakeFortranCompilerId.F.in
+@@ -132,6 +132,8 @@
+         PRINT *, 'INFO:platform[Darwin]'
+ #elif defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+         PRINT *, 'INFO:platform[Windows]'
++#elif defined(__DragonFly__) || defined(__DragonFly)
++        PRINT *, 'INFO:platform[DragonFly]'
+ #elif defined(__FreeBSD__) || defined(__FreeBSD)
+         PRINT *, 'INFO:platform[FreeBSD]'
+ #elif defined(__NetBSD__) || defined(__NetBSD)

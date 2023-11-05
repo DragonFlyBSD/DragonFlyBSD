@@ -1,0 +1,19 @@
+# For plist
+USES+=	libarchive
+ 
+# avoid compile dep on meson through json, use internal one
+CONFIGURE_ARGS+=	--no-system-jsoncpp \
+			--bootstrap-system-libuv
+
+# baselibs QA check fails because our soname is < 7
+# so ignore for now
+QA_ENV+=   IGNORE_QA_baselibs=1
+
+.if exists(/usr/lib/priv/libprivate_ncursesw.so)
+dfly-patch:
+	${REINPLACE_CMD} -e "s@CYGWIN@true@g" \
+		${WRKSRC}/Modules/FindCurses.cmake
+	${REINPLACE_CMD} -e "s@<form.h>@<ncurses/form.h>@g" \
+		${WRKSRC}/Source/CursesDialog/ccmake.cxx \
+		${WRKSRC}/Source/CursesDialog/cmCursesStandardIncludes.h
+.endif

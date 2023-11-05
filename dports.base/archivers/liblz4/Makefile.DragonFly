@@ -1,0 +1,6 @@
+# WRKSRC_SUBDIR is defined
+dfly-patch:
+	${REINPLACE_CMD} 's|GNU FreeBSD|GNU FreeBSD DragonFly|' \
+		${WRKSRC}/../../Makefile \
+		${WRKSRC}/../../lib/Makefile \
+		${WRKSRC}/../../programs/Makefile

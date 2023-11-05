@@ -1,0 +1,20 @@
+OPTIONS_DEFAULT:= ${OPTIONS_DEFAULT:NP4:NPERFORCE}
+
+# exclude ruby from nrelease
+.if ${FLAVOR:U} == lite
+OPTIONS_EXCLUDE+=	PERFORCE SUBTREE
+.endif
+
+# fix few shebangs for stage-qa in subports
+dfly-install:
+.if ${SUBPORT:Mcvs}
+	${SED} -i '' -e "s@/usr/bin/perl@${LOCALBASE}/bin/perl@g" \
+		${STAGEDIR}${PREFIX}/bin/git-cvsserver \
+		${STAGEDIR}${PREFIX}/libexec/git-core/git-cvsexportcommit \
+		${STAGEDIR}${PREFIX}/libexec/git-core/git-cvsimport \
+		${STAGEDIR}${PREFIX}/libexec/git-core/git-cvsserver
+.endif
+.if ${SUBPORT:Msvn}
+	${SED} -i '' -e "s@/usr/bin/perl@${LOCALBASE}/bin/perl@g" \
+		${STAGEDIR}${PREFIX}/libexec/git-core/git-svn
+.endif

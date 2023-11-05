@@ -1,0 +1,11 @@
+--- Utilities/cmcurl/CMakeLists.txt.orig	2022-11-01 14:55:49 UTC
++++ Utilities/cmcurl/CMakeLists.txt
+@@ -129,7 +129,7 @@ endif()
+ if(CMAKE_SYSTEM_NAME MATCHES "^(SunOS)$")
+   add_definitions(-D__EXTENSIONS__)
+ endif()
+-if(NOT CMAKE_SYSTEM_NAME MATCHES "BSD|Darwin|Windows")
++if(NOT CMAKE_SYSTEM_NAME MATCHES "DragonFly|BSD|Darwin|Windows")
+   add_definitions(-D_XOPEN_SOURCE=600)
+ endif()
+ 

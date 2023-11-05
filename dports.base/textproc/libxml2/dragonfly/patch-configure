@@ -1,0 +1,11 @@
+--- configure.intermediate	2012-12-28 23:46:36.000000000 +0100
++++ configure	2012-12-28 23:50:09.000000000 +0100
+@@ -13902,7 +13902,7 @@
+ 	       fi
+ 	   fi
+        ;;
+-       *freebsd*) THREAD_LIBS=""
++       *freebsd*|*dragonfly*) THREAD_LIBS=""
+        ;;
+     esac
+     if test "$WITH_THREADS" = "1" ; then

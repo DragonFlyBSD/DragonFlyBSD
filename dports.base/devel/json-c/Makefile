@@ -1,0 +1,26 @@
+PORTNAME=	json-c
+PORTVERSION=	0.16
+CATEGORIES=	devel
+MASTER_SITES=	https://s3.amazonaws.com/json-c_releases/releases/ \
+		LOCAL/sunpoet
+
+MAINTAINER=	sunpoet@FreeBSD.org
+COMMENT=	JSON (JavaScript Object Notation) implementation in C
+WWW=		https://github.com/json-c/json-c/wiki
+
+LICENSE=	MIT
+LICENSE_FILE=	${WRKSRC}/COPYING
+
+USES=		cmake compiler:c11 cpe
+
+CMAKE_OFF=	DISABLE_BSYMBOLIC DISABLE_JSON_POINTER DISABLE_THREAD_LOCAL_STORAGE ENABLE_RDRAND ENABLE_THREADING OVERRIDE_GET_RANDOM_SEED
+CMAKE_ON=	BUILD_SHARED_LIBS BUILD_STATIC_LIBS DISABLE_EXTRA_LIBS DISABLE_WERROR
+TEST_TARGET=	test
+USE_LDCONFIG=	yes
+
+CPE_VENDOR=	json-c_project
+
+post-install:
+	${INSTALL_DATA} ${WRKSRC}/json_object_private.h ${STAGEDIR}${PREFIX}/include/json-c/
+
+.include <bsd.port.mk>

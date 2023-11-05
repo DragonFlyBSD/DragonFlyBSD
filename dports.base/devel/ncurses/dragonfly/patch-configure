@@ -1,0 +1,14 @@
+--- configure.orig	2019-01-01 01:28:32 UTC
++++ configure
+@@ -8831,7 +8831,10 @@ case $host_os in
+ 	cf_xopen_source="-D_DARWIN_C_SOURCE"
+ 	cf_XOPEN_SOURCE=
+ 	;;
+-(freebsd*|dragonfly*|midnightbsd*)
++(dragonfly*)
++	cf_XOPEN_SOURCE=
++	;;
++(freebsd*|midnightbsd*)
+ 	# 5.x headers associate
+ 	#	_XOPEN_SOURCE=600 with _POSIX_C_SOURCE=200112L
+ 	#	_XOPEN_SOURCE=500 with _POSIX_C_SOURCE=199506L

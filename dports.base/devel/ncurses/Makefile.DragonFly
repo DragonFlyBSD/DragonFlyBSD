@@ -1,0 +1,7 @@
+
+# fix ncurses6-config --cflags
+CONFIGURE_ARGS+=	--includedir=${PREFIX}/include
+
+dfly-patch:
+	${REINPLACE_CMD} -e '/includedir/s@include ]@includez ]@g' \
+		${WRKSRC}/misc/ncurses-config.in

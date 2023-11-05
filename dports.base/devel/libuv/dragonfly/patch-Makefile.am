@@ -1,0 +1,18 @@
+--- Makefile.am.orig	2023-07-29 18:53:59 UTC
++++ Makefile.am
+@@ -439,6 +439,7 @@ test_run_tests_LDFLAGS += -lutil
+ endif
+ 
+ if FREEBSD
++if !DRAGONFLY
+ uvinclude_HEADERS += include/uv/bsd.h
+ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                     src/unix/bsd-proctitle.c \
+@@ -448,6 +449,7 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs
+                     src/unix/random-getrandom.c
+ test_run_tests_LDFLAGS += -lutil
+ endif
++endif
+ 
+ if HAIKU
+ uvinclude_HEADERS += include/uv/posix.h

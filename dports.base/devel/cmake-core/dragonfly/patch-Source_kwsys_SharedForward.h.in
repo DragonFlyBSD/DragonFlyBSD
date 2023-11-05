@@ -1,0 +1,17 @@
+Not strictly needed but having platform definitions is cleaner.
+
+--- Source/kwsys/SharedForward.h.in.orig	2017-07-18 18:22:55.000000000 +0300
++++ Source/kwsys/SharedForward.h.in
+@@ -213,6 +213,12 @@ static const char kwsys_shared_forward_p
+ #define KWSYS_SHARED_FORWARD_LDD_N 1
+ #define KWSYS_SHARED_FORWARD_LDPATH "LD_LIBRARY_PATH"
+ 
++/* DragonFly BSD */
++#elif defined(__DragonFly__)
++#define KWSYS_SHARED_FORWARD_LDD "ldd"
++#define KWSYS_SHARED_FORWARD_LDD_N 1
++#define KWSYS_SHARED_FORWARD_LDPATH "LD_LIBRARY_PATH"
++
+ /* FreeBSD */
+ #elif defined(__FreeBSD__)
+ #define KWSYS_SHARED_FORWARD_LDD "ldd"

@@ -1,0 +1,9 @@
+USES+=	ncurses
+OPTIONS_DEFAULT:= ${OPTIONS_DEFAULT:NTERMCAP}
+
+# fix plist woes
+PLIST_FILES+=	%%DATADIR%%/rl-timeout.c
+
+pre-configure-script:
+	${REINPLACE_CMD} "s/SHOBJ_LDFLAGS =/SHOBJ_LDFLAGS = -lncurses/" \
+	${WRKSRC}/shlib/Makefile.in

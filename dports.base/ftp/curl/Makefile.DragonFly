@@ -1,0 +1,2 @@
+# until https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=237621 is resolved
+OPTIONS_DEFAULT:=	${OPTIONS_DEFAULT:NGSSAPI_MIT} GSSAPI_NONE

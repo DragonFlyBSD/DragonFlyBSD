@@ -1,0 +1,2 @@
+# to help find ssl
+USES+=	localbase

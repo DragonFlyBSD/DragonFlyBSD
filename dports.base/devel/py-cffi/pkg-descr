@@ -1,0 +1,3 @@
+Foreign Function Interface for Python calling C code.
+
+See also: https://foss.heptapod.net/pypy/cffi

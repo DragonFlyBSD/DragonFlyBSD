@@ -1,0 +1,14 @@
+# Specify 'allow-without' to allow --without-perl to be used
+# TODO: Upstream
+
+--- configure.ac.orig	2018-04-02 17:44:04 UTC
++++ configure.ac
+@@ -414,7 +414,7 @@ GIT_PARSE_WITH_SET_MAKE_VAR(editor, DEFAULT_EDITOR,
+ GIT_ARG_SET_PATH(shell)
+ #
+ # Define PERL_PATH to provide path to Perl.
+-GIT_ARG_SET_PATH(perl)
++GIT_ARG_SET_PATH(perl, allow-without)
+ #
+ # Define PYTHON_PATH to provide path to Python.
+ GIT_ARG_SET_PATH(python, allow-without)
