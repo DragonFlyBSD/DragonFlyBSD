@@ -100,7 +100,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 		if (crd->crd_flags & CRD_F_IV_EXPLICIT)
 			bcopy(crd->crd_iv, iv, ivlen);
 		else
-			karc4rand(iv, ivlen);
+			karc4random_buf(iv, ivlen);
 
 		/* Do we need to write the IV */
 		if (!(crd->crd_flags & CRD_F_IV_PRESENT))
@@ -654,7 +654,7 @@ swcr_combined(struct cryptop *crp)
 		if (crde->crd_flags & CRD_F_IV_EXPLICIT)
 			bcopy(crde->crd_iv, iv, ivlen);
 		else
-			karc4rand(iv, ivlen);
+			karc4random_buf(iv, ivlen);
 
 		/* Do we need to write the IV */
 		if (!(crde->crd_flags & CRD_F_IV_PRESENT))

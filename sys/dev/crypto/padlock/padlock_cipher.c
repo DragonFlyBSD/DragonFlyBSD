@@ -151,7 +151,7 @@ padlock_cipher_setup(struct padlock_session *ses, struct cryptoini *encini)
 		    encini->cri_klen);
 	}
 
-	karc4rand(ses->ses_iv, sizeof(ses->ses_iv));
+	karc4random_buf(ses->ses_iv, sizeof(ses->ses_iv));
 	return (0);
 }
 

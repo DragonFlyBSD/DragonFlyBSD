@@ -208,7 +208,7 @@ aesni_cipher_setup_common(struct aesni_session *ses, const uint8_t *key,
 	aesni_set_enckey(key, ses->enc_schedule, ses->rounds);
 	aesni_set_deckey(ses->enc_schedule, ses->dec_schedule, ses->rounds);
 	if (ses->algo == CRYPTO_AES_CBC)
-		karc4rand(ses->iv, sizeof(ses->iv));
+		karc4random_buf(ses->iv, sizeof(ses->iv));
 	else /* if (ses->algo == CRYPTO_AES_XTS) */ {
 		aesni_set_enckey(key + keylen / 16, ses->xts_schedule,
 		    ses->rounds);

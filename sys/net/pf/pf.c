@@ -3661,7 +3661,7 @@ pf_tcp_iss(struct pf_pdesc *pd)
 	if (pf_tcp_secret_init == 0) {
 		lwkt_gettoken(&pf_gtoken);
 		if (pf_tcp_secret_init == 0) {
-			karc4rand(pf_tcp_secret, sizeof(pf_tcp_secret));
+			karc4random_buf(pf_tcp_secret, sizeof(pf_tcp_secret));
 			MD5Init(&pf_tcp_secret_ctx);
 			MD5Update(&pf_tcp_secret_ctx, pf_tcp_secret,
 			    sizeof(pf_tcp_secret));

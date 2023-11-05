@@ -882,7 +882,7 @@ vtnet_get_hwaddr(struct vtnet_softc *sc)
 		 * support the MAC feature, so this isn't too important.
 		 */
 		sc->vtnet_hwaddr[0] = 0xB2;
-		karc4rand(&sc->vtnet_hwaddr[1], ETHER_ADDR_LEN - 1);
+		karc4random_buf(&sc->vtnet_hwaddr[1], ETHER_ADDR_LEN - 1);
 		return;
 	}
 

@@ -3521,7 +3521,7 @@ random_ether_addr(u_int8_t * dst)
         if (read_random(dst, 6) == 0)
                 arc4rand(dst, 6, 0);
 #else
-	karc4rand(dst, 6);
+	karc4random_buf(dst, 6);
 #endif
 
         dst[0] &= 0xfe;

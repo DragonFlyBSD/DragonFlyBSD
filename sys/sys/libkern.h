@@ -94,7 +94,6 @@ uint32_t karc4random(void);
 uint64_t karc4random64(void);
 uint32_t karc4random_uniform(uint32_t upper_bound);
 void	 karc4random_buf(void *, size_t);
-void	 karc4rand(void *, size_t);
 void	 arc4_init_pcpu(int cpuid);
 int	 bcmp(const void *, const void *, size_t);
 int	 timingsafe_bcmp(const void *, const void *, size_t);

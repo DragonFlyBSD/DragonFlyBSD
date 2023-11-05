@@ -139,7 +139,7 @@ karc4random64(void)
 }
 
 void
-karc4rand(void *ptr, size_t len)
+karc4random_buf(void *ptr, size_t len)
 {
 	struct arc4_data *d = arc4_data_pcpu[mycpuid];
 	uint8_t *p = ptr;
@@ -159,12 +159,6 @@ karc4rand(void *ptr, size_t len)
 #if 0
 	crit_exit();
 #endif
-}
-
-void
-karc4random_buf(void *ptr, size_t len)
-{
-	karc4rand(ptr, len);
 }
 
 /*
