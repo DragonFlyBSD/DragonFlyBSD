@@ -11,10 +11,16 @@ WWW=		https://www.dragonflybsd.org/
 
 USES=	metaport
 
-COMPONENTS+=	ports-mgmt/pkg
+COMPONENTS+=	ports-mgmt/pkg \
+		security/ca_root_nss \
+		devel/git-lite \
+		dns/bind-tools \
+		net/isc-dhcp44-server \
+		sysutils/cdrtools
 
 .for comp in ${COMPONENTS}
-RUN_DEPENDS:= ${RUN_DEPENDS} /:${comp}
+prefix=${comp:C/.*\///}
+RUN_DEPENDS:= ${RUN_DEPENDS} ${prefix}>0:${comp}
 .endfor
 
 .include <bsd.port.mk>
