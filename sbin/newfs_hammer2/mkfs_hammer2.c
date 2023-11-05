@@ -96,7 +96,7 @@ hammer2_mkfs_init(hammer2_mkfs_options_t *opt)
 	opt->Hammer2Version = get_hammer2_version();
 	opt->Label[opt->NLabels++] = strdup("LOCAL");
 	opt->CompType = HAMMER2_COMP_DEFAULT; /* LZ4 */
-	opt->CheckType = HAMMER2_CHECK_XXHASH64;
+	opt->CheckType = HAMMER2_CHECK_DEFAULT; /* xxhash64 */
 	opt->DefaultLabelType = HAMMER2_LABEL_NONE;
 
 	/*

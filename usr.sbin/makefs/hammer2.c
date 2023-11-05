@@ -124,7 +124,7 @@ hammer2_prep_opts(fsinfo_t *fsopts)
 	hammer2_mkfs_init(opt);
 
 	assert(opt->CompType == HAMMER2_COMP_DEFAULT);
-	assert(opt->CheckType == HAMMER2_CHECK_XXHASH64);
+	assert(opt->CheckType == HAMMER2_CHECK_DEFAULT);
 
 	/* force debug mode for mkfs */
 	opt->DebugOpt = 1;

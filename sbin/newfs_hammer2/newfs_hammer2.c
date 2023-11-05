@@ -142,7 +142,7 @@ main(int ac, char **av)
 	 * Create Hammer2 filesystem.
 	 */
 	assert(opt.CompType == HAMMER2_COMP_DEFAULT);
-	assert(opt.CheckType == HAMMER2_CHECK_XXHASH64);
+	assert(opt.CheckType == HAMMER2_CHECK_DEFAULT);
 	hammer2_mkfs(ac, av, &opt);
 
 	/*
