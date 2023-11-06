@@ -325,6 +325,11 @@ _mtreetmp:
 		-p ${WORLDDEST}/usr/include > /dev/null
 	${LN} -sf ${.CURDIR}/sys ${WORLDDEST}
 
+_bwcleanup: umountports
+	mkdir -p ${DESTDIRBASE}
+	chflags -R noschg ${DESTDIRBASE}
+	rm -rxf ${DESTDIRBASE}
+
 _bwinit:
 	@echo "--------------------------------------------------------------"
 	@echo ">>> starting buildworld target"
@@ -443,45 +448,102 @@ realquickworld: _qwinit _mtreetmp _obj _includes _libraries everything _qwdone
 
 crossworld: _worldtmp _bootstrap-tools _obj _build-tools _cross-tools
 
-# NOTE: Currently not path-replacing /usr/distfiles.base, aka
-#	sed -e "s#/usr/distfiles.base#${WORLDDEST}/usr/distfiles.base#" \
-#
-buildports:
-	mkdir -p ${WORLDDEST}/build/synth
-	mkdir -p ${WORLDDEST}/build/synth/live_packages
-	mkdir -p ${WORLDDEST}/build/synth/logs
-	mkdir -p ${WORLDDEST}/build/synth/options
-	mkdir -p ${WORLDDEST}/build/synth/build
-	cat ${.CURDIR}/dports.base/dsynth.ini | \
-	    sed -e "s#/build#${WORLDDEST}/build#" | \
-	    sed -e "s#/usr/src#${.CURDIR}#" > \
-	    ${WORLDDEST}/build/synth/dsynth.ini
-	cat ${.CURDIR}/dports.base/pkg.conf | \
-	    sed -e "s#/build#${WORLDDEST}/build#" > \
-	    ${WORLDDEST}/build/pkg.conf
-	echo "dsynth logs will be stored in ${WORLDDEST}/build/synth/logs"
-	echo "pkg file path: file:///${WORLDDEST}/build/synth/live_packages/"
-	dsynth -SS -y -C ${WORLDDEST}/build/synth build dragonfly/base
-
-installports:
-	cd ${WORLDDEST} && tar xvzpf ${WORLDDEST}/build/synth/live_packages/All/pkg-*.pkg
-	${WORLDDEST}/usr/local/sbin/pkg-static --rootdir ${DESTDIR}/ -R ${WORLDDEST}/build install dragonfly-base
-
+.ORDER: umountports mountports
 GENLOGDIR=	/usr/obj${.CURDIR}
+
+# Build a chroot environment for buildports
+#
+# The chroot environment is built by doing a fresh make installworld
+# and make distribution, mounting expected filesystems, doing the
+# initial ldconfig setup, and copying resolv.conf to hopefully get
+# a working network.  Without these elements, various parts of dsynth
+# and the pkg system will bail.
+#
+buildportschroot: umountports
+	mkdir -p ${WORLDDEST}/chroot
+	mkdir -p ${WORLDDEST}/chroot/usr/src
+	@echo "building chroot, logfile in: ${GENLOGDIR}/chroot.out"
+	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` installworld DESTDIR=${WORLDDEST}/chroot > ${GENLOGDIR}/chroot.out 2>&1)
+	@(cd ${.CURDIR}/etc; ${MAKE} -j `sysctl -n hw.ncpu` distribution DESTDIR=${WORLDDEST}/chroot >> ${GENLOGDIR}/chroot.out 2>&1)
+	@echo "mounting procfs, devfs, tmpfs in chroot"
+	@(cd ${.CURDIR}; ${MAKE} mountports >> ${GENLOGDIR}/chroot.out 2>&1)
+	chroot ${WORLDDEST}/chroot /bin/csh -c "cd /etc/rc.d; sh ldconfig start"
+	cp /etc/resolv.conf ${WORLDDEST}/chroot/etc/
+	@(cd ${.CURDIR}; ${MAKE} umountports >> ${GENLOGDIR}/chroot.out 2>&1)
+
+# Build dragonfly/base dports using the chroot environment setup by
+# buildportschroot.
+#
+# NOTE: The real system's /usr/distfiles.base is shared with the chroot and
+#	dsynth will fetch source dists as necessary.
+#
+buildports: umountports mountports
+	mkdir -p ${WORLDDEST}/chroot
+	mkdir -p ${WORLDDEST}/chroot/build/synth
+	mkdir -p ${WORLDDEST}/chroot/build/synth/live_packages
+	mkdir -p ${WORLDDEST}/chroot/build/synth/logs
+	mkdir -p ${WORLDDEST}/chroot/build/synth/options
+	mkdir -p ${WORLDDEST}/chroot/build/synth/build
+	cp ${.CURDIR}/dports.base/dsynth.ini ${WORLDDEST}/chroot/build/synth/
+	cp ${.CURDIR}/dports.base/pkg.conf ${WORLDDEST}/chroot/build/
+	@echo "dsynth logs will be stored in ${WORLDDEST}/chroot/build/synth/logs"
+	@echo "pkg file path: file:///${WORLDDEST}/chroot/build/synth/live_packages/"
+	chroot ${WORLDDEST}/chroot dsynth -SS -y -C /build/synth build dragonfly/base
+	@(cd ${.CURDIR}; ${MAKE} umountports)
+
+# Install base system ports (does not require the chroot but does require
+# the dports stuff that was built in the chroot)
+#
+# NOTE: At the moment, the pkg install command may require interactivity,
+#	do not redirect.
+#
+installports: umountports mountports
+	cd ${WORLDDEST} && tar xvzpf ${WORLDDEST}/chroot/build/synth/live_packages/All/pkg-*.pkg > /dev/null 2>&1
+	${WORLDDEST}/usr/local/sbin/pkg-static --rootdir ${DESTDIR}/ -R ${WORLDDEST}/chroot/build install dragonfly-base
+	@(cd ${.CURDIR}; ${MAKE} umountports)
+
 .ORDER: build-all install-all
+
+mountports:
+	@echo "mounting for ports chroot"
+	mount_devfs dummy ${WORLDDEST}/chroot/dev
+	mount_procfs dummy ${WORLDDEST}/chroot/proc
+	mount_tmpfs dummy ${WORLDDEST}/chroot/tmp
+	mount_tmpfs dummy ${WORLDDEST}/chroot/var/tmp
+	mount_null ${.CURDIR} ${WORLDDEST}/chroot/usr/src
+	mount_null /usr/distfiles.base ${WORLDDEST}/chroot/usr/distfiles.base
+
+# Cleanup the chroot's mounts but otherwise leave it intact
+#
+# Strange make lines avoid junk reporting to stderr
+#
+umountports:
+	@echo "cleanup any old dsynth mounts (if any)"
+	-@chroot ${WORLDDEST}/chroot dsynth -SS -y -C /build/synth cleanup > /dev/null 2>&1 || true
+	@echo "unmount old chroot devfs, procfs, etc (if any)"
+	-@umount -f ${WORLDDEST}/chroot/usr/distfiles.base > /dev/null 2>&1 || true
+	-@umount -f ${WORLDDEST}/chroot/usr/src > /dev/null 2>&1 || true
+	-@umount -f ${WORLDDEST}/chroot/dev > /dev/null 2>&1 || true
+	-@umount -f ${WORLDDEST}/chroot/proc > /dev/null 2>&1 || true
+	-@umount -f ${WORLDDEST}/chroot/tmp > /dev/null 2>&1 || true
+	-@umount -f ${WORLDDEST}/chroot/var/tmp > /dev/null 2>&1 || true
 
 # build-all
 #
 # build
-build-all:
+build-all: _bwcleanup
 	@echo "Building world, log file in ${GENLOGDIR}/bw.out"
 	@mkdir -p ${GENLOGDIR}
 	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` buildworld > ${GENLOGDIR}/bw.out 2>&1)
 	@sync
 	@echo "Building kernel, log file in ${GENLOGDIR}/bk.out"
 	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` buildkernel > ${GENLOGDIR}/bk.out 2>&1)
-	@echo "build-all completed ok"
+	@echo "build-all main buildworld and buildkernel completed ok"
 	@sync
+	@echo "Building dragonfly/base dports, logs in ${GENLOGDIR}/bp.out"
+	@echo "IF YOU INTERRUPT THE MAKE, THEN RUN make umountports"
+	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` buildportschroot > ${GENLOGDIR}/bp.out 2>&1)
+	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` buildports > ${GENLOGDIR}/bp.out 2>&1)
 
 install-all:
 	@echo "Installing kernel, log file in ${GENLOGDIR}/bk.out"
@@ -494,12 +556,17 @@ install-all:
 	@echo "Upgrading world"
 	@(cd ${.CURDIR}; ${MAKE} -j 1 upgrade >> ${GENLOGDIR}/bw.out 2>&1)
 	@sync
-	@echo "install-all completed ok.  reboot recommended and after that, "
+	@echo "install-all main world and kernel completed ok."
+	@echo "Installing dragonfly/base dports, log file in ${GENLOGDIR}/bp.out"
+	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` installports)
+	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` umountports >> ${GENLOGDIR}/bp.out 2>&1)
+	@echo "reboot recommended and after that, "
 	@echo "when doing a major upgrade, 'pkg upgrade -f' after rebooting"
 
 .ORDER: _bwinit ${WMAKE_TGTS} _bwdone
 .ORDER: _obj _includes
 .ORDER: _qwinit _mtreetmp _obj
+.ORDER: _bwcleanup _bwinit
 .ORDER: installcheck backupworld-auto
 .ORDER: everything _qwdone
 

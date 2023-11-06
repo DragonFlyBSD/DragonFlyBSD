@@ -8,10 +8,18 @@
 # quickworld          - Skip bootstrap, build and cross-build tool steps.
 # realquickworld      - Skip above steps, plus depend.
 # crossworld          - Just do the bootstrap, build, and cross-build steps.
+#
+# buildportschroot    - Build the chroot environment for buildports
+# buildports	      - Build dragonfly/base dports
+#
 # installworld        - Install everything built by "buildworld", and the
 #                       rescue tools and initrd image if they do not exist.
 # installworld-force  - Install everything built by "buildworld";
 #                       special case for old systems.
+# installports	      - Install ports built via buildports.
+# cleanupports	      - umount all the special chroot mounts for buildports
+#			and cleanup any dsynth mounts that might be left over.
+#
 # world               - buildworld + installworld.
 # buildkernel         - Rebuild the kernel and the kernel-modules from scratch
 #                       using build/bootstrap/cross tools from the last
@@ -30,8 +38,10 @@
 # upgrade             - Upgrade the files in /etc and also setup the rest
 #                       of the system for DragonFly. ex. two compilers.
 # build-all           - Runs buildworld and buildkernel both with -j hw.ncpu
+#			Also runs buildportschroot and buildports
 # install-all         - Runs installkernel, installworld and upgrade all with
 #                       -j 1
+#
 # initrd              - Install the statically linked rescue tools and the
 #                       initrd image built by "buildworld".
 # backupworld         - Copy /bin /sbin /usr/bin /usr/sbin /usr/lib
@@ -81,7 +91,7 @@
 TGTS=	all all-man buildkernel quickkernel realquickkernel nativekernel \
 	buildworld crossworld quickworld realquickworld checkdpadd clean \
 	cleandepend cleandir depend everything \
-	buildports installports \
+	buildportschroot buildports installports mountports umountports \
 	hierarchy install installcheck installkernel \
 	reinstallkernel installworld installworld-force os-release initrd \
 	libraries lint maninstall \
