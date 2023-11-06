@@ -164,10 +164,10 @@ CTOOLSPATH= ${CTOOLSDEST}/usr/sbin:${CTOOLSDEST}/usr/bin:${CTOOLSDEST}/sbin:${CT
 # The strict temporary command path contains all binaries required
 # by the buildworld system after the cross-tools stage.
 #
-# NOTE: Append '/usr/local/bin:/usr/pkg/bin' to support external compilers.
+# NOTE: Append '/usr/local/bin:/usr/local/sbin' to support external compilers.
 #       See compilers.conf(5) man page for more info.
 #
-STRICTTMPPATH= ${CTOOLSPATH}:${BTOOLSPATH}:/usr/local/bin:/usr/pkg/bin
+STRICTTMPPATH= ${CTOOLSPATH}:${BTOOLSPATH}:/usr/local/bin:/usr/local/sbin
 
 TMPDIR?=	/tmp
 TMPPID!=	echo $$$$
@@ -442,6 +442,30 @@ quickworld: _qwinit ${QMAKE_TGTS} _qwdone
 realquickworld: _qwinit _mtreetmp _obj _includes _libraries everything _qwdone
 
 crossworld: _worldtmp _bootstrap-tools _obj _build-tools _cross-tools
+
+# NOTE: Currently not path-replacing /usr/distfiles.base, aka
+#	sed -e "s#/usr/distfiles.base#${WORLDDEST}/usr/distfiles.base#" \
+#
+buildports:
+	mkdir -p ${WORLDDEST}/build/synth
+	mkdir -p ${WORLDDEST}/build/synth/live_packages
+	mkdir -p ${WORLDDEST}/build/synth/logs
+	mkdir -p ${WORLDDEST}/build/synth/options
+	mkdir -p ${WORLDDEST}/build/synth/build
+	cat ${.CURDIR}/dports.base/dsynth.ini | \
+	    sed -e "s#/build#${WORLDDEST}/build#" | \
+	    sed -e "s#/usr/src#${.CURDIR}#" > \
+	    ${WORLDDEST}/build/synth/dsynth.ini
+	cat ${.CURDIR}/dports.base/pkg.conf | \
+	    sed -e "s#/build#${WORLDDEST}/build#" > \
+	    ${WORLDDEST}/build/pkg.conf
+	echo "dsynth logs will be stored in ${WORLDDEST}/build/synth/logs"
+	echo "pkg file path: file:///${WORLDDEST}/build/synth/live_packages/"
+	dsynth -SS -y -C ${WORLDDEST}/build/synth build dragonfly/base
+
+installports:
+	cd ${WORLDDEST} && tar xvzpf ${WORLDDEST}/build/synth/live_packages/All/pkg-*.pkg
+	${WORLDDEST}/usr/local/sbin/pkg-static --rootdir ${DESTDIR}/ -R ${WORLDDEST}/build install dragonfly-base
 
 GENLOGDIR=	/usr/obj${.CURDIR}
 .ORDER: build-all install-all

@@ -81,6 +81,7 @@
 TGTS=	all all-man buildkernel quickkernel realquickkernel nativekernel \
 	buildworld crossworld quickworld realquickworld checkdpadd clean \
 	cleandepend cleandir depend everything \
+	buildports installports \
 	hierarchy install installcheck installkernel \
 	reinstallkernel installworld installworld-force os-release initrd \
 	libraries lint maninstall \
@@ -113,7 +114,7 @@ BITGTS:=${BITGTS} ${BITGTS:S/^/build/} ${BITGTS:S/^/install/}
 .ORDER: realquickkernel reinstallkernel
 .ORDER: build-all install-all
 
-_HOSTPATH=	/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/pkg/bin
+_HOSTPATH=	/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin
 MAKE=	PATH=${_HOSTPATH} make -m ${.CURDIR}/share/mk -f Makefile.inc1
 
 #
