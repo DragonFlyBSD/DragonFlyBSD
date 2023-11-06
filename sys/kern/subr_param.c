@@ -81,7 +81,6 @@ int	maxfilesperproc;		/* per-proc open files limit */
 int	maxfilesperuser;		/* per-user open files limit */
 int	maxposixlocksperuid;		/* max # POSIX locks per uid */
 int	ncallout;			/* maximum # of timer events */
-int	mbuf_wait = 32;			/* mbuf sleep time in ticks */
 long	nbuf;
 long	nswbuf_mem;
 long	nswbuf_kva;

@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/mbuf.9,v 1.27.2.1 2003/05/28 13:53:18 yar Exp $
 .\"
-.Dd November 29, 2016
+.Dd November 6, 2023
 .Dt MBUF 9
 .Os
 .\"
@@ -243,17 +243,16 @@ argument is to be set to
 .Dv M_WAITOK
 or
 .Dv M_NOWAIT .
-It specifies whether the caller is willing to block if necessary.
 If
 .Fa how
-is set to
+is
 .Dv M_WAITOK ,
-a failed allocation will result in the caller being put
-to sleep for a designated
-.Va kern.ipc.mbuf_wait
-.Xr ( sysctl 8
-tunable)
-number of ticks.
+this macro will await resources if necessary;
+if
+.Fa how
+is
+.Dv M_NOWAIT
+and resources are not available, this macro fails.
 A number of other mbuf-related
 functions and macros have the same argument because they may
 at some point need to allocate new mbufs.

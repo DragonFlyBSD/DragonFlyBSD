@@ -275,15 +275,12 @@ SYSCTL_INT(_kern_ipc, KIPC_MAX_HDR, max_hdr, CTLFLAG_RW, &max_hdr, 0,
 	"Max size of link+protocol headers");
 SYSCTL_INT(_kern_ipc, KIPC_MAX_DATALEN, max_datalen, CTLFLAG_RW,
 	&max_datalen, 0, "Max data payload size without headers");
-SYSCTL_INT(_kern_ipc, OID_AUTO, mbuf_wait, CTLFLAG_RW,
-	&mbuf_wait, 0, "Time in ticks to sleep after failed mbuf allocations");
-static int do_mbstat(SYSCTL_HANDLER_ARGS);
 
+static int do_mbstat(SYSCTL_HANDLER_ARGS);
 SYSCTL_PROC(_kern_ipc, KIPC_MBSTAT, mbstat, CTLTYPE_STRUCT|CTLFLAG_RD,
 	0, 0, do_mbstat, "S,mbstat", "mbuf usage statistics");
 
 static int do_mbtypes(SYSCTL_HANDLER_ARGS);
-
 SYSCTL_PROC(_kern_ipc, OID_AUTO, mbtypes, CTLTYPE_ULONG|CTLFLAG_RD,
 	0, 0, do_mbtypes, "LU", "");
 
