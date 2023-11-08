@@ -134,16 +134,11 @@ encrypt_bytes(struct csprng_state *state, uint8_t *out, uint8_t *in,
 }
 
 /*
- *
  * Called with state->spin held.
- *
- * XXX: flags is currently unused, but could be used to know whether
- *      it's a /dev/random or /dev/urandom read, and make sure that
- *      enough entropy has been collected recently, etc.
  */
 int
 csprng_get_random(struct csprng_state *state, uint8_t *out, int bytes,
-		  int flags __unused, int unlimited)
+		  int flags)
 {
 	int cnt;
 	int total_bytes = 0;
@@ -165,10 +160,11 @@ again:
 	/*
 	 * If no reseed has occurred yet, we can't possibly give out
 	 * any random data.
-	 * Sleep until entropy is added to the pools (or a callout-based
+	 * If this isn't an unlimited (i.e., /dev/urandom) read, sleep
+	 * until entropy is added to the pools (or a callout-based
 	 * reseed, if enabled, occurs).
 	 */
-	if (unlimited == 0 && state->reseed_cnt == 0) {
+	if ((flags & CSPRNG_UNLIMITED) == 0 && state->reseed_cnt == 0) {
 		ssleep(state, &state->spin, 0, "csprngrsd", 0);
 		goto again;
 	}

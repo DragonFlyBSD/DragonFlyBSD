@@ -11,7 +11,7 @@
 
 /* Flags for various calls */
 #define CSPRNG_TRYLOCK		0x0001
-#define CSPRNG_UNLIMITED	0x0002
+#define CSPRNG_UNLIMITED	0x0002	/* unlimited (/dev/urandom) read */
 
 struct csprng_pool {
 	uint64_t	bytes;
@@ -47,7 +47,7 @@ struct csprng_state {
 
 int csprng_init(struct csprng_state *state);
 int csprng_get_random(struct csprng_state *state, uint8_t *out, int bytes,
-    int flags, int unlimited);
+    int flags);
 int csprng_add_entropy(struct csprng_state *state, int src_id,
     const uint8_t *entropy, size_t bytes, int flags);
 

@@ -699,14 +699,16 @@ read_random(void *buf, u_int nbytes, int unlimited)
 	spin_lock(&state->spin);
 	if (rand_mode == 0) {
 		/* Only use CSPRNG */
-		i = csprng_get_random(state, buf, nbytes, 0, unlimited);
+		i = csprng_get_random(state, buf, nbytes,
+				      unlimited ? CSPRNG_UNLIMITED : 0);
 	} else if (rand_mode == 1) {
 		/* Only use IBAA */
 		for (i = 0; i < nbytes; i++)
 			((u_char *)buf)[i] = IBAA_Byte(&state->ibaa);
 	} else {
 		/* Mix both CSPRNG and IBAA */
-		i = csprng_get_random(state, buf, nbytes, 0, unlimited);
+		i = csprng_get_random(state, buf, nbytes,
+				      unlimited ? CSPRNG_UNLIMITED : 0);
 		for (j = 0; j < i; j++)
 			((u_char *)buf)[j] ^= IBAA_Byte(&state->ibaa);
 	}
