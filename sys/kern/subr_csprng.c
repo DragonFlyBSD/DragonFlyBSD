@@ -38,6 +38,12 @@
 #include <sys/spinlock2.h>
 #include <sys/csprng.h>
 
+#define CHACHA_EMBED
+#define CHACHA_NONCE0_CTR128
+#define KEYSTREAM_ONLY
+#include <crypto/chacha20/chacha.c>
+#include <crypto/sha2/sha2.h>
+
 /*
  * Minimum amount of bytes in pool before we consider it
  * good enough.
@@ -80,8 +86,6 @@ csprng_init(struct csprng_state *state)
 	bzero(state->src_pool_idx, sizeof(state->src_pool_idx));
 	bzero(&state->last_reseed, sizeof(state->last_reseed));
 
-	state->nonce = 0;
-	state->ctr   = 0;
 	state->reseed_cnt = 0;
 	state->failed_reseeds = 0;
 	state->callout_based_reseed = 0;
@@ -116,23 +120,6 @@ csprng_init_reseed(struct csprng_state *state)
  * (uint8_t)__LINE__ as the source id... cheap & cheerful.
  */
 
-static
-int
-encrypt_bytes(struct csprng_state *state, uint8_t *out, uint8_t *in,
-	      size_t bytes)
-{
-	/* Update nonce whenever the counter is about to overflow */
-	if (chacha_check_counter(&state->cipher_ctx)) {
-		++state->nonce;
-		chacha_ivsetup(&state->cipher_ctx,
-			       (const uint8_t *)&state->nonce);
-	}
-
-	chacha_encrypt_bytes(&state->cipher_ctx, in, out, (uint32_t)bytes);
-
-	return 0;
-}
-
 /*
  * Called with state->spin held.
  */
@@ -142,14 +129,6 @@ csprng_get_random(struct csprng_state *state, uint8_t *out, int bytes,
 {
 	int cnt;
 	int total_bytes = 0;
-
-	/*
-	 * XXX: can optimize a bit by digging into chacha_encrypt_bytes
-	 *      and removing the xor of the stream with the input - that
-	 *      way we don't have to xor the output (which we provide
-	 *      as input).
-	 */
-	bzero(out, bytes);
 
 again:
 	if (!state->callout_based_reseed &&
@@ -173,13 +152,13 @@ again:
 		/* Limit amount of output without rekeying to 2^20 */
 		cnt = (bytes > (1 << 20)) ? (1 << 20) : bytes;
 
-		encrypt_bytes(state, out, out, cnt);
+		chacha_encrypt_bytes(&state->cipher_ctx, NULL, out, cnt);
 
 		/* Update key and rekey cipher */
-		encrypt_bytes(state, state->key, state->key,
-			      sizeof(state->key));
+		chacha_encrypt_bytes(&state->cipher_ctx, NULL, state->key,
+				     sizeof(state->key));
 		chacha_keysetup(&state->cipher_ctx, state->key,
-		    8*sizeof(state->key));
+				8 * sizeof(state->key));
 
 		out += cnt;
 		bytes -= cnt;
@@ -200,6 +179,7 @@ csprng_reseed(struct csprng_state *state)
 	struct csprng_pool *pool;
 	SHA256_CTX hash_ctx;
 	uint8_t digest[SHA256_DIGEST_LENGTH];
+	uint8_t counter[16];
 
 	/*
 	 * If there's not enough entropy in the first
@@ -248,15 +228,11 @@ csprng_reseed(struct csprng_state *state)
 	SHA256_Final(state->key, &hash_ctx);
 
 	/* Update key and rekey cipher */
-	chacha_keysetup(&state->cipher_ctx, state->key,
-	    8*sizeof(state->key));
+	chacha_keysetup(&state->cipher_ctx, state->key, 8*sizeof(state->key));
 
-	/* Increment the nonce if the counter overflows */
-	if (chacha_incr_counter(&state->cipher_ctx)) {
-		++state->nonce;
-		chacha_ivsetup(&state->cipher_ctx,
-			       (const uint8_t *)&state->nonce);
-	}
+	/* No IV but a 128-bit counter, should never overflow */
+	bzero(counter, sizeof(counter));
+	chacha_ivsetup(&state->cipher_ctx, NULL, counter);
 
 	return 0;
 }

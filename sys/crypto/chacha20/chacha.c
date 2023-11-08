@@ -140,6 +140,8 @@ chacha_encrypt_bytes(chacha_ctx *x, const u8 *m, u8 *c, u32 bytes)
 #ifndef KEYSTREAM_ONLY
       for (i = 0;i < bytes;++i) tmp[i] = m[i];
       m = tmp;
+#else
+      (void)m; /* suppress compiler warning */
 #endif
       ctarget = c;
       c = tmp;

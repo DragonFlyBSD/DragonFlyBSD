@@ -33,7 +33,8 @@ LOCAL void chacha_encrypt_bytes(struct chacha_ctx *x, const uint8_t *m,
     uint8_t *c, uint32_t bytes);
 
 #ifdef CHACHA_NONCE0_CTR128
-LOCAL void chacha_ctrsave(const struct chacha_ctx *x, uint8_t *counter);
+LOCAL void chacha_ctrsave(const struct chacha_ctx *x, uint8_t *counter)
+    __unused; /* maybe unused */
 #endif
 
 #endif	/* CHACHA_H */

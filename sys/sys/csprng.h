@@ -1,8 +1,8 @@
 #ifndef _SYS_CSPRNG_H_
 #define _SYS_CSPRNG_H_
 
+#include <crypto/chacha20/_chacha.h>
 #include <crypto/sha2/sha2.h>
-#include <crypto/chacha/chacha.h>
 
 #include <sys/callout.h>
 #include <sys/spinlock.h>
@@ -22,12 +22,10 @@ CTASSERT(SHA256_DIGEST_LENGTH == 32);
 
 struct csprng_state {
 	uint8_t		key[SHA256_DIGEST_LENGTH];
-	uint64_t	nonce;		/* Effectively high 64-bits of ctr */
-	uint64_t	ctr;
 
 	uint64_t	reseed_cnt;	/* Times we have reseeded */
 
-	chacha_ctx	cipher_ctx;	/* (Stream) cipher context */
+	struct chacha_ctx cipher_ctx;	/* (Stream) cipher context */
 
 	/* Pools and the per-source round robin pool index */
 	struct csprng_pool pool[32];
