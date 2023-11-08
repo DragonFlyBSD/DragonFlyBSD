@@ -6,9 +6,7 @@ Public domain.
 
 /* $OpenBSD: chacha.c,v 1.1 2013/11/21 00:45:44 djm Exp $ */
 
-#include <sys/cdefs.h>
 #include <sys/param.h>
-#include <sys/types.h>
 
 #include "chacha.h"
 
@@ -55,7 +53,7 @@ static const char sigma[16] = "expand 32-byte k";
 static const char tau[16] = "expand 16-byte k";
 
 LOCAL void
-chacha_keysetup(chacha_ctx *x,const u8 *k,u32 kbits)
+chacha_keysetup(chacha_ctx *x, const u8 *k, u32 kbits)
 {
   const char *constants;
 
@@ -82,18 +80,19 @@ chacha_keysetup(chacha_ctx *x,const u8 *k,u32 kbits)
 LOCAL void
 chacha_ivsetup(chacha_ctx *x, const u8 *iv, const u8 *counter)
 {
-#ifndef CHACHA_NONCE0_CTR128
-  x->input[12] = counter == NULL ? 0 : U8TO32_LITTLE(counter + 0);
-  x->input[13] = counter == NULL ? 0 : U8TO32_LITTLE(counter + 4);
-  x->input[14] = U8TO32_LITTLE(iv + 0);
-  x->input[15] = U8TO32_LITTLE(iv + 4);
-#else
-  // CHACHA_STATELEN
+#ifdef CHACHA_NONCE0_CTR128
+  /* 128-bit counter without IV */
   (void)iv;
   x->input[12] = U8TO32_LITTLE(counter + 0);
   x->input[13] = U8TO32_LITTLE(counter + 4);
   x->input[14] = U8TO32_LITTLE(counter + 8);
   x->input[15] = U8TO32_LITTLE(counter + 12);
+#else
+  /* 64-bit IV and 64-bit counter */
+  x->input[12] = counter == NULL ? 0 : U8TO32_LITTLE(counter + 0);
+  x->input[13] = counter == NULL ? 0 : U8TO32_LITTLE(counter + 4);
+  x->input[14] = U8TO32_LITTLE(iv + 0);
+  x->input[15] = U8TO32_LITTLE(iv + 4);
 #endif
 }
 
@@ -101,21 +100,21 @@ chacha_ivsetup(chacha_ctx *x, const u8 *iv, const u8 *counter)
 LOCAL void
 chacha_ctrsave(const chacha_ctx *x, u8 *counter)
 {
-    U32TO8_LITTLE(counter + 0, x->input[12]);
-    U32TO8_LITTLE(counter + 4, x->input[13]);
-    U32TO8_LITTLE(counter + 8, x->input[14]);
+    U32TO8_LITTLE(counter + 0,  x->input[12]);
+    U32TO8_LITTLE(counter + 4,  x->input[13]);
+    U32TO8_LITTLE(counter + 8,  x->input[14]);
     U32TO8_LITTLE(counter + 12, x->input[15]);
 }
 #endif
 
 LOCAL void
-chacha_encrypt_bytes(chacha_ctx *x,const u8 *m,u8 *c,u32 bytes)
+chacha_encrypt_bytes(chacha_ctx *x, const u8 *m, u8 *c, u32 bytes)
 {
   u32 x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15;
   u32 j0, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15;
   u8 *ctarget = NULL;
   u8 tmp[64];
-  u_int i;
+  u32 i;
 
   if (!bytes) return;
 
@@ -210,15 +209,15 @@ chacha_encrypt_bytes(chacha_ctx *x,const u8 *m,u8 *c,u32 bytes)
     j12 = PLUSONE(j12);
     if (!j12) {
       j13 = PLUSONE(j13);
-#ifndef CHACHA_NONCE0_CTR128
-      /* stopping at 2^70 bytes per nonce is user's responsibility */
-#else
+#ifdef CHACHA_NONCE0_CTR128
       if (!j13) {
         j14 = PLUSONE(j14);
         if (!j14) {
           j15 = PLUSONE(j15);
         }
       }
+#else
+      /* stopping at 2^70 bytes per nonce is user's responsibility */
 #endif
     }
 

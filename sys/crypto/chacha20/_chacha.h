@@ -1,4 +1,3 @@
-/* $FreeBSD$ */
 /*
  * Public domain.
  */
@@ -9,7 +8,7 @@
 #include <sys/types.h>
 
 struct chacha_ctx {
-	u_int input[16];
+	uint32_t input[16];
 };
 
 #endif
