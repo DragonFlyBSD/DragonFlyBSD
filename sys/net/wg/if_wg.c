@@ -1709,7 +1709,6 @@ wg_deliver_in(void *arg, int pending __unused)
 		if (m->m_pkthdr.len == 0)
 			goto done;
 
-		KKASSERT(pkt->p_af == AF_INET || pkt->p_af == AF_INET6);
 		pkt->p_mbuf = NULL;
 
 		m->m_pkthdr.rcvif = ifp;
@@ -1717,10 +1716,11 @@ wg_deliver_in(void *arg, int pending __unused)
 		NET_EPOCH_ENTER(et);
 		BPF_MTAP_AF(ifp, m, pkt->p_af);
 
+		KKASSERT(pkt->p_af == AF_INET || pkt->p_af == AF_INET6);
 		if (pkt->p_af == AF_INET)
-			netisr_dispatch(NETISR_IP, m);
-		if (pkt->p_af == AF_INET6)
-			netisr_dispatch(NETISR_IPV6, m);
+			netisr_queue(NETISR_IP, m);
+		else
+			netisr_queue(NETISR_IPV6, m);
 		NET_EPOCH_EXIT(et);
 
 		wg_timers_event_data_received(peer);
