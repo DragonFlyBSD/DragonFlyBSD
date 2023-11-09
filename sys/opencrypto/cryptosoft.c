@@ -187,7 +187,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 					bcopy(blk, iv, blks);
 					ivp = iv;
 				} else {	/* decrypt */
-					/*	
+					/*
 					 * Keep encrypted block for XOR'ing
 					 * with next block
 					 */
@@ -241,7 +241,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 			 */
 			idat = mtod(m, unsigned char *) + k;
 
-	   		while (m->m_len >= k + blks && i > 0) {
+			while (m->m_len >= k + blks && i > 0) {
 				if (exf->reinit) {
 					if (crd->crd_flags & CRD_F_ENCRYPT) {
 						exf->encrypt(kschedule,
@@ -324,7 +324,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 					bcopy(blk, iv, blks);
 					ivp = iv;
 				} else {	/* decrypt */
-					/*	
+					/*
 					 * Keep encrypted block for XOR'ing
 					 * with next block
 					 */
@@ -364,7 +364,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 			 */
 			idat = (char *)iov->iov_base + k;
 
-	   		while (iov->iov_len >= k + blks && i > 0) {
+			while (iov->iov_len >= k + blks && i > 0) {
 				if (exf->reinit) {
 					if (crd->crd_flags & CRD_F_ENCRYPT) {
 						exf->encrypt(kschedule,
@@ -924,36 +924,34 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 		authcommon:
 			(*swd)->sw_ictx = kmalloc(axf->ctxsize, M_CRYPTO_DATA,
 						  M_WAITOK);
-	
 			(*swd)->sw_octx = kmalloc(axf->ctxsize, M_CRYPTO_DATA,
 						  M_WAITOK);
-	
+
 			if (cri->cri_key != NULL) {
 				swcr_authprepare(axf, *swd, cri->cri_key,
 				    cri->cri_klen);
 			}
-	
+
 			(*swd)->sw_mlen = cri->cri_mlen;
 			(*swd)->sw_axf = axf;
 			break;
-	
+
 		case CRYPTO_MD5_KPDK:
 			axf = &auth_hash_key_md5;
 			goto auth2common;
-	
+
 		case CRYPTO_SHA1_KPDK:
 			axf = &auth_hash_key_sha1;
 		auth2common:
 			(*swd)->sw_ictx = kmalloc(axf->ctxsize, M_CRYPTO_DATA,
 						  M_WAITOK);
-	
 			(*swd)->sw_octx = kmalloc(cri->cri_klen / 8,
 						  M_CRYPTO_DATA, M_WAITOK);
-	
+
 			/* Store the key so we can "append" it to the payload */
 			if (cri->cri_key != NULL) {
 				swcr_authprepare(axf, *swd, cri->cri_key,
-				    cri->cri_klen);
+						 cri->cri_klen);
 			}
 
 			(*swd)->sw_mlen = cri->cri_mlen;
@@ -987,7 +985,7 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 			axf = &auth_hash_gmac_aes_256;
 		auth4common:
 			(*swd)->sw_ictx = kmalloc(axf->ctxsize, M_CRYPTO_DATA,
-			    M_NOWAIT);
+						  M_NOWAIT);
 			if ((*swd)->sw_ictx == NULL) {
 				swcr_freesession_slot(&swd_base, 0);
 				return ENOBUFS;
@@ -995,7 +993,7 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 
 			axf->Init((*swd)->sw_ictx);
 			axf->Setkey((*swd)->sw_ictx, cri->cri_key,
-			    cri->cri_klen / 8);
+				    cri->cri_klen / 8);
 			(*swd)->sw_axf = axf;
 			break;
 
@@ -1007,7 +1005,7 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 			swcr_freesession_slot(&swd_base, 0);
 			return EINVAL;
 		}
-	
+
 		(*swd)->sw_alg = cri->cri_alg;
 		cri = cri->cri_next;
 		swd = &((*swd)->sw_next);
@@ -1284,7 +1282,7 @@ swcr_process(device_t dev, struct cryptop *crp, int hint)
 			goto done;
 
 		case CRYPTO_DEFLATE_COMP:
-			if ((crp->crp_etype = swcr_compdec(crd, sw, 
+			if ((crp->crp_etype = swcr_compdec(crd, sw,
 			    crp->crp_buf, crp->crp_flags)) != 0)
 				goto done;
 			else

@@ -73,7 +73,6 @@
 #include <ddb/ddb.h>
 
 #include <opencrypto/cryptodev.h>
-#include <opencrypto/xform.h>			/* XXX for M_XDATA */
 
 #include <sys/kobj.h>
 #include <sys/bus.h>
@@ -1624,7 +1623,7 @@ int crypto_modevent(module_t mod, int type, void *unused);
 
 /*
  * Initialization code, both for static and dynamic loading.
- * Note this is not invoked with the usual MODULE_DECLARE
+ * Note this is not invoked with the usual DECLARE_MODULE
  * mechanism but instead is listed as a dependency by the
  * cryptosoft driver.  This guarantees proper ordering of
  * calls on module load/unload.

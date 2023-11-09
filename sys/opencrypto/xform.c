@@ -47,18 +47,18 @@
 #include <machine/cpu.h>
 
 #include <crypto/blowfish/blowfish.h>
+#include <crypto/camellia/camellia.h>
 #include <crypto/des/des.h>
 #include <crypto/rijndael/rijndael.h>
-#include <crypto/camellia/camellia.h>
-#include <crypto/twofish/twofish.h>
 #include <crypto/serpent/serpent.h>
 #include <crypto/sha1.h>
+#include <crypto/twofish/twofish.h>
 
 #include <opencrypto/cast.h>
 #include <opencrypto/deflate.h>
+#include <opencrypto/gmac.h>
 #include <opencrypto/rmd160.h>
 #include <opencrypto/skipjack.h>
-#include <opencrypto/gmac.h>
 
 #include <sys/md5.h>
 
@@ -83,6 +83,7 @@ static	int twofish128_setkey(u_int8_t **, u_int8_t *, int);
 static	int serpent128_setkey(u_int8_t **, u_int8_t *, int);
 static	int twofish_xts_setkey(u_int8_t **, u_int8_t *, int);
 static	int serpent_xts_setkey(u_int8_t **, u_int8_t *, int);
+
 static	void des1_encrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void des3_encrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void blf_encrypt(caddr_t, u_int8_t *, u_int8_t *);
@@ -95,6 +96,7 @@ static	void twofish128_encrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void serpent128_encrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void twofish_xts_encrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void serpent_xts_encrypt(caddr_t, u_int8_t *, u_int8_t *);
+
 static	void des1_decrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void des3_decrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void blf_decrypt(caddr_t, u_int8_t *, u_int8_t *);
@@ -107,6 +109,7 @@ static	void twofish128_decrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void serpent128_decrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void twofish_xts_decrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void serpent_xts_decrypt(caddr_t, u_int8_t *, u_int8_t *);
+
 static	void des1_zerokey(u_int8_t **);
 static	void des3_zerokey(u_int8_t **);
 static	void blf_zerokey(u_int8_t **);
@@ -332,7 +335,8 @@ struct enc_xform enc_xform_serpent_xts = {
 /* Authentication instances */
 struct auth_hash auth_hash_null = {
 	CRYPTO_NULL_HMAC, "NULL-HMAC",
-	0, NULL_HASH_LEN, NULL_HMAC_BLOCK_LEN, sizeof(int),	/* NB: context isn't used */
+	0, NULL_HASH_LEN, NULL_HMAC_BLOCK_LEN,
+	sizeof(int),	/* NB: context isn't used */
 	null_init, NULL, NULL, null_update, null_final
 };
 
@@ -360,7 +364,7 @@ struct auth_hash auth_hash_hmac_ripemd_160 = {
 };
 
 struct auth_hash auth_hash_key_md5 = {
-	CRYPTO_MD5_KPDK, "Keyed MD5", 
+	CRYPTO_MD5_KPDK, "Keyed MD5",
 	0, MD5_KPDK_HASH_LEN, 0, sizeof(MD5_CTX),
 	(void (*)(void *)) MD5Init, NULL, NULL,
 	MD5Update_int,
@@ -438,20 +442,24 @@ struct comp_algo comp_algo_deflate = {
 /*
  * Encryption wrapper routines.
  */
+
 static void
 null_encrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 }
+
 static void
 null_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 }
+
 static int
 null_setkey(u_int8_t **sched, u_int8_t *key, int len)
 {
 	*sched = NULL;
 	return 0;
 }
+
 static void
 null_zerokey(u_int8_t **sched)
 {
@@ -686,7 +694,7 @@ static void
 rijndael128_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 	rijndael_decrypt(((rijndael_ctx *) key), (u_char *) blk,
-	    (u_char *) blk);
+			 (u_char *) blk);
 }
 
 static int
@@ -700,7 +708,7 @@ rijndael128_setkey(u_int8_t **sched, u_int8_t *key, int len)
 			 M_INTWAIT | M_ZERO);
 	if (*sched != NULL) {
 		rijndael_set_key((rijndael_ctx *) *sched, (u_char *) key,
-		    len * 8);
+				 len * 8);
 		err = 0;
 	} else
 		err = ENOMEM;
@@ -745,7 +753,8 @@ aes_xts_reinit(caddr_t key, u_int8_t *iv)
 }
 
 void
-aes_xts_crypt(struct aes_xts_ctx *ctx, u_int8_t *data, u_int8_t *iv, u_int do_encrypt)
+aes_xts_crypt(struct aes_xts_ctx *ctx, u_int8_t *data, u_int8_t *iv,
+	      u_int do_encrypt)
 {
 	u_int8_t block[AES_XTS_BLOCK_LEN];
 	u_int i, carry_in, carry_out;
@@ -794,7 +803,7 @@ aes_xts_setkey(u_int8_t **sched, u_int8_t *key, int len)
 		return -1;
 
 	*sched = kmalloc(sizeof(struct aes_xts_ctx), M_CRYPTO_DATA,
-	    M_WAITOK | M_ZERO);
+			 M_WAITOK | M_ZERO);
 	ctx = (struct aes_xts_ctx *)*sched;
 
 	rijndael_set_key(&ctx->key1, key, len * 4);
@@ -860,7 +869,7 @@ aes_ctr_setkey(u_int8_t **sched, u_int8_t *key, int len)
 		return -1;
 
 	*sched = kmalloc(sizeof(struct aes_ctr_ctx), M_CRYPTO_DATA,
-	M_WAITOK | M_ZERO);
+			 M_WAITOK | M_ZERO);
 	ctx = (struct aes_ctr_ctx *)*sched;
 	ctx->ac_nr = rijndaelKeySetupEnc(ctx->ac_ek, (u_char *)key,
 	(len - AESCTR_NONCESIZE) * 8);
@@ -903,7 +912,7 @@ static void
 cml_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 	camellia_decrypt(((camellia_ctx *) key), (u_char *) blk,
-	    (u_char *) blk);
+			 (u_char *) blk);
 }
 
 static int
@@ -917,7 +926,7 @@ cml_setkey(u_int8_t **sched, u_int8_t *key, int len)
 			 M_INTWAIT | M_ZERO);
 	if (*sched != NULL) {
 		camellia_set_key((camellia_ctx *) *sched, (u_char *) key,
-		    len * 8);
+				 len * 8);
 		err = 0;
 	} else
 		err = ENOMEM;
@@ -1084,7 +1093,7 @@ twofish_xts_setkey(u_int8_t **sched, u_int8_t *key, int len)
 		return -1;
 
 	*sched = kmalloc(sizeof(struct twofish_xts_ctx), M_CRYPTO_DATA,
-	    M_WAITOK | M_ZERO);
+			 M_WAITOK | M_ZERO);
 	ctx = (struct twofish_xts_ctx *)*sched;
 
 	twofish_set_key(&ctx->key1, key, len * 4);
@@ -1179,7 +1188,7 @@ serpent_xts_setkey(u_int8_t **sched, u_int8_t *key, int len)
 		return -1;
 
 	*sched = kmalloc(sizeof(struct serpent_xts_ctx), M_CRYPTO_DATA,
-	    M_WAITOK | M_ZERO);
+			 M_WAITOK | M_ZERO);
 	ctx = (struct serpent_xts_ctx *)*sched;
 
 	serpent_set_key(&ctx->key1, key, len * 4);
