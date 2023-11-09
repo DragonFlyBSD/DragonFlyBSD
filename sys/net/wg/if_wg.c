@@ -30,6 +30,7 @@
 #include <sys/taskqueue.h>
 #include <sys/time.h>
 #include <machine/_inttypes.h>
+#include <machine/cpufunc.h> /* cpu_sfence() */
 #include <net/bpf.h>
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -1510,7 +1511,7 @@ wg_encrypt(struct wg_softc *sc, struct wg_packet *pkt)
 	state = WG_PACKET_CRYPTED;
 out:
 	pkt->p_mbuf = m;
-	wmb();
+	cpu_sfence(); /* Update p_state only after p_mbuf. */
 	pkt->p_state = state;
 	taskqueue_enqueue(peer->p_send_taskqueue, &peer->p_send_task);
 	noise_remote_put(remote);
@@ -1583,7 +1584,7 @@ wg_decrypt(struct wg_softc *sc, struct wg_packet *pkt)
 	state = WG_PACKET_CRYPTED;
 out:
 	pkt->p_mbuf = m;
-	wmb();
+	cpu_sfence(); /* Update p_state only after p_mbuf. */
 	pkt->p_state = state;
 	taskqueue_enqueue(peer->p_recv_taskqueue, &peer->p_recv_task);
 	noise_remote_put(remote);
