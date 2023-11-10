@@ -168,14 +168,22 @@ struct radix_node_head {
 	struct radix_node_head *rnh_maskhead;
 };
 
-#ifndef _KERNEL
-#define R_Malloc(p, t, n) (p = (t) malloc((n)))
-#define R_Free(p) free(p)
-#else
+#ifdef _KERNEL
+
+#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_RTABLE);
-#define R_Malloc(p, t, n) (p = (t) kmalloc((n), M_RTABLE, M_INTWAIT | M_NULLOK))
-#define R_Free(p) kfree(p, M_RTABLE)
 #endif
+
+#define R_Malloc(p, t, n) \
+	(p = (t) kmalloc((n), M_RTABLE, M_INTWAIT | M_NULLOK))
+#define R_Free(p)	kfree(p, M_RTABLE)
+
+#else /* !_KERNEL */
+
+#define R_Malloc(p, t, n)	(p = (t) malloc((n)))
+#define R_Free(p)		free(p)
+
+#endif /* _KERNEL */
 
 void			 rn_init(void);
 int			 rn_inithead(void **head,
