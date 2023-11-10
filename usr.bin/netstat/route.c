@@ -63,6 +63,7 @@
 #include "netstat.h"
 
 #define kget(p, d) (kread((u_long)(p), (char *)&(d), sizeof (d)))
+#define constSA(x) ((const struct sockaddr *)(x))
 
 /*
  * Definitions for showing gateway flags.
@@ -109,7 +110,7 @@ struct	radix_node_head *rt_tables[AF_MAX+1];
 
 int	NewTree = 0;
 
-static struct sockaddr *kgetsa (struct sockaddr *);
+static struct sockaddr *kgetsa (const struct sockaddr *);
 static void size_cols (int ef, struct radix_node *rn);
 static void size_cols_tree (struct radix_node *rn);
 static void size_cols_rtentry (struct rtentry *rt);
@@ -331,7 +332,7 @@ size_cols_rtentry(struct rtentry *rt)
 	}
 	if (rt->rt_ifp) {
 		if (rt->rt_ifp != lastif) {
-			if (kget(rt->rt_ifp, ifnet) == 0) 
+			if (kget(rt->rt_ifp, ifnet) == 0)
 				len = strlen(ifnet.if_xname);
 			else
 				len = strlen("---");
@@ -424,7 +425,7 @@ pr_rthdr(int af1)
 }
 
 static struct sockaddr *
-kgetsa(struct sockaddr *dst)
+kgetsa(const struct sockaddr *dst)
 {
 
 	if (kget(dst, pt_u.u_sa) != 0)
@@ -457,8 +458,7 @@ again:
 					p_rtnode();
 			}
 		} else {
-			p_sockaddr(kgetsa((struct sockaddr *)rnode.rn_key),
-				   NULL, 0, 44);
+			p_sockaddr(kgetsa(constSA(rnode.rn_key)), NULL, 0, 44);
 			putchar('\n');
 		}
 		if ((rn = rnode.rn_dupedkey))
@@ -484,7 +484,7 @@ p_rtnode(void)
 	if (rnode.rn_bit < 0) {
 		if (rnode.rn_mask) {
 			printf("\t  mask ");
-			p_sockaddr(kgetsa((struct sockaddr *)rnode.rn_mask),
+			p_sockaddr(kgetsa(constSA(rnode.rn_mask)),
 				   NULL, 0, -1);
 		} else if (rm == NULL)
 			return;
@@ -502,13 +502,14 @@ p_rtnode(void)
 			struct radix_node rnode_aux;
 			printf(" <normal>, ");
 			if (kget(rmask.rm_leaf, rnode_aux) == 0)
-				p_sockaddr(kgetsa((struct sockaddr *)rnode_aux.rn_mask),
-				    NULL, 0, -1);
+				p_sockaddr(kgetsa(constSA(rnode_aux.rn_mask)),
+					   NULL, 0, -1);
 			else
 				p_sockaddr(NULL, NULL, 0, -1);
-		} else
-		    p_sockaddr(kgetsa((struct sockaddr *)rmask.rm_mask),
-				NULL, 0, -1);
+		} else {
+			p_sockaddr(kgetsa(constSA(rmask.rm_mask)),
+				   NULL, 0, -1);
+		}
 		putchar('}');
 		if ((rm = rmask.rm_next))
 			printf(" ->");
@@ -707,7 +708,7 @@ fmt_sockaddr(struct sockaddr *sa, struct sockaddr *mask, int flags)
 		(void) sprintf(workbuf, "%d", ntohl(smpls->smpls_label));
 		break;
 	    }
-		
+
 	default:
 	    {
 		u_char *s = (u_char *)sa->sa_data, *slim;
