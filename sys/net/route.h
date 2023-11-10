@@ -75,6 +75,8 @@
 #include <sys/socket.h>
 #endif
 
+#include <net/radix.h>
+
 /*
  * Kernel resident routing tables.
  *
@@ -137,10 +139,6 @@ struct mbuf;
  * gateways are marked so that the output routines know to address the
  * gateway rather than the ultimate destination.
  */
-#ifndef RNF_NORMAL
-#include <net/radix.h>
-#endif
-
 struct rtentry {
 	struct	radix_node rt_nodes[2];	/* tree glue, and other values */
 #define	rt_key(r)	__DECONST(struct sockaddr *, (r)->rt_nodes->rn_key)
