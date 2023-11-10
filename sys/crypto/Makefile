@@ -16,6 +16,9 @@ SRCS+=	bf_enc.c bf_skey.c
 .PATH:	${.CURDIR}/camellia
 SRCS+=	camellia.c camellia-api.c
 
+.PATH:	${.CURDIR}/chacha20
+SRCS+=	chacha.c
+
 .PATH:	${.CURDIR}/des
 SRCS+=	des_ecb.c des_enc.c des_setkey.c
 

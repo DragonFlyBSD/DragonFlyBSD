@@ -2246,6 +2246,7 @@ libprop/prop_rb.c			standard
 crypto/blowfish/bf_skey.c		optional crypto
 crypto/camellia/camellia.c		optional crypto
 crypto/camellia/camellia-api.c		optional crypto
+crypto/chacha20/chacha.c		optional crypto
 crypto/des/des_ecb.c			optional crypto
 crypto/des/des_setkey.c			optional crypto
 crypto/rc4/rc4.c			optional crypto
