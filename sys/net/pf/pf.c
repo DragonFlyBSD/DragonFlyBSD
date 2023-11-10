@@ -1860,9 +1860,9 @@ pf_addr_wrap_neq(struct pf_addr_wrap *aw1, struct pf_addr_wrap *aw2)
 	switch (aw1->type) {
 	case PF_ADDR_ADDRMASK:
 	case PF_ADDR_RANGE:
-		if (PF_ANEQ(&aw1->v.a.addr, &aw2->v.a.addr, 0))
+		if (PF_ANEQ(&aw1->v.a.addr, &aw2->v.a.addr, AF_INET6))
 			return (1);
-		if (PF_ANEQ(&aw1->v.a.mask, &aw2->v.a.mask, 0))
+		if (PF_ANEQ(&aw1->v.a.mask, &aw2->v.a.mask, AF_INET6))
 			return (1);
 		return (0);
 	case PF_ADDR_DYNIFTL:
@@ -5845,10 +5845,10 @@ pf_test_state_other(struct pf_state **state, int direction, struct pfi_kif *kif,
 #endif /* INET */
 #ifdef INET6
 		case AF_INET6:
-			if (PF_ANEQ(pd->src, &nk->addr[pd->sidx], AF_INET))
+			if (PF_ANEQ(pd->src, &nk->addr[pd->sidx], AF_INET6))
 				PF_ACPY(pd->src, &nk->addr[pd->sidx], pd->af);
 
-			if (PF_ANEQ(pd->dst, &nk->addr[pd->didx], AF_INET))
+			if (PF_ANEQ(pd->dst, &nk->addr[pd->didx], AF_INET6))
 				PF_ACPY(pd->dst, &nk->addr[pd->didx], pd->af);
 #endif /* INET6 */
 		}
