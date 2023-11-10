@@ -779,10 +779,8 @@ pfr_lookup_addr(struct pfr_ktable *kt, struct pfr_addr *ad, int exact)
 	}
 	if (ADDR_NETWORK(ad)) {
 		pfr_prepare_network(&mask, ad->pfra_af, ad->pfra_net);
-		crit_enter(); /* rn_lookup makes use of globals */
 		ke = (struct pfr_kentry *)rn_lookup((char *)&sa, (char *)&mask,
 		    head);
-		crit_exit();
 		if (ke && KENTRY_RNF_ROOT(ke))
 			ke = NULL;
 	} else {
