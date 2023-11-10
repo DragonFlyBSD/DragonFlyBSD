@@ -180,6 +180,8 @@ MALLOC_DECLARE(M_RTABLE);
 
 #else /* !_KERNEL */
 
+#include <stdbool.h>
+
 #define R_Malloc(p, t, n)	(p = (t) malloc((n)))
 #define R_Free(p)		free(p)
 
