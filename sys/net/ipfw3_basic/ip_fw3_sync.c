@@ -328,10 +328,6 @@ ip_fw3_ctl_sync_centre_test(struct sockopt *sopt)
 	num = sopt->sopt_val;
 	len = sizeof(struct cmd_send_test);
 	m = m_getl(len, M_WAITOK, MT_DATA, M_PKTHDR, &nsize);
-	if (m == NULL) {
-		kprintf("ipfw3sync: MGET failed\n");
-		return -1;
-	}
 	cmd.type = 0;
 	cmd.num = *num;
 	memcpy(m->m_data, &cmd, len);
@@ -448,10 +444,6 @@ ip_fw3_sync_send_state(struct ipfw3_state *state, int cpu, int hash)
 
 	len = sizeof(struct cmd_send_state);
 	m = m_getl(len, M_WAITOK, MT_DATA, M_PKTHDR, &nsize);
-	if (m == NULL) {
-		kprintf("ipfw3sync: MGET failed\n");
-		return;
-	}
 
 	cmd.type = 1;
 	cmd.cpu = cpu;

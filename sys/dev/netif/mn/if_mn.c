@@ -685,8 +685,6 @@ ngmn_connect(hook_p hook)
 	/* XXX: we actually send a 1 byte packet */
 	dp = mn_alloc_desc();
 	MGETHDR(m, M_WAITOK, MT_DATA);
-	if (m == NULL)
-		return (ENOBUFS);
 	m->m_pkthdr.len = 0;
 	dp->m = m;
 	dp->flags = 0xc0000000 + (1 << 16);
@@ -702,16 +700,7 @@ ngmn_connect(hook_p hook)
 	dp = mn_alloc_desc();
 	m = NULL;
 	MGETHDR(m, M_WAITOK, MT_DATA);
-	if (m == NULL) {
-		mn_free_desc(dp);
-		return (ENOBUFS);
-	}
 	MCLGET(m, M_WAITOK);
-	if ((m->m_flags & M_EXT) == 0) {
-		mn_free_desc(dp);
-		m_freem(m);
-		return (ENOBUFS);
-	}
 	dp->m = m;
 	dp->data = vtophys(m->m_data);
 	dp->flags = 0x40000000;
@@ -725,17 +714,7 @@ ngmn_connect(hook_p hook)
 		dp = mn_alloc_desc();
 		m = NULL;
 		MGETHDR(m, M_WAITOK, MT_DATA);
-		if (m == NULL) {
-			mn_free_desc(dp);
-			m_freem(m);
-			return (ENOBUFS);
-		}
 		MCLGET(m, M_WAITOK);
-		if ((m->m_flags & M_EXT) == 0) {
-			mn_free_desc(dp);
-			m_freem(m);
-			return (ENOBUFS);
-		}
 		dp->m = m;
 		dp->data = vtophys(m->m_data);
 		dp->flags = 0x00000000;

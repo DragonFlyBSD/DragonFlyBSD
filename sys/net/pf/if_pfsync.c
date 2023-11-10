@@ -1217,10 +1217,6 @@ pfsync_get_mbuf(struct pfsync_softc *sc, u_int8_t action, void **sp)
 	ASSERT_LWKT_TOKEN_HELD(&pf_token);
 
 	MGETHDR(m, M_WAITOK, MT_DATA);
-	if (m == NULL) {
-		IFNET_STAT_INC(&sc->sc_if, oerrors, 1);
-		return (NULL);
-	}
 
 	switch (action) {
 	case PFSYNC_ACT_CLR:
@@ -1255,11 +1251,6 @@ pfsync_get_mbuf(struct pfsync_softc *sc, u_int8_t action, void **sp)
 
 	if (len > MHLEN) {
 		MCLGET(m, M_WAITOK);
-		if ((m->m_flags & M_EXT) == 0) {
-			m_free(m);
-			IFNET_STAT_INC(&sc->sc_if, oerrors, 1);
-			return (NULL);
-		}
 		m->m_data += rounddown2(MCLBYTES - len, sizeof(long));
 	} else
 		MH_ALIGN(m, len);
@@ -1726,10 +1717,6 @@ pfsync_sendout_mbuf(struct pfsync_softc *sc, struct mbuf *m)
 	if (sc->sc_sync_ifp ||
 	    sc->sc_sync_peer.s_addr != INADDR_PFSYNC_GROUP) {
 		M_PREPEND(m, sizeof(struct ip), M_WAITOK);
-		if (m == NULL) {
-			pfsyncstats.pfsyncs_onomem++;
-			return (0);
-		}
 		ip = mtod(m, struct ip *);
 		ip->ip_v = IPVERSION;
 		ip->ip_hl = sizeof(*ip) >> 2;

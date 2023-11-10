@@ -1286,17 +1286,7 @@ musycc_connect(hook_p hook)
 		sc->mdt[ch][i].data = 0;
 
 		MGETHDR(m, M_WAITOK, MT_DATA);
-		if (m == NULL)
-			goto errfree;
 		MCLGET(m, M_WAITOK);
-		if ((m->m_flags & M_EXT) == 0) {
-			/* We've waited mbuf_wait and still got nothing.
-			   We're calling with MB_WAITOK anyway - a little
-			   defensive programming costs us very little - if
-			   anything at all in the case of error. */
-			m_free(m);
-			goto errfree;
-		}
 		sc->mdr[ch][i].m = m;
 		sc->mdr[ch][i].data = vtophys(m->m_data);
 		sc->mdr[ch][i].status = 1600; /* MTU */
@@ -1316,16 +1306,6 @@ musycc_connect(hook_p hook)
 	tsleep(&sc->last, PCATCH, "con3", hz);
 
 	return (0);
-
-errfree:
-	while (i > 0) {
-		/* Don't leak all the previously allocated mbufs in this loop */
-		i--;
-		m_free(sc->mdr[ch][i].m);
-	}
-	kfree(sc->mdt[ch], M_MUSYCC);
-	kfree(sc->mdr[ch], M_MUSYCC);
-	return (ENOBUFS);
 }
 
 static int

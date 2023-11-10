@@ -714,11 +714,6 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			 */
 			if (sotype == SOCK_STREAM) {
 				M_PREPEND(m, NFSX_UNSIGNED, M_WAITOK);
-				if (m == NULL) {
-					error = ENOBUFS;
-					slplocked = 0;
-					goto skip;
-				}
 				*mtod(m, u_int32_t *) = htonl(0x80000000 | siz);
 			}
 			if ((slp->ns_flag & SLP_VALID) &&
@@ -734,7 +729,6 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			    error = EPIPE;
 			    m_freem(m);
 			}
-skip:
 			if (nfsrtton)
 				nfsd_rt(sotype, nd, cacherep);
 			if (nd->nd_nam2)

@@ -1242,10 +1242,6 @@ nfs_request_auth(struct nfsreq *rep)
 	 */
 	if (nmp->nm_sotype == SOCK_STREAM) {
 		M_PREPEND(m, NFSX_UNSIGNED, M_WAITOK);
-		if (m == NULL) {
-			kfree(rep, M_NFSREQ);
-			return (ENOBUFS);
-		}
 		*mtod(m, u_int32_t *) = htonl(0x80000000 |
 			 (m->m_pkthdr.len - NFSX_UNSIGNED));
 	}

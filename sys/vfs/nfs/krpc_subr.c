@@ -150,8 +150,6 @@ krpc_portmap(struct sockaddr_in *sin,	/* server address */
 	}
 
 	m = m_get(M_WAITOK, MT_DATA);
-	if (m == NULL)
-		return ENOBUFS;
 	sdata = mtod(m, struct sdata *);
 	m->m_len = sizeof(*sdata);
 

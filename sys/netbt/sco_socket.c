@@ -122,8 +122,7 @@ sco_ctloutput(netmsg_t msg)
 
 	case PRCO_SETOPT:
 		m = m_get(M_WAITOK, MT_DATA);
-		KKASSERT(m != NULL);
-		err = soopt_to_kbuf(sopt, mtod(m,void*), m->m_len, m->m_len); 
+		err = soopt_to_kbuf(sopt, mtod(m,void*), m->m_len, m->m_len);
 
 		if (m->m_len == 0) {
 			m_freem(m);

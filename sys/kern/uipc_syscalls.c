@@ -922,10 +922,6 @@ sys_sendmsg(struct sysmsg *sysmsg, const struct sendmsg_args *uap)
 			goto cleanup;
 		}
 		control = m_get(M_WAITOK, MT_CONTROL);
-		if (control == NULL) {
-			error = ENOBUFS;
-			goto cleanup;
-		}
 		control->m_len = msg.msg_controllen;
 		error = copyin(msg.msg_control, mtod(control, caddr_t),
 			       msg.msg_controllen);
@@ -1844,14 +1840,6 @@ retry_lookup:
 		 * Get an mbuf header and set it up as having external storage.
 		 */
 		MGETHDR(m, M_WAITOK, MT_DATA);
-		if (m == NULL) {
-			error = ENOBUFS;
-			vm_page_sbusy_drop(pg);
-			/* vm_page_try_to_free(pg); */
-			sf_buf_free(sf);
-			goto done;
-		}
-
 		m->m_ext.ext_free = sf_buf_mfree;
 		m->m_ext.ext_ref = sf_buf_ref;
 		m->m_ext.ext_arg = sf;

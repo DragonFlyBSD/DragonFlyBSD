@@ -231,11 +231,8 @@ md_lookup_swap(struct sockaddr_in *mdsin,	/* mountd server address */
 		u_int32_t v2[17];
 		u_int32_t v3[21];
 	} fattribs;
-	
-	m = m_get(M_WAITOK,MT_DATA);
-	if (m == NULL)
-	  	return ENOBUFS;
-	
+
+	m = m_get(M_WAITOK, MT_DATA);
 	if ((args->flags & NFSMNT_NFSV3) != 0) {
 		*mtod(m, u_int32_t *) = txdr_unsigned(*fhsizep);
 		bcopy(fhp, mtod(m, u_char *) + sizeof(u_int32_t), *fhsizep);

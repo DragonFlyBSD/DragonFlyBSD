@@ -869,8 +869,6 @@ tunwrite(struct dev_write_args *ap)
 
 	/* get a header mbuf */
 	MGETHDR(m, M_WAITOK, MT_DATA);
-	if (m == NULL)
-		return (ENOBUFS);
 
 	tlen = uio->uio_resid;
 	top = NULL;
@@ -880,13 +878,8 @@ tunwrite(struct dev_write_args *ap)
 		error = uiomove(mtod(m, caddr_t), (size_t)m->m_len, uio);
 		*mp = m;
 		mp = &m->m_next;
-		if (uio->uio_resid > 0) {
+		if (uio->uio_resid > 0)
 			MGET(m, M_WAITOK, MT_DATA);
-			if (m == NULL) {
-				error = ENOBUFS;
-				break;
-			}
-		}
 	}
 	if (error) {
 		if (top)

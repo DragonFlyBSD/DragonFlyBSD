@@ -1770,8 +1770,6 @@ unp_internalize(struct mbuf *control, struct thread *td)
 		if (control->m_flags & M_EXT)
 			return E2BIG;
 		MCLGET(control, M_WAITOK);
-		if (!(control->m_flags & M_EXT))
-			return ENOBUFS;
 
 		/* copy the data to the cluster */
 		memcpy(mtod(control, char *), cm, cm->cmsg_len);

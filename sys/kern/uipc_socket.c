@@ -1287,8 +1287,6 @@ soreceive(struct socket *so, struct sockaddr **psa, struct uio *uio,
 		flags = 0;
 	if (flags & MSG_OOB) {
 		m = m_get(M_WAITOK, MT_DATA);
-		if (m == NULL)
-			return (ENOBUFS);
 		error = so_pru_rcvoob(so, m, flags & MSG_PEEK);
 		if (error)
 			goto bad;
@@ -1637,8 +1635,6 @@ sorecvtcp(struct socket *so, struct sockaddr **psa, struct uio *uio,
 		flags = 0;
 	if (flags & MSG_OOB) {
 		m = m_get(M_WAITOK, MT_DATA);
-		if (m == NULL)
-			return (ENOBUFS);
 		error = so_pru_rcvoob(so, m, flags & MSG_PEEK);
 		if (error)
 			goto bad;

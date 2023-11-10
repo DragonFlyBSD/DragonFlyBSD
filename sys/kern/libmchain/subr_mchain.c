@@ -73,8 +73,6 @@ mb_init(struct mbchain *mbp)
 	struct mbuf *m;
 
 	m = m_gethdr(M_WAITOK, MT_DATA);
-	if (m == NULL)
-		return ENOBUFS;
 	m->m_pkthdr.rcvif = NULL;
 	m->m_len = 0;
 	mb_initm(mbp, m);
@@ -131,8 +129,6 @@ mb_reserve(struct mbchain *mbp, int size)
 	m = mbp->mb_cur;
 	if (mbp->mb_mleft < size) {
 		mn = m_get(M_WAITOK, MT_DATA);
-		if (mn == NULL)
-			return NULL;
 		mbp->mb_cur = m->m_next = mn;
 		m = mn;
 		m->m_len = 0;
@@ -207,11 +203,8 @@ mb_put_mem(struct mbchain *mbp, c_caddr_t source, int size, int type)
 
 	while (size > 0) {
 		if (mleft == 0) {
-			if (m->m_next == NULL) {
+			if (m->m_next == NULL)
 				m->m_next = m_getc(size, M_WAITOK, MT_DATA);
-				if (m->m_next == NULL)
-					return ENOBUFS;
-			}
 			m = m->m_next;
 			mleft = M_TRAILINGSPACE(m);
 			continue;
@@ -313,8 +306,6 @@ md_init(struct mdchain *mdp)
 	struct mbuf *m;
 
 	m = m_gethdr(M_WAITOK, MT_DATA);
-	if (m == NULL)
-		return ENOBUFS;
 	m->m_pkthdr.rcvif = NULL;
 	m->m_len = 0;
 	md_initm(mdp, m);
