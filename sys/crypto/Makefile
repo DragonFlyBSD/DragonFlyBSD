@@ -1,28 +1,38 @@
 # $FreeBSD: src/sys/modules/crypto/Makefile,v 1.6 2007/05/09 19:37:01 gnn Exp $
 
+KMOD=	crypto
+
 .PATH:	${.CURDIR}/../opencrypto
-.PATH:	${.CURDIR}
+# excluded: cryptodev.c
+SRCS=	cast.c criov.c crypto.c cryptosoft.c deflate.c gmac.c rmd160.c \
+	skipjack.c xform.c
+SRCS+=	cryptodev_if.c cryptodev_if.h
+
+SRCS+=	sha1.c
+
 .PATH:	${.CURDIR}/blowfish
-.PATH:	${.CURDIR}/des
-.PATH:	${.CURDIR}/rijndael
-.PATH:	${.CURDIR}/sha2
+SRCS+=	bf_enc.c bf_skey.c
+
 .PATH:	${.CURDIR}/camellia
-.PATH:	${.CURDIR}/twofish
+SRCS+=	camellia.c camellia-api.c
+
+.PATH:	${.CURDIR}/des
+SRCS+=	des_ecb.c des_enc.c des_setkey.c
+
+.PATH:	${.CURDIR}/rijndael
+SRCS+=	rijndael-alg-fst.c rijndael-api.c
+
 .PATH:	${.CURDIR}/serpent
+SRCS+=	serpent.c
 
-KMOD	= crypto
-SRCS	= crypto.c cryptodev_if.c gmac.c
-SRCS	+= criov.c cryptosoft.c xform.c
-SRCS	+= cast.c deflate.c rmd160.c rijndael-alg-fst.c rijndael-api.c
-SRCS	+= skipjack.c bf_enc.c bf_skey.c
-SRCS	+= des_ecb.c des_enc.c des_setkey.c
-SRCS	+= sha1.c sha2.c
-SRCS	+= cryptodev_if.h bus_if.h device_if.h
-SRCS	+= opt_ddb.h
-SRCS	+= camellia.c camellia-api.c
-SRCS	+= twofish.c
-SRCS	+= serpent.c
+.PATH:	${.CURDIR}/sha2
+SRCS+=	sha2.c
 
-SUBDIR	= rc4
+.PATH:	${.CURDIR}/twofish
+SRCS+=	twofish.c
+
+SRCS+=	bus_if.h device_if.h opt_ddb.h
+
+SUBDIR=	rc4
 
 .include <bsd.kmod.mk>
