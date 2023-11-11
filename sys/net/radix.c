@@ -383,7 +383,7 @@ rn_insert(const char *key, struct radix_node_head *head, bool *dupentry,
 	int head_off = top->rn_offset, klen = clen(key);
 	struct radix_node *t = rn_search(key, top);
 	const char *cp = key + head_off;
-	int b;
+	unsigned int b;
 	struct radix_node *tt;
 
 	/*
