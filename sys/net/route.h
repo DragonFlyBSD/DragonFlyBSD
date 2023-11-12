@@ -75,15 +75,7 @@
 #include <sys/socket.h>
 #endif
 
-/*
- * XXX(ALY): sbin/routed bundles its own version of radix.[ch], which is
- * older but its structs are still compatible.  So abuse the 'RNF_NORMAL'
- * macro to prevent from including both versions and breaking the build.
- * TODO: Make sys/net/radix.[ch] be used by both kernel and sbin/routed.
- */
-#ifndef RNF_NORMAL
 #include <net/radix.h>
-#endif
 
 /*
  * Kernel resident routing tables.
