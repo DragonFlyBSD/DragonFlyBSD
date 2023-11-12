@@ -512,7 +512,7 @@ ifdel(struct interface *ifp)
 		 * Assume routes just using gateways beyond this interface
 		 * will timeout naturally, and have probably already died.
 		 */
-		rn_walktree(rhead, walk_bad, 0);
+		rhead->rnh_walktree(rhead, walk_bad, NULL);
 
 		set_rdisc_mg(ifp, 0);
 		if_bad_rdisc(ifp);
@@ -563,7 +563,7 @@ if_bad(struct interface *ifp)
 			    && !strcmp(ifp->int_name, ifp1->int_name))
 				if_bad(ifp1);
 		}
-		rn_walktree(rhead, walk_bad, 0);
+		rhead->rnh_walktree(rhead, walk_bad, NULL);
 		if_bad_rdisc(ifp);
 	}
 }

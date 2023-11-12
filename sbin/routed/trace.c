@@ -795,9 +795,8 @@ trace_add_del(const char * action, struct rt_entry *rt)
 }
 
 
-/* ARGSUSED */
 static int
-walk_trace(struct radix_node *rn, __unused struct walkarg *w)
+walk_trace(struct radix_node *rn, void *w __unused)
 {
 #define RT ((struct rt_entry *)rn)
 	struct rt_spare *rts;
@@ -838,7 +837,7 @@ trace_dump(void)
 	fputs("current daemon state:\n", ftrace);
 	for (ifp = ifnet; ifp != NULL; ifp = ifp->int_next)
 		trace_if("", ifp);
-	rn_walktree(rhead, walk_trace, 0);
+	rhead->rnh_walktree(rhead, walk_trace, NULL);
 }
 
 

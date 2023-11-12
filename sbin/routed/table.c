@@ -1378,9 +1378,8 @@ kern_out(struct ag_info *ag)
 }
 
 
-/* ARGSUSED */
 static int
-walk_kern(struct radix_node *rn, __unused struct walkarg *argp)
+walk_kern(struct radix_node *rn, void *argp __unused)
 {
 #define RT ((struct rt_entry *)rn)
 	char metric, pref;
@@ -1467,8 +1466,8 @@ fix_kern(void)
 
 	/* Walk daemon table, updating the copy of the kernel table.
 	 */
-	rn_walktree(rhead, walk_kern, 0);
-	ag_flush(0,0,kern_out);
+	rhead->rnh_walktree(rhead, walk_kern, NULL);
+	ag_flush(0, 0, kern_out);
 
 	for (i = 0; i < KHASH_SIZE; i++) {
 		for (pk = &khash_bins[i]; (k = *pk) != NULL; ) {
@@ -1595,7 +1594,6 @@ del_redirects(naddr bad_gate,
 
 /* Start the daemon tables.
  */
-extern int max_keylen;
 
 void
 rtinit(void)
@@ -1604,9 +1602,8 @@ rtinit(void)
 	struct ag_info *ag;
 
 	/* Initialize the radix trees */
-	max_keylen = sizeof(struct sockaddr_in);
 	rn_init();
-	rn_inithead(&rhead, 32);
+	rn_inithead((void **)&rhead, rn_cpumaskhead(0), 32);
 
 	/* mark all of the slots in the table free */
 	ag_avail = ag_slots;
@@ -1649,7 +1646,9 @@ rtget(naddr dst, naddr mask)
 	dst_sock.sin_addr.s_addr = dst;
 	mask_sock.sin_addr.s_addr = htonl(mask);
 	masktrim(&mask_sock);
-	rt = (struct rt_entry *)rhead->rnh_lookup(&dst_sock,&mask_sock,rhead);
+	rt = (struct rt_entry *)rhead->rnh_lookup((const char *)&dst_sock,
+						  (const char *)&mask_sock,
+						  rhead);
 	if (!rt
 	    || rt->rt_dst != dst
 	    || rt->rt_mask != mask)
@@ -1665,7 +1664,8 @@ struct rt_entry *
 rtfind(naddr dst)
 {
 	dst_sock.sin_addr.s_addr = dst;
-	return (struct rt_entry *)rhead->rnh_matchaddr(&dst_sock, rhead);
+	return (struct rt_entry *)rhead->rnh_matchaddr(
+	    (const char *)&dst_sock, rhead);
 }
 
 
@@ -1715,8 +1715,9 @@ rtadd(naddr	dst,
 	need_kern.tv_sec = now.tv_sec;
 	set_need_flash();
 
-	if (0 == rhead->rnh_addaddr(&rt->rt_dst_sock, &mask_sock,
-				    rhead, rt->rt_nodes)) {
+	if (rhead->rnh_addaddr((const char *)&rt->rt_dst_sock,
+			       (const char *)&mask_sock, rhead,
+			       rt->rt_nodes) == NULL) {
 		msglog("rnh_addaddr() failed for %s mask=%#lx",
 		       naddr_ntoa(dst), (u_long)mask);
 		free(rt);
@@ -1840,8 +1841,8 @@ rtdelete(struct rt_entry *rt)
 	dst_sock.sin_addr.s_addr = rt->rt_dst;
 	mask_sock.sin_addr.s_addr = htonl(rt->rt_mask);
 	masktrim(&mask_sock);
-	if (rt != (struct rt_entry *)rhead->rnh_deladdr(&dst_sock, &mask_sock,
-							rhead)) {
+	if (rt != (struct rt_entry *)rhead->rnh_deladdr(
+	    (const char *)&dst_sock, (const char *)&mask_sock, rhead)) {
 		msglog("rnh_deladdr() failed");
 	} else {
 		free(rt);
@@ -1902,7 +1903,6 @@ rtbad_sub(struct rt_entry *rt)
 				break;
 			}
 		}
-
 	}
 
 	if (!(state & RS_LOCAL)) {
@@ -1947,9 +1947,8 @@ rtbad_sub(struct rt_entry *rt)
 /* Called while walking the table looking for sick interfaces
  * or after a time change.
  */
-/* ARGSUSED */
 int
-walk_bad(struct radix_node *rn, __unused struct walkarg *argp)
+walk_bad(struct radix_node *rn, void *argp __unused)
 {
 #define RT ((struct rt_entry *)rn)
 	struct rt_spare *rts;
@@ -1989,9 +1988,8 @@ walk_bad(struct radix_node *rn, __unused struct walkarg *argp)
 
 /* Check the age of an individual route.
  */
-/* ARGSUSED */
 static int
-walk_age(struct radix_node *rn, __unused struct walkarg *argp)
+walk_age(struct radix_node *rn, void *argp __unused)
 {
 #define RT ((struct rt_entry *)rn)
 	struct interface *ifp;
@@ -2113,7 +2111,7 @@ age(naddr bad_gate)
 
 	/* Age routes. */
 	age_bad_gate = bad_gate;
-	rn_walktree(rhead, walk_age, 0);
+	rhead->rnh_walktree(rhead, walk_age, NULL);
 
 	/* delete old redirected routes to keep the kernel table small
 	 * and prevent blackholes

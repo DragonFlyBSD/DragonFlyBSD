@@ -435,9 +435,8 @@ supply_out(struct ag_info *ag)
 
 /* supply one route from the table
  */
-/* ARGSUSED */
 static int
-walk_supply(struct radix_node *rn, __unused struct walkarg *argp)
+walk_supply(struct radix_node *rn, void *argp __unused)
 {
 #define RT ((struct rt_entry *)rn)
 	u_short ags;
@@ -776,8 +775,8 @@ supply(struct sockaddr_in *dst,
 		}
 	}
 
-	rn_walktree(rhead, walk_supply, 0);
-	ag_flush(0,0,supply_out);
+	rhead->rnh_walktree(rhead, walk_supply, NULL);
+	ag_flush(0, 0, supply_out);
 
 	/* Flush the packet buffers, provided they are not empty and
 	 * do not contain only the password.

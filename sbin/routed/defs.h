@@ -72,7 +72,6 @@
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
 #include <sys/socket.h>
-#include "radix.h"
 #include <net/if.h>
 #include <net/route.h>
 #include <net/if_dl.h>
@@ -602,7 +601,7 @@ extern struct interface *check_dup(naddr, naddr, naddr, int);
 extern int	check_remote(struct interface *);
 extern int	addrouteforif(struct interface *);
 extern void	ifinit(void);
-extern int	walk_bad(struct radix_node *, struct walkarg *);
+extern int	walk_bad(struct radix_node *, void *);
 extern int	if_ok(struct interface *, const char *);
 extern void	if_sick(struct interface *);
 extern void	if_bad(struct interface *);
