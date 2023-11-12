@@ -61,8 +61,8 @@
 static struct radix_mask *rn_mkfreelist[MAXCPU];
 static struct radix_node_head *mask_rnheads[MAXCPU];
 
-static char rn_zeros[RN_MAXKEYLEN];
-static char rn_ones[RN_MAXKEYLEN] = RN_MAXKEYONES;
+static const char rn_zeros[RN_MAXKEYLEN];
+static const char rn_ones[RN_MAXKEYLEN] = RN_MAXKEYONES;
 
 #ifdef RN_DEBUG
 static int rn_nodenum;
