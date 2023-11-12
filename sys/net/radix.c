@@ -37,18 +37,35 @@
 #include <sys/param.h>
 #ifdef	_KERNEL
 #include <sys/systm.h>
-#include <sys/malloc.h>
 #include <sys/domain.h>
 #include <sys/globaldata.h>
-#include <sys/thread.h>
-#else
-#include <stdlib.h>
-#endif
+#include <sys/malloc.h>
+#include <sys/queue.h>
 #include <sys/syslog.h>
-
-#include <net/radix.h>
-#include <net/netmsg2.h>
+#include <sys/thread.h>
 #include <net/netisr2.h>
+#include <net/netmsg2.h>
+#else
+#include <stdio.h>
+#include <stdlib.h>
+#include <strings.h>
+#include <syslog.h>
+#endif
+#include <net/radix.h>
+
+#ifndef _KERNEL
+#undef MAXCPU
+#define MAXCPU			1
+#define mycpuid			0
+#define log(l, ...)		syslog(l, __VA_ARGS__)
+#define kprintf(fmt, ...)	printf(fmt, ##__VA_ARGS__)
+#define print_backtrace(...)	/* nothing */
+#define panic(fmt, ...) \
+	do { \
+		fprintf(stderr, "PANIC: " fmt "\n", ##__VA_ARGS__); \
+		abort(); \
+	} while (0)
+#endif
 
 /*
  * The arguments to the radix functions are really counted byte arrays with
@@ -228,11 +245,11 @@ rn_satisfies_leaf(const char *trial, struct radix_node *leaf, int skip)
 	const char *cplim;
 	int length;
 
-	length = min(clen(cp), clen(cp2));
+	length = MIN(clen(cp), clen(cp2));
 	if (cp3 == NULL)
 		cp3 = rn_ones;
 	else
-		length = min(length, clen(cp3));
+		length = MIN(length, clen(cp3));
 
 	cplim = cp + length;
 	cp2 += skip;
@@ -332,7 +349,7 @@ on1:
 				if (rn_bit <= m->rm_bit)
 					return (m->rm_leaf);
 			} else {
-				off = min(t->rn_offset, matched_off);
+				off = MIN(t->rn_offset, matched_off);
 				x = rn_search_m(key, t, m->rm_mask);
 				while (x != NULL && x->rn_mask != m->rm_mask)
 					x = x->rn_dupedkey;
@@ -1116,6 +1133,8 @@ rn_inithead(void **head, struct radix_node_head *maskhead, int off)
 	return (1);
 }
 
+#ifdef _KERNEL
+
 static void
 rn_init_handler(netmsg_t msg)
 {
@@ -1123,7 +1142,7 @@ rn_init_handler(netmsg_t msg)
 
 	ASSERT_NETISR_NCPUS(cpu);
 	if (rn_inithead((void **)&mask_rnheads[cpu], NULL, 0) == 0)
-		panic("rn_init 2");
+		panic("rn_init 1");
 
 	netisr_forwardmsg(&msg->base, cpu + 1);
 }
@@ -1132,7 +1151,6 @@ void
 rn_init(void)
 {
 	struct netmsg_base msg;
-#ifdef _KERNEL
 	struct domain *dom;
 
 	SLIST_FOREACH(dom, &domains, dom_next) {
@@ -1141,7 +1159,6 @@ rn_init(void)
 			      dom->dom_name, dom->dom_maxrtkey, RN_MAXKEYLEN);
 		}
 	}
-#endif
 
 	netmsg_init(&msg, NULL, &curthread->td_msgport, 0, rn_init_handler);
 	netisr_domsg_global(&msg);
@@ -1154,3 +1171,20 @@ rn_cpumaskhead(int cpu)
 	KKASSERT(mask_rnheads[cpu] != NULL);
 	return mask_rnheads[cpu];
 }
+
+#else /* !_KERNEL */
+
+void
+rn_init(void)
+{
+	if (rn_inithead((void **)&mask_rnheads[0], NULL, 0) == 0)
+		panic("rn_init 2");
+}
+
+struct radix_node_head *
+rn_cpumaskhead(int cpu __unused)
+{
+	return mask_rnheads[0];
+}
+
+#endif /* _KERNEL */
