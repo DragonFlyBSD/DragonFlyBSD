@@ -1090,8 +1090,28 @@ rn_walktree(struct radix_node_head *h, walktree_f_t *f, void *w)
 	return rn_walktree_at(h, NULL, NULL, f, w);
 }
 
+/*
+ * Allocate and initialize an empty radix tree at <head>.
+ *
+ * The created radix_node_head embeds 3 nodes in the order of
+ * {left,root,right}.  These nodes are flagged with RNF_ROOT and thus
+ * cannot be freed.  The left and right leaves are initialized with
+ * all-zero and all-one keys, respectively, and with the significant
+ * byte starting at <off_bytes>.
+ *
+ * The <maskhead> refers to another radix tree for storing the network
+ * masks (so aka mask tree).  It is also created by this function with
+ * <maskhead>=NULL; the <off_bytes> parameter is ignored and auto set
+ * to be zero (0).  The reason of requiring <off_bytes> be zero is that
+ * a mask tree can be shared with multiple radix trees of different
+ * address families that have different offset bytes; e.g.,
+ * offsetof(struct sockaddr_in, sin_addr) !=
+ * offsetof(struct sockaddr_in6, sin6_addr).
+ *
+ * Return 1 on success, 0 on error.
+ */
 int
-rn_inithead(void **head, struct radix_node_head *maskhead, int off)
+rn_inithead(void **head, struct radix_node_head *maskhead, int off_bytes)
 {
 	struct radix_node_head *rnh;
 	struct radix_node *root, *left, *right;
@@ -1103,17 +1123,22 @@ rn_inithead(void **head, struct radix_node_head *maskhead, int off)
 	if (rnh == NULL)
 		return (0);
 
+	if (maskhead == NULL)	/* mask tree initialization */
+		off_bytes = 0;
+	if (off_bytes >= RN_MAXKEYLEN)	/* prevent possible misuse */
+		panic("%s: invalid off_bytes=%d", __func__, off_bytes);
+
 	bzero(rnh, sizeof *rnh);
 	*head = rnh;
 
-	root = rn_newpair(rn_zeros, off, rnh->rnh_nodes);
+	root = rn_newpair(rn_zeros, off_bytes * NBBY, rnh->rnh_nodes);
 	right = &rnh->rnh_nodes[2];
 	root->rn_parent = root;
 	root->rn_flags = RNF_ROOT | RNF_ACTIVE;
 	root->rn_right = right;
 
 	left = root->rn_left;
-	left->rn_bit = -1 - off;
+	left->rn_bit = -1 - off_bytes * NBBY;
 	left->rn_flags = root->rn_flags;
 
 	*right = *left;

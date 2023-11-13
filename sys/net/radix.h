@@ -189,7 +189,8 @@ MALLOC_DECLARE(M_RTABLE);
 
 void			 rn_init(void);
 int			 rn_inithead(void **head,
-				     struct radix_node_head *maskhead, int off);
+				     struct radix_node_head *maskhead,
+				     int off_bytes);
 struct radix_node_head	*rn_cpumaskhead(int cpu);
 bool			 rn_refines(const char *m, const char *n);
 struct radix_node	*rn_addmask(const char *mask, bool search, int skip,
