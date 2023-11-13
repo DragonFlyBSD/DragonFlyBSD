@@ -619,9 +619,7 @@ rt_xaddrs(struct rt_addrinfo *info,
 	  int addrs)
 {
 	int i;
-#ifdef _HAVE_SA_LEN
 	static struct sockaddr sa_zero;
-#endif
 #define ROUNDUP(a) RT_ROUNDUP(a)
 
 
@@ -630,15 +628,9 @@ rt_xaddrs(struct rt_addrinfo *info,
 	for (i = 0; i < RTAX_MAX && sa < lim; i++) {
 		if ((addrs & (1 << i)) == 0)
 			continue;
-#ifdef _HAVE_SA_LEN
 		info->rti_info[i] = (sa->sa_len != 0) ? sa : &sa_zero;
 		sa = (struct sockaddr *)((char*)(sa)
 					 + ROUNDUP(sa->sa_len));
-#else
-		info->rti_info[i] = sa;
-		sa = (struct sockaddr *)((char*)(sa)
-					 + ROUNDUP(_FAKE_SA_LEN_DST(sa)));
-#endif
 	}
 }
 

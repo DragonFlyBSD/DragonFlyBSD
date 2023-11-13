@@ -692,9 +692,7 @@ send_rdisc(union ad_u *p,
 	memset(&in, 0, sizeof(in));
 	in.sin_addr.s_addr = dst;
 	in.sin_family = AF_INET;
-#ifdef _HAVE_SIN_LEN
 	in.sin_len = sizeof(in);
-#endif
 	flags = MSG_DONTROUTE;
 
 	switch (type) {

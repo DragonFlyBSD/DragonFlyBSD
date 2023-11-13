@@ -35,11 +35,7 @@
 static struct rt_spare *rts_better(struct rt_entry *);
 static struct rt_spare rts_empty = {0,0,0,HOPCNT_INFINITY,0,0,0};
 static void  set_need_flash(void);
-#ifdef _HAVE_SIN_LEN
 static void masktrim(struct sockaddr_in *ap);
-#else
-static void masktrim(struct sockaddr_in_new *ap);
-#endif
 
 
 struct radix_node_head *rhead;		/* root of the radix tree */
@@ -648,12 +644,8 @@ rtm_type_name(u_char type)
  *	Produce a length of 0 for an address of 0.
  *	Otherwise produce the index of the first zero byte.
  */
-void
-#ifdef _HAVE_SIN_LEN
+static void
 masktrim(struct sockaddr_in *ap)
-#else
-masktrim(struct sockaddr_in_new *ap)
-#endif
 {
 	char *cp;
 
@@ -682,11 +674,7 @@ rtioctl(int action,			/* RTM_DELETE, etc */
 		struct rt_msghdr w_rtm;
 		struct sockaddr_in w_dst;
 		struct sockaddr_in w_gate;
-#ifdef _HAVE_SA_LEN
 		struct sockaddr_in w_mask;
-#else
-		struct sockaddr_in_new w_mask;
-#endif
 	} w;
 	long cc;
 #   define PAT " %-10s %s metric=%d flags=%#x"
@@ -708,22 +696,18 @@ again:
 	w.w_dst.sin_addr.s_addr = dst;
 	w.w_gate.sin_family = AF_INET;
 	w.w_gate.sin_addr.s_addr = gate;
-#ifdef _HAVE_SA_LEN
 	w.w_dst.sin_len = sizeof(w.w_dst);
 	w.w_gate.sin_len = sizeof(w.w_gate);
-#endif
 	if (mask == HOST_MASK) {
 		w.w_rtm.rtm_flags |= RTF_HOST;
 		w.w_rtm.rtm_msglen -= sizeof(w.w_mask);
 	} else {
 		w.w_rtm.rtm_addrs |= RTA_NETMASK;
 		w.w_mask.sin_addr.s_addr = htonl(mask);
-#ifdef _HAVE_SA_LEN
 		masktrim(&w.w_mask);
 		if (w.w_mask.sin_len == 0)
 			w.w_mask.sin_len = sizeof(long);
 		w.w_rtm.rtm_msglen -= (sizeof(w.w_mask) - w.w_mask.sin_len);
-#endif
 	}
 
 #ifndef NO_INSTALL
@@ -1021,9 +1005,7 @@ get_info_gate(struct sockaddr **sap,
 		return 0;
 
 	in->sin_addr.s_addr = ifp->int_addr;
-#ifdef _HAVE_SA_LEN
 	in->sin_len = sizeof(*in);
-#endif
 	in->sin_family = AF_INET;
 	*sap = (struct sockaddr *)in;
 
@@ -1614,13 +1596,8 @@ rtinit(void)
 }
 
 
-#ifdef _HAVE_SIN_LEN
 static struct sockaddr_in dst_sock = {sizeof(dst_sock), AF_INET, 0, {0}, {0}};
 static struct sockaddr_in mask_sock = {sizeof(mask_sock), AF_INET, 0, {0}, {0}};
-#else
-static struct sockaddr_in_new dst_sock = {_SIN_ADDR_SIZE, AF_INET};
-static struct sockaddr_in_new mask_sock = {_SIN_ADDR_SIZE, AF_INET};
-#endif
 
 
 static void
@@ -1690,9 +1667,7 @@ rtadd(naddr	dst,
 	rt->rt_nodes->rn_key = (caddr_t)&rt->rt_dst_sock;
 	rt->rt_dst = dst;
 	rt->rt_dst_sock.sin_family = AF_INET;
-#ifdef _HAVE_SIN_LEN
 	rt->rt_dst_sock.sin_len = dst_sock.sin_len;
-#endif
 	if (mask != HOST_MASK) {
 		smask = std_mask(dst);
 		if ((smask & ~mask) == 0 && mask > smask)

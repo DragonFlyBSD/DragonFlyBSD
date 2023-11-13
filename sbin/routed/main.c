@@ -624,9 +624,7 @@ get_rip_sock(naddr addr,
 		BADERR(1,"rip_sock = socket()");
 
 	memset(&in, 0, sizeof(in));
-#ifdef _HAVE_SIN_LEN
 	in.sin_len = sizeof(in);
-#endif
 	in.sin_family = AF_INET;
 	in.sin_port = htons(RIP_PORT);
 	in.sin_addr.s_addr = addr;

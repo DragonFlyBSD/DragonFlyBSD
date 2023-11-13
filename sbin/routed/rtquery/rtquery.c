@@ -56,8 +56,6 @@ static char sccsid[] __attribute__((unused))= "@(#)query.c	8.1 (Berkeley) 6/5/93
 __RCSID("$NetBSD: rtquery.c,v 1.10 1999/02/23 10:47:41 christos Exp $");
 #endif
 
-#define _HAVE_SIN_LEN
-
 #define	WTIME	15		/* Time to wait for all responses */
 #define	STIME	(250*1000)	/* usec to wait for another response */
 
@@ -311,9 +309,7 @@ trace_loop(char *argv[])
 
 	memset(&myaddr, 0, sizeof(myaddr));
 	myaddr.sin_family = AF_INET;
-#ifdef _HAVE_SIN_LEN
 	myaddr.sin_len = sizeof(myaddr);
-#endif
 	myaddr.sin_port = htons(IPPORT_RESERVED-1);
 	while (bind(soc, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) {
 		if (errno != EADDRINUSE
@@ -487,9 +483,7 @@ out(const char *host)
 
 	memset(&router, 0, sizeof(router));
 	router.sin_family = AF_INET;
-#ifdef _HAVE_SIN_LEN
 	router.sin_len = sizeof(router);
-#endif
 	if (!inet_aton(host, &router.sin_addr)) {
 		hp = gethostbyname(host);
 		if (hp == NULL) {

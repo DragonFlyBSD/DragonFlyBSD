@@ -102,10 +102,8 @@ output(enum output_type type,
 	in = *dst;
 	if (in.sin_port == 0)
 		in.sin_port = htons(RIP_PORT);
-#ifdef _HAVE_SIN_LEN
 	if (in.sin_len == 0)
 		in.sin_len = sizeof(in);
-#endif
 
 	soc = rip_sock;
 	flags = 0;
@@ -804,11 +802,7 @@ supply(struct sockaddr_in *dst,
 void
 rip_bcast(int flash)
 {
-#ifdef _HAVE_SIN_LEN
 	static struct sockaddr_in dst = {sizeof(dst), AF_INET, 0, {0}, {0}};
-#else
-	static struct sockaddr_in dst = {AF_INET};
-#endif
 	struct interface *ifp;
 	enum output_type type;
 	int vers;
@@ -880,11 +874,7 @@ rip_bcast(int flash)
 void
 rip_query(void)
 {
-#ifdef _HAVE_SIN_LEN
 	static struct sockaddr_in dst = {sizeof(dst), AF_INET, 0, {0}, {0}};
-#else
-	static struct sockaddr_in dst = {AF_INET};
-#endif
 	struct interface *ifp;
 	struct rip buf;
 	enum output_type type;

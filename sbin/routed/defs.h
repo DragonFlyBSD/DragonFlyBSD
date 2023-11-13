@@ -90,12 +90,8 @@
  */
 #if defined (__NetBSD__)
 #define naddr u_int32_t
-#define _HAVE_SA_LEN
-#define _HAVE_SIN_LEN
 #else
 #define naddr u_long
-#define _HAVE_SA_LEN
-#define _HAVE_SIN_LEN
 #endif
 
 /* Turn on if IP_DROP_MEMBERSHIP and IP_ADD_MEMBERSHIP do not look at
