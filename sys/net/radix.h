@@ -43,7 +43,6 @@ struct radix_node {
 	struct	radix_mask *rn_mklist;	/* masks contained in subtree */
 	struct	radix_node *rn_parent;	/* parent */
 	short	rn_bit;			/* bit offset; -1-index(netmask) */
-	char	rn_bmask;		/* node: mask for bit test */
 	u_char	rn_flags;		/* enumerated next */
 #define RNF_NORMAL	1		/* leaf contains normal route */
 #define RNF_ROOT	2		/* leaf is root leaf for tree */
@@ -56,10 +55,11 @@ struct radix_node {
 		} rn_leaf;
 		struct {			/* node only data: */
 			int	rn_Offset;	/* where to start compare */
-			struct	radix_node *rn_L; /* progeny */
-			struct	radix_node *rn_R; /* progeny */
+			char	rn_Bmask;	/* byte mask for bit test */
+			struct	radix_node *rn_Left; /* progeny */
+			struct	radix_node *rn_Right; /* progeny */
 		} rn_node;
-	}		rn_u;
+	}	rn_u;
 #ifdef RN_DEBUG
 	int rn_info;
 	struct radix_node *rn_twin;
@@ -71,8 +71,9 @@ struct radix_node {
 #define	rn_key		rn_u.rn_leaf.rn_Key
 #define	rn_mask		rn_u.rn_leaf.rn_Mask
 #define	rn_offset	rn_u.rn_node.rn_Offset
-#define	rn_left		rn_u.rn_node.rn_L
-#define	rn_right	rn_u.rn_node.rn_R
+#define	rn_bmask	rn_u.rn_node.rn_Bmask
+#define	rn_left		rn_u.rn_node.rn_Left
+#define	rn_right	rn_u.rn_node.rn_Right
 
 /*
  * We do this statically now because the dynamic initialization
