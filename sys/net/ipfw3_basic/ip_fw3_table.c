@@ -97,13 +97,15 @@ table_create_dispatch(netmsg_t nmsg)
 	strlcpy(table_ctx->name , ioc_table->name, IPFW_TABLE_NAME_LEN);
 	if (table_ctx->type == 1) {
 		rn_inithead((void **)&table_ctx->mask, NULL, 0);
-		rn_inithead((void **)&table_ctx->node, table_ctx->mask, 32);
-        } else if (table_ctx->type == 2) {
-                rn_inithead((void **)&table_ctx->mask, NULL, 0);
-		rn_inithead((void **)&table_ctx->node, table_ctx->mask, 48);
-        } else {
-                goto done;
-        }
+		rn_inithead((void **)&table_ctx->node, table_ctx->mask,
+			    offsetof(struct sockaddr_in, sin_addr) * NBBY);
+	} else if (table_ctx->type == 2) {
+		rn_inithead((void **)&table_ctx->mask, NULL, 0);
+		rn_inithead((void **)&table_ctx->node, table_ctx->mask,
+			    offsetof(struct sockaddr, sa_data) * NBBY);
+	} else {
+		goto done;
+	}
 done:
 	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
@@ -163,7 +165,8 @@ table_append_dispatch(netmsg_t nmsg)
                 if (ent == NULL)
                         return;
                 mlen = ioc_tbl->ip_ent->masklen;
-                ent->addr.sin_len = ent->mask.sin_len = 8;
+                ent->addr.sin_len = sizeof(ent->addr);
+                ent->mask.sin_len = sizeof(ent->mask);
                 ent->mask.sin_addr.s_addr = htonl(~((1 << (32 - mlen)) - 1));
                 ent->addr.sin_addr.s_addr = ioc_tbl->ip_ent->addr &
                                                 ent->mask.sin_addr.s_addr;
@@ -181,7 +184,7 @@ table_append_dispatch(netmsg_t nmsg)
                                 M_IPFW3_TABLE, M_NOWAIT | M_ZERO);
                 if (ent == NULL)
                         return;
-                ent->addr.sa_len = 8;
+                ent->addr.sa_len = offsetof(struct sockaddr, sa_data[6]);
                 strncpy(ent->addr.sa_data, ioc_tbl->mac_ent->addr.octet, 6);
 
                 if (rnh->rnh_addaddr((char *)&ent->addr,
