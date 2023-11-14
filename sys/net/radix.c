@@ -1169,6 +1169,80 @@ rn_inithead(void **head, struct radix_node_head *maskhead, int off_bytes)
 	return (1);
 }
 
+/*
+ * Callback function to be used in rn_flush() to empty a mask tree.
+ */
+void
+rn_freemask(struct radix_node *rn)
+{
+	if (rn->rn_mask != NULL)
+		panic("%s: not a mask node", __func__);
+
+	R_Free(rn);
+}
+
+struct rn_flush_ctx {
+	struct radix_node_head *head;
+	freenode_f_t *f;
+};
+
+static int
+rn_flush_walker(struct radix_node *rn, void *arg)
+{
+	struct rn_flush_ctx *ctx = arg;
+	struct radix_node *node;
+
+	node = ctx->head->rnh_deladdr(rn->rn_key, rn->rn_mask, ctx->head);
+	if (node != rn) {
+		panic("%s: deleted wrong node: %p, want: %p",
+		      __func__, node, rn);
+	}
+	if (ctx->f)
+		ctx->f(rn);
+
+	return 0;
+}
+
+#define IS_EMPTY(head) \
+	(((head)->rnh_treetop == &(head)->rnh_nodes[1]) && \
+	 ((head)->rnh_treetop->rn_left == &(head)->rnh_nodes[0]) && \
+	 ((head)->rnh_treetop->rn_right == &(head)->rnh_nodes[2]))
+
+/*
+ * Flush all nodes in the radix tree at <head>.
+ * If the callback function <f> is specified, it is called against every
+ * flushed node to allow the caller to do extra cleanups.
+ */
+void
+rn_flush(struct radix_node_head *head, freenode_f_t *f)
+{
+	struct rn_flush_ctx ctx;
+
+	if (f == rn_freemask && head->rnh_maskhead != NULL)
+		panic("%s: rn_freemask() used with non-mask tree", __func__);
+
+	ctx.head = head;
+	ctx.f = f;
+	head->rnh_walktree(head, rn_flush_walker, &ctx);
+
+	if (!IS_EMPTY(head))
+		panic("%s: failed to flush all nodes", __func__);
+}
+
+/*
+ * Free an empty radix tree at <head>.
+ *
+ * NOTE: The radix tree must be first emptied by rn_flush().
+ */
+void
+rn_freehead(struct radix_node_head *head)
+{
+	if (!IS_EMPTY(head))
+		panic("%s: radix tree not empty", __func__);
+
+	R_Free(head);
+}
+
 #ifdef _KERNEL
 
 static void

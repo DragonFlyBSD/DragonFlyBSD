@@ -106,6 +106,7 @@ struct radix_mask {
 #define	rm_leaf rm_rmu.rmu_leaf		/* extra field would make 32 bytes */
 
 typedef int walktree_f_t (struct radix_node *, void *);
+typedef void freenode_f_t (struct radix_node *);
 
 struct radix_node_head {
 	struct	radix_node *rnh_treetop;
@@ -192,6 +193,10 @@ void			 rn_init(void);
 int			 rn_inithead(void **head,
 				     struct radix_node_head *maskhead,
 				     int off_bytes);
+void			 rn_freehead(struct radix_node_head *head);
+void			 rn_flush(struct radix_node_head *head,
+				  freenode_f_t *f);
+void			 rn_freemask(struct radix_node *rn);
 struct radix_node_head	*rn_cpumaskhead(int cpu);
 bool			 rn_refines(const char *m, const char *n);
 struct radix_node	*rn_addmask(const char *mask, bool search, int skip,
