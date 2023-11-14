@@ -655,6 +655,7 @@ ipfw3_basic_modevent(module_t mod, int type, void *data)
 			err = 1;
 	}
 	ip_fw3_state_modevent(type);
+	ip_fw3_table_modevent(type);
 	return err;
 }
 

@@ -71,8 +71,6 @@
 
 #include <net/ipfw3/ip_fw.h>
 #include <net/ipfw3_basic/ip_fw3_state.h>
-#include <net/ipfw3_basic/ip_fw3_table.h>
-#include <net/ipfw3_basic/ip_fw3_sync.h>
 
 MALLOC_DEFINE(M_IPFW3_STATE, "M_IPFW3_STATE", "mem for ipfw3 states");
 
@@ -80,7 +78,6 @@ MALLOC_DEFINE(M_IPFW3_STATE, "M_IPFW3_STATE", "mem for ipfw3 states");
 struct ipfw3_state_context 		*fw3_state_ctx[MAXCPU];
 extern struct ipfw3_context		*fw3_ctx[MAXCPU];
 extern ip_fw_ctl_t 			*ip_fw3_ctl_state_ptr;
-extern ipfw_sync_install_state_t 	*ipfw_sync_install_state_prt;
 
 static struct callout 		ip_fw3_state_cleanup_callout;
 static int 			sysctl_var_cleanup_interval = 1;

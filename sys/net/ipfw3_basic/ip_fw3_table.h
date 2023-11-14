@@ -99,8 +99,11 @@ int ip_fw3_ctl_table_delete(struct sockopt *sopt);
 int ip_fw3_ctl_table_append(struct sockopt *sopt);
 int ip_fw3_ctl_table_sockopt(struct sockopt *sopt);
 
-void table_init_dispatch(netmsg_t nmsg);
-void table_fini(void);
+void ip_fw3_table_init_dispatch(netmsg_t nmsg);
+void ip_fw3_table_fini_dispatch(netmsg_t nmsg);
+void ip_fw3_table_init(void);
+void ip_fw3_table_fini(void);
+void ip_fw3_table_modevent(int type);
 
 #endif	/* _KERNEL */
 #endif /* _IP_FW3_TABLE_H_ */

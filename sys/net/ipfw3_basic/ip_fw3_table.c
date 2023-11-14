@@ -76,6 +76,7 @@
 MALLOC_DEFINE(M_IPFW3_TABLE, "IPFW3_TABLE", "mem for ip_fw3 table");
 
 extern struct ipfw3_context	*fw3_ctx[MAXCPU];
+extern ip_fw_ctl_t 		*ip_fw3_ctl_table_ptr;
 
 /*
  * activate/create the table by setup the type and reset counts.
@@ -589,8 +590,12 @@ ip_fw3_ctl_table_sockopt(struct sockopt *sopt)
 	return error;
 }
 
-static void
-table_init_ctx_dispatch(netmsg_t nmsg)
+/*
+ * it will be invoked during init of ipfw3
+ * this function will prepare the tables
+ */
+void
+ip_fw3_table_init_dispatch(netmsg_t nmsg)
 {
 	struct ipfw3_context *ctx = fw3_ctx[mycpuid];
 	ctx->table_ctx = kmalloc(sizeof(struct ipfw3_table_context) * IPFW_TABLES_MAX,
@@ -598,43 +603,61 @@ table_init_ctx_dispatch(netmsg_t nmsg)
 	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
-/*
- * release the memory of the tables
- */
 void
-table_fini(void)
+ip_fw3_table_fini_dispatch(netmsg_t nmsg)
 {
 	struct ipfw3_table_context *table_ctx, *tmp_table;
 	struct radix_node_head *rnh;
-	int cpu, id;
-	for (cpu = 0; cpu < ncpus; cpu++) {
-		table_ctx = fw3_ctx[cpu]->table_ctx;
-		tmp_table = table_ctx;
-		for (id = 0; id < IPFW_TABLES_MAX; id++, table_ctx++) {
-			if (table_ctx->type == 1) {
-				rnh = table_ctx->node;
-				rnh->rnh_walktree(rnh, flush_table_ip_entry, rnh);
-			} else if (table_ctx->type == 2) {
-				rnh = table_ctx->node;
-				rnh->rnh_walktree(rnh, flush_table_mac_entry, rnh);
-			}
+	int id;
+	table_ctx = fw3_ctx[mycpuid]->table_ctx;
+	tmp_table = table_ctx;
+	for (id = 0; id < IPFW_TABLES_MAX; id++, table_ctx++) {
+		if (table_ctx->type == 1) {
+			rnh = table_ctx->node;
+			rnh->rnh_walktree(rnh, flush_table_ip_entry, rnh);
+		} else if (table_ctx->type == 2) {
+			rnh = table_ctx->node;
+			rnh->rnh_walktree(rnh, flush_table_mac_entry, rnh);
 		}
-		kfree(tmp_table, M_IPFW3_TABLE);
 	}
+	kfree(tmp_table, M_IPFW3_TABLE);
+
+	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
-/*
- * it will be invoked during init of ipfw3
- * this function will prepare the tables
- */
+
 void
-table_init_dispatch(netmsg_t nmsg)
+ip_fw3_table_fini(void)
 {
-	int error = 0;
-	struct netmsg_base nmsg_base;
-	bzero(&nmsg_base, sizeof(nmsg_base));
-	netmsg_init(&nmsg_base, NULL, &curthread->td_msgport,
-			0, table_init_ctx_dispatch);
-	netisr_domsg(&nmsg_base, 0);
-	lwkt_replymsg(&nmsg->lmsg, error);
+	struct netmsg_base msg;
+
+	netmsg_init(&msg, NULL, &curthread->td_msgport,
+		0, ip_fw3_table_fini_dispatch);
+
+	netisr_domsg(&msg, 0);
+}
+
+void
+ip_fw3_table_init(void)
+{
+	struct netmsg_base msg;
+
+	ip_fw3_ctl_table_ptr = ip_fw3_ctl_table_sockopt;
+	netmsg_init(&msg, NULL, &curthread->td_msgport,
+		0, ip_fw3_table_init_dispatch);
+	netisr_domsg(&msg, 0);
+}
+
+
+void
+ip_fw3_table_modevent(int type)
+{
+	switch (type) {
+		case MOD_LOAD:
+			ip_fw3_table_init();
+			break;
+		case MOD_UNLOAD:
+			ip_fw3_table_fini();
+			break;
+	}
 }
