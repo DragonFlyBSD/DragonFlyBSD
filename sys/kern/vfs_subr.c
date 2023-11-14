@@ -2141,7 +2141,7 @@ vfs_create_addrlist_af(int af, struct netexport *nep)
 #ifdef INET
 	case AF_INET:
 		if ((rnh = nep->ne_inethead) == NULL) {
-			off = offsetof(struct sockaddr_in, sin_addr) << 3;
+			off = offsetof(struct sockaddr_in, sin_addr);
 			if (!rn_inithead((void **)&rnh, maskhead, off))
 				return (NULL);
 			nep->ne_inethead = rnh;
@@ -2151,7 +2151,7 @@ vfs_create_addrlist_af(int af, struct netexport *nep)
 #ifdef INET6
 	case AF_INET6:
 		if ((rnh = nep->ne_inet6head) == NULL) {
-			off = offsetof(struct sockaddr_in6, sin6_addr) << 3;
+			off = offsetof(struct sockaddr_in6, sin6_addr);
 			if (!rn_inithead((void **)&rnh, maskhead, off))
 				return (NULL);
 			nep->ne_inet6head = rnh;

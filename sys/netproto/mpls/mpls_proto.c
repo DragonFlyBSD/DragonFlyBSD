@@ -70,20 +70,21 @@ mpls_inithead(void **head, int off)
 }
 
 static	struct	domain mplsdomain = {
-	AF_MPLS,			/* dom_family */
-	"mpls",				/* dom_name */
-	NULL,				/* dom_init */
-	NULL,				/* dom_externalize */
-	NULL,				/* dom_dispose */
-	mplssw,				/* dom_protosw */
-	&mplssw[NELEM(mplssw)],
-					/* dom_protoswNPROTOSW */
-	SLIST_ENTRY_INITIALIZER,	/* dom_next */
-	mpls_inithead,			/* dom_rtattach */
-	32,				/* dom_rtoffset */
-	sizeof(struct sockaddr_mpls),	/* dom_maxrtkey */
-	NULL,				/* dom_ifattach */
-	NULL				/* dom_ifdetach */
+	.dom_family		= AF_MPLS,
+	.dom_name		= "mpls",
+	.dom_init		= NULL,
+	.dom_externalize	= NULL,
+	.dom_dispose		= NULL,
+	.dom_protosw		= mplssw,
+	.dom_protoswNPROTOSW	= &mplssw[NELEM(mplssw)],
+	.dom_next		= SLIST_ENTRY_INITIALIZER,
+	.dom_rtattach		= mpls_inithead,
+	.dom_rtoffset		= offsetof(struct sockaddr_mpls, smpls_addr),
+	.dom_maxrtkey		= sizeof(struct sockaddr_mpls),
+	.dom_ifattach		= NULL,
+	.dom_ifdetach		= NULL,
+	.dom_if_up		= NULL,
+	.dom_if_down		= NULL,
 };
 
 DOMAIN_SET(mpls);

@@ -1585,7 +1585,8 @@ rtinit(void)
 
 	/* Initialize the radix trees */
 	rn_init();
-	rn_inithead((void **)&rhead, rn_cpumaskhead(0), 32);
+	rn_inithead((void **)&rhead, rn_cpumaskhead(0),
+		    offsetof(struct sockaddr_in, sin_addr));
 
 	/* mark all of the slots in the table free */
 	ag_avail = ag_slots;

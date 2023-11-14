@@ -98,11 +98,11 @@ table_create_dispatch(netmsg_t nmsg)
 	if (table_ctx->type == 1) {
 		rn_inithead((void **)&table_ctx->mask, NULL, 0);
 		rn_inithead((void **)&table_ctx->node, table_ctx->mask,
-			    offsetof(struct sockaddr_in, sin_addr) * NBBY);
+			    offsetof(struct sockaddr_in, sin_addr));
 	} else if (table_ctx->type == 2) {
 		rn_inithead((void **)&table_ctx->mask, NULL, 0);
 		rn_inithead((void **)&table_ctx->node, table_ctx->mask,
-			    offsetof(struct sockaddr, sa_data) * NBBY);
+			    offsetof(struct sockaddr, sa_data));
 	} else {
 		goto done;
 	}

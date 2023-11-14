@@ -59,7 +59,7 @@ struct	domain {
 	struct	protosw *dom_protoswNPROTOSW;
 	SLIST_ENTRY(domain) dom_next;
 	int	(*dom_rtattach)(void **, int);	/* initialize routing table */
-	int	dom_rtoffset;		/* an arg to rtattach, in bits */
+	int	dom_rtoffset;		/* an arg to rtattach, in bytes */
 	int	dom_maxrtkey;		/* for routing layer */
 	void	*(*dom_ifattach)(struct ifnet *);
 	void	(*dom_ifdetach)(struct ifnet *, void *);
