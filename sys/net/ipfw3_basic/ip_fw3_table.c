@@ -81,7 +81,7 @@ extern ip_fw_ctl_t 		*ip_fw3_ctl_table_ptr;
 /*
  * activate/create the table by setup the type and reset counts.
  */
-static void
+void
 table_create_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_table *tbmsg = (struct netmsg_table *)nmsg;
@@ -114,7 +114,7 @@ done:
 /*
  * clean the table, especially the node
  */
-static void
+void
 table_delete_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_table *tbmsg = (struct netmsg_table *)nmsg;
@@ -139,7 +139,7 @@ table_delete_dispatch(netmsg_t nmsg)
 	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
-static void
+void
 table_append_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_table *tbmsg = (struct netmsg_table *)nmsg;
@@ -198,7 +198,7 @@ done:
 	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
-static void
+void
 table_remove_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_table *tbmsg = (struct netmsg_table *)nmsg;
@@ -261,7 +261,7 @@ flush_table_mac_entry(struct radix_node *rn, void *arg)
 	return (0);
 }
 
-static void
+void
 table_flush_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_table *tbmsg = (struct netmsg_table *)nmsg;
@@ -283,7 +283,7 @@ table_flush_dispatch(netmsg_t nmsg)
 /*
  * rename the table
  */
-static void
+void
 table_rename_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_table *tbmsg = (struct netmsg_table *)nmsg;

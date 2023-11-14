@@ -84,25 +84,30 @@ struct netmsg_table {
 	int retval;
 };
 
+void table_create_dispatch(netmsg_t nmsg);
+void table_delete_dispatch(netmsg_t nmsg);
+void table_append_dispatch(netmsg_t nmsg);
+void table_remove_dispatch(netmsg_t nmsg);
+int flush_table_ip_entry(struct radix_node *rn, void *arg);
+int flush_table_mac_entry(struct radix_node *rn, void *arg);
+void table_flush_dispatch(netmsg_t nmsg);
+void table_rename_dispatch(netmsg_t nmsg);
 int ip_fw3_ctl_table_list(struct sockopt *sopt);
 int ip_fw3_ctl_table_remove(struct sockopt *sopt);
 int ip_fw3_ctl_table_flush(struct sockopt *sopt);
-int flush_table_ip_entry(struct radix_node *rn, void *arg);
-int flush_table_mac_entry(struct radix_node *rn, void *arg);
 int dump_table_ip_entry(struct radix_node *rn, void *arg);
 int dump_table_mac_entry(struct radix_node *rn, void *arg);
 int ip_fw3_ctl_table_show(struct sockopt *sopt);
 int ip_fw3_ctl_table_test(struct sockopt *sopt);
-int ip_fw3_ctl_table_rename(struct sockopt *sopt);
 int ip_fw3_ctl_table_create(struct sockopt *sopt);
 int ip_fw3_ctl_table_delete(struct sockopt *sopt);
 int ip_fw3_ctl_table_append(struct sockopt *sopt);
+int ip_fw3_ctl_table_rename(struct sockopt *sopt);
 int ip_fw3_ctl_table_sockopt(struct sockopt *sopt);
-
 void ip_fw3_table_init_dispatch(netmsg_t nmsg);
 void ip_fw3_table_fini_dispatch(netmsg_t nmsg);
-void ip_fw3_table_init(void);
 void ip_fw3_table_fini(void);
+void ip_fw3_table_init(void);
 void ip_fw3_table_modevent(int type);
 
 #endif	/* _KERNEL */
