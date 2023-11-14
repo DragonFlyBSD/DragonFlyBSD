@@ -470,6 +470,8 @@ table_main(int ac, char **av)
 {
 	if (!strncmp(*av, "append", strlen(*av))) {
 		table_append(ac, av);
+	} else if (!strncmp(*av, "add", strlen(*av))) {
+		table_append(ac, av);
 	} else if (!strncmp(*av, "remove", strlen(*av))) {
 		table_remove(ac, av);
 	} else if (!strncmp(*av, "flush", strlen(*av))) {
@@ -490,4 +492,3 @@ table_main(int ac, char **av)
 		errx(EX_USAGE, "bad ipfw table command `%s'", *av);
 	}
 }
-
