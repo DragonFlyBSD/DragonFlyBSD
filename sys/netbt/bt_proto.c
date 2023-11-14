@@ -164,11 +164,11 @@ struct domain btdomain = {
 	.dom_protosw = btsw,
 	.dom_protoswNPROTOSW = &btsw[NELEM(btsw)],
 	.dom_next = SLIST_ENTRY_INITIALIZER,
-	.dom_rtattach = 0,
-	.dom_rtoffset = 32,
+	.dom_rtattach = NULL,
+	.dom_rtoffset = 0,
 	.dom_maxrtkey = sizeof(struct sockaddr_bt),
-	.dom_ifattach = 0,
-	.dom_ifdetach = 0,
+	.dom_ifattach = NULL,
+	.dom_ifdetach = NULL,
 };
 
 DOMAIN_SET(bt);

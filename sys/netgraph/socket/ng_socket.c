@@ -1006,8 +1006,10 @@ static struct protosw ngsw[] = {
 };
 
 struct domain ngdomain = {
-	AF_NETGRAPH, "netgraph", NULL, NULL, NULL,
-	ngsw, &ngsw[NELEM(ngsw)],
+	.dom_family		= AF_NETGRAPH,
+	.dom_name		= "netgraph",
+	.dom_protosw		= ngsw,
+	.dom_protoswNPROTOSW	= &ngsw[NELEM(ngsw)],
 };
 
 /*
