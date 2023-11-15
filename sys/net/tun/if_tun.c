@@ -231,7 +231,6 @@ tuncreate(cdev_t dev, int flags)
 	ifp->if_output = tunifoutput;
 	ifp->if_start = tunifstart;
 	ifp->if_flags = IFF_POINTOPOINT | IFF_MULTICAST;
-	ifp->if_type = IFT_PPP;
 	ifp->if_softc = sc;
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifq_set_ready(&ifp->if_snd);
