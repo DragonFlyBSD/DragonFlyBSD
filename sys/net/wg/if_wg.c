@@ -135,7 +135,7 @@ struct wg_endpoint {
 };
 
 struct aip_addr {
-	uint8_t		length;
+	uint8_t		length; /* required by the radix code */
 	union {
 		uint8_t		bytes[16];
 		uint32_t	ip;
@@ -146,7 +146,7 @@ struct aip_addr {
 };
 
 struct wg_aip {
-	struct radix_node	 a_nodes[2];
+	struct radix_node	 a_nodes[2]; /* make the first for casting */
 	LIST_ENTRY(wg_aip)	 a_entry;
 	struct aip_addr		 a_addr;
 	struct aip_addr		 a_mask;
@@ -241,6 +241,7 @@ struct wg_softc {
 	struct noise_local	*sc_local;
 	struct cookie_checker	 sc_cookie;
 
+	struct lock		 sc_aip_lock;
 	struct radix_node_head	*sc_aip4;
 	struct radix_node_head	*sc_aip6;
 
@@ -289,6 +290,9 @@ static int clone_count;
 static LIST_HEAD(, wg_softc) wg_list = LIST_HEAD_INITIALIZER(wg_list);
 
 static struct taskqueue **wg_taskqueues; /* one taskqueue per CPU */
+
+/* Radix tree to store netmasks, shared by all interfaces */
+static struct radix_node_head *wg_maskhead;
 
 MALLOC_DEFINE(M_WG, "WG", "wireguard");
 
@@ -536,7 +540,7 @@ wg_peer_get_endpoint(struct wg_peer *peer, struct wg_endpoint *e)
 static int
 wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af, const void *addr, uint8_t cidr)
 {
-	struct radix_node_head	*root;
+	struct radix_node_head	*head;
 	struct radix_node	*node;
 	struct wg_aip		*aip;
 	int			 ret = 0;
@@ -549,7 +553,7 @@ wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af, const void
 #ifdef INET
 	case AF_INET:
 		if (cidr > 32) cidr = 32;
-		root = sc->sc_aip4;
+		head = sc->sc_aip4;
 		aip->a_addr.in = *(const struct in_addr *)addr;
 		aip->a_mask.ip = htonl(~((1LL << (32 - cidr)) - 1) & 0xffffffff);
 		aip->a_addr.ip &= aip->a_mask.ip;
@@ -559,7 +563,7 @@ wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af, const void
 #ifdef INET6
 	case AF_INET6:
 		if (cidr > 128) cidr = 128;
-		root = sc->sc_aip6;
+		head = sc->sc_aip6;
 		aip->a_addr.in6 = *(const struct in6_addr *)addr;
 		in6_prefixlen2mask(&aip->a_mask.in6, cidr);
 		for (int i = 0; i < 4; i++)
@@ -572,48 +576,58 @@ wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af, const void
 		return (EAFNOSUPPORT);
 	}
 
-	RADIX_NODE_HEAD_LOCK(root);
-	node = root->rnh_addaddr(&aip->a_addr, &aip->a_mask, &root->rh, aip->a_nodes);
-	if (node == aip->a_nodes) {
+	lockmgr(&sc->sc_aip_lock, LK_EXCLUSIVE);
+	node = head->rnh_addaddr(&aip->a_addr, &aip->a_mask, head,
+				 aip->a_nodes);
+	if (node != NULL) {
+		KKASSERT(node == aip->a_nodes);
 		LIST_INSERT_HEAD(&peer->p_aips, aip, a_entry);
 		peer->p_aips_num++;
-	} else if (!node)
-		node = root->rnh_lookup(&aip->a_addr, &aip->a_mask, &root->rh);
-	if (!node) {
-		kfree(aip, M_WG);
-		return (ENOMEM);
-	} else if (node != aip->a_nodes) {
-		kfree(aip, M_WG);
-		aip = (struct wg_aip *)node;
-		if (aip->a_peer != peer) {
-			LIST_REMOVE(aip, a_entry);
-			aip->a_peer->p_aips_num--;
-			aip->a_peer = peer;
-			LIST_INSERT_HEAD(&peer->p_aips, aip, a_entry);
-			aip->a_peer->p_aips_num++;
+	} else {
+		/*
+		 * Two possibilities:
+		 * - out of memory failure
+		 * - entry already exists
+		 */
+		node = head->rnh_lookup(&aip->a_addr, &aip->a_mask, head);
+		if (node == NULL) {
+			kfree(aip, M_WG);
+			ret = ENOMEM;
+		} else {
+			KKASSERT(node != aip->a_nodes);
+			kfree(aip, M_WG);
+			aip = (struct wg_aip *)node;
+			if (aip->a_peer != peer) {
+				/* Replace the peer. */
+				LIST_REMOVE(aip, a_entry);
+				aip->a_peer->p_aips_num--;
+				aip->a_peer = peer;
+				LIST_INSERT_HEAD(&peer->p_aips, aip, a_entry);
+				aip->a_peer->p_aips_num++;
+			}
 		}
 	}
-	RADIX_NODE_HEAD_UNLOCK(root);
+	lockmgr(&sc->sc_aip_lock, LK_RELEASE);
+
 	return (ret);
 }
 
 static struct wg_peer *
 wg_aip_lookup(struct wg_softc *sc, sa_family_t af, void *a)
 {
-	struct radix_node_head	*root;
+	struct radix_node_head	*head;
 	struct radix_node	*node;
 	struct wg_peer		*peer;
 	struct aip_addr		 addr;
-	RADIX_NODE_HEAD_RLOCK_TRACKER;
 
 	switch (af) {
 	case AF_INET:
-		root = sc->sc_aip4;
+		head = sc->sc_aip4;
 		memcpy(&addr.in, a, sizeof(addr.in));
 		addr.length = offsetof(struct aip_addr, in) + sizeof(struct in_addr);
 		break;
 	case AF_INET6:
-		root = sc->sc_aip6;
+		head = sc->sc_aip6;
 		memcpy(&addr.in6, a, sizeof(addr.in6));
 		addr.length = offsetof(struct aip_addr, in6) + sizeof(struct in6_addr);
 		break;
@@ -621,15 +635,15 @@ wg_aip_lookup(struct wg_softc *sc, sa_family_t af, void *a)
 		return NULL;
 	}
 
-	RADIX_NODE_HEAD_RLOCK(root);
-	node = root->rnh_matchaddr(&addr, &root->rh);
+	lockmgr(&sc->sc_aip_lock, LK_SHARED);
+	node = head->rnh_matchaddr(&addr, head);
 	if (node != NULL) {
 		peer = ((struct wg_aip *)node)->a_peer;
 		noise_remote_ref(peer->p_remote);
 	} else {
 		peer = NULL;
 	}
-	RADIX_NODE_HEAD_RUNLOCK(root);
+	lockmgr(&sc->sc_aip_lock, LK_RELEASE);
 
 	return (peer);
 }
@@ -637,34 +651,37 @@ wg_aip_lookup(struct wg_softc *sc, sa_family_t af, void *a)
 static void
 wg_aip_remove_all(struct wg_softc *sc, struct wg_peer *peer)
 {
+	struct radix_node_head	*head;
+	struct radix_node	*node;
 	struct wg_aip		*aip, *taip;
 
-	RADIX_NODE_HEAD_LOCK(sc->sc_aip4);
-	LIST_FOREACH_MUTABLE(aip, &peer->p_aips, a_entry, taip) {
-		if (aip->a_af == AF_INET) {
-			if (sc->sc_aip4->rnh_deladdr(&aip->a_addr, &aip->a_mask, &sc->sc_aip4->rh) == NULL)
-				panic("failed to delete aip %p", aip);
-			LIST_REMOVE(aip, a_entry);
-			peer->p_aips_num--;
-			kfree(aip, M_WG);
-		}
-	}
-	RADIX_NODE_HEAD_UNLOCK(sc->sc_aip4);
+	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
 
-	RADIX_NODE_HEAD_LOCK(sc->sc_aip6);
+	lockmgr(&sc->sc_aip_lock, LK_EXCLUSIVE);
+
 	LIST_FOREACH_MUTABLE(aip, &peer->p_aips, a_entry, taip) {
-		if (aip->a_af == AF_INET6) {
-			if (sc->sc_aip6->rnh_deladdr(&aip->a_addr, &aip->a_mask, &sc->sc_aip6->rh) == NULL)
-				panic("failed to delete aip %p", aip);
-			LIST_REMOVE(aip, a_entry);
-			peer->p_aips_num--;
-			kfree(aip, M_WG);
+		switch (aip->a_af) {
+		case AF_INET:
+			head = sc->sc_aip4;
+			break;
+		case AF_INET6:
+			head = sc->sc_aip6;
+			break;
+		default:
+			panic("%s: impossible aip %p", __func__, aip);
 		}
+		node = head->rnh_deladdr(&aip->a_addr, &aip->a_mask, head);
+		if (node == NULL)
+			panic("%s: failed to delete aip %p", __func__, aip);
+		LIST_REMOVE(aip, a_entry);
+		peer->p_aips_num--;
+		kfree(aip, M_WG);
 	}
-	RADIX_NODE_HEAD_UNLOCK(sc->sc_aip6);
 
 	if (!LIST_EMPTY(&peer->p_aips) || peer->p_aips_num != 0)
 		panic("wg_aip_remove_all could not delete all %p", peer);
+
+	lockmgr(&sc->sc_aip_lock, LK_RELEASE);
 }
 
 static int
@@ -2644,18 +2661,26 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 
 	sc = kmalloc(sizeof(*sc), M_WG, M_WAITOK | M_ZERO);
 
+	if (!rn_inithead(&sc->sc_aip4, wg_maskhead,
+			 offsetof(struct aip_addr, in)) ||
+	    !rn_inithead(&sc->sc_aip6, wg_maskhead,
+			 offsetof(struct aip_addr, in6))) {
+		if (sc->sc_aip4 != NULL)
+			rn_freehead(sc->sc_aip4);
+		if (sc->sc_aip6 != NULL)
+			rn_freehead(sc->sc_aip6);
+		kfree(sc, M_WG);
+		return (ENOMEM);
+	}
+
+	lockinit(&sc->sc_aip_lock, "wg aip lock", 0, 0);
+
 	sc->sc_local = noise_local_alloc(sc);
 
 	sc->sc_encrypt_tasks = kmalloc(sizeof(*sc->sc_encrypt_tasks) * ncpus,
 				       M_WG, M_WAITOK | M_ZERO);
 	sc->sc_decrypt_tasks = kmalloc(sizeof(*sc->sc_decrypt_tasks) * ncpus,
 				       M_WG, M_WAITOK | M_ZERO);
-
-	if (!rn_inithead((void **)&sc->sc_aip4, offsetof(struct aip_addr, in) * NBBY))
-		goto free_decrypt;
-
-	if (!rn_inithead((void **)&sc->sc_aip6, offsetof(struct aip_addr, in6) * NBBY))
-		goto free_aip4;
 
 	atomic_add_int(&clone_count, 1);
 	ifp = sc->sc_ifp = if_alloc(IFT_WIREGUARD);
@@ -2667,9 +2692,6 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 	sc->sc_peers_num = 0;
 
 	cookie_checker_init(&sc->sc_cookie);
-
-	RADIX_NODE_HEAD_LOCK_INIT(sc->sc_aip4);
-	RADIX_NODE_HEAD_LOCK_INIT(sc->sc_aip6);
 
 	sc->sc_handshake_taskqueue = wg_taskqueues[karc4random() % ncpus];
 	TASK_INIT(&sc->sc_handshake_task, 0, wg_softc_handshake_receive, sc);
@@ -2701,16 +2723,8 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 	lockmgr(&wg_lock, LK_EXCLUSIVE);
 	LIST_INSERT_HEAD(&wg_list, sc, sc_entry);
 	lockmgr(&wg_lock, LK_RELEASE);
+
 	return (0);
-free_aip4:
-	RADIX_NODE_HEAD_DESTROY(sc->sc_aip4);
-	kfree(sc->sc_aip4, M_RTABLE);
-free_decrypt:
-	kfree(sc->sc_decrypt_tasks, M_WG);
-	kfree(sc->sc_encrypt_tasks, M_WG);
-	noise_local_free(sc->sc_local, NULL);
-	kfree(sc, M_WG);
-	return (ENOMEM);
 }
 
 static void
@@ -2783,10 +2797,10 @@ wg_clone_destroy(struct ifnet *ifp)
 	wg_queue_deinit(&sc->sc_encrypt_parallel);
 	wg_queue_deinit(&sc->sc_decrypt_parallel);
 
-	RADIX_NODE_HEAD_DESTROY(sc->sc_aip4);
-	RADIX_NODE_HEAD_DESTROY(sc->sc_aip6);
-	rn_detachhead((void **)&sc->sc_aip4);
-	rn_detachhead((void **)&sc->sc_aip6);
+	/* wg_peer_destroy_all() should empty the trees. */
+	rn_freehead(sc->sc_aip4);
+	rn_freehead(sc->sc_aip6);
+	lockuninit(&sc->sc_aip_lock);
 
 	cookie_checker_free(&sc->sc_cookie);
 
@@ -2848,6 +2862,11 @@ wg_module_init(void)
 					"wg_taskq_cpu_%d", i);
 	}
 
+	if (!rn_inithead(&wg_maskhead, NULL, 0)) {
+		kprintf("%s: failed to create mask tree\n", __func__);
+		return (ENOMEM);
+	}
+
 	ret = crypto_init();
 	if (ret != 0)
 		return (ret);
@@ -2881,6 +2900,9 @@ wg_module_deinit(void)
 	for (i = 0; i < ncpus; i++)
 		taskqueue_free(wg_taskqueues[i]);
 	kfree(wg_taskqueues, M_WG);
+
+	rn_flush(wg_maskhead, rn_freemask);
+	rn_freehead(wg_maskhead);
 
 	if (wg_packet_zone != NULL)
 		objcache_destroy(wg_packet_zone);
