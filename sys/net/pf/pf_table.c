@@ -977,7 +977,6 @@ pfr_route_kentry(struct pfr_ktable *kt, struct pfr_kentry *ke)
 	else if (ke->pfrke_af == AF_INET6)
 		head = kt->pfrkt_ip6;
 
-	crit_enter();
 	if (KENTRY_NETWORK(ke)) {
 		pfr_prepare_network(&mask, ke->pfrke_af, ke->pfrke_net);
 		rn = rn_addroute((char *)&ke->pfrke_sa, (char *)&mask, head,
@@ -985,7 +984,6 @@ pfr_route_kentry(struct pfr_ktable *kt, struct pfr_kentry *ke)
 	} else
 		rn = rn_addroute((char *)&ke->pfrke_sa, NULL, head,
 		    ke->pfrke_node);
-	crit_exit();
 
 	return (rn == NULL ? -1 : 0);
 }
@@ -1002,13 +1000,11 @@ pfr_unroute_kentry(struct pfr_ktable *kt, struct pfr_kentry *ke)
 	else if (ke->pfrke_af == AF_INET6)
 		head = kt->pfrkt_ip6;
 
-	crit_enter();
 	if (KENTRY_NETWORK(ke)) {
 		pfr_prepare_network(&mask, ke->pfrke_af, ke->pfrke_net);
 		rn = rn_delete((char *)&ke->pfrke_sa, (char *)&mask, head);
 	} else
 		rn = rn_delete((char *)&ke->pfrke_sa, NULL, head);
-	crit_exit();
 
 	if (rn == NULL) {
 		kprintf("pfr_unroute_kentry: delete failed.\n");
