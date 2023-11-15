@@ -1122,7 +1122,8 @@ rn_walktree(struct radix_node_head *h, walktree_f_t *f, void *w)
  * Return 1 on success, 0 on error.
  */
 int
-rn_inithead(void **head, struct radix_node_head *maskhead, int off_bytes)
+rn_inithead(struct radix_node_head **head, struct radix_node_head *maskhead,
+	    int off_bytes)
 {
 	struct radix_node_head *rnh;
 	struct radix_node *root, *left, *right;
@@ -1251,7 +1252,7 @@ rn_init_handler(netmsg_t msg)
 	int cpu = mycpuid;
 
 	ASSERT_NETISR_NCPUS(cpu);
-	if (rn_inithead((void **)&mask_rnheads[cpu], NULL, 0) == 0)
+	if (rn_inithead(&mask_rnheads[cpu], NULL, 0) == 0)
 		panic("rn_init 1");
 
 	netisr_forwardmsg(&msg->base, cpu + 1);
@@ -1287,7 +1288,7 @@ rn_cpumaskhead(int cpu)
 void
 rn_init(void)
 {
-	if (rn_inithead((void **)&mask_rnheads[0], NULL, 0) == 0)
+	if (rn_inithead(&mask_rnheads[0], NULL, 0) == 0)
 		panic("rn_init 2");
 }
 

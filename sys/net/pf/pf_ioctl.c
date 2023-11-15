@@ -201,7 +201,7 @@ pfattach(void)
 	u_int32_t *my_timeout = pf_default_rule.timeout;
 	int nn;
 
-	if (!rn_inithead((void **)&pf_maskhead, NULL, 0)) {
+	if (!rn_inithead(&pf_maskhead, NULL, 0)) {
 		kprintf("pf mask radix tree create failed\n");
 		return;
 	}

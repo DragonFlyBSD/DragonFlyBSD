@@ -97,12 +97,12 @@ table_create_dispatch(netmsg_t nmsg)
 	table_ctx->count = 0;
 	strlcpy(table_ctx->name , ioc_table->name, IPFW_TABLE_NAME_LEN);
 	if (table_ctx->type == 1) {
-		rn_inithead((void **)&table_ctx->mask, NULL, 0);
-		rn_inithead((void **)&table_ctx->node, table_ctx->mask,
+		rn_inithead(&table_ctx->mask, NULL, 0);
+		rn_inithead(&table_ctx->node, table_ctx->mask,
 			    offsetof(struct sockaddr_in, sin_addr));
 	} else if (table_ctx->type == 2) {
-		rn_inithead((void **)&table_ctx->mask, NULL, 0);
-		rn_inithead((void **)&table_ctx->node, table_ctx->mask,
+		rn_inithead(&table_ctx->mask, NULL, 0);
+		rn_inithead(&table_ctx->node, table_ctx->mask,
 			    offsetof(struct sockaddr, sa_data));
 	} else {
 		goto done;

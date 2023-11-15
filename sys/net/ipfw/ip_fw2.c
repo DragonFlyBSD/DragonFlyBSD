@@ -5884,8 +5884,8 @@ ipfw_table_create_dispatch(netmsg_t nm)
 
 	ASSERT_NETISR_NCPUS(mycpuid);
 
-	if (!rn_inithead((void **)&ctx->ipfw_tables[tblid],
-	    rn_cpumaskhead(mycpuid), offsetof(struct sockaddr_in, sin_addr)))
+	if (!rn_inithead(&ctx->ipfw_tables[tblid], rn_cpumaskhead(mycpuid),
+			 offsetof(struct sockaddr_in, sin_addr)))
 		panic("ipfw: create table%d failed", tblid);
 
 	netisr_forwardmsg(&nm->base, mycpuid + 1);

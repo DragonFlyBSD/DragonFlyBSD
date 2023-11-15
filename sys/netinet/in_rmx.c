@@ -477,12 +477,13 @@ in_inithead(void **head, int off)
 	struct in_rtq_pcpu *pcpu;
 	int cpuid = mycpuid;
 
-	KKASSERT(head == (void **)&rt_tables[cpuid][AF_INET]);
+	rnh = *head;
+	KKASSERT(rnh == rt_tables[cpuid][AF_INET]);
 
-	if (!rn_inithead(head, rn_cpumaskhead(cpuid), off))
+	if (!rn_inithead(&rnh, rn_cpumaskhead(cpuid), off))
 		return 0;
 
-	rnh = *head;
+	*head = rnh;
 	rnh->rnh_addaddr = in_addroute;
 	rnh->rnh_matchaddr = in_matchroute;
 	rnh->rnh_close = in_closeroute;

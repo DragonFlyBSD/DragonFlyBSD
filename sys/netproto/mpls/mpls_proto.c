@@ -66,7 +66,16 @@ struct protosw mplssw[] = {
 static int
 mpls_inithead(void **head, int off)
 {
-	return rn_inithead(head, rn_cpumaskhead(mycpuid), off);
+	struct radix_node_head *rnh;
+
+	rnh = *head;
+	KKASSERT(rnh == rt_tables[cpuid][AF_MPLS]);
+
+	if (!rn_inithead(&rnh, rn_cpumaskhead(mycpuid), off))
+		return 0;
+
+	*head = rnh;
+	return 1;
 }
 
 static	struct	domain mplsdomain = {

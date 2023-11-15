@@ -190,7 +190,7 @@ MALLOC_DECLARE(M_RTABLE);
 #endif /* _KERNEL */
 
 void			 rn_init(void);
-int			 rn_inithead(void **head,
+int			 rn_inithead(struct radix_node_head **head,
 				     struct radix_node_head *maskhead,
 				     int off_bytes);
 void			 rn_freehead(struct radix_node_head *head);
