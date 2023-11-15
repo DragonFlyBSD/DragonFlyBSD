@@ -49,13 +49,13 @@ struct radix_node {
 #define RNF_ACTIVE	4		/* This node is alive (for rtfree) */
 	union {
 		struct {			/* leaf only data: */
-			const char *rn_Key;	/* object of search */
-			const char *rn_Mask;	/* netmask, if present */
+			const u_char *rn_Key;	/* object of search */
+			const u_char *rn_Mask;	/* netmask, if present */
 			struct	radix_node *rn_Dupedkey;
 		} rn_leaf;
 		struct {			/* node only data: */
 			int	rn_Offset;	/* where to start compare */
-			char	rn_Bmask;	/* byte mask for bit test */
+			u_char	rn_Bmask;	/* byte mask for bit test */
 			struct	radix_node *rn_Left; /* progeny */
 			struct	radix_node *rn_Right; /* progeny */
 		} rn_node;
@@ -96,7 +96,7 @@ struct radix_mask {
 	u_char	rm_flags;		/* cf. rn_flags */
 	struct	radix_mask *rm_next;	/* list of more masks to try */
 	union	{
-		const char *rmu_mask;		/* the mask */
+		const u_char *rmu_mask;		/* the mask */
 		struct	radix_node *rmu_leaf;	/* for normal routes */
 	}	rm_rmu;
 	int	rm_refs;		/* # of references to this struct */
@@ -113,21 +113,21 @@ struct radix_node_head {
 
 	/* add based on sockaddr */
 	struct	radix_node *(*rnh_addaddr)
-		    (const char *key, const char *mask,
+		    (const void *key, const void *mask,
 		     struct radix_node_head *head, struct radix_node nodes[]);
 
 	/* remove based on sockaddr */
 	struct	radix_node *(*rnh_deladdr)
-		    (const char *key, const char *mask,
+		    (const void *key, const void *mask,
 		     struct radix_node_head *head);
 
 	/* locate based on sockaddr */
 	struct	radix_node *(*rnh_matchaddr)
-		    (const char *key, struct radix_node_head *head);
+		    (const void *key, struct radix_node_head *head);
 
 	/* locate based on sockaddr */
 	struct	radix_node *(*rnh_lookup)
-		    (const char *key, const char *mask,
+		    (const void *key, const void *mask,
 		     struct radix_node_head *head);
 
 	/* traverse tree */
@@ -136,8 +136,8 @@ struct radix_node_head {
 
 	/* traverse tree below a */
 	int	(*rnh_walktree_from)
-		    (struct radix_node_head *head, const char *a,
-		     const char *m, walktree_f_t *f, void *w);
+		    (struct radix_node_head *head, const void *addr,
+		     const void *mask, walktree_f_t *f, void *w);
 
 	/*
 	 * Do something when the last ref drops.
@@ -156,16 +156,16 @@ struct radix_node_head {
 	int	rnh_addrsize;		/* permit, but not require fixed keys */
 	int	rnh_pktsize;		/* permit, but not require fixed keys */
 	struct	radix_node *(*rnh_addpkt)	/* add based on packet hdr */
-		    (const void *v, const char *mask,
+		    (const void *v, const void *mask,
 		     struct radix_node_head *head, struct radix_node nodes[]);
 	struct	radix_node *(*rnh_delpkt)	/* remove based on packet hdr */
-		    (const void *v, const char *mask,
+		    (const void *v, const void *mask,
 		     struct radix_node_head *head);
 
 	/* traverse tree starting from a */
 	int	(*rnh_walktree_at)
-		    (struct radix_node_head *head, const char *a, const char *m,
-		     walktree_f_t *f, void *w);
+		    (struct radix_node_head *head, const void *addr,
+		     const void *mask, walktree_f_t *f, void *w);
 
 	struct radix_node_head *rnh_maskhead;
 };
@@ -198,17 +198,17 @@ void			 rn_flush(struct radix_node_head *head,
 				  freenode_f_t *f);
 void			 rn_freemask(struct radix_node *rn);
 struct radix_node_head	*rn_cpumaskhead(int cpu);
-bool			 rn_refines(const char *m, const char *n);
-struct radix_node	*rn_addmask(const char *mask, bool search, int skip,
+bool			 rn_refines(const void *m, const void *n);
+struct radix_node	*rn_addmask(const void *mask, bool search, int skip,
 				    struct radix_node_head *maskhead);
-struct radix_node	*rn_addroute(const char *key, const char *netmask,
+struct radix_node	*rn_addroute(const void *key, const void *mask,
 				     struct radix_node_head *head,
 				     struct radix_node nodes[2]);
-struct radix_node	*rn_delete(const char *key, const char *netmask,
+struct radix_node	*rn_delete(const void *key, const void *mask,
 				   struct radix_node_head *head);
-struct radix_node	*rn_lookup(const char *key, const char *mask,
+struct radix_node	*rn_lookup(const void *key, const void *mask,
 				   struct radix_node_head *head);
-struct radix_node	*rn_match(const char *key,
+struct radix_node	*rn_match(const void *key,
 				  struct radix_node_head *head);
 
 #endif /* _NET_RADIX_H_ */
