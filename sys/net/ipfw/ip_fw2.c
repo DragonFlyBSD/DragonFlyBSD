@@ -5919,22 +5919,12 @@ ipfw_table_create(struct sockopt *sopt)
 }
 
 static void
-ipfw_table_killrn(struct radix_node_head *rnh, struct radix_node *rn)
+ipfw_table_killent(struct radix_node *rn)
 {
-	struct radix_node *ret;
+	struct ipfw_tblent *te;
 
-	ret = rnh->rnh_deladdr(rn->rn_key, rn->rn_mask, rnh);
-	if (ret != rn)
-		panic("deleted other table entry");
-	kfree(ret, M_IPFW);
-}
-
-static int
-ipfw_table_killent(struct radix_node *rn, void *xrnh)
-{
-
-	ipfw_table_killrn(xrnh, rn);
-	return (0);
+	te = (struct ipfw_tblent *)rn;
+	kfree(te, M_IPFW);
 }
 
 static void
@@ -5946,9 +5936,9 @@ ipfw_table_flush_oncpu(struct ipfw_context *ctx, int tableid,
 	ASSERT_NETISR_NCPUS(mycpuid);
 
 	rnh = ctx->ipfw_tables[tableid];
-	rnh->rnh_walktree(rnh, ipfw_table_killent, rnh);
+	rn_flush(rnh, ipfw_table_killent);
 	if (destroy) {
-		R_Free(rnh);
+		rn_freehead(rnh);
 		ctx->ipfw_tables[tableid] = NULL;
 	}
 }
@@ -6342,9 +6332,13 @@ ipfw_table_killexp(struct radix_node *rn, void *xnm)
 {
 	struct netmsg_tblexp *nm = xnm;
 	struct ipfw_tblent *te = (struct ipfw_tblent *)rn;
+	struct radix_node *ret;
 
 	if (te->te_expired) {
-		ipfw_table_killrn(nm->rnh, rn);
+		ret = nm->rnh->rnh_deladdr(rn->rn_key, rn->rn_mask, nm->rnh);
+		if (ret != rn)
+			panic("deleted other table entry");
+		kfree(ret, M_IPFW);
 		nm->expcnt++;
 	}
 	return (0);

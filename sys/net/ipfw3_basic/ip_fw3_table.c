@@ -121,20 +121,14 @@ table_delete_dispatch(netmsg_t nmsg)
 	struct ipfw_ioc_table *ioc_tbl;
 	struct ipfw3_context *ctx = fw3_ctx[mycpuid];
 	struct ipfw3_table_context *table_ctx;
-	struct radix_node_head *rnh;
 
 	ioc_tbl = tbmsg->ioc_table;
 	table_ctx = ctx->table_ctx;
 	table_ctx += ioc_tbl->id;
 	table_ctx->count = 0;
 
-        if (table_ctx->type == 1) {
-                rnh = table_ctx->node;
-                rnh->rnh_walktree(rnh, flush_table_ip_entry, rnh);
-        } else if (table_ctx->type == 2) {
-                rnh = table_ctx->node;
-                rnh->rnh_walktree(rnh, flush_table_mac_entry, rnh);
-        }
+	rn_flush(table_ctx->node, flush_table_entry);
+	/* XXX: should free the tree: rn_freehead(table_ctx->node) */
 	table_ctx->type = 0;
 	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
@@ -235,30 +229,10 @@ done:
 	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
-int
-flush_table_ip_entry(struct radix_node *rn, void *arg)
+void
+flush_table_entry(struct radix_node *rn)
 {
-	struct radix_node_head *rnh = arg;
-	struct table_ip_entry *ent;
-
-	ent = (struct table_ip_entry *)
-		rnh->rnh_deladdr(rn->rn_key, rn->rn_mask, rnh);
-	if (ent != NULL)
-		kfree(ent, M_IPFW3_TABLE);
-	return (0);
-}
-
-int
-flush_table_mac_entry(struct radix_node *rn, void *arg)
-{
-	struct radix_node_head *rnh = arg;
-	struct table_mac_entry *ent;
-
-	ent = (struct table_mac_entry *)
-		rnh->rnh_deladdr(rn->rn_key, rn->rn_mask, rnh);
-	if (ent != NULL)
-		kfree(ent, M_IPFW3_TABLE);
-	return (0);
+	kfree(rn, M_IPFW3_TABLE);
 }
 
 void
@@ -276,7 +250,7 @@ table_flush_dispatch(netmsg_t nmsg)
 	rnh = table_ctx->node;
 	table_ctx->count = 0;
 
-	rnh->rnh_walktree(rnh, flush_table_ip_entry, rnh);
+	rn_flush(rnh, flush_table_entry);
 	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
@@ -607,18 +581,12 @@ void
 ip_fw3_table_fini_dispatch(netmsg_t nmsg)
 {
 	struct ipfw3_table_context *table_ctx, *tmp_table;
-	struct radix_node_head *rnh;
 	int id;
 	table_ctx = fw3_ctx[mycpuid]->table_ctx;
 	tmp_table = table_ctx;
 	for (id = 0; id < IPFW_TABLES_MAX; id++, table_ctx++) {
-		if (table_ctx->type == 1) {
-			rnh = table_ctx->node;
-			rnh->rnh_walktree(rnh, flush_table_ip_entry, rnh);
-		} else if (table_ctx->type == 2) {
-			rnh = table_ctx->node;
-			rnh->rnh_walktree(rnh, flush_table_mac_entry, rnh);
-		}
+		rn_flush(table_ctx->node, flush_table_entry);
+		/* XXX: should free the tree: rn_freehead(table_ctx->node) */
 	}
 	kfree(tmp_table, M_IPFW3_TABLE);
 

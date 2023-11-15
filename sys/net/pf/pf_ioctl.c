@@ -3366,16 +3366,6 @@ pf_load(void)
 }
 
 static int
-pf_mask_del(struct radix_node *rn, void *arg)
-{
-	struct radix_node_head *rnh = arg;
-
-	rnh->rnh_deladdr(rn->rn_key, rn->rn_mask, rnh);
-	R_Free(rn);
-	return 0;
-}
-
-static int
 pf_unload(void)
 {
 	int error;
@@ -3409,9 +3399,8 @@ pf_unload(void)
 
 	pf_normalize_unload();
 	if (pf_maskhead != NULL) {
-		pf_maskhead->rnh_walktree(pf_maskhead,
-			pf_mask_del, pf_maskhead);
-		R_Free(pf_maskhead);
+		rn_flush(pf_maskhead, rn_freemask);
+		rn_freehead(pf_maskhead);
 		pf_maskhead = NULL;
 	}
 	kmalloc_destroy(&pf_state_pl);

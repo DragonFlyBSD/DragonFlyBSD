@@ -122,11 +122,6 @@ SYSCTL_INT(_kern, KERN_MAXVNODES, maxvnodes, CTLFLAG_RW,
 
 static struct radix_node_head *vfs_create_addrlist_af(int af,
 		    struct netexport *nep);
-static void	vfs_free_addrlist (struct netexport *nep);
-static int	vfs_free_netcred (struct radix_node *rn, void *w);
-static void	vfs_free_addrlist_af (struct radix_node_head **prnh);
-static int	vfs_hang_addrlist (struct mount *mp, struct netexport *nep,
-	            const struct export_args *argp);
 static void vclean_vxlocked(struct vnode *vp, int flags);
 
 __read_mostly int prtactive = 0; /* 1 => print out reclaim of active vnodes */
@@ -2097,31 +2092,13 @@ out:
 /*
  * Free netcred structures installed in the netexport
  */
-static int
-vfs_free_netcred(struct radix_node *rn, void *w)
+static void
+vfs_free_netcred(struct radix_node *rn)
 {
-	struct radix_node_head *rnh = (struct radix_node_head *)w;
+	struct netcred *np;
 
-	(*rnh->rnh_deladdr) (rn->rn_key, rn->rn_mask, rnh);
-	kfree(rn, M_NETCRED);
-
-	return (0);
-}
-
-/*
- * callback to free an element of the mask table installed in the
- * netexport.  These may be created indirectly and are not netcred
- * structures.
- */
-static int
-vfs_free_netcred_mask(struct radix_node *rn, void *w)
-{
-	struct radix_node_head *rnh = (struct radix_node_head *)w;
-
-	(*rnh->rnh_deladdr) (rn->rn_key, rn->rn_mask, rnh);
-	kfree(rn, M_RTABLE);
-
-	return (0);
+	np = (struct netcred *)rn;
+	kfree(np, M_NETCRED);
 }
 
 static struct radix_node_head *
@@ -2163,44 +2140,27 @@ vfs_create_addrlist_af(int af, struct netexport *nep)
 }
 
 /*
- * helper function for freeing netcred elements
- */
-static void
-vfs_free_addrlist_af(struct radix_node_head **prnh)
-{
-	struct radix_node_head *rnh = *prnh;
-
-	(*rnh->rnh_walktree) (rnh, vfs_free_netcred, rnh);
-	kfree(rnh, M_RTABLE);
-	*prnh = NULL;
-}
-
-/*
- * helper function for freeing mask elements
- */
-static void
-vfs_free_addrlist_masks(struct radix_node_head **prnh)
-{
-	struct radix_node_head *rnh = *prnh;
-
-	(*rnh->rnh_walktree) (rnh, vfs_free_netcred_mask, rnh);
-	kfree(rnh, M_RTABLE);
-	*prnh = NULL;
-}
-
-/*
  * Free the net address hash lists that are hanging off the mount points.
  */
 static void
 vfs_free_addrlist(struct netexport *nep)
 {
 	NE_LOCK(nep);
-	if (nep->ne_inethead != NULL)
-		vfs_free_addrlist_af(&nep->ne_inethead);
-	if (nep->ne_inet6head != NULL)
-		vfs_free_addrlist_af(&nep->ne_inet6head);
-	if (nep->ne_maskhead)
-		vfs_free_addrlist_masks(&nep->ne_maskhead);
+	if (nep->ne_inethead != NULL) {
+		rn_flush(nep->ne_inethead, vfs_free_netcred);
+		rn_freehead(nep->ne_inethead);
+		nep->ne_inethead = NULL;
+	}
+	if (nep->ne_inet6head != NULL) {
+		rn_flush(nep->ne_inet6head, vfs_free_netcred);
+		rn_freehead(nep->ne_inet6head);
+		nep->ne_inet6head = NULL;
+	}
+	if (nep->ne_maskhead != NULL) {
+		rn_flush(nep->ne_maskhead, rn_freemask);
+		rn_freehead(nep->ne_maskhead);
+		nep->ne_maskhead = NULL;
+	}
 	NE_UNLOCK(nep);
 }
 
