@@ -167,7 +167,7 @@ gifattach0(struct gif_softc *sc)
 	sc->gif_if.if_type   = IFT_GIF;
 	ifq_set_maxlen(&sc->gif_if.if_snd, IFQ_MAXLEN);
 	if_attach(&sc->gif_if, NULL);
-	bpfattach(&sc->gif_if, DLT_NULL, sizeof(u_int));
+	bpfattach(&sc->gif_if, DLT_NULL, sizeof(uint32_t));
 }
 
 int

@@ -124,7 +124,7 @@ lo_clone_create(struct if_clone *ifc, int unit,
 	ifp->if_start = lo_altqstart;
 #endif
 	if_attach(ifp, NULL);
-	bpfattach(ifp, DLT_NULL, sizeof(u_int));
+	bpfattach(ifp, DLT_NULL, sizeof(uint32_t));
 
 	if (loif == NULL) {
 		KASSERT(unit == 0, ("loif is %s", ifp->if_xname));

@@ -82,7 +82,7 @@ discattach(void)
 	ifp->if_addrlen = 0;
 	ifq_set_maxlen(&ifp->if_snd, 20);
 	if_attach(ifp, NULL);
-	bpfattach(ifp, DLT_NULL, sizeof(u_int));
+	bpfattach(ifp, DLT_NULL, sizeof(uint32_t));
 }
 
 static int

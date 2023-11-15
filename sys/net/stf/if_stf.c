@@ -195,7 +195,7 @@ stfmodevent(module_t mod, int type, void *data)
 #endif
 		ifq_set_maxlen(&sc->sc_if.if_snd, IFQ_MAXLEN);
 		if_attach(&sc->sc_if, NULL);
-		bpfattach(&sc->sc_if, DLT_NULL, sizeof(u_int));
+		bpfattach(&sc->sc_if, DLT_NULL, sizeof(uint32_t));
 		break;
 	case MOD_UNLOAD:
 		sc = stf;

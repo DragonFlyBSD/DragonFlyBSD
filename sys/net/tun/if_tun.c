@@ -236,7 +236,7 @@ tuncreate(cdev_t dev, int flags)
 	ifq_set_ready(&ifp->if_snd);
 
 	if_attach(ifp, NULL);
-	bpfattach(ifp, DLT_NULL, sizeof(u_int));
+	bpfattach(ifp, DLT_NULL, sizeof(uint32_t));
 
 	SLIST_INSERT_HEAD(&tun_listhead, sc, tun_link);
 	TUNDEBUG(ifp, "created, minor = %#x, flags = 0x%x\n",
