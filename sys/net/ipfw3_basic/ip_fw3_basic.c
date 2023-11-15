@@ -315,7 +315,7 @@ check_from_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
                 rnh = table_ctx->node;
                 sa.sin_len = 8;
                 sa.sin_addr.s_addr = src_ip.s_addr;
-                if(rnh->rnh_lookup((char *)&sa, NULL, rnh) != NULL)
+                if (rnh->rnh_lookup(&sa, NULL, rnh) != NULL)
                         *cmd_val = IP_FW_MATCH;
         }
 	*cmd_ctl = IP_FW_CTL_NO;
@@ -408,7 +408,7 @@ check_to_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
                 rnh = table_ctx->node;
                 sa.sin_len = 8;
                 sa.sin_addr.s_addr = dst_ip.s_addr;
-                if(rnh->rnh_lookup((char *)&sa, NULL, rnh) != NULL)
+                if (rnh->rnh_lookup(&sa, NULL, rnh) != NULL)
                         *cmd_val = IP_FW_MATCH;
         }
 	*cmd_ctl = IP_FW_CTL_NO;

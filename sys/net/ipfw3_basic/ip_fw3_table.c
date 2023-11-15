@@ -166,12 +166,10 @@ table_append_dispatch(netmsg_t nmsg)
                 ent->addr.sin_addr.s_addr = ioc_tbl->ip_ent->addr &
                                                 ent->mask.sin_addr.s_addr;
 
-                if (rnh->rnh_addaddr((char *)&ent->addr,
-                                (char *)&ent->mask, rnh,
-                                (void *)ent->rn) != NULL) {
+                if (rnh->rnh_addaddr(&ent->addr, &ent->mask, rnh, ent->rn)
+                    != NULL)
                         table_ctx->count++;
-                }
-        } else if (table_ctx->type == 2 ) {
+        } else if (table_ctx->type == 2) {
                 struct table_mac_entry *ent;
 
                 rnh = table_ctx->node;
@@ -182,10 +180,8 @@ table_append_dispatch(netmsg_t nmsg)
                 ent->addr.sa_len = offsetof(struct sockaddr, sa_data[6]);
                 strncpy(ent->addr.sa_data, ioc_tbl->mac_ent->addr.octet, 6);
 
-                if (rnh->rnh_addaddr((char *)&ent->addr,
-                                NULL, rnh, (void *)ent->rn) != NULL) {
+                if (rnh->rnh_addaddr(&ent->addr, NULL, rnh, ent->rn) != NULL)
                        table_ctx->count++;
-                }
         }
 
 done:
@@ -220,7 +216,7 @@ table_remove_dispatch(netmsg_t nmsg)
 	mask.sin_addr.s_addr = htonl(mlen ? ~((1 << (32 - mlen)) - 1) : 0);
 	sa.sin_addr.s_addr = addr & mask.sin_addr.s_addr;
 
-	ent = (struct table_entry *)rnh->rnh_deladdr((char *)&sa, (char *)&mask, rnh);
+	ent = (struct table_entry *)rnh->rnh_deladdr(&sa, &mask, rnh);
 	if (ent != NULL) {
 		table_ctx->count--;
 		kfree(ent, M_IPFW3_TABLE);
@@ -446,14 +442,14 @@ ip_fw3_ctl_table_test(struct sockopt *sopt)
                 sa.sin_len = 8;
                 sa.sin_addr.s_addr = tbl->ip_ent->addr;
 
-                if(rnh->rnh_lookup((char *)&sa, NULL, rnh) != NULL)
+                if (rnh->rnh_lookup(&sa, NULL, rnh) != NULL)
                         return 0;
         } else if (tbl->type == 2) {
                 struct sockaddr sa;
                 sa.sa_len = 8;
                 strncpy(sa.sa_data, tbl->mac_ent->addr.octet, 6);
 
-                if(rnh->rnh_lookup((char *)&sa, NULL, rnh) != NULL)
+                if (rnh->rnh_lookup(&sa, NULL, rnh) != NULL)
                         return 0;
         } else {
                 /* XXX TODO */

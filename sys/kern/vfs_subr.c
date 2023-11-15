@@ -2072,8 +2072,7 @@ vfs_hang_addrlist(struct mount *mp, struct netexport *nep,
 		error = ENOBUFS;
 		goto out;
 	}
-	rn = (*rnh->rnh_addaddr)((char *)saddr, (char *)smask, rnh,
-				 np->netc_rnodes);
+	rn = rnh->rnh_addaddr(saddr, smask, rnh, np->netc_rnodes);
 	NE_UNLOCK(nep);
 	if (rn == NULL || np != (struct netcred *)rn) {	/* already exists */
 		error = EPERM;
@@ -2306,8 +2305,7 @@ vfs_export_lookup(struct mount *mp, struct netexport *nep,
 			}
 			if (rnh != NULL) {
 				np = (struct netcred *)
-					(*rnh->rnh_matchaddr)((char *)saddr,
-							      rnh);
+					rnh->rnh_matchaddr(saddr, rnh);
 				if (np && np->netc_rnodes->rn_flags & RNF_ROOT)
 					np = NULL;
 			}

@@ -122,10 +122,10 @@ extern int	in6_inithead (void **head, int off);
  * Do what we need to do when inserting a route.
  */
 static struct radix_node *
-in6_addroute(const char *key, const char *mask, struct radix_node_head *head,
-	     struct radix_node *treenodes)
+in6_addroute(const void *key, const void *mask, struct radix_node_head *head,
+	     struct radix_node *nodes)
 {
-	struct rtentry *rt = (struct rtentry *)treenodes;
+	struct rtentry *rt = (struct rtentry *)nodes;
 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)rt_key(rt);
 	struct radix_node *ret;
 
@@ -165,7 +165,7 @@ in6_addroute(const char *key, const char *mask, struct radix_node_head *head,
 	    rt->rt_ifp != NULL)
 		rt->rt_rmx.rmx_mtu = IN6_LINKMTU(rt->rt_ifp);
 
-	ret = rn_addroute(key, mask, head, treenodes);
+	ret = rn_addroute(key, mask, head, nodes);
 	if (ret == NULL && rt->rt_flags & RTF_HOST) {
 		struct rtentry *rt2;
 
@@ -184,7 +184,7 @@ in6_addroute(const char *key, const char *mask, struct radix_node_head *head,
 				rtrequest(RTM_DELETE, rt_key(rt2),
 					  rt2->rt_gateway, rt_mask(rt2),
 					  rt2->rt_flags, NULL);
-				ret = rn_addroute(key, mask, head, treenodes);
+				ret = rn_addroute(key, mask, head, nodes);
 			}
 		}
 	} else if (ret == NULL && rt->rt_flags & RTF_CLONING) {
@@ -223,7 +223,7 @@ in6_addroute(const char *key, const char *mask, struct radix_node_head *head,
  * back off again.
  */
 static struct radix_node *
-in6_matchroute(const char *key, struct radix_node_head *head)
+in6_matchroute(const void *key, struct radix_node_head *head)
 {
 	struct radix_node *rn = rn_match(key, head);
 	struct rtentry *rt = (struct rtentry *)rn;

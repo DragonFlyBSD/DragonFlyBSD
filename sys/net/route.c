@@ -246,7 +246,7 @@ _rtlookup(struct sockaddr *dst, u_long ignore)
 	/*
 	 * Look up route in the radix tree.
 	 */
-	rt = (struct rtentry *) rnh->rnh_matchaddr((char *)dst, rnh);
+	rt = (struct rtentry *) rnh->rnh_matchaddr(dst, rnh);
 	if (rt == NULL)
 		goto unreach;
 
@@ -768,9 +768,8 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 	switch (req) {
 	case RTM_DELETE:
 		/* Remove the item from the tree. */
-		rn = rnh->rnh_deladdr((char *)rtinfo->rti_info[RTAX_DST],
-				      (char *)rtinfo->rti_info[RTAX_NETMASK],
-				      rnh);
+		rn = rnh->rnh_deladdr(rtinfo->rti_info[RTAX_DST],
+				      rtinfo->rti_info[RTAX_NETMASK], rnh);
 		if (rn == NULL)
 			gotoerr(ESRCH);
 		KASSERT(!(rn->rn_flags & (RNF_ACTIVE | RNF_ROOT)),
@@ -783,8 +782,7 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 		/* Free any routes cloned from this one. */
 		if ((rt->rt_flags & (RTF_CLONING | RTF_PRCLONING)) &&
 		    rt_mask(rt) != NULL) {
-			rnh->rnh_walktree_from(rnh, (char *)rt_key(rt),
-					       (char *)rt_mask(rt),
+			rnh->rnh_walktree_from(rnh, rt_key(rt), rt_mask(rt),
 					       rt_fixdelete, rt);
 		}
 
@@ -895,8 +893,7 @@ makeroute:
 		rt->rt_ifp = ifa->ifa_ifp;
 		/* XXX mtu manipulation will be done in rnh_addaddr -- itojun */
 
-		rn = rnh->rnh_addaddr((char *)ndst,
-				      (char *)rtinfo->rti_info[RTAX_NETMASK],
+		rn = rnh->rnh_addaddr(ndst, rtinfo->rti_info[RTAX_NETMASK],
 				      rnh, rt->rt_nodes);
 		if (rn == NULL) {
 			struct rtentry *oldrt;
@@ -915,9 +912,8 @@ makeroute:
 						  oldrt->rt_gateway,
 						  rt_mask(oldrt),
 						  oldrt->rt_flags, NULL);
-					rn = rnh->rnh_addaddr((char *)ndst,
-					    (char *)
-						rtinfo->rti_info[RTAX_NETMASK],
+					rn = rnh->rnh_addaddr(ndst,
+					    rtinfo->rti_info[RTAX_NETMASK],
 					    rnh, rt->rt_nodes);
 				}
 			}
@@ -969,8 +965,7 @@ makeroute:
 		    rt_mask(rt) != NULL) {
 			struct rtfc_arg arg = { rt, rnh };
 
-			rnh->rnh_walktree_from(rnh, (char *)rt_key(rt),
-					       (char *)rt_mask(rt),
+			rnh->rnh_walktree_from(rnh, rt_key(rt), rt_mask(rt),
 					       rt_fixchange, &arg);
 		}
 
@@ -989,9 +984,8 @@ makeroute:
 		break;
 	case RTM_GET:
 		/* Get the item from the tree. */
-		rn = rnh->rnh_lookup((char *)rtinfo->rti_info[RTAX_DST],
-				     (char *)rtinfo->rti_info[RTAX_NETMASK],
-				      rnh);
+		rn = rnh->rnh_lookup(rtinfo->rti_info[RTAX_DST],
+				     rtinfo->rti_info[RTAX_NETMASK], rnh);
 		if (rn == NULL)
 			gotoerr(ESRCH);
 		if (ret_nrt != NULL) {
@@ -1237,8 +1231,7 @@ rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate)
 	if (!(rt->rt_flags & RTF_HOST) && rt_mask(rt) != NULL) {
 		struct rtfc_arg arg = { rt, rnh };
 
-		rnh->rnh_walktree_from(rnh, (char *)rt_key(rt),
-				       (char *)rt_mask(rt),
+		rnh->rnh_walktree_from(rnh, rt_key(rt), rt_mask(rt),
 				       rt_fixchange, &arg);
 	}
 
@@ -1547,8 +1540,7 @@ rtinit(struct ifaddr *ifa, int cmd, int flags)
 		 * contains the correct info.
 		 */
 		if ((rnh = rt_tables[mycpuid][dst->sa_family]) == NULL ||
-		    (rn = rnh->rnh_lookup((char *)dst,
-					  (char *)netmask, rnh)) == NULL ||
+		    (rn = rnh->rnh_lookup(dst, netmask, rnh)) == NULL ||
 		    ((struct rtentry *)rn)->rt_ifa != ifa ||
 		    !sa_equal((const struct sockaddr *)rn->rn_key, dst)) {
 			if (m != NULL)
@@ -1671,8 +1663,7 @@ rtsearch_msghandler(netmsg_t msg)
 	}
 
 	rt = (struct rtentry *)
-	     rnh->rnh_lookup((char *)rtinfo.rti_dst,
-			     (char *)rtinfo.rti_netmask, rnh);
+	     rnh->rnh_lookup(rtinfo.rti_dst, rtinfo.rti_netmask, rnh);
 
 	/*
 	 * If we are asked to do the "exact match", we need to make sure
@@ -1750,11 +1741,10 @@ _rtmask_lookup(struct sockaddr *mask, boolean_t search)
 	struct radix_node *n;
 
 #define	clen(s)	(*(const u_char *)(s))
-	n = rn_addmask((const char *)mask, search, true,
-		       rn_cpumaskhead(mycpuid));
+	n = rn_addmask(mask, search, true, rn_cpumaskhead(mycpuid));
 	if (n != NULL &&
 	    mask->sa_len >= clen(n->rn_key) &&
-	    bcmp((const char *)mask + 1,
+	    bcmp((const u_char *)mask + 1,
 		 n->rn_key + 1, clen(n->rn_key) - 1) == 0) {
 		return __DECONST(struct sockaddr *, n->rn_key);
 	} else {

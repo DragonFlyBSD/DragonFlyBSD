@@ -779,12 +779,11 @@ pfr_lookup_addr(struct pfr_ktable *kt, struct pfr_addr *ad, int exact)
 	}
 	if (ADDR_NETWORK(ad)) {
 		pfr_prepare_network(&mask, ad->pfra_af, ad->pfra_net);
-		ke = (struct pfr_kentry *)rn_lookup((char *)&sa, (char *)&mask,
-		    head);
+		ke = (struct pfr_kentry *)rn_lookup(&sa, &mask, head);
 		if (ke && KENTRY_RNF_ROOT(ke))
 			ke = NULL;
 	} else {
-		ke = (struct pfr_kentry *)rn_match((char *)&sa, head);
+		ke = (struct pfr_kentry *)rn_match(&sa, head);
 		if (ke && KENTRY_RNF_ROOT(ke))
 			ke = NULL;
 		if (exact && ke && KENTRY_NETWORK(ke))
@@ -979,11 +978,9 @@ pfr_route_kentry(struct pfr_ktable *kt, struct pfr_kentry *ke)
 
 	if (KENTRY_NETWORK(ke)) {
 		pfr_prepare_network(&mask, ke->pfrke_af, ke->pfrke_net);
-		rn = rn_addroute((char *)&ke->pfrke_sa, (char *)&mask, head,
-		    ke->pfrke_node);
+		rn = rn_addroute(&ke->pfrke_sa, &mask, head, ke->pfrke_node);
 	} else
-		rn = rn_addroute((char *)&ke->pfrke_sa, NULL, head,
-		    ke->pfrke_node);
+		rn = rn_addroute(&ke->pfrke_sa, NULL, head, ke->pfrke_node);
 
 	return (rn == NULL ? -1 : 0);
 }
@@ -1002,9 +999,9 @@ pfr_unroute_kentry(struct pfr_ktable *kt, struct pfr_kentry *ke)
 
 	if (KENTRY_NETWORK(ke)) {
 		pfr_prepare_network(&mask, ke->pfrke_af, ke->pfrke_net);
-		rn = rn_delete((char *)&ke->pfrke_sa, (char *)&mask, head);
+		rn = rn_delete(&ke->pfrke_sa, &mask, head);
 	} else
-		rn = rn_delete((char *)&ke->pfrke_sa, NULL, head);
+		rn = rn_delete(&ke->pfrke_sa, NULL, head);
 
 	if (rn == NULL) {
 		kprintf("pfr_unroute_kentry: delete failed.\n");
@@ -1986,8 +1983,7 @@ pfr_match_addr(struct pfr_ktable *kt, struct pf_addr *a, sa_family_t af)
 		pfr_sin.sin_len = sizeof(pfr_sin);
 		pfr_sin.sin_family = AF_INET;
 		pfr_sin.sin_addr.s_addr = a->addr32[0];
-		ke = (struct pfr_kentry *)rn_match((char *)&pfr_sin,
-		    kt->pfrkt_ip4);
+		ke = (struct pfr_kentry *)rn_match(&pfr_sin, kt->pfrkt_ip4);
 		if (ke && KENTRY_RNF_ROOT(ke))
 			ke = NULL;
 		break;
@@ -1998,8 +1994,7 @@ pfr_match_addr(struct pfr_ktable *kt, struct pf_addr *a, sa_family_t af)
 		pfr_sin6.sin6_len = sizeof(pfr_sin6);
 		pfr_sin6.sin6_family = AF_INET6;
 		bcopy(a, &pfr_sin6.sin6_addr, sizeof(pfr_sin6.sin6_addr));
-		ke = (struct pfr_kentry *)rn_match((char *)&pfr_sin6,
-		    kt->pfrkt_ip6);
+		ke = (struct pfr_kentry *)rn_match(&pfr_sin6, kt->pfrkt_ip6);
 		if (ke && KENTRY_RNF_ROOT(ke))
 			ke = NULL;
 		break;
@@ -2035,8 +2030,7 @@ pfr_update_stats(struct pfr_ktable *kt, struct pf_addr *a, sa_family_t af,
 		pfr_sin.sin_len = sizeof(pfr_sin);
 		pfr_sin.sin_family = AF_INET;
 		pfr_sin.sin_addr.s_addr = a->addr32[0];
-		ke = (struct pfr_kentry *)rn_match((char *)&pfr_sin,
-		    kt->pfrkt_ip4);
+		ke = (struct pfr_kentry *)rn_match(&pfr_sin, kt->pfrkt_ip4);
 		if (ke && KENTRY_RNF_ROOT(ke))
 			ke = NULL;
 		break;
@@ -2047,8 +2041,7 @@ pfr_update_stats(struct pfr_ktable *kt, struct pf_addr *a, sa_family_t af,
 		pfr_sin6.sin6_len = sizeof(pfr_sin6);
 		pfr_sin6.sin6_family = AF_INET6;
 		bcopy(a, &pfr_sin6.sin6_addr, sizeof(pfr_sin6.sin6_addr));
-		ke = (struct pfr_kentry *)rn_match((char *)&pfr_sin6,
-		    kt->pfrkt_ip6);
+		ke = (struct pfr_kentry *)rn_match(&pfr_sin6, kt->pfrkt_ip6);
 		if (ke && KENTRY_RNF_ROOT(ke))
 			ke = NULL;
 		break;
@@ -2183,10 +2176,10 @@ _next_block:
 	for (;;) {
 		/* we don't want to use a nested block */
 		if (af == AF_INET)
-			ke2 = (struct pfr_kentry *)rn_match((char *)&pfr_sin,
+			ke2 = (struct pfr_kentry *)rn_match(&pfr_sin,
 			    kt->pfrkt_ip4);
 		else if (af == AF_INET6)
-			ke2 = (struct pfr_kentry *)rn_match((char *)&pfr_sin6,
+			ke2 = (struct pfr_kentry *)rn_match(&pfr_sin6,
 			    kt->pfrkt_ip6);
 		/* no need to check KENTRY_RNF_ROOT() here */
 		if (ke2 == ke) {

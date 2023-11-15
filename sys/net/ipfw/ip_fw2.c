@@ -2857,7 +2857,7 @@ ipfw_table_lookup(struct ipfw_context *ctx, uint16_t tableid,
 	sin.sin_len = sizeof(sin);
 	sin.sin_addr = *in;
 
-	te = (struct ipfw_tblent *)rnh->rnh_matchaddr((char *)&sin, rnh);
+	te = (struct ipfw_tblent *)rnh->rnh_matchaddr(&sin, rnh);
 	if (te == NULL)
 		return (0); /* no match */
 
@@ -6158,8 +6158,8 @@ ipfw_table_add_dispatch(netmsg_t nmsg)
 	te->te_nodes->rn_key = (char *)&te->te_key;
 	memcpy(&te->te_key, nm->key, sizeof(te->te_key));
 
-	if (rnh->rnh_addaddr((char *)&te->te_key, (char *)nm->netmask, rnh,
-	    te->te_nodes) == NULL) {
+	if (rnh->rnh_addaddr(&te->te_key, nm->netmask, rnh, te->te_nodes)
+	    == NULL) {
 		if (mycpuid == 0) {
 			kfree(te, M_IPFW);
 			netisr_replymsg(&nm->base, EEXIST);
@@ -6187,7 +6187,7 @@ ipfw_table_del_dispatch(netmsg_t nmsg)
 	ASSERT_NETISR_NCPUS(mycpuid);
 
 	rnh = ctx->ipfw_tables[nm->tableid];
-	rn = rnh->rnh_deladdr((char *)nm->key, (char *)nm->netmask, rnh);
+	rn = rnh->rnh_deladdr(nm->key, nm->netmask, rnh);
 	if (rn == NULL) {
 		if (mycpuid == 0) {
 			netisr_replymsg(&nm->base, ESRCH);

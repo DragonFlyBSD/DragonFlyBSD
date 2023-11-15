@@ -1624,12 +1624,8 @@ rtget(naddr dst, naddr mask)
 	dst_sock.sin_addr.s_addr = dst;
 	mask_sock.sin_addr.s_addr = htonl(mask);
 	masktrim(&mask_sock);
-	rt = (struct rt_entry *)rhead->rnh_lookup((const char *)&dst_sock,
-						  (const char *)&mask_sock,
-						  rhead);
-	if (!rt
-	    || rt->rt_dst != dst
-	    || rt->rt_mask != mask)
+	rt = (struct rt_entry *)rhead->rnh_lookup(&dst_sock, &mask_sock, rhead);
+	if (!rt || rt->rt_dst != dst || rt->rt_mask != mask)
 		return 0;
 
 	return rt;
@@ -1642,8 +1638,7 @@ struct rt_entry *
 rtfind(naddr dst)
 {
 	dst_sock.sin_addr.s_addr = dst;
-	return (struct rt_entry *)rhead->rnh_matchaddr(
-	    (const char *)&dst_sock, rhead);
+	return (struct rt_entry *)rhead->rnh_matchaddr(&dst_sock, rhead);
 }
 
 
@@ -1691,8 +1686,7 @@ rtadd(naddr	dst,
 	need_kern.tv_sec = now.tv_sec;
 	set_need_flash();
 
-	if (rhead->rnh_addaddr((const char *)&rt->rt_dst_sock,
-			       (const char *)&mask_sock, rhead,
+	if (rhead->rnh_addaddr(&rt->rt_dst_sock, &mask_sock, rhead,
 			       rt->rt_nodes) == NULL) {
 		msglog("rnh_addaddr() failed for %s mask=%#lx",
 		       naddr_ntoa(dst), (u_long)mask);
@@ -1818,7 +1812,7 @@ rtdelete(struct rt_entry *rt)
 	mask_sock.sin_addr.s_addr = htonl(rt->rt_mask);
 	masktrim(&mask_sock);
 	if (rt != (struct rt_entry *)rhead->rnh_deladdr(
-	    (const char *)&dst_sock, (const char *)&mask_sock, rhead)) {
+	    &dst_sock, &mask_sock, rhead)) {
 		msglog("rnh_deladdr() failed");
 	} else {
 		free(rt);

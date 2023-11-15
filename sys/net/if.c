@@ -1566,10 +1566,10 @@ next:				continue;
 				 * of ifa_prefer().
 				 */
 				if (ifa_maybe == NULL ||
-				    rn_refines((char *)ifa->ifa_netmask,
-				        (char *)ifa_maybe->ifa_netmask) ||
+				    rn_refines(ifa->ifa_netmask,
+					       ifa_maybe->ifa_netmask) ||
 				    (sa_equal(ifa_maybe->ifa_netmask,
-				        ifa->ifa_netmask) &&
+					      ifa->ifa_netmask) &&
 				     ifa_prefer(ifa, ifa_maybe)))
 					ifa_maybe = ifa;
 			}

@@ -89,10 +89,10 @@ static struct in_rtq_pcpu in_rtq_pcpu[MAXCPU];
  * Do what we need to do when inserting a route.
  */
 static struct radix_node *
-in_addroute(const char *key, const char *mask, struct radix_node_head *head,
-	    struct radix_node *treenodes)
+in_addroute(const void *key, const void *mask, struct radix_node_head *head,
+	    struct radix_node *nodes)
 {
-	struct rtentry *rt = (struct rtentry *)treenodes;
+	struct rtentry *rt = (struct rtentry *)nodes;
 	struct sockaddr_in *sin = (struct sockaddr_in *)rt_key(rt);
 	struct radix_node *ret;
 	struct in_ifaddr_container *iac;
@@ -152,7 +152,7 @@ in_addroute(const char *key, const char *mask, struct radix_node_head *head,
 	    rt->rt_ifp != NULL)
 		rt->rt_rmx.rmx_mtu = rt->rt_ifp->if_mtu;
 
-	ret = rn_addroute(key, mask, head, treenodes);
+	ret = rn_addroute(key, mask, head, nodes);
 	if (ret == NULL && (rt->rt_flags & RTF_HOST)) {
 		struct rtentry *oldrt;
 
@@ -171,7 +171,7 @@ in_addroute(const char *key, const char *mask, struct radix_node_head *head,
 				rtrequest(RTM_DELETE, rt_key(oldrt),
 					  oldrt->rt_gateway, rt_mask(oldrt),
 					  oldrt->rt_flags, NULL);
-				ret = rn_addroute(key, mask, head, treenodes);
+				ret = rn_addroute(key, mask, head, nodes);
 			}
 		}
 	}
@@ -195,7 +195,7 @@ in_addroute(const char *key, const char *mask, struct radix_node_head *head,
  * back off again.
  */
 static struct radix_node *
-in_matchroute(const char *key, struct radix_node_head *head)
+in_matchroute(const void *key, struct radix_node_head *head)
 {
 	struct radix_node *rn = rn_match(key, head);
 	struct rtentry *rt = (struct rtentry *)rn;

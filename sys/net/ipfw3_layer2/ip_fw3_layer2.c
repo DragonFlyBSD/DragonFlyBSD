@@ -125,9 +125,8 @@ check_mac_from_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
                 struct sockaddr sa;
                 sa.sa_len = 8;
                 strncpy(sa.sa_data, (*args)->eh->ether_shost, 6);
-                ent = (struct table_mac_entry *)rnh->rnh_lookup((char *)&sa,
-								NULL, rnh);
-                if(ent != NULL)
+                ent = (struct table_mac_entry *)rnh->rnh_lookup(&sa, NULL, rnh);
+                if (ent != NULL)
                         *cmd_val = IP_FW_MATCH;
         }
 }
@@ -169,9 +168,8 @@ check_mac_to_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
                 struct sockaddr sa;
                 sa.sa_len = 8;
                 strncpy(sa.sa_data, (*args)->eh->ether_dhost, 6);
-                ent = (struct table_mac_entry *)rnh->rnh_lookup((char *)&sa,
-								NULL, rnh);
-                if(ent != NULL)
+                ent = (struct table_mac_entry *)rnh->rnh_lookup(&sa, NULL, rnh);
+                if (ent != NULL)
                         *cmd_val = IP_FW_MATCH;
         }
 }
