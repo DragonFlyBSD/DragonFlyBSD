@@ -307,6 +307,20 @@
 #endif
 
 /*
+ * C99 allows the 'static' keyword in array declarators of function
+ * parameter lists, such as:
+ *	void bar(int myArray[static 10]);
+ * However, this is allowed in C++, so define this __min_size() macro
+ * to make headers usable in both languages.
+ */
+#if !defined(__cplusplus) && \
+    (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901)
+#define	__min_size(x)	static (x)
+#else
+#define	__min_size(x)	(x)
+#endif
+
+/*
  * GNU C version 2.96 adds explicit branch prediction so that
  * the CPU back-end can hint the processor and also so that
  * code blocks can be reordered such that the predicted path
