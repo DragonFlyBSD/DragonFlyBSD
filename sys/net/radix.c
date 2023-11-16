@@ -122,7 +122,7 @@ MKFree(struct radix_mask **l, struct radix_mask *m)
  *
  * A route is determined by a pair of key and mask.  We require that the
  * bit-wise logical and of the key and mask to be the key.
- * We define the index of a route to associated with the mask to be
+ * We define the index of a route associated with the mask to be
  * the first bit number in the mask where 0 occurs (with bit number 0
  * representing the highest order bit).
  *
@@ -130,8 +130,9 @@ MKFree(struct radix_mask **l, struct radix_mask *m)
  * If a node n has a descendant (k, m) with index(m) == index(n) == rn_bit,
  * and m is a normal mask, then the route applies to every descendant of n.
  * If the index(m) < rn_bit, this implies the trailing last few bits of k
- * before bit b are all 0, (and hence consequently true of every descendant
- * of n), so the route applies to all descendants of the node as well.
+ * before bit rn_bit are all 0, (and hence consequently true of every
+ * descendant of n), so the route applies to all descendants of the node
+ * as well.
  *
  * Similar logic shows that a non-normal mask m such that
  * index(m) <= index(n) could potentially apply to many children of n.
@@ -144,6 +145,12 @@ MKFree(struct radix_mask **l, struct radix_mask *m)
  * that governs a subtree.
  */
 
+/*
+ * Search key <key> in the subtree from <head> until encountering
+ * a leaf node and return it.
+ *
+ * NOTE: Will never return NULL because the embedded default root node.
+ */
 static struct radix_node *
 rn_search(const void *_key, struct radix_node *head)
 {
@@ -161,6 +168,11 @@ rn_search(const void *_key, struct radix_node *head)
 	return (x);
 }
 
+/*
+ * Similar to rn_search() but with the netmask <mask> applied.
+ *
+ * NOTE: The netmask can be the all-zero default mask.
+ */
 static struct radix_node *
 rn_search_m(const void *_key, struct radix_node *head, const void *_mask)
 {
@@ -222,6 +234,11 @@ rn_refines(const void *_m, const void *_n)
 	return (!equal);
 }
 
+/*
+ * Lookup the longest-prefix match of the key <key> in the tree <head>.
+ * The netmask <mask> can be NULL; if specified, the result must have the
+ * same mask, or NULL is returned.
+ */
 struct radix_node *
 rn_lookup(const void *_key, const void *_mask, struct radix_node_head *head)
 {
@@ -235,13 +252,14 @@ rn_lookup(const void *_key, const void *_mask, struct radix_node_head *head)
 	if (mask != NULL) {
 		x = rn_addmask(mask, true, head->rnh_treetop->rn_offset,
 			       head->rnh_maskhead);
-		if (x == NULL)
+		if (x == NULL) /* mask doesn't exist in the mask tree */
 			return (NULL);
 		netmask = x->rn_key;
 	}
 
 	x = rn_match(key, head);
 	if (x != NULL && netmask != NULL) {
+		/* check the duped-key chain for different masks */
 		while (x != NULL && x->rn_mask != netmask)
 			x = x->rn_dupedkey;
 	}
@@ -249,6 +267,11 @@ rn_lookup(const void *_key, const void *_mask, struct radix_node_head *head)
 	return x;
 }
 
+/*
+ * Check whether the key <key> matches the (key, mask) of the given
+ * radix node <leaf>.  The <skip> parameter gives the number of bytes
+ * to skip for the keys and mask.
+ */
 static bool
 rn_satisfies_leaf(const void *key, struct radix_node *leaf, int skip)
 {
@@ -276,6 +299,9 @@ rn_satisfies_leaf(const void *key, struct radix_node *leaf, int skip)
 	return true;
 }
 
+/*
+ * Search for the longest-prefix match of the key <key>.
+ */
 struct radix_node *
 rn_match(const void *key, struct radix_node_head *head)
 {
@@ -419,6 +445,14 @@ rn_newpair(const void *key, int bit, struct radix_node nodes[2])
 	return parent;
 }
 
+/*
+ * Insert the key <key> to the radix tree <head>.
+ *
+ * If the key already exists, then set <dupentry> to 'true' and return the
+ * node of the existing duped key.  Otherwise, set <dupentry> to 'false',
+ * insert the key to the tree by making use of the given nodes <nodes>, and
+ * return the node of the inserted key (i.e., &nodes[0]).
+ */
 static struct radix_node *
 rn_insert(const void *key, struct radix_node_head *head, bool *dupentry,
 	  struct radix_node nodes[2])
@@ -498,9 +532,20 @@ on1:
 	return (tt);
 }
 
+/*
+ * Add the netmask <mask> to the mask tree <maskhead>.  If <search> is
+ * 'true', then only check the existence of the given mask but don't
+ * actually add it.
+ *
+ * The <skip> parameter specifies the number of bytes to skip in <mask>
+ * to obtain the mask data.  (NOTE: The length of a mask key doesn't
+ * count the trailing zero bytes.)
+ *
+ * Return a pointer to the mask node on success; otherwise NULL on error.
+ */
 struct radix_node *
 rn_addmask(const void *_mask, bool search, int skip,
-	   struct radix_node_head *mask_rnh)
+	   struct radix_node_head *maskhead)
 {
 	struct radix_node *x, *saved_x;
 	const u_char *mask, *cp, *cplim;
@@ -514,7 +559,7 @@ rn_addmask(const void *_mask, bool search, int skip,
 	if (skip == 0)
 		skip = 1;
 	if (mlen <= skip)
-		return (mask_rnh->rnh_nodes); /* all-zero key */
+		return (maskhead->rnh_nodes); /* all-zero key */
 
 	bzero(addmask_key, sizeof(addmask_key));
 	if (skip > 1)
@@ -525,10 +570,10 @@ rn_addmask(const void *_mask, bool search, int skip,
 		cp--;
 	mlen = cp - addmask_key;
 	if (mlen <= skip)
-		return (mask_rnh->rnh_nodes); /* all-zero key */
+		return (maskhead->rnh_nodes); /* all-zero key */
 
 	*addmask_key = mlen;
-	x = rn_search(addmask_key, mask_rnh->rnh_treetop);
+	x = rn_search(addmask_key, maskhead->rnh_treetop);
 	if (x->rn_key == NULL) {
 		kprintf("WARNING: radix_node->rn_key is NULL rn=%p\n", x);
 		print_backtrace(-1);
@@ -546,7 +591,7 @@ rn_addmask(const void *_mask, bool search, int skip,
 	bzero(x, RN_MAXKEYLEN + 2 * (sizeof *x));
 	mask = p = (u_char *)(x + 2);
 	bcopy(addmask_key, p, mlen);
-	x = rn_insert(mask, mask_rnh, &maskduplicated, x);
+	x = rn_insert(mask, maskhead, &maskduplicated, x);
 	if (maskduplicated) {
 		log(LOG_ERR, "%s: mask impossibly already in tree", __func__);
 		R_Free(saved_x);
@@ -632,9 +677,22 @@ rn_new_radix_mask(struct radix_node *tt, struct radix_mask *nextmask)
 	return m;
 }
 
+/*
+ * Add the route (key, mask) to the radix tree <head> using the given
+ * nodes <nodes>.  The netmask <mask> is NULL for a host route.
+ *
+ * Return the node of the inserted route on success.  Otherwise, return
+ * NULL if the following happened:
+ * - failed to add the netmask to the mask tree (e.g., out of memory)
+ * - the identical route already exists
+ *
+ * NOTE: The address <key> and netmask <mask> must be of the same data
+ *       structure (e.g., both 'struct sockaddr_in') so that they have the
+ *       same skip bytes and data length.
+ */
 struct radix_node *
 rn_addroute(const void *key, const void *mask,
-	    struct radix_node_head *head, struct radix_node treenodes[2])
+	    struct radix_node_head *head, struct radix_node nodes[2])
 {
 	struct radix_node *top, *t, *x, *tt, *saved_tt;
 	struct radix_mask *m, **mp;
@@ -664,7 +722,7 @@ rn_addroute(const void *key, const void *mask,
 	/*
 	 * Deal with duplicated keys: attach node to previous instance
 	 */
-	saved_tt = tt = rn_insert(key, head, &keyduplicated, treenodes);
+	saved_tt = tt = rn_insert(key, head, &keyduplicated, nodes);
 	if (keyduplicated) {
 		for (t = tt; tt; t = tt, tt = tt->rn_dupedkey) {
 			if (tt->rn_mask == mask)
@@ -689,7 +747,7 @@ rn_addroute(const void *key, const void *mask,
 		if (tt == saved_tt) {
 			struct	radix_node *xx = x;
 			/* link in at head of list */
-			(tt = treenodes)->rn_dupedkey = t;
+			(tt = nodes)->rn_dupedkey = t;
 			tt->rn_flags = t->rn_flags;
 			tt->rn_parent = x = t->rn_parent;
 			t->rn_parent = tt;			/* parent */
@@ -699,7 +757,7 @@ rn_addroute(const void *key, const void *mask,
 				x->rn_right = tt;
 			saved_tt = tt; x = xx;
 		} else {
-			(tt = treenodes)->rn_dupedkey = t->rn_dupedkey;
+			(tt = nodes)->rn_dupedkey = t->rn_dupedkey;
 			t->rn_dupedkey = tt;
 			tt->rn_parent = t;			/* parent */
 			if (tt->rn_dupedkey != NULL)		/* parent */
@@ -1010,7 +1068,8 @@ rn_walktree_from(struct radix_node_head *h, const void *_addr,
 	last = NULL;
 	stopping = false;
 	/*
-	 * rn_search_m is sort-of-open-coded here.
+	 * rn_search_m() is sort-of-open-coded here.  We cannot use that
+	 * function because we need to keep track of the last node seen.
 	 */
 	/* kprintf("about to search\n"); */
 	for (rn = h->rnh_treetop; rn->rn_bit >= 0; ) {

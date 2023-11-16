@@ -42,18 +42,26 @@
 struct radix_node {
 	struct	radix_mask *rn_mklist;	/* masks contained in subtree */
 	struct	radix_node *rn_parent;	/* parent */
-	short	rn_bit;			/* bit offset; -1-index(netmask) */
-	u_char	rn_flags;		/* enumerated next */
-#define RNF_NORMAL	1		/* leaf contains normal route */
-#define RNF_ROOT	2		/* leaf is root leaf for tree */
-#define RNF_ACTIVE	4		/* This node is alive (for rtfree) */
+	short	rn_bit;		/* node: bit offset; leaf: -1-index(netmask) */
+	u_char	rn_flags;	/* enumerated next */
+#define RNF_NORMAL	1	/* leaf contains normal route */
+#define RNF_ROOT	2	/* leaf is root node (embedded in the tree) */
+#define RNF_ACTIVE	4	/* node is alive (for rtfree) */
 	union {
-		struct {			/* leaf only data: */
-			const u_char *rn_Key;	/* object of search */
-			const u_char *rn_Mask;	/* netmask, if present */
+		/* leaf-only data: */
+		struct {
+			/* object of search; point to the key passed by the
+			 * caller */
+			const u_char *rn_Key;
+			/* optional netmask; if present, point to the rn_key
+			 * of a node in the mask tree */
+			const u_char *rn_Mask;
+			/* chain of routes with the same key but differnt
+			 * netmasks. */
 			struct	radix_node *rn_Dupedkey;
 		} rn_leaf;
-		struct {			/* node only data: */
+		/* node-only data: */
+		struct {
 			int	rn_Offset;	/* where to start compare */
 			u_char	rn_Bmask;	/* byte mask for bit test */
 			struct	radix_node *rn_Left; /* progeny */
@@ -92,7 +100,7 @@ struct radix_node {
 
 struct radix_mask {
 	short	rm_bit;			/* bit offset; -1-index(netmask) */
-	char	rm_unused;		/* cf. rn_bmask */
+	char	rm_unused;
 	u_char	rm_flags;		/* cf. rn_flags */
 	struct	radix_mask *rm_next;	/* list of more masks to try */
 	union	{
@@ -103,7 +111,7 @@ struct radix_mask {
 };
 
 #define	rm_mask rm_rmu.rmu_mask
-#define	rm_leaf rm_rmu.rmu_leaf		/* extra field would make 32 bytes */
+#define	rm_leaf rm_rmu.rmu_leaf
 
 typedef int walktree_f_t (struct radix_node *, void *);
 typedef void freenode_f_t (struct radix_node *);
@@ -150,7 +158,13 @@ struct radix_node_head {
 	void	(*rnh_close)
 		    (struct radix_node *rn, struct radix_node_head *head);
 
-	struct	radix_node rnh_nodes[3];	/* empty tree for common case */
+	/*
+	 * Embedded nodes (flagged with RNF_ROOT) for an empty tree:
+	 * - left node
+	 * - top/root node (pointed by rnh_treetop)
+	 * - right node
+	 */
+	struct	radix_node rnh_nodes[3];
 
 	/* unused entries */
 	int	rnh_addrsize;		/* permit, but not require fixed keys */
