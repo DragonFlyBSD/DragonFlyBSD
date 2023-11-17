@@ -25,9 +25,8 @@
  * ...
  * in = 00 01 02 ... 3e (63 bytes)
  */
+
 #include <sys/types.h>
-#include <sys/systm.h>
-#include <sys/endian.h>
 #include <sys/libkern.h>
 
 #include <crypto/siphash/siphash.h>
@@ -122,14 +121,10 @@ SipHash24_TestVectors(void)
 		SipHash_Update(&ctx, in, i);
 		SipHash_Final(out, &ctx);
 
-		if (memcmp(out, vectors[i], 8))
-#if 0
-			printf("%i: test vector failed\n", i);
-		else
-			printf("%i: test vector correct\n", i);
-#else
+		if (memcmp(out, vectors[i], 8) != 0) {
+			kprintf("%s: test vector [%d] failed\n", __func__, i);
 			fail++;
-#endif
+		}
 	}
 
 	return (fail == 0);

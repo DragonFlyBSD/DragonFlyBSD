@@ -35,7 +35,7 @@
  *  SipHash24_Init() for the fast and resonable strong version
  *  SipHash48_Init() for the strong version (half as fast)
  *
- * struct SIPHASH_CTX ctx;
+ * SIPHASH_CTX ctx;
  * SipHash24_Init(&ctx);
  * SipHash_SetKey(&ctx, "16bytes long key");
  * SipHash_Update(&ctx, pointer_to_string, length_of_string);
@@ -66,6 +66,7 @@ typedef struct _SIPHASH_CTX {
 #define SipHash24_Init(x)	SipHash_InitX((x), 2, 4)
 #define SipHash48_Init(x)	SipHash_InitX((x), 4, 8)
 void SipHash_InitX(SIPHASH_CTX *, int, int);
+
 void SipHash_SetKey(SIPHASH_CTX *,
     const uint8_t[__min_size(SIPHASH_KEY_LENGTH)]);
 void SipHash_Update(SIPHASH_CTX *, const void *, size_t);

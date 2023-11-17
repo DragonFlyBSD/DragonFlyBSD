@@ -41,10 +41,9 @@
  * https://131002.net/siphash/
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/endian.h>
-#include <sys/libkern.h>
 
 #include <crypto/siphash/siphash.h>
 
@@ -71,8 +70,7 @@ SipHash_SetKey(SIPHASH_CTX *ctx, const uint8_t key[static SIPHASH_KEY_LENGTH])
 {
 	uint64_t k[2];
 
-	KASSERT(ctx->v[0] == 0x736f6d6570736575ull &&
-	    ctx->initialized == 1,
+	KASSERT(ctx->v[0] == 0x736f6d6570736575ull && ctx->initialized == 1,
 	    ("%s: context %p not properly initialized", __func__, ctx));
 
 	k[0] = le64dec(&key[0]);
@@ -235,4 +233,3 @@ SipRounds(SIPHASH_CTX *ctx, int final)
 		ctx->v[2] = SIP_ROTL(ctx->v[2], 32);
 	}
 }
-

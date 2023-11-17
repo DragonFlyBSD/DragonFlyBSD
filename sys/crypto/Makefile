@@ -31,6 +31,9 @@ SRCS+=	serpent.c
 .PATH:	${.CURDIR}/sha2
 SRCS+=	sha2.c
 
+.PATH:	${.CURDIR}/siphash
+SRCS+=	siphash.c
+
 .PATH:	${.CURDIR}/twofish
 SRCS+=	twofish.c
 
