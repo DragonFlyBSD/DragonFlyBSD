@@ -18,11 +18,13 @@
 #ifndef _CURVE25519_H_
 #define _CURVE25519_H_
 
+#include <sys/libkern.h> /* karc4random_buf() */
+
 #define CURVE25519_KEY_SIZE 32
 
 int curve25519(uint8_t out[CURVE25519_KEY_SIZE],
-               const uint8_t scalar[CURVE25519_KEY_SIZE],
-               const uint8_t point[CURVE25519_KEY_SIZE]);
+	       const uint8_t scalar[CURVE25519_KEY_SIZE],
+	       const uint8_t point[CURVE25519_KEY_SIZE]);
 
 int curve25519_generate_public(uint8_t pub[CURVE25519_KEY_SIZE],
 			       const uint8_t secret[CURVE25519_KEY_SIZE]);
@@ -37,7 +39,7 @@ curve25519_clamp_secret(uint8_t secret[CURVE25519_KEY_SIZE])
 static inline void
 curve25519_generate_secret(uint8_t secret[CURVE25519_KEY_SIZE])
 {
-	arc4random_buf(secret, CURVE25519_KEY_SIZE);
+	karc4random_buf(secret, CURVE25519_KEY_SIZE);
 	curve25519_clamp_secret(secret);
 }
 

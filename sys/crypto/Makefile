@@ -22,6 +22,9 @@ SRCS+=	camellia.c camellia-api.c
 .PATH:	${.CURDIR}/chacha20
 SRCS+=	chacha.c
 
+.PATH:	${.CURDIR}/curve25519
+SRCS+=	curve25519.c
+
 .PATH:	${.CURDIR}/des
 SRCS+=	des_ecb.c des_enc.c des_setkey.c
 

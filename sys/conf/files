@@ -2248,6 +2248,7 @@ crypto/blowfish/bf_skey.c		optional crypto
 crypto/camellia/camellia.c		optional crypto
 crypto/camellia/camellia-api.c		optional crypto
 crypto/chacha20/chacha.c		optional crypto
+crypto/curve25519/curve25519.c		optional crypto
 crypto/des/des_ecb.c			optional crypto
 crypto/des/des_setkey.c			optional crypto
 crypto/poly1305/poly1305.c		optional crypto
