@@ -8,7 +8,7 @@
 #include <sys/types.h>
 #include <sys/systm.h>
 
-#include "poly1305.h"
+#include <crypto/poly1305/poly1305.h>
 
 /*
  * poly1305 implementation using 32 bit * 32 bit = 64 bit multiplication
@@ -16,7 +16,7 @@
  */
 
 /* interpret four 8 bit unsigned integers as a 32 bit unsigned integer in little endian */
-static unsigned long
+static inline unsigned long
 U8TO32(const unsigned char *p)
 {
 	return (((unsigned long)(p[0] & 0xff)) |
@@ -26,7 +26,7 @@ U8TO32(const unsigned char *p)
 }
 
 /* store a 32 bit unsigned integer as four 8 bit unsigned integers in little endian */
-static void
+static inline void
 U32TO8(unsigned char *p, unsigned long v)
 {
 	p[0] = (v) & 0xff;
@@ -89,7 +89,7 @@ poly1305_blocks(poly1305_state *st, const unsigned char *m, size_t bytes)
 	h3 = st->h[3];
 	h4 = st->h[4];
 
-	while (bytes >= poly1305_block_size) {
+	while (bytes >= POLY1305_BLOCK_SIZE) {
 		/* h += m[i] */
 		h0 += (U8TO32(m + 0)) & 0x3ffffff;
 		h1 += (U8TO32(m + 3) >> 2) & 0x3ffffff;
@@ -144,8 +144,8 @@ poly1305_blocks(poly1305_state *st, const unsigned char *m, size_t bytes)
 		h0 = h0 & 0x3ffffff;
 		h1 += c;
 
-		m += poly1305_block_size;
-		bytes -= poly1305_block_size;
+		m += POLY1305_BLOCK_SIZE;
+		bytes -= POLY1305_BLOCK_SIZE;
 	}
 
 	st->h[0] = h0;
@@ -162,7 +162,7 @@ poly1305_update(poly1305_state *st, const unsigned char *m, size_t bytes)
 
 	/* handle leftover */
 	if (st->leftover) {
-		size_t want = (poly1305_block_size - st->leftover);
+		size_t want = (POLY1305_BLOCK_SIZE - st->leftover);
 		if (want > bytes)
 			want = bytes;
 		for (i = 0; i < want; i++)
@@ -170,15 +170,15 @@ poly1305_update(poly1305_state *st, const unsigned char *m, size_t bytes)
 		bytes -= want;
 		m += want;
 		st->leftover += want;
-		if (st->leftover < poly1305_block_size)
+		if (st->leftover < POLY1305_BLOCK_SIZE)
 			return;
-		poly1305_blocks(st, st->buffer, poly1305_block_size);
+		poly1305_blocks(st, st->buffer, POLY1305_BLOCK_SIZE);
 		st->leftover = 0;
 	}
 
 	/* process full blocks */
-	if (bytes >= poly1305_block_size) {
-		size_t want = (bytes & ~(poly1305_block_size - 1));
+	if (bytes >= POLY1305_BLOCK_SIZE) {
+		size_t want = (bytes & ~(POLY1305_BLOCK_SIZE - 1));
 		poly1305_blocks(st, m, want);
 		m += want;
 		bytes -= want;
@@ -204,10 +204,10 @@ poly1305_finish(poly1305_state *st, unsigned char mac[16])
 	if (st->leftover) {
 		size_t i = st->leftover;
 		st->buffer[i++] = 1;
-		for (; i < poly1305_block_size; i++)
+		for (; i < POLY1305_BLOCK_SIZE; i++)
 			st->buffer[i] = 0;
 		st->final = 1;
-		poly1305_blocks(st, st->buffer, poly1305_block_size);
+		poly1305_blocks(st, st->buffer, POLY1305_BLOCK_SIZE);
 	}
 
 	/* fully carry h */

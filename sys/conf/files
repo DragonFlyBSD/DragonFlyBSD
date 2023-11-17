@@ -2250,6 +2250,7 @@ crypto/camellia/camellia-api.c		optional crypto
 crypto/chacha20/chacha.c		optional crypto
 crypto/des/des_ecb.c			optional crypto
 crypto/des/des_setkey.c			optional crypto
+crypto/poly1305/poly1305.c		optional crypto
 crypto/rc4/rc4.c			optional crypto
 crypto/rijndael/rijndael-alg-fst.c	optional crypto
 crypto/rijndael/rijndael-api-fst.c	optional crypto

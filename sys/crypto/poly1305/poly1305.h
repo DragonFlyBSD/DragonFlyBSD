@@ -9,14 +9,14 @@
 #ifndef _POLY1305_H_
 #define _POLY1305_H_
 
-#define poly1305_block_size 16
+#define POLY1305_BLOCK_SIZE	16
 
 typedef struct poly1305_state {
 	unsigned long r[5];
 	unsigned long h[5];
 	unsigned long pad[4];
 	size_t leftover;
-	unsigned char buffer[poly1305_block_size];
+	unsigned char buffer[POLY1305_BLOCK_SIZE];
 	unsigned char final;
 } poly1305_state;
 

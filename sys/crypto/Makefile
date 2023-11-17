@@ -25,6 +25,9 @@ SRCS+=	chacha.c
 .PATH:	${.CURDIR}/des
 SRCS+=	des_ecb.c des_enc.c des_setkey.c
 
+.PATH:	${.CURDIR}/poly1305
+SRCS+=	poly1305.c
+
 .PATH:	${.CURDIR}/rijndael
 SRCS+=	rijndael-alg-fst.c rijndael-api.c
 
