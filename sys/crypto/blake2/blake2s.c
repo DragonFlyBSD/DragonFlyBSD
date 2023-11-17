@@ -21,11 +21,11 @@
 
 #include <sys/types.h>
 #include <sys/systm.h>
+#include <sys/endian.h>
 
-#include <crypto/blake2s.h>
+#include <crypto/blake2/blake2s.h>
 
-static inline uint32_t
-ror32(uint32_t word, unsigned int shift)
+static inline uint32_t ror32(uint32_t word, unsigned int shift)
 {
 	return (word >> shift) | (word << (32 - shift));
 }
@@ -73,7 +73,7 @@ static inline void blake2s_init_param(struct blake2s_state *state,
 
 void blake2s_init(struct blake2s_state *state, const size_t outlen)
 {
-	KASSERT(!(!outlen || outlen > BLAKE2S_HASH_SIZE));
+	KKASSERT(!(!outlen || outlen > BLAKE2S_HASH_SIZE));
 	blake2s_init_param(state, 0x01010000 | outlen);
 	state->outlen = outlen;
 }
@@ -83,8 +83,8 @@ void blake2s_init_key(struct blake2s_state *state, const size_t outlen,
 {
 	uint8_t block[BLAKE2S_BLOCK_SIZE] = { 0 };
 
-	KASSERT(!(!outlen || outlen > BLAKE2S_HASH_SIZE ||
-		  !key || !keylen || keylen > BLAKE2S_KEY_SIZE));
+	KKASSERT(!(!outlen || outlen > BLAKE2S_HASH_SIZE ||
+		   !key || !keylen || keylen > BLAKE2S_KEY_SIZE));
 
 	blake2s_init_param(state, 0x01010000 | keylen << 8 | outlen);
 	state->outlen = outlen;
@@ -101,7 +101,7 @@ static inline void blake2s_compress(struct blake2s_state *state,
 	uint32_t v[16];
 	int i;
 
-	KASSERT(!((nblocks > 1 && inc != BLAKE2S_BLOCK_SIZE)));
+	KKASSERT(!((nblocks > 1 && inc != BLAKE2S_BLOCK_SIZE)));
 
 	while (nblocks > 0) {
 		blake2s_increment_counter(state, inc);
@@ -199,8 +199,8 @@ void blake2s_final(struct blake2s_state *state, uint8_t *out)
 	explicit_bzero(state, sizeof(*state));
 }
 
-void blake2s_hmac(uint8_t *out, const uint8_t *in, const uint8_t *key, const size_t outlen,
-		  const size_t inlen, const size_t keylen)
+void blake2s_hmac(uint8_t *out, const uint8_t *in, const uint8_t *key,
+		  const size_t outlen, const size_t inlen, const size_t keylen)
 {
 	struct blake2s_state state;
 	uint8_t x_key[BLAKE2S_BLOCK_SIZE] __aligned(__alignof__(uint32_t)) = { 0 };

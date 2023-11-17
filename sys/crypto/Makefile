@@ -10,6 +10,9 @@ SRCS+=	cryptodev_if.c cryptodev_if.h
 
 SRCS+=	sha1.c
 
+.PATH:	${.CURDIR}/blake2
+SRCS+=	blake2s.c
+
 .PATH:	${.CURDIR}/blowfish
 SRCS+=	bf_enc.c bf_skey.c
 

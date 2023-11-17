@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/systm.h>
 
 #ifndef _BLAKE2S_H_
 #define _BLAKE2S_H_
@@ -39,18 +40,23 @@ struct blake2s_state {
 void blake2s_init(struct blake2s_state *state, const size_t outlen);
 void blake2s_init_key(struct blake2s_state *state, const size_t outlen,
 		      const void *key, const size_t keylen);
-void blake2s_update(struct blake2s_state *state, const uint8_t *in, size_t inlen);
+void blake2s_update(struct blake2s_state *state, const uint8_t *in,
+		    size_t inlen);
 void blake2s_final(struct blake2s_state *state, uint8_t *out);
 
-static inline void blake2s(
-    uint8_t *out, const uint8_t *in, const uint8_t *key,
-    const size_t outlen, const size_t inlen, const size_t keylen)
+void blake2s_hmac(uint8_t *out, const uint8_t *in, const uint8_t *key,
+		  const size_t outlen, const size_t inlen,
+		  const size_t keylen);
+
+static inline void
+blake2s(uint8_t *out, const uint8_t *in, const uint8_t *key,
+	const size_t outlen, const size_t inlen, const size_t keylen)
 {
 	struct blake2s_state state;
 
-	KASSERT((in != NULL || inlen == 0) &&
-		out != NULL && outlen <= BLAKE2S_HASH_SIZE &&
-		(key != NULL || keylen == 0) && keylen <= BLAKE2S_KEY_SIZE);
+	KKASSERT((in != NULL || inlen == 0) &&
+		 out != NULL && outlen <= BLAKE2S_HASH_SIZE &&
+		 (key != NULL || keylen == 0) && keylen <= BLAKE2S_KEY_SIZE);
 
 	if (keylen)
 		blake2s_init_key(&state, outlen, key, keylen);
@@ -60,8 +66,5 @@ static inline void blake2s(
 	blake2s_update(&state, in, inlen);
 	blake2s_final(&state, out);
 }
-
-void blake2s_hmac(uint8_t *out, const uint8_t *in, const uint8_t *key,
-    const size_t outlen, const size_t inlen, const size_t keylen);
 
 #endif /* _BLAKE2S_H_ */

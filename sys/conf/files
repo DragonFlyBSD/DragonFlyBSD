@@ -2243,6 +2243,7 @@ libprop/prop_object.c			standard
 libprop/prop_stack.c			standard
 libprop/prop_string.c			standard
 libprop/prop_rb.c			standard
+crypto/blake2/blake2s.c			optional crypto
 crypto/blowfish/bf_skey.c		optional crypto
 crypto/camellia/camellia.c		optional crypto
 crypto/camellia/camellia-api.c		optional crypto
