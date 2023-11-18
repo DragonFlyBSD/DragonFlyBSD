@@ -745,18 +745,20 @@ aes_ctr_setkey(void *sched, u_int8_t *key, int len)
 {
 	struct aes_ctr_ctx *ctx;
 
-	if (len < AESCTR_NONCESIZE)
+	len -= AESCTR_NONCESIZE;
+	if (len < 0)
 		return -1;
+	if (!(len == 16 || len == 24 || len == 32))
+		return -1; /* invalid key bits */
 
 	ctx = sched;
-	ctx->ac_nr = rijndaelKeySetupEnc(ctx->ac_ek, (u_char *)key,
-					 (len - AESCTR_NONCESIZE) * 8);
+	ctx->ac_nr = rijndaelKeySetupEnc(ctx->ac_ek, key, len * 8);
 	if (ctx->ac_nr == 0) {
 		bzero(ctx, sizeof(struct aes_ctr_ctx));
 		return -1;
 	}
 
-	bcopy(key + len - AESCTR_NONCESIZE, ctx->ac_block, AESCTR_NONCESIZE);
+	bcopy(key + len, ctx->ac_block, AESCTR_NONCESIZE);
 
 	return 0;
 }
