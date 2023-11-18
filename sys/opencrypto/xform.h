@@ -40,7 +40,7 @@ struct auth_hash {
 	u_int16_t blocksize;
 	u_int16_t ctxsize;
 	void (*Init) (void *);
-	void (*Setkey) (void *, const u_int8_t *, u_int16_t);
+	int  (*Setkey) (void *, const u_int8_t *, u_int16_t);
 	void (*Reinit) (void *, const u_int8_t *, u_int16_t);
 	int  (*Update) (void *, u_int8_t *, u_int16_t);
 	void (*Final) (u_int8_t *, void *);

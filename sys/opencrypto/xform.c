@@ -412,7 +412,7 @@ struct auth_hash auth_hash_gmac_aes_128 = {
 	CRYPTO_AES_128_GMAC, "GMAC-AES-128",
 	16+4, 16, 16, sizeof(AES_GMAC_CTX),
 	(void (*)(void *)) AES_GMAC_Init,
-	(void (*)(void *, const u_int8_t *, u_int16_t)) AES_GMAC_Setkey,
+	(int  (*)(void *, const u_int8_t *, u_int16_t)) AES_GMAC_Setkey,
 	(void (*)(void *, const u_int8_t *, u_int16_t)) AES_GMAC_Reinit,
 	(int  (*)(void *, u_int8_t *, u_int16_t)) AES_GMAC_Update,
 	(void (*)(u_int8_t *, void *)) AES_GMAC_Final
@@ -422,7 +422,7 @@ struct auth_hash auth_hash_gmac_aes_192 = {
 	CRYPTO_AES_192_GMAC, "GMAC-AES-192",
 	24+4, 16, 16, sizeof(AES_GMAC_CTX),
 	(void (*)(void *)) AES_GMAC_Init,
-	(void (*)(void *, const u_int8_t *, u_int16_t)) AES_GMAC_Setkey,
+	(int  (*)(void *, const u_int8_t *, u_int16_t)) AES_GMAC_Setkey,
 	(void (*)(void *, const u_int8_t *, u_int16_t)) AES_GMAC_Reinit,
 	(int  (*)(void *, u_int8_t *, u_int16_t)) AES_GMAC_Update,
 	(void (*)(u_int8_t *, void *)) AES_GMAC_Final
@@ -432,7 +432,7 @@ struct auth_hash auth_hash_gmac_aes_256 = {
 	CRYPTO_AES_256_GMAC, "GMAC-AES-256",
 	32+4, 16, 16, sizeof(AES_GMAC_CTX),
 	(void (*)(void *)) AES_GMAC_Init,
-	(void (*)(void *, const u_int8_t *, u_int16_t)) AES_GMAC_Setkey,
+	(int  (*)(void *, const u_int8_t *, u_int16_t)) AES_GMAC_Setkey,
 	(void (*)(void *, const u_int8_t *, u_int16_t)) AES_GMAC_Reinit,
 	(int  (*)(void *, u_int8_t *, u_int16_t)) AES_GMAC_Update,
 	(void (*)(u_int8_t *, void *)) AES_GMAC_Final

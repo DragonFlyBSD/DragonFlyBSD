@@ -41,7 +41,7 @@ typedef struct _AES_GMAC_CTX {
 
 __BEGIN_DECLS
 void	AES_GMAC_Init(AES_GMAC_CTX *);
-void	AES_GMAC_Setkey(AES_GMAC_CTX *, const uint8_t *, uint16_t);
+int	AES_GMAC_Setkey(AES_GMAC_CTX *, const uint8_t *, uint16_t);
 void	AES_GMAC_Reinit(AES_GMAC_CTX *, const uint8_t *, uint16_t);
 int	AES_GMAC_Update(AES_GMAC_CTX *, uint8_t *, uint16_t);
 void	AES_GMAC_Final(uint8_t [GMAC_DIGEST_LEN], AES_GMAC_CTX *);

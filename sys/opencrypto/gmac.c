@@ -105,7 +105,7 @@ AES_GMAC_Init(AES_GMAC_CTX *ctx)
 	bzero(ctx->J, GMAC_BLOCK_LEN);
 }
 
-void
+int
 AES_GMAC_Setkey(AES_GMAC_CTX *ctx, const uint8_t *key, uint16_t klen)
 {
 	ctx->rounds = rijndaelKeySetupEnc(ctx->K, __DECONST(u_char *, key),
@@ -114,6 +114,7 @@ AES_GMAC_Setkey(AES_GMAC_CTX *ctx, const uint8_t *key, uint16_t klen)
 	bcopy(key + klen - AESCTR_NONCESIZE, ctx->J, AESCTR_NONCESIZE);
 	/* prepare a hash subkey */
 	rijndaelEncrypt(ctx->K, ctx->rounds, ctx->ghash.H, ctx->ghash.H);
+	return (0);
 }
 
 void

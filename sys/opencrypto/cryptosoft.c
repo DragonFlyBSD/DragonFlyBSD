@@ -1005,8 +1005,12 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 			}
 
 			axf->Init((*swd)->sw_ictx);
-			axf->Setkey((*swd)->sw_ictx, cri->cri_key,
-				    cri->cri_klen / 8);
+			error = axf->Setkey((*swd)->sw_ictx, cri->cri_key,
+					    cri->cri_klen / 8);
+			if (error) {
+				swcr_freesession_slot(&swd_base, 0);
+				return error;
+			}
 			(*swd)->sw_axf = axf;
 			break;
 
