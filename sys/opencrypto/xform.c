@@ -856,19 +856,21 @@ aes_ctr_setkey(u_int8_t **sched, u_int8_t *key, int len)
 {
 	struct aes_ctr_ctx *ctx;
 
-	if (len < AESCTR_NONCESIZE)
+	len -= AESCTR_NONCESIZE;
+	if (len < 0)
 		return -1;
+	if (!(len == 16 || len == 24 || len == 32))
+		return -1; /* invalid key bits */
 
 	*sched = kmalloc(sizeof(struct aes_ctr_ctx), M_CRYPTO_DATA,
-	M_WAITOK | M_ZERO);
+			 M_WAITOK | M_ZERO);
 	ctx = (struct aes_ctr_ctx *)*sched;
-	ctx->ac_nr = rijndaelKeySetupEnc(ctx->ac_ek, (u_char *)key,
-	(len - AESCTR_NONCESIZE) * 8);
+	ctx->ac_nr = rijndaelKeySetupEnc(ctx->ac_ek, key, len * 8);
 	if (ctx->ac_nr == 0) {
 		aes_ctr_zerokey(sched);
 		return -1;
 	}
-	bcopy(key + len - AESCTR_NONCESIZE, ctx->ac_block, AESCTR_NONCESIZE);
+	bcopy(key + len, ctx->ac_block, AESCTR_NONCESIZE);
 	return 0;
 }
 
