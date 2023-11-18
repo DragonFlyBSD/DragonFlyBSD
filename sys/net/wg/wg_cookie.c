@@ -15,8 +15,10 @@
 #include <sys/queue.h>
 #include <sys/socket.h>
 #include <sys/time.h>
-#include <crypto/siphash/siphash.h>
 #include <netinet/in.h>
+
+#include <crypto/blake2/blake2s.h>
+#include <crypto/siphash/siphash.h>
 
 #include "wg_cookie.h"
 

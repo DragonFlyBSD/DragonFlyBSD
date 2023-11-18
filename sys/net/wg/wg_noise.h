@@ -7,6 +7,10 @@
 #ifndef __NOISE_H__
 #define __NOISE_H__
 
+#include <crypto/chachapoly.h>
+#include <crypto/blake2/blake2s.h>
+#include <crypto/curve25519/curve25519.h>
+
 #include "crypto.h"
 
 #define NOISE_PUBLIC_KEY_LEN	CURVE25519_KEY_SIZE

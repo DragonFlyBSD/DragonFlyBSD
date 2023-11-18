@@ -8,9 +8,10 @@
 #define __COOKIE_H__
 
 #include "crypto.h"
+#include <crypto/blake2/blake2s.h>
 
 #define COOKIE_MAC_SIZE		16
-#define COOKIE_KEY_SIZE		32
+#define COOKIE_KEY_SIZE		BLAKE2S_KEY_SIZE
 #define COOKIE_NONCE_SIZE	XCHACHA20POLY1305_NONCE_SIZE
 #define COOKIE_COOKIE_SIZE	16
 #define COOKIE_SECRET_SIZE	32
