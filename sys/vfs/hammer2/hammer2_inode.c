@@ -1231,7 +1231,6 @@ hammer2_inode_create_normal(hammer2_inode_t *pip,
 	xop->lhc = inum;
 	xop->flags = 0;
 	xop->meta = nip->meta;
-	KKASSERT(vap);
 
 	xop->meta.name_len = hammer2_xop_setname_inum(&xop->head, inum);
 	xop->meta.name_key = inum;

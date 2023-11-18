@@ -616,7 +616,7 @@ typedef struct hammer2_dirent_head hammer2_dirent_head_t;
  *
  * CONTENT ADDRESSABLE INDEXING (future) - Using a 256 or 512-bit check code.
  */
-struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
+struct hammer2_blockref {		/* MUST BE EXACTLY 128 BYTES */
 	uint8_t		type;		/* type of underlying item */
 	uint8_t		methods;	/* check method & compression method */
 	uint8_t		copyid;		/* specify which copy this is */

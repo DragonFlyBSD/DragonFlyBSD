@@ -2168,7 +2168,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 */
 	{
 		hammer2_xop_scanlhc_t *sxop;
-		hammer2_tid_t lhcbase;
+		hammer2_key_t lhcbase;
 
 		tlhc = hammer2_dirhash(tname, tname_len);
 		lhcbase = tlhc;
