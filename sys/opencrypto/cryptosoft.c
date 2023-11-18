@@ -123,12 +123,17 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 	 * storage was never designed for concurrent ops.
 	 */
 	if (crd->crd_flags & CRD_F_KEY_EXPLICIT) {
-		kschedule = NULL;
-		explicit_kschedule = 1;
-		error = exf->setkey(&kschedule,
-				    crd->crd_key, crd->crd_klen / 8);
+		kschedule = kmalloc(exf->ctxsize, M_CRYPTO_DATA,
+				    M_NOWAIT | M_ZERO);
+		if (kschedule == NULL) {
+			error = ENOMEM;
+			goto out;
+		}
+		error = exf->setkey(kschedule, crd->crd_key,
+				    crd->crd_klen / 8);
 		if (error)
-			goto done;
+			goto out;
+		explicit_kschedule = 1;
 	} else {
 		spin_lock(&swcr_spin);
 		kschedule = sw->sw_kschedule;
@@ -452,27 +457,31 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 		}
 		error = 0; /* Done w/contiguous buffer encrypt/decrypt */
 	}
+
 done:
 	/*
 	 * Cleanup - explicitly replace the session key if requested
 	 *	     (horrible semantics for concurrent operation)
 	 */
 	if (explicit_kschedule) {
+		okschedule = NULL;
 		spin_lock(&swcr_spin);
 		if (sw->sw_kschedule && sw->sw_kschedule_refs == 0) {
 			okschedule = sw->sw_kschedule;
 			sw->sw_kschedule = kschedule;
-		} else {
-			okschedule = NULL;
 		}
 		spin_unlock(&swcr_spin);
-		if (okschedule)
-			exf->zerokey(&okschedule);
+		if (okschedule) {
+			bzero(okschedule, exf->ctxsize);
+			kfree(okschedule, M_CRYPTO_DATA);
+		}
 	} else {
 		spin_lock(&swcr_spin);
 		--sw->sw_kschedule_refs;
 		spin_unlock(&swcr_spin);
 	}
+
+out:
 	return error;
 }
 
@@ -889,8 +898,12 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 			txf = &enc_xform_null;
 			goto enccommon;
 		enccommon:
+			KKASSERT(txf->ctxsize > 0);
+			(*swd)->sw_kschedule = kmalloc(txf->ctxsize,
+						       M_CRYPTO_DATA,
+						       M_WAITOK | M_ZERO);
 			if (cri->cri_key != NULL) {
-				error = txf->setkey(&((*swd)->sw_kschedule),
+				error = txf->setkey((*swd)->sw_kschedule,
 						    cri->cri_key,
 						    cri->cri_klen / 8);
 				if (error) {
@@ -1129,8 +1142,10 @@ swcr_freesession_slot(struct swcr_data **swdp, u_int32_t sid)
 		case CRYPTO_NULL_CBC:
 			txf = swd->sw_exf;
 
-			if (swd->sw_kschedule)
-				txf->zerokey(&(swd->sw_kschedule));
+			if (swd->sw_kschedule) {
+				bzero(swd->sw_kschedule, txf->ctxsize);
+				kfree(swd->sw_kschedule, M_CRYPTO_DATA);
+			}
 			break;
 
 		case CRYPTO_MD5_HMAC:

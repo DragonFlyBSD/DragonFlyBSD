@@ -51,12 +51,14 @@ struct auth_hash {
 struct enc_xform {
 	int type;
 	char *name;
-	u_int16_t blocksize, ivsize;
-	u_int16_t minkey, maxkey;
+	u_int16_t blocksize;
+	u_int16_t ivsize;
+	u_int16_t minkey;
+	u_int16_t maxkey;
+	u_int16_t ctxsize;
 	void (*encrypt) (caddr_t, u_int8_t *, u_int8_t *);
 	void (*decrypt) (caddr_t, u_int8_t *, u_int8_t *);
-	int (*setkey) (u_int8_t **, u_int8_t *, int len);
-	void (*zerokey) (u_int8_t **);
+	int (*setkey) (void *, u_int8_t *, int);
 	void (*reinit) (caddr_t, u_int8_t *);
 };
 

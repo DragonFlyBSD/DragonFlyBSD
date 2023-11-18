@@ -65,24 +65,23 @@
 #include <opencrypto/cryptodev.h>
 #include <opencrypto/xform.h>
 
-static void null_encrypt(caddr_t, u_int8_t *, u_int8_t *);
-static void null_decrypt(caddr_t, u_int8_t *, u_int8_t *);
-static int null_setkey(u_int8_t **, u_int8_t *, int);
-static void null_zerokey(u_int8_t **);
+static	void null_encrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void null_decrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	int null_setkey(void *, u_int8_t *, int);
 
-static	int des1_setkey(u_int8_t **, u_int8_t *, int);
-static	int des3_setkey(u_int8_t **, u_int8_t *, int);
-static	int blf_setkey(u_int8_t **, u_int8_t *, int);
-static	int cast5_setkey(u_int8_t **, u_int8_t *, int);
-static	int skipjack_setkey(u_int8_t **, u_int8_t *, int);
-static	int rijndael128_setkey(u_int8_t **, u_int8_t *, int);
-static	int aes_xts_setkey(u_int8_t **, u_int8_t *, int);
-static	int aes_ctr_setkey(u_int8_t **, u_int8_t *, int);
-static	int cml_setkey(u_int8_t **, u_int8_t *, int);
-static	int twofish128_setkey(u_int8_t **, u_int8_t *, int);
-static	int serpent128_setkey(u_int8_t **, u_int8_t *, int);
-static	int twofish_xts_setkey(u_int8_t **, u_int8_t *, int);
-static	int serpent_xts_setkey(u_int8_t **, u_int8_t *, int);
+static	int des1_setkey(void *, u_int8_t *, int);
+static	int des3_setkey(void *, u_int8_t *, int);
+static	int blf_setkey(void *, u_int8_t *, int);
+static	int cast5_setkey(void *, u_int8_t *, int);
+static	int skipjack_setkey(void *, u_int8_t *, int);
+static	int rijndael128_setkey(void *, u_int8_t *, int);
+static	int aes_xts_setkey(void *, u_int8_t *, int);
+static	int aes_ctr_setkey(void *, u_int8_t *, int);
+static	int cml_setkey(void *, u_int8_t *, int);
+static	int twofish128_setkey(void *, u_int8_t *, int);
+static	int serpent128_setkey(void *, u_int8_t *, int);
+static	int twofish_xts_setkey(void *, u_int8_t *, int);
+static	int serpent_xts_setkey(void *, u_int8_t *, int);
 
 static	void des1_encrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void des3_encrypt(caddr_t, u_int8_t *, u_int8_t *);
@@ -110,20 +109,6 @@ static	void serpent128_decrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void twofish_xts_decrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void serpent_xts_decrypt(caddr_t, u_int8_t *, u_int8_t *);
 
-static	void des1_zerokey(u_int8_t **);
-static	void des3_zerokey(u_int8_t **);
-static	void blf_zerokey(u_int8_t **);
-static	void cast5_zerokey(u_int8_t **);
-static	void skipjack_zerokey(u_int8_t **);
-static	void rijndael128_zerokey(u_int8_t **);
-static	void aes_xts_zerokey(u_int8_t **);
-static	void aes_ctr_zerokey(u_int8_t **);
-static	void cml_zerokey(u_int8_t **);
-static	void twofish128_zerokey(u_int8_t **);
-static	void serpent128_zerokey(u_int8_t **);
-static	void twofish_xts_zerokey(u_int8_t **);
-static	void serpent_xts_zerokey(u_int8_t **);
-
 static	void aes_ctr_crypt(caddr_t, u_int8_t *, u_int8_t *);
 
 static	void aes_ctr_reinit(caddr_t, u_int8_t *);
@@ -147,10 +132,31 @@ static	int SHA512Update_int(void *, u_int8_t *, u_int16_t);
 static	u_int32_t deflate_compress(u_int8_t *, u_int32_t, u_int8_t **);
 static	u_int32_t deflate_decompress(u_int8_t *, u_int32_t, u_int8_t **);
 
+#define AES_XTS_ALPHA		0x87	/* GF(2^128) generator polynomial */
+#define AESCTR_NONCESIZE	4
+
+struct aes_xts_ctx {
+	rijndael_ctx key1;
+	rijndael_ctx key2;
+};
+
+struct aes_ctr_ctx {
+	u_int32_t	ac_ek[4*(14 + 1)];
+	u_int8_t	ac_block[AESCTR_BLOCK_LEN];
+	int		ac_nr;
+};
+
+struct twofish_xts_ctx {
+	twofish_ctx key1;
+	twofish_ctx key2;
+};
+
+struct serpent_xts_ctx {
+	serpent_ctx key1;
+	serpent_ctx key2;
+};
+
 /* Helper */
-struct aes_xts_ctx;
-struct twofish_xts_ctx;
-struct serpent_xts_ctx;
 static void aes_xts_crypt(struct aes_xts_ctx *, u_int8_t *, u_int8_t *, u_int);
 static void twofish_xts_crypt(struct twofish_xts_ctx *, u_int8_t *, u_int8_t *,
     u_int);
@@ -164,171 +170,171 @@ struct enc_xform enc_xform_null = {
 	CRYPTO_NULL_CBC, "NULL",
 	/* NB: blocksize of 4 is to generate a properly aligned ESP header */
 	NULL_BLOCK_LEN, NULL_BLOCK_LEN, 0, 256, /* 2048 bits, max key */
+	sizeof(int),	/* NB: context isn't used */
 	null_encrypt,
 	null_decrypt,
 	null_setkey,
-	null_zerokey,
-	NULL
+	NULL,
 };
 
 struct enc_xform enc_xform_des = {
 	CRYPTO_DES_CBC, "DES",
 	DES_BLOCK_LEN, DES_BLOCK_LEN, 8, 8,
+	sizeof(des_key_schedule),
 	des1_encrypt,
 	des1_decrypt,
 	des1_setkey,
-	des1_zerokey,
-	NULL
+	NULL,
 };
 
 struct enc_xform enc_xform_3des = {
 	CRYPTO_3DES_CBC, "3DES",
 	DES3_BLOCK_LEN, DES3_BLOCK_LEN, 24, 24,
+	3 * sizeof(des_key_schedule),
 	des3_encrypt,
 	des3_decrypt,
 	des3_setkey,
-	des3_zerokey,
-	NULL
+	NULL,
 };
 
 struct enc_xform enc_xform_blf = {
 	CRYPTO_BLF_CBC, "Blowfish",
 	BLOWFISH_BLOCK_LEN, BLOWFISH_BLOCK_LEN, 5, 56 /* 448 bits, max key */,
+	sizeof(BF_KEY),
 	blf_encrypt,
 	blf_decrypt,
 	blf_setkey,
-	blf_zerokey,
-	NULL
+	NULL,
 };
 
 struct enc_xform enc_xform_cast5 = {
 	CRYPTO_CAST_CBC, "CAST-128",
 	CAST128_BLOCK_LEN, CAST128_BLOCK_LEN, 5, 16,
+	sizeof(cast_key),
 	cast5_encrypt,
 	cast5_decrypt,
 	cast5_setkey,
-	cast5_zerokey,
-	NULL
+	NULL,
 };
 
 struct enc_xform enc_xform_skipjack = {
 	CRYPTO_SKIPJACK_CBC, "Skipjack",
 	SKIPJACK_BLOCK_LEN, SKIPJACK_BLOCK_LEN, 10, 10,
+	10 * (sizeof(u_int8_t *) + 0x100), /* NB: all needed memory */
 	skipjack_encrypt,
 	skipjack_decrypt,
 	skipjack_setkey,
-	skipjack_zerokey,
-	NULL
+	NULL,
 };
 
 struct enc_xform enc_xform_rijndael128 = {
 	CRYPTO_RIJNDAEL128_CBC, "Rijndael-128/AES",
 	RIJNDAEL128_BLOCK_LEN, RIJNDAEL128_BLOCK_LEN, 8, 32,
+	sizeof(rijndael_ctx),
 	rijndael128_encrypt,
 	rijndael128_decrypt,
 	rijndael128_setkey,
-	rijndael128_zerokey,
-	NULL
+	NULL,
 };
 
 struct enc_xform enc_xform_aes_xts = {
 	CRYPTO_AES_XTS, "AES-XTS",
 	AES_XTS_BLOCK_LEN, AES_XTS_IV_LEN, 32, 64,
+	sizeof(struct aes_xts_ctx),
 	aes_xts_encrypt,
 	aes_xts_decrypt,
 	aes_xts_setkey,
-	aes_xts_zerokey,
-	aes_xts_reinit
+	aes_xts_reinit,
 };
 
 struct enc_xform enc_xform_aes_ctr = {
 	CRYPTO_AES_CTR, "AES-CTR",
 	AESCTR_BLOCK_LEN, AESCTR_IV_LEN, 16+4, 32+4,
+	sizeof(struct aes_ctr_ctx),
 	aes_ctr_crypt,
 	aes_ctr_crypt,
 	aes_ctr_setkey,
-	aes_ctr_zerokey,
-	aes_ctr_reinit
+	aes_ctr_reinit,
 };
 
 struct enc_xform enc_xform_aes_gcm = {
 	CRYPTO_AES_GCM_16, "AES-GCM",
 	AESGCM_BLOCK_LEN, AESGCM_IV_LEN, 16+4, 32+4,
+	sizeof(struct aes_ctr_ctx),
 	aes_ctr_crypt,
 	aes_ctr_crypt,
 	aes_ctr_setkey,
-	aes_ctr_zerokey,
-	aes_gcm_reinit
+	aes_gcm_reinit,
 };
 
 struct enc_xform enc_xform_aes_gmac = {
 	CRYPTO_AES_GMAC, "AES-GMAC",
 	AESGMAC_BLOCK_LEN, AESGMAC_IV_LEN, 16+4, 32+4,
+	0, /* NB: no context */
 	NULL,
 	NULL,
 	NULL,
 	NULL,
-	NULL
 };
 
 struct enc_xform enc_xform_arc4 = {
 	CRYPTO_ARC4, "ARC4",
 	1, 1, 1, 32,
+	0, /* NB: no context */
 	NULL,
 	NULL,
 	NULL,
 	NULL,
-	NULL
 };
 
 struct enc_xform enc_xform_camellia = {
 	CRYPTO_CAMELLIA_CBC, "Camellia",
 	CAMELLIA_BLOCK_LEN, CAMELLIA_BLOCK_LEN, 8, 32,
+	sizeof(camellia_ctx),
 	cml_encrypt,
 	cml_decrypt,
 	cml_setkey,
-	cml_zerokey,
-	NULL
+	NULL,
 };
 
 struct enc_xform enc_xform_twofish = {
 	CRYPTO_TWOFISH_CBC, "Twofish",
 	TWOFISH_BLOCK_LEN, TWOFISH_BLOCK_LEN, 8, 32,
+	sizeof(twofish_ctx),
 	twofish128_encrypt,
 	twofish128_decrypt,
 	twofish128_setkey,
-	twofish128_zerokey,
-	NULL
+	NULL,
 };
 
 struct enc_xform enc_xform_serpent = {
 	CRYPTO_SERPENT_CBC, "Serpent",
 	SERPENT_BLOCK_LEN, SERPENT_BLOCK_LEN, 8, 32,
+	sizeof(serpent_ctx),
 	serpent128_encrypt,
 	serpent128_decrypt,
 	serpent128_setkey,
-	serpent128_zerokey,
-	NULL
+	NULL,
 };
 
 struct enc_xform enc_xform_twofish_xts = {
 	CRYPTO_TWOFISH_XTS, "TWOFISH-XTS",
 	TWOFISH_XTS_BLOCK_LEN, TWOFISH_XTS_IV_LEN, 32, 64,
+	sizeof(struct twofish_xts_ctx),
 	twofish_xts_encrypt,
 	twofish_xts_decrypt,
 	twofish_xts_setkey,
-	twofish_xts_zerokey,
-	twofish_xts_reinit
+	twofish_xts_reinit,
 };
 
 struct enc_xform enc_xform_serpent_xts = {
 	CRYPTO_SERPENT_XTS, "SERPENT-XTS",
 	SERPENT_XTS_BLOCK_LEN, SERPENT_XTS_IV_LEN, 32, 64,
+	sizeof(struct serpent_xts_ctx),
 	serpent_xts_encrypt,
 	serpent_xts_decrypt,
 	serpent_xts_setkey,
-	serpent_xts_zerokey,
-	serpent_xts_reinit
+	serpent_xts_reinit,
 };
 
 
@@ -454,16 +460,9 @@ null_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 }
 
 static int
-null_setkey(u_int8_t **sched, u_int8_t *key, int len)
+null_setkey(void *sched, u_int8_t *key, int len)
 {
-	*sched = NULL;
 	return 0;
-}
-
-static void
-null_zerokey(u_int8_t **sched)
-{
-	*sched = NULL;
 }
 
 static void
@@ -485,28 +484,9 @@ des1_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 }
 
 static int
-des1_setkey(u_int8_t **sched, u_int8_t *key, int len)
+des1_setkey(void *sched, u_int8_t *key, int len)
 {
-	des_key_schedule *p;
-	int err;
-
-	p = kmalloc(sizeof (des_key_schedule),
-		    M_CRYPTO_DATA, M_INTWAIT | M_ZERO);
-	if (p != NULL) {
-		des_set_key((des_cblock *) key, p[0]);
-		err = 0;
-	} else
-		err = ENOMEM;
-	*sched = (u_int8_t *) p;
-	return err;
-}
-
-static void
-des1_zerokey(u_int8_t **sched)
-{
-	bzero(*sched, sizeof (des_key_schedule));
-	kfree(*sched, M_CRYPTO_DATA);
-	*sched = NULL;
+	return des_set_key((des_cblock *)key, sched);
 }
 
 static void
@@ -528,30 +508,17 @@ des3_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 }
 
 static int
-des3_setkey(u_int8_t **sched, u_int8_t *key, int len)
+des3_setkey(void *sched, u_int8_t *key, int len)
 {
 	des_key_schedule *p;
-	int err;
 
-	p = kmalloc(3 * sizeof(des_key_schedule),
-		    M_CRYPTO_DATA, M_INTWAIT | M_ZERO);
-	if (p != NULL) {
-		des_set_key((des_cblock *)(key +  0), p[0]);
-		des_set_key((des_cblock *)(key +  8), p[1]);
-		des_set_key((des_cblock *)(key + 16), p[2]);
-		err = 0;
-	} else
-		err = ENOMEM;
-	*sched = (u_int8_t *) p;
-	return err;
-}
+	p = sched;
+	if (des_set_key((des_cblock *)(key +  0), p[0]) < 0 ||
+	    des_set_key((des_cblock *)(key +  8), p[1]) < 0 ||
+	    des_set_key((des_cblock *)(key + 16), p[2]) < 0)
+		return -1;
 
-static void
-des3_zerokey(u_int8_t **sched)
-{
-	bzero(*sched, 3*sizeof (des_key_schedule));
-	kfree(*sched, M_CRYPTO_DATA);
-	*sched = NULL;
+	return 0;
 }
 
 static void
@@ -585,25 +552,10 @@ blf_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 }
 
 static int
-blf_setkey(u_int8_t **sched, u_int8_t *key, int len)
+blf_setkey(void *sched, u_int8_t *key, int len)
 {
-	int err;
-
-	*sched = kmalloc(sizeof(BF_KEY), M_CRYPTO_DATA, M_INTWAIT | M_ZERO);
-	if (*sched != NULL) {
-		BF_set_key((BF_KEY *) *sched, len, key);
-		err = 0;
-	} else
-		err = ENOMEM;
-	return err;
-}
-
-static void
-blf_zerokey(u_int8_t **sched)
-{
-	bzero(*sched, sizeof(BF_KEY));
-	kfree(*sched, M_CRYPTO_DATA);
-	*sched = NULL;
+	BF_set_key(sched, len, key);
+	return 0;
 }
 
 static void
@@ -619,25 +571,10 @@ cast5_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 }
 
 static int
-cast5_setkey(u_int8_t **sched, u_int8_t *key, int len)
+cast5_setkey(void *sched, u_int8_t *key, int len)
 {
-	int err;
-
-	*sched = kmalloc(sizeof(cast_key), M_CRYPTO_DATA, M_INTWAIT | M_ZERO);
-	if (*sched != NULL) {
-		cast_setkey((cast_key *)*sched, key, len);
-		err = 0;
-	} else
-		err = ENOMEM;
-	return err;
-}
-
-static void
-cast5_zerokey(u_int8_t **sched)
-{
-	bzero(*sched, sizeof(cast_key));
-	kfree(*sched, M_CRYPTO_DATA);
-	*sched = NULL;
+	cast_setkey(sched, key, len);
+	return 0;
 }
 
 static void
@@ -653,35 +590,19 @@ skipjack_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 }
 
 static int
-skipjack_setkey(u_int8_t **sched, u_int8_t *key, int len)
+skipjack_setkey(void *sched, u_int8_t *key, int len)
 {
-	int err;
+	u_int8_t **key_tables = sched;
+	u_int8_t *table = (u_int8_t *)&key_tables[10];
+	int k;
 
-	/* NB: allocate all the memory that's needed at once */
-	*sched = kmalloc(10 * (sizeof(u_int8_t *) + 0x100),
-			 M_CRYPTO_DATA, M_INTWAIT | M_ZERO);
-	if (*sched != NULL) {
-		u_int8_t** key_tables = (u_int8_t**) *sched;
-		u_int8_t* table = (u_int8_t*) &key_tables[10];
-		int k;
+	for (k = 0; k < 10; k++) {
+		key_tables[k] = table;
+		table += 0x100;
+	}
+	subkey_table_gen(key, sched);
 
-		for (k = 0; k < 10; k++) {
-			key_tables[k] = table;
-			table += 0x100;
-		}
-		subkey_table_gen(key, (u_int8_t **) *sched);
-		err = 0;
-	} else
-		err = ENOMEM;
-	return err;
-}
-
-static void
-skipjack_zerokey(u_int8_t **sched)
-{
-	bzero(*sched, 10 * (sizeof(u_int8_t *) + 0x100));
-	kfree(*sched, M_CRYPTO_DATA);
-	*sched = NULL;
+	return 0;
 }
 
 static void
@@ -698,37 +619,15 @@ rijndael128_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 }
 
 static int
-rijndael128_setkey(u_int8_t **sched, u_int8_t *key, int len)
+rijndael128_setkey(void *sched, u_int8_t *key, int len)
 {
-	int err;
-
 	if (len != 16 && len != 24 && len != 32)
 		return (EINVAL);
-	*sched = kmalloc(sizeof(rijndael_ctx), M_CRYPTO_DATA,
-			 M_INTWAIT | M_ZERO);
-	if (*sched != NULL) {
-		rijndael_set_key((rijndael_ctx *) *sched, (u_char *) key,
-				 len * 8);
-		err = 0;
-	} else
-		err = ENOMEM;
-	return err;
+
+	rijndael_set_key(sched, (u_char *) key, len * 8);
+
+	return 0;
 }
-
-static void
-rijndael128_zerokey(u_int8_t **sched)
-{
-	bzero(*sched, sizeof(rijndael_ctx));
-	kfree(*sched, M_CRYPTO_DATA);
-	*sched = NULL;
-}
-
-#define AES_XTS_ALPHA		0x87	/* GF(2^128) generator polynomial */
-
-struct aes_xts_ctx {
-	rijndael_ctx key1;
-	rijndael_ctx key2;
-};
 
 void
 aes_xts_reinit(caddr_t key, u_int8_t *iv)
@@ -795,38 +694,19 @@ aes_xts_decrypt(caddr_t key, u_int8_t *data, u_int8_t *iv)
 }
 
 int
-aes_xts_setkey(u_int8_t **sched, u_int8_t *key, int len)
+aes_xts_setkey(void *sched, u_int8_t *key, int len)
 {
 	struct aes_xts_ctx *ctx;
 
 	if (len != 32 && len != 64)
 		return -1;
 
-	*sched = kmalloc(sizeof(struct aes_xts_ctx), M_CRYPTO_DATA,
-			 M_WAITOK | M_ZERO);
-	ctx = (struct aes_xts_ctx *)*sched;
-
+	ctx = sched;
 	rijndael_set_key(&ctx->key1, key, len * 4);
 	rijndael_set_key(&ctx->key2, key + (len / 2), len * 4);
 
 	return 0;
 }
-
-void
-aes_xts_zerokey(u_int8_t **sched)
-{
-	bzero(*sched, sizeof(struct aes_xts_ctx));
-	kfree(*sched, M_CRYPTO_DATA);
-	*sched = NULL;
-}
-
-#define AESCTR_NONCESIZE	4
-
-struct aes_ctr_ctx {
-	u_int32_t       ac_ek[4*(14 + 1)];
-	u_int8_t        ac_block[AESCTR_BLOCK_LEN];
-	int             ac_nr;
-};
 
 void
 aes_ctr_reinit(caddr_t key, u_int8_t *iv)
@@ -861,32 +741,24 @@ aes_ctr_crypt(caddr_t key, u_int8_t *data, u_int8_t *iv)
 }
 
 int
-aes_ctr_setkey(u_int8_t **sched, u_int8_t *key, int len)
+aes_ctr_setkey(void *sched, u_int8_t *key, int len)
 {
 	struct aes_ctr_ctx *ctx;
 
 	if (len < AESCTR_NONCESIZE)
 		return -1;
 
-	*sched = kmalloc(sizeof(struct aes_ctr_ctx), M_CRYPTO_DATA,
-			 M_WAITOK | M_ZERO);
-	ctx = (struct aes_ctr_ctx *)*sched;
+	ctx = sched;
 	ctx->ac_nr = rijndaelKeySetupEnc(ctx->ac_ek, (u_char *)key,
-	(len - AESCTR_NONCESIZE) * 8);
+					 (len - AESCTR_NONCESIZE) * 8);
 	if (ctx->ac_nr == 0) {
-		aes_ctr_zerokey(sched);
+		bzero(ctx, sizeof(struct aes_ctr_ctx));
 		return -1;
 	}
-	bcopy(key + len - AESCTR_NONCESIZE, ctx->ac_block, AESCTR_NONCESIZE);
-	return 0;
-}
 
-void
-aes_ctr_zerokey(u_int8_t **sched)
-{
-	bzero(*sched, sizeof(struct aes_ctr_ctx));
-	kfree(*sched, M_CRYPTO_DATA);
-	*sched = NULL;
+	bcopy(key + len - AESCTR_NONCESIZE, ctx->ac_block, AESCTR_NONCESIZE);
+
+	return 0;
 }
 
 static void
@@ -916,29 +788,14 @@ cml_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 }
 
 static int
-cml_setkey(u_int8_t **sched, u_int8_t *key, int len)
+cml_setkey(void *sched, u_int8_t *key, int len)
 {
-	int err;
-
 	if (len != 16 && len != 24 && len != 32)
 		return (EINVAL);
-	*sched = kmalloc(sizeof(camellia_ctx), M_CRYPTO_DATA,
-			 M_INTWAIT | M_ZERO);
-	if (*sched != NULL) {
-		camellia_set_key((camellia_ctx *) *sched, (u_char *) key,
-				 len * 8);
-		err = 0;
-	} else
-		err = ENOMEM;
-	return err;
-}
 
-static void
-cml_zerokey(u_int8_t **sched)
-{
-	bzero(*sched, sizeof(camellia_ctx));
-	kfree(*sched, M_CRYPTO_DATA);
-	*sched = NULL;
+	camellia_set_key(sched, key, len * 8);
+
+	return 0;
 }
 
 static void
@@ -954,28 +811,14 @@ twofish128_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 }
 
 static int
-twofish128_setkey(u_int8_t **sched, u_int8_t *key, int len)
+twofish128_setkey(void *sched, u_int8_t *key, int len)
 {
-	int err;
-
 	if (len != 16 && len != 24 && len != 32)
 		return (EINVAL);
-	*sched = kmalloc(sizeof(twofish_ctx), M_CRYPTO_DATA,
-			 M_INTWAIT | M_ZERO);
-	if (*sched != NULL) {
-		twofish_set_key((twofish_ctx *) *sched, key, len * 8);
-		err = 0;
-	} else
-		err = ENOMEM;
-	return err;
-}
 
-static void
-twofish128_zerokey(u_int8_t **sched)
-{
-	bzero(*sched, sizeof(twofish_ctx));
-	kfree(*sched, M_CRYPTO_DATA);
-	*sched = NULL;
+	twofish_set_key(sched, key, len * 8);
+
+	return 0;
 }
 
 static void
@@ -991,35 +834,16 @@ serpent128_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 }
 
 static int
-serpent128_setkey(u_int8_t **sched, u_int8_t *key, int len)
+serpent128_setkey(void *sched, u_int8_t *key, int len)
 {
-	int err;
-
 	if (len != 16 && len != 24 && len != 32)
 		return (EINVAL);
-	*sched = kmalloc(sizeof(serpent_ctx), M_CRYPTO_DATA,
-			 M_INTWAIT | M_ZERO);
-	if (*sched != NULL) {
-		serpent_set_key((serpent_ctx *) *sched, key, len * 8);
-		err = 0;
-	} else
-		err = ENOMEM;
-	return err;
+
+	serpent_set_key(sched, key, len * 8);
+
+	return 0;
 }
 
-static void
-serpent128_zerokey(u_int8_t **sched)
-{
-	bzero(*sched, sizeof(serpent_ctx));
-	kfree(*sched, M_CRYPTO_DATA);
-	*sched = NULL;
-}
-
-
-struct twofish_xts_ctx {
-	twofish_ctx key1;
-	twofish_ctx key2;
-};
 
 void
 twofish_xts_reinit(caddr_t key, u_int8_t *iv)
@@ -1085,35 +909,20 @@ twofish_xts_decrypt(caddr_t key, u_int8_t *data, u_int8_t *iv)
 }
 
 int
-twofish_xts_setkey(u_int8_t **sched, u_int8_t *key, int len)
+twofish_xts_setkey(void *sched, u_int8_t *key, int len)
 {
 	struct twofish_xts_ctx *ctx;
 
 	if (len != 32 && len != 64)
 		return -1;
 
-	*sched = kmalloc(sizeof(struct twofish_xts_ctx), M_CRYPTO_DATA,
-			 M_WAITOK | M_ZERO);
-	ctx = (struct twofish_xts_ctx *)*sched;
-
+	ctx = sched;
 	twofish_set_key(&ctx->key1, key, len * 4);
 	twofish_set_key(&ctx->key2, key + (len / 2), len * 4);
 
 	return 0;
 }
 
-void
-twofish_xts_zerokey(u_int8_t **sched)
-{
-	bzero(*sched, sizeof(struct twofish_xts_ctx));
-	kfree(*sched, M_CRYPTO_DATA);
-	*sched = NULL;
-}
-
-struct serpent_xts_ctx {
-	serpent_ctx key1;
-	serpent_ctx key2;
-};
 
 void
 serpent_xts_reinit(caddr_t key, u_int8_t *iv)
@@ -1180,29 +989,18 @@ serpent_xts_decrypt(caddr_t key, u_int8_t *data, u_int8_t *iv)
 }
 
 int
-serpent_xts_setkey(u_int8_t **sched, u_int8_t *key, int len)
+serpent_xts_setkey(void *sched, u_int8_t *key, int len)
 {
 	struct serpent_xts_ctx *ctx;
 
 	if (len != 32 && len != 64)
 		return -1;
 
-	*sched = kmalloc(sizeof(struct serpent_xts_ctx), M_CRYPTO_DATA,
-			 M_WAITOK | M_ZERO);
-	ctx = (struct serpent_xts_ctx *)*sched;
-
+	ctx = sched;
 	serpent_set_key(&ctx->key1, key, len * 4);
 	serpent_set_key(&ctx->key2, key + (len / 2), len * 4);
 
 	return 0;
-}
-
-void
-serpent_xts_zerokey(u_int8_t **sched)
-{
-	bzero(*sched, sizeof(struct serpent_xts_ctx));
-	kfree(*sched, M_CRYPTO_DATA);
-	*sched = NULL;
 }
 
 
