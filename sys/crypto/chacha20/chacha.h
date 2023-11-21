@@ -37,4 +37,7 @@ LOCAL void chacha_ctrsave(const struct chacha_ctx *x, uint8_t *counter)
     __unused; /* maybe unused */
 #endif
 
+LOCAL void hchacha20(uint8_t derived_key[32], const uint8_t nonce[16],
+    const uint8_t key[32]) __unused; /* maybe unused */
+
 #endif	/* CHACHA_H */

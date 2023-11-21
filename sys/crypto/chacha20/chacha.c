@@ -259,3 +259,51 @@ chacha_encrypt_bytes(chacha_ctx *x, const u8 *m, u8 *c, u32 bytes)
 #endif
   }
 }
+
+/*
+ * HChaCha20 is an intermediary block to build XChaCha20, similar to
+ * the HSalsa20 defined for XSalsa20.
+ */
+LOCAL void
+hchacha20(u8 derived_key[32], const u8 nonce[16], const u8 key[32])
+{
+  u32 x[16] = {
+    U8TO32_LITTLE(sigma + 0),
+    U8TO32_LITTLE(sigma + 4),
+    U8TO32_LITTLE(sigma + 8),
+    U8TO32_LITTLE(sigma + 12),
+    U8TO32_LITTLE(key + 0),
+    U8TO32_LITTLE(key + 4),
+    U8TO32_LITTLE(key + 8),
+    U8TO32_LITTLE(key + 12),
+    U8TO32_LITTLE(key + 16),
+    U8TO32_LITTLE(key + 20),
+    U8TO32_LITTLE(key + 24),
+    U8TO32_LITTLE(key + 28),
+    U8TO32_LITTLE(nonce + 0),
+    U8TO32_LITTLE(nonce + 4),
+    U8TO32_LITTLE(nonce + 8),
+    U8TO32_LITTLE(nonce + 12)
+  };
+  u32 i;
+
+  for (i = 20; i > 0; i -= 2) {
+    QUARTERROUND( x[0], x[4], x[8],x[12])
+    QUARTERROUND( x[1], x[5], x[9],x[13])
+    QUARTERROUND( x[2], x[6],x[10],x[14])
+    QUARTERROUND( x[3], x[7],x[11],x[15])
+    QUARTERROUND( x[0], x[5],x[10],x[15])
+    QUARTERROUND( x[1], x[6],x[11],x[12])
+    QUARTERROUND( x[2], x[7], x[8],x[13])
+    QUARTERROUND( x[3], x[4], x[9],x[14])
+  }
+
+  U32TO8_LITTLE(derived_key + 0,  x[0]);
+  U32TO8_LITTLE(derived_key + 4,  x[1]);
+  U32TO8_LITTLE(derived_key + 8,  x[2]);
+  U32TO8_LITTLE(derived_key + 12, x[3]);
+  U32TO8_LITTLE(derived_key + 16, x[12]);
+  U32TO8_LITTLE(derived_key + 20, x[13]);
+  U32TO8_LITTLE(derived_key + 24, x[14]);
+  U32TO8_LITTLE(derived_key + 28, x[15]);
+}
