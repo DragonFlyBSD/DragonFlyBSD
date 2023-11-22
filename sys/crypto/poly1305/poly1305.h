@@ -9,19 +9,21 @@
 #ifndef _POLY1305_H_
 #define _POLY1305_H_
 
+#define POLY1305_KEY_SIZE	32
 #define POLY1305_BLOCK_SIZE	16
+#define POLY1305_MAC_SIZE	16
 
 typedef struct poly1305_state {
 	unsigned long r[5];
 	unsigned long h[5];
 	unsigned long pad[4];
 	size_t leftover;
-	unsigned char buffer[POLY1305_BLOCK_SIZE];
-	unsigned char final;
+	uint8_t buffer[POLY1305_BLOCK_SIZE];
+	uint8_t final;
 } poly1305_state;
 
-void	poly1305_init(poly1305_state *, const unsigned char[32]);
-void	poly1305_update(poly1305_state *, const unsigned char *, size_t);
-void	poly1305_finish(poly1305_state *, unsigned char[16]);
+void	poly1305_init(poly1305_state *, const uint8_t[POLY1305_KEY_SIZE]);
+void	poly1305_update(poly1305_state *, const uint8_t *, size_t);
+void	poly1305_finish(poly1305_state *, uint8_t[POLY1305_MAC_SIZE]);
 
 #endif	/* _POLY1305_H_ */

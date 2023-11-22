@@ -17,7 +17,7 @@
 
 /* interpret four 8 bit unsigned integers as a 32 bit unsigned integer in little endian */
 static inline unsigned long
-U8TO32(const unsigned char *p)
+U8TO32(const uint8_t *p)
 {
 	return (((unsigned long)(p[0] & 0xff)) |
 	    ((unsigned long)(p[1] & 0xff) <<  8) |
@@ -27,7 +27,7 @@ U8TO32(const unsigned char *p)
 
 /* store a 32 bit unsigned integer as four 8 bit unsigned integers in little endian */
 static inline void
-U32TO8(unsigned char *p, unsigned long v)
+U32TO8(uint8_t *p, unsigned long v)
 {
 	p[0] = (v) & 0xff;
 	p[1] = (v >>  8) & 0xff;
@@ -36,7 +36,7 @@ U32TO8(unsigned char *p, unsigned long v)
 }
 
 void
-poly1305_init(poly1305_state *st, const unsigned char key[32])
+poly1305_init(poly1305_state *st, const uint8_t key[POLY1305_KEY_SIZE])
 {
 	/* r &= 0xffffffc0ffffffc0ffffffc0fffffff */
 	st->r[0] = (U8TO32(&key[0])) & 0x3ffffff;
@@ -63,7 +63,7 @@ poly1305_init(poly1305_state *st, const unsigned char key[32])
 }
 
 static void
-poly1305_blocks(poly1305_state *st, const unsigned char *m, size_t bytes)
+poly1305_blocks(poly1305_state *st, const uint8_t *m, size_t bytes)
 {
 	const unsigned long hibit = (st->final) ? 0 : (1 << 24); /* 1 << 128 */
 	unsigned long r0, r1, r2, r3, r4;
@@ -156,7 +156,7 @@ poly1305_blocks(poly1305_state *st, const unsigned char *m, size_t bytes)
 }
 
 void
-poly1305_update(poly1305_state *st, const unsigned char *m, size_t bytes)
+poly1305_update(poly1305_state *st, const uint8_t *m, size_t bytes)
 {
 	size_t i;
 
@@ -193,7 +193,7 @@ poly1305_update(poly1305_state *st, const unsigned char *m, size_t bytes)
 }
 
 void
-poly1305_finish(poly1305_state *st, unsigned char mac[16])
+poly1305_finish(poly1305_state *st, uint8_t mac[POLY1305_MAC_SIZE])
 {
 	unsigned long h0, h1, h2, h3, h4, c;
 	unsigned long g0, g1, g2, g3, g4;
