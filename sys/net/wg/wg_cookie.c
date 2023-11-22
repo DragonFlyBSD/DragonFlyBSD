@@ -17,6 +17,7 @@
 #include <sys/time.h>
 #include <netinet/in.h>
 
+#include <crypto/chachapoly.h>
 #include <crypto/blake2/blake2s.h>
 #include <crypto/siphash/siphash.h>
 

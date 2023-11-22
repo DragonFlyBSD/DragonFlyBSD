@@ -113,7 +113,7 @@ struct wg_pkt_cookie {
 struct wg_pkt_data {
 	uint32_t		t;
 	uint32_t		r_idx;
-	uint64_t		nonce;
+	uint64_t		counter;
 	uint8_t			buf[];
 };
 
@@ -159,7 +159,7 @@ struct wg_packet {
 	STAILQ_ENTRY(wg_packet)	 p_parallel;
 	struct wg_endpoint	 p_endpoint;
 	struct noise_keypair	*p_keypair;
-	uint64_t		 p_nonce;
+	uint64_t		 p_counter;
 	struct mbuf		*p_mbuf;
 	int			 p_mtu;
 	sa_family_t		 p_af;
@@ -1512,7 +1512,7 @@ wg_encrypt(struct wg_softc *sc, struct wg_packet *pkt)
 		goto out;
 
 	/* Do encryption */
-	if (noise_keypair_encrypt(pkt->p_keypair, &idx, pkt->p_nonce, m) != 0)
+	if (noise_keypair_encrypt(pkt->p_keypair, &idx, pkt->p_counter, m) != 0)
 		goto out;
 
 	/* Put header into packet */
@@ -1522,7 +1522,7 @@ wg_encrypt(struct wg_softc *sc, struct wg_packet *pkt)
 	data = mtod(m, struct wg_pkt_data *);
 	data->t = WG_PKT_DATA;
 	data->r_idx = idx;
-	data->nonce = htole64(pkt->p_nonce);
+	data->counter = htole64(pkt->p_counter);
 
 	wg_mbuf_reset(m);
 	state = WG_PACKET_CRYPTED;
@@ -1547,11 +1547,11 @@ wg_decrypt(struct wg_softc *sc, struct wg_packet *pkt)
 	peer = noise_remote_arg(remote);
 	m = pkt->p_mbuf;
 
-	/* Read nonce and then adjust to remove the header. */
-	pkt->p_nonce = le64toh(mtod(m, struct wg_pkt_data *)->nonce);
+	/* Read counter and then adjust to remove the header. */
+	pkt->p_counter = le64toh(mtod(m, struct wg_pkt_data *)->counter);
 	m_adj(m, sizeof(struct wg_pkt_data));
 
-	if (noise_keypair_decrypt(pkt->p_keypair, pkt->p_nonce, m) != 0)
+	if (noise_keypair_decrypt(pkt->p_keypair, pkt->p_counter, m) != 0)
 		goto out;
 
 	/* A packet with length 0 is a keepalive packet */
@@ -1708,7 +1708,8 @@ wg_deliver_in(void *arg, int pending __unused)
 			goto error;
 
 		m = pkt->p_mbuf;
-		if (noise_keypair_nonce_check(pkt->p_keypair, pkt->p_nonce) != 0)
+		if (noise_keypair_counter_check(pkt->p_keypair, pkt->p_counter)
+		    != 0)
 			goto error;
 
 		if (noise_keypair_received_with(pkt->p_keypair) == ECONNRESET)
@@ -2071,7 +2072,7 @@ wg_peer_send_staged(struct wg_peer *peer)
 		goto error;
 
 	STAILQ_FOREACH(pkt, &list, p_parallel) {
-		if (noise_keypair_nonce_next(keypair, &pkt->p_nonce) != 0)
+		if (noise_keypair_counter_next(keypair, &pkt->p_counter) != 0)
 			goto error_keypair;
 	}
 	STAILQ_FOREACH_MUTABLE(pkt, &list, p_parallel, tpkt) {
@@ -2867,9 +2868,6 @@ wg_module_init(void)
 		return (ENOMEM);
 	}
 
-	ret = crypto_init();
-	if (ret != 0)
-		return (ret);
 	ret = cookie_init();
 	if (ret != 0)
 		return (ret);
@@ -2895,7 +2893,6 @@ wg_module_deinit(void)
 	if_clone_detach(&wg_cloner);
 
 	cookie_deinit();
-	crypto_deinit();
 
 	for (i = 0; i < ncpus; i++)
 		taskqueue_free(wg_taskqueues[i]);

@@ -11,8 +11,6 @@
 #include <crypto/blake2/blake2s.h>
 #include <crypto/curve25519/curve25519.h>
 
-#include "crypto.h"
-
 #define NOISE_PUBLIC_KEY_LEN	CURVE25519_KEY_SIZE
 #define NOISE_SYMMETRIC_KEY_LEN	CHACHA20POLY1305_KEY_SIZE
 #define NOISE_TIMESTAMP_LEN	(sizeof(uint64_t) + sizeof(uint32_t))
@@ -82,19 +80,19 @@ void	noise_keypair_put(struct noise_keypair *);
 struct noise_remote *
 	noise_keypair_remote(struct noise_keypair *);
 
-int	noise_keypair_nonce_next(struct noise_keypair *, uint64_t *);
-int	noise_keypair_nonce_check(struct noise_keypair *, uint64_t);
+int	noise_keypair_counter_next(struct noise_keypair *, uint64_t *);
+int	noise_keypair_counter_check(struct noise_keypair *, uint64_t);
 
 int	noise_keep_key_fresh_send(struct noise_remote *);
 int	noise_keep_key_fresh_recv(struct noise_remote *);
 int	noise_keypair_encrypt(
 	    struct noise_keypair *,
 	    uint32_t *r_idx,
-	    uint64_t nonce,
+	    uint64_t counter,
 	    struct mbuf *);
 int	noise_keypair_decrypt(
 	    struct noise_keypair *,
-	    uint64_t nonce,
+	    uint64_t counter,
 	    struct mbuf *);
 
 /* Handshake functions */

@@ -16,11 +16,11 @@
 #include <sys/refcount.h>
 #include <sys/time.h>
 
+#include <crypto/chachapoly.h>
 #include <crypto/blake2/blake2s.h>
 #include <crypto/curve25519/curve25519.h>
 #include <crypto/siphash/siphash.h>
 
-#include "crypto.h"
 #include "wg_noise.h"
 
 /* Protocol string constants */
@@ -73,9 +73,9 @@ struct noise_keypair {
 	uint8_t				 kp_recv[NOISE_SYMMETRIC_KEY_LEN];
 
 	/* Counter elements */
-	struct lock			 kp_nonce_lock;
-	uint64_t			 kp_nonce_send;
-	uint64_t			 kp_nonce_recv;
+	struct lock			 kp_counter_lock;
+	uint64_t			 kp_counter_send;
+	uint64_t			 kp_counter_recv;
 	unsigned long			 kp_backtrack[COUNTER_BITS_TOTAL / COUNTER_BITS];
 
 	struct epoch_context		 kp_smr;
@@ -668,7 +668,7 @@ noise_begin_session(struct noise_remote *r)
 		    NOISE_SYMMETRIC_KEY_LEN, NOISE_SYMMETRIC_KEY_LEN, 0, 0,
 		    r->r_handshake.hs_ck);
 
-	lockinit(&kp->kp_nonce_lock, "noise_nonce", 0, 0);
+	lockinit(&kp->kp_counter_lock, "noise_counter", 0, 0);
 
 	noise_add_new_keypair(r->r_local, r, kp);
 	return (0);
@@ -751,7 +751,7 @@ noise_keypair_smr_free(struct epoch_context *smr)
 	struct noise_keypair *kp;
 	kp = __containerof(smr, struct noise_keypair, kp_smr);
 	noise_remote_put(kp->kp_remote);
-	lockuninit(&kp->kp_nonce_lock);
+	lockuninit(&kp->kp_counter_lock);
 	explicit_bzero(kp, sizeof(*kp));
 	kfree(kp, M_NOISE);
 }
@@ -789,17 +789,17 @@ noise_keypair_remote(struct noise_keypair *kp)
 }
 
 int
-noise_keypair_nonce_next(struct noise_keypair *kp, uint64_t *send)
+noise_keypair_counter_next(struct noise_keypair *kp, uint64_t *send)
 {
 	if (!atomic_load_bool(&kp->kp_can_send))
 		return (EINVAL);
 
 #ifdef __LP64__
-	*send = atomic_fetchadd_64(&kp->kp_nonce_send, 1);
+	*send = atomic_fetchadd_64(&kp->kp_counter_send, 1);
 #else
-	lockmgr(&kp->kp_nonce_lock, LK_EXCLUSIVE);
-	*send = kp->kp_nonce_send++;
-	lockmgr(&kp->kp_nonce_lock, LK_RELEASE);
+	lockmgr(&kp->kp_counter_lock, LK_EXCLUSIVE);
+	*send = kp->kp_counter_send++;
+	lockmgr(&kp->kp_counter_lock, LK_RELEASE);
 #endif
 	if (*send < REJECT_AFTER_MESSAGES)
 		return (0);
@@ -808,35 +808,35 @@ noise_keypair_nonce_next(struct noise_keypair *kp, uint64_t *send)
 }
 
 int
-noise_keypair_nonce_check(struct noise_keypair *kp, uint64_t recv)
+noise_keypair_counter_check(struct noise_keypair *kp, uint64_t recv)
 {
 	unsigned long index, index_current, top, i, bit;
 	int ret = EEXIST;
 
-	lockmgr(&kp->kp_nonce_lock, LK_EXCLUSIVE);
+	lockmgr(&kp->kp_counter_lock, LK_EXCLUSIVE);
 
-	if (__predict_false(kp->kp_nonce_recv >= REJECT_AFTER_MESSAGES + 1 ||
+	if (__predict_false(kp->kp_counter_recv >= REJECT_AFTER_MESSAGES + 1 ||
 			    recv >= REJECT_AFTER_MESSAGES))
 		goto error;
 
 	++recv;
 
-	if (__predict_false(recv + COUNTER_WINDOW_SIZE < kp->kp_nonce_recv))
+	if (__predict_false(recv + COUNTER_WINDOW_SIZE < kp->kp_counter_recv))
 		goto error;
 
 	index = recv >> COUNTER_ORDER;
 
-	if (__predict_true(recv > kp->kp_nonce_recv)) {
-		index_current = kp->kp_nonce_recv >> COUNTER_ORDER;
+	if (__predict_true(recv > kp->kp_counter_recv)) {
+		index_current = kp->kp_counter_recv >> COUNTER_ORDER;
 		top = MIN(index - index_current, COUNTER_BITS_TOTAL / COUNTER_BITS);
 		for (i = 1; i <= top; i++)
 			kp->kp_backtrack[
 			    (i + index_current) &
 				((COUNTER_BITS_TOTAL / COUNTER_BITS) - 1)] = 0;
 #ifdef __LP64__
-		atomic_store_64(&kp->kp_nonce_recv, recv);
+		atomic_store_64(&kp->kp_counter_recv, recv);
 #else
-		kp->kp_nonce_recv = recv;
+		kp->kp_counter_recv = recv;
 #endif
 	}
 
@@ -848,7 +848,7 @@ noise_keypair_nonce_check(struct noise_keypair *kp, uint64_t recv)
 	kp->kp_backtrack[index] |= bit;
 	ret = 0;
 error:
-	lockmgr(&kp->kp_nonce_lock, LK_RELEASE);
+	lockmgr(&kp->kp_counter_lock, LK_RELEASE);
 	return (ret);
 }
 
@@ -857,8 +857,8 @@ noise_keep_key_fresh_send(struct noise_remote *r)
 {
 	struct epoch_tracker et;
 	struct noise_keypair *current;
+	uint64_t counter;
 	int keep_key_fresh;
-	uint64_t nonce;
 
 	NET_EPOCH_ENTER(et);
 	current = atomic_load_ptr(&r->r_current);
@@ -866,13 +866,13 @@ noise_keep_key_fresh_send(struct noise_remote *r)
 	if (!keep_key_fresh)
 		goto out;
 #ifdef __LP64__
-	nonce = atomic_load_64(&current->kp_nonce_send);
+	counter = atomic_load_64(&current->kp_counter_send);
 #else
-	lockmgr(&current->kp_nonce_lock, LK_SHARED);
-	nonce = current->kp_nonce_send;
-	lockmgr(&current->kp_nonce_lock, LK_RELEASE);
+	lockmgr(&current->kp_counter_lock, LK_SHARED);
+	counter = current->kp_counter_send;
+	lockmgr(&current->kp_counter_lock, LK_RELEASE);
 #endif
-	keep_key_fresh = nonce > REKEY_AFTER_MESSAGES;
+	keep_key_fresh = counter > REKEY_AFTER_MESSAGES;
 	if (keep_key_fresh)
 		goto out;
 	keep_key_fresh = current->kp_is_initiator && noise_timer_expired(&current->kp_birthdate, REKEY_AFTER_TIME, 0);
@@ -900,11 +900,17 @@ noise_keep_key_fresh_recv(struct noise_remote *r)
 }
 
 int
-noise_keypair_encrypt(struct noise_keypair *kp, uint32_t *r_idx, uint64_t nonce, struct mbuf *m)
+noise_keypair_encrypt(struct noise_keypair *kp, uint32_t *r_idx,
+		      uint64_t counter, struct mbuf *m)
 {
+	uint8_t nonce[CHACHA20POLY1305_NONCE_SIZE];
 	int ret;
 
-	ret = chacha20poly1305_encrypt_mbuf(m, nonce, kp->kp_send);
+	/* 32 bits of zeros + 64-bit little-endian value of the counter */
+	*(uint32_t *)nonce = 0;
+	*(uint64_t *)(nonce + 4) = htole64(counter);
+
+	ret = chacha20poly1305_encrypt_mbuf(m, NULL, 0, nonce, kp->kp_send);
 	if (ret)
 		return (ret);
 
@@ -913,24 +919,28 @@ noise_keypair_encrypt(struct noise_keypair *kp, uint32_t *r_idx, uint64_t nonce,
 }
 
 int
-noise_keypair_decrypt(struct noise_keypair *kp, uint64_t nonce, struct mbuf *m)
+noise_keypair_decrypt(struct noise_keypair *kp, uint64_t counter,
+		      struct mbuf *m)
 {
-	uint64_t cur_nonce;
+	uint64_t cur_counter;
+	uint8_t nonce[CHACHA20POLY1305_NONCE_SIZE];
 	int ret;
 
 #ifdef __LP64__
-	cur_nonce = atomic_load_64(&kp->kp_nonce_recv);
+	cur_counter = atomic_load_64(&kp->kp_counter_recv);
 #else
-	lockmgr(&kp->kp_nonce_lock, LK_SHARED);
-	cur_nonce = kp->kp_nonce_recv;
-	lockmgr(&kp->kp_nonce_lock, LK_RELEASE);
+	lockmgr(&kp->kp_counter_lock, LK_SHARED);
+	cur_counter = kp->kp_counter_recv;
+	lockmgr(&kp->kp_counter_lock, LK_RELEASE);
 #endif
 
-	if (cur_nonce >= REJECT_AFTER_MESSAGES ||
+	if (cur_counter >= REJECT_AFTER_MESSAGES ||
 	    noise_timer_expired(&kp->kp_birthdate, REJECT_AFTER_TIME, 0))
 		return (EINVAL);
 
-	ret = chacha20poly1305_decrypt_mbuf(m, nonce, kp->kp_recv);
+	*(uint32_t *)nonce = 0;
+	*(uint64_t *)(nonce + 4) = htole64(counter);
+	ret = chacha20poly1305_decrypt_mbuf(m, NULL, 0, nonce, kp->kp_recv);
 	if (ret)
 		return (ret);
 
@@ -1308,8 +1318,10 @@ noise_msg_encrypt(uint8_t *dst, const uint8_t *src, size_t src_len,
     uint8_t key[NOISE_SYMMETRIC_KEY_LEN], uint8_t hash[NOISE_HASH_LEN])
 {
 	/* Nonce always zero for Noise_IK */
+	static const uint8_t nonce[CHACHA20POLY1305_NONCE_SIZE] = { 0 };
+
 	chacha20poly1305_encrypt(dst, src, src_len,
-	    hash, NOISE_HASH_LEN, 0, key);
+	    hash, NOISE_HASH_LEN, nonce, key);
 	noise_mix_hash(hash, dst, src_len + NOISE_AUTHTAG_LEN);
 }
 
@@ -1318,8 +1330,10 @@ noise_msg_decrypt(uint8_t *dst, const uint8_t *src, size_t src_len,
     uint8_t key[NOISE_SYMMETRIC_KEY_LEN], uint8_t hash[NOISE_HASH_LEN])
 {
 	/* Nonce always zero for Noise_IK */
+	static const uint8_t nonce[CHACHA20POLY1305_NONCE_SIZE] = { 0 };
+
 	if (!chacha20poly1305_decrypt(dst, src, src_len,
-	    hash, NOISE_HASH_LEN, 0, key))
+	    hash, NOISE_HASH_LEN, nonce, key))
 		return (EINVAL);
 	noise_mix_hash(hash, src, src_len);
 	return (0);

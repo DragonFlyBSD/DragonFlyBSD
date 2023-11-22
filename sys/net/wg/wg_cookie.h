@@ -7,7 +7,7 @@
 #ifndef __COOKIE_H__
 #define __COOKIE_H__
 
-#include "crypto.h"
+#include <crypto/chachapoly.h>
 #include <crypto/blake2/blake2s.h>
 
 #define COOKIE_MAC_SIZE		16
