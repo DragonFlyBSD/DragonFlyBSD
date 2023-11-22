@@ -54,14 +54,14 @@ static inline void blake2s_set_lastblock(struct blake2s_state *state)
 }
 
 static inline void blake2s_increment_counter(struct blake2s_state *state,
-					     const uint32_t inc)
+					     uint32_t inc)
 {
 	state->t[0] += inc;
 	state->t[1] += (state->t[0] < inc);
 }
 
 static inline void blake2s_init_param(struct blake2s_state *state,
-				      const uint32_t param)
+				      uint32_t param)
 {
 	int i;
 
@@ -71,15 +71,15 @@ static inline void blake2s_init_param(struct blake2s_state *state,
 	state->h[0] ^= param;
 }
 
-void blake2s_init(struct blake2s_state *state, const size_t outlen)
+void blake2s_init(struct blake2s_state *state, size_t outlen)
 {
 	KKASSERT(!(!outlen || outlen > BLAKE2S_HASH_SIZE));
 	blake2s_init_param(state, 0x01010000 | outlen);
 	state->outlen = outlen;
 }
 
-void blake2s_init_key(struct blake2s_state *state, const size_t outlen,
-		      const void *key, const size_t keylen)
+void blake2s_init_key(struct blake2s_state *state, size_t outlen,
+		      const void *key, size_t keylen)
 {
 	uint8_t block[BLAKE2S_BLOCK_SIZE] = { 0 };
 
@@ -95,7 +95,7 @@ void blake2s_init_key(struct blake2s_state *state, const size_t outlen,
 
 static inline void blake2s_compress(struct blake2s_state *state,
 				    const uint8_t *block, size_t nblocks,
-				    const uint32_t inc)
+				    uint32_t inc)
 {
 	uint32_t m[16];
 	uint32_t v[16];
@@ -200,7 +200,7 @@ void blake2s_final(struct blake2s_state *state, uint8_t *out)
 }
 
 void blake2s_hmac(uint8_t *out, const uint8_t *in, const uint8_t *key,
-		  const size_t outlen, const size_t inlen, const size_t keylen)
+		  size_t outlen, size_t inlen, size_t keylen)
 {
 	struct blake2s_state state;
 	uint8_t x_key[BLAKE2S_BLOCK_SIZE] __aligned(__alignof__(uint32_t)) = { 0 };
