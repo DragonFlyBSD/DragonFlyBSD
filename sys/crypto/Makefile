@@ -9,6 +9,7 @@ SRCS=	cast.c criov.c crypto.c cryptosoft.c deflate.c gmac.c rmd160.c \
 SRCS+=	cryptodev_if.c cryptodev_if.h
 
 SRCS+=	sha1.c
+SRCS+=	chachapoly.c
 
 .PATH:	${.CURDIR}/blake2
 SRCS+=	blake2s.c
