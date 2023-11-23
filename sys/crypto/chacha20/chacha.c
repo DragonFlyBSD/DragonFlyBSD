@@ -260,10 +260,6 @@ chacha_encrypt_bytes(chacha_ctx *x, const u8 *m, u8 *c, u32 bytes)
   }
 }
 
-/*
- * HChaCha20 is an intermediary block to build XChaCha20, similar to
- * the HSalsa20 defined for XSalsa20.
- */
 LOCAL void
 hchacha20(u8 derived_key[32], const u8 nonce[16], const u8 key[32])
 {
