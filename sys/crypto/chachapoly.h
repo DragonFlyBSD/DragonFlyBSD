@@ -23,6 +23,12 @@
 #define CHACHA20POLY1305_NONCE_SIZE	12
 #define XCHACHA20POLY1305_NONCE_SIZE	24
 
+/*
+ * ChaCha20-Poly1305 AEAD cipher (RFC 8439)
+ *
+ * NOTE: Support in-place encryption/decryption; i.e., the output buffer
+ *       points to the same location as the input.
+ */
 void chacha20poly1305_encrypt(uint8_t *, const uint8_t *, size_t,
 			      const uint8_t *, size_t,
 			      const uint8_t[CHACHA20POLY1305_NONCE_SIZE],
@@ -32,6 +38,12 @@ bool chacha20poly1305_decrypt(uint8_t *, const uint8_t *, size_t,
 			      const uint8_t[CHACHA20POLY1305_NONCE_SIZE],
 			      const uint8_t[CHACHA20POLY1305_KEY_SIZE]);
 
+/*
+ * XChaCha20-Poly1305 AEAD cipher
+ * (extended nonce size from 96 bits to 192 bits)
+ *
+ * NOTE: Support in-place encryption/decryption, as above.
+ */
 void xchacha20poly1305_encrypt(uint8_t *, const uint8_t *, size_t,
 			       const uint8_t *, size_t,
 			       const uint8_t[XCHACHA20POLY1305_NONCE_SIZE],
