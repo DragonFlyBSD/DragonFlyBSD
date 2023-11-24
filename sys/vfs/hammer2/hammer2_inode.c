@@ -1072,15 +1072,6 @@ hammer2_inode_create_pfs(hammer2_pfs_t *spmp,
 	xop->meta.mode = 0755;
 	xop->meta.nlinks = 1;
 
-	/*
-	 * Regular files and softlinks allow a small amount of data to be
-	 * directly embedded in the inode.  This flag will be cleared if
-	 * the size is extended past the embedded limit.
-	 */
-	if (xop->meta.type == HAMMER2_OBJTYPE_REGFILE ||
-	    xop->meta.type == HAMMER2_OBJTYPE_SOFTLINK) {
-		xop->meta.op_flags |= HAMMER2_OPFLAG_DIRECTDATA;
-	}
 	hammer2_xop_setname(&xop->head, name, name_len);
 	xop->meta.name_len = name_len;
 	xop->meta.name_key = lhc;
