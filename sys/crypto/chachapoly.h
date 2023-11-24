@@ -53,4 +53,15 @@ bool xchacha20poly1305_decrypt(uint8_t *, const uint8_t *, size_t,
 			       const uint8_t[XCHACHA20POLY1305_NONCE_SIZE],
 			       const uint8_t[CHACHA20POLY1305_KEY_SIZE]);
 
+/*
+ * Perform in-place encryption/decryption for data in an mbuf chain.
+ */
+struct mbuf;
+int chacha20poly1305_encrypt_mbuf(struct mbuf *, const uint8_t *, size_t,
+				  const uint8_t[CHACHA20POLY1305_NONCE_SIZE],
+				  const uint8_t[CHACHA20POLY1305_KEY_SIZE]);
+int chacha20poly1305_decrypt_mbuf(struct mbuf *, const uint8_t *, size_t,
+				  const uint8_t[CHACHA20POLY1305_NONCE_SIZE],
+				  const uint8_t[CHACHA20POLY1305_KEY_SIZE]);
+
 #endif	/* _CHACHAPOLY_H_ */

@@ -18,6 +18,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/endian.h>
+#include <sys/mbuf.h>
 
 #include <crypto/chachapoly.h>
 #include <crypto/chacha20/chacha.h>
@@ -276,5 +277,111 @@ xchacha20poly1305_decrypt(uint8_t *dst, const uint8_t *src, size_t src_len,
 				       derived_nonce, derived_key);
 
 	explicit_bzero(derived_key, sizeof(derived_key));
+	return (ret);
+}
+
+/*-------------------------------------------------------------------*/
+
+static int
+_chacha20poly1305_mbuf(struct chacha20poly1305_ctx *ctx,
+		       struct mbuf *m, int len)
+{
+	uint8_t block[CHACHA_BLOCKLEN], *p;
+	int off, blen, ret;
+
+	off = 0;
+	while (len >= (int)sizeof(block)) {
+		if (m->m_len == off) {
+			off = 0;
+			m = m->m_next;
+			/* Skip possibly empty mbufs. */
+			while (m != NULL && m->m_len == 0)
+				m = m->m_next;
+			if (m == NULL)
+				return (EINVAL); /* because len > 0 */
+		}
+
+		if (m->m_len >= off + sizeof(block)) {
+			p = mtod(m, uint8_t *) + off;
+			blen = rounddown2(MIN(len, m->m_len - off),
+					  sizeof(block));
+			_chacha20poly1305_update(ctx, p, p, blen);
+
+			off += blen;
+			len -= blen;
+		} else {
+			/* Insufficient data at the end; do some copying. */
+			m_copydata(m, off, sizeof(block), block);
+			_chacha20poly1305_update(ctx, block, block,
+						 sizeof(block));
+			m_copyback(m, off, sizeof(block), block);
+
+			/* Advance pointer. */
+			m = m_getptr(m, off + sizeof(block), &off);
+			if (m == NULL)
+				return (EINVAL);
+
+			len -= (int)sizeof(block);
+		}
+	}
+
+	m_copydata(m, off, len, block); /* len may be 0 */
+	if (ctx->flags & F_MODE_ENCRYPTION) {
+		ret = _chacha20poly1305_final(ctx, block, block, len) ?
+		      0 : EBADMSG;
+		m_copyback(m, off + len, sizeof(ctx->tag), ctx->tag);
+	} else {
+		m_copydata(m, off + len, sizeof(ctx->tag), ctx->tag);
+		ret = _chacha20poly1305_final(ctx, block, block, len) ?
+		      0 : EBADMSG;
+	}
+	m_copyback(m, off, len, block);
+
+	return (ret);
+}
+
+int
+chacha20poly1305_encrypt_mbuf(struct mbuf *m, const uint8_t *ad, size_t ad_len,
+			      const uint8_t nonce[CHACHA20POLY1305_NONCE_SIZE],
+			      const uint8_t key[CHACHA20POLY1305_KEY_SIZE])
+{
+	static const uint8_t blank_tag[CHACHA20POLY1305_AUTHTAG_SIZE] = { 0 };
+	struct chacha20poly1305_ctx ctx;
+	int len;
+
+	M_ASSERTPKTHDR(m);
+	len = m->m_pkthdr.len;
+
+	if (!m_append(m, sizeof(blank_tag), blank_tag))
+		return (ENOMEM);
+
+	_chacha20poly1305_init(&ctx, true, nonce, key);
+
+	_chacha20poly1305_update(&ctx, NULL, ad, ad_len);
+
+	return _chacha20poly1305_mbuf(&ctx, m, len);
+}
+
+int
+chacha20poly1305_decrypt_mbuf(struct mbuf *m, const uint8_t *ad, size_t ad_len,
+			      const uint8_t nonce[CHACHA20POLY1305_NONCE_SIZE],
+			      const uint8_t key[CHACHA20POLY1305_KEY_SIZE])
+{
+	struct chacha20poly1305_ctx ctx;
+	int len, ret;
+
+	M_ASSERTPKTHDR(m);
+	len = m->m_pkthdr.len - CHACHA20POLY1305_AUTHTAG_SIZE;
+	if (len < 0)
+		return (EBADMSG);
+
+	_chacha20poly1305_init(&ctx, false, nonce, key);
+
+	_chacha20poly1305_update(&ctx, NULL, ad, ad_len);
+
+	ret = _chacha20poly1305_mbuf(&ctx, m, len);
+	if (ret == 0)
+		m_adj(m, -CHACHA20POLY1305_AUTHTAG_SIZE);
+
 	return (ret);
 }
