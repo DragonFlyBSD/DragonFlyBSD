@@ -734,6 +734,7 @@ vendor QIHARDWARE	0x20b7	QI-hardware
 vendor PARA		0x20b8	PARA Industrial
 vendor SIMTEC		0x20df	Simtec Electronics
 vendor TRENDNET		0x20f4  TRENDnet
+vendor TPLINK		0x2357	TP-Link
 vendor RTSYSTEMS	0x2100	RTSYSTEMS
 vendor INTENSO		0x2109	INTENSO
 vendor VIALABS		0x2109	VIA Labs
@@ -4401,6 +4402,9 @@ product THRUST FUSION_PAD	0xa0a3	Fusion Digital Gamepad
 
 /* TLayTech products */
 product TLAYTECH TEU800		0x1682	TEU800 3G modem
+
+/* TP-Link products */
+product TPLINK WN722NV2		0x010c	TL-WN722N v2
 
 /* Topre Corporation products */
 product TOPRE HHKB		0x0100	HHKB Professional
