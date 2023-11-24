@@ -42,7 +42,7 @@
 struct radix_node {
 	struct	radix_mask *rn_mklist;	/* masks contained in subtree */
 	struct	radix_node *rn_parent;	/* parent */
-	short	rn_bit;		/* node: bit offset; leaf: -1-index(netmask) */
+	int	rn_bit;		/* node: bit offset; leaf: -1-index(netmask) */
 	u_char	rn_flags;	/* enumerated next */
 #define RNF_NORMAL	1	/* leaf contains normal route */
 #define RNF_ROOT	2	/* leaf is root node (embedded in the tree) */
@@ -99,7 +99,7 @@ struct radix_node {
  */
 
 struct radix_mask {
-	short	rm_bit;			/* bit offset; -1-index(netmask) */
+	int	rm_bit;			/* bit offset; -1-index(netmask) */
 	char	rm_unused;
 	u_char	rm_flags;		/* cf. rn_flags */
 	struct	radix_mask *rm_next;	/* list of more masks to try */
