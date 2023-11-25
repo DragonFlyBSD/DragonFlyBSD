@@ -5,12 +5,10 @@ PROG=	ifconfig
 
 SRCS=	ifconfig.c		# base support
 
-#
-# NB: The order here defines the order in which the constructors
-#     are called.  This in turn defines the default order in which
-#     status is displayed.  Probably should add a priority mechanism
-#     to the registration process so we don't depend on this aspect
-#     of the toolchain.
+# NB: The constructor priority defines their calling orders; one with
+#     a smaller priority is called earlier.  The calling order of the
+#     constructors in turn defines the default order in which status
+#     is displayed.
 #
 SRCS+=	af_link.c		# LLC support
 SRCS+=	af_inet.c		# IPv4 support

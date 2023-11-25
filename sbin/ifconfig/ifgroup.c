@@ -171,7 +171,8 @@ static struct afswtch af_group = {
 };
 static struct option group_gopt = { "g:", "[-g groupname]", printgroup, NULL };
 
-static __constructor(101) void
+__constructor(132)
+static void
 group_ctor(void)
 {
 	size_t i;

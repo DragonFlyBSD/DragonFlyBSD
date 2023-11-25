@@ -534,7 +534,8 @@ in6_Lopt_cb(const char *optarg __unused)
 }
 static struct option in6_Lopt = { "L", "[-L]", in6_Lopt_cb, NULL };
 
-static __constructor(101) void
+__constructor(113)
+static void
 inet6_ctor(void)
 {
 	size_t i;

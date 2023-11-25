@@ -5451,7 +5451,8 @@ static struct afswtch af_ieee80211 = {
 	.af_other_status = ieee80211_status,
 };
 
-static __constructor(101) void
+__constructor(125)
+static void
 ieee80211_ctor(void)
 {
 	size_t i;

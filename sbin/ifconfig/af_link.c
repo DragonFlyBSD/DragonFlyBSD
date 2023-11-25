@@ -120,7 +120,8 @@ static struct afswtch af_lladdr = {
 	.af_addreq	= &link_ridreq,
 };
 
-static __constructor(101) void
+__constructor(111)
+static void
 link_ctor(void)
 {
 	af_register(&af_link);

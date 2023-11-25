@@ -587,7 +587,8 @@ static struct afswtch af_bridge = {
 	.af_other_status = bridge_status,
 };
 
-static __constructor(101) void
+__constructor(141)
+static void
 bridge_ctor(void)
 {
 	size_t i;

@@ -236,7 +236,8 @@ static struct afswtch af_lagg = {
 	.af_other_status = lagg_status,
 };
 
-static __constructor(101) void
+__constructor(142)
+static void
 lagg_ctor(void)
 {
 	size_t i;

@@ -188,7 +188,8 @@ static struct option clone_Copt = {
 	.cb = clone_Copt_cb,
 };
 
-static __constructor(101) void
+__constructor(121)
+static void
 clone_ctor(void)
 {
 	size_t i;

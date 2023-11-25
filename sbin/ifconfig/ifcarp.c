@@ -244,7 +244,8 @@ static struct afswtch af_carp = {
 	.af_other_status = carp_status,
 };
 
-static __constructor(101) void
+__constructor(131)
+static void
 carp_ctor(void)
 {
 	size_t i;

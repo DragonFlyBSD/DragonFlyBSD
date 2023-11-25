@@ -248,7 +248,7 @@ static struct ifaddrs *
 sortifaddrs(struct ifaddrs *list, ifaddrs_cmp compare, struct ifa_queue *q)
 {
 	struct ifaddrs *right, *temp, *last, *result, *next, *tail;
-	
+
 	right = temp = last = list;
 	result = next = tail = NULL;
 
@@ -1495,7 +1495,8 @@ static struct cmd basic_cmds[] = {
 	DEF_CMD_ARG("tsolen",			setiftsolen)
 };
 
-static __constructor(101) void
+__constructor(101)
+static void
 ifconfig_ctor(void)
 {
 	size_t i;
