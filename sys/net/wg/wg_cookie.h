@@ -47,21 +47,28 @@ struct cookie_checker {
 
 int	cookie_init(void);
 void	cookie_deinit(void);
+
 void	cookie_checker_init(struct cookie_checker *);
 void	cookie_checker_free(struct cookie_checker *);
 void	cookie_checker_update(struct cookie_checker *,
-	    const uint8_t[COOKIE_INPUT_SIZE]);
+			      const uint8_t[COOKIE_INPUT_SIZE]);
 void	cookie_checker_create_payload(struct cookie_checker *,
-	    struct cookie_macs *cm, uint8_t[COOKIE_NONCE_SIZE],
-	    uint8_t [COOKIE_ENCRYPTED_SIZE], struct sockaddr *);
-void	cookie_maker_init(struct cookie_maker *, const uint8_t[COOKIE_INPUT_SIZE]);
+				      const struct cookie_macs *,
+				      uint8_t[COOKIE_NONCE_SIZE],
+				      uint8_t[COOKIE_ENCRYPTED_SIZE],
+				      const struct sockaddr *);
+int	cookie_checker_validate_macs(struct cookie_checker *,
+				     const struct cookie_macs *, const void *,
+				     size_t, bool, const struct sockaddr *);
+
+void	cookie_maker_init(struct cookie_maker *,
+			  const uint8_t[COOKIE_INPUT_SIZE]);
 void	cookie_maker_free(struct cookie_maker *);
 int	cookie_maker_consume_payload(struct cookie_maker *,
-	    uint8_t[COOKIE_NONCE_SIZE], uint8_t[COOKIE_ENCRYPTED_SIZE]);
+				     const uint8_t[COOKIE_NONCE_SIZE],
+				     const uint8_t[COOKIE_ENCRYPTED_SIZE]);
 void	cookie_maker_mac(struct cookie_maker *, struct cookie_macs *,
-	    void *, size_t);
-int	cookie_checker_validate_macs(struct cookie_checker *,
-	    struct cookie_macs *, void *, size_t, bool, struct sockaddr *);
+			 const void *, size_t);
 
 #ifdef SELFTESTS
 bool	cookie_selftest(void);
