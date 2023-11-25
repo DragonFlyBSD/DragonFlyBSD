@@ -70,8 +70,8 @@ int	cookie_maker_consume_payload(struct cookie_maker *,
 void	cookie_maker_mac(struct cookie_maker *, struct cookie_macs *,
 			 const void *, size_t);
 
-#ifdef SELFTESTS
+#ifdef WG_SELFTESTS
 bool	cookie_selftest(void);
-#endif /* SELFTESTS */
+#endif /* WG_SELFTESTS */
 
 #endif /* __COOKIE_H__ */

@@ -126,8 +126,8 @@ int	noise_consume_response(
 	    uint8_t ue[NOISE_PUBLIC_KEY_LEN],
 	    uint8_t en[0 + NOISE_AUTHTAG_LEN]);
 
-#ifdef SELFTESTS
+#ifdef WG_SELFTESTS
 bool	noise_counter_selftest(void);
-#endif /* SELFTESTS */
+#endif /* WG_SELFTESTS */
 
 #endif /* __NOISE_H__ */

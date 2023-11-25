@@ -561,6 +561,6 @@ error:
 }
 
 
-#ifdef SELFTESTS
+#ifdef WG_SELFTESTS
 #include "selftest/cookie.c"
-#endif /* SELFTESTS */
+#endif /* WG_SELFTESTS */

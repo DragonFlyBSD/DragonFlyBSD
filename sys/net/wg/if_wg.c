@@ -2826,7 +2826,7 @@ wg_init(void *xsc)
 	wg_up(sc);
 }
 
-#ifdef SELFTESTS
+#ifdef WG_SELFTESTS
 #include "selftest/allowedips.c"
 static bool wg_run_selftests(void)
 {
