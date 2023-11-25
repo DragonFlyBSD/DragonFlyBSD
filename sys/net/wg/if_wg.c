@@ -276,8 +276,9 @@ struct wg_softc {
 
 #define MAX_LOOPS	8
 #define MTAG_WGLOOP	0x77676c70 /* wglp */
+
 #ifndef ENOKEY
-#define	ENOKEY	ENOTCAPABLE
+#define	ENOKEY	ENOENT
 #endif
 
 #define BPF_MTAP_AF(_ifp, _m, _af) do { \
