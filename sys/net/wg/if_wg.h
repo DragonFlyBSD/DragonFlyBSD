@@ -22,8 +22,8 @@
  * It is designed to be used by tools such as ifconfig(8) and wg(8).
  */
 
-#ifndef __IF_WG_H__
-#define __IF_WG_H__
+#ifndef _NET_IF_WG_H_
+#define _NET_IF_WG_H_
 
 #include <sys/ioccom.h>
 #include <sys/time.h>
@@ -103,4 +103,4 @@ struct wg_data_io {
 	struct wg_interface_io	*wgd_interface;
 };
 
-#endif /* __IF_WG_H__ */
+#endif /* _NET_IF_WG_H_ */

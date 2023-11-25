@@ -1,11 +1,24 @@
-/* SPDX-License-Identifier: ISC
+/*-
+ * SPDX-License-Identifier: ISC
  *
  * Copyright (C) 2015-2021 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  * Copyright (C) 2019-2021 Matt Dunwoodie <ncon@noconroy.net>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef __NOISE_H__
-#define __NOISE_H__
+#ifndef _NET_WG_NOISE_H_
+#define _NET_WG_NOISE_H_
 
 #include <crypto/chachapoly.h>
 #include <crypto/blake2/blake2s.h>
@@ -130,4 +143,4 @@ int	noise_consume_response(
 bool	noise_counter_selftest(void);
 #endif /* WG_SELFTESTS */
 
-#endif /* __NOISE_H__ */
+#endif /* _NET_WG_NOISE_H_ */
