@@ -759,9 +759,9 @@ wg_socket_init(struct wg_softc *sc, in_port_t port)
 out:
 	if (rc) {
 		if (so4 != NULL)
-			soclose(so4);
+			soclose(so4, 0);
 		if (so6 != NULL)
-			soclose(so6);
+			soclose(so6, 0);
 	}
 	return (rc);
 }
@@ -819,17 +819,18 @@ wg_socket_set(struct wg_softc *sc, struct socket *new_so4, struct socket *new_so
 		return;
 	NET_EPOCH_WAIT();
 	if (so4)
-		soclose(so4);
+		soclose(so4, 0);
 	if (so6)
-		soclose(so6);
+		soclose(so6, 0);
 }
 
 static int
 wg_socket_bind(struct socket **in_so4, struct socket **in_so6, in_port_t *requested_port)
 {
 	struct socket *so4 = *in_so4, *so6 = *in_so6;
-	int ret4 = 0, ret6 = 0;
+	int ret, ret4 = 0, ret6 = 0;
 	in_port_t port = *requested_port;
+	struct sockaddr *bound_sa;
 	struct sockaddr_in sin = {
 		.sin_len = sizeof(struct sockaddr_in),
 		.sin_family = AF_INET,
@@ -846,14 +847,12 @@ wg_socket_bind(struct socket **in_so4, struct socket **in_so6, in_port_t *reques
 		if (ret4 && ret4 != EADDRNOTAVAIL)
 			return (ret4);
 		if (!ret4 && !sin.sin_port) {
-			struct sockaddr_in *bound_sin;
-			int ret = so4->so_proto->pr_sockaddr(so4,
-			    (struct sockaddr **)&bound_sin);
-			if (ret)
+			ret = so_pru_sockaddr(so4, &bound_sa);
+			if (ret != 0)
 				return (ret);
-			port = ntohs(bound_sin->sin_port);
-			sin6.sin6_port = bound_sin->sin_port;
-			kfree(bound_sin, M_SONAME);
+			port = ntohs(satosin(bound_sa)->sin_port);
+			sin6.sin6_port = satosin(bound_sa)->sin_port;
+			kfree(bound_sa, M_SONAME);
 		}
 	}
 
@@ -862,24 +861,23 @@ wg_socket_bind(struct socket **in_so4, struct socket **in_so6, in_port_t *reques
 		if (ret6 && ret6 != EADDRNOTAVAIL)
 			return (ret6);
 		if (!ret6 && !sin6.sin6_port) {
-			struct sockaddr_in6 *bound_sin6;
-			int ret = so6->so_proto->pr_sockaddr(so6,
-			    (struct sockaddr **)&bound_sin6);
-			if (ret)
+			ret = so_pru_sockaddr(so6, &bound_sa);
+			if (ret != 0)
 				return (ret);
-			port = ntohs(bound_sin6->sin6_port);
-			kfree(bound_sin6, M_SONAME);
+			port = ntohs(satosin6(bound_sa)->sin6_port);
+			kfree(bound_sa, M_SONAME);
 		}
 	}
 
 	if (ret4 && ret6)
 		return (ret4);
+
 	*requested_port = port;
 	if (ret4 && !ret6 && so4) {
-		soclose(so4);
+		soclose(so4, 0);
 		*in_so4 = NULL;
 	} else if (ret6 && !ret4 && so6) {
-		soclose(so6);
+		soclose(so6, 0);
 		*in_so6 = NULL;
 	}
 	return (0);
@@ -899,15 +897,16 @@ wg_send(struct wg_softc *sc, struct wg_endpoint *e, struct mbuf *m)
 	/* Get local control address before locking */
 	if (e->e_remote.r_sa.sa_family == AF_INET) {
 		if (e->e_local.l_in.s_addr != INADDR_ANY)
-			control = sbcreatecontrol((caddr_t)&e->e_local.l_in,
-			    sizeof(struct in_addr), IP_SENDSRCADDR,
-			    IPPROTO_IP, M_NOWAIT);
+			control = sbcreatecontrol(
+			    (caddr_t)&e->e_local.l_in, sizeof(struct in_addr),
+			    IP_SENDSRCADDR, IPPROTO_IP);
 #ifdef INET6
 	} else if (e->e_remote.r_sa.sa_family == AF_INET6) {
 		if (!IN6_IS_ADDR_UNSPECIFIED(&e->e_local.l_in6))
-			control = sbcreatecontrol((caddr_t)&e->e_local.l_pktinfo6,
-			    sizeof(struct in6_pktinfo), IPV6_PKTINFO,
-			    IPPROTO_IPV6, M_NOWAIT);
+			control = sbcreatecontrol(
+			    (caddr_t)&e->e_local.l_pktinfo6,
+			    sizeof(struct in6_pktinfo),
+			    IPV6_PKTINFO, IPPROTO_IPV6);
 #endif
 	} else {
 		m_freem(m);
