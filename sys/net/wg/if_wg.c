@@ -351,14 +351,14 @@ static struct wg_peer *wg_peer_create(struct wg_softc *, const uint8_t [WG_KEY_S
 static void wg_peer_free_deferred(struct noise_remote *);
 static void wg_peer_destroy(struct wg_peer *);
 static void wg_peer_destroy_all(struct wg_softc *);
-static void wg_peer_send_buf(struct wg_peer *, uint8_t *, size_t);
+static void wg_peer_send_buf(struct wg_peer *, void *, size_t);
+static void wg_send_buf(struct wg_softc *, struct wg_endpoint *, void *, size_t);
 static void wg_send_initiation(struct wg_peer *);
 static void wg_send_response(struct wg_peer *);
 static void wg_send_cookie(struct wg_softc *, struct cookie_macs *, uint32_t, struct wg_endpoint *);
 static void wg_peer_set_endpoint(struct wg_peer *, struct wg_endpoint *);
 static void wg_peer_clear_src(struct wg_peer *);
 static void wg_peer_get_endpoint(struct wg_peer *, struct wg_endpoint *);
-static void wg_send_buf(struct wg_softc *, struct wg_endpoint *, uint8_t *, size_t);
 static void wg_send_keepalive(struct wg_peer *);
 static void wg_handshake(struct wg_softc *, struct wg_packet *);
 static void wg_encrypt(struct wg_softc *, struct wg_packet *);
@@ -937,7 +937,7 @@ wg_send(struct wg_softc *sc, struct wg_endpoint *e, struct mbuf *m)
 }
 
 static void
-wg_send_buf(struct wg_softc *sc, struct wg_endpoint *e, uint8_t *buf, size_t len)
+wg_send_buf(struct wg_softc *sc, struct wg_endpoint *e, void *buf, size_t len)
 {
 	struct mbuf	*m;
 	int		 ret = 0;
@@ -1238,7 +1238,7 @@ wg_timers_run_persistent_keepalive(void *_peer)
 
 /* Handshake */
 static void
-wg_peer_send_buf(struct wg_peer *peer, uint8_t *buf, size_t len)
+wg_peer_send_buf(struct wg_peer *peer, void *buf, size_t len)
 {
 	struct wg_endpoint endpoint;
 
@@ -1263,7 +1263,7 @@ wg_send_initiation(struct wg_peer *peer)
 	pkt.t = WG_PKT_INITIATION;
 	cookie_maker_mac(&peer->p_cookie, &pkt.m, &pkt,
 	    sizeof(pkt) - sizeof(pkt.m));
-	wg_peer_send_buf(peer, (uint8_t *)&pkt, sizeof(pkt));
+	wg_peer_send_buf(peer, &pkt, sizeof(pkt));
 	wg_timers_event_handshake_initiated(peer);
 }
 
@@ -1282,7 +1282,7 @@ wg_send_response(struct wg_peer *peer)
 	pkt.t = WG_PKT_RESPONSE;
 	cookie_maker_mac(&peer->p_cookie, &pkt.m, &pkt,
 	     sizeof(pkt)-sizeof(pkt.m));
-	wg_peer_send_buf(peer, (uint8_t*)&pkt, sizeof(pkt));
+	wg_peer_send_buf(peer, &pkt, sizeof(pkt));
 }
 
 static void
@@ -1298,7 +1298,7 @@ wg_send_cookie(struct wg_softc *sc, struct cookie_macs *cm, uint32_t idx,
 
 	cookie_checker_create_payload(&sc->sc_cookie, cm, pkt.nonce,
 	    pkt.ec, &e->e_remote.r_sa);
-	wg_send_buf(sc, e, (uint8_t *)&pkt, sizeof(pkt));
+	wg_send_buf(sc, e, &pkt, sizeof(pkt));
 }
 
 static void
