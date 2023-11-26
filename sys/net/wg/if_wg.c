@@ -938,8 +938,8 @@ wg_send_buf(struct wg_softc *sc, struct wg_endpoint *e, uint8_t *buf, size_t len
 	bool		 retried = false;
 
 retry:
-	m = m_get2(len, M_NOWAIT, MT_DATA, M_PKTHDR);
-	if (!m) {
+	m = m_getl(len, M_NOWAIT, MT_DATA, M_PKTHDR, NULL);
+	if (m == NULL) {
 		ret = ENOMEM;
 		goto out;
 	}
