@@ -87,10 +87,10 @@
 		if_printf(sc->sc_ifp, ##__VA_ARGS__)
 
 /* First byte indicating packet type on the wire */
-#define WG_PKT_INITIATION htole32(1)
-#define WG_PKT_RESPONSE htole32(2)
-#define WG_PKT_COOKIE htole32(3)
-#define WG_PKT_DATA htole32(4)
+#define WG_PKT_INITIATION	htole32(1)
+#define WG_PKT_RESPONSE		htole32(2)
+#define WG_PKT_COOKIE		htole32(3)
+#define WG_PKT_DATA		htole32(4)
 
 #define WG_PKT_PADDING		16
 
@@ -248,7 +248,7 @@ struct wg_softc {
 	struct ucred		*sc_ucred;
 	struct wg_socket	 sc_socket;
 
-	TAILQ_HEAD(,wg_peer)	 sc_peers;
+	TAILQ_HEAD(, wg_peer)	 sc_peers;
 	size_t			 sc_peers_num;
 
 	struct noise_local	*sc_local;
@@ -295,8 +295,10 @@ struct wg_softc {
 
 static volatile unsigned long peer_counter = 0;
 
+static MALLOC_DEFINE(M_WG, "WG", "wireguard");
+static MALLOC_DEFINE(M_WG_PACKET, "WG packet", "wireguard packet");
+
 static struct objcache *wg_packet_zone;
-MALLOC_DEFINE(M_WG_PACKET, "WG packet", "wireguard packet");
 
 static struct lock wg_lock;
 
@@ -307,8 +309,6 @@ static struct taskqueue **wg_taskqueues; /* one taskqueue per CPU */
 
 /* Radix tree to store netmasks, shared by all interfaces */
 static struct radix_node_head *wg_maskhead;
-
-MALLOC_DEFINE(M_WG, "WG", "wireguard");
 
 static const char wgname[] = "wg";
 
@@ -398,7 +398,7 @@ static int wg_ioctl_set(struct wg_softc *, struct wg_data_io *);
 static int wg_module_init(void);
 static int wg_module_deinit(void);
 
-/* TODO Peer */
+/* Peer */
 static struct wg_peer *
 wg_peer_create(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE])
 {
@@ -482,6 +482,7 @@ wg_peer_free_deferred(struct noise_remote *r)
 
 	kfree(peer->p_tx_bytes, M_WG);
 	kfree(peer->p_rx_bytes, M_WG);
+
 	lockuninit(&peer->p_endpoint_lock);
 	lockuninit(&peer->p_handshake_mtx);
 
@@ -494,6 +495,7 @@ static void
 wg_peer_destroy(struct wg_peer *peer)
 {
 	struct wg_softc *sc = peer->p_sc;
+
 	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
 
 	/* Disable remote and timers. This will prevent any new handshakes
@@ -518,6 +520,7 @@ static void
 wg_peer_destroy_all(struct wg_softc *sc)
 {
 	struct wg_peer *peer, *tpeer;
+
 	TAILQ_FOREACH_MUTABLE(peer, &sc->sc_peers, p_entry, tpeer)
 		wg_peer_destroy(peer);
 }
@@ -526,6 +529,7 @@ static void
 wg_peer_set_endpoint(struct wg_peer *peer, struct wg_endpoint *e)
 {
 	KKASSERT(e->e_remote.r_sa.sa_family != 0);
+
 	if (memcmp(e, &peer->p_endpoint, sizeof(*e)) == 0)
 		return;
 
@@ -557,7 +561,7 @@ wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af, const void
 	struct radix_node_head	*head;
 	struct radix_node	*node;
 	struct wg_aip		*aip;
-	int			 ret = 0;
+	int			 i, ret = 0;
 
 	aip = kmalloc(sizeof(*aip), M_WG, M_WAITOK | M_ZERO);
 	aip->a_peer = peer;
@@ -566,7 +570,8 @@ wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af, const void
 	switch (af) {
 #ifdef INET
 	case AF_INET:
-		if (cidr > 32) cidr = 32;
+		if (cidr > 32)
+			cidr = 32;
 		head = sc->sc_aip4;
 		aip->a_addr.in = *(const struct in_addr *)addr;
 		aip->a_mask.ip = htonl(~((1LL << (32 - cidr)) - 1) & 0xffffffff);
@@ -576,11 +581,12 @@ wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af, const void
 #endif
 #ifdef INET6
 	case AF_INET6:
-		if (cidr > 128) cidr = 128;
+		if (cidr > 128)
+			cidr = 128;
 		head = sc->sc_aip6;
 		aip->a_addr.in6 = *(const struct in6_addr *)addr;
 		in6_prefixlen2mask(&aip->a_mask.in6, cidr);
-		for (int i = 0; i < 4; i++)
+		for (i = 0; i < 4; i++)
 			aip->a_addr.ip6[i] &= aip->a_mask.ip6[i];
 		aip->a_addr.length = aip->a_mask.length = offsetof(struct aip_addr, in6) + sizeof(struct in6_addr);
 		break;
@@ -646,7 +652,7 @@ wg_aip_lookup(struct wg_softc *sc, sa_family_t af, void *a)
 		addr.length = offsetof(struct aip_addr, in6) + sizeof(struct in6_addr);
 		break;
 	default:
-		return NULL;
+		return (NULL);
 	}
 
 	lockmgr(&sc->sc_aip_lock, LK_SHARED);
@@ -693,7 +699,8 @@ wg_aip_remove_all(struct wg_softc *sc, struct wg_peer *peer)
 	}
 
 	if (!LIST_EMPTY(&peer->p_aips) || peer->p_aips_num != 0)
-		panic("wg_aip_remove_all could not delete all %p", peer);
+		panic("%s: could not delete all aips for peer %" PRIu64,
+		      __func__, peer->p_id);
 
 	lockmgr(&sc->sc_aip_lock, LK_RELEASE);
 }
@@ -745,7 +752,7 @@ wg_socket_init(struct wg_softc *sc, in_port_t port)
 			goto out;
 	}
 	rc = wg_socket_bind(&so4, &so6, &port);
-	if (!rc) {
+	if (rc == 0) {
 		sc->sc_socket.so_port = port;
 		wg_socket_set(sc, so4, so6);
 	}
@@ -774,7 +781,7 @@ static int wg_socket_set_sockopt(struct socket *so4, struct socket *so6, int nam
 		ret4 = sosetopt(so4, &sopt);
 	if (so6)
 		ret6 = sosetopt(so6, &sopt);
-	return (ret4 ?: ret6);
+	return (ret4 ? ret4 : ret6);
 }
 
 static int wg_socket_set_cookie(struct wg_softc *sc, uint32_t user_cookie)
@@ -1031,10 +1038,11 @@ wg_timers_event_data_sent(struct wg_peer *peer)
 	struct epoch_tracker et;
 	NET_EPOCH_ENTER(et);
 	if (atomic_load_bool(&peer->p_enabled) &&
-	    !callout_pending(&peer->p_new_handshake))
+	    !callout_pending(&peer->p_new_handshake)) {
 		callout_reset(&peer->p_new_handshake,
 		    NEW_HANDSHAKE_TIMEOUT * hz + REKEY_TIMEOUT_JITTER * hz / 1000,
 		    wg_timers_run_new_handshake, peer);
+	}
 	NET_EPOCH_EXIT(et);
 }
 
@@ -1044,13 +1052,14 @@ wg_timers_event_data_received(struct wg_peer *peer)
 	struct epoch_tracker et;
 	NET_EPOCH_ENTER(et);
 	if (atomic_load_bool(&peer->p_enabled)) {
-		if (!callout_pending(&peer->p_send_keepalive))
+		if (!callout_pending(&peer->p_send_keepalive)) {
 			callout_reset(&peer->p_send_keepalive,
 			    KEEPALIVE_TIMEOUT * hz,
 			    wg_timers_run_send_keepalive, peer);
-		else
+		} else {
 			atomic_store_bool(&peer->p_need_another_keepalive,
 			    true);
+		}
 	}
 	NET_EPOCH_EXIT(et);
 }
@@ -1074,9 +1083,10 @@ wg_timers_event_any_authenticated_packet_traversal(struct wg_peer *peer)
 	uint16_t interval;
 	NET_EPOCH_ENTER(et);
 	interval = atomic_load_16(&peer->p_persistent_keepalive_interval);
-	if (atomic_load_bool(&peer->p_enabled) && interval > 0)
+	if (atomic_load_bool(&peer->p_enabled) && interval > 0) {
 		callout_reset(&peer->p_persistent_keepalive, interval * hz,
 		     wg_timers_run_persistent_keepalive, peer);
+	}
 	NET_EPOCH_EXIT(et);
 }
 
@@ -1085,10 +1095,11 @@ wg_timers_event_handshake_initiated(struct wg_peer *peer)
 {
 	struct epoch_tracker et;
 	NET_EPOCH_ENTER(et);
-	if (atomic_load_bool(&peer->p_enabled))
+	if (atomic_load_bool(&peer->p_enabled)) {
 		callout_reset(&peer->p_retry_handshake,
 		    REKEY_TIMEOUT * hz + REKEY_TIMEOUT_JITTER * hz / 1000,
 		    wg_timers_run_retry_handshake, peer);
+	}
 	NET_EPOCH_EXIT(et);
 }
 
@@ -1113,10 +1124,11 @@ wg_timers_event_session_derived(struct wg_peer *peer)
 {
 	struct epoch_tracker et;
 	NET_EPOCH_ENTER(et);
-	if (atomic_load_bool(&peer->p_enabled))
+	if (atomic_load_bool(&peer->p_enabled)) {
 		callout_reset(&peer->p_zero_key_material,
 		    REJECT_AFTER_TIME * 3 * hz,
 		    wg_timers_run_zero_key_material, peer);
+	}
 	NET_EPOCH_EXIT(et);
 }
 
@@ -1166,10 +1178,11 @@ wg_timers_run_retry_handshake(void *_peer)
 		wg_queue_purge(&peer->p_stage_queue);
 		NET_EPOCH_ENTER(et);
 		if (atomic_load_bool(&peer->p_enabled) &&
-		    !callout_pending(&peer->p_zero_key_material))
+		    !callout_pending(&peer->p_zero_key_material)) {
 			callout_reset(&peer->p_zero_key_material,
 			    REJECT_AFTER_TIME * 3 * hz,
 			    wg_timers_run_zero_key_material, peer);
+		}
 		NET_EPOCH_EXIT(et);
 	}
 }
@@ -1224,7 +1237,7 @@ wg_timers_run_persistent_keepalive(void *_peer)
 		wg_send_keepalive(peer);
 }
 
-/* TODO Handshake */
+/* Handshake */
 static void
 wg_peer_send_buf(struct wg_peer *peer, uint8_t *buf, size_t len)
 {
@@ -1359,7 +1372,7 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 			wg_send_cookie(sc, &init->m, init->s_idx, e);
 			goto error;
 		} else if (res != 0) {
-			panic("unexpected response: %d\n", res);
+			panic("%s: unexpected response: %d", __func__, res);
 		}
 
 		if (noise_consume_initiation(sc->sc_local, &remote,
@@ -1369,12 +1382,12 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 		}
 
 		peer = noise_remote_arg(remote);
-
 		DPRINTF(sc, "Receiving handshake initiation from peer %" PRIu64 "\n", peer->p_id);
 
 		wg_peer_set_endpoint(peer, e);
 		wg_send_response(peer);
 		break;
+
 	case WG_PKT_RESPONSE:
 		resp = mtod(m, struct wg_pkt_response *);
 
@@ -1392,7 +1405,7 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 			wg_send_cookie(sc, &resp->m, resp->s_idx, e);
 			goto error;
 		} else if (res != 0) {
-			panic("unexpected response: %d\n", res);
+			panic("%s: unexpected response: %d", __func__, res);
 		}
 
 		if (noise_consume_response(sc->sc_local, &remote,
@@ -1408,6 +1421,7 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 		wg_timers_event_session_derived(peer);
 		wg_timers_event_handshake_complete(peer);
 		break;
+
 	case WG_PKT_COOKIE:
 		cook = mtod(m, struct wg_pkt_cookie *);
 
@@ -1427,8 +1441,9 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 		}
 
 		goto not_authenticated;
+
 	default:
-		panic("invalid packet in handshake queue");
+		panic("%s: invalid packet in handshake queue", __func__);
 	}
 
 	wg_timers_event_any_authenticated_packet_received(peer);
@@ -1510,7 +1525,7 @@ calculate_padding(struct wg_packet *pkt)
 	padded_size = (last_unit + (WG_PKT_PADDING - 1)) & ~(WG_PKT_PADDING - 1);
 	if (pkt->p_mtu < padded_size)
 		padded_size = pkt->p_mtu;
-	return padded_size - last_unit;
+	return (padded_size - last_unit);
 }
 
 static void
@@ -1725,6 +1740,7 @@ wg_deliver_in(void *arg, int pending __unused)
 	struct wg_packet	*pkt;
 	struct mbuf		*m;
 	struct epoch_tracker	 et;
+	size_t			 rx_bytes;
 
 	while ((pkt = wg_queue_dequeue_serial(&peer->p_decrypt_serial)) != NULL) {
 		if (pkt->p_state != WG_PACKET_CRYPTED)
@@ -1735,18 +1751,18 @@ wg_deliver_in(void *arg, int pending __unused)
 		    != 0)
 			goto error;
 
-		if (noise_keypair_received_with(pkt->p_keypair) == ECONNRESET)
+		if (noise_keypair_received_with(pkt->p_keypair) != 0)
 			wg_timers_event_handshake_complete(peer);
 
 		wg_timers_event_any_authenticated_packet_received(peer);
 		wg_timers_event_any_authenticated_packet_traversal(peer);
 		wg_peer_set_endpoint(peer, &pkt->p_endpoint);
 
-		peer->p_rx_bytes[mycpuid] += (m->m_pkthdr.len +
-		    sizeof(struct wg_pkt_data) + NOISE_AUTHTAG_LEN);
+		rx_bytes = m->m_pkthdr.len + sizeof(struct wg_pkt_data) +
+			   NOISE_AUTHTAG_LEN;
+		peer->p_rx_bytes[mycpuid] += rx_bytes;
 		IFNET_STAT_INC(sc->sc_ifp, ipackets, 1);
-		IFNET_STAT_INC(sc->sc_ifp, ibytes, m->m_pkthdr.len +
-		    sizeof(struct wg_pkt_data) + NOISE_AUTHTAG_LEN);
+		IFNET_STAT_INC(sc->sc_ifp, ibytes, rx_bytes);
 
 		if (m->m_pkthdr.len == 0)
 			goto done;
@@ -1998,24 +2014,25 @@ wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 	struct mbuf			*defragged;
 
 	defragged = m_defrag(m, M_NOWAIT);
-	if (defragged)
+	if (defragged != NULL)
 		m = defragged;
+
 	m = m_unshare(m, M_NOWAIT);
-	if (!m) {
+	if (m == NULL) {
 		IFNET_STAT_INC(sc->sc_ifp, iqdrops, 1);
-		return true;
+		return (true);
 	}
 
 	/* Pullup enough to read packet type */
 	if ((m = m_pullup(m, sizeof(uint32_t))) == NULL) {
 		IFNET_STAT_INC(sc->sc_ifp, iqdrops, 1);
-		return true;
+		return (true);
 	}
 
 	if ((pkt = wg_packet_alloc(m)) == NULL) {
 		IFNET_STAT_INC(sc->sc_ifp, iqdrops, 1);
 		m_freem(m);
-		return true;
+		return (true);
 	}
 
 	/* Save send/recv address and port for later. */
@@ -2071,11 +2088,12 @@ wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 	} else {
 		goto error;
 	}
-	return true;
+	return (true);
+
 error:
 	IFNET_STAT_INC(sc->sc_ifp, ierrors, 1);
 	wg_packet_free(pkt);
-	return true;
+	return (true);
 }
 
 static void
@@ -2742,6 +2760,7 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 
 	if_attach(ifp, NULL);
 
+	/* DLT_NULL link-layer header: a 4-byte field in host byte order */
 	bpfattach(ifp, DLT_NULL, sizeof(uint32_t));
 
 	lockmgr(&wg_lock, LK_EXCLUSIVE);
@@ -2831,9 +2850,9 @@ wg_clone_destroy(struct ifnet *ifp)
 	if (cred != NULL)
 		crfree(cred);
 
-	bpfdetach(sc->sc_ifp);
-	if_detach(sc->sc_ifp);
-	if_free(sc->sc_ifp);
+	bpfdetach(ifp);
+	if_detach(ifp);
+	if_free(ifp);
 
 	noise_local_free(sc->sc_local, wg_clone_deferred_free);
 
@@ -2841,11 +2860,10 @@ wg_clone_destroy(struct ifnet *ifp)
 }
 
 static void
-wg_init(void *xsc)
+wg_init(void *_sc)
 {
-	struct wg_softc *sc;
+	struct wg_softc *sc = _sc;
 
-	sc = xsc;
 	wg_up(sc);
 }
 
@@ -2857,10 +2875,13 @@ static bool wg_run_selftests(void)
 	ret &= wg_allowedips_selftest();
 	ret &= noise_counter_selftest();
 	ret &= cookie_selftest();
-	return ret;
+	return (ret);
 }
 #else
-static inline bool wg_run_selftests(void) { return true; }
+static inline bool wg_run_selftests(void)
+{
+	return (true);
+}
 #endif
 
 static int
@@ -2871,7 +2892,7 @@ wg_module_init(void)
 	lockinit(&wg_lock, "wg lock", 0, 0);
 
 	wg_packet_zone = objcache_create_simple(M_WG_PACKET,
-	    sizeof(struct wg_packet));
+						sizeof(struct wg_packet));
 	if (wg_packet_zone == NULL)
 		return (ENOMEM);
 
@@ -2932,17 +2953,16 @@ wg_module_deinit(void)
 }
 
 static int
-wg_module_event_handler(module_t mod, int what, void *arg)
+wg_module_event_handler(module_t mod __unused, int what, void *arg __unused)
 {
 	switch (what) {
-		case MOD_LOAD:
-			return wg_module_init();
-		case MOD_UNLOAD:
-			return wg_module_deinit();
-		default:
-			return (EOPNOTSUPP);
+	case MOD_LOAD:
+		return wg_module_init();
+	case MOD_UNLOAD:
+		return wg_module_deinit();
+	default:
+		return (EOPNOTSUPP);
 	}
-	return (0);
 }
 
 static moduledata_t wg_moduledata = {
