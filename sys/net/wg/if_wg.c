@@ -2466,12 +2466,12 @@ wg_ioctl_set(struct wg_softc *sc, struct wg_data_io *data)
 		}
 
 		/*
-		 * Set the private key and invalidate all existing handshakes.
+		 * Set the private key.
 		 *
 		 * Note: we might be removing the private key.
 		 */
-		noise_local_private(sc->sc_local, iface_o.i_private);
-		if (noise_local_keys(sc->sc_local, NULL, NULL) == 0)
+		if (noise_local_set_private(sc->sc_local, iface_o.i_private)
+		    == 0)
 			cookie_checker_update(&sc->sc_cookie, public);
 		else
 			cookie_checker_update(&sc->sc_cookie, NULL);

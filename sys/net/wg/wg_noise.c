@@ -255,18 +255,24 @@ noise_local_arg(struct noise_local *l)
 	return (l->l_arg);
 }
 
-void
-noise_local_private(struct noise_local *l, const uint8_t private[NOISE_PUBLIC_KEY_LEN])
+int
+noise_local_set_private(struct noise_local *l,
+			const uint8_t private[NOISE_PUBLIC_KEY_LEN])
 {
 	struct epoch_tracker et;
 	struct noise_remote *r;
 	size_t i;
+	int ret;
 
 	lockmgr(&l->l_identity_lock, LK_EXCLUSIVE);
+
 	memcpy(l->l_private, private, NOISE_PUBLIC_KEY_LEN);
 	curve25519_clamp_secret(l->l_private);
-	l->l_has_identity = curve25519_generate_public(l->l_public, l->l_private);
+	l->l_has_identity =
+		curve25519_generate_public(l->l_public, l->l_private);
+	ret = (l->l_has_identity ? 0 : ENXIO);
 
+	/* Invalidate all existing handshakes. */
 	NET_EPOCH_ENTER(et);
 	for (i = 0; i < HT_REMOTE_SIZE; i++) {
 		LIST_FOREACH(r, &l->l_remote_hash[i], r_entry) {
@@ -275,7 +281,9 @@ noise_local_private(struct noise_local *l, const uint8_t private[NOISE_PUBLIC_KE
 		}
 	}
 	NET_EPOCH_EXIT(et);
+
 	lockmgr(&l->l_identity_lock, LK_RELEASE);
+	return (ret);
 }
 
 int

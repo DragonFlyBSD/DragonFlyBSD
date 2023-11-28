@@ -47,7 +47,7 @@ void	noise_local_put(struct noise_local *);
 void	noise_local_free(struct noise_local *, void (*)(struct noise_local *));
 void *	noise_local_arg(struct noise_local *);
 
-void	noise_local_private(struct noise_local *,
+int	noise_local_set_private(struct noise_local *,
 	    const uint8_t[NOISE_PUBLIC_KEY_LEN]);
 int	noise_local_keys(struct noise_local *,
 	    uint8_t[NOISE_PUBLIC_KEY_LEN],
