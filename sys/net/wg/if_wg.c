@@ -245,7 +245,6 @@ struct wg_softc {
 	struct ifnet		*sc_ifp;
 	int			 sc_flags;
 
-	struct ucred		*sc_ucred;
 	struct wg_socket	 sc_socket;
 
 	TAILQ_HEAD(, wg_peer)	 sc_peers;
@@ -708,24 +707,11 @@ wg_aip_remove_all(struct wg_softc *sc, struct wg_peer *peer)
 static int
 wg_socket_init(struct wg_softc *sc, in_port_t port)
 {
-	struct ucred *cred = sc->sc_ucred;
 	struct socket *so4 = NULL, *so6 = NULL;
 	int rc;
 
 	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
 
-	if (!cred)
-		return (EBUSY);
-
-	/*
-	 * XXX(ALY): how to achieve in dfly ???
-	 * For socket creation, we use the creds of the thread that created the
-	 * tunnel rather than the current thread to maintain the semantics that
-	 * WireGuard has on Linux with network namespaces -- that the sockets
-	 * are created in their home vnet so that they can be configured and
-	 * functionally attached to a foreign vnet as the jail's only interface
-	 * to the network.
-	 */
 #ifdef INET
 	rc = socreate(AF_INET, &so4, SOCK_DGRAM, IPPROTO_UDP, curthread);
 	if (rc)
@@ -2726,9 +2712,6 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 	atomic_add_int(&clone_count, 1);
 	ifp = sc->sc_ifp = if_alloc(IFT_WIREGUARD);
 
-	sc->sc_ucred = crhold(curthread->td_ucred);
-	sc->sc_socket.so_port = 0;
-
 	TAILQ_INIT(&sc->sc_peers);
 	sc->sc_peers_num = 0;
 
@@ -2782,15 +2765,12 @@ static int
 wg_clone_destroy(struct ifnet *ifp)
 {
 	struct wg_softc *sc = ifp->if_softc;
-	struct ucred *cred;
 	int i;
 
 	lockmgr(&wg_lock, LK_EXCLUSIVE);
 	ifp->if_softc = NULL;
 	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	sc->sc_flags |= WGF_DYING;
-	cred = sc->sc_ucred;
-	sc->sc_ucred = NULL;
 	lockmgr(&sc->sc_lock, LK_RELEASE);
 	LIST_REMOVE(sc, sc_entry);
 	lockmgr(&wg_lock, LK_RELEASE);
@@ -2845,9 +2825,6 @@ wg_clone_destroy(struct ifnet *ifp)
 	lockuninit(&sc->sc_aip_lock);
 
 	cookie_checker_free(&sc->sc_cookie);
-
-	if (cred != NULL)
-		crfree(cred);
 
 	bpfdetach(ifp);
 	if_detach(ifp);
