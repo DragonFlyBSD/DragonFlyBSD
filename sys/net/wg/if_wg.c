@@ -193,7 +193,7 @@ struct wg_queue {
 
 struct wg_peer {
 	TAILQ_ENTRY(wg_peer)		 p_entry;
-	uint64_t			 p_id;
+	unsigned long			 p_id;
 	struct wg_softc			*p_sc;
 
 	char				 p_description[WG_PEER_DESCR_SIZE];
@@ -457,7 +457,7 @@ wg_peer_create(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE])
 	if (sc->sc_ifp->if_link_state == LINK_STATE_UP)
 		wg_timers_enable(peer);
 
-	DPRINTF(sc, "Peer %" PRIu64 " created\n", peer->p_id);
+	DPRINTF(sc, "Peer %ld created\n", peer->p_id);
 	return (peer);
 }
 
@@ -511,7 +511,7 @@ wg_peer_destroy(struct wg_peer *peer)
 	 * put to call wg_peer_free_deferred. */
 	sc->sc_peers_num--;
 	TAILQ_REMOVE(&sc->sc_peers, peer, p_entry);
-	DPRINTF(sc, "Peer %" PRIu64 " destroyed\n", peer->p_id);
+	DPRINTF(sc, "Peer %ld destroyed\n", peer->p_id);
 	noise_remote_free(peer->p_remote, wg_peer_free_deferred);
 }
 
@@ -698,7 +698,7 @@ wg_aip_remove_all(struct wg_softc *sc, struct wg_peer *peer)
 	}
 
 	if (!LIST_EMPTY(&peer->p_aips) || peer->p_aips_num != 0)
-		panic("%s: could not delete all aips for peer %" PRIu64,
+		panic("%s: could not delete all aips for peer %ld",
 		      __func__, peer->p_id);
 
 	lockmgr(&sc->sc_aip_lock, LK_RELEASE);
@@ -1147,17 +1147,17 @@ wg_timers_run_retry_handshake(void *_peer)
 		peer->p_handshake_retries++;
 		lockmgr(&peer->p_handshake_mtx, LK_RELEASE);
 
-		DPRINTF(peer->p_sc, "Handshake for peer %" PRIu64 " did not complete "
-		    "after %d seconds, retrying (try %d)\n", peer->p_id,
-		    REKEY_TIMEOUT, peer->p_handshake_retries + 1);
+		DPRINTF(peer->p_sc, "Handshake for peer %ld did not complete "
+			"after %d seconds, retrying (try %d)\n", peer->p_id,
+			REKEY_TIMEOUT, peer->p_handshake_retries + 1);
 		wg_peer_clear_src(peer);
 		wg_timers_run_send_initiation(peer, true);
 	} else {
 		lockmgr(&peer->p_handshake_mtx, LK_RELEASE);
 
-		DPRINTF(peer->p_sc, "Handshake for peer %" PRIu64 " did not complete "
-		    "after %d retries, giving up\n", peer->p_id,
-		    MAX_TIMER_HANDSHAKES + 2);
+		DPRINTF(peer->p_sc, "Handshake for peer %ld did not complete "
+			"after %d retries, giving up\n", peer->p_id,
+			MAX_TIMER_HANDSHAKES + 2);
 
 		callout_stop(&peer->p_send_keepalive);
 		wg_queue_purge(&peer->p_stage_queue);
@@ -1194,9 +1194,9 @@ wg_timers_run_new_handshake(void *_peer)
 {
 	struct wg_peer *peer = _peer;
 
-	DPRINTF(peer->p_sc, "Retrying handshake with peer %" PRIu64 " because we "
-	    "stopped hearing back after %d seconds\n",
-	    peer->p_id, NEW_HANDSHAKE_TIMEOUT);
+	DPRINTF(peer->p_sc, "Retrying handshake with peer %ld, "
+		"because we stopped hearing back after %d seconds\n",
+		peer->p_id, NEW_HANDSHAKE_TIMEOUT);
 
 	wg_peer_clear_src(peer);
 	wg_timers_run_send_initiation(peer, false);
@@ -1207,9 +1207,9 @@ wg_timers_run_zero_key_material(void *_peer)
 {
 	struct wg_peer *peer = _peer;
 
-	DPRINTF(peer->p_sc, "Zeroing out keys for peer %" PRIu64 ", since we "
-	    "haven't received a new one in %d seconds\n",
-	    peer->p_id, REJECT_AFTER_TIME * 3);
+	DPRINTF(peer->p_sc, "Zeroing out keys for peer %ld, "
+		"since we haven't received a new one in %d seconds\n",
+		peer->p_id, REJECT_AFTER_TIME * 3);
 	noise_remote_keypairs_clear(peer->p_remote);
 }
 
@@ -1244,7 +1244,8 @@ wg_send_initiation(struct wg_peer *peer)
 	    pkt.es, pkt.ets) != 0)
 		return;
 
-	DPRINTF(peer->p_sc, "Sending handshake initiation to peer %" PRIu64 "\n", peer->p_id);
+	DPRINTF(peer->p_sc, "Sending handshake initiation to peer %ld\n",
+		peer->p_id);
 
 	pkt.t = WG_PKT_INITIATION;
 	cookie_maker_mac(&peer->p_cookie, &pkt.m, &pkt,
@@ -1262,7 +1263,8 @@ wg_send_response(struct wg_peer *peer)
 	    pkt.ue, pkt.en) != 0)
 		return;
 
-	DPRINTF(peer->p_sc, "Sending handshake response to peer %" PRIu64 "\n", peer->p_id);
+	DPRINTF(peer->p_sc, "Sending handshake response to peer %ld\n",
+		peer->p_id);
 
 	wg_timers_event_session_derived(peer);
 	pkt.t = WG_PKT_RESPONSE;
@@ -1302,7 +1304,8 @@ wg_send_keepalive(struct wg_peer *peer)
 		return;
 	}
 	wg_queue_push_staged(&peer->p_stage_queue, pkt);
-	DPRINTF(peer->p_sc, "Sending keepalive packet to peer %" PRIu64 "\n", peer->p_id);
+	DPRINTF(peer->p_sc, "Sending keepalive packet to peer %ld\n",
+		peer->p_id);
 send:
 	wg_peer_send_staged(peer);
 }
@@ -1367,7 +1370,8 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 		}
 
 		peer = noise_remote_arg(remote);
-		DPRINTF(sc, "Receiving handshake initiation from peer %" PRIu64 "\n", peer->p_id);
+		DPRINTF(sc, "Receiving handshake initiation from peer %ld\n",
+			peer->p_id);
 
 		wg_peer_set_endpoint(peer, e);
 		wg_send_response(peer);
@@ -1400,7 +1404,8 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 		}
 
 		peer = noise_remote_arg(remote);
-		DPRINTF(sc, "Receiving handshake response from peer %" PRIu64 "\n", peer->p_id);
+		DPRINTF(sc, "Receiving handshake response from peer %ld\n",
+			peer->p_id);
 
 		wg_peer_set_endpoint(peer, e);
 		wg_timers_event_session_derived(peer);
@@ -1579,8 +1584,8 @@ wg_decrypt(struct wg_softc *sc, struct wg_packet *pkt)
 
 	/* A packet with length 0 is a keepalive packet */
 	if (__predict_false(m->m_pkthdr.len == 0)) {
-		DPRINTF(sc, "Receiving keepalive packet from peer "
-		    "%" PRIu64 "\n", peer->p_id);
+		DPRINTF(sc, "Receiving keepalive packet from peer %ld\n",
+			peer->p_id);
 		state = WG_PACKET_CRYPTED;
 		goto out;
 	}
@@ -1607,7 +1612,8 @@ wg_decrypt(struct wg_softc *sc, struct wg_packet *pkt)
 		} else
 			panic("determine_af_and_pullup returned unexpected value");
 	} else {
-		DPRINTF(sc, "Packet is neither ipv4 nor ipv6 from peer %" PRIu64 "\n", peer->p_id);
+		DPRINTF(sc, "Packet is neither IPv4 nor IPv6 from peer %ld\n",
+			peer->p_id);
 		goto out;
 	}
 
@@ -1616,7 +1622,8 @@ wg_decrypt(struct wg_softc *sc, struct wg_packet *pkt)
 		noise_remote_put(allowed_peer->p_remote);
 
 	if (__predict_false(peer != allowed_peer)) {
-		DPRINTF(sc, "Packet has unallowed src IP from peer %" PRIu64 "\n", peer->p_id);
+		DPRINTF(sc, "Packet has unallowed src IP from peer %ld\n",
+			peer->p_id);
 		goto out;
 	}
 
@@ -2246,7 +2253,7 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst, struct rtentr
 	peer_af = peer->p_endpoint.e_remote.r_sa.sa_family;
 	if (__predict_false(peer_af != AF_INET && peer_af != AF_INET6)) {
 		DPRINTF(sc, "No valid endpoint has been configured or "
-			    "discovered for peer %" PRIu64 "\n", peer->p_id);
+			"discovered for peer %ld\n", peer->p_id);
 		error = EHOSTUNREACH;
 		goto err_peer;
 	}
