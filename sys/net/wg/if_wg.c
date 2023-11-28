@@ -234,6 +234,7 @@ struct wg_peer {
 };
 
 struct wg_socket {
+	struct lock	 so_lock;
 	struct socket	*so_so4;
 	struct socket	*so_so6;
 	uint32_t	 so_user_cookie;
@@ -318,9 +319,8 @@ static struct if_clone wg_cloner = IF_CLONE_INITIALIZER(
 
 
 static int wg_socket_init(struct wg_softc *, in_port_t);
-static int wg_socket_bind(struct socket **, struct socket **, in_port_t *);
-static void wg_socket_set(struct wg_softc *, struct socket *, struct socket *);
 static void wg_socket_uninit(struct wg_softc *);
+static int wg_socket_open(struct socket **, sa_family_t, in_port_t *, void *);
 static int wg_socket_set_sockopt(struct socket *, struct socket *, int, void *, size_t);
 static int wg_socket_set_cookie(struct wg_softc *, uint32_t);
 static int wg_send(struct wg_softc *, struct wg_endpoint *, struct mbuf *);
@@ -707,187 +707,212 @@ wg_aip_remove_all(struct wg_softc *sc, struct wg_peer *peer)
 static int
 wg_socket_init(struct wg_softc *sc, in_port_t port)
 {
-	struct socket *so4 = NULL, *so6 = NULL;
-	int rc;
+	struct wg_socket	*so = &sc->sc_socket;
+	struct socket		*so4 = NULL, *so6 = NULL;
+	in_port_t		 bound_port = port;
+	uint32_t		 cookie;
+	int			 ret;
 
-	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
-
-#ifdef INET
-	rc = socreate(AF_INET, &so4, SOCK_DGRAM, IPPROTO_UDP, curthread);
-	if (rc)
-		goto out;
-
-	so4->so_upcall = wg_upcall;
-	so4->so_upcallarg = sc;
-	atomic_set_int(&so4->so_rcv.ssb_flags, SSB_UPCALL);
-#endif
+	/*
+	 * When a host or a jail doesn't support the AF, sobind() would
+	 * return EADDRNOTAVAIL.  Handle this case in order to support such
+	 * IPv4-only or IPv6-only environments.
+	 *
+	 * However, in a dual-stack environment, both IPv4 and IPv6 sockets
+	 * must bind the same port.
+	 */
+	ret = wg_socket_open(&so4, AF_INET, &bound_port, sc);
+	if (ret != 0 && ret != EADDRNOTAVAIL)
+		goto error;
 
 #ifdef INET6
-	rc = socreate(AF_INET6, &so6, SOCK_DGRAM, IPPROTO_UDP, curthread);
-	if (rc)
-		goto out;
-
-	so6->so_upcall = wg_upcall;
-	so6->so_upcallarg = sc;
-	atomic_set_int(&so6->so_rcv.ssb_flags, SSB_UPCALL);
+	ret = wg_socket_open(&so6, AF_INET6, &bound_port, sc);
+	if (ret != 0 && ret != EADDRNOTAVAIL)
+		goto error;
 #endif
 
-	if (sc->sc_socket.so_user_cookie) {
-		rc = wg_socket_set_sockopt(so4, so6, SO_USER_COOKIE, &sc->sc_socket.so_user_cookie, sizeof(sc->sc_socket.so_user_cookie));
-		if (rc)
-			goto out;
+	if (so4 == NULL && so6 == NULL) {
+		ret = EAFNOSUPPORT;
+		goto error;
 	}
-	rc = wg_socket_bind(&so4, &so6, &port);
-	if (rc == 0) {
-		sc->sc_socket.so_port = port;
-		wg_socket_set(sc, so4, so6);
+
+	cookie = so->so_user_cookie;
+	if (cookie != 0) {
+		ret = wg_socket_set_sockopt(so4, so6, SO_USER_COOKIE,
+					    &cookie, sizeof(cookie));
+		if (ret != 0)
+			goto error;
 	}
-out:
-	if (rc) {
-		if (so4 != NULL)
-			soclose(so4, 0);
-		if (so6 != NULL)
-			soclose(so6, 0);
-	}
-	return (rc);
+
+	lockmgr(&so->so_lock, LK_EXCLUSIVE);
+	if (so->so_so4 != NULL)
+		soclose(so->so_so4, 0);
+	if (so->so_so6 != NULL)
+		soclose(so->so_so6, 0);
+	so->so_so4 = so4;
+	so->so_so6 = so6;
+	so->so_port = bound_port;
+	lockmgr(&so->so_lock, LK_RELEASE);
+
+	return (0);
+
+error:
+	if (so4 != NULL)
+		soclose(so4, 0);
+	if (so6 != NULL)
+		soclose(so6, 0);
+	return (ret);
 }
 
-static int wg_socket_set_sockopt(struct socket *so4, struct socket *so6, int name, void *val, size_t len)
+static int
+wg_socket_open(struct socket **so, sa_family_t af, in_port_t *port,
+	       void *upcall_arg)
 {
-	int ret4 = 0, ret6 = 0;
-	struct sockopt sopt = {
-		.sopt_dir = SOPT_SET,
-		.sopt_level = SOL_SOCKET,
-		.sopt_name = name,
-		.sopt_val = val,
-		.sopt_valsize = len
-	};
+	struct sockaddr_in	 sin;
+#ifdef INET6
+	struct sockaddr_in6	 sin6;
+#endif
+	struct sockaddr		*sa, *bound_sa;
+	int			 ret;
 
-	if (so4)
-		ret4 = sosetopt(so4, &sopt);
-	if (so6)
-		ret6 = sosetopt(so6, &sopt);
-	return (ret4 ? ret4 : ret6);
-}
+	if (af == AF_INET) {
+		bzero(&sin, sizeof(sin));
+		sin.sin_len = sizeof(struct sockaddr_in);
+		sin.sin_family = AF_INET;
+		sin.sin_port = htons(*port);
+		sa = sintosa(&sin);
+#ifdef INET6
+	} else if (af == AF_INET6) {
+		bzero(&sin6, sizeof(sin6));
+		sin6.sin6_len = sizeof(struct sockaddr_in6);
+		sin6.sin6_family = AF_INET6;
+		sin6.sin6_port = htons(*port);
+		sa = sintosa(&sin6);
+#endif
+	} else {
+		return (EAFNOSUPPORT);
+	}
 
-static int wg_socket_set_cookie(struct wg_softc *sc, uint32_t user_cookie)
-{
-	struct wg_socket *so = &sc->sc_socket;
-	int ret;
+	ret = socreate(af, so, SOCK_DGRAM, IPPROTO_UDP, curthread);
+	if (ret != 0)
+		return (ret);
 
-	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
-	ret = wg_socket_set_sockopt(so->so_so4, so->so_so6, SO_USER_COOKIE, &user_cookie, sizeof(user_cookie));
-	if (!ret)
-		so->so_user_cookie = user_cookie;
+	(*so)->so_upcall = wg_upcall;
+	(*so)->so_upcallarg = upcall_arg;
+	atomic_set_int(&(*so)->so_rcv.ssb_flags, SSB_UPCALL);
+
+	ret = sobind(*so, sa, curthread);
+	if (ret != 0)
+		goto error;
+
+	if (*port == 0) {
+		ret = so_pru_sockaddr(*so, &bound_sa);
+		if (ret != 0)
+			goto error;
+		if (bound_sa->sa_family == AF_INET)
+			*port = ntohs(satosin(bound_sa)->sin_port);
+		else
+			*port = ntohs(satosin6(bound_sa)->sin6_port);
+		kfree(bound_sa, M_SONAME);
+	}
+
+	return (0);
+
+error:
+	if (*so != NULL) {
+		soclose(*so, 0);
+		*so = NULL;
+	}
 	return (ret);
 }
 
 static void
 wg_socket_uninit(struct wg_softc *sc)
 {
-	wg_socket_set(sc, NULL, NULL);
-}
-
-static void
-wg_socket_set(struct wg_softc *sc, struct socket *new_so4, struct socket *new_so6)
-{
 	struct wg_socket *so = &sc->sc_socket;
-	struct socket *so4, *so6;
 
-	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
+	lockmgr(&so->so_lock, LK_EXCLUSIVE);
 
-	so4 = atomic_load_ptr(&so->so_so4);
-	so6 = atomic_load_ptr(&so->so_so6);
-	atomic_store_ptr(&so->so_so4, new_so4);
-	atomic_store_ptr(&so->so_so6, new_so6);
+	if (so->so_so4 != NULL) {
+		soclose(so->so_so4, 0);
+		so->so_so4 = NULL;
+	}
+	if (so->so_so6 != NULL) {
+		soclose(so->so_so6, 0);
+		so->so_so6 = NULL;
+	}
 
-	if (!so4 && !so6)
-		return;
-	NET_EPOCH_WAIT();
-	if (so4)
-		soclose(so4, 0);
-	if (so6)
-		soclose(so6, 0);
+	lockmgr(&so->so_lock, LK_RELEASE);
 }
 
 static int
-wg_socket_bind(struct socket **in_so4, struct socket **in_so6, in_port_t *requested_port)
+wg_socket_set_sockopt(struct socket *so4, struct socket *so6,
+		      int name, void *val, size_t len)
 {
-	struct socket *so4 = *in_so4, *so6 = *in_so6;
-	int ret, ret4 = 0, ret6 = 0;
-	in_port_t port = *requested_port;
-	struct sockaddr *bound_sa;
-	struct sockaddr_in sin = {
-		.sin_len = sizeof(struct sockaddr_in),
-		.sin_family = AF_INET,
-		.sin_port = htons(port)
+	struct sockopt sopt = {
+		.sopt_dir = SOPT_SET,
+		.sopt_level = SOL_SOCKET,
+		.sopt_name = name,
+		.sopt_val = val,
+		.sopt_valsize = len,
 	};
-	struct sockaddr_in6 sin6 = {
-		.sin6_len = sizeof(struct sockaddr_in6),
-		.sin6_family = AF_INET6,
-		.sin6_port = htons(port)
-	};
+	int ret;
 
-	if (so4) {
-		ret4 = sobind(so4, (struct sockaddr *)&sin, curthread);
-		if (ret4 && ret4 != EADDRNOTAVAIL)
-			return (ret4);
-		if (!ret4 && !sin.sin_port) {
-			ret = so_pru_sockaddr(so4, &bound_sa);
-			if (ret != 0)
-				return (ret);
-			port = ntohs(satosin(bound_sa)->sin_port);
-			sin6.sin6_port = satosin(bound_sa)->sin_port;
-			kfree(bound_sa, M_SONAME);
-		}
+	if (so4 != NULL) {
+		ret = sosetopt(so4, &sopt);
+		if (ret != 0)
+			return (ret);
+	}
+	if (so6 != NULL) {
+		ret = sosetopt(so6, &sopt);
+		if (ret != 0)
+			return (ret);
 	}
 
-	if (so6) {
-		ret6 = sobind(so6, (struct sockaddr *)&sin6, curthread);
-		if (ret6 && ret6 != EADDRNOTAVAIL)
-			return (ret6);
-		if (!ret6 && !sin6.sin6_port) {
-			ret = so_pru_sockaddr(so6, &bound_sa);
-			if (ret != 0)
-				return (ret);
-			port = ntohs(satosin6(bound_sa)->sin6_port);
-			kfree(bound_sa, M_SONAME);
-		}
-	}
-
-	if (ret4 && ret6)
-		return (ret4);
-
-	*requested_port = port;
-	if (ret4 && !ret6 && so4) {
-		soclose(so4, 0);
-		*in_so4 = NULL;
-	} else if (ret6 && !ret4 && so6) {
-		soclose(so6, 0);
-		*in_so6 = NULL;
-	}
 	return (0);
+}
+
+static int
+wg_socket_set_cookie(struct wg_softc *sc, uint32_t user_cookie)
+{
+	struct wg_socket	*so;
+	int			 ret;
+
+	so = &sc->sc_socket;
+	lockmgr(&so->so_lock, LK_EXCLUSIVE);
+
+	ret = wg_socket_set_sockopt(so->so_so4, so->so_so6, SO_USER_COOKIE,
+				    &user_cookie, sizeof(user_cookie));
+	if (ret == 0)
+		so->so_user_cookie = user_cookie;
+
+	lockmgr(&so->so_lock, LK_RELEASE);
+	return (ret);
 }
 
 static int
 wg_send(struct wg_softc *sc, struct wg_endpoint *e, struct mbuf *m)
 {
-	struct epoch_tracker et;
-	struct sockaddr *sa;
-	struct wg_socket *so = &sc->sc_socket;
-	struct socket *so4, *so6;
-	struct mbuf *control = NULL;
-	int ret = 0;
-	size_t len = m->m_pkthdr.len;
+	struct wg_socket	*so;
+	struct sockaddr		*sa;
+	struct mbuf		*control;
+	sa_family_t		 af;
+	int			 len, ret;
+
+	so = &sc->sc_socket;
+	af = e->e_remote.r_sa.sa_family;
+	len = m->m_pkthdr.len;
+	control = NULL;
+	ret = 0;
 
 	/* Get local control address before locking */
-	if (e->e_remote.r_sa.sa_family == AF_INET) {
+	if (af == AF_INET) {
 		if (e->e_local.l_in.s_addr != INADDR_ANY)
 			control = sbcreatecontrol(
 			    (caddr_t)&e->e_local.l_in, sizeof(struct in_addr),
 			    IP_SENDSRCADDR, IPPROTO_IP);
 #ifdef INET6
-	} else if (e->e_remote.r_sa.sa_family == AF_INET6) {
+	} else if (af == AF_INET6) {
 		if (!IN6_IS_ADDR_UNSPECIFIED(&e->e_local.l_in6))
 			control = sbcreatecontrol(
 			    (caddr_t)&e->e_local.l_pktinfo6,
@@ -902,19 +927,22 @@ wg_send(struct wg_softc *sc, struct wg_endpoint *e, struct mbuf *m)
 	/* Get remote address */
 	sa = &e->e_remote.r_sa;
 
-	NET_EPOCH_ENTER(et);
-	so4 = atomic_load_ptr(&so->so_so4);
-	so6 = atomic_load_ptr(&so->so_so6);
-	if (e->e_remote.r_sa.sa_family == AF_INET && so4 != NULL)
-		ret = so_pru_sosend(so4, sa, NULL, m, control, 0, curthread);
-	else if (e->e_remote.r_sa.sa_family == AF_INET6 && so6 != NULL)
-		ret = so_pru_sosend(so6, sa, NULL, m, control, 0, curthread);
-	else {
+	lockmgr(&so->so_lock, LK_SHARED);
+	if (af == AF_INET && so->so_so4 != NULL) {
+		ret = so_pru_sosend(so->so_so4, sa, NULL, m, control, 0,
+				    curthread);
+#ifdef INET6
+	} else if (af == AF_INET6 && so->so_so6 != NULL) {
+		ret = so_pru_sosend(so->so_so6, sa, NULL, m, control, 0,
+				    curthread);
+#endif
+	} else {
 		ret = ENOTCONN;
 		m_freem(control);
 		m_freem(m);
 	}
-	NET_EPOCH_EXIT(et);
+	lockmgr(&so->so_lock, LK_RELEASE);
+
 	if (ret == 0) {
 		IFNET_STAT_INC(sc->sc_ifp, opackets, 1);
 		IFNET_STAT_INC(sc->sc_ifp, obytes, len);
@@ -2736,6 +2764,7 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 	wg_queue_init(&sc->sc_decrypt_parallel, "decp");
 
 	lockinit(&sc->sc_lock, "wg softc lock", 0, 0);
+	lockinit(&sc->sc_socket.so_lock, "wg socket lock", 0, 0);
 
 	if_initname(ifp, wgname, unit);
 	ifp->if_softc = sc;
@@ -2788,6 +2817,7 @@ wg_clone_destroy(struct ifnet *ifp)
 
 	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	wg_socket_uninit(sc);
+	lockuninit(&sc->sc_socket.so_lock);
 	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	/*
