@@ -619,7 +619,7 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 			hammer2_spin_ex(&hash->spin);
 			if (atomic_cmpset_int(&ip->refs, 1, 0)) {
 				KKASSERT(hammer2_mtx_refs(&ip->lock) == 0);
-				if (ip->flags & HAMMER2_INODE_ONRBTREE) {
+				if (ip->flags & HAMMER2_INODE_ONHASH) {
 					xipp = &hash->base;
 					while (*xipp != ip)
 						xipp = &(*xipp)->next;
@@ -627,7 +627,7 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 					ip->next = NULL;
 					atomic_add_long(&pmp->inum_count, -1);
 					atomic_clear_int(&ip->flags,
-						     HAMMER2_INODE_ONRBTREE);
+						     HAMMER2_INODE_ONHASH);
 				}
 				hammer2_spin_unex(&hash->spin);
 
@@ -889,7 +889,7 @@ again:
 		 * which can't index inodes due to duplicative inode numbers).
 		 */
 		if (pmp->spmp_hmp == NULL &&
-		    (nip->flags & HAMMER2_INODE_ONRBTREE) == 0) {
+		    (nip->flags & HAMMER2_INODE_ONHASH) == 0) {
 			hammer2_mtx_unlock(&nip->lock);
 			hammer2_inode_drop(nip);
 			goto again;
@@ -971,7 +971,7 @@ again:
 		}
 		nip->next = NULL;
 		*xipp = nip;
-		atomic_set_int(&nip->flags, HAMMER2_INODE_ONRBTREE);
+		atomic_set_int(&nip->flags, HAMMER2_INODE_ONHASH);
 		atomic_add_long(&pmp->inum_count, 1);
 		hammer2_spin_unex(&hash->spin);
 	}
