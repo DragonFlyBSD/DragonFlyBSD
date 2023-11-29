@@ -380,6 +380,11 @@ wg_status(int s)
 		printf("\twgport: %hu\n", wg_interface->i_port);
 	if (wg_interface->i_flags & WG_INTERFACE_HAS_COOKIE)
 		printf("\twgcookie: %u\n", wg_interface->i_cookie);
+	if (wg_interface->i_flags & WG_INTERFACE_HAS_PRIVATE && printkeys) {
+		b64_ntop(wg_interface->i_private, WG_KEY_SIZE,
+			 key, sizeof(key));
+		printf("\twgkey: %s\n", key);
+	}
 	if (wg_interface->i_flags & WG_INTERFACE_HAS_PUBLIC) {
 		b64_ntop(wg_interface->i_public, WG_KEY_SIZE,
 			 key, sizeof(key));
@@ -394,8 +399,15 @@ wg_status(int s)
 
 		if (wg_peer->p_description[0] != '\0')
 			printf("\t\twgdescr: %s\n", wg_peer->p_description);
-		if (wg_peer->p_flags & WG_PEER_HAS_PSK)
-			printf("\t\twgpsk: (present)\n");
+		if (wg_peer->p_flags & WG_PEER_HAS_PSK) {
+			if (printkeys) {
+				b64_ntop(wg_peer->p_psk, WG_KEY_SIZE,
+					 key, sizeof(key));
+				printf("\t\twgpsk: %s\n", key);
+			} else {
+				printf("\t\twgpsk: (present)\n");
+			}
+		}
 		if ((wg_peer->p_flags & WG_PEER_HAS_PKA) && wg_peer->p_pka > 0)
 			printf("\t\twgpka: %u (seconds)\n", wg_peer->p_pka);
 		if (wg_peer->p_flags & WG_PEER_HAS_ENDPOINT) {
