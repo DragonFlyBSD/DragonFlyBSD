@@ -523,6 +523,18 @@ trigger_syncer(struct mount *mp)
 }
 
 static __inline
+void
+trigger_syncer_start(struct mount *mp)
+{
+}
+
+static __inline
+void
+trigger_syncer_stop(struct mount *mp)
+{
+}
+
+static __inline
 int
 vfs_mountedon(struct m_vnode *vp)
 {

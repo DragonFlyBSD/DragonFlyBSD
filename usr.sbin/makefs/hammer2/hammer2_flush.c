@@ -1340,10 +1340,10 @@ hammer2_xop_inode_flush(hammer2_xop_t *arg, void *scratch __unused, int clindex)
 
 			/* XXX cluster */
 			if (ip == pmp->iroot && pmp != hmp->spmp) {
-				hammer2_spin_ex(&pmp->inum_spin);
+				hammer2_spin_ex(&pmp->blockset_spin);
 				pmp->pfs_iroot_blocksets[clindex] =
 					chain->data->ipdata.u.blockset;
-				hammer2_spin_unex(&pmp->inum_spin);
+				hammer2_spin_unex(&pmp->blockset_spin);
 			}
 
 #if 0
@@ -1526,11 +1526,11 @@ hammer2_xop_inode_flush(hammer2_xop_t *arg, void *scratch __unused, int clindex)
 				j, (intmax_t)hmp->volsync.volu_size);
 		}
 		bp = getblkx(hmp->devvp, j * HAMMER2_ZONE_BYTES64,
-			    HAMMER2_PBUFSIZE, GETBLK_KVABIO, 0);
+			    HAMMER2_VOLUME_BYTES, GETBLK_KVABIO, 0);
 		atomic_clear_int(&hmp->vchain.flags,
 				 HAMMER2_CHAIN_VOLUMESYNC);
 		bkvasync(bp);
-		bcopy(&hmp->volsync, bp->b_data, HAMMER2_PBUFSIZE);
+		bcopy(&hmp->volsync, bp->b_data, HAMMER2_VOLUME_BYTES);
 		vol_error = bwrite(bp);
 		hmp->volhdrno = j;
 		if (vol_error)

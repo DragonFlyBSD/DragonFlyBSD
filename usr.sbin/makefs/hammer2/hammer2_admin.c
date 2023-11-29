@@ -703,8 +703,56 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint64_t mask)
 	 * All collectors are gone, we can cleanup and dispose of the XOP.
 	 * Note that this can wind up being a frontend OR a backend.
 	 * Pending chains are locked shared and not owned by any thread.
+	 */
+
+	/*
+	 * Cleanup the xop's cluster.  If there is an inode reference,
+	 * cache the cluster chains in the inode to improve performance,
+	 * preventing them from recursively destroying the chain recursion.
 	 *
-	 * Cleanup the collection cluster.
+	 * Note that ip->ccache[i] does NOT necessarily represent usable
+	 * chains or chains that are related to the inode.  The chains are
+	 * simply held to prevent bottom-up lastdrop destruction of
+	 * potentially valuable resolved chain data.
+	 */
+	if (xop->ip1) {
+		/*
+		 * Cache cluster chains in a convenient inode.  The chains
+		 * are cache ref'd but not held.  The inode simply serves
+		 * as a place to cache the chains to prevent the chains
+		 * from being cleaned up.
+		 */
+		hammer2_chain_t *dropch[HAMMER2_MAXCLUSTER];
+		hammer2_inode_t *ip;
+		int prior_nchains;
+
+		ip = xop->ip1;
+		hammer2_spin_ex(&ip->cluster_spin);
+		prior_nchains = ip->ccache_nchains;
+		for (i = 0; i < prior_nchains; ++i) {
+			dropch[i] = ip->ccache[i].chain;
+			ip->ccache[i].chain = NULL;
+		}
+		for (i = 0; i < xop->cluster.nchains; ++i) {
+			ip->ccache[i] = xop->cluster.array[i];
+			if (ip->ccache[i].chain)
+				hammer2_chain_ref(ip->ccache[i].chain);
+		}
+		ip->ccache_nchains = i;
+		hammer2_spin_unex(&ip->cluster_spin);
+
+		/*
+		 * Drop prior cache
+		 */
+		for (i = 0; i < prior_nchains; ++i) {
+			chain = dropch[i];
+			if (chain)
+				hammer2_chain_drop(chain);
+		}
+	}
+
+	/*
+	 * Drop and unhold chains in xop cluster
 	 */
 	for (i = 0; i < xop->cluster.nchains; ++i) {
 		xop->cluster.array[i].flags = 0;

@@ -85,7 +85,7 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 	 * Standard root cred checks, will be selectively ignored below
 	 * for ioctls that do not require root creds.
 	 */
-	error = priv_check_cred(cred, PRIV_HAMMER_IOCTL, 0);
+	error = caps_priv_check(cred, SYSCAP_NOVFS_IOCTL);
 
 	switch(com) {
 	case HAMMER2IOC_VERSION_GET:
@@ -912,9 +912,9 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		/* XXX hack blockset copy */
 		/* XXX doesn't work with real cluster */
 		wipdata->meta = nip->meta;
-		hammer2_spin_ex(&pmp->inum_spin);
+		hammer2_spin_ex(&pmp->blockset_spin);
 		wipdata->u.blockset = pmp->pfs_iroot_blocksets[0];
-		hammer2_spin_unex(&pmp->inum_spin);
+		hammer2_spin_unex(&pmp->blockset_spin);
 
 		KKASSERT(wipdata == &nchain->data->ipdata);
 

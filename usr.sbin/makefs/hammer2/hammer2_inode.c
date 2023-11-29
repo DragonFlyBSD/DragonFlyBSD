@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  *
  * Copyright (c) 2022 Tomohiro Kusumi <tkusumi@netbsd.org>
- * Copyright (c) 2011-2022 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2023 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -48,17 +48,19 @@
 
 #define INODE_DEBUG	0
 
-RB_GENERATE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
-	     hammer2_tid_t, meta.inum);
-
-int
-hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2)
+/*
+ * Initialize inum hash in fresh structure
+ */
+void
+hammer2_inum_hash_init(hammer2_pfs_t *pmp)
 {
-	if (ip1->meta.inum < ip2->meta.inum)
-		return(-1);
-	if (ip1->meta.inum > ip2->meta.inum)
-		return(1);
-	return(0);
+	hammer2_inum_hash_t *hash;
+	int i;
+
+	for (i = 0; i < HAMMER2_INUMHASH_SIZE; ++i) {
+		hash = &pmp->inumhash[i];
+		hammer2_spin_init(&hash->spin, "h2inum");
+	}
 }
 
 /*
@@ -536,23 +538,38 @@ hammer2_inode_lock_downgrade(hammer2_inode_t *ip, int wasexclusive)
 		hammer2_mtx_downgrade(&ip->lock);
 }
 
+static __inline hammer2_inum_hash_t *
+inumhash(hammer2_pfs_t *pmp, hammer2_tid_t inum)
+{
+	int hv;
+
+	hv = (int)inum;
+	return (&pmp->inumhash[hv & HAMMER2_INUMHASH_MASK]);
+}
+
+
 /*
  * Lookup an inode by inode number
  */
 hammer2_inode_t *
 hammer2_inode_lookup(hammer2_pfs_t *pmp, hammer2_tid_t inum)
 {
+	hammer2_inum_hash_t *hash;
 	hammer2_inode_t *ip;
 
 	KKASSERT(pmp);
 	if (pmp->spmp_hmp) {
 		ip = NULL;
 	} else {
-		hammer2_spin_ex(&pmp->inum_spin);
-		ip = RB_LOOKUP(hammer2_inode_tree, &pmp->inum_tree, inum);
-		if (ip)
-			hammer2_inode_ref(ip);
-		hammer2_spin_unex(&pmp->inum_spin);
+		hash = inumhash(pmp, inum);
+		hammer2_spin_sh(&hash->spin);
+		for (ip = hash->base; ip; ip = ip->next) {
+			if (ip->meta.inum == inum) {
+				hammer2_inode_ref(ip);
+				break;
+			}
+		}
+		hammer2_spin_unsh(&hash->spin);
 	}
 	return(ip);
 }
@@ -598,20 +615,27 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 			 * It should not be possible for anyone to race
 			 * the transition to 0.
 			 */
+			hammer2_inum_hash_t *hash;
+			hammer2_inode_t **xipp;
+
 			pmp = ip->pmp;
 			KKASSERT(pmp);
-			hammer2_spin_ex(&pmp->inum_spin);
+			hash = inumhash(pmp, ip->meta.inum);
 
+			hammer2_spin_ex(&hash->spin);
 			if (atomic_cmpset_int(&ip->refs, 1, 0)) {
 				KKASSERT(hammer2_mtx_refs(&ip->lock) == 0);
-				if (ip->flags & HAMMER2_INODE_ONRBTREE) {
+				if (ip->flags & HAMMER2_INODE_ONHASH) {
+					xipp = &hash->base;
+					while (*xipp != ip)
+						xipp = &(*xipp)->next;
+					*xipp = ip->next;
+					ip->next = NULL;
+					atomic_add_long(&pmp->inum_count, -1);
 					atomic_clear_int(&ip->flags,
-						     HAMMER2_INODE_ONRBTREE);
-					RB_REMOVE(hammer2_inode_tree,
-						  &pmp->inum_tree, ip);
-					--pmp->inum_count;
+						     HAMMER2_INODE_ONHASH);
 				}
-				hammer2_spin_unex(&pmp->inum_spin);
+				hammer2_spin_unex(&hash->spin);
 
 				ip->pmp = NULL;
 
@@ -626,7 +650,7 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 				TAILQ_INSERT_TAIL(&pmp->recq, ip, recq_entry);
 				ip = NULL;	/* will terminate loop */
 			} else {
-				hammer2_spin_unex(&ip->pmp->inum_spin);
+				hammer2_spin_unex(&hash->spin);
 			}
 		} else {
 			/*
@@ -872,7 +896,7 @@ again:
 		 * which can't index inodes due to duplicative inode numbers).
 		 */
 		if (pmp->spmp_hmp == NULL &&
-		    (nip->flags & HAMMER2_INODE_ONRBTREE) == 0) {
+		    (nip->flags & HAMMER2_INODE_ONHASH) == 0) {
 			hammer2_mtx_unlock(&nip->lock);
 			hammer2_inode_drop(nip);
 			goto again;
@@ -935,16 +959,28 @@ again:
 	 * get.  Undo all the work and try again.
 	 */
 	if (pmp->spmp_hmp == NULL) {
-		hammer2_spin_ex(&pmp->inum_spin);
-		if (RB_INSERT(hammer2_inode_tree, &pmp->inum_tree, nip)) {
-			hammer2_spin_unex(&pmp->inum_spin);
-			hammer2_mtx_unlock(&nip->lock);
-			hammer2_inode_drop(nip);
-			goto again;
+		hammer2_inum_hash_t *hash;
+		hammer2_inode_t *xip;
+		hammer2_inode_t **xipp;
+
+		hash = inumhash(pmp, nip->meta.inum);
+		hammer2_spin_ex(&hash->spin);
+		for (xipp = &hash->base;
+		     (xip = *xipp) != NULL;
+		     xipp = &xip->next)
+		{
+			if (xip->meta.inum == nip->meta.inum) {
+				hammer2_spin_unex(&hash->spin);
+				hammer2_mtx_unlock(&nip->lock);
+				hammer2_inode_drop(nip);
+				goto again;
+			}
 		}
-		atomic_set_int(&nip->flags, HAMMER2_INODE_ONRBTREE);
-		++pmp->inum_count;
-		hammer2_spin_unex(&pmp->inum_spin);
+		nip->next = NULL;
+		*xipp = nip;
+		atomic_set_int(&nip->flags, HAMMER2_INODE_ONHASH);
+		atomic_add_long(&pmp->inum_count, 1);
+		hammer2_spin_unex(&hash->spin);
 	}
 	return (nip);
 }
@@ -1043,15 +1079,6 @@ hammer2_inode_create_pfs(hammer2_pfs_t *spmp,
 	xop->meta.mode = 0755;
 	xop->meta.nlinks = 1;
 
-	/*
-	 * Regular files and softlinks allow a small amount of data to be
-	 * directly embedded in the inode.  This flag will be cleared if
-	 * the size is extended past the embedded limit.
-	 */
-	if (xop->meta.type == HAMMER2_OBJTYPE_REGFILE ||
-	    xop->meta.type == HAMMER2_OBJTYPE_SOFTLINK) {
-		xop->meta.op_flags |= HAMMER2_OPFLAG_DIRECTDATA;
-	}
 	hammer2_xop_setname(&xop->head, name, name_len);
 	xop->meta.name_len = name_len;
 	xop->meta.name_key = lhc;
@@ -1203,7 +1230,6 @@ hammer2_inode_create_normal(hammer2_inode_t *pip,
 	xop->lhc = inum;
 	xop->flags = 0;
 	xop->meta = nip->meta;
-	KKASSERT(vap);
 
 	xop->meta.name_len = hammer2_xop_setname_inum(&xop->head, inum);
 	xop->meta.name_key = inum;
@@ -1354,6 +1380,25 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_cluster_t *cluster)
 	bzero(dropch, sizeof(dropch));
 
 	/*
+	 * Drop any cached (typically data) chains related to this inode
+	 */
+	hammer2_spin_ex(&ip->cluster_spin);
+	for (i = 0; i < ip->ccache_nchains; ++i) {
+		dropch[i] = ip->ccache[i].chain;
+		ip->ccache[i].flags = 0;
+		ip->ccache[i].chain = NULL;
+	}
+	ip->ccache_nchains = 0;
+	hammer2_spin_unex(&ip->cluster_spin);
+
+	while (--i >= 0) {
+		if (dropch[i]) {
+			hammer2_chain_drop(dropch[i]);
+			dropch[i] = NULL;
+		}
+	}
+
+	/*
 	 * Replace chains in ip->cluster with chains from cluster and
 	 * adjust the focus if necessary.
 	 *
@@ -1434,10 +1479,30 @@ void
 hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
 			  int idx)
 {
+	hammer2_chain_t *dropch[HAMMER2_MAXCLUSTER];
 	hammer2_chain_t *ochain;
 	hammer2_chain_t *nchain;
 	int i;
 
+	/*
+	 * Drop any cached (typically data) chains related to this inode
+	 */
+	hammer2_spin_ex(&ip->cluster_spin);
+	for (i = 0; i < ip->ccache_nchains; ++i) {
+		dropch[i] = ip->ccache[i].chain;
+		ip->ccache[i].chain = NULL;
+	}
+	ip->ccache_nchains = 0;
+	hammer2_spin_unex(&ip->cluster_spin);
+
+	while (--i >= 0) {
+		if (dropch[i])
+			hammer2_chain_drop(dropch[i]);
+	}
+
+	/*
+	 * Replace inode chain at index
+	 */
 	hammer2_spin_ex(&ip->cluster_spin);
 	KKASSERT(idx < cluster->nchains);
 	if (idx < ip->cluster.nchains) {
@@ -1763,7 +1828,7 @@ hammer2_inode_chain_des(hammer2_inode_t *ip)
 int
 hammer2_inode_chain_flush(hammer2_inode_t *ip, int flags)
 {
-	hammer2_xop_fsync_t *xop;
+	hammer2_xop_flush_t *xop;
 	int error;
 
 	atomic_clear_int(&ip->flags, HAMMER2_INODE_DIRTYDATA);
@@ -1777,20 +1842,6 @@ hammer2_inode_chain_flush(hammer2_inode_t *ip, int flags)
 	return error;
 }
 
-hammer2_key_t
-hammer2_pfs_inode_count(hammer2_pfs_t *pmp)
-{
-	struct hammer2_inode *ip;
-	hammer2_key_t count = 0;
-
-	hammer2_spin_ex(&pmp->inum_spin);
-	RB_FOREACH(ip, hammer2_inode_tree, &pmp->inum_tree)
-		count++;
-	hammer2_spin_unex(&pmp->inum_spin);
-
-	return count;
-}
-
 int
 vflush(struct mount *mp, int rootrefs, int flags)
 {
@@ -1798,33 +1849,40 @@ vflush(struct mount *mp, int rootrefs, int flags)
 	struct hammer2_inode *ip, *tmp;
 	struct m_vnode *vp;
 	hammer2_key_t count_before, count_after, count_recq;
+	hammer2_inum_hash_t *hash;
+	int i;
 
 	printf("%s: total chain %ld\n", __func__, hammer2_chain_allocs);
 	printf("%s: total dio %d\n", __func__, hammer2_dio_count);
 
-	hammer2_spin_ex(&pmp->inum_spin);
-	count_before = 0;
-	RB_FOREACH(ip, hammer2_inode_tree, &pmp->inum_tree)
-		count_before++;
+	for (i = 0; i < HAMMER2_INUMHASH_SIZE; ++i) {
+		hash = &pmp->inumhash[i];
+		hammer2_spin_ex(&hash->spin);
+		count_before = 0;
+		for (ip = hash->base; ip; ip = ip->next)
+			count_before++;
 
-	RB_FOREACH_SAFE(ip, hammer2_inode_tree, &pmp->inum_tree, tmp) {
-		vp = ip->vp;
-		assert(vp);
-		if (!vp->v_vflushed) {
-			/*
-			 * Not all inodes are modified and ref'd,
-			 * so ip->refs requirement here is the initial 1.
-			 */
-			assert(ip->refs > 0);
-			hammer2_inode_drop(ip);
-			vp->v_vflushed = 1;
+		for (ip = hash->base; ip;) {
+			tmp = ip->next;
+			vp = ip->vp;
+			assert(vp);
+			if (!vp->v_vflushed) {
+				/*
+				 * Not all inodes are modified and ref'd,
+				 * so ip->refs requirement here is the initial 1.
+				 */
+				assert(ip->refs > 0);
+				hammer2_inode_drop(ip);
+				vp->v_vflushed = 1;
+			}
+			ip = tmp;
 		}
-	}
 
-	count_after = 0;
-	RB_FOREACH(ip, hammer2_inode_tree, &pmp->inum_tree)
-		count_after++;
-	hammer2_spin_unex(&pmp->inum_spin);
+		count_after = 0;
+		for (ip = hash->base; ip; ip = ip->next)
+			count_after++;
+		hammer2_spin_unex(&hash->spin);
+	}
 
 	printf("%s: total inode %jd -> %jd\n",
 	    __func__, (intmax_t)count_before, (intmax_t)count_after);
