@@ -451,7 +451,6 @@ static
 hammer2_chain_t *
 hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 {
-	hammer2_pfs_t *pmp;
 	hammer2_dev_t *hmp;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *rdrop;
@@ -577,7 +576,6 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 	 * we can safely drop chain's refs with intent to free the chain.
 	 */
 	hmp = chain->hmp;
-	pmp = chain->pmp;	/* can be NULL */
 	rdrop = NULL;
 
 	parent = chain->parent;
