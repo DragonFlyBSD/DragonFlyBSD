@@ -464,6 +464,8 @@ hammer2_read_volume_header(struct m_vnode *devvp, const char *path,
 	hammer2_volume_data_t *vd;
 	struct m_buf *bp = NULL;
 	hammer2_crc32_t crc0, crc1;
+	hammer2_off_t size = check_volume(devvp->fs->fd);
+	off_t blkoff;
 	int zone = -1;
 	int i;
 
@@ -475,6 +477,11 @@ hammer2_read_volume_header(struct m_vnode *devvp, const char *path,
 	 * block device's EOF.
 	 */
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
+		/* ignore if blkoff is beyond media size */
+		blkoff = (off_t)i * HAMMER2_ZONE_BYTES64;
+		if (blkoff >= (off_t)size)
+			continue;
+
 		if (breadx(devvp, i * HAMMER2_ZONE_BYTES64, HAMMER2_VOLUME_BYTES,
 			  &bp)) {
 			brelse(bp);

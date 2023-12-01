@@ -839,6 +839,27 @@ hammer2_dump_fsinfo(fsinfo_t *fsopts)
 }
 
 static int
+hammer2_setup_blkdev(const char *image, fsinfo_t *fsopts)
+{
+	hammer2_makefs_options_t *h2_opt = fsopts->fs_specific;
+	hammer2_off_t size;
+
+	if ((fsopts->fd = open(image, O_RDWR)) == -1) {
+		warn("can't open `%s' for writing", image);
+		return -1;
+	}
+
+	size = check_volume(fsopts->fd);
+	if (h2_opt->image_size > size) {
+		warnx("image size %lld exceeds %s size %lld",
+		    (long long)h2_opt->image_size, image, (long long)size);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
 hammer2_create_image(const char *image, fsinfo_t *fsopts)
 {
 	hammer2_makefs_options_t *h2_opt = fsopts->fs_specific;
@@ -847,9 +868,19 @@ hammer2_create_image(const char *image, fsinfo_t *fsopts)
 	char *buf;
 	int i, bufsize, oflags;
 	off_t bufrem;
+	struct stat st;
 
 	assert(image != NULL);
 	assert(fsopts != NULL);
+
+	/* check if image is blk or chr */
+	if (stat(image, &st) == 0) {
+		if (S_ISBLK(st.st_mode) || S_ISCHR(st.st_mode)) {
+			if (hammer2_setup_blkdev(image, fsopts))
+				return -1;
+			goto done;
+		}
+	}
 
 	/* create image */
 	oflags = O_RDWR | O_CREAT;
@@ -901,7 +932,7 @@ hammer2_create_image(const char *image, fsinfo_t *fsopts)
 	}
 	if (buf)
 		free(buf);
-
+done:
 	/* make the file system */
 	if (debug & DEBUG_FS_CREATE_IMAGE)
 		APRINTF("calling mkfs(\"%s\", ...)\n", image);
