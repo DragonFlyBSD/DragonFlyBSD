@@ -217,7 +217,12 @@ main(int argc, char **argv)
 	if (ef != NULL && to != NULL)
 		errx(1, "Cannot give -f and people to send to.");
 	tinit();
-	setscreensize();
+	/*
+	 * Initialize screensize now and watch for later terminal changes.
+	 */
+	setscreensize(0);
+	if (signal(SIGWINCH, setscreensize) == SIG_ERR)
+		warnx("failed to catch SIGWINCH for terminal size changes");
 	input = stdin;
 	rcvmode = !to;
 	spreserve();
@@ -313,7 +318,7 @@ hdrstop(int signo)
  * Width is either 80 or ws_col;
  */
 void
-setscreensize(void)
+setscreensize(int signo __unused)
 {
 	struct termios tbuf;
 	struct winsize ws;
