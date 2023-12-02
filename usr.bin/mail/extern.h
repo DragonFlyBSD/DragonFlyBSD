@@ -214,7 +214,7 @@ int	 set(char **);
 int	 setfile(char *);
 void	 setmsize(int);
 void	 setptr(FILE *, off_t);
-void	 setscreensize(void);
+void	 setscreensize(int);
 int	 shell(char *);
 void	 sigchild(int);
 void	 sort(char **);
