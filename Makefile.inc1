@@ -495,10 +495,12 @@ buildports: umountports mountports
 # the dports stuff that was built in the chroot)
 #
 # NOTE: At the moment, the pkg install command may require interactivity,
-#	do not redirect.
+#	do not redirect.  We have to adjust pkg.conf's paths because
+#	we are installing relative to the real root and not the chroot.
 #
 installports: umountports mountports
 	cd ${WORLDDEST} && tar xvzpf ${WORLDDEST}/chroot/build/synth/live_packages/All/pkg-*.pkg > /dev/null 2>&1
+	cat ${.CURDIR}/dports.base/pkg.conf | sed -e 's#/build#${WORLDDEST}/chroot/build#' > ${WORLDDEST}/chroot/build/pkg.conf
 	${WORLDDEST}/usr/local/sbin/pkg-static --rootdir ${DESTDIR}/ -R ${WORLDDEST}/chroot/build install dragonfly-base
 	@(cd ${.CURDIR}; ${MAKE} umountports)
 
