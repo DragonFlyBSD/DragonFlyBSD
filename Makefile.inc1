@@ -475,7 +475,9 @@ buildportschroot: umountports
 # buildportschroot.
 #
 # NOTE: The real system's /usr/distfiles.base is shared with the chroot and
-#	dsynth will fetch source dists as necessary.
+#	dsynth will fetch source dists as necessary.  If the real system
+#	is not yet fully up-to-date, it might not have its /usr/distfiles.base
+#	yet though so create it if necessary.
 #
 buildports: umountports mountports
 	mkdir -p ${WORLDDEST}/chroot
@@ -484,6 +486,7 @@ buildports: umountports mountports
 	mkdir -p ${WORLDDEST}/chroot/build/synth/logs
 	mkdir -p ${WORLDDEST}/chroot/build/synth/options
 	mkdir -p ${WORLDDEST}/chroot/build/synth/build
+	mkdir -p /usr/distfiles.base
 	cp ${.CURDIR}/dports.base/dsynth.ini ${WORLDDEST}/chroot/build/synth/
 	cp ${.CURDIR}/dports.base/pkg.conf ${WORLDDEST}/chroot/build/
 	@echo "dsynth logs will be stored in ${WORLDDEST}/chroot/build/synth/logs"
