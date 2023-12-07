@@ -1325,11 +1325,11 @@ noise_param_init(uint8_t ck[NOISE_HASH_LEN], uint8_t hash[NOISE_HASH_LEN],
 	struct blake2s_state blake;
 
 	blake2s(ck, (uint8_t *)NOISE_HANDSHAKE_NAME, NULL,
-	    NOISE_HASH_LEN, strlen(NOISE_HANDSHAKE_NAME), 0);
+	    NOISE_HASH_LEN, sizeof(NOISE_HANDSHAKE_NAME) - 1, 0);
 	blake2s_init(&blake, NOISE_HASH_LEN);
 	blake2s_update(&blake, ck, NOISE_HASH_LEN);
 	blake2s_update(&blake, (uint8_t *)NOISE_IDENTIFIER_NAME,
-	    strlen(NOISE_IDENTIFIER_NAME));
+	    sizeof(NOISE_IDENTIFIER_NAME) - 1);
 	blake2s_final(&blake, hash);
 
 	noise_mix_hash(hash, s, NOISE_PUBLIC_KEY_LEN);

@@ -85,7 +85,8 @@ static void	make_cookie(struct cookie_checker *,
 			    uint8_t[COOKIE_COOKIE_SIZE],
 			    const struct sockaddr *);
 static void	precompute_key(uint8_t[COOKIE_KEY_SIZE],
-			       const uint8_t[COOKIE_INPUT_SIZE], const char *);
+			       const uint8_t[COOKIE_INPUT_SIZE],
+			       const uint8_t *, size_t);
 static void	ratelimit_init(struct ratelimit *);
 static void	ratelimit_deinit(struct ratelimit *);
 static void	ratelimit_gc_callout(void *);
@@ -176,8 +177,10 @@ cookie_checker_update(struct cookie_checker *cc,
 {
 	lockmgr(&cc->cc_key_lock, LK_EXCLUSIVE);
 	if (key != NULL) {
-		precompute_key(cc->cc_mac1_key, key, COOKIE_MAC1_KEY_LABEL);
-		precompute_key(cc->cc_cookie_key, key, COOKIE_COOKIE_KEY_LABEL);
+		precompute_key(cc->cc_mac1_key, key, COOKIE_MAC1_KEY_LABEL,
+			       sizeof(COOKIE_MAC1_KEY_LABEL) - 1);
+		precompute_key(cc->cc_cookie_key, key, COOKIE_COOKIE_KEY_LABEL,
+			       sizeof(COOKIE_COOKIE_KEY_LABEL) - 1);
 	} else {
 		bzero(cc->cc_mac1_key, sizeof(cc->cc_mac1_key));
 		bzero(cc->cc_cookie_key, sizeof(cc->cc_cookie_key));
@@ -256,8 +259,10 @@ void
 cookie_maker_init(struct cookie_maker *cm, const uint8_t key[COOKIE_INPUT_SIZE])
 {
 	bzero(cm, sizeof(*cm));
-	precompute_key(cm->cm_mac1_key, key, COOKIE_MAC1_KEY_LABEL);
-	precompute_key(cm->cm_cookie_key, key, COOKIE_COOKIE_KEY_LABEL);
+	precompute_key(cm->cm_mac1_key, key, COOKIE_MAC1_KEY_LABEL,
+		       sizeof(COOKIE_MAC1_KEY_LABEL) - 1);
+	precompute_key(cm->cm_cookie_key, key, COOKIE_COOKIE_KEY_LABEL,
+		       sizeof(COOKIE_COOKIE_KEY_LABEL) - 1);
 	lockinit(&cm->cm_lock, "cookie_maker", 0, 0);
 }
 
@@ -330,12 +335,13 @@ cookie_maker_mac(struct cookie_maker *cm, struct cookie_macs *macs,
 
 static void
 precompute_key(uint8_t key[COOKIE_KEY_SIZE],
-	       const uint8_t input[COOKIE_INPUT_SIZE], const char *label)
+	       const uint8_t input[COOKIE_INPUT_SIZE],
+	       const uint8_t *label, size_t label_len)
 {
 	struct blake2s_state blake;
 
 	blake2s_init(&blake, COOKIE_KEY_SIZE);
-	blake2s_update(&blake, label, strlen(label));
+	blake2s_update(&blake, label, label_len);
 	blake2s_update(&blake, input, COOKIE_INPUT_SIZE);
 	blake2s_final(&blake, key);
 }
