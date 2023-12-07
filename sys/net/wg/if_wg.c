@@ -2381,6 +2381,7 @@ wg_ioctl_get(struct wg_softc *sc, struct wg_data_io *data, bool privileged)
 			peer_o.p_txbytes += peer->p_tx_bytes[cpu];
 		}
 		wg_timers_get_last_handshake(peer, &peer_o.p_last_handshake);
+		peer_o.p_id = (uint64_t)peer->p_id;
 		strlcpy(peer_o.p_description, peer->p_description,
 			sizeof(peer_o.p_description));
 

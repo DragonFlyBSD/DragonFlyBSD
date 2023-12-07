@@ -397,6 +397,7 @@ wg_status(int s)
 			 key, sizeof(key));
 		printf("\twgpeer: %s\n", key);
 
+		printf("\t\tid: %" PRIu64 "\n", wg_peer->p_id);
 		if (wg_peer->p_description[0] != '\0')
 			printf("\t\twgdescr: %s\n", wg_peer->p_description);
 		if (wg_peer->p_flags & WG_PEER_HAS_PSK) {

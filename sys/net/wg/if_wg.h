@@ -63,6 +63,7 @@ struct wg_peer_io {
 	uint64_t		p_txbytes;
 	uint64_t		p_rxbytes;
 	struct timespec		p_last_handshake; /* nanotime */
+	uint64_t		p_id;
 	char			p_description[WG_PEER_DESCR_SIZE];
 	size_t			p_aips_count;
 	struct wg_aip_io	p_aips[];
