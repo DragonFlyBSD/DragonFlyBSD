@@ -145,7 +145,7 @@ usched_ctl(struct usched *usched, int action)
 
 /*
  * Called from the scheduler clock on each cpu independently at the
- * common scheduling rate.  If th scheduler clock interrupted a running
+ * common scheduling rate.  If the scheduler clock interrupted a running
  * lwp the lp will be non-NULL.
  */
 void

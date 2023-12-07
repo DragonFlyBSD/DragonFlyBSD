@@ -797,7 +797,7 @@ jme_attach(device_t dev)
 	 * JMC250 supports both memory mapped and I/O register space
 	 * access.  Because I/O register access should use different
 	 * BARs to access registers it's waste of time to use I/O
-	 * register spce access.  JMC250 uses 16K to map entire memory
+	 * register space access.  JMC250 uses 16K to map entire memory
 	 * space.
 	 */
 	sc->jme_mem_rid = JME_PCIR_BAR;
