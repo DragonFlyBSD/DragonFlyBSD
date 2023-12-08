@@ -515,12 +515,6 @@ noise_remote_free(struct noise_remote *r, void (*cleanup)(struct noise_remote *)
 	noise_remote_put(r);
 }
 
-struct noise_local *
-noise_remote_local(struct noise_remote *r)
-{
-	return (noise_local_ref(r->r_local));
-}
-
 void *
 noise_remote_arg(struct noise_remote *r)
 {
