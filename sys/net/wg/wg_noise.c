@@ -155,6 +155,10 @@ struct noise_local {
 
 static void	noise_precompute_ss(struct noise_local *, struct noise_remote *);
 
+static struct noise_local *
+		noise_local_ref(struct noise_local *);
+static void	noise_local_put(struct noise_local *);
+
 static void	noise_remote_index_insert(struct noise_local *, struct noise_remote *);
 static struct noise_remote *
 		noise_remote_index_lookup(struct noise_local *, uint32_t, bool);
@@ -221,14 +225,14 @@ noise_local_alloc(void *arg)
 	return (l);
 }
 
-struct noise_local *
+static struct noise_local *
 noise_local_ref(struct noise_local *l)
 {
 	refcount_acquire(&l->l_refcnt);
 	return (l);
 }
 
-void
+static void
 noise_local_put(struct noise_local *l)
 {
 	if (refcount_release(&l->l_refcnt)) {

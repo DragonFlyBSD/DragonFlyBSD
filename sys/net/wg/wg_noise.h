@@ -41,9 +41,6 @@ struct noise_keypair;
 /* Local configuration */
 struct noise_local *
 	noise_local_alloc(void *);
-struct noise_local *
-	noise_local_ref(struct noise_local *);
-void	noise_local_put(struct noise_local *);
 void	noise_local_free(struct noise_local *, void (*)(struct noise_local *));
 void *	noise_local_arg(struct noise_local *);
 
