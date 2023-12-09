@@ -749,7 +749,6 @@ vge_dma_alloc(device_t dev)
 			1, 0,			/* alignment, boundary */
 			BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 			BUS_SPACE_MAXADDR,	/* highaddr */
-			NULL, NULL,		/* filter, filterarg */
 			MAXBSIZE, VGE_NSEG_NEW,	/* maxsize, nsegments */
 			BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */
 			BUS_DMA_ALLOCNOW,	/* flags */
@@ -765,7 +764,6 @@ vge_dma_alloc(device_t dev)
 	nseg = 32;
 	error = bus_dma_tag_create(sc->vge_parent_tag, ETHER_ALIGN, 0,
 				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   MCLBYTES * nseg, nseg, MCLBYTES,
 				   BUS_DMA_ALLOCNOW, &sc->vge_ldata.vge_mtag);
 	if (error) {
@@ -778,7 +776,6 @@ vge_dma_alloc(device_t dev)
 	 */
 	error = bus_dma_tag_create(sc->vge_parent_tag, VGE_RING_ALIGN, 0,
 				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   VGE_TX_LIST_SZ, 1, VGE_TX_LIST_SZ,
 				   BUS_DMA_ALLOCNOW,
 				   &sc->vge_ldata.vge_tx_list_tag);
@@ -830,7 +827,6 @@ vge_dma_alloc(device_t dev)
 	 */
 	error = bus_dma_tag_create(sc->vge_parent_tag, VGE_RING_ALIGN, 0,
 				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   VGE_TX_LIST_SZ, 1, VGE_TX_LIST_SZ,
 				   BUS_DMA_ALLOCNOW,
 				   &sc->vge_ldata.vge_rx_list_tag);

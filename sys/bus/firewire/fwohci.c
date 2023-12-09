@@ -1196,7 +1196,9 @@ fwohci_db_init(struct fwohci_softc *sc, struct fwohci_dbch *dbch)
 			/*alignment*/ 1, /*boundary*/ 0,
 			/*lowaddr*/ BUS_SPACE_MAXADDR_32BIT,
 			/*highaddr*/ BUS_SPACE_MAXADDR,
+#if defined(__FreeBSD__)
 			/*filter*/NULL, /*filterarg*/NULL,
+#endif
 			/*maxsize*/ dbch->xferq.psize,
 			/*nsegments*/ dbch->ndesc > 3 ? dbch->ndesc - 2 : 1,
 			/*maxsegsz*/ MAX_REQCOUNT,

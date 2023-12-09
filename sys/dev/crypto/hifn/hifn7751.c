@@ -453,7 +453,6 @@ hifn_attach(device_t dev)
 			       1, 0,			/* alignment,boundary */
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
-			       NULL, NULL,		/* filter, filterarg */
 			       HIFN_MAX_DMALEN,		/* maxsize */
 			       MAX_SCATTER,		/* nsegments */
 			       HIFN_MAX_SEGLEN,		/* maxsegsize */

@@ -421,7 +421,6 @@ mfi_attach(struct mfi_softc *sc)
 				1, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
 				MEGASAS_MAX_NAME*sizeof(bus_addr_t),			/* maxsize */
 				1,			/* msegments */
 				MEGASAS_MAX_NAME*sizeof(bus_addr_t),			/* maxsegsize */
@@ -465,7 +464,6 @@ mfi_attach(struct mfi_softc *sc)
 				1, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
 				tb_mem_size,		/* maxsize */
 				1,			/* msegments */
 				tb_mem_size,		/* maxsegsize */
@@ -488,7 +486,6 @@ mfi_attach(struct mfi_softc *sc)
 				0x100, 0,		/* alignmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
 				MFI_FRAME_SIZE,		/* maxsize */
 				1,			/* msegments */
 				MFI_FRAME_SIZE,		/* maxsegsize */
@@ -523,7 +520,6 @@ mfi_attach(struct mfi_softc *sc)
 				1, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
 				tb_mem_size,		/* maxsize */
 				1,			/* msegments */
 				tb_mem_size,		/* maxsegsize */
@@ -552,7 +548,6 @@ mfi_attach(struct mfi_softc *sc)
 				1, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR,	/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
 				BUS_SPACE_MAXSIZE_32BIT,/* maxsize */
 				sc->mfi_max_sge,	/* nsegments */
 				BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */
@@ -574,7 +569,6 @@ mfi_attach(struct mfi_softc *sc)
 				1, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
 				commsz,			/* maxsize */
 				1,			/* msegments */
 				commsz,			/* maxsegsize */
@@ -616,7 +610,6 @@ mfi_attach(struct mfi_softc *sc)
 				64, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
 				framessz,		/* maxsize */
 				1,			/* nsegments */
 				framessz,		/* maxsegsize */
@@ -642,7 +635,6 @@ mfi_attach(struct mfi_softc *sc)
 				4, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
 				sensesz,		/* maxsize */
 				1,			/* nsegments */
 				sensesz,		/* maxsegsize */
@@ -2757,7 +2749,6 @@ mfi_stp_cmd(struct mfi_softc *sc, struct mfi_command *cm,caddr_t arg)
 			1, 0,			/* algnmnt, boundary */
 			BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 			BUS_SPACE_MAXADDR,	/* highaddr */
-			NULL, NULL,		/* filter, filterarg */
 			ioc->mfi_sgl[i].iov_len,/* maxsize */
 			2,			/* nsegments */
 			ioc->mfi_sgl[i].iov_len,/* maxsegsize */

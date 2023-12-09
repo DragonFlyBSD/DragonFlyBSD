@@ -236,7 +236,6 @@ mlx_sglist_map(struct mlx_softc *sc)
 			       1, 0, 			/* alignment, boundary */
 			       BUS_SPACE_MAXADDR,	/* lowaddr */
 			       BUS_SPACE_MAXADDR, 	/* highaddr */
-			       NULL, NULL, 		/* filter, filterarg */
 			       segsize, 1,		/* maxsize, nsegments */
 			       BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
 			       0,			/* flags */
@@ -365,7 +364,6 @@ mlx_attach(struct mlx_softc *sc)
 			       1, 0, 				/* alignment, boundary */
 			       BUS_SPACE_MAXADDR,		/* lowaddr */
 			       BUS_SPACE_MAXADDR, 		/* highaddr */
-			       NULL, NULL, 			/* filter, filterarg */
 			       MAXBSIZE, MLX_NSEG,		/* maxsize, nsegments */
 			       BUS_SPACE_MAXSIZE_32BIT,		/* maxsegsize */
 			       0,				/* flags */

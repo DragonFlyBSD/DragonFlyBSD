@@ -225,7 +225,6 @@ twe_attach(device_t dev)
 			   1, 0, 				/* alignment, boundary */
 			   BUS_SPACE_MAXADDR_32BIT, 		/* lowaddr */
 			   BUS_SPACE_MAXADDR, 			/* highaddr */
-			   NULL, NULL, 				/* filter, filterarg */
 			   MAXBSIZE, TWE_MAX_SGL_LENGTH,	/* maxsize, nsegments */
 			   BUS_SPACE_MAXSIZE_32BIT,		/* maxsegsize */
 			   0,					/* flags */
@@ -259,7 +258,6 @@ twe_attach(device_t dev)
 			   1, 0, 			/* alignment, boundary */
 			   BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			   BUS_SPACE_MAXADDR, 		/* highaddr */
-			   NULL, NULL, 			/* filter, filterarg */
 			   sizeof(TWE_Command) *
 			   TWE_Q_LENGTH, 1,		/* maxsize, nsegments */
 			   BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
@@ -289,7 +287,6 @@ twe_attach(device_t dev)
 			   1, 0, 			/* alignment, boundary */
 			   BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			   BUS_SPACE_MAXADDR, 		/* highaddr */
-			   NULL, NULL, 			/* filter, filterarg */
 			   MAXBSIZE, TWE_MAX_SGL_LENGTH,/* maxsize, nsegments */
 			   BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
 			   BUS_DMA_ALLOCNOW,		/* flags */
@@ -306,7 +303,6 @@ twe_attach(device_t dev)
 			   1, 0, 			/* alignment, boundary */
 			   BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			   BUS_SPACE_MAXADDR, 		/* highaddr */
-			   NULL, NULL, 			/* filter, filterarg */
 			   MAXBSIZE, 1,			/* maxsize, nsegments */
 			   BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
 			   0,				/* flags */

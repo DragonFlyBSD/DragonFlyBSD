@@ -506,7 +506,6 @@ aac_alloc(struct aac_softc *sc)
 			       BUS_SPACE_MAXADDR :
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR, 	/* highaddr */
-			       NULL, NULL, 		/* filter, filterarg */
 			       MAXBSIZE,		/* maxsize */
 			       sc->aac_sg_tablesize,	/* nsegments */
 			       MAXBSIZE,		/* maxsegsize */
@@ -525,7 +524,6 @@ aac_alloc(struct aac_softc *sc)
 			       BUS_SPACE_MAXADDR_32BIT :
 			       0x7fffffff,		/* lowaddr */
 			       BUS_SPACE_MAXADDR, 	/* highaddr */
-			       NULL, NULL, 		/* filter, filterarg */
 			       sc->aac_max_fibs_alloc *
 			       sc->aac_max_fib_size,  /* maxsize */
 			       1,			/* nsegments */
@@ -546,7 +544,6 @@ aac_alloc(struct aac_softc *sc)
 			       BUS_SPACE_MAXADDR_32BIT :
 			       0x7fffffff,		/* lowaddr */
 			       BUS_SPACE_MAXADDR, 	/* highaddr */
-			       NULL, NULL, 		/* filter, filterarg */
 			       8192 + sizeof(struct aac_common), /* maxsize */
 			       1,			/* nsegments */
 			       BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */

@@ -157,8 +157,6 @@ hdspe_alloc_resources(struct sc_info *sc)
 		/*boundary*/0,
 		/*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
 		/*highaddr*/BUS_SPACE_MAXADDR,
-		/*filter*/NULL,
-		/*filterarg*/NULL,
 		/*maxsize*/2 * HDSPE_DMASEGSIZE,
 		/*nsegments*/2,
 		/*maxsegsz*/HDSPE_DMASEGSIZE,

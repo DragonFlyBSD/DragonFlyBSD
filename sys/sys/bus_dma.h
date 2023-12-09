@@ -156,12 +156,6 @@ typedef struct bus_dmamem {
 } bus_dmamem_t;
 
 /*
- * A function that returns 1 if the address cannot be accessed by
- * a device and 0 if it can be.
- */
-typedef int bus_dma_filter_t(void *, bus_addr_t);
-
-/*
  * Allocate a device specific dma_tag encapsulating the constraints of
  * the parent tag in addition to other restrictions specified:
  *
@@ -169,11 +163,6 @@ typedef int bus_dma_filter_t(void *, bus_addr_t);
  *	boundary:	Boundary that segments cannot cross.
  *	lowaddr:	Low restricted address that cannot appear in a mapping.
  *	highaddr:	High restricted address that cannot appear in a mapping.
- *	filtfunc:	An optional function to further test if an address
- *			within the range of lowaddr and highaddr cannot appear
- *			in a mapping.
- *	filtfuncarg:	An argument that will be passed to filtfunc in addition
- *			to the address to test.
  *	maxsize:	Maximum mapping size supported by this tag.
  *	nsegments:	Number of discontinuities allowed in maps.
  *	maxsegsz:	Maximum size of a segment in the map.
@@ -184,8 +173,7 @@ typedef int bus_dma_filter_t(void *, bus_addr_t);
 /* XXX Should probably allow specification of alignment */
 int bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 		       bus_size_t boundary, bus_addr_t lowaddr,
-		       bus_addr_t highaddr, bus_dma_filter_t *filtfunc,
-		       void *filtfuncarg, bus_size_t maxsize, int nsegments,
+		       bus_addr_t highaddr, bus_size_t maxsize, int nsegments,
 		       bus_size_t maxsegsz, int flags, bus_dma_tag_t *dmat);
 
 int bus_dma_tag_destroy(bus_dma_tag_t dmat);

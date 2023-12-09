@@ -281,7 +281,6 @@ amr_pci_attach(device_t dev)
 			   BUS_SPACE_MAXADDR :
 			   BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			   BUS_SPACE_MAXADDR, 		/* highaddr */
-			   NULL, NULL, 			/* filter, filterarg */
 			   MAXBSIZE, AMR_NSEG,		/* maxsize, nsegments */
 			   BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
 			   0,				/* flags */
@@ -297,7 +296,6 @@ amr_pci_attach(device_t dev)
 			   1, 0,			/* alignment,boundary */
 			   BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			   BUS_SPACE_MAXADDR,		/* highaddr */
-			   NULL, NULL,			/* filter, filterarg */
 			   MAXBSIZE, AMR_NSEG,		/* maxsize, nsegments */
 			   MAXBSIZE,			/* maxsegsize */
 			   0,		/* flags */
@@ -310,7 +308,6 @@ amr_pci_attach(device_t dev)
 			   1, 0,			/* alignment,boundary */
 			   BUS_SPACE_MAXADDR,		/* lowaddr */
 			   BUS_SPACE_MAXADDR,		/* highaddr */
-			   NULL, NULL,			/* filter, filterarg */
 			   MAXBSIZE, AMR_NSEG,		/* maxsize, nsegments */
 			   MAXBSIZE,			/* maxsegsize */
 			   0,		/* flags */
@@ -568,7 +565,6 @@ amr_sglist_map(struct amr_softc *sc)
 			       512, 0, 			/* alignment,boundary */
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR, 	/* highaddr */
-			       NULL, NULL, 		/* filter, filterarg */
 			       segsize, 1,		/* maxsize, nsegments */
 			       BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
 			       0,			/* flags */
@@ -635,7 +631,6 @@ amr_setup_mbox(struct amr_softc *sc)
 			       16, 0,			/* alignment,boundary */
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
-			       NULL, NULL,		/* filter, filterarg */
 			       sizeof(struct amr_mailbox64), /* maxsize */
 			       1,			/* nsegments */
 			       BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
@@ -684,7 +679,6 @@ amr_ccb_map(struct amr_softc *sc)
 				128, 0,			/* alignment,boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
 				ccbsize,		/* maxsize */
 				1,			/* nsegments */
 				ccbsize,		/* maxsegsize */

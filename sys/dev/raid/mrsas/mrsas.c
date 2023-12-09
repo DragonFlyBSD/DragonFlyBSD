@@ -479,7 +479,6 @@ int mrsas_alloc_evt_log_info_cmd(struct mrsas_softc *sc)
                             1, 0,                   // algnmnt, boundary
                             BUS_SPACE_MAXADDR_32BIT,// lowaddr
                             BUS_SPACE_MAXADDR,      // highaddr
-                            NULL, NULL,             // filter, filterarg
                             el_info_size,          // maxsize
                             1,                      // msegments
                             el_info_size,          // maxsegsize
@@ -1412,7 +1411,6 @@ static int mrsas_alloc_mem(struct mrsas_softc *sc)
                            0,                      /* boundary */
                            BUS_SPACE_MAXADDR,     /* lowaddr */
                            BUS_SPACE_MAXADDR,      /* highaddr */
-                           NULL, NULL,             /* filter, filterarg */
                            MRSAS_MAX_IO_SIZE,/* maxsize */
                            MRSAS_MAX_SGL, /* nsegments */
                            MRSAS_MAX_IO_SIZE,/* maxsegsize */
@@ -1431,7 +1429,6 @@ static int mrsas_alloc_mem(struct mrsas_softc *sc)
                            1, 0,                   // algnmnt, boundary
                            BUS_SPACE_MAXADDR_32BIT,// lowaddr
                            BUS_SPACE_MAXADDR,      // highaddr
-                           NULL, NULL,             // filter, filterarg
                            verbuf_size,           // maxsize
                            1,                      // msegments
                            verbuf_size,           // maxsegsize
@@ -1460,7 +1457,6 @@ static int mrsas_alloc_mem(struct mrsas_softc *sc)
                             16, 0,                   // algnmnt, boundary
                             BUS_SPACE_MAXADDR_32BIT,// lowaddr
                             BUS_SPACE_MAXADDR,      // highaddr
-                            NULL, NULL,             // filter, filterarg
                             io_req_size,            // maxsize
                             1,                      // msegments
                             io_req_size,            // maxsegsize
@@ -1490,7 +1486,6 @@ static int mrsas_alloc_mem(struct mrsas_softc *sc)
                             4, 0,                   // algnmnt, boundary
                             BUS_SPACE_MAXADDR_32BIT,// lowaddr
                             BUS_SPACE_MAXADDR,      // highaddr
-                            NULL, NULL,             // filter, filterarg
                             chain_frame_size,       // maxsize
                             1,                      // msegments
                             chain_frame_size,       // maxsegsize
@@ -1520,7 +1515,6 @@ static int mrsas_alloc_mem(struct mrsas_softc *sc)
                             16, 0,                   // algnmnt, boundary
                             BUS_SPACE_MAXADDR_32BIT,// lowaddr
                             BUS_SPACE_MAXADDR,      // highaddr
-                            NULL, NULL,             // filter, filterarg
                             reply_desc_size,        // maxsize
                             1,                      // msegments
                             reply_desc_size,        // maxsegsize
@@ -1549,7 +1543,6 @@ static int mrsas_alloc_mem(struct mrsas_softc *sc)
                             64, 0,                   // algnmnt, boundary
                             BUS_SPACE_MAXADDR_32BIT,// lowaddr
                             BUS_SPACE_MAXADDR,      // highaddr
-                            NULL, NULL,             // filter, filterarg
                             sense_size,             // maxsize
                             1,                      // nsegments
                             sense_size,             // maxsegsize
@@ -1578,7 +1571,6 @@ static int mrsas_alloc_mem(struct mrsas_softc *sc)
                             1, 0,                   // algnmnt, boundary
                             BUS_SPACE_MAXADDR_32BIT,// lowaddr
                             BUS_SPACE_MAXADDR,      // highaddr
-                            NULL, NULL,             // filter, filterarg
                             evt_detail_size,        // maxsize
                             1,                      // msegments
                             evt_detail_size,        // maxsegsize
@@ -1610,7 +1602,6 @@ static int mrsas_alloc_mem(struct mrsas_softc *sc)
                            0,                      // boundary 
                            BUS_SPACE_MAXADDR,      // lowaddr 
                            BUS_SPACE_MAXADDR,      // highaddr 
-                           NULL, NULL,             // filter, filterarg 
                            MRSAS_MAX_IO_SIZE,      // maxsize 
                            MRSAS_MAX_SGL,          // nsegments 
                            MRSAS_MAX_IO_SIZE,      // maxsegsize 
@@ -1660,7 +1651,6 @@ static int mrsas_setup_raidmap(struct mrsas_softc *sc)
                             4, 0,                   // algnmnt, boundary
                             BUS_SPACE_MAXADDR_32BIT,// lowaddr
                             BUS_SPACE_MAXADDR,      // highaddr
-                            NULL, NULL,             // filter, filterarg
                             sc->map_sz,             // maxsize
                             1,                      // nsegments
                             sc->map_sz,             // maxsegsize
@@ -1864,7 +1854,6 @@ int mrsas_alloc_ioc_cmd(struct mrsas_softc *sc)
                             1, 0,                   // algnmnt, boundary
                             BUS_SPACE_MAXADDR_32BIT,// lowaddr
                             BUS_SPACE_MAXADDR,      // highaddr
-                            NULL, NULL,             // filter, filterarg
                             ioc_init_size,          // maxsize
                             1,                      // msegments
                             ioc_init_size,          // maxsegsize
@@ -2660,7 +2649,6 @@ int mrsas_alloc_ctlr_info_cmd(struct mrsas_softc *sc)
                             1, 0,                   // algnmnt, boundary
                             BUS_SPACE_MAXADDR_32BIT,// lowaddr
                             BUS_SPACE_MAXADDR,      // highaddr
-                            NULL, NULL,             // filter, filterarg
                             ctlr_info_size,          // maxsize
                             1,                      // msegments
                             ctlr_info_size,          // maxsegsize
@@ -3423,7 +3411,6 @@ int mrsas_alloc_tmp_dcmd(struct mrsas_softc *sc, struct mrsas_tmp_dcmd *tcmd,
                             1, 0,                   // algnmnt, boundary
                             BUS_SPACE_MAXADDR_32BIT,// lowaddr
                             BUS_SPACE_MAXADDR,      // highaddr
-                            NULL, NULL,             // filter, filterarg
                             size,                   // maxsize
                             1,                      // msegments
                             size,                   // maxsegsize

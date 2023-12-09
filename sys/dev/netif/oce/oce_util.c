@@ -67,7 +67,6 @@ oce_dma_alloc(POCE_SOFTC sc, bus_size_t size, POCE_DMA_MEM dma, int flags)
 				8, 0,
 				BUS_SPACE_MAXADDR,
 				BUS_SPACE_MAXADDR,
-				NULL, NULL,
 				size, 1, size, 0, &dma->tag);
 
 	if (rc == 0) {
@@ -182,7 +181,6 @@ oce_create_ring_buffer(POCE_SOFTC sc,
 				4096, 0,
 				BUS_SPACE_MAXADDR,
 				BUS_SPACE_MAXADDR,
-				NULL, NULL,
 				size, 8, 4096, 0, &ring->dma.tag);
 	if (rc)
 		goto fail;

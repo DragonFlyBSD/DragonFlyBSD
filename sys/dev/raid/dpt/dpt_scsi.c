@@ -1251,7 +1251,6 @@ dpt_init(struct dpt_softc *dpt)
 	if (bus_dma_tag_create(dpt->parent_dmat, /*alignment*/1, /*boundary*/0,
 			       /*lowaddr*/BUS_SPACE_MAXADDR,
 			       /*highaddr*/BUS_SPACE_MAXADDR,
-			       /*filter*/NULL, /*filterarg*/NULL,
 			       PAGE_SIZE, /*nsegments*/1,
 			       /*maxsegsz*/BUS_SPACE_MAXSIZE_32BIT,
 			       /*flags*/0, &dpt->sg_dmat) != 0) {
@@ -1373,7 +1372,6 @@ dpt_init(struct dpt_softc *dpt)
 	if (bus_dma_tag_create(dpt->parent_dmat, /*alignment*/1, /*boundary*/0,
 			       /*lowaddr*/BUS_SPACE_MAXADDR,
 			       /*highaddr*/BUS_SPACE_MAXADDR,
-			       /*filter*/NULL, /*filterarg*/NULL,
 			       /*maxsize*/MAXBSIZE, /*nsegments*/dpt->sgsize,
 			       /*maxsegsz*/BUS_SPACE_MAXSIZE_32BIT,
 			       /*flags*/BUS_DMA_ALLOCNOW,
@@ -1388,7 +1386,6 @@ dpt_init(struct dpt_softc *dpt)
 	if (bus_dma_tag_create(dpt->parent_dmat, /*alignment*/1, /*boundary*/0,
 			       /*lowaddr*/BUS_SPACE_MAXADDR,
 			       /*highaddr*/BUS_SPACE_MAXADDR,
-			       /*filter*/NULL, /*filterarg*/NULL,
 			       (dpt->max_dccbs * sizeof(struct dpt_ccb))
 			       + sizeof(dpt_sp_t),
 			       /*nsegments*/1,

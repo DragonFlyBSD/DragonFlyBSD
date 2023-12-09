@@ -1774,7 +1774,7 @@ cxm_attach(device_t dev)
 	 */
 	error = bus_dma_tag_create(NULL, 1, 0,
 				   BUS_SPACE_MAXADDR_32BIT,
-				   BUS_SPACE_MAXADDR, NULL, NULL,
+				   BUS_SPACE_MAXADDR,
 				   BUS_SPACE_MAXSIZE_32BIT, 1,
 				   BUS_SPACE_MAXSIZE_32BIT, 0,
 				   &sc->parent_dmat);
@@ -1788,7 +1788,7 @@ cxm_attach(device_t dev)
 	 */
 	error = bus_dma_tag_create(sc->parent_dmat, 256, 0,
 				   BUS_SPACE_MAXADDR_32BIT,
-				   BUS_SPACE_MAXADDR, NULL, NULL,
+				   BUS_SPACE_MAXADDR,
 				   CXM_SG_SEGMENT, 1,
 				   BUS_SPACE_MAXSIZE_32BIT, 0,
 				   &sc->enc_pool.dmat);
@@ -1833,7 +1833,7 @@ cxm_attach(device_t dev)
 	 */
 	error = bus_dma_tag_create(sc->parent_dmat, 1, 0,
 				   BUS_SPACE_MAXADDR_32BIT,
-				   BUS_SPACE_MAXADDR, NULL, NULL,
+				   BUS_SPACE_MAXADDR,
 				   CXM_SG_BUFFERS
 				   * sizeof(struct cxm_sg_entry), 1,
 				   BUS_SPACE_MAXSIZE_32BIT, 0,

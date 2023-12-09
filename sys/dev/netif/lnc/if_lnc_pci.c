@@ -344,7 +344,6 @@ le_pci_attach(device_t dev)
 	    1, 0,			/* alignment, boundary */
 	    BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsize */
 	    0,				/* nsegments */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
@@ -366,7 +365,6 @@ le_pci_attach(device_t dev)
 	    16, 0,			/* alignment, boundary */
 	    BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    sc->sc_memsize,		/* maxsize */
 	    1,				/* nsegments */
 	    sc->sc_memsize,		/* maxsegsize */

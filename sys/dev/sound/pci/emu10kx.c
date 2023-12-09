@@ -2722,7 +2722,6 @@ emu_init(struct emu_sc_info *sc)
 	     /* alignment */ 2, /* boundary */ 0,
 	     /* lowaddr */ (1U << 31) - 1,	/* can only access 0-2gb */
 	     /* highaddr */ BUS_SPACE_MAXADDR,
-	     /* filter */ NULL, /* filterarg */ NULL,
 	     /* maxsize */ EMU_MAX_BUFSZ, /* nsegments */ 1, /* maxsegz */ 0x3ffff,
 	     /* flags */ 0,
 	     &(sc->mem.dmat)) != 0) {

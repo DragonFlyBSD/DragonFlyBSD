@@ -62,18 +62,14 @@ struct bounce_zone;
 struct bus_dmamap;
 
 struct bus_dma_tag {
-	bus_dma_tag_t	parent;
 	bus_size_t	alignment;
 	bus_size_t	boundary;
 	bus_addr_t	lowaddr;
 	bus_addr_t	highaddr;
-	bus_dma_filter_t *filter;
-	void		*filterarg;
 	bus_size_t	maxsize;
 	u_int		nsegments;
 	bus_size_t	maxsegsz;
 	int		flags;
-	int		ref_count;
 	int		map_count;
 	bus_dma_segment_t *segments;
 	struct bounce_zone *bounce_zone;
@@ -181,22 +177,19 @@ SYSCTL_INT(_hw_busdma, OID_AUTO, max_bpages, CTLFLAG_RD, &max_bounce_pages,
 SYSCTL_INT(_hw_busdma, OID_AUTO, bounce_alignment, CTLFLAG_RD,
 	   &bounce_alignment, 0, "Obey alignment constraint");
 
+
+/*
+ * Returns true if the address falls within the tag's exclusion window, or
+ * fails to meet its alignment requirements.
+ */
 static __inline int
-run_filter(bus_dma_tag_t dmat, bus_addr_t paddr)
+addr_needs_bounce(bus_dma_tag_t dmat, bus_addr_t paddr)
 {
-	int retval;
+	if ((paddr > dmat->lowaddr && paddr <= dmat->highaddr) ||
+	     (bounce_alignment && (paddr & (dmat->alignment - 1)) != 0))
+        return (1);
 
-	retval = 0;
-	do {
-		if (((paddr > dmat->lowaddr && paddr <= dmat->highaddr) ||
-		     (bounce_alignment && (paddr & (dmat->alignment - 1)) != 0))
-		 && (dmat->filter == NULL ||
-		     dmat->filter(dmat->filterarg, paddr) != 0))
-			retval = 1;
-
-		dmat = dmat->parent;
-	} while (retval == 0 && dmat != NULL);
-	return (retval);
+	return (0);
 }
 
 static __inline
@@ -229,8 +222,7 @@ bus_dma_tag_unlock(bus_dma_tag_t tag)
 int
 bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 		   bus_size_t boundary, bus_addr_t lowaddr,
-		   bus_addr_t highaddr, bus_dma_filter_t *filter,
-		   void *filterarg, bus_size_t maxsize, int nsegments,
+		   bus_addr_t highaddr, bus_size_t maxsize, int nsegments,
 		   bus_size_t maxsegsz, int flags, bus_dma_tag_t *dmat)
 {
 	bus_dma_tag_t newtag;
@@ -261,18 +253,14 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 	newtag = kmalloc(sizeof(*newtag), M_DEVBUF, M_INTWAIT | M_ZERO);
 
 	spin_init(&newtag->spin, "busdmacreate");
-	newtag->parent = parent;
 	newtag->alignment = alignment;
 	newtag->boundary = boundary;
 	newtag->lowaddr = trunc_page((vm_paddr_t)lowaddr) + (PAGE_SIZE - 1);
 	newtag->highaddr = trunc_page((vm_paddr_t)highaddr) + (PAGE_SIZE - 1);
-	newtag->filter = filter;
-	newtag->filterarg = filterarg;
 	newtag->maxsize = maxsize;
 	newtag->nsegments = nsegments;
 	newtag->maxsegsz = maxsegsz;
 	newtag->flags = flags;
-	newtag->ref_count = 1; /* Count ourself */
 	newtag->map_count = 0;
 	newtag->segments = NULL;
 	newtag->bounce_zone = NULL;
@@ -293,17 +281,6 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 		newtag->alignment = MAX(parent->alignment, newtag->alignment);
 #endif
 
-		if (newtag->filter == NULL) {
-			/*
-			 * Short circuit looking at our parent directly
-			 * since we have encapsulated all of its information
-			 */
-			newtag->filter = parent->filter;
-			newtag->filterarg = parent->filterarg;
-			newtag->parent = parent->parent;
-		}
-		if (newtag->parent != NULL)
-			parent->ref_count++;
 	}
 
 	if (newtag->lowaddr < ptoa(Maxmem))
@@ -360,25 +337,10 @@ bus_dma_tag_destroy(bus_dma_tag_t dmat)
 		if (dmat->map_count != 0)
 			return (EBUSY);
 
-		while (dmat != NULL) {
-			bus_dma_tag_t parent;
-
-			parent = dmat->parent;
-			dmat->ref_count--;
-			if (dmat->ref_count == 0) {
-				free_bounce_zone(dmat);
-				if (dmat->segments != NULL)
-					kfree(dmat->segments, M_DEVBUF);
-				kfree(dmat, M_DEVBUF);
-				/*
-				 * Last reference count, so
-				 * release our reference
-				 * count on our parent.
-				 */
-				dmat = parent;
-			} else
-				dmat = NULL;
-		}
+		free_bounce_zone(dmat);
+		if (dmat->segments != NULL)
+			kfree(dmat->segments, M_DEVBUF);
+		kfree(dmat, M_DEVBUF);
 	}
 	return (0);
 }
@@ -661,7 +623,7 @@ _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 
 		while (vaddr < vendaddr) {
 			paddr = _bus_dma_extract(pmap, vaddr);
-			if (run_filter(dmat, paddr) != 0)
+			if (addr_needs_bounce(dmat, paddr))
 				map->pagesneeded++;
 			vaddr += (PAGE_SIZE - (vaddr & PAGE_MASK));
 		}
@@ -716,7 +678,7 @@ _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 		size = PAGE_SIZE - (paddr & PAGE_MASK);
 		if (size > buflen)
 			size = buflen;
-		if (map->pagesneeded != 0 && run_filter(dmat, paddr)) {
+		if (map->pagesneeded != 0 && addr_needs_bounce(dmat, paddr)) {
 			/*
 			 * NOTE: paddr may have different in-page offset,
 			 *	 unless BUS_DMA_KEEP_PG_OFFSET is set.

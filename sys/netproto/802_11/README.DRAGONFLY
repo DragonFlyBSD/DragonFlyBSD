@@ -136,7 +136,6 @@
 			 0,
 			 BUS_SPACE_MAXADDR_32BIT,
 			 BUS_SPACE_MAXADDR,
-			 NULL, NULL,
 			 size, 1, size,
 			 BUS_DMA_NOWAIT, &dma->tag);
 

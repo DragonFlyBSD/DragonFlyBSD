@@ -856,7 +856,6 @@ stge_dma_alloc(struct stge_softc *sc)
 		    1, 0,			/* algnmnt, boundary */
 		    STGE_DMA_MAXADDR,		/* lowaddr */
 		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
 		    BUS_SPACE_MAXSIZE_32BIT,	/* maxsize */
 		    0,				/* nsegments */
 		    BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
@@ -900,7 +899,6 @@ stge_dma_alloc(struct stge_softc *sc)
 		    1, 0,			/* algnmnt, boundary */
 		    BUS_SPACE_MAXADDR,		/* lowaddr */
 		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
 		    STGE_JUMBO_FRAMELEN,	/* maxsize */
 		    STGE_MAXTXSEGS,		/* nsegments */
 		    STGE_MAXSGSIZE,		/* maxsegsize */
@@ -938,7 +936,6 @@ stge_dma_alloc(struct stge_softc *sc)
 		    1, 0,			/* algnmnt, boundary */
 		    BUS_SPACE_MAXADDR,		/* lowaddr */
 		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
 		    MCLBYTES,			/* maxsize */
 		    1,				/* nsegments */
 		    MCLBYTES,			/* maxsegsize */

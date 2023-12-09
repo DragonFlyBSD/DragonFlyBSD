@@ -614,8 +614,6 @@ bt_init(device_t dev)
 				/* boundary	*/ 0,
 				/* lowaddr	*/ BUS_SPACE_MAXADDR,
 				/* highaddr	*/ BUS_SPACE_MAXADDR,
-				/* filter	*/ NULL,
-				/* filterarg	*/ NULL,
 				/* maxsize	*/ MAXBSIZE,
 				/* nsegments	*/ BT_NSEG,
 				/* maxsegsz	*/ BUS_SPACE_MAXSIZE_32BIT,
@@ -631,8 +629,6 @@ bt_init(device_t dev)
 				/* boundary	*/ 0,
 				/* lowaddr	*/ BUS_SPACE_MAXADDR,
 				/* highaddr	*/ BUS_SPACE_MAXADDR,
-				/* filter	*/ NULL,
-				/* filterarg	*/ NULL,
 				/* maxsize	*/ bt->num_boxes *
 						   (sizeof(bt_mbox_in_t) +
 						    sizeof(bt_mbox_out_t)),
@@ -674,8 +670,6 @@ bt_init(device_t dev)
 				/* boundary	*/ 0,
 				/* lowaddr	*/ BUS_SPACE_MAXADDR,
 				/* highaddr	*/ BUS_SPACE_MAXADDR,
-				/* filter	*/ NULL,
-				/* filterarg	*/ NULL,
 				/* maxsize	*/ bt->max_ccbs *
 						   sizeof(struct bt_ccb),
 				/* nsegments	*/ 1,
@@ -709,8 +703,6 @@ bt_init(device_t dev)
 				/* boundary	*/ 0,
 				/* lowaddr	*/ BUS_SPACE_MAXADDR,
 				/* highaddr	*/ BUS_SPACE_MAXADDR,
-				/* filter	*/ NULL,
-				/* filterarg	*/ NULL,
 				/* maxsize	*/ PAGE_SIZE,
 				/* nsegments	*/ 1,
 				/* maxsegsz	*/ BUS_SPACE_MAXSIZE_32BIT,

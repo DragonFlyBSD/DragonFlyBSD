@@ -946,7 +946,6 @@ again:
 	    1, 0,			/* alignment, boundary */
 	    lowaddr,			/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsize */
 	    0,				/* nsegments */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
@@ -964,7 +963,6 @@ again:
 	    ALE_TX_RING_ALIGN, 0,	/* alignment, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    ALE_TX_RING_SZ,		/* maxsize */
 	    1,				/* nsegments */
 	    ALE_TX_RING_SZ,		/* maxsegsize */
@@ -983,7 +981,6 @@ again:
 		    ALE_RX_PAGE_ALIGN, 0,	/* alignment, boundary */
 		    BUS_SPACE_MAXADDR,		/* lowaddr */
 		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
 		    sc->ale_pagesize,		/* maxsize */
 		    1,				/* nsegments */
 		    sc->ale_pagesize,		/* maxsegsize */
@@ -1002,7 +999,6 @@ again:
 	    ALE_CMB_ALIGN, 0,		/* alignment, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    ALE_TX_CMB_SZ,		/* maxsize */
 	    1,				/* nsegments */
 	    ALE_TX_CMB_SZ,		/* maxsegsize */
@@ -1021,7 +1017,6 @@ again:
 		    ALE_CMB_ALIGN, 0,		/* alignment, boundary */
 		    BUS_SPACE_MAXADDR,		/* lowaddr */
 		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
 		    ALE_RX_CMB_SZ,		/* maxsize */
 		    1,				/* nsegments */
 		    ALE_RX_CMB_SZ,		/* maxsegsize */
@@ -1155,7 +1150,6 @@ again:
 	    1, 0,			/* alignment, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsize */
 	    0,				/* nsegments */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
@@ -1173,7 +1167,6 @@ again:
 	    1, 0,			/* alignment, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    ALE_TSO_MAXSIZE,		/* maxsize */
 	    ALE_MAXTXSEGS,		/* nsegments */
 	    ALE_TSO_MAXSEGSIZE,		/* maxsegsize */

@@ -1692,7 +1692,6 @@ rl_dma_alloc(struct rl_softc *sc)
 			1, 0,			/* alignment, boundary */
 			BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 			BUS_SPACE_MAXADDR,	/* highaddr */
-			NULL, NULL,		/* filter, filterarg */
 			BUS_SPACE_MAXSIZE_32BIT,/* maxsize */
 			0,			/* nsegments */
 			BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */
@@ -1725,7 +1724,6 @@ rl_dma_alloc(struct rl_softc *sc)
 			RL_TXBUF_ALIGN, 0,	/* alignment, boundary */
 			BUS_SPACE_MAXADDR,	/* lowaddr */
 			BUS_SPACE_MAXADDR,	/* highaddr */
-			NULL, NULL,		/* filter, filterarg */
 			MCLBYTES,		/* maxsize */
 			1,			/* nsegments */
 			MCLBYTES,		/* maxsegsize */

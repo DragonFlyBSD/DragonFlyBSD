@@ -580,7 +580,7 @@ iwi_alloc_cmd_ring(struct iwi_softc *sc, struct iwi_cmd_ring *ring, int count)
 
 #if defined(__DragonFly__)
 	error = bus_dma_tag_create(NULL, 4, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
+	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 	    count * IWI_CMD_DESC_SIZE, 1, count * IWI_CMD_DESC_SIZE,
 	    0 , &ring->desc_dmat);
 #else
@@ -649,7 +649,7 @@ iwi_alloc_tx_ring(struct iwi_softc *sc, struct iwi_tx_ring *ring, int count,
 
 #if defined(__DragonFly__)
 	error = bus_dma_tag_create(NULL, 4, 0, BUS_SPACE_MAXADDR_32BIT,
-	    BUS_SPACE_MAXADDR, NULL, NULL, count * IWI_TX_DESC_SIZE, 1,
+	    BUS_SPACE_MAXADDR, count * IWI_TX_DESC_SIZE, 1,
 	    count * IWI_TX_DESC_SIZE, 0, &ring->desc_dmat);
 #else
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 4, 0,
@@ -686,7 +686,7 @@ iwi_alloc_tx_ring(struct iwi_softc *sc, struct iwi_tx_ring *ring, int count,
 
 #if defined(__DragonFly__)
 	error = bus_dma_tag_create(NULL, 1, 0, BUS_SPACE_MAXADDR_32BIT,
-	    BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES, IWI_MAX_NSEG,
+	    BUS_SPACE_MAXADDR, MCLBYTES, IWI_MAX_NSEG,
 	    MCLBYTES, 0, &ring->data_dmat);
 #else
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
@@ -800,7 +800,7 @@ iwi_alloc_rx_ring(struct iwi_softc *sc, struct iwi_rx_ring *ring, int count)
 
 #if defined(__DragonFly__)
 	error = bus_dma_tag_create(NULL, 1, 0, BUS_SPACE_MAXADDR_32BIT,
-	    BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES, 1, MCLBYTES,
+	    BUS_SPACE_MAXADDR, MCLBYTES, 1, MCLBYTES,
 	    0, &ring->data_dmat);
 #else
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
@@ -3141,7 +3141,7 @@ iwi_init_fw_dma(struct iwi_softc *sc, int size)
 		return 0;
 #if defined(__DragonFly__)
 	if (bus_dma_tag_create(NULL, 4, 0, BUS_SPACE_MAXADDR_32BIT,
-	    BUS_SPACE_MAXADDR, NULL, NULL, size, 1, size,
+	    BUS_SPACE_MAXADDR, size, 1, size,
 	    0, &sc->fw_dmat) != 0) {
 #else
 	if (bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 4, 0,

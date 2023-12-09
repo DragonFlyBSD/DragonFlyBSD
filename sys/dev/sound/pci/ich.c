@@ -1043,7 +1043,7 @@ ich_pci_attach(device_t dev)
 
 	/* BDL tag */
 	if (bus_dma_tag_create(bus_get_dma_tag(dev), 8, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
+	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 	    sc->dtbl_size, 1, 0x3ffff, 0, &sc->dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto bad;
@@ -1051,7 +1051,7 @@ ich_pci_attach(device_t dev)
 
 	/* PCM channel tag */
 	if (bus_dma_tag_create(bus_get_dma_tag(dev), ICH_MIN_BLKSZ, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
+	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 	    sc->bufsz, 1, 0x3ffff, 0, &sc->chan_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto bad;

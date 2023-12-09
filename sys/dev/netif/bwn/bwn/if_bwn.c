@@ -2810,7 +2810,9 @@ bwn_dma_ringsetup(struct bwn_mac *mac, int controller_index,
 				    1, 0,
 				    BUS_SPACE_MAXADDR,
 				    BUS_SPACE_MAXADDR,
+#if !defined(__DragonFly__)
 				    NULL, NULL,
+#endif
 				    BWN_HDRSIZE(mac),
 				    1,
 				    BUS_SPACE_MAXSIZE_32BIT,
@@ -3120,7 +3122,9 @@ bwn_dma_allocringmemory(struct bwn_dma_ring *dr)
 			    BWN_ALIGN, 0,
 			    BUS_SPACE_MAXADDR,
 			    BUS_SPACE_MAXADDR,
+#if !defined(__DragonFly__)
 			    NULL, NULL,
+#endif
 			    BWN_DMA_RINGMEMSIZE,
 			    1,
 			    BUS_SPACE_MAXSIZE_32BIT,
@@ -6952,7 +6956,9 @@ bwn_dma_attach(struct bwn_mac *mac)
 			       BWN_ALIGN, 0,		/* alignment, bounds */
 			       lowaddr,			/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
+#if !defined(__DragonFly__)
 			       NULL, NULL,		/* filter, filterarg */
+#endif
 			       BUS_SPACE_MAXSIZE,	/* maxsize */
 			       BUS_SPACE_UNRESTRICTED,	/* nsegments */
 			       BUS_SPACE_MAXSIZE,	/* maxsegsize */
@@ -6974,7 +6980,9 @@ bwn_dma_attach(struct bwn_mac *mac)
 				0,
 				BUS_SPACE_MAXADDR,
 				BUS_SPACE_MAXADDR,
+#if !defined(__DragonFly__)
 				NULL, NULL,
+#endif
 				MCLBYTES,
 				1,
 				BUS_SPACE_MAXSIZE_32BIT,
@@ -6992,7 +7000,9 @@ bwn_dma_attach(struct bwn_mac *mac)
 				0,
 				BUS_SPACE_MAXADDR,
 				BUS_SPACE_MAXADDR,
+#if !defined(__DragonFly__)
 				NULL, NULL,
+#endif
 				MCLBYTES,
 				1,
 				BUS_SPACE_MAXSIZE_32BIT,

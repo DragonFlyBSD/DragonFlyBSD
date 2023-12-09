@@ -62,7 +62,7 @@ bus_dmamem_coherent(bus_dma_tag_t parent,
 	bzero(dmem, sizeof(*dmem));
 
 	error = bus_dma_tag_create(parent, alignment, boundary,
-				   lowaddr, highaddr, NULL, NULL,
+				   lowaddr, highaddr,
 				   maxsize, 1, maxsize, 0,
 				   &dmem->dmem_tag);
 	if (error)

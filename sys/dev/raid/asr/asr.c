@@ -2309,7 +2309,6 @@ asr_alloc_dma(Asr_softc_t *sc)
 			       1, 0,			/* algnmnt, boundary */
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
-			       NULL, NULL,		/* filter, filterarg */
 			       BUS_SPACE_MAXSIZE_32BIT, /* maxsize */
 			       BUS_SPACE_UNRESTRICTED,	/* nsegments */
 			       BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
@@ -2323,7 +2322,6 @@ asr_alloc_dma(Asr_softc_t *sc)
 			       1, 0,			/* algnmnt, boundary */
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
-			       NULL, NULL,		/* filter, filterarg */
 			       sizeof(sc->ha_statusmem),/* maxsize */
 			       1,			/* nsegments */
 			       sizeof(sc->ha_statusmem),/* maxsegsize */

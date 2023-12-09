@@ -1902,7 +1902,6 @@ msk_txrx_dma_alloc(struct msk_if_softc *sc_if)
 		    1, 0,			/* alignment, boundary */
 		    BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
 		    BUS_SPACE_MAXSIZE_32BIT,	/* maxsize */
 		    0,				/* nsegments */
 		    BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
@@ -1943,7 +1942,6 @@ msk_txrx_dma_alloc(struct msk_if_softc *sc_if)
 		    1, 0,			/* alignment, boundary */
 		    BUS_SPACE_MAXADDR,		/* lowaddr */
 		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
 		    MSK_JUMBO_FRAMELEN,		/* maxsize */
 		    MSK_MAXTXSEGS,		/* nsegments */
 		    MSK_MAXSGSIZE,		/* maxsegsize */
@@ -1993,7 +1991,6 @@ msk_txrx_dma_alloc(struct msk_if_softc *sc_if)
 		    rxalign, 0,			/* alignment, boundary */
 		    BUS_SPACE_MAXADDR,		/* lowaddr */
 		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
 		    MCLBYTES,			/* maxsize */
 		    1,				/* nsegments */
 		    MCLBYTES,			/* maxsegsize */
@@ -2048,7 +2045,6 @@ msk_txrx_dma_alloc(struct msk_if_softc *sc_if)
 		    MSK_RING_ALIGN, 0,		/* alignment, boundary */
 		    BUS_SPACE_MAXADDR,		/* lowaddr */
 		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
 		    MSK_JUMBO_RX_RING_SZ,	/* maxsize */
 		    1,				/* nsegments */
 		    MSK_JUMBO_RX_RING_SZ,	/* maxsegsize */
@@ -2089,7 +2085,6 @@ msk_txrx_dma_alloc(struct msk_if_softc *sc_if)
 		    PAGE_SIZE, 0,		/* alignment, boundary */
 		    BUS_SPACE_MAXADDR,		/* lowaddr */
 		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
 		    MSK_JMEM,			/* maxsize */
 		    1,				/* nsegments */
 		    MSK_JMEM,			/* maxsegsize */
@@ -2107,7 +2102,6 @@ msk_txrx_dma_alloc(struct msk_if_softc *sc_if)
 		    PAGE_SIZE, 0,		/* alignment, boundary */
 		    BUS_SPACE_MAXADDR,		/* lowaddr */
 		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
 		    MCLBYTES * MSK_MAXRXSEGS,	/* maxsize */
 		    MSK_MAXRXSEGS,		/* nsegments */
 		    MSK_JLEN,			/* maxsegsize */

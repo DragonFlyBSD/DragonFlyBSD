@@ -700,7 +700,6 @@ et_dma_alloc(device_t dev)
 	error = bus_dma_tag_create(NULL, 1, 0,
 				   BUS_SPACE_MAXADDR,
 				   BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   BUS_SPACE_MAXSIZE_32BIT,
 				   0,
 				   BUS_SPACE_MAXSIZE_32BIT,
@@ -877,7 +876,6 @@ et_dma_mbuf_create(device_t dev)
 	 */
 	error = bus_dma_tag_create(sc->sc_dtag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   MCLBYTES, 1, MCLBYTES,
 				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
 				   &sc->sc_rxbuf_dtag);
@@ -929,7 +927,6 @@ et_dma_mbuf_create(device_t dev)
 	 */
 	error = bus_dma_tag_create(sc->sc_dtag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   ET_JUMBO_FRAMELEN, ET_NSEG_MAX, MCLBYTES,
 				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK |
 				   BUS_DMA_ONEBPAGE,

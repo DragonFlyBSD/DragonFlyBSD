@@ -679,7 +679,6 @@ mps_alloc_queues(struct mps_softc *sc)
 				16, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
                                 qsize,			/* maxsize */
                                 1,			/* nsegments */
                                 qsize,			/* maxsegsize */
@@ -722,7 +721,6 @@ mps_alloc_replies(struct mps_softc *sc)
 				4, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
                                 rsize,			/* maxsize */
                                 1,			/* nsegments */
                                 rsize,			/* maxsegsize */
@@ -755,7 +753,6 @@ mps_alloc_requests(struct mps_softc *sc)
 				16, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
                                 rsize,			/* maxsize */
                                 1,			/* nsegments */
                                 rsize,			/* maxsegsize */
@@ -778,7 +775,6 @@ mps_alloc_requests(struct mps_softc *sc)
 				16, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
                                 rsize,			/* maxsize */
                                 1,			/* nsegments */
                                 rsize,			/* maxsegsize */
@@ -801,7 +797,6 @@ mps_alloc_requests(struct mps_softc *sc)
 				1, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
                                 rsize,			/* maxsize */
                                 1,			/* nsegments */
                                 rsize,			/* maxsegsize */
@@ -837,7 +832,6 @@ mps_alloc_requests(struct mps_softc *sc)
 				1, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR,	/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
                                 BUS_SPACE_MAXSIZE_32BIT,/* maxsize */
                                 nsegs,			/* nsegments */
                                 BUS_SPACE_MAXSIZE_24BIT,/* maxsegsize */

@@ -470,7 +470,7 @@ pvscsi_dma_alloc(struct pvscsi_softc *sc, struct pvscsi_dma *dma,
 	bzero(dma, sizeof(*dma));
 
 	error = bus_dma_tag_create(sc->parent_dmat, alignment, 0,
-	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL, NULL, size, 1, size,
+	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, size, 1, size,
 	    BUS_DMA_ALLOCNOW, &dma->tag);
 	if (error) {
 		device_printf(sc->dev, "error creating dma tag, error %d\n",
@@ -1643,7 +1643,7 @@ pvscsi_attach(device_t dev)
 	}
 
 	error = bus_dma_tag_create(bus_get_dma_tag(dev), 1, 0,
-	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL, NULL, BUS_SPACE_MAXSIZE,
+	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, BUS_SPACE_MAXSIZE,
 	    BUS_SPACE_UNRESTRICTED, BUS_SPACE_MAXSIZE, 0,
 	    &sc->parent_dmat);
 	if (error) {
@@ -1654,7 +1654,7 @@ pvscsi_attach(device_t dev)
 	}
 
 	error = bus_dma_tag_create(sc->parent_dmat, 1, 0,
-	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL, NULL,
+	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 	    PVSCSI_MAX_SG_ENTRIES_PER_SEGMENT * PAGE_SIZE,
 	    PVSCSI_MAX_SG_ENTRIES_PER_SEGMENT, PAGE_SIZE, BUS_DMA_ALLOCNOW,
 	    &sc->buffer_dmat);

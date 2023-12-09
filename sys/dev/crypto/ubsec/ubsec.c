@@ -374,7 +374,6 @@ ubsec_attach(device_t dev)
 			       1, 0,			/* alignment, bounds */
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
-			       NULL, NULL,		/* filter, filterarg */
 			       0x3ffff,			/* maxsize */
 			       UBS_MAX_SCATTER,		/* nsegments */
 			       0xffff,			/* maxsegsize */
@@ -1847,7 +1846,6 @@ ubsec_dma_malloc(
 			       1, 0,			/* alignment, bounds */
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
-			       NULL, NULL,		/* filter, filterarg */
 			       size,			/* maxsize */
 			       1,			/* nsegments */
 			       size,			/* maxsegsize */

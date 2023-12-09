@@ -1308,7 +1308,6 @@ mpr_alloc_hw_queues(struct mpr_softc *sc)
 				16, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
                                 qsize,			/* maxsize */
                                 1,			/* nsegments */
                                 qsize,			/* maxsegsize */
@@ -1358,7 +1357,6 @@ mpr_alloc_replies(struct mpr_softc *sc)
 				4, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
                                 rsize,			/* maxsize */
                                 1,			/* nsegments */
                                 rsize,			/* maxsegsize */
@@ -1418,7 +1416,6 @@ mpr_alloc_requests(struct mpr_softc *sc)
 				16, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
                                 rsize,			/* maxsize */
                                 1,			/* nsegments */
                                 rsize,			/* maxsegsize */
@@ -1449,7 +1446,6 @@ mpr_alloc_requests(struct mpr_softc *sc)
 				16, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR,	/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
 				rsize,			/* maxsize */
 				howmany(rsize, PAGE_SIZE), /* nsegments */
 				rsize,			/* maxsegsize */
@@ -1476,7 +1472,6 @@ mpr_alloc_requests(struct mpr_softc *sc)
 				1, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
                                 rsize,			/* maxsize */
                                 1,			/* nsegments */
                                 rsize,			/* maxsegsize */
@@ -1511,7 +1506,6 @@ mpr_alloc_requests(struct mpr_softc *sc)
 				1, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR,	/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
                                 BUS_SPACE_MAXSIZE_32BIT,/* maxsize */
                                 nsegs,			/* nsegments */
                                 BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */
@@ -1606,7 +1600,6 @@ mpr_alloc_nvme_prp_pages(struct mpr_softc *sc)
 				4, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
 				rsize,			/* maxsize */
 				1,			/* nsegments */
 				rsize,			/* maxsegsize */

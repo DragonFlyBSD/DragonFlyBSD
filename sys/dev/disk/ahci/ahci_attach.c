@@ -359,8 +359,6 @@ ahci_pci_attach(device_t dev)
 			PAGE_SIZE,			/* boundary */
 			addr,				/* loaddr? */
 			BUS_SPACE_MAXADDR,		/* hiaddr */
-			NULL,				/* filter */
-			NULL,				/* filterarg */
 			sc->sc_rfis_size,		/* [max]size */
 			1,				/* maxsegs */
 			sc->sc_rfis_size,		/* maxsegsz */
@@ -375,8 +373,6 @@ ahci_pci_attach(device_t dev)
 			4096 * 1024,			/* boundary */
 			addr,				/* loaddr? */
 			BUS_SPACE_MAXADDR,		/* hiaddr */
-			NULL,				/* filter */
-			NULL,				/* filterarg */
 			sc->sc_cmdlist_size,
 			1,				/* maxsegs */
 			sc->sc_cmdlist_size,
@@ -392,8 +388,6 @@ ahci_pci_attach(device_t dev)
 			4096 * 1024,			/* boundary */
 			addr,				/* loaddr? */
 			BUS_SPACE_MAXADDR,		/* hiaddr */
-			NULL,				/* filter */
-			NULL,				/* filterarg */
 			sc->sc_ncmds * sizeof(struct ahci_cmd_table),
 			1,				/* maxsegs */
 			sc->sc_ncmds * sizeof(struct ahci_cmd_table),
@@ -410,8 +404,6 @@ ahci_pci_attach(device_t dev)
 			0,				/* boundary */
 			addr,				/* loaddr? */
 			BUS_SPACE_MAXADDR,		/* hiaddr */
-			NULL,				/* filter */
-			NULL,				/* filterarg */
 			4096 * 1024,			/* maxiosize */
 			AHCI_MAX_PRDT,			/* maxsegs */
 			65536,				/* maxsegsz */

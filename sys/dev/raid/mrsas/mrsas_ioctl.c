@@ -230,7 +230,6 @@ int mrsas_passthru( struct mrsas_softc *sc, void *arg )
                                 1, 0,                   // algnmnt, boundary
                                 BUS_SPACE_MAXADDR_32BIT,// lowaddr
                                 BUS_SPACE_MAXADDR,      // highaddr
-                                NULL, NULL,             // filter, filterarg
                                 ioctl_data_size,        // maxsize
                                 1,                      // msegments
                                 ioctl_data_size,        // maxsegsize
@@ -270,7 +269,6 @@ int mrsas_passthru( struct mrsas_softc *sc, void *arg )
                                 1, 0,                   // algnmnt, boundary
                                 BUS_SPACE_MAXADDR_32BIT,// lowaddr
                                 BUS_SPACE_MAXADDR,      // highaddr
-                                NULL, NULL,             // filter, filterarg
                                 ioctl_sense_size,       // maxsize
                                 1,                      // msegments
                                 ioctl_sense_size,       // maxsegsize
@@ -454,7 +452,6 @@ static int mrsas_create_frame_pool(struct mrsas_softc *sc)
                             1, 0,                   // algnmnt, boundary
                             BUS_SPACE_MAXADDR_32BIT,// lowaddr
                             BUS_SPACE_MAXADDR,      // highaddr
-                            NULL, NULL,             // filter, filterarg
                             MRSAS_MFI_FRAME_SIZE,   // maxsize
                             1,                      // msegments
                             MRSAS_MFI_FRAME_SIZE,   // maxsegsize

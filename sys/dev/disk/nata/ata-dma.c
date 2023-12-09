@@ -95,20 +95,20 @@ ata_dmaalloc(device_t dev)
 
     if (bus_dma_tag_create(NULL, ch->dma->alignment, 0,
 			   ch->dma->max_address, BUS_SPACE_MAXADDR,
-			   NULL, NULL, ch->dma->max_iosize,
+			   ch->dma->max_iosize,
 			   ATA_DMA_ENTRIES, ch->dma->segsize,
 			   0, &ch->dma->dmatag))
 	goto error;
 
     if (bus_dma_tag_create(ch->dma->dmatag, PAGE_SIZE, PAGE_SIZE,
 			   ch->dma->max_address, BUS_SPACE_MAXADDR,
-			   NULL, NULL, MAXTABSZ, 1, MAXTABSZ,
+			   MAXTABSZ, 1, MAXTABSZ,
 			   0, &ch->dma->sg_tag))
 	goto error;
 
     if (bus_dma_tag_create(ch->dma->dmatag,ch->dma->alignment,ch->dma->boundary,
 			   ch->dma->max_address, BUS_SPACE_MAXADDR,
-			   NULL, NULL, ch->dma->max_iosize,
+			   ch->dma->max_iosize,
 			   ATA_DMA_ENTRIES, ch->dma->segsize,
 			   0, &ch->dma->data_tag))
 	goto error;
@@ -129,7 +129,7 @@ ata_dmaalloc(device_t dev)
 
     if (bus_dma_tag_create(ch->dma->dmatag, PAGE_SIZE, 64 * 1024,
 			   ch->dma->max_address, BUS_SPACE_MAXADDR,
-			   NULL, NULL, MAXWSPCSZ, 1, MAXWSPCSZ,
+			   MAXWSPCSZ, 1, MAXWSPCSZ,
 			   0, &ch->dma->work_tag))
 	goto error;
 

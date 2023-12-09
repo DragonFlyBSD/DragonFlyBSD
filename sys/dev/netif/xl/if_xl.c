@@ -1612,7 +1612,6 @@ xl_dma_alloc(device_t dev)
 	 */
 	error = bus_dma_tag_create(NULL, 1, 0,
 				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   BUS_SPACE_MAXSIZE_32BIT, 0,
 				   BUS_SPACE_MAXSIZE_32BIT,
 				   0, &sc->xl_parent_tag);
@@ -1657,7 +1656,6 @@ xl_dma_alloc(device_t dev)
 	 */
 	error = bus_dma_tag_create(sc->xl_parent_tag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   MCLBYTES, 1, MCLBYTES,
 				   BUS_DMA_WAITOK | BUS_DMA_ALLOCNOW,
 				   &sc->xl_rx_mtag);
@@ -1691,7 +1689,6 @@ xl_dma_alloc(device_t dev)
 
 	error = bus_dma_tag_create(sc->xl_parent_tag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   MCLBYTES, XL_MAXFRAGS, MCLBYTES,
 				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
 				   &sc->xl_tx_mtag);

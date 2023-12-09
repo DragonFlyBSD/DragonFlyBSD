@@ -667,7 +667,7 @@ static m_pool_s *___cre_dma_pool(bus_dma_tag_t dev_dmat)
 		if (!bus_dma_tag_create(dev_dmat, 1, MEMO_CLUSTER_SIZE,
 			       BUS_SPACE_MAXADDR_32BIT,
 			       BUS_SPACE_MAXADDR,
-			       NULL, NULL, MEMO_CLUSTER_SIZE, 1,
+			       MEMO_CLUSTER_SIZE, 1,
 			       MEMO_CLUSTER_SIZE, 0,
 			       &mp->dmat)) {
 			mp->getp = ___dma_getp;
@@ -8578,7 +8578,6 @@ sym_pci_attach(device_t dev)
 	 */
 	if (bus_dma_tag_create(np->bus_dmat, 1, (1<<24),
 				BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-				NULL, NULL,
 				BUS_SPACE_MAXSIZE, SYM_CONF_MAX_SG,
 				(1<<24), 0,
 				&np->data_dmat)) {

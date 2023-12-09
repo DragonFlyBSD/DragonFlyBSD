@@ -1025,7 +1025,6 @@ adw_init(struct adw_softc *adw)
 	if (bus_dma_tag_create(adw->parent_dmat, /*alignment*/1, /*boundary*/0,
 			       /*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
 			       /*highaddr*/BUS_SPACE_MAXADDR,
-			       /*filter*/NULL, /*filterarg*/NULL,
 			       /*maxsize*/MAXBSIZE, /*nsegments*/ADW_SGSIZE,
 			       /*maxsegsz*/BUS_SPACE_MAXSIZE_32BIT,
 			       /*flags*/BUS_DMA_ALLOCNOW,
@@ -1040,7 +1039,6 @@ adw_init(struct adw_softc *adw)
 			       /*boundary*/0,
 			       /*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
 			       /*highaddr*/BUS_SPACE_MAXADDR,
-			       /*filter*/NULL, /*filterarg*/NULL,
 			       (adw->max_acbs + ADW_NUM_CARRIER_QUEUES + 1)
 				* sizeof(struct adw_carrier),
 			       /*nsegments*/1,
@@ -1095,7 +1093,6 @@ adw_init(struct adw_softc *adw)
 	if (bus_dma_tag_create(adw->parent_dmat, /*alignment*/1, /*boundary*/0,
 			       /*lowaddr*/BUS_SPACE_MAXADDR,
 			       /*highaddr*/BUS_SPACE_MAXADDR,
-			       /*filter*/NULL, /*filterarg*/NULL,
 			       adw->max_acbs * sizeof(struct acb),
 			       /*nsegments*/1,
 			       /*maxsegsz*/BUS_SPACE_MAXSIZE_32BIT,
@@ -1125,7 +1122,6 @@ adw_init(struct adw_softc *adw)
 	if (bus_dma_tag_create(adw->parent_dmat, /*alignment*/1, /*boundary*/0,
 			       /*lowaddr*/BUS_SPACE_MAXADDR,
 			       /*highaddr*/BUS_SPACE_MAXADDR,
-			       /*filter*/NULL, /*filterarg*/NULL,
 			       PAGE_SIZE, /*nsegments*/1,
 			       /*maxsegsz*/BUS_SPACE_MAXSIZE_32BIT,
 			       /*flags*/0, &adw->sg_dmat) != 0) {

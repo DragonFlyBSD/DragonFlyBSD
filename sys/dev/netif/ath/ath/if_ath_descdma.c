@@ -184,7 +184,10 @@ ath_descdma_alloc_desc(struct ath_softc *sc,
 		       PAGE_SIZE, 0,		/* alignment, bounds */
 		       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 		       BUS_SPACE_MAXADDR,	/* highaddr */
+#if defined(__DragonFly__)
+#else
 		       NULL, NULL,		/* filter, filterarg */
+#endif
 		       dd->dd_desc_len,		/* maxsize */
 		       1,			/* nsegments */
 		       dd->dd_desc_len,		/* maxsegsize */

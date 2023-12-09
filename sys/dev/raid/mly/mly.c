@@ -401,7 +401,6 @@ mly_pci_attach(struct mly_softc *sc)
 			   1, 0, 			/* alignment, boundary */
 			   BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			   BUS_SPACE_MAXADDR, 		/* highaddr */
-			   NULL, NULL, 			/* filter, filterarg */
 			   MAXBSIZE, MLY_MAX_SGENTRIES,	/* maxsize, nsegments */
 			   BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
 			   BUS_DMA_ALLOCNOW,		/* flags */
@@ -417,7 +416,6 @@ mly_pci_attach(struct mly_softc *sc)
 			   1, 0, 			/* alignment, boundary */
 			   BUS_SPACE_MAXADDR,		/* lowaddr */
 			   BUS_SPACE_MAXADDR, 		/* highaddr */
-			   NULL, NULL, 			/* filter, filterarg */
 			   MAXBSIZE, MLY_MAX_SGENTRIES,	/* maxsize, nsegments */
 			   BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
 			   0,				/* flags */
@@ -433,7 +431,6 @@ mly_pci_attach(struct mly_softc *sc)
 			   1, 0, 			/* alignment, boundary */
 			   BUS_SPACE_MAXADDR,		/* lowaddr */
 			   BUS_SPACE_MAXADDR, 		/* highaddr */
-			   NULL, NULL, 			/* filter, filterarg */
 			   sizeof(union mly_command_packet) * MLY_MAX_COMMANDS, 1,	/* maxsize, nsegments */
 			   BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
 			   BUS_DMA_ALLOCNOW,		/* flags */
@@ -580,7 +577,6 @@ mly_sg_map(struct mly_softc *sc)
 			   1, 0, 			/* alignment,boundary */
 			   BUS_SPACE_MAXADDR,		/* lowaddr */
 			   BUS_SPACE_MAXADDR, 		/* highaddr */
-			   NULL, NULL, 			/* filter, filterarg */
 			   segsize, 1,			/* maxsize, nsegments */
 			   BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
 			   BUS_DMA_ALLOCNOW,		/* flags */
@@ -636,7 +632,6 @@ mly_mmbox_map(struct mly_softc *sc)
 			   1, 0, 			/* alignment,boundary */
 			   BUS_SPACE_MAXADDR,		/* lowaddr */
 			   BUS_SPACE_MAXADDR, 		/* highaddr */
-			   NULL, NULL, 			/* filter, filterarg */
 			   sizeof(struct mly_mmbox), 1,	/* maxsize, nsegments */
 			   BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
 			   BUS_DMA_ALLOCNOW,		/* flags */

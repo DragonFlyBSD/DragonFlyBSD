@@ -4163,7 +4163,7 @@ bnx_dma_alloc(device_t dev)
 	 * state machine will lockup and cause the device to hang.
 	 */
 	error = bus_dma_tag_create(NULL, 1, BGE_DMA_BOUNDARY_4G,
-	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL, NULL,
+	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 	    BUS_SPACE_MAXSIZE_32BIT, 0, BUS_SPACE_MAXSIZE_32BIT,
 	    0, &sc->bnx_cdata.bnx_parent_tag);
 	if (error) {
@@ -4201,7 +4201,7 @@ bnx_dma_alloc(device_t dev)
 	lwkt_serialize_init(&std->bnx_rx_std_serialize);
 	error = bus_dma_tag_create(sc->bnx_cdata.bnx_parent_tag, 1, 0,
 	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-	    NULL, NULL, MCLBYTES, 1, MCLBYTES,
+	    MCLBYTES, 1, MCLBYTES,
 	    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK, &std->bnx_rx_mtag);
 	if (error) {
 		device_printf(dev, "could not create RX mbuf DMA tag\n");
@@ -5193,7 +5193,7 @@ bnx_create_tx_ring(struct bnx_tx_ring *txr)
 	else
 		txmaxsegsz = PAGE_SIZE;
 	error = bus_dma_tag_create(txr->bnx_sc->bnx_cdata.bnx_parent_tag,
-	    1, 0, BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL, NULL,
+	    1, 0, BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 	    txmaxsz, BNX_NSEG_NEW, txmaxsegsz,
 	    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
 	    &txr->bnx_tx_mtag);

@@ -292,7 +292,6 @@ safe_attach(device_t dev)
 			       SAFE_DMA_BOUNDARY,	/* boundary */
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
-			       NULL, NULL,		/* filter, filterarg */
 			       SAFE_MAX_DMA,		/* maxsize */
 			       SAFE_MAX_PART,		/* nsegments */
 			       SAFE_MAX_SSIZE,		/* maxsegsize */
@@ -306,7 +305,6 @@ safe_attach(device_t dev)
 			       SAFE_MAX_DSIZE,		/* boundary */
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
-			       NULL, NULL,		/* filter, filterarg */
 			       SAFE_MAX_DMA,		/* maxsize */
 			       SAFE_MAX_PART,		/* nsegments */
 			       SAFE_MAX_DSIZE,		/* maxsegsize */
@@ -1803,7 +1801,6 @@ safe_dma_malloc(
 			       sizeof(u_int32_t), 0,	/* alignment, bounds */
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
-			       NULL, NULL,		/* filter, filterarg */
 			       size,			/* maxsize */
 			       1,			/* nsegments */
 			       size,			/* maxsegsize */

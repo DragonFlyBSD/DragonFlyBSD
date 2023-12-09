@@ -347,8 +347,6 @@ nvme_pci_attach(device_t dev)
 			4 * 1024 * 1024,		/* boundary */
 			BUS_SPACE_MAXADDR,		/* loaddr? */
 			BUS_SPACE_MAXADDR,		/* hiaddr */
-			NULL,				/* filter */
-			NULL,				/* filterarg */
 			sc->prp_bytes,			/* [max]size */
 			1,				/* maxsegs */
 			sc->prp_bytes,			/* maxsegsz */
@@ -361,8 +359,6 @@ nvme_pci_attach(device_t dev)
 			4 * 1024 * 1024,		/* boundary */
 			BUS_SPACE_MAXADDR,		/* loaddr? */
 			BUS_SPACE_MAXADDR,		/* hiaddr */
-			NULL,				/* filter */
-			NULL,				/* filterarg */
 			sc->cmd_bytes,			/* [max]size */
 			1,				/* maxsegs */
 			sc->cmd_bytes,			/* maxsegsz */
@@ -375,8 +371,6 @@ nvme_pci_attach(device_t dev)
 			4 * 1024 * 1024,		/* boundary */
 			BUS_SPACE_MAXADDR,		/* loaddr? */
 			BUS_SPACE_MAXADDR,		/* hiaddr */
-			NULL,				/* filter */
-			NULL,				/* filterarg */
 			sc->res_bytes,			/* [max]size */
 			1,				/* maxsegs */
 			sc->res_bytes,			/* maxsegsz */
@@ -389,8 +383,6 @@ nvme_pci_attach(device_t dev)
 			4 * 1024 * 1024,		/* boundary */
 			BUS_SPACE_MAXADDR,		/* loaddr? */
 			BUS_SPACE_MAXADDR,		/* hiaddr */
-			NULL,				/* filter */
-			NULL,				/* filterarg */
 			sc->adm_bytes,			/* [max]size */
 			1,				/* maxsegs */
 			sc->adm_bytes,			/* maxsegsz */

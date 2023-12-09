@@ -1939,7 +1939,7 @@ ix_alloc_rings(struct ix_softc *sc)
 	 * Create top level busdma tag
 	 */
 	error = bus_dma_tag_create(NULL, 1, 0,
-	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL, NULL,
+	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 	    BUS_SPACE_MAXSIZE_32BIT, 0, BUS_SPACE_MAXSIZE_32BIT, 0,
 	    &sc->parent_tag);
 	if (error) {
@@ -2047,7 +2047,6 @@ ix_create_tx_ring(struct ix_tx_ring *txr)
 	    1, 0,		/* alignment, bounds */
 	    BUS_SPACE_MAXADDR,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,	/* highaddr */
-	    NULL, NULL,		/* filter, filterarg */
 	    IX_TSO_SIZE,	/* maxsize */
 	    IX_MAX_SCATTER,	/* nsegments */
 	    PAGE_SIZE,		/* maxsegsize */
@@ -2469,7 +2468,6 @@ ix_create_rx_ring(struct ix_rx_ring *rxr)
 	    1, 0,		/* alignment, bounds */
 	    BUS_SPACE_MAXADDR,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,	/* highaddr */
-	    NULL, NULL,		/* filter, filterarg */
 	    PAGE_SIZE,		/* maxsize */
 	    1,			/* nsegments */
 	    PAGE_SIZE,		/* maxsegsize */

@@ -1509,7 +1509,6 @@ mpr_diag_register(struct mpr_softc *sc, mpr_fw_diag_register_t *diag_register,
 				1, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
                                 buffer_size,		/* maxsize */
                                 1,			/* nsegments */
                                 buffer_size,		/* maxsegsize */

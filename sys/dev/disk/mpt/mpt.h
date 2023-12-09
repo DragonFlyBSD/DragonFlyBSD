@@ -214,7 +214,7 @@ int mpt_modevent(module_t, int, void *);
 			   maxsize, nsegments, maxsegsz, flags,		\
 			   dma_tagp)					\
 	bus_dma_tag_create(parent_tag, alignment, boundary,		\
-			   lowaddr, highaddr, filter, filterarg,	\
+			   lowaddr, highaddr, /*filter, filterarg,*/	\
 			   maxsize, nsegments, maxsegsz, flags,		\
 			   dma_tagp)
 

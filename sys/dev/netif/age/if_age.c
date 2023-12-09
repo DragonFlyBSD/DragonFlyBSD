@@ -814,7 +814,6 @@ again:
 	    1, 0,			/* alignment, boundary */
 	    lowaddr,			/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsize */
 	    0,				/* nsegments */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
@@ -832,7 +831,6 @@ again:
 	    AGE_TX_RING_ALIGN, 0,	/* alignment, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    AGE_TX_RING_SZ,		/* maxsize */
 	    1,				/* nsegments */
 	    AGE_TX_RING_SZ,		/* maxsegsize */
@@ -850,7 +848,6 @@ again:
 	    AGE_RX_RING_ALIGN, 0,	/* alignment, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    AGE_RX_RING_SZ,		/* maxsize */
 	    1,				/* nsegments */
 	    AGE_RX_RING_SZ,		/* maxsegsize */
@@ -868,7 +865,6 @@ again:
 	    AGE_RR_RING_ALIGN, 0,	/* alignment, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    AGE_RR_RING_SZ,		/* maxsize */
 	    1,				/* nsegments */
 	    AGE_RR_RING_SZ,		/* maxsegsize */
@@ -886,7 +882,6 @@ again:
 	    AGE_CMB_ALIGN, 0,		/* alignment, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    AGE_CMB_BLOCK_SZ,		/* maxsize */
 	    1,				/* nsegments */
 	    AGE_CMB_BLOCK_SZ,		/* maxsegsize */
@@ -904,7 +899,6 @@ again:
 	    AGE_SMB_ALIGN, 0,		/* alignment, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    AGE_SMB_BLOCK_SZ,		/* maxsize */
 	    1,				/* nsegments */
 	    AGE_SMB_BLOCK_SZ,		/* maxsegsize */
@@ -1041,7 +1035,6 @@ again:
 	    1, 0,			/* alignment, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsize */
 	    0,				/* nsegments */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
@@ -1059,7 +1052,6 @@ again:
 	    1, 0,			/* alignment, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    AGE_TSO_MAXSIZE,		/* maxsize */
 	    AGE_MAXTXSEGS,		/* nsegments */
 	    AGE_TSO_MAXSEGSIZE,		/* maxsegsize */
@@ -1076,7 +1068,6 @@ again:
 	    1, 0,			/* alignment, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    MCLBYTES,			/* maxsize */
 	    1,				/* nsegments */
 	    MCLBYTES,			/* maxsegsize */

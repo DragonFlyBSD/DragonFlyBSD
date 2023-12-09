@@ -185,7 +185,6 @@ adv_pci_attach(device_t dev)
 				   /*boundary*/0,
 				   /*lowaddr*/ADV_PCI_MAX_DMA_ADDR,
 				   /*highaddr*/BUS_SPACE_MAXADDR,
-				   /*filter*/NULL, /*filterarg*/NULL,
 				   /*maxsize*/BUS_SPACE_MAXSIZE_32BIT,
 				   /*nsegments*/BUS_SPACE_UNRESTRICTED,
 				   /*maxsegsz*/ADV_PCI_MAX_DMA_COUNT,
@@ -207,7 +206,6 @@ adv_pci_attach(device_t dev)
 		if (bus_dma_tag_create(adv->parent_dmat,
 				       /*alignment*/8, /*boundary*/0,
 				       ADV_PCI_MAX_DMA_ADDR, BUS_SPACE_MAXADDR,
-				       /*filter*/NULL, /*filterarg*/NULL,
 				       ADV_OVERRUN_BSIZE, /*nsegments*/1,
 				       BUS_SPACE_MAXSIZE_32BIT, /*flags*/0,
 				       &overrun_dmat) != 0) {

@@ -528,7 +528,6 @@ ae_dma_alloc(struct ae_softc *sc)
 	error = bus_dma_tag_create(NULL, 1, 0,
 				   BUS_SPACE_MAXADDR_32BIT,
 				   BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   BUS_SPACE_MAXSIZE_32BIT,
 				   0,
 				   BUS_SPACE_MAXSIZE_32BIT,

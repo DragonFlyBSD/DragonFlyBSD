@@ -1575,7 +1575,6 @@ static int hptiop_internal_memalloc_mv(struct hpt_iop_hba *hba)
 				0,
 				BUS_SPACE_MAXADDR_32BIT,
 				BUS_SPACE_MAXADDR,
-				NULL, NULL,
 				0x800 - 0x8,
 				1,
 				BUS_SPACE_MAXSIZE_32BIT,
@@ -1630,7 +1629,6 @@ static int hptiop_internal_memalloc_mvfrey(struct hpt_iop_hba *hba)
 				0,
 				BUS_SPACE_MAXADDR_32BIT,
 				BUS_SPACE_MAXADDR,
-				NULL, NULL,
 				hba->u.mvfrey.internal_mem_size,
 				1,
 				BUS_SPACE_MAXSIZE_32BIT,
@@ -1905,7 +1903,6 @@ static int hptiop_attach(device_t dev)
 			0, /* boundary */
 			BUS_SPACE_MAXADDR,  /* lowaddr */
 			BUS_SPACE_MAXADDR,  /* highaddr */
-			NULL, NULL,         /* filter, filterarg */
 			BUS_SPACE_MAXSIZE_32BIT,    /* maxsize */
 			BUS_SPACE_UNRESTRICTED, /* nsegments */
 			BUS_SPACE_MAXSIZE_32BIT,    /* maxsegsize */
@@ -1951,7 +1948,6 @@ static int hptiop_attach(device_t dev)
 			BUS_SPACE_MAXADDR_32BIT+1, /* boundary */
 			BUS_SPACE_MAXADDR,  /* lowaddr */
 			BUS_SPACE_MAXADDR,  /* highaddr */
-			NULL, NULL,         /* filter, filterarg */
 			PAGE_SIZE * (hba->max_sg_count-1),  /* maxsize */
 			hba->max_sg_count,  /* nsegments */
 			0x20000,    /* maxsegsize */
@@ -1967,7 +1963,6 @@ static int hptiop_attach(device_t dev)
 			0, /* boundary */
 			BUS_SPACE_MAXADDR_32BIT,    /* lowaddr */
 			BUS_SPACE_MAXADDR,  /* highaddr */
-			NULL, NULL,         /* filter, filterarg */
 			HPT_SRB_MAX_SIZE * HPT_SRB_MAX_QUEUE_SIZE + 0x20,
 			1,  /* nsegments */
 			BUS_SPACE_MAXSIZE_32BIT,    /* maxsegsize */

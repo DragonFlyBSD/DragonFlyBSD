@@ -229,7 +229,6 @@ ena_dma_alloc(device_t dmadev, bus_size_t size,
 	    8, 0,	      /* alignment, bounds 		*/
 	    dma_space_addr,   /* lowaddr of exclusion window	*/
 	    BUS_SPACE_MAXADDR,/* highaddr of exclusion window	*/
-	    NULL, NULL,	      /* filter, filterarg 		*/
 	    maxsize,	      /* maxsize 			*/
 	    1,		      /* nsegments 			*/
 	    maxsize,	      /* maxsegsize 			*/
@@ -498,7 +497,6 @@ ena_setup_tx_dma_tag(struct ena_adapter *adapter)
 	    1, 0,				  /* alignment, bounds 	     */
 	    ENA_DMA_BIT_MASK(adapter->dma_width), /* lowaddr of excl window  */
 	    BUS_SPACE_MAXADDR, 			  /* highaddr of excl window */
-	    NULL, NULL,				  /* filter, filterarg 	     */
 	    ENA_TSO_MAXSIZE,			  /* maxsize 		     */
 	    ENA_BUS_DMA_SEGS,			  /* nsegments		     */
 	    ENA_TSO_MAXSIZE,			  /* maxsegsize 	     */
@@ -531,7 +529,6 @@ ena_setup_rx_dma_tag(struct ena_adapter *adapter)
 	    1, 0,				  /* alignment, bounds 	     */
 	    ENA_DMA_BIT_MASK(adapter->dma_width), /* lowaddr of excl window  */
 	    BUS_SPACE_MAXADDR, 			  /* highaddr of excl window */
-	    NULL, NULL,				  /* filter, filterarg 	     */
 	    MJUM16BYTES,			  /* maxsize 		     */
 	    adapter->max_rx_sgl_size,		  /* nsegments 		     */
 	    MJUM16BYTES,			  /* maxsegsize 	     */

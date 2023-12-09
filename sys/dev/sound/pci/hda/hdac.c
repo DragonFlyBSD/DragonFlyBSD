@@ -588,8 +588,6 @@ hdac_dma_alloc(struct hdac_softc *sc, struct hdac_dma *dma, bus_size_t size)
 	    (sc->support_64bit) ? BUS_SPACE_MAXADDR :
 		BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,			/* highaddr */
-	    NULL,				/* filtfunc */
-	    NULL,				/* fistfuncarg */
 	    roundsz, 				/* maxsize */
 	    1,					/* nsegments */
 	    roundsz, 				/* maxsegsz */
@@ -1279,8 +1277,6 @@ hdac_attach(device_t dev)
 	    (sc->support_64bit) ? BUS_SPACE_MAXADDR :
 		BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,			/* highaddr */
-	    NULL,				/* filtfunc */
-	    NULL,				/* fistfuncarg */
 	    HDA_BUFSZ_MAX, 			/* maxsize */
 	    1,					/* nsegments */
 	    HDA_BUFSZ_MAX, 			/* maxsegsz */

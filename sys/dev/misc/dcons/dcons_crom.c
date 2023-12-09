@@ -174,7 +174,6 @@ dcons_crom_attach(device_t dev)
 		/*boundary*/ 0,
 		/*lowaddr*/ BUS_SPACE_MAXADDR,
 		/*highaddr*/ BUS_SPACE_MAXADDR,
-		/*filter*/NULL, /*filterarg*/NULL,
 		/*maxsize*/ dcons_conf->size,
 		/*nsegments*/ 1,
 		/*maxsegsz*/ BUS_SPACE_MAXSIZE_32BIT,

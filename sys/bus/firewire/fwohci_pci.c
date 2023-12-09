@@ -305,7 +305,9 @@ fwohci_pci_attach(device_t self)
 				/*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
 #endif
 				/*highaddr*/BUS_SPACE_MAXADDR,
+#if defined(__FreeBSD__)
 				/*filter*/NULL, /*filterarg*/NULL,
+#endif
 				/*maxsize*/0x100000,
 				/*nsegments*/0x20,
 				/*maxsegsz*/0x8000,

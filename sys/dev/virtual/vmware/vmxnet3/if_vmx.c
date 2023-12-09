@@ -1297,7 +1297,6 @@ vmxnet3_alloc_txq_data(struct vmxnet3_softc *sc)
 		    1, 0,			/* alignment, boundary */
 		    BUS_SPACE_MAXADDR,		/* lowaddr */
 		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
 		    VMXNET3_TX_MAXSIZE,		/* maxsize */
 		    VMXNET3_TX_MAXSEGS,		/* nsegments */
 		    VMXNET3_TX_MAXSEGSIZE,	/* maxsegsize */
@@ -1413,7 +1412,6 @@ vmxnet3_alloc_rxq_data(struct vmxnet3_softc *sc)
 			    1, 0,		/* alignment, boundary */
 			    BUS_SPACE_MAXADDR,	/* lowaddr */
 			    BUS_SPACE_MAXADDR,	/* highaddr */
-			    NULL, NULL,		/* filter, filterarg */
 			    MJUMPAGESIZE,	/* maxsize */
 			    1,			/* nsegments */
 			    MJUMPAGESIZE,	/* maxsegsize */
@@ -3960,7 +3958,6 @@ vmxnet3_dma_malloc(struct vmxnet3_softc *sc, bus_size_t size, bus_size_t align,
 	    align, 0,		/* alignment, bounds */
 	    BUS_SPACE_MAXADDR,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,	/* highaddr */
-	    NULL, NULL,		/* filter, filterarg */
 	    size,		/* maxsize */
 	    1,			/* nsegments */
 	    size,		/* maxsegsize */

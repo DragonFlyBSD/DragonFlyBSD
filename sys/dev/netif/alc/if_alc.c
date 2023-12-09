@@ -1899,7 +1899,6 @@ alc_dma_alloc(struct alc_softc *sc)
 	    1, 0,			/* alignment, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsize */
 	    0,				/* nsegments */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
@@ -1917,7 +1916,6 @@ alc_dma_alloc(struct alc_softc *sc)
 	    ALC_TX_RING_ALIGN, 0,	/* alignment, boundary */
 	    BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    ALC_TX_RING_SZ,		/* maxsize */
 	    1,				/* nsegments */
 	    ALC_TX_RING_SZ,		/* maxsegsize */
@@ -1935,7 +1933,6 @@ alc_dma_alloc(struct alc_softc *sc)
 	    ALC_RX_RING_ALIGN, 0,	/* alignment, boundary */
 	    BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    ALC_RX_RING_SZ,		/* maxsize */
 	    1,				/* nsegments */
 	    ALC_RX_RING_SZ,		/* maxsegsize */
@@ -1952,7 +1949,6 @@ alc_dma_alloc(struct alc_softc *sc)
 	    ALC_RR_RING_ALIGN, 0,	/* alignment, boundary */
 	    BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    ALC_RR_RING_SZ,		/* maxsize */
 	    1,				/* nsegments */
 	    ALC_RR_RING_SZ,		/* maxsegsize */
@@ -1970,7 +1966,6 @@ alc_dma_alloc(struct alc_softc *sc)
 	    ALC_CMB_ALIGN, 0,		/* alignment, boundary */
 	    BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    ALC_CMB_SZ,			/* maxsize */
 	    1,				/* nsegments */
 	    ALC_CMB_SZ,			/* maxsegsize */
@@ -1987,7 +1982,6 @@ alc_dma_alloc(struct alc_softc *sc)
 	    ALC_SMB_ALIGN, 0,		/* alignment, boundary */
 	    BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    ALC_SMB_SZ,			/* maxsize */
 	    1,				/* nsegments */
 	    ALC_SMB_SZ,			/* maxsegsize */
@@ -2137,7 +2131,6 @@ alc_dma_alloc(struct alc_softc *sc)
 	    1, 0,			/* alignment, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsize */
 	    0,				/* nsegments */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
@@ -2155,7 +2148,6 @@ alc_dma_alloc(struct alc_softc *sc)
 	    1, 0,			/* alignment, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    ALC_TSO_MAXSIZE,		/* maxsize */
 	    ALC_MAXTXSEGS,		/* nsegments */
 	    ALC_TSO_MAXSEGSIZE,		/* maxsegsize */
@@ -2172,7 +2164,6 @@ alc_dma_alloc(struct alc_softc *sc)
 	    ALC_RX_BUF_ALIGN, 0,	/* alignment, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    MCLBYTES,			/* maxsize */
 	    1,				/* nsegments */
 	    MCLBYTES,			/* maxsegsize */

@@ -4342,7 +4342,6 @@ bge_dma_alloc(struct bge_softc *sc)
 	 */
 	error = bus_dma_tag_create(NULL, 1, BGE_DMA_BOUNDARY_4G,
 				   lowaddr, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   BUS_SPACE_MAXSIZE_32BIT, 0,
 				   BUS_SPACE_MAXSIZE_32BIT,
 				   0, &sc->bge_cdata.bge_parent_tag);
@@ -4356,7 +4355,7 @@ bge_dma_alloc(struct bge_softc *sc)
 	 */
 	error = bus_dma_tag_create(sc->bge_cdata.bge_parent_tag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL, MCLBYTES, 1, MCLBYTES,
+				   MCLBYTES, 1, MCLBYTES,
 				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
 				   &sc->bge_cdata.bge_rx_mtag);
 	if (error) {
@@ -4400,7 +4399,6 @@ bge_dma_alloc(struct bge_softc *sc)
 		txmaxsz = BGE_JUMBO_FRAMELEN;
 	error = bus_dma_tag_create(sc->bge_cdata.bge_parent_tag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   txmaxsz, BGE_NSEG_NEW, PAGE_SIZE,
 				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK |
 				   BUS_DMA_ONEBPAGE,

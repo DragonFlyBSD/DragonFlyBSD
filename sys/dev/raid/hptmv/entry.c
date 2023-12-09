@@ -1297,7 +1297,6 @@ init_adapter(IAL_ADAPTER_T *pAdapter)
 			BUS_SPACE_MAXADDR_32BIT+1, /* boundary */
 			BUS_SPACE_MAXADDR,	/* lowaddr */
 			BUS_SPACE_MAXADDR,	/* highaddr */
-			NULL, NULL, 		/* filter, filterarg */
 			PAGE_SIZE * (MAX_SG_DESCRIPTORS-1), /* maxsize */
 			MAX_SG_DESCRIPTORS, /* nsegments */
 			0x10000,	/* maxsegsize */

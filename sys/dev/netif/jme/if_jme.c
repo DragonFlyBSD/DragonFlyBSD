@@ -148,7 +148,6 @@ static int	jme_encap(struct jme_txdata *, struct mbuf **, int *);
 static void	jme_rxpkt(struct jme_rxdata *, int);
 static int	jme_rxring_dma_alloc(struct jme_rxdata *);
 static int	jme_rxbuf_dma_alloc(struct jme_rxdata *);
-static int	jme_rxbuf_dma_filter(void *, bus_addr_t);
 
 static void	jme_tick(void *);
 static void	jme_stop(struct jme_softc *);
@@ -1234,7 +1233,6 @@ jme_dma_alloc(struct jme_softc *sc)
 	    1, JME_RING_BOUNDARY,	/* algnmnt, boundary */
 	    sc->jme_lowaddr,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsize */
 	    0,				/* nsegments */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
@@ -1277,7 +1275,6 @@ jme_dma_alloc(struct jme_softc *sc)
 	    1, 0,			/* algnmnt, boundary */
 	    sc->jme_lowaddr,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsize */
 	    0,				/* nsegments */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
@@ -1315,7 +1312,6 @@ jme_dma_alloc(struct jme_softc *sc)
 	    1, 0,			/* algnmnt, boundary */
 	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
 	    JME_TSO_MAXSIZE,		/* maxsize */
 	    JME_MAXTXSEGS,		/* nsegments */
 	    JME_MAXSEGSIZE,		/* maxsegsize */
@@ -2544,7 +2540,7 @@ jme_rxeof(struct jme_rxdata *rdata, int count, int cpuid)
 			 * This test should be enough to detect the pending
 			 * RSS information delivery, given:
 			 * - If RSS hash is not calculated, the hashinfo
-			 *   will be 0.  Howvever, the lower 32bits of RX
+			 *   will be 0.  However, the lower 32bits of RX
 			 *   buffers' physical address will never be 0.
 			 *   (see jme_rxbuf_dma_filter)
 			 * - If RSS hash is calculated, the lowest 4 bits
@@ -3425,21 +3421,6 @@ jme_rxring_dma_alloc(struct jme_rxdata *rdata)
 }
 
 static int
-jme_rxbuf_dma_filter(void *arg __unused, bus_addr_t paddr)
-{
-	if ((paddr & 0xffffffff) == 0) {
-		/*
-		 * Don't allow lower 32bits of the RX buffer's
-		 * physical address to be 0, else it will break
-		 * hardware pending RSS information delivery
-		 * detection on RX path.
-		 */
-		return 1;
-	}
-	return 0;
-}
-
-static int
 jme_rxbuf_dma_alloc(struct jme_rxdata *rdata)
 {
 	bus_addr_t lowaddr;
@@ -3447,7 +3428,6 @@ jme_rxbuf_dma_alloc(struct jme_rxdata *rdata)
 
 	lowaddr = BUS_SPACE_MAXADDR;
 	if (JME_ENABLE_HWRSS(rdata->jme_sc)) {
-		/* jme_rxbuf_dma_filter will be called */
 		lowaddr = BUS_SPACE_MAXADDR_32BIT;
 	}
 
@@ -3457,7 +3437,6 @@ jme_rxbuf_dma_alloc(struct jme_rxdata *rdata)
 	    JME_RX_BUF_ALIGN, 0,	/* algnmnt, boundary */
 	    lowaddr,			/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    jme_rxbuf_dma_filter, NULL,	/* filter, filterarg */
 	    MCLBYTES,			/* maxsize */
 	    1,				/* nsegments */
 	    MCLBYTES,			/* maxsegsize */

@@ -1043,7 +1043,6 @@ static void hpt_final_init(void *dummy)
 				BUS_SPACE_MAXADDR_32BIT+1, /* boundary */
 				BUS_SPACE_MAXADDR,	/* lowaddr */
 				BUS_SPACE_MAXADDR, 	/* highaddr */
-				NULL, NULL, 		/* filter, filterarg */
 				PAGE_SIZE * (os_max_sg_descriptors-1),	/* maxsize */
 				os_max_sg_descriptors,	/* nsegments */
 				0x10000,	/* maxsegsize */

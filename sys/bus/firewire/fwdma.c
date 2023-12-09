@@ -74,7 +74,9 @@ fwdma_malloc(struct firewire_comm *fc, int alignment, bus_size_t size,
 		/*boundary*/ 0,
 		/*lowaddr*/ BUS_SPACE_MAXADDR_32BIT,
 		/*highaddr*/ BUS_SPACE_MAXADDR,
-		/*filter*/NULL, /*filterarg*/NULL,
+#if defined(__FreeBSD__)
+        /*filter*/NULL, /*filterarg*/NULL,
+#endif
 		/*maxsize*/ size,
 		/*nsegments*/ 1,
 		/*maxsegsz*/ BUS_SPACE_MAXSIZE_32BIT,
@@ -168,7 +170,9 @@ fwdma_malloc_multiseg(struct firewire_comm *fc, int alignment,
 			/*boundary*/ 0,
 			/*lowaddr*/ BUS_SPACE_MAXADDR_32BIT,
 			/*highaddr*/ BUS_SPACE_MAXADDR,
+#if defined(__FreeBSD__)
 			/*filter*/NULL, /*filterarg*/NULL,
+#endif
 			/*maxsize*/ ssize,
 			/*nsegments*/ 1,
 			/*maxsegsz*/ BUS_SPACE_MAXSIZE_32BIT,

@@ -236,7 +236,6 @@ oce_wq *oce_wq_init(POCE_SOFTC sc, uint32_t q_len, uint32_t wq_type)
 				1, 0,
 				BUS_SPACE_MAXADDR,
 				BUS_SPACE_MAXADDR,
-				NULL, NULL,
 				OCE_MAX_TX_SIZE,
 				OCE_MAX_TX_ELEMENTS,
 				PAGE_SIZE, 0, &wq->tag);
@@ -439,7 +438,6 @@ oce_rq *oce_rq_init(POCE_SOFTC sc,
 				1, 0,
 				BUS_SPACE_MAXADDR,
 				BUS_SPACE_MAXADDR,
-				NULL, NULL,
 				OCE_MAX_RX_SIZE,
 				1, PAGE_SIZE, 0, &rq->tag);
 

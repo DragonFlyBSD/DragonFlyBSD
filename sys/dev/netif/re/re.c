@@ -1017,7 +1017,7 @@ static int re_alloc_buf(struct re_softc *sc)
 
         error = bus_dma_tag_create(sc->re_parent_tag, 1, 0,
                                    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL,
-                                   NULL, MCLBYTES* RE_NTXSEGS, RE_NTXSEGS, 4096, 0,
+                                   NULL, MCLBYTES * RE_NTXSEGS, RE_NTXSEGS, 4096, 0,
                                    NULL, NULL, &sc->re_desc.re_tx_mtag);
 
         if (error) {

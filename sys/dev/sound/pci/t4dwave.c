@@ -915,7 +915,6 @@ tr_pci_attach(device_t dev)
 		/*boundary*/0,
 		/*lowaddr*/lowaddr,
 		/*highaddr*/BUS_SPACE_MAXADDR,
-		/*filter*/NULL, /*filterarg*/NULL,
 		/*maxsize*/tr->bufsz, /*nsegments*/1, /*maxsegz*/tr->bufsz,
 		/*flags*/0,
 		&tr->parent_dmat) != 0) {

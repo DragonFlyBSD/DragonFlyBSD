@@ -194,7 +194,6 @@ bfe_dma_alloc(device_t dev)
 			1, 0,                     /* alignment, boundary */
 			BFE_BUS_SPACE_MAXADDR,    /* lowaddr */
 			BUS_SPACE_MAXADDR,        /* highaddr */
-			NULL, NULL,               /* filter, filterarg */
 			BUS_SPACE_MAXSIZE_32BIT,  /* maxsize */
 			0,                        /* num of segments */
 			BUS_SPACE_MAXSIZE_32BIT,  /* max segment size */
@@ -236,7 +235,6 @@ bfe_dma_alloc(device_t dev)
 	/* Tag for RX mbufs */
 	error = bus_dma_tag_create(sc->bfe_parent_tag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   MCLBYTES, 1, MCLBYTES,
 				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
 				   &sc->bfe_rxbuf_tag);
@@ -269,7 +267,6 @@ bfe_dma_alloc(device_t dev)
 	/* Tag for TX mbufs */
 	error = bus_dma_tag_create(sc->bfe_parent_tag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   MCLBYTES, BFE_MAXSEGS, MCLBYTES,
 				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
 				   &sc->bfe_txbuf_tag);

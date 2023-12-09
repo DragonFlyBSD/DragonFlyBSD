@@ -930,7 +930,7 @@ wpi_dma_contig_alloc(struct wpi_softc *sc, struct wpi_dma_info *dma,
 
 #if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), alignment,
-	    0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, size,
+	    0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, size,
 	    1, size, 0, &dma->tag);
 #else
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), alignment,
@@ -1037,7 +1037,7 @@ wpi_alloc_rx_ring(struct wpi_softc *sc)
 	/* Create RX buffer DMA tag. */
 #if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
+	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 	    MJUMPAGESIZE, 1, MJUMPAGESIZE, 0, &ring->data_dmat);
 #else
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
@@ -1226,7 +1226,7 @@ wpi_alloc_tx_ring(struct wpi_softc *sc, struct wpi_tx_ring *ring, uint8_t qid)
 
 #if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES,
+	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, MCLBYTES,
 	    WPI_MAX_SCATTER - 1, MCLBYTES, 0, &ring->data_dmat);
 #else
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,

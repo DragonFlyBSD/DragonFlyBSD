@@ -547,7 +547,7 @@ sdhci_dma_alloc(struct sdhci_slot *slot)
 
 	/* Allocate DMA tag for 32bit ADMA2 data buffer */
 	err = bus_dma_tag_create(bus_get_dma_tag(slot->bus),
-	    4, 0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
+	    4, 0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 	    MAXPHYS, SDHCI_ADMA2_DESC_COUNT,
 	    MIN(MAXPHYS, SDHCI_ADMA2_MAX_SEGSIZE),
 	    BUS_DMA_ALLOCNOW | BUS_DMA_ALLOCALL,

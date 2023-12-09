@@ -1805,7 +1805,6 @@ agg_attach(device_t dev)
 	if (bus_dma_tag_create(/*parent*/ bus_get_dma_tag(dev),
 			       /*align */ 4, 1 << (16+1),
 			       /*limit */ MAESTRO_MAXADDR, BUS_SPACE_MAXADDR,
-			       /*filter*/ NULL, NULL,
 			       /*size  */ ess->bufsz, 1, 0x3ffff,
 			       /*flags */ 0,
 			       &ess->buf_dmat) != 0) {
@@ -1818,7 +1817,6 @@ agg_attach(device_t dev)
 			       /*align */ 1 << WAVCACHE_BASEADDR_SHIFT,
 			                  1 << (16+1),
 			       /*limit */ MAESTRO_MAXADDR, BUS_SPACE_MAXADDR,
-			       /*filter*/ NULL, NULL,
 			       /*size  */ 3*ess->bufsz, 1, 0x3ffff,
 			       /*flags */ 0,
 			       &ess->stat_dmat) != 0) {

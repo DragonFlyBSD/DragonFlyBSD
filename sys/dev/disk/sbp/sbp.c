@@ -1857,7 +1857,9 @@ END_DEBUG
 				/*boundary*/0,
 				/*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
 				/*highaddr*/BUS_SPACE_MAXADDR,
+#if defined(__FreeBSD__)
 				/*filter*/NULL, /*filterarg*/NULL,
+#endif
 				/*maxsize*/0x100000, /*nsegments*/SBP_IND_MAX,
 				/*maxsegsz*/SBP_SEG_MAX,
 				/*flags*/BUS_DMA_ALLOCNOW,

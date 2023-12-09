@@ -637,7 +637,6 @@ au_pci_attach(device_t dev)
 		/*boundary*/0,
 		/*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
 		/*highaddr*/BUS_SPACE_MAXADDR,
-		/*filter*/NULL, /*filterarg*/NULL,
 		/*maxsize*/AU_BUFFSIZE, /*nsegments*/1, /*maxsegz*/0x3ffff,
 		/*flags*/0, /*lockfunc*/busdma_lock_mutex,
 		/*lockarg*/&Giant, &au->parent_dmat) != 0) {

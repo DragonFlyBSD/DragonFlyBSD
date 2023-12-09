@@ -727,7 +727,6 @@ em_attach(device_t dev)
 	 */
 	error = bus_dma_tag_create(NULL, 1, 0,
 			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-			NULL, NULL,
 			BUS_SPACE_MAXSIZE_32BIT, 0, BUS_SPACE_MAXSIZE_32BIT,
 			0, &adapter->parent_dtag);
 	if (error) {
@@ -2918,7 +2917,6 @@ em_create_tx_ring(struct adapter *adapter)
 			1, 0,			/* alignment, bounds */
 			BUS_SPACE_MAXADDR,	/* lowaddr */
 			BUS_SPACE_MAXADDR,	/* highaddr */
-			NULL, NULL,		/* filter, filterarg */
 			EM_TSO_SIZE,		/* maxsize */
 			EM_MAX_SCATTER,		/* nsegments */
 			PAGE_SIZE,		/* maxsegsize */
@@ -3424,7 +3422,6 @@ em_create_rx_ring(struct adapter *adapter)
 			1, 0,			/* alignment, bounds */
 			BUS_SPACE_MAXADDR,	/* lowaddr */
 			BUS_SPACE_MAXADDR,	/* highaddr */
-			NULL, NULL,		/* filter, filterarg */
 			MCLBYTES,		/* maxsize */
 			1,			/* nsegments */
 			MCLBYTES,		/* maxsegsize */

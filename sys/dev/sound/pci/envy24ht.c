@@ -2436,7 +2436,6 @@ envy24ht_alloc_resource(struct sc_info *sc)
 	    /*boundary*/0,
 	    /*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
 	    /*highaddr*/BUS_SPACE_MAXADDR,
-	    /*filter*/NULL, /*filterarg*/NULL,
 	    /*maxsize*/BUS_SPACE_MAXSIZE_ENVY24,
 	    /*nsegments*/1, /*maxsegsz*/0x3ffff,
 	    /*flags*/0,

@@ -331,7 +331,10 @@ ath_pci_attach(device_t dev)
 #endif
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
+#if defined(__DragonFly__)
+#else
 			       NULL, NULL,		/* filter, filterarg */
+#endif
 			       0x3ffff,			/* maxsize XXX */
 			       ATH_MAX_SCATTER,		/* nsegments */
 			       0x3ffff,			/* maxsegsize XXX */

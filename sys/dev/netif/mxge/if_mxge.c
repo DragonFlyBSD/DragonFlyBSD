@@ -3028,7 +3028,6 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 				 4096,			/* boundary */
 				 BUS_SPACE_MAXADDR,	/* low */
 				 BUS_SPACE_MAXADDR,	/* high */
-				 NULL, NULL,		/* filter */
 				 MHLEN,			/* maxsize */
 				 1,			/* num segs */
 				 MHLEN,			/* maxsegsize */
@@ -3074,7 +3073,6 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 				 4096,			/* boundary */
 				 BUS_SPACE_MAXADDR,	/* low */
 				 BUS_SPACE_MAXADDR,	/* high */
-				 NULL, NULL,		/* filter */
 				 4096,			/* maxsize */
 				 1,			/* num segs */
 				 4096,			/* maxsegsize*/
@@ -3144,7 +3142,6 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 				 sc->tx_boundary,	/* boundary */
 				 BUS_SPACE_MAXADDR,	/* low */
 				 BUS_SPACE_MAXADDR,	/* high */
-				 NULL, NULL,		/* filter */
 				 IP_MAXPACKET +
 				 sizeof(struct ether_vlan_header),
 				 			/* maxsize */
@@ -4263,7 +4260,6 @@ mxge_attach(device_t dev)
 				 0,			/* boundary */
 				 BUS_SPACE_MAXADDR,	/* low */
 				 BUS_SPACE_MAXADDR,	/* high */
-				 NULL, NULL,		/* filter */
 				 BUS_SPACE_MAXSIZE_32BIT,/* maxsize */
 				 0, 			/* num segs */
 				 BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */

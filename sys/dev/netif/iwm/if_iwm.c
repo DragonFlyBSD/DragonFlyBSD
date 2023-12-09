@@ -1001,7 +1001,6 @@ iwm_alloc_rx_ring(struct iwm_softc *sc, struct iwm_rx_ring *ring)
 				   0,
 				   BUS_SPACE_MAXADDR_32BIT,
 				   BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   IWM_RBUF_SIZE, 1, IWM_RBUF_SIZE,
 				   BUS_DMA_NOWAIT, &ring->data_dmat);
 #else
@@ -1153,7 +1152,6 @@ iwm_alloc_tx_ring(struct iwm_softc *sc, struct iwm_tx_ring *ring, int qid)
 				   0,
 				   BUS_SPACE_MAXADDR_32BIT,
 				   BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   maxsize, nsegments, maxsize,
 				   BUS_DMA_NOWAIT, &ring->data_dmat);
 #else

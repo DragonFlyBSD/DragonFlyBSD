@@ -213,8 +213,6 @@ sili_pci_attach(device_t dev)
 			65536,				/* boundary */
 			addr,				/* loaddr? */
 			BUS_SPACE_MAXADDR,		/* hiaddr */
-			NULL,				/* filter */
-			NULL,				/* filterarg */
 			sizeof(struct sili_prb) * SILI_MAX_CMDS,
 							/* [max]size */
 			1,				/* maxsegs */
@@ -233,8 +231,6 @@ sili_pci_attach(device_t dev)
 			0,				/* boundary */
 			addr,				/* loaddr? */
 			BUS_SPACE_MAXADDR,		/* hiaddr */
-			NULL,				/* filter */
-			NULL,				/* filterarg */
 			4096 * 1024,			/* maxiosize */
 			SILI_MAX_SGET,			/* maxsegs */
 			65536,				/* maxsegsz */

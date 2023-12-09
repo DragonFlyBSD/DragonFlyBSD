@@ -3030,7 +3030,6 @@ sk_dma_alloc(device_t dev)
 	/* Create parent DMA tag */
 	error = bus_dma_tag_create(NULL, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   BUS_SPACE_MAXSIZE_32BIT, 0,
 				   BUS_SPACE_MAXSIZE_32BIT,
 				   0, &sc_if->sk_parent_dtag);
@@ -3043,7 +3042,6 @@ sk_dma_alloc(device_t dev)
 	error = bus_dma_tag_create(sc_if->sk_parent_dtag,
 				   1, SK_RING_BOUNDARY,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   BUS_SPACE_MAXSIZE_32BIT, 0,
 				   BUS_SPACE_MAXSIZE_32BIT,
 				   0, &rd->sk_ring_dtag);
@@ -3055,7 +3053,6 @@ sk_dma_alloc(device_t dev)
 	/* Create top level buffer DMA tag */
 	error = bus_dma_tag_create(sc_if->sk_parent_dtag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   BUS_SPACE_MAXSIZE_32BIT, 0,
 				   BUS_SPACE_MAXSIZE_32BIT,
 				   0, &cd->sk_buf_dtag);
@@ -3102,7 +3099,6 @@ sk_dma_alloc(device_t dev)
 	/* Create DMA tag for TX. */
 	error = bus_dma_tag_create(cd->sk_buf_dtag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   SK_JLEN, SK_NTXSEG, SK_JLEN,
 				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK |
 				   BUS_DMA_ONEBPAGE,
@@ -3133,7 +3129,6 @@ sk_dma_alloc(device_t dev)
 	/* Create DMA tag for RX. */
 	error = bus_dma_tag_create(cd->sk_buf_dtag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   MCLBYTES, 1, MCLBYTES,
 				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
 				   &cd->sk_rx_dtag);

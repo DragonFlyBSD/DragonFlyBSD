@@ -314,7 +314,6 @@ iir_pci_attach(device_t dev)
     if (bus_dma_tag_create(/*parent*/NULL, /*alignemnt*/1, /*boundary*/0,
                            /*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
                            /*highaddr*/BUS_SPACE_MAXADDR,
-                           /*filter*/NULL, /*filterarg*/NULL,
                            /*maxsize*/BUS_SPACE_MAXSIZE_32BIT,
                            /*nsegments*/GDT_MAXSG,
                            /*maxsegsz*/BUS_SPACE_MAXSIZE_32BIT,

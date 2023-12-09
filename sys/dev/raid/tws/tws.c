@@ -467,7 +467,6 @@ tws_init(struct tws_softc *sc)
                             0,                       /* boundary */
                             BUS_SPACE_MAXADDR_32BIT, /* lowaddr */
                             BUS_SPACE_MAXADDR,       /* highaddr */
-                            NULL, NULL,              /* filter, filterarg */
                             BUS_SPACE_MAXSIZE,       /* maxsize */
                             max_sg_elements,         /* numsegs */
                             BUS_SPACE_MAXSIZE,       /* maxsegsize */
@@ -487,7 +486,6 @@ tws_init(struct tws_softc *sc)
                             0,                    /* boundary */
                             BUS_SPACE_MAXADDR_32BIT, /* lowaddr */
                             BUS_SPACE_MAXADDR,    /* highaddr */
-                            NULL, NULL,           /* filter, filterarg */
                             dma_mem_size,         /* maxsize */
                             1,                    /* numsegs */
                             BUS_SPACE_MAXSIZE,    /* maxsegsize */
@@ -522,7 +520,6 @@ tws_init(struct tws_softc *sc)
                            0,                      /* boundary */
                            BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
                            BUS_SPACE_MAXADDR,      /* highaddr */
-                           NULL, NULL,             /* filter, filterarg */
                            TWS_MAX_IO_SIZE,        /* maxsize */
                            max_sg_elements,        /* nsegments */
                            TWS_MAX_IO_SIZE,        /* maxsegsize */

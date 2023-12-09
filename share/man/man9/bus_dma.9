@@ -69,7 +69,7 @@
 .\" $FreeBSD: /repoman/r/ncvs/src/share/man/man9/bus_dma.9,v 1.7 2003/07/27 14:05:29 mux Exp $
 .\" $NetBSD: bus_dma.9,v 1.25 2002/10/14 13:43:16 wiz Exp $
 .\"
-.Dd January 27, 2018
+.Dd December 09, 2023
 .Dt BUS_DMA 9
 .Os
 .Sh NAME
@@ -96,8 +96,8 @@
 .Ft int
 .Fn bus_dma_tag_create "bus_dma_tag_t parent" "bus_size_t alignment" \
 "bus_size_t boundary" "bus_addr_t lowaddr" "bus_addr_t highaddr" \
-"bus_dma_filter_t *filtfunc" "void *filtfuncarg" "bus_size_t maxsize" \
-"int nsegments" "bus_size_t maxsegsz" "int flags" "bus_dma_tag_t *dmat"
+"bus_size_t maxsize" "int nsegments" "bus_size_t maxsegsz" \
+"int flags" "bus_dma_tag_t *dmat"
 .Ft int
 .Fn bus_dma_tag_destroy "bus_dma_tag_t dmat"
 .Ft int
@@ -170,30 +170,6 @@ DMA tags are organized into a hierarchy, with each child
 tag inheriting the restrictions of its parent.
 This allows all devices along the path of DMA transactions
 to contribute to the constraints of those transactions.
-.It Vt bus_dma_filter_t
-Client specified address filter having the format:
-.Bl -tag -width compact
-.It Ft int
-.Fn "client_filter" "void *filtarg" "bus_addr_t testaddr"
-.El
-.sp
-Address filters can be specified during tag creation to allow
-for devices who's DMA address restrictions cannot be specified
-by a single window.
-The
-.Fa filtarg
-is client specified during tag creation to be passed to all
-invocations of the callback.
-The
-.Fa testaddr
-argument contains a potential starting address of a DMA mapping.
-The filter function operates on the set of addresses from
-.Fa testaddr
-to
-.Ql trunc_page(testaddr) + PAGE_SIZE - 1 ,
-inclusive.
-The filter function should return zero for any mapping in this range
-that can be accommodated by the device and non-zero otherwise.
 .It Vt bus_dma_segment_t
 A machine-dependent type that describes individual
 DMA segments.
@@ -316,11 +292,10 @@ to CPU access of the memory.
 .Sh FUNCTIONS
 .Bl -tag -width compact
 .It Fn bus_dma_tag_create "parent" "alignment" "boundary" "lowaddr" \
-"highaddr" "*filtfunc" "*filtfuncarg" "maxsize" "nsegments" "maxsegsz" \
-"flags" "*dmat"
+"highaddr" "maxsize" "nsegments" "maxsegsz" "flags" "*dmat"
 Allocates a device specific DMA tag, and initializes it according to
 the arguments provided:
-.Bl -tag -width *filtfuncarg -compact
+.Bl -tag -width alignment -compact
 .It Fa parent
 Indicates restrictions between the parent bridge, CPU memory, and the
 device.
@@ -366,23 +341,6 @@ This area of
 .Ql safe memory
 is used to bounce requests that would otherwise conflict with
 the exclusion window.
-.It Fa filtfunc
-Optional filter function (may be NULL) to be called for any attempt to
-map memory into the window described by
-.Fa lowaddr
-and
-.Fa highaddr .
-A filter function is only required when the single window described
-by
-.Fa lowaddr
-and
-.Fa highaddr
-cannot adequately describe the constraints of the device.
-The filter function will be called for every machine page
-that overlaps the exclusion window.
-.It Fa filtfuncarg
-Argument passed to all calls to the filter function for this tag.
-May be NULL.
 .It Fa maxsize
 Maximum size, in bytes, of the sum of all segment lengths in a given
 DMA mapping associated with this tag.

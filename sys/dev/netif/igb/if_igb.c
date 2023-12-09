@@ -1774,7 +1774,7 @@ igb_alloc_rings(struct igb_softc *sc)
 	 * Create top level busdma tag
 	 */
 	error = bus_dma_tag_create(NULL, 1, 0,
-	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL, NULL,
+	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 	    BUS_SPACE_MAXSIZE_32BIT, 0, BUS_SPACE_MAXSIZE_32BIT, 0,
 	    &sc->parent_tag);
 	if (error) {
@@ -1909,7 +1909,6 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 	    1, 0,		/* alignment, bounds */
 	    BUS_SPACE_MAXADDR,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,	/* highaddr */
-	    NULL, NULL,		/* filter, filterarg */
 	    IGB_TSO_SIZE,	/* maxsize */
 	    IGB_MAX_SCATTER,	/* nsegments */
 	    PAGE_SIZE,		/* maxsegsize */
@@ -2304,7 +2303,6 @@ igb_create_rx_ring(struct igb_rx_ring *rxr)
 	    1, 0,		/* alignment, bounds */
 	    BUS_SPACE_MAXADDR,	/* lowaddr */
 	    BUS_SPACE_MAXADDR,	/* highaddr */
-	    NULL, NULL,		/* filter, filterarg */
 	    MCLBYTES,		/* maxsize */
 	    1,			/* nsegments */
 	    MCLBYTES,		/* maxsegsize */

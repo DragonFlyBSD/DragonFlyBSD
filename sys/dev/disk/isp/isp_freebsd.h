@@ -644,8 +644,12 @@ void isp_common_dmateardown(ispsoftc_t *, struct ccb_scsiio *, uint32_t);
  * Platform Version specific defines
  */
 #define	BUS_DMA_ROOTARG(x)	bus_get_dma_tag(x)
-#define	isp_dma_tag_create(a, b, c, d, e, f, g, h, i, j, k, z)	\
-	bus_dma_tag_create(a, b, c, d, e, f, g, h, i, j, k, z)
+#define	isp_dma_tag_create(parent_tag, alignment, boundary, \
+			lowaddr, highaddr, _filter, _filterarg, \
+			maxsize, nsegments, maxsegsz, flags, dma_tagp)	\
+        bus_dma_tag_create(parent_tag, alignment, boundary, \
+			lowaddr, highaddr, maxsize, nsegments, maxsegsz, \
+			flags, dma_tagp)
 
 #define	isp_setup_intr	bus_setup_intr
 

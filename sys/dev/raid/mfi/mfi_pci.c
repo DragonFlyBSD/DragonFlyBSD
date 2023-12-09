@@ -272,7 +272,6 @@ mfi_pci_attach(device_t dev)
 				1, 0,			/* algnmnt, boundary */
 				BUS_SPACE_MAXADDR,	/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
 				BUS_SPACE_MAXSIZE_32BIT,/* maxsize */
 				BUS_SPACE_UNRESTRICTED,	/* nsegments */
 				BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */

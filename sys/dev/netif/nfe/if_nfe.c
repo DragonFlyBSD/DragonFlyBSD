@@ -551,7 +551,6 @@ nfe_attach(device_t dev)
 			1, 0,			/* alignment, boundary */
 			lowaddr,		/* lowaddr */
 			BUS_SPACE_MAXADDR,	/* highaddr */
-			NULL, NULL,		/* filter, filterarg */
 			BUS_SPACE_MAXSIZE_32BIT,/* maxsize */
 			0,			/* nsegments */
 			BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */
@@ -1691,7 +1690,6 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 
 	error = bus_dma_tag_create(sc->sc_dtag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
 				   MCLBYTES, 1, MCLBYTES,
 				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
 				   &ring->data_tag);
@@ -1964,7 +1962,6 @@ nfe_alloc_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 
 	error = bus_dma_tag_create(sc->sc_dtag, 1, 0,
 			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-			NULL, NULL,
 			NFE_JBYTES, NFE_MAX_SCATTER, MCLBYTES,
 			BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
 			&ring->data_tag);

@@ -140,8 +140,6 @@ ips_pci_attach(device_t dev)
 				/* boundary  */	0,
 				/* lowaddr   */	BUS_SPACE_MAXADDR_32BIT,
 				/* highaddr  */	BUS_SPACE_MAXADDR,
-				/* filter    */	NULL,
-				/* filterarg */	NULL,
 				/* maxsize   */	BUS_SPACE_MAXSIZE_32BIT,
 				/* numsegs   */	IPS_MAX_SG_ELEMENTS,
 				/* maxsegsize*/	BUS_SPACE_MAXSIZE_32BIT,

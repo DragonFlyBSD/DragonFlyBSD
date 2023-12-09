@@ -254,7 +254,6 @@ adw_pci_attach(device_t dev)
 				   /*boundary*/0,
 				   /*lowaddr*/ADW_PCI_MAX_DMA_ADDR,
 				   /*highaddr*/BUS_SPACE_MAXADDR,
-				   /*filter*/NULL, /*filterarg*/NULL,
 				   /*maxsize*/BUS_SPACE_MAXSIZE_32BIT,
 				   /*nsegments*/BUS_SPACE_UNRESTRICTED,
 				   /*maxsegsz*/ADW_PCI_MAX_DMA_COUNT,

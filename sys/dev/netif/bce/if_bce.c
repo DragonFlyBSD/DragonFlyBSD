@@ -2132,7 +2132,7 @@ bce_create_tx_ring(struct bce_tx_ring *txr)
 	 * physical address of the block.
 	 */
 	rc = bus_dma_tag_create(txr->sc->parent_tag, BCM_PAGE_SIZE, 0,
-	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL, NULL,
+	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 	    BCE_TX_CHAIN_PAGE_SZ, 1, BCE_TX_CHAIN_PAGE_SZ,
 	    0, &txr->tx_bd_chain_tag);
 	if (rc != 0) {
@@ -2181,7 +2181,7 @@ bce_create_tx_ring(struct bce_tx_ring *txr)
 
 	/* Create a DMA tag for TX mbufs. */
 	rc = bus_dma_tag_create(txr->sc->parent_tag, 1, 0,
-	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL, NULL,
+	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 	    IP_MAXPACKET + sizeof(struct ether_vlan_header),
 	    BCE_MAX_SEGMENTS, PAGE_SIZE,
 	    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
@@ -2246,7 +2246,7 @@ bce_create_rx_ring(struct bce_rx_ring *rxr)
 	 * address of the blocks.
 	 */
 	rc = bus_dma_tag_create(rxr->sc->parent_tag, BCM_PAGE_SIZE, 0,
-	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL, NULL,
+	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 	    BCE_RX_CHAIN_PAGE_SZ, 1, BCE_RX_CHAIN_PAGE_SZ,
 	    0, &rxr->rx_bd_chain_tag);
 	if (rc != 0) {
@@ -2296,7 +2296,7 @@ bce_create_rx_ring(struct bce_rx_ring *rxr)
 
 	/* Create a DMA tag for RX mbufs. */
 	rc = bus_dma_tag_create(rxr->sc->parent_tag, BCE_DMA_RX_ALIGN, 0,
-	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL, NULL,
+	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 	    MCLBYTES, 1, MCLBYTES,
 	    BUS_DMA_ALLOCNOW | BUS_DMA_ALIGNED | BUS_DMA_WAITOK,
 	    &rxr->rx_mbuf_tag);
@@ -2418,7 +2418,6 @@ bce_dma_alloc(struct bce_softc *sc)
 	 */
 	rc = bus_dma_tag_create(NULL, 1, BCE_DMA_BOUNDARY,
 				max_busaddr, BUS_SPACE_MAXADDR,
-				NULL, NULL,
 				BUS_SPACE_MAXSIZE_32BIT, 0,
 				BUS_SPACE_MAXSIZE_32BIT,
 				0, &sc->parent_tag);
@@ -2459,7 +2458,6 @@ bce_dma_alloc(struct bce_softc *sc)
 	if (sc->ctx_pages != 0) {
 		rc = bus_dma_tag_create(sc->parent_tag, BCM_PAGE_SIZE, 0,
 					BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-					NULL, NULL,
 					BCM_PAGE_SIZE, 1, BCM_PAGE_SIZE,
 					0, &sc->ctx_tag);
 		if (rc != 0) {

@@ -537,7 +537,6 @@ tw_osli_alloc_mem(struct twa_softc *sc)
 				TW_OSLI_DMA_BOUNDARY,	/* boundary */
 				BUS_SPACE_MAXADDR,	/* lowaddr */
 				BUS_SPACE_MAXADDR, 	/* highaddr */
-				NULL, NULL, 		/* filter, filterarg */
 				TW_CL_MAX_IO_SIZE,	/* maxsize */
 				max_sg_elements,	/* nsegments */
 				TW_CL_MAX_IO_SIZE,	/* maxsegsize */
@@ -558,7 +557,6 @@ tw_osli_alloc_mem(struct twa_softc *sc)
 				0,			/* boundary */
 				BUS_SPACE_MAXADDR,	/* lowaddr */
 				BUS_SPACE_MAXADDR, 	/* highaddr */
-				NULL, NULL, 		/* filter, filterarg */
 				dma_mem_size,		/* maxsize */
 				1,			/* nsegments */
 				BUS_SPACE_MAXSIZE,	/* maxsegsize */
@@ -603,7 +601,6 @@ tw_osli_alloc_mem(struct twa_softc *sc)
 				0,			/* boundary */
 				BUS_SPACE_MAXADDR,	/* lowaddr */
 				BUS_SPACE_MAXADDR, 	/* highaddr */
-				NULL, NULL, 		/* filter, filterarg */
 				TW_CL_MAX_IO_SIZE,	/* maxsize */
 				max_sg_elements,	/* nsegments */
 				TW_CL_MAX_IO_SIZE,	/* maxsegsize */
@@ -627,7 +624,6 @@ tw_osli_alloc_mem(struct twa_softc *sc)
 				0,			/* boundary */
 				BUS_SPACE_MAXADDR,	/* lowaddr */
 				BUS_SPACE_MAXADDR, 	/* highaddr */
-				NULL, NULL, 		/* filter, filterarg */
 				TW_CL_MAX_IO_SIZE,	/* maxsize */
 				max_sg_elements,	/* nsegments */
 				TW_CL_MAX_IO_SIZE,	/* maxsegsize */

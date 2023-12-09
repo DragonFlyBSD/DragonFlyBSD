@@ -2104,7 +2104,6 @@ emu_pci_attach(device_t dev)
 		/*boundary*/0,
 		/*lowaddr*/(1U << 31) - 1, /* can only access 0-2gb */
 		/*highaddr*/BUS_SPACE_MAXADDR,
-		/*filter*/NULL, /*filterarg*/NULL,
 		/*maxsize*/sc->bufsz, /*nsegments*/1, /*maxsegz*/0x3ffff,
 		/*flags*/0,
 		&sc->parent_dmat) != 0) {
