@@ -74,7 +74,7 @@ fill_classless_routes() {
 }
 
 delete_old_routes() {
-	arp -dan
+	arp -d -i $interface -an
 }
 
 add_new_routes() {
