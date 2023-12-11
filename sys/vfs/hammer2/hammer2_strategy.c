@@ -422,9 +422,7 @@ hammer2_strategy_read_completion(hammer2_chain_t *focus, const char *data,
 		 * Data is on-media, record for live dedup.  Release the
 		 * chain (try to free it) when done.  The data is still
 		 * cached by both the buffer cache in front and the
-		 * block device behind us.  This leaves more room in the
-		 * LRU chain cache for meta-data chains which we really
-		 * want to retain.
+		 * block device behind us.
 		 *
 		 * NOTE: Deduplication cannot be safely recorded for
 		 *	 records without a check code.

@@ -473,8 +473,6 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 		 *
 		 * If the chain has a parent the MODIFIED bit prevents
 		 * scrapping.
-		 *
-		 * Chains with UPDATE/MODIFIED are *not* put on the LRU list!
 		 */
 		if (chain->flags & (HAMMER2_CHAIN_UPDATE |
 				    HAMMER2_CHAIN_MODIFIED)) {
@@ -551,8 +549,6 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 	 *
 	 * Retry (return chain) if we fail to transition the refs to 0, else
 	 * return NULL indication nothing more to do.
-	 *
-	 * Chains with children are NOT put on the LRU list.
 	 */
 	if (chain->core.chain_count) {
 		if (atomic_cmpset_int(&chain->refs, 1, 0)) {
