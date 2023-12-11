@@ -450,7 +450,7 @@ again:
 		if (rnode.rn_flags & RNF_ROOT) {
 			if (Aflag)
 				printf("(root node)%s",
-				    rnode.rn_dupedkey ? " =>\n" : "\n");
+				       rnode.rn_dupedkey ? " =>\n" : "\n");
 		} else if (do_rtent) {
 			if (kget(rn, rtentry) == 0) {
 				p_rtentry(&rtentry);
@@ -490,14 +490,15 @@ p_rtnode(void)
 			return;
 	} else {
 		sprintf(nbuf, "(%d)", rnode.rn_bit);
-		printf("%6.6s %8.8lx : %8.8lx", nbuf, (u_long)rnode.rn_left, (u_long)rnode.rn_right);
+		printf("%6.6s %8.8lx : %8.8lx", nbuf,
+		       (u_long)rnode.rn_left, (u_long)rnode.rn_right);
 	}
 	while (rm) {
 		if (kget(rm, rmask) != 0)
 			break;
 		sprintf(nbuf, " %d refs, ", rmask.rm_refs);
-		printf(" mk = %8.8lx {(%d),%s",
-			(u_long)rm, -1 - rmask.rm_bit, rmask.rm_refs ? nbuf : " ");
+		printf(" mk = %8.8lx {(%d),%s", (u_long)rm,
+		       -1 - rmask.rm_bit, rmask.rm_refs ? nbuf : " ");
 		if (rmask.rm_flags & RNF_NORMAL) {
 			struct radix_node rnode_aux;
 			printf(" <normal>, ");
@@ -625,11 +626,9 @@ fmt_sockaddr(struct sockaddr *sa, struct sockaddr *mask, int flags)
 	    {
 		struct sockaddr_in *sin = (struct sockaddr_in *)sa;
 
-		if ((sin->sin_addr.s_addr == INADDR_ANY) &&
-			mask &&
-			ntohl(((struct sockaddr_in *)mask)->sin_addr.s_addr)
-				==0L)
-				cp = "default" ;
+		if ((sin->sin_addr.s_addr == INADDR_ANY) && mask &&
+		    ntohl(((struct sockaddr_in *)mask)->sin_addr.s_addr) ==0L)
+			cp = "default" ;
 		else if (flags & RTF_HOST)
 			cp = routename(sin->sin_addr.s_addr);
 		else if (mask)
@@ -653,19 +652,19 @@ fmt_sockaddr(struct sockaddr *sa, struct sockaddr *mask, int flags)
 		 */
 		if (IN6_IS_ADDR_LINKLOCAL(in6) ||
 		    IN6_IS_ADDR_MC_LINKLOCAL(in6)) {
-		    /* XXX: override is ok? */
-		    sa6->sin6_scope_id = (u_int32_t)ntohs(*(u_short *)&in6->s6_addr[2]);
-		    *(u_short *)&in6->s6_addr[2] = 0;
+			/* XXX: override is ok? */
+			sa6->sin6_scope_id =
+			    (u_int32_t)ntohs(*(u_short *)&in6->s6_addr[2]);
+			*(u_short *)&in6->s6_addr[2] = 0;
 		}
 
 		if (flags & RTF_HOST)
-		    cp = routename6(sa6);
+			cp = routename6(sa6);
 		else if (mask)
-		    cp = netname6(sa6,
-				  &((struct sockaddr_in6 *)mask)->sin6_addr);
-		else {
-		    cp = netname6(sa6, NULL);
-		}
+			cp = netname6(sa6,
+			    &((struct sockaddr_in6 *)mask)->sin6_addr);
+		else
+			cp = netname6(sa6, NULL);
 		break;
 	    }
 #endif /*INET6*/
@@ -681,7 +680,7 @@ fmt_sockaddr(struct sockaddr *sa, struct sockaddr *mask, int flags)
 
 		if (sdl->sdl_nlen == 0 && sdl->sdl_alen == 0 &&
 		    sdl->sdl_slen == 0)
-			(void) sprintf(workbuf, "link#%d", sdl->sdl_index);
+			sprintf(workbuf, "link#%d", sdl->sdl_index);
 		else
 			switch (sdl->sdl_type) {
 
@@ -721,7 +720,7 @@ fmt_sockaddr(struct sockaddr *sa, struct sockaddr *mask, int flags)
 		while (s < slim && cq < cqlim) {
 			cq += sprintf(cq, " %02x", *s++);
 			if (s < slim)
-			    cq += sprintf(cq, "%02x", *s++);
+				cq += sprintf(cq, "%02x", *s++);
 		}
 		cp = workbuf;
 	    }
@@ -794,7 +793,7 @@ p_rtentry(struct rtentry *rt)
 		if (rt->rt_ifp != lastif) {
 			if (kget(rt->rt_ifp, ifnet) == 0)
 				strlcpy(prettyname, ifnet.if_xname,
-				    sizeof(prettyname));
+					sizeof(prettyname));
 			else
 				strlcpy(prettyname, "---", sizeof(prettyname));
 			lastif = rt->rt_ifp;
@@ -860,7 +859,7 @@ routename(u_long in)
 #define C(x)	((x) & 0xff)
 		in = ntohl(in);
 		sprintf(line, "%lu.%lu.%lu.%lu",
-		    C(in >> 24), C(in >> 16), C(in >> 8), C(in));
+			C(in >> 24), C(in >> 16), C(in >> 8), C(in));
 	}
 	return (line);
 }
@@ -882,7 +881,7 @@ forgemask(u_long a)
 static void
 domask(char *dst, u_long addr, u_long mask)
 {
-	int b, i;
+	int b, bb, i;
 
 	if (!mask || (forgemask(addr) == mask)) {
 		*dst = '\0';
@@ -891,8 +890,6 @@ domask(char *dst, u_long addr, u_long mask)
 	i = 0;
 	for (b = 0; b < 32; b++)
 		if (mask & (1 << b)) {
-			int bb;
-
 			i = b;
 			for (bb = b+1; bb < 32; bb++)
 				if (!(mask & (1 << bb))) {
@@ -974,35 +971,35 @@ netname6(struct sockaddr_in6 *sa6, struct in6_addr *mask)
 	if (mask) {
 		for (masklen = 0, lim = p + 16; p < lim; p++) {
 			switch (*p) {
-			 case 0xff:
-				 masklen += 8;
-				 break;
-			 case 0xfe:
-				 masklen += 7;
-				 break;
-			 case 0xfc:
-				 masklen += 6;
-				 break;
-			 case 0xf8:
-				 masklen += 5;
-				 break;
-			 case 0xf0:
-				 masklen += 4;
-				 break;
-			 case 0xe0:
-				 masklen += 3;
-				 break;
-			 case 0xc0:
-				 masklen += 2;
-				 break;
-			 case 0x80:
-				 masklen += 1;
-				 break;
-			 case 0x00:
-				 break;
-			 default:
-				 illegal ++;
-				 break;
+			case 0xff:
+				masklen += 8;
+				break;
+			case 0xfe:
+				masklen += 7;
+				break;
+			case 0xfc:
+				masklen += 6;
+				break;
+			case 0xf8:
+				masklen += 5;
+				break;
+			case 0xf0:
+				masklen += 4;
+				break;
+			case 0xe0:
+				masklen += 3;
+				break;
+			case 0xc0:
+				masklen += 2;
+				break;
+			case 0x80:
+				masklen += 1;
+				break;
+			case 0x00:
+				break;
+			default:
+				illegal ++;
+				break;
 			}
 		}
 		if (illegal)

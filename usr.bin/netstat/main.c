@@ -299,7 +299,7 @@ main(int argc, char **argv)
 			break;
 		case 'p':
 			if ((tp = name2protox(optarg)) == NULL) {
-				errx(1, 
+				errx(1,
 				     "%s: unknown or uninstrumented protocol",
 				     optarg);
 			}
@@ -479,7 +479,7 @@ printproto(struct protox *tp, const char *name, u_long ncpusaddr)
 					    tp->pr_name);
 				return;
 			}
-			off = tp->pr_usesysctl ? tp->pr_usesysctl 
+			off = tp->pr_usesysctl ? tp->pr_usesysctl
 				: nl[tp->pr_sindex].n_value;
 		}
 	} else {
@@ -509,7 +509,7 @@ kread(u_long addr, char *buf, int size)
 		kvmd = kvm_openfiles(nlistf, memf, NULL, O_RDONLY, buf);
 		if (kvmd != NULL) {
 			if (kvm_nlist(kvmd, nl) < 0) {
-				if(nlistf)
+				if (nlistf)
 					errx(1, "%s: kvm_nlist: %s", nlistf,
 					     kvm_geterr(kvmd));
 				else
@@ -517,14 +517,14 @@ kread(u_long addr, char *buf, int size)
 			}
 
 			if (nl[0].n_type == 0) {
-				if(nlistf)
+				if (nlistf)
 					errx(1, "%s: no namelist", nlistf);
 				else
 					errx(1, "no namelist");
 			}
 		} else {
 			warnx("kvm not available");
-			return(-1);
+			return (-1);
 		}
 	}
 	if (!buf)
