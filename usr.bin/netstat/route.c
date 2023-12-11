@@ -34,6 +34,7 @@
 #include <sys/kinfo.h>
 #include <sys/param.h>
 #include <sys/socket.h>
+#include <sys/sysctl.h>
 #include <sys/time.h>
 
 #include <net/ethernet.h>
@@ -48,18 +49,17 @@
 
 #include <netproto/mpls/mpls.h>
 
-#include <sys/sysctl.h>
-
 #include <arpa/inet.h>
+#include <err.h>
+#include <kinfo.h>
 #include <libutil.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <err.h>
 #include <time.h>
-#include <kinfo.h>
+#include <unistd.h>
+
 #include "netstat.h"
 
 #define kget(p, d) (kread((u_long)(p), (char *)&(d), sizeof (d)))
@@ -100,22 +100,16 @@ typedef union {
 	u_short	u_data[128];
 } sa_u;
 
-static sa_u pt_u;
-
-int	do_rtent = 0;
-struct	rtentry rtentry;
-struct	radix_node rnode;
-struct	radix_mask rmask;
-struct	radix_node_head *rt_tables[AF_MAX+1];
-
-int	NewTree = 0;
+static sa_u	pt_u;
+static int	NewTree = 0;
+static struct	radix_node_head *rt_tables[AF_MAX+1];
 
 static struct sockaddr *kgetsa (const struct sockaddr *);
 static void size_cols (int ef, struct radix_node *rn);
 static void size_cols_tree (struct radix_node *rn);
 static void size_cols_rtentry (struct rtentry *rt);
-static void p_tree (struct radix_node *);
-static void p_rtnode (void);
+static void p_tree (struct radix_node *, int);
+static void p_rtnode (struct radix_node *);
 static void ntreestuff (void);
 static void np_rtentry (struct rt_msghdr *);
 static void p_sockaddr (struct sockaddr *, struct sockaddr *, int, int);
@@ -162,14 +156,13 @@ routepr(u_long rtree)
 			if (i == AF_UNSPEC) {
 				if (Aflag && af == 0) {
 					printf("Netmasks:\n");
-					p_tree(head.rnh_treetop);
+					p_tree(head.rnh_treetop, 0);
 				}
 			} else if (af == AF_UNSPEC || af == i) {
 				size_cols(i, head.rnh_treetop);
 				pr_family(i);
-				do_rtent = 1;
 				pr_rthdr(i);
-				p_tree(head.rnh_treetop);
+				p_tree(head.rnh_treetop, 1);
 			}
 		}
 	}
@@ -260,6 +253,9 @@ size_cols(int ef, struct radix_node *rn)
 static void
 size_cols_tree(struct radix_node *rn)
 {
+	struct radix_node rnode;
+	struct rtentry rtentry;
+
 again:
 	if (kget(rn, rnode) != 0)
 		return;
@@ -271,7 +267,7 @@ again:
 				return;
 			size_cols_rtentry(&rtentry);
 		}
-		if ((rn = rnode.rn_dupedkey))
+		if ((rn = rnode.rn_dupedkey) != NULL)
 			goto again;
 	} else {
 		rn = rnode.rn_right;
@@ -344,9 +340,7 @@ size_cols_rtentry(struct rtentry *rt)
 			int expire_time;
 
 			clock_gettime(CLOCK_MONOTONIC, &sp);
-
 			expire_time = (int)(rt->rt_rmx.rmx_expire - sp.tv_sec);
-
 			if (expire_time > 0) {
 				snprintf(buffer, sizeof(buffer), "%d",
 					 (int)expire_time);
@@ -436,8 +430,10 @@ kgetsa(const struct sockaddr *dst)
 }
 
 static void
-p_tree(struct radix_node *rn)
+p_tree(struct radix_node *rn, int is_rtentry)
 {
+	struct radix_node rnode;
+	struct rtentry rtentry;
 
 again:
 	if (kget(rn, rnode) != 0)
@@ -451,56 +447,55 @@ again:
 			if (Aflag)
 				printf("(root node)%s",
 				       rnode.rn_dupedkey ? " =>\n" : "\n");
-		} else if (do_rtent) {
+		} else if (is_rtentry) {
 			if (kget(rn, rtentry) == 0) {
 				p_rtentry(&rtentry);
 				if (Aflag)
-					p_rtnode();
+					p_rtnode(&rnode);
 			}
 		} else {
 			p_sockaddr(kgetsa(constSA(rnode.rn_key)), NULL, 0, 44);
 			putchar('\n');
 		}
-		if ((rn = rnode.rn_dupedkey))
+		if ((rn = rnode.rn_dupedkey) != NULL)
 			goto again;
 	} else {
-		if (Aflag && do_rtent) {
+		if (Aflag && is_rtentry) {
 			printf("%-8.8lx ", (u_long)rn);
-			p_rtnode();
+			p_rtnode(&rnode);
 		}
 		rn = rnode.rn_right;
-		p_tree(rnode.rn_left);
-		p_tree(rn);
+		p_tree(rnode.rn_left, is_rtentry);
+		p_tree(rn, is_rtentry);
 	}
 }
 
-char	nbuf[20];
-
 static void
-p_rtnode(void)
+p_rtnode(struct radix_node *rnode)
 {
-	struct radix_mask *rm = rnode.rn_mklist;
+	struct radix_node rnode_aux;
+	struct radix_mask rmask, *rm = rnode->rn_mklist;
+	char nbuf[20];
 
-	if (rnode.rn_bit < 0) {
-		if (rnode.rn_mask) {
+	if (rnode->rn_bit < 0) {
+		if (rnode->rn_mask) {
 			printf("\t  mask ");
-			p_sockaddr(kgetsa(constSA(rnode.rn_mask)),
+			p_sockaddr(kgetsa(constSA(rnode->rn_mask)),
 				   NULL, 0, -1);
 		} else if (rm == NULL)
 			return;
 	} else {
-		sprintf(nbuf, "(%d)", rnode.rn_bit);
+		sprintf(nbuf, "(%d)", rnode->rn_bit);
 		printf("%6.6s %8.8lx : %8.8lx", nbuf,
-		       (u_long)rnode.rn_left, (u_long)rnode.rn_right);
+		       (u_long)rnode->rn_left, (u_long)rnode->rn_right);
 	}
-	while (rm) {
+	while (rm != NULL) {
 		if (kget(rm, rmask) != 0)
 			break;
 		sprintf(nbuf, " %d refs, ", rmask.rm_refs);
 		printf(" mk = %8.8lx {(%d),%s", (u_long)rm,
 		       -1 - rmask.rm_bit, rmask.rm_refs ? nbuf : " ");
 		if (rmask.rm_flags & RNF_NORMAL) {
-			struct radix_node rnode_aux;
 			printf(" <normal>, ");
 			if (kget(rmask.rm_leaf, rnode_aux) == 0)
 				p_sockaddr(kgetsa(constSA(rnode_aux.rn_mask)),
@@ -512,7 +507,7 @@ p_rtnode(void)
 				   NULL, 0, -1);
 		}
 		putchar('}');
-		if ((rm = rmask.rm_next))
+		if ((rm = rmask.rm_next) != NULL)
 			printf(" ->");
 	}
 	putchar('\n');
