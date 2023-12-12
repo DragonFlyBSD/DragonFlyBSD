@@ -425,7 +425,7 @@ main(int argc, char *argv[])
 				matchgroup = optarg;
 				break;
 			}
-			/* FALLTHROUGH (for ifgroup) */
+			/* FALLTHROUGH */
 		default:
 			for (p = opts; p != NULL; p = p->next)
 				if (p->opt[0] == c) {
