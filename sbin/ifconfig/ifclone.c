@@ -178,7 +178,7 @@ static struct cmd clone_cmds[] = {
 };
 
 static void
-clone_Copt_cb(const char *optarg __unused)
+clone_Copt_cb(const char *arg __unused)
 {
 	list_cloners();
 	exit(exit_code);

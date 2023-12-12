@@ -250,8 +250,6 @@ in6_status(int s __unused, const struct ifaddrs *ifa)
 		 * address.
 		 */
 		if (sin != NULL && sin->sin6_family == AF_INET6) {
-			int error;
-
 			/* XXX: embedded link local addr check */
 			if (IN6_IS_ADDR_LINKLOCAL(&sin->sin6_addr) &&
 			    *(u_short *)&sin->sin6_addr.s6_addr[2] != 0) {
@@ -488,15 +486,14 @@ in6_status_tunnel(int s)
 static void
 in6_set_tunnel(int s, struct addrinfo *srcres, struct addrinfo *dstres)
 {
-	struct in6_aliasreq in6_addreq;
+	struct in6_aliasreq addreq;
 
-	memset(&in6_addreq, 0, sizeof(in6_addreq));
-	strlcpy(in6_addreq.ifra_name, name, IFNAMSIZ);
-	memcpy(&in6_addreq.ifra_addr, srcres->ai_addr, srcres->ai_addr->sa_len);
-	memcpy(&in6_addreq.ifra_dstaddr, dstres->ai_addr,
-	    dstres->ai_addr->sa_len);
+	memset(&addreq, 0, sizeof(addreq));
+	strlcpy(addreq.ifra_name, name, sizeof(addreq.ifra_name));
+	memcpy(&addreq.ifra_addr, srcres->ai_addr, srcres->ai_addr->sa_len);
+	memcpy(&addreq.ifra_dstaddr, dstres->ai_addr, dstres->ai_addr->sa_len);
 
-	if (ioctl(s, SIOCSIFPHYADDR_IN6, &in6_addreq) < 0)
+	if (ioctl(s, SIOCSIFPHYADDR_IN6, &addreq) < 0)
 		warn("SIOCSIFPHYADDR_IN6");
 }
 
@@ -530,7 +527,7 @@ static struct afswtch af_inet6 = {
 };
 
 static void
-in6_Lopt_cb(const char *optarg __unused)
+in6_Lopt_cb(const char *arg __unused)
 {
 	ip6lifetime++;	/* print IPv6 address lifetime */
 }
