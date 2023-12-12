@@ -589,7 +589,7 @@ blocks.
 .It Va vfs.hammer2.cluster_write "(default 0)"
 Set the amount of write-behind clustering to perform in buffers.
 Each buffer represents 64KB.
-The default is 4 and higher values typically do not improve performance.
+The default is 0 and higher values typically do not improve performance.
 A value of 0 disables clustered writes.
 This variable applies to the underlying media device, not to logical
 file writes, so it should not interfere with temporary file optimization.
