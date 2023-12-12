@@ -65,10 +65,10 @@ carp_status(int s)
 	struct ifdrv ifd;
 	char devname[IFNAMSIZ];
 
-	memset((char *)&carpr, 0, sizeof(struct carpreq));
-	ifr.ifr_data = (caddr_t)&carpr;
+	memset(&carpr, 0, sizeof(struct carpreq));
+	ifr.ifr_data = &carpr;
 
-	if (ioctl(s, SIOCGVH, (caddr_t)&ifr) == -1)
+	if (ioctl(s, SIOCGVH, &ifr) == -1)
 		return;
 
 	if (carpr.carpr_vhid > 0) {
@@ -98,16 +98,16 @@ setcarp_passwd(const char *val, int d, int s, const struct afswtch *afp)
 {
 	struct carpreq carpr;
 
-	memset((char *)&carpr, 0, sizeof(struct carpreq));
-	ifr.ifr_data = (caddr_t)&carpr;
+	memset(&carpr, 0, sizeof(struct carpreq));
+	ifr.ifr_data = &carpr;
 
-	if (ioctl(s, SIOCGVH, (caddr_t)&ifr) == -1)
+	if (ioctl(s, SIOCGVH, &ifr) == -1)
 		err(1, "SIOCGVH");
 
 	/* XXX Should hash the password into the key here, perhaps? */
 	strlcpy(carpr.carpr_key, val, CARP_KEY_LEN);
 
-	if (ioctl(s, SIOCSVH, (caddr_t)&ifr) == -1)
+	if (ioctl(s, SIOCSVH, &ifr) == -1)
 		err(1, "SIOCSVH");
 }
 
@@ -122,15 +122,15 @@ setcarp_vhid(const char *val, int d, int s, const struct afswtch *afp)
 	if (vhid <= 0)
 		errx(1, "vhid must be greater than 0");
 
-	memset((char *)&carpr, 0, sizeof(struct carpreq));
-	ifr.ifr_data = (caddr_t)&carpr;
+	memset(&carpr, 0, sizeof(struct carpreq));
+	ifr.ifr_data = &carpr;
 
-	if (ioctl(s, SIOCGVH, (caddr_t)&ifr) == -1)
+	if (ioctl(s, SIOCGVH, &ifr) == -1)
 		err(1, "SIOCGVH");
 
 	carpr.carpr_vhid = vhid;
 
-	if (ioctl(s, SIOCSVH, (caddr_t)&ifr) == -1)
+	if (ioctl(s, SIOCSVH, &ifr) == -1)
 		err(1, "SIOCSVH");
 }
 
@@ -142,15 +142,15 @@ setcarp_advskew(const char *val, int d, int s, const struct afswtch *afp)
 
 	advskew = atoi(val);
 
-	memset((char *)&carpr, 0, sizeof(struct carpreq));
-	ifr.ifr_data = (caddr_t)&carpr;
+	memset(&carpr, 0, sizeof(struct carpreq));
+	ifr.ifr_data = &carpr;
 
-	if (ioctl(s, SIOCGVH, (caddr_t)&ifr) == -1)
+	if (ioctl(s, SIOCGVH, &ifr) == -1)
 		err(1, "SIOCGVH");
 
 	carpr.carpr_advskew = advskew;
 
-	if (ioctl(s, SIOCSVH, (caddr_t)&ifr) == -1)
+	if (ioctl(s, SIOCSVH, &ifr) == -1)
 		err(1, "SIOCSVH");
 }
 
@@ -162,15 +162,15 @@ setcarp_advbase(const char *val, int d, int s, const struct afswtch *afp)
 
 	advbase = atoi(val);
 
-	memset((char *)&carpr, 0, sizeof(struct carpreq));
-	ifr.ifr_data = (caddr_t)&carpr;
+	memset(&carpr, 0, sizeof(struct carpreq));
+	ifr.ifr_data = &carpr;
 
-	if (ioctl(s, SIOCGVH, (caddr_t)&ifr) == -1)
+	if (ioctl(s, SIOCGVH, &ifr) == -1)
 		err(1, "SIOCGVH");
 
 	carpr.carpr_advbase = advbase;
 
-	if (ioctl(s, SIOCSVH, (caddr_t)&ifr) == -1)
+	if (ioctl(s, SIOCSVH, &ifr) == -1)
 		err(1, "SIOCSVH");
 }
 

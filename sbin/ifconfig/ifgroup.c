@@ -56,7 +56,7 @@ setifgroup(const char *group_name, int d __unused, int s,
 
 	if (strlcpy(ifgr.ifgr_group, group_name, IFNAMSIZ) >= IFNAMSIZ)
 		errx(1, "setifgroup: group name too long");
-	if (ioctl(s, SIOCAIFGROUP, (caddr_t)&ifgr) == -1 && errno != EEXIST)
+	if (ioctl(s, SIOCAIFGROUP, &ifgr) == -1 && errno != EEXIST)
 		err(1," SIOCAIFGROUP");
 }
 
@@ -74,7 +74,7 @@ unsetifgroup(const char *group_name, int d __unused, int s,
 
 	if (strlcpy(ifgr.ifgr_group, group_name, IFNAMSIZ) >= IFNAMSIZ)
 		errx(1, "unsetifgroup: group name too long");
-	if (ioctl(s, SIOCDIFGROUP, (caddr_t)&ifgr) == -1 && errno != ENOENT)
+	if (ioctl(s, SIOCDIFGROUP, &ifgr) == -1 && errno != ENOENT)
 		err(1, "SIOCDIFGROUP");
 }
 
@@ -88,7 +88,7 @@ getifgroups(int s)
 	memset(&ifgr, 0, sizeof(ifgr));
 	strlcpy(ifgr.ifgr_name, name, IFNAMSIZ);
 
-	if (ioctl(s, SIOCGIFGROUP, (caddr_t)&ifgr) == -1) {
+	if (ioctl(s, SIOCGIFGROUP, &ifgr) == -1) {
 		if (errno == EINVAL || errno == ENOTTY)
 			return;
 		else
@@ -100,7 +100,7 @@ getifgroups(int s)
 				  sizeof(struct ifg_req));
 	if (ifgr.ifgr_groups == NULL)
 		err(1, "getifgroups");
-	if (ioctl(s, SIOCGIFGROUP, (caddr_t)&ifgr) == -1)
+	if (ioctl(s, SIOCGIFGROUP, &ifgr) == -1)
 		err(1, "SIOCGIFGROUP");
 
 	cnt = 0;
@@ -134,7 +134,7 @@ printgroup(const char *groupname)
 
 	memset(&ifgr, 0, sizeof(ifgr));
 	strlcpy(ifgr.ifgr_name, groupname, sizeof(ifgr.ifgr_name));
-	if (ioctl(s, SIOCGIFGMEMB, (caddr_t)&ifgr) == -1) {
+	if (ioctl(s, SIOCGIFGMEMB, &ifgr) == -1) {
 		if (errno == EINVAL || errno == ENOTTY ||
 		    errno == ENOENT)
 			exit(exit_code);
@@ -145,7 +145,7 @@ printgroup(const char *groupname)
 	len = ifgr.ifgr_len;
 	if ((ifgr.ifgr_groups = calloc(1, len)) == NULL)
 		err(1, "printgroup");
-	if (ioctl(s, SIOCGIFGMEMB, (caddr_t)&ifgr) == -1)
+	if (ioctl(s, SIOCGIFGMEMB, &ifgr) == -1)
 		err(1, "SIOCGIFGMEMB");
 
 	for (ifg = ifgr.ifgr_groups;

@@ -462,7 +462,7 @@ in6_status_tunnel(int s)
 	memset(&in6_ifr, 0, sizeof(in6_ifr));
 	strlcpy(in6_ifr.ifr_name, name, IFNAMSIZ);
 
-	if (ioctl(s, SIOCGIFPSRCADDR_IN6, (caddr_t)&in6_ifr) < 0)
+	if (ioctl(s, SIOCGIFPSRCADDR_IN6, &in6_ifr) < 0)
 		return;
 	if (sa->sa_family != AF_INET6)
 		return;
@@ -471,7 +471,7 @@ in6_status_tunnel(int s)
 	    NI_NUMERICHOST) != 0)
 		src[0] = '\0';
 
-	if (ioctl(s, SIOCGIFPDSTADDR_IN6, (caddr_t)&in6_ifr) < 0)
+	if (ioctl(s, SIOCGIFPDSTADDR_IN6, &in6_ifr) < 0)
 		return;
 	if (sa->sa_family != AF_INET6)
 		return;

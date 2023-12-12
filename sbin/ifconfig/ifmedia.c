@@ -111,9 +111,9 @@ media_status(int s)
 	/*
 	 * Check if interface supports extended media types.
 	 */
-	if (ioctl(s, SIOCGIFXMEDIA, (caddr_t)&ifmr) < 0)
+	if (ioctl(s, SIOCGIFXMEDIA, &ifmr) < 0)
 		xmedia = 0;
-	if (xmedia == 0 && ioctl(s, SIOCGIFMEDIA, (caddr_t)&ifmr) < 0) {
+	if (xmedia == 0 && ioctl(s, SIOCGIFMEDIA, &ifmr) < 0) {
 		/*
 		 * Interface doesn't support SIOC{G,S}IFMEDIA.
 		 */
@@ -131,10 +131,10 @@ media_status(int s)
 	ifmr.ifm_ulist = media_list;
 
 	if (xmedia) {
-		if (ioctl(s, SIOCGIFXMEDIA, (caddr_t)&ifmr) < 0)
+		if (ioctl(s, SIOCGIFXMEDIA, &ifmr) < 0)
 			err(1, "SIOCGIFXMEDIA");
 	} else {
-		if (ioctl(s, SIOCGIFMEDIA, (caddr_t)&ifmr) < 0)
+		if (ioctl(s, SIOCGIFMEDIA, &ifmr) < 0)
 			err(1, "SIOCGIFMEDIA");
 	}
 
@@ -203,7 +203,7 @@ ifmedia_getstate(int s)
 	int xmedia = 1;
 
 	if (ifmr == NULL) {
-		ifmr = (struct ifmediareq *)malloc(sizeof(struct ifmediareq));
+		ifmr = malloc(sizeof(struct ifmediareq));
 		if (ifmr == NULL)
 			err(1, "malloc");
 
@@ -219,24 +219,24 @@ ifmedia_getstate(int s)
 		 * the current media type and the top-level type.
 		 */
 
-		if (ioctl(s, SIOCGIFXMEDIA, (caddr_t)ifmr) < 0)
+		if (ioctl(s, SIOCGIFXMEDIA, ifmr) < 0)
 			xmedia = 0;
-		if (xmedia == 0 && ioctl(s, SIOCGIFMEDIA, (caddr_t)ifmr) < 0)
+		if (xmedia == 0 && ioctl(s, SIOCGIFMEDIA, ifmr) < 0)
 			err(1, "SIOCGIFMEDIA");
 
 		if (ifmr->ifm_count == 0)
 			errx(1, "%s: no media types?", name);
 
-		mwords = (int *)malloc(ifmr->ifm_count * sizeof(int));
+		mwords = malloc(ifmr->ifm_count * sizeof(int));
 		if (mwords == NULL)
 			err(1, "malloc");
 
 		ifmr->ifm_ulist = mwords;
 		if (xmedia) {
-			if (ioctl(s, SIOCGIFXMEDIA, (caddr_t)ifmr) < 0)
+			if (ioctl(s, SIOCGIFXMEDIA, ifmr) < 0)
 				err(1, "SIOCGIFXMEDIA");
 		} else {
-			if (ioctl(s, SIOCGIFMEDIA, (caddr_t)ifmr) < 0)
+			if (ioctl(s, SIOCGIFMEDIA, ifmr) < 0)
 				err(1, "SIOCGIFMEDIA");
 		}
 	}
@@ -247,12 +247,12 @@ ifmedia_getstate(int s)
 static void
 setifmediacallback(int s, void *arg)
 {
-	struct ifmediareq *ifmr = (struct ifmediareq *)arg;
+	struct ifmediareq *ifmr = arg;
 	static int did_it = 0;
 
 	if (!did_it) {
 		ifr.ifr_media = ifmr->ifm_current;
-		if (ioctl(s, SIOCSIFMEDIA, (caddr_t)&ifr) < 0)
+		if (ioctl(s, SIOCSIFMEDIA, &ifr) < 0)
 			err(1, "SIOCSIFMEDIA (media)");
 		free(ifmr->ifm_ulist);
 		free(ifmr);
@@ -288,7 +288,7 @@ setmedia(const char *val, int d, int s, const struct afswtch *afp)
 	}
 
 	ifmr->ifm_current = ifr.ifr_media;
-	callback_register(setifmediacallback, (void *)ifmr);
+	callback_register(setifmediacallback, ifmr);
 }
 
 static void
@@ -323,7 +323,7 @@ domediaopt(const char *val, int clear, int s)
 		ifr.ifr_media |= options;
 
 	ifmr->ifm_current = ifr.ifr_media;
-	callback_register(setifmediacallback, (void *)ifmr);
+	callback_register(setifmediacallback, ifmr);
 }
 
 
@@ -341,7 +341,7 @@ setmediamode(const char *val, int d, int s, const struct afswtch *afp)
 	ifr.ifr_media = (ifmr->ifm_current & ~IFM_MMASK) | mode;
 
 	ifmr->ifm_current = ifr.ifr_media;
-	callback_register(setifmediacallback, (void *)ifmr);
+	callback_register(setifmediacallback, ifmr);
 }
 
 /**********************************************************************

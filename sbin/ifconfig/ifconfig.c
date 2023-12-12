@@ -638,7 +638,7 @@ group_member(const char *ifname, const char *match, const char *nomatch)
 	}
 
 	/* Determine amount of memory for the list of groups. */
-	if (ioctl(sock, SIOCGIFGROUP, (caddr_t)&ifgr) == -1) {
+	if (ioctl(sock, SIOCGIFGROUP, &ifgr) == -1) {
 		if (errno == EINVAL || errno == ENOTTY)
 			return (false);
 		else
@@ -647,11 +647,10 @@ group_member(const char *ifname, const char *match, const char *nomatch)
 
 	/* Obtain the list of groups. */
 	len = ifgr.ifgr_len;
-	ifgr.ifgr_groups =
-		(struct ifg_req *)calloc(len / sizeof(*ifg), sizeof(*ifg));
+	ifgr.ifgr_groups = calloc(len / sizeof(*ifg), sizeof(*ifg));
 	if (ifgr.ifgr_groups == NULL)
 		errx(1, "%s: no memory", __func__);
-	if (ioctl(sock, SIOCGIFGROUP, (caddr_t)&ifgr) == -1)
+	if (ioctl(sock, SIOCGIFGROUP, &ifgr) == -1)
 		errx(1, "%s: SIOCGIFGROUP", __func__);
 
 	/* Perform matching. */
@@ -1018,8 +1017,7 @@ notealias(const char *addr, int param, int s, const struct afswtch *afp)
 #define rqtosa(x) (&(((struct ifreq *)(afp->x))->ifr_addr))
 	if (setaddr && doalias == 0 && param < 0)
 		if (afp->af_addreq != NULL && afp->af_ridreq != NULL)
-			bcopy((caddr_t)rqtosa(af_addreq),
-			      (caddr_t)rqtosa(af_ridreq),
+			bcopy(rqtosa(af_addreq), rqtosa(af_ridreq),
 			      rqtosa(af_addreq)->sa_len);
 	doalias = param;
 	if (param < 0) {
@@ -1055,7 +1053,7 @@ getifflags(const char *ifname, int us)
 			err(1, "socket(family AF_LOCAL,SOCK_DGRAM)");
 	}
 
-	if (ioctl(s, SIOCGIFFLAGS, (caddr_t)&my_ifr) < 0)
+	if (ioctl(s, SIOCGIFFLAGS, &my_ifr) < 0)
 		Perror("ioctl (SIOCGIFFLAGS)");
 
 	if (us < 0)
@@ -1082,7 +1080,8 @@ setifflags(const char *vname, int value, int s, const struct afswtch *afp)
 	strlcpy(my_ifr.ifr_name, name, sizeof(my_ifr.ifr_name));
 	my_ifr.ifr_flags = flags & 0xffff;
 	my_ifr.ifr_flagshigh = flags >> 16;
-	if (ioctl(s, SIOCSIFFLAGS, (caddr_t)&my_ifr) < 0)
+
+	if (ioctl(s, SIOCSIFFLAGS, &my_ifr) < 0)
 		Perror(vname);
 }
 
@@ -1091,7 +1090,7 @@ setifcap(const char *vname, int value, int s, const struct afswtch *afp)
 {
 	int flags;
 
-	if (ioctl(s, SIOCGIFCAP, (caddr_t)&ifr) < 0)
+	if (ioctl(s, SIOCGIFCAP, &ifr) < 0)
 		Perror("ioctl (SIOCGIFCAP)");
 
 	flags = ifr.ifr_curcap;
@@ -1102,7 +1101,7 @@ setifcap(const char *vname, int value, int s, const struct afswtch *afp)
 		flags |= value;
 	}
 	ifr.ifr_reqcap = flags;
-	if (ioctl(s, SIOCSIFCAP, (caddr_t)&ifr) < 0)
+	if (ioctl(s, SIOCSIFCAP, &ifr) < 0)
 		Perror(vname);
 }
 
@@ -1112,7 +1111,7 @@ setifmetric(const char *val, int dummy __unused, int s,
 {
 	strlcpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
 	ifr.ifr_metric = atoi(val);
-	if (ioctl(s, SIOCSIFMETRIC, (caddr_t)&ifr) < 0)
+	if (ioctl(s, SIOCSIFMETRIC, &ifr) < 0)
 		err(1, "ioctl SIOCSIFMETRIC (set metric)");
 }
 
@@ -1122,7 +1121,7 @@ setifmtu(const char *val, int dummy __unused, int s,
 {
 	strlcpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
 	ifr.ifr_mtu = atoi(val);
-	if (ioctl(s, SIOCSIFMTU, (caddr_t)&ifr) < 0)
+	if (ioctl(s, SIOCSIFMTU, &ifr) < 0)
 		err(1, "ioctl SIOCSIFMTU (set mtu)");
 }
 
@@ -1132,7 +1131,7 @@ setiftsolen(const char *val, int dummy __unused, int s,
 {
 	strlcpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
 	ifr.ifr_tsolen = atoi(val);
-	if (ioctl(s, SIOCSIFTSOLEN, (caddr_t)&ifr) < 0)
+	if (ioctl(s, SIOCSIFTSOLEN, &ifr) < 0)
 		err(1, "ioctl SIOCSIFTSOLEN (set tsolen)");
 }
 
@@ -1148,7 +1147,7 @@ setifname(const char *val, int dummy __unused, int s,
 	if (newname == NULL)
 		err(1, "no memory to set ifname");
 	ifr.ifr_data = newname;
-	if (ioctl(s, SIOCSIFNAME, (caddr_t)&ifr) < 0) {
+	if (ioctl(s, SIOCSIFNAME, &ifr) < 0) {
 		free(newname);
 		err(1, "ioctl SIOCSIFNAME (set name)");
 	}
@@ -1184,7 +1183,7 @@ setifdescr(const char *val, int dummy __unused, int s,
 		}
 	}
 
-	if (ioctl(s, SIOCSIFDESCR, (caddr_t)&ifr) < 0)
+	if (ioctl(s, SIOCSIFDESCR, &ifr) < 0)
 		warn("ioctl (set descr)");
 
 	free(newdescr);
@@ -1262,7 +1261,7 @@ status(const struct afswtch *afp, const struct sockaddr_dl *sdl,
 		break;
 	}
 
-	if (ioctl(s, SIOCGIFCAP, (caddr_t)&ifr) == 0) {
+	if (ioctl(s, SIOCGIFCAP, &ifr) == 0) {
 		if (ifr.ifr_curcap != 0) {
 			printb("\toptions", ifr.ifr_curcap, IFCAPBITS);
 			putchar('\n');
@@ -1271,8 +1270,7 @@ status(const struct afswtch *afp, const struct sockaddr_dl *sdl,
 			printb("\tcapabilities", ifr.ifr_reqcap, IFCAPBITS);
 			putchar('\n');
 			if (ifr.ifr_reqcap & IFCAP_TSO) {
-				if (ioctl(s, SIOCGIFTSOLEN,
-				    (caddr_t)&ifr) == 0) {
+				if (ioctl(s, SIOCGIFTSOLEN, &ifr) == 0) {
 					printf("\ttsolen %d", ifr.ifr_tsolen);
 					putchar('\n');
 				}

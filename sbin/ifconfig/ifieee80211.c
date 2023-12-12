@@ -4226,7 +4226,7 @@ get80211opmode(int s)
 	memset(&ifmr, 0, sizeof(ifmr));
 	strlcpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
 
-	if (ioctl(s, SIOCGIFMEDIA, (caddr_t)&ifmr) >= 0) {
+	if (ioctl(s, SIOCGIFMEDIA, &ifmr) >= 0) {
 		if (ifmr.ifm_current & IFM_IEEE80211_ADHOC) {
 			if (ifmr.ifm_current & IFM_FLAG0)
 				return IEEE80211_M_AHDEMO;
@@ -5189,7 +5189,7 @@ wlan_create(int s, struct ifreq *ifr)
 	if (params.icp_opmode == IEEE80211_M_WDS &&
 	    memcmp(params.icp_bssid, zerobssid, sizeof(zerobssid)) == 0)
 		errx(1, "no bssid specified for WDS (use wlanbssid)");
-	ifr->ifr_data = (caddr_t) &params;
+	ifr->ifr_data = &params;
 	if (ioctl(s, SIOCIFCREATE2, ifr) < 0)
 		err(1, "SIOCIFCREATE2");
 }

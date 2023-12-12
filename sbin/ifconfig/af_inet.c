@@ -154,7 +154,7 @@ in_getaddr(const char *s, int which)
 	if (inet_aton(s, &sin->sin_addr))
 		return;
 	if ((hp = gethostbyname(s)) != NULL)
-		bcopy(hp->h_addr, (char *)&sin->sin_addr,
+		bcopy(hp->h_addr, &sin->sin_addr,
 		      MIN((size_t)hp->h_length, sizeof(sin->sin_addr)));
 	else if ((np = getnetbyname(s)) != NULL)
 		sin->sin_addr = inet_makeaddr(np->n_net, INADDR_ANY);
@@ -173,14 +173,14 @@ in_status_tunnel(int s)
 	memset(&ifr, 0, sizeof(ifr));
 	strlcpy(ifr.ifr_name, name, IFNAMSIZ);
 
-	if (ioctl(s, SIOCGIFPSRCADDR, (caddr_t)&ifr) < 0)
+	if (ioctl(s, SIOCGIFPSRCADDR, &ifr) < 0)
 		return;
 	if (sa->sa_family != AF_INET)
 		return;
 	if (getnameinfo(sa, sa->sa_len, src, sizeof(src), 0, 0, NI_NUMERICHOST) != 0)
 		src[0] = '\0';
 
-	if (ioctl(s, SIOCGIFPDSTADDR, (caddr_t)&ifr) < 0)
+	if (ioctl(s, SIOCGIFPDSTADDR, &ifr) < 0)
 		return;
 	if (sa->sa_family != AF_INET)
 		return;
