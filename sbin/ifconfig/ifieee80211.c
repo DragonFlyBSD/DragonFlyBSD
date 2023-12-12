@@ -209,7 +209,7 @@ getchaninfo(int s)
 	if (chaninfo == NULL)
 		errx(1, "no space for channel list");
 	if (get80211(s, IEEE80211_IOC_CHANINFO, chaninfo,
-	    IEEE80211_CHANINFO_SIZE(MAXCHAN)) < 0)
+		     IEEE80211_CHANINFO_SIZE(MAXCHAN)) < 0)
 		err(1, "unable to get channel information");
 	ifmr = ifmedia_getstate(s);
 	gethtconf(s);
@@ -605,8 +605,8 @@ static void
 set80211stationname(const char *val, int d __unused, int s,
 		    const struct afswtch *rafp __unused)
 {
-	int			len;
-	u_int8_t		data[33];
+	int		len;
+	u_int8_t	data[33];
 
 	bzero(data, sizeof(data));
 	len = sizeof(data);
@@ -835,12 +835,9 @@ static void
 set80211powersave(const char *val __unused, int d, int s,
 		  const struct afswtch *rafp __unused)
 {
-	if (d == 0)
-		set80211(s, IEEE80211_IOC_POWERSAVE, IEEE80211_POWERSAVE_OFF,
-		    0, NULL);
-	else
-		set80211(s, IEEE80211_IOC_POWERSAVE, IEEE80211_POWERSAVE_ON,
-		    0, NULL);
+	set80211(s, IEEE80211_IOC_POWERSAVE,
+		 (d == 0 ? IEEE80211_POWERSAVE_OFF : IEEE80211_POWERSAVE_ON),
+		 0, NULL);
 }
 
 static void
@@ -886,10 +883,9 @@ static void
 set80211weptxkey(const char *val, int d __unused, int s,
 		 const struct afswtch *rafp __unused)
 {
-	if (isundefarg(val))
-		set80211(s, IEEE80211_IOC_WEPTXKEY, IEEE80211_KEYIX_NONE, 0, NULL);
-	else
-		set80211(s, IEEE80211_IOC_WEPTXKEY, atoi(val)-1, 0, NULL);
+	set80211(s, IEEE80211_IOC_WEPTXKEY,
+		 (isundefarg(val) ? IEEE80211_KEYIX_NONE : atoi(val)-1),
+		 0, NULL);
 }
 
 static void
@@ -961,7 +957,8 @@ set80211rtsthreshold(const char *val, int d __unused, int s,
 		     const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_RTSTHRESHOLD,
-		isundefarg(val) ? IEEE80211_RTS_MAX : atoi(val), 0, NULL);
+		 (isundefarg(val) ? IEEE80211_RTS_MAX : atoi(val)),
+		 0, NULL);
 }
 
 static void
@@ -1224,7 +1221,7 @@ set80211bsscwmin(const char *ac, const char *val, int s,
 		 const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME_CWMIN, atoi(val),
-		getac(ac)|IEEE80211_WMEPARAM_BSS, NULL);
+		 getac(ac)|IEEE80211_WMEPARAM_BSS, NULL);
 }
 
 static void
@@ -1232,7 +1229,7 @@ set80211bsscwmax(const char *ac, const char *val, int s,
 		 const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME_CWMAX, atoi(val),
-		getac(ac)|IEEE80211_WMEPARAM_BSS, NULL);
+		 getac(ac)|IEEE80211_WMEPARAM_BSS, NULL);
 }
 
 static void
@@ -1240,7 +1237,7 @@ set80211bssaifs(const char *ac, const char *val, int s,
 		const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME_AIFS, atoi(val),
-		getac(ac)|IEEE80211_WMEPARAM_BSS, NULL);
+		 getac(ac)|IEEE80211_WMEPARAM_BSS, NULL);
 }
 
 static void
@@ -1248,7 +1245,7 @@ set80211bsstxoplimit(const char *ac, const char *val, int s,
 		     const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME_TXOPLIMIT, atoi(val),
-		getac(ac)|IEEE80211_WMEPARAM_BSS, NULL);
+		 getac(ac)|IEEE80211_WMEPARAM_BSS, NULL);
 }
 
 static void
@@ -1649,7 +1646,7 @@ static void
 set80211ucastrate(const char *val, int d __unused, int s,
 		  const struct afswtch *afp __unused)
 {
-	int flags;
+	int rate, flags;
 
 	gettxparams(s);
 	flags = getmodeflags(val);
@@ -1662,7 +1659,7 @@ set80211ucastrate(const char *val, int d __unused, int s,
 			_APPLY(flags, txparams, ucastrate,
 			    IEEE80211_FIXED_RATE_NONE);
 	} else {
-		int rate = getrate(val, "ucast");
+		rate = getrate(val, "ucast");
 		if (flags == 0) {	/* NB: no flags => current channel */
 			flags = getcurchan(s)->ic_flags;
 			_APPLY_RATE1(flags, txparams, ucastrate, rate);
@@ -1695,7 +1692,8 @@ set80211fragthreshold(const char *val, int d __unused, int s,
 		      const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_FRAGTHRESHOLD,
-		isundefarg(val) ? IEEE80211_FRAG_MAX : atoi(val), 0, NULL);
+		 isundefarg(val) ? IEEE80211_FRAG_MAX : atoi(val),
+		 0, NULL);
 }
 
 static void
@@ -1703,7 +1701,8 @@ set80211bmissthreshold(const char *val, int d __unused, int s,
 		       const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_BMISSTHRESHOLD,
-		isundefarg(val) ? IEEE80211_HWBMISS_MAX : atoi(val), 0, NULL);
+		 isundefarg(val) ? IEEE80211_HWBMISS_MAX : atoi(val),
+		 0, NULL);
 }
 
 static void
@@ -1732,8 +1731,8 @@ set80211shortgi(const char *val __unused, int d, int s,
 		const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_SHORTGI,
-		d ? (IEEE80211_HTCAP_SHORTGI20 | IEEE80211_HTCAP_SHORTGI40) : 0,
-		0, NULL);
+		 d ? (IEEE80211_HTCAP_SHORTGI20 | IEEE80211_HTCAP_SHORTGI40) : 0,
+		 0, NULL);
 }
 
 static void
@@ -5177,7 +5176,7 @@ get80211val(int s, int type, int *val)
 static void
 set80211(int s, int type, int val, int len, void *data)
 {
-	struct ieee80211req	ireq;
+	struct ieee80211req ireq;
 
 	memset(&ireq, 0, sizeof(ireq));
 	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));

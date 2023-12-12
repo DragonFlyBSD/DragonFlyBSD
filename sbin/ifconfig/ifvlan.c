@@ -68,9 +68,8 @@ vlan_status(int s)
 	if (ioctl(s, SIOCGETVLAN, &ifr) == -1)
 		return;
 
-	printf("\tvlan: %d parent interface: %s\n",
-	    vreq.vlr_tag, vreq.vlr_parent[0] == '\0' ?
-	    "<none>" : vreq.vlr_parent);
+	printf("\tvlan: %d parent interface: %s\n", vreq.vlr_tag,
+	       vreq.vlr_parent[0] == '\0' ? "<none>" : vreq.vlr_parent);
 }
 
 static void
@@ -108,6 +107,7 @@ unsetvlandev(const char *val, int d __unused, int s,
 
 	bzero(&__vreq, sizeof(__vreq));
 	ifr.ifr_data = &__vreq;
+
 #if 0	/* this code will be of use when we can alter vlan or vlandev only */
 	if (ioctl(s, SIOCGETVLAN, &ifr) == -1)
 		err(1, "SIOCGETVLAN");
@@ -115,6 +115,7 @@ unsetvlandev(const char *val, int d __unused, int s,
 	bzero(&__vreq.vlr_parent, sizeof(__vreq.vlr_parent));
 	__vreq.vlr_tag = 0; /* XXX clear parent only (no kernel support now) */
 #endif
+
 	if (ioctl(s, SIOCSETVLAN, &ifr) == -1)
 		err(1, "SIOCSETVLAN");
 	__have_dev = __have_tag = 0;
@@ -157,6 +158,7 @@ vlan_ctor(void)
 
 	for (i = 0; i < nitems(vlan_cmds);  i++)
 		cmd_register(&vlan_cmds[i]);
+
 	af_register(&af_vlan);
 	callback_register(vlan_cb, NULL);
 }

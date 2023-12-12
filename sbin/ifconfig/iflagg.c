@@ -94,7 +94,6 @@ setlagghash(const char *val, int d __unused, int s,
 	struct lagg_reqflags rf;
 	char *str, *tmp, *tok;
 
-
 	rf.rf_flags = 0;
 	str = tmp = strdup(val);
 	while ((tok = strsep(&tmp, ",")) != NULL) {
@@ -248,5 +247,6 @@ lagg_ctor(void)
 
 	for (i = 0; i < nitems(lagg_cmds);  i++)
 		cmd_register(&lagg_cmds[i]);
+
 	af_register(&af_lagg);
 }

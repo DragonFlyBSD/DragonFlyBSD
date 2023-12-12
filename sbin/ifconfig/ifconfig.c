@@ -647,7 +647,7 @@ group_member(const char *ifname, const char *match, const char *nomatch)
 
 	/* Obtain the list of groups. */
 	len = ifgr.ifgr_len;
-	ifgr.ifgr_groups = calloc(len / sizeof(*ifg), sizeof(*ifg));
+	ifgr.ifgr_groups = calloc(1, len);
 	if (ifgr.ifgr_groups == NULL)
 		errx(1, "%s: no memory", __func__);
 	if (ioctl(sock, SIOCGIFGROUP, &ifgr) == -1)
@@ -800,6 +800,7 @@ ifconfig(int argc, char *const *argv, int iscreate,
 	 const struct afswtch *uafp)
 {
 	const struct afswtch *afp, *nafp;
+	const struct cmd *p;
 	struct callback *cb;
 	int s;
 
@@ -816,10 +817,7 @@ top:
 		err(1, "socket(family %u,SOCK_DGRAM)", ifr.ifr_addr.sa_family);
 
 	while (argc > 0) {
-		const struct cmd *p;
-
 		p = cmd_lookup(*argv, iscreate);
-
 		if (iscreate && p == NULL) {
 			/*
 			 * Push the clone create callback so the new
@@ -853,9 +851,8 @@ top:
 					goto top;
 				}
 			}
-			/*
-			 * Look for a normal parameter.
-			 */
+
+			/* Look for a normal parameter. */
 			continue;
 		}
 		if (p == NULL) {
@@ -910,11 +907,9 @@ top:
 		}
 	}
 	if (clearaddr) {
-		int ret;
 		strlcpy(afp->af_ridreq, name, sizeof ifr.ifr_name);
-		ret = ioctl(s, afp->af_difaddr, afp->af_ridreq);
-		if (ret < 0) {
-			if (errno == EADDRNOTAVAIL && (doalias >= 0)) {
+		if (ioctl(s, afp->af_difaddr, afp->af_ridreq) < 0) {
+			if (errno == EADDRNOTAVAIL && doalias >= 0) {
 				/* means no previous address for interface */
 			} else
 				Perror("ioctl (SIOCDIFADDR)");
@@ -1167,7 +1162,7 @@ setifpollcpu(const char *val __unused, int dummy __unused, int s,
 
 static void
 setifdescr(const char *val, int dummy __unused, int s,
-    const struct afswtch *afp __unused)
+	   const struct afswtch *afp __unused)
 {
 	char *newdescr;
 
@@ -1321,7 +1316,6 @@ status(const struct afswtch *afp, const struct sockaddr_dl *sdl __unused,
 		printf("%s", ifs.ascii);
 
 	close(s);
-	return;
 }
 
 static void
@@ -1334,15 +1328,12 @@ void
 Perror(const char *cmd)
 {
 	switch (errno) {
-
 	case ENXIO:
 		errx(1, "%s: no such interface", cmd);
 		break;
-
 	case EPERM:
 		errx(1, "%s: permission denied", cmd);
 		break;
-
 	default:
 		err(1, "%s", cmd);
 	}

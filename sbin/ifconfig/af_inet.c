@@ -135,19 +135,20 @@ in_getaddr(const char *s, int which)
 	if (which == ADDR) {
 		char *p = NULL;
 
-		if((p = strrchr(s, '/')) != NULL) {
+		if ((p = strrchr(s, '/')) != NULL) {
 			/* address is `name/masklen' */
-			int masklen;
-			int ret;
+			int masklen, ret;
 			struct sockaddr_in *min = sintab[MASK];
+
 			*p = '\0';
 			ret = sscanf(p+1, "%u", &masklen);
-			if(ret != 1 || (masklen < 0 || masklen > 32)) {
+			if (ret != 1 || (masklen < 0 || masklen > 32)) {
 				*p = '/';
 				errx(1, "%s: bad value", s);
 			}
 			min->sin_len = sizeof(*min);
-			min->sin_addr.s_addr = htonl(rounddown2(0xffffffff, 1LL << (32 - masklen)));
+			min->sin_addr.s_addr =
+			    htonl(rounddown2(0xffffffff, 1LL << (32 - masklen)));
 		}
 	}
 
@@ -177,14 +178,16 @@ in_status_tunnel(int s)
 		return;
 	if (sa->sa_family != AF_INET)
 		return;
-	if (getnameinfo(sa, sa->sa_len, src, sizeof(src), 0, 0, NI_NUMERICHOST) != 0)
+	if (getnameinfo(sa, sa->sa_len, src, sizeof(src), 0, 0,
+			NI_NUMERICHOST) != 0)
 		src[0] = '\0';
 
 	if (ioctl(s, SIOCGIFPDSTADDR, &ifr) < 0)
 		return;
 	if (sa->sa_family != AF_INET)
 		return;
-	if (getnameinfo(sa, sa->sa_len, dst, sizeof(dst), 0, 0, NI_NUMERICHOST) != 0)
+	if (getnameinfo(sa, sa->sa_len, dst, sizeof(dst), 0, 0,
+			NI_NUMERICHOST) != 0)
 		dst[0] = '\0';
 
 	printf("\ttunnel inet %s --> %s\n", src, dst);

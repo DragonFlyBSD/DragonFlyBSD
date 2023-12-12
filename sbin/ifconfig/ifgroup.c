@@ -96,8 +96,7 @@ getifgroups(int s)
 	}
 
 	len = ifgr.ifgr_len;
-	ifgr.ifgr_groups = calloc(len / sizeof(struct ifg_req),
-				  sizeof(struct ifg_req));
+	ifgr.ifgr_groups = calloc(1, len);
 	if (ifgr.ifgr_groups == NULL)
 		err(1, "getifgroups");
 	if (ioctl(s, SIOCGIFGROUP, &ifgr) == -1)
@@ -135,8 +134,7 @@ printgroup(const char *groupname)
 	memset(&ifgr, 0, sizeof(ifgr));
 	strlcpy(ifgr.ifgr_name, groupname, sizeof(ifgr.ifgr_name));
 	if (ioctl(s, SIOCGIFGMEMB, &ifgr) == -1) {
-		if (errno == EINVAL || errno == ENOTTY ||
-		    errno == ENOENT)
+		if (errno == EINVAL || errno == ENOTTY || errno == ENOENT)
 			exit(exit_code);
 		else
 			err(1, "SIOCGIFGMEMB");
@@ -179,6 +177,7 @@ group_ctor(void)
 
 	for (i = 0; i < nitems(group_cmds);  i++)
 		cmd_register(&group_cmds[i]);
+
 	af_register(&af_group);
 	opt_register(&group_gopt);
 }

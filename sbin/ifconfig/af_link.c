@@ -75,9 +75,9 @@ link_status(int s __unused, const struct ifaddrs *ifa)
 static void
 link_getaddr(const char *addr, int which)
 {
-	char *temp;
 	struct sockaddr_dl sdl;
 	struct sockaddr *sa = &link_ridreq.ifr_addr;
+	char *temp;
 
 	if (which != ADDR)
 		errx(1, "can't set link-level netmask or broadcast");

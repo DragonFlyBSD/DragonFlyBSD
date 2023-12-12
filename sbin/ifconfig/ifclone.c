@@ -130,7 +130,7 @@ ifclonecreate(int s, __unused void *arg)
 		/* Try to find a default callback */
 		SLIST_FOREACH(dcp, &clone_defcbh, next) {
 			if (strncmp(dcp->ifprefix, ifr.ifr_name,
-			    strlen(dcp->ifprefix)) == 0) {
+				    strlen(dcp->ifprefix)) == 0) {
 				clone_cb = dcp->clone_cb;
 				break;
 			}
@@ -198,5 +198,6 @@ clone_ctor(void)
 
 	for (i = 0; i < nitems(clone_cmds); i++)
 		cmd_register(&clone_cmds[i]);
+
 	opt_register(&clone_Copt);
 }

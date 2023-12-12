@@ -544,6 +544,7 @@ inet6_ctor(void)
 
 	for (i = 0; i < nitems(inet6_cmds);  i++)
 		cmd_register(&inet6_cmds[i]);
+
 	af_register(&af_inet6);
 	opt_register(&in6_Lopt);
 }

@@ -60,9 +60,9 @@ void setcarp_vhid(const char *, int, int, const struct afswtch *rafp);
 void
 carp_status(int s)
 {
-	const char *state;
 	struct carpreq carpr;
 	struct ifdrv ifd;
+	const char *state;
 	char devname[IFNAMSIZ];
 
 	memset(&carpr, 0, sizeof(struct carpreq));
@@ -116,11 +116,10 @@ void
 setcarp_vhid(const char *val, int d __unused, int s,
 	     const struct afswtch *afp __unused)
 {
-	int vhid;
 	struct carpreq carpr;
+	int vhid;
 
 	vhid = atoi(val);
-
 	if (vhid <= 0)
 		errx(1, "vhid must be greater than 0");
 
@@ -140,8 +139,8 @@ void
 setcarp_advskew(const char *val, int d __unused, int s,
 		const struct afswtch *afp __unused)
 {
-	int advskew;
 	struct carpreq carpr;
+	int advskew;
 
 	advskew = atoi(val);
 
@@ -161,8 +160,8 @@ void
 setcarp_advbase(const char *val, int d __unused, int s,
 		const struct afswtch *afp __unused)
 {
-	int advbase;
 	struct carpreq carpr;
+	int advbase;
 
 	advbase = atoi(val);
 
@@ -257,5 +256,6 @@ carp_ctor(void)
 
 	for (i = 0; i < nitems(carp_cmds);  i++)
 		cmd_register(&carp_cmds[i]);
+
 	af_register(&af_carp);
 }

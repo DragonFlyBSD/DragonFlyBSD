@@ -247,8 +247,8 @@ ifmedia_getstate(int s)
 static void
 setifmediacallback(int s, void *arg)
 {
-	struct ifmediareq *ifmr = arg;
 	static int did_it = 0;
+	struct ifmediareq *ifmr = arg;
 
 	if (!did_it) {
 		ifr.ifr_media = ifmr->ifm_current;
@@ -765,5 +765,6 @@ ifmedia_ctor(void)
 
 	for (i = 0; i < nitems(media_cmds);  i++)
 		cmd_register(&media_cmds[i]);
+
 	af_register(&af_media);
 }

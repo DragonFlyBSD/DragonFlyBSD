@@ -609,5 +609,6 @@ bridge_ctor(void)
 
 	for (i = 0; i < nitems(bridge_cmds);  i++)
 		cmd_register(&bridge_cmds[i]);
+
 	af_register(&af_bridge);
 }
