@@ -74,23 +74,13 @@
 struct	ifreq ifr;
 
 char	name[IFNAMSIZ];
-char	*descr = NULL;
-size_t	descrlen = 64;
-int	setaddr;
-int	setmask;
-int	doalias;
-int	clearaddr;
 int	newaddr = 1;
 int	verbose;
-int	noload;
-
 int	supmedia = 0;
 int	printkeys = 0;		/* Print keying material for interfaces. */
 int	printifname = 0;	/* Print the name of the created interface. */
 int	exit_code = 0;
-
-/* Formatter strings */
-char	*f_inet, *f_inet6, *f_ether, *f_addr;
+char	*f_inet, *f_inet6, *f_ether, *f_addr;	/* Formatter strings */
 
 static	bool group_member(const char *ifname, const char *match,
 			  const char *nomatch);
@@ -110,6 +100,13 @@ static void freeformat(void);
 static void setformat(char *input);
 
 static struct option *opts = NULL;
+static char *descr = NULL;
+static size_t descrlen = 64;
+static int clearaddr;
+static int doalias;
+static int noload;
+static int setaddr;
+static int setmask;
 
 struct ifa_order_elt {
 	int		if_order;

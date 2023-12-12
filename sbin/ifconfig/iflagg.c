@@ -23,7 +23,7 @@
 
 #include "ifconfig.h"
 
-char lacpbuf[120];	/* LACP peer '[(a,a,a),(p,p,p)]' */
+static char lacpbuf[120];	/* LACP peer '[(a,a,a),(p,p,p)]' */
 
 static void
 setlaggport(const char *val, int d, int s, const struct afswtch *afp)
