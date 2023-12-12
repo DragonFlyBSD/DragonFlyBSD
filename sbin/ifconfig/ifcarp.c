@@ -188,7 +188,7 @@ getcarp_vhaddr(const char *val __unused, int d __unused, int s,
 	int count, i;
 
 	memset(&ifd, 0, sizeof(ifd));
-	strlcpy(ifd.ifd_name, ifr.ifr_name, sizeof(ifd.ifd_name));
+	strlcpy(ifd.ifd_name, IfName, sizeof(ifd.ifd_name));
 	ifd.ifd_cmd = CARPGVHADDR;
 	if (ioctl(s, SIOCGDRVSPEC, &ifd) < 0)
 		return;

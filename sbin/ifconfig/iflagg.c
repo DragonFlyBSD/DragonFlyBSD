@@ -32,7 +32,7 @@ setlaggport(const char *val, int d __unused, int s,
 	struct lagg_reqport rp;
 
 	bzero(&rp, sizeof(rp));
-	strlcpy(rp.rp_ifname, name, sizeof(rp.rp_ifname));
+	strlcpy(rp.rp_ifname, IfName, sizeof(rp.rp_ifname));
 	strlcpy(rp.rp_portname, val, sizeof(rp.rp_portname));
 
 	/*
@@ -43,7 +43,7 @@ setlaggport(const char *val, int d __unused, int s,
 	 */
 	if (ioctl(s, SIOCSLAGGPORT, &rp) && errno != EEXIST) {
 		warnx("%s %s: SIOCSLAGGPORT: %s",
-		      name, val, strerror(errno));
+		      IfName, val, strerror(errno));
 		exit_code = 1;
 	}
 }
@@ -55,7 +55,7 @@ unsetlaggport(const char *val, int d __unused, int s,
 	struct lagg_reqport rp;
 
 	bzero(&rp, sizeof(rp));
-	strlcpy(rp.rp_ifname, name, sizeof(rp.rp_ifname));
+	strlcpy(rp.rp_ifname, IfName, sizeof(rp.rp_ifname));
 	strlcpy(rp.rp_portname, val, sizeof(rp.rp_portname));
 
 	if (ioctl(s, SIOCSLAGGDELPORT, &rp))
@@ -82,7 +82,7 @@ setlaggproto(const char *val, int d __unused, int s,
 	if (ra.ra_proto == LAGG_PROTO_MAX)
 		errx(1, "Invalid aggregation protocol: %s", val);
 
-	strlcpy(ra.ra_ifname, name, sizeof(ra.ra_ifname));
+	strlcpy(ra.ra_ifname, IfName, sizeof(ra.ra_ifname));
 	if (ioctl(s, SIOCSLAGG, &ra) != 0)
 		err(1, "SIOCSLAGG");
 }
@@ -110,7 +110,7 @@ setlagghash(const char *val, int d __unused, int s,
 	if (rf.rf_flags == 0)
 		errx(1, "No lagghash options supplied");
 
-	strlcpy(rf.rf_ifname, name, sizeof(rf.rf_ifname));
+	strlcpy(rf.rf_ifname, IfName, sizeof(rf.rf_ifname));
 	if (ioctl(s, SIOCSLAGGHASH, &rf))
 		err(1, "SIOCSLAGGHASH");
 }
@@ -158,17 +158,17 @@ lagg_status(int s)
 	bzero(&rp, sizeof(rp));
 	bzero(&ra, sizeof(ra));
 
-	strlcpy(rp.rp_ifname, name, sizeof(rp.rp_ifname));
-	strlcpy(rp.rp_portname, name, sizeof(rp.rp_portname));
+	strlcpy(rp.rp_ifname, IfName, sizeof(rp.rp_ifname));
+	strlcpy(rp.rp_portname, IfName, sizeof(rp.rp_portname));
 
 	if (ioctl(s, SIOCGLAGGPORT, &rp) == 0)
 		isport = true;
 
-	strlcpy(ra.ra_ifname, name, sizeof(ra.ra_ifname));
+	strlcpy(ra.ra_ifname, IfName, sizeof(ra.ra_ifname));
 	ra.ra_size = sizeof(rpbuf);
 	ra.ra_port = rpbuf;
 
-	strlcpy(rf.rf_ifname, name, sizeof(rf.rf_ifname));
+	strlcpy(rf.rf_ifname, IfName, sizeof(rf.rf_ifname));
 	if (ioctl(s, SIOCGLAGGFLAGS, &rf) != 0)
 		rf.rf_flags = 0;
 

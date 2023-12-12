@@ -138,7 +138,7 @@ struct option {
 void	opt_register(struct option *);
 
 extern	struct ifreq ifr;
-extern	char name[IFNAMSIZ];	/* name of interface */
+extern	char IfName[IFNAMSIZ];	/* name of interface */
 extern	int supmedia;
 extern	int printkeys;
 extern	int printifname;

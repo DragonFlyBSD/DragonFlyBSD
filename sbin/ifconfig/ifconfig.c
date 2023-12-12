@@ -73,7 +73,7 @@
  */
 struct	ifreq ifr;
 
-char	name[IFNAMSIZ];
+char	IfName[IFNAMSIZ];	/* name of interface */
 int	newaddr = 1;
 int	verbose;
 int	supmedia = 0;
@@ -293,7 +293,7 @@ static void
 printifnamemaybe(void)
 {
 	if (printifname)
-		printf("%s\n", name);
+		printf("%s\n", IfName);
 }
 
 static void
@@ -487,8 +487,8 @@ main(int argc, char *argv[])
 			 */
 			if (argc > 0 && (strcmp(argv[0], "create") == 0 ||
 			    strcmp(argv[0], "plumb") == 0)) {
-				iflen = strlcpy(name, ifname, sizeof(name));
-				if (iflen >= sizeof(name))
+				iflen = strlcpy(IfName, ifname, sizeof(IfName));
+				if (iflen >= sizeof(IfName))
 					errx(1, "%s: cloning name too long",
 					    ifname);
 				ifconfig(argc, argv, 1, NULL);
@@ -523,11 +523,11 @@ main(int argc, char *argv[])
 	 * system address list.
 	 */
 	if (argc > 0 && ifname != NULL) {
-		iflen = strlcpy(name, ifname, sizeof(name));
-		if (iflen >= sizeof(name))
+		iflen = strlcpy(IfName, ifname, sizeof(IfName));
+		if (iflen >= sizeof(IfName))
 			errx(1, "%s: cloning name too long", ifname);
 
-		flags = getifflags(name, -1);
+		flags = getifflags(IfName, -1);
 		if (!((downonly && (flags & IFF_UP) != 0) ||
 		      (uponly && (flags & IFF_UP) == 0))) {
 			ifconfig(argc, argv, 0, afp);
@@ -559,8 +559,8 @@ main(int argc, char *argv[])
 			continue;
 		if (cp != NULL && strcmp(cp, ifa->ifa_name) == 0)
 			continue;
-		iflen = strlcpy(name, ifa->ifa_name, sizeof(name));
-		if (iflen >= sizeof(name)) {
+		iflen = strlcpy(IfName, ifa->ifa_name, sizeof(IfName));
+		if (iflen >= sizeof(IfName)) {
 			warnx("%s: interface name too long, skipping",
 			      ifa->ifa_name);
 			continue;
@@ -584,7 +584,8 @@ main(int argc, char *argv[])
 			if (afp == NULL ||
 			    afp->af_af != AF_LINK ||
 			    (sdl != NULL && sdl->sdl_type == IFT_ETHER)) {
-				printf("%s%s", (ifindex > 0 ? " " : ""), name);
+				printf("%s%s", (ifindex > 0 ? " " : ""),
+				       IfName);
 				ifindex++;
 			}
 			continue;
@@ -804,7 +805,7 @@ ifconfig(int argc, char *const *argv, int iscreate,
 	struct callback *cb;
 	int s;
 
-	strlcpy(ifr.ifr_name, name, sizeof ifr.ifr_name);
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 	afp = uafp != NULL ? uafp : af_getbyname("inet");
 top:
 	ifr.ifr_addr.sa_family =
@@ -835,7 +836,7 @@ top:
 			 * After cloning, make sure we have an up-to-date name
 			 * in ifr_name.
 			 */
-			strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+			strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 
 			/*
 			 * Handle any address family spec that
@@ -902,12 +903,12 @@ top:
 	if (clearaddr) {
 		if (afp->af_ridreq == NULL || afp->af_difaddr == 0) {
 			warnx("interface %s cannot change %s addresses!",
-			      name, afp->af_name);
+			      IfName, afp->af_name);
 			clearaddr = 0;
 		}
 	}
 	if (clearaddr) {
-		strlcpy(afp->af_ridreq, name, sizeof ifr.ifr_name);
+		strlcpy(afp->af_ridreq, IfName, sizeof(ifr.ifr_name));
 		if (ioctl(s, afp->af_difaddr, afp->af_ridreq) < 0) {
 			if (errno == EADDRNOTAVAIL && doalias >= 0) {
 				/* means no previous address for interface */
@@ -918,12 +919,12 @@ top:
 	if (newaddr) {
 		if (afp->af_addreq == NULL || afp->af_aifaddr == 0) {
 			warnx("interface %s cannot change %s addresses!",
-			      name, afp->af_name);
+			      IfName, afp->af_name);
 			newaddr = 0;
 		}
 	}
 	if (newaddr && (setaddr || setmask)) {
-		strlcpy(afp->af_addreq, name, sizeof ifr.ifr_name);
+		strlcpy(afp->af_addreq, IfName, sizeof(ifr.ifr_name));
 		if (ioctl(s, afp->af_aifaddr, afp->af_addreq) < 0)
 			Perror("ioctl (SIOCAIFADDR)");
 	}
@@ -1063,7 +1064,7 @@ setifflags(const char *vname, int value, int s,
 	struct ifreq my_ifr;
 	int flags;
 
-	flags = getifflags(name, s);
+	flags = getifflags(IfName, s);
 	if (value < 0) {
 		value = -value;
 		flags &= ~value;
@@ -1072,7 +1073,7 @@ setifflags(const char *vname, int value, int s,
 	}
 
 	memset(&my_ifr, 0, sizeof(struct ifreq));
-	strlcpy(my_ifr.ifr_name, name, sizeof(my_ifr.ifr_name));
+	strlcpy(my_ifr.ifr_name, IfName, sizeof(my_ifr.ifr_name));
 	my_ifr.ifr_flags = flags & 0xffff;
 	my_ifr.ifr_flagshigh = flags >> 16;
 
@@ -1105,7 +1106,7 @@ static void
 setifmetric(const char *val, int dummy __unused, int s,
 	    const struct afswtch *afp __unused)
 {
-	strlcpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
+	strlcpy(ifr.ifr_name, IfName, sizeof (ifr.ifr_name));
 	ifr.ifr_metric = atoi(val);
 	if (ioctl(s, SIOCSIFMETRIC, &ifr) < 0)
 		err(1, "ioctl SIOCSIFMETRIC (set metric)");
@@ -1115,7 +1116,7 @@ static void
 setifmtu(const char *val, int dummy __unused, int s,
 	 const struct afswtch *afp __unused)
 {
-	strlcpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
+	strlcpy(ifr.ifr_name, IfName, sizeof (ifr.ifr_name));
 	ifr.ifr_mtu = atoi(val);
 	if (ioctl(s, SIOCSIFMTU, &ifr) < 0)
 		err(1, "ioctl SIOCSIFMTU (set mtu)");
@@ -1125,7 +1126,7 @@ static void
 setiftsolen(const char *val, int dummy __unused, int s,
 	    const struct afswtch *afp __unused)
 {
-	strlcpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
+	strlcpy(ifr.ifr_name, IfName, sizeof (ifr.ifr_name));
 	ifr.ifr_tsolen = atoi(val);
 	if (ioctl(s, SIOCSIFTSOLEN, &ifr) < 0)
 		err(1, "ioctl SIOCSIFTSOLEN (set tsolen)");
@@ -1137,18 +1138,20 @@ setifname(const char *val, int dummy __unused, int s,
 {
 	char *newname;
 
-	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 
 	newname = strdup(val);
 	if (newname == NULL)
 		err(1, "no memory to set ifname");
+
 	ifr.ifr_data = newname;
 	if (ioctl(s, SIOCSIFNAME, &ifr) < 0) {
 		free(newname);
 		err(1, "ioctl SIOCSIFNAME (set name)");
 	}
+
 	printifname = 1;
-	strlcpy(name, newname, sizeof(name));
+	strlcpy(IfName, newname, sizeof(IfName));
 	free(newname);
 }
 
@@ -1221,13 +1224,13 @@ status(const struct afswtch *afp, const struct sockaddr_dl *sdl __unused,
 		ifr.ifr_addr.sa_family =
 		    afp->af_af == AF_LINK ? AF_LOCAL : afp->af_af;
 	}
-	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 
 	s = socket(ifr.ifr_addr.sa_family, SOCK_DGRAM, 0);
 	if (s < 0)
 		err(1, "socket(family %u,SOCK_DGRAM)", ifr.ifr_addr.sa_family);
 
-	printf("%s: ", name);
+	printf("%s: ", IfName);
 	printb("flags", ifa->ifa_flags, IFFBITS);
 	if (ioctl(s, SIOCGIFMETRIC, &ifr) != -1)
 		printf(" metric %d", ifr.ifr_metric);
@@ -1311,7 +1314,7 @@ status(const struct afswtch *afp, const struct sockaddr_dl *sdl __unused,
 	else if (afp->af_other_status != NULL)
 		afp->af_other_status(s);
 
-	strlcpy(ifs.ifs_name, name, sizeof ifs.ifs_name);
+	strlcpy(ifs.ifs_name, IfName, sizeof(ifs.ifs_name));
 	if (ioctl(s, SIOCGIFSTATUS, &ifs) == 0)
 		printf("%s", ifs.ascii);
 

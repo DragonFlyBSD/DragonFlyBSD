@@ -76,7 +76,7 @@ do_cmd(int sock, u_long op, void *arg, size_t argsize, int set)
 
 	memset(&ifd, 0, sizeof(ifd));
 
-	strlcpy(ifd.ifd_name, ifr.ifr_name, sizeof(ifd.ifd_name));
+	strlcpy(ifd.ifd_name, IfName, sizeof(ifd.ifd_name));
 	ifd.ifd_cmd = op;
 	ifd.ifd_len = argsize;
 	ifd.ifd_data = arg;

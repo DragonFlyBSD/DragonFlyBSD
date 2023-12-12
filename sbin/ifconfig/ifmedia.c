@@ -106,7 +106,7 @@ media_status(int s)
 	int xmedia = 1;
 
 	memset(&ifmr, 0, sizeof(ifmr));
-	strlcpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
+	strlcpy(ifmr.ifm_name, IfName, sizeof(ifmr.ifm_name));
 
 	/*
 	 * Check if interface supports extended media types.
@@ -121,7 +121,7 @@ media_status(int s)
 	}
 
 	if (ifmr.ifm_count == 0) {
-		warnx("%s: no media types?", name);
+		warnx("%s: no media types?", IfName);
 		return;
 	}
 
@@ -208,7 +208,7 @@ ifmedia_getstate(int s)
 			err(1, "malloc");
 
 		memset(ifmr, 0, sizeof(struct ifmediareq));
-		strlcpy(ifmr->ifm_name, name, sizeof(ifmr->ifm_name));
+		strlcpy(ifmr->ifm_name, IfName, sizeof(ifmr->ifm_name));
 
 		ifmr->ifm_count = 0;
 		ifmr->ifm_ulist = NULL;
@@ -225,7 +225,7 @@ ifmedia_getstate(int s)
 			err(1, "SIOCGIFMEDIA");
 
 		if (ifmr->ifm_count == 0)
-			errx(1, "%s: no media types?", name);
+			errx(1, "%s: no media types?", IfName);
 
 		mwords = malloc(ifmr->ifm_count * sizeof(int));
 		if (mwords == NULL)
@@ -280,7 +280,7 @@ setmedia(const char *val, int d __unused, int s,
 	 */
 	subtype = get_media_subtype(IFM_TYPE(ifmr->ifm_ulist[0]), val);
 
-	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 	ifr.ifr_media = (ifmr->ifm_current & ~(IFM_NMASK|IFM_TMASK)) |
 	    IFM_TYPE(ifmr->ifm_ulist[0]) | subtype;
 
@@ -316,7 +316,7 @@ domediaopt(const char *val, int clear, int s)
 
 	options = get_media_options(IFM_TYPE(ifmr->ifm_ulist[0]), val);
 
-	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 	ifr.ifr_media = ifmr->ifm_current;
 	if (clear)
 		ifr.ifr_media &= ~options;
@@ -339,7 +339,7 @@ setmediamode(const char *val, int d __unused, int s,
 
 	mode = get_media_mode(IFM_TYPE(ifmr->ifm_ulist[0]), val);
 
-	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 	ifr.ifr_media = (ifmr->ifm_current & ~IFM_MMASK) | mode;
 
 	ifmr->ifm_current = ifr.ifr_media;

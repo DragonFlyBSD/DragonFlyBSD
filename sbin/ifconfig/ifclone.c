@@ -124,7 +124,7 @@ ifclonecreate(int s, __unused void *arg)
 	clone_callback_func *clone_cb = NULL;
 
 	memset(&ifr, 0, sizeof(ifr));
-	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 
 	if (clone_cb == NULL) {
 		/* Try to find a default callback */
@@ -148,8 +148,8 @@ ifclonecreate(int s, __unused void *arg)
 	 * If we get a different name back than we put in, update record and
 	 * indicate it should be printed later.
 	 */
-	if (strncmp(name, ifr.ifr_name, sizeof(name)) != 0) {
-		strlcpy(name, ifr.ifr_name, sizeof(name));
+	if (strncmp(IfName, ifr.ifr_name, sizeof(IfName)) != 0) {
+		strlcpy(IfName, ifr.ifr_name, sizeof(IfName));
 		printifname = 1;
 	}
 }
@@ -165,7 +165,8 @@ static void
 clone_destroy(const char *x __unused, int arg __unused, int s __unused,
 	      const struct afswtch *afp __unused)
 {
-	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
+
 	if (ioctl(s, SIOCIFDESTROY, &ifr) < 0)
 		err(1, "SIOCIFDESTROY");
 }

@@ -49,7 +49,7 @@ setifgroup(const char *group_name, int d __unused, int s,
 	struct ifgroupreq ifgr;
 
 	memset(&ifgr, 0, sizeof(ifgr));
-	strlcpy(ifgr.ifgr_name, name, IFNAMSIZ);
+	strlcpy(ifgr.ifgr_name, IfName, sizeof(ifgr.ifgr_name));
 
 	if (group_name[0] && isdigit(group_name[strlen(group_name) - 1]))
 		errx(1, "setifgroup: group names may not end in a digit");
@@ -67,7 +67,7 @@ unsetifgroup(const char *group_name, int d __unused, int s,
 	struct ifgroupreq ifgr;
 
 	memset(&ifgr, 0, sizeof(ifgr));
-	strlcpy(ifgr.ifgr_name, name, IFNAMSIZ);
+	strlcpy(ifgr.ifgr_name, IfName, sizeof(ifgr.ifgr_name));
 
 	if (group_name[0] && isdigit(group_name[strlen(group_name) - 1]))
 		errx(1, "unsetifgroup: group names may not end in a digit");
@@ -86,7 +86,7 @@ getifgroups(int s)
 	size_t			 len, cnt;
 
 	memset(&ifgr, 0, sizeof(ifgr));
-	strlcpy(ifgr.ifgr_name, name, IFNAMSIZ);
+	strlcpy(ifgr.ifgr_name, IfName, sizeof(ifgr.ifgr_name));
 
 	if (ioctl(s, SIOCGIFGROUP, &ifgr) == -1) {
 		if (errno == EINVAL || errno == ENOTTY)

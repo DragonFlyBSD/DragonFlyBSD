@@ -3508,7 +3508,7 @@ scan_and_wait(int s)
 		return;
 	}
 	memset(&ireq, 0, sizeof(ireq));
-	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));
+	strlcpy(ireq.i_name, IfName, sizeof(ireq.i_name));
 	ireq.i_type = IEEE80211_IOC_SCAN_REQ;
 
 	memset(&sr, 0, sizeof(sr));
@@ -3962,7 +3962,7 @@ get80211wme(int s, int param, int ac, int *val)
 	struct ieee80211req ireq;
 
 	memset(&ireq, 0, sizeof(ireq));
-	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));
+	strlcpy(ireq.i_name, IfName, sizeof(ireq.i_name));
 	ireq.i_type = param;
 	ireq.i_len = ac;
 	if (ioctl(s, SIOCG80211, &ireq) < 0) {
@@ -4143,7 +4143,7 @@ list_mac(int s)
 	char c;
 
 	memset(&ireq, 0, sizeof(ireq));
-	strlcpy(ireq.i_name, name, sizeof(ireq.i_name)); /* XXX ?? */
+	strlcpy(ireq.i_name, IfName, sizeof(ireq.i_name)); /* XXX ?? */
 	ireq.i_type = IEEE80211_IOC_MACCMD;
 	ireq.i_val = IEEE80211_MACCMD_POLICY;
 	if (ioctl(s, SIOCG80211, &ireq) < 0) {
@@ -4249,7 +4249,7 @@ list_mesh(int s)
 	struct ieee80211req_mesh_route *rt;
 
 	memset(&ireq, 0, sizeof(ireq));
-	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));
+	strlcpy(ireq.i_name, IfName, sizeof(ireq.i_name));
 	ireq.i_type = IEEE80211_IOC_MESH_RTCMD;
 	ireq.i_val = IEEE80211_MESH_RTCMD_LIST;
 	ireq.i_data = &routes;
@@ -4319,7 +4319,7 @@ set80211list(const char *arg, int d __unused, int s,
 	else if (iseq(arg, "mesh"))
 		list_mesh(s);
 	else
-		errx(1, "Don't know how to list %s for %s", arg, name);
+		errx(1, "Don't know how to list %s for %s", arg, IfName);
 	LINE_BREAK();
 }
 
@@ -4329,7 +4329,7 @@ get80211opmode(int s)
 	struct ifmediareq ifmr;
 
 	memset(&ifmr, 0, sizeof(ifmr));
-	strlcpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
+	strlcpy(ifmr.ifm_name, IfName, sizeof(ifmr.ifm_name));
 
 	if (ioctl(s, SIOCGIFMEDIA, &ifmr) >= 0) {
 		if (ifmr.ifm_current & IFM_IEEE80211_ADHOC) {
@@ -4473,7 +4473,7 @@ getid(int s, int ix, void *data, size_t len, size_t *plen, int mesh)
 	struct ieee80211req ireq;
 
 	memset(&ireq, 0, sizeof(ireq));
-	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));
+	strlcpy(ireq.i_name, IfName, sizeof(ireq.i_name));
 	ireq.i_type = (!mesh) ? IEEE80211_IOC_SSID : IEEE80211_IOC_MESH_ID;
 	ireq.i_val = ix;
 	ireq.i_data = data;
@@ -5135,7 +5135,7 @@ get80211(int s, int type, void *data, int len)
 	struct ieee80211req ireq;
 
 	memset(&ireq, 0, sizeof(ireq));
-	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));
+	strlcpy(ireq.i_name, IfName, sizeof(ireq.i_name));
 	ireq.i_type = type;
 	ireq.i_data = data;
 	ireq.i_len = len;
@@ -5148,7 +5148,7 @@ get80211len(int s, int type, void *data, size_t len, size_t *plen)
 	struct ieee80211req ireq;
 
 	memset(&ireq, 0, sizeof(ireq));
-	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));
+	strlcpy(ireq.i_name, IfName, sizeof(ireq.i_name));
 	ireq.i_type = type;
 	ireq.i_len = len;
 	assert(ireq.i_len == len);	/* NB: check for 16-bit truncation */
@@ -5165,7 +5165,7 @@ get80211val(int s, int type, int *val)
 	struct ieee80211req ireq;
 
 	memset(&ireq, 0, sizeof(ireq));
-	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));
+	strlcpy(ireq.i_name, IfName, sizeof(ireq.i_name));
 	ireq.i_type = type;
 	if (ioctl(s, SIOCG80211, &ireq) < 0)
 		return -1;
@@ -5179,7 +5179,7 @@ set80211(int s, int type, int val, int len, void *data)
 	struct ieee80211req ireq;
 
 	memset(&ireq, 0, sizeof(ireq));
-	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));
+	strlcpy(ireq.i_name, IfName, sizeof(ireq.i_name));
 	ireq.i_type = type;
 	ireq.i_val = val;
 	ireq.i_len = len;
@@ -5353,7 +5353,7 @@ set80211clone_wlanmode(const char *arg, int d __unused, int s __unused,
 	} else if (iseq(arg, "mesh") || iseq(arg, "mp")) /* mesh point */
 		params.icp_opmode = IEEE80211_M_MBSS;
 	else
-		errx(1, "Don't know to create %s for %s", arg, name);
+		errx(1, "Don't know to create %s for %s", arg, IfName);
 }
 
 static void
