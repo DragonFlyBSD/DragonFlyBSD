@@ -49,26 +49,26 @@ static struct ifreq link_ridreq;
 static void
 link_status(int s __unused, const struct ifaddrs *ifa)
 {
-	const struct sockaddr_dl *sdl =
-		(const struct sockaddr_dl *)ifa->ifa_addr;
+	struct sockaddr_dl *sdl =
+		__DECONST(struct sockaddr_dl *, ifa->ifa_addr);
+		/* drop 'const' qualifier for LLADDR() to suppress warning */
+	char addr[18], *p;
+	int n;
 
-	if (sdl != NULL && sdl->sdl_alen > 0) {
-		if (sdl->sdl_type == IFT_ETHER &&
-		    sdl->sdl_alen == ETHER_ADDR_LEN) {
-			char *ether_addr = ether_ntoa(
-				(const struct ether_addr *)LLADDR(sdl));
+	if (sdl == NULL || sdl->sdl_alen == 0)
+		return;
 
-			if (f_ether != NULL && strcmp(f_ether, "dash") == 0) {
-				char *fchar = ether_addr;
-				while ((fchar = strchr(fchar, ':')) != NULL)
-					*fchar = '-';
-			}
-			printf("\tether %s\n", ether_addr);
-		} else {
-			int n = sdl->sdl_nlen > 0 ? sdl->sdl_nlen + 1 : 0;
-
-			printf("\tlladdr %s\n", link_ntoa(sdl) + n);
+	if (sdl->sdl_type == IFT_ETHER && sdl->sdl_alen == ETHER_ADDR_LEN) {
+		ether_ntoa_r((const struct ether_addr *)LLADDR(sdl), addr);
+		if (f_ether != NULL && strcmp(f_ether, "dash") == 0) {
+			p = addr;
+			while ((p = strchr(p, ':')) != NULL)
+				*p = '-';
 		}
+		printf("\tether %s\n", addr);
+	} else {
+		n = sdl->sdl_nlen > 0 ? sdl->sdl_nlen + 1 : 0;
+		printf("\tlladdr %s\n", link_ntoa(sdl) + n);
 	}
 }
 
