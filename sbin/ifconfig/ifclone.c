@@ -154,14 +154,16 @@ ifclonecreate(int s, __unused void *arg)
 	}
 }
 
-static
-DECL_CMD_FUNC(clone_create, arg, d)
+static void
+clone_create(const char *x __unused, int arg __unused, int s __unused,
+	     const struct afswtch *afp __unused)
 {
 	callback_register(ifclonecreate, NULL);
 }
 
-static
-DECL_CMD_FUNC(clone_destroy, arg, d)
+static void
+clone_destroy(const char *x __unused, int arg __unused, int s __unused,
+	      const struct afswtch *afp __unused)
 {
 	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 	if (ioctl(s, SIOCIFDESTROY, &ifr) < 0)

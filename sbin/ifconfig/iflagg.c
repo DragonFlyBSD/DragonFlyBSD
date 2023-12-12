@@ -26,7 +26,8 @@
 static char lacpbuf[120];	/* LACP peer '[(a,a,a),(p,p,p)]' */
 
 static void
-setlaggport(const char *val, int d, int s, const struct afswtch *afp)
+setlaggport(const char *val, int d __unused, int s,
+	    const struct afswtch *afp __unused)
 {
 	struct lagg_reqport rp;
 
@@ -48,7 +49,8 @@ setlaggport(const char *val, int d, int s, const struct afswtch *afp)
 }
 
 static void
-unsetlaggport(const char *val, int d, int s, const struct afswtch *afp)
+unsetlaggport(const char *val, int d __unused, int s,
+	      const struct afswtch *afp __unused)
 {
 	struct lagg_reqport rp;
 
@@ -61,7 +63,8 @@ unsetlaggport(const char *val, int d, int s, const struct afswtch *afp)
 }
 
 static void
-setlaggproto(const char *val, int d, int s, const struct afswtch *afp)
+setlaggproto(const char *val, int d __unused, int s,
+	     const struct afswtch *afp __unused)
 {
 	struct lagg_protos lpr[] = LAGG_PROTOS;
 	struct lagg_reqall ra;
@@ -85,7 +88,8 @@ setlaggproto(const char *val, int d, int s, const struct afswtch *afp)
 }
 
 static void
-setlagghash(const char *val, int d, int s, const struct afswtch *afp)
+setlagghash(const char *val, int d __unused, int s,
+	    const struct afswtch *afp __unused)
 {
 	struct lagg_reqflags rf;
 	char *str, *tmp, *tok;

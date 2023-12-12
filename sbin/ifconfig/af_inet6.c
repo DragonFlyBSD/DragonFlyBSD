@@ -68,7 +68,7 @@ static	int explicit_prefix = 0;
 static 	char addr_buf[NI_MAXHOST];  /* for getnameinfo() */
 
 static void
-setifprefixlen(const char *addr, int dummy __unused, int s,
+setifprefixlen(const char *addr, int dummy __unused, int s __unused,
     const struct afswtch *afp)
 {
         if (afp->af_getprefix != NULL)
@@ -77,7 +77,7 @@ setifprefixlen(const char *addr, int dummy __unused, int s,
 }
 
 static void
-setip6flags(const char *dummyaddr __unused, int flag, int dummysoc __unused,
+setip6flags(const char *addr __unused, int flag, int s __unused,
     const struct afswtch *afp)
 {
 	if (afp->af_af != AF_INET6)
@@ -90,7 +90,7 @@ setip6flags(const char *dummyaddr __unused, int flag, int dummysoc __unused,
 }
 
 static void
-setip6lifetime(const char *cmd, const char *val, int s,
+setip6lifetime(const char *cmd, const char *val, int s __unused,
     const struct afswtch *afp)
 {
 	struct timespec now;
@@ -127,7 +127,7 @@ setip6vltime(const char *seconds, int dummy __unused, int s,
 }
 
 static void
-setip6eui64(const char *cmd, int dummy __unused, int s,
+setip6eui64(const char *cmd, int dummy __unused, int s __unused,
     const struct afswtch *afp)
 {
 	struct ifaddrs *ifap, *ifa;
@@ -169,6 +169,8 @@ in6_fillscopeid(struct sockaddr_in6 *sin6)
 			ntohs(*(u_int16_t *)&sin6->sin6_addr.s6_addr[2]);
 		sin6->sin6_addr.s6_addr[2] = sin6->sin6_addr.s6_addr[3] = 0;
 	}
+#else
+	(void)sin6;
 #endif
 }
 

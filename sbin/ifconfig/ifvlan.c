@@ -74,7 +74,8 @@ vlan_status(int s)
 }
 
 static void
-setvlantag(const char *val, int d, int s, const struct afswtch	*afp)
+setvlantag(const char *val, int d __unused, int s __unused,
+	   const struct afswtch *afp __unused)
 {
 	char			*endp;
 	u_long			ul;
@@ -91,17 +92,17 @@ setvlantag(const char *val, int d, int s, const struct afswtch	*afp)
 }
 
 static void
-setvlandev(const char *val, int d, int s, const struct afswtch	*afp)
+setvlandev(const char *val, int d __unused, int s __unused,
+	   const struct afswtch *afp __unused)
 {
-
 	strlcpy(__vreq.vlr_parent, val, sizeof(__vreq.vlr_parent));
 	__have_dev = 1;
 }
 
 static void
-unsetvlandev(const char *val, int d, int s, const struct afswtch *afp)
+unsetvlandev(const char *val, int d __unused, int s,
+	     const struct afswtch *afp __unused)
 {
-
 	if (val != NULL)
 		warnx("argument to -vlandev is useless and hence deprecated");
 
@@ -120,9 +121,8 @@ unsetvlandev(const char *val, int d, int s, const struct afswtch *afp)
 }
 
 static void
-vlan_cb(int s, void *arg)
+vlan_cb(int s, void *arg __unused)
 {
-
 	if (__have_tag ^ __have_dev)
 		errx(1, "both vlan and vlandev must be specified");
 

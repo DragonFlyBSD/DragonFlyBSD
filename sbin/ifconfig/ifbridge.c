@@ -254,7 +254,8 @@ bridge_status(int s)
 }
 
 static void
-setbridge_add(const char *val, int d, int s, const struct afswtch *afp)
+setbridge_add(const char *val, int d __unused, int s,
+	      const struct afswtch *afp __unused)
 {
 	struct ifbreq req;
 
@@ -265,7 +266,8 @@ setbridge_add(const char *val, int d, int s, const struct afswtch *afp)
 }
 
 static void
-setbridge_delete(const char *val, int d, int s, const struct afswtch *afp)
+setbridge_delete(const char *val, int d __unused, int s,
+		 const struct afswtch *afp __unused)
 {
 	struct ifbreq req;
 
@@ -276,35 +278,36 @@ setbridge_delete(const char *val, int d, int s, const struct afswtch *afp)
 }
 
 static void
-setbridge_discover(const char *val, int d, int s, const struct afswtch *afp)
+setbridge_discover(const char *val, int d __unused, int s,
+		   const struct afswtch *afp __unused)
 {
-
 	do_bridgeflag(s, val, IFBIF_DISCOVER, 1);
 }
 
 static void
-unsetbridge_discover(const char *val, int d, int s, const struct afswtch *afp)
+unsetbridge_discover(const char *val, int d __unused, int s,
+		     const struct afswtch *afp __unused)
 {
-
 	do_bridgeflag(s, val, IFBIF_DISCOVER, 0);
 }
 
 static void
-setbridge_learn(const char *val, int d, int s, const struct afswtch *afp)
+setbridge_learn(const char *val, int d __unused, int s,
+		const struct afswtch *afp __unused)
 {
-
 	do_bridgeflag(s, val, IFBIF_LEARNING,  1);
 }
 
 static void
-unsetbridge_learn(const char *val, int d, int s, const struct afswtch *afp)
+unsetbridge_learn(const char *val, int d __unused, int s,
+		  const struct afswtch *afp __unused)
 {
-
 	do_bridgeflag(s, val, IFBIF_LEARNING,  0);
 }
 
 static void
-setbridge_span(const char *val, int d, int s, const struct afswtch *afp)
+setbridge_span(const char *val, int d __unused, int s,
+	       const struct afswtch *afp __unused)
 {
 	struct ifbreq req;
 
@@ -315,7 +318,8 @@ setbridge_span(const char *val, int d, int s, const struct afswtch *afp)
 }
 
 static void
-unsetbridge_span(const char *val, int d, int s, const struct afswtch *afp)
+unsetbridge_span(const char *val, int d __unused, int s,
+		 const struct afswtch *afp __unused)
 {
 	struct ifbreq req;
 
@@ -326,21 +330,22 @@ unsetbridge_span(const char *val, int d, int s, const struct afswtch *afp)
 }
 
 static void
-setbridge_stp(const char *val, int d, int s, const struct afswtch *afp)
+setbridge_stp(const char *val, int d __unused, int s,
+	      const struct afswtch *afp __unused)
 {
-
 	do_bridgeflag(s, val, IFBIF_STP, 1);
 }
 
 static void
-unsetbridge_stp(const char *val, int d, int s, const struct afswtch *afp)
+unsetbridge_stp(const char *val, int d __unused, int s,
+		const struct afswtch *afp __unused)
 {
-
 	do_bridgeflag(s, val, IFBIF_STP, 0);
 }
 
 static void
-setbridge_flush(const char *val, int d, int s, const struct afswtch *afp)
+setbridge_flush(const char *val __unused, int d __unused, int s,
+		const struct afswtch *afp __unused)
 {
 	struct ifbreq req;
 
@@ -351,7 +356,8 @@ setbridge_flush(const char *val, int d, int s, const struct afswtch *afp)
 }
 
 static void
-setbridge_flushall(const char *val, int d, int s, const struct afswtch *afp)
+setbridge_flushall(const char *val __unused, int d __unused, int s,
+		   const struct afswtch *afp __unused)
 {
 	struct ifbreq req;
 
@@ -363,7 +369,7 @@ setbridge_flushall(const char *val, int d, int s, const struct afswtch *afp)
 
 static void
 setbridge_static(const char *val, const char *mac, int s,
-    const struct afswtch *afp)
+		 const struct afswtch *afp __unused)
 {
 	struct ifbareq req;
 	struct ether_addr *ea;
@@ -383,7 +389,8 @@ setbridge_static(const char *val, const char *mac, int s,
 }
 
 static void
-setbridge_deladdr(const char *val, int d, int s, const struct afswtch *afp)
+setbridge_deladdr(const char *val, int d __unused, int s,
+		  const struct afswtch *afp __unused)
 {
 	struct ifbareq req;
 	struct ether_addr *ea;
@@ -401,13 +408,15 @@ setbridge_deladdr(const char *val, int d, int s, const struct afswtch *afp)
 }
 
 static void
-getbridge_addr(const char *val, int d, int s, const struct afswtch *afp)
+getbridge_addr(const char *val __unused, int d __unused, int s,
+	       const struct afswtch *afp __unused)
 {
 	bridge_addresses(s, "");
 }
 
 static void
-setbridge_maxaddr(const char *arg, int d, int s, const struct afswtch *afp)
+setbridge_maxaddr(const char *arg, int d __unused, int s,
+		  const struct afswtch *afp __unused)
 {
 	struct ifbrparam param;
 	u_long val;
@@ -422,7 +431,8 @@ setbridge_maxaddr(const char *arg, int d, int s, const struct afswtch *afp)
 }
 
 static void
-setbridge_hellotime(const char *arg, int d, int s, const struct afswtch *afp)
+setbridge_hellotime(const char *arg, int d __unused, int s,
+		    const struct afswtch *afp __unused)
 {
 	struct ifbrparam param;
 	u_long val;
@@ -437,7 +447,8 @@ setbridge_hellotime(const char *arg, int d, int s, const struct afswtch *afp)
 }
 
 static void
-setbridge_fwddelay(const char *arg, int d, int s, const struct afswtch *afp)
+setbridge_fwddelay(const char *arg, int d __unused, int s,
+		   const struct afswtch *afp __unused)
 {
 	struct ifbrparam param;
 	u_long val;
@@ -452,7 +463,8 @@ setbridge_fwddelay(const char *arg, int d, int s, const struct afswtch *afp)
 }
 
 static void
-setbridge_maxage(const char *arg, int d, int s, const struct afswtch *afp)
+setbridge_maxage(const char *arg, int d __unused, int s,
+		 const struct afswtch *afp __unused)
 {
 	struct ifbrparam param;
 	u_long val;
@@ -467,7 +479,8 @@ setbridge_maxage(const char *arg, int d, int s, const struct afswtch *afp)
 }
 
 static void
-setbridge_priority(const char *arg, int d, int s, const struct afswtch *afp)
+setbridge_priority(const char *arg, int d __unused, int s,
+		   const struct afswtch *afp __unused)
 {
 	struct ifbrparam param;
 	u_long val;
@@ -483,7 +496,7 @@ setbridge_priority(const char *arg, int d, int s, const struct afswtch *afp)
 
 static void
 setbridge_ifpriority(const char *ifn, const char *pri, int s,
-    const struct afswtch *afp)
+		     const struct afswtch *afp __unused)
 {
 	struct ifbreq req;
 	u_long val;
@@ -502,7 +515,7 @@ setbridge_ifpriority(const char *ifn, const char *pri, int s,
 
 static void
 setbridge_ifpathcost(const char *ifn, const char *cost, int s,
-    const struct afswtch *afp)
+		     const struct afswtch *afp __unused)
 {
 	struct ifbreq req;
 	u_long val;
@@ -521,7 +534,7 @@ setbridge_ifpathcost(const char *ifn, const char *cost, int s,
 
 static void
 setbridge_ifbondweight(const char *ifn, const char *cost, int s,
-    const struct afswtch *afp)
+		       const struct afswtch *afp __unused)
 {
 	struct ifbreq req;
 	u_long val;
@@ -541,7 +554,8 @@ setbridge_ifbondweight(const char *ifn, const char *cost, int s,
 }
 
 static void
-setbridge_timeout(const char *arg, int d, int s, const struct afswtch *afp)
+setbridge_timeout(const char *arg, int d __unused, int s,
+		  const struct afswtch *afp __unused)
 {
 	struct ifbrparam param;
 	u_long val;

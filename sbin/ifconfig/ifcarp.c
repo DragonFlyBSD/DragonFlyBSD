@@ -94,7 +94,8 @@ carp_status(int s)
 }
 
 void
-setcarp_passwd(const char *val, int d, int s, const struct afswtch *afp)
+setcarp_passwd(const char *val, int d __unused, int s,
+	       const struct afswtch *afp __unused)
 {
 	struct carpreq carpr;
 
@@ -112,7 +113,8 @@ setcarp_passwd(const char *val, int d, int s, const struct afswtch *afp)
 }
 
 void
-setcarp_vhid(const char *val, int d, int s, const struct afswtch *afp)
+setcarp_vhid(const char *val, int d __unused, int s,
+	     const struct afswtch *afp __unused)
 {
 	int vhid;
 	struct carpreq carpr;
@@ -135,7 +137,8 @@ setcarp_vhid(const char *val, int d, int s, const struct afswtch *afp)
 }
 
 void
-setcarp_advskew(const char *val, int d, int s, const struct afswtch *afp)
+setcarp_advskew(const char *val, int d __unused, int s,
+		const struct afswtch *afp __unused)
 {
 	int advskew;
 	struct carpreq carpr;
@@ -155,7 +158,8 @@ setcarp_advskew(const char *val, int d, int s, const struct afswtch *afp)
 }
 
 void
-setcarp_advbase(const char *val, int d, int s, const struct afswtch *afp)
+setcarp_advbase(const char *val, int d __unused, int s,
+		const struct afswtch *afp __unused)
 {
 	int advbase;
 	struct carpreq carpr;
@@ -175,7 +179,8 @@ setcarp_advbase(const char *val, int d, int s, const struct afswtch *afp)
 }
 
 static void
-getcarp_vhaddr(const char *val, int d, int s, const struct afswtch *afp)
+getcarp_vhaddr(const char *val __unused, int d __unused, int s,
+	       const struct afswtch *afp __unused)
 {
 #define VHADDR_PFMT	"%-15s %-15s %s\n"
 

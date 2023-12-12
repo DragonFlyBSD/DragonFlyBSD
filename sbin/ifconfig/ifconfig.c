@@ -937,9 +937,9 @@ top:
 	return (0);
 }
 
-/*ARGSUSED*/
 static void
-setifaddr(const char *addr, int param, int s, const struct afswtch *afp)
+setifaddr(const char *addr, int dummy __unused, int s __unused,
+	  const struct afswtch *afp)
 {
 	if (afp->af_getaddr == NULL)
 		return;
@@ -984,18 +984,17 @@ settunnel(const char *src, const char *dst, int s, const struct afswtch *afp)
 	freeaddrinfo(dstres);
 }
 
-/* ARGSUSED */
 static void
-deletetunnel(const char *vname, int param, int s, const struct afswtch *afp)
+deletetunnel(const char *arg __unused, int dummy __unused, int s,
+	     const struct afswtch *afp __unused)
 {
-
 	if (ioctl(s, SIOCDIFPHYADDR, &ifr) < 0)
 		err(1, "SIOCDIFPHYADDR");
 }
 
 static void
-setifnetmask(const char *addr, int dummy __unused, int s,
-    const struct afswtch *afp)
+setifnetmask(const char *addr, int dummy __unused, int s __unused,
+	     const struct afswtch *afp)
 {
 	if (afp->af_getaddr != NULL) {
 		setmask++;
@@ -1004,15 +1003,16 @@ setifnetmask(const char *addr, int dummy __unused, int s,
 }
 
 static void
-setifbroadaddr(const char *addr, int dummy __unused, int s,
-    const struct afswtch *afp)
+setifbroadaddr(const char *addr, int dummy __unused, int s __unused,
+	       const struct afswtch *afp)
 {
 	if (afp->af_getaddr != NULL)
 		afp->af_getaddr(addr, DSTADDR);
 }
 
 static void
-notealias(const char *addr, int param, int s, const struct afswtch *afp)
+notealias(const char *addr __unused, int param, int s __unused,
+	  const struct afswtch *afp)
 {
 #define rqtosa(x) (&(((struct ifreq *)(afp->x))->ifr_addr))
 	if (setaddr && doalias == 0 && param < 0)
@@ -1029,10 +1029,9 @@ notealias(const char *addr, int param, int s, const struct afswtch *afp)
 #undef rqtosa
 }
 
-/*ARGSUSED*/
 static void
-setifdstaddr(const char *addr, int param __unused, int s,
-    const struct afswtch *afp)
+setifdstaddr(const char *addr, int dummy __unused, int s __unused,
+	     const struct afswtch *afp __unused)
 {
 	if (afp->af_getaddr != NULL)
 		afp->af_getaddr(addr, DSTADDR);
@@ -1063,7 +1062,8 @@ getifflags(const char *ifname, int us)
 }
 
 static void
-setifflags(const char *vname, int value, int s, const struct afswtch *afp)
+setifflags(const char *vname, int value, int s,
+	   const struct afswtch *afp __unused)
 {
 	struct ifreq my_ifr;
 	int flags;
@@ -1086,7 +1086,8 @@ setifflags(const char *vname, int value, int s, const struct afswtch *afp)
 }
 
 void
-setifcap(const char *vname, int value, int s, const struct afswtch *afp)
+setifcap(const char *vname, int value, int s,
+	 const struct afswtch *afp __unused)
 {
 	int flags;
 
@@ -1107,7 +1108,7 @@ setifcap(const char *vname, int value, int s, const struct afswtch *afp)
 
 static void
 setifmetric(const char *val, int dummy __unused, int s,
-    const struct afswtch *afp)
+	    const struct afswtch *afp __unused)
 {
 	strlcpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
 	ifr.ifr_metric = atoi(val);
@@ -1117,7 +1118,7 @@ setifmetric(const char *val, int dummy __unused, int s,
 
 static void
 setifmtu(const char *val, int dummy __unused, int s,
-    const struct afswtch *afp)
+	 const struct afswtch *afp __unused)
 {
 	strlcpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
 	ifr.ifr_mtu = atoi(val);
@@ -1127,7 +1128,7 @@ setifmtu(const char *val, int dummy __unused, int s,
 
 static void
 setiftsolen(const char *val, int dummy __unused, int s,
-    const struct afswtch *afp)
+	    const struct afswtch *afp __unused)
 {
 	strlcpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
 	ifr.ifr_tsolen = atoi(val);
@@ -1137,7 +1138,7 @@ setiftsolen(const char *val, int dummy __unused, int s,
 
 static void
 setifname(const char *val, int dummy __unused, int s,
-    const struct afswtch *afp)
+	  const struct afswtch *afp __unused)
 {
 	char *newname;
 
@@ -1157,8 +1158,8 @@ setifname(const char *val, int dummy __unused, int s,
 }
 
 static void
-setifpollcpu(const char *val, int dummy __unused, int s,
-    const struct afswtch *afp)
+setifpollcpu(const char *val __unused, int dummy __unused, int s,
+	     const struct afswtch *afp)
 {
 	warnx("pollcpu is deprecated, use polling or npolling instead");
 	setifflags("npolling", IFF_NPOLLING, s, afp);
@@ -1190,8 +1191,8 @@ setifdescr(const char *val, int dummy __unused, int s,
 }
 
 static void
-unsetifdescr(const char *val, int dummy __unused, int s,
-    const struct afswtch *afp __unused)
+unsetifdescr(const char *val __unused, int dummy __unused, int s,
+	     const struct afswtch *afp __unused)
 {
 	setifdescr("", 0, s, 0);
 }
@@ -1210,7 +1211,7 @@ unsetifdescr(const char *val, int dummy __unused, int s,
  * specified, show only it; otherwise, show them all.
  */
 static void
-status(const struct afswtch *afp, const struct sockaddr_dl *sdl,
+status(const struct afswtch *afp, const struct sockaddr_dl *sdl __unused,
        struct ifaddrs *ifa)
 {
 	struct ifaddrs *ift;

@@ -261,7 +261,8 @@ setifmediacallback(int s, void *arg)
 }
 
 static void
-setmedia(const char *val, int d, int s, const struct afswtch *afp)
+setmedia(const char *val, int d __unused, int s,
+	 const struct afswtch *afp __unused)
 {
 	struct ifmediareq *ifmr;
 	int subtype;
@@ -292,16 +293,16 @@ setmedia(const char *val, int d, int s, const struct afswtch *afp)
 }
 
 static void
-setmediaopt(const char *val, int d, int s, const struct afswtch *afp)
+setmediaopt(const char *val, int d __unused, int s,
+	    const struct afswtch *afp __unused)
 {
-
 	domediaopt(val, 0, s);
 }
 
 static void
-unsetmediaopt(const char *val, int d, int s, const struct afswtch *afp)
+unsetmediaopt(const char *val, int d __unused, int s,
+	      const struct afswtch *afp __unused)
 {
-
 	domediaopt(val, 1, s);
 }
 
@@ -328,7 +329,8 @@ domediaopt(const char *val, int clear, int s)
 
 
 static void
-setmediamode(const char *val, int d, int s, const struct afswtch *afp)
+setmediamode(const char *val, int d __unused, int s,
+	     const struct afswtch *afp __unused)
 {
 	struct ifmediareq *ifmr;
 	int mode;

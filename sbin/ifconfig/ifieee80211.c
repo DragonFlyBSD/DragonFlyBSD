@@ -564,7 +564,8 @@ isanyarg(const char *arg)
 }
 
 static void
-set80211ssid(const char *val, int d, int s, const struct afswtch *rafp)
+set80211ssid(const char *val, int d __unused, int s,
+	     const struct afswtch *rafp __unused)
 {
 	int		ssid;
 	int		len;
@@ -586,7 +587,8 @@ set80211ssid(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211meshid(const char *val, int d, int s, const struct afswtch *rafp)
+set80211meshid(const char *val, int d __unused, int s,
+	       const struct afswtch *rafp __unused)
 {
 	int		len;
 	u_int8_t	data[IEEE80211_NWID_LEN];
@@ -600,7 +602,8 @@ set80211meshid(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211stationname(const char *val, int d, int s, const struct afswtch *rafp)
+set80211stationname(const char *val, int d __unused, int s,
+		    const struct afswtch *rafp __unused)
 {
 	int			len;
 	u_int8_t		data[33];
@@ -761,7 +764,8 @@ getchannel(int s, struct ieee80211_channel *chan, const char *val)
 }
 
 static void
-set80211channel(const char *val, int d, int s, const struct afswtch *rafp)
+set80211channel(const char *val, int d __unused, int s,
+		const struct afswtch *rafp __unused)
 {
 	struct ieee80211_channel chan;
 
@@ -770,7 +774,8 @@ set80211channel(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211chanswitch(const char *val, int d, int s, const struct afswtch *rafp)
+set80211chanswitch(const char *val, int d __unused, int s,
+		   const struct afswtch *rafp __unused)
 {
 	struct ieee80211_chanswitch_req csr;
 
@@ -781,7 +786,8 @@ set80211chanswitch(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211authmode(const char *val, int d, int s, const struct afswtch *rafp)
+set80211authmode(const char *val, int d __unused, int s,
+		 const struct afswtch *rafp __unused)
 {
 	int	mode;
 
@@ -803,7 +809,8 @@ set80211authmode(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211powersavemode(const char *val, int d, int s, const struct afswtch *rafp)
+set80211powersavemode(const char *val, int d __unused, int s,
+		      const struct afswtch *rafp __unused)
 {
 	int	mode;
 
@@ -825,7 +832,8 @@ set80211powersavemode(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211powersave(const char *val, int d, int s, const struct afswtch *rafp)
+set80211powersave(const char *val __unused, int d, int s,
+		  const struct afswtch *rafp __unused)
 {
 	if (d == 0)
 		set80211(s, IEEE80211_IOC_POWERSAVE, IEEE80211_POWERSAVE_OFF,
@@ -836,13 +844,15 @@ set80211powersave(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211powersavesleep(const char *val, int d, int s, const struct afswtch *rafp)
+set80211powersavesleep(const char *val, int d __unused, int s,
+		       const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_POWERSAVESLEEP, atoi(val), 0, NULL);
 }
 
 static void
-set80211wepmode(const char *val, int d, int s, const struct afswtch *rafp)
+set80211wepmode(const char *val, int d __unused, int s,
+		const struct afswtch *rafp __unused)
 {
 	int	mode;
 
@@ -860,7 +870,8 @@ set80211wepmode(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211wep(const char *val, int d, int s, const struct afswtch *rafp)
+set80211wep(const char *val __unused, int d, int s,
+	    const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_WEP, d, 0, NULL);
 }
@@ -872,7 +883,8 @@ isundefarg(const char *arg)
 }
 
 static void
-set80211weptxkey(const char *val, int d, int s, const struct afswtch *rafp)
+set80211weptxkey(const char *val, int d __unused, int s,
+		 const struct afswtch *rafp __unused)
 {
 	if (isundefarg(val))
 		set80211(s, IEEE80211_IOC_WEPTXKEY, IEEE80211_KEYIX_NONE, 0, NULL);
@@ -881,7 +893,8 @@ set80211weptxkey(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211wepkey(const char *val, int d, int s, const struct afswtch *rafp)
+set80211wepkey(const char *val, int d __unused, int s,
+	       const struct afswtch *rafp __unused)
 {
 	int		key = 0;
 	int		len;
@@ -905,7 +918,8 @@ set80211wepkey(const char *val, int d, int s, const struct afswtch *rafp)
  * it's not all that hard.
  */
 static void
-set80211nwkey(const char *val, int d, int s, const struct afswtch *rafp)
+set80211nwkey(const char *val, int d __unused, int s,
+	      const struct afswtch *rafp __unused)
 {
 	int		txkey;
 	int		i, len;
@@ -943,14 +957,16 @@ set80211nwkey(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211rtsthreshold(const char *val, int d, int s, const struct afswtch *rafp)
+set80211rtsthreshold(const char *val, int d __unused, int s,
+		     const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_RTSTHRESHOLD,
 		isundefarg(val) ? IEEE80211_RTS_MAX : atoi(val), 0, NULL);
 }
 
 static void
-set80211protmode(const char *val, int d, int s, const struct afswtch *rafp)
+set80211protmode(const char *val, int d __unused, int s,
+		 const struct afswtch *rafp __unused)
 {
 	int	mode;
 
@@ -968,7 +984,8 @@ set80211protmode(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211htprotmode(const char *val, int d, int s, const struct afswtch *rafp)
+set80211htprotmode(const char *val, int d __unused, int s,
+		   const struct afswtch *rafp __unused)
 {
 	int	mode;
 
@@ -984,7 +1001,8 @@ set80211htprotmode(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211txpower(const char *val, int d, int s, const struct afswtch *rafp)
+set80211txpower(const char *val, int d __unused, int s,
+		const struct afswtch *rafp __unused)
 {
 	double v = atof(val);
 	int txpow;
@@ -1000,7 +1018,8 @@ set80211txpower(const char *val, int d, int s, const struct afswtch *rafp)
 #define	IEEE80211_ROAMING_MANUAL	2
 
 static void
-set80211roaming(const char *val, int d, int s, const struct afswtch *rafp)
+set80211roaming(const char *val, int d __unused, int s,
+		const struct afswtch *rafp __unused)
 {
 	int mode;
 
@@ -1017,37 +1036,43 @@ set80211roaming(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211wme(const char *val, int d, int s, const struct afswtch *rafp)
+set80211wme(const char *val __unused, int d, int s,
+	    const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME, d, 0, NULL);
 }
 
 static void
-set80211hidessid(const char *val, int d, int s, const struct afswtch *rafp)
+set80211hidessid(const char *val __unused, int d, int s,
+		 const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_HIDESSID, d, 0, NULL);
 }
 
 static void
-set80211apbridge(const char *val, int d, int s, const struct afswtch *rafp)
+set80211apbridge(const char *val __unused, int d, int s,
+		 const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_APBRIDGE, d, 0, NULL);
 }
 
 static void
-set80211fastframes(const char *val, int d, int s, const struct afswtch *rafp)
+set80211fastframes(const char *val __unused, int d __unused, int s,
+		   const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_FF, d, 0, NULL);
 }
 
 static void
-set80211dturbo(const char *val, int d, int s, const struct afswtch *rafp)
+set80211dturbo(const char *val __unused, int d, int s,
+	       const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_TURBOP, d, 0, NULL);
 }
 
 static void
-set80211chanlist(const char *val, int d, int s, const struct afswtch *rafp)
+set80211chanlist(const char *val, int d __unused, int s,
+		 const struct afswtch *rafp __unused)
 {
 	struct ieee80211req_chanlist chanlist;
 	char *temp, *cp, *tp;
@@ -1097,9 +1122,9 @@ set80211chanlist(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211bssid(const char *val, int d, int s, const struct afswtch *rafp)
+set80211bssid(const char *val, int d __unused, int s,
+	      const struct afswtch *rafp __unused)
 {
-
 	if (!isanyarg(val)) {
 		char *temp;
 		struct sockaddr_dl sdl;
@@ -1138,88 +1163,104 @@ getac(const char *ac)
 	errx(1, "unknown wme access class %s", ac);
 }
 
-static
-DECL_CMD_FUNC2(set80211cwmin, ac, val)
+static void
+set80211cwmin(const char *ac, const char *val, int s,
+	      const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME_CWMIN, atoi(val), getac(ac), NULL);
 }
 
-static
-DECL_CMD_FUNC2(set80211cwmax, ac, val)
+static void
+set80211cwmax(const char *ac, const char *val, int s,
+	      const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME_CWMAX, atoi(val), getac(ac), NULL);
 }
 
-static
-DECL_CMD_FUNC2(set80211aifs, ac, val)
+static void
+set80211aifs(const char *ac, const char *val, int s,
+	     const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME_AIFS, atoi(val), getac(ac), NULL);
 }
 
-static
-DECL_CMD_FUNC2(set80211txoplimit, ac, val)
+static void
+set80211txoplimit(const char *ac, const char *val, int s,
+		  const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME_TXOPLIMIT, atoi(val), getac(ac), NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211acm, ac, d)
+static void
+set80211acm(const char *ac, int d __unused, int s,
+	    const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME_ACM, 1, getac(ac), NULL);
 }
-static
-DECL_CMD_FUNC(set80211noacm, ac, d)
+
+static void
+set80211noacm(const char *ac, int d __unused, int s,
+	      const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME_ACM, 0, getac(ac), NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211ackpolicy, ac, d)
+static void
+set80211ackpolicy(const char *ac, int d __unused, int s,
+		  const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME_ACKPOLICY, 1, getac(ac), NULL);
 }
-static
-DECL_CMD_FUNC(set80211noackpolicy, ac, d)
+
+static void
+set80211noackpolicy(const char *ac, int d __unused, int s,
+		    const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME_ACKPOLICY, 0, getac(ac), NULL);
 }
 
-static
-DECL_CMD_FUNC2(set80211bsscwmin, ac, val)
+static void
+set80211bsscwmin(const char *ac, const char *val, int s,
+		 const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME_CWMIN, atoi(val),
 		getac(ac)|IEEE80211_WMEPARAM_BSS, NULL);
 }
 
-static
-DECL_CMD_FUNC2(set80211bsscwmax, ac, val)
+static void
+set80211bsscwmax(const char *ac, const char *val, int s,
+		 const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME_CWMAX, atoi(val),
 		getac(ac)|IEEE80211_WMEPARAM_BSS, NULL);
 }
 
-static
-DECL_CMD_FUNC2(set80211bssaifs, ac, val)
+static void
+set80211bssaifs(const char *ac, const char *val, int s,
+		const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME_AIFS, atoi(val),
 		getac(ac)|IEEE80211_WMEPARAM_BSS, NULL);
 }
 
-static
-DECL_CMD_FUNC2(set80211bsstxoplimit, ac, val)
+static void
+set80211bsstxoplimit(const char *ac, const char *val, int s,
+		     const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_WME_TXOPLIMIT, atoi(val),
 		getac(ac)|IEEE80211_WMEPARAM_BSS, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211dtimperiod, val, d)
+static void
+set80211dtimperiod(const char *val, int d __unused, int s,
+		   const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_DTIM_PERIOD, atoi(val), 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211bintval, val, d)
+static void
+set80211bintval(const char *val, int d __unused, int s,
+		const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_BEACON_INTERVAL, atoi(val), 0, NULL);
 }
@@ -1243,20 +1284,23 @@ set80211macmac(int s, int op, const char *val)
 	set80211(s, op, 0, IEEE80211_ADDR_LEN, LLADDR(&sdl));
 }
 
-static
-DECL_CMD_FUNC(set80211addmac, val, d)
+static void
+set80211addmac(const char *val, int d __unused, int s,
+	       const struct afswtch *afp __unused)
 {
 	set80211macmac(s, IEEE80211_IOC_ADDMAC, val);
 }
 
-static
-DECL_CMD_FUNC(set80211delmac, val, d)
+static void
+set80211delmac(const char *val, int d __unused, int s,
+	       const struct afswtch *afp __unused)
 {
 	set80211macmac(s, IEEE80211_IOC_DELMAC, val);
 }
 
-static
-DECL_CMD_FUNC(set80211kickmac, val, d)
+static void
+set80211kickmac(const char *val, int d __unused, int s,
+		const struct afswtch *afp __unused)
 {
 	char *temp;
 	struct sockaddr_dl sdl;
@@ -1279,8 +1323,9 @@ DECL_CMD_FUNC(set80211kickmac, val, d)
 	set80211(s, IEEE80211_IOC_MLME, 0, sizeof(mlme), &mlme);
 }
 
-static
-DECL_CMD_FUNC(set80211maccmd, val, d)
+static void
+set80211maccmd(const char *val __unused, int d, int s,
+	       const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_MACCMD, d, 0, NULL);
 }
@@ -1305,26 +1350,30 @@ set80211meshrtmac(int s, int req, const char *val)
 	    IEEE80211_ADDR_LEN, LLADDR(&sdl));
 }
 
-static
-DECL_CMD_FUNC(set80211addmeshrt, val, d)
+static void
+set80211addmeshrt(const char *val, int d __unused, int s,
+		  const struct afswtch *afp __unused)
 {
 	set80211meshrtmac(s, IEEE80211_MESH_RTCMD_ADD, val);
 }
 
-static
-DECL_CMD_FUNC(set80211delmeshrt, val, d)
+static void
+set80211delmeshrt(const char *val, int d __unused, int s,
+		  const struct afswtch *afp __unused)
 {
 	set80211meshrtmac(s, IEEE80211_MESH_RTCMD_DELETE, val);
 }
 
-static
-DECL_CMD_FUNC(set80211meshrtcmd, val, d)
+static void
+set80211meshrtcmd(const char *val __unused, int d, int s,
+		  const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_MESH_RTCMD, d, 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211hwmprootmode, val, d)
+static void
+set80211hwmprootmode(const char *val, int d __unused, int s,
+		     const struct afswtch *afp __unused)
 {
 	int mode;
 
@@ -1339,38 +1388,44 @@ DECL_CMD_FUNC(set80211hwmprootmode, val, d)
 	set80211(s, IEEE80211_IOC_HWMP_ROOTMODE, mode, 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211hwmpmaxhops, val, d)
+static void
+set80211hwmpmaxhops(const char *val, int d __unused, int s,
+		    const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_HWMP_MAXHOPS, atoi(val), 0, NULL);
 }
 
 static void
-set80211pureg(const char *val, int d, int s, const struct afswtch *rafp)
+set80211pureg(const char *val __unused, int d, int s,
+	      const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_PUREG, d, 0, NULL);
 }
 
 static void
-set80211bgscan(const char *val, int d, int s, const struct afswtch *rafp)
+set80211bgscan(const char *val __unused, int d, int s,
+	       const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_BGSCAN, d, 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211bgscanidle, val, d)
+static void
+set80211bgscanidle(const char *val, int d __unused, int s,
+		   const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_BGSCAN_IDLE, atoi(val), 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211bgscanintvl, val, d)
+static void
+set80211bgscanintvl(const char *val, int d __unused, int s,
+		    const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_BGSCAN_INTERVAL, atoi(val), 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211scanvalid, val, d)
+static void
+set80211scanvalid(const char *val, int d __unused, int s,
+		  const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_SCANVALID, atoi(val), 0, NULL);
 }
@@ -1507,8 +1562,9 @@ getmodeflags(const char *val)
     _APPLY1(_flags, _base, _param, _v);					\
 } while (0)
 
-static
-DECL_CMD_FUNC(set80211roamrssi, val, d)
+static void
+set80211roamrssi(const char *val, int d __unused, int s,
+		 const struct afswtch *afp __unused)
 {
 	double v = atof(val);
 	int rssi, flags;
@@ -1538,8 +1594,9 @@ getrate(const char *val, const char *tag)
 	return rate;		/* NB: returns 2x the specified value */
 }
 
-static
-DECL_CMD_FUNC(set80211roamrate, val, d)
+static void
+set80211roamrate(const char *val, int d __unused, int s,
+		 const struct afswtch *afp __unused)
 {
 	int rate, flags;
 
@@ -1554,8 +1611,9 @@ DECL_CMD_FUNC(set80211roamrate, val, d)
 	callback_register(setroam_cb, &roamparams);
 }
 
-static
-DECL_CMD_FUNC(set80211mcastrate, val, d)
+static void
+set80211mcastrate(const char *val, int d __unused, int s,
+		  const struct afswtch *afp __unused)
 {
 	int rate, flags;
 
@@ -1570,8 +1628,9 @@ DECL_CMD_FUNC(set80211mcastrate, val, d)
 	callback_register(settxparams_cb, &txparams);
 }
 
-static
-DECL_CMD_FUNC(set80211mgtrate, val, d)
+static void
+set80211mgtrate(const char *val, int d __unused, int s,
+		const struct afswtch *afp __unused)
 {
 	int rate, flags;
 
@@ -1586,8 +1645,9 @@ DECL_CMD_FUNC(set80211mgtrate, val, d)
 	callback_register(settxparams_cb, &txparams);
 }
 
-static
-DECL_CMD_FUNC(set80211ucastrate, val, d)
+static void
+set80211ucastrate(const char *val, int d __unused, int s,
+		  const struct afswtch *afp __unused)
 {
 	int flags;
 
@@ -1612,8 +1672,9 @@ DECL_CMD_FUNC(set80211ucastrate, val, d)
 	callback_register(settxparams_cb, &txparams);
 }
 
-static
-DECL_CMD_FUNC(set80211maxretry, val, d)
+static void
+set80211maxretry(const char *val, int d __unused, int s,
+		 const struct afswtch *afp __unused)
 {
 	int v = atoi(val), flags;
 
@@ -1629,40 +1690,46 @@ DECL_CMD_FUNC(set80211maxretry, val, d)
 #undef _APPLY_RATE
 #undef _APPLY
 
-static
-DECL_CMD_FUNC(set80211fragthreshold, val, d)
+static void
+set80211fragthreshold(const char *val, int d __unused, int s,
+		      const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_FRAGTHRESHOLD,
 		isundefarg(val) ? IEEE80211_FRAG_MAX : atoi(val), 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211bmissthreshold, val, d)
+static void
+set80211bmissthreshold(const char *val, int d __unused, int s,
+		       const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_BMISSTHRESHOLD,
 		isundefarg(val) ? IEEE80211_HWBMISS_MAX : atoi(val), 0, NULL);
 }
 
 static void
-set80211burst(const char *val, int d, int s, const struct afswtch *rafp)
+set80211burst(const char *val __unused, int d, int s,
+	      const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_BURST, d, 0, NULL);
 }
 
 static void
-set80211doth(const char *val, int d, int s, const struct afswtch *rafp)
+set80211doth(const char *val __unused, int d, int s,
+	     const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_DOTH, d, 0, NULL);
 }
 
 static void
-set80211dfs(const char *val, int d, int s, const struct afswtch *rafp)
+set80211dfs(const char *val __unused, int d, int s,
+	    const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_DFS, d, 0, NULL);
 }
 
 static void
-set80211shortgi(const char *val, int d, int s, const struct afswtch *rafp)
+set80211shortgi(const char *val __unused, int d, int s,
+		const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_SHORTGI,
 		d ? (IEEE80211_HTCAP_SHORTGI20 | IEEE80211_HTCAP_SHORTGI40) : 0,
@@ -1670,7 +1737,8 @@ set80211shortgi(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211ampdu(const char *val, int d, int s, const struct afswtch *rafp)
+set80211ampdu(const char *val __unused, int d, int s,
+	      const struct afswtch *rafp __unused)
 {
 	int ampdu;
 
@@ -1684,8 +1752,9 @@ set80211ampdu(const char *val, int d, int s, const struct afswtch *rafp)
 	set80211(s, IEEE80211_IOC_AMPDU, ampdu, 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211ampdulimit, val, d)
+static void
+set80211ampdulimit(const char *val, int d __unused, int s,
+		   const struct afswtch *afp __unused)
 {
 	int v;
 
@@ -1712,8 +1781,9 @@ DECL_CMD_FUNC(set80211ampdulimit, val, d)
 	set80211(s, IEEE80211_IOC_AMPDU_LIMIT, v, 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211ampdudensity, val, d)
+static void
+set80211ampdudensity(const char *val, int d __unused, int s,
+		     const struct afswtch *afp __unused)
 {
 	int v;
 
@@ -1751,7 +1821,8 @@ DECL_CMD_FUNC(set80211ampdudensity, val, d)
 }
 
 static void
-set80211amsdu(const char *val, int d, int s, const struct afswtch *rafp)
+set80211amsdu(const char *val __unused, int d, int s,
+	      const struct afswtch *rafp __unused)
 {
 	int amsdu;
 
@@ -1765,111 +1836,129 @@ set80211amsdu(const char *val, int d, int s, const struct afswtch *rafp)
 	set80211(s, IEEE80211_IOC_AMSDU, amsdu, 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211amsdulimit, val, d)
+static void
+set80211amsdulimit(const char *val, int d __unused, int s,
+		   const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_AMSDU_LIMIT, atoi(val), 0, NULL);
 }
 
 static void
-set80211puren(const char *val, int d, int s, const struct afswtch *rafp)
+set80211puren(const char *val __unused, int d, int s,
+	      const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_PUREN, d, 0, NULL);
 }
 
 static void
-set80211htcompat(const char *val, int d, int s, const struct afswtch *rafp)
+set80211htcompat(const char *val __unused, int d, int s,
+		 const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_HTCOMPAT, d, 0, NULL);
 }
 
 static void
-set80211htconf(const char *val, int d, int s, const struct afswtch *rafp)
+set80211htconf(const char *val __unused, int d, int s,
+	       const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_HTCONF, d, 0, NULL);
 	htconf = d;
 }
 
 static void
-set80211dwds(const char *val, int d, int s, const struct afswtch *rafp)
+set80211dwds(const char *val __unused, int d, int s,
+	     const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_DWDS, d, 0, NULL);
 }
 
 static void
-set80211inact(const char *val, int d, int s, const struct afswtch *rafp)
+set80211inact(const char *val __unused, int d, int s,
+	      const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_INACTIVITY, d, 0, NULL);
 }
 
 static void
-set80211tsn(const char *val, int d, int s, const struct afswtch *rafp)
+set80211tsn(const char *val __unused, int d, int s,
+	    const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_TSN, d, 0, NULL);
 }
 
 static void
-set80211dotd(const char *val, int d, int s, const struct afswtch *rafp)
+set80211dotd(const char *val __unused, int d, int s,
+	     const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_DOTD, d, 0, NULL);
 }
 
 static void
-set80211smps(const char *val, int d, int s, const struct afswtch *rafp)
+set80211smps(const char *val __unused, int d, int s,
+	     const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_SMPS, d, 0, NULL);
 }
 
 static void
-set80211rifs(const char *val, int d, int s, const struct afswtch *rafp)
+set80211rifs(const char *val __unused, int d, int s,
+	     const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_RIFS, d, 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211tdmaslot, val, d)
+static void
+set80211tdmaslot(const char *val, int d __unused, int s,
+		 const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_TDMA_SLOT, atoi(val), 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211tdmaslotcnt, val, d)
+static void
+set80211tdmaslotcnt(const char *val, int d __unused, int s,
+		    const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_TDMA_SLOTCNT, atoi(val), 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211tdmaslotlen, val, d)
+static void
+set80211tdmaslotlen(const char *val, int d __unused, int s,
+		    const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_TDMA_SLOTLEN, atoi(val), 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211tdmabintval, val, d)
+static void
+set80211tdmabintval(const char *val, int d __unused, int s,
+		    const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_TDMA_BINTERVAL, atoi(val), 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211meshttl, val, d)
+static void
+set80211meshttl(const char *val, int d __unused, int s,
+		const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_MESH_TTL, atoi(val), 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211meshforward, val, d)
+static void
+set80211meshforward(const char *val, int d __unused, int s,
+		    const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_MESH_FWRD, atoi(val), 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211meshpeering, val, d)
+static void
+set80211meshpeering(const char *val, int d __unused, int s,
+		    const struct afswtch *afp __unused)
 {
 	set80211(s, IEEE80211_IOC_MESH_AP, atoi(val), 0, NULL);
 }
 
-static
-DECL_CMD_FUNC(set80211meshmetric, val, d)
+static void
+set80211meshmetric(const char *val, int d __unused, int s,
+		   const struct afswtch *afp __unused)
 {
 	char v[12];
 
@@ -1877,8 +1966,9 @@ DECL_CMD_FUNC(set80211meshmetric, val, d)
 	set80211(s, IEEE80211_IOC_MESH_PR_METRIC, 0, 0, v);
 }
 
-static
-DECL_CMD_FUNC(set80211meshpath, val, d)
+static void
+set80211meshpath(const char *val, int d __unused, int s,
+		 const struct afswtch *afp __unused)
 {
 	char v[12];
 
@@ -2236,8 +2326,9 @@ defaultcountry(const struct regdomain *rd)
 	regdomain.isocc[1] = cc->isoname[1];
 }
 
-static
-DECL_CMD_FUNC(set80211regdomain, val, d)
+static void
+set80211regdomain(const char *val, int d __unused, int s,
+		  const struct afswtch *afp __unused)
 {
 	struct regdata *rdp = getregdata();
 	const struct regdomain *rd;
@@ -2264,8 +2355,9 @@ DECL_CMD_FUNC(set80211regdomain, val, d)
 	callback_register(setregdomain_cb, &regdomain);
 }
 
-static
-DECL_CMD_FUNC(set80211country, val, d)
+static void
+set80211country(const char *val, int d __unused, int s,
+		const struct afswtch *afp __unused)
 {
 	struct regdata *rdp = getregdata();
 	const struct country *cc;
@@ -2289,7 +2381,8 @@ DECL_CMD_FUNC(set80211country, val, d)
 }
 
 static void
-set80211location(const char *val, int d, int s, const struct afswtch *rafp)
+set80211location(const char *val __unused, int d, int s,
+		 const struct afswtch *rafp __unused)
 {
 	getregdomain(s);
 	regdomain.location = d;
@@ -2297,7 +2390,8 @@ set80211location(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211ecm(const char *val, int d, int s, const struct afswtch *rafp)
+set80211ecm(const char *val __unused, int d, int s,
+	    const struct afswtch *rafp __unused)
 {
 	getregdomain(s);
 	regdomain.ecm = d;
@@ -2475,7 +2569,8 @@ printie(const char* tag, const uint8_t *ie, size_t ielen, int maxlen)
  */
 
 static void
-printwmeparam(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
+printwmeparam(const char *tag, const u_int8_t *ie, size_t ielen __unused,
+	      int maxlen __unused)
 {
 #define	MS(_v, _f)	(((_v) & _f) >> _f##_S)
 	static const char *acnames[] = { "BE", "BK", "VO", "VI" };
@@ -2506,7 +2601,8 @@ printwmeparam(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
 }
 
 static void
-printwmeinfo(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
+printwmeinfo(const char *tag, const u_int8_t *ie, size_t ielen __unused,
+	     int maxlen __unused)
 {
 	printf("%s", tag);
 	if (verbose) {
@@ -2518,7 +2614,8 @@ printwmeinfo(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
 }
 
 static void
-printhtcap(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
+printhtcap(const char *tag, const u_int8_t *ie, size_t ielen __unused,
+	   int maxlen __unused)
 {
 	printf("%s", tag);
 	if (verbose) {
@@ -2552,7 +2649,8 @@ printhtcap(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
 }
 
 static void
-printhtinfo(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
+printhtinfo(const char *tag, const u_int8_t *ie, size_t ielen __unused,
+	    int maxlen __unused)
 {
 	printf("%s", tag);
 	if (verbose) {
@@ -2584,9 +2682,9 @@ printhtinfo(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
 }
 
 static void
-printathie(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
+printathie(const char *tag, const u_int8_t *ie, size_t ielen __unused,
+	   int maxlen __unused)
 {
-
 	printf("%s", tag);
 	if (verbose) {
 		const struct ieee80211_ath_ie *ath =
@@ -2615,7 +2713,8 @@ printathie(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
 
 
 static void
-printmeshconf(const char *tag, const uint8_t *ie, size_t ielen, int maxlen)
+printmeshconf(const char *tag, const uint8_t *ie, size_t ielen __unused,
+	      int maxlen __unused)
 {
 #define MATCHOUI(field, oui, string)					\
 do {									\
@@ -2699,7 +2798,8 @@ wpa_keymgmt(const u_int8_t *sel)
 }
 
 static void
-printwpaie(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
+printwpaie(const char *tag, const u_int8_t *ie, size_t ielen __unused,
+	   int maxlen __unused)
 {
 	u_int8_t len = ie[1];
 
@@ -2785,7 +2885,8 @@ rsn_keymgmt(const u_int8_t *sel)
 }
 
 static void
-printrsnie(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
+printrsnie(const char *tag, const u_int8_t *ie, size_t ielen,
+	   int maxlen __unused)
 {
 	printf("%s", tag);
 	if (verbose) {
@@ -2833,7 +2934,8 @@ printrsnie(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
 	  (((const u_int8_t *)(p))[0] <<  8)))
 
 static void
-printwpsie(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
+printwpsie(const char *tag, const u_int8_t *ie, size_t ielen __unused,
+	   int maxlen __unused)
 {
 	u_int8_t len = ie[1];
 	uint16_t tlv_type;
@@ -3065,7 +3167,8 @@ printwpsie(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
 }
 
 static void
-printtdmaie(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
+printtdmaie(const char *tag, const u_int8_t *ie, size_t ielen,
+	    int maxlen __unused)
 {
 	printf("%s", tag);
 	if (verbose && ielen >= sizeof(struct ieee80211_tdma_param)) {
@@ -3123,7 +3226,8 @@ copy_essid(char buf[], size_t bufsize, const u_int8_t *essid, size_t essid_len)
 }
 
 static void
-printssid(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
+printssid(const char *tag, const u_int8_t *ie, size_t ielen __unused,
+	  int maxlen)
 {
 	char ssid[2*IEEE80211_NWID_LEN+1];
 
@@ -3132,7 +3236,7 @@ printssid(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
 
 static void
 printrates(const char *tag, const u_int8_t *ie, size_t ielen,
-	   __unused int maxlen)
+	   int maxlen __unused)
 {
 	const char *sep;
 	size_t i;
@@ -3149,8 +3253,8 @@ printrates(const char *tag, const u_int8_t *ie, size_t ielen,
 }
 
 static void
-printcountry(const char *tag, const u_int8_t *ie, size_t ielen,
-	     __unused int maxlen)
+printcountry(const char *tag, const u_int8_t *ie, size_t ielen __unused,
+	     int maxlen __unused)
 {
 	const struct ieee80211_country_ie *cie =
 	   (const struct ieee80211_country_ie *) ie;
@@ -3438,8 +3542,9 @@ scan_and_wait(int s)
 	close(sroute);
 }
 
-static
-DECL_CMD_FUNC(set80211scan, val, d)
+static void
+set80211scan(const char *val __unused, int d __unused, int s,
+	     const struct afswtch *afp __unused)
 {
 	scan_and_wait(s);
 	list_scan(s, 0);
@@ -3812,7 +3917,7 @@ list_txpow(int s)
 }
 
 static void
-list_keys(int s)
+list_keys(int s __unused)
 {
 }
 
@@ -4178,8 +4283,9 @@ list_mesh(int s)
 	}
 }
 
-static
-DECL_CMD_FUNC(set80211list, arg, d)
+static void
+set80211list(const char *arg, int d __unused, int s,
+	     const struct afswtch *afp __unused)
 {
 	LINE_INIT('\t');
 
@@ -5194,14 +5300,16 @@ wlan_create(int s, struct ifreq *ifr)
 		err(1, "SIOCIFCREATE2");
 }
 
-static
-DECL_CMD_FUNC(set80211clone_wlandev, arg, d)
+static void
+set80211clone_wlandev(const char *arg, int d __unused, int s __unused,
+		      const struct afswtch *afp __unused)
 {
 	strlcpy(params.icp_parent, arg, IFNAMSIZ);
 }
 
-static
-DECL_CMD_FUNC(set80211clone_wlanbssid, arg, d)
+static void
+set80211clone_wlanbssid(const char *arg, int d __unused, int s __unused,
+			const struct afswtch *afp __unused)
 {
 	const struct ether_addr *ea;
 
@@ -5211,8 +5319,9 @@ DECL_CMD_FUNC(set80211clone_wlanbssid, arg, d)
 	memcpy(params.icp_bssid, ea->octet, IEEE80211_ADDR_LEN);
 }
 
-static
-DECL_CMD_FUNC(set80211clone_wlanaddr, arg, d)
+static void
+set80211clone_wlanaddr(const char *arg, int d __unused, int s __unused,
+		       const struct afswtch *afp __unused)
 {
 	const struct ether_addr *ea;
 
@@ -5223,8 +5332,9 @@ DECL_CMD_FUNC(set80211clone_wlanaddr, arg, d)
 	params.icp_flags |= IEEE80211_CLONE_MACADDR;
 }
 
-static
-DECL_CMD_FUNC(set80211clone_wlanmode, arg, d)
+static void
+set80211clone_wlanmode(const char *arg, int d __unused, int s __unused,
+		       const struct afswtch *afp __unused)
 {
 	if (iseq(arg, "sta"))
 		params.icp_opmode = IEEE80211_M_STA;
@@ -5248,7 +5358,8 @@ DECL_CMD_FUNC(set80211clone_wlanmode, arg, d)
 }
 
 static void
-set80211clone_beacons(const char *val, int d, int s, const struct afswtch *rafp)
+set80211clone_beacons(const char *val __unused, int d, int s __unused,
+		      const struct afswtch *rafp __unused)
 {
 	/* NB: inverted sense */
 	if (d)
@@ -5258,7 +5369,8 @@ set80211clone_beacons(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211clone_bssid(const char *val, int d, int s, const struct afswtch *rafp)
+set80211clone_bssid(const char *val __unused, int d, int s __unused,
+		    const struct afswtch *rafp __unused)
 {
 	if (d)
 		params.icp_flags |= IEEE80211_CLONE_BSSID;
@@ -5267,7 +5379,8 @@ set80211clone_bssid(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 static void
-set80211clone_wdslegacy(const char *val, int d, int s, const struct afswtch *rafp)
+set80211clone_wdslegacy(const char *val __unused, int d, int s __unused,
+			const struct afswtch *rafp __unused)
 {
 	if (d)
 		params.icp_flags |= IEEE80211_CLONE_WDSLEGACY;
