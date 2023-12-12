@@ -51,13 +51,7 @@
 
 static const char *carp_states[] = { CARP_STATES };
 
-void carp_status(int s);
-void setcarp_advbase(const char *,int, int, const struct afswtch *rafp);
-void setcarp_advskew(const char *, int, int, const struct afswtch *rafp);
-void setcarp_passwd(const char *, int, int, const struct afswtch *rafp);
-void setcarp_vhid(const char *, int, int, const struct afswtch *rafp);
-
-void
+static void
 carp_status(int s)
 {
 	struct carpreq carpr;
@@ -93,7 +87,7 @@ carp_status(int s)
 		printf("\tcarpdev: %s\n", devname);
 }
 
-void
+static void
 setcarp_passwd(const char *val, int d __unused, int s,
 	       const struct afswtch *afp __unused)
 {
@@ -112,7 +106,7 @@ setcarp_passwd(const char *val, int d __unused, int s,
 		err(1, "SIOCSVH");
 }
 
-void
+static void
 setcarp_vhid(const char *val, int d __unused, int s,
 	     const struct afswtch *afp __unused)
 {
@@ -135,7 +129,7 @@ setcarp_vhid(const char *val, int d __unused, int s,
 		err(1, "SIOCSVH");
 }
 
-void
+static void
 setcarp_advskew(const char *val, int d __unused, int s,
 		const struct afswtch *afp __unused)
 {
@@ -156,7 +150,7 @@ setcarp_advskew(const char *val, int d __unused, int s,
 		err(1, "SIOCSVH");
 }
 
-void
+static void
 setcarp_advbase(const char *val, int d __unused, int s,
 		const struct afswtch *afp __unused)
 {
