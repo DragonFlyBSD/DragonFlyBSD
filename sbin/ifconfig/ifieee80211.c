@@ -170,7 +170,7 @@ static struct ieee80211_txparams_req txparams;
 static int gottxparams = 0;
 static struct ieee80211_channel curchan;
 static int gotcurchan = 0;
-static struct ifmediareq *ifmr;
+static struct ifmediareq *ifmedia;
 static int htconf = 0;
 static int gothtconf = 0;
 
@@ -211,7 +211,7 @@ getchaninfo(int s)
 	if (get80211(s, IEEE80211_IOC_CHANINFO, chaninfo,
 		     IEEE80211_CHANINFO_SIZE(MAXCHAN)) < 0)
 		err(1, "unable to get channel information");
-	ifmr = ifmedia_getstate(s);
+	ifmedia = ifmedia_getstate(s);
 	gethtconf(s);
 }
 
@@ -219,6 +219,7 @@ static struct regdata *
 getregdata(void)
 {
 	static struct regdata *rdp = NULL;
+
 	if (rdp == NULL) {
 		rdp = lib80211_alloc_regdata();
 		if (rdp == NULL)
@@ -279,13 +280,15 @@ promote(int i)
 	 * is an unfortunate side-effect of the way ifconfig is
 	 * structure for modularity (yech).
 	 *
-	 * NB: ifmr is actually setup in getchaninfo (above); we
+	 * NB: ifmedia is actually setup in getchaninfo (above); we
 	 *     assume it's called coincident with to this call so
 	 *     we have a ``current setting''; otherwise we must pass
 	 *     the socket descriptor down to here so we can make
 	 *     the ifmedia_getstate call ourselves.
 	 */
-	int chanmode = ifmr != NULL ? IFM_MODE(ifmr->ifm_current) : IFM_AUTO;
+	int chanmode = (ifmedia != NULL ?
+			IFM_MODE(ifmedia->ifm_current) :
+			IFM_AUTO);
 
 	/* when ambiguous promote to ``best'' */
 	/* NB: we abitrarily pick HT40+ over HT40- */
