@@ -28,7 +28,7 @@
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.124 2006/10/10 09:44:08 ru Exp $
 .\"
-.Dd May 29, 2022
+.Dd December 13, 2023
 .Dt IFCONFIG 8
 .Os
 .Sh NAME
@@ -97,178 +97,282 @@ of each interface present on a machine; it may also be used at
 a later time to redefine an interface's address
 or other operating parameters.
 .Pp
+.Nm
+displays the current configuration for a network interface
+when no optional parameters are supplied.
+If a protocol family is specified,
+.Nm
+will report only the details specific to that protocol family.
+If no parameters are provided, a summary of all interfaces is provided.
+.Pp
+Only the super-user may modify the configuration of a network interface.
+.Pp
 The following options are available:
 .Bl -tag -width indent
-.It Ar address
-For the
-.Tn DARPA Ns -Internet
-family,
-the address is either a host name present in the host name data
-base,
-.Xr hosts 5 ,
-or a
-.Tn DARPA
-Internet address expressed in the Internet standard
-.Dq dot notation .
+.It Fl a
+Display information about all interfaces on the system.
 .Pp
-It is also possible to use the CIDR notation (also known as the
-slash notation) to include the netmask.
-That is, one can specify an address like
-.Li 192.168.0.1/16 .
-.Pp
-For
-.Dq inet6
-family, it is also possible to specify the prefix length using the slash
-notation, like
-.Li ::1/128 .
-See the
-.Cm prefixlen
-parameter below for more information.
-.\" For the Xerox Network Systems(tm) family,
-.\" addresses are
-.\" .Ar net:a.b.c.d.e.f ,
-.\" where
-.\" .Ar net
-.\" is the assigned network number (in decimal),
-.\" and each of the six bytes of the host number,
-.\" .Ar a
-.\" through
-.\" .Ar f ,
-.\" are specified in hexadecimal.
-.\" The host number may be omitted on IEEE 802 protocol
-.\" (Ethernet, FDDI, and Token Ring) interfaces,
-.\" which use the hardware physical address,
-.\" and on interfaces other than the first.
-.\" For the
-.\" .Tn ISO
-.\" family, addresses are specified as a long hexadecimal string,
-.\" as in the Xerox family.
-.\" However, two consecutive dots imply a zero
-.\" byte, and the dots are optional, if the user wishes to (carefully)
-.\" count out long strings of digits in network byte order.
-.Pp
-The link-level
-.Pq Dq link
-address
-is specified as a series of colon-separated hex digits.
-This can be used to
-e.g.\& set a new MAC address on an Ethernet interface, though the
-mechanism used is not Ethernet-specific.
-If the interface is already
-up when this option is used, it will be briefly brought down and
-then brought back up again in order to ensure that the receive
-filter in the underlying Ethernet hardware is properly reprogrammed.
-.It Ar address_family
-Specify the
-address family
-which affects interpretation of the remaining parameters.
-Since an interface can receive transmissions in differing protocols
-with different naming schemes, specifying the address family is recommended.
-The address or protocol families currently
-supported are
-.Dq inet ,
-.Dq inet6 ,
-.Dq atalk ,
-and
-.Dq link .
-The default is
-.Dq inet .
-.Dq ether
-and
-.Dq lladdr
-are synonyms for
-.Dq link .
-.It Ar dest_address
-Specify the address of the correspondent on the other end
-of a point to point link.
-.It Ar interface
-This
-parameter is a string of the form
-.Dq name unit ,
-for example,
-.Dq Li ed0 .
-.It Ar groupname
-List the interfaces in the given group.
-.El
-.Pp
-The output format of
-.Nm
-can be controlled with the
-.Fl f
-option or the
-.Ev IFCONFIG_FORMAT
-environment variable.
+The
+.Fl a
+flag may be used instead of the
+.Ar interface
+argument.
+This is the default, if no parameters are given to
+.Nm .
+.It Fl C
+List all of the interface cloners available on the system,
+with no additional information.
+Use of this flag is mutually exclusive with all other flags and commands.
+.It Fl d
+Display only the interfaces that are down.
+.It Fl f Xo
+.Ar type Ns Cm \&: Ns Ar format Ns
+.Op Cm \&, Ns Ar type Ns Cm \&: Ns Ar format Ar ...
+.Xc
+Control the output formats of
+.Nm .
 The format is specified as a comma-separated list of
 .Sy type:format
 pairs.
+This option can be supplied multiple times.
+Alternatively, the output formats can be specified via the
+.Ev IFCONFIG_FORMAT
+environment variable.
+.Pp
 The supported
-.Sy type
-and its associated
+.Ar type Ns s
+and their associated
 .Sy format
 strings are:
 .Bl -tag -width indent
 .It Sy addr
 Adjust the display of inet and inet6 addresses:
-.Bl -tag -width default
+.Pp
+.Bl -tag -width default -compact
 .It Sy default
-Display inet and inet6 addresses in the default format, i.e.,
-.Sy numeric .
+Default format, i.e.,
+.Sy numeric
 .It Sy fqdn
-Display inet and inet6 addresses as fully qualified domain names
-.Pq FQDN .
+Fully qualified domain names
+.Pq FQDN
 .It Sy host
-Display inet and inet6 addresses as unqualified hostnames.
+Unqualified hostnames
 .It Sy numeric
-Display inet and inet6 addresses in numeric format.
+Numeric format
 .El
 .It Sy ether
 Adjust the display of link-level Ethernet (MAC) addresses:
-.Bl -tag -width default
+.Pp
+.Bl -tag -width default -compact
 .It Sy colon
 Separate address segments with a colon.
 .It Sy dash
 Separate address segments with a dash.
 .It Sy default
-Display Ethernet addresses in the default format, i.e.,
+Default format, i.e.,
 .Sy colon .
 .El
 .It Sy inet
 Adjust the display of inet address subnet masks:
-.Bl -tag -width default
+.Pp
+.Bl -tag -width default -compact
 .It Sy cidr
-Display subnet masks in CIDR notation, for example:
-.br
-10.0.0.0/8 or 203.0.113.224/26
+CIDR notation, for example:
+.Dq 10.0.0.0/8 ,
+.Dq 203.0.113.224/26
 .It Sy default
-Display subnet masks in the default format, i.e.,
-.Sy hex .
+Default format, i.e.,
+.Sy hex
 .It Sy dotted
-Display subnet masks in dotted quad notation, for example:
-.br
-255.255.0.0, 255.255.255.192
+Dotted quad notation, for example:
+.Dq 255.255.0.0 ,
+.Dq 255.255.255.192
 .It Sy hex
-Display subnet masks in hexidecimal, for example:
-.br
-0xffff0000, 0xffffffc0
+Hexidecimal format, for example:
+.Dq 0xffff0000 ,
+.Dq 0xffffffc0
 .El
 .It Sy inet6
 Adjust the display of inet6 address prefixes (subnet masks):
-.Bl -tag -width default
+.Pp
+.Bl -tag -width default -compact
 .It Sy cidr
-Display subnet prefix in CIDR notation, for example:
-.br
-::1/128, fe80::1%lo0/64
+CIDR notation, for example:
+.Dq ::1/128 ,
+.Dq fe80::1%lo0/64
 .It Sy default
-Display subnet prefix in the default format, i.e.,
+Default format, i.e.,
 .Sy numeric
 .It Sy numeric
-Display subnet prefix in integer format, for example:
-.br
-prefixlen 64
+Integer format, for example:
+.Dq prefixlen 64
 .El
 .El
+.It Fl G Ar groupname
+Exclude members of the specified group from the output.
 .Pp
-The following parameters may be set with
+Only one
+.Fl G
+flag should be specified, as the later one overrides previous ones.
+The
+.Ar groupname
+argument may contain shell patterns, but should be quoted in that case.
+.It Fl g Ar groupname
+Limit the output to the members of the specified group.
+.Pp
+Only one
+.Fl g
+flag should be specified, as the later one overrides previous ones.
+The
+.Ar groupname
+argument may contain shell patterns, but should be quoted in that case.
+.Pp
+If the
+.Fl g
+flag is specified before any other significant flags (e.g.,
+.Fl a
+or
+.Fl C ) ,
+then
+.Nm
+only lists the names of interfaces belonging to the specified group.
+Any other flags and parameters are ignored in that case.
+.Pp
+Setting
+.Ar groupname
+to
+.Sy all
+selects all interfaces.
+.It Fl k
+Print keying information for the interface, if available.
+.Pp
+For example, the values of 802.11 WEP keys will be printed,
+if accessible to the current user.
+This information is not printed by default, as it may be
+considered sensitive.
+.It Fl L
+Display address lifetime for IPv6 addresses as time offset string.
+.It Fl l
+List all available interfaces on the system,
+with no other additional information.
+.Pp
+If an
+.Ar address_family
+is specified, only interfaces of that type will be listed.
+If the
+.Ar address_family
+is set to
+.Sy ether ,
+then this flag will cause
+.Nm
+to exclude loopback interfaces from the list of Ethernet interfaces.
+This is a special case, because all other synonyms of the
+.Sy link
+address family will include loopback interfaces in the list.
+.Pp
+Use of this flag is mutually exclusive with all other flags and
+parameters, except for
+.Fl d ,
+.Fl g ,
+and
+.Fl u .
+.It Fl m
+Display the capability list,
+the maximum amount of data that TCP segmentation offloading is
+allowed to aggregate,
+and all the supported media for an interface.
+.It Fl n
+Disable the automatic loading of network interface drivers.
+.Pp
+By default, if the network interface driver is not present in the kernel,
+then
+.Nm
+will attempt to load it.
+.It Fl u
+Display only the interfaces that are up.
+.It Fl v
+Get more verbose status for an interface.
+.It Ar interface
+Specify the name of the interface to show or configure.
+This parameter is usually a string of the form
+.Dq name unit ,
+for example,
+.Dq em0 .
+If the interface has been renamed, then this form no longer holds;
+for example, an interface can be renamed to be
+.Dq vpn-corp .
+.It Ar address_family
+Specify the address family that affects interpretation of the
+remaining parameters.
+Since an interface can receive transmissions in differing protocols
+with different naming schemes, specifying the address family is
+recommended.
+.Pp
+The address or protocol families currently supported are:
+.Pp
+.Bl -tag -width default -compact
+.It Sy ether
+Synonymous with
+.Sy link
+(with some exceptions, see the
+.Fl l
+option).
+.It Sy inet
+Default, if available.
+.It Sy inet6
+.It Sy link
+Default if
+.Sy inet
+is not available.
+.It Sy lladdr
+Synonymous with
+.Sy link .
+.El
+.It Ar address
+For the
+.Sy inet
+family, the address is either a host name present in the host name
+data base (see
+.Xr hosts 5 ) ,
+or an IPv4 address expressed in the Internet standard
+.Dq dot notation
+format.
+.Pp
+It is also possible to use the CIDR notation (also known as the
+slash notation) to include the netmask.
+That is, one can specify an address like
+.Dq 192.168.0.1/16 .
+.Pp
+For the
+.Sy inet6
+family, it is also possible to specify the prefix length using the
+slash notation, like
+.Dq ::1/128 .
+See the
+.Cm prefixlen
+parameter below for more information.
+.Pp
+The link-level
+.Pq Sy link
+address is specified as a series of colon-separated hex digits.
+This can be used to, for example,
+set a new MAC address on an Ethernet interface,
+though the mechanism used is not Ethernet-specific.
+.Pp
+If the interface is already up when the link-level address is modified,
+it will be briefly brought down and then brought back up again
+in order to ensure that the receive filter in the underlying
+Ethernet hardware is properly reprogrammed.
+.It Ar dest_address
+Specify the address of the correspondent on the other end
+of a point-to-point link.
+.El
+.\"
+.Sh PARAMETERS
+.Pp
+The following
+.Ar parameters
+may be set with
 .Nm :
 .Bl -tag -width indent
 .It Cm add
@@ -2356,102 +2460,17 @@ Set the virtual host ID.
 This is a required setting.
 Acceptable values are 1 to 255.
 .El
-.Pp
-The
-.Nm
-utility displays the current configuration for a network interface
-when no optional parameters are supplied.
-If a protocol family is specified,
-.Nm
-will report only the details specific to that protocol family.
-.Pp
-If the
-.Fl m
-flag is passed before an interface name,
-.Nm
-will display the capability list,
-the maximum amount of data
-that TCP segmentation offloading is allowed to aggregate and
-all of the supported media for the specified interface.
-If
-.Fl L
-flag is supplied, address lifetime is displayed for IPv6 addresses,
-as time offset string.
-.Pp
-Optionally, the
-.Fl a
-flag may be used instead of an interface name.
-This flag instructs
-.Nm
-to display information about all interfaces in the system.
-The
-.Fl d
-flag limits this to interfaces that are down,
-.Fl u
-limits this to interfaces that are up,
-.Fl g
-limits this to members of the specified group of interfaces, and
-.Fl G
-excludes members of the specified group from the list.
-Both
-.Fl g
-and
-.Fl G
-flags may be specified to apply both conditions.
-Only one
-.Fl g
-flag should be specified, as the later one overrides previous ones
-(same for the
-.Fl G
-flag).
-The argument of
-.Fl g
-or
-.Fl G
-flag may contain shell patterns but should be quoted in that case.
-When no arguments are given,
-.Fl a
-is implied.
-.Pp
-The
-.Fl l
-flag may be used to list all available interfaces on the system, with
-no other additional information.
-Use of this flag is mutually exclusive
-with all other flags and commands, except for
-.Fl d
-(only list interfaces that are down)
-and
-.Fl u
-(only list interfaces that are up).
-.Pp
-The
-.Fl v
-flag may be used to get more verbose status for an interface.
-.Pp
-The
-.Fl C
-flag may be used to list all of the interface cloners available on
-the system, with no additional information.
-Use of this flag is mutually exclusive with all other flags and commands.
-.Pp
-The
-.Fl k
-flag causes keying information for the interface, if available, to be
-printed.
-For example, the values of 802.11 WEP keys will be printed, if accessible to
-the current user.
-This information is not printed by default, as it may be considered
-sensitive.
-.Pp
-If the network interface driver is not present in the kernel then
-.Nm
-will attempt to load it.
-The
-.Fl n
-flag disables this behavior.
-.Pp
-Only the super-user may modify the configuration of a network interface.
+.\"
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm :
+.Bl -tag -width IFCONFIG_FORMAT
+.It Ev IFCONFIG_FORMAT
+This variable can contain a specification of the output format.
+See the description of the
+.Fl f
+option for more details.
+.El
 .Sh DIAGNOSTICS
 Messages indicating the specified interface does not exist, the
 requested address is unknown, or the user is not privileged and
