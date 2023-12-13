@@ -1149,24 +1149,22 @@ setifname(const char *val, int dummy __unused, int s,
 	  const struct afswtch *afp __unused)
 {
 	struct ifreq ifr;
-	char *newname;
+	char newname[IFNAMSIZ];
+	int n;
 
-	newname = strdup(val);
-	if (newname == NULL)
-		err(1, "no memory to set ifname");
+	n = snprintf(newname, sizeof(newname), "%s", val);
+	if (n >= (int)sizeof(newname))
+		errx(1, "ifname too long");
 
 	memset(&ifr, 0, sizeof(ifr));
 	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 	ifr.ifr_data = newname;
 
-	if (ioctl(s, SIOCSIFNAME, &ifr) < 0) {
-		free(newname);
+	if (ioctl(s, SIOCSIFNAME, &ifr) < 0)
 		err(1, "ioctl SIOCSIFNAME (set name)");
-	}
 
 	printifname = 1;
 	strlcpy(IfName, newname, sizeof(IfName));
-	free(newname);
 }
 
 static void
