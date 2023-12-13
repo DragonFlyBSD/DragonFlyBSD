@@ -1011,10 +1011,11 @@ notealias(const char *addr __unused, int param, int s __unused,
 	  const struct afswtch *afp)
 {
 #define rqtosa(x) (&(((struct ifreq *)(afp->x))->ifr_addr))
-	if (setaddr && doalias == 0 && param < 0)
+	if (setaddr && doalias == 0 && param < 0) {
 		if (afp->af_addreq != NULL && afp->af_ridreq != NULL)
-			bcopy(rqtosa(af_addreq), rqtosa(af_ridreq),
-			      rqtosa(af_addreq)->sa_len);
+			memcpy(rqtosa(af_ridreq), rqtosa(af_addreq),
+			       rqtosa(af_addreq)->sa_len);
+	}
 	doalias = param;
 	if (param < 0) {
 		clearaddr = 1;

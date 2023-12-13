@@ -371,7 +371,7 @@ in6_getaddr(const char *s, int which)
 	}
 
 	if (sin->sin6_family == AF_INET6) {
-		bzero(&hints, sizeof(struct addrinfo));
+		memset(&hints, 0, sizeof(struct addrinfo));
 		hints.ai_family = AF_INET6;
 		error = getaddrinfo(s, NULL, &hints, &res);
 	}
@@ -379,7 +379,7 @@ in6_getaddr(const char *s, int which)
 		if (inet_pton(AF_INET6, s, &sin->sin6_addr) != 1)
 			errx(1, "%s: bad value", s);
 	} else
-		bcopy(res->ai_addr, sin, res->ai_addrlen);
+		memcpy(sin, res->ai_addr, res->ai_addrlen);
 }
 
 static int

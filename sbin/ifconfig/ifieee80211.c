@@ -578,8 +578,8 @@ set80211ssid(const char *val, int d __unused, int s,
 		val += 2;
 	}
 
-	bzero(data, sizeof(data));
-	len = sizeof(data);
+	memset(data, 0, sizeof(data));
+	len = (int)sizeof(data);
 	if (get_string(val, NULL, data, &len) == NULL)
 		exit(1);
 
@@ -608,8 +608,8 @@ set80211stationname(const char *val, int d __unused, int s,
 	int		len;
 	u_int8_t	data[33];
 
-	bzero(data, sizeof(data));
-	len = sizeof(data);
+	memset(data, 0, sizeof(data));
+	len = (int)sizeof(data);
 	get_string(val, NULL, data, &len);
 
 	set80211(s, IEEE80211_IOC_STATIONNAME, 0, len, data);
@@ -901,8 +901,8 @@ set80211wepkey(const char *val, int d __unused, int s,
 		val += 2;
 	}
 
-	bzero(data, sizeof(data));
-	len = sizeof(data);
+	memset(data, 0, sizeof(data));
+	len = (int)sizeof(data);
 	get_string(val, NULL, data, &len);
 
 	set80211(s, IEEE80211_IOC_WEPKEY, key, len, data);
@@ -928,8 +928,8 @@ set80211nwkey(const char *val, int d __unused, int s,
 		val += 2;
 
 		for (i = 0; i < 4; i++) {
-			bzero(data, sizeof(data));
-			len = sizeof(data);
+			memset(data, 0, sizeof(data));
+			len = (int)sizeof(data);
 			val = get_string(val, ",", data, &len);
 			if (val == NULL)
 				exit(1);
@@ -937,14 +937,14 @@ set80211nwkey(const char *val, int d __unused, int s,
 			set80211(s, IEEE80211_IOC_WEPKEY, i, len, data);
 		}
 	} else {
-		bzero(data, sizeof(data));
-		len = sizeof(data);
+		memset(data, 0, sizeof(data));
+		len = (int)sizeof(data);
 		get_string(val, NULL, data, &len);
 		txkey = 0;
 
 		set80211(s, IEEE80211_IOC_WEPKEY, 0, len, data);
 
-		bzero(data, sizeof(data));
+		memset(data, 0, sizeof(data));
 		for (i = 1; i < 4; i++)
 			set80211(s, IEEE80211_IOC_WEPKEY, i, 0, data);
 	}

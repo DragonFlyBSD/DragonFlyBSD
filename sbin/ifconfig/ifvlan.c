@@ -62,7 +62,7 @@ vlan_status(int s)
 {
 	struct vlanreq		vreq;
 
-	bzero(&vreq, sizeof(vreq));
+	memset(&vreq, 0, sizeof(vreq));
 	ifr.ifr_data = &vreq;
 
 	if (ioctl(s, SIOCGETVLAN, &ifr) == -1)
@@ -105,14 +105,14 @@ unsetvlandev(const char *val, int d __unused, int s,
 	if (val != NULL)
 		warnx("argument to -vlandev is useless and hence deprecated");
 
-	bzero(&__vreq, sizeof(__vreq));
+	memset(&__vreq, 0, sizeof(__vreq));
 	ifr.ifr_data = &__vreq;
 
 #if 0	/* this code will be of use when we can alter vlan or vlandev only */
 	if (ioctl(s, SIOCGETVLAN, &ifr) == -1)
 		err(1, "SIOCGETVLAN");
 
-	bzero(&__vreq.vlr_parent, sizeof(__vreq.vlr_parent));
+	memset(&__vreq.vlr_parent, 0, sizeof(__vreq.vlr_parent));
 	__vreq.vlr_tag = 0; /* XXX clear parent only (no kernel support now) */
 #endif
 

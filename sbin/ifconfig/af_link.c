@@ -92,7 +92,7 @@ link_getaddr(const char *addr, int which)
 		errx(1, "malformed link-level address");
 	sa->sa_family = AF_LINK;
 	sa->sa_len = sdl.sdl_alen;
-	bcopy(LLADDR(&sdl), sa->sa_data, sdl.sdl_alen);
+	memcpy(sa->sa_data, LLADDR(&sdl), sdl.sdl_alen);
 }
 
 static struct afswtch af_link = {

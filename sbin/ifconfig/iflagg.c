@@ -31,7 +31,7 @@ setlaggport(const char *val, int d __unused, int s,
 {
 	struct lagg_reqport rp;
 
-	bzero(&rp, sizeof(rp));
+	memset(&rp, 0, sizeof(rp));
 	strlcpy(rp.rp_ifname, IfName, sizeof(rp.rp_ifname));
 	strlcpy(rp.rp_portname, val, sizeof(rp.rp_portname));
 
@@ -54,7 +54,7 @@ unsetlaggport(const char *val, int d __unused, int s,
 {
 	struct lagg_reqport rp;
 
-	bzero(&rp, sizeof(rp));
+	memset(&rp, 0, sizeof(rp));
 	strlcpy(rp.rp_ifname, IfName, sizeof(rp.rp_ifname));
 	strlcpy(rp.rp_portname, val, sizeof(rp.rp_portname));
 
@@ -70,7 +70,7 @@ setlaggproto(const char *val, int d __unused, int s,
 	struct lagg_reqall ra;
 	size_t i;
 
-	bzero(&ra, sizeof(ra));
+	memset(&ra, 0, sizeof(ra));
 	ra.ra_proto = LAGG_PROTO_MAX;
 
 	for (i = 0; i < nitems(lpr); i++) {
@@ -155,8 +155,8 @@ lagg_status(int s)
 	bool isport = false;
 	size_t i;
 
-	bzero(&rp, sizeof(rp));
-	bzero(&ra, sizeof(ra));
+	memset(&rp, 0, sizeof(rp));
+	memset(&ra, 0, sizeof(ra));
 
 	strlcpy(rp.rp_ifname, IfName, sizeof(rp.rp_ifname));
 	strlcpy(rp.rp_portname, IfName, sizeof(rp.rp_portname));
