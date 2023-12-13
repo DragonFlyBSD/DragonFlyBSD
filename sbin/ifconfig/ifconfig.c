@@ -66,13 +66,7 @@
 
 #include "ifconfig.h"
 
-/*
- * Since "struct ifreq" is composed of various union members, callers
- * should pay special attention to interpret the value.
- * (.e.g. little/big endian difference in the structure.)
- */
-struct	ifreq ifr;
-
+/* Globals */
 char	IfName[IFNAMSIZ];	/* name of interface */
 int	newaddr = 1;
 int	verbose;
@@ -362,7 +356,7 @@ main(int argc, char *argv[])
 	struct ifa_order_elt *cur, *tmp;
 	struct ifa_queue q = TAILQ_HEAD_INITIALIZER(q);
 	struct ifaddrs *ifap, *sifap, *ifa;
-	struct ifreq paifr;
+	struct ifreq ifr;
 	struct option *p;
 	size_t iflen;
 	char *envformat, *cp;
@@ -548,10 +542,10 @@ main(int argc, char *argv[])
 	cp = NULL;
 	ifindex = 0;
 	for (ifa = sifap; ifa != NULL; ifa = ifa->ifa_next) {
-		memset(&paifr, 0, sizeof(paifr));
-		strlcpy(paifr.ifr_name, ifa->ifa_name, sizeof(paifr.ifr_name));
-		if (sizeof(paifr.ifr_addr) >= ifa->ifa_addr->sa_len) {
-			memcpy(&paifr.ifr_addr, ifa->ifa_addr,
+		memset(&ifr, 0, sizeof(ifr));
+		strlcpy(ifr.ifr_name, ifa->ifa_name, sizeof(ifr.ifr_name));
+		if (sizeof(ifr.ifr_addr) >= ifa->ifa_addr->sa_len) {
+			memcpy(&ifr.ifr_addr, ifa->ifa_addr,
 			       ifa->ifa_addr->sa_len);
 		}
 
@@ -802,9 +796,11 @@ ifconfig(int argc, char *const *argv, int iscreate,
 {
 	const struct afswtch *afp, *nafp;
 	const struct cmd *p;
+	struct ifreq ifr;
 	struct callback *cb;
 	int s;
 
+	memset(&ifr, 0, sizeof(ifr));
 	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 	afp = uafp != NULL ? uafp : af_getbyname("inet");
 top:
@@ -831,12 +827,6 @@ top:
 			callbacks = cb->cb_next;
 			cb->cb_func(s, cb->cb_arg);
 			iscreate = 0;
-
-			/*
-			 * After cloning, make sure we have an up-to-date name
-			 * in ifr_name.
-			 */
-			strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 
 			/*
 			 * Handle any address family spec that
@@ -908,7 +898,7 @@ top:
 		}
 	}
 	if (clearaddr) {
-		strlcpy(afp->af_ridreq, IfName, sizeof(ifr.ifr_name));
+		strlcpy(afp->af_ridreq, IfName, sizeof(afp->af_ridreq));
 		if (ioctl(s, afp->af_difaddr, afp->af_ridreq) < 0) {
 			if (errno == EADDRNOTAVAIL && doalias >= 0) {
 				/* means no previous address for interface */
@@ -924,7 +914,7 @@ top:
 		}
 	}
 	if (newaddr && (setaddr || setmask)) {
-		strlcpy(afp->af_addreq, IfName, sizeof(ifr.ifr_name));
+		strlcpy(afp->af_addreq, IfName, sizeof(afp->af_addreq));
 		if (ioctl(s, afp->af_aifaddr, afp->af_addreq) < 0)
 			Perror("ioctl (SIOCAIFADDR)");
 	}
@@ -984,6 +974,11 @@ static void
 deletetunnel(const char *arg __unused, int dummy __unused, int s,
 	     const struct afswtch *afp __unused)
 {
+	struct ifreq ifr;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
+
 	if (ioctl(s, SIOCDIFPHYADDR, &ifr) < 0)
 		err(1, "SIOCDIFPHYADDR");
 }
@@ -1037,11 +1032,11 @@ setifdstaddr(const char *addr, int dummy __unused, int s __unused,
 static int
 getifflags(const char *ifname, int us)
 {
-	struct ifreq my_ifr;
+	struct ifreq ifr;
 	int s;
 
-	memset(&my_ifr, 0, sizeof(struct ifreq));
-	strlcpy(my_ifr.ifr_name, ifname, sizeof(my_ifr.ifr_name));
+	memset(&ifr, 0, sizeof(ifr));
+	strlcpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
 
 	s = us;
 	if (us < 0) {
@@ -1049,20 +1044,20 @@ getifflags(const char *ifname, int us)
 			err(1, "socket(family AF_LOCAL,SOCK_DGRAM)");
 	}
 
-	if (ioctl(s, SIOCGIFFLAGS, &my_ifr) < 0)
+	if (ioctl(s, SIOCGIFFLAGS, &ifr) < 0)
 		Perror("ioctl (SIOCGIFFLAGS)");
 
 	if (us < 0)
 		close(s);
 
-	return ((my_ifr.ifr_flags & 0xffff) | (my_ifr.ifr_flagshigh << 16));
+	return ((ifr.ifr_flags & 0xffff) | (ifr.ifr_flagshigh << 16));
 }
 
 static void
 setifflags(const char *vname, int value, int s,
 	   const struct afswtch *afp __unused)
 {
-	struct ifreq my_ifr;
+	struct ifreq ifr;
 	int flags;
 
 	flags = getifflags(IfName, s);
@@ -1073,12 +1068,12 @@ setifflags(const char *vname, int value, int s,
 		flags |= value;
 	}
 
-	memset(&my_ifr, 0, sizeof(struct ifreq));
-	strlcpy(my_ifr.ifr_name, IfName, sizeof(my_ifr.ifr_name));
-	my_ifr.ifr_flags = flags & 0xffff;
-	my_ifr.ifr_flagshigh = flags >> 16;
+	memset(&ifr, 0, sizeof(ifr));
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
+	ifr.ifr_flags = flags & 0xffff;
+	ifr.ifr_flagshigh = flags >> 16;
 
-	if (ioctl(s, SIOCSIFFLAGS, &my_ifr) < 0)
+	if (ioctl(s, SIOCSIFFLAGS, &ifr) < 0)
 		Perror(vname);
 }
 
@@ -1086,7 +1081,11 @@ void
 setifcap(const char *vname, int value, int s,
 	 const struct afswtch *afp __unused)
 {
+	struct ifreq ifr;
 	int flags;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 
 	if (ioctl(s, SIOCGIFCAP, &ifr) < 0)
 		Perror("ioctl (SIOCGIFCAP)");
@@ -1107,8 +1106,12 @@ static void
 setifmetric(const char *val, int dummy __unused, int s,
 	    const struct afswtch *afp __unused)
 {
+	struct ifreq ifr;
+
+	memset(&ifr, 0, sizeof(ifr));
 	strlcpy(ifr.ifr_name, IfName, sizeof (ifr.ifr_name));
 	ifr.ifr_metric = atoi(val);
+
 	if (ioctl(s, SIOCSIFMETRIC, &ifr) < 0)
 		err(1, "ioctl SIOCSIFMETRIC (set metric)");
 }
@@ -1117,8 +1120,12 @@ static void
 setifmtu(const char *val, int dummy __unused, int s,
 	 const struct afswtch *afp __unused)
 {
+	struct ifreq ifr;
+
+	memset(&ifr, 0, sizeof(ifr));
 	strlcpy(ifr.ifr_name, IfName, sizeof (ifr.ifr_name));
 	ifr.ifr_mtu = atoi(val);
+
 	if (ioctl(s, SIOCSIFMTU, &ifr) < 0)
 		err(1, "ioctl SIOCSIFMTU (set mtu)");
 }
@@ -1127,8 +1134,12 @@ static void
 setiftsolen(const char *val, int dummy __unused, int s,
 	    const struct afswtch *afp __unused)
 {
+	struct ifreq ifr;
+
+	memset(&ifr, 0, sizeof(ifr));
 	strlcpy(ifr.ifr_name, IfName, sizeof (ifr.ifr_name));
 	ifr.ifr_tsolen = atoi(val);
+
 	if (ioctl(s, SIOCSIFTSOLEN, &ifr) < 0)
 		err(1, "ioctl SIOCSIFTSOLEN (set tsolen)");
 }
@@ -1137,15 +1148,17 @@ static void
 setifname(const char *val, int dummy __unused, int s,
 	  const struct afswtch *afp __unused)
 {
+	struct ifreq ifr;
 	char *newname;
-
-	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 
 	newname = strdup(val);
 	if (newname == NULL)
 		err(1, "no memory to set ifname");
 
+	memset(&ifr, 0, sizeof(ifr));
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 	ifr.ifr_data = newname;
+
 	if (ioctl(s, SIOCSIFNAME, &ifr) < 0) {
 		free(newname);
 		err(1, "ioctl SIOCSIFNAME (set name)");
@@ -1168,7 +1181,11 @@ static void
 setifdescr(const char *val, int dummy __unused, int s,
 	   const struct afswtch *afp __unused)
 {
+	struct ifreq ifr;
 	char *newdescr;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 
 	ifr.ifr_buffer.length = strlen(val) + 1;
 	if (ifr.ifr_buffer.length == 1) {
@@ -1213,9 +1230,13 @@ static void
 status(const struct afswtch *afp, const struct sockaddr_dl *sdl __unused,
        struct ifaddrs *ifa)
 {
+	struct ifreq ifr;
+	struct ifstat ifs;
 	struct ifaddrs *ift;
 	int allfamilies, s;
-	struct ifstat ifs;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 
 	if (afp == NULL) {
 		allfamilies = 1;
@@ -1225,7 +1246,6 @@ status(const struct afswtch *afp, const struct sockaddr_dl *sdl __unused,
 		ifr.ifr_addr.sa_family =
 		    afp->af_af == AF_LINK ? AF_LOCAL : afp->af_af;
 	}
-	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 
 	s = socket(ifr.ifr_addr.sa_family, SOCK_DGRAM, 0);
 	if (s < 0)

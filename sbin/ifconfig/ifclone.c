@@ -165,6 +165,9 @@ static void
 clone_destroy(const char *x __unused, int arg __unused, int s __unused,
 	      const struct afswtch *afp __unused)
 {
+	struct ifreq ifr;
+
+	memset(&ifr, 0, sizeof(ifr));
 	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 
 	if (ioctl(s, SIOCIFDESTROY, &ifr) < 0)

@@ -55,11 +55,15 @@ static void
 carp_status(int s)
 {
 	struct carpreq carpr;
+	struct ifreq ifr;
 	struct ifdrv ifd;
 	const char *state;
 	char devname[IFNAMSIZ];
 
-	memset(&carpr, 0, sizeof(struct carpreq));
+	memset(&ifr, 0, sizeof(ifr));
+	memset(&carpr, 0, sizeof(carpr));
+
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 	ifr.ifr_data = &carpr;
 
 	if (ioctl(s, SIOCGVH, &ifr) == -1)
@@ -92,8 +96,12 @@ setcarp_passwd(const char *val, int d __unused, int s,
 	       const struct afswtch *afp __unused)
 {
 	struct carpreq carpr;
+	struct ifreq ifr;
 
-	memset(&carpr, 0, sizeof(struct carpreq));
+	memset(&ifr, 0, sizeof(ifr));
+	memset(&carpr, 0, sizeof(carpr));
+
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 	ifr.ifr_data = &carpr;
 
 	if (ioctl(s, SIOCGVH, &ifr) == -1)
@@ -111,13 +119,17 @@ setcarp_vhid(const char *val, int d __unused, int s,
 	     const struct afswtch *afp __unused)
 {
 	struct carpreq carpr;
+	struct ifreq ifr;
 	int vhid;
 
 	vhid = atoi(val);
 	if (vhid <= 0)
 		errx(1, "vhid must be greater than 0");
 
-	memset(&carpr, 0, sizeof(struct carpreq));
+	memset(&ifr, 0, sizeof(ifr));
+	memset(&carpr, 0, sizeof(carpr));
+
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 	ifr.ifr_data = &carpr;
 
 	if (ioctl(s, SIOCGVH, &ifr) == -1)
@@ -134,11 +146,15 @@ setcarp_advskew(const char *val, int d __unused, int s,
 		const struct afswtch *afp __unused)
 {
 	struct carpreq carpr;
+	struct ifreq ifr;
 	int advskew;
 
 	advskew = atoi(val);
 
-	memset(&carpr, 0, sizeof(struct carpreq));
+	memset(&ifr, 0, sizeof(ifr));
+	memset(&carpr, 0, sizeof(carpr));
+
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 	ifr.ifr_data = &carpr;
 
 	if (ioctl(s, SIOCGVH, &ifr) == -1)
@@ -155,11 +171,15 @@ setcarp_advbase(const char *val, int d __unused, int s,
 		const struct afswtch *afp __unused)
 {
 	struct carpreq carpr;
+	struct ifreq ifr;
 	int advbase;
 
 	advbase = atoi(val);
 
-	memset(&carpr, 0, sizeof(struct carpreq));
+	memset(&ifr, 0, sizeof(ifr));
+	memset(&carpr, 0, sizeof(carpr));
+
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 	ifr.ifr_data = &carpr;
 
 	if (ioctl(s, SIOCGVH, &ifr) == -1)

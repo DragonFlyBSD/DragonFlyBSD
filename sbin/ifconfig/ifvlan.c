@@ -61,8 +61,12 @@ static void
 vlan_status(int s)
 {
 	struct vlanreq		vreq;
+	struct ifreq		ifr;
 
+	memset(&ifr, 0, sizeof(ifr));
 	memset(&vreq, 0, sizeof(vreq));
+
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 	ifr.ifr_data = &vreq;
 
 	if (ioctl(s, SIOCGETVLAN, &ifr) == -1)
@@ -102,10 +106,15 @@ static void
 unsetvlandev(const char *val, int d __unused, int s,
 	     const struct afswtch *afp __unused)
 {
+	struct ifreq		ifr;
+
 	if (val != NULL)
 		warnx("argument to -vlandev is useless and hence deprecated");
 
+	memset(&ifr, 0, sizeof(ifr));
 	memset(&__vreq, 0, sizeof(__vreq));
+
+	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 	ifr.ifr_data = &__vreq;
 
 #if 0	/* this code will be of use when we can alter vlan or vlandev only */
@@ -124,10 +133,14 @@ unsetvlandev(const char *val, int d __unused, int s,
 static void
 vlan_cb(int s, void *arg __unused)
 {
+	struct ifreq		ifr;
+
 	if (__have_tag ^ __have_dev)
 		errx(1, "both vlan and vlandev must be specified");
 
 	if (__have_tag && __have_dev) {
+		memset(&ifr, 0, sizeof(ifr));
+		strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 		ifr.ifr_data = &__vreq;
 		if (ioctl(s, SIOCSETVLAN, &ifr) == -1)
 			err(1, "SIOCSETVLAN");

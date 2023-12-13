@@ -249,8 +249,11 @@ setifmediacallback(int s, void *arg)
 {
 	static int did_it = 0;
 	struct ifmediareq *ifmr = arg;
+	struct ifreq ifr;
 
 	if (!did_it) {
+		memset(&ifr, 0, sizeof(ifr));
+		strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 		ifr.ifr_media = ifmr->ifm_current;
 		if (ioctl(s, SIOCSIFMEDIA, &ifr) < 0)
 			err(1, "SIOCSIFMEDIA (media)");
@@ -280,15 +283,12 @@ setmedia(const char *val, int d __unused, int s,
 	 */
 	subtype = get_media_subtype(IFM_TYPE(ifmr->ifm_ulist[0]), val);
 
-	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
-	ifr.ifr_media = (ifmr->ifm_current & ~(IFM_NMASK|IFM_TMASK)) |
-	    IFM_TYPE(ifmr->ifm_ulist[0]) | subtype;
+	ifmr->ifm_current = (ifmr->ifm_current & ~(IFM_NMASK|IFM_TMASK)) |
+			    IFM_TYPE(ifmr->ifm_ulist[0]) |
+			    subtype;
+	if ((ifmr->ifm_current & IFM_TMASK) == 0)
+		ifmr->ifm_current &= ~IFM_GMASK;
 
-	if ((ifr.ifr_media & IFM_TMASK) == 0) {
-		ifr.ifr_media &= ~IFM_GMASK;
-	}
-
-	ifmr->ifm_current = ifr.ifr_media;
 	callback_register(setifmediacallback, ifmr);
 }
 
@@ -315,15 +315,11 @@ domediaopt(const char *val, int clear, int s)
 	ifmr = ifmedia_getstate(s);
 
 	options = get_media_options(IFM_TYPE(ifmr->ifm_ulist[0]), val);
-
-	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
-	ifr.ifr_media = ifmr->ifm_current;
 	if (clear)
-		ifr.ifr_media &= ~options;
+		ifmr->ifm_current &= ~options;
 	else
-		ifr.ifr_media |= options;
+		ifmr->ifm_current |= options;
 
-	ifmr->ifm_current = ifr.ifr_media;
 	callback_register(setifmediacallback, ifmr);
 }
 
@@ -338,11 +334,8 @@ setmediamode(const char *val, int d __unused, int s,
 	ifmr = ifmedia_getstate(s);
 
 	mode = get_media_mode(IFM_TYPE(ifmr->ifm_ulist[0]), val);
+	ifmr->ifm_current = (ifmr->ifm_current & ~IFM_MMASK) | mode;
 
-	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
-	ifr.ifr_media = (ifmr->ifm_current & ~IFM_MMASK) | mode;
-
-	ifmr->ifm_current = ifr.ifr_media;
 	callback_register(setifmediacallback, ifmr);
 }
 
