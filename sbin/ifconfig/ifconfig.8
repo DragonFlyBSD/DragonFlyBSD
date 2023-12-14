@@ -397,13 +397,6 @@ was no longer needed.
 If you have incorrectly set an NS address having the side effect
 of specifying the host portion, removing all NS addresses will
 allow you to respecify the host portion.
-.It Cm anycast
-(inet6 only)
-Specify that the address configured is an anycast address.
-Based on the current specification,
-only routers may configure anycast addresses.
-Anycast address will not be used as source address of any of outgoing
-IPv6 packets.
 .It Cm arp
 Enable the use of the Address Resolution Protocol
 .Pq Xr arp 4
@@ -472,9 +465,6 @@ is a member of the TUN interface family group,
 .\" interface group.
 .It Cm -group Ar group-name
 Remove the interface from the given group.
-.It Cm eui64
-(inet6 only)
-Fill interface index (lowermost 64bit of an IPv6 address) automatically.
 .It Cm media Ar type
 If the driver supports the media selection system, set the media type
 of the interface to
@@ -645,46 +635,6 @@ The netmask can also be specified in CIDR notation after the address.
 See the
 .Ar address
 option above for more information.
-.It Cm autoconf
-(inet6 only)
-Enable IPv6 auto-configuration.
-.It Fl autoconf
-(inet6 only)
-Disable IPv6 auto-configuration.
-.It Cm pltime Ar n
-(inet6 only)
-Set the preferred lifetime for the address.
-.It Cm vltime Ar n
-(inet6 only)
-Set the valid lifetime for the address.
-.It Cm prefixlen Ar len
-(inet6 only)
-Specify that
-.Ar len
-bits are reserved for subdividing networks into sub-networks.
-The
-.Ar len
-must be integer, and for syntactical reason it must be between 0 to 128.
-It is almost always 64 under the current IPv6 assignment rule.
-If the parameter is omitted, 64 is used.
-.Pp
-The prefix length can also be specified using the slash notation
-after the address.
-See the
-.Ar address
-option above for more information.
-.It Cm deprecated
-(inet6 only)
-Set the IPv6 deprecated address bit.
-.It Fl deprecated
-(inet6 only)
-Clear the IPv6 deprecated address bit.
-.It Cm tentative
-(inet6 only)
-Set the IPv6 tentative address bit.
-.It Fl tentative
-(inet6 only)
-Clear the IPv6 tentative address bit.
 .\" see
 .\" Xr eon 5 .
 .\" .It Cm nsellength Ar n
@@ -759,6 +709,57 @@ This may be used to enable an interface after an
 It happens automatically when setting the first address on an interface.
 If the interface was reset when previously marked down,
 the hardware will be re-initialized.
+.El
+.\"
+.Ss IPv6 Parameters
+The following parameters are specific to IPv6 addresses.
+Note that the
+.Ar address_family
+argument must be specified as
+.Sy inet6
+for them.
+.Bl -tag -width indent
+.It Cm anycast
+Specify that the address configured is an anycast address.
+Based on the current specification,
+only routers may configure anycast addresses.
+Anycast address will not be used as source address of any of
+outgoing IPv6 packets.
+.It Cm autoconf
+Enable IPv6 auto-configuration.
+.It Fl autoconf
+Disable IPv6 auto-configuration.
+.It Cm deprecated
+Set the IPv6 deprecated address bit.
+.It Fl deprecated
+Clear the IPv6 deprecated address bit.
+.It Cm eui64
+Automatically configure the interface index
+(i.e., lowermost 64 bits of an IPv6 address)
+using the EUI-64 (Extended Unique Identifier) format.
+.It Cm pltime Ar n
+Set the preferred lifetime for the address.
+.It Cm prefixlen Ar len
+Specify that
+.Ar len
+bits are reserved for subdividing networks into sub-networks.
+The
+.Ar len
+must be integer, and for syntactical reason it must be between 0 to 128.
+It is almost always 64 under the current IPv6 assignment rule.
+If the parameter is omitted, 64 is used.
+.Pp
+The prefix length can also be specified using the slash notation
+after the address.
+See the
+.Ar address
+option above for more information.
+.It Cm tentative
+Set the IPv6 tentative address bit.
+.It Fl tentative
+Clear the IPv6 tentative address bit.
+.It Cm vltime Ar n
+Set the valid lifetime for the address.
 .El
 .\"
 .Ss IEEE 802.11 Wireless Interface Cloning Parameters
