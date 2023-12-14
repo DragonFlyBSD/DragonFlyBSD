@@ -712,15 +712,6 @@ Clear the IPv6 tentative address bit.
 .\" for
 .\" .Tn AFI
 .\" 37 type addresses.
-.It Cm range Ar netrange
-Under appletalk, set the interface to respond to a
-.Ar netrange
-of the form
-.Ar startnet Ns - Ns Ar endnet .
-Appletalk uses this scheme instead of
-netmasks though
-.Dx
-implements it internally as a set of netmasks.
 .It Cm remove
 Another name for the
 .Fl alias
@@ -728,10 +719,6 @@ parameter.
 Introduced for compatibility
 with
 .Bsx .
-.It Cm phase
-The argument following this specifies the version (phase) of the
-Appletalk network attached to the interface.
-Values of 1 or 2 are permitted.
 .Sm off
 .It Cm link Op Cm 0 No - Cm 2
 .Sm on
