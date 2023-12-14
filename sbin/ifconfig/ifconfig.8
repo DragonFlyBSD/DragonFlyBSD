@@ -434,11 +434,11 @@ Disable permanently promiscuous mode.
 Another name for the
 .Cm -alias
 parameter.
-.It Cm description Ar value , Cm descr Ar value
-Specify a description of the interface.
+.It Cm descr Ns Oo Cm iption Oc Ar value
+Specify a description for the interface.
 This can be used to label interfaces in situations where they may
 otherwise be difficult to distinguish.
-.It Cm -description , Cm -descr
+.It Cm -descr Ns Op Cm iption
 Clear the interface description.
 .It Cm down
 Mark an interface
@@ -734,7 +734,7 @@ Set the IPv6 deprecated address bit.
 .It Cm -deprecated
 Clear the IPv6 deprecated address bit.
 .It Cm eui64
-Automatically configure the interface index
+Automatically configure the interface identifier
 (i.e., lowermost 64 bits of an IPv6 address)
 using the EUI-64 (Extended Unique Identifier) format.
 .It Cm pltime Ar n
@@ -779,13 +779,13 @@ is one of
 .Cm sta ,
 .Cm ahdemo
 (or
-.Cm adhoc-demo ),
-.Cm ibss ,
+.Cm adhoc-demo ) ,
+.Cm ibss
 (or
-.Cm adhoc ),
-.Cm ap ,
+.Cm adhoc ) ,
+.Cm ap
 (or
-.Cm hostap ),
+.Cm hostap ) ,
 .Cm wds ,
 .Cm tdma ,
 .Cm mesh ,
@@ -798,13 +798,13 @@ mode is actually implemented as an
 .Cm adhoc-demo
 interface with special properties.
 .It Cm wlanbssid Ar bssid
-The 802.11 mac address to use for the bssid.
+The 802.11 MAC address to use for the bssid.
 This must be specified at create time for a legacy
 .Cm wds
 device.
 .It Cm wlanaddr Ar address
-The local mac address.
-If this is not specified then a mac address will automatically be assigned
+The local MAC address.
+If this is not specified then a MAC address will automatically be assigned
 to the cloned device.
 Typically this address is the same as the address of the parent device
 but if the
@@ -823,9 +823,9 @@ if their peer stops communicating.
 For completeness, a Dynamic WDS (DWDS) interface may be marked as
 .Cm -wdslegacy .
 .It Cm bssid
-Request a unique local mac address for the cloned device.
-This is only possible if the device supports multiple mac addresses.
-To force use of the parent's mac address, use
+Request a unique local MAC address for the cloned device.
+This is only possible if the device supports multiple MAC addresses.
+To force use of the parent's MAC address, use
 .Cm -bssid .
 .It Cm beacons
 Mark the cloned interface as depending on hardware support to
@@ -978,7 +978,7 @@ Set the interval at which beacon frames are sent when operating in
 ad-hoc or AP mode.
 The
 .Ar interval
-parameter is specified in TU's (1024 usecs).
+parameter is specified in TU's (1024 microseconds).
 By default beacon frames are transmitted every 100 TU's.
 .It Cm bmissthreshold Ar count
 Set the number of consecutive missed beacons at which the station
@@ -1033,7 +1033,7 @@ according to the operating characteristics of the device.
 .It Cm channel Ar number
 Set a single desired channel.
 Channels range from 1 to 255, but the exact selection available
-depends on the region your adaptor was manufactured for.
+depends on the region your adapter was manufactured for.
 Setting
 the channel to
 .Li any ,
@@ -1141,7 +1141,7 @@ Enable Dynamic Frequency Selection (DFS) as specified in 802.11h.
 DFS embodies several facilities including detection of overlapping
 radar signals, dynamic transmit power control, and channel selection
 according to a least-congested criteria.
-DFS support is mandatory for some 5Ghz frequencies in certain
+DFS support is mandatory for some 5GHz frequencies in certain
 locales (e.g.\& ETSI).
 By default DFS is enabled according to the regulatory definitions
 specified in
@@ -1280,7 +1280,7 @@ To re-enable the broadcast of the SSID etc., use
 .It Cm ht
 Enable use of High Throughput (HT) when using 802.11n (default).
 The 802.11n specification includes mechanisms for operation
-on 20MHz and 40MHz wide channels using different signalling mechanisms
+on 20MHz and 40MHz wide channels using different signaling mechanisms
 than specified in 802.11b, 802.11g, and 802.11a.
 Stations negotiate use of these facilities, termed HT20 and HT40,
 when they associate.
@@ -1540,7 +1540,7 @@ If the
 .Fl v
 option is specified then both channel and BSS parameters are displayed
 for each AC (first channel, then BSS).
-When WME mode is enabled for an adaptor this information will be
+When WME mode is enabled for an adapter this information will be
 displayed with the regular status; this command is mostly useful
 for examining parameters when WME mode is disabled.
 See the description of the
@@ -1602,7 +1602,7 @@ and
 (same as
 .Cm powersave ) .
 .It Cm powersavesleep Ar sleep
-Set the desired max powersave sleep time in TU's (1024 usecs).
+Set the desired max powersave sleep time in TU's (1024 microseconds).
 By default the max powersave sleep time is 100 TU's.
 .It Cm protmode Ar technique
 For interfaces operating in 802.11g, use the specified
@@ -1740,7 +1740,7 @@ request can be used to show recent scan results without
 initiating a new scan.
 .It Cm scanvalid Ar threshold
 Set the maximum time the scan cache contents are considered valid;
-i.e. will be used without first triggering a scan operation to
+i.e., will be used without first triggering a scan operation to
 refresh the data.
 The
 .Ar threshold
@@ -1802,7 +1802,7 @@ When operating with TDMA, setup a BSS with
 slots.
 The slot count may be at most 8.
 The current implementation is only tested with two stations
-(i.e. point to point applications).
+(i.e., point-to-point applications).
 This setting is only meaningful when a station is configured as slot 0;
 other stations adopt this setting from the BSS they join.
 By default
@@ -1866,7 +1866,7 @@ and
 .Cm mixed .
 The
 .Cm mixed
-mode explicitly tells the adaptor to allow association with access
+mode explicitly tells the adapter to allow association with access
 points which allow both encrypted and unencrypted traffic.
 On these adapters,
 .Cm on
@@ -1887,7 +1887,7 @@ If an
 is not given, key 1 is set.
 A WEP key will be either 5 or 13
 characters (40 or 104 bits) depending on the local network and the
-capabilities of the adaptor.
+capabilities of the adapter.
 It may be specified either as a plain
 string or as a string of hexadecimal digits preceded by
 .Ql 0x .
@@ -1902,7 +1902,7 @@ A key may be cleared by setting it to
 If WEP is supported then there are at least four keys.
 Some adapters support more than four keys.
 If that is the case, then the first four keys
-(1-4) will be the standard temporary keys and any others will be adaptor
+(1-4) will be the standard temporary keys and any others will be adapter
 specific keys such as permanent keys stored in NVRAM.
 .Pp
 Note that you must set a default transmit key with
@@ -2120,6 +2120,7 @@ Send broadcast root announcement (RANN) frames.
 Nodes on the mesh without a path to this root mesh station with try to
 discover a path to us.
 .El
+.Pp
 By default
 .Cm hwmprootmode
 is set to
@@ -2177,7 +2178,7 @@ compatibility.
 .Ar n : k1 , k2 , k3 , k4
 .Sm on
 .Xc
-Another way of saying
+Another way of saying:
 .Dq Li "wepmode on weptxkey n wepkey 1:k1 wepkey 2:k2 wepkey 3:k3 wepkey 4:k4" .
 Included for
 .Nx
@@ -2353,12 +2354,12 @@ For example, one specify a value of 6 on tap0 and 4 on tap1
 for a 6:4 ratio.
 Remember that this also controls packet bursting.
 .It Cm link0
-The link0 option enables transparent bridging mode.
+This option enables transparent bridging mode.
 The bridge will make every effort to retain the Ethernet header
 when forwarding packets between interfaces, making the bridging
 function work more like a hardware bridge device.
 .It Cm link1
-The link1 option enables keepalive transmission and automatically
+This option enables keepalive transmission and automatically
 places a member into a special blocked mode if no keepalive reception
 occurs.
 If either sides of the link uses this option then both sides must use
@@ -2367,14 +2368,19 @@ This option is implemented by sending CFG updates on the hello interval
 to the remote.
 The link is considered lost after 10 intervals (typically 20 seconds).
 .It Cm link2
-The link2 option enables channel bonding (see also ifbondweight, ifpriority).
-All member interfaces with the same mac address are considered to
-be in a bonding group.  If multiple interfaces in the bonding group share
-the highest priority via ifpriority, packets will be round-robined between
-them.
+This option enables channel bonding (see also
+.Cm ifbondweight
+and
+.Cm ifpriority
+parameters).
+All member interfaces with the same MAC address are considered to
+be in a bonding group.
+If multiple interfaces in the bonding group share the highest priority via
+.Cm ifpriority ,
+packets will be round-robined between them.
 When something like
 .Xr tap 4
-is used, you can manually control or copy the mac to create bonding groups.
+is used, you can manually control or copy the MAC to create bonding groups.
 When interface bonding is enabled normally blocked interfaces belonging
 to the same bonding group as an active forwarding interface will be
 changed to the bonding state.
@@ -2454,9 +2460,8 @@ If the
 .Xr vlan 4
 interface already has
 a physical interface associated with it, this command will fail.
-To
-change the association to another physical interface, the existing
-association must be cleared first.
+To change the association to another physical interface,
+the existing association must be cleared first.
 .Pp
 Note: if the hardware tagging capability
 is set on the parent interface, the
@@ -2475,8 +2480,8 @@ If the driver is a
 pseudo device, disassociate the parent interface from it.
 This breaks the link between the
 .Xr vlan 4
-interface and its parent,
-clears its VLAN tag, flags and its link address and shuts the interface down.
+interface and its parent, clears its VLAN tag,
+flags and its link address and shuts the interface down.
 The
 .Ar iface
 argument is useless and hence deprecated.
@@ -2542,7 +2547,7 @@ utility appeared in
 Basic IPv6 node operation requires a link-local address on each
 interface configured for IPv6.
 Normally, such an address is automatically configured by the
-kernel on each interface added to the system; this behaviour may
+kernel on each interface added to the system; this behavior may
 be disabled by setting the sysctl MIB variable
 .Va net.inet6.ip6.auto_linklocal
 to 0.
