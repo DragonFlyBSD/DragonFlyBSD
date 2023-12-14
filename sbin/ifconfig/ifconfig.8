@@ -760,7 +760,8 @@ It happens automatically when setting the first address on an interface.
 If the interface was reset when previously marked down,
 the hardware will be re-initialized.
 .El
-.Pp
+.\"
+.Ss IEEE 802.11 Wireless Interface Cloning Parameters
 The following parameters are specific to cloning
 IEEE 802.11 wireless interfaces with the
 .Cm create
@@ -838,7 +839,8 @@ be transmitted; this can be useful when creating a WDS configuration but
 .Cm wds
 interfaces can only be created as companions to an access point.
 .El
-.Pp
+.\"
+.Ss IEEE 802.11 Wireless Cloned Interface Parameters
 The following parameters are specific to IEEE 802.11 wireless interfaces
 cloned with a
 .Cm create
@@ -1960,7 +1962,8 @@ Note that WPS support requires a WPS-capable supplicant.
 To disable this function use
 .Fl wps .
 .El
-.Pp
+.\"
+.Ss WLAN ACL Parameters
 The following parameters support an optional access control list
 feature available with some adapters when operating in ap mode; see
 .Xr wlan_acl 4 .
@@ -1998,9 +2001,10 @@ program be configured to do the right thing
 as it handles the RADIUS processing
 (and marks stations as authorized).
 .El
-.Pp
-The following parameters are related to a wireless interface operating in mesh
-mode:
+.\"
+.Ss WLAN Mesh Mode Parameters
+The following parameters are related to a wireless interface
+operating in mesh mode:
 .Bl -tag -width indent
 .It Cm meshid Ar meshid
 Set the desired Mesh Identifier.
@@ -2077,7 +2081,8 @@ The default setting for
 .Cm hwmpmaxhops
 is 31.
 .El
-.Pp
+.\"
+.Ss WLAN Compatibility Parameters
 The following parameters are for compatibility with other systems:
 .Bl -tag -width indent
 .It Cm nwid Ar ssid
@@ -2134,7 +2139,8 @@ Included for
 .Nx
 compatibility.
 .El
-.Pp
+.\"
+.Ss Bridge Interface Parameters
 The following parameters are specific to bridge interfaces:
 .Bl -tag -width indent
 .It Cm addm Ar interface
@@ -2324,9 +2330,11 @@ Both sides of link the member represents must operate in bonding mode
 for this to work, otherwise the remote end may decide to throw away
 half your packets.
 .El
-.Pp
-The following parameters are specific to IP tunnel interfaces,
-.Xr gif 4 :
+.\"
+.Ss Generic IP Tunnel Parameters
+The following parameters are specific to
+.Xr gif 4
+IP tunnel interfaces:
 .Bl -tag -width indent
 .It Cm tunnel Ar src_addr dest_addr
 Configure the physical source and destination address for IP tunnel
@@ -2346,7 +2354,8 @@ Another name for the
 .Fl tunnel
 parameter.
 .El
-.Pp
+.\"
+.Ss VLAN Parameters
 The following parameters are specific to
 .Xr vlan 4
 interfaces:
@@ -2420,7 +2429,8 @@ The
 .Ar iface
 argument is useless and hence deprecated.
 .El
-.Pp
+.\"
+.Ss CARP Parameters
 The following parameters are specific to
 .Xr carp 4
 interfaces:
