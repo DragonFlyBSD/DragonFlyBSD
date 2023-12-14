@@ -409,27 +409,28 @@ Internet Protocol addresses and
 .It Cm -arp
 Disable the use of the Address Resolution Protocol
 .Pq Xr arp 4 .
-.It Cm staticarp
-If the Address Resolution Protocol is enabled,
-the host will only reply to requests for its addresses,
-and will never send any requests.
-.It Cm -staticarp
-If the Address Resolution Protocol is enabled,
-the host will perform normally,
-sending out requests and listening for replies.
 .It Cm broadcast
 (inet only)
 Specify the address to use to represent broadcasts to the network.
 The default broadcast address is the address with a host part of all 1's.
+.It Cm compress
+Another name for the
+.Cm link0
+parameter.
+.It Cm create
+Create the specified network pseudo-device.
+If the interface is given without a unit number,
+try to create a new device with an arbitrary unit number.
+If the creation of an arbitrary device is successful,
+the new device name is printed,
+unless the interface is renamed or destroyed in the same
+.Nm
+invocation.
 .It Cm debug
 Enable driver dependent debugging code; usually, this turns on
 extra console error logging.
 .It Cm -debug
 Disable driver dependent debugging code.
-.It Cm promisc
-Put interface into permanently promiscuous mode.
-.It Cm -promisc
-Disable permanently promiscuous mode.
 .It Cm delete
 Another name for the
 .Cm -alias
@@ -440,6 +441,8 @@ This can be used to label interfaces in situations where they may
 otherwise be difficult to distinguish.
 .It Cm -descr Ns Op Cm iption
 Clear the interface description.
+.It Cm destroy
+Destroy the specified network pseudo-device.
 .It Cm down
 Mark an interface
 .Dq down .
@@ -465,14 +468,23 @@ is a member of the TUN interface family group,
 .\" interface group.
 .It Cm -group Ar group-name
 Remove the interface from the given group.
+.It Cm link0 , link1 , link2
+Enable special processing of the link level of the interface.
+These three options are interface specific in actual effect;
+however, they are in general used to select special modes of operation.
+.Pp
+An example of this is to enable SLIP compression,
+or to select the connector type for some Ethernet cards.
+Refer to the man page for the specific driver for more information.
+.It Cm -link0 , -link1 , -link2
+Disable special processing at the link level with the specified interface.
 .It Cm media Ar type
 If the driver supports the media selection system, set the media type
 of the interface to
 .Ar type .
 Some interfaces support the mutually exclusive use of one of several
 different physical media connectors.
-For example, a 10Mbit/s Ethernet
-interface might support the use of either
+For example, a 10Mbit/s Ethernet interface might support the use of either
 .Tn AUI
 or twisted pair connectors.
 Setting the media type to
@@ -481,21 +493,28 @@ would change the currently active connector to the AUI port.
 Setting it to
 .Sy 10baseT/UTP
 would activate twisted pair.
-Refer to the interfaces' driver
-specific documentation or man page for a complete list of the
-available types.
+Refer to the interfaces' driver specific documentation or man page
+for a complete list of the available types.
 .It Cm mediaopt Ar opts
 If the driver supports the media selection system, set the specified
 media options on the interface.
 The
 .Ar opts
-argument
-is a comma delimited list of options to apply to the interface.
+argument is a comma-delimited list of options to apply to the interface.
 Refer to the interfaces' driver specific man page for a complete
 list of available options.
 .It Cm -mediaopt Ar opts
 If the driver supports the media selection system, disable the
 specified media options on the interface.
+.It Cm metric Ar n
+Set the routing metric of the interface to
+.Ar n ;
+the default is 0.
+The routing metric is used by the routing protocol
+.Pq Xr routed 8 .
+Higher metrics have the effect of making a route
+less favorable; metrics are counted as additional hops
+to the destination network or host.
 .It Cm mode Ar mode
 If the driver supports the media selection system, set the specified
 operating mode on the interface to
@@ -508,101 +527,13 @@ this directive is used to select between 802.11a
 and 802.11g
 .Pq Sy 11g
 operating modes.
-.It Cm name Ar name
-Set the interface name to
-.Ar name .
-.It Cm rss
-If the driver supports Receive Side Scaling (RSS),
-enable RSS on the interface.
-.It Cm -rss
-If the driver supports Receive Side Scaling (RSS),
-disable RSS on the interface.
-.It Cm rxcsum , txcsum
-If the driver supports user-configurable checksum offloading,
-enable receive (or transmit) checksum offloading on the interface.
-Some drivers may not be able to enable these flags independently
-of each other, so setting one may also set the other.
-The driver will offload as much checksum work as it can reliably
-support, the exact level of offloading varies between drivers.
-.It Cm -rxcsum , -txcsum
-If the driver supports user-configurable checksum offloading,
-disable receive (or transmit) checksum offloading on the interface.
-These settings may not always be independent of each other.
-.It Cm tso
-If the driver supports TCP segmentation offloading (TSO),
-enable TSO on the interface.
-.It Cm -tso
-If the driver supports TCP segmentation offloading (TSO),
-disable TSO on the interface.
-.It Cm tsolen Ar n
-Set the maximum amount of data that TCP segmentation offloading (TSO)
-is allowed to aggregate to
-.Ar n ,
-the default value is interface specific.
-This setting only takes effect on interfaces that support TSO.
-.It Cm vlanmtu , vlanhwtag
-If the driver offers user-configurable VLAN support, enable
-reception of extended frames or tag processing in hardware,
-respectively.
-Note that this must be issued on a physical interface associated with
-.Xr vlan 4 ,
-not on a
-.Xr vlan 4
-interface itself.
-.It Cm -vlanmtu , -vlanhwtag
-If the driver offers user-configurable VLAN support, disable
-reception of extended frames or tag processing in hardware,
-respectively.
-.It Cm pollcpu Ar cpu
-(deprecated)
-Use the
-.Cm polling
-or
-.Cm npolling
-parameters below instead.
-.It Cm polling , npolling
-Turn on
-.Xr polling 4
-feature and disable interrupts on the interface, if the driver supports
-this mode.
-.It Cm -polling , -npolling
-Turn off
-.Xr polling 4
-feature and enable interrupt mode on the interface.
-.It Cm create
-Create the specified network pseudo-device.
-If the interface is given without a unit number,
-try to create a new device with an arbitrary unit number.
-If the creation of an arbitrary device is successful,
-the new device name is printed unless the interface
-is renamed or destroyed in the same
-.Nm
-invocation.
-.It Cm destroy
-Destroy the specified network pseudo-device.
-.It Cm plumb
-Another name for the
-.Cm create
-parameter.
-Included for
-.Tn Solaris
-compatibility.
-.It Cm unplumb
-Another name for the
-.Cm destroy
-parameter.
-Included for
-.Tn Solaris
-compatibility.
-.It Cm metric Ar n
-Set the routing metric of the interface to
-.Ar n ;
-the default is 0.
-The routing metric is used by the routing protocol
-.Pq Xr routed 8 .
-Higher metrics have the effect of making a route
-less favorable; metrics are counted as additional hops
-to the destination network or host.
+.It Cm monitor
+Put the interface in monitor mode.
+No packets are transmitted, and received packets are discarded after
+.Xr bpf 4
+processing.
+.It Cm -monitor
+Take the interface out of monitor mode.
 .It Cm mtu Ar n
 Set the maximum transmission unit of the interface to
 .Ar n ;
@@ -611,6 +542,9 @@ The MTU is used to limit the size of packets that are transmitted on an
 interface.
 Not all interfaces support setting the MTU, and some interfaces have
 range restrictions.
+.It Cm name Ar name
+Set the interface name to
+.Ar name .
 .It Cm netmask Ar mask
 .\" (Inet and ISO.)
 (inet only)
@@ -635,6 +569,41 @@ The netmask can also be specified in CIDR notation after the address.
 See the
 .Ar address
 option above for more information.
+.It Cm noicmp
+Another name for the
+.Cm link1
+parameter.
+.It Cm normal
+Another name for the
+.Cm -link0
+parameter.
+.It Cm plumb
+Another name for the
+.Cm create
+parameter.
+Included for
+.Tn Solaris
+compatibility.
+.It Cm pollcpu Ar cpu
+(deprecated)
+Use the
+.Cm polling
+or
+.Cm npolling
+parameters below instead.
+.It Cm polling , npolling
+Turn on
+.Xr polling 4
+feature and disable interrupts on the interface, if the driver supports
+this mode.
+.It Cm -polling , -npolling
+Turn off
+.Xr polling 4
+feature and enable interrupt mode on the interface.
+.It Cm promisc
+Put interface into permanently promiscuous mode.
+.It Cm -promisc
+Disable permanently promiscuous mode.
 .It Cm remove
 Another name for the
 .Cm -alias
@@ -642,38 +611,50 @@ parameter.
 Introduced for compatibility
 with
 .Bsx .
-.Sm off
-.It Cm link Op Cm 0 No - Cm 2
-.Sm on
-Enable special processing of the link level of the interface.
-These three options are interface specific in actual effect;
-however, they are in general used to select special modes of operation.
-An example of this is to enable SLIP compression,
-or to select the connector type for some Ethernet cards.
-Refer to the man page for the specific driver for more information.
-.Sm off
-.It Cm -link Op Cm 0 No - Cm 2
-.Sm on
-Disable special processing at the link level with the specified interface.
-.It Cm compress
+.It Cm rss
+If the driver supports Receive Side Scaling (RSS),
+enable RSS on the interface.
+.It Cm -rss
+If the driver supports Receive Side Scaling (RSS),
+disable RSS on the interface.
+.It Cm rxcsum , txcsum
+If the driver supports user-configurable checksum offloading,
+enable receive (or transmit) checksum offloading on the interface.
+Some drivers may not be able to enable these flags independently
+of each other, so setting one may also set the other.
+The driver will offload as much checksum work as it can reliably
+support, the exact level of offloading varies between drivers.
+.It Cm -rxcsum , -txcsum
+If the driver supports user-configurable checksum offloading,
+disable receive (or transmit) checksum offloading on the interface.
+These settings may not always be independent of each other.
+.It Cm staticarp
+If the Address Resolution Protocol is enabled,
+the host will only reply to requests for its addresses,
+and will never send any requests.
+.It Cm -staticarp
+If the Address Resolution Protocol is enabled,
+the host will perform normally,
+sending out requests and listening for replies.
+.It Cm tso
+If the driver supports TCP segmentation offloading (TSO),
+enable TSO on the interface.
+.It Cm -tso
+If the driver supports TCP segmentation offloading (TSO),
+disable TSO on the interface.
+.It Cm tsolen Ar n
+Set the maximum amount of data that TCP segmentation offloading (TSO)
+is allowed to aggregate to
+.Ar n ,
+the default value is interface specific.
+This setting only takes effect on interfaces that support TSO.
+.It Cm unplumb
 Another name for the
-.Cm link0
+.Cm destroy
 parameter.
-.It Cm normal
-Another name for the
-.Cm -link0
-parameter.
-.It Cm noicmp
-Another name for the
-.Cm link1
-parameter.
-.It Cm monitor
-Put the interface in monitor mode.
-No packets are transmitted, and received packets are discarded after
-.Xr bpf 4
-processing.
-.It Cm -monitor
-Take the interface out of monitor mode.
+Included for
+.Tn Solaris
+compatibility.
 .It Cm up
 Mark an interface
 .Dq up .
@@ -682,6 +663,19 @@ This may be used to enable an interface after an
 It happens automatically when setting the first address on an interface.
 If the interface was reset when previously marked down,
 the hardware will be re-initialized.
+.It Cm vlanmtu , vlanhwtag
+If the driver offers user-configurable VLAN support, enable
+reception of extended frames or tag processing in hardware,
+respectively.
+Note that this must be issued on a physical interface associated with
+.Xr vlan 4 ,
+not on a
+.Xr vlan 4
+interface itself.
+.It Cm -vlanmtu , -vlanhwtag
+If the driver offers user-configurable VLAN support, disable
+reception of extended frames or tag processing in hardware,
+respectively.
 .El
 .\"
 .Ss IPv6 Parameters
