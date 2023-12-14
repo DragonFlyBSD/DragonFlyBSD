@@ -379,8 +379,7 @@ may be set with
 Another name for the
 .Cm alias
 parameter.
-Introduced for compatibility
-with
+Introduced for compatibility with
 .Bsx .
 .It Cm alias
 Establish an additional network address for this interface.
@@ -399,7 +398,7 @@ If you have incorrectly set an NS address having the side effect
 of specifying the host portion, removing all NS addresses will
 allow you to respecify the host portion.
 .It Cm anycast
-(Inet6 only.)
+(inet6 only)
 Specify that the address configured is an anycast address.
 Based on the current specification,
 only routers may configure anycast addresses.
@@ -411,11 +410,9 @@ Enable the use of the Address Resolution Protocol
 in mapping
 between network level addresses and link level addresses (default).
 This is currently implemented for mapping between
-.Tn DARPA
-Internet
-addresses and
+Internet Protocol addresses and
 .Tn IEEE
-802 48-bit MAC addresses (Ethernet, FDDI, and Token Ring addresses).
+802 48-bit MAC addresses (Ethernet addresses).
 .It Fl arp
 Disable the use of the Address Resolution Protocol
 .Pq Xr arp 4 .
@@ -428,9 +425,8 @@ If the Address Resolution Protocol is enabled,
 the host will perform normally,
 sending out requests and listening for replies.
 .It Cm broadcast
-(Inet only.)
-Specify the address to use to represent broadcasts to the
-network.
+(inet only)
+Specify the address to use to represent broadcasts to the network.
 The default broadcast address is the address with a host part of all 1's.
 .It Cm debug
 Enable driver dependent debugging code; usually, this turns on
@@ -461,26 +457,24 @@ transmit messages through that interface.
 If possible, the interface will be reset to disable reception as well.
 This action does not automatically disable routes using the interface.
 .It Cm group Ar group-name
-Assign the interface to a
-.Dq group .
-Any interface can be in multiple groups.
+Assign the interface to the specified group.
+The name of the group may not be longer than 15 characters and
+must not end in a digit.
+An interface can be in multiple groups.
 .Pp
 Cloned interfaces are members of their interface family group by default.
-For example, a PPP interface such as
-.Em ppp0
-is a member of the PPP interface family group,
-.Em ppp .
+For example, a tunnel interface such as
+.Em tun0
+is a member of the TUN interface family group,
+.Em tun .
 .\" The interface(s) that the default route(s) point to are members of the
 .\" .Em egress
 .\" interface group.
 .It Cm -group Ar group-name
-Remove the interface from the given
-.Dq group .
+Remove the interface from the given group.
 .It Cm eui64
-(Inet6 only.)
-Fill interface index
-(lowermost 64bit of an IPv6 address)
-automatically.
+(inet6 only)
+Fill interface index (lowermost 64bit of an IPv6 address) automatically.
 .It Cm media Ar type
 If the driver supports the media selection system, set the media type
 of the interface to
@@ -492,10 +486,10 @@ interface might support the use of either
 .Tn AUI
 or twisted pair connectors.
 Setting the media type to
-.Cm 10base5/AUI
+.Sy 10base5/AUI
 would change the currently active connector to the AUI port.
 Setting it to
-.Cm 10baseT/UTP
+.Sy 10baseT/UTP
 would activate twisted pair.
 Refer to the interfaces' driver
 specific documentation or man page for a complete list of the
@@ -518,21 +512,21 @@ operating mode on the interface to
 .Ar mode .
 For IEEE 802.11 wireless interfaces that support multiple operating modes
 this directive is used to select between 802.11a
-.Pq Cm 11a ,
+.Pq Sy 11a ,
 802.11b
-.Pq Cm 11b ,
+.Pq Sy 11b ,
 and 802.11g
-.Pq Cm 11g
+.Pq Sy 11g
 operating modes.
 .It Cm name Ar name
 Set the interface name to
 .Ar name .
 .It Cm rss
-If the driver supports receive side scaling,
-enable receive side scaling on the interface.
+If the driver supports Receive Side Scaling (RSS),
+enable RSS on the interface.
 .It Fl rss
-If the driver supports receive side scaling,
-disable receive side scaling on the interface.
+If the driver supports Receive Side Scaling (RSS),
+disable RSS on the interface.
 .It Cm rxcsum , txcsum
 If the driver supports user-configurable checksum offloading,
 enable receive (or transmit) checksum offloading on the interface.
@@ -545,11 +539,17 @@ If the driver supports user-configurable checksum offloading,
 disable receive (or transmit) checksum offloading on the interface.
 These settings may not always be independent of each other.
 .It Cm tso
-If the driver supports TCP segmentation offloading,
-enable TCP segmentation offloading on the interface.
+If the driver supports TCP segmentation offloading (TSO),
+enable TSO on the interface.
 .It Fl tso
-If the driver supports TCP segmentation offloading,
-disable TCP segmentation offloading on the interface.
+If the driver supports TCP segmentation offloading (TSO),
+disable TSO on the interface.
+.It Cm tsolen Ar n
+Set the maximum amount of data that TCP segmentation offloading (TSO)
+is allowed to aggregate to
+.Ar n ,
+the default value is interface specific.
+This setting only takes effect on interfaces that support TSO.
 .It Cm vlanmtu , vlanhwtag
 If the driver offers user-configurable VLAN support, enable
 reception of extended frames or tag processing in hardware,
@@ -564,7 +564,12 @@ If the driver offers user-configurable VLAN support, disable
 reception of extended frames or tag processing in hardware,
 respectively.
 .It Cm pollcpu Ar cpu
-Deprecated, use polling or npolling instead.
+(deprecated)
+Use the
+.Cm polling
+or
+.Cm npolling
+parameters below instead.
 .It Cm polling , npolling
 Turn on
 .Xr polling 4
@@ -576,11 +581,11 @@ Turn off
 feature and enable interrupt mode on the interface.
 .It Cm create
 Create the specified network pseudo-device.
-If the interface is given without a unit number, try to create a new
-device with an arbitrary unit number.
-If creation of an arbitrary device is successful, the new device name is
-printed to standard output unless the interface is renamed or destroyed
-in the same
+If the interface is given without a unit number,
+try to create a new device with an arbitrary unit number.
+If the creation of an arbitrary device is successful,
+the new device name is printed unless the interface
+is renamed or destroyed in the same
 .Nm
 invocation.
 .It Cm destroy
@@ -601,8 +606,8 @@ Included for
 compatibility.
 .It Cm metric Ar n
 Set the routing metric of the interface to
-.Ar n ,
-default 0.
+.Ar n ;
+the default is 0.
 The routing metric is used by the routing protocol
 .Pq Xr routed 8 .
 Higher metrics have the effect of making a route
@@ -610,22 +615,15 @@ less favorable; metrics are counted as additional hops
 to the destination network or host.
 .It Cm mtu Ar n
 Set the maximum transmission unit of the interface to
-.Ar n ,
-default is interface specific.
+.Ar n ;
+the default is interface specific.
 The MTU is used to limit the size of packets that are transmitted on an
 interface.
 Not all interfaces support setting the MTU, and some interfaces have
 range restrictions.
-.It Cm tsolen Ar n
-Set the maximum amount of data
-that TCP segmentation offloading is allowed to aggregate to
-.Ar n ,
-the default value is interface specific.
-This setting only takes effect on interfaces
-that support TCP segmentation offloading.
 .It Cm netmask Ar mask
 .\" (Inet and ISO.)
-(Inet only.)
+(inet only)
 Specify how much of the address to reserve for subdividing
 networks into sub-networks.
 The mask includes the network part of the local address
@@ -648,18 +646,19 @@ See the
 .Ar address
 option above for more information.
 .It Cm autoconf
-(Inet6 only.)
-Enable autoconfiguration.
+(inet6 only)
+Enable IPv6 auto-configuration.
 .It Fl autoconf
-Disable autoconfiguration.
+(inet6 only)
+Disable IPv6 auto-configuration.
 .It Cm pltime Ar n
-(Inet6 only.)
-Set preferred lifetime for the address.
+(inet6 only)
+Set the preferred lifetime for the address.
 .It Cm vltime Ar n
-(Inet6 only.)
-Set valid lifetime for the address.
+(inet6 only)
+Set the valid lifetime for the address.
 .It Cm prefixlen Ar len
-(Inet6 only.)
+(inet6 only)
 Specify that
 .Ar len
 bits are reserved for subdividing networks into sub-networks.
@@ -669,21 +668,22 @@ must be integer, and for syntactical reason it must be between 0 to 128.
 It is almost always 64 under the current IPv6 assignment rule.
 If the parameter is omitted, 64 is used.
 .Pp
-The prefix can also be specified using the slash notation after the address.
+The prefix length can also be specified using the slash notation
+after the address.
 See the
 .Ar address
 option above for more information.
 .It Cm deprecated
-(Inet6 only.)
+(inet6 only)
 Set the IPv6 deprecated address bit.
 .It Fl deprecated
-(Inet6 only.)
+(inet6 only)
 Clear the IPv6 deprecated address bit.
 .It Cm tentative
-(Inet6 only.)
+(inet6 only)
 Set the IPv6 tentative address bit.
 .It Fl tentative
-(Inet6 only.)
+(inet6 only)
 Clear the IPv6 tentative address bit.
 .\" see
 .\" Xr eon 5 .
@@ -723,13 +723,11 @@ with
 .It Cm link Op Cm 0 No - Cm 2
 .Sm on
 Enable special processing of the link level of the interface.
-These three options are interface specific in actual effect, however,
-they are in general used to select special modes of operation.
-An example
-of this is to enable SLIP compression, or to select the connector type
-for some Ethernet cards.
-Refer to the man page for the specific driver
-for more information.
+These three options are interface specific in actual effect;
+however, they are in general used to select special modes of operation.
+An example of this is to enable SLIP compression,
+or to select the connector type for some Ethernet cards.
+Refer to the man page for the specific driver for more information.
 .Sm off
 .It Fl link Op Cm 0 No - Cm 2
 .Sm on
