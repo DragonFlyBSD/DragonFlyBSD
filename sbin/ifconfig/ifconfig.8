@@ -390,7 +390,7 @@ for this interface, a non-conflicting netmask must be given.
 Usually
 .Li 0xffffffff
 is most appropriate.
-.It Fl alias
+.It Cm -alias
 Remove the network address specified.
 This would be used if you incorrectly specified an alias, or it
 was no longer needed.
@@ -406,14 +406,14 @@ This is currently implemented for mapping between
 Internet Protocol addresses and
 .Tn IEEE
 802 48-bit MAC addresses (Ethernet addresses).
-.It Fl arp
+.It Cm -arp
 Disable the use of the Address Resolution Protocol
 .Pq Xr arp 4 .
 .It Cm staticarp
 If the Address Resolution Protocol is enabled,
 the host will only reply to requests for its addresses,
 and will never send any requests.
-.It Fl staticarp
+.It Cm -staticarp
 If the Address Resolution Protocol is enabled,
 the host will perform normally,
 sending out requests and listening for replies.
@@ -424,15 +424,15 @@ The default broadcast address is the address with a host part of all 1's.
 .It Cm debug
 Enable driver dependent debugging code; usually, this turns on
 extra console error logging.
-.It Fl debug
+.It Cm -debug
 Disable driver dependent debugging code.
 .It Cm promisc
 Put interface into permanently promiscuous mode.
-.It Fl promisc
+.It Cm -promisc
 Disable permanently promiscuous mode.
 .It Cm delete
 Another name for the
-.Fl alias
+.Cm -alias
 parameter.
 .It Cm description Ar value , Cm descr Ar value
 Specify a description of the interface.
@@ -493,7 +493,7 @@ argument
 is a comma delimited list of options to apply to the interface.
 Refer to the interfaces' driver specific man page for a complete
 list of available options.
-.It Fl mediaopt Ar opts
+.It Cm -mediaopt Ar opts
 If the driver supports the media selection system, disable the
 specified media options on the interface.
 .It Cm mode Ar mode
@@ -514,7 +514,7 @@ Set the interface name to
 .It Cm rss
 If the driver supports Receive Side Scaling (RSS),
 enable RSS on the interface.
-.It Fl rss
+.It Cm -rss
 If the driver supports Receive Side Scaling (RSS),
 disable RSS on the interface.
 .It Cm rxcsum , txcsum
@@ -524,14 +524,14 @@ Some drivers may not be able to enable these flags independently
 of each other, so setting one may also set the other.
 The driver will offload as much checksum work as it can reliably
 support, the exact level of offloading varies between drivers.
-.It Fl rxcsum , txcsum
+.It Cm -rxcsum , -txcsum
 If the driver supports user-configurable checksum offloading,
 disable receive (or transmit) checksum offloading on the interface.
 These settings may not always be independent of each other.
 .It Cm tso
 If the driver supports TCP segmentation offloading (TSO),
 enable TSO on the interface.
-.It Fl tso
+.It Cm -tso
 If the driver supports TCP segmentation offloading (TSO),
 disable TSO on the interface.
 .It Cm tsolen Ar n
@@ -549,7 +549,7 @@ Note that this must be issued on a physical interface associated with
 not on a
 .Xr vlan 4
 interface itself.
-.It Fl vlanmtu , vlanhwtag
+.It Cm -vlanmtu , -vlanhwtag
 If the driver offers user-configurable VLAN support, disable
 reception of extended frames or tag processing in hardware,
 respectively.
@@ -565,7 +565,7 @@ Turn on
 .Xr polling 4
 feature and disable interrupts on the interface, if the driver supports
 this mode.
-.It Fl polling , npolling
+.It Cm -polling , -npolling
 Turn off
 .Xr polling 4
 feature and enable interrupt mode on the interface.
@@ -664,7 +664,7 @@ option above for more information.
 .\" 37 type addresses.
 .It Cm remove
 Another name for the
-.Fl alias
+.Cm -alias
 parameter.
 Introduced for compatibility
 with
@@ -679,7 +679,7 @@ An example of this is to enable SLIP compression,
 or to select the connector type for some Ethernet cards.
 Refer to the man page for the specific driver for more information.
 .Sm off
-.It Fl link Op Cm 0 No - Cm 2
+.It Cm -link Op Cm 0 No - Cm 2
 .Sm on
 Disable special processing at the link level with the specified interface.
 .It Cm compress
@@ -688,7 +688,7 @@ Another name for the
 parameter.
 .It Cm normal
 Another name for the
-.Fl link0
+.Cm -link0
 parameter.
 .It Cm noicmp
 Another name for the
@@ -699,7 +699,7 @@ Put the interface in monitor mode.
 No packets are transmitted, and received packets are discarded after
 .Xr bpf 4
 processing.
-.It Fl monitor
+.It Cm -monitor
 Take the interface out of monitor mode.
 .It Cm up
 Mark an interface
@@ -727,11 +727,11 @@ Anycast address will not be used as source address of any of
 outgoing IPv6 packets.
 .It Cm autoconf
 Enable IPv6 auto-configuration.
-.It Fl autoconf
+.It Cm -autoconf
 Disable IPv6 auto-configuration.
 .It Cm deprecated
 Set the IPv6 deprecated address bit.
-.It Fl deprecated
+.It Cm -deprecated
 Clear the IPv6 deprecated address bit.
 .It Cm eui64
 Automatically configure the interface index
@@ -756,7 +756,7 @@ See the
 option above for more information.
 .It Cm tentative
 Set the IPv6 tentative address bit.
-.It Fl tentative
+.It Cm -tentative
 Clear the IPv6 tentative address bit.
 .It Cm vltime Ar n
 Set the valid lifetime for the address.
@@ -820,24 +820,24 @@ Legacy
 .Cm wds
 devices have a fixed peer relationship and do not, for example, roam
 if their peer stops communicating.
-For completeness a Dynamic WDS (DWDS) interface may marked as
-.Fl wdslegacy .
+For completeness, a Dynamic WDS (DWDS) interface may be marked as
+.Cm -wdslegacy .
 .It Cm bssid
 Request a unique local mac address for the cloned device.
 This is only possible if the device supports multiple mac addresses.
-To force use of the parent's mac address use
-.Fl bssid .
+To force use of the parent's mac address, use
+.Cm -bssid .
 .It Cm beacons
 Mark the cloned interface as depending on hardware support to
 track received beacons.
-To have beacons tracked in software use
-.Fl beacons .
+To have beacons tracked in software, use
+.Cm -beacons .
 For
 .Cm hostap
-mode
-.Fl beacons
-can also be used to indicate no beacons should
-be transmitted; this can be useful when creating a WDS configuration but
+mode,
+.Cm -beacons
+can also be used to indicate no beacons should be transmitted;
+this can be useful when creating a WDS configuration but
 .Cm wds
 interfaces can only be created as companions to an access point (AP).
 .El
@@ -853,7 +853,7 @@ Enable sending and receiving AMPDU frames when using 802.11n (default).
 The 802.11n specification states a compliant station must be capable
 of receiving AMPDU frames but transmission is optional.
 Use
-.Fl ampdu
+.Cm -ampdu
 to disable all use of AMPDU with 802.11n.
 For testing and/or to work around interoperability problems one can use
 .Cm ampdutx
@@ -884,7 +884,7 @@ than the maximum specified by the receiving station.
 Enable sending and receiving AMSDU frames when using 802.11n.
 By default AMSDU is received but not transmitted.
 Use
-.Fl amsdu
+.Cm -amsdu
 to disable all use of AMSDU with 802.11n.
 For testing and/or to work around interoperability problems one can use
 .Cm amsdutx
@@ -908,7 +908,7 @@ When operating as an access point, pass packets between
 wireless clients directly (default).
 To instead let them pass up through the
 system and be forwarded using some other mechanism, use
-.Fl apbridge .
+.Cm -apbridge .
 Disabling the internal bridging
 is useful when traffic is to be processed with
 packet filtering.
@@ -947,7 +947,7 @@ there may be some small latency if outbound traffic interrupts a
 scan operation.
 By default background scanning is enabled if the device is capable.
 To disable background scanning, use
-.Fl bgscan .
+.Cm -bgscan .
 Background scanning is controlled by the
 .Cm bgscanidle
 and
@@ -1019,7 +1019,7 @@ and some devices that do not support QoS may still be capable.
 By default packet bursting is enabled if a device is capable
 of doing it.
 To disable packet bursting, use
-.Fl burst .
+.Cm -burst .
 .It Cm chanlist Ar channels
 Set the desired channels to use when scanning for access
 points, neighbors in an IBSS network, or looking for unoccupied
@@ -1152,7 +1152,7 @@ for full DFS support to work.
 To be fully compliant with the local regulatory agency frequencies that
 require DFS should not be used unless it is fully supported.
 Use
-.Fl dfs
+.Cm -dfs
 to disable this functionality for testing.
 .It Cm dotd
 Enable support for the 802.11d specification (default).
@@ -1164,8 +1164,8 @@ operate according to the associated regulatory constraints.
 When operating as an access point with 802.11d enabled the beacon and
 probe response frames transmitted will advertise the current regulatory
 domain settings.
-To disable 802.11d use
-.Fl dotd .
+To disable 802.11d, use
+.Cm -dotd .
 .It Cm doth
 Enable 802.11h support including spectrum management.
 When 802.11h is enabled beacon and probe response frames will have
@@ -1174,8 +1174,8 @@ country and power constraint information elements will be present.
 802.11h support also includes handling Channel Switch Announcements (CSA)
 which are a mechanism to coordinate channel changes by an access point.
 By default 802.11h is enabled if the device is capable.
-To disable 802.11h use
-.Fl doth .
+To disable 802.11h, use
+.Cm -doth .
 .It Cm deftxkey Ar index
 Set the default key to use for transmission.
 Typically this is only set when using WEP encryption.
@@ -1210,8 +1210,8 @@ Note that turbo mode (dynamic or static) is only allowed on some
 channels depending on the regulatory constraints; use the
 .Cm list chan
 command to identify the channels where turbo mode may be used.
-To disable Dynamic Turbo mode use
-.Fl dturbo .
+To disable Dynamic Turbo mode, use
+.Cm -dturbo .
 .It Cm dwds
 Enable Dynamic WDS (DWDS) support.
 DWDS is a facility by which 4-address traffic can be carried between
@@ -1254,7 +1254,7 @@ protocol extension so enabling use is safe when communicating with
 non-Atheros devices.
 By default, use of fast frames is enabled if the device is capable.
 To explicitly disable fast frames, use
-.Fl ff .
+.Cm -ff .
 .It Cm fragthreshold Ar length
 Set the threshold for which transmitted frames are broken into fragments.
 The
@@ -1276,7 +1276,7 @@ they are directed to the AP (i.e., they include the AP's SSID).
 By default, the SSID is included in beacon frames and
 undirected probe request frames are answered.
 To re-enable the broadcast of the SSID etc., use
-.Fl hidessid .
+.Cm -hidessid .
 .It Cm ht
 Enable use of High Throughput (HT) when using 802.11n (default).
 The 802.11n specification includes mechanisms for operation
@@ -1284,12 +1284,12 @@ on 20MHz and 40MHz wide channels using different signalling mechanisms
 than specified in 802.11b, 802.11g, and 802.11a.
 Stations negotiate use of these facilities, termed HT20 and HT40,
 when they associate.
-To disable all use of 802.11n use
-.Fl ht .
-To disable use of HT20 (e.g.\& to force only HT40 use) use
-.Fl ht20 .
-To disable use of HT40 use
-.Fl ht40 .
+To disable all use of 802.11n, use
+.Cm -ht ;
+to disable use of HT20 (e.g.\& to force only HT40 use), use
+.Cm -ht20 ;
+to disable use of HT40, use
+.Cm -ht40 .
 .Pp
 HT configuration is used to
 .Dq auto promote
@@ -1316,8 +1316,8 @@ will be provided.
 Stations that associate using the compatibility mechanisms are flagged in
 .Cm list sta
 operation.
-To disable compatibility support use
-.Fl htcompat .
+To disable compatibility support, use
+.Cm -htcompat .
 .It Cm htprotmode Ar technique
 For interfaces operating in 802.11n, use the specified
 .Ar technique
@@ -1339,7 +1339,7 @@ to see if the station is still present.
 If no response is received then the station is deauthenticated.
 Applications that prefer to handle this work can disable this
 facility by using
-.Fl inact .
+.Cm -inact .
 .It Cm indoor
 Set the location to use in calculating regulatory constraints.
 The location is also advertised in beacon and probe response frames
@@ -1586,14 +1586,14 @@ Not all devices support power save operation as a client.
 The 802.11 specification requires that all access points support
 power save but some drivers do not.
 Use
-.Fl powersave
+.Cm -powersave
 to disable powersave operation when operating as a client.
 .It Cm powersavemode Ar mode
 Set powersave mode.
 The set of valid modes is
 .Cm off
 (same as
-.Fl powersave ) ,
+.Cm -powersave ) ,
 .Cm on
 (same as
 .Cm powersave ) ,
@@ -1623,13 +1623,13 @@ When operating as an access point in 802.11g mode allow only
 11g-capable stations to associate (11b-only stations are not
 permitted to associate).
 To allow both 11g and 11b-only stations to associate, use
-.Fl pureg .
+.Cm -pureg .
 .It Cm puren
 When operating as an access point in 802.11n mode allow only
 HT-capable stations to associate (legacy stations are not
 permitted to associate).
 To allow both HT and legacy stations to associate, use
-.Fl puren .
+.Cm -puren .
 .It Cm regdomain Ar sku
 Set the regulatory domain to use in calculating the regulatory constraints
 for operation.
@@ -1654,8 +1654,8 @@ Enable use of Reduced InterFrame Spacing (RIFS) when operating in 802.11n
 on an HT channel.
 Note that RIFS must be supported by both the station and access point
 for it to be used.
-To disable RIFS use
-.Fl rifs .
+To disable RIFS, use
+.Cm -rifs .
 .It Cm roam:rate Ar rate
 Set the threshold for controlling roaming when operating in a BSS.
 The
@@ -1755,15 +1755,15 @@ background scan operations.
 Enable use of Short Guard Interval when operating in 802.11n
 on an HT channel.
 NB: this currently enables Short GI on both HT40 and HT20 channels.
-To disable Short GI use
-.Fl shortgi .
+To disable Short GI, use
+.Cm -shortgi .
 .It Cm smps
 Enable use of Static Spatial Multiplexing Power Save (SMPS)
 when operating in 802.11n.
 A station operating with Static SMPS maintains only a single
 receive chain active (this can significantly reduce power consumption).
-To disable SMPS use
-.Fl smps .
+To disable SMPS, use
+.Cm -smps .
 .It Cm smpsdyn
 Enable use of Dynamic Spatial Multiplexing Power Save (SMPS)
 when operating in 802.11n.
@@ -1772,8 +1772,8 @@ receive chain active but switches to multiple receive chains when it
 receives an RTS frame (this can significantly reduce power consumption).
 Note that stations cannot distinguish between RTS/CTS intended to
 enable multiple receive chains and those used for other purposes.
-To disable SMPS use
-.Fl smps .
+To disable SMPS, use
+.Cm -smps .
 .It Cm ssid Ar ssid
 Set the desired Service Set Identifier (aka network name).
 The SSID is a string up to 32 characters
@@ -1840,7 +1840,7 @@ is set to 5.
 When operating as an access point with WPA/802.11i allow legacy
 stations to associate using static key WEP and open authentication.
 To disallow legacy station use of WEP, use
-.Fl tsn .
+.Cm -tsn .
 .It Cm txpower Ar power
 Set the power used to transmit frames.
 The
@@ -1914,7 +1914,7 @@ for the specified interface.
 WME is a subset of the IEEE 802.11e standard to support the
 efficient communication of realtime and multimedia data.
 To disable WME support, use
-.Fl wme .
+.Cm -wme .
 Another name for this parameter is
 .Cm wmm .
 .Pp
@@ -1956,14 +1956,14 @@ Best Effort (BE) category.
 Set the ACK policy for QoS transmissions by the local station;
 this controls whether or not data frames transmitted by a station
 require an ACK response from the receiving station.
-To disable waiting for an ACK use
-.Fl ack .
+To disable waiting for an ACK, use
+.Cm -ack .
 This parameter is applied only to the local station.
 .It Cm acm Ar ac
 Enable the Admission Control Mandatory (ACM) mechanism
 for transmissions by the local station.
-To disable the ACM use
-.Fl acm .
+To disable the ACM, use
+.Cm -acm .
 On stations in a BSS this parameter is read-only and indicates
 the setting received from the access point.
 NB: ACM is not supported right now.
@@ -2006,8 +2006,8 @@ This parameter is meaningful only when operating in AP mode.
 .It Cm wps
 Enable Wireless Privacy Subscriber support.
 Note that WPS support requires a WPS-capable supplicant.
-To disable this function use
-.Fl wps .
+To disable this function, use
+.Cm -wps .
 .El
 .\"
 .Ss WLAN ACL Parameters
@@ -2160,7 +2160,7 @@ Another way of saying
 Included for
 .Bsx
 compatibility.
-.It Fl wep
+.It Cm -wep
 Another way of saying
 .Cm wepmode off .
 Included for
@@ -2182,7 +2182,7 @@ Another way of saying
 Included for
 .Nx
 compatibility.
-.It Fl nwkey
+.It Cm -nwkey
 Another way of saying
 .Cm wepmode off .
 Included for
@@ -2243,7 +2243,7 @@ the bridge will forward the packet to all
 member interfaces marked as
 .Dq discovering .
 This is the default for all interfaces added to a bridge.
-.It Fl discover Ar interface
+.It Cm -discover Ar interface
 Clear the
 .Dq discovering
 attribute on a member interface.
@@ -2260,7 +2260,7 @@ When a packet arrives on such an interface, the source
 address of the packet is entered into the address cache as being a
 destination address on the interface's segment.
 This is the default for all interfaces added to a bridge.
-.It Fl learn Ar interface
+.It Cm -learn Ar interface
 Clear the
 .Dq learning
 attribute on a member interface.
@@ -2271,7 +2271,7 @@ as a span port on the bridge.
 Span ports transmit a copy of every frame received by the bridge.
 This is most useful for snooping a bridged network passively on
 another host connected to one of the span ports of the bridge.
-.It Fl span Ar interface
+.It Cm -span Ar interface
 Delete the interface named by
 .Ar interface
 from the list of span ports of the bridge.
@@ -2282,7 +2282,7 @@ The
 .Xr bridge 4
 driver has support for the IEEE 802.1D Spanning Tree protocol (STP).
 Spanning Tree is used to detect and remove loops in a network topology.
-.It Fl stp Ar interface
+.It Cm -stp Ar interface
 Disable Spanning Tree protocol on
 .Ar interface .
 This is the default for all interfaces added to a bridge.
@@ -2397,13 +2397,13 @@ and
 .Ar dest_addr
 are interpreted as the outer source/destination for the encapsulating
 IPv4/IPv6 header.
-.It Fl tunnel
+.It Cm -tunnel
 Unconfigure the physical source and destination address for IP tunnel
 interfaces previously configured with
 .Cm tunnel .
 .It Cm deletetunnel
 Another name for the
-.Fl tunnel
+.Cm -tunnel
 parameter.
 .El
 .\"
@@ -2469,7 +2469,7 @@ interface recognizes that the
 parent interface supports insertion and extraction of VLAN tags on its
 own (usually in firmware) and that it should pass packets to and from
 the parent unaltered.
-.It Fl vlandev Op Ar iface
+.It Cm -vlandev Op Ar iface
 If the driver is a
 .Xr vlan 4
 pseudo device, disassociate the parent interface from it.
