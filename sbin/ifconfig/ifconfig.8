@@ -28,7 +28,7 @@
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.124 2006/10/10 09:44:08 ru Exp $
 .\"
-.Dd December 13, 2023
+.Dd December 15, 2023
 .Dt IFCONFIG 8
 .Os
 .Sh NAME
@@ -2481,6 +2481,115 @@ This is a required setting.
 Acceptable values are 1 to 255.
 .El
 .\"
+.Ss WireGuard Parameters
+The following parameters are available to
+.Xr wg 4
+interfaces:
+.Bl -tag -width indent
+.\" TODO: uncomment this when ipfw/pf is ready ...
+.\" .It Cm wgcookie Ar cookie
+.\" Set a custom
+.\" .Ar cookie ,
+.\" which is an arbitrary 32-bit unsigned integer,
+.\" for the interface's underlying socket.
+.\" The cookie can then be used by
+.\" .Xr ipfw 4
+.\" or
+.\" .Xr pf 4
+.\" to manipulate the traffic of this interface.
+.\" .It Cm -wgcookie
+.\" Remove the custom cookie from the interface's underlying socket.
+.It Cm wgkey Ar privatekey
+Set the private key of the interface.
+The
+.Ar privatekey
+is 32 bytes in base64 encoding.
+It can be generated as follows:
+.Pp
+.Dl $ openssl rand -base64 32
+.Pp
+The corresponding public key will then be displayed
+in the interface status for distribution to peers.
+By default, the status output will exclude the private key,
+unless the
+.Fl k
+flag is specified.
+.It Cm wgpeer Ar publickey
+Add or specify a peer by its
+.Ar publickey ,
+which is also 32 bytes in base64 encoding.
+Repeat this parameter to specify multiple peers in a single command.
+.It Cm -wgpeer Ar publickey
+Remove the peer with the given
+.Ar publickey .
+.It Cm -wgpeerall
+Remove all peers from the interface.
+.It Cm wgport Ar port
+Set the interface's UDP
+.Ar port
+for exchanging traffic with its peers.
+The interface will bind to
+.Dv INADDR_ANY
+and
+.Dv IN6ADDR_ANY_INIT .
+By default, the interface will choose a port automatically.
+.El
+.Pp
+Peer configuration parameters, which apply to the
+.Cm wgpeer
+parameter immediately preceding them,
+are as follows:
+.Bl -tag -width indent
+.It Cm wgdescr Ns Oo Cm iption Oc Ar value
+Specify a description for the peer.
+This can be used to label peers in situations where they may
+otherwise be difficult to distinguish.
+.It Cm -wgdescr Ns Op Cm iption
+Clear the peer description.
+.It Cm wgaip Ar address/prefix
+Set the peer's IPv4 or IPv6 address range (in CIDR notation)
+allowed for its tunneled traffic.
+Repeat this parameter to set multiple ranges.
+By default, no address is allowed.
+.It Cm wgendpoint Ar address port
+Address traffic to the peer's IPv4 or IPv6
+.Ar address
+and UDP
+.Ar port .
+The interface will track the peer and update
+.Cm wgendpoint
+to the source of its last authenticated packet.
+By default, the endpoint is unknown and so the peer cannot
+be addressed until it initiates communication.
+This implies that at least one peer in each pair must specify
+.Cm wgendpoint .
+.It Cm wgpka Ar interval
+Set the
+.Ar interval
+of persistent keepalive packets in seconds.
+They can be used to maintain connectivity to a peer otherwise blocked
+to unsolicited traffic by an intermediate firewall or NAT device.
+For this, an
+.Ar interval
+of 25 seconds should suffice.
+By default, the persistent keepalive is disabled.
+.It Cm -wgpka
+Disable the persistent keepalive for this peer.
+.It Cm wgpsk Ar presharedkey
+Set a unique key pre-shared with the peer.
+This strengthens the Diffie-Hellman exchange should in future
+an attack on it become feasible.
+The
+.Ar presharedkey
+is also 32 bytes in base64 encoding.
+It is optional but recommended;
+it can be generated in the same way as the
+.Cm wgkey
+private key.
+.It Cm -wgpsk
+Remove the pre-shared key for this peer.
+.El
+.\"
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm :
@@ -2502,6 +2611,7 @@ tried to alter an interface's configuration.
 .Xr netintro 4 ,
 .Xr polling 4 ,
 .Xr vlan 4 ,
+.Xr wg 4 ,
 .Xr rc 8 ,
 .Xr routed 8 ,
 .Xr sysctl 8
