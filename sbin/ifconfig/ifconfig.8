@@ -132,7 +132,7 @@ Display only the interfaces that are down.
 Control the output formats of
 .Nm .
 The format is specified as a comma-separated list of
-.Sy type:format
+.Ar type Ns Cm \&: Ns Ar format
 pairs.
 This option can be supplied multiple times.
 Alternatively, the output formats can be specified via the
@@ -142,68 +142,68 @@ environment variable.
 The supported
 .Ar type Ns s
 and their associated
-.Sy format
+.Ar format
 strings are:
 .Bl -tag -width indent
-.It Sy addr
+.It Cm addr
 Adjust the display of inet and inet6 addresses:
 .Pp
 .Bl -tag -width default -compact
-.It Sy default
+.It Cm default
 Default format, i.e.,
-.Sy numeric
-.It Sy fqdn
+.Cm numeric
+.It Cm fqdn
 Fully qualified domain names
 .Pq FQDN
-.It Sy host
+.It Cm host
 Unqualified hostnames
-.It Sy numeric
+.It Cm numeric
 Numeric format
 .El
-.It Sy ether
+.It Cm ether
 Adjust the display of link-level Ethernet (MAC) addresses:
 .Pp
 .Bl -tag -width default -compact
-.It Sy colon
+.It Cm colon
 Separate address segments with a colon.
-.It Sy dash
+.It Cm dash
 Separate address segments with a dash.
-.It Sy default
+.It Cm default
 Default format, i.e.,
-.Sy colon .
+.Cm colon .
 .El
-.It Sy inet
+.It Cm inet
 Adjust the display of inet address subnet masks:
 .Pp
 .Bl -tag -width default -compact
-.It Sy cidr
+.It Cm cidr
 CIDR notation, for example:
 .Dq 10.0.0.0/8 ,
 .Dq 203.0.113.224/26
-.It Sy default
+.It Cm default
 Default format, i.e.,
-.Sy hex
-.It Sy dotted
+.Cm hex
+.It Cm dotted
 Dotted quad notation, for example:
 .Dq 255.255.0.0 ,
 .Dq 255.255.255.192
-.It Sy hex
+.It Cm hex
 Hexidecimal format, for example:
 .Dq 0xffff0000 ,
 .Dq 0xffffffc0
 .El
-.It Sy inet6
+.It Cm inet6
 Adjust the display of inet6 address prefixes (subnet masks):
 .Pp
 .Bl -tag -width default -compact
-.It Sy cidr
+.It Cm cidr
 CIDR notation, for example:
 .Dq ::1/128 ,
 .Dq fe80::1%lo0/64
-.It Sy default
+.It Cm default
 Default format, i.e.,
-.Sy numeric
-.It Sy numeric
+.Cm numeric
+.It Cm numeric
 Integer format, for example:
 .Dq prefixlen 64
 .El
@@ -241,7 +241,7 @@ Any other flags and parameters are ignored in that case.
 Setting
 .Ar groupname
 to
-.Sy all
+.Cm all
 selects all interfaces.
 .It Fl k
 Print keying information for the interface, if available.
@@ -262,12 +262,12 @@ is specified, only interfaces of that type will be listed.
 If the
 .Ar address_family
 is set to
-.Sy ether ,
+.Cm ether ,
 then this flag will cause
 .Nm
 to exclude loopback interfaces from the list of Ethernet interfaces.
 This is a special case, because all other synonyms of the
-.Sy link
+.Cm link
 address family will include loopback interfaces in the list.
 .Pp
 Use of this flag is mutually exclusive with all other flags and
@@ -311,26 +311,26 @@ recommended.
 The address or protocol families currently supported are:
 .Pp
 .Bl -tag -width default -compact
-.It Sy ether
+.It Cm ether
 Synonymous with
-.Sy link
+.Cm link
 (with some exceptions, see the
 .Fl l
 option).
-.It Sy inet
+.It Cm inet
 Default, if available.
-.It Sy inet6
-.It Sy link
+.It Cm inet6
+.It Cm link
 Default if
-.Sy inet
+.Cm inet
 is not available.
-.It Sy lladdr
+.It Cm lladdr
 Synonymous with
-.Sy link .
+.Cm link .
 .El
 .It Ar address
 For the
-.Sy inet
+.Cm inet
 family, the address is either a host name present in the host name
 data base (see
 .Xr hosts 5 ) ,
@@ -344,7 +344,7 @@ That is, one can specify an address like
 .Dq 192.168.0.1/16 .
 .Pp
 For the
-.Sy inet6
+.Cm inet6
 family, it is also possible to specify the prefix length using the
 slash notation, like
 .Dq ::1/128 .
@@ -353,7 +353,7 @@ See the
 parameter below for more information.
 .Pp
 The link-level
-.Pq Sy link
+.Pq Cm link
 address is specified as a series of colon-separated hex digits.
 This can be used to, for example,
 set a new MAC address on an Ethernet interface,
@@ -488,10 +488,10 @@ For example, a 10Mbit/s Ethernet interface might support the use of either
 .Tn AUI
 or twisted pair connectors.
 Setting the media type to
-.Sy 10base5/AUI
+.Cm 10base5/AUI
 would change the currently active connector to the AUI port.
 Setting it to
-.Sy 10baseT/UTP
+.Cm 10baseT/UTP
 would activate twisted pair.
 Refer to the interfaces' driver specific documentation or man page
 for a complete list of the available types.
@@ -521,11 +521,11 @@ operating mode on the interface to
 .Ar mode .
 For IEEE 802.11 wireless interfaces that support multiple operating modes
 this directive is used to select between 802.11a
-.Pq Sy 11a ,
+.Pq Cm 11a ,
 802.11b
-.Pq Sy 11b ,
+.Pq Cm 11b ,
 and 802.11g
-.Pq Sy 11g
+.Pq Cm 11g
 operating modes.
 .It Cm monitor
 Put the interface in monitor mode.
@@ -683,7 +683,7 @@ The following parameters are specific to IPv6 addresses.
 Note that the
 .Ar address_family
 argument must be specified as
-.Sy inet6
+.Cm inet6
 for them.
 .Bl -tag -width indent
 .It Cm anycast
@@ -992,8 +992,8 @@ Set the desired channels to use when scanning for access
 points, neighbors in an IBSS network, or looking for unoccupied
 channels when operating as an access point.
 The set of channels is specified as a comma-separated list with
-each element in the list representing either a single channel number or a range
-of the form
+each element in the list representing either a single channel number
+or a range of the form
 .Dq Li a-b .
 Channel numbers must be in the range 1 to 255 and be permissible
 according to the operating characteristics of the device.
@@ -1001,9 +1001,8 @@ according to the operating characteristics of the device.
 Set a single desired channel.
 Channels range from 1 to 255, but the exact selection available
 depends on the region your adapter was manufactured for.
-Setting
-the channel to
-.Li any ,
+Setting the channel to
+.Cm any ,
 or
 .Cm -
 will clear any desired channel and, if the device is marked up,
@@ -1030,43 +1029,43 @@ The full set of flags specified following a
 are:
 .Pp
 .Bl -tag -compact
-.It Sy a
+.It Cm a
 802.11a
-.It Sy b
+.It Cm b
 802.11b
-.It Sy d
+.It Cm d
 Atheros Dynamic Turbo mode
-.It Sy g
+.It Cm g
 802.11g
-.It Sy h
+.It Cm h
 Same as
-.Sy n
-.It Sy n
+.Cm n
+.It Cm n
 802.11n, aka HT
-.It Sy s
+.It Cm s
 Atheros Static Turbo mode
-.It Sy t
+.It Cm t
 Atheros Dynamic Turbo mode, or appended to
-.Sy st
+.Cm st
 and
-.Sy dt
+.Cm dt
 .El
 .Pp
 The full set of channel widths following a
-.Ql /
+.Ql \&/
 are:
 .Pp
 .Bl -tag -compact
-.It Sy 5
+.It Cm 5
 5MHz, aka quarter-rate channel
-.It Sy 10
+.It Cm 10
 10MHz, aka half-rate channel
-.It Sy 20
+.It Cm 20
 20MHz, mostly for use in specifying
-.Sy ht20
-.It Sy 40
+.Cm ht20
+.It Cm 40
 40MHz, mostly for use in specifying
-.Sy ht40
+.Cm ht40
 .El
 .Pp
 In addition, a 40MHz HT channel specification may include the location
@@ -1230,8 +1229,7 @@ argument is the frame size in bytes and must be in the range 256 to 2346.
 Setting
 .Ar length
 to
-.Li 2346 ,
-.Cm any ,
+.Cm 2346 , any ,
 or
 .Cm -
 disables transmit fragmentation.
@@ -1401,7 +1399,9 @@ using extended transmit rates.
 .It Li H
 High Throughput (HT).
 Indicates that the station is using HT transmit rates.
-If a `+' follows immediately after then the station associated
+If a
+.Ql +
+follows immediately after then the station associated
 using deprecated mechanisms supported only when
 .Cm htcompat
 is enabled.
@@ -1475,7 +1475,9 @@ using extended transmit rates.
 .It Li H
 High Throughput (HT).
 Indicates that the station is using HT transmit rates.
-If a `+' follows immediately after then the station associated
+If a
+.Ql +
+follows immediately after then the station associated
 using deprecated mechanisms supported only when
 .Cm htcompat
 is enabled.
@@ -1686,8 +1688,7 @@ is the frame size in bytes and must be in the range 1 to 2346.
 Setting
 .Ar length
 to
-.Li 2346 ,
-.Cm any ,
+.Cm 2346 , any ,
 or
 .Cm -
 disables transmission of RTS frames.
