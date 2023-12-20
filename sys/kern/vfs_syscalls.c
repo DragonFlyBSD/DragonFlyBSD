@@ -710,17 +710,64 @@ dounmount_interlock(struct mount *mp)
 	return(0);
 }
 
+/*
+ * Returns non-zero if the specified process uses the specified
+ * mount point.
+ */
+static int
+process_uses_mount(struct proc *p, struct mount *mp)
+{
+	struct filedesc *fdp;
+	struct file *fp;
+	int found;
+	int n;
+
+	fdp = p->p_fd;
+	if (fdp == NULL)
+		return 0;
+	if (fdp->fd_ncdir.mount == mp ||
+	    fdp->fd_nrdir.mount == mp ||
+	    fdp->fd_njdir.mount == mp)
+	{
+		return 1;
+	}
+
+	found = 0;
+	spin_lock_shared(&fdp->fd_spin);
+	for (n = 0; n < fdp->fd_nfiles; ++n) {
+		fp = fdp->fd_files[n].fp;
+		if (fp && fp->f_nchandle.mount == mp) {
+			found = 1;
+			break;
+		}
+	}
+	spin_unlock_shared(&fdp->fd_spin);
+
+	return found;
+}
+
+/*
+ * Cleanup processes that have references to the mount point
+ * being force-unmounted.
+ */
+struct unmount_allproc_info {
+	struct mount *mp;
+	int sig;
+};
+
 static int
 unmount_allproc_cb(struct proc *p, void *arg)
 {
+	struct unmount_allproc_info *info;
 	struct mount *mp;
 
-	if (p->p_textnch.ncp == NULL)
-		return 0;
+	info = arg;
+	mp = info->mp;
 
-	mp = (struct mount *)arg;
 	if (p->p_textnch.mount == mp)
 		cache_drop(&p->p_textnch);
+	if (info->sig && process_uses_mount(p, mp))
+		ksignal(p, info->sig);
 
 	return 0;
 }
@@ -859,15 +906,35 @@ dounmount(struct mount *mp, int flags, int halting)
 		/*
 		 * If forcing the unmount, clean out any p->p_textnch
 		 * nchandles that match this mount.
+		 *
+		 * In addition any process which has a current, root, or
+		 * jail directory matching the mount, or which has an open
+		 * descriptor matching the mount, will be killed.  We first
+		 * try SIGKILL, and if that doesn't work we issue SIGQUIT.
 		 */
-		if (flags & MNT_FORCE)
-			allproc_scan(&unmount_allproc_cb, mp, 0);
+		if (flags & MNT_FORCE) {
+			struct unmount_allproc_info info;
+
+			info.mp = mp;
+			switch(retry) {
+			case 3:
+				info.sig = SIGINT;
+				break;
+			case 7:
+				info.sig = SIGKILL;
+				break;
+			default:
+				info.sig = 0;
+				break;
+			}
+			allproc_scan(&unmount_allproc_cb, &info, 0);
+		}
 
 		/*
 		 * Sleep and retry.
 		 */
-		tsleep(&mp->mnt_refs, 0, "mntbsy", hz / 10 + 1);
-		if ((retry & 15) == 15) {
+		tsleep(&mp->mnt_refs, 0, "mntbsy", hz / 4 + 1);
+		if (debug_unmount && (retry & 15) == 15) {
 			mount_warning(mp,
 				      "(%p) debug - retry %d, "
 				      "%d namecache refs, %d mount refs",
@@ -875,6 +942,15 @@ dounmount(struct mount *mp, int flags, int halting)
 				      (ncp ? ncp->nc_refs - 1 : 0),
 				      mp->mnt_refs - 1);
 		}
+	}
+	if (retry == 10) {
+		mount_warning(mp,
+			      "forced umount of \"%s\" - "
+			      "%d namecache refs, %d mount refs",
+			      (mp->mnt_ncmountpt.ncp ?
+				mp->mnt_ncmountpt.ncp->nc_name : "?"),
+			      (ncp ? ncp->nc_refs - 1 : 0),
+			      mp->mnt_refs - 1);
 	}
 
 	error = 0;
