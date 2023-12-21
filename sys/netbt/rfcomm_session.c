@@ -1592,8 +1592,7 @@ rfcomm_session_send_uih(struct rfcomm_session *rs, struct rfcomm_dlc *dlc,
 	/* Append FCS */
 	fcs = 0xff - fcs;	/* ones complement */
 	len = m0->m_pkthdr.len;
-	m_copyback(m0, len, sizeof(fcs), &fcs);
-	if (m0->m_pkthdr.len != len + sizeof(fcs))
+	if (m_copyback2(m0, len, sizeof(fcs), &fcs, M_NOWAIT) != 0)
 		goto nomem;
 
 	DPRINTFN(10, "dlci %d, pktlen %d (%d data, %d credits), fcs=%#2.2x\n",
@@ -1678,17 +1677,10 @@ rfcomm_session_send_mcc(struct rfcomm_session *rs, int cr,
 	 */
 	hlen = hdr - mtod(m, uint8_t *);
 
-	if (len > 0) {
-		m->m_pkthdr.len = m->m_len = MHLEN;
-		m_copyback(m, hlen, len, data);
-		if (m->m_pkthdr.len != max(MHLEN, hlen + len)) {
-			m_freem(m);
-			return ENOMEM;
-		}
+	if (len > 0 && m_copyback2(m, hlen, len, data, M_NOWAIT) != 0) {
+		m_freem(m);
+		return ENOMEM;
 	}
-
-	m->m_pkthdr.len = hlen + len;
-	m->m_len = min(MHLEN, m->m_pkthdr.len);
 
 	DPRINTFN(5, "%s type %2.2x len %d\n",
 		(cr ? "command" : "response"), type, m->m_pkthdr.len);

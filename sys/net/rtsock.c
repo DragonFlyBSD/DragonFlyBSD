@@ -823,12 +823,11 @@ flush:
 		rp = sotorawcb(so);
 	}
 	if (rtm != NULL) {
-		m_copyback(m, 0, rtm->rtm_msglen, (caddr_t)rtm);
-		if (m->m_pkthdr.len < rtm->rtm_msglen) {
+		if (m_copyback2(m, 0, rtm->rtm_msglen, (caddr_t)rtm, M_NOWAIT)
+		    != 0) {
 			m_freem(m);
 			m = NULL;
-		} else if (m->m_pkthdr.len > rtm->rtm_msglen)
-			m_adj(m, rtm->rtm_msglen - m->m_pkthdr.len);
+		}
 		kfree(rtm, M_RTABLE);
 	}
 	if (m != NULL)
@@ -1128,8 +1127,8 @@ rt_msg_mbuf(int type, struct rt_addrinfo *rtinfo)
 {
 	struct mbuf *m;
 	struct rt_msghdr *rtm;
-	int hlen, len;
-	int i;
+	struct sockaddr *sa;
+	int hlen, dlen, len, i;
 
 	hlen = rt_msghdrsize(type);
 	KASSERT(hlen <= MCLBYTES, ("rt_msg_mbuf: hlen %d doesn't fit", hlen));
@@ -1138,24 +1137,19 @@ rt_msg_mbuf(int type, struct rt_addrinfo *rtinfo)
 	if (m == NULL)
 		return (NULL);
 	mbuftrackid(m, 32);
-	m->m_pkthdr.len = m->m_len = hlen;
 	m->m_pkthdr.rcvif = NULL;
 	rtinfo->rti_addrs = 0;
 	len = hlen;
 	for (i = 0; i < RTAX_MAX; i++) {
-		struct sockaddr *sa;
-		int dlen;
-
 		if ((sa = rtinfo->rti_info[i]) == NULL)
 			continue;
 		rtinfo->rti_addrs |= (1 << i);
 		dlen = RT_ROUNDUP(sa->sa_len);
-		m_copyback(m, len, dlen, (caddr_t)sa); /* can grow mbuf chain */
+		if (m_copyback2(m, len, dlen, (caddr_t)sa, M_NOWAIT) != 0) {
+			m_freem(m);
+			return (NULL);
+		}
 		len += dlen;
-	}
-	if (m->m_pkthdr.len != len) { /* one of the m_copyback() calls failed */
-		m_freem(m);
-		return (NULL);
 	}
 	rtm = mtod(m, struct rt_msghdr *);
 	bzero(rtm, hlen);

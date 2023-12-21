@@ -300,14 +300,10 @@ hci_send_cmd(struct hci_unit *unit, uint16_t opcode, void *buf, uint8_t len)
 	m->m_pkthdr.len = m->m_len = sizeof(hci_cmd_hdr_t);
 	M_SETCTX(m, NULL);	/* XXX is this needed? */
 
-	if (len) {
-		KKASSERT(buf != NULL);
-
-		m_copyback(m, sizeof(hci_cmd_hdr_t), len, buf);
-		if (m->m_pkthdr.len != (sizeof(hci_cmd_hdr_t) + len)) {
-			m_freem(m);
-			return ENOMEM;
-		}
+	if (len > 0 &&
+	    m_copyback2(m, sizeof(hci_cmd_hdr_t), len, buf, M_NOWAIT) != 0) {
+		m_freem(m);
+		return ENOMEM;
 	}
 
 	DPRINTFN(2, "(%s) opcode (%3.3x|%4.4x)\n",

@@ -535,19 +535,14 @@ ng_h4_input(int c, struct tty *tp)
 			struct mbuf	*m = NULL;
 
 			MGETHDR(m, M_NOWAIT, MT_DATA);
-			if (m != NULL) {
-				m->m_pkthdr.len = 0;
-
-				/* XXX m_copyback() is stupid */
-				m->m_len = min(MHLEN, sc->got);
-
-				m_copyback(m, 0, sc->got, sc->ibuf);
+			if (m != NULL && m_copyback2(m, 0, sc->got, sc->ibuf,
+						     M_NOWAIT) == 0) {
 				NG_SEND_DATA_ONLY(c, sc->hook, m);
 			} else {
 				NG_H4_ERR("%s: %s - could not get mbuf\n",
 					__func__, NG_NODE_NAME(sc->node));
-
 				NG_H4_STAT_IERROR(sc->stat);
+				m_freem(m);
 			}
 		}
 

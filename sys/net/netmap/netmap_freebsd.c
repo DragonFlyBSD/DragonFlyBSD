@@ -124,7 +124,9 @@ generic_xmit_frame(struct ifnet *ifp, struct mbuf *m,
 	m->m_len = m->m_pkthdr.len = 0;
 
 	// copy data to the mbuf
-	m_copyback(m, 0, len, addr);
+	ret = m_copyback2(m, 0, len, addr, M_NOWAIT);
+	if (ret != 0)
+		return ret;
 
 #if 0
 	// inc refcount. We are alone, so we can skip the atomic
