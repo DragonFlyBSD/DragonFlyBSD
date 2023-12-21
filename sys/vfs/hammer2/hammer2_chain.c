@@ -983,13 +983,6 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 	 * by creating a zero-fill element.  We do not mark the buffer
 	 * dirty when creating a zero-fill element (the hammer2_chain_modify()
 	 * API must still be used to do that).
-	 *
-	 * The device buffer is variable-sized in powers of 2 down
-	 * to HAMMER2_MIN_ALLOC (typically 1K).  A 64K physical storage
-	 * chunk always contains buffers of the same size. (XXX)
-	 *
-	 * The minimum physical IO size may be larger than the variable
-	 * block size.
 	 */
 	bref = &chain->bref;
 
