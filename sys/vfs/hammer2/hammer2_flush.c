@@ -1112,10 +1112,6 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 
 		/*
 		 * Blocktable updates
-		 *
-		 * We synchronize pending statistics at this time.  Delta
-		 * adjustments designated for the current and upper level
-		 * are synchronized.
 		 */
 		if (base && (chain->flags & HAMMER2_CHAIN_BLKMAPUPD)) {
 			if (chain->flags & HAMMER2_CHAIN_BLKMAPPED) {

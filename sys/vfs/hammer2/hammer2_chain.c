@@ -3610,15 +3610,6 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 
 		/*
 		 * delete blockmapped chain from its parent.
-		 *
-		 * The parent is not affected by any statistics in chain
-		 * which are pending synchronization.  That is, there is
-		 * nothing to undo in the parent since they have not yet
-		 * been incorporated into the parent.
-		 *
-		 * The parent is affected by statistics stored in inodes.
-		 * Those have already been synchronized, so they must be
-		 * undone.  XXX split update possible w/delete in middle?
 		 */
 		if (base) {
 			hammer2_base_delete(parent, base, count, chain, obref);
@@ -3630,10 +3621,6 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 		 * Chain is not blockmapped but a parent is present.
 		 * Atomically remove the chain from the parent.  There is
 		 * no blockmap entry to remove.
-		 *
-		 * Because chain was associated with a parent but not
-		 * synchronized, the chain's *_count_up fields contain
-		 * inode adjustment statistics which must be undone.
 		 */
 		hammer2_spin_ex(&chain->core.spin);
 		hammer2_spin_ex(&parent->core.spin);
@@ -3994,11 +3981,6 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 
 		/*
 		 * Shift the chain to the indirect block.
-		 *
-		 * WARNING! No reason for us to load chain data, pass NOSTATS
-		 *	    to prevent delete/insert from trying to access
-		 *	    inode stats (and thus asserting if there is no
-		 *	    chain->data loaded).
 		 *
 		 * WARNING! The (parent, chain) deletion may modify the parent
 		 *	    and invalidate the base pointer.
