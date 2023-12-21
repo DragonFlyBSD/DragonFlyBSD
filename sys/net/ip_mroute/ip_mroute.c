@@ -2573,8 +2573,7 @@ bw_upcalls_send(void)
 	log(LOG_WARNING, "bw_upcalls_send: cannot allocate mbuf\n");
 	return;
     }
-    
-    m->m_len = m->m_pkthdr.len = 0;
+
     m_copyback(m, 0, sizeof(struct igmpmsg), (caddr_t)&igmpmsg);
     m_copyback(m, sizeof(struct igmpmsg), len, (caddr_t)&bw_upcalls[0]);
     
