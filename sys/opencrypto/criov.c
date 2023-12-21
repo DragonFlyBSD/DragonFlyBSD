@@ -162,7 +162,7 @@ crypto_copyback(int flags, caddr_t buf, int off, int size, caddr_t in)
 {
 
 	if ((flags & CRYPTO_F_IMBUF) != 0)
-		m_copyback((struct mbuf *)buf, off, size, in);
+		m_copyback2((struct mbuf *)buf, off, size, in, M_WAITOK);
 	else if ((flags & CRYPTO_F_IOV) != 0)
 		cuio_copyback((struct uio *)buf, off, size, in);
 	else

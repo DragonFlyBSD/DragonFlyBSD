@@ -778,9 +778,6 @@ swcr_compdec(struct cryptodesc *crd, struct swcr_data *sw,
 	if (result == 0)
 		return EINVAL;
 
-	/* Copy back the (de)compressed data. m_copyback is
-	 * extending the mbuf as necessary.
-	 */
 	sw->sw_size = result;
 	/* Check the compressed size when doing compression */
 	if (crd->crd_flags & CRD_F_COMP) {
@@ -791,6 +788,10 @@ swcr_compdec(struct cryptodesc *crd, struct swcr_data *sw,
 		}
 	}
 
+	/*
+	 * Copy back the (de)compressed data.
+	 * If CRYPTO_F_IMBUF, the mbuf will be extended as necessary.
+	 */
 	crypto_copyback(flags, buf, crd->crd_skip, result, out);
 	if (result < crd->crd_len) {
 		adj = result - crd->crd_len;
