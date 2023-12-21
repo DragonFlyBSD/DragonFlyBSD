@@ -2332,11 +2332,12 @@ m_devpad(struct mbuf *m, int padto)
  *
  * Note that m0->m_len may be 0 (e.g., a newly allocated mbuf).
  */
-int
-m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how)
+static __inline int
+_m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how,
+	     boolean_t allow_alloc)
 {
 	struct mbuf *m = m0, *n;
-	int mlen, tlen, nsize, totlen = 0, error = 0;
+	int mlen, tlen, nsize, totlen = 0, error = ENOBUFS;
 
 	if (m0 == NULL)
 		return (0);
@@ -2351,11 +2352,11 @@ m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how)
 		off -= m->m_len;
 		totlen += m->m_len;
 		if (m->m_next == NULL) {
-			n = m_getl(off + len, how, m->m_type, 0, &nsize);
-			if (n == NULL) {
-				error = ENOBUFS;
+			if (!allow_alloc)
 				goto out;
-			}
+			n = m_getl(off + len, how, m->m_type, 0, &nsize);
+			if (n == NULL)
+				goto out;
 			n->m_len = min(nsize, off + len);
 			bzero(mtod(n, char *), n->m_len);
 			m->m_next = n;
@@ -2378,16 +2379,17 @@ m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how)
 		if (len == 0)
 			break;
 		if (m->m_next == NULL) {
-			n = m_getl(len, how, m->m_type, 0, &nsize);
-			if (n == NULL) {
-				error = ENOBUFS;
+			if (!allow_alloc)
 				goto out;
-			}
+			n = m_getl(len, how, m->m_type, 0, &nsize);
+			if (n == NULL)
+				goto out;
 			n->m_len = min(nsize, len);
 			m->m_next = n;
 		}
 		m = m->m_next;
 	}
+	error = 0;
 
 out:
 	if ((m0->m_flags & M_PKTHDR) && (m0->m_pkthdr.len < totlen))
@@ -2396,18 +2398,25 @@ out:
 	return (error);
 }
 
+int
+m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how)
+{
+	return _m_copyback2(m0, off, len, cp, how, TRUE);
+}
+
 /*
- * Legacy interface; use m_copyback2() instead.
- *
- * NOTE:
- * The mbuf chain will be extended if necessary.  However, this routine
- * doesn't return any value to indicate the potential failure of mbuf
- * allocation.
+ * Similar to m_copyback2() but forbid mbuf expansion.  The caller must
+ * ensure that the mbuf (chain) is big enough; otherwise, the copyback
+ * would fail with diagnostics printed to the console.
  */
 void
 m_copyback(struct mbuf *m0, int off, int len, caddr_t cp)
 {
-	(void)m_copyback2(m0, off, len, cp, M_NOWAIT);
+	if (_m_copyback2(m0, off, len, cp, 0, FALSE) != 0) {
+		kprintf("%s: unexpected mbuf expansion required, "
+			"code path needs to be fixed:\n", __func__);
+		print_backtrace(8);
+	}
 }
 
 /*

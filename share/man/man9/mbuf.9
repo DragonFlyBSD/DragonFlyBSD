@@ -403,14 +403,15 @@ bytes, into the indicated buffer
 .Fa buf .
 .\"
 .It Fn m_copyback mbuf offset len buf
-.Em ( deprecated )
-It is equivalent to
-.Fn m_copyback2 mbuf offset len buf M_NOWAIT ,
-but without a return value indicating the possible mbuf allocation failure.
-.Sy Note :
-This function is deprecated; use
+Similar to the
 .Fn m_copyback2
-instead.
+function below, but
+.Em forbid mbuf expansion .
+So the caller must ensure that the mbuf (chain) has enough space;
+otherwise, the copy would fail and it would be hard for the caller
+to discriminate due to the lack of a return value.
+In the failure case, the input mbuf (chain) may be modified but
+will not be freed.
 .\"
 .It Fn m_copyback2 mbuf offset len buf how
 Copy
