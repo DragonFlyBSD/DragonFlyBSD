@@ -1819,9 +1819,9 @@ m_dup_data(struct mbuf *m, int how)
 			KKASSERT(m->m_type == MT_DATA);
 			if (n == NULL) {
 				n = m_getl(gsize, how, MT_DATA, 0, &nsize);
-				n->m_len = 0;
 				if (n == NULL)
 					goto nospace;
+				n->m_len = 0;
 				*p = n;
 				p = &n->m_next;
 			}
