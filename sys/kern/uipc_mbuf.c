@@ -2340,9 +2340,9 @@ m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how)
 	if (m0 == NULL)
 		return (0);
 
-	while (off > (mlen = m->m_len)) {
-		off -= mlen;
-		totlen += mlen;
+	while (off > m->m_len) {
+		off -= m->m_len;
+		totlen += m->m_len;
 		if (m->m_next == NULL) {
 			n = m_getclr(how, m->m_type);
 			if (n == NULL) {
@@ -2355,13 +2355,12 @@ m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how)
 		m = m->m_next;
 	}
 	while (len > 0) {
-		mlen = min (m->m_len - off, len);
-		bcopy(cp, off + mtod(m, caddr_t), (unsigned)mlen);
+		mlen = min(m->m_len - off, len);
+		bcopy(cp, mtod(m, char *) + off, mlen);
+		off = 0;
 		cp += mlen;
 		len -= mlen;
-		mlen += off;
-		off = 0;
-		totlen += mlen;
+		totlen += mlen + off;
 		if (len == 0)
 			break;
 		if (m->m_next == NULL) {
@@ -2375,8 +2374,10 @@ m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how)
 		}
 		m = m->m_next;
 	}
-out:	if (((m = m0)->m_flags & M_PKTHDR) && (m->m_pkthdr.len < totlen))
-		m->m_pkthdr.len = totlen;
+
+out:
+	if ((m0->m_flags & M_PKTHDR) && (m0->m_pkthdr.len < totlen))
+		m0->m_pkthdr.len = totlen;
 
 	return (error);
 }
