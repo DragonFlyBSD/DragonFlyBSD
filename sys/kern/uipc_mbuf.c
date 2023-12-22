@@ -2328,24 +2328,27 @@ m_devpad(struct mbuf *m, int padto)
 /*
  * Copy data from a buffer back into the indicated mbuf chain,
  * starting "off" bytes from the beginning, extending the mbuf
- * chain if necessary.
+ * chain if necessary.  The mbuf needs to be properly initialized
+ * including the setting of m_len.
  */
-void
-m_copyback(struct mbuf *m0, int off, int len, caddr_t cp)
+int
+m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how)
 {
-	int mlen;
 	struct mbuf *m = m0, *n;
-	int totlen = 0;
+	int mlen, totlen = 0, error = 0;
 
 	if (m0 == NULL)
-		return;
+		return (0);
+
 	while (off > (mlen = m->m_len)) {
 		off -= mlen;
 		totlen += mlen;
 		if (m->m_next == NULL) {
-			n = m_getclr(M_NOWAIT, m->m_type);
-			if (n == NULL)
+			n = m_getclr(how, m->m_type);
+			if (n == NULL) {
+				error = ENOBUFS;
 				goto out;
+			}
 			n->m_len = min(MLEN, len + off);
 			m->m_next = n;
 		}
@@ -2362,9 +2365,11 @@ m_copyback(struct mbuf *m0, int off, int len, caddr_t cp)
 		if (len == 0)
 			break;
 		if (m->m_next == NULL) {
-			n = m_get(M_NOWAIT, m->m_type);
-			if (n == NULL)
-				break;
+			n = m_get(how, m->m_type);
+			if (n == NULL) {
+				error = ENOBUFS;
+				goto out;
+			}
 			n->m_len = min(MLEN, len);
 			m->m_next = n;
 		}
@@ -2372,6 +2377,22 @@ m_copyback(struct mbuf *m0, int off, int len, caddr_t cp)
 	}
 out:	if (((m = m0)->m_flags & M_PKTHDR) && (m->m_pkthdr.len < totlen))
 		m->m_pkthdr.len = totlen;
+
+	return (error);
+}
+
+/*
+ * Legacy interface; use m_copyback2() instead.
+ *
+ * NOTE:
+ * The mbuf chain will be extended if necessary.  However, this routine
+ * doesn't return any value to indicate the potential failure of mbuf
+ * allocation.
+ */
+void
+m_copyback(struct mbuf *m0, int off, int len, caddr_t cp)
+{
+	(void)m_copyback2(m0, off, len, cp, M_NOWAIT);
 }
 
 /*

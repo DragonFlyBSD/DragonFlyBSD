@@ -685,6 +685,7 @@ MLINKS+=mbuf.9 m_adj.9 \
 	mbuf.9 m_cat.9 \
 	mbuf.9 MCLGET.9 \
 	mbuf.9 m_copyback.9 \
+	mbuf.9 m_copyback2.9 \
 	mbuf.9 m_copydata.9 \
 	mbuf.9 m_copym.9 \
 	mbuf.9 m_copypacket.9 \

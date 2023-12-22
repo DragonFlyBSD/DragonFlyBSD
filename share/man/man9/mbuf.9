@@ -84,6 +84,8 @@
 .Fn m_copydata "const struct mbuf *mbuf" "int offset" "int len" "caddr_t buf"
 .Ft void
 .Fn m_copyback "struct mbuf *mbuf" "int offset" "int len" "caddr_t buf"
+.Ft int
+.Fn m_copyback2 "struct mbuf *mbuf" "int offset" "int len" "caddr_t buf" "int how"
 .Ft struct mbuf *
 .Fo m_devget
 .Fa "char *buf"
@@ -401,6 +403,16 @@ bytes, into the indicated buffer
 .Fa buf .
 .\"
 .It Fn m_copyback mbuf offset len buf
+.Em ( deprecated )
+It is equivalent to
+.Fn m_copyback2 mbuf offset len buf M_NOWAIT ,
+but without a return value indicating the possible mbuf allocation failure.
+.Sy Note :
+This function is deprecated; use
+.Fn m_copyback2
+instead.
+.\"
+.It Fn m_copyback2 mbuf offset len buf how
 Copy
 .Fa len
 bytes from the buffer
