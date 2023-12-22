@@ -132,7 +132,8 @@ ip6_forward(struct mbuf *m, int srcrt)
 	 * we need to generate an ICMP6 message to the src.
 	 * Thanks to M_EXT, in most cases copy will not occur.
 	 */
-	mcopy = m_copy(m, 0, imin(m->m_pkthdr.len, ICMPV6_PLD_MAXLEN));
+	mcopy = m_copym(m, 0, imin(m->m_pkthdr.len, ICMPV6_PLD_MAXLEN),
+			M_NOWAIT);
 
 	dst = (struct sockaddr_in6 *)&ip6_forward_rt.ro_dst;
 	if (!srcrt) {

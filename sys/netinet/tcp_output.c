@@ -911,7 +911,8 @@ send:
 			    mtod(m, caddr_t) + hdrlen);
 			m->m_len += len;
 		} else {
-			m->m_next = m_copy(so->so_snd.ssb_mb, off, (int) len);
+			m->m_next = m_copym(so->so_snd.ssb_mb, off,
+					(int) len, M_NOWAIT);
 			if (m->m_next == NULL) {
 				m_free(m);
 				m = NULL;

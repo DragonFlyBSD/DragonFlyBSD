@@ -478,7 +478,7 @@ struct mbstat {
 	*_mmp = _mm;							\
 } while (0)
 
-/* Length to m_copy to copy all. */
+/* Length to m_copym() to copy all. */
 #define	M_COPYALL	1000000000
 
 /* Compatibility with 4.3 */

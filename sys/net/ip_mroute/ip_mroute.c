@@ -1292,7 +1292,7 @@ X_ip_mforward(struct ip *ip, struct ifnet *ifp, struct mbuf *m,
 		    goto fail;
 
 	    /* Make a copy of the header to send to the user level process */
-	    mm = m_copy(mb0, 0, hlen);
+	    mm = m_copym(mb0, 0, hlen, M_NOWAIT);
 	    if (mm == NULL)
 		goto fail1;
 
@@ -1520,7 +1520,7 @@ ip_mdq(struct mbuf *m, struct ifnet *ifp, struct mfc *rt, vifi_t xmt_vif)
 		struct sockaddr_in k_igmpsrc = { sizeof k_igmpsrc, AF_INET };
 		struct igmpmsg *im;
 		int hlen = ip->ip_hl << 2;
-		struct mbuf *mm = m_copy(m, 0, hlen);
+		struct mbuf *mm = m_copym(m, 0, hlen, M_NOWAIT);
 
 		if (mm && (M_HASCL(mm) || mm->m_len < hlen))
 		    mm = m_pullup(mm, hlen);
@@ -3201,7 +3201,7 @@ pim_input(struct mbuf **mp, int *offp, int proto)
 	 * actions (e.g., send back PIM_REGISTER_STOP).
 	 * XXX: here m->m_data points to the outer IP header.
 	 */
-	mcp = m_copy(m, 0, iphlen + PIM_REG_MINLEN);
+	mcp = m_copym(m, 0, iphlen + PIM_REG_MINLEN, M_NOWAIT);
 	if (mcp == NULL) {
 	    log(LOG_ERR,
 		"pim_input: pim register: could not copy register head\n");

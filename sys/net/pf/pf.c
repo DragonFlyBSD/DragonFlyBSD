@@ -2304,7 +2304,7 @@ pf_send_icmp(struct mbuf *m, u_int8_t type, u_int8_t code, sa_family_t af,
 	 * DragonFly doesn't zero the auxillary pkghdr fields, only fw_flags,
 	 * so make sure pf.flags is clear.
 	 */
-	if ((m0 = m_copy(m, 0, M_COPYALL)) == NULL)
+	if ((m0 = m_copym(m, 0, M_COPYALL, M_NOWAIT)) == NULL)
 		return;
 
 	m0->m_pkthdr.fw_flags |= PF_MBUF_TAGGED;

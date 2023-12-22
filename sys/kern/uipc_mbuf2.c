@@ -197,7 +197,7 @@ m_pulldown(struct mbuf *m, int off, int len, int *offp)
 	}
 
 	/*
-	 * now, we need to do the hard way.  don't m_copy as there's no room
+	 * now, we need to do the hard way.  don't m_copym as there's no room
 	 * on both end.
 	 */
 	o = m_getl(len, M_NOWAIT, m->m_type, 0, NULL);

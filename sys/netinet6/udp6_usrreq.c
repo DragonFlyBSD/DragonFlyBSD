@@ -66,7 +66,7 @@
 
 #include <sys/param.h>
 #include <sys/kernel.h>
-#include <sys/malloc.h>	/* for M_NOWAIT, XXX legacy m_copy() */
+#include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
@@ -247,12 +247,13 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 			if (last != NULL) {
 				struct mbuf *n;
 
-				if ((n = m_copy(m, 0, M_COPYALL)) != NULL) {
+				n = m_copym(m, 0, M_COPYALL, M_NOWAIT);
+				if (n != NULL) {
 					/*
 					 * KAME NOTE: do not
-					 * m_copy(m, offset, ...) above.
+					 * m_copym(m, offset, ...) above.
 					 * ssb_appendaddr() expects M_PKTHDR,
-					 * and m_copy() will copy M_PKTHDR
+					 * and m_copym() will copy M_PKTHDR
 					 * only if offset is 0.
 					 */
 					so = last->in6p_socket;

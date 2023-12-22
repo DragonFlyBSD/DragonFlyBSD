@@ -530,7 +530,7 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 		icmp6_ifstat_inc(m->m_pkthdr.rcvif, ifs6_in_echo);
 		if (code != 0)
 			goto badcode;
-		if ((n = m_copy(m, 0, M_COPYALL)) == NULL) {
+		if ((n = m_copym(m, 0, M_COPYALL, M_NOWAIT)) == NULL) {
 			/* Give up remote */
 			break;
 		}
@@ -645,8 +645,8 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 			IP6_EXTHDR_CHECK(m, off, sizeof(struct icmp6_nodeinfo),
 					 IPPROTO_DONE);
 #endif
-			n = m_copy(m, 0, M_COPYALL);
-			if (n)
+			n = m_copym(m, 0, M_COPYALL, M_NOWAIT);
+			if (n != NULL)
 				n = ni6_input(n, off);
 			/* XXX meaningless if n == NULL */
 			noff = sizeof(struct ip6_hdr);
@@ -1858,7 +1858,7 @@ icmp6_rip6_input(struct	mbuf **mp, int	off)
 			struct socket *so;
 			struct mbuf *n;
 
-			if ((n = m_copy(m, 0, (int)M_COPYALL)) != NULL) {
+			if ((n = m_copym(m, 0, M_COPYALL, M_NOWAIT)) != NULL) {
 				if (last->in6p_flags & IN6P_CONTROLOPTS)
 					ip6_savecontrol(last, &opts, ip6, n);
 				/* strip intermediate headers */

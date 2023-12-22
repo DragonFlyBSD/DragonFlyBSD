@@ -1418,7 +1418,7 @@ dontblock:
 	while (m && m->m_type == MT_CONTROL && error == 0) {
 		if (flags & MSG_PEEK) {
 			if (controlp)
-				*controlp = m_copy(m, 0, m->m_len);
+				*controlp = m_copym(m, 0, m->m_len, M_NOWAIT);
 			m = m->m_next;	/* XXX race */
 		} else {
 			const struct cmsghdr *cm = mtod(m, struct cmsghdr *);

@@ -155,9 +155,10 @@ rip6_input(struct mbuf **mp, int *offp, int proto)
 			}
 		}
 		if (last) {
-			struct mbuf *n = m_copy(m, 0, (int)M_COPYALL);
+			struct mbuf *n;
 
-			if (n) {
+			n = m_copym(m, 0, M_COPYALL, M_NOWAIT);
+			if (n != NULL) {
 				struct socket *so;
 
 				so = last->in6p_socket;

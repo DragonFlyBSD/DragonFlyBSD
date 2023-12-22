@@ -865,7 +865,7 @@ smart_frag_failure:
 		/*
 		 * In the first mbuf, leave room for the link header, then
 		 * copy the original IP header including options. The payload
-		 * goes into an additional mbuf chain returned by m_copy().
+		 * goes into an additional mbuf chain returned by m_copym().
 		 */
 		m->m_data += max_linkhdr;
 		mhip = mtod(m, struct ip *);
@@ -884,7 +884,7 @@ smart_frag_failure:
 			mhip->ip_off |= htons(IP_MF);
 		}
 		mhip->ip_len = htons((u_short)(len + mhlen));
-		m->m_next = m_copy(m0, off, len);
+		m->m_next = m_copym(m0, off, len, M_NOWAIT);
 		if (m->m_next == NULL) {		/* copy failed */
 			m_free(m);
 			error = ENOBUFS;	/* ??? */
