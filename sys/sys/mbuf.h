@@ -506,8 +506,8 @@ int		 m_apply(struct mbuf *, int, int,
 int		m_append(struct mbuf *, int, c_caddr_t);
 void		 m_cat(struct mbuf *, struct mbuf *);
 u_int		 m_countm(struct mbuf *m, struct mbuf **lastm, u_int *mbcnt);
-void		 m_copyback(struct mbuf *, int, int, caddr_t);
-int		 m_copyback2(struct mbuf *, int, int, caddr_t, int);
+void		 m_copyback(struct mbuf *, int, int, c_caddr_t);
+int		 m_copyback2(struct mbuf *, int, int, c_caddr_t, int);
 void		 m_copydata(const struct mbuf *, int, int, caddr_t);
 struct	mbuf	*m_copym(const struct mbuf *, int, int, int);
 struct	mbuf	*m_copypacket(struct mbuf *, int);

@@ -2333,7 +2333,7 @@ m_devpad(struct mbuf *m, int padto)
  * Note that m0->m_len may be 0 (e.g., a newly allocated mbuf).
  */
 static __inline int
-_m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how,
+_m_copyback2(struct mbuf *m0, int off, int len, c_caddr_t cp, int how,
 	     boolean_t allow_alloc)
 {
 	struct mbuf *m = m0, *n;
@@ -2399,7 +2399,7 @@ out:
 }
 
 int
-m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how)
+m_copyback2(struct mbuf *m0, int off, int len, c_caddr_t cp, int how)
 {
 	return _m_copyback2(m0, off, len, cp, how, TRUE);
 }
@@ -2410,7 +2410,7 @@ m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how)
  * would fail with diagnostics printed to the console.
  */
 void
-m_copyback(struct mbuf *m0, int off, int len, caddr_t cp)
+m_copyback(struct mbuf *m0, int off, int len, c_caddr_t cp)
 {
 	if (_m_copyback2(m0, off, len, cp, 0, FALSE) != 0) {
 		kprintf("%s: unexpected mbuf expansion required, "

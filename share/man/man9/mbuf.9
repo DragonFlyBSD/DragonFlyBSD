@@ -83,9 +83,9 @@
 .Ft void
 .Fn m_copydata "const struct mbuf *mbuf" "int offset" "int len" "caddr_t buf"
 .Ft void
-.Fn m_copyback "struct mbuf *mbuf" "int offset" "int len" "caddr_t buf"
+.Fn m_copyback "struct mbuf *mbuf" "int offset" "int len" "c_caddr_t buf"
 .Ft int
-.Fn m_copyback2 "struct mbuf *mbuf" "int offset" "int len" "caddr_t buf" "int how"
+.Fn m_copyback2 "struct mbuf *mbuf" "int offset" "int len" "c_caddr_t buf" "int how"
 .Ft struct mbuf *
 .Fo m_devget
 .Fa "char *buf"
