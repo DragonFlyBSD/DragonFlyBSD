@@ -2328,19 +2328,26 @@ m_devpad(struct mbuf *m, int padto)
 /*
  * Copy data from a buffer back into the indicated mbuf chain,
  * starting "off" bytes from the beginning, extending the mbuf
- * chain if necessary.  The mbuf needs to be properly initialized
- * including the setting of m_len.
+ * chain if necessary.
+ *
+ * Note that m0->m_len may be 0 (e.g., a newly allocated mbuf).
  */
 int
 m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how)
 {
 	struct mbuf *m = m0, *n;
-	int mlen, nsize, totlen = 0, error = 0;
+	int mlen, tlen, nsize, totlen = 0, error = 0;
 
 	if (m0 == NULL)
 		return (0);
 
 	while (off > m->m_len) {
+		if (m->m_next == NULL && (tlen = M_TRAILINGSPACE(m)) > 0) {
+			/* Use the trailing space of the last mbuf. */
+			mlen = min(off - m->m_len, tlen);
+			bzero(mtod(m, char *) + m->m_len, mlen);
+			m->m_len += mlen;
+		}
 		off -= m->m_len;
 		totlen += m->m_len;
 		if (m->m_next == NULL) {
@@ -2356,6 +2363,12 @@ m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how)
 		m = m->m_next;
 	}
 	while (len > 0) {
+		if (m->m_next == NULL &&
+		    m->m_len < off + len &&
+		    (tlen = M_TRAILINGSPACE(m)) > 0) {
+			/* Use the trailing space of the last mbuf. */
+			m->m_len += min(off + len - m->m_len, tlen);
+		}
 		mlen = min(m->m_len - off, len);
 		bcopy(cp, mtod(m, char *) + off, mlen);
 		off = 0;
