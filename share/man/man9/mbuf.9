@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/mbuf.9,v 1.27.2.1 2003/05/28 13:53:18 yar Exp $
 .\"
-.Dd November 6, 2023
+.Dd December 20, 2023
 .Dt MBUF 9
 .Os
 .\"
@@ -421,8 +421,8 @@ back into the indicated mbuf chain,
 starting at
 .Fa offset
 bytes from the beginning of the chain, extending the mbuf chain if necessary.
+Mbuf clusters will be allocated if appropriate.
 .Sy Note :
-It doesn't allocate any clusters, just adds mbufs to the chain.
 It's safe to set
 .Fa offset
 beyond the current chain end: zeroed mbufs will be allocated to fill the

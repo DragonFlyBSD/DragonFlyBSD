@@ -2335,7 +2335,7 @@ int
 m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how)
 {
 	struct mbuf *m = m0, *n;
-	int mlen, totlen = 0, error = 0;
+	int mlen, nsize, totlen = 0, error = 0;
 
 	if (m0 == NULL)
 		return (0);
@@ -2344,12 +2344,13 @@ m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how)
 		off -= m->m_len;
 		totlen += m->m_len;
 		if (m->m_next == NULL) {
-			n = m_getclr(how, m->m_type);
+			n = m_getl(off + len, how, m->m_type, 0, &nsize);
 			if (n == NULL) {
 				error = ENOBUFS;
 				goto out;
 			}
-			n->m_len = min(MLEN, len + off);
+			n->m_len = min(nsize, off + len);
+			bzero(mtod(n, char *), n->m_len);
 			m->m_next = n;
 		}
 		m = m->m_next;
@@ -2364,12 +2365,12 @@ m_copyback2(struct mbuf *m0, int off, int len, caddr_t cp, int how)
 		if (len == 0)
 			break;
 		if (m->m_next == NULL) {
-			n = m_get(how, m->m_type);
+			n = m_getl(len, how, m->m_type, 0, &nsize);
 			if (n == NULL) {
 				error = ENOBUFS;
 				goto out;
 			}
-			n->m_len = min(MLEN, len);
+			n->m_len = min(nsize, len);
 			m->m_next = n;
 		}
 		m = m->m_next;
