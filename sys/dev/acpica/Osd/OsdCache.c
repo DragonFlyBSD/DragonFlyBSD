@@ -87,7 +87,7 @@ AcpiOsPurgeCache(ACPI_CACHE_T *Cache)
 {
 	struct objcache *reclaimlist[] = { Cache->cache };
 
-	objcache_reclaimlist(reclaimlist, 1, M_WAITOK);
+	objcache_reclaimlist(reclaimlist, 1);
 	return AE_OK;
 }
 

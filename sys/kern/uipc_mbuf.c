@@ -1028,7 +1028,7 @@ retryonce:
 			};
 			const int nreclaims = NELEM(reclaimlist);
 
-			if (!objcache_reclaimlist(reclaimlist, nreclaims, ocf))
+			if (!objcache_reclaimlist(reclaimlist, nreclaims))
 				m_reclaim();
 			goto retryonce;
 		}
@@ -1064,7 +1064,7 @@ retryonce:
 			};
 			const int nreclaims = NELEM(reclaimlist);
 
-			if (!objcache_reclaimlist(reclaimlist, nreclaims, ocf))
+			if (!objcache_reclaimlist(reclaimlist, nreclaims))
 				m_reclaim();
 			goto retryonce;
 		}
@@ -1120,7 +1120,7 @@ retryonce:
 				reclaimlist[0] = mbclc;
 			else
 				reclaimlist[0] = mbphclc;
-			if (!objcache_reclaimlist(reclaimlist, 1, ocflags))
+			if (!objcache_reclaimlist(reclaimlist, 1))
 				m_reclaim();
 			goto retryonce;
 		}

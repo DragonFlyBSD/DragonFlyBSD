@@ -77,7 +77,7 @@ void	 objcache_put(struct objcache *oc, void *obj);
 void	 objcache_dtor(struct objcache *oc, void *obj);
 void	 objcache_populate_linear(struct objcache *oc, void *elts, int nelts,
 				  int size);
-__boolean_t objcache_reclaimlist(struct objcache *oc[], int nlist, int ocflags);
+__boolean_t objcache_reclaimlist(struct objcache *oc[], int nlist);
 void	 objcache_destroy(struct objcache *oc);
 
 #endif	/* _KERNEL */

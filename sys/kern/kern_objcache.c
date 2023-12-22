@@ -859,7 +859,7 @@ depot_disassociate(struct magazinedepot *depot, struct magazinelist *tmplist)
  * cache, then the full magazine depot.
  */
 boolean_t
-objcache_reclaimlist(struct objcache *oclist[], int nlist, int ocflags)
+objcache_reclaimlist(struct objcache *oclist[], int nlist)
 {
 	struct objcache *oc;
 	struct percpu_objcache *cpucache;
