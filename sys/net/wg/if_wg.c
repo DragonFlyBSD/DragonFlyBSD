@@ -167,6 +167,12 @@ struct wg_aip {
 	sa_family_t		 a_af;
 };
 
+enum wg_packet_state {
+	WG_PACKET_DEAD,		/* to be dropped */
+	WG_PACKET_UNCRYPTED,	/* before encryption/decryption */
+	WG_PACKET_CRYPTED,	/* after encryption/decryption */
+};
+
 struct wg_packet {
 	STAILQ_ENTRY(wg_packet)	 p_serial;
 	STAILQ_ENTRY(wg_packet)	 p_parallel;
@@ -176,11 +182,7 @@ struct wg_packet {
 	struct mbuf		*p_mbuf;
 	int			 p_mtu;
 	sa_family_t		 p_af;
-	enum wg_ring_state {
-		WG_PACKET_UNCRYPTED,
-		WG_PACKET_CRYPTED,
-		WG_PACKET_DEAD,
-	}			 p_state;
+	enum wg_packet_state	 p_state;
 };
 
 STAILQ_HEAD(wg_packet_list, wg_packet);
@@ -1556,7 +1558,7 @@ wg_encrypt(struct wg_softc *sc, struct wg_packet *pkt)
 	struct mbuf		*m;
 	uint32_t		 idx;
 	unsigned int		 padlen;
-	enum wg_ring_state	 state = WG_PACKET_DEAD;
+	enum wg_packet_state	 state = WG_PACKET_DEAD;
 
 	remote = noise_keypair_remote(pkt->p_keypair);
 	peer = noise_remote_arg(remote);
@@ -1597,7 +1599,7 @@ wg_decrypt(struct wg_softc *sc, struct wg_packet *pkt)
 	struct noise_remote	*remote;
 	struct mbuf		*m;
 	int			 len;
-	enum wg_ring_state	 state = WG_PACKET_DEAD;
+	enum wg_packet_state	 state = WG_PACKET_DEAD;
 
 	remote = noise_keypair_remote(pkt->p_keypair);
 	peer = noise_remote_arg(remote);
