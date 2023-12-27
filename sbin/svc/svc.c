@@ -346,7 +346,7 @@ execute_cmd(command_t *cmd)
 	} else if (strcmp(directive, "logfile") == 0) {
 		rc = execute_remote(cmd, execute_logfile);
 	} else {
-		fprintf(cmd->fp, "Uknown directive: %s\n", directive);
+		fprintf(cmd->fp, "Unknown directive: %s\n", directive);
 		rc = 1;
 	}
 	return rc;
