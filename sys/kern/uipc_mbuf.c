@@ -1485,8 +1485,8 @@ m_freem(struct mbuf *m)
 #endif
 
 void
-m_extadd(struct mbuf *m, caddr_t buf, u_int size,  void (*reff)(void *),
-    void (*freef)(void *), void *arg)
+m_extadd(struct mbuf *m, void *buf, u_int size, void (*reff)(void *),
+	 void (*freef)(void *), void *arg)
 {
 	m->m_ext.ext_arg = arg;
 	m->m_ext.ext_buf = buf;
@@ -1677,8 +1677,9 @@ nospace:
  * continuing for "len" bytes, into the indicated buffer.
  */
 void
-m_copydata(const struct mbuf *m, int off, int len, caddr_t cp)
+m_copydata(const struct mbuf *m, int off, int len, void *_cp)
 {
+	caddr_t *cp = _cp;
 	unsigned count;
 
 	KASSERT(off >= 0, ("m_copydata, negative off %d", off));
@@ -2243,9 +2244,10 @@ extpacket:
  * Note: "offset" is ill-defined and always called as 0, so ignore it.
  */
 struct mbuf *
-m_devget(char *buf, int len, int offset, struct ifnet *ifp)
+m_devget(void *_buf, int len, int offset, struct ifnet *ifp)
 {
 	struct mbuf *m, *mfirst = NULL, **mtail;
+	caddr_t *buf = _buf;
 	int nsize, flags;
 
 	mtail = &mfirst;
@@ -2333,10 +2335,11 @@ m_devpad(struct mbuf *m, int padto)
  * Note that m0->m_len may be 0 (e.g., a newly allocated mbuf).
  */
 static __inline int
-_m_copyback2(struct mbuf *m0, int off, int len, c_caddr_t cp, int how,
+_m_copyback2(struct mbuf *m0, int off, int len, const void *_cp, int how,
 	     boolean_t allow_alloc)
 {
 	struct mbuf *m = m0, *n;
+	const caddr_t *cp = _cp;
 	int mlen, tlen, nsize, totlen = 0, error = ENOBUFS;
 
 	if (m0 == NULL)
@@ -2399,7 +2402,7 @@ out:
 }
 
 int
-m_copyback2(struct mbuf *m0, int off, int len, c_caddr_t cp, int how)
+m_copyback2(struct mbuf *m0, int off, int len, const void *cp, int how)
 {
 	return _m_copyback2(m0, off, len, cp, how, TRUE);
 }
@@ -2410,7 +2413,7 @@ m_copyback2(struct mbuf *m0, int off, int len, c_caddr_t cp, int how)
  * would fail with diagnostics printed to the console.
  */
 void
-m_copyback(struct mbuf *m0, int off, int len, c_caddr_t cp)
+m_copyback(struct mbuf *m0, int off, int len, const void *cp)
 {
 	if (_m_copyback2(m0, off, len, cp, 0, FALSE) != 0) {
 		kprintf("%s: unexpected mbuf expansion required, "
@@ -2427,9 +2430,10 @@ m_copyback(struct mbuf *m0, int off, int len, c_caddr_t cp)
  * Return 1 if able to complete the job; otherwise 0.
  */
 int
-m_append(struct mbuf *m0, int len, c_caddr_t cp)
+m_append(struct mbuf *m0, int len, const void *_cp)
 {
 	struct mbuf *m, *n;
+	const caddr_t *cp = _cp;
 	int remainder, space;
 
 	for (m = m0; m->m_next != NULL; m = m->m_next)

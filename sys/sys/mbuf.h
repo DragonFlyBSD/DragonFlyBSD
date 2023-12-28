@@ -503,22 +503,22 @@ void		 m_adj(struct mbuf *, int);
 void		 m_align(struct mbuf *, int);
 int		 m_apply(struct mbuf *, int, int,
 		    int (*)(void *, void *, u_int), void *);
-int		m_append(struct mbuf *, int, c_caddr_t);
+int		 m_append(struct mbuf *, int, const void *);
 void		 m_cat(struct mbuf *, struct mbuf *);
 u_int		 m_countm(struct mbuf *m, struct mbuf **lastm, u_int *mbcnt);
-void		 m_copyback(struct mbuf *, int, int, c_caddr_t);
-int		 m_copyback2(struct mbuf *, int, int, c_caddr_t, int);
-void		 m_copydata(const struct mbuf *, int, int, caddr_t);
+void		 m_copyback(struct mbuf *, int, int, const void *);
+int		 m_copyback2(struct mbuf *, int, int, const void *, int);
+void		 m_copydata(const struct mbuf *, int, int, void *);
 struct	mbuf	*m_copym(const struct mbuf *, int, int, int);
 struct	mbuf	*m_copypacket(struct mbuf *, int);
 struct	mbuf	*m_defrag(struct mbuf *, int);
 struct	mbuf	*m_defrag_nofree(struct mbuf *, int);
-struct	mbuf	*m_devget(char *, int, int, struct ifnet *);
+struct	mbuf	*m_devget(void *, int, int, struct ifnet *);
 struct	mbuf	*m_dup(struct mbuf *, int);
 struct	mbuf	*m_dup_data(struct mbuf *, int);
 int		 m_dup_pkthdr(struct mbuf *, const struct mbuf *, int);
-void		 m_extadd(struct mbuf *, caddr_t, u_int, void (*)(void *),
-		  void (*)(void *), void *);
+void		 m_extadd(struct mbuf *, void *, u_int, void (*)(void *),
+		    void (*)(void *), void *);
 #ifdef MBUF_DEBUG
 struct	mbuf	*_m_free(struct mbuf *, const char *name);
 void		 _m_freem(struct mbuf *, const char *name);
