@@ -3,10 +3,10 @@
  *
  * Copyright (c) 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Jeffrey M. Hsu.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -18,7 +18,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -125,16 +125,17 @@ static int
 mbtrack_cmp(struct mbtrack *mb1, struct mbtrack *mb2)
 {
 	if (mb1->m < mb2->m)
-		return(-1);
+		return (-1);
 	if (mb1->m > mb2->m)
-		return(1);
-	return(0);
+		return (1);
+	return (0);
 }
 
 RB_GENERATE2(mbuf_rb_tree, mbtrack, rb_node, mbtrack_cmp, struct mbuf *, m);
 
 struct mbuf_rb_tree	mbuf_track_root;
-static struct spinlock	mbuf_track_spin = SPINLOCK_INITIALIZER(mbuf_track_spin, "mbuf_track_spin");
+static struct spinlock	mbuf_track_spin =
+	SPINLOCK_INITIALIZER(mbuf_track_spin, "mbuf_track_spin");
 
 static void
 mbuftrack(struct mbuf *m)
@@ -146,7 +147,7 @@ mbuftrack(struct mbuf *m)
 	mbt->m = m;
 	if (mbuf_rb_tree_RB_INSERT(&mbuf_track_root, mbt)) {
 		spin_unlock(&mbuf_track_spin);
-		panic("mbuftrack: mbuf %p already being tracked", m);
+		panic("%s: mbuf %p already being tracked", __func__, m);
 	}
 	spin_unlock(&mbuf_track_spin);
 }
@@ -160,7 +161,7 @@ mbufuntrack(struct mbuf *m)
 	mbt = mbuf_rb_tree_RB_LOOKUP(&mbuf_track_root, m);
 	if (mbt == NULL) {
 		spin_unlock(&mbuf_track_spin);
-		panic("mbufuntrack: mbuf %p was not tracked", m);
+		panic("%s: mbuf %p was not tracked", __func__, m);
 	} else {
 		mbuf_rb_tree_RB_REMOVE(&mbuf_track_root, mbt);
 		spin_unlock(&mbuf_track_spin);
@@ -175,13 +176,13 @@ mbuftrackid(struct mbuf *m, int trackid)
 	struct mbuf *n;
 
 	spin_lock(&mbuf_track_spin);
-	while (m) { 
+	while (m) {
 		n = m->m_nextpkt;
 		while (m) {
 			mbt = mbuf_rb_tree_RB_LOOKUP(&mbuf_track_root, m);
 			if (mbt == NULL) {
 				spin_unlock(&mbuf_track_spin);
-				panic("mbuftrackid: mbuf %p not tracked", m);
+				panic("%s: mbuf %p not tracked", __func__, m);
 			}
 			mbt->trackid = trackid;
 			m = m->m_next;
@@ -203,9 +204,9 @@ mbuftrack_callback(struct mbtrack *mbt, void *arg)
 	spin_unlock(&mbuf_track_spin);
 	error = SYSCTL_OUT(req, buf, strlen(buf));
 	spin_lock(&mbuf_track_spin);
-	if (error)	
-		return(-error);
-	return(0);
+	if (error)
+		return (-error);
+	return (0);
 }
 
 static int
@@ -268,21 +269,21 @@ static int	mclph_cachefrac;
 static int	mcl_cachefrac;
 
 SYSCTL_INT(_kern_ipc, KIPC_MAX_LINKHDR, max_linkhdr, CTLFLAG_RW,
-	&max_linkhdr, 0, "Max size of a link-level header");
+	   &max_linkhdr, 0, "Max size of a link-level header");
 SYSCTL_INT(_kern_ipc, KIPC_MAX_PROTOHDR, max_protohdr, CTLFLAG_RW,
-	&max_protohdr, 0, "Max size of a protocol header");
+	   &max_protohdr, 0, "Max size of a protocol header");
 SYSCTL_INT(_kern_ipc, KIPC_MAX_HDR, max_hdr, CTLFLAG_RW, &max_hdr, 0,
-	"Max size of link+protocol headers");
+	   "Max size of link+protocol headers");
 SYSCTL_INT(_kern_ipc, KIPC_MAX_DATALEN, max_datalen, CTLFLAG_RW,
-	&max_datalen, 0, "Max data payload size without headers");
+	   &max_datalen, 0, "Max data payload size without headers");
 
 static int do_mbstat(SYSCTL_HANDLER_ARGS);
 SYSCTL_PROC(_kern_ipc, KIPC_MBSTAT, mbstat, CTLTYPE_STRUCT|CTLFLAG_RD,
-	0, 0, do_mbstat, "S,mbstat", "mbuf usage statistics");
+	    0, 0, do_mbstat, "S,mbstat", "mbuf usage statistics");
 
 static int do_mbtypes(SYSCTL_HANDLER_ARGS);
 SYSCTL_PROC(_kern_ipc, OID_AUTO, mbtypes, CTLTYPE_ULONG|CTLFLAG_RD,
-	0, 0, do_mbtypes, "LU", "");
+	    0, 0, do_mbtypes, "LU", "");
 
 static int
 do_mbstat(SYSCTL_HANDLER_ARGS)
@@ -295,28 +296,29 @@ do_mbstat(SYSCTL_HANDLER_ARGS)
 	mbstat_totalp = &mbstat_total;
 
 	for (i = 0; i < ncpus; i++) {
-		mbstat_total.m_mbufs += mbstat[i].m_mbufs;	
-		mbstat_total.m_clusters += mbstat[i].m_clusters;	
-		mbstat_total.m_jclusters += mbstat[i].m_jclusters;	
-		mbstat_total.m_clfree += mbstat[i].m_clfree;	
-		mbstat_total.m_drops += mbstat[i].m_drops;	
-		mbstat_total.m_wait += mbstat[i].m_wait;	
-		mbstat_total.m_drain += mbstat[i].m_drain;	
-		mbstat_total.m_mcfail += mbstat[i].m_mcfail;	
-		mbstat_total.m_mpfail += mbstat[i].m_mpfail;	
-
+		mbstat_total.m_mbufs += mbstat[i].m_mbufs;
+		mbstat_total.m_clusters += mbstat[i].m_clusters;
+		mbstat_total.m_jclusters += mbstat[i].m_jclusters;
+		mbstat_total.m_clfree += mbstat[i].m_clfree;
+		mbstat_total.m_drops += mbstat[i].m_drops;
+		mbstat_total.m_wait += mbstat[i].m_wait;
+		mbstat_total.m_drain += mbstat[i].m_drain;
+		mbstat_total.m_mcfail += mbstat[i].m_mcfail;
+		mbstat_total.m_mpfail += mbstat[i].m_mpfail;
 	}
+
 	/*
 	 * The following fields are not cumulative fields so just
 	 * get their values once.
 	 */
-	mbstat_total.m_msize = mbstat[0].m_msize;	
-	mbstat_total.m_mclbytes = mbstat[0].m_mclbytes;	
-	mbstat_total.m_minclsize = mbstat[0].m_minclsize;	
-	mbstat_total.m_mlen = mbstat[0].m_mlen;	
-	mbstat_total.m_mhlen = mbstat[0].m_mhlen;	
+	mbstat_total.m_msize = mbstat[0].m_msize;
+	mbstat_total.m_mclbytes = mbstat[0].m_mclbytes;
+	mbstat_total.m_minclsize = mbstat[0].m_minclsize;
+	mbstat_total.m_mlen = mbstat[0].m_mlen;
+	mbstat_total.m_mhlen = mbstat[0].m_mhlen;
 
-	return(sysctl_handle_opaque(oidp, mbstat_totalp, sizeof(mbstat_total), req));
+	return sysctl_handle_opaque(oidp, mbstat_totalp,
+				    sizeof(mbstat_total), req);
 }
 
 static int
@@ -333,7 +335,7 @@ do_mbtypes(SYSCTL_HANDLER_ARGS)
 			totals[j] += mbtypes[i].stats[j];
 	}
 
-	return(sysctl_handle_opaque(oidp, totals, sizeof(totals), req));
+	return sysctl_handle_opaque(oidp, totals, sizeof(totals), req);
 }
 
 /*
@@ -346,14 +348,14 @@ static int sysctl_nmbclusters(SYSCTL_HANDLER_ARGS);
 static int sysctl_nmbjclusters(SYSCTL_HANDLER_ARGS);
 static int sysctl_nmbufs(SYSCTL_HANDLER_ARGS);
 SYSCTL_PROC(_kern_ipc, KIPC_NMBCLUSTERS, nmbclusters, CTLTYPE_INT | CTLFLAG_RW,
-	   0, 0, sysctl_nmbclusters, "I",
-	   "Maximum number of mbuf clusters available");
+	    0, 0, sysctl_nmbclusters, "I",
+	    "Maximum number of mbuf clusters available");
 SYSCTL_PROC(_kern_ipc, OID_AUTO, nmbjclusters, CTLTYPE_INT | CTLFLAG_RW,
-	   0, 0, sysctl_nmbjclusters, "I",
-	   "Maximum number of mbuf jclusters available");
+	    0, 0, sysctl_nmbjclusters, "I",
+	    "Maximum number of mbuf jclusters available");
 SYSCTL_PROC(_kern_ipc, OID_AUTO, nmbufs, CTLTYPE_INT | CTLFLAG_RW,
-	   0, 0, sysctl_nmbufs, "I",
-	   "Maximum number of mbufs available");
+	    0, 0, sysctl_nmbufs, "I",
+	    "Maximum number of mbufs available");
 
 SYSCTL_INT(_kern_ipc, OID_AUTO, mjclph_cachefrac, CTLFLAG_RD,
 	   &mjclph_cachefrac, 0,
@@ -362,19 +364,21 @@ SYSCTL_INT(_kern_ipc, OID_AUTO, mjcl_cachefrac, CTLFLAG_RD,
 	   &mjcl_cachefrac, 0,
 	   "Fraction of cacheable mbuf jclusters");
 SYSCTL_INT(_kern_ipc, OID_AUTO, mclph_cachefrac, CTLFLAG_RD,
-    	   &mclph_cachefrac, 0,
+	   &mclph_cachefrac, 0,
 	   "Fraction of cacheable mbuf clusters w/ pkthdr");
 SYSCTL_INT(_kern_ipc, OID_AUTO, mcl_cachefrac, CTLFLAG_RD,
-    	   &mcl_cachefrac, 0, "Fraction of cacheable mbuf clusters");
+	   &mcl_cachefrac, 0, "Fraction of cacheable mbuf clusters");
 
 SYSCTL_INT(_kern_ipc, OID_AUTO, m_defragpackets, CTLFLAG_RD,
 	   &m_defragpackets, 0, "Number of defragment packets");
 SYSCTL_INT(_kern_ipc, OID_AUTO, m_defragbytes, CTLFLAG_RD,
 	   &m_defragbytes, 0, "Number of defragment bytes");
 SYSCTL_INT(_kern_ipc, OID_AUTO, m_defraguseless, CTLFLAG_RD,
-	   &m_defraguseless, 0, "Number of useless defragment mbuf chain operations");
+	   &m_defraguseless, 0,
+	   "Number of useless defragment mbuf chain operations");
 SYSCTL_INT(_kern_ipc, OID_AUTO, m_defragfailure, CTLFLAG_RD,
-	   &m_defragfailure, 0, "Number of failed defragment mbuf chain operations");
+	   &m_defragfailure, 0,
+	   "Number of failed defragment mbuf chain operations");
 #ifdef MBUF_STRESS_TEST
 SYSCTL_INT(_kern_ipc, OID_AUTO, m_defragrandomfailures, CTLFLAG_RW,
 	   &m_defragrandomfailures, 0, "");
@@ -430,7 +434,7 @@ static void mbupdatelimits(void);
  * Perform sanity checks of tunables declared above.
  */
 static void
-tunable_mbinit(void *dummy)
+tunable_mbinit(void *dummy __unused)
 {
 	/*
 	 * This has to be done before VM init.
@@ -523,14 +527,14 @@ static int
 sysctl_nmbclusters(SYSCTL_HANDLER_ARGS)
 {
 	return sysctl_mblimit(oidp, arg1, arg2, req, &nmbclusters,
-	    NMBCLUSTERS_MIN);
+			      NMBCLUSTERS_MIN);
 }
 
 static int
 sysctl_nmbjclusters(SYSCTL_HANDLER_ARGS)
 {
 	return sysctl_mblimit(oidp, arg1, arg2, req, &nmbjclusters,
-	    NMBJCLUSTERS_MIN);
+			      NMBJCLUSTERS_MIN);
 }
 
 static int
@@ -557,11 +561,6 @@ mb_inclimit(int inc)
 	mbinclimit(&nmbufs, inc, NMBUFS_MIN);
 }
 
-/* "number of clusters of pages" */
-#define NCL_INIT	1
-
-#define NMB_INIT	16
-
 /*
  * The mbuf object cache only guarantees that m_next and m_nextpkt are
  * NULL and that m_data points to the beginning of the data area.  In
@@ -569,7 +568,7 @@ mb_inclimit(int inc)
  * responsibility of the caller to initialize those fields before use.
  */
 static __inline boolean_t
-mbuf_ctor(void *obj, void *private, int ocflags)
+mbuf_ctor(void *obj, void *private __unused, int ocflags __unused)
 {
 	struct mbuf *m = obj;
 
@@ -585,7 +584,7 @@ mbuf_ctor(void *obj, void *private, int ocflags)
  * Initialize the mbuf and the packet header fields.
  */
 static boolean_t
-mbufphdr_ctor(void *obj, void *private, int ocflags)
+mbufphdr_ctor(void *obj, void *private __unused, int ocflags __unused)
 {
 	struct mbuf *m = obj;
 
@@ -606,7 +605,7 @@ mbufphdr_ctor(void *obj, void *private, int ocflags)
  * A mbcluster object consists of 2K (MCLBYTES) cluster and a refcount.
  */
 static boolean_t
-mclmeta_ctor(void *obj, void *private, int ocflags)
+mclmeta_ctor(void *obj, void *private __unused, int ocflags)
 {
 	struct mbcluster *cl = obj;
 	void *buf;
@@ -623,7 +622,7 @@ mclmeta_ctor(void *obj, void *private, int ocflags)
 }
 
 static boolean_t
-mjclmeta_ctor(void *obj, void *private, int ocflags)
+mjclmeta_ctor(void *obj, void *private __unused, int ocflags)
 {
 	struct mbcluster *cl = obj;
 	void *buf;
@@ -640,7 +639,7 @@ mjclmeta_ctor(void *obj, void *private, int ocflags)
 }
 
 static void
-mclmeta_dtor(void *obj, void *private)
+mclmeta_dtor(void *obj, void *private __unused)
 {
 	struct mbcluster *mcl = obj;
 
@@ -649,7 +648,7 @@ mclmeta_dtor(void *obj, void *private)
 }
 
 static void
-linkjcluster(struct mbuf *m, struct mbcluster *cl, uint size)
+linkjcluster(struct mbuf *m, struct mbcluster *cl, u_int size)
 {
 	/*
 	 * Add the cluster to the mbuf.  The caller will detect that the
@@ -771,13 +770,10 @@ struct objcache_malloc_args mbuf_malloc_args = { MSIZE, M_MBUF };
 struct objcache_malloc_args mclmeta_malloc_args =
 	{ sizeof(struct mbcluster), M_MCLMETA };
 
-/* ARGSUSED*/
 static void
-mbinit(void *dummy)
+mbinit(void *dummy __unused)
 {
-	int mb_limit, cl_limit, ncl_limit, jcl_limit;
-	int limit;
-	int i;
+	int limit, mb_limit, cl_limit, ncl_limit, jcl_limit, i;
 
 	/*
 	 * Initialize statistics
@@ -880,11 +876,10 @@ mbinit(void *dummy)
 static void
 mbupdatelimits(void)
 {
-	int mb_limit, cl_limit, ncl_limit, jcl_limit;
-	int limit;
+	int limit, mb_limit, cl_limit, ncl_limit, jcl_limit;
 
 	KASSERT(lockstatus(&mbupdate_lk, curthread) != 0,
-	    ("mbupdate_lk is not held"));
+		("mbupdate_lk is not held"));
 
 	/*
 	 * Figure out adjustments to object caches after nmbufs, nmbclusters,
@@ -1088,6 +1083,7 @@ retryonce:
 
 /*
  * Get a mbuf (not a mbuf cluster!) and zero it.
+ *
  * Deprecated.
  */
 struct mbuf *
@@ -1103,7 +1099,7 @@ m_getclr(int how, int type)
 
 static struct mbuf *
 m_getcl_cache(int how, short type, int flags, struct objcache *mbclc,
-    struct objcache *mbphclc, u_long *cl_stats)
+	      struct objcache *mbphclc, u_long *cl_stats)
 {
 	struct mbuf *m = NULL;
 	int ocflags = MB_OCFLAG(how);
@@ -1138,7 +1134,7 @@ retryonce:
 #endif
 	m->m_type = type;
 	m->m_len = 0;
-	m->m_pkthdr.len = 0;	/* just do it unconditonally */
+	m->m_pkthdr.len = 0;	/* just do it unconditionally */
 
 	mbuftrack(m);
 
@@ -1180,8 +1176,8 @@ struct mbuf *
 m_getcl(int how, short type, int flags)
 {
 	return m_getcl_cache(how, type, flags,
-	    mbufcluster_cache, mbufphdrcluster_cache,
-	    &mbstat[mycpu->gd_cpuid].m_clusters);
+			     mbufcluster_cache, mbufphdrcluster_cache,
+			     &mbstat[mycpu->gd_cpuid].m_clusters);
 }
 
 /*
@@ -1257,7 +1253,7 @@ m_mclget(struct mbuf *m, int how)
 
 /*
  * Updates to mbcluster must be MPSAFE.  Only an entity which already has
- * a reference to the cluster can ref it, so we are in no danger of 
+ * a reference to the cluster can ref it, so we are in no danger of
  * racing an add with a subtract.  But the operation must still be atomic
  * since multiple entities may have a reference on the cluster.
  *
@@ -1274,7 +1270,7 @@ m_mclref(void *arg)
 
 /*
  * When dereferencing a cluster we have to deal with a N->0 race, where
- * N entities free their references simultaniously.  To do this we use
+ * N entities free their references simultaneously.  To do this we use
  * atomic_fetchadd_int().
  */
 static void
@@ -1308,16 +1304,11 @@ m_mjclfree(void *arg)
  * (example: call to bpf_mtap from drivers)
  */
 
-#ifdef MBUF_DEBUG
-
-struct mbuf  *
-_m_free(struct mbuf *m, const char *func)
-
-#else
-
 struct mbuf *
+#ifdef MBUF_DEBUG
+_m_free(struct mbuf *m, const char *func)
+#else
 m_free(struct mbuf *m)
-
 #endif
 {
 	struct mbuf *n;
@@ -1377,7 +1368,7 @@ m_free(struct mbuf *m)
 	 * and is totally separate from whether the mbuf is currently
 	 * associated with a cluster.
 	 */
-	switch(m->m_flags & (M_CLCACHE | M_EXT | M_EXT_CLUSTER)) {
+	switch (m->m_flags & (M_CLCACHE | M_EXT | M_EXT_CLUSTER)) {
 	case M_CLCACHE | M_EXT | M_EXT_CLUSTER:
 		/*
 		 * mbuf+cluster cache case.  The mbuf was allocated from the
@@ -1393,7 +1384,8 @@ m_free(struct mbuf *m)
 			 * an mbuf).
 			 */
 			m->m_data = m->m_ext.ext_buf;
-			if (m->m_flags & M_EXT && m->m_ext.ext_size != MCLBYTES) {
+			if (m->m_flags &
+			    M_EXT && m->m_ext.ext_size != MCLBYTES) {
 				if (m->m_flags & M_PHCACHE)
 					objcache_put(mbufphdrjcluster_cache, m);
 				else
@@ -1416,10 +1408,9 @@ m_free(struct mbuf *m)
 			 * Other mbuf references to the cluster will typically
 			 * be M_EXT | M_EXT_CLUSTER but without M_CLCACHE.
 			 *
-			 * XXX we could try to connect another cluster to
-			 * it.
+			 * XXX we could try to connect another cluster to it.
 			 */
-			m->m_ext.ext_free(m->m_ext.ext_arg); 
+			m->m_ext.ext_free(m->m_ext.ext_arg);
 			m->m_flags &= ~(M_EXT | M_EXT_CLUSTER);
 			if (m->m_ext.ext_size == MCLBYTES) {
 				if (m->m_flags & M_PHCACHE)
@@ -1440,9 +1431,9 @@ m_free(struct mbuf *m)
 		 * Normal cluster association case, disconnect the cluster from
 		 * the mbuf.  The cluster may or may not be custom.
 		 */
-		m->m_ext.ext_free(m->m_ext.ext_arg); 
+		m->m_ext.ext_free(m->m_ext.ext_arg);
 		m->m_flags &= ~(M_EXT | M_EXT_CLUSTER);
-		/* fall through */
+		/* FALLTHROUGH */
 	case 0:
 		/*
 		 * return the mbuf to the mbuf cache.
@@ -1482,7 +1473,7 @@ m_freem(struct mbuf *m)
 		m = m_free(m);
 }
 
-#endif
+#endif /* MBUF_DEBUG */
 
 void
 m_extadd(struct mbuf *m, void *buf, u_int size, void (*reff)(void *),
@@ -1512,9 +1503,9 @@ m_prepend(struct mbuf *m, int len, int how)
 	struct mbuf *mn;
 
 	if (m->m_flags & M_PKTHDR)
-	    mn = m_gethdr(how, m->m_type);
+		mn = m_gethdr(how, m->m_type);
 	else
-	    mn = m_get(how, m->m_type);
+		mn = m_get(how, m->m_type);
 	if (mn == NULL) {
 		m_freem(m);
 		return (NULL);
@@ -1544,12 +1535,13 @@ m_copym(const struct mbuf *m, int off0, int len, int wait)
 	struct mbuf *top;
 	int copyhdr = 0;
 
-	KASSERT(off >= 0, ("m_copym, negative off %d", off));
-	KASSERT(len >= 0, ("m_copym, negative len %d", len));
+	KASSERT(off >= 0, ("%s: negative off %d", __func__, off));
+	KASSERT(len >= 0, ("%s: negative len %d", __func__, len));
 	if (off == 0 && (m->m_flags & M_PKTHDR))
 		copyhdr = 1;
 	while (off > 0) {
-		KASSERT(m != NULL, ("m_copym, offset > size of mbuf chain"));
+		KASSERT(m != NULL,
+			("%s: offset > size of mbuf chain", __func__));
 		if (off < m->m_len)
 			break;
 		off -= m->m_len;
@@ -1559,8 +1551,8 @@ m_copym(const struct mbuf *m, int off0, int len, int wait)
 	top = NULL;
 	while (len > 0) {
 		if (m == NULL) {
-			KASSERT(len == M_COPYALL, 
-			    ("m_copym, length > size of mbuf chain"));
+			KASSERT(len == M_COPYALL,
+				("%s: length > size of mbuf chain", __func__));
 			break;
 		}
 		/*
@@ -1588,12 +1580,12 @@ m_copym(const struct mbuf *m, int off0, int len, int wait)
 		if (m->m_flags & M_EXT) {
 			KKASSERT((n->m_flags & M_EXT) == 0);
 			n->m_data = m->m_data + off;
-			m->m_ext.ext_ref(m->m_ext.ext_arg); 
+			m->m_ext.ext_ref(m->m_ext.ext_arg);
 			n->m_ext = m->m_ext;
 			n->m_flags |= m->m_flags & (M_EXT | M_EXT_CLUSTER);
 		} else {
-			bcopy(mtod(m, caddr_t)+off, mtod(n, caddr_t),
-			    (unsigned)n->m_len);
+			bcopy(mtod(m, caddr_t) + off, mtod(n, caddr_t),
+			      n->m_len);
 		}
 		if (len != M_COPYALL)
 			len -= n->m_len;
@@ -1635,12 +1627,12 @@ m_copypacket(struct mbuf *m, int how)
 	if (m->m_flags & M_EXT) {
 		KKASSERT((n->m_flags & M_EXT) == 0);
 		n->m_data = m->m_data;
-		m->m_ext.ext_ref(m->m_ext.ext_arg); 
+		m->m_ext.ext_ref(m->m_ext.ext_arg);
 		n->m_ext = m->m_ext;
 		n->m_flags |= m->m_flags & (M_EXT | M_EXT_CLUSTER);
 	} else {
-		n->m_data = n->m_pktdat + (m->m_data - m->m_pktdat );
-		bcopy(mtod(m, char *), mtod(n, char *), n->m_len);
+		n->m_data = n->m_pktdat + (m->m_data - m->m_pktdat);
+		bcopy(mtod(m, void *), mtod(n, void *), n->m_len);
 	}
 
 	m = m->m_next;
@@ -1656,11 +1648,11 @@ m_copypacket(struct mbuf *m, int how)
 		if (m->m_flags & M_EXT) {
 			KKASSERT((n->m_flags & M_EXT) == 0);
 			n->m_data = m->m_data;
-			m->m_ext.ext_ref(m->m_ext.ext_arg); 
+			m->m_ext.ext_ref(m->m_ext.ext_arg);
 			n->m_ext = m->m_ext;
 			n->m_flags |= m->m_flags & (M_EXT | M_EXT_CLUSTER);
 		} else {
-			bcopy(mtod(m, char *), mtod(n, char *), n->m_len);
+			bcopy(mtod(m, void *), mtod(n, void *), n->m_len);
 		}
 
 		m = m->m_next;
@@ -1682,17 +1674,19 @@ m_copydata(const struct mbuf *m, int off, int len, void *_cp)
 	caddr_t *cp = _cp;
 	unsigned count;
 
-	KASSERT(off >= 0, ("m_copydata, negative off %d", off));
-	KASSERT(len >= 0, ("m_copydata, negative len %d", len));
+	KASSERT(off >= 0, ("%s: negative off %d", __func__, off));
+	KASSERT(len >= 0, ("%s: negative len %d", __func__, len));
 	while (off > 0) {
-		KASSERT(m != NULL, ("m_copydata, offset > size of mbuf chain"));
+		KASSERT(m != NULL,
+			("%s: offset > size of mbuf chain", __func__));
 		if (off < m->m_len)
 			break;
 		off -= m->m_len;
 		m = m->m_next;
 	}
 	while (len > 0) {
-		KASSERT(m != NULL, ("m_copydata, length > size of mbuf chain"));
+		KASSERT(m != NULL,
+			("%s: length > size of mbuf chain", __func__));
 		count = min(m->m_len - off, len);
 		bcopy(mtod(m, caddr_t) + off, cp, count);
 		len -= count;
@@ -1710,12 +1704,13 @@ m_copydata(const struct mbuf *m, int off, int len, void *_cp)
 struct mbuf *
 m_dup(struct mbuf *m, int how)
 {
-	struct mbuf **p, *top = NULL;
-	int remain, moff, nsize;
+	struct mbuf **p, *n, *top = NULL;
+	int remain, moff, nsize, chunk;
 
 	/* Sanity check */
 	if (m == NULL)
 		return (NULL);
+
 	KASSERT((m->m_flags & M_PKTHDR) != 0, ("%s: !PKTHDR", __func__));
 
 	/* While there's more data, get a new mbuf, tack it on, and fill it */
@@ -1723,8 +1718,6 @@ m_dup(struct mbuf *m, int how)
 	moff = 0;
 	p = &top;
 	while (remain > 0 || top == NULL) {	/* allow m->m_pkthdr.len == 0 */
-		struct mbuf *n;
-
 		/* Get the next new mbuf */
 		n = m_getl(remain, how, m->m_type, top == NULL ? M_PKTHDR : 0,
 			   &nsize);
@@ -1741,8 +1734,7 @@ m_dup(struct mbuf *m, int how)
 		/* Copy data from original mbuf(s) into new mbuf */
 		n->m_len = 0;
 		while (n->m_len < nsize && m != NULL) {
-			int chunk = min(nsize - n->m_len, m->m_len - moff);
-
+			chunk = min(nsize - n->m_len, m->m_len - moff);
 			bcopy(m->m_data + moff, n->m_data + n->m_len, chunk);
 			moff += chunk;
 			n->m_len += chunk;
@@ -1783,9 +1775,7 @@ m_dup_data(struct mbuf *m, int how)
 	struct mbuf **p, *n, *top = NULL;
 	int mlen, moff, chunk, gsize, nsize;
 
-	/*
-	 * Degenerate case
-	 */
+	/* Degenerate case */
 	if (m == NULL)
 		return (NULL);
 
@@ -1860,8 +1850,7 @@ m_cat(struct mbuf *m, struct mbuf *n)
 			return;
 		}
 		/* splat the data from one into the other */
-		bcopy(mtod(n, caddr_t), mtod(m, caddr_t) + m->m_len,
-		    (u_int)n->m_len);
+		bcopy(mtod(n, caddr_t), mtod(m, caddr_t) + m->m_len, n->m_len);
 		m->m_len += n->m_len;
 		n = m_free(n);
 	}
@@ -1870,9 +1859,8 @@ m_cat(struct mbuf *m, struct mbuf *n)
 void
 m_adj(struct mbuf *mp, int req_len)
 {
-	int len = req_len;
 	struct mbuf *m;
-	int count;
+	int count, len = req_len;
 
 	if ((m = mp) == NULL)
 		return;
@@ -1934,8 +1922,8 @@ m_adj(struct mbuf *mp, int req_len)
 			}
 			count -= m->m_len;
 		}
-		while (m->m_next)
-			(m = m->m_next) ->m_len = 0;
+		while ((m = m->m_next) != NULL)
+			m->m_len = 0;
 	}
 }
 
@@ -1989,14 +1977,15 @@ m_unshare(struct mbuf *m0, int how)
 		 * crypto operations, especially when using hardware.
 		 */
 		if ((m->m_flags & M_EXT) == 0) {
-			if (mprev && (mprev->m_flags & M_EXT) &&
+			if (mprev != NULL && (mprev->m_flags & M_EXT) &&
 			    m->m_len <= M_TRAILINGSPACE(mprev)) {
 				/* XXX: this ignores mbuf types */
 				memcpy(mtod(mprev, caddr_t) + mprev->m_len,
 				       mtod(m, caddr_t), m->m_len);
 				mprev->m_len += m->m_len;
-				mprev->m_next = m->m_next;	/* unlink from chain */
-				m_free(m);			/* reclaim mbuf */
+				/* unlink from chain and reclaim */
+				mprev->m_next = m->m_next;
+				m_free(m);
 			} else {
 				mprev = m;
 			}
@@ -2024,8 +2013,9 @@ m_unshare(struct mbuf *m0, int how)
 			memcpy(mtod(mprev, caddr_t) + mprev->m_len,
 			       mtod(m, caddr_t), m->m_len);
 			mprev->m_len += m->m_len;
-			mprev->m_next = m->m_next;	/* unlink from chain */
-			m_free(m);			/* reclaim mbuf */
+			/* unlink from chain and reclaim */
+			mprev->m_next = m->m_next;
+			m_free(m);
 			continue;
 		}
 
@@ -2077,7 +2067,7 @@ m_unshare(struct mbuf *m0, int how)
 			n->m_len = cc;
 			if (mlast != NULL)
 				mlast->m_next = n;
-			mlast = n;	
+			mlast = n;
 
 			len -= cc;
 			if (len <= 0)
@@ -2091,7 +2081,7 @@ m_unshare(struct mbuf *m0, int how)
 				return (NULL);
 			}
 		}
-		n->m_next = m->m_next; 
+		n->m_next = m->m_next;
 		if (mprev == NULL)
 			m0 = mfirst;		/* new head of chain */
 		else
@@ -2146,8 +2136,7 @@ m_pullup(struct mbuf *n, int len)
 	space = &m->m_dat[MLEN] - (m->m_data + m->m_len);
 	do {
 		count = min(min(max(len, max_protohdr), space), n->m_len);
-		bcopy(mtod(n, caddr_t), mtod(m, caddr_t) + m->m_len,
-		  (unsigned)count);
+		bcopy(mtod(n, caddr_t), mtod(m, caddr_t) + m->m_len, count);
 		len -= count;
 		m->m_len += count;
 		n->m_len -= count;
@@ -2226,7 +2215,7 @@ extpacket:
 	if (m->m_flags & M_EXT) {
 		KKASSERT((n->m_flags & M_EXT) == 0);
 		n->m_data = m->m_data + len;
-		m->m_ext.ext_ref(m->m_ext.ext_arg); 
+		m->m_ext.ext_ref(m->m_ext.ext_arg);
 		n->m_ext = m->m_ext;
 		n->m_flags |= m->m_flags & (M_EXT | M_EXT_CLUSTER);
 	} else {
@@ -2244,7 +2233,7 @@ extpacket:
  * Note: "offset" is ill-defined and always called as 0, so ignore it.
  */
 struct mbuf *
-m_devget(void *_buf, int len, int offset, struct ifnet *ifp)
+m_devget(void *_buf, int len, int offset __unused, struct ifnet *ifp)
 {
 	struct mbuf *m, *mfirst = NULL, **mtail;
 	caddr_t *buf = _buf;
@@ -2269,7 +2258,7 @@ m_devget(void *_buf, int len, int offset, struct ifnet *ifp)
 			flags = 0;
 		}
 
-		bcopy(buf, m->m_data, (unsigned)m->m_len);
+		bcopy(buf, m->m_data, m->m_len);
 		buf += m->m_len;
 		len -= m->m_len;
 		*mtail = m;
@@ -2321,7 +2310,7 @@ m_devpad(struct mbuf *m, int padto)
 	KKASSERT(M_WRITABLE(last));
 
 	/* Now zero the pad area */
-	bzero(mtod(last, char *) + last->m_len, padlen);
+	bzero(mtod(last, caddr_t) + last->m_len, padlen);
 	last->m_len += padlen;
 	m->m_pkthdr.len += padlen;
 	return 0;
@@ -2349,7 +2338,7 @@ _m_copyback2(struct mbuf *m0, int off, int len, const void *_cp, int how,
 		if (m->m_next == NULL && (tlen = M_TRAILINGSPACE(m)) > 0) {
 			/* Use the trailing space of the last mbuf. */
 			mlen = min(off - m->m_len, tlen);
-			bzero(mtod(m, char *) + m->m_len, mlen);
+			bzero(mtod(m, caddr_t) + m->m_len, mlen);
 			m->m_len += mlen;
 		}
 		off -= m->m_len;
@@ -2361,7 +2350,7 @@ _m_copyback2(struct mbuf *m0, int off, int len, const void *_cp, int how,
 			if (n == NULL)
 				goto out;
 			n->m_len = min(nsize, off + len);
-			bzero(mtod(n, char *), n->m_len);
+			bzero(mtod(n, void *), n->m_len);
 			m->m_next = n;
 		}
 		m = m->m_next;
@@ -2374,7 +2363,7 @@ _m_copyback2(struct mbuf *m0, int off, int len, const void *_cp, int how,
 			m->m_len += min(off + len - m->m_len, tlen);
 		}
 		mlen = min(m->m_len - off, len);
-		bcopy(cp, mtod(m, char *) + off, mlen);
+		bcopy(cp, mtod(m, caddr_t) + off, mlen);
 		off = 0;
 		cp += mlen;
 		len -= mlen;
@@ -2475,22 +2464,24 @@ m_append(struct mbuf *m0, int len, const void *_cp)
  */
 int
 m_apply(struct mbuf *m, int off, int len,
-    int (*f)(void *, void *, u_int), void *arg)
+	int (*f)(void *, void *, u_int), void *arg)
 {
 	u_int count;
 	int rval;
 
-	KASSERT(off >= 0, ("m_apply, negative off %d", off));
-	KASSERT(len >= 0, ("m_apply, negative len %d", len));
+	KASSERT(off >= 0, ("%s: negative off %d", __func__, off));
+	KASSERT(len >= 0, ("%s: negative len %d", __func__, len));
 	while (off > 0) {
-		KASSERT(m != NULL, ("m_apply, offset > size of mbuf chain"));
+		KASSERT(m != NULL,
+			("%s: offset > size of mbuf chain", __func__));
 		if (off < m->m_len)
 			break;
 		off -= m->m_len;
 		m = m->m_next;
 	}
 	while (len > 0) {
-		KASSERT(m != NULL, ("m_apply, offset > size of mbuf chain"));
+		KASSERT(m != NULL,
+			("%s: offset > size of mbuf chain", __func__));
 		count = min(m->m_len - off, len);
 		rval = (*f)(arg, mtod(m, caddr_t) + off, count);
 		if (rval)
@@ -2508,7 +2499,6 @@ m_apply(struct mbuf *m, int off, int len,
 struct mbuf *
 m_getptr(struct mbuf *m, int loc, int *off)
 {
-
 	while (loc >= 0) {
 		/* Normal end of search. */
 		if (m->m_len > loc) {
@@ -2557,7 +2547,7 @@ m_print(const struct mbuf *m)
 void
 m_move_pkthdr(struct mbuf *to, struct mbuf *from)
 {
-	KASSERT((to->m_flags & M_PKTHDR), ("m_move_pkthdr: not packet header"));
+	KASSERT((to->m_flags & M_PKTHDR), ("%s: not packet header", __func__));
 
 	to->m_flags |= from->m_flags & M_COPYFLAGS;
 	to->m_pkthdr = from->m_pkthdr;		/* especially tags */
@@ -2572,7 +2562,7 @@ m_move_pkthdr(struct mbuf *to, struct mbuf *from)
 int
 m_dup_pkthdr(struct mbuf *to, const struct mbuf *from, int how)
 {
-	KASSERT((to->m_flags & M_PKTHDR), ("m_dup_pkthdr: not packet header"));
+	KASSERT((to->m_flags & M_PKTHDR), ("%s: not packet header", __func__));
 
 	to->m_flags = (from->m_flags & M_COPYFLAGS) |
 		      (to->m_flags & ~M_COPYFLAGS);
@@ -2622,7 +2612,7 @@ m_defrag_nofree(struct mbuf *m0, int how)
 			goto nospace;
 	}
 #endif
-	
+
 	m_final = m_getl(m0->m_pkthdr.len, how, MT_DATA, M_PKTHDR, &nsize);
 	if (m_final == NULL)
 		goto nospace;
@@ -2644,7 +2634,7 @@ m_defrag_nofree(struct mbuf *m0, int how)
 				goto nospace;
 		}
 
-		m_copydata(m0, progress, length, mtod(m_new, caddr_t));
+		m_copydata(m0, progress, length, mtod(m_new, void *));
 		progress += length;
 		m_new->m_len = length;
 		if (m_new != m_final)

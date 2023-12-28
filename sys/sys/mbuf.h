@@ -54,11 +54,10 @@
 #endif
 
 /*
- * Mbufs are of a single size, MSIZE (machine/param.h), which
- * includes overhead.  An mbuf may add a single "mbuf cluster" of size
- * MCLBYTES (also in machine/param.h), which has no additional overhead
- * and is used instead of the internal data area; this is done when
- * at least MINCLSIZE of data must be stored.
+ * Mbufs are of a single size MSIZE, which includes overhead.
+ * An mbuf may add a single "mbuf cluster" of size MCLBYTES, which has
+ * no additional overhead and is used instead of the internal data area;
+ * this is done when at least MINCLSIZE of data must be stored.
  */
 #define	MLEN		(MSIZE - sizeof(struct m_hdr))	/* normal data len */
 #define	MHLEN		(MLEN - sizeof(struct pkthdr))	/* data len w/pkthdr */
@@ -152,7 +151,7 @@ SLIST_HEAD(packet_tags, m_tag);
  *             Keep this in mind, when adding or removing fields!
  */
 struct pkthdr {
-	struct	ifnet *rcvif;		/* rcv interface */
+	struct ifnet *rcvif;		/* rcv interface */
 	struct packet_tags tags;	/* list of packet tags */
 
 	/* variables for ip and tcp reassembly */
@@ -256,19 +255,19 @@ struct mbuf {
 #define	M_FIRSTFRAG	0x0800	/* packet is first fragment */
 #define	M_LASTFRAG	0x1000	/* packet is last fragment */
 #define	M_CLCACHE	0x2000	/* mbuf allocated from the cluster cache */
-#define M_EXT_CLUSTER	0x4000	/* standard cluster else special */
+#define	M_EXT_CLUSTER	0x4000	/* standard cluster else special */
 #define	M_PHCACHE	0x8000	/* mbuf allocated from the pkt header cache */
-#define M_UNUSED16	0x10000	/* was: notification event (SCTP) */
-#define M_VLANTAG	0x20000	/* ether_vlantag is valid */
-#define M_MPLSLABELED	0x40000	/* packet is mpls labeled */
-#define M_LENCHECKED	0x80000	/* packet proto lengths are checked */
-#define M_HASH		0x100000/* hash field in pkthdr is valid */
-#define M_PROTO6        0x200000/* protocol-specific */
-#define M_PROTO7        0x400000/* protocol-specific */
-#define M_PROTO8        0x800000/* protocol-specific */
-#define M_CKHASH	0x1000000/* hash needs software verification */
-#define M_PRIO		0x2000000/* high priority mbuf */
-#define M_SOLOCKED	0x4000000/* locked by userland for read() */
+#define	M_UNUSED16	0x10000	/* was: notification event (SCTP) */
+#define	M_VLANTAG	0x20000	/* ether_vlantag is valid */
+#define	M_MPLSLABELED	0x40000	/* packet is mpls labeled */
+#define	M_LENCHECKED	0x80000	/* packet proto lengths are checked */
+#define	M_HASH		0x100000	/* hash field in pkthdr is valid */
+#define	M_PROTO6	0x200000	/* protocol-specific */
+#define	M_PROTO7	0x400000	/* protocol-specific */
+#define	M_PROTO8	0x800000	/* protocol-specific */
+#define	M_CKHASH	0x1000000	/* hash needs software verification */
+#define	M_PRIO		0x2000000	/* high priority mbuf */
+#define	M_SOLOCKED	0x4000000	/* locked by userland for read() */
 
 /*
  * Flags copied when copying m_pkthdr.
@@ -296,7 +295,7 @@ struct mbuf {
 						 * NB: This flag is only used
 						 * by IP defragmenter.
 						 */
-#define CSUM_TSO		0x2000		/* will do TCP segmentation */
+#define	CSUM_TSO		0x2000		/* will do TCP segmentation */
 
 #define	CSUM_DELAY_DATA		(CSUM_TCP | CSUM_UDP)
 #define	CSUM_DELAY_IP		(CSUM_IP)	/* XXX add ipv6 here too? */
@@ -304,18 +303,18 @@ struct mbuf {
 /*
  * Flags indicating PF processing status
  */
-#define FW_MBUF_GENERATED	0x00000001
+#define	FW_MBUF_GENERATED	0x00000001
 #define	PF_MBUF_STRUCTURE	0x00000002	/* m_pkthdr.pf valid */
 #define	PF_MBUF_ROUTED		0x00000004	/* pf_routed field is valid */
 #define	PF_MBUF_TAGGED		0x00000008
 #define	IPFW_MBUF_CONTINUE	0x00000010
 #define	XX_MBUF_UNUSED20	0x00000020
-#define IPFORWARD_MBUF_TAGGED	0x00000040
-#define DUMMYNET_MBUF_TAGGED	0x00000080
-#define BRIDGE_MBUF_TAGGED	0x00000100
-#define FW_MBUF_REDISPATCH	0x00000200
-#define FW_MBUF_PRIVATE1	0x00000400
-#define FW_MBUF_PRIVATE2	0x00000800
+#define	IPFORWARD_MBUF_TAGGED	0x00000040
+#define	DUMMYNET_MBUF_TAGGED	0x00000080
+#define	BRIDGE_MBUF_TAGGED	0x00000100
+#define	FW_MBUF_REDISPATCH	0x00000200
+#define	FW_MBUF_PRIVATE1	0x00000400
+#define	FW_MBUF_PRIVATE2	0x00000800
 #define	IPFW_MBUF_GENERATED	FW_MBUF_GENERATED
 
 /*
@@ -424,8 +423,8 @@ struct mbstat {
 /*
  * Check if we can write to an mbuf.
  */
-#define M_EXT_WRITABLE(m)	(m_sharecount(m) == 1)
-#define M_WRITABLE(m)		(!((m)->m_flags & M_EXT) || M_EXT_WRITABLE(m))
+#define	M_EXT_WRITABLE(m)	(m_sharecount(m) == 1)
+#define	M_WRITABLE(m)		(!((m)->m_flags & M_EXT) || M_EXT_WRITABLE(m))
 
 /*
  * Check if the supplied mbuf has a packet header, or else panic.
@@ -485,6 +484,7 @@ struct mbstat {
 #define	m_copy(m, o, l)	m_copym((m), (o), (l), M_NOWAIT)
 
 #ifdef _KERNEL
+
 extern	u_int		 m_clalloc_wid;	/* mbuf cluster wait count */
 extern	u_int		 m_mballoc_wid;	/* mbuf wait count */
 extern	int		 max_linkhdr;	/* largest link-level header */
@@ -630,7 +630,10 @@ m_getb(int len, int how, int type, int flags)
 	return (m);
 }
 
+
 /*
+ * Mbuf tags
+ *
  * Packets may have annotations attached by affixing a list
  * of "packet tags" to the pkthdr structure.  Packet tags are
  * dynamically allocated semi-opaque data structures that have
@@ -668,27 +671,24 @@ m_getb(int len, int how, int type, int flags)
  *	struct m_tag *mtag = &p->tag;
  */
 
-#define	PACKET_TAG_NONE				0  /* Nadda */
-
-#define	PACKET_TAG_ENCAP			6 /* Encap.  processing */
-/* struct ifnet *, the GIF interface */
-#define	PACKET_TAG_IPV6_INPUT			8 /* IPV6 input processing */
-/* struct ip6aux */
-#define	PACKET_TAG_IPFW_DIVERT			9 /* divert info */
-/* struct divert_info */
-#define	PACKET_TAG_DUMMYNET			15 /* dummynet info */
-/* struct dn_pkt */
-#define	PACKET_TAG_IPFORWARD			18 /* ipforward info */
-/* struct sockaddr_in */
-#define PACKET_TAG_IPSRCRT			27 /* IP srcrt opts */
-/* struct ip_srcrt_opt */
-#define	PACKET_TAG_CARP                         28 /* CARP info */
-/* struct ifnet */
-#define PACKET_TAG_PF				29 /* PF info */
-/* struct pf_mtag */
-
-#define PACKET_TAG_PF_DIVERT			0x0200 /* pf(4) diverted packet */
-	
+#define	PACKET_TAG_NONE		0  /* Nadda */
+#define	PACKET_TAG_ENCAP	6 /* Encap. processing */
+				/* struct ifnet *, the GIF interface */
+#define	PACKET_TAG_IPV6_INPUT	8 /* IPV6 input processing */
+				/* struct ip6aux */
+#define	PACKET_TAG_IPFW_DIVERT	9 /* divert info */
+				/* struct divert_info */
+#define	PACKET_TAG_DUMMYNET	15 /* dummynet info */
+				/* struct dn_pkt */
+#define	PACKET_TAG_IPFORWARD	18 /* ipforward info */
+				/* struct sockaddr_in */
+#define PACKET_TAG_IPSRCRT	27 /* IP srcrt opts */
+				/* struct ip_srcrt_opt */
+#define	PACKET_TAG_CARP		28 /* CARP info */
+				/* struct ifnet */
+#define	PACKET_TAG_PF		29 /* PF info */
+				/* struct pf_mtag */
+#define	PACKET_TAG_PF_DIVERT	0x0200 /* pf(4) diverted packet */
 
 /* Packet tag routines */
 struct	m_tag 	*m_tag_alloc(uint32_t, int, int, int);
@@ -725,6 +725,11 @@ m_tag_find(struct mbuf *m, int type, struct m_tag *start)
 	return m_tag_locate(m, MTAG_ABI_COMPAT, type, start);
 }
 
+
+/*
+ * Mbuf queue routines
+ */
+
 struct mbufq {
 	STAILQ_HEAD(, mbuf)	mq_head;
 	int			mq_len;
@@ -734,7 +739,6 @@ struct mbufq {
 static inline void
 mbufq_init(struct mbufq *mq, int maxlen)
 {
-
 	STAILQ_INIT(&mq->mq_head);
 	mq->mq_maxlen = maxlen;
 	mq->mq_len = 0;
@@ -766,35 +770,30 @@ mbufq_drain(struct mbufq *mq)
 static inline struct mbuf *
 mbufq_first(const struct mbufq *mq)
 {
-
 	return (STAILQ_FIRST(&mq->mq_head));
 }
 
 static inline struct mbuf *
 mbufq_last(const struct mbufq *mq)
 {
-
 	return (STAILQ_LAST(&mq->mq_head, mbuf, m_stailqpkt));
 }
 
 static inline int
 mbufq_full(const struct mbufq *mq)
 {
-
 	return (mq->mq_len >= mq->mq_maxlen);
 }
 
 static inline int
 mbufq_len(const struct mbufq *mq)
 {
-
 	return (mq->mq_len);
 }
 
 static inline int
 mbufq_enqueue(struct mbufq *mq, struct mbuf *m)
 {
-
 	if (mbufq_full(mq))
 		return (ENOBUFS);
 	STAILQ_INSERT_TAIL(&mq->mq_head, m, m_stailqpkt);
@@ -819,7 +818,6 @@ mbufq_dequeue(struct mbufq *mq)
 static inline void
 mbufq_prepend(struct mbufq *mq, struct mbuf *m)
 {
-
 	STAILQ_INSERT_HEAD(&mq->mq_head, m, m_stailqpkt);
 	mq->mq_len++;
 }
