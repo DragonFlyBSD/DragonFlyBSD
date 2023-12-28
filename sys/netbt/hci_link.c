@@ -425,7 +425,7 @@ hci_acl_recv(struct mbuf *m, struct hci_unit *unit)
 	KKASSERT(unit != NULL);
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(hdr));
-	m_copydata(m, 0, sizeof(hdr), (caddr_t)&hdr);
+	m_copydata(m, 0, sizeof(hdr), &hdr);
 	m_adj(m, sizeof(hdr));
 
 #ifdef DIAGNOSTIC
@@ -505,7 +505,7 @@ hci_acl_recv(struct mbuf *m, struct hci_unit *unit)
 		goto bad;
 	}
 
-	m_copydata(m, 0, sizeof(want), (caddr_t)&want);
+	m_copydata(m, 0, sizeof(want), &want);
 	want = letoh16(want) + sizeof(l2cap_hdr_t) - got;
 
 	if (want > 0)
@@ -835,7 +835,7 @@ hci_sco_recv(struct mbuf *m, struct hci_unit *unit)
 	KKASSERT(unit != NULL);
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(hdr));
-	m_copydata(m, 0, sizeof(hdr), (caddr_t)&hdr);
+	m_copydata(m, 0, sizeof(hdr), &hdr);
 	m_adj(m, sizeof(hdr));
 
 #ifdef DIAGNOSTIC

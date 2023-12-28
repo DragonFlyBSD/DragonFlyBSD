@@ -3221,7 +3221,7 @@ urtwn_tx_start(struct urtwn_softc *sc, struct mbuf *m, uint8_t type,
 	txd->txdsum = sum;	/* NB: already little endian. */
 
 	xferlen = sizeof(*txd) + m->m_pkthdr.len;
-	m_copydata(m, 0, m->m_pkthdr.len, (caddr_t)&txd[1]);
+	m_copydata(m, 0, m->m_pkthdr.len, &txd[1]);
 
 	data->buflen = xferlen;
 	data->m = m;

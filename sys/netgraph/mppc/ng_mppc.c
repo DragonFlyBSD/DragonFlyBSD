@@ -480,7 +480,7 @@ ng_mppc_compress(node_p node, struct mbuf *m, struct mbuf **resultp)
 	inbuf = kmalloc(inlen, M_NETGRAPH, M_NOWAIT);
 	if (inbuf == NULL)
 		return (ENOMEM);
-	m_copydata(m, 0, inlen, (caddr_t)inbuf);
+	m_copydata(m, 0, inlen, inbuf);
 	if ((d->cfg.bits & MPPC_BIT) != 0)
 		outlen = MPPC_MAX_BLOWUP(inlen);
 	else
@@ -565,7 +565,7 @@ ng_mppc_compress(node_p node, struct mbuf *m, struct mbuf **resultp)
 	*((u_int16_t *)outbuf) = htons(header);
 
 	/* Return packet in an mbuf */
-	*resultp = m_devget((caddr_t)outbuf, outlen, 0, NULL);
+	*resultp = m_devget(outbuf, outlen, 0, NULL);
 	kfree(outbuf, M_NETGRAPH);
 	return (*resultp == NULL ? ENOBUFS : 0);
 }
@@ -587,7 +587,7 @@ ng_mppc_decompress(node_p node, struct mbuf *m, struct mbuf **resultp)
 	/* Pull off header */
 	if (m->m_pkthdr.len < MPPC_HDRLEN)
 		return (EINVAL);
-	m_copydata(m, 0, MPPC_HDRLEN, (caddr_t)&header);
+	m_copydata(m, 0, MPPC_HDRLEN, &header);
 	header = ntohs(header);
 	cc = (header & MPPC_CCOUNT_MASK);
 
@@ -596,7 +596,7 @@ ng_mppc_decompress(node_p node, struct mbuf *m, struct mbuf **resultp)
 	buf = kmalloc(len, M_NETGRAPH, M_NOWAIT);
 	if (buf == NULL)
 		return (ENOMEM);
-	m_copydata(m, MPPC_HDRLEN, len, (caddr_t)buf);
+	m_copydata(m, MPPC_HDRLEN, len, buf);
 
 	/* Check for an unexpected jump in the sequence number */
 	numLost = ((cc - d->cc) & MPPC_CCOUNT_MASK);
@@ -737,7 +737,7 @@ failed:
 #endif
 
 	/* Return result in an mbuf */
-	*resultp = m_devget((caddr_t)buf, len, 0, NULL);
+	*resultp = m_devget(buf, len, 0, NULL);
 	kfree(buf, M_NETGRAPH);
 	return (*resultp == NULL ? ENOBUFS : 0);
 }

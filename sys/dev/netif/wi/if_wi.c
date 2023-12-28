@@ -1009,7 +1009,7 @@ wi_start(struct wi_softc *sc)
 		}
 
 		m_copydata(m0, 0, sizeof(struct ieee80211_frame),
-		    (caddr_t)&frmhdr.wi_whdr);
+		    &frmhdr.wi_whdr);
 		m_adj(m0, sizeof(struct ieee80211_frame));
 		frmhdr.wi_dat_len = htole16(m0->m_pkthdr.len);
 		ieee80211_free_node(ni);
@@ -1078,8 +1078,7 @@ wi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m0,
 	}
 	m0->m_pkthdr.rcvif = NULL;
 
-	m_copydata(m0, 4, ETHER_ADDR_LEN * 2,
-	    (caddr_t)&frmhdr.wi_ehdr);
+	m_copydata(m0, 4, ETHER_ADDR_LEN * 2, &frmhdr.wi_ehdr);
 	frmhdr.wi_ehdr.ether_type = 0;
 	wh = mtod(m0, struct ieee80211_frame *);
 			
@@ -1099,8 +1098,7 @@ wi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m0,
 		sc->sc_tx_th.wt_rate = ni->ni_txrate;
 		ieee80211_radiotap_tx(vap, m0);
 	}
-	m_copydata(m0, 0, sizeof(struct ieee80211_frame),
-	    (caddr_t)&frmhdr.wi_whdr);
+	m_copydata(m0, 0, sizeof(struct ieee80211_frame), &frmhdr.wi_whdr);
 	m_adj(m0, sizeof(struct ieee80211_frame));
 	frmhdr.wi_dat_len = htole16(m0->m_pkthdr.len);
 	if (wi_start_tx(sc, &frmhdr, m0) < 0) {
@@ -1949,7 +1947,7 @@ wi_mwrite_bap(struct wi_softc *sc, int id, int off, struct mbuf *m0, int totlen)
 		len = min(m->m_len, totlen);
 
 		if (((u_long)m->m_data) % 2 != 0 || len % 2 != 0) {
-			m_copydata(m, 0, totlen, (caddr_t)&sc->sc_txbuf);
+			m_copydata(m, 0, totlen, &sc->sc_txbuf);
 			return wi_write_bap(sc, id, off, (caddr_t)&sc->sc_txbuf,
 			    totlen);
 		}

@@ -395,7 +395,7 @@ ng_bpf_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 			needfree = 1;
 		} else
 			data = buf;
-		m_copydata(m, 0, totlen, (caddr_t)data);
+		m_copydata(m, 0, totlen, data);
 	} else
 		data = mtod(m, u_char *);
 

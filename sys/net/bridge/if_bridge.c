@@ -4041,12 +4041,12 @@ bridge_pfil(struct mbuf **mp, struct ifnet *bifp, struct ifnet *ifp, int dir)
 	}
 
 	/* Strip off the Ethernet header and keep a copy. */
-	m_copydata(*mp, 0, ETHER_HDR_LEN, (caddr_t) &eh2);
+	m_copydata(*mp, 0, ETHER_HDR_LEN, &eh2);
 	m_adj(*mp, ETHER_HDR_LEN);
 
 	/* Strip off snap header, if present */
 	if (snap) {
-		m_copydata(*mp, 0, sizeof(struct llc), (caddr_t) &llc1);
+		m_copydata(*mp, 0, sizeof(struct llc), &llc1);
 		m_adj(*mp, sizeof(struct llc));
 	}
 

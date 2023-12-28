@@ -496,7 +496,7 @@ ng_mppc_compress(node_p node, struct mbuf **datap)
 			m_freem(m);
 			return (ENOMEM);
 		}
-		m_copydata(m, 0, inlen, (caddr_t)inbuf);
+		m_copydata(m, 0, inlen, inbuf);
 
 		outlen = MPPC_MAX_BLOWUP(inlen);
 		outbuf = kmalloc(outlen, M_NETGRAPH_MPPC, M_WAITOK | M_NULLOK);
@@ -529,7 +529,7 @@ ng_mppc_compress(node_p node, struct mbuf **datap)
 				
 			/* Replace m by the compresed one. */
 			m_freem(m);
-			m = m_devget((caddr_t)outbuf, outlen, 0, NULL);
+			m = m_devget(outbuf, outlen, 0, NULL);
 		}
 		d->flushed = (rtn & MPPC_EXPANDED) != 0
 		    || (flags & MPPC_SAVE_HISTORY) == 0;
@@ -607,7 +607,7 @@ ng_mppc_decompress(node_p node, struct mbuf **datap)
 		m_freem(m);
 		return (EINVAL);
 	}
-	m_copydata(m, 0, MPPC_HDRLEN, (caddr_t)&header);
+	m_copydata(m, 0, MPPC_HDRLEN, &header);
 	header = ntohs(header);
 	cc = (header & MPPC_CCOUNT_MASK);
 	m_adj(m, MPPC_HDRLEN);
@@ -734,7 +734,7 @@ failed:
 			m_freem(m);
 			return (ENOMEM);
 		}
-		m_copydata(m, 0, len, (caddr_t)buf);
+		m_copydata(m, 0, len, buf);
 
 		/* Allocate a buffer for decompressed data */
 		decompbuf = kmalloc(MPPC_DECOMP_BUFSIZE + MPPC_DECOMP_SAFETY,
@@ -774,7 +774,7 @@ failed:
 		len = decomplen - destCnt;
 	
 		m_freem(m);
-		m = m_devget((caddr_t)decompbuf, len, 0, NULL);
+		m = m_devget(decompbuf, len, 0, NULL);
 		kfree(decompbuf, M_NETGRAPH_MPPC);
 	}
 #endif

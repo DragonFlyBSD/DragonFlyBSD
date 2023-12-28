@@ -450,7 +450,7 @@ cisco_input(sc_p sc, item_p item)
 	if (m->m_len >= sizeof(*h))			/* the common case */
 		h = mtod(m, const struct cisco_header *);
 	else {
-		m_copydata(m, 0, sizeof(*h), (caddr_t)&hdrbuf);
+		m_copydata(m, 0, sizeof(*h), &hdrbuf);
 		h = &hdrbuf;
 	}
 	m_adj(m, sizeof(*h));
@@ -480,7 +480,7 @@ cisco_input(sc_p sc, item_p item)
 			if (m->m_len >= sizeof(*p))	/* the common case */
 				p = mtod(m, const struct cisco_packet *);
 			else {
-				m_copydata(m, 0, sizeof(*p), (caddr_t)&pktbuf);
+				m_copydata(m, 0, sizeof(*p), &pktbuf);
 				p = &pktbuf;
 			}
 

@@ -642,7 +642,7 @@ ieee80211_realign(struct ieee80211vap *vap, struct mbuf *m, size_t align)
 	if (__predict_true(n != NULL)) {
 		m_move_pkthdr(n, m);
 		n->m_data = (caddr_t)(ALIGN(n->m_data + align) - align);
-		m_copydata(m, 0, pktlen, mtod(n, caddr_t));
+		m_copydata(m, 0, pktlen, mtod(n, void *));
 		n->m_len = pktlen;
 	} else {
 		IEEE80211_DISCARD(vap, IEEE80211_MSG_ANY,

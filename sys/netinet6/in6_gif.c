@@ -366,7 +366,7 @@ gif_encapcheck6(const struct mbuf *m, int off, int proto, void *arg)
 	/* sanity check done in caller */
 	sc = (struct gif_softc *)arg;
 
-	m_copydata(m, 0, sizeof(ip6), (caddr_t)&ip6);
+	m_copydata(m, 0, sizeof(ip6), &ip6);
 	ifp = (m->m_flags & M_PKTHDR) ? m->m_pkthdr.rcvif : NULL;
 
 	return gif_validate6(&ip6, sc, ifp);

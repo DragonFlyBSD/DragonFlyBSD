@@ -209,7 +209,7 @@ icmp_error(struct mbuf *n, int type, int code, n_long dest, int destmtu)
 	}
 
 	icp->icmp_code = code;
-	m_copydata(n, 0, icmplen, (caddr_t)&icp->icmp_ip);
+	m_copydata(n, 0, icmplen, &icp->icmp_ip);
 	nip = &icp->icmp_ip;
 
 	/*

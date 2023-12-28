@@ -933,7 +933,7 @@ again:
 				if (m0 != NULL) {
 					m_copydata(xfer->mbuf, 0,
 						xfer->mbuf->m_pkthdr.len,
-						mtod(m0, caddr_t));
+						mtod(m0, void *));
 					m0->m_len = m0->m_pkthdr.len = 
 						xfer->mbuf->m_pkthdr.len;
 					m_freem(xfer->mbuf);

@@ -112,7 +112,7 @@ l2cap_recv_frame(struct mbuf *m, struct hci_link *link)
 	struct l2cap_channel *chan;
 	l2cap_hdr_t hdr;
 
-	m_copydata(m, 0, sizeof(hdr), (caddr_t)&hdr);
+	m_copydata(m, 0, sizeof(hdr), &hdr);
 	m_adj(m, sizeof(hdr));
 
 	hdr.length = letoh16(hdr.length);

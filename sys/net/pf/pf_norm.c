@@ -1392,7 +1392,7 @@ pf_normalize_tcp(int dir, struct pfi_kif *kif, struct mbuf *m, int ipoff,
 
 	/* copy back packet headers if we sanitized */
 	if (rewrite)
-		m_copyback(m, off, sizeof(*th), (caddr_t)th);
+		m_copyback(m, off, sizeof(*th), th);
 
 	return (PF_PASS);
 

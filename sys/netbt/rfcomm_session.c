@@ -1225,10 +1225,10 @@ rfcomm_session_recv_mcc_rpn(struct rfcomm_session *rs, int cr, struct mbuf *m)
 	rpn.xoff_char = RFCOMM_RPN_XOFF_CHAR;
 
 	if (m->m_pkthdr.len == sizeof(rpn)) {
-		m_copydata(m, 0, sizeof(rpn), (caddr_t)&rpn);
+		m_copydata(m, 0, sizeof(rpn), &rpn);
 		rpn.param_mask = RFCOMM_RPN_PM_ALL;
 	} else if (m->m_pkthdr.len == 1) {
-		m_copydata(m, 0, 1, (caddr_t)&rpn);
+		m_copydata(m, 0, 1, &rpn);
 		rpn.param_mask = letoh16(rpn.param_mask);
 	} else {
 		DPRINTF("Bad RPN length (%d)\n", m->m_pkthdr.len);
@@ -1285,7 +1285,7 @@ rfcomm_session_recv_mcc_rls(struct rfcomm_session *rs, int cr, struct mbuf *m)
 		return;
 	}
 
-	m_copydata(m, 0, sizeof(rls), (caddr_t)&rls);
+	m_copydata(m, 0, sizeof(rls), &rls);
 
 	/*
 	 * So far as I can tell, we just send back what
@@ -1313,7 +1313,7 @@ rfcomm_session_recv_mcc_pn(struct rfcomm_session *rs, int cr, struct mbuf *m)
 		return;
 	}
 
-	m_copydata(m, 0, sizeof(pn), (caddr_t)&pn);
+	m_copydata(m, 0, sizeof(pn), &pn);
 
 	pn.dlci &= 0x3f;
 	pn.mtu = letoh16(pn.mtu);

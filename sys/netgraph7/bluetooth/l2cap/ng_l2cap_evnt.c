@@ -1273,7 +1273,7 @@ get_next_l2cap_opt(struct mbuf *m, int *off, ng_l2cap_cfg_opt_p hdr,
 	if (len < 0 || len < sizeof(*hdr))
 		return (-1);
 
-	m_copydata(m, *off, sizeof(*hdr), (caddr_t) hdr);
+	m_copydata(m, *off, sizeof(*hdr), hdr);
 	*off += sizeof(*hdr);
 	len  -= sizeof(*hdr);
 
@@ -1285,7 +1285,7 @@ get_next_l2cap_opt(struct mbuf *m, int *off, ng_l2cap_cfg_opt_p hdr,
 		if (hdr->length != NG_L2CAP_OPT_MTU_SIZE || len < hdr->length)
 			return (-2);
 
-		m_copydata(m, *off, NG_L2CAP_OPT_MTU_SIZE, (caddr_t) val);
+		m_copydata(m, *off, NG_L2CAP_OPT_MTU_SIZE, val);
 		val->mtu = le16toh(val->mtu);
 		*off += NG_L2CAP_OPT_MTU_SIZE;
 		break;
@@ -1295,7 +1295,7 @@ get_next_l2cap_opt(struct mbuf *m, int *off, ng_l2cap_cfg_opt_p hdr,
 		    len < hdr->length)
 			return (-2);
 
-		m_copydata(m, *off, NG_L2CAP_OPT_FLUSH_TIMO_SIZE, (caddr_t)val);
+		m_copydata(m, *off, NG_L2CAP_OPT_FLUSH_TIMO_SIZE, val);
 		val->flush_timo = le16toh(val->flush_timo);
 		*off += NG_L2CAP_OPT_FLUSH_TIMO_SIZE;
 		break;
@@ -1304,7 +1304,7 @@ get_next_l2cap_opt(struct mbuf *m, int *off, ng_l2cap_cfg_opt_p hdr,
 		if (hdr->length != NG_L2CAP_OPT_QOS_SIZE || len < hdr->length)
 			return (-2);
 
-		m_copydata(m, *off, NG_L2CAP_OPT_QOS_SIZE, (caddr_t) val);
+		m_copydata(m, *off, NG_L2CAP_OPT_QOS_SIZE, val);
 		val->flow.token_rate = le32toh(val->flow.token_rate);
 		val->flow.token_bucket_size = 
 				le32toh(val->flow.token_bucket_size);

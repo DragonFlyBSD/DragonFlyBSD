@@ -366,7 +366,7 @@ gif_encapcheck4(const struct mbuf *m, int off, int proto, void *arg)
 	sc = (struct gif_softc *)arg;
 
 	/* LINTED const cast */
-	m_copydata(__DECONST(struct mbuf *, m), 0, sizeof ip, (caddr_t)&ip);
+	m_copydata(__DECONST(struct mbuf *, m), 0, sizeof ip, &ip);
 	ifp = ((m->m_flags & M_PKTHDR) != 0) ? m->m_pkthdr.rcvif : NULL;
 
 	return gif_validate4(&ip, sc, ifp);

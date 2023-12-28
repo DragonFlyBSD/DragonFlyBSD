@@ -1390,8 +1390,7 @@ encap_retry:
 				return ENOMEM;
 			}
 		}
-		m_copydata(m_head, 0, m_head->m_pkthdr.len,
-		    mtod(mn, caddr_t));
+		m_copydata(m_head, 0, m_head->m_pkthdr.len, mtod(mn, void *));
 		mn->m_pkthdr.len = mn->m_len = m_head->m_pkthdr.len;
 		m_freem(m_head);
 		m_head = mn;

@@ -247,7 +247,7 @@ stf_encapcheck(const struct mbuf *m, int off, int proto, void *arg)
 	if (proto != IPPROTO_IPV6)
 		return 0;
 
-	m_copydata(m, 0, sizeof(ip), (caddr_t)&ip);
+	m_copydata(m, 0, sizeof(ip), &ip);
 
 	if (ip.ip_v != 4)
 		return 0;

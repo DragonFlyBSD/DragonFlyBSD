@@ -480,7 +480,7 @@ nga_rcv_sync(const sc_p sc, item_p item)
 		};
 		u_char buf[4];
 
-		m_copydata(m, 0, 4, (caddr_t)buf);
+		m_copydata(m, 0, 4, buf);
 		if (bcmp(buf, &lcphdr, 4) == 0)
 			accm = ~0;
 	}

@@ -165,7 +165,7 @@ hci_event(struct mbuf *m, struct hci_unit *unit)
 	KKASSERT(m->m_flags & M_PKTHDR);
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(hdr));
-	m_copydata(m, 0, sizeof(hdr), (caddr_t)&hdr);
+	m_copydata(m, 0, sizeof(hdr), &hdr);
 	m_adj(m, sizeof(hdr));
 
 	KKASSERT(hdr.type == HCI_EVENT_PKT);
@@ -242,7 +242,7 @@ hci_event_command_status(struct hci_unit *unit, struct mbuf *m)
 	struct hci_link *link;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(ep));
-	m_copydata(m, 0, sizeof(ep), (caddr_t)&ep);
+	m_copydata(m, 0, sizeof(ep), &ep);
 	m_adj(m, sizeof(ep));
 
 	DPRINTFN(1, "(%s) opcode (%03x|%04x) status = 0x%x num_cmd_pkts = %d\n",
@@ -297,7 +297,7 @@ hci_event_command_compl(struct hci_unit *unit, struct mbuf *m)
 	hci_status_rp rp;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(ep));
-	m_copydata(m, 0, sizeof(ep), (caddr_t)&ep);
+	m_copydata(m, 0, sizeof(ep), &ep);
 	m_adj(m, sizeof(ep));
 
 	DPRINTFN(1, "(%s) opcode (%03x|%04x) num_cmd_pkts = %d\n",
@@ -310,7 +310,7 @@ hci_event_command_compl(struct hci_unit *unit, struct mbuf *m)
 	 * that a command_complete packet will contain the status though most
 	 * do seem to.
 	 */
-	m_copydata(m, 0, sizeof(rp), (caddr_t)&rp);
+	m_copydata(m, 0, sizeof(rp), &rp);
 	if (rp.status > 0)
 		kprintf("%s: CommandComplete opcode (%03x|%04x) failed (status=0x%02x)\n",
 		    device_get_nameunit(unit->hci_dev), HCI_OGF(letoh16(ep.opcode)),
@@ -374,15 +374,15 @@ hci_event_num_compl_pkts(struct hci_unit *unit, struct mbuf *m)
 	int num_acl = 0, num_sco = 0;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(ep));
-	m_copydata(m, 0, sizeof(ep), (caddr_t)&ep);
+	m_copydata(m, 0, sizeof(ep), &ep);
 	m_adj(m, sizeof(ep));
 
 	while (ep.num_con_handles--) {
-		m_copydata(m, 0, sizeof(handle), (caddr_t)&handle);
+		m_copydata(m, 0, sizeof(handle), &handle);
 		m_adj(m, sizeof(handle));
 		handle = letoh16(handle);
 
-		m_copydata(m, 0, sizeof(num), (caddr_t)&num);
+		m_copydata(m, 0, sizeof(num), &num);
 		m_adj(m, sizeof(num));
 		num = letoh16(num);
 
@@ -445,7 +445,7 @@ hci_event_inquiry_result(struct hci_unit *unit, struct mbuf *m)
 	struct hci_memo *memo;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(ep));
-	m_copydata(m, 0, sizeof(ep), (caddr_t)&ep);
+	m_copydata(m, 0, sizeof(ep), &ep);
 	m_adj(m, sizeof(ep));
 
 	DPRINTFN(1, "(%s) %d response%s\n", device_get_nameunit(unit->hci_dev),
@@ -453,7 +453,7 @@ hci_event_inquiry_result(struct hci_unit *unit, struct mbuf *m)
 
 	while(ep.num_responses--) {
 		KKASSERT(m->m_pkthdr.len >= sizeof(ir));
-		m_copydata(m, 0, sizeof(ir), (caddr_t)&ir);
+		m_copydata(m, 0, sizeof(ir), &ir);
 		m_adj(m, sizeof(ir));
 
 		DPRINTFN(1, "bdaddr %02x:%02x:%02x:%02x:%02x:%02x\n",
@@ -482,7 +482,7 @@ hci_event_rssi_result(struct hci_unit *unit, struct mbuf *m)
 	struct hci_memo *memo;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(ep));
-	m_copydata(m, 0, sizeof(ep), (caddr_t)&ep);
+	m_copydata(m, 0, sizeof(ep), &ep);
 	m_adj(m, sizeof(ep));
 
 	DPRINTFN(1, "%d response%s\n", ep.num_responses,
@@ -490,7 +490,7 @@ hci_event_rssi_result(struct hci_unit *unit, struct mbuf *m)
 
 	while(ep.num_responses--) {
 		KKASSERT(m->m_pkthdr.len >= sizeof(rr));
-		m_copydata(m, 0, sizeof(rr), (caddr_t)&rr);
+		m_copydata(m, 0, sizeof(rr), &rr);
 		m_adj(m, sizeof(rr));
 
 		DPRINTFN(1, "bdaddr %02x:%02x:%02x:%02x:%02x:%02x\n",
@@ -522,7 +522,7 @@ hci_event_con_compl(struct hci_unit *unit, struct mbuf *m)
 	int err;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(ep));
-	m_copydata(m, 0, sizeof(ep), (caddr_t)&ep);
+	m_copydata(m, 0, sizeof(ep), &ep);
 	m_adj(m, sizeof(ep));
 
 	DPRINTFN(1, "(%s) %s connection complete for "
@@ -618,7 +618,7 @@ hci_event_discon_compl(struct hci_unit *unit, struct mbuf *m)
 	struct hci_link *link;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(ep));
-	m_copydata(m, 0, sizeof(ep), (caddr_t)&ep);
+	m_copydata(m, 0, sizeof(ep), &ep);
 	m_adj(m, sizeof(ep));
 
 	ep.con_handle = letoh16(ep.con_handle);
@@ -646,7 +646,7 @@ hci_event_con_req(struct hci_unit *unit, struct mbuf *m)
 	struct hci_link *link;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(ep));
-	m_copydata(m, 0, sizeof(ep), (caddr_t)&ep);
+	m_copydata(m, 0, sizeof(ep), &ep);
 	m_adj(m, sizeof(ep));
 
 	DPRINTFN(1, "(%s) bdaddr %2.2x:%2.2x:%2.2x:%2.2x:%2.2x:%2.2x "
@@ -694,7 +694,7 @@ hci_event_auth_compl(struct hci_unit *unit, struct mbuf *m)
 	int err;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(ep));
-	m_copydata(m, 0, sizeof(ep), (caddr_t)&ep);
+	m_copydata(m, 0, sizeof(ep), &ep);
 	m_adj(m, sizeof(ep));
 
 	ep.con_handle = HCI_CON_HANDLE(letoh16(ep.con_handle));
@@ -737,7 +737,7 @@ hci_event_encryption_change(struct hci_unit *unit, struct mbuf *m)
 	int err;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(ep));
-	m_copydata(m, 0, sizeof(ep), (caddr_t)&ep);
+	m_copydata(m, 0, sizeof(ep), &ep);
 	m_adj(m, sizeof(ep));
 
 	ep.con_handle = HCI_CON_HANDLE(letoh16(ep.con_handle));
@@ -782,7 +782,7 @@ hci_event_change_con_link_key_compl(struct hci_unit *unit, struct mbuf *m)
 	int err;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(ep));
-	m_copydata(m, 0, sizeof(ep), (caddr_t)&ep);
+	m_copydata(m, 0, sizeof(ep), &ep);
 	m_adj(m, sizeof(ep));
 
 	ep.con_handle = HCI_CON_HANDLE(letoh16(ep.con_handle));
@@ -823,7 +823,7 @@ hci_event_read_clock_offset_compl(struct hci_unit *unit, struct mbuf *m)
 	struct hci_link *link;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(ep));
-	m_copydata(m, 0, sizeof(ep), (caddr_t)&ep);
+	m_copydata(m, 0, sizeof(ep), &ep);
 	m_adj(m, sizeof(ep));
 
 	DPRINTFN(1, "handle #%d, offset=%u, status=0x%x\n",
@@ -847,7 +847,7 @@ hci_cmd_read_bdaddr(struct hci_unit *unit, struct mbuf *m)
 	hci_read_bdaddr_rp rp;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(rp));
-	m_copydata(m, 0, sizeof(rp), (caddr_t)&rp);
+	m_copydata(m, 0, sizeof(rp), &rp);
 	m_adj(m, sizeof(rp));
 
 	if (rp.status > 0)
@@ -872,7 +872,7 @@ hci_cmd_read_buffer_size(struct hci_unit *unit, struct mbuf *m)
 	hci_read_buffer_size_rp rp;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(rp));
-	m_copydata(m, 0, sizeof(rp), (caddr_t)&rp);
+	m_copydata(m, 0, sizeof(rp), &rp);
 	m_adj(m, sizeof(rp));
 
 	if (rp.status > 0)
@@ -900,7 +900,7 @@ hci_cmd_read_local_features(struct hci_unit *unit, struct mbuf *m)
 	hci_read_local_features_rp rp;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(rp));
-	m_copydata(m, 0, sizeof(rp), (caddr_t)&rp);
+	m_copydata(m, 0, sizeof(rp), &rp);
 	m_adj(m, sizeof(rp));
 
 	if (rp.status > 0)
@@ -994,7 +994,7 @@ hci_cmd_read_local_ver(struct hci_unit *unit, struct mbuf *m)
 	hci_read_local_ver_rp rp;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(rp));
-	m_copydata(m, 0, sizeof(rp), (caddr_t)&rp);
+	m_copydata(m, 0, sizeof(rp), &rp);
 	m_adj(m, sizeof(rp));
 
 	if (rp.status != 0)
@@ -1021,7 +1021,7 @@ hci_cmd_read_local_commands(struct hci_unit *unit, struct mbuf *m)
 	hci_read_local_commands_rp rp;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(rp));
-	m_copydata(m, 0, sizeof(rp), (caddr_t)&rp);
+	m_copydata(m, 0, sizeof(rp), &rp);
 	m_adj(m, sizeof(rp));
 
 	if (rp.status != 0)
@@ -1050,7 +1050,7 @@ hci_cmd_reset(struct hci_unit *unit, struct mbuf *m)
 	int acl;
 
 	KKASSERT(m->m_pkthdr.len >= sizeof(rp));
-	m_copydata(m, 0, sizeof(rp), (caddr_t)&rp);
+	m_copydata(m, 0, sizeof(rp), &rp);
 	m_adj(m, sizeof(rp));
 
 	if (rp.status != 0)

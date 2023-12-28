@@ -484,7 +484,7 @@ hci_send(struct hci_pcb *pcb, struct mbuf *m, bdaddr_t *addr)
 		err = EMSGSIZE;
 		goto bad;
 	}
-	m_copydata(m, 0, sizeof(hdr), (caddr_t)&hdr);
+	m_copydata(m, 0, sizeof(hdr), &hdr);
 	hdr.opcode = letoh16(hdr.opcode);
 
 	/* only allows CMD packets to be sent */

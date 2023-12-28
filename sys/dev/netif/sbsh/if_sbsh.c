@@ -717,7 +717,7 @@ repack(struct sbsh_softc *sc, struct mbuf *m)
 		}
 	}
 
-	m_copydata(m, 0, m->m_pkthdr.len, mtod(m_new, caddr_t));
+	m_copydata(m, 0, m->m_pkthdr.len, mtod(m_new, void *));
 	m_new->m_pkthdr.len = m_new->m_len = m->m_pkthdr.len;
 	m_freem(m);
 	return (m_new);

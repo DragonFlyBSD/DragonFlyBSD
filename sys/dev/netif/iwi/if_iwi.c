@@ -1941,7 +1941,7 @@ iwi_tx_start(struct iwi_softc *sc, struct mbuf *m0, struct ieee80211_node *ni,
 	desc = &txq->desc[txq->cur];
 
 	/* save and trim IEEE802.11 header */
-	m_copydata(m0, 0, hdrlen, (caddr_t)&desc->wh);
+	m_copydata(m0, 0, hdrlen, &desc->wh);
 	m_adj(m0, hdrlen);
 
 #if defined(__DragonFly__)

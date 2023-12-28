@@ -1208,7 +1208,7 @@ ni6_input(struct mbuf *m, int off)
 			 */
 			/* m_pulldown instead of copy? */
 			m_copydata(m, off + sizeof(struct icmp6_nodeinfo),
-			    subjlen, (caddr_t)&sin6.sin6_addr);
+			    subjlen, &sin6.sin6_addr);
 			if (in6_addr2zoneid(m->m_pkthdr.rcvif,
 			    &sin6.sin6_addr, &sin6.sin6_scope_id))
 				goto bad;
@@ -1948,7 +1948,7 @@ icmp6_reflect(struct mbuf *m, size_t off)
 		struct ip6_hdr nip6;
 
 		l = off - sizeof(struct ip6_hdr);
-		m_copydata(m, 0, sizeof(nip6), (caddr_t)&nip6);
+		m_copydata(m, 0, sizeof(nip6), &nip6);
 		m_adj(m, l);
 		l = sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr);
 		if (m->m_len < l) {

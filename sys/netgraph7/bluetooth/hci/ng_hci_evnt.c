@@ -386,7 +386,7 @@ inquiry_result(ng_hci_unit_p unit, struct mbuf *event)
 
 	for (; ep->num_responses > 0; ep->num_responses --) {
 		/* Get remote unit address */
-		m_copydata(event, 0, sizeof(bdaddr), (caddr_t) &bdaddr);
+		m_copydata(event, 0, sizeof(bdaddr), &bdaddr);
 		m_adj(event, sizeof(bdaddr));
 
 		/* Lookup entry in the cache */
@@ -418,8 +418,8 @@ inquiry_result(ng_hci_unit_p unit, struct mbuf *event)
 		m_adj(event, NG_HCI_CLASS_SIZE);
 
 		/* clock offset */
-		m_copydata(event, 0, sizeof(n->clock_offset), 
-			(caddr_t) &n->clock_offset);
+		m_copydata(event, 0, sizeof(n->clock_offset),
+			&n->clock_offset);
 		n->clock_offset = le16toh(n->clock_offset);
 	}
 
@@ -890,12 +890,12 @@ num_compl_pkts(ng_hci_unit_p unit, struct mbuf *event)
 
 	for (; ep->num_con_handles > 0; ep->num_con_handles --) {
 		/* Get connection handle */
-		m_copydata(event, 0, sizeof(h), (caddr_t) &h);
+		m_copydata(event, 0, sizeof(h), &h);
 		m_adj(event, sizeof(h));
 		h = NG_HCI_CON_HANDLE(le16toh(h));
 
 		/* Get number of completed packets */
-		m_copydata(event, 0, sizeof(p), (caddr_t) &p);
+		m_copydata(event, 0, sizeof(p), &p);
 		m_adj(event, sizeof(p));
 		p = le16toh(p);
 

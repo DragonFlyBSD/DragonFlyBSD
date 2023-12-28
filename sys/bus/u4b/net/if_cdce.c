@@ -818,7 +818,7 @@ tr_setup:
 				crc = cdce_m_crc32(m, 0, m->m_pkthdr.len);
 				crc = htole32(crc);
 
-				if (!m_append(m, 4, (void *)&crc)) {
+				if (!m_append(m, 4, &crc)) {
 					m_freem(m);
           IFNET_STAT_INC(ifp, oerrors, 1);
 					continue;

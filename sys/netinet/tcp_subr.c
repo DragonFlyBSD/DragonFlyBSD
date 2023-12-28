@@ -1623,7 +1623,7 @@ tcp6_ctlinput(netmsg_t msg)
 			goto out;
 
 		bzero(&th, sizeof th);
-		m_copydata(m, off, sizeof *thp, (caddr_t)&th);
+		m_copydata(m, off, sizeof *thp, &th);
 
 		in6_pcbnotify(&tcbinfo[0], sa, th.th_dport,
 		    (struct sockaddr *)ip6cp->ip6c_src,

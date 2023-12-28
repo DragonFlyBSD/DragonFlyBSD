@@ -259,7 +259,7 @@ ngc_send(netmsg_t netmsg)
 	 * Messages are not delivered in mbufs.
 	 */
 	msg = kmalloc(len + 1, M_NETGRAPH_MSG, M_WAITOK);
-	m_copydata(m, 0, len, (char *)msg);
+	m_copydata(m, 0, len, msg);
 
 	if (msg->header.version != NG_VERSION) {
 		kfree(msg, M_NETGRAPH_MSG);
@@ -941,8 +941,7 @@ ngs_rcvmsg(node_p node, item_p item, hook_p lasthook)
 	}
 
 	/* Copy the message itself into an mbuf chain. */
-	m = m_devget((caddr_t)msg, sizeof(struct ng_mesg) + msg->header.arglen,
-		     0, NULL);
+	m = m_devget(msg, sizeof(struct ng_mesg) + msg->header.arglen, 0, NULL);
 
 	/*
 	 * Here we free the message. We need to do that

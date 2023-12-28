@@ -3021,7 +3021,7 @@ tr_setup:
 			break;
 		}
 		m_copydata(m, 4 /* skip 32-bit DMA-len header */,
-		    dmalen + sizeof(struct rt2870_rxd), mtod(m0, caddr_t));
+		    dmalen + sizeof(struct rt2870_rxd), mtod(m0, void *));
 		m0->m_pkthdr.len = m0->m_len =
 		    dmalen + sizeof(struct rt2870_rxd);
 		run_rx_frame(sc, m0, dmalen);

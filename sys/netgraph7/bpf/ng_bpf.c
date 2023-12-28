@@ -445,7 +445,7 @@ ng_bpf_rcvdata(hook_p hook, item_p item)
 				return (ENOMEM);
 			}
 			needfree = 1;
-			m_copydata(m, 0, totlen, (caddr_t)data);
+			m_copydata(m, 0, totlen, data);
 		}
 	} else {
 		if (m->m_next != NULL) {

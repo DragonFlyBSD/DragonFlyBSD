@@ -214,13 +214,13 @@ rts_filter(struct mbuf *m, const struct sockproto *proto,
 		if (m->m_pkthdr.len < sizeof(*rtm) + _SA_MINSIZE)
 			return EINVAL;
 		m_copydata(m, sizeof(*rtm) + offsetof(struct sockaddr, sa_len),
-		    sizeof(ss.ss_len), (caddr_t)&ss);
+		    sizeof(ss.ss_len), &ss);
 		if (ss.ss_len < _SA_MINSIZE ||
 		    ss.ss_len > sizeof(ss) ||
 		    m->m_pkthdr.len < sizeof(*rtm) + ss.ss_len)
 			return EINVAL;
 		/* Copy out the destination sockaddr */
-		m_copydata(m, sizeof(*rtm), ss.ss_len, (caddr_t)&ss);
+		m_copydata(m, sizeof(*rtm), ss.ss_len, &ss);
 
 		/* Find a matching sockaddr in the filter */
 		while (cp < ep) {
@@ -711,7 +711,7 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	if (rtm == NULL)
 		gotoerr(ENOBUFS);
 
-	m_copydata(m, 0, len, (caddr_t)rtm);
+	m_copydata(m, 0, len, rtm);
 	if (rtm->rtm_version != RTM_VERSION)
 		gotoerr(EPROTONOSUPPORT);
 
@@ -823,8 +823,7 @@ flush:
 		rp = sotorawcb(so);
 	}
 	if (rtm != NULL) {
-		if (m_copyback2(m, 0, rtm->rtm_msglen, (caddr_t)rtm, M_NOWAIT)
-		    != 0) {
+		if (m_copyback2(m, 0, rtm->rtm_msglen, rtm, M_NOWAIT) != 0) {
 			m_freem(m);
 			m = NULL;
 		}
@@ -1145,7 +1144,7 @@ rt_msg_mbuf(int type, struct rt_addrinfo *rtinfo)
 			continue;
 		rtinfo->rti_addrs |= (1 << i);
 		dlen = RT_ROUNDUP(sa->sa_len);
-		if (m_copyback2(m, len, dlen, (caddr_t)sa, M_NOWAIT) != 0) {
+		if (m_copyback2(m, len, dlen, sa, M_NOWAIT) != 0) {
 			m_freem(m);
 			return (NULL);
 		}

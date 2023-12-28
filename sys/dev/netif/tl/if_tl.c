@@ -1776,8 +1776,8 @@ tl_encap(struct tl_softc *sc, struct tl_chain *c, struct mbuf *m_head)
 			if_printf(&sc->arpcom.ac_if, "no memory for tx list\n");
 			return (1);
 		}
-		m_copydata(m_head, 0, m_head->m_pkthdr.len,	
-					mtod(m_new, caddr_t));
+		m_copydata(m_head, 0, m_head->m_pkthdr.len,
+			   mtod(m_new, void *));
 		m_new->m_pkthdr.len = m_new->m_len = m_head->m_pkthdr.len;
 		m_freem(m_head);
 		m_head = m_new;

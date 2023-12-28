@@ -2063,7 +2063,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 			mtemp->m_len = imin((IP_VHL_HL(ip->ip_vhl) << 2) + 8,
 					    (int)ntohs(ip->ip_len));
 			mtemp->m_pkthdr.len = mtemp->m_len;
-			m_copydata(m, 0, mtemp->m_len, mtod(mtemp, caddr_t));
+			m_copydata(m, 0, mtemp->m_len, mtod(mtemp, void *));
 		}
 	}
 

@@ -401,7 +401,7 @@ ng_pred1_compress(node_p node, struct mbuf *m, struct mbuf **resultp)
 	}
 
 	/* Work with contiguous regions of memory. */
-	m_copydata(m, 0, inlen, (caddr_t)(priv->inbuf + 2));
+	m_copydata(m, 0, inlen, priv->inbuf + 2);
 
 	NG_FREE_M(m);
 
@@ -437,7 +437,7 @@ ng_pred1_compress(node_p node, struct mbuf *m, struct mbuf **resultp)
 	outlen += 2;
 
 	/* Return packet in an mbuf. */
-	*resultp = m_devget((caddr_t)out, outlen, 0, NULL);
+	*resultp = m_devget(out, outlen, 0, NULL);
 	if (*resultp == NULL) {
 	    priv->stats.Errors++;
 	    return (ENOMEM);
@@ -472,7 +472,7 @@ ng_pred1_decompress(node_p node, struct mbuf *m, struct mbuf **resultp)
 	}
 
 	/* Work with contiguous regions of memory. */
-	m_copydata(m, 0, inlen, (caddr_t)priv->inbuf);
+	m_copydata(m, 0, inlen, priv->inbuf);
 
 	priv->stats.InOctets += inlen;
 
@@ -516,7 +516,7 @@ ng_pred1_decompress(node_p node, struct mbuf *m, struct mbuf **resultp)
 		}
 
 		/* Return packet in an mbuf. */
-		*resultp = m_devget((caddr_t)priv->outbuf, len, 0, NULL);
+		*resultp = m_devget(priv->outbuf, len, 0, NULL);
 		if (*resultp == NULL) {
 			priv->stats.Errors++;
 			return (ENOMEM);

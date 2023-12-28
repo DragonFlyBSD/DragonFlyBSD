@@ -1161,8 +1161,7 @@ ieee80211_classify(struct ieee80211_node *ni, struct mbuf *m)
 		 * IPv6 frame, map the DSCP bits from the traffic class field.
 		 */
 		m_copydata(m, sizeof(struct ether_header) +
-		    offsetof(struct ip6_hdr, ip6_flow), sizeof(flow),
-		    (caddr_t) &flow);
+		    offsetof(struct ip6_hdr, ip6_flow), sizeof(flow), &flow);
 		tos = (uint8_t)(ntohl(flow) >> 20);
 		tos >>= 5;		/* NB: ECN + low 3 bits of DSCP */
 		d_wme_ac = TID_TO_WME_AC(tos);

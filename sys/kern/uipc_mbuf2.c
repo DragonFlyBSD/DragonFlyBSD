@@ -247,7 +247,7 @@ m_dup1(struct mbuf *m, int off, int len, int wait)
 		m_free(n);
 		return NULL;
 	}
-	m_copydata(m, off, len, mtod(n, caddr_t));
+	m_copydata(m, off, len, mtod(n, void *));
 	return n;
 }
 

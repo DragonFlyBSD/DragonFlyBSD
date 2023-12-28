@@ -766,7 +766,7 @@ sln_tx(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 				break;
 			}
 		}
-		m_copydata(m_head, 0, m_head->m_pkthdr.len, mtod(m_new, caddr_t));
+		m_copydata(m_head, 0, m_head->m_pkthdr.len, mtod(m_new, void *));
 		m_new->m_pkthdr.len = m_new->m_len = m_head->m_pkthdr.len;
 		m_freem(m_head);
 		m_head = m_new;

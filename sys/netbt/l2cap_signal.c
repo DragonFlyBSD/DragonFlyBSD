@@ -76,7 +76,7 @@ l2cap_recv_signal(struct mbuf *m, struct hci_link *link)
 		if (m->m_pkthdr.len < sizeof(cmd))
 			goto reject;
 
-		m_copydata(m, 0, sizeof(cmd), (caddr_t)&cmd);
+		m_copydata(m, 0, sizeof(cmd), &cmd);
 		cmd.length = letoh16(cmd.length);
 
 		if (m->m_pkthdr.len < sizeof(cmd) + cmd.length)
@@ -179,12 +179,12 @@ l2cap_recv_command_rej(struct mbuf *m, struct hci_link *link)
 	l2cap_cmd_hdr_t cmd;
 	l2cap_cmd_rej_cp cp;
 
-	m_copydata(m, 0, sizeof(cmd), (caddr_t)&cmd);
+	m_copydata(m, 0, sizeof(cmd), &cmd);
 	m_adj(m, sizeof(cmd));
 
 	cmd.length = letoh16(cmd.length);
 
-	m_copydata(m, 0, cmd.length, (caddr_t)&cp);
+	m_copydata(m, 0, cmd.length, &cp);
 	m_adj(m, cmd.length);
 
 	req = l2cap_request_lookup(link, cmd.ident);
@@ -241,11 +241,11 @@ l2cap_recv_connect_req(struct mbuf *m, struct hci_link *link)
 	int err;
 
 	/* extract cmd */
-	m_copydata(m, 0, sizeof(cmd), (caddr_t)&cmd);
+	m_copydata(m, 0, sizeof(cmd), &cmd);
 	m_adj(m, sizeof(cmd));
 
 	/* extract request */
-	m_copydata(m, 0, sizeof(cp), (caddr_t)&cp);
+	m_copydata(m, 0, sizeof(cp), &cp);
 	m_adj(m, sizeof(cp));
 
 	cp.scid = letoh16(cp.scid);
@@ -349,10 +349,10 @@ l2cap_recv_connect_rsp(struct mbuf *m, struct hci_link *link)
 	struct l2cap_req *req;
 	struct l2cap_channel *chan;
 
-	m_copydata(m, 0, sizeof(cmd), (caddr_t)&cmd);
+	m_copydata(m, 0, sizeof(cmd), &cmd);
 	m_adj(m, sizeof(cmd));
 
-	m_copydata(m, 0, sizeof(cp), (caddr_t)&cp);
+	m_copydata(m, 0, sizeof(cp), &cp);
 	m_adj(m, sizeof(cp));
 
 	cp.scid = letoh16(cp.scid);
@@ -419,14 +419,14 @@ l2cap_recv_config_req(struct mbuf *m, struct hci_link *link)
 	struct l2cap_channel *chan;
 	int left, len;
 
-	m_copydata(m, 0, sizeof(cmd), (caddr_t)&cmd);
+	m_copydata(m, 0, sizeof(cmd), &cmd);
 	m_adj(m, sizeof(cmd));
 	left = letoh16(cmd.length);
 
 	if (left < sizeof(cp))
 		goto reject;
 
-	m_copydata(m, 0, sizeof(cp), (caddr_t)&cp);
+	m_copydata(m, 0, sizeof(cp), &cp);
 	m_adj(m, sizeof(cp));
 	left -= sizeof(cp);
 
@@ -467,7 +467,7 @@ l2cap_recv_config_req(struct mbuf *m, struct hci_link *link)
 		if (left < sizeof(opt))
 			goto reject;
 
-		m_copydata(m, 0, sizeof(opt), (caddr_t)&opt);
+		m_copydata(m, 0, sizeof(opt), &opt);
 		m_adj(m, sizeof(opt));
 		left -= sizeof(opt);
 
@@ -482,7 +482,7 @@ l2cap_recv_config_req(struct mbuf *m, struct hci_link *link)
 			if (opt.length != L2CAP_OPT_MTU_SIZE)
 				goto reject;
 
-			m_copydata(m, 0, L2CAP_OPT_MTU_SIZE, (caddr_t)&val);
+			m_copydata(m, 0, L2CAP_OPT_MTU_SIZE, &val);
 			val.mtu = letoh16(val.mtu);
 
 			/*
@@ -528,7 +528,7 @@ l2cap_recv_config_req(struct mbuf *m, struct hci_link *link)
 			if (opt.length != L2CAP_OPT_QOS_SIZE)
 				goto reject;
 
-			m_copydata(m, 0, L2CAP_OPT_QOS_SIZE, (caddr_t)&val);
+			m_copydata(m, 0, L2CAP_OPT_QOS_SIZE, &val);
 			if (val.qos.service_type == L2CAP_QOS_NO_TRAFFIC ||
 			    val.qos.service_type == L2CAP_QOS_BEST_EFFORT)
 				/*
@@ -629,14 +629,14 @@ l2cap_recv_config_rsp(struct mbuf *m, struct hci_link *link)
 	struct l2cap_channel *chan;
 	int left;
 
-	m_copydata(m, 0, sizeof(cmd), (caddr_t)&cmd);
+	m_copydata(m, 0, sizeof(cmd), &cmd);
 	m_adj(m, sizeof(cmd));
 	left = letoh16(cmd.length);
 
 	if (left < sizeof(cp))
 		goto out;
 
-	m_copydata(m, 0, sizeof(cp), (caddr_t)&cp);
+	m_copydata(m, 0, sizeof(cp), &cp);
 	m_adj(m, sizeof(cp));
 	left -= sizeof(cp);
 
@@ -705,7 +705,7 @@ l2cap_recv_config_rsp(struct mbuf *m, struct hci_link *link)
 			if (left < sizeof(opt))
 				goto discon;
 
-			m_copydata(m, 0, sizeof(opt), (caddr_t)&opt);
+			m_copydata(m, 0, sizeof(opt), &opt);
 			m_adj(m, sizeof(opt));
 			left -= sizeof(opt);
 
@@ -717,7 +717,7 @@ l2cap_recv_config_rsp(struct mbuf *m, struct hci_link *link)
 				if (opt.length != L2CAP_OPT_MTU_SIZE)
 					goto discon;
 
-				m_copydata(m, 0, L2CAP_OPT_MTU_SIZE, (caddr_t)&val);
+				m_copydata(m, 0, L2CAP_OPT_MTU_SIZE, &val);
 				chan->lc_imtu = letoh16(val.mtu);
 				if (chan->lc_imtu < L2CAP_MTU_MINIMUM)
 					chan->lc_imtu = L2CAP_MTU_DEFAULT;
@@ -770,7 +770,7 @@ l2cap_recv_config_rsp(struct mbuf *m, struct hci_link *link)
 			if (left < sizeof(opt))
 				goto discon;
 
-			m_copydata(m, 0, sizeof(opt), (caddr_t)&opt);
+			m_copydata(m, 0, sizeof(opt), &opt);
 			m_adj(m, sizeof(opt));
 			left -= sizeof(opt);
 
@@ -836,10 +836,10 @@ l2cap_recv_disconnect_req(struct mbuf *m, struct hci_link *link)
 	l2cap_discon_rsp_cp rp;
 	struct l2cap_channel *chan;
 
-	m_copydata(m, 0, sizeof(cmd), (caddr_t)&cmd);
+	m_copydata(m, 0, sizeof(cmd), &cmd);
 	m_adj(m, sizeof(cmd));
 
-	m_copydata(m, 0, sizeof(cp), (caddr_t)&cp);
+	m_copydata(m, 0, sizeof(cp), &cp);
 	m_adj(m, sizeof(cp));
 
 	cp.scid = letoh16(cp.scid);
@@ -873,10 +873,10 @@ l2cap_recv_disconnect_rsp(struct mbuf *m, struct hci_link *link)
 	struct l2cap_req *req;
 	struct l2cap_channel *chan;
 
-	m_copydata(m, 0, sizeof(cmd), (caddr_t)&cmd);
+	m_copydata(m, 0, sizeof(cmd), &cmd);
 	m_adj(m, sizeof(cmd));
 
-	m_copydata(m, 0, sizeof(cp), (caddr_t)&cp);
+	m_copydata(m, 0, sizeof(cp), &cp);
 	m_adj(m, sizeof(cp));
 
 	cp.scid = letoh16(cp.scid);
@@ -911,10 +911,10 @@ l2cap_recv_info_req(struct mbuf *m, struct hci_link *link)
 	l2cap_info_req_cp cp;
 	l2cap_info_rsp_cp rp;
 
-	m_copydata(m, 0, sizeof(cmd), (caddr_t)&cmd);
+	m_copydata(m, 0, sizeof(cmd), &cmd);
 	m_adj(m, sizeof(cmd));
 
-	m_copydata(m, 0, sizeof(cp), (caddr_t)&cp);
+	m_copydata(m, 0, sizeof(cp), &cp);
 	m_adj(m, sizeof(cp));
 
 	switch(letoh16(cp.type)) {

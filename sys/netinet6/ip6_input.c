@@ -256,7 +256,7 @@ ip6_input(netmsg_t msg)
 			goto bad;
 		M_MOVE_PKTHDR(n, m);
 
-		m_copydata(m, 0, n->m_pkthdr.len, mtod(n, caddr_t));
+		m_copydata(m, 0, n->m_pkthdr.len, mtod(n, void *));
 		n->m_len = n->m_pkthdr.len;
 		m_freem(m);
 		m = n;
@@ -1383,7 +1383,7 @@ ip6_pullexthdr(struct mbuf *m, size_t off, int nxt)
 	}
 #endif
 
-	m_copydata(m, off, sizeof(ip6e), (caddr_t)&ip6e);
+	m_copydata(m, off, sizeof(ip6e), &ip6e);
 	if (nxt == IPPROTO_AH)
 		elen = (ip6e.ip6e_len + 2) << 2;
 	else
@@ -1399,7 +1399,7 @@ ip6_pullexthdr(struct mbuf *m, size_t off, int nxt)
 		return NULL;
 	}
 
-	m_copydata(m, off, elen, mtod(n, caddr_t));
+	m_copydata(m, off, elen, mtod(n, void *));
 	n->m_len = elen;
 	return n;
 }
@@ -1473,7 +1473,7 @@ ip6_nexthdr(struct mbuf *m, int off, int proto, int *nxtp)
 	case IPPROTO_IPV6:
 		if (m->m_pkthdr.len < off + sizeof(ip6))
 			return -1;
-		m_copydata(m, off, sizeof(ip6), (caddr_t)&ip6);
+		m_copydata(m, off, sizeof(ip6), &ip6);
 		if (nxtp)
 			*nxtp = ip6.ip6_nxt;
 		off += sizeof(ip6);
@@ -1486,7 +1486,7 @@ ip6_nexthdr(struct mbuf *m, int off, int proto, int *nxtp)
 		 */
 		if (m->m_pkthdr.len < off + sizeof(fh))
 			return -1;
-		m_copydata(m, off, sizeof(fh), (caddr_t)&fh);
+		m_copydata(m, off, sizeof(fh), &fh);
 		/* IP6F_OFF_MASK = 0xfff8(BigEndian), 0xf8ff(LittleEndian) */
 		if (fh.ip6f_offlg & IP6F_OFF_MASK)
 			return -1;
@@ -1498,7 +1498,7 @@ ip6_nexthdr(struct mbuf *m, int off, int proto, int *nxtp)
 	case IPPROTO_AH:
 		if (m->m_pkthdr.len < off + sizeof(ip6e))
 			return -1;
-		m_copydata(m, off, sizeof(ip6e), (caddr_t)&ip6e);
+		m_copydata(m, off, sizeof(ip6e), &ip6e);
 		if (nxtp)
 			*nxtp = ip6e.ip6e_nxt;
 		off += (ip6e.ip6e_len + 2) << 2;
@@ -1509,7 +1509,7 @@ ip6_nexthdr(struct mbuf *m, int off, int proto, int *nxtp)
 	case IPPROTO_DSTOPTS:
 		if (m->m_pkthdr.len < off + sizeof(ip6e))
 			return -1;
-		m_copydata(m, off, sizeof(ip6e), (caddr_t)&ip6e);
+		m_copydata(m, off, sizeof(ip6e), &ip6e);
 		if (nxtp)
 			*nxtp = ip6e.ip6e_nxt;
 		off += (ip6e.ip6e_len + 1) << 3;

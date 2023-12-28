@@ -1258,7 +1258,7 @@ wb_encap(struct wb_softc *sc, struct wb_chain *c, struct mbuf *m_head)
 			}
 		}
 		m_copydata(m_head, 0, m_head->m_pkthdr.len,
-		    mtod(m_new, caddr_t));
+		    mtod(m_new, void *));
 		m_new->m_pkthdr.len = m_new->m_len = m_head->m_pkthdr.len;
 		m_freem(m_head);
 		m_head = m_new;

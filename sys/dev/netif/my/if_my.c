@@ -1106,7 +1106,7 @@ my_rxeof(struct my_softc * sc)
 		total_len -= ETHER_CRC_LEN;
 
 		if (total_len < MINCLSIZE) {
-			m = m_devget(mtod(cur_rx->my_mbuf, char *),
+			m = m_devget(mtod(cur_rx->my_mbuf, void *),
 				     total_len, 0, ifp);
 			cur_rx->my_ptr->my_status = MY_OWNByNIC;
 			if (m == NULL) {
@@ -1300,7 +1300,7 @@ my_encap(struct my_softc * sc, struct my_chain * c, struct mbuf * m_head)
 			return (1);
 		}
 	}
-	m_copydata(m_head, 0, m_head->m_pkthdr.len, mtod(m_new, caddr_t));
+	m_copydata(m_head, 0, m_head->m_pkthdr.len, mtod(m_new, void *));
 	m_new->m_pkthdr.len = m_new->m_len = m_head->m_pkthdr.len;
 	m_freem(m_head);
 	m_head = m_new;

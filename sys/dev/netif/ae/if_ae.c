@@ -1097,11 +1097,10 @@ ae_encap(struct ae_softc *sc, struct mbuf **m_head)
 	to_end = AE_TXD_BUFSIZE_DEFAULT - sc->txd_cur;
 
 	if (to_end >= len) {
-		m_copydata(m0, 0, len, (caddr_t)(sc->txd_base + sc->txd_cur));
+		m_copydata(m0, 0, len, sc->txd_base + sc->txd_cur);
 	} else {
-		m_copydata(m0, 0, to_end, (caddr_t)(sc->txd_base +
-		    sc->txd_cur));
-		m_copydata(m0, to_end, len - to_end, (caddr_t)sc->txd_base);
+		m_copydata(m0, 0, to_end, sc->txd_base + sc->txd_cur);
+		m_copydata(m0, to_end, len - to_end, sc->txd_base);
 	}
 
 	/*

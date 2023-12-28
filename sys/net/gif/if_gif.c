@@ -298,7 +298,7 @@ gif_encapcheck(const struct mbuf *m, int off, int proto, void *arg)
 	if (m->m_pkthdr.len < sizeof(ip))
 		return 0;
 
-	m_copydata(m, 0, sizeof(ip), (caddr_t)&ip);
+	m_copydata(m, 0, sizeof(ip), &ip);
 
 	switch (ip.ip_v) {
 #ifdef INET

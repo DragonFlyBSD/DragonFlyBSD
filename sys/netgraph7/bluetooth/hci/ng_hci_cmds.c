@@ -672,7 +672,7 @@ process_info_params(ng_hci_unit_p unit, u_int16_t ocf, struct mbuf *mcp,
 	case NG_HCI_OCF_READ_LOCAL_FEATURES:
 		m_adj(mrp, sizeof(u_int8_t));
 		len = min(mrp->m_pkthdr.len, sizeof(unit->features));
-		m_copydata(mrp, 0, len, (caddr_t) unit->features);
+		m_copydata(mrp, 0, len, unit->features);
 		break;
 
 	case NG_HCI_OCF_READ_BUFFER_SIZE: {
@@ -714,7 +714,7 @@ process_info_params(ng_hci_unit_p unit, u_int16_t ocf, struct mbuf *mcp,
 
 		m_adj(mrp, sizeof(u_int8_t));
 		len = min(mrp->m_pkthdr.len, sizeof(unit->bdaddr));
-		m_copydata(mrp, 0, len, (caddr_t) &unit->bdaddr);
+		m_copydata(mrp, 0, len, &unit->bdaddr);
 
 		/* Let upper layers know */
 		ng_hci_node_is_up(unit->node, unit->acl, NULL, 0);

@@ -701,7 +701,7 @@ txp_rx_reclaim(struct txp_softc *sc, struct txp_rx_ring *r)
 			mnew->m_pkthdr.rcvif = ifp;
 			m_adj(mnew, 2);
 			mnew->m_pkthdr.len = mnew->m_len = m->m_len;
-			m_copydata(m, 0, m->m_pkthdr.len, mtod(mnew, caddr_t));
+			m_copydata(m, 0, m->m_pkthdr.len, mtod(mnew, void *));
 			m_freem(m);
 			m = mnew;
 		}

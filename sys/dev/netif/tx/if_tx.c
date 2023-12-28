@@ -516,7 +516,7 @@ epic_ifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 				continue;
 			}
 
-			m_copydata(m0, 0, m0->m_pkthdr.len, mtod(m, caddr_t));
+			m_copydata(m0, 0, m0->m_pkthdr.len, mtod(m, void *));
 			flist->frag[0].fraglen =
 			     m->m_pkthdr.len = m->m_len = m0->m_pkthdr.len;
 			m->m_pkthdr.rcvif = ifp;

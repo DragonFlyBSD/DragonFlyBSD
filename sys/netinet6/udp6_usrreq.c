@@ -435,7 +435,7 @@ udp6_ctlinput(netmsg_t msg)
 			return;
 
 		bzero(&uh, sizeof(uh));
-		m_copydata(m, off, sizeof(*uhp), (caddr_t)&uh);
+		m_copydata(m, off, sizeof(*uhp), &uh);
 
 		in6_pcbnotify(&udbinfo[0], sa, uh.uh_dport,
 			      (struct sockaddr *)ip6cp->ip6c_src, uh.uh_sport,

@@ -460,7 +460,7 @@ ng_deflate_compress(node_p node, struct mbuf *m, struct mbuf **resultp)
 	}
 
 	/* Work with contiguous regions of memory. */
-	m_copydata(m, 0, inlen, (caddr_t)priv->inbuf);
+	m_copydata(m, 0, inlen, priv->inbuf);
 	outlen = DEFLATE_BUF_SIZE;
 
 	/* Compress "inbuf" into "outbuf". */
@@ -504,7 +504,7 @@ ng_deflate_compress(node_p node, struct mbuf *m, struct mbuf **resultp)
 		((u_int16_t *)priv->outbuf)[1] = htons(priv->seqnum);
 
 		/* Return packet in an mbuf. */
-		*resultp = m_devget((caddr_t)priv->outbuf, outlen, 0, NULL);
+		*resultp = m_devget(priv->outbuf, outlen, 0, NULL);
 		if (*resultp == NULL) {
 			priv->stats.Errors++;
 			return (ENOMEM);
@@ -546,7 +546,7 @@ ng_deflate_decompress(node_p node, struct mbuf *m, struct mbuf **resultp)
 	}
 
 	/* Work with contiguous regions of memory. */
-	m_copydata(m, 0, inlen, (caddr_t)priv->inbuf);
+	m_copydata(m, 0, inlen, priv->inbuf);
 
 	/* Separate proto. */
 	if ((priv->inbuf[0] & 0x01) != 0) {
@@ -615,13 +615,11 @@ ng_deflate_decompress(node_p node, struct mbuf *m, struct mbuf **resultp)
 		if ((priv->outbuf[1] & 0x01) != 0) {
 			priv->outbuf[0] = 0;
 			/* Return packet in an mbuf. */
-			*resultp = m_devget((caddr_t)priv->outbuf, outlen, 0,
-					    NULL);
+			*resultp = m_devget(priv->outbuf, outlen, 0, NULL);
 		} else {
 			outlen--;
 			/* Return packet in an mbuf. */
-			*resultp = m_devget((caddr_t)(priv->outbuf + 1),
-					    outlen, 0, NULL);
+			*resultp = m_devget(priv->outbuf + 1, outlen, 0, NULL);
 		}
 		if (*resultp == NULL) {
 			priv->stats.Errors++;
