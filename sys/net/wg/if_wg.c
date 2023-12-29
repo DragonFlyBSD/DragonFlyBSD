@@ -405,7 +405,7 @@ wg_peer_create(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE])
 
 	peer = kmalloc(sizeof(*peer), M_WG, M_WAITOK | M_ZERO);
 
-	peer->p_remote = noise_remote_alloc(sc->sc_local, peer, pub_key);
+	peer->p_remote = noise_remote_alloc(sc->sc_local, pub_key, peer);
 	if (noise_remote_enable(peer->p_remote) != 0) {
 		kfree(peer, M_WG);
 		return (NULL);
