@@ -267,7 +267,6 @@ typedef cpumask_t		os_cpuset_t;
 
 /* Misc. */
 #if defined(__DragonFly__)
-#define ilog2(n)		((sizeof(n) > 4 ? ffsl(n) : ffs(n)) - 1)
 #define uimin(a, b)		((u_int)a < (u_int)b ? (u_int)a : (u_int)b)
 #endif
 

@@ -83,4 +83,83 @@
 #define	__SHIFTIN(__x, __mask) ((__x) * __LOWEST_SET_BIT(__mask))
 #define	__SHIFTOUT_MASK(__mask) __SHIFTOUT((__mask), (__mask))
 
+/*
+ * Integer logarithm, returns -1 on error.
+ * Inspired by the linux version written by David Howells.
+ */
+#define	_ilog2_helper(_n, _x)	((_n) & (1ULL << (_x))) ? _x :
+#define	_ilog2_const(_n) \
+( \
+	_ilog2_helper(_n, 63) \
+	_ilog2_helper(_n, 62) \
+	_ilog2_helper(_n, 61) \
+	_ilog2_helper(_n, 60) \
+	_ilog2_helper(_n, 59) \
+	_ilog2_helper(_n, 58) \
+	_ilog2_helper(_n, 57) \
+	_ilog2_helper(_n, 56) \
+	_ilog2_helper(_n, 55) \
+	_ilog2_helper(_n, 54) \
+	_ilog2_helper(_n, 53) \
+	_ilog2_helper(_n, 52) \
+	_ilog2_helper(_n, 51) \
+	_ilog2_helper(_n, 50) \
+	_ilog2_helper(_n, 49) \
+	_ilog2_helper(_n, 48) \
+	_ilog2_helper(_n, 47) \
+	_ilog2_helper(_n, 46) \
+	_ilog2_helper(_n, 45) \
+	_ilog2_helper(_n, 44) \
+	_ilog2_helper(_n, 43) \
+	_ilog2_helper(_n, 42) \
+	_ilog2_helper(_n, 41) \
+	_ilog2_helper(_n, 40) \
+	_ilog2_helper(_n, 39) \
+	_ilog2_helper(_n, 38) \
+	_ilog2_helper(_n, 37) \
+	_ilog2_helper(_n, 36) \
+	_ilog2_helper(_n, 35) \
+	_ilog2_helper(_n, 34) \
+	_ilog2_helper(_n, 33) \
+	_ilog2_helper(_n, 32) \
+	_ilog2_helper(_n, 31) \
+	_ilog2_helper(_n, 30) \
+	_ilog2_helper(_n, 29) \
+	_ilog2_helper(_n, 28) \
+	_ilog2_helper(_n, 27) \
+	_ilog2_helper(_n, 26) \
+	_ilog2_helper(_n, 25) \
+	_ilog2_helper(_n, 24) \
+	_ilog2_helper(_n, 23) \
+	_ilog2_helper(_n, 22) \
+	_ilog2_helper(_n, 21) \
+	_ilog2_helper(_n, 20) \
+	_ilog2_helper(_n, 19) \
+	_ilog2_helper(_n, 18) \
+	_ilog2_helper(_n, 17) \
+	_ilog2_helper(_n, 16) \
+	_ilog2_helper(_n, 15) \
+	_ilog2_helper(_n, 14) \
+	_ilog2_helper(_n, 13) \
+	_ilog2_helper(_n, 12) \
+	_ilog2_helper(_n, 11) \
+	_ilog2_helper(_n, 10) \
+	_ilog2_helper(_n,  9) \
+	_ilog2_helper(_n,  8) \
+	_ilog2_helper(_n,  7) \
+	_ilog2_helper(_n,  6) \
+	_ilog2_helper(_n,  5) \
+	_ilog2_helper(_n,  4) \
+	_ilog2_helper(_n,  3) \
+	_ilog2_helper(_n,  2) \
+	_ilog2_helper(_n,  1) \
+	_ilog2_helper(_n,  0) \
+	-1 \
+)
+#define	ilog2(_n) \
+( \
+	__builtin_constant_p(_n) ?  _ilog2_const(_n) : \
+	((sizeof(_n) > 4 ? flsl(_n) : fls(_n)) - 1) \
+)
+
 #endif	/* !_SYS_BITOPS_H_ */
