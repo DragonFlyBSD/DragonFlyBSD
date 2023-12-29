@@ -40,9 +40,8 @@ struct noise_keypair;
 
 /* Local configuration */
 struct noise_local *
-	noise_local_alloc(void *);
-void	noise_local_free(struct noise_local *, void (*)(struct noise_local *));
-void *	noise_local_arg(struct noise_local *);
+	noise_local_alloc(void);
+void	noise_local_free(struct noise_local *);
 
 int	noise_local_set_private(struct noise_local *,
 	    const uint8_t[NOISE_PUBLIC_KEY_LEN]);

@@ -142,8 +142,6 @@ struct noise_local {
 
 	u_int				 l_refcnt;
 	uint8_t				 l_hash_key[SIPHASH_KEY_LENGTH];
-	void				*l_arg;
-	void				(*l_cleanup)(struct noise_local *);
 
 	struct lock			 l_remote_mtx;
 	size_t				 l_remote_num;
@@ -196,7 +194,7 @@ MALLOC_DEFINE(M_NOISE, "NOISE", "wgnoise");
 
 /* Local configuration */
 struct noise_local *
-noise_local_alloc(void *arg)
+noise_local_alloc(void)
 {
 	struct noise_local *l;
 	size_t i;
@@ -210,8 +208,6 @@ noise_local_alloc(void *arg)
 
 	refcount_init(&l->l_refcnt, 1);
 	karc4random_buf(l->l_hash_key, sizeof(l->l_hash_key));
-	l->l_arg = arg;
-	l->l_cleanup = NULL;
 
 	lockinit(&l->l_remote_mtx, "noise_remote", 0, 0);
 	l->l_remote_num = 0;
@@ -236,8 +232,6 @@ static void
 noise_local_put(struct noise_local *l)
 {
 	if (refcount_release(&l->l_refcnt)) {
-		if (l->l_cleanup != NULL)
-			l->l_cleanup(l);
 		lockuninit(&l->l_identity_lock);
 		lockuninit(&l->l_remote_mtx);
 		lockuninit(&l->l_index_mtx);
@@ -247,16 +241,9 @@ noise_local_put(struct noise_local *l)
 }
 
 void
-noise_local_free(struct noise_local *l, void (*cleanup)(struct noise_local *))
+noise_local_free(struct noise_local *l)
 {
-	l->l_cleanup = cleanup;
 	noise_local_put(l);
-}
-
-void *
-noise_local_arg(struct noise_local *l)
-{
-	return (l->l_arg);
 }
 
 int

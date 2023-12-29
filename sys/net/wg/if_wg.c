@@ -274,8 +274,6 @@ struct wg_softc {
 	struct lock		 sc_lock;
 };
 
-#define	WGF_DYING	0x0001
-
 #define MAX_LOOPS	8
 #define MTAG_WGLOOP	0x77676c70 /* wglp */
 
@@ -304,7 +302,6 @@ static struct objcache *wg_packet_zone;
 
 static struct lock wg_lock;
 
-static int clone_count;
 static LIST_HEAD(, wg_softc) wg_list = LIST_HEAD_INITIALIZER(wg_list);
 
 static struct taskqueue **wg_taskqueues; /* one taskqueue per CPU */
@@ -2659,10 +2656,6 @@ wg_up(struct wg_softc *sc)
 
 	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 
-	/* The interface is being removed, no more wg_up(). */
-	if ((sc->sc_flags & WGF_DYING) != 0)
-		goto out;
-
 	/* Silent success if we're already running. */
 	rc = 0;
 	if (ifp->if_flags & IFF_RUNNING)
@@ -2738,17 +2731,11 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 		return (ENOMEM);
 	}
 
+	lockinit(&sc->sc_lock, "wg softc lock", 0, 0);
 	lockinit(&sc->sc_aip_lock, "wg aip lock", 0, 0);
+	lockinit(&sc->sc_socket.so_lock, "wg socket lock", 0, 0);
 
-	sc->sc_local = noise_local_alloc(sc);
-
-	sc->sc_encrypt_tasks = kmalloc(sizeof(*sc->sc_encrypt_tasks) * ncpus,
-				       M_WG, M_WAITOK | M_ZERO);
-	sc->sc_decrypt_tasks = kmalloc(sizeof(*sc->sc_decrypt_tasks) * ncpus,
-				       M_WG, M_WAITOK | M_ZERO);
-
-	atomic_add_int(&clone_count, 1);
-	ifp = sc->sc_ifp = if_alloc(IFT_WIREGUARD);
+	sc->sc_local = noise_local_alloc();
 
 	TAILQ_INIT(&sc->sc_peers);
 	sc->sc_peers_num = 0;
@@ -2759,6 +2746,10 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 	TASK_INIT(&sc->sc_handshake_task, 0, wg_softc_handshake_receive, sc);
 	wg_queue_init(&sc->sc_handshake_queue, "hsq");
 
+	sc->sc_encrypt_tasks = kmalloc(sizeof(*sc->sc_encrypt_tasks) * ncpus,
+				       M_WG, M_WAITOK | M_ZERO);
+	sc->sc_decrypt_tasks = kmalloc(sizeof(*sc->sc_decrypt_tasks) * ncpus,
+				       M_WG, M_WAITOK | M_ZERO);
 	for (i = 0; i < ncpus; i++) {
 		TASK_INIT(&sc->sc_encrypt_tasks[i], 0, wg_softc_encrypt, sc);
 		TASK_INIT(&sc->sc_decrypt_tasks[i], 0, wg_softc_decrypt, sc);
@@ -2766,9 +2757,7 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 	wg_queue_init(&sc->sc_encrypt_parallel, "encp");
 	wg_queue_init(&sc->sc_decrypt_parallel, "decp");
 
-	lockinit(&sc->sc_lock, "wg softc lock", 0, 0);
-	lockinit(&sc->sc_socket.so_lock, "wg socket lock", 0, 0);
-
+	ifp = sc->sc_ifp = if_alloc(IFT_WIREGUARD);
 	if_initname(ifp, wgname, unit);
 	ifp->if_softc = sc;
 	ifp->if_mtu = DEFAULT_MTU;
@@ -2791,43 +2780,20 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 	return (0);
 }
 
-static void
-wg_clone_deferred_free(struct noise_local *l)
-{
-	struct wg_softc *sc = noise_local_arg(l);
-
-	kfree(sc, M_WG);
-	atomic_add_int(&clone_count, -1);
-}
-
 static int
 wg_clone_destroy(struct ifnet *ifp)
 {
 	struct wg_softc *sc = ifp->if_softc;
 	int i;
 
-	lockmgr(&wg_lock, LK_EXCLUSIVE);
-	ifp->if_softc = NULL;
 	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
-	sc->sc_flags |= WGF_DYING;
-	lockmgr(&sc->sc_lock, LK_RELEASE);
-	LIST_REMOVE(sc, sc_entry);
-	lockmgr(&wg_lock, LK_RELEASE);
 
 	ifp->if_link_state = LINK_STATE_DOWN;
 	if_link_state_change(ifp);
 	if_purgeaddrs_nolink(ifp);
 
-	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	wg_socket_uninit(sc);
 	lockuninit(&sc->sc_socket.so_lock);
-	lockmgr(&sc->sc_lock, LK_RELEASE);
-
-	/*
-	 * No guarantees that all traffic have passed until the epoch has
-	 * elapsed with the socket closed.
-	 */
-	NET_EPOCH_WAIT();
 
 	/* Cancel all tasks. */
 	while (taskqueue_cancel(sc->sc_handshake_taskqueue,
@@ -2848,29 +2814,31 @@ wg_clone_destroy(struct ifnet *ifp)
 		}
 	}
 
-	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
-	wg_peer_destroy_all(sc);
-	NET_EPOCH_DRAIN_CALLBACKS();
-	lockmgr(&sc->sc_lock, LK_RELEASE);
-	lockuninit(&sc->sc_lock);
 	kfree(sc->sc_encrypt_tasks, M_WG);
 	kfree(sc->sc_decrypt_tasks, M_WG);
 	wg_queue_deinit(&sc->sc_handshake_queue);
 	wg_queue_deinit(&sc->sc_encrypt_parallel);
 	wg_queue_deinit(&sc->sc_decrypt_parallel);
 
-	/* wg_peer_destroy_all() should empty the trees. */
+	wg_peer_destroy_all(sc);
 	rn_freehead(sc->sc_aip4);
 	rn_freehead(sc->sc_aip6);
 	lockuninit(&sc->sc_aip_lock);
 
 	cookie_checker_free(&sc->sc_cookie);
+	noise_local_free(sc->sc_local);
 
 	bpfdetach(ifp);
 	if_detach(ifp);
 	if_free(ifp);
 
-	noise_local_free(sc->sc_local, wg_clone_deferred_free);
+	lockmgr(&wg_lock, LK_EXCLUSIVE);
+	LIST_REMOVE(sc, sc_entry);
+	lockmgr(&wg_lock, LK_RELEASE);
+
+	lockmgr(&sc->sc_lock, LK_RELEASE);
+	lockuninit(&sc->sc_lock);
+	kfree(sc, M_WG);
 
 	return (0);
 }
@@ -2947,8 +2915,12 @@ wg_module_deinit(void)
 {
 	int i;
 
-	if (atomic_load_int(&clone_count) > 0)
+	lockmgr(&wg_lock, LK_EXCLUSIVE);
+
+	if (!LIST_EMPTY(&wg_list)) {
+		lockmgr(&wg_lock, LK_RELEASE);
 		return (EBUSY);
+	}
 
 	if_clone_detach(&wg_cloner);
 
@@ -2963,6 +2935,8 @@ wg_module_deinit(void)
 
 	if (wg_packet_zone != NULL)
 		objcache_destroy(wg_packet_zone);
+
+	lockmgr(&wg_lock, LK_RELEASE);
 	lockuninit(&wg_lock);
 
 	return (0);
