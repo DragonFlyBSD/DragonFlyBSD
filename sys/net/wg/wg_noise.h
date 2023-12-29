@@ -62,7 +62,7 @@ struct noise_remote *
 struct noise_remote *
 	noise_remote_ref(struct noise_remote *);
 void	noise_remote_put(struct noise_remote *);
-void	noise_remote_free(struct noise_remote *, void (*)(struct noise_remote *));
+void	noise_remote_free(struct noise_remote *);
 void *	noise_remote_arg(struct noise_remote *);
 
 void	noise_remote_set_psk(struct noise_remote *,

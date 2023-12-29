@@ -346,7 +346,6 @@ static int wg_aip_add(struct wg_softc *, struct wg_peer *, sa_family_t, const vo
 static struct wg_peer *wg_aip_lookup(struct wg_softc *, sa_family_t, void *);
 static void wg_aip_remove_all(struct wg_softc *, struct wg_peer *);
 static struct wg_peer *wg_peer_create(struct wg_softc *, const uint8_t [WG_KEY_SIZE]);
-static void wg_peer_free_deferred(struct noise_remote *);
 static void wg_peer_destroy(struct wg_peer *);
 static void wg_peer_destroy_all(struct wg_softc *);
 static void wg_peer_send_buf(struct wg_peer *, void *, size_t);
@@ -461,9 +460,28 @@ wg_peer_create(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE])
 }
 
 static void
-wg_peer_free_deferred(struct noise_remote *r)
+wg_peer_destroy(struct wg_peer *peer)
 {
-	struct wg_peer *peer = noise_remote_arg(r);
+	struct wg_softc *sc = peer->p_sc;
+
+	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
+
+	/*
+	 * Disable remote and timers.  This will prevent any new handshakes
+	 * from occuring.
+	 */
+	noise_remote_disable(peer->p_remote);
+	wg_timers_disable(peer);
+
+	/*
+	 * Remove all allowed IPs, so no more packets will be routed to
+	 * this peer.
+	 */
+	wg_aip_remove_all(sc, peer);
+
+	/* Remove peer from the interface, then free. */
+	sc->sc_peers_num--;
+	TAILQ_REMOVE(&sc->sc_peers, peer, p_entry);
 
 	/*
 	 * While there are no references remaining, we may still have
@@ -484,34 +502,11 @@ wg_peer_free_deferred(struct noise_remote *r)
 	lockuninit(&peer->p_endpoint_lock);
 	lockuninit(&peer->p_handshake_mtx);
 
+	noise_remote_free(peer->p_remote);
 	cookie_maker_free(&peer->p_cookie);
 
-	kfree(peer, M_WG);
-}
-
-static void
-wg_peer_destroy(struct wg_peer *peer)
-{
-	struct wg_softc *sc = peer->p_sc;
-
-	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
-
-	/* Disable remote and timers. This will prevent any new handshakes
-	 * occuring. */
-	noise_remote_disable(peer->p_remote);
-	wg_timers_disable(peer);
-
-	/* Now we can remove all allowed IPs so no more packets will be routed
-	 * to the peer. */
-	wg_aip_remove_all(sc, peer);
-
-	/* Remove peer from the interface, then free. Some references may still
-	 * exist to p_remote, so noise_remote_free will wait until they're all
-	 * put to call wg_peer_free_deferred. */
-	sc->sc_peers_num--;
-	TAILQ_REMOVE(&sc->sc_peers, peer, p_entry);
 	DPRINTF(sc, "Peer %ld destroyed\n", peer->p_id);
-	noise_remote_free(peer->p_remote, wg_peer_free_deferred);
+	kfree(peer, M_WG);
 }
 
 static void
