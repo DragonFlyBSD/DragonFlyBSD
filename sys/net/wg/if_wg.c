@@ -995,39 +995,23 @@ wg_timers_enable(struct wg_peer *peer)
 static void
 wg_timers_disable(struct wg_peer *peer)
 {
-	/* By setting p_enabled = false, then calling NET_EPOCH_WAIT, we can be
-	 * sure no new handshakes are created after the wait. This is because
-	 * all callout_resets (scheduling the callout) are guarded by
-	 * p_enabled. We can be sure all sections that read p_enabled and then
-	 * optionally call callout_reset are finished as they are surrounded by
-	 * NET_EPOCH_{ENTER,EXIT}.
-	 *
-	 * However, as new callouts may be scheduled during NET_EPOCH_WAIT (but
-	 * not after), we stop all callouts leaving no callouts active.
-	 *
-	 * We should also pull NET_EPOCH_WAIT out of the FOREACH(peer) loops, but the
-	 * performance impact is acceptable for the time being. */
 	atomic_store_bool(&peer->p_enabled, false);
-	NET_EPOCH_WAIT();
 	atomic_store_bool(&peer->p_need_another_keepalive, false);
 
-	callout_stop(&peer->p_new_handshake);
-	callout_stop(&peer->p_send_keepalive);
-	callout_stop(&peer->p_retry_handshake);
-	callout_stop(&peer->p_persistent_keepalive);
-	callout_stop(&peer->p_zero_key_material);
+	/* Cancel the callouts and wait for them to complete. */
+	callout_drain(&peer->p_new_handshake);
+	callout_drain(&peer->p_send_keepalive);
+	callout_drain(&peer->p_retry_handshake);
+	callout_drain(&peer->p_persistent_keepalive);
+	callout_drain(&peer->p_zero_key_material);
 }
 
 static void
 wg_timers_set_persistent_keepalive(struct wg_peer *peer, uint16_t interval)
 {
-	struct epoch_tracker et;
-	if (interval != peer->p_persistent_keepalive_interval) {
+	if (atomic_load_bool(&peer->p_enabled)) {
 		atomic_store_16(&peer->p_persistent_keepalive_interval, interval);
-		NET_EPOCH_ENTER(et);
-		if (atomic_load_bool(&peer->p_enabled))
-			wg_timers_run_persistent_keepalive(peer);
-		NET_EPOCH_EXIT(et);
+		wg_timers_run_persistent_keepalive(peer);
 	}
 }
 
@@ -1042,22 +1026,17 @@ wg_timers_get_last_handshake(struct wg_peer *peer, struct timespec *time)
 static void
 wg_timers_event_data_sent(struct wg_peer *peer)
 {
-	struct epoch_tracker et;
-	NET_EPOCH_ENTER(et);
 	if (atomic_load_bool(&peer->p_enabled) &&
 	    !callout_pending(&peer->p_new_handshake)) {
 		callout_reset(&peer->p_new_handshake,
 		    NEW_HANDSHAKE_TIMEOUT * hz + REKEY_TIMEOUT_JITTER * hz / 1000,
 		    wg_timers_run_new_handshake, peer);
 	}
-	NET_EPOCH_EXIT(et);
 }
 
 static void
 wg_timers_event_data_received(struct wg_peer *peer)
 {
-	struct epoch_tracker et;
-	NET_EPOCH_ENTER(et);
 	if (atomic_load_bool(&peer->p_enabled)) {
 		if (!callout_pending(&peer->p_send_keepalive)) {
 			callout_reset(&peer->p_send_keepalive,
@@ -1068,7 +1047,6 @@ wg_timers_event_data_received(struct wg_peer *peer)
 			    true);
 		}
 	}
-	NET_EPOCH_EXIT(et);
 }
 
 static void
@@ -1086,35 +1064,28 @@ wg_timers_event_any_authenticated_packet_received(struct wg_peer *peer)
 static void
 wg_timers_event_any_authenticated_packet_traversal(struct wg_peer *peer)
 {
-	struct epoch_tracker et;
 	uint16_t interval;
-	NET_EPOCH_ENTER(et);
+
 	interval = atomic_load_16(&peer->p_persistent_keepalive_interval);
 	if (atomic_load_bool(&peer->p_enabled) && interval > 0) {
 		callout_reset(&peer->p_persistent_keepalive, interval * hz,
 		     wg_timers_run_persistent_keepalive, peer);
 	}
-	NET_EPOCH_EXIT(et);
 }
 
 static void
 wg_timers_event_handshake_initiated(struct wg_peer *peer)
 {
-	struct epoch_tracker et;
-	NET_EPOCH_ENTER(et);
 	if (atomic_load_bool(&peer->p_enabled)) {
 		callout_reset(&peer->p_retry_handshake,
 		    REKEY_TIMEOUT * hz + REKEY_TIMEOUT_JITTER * hz / 1000,
 		    wg_timers_run_retry_handshake, peer);
 	}
-	NET_EPOCH_EXIT(et);
 }
 
 static void
 wg_timers_event_handshake_complete(struct wg_peer *peer)
 {
-	struct epoch_tracker et;
-	NET_EPOCH_ENTER(et);
 	if (atomic_load_bool(&peer->p_enabled)) {
 		lockmgr(&peer->p_handshake_mtx, LK_EXCLUSIVE);
 		callout_stop(&peer->p_retry_handshake);
@@ -1123,30 +1094,23 @@ wg_timers_event_handshake_complete(struct wg_peer *peer)
 		lockmgr(&peer->p_handshake_mtx, LK_RELEASE);
 		wg_timers_run_send_keepalive(peer);
 	}
-	NET_EPOCH_EXIT(et);
 }
 
 static void
 wg_timers_event_session_derived(struct wg_peer *peer)
 {
-	struct epoch_tracker et;
-	NET_EPOCH_ENTER(et);
 	if (atomic_load_bool(&peer->p_enabled)) {
 		callout_reset(&peer->p_zero_key_material,
 		    REJECT_AFTER_TIME * 3 * hz,
 		    wg_timers_run_zero_key_material, peer);
 	}
-	NET_EPOCH_EXIT(et);
 }
 
 static void
 wg_timers_event_want_initiation(struct wg_peer *peer)
 {
-	struct epoch_tracker et;
-	NET_EPOCH_ENTER(et);
 	if (atomic_load_bool(&peer->p_enabled))
 		wg_timers_run_send_initiation(peer, false);
-	NET_EPOCH_EXIT(et);
 }
 
 static void
@@ -1161,7 +1125,6 @@ wg_timers_run_send_initiation(struct wg_peer *peer, bool is_retry)
 static void
 wg_timers_run_retry_handshake(void *_peer)
 {
-	struct epoch_tracker et;
 	struct wg_peer *peer = _peer;
 
 	lockmgr(&peer->p_handshake_mtx, LK_EXCLUSIVE);
@@ -1180,35 +1143,29 @@ wg_timers_run_retry_handshake(void *_peer)
 		DPRINTF(peer->p_sc, "Handshake for peer %ld did not complete "
 			"after %d retries, giving up\n", peer->p_id,
 			MAX_TIMER_HANDSHAKES + 2);
-
 		callout_stop(&peer->p_send_keepalive);
 		wg_queue_purge(&peer->p_stage_queue);
-		NET_EPOCH_ENTER(et);
 		if (atomic_load_bool(&peer->p_enabled) &&
 		    !callout_pending(&peer->p_zero_key_material)) {
 			callout_reset(&peer->p_zero_key_material,
 			    REJECT_AFTER_TIME * 3 * hz,
 			    wg_timers_run_zero_key_material, peer);
 		}
-		NET_EPOCH_EXIT(et);
 	}
 }
 
 static void
 wg_timers_run_send_keepalive(void *_peer)
 {
-	struct epoch_tracker et;
 	struct wg_peer *peer = _peer;
 
 	wg_send_keepalive(peer);
-	NET_EPOCH_ENTER(et);
 	if (atomic_load_bool(&peer->p_enabled) &&
 	    atomic_load_bool(&peer->p_need_another_keepalive)) {
 		atomic_store_bool(&peer->p_need_another_keepalive, false);
 		callout_reset(&peer->p_send_keepalive, KEEPALIVE_TIMEOUT * hz,
 		    wg_timers_run_send_keepalive, peer);
 	}
-	NET_EPOCH_EXIT(et);
 }
 
 static void
@@ -1753,7 +1710,6 @@ wg_deliver_in(void *arg, int pending __unused)
 	struct ifnet		*ifp = sc->sc_ifp;
 	struct wg_packet	*pkt;
 	struct mbuf		*m;
-	struct epoch_tracker	 et;
 	size_t			 rx_bytes;
 
 	while ((pkt = wg_queue_dequeue_serial(&peer->p_decrypt_serial)) != NULL) {
@@ -1785,7 +1741,6 @@ wg_deliver_in(void *arg, int pending __unused)
 
 		m->m_pkthdr.rcvif = ifp;
 
-		NET_EPOCH_ENTER(et);
 		BPF_MTAP_AF(ifp, m, pkt->p_af);
 
 		KKASSERT(pkt->p_af == AF_INET || pkt->p_af == AF_INET6);
@@ -1793,7 +1748,6 @@ wg_deliver_in(void *arg, int pending __unused)
 			netisr_queue(NETISR_IP, m);
 		else
 			netisr_queue(NETISR_IPV6, m);
-		NET_EPOCH_EXIT(et);
 
 		wg_timers_event_data_received(peer);
 
