@@ -1126,7 +1126,7 @@ rt_msg_buffer(int type, struct rt_addrinfo *rtinfo, void *buf, int msglen)
 static struct mbuf *
 rt_msg_mbuf(int type, struct rt_addrinfo *rtinfo)
 {
-	struct mbuf *m;
+	struct mbuf *m, *n;
 	struct rt_msghdr *rtm;
 	struct sockaddr *sa;
 	int hlen, dlen, len, i;
@@ -1134,10 +1134,28 @@ rt_msg_mbuf(int type, struct rt_addrinfo *rtinfo)
 	hlen = rt_msghdrsize(type);
 	KASSERT(hlen <= MCLBYTES, ("rt_msg_mbuf: hlen %d doesn't fit", hlen));
 
-	m = m_getl(hlen, M_NOWAIT, MT_DATA, M_PKTHDR, NULL);
+	/* Determine the required mbuf (chain) length. */
+	len = hlen;
+	for (i = 0; i < RTAX_MAX; i++) {
+		if ((sa = rtinfo->rti_info[i]) == NULL)
+			continue;
+		len += RT_ROUNDUP(sa->sa_len);
+	}
+
+	/* Allocate the mbuf header and possible chain. */
+	m = m_getl(len, M_NOWAIT, MT_DATA, M_PKTHDR, &dlen);
 	if (m == NULL)
 		return (NULL);
+	if (len > dlen) {
+		n = m_getc(len - dlen, M_NOWAIT, MT_DATA);
+		if (n == NULL) {
+			m_freem(m);
+			return (NULL);
+		}
+		m_cat(m, n);
+	}
 	mbuftrackid(m, 32);
+
 	m->m_pkthdr.len = m->m_len = hlen; /* rtinfo->rti_info[] can be empty */
 	m->m_pkthdr.rcvif = NULL;
 	rtinfo->rti_addrs = 0;
@@ -1147,10 +1165,7 @@ rt_msg_mbuf(int type, struct rt_addrinfo *rtinfo)
 			continue;
 		rtinfo->rti_addrs |= (1 << i);
 		dlen = RT_ROUNDUP(sa->sa_len);
-		if (m_copyback2(m, len, dlen, sa, M_NOWAIT) != 0) {
-			m_freem(m);
-			return (NULL);
-		}
+		m_copyback(m, len, dlen, sa);
 		len += dlen;
 	}
 	rtm = mtod(m, struct rt_msghdr *);
