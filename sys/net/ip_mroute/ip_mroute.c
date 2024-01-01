@@ -2574,8 +2574,8 @@ bw_upcalls_send(void)
 	return;
     }
 
-    m_copyback(m, 0, sizeof(struct igmpmsg), (caddr_t)&igmpmsg);
-    m_copyback(m, sizeof(struct igmpmsg), len, (caddr_t)&bw_upcalls[0]);
+    m_copyback(m, 0, sizeof(struct igmpmsg), &igmpmsg);
+    m_copyback(m, sizeof(struct igmpmsg), len, &bw_upcalls[0]);
     
     /*
      * Send the upcalls
