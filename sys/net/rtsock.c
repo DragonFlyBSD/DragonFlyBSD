@@ -826,6 +826,8 @@ flush:
 		if (m_copyback2(m, 0, rtm->rtm_msglen, rtm, M_NOWAIT) != 0) {
 			m_freem(m);
 			m = NULL;
+		} else if (m->m_pkthdr.len > rtm->rtm_msglen) {
+			m_adj(m, rtm->rtm_msglen - m->m_pkthdr.len);
 		}
 		kfree(rtm, M_RTABLE);
 	}
