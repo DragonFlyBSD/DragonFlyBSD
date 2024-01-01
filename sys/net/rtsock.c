@@ -1138,6 +1138,7 @@ rt_msg_mbuf(int type, struct rt_addrinfo *rtinfo)
 	if (m == NULL)
 		return (NULL);
 	mbuftrackid(m, 32);
+	m->m_pkthdr.len = m->m_len = hlen; /* rtinfo->rti_info[] can be empty */
 	m->m_pkthdr.rcvif = NULL;
 	rtinfo->rti_addrs = 0;
 	len = hlen;
