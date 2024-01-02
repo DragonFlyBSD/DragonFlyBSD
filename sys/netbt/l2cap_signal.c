@@ -957,9 +957,11 @@ l2cap_send_signal(struct hci_link *link, uint8_t code, uint8_t ident,
 
 	hdr = mtod(m, l2cap_hdr_t *);
 	cmd = (l2cap_cmd_hdr_t *)(hdr + 1);
+	hlen = (int)(sizeof(*hdr) + sizeof(*cmd));
+
+	m->m_len = m->m_pkthdr.len = hlen; /* in case length == 0 */
 
 	/* Command Data */
-	hlen = (int)(sizeof(*hdr) + sizeof(*cmd));
 	if (length > 0 && m_copyback2(m, hlen, length, data, M_NOWAIT) != 0) {
 		m_freem(m);
 		return ENOMEM;
