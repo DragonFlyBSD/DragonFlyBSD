@@ -7,6 +7,8 @@
 .
     bin
     ..
+    distfiles.base
+    ..
     games
     ..
     include

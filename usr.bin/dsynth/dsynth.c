@@ -109,7 +109,7 @@ main(int ac, char **av)
 	 * Process options and make sure the directive is present
 	 */
 	sopt = 0;
-	while ((c = getopt(ac, av, "dfhm:p:vxys:DPM:NS")) != -1) {
+	while ((c = getopt(ac, av, "dfhm:p:vxys:C:DPM:NS")) != -1) {
 		switch(c) {
 		case 'f':
 			++ForceOpt;
@@ -119,6 +119,10 @@ main(int ac, char **av)
 			break;
 		case 'y':
 			++YesOpt;
+			break;
+		case 'C':
+			ConfigBase1 = optarg;
+			ConfigBase2 = NULL;
 			break;
 		case 'D':
 			WorkerProcFlags |= WORKER_PROC_DEVELOPER;
@@ -581,7 +585,7 @@ DoInit(void)
 	if (stat(ConfigBase1, &st) == 0) {
 		dfatal("init will not overwrite %s", ConfigBase1);
 	}
-	if (stat(ConfigBase2, &st) == 0) {
+	if (ConfigBase2 && stat(ConfigBase2, &st) == 0) {
 		dfatal("init will not create %s if %s exists",
 		       ConfigBase2, ConfigBase1);
 	}
@@ -671,6 +675,7 @@ usage(int ecode)
     "    -xx                  - Do not rebuild packages whos dports trees\n"
     "                           change\n"
     "    -y                   - Automatically answer yes to dsynth questions\n"
+    "    -C configbase        - Config base directory (replaces /etc/dsynth)\n"
     "    -D                   - Enable DEVELOPER mode\n"
     "    -P                   - Include the check-plist stage\n"
     "    -S                   - Disable ncurses\n"

@@ -1538,6 +1538,7 @@ childBuilderThread(void *arg)
 				closefrom(4);
 				fcntl(3, F_SETFD, 0);
 				execle(DSynthExecPath, DSynthExecPath,
+				       "-C", ConfigBase,
 				       "-p", Profile,
 				       "WORKER", slotbuf, fdbuf,
 				       work->pkg->portdir, work->pkg->pkgfile,

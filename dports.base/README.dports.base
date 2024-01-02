@@ -1,0 +1,29 @@
+USING DPORTS SOFTWARE IN DRAGONFLY BSD BASE
+
+* GOALS
+
+- Improving and/or replacing our VENDOR software procedure.
+- Integrating software from DPorts into DragonFly without needing to modify
+  the base system.
+
+* APPROACH
+
+In DragonFly's src repo there is going to be a directory called 'dports.base'
+which will contain the dragonfly/base meta-port along with some other
+configuration files needed by the make system.  All dport dependencies will
+be retrieved from the dports tree in /usr/dports.
+
+The dragonfly/base meta-port specifies all ports that we intend to include
+in our official distributions.  Many additional ports that the main set of
+ports are dependent on will also be built.
+
+Our Makefile system for building the world is now able to build these ports
+by creating a custom chrooted environment and running dsynth inside it for
+a completely pristine build of the required ports.
+
+--- DEVELOPER NOTES ---
+
+We have not yet decided what to do with programs like LEX and YACC which
+are integrated into base, but the concept is to reduce the number of
+third-party applications that are in the base repo, except for those required
+to bootstrap the dsynth build and get basic networking operational.
