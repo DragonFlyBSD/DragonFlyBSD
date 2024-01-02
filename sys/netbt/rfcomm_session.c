@@ -1676,6 +1676,7 @@ rfcomm_session_send_mcc(struct rfcomm_session *rs, int cr,
 	 * add command data (to same mbuf if possible)
 	 */
 	hlen = hdr - mtod(m, uint8_t *);
+	m->m_len = m->m_pkthdr.len = hlen; /* in case len == 0 */
 
 	if (len > 0 && m_copyback2(m, hlen, len, data, M_NOWAIT) != 0) {
 		m_freem(m);
