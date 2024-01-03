@@ -1384,8 +1384,8 @@ m_free(struct mbuf *m)
 			 * an mbuf).
 			 */
 			m->m_data = m->m_ext.ext_buf;
-			if (m->m_flags &
-			    M_EXT && m->m_ext.ext_size != MCLBYTES) {
+			if ((m->m_flags & M_EXT) &&
+			    m->m_ext.ext_size != MCLBYTES) {
 				if (m->m_flags & M_PHCACHE)
 					objcache_put(mbufphdrjcluster_cache, m);
 				else
