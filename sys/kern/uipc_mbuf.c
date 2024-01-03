@@ -1671,7 +1671,7 @@ nospace:
 void
 m_copydata(const struct mbuf *m, int off, int len, void *_cp)
 {
-	caddr_t *cp = _cp;
+	caddr_t cp = _cp;
 	unsigned count;
 
 	KASSERT(off >= 0, ("%s: negative off %d", __func__, off));
@@ -2236,7 +2236,7 @@ struct mbuf *
 m_devget(void *_buf, int len, int offset __unused, struct ifnet *ifp)
 {
 	struct mbuf *m, *mfirst = NULL, **mtail;
-	caddr_t *buf = _buf;
+	caddr_t buf = _buf;
 	int nsize, flags;
 
 	mtail = &mfirst;
@@ -2328,7 +2328,7 @@ _m_copyback2(struct mbuf *m0, int off, int len, const void *_cp, int how,
 	     boolean_t allow_alloc)
 {
 	struct mbuf *m = m0, *n;
-	const caddr_t *cp = _cp;
+	c_caddr_t cp = _cp;
 	int mlen, tlen, nsize, totlen = 0, error = ENOBUFS;
 
 	if (m0 == NULL)
@@ -2422,7 +2422,7 @@ int
 m_append(struct mbuf *m0, int len, const void *_cp)
 {
 	struct mbuf *m, *n;
-	const caddr_t *cp = _cp;
+	c_caddr_t cp = _cp;
 	int remainder, space;
 
 	for (m = m0; m->m_next != NULL; m = m->m_next)
