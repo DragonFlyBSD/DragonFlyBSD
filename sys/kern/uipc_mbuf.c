@@ -2239,6 +2239,7 @@ m_devget(void *_buf, int len, int offset __unused, struct ifnet *ifp)
 	caddr_t buf = _buf;
 	int nsize, flags;
 
+	KKASSERT(offset == 0);
 	mtail = &mfirst;
 	flags = M_PKTHDR;
 

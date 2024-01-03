@@ -2228,7 +2228,7 @@ ale_rxeof(struct ale_softc *sc)
 		 * think users would expect good Rx performance numbers
 		 * on these low-end consumer ethernet controller.
 		 */
-		m = m_devget(rs + 1, length - ETHER_CRC_LEN, ETHER_ALIGN, ifp);
+		m = m_devget(rs + 1, length - ETHER_CRC_LEN, 0, ifp);
 		if (m == NULL) {
 			IFNET_STAT_INC(ifp, iqdrops, 1);
 			ale_rx_update_page(sc, &rx_page, length, &prod);
