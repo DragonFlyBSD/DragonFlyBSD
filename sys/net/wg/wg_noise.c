@@ -505,12 +505,16 @@ noise_remote_keys(struct noise_remote *r, uint8_t public[NOISE_PUBLIC_KEY_LEN],
 		memcpy(public, r->r_public, NOISE_PUBLIC_KEY_LEN);
 
 	lockmgr(&r->r_handshake_lock, LK_SHARED);
-	if (psk != NULL)
-		memcpy(psk, r->r_psk, NOISE_SYMMETRIC_KEY_LEN);
-	ret = timingsafe_bcmp(r->r_psk, null_psk, NOISE_SYMMETRIC_KEY_LEN);
+	if (timingsafe_bcmp(r->r_psk, null_psk, NOISE_SYMMETRIC_KEY_LEN) == 0) {
+		ret = ENOENT;
+	} else {
+		if (psk != NULL)
+			memcpy(psk, r->r_psk, NOISE_SYMMETRIC_KEY_LEN);
+		ret = 0;
+	}
 	lockmgr(&r->r_handshake_lock, LK_RELEASE);
 
-	return (ret ? 0 : ENOENT);
+	return (ret);
 }
 
 int
