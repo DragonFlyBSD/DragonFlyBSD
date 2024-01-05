@@ -22,7 +22,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/endian.h>
-#include <sys/epoch.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
@@ -91,8 +90,6 @@ struct noise_keypair {
 	uint64_t			 kp_counter_send;
 	uint64_t			 kp_counter_recv;
 	unsigned long			 kp_backtrack[COUNTER_BITS_TOTAL / COUNTER_BITS];
-
-	struct epoch_context		 kp_smr;
 };
 
 struct noise_handshake {
@@ -127,7 +124,7 @@ struct noise_remote {
 	struct noise_local		*r_local;
 	void				*r_arg;
 
-	struct lock			 r_keypair_mtx;
+	struct lock			 r_keypair_lock;
 	struct noise_keypair		*r_next, *r_current, *r_previous;
 };
 
@@ -317,7 +314,7 @@ noise_remote_alloc(struct noise_local *l, void *arg,
 	r->r_local = noise_local_ref(l);
 	r->r_arg = arg;
 
-	lockinit(&r->r_keypair_mtx, "noise_keypair", 0, 0);
+	lockinit(&r->r_keypair_lock, "noise_keypair", 0, 0);
 
 	return (r);
 }
@@ -464,7 +461,7 @@ noise_remote_put(struct noise_remote *r)
 	if (refcount_release(&r->r_refcnt)) {
 		noise_local_put(r->r_local);
 		lockuninit(&r->r_handshake_lock);
-		lockuninit(&r->r_keypair_mtx);
+		lockuninit(&r->r_keypair_lock);
 		explicit_bzero(r, sizeof(*r));
 		kfree(r, M_NOISE);
 	}
@@ -541,7 +538,8 @@ noise_remote_keypairs_clear(struct noise_remote *r)
 {
 	struct noise_keypair *kp;
 
-	lockmgr(&r->r_keypair_mtx, LK_EXCLUSIVE);
+	lockmgr(&r->r_keypair_lock, LK_EXCLUSIVE);
+
 	kp = atomic_load_ptr(&r->r_next);
 	atomic_store_ptr(&r->r_next, NULL);
 	noise_keypair_drop(kp);
@@ -553,25 +551,25 @@ noise_remote_keypairs_clear(struct noise_remote *r)
 	kp = atomic_load_ptr(&r->r_previous);
 	atomic_store_ptr(&r->r_previous, NULL);
 	noise_keypair_drop(kp);
-	lockmgr(&r->r_keypair_mtx, LK_RELEASE);
+
+	lockmgr(&r->r_keypair_lock, LK_RELEASE);
 }
 
 static void
 noise_remote_expire_current(struct noise_remote *r)
 {
-	struct epoch_tracker et;
 	struct noise_keypair *kp;
 
 	noise_remote_handshake_clear(r);
 
-	NET_EPOCH_ENTER(et);
+	lockmgr(&r->r_keypair_lock, LK_SHARED);
 	kp = atomic_load_ptr(&r->r_next);
 	if (kp != NULL)
 		atomic_store_bool(&kp->kp_can_send, false);
 	kp = atomic_load_ptr(&r->r_current);
 	if (kp != NULL)
 		atomic_store_bool(&kp->kp_can_send, false);
-	NET_EPOCH_EXIT(et);
+	lockmgr(&r->r_keypair_lock, LK_RELEASE);
 }
 
 /* Keypair functions */
@@ -582,12 +580,13 @@ noise_add_new_keypair(struct noise_local *l, struct noise_remote *r,
 	struct noise_keypair *next, *current, *previous;
 	struct noise_index *r_i = &r->r_index;
 
-	/* Insert into the keypair table */
-	lockmgr(&r->r_keypair_mtx, LK_EXCLUSIVE);
+	/*
+	 * Rotate keypairs and load the new one.
+	 */
+	lockmgr(&r->r_keypair_lock, LK_EXCLUSIVE);
 	next = atomic_load_ptr(&r->r_next);
 	current = atomic_load_ptr(&r->r_current);
 	previous = atomic_load_ptr(&r->r_previous);
-
 	if (kp->kp_is_initiator) {
 		if (next != NULL) {
 			atomic_store_ptr(&r->r_next, NULL);
@@ -603,11 +602,12 @@ noise_add_new_keypair(struct noise_local *l, struct noise_remote *r,
 		noise_keypair_drop(next);
 		atomic_store_ptr(&r->r_previous, NULL);
 		noise_keypair_drop(previous);
-
 	}
-	lockmgr(&r->r_keypair_mtx, LK_RELEASE);
+	lockmgr(&r->r_keypair_lock, LK_RELEASE);
 
-	/* Insert into index table */
+	/*
+	 * Insert into index hashtable.
+	 */
 	KKASSERT(lockstatus(&r->r_handshake_lock, curthread) == LK_EXCLUSIVE);
 
 	kp->kp_index.i_is_keypair = true;
@@ -679,26 +679,19 @@ noise_keypair_lookup(struct noise_local *l, uint32_t idx0)
 struct noise_keypair *
 noise_keypair_current(struct noise_remote *r)
 {
-	struct epoch_tracker et;
 	struct noise_keypair *kp, *ret = NULL;
 
-	NET_EPOCH_ENTER(et);
+	lockmgr(&r->r_keypair_lock, LK_SHARED);
 	kp = atomic_load_ptr(&r->r_current);
 	if (kp != NULL && atomic_load_bool(&kp->kp_can_send)) {
 		if (noise_timer_expired(&kp->kp_birthdate, REJECT_AFTER_TIME, 0))
 			atomic_store_bool(&kp->kp_can_send, false);
-		else if (refcount_acquire_if_not_zero(&kp->kp_refcnt))
-			ret = kp;
+		else
+			ret = noise_keypair_ref(kp);
 	}
-	NET_EPOCH_EXIT(et);
-	return (ret);
-}
+	lockmgr(&r->r_keypair_lock, LK_RELEASE);
 
-struct noise_keypair *
-noise_keypair_ref(struct noise_keypair *kp)
-{
-	refcount_acquire(&kp->kp_refcnt);
-	return (kp);
+	return (ret);
 }
 
 int
@@ -710,9 +703,11 @@ noise_keypair_received_with(struct noise_keypair *kp)
 	if (kp != atomic_load_ptr(&r->r_next))
 		return (0);
 
-	lockmgr(&r->r_keypair_mtx, LK_EXCLUSIVE);
+	lockmgr(&r->r_keypair_lock, LK_EXCLUSIVE);
+
+	/* Double check after locking. */
 	if (kp != atomic_load_ptr(&r->r_next)) {
-		lockmgr(&r->r_keypair_mtx, LK_RELEASE);
+		lockmgr(&r->r_keypair_lock, LK_RELEASE);
 		return (0);
 	}
 
@@ -721,27 +716,28 @@ noise_keypair_received_with(struct noise_keypair *kp)
 	noise_keypair_drop(old);
 	atomic_store_ptr(&r->r_current, kp);
 	atomic_store_ptr(&r->r_next, NULL);
-	lockmgr(&r->r_keypair_mtx, LK_RELEASE);
+
+	lockmgr(&r->r_keypair_lock, LK_RELEASE);
 
 	return (ECONNRESET);
 }
 
-static void
-noise_keypair_smr_free(struct epoch_context *smr)
+struct noise_keypair *
+noise_keypair_ref(struct noise_keypair *kp)
 {
-	struct noise_keypair *kp;
-	kp = __containerof(smr, struct noise_keypair, kp_smr);
-	noise_remote_put(kp->kp_remote);
-	lockuninit(&kp->kp_counter_lock);
-	explicit_bzero(kp, sizeof(*kp));
-	kfree(kp, M_NOISE);
+	refcount_acquire(&kp->kp_refcnt);
+	return (kp);
 }
 
 void
 noise_keypair_put(struct noise_keypair *kp)
 {
-	if (refcount_release(&kp->kp_refcnt))
-		NET_EPOCH_CALL(noise_keypair_smr_free, &kp->kp_smr);
+	if (refcount_release(&kp->kp_refcnt)) {
+		noise_remote_put(kp->kp_remote);
+		lockuninit(&kp->kp_counter_lock);
+		explicit_bzero(kp, sizeof(*kp));
+		kfree(kp, M_NOISE);
+	}
 }
 
 static void
@@ -760,6 +756,7 @@ noise_keypair_drop(struct noise_keypair *kp)
 	LIST_REMOVE(&kp->kp_index, i_entry);
 	lockmgr(&l->l_index_lock, LK_RELEASE);
 
+	KKASSERT(lockstatus(&r->r_keypair_lock, curthread) == LK_EXCLUSIVE);
 	noise_keypair_put(kp);
 }
 
@@ -836,12 +833,12 @@ error:
 int
 noise_keep_key_fresh_send(struct noise_remote *r)
 {
-	struct epoch_tracker et;
 	struct noise_keypair *current;
 	uint64_t counter;
 	int keep_key_fresh;
 
-	NET_EPOCH_ENTER(et);
+	lockmgr(&r->r_keypair_lock, LK_SHARED);
+
 	current = atomic_load_ptr(&r->r_current);
 	keep_key_fresh = current != NULL && atomic_load_bool(&current->kp_can_send);
 	if (!keep_key_fresh)
@@ -859,23 +856,22 @@ noise_keep_key_fresh_send(struct noise_remote *r)
 	keep_key_fresh = current->kp_is_initiator && noise_timer_expired(&current->kp_birthdate, REKEY_AFTER_TIME, 0);
 
 out:
-	NET_EPOCH_EXIT(et);
+	lockmgr(&r->r_keypair_lock, LK_RELEASE);
 	return (keep_key_fresh ? ESTALE : 0);
 }
 
 int
 noise_keep_key_fresh_recv(struct noise_remote *r)
 {
-	struct epoch_tracker et;
 	struct noise_keypair *current;
 	int keep_key_fresh;
 
-	NET_EPOCH_ENTER(et);
+	lockmgr(&r->r_keypair_lock, LK_SHARED);
 	current = atomic_load_ptr(&r->r_current);
 	keep_key_fresh = current != NULL && atomic_load_bool(&current->kp_can_send) &&
 	    current->kp_is_initiator && noise_timer_expired(&current->kp_birthdate,
 	    REJECT_AFTER_TIME - KEEPALIVE_TIMEOUT - REKEY_TIMEOUT, 0);
-	NET_EPOCH_EXIT(et);
+	lockmgr(&r->r_keypair_lock, LK_RELEASE);
 
 	return (keep_key_fresh ? ESTALE : 0);
 }
