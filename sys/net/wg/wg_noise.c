@@ -21,6 +21,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/bitops.h> /* ilog2() */
 #include <sys/endian.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
@@ -42,15 +43,11 @@
 
 /* Constants for the counter */
 #define COUNTER_BITS_TOTAL	8192
-#ifdef __LP64__
-#define COUNTER_ORDER		6
-#define COUNTER_BITS		64
-#else
-#define COUNTER_ORDER		5
-#define COUNTER_BITS		32
-#endif
-#define COUNTER_REDUNDANT_BITS	COUNTER_BITS
-#define COUNTER_WINDOW_SIZE	(COUNTER_BITS_TOTAL - COUNTER_REDUNDANT_BITS)
+#define COUNTER_BITS		(sizeof(unsigned long) * 8)
+#define COUNTER_ORDER		ilog2(COUNTER_BITS)
+#define COUNTER_WINDOW_SIZE	(COUNTER_BITS_TOTAL - COUNTER_BITS)
+#define COUNTER_NUM		(COUNTER_BITS_TOTAL / COUNTER_BITS)
+#define COUNTER_MASK		(COUNTER_NUM - 1)
 
 /* Constants for the keypair */
 #define REKEY_AFTER_MESSAGES	(1ull << 60)
@@ -58,8 +55,7 @@
 #define REKEY_AFTER_TIME	120
 #define REKEY_AFTER_TIME_RECV	165
 #define REJECT_INTERVAL		(1000000000 / 50) /* fifty times per sec */
-/* 24 = floor(log2(REJECT_INTERVAL)) */
-#define REJECT_INTERVAL_MASK	(~((1ull<<24)-1))
+#define REJECT_INTERVAL_MASK	(~((1ULL << ilog2(REJECT_INTERVAL)) - 1))
 
 #define HT_INDEX_SIZE		(1 << 13)
 #define HT_INDEX_MASK		(HT_INDEX_SIZE - 1)
@@ -89,7 +85,7 @@ struct noise_keypair {
 	struct lock			 kp_counter_lock;
 	uint64_t			 kp_counter_send;
 	uint64_t			 kp_counter_recv;
-	unsigned long			 kp_backtrack[COUNTER_BITS_TOTAL / COUNTER_BITS];
+	unsigned long			 kp_backtrack[COUNTER_NUM];
 };
 
 struct noise_handshake {
@@ -810,11 +806,9 @@ noise_keypair_counter_check(struct noise_keypair *kp, uint64_t recv)
 
 	if (__predict_true(recv > kp->kp_counter_recv)) {
 		index_current = kp->kp_counter_recv >> COUNTER_ORDER;
-		top = MIN(index - index_current, COUNTER_BITS_TOTAL / COUNTER_BITS);
+		top = MIN(index - index_current, COUNTER_NUM);
 		for (i = 1; i <= top; i++)
-			kp->kp_backtrack[
-			    (i + index_current) &
-				((COUNTER_BITS_TOTAL / COUNTER_BITS) - 1)] = 0;
+			kp->kp_backtrack[(i+index_current) & COUNTER_MASK] = 0;
 #ifdef __LP64__
 		atomic_store_64(&kp->kp_counter_recv, recv);
 #else
@@ -822,8 +816,8 @@ noise_keypair_counter_check(struct noise_keypair *kp, uint64_t recv)
 #endif
 	}
 
-	index &= (COUNTER_BITS_TOTAL / COUNTER_BITS) - 1;
-	bit = 1ul << (recv & (COUNTER_BITS - 1));
+	index &= COUNTER_MASK;
+	bit = 1UL << (recv & (COUNTER_BITS - 1));
 	if (kp->kp_backtrack[index] & bit)
 		goto error;
 
