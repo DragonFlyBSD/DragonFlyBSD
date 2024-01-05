@@ -111,18 +111,18 @@ siphash13(const uint8_t key[SIPHASH_KEY_LENGTH], const void *src, size_t len)
 	return SipHashX(&ctx, 1, 3, key, src, len);
 }
 
-static inline int
+static inline bool
 timer_expired(const struct timespec *birthdate, time_t sec, long nsec)
 {
 	struct timespec uptime;
 	struct timespec expire = { .tv_sec = sec, .tv_nsec = nsec };
 
 	if (birthdate->tv_sec == 0 && birthdate->tv_nsec == 0)
-		return (ETIMEDOUT);
+		return (true);
 
 	getnanouptime(&uptime);
 	timespecadd(birthdate, &expire, &expire);
-	return timespeccmp(&uptime, &expire, >) ? ETIMEDOUT : 0;
+	return timespeccmp(&uptime, &expire, >);
 }
 
 /*----------------------------------------------------------------------------*/

@@ -43,9 +43,9 @@ struct noise_local *
 	noise_local_alloc(void);
 void	noise_local_free(struct noise_local *);
 
-int	noise_local_set_private(struct noise_local *,
+bool	noise_local_set_private(struct noise_local *,
 	    const uint8_t[NOISE_PUBLIC_KEY_LEN]);
-int	noise_local_keys(struct noise_local *,
+bool	noise_local_keys(struct noise_local *,
 	    uint8_t[NOISE_PUBLIC_KEY_LEN],
 	    uint8_t[NOISE_PUBLIC_KEY_LEN]);
 
@@ -67,10 +67,10 @@ void *	noise_remote_arg(struct noise_remote *);
 
 void	noise_remote_set_psk(struct noise_remote *,
 	    const uint8_t[NOISE_SYMMETRIC_KEY_LEN]);
-int	noise_remote_keys(struct noise_remote *,
+bool	noise_remote_keys(struct noise_remote *,
 	    uint8_t[NOISE_PUBLIC_KEY_LEN],
 	    uint8_t[NOISE_SYMMETRIC_KEY_LEN]);
-int	noise_remote_initiation_expired(struct noise_remote *);
+bool	noise_remote_initiation_expired(struct noise_remote *);
 void	noise_remote_handshake_clear(struct noise_remote *);
 void	noise_remote_keypairs_clear(struct noise_remote *);
 
@@ -81,17 +81,18 @@ struct noise_keypair *
 	noise_keypair_current(struct noise_remote *);
 struct noise_keypair *
 	noise_keypair_ref(struct noise_keypair *);
-int	noise_keypair_received_with(struct noise_keypair *);
 void	noise_keypair_put(struct noise_keypair *);
+bool	noise_keypair_received_with(struct noise_keypair *);
 
 struct noise_remote *
 	noise_keypair_remote(struct noise_keypair *);
 
-int	noise_keypair_counter_next(struct noise_keypair *, uint64_t *);
-int	noise_keypair_counter_check(struct noise_keypair *, uint64_t);
+bool	noise_keypair_counter_next(struct noise_keypair *, uint64_t *);
+bool	noise_keypair_counter_check(struct noise_keypair *, uint64_t);
 
-int	noise_keep_key_fresh_send(struct noise_remote *);
-int	noise_keep_key_fresh_recv(struct noise_remote *);
+bool	noise_keep_key_fresh_send(struct noise_remote *);
+bool	noise_keep_key_fresh_recv(struct noise_remote *);
+
 int	noise_keypair_encrypt(
 	    struct noise_keypair *,
 	    uint32_t *r_idx,
