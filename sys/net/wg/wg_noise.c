@@ -163,7 +163,7 @@ static struct noise_local *
 		noise_local_ref(struct noise_local *);
 static void	noise_local_put(struct noise_local *);
 
-static void	noise_remote_index_insert(struct noise_local *,
+static uint32_t	noise_remote_index_insert(struct noise_local *,
 					  struct noise_remote *);
 static struct noise_remote *
 		noise_remote_index_lookup(struct noise_local *,
@@ -442,7 +442,7 @@ noise_remote_lookup(struct noise_local *l,
 	return (ret);
 }
 
-static void
+static uint32_t
 noise_remote_index_insert(struct noise_local *l, struct noise_remote *r)
 {
 	struct noise_index *i, *r_i = &r->r_index;
@@ -460,6 +460,8 @@ retry:
 	}
 	LIST_INSERT_HEAD(&l->l_index_hash[idx], r_i, i_entry);
 	lockmgr(&l->l_index_lock, LK_RELEASE);
+
+	return (r_i->i_local_index);
 }
 
 static struct noise_remote *
@@ -1042,10 +1044,9 @@ noise_create_initiation(struct noise_remote *r, uint32_t *s_idx,
 	noise_tai64n_now(ets);
 	noise_msg_encrypt(ets, ets, NOISE_TIMESTAMP_LEN, key, hs->hs_hash);
 
-	noise_remote_index_insert(l, r);
+	*s_idx = noise_remote_index_insert(l, r);
 	r->r_handshake_state = HANDSHAKE_INITIATOR;
 	getnanouptime(&r->r_last_sent);
-	*s_idx = r->r_index.i_local_index;
 	ret = 0;
 
 error:
