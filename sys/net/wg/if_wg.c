@@ -2604,8 +2604,6 @@ wg_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 	bool			 privileged;
 	int			 ret;
 
-	lockmgr(&wg_lock, LK_SHARED);
-
 	sc = ifp->if_softc;
 	ret = 0;
 
@@ -2650,7 +2648,6 @@ wg_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 		ret = ENOTTY;
 	}
 
-	lockmgr(&wg_lock, LK_RELEASE);
 	return (ret);
 }
 
