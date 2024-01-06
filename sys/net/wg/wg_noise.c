@@ -919,7 +919,7 @@ noise_keypair_decrypt(struct noise_keypair *kp, uint64_t counter,
 /*----------------------------------------------------------------------------*/
 /* Handshake functions */
 
-int
+bool
 noise_create_initiation(struct noise_remote *r, uint32_t *s_idx,
 			uint8_t ue[NOISE_PUBLIC_KEY_LEN],
 			uint8_t es[NOISE_PUBLIC_KEY_LEN + NOISE_AUTHTAG_LEN],
@@ -928,7 +928,7 @@ noise_create_initiation(struct noise_remote *r, uint32_t *s_idx,
 	struct noise_handshake *hs = &r->r_handshake;
 	struct noise_local *l = r->r_local;
 	uint8_t key[NOISE_SYMMETRIC_KEY_LEN];
-	int ret = EINVAL;
+	bool ok = false;
 
 	lockmgr(&l->l_identity_lock, LK_SHARED);
 	lockmgr(&r->r_handshake_lock, LK_EXCLUSIVE);
@@ -965,27 +965,26 @@ noise_create_initiation(struct noise_remote *r, uint32_t *s_idx,
 	*s_idx = noise_remote_index_insert(l, r);
 	r->r_handshake_state = HANDSHAKE_INITIATOR;
 	getnanouptime(&r->r_last_sent);
-	ret = 0;
+	ok = true;
 
 error:
 	lockmgr(&r->r_handshake_lock, LK_RELEASE);
 	lockmgr(&l->l_identity_lock, LK_RELEASE);
 	explicit_bzero(key, sizeof(key));
-	return (ret);
+	return (ok);
 }
 
-int
-noise_consume_initiation(struct noise_local *l, struct noise_remote **rp,
-			 uint32_t s_idx, uint8_t ue[NOISE_PUBLIC_KEY_LEN],
+struct noise_remote *
+noise_consume_initiation(struct noise_local *l, uint32_t s_idx,
+			 uint8_t ue[NOISE_PUBLIC_KEY_LEN],
 			 uint8_t es[NOISE_PUBLIC_KEY_LEN + NOISE_AUTHTAG_LEN],
 			 uint8_t ets[NOISE_TIMESTAMP_LEN + NOISE_AUTHTAG_LEN])
 {
-	struct noise_remote *r;
+	struct noise_remote *r, *ret = NULL;
 	struct noise_handshake hs;
 	uint8_t key[NOISE_SYMMETRIC_KEY_LEN];
 	uint8_t r_public[NOISE_PUBLIC_KEY_LEN];
 	uint8_t timestamp[NOISE_TIMESTAMP_LEN];
-	int ret = EINVAL;
 
 	lockmgr(&l->l_identity_lock, LK_SHARED);
 
@@ -1045,8 +1044,7 @@ noise_consume_initiation(struct noise_local *l, struct noise_remote **rp,
 	r->r_index.i_remote_index = s_idx;
 	r->r_handshake_state = HANDSHAKE_RESPONDER;
 	r->r_handshake = hs;
-	*rp = noise_remote_ref(r);
-	ret = 0;
+	ret = noise_remote_ref(r);
 
 error_set:
 	lockmgr(&r->r_handshake_lock, LK_RELEASE);
@@ -1059,7 +1057,7 @@ error:
 	return (ret);
 }
 
-int
+bool
 noise_create_response(struct noise_remote *r, uint32_t *s_idx,
 		      uint32_t *r_idx, uint8_t ue[NOISE_PUBLIC_KEY_LEN],
 		      uint8_t en[0 + NOISE_AUTHTAG_LEN])
@@ -1068,7 +1066,7 @@ noise_create_response(struct noise_remote *r, uint32_t *s_idx,
 	struct noise_local *l = r->r_local;
 	uint8_t key[NOISE_SYMMETRIC_KEY_LEN];
 	uint8_t e[NOISE_PUBLIC_KEY_LEN];
-	int ret = EINVAL;
+	bool ok = false;
 
 	lockmgr(&l->l_identity_lock, LK_SHARED);
 	lockmgr(&r->r_handshake_lock, LK_EXCLUSIVE);
@@ -1100,7 +1098,7 @@ noise_create_response(struct noise_remote *r, uint32_t *s_idx,
 		getnanouptime(&r->r_last_sent);
 		*s_idx = r->r_index.i_local_index;
 		*r_idx = r->r_index.i_remote_index;
-		ret = 0;
+		ok = true;
 	}
 
 error:
@@ -1108,23 +1106,22 @@ error:
 	lockmgr(&l->l_identity_lock, LK_RELEASE);
 	explicit_bzero(key, sizeof(key));
 	explicit_bzero(e, sizeof(e));
-	return (ret);
+	return (ok);
 }
 
-int
-noise_consume_response(struct noise_local *l, struct noise_remote **rp,
-		       uint32_t s_idx, uint32_t r_idx,
+struct noise_remote *
+noise_consume_response(struct noise_local *l, uint32_t s_idx, uint32_t r_idx,
 		       uint8_t ue[NOISE_PUBLIC_KEY_LEN],
 		       uint8_t en[0 + NOISE_AUTHTAG_LEN])
 {
+	struct noise_remote *r, *ret = NULL;
+	struct noise_handshake hs;
 	uint8_t preshared_key[NOISE_SYMMETRIC_KEY_LEN];
 	uint8_t key[NOISE_SYMMETRIC_KEY_LEN];
-	struct noise_handshake hs;
-	struct noise_remote *r = NULL;
-	int ret = EINVAL;
 
-	if ((r = noise_remote_index_lookup(l, r_idx, false)) == NULL)
-		return (ret);
+	r = noise_remote_index_lookup(l, r_idx, false);
+	if (r == NULL)
+		return (NULL);
 
 	lockmgr(&l->l_identity_lock, LK_SHARED);
 	if (!l->l_has_identity)
@@ -1164,7 +1161,7 @@ noise_consume_response(struct noise_local *l, struct noise_remote **rp,
 		r->r_handshake = hs;
 		r->r_index.i_remote_index = s_idx;
 		if (noise_begin_session(r))
-			*rp = noise_remote_ref(r);
+			ret = noise_remote_ref(r);
 	}
 	lockmgr(&r->r_handshake_lock, LK_RELEASE);
 

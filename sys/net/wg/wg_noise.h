@@ -100,28 +100,28 @@ int	noise_keypair_decrypt(struct noise_keypair *, uint64_t counter,
 			      struct mbuf *);
 
 /* Handshake functions */
-int	noise_create_initiation(
+bool	noise_create_initiation(
 	    struct noise_remote *,
 	    uint32_t *s_idx,
 	    uint8_t ue[NOISE_PUBLIC_KEY_LEN],
 	    uint8_t es[NOISE_PUBLIC_KEY_LEN + NOISE_AUTHTAG_LEN],
 	    uint8_t ets[NOISE_TIMESTAMP_LEN + NOISE_AUTHTAG_LEN]);
-int	noise_consume_initiation(
+struct noise_remote *
+	noise_consume_initiation(
 	    struct noise_local *,
-	    struct noise_remote **,
 	    uint32_t s_idx,
 	    uint8_t ue[NOISE_PUBLIC_KEY_LEN],
 	    uint8_t es[NOISE_PUBLIC_KEY_LEN + NOISE_AUTHTAG_LEN],
 	    uint8_t ets[NOISE_TIMESTAMP_LEN + NOISE_AUTHTAG_LEN]);
-int	noise_create_response(
+bool	noise_create_response(
 	    struct noise_remote *,
 	    uint32_t *s_idx,
 	    uint32_t *r_idx,
 	    uint8_t ue[NOISE_PUBLIC_KEY_LEN],
 	    uint8_t en[0 + NOISE_AUTHTAG_LEN]);
-int	noise_consume_response(
+struct noise_remote *
+	noise_consume_response(
 	    struct noise_local *,
-	    struct noise_remote **,
 	    uint32_t s_idx,
 	    uint32_t r_idx,
 	    uint8_t ue[NOISE_PUBLIC_KEY_LEN],

@@ -1236,8 +1236,8 @@ wg_send_initiation(struct wg_peer *peer)
 {
 	struct wg_pkt_initiation pkt;
 
-	if (noise_create_initiation(peer->p_remote, &pkt.s_idx, pkt.ue,
-				    pkt.es, pkt.ets) != 0)
+	if (!noise_create_initiation(peer->p_remote, &pkt.s_idx, pkt.ue,
+				     pkt.es, pkt.ets))
 		return;
 
 	DPRINTF(peer->p_sc, "Sending handshake initiation to peer %ld\n",
@@ -1255,8 +1255,8 @@ wg_send_response(struct wg_peer *peer)
 {
 	struct wg_pkt_response pkt;
 
-	if (noise_create_response(peer->p_remote, &pkt.s_idx, &pkt.r_idx,
-				  pkt.ue, pkt.en) != 0)
+	if (!noise_create_response(peer->p_remote, &pkt.s_idx, &pkt.r_idx,
+				   pkt.ue, pkt.en))
 		return;
 
 	DPRINTF(peer->p_sc, "Sending handshake response to peer %ld\n",
@@ -1360,9 +1360,10 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 			panic("%s: unexpected return: %d", __func__, ret);
 		}
 
-		if (noise_consume_initiation(sc->sc_local, &remote,
-					     init->s_idx, init->ue,
-					     init->es, init->ets) != 0) {
+		remote = noise_consume_initiation(sc->sc_local, init->s_idx,
+						  init->ue, init->es,
+						  init->ets);
+		if (remote == NULL) {
 			DPRINTF(sc, "Invalid handshake initiation\n");
 			goto error;
 		}
@@ -1394,9 +1395,10 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 			panic("%s: unexpected return: %d", __func__, ret);
 		}
 
-		if (noise_consume_response(sc->sc_local, &remote,
-					   resp->s_idx, resp->r_idx,
-					   resp->ue, resp->en) != 0) {
+		remote = noise_consume_response(sc->sc_local, resp->s_idx,
+						resp->r_idx, resp->ue,
+						resp->en);
+		if (remote == NULL) {
 			DPRINTF(sc, "Invalid handshake response\n");
 			goto error;
 		}
