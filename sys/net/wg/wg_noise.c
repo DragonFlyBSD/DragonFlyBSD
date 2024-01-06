@@ -172,10 +172,7 @@ static bool	noise_remote_index_remove(struct noise_local *,
 					  struct noise_remote *);
 static void	noise_remote_expire_current(struct noise_remote *);
 
-static void	noise_add_new_keypair(struct noise_local *,
-				      struct noise_remote *,
-				      struct noise_keypair *);
-static int	noise_begin_session(struct noise_remote *);
+static bool	noise_begin_session(struct noise_remote *);
 static void	noise_keypair_drop(struct noise_keypair *);
 
 static void	noise_kdf(uint8_t *, uint8_t *, uint8_t *, const uint8_t *,
@@ -647,85 +644,6 @@ noise_remote_expire_current(struct noise_remote *r)
 /*----------------------------------------------------------------------------*/
 /* Keypair functions */
 
-static void
-noise_add_new_keypair(struct noise_local *l, struct noise_remote *r,
-		      struct noise_keypair *kp)
-{
-	struct noise_keypair *next, *current, *previous;
-	struct noise_index *r_i = &r->r_index;
-
-	/*
-	 * Rotate keypairs and load the new one.
-	 */
-	lockmgr(&r->r_keypair_lock, LK_EXCLUSIVE);
-	next = atomic_load_ptr(&r->r_keypair_next);
-	current = atomic_load_ptr(&r->r_keypair_current);
-	previous = atomic_load_ptr(&r->r_keypair_previous);
-	if (kp->kp_is_initiator) {
-		if (next != NULL) {
-			atomic_store_ptr(&r->r_keypair_next, NULL);
-			atomic_store_ptr(&r->r_keypair_previous, next);
-			noise_keypair_drop(current);
-		} else {
-			atomic_store_ptr(&r->r_keypair_previous, current);
-		}
-		noise_keypair_drop(previous);
-		atomic_store_ptr(&r->r_keypair_current, kp);
-	} else {
-		atomic_store_ptr(&r->r_keypair_next, kp);
-		noise_keypair_drop(next);
-		atomic_store_ptr(&r->r_keypair_previous, NULL);
-		noise_keypair_drop(previous);
-	}
-	lockmgr(&r->r_keypair_lock, LK_RELEASE);
-
-	/*
-	 * Insert into index hashtable.
-	 */
-	KKASSERT(lockstatus(&r->r_handshake_lock, curthread) == LK_EXCLUSIVE);
-
-	kp->kp_index.i_is_keypair = true;
-	kp->kp_index.i_local_index = r_i->i_local_index;
-	kp->kp_index.i_remote_index = r_i->i_remote_index;
-
-	lockmgr(&l->l_index_lock, LK_EXCLUSIVE);
-	LIST_INSERT_BEFORE(r_i, &kp->kp_index, i_entry);
-	r->r_handshake_state = HANDSHAKE_DEAD;
-	LIST_REMOVE(r_i, i_entry);
-	lockmgr(&l->l_index_lock, LK_RELEASE);
-
-	explicit_bzero(&r->r_handshake, sizeof(r->r_handshake));
-}
-
-static int
-noise_begin_session(struct noise_remote *r)
-{
-	struct noise_keypair *kp;
-
-	KKASSERT(lockstatus(&r->r_handshake_lock, curthread) == LK_EXCLUSIVE);
-
-	kp = kmalloc(sizeof(*kp), M_NOISE, M_NOWAIT | M_ZERO);
-	if (kp == NULL)
-		return (ENOMEM);
-
-	refcount_init(&kp->kp_refcnt, 1);
-	kp->kp_can_send = true;
-	kp->kp_is_initiator = (r->r_handshake_state == HANDSHAKE_INITIATOR);
-	kp->kp_remote = noise_remote_ref(r);
-	getnanouptime(&kp->kp_birthdate);
-
-	noise_kdf((kp->kp_is_initiator ? kp->kp_send : kp->kp_recv),
-		  (kp->kp_is_initiator ? kp->kp_recv : kp->kp_send),
-		  NULL, NULL,
-		  NOISE_SYMMETRIC_KEY_LEN, NOISE_SYMMETRIC_KEY_LEN, 0, 0,
-		  r->r_handshake.hs_ck);
-
-	lockinit(&kp->kp_counter_lock, "noise_counter", 0, 0);
-
-	noise_add_new_keypair(r->r_local, r, kp);
-	return (0);
-}
-
 struct noise_keypair *
 noise_keypair_lookup(struct noise_local *l, uint32_t idx0)
 {
@@ -1178,10 +1096,11 @@ noise_create_response(struct noise_remote *r, uint32_t *s_idx,
 	/* {} */
 	noise_msg_encrypt(en, NULL, 0, key, hs->hs_hash);
 
-	if ((ret = noise_begin_session(r)) == 0) {
+	if (noise_begin_session(r)) {
 		getnanouptime(&r->r_last_sent);
 		*s_idx = r->r_index.i_local_index;
 		*r_idx = r->r_index.i_remote_index;
+		ret = 0;
 	}
 
 error:
@@ -1244,7 +1163,7 @@ noise_consume_response(struct noise_local *l, struct noise_remote **rp,
 	    r->r_index.i_local_index == r_idx) {
 		r->r_handshake = hs;
 		r->r_index.i_remote_index = s_idx;
-		if ((ret = noise_begin_session(r)) == 0)
+		if (noise_begin_session(r))
 			*rp = noise_remote_ref(r);
 	}
 	lockmgr(&r->r_handshake_lock, LK_RELEASE);
@@ -1261,6 +1180,95 @@ error:
 
 /*----------------------------------------------------------------------------*/
 /* Handshake helper functions */
+
+static bool
+noise_begin_session(struct noise_remote *r)
+{
+	struct noise_local *l = r->r_local;
+	struct noise_keypair *kp, *next, *current, *previous;
+	struct noise_index *r_i;
+
+	KKASSERT(lockstatus(&r->r_handshake_lock, curthread) == LK_EXCLUSIVE);
+
+	kp = kmalloc(sizeof(*kp), M_NOISE, M_NOWAIT | M_ZERO);
+	if (kp == NULL)
+		return (false);
+
+	/*
+	 * Initialize the new keypair.
+	 */
+	refcount_init(&kp->kp_refcnt, 1);
+	kp->kp_can_send = true;
+	kp->kp_is_initiator = (r->r_handshake_state == HANDSHAKE_INITIATOR);
+	kp->kp_remote = noise_remote_ref(r);
+	getnanouptime(&kp->kp_birthdate);
+	lockinit(&kp->kp_counter_lock, "noise_counter", 0, 0);
+
+	noise_kdf((kp->kp_is_initiator ? kp->kp_send : kp->kp_recv),
+		  (kp->kp_is_initiator ? kp->kp_recv : kp->kp_send),
+		  NULL, NULL,
+		  NOISE_SYMMETRIC_KEY_LEN, NOISE_SYMMETRIC_KEY_LEN, 0, 0,
+		  r->r_handshake.hs_ck);
+
+	/*
+	 * Rotate existing keypairs and load the new one.
+	 */
+	lockmgr(&r->r_keypair_lock, LK_EXCLUSIVE);
+	next = atomic_load_ptr(&r->r_keypair_next);
+	current = atomic_load_ptr(&r->r_keypair_current);
+	previous = atomic_load_ptr(&r->r_keypair_previous);
+	if (kp->kp_is_initiator) {
+		/*
+		 * Received a confirmation response, which means this new
+		 * keypair can now be used.
+		 *
+		 * Rotate the existing keypair ("current" or "next" slot)
+		 * to the "previous" slot, and load the new keypair to the
+		 * "current" slot.
+		 */
+		if (next != NULL) {
+			atomic_store_ptr(&r->r_keypair_next, NULL);
+			atomic_store_ptr(&r->r_keypair_previous, next);
+			noise_keypair_drop(current);
+		} else {
+			atomic_store_ptr(&r->r_keypair_previous, current);
+		}
+		noise_keypair_drop(previous);
+		atomic_store_ptr(&r->r_keypair_current, kp);
+	} else {
+		/*
+		 * This new keypair cannot be used until we receive a
+		 * confirmation via the first data packet.
+		 *
+		 * So drop the "previous" keypair, the possibly existing
+		 * "next" one, and load the new keypair to the "next" slot.
+		 */
+		atomic_store_ptr(&r->r_keypair_next, kp);
+		noise_keypair_drop(next);
+		atomic_store_ptr(&r->r_keypair_previous, NULL);
+		noise_keypair_drop(previous);
+	}
+	lockmgr(&r->r_keypair_lock, LK_RELEASE);
+
+	/*
+	 * Insert into index hashtable, replacing the existing remote index
+	 * (added with handshake initiation creation/consumption).
+	 */
+	r_i = &r->r_index;
+	kp->kp_index.i_is_keypair = true;
+	kp->kp_index.i_local_index = r_i->i_local_index;
+	kp->kp_index.i_remote_index = r_i->i_remote_index;
+
+	KKASSERT(lockstatus(&r->r_handshake_lock, curthread) == LK_EXCLUSIVE);
+	lockmgr(&l->l_index_lock, LK_EXCLUSIVE);
+	LIST_INSERT_BEFORE(r_i, &kp->kp_index, i_entry);
+	r->r_handshake_state = HANDSHAKE_DEAD;
+	LIST_REMOVE(r_i, i_entry);
+	lockmgr(&l->l_index_lock, LK_RELEASE);
+
+	explicit_bzero(&r->r_handshake, sizeof(r->r_handshake));
+	return (true);
+}
 
 static void
 noise_kdf(uint8_t *a, uint8_t *b, uint8_t *c, const uint8_t *x,
