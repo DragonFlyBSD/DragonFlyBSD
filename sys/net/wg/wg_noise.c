@@ -132,9 +132,9 @@ struct noise_remote {
 	void				*r_arg;
 
 	struct lock			 r_keypair_lock;
-	struct noise_keypair		*r_next;
-	struct noise_keypair		*r_current;
-	struct noise_keypair		*r_previous;
+	struct noise_keypair		*r_keypair_next;
+	struct noise_keypair		*r_keypair_current;
+	struct noise_keypair		*r_keypair_previous;
 };
 
 struct noise_local {
@@ -610,16 +610,16 @@ noise_remote_keypairs_clear(struct noise_remote *r)
 
 	lockmgr(&r->r_keypair_lock, LK_EXCLUSIVE);
 
-	kp = atomic_load_ptr(&r->r_next);
-	atomic_store_ptr(&r->r_next, NULL);
+	kp = atomic_load_ptr(&r->r_keypair_next);
+	atomic_store_ptr(&r->r_keypair_next, NULL);
 	noise_keypair_drop(kp);
 
-	kp = atomic_load_ptr(&r->r_current);
-	atomic_store_ptr(&r->r_current, NULL);
+	kp = atomic_load_ptr(&r->r_keypair_current);
+	atomic_store_ptr(&r->r_keypair_current, NULL);
 	noise_keypair_drop(kp);
 
-	kp = atomic_load_ptr(&r->r_previous);
-	atomic_store_ptr(&r->r_previous, NULL);
+	kp = atomic_load_ptr(&r->r_keypair_previous);
+	atomic_store_ptr(&r->r_keypair_previous, NULL);
 	noise_keypair_drop(kp);
 
 	lockmgr(&r->r_keypair_lock, LK_RELEASE);
@@ -633,10 +633,10 @@ noise_remote_expire_current(struct noise_remote *r)
 	noise_remote_handshake_clear(r);
 
 	lockmgr(&r->r_keypair_lock, LK_SHARED);
-	kp = atomic_load_ptr(&r->r_next);
+	kp = atomic_load_ptr(&r->r_keypair_next);
 	if (kp != NULL)
 		atomic_store_bool(&kp->kp_can_send, false);
-	kp = atomic_load_ptr(&r->r_current);
+	kp = atomic_load_ptr(&r->r_keypair_current);
 	if (kp != NULL)
 		atomic_store_bool(&kp->kp_can_send, false);
 	lockmgr(&r->r_keypair_lock, LK_RELEASE);
@@ -656,23 +656,23 @@ noise_add_new_keypair(struct noise_local *l, struct noise_remote *r,
 	 * Rotate keypairs and load the new one.
 	 */
 	lockmgr(&r->r_keypair_lock, LK_EXCLUSIVE);
-	next = atomic_load_ptr(&r->r_next);
-	current = atomic_load_ptr(&r->r_current);
-	previous = atomic_load_ptr(&r->r_previous);
+	next = atomic_load_ptr(&r->r_keypair_next);
+	current = atomic_load_ptr(&r->r_keypair_current);
+	previous = atomic_load_ptr(&r->r_keypair_previous);
 	if (kp->kp_is_initiator) {
 		if (next != NULL) {
-			atomic_store_ptr(&r->r_next, NULL);
-			atomic_store_ptr(&r->r_previous, next);
+			atomic_store_ptr(&r->r_keypair_next, NULL);
+			atomic_store_ptr(&r->r_keypair_previous, next);
 			noise_keypair_drop(current);
 		} else {
-			atomic_store_ptr(&r->r_previous, current);
+			atomic_store_ptr(&r->r_keypair_previous, current);
 		}
 		noise_keypair_drop(previous);
-		atomic_store_ptr(&r->r_current, kp);
+		atomic_store_ptr(&r->r_keypair_current, kp);
 	} else {
-		atomic_store_ptr(&r->r_next, kp);
+		atomic_store_ptr(&r->r_keypair_next, kp);
 		noise_keypair_drop(next);
-		atomic_store_ptr(&r->r_previous, NULL);
+		atomic_store_ptr(&r->r_keypair_previous, NULL);
 		noise_keypair_drop(previous);
 	}
 	lockmgr(&r->r_keypair_lock, LK_RELEASE);
@@ -752,7 +752,7 @@ noise_keypair_current(struct noise_remote *r)
 	struct noise_keypair *kp, *ret = NULL;
 
 	lockmgr(&r->r_keypair_lock, LK_SHARED);
-	kp = atomic_load_ptr(&r->r_current);
+	kp = atomic_load_ptr(&r->r_keypair_current);
 	if (kp != NULL && atomic_load_bool(&kp->kp_can_send)) {
 		if (timer_expired(&kp->kp_birthdate, REJECT_AFTER_TIME, 0))
 			atomic_store_bool(&kp->kp_can_send, false);
@@ -770,22 +770,23 @@ noise_keypair_received_with(struct noise_keypair *kp)
 	struct noise_keypair *old;
 	struct noise_remote *r = kp->kp_remote;
 
-	if (kp != atomic_load_ptr(&r->r_next))
+	if (kp != atomic_load_ptr(&r->r_keypair_next))
 		return (false);
 
 	lockmgr(&r->r_keypair_lock, LK_EXCLUSIVE);
 
 	/* Double check after locking. */
-	if (kp != atomic_load_ptr(&r->r_next)) {
+	if (kp != atomic_load_ptr(&r->r_keypair_next)) {
 		lockmgr(&r->r_keypair_lock, LK_RELEASE);
 		return (false);
 	}
 
-	old = atomic_load_ptr(&r->r_previous);
-	atomic_store_ptr(&r->r_previous, atomic_load_ptr(&r->r_current));
+	old = atomic_load_ptr(&r->r_keypair_previous);
+	atomic_store_ptr(&r->r_keypair_previous,
+			 atomic_load_ptr(&r->r_keypair_current));
 	noise_keypair_drop(old);
-	atomic_store_ptr(&r->r_current, kp);
-	atomic_store_ptr(&r->r_next, NULL);
+	atomic_store_ptr(&r->r_keypair_current, kp);
+	atomic_store_ptr(&r->r_keypair_next, NULL);
 
 	lockmgr(&r->r_keypair_lock, LK_RELEASE);
 
@@ -909,7 +910,7 @@ noise_keep_key_fresh_send(struct noise_remote *r)
 
 	lockmgr(&r->r_keypair_lock, LK_SHARED);
 
-	current = atomic_load_ptr(&r->r_current);
+	current = atomic_load_ptr(&r->r_keypair_current);
 	keep_key_fresh = (current != NULL &&
 			  atomic_load_bool(&current->kp_can_send));
 	if (!keep_key_fresh)
@@ -941,7 +942,7 @@ noise_keep_key_fresh_recv(struct noise_remote *r)
 	bool keep_key_fresh;
 
 	lockmgr(&r->r_keypair_lock, LK_SHARED);
-	current = atomic_load_ptr(&r->r_current);
+	current = atomic_load_ptr(&r->r_keypair_current);
 	keep_key_fresh = (current != NULL &&
 			  atomic_load_bool(&current->kp_can_send) &&
 			  current->kp_is_initiator &&
