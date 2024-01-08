@@ -28,6 +28,9 @@
  *
  * NOTE: Support in-place encryption/decryption; i.e., the output buffer
  *       points to the same location as the input.
+ *
+ * NOTE: The output buffer may be NULL when to decrypt a message of empty
+ *       plaintext.  This is used by WireGuard.
  */
 void chacha20poly1305_encrypt(uint8_t *, const uint8_t *, size_t,
 			      const uint8_t *, size_t,

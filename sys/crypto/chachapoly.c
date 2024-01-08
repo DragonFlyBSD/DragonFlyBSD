@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015 Mike Belopuhov
- * Copyright (c) 2023 Aaron LI <aly@aaronly.me>
+ * Copyright (c) 2023-2024 Aaron LI <aly@aaronly.me>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -79,12 +79,28 @@ _chacha20poly1305_init(struct chacha20poly1305_ctx *ctx, bool enc_mode,
 }
 
 /*
- * Process the AD (additional data) and cipher data (i.e., plaintext or
- * ciphertext).
+ * Authenticate the additional data (AD).
  *
- * If the output buffer <out> is NULL, then the input data are regarded
- * as AAD.  The AAD can be provided in multiple pieces, but must be done
- * before any cipher data.
+ * This function may be called zero, one or more times to pass successive
+ * fragments of the AD, but must be done before processing any cipher data,
+ * i.e., calling _chacha20poly1305_update().
+ */
+static void
+_chacha20poly1305_update_ad(struct chacha20poly1305_ctx *ctx,
+			    const uint8_t *ad, size_t ad_len)
+{
+	KKASSERT((ctx->flags & F_INITIALIZED) != 0);
+	KKASSERT((ctx->flags & F_AD_DONE) == 0);
+
+	if (ad_len == 0 || ad == NULL)
+		return;
+
+	poly1305_update(&ctx->poly, ad, ad_len);
+	ctx->ad_len += ad_len;
+}
+
+/*
+ * Encrypt/decrypt the cipher data (i.e., plaintext or ciphertext).
  *
  * NOTE: The cipher data must be complete blocks.  This requirement is
  *       placed to help easily implement the in-place encryption/
@@ -95,22 +111,16 @@ _chacha20poly1305_update(struct chacha20poly1305_ctx *ctx,
 			 uint8_t *out, const uint8_t *in, size_t in_len)
 {
 	KKASSERT((ctx->flags & F_INITIALIZED) != 0);
-
-	if (out == NULL) {
-		/* Additional data */
-		KKASSERT((ctx->flags & F_AD_DONE) == 0);
-		poly1305_update(&ctx->poly, in, in_len);
-		ctx->ad_len += in_len;
-		return;
-	}
-
-	/* Cipher data: must be complete blocks. */
-	KKASSERT(in_len % CHACHA_BLOCKLEN == 0);
+	KKASSERT(in_len == 0 || (in_len > 0 && out != NULL));
+	KKASSERT(in_len % CHACHA_BLOCKLEN == 0); /* must be complete blocks */
 
 	if ((ctx->flags & F_AD_DONE) == 0) {
 		poly1305_update(&ctx->poly, pad0, PADDING_LEN(ctx->ad_len));
 		ctx->flags |= F_AD_DONE;
 	}
+
+	if (in_len == 0 || in == NULL)
+		return;
 
 	/* Swap the Poly1305/ChaCha order to support in-place operation. */
 	if (ctx->flags & F_MODE_ENCRYPTION) {
@@ -145,8 +155,8 @@ _chacha20poly1305_final(struct chacha20poly1305_ctx *ctx,
 	bool ret;
 
 	KKASSERT((ctx->flags & F_INITIALIZED) != 0);
+	KKASSERT(in_len == 0 || (in_len > 0 && out != NULL));
 	KKASSERT(in_len <= CHACHA_BLOCKLEN);
-	KKASSERT(out != NULL);
 
 	if (ctx->ad_len > 0 && (ctx->flags & F_AD_DONE) == 0) {
 		KKASSERT(ctx->data_len == 0);
@@ -154,16 +164,17 @@ _chacha20poly1305_final(struct chacha20poly1305_ctx *ctx,
 		ctx->flags |= F_AD_DONE;
 	}
 
-	if (ctx->flags & F_MODE_ENCRYPTION) {
-		chacha_encrypt_bytes(&ctx->chacha, in, out, in_len);
-		poly1305_update(&ctx->poly, out, in_len);
-	} else {
-		poly1305_update(&ctx->poly, in, in_len);
-		chacha_encrypt_bytes(&ctx->chacha, in, out, in_len);
+	if (in_len > 0) {
+		if (ctx->flags & F_MODE_ENCRYPTION) {
+			chacha_encrypt_bytes(&ctx->chacha, in, out, in_len);
+			poly1305_update(&ctx->poly, out, in_len);
+		} else {
+			poly1305_update(&ctx->poly, in, in_len);
+			chacha_encrypt_bytes(&ctx->chacha, in, out, in_len);
+		}
+		poly1305_update(&ctx->poly, pad0, PADDING_LEN(in_len));
+		ctx->data_len += in_len;
 	}
-	poly1305_update(&ctx->poly, pad0, PADDING_LEN(in_len));
-
-	ctx->data_len += in_len;
 
 	/* Calculate the tag. */
 	lens[0] = htole64(ctx->ad_len);
@@ -196,7 +207,7 @@ chacha20poly1305_encrypt(uint8_t *dst, const uint8_t *src, size_t src_len,
 
 	_chacha20poly1305_init(&ctx, true, nonce, key);
 
-	_chacha20poly1305_update(&ctx, NULL, ad, ad_len);
+	_chacha20poly1305_update_ad(&ctx, ad, ad_len);
 
 	len = rounddown2(src_len, CHACHA_BLOCKLEN);
 	_chacha20poly1305_update(&ctx, dst, src, len);
@@ -219,7 +230,7 @@ chacha20poly1305_decrypt(uint8_t *dst, const uint8_t *src, size_t src_len,
 
 	_chacha20poly1305_init(&ctx, false, nonce, key);
 
-	_chacha20poly1305_update(&ctx, NULL, ad, ad_len);
+	_chacha20poly1305_update_ad(&ctx, ad, ad_len);
 
 	data_len = src_len - sizeof(ctx.tag);
 	len = rounddown2(data_len, CHACHA_BLOCKLEN);
@@ -357,7 +368,7 @@ chacha20poly1305_encrypt_mbuf(struct mbuf *m, const uint8_t *ad, size_t ad_len,
 
 	_chacha20poly1305_init(&ctx, true, nonce, key);
 
-	_chacha20poly1305_update(&ctx, NULL, ad, ad_len);
+	_chacha20poly1305_update_ad(&ctx, ad, ad_len);
 
 	return _chacha20poly1305_mbuf(&ctx, m, len);
 }
@@ -377,7 +388,7 @@ chacha20poly1305_decrypt_mbuf(struct mbuf *m, const uint8_t *ad, size_t ad_len,
 
 	_chacha20poly1305_init(&ctx, false, nonce, key);
 
-	_chacha20poly1305_update(&ctx, NULL, ad, ad_len);
+	_chacha20poly1305_update_ad(&ctx, ad, ad_len);
 
 	ret = _chacha20poly1305_mbuf(&ctx, m, len);
 	if (ret == 0)
