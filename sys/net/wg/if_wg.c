@@ -1014,11 +1014,9 @@ wg_timers_disable(struct wg_peer *peer)
 static void
 wg_timers_set_persistent_keepalive(struct wg_peer *peer, uint16_t interval)
 {
-	if (atomic_load_bool(&peer->p_enabled)) {
-		atomic_store_16(&peer->p_persistent_keepalive_interval,
-				interval);
+	atomic_store_16(&peer->p_persistent_keepalive_interval, interval);
+	if (atomic_load_bool(&peer->p_enabled))
 		wg_timers_run_persistent_keepalive(peer);
-	}
 }
 
 static void
