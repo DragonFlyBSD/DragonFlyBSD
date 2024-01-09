@@ -78,6 +78,16 @@ CTASSERT(WG_KEY_SIZE >= NOISE_SYMMETRIC_KEY_LEN);
 #define ENOKEY			ENOENT
 #endif
 
+/*
+ * mbuf flags to clear after in-place encryption/decryption, so that the
+ * mbuf can be reused for re-entering the network stack or delivering to
+ * the remote peer.
+ *
+ * For example, the M_HASH and M_LENCHECKED flags must be cleared for an
+ * inbound packet; otherwise, panic is to be expected.
+ */
+#define MBUF_CLEARFLAGS		(M_COPYFLAGS & ~(M_PKTHDR | M_EOR | M_PRIO))
+
 #define MAX_LOOPS		8 /* 0 means no loop allowed */
 #define MAX_STAGED_PKT		128
 #define MAX_QUEUED_PKT		1024
@@ -1515,40 +1525,6 @@ wg_softc_handshake_receive(void *arg, int pending __unused)
 /*----------------------------------------------------------------------------*/
 /* Transport Packet Functions */
 
-static void
-wg_mbuf_reset(struct mbuf *m)
-{
-	/*
-	 * We want to reset the mbuf to a newly allocated state, containing
-	 * just the packet contents. Unfortunately FreeBSD doesn't seem to
-	 * offer this anywhere, so we have to make it up as we go. If we can
-	 * get this in kern/kern_mbuf.c, that would be best.
-	 *
-	 * Notice: this may break things unexpectedly but it is better to fail
-	 *         closed in the extreme case than leak informtion in every
-	 *         case.
-	 *
-	 * With that said, all this attempts to do is remove any extraneous
-	 * information that could be present.
-	 */
-
-	M_ASSERTPKTHDR(m);
-
-	m->m_flags &= ~(M_BCAST|M_MCAST|M_VLANTAG|M_PROMISC|M_PROTOFLAGS);
-
-	M_HASHTYPE_CLEAR(m);
-#ifdef NUMA
-        m->m_pkthdr.numa_domain = M_NODOM;
-#endif
-
-	KASSERT((m->m_pkthdr.csum_flags & CSUM_SND_TAG) == 0,
-	    ("%s: mbuf %p has a send tag", __func__, m));
-
-	m->m_pkthdr.csum_flags = 0;
-	m->m_pkthdr.PH_per.sixtyfour[0] = 0;
-	m->m_pkthdr.PH_loc.sixtyfour[0] = 0;
-}
-
 static inline unsigned int
 calculate_padding(struct wg_packet *pkt)
 {
@@ -1601,8 +1577,11 @@ wg_encrypt(struct wg_softc *sc, struct wg_packet *pkt)
 	data->r_idx = idx;
 	data->counter = htole64(pkt->p_counter);
 
-	wg_mbuf_reset(m);
+	/* Reset mbuf flags. */
+	m->m_flags &= ~MBUF_CLEARFLAGS;
+
 	state = WG_PACKET_CRYPTED;
+
 out:
 	pkt->p_mbuf = m;
 	cpu_sfence(); /* Update p_state only after p_mbuf. */
@@ -1674,8 +1653,12 @@ wg_decrypt(struct wg_softc *sc, struct wg_packet *pkt)
 		goto out;
 	}
 
-	wg_mbuf_reset(m);
+	/* Reset mbuf flags. */
+	m->m_flags &= ~MBUF_CLEARFLAGS;
+	m->m_pkthdr.csum_flags = 0; /* Tunneled packet was not offloaded. */
+
 	state = WG_PACKET_CRYPTED;
+
 out:
 	pkt->p_mbuf = m;
 	cpu_sfence(); /* Update p_state only after p_mbuf. */
