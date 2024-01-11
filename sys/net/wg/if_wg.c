@@ -386,7 +386,6 @@ static bool wg_input(struct wg_softc *, struct mbuf *, const struct sockaddr *);
 static int wg_output(struct ifnet *, struct mbuf *, struct sockaddr *, struct rtentry *);
 static int wg_up(struct wg_softc *);
 static void wg_down(struct wg_softc *);
-static void wg_init(void *);
 static int wg_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static int wg_ioctl_get(struct wg_softc *, struct wg_data_io *, bool);
 static int wg_ioctl_set(struct wg_softc *, struct wg_data_io *);
@@ -2714,14 +2713,6 @@ wg_down(struct wg_softc *sc)
 	lockmgr(&sc->sc_lock, LK_RELEASE);
 }
 
-static void
-wg_init(void *_sc)
-{
-	struct wg_softc *sc = _sc;
-
-	wg_up(sc);
-}
-
 static int
 wg_clone_create(struct if_clone *ifc __unused, int unit,
 		caddr_t params __unused, caddr_t data __unused)
@@ -2773,7 +2764,6 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 	ifp->if_softc = sc;
 	ifp->if_mtu = DEFAULT_MTU;
 	ifp->if_flags = IFF_NOARP | IFF_MULTICAST;
-	ifp->if_init = wg_init;
 	ifp->if_output = wg_output;
 	ifp->if_ioctl = wg_ioctl;
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
