@@ -2332,6 +2332,9 @@ _m_copyback2(struct mbuf *m0, int off, int len, const void *_cp, int how,
 	c_caddr_t cp = _cp;
 	int mlen, tlen, nsize, totlen = 0, error = ENOBUFS;
 
+	KASSERT(off >= 0, ("%s: negative off %d", __func__, off));
+	KASSERT(len >= 0, ("%s: negative len %d", __func__, len));
+
 	if (m0 == NULL)
 		return (0);
 
