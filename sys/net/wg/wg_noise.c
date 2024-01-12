@@ -178,11 +178,11 @@ static void	noise_keypair_drop(struct noise_keypair *);
 static void	noise_kdf(uint8_t *, uint8_t *, uint8_t *, const uint8_t *,
 			  size_t, size_t, size_t, size_t,
 			  const uint8_t [NOISE_HASH_LEN]);
-static int	noise_mix_dh(uint8_t [NOISE_HASH_LEN],
+static bool	noise_mix_dh(uint8_t [NOISE_HASH_LEN],
 			     uint8_t [NOISE_SYMMETRIC_KEY_LEN],
 			     const uint8_t [NOISE_PUBLIC_KEY_LEN],
 			     const uint8_t [NOISE_PUBLIC_KEY_LEN]);
-static int	noise_mix_ss(uint8_t ck[NOISE_HASH_LEN],
+static bool	noise_mix_ss(uint8_t ck[NOISE_HASH_LEN],
 			     uint8_t [NOISE_SYMMETRIC_KEY_LEN],
 			     const uint8_t [NOISE_PUBLIC_KEY_LEN]);
 static void	noise_mix_hash(uint8_t [NOISE_HASH_LEN],
@@ -198,7 +198,7 @@ static void	noise_param_init(uint8_t [NOISE_HASH_LEN],
 static void	noise_msg_encrypt(uint8_t *, const uint8_t *, size_t,
 				  uint8_t [NOISE_SYMMETRIC_KEY_LEN],
 				  uint8_t [NOISE_HASH_LEN]);
-static int	noise_msg_decrypt(uint8_t *, const uint8_t *, size_t,
+static bool	noise_msg_decrypt(uint8_t *, const uint8_t *, size_t,
 				  uint8_t [NOISE_SYMMETRIC_KEY_LEN],
 				  uint8_t [NOISE_HASH_LEN]);
 static void	noise_msg_ephemeral(uint8_t [NOISE_HASH_LEN],
@@ -947,7 +947,7 @@ noise_create_initiation(struct noise_remote *r, uint32_t *s_idx,
 	noise_msg_ephemeral(hs->hs_ck, hs->hs_hash, ue);
 
 	/* es */
-	if (noise_mix_dh(hs->hs_ck, key, hs->hs_e, r->r_public) != 0)
+	if (!noise_mix_dh(hs->hs_ck, key, hs->hs_e, r->r_public))
 		goto error;
 
 	/* s */
@@ -955,7 +955,7 @@ noise_create_initiation(struct noise_remote *r, uint32_t *s_idx,
 			  key, hs->hs_hash);
 
 	/* ss */
-	if (noise_mix_ss(hs->hs_ck, key, r->r_ss) != 0)
+	if (!noise_mix_ss(hs->hs_ck, key, r->r_ss))
 		goto error;
 
 	/* {t} */
@@ -997,13 +997,13 @@ noise_consume_initiation(struct noise_local *l, uint32_t s_idx,
 	noise_msg_ephemeral(hs.hs_ck, hs.hs_hash, ue);
 
 	/* es */
-	if (noise_mix_dh(hs.hs_ck, key, l->l_private, ue) != 0)
+	if (!noise_mix_dh(hs.hs_ck, key, l->l_private, ue))
 		goto error;
 
 	/* s */
-	if (noise_msg_decrypt(r_public, es,
-			      NOISE_PUBLIC_KEY_LEN + NOISE_AUTHTAG_LEN,
-			      key, hs.hs_hash) != 0)
+	if (!noise_msg_decrypt(r_public, es,
+			       NOISE_PUBLIC_KEY_LEN + NOISE_AUTHTAG_LEN,
+			       key, hs.hs_hash))
 		goto error;
 
 	/* Lookup the remote we received from */
@@ -1011,13 +1011,13 @@ noise_consume_initiation(struct noise_local *l, uint32_t s_idx,
 		goto error;
 
 	/* ss */
-	if (noise_mix_ss(hs.hs_ck, key, r->r_ss) != 0)
+	if (!noise_mix_ss(hs.hs_ck, key, r->r_ss))
 		goto error_put;
 
 	/* {t} */
-	if (noise_msg_decrypt(timestamp, ets,
-			      NOISE_TIMESTAMP_LEN + NOISE_AUTHTAG_LEN,
-			      key, hs.hs_hash) != 0)
+	if (!noise_msg_decrypt(timestamp, ets,
+			       NOISE_TIMESTAMP_LEN + NOISE_AUTHTAG_LEN,
+			       key, hs.hs_hash))
 		goto error_put;
 
 	memcpy(hs.hs_e, ue, NOISE_PUBLIC_KEY_LEN);
@@ -1081,11 +1081,11 @@ noise_create_response(struct noise_remote *r, uint32_t *s_idx,
 	noise_msg_ephemeral(hs->hs_ck, hs->hs_hash, ue);
 
 	/* ee */
-	if (noise_mix_dh(hs->hs_ck, NULL, e, hs->hs_e) != 0)
+	if (!noise_mix_dh(hs->hs_ck, NULL, e, hs->hs_e))
 		goto error;
 
 	/* se */
-	if (noise_mix_dh(hs->hs_ck, NULL, e, r->r_public) != 0)
+	if (!noise_mix_dh(hs->hs_ck, NULL, e, r->r_public))
 		goto error;
 
 	/* psk */
@@ -1140,19 +1140,19 @@ noise_consume_response(struct noise_local *l, uint32_t s_idx, uint32_t r_idx,
 	noise_msg_ephemeral(hs.hs_ck, hs.hs_hash, ue);
 
 	/* ee */
-	if (noise_mix_dh(hs.hs_ck, NULL, hs.hs_e, ue) != 0)
+	if (!noise_mix_dh(hs.hs_ck, NULL, hs.hs_e, ue))
 		goto error_zero;
 
 	/* se */
-	if (noise_mix_dh(hs.hs_ck, NULL, l->l_private, ue) != 0)
+	if (!noise_mix_dh(hs.hs_ck, NULL, l->l_private, ue))
 		goto error_zero;
 
 	/* psk */
 	noise_mix_psk(hs.hs_ck, hs.hs_hash, key, preshared_key);
 
 	/* {} */
-	if (noise_msg_decrypt(NULL, en, 0 + NOISE_AUTHTAG_LEN, key,
-			      hs.hs_hash) != 0)
+	if (!noise_msg_decrypt(NULL, en, 0 + NOISE_AUTHTAG_LEN, key,
+			       hs.hs_hash))
 		goto error_zero;
 
 	lockmgr(&r->r_handshake_lock, LK_EXCLUSIVE);
@@ -1314,7 +1314,7 @@ out:
 	explicit_bzero(out, sizeof(out));
 }
 
-static int
+static bool
 noise_mix_dh(uint8_t ck[NOISE_HASH_LEN], uint8_t key[NOISE_SYMMETRIC_KEY_LEN],
 	     const uint8_t private[NOISE_PUBLIC_KEY_LEN],
 	     const uint8_t public[NOISE_PUBLIC_KEY_LEN])
@@ -1322,26 +1322,28 @@ noise_mix_dh(uint8_t ck[NOISE_HASH_LEN], uint8_t key[NOISE_SYMMETRIC_KEY_LEN],
 	uint8_t dh[NOISE_PUBLIC_KEY_LEN];
 
 	if (!curve25519(dh, private, public))
-		return (EINVAL);
+		return (false);
+
 	noise_kdf(ck, key, NULL, dh,
 		  NOISE_HASH_LEN, NOISE_SYMMETRIC_KEY_LEN, 0,
 		  NOISE_PUBLIC_KEY_LEN, ck);
 	explicit_bzero(dh, NOISE_PUBLIC_KEY_LEN);
-	return (0);
+	return (true);
 }
 
-static int
+static bool
 noise_mix_ss(uint8_t ck[NOISE_HASH_LEN], uint8_t key[NOISE_SYMMETRIC_KEY_LEN],
 	     const uint8_t ss[NOISE_PUBLIC_KEY_LEN])
 {
 	static uint8_t null_point[NOISE_PUBLIC_KEY_LEN];
 
 	if (timingsafe_bcmp(ss, null_point, NOISE_PUBLIC_KEY_LEN) == 0)
-		return (ENOENT);
+		return (false);
+
 	noise_kdf(ck, key, NULL, ss,
 		  NOISE_HASH_LEN, NOISE_SYMMETRIC_KEY_LEN,
 		  0, NOISE_PUBLIC_KEY_LEN, ck);
-	return (0);
+	return (true);
 }
 
 static void
@@ -1400,7 +1402,7 @@ noise_msg_encrypt(uint8_t *dst, const uint8_t *src, size_t src_len,
 	noise_mix_hash(hash, dst, src_len + NOISE_AUTHTAG_LEN);
 }
 
-static int
+static bool
 noise_msg_decrypt(uint8_t *dst, const uint8_t *src, size_t src_len,
 		  uint8_t key[NOISE_SYMMETRIC_KEY_LEN],
 		  uint8_t hash[NOISE_HASH_LEN])
@@ -1410,9 +1412,10 @@ noise_msg_decrypt(uint8_t *dst, const uint8_t *src, size_t src_len,
 
 	if (!chacha20poly1305_decrypt(dst, src, src_len,
 				      hash, NOISE_HASH_LEN, nonce, key))
-		return (EINVAL);
+		return (false);
+
 	noise_mix_hash(hash, src, src_len);
-	return (0);
+	return (true);
 }
 
 static void
