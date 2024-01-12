@@ -1984,37 +1984,31 @@ static void
 wg_upcall(struct socket *so, void *arg, int waitflag __unused)
 {
 	struct wg_softc		*sc = arg;
-	struct sockaddr		*sa;
+	struct sockaddr		*from;
 	struct sockbuf		 sio;
 	int			 ret, flags;
 
 	/*
 	 * For UDP, soreceive typically pulls just one packet,
-	 * loop to get the whole batch.
+	 * so loop to get the whole batch.
 	 */
 	do {
 		sbinit(&sio, 1000000000); /* really large to receive all */
 		flags = MSG_DONTWAIT;
-		ret = so_pru_soreceive(so, &sa, NULL, &sio, NULL, &flags);
+		ret = so_pru_soreceive(so, &from, NULL, &sio, NULL, &flags);
 		if (ret != 0 || sio.sb_mb == NULL) {
-			if (sa != NULL)
-				kfree(sa, M_SONAME);
+			if (from != NULL)
+				kfree(from, M_SONAME);
 			break;
 		}
-		wg_input(sc, sio.sb_mb, sa);
-		kfree(sa, M_SONAME);
+		wg_input(sc, sio.sb_mb, from);
+		kfree(from, M_SONAME);
 	} while (sio.sb_mb != NULL);
 }
 
 static bool
 wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 {
-#ifdef INET
-	const struct sockaddr_in	*sin;
-#endif
-#ifdef INET6
-	const struct sockaddr_in6	*sin6;
-#endif
 	struct noise_remote		*remote;
 	struct wg_pkt_data		*data;
 	struct wg_packet		*pkt;
@@ -2045,20 +2039,18 @@ wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 		return (true);
 	}
 
-	/* Save send/recv address and port for later. */
+	/* Save the remote address and port for later use. */
 	switch (sa->sa_family) {
 #ifdef INET
 	case AF_INET:
-		sin = (const struct sockaddr_in *)sa;
-		pkt->p_endpoint.e_remote.r_sin = sin[0];
-		pkt->p_endpoint.e_local.l_in = sin[1].sin_addr;
+		pkt->p_endpoint.e_remote.r_sin =
+		    *(const struct sockaddr_in *)sa;
 		break;
 #endif
 #ifdef INET6
 	case AF_INET6:
-		sin6 = (const struct sockaddr_in6 *)sa;
-		pkt->p_endpoint.e_remote.r_sin6 = sin6[0];
-		pkt->p_endpoint.e_local.l_in6 = sin6[1].sin6_addr;
+		pkt->p_endpoint.e_remote.r_sin6 =
+		    *(const struct sockaddr_in6 *)sa;
 		break;
 #endif
 	default:
