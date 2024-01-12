@@ -223,15 +223,8 @@ timer_expired(const struct timespec *birthdate, time_t sec, long nsec)
 	struct timespec uptime;
 	struct timespec expire = { .tv_sec = sec, .tv_nsec = nsec };
 
-	/*
-	 * We don't really worry about a zeroed birthdate, to avoid the
-	 * extra check on every encrypt/decrypt.
-	 *
-	 * This does mean that the r_last_init_recv check may fail if
-	 * getnanouptime() < { tv_sec = 0, tv_nsec = REJECT_INTERVAL }.
-	 * However, we don't try to initialize r_last_init_recv with a
-	 * negative value, avoid the risk of time_t may be unsigned.
-	 */
+	if (__predict_false(!timespecisset(birthdate)))
+		return (true);
 
 	getnanouptime(&uptime);
 	timespecadd(birthdate, &expire, &expire);
