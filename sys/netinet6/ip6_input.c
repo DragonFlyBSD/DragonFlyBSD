@@ -1068,7 +1068,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 		struct timeval tv;
 
 		microtime(&tv);
-		*mp = sbcreatecontrol((caddr_t)&tv, sizeof(tv),
+		*mp = sbcreatecontrol(&tv, sizeof(tv),
 		    SCM_TIMESTAMP, SOL_SOCKET);
 		if (*mp) {
 			mp = &(*mp)->m_next;
@@ -1084,7 +1084,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 		in6_clearscope(&pi6.ipi6_addr); /* XXX */
 		pi6.ipi6_ifindex = (m && m->m_pkthdr.rcvif) ?
 		    m->m_pkthdr.rcvif->if_index : 0;
-		*mp = sbcreatecontrol((caddr_t)&pi6, sizeof(struct in6_pktinfo),
+		*mp = sbcreatecontrol(&pi6, sizeof(struct in6_pktinfo),
 		    IS2292(IPV6_2292PKTINFO, IPV6_PKTINFO), IPPROTO_IPV6);
 		if (*mp)
 			mp = &(*mp)->m_next;
@@ -1093,7 +1093,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 	if (in6p->in6p_flags & IN6P_HOPLIMIT) {
 		int hlim = ip6->ip6_hlim & 0xff;
 
-		*mp = sbcreatecontrol((caddr_t)&hlim, sizeof(int),
+		*mp = sbcreatecontrol(&hlim, sizeof(int),
 		    IS2292(IPV6_2292HOPLIMIT, IPV6_HOPLIMIT), IPPROTO_IPV6);
 		if (*mp)
 			mp = &(*mp)->m_next;
@@ -1107,7 +1107,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 		flowinfo >>= 20;
 
 		tclass = flowinfo & 0xff;
-		*mp = sbcreatecontrol((caddr_t) &tclass, sizeof(tclass),
+		*mp = sbcreatecontrol(&tclass, sizeof(tclass),
 		    IPV6_TCLASS, IPPROTO_IPV6);
 		if (*mp)
 			mp = &(*mp)->m_next;
@@ -1161,7 +1161,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 			 * RFC 2292.
 			 * Note: this constraint is removed in 2292bis.
 			 */
-			*mp = sbcreatecontrol((caddr_t)hbh, hbhlen,
+			*mp = sbcreatecontrol(hbh, hbhlen,
 			    IS2292(IPV6_2292HOPOPTS, IPV6_HOPOPTS),
 			    IPPROTO_IPV6);
 			if (*mp)
@@ -1274,7 +1274,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 				if (!privileged)
 					break;
 
-				*mp = sbcreatecontrol((caddr_t)ip6e, elen,
+				*mp = sbcreatecontrol(ip6e, elen,
 				    IS2292(IPV6_2292DSTOPTS, IPV6_DSTOPTS),
 				    IPPROTO_IPV6);
 				if (*mp)
@@ -1284,7 +1284,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 				if (!(in6p->in6p_flags & IN6P_RTHDR))
 					break;
 
-				*mp = sbcreatecontrol((caddr_t)ip6e, elen,
+				*mp = sbcreatecontrol(ip6e, elen,
 				    IS2292(IPV6_2292RTHDR, IPV6_RTHDR),
 				    IPPROTO_IPV6);
 				if (*mp)
@@ -1344,7 +1344,7 @@ ip6_notify_pmtu(struct inpcb *in6p, struct sockaddr_in6 *dst, u_int32_t *mtu)
 	mtuctl.ip6m_mtu = *mtu;
 	mtuctl.ip6m_addr = *dst;
 
-	if ((m_mtu = sbcreatecontrol((caddr_t)&mtuctl, sizeof(mtuctl),
+	if ((m_mtu = sbcreatecontrol(&mtuctl, sizeof(mtuctl),
 	    IPV6_PATHMTU, IPPROTO_IPV6)) == NULL)
 		return;
 

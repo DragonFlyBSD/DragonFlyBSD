@@ -990,7 +990,7 @@ hci_mtap(struct mbuf *m, struct hci_unit *unit)
 		if (pcb->hp_flags & HCI_DIRECTION) {
 			int dir = m->m_flags & IFF_LINK0 ? 1 : 0;
 
-			*ctl = sbcreatecontrol((void *)&dir, sizeof(dir),
+			*ctl = sbcreatecontrol(&dir, sizeof(dir),
 			    SCM_HCI_DIRECTION, BTPROTO_HCI);
 
 			if (*ctl != NULL)

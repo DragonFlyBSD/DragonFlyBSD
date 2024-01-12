@@ -135,7 +135,7 @@ void	sbappendstream (struct sockbuf *sb, struct mbuf *m);
 void	_sbcheck (struct sockbuf *sb);
 void	sbcompress (struct sockbuf *sb, struct mbuf *m, struct mbuf *n);
 struct mbuf *
-	sbcreatecontrol (caddr_t p, int size, int type, int level);
+	sbcreatecontrol (const void *p, size_t size, int type, int level);
 void	sbdrop (struct sockbuf *sb, int len);
 void	sbdroprecord (struct sockbuf *sb);
 struct mbuf *

@@ -692,8 +692,7 @@ uipc_send(netmsg_t msg)
 				mp = &ncon->m_next;
 			}
 			if (ncon == NULL) {
-				ncon = sbcreatecontrol((caddr_t)&cred,
-						       sizeof(cred),
+				ncon = sbcreatecontrol(&cred, sizeof(cred),
 						       SCM_CREDS, SOL_SOCKET);
 				unp_internalize(ncon, msg->send.nm_td);
 				*mp = ncon;

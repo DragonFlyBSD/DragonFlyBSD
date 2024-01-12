@@ -583,14 +583,14 @@ sbunlinkmbuf(struct sockbuf *sb, struct mbuf *m, struct mbuf **free_chain)
  * with the specified type for presentation on a socket buffer.
  */
 struct mbuf *
-sbcreatecontrol(caddr_t p, int size, int type, int level)
+sbcreatecontrol(const void *p, size_t size, int type, int level)
 {
 	struct cmsghdr *cp;
 	struct mbuf *m;
 
-	if (CMSG_SPACE((u_int)size) > MCLBYTES)
+	if (CMSG_SPACE(size) > MCLBYTES)
 		return (NULL);
-	m = m_getl(CMSG_SPACE((u_int)size), M_NOWAIT, MT_CONTROL, 0, NULL);
+	m = m_getl(CMSG_SPACE(size), M_NOWAIT, MT_CONTROL, 0, NULL);
 	if (m == NULL)
 		return (NULL);
 	m->m_len = CMSG_SPACE(size);
@@ -603,4 +603,3 @@ sbcreatecontrol(caddr_t p, int size, int type, int level)
 	mbuftrackid(m, 24);
 	return (m);
 }
-
