@@ -247,9 +247,10 @@
  * 600503 - kldstat(2) supports module's full path
  * 600504 - change m_copyback(9) to forbid mbuf expansion
  * 600505 - add SO_USER_COOKIE to setsockopt(2)/getsockopt(2)
+ * 600506 - add mbuf m_pkthdr.loop_cnt for loop detection
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600505	/* propagated to newvers */
+#define __DragonFly_version 600506	/* propagated to newvers */
 
 #include <sys/_null.h>
 

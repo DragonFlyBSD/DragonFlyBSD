@@ -171,8 +171,9 @@ struct pkthdr {
 	uint16_t ether_vlantag;		/* ethernet 802.1p+q vlan tag */
 
 	uint16_t hash;			/* packet hash */
-	uint16_t unused1;		/* reserved for route table id */
-	uint32_t unused2;		/* reserved for codel timestamp */
+	uint8_t loop_cnt;		/* in-kernel packet loop count */
+	uint8_t unused1;		/* reserved for route table id */
+	uint32_t unused2;		/* reserved for CoDel timestamp */
 
 	uint16_t wlan_seqno;		/* IEEE 802.11 seq no. */
 	/*

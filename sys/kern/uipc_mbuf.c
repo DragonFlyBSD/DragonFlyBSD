@@ -1076,6 +1076,7 @@ retryonce:
 #endif
 	m->m_len = 0;
 	m->m_pkthdr.len = 0;
+	m->m_pkthdr.loop_cnt = 0;
 
 	updatestats(m, type);
 	return (m);
