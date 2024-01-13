@@ -783,6 +783,8 @@ wg_socket_init(struct wg_softc *sc, in_port_t port)
 			goto error;
 	}
 
+	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
+
 	lockmgr(&so->so_lock, LK_EXCLUSIVE);
 	if (so->so_so4 != NULL)
 		soclose(so->so_so4, 0);
@@ -870,6 +872,8 @@ wg_socket_uninit(struct wg_softc *sc)
 {
 	struct wg_socket *so = &sc->sc_socket;
 
+	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
+
 	lockmgr(&so->so_lock, LK_EXCLUSIVE);
 
 	if (so->so_so4 != NULL) {
@@ -916,6 +920,8 @@ wg_socket_set_cookie(struct wg_softc *sc, uint32_t user_cookie)
 {
 	struct wg_socket	*so;
 	int			 ret;
+
+	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
 
 	so = &sc->sc_socket;
 	lockmgr(&so->so_lock, LK_EXCLUSIVE);
@@ -2386,6 +2392,11 @@ wg_ioctl_get(struct wg_softc *sc, struct wg_data_io *data, bool privileged)
 
 	iface_p = data->wgd_interface;
 	bzero(&iface_o, sizeof(iface_o));
+	/*
+	 * No need to acquire the 'sc_socket.so_lock', because 'sc_lock'
+	 * is acquired and that's enough to prevent modifications to
+	 * 'sc_socket' members.
+	 */
 	if (sc->sc_socket.so_port != 0) {
 		iface_o.i_port = sc->sc_socket.so_port;
 		iface_o.i_flags |= WG_INTERFACE_HAS_PORT;
