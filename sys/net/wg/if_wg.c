@@ -78,9 +78,7 @@ CTASSERT(WG_KEY_SIZE >= NOISE_SYMMETRIC_KEY_LEN);
 #define ENOKEY			ENOENT
 #endif
 
-#define MTAG_WGLOOP		0x77676c70 /* wglp */
 #define MAX_LOOPS		8 /* 0 means no loop allowed */
-
 #define MAX_STAGED_PKT		128
 #define MAX_QUEUED_PKT		1024
 #define MAX_QUEUED_PKT_MASK	(MAX_QUEUED_PKT - 1)
@@ -1520,9 +1518,6 @@ wg_softc_handshake_receive(void *arg, int pending __unused)
 static void
 wg_mbuf_reset(struct mbuf *m)
 {
-
-	struct m_tag *t, *tmp;
-
 	/*
 	 * We want to reset the mbuf to a newly allocated state, containing
 	 * just the packet contents. Unfortunately FreeBSD doesn't seem to
@@ -1545,11 +1540,6 @@ wg_mbuf_reset(struct mbuf *m)
 #ifdef NUMA
         m->m_pkthdr.numa_domain = M_NODOM;
 #endif
-	SLIST_FOREACH_MUTABLE(t, &m->m_pkthdr.tags, m_tag_link, tmp) {
-		if ((t->m_tag_id != 0 || t->m_tag_cookie != MTAG_WGLOOP) &&
-		    t->m_tag_id != PACKET_TAG_MACLABEL)
-			m_tag_delete(m, t);
-	}
 
 	KASSERT((m->m_pkthdr.csum_flags & CSUM_SND_TAG) == 0,
 	    ("%s: mbuf %p has a send tag", __func__, m));
@@ -2339,13 +2329,11 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		goto err_peer;
 	}
 
-#if 0 /* TODO */
-	if (__predict_false(if_tunnel_check_nesting(ifp, m, MTAG_WGLOOP, MAX_LOOPS))) {
+	if (__predict_false(m->m_pkthdr.loop_cnt++ > MAX_LOOPS)) {
 		DPRINTF(sc, "Packet looped");
 		error = ELOOP;
 		goto err_peer;
 	}
-#endif
 
 	wg_queue_push_staged(&peer->p_stage_queue, pkt);
 	wg_peer_send_staged(peer);
