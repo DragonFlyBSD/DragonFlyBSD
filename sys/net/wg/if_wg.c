@@ -350,6 +350,8 @@ static void wg_peer_send_buf(struct wg_peer *, const void *, size_t);
 static void wg_peer_send_staged(struct wg_peer *);
 static void wg_peer_set_endpoint(struct wg_peer *, const struct wg_endpoint *);
 static void wg_peer_get_endpoint(struct wg_peer *, struct wg_endpoint *);
+static int wg_peer_set_sockaddr(struct wg_peer *, const struct sockaddr *);
+static int wg_peer_get_sockaddr(struct wg_peer *, struct sockaddr *);
 static void wg_peer_clear_src(struct wg_peer *);
 static int wg_send(struct wg_softc *, struct wg_endpoint *, struct mbuf *);
 static void wg_send_buf(struct wg_softc *, struct wg_endpoint *, const void *, size_t);
@@ -510,6 +512,47 @@ wg_peer_destroy_all(struct wg_softc *sc)
 
 	TAILQ_FOREACH_MUTABLE(peer, &sc->sc_peers, p_entry, tpeer)
 		wg_peer_destroy(peer);
+}
+
+static int
+wg_peer_set_sockaddr(struct wg_peer *peer, const struct sockaddr *remote)
+{
+	int ret = 0;
+
+	lockmgr(&peer->p_endpoint_lock, LK_EXCLUSIVE);
+
+	memcpy(&peer->p_endpoint.e_remote, remote,
+	       sizeof(peer->p_endpoint.e_remote));
+	if (remote->sa_family == AF_INET)
+		memcpy(&peer->p_endpoint.e_remote.r_sin, remote,
+		       sizeof(peer->p_endpoint.e_remote.r_sin));
+#ifdef INET6
+	else if (remote->sa_family == AF_INET6)
+		memcpy(&peer->p_endpoint.e_remote.r_sin6, remote,
+		       sizeof(peer->p_endpoint.e_remote.r_sin6));
+#endif
+	else
+		ret = EAFNOSUPPORT;
+
+	bzero(&peer->p_endpoint.e_local, sizeof(peer->p_endpoint.e_local));
+
+	lockmgr(&peer->p_endpoint_lock, LK_RELEASE);
+	return (ret);
+}
+
+static int
+wg_peer_get_sockaddr(struct wg_peer *peer, struct sockaddr *remote)
+{
+	int ret = ENOENT;
+
+	lockmgr(&peer->p_endpoint_lock, LK_SHARED);
+	if (peer->p_endpoint.e_remote.r_sa.sa_family != AF_UNSPEC) {
+		memcpy(remote, &peer->p_endpoint.e_remote,
+		       sizeof(peer->p_endpoint.e_remote));
+		ret = 0;
+	}
+	lockmgr(&peer->p_endpoint_lock, LK_RELEASE);
+	return (ret);
 }
 
 static void
@@ -2368,13 +2411,8 @@ wg_ioctl_get(struct wg_softc *sc, struct wg_data_io *data, bool privileged)
 		peer_o.p_pka = peer->p_persistent_keepalive_interval;
 		if (peer_o.p_pka != 0)
 			peer_o.p_flags |= WG_PEER_HAS_PKA;
-		if (peer->p_endpoint.e_remote.r_sa.sa_family != AF_UNSPEC) {
-			KKASSERT(sizeof(peer_o.p_endpoint) >=
-				 sizeof(peer->p_endpoint.e_remote));
-			memcpy(&peer_o.p_endpoint, &peer->p_endpoint.e_remote,
-			       sizeof(peer->p_endpoint.e_remote));
+		if (wg_peer_get_sockaddr(peer, &peer_o.p_sa) == 0)
 			peer_o.p_flags |= WG_PEER_HAS_ENDPOINT;
-		}
 		for (cpu = 0; cpu < ncpus; cpu++) {
 			peer_o.p_rxbytes += peer->p_rx_bytes[cpu];
 			peer_o.p_txbytes += peer->p_tx_bytes[cpu];
@@ -2526,22 +2564,9 @@ wg_ioctl_set(struct wg_softc *sc, struct wg_data_io *data)
 		}
 
 		if (peer_o.p_flags & WG_PEER_HAS_ENDPOINT) {
-			if (peer_o.p_sa.sa_family == AF_INET) {
-				memcpy(&peer->p_endpoint.e_remote.r_sin,
-				       &peer_o.p_sin,
-				       sizeof(peer->p_endpoint.e_remote.r_sin));
-			}
-#ifdef INET6
-			else if (peer_o.p_sa.sa_family == AF_INET6) {
-				memcpy(&peer->p_endpoint.e_remote.r_sin6,
-				       &peer_o.p_sin6,
-				       sizeof(peer->p_endpoint.e_remote.r_sin6));
-			}
-#endif
-			else {
-				ret = EAFNOSUPPORT;
+			ret = wg_peer_set_sockaddr(peer, &peer_o.p_sa);
+			if (ret != 0)
 				goto error;
-			}
 		}
 		if (peer_o.p_flags & WG_PEER_HAS_PSK)
 			noise_remote_set_psk(peer->p_remote, peer_o.p_psk);
