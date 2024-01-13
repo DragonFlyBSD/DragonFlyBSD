@@ -271,10 +271,15 @@ struct mbuf {
 #define	M_SOLOCKED	0x4000000	/* locked by userland for read() */
 
 /*
+ * Flags to purge when crossing layers.
+ */
+#define	M_PROTOFLAGS	(M_PROTO1|M_PROTO2|M_PROTO3|M_PROTO4|M_PROTO5 | \
+			 M_PROTO6|M_PROTO7|M_PROTO8)
+
+/*
  * Flags copied when copying m_pkthdr.
  */
-#define	M_COPYFLAGS	(M_PKTHDR|M_EOR|M_PROTO1|M_PROTO2|M_PROTO3 | \
-			 M_PROTO4|M_PROTO5|M_PROTO6|M_PROTO7|M_PROTO8 | \
+#define	M_COPYFLAGS	(M_PKTHDR|M_EOR|M_PROTOFLAGS | \
 			 M_BCAST|M_MCAST|M_FRAG|M_FIRSTFRAG|M_LASTFRAG | \
 			 M_VLANTAG|M_MPLSLABELED | \
 			 M_LENCHECKED|M_HASH|M_CKHASH|M_PRIO)
