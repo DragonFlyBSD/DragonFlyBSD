@@ -382,7 +382,7 @@ static bool wg_queue_both(struct wg_queue *, struct wg_queue *, struct wg_packet
 static struct wg_packet *wg_queue_dequeue_serial(struct wg_queue *);
 static struct wg_packet *wg_queue_dequeue_parallel(struct wg_queue *);
 static void wg_upcall(struct socket *, void *, int);
-static bool wg_input(struct wg_softc *, struct mbuf *, const struct sockaddr *);
+static void wg_input(struct wg_softc *, struct mbuf *, const struct sockaddr *);
 static int wg_output(struct ifnet *, struct mbuf *, struct sockaddr *, struct rtentry *);
 static int wg_up(struct wg_softc *);
 static void wg_down(struct wg_softc *);
@@ -2006,7 +2006,7 @@ wg_upcall(struct socket *so, void *arg, int waitflag __unused)
 	} while (sio.sb_mb != NULL);
 }
 
-static bool
+static void
 wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 {
 	struct noise_remote		*remote;
@@ -2024,19 +2024,19 @@ wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 	m = m_unshare(m, M_NOWAIT);
 	if (m == NULL) {
 		IFNET_STAT_INC(sc->sc_ifp, iqdrops, 1);
-		return (true);
+		return;
 	}
 
 	/* Pullup enough to read packet type */
 	if ((m = m_pullup(m, sizeof(uint32_t))) == NULL) {
 		IFNET_STAT_INC(sc->sc_ifp, iqdrops, 1);
-		return (true);
+		return;
 	}
 
 	if ((pkt = wg_packet_alloc(m)) == NULL) {
 		IFNET_STAT_INC(sc->sc_ifp, iqdrops, 1);
 		m_freem(m);
-		return (true);
+		return;
 	}
 
 	/* Save the remote address and port for later use. */
@@ -2073,7 +2073,10 @@ wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 		}
 		taskqueue_enqueue(sc->sc_handshake_taskqueue,
 				  &sc->sc_handshake_task);
-	} else if (pkt_len >= WG_PKT_DATA_MINLEN && pkt_type == WG_PKT_DATA) {
+		return;
+	}
+
+	if (pkt_len >= WG_PKT_DATA_MINLEN && pkt_type == WG_PKT_DATA) {
 		/* Pullup the whole header to read r_idx below. */
 		pkt->p_mbuf = m_pullup(m, sizeof(struct wg_pkt_data));
 		if (pkt->p_mbuf == NULL)
@@ -2093,16 +2096,12 @@ wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 
 		wg_decrypt_dispatch(sc);
 		noise_remote_put(remote);
-	} else {
-		goto error;
+		return;
 	}
-
-	return (true);
 
 error:
 	IFNET_STAT_INC(sc->sc_ifp, ierrors, 1);
 	wg_packet_free(pkt);
-	return (true);
 }
 
 static void
