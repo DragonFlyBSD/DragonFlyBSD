@@ -324,6 +324,7 @@ static int wg_socket_set_cookie(struct wg_softc *, uint32_t);
 static void wg_timers_enable(struct wg_peer *);
 static void wg_timers_disable(struct wg_peer *);
 static void wg_timers_set_persistent_keepalive(struct wg_peer *, uint16_t);
+static bool wg_timers_get_persistent_keepalive(struct wg_peer *, uint16_t *);
 static void wg_timers_get_last_handshake(struct wg_peer *, struct timespec *);
 static void wg_timers_event_data_sent(struct wg_peer *);
 static void wg_timers_event_data_received(struct wg_peer *);
@@ -1059,6 +1060,13 @@ wg_timers_set_persistent_keepalive(struct wg_peer *peer, uint16_t interval)
 	atomic_store_16(&peer->p_persistent_keepalive_interval, interval);
 	if (atomic_load_bool(&peer->p_enabled))
 		wg_timers_run_persistent_keepalive(peer);
+}
+
+static bool
+wg_timers_get_persistent_keepalive(struct wg_peer *peer, uint16_t *interval)
+{
+	*interval = atomic_load_16(&peer->p_persistent_keepalive_interval);
+	return (*interval > 0);
 }
 
 static void
@@ -2408,8 +2416,7 @@ wg_ioctl_get(struct wg_softc *sc, struct wg_data_io *data, bool privileged)
 			else
 				bzero(peer_o.p_psk, sizeof(peer_o.p_psk));
 		}
-		peer_o.p_pka = peer->p_persistent_keepalive_interval;
-		if (peer_o.p_pka != 0)
+		if (wg_timers_get_persistent_keepalive(peer, &peer_o.p_pka))
 			peer_o.p_flags |= WG_PEER_HAS_PKA;
 		if (wg_peer_get_sockaddr(peer, &peer_o.p_sa) == 0)
 			peer_o.p_flags |= WG_PEER_HAS_ENDPOINT;
