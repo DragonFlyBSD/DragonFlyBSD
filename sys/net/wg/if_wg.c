@@ -169,13 +169,11 @@ struct wg_endpoint {
 		struct sockaddr_in6	r_sin6;
 #endif
 	} e_remote;
-	union {
-		struct in_addr		l_in;
-#ifdef INET6
-		struct in6_pktinfo	l_pktinfo6;
-#define l_in6 l_pktinfo6.ipi6_addr
-#endif
-	} e_local;
+	/*
+	 * NOTE: No 'e_local' on DragonFly, because the socket upcall
+	 *       and so_pru_soreceive() cannot provide the local
+	 *       (i.e., destination) address of a received packet.
+	 */
 };
 
 struct aip_addr {
@@ -361,7 +359,6 @@ static void wg_peer_set_endpoint(struct wg_peer *, const struct wg_endpoint *);
 static void wg_peer_get_endpoint(struct wg_peer *, struct wg_endpoint *);
 static int wg_peer_set_sockaddr(struct wg_peer *, const struct sockaddr *);
 static int wg_peer_get_sockaddr(struct wg_peer *, struct sockaddr *);
-static void wg_peer_clear_src(struct wg_peer *);
 static int wg_send(struct wg_softc *, struct wg_endpoint *, struct mbuf *);
 static void wg_send_buf(struct wg_softc *, struct wg_endpoint *, const void *, size_t);
 static void wg_send_initiation(struct wg_peer *);
@@ -543,7 +540,7 @@ wg_peer_set_sockaddr(struct wg_peer *peer, const struct sockaddr *remote)
 	else
 		ret = EAFNOSUPPORT;
 
-	bzero(&peer->p_endpoint.e_local, sizeof(peer->p_endpoint.e_local));
+	/* No 'e_local' to clear on DragonFly. */
 
 	lockmgr(&peer->p_endpoint_lock, LK_RELEASE);
 	return (ret);
@@ -582,14 +579,6 @@ wg_peer_get_endpoint(struct wg_peer *peer, struct wg_endpoint *e)
 {
 	lockmgr(&peer->p_endpoint_lock, LK_SHARED);
 	*e = peer->p_endpoint;
-	lockmgr(&peer->p_endpoint_lock, LK_RELEASE);
-}
-
-static void
-wg_peer_clear_src(struct wg_peer *peer)
-{
-	lockmgr(&peer->p_endpoint_lock, LK_EXCLUSIVE);
-	bzero(&peer->p_endpoint.e_local, sizeof(peer->p_endpoint.e_local));
 	lockmgr(&peer->p_endpoint_lock, LK_RELEASE);
 }
 
@@ -948,49 +937,34 @@ wg_send(struct wg_softc *sc, struct wg_endpoint *e, struct mbuf *m)
 {
 	struct wg_socket	*so;
 	struct sockaddr		*sa;
-	struct mbuf		*control;
-	sa_family_t		 af;
 	int			 len, ret;
 
 	so = &sc->sc_socket;
-	af = e->e_remote.r_sa.sa_family;
+	sa = &e->e_remote.r_sa;
 	len = m->m_pkthdr.len;
-	control = NULL;
 	ret = 0;
 
-	/* Get local control address before locking */
-	if (af == AF_INET) {
-		if (e->e_local.l_in.s_addr != INADDR_ANY)
-			control = sbcreatecontrol(&e->e_local.l_in,
-			    sizeof(e->e_local.l_in), IP_SENDSRCADDR,
-			    IPPROTO_IP);
-#ifdef INET6
-	} else if (af == AF_INET6) {
-		if (!IN6_IS_ADDR_UNSPECIFIED(&e->e_local.l_in6))
-			control = sbcreatecontrol(&e->e_local.l_pktinfo6,
-			    sizeof(e->e_local.l_pktinfo6), IPV6_PKTINFO,
-			    IPPROTO_IPV6);
-#endif
-	} else {
-		m_freem(m);
-		return (EAFNOSUPPORT);
-	}
-
-	/* Get remote address */
-	sa = &e->e_remote.r_sa;
-
+	/*
+	 * NOTE: DragonFly by default sends UDP packets asynchronously,
+	 *       unless the 'net.inet.udp.sosend_async' sysctl MIB is set
+	 *       to 0 or the 'MSG_SYNC' flag is set for so_pru_sosend().
+	 *       And in the async mode, an error code cannot really be
+	 *       replied to the caller.  So so_pru_sosend() may return 0
+	 *       even if the packet fails to send.
+	 */
 	lockmgr(&so->so_lock, LK_SHARED);
-	if (af == AF_INET && so->so_so4 != NULL) {
-		ret = so_pru_sosend(so->so_so4, sa, NULL, m, control, 0,
+	if (sa->sa_family == AF_INET && so->so_so4 != NULL) {
+		ret = so_pru_sosend(so->so_so4, sa, NULL /* uio */,
+				    m, NULL /* control */, 0 /* flags */,
 				    curthread);
 #ifdef INET6
-	} else if (af == AF_INET6 && so->so_so6 != NULL) {
-		ret = so_pru_sosend(so->so_so6, sa, NULL, m, control, 0,
+	} else if (sa->sa_family == AF_INET6 && so->so_so6 != NULL) {
+		ret = so_pru_sosend(so->so_so6, sa, NULL /* uio */,
+				    m, NULL /* control */, 0 /* flags */,
 				    curthread);
 #endif
 	} else {
 		ret = ENOTCONN;
-		m_freem(control);
 		m_freem(m);
 	}
 	lockmgr(&so->so_lock, LK_RELEASE);
@@ -1008,7 +982,7 @@ wg_send_buf(struct wg_softc *sc, struct wg_endpoint *e, const void *buf,
 	    size_t len)
 {
 	struct mbuf	*m;
-	int		 ret = 0;
+	int		 ret;
 
 	/*
 	 * This function only sends handshake packets of known lengths that
@@ -1016,7 +990,6 @@ wg_send_buf(struct wg_softc *sc, struct wg_endpoint *e, const void *buf,
 	 */
 	KKASSERT(len <= MHLEN);
 
-retry:
 	m = m_gethdr(M_NOWAIT, MT_DATA);
 	if (m == NULL) {
 		DPRINTF(sc, "Unable to allocate mbuf\n");
@@ -1030,18 +1003,9 @@ retry:
 	/* Give high priority to the handshake packets. */
 	m->m_flags |= M_PRIO;
 
-	if (ret == 0) {
-		ret = wg_send(sc, e, m);
-		/* Retry if we couldn't bind to e->e_local */
-		if (ret == EADDRNOTAVAIL) {
-			bzero(&e->e_local, sizeof(e->e_local));
-			goto retry;
-		}
-	} else {
-		ret = wg_send(sc, e, m);
-		if (ret != 0)
-			DPRINTF(sc, "Unable to send packet: %d\n", ret);
-	}
+	ret = wg_send(sc, e, m);
+	if (ret != 0)
+		DPRINTF(sc, "Unable to send packet: %d\n", ret);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1209,7 +1173,6 @@ wg_timers_run_retry_handshake(void *_peer)
 		DPRINTF(peer->p_sc, "Handshake for peer %ld did not complete "
 			"after %d seconds, retrying (try %d)\n", peer->p_id,
 			REKEY_TIMEOUT, peer->p_handshake_retries + 1);
-		wg_peer_clear_src(peer);
 		wg_timers_run_send_initiation(peer, true);
 	} else {
 		lockmgr(&peer->p_handshake_mtx, LK_RELEASE);
@@ -1260,8 +1223,6 @@ wg_timers_run_new_handshake(void *_peer)
 	DPRINTF(peer->p_sc, "Retrying handshake with peer %ld, "
 		"because we stopped hearing back after %d seconds\n",
 		peer->p_id, NEW_HANDSHAKE_TIMEOUT);
-
-	wg_peer_clear_src(peer);
 	wg_timers_run_send_initiation(peer, false);
 }
 
@@ -1725,34 +1686,27 @@ wg_deliver_out(void *arg, int pending __unused)
 	struct mbuf		*m;
 	int			 ret, len;
 
-	wg_peer_get_endpoint(peer, &endpoint);
-
 	while ((pkt = wg_queue_dequeue_serial(queue)) != NULL) {
 		if (pkt->p_state != WG_PACKET_CRYPTED)
 			goto error;
 
 		m = pkt->p_mbuf;
 		pkt->p_mbuf = NULL;
-
 		len = m->m_pkthdr.len;
 
 		wg_timers_event_any_authenticated_packet_traversal(peer);
 		wg_timers_event_any_authenticated_packet_sent(peer);
+		wg_peer_get_endpoint(peer, &endpoint);
 		ret = wg_send(sc, &endpoint, m);
-		if (ret == 0) {
-			if (len > WG_PKT_DATA_MINLEN)
-				wg_timers_event_data_sent(peer);
-			peer->p_tx_bytes[mycpuid] += len;
-		} else if (ret == EADDRNOTAVAIL) {
-			wg_peer_clear_src(peer);
-			wg_peer_get_endpoint(peer, &endpoint);
+		if (ret != 0)
 			goto error;
-		} else {
-			goto error;
-		}
-		wg_packet_free(pkt);
+
+		peer->p_tx_bytes[mycpuid] += len;
+		if (len > WG_PKT_DATA_MINLEN)
+			wg_timers_event_data_sent(peer);
 		if (noise_keep_key_fresh_send(peer->p_remote))
 			wg_timers_event_want_initiation(peer);
+		wg_packet_free(pkt);
 		continue;
 
 error:
