@@ -23,7 +23,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/atomic.9,v 1.17 2010/05/27 13:56:27 uqs Exp $
 .\"
-.Dd June 13, 2012
+.Dd January 14, 2024
 .Dt ATOMIC 9
 .Os
 .Sh NAME
@@ -53,7 +53,7 @@
 .Ft <type>
 .Fn atomic_fetchadd_<type> "volatile <type> *p" "<type> v"
 .Ft <type>
-.Fn atomic_load_acq_<type> "volatile <type> *p"
+.Fn atomic_load_[acq_]<type> "volatile <type> *p"
 .Ft <type>
 .Fn atomic_readandclear_<type> "volatile <type> *p"
 .Ft void
@@ -61,7 +61,7 @@
 .Ft void
 .Fn atomic_subtract_[acq_|rel_]<type> "volatile <type> *p" "<type> v"
 .Ft void
-.Fn atomic_store_rel_<type> "volatile <type> *p" "<type> v"
+.Fn atomic_store_[rel_]<type> "volatile <type> *p" "<type> v"
 .Sh DESCRIPTION
 Each of the atomic operations is guaranteed to be atomic in the presence of
 interrupts.
@@ -222,12 +222,6 @@ and do not have any variants with memory barriers at this time.
 .Bd -literal -compact
 return (*addr)
 .Ed
-.El
-.Pp
-The
-.Fn atomic_load
-functions are only provided with acquire memory barriers.
-.Bl -hang
 .It Fn atomic_readandclear addr
 .Bd -literal -compact
 temp = *addr;
@@ -269,10 +263,6 @@ functions are not implemented for the type
 *p = v;
 .Ed
 .El
-.Pp
-The
-.Fn atomic_store
-functions are only provided with release memory barriers.
 .Sh RETURN VALUES
 The
 .Fn atomic_cmpset
@@ -332,6 +322,7 @@ This first set only supported the types
 .Dq Li int ,
 and
 .Dq Li long .
+.Pp
 The
 .Fn atomic_cmpset ,
 .Fn atomic_load ,
@@ -351,7 +342,17 @@ and all of the acquire and release variants
 were added in
 .Fx 5.0
 as well.
+.Pp
 The
 .Fn atomic_fetchadd
 operations were added in
 .Fx 6.0 .
+.Pp
+The relaxed variants of
+.Fn atomic_load
+and
+.Fn atomic_store
+were added in
+.Fx 12.0
+and
+.Dx 6.5 .

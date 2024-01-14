@@ -28,9 +28,8 @@
 #ifndef _CPU_ATOMIC_H_
 #define _CPU_ATOMIC_H_
 
-#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
-#endif
+#include <sys/atomic_common.h>
 
 /*
  * Various simple arithmetic on memory which is atomic in the presence
