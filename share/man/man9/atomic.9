@@ -66,12 +66,26 @@
 Each of the atomic operations is guaranteed to be atomic in the presence of
 interrupts.
 They can be used to implement reference counts or as building blocks for more
-advanced synchronization primitives such as mutexes.
+advanced synchronization primitives, such as mutexes.
+.Pp
+On all architectures supported by
+. Dx ,
+ordinary loads and stores of integers in cache-coherent memory are
+inherently atomic if the integer is naturally aligned and its size does
+not exceed the processor's word size.
+However, such loads and stores may be elided from the program by the
+compiler, whereas atomic operations are always performed.
+.Pp
+Except as noted below, the semantics of these operations are almost
+identical to the semantics of similarly named C11 atomic operations.
 .Ss Types
 Each atomic operation operates on a specific
 .Fa type .
 The type to use is indicated in the function name.
-The available types that can be used are:
+In contrast to C11 atomic operations,
+.Dx Ns 's
+atomic operations are performed on ordinary integer types.
+The available types are:
 .Pp
 .Bl -tag -offset indent -width ".Li cpumask" -compact
 .It Li cpumask
@@ -84,8 +98,8 @@ unsigned long integer
 unsigned integer the size of a pointer
 .It Li 32
 unsigned 32-bit integer
-.\".It Li 64
-.\"unsigned 64-bit integer
+.It Li 64
+unsigned 64-bit integer
 .El
 .Pp
 For example, the function to atomically add two integers is called
@@ -105,8 +119,8 @@ unsigned 8-bit integer
 unsigned 16-bit integer
 .El
 .Pp
-These must not be used in MI code because the instructions to implement them
-efficiently may not be available.
+These must not be used in machine-independent code, because the instructions
+to implement them efficiently may not be available.
 .Ss Memory Barriers
 Memory barriers are used to guarantee the order of data accesses in
 two ways.
@@ -335,7 +349,7 @@ The types
 .Dq Li 8 ,
 .Dq Li 16 ,
 .Dq Li 32 ,
-.\".Dq Li 64 ,
+.Dq Li 64 ,
 and
 .Dq Li ptr
 and all of the acquire and release variants
