@@ -565,7 +565,7 @@ wg_peer_set_endpoint(struct wg_peer *peer, const struct wg_endpoint *e)
 {
 	KKASSERT(e->e_remote.r_sa.sa_family != AF_UNSPEC);
 
-	if (memcmp(e, &peer->p_endpoint, sizeof(*e)) == 0)
+	if (__predict_true(memcmp(e, &peer->p_endpoint, sizeof(*e)) == 0))
 		return;
 
 	lockmgr(&peer->p_endpoint_lock, LK_EXCLUSIVE);
@@ -576,6 +576,9 @@ wg_peer_set_endpoint(struct wg_peer *peer, const struct wg_endpoint *e)
 static void
 wg_peer_get_endpoint(struct wg_peer *peer, struct wg_endpoint *e)
 {
+	if (__predict_true(memcmp(e, &peer->p_endpoint, sizeof(*e)) == 0))
+		return;
+
 	lockmgr(&peer->p_endpoint_lock, LK_SHARED);
 	*e = peer->p_endpoint;
 	lockmgr(&peer->p_endpoint_lock, LK_RELEASE);
