@@ -591,7 +591,7 @@ wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af,
 	struct radix_node_head	*head;
 	struct radix_node	*node;
 	struct wg_aip		*aip;
-	int			 i, ret = 0;
+	int			 ret = 0;
 
 	aip = kmalloc(sizeof(*aip), M_WG, M_WAITOK | M_ZERO);
 	aip->a_peer = peer;
@@ -611,6 +611,9 @@ wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af,
 		break;
 #ifdef INET6
 	case AF_INET6:
+	{
+		int i;
+
 		if (cidr > 128)
 			cidr = 128;
 		head = sc->sc_aip6;
@@ -621,6 +624,7 @@ wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af,
 		aip->a_addr.length = aip->a_mask.length =
 		    offsetof(struct aip_addr, in6) + sizeof(struct in6_addr);
 		break;
+	}
 #endif
 	default:
 		kfree(aip, M_WG);
