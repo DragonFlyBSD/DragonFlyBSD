@@ -976,6 +976,8 @@ wg_send(struct wg_softc *sc, struct wg_endpoint *e, struct mbuf *m)
 	if (ret == 0) {
 		IFNET_STAT_INC(sc->sc_ifp, opackets, 1);
 		IFNET_STAT_INC(sc->sc_ifp, obytes, len);
+	} else {
+		IFNET_STAT_INC(sc->sc_ifp, oerrors, 1);
 	}
 
 	return (ret);
@@ -1689,34 +1691,39 @@ wg_deliver_out(void *arg, int pending __unused)
 	struct wg_endpoint	 endpoint;
 	struct wg_packet	*pkt;
 	struct mbuf		*m;
-	int			 ret, len;
+	int			 len, cpu;
+
+	cpu = mycpuid;
 
 	while ((pkt = wg_queue_dequeue_serial(queue)) != NULL) {
-		if (pkt->p_state != WG_PACKET_CRYPTED)
-			goto error;
+		if (pkt->p_state != WG_PACKET_CRYPTED) {
+			IFNET_STAT_INC(sc->sc_ifp, oerrors, 1);
+			wg_packet_free(pkt);
+			continue;
+		}
 
 		m = pkt->p_mbuf;
-		pkt->p_mbuf = NULL;
 		len = m->m_pkthdr.len;
 
+		pkt->p_mbuf = NULL;
+		wg_packet_free(pkt);
+
+		/*
+		 * The keepalive timers -- both persistent and mandatory --
+		 * are part of the internal state machine, which needs to be
+		 * cranked whether or not the packet was actually sent.
+		 */
 		wg_timers_event_any_authenticated_packet_traversal(peer);
 		wg_timers_event_any_authenticated_packet_sent(peer);
+
 		wg_peer_get_endpoint(peer, &endpoint);
-		ret = wg_send(sc, &endpoint, m);
-		if (ret != 0)
-			goto error;
-
-		peer->p_tx_bytes[mycpuid] += len;
-		if (len > WG_PKT_DATA_MINLEN)
-			wg_timers_event_data_sent(peer);
-		if (noise_keep_key_fresh_send(peer->p_remote))
-			wg_timers_event_want_initiation(peer);
-		wg_packet_free(pkt);
-		continue;
-
-error:
-		IFNET_STAT_INC(sc->sc_ifp, oerrors, 1);
-		wg_packet_free(pkt);
+		if (wg_send(sc, &endpoint, m) == 0) {
+			peer->p_tx_bytes[cpu] += len;
+			if (len > WG_PKT_DATA_MINLEN)
+				wg_timers_event_data_sent(peer);
+			if (noise_keep_key_fresh_send(peer->p_remote))
+				wg_timers_event_want_initiation(peer);
+		}
 	}
 }
 
@@ -1730,7 +1737,9 @@ wg_deliver_in(void *arg, int pending __unused)
 	struct ifnet		*ifp;
 	struct mbuf		*m;
 	size_t			 rx_bytes;
+	int			 cpu;
 
+	cpu = mycpuid;
 	ifp = sc->sc_ifp;
 
 	while ((pkt = wg_queue_dequeue_serial(queue)) != NULL) {
@@ -1752,29 +1761,25 @@ wg_deliver_in(void *arg, int pending __unused)
 		m = pkt->p_mbuf;
 		rx_bytes = m->m_pkthdr.len + sizeof(struct wg_pkt_data) +
 			   NOISE_AUTHTAG_LEN;
-		peer->p_rx_bytes[mycpuid] += rx_bytes;
+		peer->p_rx_bytes[cpu] += rx_bytes;
 		IFNET_STAT_INC(ifp, ipackets, 1);
 		IFNET_STAT_INC(ifp, ibytes, rx_bytes);
 
-		if (m->m_pkthdr.len == 0)
-			goto done;
+		if (m->m_pkthdr.len > 0) {
+			m->m_pkthdr.rcvif = ifp;
+			BPF_MTAP_AF(ifp, m, pkt->p_af);
 
-		pkt->p_mbuf = NULL;
-		m->m_pkthdr.rcvif = ifp;
-		BPF_MTAP_AF(ifp, m, pkt->p_af);
+			netisr_queue((pkt->p_af == AF_INET ?
+				      NETISR_IP : NETISR_IPV6), m);
+			pkt->p_mbuf = NULL;
 
-		KKASSERT(pkt->p_af == AF_INET || pkt->p_af == AF_INET6);
-		if (pkt->p_af == AF_INET)
-			netisr_queue(NETISR_IP, m);
-		else
-			netisr_queue(NETISR_IPV6, m);
+			wg_timers_event_data_received(peer);
+		}
 
-		wg_timers_event_data_received(peer);
+		wg_packet_free(pkt);
 
-done:
 		if (noise_keep_key_fresh_recv(peer->p_remote))
 			wg_timers_event_want_initiation(peer);
-		wg_packet_free(pkt);
 	}
 }
 
