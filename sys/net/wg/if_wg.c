@@ -107,8 +107,20 @@ CTASSERT(WG_KEY_SIZE >= NOISE_SYMMETRIC_KEY_LEN);
 #define WG_PKT_PADDING		16
 #define WG_PKT_WITH_PADDING(n)	\
 	(((n) + (WG_PKT_PADDING - 1)) & ~(WG_PKT_PADDING - 1))
-#define WG_PKT_DATA_MINLEN	\
-	(sizeof(struct wg_pkt_data) + NOISE_AUTHTAG_LEN)
+#define WG_PKT_ENCRYPTED_LEN(n)	\
+	(offsetof(struct wg_pkt_data, buf[(n)]) + NOISE_AUTHTAG_LEN)
+#define WG_PKT_IS_INITIATION(m)	\
+	(*mtod((m), uint32_t *) == WG_PKT_INITIATION && \
+	 (size_t)(m)->m_pkthdr.len == sizeof(struct wg_pkt_initiation))
+#define WG_PKT_IS_RESPONSE(m)	\
+	(*mtod((m), uint32_t *) == WG_PKT_RESPONSE && \
+	 (size_t)(m)->m_pkthdr.len == sizeof(struct wg_pkt_response))
+#define WG_PKT_IS_COOKIE(m)	\
+	(*mtod((m), uint32_t *) == WG_PKT_COOKIE && \
+	 (size_t)(m)->m_pkthdr.len == sizeof(struct wg_pkt_cookie))
+#define WG_PKT_IS_DATA(m)	\
+	(*mtod((m), uint32_t *) == WG_PKT_DATA && \
+	 (size_t)(m)->m_pkthdr.len >= WG_PKT_ENCRYPTED_LEN(0))
 
 
 #define DPRINTF(sc, ...)	\
@@ -1719,7 +1731,7 @@ wg_deliver_out(void *arg, int pending __unused)
 		wg_peer_get_endpoint(peer, &endpoint);
 		if (wg_send(sc, &endpoint, m) == 0) {
 			peer->p_tx_bytes[cpu] += len;
-			if (len > WG_PKT_DATA_MINLEN)
+			if (len > WG_PKT_ENCRYPTED_LEN(0))
 				wg_timers_event_data_sent(peer);
 			if (noise_keep_key_fresh_send(peer->p_remote))
 				wg_timers_event_want_initiation(peer);
@@ -1759,8 +1771,7 @@ wg_deliver_in(void *arg, int pending __unused)
 		wg_peer_set_endpoint(peer, &pkt->p_endpoint);
 
 		m = pkt->p_mbuf;
-		rx_bytes = m->m_pkthdr.len + sizeof(struct wg_pkt_data) +
-			   NOISE_AUTHTAG_LEN;
+		rx_bytes = WG_PKT_ENCRYPTED_LEN(m->m_pkthdr.len);
 		peer->p_rx_bytes[cpu] += rx_bytes;
 		IFNET_STAT_INC(ifp, ipackets, 1);
 		IFNET_STAT_INC(ifp, ibytes, rx_bytes);
@@ -2003,13 +2014,11 @@ wg_upcall(struct socket *so, void *arg, int waitflag __unused)
 static void
 wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 {
-	struct noise_remote		*remote;
-	struct wg_pkt_data		*data;
-	struct wg_packet		*pkt;
-	struct wg_peer			*peer;
-	struct mbuf			*defragged;
-	uint32_t			 pkt_type;
-	size_t				 pkt_len;
+	struct noise_remote	*remote;
+	struct wg_pkt_data	*data;
+	struct wg_packet	*pkt;
+	struct wg_peer		*peer;
+	struct mbuf		*defragged;
 
 	defragged = m_defrag(m, M_NOWAIT);
 	if (defragged != NULL)
@@ -2049,16 +2058,9 @@ wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 		goto error;
 	}
 
-	pkt_len = (size_t)m->m_pkthdr.len;
-	pkt_type = *mtod(m, uint32_t *);
-
-	if ((pkt_len == sizeof(struct wg_pkt_initiation) &&
-	     pkt_type == WG_PKT_INITIATION) ||
-	    (pkt_len == sizeof(struct wg_pkt_response) &&
-	     pkt_type == WG_PKT_RESPONSE) ||
-	    (pkt_len == sizeof(struct wg_pkt_cookie) &&
-	     pkt_type == WG_PKT_COOKIE))
-	{
+	if (WG_PKT_IS_INITIATION(m) ||
+	    WG_PKT_IS_RESPONSE(m) ||
+	    WG_PKT_IS_COOKIE(m)) {
 		if (!wg_queue_enqueue_handshake(&sc->sc_handshake_queue, pkt)) {
 			IFNET_STAT_INC(sc->sc_ifp, iqdrops, 1);
 			DPRINTF(sc, "Dropping handshake packet\n");
@@ -2068,7 +2070,7 @@ wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 		return;
 	}
 
-	if (pkt_len >= WG_PKT_DATA_MINLEN && pkt_type == WG_PKT_DATA) {
+	if (WG_PKT_IS_DATA(m)) {
 		/* Pullup the whole header to read r_idx below. */
 		pkt->p_mbuf = m_pullup(m, sizeof(struct wg_pkt_data));
 		if (pkt->p_mbuf == NULL)
