@@ -21,7 +21,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "opt_inet.h"
 #include "opt_inet6.h"
 
 #include <sys/param.h>
@@ -599,7 +598,6 @@ wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af,
 	aip->a_af = af;
 
 	switch (af) {
-#ifdef INET
 	case AF_INET:
 		if (cidr > 32)
 			cidr = 32;
@@ -611,7 +609,6 @@ wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af,
 		aip->a_addr.length = aip->a_mask.length =
 		    offsetof(struct aip_addr, in) + sizeof(struct in_addr);
 		break;
-#endif
 #ifdef INET6
 	case AF_INET6:
 		if (cidr > 128)
@@ -2025,12 +2022,10 @@ wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 
 	/* Save the remote address and port for later use. */
 	switch (sa->sa_family) {
-#ifdef INET
 	case AF_INET:
 		pkt->p_endpoint.e_remote.r_sin =
 		    *(const struct sockaddr_in *)sa;
 		break;
-#endif
 #ifdef INET6
 	case AF_INET6:
 		pkt->p_endpoint.e_remote.r_sin6 =
@@ -2132,14 +2127,12 @@ xmit_err(struct ifnet *ifp, struct mbuf *m, struct wg_packet *pkt,
 	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	switch (af) {
-#ifdef INET
 	case AF_INET:
 		icmp_error(m, ICMP_UNREACH, ICMP_UNREACH_HOST, 0, 0);
 		if (pkt != NULL)
 			pkt->p_mbuf = NULL;
 		m = NULL;
 		break;
-#endif
 #ifdef INET6
 	case AF_INET6:
 		icmp6_error(m, ICMP6_DST_UNREACH, 0, 0);

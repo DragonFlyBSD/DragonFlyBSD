@@ -17,7 +17,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "opt_inet.h"
 #include "opt_inet6.h"
 
 #include <sys/param.h>
