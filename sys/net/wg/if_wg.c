@@ -1494,8 +1494,9 @@ calculate_padding(struct wg_packet *pkt)
 
 	last_unit = pkt->p_mbuf->m_pkthdr.len;
 
+	/* Keepalive packets don't set p_mtu, but also have a length of zero. */
 	if (__predict_false(pkt->p_mtu == 0))
-		return WG_PKT_WITH_PADDING(last_unit);
+		return WG_PKT_WITH_PADDING(last_unit) - last_unit;
 
 	/*
 	 * Just in case the packet is bigger than the MTU and would cause
