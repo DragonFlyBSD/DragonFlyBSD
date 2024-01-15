@@ -377,11 +377,11 @@ static void wg_send_response(struct wg_peer *);
 static void wg_send_cookie(struct wg_softc *, struct cookie_macs *, uint32_t, struct wg_endpoint *);
 static void wg_send_keepalive(struct wg_peer *);
 static void wg_handshake(struct wg_softc *, struct wg_packet *);
+static void wg_handshake_worker(void *, int);
 static void wg_encrypt(struct wg_softc *, struct wg_packet *);
 static void wg_decrypt(struct wg_softc *, struct wg_packet *);
-static void wg_softc_handshake_receive(void *, int);
-static void wg_softc_decrypt(void *, int);
-static void wg_softc_encrypt(void *, int);
+static void wg_encrypt_worker(void *, int);
+static void wg_decrypt_worker(void *, int);
 static void wg_encrypt_dispatch(struct wg_softc *);
 static void wg_decrypt_dispatch(struct wg_softc *);
 static void wg_deliver_out(void *, int);
@@ -1491,7 +1491,7 @@ error:
 }
 
 static void
-wg_softc_handshake_receive(void *arg, int pending __unused)
+wg_handshake_worker(void *arg, int pending __unused)
 {
 	struct wg_softc		*sc = arg;
 	struct wg_queue		*queue = &sc->sc_handshake_queue;
@@ -1648,7 +1648,7 @@ out:
 }
 
 static void
-wg_softc_encrypt(void *arg, int pending __unused)
+wg_encrypt_worker(void *arg, int pending __unused)
 {
 	struct wg_softc		*sc = arg;
 	struct wg_queue		*queue = &sc->sc_encrypt_parallel;
@@ -1659,7 +1659,7 @@ wg_softc_encrypt(void *arg, int pending __unused)
 }
 
 static void
-wg_softc_decrypt(void *arg, int pending __unused)
+wg_decrypt_worker(void *arg, int pending __unused)
 {
 	struct wg_softc		*sc = arg;
 	struct wg_queue		*queue = &sc->sc_decrypt_parallel;
@@ -2712,7 +2712,7 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 	cookie_checker_init(&sc->sc_cookie);
 
 	sc->sc_handshake_taskqueue = wg_taskqueues[karc4random() % ncpus];
-	TASK_INIT(&sc->sc_handshake_task, 0, wg_softc_handshake_receive, sc);
+	TASK_INIT(&sc->sc_handshake_task, 0, wg_handshake_worker, sc);
 	wg_queue_init(&sc->sc_handshake_queue, "hsq");
 
 	sc->sc_encrypt_tasks = kmalloc(sizeof(*sc->sc_encrypt_tasks) * ncpus,
@@ -2720,8 +2720,8 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 	sc->sc_decrypt_tasks = kmalloc(sizeof(*sc->sc_decrypt_tasks) * ncpus,
 				       M_WG, M_WAITOK | M_ZERO);
 	for (i = 0; i < ncpus; i++) {
-		TASK_INIT(&sc->sc_encrypt_tasks[i], 0, wg_softc_encrypt, sc);
-		TASK_INIT(&sc->sc_decrypt_tasks[i], 0, wg_softc_decrypt, sc);
+		TASK_INIT(&sc->sc_encrypt_tasks[i], 0, wg_encrypt_worker, sc);
+		TASK_INIT(&sc->sc_decrypt_tasks[i], 0, wg_decrypt_worker, sc);
 	}
 	wg_queue_init(&sc->sc_encrypt_parallel, "encp");
 	wg_queue_init(&sc->sc_decrypt_parallel, "decp");
