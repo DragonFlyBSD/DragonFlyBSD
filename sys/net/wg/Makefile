@@ -1,10 +1,17 @@
-.PATH: ${SRCTOP}/sys/dev/wg
+KMOD=	if_wg
 
-KMOD= if_wg
+SRCS=	if_wg.c wg_cookie.c wg_noise.c
+SRCS+=	opt_inet6.h
 
-SRCS= if_wg.c wg_cookie.c wg_crypto.c wg_noise.c
-SRCS+= opt_inet.h opt_inet6.h device_if.h bus_if.h
+# Help quickly build and test this module alone.
+.if !defined(KERNBUILDDIR)
+KCFLAGS+=-g -DINVARIANTS
+
+opt_inet6.h:
+	echo "#define INET6 1" > ${.TARGET}
+.endif
+
+# Header files are installed by 'include/Makefile'.
+# XXX: should install only 'if_wg.h' but no other header files.
 
 .include <bsd.kmod.mk>
-
-CFLAGS+= -include ${SRCTOP}/sys/dev/wg/compat.h
