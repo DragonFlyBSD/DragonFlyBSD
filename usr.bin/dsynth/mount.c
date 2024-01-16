@@ -197,8 +197,15 @@ DoWorkerMounts(worker_t *work)
 	}
 	free(buf);
 
-	domount(work, NULLFS_RO, "$/boot", "/boot", NULL);
-	domount(work, TMPFS_RW,  "dummy", "/boot/modules.local", NULL);
+	domount(work, TMPFS_RW,  "dummy", "/boot", NULL);
+
+	asprintf(&buf, "%s/boot/modules.local", work->basedir);
+	if (mkdir(buf, 0755) != 0) {
+		fprintf(stderr, "Command failed: mkdir %s\n", buf);
+		++work->mount_error;
+	}
+	free(buf);
+
 	domount(work, DEVFS_RW,  "dummy", "/dev", NULL);
 	domount(work, PROCFS_RO, "dummy", "/proc", NULL);
 	domount(work, NULLFS_RO, "$/bin", "/bin", "/bin.%03d");
@@ -261,7 +268,6 @@ DoWorkerUnmounts(worker_t *work)
 		dounmount(work, "/dev");
 		dounmount(work, "/usr/src");
 		dounmount(work, "/usr/games");
-		dounmount(work, "/boot/modules.local");
 		dounmount(work, "/boot");
 		dounmount(work, "/usr/local");
 		dounmount(work, "/construction");
