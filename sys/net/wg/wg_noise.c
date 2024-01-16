@@ -335,6 +335,8 @@ noise_local_keys(struct noise_local *l, uint8_t public[NOISE_PUBLIC_KEY_LEN],
 static void
 noise_precompute_ss(struct noise_local *l, struct noise_remote *r)
 {
+	KKASSERT(lockstatus(&l->l_identity_lock, curthread) != 0);
+
 	lockmgr(&r->r_handshake_lock, LK_EXCLUSIVE);
 	if (!l->l_has_identity ||
 	    !curve25519(r->r_ss, l->l_private, r->r_public))
@@ -357,13 +359,16 @@ noise_remote_alloc(struct noise_local *l,
 
 	lockinit(&r->r_handshake_lock, "noise_handshake", 0, 0);
 	r->r_handshake_state = HANDSHAKE_DEAD;
-	noise_precompute_ss(l, r);
 
 	refcount_init(&r->r_refcnt, 1);
 	r->r_local = noise_local_ref(l);
 	r->r_arg = arg;
 
 	lockinit(&r->r_keypair_lock, "noise_keypair", 0, 0);
+
+	lockmgr(&l->l_identity_lock, LK_SHARED);
+	noise_precompute_ss(l, r);
+	lockmgr(&l->l_identity_lock, LK_RELEASE);
 
 	return (r);
 }
