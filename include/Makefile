@@ -78,6 +78,7 @@ LSUBDIRS= \
 	net/sl net/sppp \
 	net/tap net/tun \
 	net/vlan \
+	net/wg \
 	netgraph/UI netgraph/async netgraph/bpf netgraph/bridge \
 	netgraph/cisco netgraph/echo netgraph/eiface netgraph/etf \
 	netgraph/ether netgraph/fec netgraph/frame_relay netgraph/hole \

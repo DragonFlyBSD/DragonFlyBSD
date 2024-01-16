@@ -398,6 +398,7 @@ MAN=	aac.4 \
 	watchdog.4 \
 	wb.4 \
 	wbsio.4 \
+	wg.4 \
 	wi.4 \
 	wlan.4 \
 	wlan_acl.4 \
@@ -557,6 +558,8 @@ MLINKS+=vpo.4 imm.4
 MLINKS+=vr.4 if_vr.4
 MLINKS+=vtnet.4 if_vtnet.4
 MLINKS+=wb.4 if_wb.4
+MLINKS+=wg.4 if_wg.4 \
+	wg.4 wireguard.4
 MLINKS+=wi.4 if_wi.4
 MLINKS+=wpi.4 if_wpi.4
 MLINKS+=xe.4 if_xe.4

@@ -11,6 +11,7 @@ SUBDIR=	accf_data accf_http \
 	sl sppp stf \
 	tap tun \
 	vlan \
+	wg \
 	zlib
 
 # empty to allow concurrent building
