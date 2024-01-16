@@ -1,7 +1,17 @@
-SUBDIR=accf_data accf_http disc gif gre sl stf tap tun \
-	vlan zlib bridge lagg dummynet ipfw \
-	dummynet3 ipfw3 ipfw3_basic ipfw3_nat ipfw3_layer2 ipfw3_layer4 \
-	ip6fw ip_mroute sppp pf
+SUBDIR=	accf_data accf_http \
+	bridge \
+	disc \
+	dummynet dummynet3 \
+	gif gre \
+	ip_mroute \
+	ipfw ip6fw \
+	ipfw3 ipfw3_basic ipfw3_nat ipfw3_layer2 ipfw3_layer4 \
+	lagg \
+	pf \
+	sl sppp stf \
+	tap tun \
+	vlan \
+	zlib
 
 # empty to allow concurrent building
 #

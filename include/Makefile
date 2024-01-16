@@ -66,12 +66,18 @@ LSUBDIRS= \
 	dev/video/bktr dev/video/meteor \
 	dev/virtual/nvmm dev/virtual/nvmm/x86 \
 	libprop \
-	net/bridge net/tap net/tun net/ppp_layer net/sl \
-	net/pf net/altq \
-	net/vlan net/ipfw net/ip6fw net/dummynet net/sppp net/ip_mroute \
+	net/altq net/bridge \
+	net/dummynet net/dummynet3 \
+	net/ip_mroute \
+	net/ip6fw net/ipfw \
 	net/ipfw3 net/ipfw3_basic net/ipfw3_layer2 net/ipfw3_layer4 \
-	net/ipfw3_nat net/dummynet3 \
+	net/ipfw3_nat \
 	net/lagg \
+	net/pf \
+	net/ppp_layer \
+	net/sl net/sppp \
+	net/tap net/tun \
+	net/vlan \
 	netgraph/UI netgraph/async netgraph/bpf netgraph/bridge \
 	netgraph/cisco netgraph/echo netgraph/eiface netgraph/etf \
 	netgraph/ether netgraph/fec netgraph/frame_relay netgraph/hole \
