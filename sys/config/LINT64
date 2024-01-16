@@ -315,6 +315,7 @@ pseudo-device	tap			#Ethernet tunnel network interface
 pseudo-device	tun			#Tunnel driver (ppp(8), nos-tun(8))
 pseudo-device	sl	2		#Serial Line IP
 pseudo-device	gre			#IP over IP tunneling
+pseudo-device	wg			# WireGuard VPN
 
 # for IPv6
 pseudo-device	gif			#IPv6 and IPv4 tunneling

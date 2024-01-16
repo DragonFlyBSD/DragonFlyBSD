@@ -1584,6 +1584,9 @@ net/tun/if_tun.c		optional tun
 net/tap/if_tap.c		optional tap
 net/vlan/if_vlan.c		optional vlan
 net/vlan/if_vlan_ether.c	optional ether
+net/wg/if_wg.c			optional wg
+net/wg/wg_cookie.c		optional wg
+net/wg/wg_noise.c		optional wg
 net/net_osdep.c		standard
 net/netisr.c		standard
 net/radix.c		standard
