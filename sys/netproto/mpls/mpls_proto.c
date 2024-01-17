@@ -69,7 +69,7 @@ mpls_inithead(void **head, int off)
 	struct radix_node_head *rnh;
 
 	rnh = *head;
-	KKASSERT(rnh == rt_tables[cpuid][AF_MPLS]);
+	KKASSERT(rnh == rt_tables[mycpuid][AF_MPLS]);
 
 	if (!rn_inithead(&rnh, rn_cpumaskhead(mycpuid), off))
 		return 0;
