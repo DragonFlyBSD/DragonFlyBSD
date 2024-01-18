@@ -17,6 +17,11 @@ nvmm_x86_svmfunc.o nvmm_x86_vmxfunc.o: assym.s
 .endif # !KERNBUILDDIR
 .endif
 
+# Help quickly build and test this module alone.
+.if !defined(KERNBUILDDIR)
+KCFLAGS+=-g -DINVARIANTS
+.endif
+
 # Header files are installed by 'include/Makefile'.
 
 .include <bsd.kmod.mk>
