@@ -385,20 +385,6 @@ static void wg_encrypt_dispatch(struct wg_softc *);
 static void wg_decrypt_dispatch(struct wg_softc *);
 static void wg_deliver_out(void *, int);
 static void wg_deliver_in(void *, int);
-static struct wg_packet *wg_packet_alloc(struct mbuf *);
-static void wg_packet_free(struct wg_packet *);
-static void wg_queue_init(struct wg_queue *, const char *);
-static void wg_queue_deinit(struct wg_queue *);
-static size_t wg_queue_len(const struct wg_queue *);
-static bool wg_queue_enqueue_handshake(struct wg_queue *, struct wg_packet *);
-static struct wg_packet *wg_queue_dequeue_handshake(struct wg_queue *);
-static void wg_queue_push_staged(struct wg_queue *, struct wg_packet *);
-static void wg_queue_enlist_staged(struct wg_queue *, struct wg_packet_list *);
-static void wg_queue_delist_staged(struct wg_queue *, struct wg_packet_list *);
-static void wg_queue_purge(struct wg_queue *);
-static bool wg_queue_both(struct wg_queue *, struct wg_queue *, struct wg_packet *);
-static struct wg_packet *wg_queue_dequeue_serial(struct wg_queue *);
-static struct wg_packet *wg_queue_dequeue_parallel(struct wg_queue *);
 static void wg_upcall(struct socket *, void *, int);
 static void wg_input(struct wg_softc *, struct mbuf *, const struct sockaddr *);
 static int wg_output(struct ifnet *, struct mbuf *, struct sockaddr *, struct rtentry *);
@@ -411,6 +397,239 @@ static int wg_module_init(void);
 static int wg_module_deinit(void);
 static inline int determine_af_and_pullup(struct mbuf **, sa_family_t *);
 
+
+/*----------------------------------------------------------------------------*/
+/* Packet */
+
+static struct wg_packet *
+wg_packet_alloc(struct mbuf *m)
+{
+	struct wg_packet *pkt;
+
+	if ((pkt = objcache_get(wg_packet_zone, M_NOWAIT)) == NULL)
+		return (NULL);
+
+	bzero(pkt, sizeof(*pkt)); /* objcache_get() doesn't ensure M_ZERO. */
+	pkt->p_mbuf = m;
+
+	return (pkt);
+}
+
+static void
+wg_packet_free(struct wg_packet *pkt)
+{
+	if (pkt->p_keypair != NULL)
+		noise_keypair_put(pkt->p_keypair);
+	if (pkt->p_mbuf != NULL)
+		m_freem(pkt->p_mbuf);
+	objcache_put(wg_packet_zone, pkt);
+}
+
+/*----------------------------------------------------------------------------*/
+/*
+ * Packet Queue Functions
+ *
+ * WireGuard uses the following queues:
+ * - per-interface handshake queue: track incoming handshake packets
+ * - per-peer staged queue: track the outgoing packets sent by that peer
+ * - per-interface parallel encrypt and decrypt queues
+ * - per-peer serial encrypt and decrypt queues
+ *
+ * For one interface, the handshake packets are only tracked in the handshake
+ * queue and are processed in serial.  However, all data packets are tracked
+ * in two queues: a serial queue and a parallel queue.  Specifically, the
+ * outgoing packets (from the staged queue) will be queued in both the
+ * parallel encrypt and the serial encrypt queues; the incoming packets will
+ * be queued in both the parallel decrypt and the serial decrypt queues.
+ *
+ * - The parallel queues are used to distribute the encryption/decryption work
+ *   across all CPUs.  The per-CPU wg_{encrypt,decrypt}_worker() work on the
+ *   parallel queues.
+ * - The serial queues ensure that packets are not reordered and are
+ *   delivered in sequence for each peer.  The per-peer wg_deliver_{in,out}()
+ *   work on the serial queues.
+ */
+
+static void wg_queue_purge(struct wg_queue *);
+
+static void
+wg_queue_init(struct wg_queue *queue, const char *name)
+{
+	lockinit(&queue->q_mtx, name, 0, 0);
+	STAILQ_INIT(&queue->q_queue);
+	queue->q_len = 0;
+}
+
+static void
+wg_queue_deinit(struct wg_queue *queue)
+{
+	wg_queue_purge(queue);
+	lockuninit(&queue->q_mtx);
+}
+
+static size_t
+wg_queue_len(const struct wg_queue *queue)
+{
+	return (queue->q_len);
+}
+
+static bool
+wg_queue_enqueue_handshake(struct wg_queue *hs, struct wg_packet *pkt)
+{
+	bool ok = false;
+
+	lockmgr(&hs->q_mtx, LK_EXCLUSIVE);
+	if (hs->q_len < MAX_QUEUED_HANDSHAKES) {
+		STAILQ_INSERT_TAIL(&hs->q_queue, pkt, p_parallel);
+		hs->q_len++;
+		ok = true;
+	}
+	lockmgr(&hs->q_mtx, LK_RELEASE);
+
+	if (!ok)
+		wg_packet_free(pkt);
+
+	return (ok);
+}
+
+static struct wg_packet *
+wg_queue_dequeue_handshake(struct wg_queue *hs)
+{
+	struct wg_packet *pkt;
+
+	lockmgr(&hs->q_mtx, LK_EXCLUSIVE);
+	pkt = STAILQ_FIRST(&hs->q_queue);
+	if (pkt != NULL) {
+		STAILQ_REMOVE_HEAD(&hs->q_queue, p_parallel);
+		hs->q_len--;
+	}
+	lockmgr(&hs->q_mtx, LK_RELEASE);
+
+	return (pkt);
+}
+
+static void
+wg_queue_push_staged(struct wg_queue *staged, struct wg_packet *pkt)
+{
+	struct wg_packet *old = NULL;
+
+	lockmgr(&staged->q_mtx, LK_EXCLUSIVE);
+	if (staged->q_len >= MAX_STAGED_PKT) {
+		old = STAILQ_FIRST(&staged->q_queue);
+		STAILQ_REMOVE_HEAD(&staged->q_queue, p_parallel);
+		staged->q_len--;
+	}
+	STAILQ_INSERT_TAIL(&staged->q_queue, pkt, p_parallel);
+	staged->q_len++;
+	lockmgr(&staged->q_mtx, LK_RELEASE);
+
+	if (old != NULL)
+		wg_packet_free(old);
+}
+
+static void
+wg_queue_enlist_staged(struct wg_queue *staged, struct wg_packet_list *list)
+{
+	struct wg_packet *pkt, *tpkt;
+
+	STAILQ_FOREACH_MUTABLE(pkt, list, p_parallel, tpkt)
+		wg_queue_push_staged(staged, pkt);
+	STAILQ_INIT(list);
+}
+
+static void
+wg_queue_delist_staged(struct wg_queue *staged, struct wg_packet_list *list)
+{
+	STAILQ_INIT(list);
+	lockmgr(&staged->q_mtx, LK_EXCLUSIVE);
+	STAILQ_CONCAT(list, &staged->q_queue);
+	staged->q_len = 0;
+	lockmgr(&staged->q_mtx, LK_RELEASE);
+}
+
+static void
+wg_queue_purge(struct wg_queue *staged)
+{
+	struct wg_packet_list list;
+	struct wg_packet *pkt, *tpkt;
+
+	wg_queue_delist_staged(staged, &list);
+	STAILQ_FOREACH_MUTABLE(pkt, &list, p_parallel, tpkt)
+		wg_packet_free(pkt);
+}
+
+static bool
+wg_queue_both(struct wg_queue *parallel, struct wg_queue *serial,
+	      struct wg_packet *pkt)
+{
+	pkt->p_state = WG_PACKET_UNCRYPTED;
+
+	lockmgr(&serial->q_mtx, LK_EXCLUSIVE);
+	if (serial->q_len < MAX_QUEUED_PKT) {
+		serial->q_len++;
+		STAILQ_INSERT_TAIL(&serial->q_queue, pkt, p_serial);
+	} else {
+		lockmgr(&serial->q_mtx, LK_RELEASE);
+		wg_packet_free(pkt);
+		return (false);
+	}
+	lockmgr(&serial->q_mtx, LK_RELEASE);
+
+	lockmgr(&parallel->q_mtx, LK_EXCLUSIVE);
+	if (parallel->q_len < MAX_QUEUED_PKT) {
+		parallel->q_len++;
+		STAILQ_INSERT_TAIL(&parallel->q_queue, pkt, p_parallel);
+	} else {
+		lockmgr(&parallel->q_mtx, LK_RELEASE);
+		/*
+		 * Cannot just free the packet because it's already queued
+		 * in the serial queue.  Instead, set its state to DEAD and
+		 * let the serial worker to free it.
+		 */
+		pkt->p_state = WG_PACKET_DEAD;
+		return (false);
+	}
+	lockmgr(&parallel->q_mtx, LK_RELEASE);
+
+	return (true);
+}
+
+static struct wg_packet *
+wg_queue_dequeue_serial(struct wg_queue *serial)
+{
+	struct wg_packet *pkt = NULL;
+
+	lockmgr(&serial->q_mtx, LK_EXCLUSIVE);
+	if (serial->q_len > 0 &&
+	    STAILQ_FIRST(&serial->q_queue)->p_state != WG_PACKET_UNCRYPTED) {
+		/*
+		 * Dequeue both CRYPTED packets (to be delivered) and
+		 * DEAD packets (to be freed).
+		 */
+		serial->q_len--;
+		pkt = STAILQ_FIRST(&serial->q_queue);
+		STAILQ_REMOVE_HEAD(&serial->q_queue, p_serial);
+	}
+	lockmgr(&serial->q_mtx, LK_RELEASE);
+
+	return (pkt);
+}
+
+static struct wg_packet *
+wg_queue_dequeue_parallel(struct wg_queue *parallel)
+{
+	struct wg_packet *pkt = NULL;
+
+	lockmgr(&parallel->q_mtx, LK_EXCLUSIVE);
+	if (parallel->q_len > 0) {
+		parallel->q_len--;
+		pkt = STAILQ_FIRST(&parallel->q_queue);
+		STAILQ_REMOVE_HEAD(&parallel->q_queue, p_parallel);
+	}
+	lockmgr(&parallel->q_mtx, LK_RELEASE);
+
+	return (pkt);
+}
 
 /*----------------------------------------------------------------------------*/
 /* Peer */
@@ -1792,197 +2011,6 @@ wg_deliver_in(void *arg, int pending __unused)
 		if (noise_keep_key_fresh_recv(peer->p_remote))
 			wg_timers_event_want_initiation(peer);
 	}
-}
-
-static struct wg_packet *
-wg_packet_alloc(struct mbuf *m)
-{
-	struct wg_packet *pkt;
-
-	if ((pkt = objcache_get(wg_packet_zone, M_NOWAIT)) == NULL)
-		return (NULL);
-	bzero(pkt, sizeof(*pkt)); /* objcache_get() doesn't ensure M_ZERO. */
-	pkt->p_mbuf = m;
-
-	return (pkt);
-}
-
-static void
-wg_packet_free(struct wg_packet *pkt)
-{
-	if (pkt->p_keypair != NULL)
-		noise_keypair_put(pkt->p_keypair);
-	if (pkt->p_mbuf != NULL)
-		m_freem(pkt->p_mbuf);
-	objcache_put(wg_packet_zone, pkt);
-}
-
-static void
-wg_queue_init(struct wg_queue *queue, const char *name)
-{
-	lockinit(&queue->q_mtx, name, 0, 0);
-	STAILQ_INIT(&queue->q_queue);
-	queue->q_len = 0;
-}
-
-static void
-wg_queue_deinit(struct wg_queue *queue)
-{
-	wg_queue_purge(queue);
-	lockuninit(&queue->q_mtx);
-}
-
-static size_t
-wg_queue_len(const struct wg_queue *queue)
-{
-	return (queue->q_len);
-}
-
-static bool
-wg_queue_enqueue_handshake(struct wg_queue *hs, struct wg_packet *pkt)
-{
-	bool ok = false;
-
-	lockmgr(&hs->q_mtx, LK_EXCLUSIVE);
-	if (hs->q_len < MAX_QUEUED_HANDSHAKES) {
-		STAILQ_INSERT_TAIL(&hs->q_queue, pkt, p_parallel);
-		hs->q_len++;
-		ok = true;
-	}
-	lockmgr(&hs->q_mtx, LK_RELEASE);
-
-	if (!ok)
-		wg_packet_free(pkt);
-
-	return (ok);
-}
-
-static struct wg_packet *
-wg_queue_dequeue_handshake(struct wg_queue *hs)
-{
-	struct wg_packet *pkt;
-
-	lockmgr(&hs->q_mtx, LK_EXCLUSIVE);
-	if ((pkt = STAILQ_FIRST(&hs->q_queue)) != NULL) {
-		STAILQ_REMOVE_HEAD(&hs->q_queue, p_parallel);
-		hs->q_len--;
-	}
-	lockmgr(&hs->q_mtx, LK_RELEASE);
-
-	return (pkt);
-}
-
-static void
-wg_queue_push_staged(struct wg_queue *staged, struct wg_packet *pkt)
-{
-	struct wg_packet *old = NULL;
-
-	lockmgr(&staged->q_mtx, LK_EXCLUSIVE);
-	if (staged->q_len >= MAX_STAGED_PKT) {
-		old = STAILQ_FIRST(&staged->q_queue);
-		STAILQ_REMOVE_HEAD(&staged->q_queue, p_parallel);
-		staged->q_len--;
-	}
-	STAILQ_INSERT_TAIL(&staged->q_queue, pkt, p_parallel);
-	staged->q_len++;
-	lockmgr(&staged->q_mtx, LK_RELEASE);
-
-	if (old != NULL)
-		wg_packet_free(old);
-}
-
-static void
-wg_queue_enlist_staged(struct wg_queue *staged, struct wg_packet_list *list)
-{
-	struct wg_packet *pkt, *tpkt;
-
-	STAILQ_FOREACH_MUTABLE(pkt, list, p_parallel, tpkt)
-		wg_queue_push_staged(staged, pkt);
-}
-
-static void
-wg_queue_delist_staged(struct wg_queue *staged, struct wg_packet_list *list)
-{
-	STAILQ_INIT(list);
-	lockmgr(&staged->q_mtx, LK_EXCLUSIVE);
-	STAILQ_CONCAT(list, &staged->q_queue);
-	staged->q_len = 0;
-	lockmgr(&staged->q_mtx, LK_RELEASE);
-}
-
-static void
-wg_queue_purge(struct wg_queue *staged)
-{
-	struct wg_packet_list list;
-	struct wg_packet *pkt, *tpkt;
-
-	wg_queue_delist_staged(staged, &list);
-	STAILQ_FOREACH_MUTABLE(pkt, &list, p_parallel, tpkt)
-		wg_packet_free(pkt);
-}
-
-static bool
-wg_queue_both(struct wg_queue *parallel, struct wg_queue *serial,
-	      struct wg_packet *pkt)
-{
-	pkt->p_state = WG_PACKET_UNCRYPTED;
-
-	lockmgr(&serial->q_mtx, LK_EXCLUSIVE);
-	if (serial->q_len < MAX_QUEUED_PKT) {
-		serial->q_len++;
-		STAILQ_INSERT_TAIL(&serial->q_queue, pkt, p_serial);
-	} else {
-		lockmgr(&serial->q_mtx, LK_RELEASE);
-		wg_packet_free(pkt);
-		return (false);
-	}
-	lockmgr(&serial->q_mtx, LK_RELEASE);
-
-	lockmgr(&parallel->q_mtx, LK_EXCLUSIVE);
-	if (parallel->q_len < MAX_QUEUED_PKT) {
-		parallel->q_len++;
-		STAILQ_INSERT_TAIL(&parallel->q_queue, pkt, p_parallel);
-	} else {
-		lockmgr(&parallel->q_mtx, LK_RELEASE);
-		pkt->p_state = WG_PACKET_DEAD;
-		return (false);
-	}
-	lockmgr(&parallel->q_mtx, LK_RELEASE);
-
-	return (true);
-}
-
-static struct wg_packet *
-wg_queue_dequeue_serial(struct wg_queue *serial)
-{
-	struct wg_packet *pkt = NULL;
-
-	lockmgr(&serial->q_mtx, LK_EXCLUSIVE);
-	if (serial->q_len > 0 &&
-	    STAILQ_FIRST(&serial->q_queue)->p_state != WG_PACKET_UNCRYPTED) {
-		serial->q_len--;
-		pkt = STAILQ_FIRST(&serial->q_queue);
-		STAILQ_REMOVE_HEAD(&serial->q_queue, p_serial);
-	}
-	lockmgr(&serial->q_mtx, LK_RELEASE);
-
-	return (pkt);
-}
-
-static struct wg_packet *
-wg_queue_dequeue_parallel(struct wg_queue *parallel)
-{
-	struct wg_packet *pkt = NULL;
-
-	lockmgr(&parallel->q_mtx, LK_EXCLUSIVE);
-	if (parallel->q_len > 0) {
-		parallel->q_len--;
-		pkt = STAILQ_FIRST(&parallel->q_queue);
-		STAILQ_REMOVE_HEAD(&parallel->q_queue, p_parallel);
-	}
-	lockmgr(&parallel->q_mtx, LK_RELEASE);
-
-	return (pkt);
 }
 
 static void
