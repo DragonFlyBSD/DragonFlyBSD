@@ -159,9 +159,9 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 			printf(" %10.10s","Obytes");
 		printf(" %5s", "Coll");
 		if (tflag)
-			printf(" %s", "Time");
+			printf(" %5s", "Time");
 		if (dflag)
-			printf(" %s", "Drop");
+			printf(" %5s", "Drop");
 		putchar('\n');
 	}
 	ifaddraddr = 0;
@@ -407,7 +407,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 		show_stat("lu", 5, collisions, link_layer);
 		if (tflag) {
 			printf(" ");
-			show_stat("d", 3, timer, link_layer);
+			show_stat("d", 5, timer, link_layer);
 		}
 		if (dflag) {
 			printf(" ");
@@ -440,7 +440,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 					break;
 				if (msa.sa.sa_family != sa->sa_family)
 					continue;
-				
+
 				fmt = NULL;
 				switch (msa.sa.sa_family) {
 				case AF_INET:
