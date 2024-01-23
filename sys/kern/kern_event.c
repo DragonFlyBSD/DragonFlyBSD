@@ -411,7 +411,7 @@ filt_proc(struct knote *kn, long hint)
 		kev.data = kn->kn_id;			/* parent */
 		kev.udata = kn->kn_kevent.udata;	/* preserve udata */
 		n = 1;
-		error = kqueue_register(kn->kn_kq, &kev, &n);
+		error = kqueue_register(kn->kn_kq, &kev, &n, 0);
 		if (error)
 			kn->kn_fflags |= NOTE_TRACKERR;
 	}
@@ -826,7 +826,8 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 			kev[i].flags &= ~EV_SYSFLAGS;
 		for (i = 0; i < n; ++i) {
 			gobbled = n - i;
-			error = kqueue_register(kq, &kev[i], &gobbled);
+
+			error = kqueue_register(kq, &kev[i], &gobbled, flags);
 			i += gobbled - 1;
 			kevp = &kev[i];
 
@@ -1140,9 +1141,15 @@ floadkevfps(thread_t td, struct filedesc *fdp, struct kevent *kev,
  * If an error occurs or a kev is flagged EV_RECEIPT, it is
  * processed and included in *countp, and processing then
  * stops.
+ *
+ * If flags contains KEVENT_UNIQUE_NOTES, kev->data contains an identifier
+ * to further distinguish knotes which might otherwise have the same kq,
+ * ident, and filter (used by *poll() because multiple pfds are allowed to
+ * reference the same descriptor and implied kq filter).  kev->data is
+ * implied to be zero for event processing when this flag is set.
  */
 int
-kqueue_register(struct kqueue *kq, struct kevent *kev, int *countp)
+kqueue_register(struct kqueue *kq, struct kevent *kev, int *countp, int flags)
 {
 	struct filedesc *fdp = kq->kq_fdp;
 	struct klist *list = NULL;
@@ -1154,6 +1161,7 @@ kqueue_register(struct kqueue *kq, struct kevent *kev, int *countp)
 	int count;
 	int climit;
 	int closedcounter;
+	int uniqifier = 0;
 	struct knote_cache_list *cache_list;
 
 	td = curthread;
@@ -1184,6 +1192,17 @@ kqueue_register(struct kqueue *kq, struct kevent *kev, int *countp)
 	}
 
 loop:
+	/*
+	 * knote uniqifiers are used by *poll() because there may be
+	 * multiple pfd[] entries for the same descriptor and filter.
+	 * The unique id is stored in kev->data and kev->data for the
+	 * kevent is implied to be zero.
+	 */
+	if (flags & KEVENT_UNIQUE_NOTES) {
+		uniqifier = kev->data;
+		kev->data = 0;
+	}
+
 	if (kev->filter < 0) {
 		if (kev->filter + EVFILT_SYSCOUNT < 0) {
 			error = EINVAL;
@@ -1234,7 +1253,9 @@ again:
 		SLIST_FOREACH(kn, list, kn_link) {
 			if (kn->kn_kq == kq &&
 			    kn->kn_filter == kev->filter &&
-			    kn->kn_id == kev->ident) {
+			    kn->kn_id == kev->ident &&
+			    kn->kn_uniqifier == uniqifier)
+			{
 				if (knote_acquire(kn) == 0)
 					goto again;
 				break;
@@ -1272,6 +1293,7 @@ again:
 			kn->kn_fp = fp[count];
 			kn->kn_kq = kq;
 			kn->kn_fop = fops;
+			kn->kn_uniqifier = uniqifier;
 
 			/*
 			 * apply reference count to knote structure, and
@@ -1379,7 +1401,8 @@ again:
 	 * Disablement does not deactivate a knote here.
 	 */
 	if ((kev->flags & EV_DISABLE) &&
-	    ((kn->kn_status & KN_DISABLED) == 0)) {
+	    ((kn->kn_status & KN_DISABLED) == 0))
+	{
 		kn->kn_status |= KN_DISABLED;
 	}
 
@@ -1389,7 +1412,8 @@ again:
 	if ((kev->flags & EV_ENABLE) && (kn->kn_status & KN_DISABLED)) {
 		kn->kn_status &= ~KN_DISABLED;
 		if ((kn->kn_status & KN_ACTIVE) &&
-		    ((kn->kn_status & KN_QUEUED) == 0)) {
+		    ((kn->kn_status & KN_QUEUED) == 0))
+		{
 			knote_enqueue(kn);
 		}
 	}

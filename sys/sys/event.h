@@ -205,6 +205,8 @@ struct knote {
 	struct 			kevent kn_kevent;
 	int			kn_status;
 	int			kn_sfflags;	/* saved filter flags */
+	int			kn_uniqifier;	/* distinguish similar notes */
+	int			kn_unused01;
 	intptr_t		kn_sdata;	/* saved data field */
 	union {
 		struct		file *p_fp;	/* file data pointer */
@@ -238,6 +240,7 @@ struct kevent_args;
 
 #define KEVENT_TIMEOUT_PRECISE		0x01
 #define KEVENT_AUTO_STALE		0x02	/* used by poll/select */
+#define KEVENT_UNIQUE_NOTES		0x04	/* force unique notes */
 
 #define KEVENT_SCAN_MASK		0xF0
 #define KEVENT_SCAN_KEEP_MARKER		0x10
@@ -260,7 +263,7 @@ void	knote_assume_knotes(struct kqinfo *, struct kqinfo *,
 void	knote_fdclose(struct file *, struct filedesc *, int);
 void	kqueue_init(struct kqueue *, struct filedesc *);
 void	kqueue_terminate(struct kqueue *);
-int 	kqueue_register(struct kqueue *, struct kevent *, int *);
+int 	kqueue_register(struct kqueue *, struct kevent *, int *, int);
 
 extern struct klist fs_klist;	/* EVFILT_FS */
 

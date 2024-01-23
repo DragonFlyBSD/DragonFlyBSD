@@ -998,7 +998,7 @@ deregister:
 			kev = kevp[i];
 			kev.flags = EV_DISABLE|EV_DELETE;
 			n = 1;
-			kqueue_register(&skap->lwp->lwp_kqueue, &kev, &n);
+			kqueue_register(&skap->lwp->lwp_kqueue, &kev, &n, 0);
 			if (nseldebug) {
 				kprintf("select fd %ju mismatched serial %ju\n",
 				    (uintmax_t)kevp[i].ident,
@@ -1330,7 +1330,13 @@ poll_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 			continue;
 		}
 
+		/*
+		 * NOTE: pfd->events == 0 implies POLLHUP in BSDs.  Used
+		 *	 by at least sshd and X11 udev support.
+		 */
 		kev_count = 0;
+		if (pfd->events == 0)
+			kev_count++;
 		if (pfd->events & (POLLIN | POLLHUP | POLLRDNORM))
 			kev_count++;
 		if (pfd->events & (POLLOUT | POLLWRNORM))
@@ -1343,26 +1349,53 @@ poll_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 
 		/*
 		 * NOTE: A combined serial number and poll array index is
-		 * stored in kev->udata.
+		 *	 stored in kev->udata.
+		 *
+		 * NOTE: Events will be registered with KEVENT_UNIQUE_NOTES
+		 *	 set, using kev->data for the uniqifier.  kev->data
+		 *	 is an implied in the actual registration.
 		 */
 		kev = &kevp[*events];
+
+		/*
+		 * Implied POLLHUP
+		 */
+		if (pfd->events == 0) {
+			int notes = NOTE_OLDAPI | NOTE_HUPONLY;
+
+			EV_SET(kev++, pfd->fd, EVFILT_READ, EV_ADD|EV_ENABLE,
+			       notes, pkap->pfds, (void *)(uintptr_t)
+				(pkap->lwp->lwp_kqueue_serial + pkap->pfds));
+		}
+
+		/*
+		 * Nominal read events
+		 */
 		if (pfd->events & (POLLIN | POLLHUP | POLLRDNORM)) {
 			int notes = NOTE_OLDAPI;
 			if ((pfd->events & (POLLIN | POLLRDNORM)) == 0)
 				notes |= NOTE_HUPONLY;
 
 			EV_SET(kev++, pfd->fd, EVFILT_READ, EV_ADD|EV_ENABLE,
-			       notes, 0, (void *)(uintptr_t)
+			       notes, pkap->pfds, (void *)(uintptr_t)
 				(pkap->lwp->lwp_kqueue_serial + pkap->pfds));
 		}
+
+		/*
+		 * Nominal write events
+		 */
 		if (pfd->events & (POLLOUT | POLLWRNORM)) {
 			EV_SET(kev++, pfd->fd, EVFILT_WRITE, EV_ADD|EV_ENABLE,
-			       NOTE_OLDAPI, 0, (void *)(uintptr_t)
+			       NOTE_OLDAPI, pkap->pfds, (void *)(uintptr_t)
 				(pkap->lwp->lwp_kqueue_serial + pkap->pfds));
 		}
+
+		/*
+		 * Nominal exceptional events
+		 */
 		if (pfd->events & (POLLPRI | POLLRDBAND)) {
 			EV_SET(kev++, pfd->fd, EVFILT_EXCEPT, EV_ADD|EV_ENABLE,
-			       NOTE_OLDAPI | NOTE_OOB, 0,
+			       NOTE_OLDAPI | NOTE_OOB, pkap->pfds,
 			       (void *)(uintptr_t)
 				(pkap->lwp->lwp_kqueue_serial + pkap->pfds));
 		}
@@ -1407,8 +1440,10 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 deregister:
 			kev = kevp[i];
 			kev.flags = EV_DISABLE|EV_DELETE;
+			kev.data = pi;	/* uniquifier */
 			n = 1;
-			kqueue_register(&pkap->lwp->lwp_kqueue, &kev, &n);
+			kqueue_register(&pkap->lwp->lwp_kqueue, &kev, &n,
+					KEVENT_UNIQUE_NOTES);
 			if (nseldebug) {
 				kprintf("poll index %ju out of range against "
 				    "serial %ju\n", (uintmax_t)pi,
@@ -1576,7 +1611,7 @@ dopoll(int nfds, struct pollfd *fds, struct timespec *ts, int *res, int flags)
 	int bytes;
 	int error;
 
-	flags |= KEVENT_AUTO_STALE;
+	flags |= KEVENT_AUTO_STALE | KEVENT_UNIQUE_NOTES;
 
         *res = 0;
         if (nfds < 0)
@@ -1603,6 +1638,7 @@ dopoll(int nfds, struct pollfd *fds, struct timespec *ts, int *res, int flags)
 		ka.fds = kmalloc(bytes, M_SELECT, M_WAITOK);
 
 	error = copyin(fds, ka.fds, bytes);
+
 	if (error == 0)
 		error = kern_kevent(&ka.lwp->lwp_kqueue, 0x7FFFFFFF, res, &ka,
 				    poll_copyin, poll_copyout, ts, flags);
@@ -1661,7 +1697,7 @@ socket_wait(struct socket *so, struct timespec *ts, int *res)
 	kqueue_init(&kq, td->td_lwp->lwp_proc->p_fd);
 	EV_SET(&kev, fd, EVFILT_READ, EV_ADD|EV_ENABLE, 0, 0, NULL);
 	n = 1;
-	if ((error = kqueue_register(&kq, &kev, &n)) != 0) {
+	if ((error = kqueue_register(&kq, &kev, &n, 0)) != 0) {
 		fdrop(fp);
 		return (error);
 	}
@@ -1671,7 +1707,7 @@ socket_wait(struct socket *so, struct timespec *ts, int *res)
 
 	EV_SET(&kev, fd, EVFILT_READ, EV_DELETE|EV_DISABLE, 0, 0, NULL);
 	n = 1;
-	kqueue_register(&kq, &kev, &n);
+	kqueue_register(&kq, &kev, &n, 0);
 	fp->f_ops = &badfileops;
 	fdrop(fp);
 
