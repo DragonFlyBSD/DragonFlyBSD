@@ -319,7 +319,6 @@ static MALLOC_DEFINE(M_WG, "WG", "wireguard");
 static MALLOC_DEFINE(M_WG_PACKET, "WG packet", "wireguard packet");
 
 static const char wgname[] = "wg";
-static volatile unsigned long peer_counter = 0;
 
 static struct objcache *wg_packet_zone;
 static struct lock wg_mtx;
@@ -419,6 +418,7 @@ static inline int determine_af_and_pullup(struct mbuf **, sa_family_t *);
 static struct wg_peer *
 wg_peer_create(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE])
 {
+	static unsigned long peer_counter = 0;
 	struct wg_peer *peer;
 
 	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
@@ -431,7 +431,7 @@ wg_peer_create(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE])
 		return (NULL);
 	}
 
-	peer->p_id = peer_counter++;
+	peer->p_id = ++peer_counter;
 	peer->p_sc = sc;
 	peer->p_tx_bytes = kmalloc(sizeof(*peer->p_tx_bytes) * ncpus,
 				   M_WG, M_WAITOK | M_ZERO);
