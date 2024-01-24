@@ -5,13 +5,13 @@
  */
 
 #define T_LIM (COUNTER_WINDOW_SIZE + 1)
-#define T_INIT do {				\
-	bzero(&kp, sizeof(kp));			\
-	rw_init(&kp.kp_nonce_lock, "counter");	\
+#define T_INIT do {							\
+	bzero(&kp, sizeof(kp));						\
+	lockinit(&kp.kp_counter_lock, "noise_counter", 0, 0);		\
 } while (0)
 #define T(num, v, e) do {						\
-	if (noise_keypair_nonce_check(&kp, v) != (e)) {			\
-		printf("nonce counter self-test %u: FAIL\n", num);	\
+	if (noise_keypair_counter_check(&kp, v) != (e)) {		\
+		kprintf("%s: self-test %u: FAIL\n", __func__, num);	\
 		success = false;					\
 	}								\
 } while (0)
@@ -24,76 +24,76 @@ noise_counter_selftest(void)
 	bool success = true;
 
 	T_INIT;
-	/* T(test number, nonce, expected_response) */
-	T( 1, 0, 0);
-	T( 2, 1, 0);
-	T( 3, 1, EEXIST);
-	T( 4, 9, 0);
-	T( 5, 8, 0);
-	T( 6, 7, 0);
-	T( 7, 7, EEXIST);
-	T( 8, T_LIM, 0);
-	T( 9, T_LIM - 1, 0);
-	T(10, T_LIM - 1, EEXIST);
-	T(11, T_LIM - 2, 0);
-	T(12, 2, 0);
-	T(13, 2, EEXIST);
-	T(14, T_LIM + 16, 0);
-	T(15, 3, EEXIST);
-	T(16, T_LIM + 16, EEXIST);
-	T(17, T_LIM * 4, 0);
-	T(18, T_LIM * 4 - (T_LIM - 1), 0);
-	T(19, 10, EEXIST);
-	T(20, T_LIM * 4 - T_LIM, EEXIST);
-	T(21, T_LIM * 4 - (T_LIM + 1), EEXIST);
-	T(22, T_LIM * 4 - (T_LIM - 2), 0);
-	T(23, T_LIM * 4 + 1 - T_LIM, EEXIST);
-	T(24, 0, EEXIST);
-	T(25, REJECT_AFTER_MESSAGES, EEXIST);
-	T(26, REJECT_AFTER_MESSAGES - 1, 0);
-	T(27, REJECT_AFTER_MESSAGES, EEXIST);
-	T(28, REJECT_AFTER_MESSAGES - 1, EEXIST);
-	T(29, REJECT_AFTER_MESSAGES - 2, 0);
-	T(30, REJECT_AFTER_MESSAGES + 1, EEXIST);
-	T(31, REJECT_AFTER_MESSAGES + 2, EEXIST);
-	T(32, REJECT_AFTER_MESSAGES - 2, EEXIST);
-	T(33, REJECT_AFTER_MESSAGES - 3, 0);
-	T(34, 0, EEXIST);
+	/* T(test_number, nonce, expected_response) */
+	T( 1, 0, true);
+	T( 2, 1, true);
+	T( 3, 1, false);
+	T( 4, 9, true);
+	T( 5, 8, true);
+	T( 6, 7, true);
+	T( 7, 7, false);
+	T( 8, T_LIM, true);
+	T( 9, T_LIM - 1, true);
+	T(10, T_LIM - 1, false);
+	T(11, T_LIM - 2, true);
+	T(12, 2, true);
+	T(13, 2, false);
+	T(14, T_LIM + 16, true);
+	T(15, 3, false);
+	T(16, T_LIM + 16, false);
+	T(17, T_LIM * 4, true);
+	T(18, T_LIM * 4 - (T_LIM - 1), true);
+	T(19, 10, false);
+	T(20, T_LIM * 4 - T_LIM, false);
+	T(21, T_LIM * 4 - (T_LIM + 1), false);
+	T(22, T_LIM * 4 - (T_LIM - 2), true);
+	T(23, T_LIM * 4 + 1 - T_LIM, false);
+	T(24, 0, false);
+	T(25, REJECT_AFTER_MESSAGES, false);
+	T(26, REJECT_AFTER_MESSAGES - 1, true);
+	T(27, REJECT_AFTER_MESSAGES, false);
+	T(28, REJECT_AFTER_MESSAGES - 1, false);
+	T(29, REJECT_AFTER_MESSAGES - 2, true);
+	T(30, REJECT_AFTER_MESSAGES + 1, false);
+	T(31, REJECT_AFTER_MESSAGES + 2, false);
+	T(32, REJECT_AFTER_MESSAGES - 2, false);
+	T(33, REJECT_AFTER_MESSAGES - 3, true);
+	T(34, 0, false);
 
 	T_INIT;
 	for (i = 1; i <= COUNTER_WINDOW_SIZE; ++i)
-		T(35, i, 0);
-	T(36, 0, 0);
-	T(37, 0, EEXIST);
+		T(35, i, true);
+	T(36, 0, true);
+	T(37, 0, false);
 
 	T_INIT;
 	for (i = 2; i <= COUNTER_WINDOW_SIZE + 1; ++i)
-		T(38, i, 0);
-	T(39, 1, 0);
-	T(40, 0, EEXIST);
+		T(38, i, true);
+	T(39, 1, true);
+	T(40, 0, false);
 
 	T_INIT;
 	for (i = COUNTER_WINDOW_SIZE + 1; i-- > 0;)
-		T(41, i, 0);
+		T(41, i, true);
 
 	T_INIT;
 	for (i = COUNTER_WINDOW_SIZE + 2; i-- > 1;)
-		T(42, i, 0);
-	T(43, 0, EEXIST);
+		T(42, i, true);
+	T(43, 0, false);
 
 	T_INIT;
 	for (i = COUNTER_WINDOW_SIZE + 1; i-- > 1;)
-		T(44, i, 0);
-	T(45, COUNTER_WINDOW_SIZE + 1, 0);
-	T(46, 0, EEXIST);
+		T(44, i, true);
+	T(45, COUNTER_WINDOW_SIZE + 1, true);
+	T(46, 0, false);
 
 	T_INIT;
 	for (i = COUNTER_WINDOW_SIZE + 1; i-- > 1;)
-		T(47, i, 0);
-	T(48, 0, 0);
-	T(49, COUNTER_WINDOW_SIZE + 1, 0);
+		T(47, i, true);
+	T(48, 0, true);
+	T(49, COUNTER_WINDOW_SIZE + 1, true);
 
 	if (success)
-		printf("nonce counter self-test: pass\n");
-	return success;
+		kprintf("%s: self-test: pass\n", __func__);
+	return (success);
 }

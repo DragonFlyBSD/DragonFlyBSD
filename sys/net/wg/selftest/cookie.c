@@ -6,18 +6,18 @@
 
 #define MESSAGE_LEN 64
 #define T_FAILED_ITER(test) do {				\
-	printf("%s %s: FAIL, iter: %d\n", __func__, test, i);	\
+	kprintf("%s %s: FAIL, iter: %d\n", __func__, test, i);	\
 	goto cleanup;						\
 } while (0)
 #define T_FAILED(test) do {				\
-	printf("%s %s: FAIL\n", __func__, test);	\
+	kprintf("%s %s: FAIL\n", __func__, test);	\
 	goto cleanup;					\
 } while (0)
-#define T_PASSED printf("%s: pass\n", __func__)
+#define T_PASSED kprintf("%s: pass\n", __func__)
 
 static const struct expected_results {
-	int result;
-	int sleep_time;
+	int		result;
+	uint64_t	sleep_time; /* nanoseconds */
 } rl_expected[] = {
 	[0 ... INITIATIONS_BURSTABLE - 1] = { 0, 0 },
 	[INITIATIONS_BURSTABLE] = { ECONNREFUSED, 0 },
@@ -38,6 +38,7 @@ cookie_ratelimit_timings_test(void)
 #ifdef INET6
 	struct sockaddr_in6 sin6;
 #endif
+	uint64_t t;
 	int i;
 
 	bzero(&rl, sizeof(rl));
@@ -49,23 +50,23 @@ cookie_ratelimit_timings_test(void)
 #endif
 
 	for (i = 0; i < sizeof(rl_expected)/sizeof(*rl_expected); i++) {
-		if (rl_expected[i].sleep_time != 0)
-			tsleep_sbt(&rl, PWAIT, "rl", rl_expected[i].sleep_time, 0, 0);
+		if ((t = rl_expected[i].sleep_time) != 0)
+			tsleep(&rl, 0, "rl", (int)(t * hz / NSEC_PER_SEC));
 
 		/* The first v4 ratelimit_allow is against a constant address,
 		 * and should be indifferent to the port. */
 		sin.sin_addr.s_addr = 0x01020304;
-		sin.sin_port = arc4random();
+		sin.sin_port = karc4random();
 
-		if (ratelimit_allow(&rl, sintosa(&sin), NULL) != rl_expected[i].result)
+		if (ratelimit_allow(&rl, sintosa(&sin)) != rl_expected[i].result)
 			T_FAILED_ITER("malicious v4");
 
 		/* The second ratelimit_allow is to test that an arbitrary
 		 * address is still allowed. */
 		sin.sin_addr.s_addr += i + 1;
-		sin.sin_port = arc4random();
+		sin.sin_port = karc4random();
 
-		if (ratelimit_allow(&rl, sintosa(&sin), NULL) != 0)
+		if (ratelimit_allow(&rl, sintosa(&sin)) != 0)
 			T_FAILED_ITER("non-malicious v4");
 
 #ifdef INET6
@@ -77,17 +78,17 @@ cookie_ratelimit_timings_test(void)
 		sin6.sin6_addr.s6_addr32[1] = 0x05060708;
 		sin6.sin6_addr.s6_addr32[2] = i;
 		sin6.sin6_addr.s6_addr32[3] = i;
-		sin6.sin6_port = arc4random();
+		sin6.sin6_port = karc4random();
 
-		if (ratelimit_allow(&rl, sin6tosa(&sin6), NULL) != rl_expected[i].result)
+		if (ratelimit_allow(&rl, sin6tosa(&sin6)) != rl_expected[i].result)
 			T_FAILED_ITER("malicious v6");
 
 		/* Again, test that an address different to above is still
 		 * allowed. */
 		sin6.sin6_addr.s6_addr32[0] += i + 1;
-		sin6.sin6_port = arc4random();
+		sin6.sin6_port = karc4random();
 
-		if (ratelimit_allow(&rl, sintosa(&sin), NULL) != 0)
+		if (ratelimit_allow(&rl, sintosa(&sin)) != 0)
 			T_FAILED_ITER("non-malicious v6");
 #endif
 	}
@@ -116,10 +117,10 @@ cookie_ratelimit_capacity_test(void)
 	for (i = 0; i <= RATELIMIT_SIZE_MAX; i++) {
 		sin.sin_addr.s_addr = i;
 		if (i == RATELIMIT_SIZE_MAX) {
-			if (ratelimit_allow(&rl, sintosa(&sin), NULL) != ECONNREFUSED)
+			if (ratelimit_allow(&rl, sintosa(&sin)) != ECONNREFUSED)
 				T_FAILED_ITER("reject");
 		} else {
-			if (ratelimit_allow(&rl, sintosa(&sin), NULL) != 0)
+			if (ratelimit_allow(&rl, sintosa(&sin)) != 0)
 				T_FAILED_ITER("allow");
 		}
 	}
@@ -149,25 +150,25 @@ cookie_ratelimit_gc_test(void)
 
 	for (i = 0; i < RATELIMIT_SIZE_MAX / 2; i++) {
 		sin.sin_addr.s_addr = i;
-		if (ratelimit_allow(&rl, sintosa(&sin), NULL) != 0)
+		if (ratelimit_allow(&rl, sintosa(&sin)) != 0)
 			T_FAILED_ITER("insert");
 	}
 
 	if (rl.rl_table_num != RATELIMIT_SIZE_MAX / 2)
 		T_FAILED("insert 1 not full");
 
-	tsleep_sbt(&rl, PWAIT, "rl", ELEMENT_TIMEOUT * SBT_1S / 2 , 0, 0);
+	tsleep(&rl, 0, "rl", ELEMENT_TIMEOUT * hz / 2);
 
 	for (i = 0; i < RATELIMIT_SIZE_MAX / 2; i++) {
 		sin.sin_addr.s_addr = i;
-		if (ratelimit_allow(&rl, sintosa(&sin), NULL) != 0)
+		if (ratelimit_allow(&rl, sintosa(&sin)) != 0)
 			T_FAILED_ITER("insert");
 	}
 
 	if (rl.rl_table_num != RATELIMIT_SIZE_MAX / 2)
 		T_FAILED("insert 2 not full");
 
-	tsleep_sbt(&rl, PWAIT, "rl", ELEMENT_TIMEOUT * SBT_1S * 2 , 0, 0);
+	tsleep(&rl, 0, "rl", ELEMENT_TIMEOUT * hz * 2);
 
 	if (rl.rl_table_num != 0)
 		T_FAILED("gc");
@@ -193,8 +194,8 @@ cookie_mac_test(void)
 	uint8_t	shared[COOKIE_INPUT_SIZE];
 	uint8_t message[MESSAGE_LEN];
 
-	arc4random_buf(shared, COOKIE_INPUT_SIZE);
-	arc4random_buf(message, MESSAGE_LEN);
+	karc4random_buf(shared, COOKIE_INPUT_SIZE);
+	karc4random_buf(message, MESSAGE_LEN);
 
 	/* Init cookie_maker. */
 	cookie_maker_init(&maker, shared);
@@ -220,7 +221,7 @@ cookie_mac_test(void)
 	for (i = 0; i < sizeof(cm.mac1); i++) {
 		cm.mac1[i] = ~cm.mac1[i];
 		if (cookie_checker_validate_macs(&checker, &cm, message,
-		    MESSAGE_LEN, 0, sintosa(&sin), NULL) != EINVAL)
+		    MESSAGE_LEN, 0, sintosa(&sin)) != EINVAL)
 			T_FAILED("validate_macs_noload_munge");
 		cm.mac1[i] = ~cm.mac1[i];
 	}
@@ -235,12 +236,12 @@ cookie_mac_test(void)
 
 	/* Check we can successfully validate the MAC */
 	if (cookie_checker_validate_macs(&checker, &cm, message,
-	    MESSAGE_LEN, 0, sintosa(&sin), NULL) != 0)
+	    MESSAGE_LEN, 0, sintosa(&sin)) != 0)
 		T_FAILED("validate_macs_noload_normal");
 
 	/* Check we get a EAGAIN if no mac2 and under load */
 	if (cookie_checker_validate_macs(&checker, &cm, message,
-	    MESSAGE_LEN, 1, sintosa(&sin), NULL) != EAGAIN)
+	    MESSAGE_LEN, 1, sintosa(&sin)) != EAGAIN)
 		T_FAILED("validate_macs_load_normal");
 
 	/* Simulate a cookie message */
@@ -274,19 +275,19 @@ cookie_mac_test(void)
 
 	/* Check we get OK if mac2 and under load */
 	if (cookie_checker_validate_macs(&checker, &cm, message,
-	    MESSAGE_LEN, 1, sintosa(&sin), NULL) != 0)
+	    MESSAGE_LEN, 1, sintosa(&sin)) != 0)
 		T_FAILED("validate_macs_load_normal_mac2");
 
 	sin.sin_addr.s_addr = ~sin.sin_addr.s_addr;
 	/* Check we get EAGAIN if we munge the source IP */
 	if (cookie_checker_validate_macs(&checker, &cm, message,
-	    MESSAGE_LEN, 1, sintosa(&sin), NULL) != EAGAIN)
+	    MESSAGE_LEN, 1, sintosa(&sin)) != EAGAIN)
 		T_FAILED("validate_macs_load_spoofip_mac2");
 	sin.sin_addr.s_addr = ~sin.sin_addr.s_addr;
 
 	/* Check we get OK if mac2 and under load */
 	if (cookie_checker_validate_macs(&checker, &cm, message,
-	    MESSAGE_LEN, 1, sintosa(&sin), NULL) != 0)
+	    MESSAGE_LEN, 1, sintosa(&sin)) != 0)
 		T_FAILED("validate_macs_load_normal_mac2_retry");
 
 	T_PASSED;
