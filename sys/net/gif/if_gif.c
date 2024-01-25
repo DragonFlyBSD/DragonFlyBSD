@@ -332,21 +332,17 @@ gif_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 {
 	struct gif_softc *sc = (struct gif_softc*)ifp;
 	int error = 0;
-	static int called = 0;	/* XXX: MUTEX */
 
 	/*
 	 * gif may cause infinite recursion calls when misconfigured.
 	 * We'll prevent this by introducing upper limit.
-	 * XXX: this mechanism may introduce another problem about
-	 *      mutual exclusion of the variable CALLED, especially if we
-	 *      use kernel thread.
 	 */
-	if (++called > max_gif_nesting) {
+	if (++m->m_pkthdr.loop_cnt > max_gif_nesting) {
 		log(LOG_NOTICE,
-		    "gif_output: recursively called too many times(%d)\n",
-		    called);
+		    "gif_output: packet looped too many times (%d)\n",
+		    m->m_pkthdr.loop_cnt);
 		m_freem(m);
-		error = EIO;	/* is there better errno? */
+		error = ELOOP;
 		goto end;
 	}
 
@@ -397,7 +393,6 @@ gif_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	}
 
   end:
-	called = 0;		/* reset recursion counter */
 	if (error)
 		IFNET_STAT_INC(ifp, oerrors, 1);
 	return error;
