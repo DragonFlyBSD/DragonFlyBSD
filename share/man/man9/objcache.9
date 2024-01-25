@@ -114,8 +114,8 @@ The
 .Fa cluster_limit
 determines the number of available magazines in the depot layer.
 It must be at least
-.Fa mag_capacity *
-ncpus * 8.
+.Fa ( mag_capacity
+* ncpus * 8).
 If 0 is given, then there is no limit to the number of magazines the depot
 can have (aside from the inherent limitation imposed by the restricted nature
 of the back end allocator).
