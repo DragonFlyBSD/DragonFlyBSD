@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/lock.9,v 1.11 2003/09/08 19:57:21 ru Exp $
 .\"
-.Dd July 21, 2018
+.Dd January 25, 2024
 .Dt LOCK 9
 .Os
 .Sh NAME
@@ -197,7 +197,7 @@ function returns 0 on success and non-zero on failure.
 The
 .Fn lockstatus
 function returns:
-.Bl -tag -width ".Dv LK_EXCLUSIVE"
+.Bl -tag -width ".Dv LK_EXCLUSIVE" -offset indent
 .It Dv LK_EXCLUSIVE
 An exclusive lock is held by the thread
 .Fa td .
@@ -212,12 +212,15 @@ The lock is not held by anyone.
 .Pp
 The
 .Fn lockowned
-function returns a non-zero return value if the caller owns the lock shared or exclusive.
+function returns a non-zero value if the caller owns the lock shared or
+exclusive.
 .Sh FILES
-The lock manager itself is implemented within the file
-.Pa /sys/kern/kern_lock.c .
-Data structures and function prototypes for the lock manager are in
-.Pa /sys/sys/lock.h .
+.Bl -tag -width /sys/kern/kern_lock.c -compact
+.It Pa /sys/kern/kern_lock.c
+the lock manager implementation
+.It Pa /sys/sys/lock.h
+data structures and function prototypes for the lock manager
+.El
 .Sh ERRORS
 .Fn lockmgr
 fails if:
