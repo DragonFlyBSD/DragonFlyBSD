@@ -58,8 +58,6 @@ struct gre_softc {
 
 	const struct encaptab *encap;	/* encapsulation cookie */
 
-	int called;		/* infinite recursion preventer */
-
 	struct resource *r_unit;/* resource allocated for this unit */
 };	
 

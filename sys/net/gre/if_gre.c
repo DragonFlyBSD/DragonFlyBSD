@@ -203,7 +203,6 @@ gre_clone_create(struct if_clone *ifc, int unit,
 	sc->g_proto = IPPROTO_GRE;
 	sc->sc_if.if_flags |= IFF_LINK0;
 	sc->encap = NULL;
-	sc->called = 0;
 	sc->route_pcpu = kmalloc(netisr_ncpus * sizeof(struct route), M_GRE,
 	    M_WAITOK | M_ZERO);
 	if_attach(&sc->sc_if, NULL);
@@ -261,11 +260,11 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	 * gre may cause infinite recursion calls when misconfigured.
 	 * We'll prevent this by introducing upper limit.
 	 */
-	if (++(sc->called) > max_gre_nesting) {
-		kprintf("%s: gre_output: recursively called too many "
-		       "times(%d)\n", if_name(&sc->sc_if), sc->called);
+	if (++m->m_pkthdr.loop_cnt > max_gre_nesting) {
+		kprintf("%s: gre_output: packet looped too many times (%d)\n",
+			if_name(&sc->sc_if), m->m_pkthdr.loop_cnt);
 		m_freem(m);
-		error = EIO;    /* is there better errno? */
+		error = ELOOP;
 		goto end;
 	}
 
@@ -423,7 +422,6 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	/* send it off */
 	error = ip_output(m, NULL, ro, IP_DEBUGROUTE, NULL, NULL);
   end:
-	sc->called = 0;
 	if (error)
 		IFNET_STAT_INC(ifp, oerrors, 1);
 	return (error);
