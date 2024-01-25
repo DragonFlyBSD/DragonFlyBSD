@@ -1,7 +1,27 @@
-/* SPDX-License-Identifier: MIT
+/*-
+ * SPDX-License-Identifier: MIT
  *
  * Copyright (C) 2015-2021 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  * Copyright (C) 2019-2021 Matt Dunwoodie <ncon@noconroy.net>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject
+ * to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 #define T_LIM (COUNTER_WINDOW_SIZE + 1)
@@ -20,11 +40,11 @@ bool
 noise_counter_selftest(void)
 {
 	struct noise_keypair kp;
-	unsigned int i;
+	int i;
 	bool success = true;
 
 	T_INIT;
-	/* T(test_number, nonce, expected_response) */
+	/* T(test_number, counter, expected_response) */
 	T( 1, 0, true);
 	T( 2, 1, true);
 	T( 3, 1, false);
@@ -73,27 +93,30 @@ noise_counter_selftest(void)
 	T(40, 0, false);
 
 	T_INIT;
-	for (i = COUNTER_WINDOW_SIZE + 1; i-- > 0;)
+	for (i = COUNTER_WINDOW_SIZE; i >= 0; --i)
 		T(41, i, true);
 
 	T_INIT;
-	for (i = COUNTER_WINDOW_SIZE + 2; i-- > 1;)
+	for (i = COUNTER_WINDOW_SIZE + 1; i >= 1; --i)
 		T(42, i, true);
 	T(43, 0, false);
 
 	T_INIT;
-	for (i = COUNTER_WINDOW_SIZE + 1; i-- > 1;)
+	for (i = COUNTER_WINDOW_SIZE; i >= 1; --i)
 		T(44, i, true);
 	T(45, COUNTER_WINDOW_SIZE + 1, true);
 	T(46, 0, false);
 
 	T_INIT;
-	for (i = COUNTER_WINDOW_SIZE + 1; i-- > 1;)
+	for (i = COUNTER_WINDOW_SIZE; i >= 1; --i)
 		T(47, i, true);
 	T(48, 0, true);
 	T(49, COUNTER_WINDOW_SIZE + 1, true);
 
-	if (success)
-		kprintf("%s: self-test: pass\n", __func__);
+	kprintf("%s: %s\n", __func__, success ? "pass" : "FAIL");
 	return (success);
 }
+
+#undef T
+#undef T_INIT
+#undef T_LIM
