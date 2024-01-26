@@ -5,24 +5,24 @@
 
 static bool test_aip_init(struct wg_softc *sc)
 {
-	if (!rn_inithead((void **)&sc->sc_aip4, offsetof(struct aip_addr, in) * NBBY))
+	if (!rn_inithead(&sc->sc_aip4, wg_maskhead,
+			 offsetof(struct aip_addr, in)))
 		return false;
-	if (!rn_inithead((void **)&sc->sc_aip6, offsetof(struct aip_addr, in6) * NBBY))
+	if (!rn_inithead(&sc->sc_aip6, wg_maskhead,
+			 offsetof(struct aip_addr, in6)))
 		return false;
-	RADIX_NODE_HEAD_LOCK_INIT(sc->sc_aip4);
-	RADIX_NODE_HEAD_LOCK_INIT(sc->sc_aip6);
 	return true;
 }
 
 static void test_aip_deinit(struct wg_softc *sc)
 {
 	if (sc->sc_aip4) {
-		RADIX_NODE_HEAD_DESTROY(sc->sc_aip4);
-		rn_detachhead((void **)&sc->sc_aip4);
+		rn_freehead(sc->sc_aip4);
+		sc->sc_aip4 = NULL;
 	}
 	if (sc->sc_aip6) {
-		RADIX_NODE_HEAD_DESTROY(sc->sc_aip6);
-		rn_detachhead((void **)&sc->sc_aip6);
+		rn_freehead(sc->sc_aip6);
+		sc->sc_aip6 = NULL;
 	}
 }
 
@@ -55,9 +55,9 @@ static void horrible_allowedips_free(struct horrible_allowedips *table)
 {
 	struct horrible_allowedips_node *node, *temp_node;
 
-	LIST_FOREACH_SAFE(node, &table->head, table, temp_node) {
+	LIST_FOREACH_MUTABLE(node, &table->head, table, temp_node) {
 		LIST_REMOVE(node, table);
-		free(node, M_WG);
+		kfree(node, M_WG);
 	}
 }
 
@@ -127,7 +127,7 @@ horrible_insert_ordered(struct horrible_allowedips *table,
 			    sizeof(struct aip_addr)) &&
 		    other->ip_version == node->ip_version) {
 			other->value = node->value;
-			free(node, M_WG);
+			kfree(node, M_WG);
 			return;
 		}
 		where = other;
@@ -146,7 +146,7 @@ static int
 horrible_allowedips_insert_v4(struct horrible_allowedips *table,
 			      struct in_addr *ip, uint8_t cidr, void *value)
 {
-	struct horrible_allowedips_node *node = malloc(sizeof(*node), M_WG, M_NOWAIT | M_ZERO);
+	struct horrible_allowedips_node *node = kmalloc(sizeof(*node), M_WG, M_NOWAIT | M_ZERO);
 
 	if (!node)
 		return ENOMEM;
@@ -163,7 +163,7 @@ static int
 horrible_allowedips_insert_v6(struct horrible_allowedips *table,
 			      struct in6_addr *ip, uint8_t cidr, void *value)
 {
-	struct horrible_allowedips_node *node = malloc(sizeof(*node), M_WG, M_NOWAIT | M_ZERO);
+	struct horrible_allowedips_node *node = kmalloc(sizeof(*node), M_WG, M_NOWAIT | M_ZERO);
 
 	if (!node)
 		return ENOMEM;
@@ -220,15 +220,15 @@ static bool randomized_test(void)
 	struct horrible_allowedips h;
 	struct wg_softc sc = {{ 0 }};
 	bool ret = false;
-	peers = mallocarray(NUM_PEERS, sizeof(*peers), M_WG, M_NOWAIT | M_ZERO);
+	peers = kmalloc(NUM_PEERS * sizeof(*peers), M_WG, M_NOWAIT | M_ZERO);
 	if (!peers) {
-		printf("allowedips random self-test malloc: FAIL\n");
+		kprintf("allowedips random self-test malloc: FAIL\n");
 		goto free;
 	}
 	for (i = 0; i < NUM_PEERS; ++i) {
-		peers[i] = malloc(sizeof(*peers[i]), M_WG, M_NOWAIT | M_ZERO);
+		peers[i] = kmalloc(sizeof(*peers[i]), M_WG, M_NOWAIT | M_ZERO);
 		if (!peers[i]) {
-			printf("allowedips random self-test malloc: FAIL\n");
+			kprintf("allowedips random self-test malloc: FAIL\n");
 			goto free;
 		}
 		LIST_INIT(&peers[i]->p_aips);
@@ -237,28 +237,28 @@ static bool randomized_test(void)
 	}
 
 	if (!test_aip_init(&sc)) {
-		printf("allowedips random self-test malloc: FAIL\n");
+		kprintf("allowedips random self-test malloc: FAIL\n");
 		goto free;
 	}
 	horrible_allowedips_init(&h);
 
 	for (i = 0; i < NUM_RAND_ROUTES; ++i) {
-		arc4random_buf(ip, 4);
-		cidr = arc4random_uniform(32) + 1;
-		peer = peers[arc4random_uniform(NUM_PEERS)];
+		karc4random_buf(ip, 4);
+		cidr = karc4random_uniform(32) + 1;
+		peer = peers[karc4random_uniform(NUM_PEERS)];
 		if (wg_aip_add(&sc, peer, AF_INET, ip, cidr)) {
-			printf("allowedips random self-test malloc: FAIL\n");
+			kprintf("allowedips random self-test malloc: FAIL\n");
 			goto free;
 		}
 		if (horrible_allowedips_insert_v4(&h, (struct in_addr *)ip,
 						  cidr, peer)) {
-			printf("allowedips random self-test malloc: FAIL\n");
+			kprintf("allowedips random self-test malloc: FAIL\n");
 			goto free;
 		}
 		for (j = 0; j < NUM_MUTATED_ROUTES; ++j) {
 			memcpy(mutated, ip, 4);
-			arc4random_buf(mutate_mask, 4);
-			mutate_amount = arc4random_uniform(32);
+			karc4random_buf(mutate_mask, 4);
+			mutate_amount = karc4random_uniform(32);
 			for (k = 0; k < mutate_amount / 8; ++k)
 				mutate_mask[k] = 0xff;
 			mutate_mask[k] = 0xff
@@ -268,38 +268,38 @@ static bool randomized_test(void)
 			for (k = 0; k < 4; ++k)
 				mutated[k] = (mutated[k] & mutate_mask[k]) |
 					     (~mutate_mask[k] &
-					      arc4random_uniform(256));
-			cidr = arc4random_uniform(32) + 1;
-			peer = peers[arc4random_uniform(NUM_PEERS)];
+					      karc4random_uniform(256));
+			cidr = karc4random_uniform(32) + 1;
+			peer = peers[karc4random_uniform(NUM_PEERS)];
 			if (wg_aip_add(&sc, peer, AF_INET, mutated, cidr)) {
-				printf("allowedips random self-test malloc: FAIL\n");
+				kprintf("allowedips random self-test malloc: FAIL\n");
 				goto free;
 			}
 			if (horrible_allowedips_insert_v4(&h,
 				(struct in_addr *)mutated, cidr, peer)) {
-				printf("allowedips random self-test malloc: FAIL\n");
+				kprintf("allowedips random self-test malloc: FAIL\n");
 				goto free;
 			}
 		}
 	}
 
 	for (i = 0; i < NUM_RAND_ROUTES; ++i) {
-		arc4random_buf(ip, 16);
-		cidr = arc4random_uniform(128) + 1;
-		peer = peers[arc4random_uniform(NUM_PEERS)];
+		karc4random_buf(ip, 16);
+		cidr = karc4random_uniform(128) + 1;
+		peer = peers[karc4random_uniform(NUM_PEERS)];
 		if (wg_aip_add(&sc, peer, AF_INET6, ip, cidr)) {
-			printf("allowedips random self-test malloc: FAIL\n");
+			kprintf("allowedips random self-test malloc: FAIL\n");
 			goto free;
 		}
 		if (horrible_allowedips_insert_v6(&h, (struct in6_addr *)ip,
 						  cidr, peer)) {
-			printf("allowedips random self-test malloc: FAIL\n");
+			kprintf("allowedips random self-test malloc: FAIL\n");
 			goto free;
 		}
 		for (j = 0; j < NUM_MUTATED_ROUTES; ++j) {
 			memcpy(mutated, ip, 16);
-			arc4random_buf(mutate_mask, 16);
-			mutate_amount = arc4random_uniform(128);
+			karc4random_buf(mutate_mask, 16);
+			mutate_amount = karc4random_uniform(128);
 			for (k = 0; k < mutate_amount / 8; ++k)
 				mutate_mask[k] = 0xff;
 			mutate_mask[k] = 0xff
@@ -309,36 +309,36 @@ static bool randomized_test(void)
 			for (k = 0; k < 4; ++k)
 				mutated[k] = (mutated[k] & mutate_mask[k]) |
 					     (~mutate_mask[k] &
-					      arc4random_uniform(256));
-			cidr = arc4random_uniform(128) + 1;
-			peer = peers[arc4random_uniform(NUM_PEERS)];
+					      karc4random_uniform(256));
+			cidr = karc4random_uniform(128) + 1;
+			peer = peers[karc4random_uniform(NUM_PEERS)];
 			if (wg_aip_add(&sc, peer, AF_INET6, mutated, cidr)) {
-				printf("allowedips random self-test malloc: FAIL\n");
+				kprintf("allowedips random self-test malloc: FAIL\n");
 				goto free;
 			}
 			if (horrible_allowedips_insert_v6(
 				    &h, (struct in6_addr *)mutated, cidr,
 				    peer)) {
-				printf("allowedips random self-test malloc: FAIL\n");
+				kprintf("allowedips random self-test malloc: FAIL\n");
 				goto free;
 			}
 		}
 	}
 
 	for (i = 0; i < NUM_QUERIES; ++i) {
-		arc4random_buf(ip, 4);
+		karc4random_buf(ip, 4);
 		if (wg_aip_lookup(&sc, AF_INET, ip) !=
 		    horrible_allowedips_lookup_v4(&h, (struct in_addr *)ip)) {
-			printf("allowedips random self-test: FAIL\n");
+			kprintf("allowedips random self-test: FAIL\n");
 			goto free;
 		}
 	}
 
 	for (i = 0; i < NUM_QUERIES; ++i) {
-		arc4random_buf(ip, 16);
+		karc4random_buf(ip, 16);
 		if (wg_aip_lookup(&sc, AF_INET6, ip) !=
 		    horrible_allowedips_lookup_v6(&h, (struct in6_addr *)ip)) {
-			printf("allowedips random self-test: FAIL\n");
+			kprintf("allowedips random self-test: FAIL\n");
 			goto free;
 		}
 	}
@@ -350,9 +350,9 @@ free:
 		for (i = 0; i < NUM_PEERS; ++i)
 			wg_aip_remove_all(&sc, peers[i]);
 		for (i = 0; i < NUM_PEERS; ++i)
-			free(peers[i], M_WG);
+			kfree(peers[i], M_WG);
 	}
-	free(peers, M_WG);
+	kfree(peers, M_WG);
 	test_aip_deinit(&sc);
 	return ret;
 }
@@ -384,7 +384,7 @@ static struct in6_addr *ip6(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
 
 static struct wg_peer *init_peer(void)
 {
-	struct wg_peer *peer = malloc(sizeof(*peer), M_WG, M_NOWAIT | M_ZERO);
+	struct wg_peer *peer = kmalloc(sizeof(*peer), M_WG, M_NOWAIT | M_ZERO);
 
 	if (!peer)
 		return NULL;
@@ -398,7 +398,7 @@ static struct wg_peer *init_peer(void)
 		int _r = wg_aip_add(&sc, mem, (version) == 6 ? AF_INET6 : AF_INET,  \
 				     ip##version(ipa, ipb, ipc, ipd), cidr);        \
 		if (_r) {                                                           \
-			printf("allowedips self-test insertion: FAIL (%d)\n", _r);  \
+			kprintf("allowedips self-test insertion: FAIL (%d)\n", _r); \
 			success = false;                                            \
 		}                                                                   \
 	} while (0)
@@ -406,7 +406,7 @@ static struct wg_peer *init_peer(void)
 #define maybe_fail() do {                                              \
 		++i;                                                   \
 		if (!_s) {                                             \
-			printf("allowedips self-test %zu: FAIL\n", i); \
+			kprintf("allowedips self-test %zu: FAIL\n", i); \
 			success = false;                               \
 		}                                                      \
 	} while (0)
@@ -454,12 +454,12 @@ static bool wg_allowedips_selftest(void)
 	uint64_t part;
 
 	if (!test_aip_init(&sc)) {
-		printf("allowedips self-test malloc: FAIL\n");
+		kprintf("allowedips self-test malloc: FAIL\n");
 		goto free;
 	}
 
 	if (!a || !b || !c || !d || !e || !f || !g || !h) {
-		printf("allowedips self-test malloc: FAIL\n");
+		kprintf("allowedips self-test malloc: FAIL\n");
 		goto free;
 	}
 
@@ -600,18 +600,18 @@ static bool wg_allowedips_selftest(void)
 #endif
 
 	if (success)
-		printf("allowedips self-tests: pass\n");
+		kprintf("allowedips self-tests: pass\n");
 
 free:
 	free_all();
-	free(a, M_WG);
-	free(b, M_WG);
-	free(c, M_WG);
-	free(d, M_WG);
-	free(e, M_WG);
-	free(f, M_WG);
-	free(g, M_WG);
-	free(h, M_WG);
+	kfree(a, M_WG);
+	kfree(b, M_WG);
+	kfree(c, M_WG);
+	kfree(d, M_WG);
+	kfree(e, M_WG);
+	kfree(f, M_WG);
+	kfree(g, M_WG);
+	kfree(h, M_WG);
 	test_aip_deinit(&sc);
 
 	return success;
