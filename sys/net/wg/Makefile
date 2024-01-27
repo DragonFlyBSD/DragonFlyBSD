@@ -11,6 +11,10 @@ opt_inet6.h:
 	echo "#define INET6 1" > ${.TARGET}
 .endif
 
+# Uncomment the following lines to enable selftests.
+#KCFLAGS+=-DWG_SELFTESTS
+#KCFLAGS+=-DWG_ALLOWEDIPS_RANDOMIZED_TEST # NOTE: can take >1 hour !
+
 # Header files are installed by 'include/Makefile'.
 # XXX: should install only 'if_wg.h' but no other header files.
 
