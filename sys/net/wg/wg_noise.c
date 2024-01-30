@@ -775,26 +775,45 @@ noise_keypair_counter_next(struct noise_keypair *kp, uint64_t *send)
 	return (false);
 }
 
-bool
+/*
+ * Validate the received counter to avoid replay attacks.  A sliding window
+ * is used to keep track of the received counters, since the UDP messages
+ * can arrive out of order.
+ *
+ * NOTE: Validate the counter only *after* successful decryption, which
+ *       ensures that the message and counter is authentic.
+ *
+ * This implements the algorithm from RFC 6479:
+ * "IPsec Anti-Replay Algorithm without Bit Shifting"
+ */
+int
 noise_keypair_counter_check(struct noise_keypair *kp, uint64_t recv)
 {
 	unsigned long index, index_current, top, i, bit;
-	bool ok = false;
+	int ret;
 
 	lockmgr(&kp->kp_counter_lock, LK_EXCLUSIVE);
 
 	if (__predict_false(kp->kp_counter_recv >= REJECT_AFTER_MESSAGES + 1 ||
-			    recv >= REJECT_AFTER_MESSAGES))
-		goto error;
+			    recv >= REJECT_AFTER_MESSAGES)) {
+		ret = EINVAL;
+		goto out;
+	}
 
 	++recv;
 
-	if (__predict_false(recv + COUNTER_WINDOW_SIZE < kp->kp_counter_recv))
-		goto error;
+	if (__predict_false(recv + COUNTER_WINDOW_SIZE < kp->kp_counter_recv)) {
+		ret = ESTALE;
+		goto out;
+	}
 
 	index = recv >> COUNTER_ORDER;
 
 	if (__predict_true(recv > kp->kp_counter_recv)) {
+		/*
+		 * The new counter is ahead of the current counter, so need
+		 * to zero out the bitmap that has previously been used.
+		 */
 		index_current = kp->kp_counter_recv >> COUNTER_ORDER;
 		top = MIN(index - index_current, COUNTER_NUM);
 		for (i = 1; i <= top; i++)
@@ -808,15 +827,17 @@ noise_keypair_counter_check(struct noise_keypair *kp, uint64_t recv)
 
 	index &= COUNTER_MASK;
 	bit = 1UL << (recv & (COUNTER_BITS - 1));
-	if (kp->kp_backtrack[index] & bit)
-		goto error;
+	if (kp->kp_backtrack[index] & bit) {
+		ret = EEXIST;
+		goto out;
+	}
 
 	kp->kp_backtrack[index] |= bit;
-	ok = true;
+	ret = 0;
 
-error:
+out:
 	lockmgr(&kp->kp_counter_lock, LK_RELEASE);
-	return (ok);
+	return (ret);
 }
 
 bool

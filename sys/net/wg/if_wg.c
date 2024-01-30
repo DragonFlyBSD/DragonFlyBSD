@@ -1975,8 +1975,8 @@ wg_deliver_in(void *arg, int pending __unused)
 
 	while ((pkt = wg_queue_dequeue_serial(queue)) != NULL) {
 		if (pkt->p_state != WG_PACKET_CRYPTED ||
-		    !noise_keypair_counter_check(pkt->p_keypair,
-						 pkt->p_counter)) {
+		    noise_keypair_counter_check(pkt->p_keypair,
+						pkt->p_counter) != 0) {
 			IFNET_STAT_INC(ifp, ierrors, 1);
 			wg_packet_free(pkt);
 			continue;

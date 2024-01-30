@@ -93,7 +93,7 @@ struct noise_remote *
 	noise_keypair_remote(struct noise_keypair *);
 
 bool	noise_keypair_counter_next(struct noise_keypair *, uint64_t *);
-bool	noise_keypair_counter_check(struct noise_keypair *, uint64_t);
+int	noise_keypair_counter_check(struct noise_keypair *, uint64_t);
 
 bool	noise_keep_key_fresh_send(struct noise_remote *);
 bool	noise_keep_key_fresh_recv(struct noise_remote *);
