@@ -93,8 +93,8 @@ struct noise_keypair {
 	uint8_t			 kp_recv[NOISE_SYMMETRIC_KEY_LEN];
 
 	struct lock		 kp_counter_lock;
-	uint64_t		 kp_counter_send;
-	uint64_t		 kp_counter_recv;
+	uint64_t		 kp_counter_send; /* next counter available */
+	uint64_t		 kp_counter_recv; /* max counter received */
 	unsigned long		 kp_backtrack[COUNTER_NUM];
 };
 
@@ -794,13 +794,11 @@ noise_keypair_counter_check(struct noise_keypair *kp, uint64_t recv)
 
 	lockmgr(&kp->kp_counter_lock, LK_EXCLUSIVE);
 
-	if (__predict_false(kp->kp_counter_recv >= REJECT_AFTER_MESSAGES + 1 ||
+	if (__predict_false(kp->kp_counter_recv >= REJECT_AFTER_MESSAGES ||
 			    recv >= REJECT_AFTER_MESSAGES)) {
 		ret = EINVAL;
 		goto out;
 	}
-
-	++recv;
 
 	if (__predict_false(recv + COUNTER_WINDOW_SIZE < kp->kp_counter_recv)) {
 		ret = ESTALE;
