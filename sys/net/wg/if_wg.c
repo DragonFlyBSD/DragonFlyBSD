@@ -1714,24 +1714,27 @@ calculate_padding(struct wg_packet *pkt)
 static inline int
 determine_af_and_pullup(struct mbuf **m, sa_family_t *af)
 {
-	u_char ipv;
+	const struct ip		*ip;
+	const struct ip6_hdr	*ip6;
+	int			 len;
 
-	if ((*m)->m_pkthdr.len >= sizeof(struct ip6_hdr))
-		*m = m_pullup(*m, sizeof(struct ip6_hdr));
-	else if ((*m)->m_pkthdr.len >= sizeof(struct ip))
-		*m = m_pullup(*m, sizeof(struct ip));
+	ip = mtod(*m, const struct ip *);
+	ip6 = mtod(*m, const struct ip6_hdr *);
+	len = (*m)->m_pkthdr.len;
+
+	if (len >= sizeof(*ip) && ip->ip_v == IPVERSION)
+		*af = AF_INET;
+#ifdef INET6
+	else if (len >= sizeof(*ip6) &&
+		   (ip6->ip6_vfc & IPV6_VERSION_MASK) == IPV6_VERSION)
+		*af = AF_INET6;
+#endif
 	else
 		return (EAFNOSUPPORT);
+
+	*m = m_pullup(*m, (*af == AF_INET ? sizeof(*ip) : sizeof(*ip6)));
 	if (*m == NULL)
 		return (ENOBUFS);
-
-	ipv = mtod(*m, struct ip *)->ip_v;
-	if (ipv == 4)
-		*af = AF_INET;
-	else if (ipv == 6 && (*m)->m_pkthdr.len >= sizeof(struct ip6_hdr))
-		*af = AF_INET6;
-	else
-		return (EAFNOSUPPORT);
 
 	return (0);
 }
@@ -2158,29 +2161,32 @@ static inline void
 xmit_err(struct ifnet *ifp, struct mbuf *m, struct wg_packet *pkt,
 	 sa_family_t af)
 {
-	IFNET_STAT_INC(ifp, oerrors, 1);
+	bool oerror = false;
 
-	switch (af) {
-	case AF_INET:
-		icmp_error(m, ICMP_UNREACH, ICMP_UNREACH_HOST, 0, 0);
-		if (pkt != NULL)
-			pkt->p_mbuf = NULL;
-		m = NULL;
-		break;
+	if (m != NULL) {
+		if (af == AF_INET) {
+			icmp_error(m, ICMP_UNREACH, ICMP_UNREACH_HOST, 0, 0);
+			oerror = true;
 #ifdef INET6
-	case AF_INET6:
-		icmp6_error(m, ICMP6_DST_UNREACH, 0, 0);
+		} else if (af == AF_INET6) {
+			icmp6_error(m, ICMP6_DST_UNREACH, 0, 0);
+			oerror = true;
+#endif
+		} else {
+			m_freem(m);
+		}
+
 		if (pkt != NULL)
 			pkt->p_mbuf = NULL;
-		m = NULL;
-		break;
-#endif
 	}
 
 	if (pkt != NULL)
 		wg_packet_free(pkt);
-	else if (m != NULL)
-		m_freem(m);
+
+	if (oerror)
+		IFNET_STAT_INC(ifp, oerrors, 1);
+	else
+		IFNET_STAT_INC(ifp, oqdrops, 1);
 }
 
 static int
@@ -2188,11 +2194,11 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	  struct rtentry *rt)
 {
 	struct wg_softc		*sc = ifp->if_softc;
-	struct wg_packet	*pkt;
-	struct wg_peer		*peer;
+	struct wg_packet	*pkt = NULL;
+	struct wg_peer		*peer = NULL;
 	struct mbuf		*defragged;
-	sa_family_t		 af, peer_af;
-	int			 error;
+	sa_family_t		 af = AF_UNSPEC;
+	int			 ret;
 
 	if (dst->sa_family == AF_UNSPEC) {
 		/*
@@ -2204,9 +2210,8 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		m_adj(m, sizeof(uint32_t));
 	}
 	if (dst->sa_family == AF_UNSPEC) {
-		xmit_err(ifp, m, NULL, AF_UNSPEC);
-		error = EAFNOSUPPORT;
-		goto err;
+		ret = EAFNOSUPPORT;
+		goto error;
 	}
 
 	BPF_MTAP_AF(ifp, m, dst->sa_family);
@@ -2217,25 +2222,20 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	m = m_unshare(m, M_NOWAIT);
 	if (m == NULL) {
-		IFNET_STAT_INC(ifp, oqdrops, 1);
-		error = ENOBUFS;
-		goto err;
+		ret = ENOBUFS;
+		goto error;
 	}
 
-	error = determine_af_and_pullup(&m, &af);
-	if (error) {
-		xmit_err(ifp, m, NULL, AF_UNSPEC);
-		goto err;
-	}
+	if ((ret = determine_af_and_pullup(&m, &af)) != 0)
+		goto error;
 	if (af != dst->sa_family) {
-		xmit_err(ifp, m, NULL, AF_UNSPEC);
-		error = EAFNOSUPPORT;
-		goto err;
+		ret = EAFNOSUPPORT;
+		goto error;
 	}
 
 	if ((pkt = wg_packet_alloc(m)) == NULL) {
-		error = ENOBUFS;
-		goto err_xmit;
+		ret = ENOBUFS;
+		goto error;
 	}
 
 	pkt->p_af = af;
@@ -2246,32 +2246,28 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	if (af == AF_INET) {
 		peer = wg_aip_lookup(sc, AF_INET,
-		    &mtod(m, struct ip *)->ip_dst);
-	} else if (af == AF_INET6) {
-		peer = wg_aip_lookup(sc, AF_INET6,
-		    &mtod(m, struct ip6_hdr *)->ip6_dst);
+				     &mtod(m, struct ip *)->ip_dst);
 	} else {
-		error = EAFNOSUPPORT;
-		goto err_xmit;
+		peer = wg_aip_lookup(sc, AF_INET6,
+				     &mtod(m, struct ip6_hdr *)->ip6_dst);
 	}
-
 	if (__predict_false(peer == NULL)) {
-		error = ENOKEY;
-		goto err_xmit;
+		ret = ENOKEY;
+		goto error;
 	}
 
-	peer_af = peer->p_endpoint.e_remote.r_sa.sa_family;
-	if (__predict_false(peer_af != AF_INET && peer_af != AF_INET6)) {
+	if (__predict_false(peer->p_endpoint.e_remote.r_sa.sa_family
+			    == AF_UNSPEC)) {
 		DPRINTF(sc, "No valid endpoint has been configured or "
 			"discovered for peer %ld\n", peer->p_id);
-		error = EHOSTUNREACH;
-		goto err_peer;
+		ret = EHOSTUNREACH;
+		goto error;
 	}
 
 	if (__predict_false(m->m_pkthdr.loop_cnt++ > MAX_LOOPS)) {
 		DPRINTF(sc, "Packet looped");
-		error = ELOOP;
-		goto err_peer;
+		ret = ELOOP;
+		goto error;
 	}
 
 	wg_queue_push_staged(&peer->p_stage_queue, pkt);
@@ -2280,12 +2276,11 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	return (0);
 
-err_peer:
-	noise_remote_put(peer->p_remote);
-err_xmit:
+error:
+	if (peer != NULL)
+		noise_remote_put(peer->p_remote);
 	xmit_err(ifp, m, pkt, af);
-err:
-	return (error);
+	return (ret);
 }
 
 /*----------------------------------------------------------------------------*/
