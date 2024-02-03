@@ -1017,7 +1017,8 @@ wg_socket_init(struct wg_softc *sc, in_port_t port)
 
 	KKASSERT(lockstatus(&sc->sc_lock, curthread) == LK_EXCLUSIVE);
 
-	lockmgr(&so->so_lock, LK_EXCLUSIVE);
+	lockinit(&so->so_lock, "wg socket lock", 0, 0);
+
 	if (so->so_so4 != NULL)
 		soclose(so->so_so4, 0);
 	if (so->so_so6 != NULL)
@@ -1025,7 +1026,6 @@ wg_socket_init(struct wg_softc *sc, in_port_t port)
 	so->so_so4 = so4;
 	so->so_so6 = so6;
 	so->so_port = bound_port;
-	lockmgr(&so->so_lock, LK_RELEASE);
 
 	return (0);
 
@@ -1118,6 +1118,7 @@ wg_socket_uninit(struct wg_softc *sc)
 	}
 
 	lockmgr(&so->so_lock, LK_RELEASE);
+	lockuninit(&so->so_lock);
 }
 
 static int
@@ -2732,7 +2733,6 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 
 	lockinit(&sc->sc_lock, "wg softc lock", 0, 0);
 	lockinit(&sc->sc_aip_lock, "wg aip lock", 0, 0);
-	lockinit(&sc->sc_socket.so_lock, "wg socket lock", 0, 0);
 
 	sc->sc_local = noise_local_alloc();
 
@@ -2789,7 +2789,6 @@ wg_clone_destroy(struct ifnet *ifp)
 	if_purgeaddrs_nolink(ifp);
 
 	wg_socket_uninit(sc);
-	lockuninit(&sc->sc_socket.so_lock);
 
 	/* Cancel all tasks. */
 	while (taskqueue_cancel(sc->sc_handshake_taskqueue,
