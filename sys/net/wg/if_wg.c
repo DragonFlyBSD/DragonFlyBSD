@@ -326,77 +326,30 @@ static struct taskqueue **wg_taskqueues; /* one taskqueue per CPU */
 static struct radix_node_head *wg_maskhead; /* shared by all interfaces */
 static LIST_HEAD(, wg_softc) wg_list = LIST_HEAD_INITIALIZER(wg_list);
 
-static int wg_clone_create(struct if_clone *, int, caddr_t, caddr_t);
-static int wg_clone_destroy(struct ifnet *ifp);
-static struct if_clone wg_cloner = IF_CLONE_INITIALIZER(
-	wgname, wg_clone_create, wg_clone_destroy, 0, IF_MAXUNIT);
 
+/* Timers */
+static void	wg_timers_enable(struct wg_peer *);
+static void	wg_timers_disable(struct wg_peer *);
 
-static int wg_socket_init(struct wg_softc *, in_port_t);
-static void wg_socket_uninit(struct wg_softc *);
-static int wg_socket_open(struct socket **, sa_family_t, in_port_t *, void *);
-static int wg_socket_set_sockopt(struct socket *, struct socket *, int, void *, size_t);
-static int wg_socket_set_cookie(struct wg_softc *, uint32_t);
-static void wg_timers_enable(struct wg_peer *);
-static void wg_timers_disable(struct wg_peer *);
-static void wg_timers_set_persistent_keepalive(struct wg_peer *, uint16_t);
-static bool wg_timers_get_persistent_keepalive(struct wg_peer *, uint16_t *);
-static void wg_timers_get_last_handshake(struct wg_peer *, struct timespec *);
-static void wg_timers_event_data_sent(struct wg_peer *);
-static void wg_timers_event_data_received(struct wg_peer *);
-static void wg_timers_event_any_authenticated_packet_sent(struct wg_peer *);
-static void wg_timers_event_any_authenticated_packet_received(struct wg_peer *);
-static void wg_timers_event_any_authenticated_packet_traversal(struct wg_peer *);
-static void wg_timers_event_handshake_initiated(struct wg_peer *);
-static void wg_timers_event_handshake_complete(struct wg_peer *);
-static void wg_timers_event_session_derived(struct wg_peer *);
-static void wg_timers_event_want_initiation(struct wg_peer *);
-static void wg_timers_run_send_initiation(struct wg_peer *, bool);
-static void wg_timers_run_retry_handshake(void *);
-static void wg_timers_run_send_keepalive(void *);
-static void wg_timers_run_new_handshake(void *);
-static void wg_timers_run_zero_key_material(void *);
-static void wg_timers_run_persistent_keepalive(void *);
-static int wg_aip_add(struct wg_softc *, struct wg_peer *, sa_family_t, const void *, uint8_t);
-static struct wg_peer *wg_aip_lookup(struct wg_softc *, sa_family_t, const void *);
-static void wg_aip_remove_all(struct wg_softc *, struct wg_peer *);
-static struct wg_peer *wg_peer_create(struct wg_softc *, const uint8_t [WG_KEY_SIZE]);
-static void wg_peer_destroy(struct wg_peer *);
-static void wg_peer_destroy_all(struct wg_softc *);
-static void wg_peer_send_buf(struct wg_peer *, const void *, size_t);
-static void wg_peer_send_staged(struct wg_peer *);
-static void wg_peer_set_endpoint(struct wg_peer *, const struct wg_endpoint *);
-static void wg_peer_get_endpoint(struct wg_peer *, struct wg_endpoint *);
-static int wg_peer_set_sockaddr(struct wg_peer *, const struct sockaddr *);
-static int wg_peer_get_sockaddr(struct wg_peer *, struct sockaddr *);
-static int wg_send(struct wg_softc *, struct wg_endpoint *, struct mbuf *);
-static void wg_send_buf(struct wg_softc *, struct wg_endpoint *, const void *, size_t);
-static void wg_send_initiation(struct wg_peer *);
-static void wg_send_response(struct wg_peer *);
-static void wg_send_cookie(struct wg_softc *, struct cookie_macs *, uint32_t, struct wg_endpoint *);
-static void wg_send_keepalive(struct wg_peer *);
-static void wg_handshake(struct wg_softc *, struct wg_packet *);
-static void wg_handshake_worker(void *, int);
-static void wg_encrypt(struct wg_softc *, struct wg_packet *);
-static void wg_decrypt(struct wg_softc *, struct wg_packet *);
-static void wg_encrypt_worker(void *, int);
-static void wg_decrypt_worker(void *, int);
-static void wg_encrypt_dispatch(struct wg_softc *);
-static void wg_decrypt_dispatch(struct wg_softc *);
-static void wg_deliver_out(void *, int);
-static void wg_deliver_in(void *, int);
-static void wg_upcall(struct socket *, void *, int);
-static void wg_input(struct wg_softc *, struct mbuf *, const struct sockaddr *);
-static int wg_output(struct ifnet *, struct mbuf *, struct sockaddr *, struct rtentry *);
-static int wg_up(struct wg_softc *);
-static void wg_down(struct wg_softc *);
-static int wg_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static int wg_ioctl_get(struct wg_softc *, struct wg_data_io *, bool);
-static int wg_ioctl_set(struct wg_softc *, struct wg_data_io *);
-static int wg_module_init(void);
-static int wg_module_deinit(void);
-static inline int determine_af_and_pullup(struct mbuf **, sa_family_t *);
+/* Allowed IP */
+static int	wg_aip_add(struct wg_softc *, struct wg_peer *, sa_family_t,
+			   const void *, uint8_t);
+static struct wg_peer *
+		wg_aip_lookup(struct wg_softc *, sa_family_t, const void *);
+static void	wg_aip_remove_all(struct wg_softc *, struct wg_peer *);
 
+/* Handshake */
+static void	wg_send_initiation(struct wg_peer *);
+static void	wg_send_response(struct wg_peer *);
+static void	wg_send_cookie(struct wg_softc *, struct cookie_macs *,
+			       uint32_t, struct wg_endpoint *);
+static void	wg_send_keepalive(struct wg_peer *);
+
+/* Transport Packet Functions */
+static void	wg_peer_send_staged(struct wg_peer *);
+static void	wg_deliver_out(void *, int);
+static void	wg_deliver_in(void *, int);
+static void	wg_upcall(struct socket *, void *, int);
 
 /*----------------------------------------------------------------------------*/
 /* Packet */
@@ -975,6 +928,11 @@ wg_aip_remove_all(struct wg_softc *sc, struct wg_peer *peer)
 /*----------------------------------------------------------------------------*/
 /* Socket */
 
+static int	wg_socket_open(struct socket **, sa_family_t, in_port_t *,
+			       void *);
+static int	wg_socket_set_sockopt(struct socket *, struct socket *,
+				      int, void *, size_t);
+
 static int
 wg_socket_init(struct wg_softc *sc, in_port_t port)
 {
@@ -1248,6 +1206,13 @@ wg_send_buf(struct wg_softc *sc, struct wg_endpoint *e, const void *buf,
 
 /*----------------------------------------------------------------------------*/
 /* Timers */
+
+static void	wg_timers_run_send_initiation(struct wg_peer *, bool);
+static void	wg_timers_run_retry_handshake(void *);
+static void	wg_timers_run_send_keepalive(void *);
+static void	wg_timers_run_new_handshake(void *);
+static void	wg_timers_run_zero_key_material(void *);
+static void	wg_timers_run_persistent_keepalive(void *);
 
 static void
 wg_timers_enable(struct wg_peer *peer)
@@ -1746,6 +1711,31 @@ calculate_padding(struct wg_packet *pkt)
 	return (padded_size - last_unit);
 }
 
+static inline int
+determine_af_and_pullup(struct mbuf **m, sa_family_t *af)
+{
+	u_char ipv;
+
+	if ((*m)->m_pkthdr.len >= sizeof(struct ip6_hdr))
+		*m = m_pullup(*m, sizeof(struct ip6_hdr));
+	else if ((*m)->m_pkthdr.len >= sizeof(struct ip))
+		*m = m_pullup(*m, sizeof(struct ip));
+	else
+		return (EAFNOSUPPORT);
+	if (*m == NULL)
+		return (ENOBUFS);
+
+	ipv = mtod(*m, struct ip *)->ip_v;
+	if (ipv == 4)
+		*af = AF_INET;
+	else if (ipv == 6 && (*m)->m_pkthdr.len >= sizeof(struct ip6_hdr))
+		*af = AF_INET6;
+	else
+		return (EAFNOSUPPORT);
+
+	return (0);
+}
+
 static void
 wg_encrypt(struct wg_softc *sc, struct wg_packet *pkt)
 {
@@ -2015,32 +2005,6 @@ wg_deliver_in(void *arg, int pending __unused)
 }
 
 static void
-wg_upcall(struct socket *so, void *arg, int waitflag __unused)
-{
-	struct wg_softc		*sc = arg;
-	struct sockaddr		*from;
-	struct sockbuf		 sio;
-	int			 ret, flags;
-
-	/*
-	 * For UDP, soreceive typically pulls just one packet,
-	 * so loop to get the whole batch.
-	 */
-	do {
-		sbinit(&sio, 1000000000); /* really large to receive all */
-		flags = MSG_DONTWAIT;
-		ret = so_pru_soreceive(so, &from, NULL, &sio, NULL, &flags);
-		if (ret != 0 || sio.sb_mb == NULL) {
-			if (from != NULL)
-				kfree(from, M_SONAME);
-			break;
-		}
-		wg_input(sc, sio.sb_mb, from);
-		kfree(from, M_SONAME);
-	} while (sio.sb_mb != NULL);
-}
-
-static void
 wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 {
 	struct noise_remote	*remote;
@@ -2128,6 +2092,32 @@ error:
 }
 
 static void
+wg_upcall(struct socket *so, void *arg, int waitflag __unused)
+{
+	struct wg_softc		*sc = arg;
+	struct sockaddr		*from;
+	struct sockbuf		 sio;
+	int			 ret, flags;
+
+	/*
+	 * For UDP, soreceive typically pulls just one packet,
+	 * so loop to get the whole batch.
+	 */
+	do {
+		sbinit(&sio, 1000000000); /* really large to receive all */
+		flags = MSG_DONTWAIT;
+		ret = so_pru_soreceive(so, &from, NULL, &sio, NULL, &flags);
+		if (ret != 0 || sio.sb_mb == NULL) {
+			if (from != NULL)
+				kfree(from, M_SONAME);
+			break;
+		}
+		wg_input(sc, sio.sb_mb, from);
+		kfree(from, M_SONAME);
+	} while (sio.sb_mb != NULL);
+}
+
+static void
 wg_peer_send_staged(struct wg_peer *peer)
 {
 	struct wg_softc		*sc = peer->p_sc;
@@ -2191,31 +2181,6 @@ xmit_err(struct ifnet *ifp, struct mbuf *m, struct wg_packet *pkt,
 		wg_packet_free(pkt);
 	else if (m != NULL)
 		m_freem(m);
-}
-
-static inline int
-determine_af_and_pullup(struct mbuf **m, sa_family_t *af)
-{
-	u_char ipv;
-
-	if ((*m)->m_pkthdr.len >= sizeof(struct ip6_hdr))
-		*m = m_pullup(*m, sizeof(struct ip6_hdr));
-	else if ((*m)->m_pkthdr.len >= sizeof(struct ip))
-		*m = m_pullup(*m, sizeof(struct ip));
-	else
-		return (EAFNOSUPPORT);
-	if (*m == NULL)
-		return (ENOBUFS);
-
-	ipv = mtod(*m, struct ip *)->ip_v;
-	if (ipv == 4)
-		*af = AF_INET;
-	else if (ipv == 6 && (*m)->m_pkthdr.len >= sizeof(struct ip6_hdr))
-		*af = AF_INET6;
-	else
-		return (EAFNOSUPPORT);
-
-	return (0);
 }
 
 static int
@@ -2325,6 +2290,9 @@ err:
 
 /*----------------------------------------------------------------------------*/
 /* Interface Functions */
+
+static int	wg_up(struct wg_softc *);
+static void	wg_down(struct wg_softc *);
 
 static int
 wg_ioctl_get(struct wg_softc *sc, struct wg_data_io *data, bool privileged)
@@ -2868,6 +2836,9 @@ wg_run_selftests(void)
 	return (true);
 }
 #endif /* WG_SELFTESTS */
+
+static struct if_clone wg_cloner = IF_CLONE_INITIALIZER(
+	wgname, wg_clone_create, wg_clone_destroy, 0, IF_MAXUNIT);
 
 static int
 wg_module_init(void)
