@@ -2679,8 +2679,9 @@ out:
 static void
 wg_down(struct wg_softc *sc)
 {
-	struct ifnet *ifp = sc->sc_ifp;
-	struct wg_peer *peer;
+	struct ifnet	*ifp = sc->sc_ifp;
+	struct wg_peer	*peer;
+	int		 i;
 
 	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 
@@ -2689,6 +2690,25 @@ wg_down(struct wg_softc *sc)
 		return;
 	}
 	ifp->if_flags &= ~IFF_RUNNING;
+
+	/* Cancel all tasks. */
+	while (taskqueue_cancel(sc->sc_handshake_taskqueue,
+				&sc->sc_handshake_task, NULL) != 0) {
+		taskqueue_drain(sc->sc_handshake_taskqueue,
+				&sc->sc_handshake_task);
+	}
+	for (i = 0; i < ncpus; i++) {
+		while (taskqueue_cancel(wg_taskqueues[i],
+					&sc->sc_encrypt_tasks[i], NULL) != 0) {
+			taskqueue_drain(wg_taskqueues[i],
+					&sc->sc_encrypt_tasks[i]);
+		}
+		while (taskqueue_cancel(wg_taskqueues[i],
+					&sc->sc_decrypt_tasks[i], NULL) != 0) {
+			taskqueue_drain(wg_taskqueues[i],
+					&sc->sc_decrypt_tasks[i]);
+		}
+	}
 
 	TAILQ_FOREACH(peer, &sc->sc_peers, p_entry) {
 		wg_queue_purge(&peer->p_stage_queue);
@@ -2780,34 +2800,10 @@ static int
 wg_clone_destroy(struct ifnet *ifp)
 {
 	struct wg_softc *sc = ifp->if_softc;
-	int i;
+
+	wg_down(sc);
 
 	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
-
-	ifp->if_link_state = LINK_STATE_DOWN;
-	if_link_state_change(ifp);
-	if_purgeaddrs_nolink(ifp);
-
-	wg_socket_uninit(sc);
-
-	/* Cancel all tasks. */
-	while (taskqueue_cancel(sc->sc_handshake_taskqueue,
-				&sc->sc_handshake_task, NULL) != 0) {
-		taskqueue_drain(sc->sc_handshake_taskqueue,
-				&sc->sc_handshake_task);
-	}
-	for (i = 0; i < ncpus; i++) {
-		while (taskqueue_cancel(wg_taskqueues[i],
-					&sc->sc_encrypt_tasks[i], NULL) != 0) {
-			taskqueue_drain(wg_taskqueues[i],
-					&sc->sc_encrypt_tasks[i]);
-		}
-		while (taskqueue_cancel(wg_taskqueues[i],
-					&sc->sc_decrypt_tasks[i], NULL) != 0) {
-			taskqueue_drain(wg_taskqueues[i],
-					&sc->sc_decrypt_tasks[i]);
-		}
-	}
 
 	kfree(sc->sc_encrypt_tasks, M_WG);
 	kfree(sc->sc_decrypt_tasks, M_WG);
@@ -2816,16 +2812,26 @@ wg_clone_destroy(struct ifnet *ifp)
 	wg_queue_deinit(&sc->sc_decrypt_parallel);
 
 	wg_peer_destroy_all(sc);
+
+	/*
+	 * Detach and free the interface before the sc_aip4 and sc_aip6 radix
+	 * trees, because the purge of interface's IPv6 addresses can cause
+	 * packet transmission and thus wg_aip_lookup() calls.
+	 */
+	bpfdetach(ifp);
+	if_detach(ifp);
+	if_free(ifp);
+
+	/*
+	 * All peers have been removed, so the sc_aip4 and sc_aip6 radix trees
+	 * must be empty now.
+	 */
 	rn_freehead(sc->sc_aip4);
 	rn_freehead(sc->sc_aip6);
 	lockuninit(&sc->sc_aip_lock);
 
 	cookie_checker_free(&sc->sc_cookie);
 	noise_local_free(sc->sc_local);
-
-	bpfdetach(ifp);
-	if_detach(ifp);
-	if_free(ifp);
 
 	lockmgr(&wg_mtx, LK_EXCLUSIVE);
 	LIST_REMOVE(sc, sc_entry);
