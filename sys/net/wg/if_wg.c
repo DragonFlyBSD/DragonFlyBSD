@@ -341,18 +341,18 @@ static void wg_timers_run_new_handshake(void *);
 static void wg_timers_run_zero_key_material(void *);
 static void wg_timers_run_persistent_keepalive(void *);
 static int wg_aip_add(struct wg_softc *, struct wg_peer *, sa_family_t, const void *, uint8_t);
-static struct wg_peer *wg_aip_lookup(struct wg_softc *, sa_family_t, void *);
+static struct wg_peer *wg_aip_lookup(struct wg_softc *, sa_family_t, const void *);
 static void wg_aip_remove_all(struct wg_softc *, struct wg_peer *);
 static struct wg_peer *wg_peer_create(struct wg_softc *, const uint8_t [WG_KEY_SIZE]);
 static void wg_peer_destroy(struct wg_peer *);
 static void wg_peer_destroy_all(struct wg_softc *);
-static void wg_peer_send_buf(struct wg_peer *, void *, size_t);
+static void wg_peer_send_buf(struct wg_peer *, const void *, size_t);
 static void wg_peer_send_staged(struct wg_peer *);
 static void wg_peer_set_endpoint(struct wg_peer *, const struct wg_endpoint *);
 static void wg_peer_get_endpoint(struct wg_peer *, struct wg_endpoint *);
 static void wg_peer_clear_src(struct wg_peer *);
 static int wg_send(struct wg_softc *, struct wg_endpoint *, struct mbuf *);
-static void wg_send_buf(struct wg_softc *, struct wg_endpoint *, void *, size_t);
+static void wg_send_buf(struct wg_softc *, struct wg_endpoint *, const void *, size_t);
 static void wg_send_initiation(struct wg_peer *);
 static void wg_send_response(struct wg_peer *);
 static void wg_send_cookie(struct wg_softc *, struct cookie_macs *, uint32_t, struct wg_endpoint *);
@@ -371,7 +371,7 @@ static struct wg_packet *wg_packet_alloc(struct mbuf *);
 static void wg_packet_free(struct wg_packet *);
 static void wg_queue_init(struct wg_queue *, const char *);
 static void wg_queue_deinit(struct wg_queue *);
-static size_t wg_queue_len(struct wg_queue *);
+static size_t wg_queue_len(const struct wg_queue *);
 static bool wg_queue_enqueue_handshake(struct wg_queue *, struct wg_packet *);
 static struct wg_packet *wg_queue_dequeue_handshake(struct wg_queue *);
 static void wg_queue_push_staged(struct wg_queue *, struct wg_packet *);
@@ -627,7 +627,7 @@ wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af,
 }
 
 static struct wg_peer *
-wg_aip_lookup(struct wg_softc *sc, sa_family_t af, void *a)
+wg_aip_lookup(struct wg_softc *sc, sa_family_t af, const void *a)
 {
 	struct radix_node_head	*head;
 	struct radix_node	*node;
@@ -947,7 +947,8 @@ wg_send(struct wg_softc *sc, struct wg_endpoint *e, struct mbuf *m)
 }
 
 static void
-wg_send_buf(struct wg_softc *sc, struct wg_endpoint *e, void *buf, size_t len)
+wg_send_buf(struct wg_softc *sc, struct wg_endpoint *e, const void *buf,
+	    size_t len)
 {
 	struct mbuf	*m;
 	int		 ret = 0;
@@ -1217,7 +1218,7 @@ wg_timers_run_zero_key_material(void *_peer)
 /* Handshake */
 
 static void
-wg_peer_send_buf(struct wg_peer *peer, void *buf, size_t len)
+wg_peer_send_buf(struct wg_peer *peer, const void *buf, size_t len)
 {
 	struct wg_endpoint endpoint;
 
@@ -1828,7 +1829,7 @@ wg_queue_deinit(struct wg_queue *queue)
 }
 
 static size_t
-wg_queue_len(struct wg_queue *queue)
+wg_queue_len(const struct wg_queue *queue)
 {
 	return (queue->q_len);
 }
@@ -2870,6 +2871,7 @@ wg_run_selftests(void)
 	ret &= noise_counter_selftest();
 	ret &= cookie_selftest();
 
+	kprintf("%s: %s\n", __func__, ret ? "pass" : "FAIL");
 	return (ret);
 }
 #else /* !WG_SELFTESTS */
