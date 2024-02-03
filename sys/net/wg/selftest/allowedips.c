@@ -101,7 +101,7 @@ horrible_allowedips_init(struct horrible_allowedips *table)
 }
 
 static void
-horrible_allowedips_free(struct horrible_allowedips *table)
+horrible_allowedips_flush(struct horrible_allowedips *table)
 {
 	struct horrible_allowedips_node *node, *node_;
 
@@ -366,6 +366,27 @@ wg_allowedips_randomized_test(void)
 	}
 	kprintf("done\n");
 
+	kprintf("%s: v4 looking up: ", __func__);
+	for (i = 0, nextp = 0; i < T_NUM_QUERIES; ++i) {
+		if ((p = i * 100 / T_NUM_QUERIES) == nextp) {
+			kprintf("%d%%...", p);
+			nextp += 5;
+		}
+		karc4random_buf(ip, 4);
+		if (wg_aip_lookup(&sc, AF_INET, ip) !=
+		    horrible_allowedips_lookup_v4(&h, ip)) {
+			kprintf("%s: FAIL: lookup_v4\n", __func__);
+			goto error;
+		}
+	}
+	kprintf("pass\n");
+
+	/*
+	 * Flush existing v4 routes for the following v6 test so as to
+	 * significantly reduce the test time.
+	 */
+	horrible_allowedips_flush(&h);
+
 	kprintf("%s: inserting v6 routes: ", __func__);
 	for (i = 0, nextp = 0; i < T_NUM_RAND_ROUTES; ++i) {
 		if ((p = i * 100 / T_NUM_RAND_ROUTES) == nextp) {
@@ -413,21 +434,6 @@ wg_allowedips_randomized_test(void)
 	}
 	kprintf("done\n");
 
-	kprintf("%s: v4 looking up: ", __func__);
-	for (i = 0, nextp = 0; i < T_NUM_QUERIES; ++i) {
-		if ((p = i * 100 / T_NUM_QUERIES) == nextp) {
-			kprintf("%d%%...", p);
-			nextp += 5;
-		}
-		karc4random_buf(ip, 4);
-		if (wg_aip_lookup(&sc, AF_INET, ip) !=
-		    horrible_allowedips_lookup_v4(&h, ip)) {
-			kprintf("%s: FAIL: lookup_v4\n", __func__);
-			goto error;
-		}
-	}
-	kprintf("pass\n");
-
 	kprintf("%s: v6 looking up: ", __func__);
 	for (i = 0, nextp = 0; i < T_NUM_QUERIES; ++i) {
 		if ((p = i * 100 / T_NUM_QUERIES) == nextp) {
@@ -447,7 +453,7 @@ wg_allowedips_randomized_test(void)
 	kprintf("%s: pass\n", __func__);
 
 error:
-	horrible_allowedips_free(&h);
+	horrible_allowedips_flush(&h);
 	if (peers != NULL) {
 		for (i = 0; i < T_NUM_PEERS; ++i) {
 			if (peers[i] != NULL) {
