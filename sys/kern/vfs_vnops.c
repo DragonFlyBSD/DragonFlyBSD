@@ -155,7 +155,8 @@ vn_open(struct nlookupdata *nd, struct file **fpp, int fmode, int cmode)
 		bwillinode(1);
 		error = nlookup(nd);
 		if (error == EACCES && nd->nl_nch.ncp->nc_vp != NULL &&
-		    (fmode & O_EXCL)) {
+		    (fmode & O_EXCL) && !nd->nl_dir_error)
+		{
 			error = EEXIST;
 		}
 

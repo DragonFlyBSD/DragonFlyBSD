@@ -81,7 +81,8 @@ SYSCTL_INT(_debug, OID_AUTO, nlookup_debug, CTLFLAG_RW,
 	&nlookup_debug, 0,
 	"Force retry test");
 
-static int naccess(struct nchandle *nch, u_int *genp, int vmode,
+static int naccess(struct nlookupdata *nd, struct nchandle *nch,
+			u_int *genp, int vmode,
 			struct ucred *cred, int *stickyp, int nchislocked);
 
 /*
@@ -565,6 +566,7 @@ nlookup_start:
      * return a locked, resolved namecache entry.
      */
     nd->nl_loopcnt = 0;
+    nd->nl_dir_error = 0;
     if (nd->nl_dvp) {
 	vrele(nd->nl_dvp);
 	nd->nl_dvp = NULL;
@@ -650,10 +652,10 @@ nlookup_start:
 	 */
 	dflags = 0;
 	if (*nptr == '/' || (saveflag & NLC_MODIFYING_MASK) == 0) {
-	    error = naccess(&nd->nl_nch, &nl_gen, NLC_EXEC,
+	    error = naccess(nd, &nd->nl_nch, &nl_gen, NLC_EXEC,
 			    nd->nl_cred, NULL, 0);
 	} else {
-	    error = naccess(&nd->nl_nch, &nl_gen, NLC_EXEC,
+	    error = naccess(nd, &nd->nl_nch, &nl_gen, NLC_EXEC,
 			    nd->nl_cred, &dflags, 0);
 	}
 	if (error) {
@@ -838,7 +840,7 @@ nlookup_start:
 
 		par.mount = nch.mount;
 		cache_hold(&par);
-		error = naccess(&par, &dummy_gen, 0, nd->nl_cred, &dflags, 0);
+		error = naccess(nd, &par, &dummy_gen, 0, nd->nl_cred, &dflags, 0);
 		cache_drop_and_cache(&par, nd->nl_elmno - 1);
 		if (error) {
 		    if (!keeperror(nd, error))
@@ -906,7 +908,8 @@ nlookup_start:
 		if (nd->nl_flags & NLC_NFS_RDONLY) {
 			error = EROFS;
 		} else {
-			error = naccess(&nch, &nch_gen, nd->nl_flags | dflags,
+			error = naccess(nd, &nch, &nch_gen,
+					nd->nl_flags | dflags,
 					nd->nl_cred, NULL, last_element);
 		}
 	    }
@@ -1208,7 +1211,7 @@ double_break:
 	KKASSERT(last_element);
 
 	if (nch.ncp->nc_vp && (nd->nl_flags & NLC_ALLCHKS)) {
-	    error = naccess(&nch, &nch_gen, nd->nl_flags | dflags,
+	    error = naccess(nd, &nch, &nch_gen, nd->nl_flags | dflags,
 			    nd->nl_cred, NULL, 1);
 	    if (keeperror(nd, error)) {
 		cache_put(&nch);
@@ -1501,7 +1504,7 @@ fail:
 #define S_XOK_MASK	(S_IXUSR|S_IXGRP|S_IXOTH)
 
 static int
-naccess(struct nchandle *nch, u_int *genp, int nflags,
+naccess(struct nlookupdata *nd, struct nchandle *nch, u_int *genp, int nflags,
 	struct ucred *cred, int *nflagsp, int nchislocked)
 {
     struct vnode *vp;
@@ -1560,6 +1563,9 @@ again:
      *
      * We can safely resolve ncp->nc_parent because ncp is currently
      * locked.
+     *
+     * We set nl_dir_error if an error occurs checking directory perms
+     * for an intermediate directory.
      */
     if (nflags & (NLC_CREATE | NLC_DELETE | NLC_RENAME_SRC | NLC_RENAME_DST)) {
 	if (((nflags & NLC_CREATE) && ncp->nc_vp == NULL) ||
@@ -1575,16 +1581,20 @@ again:
 		goto again;
 	    }
 	    if ((par.ncp = ncp->nc_parent) == NULL) {
-		if (error != EAGAIN)
+		if (error != EAGAIN) {
 		    error = EINVAL;
+		    ++nd->nl_dir_error;
+		}
 	    } else if (error == 0 || error == ENOENT) {
 		u_int dummy_gen = 0;
 
 		par.mount = nch->mount;
 		cache_hold(&par);
 		cache_lock_maybe_shared(&par, 0);
-		error = naccess(&par, &dummy_gen, NLC_WRITE, cred, NULL, 1);
+		error = naccess(nd, &par, &dummy_gen, NLC_WRITE, cred, NULL, 1);
 		cache_put(&par);
+		if (error)
+			++nd->nl_dir_error;
 	    }
 	}
     }

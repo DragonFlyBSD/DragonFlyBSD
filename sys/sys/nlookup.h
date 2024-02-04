@@ -84,7 +84,7 @@ struct nlookupdata {
 
 	int		nl_flags;	/* operations flags */
 	int		nl_loopcnt;	/* symlinks encountered */
-	int		nl_unused01;	/* start at nl_path + nl_startidx */
+	int		nl_dir_error;	/* error assoc w/intermediate dir */
 	int		nl_elmno;	/* iteration# to help caches */
 
 	/*
