@@ -213,8 +213,8 @@ cleanup:
 static bool
 cookie_mac_test(void)
 {
-	struct cookie_checker checker;
-	struct cookie_maker maker;
+	struct cookie_checker *checker;
+	struct cookie_maker *maker;
 	struct cookie_macs cm;
 	struct sockaddr_in sin;
 	uint8_t nonce[COOKIE_NONCE_SIZE];
@@ -228,10 +228,10 @@ cookie_mac_test(void)
 	karc4random_buf(message, T_MESSAGE_LEN);
 
 	/* Init cookie_maker. */
-	cookie_maker_init(&maker, shared);
+	maker = cookie_maker_alloc(shared);
 
-	cookie_checker_init(&checker);
-	cookie_checker_update(&checker, shared);
+	checker = cookie_checker_alloc();
+	cookie_checker_update(checker, shared);
 
 	/* Create dummy sockaddr. */
 	sin.sin_family = AF_INET;
@@ -240,7 +240,7 @@ cookie_mac_test(void)
 	sin.sin_port = 51820;
 
 	/* MAC message. */
-	cookie_maker_mac(&maker, &cm, message, T_MESSAGE_LEN);
+	cookie_maker_mac(maker, &cm, message, T_MESSAGE_LEN);
 
 	/* Check we have a null mac2. */
 	for (i = 0; i < sizeof(cm.mac2); i++) {
@@ -251,7 +251,7 @@ cookie_mac_test(void)
 	/* Validate all bytes are checked in mac1. */
 	for (i = 0; i < sizeof(cm.mac1); i++) {
 		cm.mac1[i] = ~cm.mac1[i];
-		if (cookie_checker_validate_macs(&checker, &cm, message,
+		if (cookie_checker_validate_macs(checker, &cm, message,
 						 T_MESSAGE_LEN, 0,
 						 sintosa(&sin)) != EINVAL)
 			T_FAILED("validate_macs_noload_munge");
@@ -267,38 +267,38 @@ cookie_mac_test(void)
 
 
 	/* Check we can successfully validate the MAC. */
-	if (cookie_checker_validate_macs(&checker, &cm, message, T_MESSAGE_LEN,
+	if (cookie_checker_validate_macs(checker, &cm, message, T_MESSAGE_LEN,
 					 0, sintosa(&sin)) != 0)
 		T_FAILED("validate_macs_noload_normal");
 
 	/* Check we get a EAGAIN if no mac2 and under load. */
-	if (cookie_checker_validate_macs(&checker, &cm, message, T_MESSAGE_LEN,
+	if (cookie_checker_validate_macs(checker, &cm, message, T_MESSAGE_LEN,
 					 1, sintosa(&sin)) != EAGAIN)
 		T_FAILED("validate_macs_load_normal");
 
 	/* Simulate a cookie message. */
-	cookie_checker_create_payload(&checker, &cm, nonce, cookie,
+	cookie_checker_create_payload(checker, &cm, nonce, cookie,
 				      sintosa(&sin));
 
 	/* Validate all bytes are checked in cookie. */
 	for (i = 0; i < sizeof(cookie); i++) {
 		cookie[i] = ~cookie[i];
-		if (cookie_maker_consume_payload(&maker, nonce, cookie)
+		if (cookie_maker_consume_payload(maker, nonce, cookie)
 		    != EINVAL)
 			T_FAILED("consume_payload_munge");
 		cookie[i] = ~cookie[i];
 	}
 
 	/* Check we can actually consume the payload. */
-	if (cookie_maker_consume_payload(&maker, nonce, cookie) != 0)
+	if (cookie_maker_consume_payload(maker, nonce, cookie) != 0)
 		T_FAILED("consume_payload_normal");
 
 	/* Check replay isn't allowed. */
-	if (cookie_maker_consume_payload(&maker, nonce, cookie) != ETIMEDOUT)
+	if (cookie_maker_consume_payload(maker, nonce, cookie) != ETIMEDOUT)
 		T_FAILED("consume_payload_normal_replay");
 
 	/* MAC message again, with MAC2. */
-	cookie_maker_mac(&maker, &cm, message, T_MESSAGE_LEN);
+	cookie_maker_mac(maker, &cm, message, T_MESSAGE_LEN);
 
 	/* Check we added a mac2. */
 	res = 0;
@@ -308,19 +308,19 @@ cookie_mac_test(void)
 		T_FAILED("validate_macs_make_mac2");
 
 	/* Check we get OK if mac2 and under load */
-	if (cookie_checker_validate_macs(&checker, &cm, message, T_MESSAGE_LEN,
+	if (cookie_checker_validate_macs(checker, &cm, message, T_MESSAGE_LEN,
 					 1, sintosa(&sin)) != 0)
 		T_FAILED("validate_macs_load_normal_mac2");
 
 	/* Check we get EAGAIN if we munge the source IP. */
 	sin.sin_addr.s_addr = ~sin.sin_addr.s_addr;
-	if (cookie_checker_validate_macs(&checker, &cm, message, T_MESSAGE_LEN,
+	if (cookie_checker_validate_macs(checker, &cm, message, T_MESSAGE_LEN,
 					 1, sintosa(&sin)) != EAGAIN)
 		T_FAILED("validate_macs_load_spoofip_mac2");
 	sin.sin_addr.s_addr = ~sin.sin_addr.s_addr;
 
 	/* Check we get OK if mac2 and under load */
-	if (cookie_checker_validate_macs(&checker, &cm, message, T_MESSAGE_LEN,
+	if (cookie_checker_validate_macs(checker, &cm, message, T_MESSAGE_LEN,
 					 1, sintosa(&sin)) != 0)
 		T_FAILED("validate_macs_load_normal_mac2_retry");
 
@@ -328,8 +328,8 @@ cookie_mac_test(void)
 	ret = true;
 
 cleanup:
-	cookie_checker_free(&checker);
-	cookie_maker_free(&maker);
+	cookie_checker_free(checker);
+	cookie_maker_free(maker);
 	return (ret);
 }
 

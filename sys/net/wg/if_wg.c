@@ -241,7 +241,7 @@ struct wg_peer {
 	char			 p_description[WG_PEER_DESCR_SIZE];
 
 	struct noise_remote	*p_remote;
-	struct cookie_maker	 p_cookie;
+	struct cookie_maker	*p_cookie;
 
 	struct lock		 p_endpoint_lock;
 	struct wg_endpoint	 p_endpoint;
@@ -294,7 +294,7 @@ struct wg_softc {
 	size_t			 sc_peers_num;
 
 	struct noise_local	*sc_local;
-	struct cookie_checker	 sc_cookie;
+	struct cookie_checker	*sc_cookie;
 
 	struct lock		 sc_aip_lock;
 	struct radix_node_head	*sc_aip4;
@@ -603,14 +603,14 @@ wg_peer_create(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE])
 		return (NULL);
 	}
 
+	peer->p_cookie = cookie_maker_alloc(pub_key);
+
 	peer->p_id = ++peer_counter;
 	peer->p_sc = sc;
 	peer->p_tx_bytes = kmalloc(sizeof(*peer->p_tx_bytes) * ncpus,
 				   M_WG, M_WAITOK | M_ZERO);
 	peer->p_rx_bytes = kmalloc(sizeof(*peer->p_rx_bytes) * ncpus,
 				   M_WG, M_WAITOK | M_ZERO);
-
-	cookie_maker_init(&peer->p_cookie, pub_key);
 
 	lockinit(&peer->p_endpoint_lock, "wg_peer_endpoint", 0, 0);
 	lockinit(&peer->p_handshake_mtx, "wg_peer_handshake", 0, 0);
@@ -688,7 +688,7 @@ wg_peer_destroy(struct wg_peer *peer)
 	lockuninit(&peer->p_handshake_mtx);
 
 	noise_remote_free(peer->p_remote);
-	cookie_maker_free(&peer->p_cookie);
+	cookie_maker_free(peer->p_cookie);
 
 	DPRINTF(sc, "Peer %ld destroyed\n", peer->p_id);
 	kfree(peer, M_WG);
@@ -1470,7 +1470,7 @@ wg_send_initiation(struct wg_peer *peer)
 		peer->p_id);
 
 	pkt.t = WG_PKT_INITIATION;
-	cookie_maker_mac(&peer->p_cookie, &pkt.m, &pkt,
+	cookie_maker_mac(peer->p_cookie, &pkt.m, &pkt,
 			 sizeof(pkt) - sizeof(pkt.m));
 	wg_peer_send_buf(peer, &pkt, sizeof(pkt));
 	wg_timers_event_handshake_initiated(peer);
@@ -1490,7 +1490,7 @@ wg_send_response(struct wg_peer *peer)
 
 	wg_timers_event_session_derived(peer);
 	pkt.t = WG_PKT_RESPONSE;
-	cookie_maker_mac(&peer->p_cookie, &pkt.m, &pkt,
+	cookie_maker_mac(peer->p_cookie, &pkt.m, &pkt,
 			 sizeof(pkt) - sizeof(pkt.m));
 	wg_peer_send_buf(peer, &pkt, sizeof(pkt));
 }
@@ -1506,7 +1506,7 @@ wg_send_cookie(struct wg_softc *sc, struct cookie_macs *cm, uint32_t idx,
 	pkt.t = WG_PKT_COOKIE;
 	pkt.r_idx = idx;
 
-	cookie_checker_create_payload(&sc->sc_cookie, cm, pkt.nonce,
+	cookie_checker_create_payload(sc->sc_cookie, cm, pkt.nonce,
 				      pkt.ec, &e->e_remote.r_sa);
 	wg_send_buf(sc, e, &pkt, sizeof(pkt));
 }
@@ -1570,7 +1570,7 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 	case WG_PKT_INITIATION:
 		init = mtod(m, struct wg_pkt_initiation *);
 
-		ret = cookie_checker_validate_macs(&sc->sc_cookie, &init->m,
+		ret = cookie_checker_validate_macs(sc->sc_cookie, &init->m,
 		    init, sizeof(*init) - sizeof(init->m), underload,
 		    &e->e_remote.r_sa);
 		if (ret == EINVAL) {
@@ -1605,7 +1605,7 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 	case WG_PKT_RESPONSE:
 		resp = mtod(m, struct wg_pkt_response *);
 
-		ret = cookie_checker_validate_macs(&sc->sc_cookie, &resp->m,
+		ret = cookie_checker_validate_macs(sc->sc_cookie, &resp->m,
 		    resp, sizeof(*resp) - sizeof(resp->m), underload,
 		    &e->e_remote.r_sa);
 		if (ret == EINVAL) {
@@ -1648,7 +1648,7 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 		}
 
 		peer = noise_remote_arg(remote);
-		if (cookie_maker_consume_payload(&peer->p_cookie, cook->nonce,
+		if (cookie_maker_consume_payload(peer->p_cookie, cook->nonce,
 						 cook->ec) == 0) {
 			DPRINTF(sc, "Receiving cookie response\n");
 		} else {
@@ -2451,9 +2451,9 @@ wg_ioctl_set(struct wg_softc *sc, struct wg_data_io *data)
 		 * Note: we might be removing the private key.
 		 */
 		if (noise_local_set_private(sc->sc_local, iface_o.i_private))
-			cookie_checker_update(&sc->sc_cookie, public);
+			cookie_checker_update(sc->sc_cookie, public);
 		else
-			cookie_checker_update(&sc->sc_cookie, NULL);
+			cookie_checker_update(sc->sc_cookie, NULL);
 	}
 
 	if ((iface_o.i_flags & WG_INTERFACE_HAS_PORT) &&
@@ -2718,9 +2718,9 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 	lockinit(&sc->sc_aip_lock, "wg aip lock", 0, 0);
 
 	sc->sc_local = noise_local_alloc();
+	sc->sc_cookie = cookie_checker_alloc();
 
 	TAILQ_INIT(&sc->sc_peers);
-	cookie_checker_init(&sc->sc_cookie);
 
 	sc->sc_handshake_taskqueue = wg_taskqueues[karc4random() % ncpus];
 	TASK_INIT(&sc->sc_handshake_task, 0, wg_handshake_worker, sc);
@@ -2793,7 +2793,7 @@ wg_clone_destroy(struct ifnet *ifp)
 	rn_freehead(sc->sc_aip6);
 	lockuninit(&sc->sc_aip_lock);
 
-	cookie_checker_free(&sc->sc_cookie);
+	cookie_checker_free(sc->sc_cookie);
 	noise_local_free(sc->sc_local);
 
 	lockmgr(&wg_mtx, LK_EXCLUSIVE);

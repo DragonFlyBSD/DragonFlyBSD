@@ -25,14 +25,11 @@
 #endif
 
 #include <crypto/chachapoly.h>
-#include <crypto/blake2/blake2s.h>
 
 #define COOKIE_MAC_SIZE		16
-#define COOKIE_KEY_SIZE		BLAKE2S_KEY_SIZE
-#define COOKIE_NONCE_SIZE	XCHACHA20POLY1305_NONCE_SIZE
 #define COOKIE_COOKIE_SIZE	16
-#define COOKIE_SECRET_SIZE	32
 #define COOKIE_INPUT_SIZE	32
+#define COOKIE_NONCE_SIZE	XCHACHA20POLY1305_NONCE_SIZE
 #define COOKIE_ENCRYPTED_SIZE	(COOKIE_COOKIE_SIZE + COOKIE_MAC_SIZE)
 
 struct cookie_macs {
@@ -40,32 +37,14 @@ struct cookie_macs {
 	uint8_t	mac2[COOKIE_MAC_SIZE];
 };
 
-struct cookie_maker {
-	uint8_t		cm_mac1_key[COOKIE_KEY_SIZE];
-	uint8_t		cm_cookie_key[COOKIE_KEY_SIZE];
-
-	struct lock	cm_lock;
-	bool		cm_cookie_valid;
-	uint8_t		cm_cookie[COOKIE_COOKIE_SIZE];
-	struct timespec	cm_cookie_birthdate;	/* nanouptime */
-	bool		cm_mac1_sent;
-	uint8_t		cm_mac1_last[COOKIE_MAC_SIZE];
-};
-
-struct cookie_checker {
-	struct lock	cc_key_lock;
-	uint8_t		cc_mac1_key[COOKIE_KEY_SIZE];
-	uint8_t		cc_cookie_key[COOKIE_KEY_SIZE];
-
-	struct lock	cc_secret_mtx;
-	struct timespec	cc_secret_birthdate;	/* nanouptime */
-	uint8_t		cc_secret[COOKIE_SECRET_SIZE];
-};
+struct cookie_maker;
+struct cookie_checker;
 
 int	cookie_init(void);
 void	cookie_deinit(void);
 
-void	cookie_checker_init(struct cookie_checker *);
+struct cookie_checker *
+	cookie_checker_alloc(void);
 void	cookie_checker_free(struct cookie_checker *);
 void	cookie_checker_update(struct cookie_checker *,
 			      const uint8_t[COOKIE_INPUT_SIZE]);
@@ -78,8 +57,8 @@ int	cookie_checker_validate_macs(struct cookie_checker *,
 				     const struct cookie_macs *, const void *,
 				     size_t, bool, const struct sockaddr *);
 
-void	cookie_maker_init(struct cookie_maker *,
-			  const uint8_t[COOKIE_INPUT_SIZE]);
+struct cookie_maker *
+	cookie_maker_alloc(const uint8_t[COOKIE_INPUT_SIZE]);
 void	cookie_maker_free(struct cookie_maker *);
 int	cookie_maker_consume_payload(struct cookie_maker *,
 				     const uint8_t[COOKIE_NONCE_SIZE],

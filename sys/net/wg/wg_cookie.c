@@ -37,6 +37,9 @@
 
 #include "wg_cookie.h"
 
+/* Constants for cookies */
+#define COOKIE_KEY_SIZE		BLAKE2S_KEY_SIZE
+#define COOKIE_SECRET_SIZE	32
 #define COOKIE_MAC1_KEY_LABEL	"mac1----"
 #define COOKIE_COOKIE_KEY_LABEL	"cookie--"
 #define COOKIE_SECRET_MAX_AGE	120
@@ -54,6 +57,28 @@
 #define ELEMENT_TIMEOUT		1 /* second */
 #define IPV4_MASK_SIZE		4 /* Use all 4 bytes of IPv4 address */
 #define IPV6_MASK_SIZE		8 /* Use top 8 bytes (/64) of IPv6 address */
+
+struct cookie_maker {
+	uint8_t		cm_mac1_key[COOKIE_KEY_SIZE];
+	uint8_t		cm_cookie_key[COOKIE_KEY_SIZE];
+
+	struct lock	cm_lock;
+	bool		cm_cookie_valid;
+	uint8_t		cm_cookie[COOKIE_COOKIE_SIZE];
+	struct timespec	cm_cookie_birthdate;	/* nanouptime */
+	bool		cm_mac1_sent;
+	uint8_t		cm_mac1_last[COOKIE_MAC_SIZE];
+};
+
+struct cookie_checker {
+	struct lock	cc_key_lock;
+	uint8_t		cc_mac1_key[COOKIE_KEY_SIZE];
+	uint8_t		cc_cookie_key[COOKIE_KEY_SIZE];
+
+	struct lock	cc_secret_mtx;
+	struct timespec	cc_secret_birthdate;	/* nanouptime */
+	uint8_t		cc_secret[COOKIE_SECRET_SIZE];
+};
 
 struct ratelimit_key {
 	uint8_t ip[IPV6_MASK_SIZE];
@@ -101,6 +126,7 @@ static struct ratelimit ratelimit_v6;
 
 static struct objcache *ratelimit_zone;
 static MALLOC_DEFINE(M_WG_RATELIMIT, "WG ratelimit", "wireguard ratelimit");
+static MALLOC_DEFINE(M_WG_COOKIE, "WG cookie", "wireguard cookie");
 
 
 static inline uint64_t
@@ -154,12 +180,16 @@ cookie_deinit(void)
 		objcache_destroy(ratelimit_zone);
 }
 
-void
-cookie_checker_init(struct cookie_checker *cc)
+struct cookie_checker *
+cookie_checker_alloc(void)
 {
-	bzero(cc, sizeof(*cc));
+	struct cookie_checker *cc;
+
+	cc = kmalloc(sizeof(*cc), M_WG_COOKIE, M_WAITOK | M_ZERO);
 	lockinit(&cc->cc_key_lock, "cookie_checker_key", 0, 0);
 	lockinit(&cc->cc_secret_mtx, "cookie_checker_secret", 0, 0);
+
+	return (cc);
 }
 
 void
@@ -168,6 +198,7 @@ cookie_checker_free(struct cookie_checker *cc)
 	lockuninit(&cc->cc_key_lock);
 	lockuninit(&cc->cc_secret_mtx);
 	explicit_bzero(cc, sizeof(*cc));
+	kfree(cc, M_WG_COOKIE);
 }
 
 void
@@ -254,15 +285,19 @@ cookie_checker_validate_macs(struct cookie_checker *cc,
 	return (0);
 }
 
-void
-cookie_maker_init(struct cookie_maker *cm, const uint8_t key[COOKIE_INPUT_SIZE])
+struct cookie_maker *
+cookie_maker_alloc(const uint8_t key[COOKIE_INPUT_SIZE])
 {
-	bzero(cm, sizeof(*cm));
+	struct cookie_maker *cm;
+
+	cm = kmalloc(sizeof(*cm), M_WG_COOKIE, M_WAITOK | M_ZERO);
 	precompute_key(cm->cm_mac1_key, key, COOKIE_MAC1_KEY_LABEL,
 		       sizeof(COOKIE_MAC1_KEY_LABEL) - 1);
 	precompute_key(cm->cm_cookie_key, key, COOKIE_COOKIE_KEY_LABEL,
 		       sizeof(COOKIE_COOKIE_KEY_LABEL) - 1);
 	lockinit(&cm->cm_lock, "cookie_maker", 0, 0);
+
+	return (cm);
 }
 
 void
@@ -270,6 +305,7 @@ cookie_maker_free(struct cookie_maker *cm)
 {
 	lockuninit(&cm->cm_lock);
 	explicit_bzero(cm, sizeof(*cm));
+	kfree(cm, M_WG_COOKIE);
 }
 
 int
