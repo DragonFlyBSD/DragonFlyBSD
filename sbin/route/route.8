@@ -103,7 +103,9 @@ Change aspects of a route (such as its gateway).
 .It Cm get
 Lookup and display the route for a destination.
 .It Cm show
-Print out the route table similar to "netstat \-r" (see
+Print out the route table similar to
+.Dq Cd netstat -r
+(see
 .Xr netstat 1 ) .
 .It Cm monitor
 Continuously report any changes to the routing information base,
@@ -131,7 +133,9 @@ If the
 .Cm flush
 command is specified,
 .Nm
-will ``flush'' the routing tables of all gateway entries.
+will
+.Dq flush
+the routing tables of all gateway entries.
 When the address family may is specified by any of the
 .Fl inet6
 or
@@ -215,7 +219,7 @@ no intermediary system to act as a gateway, the
 modifier should be specified;
 the gateway given is the address of this host on the common network,
 indicating the interface to be used for transmission.
-Alternately, if the interface is point to point the name of the interface
+Alternately, if the interface is point-to-point, the name of the interface
 itself may be given, in which case the route remains valid even
 if the local or remote addresses change.
 .Pp
@@ -341,7 +345,7 @@ The optional
 .Fl pop ,
 and
 .Fl swap
-modifiers may be used to specify the desired mpls label
+modifiers may be used to specify the desired MPLS label
 operations for the route. Each route may have up to 3
 label operations assigned to it. The label operations
 may be combined between them, but specifically the
@@ -355,7 +359,7 @@ operation always swaps the outer label and may not be
 repeated.
 Here are some MPLS route examples:
 .Pp
-Add an normal inet route, but push an mpls
+Add an normal inet route, but push an MPLS
 .Ar label
 to the packet:
 .Pp
@@ -367,7 +371,7 @@ to the packet:
 .Ar label
 .Ed
 .Pp
-Add an normal inet route, but double-push an mpls
+Add an normal inet route, but double-push an MPLS
 .Ar inner-label
 and an
 .Ar outer-label
@@ -383,7 +387,7 @@ to the packet:
 .Ar outer-label
 .Ed
 .Pp
-Add an mpls route for an
+Add an MPLS route for an
 .Ar incoming-label
 to be forwarded to
 .Ar gateway
@@ -412,8 +416,8 @@ the routing tables.
 .Sh EXIT STATUS
 .Ex -std
 .Sh DIAGNOSTICS
-.Bl -diag
-.It "add [host \&| network ] %s: gateway %s flags %x"
+.Bl -tag -width indent
+.It Sy "add [host \&| network ] %s: gateway %s flags %x"
 The specified route is being added to the tables.  The
 values printed are from the routing table entry supplied
 in the
@@ -423,25 +427,25 @@ If the gateway address used was not the primary address of the gateway
 (the first one returned by
 .Xr gethostbyname 3 ) ,
 the gateway address is printed numerically as well as symbolically.
-.It "delete [ host \&| network ] %s: gateway %s flags %x"
+.It Sy "delete [ host \&| network ] %s: gateway %s flags %x"
 As above, but when deleting an entry.
-.It "%s %s done"
+.It Sy "%s %s done"
 When the
 .Cm flush
 command is specified, each routing table entry deleted
 is indicated with a message of this form.
-.It "Network is unreachable"
+.It Sy "Network is unreachable"
 An attempt to add a route failed because the gateway listed was not
 on a directly-connected network.
 The next-hop gateway must be given.
-.It "not in table"
+.It Sy "not in table"
 A delete operation was attempted for an entry which
 wasn't present in the tables.
-.It "routing table overflow"
+.It Sy "routing table overflow"
 An add operation was attempted, but the system was
 low on resources and was unable to allocate memory
 to create the new entry.
-.It "gateway uses the same route"
+.It Sy "gateway uses the same route"
 A
 .Cm change
 operation resulted in a route whose gateway uses the
