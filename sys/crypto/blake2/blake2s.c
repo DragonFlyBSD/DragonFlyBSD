@@ -73,7 +73,8 @@ static inline void blake2s_init_param(struct blake2s_state *state,
 
 void blake2s_init(struct blake2s_state *state, size_t outlen)
 {
-	KKASSERT(!(!outlen || outlen > BLAKE2S_HASH_SIZE));
+	KKASSERT(outlen > 0 && outlen <= BLAKE2S_HASH_SIZE);
+
 	blake2s_init_param(state, 0x01010000 | outlen);
 	state->outlen = outlen;
 }
@@ -83,8 +84,8 @@ void blake2s_init_key(struct blake2s_state *state, size_t outlen,
 {
 	uint8_t block[BLAKE2S_BLOCK_SIZE] = { 0 };
 
-	KKASSERT(!(!outlen || outlen > BLAKE2S_HASH_SIZE ||
-		   !key || !keylen || keylen > BLAKE2S_KEY_SIZE));
+	KKASSERT(outlen > 0 && outlen <= BLAKE2S_HASH_SIZE);
+	KKASSERT(key != NULL || keylen > 0 && keylen <= BLAKE2S_KEY_SIZE);
 
 	blake2s_init_param(state, 0x01010000 | keylen << 8 | outlen);
 	state->outlen = outlen;
@@ -189,6 +190,7 @@ void blake2s_update(struct blake2s_state *state, const uint8_t *in, size_t inlen
 void blake2s_final(struct blake2s_state *state, uint8_t *out)
 {
 	int i;
+
 	blake2s_set_lastblock(state);
 	memset(state->buf + state->buflen, 0,
 	       BLAKE2S_BLOCK_SIZE - state->buflen); /* Padding */
@@ -203,16 +205,21 @@ void blake2s_hmac(uint8_t *out, const uint8_t *in, const uint8_t *key,
 		  size_t outlen, size_t inlen, size_t keylen)
 {
 	struct blake2s_state state;
-	uint8_t x_key[BLAKE2S_BLOCK_SIZE] __aligned(__alignof__(uint32_t)) = { 0 };
+	uint8_t x_key[BLAKE2S_BLOCK_SIZE] __aligned(__alignof__(uint32_t));
 	uint8_t i_hash[BLAKE2S_HASH_SIZE] __aligned(__alignof__(uint32_t));
 	int i;
 
+	KKASSERT(out != NULL && outlen <= BLAKE2S_HASH_SIZE &&
+		 key != NULL && keylen > 0);
+
+	memset(x_key, 0, BLAKE2S_BLOCK_SIZE);
 	if (keylen > BLAKE2S_BLOCK_SIZE) {
 		blake2s_init(&state, BLAKE2S_HASH_SIZE);
 		blake2s_update(&state, key, keylen);
 		blake2s_final(&state, x_key);
-	} else
+	} else {
 		memcpy(x_key, key, keylen);
+	}
 
 	for (i = 0; i < BLAKE2S_BLOCK_SIZE; ++i)
 		x_key[i] ^= 0x36;
