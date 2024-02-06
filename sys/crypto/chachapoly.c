@@ -158,6 +158,7 @@ _chacha20poly1305_final(struct chacha20poly1305_ctx *ctx,
 	KKASSERT(in_len == 0 || (in_len > 0 && out != NULL));
 	KKASSERT(in_len <= CHACHA_BLOCKLEN);
 
+	/* Handle the case that no _update() was called. */
 	if (ctx->ad_len > 0 && (ctx->flags & F_AD_DONE) == 0) {
 		KKASSERT(ctx->data_len == 0);
 		poly1305_update(&ctx->poly, pad0, PADDING_LEN(ctx->ad_len));
@@ -172,6 +173,10 @@ _chacha20poly1305_final(struct chacha20poly1305_ctx *ctx,
 			poly1305_update(&ctx->poly, in, in_len);
 			chacha_encrypt_bytes(&ctx->chacha, in, out, in_len);
 		}
+		/*
+		 * Only need to pad the last chunk, because the data chunks
+		 * processed by _update() are complete blocks.
+		 */
 		poly1305_update(&ctx->poly, pad0, PADDING_LEN(in_len));
 		ctx->data_len += in_len;
 	}
