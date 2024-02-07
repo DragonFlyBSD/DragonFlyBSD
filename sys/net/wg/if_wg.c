@@ -2918,5 +2918,5 @@ static moduledata_t wg_moduledata = {
 };
 
 DECLARE_MODULE(if_wg, wg_moduledata, SI_SUB_PSEUDO, SI_ORDER_ANY);
-MODULE_VERSION(if_wg, 20220615); /* WireGuard version */
+MODULE_VERSION(if_wg, 1); /* WireGuard version */
 MODULE_DEPEND(if_wg, crypto, 1, 1, 1);
