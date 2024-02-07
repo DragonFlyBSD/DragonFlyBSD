@@ -123,9 +123,9 @@ CTASSERT(WG_KEY_SIZE >= NOISE_SYMMETRIC_KEY_LEN);
 	 (size_t)(m)->m_pkthdr.len >= WG_PKT_ENCRYPTED_LEN(0))
 
 
-#define DPRINTF(sc, ...)	\
+#define DPRINTF(sc, fmt, ...)	\
 	if (sc->sc_ifp->if_flags & IFF_DEBUG) \
-		if_printf(sc->sc_ifp, ##__VA_ARGS__)
+		if_printf(sc->sc_ifp, fmt, ##__VA_ARGS__)
 
 #define BPF_MTAP_AF(_ifp, _m, _af) do { \
 	if ((_ifp)->if_bpf != NULL) { \
@@ -1205,7 +1205,12 @@ wg_send_buf(struct wg_softc *sc, struct wg_endpoint *e, const void *buf,
 }
 
 /*----------------------------------------------------------------------------*/
-/* Timers */
+/*
+ * Timers
+ *
+ * These functions handle the timeout callbacks for a WireGuard session, and
+ * provide an "event-based" model for controlling WireGuard session timers.
+ */
 
 static void	wg_timers_run_send_initiation(struct wg_peer *, bool);
 static void	wg_timers_run_retry_handshake(void *);
@@ -1258,6 +1263,9 @@ wg_timers_get_last_handshake(struct wg_peer *peer, struct timespec *time)
 	lockmgr(&peer->p_handshake_mtx, LK_RELEASE);
 }
 
+/*
+ * Should be called after an authenticated data packet is sent.
+ */
 static void
 wg_timers_event_data_sent(struct wg_peer *peer)
 {
@@ -1272,6 +1280,9 @@ wg_timers_event_data_sent(struct wg_peer *peer)
 	}
 }
 
+/*
+ * Should be called after an authenticated data packet is received.
+ */
 static void
 wg_timers_event_data_received(struct wg_peer *peer)
 {
@@ -1287,18 +1298,30 @@ wg_timers_event_data_received(struct wg_peer *peer)
 	}
 }
 
+/*
+ * Should be called before any type of authenticated packet is to be sent,
+ * whether keepalive, data, or handshake.
+ */
 static void
 wg_timers_event_any_authenticated_packet_sent(struct wg_peer *peer)
 {
 	callout_stop(&peer->p_send_keepalive);
 }
 
+/*
+ * Should be called after any type of authenticated packet is received,
+ * whether keepalive, data, or handshake.
+ */
 static void
 wg_timers_event_any_authenticated_packet_received(struct wg_peer *peer)
 {
 	callout_stop(&peer->p_new_handshake);
 }
 
+/*
+ * Should be called before a packet with authentication (whether keepalive,
+ * data, or handshakem) is sent, or after one is received.
+ */
 static void
 wg_timers_event_any_authenticated_packet_traversal(struct wg_peer *peer)
 {
@@ -1311,6 +1334,9 @@ wg_timers_event_any_authenticated_packet_traversal(struct wg_peer *peer)
 	}
 }
 
+/*
+ * Should be called after a handshake initiation message is sent.
+ */
 static void
 wg_timers_event_handshake_initiated(struct wg_peer *peer)
 {
@@ -1323,6 +1349,10 @@ wg_timers_event_handshake_initiated(struct wg_peer *peer)
 	}
 }
 
+/*
+ * Should be called after a handshake response message is received and
+ * processed, or when getting key confirmation via the first data message.
+ */
 static void
 wg_timers_event_handshake_complete(struct wg_peer *peer)
 {
@@ -1337,6 +1367,10 @@ wg_timers_event_handshake_complete(struct wg_peer *peer)
 	}
 }
 
+/*
+ * Should be called after an ephemeral key is created, which is before sending
+ * a handshake response or after receiving a handshake response.
+ */
 static void
 wg_timers_event_session_derived(struct wg_peer *peer)
 {
@@ -1347,6 +1381,10 @@ wg_timers_event_session_derived(struct wg_peer *peer)
 	}
 }
 
+/*
+ * Should be called after data packet sending failure, or after the old
+ * keypairs expiring (or near expiring).
+ */
 static void
 wg_timers_event_want_initiation(struct wg_peer *peer)
 {
@@ -1533,33 +1571,46 @@ send:
 	wg_peer_send_staged(peer);
 }
 
+static bool
+wg_is_underload(struct wg_softc *sc)
+{
+	/*
+	 * This is global, so that the load calculation applies to the
+	 * whole system.  Don't care about races with it at all.
+	 */
+	static struct timespec	last_underload; /* nanouptime */
+	struct timespec		now;
+	bool			underload;
+
+	underload = (wg_queue_len(&sc->sc_handshake_queue) >=
+		     MAX_QUEUED_HANDSHAKES / 8);
+	if (underload) {
+		getnanouptime(&last_underload);
+	} else if (timespecisset(&last_underload)) {
+		getnanouptime(&now);
+		now.tv_sec -= UNDERLOAD_TIMEOUT;
+		underload = timespeccmp(&last_underload, &now, >);
+		if (!underload)
+			timespecclear(&last_underload);
+	}
+
+	return (underload);
+}
+
 static void
 wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 {
-	static struct timespec		 wg_last_underload; /* nanouptime */
 	struct wg_pkt_initiation	*init;
 	struct wg_pkt_response		*resp;
 	struct wg_pkt_cookie		*cook;
 	struct wg_endpoint		*e;
 	struct wg_peer			*peer;
 	struct mbuf			*m;
-	struct timespec			 now;
 	struct noise_remote		*remote = NULL;
 	bool				 underload;
 	int				 ret;
 
-	underload = (wg_queue_len(&sc->sc_handshake_queue) >=
-		     MAX_QUEUED_HANDSHAKES / 8);
-	if (underload) {
-		getnanouptime(&wg_last_underload);
-	} else if (timespecisset(&wg_last_underload)) {
-		getnanouptime(&now);
-		now.tv_sec -= UNDERLOAD_TIMEOUT;
-		underload = timespeccmp(&wg_last_underload, &now, >);
-		if (!underload)
-			timespecclear(&wg_last_underload);
-	}
-
+	underload = wg_is_underload(sc);
 	m = pkt->p_mbuf;
 	e = &pkt->p_endpoint;
 
@@ -1573,17 +1624,28 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 		ret = cookie_checker_validate_macs(sc->sc_cookie, &init->m,
 		    init, sizeof(*init) - sizeof(init->m), underload,
 		    &e->e_remote.r_sa);
-		if (ret == EINVAL) {
-			DPRINTF(sc, "Invalid initiation MAC\n");
+		if (ret != 0) {
+			switch (ret) {
+			case EINVAL:
+				DPRINTF(sc, "Invalid initiation MAC\n");
+				break;
+			case ECONNREFUSED:
+				DPRINTF(sc, "Handshake ratelimited\n");
+				break;
+			case EAGAIN:
+				wg_send_cookie(sc, &init->m, init->s_idx, e);
+				break;
+			default:
+				/*
+				 * cookie_checker_validate_macs() seems could
+				 * return EAFNOSUPPORT, but that is actually
+				 * impossible, because packets of unsupported
+				 * AF have been already dropped.
+				 */
+				panic("%s: unexpected return: %d",
+				      __func__, ret);
+			}
 			goto error;
-		} else if (ret == ECONNREFUSED) {
-			DPRINTF(sc, "Handshake ratelimited\n");
-			goto error;
-		} else if (ret == EAGAIN) {
-			wg_send_cookie(sc, &init->m, init->s_idx, e);
-			goto error;
-		} else if (ret != 0) {
-			panic("%s: unexpected return: %d", __func__, ret);
 		}
 
 		remote = noise_consume_initiation(sc->sc_local, init->s_idx,
@@ -1608,17 +1670,23 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 		ret = cookie_checker_validate_macs(sc->sc_cookie, &resp->m,
 		    resp, sizeof(*resp) - sizeof(resp->m), underload,
 		    &e->e_remote.r_sa);
-		if (ret == EINVAL) {
-			DPRINTF(sc, "Invalid response MAC\n");
+		if (ret != 0) {
+			switch (ret) {
+			case EINVAL:
+				DPRINTF(sc, "Invalid response MAC\n");
+				break;
+			case ECONNREFUSED:
+				DPRINTF(sc, "Handshake ratelimited\n");
+				break;
+			case EAGAIN:
+				wg_send_cookie(sc, &resp->m, resp->s_idx, e);
+				break;
+			default:
+				/* See also the comment above. */
+				panic("%s: unexpected return: %d",
+				      __func__, ret);
+			}
 			goto error;
-		} else if (ret == ECONNREFUSED) {
-			DPRINTF(sc, "Handshake ratelimited\n");
-			goto error;
-		} else if (ret == EAGAIN) {
-			wg_send_cookie(sc, &resp->m, resp->s_idx, e);
-			goto error;
-		} else if (ret != 0) {
-			panic("%s: unexpected return: %d", __func__, ret);
 		}
 
 		remote = noise_consume_response(sc->sc_local, resp->s_idx,
@@ -1802,7 +1870,7 @@ wg_decrypt(struct wg_softc *sc, struct wg_packet *pkt)
 	if (noise_keypair_decrypt(pkt->p_keypair, pkt->p_counter, m) != 0)
 		goto out;
 
-	/* A packet with length 0 is a keepalive packet. */
+	/* A packet with a length of zero is a keepalive packet. */
 	if (__predict_false(m->m_pkthdr.len == 0)) {
 		DPRINTF(sc, "Receiving keepalive packet from peer %ld\n",
 			peer->p_id);
@@ -1811,29 +1879,23 @@ wg_decrypt(struct wg_softc *sc, struct wg_packet *pkt)
 	}
 
 	/*
-	 * We can let the network stack handle the intricate validation of the
-	 * IP header, we just worry about the sizeof and the version, so we can
-	 * read the source address in wg_aip_lookup.
+	 * Extract the source address for wg_aip_lookup(), and trim the
+	 * packet if it was padded before encryption.
 	 */
-	if (determine_af_and_pullup(&m, &pkt->p_af) == 0) {
-		KKASSERT(pkt->p_af == AF_INET || pkt->p_af == AF_INET6);
-		if (pkt->p_af == AF_INET) {
-			struct ip *ip = mtod(m, struct ip *);
-			allowed_peer = wg_aip_lookup(sc, AF_INET, &ip->ip_src);
-			len = ntohs(ip->ip_len);
-			if (len >= sizeof(struct ip) && len < m->m_pkthdr.len)
-				m_adj(m, len - m->m_pkthdr.len);
-		} else {
-			struct ip6_hdr *ip6 = mtod(m, struct ip6_hdr *);
-			allowed_peer = wg_aip_lookup(sc, AF_INET6, &ip6->ip6_src);
-			len = ntohs(ip6->ip6_plen) + sizeof(struct ip6_hdr);
-			if (len < m->m_pkthdr.len)
-				m_adj(m, len - m->m_pkthdr.len);
-		}
-	} else {
-		DPRINTF(sc, "Packet is neither IPv4 nor IPv6 from peer %ld\n",
-			peer->p_id);
+	if (determine_af_and_pullup(&m, &pkt->p_af) != 0)
 		goto out;
+	if (pkt->p_af == AF_INET) {
+		const struct ip *ip = mtod(m, const struct ip *);
+		allowed_peer = wg_aip_lookup(sc, AF_INET, &ip->ip_src);
+		len = ntohs(ip->ip_len);
+		if (len >= sizeof(struct ip) && len < m->m_pkthdr.len)
+			m_adj(m, len - m->m_pkthdr.len);
+	} else {
+		const struct ip6_hdr *ip6 = mtod(m, const struct ip6_hdr *);
+		allowed_peer = wg_aip_lookup(sc, AF_INET6, &ip6->ip6_src);
+		len = ntohs(ip6->ip6_plen) + sizeof(struct ip6_hdr);
+		if (len < m->m_pkthdr.len)
+			m_adj(m, len - m->m_pkthdr.len);
 	}
 
 	/* Drop the reference, since no need to dereference it. */
@@ -2016,10 +2078,16 @@ wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 	struct wg_peer		*peer;
 	struct mbuf		*defragged;
 
+	/*
+	 * Defragment mbufs early on in order to:
+	 * - make the crypto a lot faster;
+	 * - make the subsequent m_pullup()'s no-ops.
+	 */
 	defragged = m_defrag(m, M_NOWAIT);
 	if (defragged != NULL)
-		m = defragged;
+		m = defragged; /* The original mbuf chain is freed. */
 
+	/* Ensure the packet is not shared before modifying it. */
 	m = m_unshare(m, M_NOWAIT);
 	if (m == NULL) {
 		IFNET_STAT_INC(sc->sc_ifp, iqdrops, 1);
@@ -2051,6 +2119,7 @@ wg_input(struct wg_softc *sc, struct mbuf *m, const struct sockaddr *sa)
 		break;
 #endif
 	default:
+		DPRINTF(sc, "Unsupported packet address family\n");
 		goto error;
 	}
 
@@ -2126,7 +2195,7 @@ wg_peer_send_staged(struct wg_peer *peer)
 	struct wg_softc		*sc = peer->p_sc;
 	struct wg_packet	*pkt, *tpkt;
 	struct wg_packet_list	 list;
-	struct noise_keypair	*keypair;
+	struct noise_keypair	*keypair = NULL;
 
 	wg_queue_delist_staged(&peer->p_stage_queue, &list);
 
@@ -2136,9 +2205,14 @@ wg_peer_send_staged(struct wg_peer *peer)
 	if ((keypair = noise_keypair_current(peer->p_remote)) == NULL)
 		goto error;
 
+	/*
+	 * We now try to assign counters to all of the packets in the queue.
+	 * If we can't assign counters for all of them, we just consider it
+	 * a failure and wait for the next handshake.
+	 */
 	STAILQ_FOREACH(pkt, &list, p_parallel) {
 		if (!noise_keypair_counter_next(keypair, &pkt->p_counter))
-			goto error_keypair;
+			goto error;
 	}
 	STAILQ_FOREACH_MUTABLE(pkt, &list, p_parallel, tpkt) {
 		pkt->p_keypair = noise_keypair_ref(keypair);
@@ -2146,13 +2220,14 @@ wg_peer_send_staged(struct wg_peer *peer)
 				   &peer->p_encrypt_serial, pkt))
 			IFNET_STAT_INC(sc->sc_ifp, oqdrops, 1);
 	}
+
 	wg_encrypt_dispatch(sc);
 	noise_keypair_put(keypair);
 	return;
 
-error_keypair:
-	noise_keypair_put(keypair);
 error:
+	if (keypair != NULL)
+		noise_keypair_put(keypair);
 	wg_queue_enlist_staged(&peer->p_stage_queue, &list);
 	wg_timers_event_want_initiation(peer);
 }

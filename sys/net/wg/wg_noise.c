@@ -607,6 +607,11 @@ noise_remote_keypairs_clear(struct noise_remote *r)
 
 	lockmgr(&r->r_keypair_lock, LK_EXCLUSIVE);
 
+	/*
+	 * We zero the "next" keypair before zeroing the others, so that
+	 * noise_keypair_received_with() returns early before subsequent
+	 * ones are zeroed.
+	 */
 	kp = atomic_load_ptr(&r->r_keypair_next);
 	atomic_store_ptr(&r->r_keypair_next, NULL);
 	noise_keypair_drop(kp);
@@ -780,11 +785,12 @@ noise_keypair_counter_next(struct noise_keypair *kp, uint64_t *send)
 	*send = kp->kp_counter_send++;
 	lockmgr(&kp->kp_counter_lock, LK_RELEASE);
 #endif
-	if (*send < REJECT_AFTER_MESSAGES)
-		return (true);
+	if (*send >= REJECT_AFTER_MESSAGES) {
+		atomic_store_bool(&kp->kp_can_send, false);
+		return (false);
+	}
 
-	atomic_store_bool(&kp->kp_can_send, false);
-	return (false);
+	return (true);
 }
 
 /*
