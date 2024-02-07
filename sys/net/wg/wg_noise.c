@@ -838,57 +838,47 @@ out:
 	return (ret);
 }
 
+/*
+ * Check whether the current keypair of the given remote <r> is expiring soon
+ * or already expired, and thus should do a refreshing.
+ */
 bool
-noise_keep_key_fresh_send(struct noise_remote *r)
+noise_keypair_should_refresh(struct noise_remote *r, bool sending)
 {
-	struct noise_keypair *current;
+	struct noise_keypair *kp;
 	uint64_t counter;
-	bool keep_key_fresh;
+	bool refresh;
 
 	lockmgr(&r->r_keypair_lock, LK_SHARED);
 
-	current = atomic_load_ptr(&r->r_keypair_current);
-	keep_key_fresh = (current != NULL &&
-			  atomic_load_bool(&current->kp_can_send));
-	if (!keep_key_fresh)
-		goto out;
-#ifdef __LP64__
-	counter = atomic_load_64(&current->kp_counter_send);
-#else
-	lockmgr(&current->kp_counter_lock, LK_SHARED);
-	counter = current->kp_counter_send;
-	lockmgr(&current->kp_counter_lock, LK_RELEASE);
-#endif
-	keep_key_fresh = counter > REKEY_AFTER_MESSAGES;
-	if (keep_key_fresh)
+	kp = atomic_load_ptr(&r->r_keypair_current);
+	refresh = (kp != NULL && atomic_load_bool(&kp->kp_can_send));
+	if (__predict_false(!refresh))
 		goto out;
 
-	keep_key_fresh = (current->kp_is_initiator &&
-			  timer_expired(&current->kp_birthdate,
-					REKEY_AFTER_TIME, 0));
+	if (sending) {
+		/* sending path */
+#ifdef __LP64__
+		counter = atomic_load_64(&kp->kp_counter_send);
+#else
+		lockmgr(&kp->kp_counter_lock, LK_SHARED);
+		counter = kp->kp_counter_send;
+		lockmgr(&kp->kp_counter_lock, LK_RELEASE);
+#endif
+		refresh = (counter > REKEY_AFTER_MESSAGES ||
+			   (kp->kp_is_initiator &&
+			    timer_expired(&kp->kp_birthdate,
+					  REKEY_AFTER_TIME, 0)));
+	} else {
+		/* receiving path */
+		refresh = (kp->kp_is_initiator &&
+			   timer_expired(&kp->kp_birthdate, REJECT_AFTER_TIME -
+					 KEEPALIVE_TIMEOUT - REKEY_TIMEOUT, 0));
+	}
 
 out:
 	lockmgr(&r->r_keypair_lock, LK_RELEASE);
-	return (keep_key_fresh);
-}
-
-bool
-noise_keep_key_fresh_recv(struct noise_remote *r)
-{
-	struct noise_keypair *current;
-	bool keep_key_fresh;
-
-	lockmgr(&r->r_keypair_lock, LK_SHARED);
-	current = atomic_load_ptr(&r->r_keypair_current);
-	keep_key_fresh = (current != NULL &&
-			  atomic_load_bool(&current->kp_can_send) &&
-			  current->kp_is_initiator &&
-			  timer_expired(&current->kp_birthdate,
-					REJECT_AFTER_TIME - KEEPALIVE_TIMEOUT -
-					REKEY_TIMEOUT, 0));
-	lockmgr(&r->r_keypair_lock, LK_RELEASE);
-
-	return (keep_key_fresh);
+	return (refresh);
 }
 
 int

@@ -1946,7 +1946,7 @@ wg_deliver_out(void *arg, int pending __unused)
 			peer->p_tx_bytes[cpu] += len;
 			if (len > WG_PKT_ENCRYPTED_LEN(0))
 				wg_timers_event_data_sent(peer);
-			if (noise_keep_key_fresh_send(peer->p_remote))
+			if (noise_keypair_should_refresh(peer->p_remote, true))
 				wg_timers_event_want_initiation(peer);
 		}
 	}
@@ -2002,7 +2002,7 @@ wg_deliver_in(void *arg, int pending __unused)
 
 		wg_packet_free(pkt);
 
-		if (noise_keep_key_fresh_recv(peer->p_remote))
+		if (noise_keypair_should_refresh(peer->p_remote, false))
 			wg_timers_event_want_initiation(peer);
 	}
 }

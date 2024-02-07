@@ -87,17 +87,12 @@ struct noise_keypair *
 struct noise_keypair *
 	noise_keypair_ref(struct noise_keypair *);
 void	noise_keypair_put(struct noise_keypair *);
-bool	noise_keypair_received_with(struct noise_keypair *);
-
 struct noise_remote *
 	noise_keypair_remote(struct noise_keypair *);
-
+bool	noise_keypair_received_with(struct noise_keypair *);
+bool	noise_keypair_should_refresh(struct noise_remote *, bool);
 bool	noise_keypair_counter_next(struct noise_keypair *, uint64_t *);
 int	noise_keypair_counter_check(struct noise_keypair *, uint64_t);
-
-bool	noise_keep_key_fresh_send(struct noise_remote *);
-bool	noise_keep_key_fresh_recv(struct noise_remote *);
-
 int	noise_keypair_encrypt(struct noise_keypair *, uint32_t *r_idx,
 			      uint64_t counter, struct mbuf *);
 int	noise_keypair_decrypt(struct noise_keypair *, uint64_t counter,
