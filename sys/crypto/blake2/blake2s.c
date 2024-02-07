@@ -85,7 +85,7 @@ void blake2s_init_key(struct blake2s_state *state, size_t outlen,
 	uint8_t block[BLAKE2S_BLOCK_SIZE] = { 0 };
 
 	KKASSERT(outlen > 0 && outlen <= BLAKE2S_HASH_SIZE);
-	KKASSERT(key != NULL || keylen > 0 && keylen <= BLAKE2S_KEY_SIZE);
+	KKASSERT(key != NULL && keylen > 0 && keylen <= BLAKE2S_KEY_SIZE);
 
 	blake2s_init_param(state, 0x01010000 | keylen << 8 | outlen);
 	state->outlen = outlen;
