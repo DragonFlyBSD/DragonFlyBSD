@@ -2499,6 +2499,9 @@ wg_ioctl_set(struct wg_softc *sc, struct wg_data_io *data)
 				ret = ENOMEM;
 				goto error;
 			}
+
+			/* No allowed IPs to remove for a new peer. */
+			peer_o.p_flags &= ~WG_PEER_REPLACE_AIPS;
 		}
 
 		if (peer_o.p_flags & WG_PEER_REMOVE) {
@@ -2531,6 +2534,9 @@ wg_ioctl_set(struct wg_softc *sc, struct wg_data_io *data)
 			if (ret != 0)
 				goto error;
 		}
+
+		if (sc->sc_ifp->if_link_state == LINK_STATE_UP)
+			wg_peer_send_staged(peer);
 
 	next_peer:
 		if (remote != NULL) {
