@@ -682,12 +682,20 @@ noise_keypair_current(struct noise_remote *r)
 	return (ret);
 }
 
+/*
+ * Check whether the keypair <kp> associated with the received packet
+ * is the "next" keypair of the remote peer.  If true, it means the
+ * keypair has received the confirmation from the initiator and thus
+ * becomes the "current".
+ */
 bool
 noise_keypair_received_with(struct noise_keypair *kp)
 {
 	struct noise_keypair *old;
 	struct noise_remote *r = kp->kp_remote;
 
+	if (kp->kp_is_initiator)
+		return (false);
 	if (kp != atomic_load_ptr(&r->r_keypair_next))
 		return (false);
 
@@ -699,6 +707,10 @@ noise_keypair_received_with(struct noise_keypair *kp)
 		return (false);
 	}
 
+	/*
+	 * Received the confirming data packet, so move the keypair from
+	 * the "next" slot to the "current".
+	 */
 	old = atomic_load_ptr(&r->r_keypair_previous);
 	atomic_store_ptr(&r->r_keypair_previous,
 			 atomic_load_ptr(&r->r_keypair_current));
