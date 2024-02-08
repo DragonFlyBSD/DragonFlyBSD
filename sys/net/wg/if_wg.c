@@ -127,18 +127,6 @@ CTASSERT(WG_KEY_SIZE >= NOISE_SYMMETRIC_KEY_LEN);
 	if (sc->sc_ifp->if_flags & IFF_DEBUG) \
 		if_printf(sc->sc_ifp, fmt, ##__VA_ARGS__)
 
-#define BPF_MTAP_AF(_ifp, _m, _af) do { \
-	if ((_ifp)->if_bpf != NULL) { \
-		bpf_gettoken(); \
-		if ((_ifp)->if_bpf != NULL) { \
-			/* Prepend the AF as a 4-byte field for DLT_NULL. */ \
-			uint32_t __bpf_af = (uint32_t)(_af); \
-			bpf_ptap((_ifp)->if_bpf, (_m), &__bpf_af, 4); \
-		} \
-		bpf_reltoken(); \
-	} \
-} while (0)
-
 
 struct wg_pkt_initiation {
 	uint32_t		t;
@@ -1757,6 +1745,24 @@ wg_handshake_worker(void *arg, int pending __unused)
 /*----------------------------------------------------------------------------*/
 /* Transport Packet Functions */
 
+static inline void
+wg_bpf_ptap(struct ifnet *ifp, struct mbuf *m, sa_family_t af)
+{
+	uint32_t bpf_af;
+
+	if (ifp->if_bpf == NULL)
+		return;
+
+	bpf_gettoken();
+	/* Double check after obtaining the token. */
+	if (ifp->if_bpf != NULL) {
+		/* Prepend the AF as a 4-byte field for DLT_NULL. */
+		bpf_af = (uint32_t)af;
+		bpf_ptap(ifp->if_bpf, m, &bpf_af, sizeof(bpf_af));
+	}
+	bpf_reltoken();
+}
+
 static inline unsigned int
 calculate_padding(struct wg_packet *pkt)
 {
@@ -2065,7 +2071,7 @@ wg_deliver_in(void *arg, int pending __unused)
 			m->m_flags &= ~MBUF_CLEARFLAGS;
 			m->m_pkthdr.rcvif = ifp;
 
-			BPF_MTAP_AF(ifp, m, pkt->p_af);
+			wg_bpf_ptap(ifp, m, pkt->p_af);
 
 			netisr_queue((pkt->p_af == AF_INET ?
 				      NETISR_IP : NETISR_IPV6), m);
@@ -2301,7 +2307,7 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		goto error;
 	}
 
-	BPF_MTAP_AF(ifp, m, dst->sa_family);
+	wg_bpf_ptap(ifp, m, dst->sa_family);
 
 	defragged = m_defrag(m, M_NOWAIT);
 	if (defragged != NULL)
