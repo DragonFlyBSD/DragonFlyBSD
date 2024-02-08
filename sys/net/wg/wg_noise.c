@@ -96,6 +96,10 @@ struct noise_keypair {
 	uint64_t		 kp_counter_send; /* next counter available */
 	uint64_t		 kp_counter_recv; /* max counter received */
 	unsigned long		 kp_backtrack[COUNTER_NUM];
+
+#ifdef INVARIANTS
+	LIST_ENTRY(noise_keypair) _kp_entry;
+#endif
 };
 
 struct noise_handshake {
@@ -135,6 +139,10 @@ struct noise_remote {
 	struct noise_keypair		*r_keypair_next;
 	struct noise_keypair		*r_keypair_current;
 	struct noise_keypair		*r_keypair_previous;
+
+#ifdef INVARIANTS
+	LIST_ENTRY(noise_remote)	 _r_entry;
+#endif
 };
 
 struct noise_local {
@@ -154,7 +162,22 @@ struct noise_local {
 	/* Hash table to lookup the remote/keypair from its index. */
 	struct lock			 l_index_lock;
 	LIST_HEAD(, noise_index)	 l_index_hash[HT_INDEX_SIZE];
+
+#ifdef INVARIANTS
+	LIST_ENTRY(noise_local)		 _l_entry;
+#endif
 };
+
+
+static MALLOC_DEFINE(M_NOISE, "NOISE", "wgnoise");
+
+#ifdef INVARIANTS
+static struct lock noise_mtx;
+static LIST_HEAD(, noise_local) noise_locals;
+static LIST_HEAD(, noise_remote) noise_remotes;
+static LIST_HEAD(, noise_keypair) noise_keypairs;
+#endif
+
 
 static void	noise_precompute_ss(struct noise_local *,
 				    struct noise_remote *);
@@ -207,8 +230,6 @@ static void	noise_msg_ephemeral(uint8_t [NOISE_HASH_LEN],
 
 static void	noise_tai64n_now(uint8_t [NOISE_TIMESTAMP_LEN]);
 
-static MALLOC_DEFINE(M_NOISE, "NOISE", "wgnoise");
-
 
 static inline uint64_t
 siphash24(const uint8_t key[SIPHASH_KEY_LENGTH], const void *src, size_t len)
@@ -231,6 +252,39 @@ timer_expired(const struct timespec *birthdate, time_t sec, long nsec)
 	return timespeccmp(&uptime, &expire, >);
 }
 
+/*----------------------------------------------------------------------------*/
+
+int
+noise_init(void)
+{
+#ifdef INVARIANTS
+	lockinit(&noise_mtx, "noise mtx lock", 0, 0);
+
+	LIST_INIT(&noise_locals);
+	LIST_INIT(&noise_remotes);
+	LIST_INIT(&noise_keypairs);
+#endif
+
+	return (0);
+}
+
+void
+noise_deinit(void)
+{
+#ifdef INVARIANTS
+	lockmgr(&noise_mtx, LK_EXCLUSIVE);
+
+	if (!LIST_EMPTY(&noise_locals))
+		panic("%s: noise_local leaked", __func__);
+	if (!LIST_EMPTY(&noise_remotes))
+		panic("%s: noise_remote leaked", __func__);
+	if (!LIST_EMPTY(&noise_keypairs))
+		panic("%s: noise_keypair leaked", __func__);
+
+	lockmgr(&noise_mtx, LK_RELEASE);
+	lockuninit(&noise_mtx);
+#endif
+}
 
 /*----------------------------------------------------------------------------*/
 /* Local configuration */
@@ -255,6 +309,12 @@ noise_local_alloc(void)
 	for (i = 0; i < HT_INDEX_SIZE; i++)
 		LIST_INIT(&l->l_index_hash[i]);
 
+#ifdef INVARIANTS
+	lockmgr(&noise_mtx, LK_EXCLUSIVE);
+	LIST_INSERT_HEAD(&noise_locals, l, _l_entry);
+	lockmgr(&noise_mtx, LK_RELEASE);
+#endif
+
 	return (l);
 }
 
@@ -269,6 +329,12 @@ static void
 noise_local_put(struct noise_local *l)
 {
 	if (refcount_release(&l->l_refcnt)) {
+#ifdef INVARIANTS
+		lockmgr(&noise_mtx, LK_EXCLUSIVE);
+		LIST_REMOVE(l, _l_entry);
+		lockmgr(&noise_mtx, LK_RELEASE);
+#endif
+
 		lockuninit(&l->l_identity_lock);
 		lockuninit(&l->l_remote_lock);
 		lockuninit(&l->l_index_lock);
@@ -369,6 +435,12 @@ noise_remote_alloc(struct noise_local *l,
 	lockmgr(&l->l_identity_lock, LK_SHARED);
 	noise_precompute_ss(l, r);
 	lockmgr(&l->l_identity_lock, LK_RELEASE);
+
+#ifdef INVARIANTS
+	lockmgr(&noise_mtx, LK_EXCLUSIVE);
+	LIST_INSERT_HEAD(&noise_remotes, r, _r_entry);
+	lockmgr(&noise_mtx, LK_RELEASE);
+#endif
 
 	return (r);
 }
@@ -522,6 +594,12 @@ void
 noise_remote_put(struct noise_remote *r)
 {
 	if (refcount_release(&r->r_refcnt)) {
+#ifdef INVARIANTS
+		lockmgr(&noise_mtx, LK_EXCLUSIVE);
+		LIST_REMOVE(r, _r_entry);
+		lockmgr(&noise_mtx, LK_RELEASE);
+#endif
+
 		noise_local_put(r->r_local);
 		lockuninit(&r->r_handshake_lock);
 		lockuninit(&r->r_keypair_lock);
@@ -739,6 +817,12 @@ void
 noise_keypair_put(struct noise_keypair *kp)
 {
 	if (refcount_release(&kp->kp_refcnt)) {
+#ifdef INVARIANTS
+		lockmgr(&noise_mtx, LK_EXCLUSIVE);
+		LIST_REMOVE(kp, _kp_entry);
+		lockmgr(&noise_mtx, LK_RELEASE);
+#endif
+
 		noise_remote_put(kp->kp_remote);
 		lockuninit(&kp->kp_counter_lock);
 		explicit_bzero(kp, sizeof(*kp));
@@ -1287,6 +1371,12 @@ noise_begin_session(struct noise_remote *r)
 	r->r_handshake_state = HANDSHAKE_DEAD;
 	LIST_REMOVE(r_i, i_entry);
 	lockmgr(&l->l_index_lock, LK_RELEASE);
+
+#ifdef INVARIANTS
+	lockmgr(&noise_mtx, LK_EXCLUSIVE);
+	LIST_INSERT_HEAD(&noise_keypairs, kp, _kp_entry);
+	lockmgr(&noise_mtx, LK_RELEASE);
+#endif
 
 	explicit_bzero(&r->r_handshake, sizeof(r->r_handshake));
 	return (true);

@@ -42,6 +42,9 @@ struct noise_local;
 struct noise_remote;
 struct noise_keypair;
 
+int	noise_init(void);
+void	noise_deinit(void);
+
 /* Local configuration */
 struct noise_local *
 	noise_local_alloc(void);

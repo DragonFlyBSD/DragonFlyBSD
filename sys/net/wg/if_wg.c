@@ -2945,6 +2945,9 @@ wg_module_init(void)
 	ret = cookie_init();
 	if (ret != 0)
 		return (ret);
+	ret = noise_init();
+	if (ret != 0)
+		return (ret);
 
 	ret = if_clone_attach(&wg_cloner);
 	if (ret != 0)
@@ -2970,6 +2973,7 @@ wg_module_deinit(void)
 
 	if_clone_detach(&wg_cloner);
 
+	noise_deinit();
 	cookie_deinit();
 
 	for (i = 0; i < ncpus; i++)
