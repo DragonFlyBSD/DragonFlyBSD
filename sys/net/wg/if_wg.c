@@ -305,7 +305,7 @@ static const char wgname[] = "wg";
 static volatile unsigned long peer_counter = 0;
 
 static struct objcache *wg_packet_zone;
-static struct lock wg_lock;
+static struct lock wg_mtx;
 static struct taskqueue **wg_taskqueues; /* one taskqueue per CPU */
 static struct radix_node_head *wg_maskhead; /* shared by all interfaces */
 static LIST_HEAD(, wg_softc) wg_list = LIST_HEAD_INITIALIZER(wg_list);
@@ -2784,9 +2784,9 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 	/* DLT_NULL link-layer header: a 4-byte field in host byte order */
 	bpfattach(ifp, DLT_NULL, sizeof(uint32_t));
 
-	lockmgr(&wg_lock, LK_EXCLUSIVE);
+	lockmgr(&wg_mtx, LK_EXCLUSIVE);
 	LIST_INSERT_HEAD(&wg_list, sc, sc_entry);
-	lockmgr(&wg_lock, LK_RELEASE);
+	lockmgr(&wg_mtx, LK_RELEASE);
 
 	return (0);
 }
@@ -2843,9 +2843,9 @@ wg_clone_destroy(struct ifnet *ifp)
 	if_detach(ifp);
 	if_free(ifp);
 
-	lockmgr(&wg_lock, LK_EXCLUSIVE);
+	lockmgr(&wg_mtx, LK_EXCLUSIVE);
 	LIST_REMOVE(sc, sc_entry);
-	lockmgr(&wg_lock, LK_RELEASE);
+	lockmgr(&wg_mtx, LK_RELEASE);
 
 	lockmgr(&sc->sc_lock, LK_RELEASE);
 	lockuninit(&sc->sc_lock);
@@ -2884,7 +2884,7 @@ wg_module_init(void)
 {
 	int i, ret;
 
-	lockinit(&wg_lock, "wg lock", 0, 0);
+	lockinit(&wg_mtx, "wg mtx lock", 0, 0);
 
 	wg_packet_zone = objcache_create_simple(M_WG_PACKET,
 						sizeof(struct wg_packet));
@@ -2924,10 +2924,10 @@ wg_module_deinit(void)
 {
 	int i;
 
-	lockmgr(&wg_lock, LK_EXCLUSIVE);
+	lockmgr(&wg_mtx, LK_EXCLUSIVE);
 
 	if (!LIST_EMPTY(&wg_list)) {
-		lockmgr(&wg_lock, LK_RELEASE);
+		lockmgr(&wg_mtx, LK_RELEASE);
 		return (EBUSY);
 	}
 
@@ -2945,8 +2945,8 @@ wg_module_deinit(void)
 	if (wg_packet_zone != NULL)
 		objcache_destroy(wg_packet_zone);
 
-	lockmgr(&wg_lock, LK_RELEASE);
-	lockuninit(&wg_lock);
+	lockmgr(&wg_mtx, LK_RELEASE);
+	lockuninit(&wg_mtx);
 
 	return (0);
 }
