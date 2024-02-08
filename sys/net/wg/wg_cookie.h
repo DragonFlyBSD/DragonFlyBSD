@@ -20,6 +20,10 @@
 #ifndef _NET_WG_COOKIE_H_
 #define _NET_WG_COOKIE_H_
 
+#ifndef _KERNEL
+#error "This file should not be included by userland programs."
+#endif
+
 #include <crypto/chachapoly.h>
 #include <crypto/blake2/blake2s.h>
 
