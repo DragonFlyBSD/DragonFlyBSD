@@ -43,7 +43,6 @@
 #include <sys/time.h>
 
 #include <machine/atomic.h>
-#include <machine/cpufunc.h> /* cpu_sfence() */
 
 #include <net/bpf.h>
 #include <net/ethernet.h> /* ETHERMTU */
@@ -210,7 +209,7 @@ struct wg_packet {
 	struct mbuf		*p_mbuf;
 	int			 p_mtu;
 	sa_family_t		 p_af;
-	enum wg_packet_state	 p_state;
+	unsigned int		 p_state; /* atomic */
 };
 
 STAILQ_HEAD(wg_packet_list, wg_packet);
@@ -1821,9 +1820,8 @@ wg_encrypt(struct wg_softc *sc, struct wg_packet *pkt)
 	struct wg_peer		*peer;
 	struct noise_remote	*remote;
 	struct mbuf		*m;
+	unsigned int		 padlen, state = WG_PACKET_DEAD;
 	uint32_t		 idx;
-	unsigned int		 padlen;
-	enum wg_packet_state	 state = WG_PACKET_DEAD;
 
 	remote = noise_keypair_remote(pkt->p_keypair);
 	peer = noise_remote_arg(remote);
@@ -1848,8 +1846,7 @@ wg_encrypt(struct wg_softc *sc, struct wg_packet *pkt)
 
 out:
 	pkt->p_mbuf = m;
-	cpu_sfence(); /* Update p_state only after p_mbuf. */
-	pkt->p_state = state;
+	atomic_store_rel_int(&pkt->p_state, state);
 	taskqueue_enqueue(peer->p_send_taskqueue, &peer->p_send_task);
 	noise_remote_put(remote);
 }
@@ -1860,8 +1857,8 @@ wg_decrypt(struct wg_softc *sc, struct wg_packet *pkt)
 	struct wg_peer		*peer, *allowed_peer;
 	struct noise_remote	*remote;
 	struct mbuf		*m;
+	unsigned int		 state = WG_PACKET_DEAD;
 	int			 len;
-	enum wg_packet_state	 state = WG_PACKET_DEAD;
 
 	remote = noise_keypair_remote(pkt->p_keypair);
 	peer = noise_remote_arg(remote);
@@ -1915,8 +1912,7 @@ wg_decrypt(struct wg_softc *sc, struct wg_packet *pkt)
 
 out:
 	pkt->p_mbuf = m;
-	cpu_sfence(); /* Update p_state only after p_mbuf. */
-	pkt->p_state = state;
+	atomic_store_rel_int(&pkt->p_state, state);
 	taskqueue_enqueue(peer->p_recv_taskqueue, &peer->p_recv_task);
 	noise_remote_put(remote);
 }
@@ -1982,7 +1978,7 @@ wg_deliver_out(void *arg, int pending __unused)
 	cpu = mycpuid;
 
 	while ((pkt = wg_queue_dequeue_serial(queue)) != NULL) {
-		if (pkt->p_state != WG_PACKET_CRYPTED) {
+		if (atomic_load_acq_int(&pkt->p_state) != WG_PACKET_CRYPTED) {
 			IFNET_STAT_INC(sc->sc_ifp, oerrors, 1);
 			wg_packet_free(pkt);
 			continue;
@@ -2030,9 +2026,9 @@ wg_deliver_in(void *arg, int pending __unused)
 	ifp = sc->sc_ifp;
 
 	while ((pkt = wg_queue_dequeue_serial(queue)) != NULL) {
-		if (pkt->p_state != WG_PACKET_CRYPTED ||
-		    noise_keypair_counter_check(pkt->p_keypair,
-						pkt->p_counter) != 0) {
+		if (atomic_load_acq_int(&pkt->p_state) != WG_PACKET_CRYPTED ||
+		    noise_keypair_counter_check(pkt->p_keypair, pkt->p_counter)
+		    != 0) {
 			IFNET_STAT_INC(ifp, ierrors, 1);
 			wg_packet_free(pkt);
 			continue;
