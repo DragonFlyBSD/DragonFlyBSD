@@ -1838,9 +1838,6 @@ wg_encrypt(struct wg_softc *sc, struct wg_packet *pkt)
 	data->r_idx = idx;
 	data->counter = htole64(pkt->p_counter);
 
-	/* Reset mbuf flags. */
-	m->m_flags &= ~MBUF_CLEARFLAGS;
-
 	state = WG_PACKET_CRYPTED;
 
 out:
@@ -1907,10 +1904,6 @@ wg_decrypt(struct wg_softc *sc, struct wg_packet *pkt)
 			peer->p_id);
 		goto out;
 	}
-
-	/* Reset mbuf flags. */
-	m->m_flags &= ~MBUF_CLEARFLAGS;
-	m->m_pkthdr.csum_flags = 0; /* Tunneled packet was not offloaded. */
 
 	state = WG_PACKET_CRYPTED;
 
@@ -1990,6 +1983,7 @@ wg_deliver_out(void *arg, int pending __unused)
 		}
 
 		m = pkt->p_mbuf;
+		m->m_flags &= ~MBUF_CLEARFLAGS;
 		len = m->m_pkthdr.len;
 
 		pkt->p_mbuf = NULL;
@@ -2052,7 +2046,25 @@ wg_deliver_in(void *arg, int pending __unused)
 		IFNET_STAT_INC(ifp, ibytes, rx_bytes);
 
 		if (m->m_pkthdr.len > 0) {
+			if (ifp->if_capenable & IFCAP_RXCSUM) {
+				/*
+				 * The packet is authentic as ensured by the
+				 * AEAD tag, so we can tell the networking
+				 * stack that this packet has valid checksums
+				 * and thus is unnecessary to check again.
+				 */
+				if (m->m_pkthdr.csum_flags & CSUM_IP)
+					m->m_pkthdr.csum_flags |=
+					    (CSUM_IP_CHECKED | CSUM_IP_VALID);
+				if (m->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
+					m->m_pkthdr.csum_flags |=
+					    (CSUM_DATA_VALID | CSUM_PSEUDO_HDR);
+					m->m_pkthdr.csum_data = 0xffff;
+				}
+			}
+			m->m_flags &= ~MBUF_CLEARFLAGS;
 			m->m_pkthdr.rcvif = ifp;
+
 			BPF_MTAP_AF(ifp, m, pkt->p_af);
 
 			netisr_queue((pkt->p_af == AF_INET ?
@@ -2641,9 +2653,10 @@ wg_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 	struct wg_softc		*sc;
 	struct ifreq		*ifr;
 	bool			 privileged;
-	int			 ret;
+	int			 ret, mask;
 
 	sc = ifp->if_softc;
+	ifr = (struct ifreq *)data;
 	ret = 0;
 
 	switch (cmd) {
@@ -2674,11 +2687,15 @@ wg_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 			wg_down(sc);
 		break;
 	case SIOCSIFMTU:
-		ifr = (struct ifreq *)data;
 		if (ifr->ifr_mtu <= 0 || ifr->ifr_mtu > MAX_MTU)
 			ret = EINVAL;
 		else
 			ifp->if_mtu = ifr->ifr_mtu;
+		break;
+	case SIOCSIFCAP:
+		mask = ifp->if_capenable ^ ifr->ifr_reqcap;
+		if (mask & IFCAP_RXCSUM)
+			ifp->if_capenable ^= IFCAP_RXCSUM;
 		break;
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
@@ -2823,6 +2840,7 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 	ifp->if_softc = sc;
 	ifp->if_mtu = DEFAULT_MTU;
 	ifp->if_flags = IFF_NOARP | IFF_MULTICAST;
+	ifp->if_capabilities = ifp->if_capenable = IFCAP_RXCSUM;
 	ifp->if_output = wg_output;
 	ifp->if_ioctl = wg_ioctl;
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
