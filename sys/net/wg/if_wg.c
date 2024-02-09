@@ -2535,7 +2535,7 @@ wg_ioctl_set(struct wg_softc *sc, struct wg_data_io *data)
 			noise_remote_put(remote);
 			remote = NULL;
 		}
-		aip_p = &peer_p->p_aips[peer_p->p_aips_count];
+		aip_p = &peer_p->p_aips[peer_o.p_aips_count];
 		peer_p = (struct wg_peer_io *)aip_p;
 	}
 
