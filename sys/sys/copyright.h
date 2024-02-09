@@ -28,14 +28,14 @@
 
 
 /* Copyrights macros  */
-  
+
 /* FreeBSD */
 #define COPYRIGHT_FreeBSD \
 	"Copyright (c) 1992-2003 The FreeBSD Project.\n"
 
 /* DragonFly */
 #define COPYRIGHT_DragonFly \
-	"Copyright (c) 2003-2023 The DragonFly Project.\n"
+	"Copyright (c) 2003-2024 The DragonFly Project.\n"
 
 /* Berkeley */
 #define COPYRIGHT_UCB \
