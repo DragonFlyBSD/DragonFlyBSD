@@ -898,7 +898,8 @@ top:
 		}
 	}
 	if (clearaddr) {
-		strlcpy(afp->af_ridreq, IfName, sizeof(afp->af_ridreq));
+		/* NOTE: Don't use sizeof because af_ridreq is 'void *'. */
+		strlcpy(afp->af_ridreq, IfName, IFNAMSIZ);
 		if (ioctl(s, afp->af_difaddr, afp->af_ridreq) < 0) {
 			if (errno == EADDRNOTAVAIL && doalias >= 0) {
 				/* means no previous address for interface */
@@ -914,7 +915,8 @@ top:
 		}
 	}
 	if (newaddr && (setaddr || setmask)) {
-		strlcpy(afp->af_addreq, IfName, sizeof(afp->af_addreq));
+		/* NOTE: Don't use sizeof because af_addreq is 'void *'. */
+		strlcpy(afp->af_addreq, IfName, IFNAMSIZ);
 		if (ioctl(s, afp->af_aifaddr, afp->af_addreq) < 0)
 			Perror("ioctl (SIOCAIFADDR)");
 	}
