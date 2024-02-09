@@ -78,7 +78,7 @@ void	callback_register(callback_func *, void *);
 	{ name, param, { .c_func = func }, 0, NULL }
 #define	DEF_CMD_ARG(name, func)		\
 	{ .c_name = name, .c_parameter = NEXTARG, \
-		.c_u = { .c_func = func }, 0, NULL }
+	  .c_u = { .c_func = func }, 0, NULL }
 #define	DEF_CMD_OPTARG(name, func)	\
 	{ name, OPTARG, { .c_func = func }, 0, NULL }
 #define	DEF_CMD_ARG2(name, func)	\
@@ -132,10 +132,10 @@ struct afswtch {
 void	af_register(struct afswtch *);
 
 struct option {
-	const char *opt;
-	const char *opt_usage;
-	void	(*cb)(const char *arg);
-	struct option *next;
+	const char	*opt;
+	const char	*opt_usage;
+	void		(*cb)(const char *arg);
+	struct option	*next;
 };
 void	opt_register(struct option *);
 

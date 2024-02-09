@@ -343,7 +343,7 @@ in6_getprefix(const char *plen, int which)
 		memset(&sin->sin6_addr, 0xff, sizeof(struct in6_addr));
 		return;
 	}
-	memset((void *)&sin->sin6_addr, 0x00, sizeof(sin->sin6_addr));
+	memset(&sin->sin6_addr, 0x00, sizeof(sin->sin6_addr));
 	for (cp = (u_char *)&sin->sin6_addr; len > 7; len -= 8)
 		*cp++ = 0xff;
 	*cp = 0xff << (8 - len);

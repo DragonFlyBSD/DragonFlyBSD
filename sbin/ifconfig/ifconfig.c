@@ -177,7 +177,6 @@ calcorders(struct ifaddrs *ifa, struct ifa_queue *q)
 
 		if (ifa->ifa_addr) {
 			af = ifa->ifa_addr->sa_family;
-
 			if (af < nitems(cur->af_orders) &&
 			    cur->af_orders[af] == 0)
 				cur->af_orders[af] = ++ord;
@@ -1015,6 +1014,8 @@ notealias(const char *addr __unused, int param, int s __unused,
 			memcpy(rqtosa(af_ridreq), rqtosa(af_addreq),
 			       rqtosa(af_addreq)->sa_len);
 	}
+#undef rqtosa
+
 	doalias = param;
 	if (param < 0) {
 		clearaddr = true;
@@ -1022,7 +1023,6 @@ notealias(const char *addr __unused, int param, int s __unused,
 	} else {
 		clearaddr = false;
 	}
-#undef rqtosa
 }
 
 static void
@@ -1389,9 +1389,10 @@ printb(const char *s, unsigned v, const char *bits)
 				any = 1;
 				for (; (c = *bits) > 32; bits++)
 					putchar(c);
-			} else
+			} else {
 				for (; *bits > 32; bits++)
 					;
+			}
 		}
 		putchar('>');
 	}
@@ -1400,10 +1401,10 @@ printb(const char *s, unsigned v, const char *bits)
 void
 ifmaybeload(const char *name)
 {
-#define MOD_PREFIX_LEN		3	/* "if_" */
+#define MOD_PREFIX	"if_"
 	struct module_stat mstat;
 	int fileid, modid;
-	char ifkind[IFNAMSIZ + MOD_PREFIX_LEN], ifname[IFNAMSIZ], *dp;
+	char ifkind[IFNAMSIZ + sizeof(MOD_PREFIX) - 1], ifname[IFNAMSIZ], *dp;
 	const char *cp;
 
 	/* loading suppressed by the user */
@@ -1412,15 +1413,15 @@ ifmaybeload(const char *name)
 
 	/* trim the interface number off the end */
 	strlcpy(ifname, name, sizeof(ifname));
-	for (dp = ifname; *dp != 0; dp++)
+	for (dp = ifname; *dp != 0; dp++) {
 		if (isdigit(*dp)) {
 			*dp = 0;
 			break;
 		}
+	}
 
 	/* turn interface and unit into module name */
-	strlcpy(ifkind, "if_", sizeof(ifkind));
-	strlcat(ifkind, ifname, sizeof(ifkind));
+	snprintf(ifkind, sizeof(ifkind), "%s%s", MOD_PREFIX, ifname);
 
 	/* scan files in kernel */
 	mstat.version = sizeof(struct module_stat);
@@ -1437,8 +1438,7 @@ ifmaybeload(const char *name)
 				cp = mstat.name;
 			}
 			/* already loaded? */
-			if (strcmp(ifname, cp) == 0 ||
-			    strcmp(ifkind, cp) == 0)
+			if (strcmp(ifname, cp) == 0 || strcmp(ifkind, cp) == 0)
 				return;
 		}
 	}

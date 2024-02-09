@@ -117,7 +117,7 @@ clone_setdefcallback(const char *ifprefix, clone_callback_func *p)
  * no parameters.
  */
 static void
-ifclonecreate(int s, __unused void *arg)
+ifclonecreate(int s, void *arg __unused)
 {
 	struct ifreq ifr;
 	struct clone_defcb *dcp;
