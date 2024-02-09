@@ -37,6 +37,8 @@
 #ifndef IFCONFIG_IFCONFIG_H
 #define IFCONFIG_IFCONFIG_H
 
+#include <stdbool.h>
+
 struct afswtch;
 struct cmd;
 
@@ -138,11 +140,11 @@ struct option {
 void	opt_register(struct option *);
 
 extern	char IfName[IFNAMSIZ];	/* name of interface */
-extern	int supmedia;
-extern	int printkeys;
-extern	int printifname;
-extern	int newaddr;
-extern	int verbose;
+extern	bool supmedia;
+extern	bool printkeys;
+extern	bool printifname;
+extern	bool newaddr;
+extern	bool verbose;
 extern	int exit_code;
 extern	char *f_inet, *f_inet6, *f_ether, *f_addr, *f_scope;
 

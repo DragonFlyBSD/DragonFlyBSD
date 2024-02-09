@@ -42,6 +42,7 @@
 
 #include <err.h>
 #include <ifaddrs.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -355,7 +356,7 @@ in6_getaddr(const char *s, int which)
 	struct addrinfo hints, *res;
 	int error = -1;
 
-	newaddr &= 1;
+	newaddr = true;
 
 	sin->sin6_len = sizeof(*sin);
 	if (which != MASK)

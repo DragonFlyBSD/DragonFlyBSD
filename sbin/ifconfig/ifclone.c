@@ -150,7 +150,7 @@ ifclonecreate(int s, __unused void *arg)
 	 */
 	if (strncmp(IfName, ifr.ifr_name, sizeof(IfName)) != 0) {
 		strlcpy(IfName, ifr.ifr_name, sizeof(IfName));
-		printifname = 1;
+		printifname = true;
 	}
 }
 

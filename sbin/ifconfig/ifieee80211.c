@@ -86,6 +86,7 @@
 #include <langinfo.h>
 #include <locale.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -156,7 +157,7 @@ static const char *get_string(const char *val, const char *sep,
 static void print_string(const u_int8_t *buf, int len);
 static void print_regdomain(const struct ieee80211_regdomain *, int);
 static void print_channels(int, const struct ieee80211req_chaninfo *,
-    int allchans, int verbose);
+    bool allchans, bool verbose);
 static void regdomain_makechannels(struct ieee80211_regdomain_req *,
     const struct ieee80211_devcaps_req *);
 static const char *mesh_linkstate_string(uint8_t state);
@@ -520,7 +521,8 @@ setregdomain_cb(int s, void *arg)
 		printf("htcaps    : 0x%x\n", dc->dc_htcaps);
 		memcpy(chaninfo, &dc->dc_chaninfo,
 		    IEEE80211_CHANINFO_SPACE(&dc->dc_chaninfo));
-		print_channels(s, &dc->dc_chaninfo, 1/*allchans*/, 1/*verbose*/);
+		print_channels(s, &dc->dc_chaninfo, true /* allchans */,
+		    true /* verbose */);
 	}
 #endif
 	req = malloc(IEEE80211_REGDOMAIN_SIZE(dc->dc_chaninfo.ic_nchans));
@@ -540,7 +542,8 @@ setregdomain_cb(int s, void *arg)
 			errx(1, "no space for channel list");
 		memcpy(chaninfo, &req->chaninfo,
 		    IEEE80211_CHANINFO_SPACE(&req->chaninfo));
-		print_channels(s, &req->chaninfo, 1/*allchans*/, 1/*verbose*/);
+		print_channels(s, &req->chaninfo, true /* allchans */,
+		    true /* verbose */);
 	}
 	if (req->chaninfo.ic_nchans == 0)
 		errx(1, "no channels calculated");
@@ -3774,7 +3777,7 @@ chanpref(const struct ieee80211_channel *c)
 
 static void
 print_channels(int s, const struct ieee80211req_chaninfo *chans,
-	int allchans, int verb)
+	bool allchans, bool verb)
 {
 	struct ieee80211req_chaninfo *achans;
 	uint8_t reported[IEEE80211_CHAN_BYTES];
@@ -3842,7 +3845,7 @@ print_channels(int s, const struct ieee80211req_chaninfo *chans,
 }
 
 static void
-list_channels(int s, int allchans)
+list_channels(int s, bool allchans)
 {
 	getchaninfo(s);
 	print_channels(s, chaninfo, allchans, verbose);
@@ -4239,7 +4242,8 @@ list_regdomain(int s, int channelsalso)
 		spacer = ':';
 		print_regdomain(&regdomain, 1);
 		LINE_BREAK();
-		print_channels(s, chaninfo, 1/*allchans*/, 1/*verbose*/);
+		print_channels(s, chaninfo, true /* allchans */,
+		    true /* verbose */);
 	} else
 		print_regdomain(&regdomain, verbose);
 }
@@ -4298,9 +4302,9 @@ set80211list(const char *arg, int d __unused, int s,
 	else if (iseq(arg, "lscan"))
 		list_scan(s, 1);
 	else if (iseq(arg, "chan") || iseq(arg, "freq"))
-		list_channels(s, 1);
+		list_channels(s, true);
 	else if (iseq(arg, "active"))
-		list_channels(s, 0);
+		list_channels(s, false);
 	else if (iseq(arg, "keys"))
 		list_keys(s);
 	else if (iseq(arg, "caps"))

@@ -68,11 +68,11 @@
 
 /* Globals */
 char	IfName[IFNAMSIZ];	/* name of interface */
-int	newaddr = 1;
-int	verbose;
-int	supmedia = 0;
-int	printkeys = 0;		/* Print keying material for interfaces. */
-int	printifname = 0;	/* Print the name of the created interface. */
+bool	newaddr = true;
+bool	verbose;
+bool	supmedia = false;
+bool	printkeys = false;	/* Print keying material for interfaces. */
+bool	printifname = false;	/* Print the name of the created interface. */
 int	exit_code = 0;
 char	*f_inet, *f_inet6, *f_ether, *f_addr;	/* Formatter strings */
 
@@ -96,11 +96,11 @@ static void setformat(char *input);
 static struct option *opts = NULL;
 static char *descr = NULL;
 static size_t descrlen = 64;
-static int clearaddr;
+static bool clearaddr;
 static int doalias;
-static int noload;
-static int setaddr;
-static int setmask;
+static bool noload;
+static bool setaddr;
+static bool setmask;
 
 struct ifa_order_elt {
 	int		if_order;
@@ -348,8 +348,8 @@ setformat(char *input)
 int
 main(int argc, char *argv[])
 {
-	int c, all, namesonly, downonly, uponly;
-	int ifindex, flags;
+	int c, ifindex, flags;
+	bool all, namesonly, downonly, uponly;
 	const struct afswtch *afp = NULL;
 	const struct sockaddr_dl *sdl;
 	const char *ifname, *matchgroup, *nogroup;
@@ -362,7 +362,9 @@ main(int argc, char *argv[])
 	char *envformat, *cp;
 	char options[1024];
 
-	all = downonly = uponly = namesonly = verbose = noload = 0;
+	doalias = 0;
+	all = downonly = uponly = namesonly = verbose = false;
+	clearaddr = noload = setaddr = setmask = false;
 	f_inet = f_inet6 = f_ether = f_addr = NULL;
 	matchgroup = nogroup = NULL;
 
@@ -383,10 +385,10 @@ main(int argc, char *argv[])
 	while ((c = getopt(argc, argv, options)) != -1) {
 		switch (c) {
 		case 'a':	/* scan all interfaces */
-			all++;
+			all = true;
 			break;
 		case 'd':	/* restrict scan to "down" interfaces */
-			downonly++;
+			downonly = true;
 			break;
 		case 'f':
 			setformat(optarg);
@@ -397,22 +399,22 @@ main(int argc, char *argv[])
 			nogroup = optarg;
 			break;
 		case 'k':
-			printkeys++;
+			printkeys = true;
 			break;
 		case 'l':	/* scan interface names only */
-			namesonly++;
+			namesonly = true;
 			break;
 		case 'm':	/* show media choices in status */
-			supmedia = 1;
+			supmedia = true;
 			break;
 		case 'n':	/* suppress module loading */
-			noload++;
+			noload = true;
 			break;
 		case 'u':	/* restrict scan to "up" interfaces */
-			uponly++;
+			uponly = true;
 			break;
 		case 'v':
-			verbose++;
+			verbose = true;
 			break;
 		case 'g':
 			if (all) {
@@ -894,7 +896,7 @@ top:
 		if (afp->af_ridreq == NULL || afp->af_difaddr == 0) {
 			warnx("interface %s cannot change %s addresses!",
 			      IfName, afp->af_name);
-			clearaddr = 0;
+			clearaddr = false;
 		}
 	}
 	if (clearaddr) {
@@ -911,7 +913,7 @@ top:
 		if (afp->af_addreq == NULL || afp->af_aifaddr == 0) {
 			warnx("interface %s cannot change %s addresses!",
 			      IfName, afp->af_name);
-			newaddr = 0;
+			newaddr = false;
 		}
 	}
 	if (newaddr && (setaddr || setmask)) {
@@ -936,9 +938,9 @@ setifaddr(const char *addr, int dummy __unused, int s __unused,
 	 * The address interpretation may depend on the flags,
 	 * and the flags may change when the address is set.
 	 */
-	setaddr++;
+	setaddr = true;
 	if (doalias == 0 && afp->af_af != AF_LINK)
-		clearaddr = 1;
+		clearaddr = true;
 	afp->af_getaddr(addr, (doalias >= 0 ? ADDR : RIDADDR));
 }
 
@@ -990,7 +992,7 @@ setifnetmask(const char *addr, int dummy __unused, int s __unused,
 	     const struct afswtch *afp)
 {
 	if (afp->af_getaddr != NULL) {
-		setmask++;
+		setmask = true;
 		afp->af_getaddr(addr, MASK);
 	}
 }
@@ -1015,10 +1017,10 @@ notealias(const char *addr __unused, int param, int s __unused,
 	}
 	doalias = param;
 	if (param < 0) {
-		clearaddr = 1;
-		newaddr = 0;
+		clearaddr = true;
+		newaddr = false;
 	} else {
-		clearaddr = 0;
+		clearaddr = false;
 	}
 #undef rqtosa
 }
@@ -1165,7 +1167,7 @@ setifname(const char *val, int dummy __unused, int s,
 	if (ioctl(s, SIOCSIFNAME, &ifr) < 0)
 		err(1, "ioctl SIOCSIFNAME (set name)");
 
-	printifname = 1;
+	printifname = true;
 	strlcpy(IfName, newname, sizeof(IfName));
 }
 
@@ -1233,16 +1235,17 @@ status(const struct afswtch *afp, const struct sockaddr_dl *sdl __unused,
 	struct ifreq ifr;
 	struct ifstat ifs;
 	struct ifaddrs *ift;
-	int allfamilies, s;
+	bool allfamilies;
+	int s;
 
 	memset(&ifr, 0, sizeof(ifr));
 	strlcpy(ifr.ifr_name, IfName, sizeof(ifr.ifr_name));
 
 	if (afp == NULL) {
-		allfamilies = 1;
+		allfamilies = true;
 		ifr.ifr_addr.sa_family = AF_LOCAL;
 	} else {
-		allfamilies = 0;
+		allfamilies = false;
 		ifr.ifr_addr.sa_family =
 		    afp->af_af == AF_LINK ? AF_LOCAL : afp->af_af;
 	}
