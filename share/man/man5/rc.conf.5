@@ -103,6 +103,17 @@ postfix in the name of a variable for starting a service can be
 omitted (as in
 .Nx ) .
 .Bl -tag -width indent-two
+.It Va rc_conf_files
+.Pq Vt str
+This option is used to specify a list of files that will override
+the settings in
+.Pa /etc/defaults/rc.conf .
+The files will be read in the order in which they are specified and should
+include the full path to the file.
+By default, the files specified are
+.Pa /etc/rc.conf
+and
+.Pa /etc/rc.conf.local
 .It Va rc_debug
 .Pq Vt bool
 If set to
@@ -1028,17 +1039,6 @@ By default,
 .Xr ppp 8
 is started as
 .Dq Li root .
-.It Va rc_conf_files
-.Pq Vt str
-This option is used to specify a list of files that will override
-the settings in
-.Pa /etc/defaults/rc.conf .
-The files will be read in the order in which they are specified and should
-include the full path to the file.
-By default, the files specified are
-.Pa /etc/rc.conf
-and
-.Pa /etc/rc.conf.local
 .It Va fsck_y_enable
 .Pq Vt bool
 If set to
