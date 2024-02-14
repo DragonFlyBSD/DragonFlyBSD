@@ -59,7 +59,8 @@ MAN=	acct.5 \
 	tmpfs.5 \
 	utmpx.5 \
 	uuids.5 \
-	varsym.conf.5
+	varsym.conf.5 \
+	wg.conf.5
 
 .if defined(WANT_HESIOD)
 MAN+=	hesiod.conf.5
@@ -76,5 +77,6 @@ MLINKS+=passwd.5 master.passwd.5
 MLINKS+=resolver.5 resolv.conf.5
 MLINKS+=utmpx.5 lastlogx.5 \
 	utmpx.5 wtmpx.5
+MLINKS+=wg.conf.5 wireguard.conf.5
 
 .include <bsd.prog.mk>

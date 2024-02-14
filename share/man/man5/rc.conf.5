@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd May 30, 2021
+.Dd February 14, 2024
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -1039,6 +1039,33 @@ By default,
 .Xr ppp 8
 is started as
 .Dq Li root .
+.It Va wg_enable
+.Pq Vt bool
+Set to
+.Dq Li YES
+to configure the
+.Xr wg 4
+interfaces specified in
+.Va wg_interfaces
+below.
+.It Va wg_interfaces
+.Pq Vt str
+Specify the list of
+.Xr wg 4
+interfaces to configure.
+Each listed interface is configured according to its config file at
+.Pa /etc/wireguard/ Ns Ao Ar interface Ac Ns Pa .conf .
+Refer to
+.Xr wg.conf 5
+for more information.
+.It Va wg_config_dir
+.Pq Vt str
+Specify the directory to find the config files for the
+.Xr wg 4
+interfaces listed in
+.Va wg_interfaces .
+The default is
+.Pa /etc/wireguard .
 .It Va fsck_y_enable
 .Pq Vt bool
 If set to
@@ -2724,6 +2751,7 @@ By default no flags are passed.
 .Xr tcp 4 ,
 .Xr udp 4 ,
 .Xr vlan 4 ,
+.Xr wg 4 ,
 .Xr autofs 5 ,
 .Xr auto_master 5 ,
 .Xr exports 5 ,

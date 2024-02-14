@@ -59,7 +59,15 @@ The interfaces can be created at runtime using the
 .Ic ifconfig Cm wg Ns Ar N Cm create
 command, and then can be configured with
 .Xr ifconfig 8 .
-.Pp
+In addition, the
+.Nm
+.Xr rc 8
+script can be used to easily manage the interfaces; refer to
+.Xr rc.conf 5
+and
+.Xr wg.conf 5
+for the details.
+.Ss Terminology
 The following glossary provides a brief overview of WireGuard terminology:
 .Bl -tag -width indent -offset 3n
 .It Peer
@@ -204,6 +212,7 @@ is not assigned to the allowed IPs of Peer X.
 .Xr inet 4 ,
 .Xr ip 4 ,
 .Xr netintro 4 ,
+.Xr wg.conf 5 ,
 .Xr ifconfig 8
 .Rs
 .%T WireGuard whitepaper

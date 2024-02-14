@@ -1,0 +1,319 @@
+.\" Copyright (c) 2024 The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd February 14, 2024
+.Dt WG.CONF 5
+.Os
+.Sh NAME
+.Nm wg.conf
+.Nd WireGuard configuration file
+.Sh SYNOPSIS
+.Pa /etc/wireguard/ Ns Va ${ifname} Ns .conf
+.Sh DESCRIPTION
+The
+.Nm
+file is used by the WireGuard
+.Xr rc 8
+script to manage a
+.Xr wg 4
+interface.
+The file format is very similar to that of the
+.Xr wg-quick 8
+tool on Linux or
+.Fx ,
+but has necessary differences and minor additions.
+.Pp
+The format is based on INI.
+Blank lines and comment lines (i.e., the first non-blank character is
+.Sq #
+or
+.Sq \&; )
+are ignored;
+however, in-line comments are now allowed.
+Backslash continuation is supported, so a long line may be split into
+multiple lines by ending the lines with a backslash
+.Pq Sq \e .
+The section and field names are case-insensitive.
+There must be one and only one
+.Va Interface
+section, while there can be zero or more
+.Va Peer
+sections.
+.Pp
+The
+.Va Interface
+section may contain the following fields:
+.Bl -tag -width ".It Description" -offset indent
+.It Description
+A description string.
+.It PrivateKey
+.Pq required
+The base64-encoded private key of the interface.
+.It ListenPort
+The UDP port to listen on.
+If not specified, it will be chosen automatically.
+.It Address
+.Pq required
+A comma-separated list of IPv4 or IPv6 addresses (optionally with CIDR masks)
+to be assigned to the interface.
+May be specified multiple times.
+.\" TODO: uncomment this when ifconfig(8)'s wgcookie is ready ...
+.\" .It Cookie
+.\" A 32-bit unsigned integer to mark the packets going through the interface,
+.\" so that they can be easily manipulated in the kernel, e.g., by
+.\" .Xr ipfw 4
+.\" or
+.\" .Xr pf 4 .
+.It MTU
+The explicit MTU to specify for the interface to override the default value.
+.It PreUp
+The command to be executed by
+.Xr sh 1
+before bringing up the interface.
+The special string
+.Dq %i
+will be expanded to the name of the interface.
+If the command execution fails (i.e., a non-zero return value),
+a warning message will be printed and the configuration procedure
+will continue.
+May be specified multiple times, in which case the commands are executed
+in the same order as specified.
+.It PostUp
+Similar to the
+.Va PreUp
+above, but the commands will be executed after bringing up the interface.
+This is most commonly used to configure custom routes, DNS resolvers,
+or firewall rules.
+.It PreDown
+Similar to the
+.Va PreUp
+above, but the commands will be executed before bringing down the interface.
+.It PostDown
+Similar to the
+.Va PreUp
+above, but the commands will be executed after bringing down the interface.
+.El
+.Pp
+The
+.Va Peer
+section may contain the following fields:
+.Bl -tag -width ".It PersistentKeepalive" -offset indent
+.It Enabled
+If set to
+.Dq false
+or
+.Dq no ,
+the peer is disabled and will be ignored.
+.It Description
+A description string.
+.It PublicKey
+.Pq required
+The base64-encoded public key of the peer.
+.It PresharedKey
+The base64-encoded pre-shared key, which can strengthen the
+Diffie-Hellman exchange.
+.It Endpoint
+The endpoint address, which may be of formats
+.Dq domain:port ,
+.Dq ipv4:port ,
+or
+.Dq [ipv6]:port .
+.Sy Note:
+At least one peer in each pair must specify the endpoint address.
+.It AllowedIPs
+.Pq required
+A comma-separated list of IPv4 or IPv6 addresses with CIDR masks,
+from which the incoming traffic to this peer is allowed,
+and to which the outgoing traffic from this peer is directed.
+May be specified multiple times.
+.It PersistentKeepalive
+The interval in seconds of keepalive packets to be sent to the peer,
+for the purpose of keeping a stateful firewall or NAT mapping valid
+persistently.
+If unspecified or set to
+.Dq 0
+or
+.Dq off ,
+this function is disabled.
+.El
+.Pp
+.Sy Note:
+The WireGuard
+.Xr rc 8
+script would not add/delete routes according to the peer's allowed IPs,
+because
+.Dx
+currently doesn't support multiple routing tables (or FIBs),
+without which it is hard to reliably generate the correct routes,
+especially to override the default routes.
+Therefore, users should manually determine the routes and
+manage them with the
+.Va PostUp
+and
+.Va PreDown
+hooks.
+.Sh FILES
+.Bl -tag -width "/etc/wireguard/${ifname}.conf" -compat
+.It Pa /etc/wireguard/ Ns Va ${ifname} Ns .conf
+The configuration file for
+.Xr wg 4
+interface named
+.Va ${ifname} .
+.It Pa /etc/rc.d/wg
+The WireGuard
+.Xr rc 8
+script.
+.El
+.Sh EXAMPLES
+.Ss Server Configuration
+This example sets up a WireGuard peer as the server,
+to which the other peers (i.e., clients) can connect.
+The allowed peers are specified with their public keys.
+Note that we use
+.Dq /24
+and
+.Dq /64
+for the interface's addresses, but use
+.Dq /32
+and
+.Dq /128
+for the peers' allowed IPs.
+In this way, with IP forwarding enabled, the server peer acts like
+an LAN switch and then all peers can communicate with each other.
+.Bd -literal -offset indent
+[Interface]
+PrivateKey = <private-key>
+Address = 10.6.66.1/24
+Address = fc00:6:66::1/64
+ListenPort = 6666
+PostUp = sysctl net.inet.ip.forwarding=1
+PostUp = sysctl net.inet6.ip6.forwarding=1
+
+[Peer]
+Description = my peer #1
+PublicKey = <public-key>
+AllowedIPs = 10.6.66.2/32, fc00:6:66::2/128
+
+[Peer]
+Enabled = false
+Description = my peer #2
+PublicKey = <public-key>
+AllowedIPs = 10.6.66.3/32
+.Ed
+.Ss Client Configuration
+The following example configures a WireGuard peer that connects to
+the above server, which is assumed to have an address of
+.Dq wg.example.com .
+Note that the peer's allowed IPs must be the LAN networks (e.g.,
+.Dq 10.6.66.0/24 )
+instead of the specific IP addresses of the server peer (e.g.,
+.Dq 10.6.66.1/32 ) ;
+in this way, the system will auto-configure the routes
+for such directly connected networks.
+In addition, the persistent keepalive function is enabled to make
+this peer always try to keep the connection, so that other peers
+can connect to this peer anytime.
+.Bd -literal -offset indent
+[Interface]
+PrivateKey = <private-key>
+Address = 10.6.66.2/24, fc00:6:66::2/64
+
+[Peer]
+PublicKey = <public-key>
+Endpoint = wg.example.com:6666
+AllowedIPs = 10.6.66.0/24
+AllowedIPs = fc00:6:66::/64
+PersistentKeepalive = 25
+.Ed
+.Pp
+The following example configures a WireGuard peer that forwards all its
+IPv4 traffic to the other peer, which must have NAT configured,
+e.g., by using
+.Xr pf 4 .
+The whole IPv4 network (i.e.,
+.Dq 0.0.0.0/0 )
+is split into
+.Dq 0.0.0.0/1
+and
+.Dq 128.0.0.0/1 ,
+so that the existing default route is kept intact.
+.Bd -literal -offset indent
+[Interface]
+PrivateKey = <private-key>
+Address = 10.6.66.2/24
+PostUp = route add -host <peer-addr> \e
+	$(route get -inet default | awk '/gateway:/ { print $2 }')
+PostUp = route add -net 0.0.0.0/1 -interface %i
+PostUp = route add -net 128.0.0.0/1 -interface %i
+PreDown = route delete -host <peer-addr>
+PreDown = route delete -net 0.0.0.0/1
+PreDown = route delete -net 128.0.0.0/1
+
+[Peer]
+PublicKey = <public-key>
+Endpoint = <peer-addr>:<peer-port>
+AllowedIPs = 0.0.0.0/0
+PersistentKeepalive = 25
+.Ed
+.Ss Command-line Usage
+Suppose the
+.Xr wg 4
+interface is called
+.Sy mywg ,
+and its
+.Nm
+configuration file has been already prepared.
+To create and start the interface:
+.Pp
+.Dl $ /etc/rc.d/wg onestart mywg
+.Pp
+which is equivalent to
+.Ql wg-quick up mywg .
+.Pp
+To stop and destroy the interface:
+.Pp
+.Dl $ /etc/rc.d/wg onestop mywg
+.Pp
+which is equivalent to
+.Ql wg-quick down mywg .
+.Sh SEE ALSO
+.Xr wg 4 ,
+.Xr rc.conf 5 ,
+.Xr ifconfig 8
+.Sh HISTORY
+The WireGuard
+.Xr rc 8
+script was written by
+.An Aaron LI Aq Mt aly@aaronly.me
+and appeared in
+.Dx 6.5 .
+.Sh AUTHORS
+.An -nosplit
+This manual page was written by
+.An Aaron LI Aq Mt aly@aaronly.me .

@@ -25,7 +25,7 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS \
 	sysctl syslogd sysvipcd \
 	ttys udevd udevd_early \
 	varsym vfs_quota vinum virecover vkernel vknetd \
-	watchdogd wpa_supplicant \
+	watchdogd wg wpa_supplicant \
 	ypbind yppasswdd ypserv ypset ypupdated ypxfrd
 
 FILESDIR=	/etc/rc.d

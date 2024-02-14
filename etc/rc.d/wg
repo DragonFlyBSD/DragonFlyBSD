@@ -1,0 +1,520 @@
+#!/bin/sh
+#
+# Copyright (c) 2024 The DragonFly Project.  All rights reserved.
+#
+# This code is derived from software contributed to The DragonFly Project
+# by Aaron LI <aly@aaronly.me>
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the
+#    distribution.
+# 3. Neither the name of The DragonFly Project nor the names of its
+#    contributors may be used to endorse or promote products derived
+#    from this software without specific, prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+# COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+# OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGE.
+#
+
+# PROVIDE: wg wireguard
+# REQUIRE: NETWORKING
+# BEFORE:  DAEMON
+
+# uncomment to show extra debug logs
+#WG_DEBUG=yes
+# uncomment to not actually execute the commands
+#WG_DRYRUN=yes
+# directory to find the WireGuard config files
+WG_CONFIG_DIR="/etc/wireguard"
+
+. /etc/rc.subr
+
+name="wg"
+rcvar=$(set_rcvar)
+start_cmd="${name}_start"
+stop_cmd="${name}_stop"
+status_cmd="${name}_status"
+extra_commands="status"
+
+# usage: wg_run cmd ...
+wg_run()
+{
+	if [ -n "${WG_DRYRUN}" ]; then
+		printf "[+] %s\n" "$*"
+		return
+	fi
+	debug "[+] $*"
+	"$@"
+}
+
+# similar to wg_run(), but exit if the command fails.
+wg_must_run()
+{
+	wg_run "$@"
+	local ret=$?
+	if [ ${ret} -ne 0 ]; then
+		err ${ret} "return code: ${ret}, command was: $*"
+	fi
+}
+
+# usage: wg_load_config <conffile>
+wg_load_config()
+{
+	local conffile=$1
+	local ifname=$(basename ${conffile} .conf)
+
+	debug "loading [${ifname}] configs from file: ${conffile}"
+	local configs=$(awk -v ifname="${ifname}" -v debugvar="${WG_DEBUG}" '
+	BEGIN {
+		SUBSEP = "_"
+
+		# conversion table for hex2dec()
+		xdigits = "0123456789abcdef"
+		for (i = 0; i < length(xdigits); i++) {
+			k = substr(xdigits, i + 1, 1)
+			decv[k] = i
+			decv[toupper(k)] = i
+		}
+	}
+
+	function debug(msg) {
+		if (!debugvar)
+			return
+		printf("wg [%s]: DEBUG: %s\n", ifname, msg) > "/dev/stderr"
+	}
+	function info(msg) {
+		printf("wg [%s]: INFO: %s\n", ifname, msg) > "/dev/stderr"
+	}
+	function warn(msg) {
+		printf("wg [%s]: WARNING: %s\n", ifname, msg) > "/dev/stderr"
+	}
+	function error(code, msg) {
+		printf("wg [%s]: ERROR: %s\n", ifname, msg) > "/dev/stderr"
+		exit code
+	}
+	function hex2dec(x,   v) {
+		# The 0x prefix is optional.
+		v = 0
+		for (i = 1; i <= length(x); i++)
+			v = 16 * v + decv[substr(x, i, 1)]
+		return v
+	}
+	function fix_integer(v) {
+		if (v == "off")
+			return 0
+		else if (v ~ /^0[xX][[:xdigit:]]+$/)
+			return hex2dec(v)
+		else
+			return v + 0
+	}
+	function fix_boolean(v) {
+		v = tolower(v)
+		if (v == "1" || v == "true" || v == "on" || v == "yes")
+			return "true"
+		else
+			return "false"
+	}
+	function fix_endpoint(v) {
+		if (v ~ /^\[/) {
+			# Assume IPv6: [ipv6]:port
+			sub(/\[/, "", v)
+			sub(/\]:/, " ", v)
+		} else {
+			# Assume IPv4 or domain: ipv4:port, domain:port
+			sub(/:/, " ", v)
+		}
+		return v
+	}
+	function fix_address(v,   n, a) {
+		# Comma-separated IPv4/IPv6, with optional CIDR masks
+		n = split(v, addrs, /[, ]+/)
+		v = ""
+		for (i = 1; i <= n; i++) {
+			a = addrs[i]
+			if (!index(a, "/")) {
+				if (index(a, ":"))
+					a = a "/128"
+				else
+					a = a "/32"
+			}
+			v = v " " a
+		}
+		return v
+	}
+	function fix_aips(v,   n) {
+		# Comma-separated IPv4/IPv6 with CIDR masks
+		n = split(v, aips, /[, ]+/)
+		v = ""
+		for (i = 1; i <= n; i++)
+			v = v " " aips[i]
+		return v
+	}
+	function trim(s) {
+		gsub(/^[ \t]+|[ \t]+$/, "", s)
+		return s
+	}
+	function quote(s) {
+		# NOTE: \047 is the single quote.
+		gsub(/\047/, "\047\\\047\047", s)
+		gsub(/^|$/, "\047", s)
+		return s
+	}
+
+	NF == 0 || $1 ~ /^[#;]/ {
+		next
+	}
+	$1 ~ /^\[/ {
+		section = tolower($1)
+		if (section == "[interface]") {
+			is_interface = 1
+			is_peer = 0
+		} else if (section == "[peer]") {
+			is_interface = 0
+			is_peer = 1
+			peer_count++
+		} else {
+			is_interface = 0
+			is_peer = 0
+			warn(sprintf("unknown section: %s", section))
+		}
+		next
+	}
+	!(is_interface || is_peer) {
+		warn(sprintf("skip unknown %s: %s", section, $0))
+		next
+	}
+	$0 !~ /^[ \t]*[[:alnum:]]+[ \t]*=[ \t]*[^ \t].*$/ {
+		warn(sprintf("skip invalid line: %s", $0))
+		next
+	}
+	{
+		match($0, /^[ \t]*[[:alnum:]]+[ \t]*=/)
+		key = trim(tolower(substr($0, 1, RLENGTH - 1)))
+		value = trim(substr($0, RLENGTH + 1))
+		if (key == "" || value == "")
+			error(1, "code bug") # already skipped; cannot happen
+
+		# Join split lines.
+		while (value ~ /\\$/) {
+			if ((getline vline) <= 0) {
+				warn(sprintf("incomplete value of |%s|: %s",
+					     key, value))
+				break
+			}
+			value = substr(value, 1, length(value) - 1)
+			value = value " " trim(vline)
+		}
+
+		if (is_interface) {
+			debug(sprintf("interface: |%s| = |%s|", key, value))
+			if (key == "description" || key == "privatekey" ||
+			    key == "listenport" || key == "mtu") {
+				interface[key] = value
+			} else if (key == "cookie" || key == "fwmark") {
+				key = "cookie"
+				interface[key] = fix_integer(value)
+			} else if (key == "address") {
+				old = interface[key]
+				interface[key] = old " " fix_address(value)
+			} else if (key == "preup" || key == "postup" ||
+				   key == "predown" || key == "postdown") {
+				gsub(/%i/, ifname, value)
+				n = ++interface[key "_count"]
+				interface[key n] = value
+			} else {
+				info(sprintf("ignore unsupported interface " \
+					     "config: %s = %s", key, value))
+				next
+			}
+		} else {
+			debug(sprintf("peer[%d]: |%s| = |%s|",
+				      peer_count, key, value))
+			if (key == "description" || key == "publickey" ||
+			    key == "presharedkey") {
+				peers[peer_count, key] = value
+			} else if (key == "endpoint") {
+				peers[peer_count, key] = fix_endpoint(value)
+			} else if (key == "allowedips") {
+				old = peers[peer_count, key]
+				peers[peer_count, key] = old " " fix_aips(value)
+			} else if (key == "persistentkeepalive") {
+				peers[peer_count, key] = fix_integer(value)
+			} else if (key == "enabled") {
+				peers[peer_count, key] = fix_boolean(value)
+			} else {
+				info(sprintf("ignore unsupported peer " \
+					     "config: %s = %s", key, value))
+				next
+			}
+		}
+	}
+
+	END {
+		for (key in interface)
+			printf("_wg_interface_%s=%s;\n",
+			       key, quote(interface[key]))
+
+		printf("_wg_peer_count=%s;\n", quote(peer_count))
+		for (key in peers)
+			printf("_wg_peer%s=%s;\n", key, quote(peers[key]))
+	}' "${conffile}") || exit $?
+
+	local msg=$(printf "eval configs: {{{\n%s\n}}}\n" "${configs}")
+	debug "${msg}"
+
+	eval "${configs}"
+}
+
+# usage: wg_set_interface <ifname>
+wg_set_interface()
+{
+	local ifname=$1
+
+	local privkey=${_wg_interface_privatekey}
+	local port=${_wg_interface_listenport}
+	local cookie=${_wg_interface_cookie}
+
+	local args=
+	if [ -z "${privkey}" ]; then
+		err 1 "interface is missing the private key"
+	else
+		args="wgkey ${privkey}"
+	fi
+	if [ -n "${port}" ]; then
+		args="${args} wgport ${port}"
+	fi
+	if [ -n "${cookie}" ]; then
+		args="${args} wgcookie ${cookie}"
+	fi
+	wg_must_run ifconfig ${ifname} ${args}
+
+	local addrs=${_wg_interface_address}
+	local addr af
+	for addr in ${addrs}; do
+		case ${addr} in
+		*:*)
+			af=inet6
+			;;
+		*)
+			af=inet
+			;;
+		esac
+		wg_run ifconfig ${ifname} ${af} ${addr} alias
+	done
+
+	local descr=${_wg_interface_description}
+	if [ -n "${descr}" ]; then
+		wg_run ifconfig ${ifname} description "${descr}"
+	fi
+
+	local mtu=${_wg_interface_mtu}
+	if [ -n "${mtu}" ]; then
+		wg_run ifconfig ${ifname} mtu ${mtu}
+	fi
+}
+
+# usage: wg_set_peer <ifname> <peerid>
+wg_set_peer()
+{
+	local ifname=$1
+	local peerid=$2
+
+	local enabled
+	eval 'enabled="${_wg_'${peerid}'_enabled}"'
+	if [ "${enabled}" = "false" ]; then
+		info "peer [${peerid}] is disabled"
+		return
+	fi
+
+	local publickey
+	eval 'publickey="${_wg_'${peerid}'_publickey}"'
+	if [ -z "${publickey}" ]; then
+		warn "peer [${peerid}] is missing the public key"
+		return
+	fi
+	local cmd="ifconfig ${ifname} wgpeer ${publickey}"
+
+	local descr
+	eval 'descr="${_wg_'${peerid}'_description}"'
+	if [ -n "${descr}" ]; then
+		wg_run ${cmd} wgdescription "${descr}"
+	fi
+
+	local psk endpoint pka aips
+	eval 'psk="${_wg_'${peerid}'_presharedkey}"'
+	eval 'endpoint="${_wg_'${peerid}'_endpoint}"'
+	eval 'pka="${_wg_'${peerid}'_persistentkeepalive}"'
+	eval 'aips="${_wg_'${peerid}'_allowedips}"'
+
+	local args= aip
+	if [ -n "${psk}" ]; then
+		args="${args} wgpsk ${psk}"
+	fi
+	if [ -n "${endpoint}" ]; then
+		args="${args} wgendpoint ${endpoint}"
+	fi
+	if [ -n "${pka}" ]; then
+		args="${args} wgpka ${pka}"
+	fi
+	# All allowed IPs must be configured at once.
+	for aip in ${aips}; do
+		args="${args} wgaip ${aip}"
+	done
+	wg_run ${cmd} ${args}
+}
+
+# usage: wg_exec_hook <preup|postup|predown|postdown>
+wg_exec_hook()
+{
+	local hook=$1
+	local count
+
+	case ${hook} in
+	preup|postup|predown|postdown)
+		eval 'count="${_wg_interface_'${hook}'_count:-0}"'
+		;;
+	*)
+		err 1 "unknown hook: ${hook}"
+		;;
+	esac
+
+	debug "executing [${hook}] hook (${count} actions) ..."
+
+	local i=1 cmd ret
+	while [ ${i} -le ${count} ]; do
+		eval 'cmd="${_wg_interface_'${hook}${i}'}"'
+		wg_run sh -c "${cmd}"
+		ret=$?
+		if [ ${ret} -ne 0 ]; then
+			warn "return code: ${ret}, command was: sh -c '${cmd}'"
+		fi
+		i=$((i + 1))
+	done
+}
+
+# usage: wg_start_interface <ifname>
+wg_start_interface()
+{
+	local ifname=$1
+	info "starting interface [${ifname}] ..."
+
+	local conffile="${WG_CONFIG_DIR}/${ifname}.conf"
+	if [ ! -r "${conffile}" ]; then
+		err 1 "cannot read config file: ${conffile}"
+	fi
+
+	wg_load_config "${conffile}"
+
+	wg_exec_hook preup
+
+	local cmd
+	if expr "${ifname}" : '^wg[0-9]+$' > /dev/null; then
+		cmd="ifconfig ${ifname} create"
+	else
+		cmd="ifconfig wg create name ${ifname}"
+	fi
+	wg_must_run ${cmd} > /dev/null
+
+	wg_set_interface ${ifname}
+
+	local i=1
+	while [ ${i} -le ${_wg_peer_count:-0} ]; do
+		wg_set_peer ${ifname} "peer${i}"
+		i=$((i + 1))
+	done
+
+	wg_run ifconfig ${ifname} up
+
+	wg_exec_hook postup
+
+	info "interface [${ifname}] started."
+}
+
+# usage: wg_stop_interface <ifname>
+wg_stop_interface()
+{
+	local ifname=$1
+	info "stopping interface [${ifname}] ..."
+
+	local conffile="${WG_CONFIG_DIR}/${ifname}.conf"
+	if [ ! -r "${conffile}" ]; then
+		err 1 "cannot read config file: ${conffile}"
+	fi
+
+	wg_load_config "${conffile}"
+
+	wg_exec_hook predown
+
+	wg_run ifconfig ${ifname} down
+	wg_run ifconfig ${ifname} destroy
+
+	wg_exec_hook postdown
+
+	info "interface [${ifname}] stopped."
+}
+
+wg_start()
+{
+	local ifname
+	for ifname in ${wg_interfaces}; do
+		if [ "${ifname}" = "wg" ]; then
+			warn "skip invalid interface name: ${ifname}"
+			continue
+		fi
+		if ifconfig -n ${ifname} >/dev/null 2>&1; then
+			warn "interface [${ifname}] already exists."
+			continue
+		fi
+		# Use a sub-shell to avoid mixing the configurations of
+		# different interfaces.
+		( wg_start_interface ${ifname} )
+	done
+}
+
+wg_stop()
+{
+	local ifname
+	for ifname in ${wg_interfaces}; do
+		if ! ifconfig -n ${ifname} >/dev/null 2>&1; then
+			warn "interface [${ifname}] does not exist."
+			continue
+		fi
+		( wg_stop_interface ${ifname} )
+	done
+}
+
+wg_status()
+{
+	local ifname
+	for ifname in ${wg_interfaces}; do
+		wg_run ifconfig -n ${ifname}
+	done
+}
+
+load_rc_config ${name}
+
+cmd=$1
+shift
+if [ $# -gt 0 ]; then
+	wg_interfaces="$@"
+fi
+debug "interfaces: ${wg_interfaces}"
+
+run_rc_command "${cmd}"
