@@ -2246,38 +2246,6 @@ error:
 	wg_timers_event_want_initiation(peer);
 }
 
-static inline void
-xmit_err(struct ifnet *ifp, struct mbuf *m, struct wg_packet *pkt,
-	 sa_family_t af)
-{
-	bool oerror = false;
-
-	if (m != NULL) {
-		if (af == AF_INET) {
-			icmp_error(m, ICMP_UNREACH, ICMP_UNREACH_HOST, 0, 0);
-			oerror = true;
-#ifdef INET6
-		} else if (af == AF_INET6) {
-			icmp6_error(m, ICMP6_DST_UNREACH, 0, 0);
-			oerror = true;
-#endif
-		} else {
-			m_freem(m);
-		}
-
-		if (pkt != NULL)
-			pkt->p_mbuf = NULL;
-	}
-
-	if (pkt != NULL)
-		wg_packet_free(pkt);
-
-	if (oerror)
-		IFNET_STAT_INC(ifp, oerrors, 1);
-	else
-		IFNET_STAT_INC(ifp, oqdrops, 1);
-}
-
 static int
 wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	  struct rtentry *rt)
@@ -2304,6 +2272,12 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	}
 
 	wg_bpf_ptap(ifp, m, dst->sa_family);
+
+	if (__predict_false(m->m_pkthdr.loop_cnt++ > MAX_LOOPS)) {
+		DPRINTF(sc, "Packet looped\n");
+		ret = ELOOP;
+		goto error;
+	}
 
 	defragged = m_defrag(m, M_NOWAIT);
 	if (defragged != NULL)
@@ -2344,18 +2318,11 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		ret = ENOKEY;
 		goto error;
 	}
-
 	if (__predict_false(peer->p_endpoint.e_remote.r_sa.sa_family
 			    == AF_UNSPEC)) {
 		DPRINTF(sc, "No valid endpoint has been configured or "
 			"discovered for peer %ld\n", peer->p_id);
 		ret = EHOSTUNREACH;
-		goto error;
-	}
-
-	if (__predict_false(m->m_pkthdr.loop_cnt++ > MAX_LOOPS)) {
-		DPRINTF(sc, "Packet looped");
-		ret = ELOOP;
 		goto error;
 	}
 
@@ -2366,9 +2333,28 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	return (0);
 
 error:
+	IFNET_STAT_INC(ifp, oerrors, 1);
+	if (ret == ELOOP) {
+		/* Skip ICMP error for ELOOP to avoid infinite loop. */
+		m_freem(m); /* m cannot be NULL */
+		m = NULL;
+	}
+	if (m != NULL) {
+		if (af == AF_INET)
+			icmp_error(m, ICMP_UNREACH, ICMP_UNREACH_HOST, 0, 0);
+#ifdef INET6
+		else if (af == AF_INET6)
+			icmp6_error(m, ICMP6_DST_UNREACH, 0, 0);
+#endif
+		else
+			m_freem(m);
+	}
+	if (pkt != NULL) {
+		pkt->p_mbuf = NULL; /* m already freed above */
+		wg_packet_free(pkt);
+	}
 	if (peer != NULL)
 		noise_remote_put(peer->p_remote);
-	xmit_err(ifp, m, pkt, af);
 	return (ret);
 }
 
