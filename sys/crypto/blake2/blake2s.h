@@ -44,9 +44,6 @@ void blake2s_update(struct blake2s_state *state, const uint8_t *in,
 		    size_t inlen);
 void blake2s_final(struct blake2s_state *state, uint8_t *out);
 
-void blake2s_hmac(uint8_t *out, const uint8_t *in, const uint8_t *key,
-		  size_t outlen, size_t inlen, size_t keylen);
-
 static inline void
 blake2s(uint8_t *out, const uint8_t *in, const uint8_t *key,
 	size_t outlen, size_t inlen, size_t keylen)
