@@ -1601,6 +1601,7 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 	m = pkt->p_mbuf;
 	e = &pkt->p_endpoint;
 
+	/* m_pullup() may change 'm', so must update 'pkt->p_mbuf'. */
 	if ((pkt->p_mbuf = m = m_pullup(m, m->m_pkthdr.len)) == NULL)
 		goto error;
 
@@ -1721,10 +1722,16 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 	wg_timers_event_any_authenticated_packet_traversal(peer);
 
 not_authenticated:
-	peer->p_rx_bytes[mycpuid] += m->m_pkthdr.len;
 	IFNET_STAT_INC(sc->sc_ifp, ipackets, 1);
 	IFNET_STAT_INC(sc->sc_ifp, ibytes, m->m_pkthdr.len);
+	peer->p_rx_bytes[mycpuid] += m->m_pkthdr.len;
+	noise_remote_put(remote);
+	wg_packet_free(pkt);
+
+	return;
+
 error:
+	IFNET_STAT_INC(sc->sc_ifp, ierrors, 1);
 	if (remote != NULL)
 		noise_remote_put(remote);
 	wg_packet_free(pkt);
