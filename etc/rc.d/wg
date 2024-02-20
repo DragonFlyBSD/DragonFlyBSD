@@ -41,8 +41,6 @@
 #WG_DEBUG=yes
 # uncomment to not actually execute the commands
 #WG_DRYRUN=yes
-# directory to find the WireGuard config files
-WG_CONFIG_DIR="/etc/wireguard"
 
 . /etc/rc.subr
 
@@ -415,7 +413,7 @@ wg_start_interface()
 	local ifname=$1
 	info "starting interface [${ifname}] ..."
 
-	local conffile="${WG_CONFIG_DIR}/${ifname}.conf"
+	local conffile="${wg_config_dir}/${ifname}.conf"
 	if [ ! -r "${conffile}" ]; then
 		err 1 "cannot read config file: ${conffile}"
 	fi
@@ -453,7 +451,7 @@ wg_stop_interface()
 	local ifname=$1
 	info "stopping interface [${ifname}] ..."
 
-	local conffile="${WG_CONFIG_DIR}/${ifname}.conf"
+	local conffile="${wg_config_dir}/${ifname}.conf"
 	if [ ! -r "${conffile}" ]; then
 		err 1 "cannot read config file: ${conffile}"
 	fi
