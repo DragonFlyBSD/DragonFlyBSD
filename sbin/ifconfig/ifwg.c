@@ -177,9 +177,9 @@ wg_setpeer(const char *peerkey, int arg __unused, int s __unused,
 	wg_data_grow(sizeof(*wg_peer));
 
 	if (wg_aip == NULL)
-		wg_peer = &wg_interface->i_peers[0];
+		wg_peer = &wg_interface->i_peers[0]; /* first peer */
 	else
-		wg_peer = (struct wg_peer_io *)wg_aip;
+		wg_peer = (struct wg_peer_io *)wg_aip; /* end of last peer */
 	wg_aip = &wg_peer->p_aips[0];
 
 	if (b64_pton(peerkey, wg_peer->p_public, WG_KEY_SIZE) != WG_KEY_SIZE)
@@ -289,7 +289,7 @@ wg_unsetpeerpka(const char *x __unused, int arg __unused, int s __unused,
 		const struct afswtch *afp __unused)
 {
 	if (wg_peer == NULL)
-		errx(1, "wgpka: wgpeer not set");
+		errx(1, "-wgpka: wgpeer not set");
 
 	wg_peer->p_pka = 0;
 	wg_peer->p_flags |= WG_PEER_HAS_PKA;
@@ -298,8 +298,8 @@ wg_unsetpeerpka(const char *x __unused, int arg __unused, int s __unused,
 }
 
 static void
-wg_setpeerep(const char *host, const char *service, int s __unused,
-	     const struct afswtch *afp __unused)
+wg_setpeerendpoint(const char *host, const char *service, int s __unused,
+		   const struct afswtch *afp __unused)
 {
 	struct addrinfo *ai;
 	int error;
@@ -458,7 +458,7 @@ static struct cmd wg_cmds[] = {
 	DEF_CMD("-wgpsk",		0,	wg_unsetpeerpsk),
 	DEF_CMD_ARG("wgpka",			wg_setpeerpka),
 	DEF_CMD("-wgpka",		0,	wg_unsetpeerpka),
-	DEF_CMD_ARG2("wgendpoint",		wg_setpeerep),
+	DEF_CMD_ARG2("wgendpoint",		wg_setpeerendpoint),
 	DEF_CMD_ARG("wgdescr",			wg_setpeerdesc),
 	DEF_CMD_ARG("wgdescription",		wg_setpeerdesc),
 	DEF_CMD("-wgdescr",		0,	wg_unsetpeerdesc),
