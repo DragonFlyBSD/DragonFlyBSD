@@ -1077,6 +1077,7 @@ enum bits {
 #define RT_DEVICEID_8161			0x8161		/* For RTL8168 Series add-on card */
 #define RT_DEVICEID_8136			0x8136		/* For RTL8101E */
 #define RT_DEVICEID_8125			0x8125		/* For RTL8125 */
+#define RT_DEVICEID_2600			0x2600		/* For E2600 Killer Ethernet */
 
 /*
  * Accton PCI vendor ID
