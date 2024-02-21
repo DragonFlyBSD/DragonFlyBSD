@@ -178,6 +178,9 @@ static const struct re_type {
 	{ PCI_VENDOR_TTTECH, PCI_PRODUCT_TTTECH_MC322,
 	  "TTTech MC322 Gigabit Ethernet" },
 
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT2600,
+           "RealTek Killer E2600 Gigabit Ethernet Controller" },
+
 	{ 0, 0, NULL }
 };
 

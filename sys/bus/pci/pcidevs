@@ -527,6 +527,7 @@ product REALTEK RT8169SC	0x8167	8169SC/8110SC Single-chip Gigabit Ethernet
 product REALTEK RT8168		0x8168	8168/8111B PCIe Gigabit Ethernet
 product REALTEK RT8169		0x8169	8169 10/100/1000 Ethernet
 product REALTEK RT8180		0x8180	8180 802.11b
+product REALTEK RT2600		0x2600	E2600 PCIe Gigabit Ethernet
 
 /* Hangzhou Silan Microelectronics products */
 product SILAN SC92031		0x2031	SC92031 based fast ethernet adapter
