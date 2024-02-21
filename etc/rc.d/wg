@@ -170,6 +170,8 @@ wg_load_config()
 	}
 	function quote(s) {
 		# NOTE: \047 is the single quote.
+		if (s == "")
+			return "\047\047"
 		gsub(/\047/, "\047\\\047\047", s)
 		gsub(/^|$/, "\047", s)
 		return s
@@ -269,6 +271,7 @@ wg_load_config()
 			printf("_wg_interface_%s=%s;\n",
 			       key, quote(interface[key]))
 
+		peer_count += 0  # fix empty value to be 0
 		printf("_wg_peer_count=%s;\n", quote(peer_count))
 		for (key in peers)
 			printf("_wg_peer%s=%s;\n", key, quote(peers[key]))
