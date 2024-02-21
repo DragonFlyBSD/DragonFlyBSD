@@ -170,11 +170,8 @@ wg_load_config()
 	}
 	function quote(s) {
 		# NOTE: \047 is the single quote.
-		if (s == "")
-			return "\047\047"
 		gsub(/\047/, "\047\\\047\047", s)
-		gsub(/^|$/, "\047", s)
-		return s
+		return "\047" s "\047"
 	}
 
 	NF == 0 || $1 ~ /^[#;]/ {
