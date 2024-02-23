@@ -31,7 +31,7 @@
 .\"     @(#)rc.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/share/man/man8/rc.8,v 1.22 2002/12/12 17:25:58 ru Exp $
 .\"
-.Dd July 20, 2018
+.Dd February 22, 2024
 .Dt RC 8
 .Os
 .Sh NAME
@@ -205,15 +205,15 @@ Scripts that are
 .Dq placeholders
 to ensure that certain operations are performed before others.
 In order of startup, these are:
-.Bl -tag -width ".Pa NETWORKING"
+.Bl -tag -width ".Pa FILESYSTEMS"
+.It Pa FILESYSTEMS
+Ensure that root and other critical local file systems are mounted.
 .It Pa NETWORKING
 Ensure basic network services are running, including general
 network configuration
 .Pq Pa netif , routing , network_ipv6 , ppp .
 .It Pa SERVERS
 Ensure basic services (such as
-.Pa NETWORKING
-and
 .Pa syslogd )
 exist for services that start early (such as
 .Pa named ) ,
@@ -222,7 +222,7 @@ because they are required by
 below.
 .It Pa DAEMON
 Check-point before all general purpose daemons such as
-.Pa dhcpd , ftpd
+.Pa dntpd
 and
 .Pa lpd .
 .It Pa LOGIN

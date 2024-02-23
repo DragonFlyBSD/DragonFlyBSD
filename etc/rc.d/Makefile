@@ -5,7 +5,7 @@
 
 # note: bgfsk and lomac left out (from 5.0)
 #
-FILES=	DAEMON LOGIN NETWORKING SERVERS \
+FILES=	DAEMON FILESYSTEMS LOGIN NETWORKING SERVERS \
 	accounting addswap adjkerntz automount automountd autounmountd \
 	bootconf bootparams btconfig bthcid ccd cleanvar cryptdisks \
 	cleartmp cron cryptdisks \

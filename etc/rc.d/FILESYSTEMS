@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# PROVIDE: FILESYSTEMS
+
+#	This is a dummy dependency, for services which require filesystems
+#	to be mounted before starting.
+
+. /etc/rc.subr
+dummy_rc_command "$1"
