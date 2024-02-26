@@ -1,10 +1,8 @@
 #!/bin/sh
-#
-# $FreeBSD$
-#
 
 # PROVIDE: autounmountd
-# REQUIRE: DAEMON
+# REQUIRE: SERVERS
+# BEFORE:  DAEMON
 # KEYWORD: nojail
 
 . /etc/rc.subr

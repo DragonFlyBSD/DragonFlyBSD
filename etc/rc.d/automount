@@ -1,10 +1,8 @@
 #!/bin/sh
-#
-# $FreeBSD$
-#
 
 # PROVIDE: automount
-# REQUIRE: nfsclient automountd
+# REQUIRE: automountd
+# BEFORE:  DAEMON
 # KEYWORD: nojail shutdown
 
 . /etc/rc.subr
@@ -17,13 +15,11 @@ required_modules="autofs"
 
 automount_start()
 {
-
 	/usr/sbin/automount ${automount_flags}
 }
 
 automount_stop()
 {
-
 	/sbin/umount -At autofs
 }
 

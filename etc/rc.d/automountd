@@ -1,10 +1,9 @@
 #!/bin/sh
-#
-# $FreeBSD$
-#
 
 # PROVIDE: automountd
-# REQUIRE: DAEMON
+# REQUIRE: SERVERS
+# REQUIRE: nfsclient
+# BEFORE:  DAEMON
 # KEYWORD: nojail
 
 . /etc/rc.subr
