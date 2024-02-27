@@ -5,7 +5,7 @@
 
 # PROVIDE: random
 # REQUIRE: diskless mountcritlocal initrandom
-# BEFORE: netif
+# BEFORE:  FILESYSTEMS
 # KEYWORD: shutdown
 
 . /etc/rc.subr

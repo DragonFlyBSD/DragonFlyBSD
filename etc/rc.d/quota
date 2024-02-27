@@ -7,8 +7,8 @@
 #
 
 # PROVIDE: quota
-# REQUIRE: mountcritremote
-# BEFORE: DAEMON
+# REQUIRE: mountcritremote ypset
+# BEFORE:  DAEMON
 
 . /etc/rc.subr
 

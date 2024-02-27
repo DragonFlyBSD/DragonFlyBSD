@@ -5,7 +5,7 @@
 #
 
 # PROVIDE: savecore
-# REQUIRE: syslogd
+# REQUIRE: dumpon syslogd
 # BEFORE:  SERVERS
 
 . /etc/rc.subr

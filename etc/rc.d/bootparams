@@ -5,7 +5,7 @@
 #
 
 # PROVIDE: bootparams
-# REQUIRE: rpcbind DAEMON
+# REQUIRE: DAEMON
 # BEFORE:  LOGIN
 
 . /etc/rc.subr

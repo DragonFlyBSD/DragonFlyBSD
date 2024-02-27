@@ -5,8 +5,8 @@
 #
 
 # PROVIDE: newsyslog
-# REQUIRE: mountcritremote sysdb
-# BEFORE:  syslogd SERVERS
+# REQUIRE: mountcritremote
+# BEFORE:  SERVERS
 
 . /etc/rc.subr
 

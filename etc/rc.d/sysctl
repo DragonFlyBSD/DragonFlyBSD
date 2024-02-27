@@ -5,8 +5,9 @@
 #
 
 # PROVIDE: sysctl
-# REQUIRE: root modules
-# BEFORE:  DAEMON
+# REQUIRE: FILESYSTEMS
+# REQUIRE: modules
+# BEFORE:  NETWORKING
 
 . /etc/rc.subr
 

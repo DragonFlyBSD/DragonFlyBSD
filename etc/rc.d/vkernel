@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # PROVIDE: vkernel
-# REQUIRE: LOGIN NETWORKING
+# REQUIRE: LOGIN
 
 . /etc/rc.subr
 

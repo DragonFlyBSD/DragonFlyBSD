@@ -29,7 +29,7 @@
 
 # PROVIDE: diskless
 # REQUIRE: initdiskless rcconf mountcritlocal
-# BEFORE: addswap random
+# BEFORE:  FILESYSTEMS
 
 if [ -r /etc/rc.subr ]; then
     . /etc/rc.subr

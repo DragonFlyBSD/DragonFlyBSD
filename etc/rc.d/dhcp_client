@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # PROVIDE: dhcp_client
-# REQUIRE: mountcritlocal
+# REQUIRE: FILESYSTEMS
 # KEYWORD: nojail nostart
 
 . /etc/rc.subr

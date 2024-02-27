@@ -4,8 +4,8 @@
 #
 
 # PROVIDE: ipfw
-# REQUIRE: ppp
-# BEFORE: NETWORKING
+# REQUIRE: netif ppp
+# BEFORE:  NETWORKING
 
 . /etc/rc.subr
 

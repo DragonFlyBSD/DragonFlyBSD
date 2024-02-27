@@ -4,8 +4,8 @@
 #
 
 # PROVIDE: adjkerntz
-# REQUIRE: diskless mountcritlocal random
-# BEFORE: netif
+# REQUIRE: FILESYSTEMS
+# BEFORE:  NETWORKING
 
 . /etc/rc.subr
 

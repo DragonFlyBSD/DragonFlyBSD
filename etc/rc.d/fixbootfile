@@ -7,8 +7,8 @@
 #
 
 # PROVIDE: fixbootfile
-# REQUIRE: mountcritlocal
-# BEFORE: sysctl
+# REQUIRE: FILESYSTEMS
+# BEFORE:  sysctl
 
 . /etc/rc.subr
 

@@ -5,8 +5,8 @@
 #
 
 # PROVIDE: cleartmp
-# REQUIRE: mountcritremote
-# BEFORE: DAEMON
+# REQUIRE: SERVERS
+# BEFORE:  DAEMON
 
 . /etc/rc.subr
 

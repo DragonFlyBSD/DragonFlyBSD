@@ -5,7 +5,7 @@
 #
 
 # PROVIDE: dmesg
-# REQUIRE: mountcritremote
+# REQUIRE: SERVERS
 # BEFORE:  DAEMON
 
 . /etc/rc.subr

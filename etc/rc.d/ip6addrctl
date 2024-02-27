@@ -4,9 +4,9 @@
 #
 
 # PROVIDE: ip6addrctl
-# REQUIRE: root mountcritlocal
-# BEFORE: netif
-# KEYWORD: nojailvnet
+# REQUIRE: FILESYSTEMS
+# BEFORE:  NETWORKING
+# KEYWORD: nojail
 
 . /etc/rc.subr
 . /etc/network.subr

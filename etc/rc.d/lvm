@@ -5,7 +5,6 @@
 
 # PROVIDE: lvm
 # REQUIRE: udevd_early
-# BEFORE:  mountcritlocal cryptdisks
 
 . /etc/rc.subr
 

@@ -5,7 +5,7 @@
 #
 
 # PROVIDE: localswap
-# REQUIRE: savecore
+# REQUIRE: savecore cryptdisks
 # BEFORE:  SERVERS
 # KEYWORD: shutdown
 

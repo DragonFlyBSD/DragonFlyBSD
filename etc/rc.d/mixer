@@ -28,7 +28,7 @@
 #
 
 # PROVIDE: mixer
-# REQUIRE: root mountcritlocal cleanvar
+# REQUIRE: FILESYSTEMS
 # KEYWORD: nojail shutdown
 
 . /etc/rc.subr

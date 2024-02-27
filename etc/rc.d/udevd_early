@@ -1,7 +1,6 @@
 #!/bin/sh
 
 # PROVIDE: udevd_early
-# BEFORE: mountcritlocal
 
 . /etc/rc.subr
 

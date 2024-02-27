@@ -5,7 +5,8 @@
 #
 
 # PROVIDE: tty
-# REQUIRE: root
+# REQUIRE: FILESYSTEMS
+# BEFORE:  NETWORKING
 
 . /etc/rc.subr
 

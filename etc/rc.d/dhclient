@@ -5,6 +5,7 @@
 #
 
 # PROVIDE: dhclient
+# REQUIRE: FILESYSTEMS
 # KEYWORD: nojail nostart
 
 . /etc/rc.subr

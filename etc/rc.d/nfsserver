@@ -4,7 +4,7 @@
 #
 
 # PROVIDE: nfsserver
-# REQUIRE: NETWORKING mountcritremote
+# REQUIRE: SERVERS
 
 . /etc/rc.subr
 

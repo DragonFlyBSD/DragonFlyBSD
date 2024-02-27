@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # PROVIDE: udevd
-# REQUIRE: mountcritlocal
+# REQUIRE: FILESYSTEMS
 
 . /etc/rc.subr
 

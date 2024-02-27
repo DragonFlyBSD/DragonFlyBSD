@@ -29,7 +29,8 @@
 #
 
 # PROVIDE: network_ipv6
-# REQUIRE: routing
+# REQUIRE: ip6addrctl routing
+# BEFORE:  NETWORKING
 
 . /etc/rc.subr
 . /etc/network.subr

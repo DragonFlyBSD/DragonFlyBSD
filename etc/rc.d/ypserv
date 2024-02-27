@@ -5,7 +5,7 @@
 #
 
 # PROVIDE: ypserv
-# REQUIRE: rpcbind
+# REQUIRE: rpcbind nisdomain
 
 . /etc/rc.subr
 

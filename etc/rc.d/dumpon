@@ -4,8 +4,8 @@
 #
 
 # PROVIDE: dumpon
-# REQUIRE: initrandom
-# BEFORE: disks savecore
+# REQUIRE: initrandom cryptdisks
+# BEFORE:  disks
 
 . /etc/rc.subr
 

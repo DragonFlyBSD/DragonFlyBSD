@@ -2,7 +2,7 @@
 
 # PROVIDE: mounttmpfs
 # REQUIRE: cleanvar
-# BEFORE: netif
+# BEFORE:  FILESYSTEMS
 
 . /etc/rc.subr
 

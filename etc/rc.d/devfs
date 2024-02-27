@@ -5,7 +5,7 @@
 
 # PROVIDE: devfs
 # REQUIRE: rcconf
-# BEFORE: disks initrandom
+# BEFORE:  disks
 
 . /etc/rc.subr
 

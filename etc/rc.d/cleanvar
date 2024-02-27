@@ -5,6 +5,7 @@
 
 # PROVIDE: cleanvar
 # REQUIRE: mountcritlocal
+# BEFORE:  FILESYSTEMS
 
 . /etc/rc.subr
 dummy_rc_command "$1"

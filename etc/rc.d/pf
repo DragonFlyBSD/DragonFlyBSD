@@ -4,8 +4,8 @@
 #
 
 # PROVIDE: pf
-# REQUIRE: root mountcritlocal netif pflog
-# BEFORE:  DAEMON LOGIN
+# REQUIRE: FILESYSTEMS netif pflog
+# BEFORE:  DAEMON
 # KEYWORD: nojail
 
 . /etc/rc.subr

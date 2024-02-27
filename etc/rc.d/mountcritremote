@@ -5,7 +5,8 @@
 #
 
 # PROVIDE: mountcritremote
-# REQUIRE: NETWORKING root mountcritlocal cleanvar
+# REQUIRE: NETWORKING
+# BEFORE:  SERVERS
 
 . /etc/rc.subr
 

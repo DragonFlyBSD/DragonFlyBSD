@@ -6,7 +6,6 @@
 
 # PROVIDE: sysdb
 # REQUIRE: mountcritremote
-# BEFORE:  DAEMON
 
 . /etc/rc.subr
 

@@ -5,7 +5,7 @@
 #
 
 # PROVIDE: nfsd
-# REQUIRE: mountd
+# REQUIRE: nfsserver rpcbind mountd
 # KEYWORD: shutdown
 
 . /etc/rc.subr

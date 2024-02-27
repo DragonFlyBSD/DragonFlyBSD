@@ -6,6 +6,7 @@
 
 # PROVIDE: routed
 # REQUIRE: netif routing
+# BEFORE:  NETWORKING
 
 . /etc/rc.subr
 

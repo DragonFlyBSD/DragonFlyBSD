@@ -28,7 +28,8 @@
 #
 
 # PROVIDE: serial
-# REQUIRE: root
+# REQUIRE: FILESYSTEMS
+# BEFORE:  NETWORKING
 
 . /etc/rc.subr
 dummy_rc_command "$1"

@@ -5,7 +5,8 @@
 #
 
 # PROVIDE: mountcritlocal
-# REQUIRE: root
+# REQUIRE: root lvm cryptdisks
+# BEFORE:  FILESYSTEMS
 
 . /etc/rc.subr
 

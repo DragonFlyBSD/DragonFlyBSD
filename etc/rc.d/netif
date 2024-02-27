@@ -26,7 +26,9 @@
 #
 
 # PROVIDE: netif
-# REQUIRE: cleanvar mountcritlocal serial sppp sysctl tty
+# REQUIRE: FILESYSTEMS
+# REQUIRE: hostname sysctl
+# BEFORE:  NETWORKING
 
 . /etc/rc.subr
 . /etc/network.subr

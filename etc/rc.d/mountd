@@ -5,7 +5,7 @@
 #
 
 # PROVIDE: mountd
-# REQUIRE: NETWORKING mountcritremote nfsserver rpcbind quota
+# REQUIRE: rpcbind nfsserver quota
 # KEYWORD: shutdown
 
 . /etc/rc.subr

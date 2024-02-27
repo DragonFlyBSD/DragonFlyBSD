@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # PROVIDE: dhcpcd
-# REQUIRE: mountcritlocal cleanvar
-# BEFORE: mountcritremote
+# REQUIRE: FILESYSTEMS
+# BEFORE:  NETWORKING
 # KEYWORD: nojail
 
 . /etc/rc.subr

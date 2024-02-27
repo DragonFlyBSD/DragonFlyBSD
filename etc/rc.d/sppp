@@ -4,8 +4,8 @@
 #
 
 # PROVIDE: sppp
-# REQUIRE: root
-# BEFORE: netif
+# REQUIRE: FILESYSTEMS
+# BEFORE:  netif
 
 . /etc/rc.subr
 

@@ -5,7 +5,7 @@
 #
 
 # PROVIDE: virecover
-# REQUIRE: mountcritremote ldconfig
+# REQUIRE: SERVERS
 # BEFORE:  DAEMON
 #
 # XXX: should require `mail'!

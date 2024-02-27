@@ -6,8 +6,8 @@
 #
 
 # PROVIDE: addswap
-# REQUIRE: mountcritlocal
-# BEFORE: sysctl
+# REQUIRE: FILESYSTEMS
+# BEFORE:  LOGIN
 
 . /etc/rc.subr
 

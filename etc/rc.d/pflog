@@ -4,8 +4,7 @@
 #
 
 # PROVIDE: pflog
-# REQUIRE: root mountcritlocal netif
-# BEFORE:  DAEMON LOGIN
+# REQUIRE: FILESYSTEMS netif
 # KEYWORD: nojail
 
 . /etc/rc.subr

@@ -5,7 +5,7 @@
 
 # PROVIDE: devd
 # REQUIRE: netif network_ipv6
-# BEFORE: NETWORKING mountcritremote
+# BEFORE:  NETWORKING
 # KEYWORD: nojail shutdown
 
 . /etc/rc.subr

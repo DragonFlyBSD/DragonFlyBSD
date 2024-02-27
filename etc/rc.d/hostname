@@ -27,8 +27,8 @@
 #
 
 # PROVIDE: hostname
-# REQUIRE: mountcritlocal tty
-# BEFORE:  netif
+# REQUIRE: FILESYSTEMS
+# BEFORE:  NETWORKING
 
 . /etc/rc.subr
 

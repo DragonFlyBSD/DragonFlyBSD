@@ -5,7 +5,7 @@
 #
 
 # PROVIDE: rpcbind
-# REQUIRE: NETWORKING syslogd named
+# REQUIRE: SERVERS
 
 . /etc/rc.subr
 

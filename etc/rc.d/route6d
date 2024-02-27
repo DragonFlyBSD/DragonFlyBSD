@@ -6,6 +6,7 @@
 
 # PROVIDE: route6d
 # REQUIRE: network_ipv6
+# BEFORE:  NETWORKING
 
 . /etc/rc.subr
 

@@ -34,7 +34,8 @@
 #
 
 # PROVIDE: ipfw3
-# BEFORE: NETWORKING
+# REQUIRE: netif
+# BEFORE:  NETWORKING
 
 . /etc/rc.subr
 

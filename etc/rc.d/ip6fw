@@ -4,8 +4,8 @@
 #
 
 # PROVIDE: ip6fw
-# REQUIRE: routing
-# BEFORE: network_ipv6
+# REQUIRE: network_ipv6
+# BEFORE:  NETWORKING
 
 . /etc/rc.subr
 

@@ -4,7 +4,7 @@
 #
 
 # PROVIDE: nfsclient
-# REQUIRE: NETWORKING mountcritremote rpcbind
+# REQUIRE: rpcbind
 # KEYWORD: shutdown
 
 . /etc/rc.subr
