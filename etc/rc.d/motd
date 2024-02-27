@@ -14,7 +14,6 @@ name="motd"
 rcvar="update_motd"
 start_cmd="motd_start"
 stop_cmd=":"
-PERMS="644"
 
 motd_start()
 {
@@ -22,25 +21,31 @@ motd_start()
 	#	Must be done *before* interactive logins are possible
 	#	to prevent possible race conditions.
 	#
+	local target="/etc/motd"
+	local old new exp temp
+
 	echo "Updating motd."
-	if [ ! -f /etc/motd ]; then
-		install -c -o root -g wheel -m ${PERMS} /dev/null /etc/motd
+	if [ ! -f "${target}" ]; then
+		install -o root -g wheel -m 0644 /dev/null ${target}
 	fi
 
-	T1=`mktemp -t motd`
-	awk 'NR == 1{if ($1 == "DragonFly") {print} else {exit 1}}' < /etc/motd > $T1 && {
+	old=$(awk '
+	NR == 1 {
+		if ($1 == "DragonFly") { print } else { exit 1 }
+	}' < ${target})
+	if [ $? -ne 0 ]; then
+		return  # custom motd
+	fi
 
-        T2=`mktemp -t motd`
-        uname -v | sed -e 's,^\([^#]*\) #\(.* [1-2][0-9][0-9][0-9]\).*/\([^\]*\) $,\1 (\3) #\2,' > ${T2}
-        cmp -s $T1 $T2 || {
-                       awk '{if (NR == 1) {next} else {print}}' < /etc/motd >> ${T2}
-                       cp $T2 /etc/motd
-                       chmod ${PERMS} /etc/motd
-                       rm -f $T2
-               }
-	}
-
-	rm -f $T1 $T2
+	exp='s@([^#]*) #(.* [1-2][0-9]{3}).*/([^/ ]+) *$@\1 (\3) #\2@'
+	new=$(uname -v | sed -E -e "${exp}")
+	if [ "${old}" != "${new}" ]; then
+		temp=$(mktemp -t motd)
+		printf '%s\n' "${new}" > ${temp}
+		tail -n +2 ${target} >> ${temp}
+		cat ${temp} > ${target}
+		rm -f ${temp}
+	fi
 }
 
 load_rc_config $name
