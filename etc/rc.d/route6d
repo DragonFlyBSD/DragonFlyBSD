@@ -20,6 +20,6 @@ name="route6d"
 load_rc_config $name
 rcvar="ipv6_router_enable"
 command="${ipv6_router_program:-/usr/sbin/${name}}"
-eval ${name}_flags=\"${ipv6_router_flags}\"
+eval ${name}_flags=\$ipv6_router_flags
 
 run_rc_command "$1"

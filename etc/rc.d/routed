@@ -20,6 +20,6 @@ load_rc_config $name
 
 rcvar="router_enable"
 command="${router_program:-/sbin/${name}}"
-eval ${name}_flags=${router_flags}
+eval ${name}_flags=\$router_flags
 
 run_rc_command "$1"
