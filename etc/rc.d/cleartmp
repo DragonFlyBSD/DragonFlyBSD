@@ -2,7 +2,6 @@
 #
 # $NetBSD: cleartmp,v 1.4 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/cleartmp,v 1.4 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/cleartmp,v 1.7 2008/11/22 18:36:18 swildner Exp $
 #
 
 # PROVIDE: cleartmp
@@ -31,13 +30,10 @@ cleartmp_start()
 		! -name snapshots ! -path "./snapshots/*" \
 		! -name quota.user ! -name quota.group \
 		-exec rm -rf -- {} \; -type d -prune)
-	
-		# Remove X lock files, since they will prevent you from
-		# restarting X
-		#
-		rm -f /tmp/.X*-lock
-		rm -fr /tmp/.X11-unix
-		mkdir -m 1777 /tmp/.X11-unix
+
+	# Remove X lock files, since they will prevent you from restarting X.
+	rm -rf /tmp/.X*-lock /tmp/.X11-unix
+	mkdir -m 1777 /tmp/.X11-unix
 }
 
 load_rc_config $name

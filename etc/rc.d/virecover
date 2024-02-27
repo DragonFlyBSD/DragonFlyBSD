@@ -2,7 +2,6 @@
 #
 # $NetBSD: virecover,v 1.6 2002/03/22 04:34:00 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/virecover,v 1.5 2003/05/05 09:53:32 mtm Exp $
-# $DragonFly: src/etc/rc.d/virecover,v 1.4 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: virecover
@@ -14,8 +13,8 @@
 . /etc/rc.subr
 
 name="virecover"
-stop_cmd=":"
 start_cmd="virecover_start"
+stop_cmd=":"
 
 virecover_start()
 {

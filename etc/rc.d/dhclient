@@ -2,12 +2,10 @@
 #
 # $NetBSD: dhclient,v 1.8 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/dhclient,v 1.20.2.4 2007/03/10 14:07:01 yar Exp $
-# $DragonFly: src/etc/rc.d/dhclient,v 1.11 2008/08/30 21:21:40 swildner Exp $
 #
 
 # PROVIDE: dhclient
 # KEYWORD: nojail nostart
-#
 
 . /etc/rc.subr
 . /etc/network.subr

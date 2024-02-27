@@ -20,7 +20,9 @@ required_files="/etc/mail/${name}.cf"
 start_precmd="sendmail_precmd"
 command=${sendmail_program:-/usr/sbin/sendmail}
 pidfile=${sendmail_pidfile:-/var/run/sendmail.pid}
+
 load_rc_config $name
+
 case ${sendmail_enable} in
 [Nn][Oo][Nn][Ee])
 	sendmail_enable="NO"
@@ -37,33 +39,31 @@ sendmail_precmd()
 	#
 	if checkyesno ${rcvar} && [ -f "/etc/${name}.cf" ]; then
 		if ! cmp -s "/etc/mail/${name}.cf" "/etc/${name}.cf"; then
-			warn \
-    "${name} was not started; you have multiple copies of sendmail.cf."
+			warn "${name} was not started; " \
+			     "you have multiple copies of sendmail.cf."
 			return 1
 		fi
 	fi
 
 	# check modifications on /etc/mail/aliases
 	if checkyesno sendmail_rebuild_aliases; then
-		if [ -f "/etc/mail/aliases.db" ]; then
-			if [ "/etc/mail/aliases" -nt "/etc/mail/aliases.db" ]; then
-				echo \
-	    "${name}: /etc/mail/aliases newer than /etc/mail/aliases.db, regenerating"
-				/usr/bin/newaliases
-			fi
-		else
-			echo \
-	    "${name}: /etc/mail/aliases.db not present, generating"
+		if [ ! -f "/etc/mail/aliases.db" ]; then
+			echo "${name}: /etc/mail/aliases.db not present, " \
+			     "generating"
+			/usr/bin/newaliases
+		elif [ "/etc/mail/aliases" -nt "/etc/mail/aliases.db" ]; then
+			echo "${name}: /etc/mail/aliases newer than " \
+			     "/etc/mail/aliases.db, regenerating"
 			/usr/bin/newaliases
 		fi
 	fi
 
 	# check couple of common db files, too
 	for f in genericstable virtusertable domaintable mailertable; do
-		if [ -r "/etc/mail/$f" -a \
-		    "/etc/mail/$f" -nt "/etc/mail/$f.db" ]; then
-			echo \
-    "${name}: /etc/mail/$f newer than /etc/mail/$f.db, regenerating"
+		if [ -r "/etc/mail/$f" ] && \
+		   [ "/etc/mail/$f" -nt "/etc/mail/$f.db" ]; then
+			echo "${name}: /etc/mail/$f newer than " \
+			     "/etc/mail/$f.db, regenerating"
 			/usr/sbin/makemap hash /etc/mail/$f < /etc/mail/$f
 		fi
 	done
@@ -84,6 +84,7 @@ if ! checkyesno sendmail_outbound_enable; then
 	start_cmd="${command} ${sendmail_outbound_flags}"
 	run_rc_command "$1"
 fi
+
 name="sendmail_clientmqueue"
 rcvar="sendmail_msp_queue_enable"
 start_cmd="${command} ${sendmail_msp_queue_flags}"

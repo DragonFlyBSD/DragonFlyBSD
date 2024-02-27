@@ -12,7 +12,7 @@
 . /etc/rc.subr
 
 name="lockd"
-rcvar=rpc_lockd_enable
+rcvar="rpc_lockd_enable"
 command="/usr/sbin/rpc.${name}"
 start_precmd='lockd_precmd'
 stop_precmd='checkyesno nfs_server_enable || checkyesno nfs_client_enable'
@@ -23,18 +23,18 @@ status_precmd=$stop_precmd
 #
 lockd_precmd()
 {
-	local ret
-	ret=0
+	local ret=0
 
 	if ! checkyesno nfs_server_enable && ! checkyesno nfs_client_enable
 	then
 		ret=1
 	fi
 	if ! checkyesno rpcbind_enable && \
-	    ! /etc/rc.d/rpcbind forcestatus 1>/dev/null 2>&1
+	   ! /etc/rc.d/rpcbind forcestatus >/dev/null 2>&1
 	then
 		force_depend rpcbind || ret=1
 	fi
+
 	rc_flags=${rpc_lockd_flags}
 	return ${ret}
 }

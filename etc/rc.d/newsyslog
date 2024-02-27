@@ -2,7 +2,6 @@
 #
 # $NetBSD: newsyslog,v 1.5 2002/03/24 15:51:26 lukem Exp $
 # $FreeBSD: src/etc/rc.d/newsyslog,v 1.2 2002/06/13 22:14:36 gordon Exp $
-# $DragonFly: src/etc/rc.d/newsyslog,v 1.4 2008/01/20 11:16:47 swildner Exp $
 #
 
 # PROVIDE: newsyslog

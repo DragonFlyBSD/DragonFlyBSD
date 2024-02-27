@@ -1,4 +1,5 @@
 #!/bin/sh
+
 # PROVIDE: udevd
 # REQUIRE: mountcritlocal
 

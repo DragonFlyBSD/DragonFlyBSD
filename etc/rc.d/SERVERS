@@ -12,4 +12,3 @@
 
 . /etc/rc.subr
 dummy_rc_command "$1"
-

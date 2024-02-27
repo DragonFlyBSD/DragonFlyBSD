@@ -18,7 +18,7 @@ cryptdisks_start()
 
 	if [ -x /sbin/dmsetup ]; then
 		/sbin/dmsetup version >/dev/null 2>&1
-		if [ $? -ne 0 ]; then 
+		if [ $? -ne 0 ]; then
 			warn "/etc/crypttab found but dm is not loaded or present in kernel"
 			return 1;
 		fi
@@ -33,7 +33,7 @@ cryptdisks_stop()
 	if [ ! -f $CRYPTTAB ]; then
 		return 0;
 	fi
- 
+
 	if [ -x /sbin/dmsetup ]; then
 		/sbin/dmsetup version >/dev/null 2>&1
 		if [ $? -ne 0 ]; then
@@ -41,7 +41,7 @@ cryptdisks_stop()
 			return 1;
 		fi
 	fi
- 
+
 	echo "Unconfiguring crypto disks."
 	/sbin/cryptdisks -0
 

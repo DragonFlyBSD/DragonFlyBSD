@@ -1,5 +1,4 @@
 #!/bin/sh
-#
 
 # PROVIDE: powerd
 # REQUIRE: DAEMON
@@ -10,6 +9,6 @@
 name=powerd
 rcvar=`set_rcvar`
 command="/usr/sbin/${name}"
-required_files=""
+
 load_rc_config $name
 run_rc_command "$1"

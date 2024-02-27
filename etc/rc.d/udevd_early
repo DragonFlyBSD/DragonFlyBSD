@@ -1,4 +1,5 @@
 #!/bin/sh
+
 # PROVIDE: udevd_early
 # BEFORE: mountcritlocal
 
@@ -10,4 +11,3 @@ command="/sbin/udevd"
 
 load_rc_config $name
 run_rc_command "$1"
-

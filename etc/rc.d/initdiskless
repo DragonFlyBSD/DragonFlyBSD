@@ -26,11 +26,12 @@
 #
 # $FreeBSD: src/etc/rc.d/initdiskless,v 1.24 2003/06/30 21:47:06 brooks Exp $
 #
+
 # PROVIDE: initdiskless
 
 . /etc/rc.subr
 dummy_rc_command "$1"
- 
+
 # On entry to this script the entire system consists of a read-only root
 # mounted via NFS.  We use the contents of /conf to create and populate
 # memory filesystems.  The kernel has run BOOTP and configured an interface
@@ -97,12 +98,12 @@ dlv=`${SYSCTL_N} -q vfs.nfs.diskless_valid`
 chkerr() {
 	case $1 in
 	0)
-	;;
+		;;
 	*)
-	echo "$2 failed: dropping into /bin/sh"
-	/bin/sh
-	# RESUME
-	;;
+		echo "$2 failed: dropping into /bin/sh"
+		/bin/sh
+		# RESUME
+		;;
 	esac
 }
 
@@ -166,7 +167,7 @@ done
 echo "Interface ${bootp_ifc} IP-Address ${bootp_ipa} Broadcast ${bootp_ipbca}"
 
 # Figure out our NFS root path
-# 
+#
 set `mount -t nfs`
 while [ $# -ge 1 ] ; do
 	if [ "$2" = "on" -a "$3" = "/" ]; then
@@ -177,7 +178,7 @@ while [ $# -ge 1 ] ; do
 done
 
 # Resolve templates in /conf/base, /conf/default, /conf/${bootp_ipbca},
-# and /conf/${bootp_ipa}.  For each subdirectory found within these 
+# and /conf/${bootp_ipa}.  For each subdirectory found within these
 # directories:
 #
 # - calculate memory filesystem sizes.  If the subdirectory (prior to

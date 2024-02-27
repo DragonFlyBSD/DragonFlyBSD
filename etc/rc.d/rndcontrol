@@ -1,7 +1,4 @@
 #!/bin/sh
-#
-# $DragonFly: src/etc/rc.d/rndcontrol,v 1.2 2005/11/19 21:47:32 swildner Exp $
-#
 
 # PROVIDE: rndcontrol
 # REQUIRE: DAEMON
@@ -28,7 +25,6 @@ rand_start()
 		;;
 	esac
 }
-
 
 load_rc_config $name
 run_rc_command "$1"

@@ -39,8 +39,6 @@ fi
 dlv=`${SYSCTL_N} -q vfs.nfs.diskless_valid`
 [ ${dlv:=0} -eq 0 ] && exit 0
 
-name="diskless"
-
 # Provide a function for normalizing the mounting of memory filesystems.
 #   $1 = size
 #   $2 = mount point

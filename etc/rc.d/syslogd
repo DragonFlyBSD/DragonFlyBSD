@@ -16,10 +16,9 @@ command="/usr/sbin/${name}"
 required_files="/etc/syslog.conf"
 start_precmd="syslogd_precmd"
 extra_commands="reload"
+pidfile="/var/run/syslog.pid"
 
 _sockfile="/var/run/syslogd.sockets"
-
-pidfile="/var/run/syslog.pid"
 evalargs="rc_flags=\"\`set_socketlist\` \$rc_flags\""
 
 syslogd_precmd()
@@ -70,5 +69,6 @@ set_socketlist()
 	done
 	echo $_socketargs
 }
+
 load_rc_config $name
 run_rc_command "$1"

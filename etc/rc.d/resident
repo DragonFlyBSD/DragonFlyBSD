@@ -1,8 +1,5 @@
 #!/bin/sh
 
-# $DragonFly: src/etc/rc.d/resident,v 1.4 2007/08/08 03:11:00 swildner Exp $
-#
-
 # PROVIDE: resident
 # REQUIRE: mountcritremote
 
@@ -16,23 +13,24 @@ stop_cmd=":"
 
 resident_start()
 {
-	if [ -f /etc/resident.conf ]; then
-        	while read path 
-        	do
-                	case ${path} in
-                	\#*|"")
-                	        ;;
-                	*)
-				if [ -f ${path} ]; then
-					resident ${path}
-				else
-					file ${path} | grep shared | \
-					    cut -f1 -d ':' -s | xargs resident
-				fi
-				;;
-                	esac
-        	done < /etc/resident.conf
+	if [ ! -f /etc/resident.conf ]; then
+		return
 	fi
+
+	while read path; do
+		case ${path} in
+		\#*|"")
+			;;
+		*)
+			if [ -f ${path} ]; then
+				resident ${path}
+			else
+				file ${path} | grep shared | \
+				    cut -f1 -d ':' -s | xargs resident
+			fi
+			;;
+		esac
+	done < /etc/resident.conf
 }
 
 load_rc_config $name

@@ -36,7 +36,6 @@ name="syscons"
 start_cmd="syscons_start"
 
 # stdin must be redirected because it might be for a serial console
-#
 kbddev=/dev/ttyv0
 viddev=/dev/ttyv0
 
@@ -50,7 +49,8 @@ syscons_start()
 	[Nn][Oo] | '')
 		;;
 	*)
-		echo -n ' keymap';	kbdcontrol < ${kbddev} -l ${keymap}
+		echo -n ' keymap'
+		kbdcontrol < ${kbddev} -l ${keymap}
 		;;
 	esac
 
@@ -60,7 +60,8 @@ syscons_start()
 	[Nn][Oo] | '')
 		;;
 	*)
-		echo -n ' keyrate';	kbdcontrol < ${kbddev} -r ${keyrate}
+		echo -n ' keyrate'
+		kbdcontrol < ${kbddev} -r ${keyrate}
 		;;
 	esac
 
@@ -70,7 +71,8 @@ syscons_start()
 	[Nn][Oo] | '')
 		;;
 	*)
-		echo -n ' keybell';	kbdcontrol < ${kbddev} -b ${keybell}
+		echo -n ' keybell'
+		kbdcontrol < ${kbddev} -b ${keybell}
 		;;
 	esac
 
@@ -95,7 +97,8 @@ syscons_start()
 	[Nn][Oo] | '')
 		;;
 	*)
-		echo -n ' cursor';	vidcontrol < ${viddev} -c ${cursor}
+		echo -n ' cursor'
+		vidcontrol < ${viddev} -c ${cursor}
 		;;
 	esac
 
@@ -105,7 +108,8 @@ syscons_start()
 	[Nn][Oo] | '')
 		;;
 	*)
-		echo -n ' scrnmap';	vidcontrol < ${viddev} -l ${scrnmap}
+		echo -n ' scrnmap'
+		vidcontrol < ${viddev} -l ${scrnmap}
 		;;
 	esac
 
@@ -115,7 +119,8 @@ syscons_start()
 	[Nn][Oo] | '')
 		;;
 	*)
-		echo -n ' font8x16';	vidcontrol < ${viddev} -f 8x16 ${font8x16}
+		echo -n ' font8x16'
+		vidcontrol < ${viddev} -f 8x16 ${font8x16}
 		;;
 	esac
 
@@ -125,7 +130,8 @@ syscons_start()
 	[Nn][Oo] | '')
 		;;
 	*)
-		echo -n ' font8x14';	vidcontrol < ${viddev} -f 8x14 ${font8x14}
+		echo -n ' font8x14'
+		vidcontrol < ${viddev} -f 8x14 ${font8x14}
 		;;
 	esac
 
@@ -135,7 +141,8 @@ syscons_start()
 	[Nn][Oo] | '')
 		;;
 	*)
-		echo -n ' font8x8';	vidcontrol < ${viddev} -f 8x8 ${font8x8}
+		echo -n ' font8x8'
+		vidcontrol < ${viddev} -f 8x8 ${font8x8}
 		;;
 	esac
 
@@ -145,7 +152,8 @@ syscons_start()
 	[Nn][Oo] | '')
 		;;
 	*)
-		echo -n ' blanktime';	vidcontrol < ${viddev} -t ${blanktime}
+		echo -n ' blanktime'
+		vidcontrol < ${viddev} -t ${blanktime}
 		;;
 	esac
 
@@ -169,7 +177,8 @@ syscons_start()
 	[Nn][Oo] | '')
 		;;
 	*)
-		echo -n ' vidhistory';	vidcontrol < ${viddev} -h ${vidhistory}
+		echo -n ' vidhistory'
+		vidcontrol < ${viddev} -h ${vidhistory}
 		;;
 	esac
 

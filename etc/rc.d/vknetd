@@ -1,5 +1,4 @@
 #!/bin/sh
-#
 
 # PROVIDE: vknetd
 # REQUIRE: DAEMON netif

@@ -1,5 +1,4 @@
 #!/bin/sh
-#
 
 # PROVIDE: vkernel
 # REQUIRE: LOGIN NETWORKING
@@ -168,7 +167,6 @@ vkernel_stop()
 		fi
 	done
 }
-
 
 load_rc_config $name
 run_rc_command "$1"

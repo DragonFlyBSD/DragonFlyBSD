@@ -31,7 +31,7 @@
 # REQUIRE: root
 
 . /etc/rc.subr
-dummy_rc_command "$1"   
+dummy_rc_command "$1"
 
 # Change some defaults for serial devices.
 # Standard defaults are:

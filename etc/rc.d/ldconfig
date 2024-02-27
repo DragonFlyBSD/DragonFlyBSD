@@ -2,7 +2,6 @@
 #
 # $NetBSD: ldconfig,v 1.5 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/ldconfig,v 1.7 2003/06/30 15:02:05 trhodes Exp $
-# $DragonFly: src/etc/rc.d/ldconfig,v 1.8 2008/04/15 10:11:35 swildner Exp $
 #
 
 # PROVIDE: ldconfig
@@ -18,24 +17,24 @@ stop_cmd=":"
 
 ldconfig_start()
 {
-		_ins=
-		ldconfig=${ldconfig_command}
-		checkyesno ldconfig_insecure && _ins="-i"
-		if [ -x "${ldconfig_command}" ]; then
-			_LDC=""
-			for i in ${ldconfig_local_dirs}; do
-				if [ -d "${i}" ]; then
-					ldconfig_paths="${ldconfig_paths} `find ${i} -type f`"
-				fi
-			done
-			for i in ${ldconfig_paths} /etc/ld-elf.so.conf; do
-				if [ -r "${i}" ]; then
-					_LDC="${_LDC} ${i}"
-				fi
-			done
-			echo 'ELF ldconfig path:' ${_LDC}
-			${ldconfig} -elf ${_ins} ${_LDC}
-		fi
+	_ins=
+	ldconfig=${ldconfig_command}
+	checkyesno ldconfig_insecure && _ins="-i"
+	if [ -x "${ldconfig_command}" ]; then
+		_LDC=""
+		for i in ${ldconfig_local_dirs}; do
+			if [ -d "${i}" ]; then
+				ldconfig_paths="${ldconfig_paths} `find ${i} -type f`"
+			fi
+		done
+		for i in ${ldconfig_paths} /etc/ld-elf.so.conf; do
+			if [ -r "${i}" ]; then
+				_LDC="${_LDC} ${i}"
+			fi
+		done
+		echo 'ELF ldconfig path:' ${_LDC}
+		${ldconfig} -elf ${_ins} ${_LDC}
+	fi
 }
 
 load_rc_config $name

@@ -13,7 +13,6 @@
 name="nfsd"
 rcvar=`set_rcvar nfs_server`
 command="/sbin/${name}"
-load_rc_config $name
 command_args="${nfs_server_flags}"
 start_precmd="nfsd_precmd"
 sig_stop="USR1"
@@ -25,13 +24,13 @@ nfsd_precmd()
 	fi
 
 	if ! checkyesno rpcbind_enable  && \
-	    ! /etc/rc.d/rpcbind forcestatus 1>/dev/null 2>&1
+	   ! /etc/rc.d/rpcbind forcestatus >/dev/null 2>&1
 	then
 		force_depend rpcbind || return 1
 	fi
 
 	if ! checkyesno mountd_enable  && \
-	    ! /etc/rc.d/mountd forcestatus 1>/dev/null 2>&1
+	   ! /etc/rc.d/mountd forcestatus >/dev/null 2>&1
 	then
 		force_depend mountd || return 1
 	fi
@@ -40,7 +39,9 @@ nfsd_precmd()
 		echo 'NFS on reserved port only=YES'
 		${SYSCTL_W} vfs.nfs.nfs_privport=1 >/dev/null
 	fi
+
 	return 0
 }
 
+load_rc_config $name
 run_rc_command "$1"
