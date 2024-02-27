@@ -5,8 +5,8 @@
 #
 
 # PROVIDE: rtsold
-# REQUIRE: DAEMON
-# BEFORE:  LOGIN
+# REQUIRE: network_ipv6
+# BEFORE:  NETWORKING
 
 . /etc/rc.subr
 

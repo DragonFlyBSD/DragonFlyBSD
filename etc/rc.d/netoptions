@@ -4,8 +4,8 @@
 #
 
 # PROVIDE: netoptions
-# REQUIRE: localdaemons
-# BEFORE:  securelevel
+# REQUIRE: FILESYSTEMS
+# BEFORE:  NETWORKING
 
 . /etc/rc.subr
 

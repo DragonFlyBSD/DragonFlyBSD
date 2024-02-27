@@ -6,7 +6,7 @@
 
 # PROVIDE: ldconfig
 # REQUIRE: mountcritremote
-# BEFORE:  DAEMON
+# BEFORE:  SERVERS
 
 . /etc/rc.subr
 
