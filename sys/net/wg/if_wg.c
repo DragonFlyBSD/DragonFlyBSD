@@ -1700,6 +1700,13 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 	case WG_PKT_COOKIE:
 		cook = mtod(m, struct wg_pkt_cookie *);
 
+		/*
+		 * A cookie message can be a reply to an initiation message
+		 * or to a response message.  In the latter case, the noise
+		 * index has been transformed from a remote entry to a
+		 * keypair entry.  Therefore, we need to lookup the index
+		 * for both remote and keypair entries.
+		 */
 		remote = noise_remote_index(sc->sc_local, cook->r_idx);
 		if (remote == NULL) {
 			DPRINTF(sc, "Unknown cookie index\n");
