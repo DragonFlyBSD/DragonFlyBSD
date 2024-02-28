@@ -2868,6 +2868,43 @@ if_setlladdr(struct ifnet *ifp, const u_char *lladdr, int len)
 
 
 /*
+ * Tunnel interfaces can nest, also they may cause infinite recursion
+ * calls when misconfigured.  Introduce an upper limit to prevent infinite
+ * recursions, as well as to constrain the nesting depth.
+ *
+ * Return 0, if tunnel nesting count is equal or less than limit.
+ */
+int
+if_tunnel_check_nesting(struct ifnet *ifp, struct mbuf *m, uint32_t cookie,
+			int limit)
+{
+	struct m_tag *mtag;
+	int count;
+
+	count = 1;
+	mtag = m_tag_locate(m, cookie, 0 /* type */, NULL);
+	if (mtag != NULL)
+		count += *(int *)(mtag + 1);
+	if (count > limit) {
+		log(LOG_NOTICE,
+		    "%s: packet looped too many times (%d), limit %d\n",
+		    ifp->if_xname, count, limit);
+		return (ELOOP);
+	}
+
+	if (mtag == NULL) {
+		mtag = m_tag_alloc(cookie, 0, sizeof(int), M_NOWAIT);
+		if (mtag == NULL)
+			return (ENOMEM);
+		m_tag_prepend(m, mtag);
+	}
+
+	*(int *)(mtag + 1) = count;
+	return (0);
+}
+
+
+/*
  * Locate an interface based on a complete address.
  */
 struct ifnet *

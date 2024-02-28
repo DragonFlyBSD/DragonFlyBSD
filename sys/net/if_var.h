@@ -159,7 +159,7 @@ enum ifnet_serialize {
  *			struct  ifnet ac_if;
  *			...
  *		} <arpcom> ;
- *		...   
+ *		...
  *	};
  *
  * The assumption is used in a number of places, including many
@@ -951,6 +951,7 @@ int	if_printf(struct ifnet *, const char *, ...) __printflike(2, 3);
 struct ifnet *if_alloc(uint8_t);
 void	if_free(struct ifnet *);
 int	if_setlladdr(struct ifnet *, const u_char *, int);
+int	if_tunnel_check_nesting(struct ifnet *, struct mbuf *, uint32_t, int);
 struct ifnet *if_bylla(const void *, unsigned char);
 void	if_up(struct ifnet *);
 /*void	ifinit(void);*/ /* declared in systm.h for main() */

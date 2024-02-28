@@ -87,6 +87,8 @@
 
 #define GIFNAME		"gif"
 
+#define MTAG_GIF	1709048582 /* mtag cookie for nesting check */
+
 static MALLOC_DEFINE(M_GIF, "gif", "Generic Tunnel Interface");
 LIST_HEAD(, gif_softc) gif_softc_list;
 
@@ -330,19 +332,12 @@ static int
 gif_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		      struct rtentry *rt)
 {
-	struct gif_softc *sc = (struct gif_softc*)ifp;
+	struct gif_softc *sc = (struct gif_softc *)ifp;
 	int error = 0;
 
-	/*
-	 * gif may cause infinite recursion calls when misconfigured.
-	 * We'll prevent this by introducing upper limit.
-	 */
-	if (++m->m_pkthdr.loop_cnt > max_gif_nesting) {
-		log(LOG_NOTICE,
-		    "gif_output: packet looped too many times (%d)\n",
-		    m->m_pkthdr.loop_cnt);
+	error = if_tunnel_check_nesting(ifp, m, MTAG_GIF, max_gif_nesting);
+	if (error != 0) {
 		m_freem(m);
-		error = ELOOP;
 		goto end;
 	}
 

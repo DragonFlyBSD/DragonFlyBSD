@@ -87,6 +87,8 @@ CTASSERT(WG_KEY_SIZE >= NOISE_SYMMETRIC_KEY_LEN);
 #define MBUF_CLEARFLAGS		(M_COPYFLAGS & ~(M_PKTHDR | M_EOR | M_PRIO))
 
 #define MAX_LOOPS		8 /* 0 means no loop allowed */
+#define MTAG_WGLOOP		0x77676c70 /* wglp; cookie for loop check */
+
 #define MAX_STAGED_PKT		128
 #define MAX_QUEUED_PKT		1024
 #define MAX_QUEUED_PKT_MASK	(MAX_QUEUED_PKT - 1)
@@ -2280,7 +2282,8 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	wg_bpf_ptap(ifp, m, dst->sa_family);
 
-	if (__predict_false(m->m_pkthdr.loop_cnt++ > MAX_LOOPS)) {
+	if (__predict_false(if_tunnel_check_nesting(ifp, m, MTAG_WGLOOP,
+						    MAX_LOOPS) != 0)) {
 		DPRINTF(sc, "Packet looped\n");
 		ret = ELOOP;
 		goto error;

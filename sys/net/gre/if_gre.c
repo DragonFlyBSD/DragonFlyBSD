@@ -97,6 +97,8 @@
 
 #define GRENAME	"gre"
 
+#define MTAG_GRE	1709049137 /* mtag cookie for nesting check */
+
 static MALLOC_DEFINE(M_GRE, GRENAME, "Generic Routing Encapsulation");
 
 struct gre_softc_head gre_softc_list;
@@ -256,15 +258,9 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	ASSERT_NETISR_NCPUS(mycpuid);
 
-	/*
-	 * gre may cause infinite recursion calls when misconfigured.
-	 * We'll prevent this by introducing upper limit.
-	 */
-	if (++m->m_pkthdr.loop_cnt > max_gre_nesting) {
-		kprintf("%s: gre_output: packet looped too many times (%d)\n",
-			if_name(&sc->sc_if), m->m_pkthdr.loop_cnt);
+	error = if_tunnel_check_nesting(ifp, m, MTAG_GRE, max_gre_nesting);
+	if (error != 0) {
 		m_freem(m);
-		error = ELOOP;
 		goto end;
 	}
 

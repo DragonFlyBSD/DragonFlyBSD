@@ -248,9 +248,11 @@
  * 600504 - change m_copyback(9) to forbid mbuf expansion
  * 600505 - add SO_USER_COOKIE to setsockopt(2)/getsockopt(2)
  * 600506 - add mbuf m_pkthdr.loop_cnt for loop detection
+ * 600507 - remove mbuf m_pkthdr.loop_cnt and replace with
+ *          if_tunnel_check_nesting()
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600506	/* propagated to newvers */
+#define __DragonFly_version 600507	/* propagated to newvers */
 
 #include <sys/_null.h>
 
