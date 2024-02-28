@@ -11,7 +11,9 @@ y.tab.h: awkgram.c awkgram.y
 awkgram.tab.h: y.tab.h
 	${LN} -sf ${.ALLSRC} ${.TARGET}
 
-WARNS= 2
+# remaining warnings:
+# - redundant-decls: popen()/pclose() in proto.h
+WARNS= 5
 
 CLEANFILES+=	awkgram.tab.h y.tab.h awkgram.c
 
