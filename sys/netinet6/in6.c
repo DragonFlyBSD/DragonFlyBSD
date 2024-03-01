@@ -2465,27 +2465,19 @@ in6if_do_dad(struct ifnet *ifp)
 	if (ifp->if_flags & IFF_LOOPBACK)
 		return (0);
 
-	switch (ifp->if_type) {
-#ifdef IFT_DUMMY
-	case IFT_DUMMY:
+	/*
+	 * Our DAD routine requires the interface up and running.
+	 * However, some interfaces can be up before the RUNNING
+	 * status.  Additionally, users may try to assign addresses
+	 * before the interface becomes up (or running).
+	 * We simply skip DAD in such a case as a workaround.
+	 * XXX: we should rather mark "tentative" on such addresses,
+	 * and do DAD after the interface becomes ready.
+	 */
+	if ((ifp->if_flags & (IFF_UP|IFF_RUNNING)) != (IFF_UP|IFF_RUNNING))
 		return (0);
-#endif
-	default:
-		/*
-		 * Our DAD routine requires the interface up and running.
-		 * However, some interfaces can be up before the RUNNING
-		 * status.  Additionaly, users may try to assign addresses
-		 * before the interface becomes up (or running).
-		 * We simply skip DAD in such a case as a work around.
-		 * XXX: we should rather mark "tentative" on such addresses,
-		 * and do DAD after the interface becomes ready.
-		 */
-		if ((ifp->if_flags & (IFF_UP|IFF_RUNNING)) !=
-		    (IFF_UP|IFF_RUNNING))
-			return (0);
 
-		return (1);
-	}
+	return (1);
 }
 
 /*
