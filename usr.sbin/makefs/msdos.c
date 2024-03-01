@@ -224,8 +224,8 @@ msdos_populate_dir(const char *path, struct denode *dir, fsnode *root,
 	assert(fsopts != NULL);
 
 	for (cur = root->next; cur != NULL; cur = cur->next) {
-		if ((size_t)snprintf(pbuf, sizeof(pbuf), "%s/%s", path,
-		    cur->name) >= sizeof(pbuf)) {
+		if ((size_t)snprintf(pbuf, sizeof(pbuf), "%s/%s/%s",
+		    cur->root, cur->path, cur->name) >= sizeof(pbuf)) {
 			warnx("path %s too long", pbuf);
 			return -1;
 		}
