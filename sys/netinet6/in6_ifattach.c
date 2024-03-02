@@ -65,12 +65,6 @@
 
 unsigned long in6_maxmtu = 0;
 
-#ifdef IP6_AUTO_LINKLOCAL
-int ip6_auto_linklocal = IP6_AUTO_LINKLOCAL;
-#else
-int ip6_auto_linklocal = 1;	/* enable by default */
-#endif
-
 static struct callout in6_tmpaddrtimer_ch;
 static struct netmsg_base in6_tmpaddrtimer_netmsg;
 
@@ -736,7 +730,6 @@ void
 in6_ifattach(struct ifnet *ifp,
 	     struct ifnet *altifp)	/* secondary EUI64 source */
 {
-	struct in6_ifaddr *ia;
 	struct in6_addr in6;
 
 	/* some of the interfaces are inherently not IPv6 capable */
@@ -794,15 +787,9 @@ in6_ifattach(struct ifnet *ifp,
 	/*
 	 * assign a link-local address, if there's none.
 	 */
-	if (ip6_auto_linklocal) {
-		ia = in6ifa_ifpforlinklocal(ifp, 0);
-		if (ia == NULL) {
-			if (in6_ifattach_linklocal(ifp, altifp) == 0) {
-				/* linklocal address assigned */
-			} else {
-				/* failed to assign linklocal address. bark? */
-			}
-		}
+	if ((ND_IFINFO(ifp)->flags & ND6_IFF_AUTO_LINKLOCAL) &&
+	    in6ifa_ifpforlinklocal(ifp, 0) == NULL) {
+		in6_ifattach_linklocal(ifp, altifp);
 	}
 
 #ifdef IFT_STF			/* XXX */

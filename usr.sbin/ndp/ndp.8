@@ -28,7 +28,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd May 17, 1998
+.Dd March 1, 2024
 .Dt NDP 8
 .Os
 .\"
@@ -146,6 +146,15 @@ unless the
 .Va net.inet6.ip6.accept_rtadv
 variable is non-0, even if the flag is on.
 This flag is set to 1 by default.
+.It Xo
+.Ic auto_linklocal
+.Xc
+Specify whether or not to perform automatic link-local address
+configuration on the
+.Ar interface .
+This flag is set by the
+.Va net.inet6.ip6.auto_linklocal
+sysctl variable.
 .El
 .It Fl n
 Do not try to resolve numeric address to hostname.

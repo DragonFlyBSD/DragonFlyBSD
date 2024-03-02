@@ -89,7 +89,7 @@ struct nd_ifinfo {
 	u_int32_t basereachable;	/* BaseReachableTime */
 	u_int32_t reachable;		/* Reachable Time */
 	u_int32_t retrans;		/* Retrans Timer */
-	u_int32_t flags;		/* Flags */
+	u_int32_t flags;		/* Flags (ND6_IFF_*) */
 	int recalctm;			/* BaseReacable re-calculation timer */
 	u_int8_t chlim;			/* CurHopLimit */
 	u_int8_t reserved;		/* reserved 0 */
@@ -102,6 +102,7 @@ struct nd_ifinfo {
 
 #define ND6_IFF_PERFORMNUD	0x1
 #define ND6_IFF_ACCEPT_RTADV	0x2
+#define ND6_IFF_AUTO_LINKLOCAL	0x4
 
 #ifdef _KERNEL
 #define ND_IFINFO(ifp) \

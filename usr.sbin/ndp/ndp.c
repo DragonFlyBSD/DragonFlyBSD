@@ -950,6 +950,9 @@ ifinfo(int argc, char **argv)
 #ifdef ND6_IFF_ACCEPT_RTADV
 		SETFLAG("accept_rtadv", ND6_IFF_ACCEPT_RTADV);
 #endif
+#ifdef ND6_IFF_AUTO_LINKLOCAL
+		SETFLAG("auto_linklocal", ND6_IFF_AUTO_LINKLOCAL);
+#endif
 		ND.flags = newflags;
 		if (ioctl(s, SIOCSIFINFO_FLAGS, (caddr_t)&nd) < 0) {
 			perror("ioctl(SIOCSIFINFO_FLAGS)");
@@ -997,6 +1000,10 @@ ifinfo(int argc, char **argv)
 #ifdef ND6_IFF_ACCEPT_RTADV
 		if ((ND.flags & ND6_IFF_ACCEPT_RTADV))
 			printf("accept_rtadv ");
+#endif
+#ifdef ND6_IFF_AUTO_LINKLOCAL
+		if ((ND.flags & ND6_IFF_AUTO_LINKLOCAL))
+			printf("auto_linklocal ");
 #endif
 	}
 	putc('\n', stdout);

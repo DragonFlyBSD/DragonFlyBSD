@@ -363,6 +363,12 @@ int	ip6_use_deprecated = 1;	/* allow deprecated addr (RFC2462 5.5.4) */
 int	ip6_rr_prune = 5;	/* router renumbering prefix
 				 * walk list every 5 sec. */
 
+#ifdef IP6_AUTO_LINKLOCAL
+int ip6_auto_linklocal = IP6_AUTO_LINKLOCAL;
+#else
+int ip6_auto_linklocal = 1;	/* enable by default */
+#endif
+
 u_int32_t ip6_id = 0UL;
 time_t	ip6_log_time = (time_t)0L;
 
@@ -489,8 +495,10 @@ SYSCTL_OID(_net_inet6_ip6, IPV6CTL_TEMPVLTIME, tempvltime,
     CTLTYPE_INT|CTLFLAG_RW, &ip6_temp_valid_lifetime, 0,
     sysctl_ip6_tempvltime, "I",
     "Valid lifetime for tmpaddrs");
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_AUTO_LINKLOCAL, auto_linklocal, CTLFLAG_RW,
-    &ip6_auto_linklocal, 0, "Enable auto-assigning a link-local address");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_AUTO_LINKLOCAL, auto_linklocal,
+    CTLFLAG_RW, &ip6_auto_linklocal, 0,
+    "Default value of per-interface flag for auto-assigning "
+    "a link-local address");
 SYSCTL_STRUCT(_net_inet6_ip6, IPV6CTL_RIP6STATS, rip6stats, CTLFLAG_RD,
     &rip6stat, rip6stat, "Raw stats");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_MAXFRAGS, maxfrags, CTLFLAG_RW,

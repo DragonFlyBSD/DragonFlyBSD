@@ -62,6 +62,7 @@
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 #include <netinet6/in6_var.h>
+#include <netinet6/in6_ifattach.h>
 #include <netinet/ip6.h>
 #include <netinet6/ip6_var.h>
 #include <netinet6/nd6.h>
@@ -207,6 +208,9 @@ nd6_ifattach(struct ifnet *ifp)
 	 * here.
 	 */
 	nd->flags = (ND6_IFF_PERFORMNUD | ND6_IFF_ACCEPT_RTADV);
+	/* A loopback interface always has link-local address. */
+	if (ip6_auto_linklocal || (ifp->if_flags & IFF_LOOPBACK))
+		nd->flags |= ND6_IFF_AUTO_LINKLOCAL;
 
 	/* XXX: we cannot call nd6_setmtu since ifp is not fully initialized */
 	nd6_setmtu0(ifp, nd);
@@ -1558,6 +1562,12 @@ nd6_ioctl(u_long cmd, caddr_t	data, struct ifnet *ifp)
 			ND_IFINFO(ifp)->chlim = ndi->ndi.chlim;
 		/* FALLTHROUGH */
 	case SIOCSIFINFO_FLAGS:
+		if ((ndi->ndi.flags & ND6_IFF_AUTO_LINKLOCAL) &&
+		    !(ND_IFINFO(ifp)->flags & ND6_IFF_AUTO_LINKLOCAL)) {
+			/* auto_linklocal 0->1 transision */
+			ND_IFINFO(ifp)->flags |= ND6_IFF_AUTO_LINKLOCAL;
+			in6_ifattach(ifp, NULL);
+		}
 		ND_IFINFO(ifp)->flags = ndi->ndi.flags;
 		break;
 	case SIOCSNDFLUSH_IN6:	/* XXX: the ioctl name is confusing... */
