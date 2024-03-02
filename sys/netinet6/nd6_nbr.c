@@ -1096,7 +1096,7 @@ nd6_dad_start(struct ifaddr *ifa,
 	/*
 	 * If we don't need DAD, don't do it.
 	 * There are several cases:
-	 * - DAD is disabled (ip6_dad_count == 0)
+	 * - DAD is disabled globally (ip6_dad_count == 0) or on the interface
 	 * - the interface address is anycast
 	 */
 	if (!(ia->ia6_flags & IN6_IFF_TENTATIVE)) {
@@ -1107,13 +1107,13 @@ nd6_dad_start(struct ifaddr *ifa,
 			ifa->ifa_ifp ? if_name(ifa->ifa_ifp) : "???");
 		return;
 	}
-	if (ia->ia6_flags & IN6_IFF_ANYCAST || !ip6_dad_count) {
+	if ((ia->ia6_flags & IN6_IFF_ANYCAST) ||
+	    ip6_dad_count == 0 ||
+	    (ND_IFINFO(ifa->ifa_ifp)->flags & ND6_IFF_NO_DAD)) {
 		ia->ia6_flags &= ~IN6_IFF_TENTATIVE;
 		in6_newaddrmsg(ifa);
 		return;
 	}
-	if (!ifa->ifa_ifp)
-		panic("nd6_dad_start: ifa->ifa_ifp == NULL");
 	if (!(ifa->ifa_ifp->if_flags & IFF_UP))
 		return;
 	if (nd6_dad_find(ifa) != NULL) {
