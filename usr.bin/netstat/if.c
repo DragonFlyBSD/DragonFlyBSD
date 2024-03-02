@@ -150,7 +150,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 		return;
 
 	if (!pfunc) {
-		printf("%-7.7s %-5.5s %-13.13s %-15.15s %8.8s %5.5s",
+		printf("%-9.9s %-5.5s %-13.13s %-15.15s %8.8s %5.5s",
 		       "Name", "Mtu", "Network", "Address", "Ipkts", "Ierrs");
 		if (bflag)
 			printf(" %10.10s","Ibytes");
@@ -247,7 +247,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 		timer = ifnet.if_timer;
 
 		if (ifaddraddr == 0) {
-			printf("%-7.7s %-5lu ", name, ifnet.if_mtu);
+			printf("%-9.9s %-5lu ", name, ifnet.if_mtu);
 			printf("%-13.13s ", "none");
 			printf("%-15.15s ", "none");
 		} else {
