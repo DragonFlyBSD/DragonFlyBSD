@@ -1617,7 +1617,7 @@ in6_lifaddr_ioctl(u_long cmd, caddr_t data, struct ifnet *ifp,
 }
 
 /*
- * Initialize an interface's intetnet6 address
+ * Initialize an interface's internet6 address
  * and routing table entry.
  */
 static int

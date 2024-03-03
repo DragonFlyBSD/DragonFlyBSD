@@ -1540,7 +1540,7 @@ ifa_ifwithaddr(struct sockaddr *addr)
 }
 
 /*
- * Locate the point to point interface with a given destination address.
+ * Locate the point-to-point interface with a given destination address.
  */
 struct ifaddr *
 ifa_ifwithdstaddr(struct sockaddr *addr)

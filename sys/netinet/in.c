@@ -449,7 +449,7 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	 * Find address for this interface, if it exists.
 	 *
 	 * If an alias address was specified, find that one instead of
-	 * the first one on the interface, if possible
+	 * the first one on the interface, if possible.
 	 */
 	if (ifp) {
 		struct in_ifaddr *iap;
@@ -1028,7 +1028,7 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia,
 		ia->ia_netmask = IN_CLASSC_NET;
 	/*
 	 * The subnet mask usually includes at least the standard network part,
-	 * but may may be smaller in the case of supernetting.
+	 * but may be smaller in the case of supernetting.
 	 * If it is set, we believe it.
 	 */
 	if (ia->ia_subnetmask == 0) {

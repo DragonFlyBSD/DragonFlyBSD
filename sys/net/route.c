@@ -528,7 +528,7 @@ ifa_ifwithroute(int flags, struct sockaddr *dst, struct sockaddr *gateway)
 		/*
 		 * If we are adding a route to a remote net
 		 * or host, the gateway may still be on the
-		 * other end of a pt to pt link.
+		 * other end of a point-to-point link.
 		 */
 		ifa = ifa_ifwithdstaddr(gateway);
 	}

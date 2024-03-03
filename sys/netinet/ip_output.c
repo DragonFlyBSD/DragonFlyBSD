@@ -460,7 +460,7 @@ reroute:
 	/*
 	 * If the source address is not specified yet, use the address
 	 * of the outgoing interface.  In case, keep note we did that,
-	 * so if the the firewall changes the next-hop causing the output
+	 * so if the firewall changes the next-hop causing the output
 	 * interface to change, we can fix that.
 	 */
 	if (ip->ip_src.s_addr == INADDR_ANY || src_was_INADDR_ANY) {
