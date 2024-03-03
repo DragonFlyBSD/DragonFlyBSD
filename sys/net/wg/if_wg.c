@@ -61,6 +61,7 @@
 #include <netinet/ip6.h>
 #include <netinet/icmp6.h>
 #include <netinet6/in6_var.h> /* in6_mask2len() */
+#include <netinet6/nd6.h> /* ND_IFINFO() */
 
 #include "wg_cookie.h"
 #include "wg_noise.h"
@@ -2848,6 +2849,12 @@ wg_clone_create(struct if_clone *ifc __unused, int unit,
 
 	/* DLT_NULL link-layer header: a 4-byte field in host byte order */
 	bpfattach(ifp, DLT_NULL, sizeof(uint32_t));
+
+#ifdef INET6
+	/* NOTE: ND_IFINFO() is only available after if_attach(). */
+	ND_IFINFO(ifp)->flags &= ~ND6_IFF_AUTO_LINKLOCAL;
+	ND_IFINFO(ifp)->flags |= ND6_IFF_NO_DAD;
+#endif
 
 	lockmgr(&wg_mtx, LK_EXCLUSIVE);
 	LIST_INSERT_HEAD(&wg_list, sc, sc_entry);
