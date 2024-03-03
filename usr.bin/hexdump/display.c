@@ -335,14 +335,18 @@ doskip(const char *fname)
 
 	if (fstat(fileno(stdin), &sb))
 		err(1, "%s", fname);
-	if (S_ISREG(sb.st_mode) && skip >= sb.st_size) {
-		address += sb.st_size;
-		skip -= sb.st_size;
-	} else if (S_ISREG(sb.st_mode)) {
-		if (fseeko(stdin, skip, SEEK_SET))
-			err(1, "%s", fname);
-		address += skip;
-		skip = 0;
+
+	/* Pseudo-filesystems advertize a zero size. */
+	if (S_ISREG(sb.st_mode) && sb.st_size > 0) {
+		if (skip >= sb.st_size) {
+			address += sb.st_size;
+			skip -= sb.st_size;
+		} else {
+			if (fseeko(stdin, skip, SEEK_SET))
+				err(1, "%s", fname);
+			address += skip;
+			skip = 0;
+		}
 	} else {
 		for (cnt = 0; cnt < skip; ++cnt)
 			if (getchar() == EOF)
