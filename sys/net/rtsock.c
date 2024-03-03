@@ -1881,7 +1881,6 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 	case NET_RT_FLAGS:
 		error = sysctl_rttable(af, w.w_req, w.w_op, w.w_arg);
 		break;
-
 	case NET_RT_IFLIST:
 		error = sysctl_iflist(af, &w);
 		break;

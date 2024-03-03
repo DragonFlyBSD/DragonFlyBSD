@@ -468,10 +468,10 @@ SYSCTL_INT(_net_inet6_ip6, IPV6CTL_ACCEPT_RTADV, accept_rtadv,
     CTLFLAG_RW, &ip6_accept_rtadv, 0,
     "Default value of per-interface flag for accepting "
     "ICMPv6 Router Advertisement messages");
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_LOG_INTERVAL,
-	log_interval, CTLFLAG_RW,	&ip6_log_interval,	0, "");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_LOG_INTERVAL, log_interval,
+    CTLFLAG_RW, &ip6_log_interval, 0, "");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_HDRNESTLIMIT, hdrnestlimit, CTLFLAG_RW,
-    &ip6_hdrnestlimit,	0, "Upper limit of # of extension headers");
+    &ip6_hdrnestlimit, 0, "Upper limit of # of extension headers");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_DAD_COUNT, dad_count, CTLFLAG_RW,
     &ip6_dad_count, 0, "Number of times to perform duplicate address detectione");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_AUTO_FLOWLABEL, auto_flowlabel, CTLFLAG_RW,
@@ -479,14 +479,13 @@ SYSCTL_INT(_net_inet6_ip6, IPV6CTL_AUTO_FLOWLABEL, auto_flowlabel, CTLFLAG_RW,
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_DEFMCASTHLIM, defmcasthlim, CTLFLAG_RW,
     &ip6_defmcasthlim, 0, "Default multicast hop limit");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_GIF_HLIM, gifhlim, CTLFLAG_RW,
-    &ip6_gif_hlim,	0, "Hop limit for gif encap packet");
-SYSCTL_STRING(_net_inet6_ip6, IPV6CTL_KAME_VERSION,
-	kame_version, CTLFLAG_RD,	__KAME_VERSION,		0, "Kame version");
+    &ip6_gif_hlim, 0, "Hop limit for gif encap packet");
+SYSCTL_STRING(_net_inet6_ip6, IPV6CTL_KAME_VERSION, kame_version,
+    CTLFLAG_RD, __KAME_VERSION, 0, "KAME version");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_USE_DEPRECATED, use_deprecated, CTLFLAG_RW,
     &ip6_use_deprecated, 0, "Allow deprecated addr as source");
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_RR_PRUNE,
-	rr_prune, CTLFLAG_RW,	&ip6_rr_prune,	0,
-    "Walk timer for router renumbering");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_RR_PRUNE, rr_prune, CTLFLAG_RW,
+    &ip6_rr_prune, 0, "Walk timer for router renumbering");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_USETEMPADDR, use_tempaddr, CTLFLAG_RW,
     &ip6_use_tempaddr, 0, "Whether to use temporary addresses");
 SYSCTL_OID(_net_inet6_ip6, IPV6CTL_TEMPPLTIME, temppltime,
@@ -518,7 +517,7 @@ SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_PRUNE, nd6_prune, CTLFLAG_RW,
 SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_DELAY, nd6_delay, CTLFLAG_RW,
     &nd6_delay, 0, "Reachability timeout for stale neighbors");
 SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_UMAXTRIES, nd6_umaxtries, CTLFLAG_RW,
-    &nd6_umaxtries,	0, "Maximum unicast query");
+    &nd6_umaxtries, 0, "Maximum unicast query");
 SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_MMAXTRIES, nd6_mmaxtries, CTLFLAG_RW,
     &nd6_mmaxtries, 0, "Maximum multicast query");
 SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_USELOOPBACK, nd6_useloopback, CTLFLAG_RW,
@@ -526,7 +525,7 @@ SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_USELOOPBACK, nd6_useloopback, CTLFLAG
 SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_NODEINFO,
     nodeinfo, CTLFLAG_RW, &icmp6_nodeinfo, 0, "Enable/disable NI response");
 SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ERRPPSLIMIT,
-	errppslimit, CTLFLAG_RW,	&icmp6errppslim,	0,
+    errppslimit, CTLFLAG_RW, &icmp6errppslim, 0,
     "ICMPv6 error maximum packet-per-second value (default: 100pps)");
 SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_MAXNUDHINT, nd6_maxnudhint, CTLFLAG_RW,
     &nd6_maxnudhint, 0, "Max # of subsequent upper layer hints");

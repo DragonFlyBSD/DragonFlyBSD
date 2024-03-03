@@ -52,7 +52,7 @@
 struct in_ifaddr {
 	struct	ifaddr ia_ifa;		/* protocol-independent info */
 #define	ia_ifp		ia_ifa.ifa_ifp
-#define ia_flags	ia_ifa.ifa_flags
+#define	ia_flags	ia_ifa.ifa_flags
 					/* ia_{,sub}net{,mask} in host order */
 	u_long	ia_net;			/* network number of interface */
 	u_long	ia_netmask;		/* mask of net part */
@@ -67,13 +67,14 @@ struct in_ifaddr {
 	struct	sockaddr_in ia_sockmask; /* reserve space for general netmask */
 };
 
-struct	in_aliasreq {
+struct in_aliasreq {
 	char	ifra_name[IFNAMSIZ];		/* if name, e.g. "en0" */
 	struct	sockaddr_in ifra_addr;
 	struct	sockaddr_in ifra_broadaddr;
-#define ifra_dstaddr ifra_broadaddr
+#define	ifra_dstaddr	ifra_broadaddr
 	struct	sockaddr_in ifra_mask;
 };
+
 /*
  * Given a pointer to an in_ifaddr (ifaddr),
  * return a pointer to the addr as a sockaddr_in.
@@ -227,7 +228,7 @@ IN_LOOKUP_MULTI(const struct in_addr *_addr, struct ifnet *_ifp)
  * are no remaining records.
  */
 #define IN_NEXT_MULTI(step, inm) \
-	/* struct in_multistep  step; */ \
+	/* struct in_multistep step; */ \
 	/* struct in_multi *inm; */ \
 do { \
 	if (((inm) = (step).i_inm) != NULL) \
@@ -243,7 +244,7 @@ do { \
 } while(0)
 
 struct	route;
-struct  lwkt_serialize;
+struct	lwkt_serialize;
 union	netmsg;
 
 void	in_ifdetach(struct ifnet *ifp);

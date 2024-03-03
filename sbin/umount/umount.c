@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1980, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)umount.c	8.8 (Berkeley) 5/8/95
  * $FreeBSD: src/sbin/umount/umount.c,v 1.28 2001/10/13 02:04:54 iedowse Exp $
  */
@@ -64,8 +63,7 @@ char   *nfshost;
 
 void	 checkmntlist (char *, char **, char **, char **);
 int	 checkvfsname (const char *, char **);
-char	*getmntname (const char *, const char *,
-	 mntwhat, char **, dowhat);
+char	*getmntname (const char *, const char *, mntwhat, char **, dowhat);
 char 	*getrealname(char *, char *resolved_path);
 char   **makevfslist (const char *);
 int	 mntinfo (struct statfs **);
@@ -274,7 +272,7 @@ checkname(char *name, char **typelist)
 	 */
 	if (mntfromname == NULL && mntonname == NULL) {
 		speclen = strlen(name);
-		for (speclen = strlen(name); 
+		for (speclen = strlen(name);
 		    speclen > 1 && name[speclen - 1] == '/';
 		    speclen--)
 			name[speclen - 1] = '\0';
@@ -294,7 +292,7 @@ checkname(char *name, char **typelist)
 				if (*hostp != '\0') {
 					/*
 					 * Make both '@' and ':'
-					 * notations equal 
+					 * notations equal
 					 */
 					char *host = strdup(hostp);
 					len = strlen(hostp);
@@ -306,7 +304,7 @@ checkname(char *name, char **typelist)
 					memmove(name, host, len);
 					free(host);
 				}
-				for (speclen = strlen(name); 
+				for (speclen = strlen(name);
 				    speclen > 1 && name[speclen - 1] == '/';
 				    speclen--)
 					name[speclen - 1] = '\0';
@@ -380,7 +378,7 @@ checkname(char *name, char **typelist)
 	 * If several equal mounts are in the mounttable, check the order
 	 * and warn the user if necessary.
 	 */
-	if (strcmp(mntfromnamerev, mntfromname ) != 0 &&
+	if (strcmp(mntfromnamerev, mntfromname) != 0 &&
 	    strcmp(resolved, mntonname) != 0) {
 		warnx("cannot umount %s, %s\n        "
 		    "is mounted there, umount it first",
@@ -439,7 +437,7 @@ umountfs(char *mntfromname, char *mntonname, char *type)
 		 * mount from mntfromname that is still mounted.
 		 */
 		if (getmntname(mntfromname, NULL, NOTHING, &type, COUNT)
-		     != NULL)
+		    != NULL)
 			do_rpc = 1;
 	}
 
@@ -731,7 +729,7 @@ getrealname(char *name, char *realname)
 	int havedir;
 	size_t baselen;
 	size_t dirlen;
-	
+
 	dirname = NULL;
 	havedir = 0;
 	if (*name == '/') {
@@ -750,7 +748,7 @@ getrealname(char *name, char *realname)
 			if ((dirname = strrchr(name, '/')) == NULL) {
 				if ((realpath(name, realname)) == NULL)
 					return (NULL);
-			} else 
+			} else
 				havedir = 1;
 		}
 	}

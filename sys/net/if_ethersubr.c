@@ -120,7 +120,7 @@ static int ether_resolvemulti(struct ifnet *, struct sockaddr **,
 /*
  * if_lagg(4) support
  */
-void	(*lagg_input_p)(struct ifnet *, struct mbuf *); 
+void	(*lagg_input_p)(struct ifnet *, struct mbuf *);
 int (*lagg_output_p)(struct ifnet *, struct mbuf *);
 
 const uint8_t etherbroadcastaddr[ETHER_ADDR_LEN] = {
@@ -197,7 +197,7 @@ SYSCTL_INT(_net_link_ether, OID_AUTO, always_ckhash, CTLFLAG_RW,
     &ether_input_ckhash, 0, "always check hash");
 
 #define ETHER_KTR_STR		"ifp=%p"
-#define ETHER_KTR_ARGS	struct ifnet *ifp
+#define ETHER_KTR_ARGS		struct ifnet *ifp
 #ifndef KTR_ETHERNET
 #define KTR_ETHERNET		KTR_ALL
 #endif
@@ -708,8 +708,8 @@ do { \
 	case SIOCGIFADDR:
 	case SIOCGHWADDR:
 		error = copyout(IFP2AC(ifp)->ac_enaddr,
-			        ((struct sockaddr *)ifr->ifr_data)->sa_data,
-		      ETHER_ADDR_LEN);
+				((struct sockaddr *)ifr->ifr_data)->sa_data,
+				ETHER_ADDR_LEN);
 		break;
 
 	case SIOCSIFMTU:

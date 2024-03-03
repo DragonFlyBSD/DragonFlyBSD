@@ -193,7 +193,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 				continue;
 			}
 
-			if ((ifnet.if_flags&IFF_UP) == 0)
+			if ((ifnet.if_flags & IFF_UP) == 0)
 				*cp++ = '*';
 			*cp = '\0';
 
@@ -201,8 +201,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 				  (char *)&head, sizeof(head)))
 				return;
 
-			ifaddrcont_addr =
-				(u_long)TAILQ_FIRST(&head);
+			ifaddrcont_addr = (u_long)TAILQ_FIRST(&head);
 			if (ifaddrcont_addr == 0) {
 				ifaddraddr = 0;
 			} else {

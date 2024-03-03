@@ -151,7 +151,7 @@ struct	ip6_pktopts {
 
 	/* Next-hop address information */
 	struct	ip6po_nhinfo ip6po_nhinfo;
-	
+
 	struct	ip6_hbh *ip6po_hbh; /* Hop-by-Hop options header */
 
 	/* Destination options header (before a routing header) */

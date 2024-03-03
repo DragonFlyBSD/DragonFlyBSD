@@ -209,7 +209,7 @@ main(int argc, char *argv[])
 	rv = 0;
 	if (listopt) {
 		if(argc > optind)
-			while(argc > optind) 
+			while(argc > optind)
 				rv += getinfo( argv[optind++]);
 		else {
 			rv = getinfo( NULL );
@@ -258,7 +258,7 @@ what_opt(const char *str, u_long *p)
  * GETINFO
  *
  *	Print vnode disk information to stdout for the device at
- *	path 'vname', or all existing 'vn' devices if none is given. 
+ *	path 'vname', or all existing 'vn' devices if none is given.
  *	Any 'vn' devices must exist under /dev in order to be queried.
  *
  *	Todo: correctly use vm_secsize for swap-backed vn's ..
@@ -310,10 +310,10 @@ getinfo( const char *vname )
 			break;
 		}
 		else {
-        		if (ioctl(vd, VNIOCGET, &vnu) == -1) {
+			if (ioctl(vd, VNIOCGET, &vnu) == -1) {
 				warn("vn%d: ioctl", i);
 					continue;
-        		}
+			}
 
 			fprintf(stdout, "vn%d: ", vnu.vnu_unit);
 
@@ -324,10 +324,10 @@ getinfo( const char *vname )
 					"consuming %jd VM pages\n",
 					(intmax_t)vnu.vnu_size);
 			else
-				fprintf(stdout, 
+				fprintf(stdout,
 					"covering %s on %s, inode %ju\n",
 					vnu.vnu_file,
-					devname(vnu.vnu_dev, S_IFBLK), 
+					devname(vnu.vnu_dev, S_IFBLK),
 					(uintmax_t)vnu.vnu_ino);
 		}
 	}
@@ -343,7 +343,7 @@ config(struct vndisk *vnp)
 	struct vn_ioctl vnio;
 	int flags, pgsize, rv, status;
 	u_long l;
-	
+
 	pgsize = getpagesize();
 
 	status = rv = 0;
@@ -390,7 +390,8 @@ config(struct vndisk *vnp)
 					    ZBUFSIZE : (int)st.st_size;
 					if (write(fd, buf, n) != n) {
 						ftruncate(fd, 0);
-						printf("Unable to ZERO file %s\n", file);
+						printf("Unable to ZERO file "
+						       "%s\n", file);
 						return(0);
 					}
 					st.st_size -= (off_t)n;
@@ -498,9 +499,10 @@ config(struct vndisk *vnp)
 			if (verbose) {
 				printf("%s: %s, ", dev, file);
 				if (vnp->size != 0) {
-				    printf("%jd bytes mapped\n", (intmax_t)vnio.vn_size);
+					printf("%jd bytes mapped\n",
+					       (intmax_t)vnio.vn_size);
 				} else {
-				    printf("complete file mapped\n");
+					printf("complete file mapped\n");
 				}
 			}
 			/*

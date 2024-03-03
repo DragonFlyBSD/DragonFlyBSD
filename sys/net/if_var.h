@@ -426,7 +426,7 @@ typedef void if_init_f_t (void *);
 
 #define	if_mtu		if_data.ifi_mtu
 #define	if_type		if_data.ifi_type
-#define if_physical	if_data.ifi_physical
+#define	if_physical	if_data.ifi_physical
 #define	if_addrlen	if_data.ifi_addrlen
 #define	if_hdrlen	if_data.ifi_hdrlen
 #define	if_metric	if_data.ifi_metric
@@ -446,9 +446,9 @@ typedef void if_init_f_t (void *);
 #define	if_noproto	if_data.ifi_noproto
 #define	if_oqdrops	if_data.ifi_oqdrops
 #define	if_lastchange	if_data.ifi_lastchange
-#define if_recvquota	if_data.ifi_recvquota
+#define	if_recvquota	if_data.ifi_recvquota
 #define	if_xmitquota	if_data.ifi_xmitquota
-#define if_rawoutput(if, m, sa) if_output(if, m, sa, NULL)
+#define	if_rawoutput(if, m, sa) if_output(if, m, sa, NULL)
 
 /* for compatibility with other BSDs */
 #define	if_list		if_link
@@ -637,10 +637,10 @@ struct ifaddr {
 #ifdef notdef
 	struct	rtentry *ifa_rt;	/* XXXX for ROUTETOIF ????? */
 #endif
-	int (*ifa_claim_addr)		/* check if an addr goes to this if */
+	int	(*ifa_claim_addr)	/* check if an addr goes to this if */
 		(struct ifaddr *, struct sockaddr *);
-
 };
+
 #define	IFA_ROUTE	RTF_UP		/* route installed */
 
 /* for compatibility with other BSDs */
@@ -990,8 +990,8 @@ void	if_devstart_sched(struct ifnet *ifp); /* COMPAT */
 void	ifnet_lock(void);
 void	ifnet_unlock(void);
 
-#define IF_LLSOCKADDR(ifp)						\
-    ((struct sockaddr_dl *)(ifp)->if_lladdr->ifa_addr)
+#define IF_LLSOCKADDR(ifp)	\
+	((struct sockaddr_dl *)(ifp)->if_lladdr->ifa_addr)
 #define IF_LLADDR(ifp)	LLADDR(IF_LLSOCKADDR(ifp))
 
 #ifdef IFPOLL_ENABLE

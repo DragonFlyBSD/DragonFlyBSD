@@ -345,7 +345,7 @@ main(int argc, char **argv)
 			preload = ultmp;
 			break;
 		case 'M':
-			switch(optarg[0]) {
+			switch (optarg[0]) {
 			case 'M':
 			case 'm':
 				options |= F_MASK;
@@ -641,7 +641,7 @@ main(int argc, char **argv)
 		datalen = sweepmin;
 		send_len = icmp_len + sweepmin;
 	}
-	if (options & F_SWEEP && !sweepmax) 
+	if (options & F_SWEEP && !sweepmax)
 		errx(EX_USAGE, "Maximum sweep size must be specified");
 
 	/*
@@ -671,9 +671,9 @@ main(int argc, char **argv)
 		if (sweepmax)
 			printf(": (%d ... %d) data bytes\n",
 			    sweepmin, sweepmax);
-		else 
+		else
 			printf(": %d data bytes\n", datalen);
-		
+
 	} else {
 		if (sweepmax)
 			printf("PING %s: (%d ... %d) data bytes\n",
@@ -795,14 +795,14 @@ main(int argc, char **argv)
 		}
 		if (n == 0 || options & F_FLOOD) {
 			if (sweepmax && sntransmitted == snpackets) {
-				for (i = 0; i < sweepincr ; ++i) 
+				for (i = 0; i < sweepincr ; ++i)
 					*datap++ = i;
 				datalen += sweepincr;
 				if (datalen > sweepmax)
 					break;
 				send_len = icmp_len + datalen;
 				sntransmitted = 0;
-			} 
+			}
 			if (!npackets || ntransmitted < npackets)
 				pinger();
 			else {
@@ -1006,7 +1006,7 @@ pr_pack(char *buf, int cc, struct sockaddr_in *from, struct timeval *tv)
 
 		if (options & F_QUIET)
 			return;
-	
+
 		if (options & F_WAITTIME && triptime > waittime) {
 			++nrcvtimeout;
 			return;

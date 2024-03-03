@@ -492,8 +492,8 @@ rtredirect_msghandler(netmsg_t msg)
 }
 
 /*
-* Routing table ioctl interface.
-*/
+ * Routing table ioctl interface.
+ */
 int
 rtioctl(u_long req, caddr_t data, struct ucred *cred)
 {
@@ -875,8 +875,8 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 			gotoerr(ENETDOWN);
 
 		KASSERT(rt->rt_cpuid == mycpuid,
-		    ("rt resolve rt_cpuid %d, mycpuid %d",
-		     rt->rt_cpuid, mycpuid));
+			("rt resolve rt_cpuid %d, mycpuid %d",
+			 rt->rt_cpuid, mycpuid));
 
 		ifa = rt->rt_ifa;
 		rtinfo->rti_flags =
@@ -891,20 +891,20 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 		goto makeroute;
 
 	case RTM_ADD:
-		KASSERT(!(rtinfo->rti_flags & RTF_GATEWAY) ||
-			rtinfo->rti_info[RTAX_GATEWAY] != NULL,
-		    ("rtrequest: GATEWAY but no gateway"));
+		KASSERT((!(rtinfo->rti_flags & RTF_GATEWAY) ||
+			 rtinfo->rti_info[RTAX_GATEWAY] != NULL),
+			("rtrequest: GATEWAY but no gateway"));
 
-		if (rtinfo->rti_ifa == NULL && (error = rt_getifa(rtinfo)))
+		if (rtinfo->rti_ifa == NULL &&
+		    (error = rt_getifa(rtinfo)) != 0)
 			gotoerr(error);
 		ifa = rtinfo->rti_ifa;
 makeroute:
 		R_Malloc(rt, struct rtentry *, sizeof(struct rtentry));
 		if (rt == NULL) {
-			if (req == RTM_ADD) {
-				kprintf("rtrequest1: alloc rtentry failed on "
-				    "cpu%d\n", mycpuid);
-			}
+			if (req == RTM_ADD)
+				kprintf("%s: alloc rtentry failed on cpu%d\n",
+					__func__, mycpuid);
 			gotoerr(ENOBUFS);
 		}
 		bzero(rt, sizeof(struct rtentry));
@@ -930,7 +930,7 @@ makeroute:
 		/*
 		 * Note that we now have a reference to the ifa.
 		 * This moved from below so that rnh->rnh_addaddr() can
-		 * examine the ifa and  ifa->ifa_ifp if it so desires.
+		 * examine the ifa and ifa->ifa_ifp if it so desires.
 		 */
 		IFAREF(ifa);
 		rt->rt_ifa = ifa;

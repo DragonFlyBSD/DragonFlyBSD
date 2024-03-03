@@ -33,7 +33,7 @@
 #include <sys/types.h>
 
 struct ifaddrs {
-	struct ifaddrs  *ifa_next;
+	struct ifaddrs	*ifa_next;
 	char		*ifa_name;
 	u_int		 ifa_flags;
 	struct sockaddr	*ifa_addr;

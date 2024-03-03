@@ -192,8 +192,7 @@ nd6_ifattach(struct ifnet *ifp)
 {
 	struct nd_ifinfo *nd;
 
-	nd = (struct nd_ifinfo *)kmalloc(sizeof(*nd), M_IP6NDP,
-	    M_WAITOK | M_ZERO);
+	nd = kmalloc(sizeof(*nd), M_IP6NDP, M_WAITOK | M_ZERO);
 
 	nd->initialized = 1;
 
@@ -212,6 +211,7 @@ nd6_ifattach(struct ifnet *ifp)
 
 	/* XXX: we cannot call nd6_setmtu since ifp is not fully initialized */
 	nd6_setmtu0(ifp, nd);
+
 	return nd;
 }
 
@@ -1424,7 +1424,7 @@ nd6_rtrequest(int req, struct rtentry *rt)
 }
 
 int
-nd6_ioctl(u_long cmd, caddr_t	data, struct ifnet *ifp)
+nd6_ioctl(u_long cmd, caddr_t data, struct ifnet *ifp)
 {
 	struct in6_drlist *drl = (struct in6_drlist *)data;
 	struct in6_prlist *prl = (struct in6_prlist *)data;

@@ -50,10 +50,10 @@ struct iso_args {
 	char	cs_disk[ICONV_CSNMAXLEN];	/* disk charset for Joliet cs conversion */
 	char	cs_local[ICONV_CSNMAXLEN];	/* local charset for Joliet cs conversion */
 };
-#define	ISOFSMNT_NORRIP		0x00000001	/* disable Rock Ridge Ext.*/
+#define	ISOFSMNT_NORRIP		0x00000001	/* disable Rock Ridge Ext. */
 #define	ISOFSMNT_GENS		0x00000002	/* enable generation numbers */
 #define	ISOFSMNT_EXTATT		0x00000004	/* enable extended attributes */
-#define	ISOFSMNT_NOJOLIET	0x00000008	/* disable Joliet Ext.*/
+#define	ISOFSMNT_NOJOLIET	0x00000008	/* disable Joliet Ext. */
 #define	ISOFSMNT_BROKENJOLIET	0x00000010	/* allow broken Joliet disks */
 #define	ISOFSMNT_KICONV		0x00000020	/* Use libiconv to convert chars */
 #define	ISOFSMNT_UID		0x00000040	/* override uid */

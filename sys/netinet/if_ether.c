@@ -793,7 +793,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 					    hexstr[0], HEX_NCPYLEN(ifp->if_addrlen), ":");
 					hexncpy((u_char *)ar_sha(ah), ifp->if_addrlen,
 					    hexstr[1], HEX_NCPYLEN(ifp->if_addrlen), ":");
-			    		log(LOG_INFO,
+					log(LOG_INFO,
 					    "arp: %s moved from %s to %s on %s\n",
 					    kinet_ntoa(isaddr, sbuf), hexstr[0], hexstr[1],
 					    ifp->if_xname);

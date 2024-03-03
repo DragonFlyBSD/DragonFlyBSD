@@ -70,7 +70,7 @@ struct if_data {
 	u_char	ifi_xmitquota;		/* polling quota for xmit intrs */
 	u_long	ifi_mtu;		/* maximum transmission unit */
 	u_long	ifi_metric;		/* routing metric (external only) */
-	u_long  ifi_link_state;		/* current link state */
+	u_long	ifi_link_state;		/* current link state */
 	uint64_t ifi_baudrate;		/* linespeed */
 	/* volatile statistics */
 	u_long	ifi_ipackets;		/* packets received on interface */
@@ -112,7 +112,7 @@ struct if_data {
 #define	IFF_STATICARP	0x80000		/* static ARP */
 #define	IFF_NPOLLING	0x100000	/* interface is in polling mode */
 #define	IFF_IDIRECT	0x200000	/* direct input */
-#define IFF_ISBRIDGE	0x400000	/* this is actually a bridge(4) */
+#define	IFF_ISBRIDGE	0x400000	/* this is actually a bridge(4) */
 
 /* flags set internally only: */
 #define	IFF_CANTCHANGE \
@@ -224,8 +224,8 @@ struct if_announcemsghdr {
  * Buffer with length to be used in SIOCGIFDESCR/SIOCSIFDESCR requests
  */
 struct ifreq_buffer {
-	size_t  length;
-	void    *buffer;
+	size_t	 length;
+	void	*buffer;
 };
 
 /*
@@ -240,14 +240,14 @@ struct	ifreq {
 		struct	sockaddr ifru_addr;
 		struct	sockaddr ifru_dstaddr;
 		struct	sockaddr ifru_broadaddr;
-		struct  ifreq_buffer ifru_buffer;
+		struct	ifreq_buffer ifru_buffer;
 		short	ifru_flags[2];
 		short	ifru_index;
 		int	ifru_metric;
 		int	ifru_mtu;
 		int	ifru_phys;
 		int	ifru_media;
-		void   *ifru_data;
+		void	*ifru_data;
 		int	ifru_cap[2];
 		int	ifru_pollcpu;
 		int	ifru_tsolen;
@@ -255,7 +255,7 @@ struct	ifreq {
 #define	ifr_addr	ifr_ifru.ifru_addr	/* address */
 #define	ifr_dstaddr	ifr_ifru.ifru_dstaddr	/* other end of p-to-p link */
 #define	ifr_broadaddr	ifr_ifru.ifru_broadaddr	/* broadcast address */
-#define ifr_buffer	ifr_ifru.ifru_buffer	/* user supplied buffer with its length */
+#define	ifr_buffer	ifr_ifru.ifru_buffer	/* user supplied buffer with its length */
 #define	ifr_flags	ifr_ifru.ifru_flags[0]	/* flags (low 16 bits) */
 #define	ifr_flagshigh	ifr_ifru.ifru_flags[1]	/* flags (high 16 bits) */
 #define	ifr_metric	ifr_ifru.ifru_metric	/* metric */
@@ -293,13 +293,13 @@ struct ifmediareq {
 };
 
 struct  ifdrv {
-	char            ifd_name[IFNAMSIZ];     /* if name, e.g. "en0" */
-	unsigned long   ifd_cmd;
-	size_t          ifd_len;
-	void            *ifd_data;
+	char		 ifd_name[IFNAMSIZ];     /* if name, e.g. "en0" */
+	unsigned long	 ifd_cmd;
+	size_t		 ifd_len;
+	void		*ifd_data;
 };
 
-/* 
+/*
  * Structure used to retrieve aux status data from interfaces.
  * Kernel suppliers to this interface should respect the formatting
  * needed by ifconfig(8): each line starts with a TAB and ends with
@@ -384,5 +384,7 @@ char		*if_indextoname(unsigned int, char *);
 struct if_nameindex *if_nameindex(void);
 void		 if_freenameindex(struct if_nameindex *);
 __END_DECLS
+
 #endif /* !_KERNEL */
+
 #endif /* !_NET_IF_H_ */

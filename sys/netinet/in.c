@@ -100,18 +100,17 @@ in_localaddr(struct in_addr in)
 	if (subnetsarelocal) {
 		TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
 			ia = iac->ia;
-
 			if ((i & ia->ia_netmask) == ia->ia_net)
 				return (1);
 		}
 	} else {
 		TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
 			ia = iac->ia;
-
 			if ((i & ia->ia_subnetmask) == ia->ia_subnet)
 				return (1);
 		}
 	}
+
 	return (0);
 }
 
@@ -142,14 +141,15 @@ in_canforward(struct in_addr in)
 static void
 in_socktrim(struct sockaddr_in *ap)
 {
-    char *cplim = (char *) &ap->sin_addr;
-    char *cp = (char *) (&ap->sin_addr + 1);
+	char *cplim = (char *) &ap->sin_addr;
+	char *cp = (char *) (&ap->sin_addr + 1);
 
-    ap->sin_len = 0;
-    while (--cp >= cplim)
-	if (*cp) {
-	    (ap)->sin_len = cp - (char *) (ap) + 1;
-	    break;
+	ap->sin_len = 0;
+	while (--cp >= cplim) {
+		if (*cp) {
+			(ap)->sin_len = cp - (char *) (ap) + 1;
+			break;
+		}
 	}
 }
 
@@ -194,7 +194,7 @@ in_control_dispatch(netmsg_t msg)
 	int error;
 
 	error = in_control(msg->control.nm_cmd, msg->control.nm_data,
-	    msg->control.nm_ifp, msg->control.nm_td);
+			   msg->control.nm_ifp, msg->control.nm_td);
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
@@ -236,7 +236,7 @@ in_control(u_long cmd, caddr_t data, struct ifnet *ifp, struct thread *td)
 		 * Dispatch these SIOCs to netisr0.
 		 */
 		netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
-		    in_control_internal_dispatch);
+			    in_control_internal_dispatch);
 		msg.nm_cmd = cmd;
 		msg.nm_data = data;
 		msg.nm_ifp = ifp;
@@ -824,11 +824,11 @@ in_lifaddr_ioctl(u_long cmd, caddr_t data, struct ifnet *ifp, struct thread *td)
 		if (iflr->addr.ss_len != sizeof(struct sockaddr_in))
 			return EINVAL;
 		/* XXX need improvement */
-		if (iflr->dstaddr.ss_family
-		 && iflr->dstaddr.ss_family != AF_INET)
+		if (iflr->dstaddr.ss_family &&
+		    iflr->dstaddr.ss_family != AF_INET)
 			return EINVAL;
-		if (iflr->dstaddr.ss_family
-		 && iflr->dstaddr.ss_len != sizeof(struct sockaddr_in))
+		if (iflr->dstaddr.ss_family &&
+		    iflr->dstaddr.ss_len != sizeof(struct sockaddr_in))
 			return EINVAL;
 		break;
 	default: /*shouldn't happen*/
@@ -1051,9 +1051,9 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia,
 			ia->ia_netbroadcast.s_addr = INADDR_BROADCAST;
 		} else {
 			ia->ia_broadaddr.sin_addr.s_addr =
-				htonl(ia->ia_subnet | ~ia->ia_subnetmask);
+			    htonl(ia->ia_subnet | ~ia->ia_subnetmask);
 			ia->ia_netbroadcast.s_addr =
-				htonl(ia->ia_net | ~ ia->ia_netmask);
+			    htonl(ia->ia_net | ~ia->ia_netmask);
 		}
 	} else if (ifp->if_flags & IFF_LOOPBACK) {
 		ia->ia_dstaddr = ia->ia_addr;
@@ -1083,11 +1083,12 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia,
 		addr.s_addr = htonl(INADDR_ALLHOSTS_GROUP);
 		in_addmulti(&addr, ifp);
 	}
+
 	return (0);
+
 fail:
 	if (ifac->ifa_listmask & IFA_LIST_IN_IFADDRHASH)
 		in_iahash_remove(ia);
-
 	ia->ia_addr = oldaddr;
 	if (was_hash)
 		in_iahash_insert(ia);
