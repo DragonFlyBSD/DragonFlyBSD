@@ -2371,7 +2371,7 @@ icmp6_redirect_output(struct mbuf *m0, struct rtentry *rt)
 	icmp6_errcount(&icmp6stat.icp6s_outerrhist, ND_REDIRECT, 0);
 
 	/* if we are not router, we don't send icmp6 redirect */
-	if (!ip6_forwarding || ip6_accept_rtadv)
+	if (!ip6_forwarding)
 		goto fail;
 
 	/* sanity check */

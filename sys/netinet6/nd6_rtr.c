@@ -126,7 +126,7 @@ nd6_rs_input(struct mbuf *m, int off, int icmp6len)
 	union nd_opts ndopts;
 
 	/* If I'm not a router, ignore it. */
-	if (ip6_accept_rtadv != 0 || ip6_forwarding != 1)
+	if (!ip6_forwarding)
 		goto freeit;
 
 	/* Sanity checks */
@@ -215,12 +215,10 @@ nd6_ra_input(struct mbuf *m, int off, int icmp6len)
 
 	/*
 	 * We only accept RAs only when
-	 * the system-wide variable allows the acceptance, and
+	 * the node is not a router, and
 	 * per-interface variable allows RAs on the receiving interface.
 	 */
-	if (ip6_accept_rtadv == 0)
-		goto freeit;
-	if (!(ndi->flags & ND6_IFF_ACCEPT_RTADV))
+	if (ip6_forwarding || !(ndi->flags & ND6_IFF_ACCEPT_RTADV))
 		goto freeit;
 
 	if (ip6->ip6_hlim != 255) {
@@ -549,7 +547,7 @@ defrtrlist_del(struct nd_defrouter *dr)
 	 * Flush all the routing table entries that use the router
 	 * as a next hop.
 	 */
-	if (!ip6_forwarding && ip6_accept_rtadv) /* XXX: better condition? */
+	if (!ip6_forwarding)
 		rt6_flush(&dr->rtaddr, dr->ifp);
 
 	if (dr == TAILQ_FIRST(&nd_defrouter))

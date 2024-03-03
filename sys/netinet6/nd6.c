@@ -202,15 +202,13 @@ nd6_ifattach(struct ifnet *ifp)
 	nd->reachable = ND_COMPUTE_RTIME(nd->basereachable);
 	nd->retrans = RETRANS_TIMER;
 
-	/*
-	 * Note that the default value of ip6_accept_rtadv is 0, which means
-	 * we won't accept RAs by default even if we set ND6_IFF_ACCEPT_RTADV
-	 * here.
-	 */
-	nd->flags = (ND6_IFF_PERFORMNUD | ND6_IFF_ACCEPT_RTADV);
+	nd->flags = ND6_IFF_PERFORMNUD;
 	/* A loopback interface always has link-local address. */
 	if (ip6_auto_linklocal || (ifp->if_flags & IFF_LOOPBACK))
 		nd->flags |= ND6_IFF_AUTO_LINKLOCAL;
+	/* A loopback interface does not need to accept RAs. */
+	if (ip6_accept_rtadv && !(ifp->if_flags & IFF_LOOPBACK))
+		nd->flags |= ND6_IFF_ACCEPT_RTADV;
 
 	/* XXX: we cannot call nd6_setmtu since ifp is not fully initialized */
 	nd6_setmtu0(ifp, nd);
@@ -826,7 +824,8 @@ nd6_purge(struct ifnet *ifp)
 	if (nd6_defifindex == ifp->if_index)
 		nd6_setdefaultiface(0);
 
-	if (!ip6_forwarding && ip6_accept_rtadv) { /* XXX: too restrictive? */
+	if (!ip6_forwarding &&
+	    (ND_IFINFO(ifp)->flags & ND6_IFF_ACCEPT_RTADV)) {
 		/* refresh default router list */
 		bzero(&drany, sizeof(drany));
 		defrouter_delreq(&drany, 0);
@@ -1041,7 +1040,9 @@ nd6_free(struct rtentry *rt)
 	 * even though it is not harmful, it was not really necessary.
 	 */
 
-	if (!ip6_forwarding && ip6_accept_rtadv) { /* XXX: too restrictive? */
+	/* XXX: this condition too restrictive? */
+	if (!ip6_forwarding &&
+	    (ND_IFINFO(rt->rt_ifp)->flags & ND6_IFF_ACCEPT_RTADV)) {
 		mtx_lock(&nd6_mtx);
 		dr = defrouter_lookup(
 		    &((struct sockaddr_in6 *)rt_key(rt))->sin6_addr,
@@ -1901,7 +1902,8 @@ fail:
 	 * for those are not autoconfigured hosts, we explicitly avoid such
 	 * cases for safety.
 	 */
-	if (do_update && ln->ln_router && !ip6_forwarding && ip6_accept_rtadv)
+	if (do_update && ln->ln_router && !ip6_forwarding &&
+	    (ND_IFINFO(ifp)->flags & ND6_IFF_ACCEPT_RTADV))
 		defrouter_select();
 
 	return rt;

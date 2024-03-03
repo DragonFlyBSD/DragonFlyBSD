@@ -834,7 +834,9 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 				defrtrlist_del(dr);
 			mtx_unlock(&nd6_mtx);
 
-			if (dr == NULL && !ip6_forwarding && ip6_accept_rtadv) {
+			if (dr == NULL && !ip6_forwarding &&
+			    (ND_IFINFO(rt->rt_ifp)->flags &
+			     ND6_IFF_ACCEPT_RTADV) != 0) {
 				/*
 				 * Even if the neighbor is not in the default
 				 * router list, the neighbor may be used

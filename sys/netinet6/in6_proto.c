@@ -465,7 +465,9 @@ SYSCTL_STRUCT(_net_inet6_ip6, IPV6CTL_STATS, stats, CTLFLAG_RD,
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_MAXFRAGPACKETS, maxfragpackets,
     CTLFLAG_RW, &ip6_maxfragpackets, 0, "Maximum packets in reassembly queue");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_ACCEPT_RTADV, accept_rtadv,
-    CTLFLAG_RW, &ip6_accept_rtadv, 0, "Acts as a host not a router");
+    CTLFLAG_RW, &ip6_accept_rtadv, 0,
+    "Default value of per-interface flag for accepting "
+    "ICMPv6 Router Advertisement messages");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_LOG_INTERVAL,
 	log_interval, CTLFLAG_RW,	&ip6_log_interval,	0, "");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_HDRNESTLIMIT, hdrnestlimit, CTLFLAG_RW,
