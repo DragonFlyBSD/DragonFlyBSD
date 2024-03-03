@@ -2424,10 +2424,7 @@ in6_if_up_dispatch(netmsg_t nmsg)
 
 	ASSERT_NETISR0;
 
-	/*
-	 * special cases, like 6to4, are handled in in6_ifattach
-	 */
-	in6_ifattach(ifp, NULL);
+	in6_ifattach(ifp, NULL); /* will handle special cases */
 
 	dad_delay = 0;
 	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {

@@ -745,24 +745,6 @@ in6_ifattach(struct ifnet *ifp,
 	}
 
 	/*
-	 * quirks based on interface type
-	 */
-	switch (ifp->if_type) {
-#ifdef IFT_STF
-	case IFT_STF:
-		/*
-		 * 6to4 interface is a very special kind of beast.
-		 * no multicast, no linklocal.  RFC2529 specifies how to make
-		 * linklocals for 6to4 interface, but there's no use and
-		 * it is rather harmful to have one.
-		 */
-		goto statinit;
-#endif
-	default:
-		break;
-	}
-
-	/*
 	 * usually, we require multicast capability to the interface
 	 */
 	if (!(ifp->if_flags & IFF_MULTICAST)) {
@@ -791,10 +773,6 @@ in6_ifattach(struct ifnet *ifp,
 	    in6ifa_ifpforlinklocal(ifp, 0) == NULL) {
 		in6_ifattach_linklocal(ifp, altifp);
 	}
-
-#ifdef IFT_STF			/* XXX */
-statinit:
-#endif
 
 	/* update dynamically. */
 	if (in6_maxmtu < ifp->if_mtu)

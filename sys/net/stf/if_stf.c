@@ -106,6 +106,7 @@
 #include <netinet/ip6.h>
 #include <netinet6/ip6_var.h>
 #include <netinet6/in6_var.h>
+#include <netinet6/nd6.h>
 #include <netinet/ip_ecn.h>
 
 #include <netinet/ip_encap.h>
@@ -196,6 +197,15 @@ stfmodevent(module_t mod, int type, void *data)
 		ifq_set_maxlen(&sc->sc_if.if_snd, IFQ_MAXLEN);
 		if_attach(&sc->sc_if, NULL);
 		bpfattach(&sc->sc_if, DLT_NULL, sizeof(uint32_t));
+		/*
+		 * 6to4 interface is very special: no multicast, no linklocal.
+		 * RFC2529 specifies how to make linklocals, but there's no
+		 * use and it is rather harmful to have one.
+		 *
+		 * NOTE: ND_IFINFO() is only available after if_attach().
+		 */
+		ND_IFINFO(&sc->sc_if)->flags &= ~ND6_IFF_AUTO_LINKLOCAL;
+		ND_IFINFO(&sc->sc_if)->flags |= ND6_IFF_NO_DAD;
 		break;
 	case MOD_UNLOAD:
 		sc = stf;
