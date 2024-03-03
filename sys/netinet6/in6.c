@@ -2464,6 +2464,8 @@ in6if_do_dad(struct ifnet *ifp)
 {
 	if (ifp->if_flags & IFF_LOOPBACK)
 		return (0);
+	if (!(ifp->if_flags & IFF_MULTICAST))
+		return (0);
 
 	/*
 	 * Our DAD routine requires the interface up and running.
