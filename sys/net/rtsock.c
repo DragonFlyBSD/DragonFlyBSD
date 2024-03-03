@@ -696,12 +696,13 @@ route_output(struct mbuf *m, struct socket *so, ...)
 
 	family = familyof(NULL);
 
-#define gotoerr(e) { error = e; goto flush; }
-
 	if (m == NULL ||
 	    (m->m_len < sizeof(long) &&
 	     (m = m_pullup(m, sizeof(long))) == NULL))
 		return (ENOBUFS);
+
+#define gotoerr(e) { error = e; goto flush; }
+
 	len = m->m_pkthdr.len;
 	if (len < sizeof(struct rt_msghdr) ||
 	    len != mtod(m, struct rt_msghdr *)->rtm_msglen)
@@ -734,9 +735,7 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	 */
 	if (rtm->rtm_type != RTM_GET &&
 	    caps_priv_check(so->so_cred, SYSCAP_RESTRICTEDROOT) != 0)
-	{
 		gotoerr(EPERM);
-	}
 
 	if (rtinfo.rti_genmask != NULL) {
 		error = rtmask_add_global(rtinfo.rti_genmask,
@@ -801,6 +800,9 @@ route_output(struct mbuf *m, struct socket *so, ...)
 		error = EOPNOTSUPP;
 		break;
 	}
+
+#undef gotoerr
+
 flush:
 	if (rtm != NULL) {
 		if (error != 0)

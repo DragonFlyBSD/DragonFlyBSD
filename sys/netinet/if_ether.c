@@ -327,8 +327,9 @@ arp_rtrequest(int req, struct rtentry *rt)
 		if (SIN(rt_key(rt))->sin_addr.s_addr ==
 		    (IA_SIN(rt->rt_ifa))->sin_addr.s_addr) {
 			rt->rt_expire = 0;
+			SDL(gate)->sdl_alen = rt->rt_ifp->if_addrlen;
 			bcopy(IF_LLADDR(rt->rt_ifp), LLADDR(SDL(gate)),
-			      SDL(gate)->sdl_alen = rt->rt_ifp->if_addrlen);
+			      rt->rt_ifp->if_addrlen);
 			if (useloopback)
 				rt->rt_ifp = loif;
 		}

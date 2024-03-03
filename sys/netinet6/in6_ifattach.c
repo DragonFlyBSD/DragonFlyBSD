@@ -734,10 +734,7 @@ in6_ifattach(struct ifnet *ifp,
 
 	/* some of the interfaces are inherently not IPv6 capable */
 	switch (ifp->if_type) {
-#ifdef IFT_BRIDGE	/* OpenBSD 2.8, NetBSD 1.6 */
 	case IFT_BRIDGE:
-		return;
-#endif
 	case IFT_PFLOG:
 	case IFT_PFSYNC:
 	case IFT_CARP:

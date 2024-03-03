@@ -1161,9 +1161,8 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 		/*
 		 * join node information group address
 		 */
-#define hostnamelen	strlen(hostname)
-		if (in6_nigroup(ifp, hostname, hostnamelen, &mltaddr.sin6_addr)
-		    == 0) {
+		if (in6_nigroup(ifp, hostname, strlen(hostname),
+				&mltaddr.sin6_addr) == 0) {
 			in6m = IN6_LOOKUP_MULTI(&mltaddr.sin6_addr, ifp);
 			if (in6m == NULL && ia != NULL) {
 				in6_addmulti(&mltaddr.sin6_addr, ifp, &error);
@@ -1176,7 +1175,6 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 				}
 			}
 		}
-#undef hostnamelen
 
 		/*
 		 * join node-local all-nodes address, on loopback.
