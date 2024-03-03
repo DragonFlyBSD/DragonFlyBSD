@@ -144,11 +144,9 @@ static char *
 digestbig(const char *fname, char * const buf, const Algorithm_t *alg)
 {
 	int		 fd;
-	struct stat	 st;
 	char		*result = NULL;
 	unsigned char	 buffer[4096];
 	DIGEST_CTX	 context;
-	off_t		 size;
 	int		 bytes;
 
 	fd = open(fname, O_RDONLY);
@@ -157,30 +155,19 @@ digestbig(const char *fname, char * const buf, const Algorithm_t *alg)
 		return NULL;
         }
 
-	if (fstat(fd, &st) == -1) {
-		warn("can't fstat %s after opening", fname);
-		goto cleanup;
-	}
-
 	alg->Init(&context);
 
-	size = st.st_size;
 	bytes = 0;
 
-        while (size > 0) {
-		if ((size_t)size > sizeof(buffer))
-			bytes = read(fd, buffer, sizeof(buffer));
-		else
-			bytes = read(fd, buffer, size);
-		if (bytes < 0)
+        while (1) {
+		bytes = read(fd, buffer, sizeof(buffer));
+		if (bytes <= 0)
 			break;
 		alg->Update(&context, buffer, bytes);
-		size -= bytes;
 	}
 
 	result = digestend(alg, &context, buf);
 
-cleanup:
 	close(fd);
 	return result;
 }
