@@ -85,7 +85,7 @@
 #define	FLOOD_BACKOFF	20000		/* usecs to back off if F_FLOOD mode */
 					/* runs out of buffer space */
 #define	MAXIPLEN	(sizeof(struct ip) + MAX_IPOPTLEN)
-#define	MAXICMPLEN	(ICMP_ADVLENMIN + MAX_IPOPTLEN)
+#define	MAXPAYLOAD	(IP_MAXPACKET - MAXIPLEN - ICMP_MINLEN)
 #define	MAXWAIT		10000		/* max ms to wait for response */
 #define	MAXALARM	(60 * 60)	/* max seconds for alarm timeout */
 #define	MAXTOS		255
@@ -395,12 +395,10 @@ main(int argc, char **argv)
 			if (*ep || ep == optarg)
 				errx(EX_USAGE, "invalid packet size: `%s'",
 				    optarg);
-			if (uid != 0 && ultmp > DEFDATALEN) {
-				errno = EPERM;
-				err(EX_NOPERM,
-				    "packet size too large: %lu > %u",
-				    ultmp, DEFDATALEN);
-			}
+			if (ultmp > MAXPAYLOAD)
+				errx(EX_USAGE,
+				    "packet size too large: %lu > %lu",
+				    ultmp, MAXPAYLOAD);
 			datalen = ultmp;
 			break;
 		case 'T':		/* multicast TTL */
