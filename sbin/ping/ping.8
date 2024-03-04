@@ -170,8 +170,8 @@ Wait
 seconds
 .Em between sending each packet .
 The default is to wait for one second between each packet.
-The wait time may be fractional, but only the super-user may specify
-values less than 1 second.
+Only the super-user may specify values less than 0.002 second
+(i.e., 2 milliseconds).
 This option is incompatible with the
 .Fl f
 option.

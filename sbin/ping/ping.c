@@ -164,7 +164,7 @@ long sntransmitted;		/* # of packets we sent in this sweep */
 int sweepmax;			/* max value of payload in sweep */
 int sweepmin = 0;		/* start value of payload in sweep */
 int sweepincr = 1;		/* payload increment in sweep */
-int interval = 1000;		/* interval between packets, ms */
+long interval = 1000000;	/* interval between packets, usec */
 int waittime = MAXWAIT;		/* timeout for each packet */
 long nrcvtimeout = 0;		/* # of packets we got back after waittime */
 
@@ -317,13 +317,14 @@ main(int argc, char **argv)
 			options |= F_MIF;
 			break;
 		case 'i':		/* wait between sending packets */
-			t = strtod(optarg, &ep) * 1000.0;
-			if (*ep || ep == optarg || t > (double)INT_MAX)
+			t = strtod(optarg, &ep) * 1000000.0; /* sec -> usec */
+			if (*ep || ep == optarg ||
+			    t > (double)LONG_MAX || t <= 0)
 				errx(EX_USAGE, "invalid timing interval: `%s'",
 				    optarg);
 			options |= F_INTERVAL;
-			interval = (int)t;
-			if (uid && interval < 1000) {
+			interval = (long)t;
+			if (uid != 0 && interval < 2000 /* 2 ms */) {
 				errno = EPERM;
 				err(EX_NOPERM, "-i interval too short");
 			}
@@ -728,8 +729,8 @@ main(int argc, char **argv)
 		intvl.tv_sec = 0;
 		intvl.tv_usec = 10000;
 	} else {
-		intvl.tv_sec = interval / 1000;
-		intvl.tv_usec = interval % 1000 * 1000;
+		intvl.tv_sec = interval / 1000000;
+		intvl.tv_usec = interval % 1000000;
 	}
 
 	almost_done = 0;
