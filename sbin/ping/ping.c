@@ -338,7 +338,7 @@ main(int argc, char **argv)
 			if (*ep || ep == optarg || ultmp > INT_MAX)
 				errx(EX_USAGE,
 				    "invalid preload value: `%s'", optarg);
-			if (uid) {
+			if (uid != 0) {
 				errno = EPERM;
 				err(EX_NOPERM, "-l flag");
 			}
@@ -425,8 +425,9 @@ main(int argc, char **argv)
 			break;
 		case 'W':		/* wait ms for answer */
 			t = strtod(optarg, &ep);
-			if (*ep || ep == optarg || t > (double)INT_MAX)
-				errx(EX_USAGE, "invalid timing interval: `%s'",
+			if (*ep || ep == optarg ||
+			    t > (double)INT_MAX || t <= 0)
+				errx(EX_USAGE, "invalid wait timeout: `%s'",
 				    optarg);
 			options |= F_WAITTIME;
 			waittime = (int)t;
