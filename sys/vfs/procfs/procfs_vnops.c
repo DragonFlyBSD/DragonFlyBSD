@@ -143,6 +143,7 @@ static struct proc_target {
 	{ DT_REG, N("cmdline"),	Pcmdline,	NULL },
 	{ DT_REG, N("rlimit"),	Prlimit,	NULL },
 	{ DT_LNK, N("file"),	Pfile,		NULL },
+	{ DT_LNK, N("exe"),	Pfile,		NULL },
 #undef N
 };
 static const int nproc_targets = NELEM(proc_targets);
@@ -784,7 +785,7 @@ procfs_lookup(struct vop_old_lookup_args *ap)
 		if (cnp->cn_flags & CNP_ISDOTDOT)
 			return (EIO);
 
-		if (CNEQ(cnp, "curproc", 7)) {
+		if (CNEQ(cnp, "curproc", 7) || CNEQ(cnp, "self", 4)) {
 			error = procfs_allocvp(dvp->v_mount, vpp, 0, Pcurproc);
 			goto out;
 		}
@@ -1000,7 +1001,7 @@ procfs_readdir_root(struct vop_readdir_args *ap)
 	info.pcnt = 0;
 	info.uio = uio;
 	info.cred = ap->a_cred;
-	while (info.pcnt < 3) {
+	while (info.pcnt < 4) {
 		res = procfs_readdir_root_callback(NULL, &info);
 		if (res < 0)
 			break;
@@ -1050,6 +1051,12 @@ procfs_readdir_root_callback(struct proc *p, void *data)
 		d_type = DT_LNK;
 		break;
 
+	case 3:
+		d_ino = PROCFS_FILENO(0, Pcurproc);
+		d_namlen = 4;
+		d_name = "self";
+		d_type = DT_LNK;
+		break;
 
 	default:
 		if (!PRISON_CHECK(info->cred, p->p_ucred))
