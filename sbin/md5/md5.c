@@ -121,6 +121,7 @@ static const struct Algorithm_t Algorithm[] = {
 	  (DIGEST_Update *)RIPEMD160_Update,
 	  (DIGEST_Final *)RIPEMD160_Final,
 	  RIPEMD160_DIGEST_LENGTH },
+	{ 0 },
 };
 
 /*
@@ -324,22 +325,22 @@ badnumber:
 int
 main(int argc, char *argv[])
 {
-	char		*p, buf[HEX_DIGEST_LENGTH];
-	int		 ch, failed, useoffsets = 0;
-	off_t		 begin = 0, end = 0;
-	unsigned	 digest;
-	const char	*progname;
+	char			*p, buf[HEX_DIGEST_LENGTH];
+	int			 ch, failed, useoffsets = 0;
+	off_t			 begin = 0, end = 0;
+	const char		*progname;
+	const Algorithm_t	*alg;
 
 	if ((progname = strrchr(argv[0], '/')) == NULL)
 		progname = argv[0];
 	else
 		progname++;
 
-	for (digest = 0; digest < sizeof(Algorithm)/sizeof(*Algorithm); digest++)
-		if (strcasecmp(Algorithm[digest].progname, progname) == 0)
+	for (alg = Algorithm; alg->progname != NULL; alg++)
+		if (strcasecmp(alg->progname, progname) == 0)
 			break;
-	if (digest == sizeof(Algorithm)/sizeof(*Algorithm))
-		digest = 0;
+	if (alg->progname == NULL)
+		alg = Algorithm;
 
 	failed = 0;
 	while ((ch = getopt(argc, argv, "hb:e:pqrs:tx")) != -1) {
@@ -353,7 +354,7 @@ main(int argc, char *argv[])
 			useoffsets = 1;
 			break;
 		case 'p':
-			MDFilter(&Algorithm[digest], 1);
+			MDFilter(alg, 1);
 			break;
 		case 'q':
 			qflag = 1;
@@ -363,13 +364,13 @@ main(int argc, char *argv[])
 			break;
 		case 's':
 			sflag = 1;
-			MDString(&Algorithm[digest], optarg);
+			MDString(alg, optarg);
 			break;
 		case 't':
-			MDTimeTrial(&Algorithm[digest]);
+			MDTimeTrial(alg);
 			break;
 		case 'x':
-			MDTestSuite(&Algorithm[digest]);
+			MDTestSuite(alg);
 			break;
 		case 'h':
 			usage(EX_OK);
@@ -383,10 +384,9 @@ main(int argc, char *argv[])
 	if (*argv) {
 		do {
 			if (useoffsets)
-				p = digestfile(*argv, buf, Algorithm + digest,
-					       &begin, &end);
+				p = digestfile(*argv, buf, alg, &begin, &end);
 			else
-				p = digestbig(*argv, buf, Algorithm + digest);
+				p = digestbig(*argv, buf, alg);
 			if (!p) {
 				/* digestfile() outputs its own diagnostics */
 #if 0
@@ -407,19 +407,18 @@ main(int argc, char *argv[])
 						printf("%s %s\n", p, *argv);
 				} else if (useoffsets) {
 					printf("%s (%s[%jd-%jd]) = %s\n",
-					       Algorithm[digest].name, *argv,
+					       alg->name, *argv,
 					       (intmax_t)begin,
 					       (intmax_t)end,
 					       p);
 				} else {
 					printf("%s (%s) = %s\n",
-					       Algorithm[digest].name,
-					       *argv, p);
+					       alg->name, *argv, p);
 				}
 			}
 		} while (*++argv);
 	} else if (!sflag && (optind == 1 || qflag || rflag))
-		MDFilter(&Algorithm[digest], 0);
+		MDFilter(alg, 0);
 
 	if (failed != 0)
 		return (EX_NOINPUT);
