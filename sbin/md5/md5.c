@@ -140,14 +140,19 @@ digestdata(const Algorithm_t *alg, const void *data, unsigned int len,
 	return (digestend(alg, &context, buf));
 }
 
+/*
+ * Digest the whole file.  Don't rely on the file size (st_size), which may
+ * be zero and meaningless for files on pseudo filesystems (e.g., /proc).
+ * Instead, read the file until EOF to get the whole contents.
+ */
 static char *
 digestbig(const char *fname, char * const buf, const Algorithm_t *alg)
 {
 	int		 fd;
-	char		*result = NULL;
+	char		*result;
 	unsigned char	 buffer[4096];
 	DIGEST_CTX	 context;
-	int		 bytes;
+	ssize_t		 bytes;
 
 	fd = open(fname, O_RDONLY);
 	if (fd == -1) {
@@ -157,16 +162,12 @@ digestbig(const char *fname, char * const buf, const Algorithm_t *alg)
 
 	alg->Init(&context);
 
-	bytes = 0;
-
-	while (1) {
-		bytes = read(fd, buffer, sizeof(buffer));
-		if (bytes <= 0)
-			break;
-		alg->Update(&context, buffer, bytes);
-	}
-
-	result = digestend(alg, &context, buf);
+	while ((bytes = read(fd, buffer, sizeof(buffer))) > 0)
+		alg->Update(&context, buffer, (size_t)bytes);
+	if (bytes == 0) /* EOF */
+		result = digestend(alg, &context, buf);
+	else
+		result = NULL;
 
 	close(fd);
 	return result;
