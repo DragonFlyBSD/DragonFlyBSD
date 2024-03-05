@@ -14,8 +14,8 @@ MLINKS=	md5.1 rmd160.1 \
 	md5.1 sha512.1
 
 CFLAGS+=	${PRIVATELIB_CFLAGS}
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 DPADD=		${LIBCRYPTO}
 LDADD=		-lprivate_crypto
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

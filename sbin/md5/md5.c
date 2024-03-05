@@ -19,19 +19,21 @@
  *  documentation and/or software.
  */
 
-#include <fcntl.h>
 #include <sys/types.h>
+#include <sys/mman.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#include <sys/resource.h>
+
 #include <err.h>
-#include <sys/mman.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sysexits.h>
 #include <time.h>
 #include <unistd.h>
-#include <sysexits.h>
+
 #include <openssl/md5.h>
 #include <openssl/ripemd.h>
 #include <openssl/sha.h>
@@ -39,9 +41,9 @@
 /*
  * Length of test block, number of test blocks.
  */
-#define TEST_BLOCK_LEN 10000
-#define TEST_BLOCK_COUNT 100000
-#define MDTESTCOUNT 8
+#define TEST_BLOCK_LEN		10000
+#define TEST_BLOCK_COUNT	100000
+#define MDTESTCOUNT		8
 
 static int qflag;
 static int rflag;
@@ -89,21 +91,36 @@ typedef union {
 /* algorithm function table */
 
 static const struct Algorithm_t Algorithm[] = {
-	{ "md5", "MD5", &MD5_TestOutput, (DIGEST_Init*)&MD5_Init,
-		(DIGEST_Update*)&MD5_Update, (DIGEST_Final*)&MD5_Final,
-		MD5_DIGEST_LENGTH},
-	{ "sha1", "SHA1", &SHA1_TestOutput, (DIGEST_Init*)&SHA1_Init,
-		(DIGEST_Update*)&SHA1_Update, (DIGEST_Final*)&SHA1_Final,
-		SHA_DIGEST_LENGTH},
-	{ "sha256", "SHA256", &SHA256_TestOutput, (DIGEST_Init*)&SHA256_Init,
-		(DIGEST_Update*)&SHA256_Update, (DIGEST_Final*)&SHA256_Final,
-		SHA256_DIGEST_LENGTH},
-	{ "sha512", "SHA512", &SHA512_TestOutput, (DIGEST_Init*)&SHA512_Init,
-		(DIGEST_Update*)&SHA512_Update, (DIGEST_Final*)&SHA512_Final,
-		SHA512_DIGEST_LENGTH},
-	{ "rmd160", "RMD160", &RIPEMD160_TestOutput,
-		(DIGEST_Init*)&RIPEMD160_Init, (DIGEST_Update*)&RIPEMD160_Update,
-		(DIGEST_Final*)&RIPEMD160_Final, RIPEMD160_DIGEST_LENGTH}
+	{ "md5", "MD5",
+	  &MD5_TestOutput,
+	  (DIGEST_Init *)MD5_Init,
+	  (DIGEST_Update *)MD5_Update,
+	  (DIGEST_Final *)MD5_Final,
+	  MD5_DIGEST_LENGTH },
+	{ "sha1", "SHA1",
+	  &SHA1_TestOutput,
+	  (DIGEST_Init *)SHA1_Init,
+	  (DIGEST_Update *)SHA1_Update,
+	  (DIGEST_Final *)SHA1_Final,
+	  SHA_DIGEST_LENGTH },
+	{ "sha256", "SHA256",
+	  &SHA256_TestOutput,
+	  (DIGEST_Init *)SHA256_Init,
+	  (DIGEST_Update *)SHA256_Update,
+	  (DIGEST_Final *)SHA256_Final,
+	  SHA256_DIGEST_LENGTH },
+	{ "sha512", "SHA512",
+	  &SHA512_TestOutput,
+	  (DIGEST_Init *)SHA512_Init,
+	  (DIGEST_Update *)SHA512_Update,
+	  (DIGEST_Final *)SHA512_Final,
+	  SHA512_DIGEST_LENGTH },
+	{ "rmd160", "RMD160",
+	  &RIPEMD160_TestOutput,
+	  (DIGEST_Init *)RIPEMD160_Init,
+	  (DIGEST_Update *)RIPEMD160_Update,
+	  (DIGEST_Final *)RIPEMD160_Final,
+	  RIPEMD160_DIGEST_LENGTH },
 };
 
 /*
@@ -115,8 +132,8 @@ static const struct Algorithm_t Algorithm[] = {
 static char *
 digestend(const Algorithm_t *alg, DIGEST_CTX *context, char * const buf)
 {
+	static const char hex[] = "0123456789abcdef";
 	unsigned char digest[HEX_DIGEST_LENGTH];
-	static const char hex[]="0123456789abcdef";
 	int i;
 
 	alg->Final(digest, context);
@@ -133,7 +150,7 @@ static char *
 digestdata(const Algorithm_t *alg, const void *data, unsigned int len,
 	   char * const buf)
 {
-	DIGEST_CTX	context;
+	DIGEST_CTX context;
 
 	alg->Init(&context);
 	alg->Update(&context, data, len);
@@ -155,7 +172,7 @@ digestbig(const char *fname, char * const buf, const Algorithm_t *alg)
 	if (fd == -1) {
 		warn("can't open %s", fname);
 		return NULL;
-        }
+	}
 
 	if (fstat(fd, &st) == -1) {
 		warn("can't fstat %s after opening", fname);
@@ -167,7 +184,7 @@ digestbig(const char *fname, char * const buf, const Algorithm_t *alg)
 	size = st.st_size;
 	bytes = 0;
 
-        while (size > 0) {
+	while (size > 0) {
 		if ((size_t)size > sizeof(buffer))
 			bytes = read(fd, buffer, sizeof(buffer));
 		else
@@ -187,16 +204,15 @@ cleanup:
 
 static char *
 digestfile(const char *fname, char *buf, const Algorithm_t *alg,
-    off_t *beginp, off_t *endp)
+	   off_t *beginp, off_t *endp)
 {
 	int		 fd;
 	struct stat	 st;
-	size_t		 size;
+	size_t		 size, pagesize;
 	char		*result = NULL;
 	void		*map;
 	DIGEST_CTX	 context;
 	off_t		 end = *endp, begin = *beginp;
-	size_t		 pagesize;
 
 	fd = open(fname, O_RDONLY);
 	if (fd == -1) {
@@ -218,17 +234,16 @@ digestfile(const char *fname, char *buf, const Algorithm_t *alg,
 
 	if (begin < 0 || end < 0 || begin > st.st_size || end > st.st_size) {
 		warnx("%s is %jd bytes long, not large enough for the "
-		    "specified offsets [%jd-%jd]", fname,
-		    (intmax_t)st.st_size,
-		    (intmax_t)*beginp, (intmax_t)*endp);
+		      "specified offsets [%jd-%jd]",
+		      fname, (intmax_t)st.st_size,
+		      (intmax_t)*beginp, (intmax_t)*endp);
 		goto cleanup;
 	}
 	if (begin > end) {
 		warnx("%s is %jd bytes long. Begin-offset %jd (%jd) is "
-		    "larger than end-offset %jd (%jd)",
-		    fname, (intmax_t)st.st_size,
-		    (intmax_t)begin, (intmax_t)*beginp,
-		    (intmax_t)end, (intmax_t)*endp);
+		      "larger than end-offset %jd (%jd)",
+		      fname, (intmax_t)st.st_size, (intmax_t)begin,
+		      (intmax_t)*beginp, (intmax_t)end, (intmax_t)*endp);
 		goto cleanup;
 	}
 
@@ -250,7 +265,7 @@ digestfile(const char *fname, char *buf, const Algorithm_t *alg,
 		map = mmap(NULL, size, PROT_READ, MAP_NOCORE, fd, begin);
 		if (map == MAP_FAILED) {
 			warn("mmaping of %s between %jd and %jd ",
-			    fname, (intmax_t)begin, (intmax_t)begin + size);
+			     fname, (intmax_t)begin, (intmax_t)begin + size);
 			goto cleanup;
 		}
 		/*
@@ -281,16 +296,19 @@ parseint(const char *arg)
 	switch (endp[0]) {
 	case 'T':
 	case 't':
-		result *= 1024;	/* FALLTHROUGH */
+		result *= 1024;
+		/* FALLTHROUGH */
 	case 'M':
 	case 'm':
-		result *= 1024;	/* FALLTHROUGH */
+		result *= 1024;
+		/* FALLTHROUGH */
 	case 'K':
 	case 'k':
 		endp++;
 		if (endp[1] == 'b' || endp[1] == 'B')
 			endp++;
-		result *= 1024;	/* FALLTHROUGH */
+		result *= 1024;
+		/* FALLTHROUGH */
 	case '\0':
 		break;
 	default:
@@ -305,25 +323,24 @@ badnumber:
 	errx(EX_USAGE, "`%s' is not a valid offset.", arg);
 }
 
-/* Main driver.
-
-Arguments (may be any combination):
-  -sstring - digests string
-  -t       - runs time trial
-  -x       - runs test script
-  filename - digests file
-  (none)   - digests standard input
+/*
+ * Main driver.
+ *
+ * Arguments (may be any combination):
+ *   -sstring - digests string
+ *   -t       - runs time trial
+ *   -x       - runs test script
+ *   filename - digests file
+ *   (none)   - digests standard input
  */
 int
 main(int argc, char *argv[])
 {
-	int     ch;
-	char   *p;
-	char	buf[HEX_DIGEST_LENGTH];
-	int     failed, useoffsets = 0;
-	off_t   begin = 0, end = 0; /* To shut compiler warning */
-	unsigned	digest;
-	const char*	progname;
+	char		*p, buf[HEX_DIGEST_LENGTH];
+	int		 ch, failed, useoffsets = 0;
+	off_t		 begin = 0, end = 0;
+	unsigned	 digest;
+	const char	*progname;
 
 	if ((progname = strrchr(argv[0], '/')) == NULL)
 		progname = argv[0];
@@ -333,7 +350,6 @@ main(int argc, char *argv[])
 	for (digest = 0; digest < sizeof(Algorithm)/sizeof(*Algorithm); digest++)
 		if (strcasecmp(Algorithm[digest].progname, progname) == 0)
 			break;
-
 	if (digest == sizeof(Algorithm)/sizeof(*Algorithm))
 		digest = 0;
 
@@ -380,7 +396,7 @@ main(int argc, char *argv[])
 		do {
 			if (useoffsets)
 				p = digestfile(*argv, buf, Algorithm + digest,
-				    &begin, &end);
+					       &begin, &end);
 			else
 				p = digestbig(*argv, buf, Algorithm + digest);
 			if (!p) {
@@ -400,8 +416,7 @@ main(int argc, char *argv[])
 						       (intmax_t)begin,
 						       (intmax_t)end);
 					else
-						printf("%s %s\n",
-							p, *argv);
+						printf("%s %s\n", p, *argv);
 				} else if (useoffsets) {
 					printf("%s (%s[%jd-%jd]) = %s\n",
 					       Algorithm[digest].name, *argv,
@@ -437,10 +452,10 @@ MDString(const Algorithm_t *alg, const char *string)
 		printf("%s\n", digestdata(alg, string, len, buf));
 	else if (rflag)
 		printf("%s \"%s\"\n",
-			digestdata(alg, string, len, buf), string);
+		       digestdata(alg, string, len, buf), string);
 	else
 		printf("%s (\"%s\") = %s\n", alg->name, string,
-			digestdata(alg, string, len, buf));
+		       digestdata(alg, string, len, buf));
 }
 
 /*
@@ -458,7 +473,7 @@ MDTimeTrial(const Algorithm_t *alg)
 	char *p, buf[HEX_DIGEST_LENGTH];
 
 	printf("%s time trial. Digesting %d %d-byte blocks ...",
-	    alg->name, TEST_BLOCK_COUNT, TEST_BLOCK_LEN);
+	       alg->name, TEST_BLOCK_COUNT, TEST_BLOCK_LEN);
 	fflush(stdout);
 
 	/* Initialize block */
@@ -480,10 +495,10 @@ MDTimeTrial(const Algorithm_t *alg)
 	seconds = total.tv_sec + (float) total.tv_usec / 1000000;
 
 	printf(" done\n");
-	printf("Digest = %s", p);
-	printf("\nTime = %f seconds\n", seconds);
-	printf("Speed = %f MiB/second\n", (float) TEST_BLOCK_LEN *
-		(float) TEST_BLOCK_COUNT / seconds / (1 << 20));
+	printf("Digest = %s\n", p);
+	printf("Time = %.3f seconds\n", seconds);
+	printf("Speed = %.3f MiB/second\n",
+	       (float) TEST_BLOCK_LEN * TEST_BLOCK_COUNT / seconds / (1 << 20));
 }
 
 /*
@@ -497,8 +512,8 @@ static const char *MDTestInput[MDTESTCOUNT] = {
 	"abcdefghijklmnopqrstuvwxyz",
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
 	"12345678901234567890123456789012345678901234567890123456789012345678901234567890",
-	"MD5 has not yet (2001-09-03) been broken, but sufficient attacks have been made \
-that its security is in some doubt"
+	("MD5 has not yet (2001-09-03) been broken, but sufficient attacks have been made "
+	 "that its security is in some doubt")
 };
 
 const char *MD5_TestOutput[MDTESTCOUNT] = {
