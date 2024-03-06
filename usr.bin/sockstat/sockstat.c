@@ -54,6 +54,7 @@
 #include <netdb.h>
 #include <pwd.h>
 #include <stdarg.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -68,7 +69,7 @@ static int	 opt_v;		/* Verbose mode */
 
 static int	*ports;
 
-#define INT_BIT (sizeof(int)*CHAR_BIT)
+#define INT_BIT (sizeof(int) * CHAR_BIT)
 #define SET_PORT(p) do { ports[p / INT_BIT] |= 1 << (p % INT_BIT); } while (0)
 #define CHK_PORT(p) (ports[p / INT_BIT] & (1 << (p % INT_BIT)))
 
@@ -83,14 +84,13 @@ struct sock {
 	struct sock *next;
 };
 
-static int xprintf(const char *, ...) __printflike(1, 2);
-
 #define HASHSIZE 1009
 static struct sock *sockhash[HASHSIZE];
 
 static struct kinfo_file *xfiles;
 static size_t nxfiles;
 
+__printflike(1, 2)
 static int
 xprintf(const char *fmt, ...)
 {
@@ -179,7 +179,7 @@ sockaddr(struct sockaddr_storage *sa, int af, void *addr, int port)
 static void
 gather_inet(int proto)
 {
-	void *so_begin, *so_end;
+	uint8_t *buf, *so_begin, *so_end;
 	struct xinpcb *xip;
 	struct xtcpcb *xtp;
 	struct inpcb *inp;
@@ -187,7 +187,6 @@ gather_inet(int proto)
 	struct sock *sock;
 	const char *varname, *protoname;
 	size_t len;
-	void *buf;
 	int hash;
 
 	switch (proto) {
@@ -223,13 +222,10 @@ gather_inet(int proto)
 		err(1, "fetching %s", varname);
 	}
 
-	so_begin = buf;
-	so_end = (uint8_t *)buf + len;
-
-	for (so_begin = buf, so_end = (uint8_t *)so_begin + len;
-	     (uint8_t *)so_begin + sizeof(size_t) < (uint8_t *)so_end &&
-	     (uint8_t *)so_begin + *(size_t *)so_begin <= (uint8_t *)so_end;
-	     so_begin = (uint8_t *)so_begin + *(size_t *)so_begin) {
+	for (so_begin = buf, so_end = buf + len;
+	     so_begin + sizeof(size_t) < so_end &&
+	     so_begin + *(size_t *)so_begin <= so_end;
+	     so_begin = so_begin + *(size_t *)so_begin) {
 		switch (proto) {
 		case IPPROTO_TCP:
 			xtp = (struct xtcpcb *)so_begin;
@@ -297,12 +293,11 @@ out:
 static void
 gather_unix(int proto)
 {
-	void *so_begin, *so_end;
+	uint8_t *buf, *so_begin, *so_end;
 	struct xunpcb *xup;
 	struct sock *sock;
 	const char *varname, *protoname;
 	size_t len;
-	void *buf;
 	int hash;
 
 	switch (proto) {
@@ -329,11 +324,11 @@ gather_unix(int proto)
 	if (sysctlbyname(varname, buf, &len, NULL, 0))
 		err(1, "fetching %s", varname);
 
-	for (so_begin = buf, so_end = (uint8_t *)buf + len;
-	     (uint8_t *)so_begin + sizeof(size_t) < (uint8_t *)so_end &&
-	     (uint8_t *)so_begin + *(size_t *)so_begin <= (uint8_t *)so_end;
-	     so_begin = (uint8_t *)so_begin + *(size_t *)so_begin) {
-		xup = so_begin;
+	for (so_begin = buf, so_end = buf + len;
+	     so_begin + sizeof(size_t) < so_end &&
+	     so_begin + *(size_t *)so_begin <= so_end;
+	     so_begin = so_begin + *(size_t *)so_begin) {
+		xup = (struct xunpcb *)so_begin;
 		if (xup->xu_len != sizeof *xup) {
 			warnx("struct xunpcb size mismatch");
 			goto out;
@@ -349,8 +344,7 @@ gather_unix(int proto)
 		sock->family = AF_UNIX;
 		sock->protoname = protoname;
 		if (xup->xu_unp.unp_addr != NULL)
-			sock->laddr =
-			    *(struct sockaddr_storage *)(void *)&xup->xu_addr;
+			sock->laddr = *(struct sockaddr_storage *)&xup->xu_addr;
 		else if (xup->xu_unp.unp_conn != NULL)
 			*(void **)&sock->faddr = xup->xu_unp.unp_conn;
 		hash = (int)((uintptr_t)sock->socket % HASHSIZE);
@@ -368,13 +362,41 @@ getfiles(void)
 		err(1, "kinfo_get_files");
 }
 
-static int
-printaddr(int af, struct sockaddr_storage *ss)
+static void
+printproto(int width, int af, const char *protoname)
+{
+	int n;
+
+	switch (af) {
+	case AF_INET:
+	case AF_INET6:
+		n = xprintf("%s%c", protoname, af == AF_INET ? '4' : '6');
+		break;
+	default:
+		n = xprintf("%s", protoname);
+		break;
+	}
+
+	if (width > 0 && width > n)
+		xprintf("%*s", width - n, "");
+}
+
+static void
+printaddr(int width, int af, struct sockaddr_storage *ss)
 {
 	char addrstr[INET6_ADDRSTRLEN] = { '\0', '\0' };
 	struct sockaddr_un *sun;
 	void *addr;
-	int off, port;
+	int port, n;
+
+	if (af == AF_UNIX) {
+		sun = (struct sockaddr_un *)ss;
+		n = sun->sun_len - offsetof(struct sockaddr_un, sun_path);
+		xprintf("%.*s", n, sun->sun_path);
+		if (width > 0 && width > n)
+			xprintf("%*s", width - n, "");
+		return;
+	}
 
 	switch (af) {
 	case AF_INET:
@@ -389,19 +411,18 @@ printaddr(int af, struct sockaddr_storage *ss)
 			addrstr[0] = '*';
 		port = ntohs(((struct sockaddr_in6 *)ss)->sin6_port);
 		break;
-	case AF_UNIX:
-		sun = (struct sockaddr_un *)ss;
-		off = (int)((char *)&sun->sun_path - (char *)sun);
-		return (xprintf("%.*s", sun->sun_len - off, sun->sun_path));
 	default:
 		abort();
 	}
+
 	if (addrstr[0] == '\0')
 		inet_ntop(af, addr, addrstr, sizeof addrstr);
 	if (port == 0)
-		return xprintf("%s:*", addrstr);
+		n = xprintf("%s:*", addrstr);
 	else
-		return xprintf("%s:%d", addrstr, port);
+		n = xprintf("%s:%d", addrstr, port);
+	if (width > 0 && width > n)
+		xprintf("%*s", width - n, "");
 }
 
 static const char *
@@ -454,9 +475,9 @@ display(void)
 	struct kinfo_file *xf;
 	struct sock *s;
 	void *p;
-	int hash, n, pos;
+	int hash, n;
 
-	printf("%-8s %-10s %-5s %-2s %-6s %-21s %-21s\n",
+	printf("%-8s %-10s %6s %5s %-6s %-21s %-21s\n",
 	    "USER", "COMMAND", "PID", "FD", "PROTO",
 	    "LOCAL ADDRESS", "FOREIGN ADDRESS");
 	setpassent(1);
@@ -471,51 +492,35 @@ display(void)
 			continue;
 		if (!check_ports(s))
 			continue;
-		pos = 0;
-		if ((pwd = getpwuid(xf->f_uid)) == NULL)
-			pos += xprintf("%lu", (u_long)xf->f_uid);
+		if ((pwd = getpwuid(xf->f_uid)) != NULL)
+			xprintf("%-8.8s ", pwd->pw_name);
 		else
-			pos += xprintf("%s", pwd->pw_name);
-		while (pos < 9)
-			pos += xprintf(" ");
-		pos += xprintf("%.10s", getprocname(xf->f_pid));
-		while (pos < 20)
-			pos += xprintf(" ");
-		pos += xprintf("%lu", (u_long)xf->f_pid);
-		while (pos < 26)
-			pos += xprintf(" ");
-		pos += xprintf("%d", xf->f_fd);
-		while (pos < 29)
-			pos += xprintf(" ");
-		pos += xprintf("%s", s->protoname);
-		if (s->family == AF_INET)
-			pos += xprintf("4");
-		if (s->family == AF_INET6)
-			pos += xprintf("6");
-		while (pos < 36)
-			pos += xprintf(" ");
+			xprintf("%-8lu ", (u_long)xf->f_uid);
+		xprintf("%-10.10s ", getprocname(xf->f_pid));
+		xprintf("%6lu ", (u_long)xf->f_pid);
+		xprintf("%5d ", xf->f_fd);
+		printproto(6, s->family, s->protoname);
+		xprintf(" ");
 		switch (s->family) {
 		case AF_INET:
 		case AF_INET6:
-			pos += printaddr(s->family, &s->laddr);
-			while (pos < 57)
-				pos += xprintf(" ");
-			pos += xprintf(" ");
-			pos += printaddr(s->family, &s->faddr);
+			printaddr(21, s->family, &s->laddr);
+			xprintf(" ");
+			printaddr(0, s->family, &s->faddr);
 			break;
 		case AF_UNIX:
 			/* server */
 			if (s->laddr.ss_len > 0) {
-				pos += printaddr(s->family, &s->laddr);
+				printaddr(0, s->family, &s->laddr);
 				break;
 			}
 			/* client */
 			p = *(void **)&s->faddr;
 			if (p == NULL) {
-				pos += xprintf("(not connected)");
+				xprintf("(not connected)");
 				break;
 			}
-			pos += xprintf("-> ");
+			xprintf("-> ");
 			for (hash = 0; hash < HASHSIZE; ++hash) {
 				for (s = sockhash[hash]; s != NULL; s = s->next)
 					if (s->pcb == p)
@@ -524,9 +529,9 @@ display(void)
 					break;
 			}
 			if (s == NULL || s->laddr.ss_len == 0)
-				pos += xprintf("??");
+				xprintf("??");
 			else
-				pos += printaddr(s->family, &s->laddr);
+				printaddr(0, s->family, &s->laddr);
 			break;
 		default:
 			abort();
