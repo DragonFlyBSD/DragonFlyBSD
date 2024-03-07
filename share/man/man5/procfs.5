@@ -2,7 +2,7 @@
 .\" Written by Garrett Wollman
 .\" This file is in the public domain.
 .\"
-.Dd August 10, 1994
+.Dd March 7, 2024
 .Dt PROCFS 5
 .Os
 .Sh NAME
@@ -83,6 +83,10 @@ in
 The type of the executable referenced by the
 .Pa file
 entry.
+.It Pa exe
+Identical to the
+.Pa file
+entry below.
 .It Pa file
 A reference to the vnode from which the process text was read.
 This can be used to gain access to the process' symbol table,
@@ -210,6 +214,10 @@ the process executable name
 used to send control messages to the process
 .It Pa /proc/curproc/etype
 executable type
+.It Pa /proc/curproc/exe
+identical to
+.Pa /proc/curproc/file
+below
 .It Pa /proc/curproc/file
 executable image
 .It Pa /proc/curproc/fpregs
@@ -228,6 +236,9 @@ the process register set
 the process current and maximum rlimit
 .It Pa /proc/curproc/status
 the process' current status
+.It Pa /proc/self
+another symlink that's the same as
+.Pa /proc/curproc
 .El
 .Sh SEE ALSO
 .Xr mount 2 ,
