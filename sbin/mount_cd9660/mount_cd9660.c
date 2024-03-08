@@ -46,10 +46,13 @@
 #include <sys/module.h>
 #include <vfs/isofs/cd9660/cd9660_mount.h>
 
+#include <ctype.h>
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <mntopts.h>
+#include <pwd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -68,6 +71,9 @@ struct mntopt mopts[] = {
 	MOPT_NULL
 };
 
+static gid_t	a_gid(const char *);
+static uid_t	a_uid(const char *);
+static mode_t	a_mask(const char *);
 static int	get_ssector(const char *dev);
 static void	usage(void);
 int set_charset(struct iso_args *args, const char *cs_local, const char *cs_disk);
@@ -75,18 +81,19 @@ int set_charset(struct iso_args *args, const char *cs_local, const char *cs_disk
 int
 main(int argc, char **argv)
 {
+	struct stat sb;
 	struct iso_args args;
-	int ch, mntflags, opts;
+	int ch, mntflags, opts, set_mask, set_dirmask;
 	char *dev, *dir, mntpath[MAXPATHLEN];
 	struct vfsconf vfc;
 	int error, verbose;
 	const char *quirk;
 	char *cs_local = NULL;
 
-	mntflags = opts = verbose = 0;
+	mntflags = opts = set_mask = set_dirmask = verbose = 0;
 	memset(&args, 0, sizeof args);
 	args.ssector = -1;
-	while ((ch = getopt(argc, argv, "begjo:rs:C:v")) != -1)
+	while ((ch = getopt(argc, argv, "begG:jm:M:o:rs:U:C:v")) != -1)
 		switch (ch) {
 		case 'b':
 			opts |= ISOFSMNT_BROKENJOLIET;
@@ -97,8 +104,20 @@ main(int argc, char **argv)
 		case 'g':
 			opts |= ISOFSMNT_GENS;
 			break;
+		case 'G':
+			opts |= ISOFSMNT_GID;
+			args.gid = a_gid(optarg);
+			break;
 		case 'j':
 			opts |= ISOFSMNT_NOJOLIET;
+			break;
+		case 'm':
+			args.fmask = a_mask(optarg);
+			set_mask = 1;
+			break;
+		case 'M':
+			args.dmask = a_mask(optarg);
+			set_dirmask = 1;
 			break;
 		case 'C':
 			quirk = kiconv_quirkcs(optarg, KICONV_VENDOR_MICSFT);
@@ -116,6 +135,10 @@ main(int argc, char **argv)
 		case 's':
 			args.ssector = atoi(optarg);
 			break;
+		case 'U':
+			opts |= ISOFSMNT_UID;
+			args.uid = a_uid(optarg);
+			break;
 		case 'v':
 			verbose++;
 			break;
@@ -128,6 +151,14 @@ main(int argc, char **argv)
 
 	if (argc != 2)
 		usage();
+
+	if (set_mask && !set_dirmask) {
+		args.dmask = args.fmask;
+		set_dirmask = 1;
+	} else if (set_dirmask && !set_mask) {
+		args.fmask = args.dmask;
+		set_mask = 1;
+	}
 
 	dev = argv[0];
 	dir = argv[1];
@@ -167,6 +198,13 @@ main(int argc, char **argv)
 			args.ssector = 0;
 		} else if (verbose)
 			printf("using starting sector %d\n", args.ssector);
+	}
+
+	if (!set_mask) {
+		if (stat(mntpath, &sb) == -1)
+			err(EX_OSERR, "stat %s", mntpath);
+		args.fmask = args.dmask =
+			sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
 	}
 
 	error = getvfsbyname("cd9660", &vfc);
@@ -213,7 +251,9 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: mount_cd9660 [-begjrv] [-C charset] [-o options] [-s startsector] special node\n");
+	    "usage: mount_cd9660 [-begjrv] [-C charset] [-G gid] [-m mask]\n"
+	    "                    [-M mask] [-o options] [-s startsector]\n"
+	    "                    [-U uid] special_node\n");
 	exit(EX_USAGE);
 }
 
@@ -257,4 +297,61 @@ get_ssector(const char *dev)
 		return -1;
 
 	return ntohl(toc_buffer[i].addr.lba);
+}
+
+static gid_t
+a_gid(const char *s)
+{
+	struct group *gr;
+	const char *gname;
+	gid_t gid;
+
+	if ((gr = getgrnam(s)) != NULL) {
+		gid = gr->gr_gid;
+	} else {
+		for (gname = s; *s && isdigit(*s); ++s)
+			;
+		if (!*s)
+			gid = atoi(gname);
+		else
+			errx(EX_NOUSER, "unknown group id: %s", gname);
+	}
+	return (gid);
+}
+
+static uid_t
+a_uid(const char *s)
+{
+	struct passwd *pw;
+	const char *uname;
+	uid_t uid;
+
+	if ((pw = getpwnam(s)) != NULL) {
+		uid = pw->pw_uid;
+	} else {
+		for (uname = s; *s && isdigit(*s); ++s)
+			;
+		if (!*s)
+			uid = atoi(uname);
+		else
+			errx(EX_NOUSER, "unknown user id: %s", uname);
+	}
+	return (uid);
+}
+
+static mode_t
+a_mask(const char *s)
+{
+	int done, rv;
+	char *ep;
+
+	done = 0;
+	rv = -1;
+	if (*s >= '0' && *s <= '7') {
+		done = 1;
+		rv = strtol(optarg, &ep, 8);
+	}
+	if (!done || rv < 0 || *ep)
+		errx(EX_USAGE, "invalid file mode: %s", s);
+	return (rv);
 }

@@ -226,6 +226,11 @@ struct iso_mnt {
 	cdev_t im_dev;
 	struct vnode *im_devvp;
 
+	uid_t im_uid;
+	gid_t im_gid;
+	mode_t im_fmask;
+	mode_t im_dmask;
+
 	int logical_block_size;
 	int im_bshift;
 	int im_bmask;
