@@ -58,6 +58,7 @@
 #include <sys/buf2.h>
 
 #include "iso.h"
+#include "cd9660_mount.h"
 #include "cd9660_node.h"
 #include "iso_rrip.h"
 
@@ -126,10 +127,20 @@ cd9660_access(struct vop_access_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct iso_node *ip = VTOI(vp);
+	mode_t file_mode;
+	uid_t uid;
+	gid_t gid;
 
 	KKASSERT(vp->v_mount->mnt_flag & MNT_RDONLY);
-	return (vop_helper_access(ap, ip->inode.iso_uid, ip->inode.iso_gid,
-				  ip->inode.iso_mode, 0));
+
+	file_mode = ip->inode.iso_mode;
+	file_mode &= (vp->v_type == VDIR) ? ip->i_mnt->im_dmask : ip->i_mnt->im_fmask;
+	uid = (ip->i_mnt->im_flags & ISOFSMNT_UID) ?
+		ip->i_mnt->im_uid : ip->inode.iso_uid;
+	gid = (ip->i_mnt->im_flags & ISOFSMNT_GID) ?
+		ip->i_mnt->im_gid : ip->inode.iso_gid;
+
+	return (vop_helper_access(ap, uid, gid, file_mode, 0));
 }
 
 /*
@@ -146,9 +157,13 @@ cd9660_getattr(struct vop_getattr_args *ap)
 	vap->va_fileid	= ip->i_number;
 
 	vap->va_mode	= ip->inode.iso_mode;
+	vap->va_mode &= (vp->v_type == VDIR) ? ip->i_mnt->im_dmask : ip->i_mnt->im_fmask;
+
 	vap->va_nlink	= ip->inode.iso_links;
-	vap->va_uid	= ip->inode.iso_uid;
-	vap->va_gid	= ip->inode.iso_gid;
+	vap->va_uid	= (ip->i_mnt->im_flags & ISOFSMNT_UID) ?
+			ip->i_mnt->im_uid : ip->inode.iso_uid;
+	vap->va_gid	= (ip->i_mnt->im_flags & ISOFSMNT_GID) ?
+			ip->i_mnt->im_gid : ip->inode.iso_gid;
 	vap->va_atime	= ip->inode.iso_atime;
 	vap->va_mtime	= ip->inode.iso_mtime;
 	vap->va_ctime	= ip->inode.iso_ctime;

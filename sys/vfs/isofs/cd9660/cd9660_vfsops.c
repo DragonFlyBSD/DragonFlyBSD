@@ -447,6 +447,13 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 
 	dev->si_mountpoint = mp;
 
+	if (argp->flags & ISOFSMNT_UID)
+		isomp->im_uid = argp->uid;
+	if (argp->flags & ISOFSMNT_GID)
+		isomp->im_gid = argp->gid;
+	isomp->im_fmask = argp->fmask & ACCESSPERMS;
+	isomp->im_dmask = argp->dmask & ACCESSPERMS;
+
 	/* Check the Rock Ridge Extension support */
 	if (!(argp->flags & ISOFSMNT_NORRIP)) {
 		if ((error = bread(isomp->im_devvp,
@@ -472,7 +479,8 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 	}
 	isomp->im_flags = argp->flags & (ISOFSMNT_NORRIP | ISOFSMNT_GENS |
 					 ISOFSMNT_EXTATT | ISOFSMNT_NOJOLIET |
-					 ISOFSMNT_KICONV);
+					 ISOFSMNT_KICONV |
+					 ISOFSMNT_UID | ISOFSMNT_GID);
 
 	if (isomp->im_flags & ISOFSMNT_KICONV && cd9660_iconv) {
 		bcopy(argp->cs_local, cs_local, sizeof(cs_local));
