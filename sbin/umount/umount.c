@@ -34,12 +34,16 @@
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <sys/vnioctl.h>
 
 #include <netdb.h>
 #include <rpc/rpc.h>
 #include <vfs/nfs/rpcv2.h>
 
 #include <err.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <fstab.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,7 +59,7 @@ typedef enum { MNTON, MNTFROM, NOTHING } mntwhat;
 typedef enum { MARK, UNMARK, NAME, COUNT, FREE } dowhat;
 
 struct  addrinfo *nfshost_ai = NULL;
-int	fflag, vflag;
+int	all, dflag, fflag, vflag;
 char   *nfshost;
 
 void	 checkmntlist (char *, char **, char **, char **);
@@ -72,24 +76,28 @@ int	 checkname (char *, char **);
 int	 umountfs (char *, char *, char *);
 void	 usage (void) __dead2;
 int	 xdr_dir (XDR *, char *);
+int	 vn_detach(const char *);
 
 int
 main(int argc, char *argv[])
 {
-	int all, errs, ch, mntsize, error;
+	int errs, ch, mntsize, error;
 	char **typelist = NULL, *mntonname, *mntfromname;
 	char *type, *mntfromnamerev, *mntonnamerev;
 	struct statfs *mntbuf;
 	struct addrinfo hints;
 
 	all = errs = 0;
-	while ((ch = getopt(argc, argv, "AaF:fh:t:v")) != -1) {
+	while ((ch = getopt(argc, argv, "AadF:fh:t:v")) != -1) {
 		switch (ch) {
 		case 'A':
 			all = 2;
 			break;
 		case 'a':
 			all = 1;
+			break;
+		case 'd':
+			dflag = 1;
 			break;
 		case 'F':
 			setfstab(optarg);
@@ -478,6 +486,14 @@ umountfs(char *mntfromname, char *mntonname, char *type)
 		auth_destroy(clp->cl_auth);
 		clnt_destroy(clp);
 	}
+
+	if (dflag) {
+		if (vn_detach(mntfromname) && !all)
+			return (-1);
+		else if (vflag)
+			printf("%s: detached\n", mntfromname);
+	}
+
 	return (0);
 }
 
@@ -744,7 +760,35 @@ usage(void)
 {
 
 	fprintf(stderr, "%s\n%s\n",
-	    "usage: umount [-fv] special | node",
-	    "       umount -a | -A [-F fstab] [-fv] [-h host] [-t type]");
+	    "usage: umount [-dfv] special | node",
+	    "       umount -a | -A [-F fstab] [-dfv] [-h host] [-t type]");
 	exit(1);
+}
+
+int
+vn_detach(const char *device)
+{
+	struct vn_ioctl vnio;
+	int fd;
+
+	if (strncmp(device, "/dev/vn", sizeof("/dev/vn") - 1)) {
+		if (!all)
+			warnx("invalid vn device: %s", device);
+		return (-1);
+	}
+
+	memset(&vnio, 0, sizeof(vnio));
+
+	fd = open(device, O_RDONLY);
+	if (fd < 0)
+		return (-1);
+
+	if (ioctl(fd, VNIOCDETACH, &vnio) < 0) {
+		warn("VNIOCDETACH: %s", device);
+		close(fd);
+		return (-1);
+	}
+
+	close(fd);
+	return (0);
 }
