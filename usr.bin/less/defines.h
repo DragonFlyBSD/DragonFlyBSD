@@ -214,6 +214,9 @@
 #define	TABSTOP_MAX	128	/* Max number of custom tab stops */
 #endif
 
+/* Define as the return type of signal handlers (int or void).  */
+#define RETSIGTYPE void
+
 /* Settings automatically determined by configure.  */
 
 
@@ -241,9 +244,6 @@
 /* Define HAVE_FILENO if you have the fileno() macro. */
 #define HAVE_FILENO 1
 
-/* Define HAVE_FLOAT if your compiler supports the "double" type. */
-#define HAVE_FLOAT 1
-
 /* Define to 1 if you have the `fsync' function. */
 #define HAVE_FSYNC 1
 
@@ -256,14 +256,20 @@
 /* Define to 1 if you have the <limits.h> header file. */
 #define HAVE_LIMITS_H 1
 
+/* Define to 1 if you have the <linux/magic.h> header file. */
+/* #undef HAVE_LINUX_MAGIC_H */
+
 /* Define HAVE_LOCALE if you have locale.h and setlocale. */
 #define HAVE_LOCALE 1
 
-/* Define to 1 if you have the <memory.h> header file. */
-#define HAVE_MEMORY_H 1
-
 /* Define to 1 if you have the `nanosleep' function. */
 #define HAVE_NANOSLEEP 1
+
+/* Define to 1 if you have the <ncursesw/termcap.h> header file. */
+/* #undef HAVE_NCURSESW_TERMCAP_H */
+
+/* Define to 1 if you have the <ncurses/termcap.h> header file. */
+/* #undef HAVE_NCURSES_TERMCAP_H */
 
 /* Define HAVE_OSPEED if your termcap library has the ospeed variable. */
 #define HAVE_OSPEED 1
@@ -320,6 +326,9 @@
 /* Define HAVE_STAT_INO if your struct stat has st_ino and st_dev. */
 #define HAVE_STAT_INO 1
 
+/* Define to 1 if you have the <stdckdint.h> header file. */
+/* #undef HAVE_STDCKDINT_H */
+
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
 
@@ -338,6 +347,9 @@
 /* Define to 1 if you have the <string.h> header file. */
 #define HAVE_STRING_H 1
 
+/* Define to 1 if you have the `strsignal' function. */
+#define HAVE_STRSIGNAL 1
+
 /* Define to 1 if you have the `system' function. */
 #define HAVE_SYSTEM 1
 
@@ -355,6 +367,9 @@
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #define HAVE_SYS_TYPES_H 1
+
+/* Define to 1 if you have the <sys/wait.h> header file. */
+#define HAVE_SYS_WAIT_H 1
 
 /* Define to 1 if you have the <termcap.h> header file. */
 #define HAVE_TERMCAP_H 1
@@ -410,7 +425,7 @@
 
 /* Define MUST_DEFINE_OSPEED if you have ospeed but it is not defined in
    termcap.h. */
-#define MUST_DEFINE_OSPEED 1
+/* #undef MUST_DEFINE_OSPEED */
 
 /* pattern matching is supported, but without metacharacters. */
 /* #undef NO_REGEX */
@@ -433,25 +448,16 @@
 /* Define to the version of this package. */
 #define PACKAGE_VERSION "1"
 
-/* Define as the return type of signal handlers (`int' or `void'). */
-#define RETSIGTYPE void
-
 /* Define SECURE_COMPILE=1 to build a secure version of less. */
 #define SECURE_COMPILE 0
 
 /* Define to 1 if the `S_IS*' macros in <sys/stat.h> do not work properly. */
 /* #undef STAT_MACROS_BROKEN */
 
-/* Define to 1 if you have the ANSI C header files. */
+/* Define to 1 if all of the C90 standard headers exist (not just the ones
+   required in a freestanding environment). This macro is provided for
+   backward compatibility; new code need not use it. */
 #define STDC_HEADERS 1
-
-/* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
-#define TIME_WITH_SYS_TIME 1
-
-/* Enable large inode numbers on Mac OS X 10.5.  */
-#ifndef _DARWIN_USE_64_BIT_INODE
-# define _DARWIN_USE_64_BIT_INODE 1
-#endif
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 /* #undef _FILE_OFFSET_BITS */

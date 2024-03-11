@@ -1,21 +1,21 @@
 # $FreeBSD: src/usr.bin/less/Makefile,v 1.4.2.5 2003/02/02 10:04:50 johan Exp $
 
 PROG=	less
-SRCS=	main.c screen.c brac.c ch.c charset.c cmdbuf.c \
+SRCS=	main.c \
+	brac.c ch.c charset.c cmdbuf.c \
 	command.c cvt.c decode.c edit.c filename.c forwback.c \
 	help.c ifile.c input.c jump.c lesskey_parse.c line.c linenum.c \
 	lsystem.c mark.c optfunc.c option.c opttbl.c os.c \
-	output.c pattern.c position.c prompt.c search.c signal.c \
+	output.c pattern.c position.c prompt.c screen.c search.c signal.c \
 	tags.c ttyin.c version.c xbuf.c
-CFLAGS+=	-I${.CURDIR} -DSYSDIR=\"/etc\"
-DPADD=	${LIBNCURSES}
-LDADD=	-lprivate_ncurses
 
+CFLAGS+=	-I${.CURDIR} -DSYSDIR=\"/etc\"
 CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+DPADD=		${LIBNCURSES}
+LDADD=		-lprivate_ncurses
 
-SCRIPTS= lesspipe.sh zless.sh
-SCRIPTSNAME_lesspipe.sh=lesspipe.sh
+SCRIPTS=	lesspipe.sh zless.sh
 
 LINKS=	${BINDIR}/less ${BINDIR}/more \
 	${BINDIR}/zless ${BINDIR}/bzless \
@@ -29,7 +29,7 @@ MLINKS=	less.1 more.1 \
 	less.1 lzless.1 \
 	less.1 zstdless.1
 
-CLEANFILES= less.1
+CLEANFILES=	less.1
 
 WARNS?=	2
 

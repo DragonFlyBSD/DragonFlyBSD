@@ -1,8 +1,7 @@
 # $FreeBSD: src/usr.bin/lesskey/Makefile,v 1.2.2.2 2001/04/25 11:29:26 ru Exp $
-# $DragonFly: src/usr.bin/lesskey/Makefile,v 1.2 2003/06/17 04:29:27 dillon Exp $
 
 PROG=	lesskey
-SRCS=	lesskey_parse.c lesskey.c version.c xbuf.c
+SRCS=	lesskey.c lesskey_parse.c version.c xbuf.c
 CLEANFILES= lesskey.1
 WARNS?=	2
 
