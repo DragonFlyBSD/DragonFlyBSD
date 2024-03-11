@@ -8,9 +8,8 @@ Makefile.o2e
 Makefile.o9c
 Makefile.o9u
 Makefile.wnb
-Makefile.wnm
 Makefile.wng
-README
+Makefile.wnm
 configure
 configure.ac
 defines.ds
@@ -23,11 +22,11 @@ less.hlp
 less.man
 lessecho.man
 lesskey.man
-mkfuncs.pl
-mkfuncs.py
+lesstest/
 mkhelp.pl
 mkhelp.py
 mkinstalldirs
+mkutable
 regexp.c
 regexp.h
 scrsize.c

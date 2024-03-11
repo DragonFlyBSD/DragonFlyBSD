@@ -1,19 +1,24 @@
-LESS 608
-========
+LESS
+====
 
 Original source can be downloaded from:
-http://www.greenwoodsoftware.com/less/
+https://www.greenwoodsoftware.com/less/
 
-file = less-608.tar.gz
-date = 22 July 2022
-size = 362346
-sha1 = 94493a15bed80574cefc30153a10ceebab6824a0
+file = less-643.tar.gz
+date = 12 August 2023
+size = 592291
+sha1 = ee1f35a340b2631eb0376df7e073f01d86cdfbed
 
 A list of deleted files is in README.DELETED.
 
 Use "git diff vendor/LESS contrib/less" to see local modifications.
 
 When upgrading, remember to update usr.bin/less/defines.h.
+
+To generate the 'defines.h':
+	$ ln -s libprivate_ncurses.so /usr/lib/priv/libncurses.so
+	$ ./configure CFLAGS="-I/usr/include/priv/ncurses" LDFLAGS="-L/usr/lib/priv -rpath /lib/priv" LIBS="-lprivate_ncurses"
+	$ rm /usr/lib/priv/libncurses.so
 
 This source is used in:
 	usr.bin/less
