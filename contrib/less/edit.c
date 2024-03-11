@@ -16,9 +16,7 @@
 #if HAVE_SYS_WAIT_H
 #include <sys/wait.h>
 #endif
-#if OS2
 #include <signal.h>
-#endif
 
 public int fd0 = 0;
 
