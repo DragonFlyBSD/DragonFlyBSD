@@ -16,6 +16,7 @@ DPADD=		${LIBNCURSES}
 LDADD=		-lprivate_ncurses
 
 SCRIPTS=	lesspipe.sh zless.sh
+SCRIPTSNAME_lesspipe.sh=lesspipe.sh
 
 LINKS=	${BINDIR}/less ${BINDIR}/more \
 	${BINDIR}/zless ${BINDIR}/bzless \
