@@ -109,7 +109,6 @@ fuse_mount(struct mount *mp, char *mntpt, caddr_t data, struct ucred *cred)
 	error = copyin(data, &args, sizeof(args));
 	if (error)
 		return error;
-	memcpy(sbp->f_mntfromname, args.from, sizeof(sbp->f_mntfromname));
 
 	memset(sbp->f_mntfromname, 0, sizeof(sbp->f_mntfromname));
 	error = copyinstr(args.from, sbp->f_mntfromname,
@@ -124,12 +123,14 @@ fuse_mount(struct mount *mp, char *mntpt, caddr_t data, struct ucred *cred)
 		return error;
 
 	memset(subtype, 0, sizeof(subtype));
-	error = copyinstr(args.subtype, subtype, sizeof(subtype), NULL);
-	if (error)
-		return error;
-	if (strlen(subtype)) {
-		strlcat(sbp->f_fstypename, ".", sizeof(sbp->f_fstypename));
-		strlcat(sbp->f_fstypename, subtype, sizeof(sbp->f_fstypename));
+	if (args.subtype != NULL) {
+		error = copyinstr(args.subtype, subtype, sizeof(subtype), NULL);
+		if (error)
+			return error;
+		if (strlen(subtype)) {
+			strlcat(sbp->f_fstypename, ".", sizeof(sbp->f_fstypename));
+			strlcat(sbp->f_fstypename, subtype, sizeof(sbp->f_fstypename));
+		}
 	}
 
 	error = nlookup_init(&nd, sbp->f_mntfromname, UIO_SYSSPACE, NLC_FOLLOW);
