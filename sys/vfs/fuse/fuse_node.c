@@ -52,17 +52,14 @@ RB_GENERATE_STATIC(fuse_dent_tree, fuse_dent, dent_entry, fuse_dent_cmp);
 
 void
 fuse_node_new(struct fuse_mount *fmp, uint64_t ino, enum vtype vtyp,
-    struct fuse_node **fnpp)
+	      struct fuse_node **fnpp)
 {
 	struct fuse_node *fnp;
 
 	fnp = objcache_get(fuse_node_objcache, M_WAITOK);
-	KKASSERT(fnp);
+	bzero(fnp, sizeof(*fnp));
 
-	memset(fnp, 0, sizeof(*fnp));
-	fnp->vp = NULL;
 	fnp->fmp = fmp;
-	fnp->pfnp = NULL;
 
 	mtx_init(&fnp->node_lock, "fuse_node_lock");
 	RB_INIT(&fnp->dent_head);
@@ -76,7 +73,6 @@ fuse_node_new(struct fuse_mount *fmp, uint64_t ino, enum vtype vtyp,
 	fnp->closed = false;
 
 	*fnpp = fnp;
-	KKASSERT(*fnpp);
 }
 
 void
@@ -84,13 +80,16 @@ fuse_node_free(struct fuse_node *fnp)
 {
 	struct fuse_node *dfnp = fnp->pfnp;
 	struct fuse_dent *fep;
+	struct fuse_dent *fep_temp;
 
 	fuse_dbg("free ino=%ju\n", fnp->ino);
 
 	if (dfnp) {
 		KKASSERT(dfnp->type == VDIR);
 		mtx_lock(&dfnp->node_lock);
-		RB_FOREACH(fep, fuse_dent_tree, &dfnp->dent_head) {
+		RB_FOREACH_SAFE(fep, fuse_dent_tree,
+				&dfnp->dent_head, fep_temp)
+		{
 			if (fep->fnp == fnp) {
 				fuse_dent_detach(dfnp, fep);
 				fuse_dent_free(fep);
@@ -107,12 +106,14 @@ fuse_node_free(struct fuse_node *fnp)
 			fuse_dent_free(fep);
 		}
 	}
-	fnp->vp->v_data = NULL;
-	fnp->vp = NULL;
-	fnp->nlink = -123; /* debug */
-	mtx_unlock(&fnp->node_lock);
-
-	objcache_put(fuse_node_objcache, fnp);
+	if (fnp->nlink == 0) {
+		fnp->nlink = -123; /* debug */
+		mtx_unlock(&fnp->node_lock);
+		objcache_put(fuse_node_objcache, fnp);
+	} else {
+		kprintf("fuse: fnp %p freed while still attached!\n", fnp);
+		mtx_unlock(&fnp->node_lock);
+	}
 }
 
 void
@@ -122,7 +123,7 @@ fuse_dent_new(struct fuse_node *fnp, const char *name, int namelen,
 	struct fuse_dent *fep;
 
 	fep = objcache_get(fuse_dent_objcache, M_WAITOK);
-	KKASSERT(fep);
+	bzero(fep, sizeof(*fep));
 
 	if (namelen >= 0)
 		fep->name = kstrndup(name, namelen, M_TEMP);
@@ -131,11 +132,6 @@ fuse_dent_new(struct fuse_node *fnp, const char *name, int namelen,
 	KKASSERT(fep->name);
 	fep->fnp = fnp;
 
-	KASSERT(fnp->nlink >= 0, ("new ino=%ju nlink=%d dent=\"%s\"",
-	    fnp->ino, fnp->nlink, fep->name));
-	KKASSERT(fnp->nlink < LINK_MAX);
-	fnp->nlink++;
-
 	*fepp = fep;
 	KKASSERT(*fepp);
 }
@@ -143,20 +139,12 @@ fuse_dent_new(struct fuse_node *fnp, const char *name, int namelen,
 void
 fuse_dent_free(struct fuse_dent *fep)
 {
-	struct fuse_node *fnp = fep->fnp;
-
 	fuse_dbg("free dent=\"%s\"\n", fep->name);
-
-	KASSERT(fnp->nlink > 0, ("free ino=%ju nlink=%d dent=\"%s\"",
-	    fnp->ino, fnp->nlink, fep->name));
 
 	if (fep->name) {
 		kfree(fep->name, M_TEMP);
 		fep->name = NULL;
 	}
-
-	KKASSERT(fnp->nlink <= LINK_MAX);
-	fnp->nlink--;
 
 	fep->fnp = NULL;
 	objcache_put(fuse_dent_objcache, fep);
@@ -170,6 +158,8 @@ fuse_dent_attach(struct fuse_node *dfnp, struct fuse_dent *fep)
 	KKASSERT(mtx_islocked_ex(&dfnp->node_lock));
 
 	RB_INSERT(fuse_dent_tree, &dfnp->dent_head, fep);
+	fep->fnp->pfnp = dfnp;
+	++fep->fnp->nlink;
 }
 
 void
@@ -180,6 +170,8 @@ fuse_dent_detach(struct fuse_node *dfnp, struct fuse_dent *fep)
 	KKASSERT(mtx_islocked_ex(&dfnp->node_lock));
 
 	RB_REMOVE(fuse_dent_tree, &dfnp->dent_head, fep);
+	fep->fnp->pfnp = NULL;
+	--fep->fnp->nlink;
 }
 
 int
@@ -211,8 +203,9 @@ fuse_dent_find(struct fuse_node *dfnp, const char *name, int namelen,
 }
 
 int
-fuse_alloc_node(struct fuse_node *dfnp, uint64_t ino, const char *name,
-    int namelen, enum vtype vtyp, struct vnode **vpp)
+fuse_alloc_node(struct fuse_node *dfnp, uint64_t ino,
+		const char *name, int namelen,
+		enum vtype vtyp, struct vnode **vpp)
 {
 	struct fuse_node *fnp = NULL;
 	struct fuse_dent *fep = NULL;
@@ -224,63 +217,96 @@ fuse_alloc_node(struct fuse_node *dfnp, uint64_t ino, const char *name,
 
 	mtx_lock(&dfnp->node_lock);
 	error = fuse_dent_find(dfnp, name, namelen, &fep);
-	if (!error) {
+	if (error == 0) {
 		mtx_unlock(&dfnp->node_lock);
 		return EEXIST;
-	} else if (error == ENOENT) {
+	}
+	if (error == ENOENT) {
 		fuse_node_new(dfnp->fmp, ino, vtyp, &fnp);
 		mtx_lock(&fnp->node_lock);
-		fnp->pfnp = dfnp;
 		fuse_dent_new(fnp, name, namelen, &fep);
 		fuse_dent_attach(dfnp, fep);
 		mtx_unlock(&fnp->node_lock);
-	} else
-		KKASSERT(0);
+		error = 0;
+	}
 	mtx_unlock(&dfnp->node_lock);
 
-	error = fuse_node_vn(fnp, LK_EXCLUSIVE, vpp);
+	error = fuse_node_vn(fnp, vpp);
 	if (error) {
 		mtx_lock(&dfnp->node_lock);
 		fuse_dent_detach(dfnp, fep);
 		fuse_dent_free(fep);
 		mtx_unlock(&dfnp->node_lock);
 		fuse_node_free(fnp);
-		return error;
 	}
-	KKASSERT(*vpp);
-
-	fuse_dbg("fnp=%p ino=%ju dent=\"%s\"\n", fnp, fnp->ino, fep->name);
-
-	return 0;
+	return error;
 }
 
+/*
+ * Returns exclusively locked vp
+ */
 int
-fuse_node_vn(struct fuse_node *fnp, int flags, struct vnode **vpp)
+fuse_node_vn(struct fuse_node *fnp, struct vnode **vpp)
 {
 	struct mount *mp = fnp->fmp->mp;
 	struct vnode *vp;
+	struct vnode *newvp;
 	int error;
+
+	newvp = NULL;
 retry:
+	error = 0;
+	if (fnp->vp == NULL && newvp == NULL) {
+		error = getnewvnode(VT_FUSE, mp, &newvp,
+				    VLKTIMEOUT, LK_CANRECURSE);
+		if (error)
+			return error;
+	}
+
 	mtx_lock(&fnp->node_lock);
+
+	/*
+	 * Check case where vp is already assigned
+	 */
 	vp = fnp->vp;
 	if (vp) {
 		vhold(vp);
 		mtx_unlock(&fnp->node_lock);
+		error = vget(vp, LK_EXCLUSIVE | LK_RETRY);
+		vdrop(vp);
 
-		error = vget(vp, flags | LK_RETRY);
-		if (error) {
-			vdrop(vp);
+		if (error)
+			goto retry;
+		if (fnp->vp != vp) {
+			vput(vp);
 			goto retry;
 		}
-		vdrop(vp);
+
 		*vpp = vp;
+
+		if (newvp) {
+			newvp->v_type = VBAD;
+			vx_put(newvp);
+		}
+
 		return 0;
 	}
-	mtx_unlock(&fnp->node_lock);
 
-	error = getnewvnode(VT_FUSE, mp, &vp, VLKTIMEOUT, LK_CANRECURSE);
-	if (error)
-		return error;
+	/*
+	 * Assign new vp, release the node lock
+	 */
+	if (newvp == NULL) {
+		mtx_unlock(&fnp->node_lock);
+		goto retry;
+	}
+
+	fnp->vp = newvp;
+	mtx_unlock(&fnp->node_lock);
+	vp = newvp;
+
+	/*
+	 * Finish setting up vp (vp is held exclusively + vx)
+	 */
 	vp->v_type = fnp->type;
 	vp->v_data = fnp;
 
@@ -308,13 +334,11 @@ retry:
 		KKASSERT(0);
 	}
 
-	vx_downgrade(vp);
-	KKASSERT(vn_islocked(vp) == LK_EXCLUSIVE);
-	KASSERT(!fnp->vp, ("lost race"));
-	fnp->vp = vp;
+	vx_downgrade(vp);	/* VX to normal, is still exclusive */
+
 	*vpp = vp;
 
-	return 0;
+	return error;
 }
 
 int

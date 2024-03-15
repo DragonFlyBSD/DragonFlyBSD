@@ -54,6 +54,7 @@
 #include <sys/errno.h>
 #include <sys/queue.h>
 #include <sys/tree.h>
+#include <sys/lockf.h>
 #include <machine/atomic.h>
 
 #include "fuse_debug.h"
@@ -63,9 +64,10 @@
 #define VFSTOFUSE(mp) ((struct fuse_mount*)((mp)->mnt_data))
 #define VTOI(vp) ((struct fuse_node*)((vp)->v_data))
 
-#define FUSE_BLKSIZE PAGE_SIZE
-#define FUSE_BLKMASK (FUSE_BLKSIZE - 1)
-#define FUSE_BLKMASK64 ((off_t)(FUSE_BLKSIZE - 1))
+#define FUSE_MAXFILESIZE	0x7FFFFFFFFFFFFFFFLL
+#define FUSE_BLKSIZE		PAGE_SIZE
+#define FUSE_BLKMASK		(FUSE_BLKSIZE - 1)
+#define FUSE_BLKMASK64		((off_t)(FUSE_BLKSIZE - 1))
 
 SYSCTL_DECL(_vfs_fuse);
 
@@ -81,6 +83,9 @@ struct fuse_mount {
 	struct fuse_node *rfnp;
 	struct mtx mnt_lock;
 	struct mtx ipc_lock;
+	struct thread *helper_td;	// helper thread
+	struct spinlock helper_spin;	// protect bioq
+	TAILQ_HEAD(, bio) bioq;		// bioq for strategy I/Os
 	TAILQ_HEAD(,fuse_ipc) request_head;
 	TAILQ_HEAD(,fuse_ipc) reply_head;
 
@@ -102,6 +107,7 @@ struct fuse_node {
 	struct fuse_node *pfnp;
 	struct mtx node_lock;
 	struct fuse_dent_tree dent_head;
+	struct lockf	advlock;
 
 	uint64_t ino;
 	enum vtype type;
@@ -110,6 +116,11 @@ struct fuse_node {
 	uint64_t nlookup;
 	uint64_t fh;
 	bool closed; /* XXX associated with closed fh */
+	int modified : 1;	/* file modified */
+	int changed : 1;	/* file inode changed */
+	int accessed : 1;	/* file accessed */
+	int attrgood : 1;	/* have valid attributes */
+	int sizeoverride : 1;	/* override attr size with fnp->size */
 };
 
 struct fuse_dent {
@@ -153,19 +164,10 @@ void fuse_dent_detach(struct fuse_node*, struct fuse_dent*);
 int fuse_dent_find(struct fuse_node*, const char*, int, struct fuse_dent**);
 int fuse_alloc_node(struct fuse_node*, uint64_t, const char*, int, enum vtype,
     struct vnode**);
-int fuse_node_vn(struct fuse_node*, int, struct vnode**);
+int fuse_node_vn(struct fuse_node*, struct vnode**);
 int fuse_node_truncate(struct fuse_node*, size_t, size_t);
 void fuse_node_init(void);
 void fuse_node_cleanup(void);
-
-uint64_t fuse_fh(struct file*);
-void fuse_get_fh(struct file*, uint64_t);
-void fuse_put_fh(struct file*);
-uint64_t fuse_nfh(struct fuse_node*);
-void fuse_get_nfh(struct fuse_node*, uint64_t);
-void fuse_put_nfh(struct fuse_node*);
-void fuse_file_init(void);
-void fuse_file_cleanup(void);
 
 void fuse_buf_alloc(struct fuse_buf*, size_t);
 void fuse_buf_free(struct fuse_buf*);
@@ -185,7 +187,8 @@ void fuse_fill_in_header(struct fuse_in_header*, uint32_t, uint32_t, uint64_t,
     uint64_t, uint32_t, uint32_t, uint32_t);
 int fuse_forget_node(struct fuse_mount*, uint64_t, uint64_t, struct ucred*);
 int fuse_audit_length(struct fuse_in_header*, struct fuse_out_header*);
-const char *fuse_get_ops(int);
+    const char *fuse_get_ops(int);
+void fuse_io_thread(void *arg);
 
 static __inline int
 fuse_test_dead(struct fuse_mount *fmp)

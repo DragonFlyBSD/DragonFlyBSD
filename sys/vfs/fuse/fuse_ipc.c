@@ -92,6 +92,7 @@ fuse_ipc_get(struct fuse_mount *fmp, size_t len)
 	struct fuse_ipc *fip;
 
 	fip = objcache_get(fuse_ipc_objcache, M_WAITOK);
+	bzero(fip, sizeof(*fip));
 	refcount_init(&fip->refcnt, 1);
 	fip->fmp = fmp;
 	fip->unique = atomic_fetchadd_long(&fmp->unique, 1);
@@ -210,8 +211,6 @@ fuse_ipc_tx(struct fuse_ipc *fip)
 		return ENOTCONN;
 	}
 
-	mtx_lock(&fmp->mnt_lock);
-
 	mtx_lock(&fmp->ipc_lock);
 	TAILQ_INSERT_TAIL(&fmp->reply_head, fip, reply_entry);
 	TAILQ_INSERT_TAIL(&fmp->request_head, fip, request_entry);
@@ -219,7 +218,6 @@ fuse_ipc_tx(struct fuse_ipc *fip)
 
 	wakeup(fmp);
 	KNOTE(&fmp->kq.ki_note, 0);
-	mtx_unlock(&fmp->mnt_lock);
 
 	error = fuse_ipc_wait(fip);
 	KKASSERT(fuse_ipc_test_replied(fip));

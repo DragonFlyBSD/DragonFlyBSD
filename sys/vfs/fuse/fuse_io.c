@@ -30,20 +30,16 @@
 #include <sys/uio.h>
 #include <sys/buf2.h>
 
-static void
-fuse_brelse(struct buf *bp)
-{
-	bp->b_flags |= B_INVAL | B_RELBUF;
-	brelse(bp);
-}
-
+#if 0
 static void
 fuse_fix_size(struct fuse_node *fnp, bool fixsize, size_t oldsize)
 {
 	if (fixsize)
 		fuse_node_truncate(fnp, fnp->size, oldsize);
 }
+#endif
 
+#if 0
 int
 fuse_read(struct vop_read_args *ap)
 {
@@ -86,7 +82,7 @@ fuse_read(struct vop_read_args *ap)
 		}
 
 		error = breadnx(vp, base_offset, FUSE_BLKSIZE, B_NOTMETA, NULL,
-		    NULL, 0, &bp);
+				NULL, 0, &bp);
 		KKASSERT(!error);
 
 		fuse_dbg("b_loffset=%ju b_bcount=%d b_flags=%x\n",
@@ -344,3 +340,4 @@ skip:
 
 	return error;
 }
+#endif
