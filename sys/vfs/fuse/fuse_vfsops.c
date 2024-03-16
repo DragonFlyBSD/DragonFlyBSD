@@ -82,6 +82,7 @@ fuse_mount_free(struct fuse_mount *fmp)
 		fuse_dbg("fmp=%p free\n", fmp);
 		mtx_uninit(&fmp->ipc_lock);
 		mtx_uninit(&fmp->mnt_lock);
+		mtx_uninit(&fmp->ino_lock);
 		crfree(fmp->cred);
 		kfree(fmp, M_TEMP);
 		return 0;
@@ -176,8 +177,10 @@ fuse_mount(struct mount *mp, char *mntpt, caddr_t data, struct ucred *cred)
 	fmp->dead = false;
 	mtx_init(&fmp->mnt_lock, "fuse_mnt_lock");
 	mtx_init(&fmp->ipc_lock, "fuse_ipc_lock");
+	mtx_init(&fmp->ino_lock, "fuse_ino_lock");
 	TAILQ_INIT(&fmp->request_head);
 	TAILQ_INIT(&fmp->reply_head);
+	RB_INIT(&fmp->node_head);
 	fmp->devvp = devvp;
 	fmp->cred = crhold(cred);
 	KKASSERT(fmp->refcnt > 0);
@@ -276,7 +279,7 @@ fuse_unmount(struct mount *mp, int mntflags)
 	}
 
 	KKASSERT(fmp->rfnp->vp == NULL);
-	fuse_node_free(fmp->rfnp);
+	fuse_node_free(fmp, fmp->rfnp);
 	fmp->rfnp = NULL;
 
 	/* The userspace fs will exit anyway after FUSE_DESTROY. */

@@ -71,7 +71,7 @@ fuse_forget_node(struct fuse_mount *fmp, uint64_t ino, uint64_t nlookup,
 	ffi = fuse_ipc_fill(fip, FUSE_FORGET, ino, cred);
 	ffi->nlookup = nlookup;
 
-	error = fuse_ipc_tx(fip);
+	error = fuse_ipc_tx_noreply(fip);
 	if (error)
 		return error;
 	fuse_ipc_put(fip);

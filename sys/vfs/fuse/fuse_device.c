@@ -102,8 +102,11 @@ fuse_device_clear(struct fuse_mount *fmp)
 {
 	struct fuse_ipc *fip;
 
-	while ((fip = TAILQ_FIRST(&fmp->request_head)))
+	while ((fip = TAILQ_FIRST(&fmp->request_head))) {
 		TAILQ_REMOVE(&fmp->request_head, fip, request_entry);
+		if (atomic_swap_int(&fip->sent, 1) == -1)
+			wakeup(fip);
+	}
 
 	while ((fip = TAILQ_FIRST(&fmp->reply_head))) {
 		TAILQ_REMOVE(&fmp->reply_head, fip, reply_entry);
@@ -148,9 +151,14 @@ fuse_device_read(struct dev_read_args *ap)
 	fuse_dbgipc(fip, 0, "");
 
 	if (uio->uio_resid < fuse_in_size(fip))
-		return EILSEQ;
+		error = EILSEQ;
+	else
+		error = uiomove(fuse_in(fip), fuse_in_size(fip), uio);
 
-	return uiomove(fuse_in(fip), fuse_in_size(fip), uio);
+	if (atomic_swap_int(&fip->sent, 1) == -1)
+		wakeup(fip);
+
+	return error;
 }
 
 static int

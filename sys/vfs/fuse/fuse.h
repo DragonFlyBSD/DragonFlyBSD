@@ -75,6 +75,10 @@ extern int fuse_debug;
 extern struct vop_ops fuse_vnode_vops;
 extern struct vop_ops fuse_spec_vops;
 
+struct fuse_node;
+
+RB_HEAD(fuse_node_tree, fuse_node);
+
 struct fuse_mount {
 	struct mount *mp;
 	struct vnode *devvp;
@@ -83,11 +87,13 @@ struct fuse_mount {
 	struct fuse_node *rfnp;
 	struct mtx mnt_lock;
 	struct mtx ipc_lock;
-	struct thread *helper_td;	// helper thread
-	struct spinlock helper_spin;	// protect bioq
-	TAILQ_HEAD(, bio) bioq;		// bioq for strategy I/Os
+	struct mtx ino_lock;
+	struct thread *helper_td;		// helper thread
+	struct spinlock helper_spin;		// protect bioq
+	TAILQ_HEAD(, bio) bioq;			// bioq for strategy I/Os
 	TAILQ_HEAD(,fuse_ipc) request_head;
 	TAILQ_HEAD(,fuse_ipc) reply_head;
+	struct fuse_node_tree node_head;	// inode index
 
 	unsigned int refcnt;
 	unsigned long unique;
@@ -98,20 +104,17 @@ struct fuse_mount {
 	uint32_t max_write;
 };
 
-RB_HEAD(fuse_dent_tree, fuse_dent);
-
 struct fuse_node {
+	RB_ENTRY(fuse_node) node_entry;		// inode index entry
 	struct vnode *vp;
 	struct vattr attr;
 	struct fuse_mount *fmp;
 	struct fuse_node *pfnp;
 	struct mtx node_lock;
-	struct fuse_dent_tree dent_head;
 	struct lockf	advlock;
 
 	uint64_t ino;
 	enum vtype type;
-	int nlink;
 	size_t size;
 	uint64_t nlookup;
 	uint64_t fh;
@@ -121,13 +124,6 @@ struct fuse_node {
 	int accessed : 1;	/* file accessed */
 	int attrgood : 1;	/* have valid attributes */
 	int sizeoverride : 1;	/* override attr size with fnp->size */
-};
-
-struct fuse_dent {
-	struct fuse_node *fnp;
-	RB_ENTRY(fuse_dent) dent_entry;
-
-	char *name;
 };
 
 struct fuse_buf {
@@ -144,6 +140,7 @@ struct fuse_ipc {
 
 	unsigned int refcnt;
 	uint64_t unique;
+	int sent;
 	int done;
 };
 
@@ -156,14 +153,9 @@ void fuse_device_cleanup(void);
 
 void fuse_node_new(struct fuse_mount*, uint64_t, enum vtype,
     struct fuse_node**);
-void fuse_node_free(struct fuse_node*);
-void fuse_dent_new(struct fuse_node*, const char*, int, struct fuse_dent**);
-void fuse_dent_free(struct fuse_dent*);
-void fuse_dent_attach(struct fuse_node*, struct fuse_dent*);
-void fuse_dent_detach(struct fuse_node*, struct fuse_dent*);
-int fuse_dent_find(struct fuse_node*, const char*, int, struct fuse_dent**);
-int fuse_alloc_node(struct fuse_node*, uint64_t, const char*, int, enum vtype,
-    struct vnode**);
+void fuse_node_free(struct fuse_mount *, struct fuse_node *);
+int fuse_alloc_node(struct fuse_mount *, struct fuse_node *,
+    uint64_t, enum vtype, struct vnode **);
 int fuse_node_vn(struct fuse_node*, struct vnode**);
 int fuse_node_truncate(struct fuse_node*, size_t, size_t);
 void fuse_node_init(void);
@@ -175,6 +167,7 @@ struct fuse_ipc *fuse_ipc_get(struct fuse_mount*, size_t);
 void fuse_ipc_put(struct fuse_ipc*);
 void *fuse_ipc_fill(struct fuse_ipc*, int, uint64_t, struct ucred*);
 int fuse_ipc_tx(struct fuse_ipc*);
+int fuse_ipc_tx_noreply(struct fuse_ipc*);
 void fuse_ipc_init(void);
 void fuse_ipc_cleanup(void);
 

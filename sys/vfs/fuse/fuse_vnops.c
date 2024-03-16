@@ -43,6 +43,7 @@
 
 static int fuse_reg_resize(struct vnode *vp, off_t newsize, int trivial);
 static void fuse_io_execute(struct fuse_mount *fmp, struct bio *bio);
+static void fuse_release(struct fuse_mount *fmp, struct fuse_node *fnp);
 
 static int
 fuse_set_attr(struct fuse_node *fnp, struct fuse_attr *fat)
@@ -79,10 +80,6 @@ fuse_set_attr(struct fuse_node *fnp, struct fuse_attr *fat)
 
 	KKASSERT(vap->va_type == fnp->type);
 
-	/*
-	 * NOTE: fnp->nlink just founds fep entries, it is not the
-	 *	 nlink file attribute.
-	 */
 	if (fnp->vp->v_object && fnp->sizeoverride == 0 &&
 	    fnp->size != vap->va_size)
 	{
@@ -290,11 +287,10 @@ fuse_vop_fsync(struct vop_fsync_args *ap)
 	fsi->fsync_flags = 1; /* datasync */
 
 	error = fuse_ipc_tx(fip);
-	if (error)
-		return error;
-	fuse_ipc_put(fip);
+	if (error == 0)
+		fuse_ipc_put(fip);
 
-	return 0;
+	return error;
 }
 
 static int
@@ -495,12 +491,14 @@ fuse_vop_nresolve(struct vop_nresolve_args *ap)
 	struct namecache *ncp = ap->a_nch->ncp;
 	struct fuse_mount *fmp = VFSTOFUSE(dvp->v_mount);
 	struct fuse_node *dfnp = VTOI(dvp);
+	struct fuse_node *fnp;
 	struct fuse_ipc *fip;
 	struct fuse_entry_out *feo;
 	char *p, tmp[1024];
 	uint32_t mode;
 	enum vtype vtyp;
 	int error;
+	int forgettable;
 
 	if (fuse_test_dead(fmp))
 		return ENOTCONN;
@@ -515,6 +513,14 @@ fuse_vop_nresolve(struct vop_nresolve_args *ap)
 	p[ncp->nc_nlen] = '\0';
 	strlcpy(tmp, p, sizeof(tmp));
 
+	/*
+	 * "." and ".." are not ref-counted by the fuse userland
+	 * (their API is basically broken but, meh).
+	 */
+	forgettable = 0;
+	if (strcmp(p, ".") != 0 && strcmp(p, "..") != 0)
+		forgettable = 1;
+
 	error = fuse_ipc_tx(fip);
 	if (error == ENOENT) {
 		cache_setvp(ap->a_nch, NULL);
@@ -528,7 +534,17 @@ fuse_vop_nresolve(struct vop_nresolve_args *ap)
 	feo = fuse_out_data(fip);
 	fuse_dbg("lookup \"%s\" ino=%ju/%ju\n", p, feo->nodeid, feo->attr.ino);
 
+	/*
+	 * Apparently in later FUSEs this means a cacheable ENOENT
+	 */
+	if (feo->nodeid == 0) {
+		fuse_ipc_put(fip);
+		cache_setvp(ap->a_nch, NULL);
+		return ENOENT;
+	}
+
 	mode = feo->attr.mode;
+
 	if (S_ISREG(mode))
 		vtyp = VREG;
 	else if (S_ISDIR(mode))
@@ -546,28 +562,32 @@ fuse_vop_nresolve(struct vop_nresolve_args *ap)
 	else
 		vtyp = VBAD;
 
-	error = fuse_alloc_node(dfnp, feo->nodeid, p, strlen(p), vtyp, &vp);
-	if (error) {
-		fuse_ipc_put(fip);
-		return error;
+	error = fuse_alloc_node(fmp, dfnp, feo->nodeid, vtyp, &vp);
+	if (error == 0) {
+		KKASSERT(vp);
+		KKASSERT(vn_islocked(vp));
+
+		vn_unlock(vp);
+		cache_setvp(ap->a_nch, vp);
+		vrele(vp);
+
+		/* unused */
+		//feo->generation;
+		//feo->entry_valid;
+		//feo->attr_valid;
+		//feo->entry_valid_nsec;
+		//feo->attr_valid_nsec;
+		fnp = VTOI(vp);
+
+		if (forgettable)
+			atomic_add_64(&fnp->nlookup, 1);
+	} else {
+		if (forgettable)
+			fuse_forget_node(fmp, feo->nodeid, 1, NULL);
 	}
-	KKASSERT(vp);
-	KKASSERT(vn_islocked(vp));
-
-	vn_unlock(vp);
-	cache_setvp(ap->a_nch, vp);
-	vrele(vp);
-
-	/* unused */
-	//feo->generation;
-	//feo->entry_valid;
-	//feo->attr_valid;
-	//feo->entry_valid_nsec;
-	//feo->attr_valid_nsec;
-
 	fuse_ipc_put(fip);
 
-	return 0;
+	return error;
 }
 
 static int
@@ -579,7 +599,6 @@ fuse_vop_nlink(struct vop_nlink_args *ap)
 	struct fuse_mount *fmp = VFSTOFUSE(vp->v_mount);
 	struct fuse_node *dfnp = VTOI(dvp);
 	struct fuse_node *fnp = VTOI(vp);
-	struct fuse_dent *fep;
 	struct fuse_ipc *fip;
 	struct fuse_link_in *fli;
 	struct fuse_entry_out *feo;
@@ -596,8 +615,6 @@ fuse_vop_nlink(struct vop_nlink_args *ap)
 		return EPERM;
 	if (dvp->v_mount != vp->v_mount)
 		return EXDEV;
-	if (fnp->nlink >= LINK_MAX)
-		return EMLINK;
 
 	fip = fuse_ipc_get(fmp, sizeof(fli) + ncp->nc_nlen + 1);
 	fli = fuse_ipc_fill(fip, FUSE_LINK, dfnp->ino, ap->a_cred);
@@ -619,8 +636,6 @@ fuse_vop_nlink(struct vop_nlink_args *ap)
 
 	mtx_lock(&dfnp->node_lock);
 	mtx_lock(&fnp->node_lock);
-	fuse_dent_new(fnp, p, strlen(p), &fep);
-	fuse_dent_attach(dfnp, fep);
 	fuse_set_attr(fnp, &feo->attr);
 	mtx_unlock(&fnp->node_lock);
 	mtx_unlock(&dfnp->node_lock);
@@ -690,36 +705,34 @@ fuse_vop_ncreate(struct vop_ncreate_args *ap)
 		return EINVAL;
 	}
 
-	error = fuse_alloc_node(dfnp, feo->nodeid, p, strlen(p), VREG, &vp);
-	if (error) {
-		fuse_ipc_put(fip);
-		return error;
+	error = fuse_alloc_node(fmp, dfnp, feo->nodeid, VREG, &vp);
+	if (error == 0) {
+		KKASSERT(vp);
+		KKASSERT(vn_islocked(vp));
+
+		fnp = VTOI(vp);
+		mtx_lock(&fnp->node_lock);
+		fuse_set_attr(fnp, &feo->attr);
+		mtx_unlock(&fnp->node_lock);
+		fnp->fh = foo->fh;
+
+		cache_setunresolved(ap->a_nch);
+		cache_setvp(ap->a_nch, vp);
+		*(ap->a_vpp) = vp;
+		fuse_knote(dvp, NOTE_WRITE);
+
+		/* unused */
+		//feo->generation;
+		//feo->entry_valid;
+		//feo->attr_valid;
+		//feo->entry_valid_nsec;
+		//feo->attr_valid_nsec;
+		/* unused */
+		//foo->open_flags;
 	}
-	KKASSERT(vp);
-	KKASSERT(vn_islocked(vp));
-
-	fnp = VTOI(vp);
-	mtx_lock(&fnp->node_lock);
-	fuse_set_attr(fnp, &feo->attr);
-	mtx_unlock(&fnp->node_lock);
-
-	cache_setunresolved(ap->a_nch);
-	cache_setvp(ap->a_nch, vp);
-	*(ap->a_vpp) = vp;
-	fuse_knote(dvp, NOTE_WRITE);
-
-	/* unused */
-	//feo->generation;
-	//feo->entry_valid;
-	//feo->attr_valid;
-	//feo->entry_valid_nsec;
-	//feo->attr_valid_nsec;
-	/* unused */
-	//foo->open_flags;
-
 	fuse_ipc_put(fip);
 
-	return 0;
+	return error;
 }
 
 static int
@@ -766,35 +779,32 @@ fuse_vop_nmknod(struct vop_nmknod_args *ap)
 		return EINVAL;
 	}
 
-	error = fuse_alloc_node(dfnp, feo->nodeid, p, strlen(p),
-	    ap->a_vap->va_type, &vp);
-	if (error) {
-		fuse_ipc_put(fip);
-		return error;
+	error = fuse_alloc_node(fmp, dfnp, feo->nodeid,
+				ap->a_vap->va_type, &vp);
+	if (error == 0) {
+		KKASSERT(vp);
+		KKASSERT(vn_islocked(vp));
+
+		fnp = VTOI(vp);
+		mtx_lock(&fnp->node_lock);
+		fuse_set_attr(fnp, &feo->attr);
+		mtx_unlock(&fnp->node_lock);
+
+		cache_setunresolved(ap->a_nch);
+		cache_setvp(ap->a_nch, vp);
+		*(ap->a_vpp) = vp;
+		fuse_knote(dvp, NOTE_WRITE);
+
+		/* unused */
+		//feo->generation;
+		//feo->entry_valid;
+		//feo->attr_valid;
+		//feo->entry_valid_nsec;
+		//feo->attr_valid_nsec;
 	}
-	KKASSERT(vp);
-	KKASSERT(vn_islocked(vp));
-
-	fnp = VTOI(vp);
-	mtx_lock(&fnp->node_lock);
-	fuse_set_attr(fnp, &feo->attr);
-	mtx_unlock(&fnp->node_lock);
-
-	cache_setunresolved(ap->a_nch);
-	cache_setvp(ap->a_nch, vp);
-	*(ap->a_vpp) = vp;
-	fuse_knote(dvp, NOTE_WRITE);
-
-	/* unused */
-	//feo->generation;
-	//feo->entry_valid;
-	//feo->attr_valid;
-	//feo->entry_valid_nsec;
-	//feo->attr_valid_nsec;
-
 	fuse_ipc_put(fip);
 
-	return 0;
+	return error;
 }
 
 static int
@@ -806,7 +816,6 @@ fuse_vop_nremove(struct vop_nremove_args *ap)
 	struct fuse_mount *fmp = VFSTOFUSE(dvp->v_mount);
 	struct fuse_node *dfnp = VTOI(dvp);
 	struct fuse_node *fnp;
-	struct fuse_dent *fep;
 	struct fuse_ipc *fip;
 	char *p;
 	int error;
@@ -818,8 +827,22 @@ fuse_vop_nremove(struct vop_nremove_args *ap)
 		return EOPNOTSUPP;
 
 	error = cache_vget(ap->a_nch, ap->a_cred, LK_SHARED, &vp);
+	if (error)
+		return error;
 	KKASSERT(vp->v_mount == dvp->v_mount);
-	KKASSERT(!error); /* from tmpfs */
+
+	/*
+	 * Clean-up the deletion target to avoid .fuse_hidden*
+	 * files.
+	 *
+	 * NOTE: XXX v_opencount check does not take mmap/filepointers
+	 *	 into account.
+	 */
+	vinvalbuf(vp, V_SAVE, 0, 0);
+	if (vp->v_opencount == 0) {
+		fnp = VTOI(vp);
+		fuse_release(fmp, fnp);
+	}
 	vn_unlock(vp);
 
 	fip = fuse_ipc_get(fmp, ncp->nc_nlen + 1);
@@ -835,20 +858,6 @@ fuse_vop_nremove(struct vop_nremove_args *ap)
 	}
 
 	fnp = VTOI(vp);
-	mtx_lock(&dfnp->node_lock);
-	mtx_lock(&fnp->node_lock);
-	error = fuse_dent_find(dfnp, p, strlen(p), &fep);
-	if (error == ENOENT) {
-		mtx_unlock(&fnp->node_lock);
-		mtx_unlock(&dfnp->node_lock);
-		fuse_ipc_put(fip);
-		vrele(vp);
-		return error;
-	}
-	fuse_dent_detach(dfnp, fep);
-	fuse_dent_free(fep);
-	mtx_unlock(&fnp->node_lock);
-	mtx_unlock(&dfnp->node_lock);
 
 	cache_unlink(ap->a_nch);
 	fuse_knote(dvp, NOTE_WRITE);
@@ -899,34 +908,31 @@ fuse_vop_nmkdir(struct vop_nmkdir_args *ap)
 		return EINVAL;
 	}
 
-	error = fuse_alloc_node(dfnp, feo->nodeid, p, strlen(p), VDIR, &vp);
-	if (error) {
-		fuse_ipc_put(fip);
-		return error;
+	error = fuse_alloc_node(fmp, dfnp, feo->nodeid, VDIR, &vp);
+	if (error == 0) {
+		KKASSERT(vp);
+		KKASSERT(vn_islocked(vp));
+
+		fnp = VTOI(vp);
+		mtx_lock(&fnp->node_lock);
+		fuse_set_attr(fnp, &feo->attr);
+		mtx_unlock(&fnp->node_lock);
+
+		cache_setunresolved(ap->a_nch);
+		cache_setvp(ap->a_nch, vp);
+		*(ap->a_vpp) = vp;
+		fuse_knote(dvp, NOTE_WRITE | NOTE_LINK);
+
+		/* unused */
+		//feo->generation;
+		//feo->entry_valid;
+		//feo->attr_valid;
+		//feo->entry_valid_nsec;
+		//feo->attr_valid_nsec;
 	}
-	KKASSERT(vp);
-	KKASSERT(vn_islocked(vp));
-
-	fnp = VTOI(vp);
-	mtx_lock(&fnp->node_lock);
-	fuse_set_attr(fnp, &feo->attr);
-	mtx_unlock(&fnp->node_lock);
-
-	cache_setunresolved(ap->a_nch);
-	cache_setvp(ap->a_nch, vp);
-	*(ap->a_vpp) = vp;
-	fuse_knote(dvp, NOTE_WRITE | NOTE_LINK);
-
-	/* unused */
-	//feo->generation;
-	//feo->entry_valid;
-	//feo->attr_valid;
-	//feo->entry_valid_nsec;
-	//feo->attr_valid_nsec;
-
 	fuse_ipc_put(fip);
 
-	return 0;
+	return error;
 }
 
 static int
@@ -938,7 +944,6 @@ fuse_vop_nrmdir(struct vop_nrmdir_args *ap)
 	struct fuse_mount *fmp = VFSTOFUSE(dvp->v_mount);
 	struct fuse_node *dfnp = VTOI(dvp);
 	struct fuse_node *fnp;
-	struct fuse_dent *fep;
 	struct fuse_ipc *fip;
 	char *p;
 	int error;
@@ -967,20 +972,6 @@ fuse_vop_nrmdir(struct vop_nrmdir_args *ap)
 	}
 
 	fnp = VTOI(vp);
-	mtx_lock(&dfnp->node_lock);
-	mtx_lock(&fnp->node_lock);
-	error = fuse_dent_find(dfnp, p, strlen(p), &fep);
-	if (error == ENOENT) {
-		mtx_unlock(&fnp->node_lock);
-		mtx_unlock(&dfnp->node_lock);
-		fuse_ipc_put(fip);
-		vrele(vp);
-		return error;
-	}
-	fuse_dent_detach(dfnp, fep);
-	fuse_dent_free(fep);
-	mtx_unlock(&fnp->node_lock);
-	mtx_unlock(&dfnp->node_lock);
 
 	cache_unlink(ap->a_nch);
 	fuse_knote(dvp, NOTE_WRITE | NOTE_LINK);
@@ -1140,11 +1131,9 @@ fuse_vop_nrename(struct vop_nrename_args *ap)
 	struct fuse_node *ffnp = VTOI(fvp);
 	struct fuse_node *tdfnp = VTOI(tdvp);
 	struct fuse_node *tfnp;
-	struct fuse_dent *ffep;
-	struct fuse_dent *tfep;
 	struct fuse_ipc *fip;
 	struct fuse_rename_in *fri;
-	char *p, *newname, *oldname;
+	char *p, *newname;
 	int error;
 
 	KKASSERT(fdvp->v_mount == fvp->v_mount);
@@ -1158,9 +1147,21 @@ fuse_vop_nrename(struct vop_nrename_args *ap)
 	error = cache_vget(ap->a_tnch, ap->a_cred, LK_SHARED, &tvp);
 	if (!error) {
 		tfnp = VTOI(tvp);
+
+		/*
+		 * Clean-up the deletion target to avoid .fuse_hidden*
+		 * files.
+		 * NOTE: XXX v_opencount check does not take mmap/filepointers
+		 *	 into account.
+		 */
+		if (tvp->v_opencount == 0) {
+			vinvalbuf(tvp, V_SAVE, 0, 0);
+			fuse_release(fmp, tfnp);
+		}
 		vn_unlock(tvp);
-	} else
+	} else {
 		tfnp = NULL;
+	}
 
 	/* Disallow cross-device renames.
 	 * Why isn't this done by the caller? */
@@ -1174,18 +1175,11 @@ fuse_vop_nrename(struct vop_nrename_args *ap)
 		error = 0;
 		goto out;
 	}
-	error = fuse_dent_find(fdfnp, fncp->nc_name, fncp->nc_nlen, &ffep);
-	if (error == ENOENT)
-		goto out;
-	KKASSERT(ffep->fnp == ffnp);
 
 	if (tvp) {
 		KKASSERT(tfnp);
 		if (ffnp->type == VDIR && tfnp->type == VDIR) {
-			if (!RB_EMPTY(&tfnp->dent_head)) {
-				error = ENOTEMPTY;
-				goto out;
-			}
+			/* depend on RPC to check if empty */
 		} else if (ffnp->type == VDIR && tfnp->type != VDIR) {
 			error = ENOTDIR;
 			goto out;
@@ -1196,8 +1190,8 @@ fuse_vop_nrename(struct vop_nrename_args *ap)
 			KKASSERT(ffnp->type != VDIR && tfnp->type != VDIR);
 	}
 
-	fip = fuse_ipc_get(fmp,
-	    sizeof(*fri) + fncp->nc_nlen + tncp->nc_nlen + 2);
+	fip = fuse_ipc_get(fmp, sizeof(*fri) + fncp->nc_nlen +
+				tncp->nc_nlen + 2);
 	/* There is also fuse_rename2_in with flags. */
 	fri = fuse_ipc_fill(fip, FUSE_RENAME, fdfnp->ino, ap->a_cred);
 	fri->newdir = tdfnp->ino;
@@ -1227,36 +1221,13 @@ fuse_vop_nrename(struct vop_nrename_args *ap)
 	mtx_lock(&fdfnp->node_lock);
 	mtx_lock(&ffnp->node_lock);
 
-	fuse_dbg("detach from_dent=\"%s\"\n", ffep->name);
-	fuse_dent_detach(fdfnp, ffep);
-
-	if (newname) {
-		oldname = ffep->name;
-		ffep->name = newname;
-		newname = oldname;
-	}
-
 	if (tvp) {
-		mtx_lock(&tfnp->node_lock);
-		error = fuse_dent_find(tdfnp, tncp->nc_name, tncp->nc_nlen,
-		    &tfep);
-		KKASSERT(!error);
-		fuse_dbg("detach/free to_dent=\"%s\"\n", tfep->name);
-		fuse_dent_detach(tdfnp, tfep);
-		fuse_dent_free(tfep);
-		mtx_unlock(&tfnp->node_lock);
 		fuse_knote(tdvp, NOTE_DELETE);
 	}
-
-	fuse_dbg("attach from_dent=\"%s\"\n", ffep->name);
-	fuse_dent_attach(tdfnp, ffep);
 
 	mtx_unlock(&ffnp->node_lock);
 	mtx_unlock(&fdfnp->node_lock);
 	mtx_unlock(&tdfnp->node_lock);
-
-	if (newname)
-		kfree(newname, M_TEMP);
 
 	cache_rename(ap->a_fnch, ap->a_tnch);
 	fuse_knote(fdvp, NOTE_WRITE);
@@ -1306,34 +1277,31 @@ fuse_vop_nsymlink(struct vop_nsymlink_args *ap)
 		return EINVAL;
 	}
 
-	error = fuse_alloc_node(dfnp, feo->nodeid, p, strlen(p), VLNK, &vp);
-	if (error) {
-		fuse_ipc_put(fip);
-		return error;
+	error = fuse_alloc_node(fmp, dfnp, feo->nodeid, VLNK, &vp);
+	if (error == 0) {
+		KKASSERT(vp);
+		KKASSERT(vn_islocked(vp));
+
+		fnp = VTOI(vp);
+		mtx_lock(&fnp->node_lock);
+		fuse_set_attr(fnp, &feo->attr);
+		mtx_unlock(&fnp->node_lock);
+
+		cache_setunresolved(ap->a_nch);
+		cache_setvp(ap->a_nch, vp);
+		*(ap->a_vpp) = vp;
+		fuse_knote(vp, NOTE_WRITE);
+
+		/* unused */
+		//feo->generation;
+		//feo->entry_valid;
+		//feo->attr_valid;
+		//feo->entry_valid_nsec;
+		//feo->attr_valid_nsec;
 	}
-	KKASSERT(vp);
-	KKASSERT(vn_islocked(vp));
-
-	fnp = VTOI(vp);
-	mtx_lock(&fnp->node_lock);
-	fuse_set_attr(fnp, &feo->attr);
-	mtx_unlock(&fnp->node_lock);
-
-	cache_setunresolved(ap->a_nch);
-	cache_setvp(ap->a_nch, vp);
-	*(ap->a_vpp) = vp;
-	fuse_knote(vp, NOTE_WRITE);
-
-	/* unused */
-	//feo->generation;
-	//feo->entry_valid;
-	//feo->attr_valid;
-	//feo->entry_valid_nsec;
-	//feo->attr_valid_nsec;
-
 	fuse_ipc_put(fip);
 
-	return 0;
+	return error;
 }
 
 static int
@@ -1760,8 +1728,8 @@ fuse_vop_print(struct vop_print_args *ap)
 {
 	struct fuse_node *fnp = VTOI(ap->a_vp);
 
-	fuse_print("tag VT_FUSE, node %p, ino %ju, parent ino %ju\n",
-	    fnp, VTOI(ap->a_vp)->ino, VTOI(fnp->pfnp->vp)->ino);
+	fuse_print("tag VT_FUSE, node %p, ino %ju\n",
+	    fnp, VTOI(ap->a_vp)->ino);
 
 	return 0;
 }
@@ -1773,43 +1741,15 @@ fuse_vop_inactive(struct vop_inactive_args *ap)
 	struct mount *mp = vp->v_mount;
 	struct fuse_node *fnp = VTOI(vp);
 	struct fuse_mount *fmp = VFSTOFUSE(mp);
-	struct fuse_ipc *fip;
-	struct fuse_release_in *fri;
-	int error, op;
 
 	if (!fnp) {
 		vrecycle(vp);
 		return 0;
 	}
 
-	fuse_dbg("ino=%ju nlink=%d\n", fnp->ino, fnp->nlink);
+	fuse_dbg("ino=%ju\n", fnp->ino);
 	vinvalbuf(vp, V_SAVE, 0, 0);
-
-	if (fnp->fh) {
-		/*
-		 * Release the file-handle to clean-up the userland side.
-		 */
-		if (vp->v_type == VDIR)
-			op = FUSE_RELEASEDIR;
-		else
-			op = FUSE_RELEASE;
-
-		fip = fuse_ipc_get(fmp, sizeof(*fri));
-		fri = fuse_ipc_fill(fip, op, fnp->ino, NULL);
-		/* unused */
-		//fri->flags = ...;
-		//fri->release_flags = ...;
-		//fri->lock_owner = ...;
-		fri->fh = fnp->fh;
-
-		error = fuse_ipc_tx(fip);
-		if (error)
-			return error;
-		fuse_ipc_put(fip);
-	}
-
-	fnp->closed = true;
-	fnp->fh = 0;
+	fuse_release(fmp, fnp);
 
 	vrecycle(vp);
 
@@ -1833,7 +1773,7 @@ fuse_vop_reclaim(struct vop_reclaim_args *ap)
 		fuse_dbg("ino=%ju\n", fnp->ino);
 
 		if (fnp != fmp->rfnp)
-			fuse_node_free(fnp);
+			fuse_node_free(fmp, fnp);
 		vclrisdirty(vp);
 	}
 
@@ -2151,6 +2091,52 @@ write_failed:
 	bp->b_error = EINVAL;
 	biodone(bio);
 #endif
+
+static void
+fuse_release(struct fuse_mount *fmp, struct fuse_node *fnp)
+{
+	struct fuse_ipc *fip;
+	struct fuse_release_in *fri;
+	int error, op;
+
+	if (fnp->fh) {
+		/*
+		 * Release the file-handle to clean-up the userland side.
+		 */
+		if (fnp->type == VDIR)
+			op = FUSE_RELEASEDIR;
+		else
+			op = FUSE_RELEASE;
+
+		fip = fuse_ipc_get(fmp, sizeof(*fri));
+		fri = fuse_ipc_fill(fip, op, fnp->ino, NULL);
+		/* unused */
+		//fri->flags = ...;
+		fri->release_flags = FUSE_RELEASE_FLUSH;
+		//fri->lock_owner = ...;
+		fri->fh = fnp->fh;
+
+		error = fuse_ipc_tx(fip);
+		if (error == 0)
+			fuse_ipc_put(fip);
+
+#if 0
+		op = FUSE_FORGET;
+		fip = fuse_ipc_get(fmp, sizeof(*fri));
+		fri = fuse_ipc_fill(fip, op, fnp->ino, NULL);
+		error = fuse_ipc_tx(fip);
+		if (error == 0)
+			fuse_ipc_put(fip);
+#endif
+		fnp->fh = 0;
+	}
+	if (fnp->nlookup && fnp->ino != 1) {
+		error = fuse_forget_node(fmp, fnp->ino, fnp->nlookup, NULL);
+		fnp->nlookup = 0;
+	}
+	fnp->closed = true;
+}
+
 
 struct vop_ops fuse_vnode_vops = {
 	.vop_default =		vop_defaultop,
