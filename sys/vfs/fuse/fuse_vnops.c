@@ -276,19 +276,23 @@ fuse_vop_fsync(struct vop_fsync_args *ap)
 	if (vp->v_opencount == 0)
 		vfinalize(vp);
 
-	if (vp->v_type == VDIR)
-		op = FUSE_FSYNCDIR;
-	else
-		op = FUSE_FSYNC;
+	if (fnp->fh) {
+		if (vp->v_type == VDIR)
+			op = FUSE_FSYNCDIR;
+		else
+			op = FUSE_FSYNC;
 
-	fip = fuse_ipc_get(fmp, sizeof(*fsi));
-	fsi = fuse_ipc_fill(fip, op, VTOI(vp)->ino, NULL);
-	fsi->fh = VTOI(vp)->fh;
-	fsi->fsync_flags = 1; /* datasync */
+		fip = fuse_ipc_get(fmp, sizeof(*fsi));
+		fsi = fuse_ipc_fill(fip, op, VTOI(vp)->ino, NULL);
+		fsi->fh = VTOI(vp)->fh;
+		fsi->fsync_flags = 1; /* datasync */
 
-	error = fuse_ipc_tx(fip);
-	if (error == 0)
-		fuse_ipc_put(fip);
+		error = fuse_ipc_tx(fip);
+		if (error == 0)
+			fuse_ipc_put(fip);
+	} else {
+		error = 0;
+	}
 
 	return error;
 }
@@ -542,6 +546,8 @@ fuse_vop_nresolve(struct vop_nresolve_args *ap)
 		cache_setvp(ap->a_nch, NULL);
 		return ENOENT;
 	}
+	if (feo->nodeid == 1)
+		forgettable = 0;
 
 	mode = feo->attr.mode;
 
@@ -582,8 +588,11 @@ fuse_vop_nresolve(struct vop_nresolve_args *ap)
 		if (forgettable)
 			atomic_add_64(&fnp->nlookup, 1);
 	} else {
+#if 0
+		/* sshfs fails utterly if we issue FUSE_FORGET */
 		if (forgettable)
 			fuse_forget_node(fmp, feo->nodeid, 1, NULL);
+#endif
 	}
 	fuse_ipc_put(fip);
 
@@ -1741,17 +1750,30 @@ fuse_vop_inactive(struct vop_inactive_args *ap)
 	struct mount *mp = vp->v_mount;
 	struct fuse_node *fnp = VTOI(vp);
 	struct fuse_mount *fmp = VFSTOFUSE(mp);
+	struct vm_object *obj;
 
 	if (!fnp) {
 		vrecycle(vp);
 		return 0;
 	}
 
+	/*
+	 * For now synchronize all dirty data on INACTIVE instead
+	 * of on RECLAIM.
+	 *
+	 * Get all dirty data out... mmap'd pages and the buffer cache,
+	 * so we can issue FUSE_RELEASE here.
+	 */
 	fuse_dbg("ino=%ju\n", fnp->ino);
-	vinvalbuf(vp, V_SAVE, 0, 0);
-	fuse_release(fmp, fnp);
 
-	vrecycle(vp);
+	if ((obj = vp->v_object) != NULL)
+		vm_object_page_clean(obj, 0, 0, 0);
+	VOP_FSYNC(vp, MNT_WAIT, 0);
+
+	/*
+	 *
+	 */
+	fuse_release(fmp, fnp);
 
 	return 0;
 }
@@ -2131,7 +2153,10 @@ fuse_release(struct fuse_mount *fmp, struct fuse_node *fnp)
 		fnp->fh = 0;
 	}
 	if (fnp->nlookup && fnp->ino != 1) {
+#if 0
+		/* sshfs fails utterly if we issue FUSE_FORGET */
 		error = fuse_forget_node(fmp, fnp->ino, fnp->nlookup, NULL);
+#endif
 		fnp->nlookup = 0;
 	}
 	fnp->closed = true;
