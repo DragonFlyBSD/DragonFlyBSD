@@ -564,6 +564,10 @@ struct rtfc_arg {
 
 /*
  * Set rtinfo->rti_ifa and rtinfo->rti_ifp.
+ *
+ * Assume that the caller did basic checks to ensure:
+ * - RTAX_DST exists
+ * - RTAX_GATEWAY exists if RTF_GATEWAY is set
  */
 int
 rt_getifa(struct rt_addrinfo *rtinfo)
@@ -580,6 +584,10 @@ rt_getifa(struct rt_addrinfo *rtinfo)
 	if (rtinfo->rti_ifp == NULL) {
 		struct sockaddr *ifpaddr;
 
+		/*
+		 * If we have interface specified by RTAX_IFP address,
+		 * try to use it.
+		 */
 		ifpaddr = rtinfo->rti_info[RTAX_IFP];
 		if (ifpaddr != NULL && ifpaddr->sa_family == AF_LINK) {
 			struct ifaddr *ifa;
@@ -590,19 +598,55 @@ rt_getifa(struct rt_addrinfo *rtinfo)
 		}
 	}
 
+	/*
+	 * If we have source address specified, try to find it.
+	 */
 	if (rtinfo->rti_ifa == NULL && ifaaddr != NULL)
 		rtinfo->rti_ifa = ifa_ifwithaddr(ifaaddr);
 	if (rtinfo->rti_ifa == NULL) {
 		struct sockaddr *sa;
 
-		sa = ifaaddr != NULL ? ifaaddr :
-		    (gateway != NULL ? gateway : dst);
-		if (sa != NULL && rtinfo->rti_ifp != NULL)
+		/*
+		 * Most common use case for the userland-supplied routes.
+		 *
+		 * The IFA is determined by:
+		 * + If ifp is set, try the followings in order:
+		 *   1. IFA address
+		 *   2. Gateway address
+		 *      Note: For interface routes link-level gateway address
+		 *            is specified to indicate the interface index
+		 *            without specifying RTF_GATEWAY.  Ignore the
+		 *            gateway in this case.
+		 *      Note: The gateway may have different AF as the dst.
+		 *            Also ignore the gateway in this case.
+		 *   3. Final destination
+		 *   4. Try to get at least link-level IFA.
+		 *      Note: This allows to add directly-reachable interface
+		 *            prefix to an interface without any IP address.
+		 * + Else:
+		 *   Try to lookup gateway or dst in the routing table to get
+		 *   the IFA.
+		 */
+		if (ifaaddr != NULL)
+			sa = ifaaddr;
+		else if ((flags & RTF_GATEWAY) != 0 &&
+			 gateway->sa_family == dst->sa_family)
+			sa = gateway;
+		else
+			sa = dst;
+		KKASSERT(sa != NULL);
+
+		if (rtinfo->rti_ifp != NULL) {
 			rtinfo->rti_ifa = ifaof_ifpforaddr(sa, rtinfo->rti_ifp);
-		else if (dst != NULL && gateway != NULL)
+			if (rtinfo->rti_ifa == NULL &&
+			    gateway != NULL && gateway != sa)
+				rtinfo->rti_ifa =
+				    ifaof_ifpforaddr(gateway, rtinfo->rti_ifp);
+		} else if (dst != NULL && gateway != NULL) {
 			rtinfo->rti_ifa = ifa_ifwithroute(flags, dst, gateway);
-		else if (sa != NULL)
+		} else {
 			rtinfo->rti_ifa = ifa_ifwithroute(flags, sa, sa);
+		}
 	}
 	if (rtinfo->rti_ifa == NULL)
 		return (ENETUNREACH);

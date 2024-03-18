@@ -117,7 +117,6 @@ static int	ifconf(u_long, caddr_t, struct ucred *);
 static void	ifinit(void *);
 static void	ifnetinit(void *);
 static void	if_slowtimo(void *);
-static void	link_rtrequest(int, struct rtentry *);
 static int	if_rtdel(struct radix_node *, void *);
 static void	if_slowtimo_dispatch(netmsg_t);
 
@@ -561,7 +560,6 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	sdl->sdl_type = ifp->if_type;
 	ifp->if_lladdr = ifa;
 	ifa->ifa_ifp = ifp;
-	ifa->ifa_rtrequest = link_rtrequest;
 	ifa->ifa_addr = (struct sockaddr *)sdl;
 	sdl = (struct sockaddr_dl *)(socksize + (caddr_t)sdl);
 	ifa->ifa_netmask = (struct sockaddr *)sdl;
@@ -1623,31 +1621,6 @@ ifaof_ifpforaddr(struct sockaddr *addr, struct ifnet *ifp)
 		}
 	}
 	return (ifa_maybe);
-}
-
-/*
- * Default action when installing a route with a Link Level gateway.
- * Lookup an appropriate real ifa to point to.
- * This should be moved to /sys/net/link.c eventually.
- */
-static void
-link_rtrequest(int cmd, struct rtentry *rt)
-{
-	struct ifaddr *ifa;
-	struct sockaddr *dst;
-	struct ifnet *ifp;
-
-	if (cmd != RTM_ADD || (ifa = rt->rt_ifa) == NULL ||
-	    (ifp = ifa->ifa_ifp) == NULL || (dst = rt_key(rt)) == NULL)
-		return;
-	ifa = ifaof_ifpforaddr(dst, ifp);
-	if (ifa != NULL) {
-		IFAFREE(rt->rt_ifa);
-		IFAREF(ifa);
-		rt->rt_ifa = ifa;
-		if (ifa->ifa_rtrequest && ifa->ifa_rtrequest != link_rtrequest)
-			ifa->ifa_rtrequest(cmd, rt);
-	}
 }
 
 struct netmsg_if {
