@@ -1121,6 +1121,13 @@ in_addprefix(struct in_ifaddr *target, int flags)
 		return 0;
 #endif
 
+	/*
+	 * Add a loopback route to the interface address.
+	 */
+	if ((target->ia_ifp->if_flags & IFF_LOOPBACK) == 0)
+		ifa_add_loopback_route(&target->ia_ifa,
+		    (struct sockaddr *)&target->ia_addr);
+
 	mask = target->ia_sockmask.sin_addr;
 	if (flags & RTF_HOST) {
 		prefix = target->ia_dstaddr.sin_addr;
@@ -1197,6 +1204,17 @@ in_scrubprefix(struct in_ifaddr *target)
 	if (target->ia_ifp->if_type == IFT_CARP)
 		return;
 #endif
+
+	/*
+	 * Remove the loopback route to the interface address.
+	 *
+	 * TODO: Change the route if the address still presents on other
+	 *       interface.
+	 */
+	if (target->ia_addr.sin_addr.s_addr != INADDR_ANY &&
+	    (target->ia_ifp->if_flags & IFF_LOOPBACK) == 0)
+		ifa_del_loopback_route(&target->ia_ifa,
+		    (struct sockaddr *)&target->ia_addr);
 
 	if ((target->ia_flags & IFA_ROUTE) == 0)
 		return;

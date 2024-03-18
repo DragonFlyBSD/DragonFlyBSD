@@ -962,6 +962,9 @@ int	ifgroup_lockmgr(u_int flags);
 int	if_addgroup(struct ifnet *, const char *);
 int	if_delgroup(struct ifnet *, const char *);
 
+int	ifa_add_loopback_route(struct ifaddr *, struct sockaddr *);
+int	ifa_del_loopback_route(struct ifaddr *, struct sockaddr *);
+
 struct	ifaddr *ifa_ifwithaddr(struct sockaddr *);
 struct	ifaddr *ifa_ifwithdstaddr(struct sockaddr *);
 struct	ifaddr *ifa_ifwithnet(struct sockaddr *);

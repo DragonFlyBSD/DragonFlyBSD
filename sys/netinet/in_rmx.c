@@ -112,20 +112,25 @@ in_addroute(const void *key, const void *mask, struct radix_node_head *head,
 		rt->rt_flags |= RTF_PRCLONING;
 
 	/*
-	 *   For host routes, we make sure that RTF_BROADCAST
-	 *   is set for anything that looks like a broadcast address.
-	 *   This way, we can avoid an expensive call to in_broadcast()
-	 *   in ip_output() most of the time (because the route passed
-	 *   to ip_output() is almost always a host route).
+	 * Try to set RTF_BROADCAST or RTF_LOCAL for a host route.
 	 *
-	 *   For local routes we set RTF_LOCAL allowing various shortcuts.
+	 * Skip this process if a host route already has RTF_LOCAL set,
+	 * for example by ifa_maintain_loopback_route().
 	 *
-	 *   A cloned network route will point to one of several possible
-	 *   addresses if an interface has aliases and must be repointed
-	 *   back to the correct address or arp_rtrequest() will not properly
-	 *   detect the local ip.
+	 * For host routes, we make sure that RTF_BROADCAST is set for
+	 * anything that looks like a broadcast address.  This way, we can
+	 * avoid an expensive call to in_broadcast() in ip_output() most of
+	 * the time (because the route passed to ip_output() is almost always
+	 * a host route).
+	 *
+	 * For local routes, we set RTF_LOCAL to allow various shortcuts.
+	 *
+	 * A cloned network route will point to one of several possible
+	 * addresses if an interface has aliases and must be repointed back to
+	 * the correct address or arp_rtrequest() will not properly detect the
+	 * local IP.
 	 */
-	if (rt->rt_flags & RTF_HOST) {
+	if ((rt->rt_flags & (RTF_HOST | RTF_LOCAL)) == RTF_HOST) {
 		if (in_broadcast(sin->sin_addr, rt->rt_ifp)) {
 			rt->rt_flags |= RTF_BROADCAST;
 		} else if (satosin(rt->rt_ifa->ifa_addr)->sin_addr.s_addr ==
