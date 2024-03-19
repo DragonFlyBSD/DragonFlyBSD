@@ -1398,7 +1398,7 @@ rt_addrinfo_print(int cmd, struct rt_addrinfo *rti)
 		break;
 	}
 	kprintf("rti %p cpu %d ", rti, mycpuid);
-	for (i = 0; i < rti->rti_addrs; ++i) {
+	for (i = 0; i < RTAX_MAX; ++i) {
 		if (rti->rti_info[i] == NULL)
 			continue;
 		if (didit)
