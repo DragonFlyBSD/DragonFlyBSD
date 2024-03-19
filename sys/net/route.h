@@ -272,7 +272,7 @@ struct rt_msghdr {
 #define RTV_IWCAPSEGS	0x400	/* init or lock _iwcapsegs */
 
 /*
- * Bitmask values for rtm_addrs.
+ * Bitmask values for rtm_addrs/rti_addrs.
  */
 #define RTA_DST		0x1	/* destination sockaddr present */
 #define RTA_GATEWAY	0x2	/* gateway sockaddr present */
@@ -316,9 +316,9 @@ struct rt_msghdr {
 #define RT_ADVANCE(x, n)	(x += RT_ROUNDUP((n)->sa_len))
 
 struct rt_addrinfo {
-	int		 rti_addrs;
+	int		 rti_addrs;	/* bitmask of RTA_ values */
 	struct sockaddr	*rti_info[RTAX_MAX];
-	int		 rti_flags;
+	int		 rti_flags;	/* RTF_ flags */
 	struct ifaddr	*rti_ifa;
 	struct ifnet	*rti_ifp;
 };
