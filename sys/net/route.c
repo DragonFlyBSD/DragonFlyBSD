@@ -1489,49 +1489,42 @@ sockaddr_print(const struct sockaddr *sa)
 		return;
 	}
 
-	len = sa->sa_len - offsetof(struct sockaddr, sa_data[0]);
-
-	switch(sa->sa_family) {
+	switch (sa->sa_family) {
 	case AF_INET:
+		sa4 = (const struct sockaddr_in *)sa;
+		kprintf("INET %d %d.%d.%d.%d",
+			ntohs(sa4->sin_port),
+			(ntohl(sa4->sin_addr.s_addr) >> 24) & 255,
+			(ntohl(sa4->sin_addr.s_addr) >> 16) & 255,
+			(ntohl(sa4->sin_addr.s_addr) >> 8) & 255,
+			(ntohl(sa4->sin_addr.s_addr) >> 0) & 255
+		);
+		break;
 	case AF_INET6:
+		sa6 = (const struct sockaddr_in6 *)sa;
+		kprintf("INET6 %d %04x:%04x%04x:%04x:%04x:%04x:%04x:%04x",
+			ntohs(sa6->sin6_port),
+			ntohs(sa6->sin6_addr.s6_addr16[0]),
+			ntohs(sa6->sin6_addr.s6_addr16[1]),
+			ntohs(sa6->sin6_addr.s6_addr16[2]),
+			ntohs(sa6->sin6_addr.s6_addr16[3]),
+			ntohs(sa6->sin6_addr.s6_addr16[4]),
+			ntohs(sa6->sin6_addr.s6_addr16[5]),
+			ntohs(sa6->sin6_addr.s6_addr16[6]),
+			ntohs(sa6->sin6_addr.s6_addr16[7])
+		);
+		break;
 	default:
-		switch(sa->sa_family) {
-		case AF_INET:
-			sa4 = (const struct sockaddr_in *)sa;
-			kprintf("INET %d %d.%d.%d.%d",
-				ntohs(sa4->sin_port),
-				(ntohl(sa4->sin_addr.s_addr) >> 24) & 255,
-				(ntohl(sa4->sin_addr.s_addr) >> 16) & 255,
-				(ntohl(sa4->sin_addr.s_addr) >> 8) & 255,
-				(ntohl(sa4->sin_addr.s_addr) >> 0) & 255
-			);
-			break;
-		case AF_INET6:
-			sa6 = (const struct sockaddr_in6 *)sa;
-			kprintf("INET6 %d %04x:%04x%04x:%04x:%04x:%04x:%04x:%04x",
-				ntohs(sa6->sin6_port),
-				ntohs(sa6->sin6_addr.s6_addr16[0]),
-				ntohs(sa6->sin6_addr.s6_addr16[1]),
-				ntohs(sa6->sin6_addr.s6_addr16[2]),
-				ntohs(sa6->sin6_addr.s6_addr16[3]),
-				ntohs(sa6->sin6_addr.s6_addr16[4]),
-				ntohs(sa6->sin6_addr.s6_addr16[5]),
-				ntohs(sa6->sin6_addr.s6_addr16[6]),
-				ntohs(sa6->sin6_addr.s6_addr16[7])
-			);
-			break;
-		default:
-			kprintf("AF%d ", sa->sa_family);
-			while (len > 0 && sa->sa_data[len-1] == 0)
-				--len;
-
-			for (i = 0; i < len; ++i) {
-				if (i)
-					kprintf(".");
-				kprintf("%d", (unsigned char)sa->sa_data[i]);
-			}
-			break;
+		kprintf("AF%d ", sa->sa_family);
+		len = sa->sa_len - offsetof(struct sockaddr, sa_data[0]);
+		while (len > 0 && sa->sa_data[len-1] == 0)
+			--len;
+		for (i = 0; i < len; ++i) {
+			if (i)
+				kprintf(".");
+			kprintf("%d", (unsigned char)sa->sa_data[i]);
 		}
+		break;
 	}
 }
 
