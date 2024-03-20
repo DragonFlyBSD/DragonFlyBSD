@@ -1396,17 +1396,17 @@ rt_setshims(struct rtentry *rt, struct sockaddr **rt_shim){
  * Print out a route table entry
  */
 void
-rt_print(struct rt_addrinfo *rtinfo, struct rtentry *rn)
+rt_print(struct rt_addrinfo *rtinfo, struct rtentry *rt)
 {
 	kprintf("rti %p cpu %d route %p flags %08lx: ",
-		rtinfo, mycpuid, rn, rn->rt_flags);
-	sockaddr_print(rt_key(rn));
+		rtinfo, mycpuid, rt, rt->rt_flags);
+	sockaddr_print(rt_key(rt));
 	kprintf(" mask ");
-	sockaddr_print(rt_mask(rn));
+	sockaddr_print(rt_mask(rt));
 	kprintf(" gw ");
-	sockaddr_print(rn->rt_gateway);
-	kprintf(" ifc \"%s\"", rn->rt_ifp ? rn->rt_ifp->if_dname : "?");
-	kprintf(" ifa %p\n", rn->rt_ifa);
+	sockaddr_print(rt->rt_gateway);
+	kprintf(" ifp \"%s\"", rt->rt_ifp ? rt->rt_ifp->if_xname : "?");
+	kprintf(" ifa %p\n", rt->rt_ifa);
 }
 
 void
@@ -1434,13 +1434,13 @@ rt_addrinfo_print(int cmd, struct rt_addrinfo *rti)
 		kprintf("C%02d ", cmd);
 		break;
 	}
-	kprintf("rti %p cpu %d ", rti, mycpuid);
+	kprintf("rti %p cpu %d flags %08x ", rti, mycpuid, rti->rti_flags);
 	for (i = 0; i < RTAX_MAX; ++i) {
 		if (rti->rti_info[i] == NULL)
 			continue;
 		if (didit)
-			kprintf(" ,");
-		switch(i) {
+			kprintf(", ");
+		switch (i) {
 		case RTAX_DST:
 			kprintf("(DST ");
 			break;
@@ -1473,7 +1473,8 @@ rt_addrinfo_print(int cmd, struct rt_addrinfo *rti)
 		kprintf(")");
 		didit = 1;
 	}
-	kprintf("\n");
+	kprintf(" ifp \"%s\"", rti->rti_ifp ? rti->rti_ifp->if_xname : "?");
+	kprintf(" ifa %p\n", rti->rti_ifa);
 }
 
 void
