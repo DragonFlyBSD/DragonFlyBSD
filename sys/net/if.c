@@ -1472,18 +1472,39 @@ if_rtdel(struct radix_node *rn, void *arg)
 }
 
 static __inline boolean_t
+ifa_match_withmask(const struct ifaddr *ifa, const struct sockaddr *addr)
+{
+	const char *cp, *cp2, *cp3, *cplim;
+
+	KKASSERT(ifa->ifa_addr->sa_family == addr->sa_family);
+
+	cp = addr->sa_data;
+	cp2 = ifa->ifa_addr->sa_data;
+	cp3 = ifa->ifa_netmask->sa_data;
+	cplim = (const char *)ifa->ifa_netmask + ifa->ifa_netmask->sa_len;
+
+	while (cp3 < cplim) {
+		if ((*cp++ ^ *cp2++) & *cp3++)
+			return (FALSE);
+	}
+
+	return (TRUE);
+}
+
+static __inline boolean_t
 ifa_prefer(const struct ifaddr *cur_ifa, const struct ifaddr *old_ifa)
 {
 	if (old_ifa == NULL)
-		return TRUE;
+		return (TRUE);
 
 	if ((old_ifa->ifa_ifp->if_flags & IFF_UP) == 0 &&
 	    (cur_ifa->ifa_ifp->if_flags & IFF_UP))
-		return TRUE;
+		return (TRUE);
 	if ((old_ifa->ifa_flags & IFA_ROUTE) == 0 &&
 	    (cur_ifa->ifa_flags & IFA_ROUTE))
-		return TRUE;
-	return FALSE;
+		return (TRUE);
+
+	return (FALSE);
 }
 
 /*
@@ -1557,7 +1578,6 @@ ifa_ifwithnet(struct sockaddr *addr)
 {
 	struct ifaddr *ifa_maybe = NULL;
 	u_int af = addr->sa_family;
-	char *addr_data = addr->sa_data, *cplim;
 	const struct ifnet_array *arr;
 	int i;
 
@@ -1583,10 +1603,9 @@ ifa_ifwithnet(struct sockaddr *addr)
 
 		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 			struct ifaddr *ifa = ifac->ifa;
-			char *cp, *cp2, *cp3;
 
 			if (ifa->ifa_addr->sa_family != af)
-next:				continue;
+				continue;
 			if (af == AF_INET && ifp->if_flags & IFF_POINTOPOINT) {
 				/*
 				 * This is a bit broken as it doesn't
@@ -1601,7 +1620,7 @@ next:				continue;
 					return (ifa);
 			} else {
 				/*
-				 * if we have a special address handler,
+				 * If we have a special address handler,
 				 * then use it instead of the generic one.
 				 */
 				if (ifa->ifa_claim_addr) {
@@ -1612,23 +1631,10 @@ next:				continue;
 					}
 				}
 
-				/*
-				 * Scan all the bits in the ifa's address.
-				 * If a bit dissagrees with what we are
-				 * looking for, mask it with the netmask
-				 * to see if it really matters.
-				 * (A byte at a time)
-				 */
-				if (ifa->ifa_netmask == 0)
+				if (ifa->ifa_netmask == NULL ||
+				    !ifa_match_withmask(ifa, addr))
 					continue;
-				cp = addr_data;
-				cp2 = ifa->ifa_addr->sa_data;
-				cp3 = ifa->ifa_netmask->sa_data;
-				cplim = ifa->ifa_netmask->sa_len +
-					(char *)ifa->ifa_netmask;
-				while (cp3 < cplim)
-					if ((*cp++ ^ *cp2++) & *cp3++)
-						goto next; /* next address! */
+
 				/*
 				 * If the netmask of what we just found
 				 * is more specific than what we had before
@@ -1648,6 +1654,7 @@ next:				continue;
 			}
 		}
 	}
+
 	return (ifa_maybe);
 }
 
@@ -1659,13 +1666,12 @@ struct ifaddr *
 ifaof_ifpforaddr(struct sockaddr *addr, struct ifnet *ifp)
 {
 	struct ifaddr_container *ifac;
-	char *cp, *cp2, *cp3;
-	char *cplim;
 	struct ifaddr *ifa_maybe = NULL;
 	u_int af = addr->sa_family;
 
 	if (af >= AF_MAX)
-		return (0);
+		return (NULL);
+
 	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 		struct ifaddr *ifa = ifac->ifa;
 
@@ -1684,17 +1690,11 @@ ifaof_ifpforaddr(struct sockaddr *addr, struct ifnet *ifp)
 			if (sa_equal(addr, ifa->ifa_dstaddr))
 				return (ifa);
 		} else {
-			cp = addr->sa_data;
-			cp2 = ifa->ifa_addr->sa_data;
-			cp3 = ifa->ifa_netmask->sa_data;
-			cplim = ifa->ifa_netmask->sa_len + (char *)ifa->ifa_netmask;
-			for (; cp3 < cplim; cp3++)
-				if ((*cp++ ^ *cp2++) & *cp3)
-					break;
-			if (cp3 == cplim)
+			if (ifa_match_withmask(ifa, addr))
 				return (ifa);
 		}
 	}
+
 	return (ifa_maybe);
 }
 
