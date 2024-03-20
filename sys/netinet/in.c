@@ -1064,18 +1064,10 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia,
 		flags |= RTF_HOST;
 	}
 
-	/*-
-	 * Don't add host routes for interface addresses of
-	 * 0.0.0.0 --> 0.255.255.255 netmask 255.0.0.0.  This makes it
-	 * possible to assign several such address pairs with consistent
-	 * results (no host route) and is required by BOOTP.
-	 *
-	 * XXX: This is ugly !  There should be a way for the caller to
-	 *      say that they don't want a host route.
+	/*
+	 * Ignore the INADDR_ANY address added by DHCP/BOOTP.
 	 */
-	if (ia->ia_addr.sin_addr.s_addr != INADDR_ANY ||
-	    ia->ia_netmask != IN_CLASSA_NET ||
-	    ia->ia_dstaddr.sin_addr.s_addr != htonl(IN_CLASSA_HOST)) {
+	if (ia->ia_addr.sin_addr.s_addr != INADDR_ANY) {
 		error = in_addprefix(ia, flags);
 		if (error)
 			goto fail;
