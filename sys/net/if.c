@@ -1363,6 +1363,9 @@ ifa_maintain_loopback_route(int cmd, struct ifaddr *ifa, struct sockaddr *ia)
 	struct ifnet *ifp;
 	int error;
 
+	/* RTM_CHANGE is unsupported in rtrequest1() yet. */
+	KKASSERT(cmd == RTM_DELETE || cmd == RTM_ADD);
+
 	rti_ifa = NULL;
 	ifp = ifa->ifa_ifp;
 

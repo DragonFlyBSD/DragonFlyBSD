@@ -1206,15 +1206,39 @@ in_scrubprefix(struct in_ifaddr *target)
 #endif
 
 	/*
-	 * Remove the loopback route to the interface address.
-	 *
-	 * TODO: Change the route if the address still presents on other
-	 *       interface.
+	 * Remove or change the loopback route to the interface address.
 	 */
 	if (target->ia_addr.sin_addr.s_addr != INADDR_ANY &&
-	    (target->ia_ifp->if_flags & IFF_LOOPBACK) == 0)
+	    (target->ia_ifp->if_flags & IFF_LOOPBACK) == 0) {
+		struct in_ifaddr *ia;
+		struct in_addr addr;
+
+		/*
+		 * rtrequest1() doesn't yet support to change a route (i.e.,
+		 * RTM_CHANGE), so always delete the old one and then add
+		 * the new one if needed.
+		 */
 		ifa_del_loopback_route(&target->ia_ifa,
 		    (struct sockaddr *)&target->ia_addr);
+
+		/*
+		 * Check whether the host address is still bound to another
+		 * interface address.  If yes, then re-add a loopback route
+		 * for it.
+		 */
+		addr = target->ia_addr.sin_addr;
+		LIST_FOREACH(iac, INADDR_HASH(addr.s_addr), ia_hash) {
+			ia = iac->ia;
+			if (ia != target &&
+			    ia->ia_addr.sin_addr.s_addr == addr.s_addr) {
+				IFAREF(&ia->ia_ifa);
+				ifa_add_loopback_route(&ia->ia_ifa,
+				    (struct sockaddr *)&target->ia_addr);
+				IFAFREE(&ia->ia_ifa);
+				break;
+			}
+		}
+	}
 
 	if ((target->ia_flags & IFA_ROUTE) == 0)
 		return;
