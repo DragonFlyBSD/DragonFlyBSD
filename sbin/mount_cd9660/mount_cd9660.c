@@ -31,9 +31,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *      @(#)mount_cd9660.c	8.7 (Berkeley) 5/1/95
- *
- * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_cd9660.c	8.7 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/mount_cd9660/mount_cd9660.c,v 1.15.2.3 2001/03/14 12:05:01 bp Exp $
  */
@@ -74,9 +71,9 @@ struct mntopt mopts[] = {
 static gid_t	a_gid(const char *);
 static uid_t	a_uid(const char *);
 static mode_t	a_mask(const char *);
+static int	set_charset(struct iso_args *args, const char *cs_local);
 static int	get_ssector(const char *dev);
 static void	usage(void);
-int set_charset(struct iso_args *args, const char *cs_local, const char *cs_disk);
 
 int
 main(int argc, char **argv)
@@ -87,16 +84,21 @@ main(int argc, char **argv)
 	char *dev, *dir, mntpath[MAXPATHLEN];
 	struct vfsconf vfc;
 	int error, verbose;
-	const char *quirk;
-	char *cs_local = NULL;
+	const char *cs_local;
 
 	mntflags = opts = set_mask = set_dirmask = verbose = 0;
 	memset(&args, 0, sizeof args);
 	args.ssector = -1;
-	while ((ch = getopt(argc, argv, "begG:jm:M:o:rs:U:C:v")) != -1)
+	while ((ch = getopt(argc, argv, "bC:egG:jm:M:o:rs:U:v")) != -1)
 		switch (ch) {
 		case 'b':
 			opts |= ISOFSMNT_BROKENJOLIET;
+			break;
+		case 'C':
+			cs_local = kiconv_quirkcs(optarg, KICONV_VENDOR_MICSFT);
+			if (set_charset(&args, cs_local) == -1)
+				err(EX_OSERR, "cd9660_iconv");
+			opts |= ISOFSMNT_KICONV;
 			break;
 		case 'e':
 			opts |= ISOFSMNT_EXTATT;
@@ -118,13 +120,6 @@ main(int argc, char **argv)
 		case 'M':
 			args.dmask = a_mask(optarg);
 			set_dirmask = 1;
-			break;
-		case 'C':
-			quirk = kiconv_quirkcs(optarg, KICONV_VENDOR_MICSFT);
-			cs_local = strdup(quirk);
-			if (set_charset(&args, cs_local, NULL) == -1)
-				err(EX_OSERR, "cd9660_iconv");
-			opts |= ISOFSMNT_KICONV;
 			break;
 		case 'o':
 			getmntopts(optarg, mopts, &mntflags, &opts);
@@ -222,30 +217,25 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-int
-set_charset(struct iso_args *args, const char *cs_local, const char *cs_disk)
+static int
+set_charset(struct iso_args *args, const char *cs_local)
 {
-        int error;
-        if (modfind("cd9660_iconv") < 0) {
-                if (kldload("cd9660_iconv") < 0 || modfind("cd9660_iconv") < 0)
-                {
-                        warnx("cannot find or load \"cd9660_iconv\" kernel module");
-                        return (-1);
-                }
-        }
-        snprintf(args->cs_local, ICONV_CSNMAXLEN, "%s", cs_local);
-        error = kiconv_add_xlat16_cspairs(ENCODING_UNICODE, cs_local);
-        if (error)
-                return (-1);
-        if (!cs_disk)
-                cs_disk = strdup(ENCODING_UNICODE);
-        snprintf(args->cs_disk, ICONV_CSNMAXLEN, "%s", cs_disk);
-        error = kiconv_add_xlat16_cspairs(cs_disk, cs_local);
-        if (error)
-                return (-1);
-        return (0);
-}
+	if (modfind("cd9660_iconv") < 0) {
+		if (kldload("cd9660_iconv") < 0 ||
+		    modfind("cd9660_iconv") < 0) {
+			warnx("cannot find or load \"cd9660_iconv\" "
+			      "kernel module");
+			return (-1);
+		}
+	}
 
+	snprintf(args->cs_disk, sizeof(args->cs_disk), "%s", ENCODING_UNICODE);
+	snprintf(args->cs_local, sizeof(args->cs_local), "%s", cs_local);
+	if (kiconv_add_xlat16_cspairs(args->cs_disk, args->cs_local) != 0)
+		return (-1);
+
+	return (0);
+}
 
 static void
 usage(void)
@@ -288,7 +278,7 @@ get_ssector(const char *dev)
 		return -1;
 	}
 	close(fd);
-	
+
 	for (i = ntocentries - 1; i >= 0; i--)
 		if ((toc_buffer[i].control & 4) != 0)
 			/* found a data track */
