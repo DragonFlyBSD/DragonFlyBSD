@@ -788,20 +788,18 @@ wg_aip_add(struct wg_softc *sc, struct wg_peer *peer, sa_family_t af,
 		break;
 #ifdef INET6
 	case AF_INET6:
-	{
-		int i;
-
 		if (cidr > 128)
 			cidr = 128;
 		head = sc->sc_aip6;
 		aip->a_addr.in6 = *(const struct in6_addr *)addr;
 		in6_prefixlen2mask(&aip->a_mask.in6, cidr);
-		for (i = 0; i < 4; i++)
-			aip->a_addr.ip6[i] &= aip->a_mask.ip6[i];
+		aip->a_addr.ip6[0] &= aip->a_mask.ip6[0];
+		aip->a_addr.ip6[1] &= aip->a_mask.ip6[1];
+		aip->a_addr.ip6[2] &= aip->a_mask.ip6[2];
+		aip->a_addr.ip6[3] &= aip->a_mask.ip6[3];
 		aip->a_addr.length = aip->a_mask.length =
 		    offsetof(struct aip_addr, in6) + sizeof(struct in6_addr);
 		break;
-	}
 #endif
 	default:
 		kfree(aip, M_WG);
@@ -1600,13 +1598,13 @@ wg_handshake(struct wg_softc *sc, struct wg_packet *pkt)
 	bool				 underload;
 	int				 ret;
 
+	pkt->p_mbuf = m_pullup(pkt->p_mbuf, pkt->p_mbuf->m_pkthdr.len);
+	if (pkt->p_mbuf == NULL)
+		goto error;
+
 	underload = wg_is_underload(sc);
 	m = pkt->p_mbuf;
 	e = &pkt->p_endpoint;
-
-	/* m_pullup() may change 'm', so must update 'pkt->p_mbuf'. */
-	if ((pkt->p_mbuf = m = m_pullup(m, m->m_pkthdr.len)) == NULL)
-		goto error;
 
 	switch (*mtod(m, uint32_t *)) {
 	case WG_PKT_INITIATION:
@@ -1816,7 +1814,7 @@ determine_af_and_pullup(struct mbuf **m, sa_family_t *af)
 		*af = AF_INET;
 #ifdef INET6
 	else if (len >= sizeof(*ip6) &&
-		   (ip6->ip6_vfc & IPV6_VERSION_MASK) == IPV6_VERSION)
+		 (ip6->ip6_vfc & IPV6_VERSION_MASK) == IPV6_VERSION)
 		*af = AF_INET6;
 #endif
 	else
@@ -2325,13 +2323,10 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	    rt->rt_rmx.rmx_mtu < pkt->p_mtu)
 		pkt->p_mtu = rt->rt_rmx.rmx_mtu;
 
-	if (af == AF_INET) {
-		peer = wg_aip_lookup(sc, AF_INET,
-				     &mtod(m, struct ip *)->ip_dst);
-	} else {
-		peer = wg_aip_lookup(sc, AF_INET6,
-				     &mtod(m, struct ip6_hdr *)->ip6_dst);
-	}
+	peer = wg_aip_lookup(sc, af,
+			     (af == AF_INET ?
+			      (void *)&mtod(m, struct ip *)->ip_dst :
+			      (void *)&mtod(m, struct ip6_hdr *)->ip6_dst));
 	if (__predict_false(peer == NULL)) {
 		ret = ENOKEY;
 		goto error;
