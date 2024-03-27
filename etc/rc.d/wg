@@ -423,7 +423,7 @@ wg_start_interface()
 	wg_exec_hook preup
 
 	local cmd
-	if expr "${ifname}" : '^wg[0-9]+$' > /dev/null; then
+	if expr "${ifname}" : 'wg[0-9][0-9]*$' > /dev/null; then
 		cmd="ifconfig ${ifname} create"
 	else
 		cmd="ifconfig wg create name ${ifname}"
