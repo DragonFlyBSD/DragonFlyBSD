@@ -284,7 +284,7 @@ fuse_vop_fsync(struct vop_fsync_args *ap)
 
 		fip = fuse_ipc_get(fmp, sizeof(*fsi));
 		fsi = fuse_ipc_fill(fip, op, VTOI(vp)->ino, NULL);
-		fsi->fh = VTOI(vp)->fh;
+		fsi->fh = fnp->fh;
 		fsi->fsync_flags = 1; /* datasync */
 
 		error = fuse_ipc_tx(fip);
