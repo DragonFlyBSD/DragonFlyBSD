@@ -372,7 +372,6 @@ static struct ieee80211_node *
 static uint8_t	iwm_rate_from_ucode_rate(uint32_t);
 static int	iwm_rate2ridx(struct iwm_softc *, uint8_t);
 static void	iwm_setrates(struct iwm_softc *, struct iwm_node *, int);
-static int	iwm_media_change(struct ifnet *);
 static int	iwm_newstate(struct ieee80211vap *, enum ieee80211_state, int);
 static void	iwm_endscan_cb(void *, int);
 static int	iwm_send_bt_init_conf(struct iwm_softc *);
@@ -1963,98 +1962,6 @@ iwm_nvm_read_section(struct iwm_softc *sc,
 
 /* iwlwifi/iwl-nvm-parse.c */
 
-/* NVM offsets (in words) definitions */
-enum iwm_nvm_offsets {
-	/* NVM HW-Section offset (in words) definitions */
-	IWM_HW_ADDR = 0x15,
-
-/* NVM SW-Section offset (in words) definitions */
-	IWM_NVM_SW_SECTION = 0x1C0,
-	IWM_NVM_VERSION = 0,
-	IWM_RADIO_CFG = 1,
-	IWM_SKU = 2,
-	IWM_N_HW_ADDRS = 3,
-	IWM_NVM_CHANNELS = 0x1E0 - IWM_NVM_SW_SECTION,
-
-/* NVM calibration section offset (in words) definitions */
-	IWM_NVM_CALIB_SECTION = 0x2B8,
-	IWM_XTAL_CALIB = 0x316 - IWM_NVM_CALIB_SECTION
-};
-
-enum iwm_8000_nvm_offsets {
-	/* NVM HW-Section offset (in words) definitions */
-	IWM_HW_ADDR0_WFPM_8000 = 0x12,
-	IWM_HW_ADDR1_WFPM_8000 = 0x16,
-	IWM_HW_ADDR0_PCIE_8000 = 0x8A,
-	IWM_HW_ADDR1_PCIE_8000 = 0x8E,
-	IWM_MAC_ADDRESS_OVERRIDE_8000 = 1,
-
-	/* NVM SW-Section offset (in words) definitions */
-	IWM_NVM_SW_SECTION_8000 = 0x1C0,
-	IWM_NVM_VERSION_8000 = 0,
-	IWM_RADIO_CFG_8000 = 0,
-	IWM_SKU_8000 = 2,
-	IWM_N_HW_ADDRS_8000 = 3,
-
-	/* NVM REGULATORY -Section offset (in words) definitions */
-	IWM_NVM_CHANNELS_8000 = 0,
-	IWM_NVM_LAR_OFFSET_8000_OLD = 0x4C7,
-	IWM_NVM_LAR_OFFSET_8000 = 0x507,
-	IWM_NVM_LAR_ENABLED_8000 = 0x7,
-
-	/* NVM calibration section offset (in words) definitions */
-	IWM_NVM_CALIB_SECTION_8000 = 0x2B8,
-	IWM_XTAL_CALIB_8000 = 0x316 - IWM_NVM_CALIB_SECTION_8000
-};
-
-/* SKU Capabilities (actual values from NVM definition) */
-enum nvm_sku_bits {
-	IWM_NVM_SKU_CAP_BAND_24GHZ	= (1 << 0),
-	IWM_NVM_SKU_CAP_BAND_52GHZ	= (1 << 1),
-	IWM_NVM_SKU_CAP_11N_ENABLE	= (1 << 2),
-	IWM_NVM_SKU_CAP_11AC_ENABLE	= (1 << 3),
-};
-
-/* radio config bits (actual values from NVM definition) */
-#define IWM_NVM_RF_CFG_DASH_MSK(x)   (x & 0x3)         /* bits 0-1   */
-#define IWM_NVM_RF_CFG_STEP_MSK(x)   ((x >> 2)  & 0x3) /* bits 2-3   */
-#define IWM_NVM_RF_CFG_TYPE_MSK(x)   ((x >> 4)  & 0x3) /* bits 4-5   */
-#define IWM_NVM_RF_CFG_PNUM_MSK(x)   ((x >> 6)  & 0x3) /* bits 6-7   */
-#define IWM_NVM_RF_CFG_TX_ANT_MSK(x) ((x >> 8)  & 0xF) /* bits 8-11  */
-#define IWM_NVM_RF_CFG_RX_ANT_MSK(x) ((x >> 12) & 0xF) /* bits 12-15 */
-
-#define IWM_NVM_RF_CFG_FLAVOR_MSK_8000(x)	(x & 0xF)
-#define IWM_NVM_RF_CFG_DASH_MSK_8000(x)		((x >> 4) & 0xF)
-#define IWM_NVM_RF_CFG_STEP_MSK_8000(x)		((x >> 8) & 0xF)
-#define IWM_NVM_RF_CFG_TYPE_MSK_8000(x)		((x >> 12) & 0xFFF)
-#define IWM_NVM_RF_CFG_TX_ANT_MSK_8000(x)	((x >> 24) & 0xF)
-#define IWM_NVM_RF_CFG_RX_ANT_MSK_8000(x)	((x >> 28) & 0xF)
-
-/**
- * enum iwm_nvm_channel_flags - channel flags in NVM
- * @IWM_NVM_CHANNEL_VALID: channel is usable for this SKU/geo
- * @IWM_NVM_CHANNEL_IBSS: usable as an IBSS channel
- * @IWM_NVM_CHANNEL_ACTIVE: active scanning allowed
- * @IWM_NVM_CHANNEL_RADAR: radar detection required
- * XXX cannot find this (DFS) flag in iwm-nvm-parse.c
- * @IWM_NVM_CHANNEL_DFS: dynamic freq selection candidate
- * @IWM_NVM_CHANNEL_WIDE: 20 MHz channel okay (?)
- * @IWM_NVM_CHANNEL_40MHZ: 40 MHz channel okay (?)
- * @IWM_NVM_CHANNEL_80MHZ: 80 MHz channel okay (?)
- * @IWM_NVM_CHANNEL_160MHZ: 160 MHz channel okay (?)
- */
-enum iwm_nvm_channel_flags {
-	IWM_NVM_CHANNEL_VALID = (1 << 0),
-	IWM_NVM_CHANNEL_IBSS = (1 << 1),
-	IWM_NVM_CHANNEL_ACTIVE = (1 << 3),
-	IWM_NVM_CHANNEL_RADAR = (1 << 4),
-	IWM_NVM_CHANNEL_DFS = (1 << 7),
-	IWM_NVM_CHANNEL_WIDE = (1 << 8),
-	IWM_NVM_CHANNEL_40MHZ = (1 << 9),
-	IWM_NVM_CHANNEL_80MHZ = (1 << 10),
-	IWM_NVM_CHANNEL_160MHZ = (1 << 11),
-};
-
 /*
  * Translate EEPROM flags to net80211.
  */
@@ -2269,7 +2176,7 @@ iwm_set_radio_cfg(const struct iwm_softc *sc, struct iwm_nvm_data *data,
 	data->radio_cfg_type = IWM_NVM_RF_CFG_TYPE_MSK_8000(radio_cfg);
 	data->radio_cfg_step = IWM_NVM_RF_CFG_STEP_MSK_8000(radio_cfg);
 	data->radio_cfg_dash = IWM_NVM_RF_CFG_DASH_MSK_8000(radio_cfg);
-	data->radio_cfg_pnum = IWM_NVM_RF_CFG_FLAVOR_MSK_8000(radio_cfg);
+	data->radio_cfg_pnum = IWM_NVM_RF_CFG_PNUM_MSK_8000(radio_cfg);
 	data->valid_tx_ant = IWM_NVM_RF_CFG_TX_ANT_MSK_8000(radio_cfg);
 	data->valid_rx_ant = IWM_NVM_RF_CFG_RX_ANT_MSK_8000(radio_cfg);
 }
@@ -2432,7 +2339,7 @@ iwm_parse_nvm_sections(struct iwm_softc *sc, struct iwm_nvm_section *sections)
 static int
 iwm_nvm_init(struct iwm_softc *sc)
 {
-	struct iwm_nvm_section nvm_sections[IWM_NVM_MAX_NUM_SECTIONS];
+	struct iwm_nvm_section nvm_sections[IWM_NVM_NUM_OF_SECTIONS];
 	int i, ret, section;
 	uint32_t size_read = 0;
 	uint8_t *nvm_buffer, *temp;
@@ -2440,7 +2347,7 @@ iwm_nvm_init(struct iwm_softc *sc)
 
 	memset(nvm_sections, 0, sizeof(nvm_sections));
 
-	if (sc->cfg->nvm_hw_section_num >= IWM_NVM_MAX_NUM_SECTIONS)
+	if (sc->cfg->nvm_hw_section_num >= IWM_NVM_NUM_OF_SECTIONS)
 		return EINVAL;
 
 	/* load NVM values from nic */
@@ -2450,7 +2357,7 @@ iwm_nvm_init(struct iwm_softc *sc)
 	nvm_buffer = kmalloc(sc->cfg->eeprom_size, M_DEVBUF, M_WAITOK | M_ZERO);
 	if (!nvm_buffer)
 		return ENOMEM;
-	for (section = 0; section < IWM_NVM_MAX_NUM_SECTIONS; section++) {
+	for (section = 0; section < IWM_NVM_NUM_OF_SECTIONS; section++) {
 		/* we override the constness for initial read */
 		ret = iwm_nvm_read_section(sc, section, nvm_buffer,
 					   &len, size_read);
@@ -2477,7 +2384,7 @@ iwm_nvm_init(struct iwm_softc *sc)
 	IWM_DPRINTF(sc, IWM_DEBUG_EEPROM | IWM_DEBUG_RESET,
 		    "nvm version = %x\n", sc->nvm_data->nvm_version);
 
-	for (i = 0; i < IWM_NVM_MAX_NUM_SECTIONS; i++) {
+	for (i = 0; i < IWM_NVM_NUM_OF_SECTIONS; i++) {
 		if (nvm_sections[i].data != NULL)
 			kfree(nvm_sections[i].data, M_DEVBUF);
 	}
@@ -2654,15 +2561,12 @@ static int
 iwm_pcie_load_cpu_sections(struct iwm_softc *sc,
 	const struct iwm_fw_img *image, int cpu, int *first_ucode_section)
 {
-	int shift_param;
 	int i, ret = 0;
 	uint32_t last_read_idx = 0;
 
 	if (cpu == 1) {
-		shift_param = 0;
 		*first_ucode_section = 0;
 	} else {
-		shift_param = 16;
 		(*first_ucode_section)++;
 	}
 
@@ -3205,7 +3109,12 @@ static int
 iwm_get_noise(struct iwm_softc *sc,
     const struct iwm_statistics_rx_non_phy *stats)
 {
-	int i, total, nbant, noise;
+	int i, noise;
+#ifdef IWM_DEBUG
+	int nbant, total;
+#else
+	int nbant __unused, total __unused;
+#endif
 
 	total = nbant = noise = 0;
 	for (i = 0; i < 3; i++) {
@@ -3235,7 +3144,7 @@ iwm_get_noise(struct iwm_softc *sc,
 static void
 iwm_handle_rx_statistics(struct iwm_softc *sc, struct iwm_rx_packet *pkt)
 {
-	struct iwm_notif_statistics_v10 *stats = (void *)&pkt->data;
+	struct iwm_notif_statistics *stats = (void *)&pkt->data;
 
 	memcpy(&sc->sc_stats, stats, sizeof(sc->sc_stats));
 	sc->sc_noise = iwm_get_noise(sc, &stats->rx.general);
@@ -3299,7 +3208,6 @@ iwm_rx_rx_mpdu(struct iwm_softc *sc, struct mbuf *m, uint32_t offset,
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
-	struct ieee80211_frame *wh;
 	struct ieee80211_rx_stats rxs;
 	struct iwm_rx_phy_info *phy_info;
 	struct iwm_rx_mpdu_res_start *rx_res;
@@ -3310,7 +3218,6 @@ iwm_rx_rx_mpdu(struct iwm_softc *sc, struct mbuf *m, uint32_t offset,
 
 	phy_info = &sc->sc_last_phy_info;
 	rx_res = (struct iwm_rx_mpdu_res_start *)pkt->data;
-	wh = (struct ieee80211_frame *)(pkt->data + sizeof(*rx_res));
 	len = le16toh(rx_res->byte_count);
 	rx_pkt_status = le32toh(*(uint32_t *)(pkt->data + sizeof(*rx_res) + len));
 
@@ -3999,7 +3906,7 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 	if (hdrlen & 3) {
 		/* First segment length must be a multiple of 4. */
 		flags |= IWM_TX_CMD_FLG_MH_PAD;
-		tx->offload_assist |= htole16(1 << IWM_TX_CMD_OFFLD_PAD);
+		tx->offload_assist |= htole16(IWM_TX_CMD_OFFLD_PAD);
 		pad = 4 - (hdrlen & 3);
 	} else {
 		tx->offload_assist = 0;
@@ -4176,7 +4083,7 @@ int
 iwm_flush_tx_path(struct iwm_softc *sc, uint32_t tfd_msk, uint32_t flags)
 {
 	int ret;
-	struct iwm_tx_path_flush_cmd flush_cmd = {
+	struct iwm_tx_path_flush_cmd_v1 flush_cmd = {
 		.queues_ctl = htole32(tfd_msk),
 		.flush_ctl = htole16(IWM_DUMP_TX_FIFO_FLUSH),
 	};
@@ -4196,7 +4103,7 @@ iwm_flush_tx_path(struct iwm_softc *sc, uint32_t tfd_msk, uint32_t flags)
 static int
 iwm_update_quotas(struct iwm_softc *sc, struct iwm_vap *ivp)
 {
-	struct iwm_time_quota_cmd cmd;
+	struct iwm_time_quota_cmd_v1 cmd;
 	int i, idx, ret, num_active_macs, quota, quota_rem;
 	int colors[IWM_MAX_BINDINGS] = { -1, -1, -1, -1, };
 	int n_ifs[IWM_MAX_BINDINGS] = {0, };
@@ -4538,27 +4445,6 @@ iwm_setrates(struct iwm_softc *sc, struct iwm_node *in, int rix)
 	}
 }
 
-static int
-iwm_media_change(struct ifnet *ifp)
-{
-	struct ieee80211vap *vap = ifp->if_softc;
-	struct ieee80211com *ic = vap->iv_ic;
-	struct iwm_softc *sc = ic->ic_softc;
-	int error;
-
-	error = ieee80211_media_change(ifp);
-	if (error != ENETRESET)
-		return error;
-
-	IWM_LOCK(sc);
-	if (ic->ic_nrunning > 0) {
-		iwm_stop(sc);
-		iwm_init(sc);
-	}
-	IWM_UNLOCK(sc);
-	return error;
-}
-
 static void
 iwm_bring_down_firmware(struct iwm_softc *sc, struct ieee80211vap *vap)
 {
@@ -4849,7 +4735,7 @@ iwm_send_update_mcc_cmd(struct iwm_softc *sc, const char *alpha2)
 #ifdef IWM_DEBUG
 	struct iwm_rx_packet *pkt;
 	struct iwm_mcc_update_resp_v1 *mcc_resp_v1 = NULL;
-	struct iwm_mcc_update_resp *mcc_resp;
+	struct iwm_mcc_update_resp_v2 *mcc_resp;
 	int n_channels;
 	uint16_t mcc;
 #endif
@@ -5189,18 +5075,46 @@ iwm_parent(struct ieee80211com *ic)
 {
 	struct iwm_softc *sc = ic->ic_softc;
 	int startall = 0;
+	int rfkill = 0;
 
 	IWM_LOCK(sc);
 	if (ic->ic_nrunning > 0) {
 		if (!(sc->sc_flags & IWM_FLAG_HW_INITED)) {
 			iwm_init(sc);
-			startall = 1;
+			rfkill = iwm_check_rfkill(sc);
+			if (!rfkill)
+				startall = 1;
 		}
 	} else if (sc->sc_flags & IWM_FLAG_HW_INITED)
 		iwm_stop(sc);
 	IWM_UNLOCK(sc);
 	if (startall)
 		ieee80211_start_all(ic);
+	else if (rfkill)
+		taskqueue_enqueue(sc->sc_tq, &sc->sc_rftoggle_task);
+}
+
+static void
+iwm_rftoggle_task(void *arg, int npending __unused)
+{
+	struct iwm_softc *sc = arg;
+	struct ieee80211com *ic = &sc->sc_ic;
+	int rfkill;
+
+	IWM_LOCK(sc);
+	rfkill = iwm_check_rfkill(sc);
+	IWM_UNLOCK(sc);
+	if (rfkill) {
+		device_printf(sc->sc_dev,
+		    "%s: rfkill switch, disabling interface\n", __func__);
+		ieee80211_suspend_all(ic);
+		ieee80211_notify_radio(ic, 0);
+	} else {
+		device_printf(sc->sc_dev,
+		    "%s: rfkill cleared, re-enabling interface\n", __func__);
+		ieee80211_resume_all(ic);
+		ieee80211_notify_radio(ic, 1);
+	}
 }
 
 /*
@@ -5686,8 +5600,6 @@ iwm_handle_rxb(struct iwm_softc *sc, struct mbuf *m)
 			break;
 
 		case IWM_SCAN_ITERATION_COMPLETE: {
-			struct iwm_lmac_scan_complete_notif *notif;
-			notif = (void *)pkt->data;
 			break;
 		}
 
@@ -5700,12 +5612,14 @@ iwm_handle_rxb(struct iwm_softc *sc, struct mbuf *m)
 			break;
 
 		case IWM_SCAN_ITERATION_COMPLETE_UMAC: {
+#ifdef IWM_DEBUG
 			struct iwm_umac_scan_iter_complete_notif *notif;
 			notif = (void *)pkt->data;
 
 			IWM_DPRINTF(sc, IWM_DEBUG_SCAN, "UMAC scan iteration "
 			    "complete, status=0x%x, %d channels scanned\n",
 			    notif->status, notif->scanned_channels);
+#endif
 			break;
 		}
 
@@ -5735,6 +5649,7 @@ iwm_handle_rxb(struct iwm_softc *sc, struct mbuf *m)
 			break;
 
 		case IWM_SCD_QUEUE_CFG: {
+#ifdef IWM_DEBUG
 			struct iwm_scd_txq_cfg_rsp *rsp;
 			rsp = (void *)pkt->data;
 
@@ -5743,14 +5658,14 @@ iwm_handle_rxb(struct iwm_softc *sc, struct mbuf *m)
 			    "tid=%d scd_queue=%d\n",
 			    rsp->token, rsp->sta_id, rsp->tid,
 			    rsp->scd_queue);
+#endif
 			break;
 		}
 
 		default:
 			device_printf(sc->sc_dev,
-			    "frame %d/%d %x UNHANDLED (this should "
-			    "not happen)\n", qid & ~0x80, idx,
-			    pkt->len_n_flags);
+			    "code %x, frame %d/%d %x unhandled\n",
+			    code, qid & ~0x80, idx, pkt->len_n_flags);
 			break;
 		}
 
@@ -5834,7 +5749,7 @@ iwm_intr(void *arg)
 {
 	struct iwm_softc *sc = arg;
 	int handled = 0;
-	int r1, r2, rv = 0;
+	int r1, r2;
 	int isperiodic = 0;
 
 #if defined(__DragonFly__)
@@ -5933,7 +5848,6 @@ iwm_intr(void *arg)
 		handled |= IWM_CSR_INT_BIT_HW_ERR;
 		device_printf(sc->sc_dev, "hardware error, stopping device\n");
 		iwm_stop(sc);
-		rv = 1;
 		goto out;
 	}
 
@@ -5947,12 +5861,7 @@ iwm_intr(void *arg)
 
 	if (r1 & IWM_CSR_INT_BIT_RF_KILL) {
 		handled |= IWM_CSR_INT_BIT_RF_KILL;
-		if (iwm_check_rfkill(sc)) {
-			device_printf(sc->sc_dev,
-			    "%s: rfkill switch, disabling interface\n",
-			    __func__);
-			iwm_stop(sc);
-		}
+		taskqueue_enqueue(sc->sc_tq, &sc->sc_rftoggle_task);
 	}
 
 	/*
@@ -5983,8 +5892,6 @@ iwm_intr(void *arg)
 	if (__predict_false(r1 & ~handled))
 		IWM_DPRINTF(sc, IWM_DEBUG_INTR,
 		    "%s: unhandled interrupts: %x\n", __func__, r1);
-	rv = 1;
-
  out_ena:
 	iwm_restore_interrupts(sc);
  out:
@@ -6010,6 +5917,7 @@ iwm_intr(void *arg)
 #define	PCI_PRODUCT_INTEL_WL_8265_1	0x24fd
 #define	PCI_PRODUCT_INTEL_WL_9560_1	0x9df0
 #define	PCI_PRODUCT_INTEL_WL_9560_2	0xa370
+#define	PCI_PRODUCT_INTEL_WL_9560_3	0x31dc
 #define	PCI_PRODUCT_INTEL_WL_9260_1	0x2526
 
 static const struct iwm_devices {
@@ -6030,6 +5938,7 @@ static const struct iwm_devices {
 	{ PCI_PRODUCT_INTEL_WL_8265_1, &iwm8265_cfg },
 	{ PCI_PRODUCT_INTEL_WL_9560_1, &iwm9560_cfg },
 	{ PCI_PRODUCT_INTEL_WL_9560_2, &iwm9560_cfg },
+	{ PCI_PRODUCT_INTEL_WL_9560_3, &iwm9560_cfg },
 	{ PCI_PRODUCT_INTEL_WL_9260_1, &iwm9260_cfg },
 };
 
@@ -6131,12 +6040,12 @@ iwm_pci_attach(device_t dev)
 	error = bus_setup_intr(dev, sc->sc_irq, INTR_TYPE_NET | INTR_MPSAFE,
 	    NULL, iwm_intr, sc, &sc->sc_ih);
 #endif
-	if (sc->sc_ih == NULL) {
+	if (error != 0) {
 		device_printf(dev, "can't establish interrupt");
-			return (ENXIO);
 #if defined(__DragonFly__)
 		pci_release_msi(dev);
 #endif
+		return (error);
 	}
 	sc->sc_dmat = bus_get_dma_tag(sc->sc_dev);
 
@@ -6181,6 +6090,16 @@ iwm_attach(device_t dev)
 	callout_init_lk(&sc->sc_watchdog_to, &sc->sc_lk);
 	callout_init_lk(&sc->sc_led_blink_to, &sc->sc_lk);
 	TASK_INIT(&sc->sc_es_task, 0, iwm_endscan_cb, sc);
+	TASK_INIT(&sc->sc_rftoggle_task, 0, iwm_rftoggle_task, sc);
+
+	sc->sc_tq = taskqueue_create("iwm_taskq", M_WAITOK,
+	    taskqueue_thread_enqueue, &sc->sc_tq);
+	error = taskqueue_start_threads(&sc->sc_tq, 1, TDPRI_KERN_DAEMON, -1, "iwm_taskq");
+	if (error != 0) {
+		device_printf(dev, "can't start taskq thread, error %d\n",
+		    error);
+		goto fail;
+	}
 
 	error = iwm_dev_check(dev);
 	if (error != 0)
@@ -6565,8 +6484,8 @@ iwm_vap_create(struct ieee80211com *ic, const char name[IFNAMSIZ], int unit,
 
 	ieee80211_ratectl_init(vap);
 	/* Complete setup. */
-	ieee80211_vap_attach(vap, iwm_media_change, ieee80211_media_status,
-	    mac);
+	ieee80211_vap_attach(vap, ieee80211_media_change,
+	    ieee80211_media_status, mac);
 	ic->ic_opmode = opmode;
 
 	return vap;
@@ -6756,6 +6675,12 @@ iwm_detach_local(struct iwm_softc *sc, int do_net80211)
 		ieee80211_draintask(&sc->sc_ic, &sc->sc_es_task);
 	}
 	iwm_stop_device(sc);
+#if defined(__DragonFly__)
+		/* doesn't exist for DFly, DFly drains tasks on free */
+#else
+		taskqueue_drain_all(sc->sc_tq);
+#endif
+	taskqueue_free(sc->sc_tq);
 	if (do_net80211) {
 		IWM_LOCK(sc);
 		iwm_xmit_queue_drain(sc);

@@ -1,5 +1,4 @@
 /*	$OpenBSD: if_iwmvar.h,v 1.7 2015/03/02 13:51:10 jsg Exp $	*/
-/*	$FreeBSD$ */
 
 /*
  * Copyright (c) 2014 genua mbh <info@genua.de>
@@ -501,7 +500,9 @@ struct iwm_softc {
 	uint8_t			sc_cmd_resp[IWM_CMD_RESP_MAX];
 	int			sc_wantresp;
 
+	struct taskqueue	*sc_tq;
 	struct task		sc_es_task;
+	struct task		sc_rftoggle_task;
 
 	struct iwm_rx_phy_info	sc_last_phy_info;
 	int			sc_ampdu_ref;
@@ -511,7 +512,7 @@ struct iwm_softc {
 	/* phy contexts.  we only use the first one */
 	struct iwm_phy_ctxt	sc_phyctxt[IWM_NUM_PHY_CTX];
 
-	struct iwm_notif_statistics_v10 sc_stats;
+	struct iwm_notif_statistics sc_stats;
 	int			sc_noise;
 
 	struct iwm_rx_radiotap_header sc_rxtap;
