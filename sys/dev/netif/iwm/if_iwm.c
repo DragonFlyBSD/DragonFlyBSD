@@ -3273,12 +3273,8 @@ iwm_rx_rx_mpdu(struct iwm_softc *sc, struct mbuf *m, uint32_t offset,
 	}
 
 	/* rssi is in 1/2db units */
-#if !defined(__DragonFly__)
 	rxs.c_rssi = rssi * 2;
 	rxs.c_nf = sc->sc_noise;
-#else
-	/* old DFly ieee80211 ABI does not have c_rssi */
-#endif
 	if (ieee80211_add_rx_params(m, &rxs) == 0)
 		return false;
 
@@ -3385,12 +3381,8 @@ iwm_rx_mpdu_mq(struct iwm_softc *sc, struct mbuf *m, uint32_t offset,
 	    channel <= 14 ? IEEE80211_CHAN_2GHZ : IEEE80211_CHAN_5GHZ);
 
 	/* rssi is in 1/2db units */
-#if !defined(__DragonFly__)
 	rxs.c_rssi = rssi * 2;
 	rxs.c_nf = sc->sc_noise;
-#else
-	/* old DFly ieee80211 ABI does not have c_rssi */
-#endif
 	if (ieee80211_add_rx_params(m, &rxs) == 0)
 		return false;
 

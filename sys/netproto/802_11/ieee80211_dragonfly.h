@@ -531,8 +531,8 @@ struct ieee80211_rx_stats {
 	int16_t	c_nf_ext[IEEE80211_MAX_CHAINS];	/* per-chain NF */
 	int16_t	c_rssi_ctl[IEEE80211_MAX_CHAINS];	/* per-chain RSSI */
 	int16_t	c_rssi_ext[IEEE80211_MAX_CHAINS];	/* per-chain RSSI */
-	uint8_t nf;			/* global NF */
-	uint8_t rssi;			/* global RSSI */
+	uint8_t c_nf;			/* global NF */
+	uint8_t c_rssi;			/* global RSSI */
 	uint8_t evm[IEEE80211_MAX_CHAINS][IEEE80211_MAX_EVM_PILOTS];
 					/* per-chain, per-pilot EVM values */
 	uint16_t c_freq;
