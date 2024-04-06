@@ -36,6 +36,7 @@
 #include <sys/systm.h>
 
 #include <dev/misc/evdev/evdev.h>
+#include <dev/misc/evdev/evdev_private.h>
 #include <dev/misc/evdev/input.h>
 #include <dev/misc/kbd/kbdreg.h>
 
@@ -128,7 +129,7 @@ static uint16_t evdev_at_set1_scancodes[] = {
 	KEY_APOSTROPHE,	KEY_GRAVE,	KEY_LEFTSHIFT,	KEY_BACKSLASH,
 	KEY_Z,		KEY_X,		KEY_C,		KEY_V,
 	KEY_B,		KEY_N,		KEY_M,		KEY_COMMA,
-	KEY_DOT,	KEY_SLASH,	KEY_RIGHTSHIFT,	NONE,
+	KEY_DOT,	KEY_SLASH,	KEY_RIGHTSHIFT,	KEY_KPASTERISK,
 	KEY_LEFTALT,	KEY_SPACE,	KEY_CAPSLOCK,	KEY_F1,
 	KEY_F2,		KEY_F3,		KEY_F4,		KEY_F5,
 	/* 0x40 - 0x5f */
@@ -139,13 +140,13 @@ static uint16_t evdev_at_set1_scancodes[] = {
 	KEY_KP2,	KEY_KP3,	KEY_KP0,	KEY_KPDOT,
 	NONE,		NONE,		KEY_102ND,	KEY_F11,
 	KEY_F12,	NONE,		NONE,		NONE,
-	NONE,		NONE,		NONE,		NONE,
+	NONE,		KEY_F13,	NONE,		NONE,
 	/* 0x60 - 0x7f */
 	NONE,		NONE,		NONE,		NONE,
 	NONE,		NONE,		NONE,		NONE,
 	NONE,		NONE,		NONE,		NONE,
 	NONE,		NONE,		NONE,		NONE,
-	KEY_KATAKANAHIRAGANA,	NONE,	NONE,		KEY_RO,
+	KEY_KATAKANAHIRAGANA,	KEY_HANJA,	KEY_HANGEUL,	KEY_RO,
 	NONE,		NONE,	KEY_ZENKAKUHANKAKU,	KEY_HIRAGANA,
 	KEY_KATAKANA,	KEY_HENKAN,	NONE,		KEY_MUHENKAN,
 	NONE,		KEY_YEN,	KEY_KPCOMMA,	NONE,
@@ -164,17 +165,17 @@ static uint16_t evdev_at_set1_scancodes[] = {
 	NONE,		NONE,		NONE,		NONE,
 	NONE,		NONE,		KEY_VOLUMEDOWN,	NONE,
 	KEY_VOLUMEUP,	NONE,		KEY_HOMEPAGE,	NONE,
-	NONE,		KEY_KPASTERISK,	NONE,		KEY_SYSRQ,
-	KEY_RIGHTALT,	NONE,		NONE,		NONE,
-	NONE,		NONE,		NONE,		NONE,
+	NONE,		KEY_KPSLASH,	NONE,		KEY_SYSRQ,
+	KEY_RIGHTALT,	NONE,		NONE,		KEY_F13,
+	KEY_F14,	KEY_F15,	KEY_F16,	KEY_F17,
 	/* 0x40 - 0x5f. 0xE0 prefixed */
-	NONE,		NONE,		NONE,		NONE,
-	NONE,		NONE,		KEY_PAUSE,	KEY_HOME,
+	KEY_F18,	KEY_F19,	KEY_F20,	KEY_F21,
+	KEY_F22,	NONE,		KEY_PAUSE,	KEY_HOME,
 	KEY_UP,		KEY_PAGEUP,	NONE,		KEY_LEFT,
 	NONE,		KEY_RIGHT,	NONE,		KEY_END,
 	KEY_DOWN,	KEY_PAGEDOWN,	KEY_INSERT,	KEY_DELETE,
-	NONE,		NONE,		NONE,		NONE,
-	NONE,		NONE,		NONE,		KEY_LEFTMETA,
+	NONE,		NONE,		NONE,		KEY_F23,
+	KEY_F24,	NONE,		NONE,		KEY_LEFTMETA,
 	KEY_RIGHTMETA,	KEY_MENU,	KEY_POWER,	KEY_SLEEP,
 	/* 0x60 - 0x7f. 0xE0 prefixed */
 	NONE,		NONE,		NONE,		KEY_WAKEUP,
@@ -202,6 +203,14 @@ static uint16_t evdev_led_codes[] = {
 	LED_CAPSL,	/* CLKED */
 	LED_NUML,	/* NLKED */
 	LED_SCROLLL,	/* SLKED */
+};
+
+static uint16_t evdev_nfinger_codes[] = {
+	BTN_TOOL_FINGER,
+	BTN_TOOL_DOUBLETAP,
+	BTN_TOOL_TRIPLETAP,
+	BTN_TOOL_QUADTAP,
+	BTN_TOOL_QUINTTAP,
 };
 
 uint16_t
@@ -249,12 +258,15 @@ evdev_scancode2key(int *state, int scancode)
 		 */
 		*state = 0;
 		if ((scancode & 0x7f) == 0x1D)
-			*state = 0x1D;
+			*state = scancode;
 		return (NONE);
 		/* NOT REACHED */
 	case 0x1D:	/* pause / break */
+	case 0x9D:
+		if ((*state ^ scancode) & 0x80)
+			return (NONE);
 		*state = 0;
-		if (scancode != 0x45)
+		if ((scancode & 0x7f) != 0x45)
 			return (NONE);
 		keycode = KEY_PAUSE;
 		break;
@@ -298,10 +310,42 @@ evdev_push_repeats(struct evdev_dev *evdev, keyboard_t *kbd)
 }
 
 void
-evdev_ev_kbd_event(struct evdev_dev *evdev, void *softc, uint16_t type,
+evdev_support_nfingers(struct evdev_dev *evdev, int nfingers)
+{
+	int i;
+
+	for (i = 0; i < MIN(nitems(evdev_nfinger_codes), nfingers); i++)
+		evdev_support_key(evdev, evdev_nfinger_codes[i]);
+}
+
+void
+evdev_send_nfingers(struct evdev_dev *evdev, int nfingers)
+{
+	int i;
+
+	EVDEV_LOCK_ASSERT(evdev);
+
+	if (nfingers > nitems(evdev_nfinger_codes))
+		nfingers = nitems(evdev_nfinger_codes);
+
+	for (i = 0; i < nitems(evdev_nfinger_codes); i++)
+		evdev_send_event(evdev, EV_KEY, evdev_nfinger_codes[i],
+			nfingers == i + 1);
+}
+
+void
+evdev_push_nfingers(struct evdev_dev *evdev, int nfingers)
+{
+	EVDEV_ENTER(evdev);
+	evdev_send_nfingers(evdev, nfingers);
+	EVDEV_EXIT(evdev);
+}
+
+void
+evdev_ev_kbd_event(struct evdev_dev *evdev, uint16_t type,
     uint16_t code, int32_t value)
 {
-	keyboard_t *kbd = (keyboard_t *)softc;
+	keyboard_t *kbd = (keyboard_t *)evdev_get_softc(evdev);
 	int delay[2], leds, oleds;
 	size_t i;
 

@@ -282,3 +282,5 @@ SYSCTL_INT(_debug_sizeof, OID_AUTO, proc, CTLFLAG_RD,
 #include <sys/conf.h>
 SYSCTL_INT(_debug_sizeof, OID_AUTO, cdev, CTLFLAG_RD,
     0, sizeof(struct cdev), "sizeof(struct cdev)");
+
+SYSCTL_NODE(_kern, OID_AUTO, features, CTLFLAG_RD, 0, "Kernel Features");

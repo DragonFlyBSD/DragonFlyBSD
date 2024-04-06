@@ -327,6 +327,9 @@ int 	genkbd_commonioctl(keyboard_t *kbd, u_long cmd, caddr_t arg);
 int 	genkbd_keyaction(keyboard_t *kbd, int keycode, int up,
 			 int *shiftstate, int *accents);
 
+#ifdef EVDEV_SUPPORT
+void	kbd_ev_event(keyboard_t *kbd, uint16_t type, uint16_t code, int32_t value);
+#endif
 #endif /* _KERNEL */
 
 #endif /* !_DEV_KBD_KBDREG_H_ */

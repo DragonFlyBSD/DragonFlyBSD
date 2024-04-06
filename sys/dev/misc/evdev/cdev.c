@@ -207,6 +207,8 @@ evdev_read(struct dev_read_args *ap)
 				client->ec_blocked = true;
 				ret = lksleep(client, &client->ec_buffer_mtx,
 				    PCATCH, "evread", 0);
+				if (ret == 0 && client->ec_revoked)
+					ret = ENODEV;
 			}
 		}
 	}
@@ -430,7 +432,7 @@ evdev_ioctl(struct dev_ioctl_args *ap)
 			return (ENOTSUP);
 
 		ke = (struct input_keymap_entry *)data;
-		evdev->ev_methods->ev_get_keycode(evdev, evdev->ev_softc, ke);
+		evdev->ev_methods->ev_get_keycode(evdev, ke);
 		return (0);
 
 	case EVIOCSKEYCODE:
@@ -443,7 +445,7 @@ evdev_ioctl(struct dev_ioctl_args *ap)
 			return (ENOTSUP);
 
 		ke = (struct input_keymap_entry *)data;
-		evdev->ev_methods->ev_set_keycode(evdev, evdev->ev_softc, ke);
+		evdev->ev_methods->ev_set_keycode(evdev, ke);
 		return (0);
 
 	case EVIOCGABS(0) ... EVIOCGABS(ABS_MAX):
@@ -546,7 +548,7 @@ evdev_ioctl(struct dev_ioctl_args *ap)
 		    MIN(len / sizeof(int32_t) - 1, MAXIMAL_MT_SLOT(evdev) + 1);
 		for (int i = 0; i < nvalues; i++)
 			((int32_t *)data)[i + 1] =
-			    evdev_get_mt_value(evdev, i, code);
+			    evdev_mt_get_value(evdev, i, code);
 		return (0);
 
 	case EVIOCGKEY(0):

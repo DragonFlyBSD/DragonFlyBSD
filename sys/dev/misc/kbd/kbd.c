@@ -30,6 +30,7 @@
  */
 
 #include "opt_kbd.h"
+#include "opt_evdev.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -47,6 +48,11 @@
 #include <machine/console.h>
 
 #include "kbdreg.h"
+
+#ifdef EVDEV_SUPPORT
+#include <dev/misc/evdev/evdev.h>
+#include <dev/misc/evdev/input.h>
+#endif
 
 #if 0
 #define lwkt_gettoken(x)
@@ -1489,3 +1495,43 @@ genkbd_keyaction(keyboard_t *kbd, int keycode, int up, int *shiftstate,
 	/* NOT REACHED */
 	lwkt_reltoken(&kbd_token);
 }
+
+#ifdef EVDEV_SUPPORT
+void
+kbd_ev_event(keyboard_t *kbd, uint16_t type, uint16_t code, int32_t value)
+{
+	int delay[2], led = 0, leds, oleds;
+
+	if (type == EV_LED) {
+		leds = oleds = KBD_LED_VAL(kbd);
+		switch (code) {
+		case LED_CAPSL:
+			led = CLKED;
+			break;
+		case LED_NUML:
+			led = NLKED;
+			break;
+		case LED_SCROLLL:
+			led = SLKED;
+			break;
+		}
+
+		if (value)
+			leds |= led;
+		else
+			leds &= ~led;
+
+		if (leds != oleds)
+			kbd_ioctl(kbd, KDSETLED, (caddr_t)&leds);
+
+	} else if (type == EV_REP && code == REP_DELAY) {
+		delay[0] = value;
+		delay[1] = kbd->kb_delay2;
+		kbd_ioctl(kbd, KDSETREPEAT, (caddr_t)delay);
+	} else if (type == EV_REP && code == REP_PERIOD) {
+		delay[0] = kbd->kb_delay1;
+		delay[1] = value;
+		kbd_ioctl(kbd, KDSETREPEAT, (caddr_t)delay);
+	}
+}
+#endif

@@ -383,12 +383,6 @@ smioctl(struct dev_ioctl_args *ap)
 		lockmgr(&sc->sm_lock, LK_RELEASE);
 		return 0;
 
-#if 0 /* notyet */
-	case MOUSE_GETVARS:	/* get internal mouse variables */
-	case MOUSE_SETVARS:	/* set internal mouse variables */
-		return ENODEV;
-#endif
-
 	case MOUSE_READSTATE:	/* read status from the device */
 	case MOUSE_READDATA:	/* read data from the device */
 		return ENODEV;

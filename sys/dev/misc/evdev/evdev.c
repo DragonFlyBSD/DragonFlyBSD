@@ -54,6 +54,9 @@
 
 #ifdef FEATURE
 FEATURE(evdev, "Input event devices support");
+#ifdef EVDEV_SUPPORT
+FEATURE(evdev_support, "Evdev support in hybrid drivers");
+#endif
 #endif
 
 enum evdev_sparse_result
@@ -86,24 +89,19 @@ int evdev_sysmouse_t_axis = 0;
  */
 
 SYSCTL_NODE(_kern, OID_AUTO, evdev, CTLFLAG_RW, 0, "Evdev args");
+#ifdef EVDEV_SUPPORT
 SYSCTL_INT(_kern_evdev, OID_AUTO, rcpt_mask, CTLFLAG_RW, &evdev_rcpt_mask, 0,
     "Who sends events: bit0 - sysmouse, bit1 - kbdmux, "
     "bit2 - mouse hardware, bit3 - keyboard hardware");
 SYSCTL_INT(_kern_evdev, OID_AUTO, sysmouse_t_axis, CTLFLAG_RW,
     &evdev_sysmouse_t_axis, 0, "Extract T-axis from 0-none, 1-ums, 2-psm");
+#endif
+SYSCTL_NODE(_kern_evdev, OID_AUTO, input, CTLFLAG_RD, 0,
+    "Evdev input devices");
 
 static void evdev_start_repeat(struct evdev_dev *, uint16_t);
 static void evdev_stop_repeat(struct evdev_dev *);
 static int evdev_check_event(struct evdev_dev *, uint16_t, uint16_t, int32_t);
-
-static inline void
-bit_change(bitstr_t *bitstr, int bit, int value)
-{
-	if (value)
-		bit_set(bitstr, bit);
-	else
-		bit_clear(bitstr, bit);
-}
 
 struct evdev_dev *
 evdev_alloc(void)
@@ -209,6 +207,87 @@ evdev_estimate_report_size(struct evdev_dev *evdev)
 	return (size);
 }
 
+static void
+evdev_sysctl_create(struct evdev_dev *evdev)
+{
+	struct sysctl_oid *ev_sysctl_tree;
+	char ev_unit_str[8];
+
+	ksnprintf(ev_unit_str, sizeof(ev_unit_str), "%d", evdev->ev_unit);
+	sysctl_ctx_init(&evdev->ev_sysctl_ctx);
+
+	ev_sysctl_tree = SYSCTL_ADD_NODE(&evdev->ev_sysctl_ctx,
+	    SYSCTL_STATIC_CHILDREN(_kern_evdev_input), OID_AUTO,
+	    ev_unit_str, CTLFLAG_RD, NULL, "device index");
+
+	SYSCTL_ADD_STRING(&evdev->ev_sysctl_ctx,
+	    SYSCTL_CHILDREN(ev_sysctl_tree), OID_AUTO, "name", CTLFLAG_RD,
+	    evdev->ev_name, 0,
+	    "Input device name");
+
+	SYSCTL_ADD_STRUCT(&evdev->ev_sysctl_ctx,
+	    SYSCTL_CHILDREN(ev_sysctl_tree), OID_AUTO, "id", CTLFLAG_RD,
+	    &evdev->ev_id, input_id,
+	    "Input device identification");
+
+	/* ioctl returns ENOENT if phys is not set. sysctl returns "" here */
+	SYSCTL_ADD_STRING(&evdev->ev_sysctl_ctx,
+	    SYSCTL_CHILDREN(ev_sysctl_tree), OID_AUTO, "phys", CTLFLAG_RD,
+	    evdev->ev_shortname, 0,
+	    "Input device short name");
+
+	/* ioctl returns ENOENT if uniq is not set. sysctl returns "" here */
+	SYSCTL_ADD_STRING(&evdev->ev_sysctl_ctx,
+	    SYSCTL_CHILDREN(ev_sysctl_tree), OID_AUTO, "uniq", CTLFLAG_RD,
+	    evdev->ev_serial, 0,
+	    "Input device unique number");
+
+	SYSCTL_ADD_OPAQUE(&evdev->ev_sysctl_ctx,
+	    SYSCTL_CHILDREN(ev_sysctl_tree), OID_AUTO, "props", CTLFLAG_RD,
+	    evdev->ev_prop_flags, sizeof(evdev->ev_prop_flags), "",
+	    "Input device properties");
+
+	SYSCTL_ADD_OPAQUE(&evdev->ev_sysctl_ctx,
+	    SYSCTL_CHILDREN(ev_sysctl_tree), OID_AUTO, "type_bits", CTLFLAG_RD,
+	    evdev->ev_type_flags, sizeof(evdev->ev_type_flags), "",
+	    "Input device supported events types");
+
+	SYSCTL_ADD_OPAQUE(&evdev->ev_sysctl_ctx,
+	    SYSCTL_CHILDREN(ev_sysctl_tree), OID_AUTO, "key_bits", CTLFLAG_RD,
+	    evdev->ev_key_flags, sizeof(evdev->ev_key_flags),
+	    "", "Input device supported keys");
+
+	SYSCTL_ADD_OPAQUE(&evdev->ev_sysctl_ctx,
+	    SYSCTL_CHILDREN(ev_sysctl_tree), OID_AUTO, "rel_bits", CTLFLAG_RD,
+	    evdev->ev_rel_flags, sizeof(evdev->ev_rel_flags), "",
+	    "Input device supported relative events");
+
+	SYSCTL_ADD_OPAQUE(&evdev->ev_sysctl_ctx,
+	    SYSCTL_CHILDREN(ev_sysctl_tree), OID_AUTO, "abs_bits", CTLFLAG_RD,
+	    evdev->ev_abs_flags, sizeof(evdev->ev_abs_flags), "",
+	    "Input device supported absolute events");
+
+	SYSCTL_ADD_OPAQUE(&evdev->ev_sysctl_ctx,
+	    SYSCTL_CHILDREN(ev_sysctl_tree), OID_AUTO, "msc_bits", CTLFLAG_RD,
+	    evdev->ev_msc_flags, sizeof(evdev->ev_msc_flags), "",
+	    "Input device supported miscellaneous events");
+
+	SYSCTL_ADD_OPAQUE(&evdev->ev_sysctl_ctx,
+	    SYSCTL_CHILDREN(ev_sysctl_tree), OID_AUTO, "led_bits", CTLFLAG_RD,
+	    evdev->ev_led_flags, sizeof(evdev->ev_led_flags), "",
+	    "Input device supported LED events");
+
+	SYSCTL_ADD_OPAQUE(&evdev->ev_sysctl_ctx,
+	    SYSCTL_CHILDREN(ev_sysctl_tree), OID_AUTO, "snd_bits", CTLFLAG_RD,
+	    evdev->ev_snd_flags, sizeof(evdev->ev_snd_flags), "",
+	    "Input device supported sound events");
+
+	SYSCTL_ADD_OPAQUE(&evdev->ev_sysctl_ctx,
+	    SYSCTL_CHILDREN(ev_sysctl_tree), OID_AUTO, "sw_bits", CTLFLAG_RD,
+	    evdev->ev_sw_flags, sizeof(evdev->ev_sw_flags), "",
+	    "Input device supported switch events");
+}
+
 static int
 evdev_register_common(struct evdev_dev *evdev)
 {
@@ -223,7 +302,7 @@ evdev_register_common(struct evdev_dev *evdev)
 	if (evdev_event_supported(evdev, EV_REP) &&
 	    bit_test(evdev->ev_flags, EVDEV_FLAG_SOFTREPEAT)) {
 		/* Initialize callout */
-		callout_init_lk(&evdev->ev_rep_callout, &evdev->ev_mtx);
+		callout_init_lk(&evdev->ev_rep_callout, evdev->ev_state_lock);
 
 		if (evdev->ev_rep[REP_DELAY] == 0 &&
 		    evdev->ev_rep[REP_PERIOD] == 0) {
@@ -233,9 +312,9 @@ evdev_register_common(struct evdev_dev *evdev)
 		}
 	}
 
-	/* Initialize multitouch protocol type B states */
-	if (bit_test(evdev->ev_abs_flags, ABS_MT_SLOT) &&
-	    evdev->ev_absinfo != NULL && MAXIMAL_MT_SLOT(evdev) > 0)
+	/* Initialize multitouch protocol type B states or A to B converter */
+	if (bit_test(evdev->ev_abs_flags, ABS_MT_SLOT) ||
+	    bit_test(evdev->ev_flags, EVDEV_FLAG_MT_TRACK))
 		evdev_mt_init(evdev);
 
 	/* Estimate maximum report size */
@@ -248,6 +327,12 @@ evdev_register_common(struct evdev_dev *evdev)
 
 	/* Create char device node */
 	ret = evdev_cdev_create(evdev);
+	if (ret != 0)
+		goto bail_out;
+
+	/* Create sysctls (for device enumeration without /dev/input access rights) */
+	evdev_sysctl_create(evdev);
+
 bail_out:
 	return (ret);
 }
@@ -258,7 +343,7 @@ evdev_register(struct evdev_dev *evdev)
 	int ret;
 
 	evdev->ev_lock_type = EV_LOCK_INTERNAL;
-	evdev->ev_lock = &evdev->ev_mtx;
+	evdev->ev_state_lock = &evdev->ev_mtx;
 	lockinit(&evdev->ev_mtx, "evmtx", 0, 0);
 
 	ret = evdev_register_common(evdev);
@@ -273,22 +358,24 @@ evdev_register_mtx(struct evdev_dev *evdev, struct lock *mtx)
 {
 
 	evdev->ev_lock_type = EV_LOCK_MTX;
-	evdev->ev_lock = mtx;
+	evdev->ev_state_lock = mtx;
 	return (evdev_register_common(evdev));
 }
 
 int
 evdev_unregister(struct evdev_dev *evdev)
 {
-	struct evdev_client *client;
+	struct evdev_client *client, *tmp;
 	int ret;
 	debugf(evdev, "%s: unregistered evdev provider: %s\n",
 	    evdev->ev_shortname, evdev->ev_name);
 
+	sysctl_ctx_free(&evdev->ev_sysctl_ctx);
+
 	EVDEV_LOCK(evdev);
 	evdev->ev_cdev->si_drv1 = NULL;
 	/* Wake up sleepers */
-	LIST_FOREACH(client, &evdev->ev_clients, ec_link) {
+	LIST_FOREACH_MUTABLE(client, &evdev->ev_clients, ec_link, tmp) {
 		evdev_revoke_client(client);
 		evdev_dispose_client(evdev, client);
 		EVDEV_CLIENT_LOCKQ(client);
@@ -361,6 +448,13 @@ evdev_set_methods(struct evdev_dev *evdev, void *softc,
 	evdev->ev_softc = softc;
 }
 
+inline void *
+evdev_get_softc(struct evdev_dev *evdev)
+{
+
+	return (evdev->ev_softc);
+}
+
 inline void
 evdev_support_prop(struct evdev_dev *evdev, uint16_t prop)
 {
@@ -394,16 +488,15 @@ evdev_support_rel(struct evdev_dev *evdev, uint16_t code)
 }
 
 inline void
-evdev_support_abs(struct evdev_dev *evdev, uint16_t code, int32_t value,
-    int32_t minimum, int32_t maximum, int32_t fuzz, int32_t flat,
-    int32_t resolution)
+evdev_support_abs(struct evdev_dev *evdev, uint16_t code, int32_t minimum,
+    int32_t maximum, int32_t fuzz, int32_t flat, int32_t resolution)
 {
 	struct input_absinfo absinfo;
 
 	KASSERT(code < ABS_CNT, ("invalid evdev abs property"));
 
 	absinfo = (struct input_absinfo) {
-		.value = value,
+		.value = 0,
 		.minimum = minimum,
 		.maximum = maximum,
 		.fuzz = fuzz,
@@ -591,6 +684,7 @@ static void
 evdev_modify_event(struct evdev_dev *evdev, uint16_t type, uint16_t code,
     int32_t *value)
 {
+	int32_t fuzz, old_value, abs_change;
 
 	EVDEV_LOCK_ASSERT(evdev);
 
@@ -606,7 +700,8 @@ evdev_modify_event(struct evdev_dev *evdev, uint16_t type, uint16_t code,
 				*value = KEY_EVENT_REPEAT;
 		} else {
 			/* Start/stop callout for evdev repeats */
-			if (bit_test(evdev->ev_key_states, code) == !*value) {
+			if (bit_test(evdev->ev_key_states, code) == !*value &&
+			    !LIST_EMPTY(&evdev->ev_clients)) {
 				if (*value == KEY_EVENT_DOWN)
 					evdev_start_repeat(evdev, code);
 				else
@@ -616,7 +711,32 @@ evdev_modify_event(struct evdev_dev *evdev, uint16_t type, uint16_t code,
 		break;
 
 	case EV_ABS:
-		/* TBD: implement fuzz */
+		if (code == ABS_MT_SLOT)
+			break;
+		else if (!ABS_IS_MT(code))
+			old_value = evdev->ev_absinfo[code].value;
+		else if (!bit_test(evdev->ev_abs_flags, ABS_MT_SLOT))
+			/* Pass MT protocol type A events as is */
+			break;
+		else if (code == ABS_MT_TRACKING_ID) {
+			*value = evdev_mt_reassign_id(evdev,
+			    evdev_mt_get_last_slot(evdev), *value);
+			break;
+		} else
+			old_value = evdev_mt_get_value(evdev,
+			    evdev_mt_get_last_slot(evdev), code);
+
+		fuzz = evdev->ev_absinfo[code].fuzz;
+		if (fuzz == 0)
+			break;
+
+		abs_change = abs(*value - old_value);
+		if (abs_change < fuzz / 2)
+			*value = old_value;
+		else if (abs_change < fuzz)
+			*value = (old_value * 3 + *value) / 4;
+		else if (abs_change < fuzz * 2)
+			*value = (old_value + *value) / 2;
 		break;
 	}
 }
@@ -661,8 +781,6 @@ evdev_sparse_event(struct evdev_dev *evdev, uint16_t type, uint16_t code,
 		break;
 
 	case EV_SND:
-		if (bit_test(evdev->ev_snd_states, code) == value)
-			return (EV_SKIP_EVENT);
 		bit_change(evdev->ev_snd_states, code, value);
 		break;
 
@@ -688,7 +806,7 @@ evdev_sparse_event(struct evdev_dev *evdev, uint16_t type, uint16_t code,
 		switch (code) {
 		case ABS_MT_SLOT:
 			/* Postpone ABS_MT_SLOT till next event */
-			evdev_set_last_mt_slot(evdev, value);
+			evdev_mt_set_last_slot(evdev, value);
 			return (EV_SKIP_EVENT);
 
 		case ABS_MT_FIRST ... ABS_MT_LAST:
@@ -696,11 +814,11 @@ evdev_sparse_event(struct evdev_dev *evdev, uint16_t type, uint16_t code,
 			if (!bit_test(evdev->ev_abs_flags, ABS_MT_SLOT))
 				break;
 			/* Don`t repeat MT protocol type B events */
-			last_mt_slot = evdev_get_last_mt_slot(evdev);
-			if (evdev_get_mt_value(evdev, last_mt_slot, code)
+			last_mt_slot = evdev_mt_get_last_slot(evdev);
+			if (evdev_mt_get_value(evdev, last_mt_slot, code)
 			     == value)
 				return (EV_SKIP_EVENT);
-			evdev_set_mt_value(evdev, last_mt_slot, code, value);
+			evdev_mt_set_value(evdev, last_mt_slot, code, value);
 			if (last_mt_slot != CURRENT_MT_SLOT(evdev)) {
 				CURRENT_MT_SLOT(evdev) = last_mt_slot;
 				evdev->ev_report_opened = true;
@@ -766,6 +884,7 @@ evdev_send_event(struct evdev_dev *evdev, uint16_t type, uint16_t code,
 
 	EVDEV_LOCK_ASSERT(evdev);
 
+	evdev_modify_event(evdev, type, code, &value);
 	sparse =  evdev_sparse_event(evdev, type, code, value);
 	switch (sparse) {
 	case EV_REPORT_MT_SLOT:
@@ -791,15 +910,16 @@ evdev_push_event(struct evdev_dev *evdev, uint16_t type, uint16_t code,
 
 	EVDEV_ENTER(evdev);
 
-	evdev_modify_event(evdev, type, code, &value);
 	if (type == EV_SYN && code == SYN_REPORT &&
-	     bit_test(evdev->ev_flags, EVDEV_FLAG_MT_AUTOREL))
-		evdev_send_mt_autorel(evdev);
-	if (type == EV_SYN && code == SYN_REPORT && evdev->ev_report_opened &&
-	    bit_test(evdev->ev_flags, EVDEV_FLAG_MT_STCOMPAT))
-		evdev_send_mt_compat(evdev);
-	evdev_send_event(evdev, type, code, value);
+	    bit_test(evdev->ev_abs_flags, ABS_MT_SLOT))
+		evdev_mt_sync_frame(evdev);
+	else
+		if (bit_test(evdev->ev_flags, EVDEV_FLAG_MT_TRACK) &&
+		    evdev_mt_record_event(evdev, type, code, value))
+			goto exit;
 
+	evdev_send_event(evdev, type, code, value);
+exit:
 	EVDEV_EXIT(evdev);
 
 	return (0);
@@ -823,7 +943,7 @@ evdev_inject_event(struct evdev_dev *evdev, uint16_t type, uint16_t code,
 	case EV_FF:
 		if (evdev->ev_methods != NULL &&
 		    evdev->ev_methods->ev_event != NULL)
-			evdev->ev_methods->ev_event(evdev, evdev->ev_softc,
+			evdev->ev_methods->ev_event(evdev,
 			    type, code, value);
 		/*
 		 * Leds and driver repeats should be reported in ev_event
@@ -840,7 +960,11 @@ evdev_inject_event(struct evdev_dev *evdev, uint16_t type, uint16_t code,
 	case EV_ABS:
 	case EV_SW:
 push:
+		if (evdev->ev_lock_type != EV_LOCK_INTERNAL)
+			EVDEV_LOCK(evdev);
 		ret = evdev_push_event(evdev, type,  code, value);
+		if (evdev->ev_lock_type != EV_LOCK_INTERNAL)
+			EVDEV_UNLOCK(evdev);
 		break;
 
 	default:
@@ -863,7 +987,7 @@ evdev_register_client(struct evdev_dev *evdev, struct evdev_client *client)
 	    evdev->ev_methods->ev_open != NULL) {
 		debugf(evdev, "calling ev_open() on device %s",
 		    evdev->ev_shortname);
-		ret = evdev->ev_methods->ev_open(evdev, evdev->ev_softc);
+		ret = evdev->ev_methods->ev_open(evdev);
 	}
 	if (ret == 0)
 		LIST_INSERT_HEAD(&evdev->ev_clients, client, ec_link);
@@ -881,7 +1005,7 @@ evdev_dispose_client(struct evdev_dev *evdev, struct evdev_client *client)
 	if (LIST_EMPTY(&evdev->ev_clients)) {
 		if (evdev->ev_methods != NULL &&
 		    evdev->ev_methods->ev_close != NULL)
-			evdev->ev_methods->ev_close(evdev, evdev->ev_softc);
+			(void)evdev->ev_methods->ev_close(evdev);
 		if (evdev_event_supported(evdev, EV_REP) &&
 		    bit_test(evdev->ev_flags, EVDEV_FLAG_SOFTREPEAT))
 			evdev_stop_repeat(evdev);
@@ -915,6 +1039,21 @@ evdev_release_client(struct evdev_dev *evdev, struct evdev_client *client)
 	evdev->ev_grabber = NULL;
 
 	return (0);
+}
+
+bool
+evdev_is_grabbed(struct evdev_dev *evdev)
+{
+#if 0
+	if (kdb_active || SCHEDULER_STOPPED())
+		return (false);
+#endif
+	/*
+	 * The function is intended to be called from evdev-unrelated parts of
+	 * code like syscons-compatible parts of mouse and keyboard drivers.
+	 * That makes unlocked read-only access acceptable.
+	 */
+	return (evdev->ev_grabber != NULL);
 }
 
 static void

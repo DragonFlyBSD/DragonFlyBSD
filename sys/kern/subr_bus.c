@@ -49,6 +49,7 @@
 #include <sys/signalvar.h>
 #include <sys/machintr.h>
 #include <sys/vnode.h>
+#include <sys/sbuf.h>
 
 #include <machine/stdarg.h>	/* for device_printf() */
 
@@ -1691,6 +1692,47 @@ device_printf(device_t dev, const char * fmt, ...)
 	retval += kvprintf(fmt, ap);
 	__va_end(ap);
 	return retval;
+}
+
+/**
+ * @brief Print the name of the device followed by a colon, a space
+ * and the result of calling log() with the value of @p fmt and
+ * the following arguments.
+ *
+ * @returns the number of characters printed
+ */
+int
+device_log(device_t dev, int pri, const char * fmt, ...)
+{
+	char buf[128];
+	struct sbuf sb;
+	const char *name;
+	__va_list ap;
+	size_t retval;
+
+	retval = 0;
+
+	sbuf_new(&sb, buf, sizeof(buf), SBUF_FIXEDLEN);
+
+	name = device_get_name(dev);
+
+	if (name == NULL)
+		sbuf_cat(&sb, "unknown: ");
+	else
+		sbuf_printf(&sb, "%s%d: ", name, device_get_unit(dev));
+
+	__va_start(ap, fmt);
+	sbuf_vprintf(&sb, fmt, ap);
+	__va_end(ap);
+
+	sbuf_finish(&sb);
+
+	log(pri, "%.*s", (int) sbuf_len(&sb), sbuf_data(&sb));
+	retval = sbuf_len(&sb);
+
+	sbuf_delete(&sb);
+
+	return (retval);
 }
 
 static void

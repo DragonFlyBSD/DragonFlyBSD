@@ -758,6 +758,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
  */
 extern struct sysctl_oid_list sysctl__children;
 SYSCTL_DECL(_kern);
+SYSCTL_DECL(_kern_features);
 SYSCTL_DECL(_sysctl);
 SYSCTL_DECL(_vm);
 SYSCTL_DECL(_vfs);
@@ -821,6 +822,14 @@ void	_sysctl_xunlock(void);
 struct sbuf;
 struct sbuf *sbuf_new_for_sysctl(struct sbuf *, char *, int,
 	    struct sysctl_req *);
+
+/*
+ * A macro to generate a read-only sysctl to indicate the presence of optional
+ * kernel features.
+ */
+#define FEATURE(name, desc)						\
+	SYSCTL_INT(_kern_features, OID_AUTO, name,		\
+	    CTLFLAG_RD, NULL, 1, desc)
 
 #endif	/* _KERNEL */
 

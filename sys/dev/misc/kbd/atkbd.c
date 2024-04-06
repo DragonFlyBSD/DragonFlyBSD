@@ -33,6 +33,7 @@
 
 #include "opt_kbd.h"
 #include "opt_atkbd.h"
+#include "opt_evdev.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -40,6 +41,7 @@
 #include <sys/bus.h>
 #include <sys/proc.h>
 #include <sys/malloc.h>
+#include <sys/sysctl.h>
 #include <sys/thread2.h>
 
 #include <sys/kbio.h>
@@ -49,10 +51,48 @@
 
 #include <bus/isa/isareg.h>
 
-static timeout_t	atkbd_timeout;
+#ifdef EVDEV_SUPPORT
+#include <dev/misc/evdev/evdev.h>
+#include <dev/misc/evdev/input.h>
+#endif
 
-#if 0
-static int atkbd_setmuxmode(KBDC kbdc, int value, int *mux_version);
+typedef struct atkbd_state {
+	KBDC		kbdc;		/* keyboard controller */
+	int		ks_mode;	/* input mode (K_XLATE,K_RAW,K_CODE) */
+	int		ks_flags;	/* flags */
+#define COMPOSE		(1 << 0)
+	int		ks_polling;
+	int		ks_state;	/* shift/lock key state */
+	int		ks_accents;	/* accent key index (> 0) */
+	u_int		ks_composed_char; /* composed char code (> 0) */
+	u_char		ks_prefix;	/* AT scan code prefix */
+#ifdef EVDEV_SUPPORT
+	struct evdev_dev *ks_evdev;
+	int		ks_evdev_state;
+#endif
+} atkbd_state_t;
+
+static SYSCTL_NODE(_hw, OID_AUTO, atkbd, CTLFLAG_RD, 0, "AT keyboard");
+
+static int atkbdhz = 0;
+
+TUNABLE_INT("hw.atkbd.hz", &atkbdhz);
+SYSCTL_INT(_hw_atkbd, OID_AUTO, hz, CTLFLAG_RW, &atkbdhz, 0,
+    "Polling frequency (in hz)");
+
+
+static void		atkbd_timeout(void *arg);
+static int		atkbd_reset(KBDC kbdc, int flags, int c);
+
+#define HAS_QUIRK(p, q)		(((atkbdc_softc_t *)(p))->quirks & q)
+#define ALLOW_DISABLE_KBD(kbdc)	!HAS_QUIRK(kbdc, KBDC_QUIRK_KEEP_ACTIVATED)
+
+#define DEFAULT_DELAY		0x1  /* 500ms */
+#define DEFAULT_RATE		0x10 /* 14Hz */
+
+#ifdef EVDEV_SUPPORT
+#define PS2_KEYBOARD_VENDOR	1
+#define PS2_KEYBOARD_PRODUCT	1
 #endif
 
 int
@@ -128,7 +168,7 @@ atkbd_timeout(void *arg)
 	keyboard_t *kbd;
 
 	/*
-	 * The original text of the following comments are extracted 
+	 * The original text of the following comments are extracted
 	 * from syscons.c (1.287)
 	 * 
 	 * With release 2.1 of the Xaccel server, the keyboard is left
@@ -139,7 +179,7 @@ atkbd_timeout(void *arg)
 	 *
 	 * Try removing anything stuck in the keyboard controller; whether
 	 * it's a keyboard scan code or mouse data. The low-level
-	 * interrupt routine doesn't read the mouse data directly, 
+	 * interrupt routine doesn't read the mouse data directly,
 	 * but the keyboard controller driver will, as a side effect.
 	 */
 	/*
@@ -164,7 +204,10 @@ atkbd_timeout(void *arg)
 		if (kbd_check_char(kbd))
 			kbd_intr(kbd, NULL);
 	}
-	callout_reset(&kbd->kb_atkbd_timeout_ch, hz / 10, atkbd_timeout, arg);
+	if (atkbdhz > 0) {
+		callout_reset(&kbd->kb_atkbd_timeout_ch, hz / atkbdhz,
+				atkbd_timeout, arg);
+	}
 	crit_exit();
 }
 
@@ -175,17 +218,6 @@ atkbd_timeout(void *arg)
 
 #define ATKBD_DEFAULT	0
 
-typedef struct atkbd_state {
-	KBDC		kbdc;		/* keyboard controller */
-	int		ks_mode;	/* input mode (K_XLATE,K_RAW,K_CODE) */
-	int		ks_flags;	/* flags */
-#define COMPOSE		(1 << 0)
-	int		ks_polling;
-	int		ks_state;	/* shift/lock key state */
-	int		ks_accents;	/* accent key index (> 0) */
-	u_int		ks_composed_char; /* composed char code (> 0) */
-	u_char		ks_prefix;	/* AT scan code prefix */
-} atkbd_state_t;
 
 /* keyboard driver declaration */
 static int		atkbd_configure(int flags);
@@ -207,41 +239,49 @@ static kbd_get_state_t	atkbd_get_state;
 static kbd_set_state_t	atkbd_set_state;
 static kbd_poll_mode_t	atkbd_poll;
 
-keyboard_switch_t atkbdsw = {
-	atkbd_probe,
-	atkbd_init,
-	atkbd_term,
-	atkbd_intr,
-	atkbd_test_if,
-	atkbd_enable,
-	atkbd_disable,
-	atkbd_read,
-	atkbd_check,
-	atkbd_read_char,
-	atkbd_check_char,
-	atkbd_ioctl,
-	atkbd_lock,
-	atkbd_clear_state,
-	atkbd_get_state,
-	atkbd_set_state,
-	genkbd_get_fkeystr,
-	atkbd_poll,
-	genkbd_diag,
+static keyboard_switch_t atkbdsw = {
+	.probe =	atkbd_probe,
+	.init =		atkbd_init,
+	.term =		atkbd_term,
+	.intr =		atkbd_intr,
+	.test_if =	atkbd_test_if,
+	.enable =	atkbd_enable,
+	.disable =	atkbd_disable,
+	.read =		atkbd_read,
+	.check =	atkbd_check,
+	.read_char =	atkbd_read_char,
+	.check_char =	atkbd_check_char,
+	.ioctl =	atkbd_ioctl,
+	.lock =		atkbd_lock,
+	.clear_state =	atkbd_clear_state,
+	.get_state =	atkbd_get_state,
+	.set_state =	atkbd_set_state,
+	.get_fkeystr =	genkbd_get_fkeystr,
+	.poll =		atkbd_poll,
+	.diag =		genkbd_diag,
 };
 
 KEYBOARD_DRIVER(atkbd, atkbdsw, atkbd_configure);
 
 /* local functions */
-static int		get_typematic(keyboard_t *kbd);
+static int		set_typematic(keyboard_t *kbd);
 static int		setup_kbd_port(KBDC kbdc, int port, int intr);
 static int		get_kbd_echo(KBDC kbdc);
 static int		probe_keyboard(KBDC kbdc, int flags);
 static int		init_keyboard(KBDC kbdc, int *type, int flags);
 static int		write_kbd(KBDC kbdc, int command, int data);
-static int		get_kbd_id(KBDC kbdc, int cmd);
+static int		get_kbd_id(KBDC kbdc);
 static int		typematic(int delay, int rate);
 static int		typematic_delay(int delay);
 static int		typematic_rate(int rate);
+
+#ifdef EVDEV_SUPPORT
+static evdev_event_t atkbd_ev_event;
+
+static const struct evdev_methods atkbd_evdev_methods = {
+	.ev_event = atkbd_ev_event,
+};
+#endif
 
 /* local variables */
 
@@ -259,7 +299,7 @@ static keymap_t		default_keymap;
 static accentmap_t	default_accentmap;
 static fkeytab_t	default_fkeytab[NUM_FKEYS];
 
-/* 
+/*
  * The back door to the keyboard driver!
  * This function is called by the console driver, via the kbdio module,
  * to tickle keyboard drivers when the low-level console is being initialized.
@@ -284,9 +324,10 @@ atkbd_configure(int flags)
 		i = kbd_find_keyboard(ATKBD_DRIVER_NAME, ATKBD_DEFAULT);
 		if (i >= 0) {
 			kbd = kbd_get_keyboard(i);
+			/* XXX */
 			KBD_ALWAYS_LOCK(kbd);
 			kbd_unregister(kbd);
-			kbd = NULL; /* huh? */
+			kbd->kb_flags &= ~KB_REGISTERED;
 		}
 		return 0;
 	}
@@ -339,6 +380,16 @@ atkbd_probe(int unit, void *arg, int flags)
 	return 0;
 }
 
+#ifdef EVDEV_SUPPORT
+  #if defined(__FreeBSD__)
+    #define KBD_EVDEV_REGISTER(evdev) evdev_register_mtx(evdev, &Giant)
+  #elif defined(__DragonFly__)
+    #define KBD_EVDEV_REGISTER(evdev) evdev_register(evdev)
+  #else
+    #error "FreeBSD or DragonFly expected"
+  #endif
+#endif /* EVDEV_SUPPORT */
+
 /* reset and initialize the device */
 static int
 atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
@@ -351,6 +402,11 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 	int fkeymap_size;
 	int delay[2];
 	int *data = (int *)arg;	/* data[0]: controller, data[1]: irq */
+	int error, needfree;
+#ifdef EVDEV_SUPPORT
+	struct evdev_dev *evdev;
+	char phys_loc[8];
+#endif
 
 	/* XXX */
 	if (unit == ATKBD_DEFAULT) {
@@ -362,14 +418,21 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		keymap = &default_keymap;
 		accmap = &default_accentmap;
 		fkeymap = default_fkeytab;
-		fkeymap_size = NELEM(default_fkeytab);
+		fkeymap_size = nitems(default_fkeytab);
+		needfree = 0;
 	} else if (*kbdp == NULL) {
 		*kbdp = kbd = kmalloc(sizeof(*kbd), M_DEVBUF, M_WAITOK|M_ZERO);
 		state = kmalloc(sizeof(*state), M_DEVBUF, M_WAITOK|M_ZERO);
 		keymap = kmalloc(sizeof(key_map), M_DEVBUF, M_WAITOK);
 		accmap = kmalloc(sizeof(accent_map), M_DEVBUF, M_WAITOK);
 		fkeymap = kmalloc(sizeof(fkey_tab), M_DEVBUF, M_WAITOK);
-		fkeymap_size = NELEM(fkey_tab);
+		fkeymap_size = nitems(fkey_tab);
+		needfree = 1;
+		if ((kbd == NULL) || (state == NULL) || (keymap == NULL)
+		     || (accmap == NULL) || (fkeymap == NULL)) {
+			error = ENOMEM;
+			goto bad;
+		}
 	} else if (KBD_IS_INITIALIZED(*kbdp) && KBD_IS_CONFIGURED(*kbdp)) {
 		return 0;
 	} else {
@@ -380,12 +443,14 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		accmap = kbd->kb_accentmap;
 		fkeymap = kbd->kb_fkeytab;
 		fkeymap_size = kbd->kb_fkeytab_size;
+		needfree = 0;
 	}
 
 	if (!KBD_IS_PROBED(kbd)) {
 		state->kbdc = atkbdc_open(data[0]);
 		if (state->kbdc == NULL) {
-			return ENXIO;
+			error = ENXIO;
+			goto bad;
 		}
 		kbd_init_struct(kbd, ATKBD_DRIVER_NAME, KB_OTHER, unit, flags,
 				KB_PRI_ATKBD, 0, 0);
@@ -395,17 +460,18 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		      imin(fkeymap_size*sizeof(fkeymap[0]), sizeof(fkey_tab)));
 		kbd_set_maps(kbd, keymap, accmap, fkeymap, fkeymap_size);
 		kbd->kb_data = (void *)state;
-	
+
 		if (probe_keyboard(state->kbdc, flags)) { /* shouldn't happen */
 			if (flags & KB_CONF_FAIL_IF_NO_KBD) {
-				return ENXIO;
+				error = ENXIO;
+				goto bad;
 			}
 		} else {
 			KBD_FOUND_DEVICE(kbd);
 		}
 		atkbd_clear_state(kbd);
 		state->ks_mode = K_XLATE;
-		/* 
+		/*
 		 * FIXME: set the initial value for lock keys in ks_state
 		 * according to the BIOS data?
 		 */
@@ -413,33 +479,95 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 	}
 	if (!KBD_IS_INITIALIZED(kbd) && !(flags & KB_CONF_PROBE_ONLY)) {
 		kbd->kb_config = flags & ~KB_CONF_PROBE_ONLY;
-		if (!KBD_HAS_DEVICE(kbd)
+		if (KBD_HAS_DEVICE(kbd)
 		    && init_keyboard(state->kbdc, &kbd->kb_type, kbd->kb_config)
 		    && (kbd->kb_config & KB_CONF_FAIL_IF_NO_KBD)) {
-			return ENXIO;
+			kbd_unregister(kbd);
+			error = ENXIO;
+			goto bad;
 		}
 		atkbd_ioctl(kbd, KDSETLED, (caddr_t)&state->ks_state);
-		get_typematic(kbd);
+		set_typematic(kbd);
 		delay[0] = kbd->kb_delay1;
 		delay[1] = kbd->kb_delay2;
 		atkbd_ioctl(kbd, KDSETREPEAT, (caddr_t)delay);
-		KBD_FOUND_DEVICE(kbd);
+
+#ifdef EVDEV_SUPPORT
+		/* register as evdev provider on first init */
+		if (state->ks_evdev == NULL) {
+			ksnprintf(phys_loc, sizeof(phys_loc), "atkbd%d", unit);
+			evdev = evdev_alloc();
+			evdev_set_name(evdev, "AT keyboard");
+			evdev_set_phys(evdev, phys_loc);
+			evdev_set_id(evdev, BUS_I8042, PS2_KEYBOARD_VENDOR,
+			    PS2_KEYBOARD_PRODUCT, 0);
+			evdev_set_methods(evdev, kbd, &atkbd_evdev_methods);
+			evdev_support_event(evdev, EV_SYN);
+			evdev_support_event(evdev, EV_KEY);
+			evdev_support_event(evdev, EV_LED);
+			evdev_support_event(evdev, EV_REP);
+			evdev_support_all_known_keys(evdev);
+			evdev_support_led(evdev, LED_NUML);
+			evdev_support_led(evdev, LED_CAPSL);
+			evdev_support_led(evdev, LED_SCROLLL);
+
+			/*
+			 * NOTE: in freebsd, this depends on their Giant
+			 * mutex lock, discuss with the others which
+			 * locking would be best here
+			 */
+			if (KBD_EVDEV_REGISTER(evdev))
+				evdev_free(evdev);
+			else
+				state->ks_evdev = evdev;
+			state->ks_evdev_state = 0;
+		}
+#endif
+
 		KBD_INIT_DONE(kbd);
 	}
 	if (!KBD_IS_CONFIGURED(kbd)) {
 		if (kbd_register(kbd) < 0) {
-			return ENXIO;
+			error = ENXIO;
+			goto bad;
 		}
 		KBD_CONFIG_DONE(kbd);
 	}
 
 	return 0;
+bad:
+	if (needfree) {
+		if (state != NULL)
+			kfree(state, M_DEVBUF);
+		if (keymap != NULL)
+			kfree(keymap, M_DEVBUF);
+		if (accmap != NULL)
+			kfree(accmap, M_DEVBUF);
+		if (fkeymap != NULL)
+			kfree(fkeymap, M_DEVBUF);
+		if (kbd != NULL) {
+			kfree(kbd, M_DEVBUF);
+			*kbdp = NULL;	/* insure ref doesn't leak to caller */
+		}
+	}
+
+	return error;
 }
 
 /* finish using this keyboard */
 static int
 atkbd_term(keyboard_t *kbd)
 {
+#ifdef EVDEV_SUPPORT
+	atkbd_state_t *state = (atkbd_state_t *)kbd->kb_data;
+
+	if(state->ks_evdev) {
+		evdev_free(state->ks_evdev);
+		state->ks_evdev = NULL;
+		state->ks_evdev_state = 0;
+	}
+#endif
+
 	kbd_unregister(kbd);
 	return 0;
 }
@@ -448,9 +576,26 @@ atkbd_term(keyboard_t *kbd)
 static int
 atkbd_intr(keyboard_t *kbd, void *arg)
 {
-	atkbd_state_t *state;
+	atkbd_state_t *state = (atkbd_state_t *)kbd->kb_data;
 	int delay[2];
 	int c;
+
+	if (!KBD_HAS_DEVICE(kbd)) {
+		/*
+		 * The keyboard was not detected before;
+		 * it must have been reconnected!
+		 */
+		init_keyboard(state->kbdc, &kbd->kb_type, kbd->kb_config);
+		KBD_FOUND_DEVICE(kbd);
+		atkbd_ioctl(kbd, KDSETLED, (caddr_t)&state->ks_state);
+		set_typematic(kbd);
+		delay[0] = kbd->kb_delay1;
+		delay[1] = kbd->kb_delay2;
+		atkbd_ioctl(kbd, KDSETREPEAT, (caddr_t)delay);
+	}
+
+	if (state->ks_polling)
+		return 0;
 
 	if (KBD_IS_ACTIVE(kbd) && KBD_IS_BUSY(kbd)) {
 		/* let the callback function to process the input */
@@ -461,22 +606,6 @@ atkbd_intr(keyboard_t *kbd, void *arg)
 		do {
 			c = atkbd_read_char(kbd, FALSE);
 		} while (c != NOKEY);
-
-		if (!KBD_HAS_DEVICE(kbd)) {
-			/*
-			 * The keyboard was not detected before;
-			 * it must have been reconnected!
-			 */
-			state = (atkbd_state_t *)kbd->kb_data;
-			init_keyboard(state->kbdc, &kbd->kb_type,
-				      kbd->kb_config);
-			atkbd_ioctl(kbd, KDSETLED, (caddr_t)&state->ks_state);
-			get_typematic(kbd);
-			delay[0] = kbd->kb_delay1;
-			delay[1] = kbd->kb_delay2;
-			atkbd_ioctl(kbd, KDSETREPEAT, (caddr_t)delay);
-			KBD_FOUND_DEVICE(kbd);
-		}
 	}
 
 	return 0;
@@ -500,7 +629,7 @@ atkbd_test_if(keyboard_t *kbd)
 	return error;
 }
 
-/* 
+/*
  * Enable the access to the device; until this function is called,
  * the client cannot read from the keyboard.
  */
@@ -592,6 +721,33 @@ next_code:
 #if KBDIO_DEBUG >= 10
 	kprintf("atkbd_read_char(): scancode:0x%x\n", scancode);
 #endif
+#ifdef EVDEV_SUPPORT
+	/* push evdev event */
+	if (evdev_rcpt_mask & EVDEV_RCPT_HW_KBD && state->ks_evdev != NULL) {
+		/* "hancha" and "han/yong" korean keys handling */
+		if (state->ks_evdev_state == 0 &&
+		    (scancode == 0xF1 || scancode == 0xF2)) {
+			keycode = evdev_scancode2key(&state->ks_evdev_state,
+				scancode & 0x7F);
+			evdev_push_event(state->ks_evdev, EV_KEY,
+			    (uint16_t)keycode, 1);
+			evdev_sync(state->ks_evdev);
+		}
+
+		keycode = evdev_scancode2key(&state->ks_evdev_state,
+		    scancode);
+
+		if (keycode != KEY_RESERVED) {
+			evdev_push_event(state->ks_evdev, EV_KEY,
+			    (uint16_t)keycode, scancode & 0x80 ? 0 : 1);
+			evdev_sync(state->ks_evdev);
+		}
+	}
+
+	if (state->ks_evdev != NULL && evdev_is_grabbed(state->ks_evdev))
+		return (NOKEY);
+#endif
+
 
 	/* return the byte as is for the K_RAW mode */
 	if (state->ks_mode == K_RAW) {
@@ -682,6 +838,15 @@ next_code:
 			break;
 		case 0x5d:	/* menu key */
 			keycode = 0x6b;
+			break;
+		case 0x5e:	/* power key */
+			keycode = 0x6d;
+			break;
+		case 0x5f:	/* sleep key */
+			keycode = 0x6e;
+			break;
+		case 0x63:	/* wake key */
+			keycode = 0x6f;
 			break;
 		default:	/* ignore everything else */
 			goto next_code;
@@ -803,7 +968,6 @@ static int
 atkbd_check_char(keyboard_t *kbd)
 {
 	atkbd_state_t *state;
-	int ret;
 
 	if (!KBD_IS_ACTIVE(kbd)) {
 		return FALSE;
@@ -812,15 +976,14 @@ atkbd_check_char(keyboard_t *kbd)
 	if (!(state->ks_flags & COMPOSE) && (state->ks_composed_char > 0)) {
 		return TRUE;
 	}
-	ret = kbdc_data_ready(state->kbdc);
-	return ret;
+	return kbdc_data_ready(state->kbdc);
 }
 
 /* some useful control functions */
 static int
 atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 {
-	/* trasnlate LED_XXX bits into the device specific bits */
+	/* translate LED_XXX bits into the device specific bits */
 	static u_char ledmap[8] = {
 		0, 4, 2, 6, 1, 5, 3, 7,
 	};
@@ -883,6 +1046,12 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 				return error;
 			}
 		}
+#ifdef EVDEV_SUPPORT
+		/* push LED states to evdev */
+		if (state->ks_evdev != NULL &&
+		    evdev_rcpt_mask & EVDEV_RCPT_HW_KBD)
+			evdev_push_leds(state->ks_evdev, *(int *)arg);
+#endif
 		KBD_LED_VAL(kbd) = *(int *)arg;
 		break;
 
@@ -910,8 +1079,31 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		if (error == 0) {
 			kbd->kb_delay1 = typematic_delay(i);
 			kbd->kb_delay2 = typematic_rate(i);
+#ifdef EVDEV_SUPPORT
+			if (state->ks_evdev != NULL &&
+			    evdev_rcpt_mask & EVDEV_RCPT_HW_KBD)
+				evdev_push_repeats(state->ks_evdev, kbd);
+#endif
 		}
 		return error;
+
+#if 0 /* obsolete */
+	case KDSETRAD:		/* set keyboard repeat rate (old interface) */
+		crit_exit();
+		if (!KBD_HAS_DEVICE(kbd))
+			return 0;
+		error = write_kbd(state->kbdc, KBDC_SET_TYPEMATIC, *(int *)arg);
+		if (error == 0) {
+			kbd->kb_delay1 = typematic_delay(*(int *)arg);
+			kbd->kb_delay2 = typematic_rate(*(int *)arg);
+#ifdef EVDEV_SUPPORT
+			if (state->ks_evdev != NULL &&
+			    evdev_rcpt_mask & EVDEV_RCPT_HW_KBD)
+				evdev_push_repeats(state->ks_evdev, kbd);
+#endif
+		}
+		return error;
+#endif
 
 	case PIO_KEYMAP:	/* set keyboard translation table */
 	case PIO_KEYMAPENT:	/* set keyboard translation table entry */
@@ -992,12 +1184,111 @@ atkbd_poll(keyboard_t *kbd, int on)
 	return 0;
 }
 
+static int
+atkbd_reset(KBDC kbdc, int flags, int c)
+{
+	/* reset keyboard hardware */
+	if (!(flags & KB_CONF_NO_RESET) && !reset_kbd(kbdc)) {
+		/*
+		 * KEYBOARD ERROR
+		 * Keyboard reset may fail either because the keyboard
+		 * doen't exist, or because the keyboard doesn't pass
+		 * the self-test, or the keyboard controller on the
+		 * motherboard and the keyboard somehow fail to shake hands.
+		 * It is just possible, particularly in the last case,
+		 * that the keyboard controller may be left in a hung state.
+		 * test_controller() and test_kbd_port() appear to bring
+		 * the keyboard controller back (I don't know why and how,
+		 * though.)
+		 */
+		empty_both_buffers(kbdc, 10);
+		test_controller(kbdc);
+		test_kbd_port(kbdc);
+		/*
+		 * We could disable the keyboard port and interrupt... but,
+		 * the keyboard may still exist (see above).
+		 */
+		set_controller_command_byte(kbdc,
+		    ALLOW_DISABLE_KBD(kbdc) ? 0xff : KBD_KBD_CONTROL_BITS, c);
+		if (bootverbose)
+			kprintf("atkbd: failed to reset the keyboard.\n");
+		return (EIO);
+	}
+	return (0);
+}
+
+#ifdef EVDEV_SUPPORT
+static void
+atkbd_ev_event(struct evdev_dev *evdev, uint16_t type, uint16_t code,
+    int32_t value)
+{
+	keyboard_t *kbd = evdev_get_softc(evdev);
+
+	if (evdev_rcpt_mask & EVDEV_RCPT_HW_KBD &&
+	    (type == EV_LED || type == EV_REP)) {
+		/*
+		 * NOTE: the current data writing part of kbd_ev_event() and its calls
+		 * kbd_ioctl() performs a lockmgr lock per the KBD_LOCK macro, 
+		 * so unlike FreeBSD we don't lock here.
+		 *
+		 * Should the data writes in kbd_ev_event(), which is a completely FreeBSD ported
+		 * function, ever change to encompass things outside of kbd_ioctl,
+		 * then this needs to be redesigned or rethought, possibly by:
+		 *
+		 * setting a lockmgr(&kbd->kb_lock, LK_EXCLUSIVE)
+		 * saving the KB_POLLING flag of kbd->kb_flags 
+		 * setting it
+		 * doing our stuff in kbd_ev_event()
+		 * and restoring the original KB_POLLING FLAG afterwards
+		 * releasing the lockmgr() held lock
+		 *
+		 * KBD_LOCK defined at sys/dev/misc/kbd/kbdreg.h:137
+		 * and works by checking if KB_POLLING is not set.
+		 * This would obviously be quite a hack, if it were needed.
+		 * Note by htse (harald.brinkhof@gmail.com).
+		 */
+#if defined(__FreeBSD__)
+		mtx_lock(&Giant);
+#endif
+#if defined(__DragonFly__) && 0
+		if(!lockmgr(&kbd->kb_lock, LK_EXCLUSIVE)) {
+			/* save original flag */
+			int orig_is_polled = KBD_IS_POLLED(kbd);
+			/* set state to polling */
+			KBD_POLL(kbd);
+#endif
+		kbd_ev_event(kbd, type, code, value);
+#if defined(__FreeBSD__)
+		mtx_unlock(&Giant);
+#endif
+#if defined(__DragonFly__) && 0
+			/* restore original state if not polling */
+			if(orig_is_polled == 0)
+				KBD_UNPOLL(kbd);
+
+			lockmgr(&kbd->kb_lock, LK_RELEASE);
+		}
+#endif
+	}
+}
+#endif
+
 /* local functions */
 
 static int
-get_typematic(keyboard_t *kbd)
+set_typematic(keyboard_t *kbd)
 {
-	return ENODEV;
+	int val, error;
+	atkbd_state_t *state = kbd->kb_data;
+
+	val = typematic(DEFAULT_DELAY, DEFAULT_RATE);
+	error = write_kbd(state->kbdc, KBDC_SET_TYPEMATIC, val);
+	if (error == 0) {
+		kbd->kb_delay1 = typematic_delay(val);
+		kbd->kb_delay2 = typematic_rate(val);
+	}
+
+	return (error);
 }
 
 static int
@@ -1005,8 +1296,8 @@ setup_kbd_port(KBDC kbdc, int port, int intr)
 {
 	if (!set_controller_command_byte(kbdc,
 		KBD_KBD_CONTROL_BITS,
-		((port) ? KBD_ENABLE_KBD_PORT : KBD_DISABLE_KBD_PORT) |
-		((intr) ? KBD_ENABLE_KBD_INT : KBD_DISABLE_KBD_INT)))
+		((port) ? KBD_ENABLE_KBD_PORT : KBD_DISABLE_KBD_PORT)
+		    | ((intr) ? KBD_ENABLE_KBD_INT : KBD_DISABLE_KBD_INT)))
 		return 1;
 	return 0;
 }
@@ -1032,11 +1323,11 @@ get_kbd_echo(KBDC kbdc)
 	if (setup_kbd_port(kbdc, TRUE, TRUE)) {
 		/*
 		 * CONTROLLER ERROR 
-		 * This is serious; the keyboard intr is left disabled! 
+		 * This is serious; the keyboard intr is left disabled!
 		 */
 		return ENXIO;
 	}
-    
+
 	return 0;
 }
 
@@ -1044,11 +1335,12 @@ static int
 probe_keyboard(KBDC kbdc, int flags)
 {
 	/*
-	 * Don't try to print anything in this function.  The low-level 
+	 * Don't try to print anything in this function.  The low-level
 	 * console may not have been initialized yet...
 	 */
 	int err;
 	int c;
+	int m;
 
 	if (!kbdc_lock(kbdc, TRUE)) {
 		/* driver error? */
@@ -1066,22 +1358,25 @@ probe_keyboard(KBDC kbdc, int flags)
 	empty_both_buffers(kbdc, 100);
 
 	/* save the current keyboard controller command byte */
+	m = kbdc_get_device_mask(kbdc) & ~KBD_KBD_CONTROL_BITS;
 	c = get_controller_command_byte(kbdc);
 	if (c == -1) {
 		/* CONTROLLER ERROR */
+		kbdc_set_device_mask(kbdc, m);
 		kbdc_lock(kbdc, FALSE);
 		return ENXIO;
 	}
 
-	/* 
+	/*
 	 * The keyboard may have been screwed up by the boot block.
 	 * We may just be able to recover from error by testing the controller
 	 * and the keyboard port. The controller command byte needs to be
-	 * saved before this recovery operation, as some controllers seem 
+	 * saved before this recovery operation, as some controllers seem
 	 * to set the command byte to particular values.
 	 */
 	test_controller(kbdc);
-	test_kbd_port(kbdc);
+	if (!(flags & KB_CONF_NO_PROBE_TEST))
+		test_kbd_port(kbdc);
 
 	err = get_kbd_echo(kbdc);
 
@@ -1092,16 +1387,21 @@ probe_keyboard(KBDC kbdc, int flags)
 	 * to the system later.  It is NOT recommended to hot-plug
 	 * the AT keyboard, but many people do so...
 	 */
+	kbdc_set_device_mask(kbdc, m | KBD_KBD_CONTROL_BITS);
 	setup_kbd_port(kbdc, TRUE, TRUE);
 #if 0
-	if (err) {
+	if (err == 0) {
+		kbdc_set_device_mask(kbdc, m | KBD_KBD_CONTROL_BITS);
+	} else {
 		/* try to restore the command byte as before */
-		set_controller_command_byte(kbdc, KBD_KBD_CONTROL_BITS, c);
+		set_controller_command_byte(kbdc,
+		    ALLOW_DISABLE_KBD(kbdc) ? 0xff : KBD_KBD_CONTROL_BITS, c);
+		kbdc_set_device_mask(kbdc, m);
 	}
 #endif
 
 	kbdc_lock(kbdc, FALSE);
-	return err;
+	return (HAS_QUIRK(kbdc, KBDC_QUIRK_IGNORE_PROBE_RESULT) ? 0 : err);
 }
 
 static int
@@ -1110,9 +1410,6 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 	int codeset;
 	int id;
 	int c;
-	int mux_version;
-	int mux_mask;
-	int mux_val;
 
 	if (!kbdc_lock(kbdc, TRUE)) {
 		/* driver error? */
@@ -1126,16 +1423,6 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 	 */
 	write_controller_command(kbdc, KBDC_DISABLE_KBD_PORT);
 
-#if 0
-	if (atkbd_setmuxmode(kbdc, 1, &mux_version)) {
-		kprintf("atkbd: no mux\n");
-		mux_version = -1;
-	} else {
-		kprintf("atkbd: mux present version %d\n", mux_version);
-	}
-#else
-	mux_version = -1;
-#endif
 
 	/* save the current controller command byte */
 	empty_both_buffers(kbdc, 200);
@@ -1162,41 +1449,16 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 		return EIO;
 	}
 
-	/* default codeset */
-	codeset = -1;
-
-	/* reset keyboard hardware */
-	if (!(flags & KB_CONF_NO_RESET) && !reset_kbd(kbdc)) {
-		/*
-		 * KEYBOARD ERROR
-		 * Keyboard reset may fail either because the keyboard
-		 * doen't exist, or because the keyboard doesn't pass
-		 * the self-test, or the keyboard controller on the
-		 * motherboard and the keyboard somehow fail to shake hands.
-		 * It is just possible, particularly in the last case,
-		 * that the keyoard controller may be left in a hung state.
-		 * test_controller() and test_kbd_port() appear to bring
-		 * the keyboard controller back (I don't know why and how,
-		 * though.)
-		 */
-		empty_both_buffers(kbdc, 10);
-		test_controller(kbdc);
-		test_kbd_port(kbdc);
-		/*
-		 * We could disable the keyboard port and interrupt... but,
-		 * the keyboard may still exist (see above).
-		 */
-		set_controller_command_byte(kbdc, KBD_KBD_CONTROL_BITS, c);
+	if (HAS_QUIRK(kbdc, KBDC_QUIRK_RESET_AFTER_PROBE) &&
+		atkbd_reset(kbdc, flags, c)) {
 		kbdc_lock(kbdc, FALSE);
-		if (bootverbose)
-			kprintf("atkbd: failed to reset the keyboard.\n");
-		return EIO;
+		return (EIO);
 	}
 
 	/* 
-	 * Check if we have an XT keyboard before we attempt to reset it. 
-	 * The procedure assumes that the keyboard and the controller have 
-	 * been set up properly by BIOS and have not been messed up 
+	 * Check if we have an XT keyboard before we attempt to reset it.
+	 * The procedure assumes that the keyboard and the controller have
+	 * been set up properly by BIOS and have not been messed up
 	 * during the boot process.
 	 */
 	codeset = -1;
@@ -1207,18 +1469,18 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 	else if ((c & KBD_TRANSLATION) == 0) {
 		/* SET_SCANCODE_SET is not always supported; ignore error */
 		if (send_kbd_command_and_data(kbdc, KBDC_SET_SCANCODE_SET, 0)
-			== KBD_ACK) 
+			== KBD_ACK)
 			codeset = read_kbd_data(kbdc);
 	}
 #endif /* KBD_DETECT_XT_KEYBOARD */
 	if (bootverbose)
 		kprintf("atkbd: scancode set %d\n", codeset);
- 
+
 	/*
 	 * Get the keyboard id.
 	 */
 	*type = KB_OTHER;
-	id = get_kbd_id(kbdc, ATKBD_CMD_GETID);
+	id = get_kbd_id(kbdc);
 	switch(id) {
 	case 0x41ab:	/* 101/102/... Enhanced */
 	case 0x83ab:	/* ditto */
@@ -1240,8 +1502,14 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 	if (bootverbose)
 		kprintf("atkbd: keyboard ID 0x%x (%d)\n", id, *type);
 
+	if (!HAS_QUIRK(kbdc, KBDC_QUIRK_RESET_AFTER_PROBE) &&
+	    atkbd_reset(kbdc, flags, c)) {
+		kbdc_lock(kbdc, FALSE);
+		return (EIO);
+	}
+
 	/*
-	 * Allow us to set the XT_KEYBD flag in UserConfig so that keyboards
+	 * Allow us to set the XT_KEYBD flag so that keyboards
 	 * such as those on the IBM ThinkPad laptop computers can be used
 	 * with the standard console driver.
 	 */
@@ -1252,52 +1520,27 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 			c &= ~KBD_TRANSLATION;
 		} else {
 			/*
-			 * KEYBOARD ERROR 
+			 * KEYBOARD ERROR
 			 * The XT kbd isn't usable unless the proper scan
-			 * code set is selected. 
+			 * code set is selected.
 			 */
-			set_controller_command_byte(kbdc,
-						    KBD_KBD_CONTROL_BITS, c);
+			set_controller_command_byte(kbdc, ALLOW_DISABLE_KBD(kbdc)
+			    ? 0xff : KBD_KBD_CONTROL_BITS, c);
 			kbdc_lock(kbdc, FALSE);
 			kprintf("atkbd: unable to set the XT keyboard mode.\n");
 			return EIO;
 		}
 	}
 
-#if 0
-	if (send_kbd_command_and_data(kbdc, ATKBD_CMD_EX_ENABLE, 0x71) != KBD_ACK)
-		kprintf("atkbd: can't CMD_EX_ENABLE\n");
-
-	if (send_kbd_command(kbdc, ATKBD_CMD_SETALL_MB) != KBD_ACK)
-		kprintf("atkbd: can't SETALL_MB\n");
-	if (send_kbd_command(kbdc, ATKBD_CMD_SETALL_MBR) != KBD_ACK)
-		kprintf("atkbd: can't SETALL_MBR\n");
-#endif
-#if 0
-	if (send_kbd_command_and_data(kbdc, ATKBD_CMD_SSCANSET, 2) != KBD_ACK)
-		kprintf("atkbd: can't SSCANSET\n");
-	if (send_kbd_command_and_data(kbdc, ATKBD_CMD_GSCANSET, 0) != KBD_ACK)
-		kprintf("atkbd: can't SSCANSET\n");
-	else
-		kprintf("atkbd: scanset %d\n", read_kbd_data(kbdc));
-#endif
-#if 0
-	kprintf("atkbd: id %04x\n", get_kbd_id(kbdc, ATKBD_CMD_OK_GETID));
-	if (send_kbd_command_and_data(kbdc, ATKBD_CMD_SETLEDS, 0) != KBD_ACK)
-		kprintf("atkbd: setleds failed\n");
-	if (send_kbd_command_and_data(kbdc, ATKBD_CMD_SETREP, 255) != KBD_ACK)
-		kprintf("atkbd: setrep failed\n");
-	if (send_kbd_command(kbdc, ATKBD_CMD_RESEND) != KBD_ACK)
-		kprintf("atkbd: resend failed\n");
-#endif
 	/*
 	 * Some keyboards require a SETLEDS command to be sent after
 	 * the reset command before they will send keystrokes to us
 	 * (Acer C720).
 	 */
-	if (send_kbd_command_and_data(kbdc, ATKBD_CMD_SETLEDS, 0) != KBD_ACK)
+	if (HAS_QUIRK(kbdc, KBDC_QUIRK_SETLEDS_ON_INIT) &&
+	    send_kbd_command_and_data(kbdc, KBDC_SET_LEDS, 0) != KBD_ACK) {
 		kprintf("atkbd: setleds failed\n");
-	send_kbd_command(kbdc, ATKBD_CMD_ENABLE);
+	}
 
 #if 0
 	/* DEBUGGING */
@@ -1313,31 +1556,22 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 		kprintf("\n");
 	}
 #endif
-
-	if (mux_version == -1) {
-		mux_mask = 0;
-		mux_val = 0;
-	} else {
-		mux_mask = KBD_AUX_CONTROL_BITS;
-		mux_val = 0;
-		kprintf("atkbd: setaux for multiplexer\n");
-	}
-
+	if (!ALLOW_DISABLE_KBD(kbdc))
+	    send_kbd_command(kbdc, KBDC_ENABLE_KBD);
+ 
 	/* enable the keyboard port and intr. */
-	if (!set_controller_command_byte(kbdc, 
-		KBD_KBD_CONTROL_BITS | KBD_TRANSLATION |
-		KBD_OVERRIDE_KBD_LOCK | mux_mask,
+	if (!set_controller_command_byte(kbdc,
+		KBD_KBD_CONTROL_BITS | KBD_TRANSLATION | KBD_OVERRIDE_KBD_LOCK,
 		(c & (KBD_TRANSLATION | KBD_OVERRIDE_KBD_LOCK))
-		    | KBD_ENABLE_KBD_PORT | KBD_ENABLE_KBD_INT | mux_val)) {
+		    | KBD_ENABLE_KBD_PORT | KBD_ENABLE_KBD_INT)) {
 		/*
-		 * CONTROLLER ERROR 
+		 * CONTROLLER ERROR
 		 * This is serious; we are left with the disabled
-		 * keyboard intr. 
+		 * keyboard intr.
 		 */
-		set_controller_command_byte(kbdc,
-				KBD_KBD_CONTROL_BITS | KBD_TRANSLATION |
-				KBD_OVERRIDE_KBD_LOCK | mux_mask,
-				c);
+		set_controller_command_byte(kbdc, ALLOW_DISABLE_KBD(kbdc)
+		    ? 0xff : (KBD_KBD_CONTROL_BITS | KBD_TRANSLATION |
+			KBD_OVERRIDE_KBD_LOCK), c);
 		kbdc_lock(kbdc, FALSE);
 		kprintf("atkbd: unable to enable the keyboard port and intr.\n");
 		return EIO;
@@ -1347,114 +1581,68 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 	return 0;
 }
 
-#if 0
-
-static
-int
-atkbd_setmuxmode(KBDC kbdc, int enable, int *mux_version)
-{
-	int param;
-	int val;
-	int i;
-
-	kbdc->mux_active = 0;
-	empty_both_buffers(kbdc, 100);
-	val = 0xf0;
-	if ((param = write_controller_w1r1(kbdc, KBDC_AUX_LOOP, val)) != val) {
-		kprintf("setmuxmode: fail1\n");
-		return(-1);
-	}
-	val = enable ? 0x56 : 0xf6;
-	if ((param = write_controller_w1r1(kbdc, KBDC_AUX_LOOP, val)) != val) {
-		kprintf("setmuxmode: fail2\n");
-		return(-1);
-	}
-	val = enable ? 0xa4 : 0xa5;
-	if ((param = write_controller_w1r1(kbdc, KBDC_AUX_LOOP, val)) != val) {
-		kprintf("setmuxmode: fail3\n");
-		return(-1);
-	}
-	kprintf("mux version %02x\n", param);
-	if (param == 0xac) {
-		kprintf("setmuxmode: fail4\n");
-		return(-1);
-	}
-
-	if (enable) {
-		for (i = 0; i < KBD_NUM_MUX_PORTS; ++i) {
-			write_controller_command(kbdc, KBDC_MUX_PFX + i);
-			write_controller_command(kbdc, KBDC_ENABLE_AUX_PORT);
-
-		}
-	}
-	kbdc->mux_active = 1;
-	if (mux_version)
-		*mux_version = param;
-	return 0;
-}
-
-#endif
-
 static int
 write_kbd(KBDC kbdc, int command, int data)
 {
-    /* prevent the timeout routine from polling the keyboard */
-    if (!kbdc_lock(kbdc, TRUE)) 
-	return EBUSY;
+	/* prevent the timeout routine from polling the keyboard */
+	if (!kbdc_lock(kbdc, TRUE)) 
+		return EBUSY;
 
-    /* disable the keyboard and mouse interrupt */
-    crit_enter();
+	/* disable the keyboard and mouse interrupt */
+	crit_enter();
 
 #if 0
-    /*
-     * XXX NOTE: We can't just disable the KBD port any more, even
-     * 	         temporarily, without blowing up some BIOS emulations
-     *		 if not followed by a full reset.
-     */
-    c = get_controller_command_byte(kbdc);
-    if ((c == -1) ||
-	!set_controller_command_byte(kbdc,
-		KBD_KBD_CONTROL_BITS,
-		KBD_DISABLE_KBD_PORT | KBD_DISABLE_KBD_INT)) {
-	/* CONTROLLER ERROR */
-        kbdc_lock(kbdc, FALSE);
+	/*
+	 * XXX NOTE: We can't just disable the KBD port any more, even
+	 * 	         temporarily, without blowing up some BIOS emulations
+	 *		 if not followed by a full reset.
+	 */
+	c = get_controller_command_byte(kbdc);
+	if ((c == -1)
+	    || !set_controller_command_byte(kbdc, 
+		kbdc_get_device_mask(kbdc),
+		KBD_DISABLE_KBD_PORT | KBD_DISABLE_KBD_INT
+		| KBD_DISABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
+		/* CONTROLLER ERROR */
+		kbdc_lock(kbdc, FALSE);
+		crit_exit();
+		return EIO;
+	}
+	/* 
+	 * Now that the keyboard controller is told not to generate
+	 * the keyboard and mouse interrupts, call `splx()' to allow
+	 * the other tty interrupts. The clock interrupt may also occur,
+	 * but the timeout routine (`scrn_timer()') will be blocked
+	 * by the lock flag set via `kbdc_lock()'
+	 */
 	crit_exit();
-	return EIO;
-    }
-    /* 
-     * Now that the keyboard controller is told not to generate 
-     * the keyboard and mouse interrupts, call `splx()' to allow 
-     * the other tty interrupts. The clock interrupt may also occur, 
-     * but the timeout routine (`scrn_timer()') will be blocked 
-     * by the lock flag set via `kbdc_lock()'
-     */
-    crit_exit();
 #endif
 
-    if (send_kbd_command_and_data(kbdc, command, data) != KBD_ACK)
-        send_kbd_command(kbdc, KBDC_ENABLE_KBD);
+	if (send_kbd_command_and_data(kbdc, command, data) != KBD_ACK)
+		send_kbd_command(kbdc, KBDC_ENABLE_KBD);
 
 #if 0
-    /* restore the interrupts */
-    if (!set_controller_command_byte(kbdc, KBD_KBD_CONTROL_BITS, c)) {
-	/* CONTROLLER ERROR */
-    }
+	/* restore the interrupts */
+	if (!set_controller_command_byte(kbdc, kbdc_get_device_mask(kbdc),
+	    c & (KBD_KBD_CONTROL_BITS | KBD_AUX_CONTROL_BITS))) { 
+		/* CONTROLLER ERROR */
+	}
 #else
-    crit_exit();
+	crit_exit();
 #endif
-    kbdc_lock(kbdc, FALSE);
+	kbdc_lock(kbdc, FALSE);
 
-    return 0;
+	return 0;
 }
 
 static int
-get_kbd_id(KBDC kbdc, int cmd)
+get_kbd_id(KBDC kbdc)
 {
 	int id1, id2;
 
 	empty_both_buffers(kbdc, 10);
 	id1 = id2 = -1;
-	if (send_kbd_command(kbdc, cmd) != KBD_ACK)
+	if (send_kbd_command(kbdc, KBDC_SEND_DEV_ID) != KBD_ACK)
 		return -1;
 
 	DELAY(10000); 	/* 10 msec delay */
@@ -1471,8 +1659,8 @@ get_kbd_id(KBDC kbdc, int cmd)
 	return ((id2 << 8) | id1);
 }
 
-static int delays[] = { 250, 500, 750, 1000 };
-static int rates[] = {  34,  38,  42,  46,  50,  55,  59,  63,
+static int kbdelays[] = { 250, 500, 750, 1000 };
+static int kbrates[] = {  34,  38,  42,  46,  50,  55,  59,  63,
 			68,  76,  84,  92, 100, 110, 118, 126,
 		       136, 152, 168, 184, 200, 220, 236, 252,
 		       272, 304, 336, 368, 400, 440, 472, 504 };
@@ -1480,13 +1668,13 @@ static int rates[] = {  34,  38,  42,  46,  50,  55,  59,  63,
 static int
 typematic_delay(int i)
 {
-	return delays[(i >> 5) & 3];
+	return (kbdelays[(i >> 5) & 3]);
 }
 
 static int
 typematic_rate(int i)
 {
-	return rates[i & 0x1f];
+	return (kbrates[i & 0x1f]);
 }
 
 static int
@@ -1495,13 +1683,13 @@ typematic(int delay, int rate)
 	int value;
 	int i;
 
-	for (i = NELEM(delays) - 1; i > 0; --i) {
-		if (delay >= delays[i])
+	for (i = nitems(kbdelays) - 1; i > 0; --i) {
+		if (delay >= kbdelays[i])
 			break;
 	}
 	value = i << 5;
-	for (i = NELEM(rates) - 1; i > 0; --i) {
-		if (rate >= rates[i])
+	for (i = nitems(kbrates) - 1; i > 0; --i) {
+		if (rate >= kbrates[i])
 			break;
 	}
 	value |= i;
