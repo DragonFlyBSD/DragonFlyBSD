@@ -75,8 +75,9 @@ IMGFILE?=		${ISODIR}/dfly-gui.img
 # NOTE: order important, do not sort package list
 #
 DPORTS_PACKAGES+=	x11/xorg \
+			x11-drivers/xf86-input-libinput \
 			x11-wm/fluxbox \
-			x11-wm/fvwm \
+			x11-wm/fvwm3 \
 			www/firefox \
 			graphics/xpdf \
 			shells/zsh \
@@ -94,7 +95,16 @@ DPORTS_PACKAGES+=	x11/xorg \
 			x11-fonts/terminus-font \
 			net/rsync \
 			x11-clocks/asclock \
-			sysutils/screen
+			sysutils/screen \
+			sysutils/tmux
+.endif
+
+.if make(binpkgs)
+PKG_x11-wm/fvwm3?=fvwm3
+PKG_lang/perl5?=perl5
+# Only install the console flavor of vim, whereas
+# "pkg ins editors/vim" would install all flavors.
+PKG_editors/vim?=vim
 .endif
 
 ROOTSKELS+=		${.CURDIR}/gui

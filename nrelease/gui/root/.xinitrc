@@ -7,18 +7,8 @@ umask 022
 
 set userresources = "$HOME/.Xresources"
 set usermodmap = "$HOME/.Xmodmap"
-set sysresources = "/usr/pkg/xorg/lib/X11/xinit/.Xresources"
-set sysmodmap = "/usr/pkg/xorg/lib/X11/xinit/.Xmodmap"
 
 cd $HOME
-
-if ( -f $sysresources ) then
-    xrdb -merge $sysresources
-endif
-
-if ( -f $sysmodmap ) then
-    xmodmap $sysmodmap
-endif
 
 if ( -f $userresources ) then
     xrdb -merge $userresources
@@ -27,6 +17,8 @@ endif
 if ( -f $usermodmap ) then
     xmodmap $usermodmap
 endif
+
+xinput set-prop 'SynPS/2 Synaptics TouchPad' 'libinput Tapping Enabled' 1
 
 xset m 2 1
 (limit core 0; xscreensaver -nosplash) &
@@ -37,7 +29,7 @@ setenv TERM xterm
 
 # start window manager here
 #
-/usr/pkg/bin/fvwm2 -f ~/.fvwm/.fvwm2rc
+/usr/local/bin/fvwm3 -f ~/.fvwm/.fvwm2rc
 #startkde
 
 /bin/kill $SSH_AGENT_PID
