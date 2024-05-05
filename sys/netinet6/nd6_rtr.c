@@ -1313,9 +1313,12 @@ pfxlist_onlink_check(void)
 			if (!(ifa->ia6_flags & IN6_IFF_AUTOCONF))
 				continue;
 
-			ifa->ia6_flags &= ~IN6_IFF_DETACHED;
-			ifa->ia6_flags |= IN6_IFF_TENTATIVE;
-			nd6_dad_start((struct ifaddr *)ifa, 0);
+			if (ifa->ia6_flags & IN6_IFF_DETACHED) {
+				ifa->ia6_flags &= ~IN6_IFF_DETACHED;
+				ifa->ia6_flags |= IN6_IFF_TENTATIVE;
+				/* Do we need a delay in this case? */
+				nd6_dad_start((struct ifaddr *)ifa, 0);
+			}
 		}
 	}
 }
