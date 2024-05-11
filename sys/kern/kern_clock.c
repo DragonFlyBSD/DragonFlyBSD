@@ -1601,6 +1601,36 @@ get_approximate_time_t(void)
 	return(gd->gd_time_seconds + bt->tv_sec);
 }
 
+static int
+pps_fetch_timeout(struct timespec *timeout, struct pps_state *pps)
+{
+	int to, err;
+	pps_seq_t *ap, *cp;
+	pps_seq_t a, c;
+
+	to = INT_MAX;
+	if (timeout->tv_sec > -1)
+		to = tstohz_low(timeout);
+
+	ap = &pps->ppsinfo.assert_sequence;
+	cp = &pps->ppsinfo.clear_sequence;
+	a = atomic_load_acq_int(ap);
+	c = atomic_load_acq_int(cp);
+
+	while (a == atomic_load_acq_int(ap) && c == atomic_load_acq_int(cp)) {
+		err = tsleep(pps, PCATCH, "ppsfch", to);
+		if (err == EWOULDBLOCK) {
+			if (timeout->tv_sec < 0)
+				continue;
+			return (ETIMEDOUT);
+		}
+		if (err != 0)
+			return (err);
+	}
+
+	return (0);
+}
+
 int
 pps_ioctl(u_long cmd, caddr_t data, struct pps_state *pps)
 {
@@ -1609,6 +1639,7 @@ pps_ioctl(u_long cmd, caddr_t data, struct pps_state *pps)
 #ifdef PPS_SYNC
 	struct pps_kcbind_args *kapi;
 #endif
+	int err;
 
 	switch (cmd) {
 	case PPS_IOC_CREATE:
@@ -1633,8 +1664,11 @@ pps_ioctl(u_long cmd, caddr_t data, struct pps_state *pps)
 		fapi = (struct pps_fetch_args *)data;
 		if (fapi->tsformat && fapi->tsformat != PPS_TSFMT_TSPEC)
 			return (EINVAL);
-		if (fapi->timeout.tv_sec || fapi->timeout.tv_nsec)
-			return (EOPNOTSUPP);
+		if (fapi->timeout.tv_sec != 0 || fapi->timeout.tv_nsec != 0) {
+			err = pps_fetch_timeout(&fapi->timeout, pps);
+			if (err != 0)
+				return (err);
+		}
 		pps->ppsinfo.current_mode = pps->ppsparam.mode;
 		fapi->pps_info_buf = pps->ppsinfo;
 		return (0);
@@ -1661,7 +1695,7 @@ pps_ioctl(u_long cmd, caddr_t data, struct pps_state *pps)
 void
 pps_init(struct pps_state *pps)
 {
-	pps->ppscap |= PPS_TSFMT_TSPEC;
+	pps->ppscap |= PPS_TSFMT_TSPEC | PPS_CANWAIT;
 	if (pps->ppscap & PPS_CAPTUREASSERT)
 		pps->ppscap |= PPS_OFFSETASSERT;
 	if (pps->ppscap & PPS_CAPTURECLEAR)
@@ -1737,7 +1771,7 @@ pps_event(struct pps_state *pps, sysclock_t count, int event)
 		++ts.tv_sec;
 	}
 
-	(*pseq)++;
+	atomic_add_rel_int(pseq, 1);
 	*tsp = ts;
 
 	if (foff) {
@@ -1763,6 +1797,7 @@ pps_event(struct pps_state *pps, sysclock_t count, int event)
 		hardpps(tsp, delta);
 	}
 #endif
+	wakeup(pps);
 }
 
 /*
