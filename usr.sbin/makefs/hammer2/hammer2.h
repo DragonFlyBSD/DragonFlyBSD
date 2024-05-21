@@ -377,8 +377,6 @@ struct hammer2_chain {
 	u_int		lockcnt;
 	int		error;			/* on-lock data error state */
 	int		cache_index;		/* heur speeds up lookup */
-
-	TAILQ_ENTRY(hammer2_chain) lru_node;	/* 0-refs LRU */
 };
 
 typedef struct hammer2_chain hammer2_chain_t;
@@ -1293,13 +1291,6 @@ TAILQ_HEAD(hammer2_pfslist, hammer2_pfs);
 #define HAMMER2_PMPF_SPMP	0x00000001
 #define HAMMER2_PMPF_EMERG	0x00000002	/* Emergency delete mode */
 
-/*
- * NOTE: The LRU list contains at least all the chains with refs == 0
- *	 that can be recycled, and may contain additional chains which
- *	 cannot.
- */
-#define HAMMER2_LRU_LIMIT		4096
-
 #define HAMMER2_DIRTYCHAIN_WAITING	0x80000000
 #define HAMMER2_DIRTYCHAIN_MASK		0x7FFFFFFF
 
@@ -1674,6 +1665,7 @@ void hammer2_trans_assert_strategy(hammer2_pfs_t *pmp);
 /*
  * hammer2_ioctl.c
  */
+void hammer2_inum_hash_init(hammer2_pfs_t *pmp);
 int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
 				int fflag, struct ucred *cred);
 int hammer2_ioctl_version_get(hammer2_inode_t *ip, void *data);
@@ -1693,7 +1685,6 @@ int hammer2_ioctl_growfs(hammer2_inode_t *ip, void *data, struct ucred *cred);
  * hammer2_io.c
  */
 void hammer2_io_hash_init(hammer2_dev_t *hmp);
-void hammer2_inum_hash_init(hammer2_pfs_t *pmp);
 void hammer2_io_inval(hammer2_io_t *dio, hammer2_off_t data_off, u_int bytes);
 void hammer2_io_hash_cleanup_all(hammer2_dev_t *hmp);
 char *hammer2_io_data(hammer2_io_t *dio, off_t lbase);
