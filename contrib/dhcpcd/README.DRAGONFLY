@@ -4,10 +4,10 @@ DHCPCD
 Original source can be downloaded from:
 https://github.com/NetworkConfiguration/dhcpcd/releases
 
-file   = dhcpcd-10.0.4.tar.xz
-date   = 2023 October 19
-size   = 269212
-SHA256 = ced5bbde8da3726eac77b9e77e4f31a89c9849d811ef8a2c749664fc5f55a718
+file   = dhcpcd-10.0.7.tar.xz
+date   = 2024 May 24
+size   = 272144
+SHA256 = d5b15d6ca3fc6ee6eb01e49f67007a14a406fc83155d1c9a90e1ea9e71c9e769
 
 The source is imported via a Makefile target rather than by hand.
 There is no README.DELETED for this import as it's all automated.
