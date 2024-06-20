@@ -33,7 +33,7 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\"
-.Dd February 22, 2011
+.Dd June 20, 2024
 .Dt BRIDGE 4
 .Os
 .Sh NAME
@@ -139,22 +139,38 @@ framework.
 When filtering is enabled, bridged packets will pass through the filter
 inbound on the originating interface, on the bridge interface and outbound on
 the appropriate interfaces.
-Either stage can be disabled, this behaviour can be controlled using
+Either stage can be disabled as well as the filtering of non IP and IPv6
+packets.
+Note that ARP and REVARP packets are always forwarded without being filtered.
+.Pp
+This behaviour can be controlled using
 .Xr sysctl 8 :
 Set
 .Va net.link.bridge.pfil_member
 to
 .Li 1
-to enable filtering on the incoming and outgoing member interfaces
-and set
+to enable filtering on the incoming and outgoing member interfaces,
+set
 .Va net.link.bridge.pfil_bridge
 to
 .Li 1
-to enable filtering on the bridge interface.
-.Pp
-ARP and REVARP packets are forwarded without being filtered and others
-that are not IP nor IPv6 packets are not forwarded when filtering is
+to enable filtering on the bridge interface
+and set
+.Va net.link.bridge.pfil_onlyip
+to
+.Li 1
+to only allow IP and IPv6 packets to be forawarded when filtering is
 enabled.
+For example, setting
+.Va net.link.bridge.pfil_onlyip
+to
+.Li 0
+would allow PPPoE traffic over the bridge.
+.Pp
+The default value of the
+.Va net.link.bridge.pfil_*
+nodes is
+.Li 1 .
 .Pp
 Note that packets to and from the bridging host will be seen by the
 filter on the interface with the appropriate address configured as well
