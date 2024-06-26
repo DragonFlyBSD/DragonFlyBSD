@@ -3732,8 +3732,11 @@ getutimens(const struct timespec *ts, struct timespec *newts, int *nullflag)
 
 	newts[0] = ts[0];
 	newts[1] = ts[1];
-	if (newts[0].tv_nsec == UTIME_OMIT && newts[1].tv_nsec == UTIME_OMIT)
+	if (newts[0].tv_nsec == UTIME_OMIT && newts[1].tv_nsec == UTIME_OMIT) {
+		newts[0].tv_sec = VNOVAL;
+		newts[1].tv_sec = VNOVAL;
 		return (0);
+	}
 	if (newts[0].tv_nsec == UTIME_NOW && newts[1].tv_nsec == UTIME_NOW)
 		*nullflag = 1;
 
