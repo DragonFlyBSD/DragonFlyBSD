@@ -159,13 +159,19 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 			goto bad;
 		}
 	} else if (!nd6_onlink_ns_rfc4861) {
+		struct sockaddr_in6 src_sa6;
+
 		/*
-		 * Make sure the source address is from a neighbor's address.
-		 *
-		 * XXX probably only need to check cmpifp.
+		 * According to recent IETF discussions, it is not a good idea
+		 * to accept a NS from an address which would not be deemed
+		 * to be a neighbor otherwise.  This point is expected to be
+		 * clarified in future revisions of the specification.
 		 */
-		if (in6ifa_ifplocaladdr(cmpifp, &saddr6) == NULL &&
-		    in6ifa_ifplocaladdr(ifp, &saddr6) == NULL) {
+		bzero(&src_sa6, sizeof(src_sa6));
+		src_sa6.sin6_family = AF_INET6;
+		src_sa6.sin6_len = sizeof(src_sa6);
+		src_sa6.sin6_addr = saddr6;
+		if (nd6_is_addr_neighbor(&src_sa6, ifp) == 0) {
 			nd6log((LOG_INFO, "nd6_ns_input: "
 			    "NS packet from non-neighbor\n"));
 			goto bad;
@@ -685,7 +691,13 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 		/*
 		 * Make sure the source address is from a neighbor's address.
 		 */
-		if (in6ifa_ifplocaladdr(ifp, &saddr6) == NULL) {
+		struct sockaddr_in6 src_sa6;
+
+		bzero(&src_sa6, sizeof(src_sa6));
+		src_sa6.sin6_family = AF_INET6;
+		src_sa6.sin6_len = sizeof(src_sa6);
+		src_sa6.sin6_addr = saddr6;
+		if (nd6_is_addr_neighbor(&src_sa6, ifp) == 0) {
 			nd6log((LOG_INFO, "nd6_na_input: "
 			    "NA packet from non-neighbor\n"));
 			goto bad;

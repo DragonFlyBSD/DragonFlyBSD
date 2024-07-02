@@ -980,7 +980,6 @@ int
 nd6_is_addr_neighbor(struct sockaddr_in6 *addr, struct ifnet *ifp)
 {
 	struct ifaddr_container *ifac;
-	int i;
 
 #define IFADDR6(a) ((((struct in6_ifaddr *)(a))->ia_addr).sin6_addr)
 #define IFMASK6(a) ((((struct in6_ifaddr *)(a))->ia_prefixmask).sin6_addr)
@@ -1002,15 +1001,11 @@ nd6_is_addr_neighbor(struct sockaddr_in6 *addr, struct ifnet *ifp)
 		struct ifaddr *ifa = ifac->ifa;
 
 		if (ifa->ifa_addr->sa_family != AF_INET6)
-			next: continue;
+			continue;
 
-		for (i = 0; i < 4; i++) {
-			if ((IFADDR6(ifa).s6_addr32[i] ^
-			     addr->sin6_addr.s6_addr32[i]) &
-			    IFMASK6(ifa).s6_addr32[i])
-				goto next;
-		}
-		return (1);
+		if (IN6_ARE_MASKED_ADDR_EQUAL(&IFADDR6(ifa), &addr->sin6_addr,
+		    &IFMASK6(ifa)))
+			return (1);
 	}
 
 	/*

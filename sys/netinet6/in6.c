@@ -1851,34 +1851,6 @@ in6ifa_llaonifp(struct ifnet *ifp)
 }
 
 /*
- * find the internet address on a given interface corresponding to a neighbor's
- * address.
- */
-struct in6_ifaddr *
-in6ifa_ifplocaladdr(const struct ifnet *ifp, const struct in6_addr *addr)
-{
-	struct ifaddr *ifa;
-	struct in6_ifaddr *ia;
-	struct ifaddr_container *ifac;
-
-	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
-		ifa = ifac->ifa;
-
-		if (ifa->ifa_addr == NULL)
-			continue;	/* just for safety */
-		if (ifa->ifa_addr->sa_family != AF_INET6)
-			continue;
-		ia = (struct in6_ifaddr *)ifa;
-		if (IN6_ARE_MASKED_ADDR_EQUAL(addr,
-				&ia->ia_addr.sin6_addr,
-				&ia->ia_prefixmask.sin6_addr))
-			return ia;
-	}
-
-	return NULL;
-}
-
-/*
  * Convert IP6 address to printable (loggable) representation.
  */
 static char digits[] = "0123456789abcdef";
