@@ -284,7 +284,7 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 		if (rtifp && rtifp->if_bridge)
 			rtifp = rtifp->if_bridge;
 
-		if (rt != NULL &&
+		if (rt != NULL && (rt->rt_flags & RTF_ANNOUNCE) &&
 		    (cmpifp != rtifp || (m->m_flags & M_MCAST) == 0)) {
 			ifa = (struct ifaddr *)in6ifa_ifpforlinklocal(cmpifp,
 				IN6_IFF_NOTREADY|IN6_IFF_ANYCAST);
@@ -300,7 +300,6 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 				 * target mac, else our mac is used.
 				 */
 				if (cmpifp == rtifp &&
-				    (rt->rt_flags & RTF_ANNOUNCE) &&
 				    rt->rt_gateway->sa_family == AF_LINK) {
 					proxydl = SDL(rt->rt_gateway);
 				}
