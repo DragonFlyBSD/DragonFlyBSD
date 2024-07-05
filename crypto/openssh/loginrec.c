@@ -42,7 +42,7 @@
  * from this software without specific prior written permission.
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
 
@@ -191,7 +191,7 @@
  ** prototypes for helper functions in this file
  **/
 
-#ifdef HAVE_UTMP_H
+#if HAVE_UTMP_H
 void set_utmp_time(struct logininfo *li, struct utmp *ut);
 void construct_utmp(struct logininfo *li, struct utmp *ut);
 #endif

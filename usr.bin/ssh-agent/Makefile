@@ -2,10 +2,8 @@
 .PATH: ${.CURDIR}/../../crypto/openssh
 
 PROG=	ssh-agent
-SRCS=	ssh-agent.c
+SRCS=	ssh-agent.c ssh-pkcs11-client.c
 WARNS?=	3
-
-# not needed: ssh-pkcs11-client.c
 
 CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include

@@ -1,4 +1,4 @@
-/* $OpenBSD: misc.h,v 1.100 2022/06/03 04:30:47 djm Exp $ */
+/* $OpenBSD: misc.h,v 1.109 2024/06/06 17:15:25 djm Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
@@ -19,6 +19,13 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdio.h>
+#include <signal.h>
+
+/* special-case port number meaning allow any port */
+#define FWD_PERMIT_ANY_PORT	0
+
+/* special-case wildcard meaning allow any host */
+#define FWD_PERMIT_ANY_HOST	"*"
 
 /* Data structure for representing a forwarding request. */
 struct Forward {
@@ -33,6 +40,8 @@ struct Forward {
 };
 
 int forward_equals(const struct Forward *, const struct Forward *);
+int permitopen_port(const char *p);
+
 int daemonized(void);
 
 /* Common server and client forwarding options. */
@@ -57,7 +66,7 @@ char	*get_rdomain(int);
 int	 set_rdomain(int, const char *);
 int	 get_sock_af(int);
 void	 set_sock_tos(int, int);
-int	 waitrfd(int, int *);
+int	 waitrfd(int, int *, volatile sig_atomic_t *);
 int	 timeout_connect(int, const struct sockaddr *, socklen_t, int *);
 int	 a2port(const char *);
 int	 a2tun(const char *, int *);
@@ -94,8 +103,10 @@ int	 valid_env_name(const char *);
 const char *atoi_err(const char *, int *);
 int	 parse_absolute_time(const char *, uint64_t *);
 void	 format_absolute_time(uint64_t, char *, size_t);
+int	 parse_pattern_interval(const char *, char **, int *);
 int	 path_absolute(const char *);
 int	 stdfd_devnull(int, int, int);
+int	 lib_contains_symbol(const char *, const char *);
 
 void	 sock_set_v6only(int);
 
@@ -207,6 +218,17 @@ void	opt_array_append(const char *file, const int line,
 void	opt_array_append2(const char *file, const int line,
 	    const char *directive, char ***array, int **iarray, u_int *lp,
 	    const char *s, int i);
+void	opt_array_free2(char **array, int **iarray, u_int l);
+
+struct timespec;
+void ptimeout_init(struct timespec *pt);
+void ptimeout_deadline_sec(struct timespec *pt, long sec);
+void ptimeout_deadline_ms(struct timespec *pt, long ms);
+void ptimeout_deadline_monotime_tsp(struct timespec *pt, struct timespec *when);
+void ptimeout_deadline_monotime(struct timespec *pt, time_t when);
+int ptimeout_get_ms(struct timespec *pt);
+struct timespec *ptimeout_get_tsp(struct timespec *pt);
+int ptimeout_isset(struct timespec *pt);
 
 /* readpass.c */
 
@@ -230,5 +252,9 @@ void	notify_complete(struct notifier_ctx *, const char *, ...)
 
 typedef void (*sshsig_t)(int);
 sshsig_t ssh_signal(int, sshsig_t);
+int signal_is_crash(int);
+
+/* On OpenBSD time_t is int64_t which is long long. */
+/* #define SSH_TIME_T_MAX LLONG_MAX */
 
 #endif /* _MISC_H */

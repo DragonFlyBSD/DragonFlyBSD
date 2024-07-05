@@ -2,13 +2,19 @@ PROG=	sshd
 SRCS=	sshd.c
 
 .PATH: ${.CURDIR}/../../crypto/openssh
-SRCS+=	auth.c auth-options.c auth-pam.c auth-passwd.c auth-rhosts.c \
-	auth2.c auth2-chall.c auth2-hostbased.c auth2-kbdint.c auth2-none.c \
-	auth2-passwd.c auth2-pubkey.c auth2-pubkeyfile.c channels.c \
-	groupaccess.c loginrec.c misc.c monitor.c monitor_wrap.c packet.c \
-	platform.c sandbox-rlimit.c servconf.c serverloop.c session.c \
-	sftp-common.c sftp-realpath.c sftp-server.c sshbuf-misc.c sshlogin.c \
-	sshpty.c sshkey.c uidswap.c
+SRCS+=	platform-listen.c \
+        servconf.c sshpty.c srclimit.c groupaccess.c auth2-methods.c \
+	dns.c fatal.c compat.c utf8.c authfd.c canohost.c
+
+#SRCS+=	auth.c auth-options.c auth-pam.c auth-passwd.c auth-rhosts.c \
+#	auth2.c auth2-chall.c auth2-hostbased.c auth2-kbdint.c auth2-none.c \
+#	auth2-passwd.c auth2-methods.c auth2-pubkey.c auth2-pubkeyfile.c \
+#	channels.c \
+#	groupaccess.c loginrec.c misc.c monitor.c monitor_wrap.c packet.c \
+#	platform.c \
+#	sandbox-rlimit.c servconf.c serverloop.c session.c \
+#	sftp-common.c sftp-realpath.c sftp-server.c sshbuf-misc.c sshlogin.c \
+#	sshpty.c sshkey.c uidswap.c \
 
 # not needed:
 # audit-bsm.c audit-linux.c audit.c auth-bsdauth.c auth-krb5.c auth-shadow.c auth-sia.c
@@ -17,7 +23,7 @@ SRCS+=	auth.c auth-options.c auth-pam.c auth-passwd.c auth-rhosts.c \
 # sandbox-seccomp-filter.c sandbox-solaris.c sandbox-systrace.c
 
 # Custom password routine
-SRCS+=	auth-passwd-custom.c
+#SRCS+=	auth-passwd-custom.c
 CFLAGS+= -DCUSTOM_SYS_AUTH_PASSWD
 CFLAGS+= -DWTMPX_FILE=_PATH_WTMPX -DUTMPX_FILE=_PATH_UTMPX
 CFLAGS+= -DUTXDB_LASTLOGIN=UTX_DB_LASTLOGX

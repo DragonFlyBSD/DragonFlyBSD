@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-agent.c,v 1.292 2022/09/17 10:11:29 djm Exp $ */
+/* $OpenBSD: ssh-agent.c,v 1.306 2024/03/09 05:12:13 djm Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -80,14 +80,12 @@
 #include "sshbuf.h"
 #include "sshkey.h"
 #include "authfd.h"
-#include "compat.h"
 #include "log.h"
 #include "misc.h"
 #include "digest.h"
 #include "ssherr.h"
 #include "match.h"
 #include "msg.h"
-#include "ssherr.h"
 #include "pathnames.h"
 #include "ssh-pkcs11.h"
 #include "sk-api.h"
@@ -107,6 +105,8 @@
 #define AGENT_MAX_SID_LEN		128
 /* Maximum number of destination constraints to accept on a key */
 #define AGENT_MAX_DEST_CONSTRAINTS	1024
+/* Maximum number of associated certificate constraints to accept on a key */
+#define AGENT_MAX_EXT_CERTS		1024
 
 /* XXX store hostkey_sid in a refcounted tree */
 
@@ -130,6 +130,7 @@ typedef struct socket_entry {
 	struct sshbuf *request;
 	size_t nsession_ids;
 	struct hostkey_sid *session_ids;
+	int session_bind_attempted;
 } SocketEntry;
 
 u_int sockets_alloc = 0;
@@ -161,6 +162,8 @@ int max_fd = 0;
 pid_t parent_pid = -1;
 time_t parent_alive_interval = 0;
 
+sig_atomic_t signalled = 0;
+
 /* pid of process for which cleanup_socket is applicable */
 pid_t cleanup_pid = 0;
 
@@ -170,6 +173,12 @@ char socket_dir[PATH_MAX];
 
 /* Pattern-list of allowed PKCS#11/Security key paths */
 static char *allowed_providers;
+
+/*
+ * Allows PKCS11 providers or SK keys that use non-internal providers to
+ * be added over a remote connection (identified by session-bind@openssh.com).
+ */
+static int remote_add_provider;
 
 /* locking */
 #define LOCK_SIZE	32
@@ -241,6 +250,93 @@ free_dest_constraints(struct dest_constraint *dcs, size_t ndcs)
 		free_dest_constraint_hop(&dcs[i].to);
 	}
 	free(dcs);
+}
+
+#ifdef ENABLE_PKCS11
+static void
+dup_dest_constraint_hop(const struct dest_constraint_hop *dch,
+    struct dest_constraint_hop *out)
+{
+	u_int i;
+	int r;
+
+	out->user = dch->user == NULL ? NULL : xstrdup(dch->user);
+	out->hostname = dch->hostname == NULL ? NULL : xstrdup(dch->hostname);
+	out->is_ca = dch->is_ca;
+	out->nkeys = dch->nkeys;
+	out->keys = out->nkeys == 0 ? NULL :
+	    xcalloc(out->nkeys, sizeof(*out->keys));
+	out->key_is_ca = out->nkeys == 0 ? NULL :
+	    xcalloc(out->nkeys, sizeof(*out->key_is_ca));
+	for (i = 0; i < dch->nkeys; i++) {
+		if (dch->keys[i] != NULL &&
+		    (r = sshkey_from_private(dch->keys[i],
+		    &(out->keys[i]))) != 0)
+			fatal_fr(r, "copy key");
+		out->key_is_ca[i] = dch->key_is_ca[i];
+	}
+}
+
+static struct dest_constraint *
+dup_dest_constraints(const struct dest_constraint *dcs, size_t ndcs)
+{
+	size_t i;
+	struct dest_constraint *ret;
+
+	if (ndcs == 0)
+		return NULL;
+	ret = xcalloc(ndcs, sizeof(*ret));
+	for (i = 0; i < ndcs; i++) {
+		dup_dest_constraint_hop(&dcs[i].from, &ret[i].from);
+		dup_dest_constraint_hop(&dcs[i].to, &ret[i].to);
+	}
+	return ret;
+}
+#endif /* ENABLE_PKCS11 */
+
+#ifdef DEBUG_CONSTRAINTS
+static void
+dump_dest_constraint_hop(const struct dest_constraint_hop *dch)
+{
+	u_int i;
+	char *fp;
+
+	debug_f("user %s hostname %s is_ca %d nkeys %u",
+	    dch->user == NULL ? "(null)" : dch->user,
+	    dch->hostname == NULL ? "(null)" : dch->hostname,
+	    dch->is_ca, dch->nkeys);
+	for (i = 0; i < dch->nkeys; i++) {
+		fp = NULL;
+		if (dch->keys[i] != NULL &&
+		    (fp = sshkey_fingerprint(dch->keys[i],
+		    SSH_FP_HASH_DEFAULT, SSH_FP_DEFAULT)) == NULL)
+			fatal_f("fingerprint failed");
+		debug_f("key %u/%u: %s%s%s key_is_ca %d", i, dch->nkeys,
+		    dch->keys[i] == NULL ? "" : sshkey_ssh_name(dch->keys[i]),
+		    dch->keys[i] == NULL ? "" : " ",
+		    dch->keys[i] == NULL ? "none" : fp,
+		    dch->key_is_ca[i]);
+		free(fp);
+	}
+}
+#endif /* DEBUG_CONSTRAINTS */
+
+static void
+dump_dest_constraints(const char *context,
+    const struct dest_constraint *dcs, size_t ndcs)
+{
+#ifdef DEBUG_CONSTRAINTS
+	size_t i;
+
+	debug_f("%s: %zu constraints", context, ndcs);
+	for (i = 0; i < ndcs; i++) {
+		debug_f("constraint %zu / %zu: from: ", i, ndcs);
+		dump_dest_constraint_hop(&dcs[i].from);
+		debug_f("constraint %zu / %zu: to: ", i, ndcs);
+		dump_dest_constraint_hop(&dcs[i].to);
+	}
+	debug_f("done for %s", context);
+#endif /* DEBUG_CONSTRAINTS */
 }
 
 static void
@@ -386,6 +482,10 @@ identity_permitted(Identity *id, SocketEntry *e, char *user,
 	    e->nsession_ids, id->ndest_constraints);
 	if (id->ndest_constraints == 0)
 		return 0; /* unconstrained */
+	if (e->session_bind_attempted && e->nsession_ids == 0) {
+		error_f("previous session bind failed on socket");
+		return -1;
+	}
 	if (e->nsession_ids == 0)
 		return 0; /* local use */
 	/*
@@ -465,6 +565,12 @@ identity_permitted(Identity *id, SocketEntry *e, char *user,
 	return 0;
 }
 
+static int
+socket_is_remote(SocketEntry *e)
+{
+	return e->session_bind_attempted || (e->nsession_ids != 0);
+}
+
 /* return matching private key for given public key */
 static Identity *
 lookup_identity(struct sshkey *key)
@@ -514,13 +620,22 @@ process_request_identities(SocketEntry *e)
 	Identity *id;
 	struct sshbuf *msg, *keys;
 	int r;
-	u_int nentries = 0;
+	u_int i = 0, nentries = 0;
+	char *fp;
 
 	debug2_f("entering");
 
 	if ((msg = sshbuf_new()) == NULL || (keys = sshbuf_new()) == NULL)
 		fatal_f("sshbuf_new failed");
 	TAILQ_FOREACH(id, &idtab->idlist, next) {
+		if ((fp = sshkey_fingerprint(id->key, SSH_FP_HASH_DEFAULT,
+		    SSH_FP_DEFAULT)) == NULL)
+			fatal_f("fingerprint failed");
+		debug_f("key %u / %u: %s %s", i++, idtab->nentries,
+		    sshkey_ssh_name(id->key), fp);
+		dump_dest_constraints(__func__,
+		    id->dest_constraints, id->ndest_constraints);
+		free(fp);
 		/* identity not visible, don't include in response */
 		if (identity_permitted(id, e, NULL, NULL, NULL) != 0)
 			continue;
@@ -845,8 +960,8 @@ process_sign_request2(SocketEntry *e)
 	}
 	/* Success */
 	ok = 0;
- send:
 	debug_f("good signature");
+ send:
 	notify_complete(notifier, "User presence confirmed");
 
 	if (ok == 0) {
@@ -1025,8 +1140,8 @@ parse_dest_constraint(struct sshbuf *m, struct dest_constraint *dc)
 		error_fr(r, "parse");
 		goto out;
 	}
-	if ((r = parse_dest_constraint_hop(frombuf, &dc->from) != 0) ||
-	    (r = parse_dest_constraint_hop(tobuf, &dc->to) != 0))
+	if ((r = parse_dest_constraint_hop(frombuf, &dc->from)) != 0 ||
+	    (r = parse_dest_constraint_hop(tobuf, &dc->to)) != 0)
 		goto out; /* already logged */
 	if (elen != 0) {
 		error_f("unsupported extensions (len %zu)", elen);
@@ -1060,11 +1175,14 @@ parse_dest_constraint(struct sshbuf *m, struct dest_constraint *dc)
 
 static int
 parse_key_constraint_extension(struct sshbuf *m, char **sk_providerp,
-    struct dest_constraint **dcsp, size_t *ndcsp)
+    struct dest_constraint **dcsp, size_t *ndcsp, int *cert_onlyp,
+    struct sshkey ***certs, size_t *ncerts)
 {
 	char *ext_name = NULL;
 	int r;
 	struct sshbuf *b = NULL;
+	u_char v;
+	struct sshkey *k;
 
 	if ((r = sshbuf_get_cstring(m, &ext_name, NULL)) != 0) {
 		error_fr(r, "parse constraint extension");
@@ -1107,6 +1225,36 @@ parse_key_constraint_extension(struct sshbuf *m, char **sk_providerp,
 			    *dcsp + (*ndcsp)++)) != 0)
 				goto out; /* error already logged */
 		}
+	} else if (strcmp(ext_name,
+	    "associated-certs-v00@openssh.com") == 0) {
+		if (certs == NULL || ncerts == NULL || cert_onlyp == NULL) {
+			error_f("%s not valid here", ext_name);
+			r = SSH_ERR_INVALID_FORMAT;
+			goto out;
+		}
+		if (*certs != NULL) {
+			error_f("%s already set", ext_name);
+			goto out;
+		}
+		if ((r = sshbuf_get_u8(m, &v)) != 0 ||
+		    (r = sshbuf_froms(m, &b)) != 0) {
+			error_fr(r, "parse %s", ext_name);
+			goto out;
+		}
+		*cert_onlyp = v != 0;
+		while (sshbuf_len(b) != 0) {
+			if (*ncerts >= AGENT_MAX_EXT_CERTS) {
+				error_f("too many %s constraints", ext_name);
+				goto out;
+			}
+			*certs = xrecallocarray(*certs, *ncerts, *ncerts + 1,
+			    sizeof(**certs));
+			if ((r = sshkey_froms(b, &k)) != 0) {
+				error_fr(r, "parse key");
+				goto out;
+			}
+			(*certs)[(*ncerts)++] = k;
+		}
 	} else {
 		error_f("unsupported constraint \"%s\"", ext_name);
 		r = SSH_ERR_FEATURE_UNSUPPORTED;
@@ -1123,7 +1271,8 @@ parse_key_constraint_extension(struct sshbuf *m, char **sk_providerp,
 static int
 parse_key_constraints(struct sshbuf *m, struct sshkey *k, time_t *deathp,
     u_int *secondsp, int *confirmp, char **sk_providerp,
-    struct dest_constraint **dcsp, size_t *ndcsp)
+    struct dest_constraint **dcsp, size_t *ndcsp,
+    int *cert_onlyp, size_t *ncerts, struct sshkey ***certs)
 {
 	u_char ctype;
 	int r;
@@ -1178,7 +1327,8 @@ parse_key_constraints(struct sshbuf *m, struct sshkey *k, time_t *deathp,
 			break;
 		case SSH_AGENT_CONSTRAIN_EXTENSION:
 			if ((r = parse_key_constraint_extension(m,
-			    sk_providerp, dcsp, ndcsp)) != 0)
+			    sk_providerp, dcsp, ndcsp,
+			    cert_onlyp, certs, ncerts)) != 0)
 				goto out; /* error already logged */
 			break;
 		default:
@@ -1215,11 +1365,13 @@ process_add_identity(SocketEntry *e)
 		goto out;
 	}
 	if (parse_key_constraints(e->request, k, &death, &seconds, &confirm,
-	    &sk_provider, &dest_constraints, &ndest_constraints) != 0) {
+	    &sk_provider, &dest_constraints, &ndest_constraints,
+	    NULL, NULL, NULL) != 0) {
 		error_f("failed to parse constraints");
 		sshbuf_reset(e->request);
 		goto out;
 	}
+	dump_dest_constraints(__func__, dest_constraints, ndest_constraints);
 
 	if (sk_provider != NULL) {
 		if (!sshkey_is_sk(k)) {
@@ -1230,6 +1382,12 @@ process_add_identity(SocketEntry *e)
 		if (strcasecmp(sk_provider, "internal") == 0) {
 			debug_f("internal provider");
 		} else {
+			if (socket_is_remote(e) && !remote_add_provider) {
+				verbose("failed add of SK provider \"%.100s\": "
+				    "remote addition of providers is disabled",
+				    sk_provider);
+				goto out;
+			}
 			if (realpath(sk_provider, canonical_provider) == NULL) {
 				verbose("failed provider \"%.100s\": "
 				    "realpath: %s", sk_provider,
@@ -1369,6 +1527,32 @@ no_identities(SocketEntry *e)
 }
 
 #ifdef ENABLE_PKCS11
+/* Add an identity to idlist; takes ownership of 'key' and 'comment' */
+static void
+add_p11_identity(struct sshkey *key, char *comment, const char *provider,
+    time_t death, u_int confirm, struct dest_constraint *dest_constraints,
+    size_t ndest_constraints)
+{
+	Identity *id;
+
+	if (lookup_identity(key) != NULL) {
+		sshkey_free(key);
+		free(comment);
+		return;
+	}
+	id = xcalloc(1, sizeof(Identity));
+	id->key = key;
+	id->comment = comment;
+	id->provider = xstrdup(provider);
+	id->death = death;
+	id->confirm = confirm;
+	id->dest_constraints = dup_dest_constraints(dest_constraints,
+	    ndest_constraints);
+	id->ndest_constraints = ndest_constraints;
+	TAILQ_INSERT_TAIL(&idtab->idlist, id, next);
+	idtab->nentries++;
+}
+
 static void
 process_add_smartcard_key(SocketEntry *e)
 {
@@ -1378,9 +1562,10 @@ process_add_smartcard_key(SocketEntry *e)
 	u_int seconds = 0;
 	time_t death = 0;
 	struct sshkey **keys = NULL, *k;
-	Identity *id;
 	struct dest_constraint *dest_constraints = NULL;
-	size_t ndest_constraints = 0;
+	size_t j, ndest_constraints = 0, ncerts = 0;
+	struct sshkey **certs = NULL;
+	int cert_only = 0;
 
 	debug2_f("entering");
 	if ((r = sshbuf_get_cstring(e->request, &provider, NULL)) != 0 ||
@@ -1389,8 +1574,15 @@ process_add_smartcard_key(SocketEntry *e)
 		goto send;
 	}
 	if (parse_key_constraints(e->request, NULL, &death, &seconds, &confirm,
-	    NULL, &dest_constraints, &ndest_constraints) != 0) {
+	    NULL, &dest_constraints, &ndest_constraints, &cert_only,
+	    &ncerts, &certs) != 0) {
 		error_f("failed to parse constraints");
+		goto send;
+	}
+	dump_dest_constraints(__func__, dest_constraints, ndest_constraints);
+	if (socket_is_remote(e) && !remote_add_provider) {
+		verbose("failed PKCS#11 add of \"%.100s\": remote addition of "
+		    "providers is disabled", provider);
 		goto send;
 	}
 	if (realpath(provider, canonical_provider) == NULL) {
@@ -1409,26 +1601,28 @@ process_add_smartcard_key(SocketEntry *e)
 
 	count = pkcs11_add_provider(canonical_provider, pin, &keys, &comments);
 	for (i = 0; i < count; i++) {
-		k = keys[i];
-		if (lookup_identity(k) == NULL) {
-			id = xcalloc(1, sizeof(Identity));
-			id->key = k;
-			keys[i] = NULL; /* transferred */
-			id->provider = xstrdup(canonical_provider);
-			if (*comments[i] != '\0') {
-				id->comment = comments[i];
-				comments[i] = NULL; /* transferred */
-			} else {
-				id->comment = xstrdup(canonical_provider);
-			}
-			id->death = death;
-			id->confirm = confirm;
-			id->dest_constraints = dest_constraints;
-			id->ndest_constraints = ndest_constraints;
-			dest_constraints = NULL; /* transferred */
-			ndest_constraints = 0;
-			TAILQ_INSERT_TAIL(&idtab->idlist, id, next);
-			idtab->nentries++;
+		if (comments[i] == NULL || comments[i][0] == '\0') {
+			free(comments[i]);
+			comments[i] = xstrdup(canonical_provider);
+		}
+		for (j = 0; j < ncerts; j++) {
+			if (!sshkey_is_cert(certs[j]))
+				continue;
+			if (!sshkey_equal_public(keys[i], certs[j]))
+				continue;
+			if (pkcs11_make_cert(keys[i], certs[j], &k) != 0)
+				continue;
+			add_p11_identity(k, xstrdup(comments[i]),
+			    canonical_provider, death, confirm,
+			    dest_constraints, ndest_constraints);
+			success = 1;
+		}
+		if (!cert_only && lookup_identity(keys[i]) == NULL) {
+			add_p11_identity(keys[i], comments[i],
+			    canonical_provider, death, confirm,
+			    dest_constraints, ndest_constraints);
+			keys[i] = NULL;		/* transferred */
+			comments[i] = NULL;	/* transferred */
 			success = 1;
 		}
 		/* XXX update constraints for existing keys */
@@ -1441,6 +1635,9 @@ send:
 	free(keys);
 	free(comments);
 	free_dest_constraints(dest_constraints, ndest_constraints);
+	for (j = 0; j < ncerts; j++)
+		sshkey_free(certs[j]);
+	free(certs);
 	send_status(e, success);
 }
 
@@ -1498,6 +1695,7 @@ process_ext_session_bind(SocketEntry *e)
 	u_char fwd = 0;
 
 	debug2_f("entering");
+	e->session_bind_attempted = 1;
 	if ((r = sshkey_froms(e->request, &key)) != 0 ||
 	    (r = sshbuf_froms(e->request, &sid)) != 0 ||
 	    (r = sshbuf_froms(e->request, &sig)) != 0 ||
@@ -1866,7 +2064,7 @@ after_poll(struct pollfd *pfd, size_t npfd, u_int maxfds)
 }
 
 static int
-prepare_poll(struct pollfd **pfdp, size_t *npfdp, int *timeoutp, u_int maxfds)
+prepare_poll(struct pollfd **pfdp, size_t *npfdp, struct timespec *timeoutp, u_int maxfds)
 {
 	struct pollfd *pfd = *pfdp;
 	size_t i, j, npfd = 0;
@@ -1932,14 +2130,8 @@ prepare_poll(struct pollfd **pfdp, size_t *npfdp, int *timeoutp, u_int maxfds)
 	if (parent_alive_interval != 0)
 		deadline = (deadline == 0) ? parent_alive_interval :
 		    MINIMUM(deadline, parent_alive_interval);
-	if (deadline == 0) {
-		*timeoutp = -1; /* INFTIM */
-	} else {
-		if (deadline > INT_MAX / 1000)
-			*timeoutp = INT_MAX / 1000;
-		else
-			*timeoutp = deadline * 1000;
-	}
+	if (deadline != 0)
+		ptimeout_deadline_sec(timeoutp, deadline);
 	return (1);
 }
 
@@ -1959,18 +2151,16 @@ void
 cleanup_exit(int i)
 {
 	cleanup_socket();
-	_exit(i);
-}
-
-/*ARGSUSED*/
-static void
-cleanup_handler(int sig)
-{
-	cleanup_socket();
 #ifdef ENABLE_PKCS11
 	pkcs11_terminate();
 #endif
-	_exit(2);
+	_exit(i);
+}
+
+static void
+cleanup_handler(int sig)
+{
+	signalled = sig;
 }
 
 static void
@@ -1992,9 +2182,9 @@ usage(void)
 {
 	fprintf(stderr,
 	    "usage: ssh-agent [-c | -s] [-Dd] [-a bind_address] [-E fingerprint_hash]\n"
-	    "                 [-P allowed_providers] [-t life]\n"
-	    "       ssh-agent [-a bind_address] [-E fingerprint_hash] [-P allowed_providers]\n"
-	    "                 [-t life] command [arg ...]\n"
+	    "                 [-O option] [-P allowed_providers] [-t life]\n"
+	    "       ssh-agent [-a bind_address] [-E fingerprint_hash] [-O option]\n"
+	    "                 [-P allowed_providers] [-t life] command [arg ...]\n"
 	    "       ssh-agent [-c | -s] -k\n");
 	exit(1);
 }
@@ -2014,17 +2204,18 @@ main(int ac, char **av)
 	char pidstrbuf[1 + 3 * sizeof pid];
 	size_t len;
 	mode_t prev_mask;
-	int timeout = -1; /* INFTIM */
+	struct timespec timeout;
 	struct pollfd *pfd = NULL;
 	size_t npfd = 0;
 	u_int maxfds;
+	sigset_t nsigset, osigset;
 
 	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
 	sanitise_stdfd();
 
 	/* drop */
-	setegid(getgid());
-	setgid(getgid());
+	(void)setegid(getgid());
+	(void)setgid(getgid());
 
 	platform_disable_tracing(0);	/* strict=no */
 
@@ -2053,7 +2244,9 @@ main(int ac, char **av)
 			break;
 		case 'O':
 			if (strcmp(optarg, "no-restrict-websafe") == 0)
-				restrict_websafe  = 0;
+				restrict_websafe = 0;
+			else if (strcmp(optarg, "allow-remote-pkcs11") == 0)
+				remote_add_provider = 1;
 			else
 				fatal("Unknown -O option");
 			break;
@@ -2251,13 +2444,25 @@ skip:
 	ssh_signal(SIGHUP, cleanup_handler);
 	ssh_signal(SIGTERM, cleanup_handler);
 
+	sigemptyset(&nsigset);
+	sigaddset(&nsigset, SIGINT);
+	sigaddset(&nsigset, SIGHUP);
+	sigaddset(&nsigset, SIGTERM);
+
 	if (pledge("stdio rpath cpath unix id proc exec", NULL) == -1)
 		fatal("%s: pledge: %s", __progname, strerror(errno));
 	platform_pledge_agent();
 
 	while (1) {
+		sigprocmask(SIG_BLOCK, &nsigset, &osigset);
+		if (signalled != 0) {
+			logit("exiting on signal %d", (int)signalled);
+			cleanup_exit(2);
+		}
+		ptimeout_init(&timeout);
 		prepare_poll(&pfd, &npfd, &timeout, maxfds);
-		result = poll(pfd, npfd, timeout);
+		result = ppoll(pfd, npfd, ptimeout_get_tsp(&timeout), &osigset);
+		sigprocmask(SIG_SETMASK, &osigset, NULL);
 		saved_errno = errno;
 		if (parent_alive_interval != 0)
 			check_parent_exists();

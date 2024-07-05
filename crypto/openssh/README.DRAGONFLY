@@ -4,12 +4,17 @@ OPENSSH
 Original source can be downloaded from OpenBSD at
 ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/
 
-file = openssh-9.1p1.tar.gz
-date = 04 October 2022
-size = 1838747
-sha1 = 15545440268967511d3194ebf20bcd0c7ff3fcc9
+file = openssh-9.8p1.tar.gz
+date = 01 July 2024
+size = 1910393
+sha1 = a0bb501b11349f5c5c33a269351be091dc2c2727
 
 A list of deleted files is in README.DELETED.
+
+Modified configure script to adjust two -lcrypto lines to:
+
+    LIBS="-L/usr/lib/priv -lprivate_crypto $LIBS"
+    CHANNELLIBS="-L/usr/lib/priv -lprivate_crypto $CHANNELLIBS"
 
 Configured with
 ===============
@@ -20,12 +25,13 @@ Configured with
 
 The following files have been patched (* planned)
 =================================================
-  auth-pam.c			WARNS, static sshpam_password_change_required()
-  platform.h			pledge dummies
-  session.c			WARNS, unused copy_environment()
-				WARNS, strdup(login_getcapstr()) (leak)
-  servconf.c			PAM defaults
+  session.c			do_nologin function declaration of nl needs to be
+				const char *nl;
   sshd_config			PasswordAuthentication no
+
+Prior adjustments (don't appear to be needed for 9.8):
+  platform.h			pledge dummies
+  servconf.c			PAM defaults
 
 NOTE: The configure script misdetects few things.
 Update config.h and openbsd-compat in lib/libssh.
@@ -34,6 +40,7 @@ Used in:
 lib/libssh/
 libexec/sftp-server/
 libexec/ssh-keysign/
+libexec/sshd-session/
 libexec/ssh-pkcs11-helper/
 usr.bin/scp/
 usr.bin/sftp/

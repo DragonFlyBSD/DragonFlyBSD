@@ -3,21 +3,55 @@ SHLIB_MAJOR= 5
 PRIVATELIB= shpub
 
 .PATH: ${.CURDIR}/../../crypto/openssh
-SRCS=	addr.c addrmatch.c atomicio.c authfd.c authfile.c bitmap.c canohost.c \
-	chacha.c channels.c cipher.c cipher-chachapoly-libcrypto.c cleanup.c compat.c \
-	dh.c digest-openssl.c dispatch.c dns.c entropy.c fatal.c \
-	hash.c hmac.c hostfile.c \
-	krl.c log.c mac.c match.c misc.c moduli.c monitor_fdpass.c msg.c \
-	nchan.c packet.c platform-misc.c poly1305.c readpass.c srclimit.c \
-	ssh_api.c ssh-dss.c ssh-ecdsa.c ssh-ecdsa-sk.c ssh-ed25519.c ssh-ed25519-sk.c \
-	ssh-rsa.c ssh-sk-client.c sshbuf.c sshbuf-getput-basic.c sshbuf-getput-crypto.c \
-	sshbuf-io.c sshbuf-misc.c \
-	ssherr.c sshkey.c sshsig.c ttymodes.c \
-	umac.c umac128.c utf8.c verify.c xmalloc.c
-SRCS+=	ed25519.c fe25519.c ge25519.c sc25519.c smult_curve25519_ref.c
-SRCS+=	kex.c kexc25519.c kexdh.c kexecdh.c \
-	kexgen.c kexgex.c kexgexc.c kexgexs.c \
-	kexsntrup761x25519.c sntrup761.c
+
+# SRCS built from /usr/src/crypto/openssh/Makefile.inc,
+#	XMSS_OBJS
+#	LIBOPENSSH_OBJS
+#	LIBSHS_OBJS
+#	+ ssh-sk-client.c
+#
+#	ssh-sk-client.c is used by sshkey.c from LIBOPENSSH_OBJS and had
+#	to be included in libssh in order for initrd rescue to build.
+#
+SRCS=   ssh_api.c \
+        ssherr.c \
+        sshbuf.c \
+        sshkey.c \
+        sshbuf-getput-basic.c \
+        sshbuf-misc.c \
+        sshbuf-getput-crypto.c \
+        krl.c \
+        bitmap.c \
+	\
+        ssh-xmss.c \
+        sshkey-xmss.c \
+        xmss_commons.c \
+        xmss_fast.c \
+        xmss_hash.c \
+        xmss_hash_address.c \
+        xmss_wots.c \
+	\
+        authfd.c authfile.c \
+        canohost.c channels.c cipher.c cipher-aes.c cipher-aesctr.c \
+        cleanup.c \
+        compat.c fatal.c hostfile.c \
+        log.c match.c moduli.c nchan.c packet.c \
+        readpass.c ttymodes.c xmalloc.c addr.c addrmatch.c \
+        atomicio.c dispatch.c mac.c misc.c utf8.c \
+        monitor_fdpass.c rijndael.c ssh-dss.c ssh-ecdsa.c ssh-ecdsa-sk.c \
+        ssh-ed25519-sk.c ssh-rsa.c dh.c \
+        msg.c progressmeter.c dns.c entropy.c gss-genr.c umac.c umac128.c \
+        ssh-pkcs11.c smult_curve25519_ref.c \
+        poly1305.c chacha.c cipher-chachapoly.c cipher-chachapoly-libcrypto.c \
+        ssh-ed25519.c digest-openssl.c digest-libc.c \
+        hmac.c ed25519.c hash.c \
+        kex.c kex-names.c kexdh.c kexgex.c kexecdh.c kexc25519.c \
+        kexgexc.c kexgexs.c \
+        kexsntrup761x25519.c sntrup761.c kexgen.c \
+        sftp-realpath.c platform-pledge.c platform-tracing.c platform-misc.c \
+        sshbuf-io.c \
+	\
+	ssh-sk-client.c
 
 # not implemented: platform-pledge.c platform-tracing.c
 # only for scp/sftp: progressmeter.c

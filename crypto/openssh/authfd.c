@@ -1,4 +1,4 @@
-/* $OpenBSD: authfd.c,v 1.130 2022/04/27 11:08:55 dtucker Exp $ */
+/* $OpenBSD: authfd.c,v 1.134 2023/12/18 14:46:56 djm Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -55,7 +55,6 @@
 #include "sshkey.h"
 #include "authfd.h"
 #include "cipher.h"
-#include "compat.h"
 #include "log.h"
 #include "atomicio.h"
 #include "misc.h"
@@ -491,8 +490,8 @@ encode_dest_constraint(struct sshbuf *m, const struct dest_constraint *dc)
 
 	if ((b = sshbuf_new()) == NULL)
 		return SSH_ERR_ALLOC_FAIL;
-	if ((r = encode_dest_constraint_hop(b, &dc->from) != 0) ||
-	    (r = encode_dest_constraint_hop(b, &dc->to) != 0) ||
+	if ((r = encode_dest_constraint_hop(b, &dc->from)) != 0 ||
+	    (r = encode_dest_constraint_hop(b, &dc->to)) != 0 ||
 	    (r = sshbuf_put_string(b, NULL, 0)) != 0) /* reserved */
 		goto out;
 	if ((r = sshbuf_put_stringb(m, b)) != 0)
@@ -505,9 +504,10 @@ encode_dest_constraint(struct sshbuf *m, const struct dest_constraint *dc)
 }
 
 static int
-encode_constraints(struct sshbuf *m, u_int life, u_int confirm, u_int maxsign,
-    const char *provider, struct dest_constraint **dest_constraints,
-    size_t ndest_constraints)
+encode_constraints(struct sshbuf *m, u_int life, u_int confirm,
+    u_int maxsign, const char *provider,
+    struct dest_constraint **dest_constraints, size_t ndest_constraints,
+    int cert_only, struct sshkey **certs, size_t ncerts)
 {
 	int r;
 	struct sshbuf *b = NULL;
@@ -551,6 +551,27 @@ encode_constraints(struct sshbuf *m, u_int life, u_int confirm, u_int maxsign,
 		    "restrict-destination-v00@openssh.com")) != 0 ||
 		    (r = sshbuf_put_stringb(m, b)) != 0)
 			goto out;
+		sshbuf_free(b);
+		b = NULL;
+	}
+	if (ncerts != 0) {
+		if ((b = sshbuf_new()) == NULL) {
+			r = SSH_ERR_ALLOC_FAIL;
+			goto out;
+		}
+		for (i = 0; i < ncerts; i++) {
+			if ((r = sshkey_puts(certs[i], b)) != 0)
+				goto out;
+		}
+		if ((r = sshbuf_put_u8(m,
+		    SSH_AGENT_CONSTRAIN_EXTENSION)) != 0 ||
+		    (r = sshbuf_put_cstring(m,
+		    "associated-certs-v00@openssh.com")) != 0 ||
+		    (r = sshbuf_put_u8(m, cert_only != 0)) != 0 ||
+		    (r = sshbuf_put_stringb(m, b)) != 0)
+			goto out;
+		sshbuf_free(b);
+		b = NULL;
 	}
 	r = 0;
  out:
@@ -608,7 +629,7 @@ ssh_add_identity_constrained(int sock, struct sshkey *key,
 	}
 	if (constrained &&
 	    (r = encode_constraints(msg, life, confirm, maxsign,
-	    provider, dest_constraints, ndest_constraints)) != 0)
+	    provider, dest_constraints, ndest_constraints, 0, NULL, 0)) != 0)
 		goto out;
 	if ((r = ssh_request_reply_decode(sock, msg)) != 0)
 		goto out;
@@ -663,10 +684,11 @@ ssh_remove_identity(int sock, const struct sshkey *key)
 int
 ssh_update_card(int sock, int add, const char *reader_id, const char *pin,
     u_int life, u_int confirm,
-    struct dest_constraint **dest_constraints, size_t ndest_constraints)
+    struct dest_constraint **dest_constraints, size_t ndest_constraints,
+    int cert_only, struct sshkey **certs, size_t ncerts)
 {
 	struct sshbuf *msg;
-	int r, constrained = (life || confirm);
+	int r, constrained = (life || confirm || dest_constraints || certs);
 	u_char type;
 
 	if (add) {
@@ -684,7 +706,8 @@ ssh_update_card(int sock, int add, const char *reader_id, const char *pin,
 		goto out;
 	if (constrained &&
 	    (r = encode_constraints(msg, life, confirm, 0, NULL,
-	    dest_constraints, ndest_constraints)) != 0)
+	    dest_constraints, ndest_constraints,
+	    cert_only, certs, ncerts)) != 0)
 		goto out;
 	if ((r = ssh_request_reply_decode(sock, msg)) != 0)
 		goto out;

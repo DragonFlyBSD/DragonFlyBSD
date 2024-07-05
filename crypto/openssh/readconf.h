@@ -1,4 +1,4 @@
-/* $OpenBSD: readconf.h,v 1.148 2022/09/17 10:33:18 djm Exp $ */
+/* $OpenBSD: readconf.h,v 1.156 2024/03/04 02:16:11 djm Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
@@ -28,6 +28,7 @@ struct allowed_cname {
 };
 
 typedef struct {
+	char   *host_arg;	/* Host arg as specified on command line. */
 	int     forward_agent;	/* Forward authentication agent. */
 	char   *forward_agent_sock_path; /* Optional path of the agent. */
 	int     forward_x11;	/* Forward X11 display. */
@@ -69,6 +70,7 @@ typedef struct {
 	char   *kex_algorithms;	/* SSH2 kex methods in order of preference. */
 	char   *ca_sign_algorithms;	/* Allowed CA signature algorithms */
 	char   *hostname;	/* Real host to connect. */
+	char   *tag;		/* Configuration tag name. */
 	char   *host_key_alias;	/* hostname alias for .ssh/known_hosts */
 	char   *proxy_command;	/* Proxy command for connecting the host. */
 	char   *user;		/* User to log in as. */
@@ -85,7 +87,7 @@ typedef struct {
 	char   *sk_provider; /* Security key provider */
 	int	verify_host_key_dns;	/* Verify host key using DNS */
 
-	int     num_identity_files;	/* Number of files for RSA/DSA identities. */
+	int     num_identity_files;	/* Number of files for identities. */
 	char   *identity_files[SSH_MAX_IDENTITY_FILES];
 	int    identity_file_userprovided[SSH_MAX_IDENTITY_FILES];
 	struct sshkey *identity_keys[SSH_MAX_IDENTITY_FILES];
@@ -153,12 +155,12 @@ typedef struct {
 	int	proxy_use_fdpass;
 
 	int	num_canonical_domains;
-	char	*canonical_domains[MAX_CANON_DOMAINS];
+	char	**canonical_domains;
 	int	canonicalize_hostname;
 	int	canonicalize_max_dots;
 	int	canonicalize_fallback_local;
 	int	num_permitted_cnames;
-	struct allowed_cname permitted_cnames[MAX_CANON_DOMAINS];
+	struct allowed_cname *permitted_cnames;
 
 	char	*revoked_host_keys;
 
@@ -177,6 +179,11 @@ typedef struct {
 	char   *known_hosts_command;
 
 	int	required_rsa_size;	/* minimum size of RSA keys */
+	int	enable_escape_commandline;	/* ~C commandline */
+	int	obscure_keystroke_timing_interval;
+
+	char	**channel_timeouts;	/* inactivity timeout by channel type */
+	u_int	num_channel_timeouts;
 
 	char	*ignored_unknown; /* Pattern list of unknown tokens to ignore */
 }       Options;
@@ -219,9 +226,14 @@ typedef struct {
 #define SSH_STRICT_HOSTKEY_YES	2
 #define SSH_STRICT_HOSTKEY_ASK	3
 
+/* ObscureKeystrokes parameters */
+#define SSH_KEYSTROKE_DEFAULT_INTERVAL_MS	20
+#define SSH_KEYSTROKE_CHAFF_MIN_MS		1024
+#define SSH_KEYSTROKE_CHAFF_RNG_MS		2048
+
 const char *kex_default_pk_alg(void);
 char	*ssh_connection_hash(const char *thishost, const char *host,
-    const char *portstr, const char *user);
+    const char *portstr, const char *user, const char *jump_host);
 void     initialize_options(Options *);
 int      fill_default_options(Options *);
 void	 fill_default_options_for_canonicalization(Options *);

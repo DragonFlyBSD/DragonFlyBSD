@@ -11,6 +11,7 @@ SRCS=	ssh.c
 SRCS+=	authfd.c channels.c clientloop.c mux.c readconf.c misc.c \
 	packet.c sshbuf-misc.c sshconnect.c sshconnect2.c sshkey.c sshtty.c
 
+
 .if defined(XAUTH_PATH)
 CFLAGS+= -DXAUTH_PATH=\"${XAUTH_PATH}\"
 .endif

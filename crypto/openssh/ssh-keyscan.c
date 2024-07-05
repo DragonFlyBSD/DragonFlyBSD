@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-keyscan.c,v 1.146 2022/08/19 04:02:46 dtucker Exp $ */
+/* $OpenBSD: ssh-keyscan.c,v 1.158 2024/06/14 00:25:25 djm Exp $ */
 /*
  * Copyright 1995, 1996 by David Mazieres <dm@lcs.mit.edu>.
  *
@@ -23,6 +23,7 @@
 #include <openssl/bn.h>
 #endif
 
+#include <limits.h>
 #include <netdb.h>
 #include <errno.h>
 #ifdef HAVE_POLL_H
@@ -40,6 +41,7 @@
 #include "sshbuf.h"
 #include "sshkey.h"
 #include "cipher.h"
+#include "digest.h"
 #include "kex.h"
 #include "compat.h"
 #include "myproposal.h"
@@ -52,6 +54,7 @@
 #include "ssherr.h"
 #include "ssh_api.h"
 #include "dns.h"
+#include "addr.h"
 
 /* Flag indicating whether IPv4 or IPv6.  This can be set on the command line.
    Default value is AF_UNSPEC means both IPv4 and IPv6. */
@@ -79,6 +82,10 @@ int print_sshfp = 0;		/* Print SSHFP records instead of known_hosts */
 
 int found_one = 0;		/* Successfully found a key */
 
+int hashalg = -1;		/* Hash for SSHFP records or -1 for all */
+
+int quiet = 0;			/* Don't print key comment lines */
+
 #define MAXMAXFD 256
 
 /* The number of seconds after which to give up on a TCP connection */
@@ -99,19 +106,13 @@ typedef struct Connection {
 	u_char c_status;	/* State of connection on this file desc. */
 #define CS_UNUSED 0		/* File descriptor unused */
 #define CS_CON 1		/* Waiting to connect/read greeting */
-#define CS_SIZE 2		/* Waiting to read initial packet size */
-#define CS_KEYS 3		/* Waiting to read public key packet */
 	int c_fd;		/* Quick lookup: c->c_fd == c - fdcon */
-	int c_plen;		/* Packet length field for ssh packet */
-	int c_len;		/* Total bytes which must be read. */
-	int c_off;		/* Length of data read so far. */
 	int c_keytype;		/* Only one of KT_* */
 	sig_atomic_t c_done;	/* SSH2 done */
 	char *c_namebase;	/* Address to free for c_name and c_namelist */
 	char *c_name;		/* Hostname of connection for errors */
 	char *c_namelist;	/* Pointer to other possible addresses */
 	char *c_output_name;	/* Hostname of connection for output */
-	char *c_data;		/* Data read from this fd */
 	struct ssh *c_ssh;	/* SSH-connection */
 	struct timespec c_ts;	/* Time at which connection gets aborted */
 	TAILQ_ENTRY(Connection) c_link;	/* List of connections in timeout order. */
@@ -127,15 +128,21 @@ fdlim_get(int hard)
 {
 #if defined(HAVE_GETRLIMIT) && defined(RLIMIT_NOFILE)
 	struct rlimit rlfd;
+	rlim_t lim;
 
 	if (getrlimit(RLIMIT_NOFILE, &rlfd) == -1)
-		return (-1);
-	if ((hard ? rlfd.rlim_max : rlfd.rlim_cur) == RLIM_INFINITY)
-		return SSH_SYSFDMAX;
-	else
-		return hard ? rlfd.rlim_max : rlfd.rlim_cur;
+		return -1;
+	lim = hard ? rlfd.rlim_max : rlfd.rlim_cur;
+	if (lim <= 0)
+		return -1;
+	if (lim == RLIM_INFINITY)
+		lim = SSH_SYSFDMAX;
+	if (lim >= INT_MAX)
+		lim = INT_MAX;
+	return lim;
 #else
-	return SSH_SYSFDMAX;
+	return (SSH_SYSFDMAX <= 0) ? -1 :
+	    ((SSH_SYSFDMAX >= INT_MAX) ? INT_MAX : SSH_SYSFDMAX);
 #endif
 }
 
@@ -309,11 +316,12 @@ keyprint_one(const char *host, struct sshkey *key)
 {
 	char *hostport = NULL, *hashed = NULL;
 	const char *known_host;
+	int r = 0;
 
 	found_one = 1;
 
 	if (print_sshfp) {
-		export_dns_rr(host, key, stdout, 0);
+		export_dns_rr(host, key, stdout, 0, hashalg);
 		return;
 	}
 
@@ -323,9 +331,9 @@ keyprint_one(const char *host, struct sshkey *key)
 		fatal("host_hash failed");
 	known_host = hash_hosts ? hashed : hostport;
 	if (!get_cert)
-		fprintf(stdout, "%s ", known_host);
-	sshkey_write(key, stdout);
-	fputs("\n", stdout);
+		r = fprintf(stdout, "%s ", known_host);
+	if (r >= 0 && sshkey_write(key, stdout) == 0)
+		(void)fputs("\n", stdout);
 	free(hashed);
 	free(hostport);
 }
@@ -384,7 +392,7 @@ tcpconnect(char *host)
 }
 
 static int
-conalloc(char *iname, char *oname, int keytype)
+conalloc(const char *iname, const char *oname, int keytype)
 {
 	char *namebase, *name, *namelist;
 	int s;
@@ -411,9 +419,6 @@ conalloc(char *iname, char *oname, int keytype)
 	fdcon[s].c_name = name;
 	fdcon[s].c_namelist = namelist;
 	fdcon[s].c_output_name = xstrdup(oname);
-	fdcon[s].c_data = (char *) &fdcon[s].c_plen;
-	fdcon[s].c_len = 4;
-	fdcon[s].c_off = 0;
 	fdcon[s].c_keytype = keytype;
 	monotime_ts(&fdcon[s].c_ts);
 	fdcon[s].c_ts.tv_sec += timeout;
@@ -431,8 +436,6 @@ confree(int s)
 		fatal("confree: attempt to free bad fdno %d", s);
 	free(fdcon[s].c_namebase);
 	free(fdcon[s].c_output_name);
-	if (fdcon[s].c_status == CS_KEYS)
-		free(fdcon[s].c_data);
 	fdcon[s].c_status = CS_UNUSED;
 	fdcon[s].c_keytype = 0;
 	if (fdcon[s].c_ssh) {
@@ -445,15 +448,6 @@ confree(int s)
 	read_wait[s].fd = -1;
 	read_wait[s].events = 0;
 	ncon--;
-}
-
-static void
-contouch(int s)
-{
-	TAILQ_REMOVE(&tq, &fdcon[s], c_link);
-	monotime_ts(&fdcon[s].c_ts);
-	fdcon[s].c_ts.tv_sec += timeout;
-	TAILQ_INSERT_TAIL(&tq, &fdcon[s], c_link);
 }
 
 static int
@@ -492,11 +486,11 @@ congreet(int s)
 
 	/*
 	 * Read the server banner as per RFC4253 section 4.2.  The "SSH-"
-	 * protocol identification string may be preceeded by an arbitarily
+	 * protocol identification string may be preceded by an arbitrarily
 	 * large banner which we must read and ignore.  Loop while reading
 	 * newline-terminated lines until we have one starting with "SSH-".
 	 * The ID string cannot be longer than 255 characters although the
-	 * preceeding banner lines may (in which case they'll be discarded
+	 * preceding banner lines may (in which case they'll be discarded
 	 * in multiple iterations of the outer loop).
 	 */
 	for (;;) {
@@ -550,8 +544,10 @@ congreet(int s)
 		confree(s);
 		return;
 	}
-	fprintf(stderr, "%c %s:%d %s\n", print_sshfp ? ';' : '#',
-	    c->c_name, ssh_port, chop(buf));
+	if (!quiet) {
+		fprintf(stdout, "%c %s:%d %s\n", print_sshfp ? ';' : '#',
+		    c->c_name, ssh_port, chop(buf));
+	}
 	keygrab_ssh2(c);
 	confree(s);
 }
@@ -560,35 +556,11 @@ static void
 conread(int s)
 {
 	con *c = &fdcon[s];
-	size_t n;
 
-	if (c->c_status == CS_CON) {
-		congreet(s);
-		return;
-	}
-	n = atomicio(read, s, c->c_data + c->c_off, c->c_len - c->c_off);
-	if (n == 0) {
-		error("read (%s): %s", c->c_name, strerror(errno));
-		confree(s);
-		return;
-	}
-	c->c_off += n;
+	if (c->c_status != CS_CON)
+		fatal("conread: invalid status %d", c->c_status);
 
-	if (c->c_off == c->c_len)
-		switch (c->c_status) {
-		case CS_SIZE:
-			c->c_plen = htonl(c->c_plen);
-			c->c_len = c->c_plen + 8 - (c->c_plen & 7);
-			c->c_off = 0;
-			c->c_data = xmalloc(c->c_len);
-			c->c_status = CS_KEYS;
-			break;
-		default:
-			fatal("conread: invalid status %d", c->c_status);
-			break;
-		}
-
-	contouch(s);
+	congreet(s);
 }
 
 static void
@@ -629,7 +601,7 @@ conloop(void)
 }
 
 static void
-do_host(char *host)
+do_one_host(char *host)
 {
 	char *name = strnnsep(&host, " \t\n");
 	int j;
@@ -642,6 +614,42 @@ do_host(char *host)
 				conloop();
 			conalloc(name, *host ? host : name, j);
 		}
+	}
+}
+
+static void
+do_host(char *host)
+{
+	char daddr[128];
+	struct xaddr addr, end_addr;
+	u_int masklen;
+
+	if (host == NULL)
+		return;
+	if (addr_pton_cidr(host, &addr, &masklen) != 0) {
+		/* Assume argument is a hostname */
+		do_one_host(host);
+	} else {
+		/* Argument is a CIDR range */
+		debug("CIDR range %s", host);
+		end_addr = addr;
+		if (addr_host_to_all1s(&end_addr, masklen) != 0)
+			goto badaddr;
+		/*
+		 * Note: we deliberately include the all-zero/ones addresses.
+		 */
+		for (;;) {
+			if (addr_ntop(&addr, daddr, sizeof(daddr)) != 0) {
+ badaddr:
+				error("Invalid address %s", host);
+				return;
+			}
+			debug("CIDR expand: address %s", daddr);
+			do_one_host(daddr);
+			if (addr_cmp(&addr, &end_addr) == 0)
+				break;
+			addr_increment(&addr);
+		};
 	}
 }
 
@@ -661,9 +669,8 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-46cDHv] [-f file] [-p port] [-T timeout] [-t type]\n"
-	    "\t\t   [host | addrlist namelist]\n",
-	    __progname);
+	    "usage: ssh-keyscan [-46cDHqv] [-f file] [-O option] [-p port] [-T timeout]\n"
+	    "                   [-t type] [host | addrlist namelist]\n");
 	exit(1);
 }
 
@@ -689,7 +696,7 @@ main(int argc, char **argv)
 	if (argc <= 1)
 		usage();
 
-	while ((opt = getopt(argc, argv, "cDHv46p:T:t:f:")) != -1) {
+	while ((opt = getopt(argc, argv, "cDHqv46O:p:T:t:f:")) != -1) {
 		switch (opt) {
 		case 'H':
 			hash_hosts = 1;
@@ -724,10 +731,21 @@ main(int argc, char **argv)
 			else
 				fatal("Too high debugging level.");
 			break;
+		case 'q':
+			quiet = 1;
+			break;
 		case 'f':
 			if (strcmp(optarg, "-") == 0)
 				optarg = NULL;
 			argv[fopt_count++] = optarg;
+			break;
+		case 'O':
+			/* Maybe other misc options in the future too */
+			if (strncmp(optarg, "hashalg=", 8) != 0)
+				fatal("Unsupported -O option");
+			if ((hashalg = ssh_digest_alg_by_name(
+			    optarg + 8)) == -1)
+				fatal("Unsupported hash algorithm");
 			break;
 		case 't':
 			get_keytypes = 0;
@@ -736,9 +754,11 @@ main(int argc, char **argv)
 				int type = sshkey_type_from_name(tname);
 
 				switch (type) {
+#ifdef WITH_DSA
 				case KEY_DSA:
 					get_keytypes |= KT_DSA;
 					break;
+#endif
 				case KEY_ECDSA:
 					get_keytypes |= KT_ECDSA;
 					break;
@@ -770,7 +790,6 @@ main(int argc, char **argv)
 		case '6':
 			IPv4or6 = AF_INET6;
 			break;
-		case '?':
 		default:
 			usage();
 		}
@@ -798,7 +817,8 @@ main(int argc, char **argv)
 		if (argv[j] == NULL)
 			fp = stdin;
 		else if ((fp = fopen(argv[j], "r")) == NULL)
-			fatal("%s: %s: %s", __progname, argv[j], strerror(errno));
+			fatal("%s: %s: %s", __progname,
+			    fp == stdin ? "<stdin>" : argv[j], strerror(errno));
 
 		while (getline(&line, &linesize, fp) != -1) {
 			/* Chomp off trailing whitespace and comments */
@@ -820,9 +840,11 @@ main(int argc, char **argv)
 		}
 
 		if (ferror(fp))
-			fatal("%s: %s: %s", __progname, argv[j], strerror(errno));
+			fatal("%s: %s: %s", __progname,
+			    fp == stdin ? "<stdin>" : argv[j], strerror(errno));
 
-		fclose(fp);
+		if (fp != stdin)
+			fclose(fp);
 	}
 	free(line);
 

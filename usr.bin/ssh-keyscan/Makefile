@@ -2,6 +2,8 @@
 .PATH: ${.CURDIR}/../../crypto/openssh
 
 PROG=	ssh-keyscan
+SRCS=	ssh-keyscan.c
+
 WARNS?=	3
 
 CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh
