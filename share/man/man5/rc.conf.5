@@ -1047,6 +1047,19 @@ By default, the files specified are
 .Pa /etc/rc.conf
 and
 .Pa /etc/rc.conf.local
+.It Va root_rw_mount
+.Pq Vt bool
+Set to
+.Dq Li YES
+by default.
+After the file systems are checked at boot time, the root filesystem
+is remounted as read-write if this is set to
+.Dq Li YES .
+Diskless systems that mount their root filesystem from a read-only
+remote share should set this to
+.Dq Li NO
+in
+.Pa rc.conf .
 .It Va fsck_y_enable
 .Pq Vt bool
 If set to
