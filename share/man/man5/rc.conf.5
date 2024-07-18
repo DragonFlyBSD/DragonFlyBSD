@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd February 14, 2024
+.Dd July 18, 2024
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -1066,6 +1066,19 @@ interfaces listed in
 .Va wg_interfaces .
 The default is
 .Pa /etc/wireguard .
+.It Va root_rw_mount
+.Pq Vt bool
+Set to
+.Dq Li YES
+by default.
+After the file systems are checked at boot time, the root filesystem
+is remounted as read-write if this is set to
+.Dq Li YES .
+Diskless systems that mount their root filesystem from a read-only
+remote share should set this to
+.Dq Li NO
+in
+.Pa rc.conf .
 .It Va fsck_y_enable
 .Pq Vt bool
 If set to
