@@ -434,6 +434,10 @@ procfs_rw(struct vop_read_args *ap)
 	LWPRELE(lp);
 
 	lockmgr(&pfs->pfs_lock, LK_RELEASE);
+
+	if (uio->uio_rw == UIO_WRITE && rtval == 0)
+		KNOTE(&PFSTOV(pfs)->v_pollinfo.vpi_kqinfo.ki_note, NOTE_WRITE);
+
 out:
 	pfs_pdone(p);
 

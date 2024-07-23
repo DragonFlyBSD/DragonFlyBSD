@@ -70,6 +70,7 @@ static int	procfs_close (struct vop_close_args *);
 static int	procfs_getattr (struct vop_getattr_args *);
 static int	procfs_inactive (struct vop_inactive_args *);
 static int	procfs_ioctl (struct vop_ioctl_args *);
+static int	procfs_kqfilter (struct vop_kqfilter_args *);
 static int	procfs_lookup (struct vop_old_lookup_args *);
 static int	procfs_open (struct vop_open_args *);
 static int	procfs_print (struct vop_print_args *);
@@ -110,7 +111,8 @@ struct vop_ops procfs_vnode_vops = {
 	.vop_setattr =		procfs_setattr,
 	.vop_old_symlink =	(void *)procfs_badop,
 	.vop_write =		(void *)procfs_rw,
-	.vop_ioctl =		procfs_ioctl
+	.vop_ioctl =		procfs_ioctl,
+	.vop_kqfilter =		procfs_kqfilter,
 };
 
 
@@ -1186,3 +1188,88 @@ atopid(const char *b, u_int len)
 	return (p);
 }
 
+/*
+ * kqfilter operations
+ */
+static void
+procfs_filt_detach(struct knote *kn)
+{
+	struct vnode *vp = (void *)kn->kn_hook;
+
+	knote_remove(&vp->v_pollinfo.vpi_kqinfo.ki_note, kn);
+}
+
+static int
+procfs_filt_read(struct knote *kn, long hint)
+{
+	if (hint == NOTE_REVOKE) {
+		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT);
+		return (1);
+	}
+
+	/* Files on procfs have a size of 0. */
+	kn->kn_data = 0;
+	if (kn->kn_sfflags & NOTE_OLDAPI)
+		return (1);
+	return (kn->kn_data != 0);
+}
+
+static int
+procfs_filt_write(struct knote *kn, long hint)
+{
+	if (hint == NOTE_REVOKE)
+		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT);
+	kn->kn_data = 0;
+	return (1);
+}
+
+static int
+procfs_filt_vnode(struct knote *kn, long hint)
+{
+	if (kn->kn_sfflags & hint)
+		kn->kn_fflags |= hint;
+	if (hint == NOTE_REVOKE) {
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
+		return (1);
+	}
+	return (kn->kn_fflags != 0);
+}
+
+static struct filterops procfs_read_filtops = {
+	FILTEROP_ISFD | FILTEROP_MPSAFE, NULL,
+	procfs_filt_detach, procfs_filt_read,
+};
+static struct filterops procfs_write_filtops = {
+	FILTEROP_ISFD | FILTEROP_MPSAFE, NULL,
+	procfs_filt_detach, procfs_filt_write,
+};
+static struct filterops procfs_vnode_filtops = {
+	FILTEROP_ISFD | FILTEROP_MPSAFE, NULL,
+	procfs_filt_detach, procfs_filt_vnode,
+};
+
+static int
+procfs_kqfilter(struct vop_kqfilter_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+	struct knote *kn = ap->a_kn;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &procfs_read_filtops;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &procfs_write_filtops;
+		break;
+	case EVFILT_VNODE:
+		kn->kn_fop = &procfs_vnode_filtops;
+		break;
+	default:
+		return (EOPNOTSUPP);
+	}
+
+	kn->kn_hook = (caddr_t)vp;
+	knote_insert(&vp->v_pollinfo.vpi_kqinfo.ki_note, kn);
+
+	return (0);
+}
