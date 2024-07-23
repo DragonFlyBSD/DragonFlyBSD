@@ -60,7 +60,7 @@
 #include <sys/ptrace.h>
 
 static int	procfs_rwmem (struct proc *curp,
-				  struct proc *p, struct uio *uio);
+			      struct proc *p, struct uio *uio);
 
 /*
  * p->p_token is held on entry.
@@ -186,7 +186,8 @@ procfs_domem(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		 * Can't trace a process that's currently exec'ing.
 		 */
 		error = EAGAIN;
-	} else if (!CHECKIO(curp, p) || p_trespass(curp->p_ucred, p->p_ucred)) {
+	} else if (!CHECKIO(curp, p) ||
+		   p_trespass(curp->p_ucred, p->p_ucred)) {
 		/*
 		 * Can't trace processes outside our jail
 		 */

@@ -189,7 +189,7 @@ procfs_open(struct vop_open_args *ap)
 
 		p1 = curproc;
 		KKASSERT(p1);
-		/* Can't trace a process that's currently exec'ing. */ 
+		/* Can't trace a process that's currently exec'ing. */
 		if ((p2->p_flags & P_INEXEC) != 0) {
 			error = EAGAIN;
 			goto done;
@@ -258,7 +258,7 @@ procfs_close(struct vop_close_args *ap)
 			p->p_step = 0;
 			spin_unlock(&p->p_spin);
 			wakeup(&p->p_stype);
-		        wakeup(&p->p_step);
+			wakeup(&p->p_step);
 		}
 		pfs_pdone(p);
 		break;
@@ -293,7 +293,7 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 		goto done;
 	}
 
-	/* Can't trace a process that's currently exec'ing. */ 
+	/* Can't trace a process that's currently exec'ing. */
 	if ((procp->p_flags & P_INEXEC) != 0) {
 		error = EAGAIN;
 		goto done;
@@ -305,111 +305,111 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 
 	switch (ap->a_command) {
 	case PIOCBIS:
-	  spin_lock(&procp->p_spin);
-	  procp->p_stops |= *(unsigned int*)ap->a_data;
-	  spin_unlock(&procp->p_spin);
-	  break;
+		spin_lock(&procp->p_spin);
+		procp->p_stops |= *(unsigned int*)ap->a_data;
+		spin_unlock(&procp->p_spin);
+		break;
 	case PIOCBIC:
-	  spin_lock(&procp->p_spin);
-	  procp->p_stops &= ~*(unsigned int*)ap->a_data;
-	  spin_unlock(&procp->p_spin);
-	  break;
+		spin_lock(&procp->p_spin);
+		procp->p_stops &= ~*(unsigned int*)ap->a_data;
+		spin_unlock(&procp->p_spin);
+		break;
 	case PIOCSFL:
-	  /*
-	   * NFLAGS is "non-suser_xxx flags" -- currently, only
-	   * PFS_ISUGID ("ignore set u/g id");
-	   */
+		/*
+		* NFLAGS is "non-suser_xxx flags" -- currently, only
+		* PFS_ISUGID ("ignore set u/g id");
+		*/
 #define NFLAGS	(PF_ISUGID)
-	  flags = (unsigned char)*(unsigned int*)ap->a_data;
-	  if (flags & NFLAGS &&
-	      (error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT)))
-	  {
-	    goto done;
-	  }
-	  procp->p_pfsflags = flags;
-	  break;
+		flags = (unsigned char)*(unsigned int*)ap->a_data;
+		if (flags & NFLAGS &&
+		    (error = caps_priv_check(ap->a_cred,
+					     SYSCAP_RESTRICTEDROOT))) {
+			goto done;
+		}
+		procp->p_pfsflags = flags;
+		break;
 	case PIOCGFL:
-	  *(unsigned int*)ap->a_data = (unsigned int)procp->p_pfsflags;
-	  break;
+		*(unsigned int*)ap->a_data = (unsigned int)procp->p_pfsflags;
+		break;
 	case PIOCSTATUS:
-	  /*
-	   * NOTE: syscall entry deals with stopevents and may run without
-	   *	   the MP lock.
-	   */
-	  psp = (struct procfs_status *)ap->a_data;
-	  psp->flags = procp->p_pfsflags;
-	  psp->events = procp->p_stops;
-	  spin_lock(&procp->p_spin);
-	  if (procp->p_step) {
-	    psp->state = 0;
-	    psp->why = procp->p_stype;
-	    psp->val = procp->p_xstat;
-	    spin_unlock(&procp->p_spin);
-	  } else {
-	    psp->state = 1;
-	    spin_unlock(&procp->p_spin);
-	    psp->why = 0;	/* Not defined values */
-	    psp->val = 0;	/* Not defined values */
-	  }
-	  break;
+		/*
+		* NOTE: syscall entry deals with stopevents and may run
+		*	without the MP lock.
+		*/
+		psp = (struct procfs_status *)ap->a_data;
+		psp->flags = procp->p_pfsflags;
+		psp->events = procp->p_stops;
+		spin_lock(&procp->p_spin);
+		if (procp->p_step) {
+			psp->state = 0;
+			psp->why = procp->p_stype;
+			psp->val = procp->p_xstat;
+			spin_unlock(&procp->p_spin);
+		} else {
+			psp->state = 1;
+			spin_unlock(&procp->p_spin);
+			psp->why = 0;	/* Not defined values */
+			psp->val = 0;	/* Not defined values */
+		}
+		break;
 	case PIOCWAIT:
-	  /*
-	   * NOTE: syscall entry deals with stopevents and may run without
-	   *	   the MP lock.
-	   */
-	  psp = (struct procfs_status *)ap->a_data;
-	  spin_lock(&procp->p_spin);
-	  while (procp->p_step == 0) {
-	    tsleep_interlock(&procp->p_stype, PCATCH);
-	    spin_unlock(&procp->p_spin);
-	    if (procp->p_stops == 0) {
-		error = 0;
-		goto done;
-	    }
-	    if (procp->p_flags & P_POSTEXIT) {
-		error = EINVAL;
-		goto done;
-	    }
-	    if (procp->p_flags & P_INEXEC) {
-		error = EAGAIN;
-		goto done;
-	    }
-	    error = tsleep(&procp->p_stype, PCATCH | PINTERLOCKED,
-			   "piocwait", 0);
-	    if (error)
-	      goto done;
-	    spin_lock(&procp->p_spin);
-	  }
-	  spin_unlock(&procp->p_spin);
-	  psp->state = 1;	/* It stopped */
-	  psp->flags = procp->p_pfsflags;
-	  psp->events = procp->p_stops;
-	  psp->why = procp->p_stype;	/* why it stopped */
-	  psp->val = procp->p_xstat;	/* any extra info */
-	  break;
+		/*
+		* NOTE: syscall entry deals with stopevents and may run
+		*	without the MP lock.
+		*/
+		psp = (struct procfs_status *)ap->a_data;
+		spin_lock(&procp->p_spin);
+		while (procp->p_step == 0) {
+			tsleep_interlock(&procp->p_stype, PCATCH);
+			spin_unlock(&procp->p_spin);
+			if (procp->p_stops == 0) {
+				error = 0;
+				goto done;
+			}
+			if (procp->p_flags & P_POSTEXIT) {
+				error = EINVAL;
+				goto done;
+			}
+			if (procp->p_flags & P_INEXEC) {
+				error = EAGAIN;
+				goto done;
+			}
+			error = tsleep(&procp->p_stype, PCATCH | PINTERLOCKED,
+				       "piocwait", 0);
+			if (error)
+				goto done;
+			spin_lock(&procp->p_spin);
+		}
+		spin_unlock(&procp->p_spin);
+		psp->state = 1;	/* It stopped */
+		psp->flags = procp->p_pfsflags;
+		psp->events = procp->p_stops;
+		psp->why = procp->p_stype;	/* why it stopped */
+		psp->val = procp->p_xstat;	/* any extra info */
+		break;
 	case PIOCCONT:	/* Restart a proc */
-	  /*
-	   * NOTE: syscall entry deals with stopevents and may run without
-	   *	   the MP lock.  However, the caller is presumably interlocked
-	   *	   by having waited.
-	   */
-	  if (procp->p_step == 0) {
-	    error = EINVAL;	/* Can only start a stopped process */
-	    goto done;
-	  }
-	  if ((signo = *(int*)ap->a_data) != 0) {
-	    if (signo >= NSIG || signo <= 0) {
-	      error = EINVAL;
-	      goto done;
-	    }
-	    ksignal(procp, signo);
-	  }
-	  procp->p_step = 0;
-	  wakeup(&procp->p_step);
-	  break;
+		/*
+		* NOTE: syscall entry deals with stopevents and may run
+		*	without the MP lock.  However, the caller is
+		*	presumably interlocked by having waited.
+		*/
+		if (procp->p_step == 0) {
+			error = EINVAL;	/* Can only start a stopped process */
+			goto done;
+		}
+		if ((signo = *(int*)ap->a_data) != 0) {
+			if (signo >= NSIG || signo <= 0) {
+				error = EINVAL;
+				goto done;
+			}
+			ksignal(procp, signo);
+		}
+		procp->p_step = 0;
+		wakeup(&procp->p_step);
+		break;
 	default:
-	  error = ENOTTY;
-	  goto done;
+		error = ENOTTY;
+		goto done;
 	}
 	error = 0;
 done:
@@ -526,7 +526,7 @@ procfs_getattr(struct vop_getattr_args *ap)
 	int error;
 
 	/*
-	 * First make sure that the process and its credentials 
+	 * First make sure that the process and its credentials
 	 * still exist.
 	 */
 	switch (pfs->pfs_type) {
@@ -684,9 +684,9 @@ procfs_getattr(struct vop_getattr_args *ap)
 		vap->va_bytes = vap->va_size = sizeof(struct fpreg);
 		break;
 
-        case Pdbregs:
-                vap->va_bytes = vap->va_size = sizeof(struct dbreg);
-                break;
+	case Pdbregs:
+		vap->va_bytes = vap->va_size = sizeof(struct dbreg);
+		break;
 
 	case Ptype:
 	case Pmap:
@@ -741,8 +741,8 @@ procfs_access(struct vop_access_args *ap)
 
 	error = VOP_GETATTR(ap->a_vp, &vattr);
 	if (!error)
-		error = vop_helper_access(ap, vattr.va_uid, vattr.va_gid, 
-				vattr.va_mode, 0);
+		error = vop_helper_access(ap, vattr.va_uid, vattr.va_gid,
+					  vattr.va_mode, 0);
 	return (error);
 }
 
@@ -841,7 +841,7 @@ procfs_lookup(struct vop_old_lookup_args *ap)
 		break;
 	found:
 		error = procfs_allocvp(dvp->v_mount, vpp, pfs->pfs_pid,
-					pt->pt_pfstype);
+				       pt->pt_pfstype);
 		goto out;
 
 	default:
@@ -898,8 +898,8 @@ procfs_readdir(struct vop_readdir_args *ap)
 	error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
 	if (error)
 		return (error);
-	pfs = VTOPFS(ap->a_vp);
 
+	pfs = VTOPFS(ap->a_vp);
 	switch (pfs->pfs_type) {
 	case Pproc:
 		/*
@@ -1064,7 +1064,7 @@ procfs_readdir_root_callback(struct proc *p, void *data)
 	default:
 		if (!PRISON_CHECK(info->cred, p->p_ucred))
 			return(0);
-		if (ps_showallprocs == 0 && 
+		if (ps_showallprocs == 0 &&
 		    info->cred->cr_uid != 0 &&
 		    info->cred->cr_uid != p->p_ucred->cr_uid) {
 			return(0);
@@ -1080,7 +1080,7 @@ procfs_readdir_root_callback(struct proc *p, void *data)
 
 		d_ino = PROCFS_FILENO(p->p_pid, Pproc);
 		d_namlen = ksnprintf(d_name_pid, sizeof(d_name_pid),
-		    "%ld", (long)p->p_pid);
+				     "%ld", (long)p->p_pid);
 		d_name = d_name_pid;
 		d_type = DT_DIR;
 		break;
@@ -1122,7 +1122,6 @@ procfs_readlink(struct vop_readlink_args *ap)
 			return (EINVAL);
 
 		len = ksnprintf(buf, sizeof(buf), "%ld", (long)curproc->p_pid);
-
 		return (uiomove(buf, len, ap->a_uio));
 	case Pfile:
 		/*

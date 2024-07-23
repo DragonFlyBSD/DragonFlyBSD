@@ -58,7 +58,7 @@
 		error = ENOMEM;			\
 		goto bailout;			\
 	}					\
-    } while (0)
+} while (0)
 
 int
 procfs_dostatus(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
@@ -89,7 +89,7 @@ procfs_dostatus(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
                                 euid ruid rgid,egid,groups[1 .. NGROUPS]
 */
 	KASSERT(sizeof(psbuf) > MAXCOMLEN,
-			("Too short buffer for new MAXCOMLEN"));
+		("Too short buffer for new MAXCOMLEN"));
 
 	ps = psbuf;
 	bcopy(p->p_comm, ps, MAXCOMLEN);
@@ -218,8 +218,8 @@ procfs_docmdline(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		buf = NULL;
 	} else if (p->p_upmap != NULL && p->p_upmap->proc_title[0] &&
 		   (ps_argsopen || (CHECKIO(curp, p) &&
-			     (p->p_flags & P_INEXEC) == 0 &&
-			     !p_trespass(curp->p_ucred, p->p_ucred))
+				    (p->p_flags & P_INEXEC) == 0 &&
+				    !p_trespass(curp->p_ucred, p->p_ucred))
 	    )) {
 		/*
 		 * Args set via writable user process mmap.
@@ -236,7 +236,7 @@ procfs_docmdline(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	} else if (p->p_args &&
 		   (ps_argsopen || (CHECKIO(curp, p) &&
 				    (p->p_flags & P_INEXEC) == 0 &&
-				     !p_trespass(curp->p_ucred, p->p_ucred))
+				    !p_trespass(curp->p_ucred, p->p_ucred))
 		   )) {
 		bp = p->p_args->ar_args;
 		buflen = p->p_args->ar_length;

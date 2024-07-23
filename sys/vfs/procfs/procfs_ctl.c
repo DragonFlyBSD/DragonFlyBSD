@@ -110,7 +110,7 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 
 	ASSERT_LWKT_TOKEN_HELD(&p->p_token);
 
-	/* Can't trace a process that's currently exec'ing. */ 
+	/* Can't trace a process that's currently exec'ing. */
 	if ((p->p_flags & P_INEXEC) != 0)
 		return EAGAIN;
 	/*
@@ -251,18 +251,19 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 		error = 0;
 		if (p->p_flags & P_TRACED) {
 			while (error == 0 &&
-					p->p_stat != SSTOP &&
-					(p->p_flags & P_TRACED) &&
-					(p->p_pptr == curp)) {
-				error = tsleep((caddr_t) p,
-						PCATCH, "procfsx", 0);
+			       p->p_stat != SSTOP &&
+			       (p->p_flags & P_TRACED) &&
+			       (p->p_pptr == curp))
+			{
+				error = tsleep((caddr_t) p, PCATCH,
+					       "procfsx", 0);
 			}
 			if (error == 0 && !TRACE_WAIT_P(curp, p))
 				error = EBUSY;
 		} else {
 			while (error == 0 && p->p_stat != SSTOP) {
-				error = tsleep((caddr_t) p,
-						PCATCH, "procfs", 0);
+				error = tsleep((caddr_t) p, PCATCH,
+					       "procfs", 0);
 			}
 		}
 		return (error);

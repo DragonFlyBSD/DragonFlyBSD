@@ -115,7 +115,7 @@ loop:
 			spin_lock(&ph->spin);
 			for (pfs = ph->first; pfs; pfs = pfs->pfs_next) {
 				if (PFSTOV(pfs) == vp &&
-				    pfs->pfs_pid == pid && 
+				    pfs->pfs_pid == pid &&
 				    pfs->pfs_type == pfs_type &&
 				    PFSTOV(pfs)->v_mount == mp) {
 					break;
@@ -395,9 +395,9 @@ procfs_rw(struct vop_read_args *ap)
 		rtval = procfs_dofpregs(curp, lp, pfs, uio);
 		break;
 
-        case Pdbregs:
-                rtval = procfs_dodbregs(curp, lp, pfs, uio);
-                break;
+	case Pdbregs:
+		rtval = procfs_dodbregs(curp, lp, pfs, uio);
+		break;
 
 	case Pctl:
 		rtval = procfs_doctl(curp, lp, pfs, uio);
