@@ -65,6 +65,7 @@
 #include <bus/pci/pci_cfgreg.h>
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pci_private.h>
+#include <machine/cputypes.h>
 
 #include <vm/vm_param.h>
 
@@ -310,6 +311,10 @@ TUNABLE_INT("debug.acpi.allow_method_calls", &acpi_allow_mcall);
 static int acpi_susp_bounce;
 SYSCTL_INT(_debug_acpi, OID_AUTO, suspend_bounce, CTLFLAG_RW,
     &acpi_susp_bounce, 0, "Don't actually suspend, just test devices.");
+
+#if defined(__x86_64__)
+int acpi_override_isa_irq_polarity;
+#endif
 
 /*
  * ACPI can only be loaded as a module by the loader; activating it after
@@ -631,6 +636,22 @@ acpi_attach(device_t dev)
     SYSCTL_ADD_INT(&sc->acpi_sysctl_ctx, SYSCTL_CHILDREN(sc->acpi_sysctl_tree),
 	OID_AUTO, "handle_reboot", CTLFLAG_RW,
 	&sc->acpi_handle_reboot, 0, "Use ACPI Reset Register to reboot");
+
+#if defined(__x86_64__)
+    /*
+     * Enable workaround for incorrect ISA IRQ polarity by default on
+     * systems with Intel CPUs.
+     */
+    if (cpu_vendor_id == CPU_VENDOR_INTEL)
+	acpi_override_isa_irq_polarity = 1;
+
+    TUNABLE_INT_FETCH("hw.acpi.override_isa_irq_polarity",
+	&acpi_override_isa_irq_polarity);
+    SYSCTL_ADD_INT(&sc->acpi_sysctl_ctx, SYSCTL_CHILDREN(sc->acpi_sysctl_tree),
+	OID_AUTO, "override_isa_irq_polarity", CTLFLAG_RD,
+	&acpi_override_isa_irq_polarity, 0,
+	"Force active-hi polarity for edge-triggered ISA IRQs");
+#endif
 
     /*
      * Default to 1 second before sleeping to give some machines time to

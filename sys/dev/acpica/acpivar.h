@@ -239,6 +239,18 @@ extern int	acpi_quirks;
 #define ACPI_Q_MADT_IRQ0	(1 << 2)
 #define ACPI_Q_BATT_RATE_ABS	(1 << 3)
 
+#if defined(__x86_64__)
+/*
+ * Certain Intel BIOSes have buggy AML that specify an IRQ that is
+ * edge-sensitive and active-lo.  Normally, edge-sensitive IRQs should
+ * be active-hi.  If this value is non-zero, edge-sensitive ISA IRQs
+ * are forced to be active-hi instead.  At least some AMD systems use
+ * active-lo edge-sensitive ISA IRQs, so this setting is only enabled
+ * by default on systems with Intel CPUs.
+ */
+extern int	acpi_override_isa_irq_polarity;
+#endif
+
 /*
  * Note that the low ivar values are reserved to provide
  * interface compatibility with ISA drivers which can also

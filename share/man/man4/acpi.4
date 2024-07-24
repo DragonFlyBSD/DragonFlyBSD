@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/acpi.4,v 1.61.8.1 2009/04/15 03:14:26 kensmith Exp $
 .\"
-.Dd May 29, 2020
+.Dd July 25, 2024
 .Dt ACPI 4
 .Os
 .Sh NAME
@@ -270,6 +270,12 @@ is a valid list of two interfaces
 .Qq Li FreeBSD
 and
 .Qq Li Linux .
+.It Va hw.acpi.override_isa_irq_polarity (x86)
+Forces active-lo polarity for edge-triggered ISA interrupts.
+Some older systems incorrectly specify active-lo polarity for ISA
+interrupts and this override fixes those systems.
+This override is enabled by default on systems with Intel CPUs,
+but can be enabled or disabled by setting the tunable explicitly.
 .It Va hw.acpi.reset_video
 Enables calling the VESA reset BIOS vector on the resume path.
 This can fix some graphics cards that have problems such as LCD white-out

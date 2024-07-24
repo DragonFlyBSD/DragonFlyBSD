@@ -137,14 +137,11 @@ acpi_config_intr(device_t dev, ACPI_RESOURCE *res)
     }
 
 #if defined(__x86_64__)
-    /*
-     * XXX: Certain BIOSes have buggy AML that specify an IRQ that is
-     * edge-sensitive and active-lo.  However, edge-sensitive IRQs
-     * should be active-hi.  Force IRQs with an ISA IRQ value to be
-     * active-hi instead.
-     */
-    if (irq < 16 && trig == ACPI_EDGE_SENSITIVE && pol == ACPI_ACTIVE_LOW)
+    if (irq < 16 && trig == ACPI_EDGE_SENSITIVE && pol == ACPI_ACTIVE_LOW &&
+	acpi_override_isa_irq_polarity) {
+	device_printf(dev, "forcing active-hi polarity for IRQ %u\n", irq);
 	pol = ACPI_ACTIVE_HIGH;
+    }
 #endif
 
     if (trig == ACPI_EDGE_SENSITIVE)
