@@ -1020,8 +1020,10 @@ tun_filter_read(struct knote *kn, long hint)
 	int ready = 0;
 
 	ifnet_serialize_all(ifp);
-	if (!ifsq_is_empty(ifq_get_subq_default(&ifp->if_snd)))
-		ready = 1;
+	if (!ifsq_is_empty(ifq_get_subq_default(&ifp->if_snd))) {
+		if ((kn->kn_sfflags & NOTE_HUPONLY) == 0)
+			ready = 1;
+	}
 	ifnet_deserialize_all(ifp);
 
 	return (ready);

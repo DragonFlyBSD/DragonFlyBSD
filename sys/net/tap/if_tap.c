@@ -1024,11 +1024,13 @@ static int
 tap_filter_read(struct knote *kn, long hint)
 {
 	struct tap_softc *sc = (struct tap_softc *)kn->kn_hook;
+	int ready = 0;
 
-	if (IF_QEMPTY(&sc->tap_devq) == 0)	/* XXX serializer */
-		return (1);
-	else
-		return (0);
+	if (!IF_QEMPTY(&sc->tap_devq)) {	/* XXX serializer */
+		if ((kn->kn_sfflags & NOTE_HUPONLY) == 0)
+			ready = 1;
+	}
+	return ready;
 }
 
 static int

@@ -76,6 +76,8 @@ static MALLOC_DEFINE(M_IOCTLMAP, "ioctlmap", "mapped ioctl handler buffer");
 static MALLOC_DEFINE(M_SELECT, "select", "select() buffer");
 MALLOC_DEFINE(M_IOV, "iov", "large iov's");
 
+static struct krate krate_poll = { .freq = 1 };
+
 typedef struct kfd_set {
         fd_mask	fds_bits[2];
 } kfd_set;
@@ -607,7 +609,9 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map,
 		if (iomc == NULL ||
 		    (iomc->start == 0 && iomc->maptocmd == 0
 		     && iomc->wrapfunc == NULL && iomc->mapfunc == NULL)) {
-			kprintf("%s: 'ioctl' fd=%d, cmd=0x%lx ('%c',%d) not implemented\n",
+			krateprintf(&krate_poll,
+				"%s: 'ioctl' fd=%d, cmd=0x%lx ('%c',%d) "
+				"not implemented\n",
 			       map->sys, fd, maskcmd,
 			       (int)((maskcmd >> 8) & 0xff),
 			       (int)(maskcmd & 0xff));
@@ -635,10 +639,12 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map,
 						    iomc->maptocmd, iomc->maptoend,
 						    com, ocom);
 			} else {
-				kprintf("%s: Invalid mapping for fd=%d, cmd=%#lx ('%c',%d)\n",
-				       map->sys, fd, maskcmd,
-				       (int)((maskcmd >> 8) & 0xff),
-				       (int)(maskcmd & 0xff));
+				krateprintf(&krate_poll,
+					"%s: Invalid mapping for fd=%d, "
+					"cmd=%#lx ('%c',%d)\n",
+					map->sys, fd, maskcmd,
+					(int)((maskcmd >> 8) & 0xff),
+					(int)(maskcmd & 0xff));
 				error = EINVAL;
 				goto done;
 			}
@@ -959,7 +965,8 @@ select_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 				++*events;
 
 				if (nseldebug) {
-					kprintf("select fd %d filter %d "
+					kprintf(
+					    "select fd %d filter %d "
 					    "serial %ju\n", fd, filter,
 					    (uintmax_t)
 					    skap->lwp->lwp_kqueue_serial);
@@ -1591,11 +1598,12 @@ deregister:
 		 * set poll return bits to prevent a live-lock.
 		 */
 		if (pfd->revents == 0) {
-			kprintf("poll index %ju no-action %ju/%d "
+			krateprintf(&krate_poll,
+				"poll index %ju no-action %ju/%d "
 				"events=%08x kevpfilt=%d/%08x\n",
-			    (uintmax_t)pi, (uintmax_t)kevp[i].ident,
-			    pfd->fd, pfd->events,
-			    kevp[i].filter, kevp[i].flags);
+				(uintmax_t)pi, (uintmax_t)kevp[i].ident,
+				pfd->fd, pfd->events,
+				kevp[i].filter, kevp[i].flags);
 			goto deregister;
 		}
 	}
