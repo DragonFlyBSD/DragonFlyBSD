@@ -196,6 +196,12 @@ DoWorkerMounts(worker_t *work)
 		++work->mount_error;
 	}
 	free(buf);
+	asprintf(&buf, "%s/usr/packages", work->basedir);
+	if (mkdir(buf, 0755) != 0) {
+		fprintf(stderr, "Command failed: mkdir %s\n", buf);
+		++work->mount_error;
+	}
+	free(buf);
 
 	domount(work, TMPFS_RW,  "dummy", "/boot", NULL);
 
