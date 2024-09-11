@@ -569,4 +569,5 @@ struct sysent sysent[] = {
 	{ AS(fexecve_args), 4, (sy_call_t *)sys_fexecve },	/* 552 = fexecve */
 	{ AS(posix_fallocate_args), 4, (sy_call_t *)sys_posix_fallocate },	/* 553 = posix_fallocate */
 	{ AS(fdatasync_args), 4, (sy_call_t *)sys_fdatasync },	/* 554 = fdatasync */
+	{ AS(futimesat_args), 4, (sy_call_t *)sys_futimesat },	/* 555 = futimesat */
 };

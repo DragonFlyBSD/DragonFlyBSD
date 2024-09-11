@@ -233,7 +233,8 @@ MLINKS+=umtx.2 umtx_sleep.2 \
 	umtx.2 umtx_wakeup.2
 MLINKS+=utimensat.2 futimens.2
 MLINKS+=utimes.2 futimes.2 \
-	utimes.2 lutimes.2
+	utimes.2 lutimes.2 \
+	utimes.2 futimesat.2
 MLINKS+=varsym.2 varsym_get.2 \
 	varsym.2 varsym_list.2 \
 	varsym.2 varsym_set.2

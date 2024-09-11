@@ -317,4 +317,5 @@ MIASM =  \
 	__realpath.o \
 	fexecve.o \
 	posix_fallocate.o \
-	fdatasync.o
+	fdatasync.o \
+	futimesat.o

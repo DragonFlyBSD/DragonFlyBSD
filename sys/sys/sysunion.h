@@ -324,4 +324,5 @@ union sysunion {
 	struct	fexecve_args fexecve;
 	struct	posix_fallocate_args posix_fallocate;
 	struct	fdatasync_args fdatasync;
+	struct	futimesat_args futimesat;
 };

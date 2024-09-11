@@ -738,3 +738,4 @@
 552	STD	{ int fexecve(int fd, char **argv, char **envv); }
 553	STD	{ int posix_fallocate(int fd, off_t offset, off_t len); }
 554	STD	{ int fdatasync(int fd); }
+555	STD	{ int futimesat(int fd, const char *path, const struct timeval *tptr); }

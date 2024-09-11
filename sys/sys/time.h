@@ -243,8 +243,12 @@ __BEGIN_DECLS
 #if __BSD_VISIBLE
 int	adjtime(const struct timeval *, struct timeval *);
 int	futimes(int, const struct timeval *);
+int	futimesat(int fd, const char *path, const struct timeval times[2]);
 int	lutimes(const char *, const struct timeval *);
 int	settimeofday(const struct timeval *, const struct timezone *);
+
+#define HAVE_FUTIMESAT	1
+
 #endif
 
 #if __XSI_VISIBLE

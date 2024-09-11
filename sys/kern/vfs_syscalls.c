@@ -3941,6 +3941,37 @@ sys_futimes(struct sysmsg *sysmsg, const struct futimes_args *uap)
 	return (error);
 }
 
+/*
+ * futimesat_args(int fd, const char *path, struct timeval *tptr)
+ *
+ * Set the access and modification times of a file.
+ */
+int
+sys_futimesat(struct sysmsg *sysmsg, const struct futimesat_args *uap)
+{
+	struct timespec ts[2];
+	struct nlookupdata nd;
+	struct file *fp;
+	int error;
+
+	if (uap->tptr) {
+		struct timeval tv[2];
+
+		if ((error = copyin(uap->tptr, tv, sizeof(tv))) != 0)
+			return error;
+		if ((error = getutimes(tv, ts)) != 0)
+			return error;
+	}
+
+	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path,
+	                        UIO_USERSPACE, 0);
+	if (error == 0)
+		error = kern_utimensat(&nd, uap->tptr ? ts : NULL, 0);
+	nlookup_done_at(&nd, fp);
+
+	return (error);
+}
+
 int
 kern_utimensat(struct nlookupdata *nd, const struct timespec *ts, int flags)
 {

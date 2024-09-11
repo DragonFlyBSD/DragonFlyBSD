@@ -37,7 +37,8 @@
 .Sh NAME
 .Nm utimes ,
 .Nm lutimes ,
-.Nm futimes
+.Nm futimes ,
+.Nm futimesat
 .Nd set file access and modification times
 .Sh LIBRARY
 .Lb libc
@@ -49,6 +50,8 @@
 .Fn lutimes "const char *path" "const struct timeval *times"
 .Ft int
 .Fn futimes "int fd" "const struct timeval *times"
+.Ft int
+.Fn futimesat "int fd" "const char *path" "const struct timeval times[2]"
 .Sh DESCRIPTION
 The access and modification times of the file named by
 .Fa path
@@ -133,6 +136,13 @@ does not match the owner of the file and is not the super-user.
 .It Bq Er EROFS
 The file system containing the file is mounted read-only.
 .El
+.Pp
+.Fn futimesat
+is like
+.Fn utimes
+except in the case where a relative path is specified.  Such a path will
+be resolved relative to the directory passed in
+.Fa fd .
 .Pp
 .Fn futimes
 will fail if:

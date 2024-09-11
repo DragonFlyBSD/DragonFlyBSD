@@ -88,6 +88,7 @@ DF404.0 {
     fsync;
     futimens;
     futimes;
+    futimesat;
     get_tls_area;
     getdents;
     getdirentries;
@@ -426,6 +427,7 @@ DFprivate_1.0 {
     __sys_fsync;
     __sys_futimens;
     __sys_futimes;
+    __sys_futimesat;
     __sys_get_tls_area;
     __sys_getcpuclockid;
     __sys_getdents;
@@ -733,6 +735,7 @@ DFprivate_1.0 {
     _fsync;
     _futimens;
     _futimes;
+    _futimesat;
     _get_tls_area;
     _getcpuclockid;
     _getdents;

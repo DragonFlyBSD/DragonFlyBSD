@@ -1451,6 +1451,11 @@ struct	posix_fallocate_args {
 struct	fdatasync_args {
 	int	fd;	char fd_[PAD_(int)];
 };
+struct	futimesat_args {
+	int	fd;	char fd_[PAD_(int)];
+	const char *	path;	char path_[PAD_(const char *)];
+	const struct timeval *	tptr;	char tptr_[PAD_(const struct timeval *)];
+};
 
 #undef PAD_
 
@@ -1779,6 +1784,7 @@ int	sys___realpath (struct sysmsg *sysmsg, const struct __realpath_args *);
 int	sys_fexecve (struct sysmsg *sysmsg, const struct fexecve_args *);
 int	sys_posix_fallocate (struct sysmsg *sysmsg, const struct posix_fallocate_args *);
 int	sys_fdatasync (struct sysmsg *sysmsg, const struct fdatasync_args *);
+int	sys_futimesat (struct sysmsg *sysmsg, const struct futimesat_args *);
 
 #endif /* _KERNEL */
 
