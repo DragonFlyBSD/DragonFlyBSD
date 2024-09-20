@@ -431,9 +431,6 @@ format_hammer2_inode(hammer2_volume_t *vol, hammer2_mkfs_options_t *opt,
 	rawip->meta.inum = 0;		/* super root inode, inumber 0 */
 	rawip->meta.nlinks = 2;		/* directory link count compat */
 
-	rawip->meta.name_len = 0;	/* super-root is unnamed */
-	rawip->meta.name_key = 0;
-
 	rawip->meta.comp_algo = HAMMER2_ENC_ALGO(HAMMER2_COMP_AUTOZERO);
 	rawip->meta.check_algo = HAMMER2_ENC_ALGO(HAMMER2_CHECK_XXHASH64);
 
