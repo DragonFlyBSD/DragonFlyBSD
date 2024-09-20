@@ -733,11 +733,12 @@ hammer2_mkfs(int ac, char **av, hammer2_mkfs_options_t *opt)
 				size = resid;
 		}
 
-		assert(size > 0);
 		if (i == fso.nvolumes - 1)
 			size &= ~HAMMER2_VOLUME_ALIGNMASK64;
 		else
 			size &= ~HAMMER2_FREEMAP_LEVEL1_MASK;
+		if (size == 0)
+			errx(1, "%s has aligned size of 0", av[i]);
 		hammer2_install_volume(vol, fd, i, av[i], fso.total_size, size);
 		fso.total_size += size;
 	}

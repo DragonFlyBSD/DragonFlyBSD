@@ -310,6 +310,8 @@ hammer2_verify_volumes_common(const hammer2_ondisk_t *fsp)
 		if (vol->size > size)
 			errx(1, "%s's size 0x%016jx exceeds device size 0x%016jx",
 			     path, (intmax_t)vol->size, size);
+		if (vol->size == 0)
+			errx(1, "%s has size of 0", path);
 	}
 	free(st);
 }
