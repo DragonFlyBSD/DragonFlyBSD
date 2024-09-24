@@ -537,18 +537,18 @@ next_volume:
 	}
 
 	if (which == 1 && VerboseOpt < 3) {
-		printf("Total unallocated storage:   %6.3fGiB (%6.3fGiB in 64KB chunks)\n",
+		printf("Total unallocated storage:   %6.3fGB (%6.3fGB in 64KB chunks)\n",
 		       (double)TotalAccum16[0] / GIG,
 		       (double)TotalAccum64[0] / GIG);
-		printf("Total possibly free storage: %6.3fGiB (%6.3fGiB in 64KB chunks)\n",
+		printf("Total possibly free storage: %6.3fGB (%6.3fGB in 64KB chunks)\n",
 		       (double)TotalAccum16[2] / GIG,
 		       (double)TotalAccum64[2] / GIG);
-		printf("Total allocated storage:     %6.3fGiB (%6.3fGiB in 64KB chunks)\n",
+		printf("Total allocated storage:     %6.3fGB (%6.3fGB in 64KB chunks)\n",
 		       (double)TotalAccum16[3] / GIG,
 		       (double)TotalAccum64[3] / GIG);
-		printf("Total unavailable storage:   %6.3fGiB\n",
+		printf("Total unavailable storage:   %6.3fGB\n",
 		       (double)TotalUnavail / GIG);
-		printf("Total freemap storage:       %6.3fGiB\n",
+		printf("Total freemap storage:       %6.3fGB\n",
 		       (double)TotalFreemap / GIG);
 	}
 	hammer2_cleanup_volumes();
@@ -578,7 +578,7 @@ show_volhdr(hammer2_volume_data_t *voldata, int bi)
 	       (intmax_t)voldata->aux_end,
 	       (double)(voldata->aux_end - voldata->aux_beg) /
 	       (1024.0*1024.0));
-	printf("    volu_size      0x%016jx (%6.2fGiB)\n",
+	printf("    volu_size      0x%016jx (%6.2fGB)\n",
 	       (intmax_t)voldata->volu_size,
 	       (double)voldata->volu_size / GIG);
 	printf("    version        %d\n", voldata->version);
@@ -607,13 +607,13 @@ show_volhdr(hammer2_volume_data_t *voldata, int bi)
 	free(name);
 	free(str);
 
-	printf("    allocator_size 0x%016jx (%6.2fGiB)\n",
+	printf("    allocator_size 0x%016jx (%6.2fGB)\n",
 	       voldata->allocator_size,
 	       (double)voldata->allocator_size / GIG);
-	printf("    allocator_free 0x%016jx (%6.2fGiB)\n",
+	printf("    allocator_free 0x%016jx (%6.2fGB)\n",
 	       voldata->allocator_free,
 	       (double)voldata->allocator_free / GIG);
-	printf("    allocator_beg  0x%016jx (%6.2fGiB)\n",
+	printf("    allocator_beg  0x%016jx (%6.2fGB)\n",
 	       voldata->allocator_beg,
 	       (double)voldata->allocator_beg / GIG);
 
