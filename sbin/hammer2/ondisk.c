@@ -194,7 +194,7 @@ hammer2_err_uuid_mismatch(uuid_t *uuid1, uuid_t *uuid2, const char *id)
 	hammer2_uuid_to_str(uuid1, &p1);
 	hammer2_uuid_to_str(uuid2, &p2);
 
-	errx(1, "%s uuid mismatch %s vs %s", id, p1, p2);
+	errx(1, "Volume %s uuid mismatch %s vs %s", id, p1, p2);
 
 	free(p1);
 	free(p2);
@@ -259,13 +259,16 @@ hammer2_add_volume(const char *path, int rdonly)
 }
 
 static void
-hammer2_verify_volumes_common(const hammer2_ondisk_t *fsp)
+hammer2_verify_volumes_common(const hammer2_ondisk_t *fsp,
+			      const hammer2_volume_data_t *rootvoldata)
 {
 	const hammer2_volume_t *vol;
 	hammer2_off_t size;
 	struct stat *st;
 	const char *path;
+	char *str;
 	int i, j, nvolumes = 0;
+	uuid_t uuid;
 
 	if (fsp->version == -1)
 		errx(1, "Bad volume version %d", fsp->version);
@@ -275,6 +278,19 @@ hammer2_verify_volumes_common(const hammer2_ondisk_t *fsp)
 		vol = &fsp->volumes[i];
 		if (vol->id != -1)
 			nvolumes++;
+	}
+
+	/* check volume header */
+	if (rootvoldata) {
+		if (rootvoldata->volu_id != HAMMER2_ROOT_VOLUME)
+			errx(1, "Volume id %d must be %d",
+			     rootvoldata->volu_id, HAMMER2_ROOT_VOLUME);
+		str = NULL;
+		uuid = rootvoldata->fstype;
+		hammer2_uuid_to_str(&uuid, &str);
+		if (strcmp(str, HAMMER2_UUID_STRING))
+			errx(1, "Volume fstype uuid %s must be %s", str,
+			     HAMMER2_UUID_STRING);
 	}
 
 	/* fsp->nvolumes hasn't been verified yet, use nvolumes */
@@ -337,8 +353,6 @@ hammer2_verify_volumes_1(hammer2_ondisk_t *fsp,
 
 	/* check volume header */
 	if (rootvoldata) {
-		if (rootvoldata->volu_id)
-			errx(1, "Volume id %d must be 0", rootvoldata->volu_id);
 		if (rootvoldata->nvolumes)
 			errx(1, "Volume count %d must be 0",
 			     rootvoldata->nvolumes);
@@ -387,9 +401,6 @@ hammer2_verify_volumes_2(const hammer2_ondisk_t *fsp,
 
 	/* check volume header */
 	if (rootvoldata) {
-		if (rootvoldata->volu_id != HAMMER2_ROOT_VOLUME)
-			errx(1, "Volume id %d must be %d",
-			     rootvoldata->volu_id, HAMMER2_ROOT_VOLUME);
 		if (rootvoldata->nvolumes != fso.nvolumes)
 			errx(1, "Volume header requires %d devices, %d specified",
 			     rootvoldata->nvolumes, fso.nvolumes);
@@ -456,7 +467,7 @@ void
 hammer2_verify_volumes(hammer2_ondisk_t *fsp,
 		       const hammer2_volume_data_t *rootvoldata)
 {
-	hammer2_verify_volumes_common(fsp);
+	hammer2_verify_volumes_common(fsp, rootvoldata);
 	if (fsp->version >= HAMMER2_VOL_VERSION_MULTI_VOLUMES)
 		hammer2_verify_volumes_2(fsp, rootvoldata);
 	else
