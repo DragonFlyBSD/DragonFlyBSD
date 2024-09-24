@@ -484,8 +484,9 @@ next_volume:
 				best = broot;
 				best_media = media;
 			}
-			printf("Volume header %d: mirror_tid=%016jx\n",
-			       i, (intmax_t)broot.mirror_tid);
+			printf("Volume %d header %d: mirror_tid=%016jx\n",
+			       media.voldata.volu_id, i,
+			       (intmax_t)broot.mirror_tid);
 
 			if (all_volume_headers) {
 				switch(which) {
@@ -566,7 +567,7 @@ show_volhdr(hammer2_volume_data_t *voldata, int bi)
 	char *buf;
 	uuid_t uuid;
 
-	printf("\nVolume header %d {\n", bi);
+	printf("\nVolume %d header %d {\n", voldata->volu_id, bi);
 	printf("    magic          0x%016jx\n", (intmax_t)voldata->magic);
 	printf("    boot_beg       0x%016jx\n", (intmax_t)voldata->boot_beg);
 	printf("    boot_end       0x%016jx (%6.2fMB)\n",
