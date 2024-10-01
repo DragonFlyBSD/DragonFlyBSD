@@ -967,7 +967,7 @@ struct hammer2_inode_meta {
 	 *	 a separate node.  {pfs_clid, pfs_fsid} must be used for
 	 *	 registration in the cluster.
 	 */
-	uint8_t		target_type;	/* 0084 hardlink target type */
+	uint8_t		unused84;	/* 0084 */
 	uint8_t		check_algo;	/* 0085 check code request & algo */
 	uint8_t		pfs_nmasters;	/* 0086 (if PFSROOT) if multi-master */
 	uint8_t		pfs_type;	/* 0087 (if PFSROOT) node type */

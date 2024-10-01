@@ -1633,7 +1633,6 @@ start_ioctl:
 	printf("name_len = %u\n", meta->name_len);
 	printf("ncopies = %u\n", meta->ncopies);
 	printf("comp_algo = 0x%jx\n", (uintmax_t)meta->comp_algo);
-	printf("target_type = %u\n", meta->target_type);
 	printf("check_algo = %u\n", meta->check_algo);
 	printf("pfs_nmasters = %u\n", meta->pfs_nmasters);
 	printf("pfs_type = %u (%s)\n", meta->pfs_type,

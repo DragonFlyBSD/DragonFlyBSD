@@ -1203,7 +1203,6 @@ print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
 		tfprintf(fp, tab, "name_len %u\n", ipdata->meta.name_len);
 		tfprintf(fp, tab, "ncopies %u\n", ipdata->meta.ncopies);
 		tfprintf(fp, tab, "comp_algo %u\n", ipdata->meta.comp_algo);
-		tfprintf(fp, tab, "target_type %u\n", ipdata->meta.target_type);
 		tfprintf(fp, tab, "check_algo %u\n", ipdata->meta.check_algo);
 		if ((ipdata->meta.op_flags & HAMMER2_OPFLAG_PFSROOT) ||
 		    ipdata->meta.pfs_type == HAMMER2_PFSTYPE_SUPROOT) {
