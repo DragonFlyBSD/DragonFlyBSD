@@ -347,8 +347,8 @@ reloc_plt(Obj_Entry *obj)
 	  break;
 
 	default:
-	  _rtld_error("Unknown relocation type %x in PLT",
-	    (unsigned int)ELF_R_TYPE(rela->r_info));
+	  _rtld_error("Unknown relocation type 0x%02x in PLT (%s)",
+		      (unsigned int)ELF_R_TYPE(rela->r_info), obj->path);
 	  return (-1);
 	}
     }
@@ -389,8 +389,8 @@ reloc_jmpslots(Obj_Entry *obj, int flags, RtldLockState *lockstate)
 	  break;
 
 	default:
-	  _rtld_error("Unknown relocation type %x in PLT",
-	    (unsigned int)ELF_R_TYPE(rela->r_info));
+	  _rtld_error("Unknown relocation type 0x%02x in PLT (%s)",
+		      (unsigned int)ELF_R_TYPE(rela->r_info), obj->path);
 	  return (-1);
 	}
     }
