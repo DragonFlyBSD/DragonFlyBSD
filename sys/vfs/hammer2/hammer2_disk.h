@@ -879,7 +879,7 @@ struct hammer2_bmap_data {
 	uint32_t reserved14;	/* 14 */
 	uint32_t reserved18;	/* 18 */
 	uint32_t avail;		/* 1C */
-	uint32_t reserved20[8];	/* 20-3F 256 bits manages 128K/1KB/2-bits */
+	uint32_t reserved20[8];	/* 20-3F */
 				/* 40-7F 512 bits manages 4MB of storage */
 	hammer2_bitmap_t bitmapq[HAMMER2_BMAP_ELEMENTS];
 } __packed;
@@ -957,6 +957,8 @@ struct hammer2_inode_meta {
 	uint16_t	name_len;	/* 0080 filename length */
 	uint8_t		ncopies;	/* 0082 ncopies to local media */
 	uint8_t		comp_algo;	/* 0083 compression request & algo */
+	uint8_t		unused84;	/* 0084 */
+	uint8_t		check_algo;	/* 0085 check code request & algo */
 
 	/*
 	 * These fields are currently only applicable to PFSROOTs.
@@ -967,8 +969,6 @@ struct hammer2_inode_meta {
 	 *	 a separate node.  {pfs_clid, pfs_fsid} must be used for
 	 *	 registration in the cluster.
 	 */
-	uint8_t		unused84;	/* 0084 */
-	uint8_t		check_algo;	/* 0085 check code request & algo */
 	uint8_t		pfs_nmasters;	/* 0086 (if PFSROOT) if multi-master */
 	uint8_t		pfs_type;	/* 0087 (if PFSROOT) node type */
 	hammer2_tid_t	pfs_inum;	/* 0088 (if PFSROOT) inum allocator */
@@ -981,9 +981,9 @@ struct hammer2_inode_meta {
 	 * the sysop and in-memory structures keep track of inheritance.
 	 */
 	hammer2_key_t	data_quota;	/* 00B0 subtree quota in bytes */
-	hammer2_key_t	unusedB8;	/* 00B8 subtree byte count */
+	hammer2_key_t	unusedB8;	/* 00B8 */
 	hammer2_key_t	inode_quota;	/* 00C0 subtree quota inode count */
-	hammer2_key_t	unusedC8;	/* 00C8 subtree inode count */
+	hammer2_key_t	unusedC8;	/* 00C8 */
 
 	/*
 	 * The last snapshot tid is tested against modify_tid to determine
