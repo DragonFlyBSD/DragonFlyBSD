@@ -431,30 +431,35 @@ cmd_show(const char *devpath, int which)
 		show_all_volume_headers = (int)strtol(env, NULL, 0);
 		if (errno)
 			show_all_volume_headers = 0;
+		errno = 0;
 	}
 	env = getenv("HAMMER2_SHOW_TAB");
 	if (env != NULL) {
 		show_tab = (int)strtol(env, NULL, 0);
 		if (errno || show_tab < 0 || show_tab > 8)
 			show_tab = 2;
+		errno = 0;
 	}
 	env = getenv("HAMMER2_SHOW_DEPTH");
 	if (env != NULL) {
 		show_depth = (int)strtol(env, NULL, 0);
 		if (errno || show_depth < 0)
 			show_depth = -1;
+		errno = 0;
 	}
 	env = getenv("HAMMER2_SHOW_MIN_MIRROR_TID");
 	if (env != NULL) {
 		show_min_mirror_tid = (hammer2_tid_t)strtoull(env, NULL, 16);
 		if (errno)
 			show_min_mirror_tid = 0;
+		errno = 0;
 	}
 	env = getenv("HAMMER2_SHOW_MIN_MODIFY_TID");
 	if (env != NULL) {
 		show_min_modify_tid = (hammer2_tid_t)strtoull(env, NULL, 16);
 		if (errno)
 			show_min_modify_tid = 0;
+		errno = 0;
 	}
 
 	hammer2_init_volumes(devpath, 1);
