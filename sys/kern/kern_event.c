@@ -101,7 +101,8 @@ static struct fileops kqueueops = {
 	.fo_kqfilter = kqueue_kqfilter,
 	.fo_stat = kqueue_stat,
 	.fo_close = kqueue_close,
-	.fo_shutdown = nofo_shutdown
+	.fo_shutdown = nofo_shutdown,
+	.fo_seek = badfo_seek
 };
 
 static void 	knote_attach(struct knote *kn);

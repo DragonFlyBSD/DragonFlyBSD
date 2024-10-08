@@ -114,6 +114,7 @@ static int devfs_fo_stat(struct file *, struct stat *, struct ucred *);
 static int devfs_fo_kqfilter(struct file *, struct knote *);
 static int devfs_fo_ioctl(struct file *, u_long, caddr_t,
 				struct ucred *, struct sysmsg *);
+static int devfs_fo_seek(struct file *, off_t, int, off_t *);
 static __inline int sequential_heuristic(struct uio *, struct file *);
 
 extern struct lock devfs_lock;
@@ -193,7 +194,8 @@ struct fileops devfs_dev_fileops = {
 	.fo_kqfilter	= devfs_fo_kqfilter,
 	.fo_stat	= devfs_fo_stat,
 	.fo_close	= devfs_fo_close,
-	.fo_shutdown	= nofo_shutdown
+	.fo_shutdown	= nofo_shutdown,
+	.fo_seek	= devfs_fo_seek
 };
 
 /*
@@ -1614,6 +1616,64 @@ out:
 	return (error);
 }
 
+int
+devfs_fo_seek(struct file *fp, off_t offset, int whence, off_t *res)
+{
+	/*
+	 * NOTE: vnode_fileops uses exact same code
+	 */
+	struct vnode *vp;
+	struct vattr_lite lva;
+	off_t new_offset;
+	int error;
+
+	vp = (struct vnode *)fp->f_data;
+
+	switch (whence) {
+	case L_INCR:
+		spin_lock(&fp->f_spin);
+		new_offset = fp->f_offset + offset;
+		error = 0;
+		break;
+	case L_XTND:
+		error = VOP_GETATTR_LITE(vp, &lva);
+		spin_lock(&fp->f_spin);
+		new_offset = offset + lva.va_size;
+		break;
+	case L_SET:
+		new_offset = offset;
+		error = 0;
+		spin_lock(&fp->f_spin);
+		break;
+	default:
+		new_offset = 0;
+		error = EINVAL;
+		spin_lock(&fp->f_spin);
+		break;
+	}
+
+	/*
+	 * Validate the seek position.  Negative offsets are not allowed
+	 * for regular files or directories.
+	 *
+	 * Normally we would also not want to allow negative offsets for
+	 * character and block-special devices.  However kvm addresses
+	 * on 64 bit architectures might appear to be negative and must
+	 * be allowed.
+	 */
+	if (error == 0) {
+		if (new_offset < 0 &&
+		    (vp->v_type == VREG || vp->v_type == VDIR)) {
+			error = EINVAL;
+		} else {
+			fp->f_offset = new_offset;
+		}
+	}
+	*res = fp->f_offset;
+	spin_unlock(&fp->f_spin);
+
+	return (error);
+}
 
 static int
 devfs_spec_fsync(struct vop_fsync_args *ap)

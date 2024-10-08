@@ -2840,63 +2840,13 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 {
 	struct thread *td = curthread;
 	struct file *fp;
-	struct vnode *vp;
-	struct vattr_lite lva;
-	off_t new_offset;
 	int error;
 
 	fp = holdfp(td, fd, -1);
 	if (fp == NULL)
 		return (EBADF);
-	if (fp->f_type != DTYPE_VNODE) {
-		error = ESPIPE;
-		goto done;
-	}
-	vp = (struct vnode *)fp->f_data;
 
-	switch (whence) {
-	case L_INCR:
-		spin_lock(&fp->f_spin);
-		new_offset = fp->f_offset + offset;
-		error = 0;
-		break;
-	case L_XTND:
-		error = VOP_GETATTR_LITE(vp, &lva);
-		spin_lock(&fp->f_spin);
-		new_offset = offset + lva.va_size;
-		break;
-	case L_SET:
-		new_offset = offset;
-		error = 0;
-		spin_lock(&fp->f_spin);
-		break;
-	default:
-		new_offset = 0;
-		error = EINVAL;
-		spin_lock(&fp->f_spin);
-		break;
-	}
-
-	/*
-	 * Validate the seek position.  Negative offsets are not allowed
-	 * for regular files or directories.
-	 *
-	 * Normally we would also not want to allow negative offsets for
-	 * character and block-special devices.  However kvm addresses
-	 * on 64 bit architectures might appear to be negative and must
-	 * be allowed.
-	 */
-	if (error == 0) {
-		if (new_offset < 0 &&
-		    (vp->v_type == VREG || vp->v_type == VDIR)) {
-			error = EINVAL;
-		} else {
-			fp->f_offset = new_offset;
-		}
-	}
-	*res = fp->f_offset;
-	spin_unlock(&fp->f_spin);
-done:
+	error = fo_seek(fp, offset, whence, res);
 	dropfp(td, fd, fp);
 
 	return (error);

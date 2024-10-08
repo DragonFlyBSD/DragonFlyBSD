@@ -100,7 +100,8 @@ static struct fileops cryptofops = {
     .fo_kqfilter = cryptof_kqfilter,
     .fo_stat = cryptof_stat,
     .fo_close = cryptof_close,
-    .fo_shutdown = nofo_shutdown
+    .fo_shutdown = nofo_shutdown,
+    .fo_seek = badfo_seek
 };
 
 static struct csession *csefind(struct fcrypt *, u_int, int *);

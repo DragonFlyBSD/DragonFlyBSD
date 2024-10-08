@@ -52,6 +52,8 @@
 #include <sys/conf.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
+#include <sys/spinlock.h>
+#include <sys/spinlock2.h>
 
 #include <sys/mplock2.h>
 
@@ -64,6 +66,7 @@ static int vn_kqfilter (struct file *fp, struct knote *kn);
 static int vn_statfile (struct file *fp, struct stat *sb, struct ucred *cred);
 static int vn_write (struct file *fp, struct uio *uio,
 		struct ucred *cred, int flags);
+static int vn_seek (struct file *fp, off_t offset, int whence, off_t *res);
 
 struct fileops vnode_fileops = {
 	.fo_read = vn_read,
@@ -72,7 +75,8 @@ struct fileops vnode_fileops = {
 	.fo_kqfilter = vn_kqfilter,
 	.fo_stat = vn_statfile,
 	.fo_close = vn_closefile,
-	.fo_shutdown = nofo_shutdown
+	.fo_shutdown = nofo_shutdown,
+	.fo_seek = vn_seek
 };
 
 /*
@@ -1189,5 +1193,64 @@ vn_kqfilter(struct file *fp, struct knote *kn)
 	int error;
 
 	error = VOP_KQFILTER(((struct vnode *)fp->f_data), kn);
+	return (error);
+}
+
+int
+vn_seek(struct file *fp, off_t offset, int whence, off_t *res)
+{
+	/*
+	 * NOTE: devfs_dev_fileops uses exact same code
+	 */
+	struct vnode *vp;
+	struct vattr_lite lva;
+	off_t new_offset;
+	int error;
+
+	vp = (struct vnode *)fp->f_data;
+
+	switch (whence) {
+	case L_INCR:
+		spin_lock(&fp->f_spin);
+		new_offset = fp->f_offset + offset;
+		error = 0;
+		break;
+	case L_XTND:
+		error = VOP_GETATTR_LITE(vp, &lva);
+		spin_lock(&fp->f_spin);
+		new_offset = offset + lva.va_size;
+		break;
+	case L_SET:
+		new_offset = offset;
+		error = 0;
+		spin_lock(&fp->f_spin);
+		break;
+	default:
+		new_offset = 0;
+		error = EINVAL;
+		spin_lock(&fp->f_spin);
+		break;
+	}
+
+	/*
+	 * Validate the seek position.  Negative offsets are not allowed
+	 * for regular files or directories.
+	 *
+	 * Normally we would also not want to allow negative offsets for
+	 * character and block-special devices.  However kvm addresses
+	 * on 64 bit architectures might appear to be negative and must
+	 * be allowed.
+	 */
+	if (error == 0) {
+		if (new_offset < 0 &&
+		    (vp->v_type == VREG || vp->v_type == VDIR)) {
+			error = EINVAL;
+		} else {
+			fp->f_offset = new_offset;
+		}
+	}
+	*res = fp->f_offset;
+	spin_unlock(&fp->f_spin);
+
 	return (error);
 }

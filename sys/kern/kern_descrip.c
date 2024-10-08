@@ -3465,7 +3465,8 @@ struct fileops badfileops = {
 	.fo_kqfilter = badfo_kqfilter,
 	.fo_stat = badfo_stat,
 	.fo_close = badfo_close,
-	.fo_shutdown = badfo_shutdown
+	.fo_shutdown = badfo_shutdown,
+	.fo_seek = badfo_seek
 };
 
 int
@@ -3517,6 +3518,12 @@ int
 nofo_shutdown(struct file *fp, int how)
 {
 	return (EOPNOTSUPP);
+}
+
+int
+badfo_seek(struct file *fp, off_t offset, int whence, off_t *res)
+{
+	return (ESPIPE);
 }
 
 SYSINIT(fildescdev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE + CDEV_MAJOR,

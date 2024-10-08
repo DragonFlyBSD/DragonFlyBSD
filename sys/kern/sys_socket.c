@@ -60,7 +60,8 @@ struct	fileops socketops = {
 	.fo_kqfilter = sokqfilter,
 	.fo_stat = soo_stat,
 	.fo_close = soo_close,
-	.fo_shutdown = soo_shutdown
+	.fo_shutdown = soo_shutdown,
+	.fo_seek = badfo_seek
 };
 
 /*

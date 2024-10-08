@@ -93,7 +93,8 @@ __read_mostly static struct fileops pipeops = {
 	.fo_kqfilter = pipe_kqfilter,
 	.fo_stat = pipe_stat,
 	.fo_close = pipe_close,
-	.fo_shutdown = pipe_shutdown
+	.fo_shutdown = pipe_shutdown,
+	.fo_seek = badfo_seek
 };
 
 static void	filt_pipedetach(struct knote *kn);

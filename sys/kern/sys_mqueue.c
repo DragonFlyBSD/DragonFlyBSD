@@ -101,7 +101,8 @@ static struct fileops mqops = {
 	.fo_stat = mq_stat_fop,
 	.fo_close = mq_close_fop,
 	.fo_kqfilter = mq_kqfilter_fop,
-	.fo_shutdown = badfo_shutdown
+	.fo_shutdown = badfo_shutdown,
+	.fo_seek = badfo_seek
 };
 
 /* Define a new malloc type for message queues */

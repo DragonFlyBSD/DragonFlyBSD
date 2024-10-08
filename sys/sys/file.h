@@ -85,6 +85,7 @@ struct	fileops {
 			 struct ucred *cred);
 	int (*fo_close)	(struct file *fp);
 	int (*fo_shutdown)(struct file *fp, int how);
+	int (*fo_seek)	(struct file *fp, off_t offset, int whence, off_t *res);
 };
 
 /*
@@ -171,6 +172,7 @@ int badfo_kqfilter(struct file *fp, struct knote *kn);
 int badfo_stat(struct file *fp, struct stat *sb, struct ucred *cred);
 int badfo_close(struct file *fp);
 int badfo_shutdown(struct file *fp, int how);
+int badfo_seek(struct file *fp, off_t offset, int whence, off_t *res);
 
 #endif /* _KERNEL */
 

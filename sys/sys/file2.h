@@ -115,6 +115,12 @@ fo_kqfilter(struct file *fp, struct knote *kn)
 	return ((*fp->f_ops->fo_kqfilter)(fp, kn));
 }
 
+static __inline int
+fo_seek(struct file *fp, off_t offset, int whence, off_t *res)
+{
+	return ((*fp->f_ops->fo_seek)(fp, offset, whence, res));
+}
+
 #endif /* _KERNEL */
 
 #endif /* !SYS_FILE2_H */
