@@ -2,7 +2,7 @@
 
 .include "Makefile.buo"
 
-SUBDIR= dialog diff grep rcs
+SUBDIR= dialog grep rcs
 
 .if !defined(NO_CVS)
 SUBDIR+=cvs

@@ -1,1 +1,0 @@
-BASEDIR=	${.CURDIR}/../../../../contrib/diffutils

@@ -47,6 +47,8 @@ SUBDIR=	alias \
 	cut \
 	dc \
 	dfregress \
+	diff \
+	diff3 \
 	dirname \
 	drill \
 	dsynth \
@@ -170,6 +172,7 @@ SUBDIR=	alias \
 	rwho \
 	scp \
 	script \
+	sdiff \
 	sdpquery \
 	sed \
 	setcaps \
