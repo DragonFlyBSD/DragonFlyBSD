@@ -413,15 +413,15 @@ int
 cmd_show(const char *devpath, int which)
 {
 	hammer2_blockref_t broot;
-	hammer2_blockref_t best;
 	hammer2_media_data_t media;
-	hammer2_media_data_t best_media;
 	hammer2_off_t off, volu_loff, next_volu_loff = 0;
+	hammer2_tid_t best_mirror_tid = 0;
+	int bests[HAMMER2_MAX_VOLUMES];
 	int fd;
-	int i;
-	int best_i;
+	int i, j;
 	char *env;
 
+	memset(bests, 0xff, sizeof(bests));
 	memset(TotalAccum16, 0, sizeof(TotalAccum16));
 	memset(TotalAccum64, 0, sizeof(TotalAccum64));
 	TotalUnavail = TotalFreemap = 0;
@@ -464,82 +464,77 @@ cmd_show(const char *devpath, int which)
 
 	hammer2_init_volumes(devpath, 1);
 	int all_volume_headers = VerboseOpt >= 3 || show_all_volume_headers;
-next_volume:
-	volu_loff = next_volu_loff;
-	next_volu_loff = -1;
-	printf("%s\n", hammer2_get_volume_path(volu_loff));
+
+	/*
+	 * Get best volume header for all volumes first.
+	 */
+	volu_loff = 0;
+	for (i = 0; i < HAMMER2_MAX_VOLUMES; ++i) {
+		for (j = 0; j < HAMMER2_NUM_VOLHDRS; ++j) {
+			off = j * HAMMER2_ZONE_BYTES64;
+			fd = hammer2_get_volume_fd(volu_loff);
+			lseek(fd, off, SEEK_SET);
+			if (read(fd, &media, HAMMER2_PBUFSIZE) ==
+			    (ssize_t)HAMMER2_PBUFSIZE) {
+				if (bests[i] < 0 || best_mirror_tid <
+				    media.voldata.mirror_tid) {
+					bests[i] = j;
+					best_mirror_tid = media.voldata.mirror_tid;
+				}
+			}
+		}
+		volu_loff = get_next_volume(&media.voldata, volu_loff);
+	}
+
 	/*
 	 * Show the tree using the best volume header.
 	 * -vvv will show the tree for all four volume headers.
 	 */
-	best_i = -1;
-	bzero(&best, sizeof(best));
-	bzero(&best_media, sizeof(best_media));
-	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
-		bzero(&broot, sizeof(broot));
-		broot.data_off = (i * HAMMER2_ZONE_BYTES64) | HAMMER2_PBUFRADIX;
-		off = broot.data_off & ~HAMMER2_OFF_MASK_RADIX;
-		fd = hammer2_get_volume_fd(volu_loff);
-		lseek(fd, off, SEEK_SET);
-		if (read(fd, &media, HAMMER2_PBUFSIZE) ==
-		    (ssize_t)HAMMER2_PBUFSIZE) {
-			broot.mirror_tid = media.voldata.mirror_tid;
-			if (best_i < 0 || best.mirror_tid < broot.mirror_tid) {
-				best_i = i;
-				best = broot;
-				best_media = media;
-			}
-			printf("Volume %d header %d: mirror_tid=%016jx\n",
-			       media.voldata.volu_id, i,
-			       (intmax_t)broot.mirror_tid);
-
-			if (all_volume_headers) {
-				switch(which) {
-				case 0:
-					broot.type = HAMMER2_BREF_TYPE_VOLUME;
-					show_bref(&media.voldata, 0, i, &broot,
-						  0);
-					break;
-				case 1:
-					broot.type = HAMMER2_BREF_TYPE_FREEMAP;
-					show_bref(&media.voldata, 0, i, &broot,
-						  0);
-					break;
-				default:
-					show_volhdr(&media.voldata, i);
-					if (i == 0)
-						next_volu_loff = get_next_volume(&media.voldata, volu_loff);
-					break;
-				}
-				if (i != HAMMER2_NUM_VOLHDRS - 1)
+	for (i = 0; i < HAMMER2_MAX_VOLUMES; ++i) {
+		volu_loff = next_volu_loff;
+		printf("%s\n", hammer2_get_volume_path(volu_loff));
+		for (j = 0; j < HAMMER2_NUM_VOLHDRS; ++j) {
+			bzero(&broot, sizeof(broot));
+			broot.data_off = (j * HAMMER2_ZONE_BYTES64) |
+			    HAMMER2_PBUFRADIX;
+			off = broot.data_off & ~HAMMER2_OFF_MASK_RADIX;
+			fd = hammer2_get_volume_fd(volu_loff);
+			lseek(fd, off, SEEK_SET);
+			if (read(fd, &media, HAMMER2_PBUFSIZE) ==
+			    (ssize_t)HAMMER2_PBUFSIZE) {
+				broot.mirror_tid = media.voldata.mirror_tid;
+				printf("Volume %d header %d: mirror_tid=%016jx\n",
+				       media.voldata.volu_id, j,
+				       (intmax_t)broot.mirror_tid);
+				if (all_volume_headers || bests[i] == j) {
+					switch(which) {
+					case 0:
+						broot.type = HAMMER2_BREF_TYPE_VOLUME;
+						show_bref(&media.voldata, 0, j,
+							  &broot, 0);
+						next_volu_loff = -1;
+						break;
+					case 1:
+						broot.type = HAMMER2_BREF_TYPE_FREEMAP;
+						show_bref(&media.voldata, 0, j,
+							  &broot, 0);
+						next_volu_loff = -1;
+						break;
+					default:
+						show_volhdr(&media.voldata, j);
+						next_volu_loff = get_next_volume(
+						    &media.voldata, volu_loff);
+						break;
+					}
+				if (all_volume_headers && j != HAMMER2_NUM_VOLHDRS - 1)
 					printf("\n");
+				}
 			}
 		}
-	}
-	if (next_volu_loff != (hammer2_off_t)-1) {
-		printf("---------------------------------------------\n");
-		goto next_volume;
-	}
-
-	if (!all_volume_headers) {
-		switch(which) {
-		case 0:
-			best.type = HAMMER2_BREF_TYPE_VOLUME;
-			show_bref(&best_media.voldata, 0, best_i, &best, 0);
+		if (next_volu_loff == (hammer2_off_t)-1)
 			break;
-		case 1:
-			best.type = HAMMER2_BREF_TYPE_FREEMAP;
-			show_bref(&best_media.voldata, 0, best_i, &best, 0);
-			break;
-		default:
-			show_volhdr(&best_media.voldata, best_i);
-			next_volu_loff = get_next_volume(&best_media.voldata, volu_loff);
-			if (next_volu_loff != (hammer2_off_t)-1) {
-				printf("---------------------------------------------\n");
-				goto next_volume;
-			}
-			break;
-		}
+		if (i != HAMMER2_MAX_VOLUMES - 1)
+			printf("---------------------------------------------\n");
 	}
 
 	if (which == 1 && VerboseOpt < 3) {
