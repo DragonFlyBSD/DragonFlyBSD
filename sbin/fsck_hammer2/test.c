@@ -1156,9 +1156,9 @@ print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
 		tfprintf(fp, tab, "size %ju ", (uintmax_t)ipdata->meta.size);
 		if (ipdata->meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA &&
 		    ipdata->meta.size <= HAMMER2_EMBEDDED_BYTES)
-			printf("(embedded data)\n");
+			fprintf(fp, "(embedded data)\n");
 		else
-			printf("\n");
+			fprintf(fp, "\n");
 		tfprintf(fp, tab, "nlinks %ju\n",
 		    (uintmax_t)ipdata->meta.nlinks);
 		tfprintf(fp, tab, "iparent 0x%016jx\n",
@@ -1167,8 +1167,10 @@ print_media(FILE *fp, int tab, const hammer2_blockref_t *bref,
 		    (uintmax_t)ipdata->meta.name_key);
 		tfprintf(fp, tab, "name_len %u\n", ipdata->meta.name_len);
 		tfprintf(fp, tab, "ncopies %u\n", ipdata->meta.ncopies);
-		tfprintf(fp, tab, "comp_algo %u\n", ipdata->meta.comp_algo);
-		tfprintf(fp, tab, "check_algo %u\n", ipdata->meta.check_algo);
+		tfprintf(fp, tab, "comp_algo %s\n",
+		    hammer2_compmode_to_str(ipdata->meta.comp_algo));
+		tfprintf(fp, tab, "check_algo %s\n",
+		    hammer2_checkmode_to_str(ipdata->meta.check_algo));
 		if ((ipdata->meta.op_flags & HAMMER2_OPFLAG_PFSROOT) ||
 		    ipdata->meta.pfs_type == HAMMER2_PFSTYPE_SUPROOT) {
 			tfprintf(fp, tab, "pfs_nmasters %u\n",
