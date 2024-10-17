@@ -1036,6 +1036,10 @@ generic_elf_coredump(struct lwp *lp, int sig, struct file *fp, off_t limit)
 					php->p_filesz, &nbytes, UIO_USERSPACE);
 			if (error != 0)
 				break;
+			if (p->p_flags & P_MUSTKILL) {
+				error = EIO;
+				break;
+			}
 			php++;
 		}
 	}
