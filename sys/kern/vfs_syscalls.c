@@ -75,6 +75,8 @@
 #include <machine/limits.h>
 #include <machine/stdarg.h>
 
+#define UMOUNTF_RETRIES		50	/* 0.25 seconds per retry */
+
 static void mount_warning(struct mount *mp, const char *ctl, ...)
 		__printflike(2, 3);
 static int mount_path(struct proc *p, struct mount *mp, char **rb, char **fb);
@@ -766,8 +768,12 @@ unmount_allproc_cb(struct proc *p, void *arg)
 
 	if (p->p_textnch.mount == mp)
 		cache_drop(&p->p_textnch);
-	if (info->sig && process_uses_mount(p, mp))
+	if (info->sig && process_uses_mount(p, mp)) {
+		lwkt_gettoken(&p->p_token);
+		p->p_flags |= P_MUSTKILL;
+		lwkt_reltoken(&p->p_token);
 		ksignal(p, info->sig);
+	}
 
 	return 0;
 }
@@ -871,7 +877,9 @@ dounmount(struct mount *mp, int flags, int halting)
 	 * Scans can get temporary refs on a mountpoint (thought really
 	 * heavy duty stuff like cache_findmount() do not).
 	 */
-	for (retry = 0; (retry < 10 || debug_unmount); ++retry) {
+	for (retry = 0; (retry < UMOUNTF_RETRIES || debug_unmount); ++retry) {
+		int dummy = 0;
+
 		/*
 		 * Invalidate the namecache topology under the mount.
 		 * nullfs mounts alias a real mount's namecache topology
@@ -910,7 +918,7 @@ dounmount(struct mount *mp, int flags, int halting)
 		 * In addition any process which has a current, root, or
 		 * jail directory matching the mount, or which has an open
 		 * descriptor matching the mount, will be killed.  We first
-		 * try SIGKILL, and if that doesn't work we issue SIGQUIT.
+		 * try SIGINT, and if that doesn't work we issue SIGKILL.
 		 */
 		if (flags & MNT_FORCE) {
 			struct unmount_allproc_info info;
@@ -933,7 +941,9 @@ dounmount(struct mount *mp, int flags, int halting)
 		/*
 		 * Sleep and retry.
 		 */
-		tsleep(&mp->mnt_refs, 0, "mntbsy", hz / 4 + 1);
+		error = lockmgr(&mp->mnt_lock, LK_RELEASE);
+		tsleep(&dummy, 0, "mntbsy", hz / 4 + 1);
+		error = lockmgr(&mp->mnt_lock, LK_EXCLUSIVE);
 		if (debug_unmount && (retry & 15) == 15) {
 			mount_warning(mp,
 				      "(%p) debug - retry %d, "
@@ -943,7 +953,7 @@ dounmount(struct mount *mp, int flags, int halting)
 				      mp->mnt_refs - 1);
 		}
 	}
-	if (retry == 10) {
+	if (retry == UMOUNTF_RETRIES) {
 		mount_warning(mp,
 			      "forced umount of \"%s\" - "
 			      "%d namecache refs, %d mount refs",

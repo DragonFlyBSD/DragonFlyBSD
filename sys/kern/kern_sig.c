@@ -2524,8 +2524,11 @@ coredump(struct lwp *lp, int sig)
 
 	STOPEVENT(p, S_CORE, 0);
 
-	if (((sugid_coredump == 0) && p->p_flags & P_SUGID) || do_coredump == 0)
+	if (((sugid_coredump == 0) && (p->p_flags & P_SUGID)) ||
+	    do_coredump == 0)
+	{
 		return (EFAULT);
+	}
 
 	/*
 	 * Note that the bulk of limit checking is done after

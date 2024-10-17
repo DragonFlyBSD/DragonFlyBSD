@@ -364,7 +364,7 @@ struct	proc {
 #define	P_CONTINUED	0x08000	/* Proc has continued from a stopped state */
 
 #define P_LOWMEMKILL	0x00010000 /* trying to kill due to low memory */
-#define	P_UNUSED17	0x00020000
+#define	P_MUSTKILL	0x00020000 /* kernel is really trying to kill me */
 
 #define	P_UNUSED18	0x00040000
 #define	P_UNUSED19	0x00080000 /* was: Now in a zombied state */
