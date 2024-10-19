@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2019-2020 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  * Copyright (C) 2019-2020 Matt Dunwoodie <ncon@noconroy.net>
- * Copyright (c) 2023 Aaron LI <aly@aaronly.me>
+ * Copyright (c) 2023-2024 Aaron LI <aly@aaronly.me>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -208,27 +208,60 @@ wg_unsetpeerall(const char *x __unused, int arg __unused, int s __unused,
 	WG_REGISTER_CALLBACK();
 }
 
+/*
+ * Manually parse the CIDR instead of using inet_net_pton() because:
+ * 1. it uses a legacy IPv6 CIDR format (e.g., 1:2:3:4/64) and fails to parse
+ *    some now valid IPv6 CIDRs (e.g., 1:2:3:4::/64);
+ * 2. it's not standard and behaves differently across BSDs and Linux.
+ */
+static int
+wg_aip_parse(const char *aip, struct wg_aip_io *waip)
+{
+	char *p, buf[INET6_ADDRSTRLEN + sizeof("/128")];
+	int plen;
+
+	if (snprintf(buf, sizeof(buf), "%s", aip) >= (int)sizeof(buf))
+		return (-1);
+
+	plen = 128;
+	if ((p = strchr(buf, '/')) != NULL) {
+		const ptrdiff_t off = p - buf;
+		buf[off] = '\0';
+		plen = atoi(&buf[off + 1]);
+	}
+
+	if (inet_pton(AF_INET6, buf, &waip->a_ipv6) == 1) {
+		if (plen < 0 || plen > 128)
+			return (-1);
+		waip->a_cidr = plen;
+		waip->a_af = AF_INET6;
+		return (0);
+	}
+
+	if (inet_pton(AF_INET, buf, &waip->a_ipv4) == 1) {
+		if (plen == 128)
+			plen = 32;
+		if (plen < 0 || plen > 32)
+			return (-1);
+		waip->a_cidr = plen;
+		waip->a_af = AF_INET;
+		return (0);
+	}
+
+	return (-1);
+}
+
 static void
 wg_setpeeraip(const char *aip, int arg __unused, int s __unused,
 	      const struct afswtch *afp __unused)
 {
-	int res;
-
 	if (wg_peer == NULL)
 		errx(1, "wgaip: wgpeer not set");
 
 	wg_data_grow(sizeof(*wg_aip));
 
-	if ((res = inet_net_pton(AF_INET, aip, &wg_aip->a_ipv4,
-				 sizeof(wg_aip->a_ipv4))) != -1) {
-		wg_aip->a_af = AF_INET;
-	} else if ((res = inet_net_pton(AF_INET6, aip, &wg_aip->a_ipv6,
-					sizeof(wg_aip->a_ipv6))) != -1) {
-		wg_aip->a_af = AF_INET6;
-	} else {
+	if (wg_aip_parse(aip, wg_aip) == -1)
 		errx(1, "wgaip: bad address: %s", aip);
-	}
-	wg_aip->a_cidr = res;
 
 	wg_peer->p_flags |= WG_PEER_REPLACE_AIPS;
 	wg_peer->p_aips_count++;
