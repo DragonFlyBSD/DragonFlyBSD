@@ -217,6 +217,7 @@ wg_unsetpeerall(const char *x __unused, int arg __unused, int s __unused,
 static int
 wg_aip_parse(const char *aip, struct wg_aip_io *waip)
 {
+	const char *errmsg = NULL;
 	char *p, buf[INET6_ADDRSTRLEN + sizeof("/128")];
 	int plen;
 
@@ -225,9 +226,10 @@ wg_aip_parse(const char *aip, struct wg_aip_io *waip)
 
 	plen = 128;
 	if ((p = strchr(buf, '/')) != NULL) {
-		const ptrdiff_t off = p - buf;
-		buf[off] = '\0';
-		plen = atoi(&buf[off + 1]);
+		*p = '\0';
+		plen = (int)strtonum(p + 1, 0, 128, &errmsg);
+		if (errmsg != NULL)
+			return (-1);
 	}
 
 	if (inet_pton(AF_INET6, buf, &waip->a_ipv6) == 1) {
