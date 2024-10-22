@@ -66,6 +66,8 @@
 #include "rtld_printf.h"
 #include "notes.h"
 
+#define cpu_sfence()    __asm __volatile("" : : : "memory");
+
 #define PATH_RTLD	"/usr/libexec/ld-elf.so.2"
 #define LD_ARY_CACHE	16
 
@@ -4428,14 +4430,16 @@ tls_get_addr_common(Elf_Addr** dtvp, int index, size_t offset)
 	newdtv[0] = tls_dtv_generation;
 	newdtv[1] = tls_max_index;
 	free(dtv);
-	lock_release(rtld_bind_lock, &lockstate);
+	cpu_sfence();
 	dtv = *dtvp = newdtv;
+	lock_release(rtld_bind_lock, &lockstate);
     }
 
     /* Dynamically allocate module TLS if necessary */
     if (!dtv[index + 1]) {
 	/* Signal safe, wlock will block out signals. */
 	wlock_acquire(rtld_bind_lock, &lockstate);
+	dtv = *dtvp;
 	if (!dtv[index + 1])
 	    dtv[index + 1] = (Elf_Addr)allocate_module_tls(index);
 	lock_release(rtld_bind_lock, &lockstate);
@@ -4552,6 +4556,15 @@ allocate_module_tls(int index)
 	die();
     }
 
+    if (obj->tls_static) {
+#if defined(RTLD_STATIC_TLS_VARIANT_II)
+        p = (char *)tls_get_tcb() - obj->tlsoffset;
+#else
+#error "Unsupported TLS layout"
+#endif
+        return p;
+    }
+
     p = malloc(obj->tlssize);
     if (p == NULL) {
 	_rtld_error("Cannot allocate TLS block for index %d", index);
@@ -4568,11 +4581,14 @@ allocate_tls_offset(Obj_Entry *obj)
 {
     size_t off;
 
-    if (obj->tls_done)
+    if (obj->tls_static)
 	return true;
 
+    if (obj->tls_dynamic)
+        return false;
+
     if (obj->tlssize == 0) {
-	obj->tls_done = true;
+	obj->tls_static = true;
 	return true;
     }
 
@@ -4595,7 +4611,7 @@ allocate_tls_offset(Obj_Entry *obj)
 
     tls_last_offset = obj->tlsoffset = off;
     tls_last_size = obj->tlssize;
-    obj->tls_done = true;
+    obj->tls_static = true;
 
     return true;
 }
@@ -4944,7 +4960,7 @@ distribute_static_tls(Objlist *list, RtldLockState *lockstate)
 	 */
 	STAILQ_FOREACH(elm, list, link) {
 		obj = elm->obj;
-		if (/*obj->marker ||*/ !obj->tls_done || obj->static_tls_copied)
+		if (/*obj->marker ||*/ !obj->tls_static || obj->static_tls_copied)
 			continue;
 		dtlsfunc(obj->tlsoffset, obj->tlsinit,
 			 obj->tlsinitsize, obj->tlssize);
