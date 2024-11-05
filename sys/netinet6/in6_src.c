@@ -408,7 +408,9 @@ in6_pcbporthash_update(struct inpcbportinfo *portinfo,
 int
 in6_pcbsetlport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 {
+#if 0
 	struct socket *so = inp->inp_socket;
+#endif
 	uint16_t lport, first, last, step, first0, last0;
 	int count, error = 0, wild = 0;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
@@ -417,9 +419,17 @@ in6_pcbsetlport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 	int portinfo_first, portinfo_idx;
 	uint32_t cut;
 
+#if 0
 	/* XXX: this is redundant when called from in6_pcbbind */
 	if ((so->so_options & (SO_REUSEADDR|SO_REUSEPORT)) == 0)
 		wild = INPLOOKUP_WILDCARD;
+#endif
+	/*
+	 * We force matches against wildcard ports in order to
+	 * avoid auto-assigning lport to such ports, which would
+	 * cause problems for same-machine connect()s.
+	 */
+	wild = INPLOOKUP_WILDCARD;
 	if (td->td_proc && td->td_proc->p_ucred)
 		cred = td->td_proc->p_ucred;
 
