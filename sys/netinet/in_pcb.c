@@ -375,6 +375,13 @@ in_pcbsetlport(struct inpcb *inp, int wild, struct ucred *cred)
 	int portinfo_first, portinfo_idx;
 	uint32_t cut;
 
+	/*
+	 * We force matches against wildcard ports in order to
+	 * avoid auto-assigning lport to such ports, which would
+	 * cause problems for same-machine connect()s.
+	 */
+	wild = INPLOOKUP_WILDCARD;
+
 	inp->inp_flags |= INP_ANONPORT;
 
 	step = pcbinfo->portinfo_cnt;
