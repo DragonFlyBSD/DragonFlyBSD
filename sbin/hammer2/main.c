@@ -616,7 +616,7 @@ usage(int code)
 			"Connect to debug shell\n"
 		"    debugspan <target>                "
 			"Connect to target, run CONN/SPAN\n"
-		"    growfs [<path...]                 "
+		"    growfs [<path>...]                "
 			"Grow a filesystem into resized partition\n"
 		"    rsainit [<path>]                  "
 			"Initialize rsa fields\n"
