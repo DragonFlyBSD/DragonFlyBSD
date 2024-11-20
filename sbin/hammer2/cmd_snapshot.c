@@ -79,6 +79,7 @@ cmd_pfs_snapshot(const char *sel_path, const char *path, const char *label,
 		pfs.name_key = (hammer2_key_t)-1;
 		if (ioctl(fd, HAMMER2IOC_PFS_GET, &pfs) < 0) {
 			perror("ioctl");
+			return 1;
 		}
 		snprintf(filename, sizeof(filename),
 			 "%s.%04d%02d%02d.%02d%02d%02d",
