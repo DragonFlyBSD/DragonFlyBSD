@@ -505,6 +505,7 @@ kern_sigprocmask(int how, sigset_t *set, sigset_t *oset)
 		case SIG_SETMASK:
 			SIG_CANTMASK(*set);
 			lp->lwp_sigmask = *set;
+			sigirefs_wait(p);
 			break;
 		default:
 			error = EINVAL;
@@ -587,17 +588,24 @@ kern_sigsuspend(sigset_t *set)
 	struct sigacts *ps = p->p_sigacts;
 
 	/*
-	 * When returning from sigsuspend, we want
-	 * the old mask to be restored after the
-	 * signal handler has finished.  Thus, we
-	 * save it here and mark the sigacts structure
-	 * to indicate this.
+	 * When returning from sigsuspend, we want the old mask to be
+	 * restored after the signal handler has finished.  Thus, we
+	 * save it here and mark the sigacts structure to indicate this.
+	 *
+	 * To interlock signal deliveries which may race this function, we
+	 * must hold the LWP token, otherwise the signal may be made pending
+	 * to the process rather than the lwp during execution of the tsleep()
+	 * (which does not hold the process token to interlock that) and be
+	 * missed by the tsleep().
 	 */
+	lwkt_gettoken(&lp->lwp_token);
 	lp->lwp_oldsigmask = lp->lwp_sigmask;
 	lp->lwp_flags |= LWP_OLDMASK;
-
 	SIG_CANTMASK(*set);
 	lp->lwp_sigmask = *set;
+	lwkt_reltoken(&lp->lwp_token);
+	sigirefs_wait(p);
+
 	while (tsleep(ps, PCATCH, "pause", 0) == 0)
 		/* void */;
 	/* always return EINTR rather than ERESTART... */
@@ -1350,9 +1358,13 @@ active_process:
 
 	/*
 	 * Never deliver a lwp-specific signal to a random lwp.
+	 *
+	 * When delivering an untargetted signal, use p_sigirefs to
+	 * inform lwps of potential collisions.
 	 */
 	if (lp == NULL) {
 		/* NOTE: returns lp w/ token held */
+		sigirefs_hold(p);
 		lp = find_lwp_for_signal(p, sig);
 		if (lp) {
 			if (SIGISMEMBER(lp->lwp_sigmask, sig)) {
@@ -1360,10 +1372,12 @@ active_process:
 				LWPRELE(lp);
 				lp = NULL;
 				/* maintain proc token */
+				/* maintain sigirefs */
 			} else {
 				lwkt_token_swap();
 				lwkt_reltoken(&p->p_token);
 				/* maintain lp token */
+				sigirefs_drop(p);
 			}
 		}
 	}
@@ -1372,11 +1386,15 @@ active_process:
 	 * Deliver to the process generically if (1) the signal is being
 	 * sent to any thread or (2) we could not find a thread to deliver
 	 * it to.
+	 *
+	 * Drop p_sigirefs after the signal has been resolved to interlock
+	 * against sigsuspend/ppoll/pselect.
 	 */
 	if (lp == NULL) {
 		sigsetfrompid(curthread, p, sig);
 		KNOTE(&p->p_klist, NOTE_SIGNAL | sig);
 		SIGADDSET_ATOMIC(p->p_siglist, sig);
+		sigirefs_drop(p);
 		goto out;
 	}
 
@@ -1818,6 +1836,8 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 
 		lp->lwp_sigmask = savedmask;
 		SIGSETNAND(lp->lwp_sigmask, waitset);
+		sigirefs_wait(p);
+
 		/*
 		 * We won't ever be woken up.  Instead, our sleep will
 		 * be broken in lwpsignal().
@@ -1836,6 +1856,8 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 	}
 
 	lp->lwp_sigmask = savedmask;
+	sigirefs_wait(p);
+
 	if (sig) {
 		error = 0;
 		bzero(info, sizeof(*info));

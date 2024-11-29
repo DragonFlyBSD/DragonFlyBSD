@@ -330,7 +330,8 @@ struct	proc {
 	struct lwkt_token p_token;	/* Token for LWP access to proc */
 	struct sem_undo	*p_sem_undo;	/* Fast semaphore tracking lookup */
 	void		*p_drv_priv;	/* scp linkage (for syscons) */
-	char		p_unused02[44];
+	uint32_t	p_sigirefs;	/* signal interlock refs */
+	char		p_unused02[40];
 	struct sys_upmap *p_upmap;	/* user RW mappable per-process page */
 	forkid_t	p_forkid;	/* unique forkid */
 	struct sysreaper *p_reaper;	/* reaper control */

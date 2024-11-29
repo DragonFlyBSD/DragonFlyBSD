@@ -68,6 +68,7 @@
 
 #include <sys/file2.h>
 #include <sys/spinlock2.h>
+#include <sys/signal2.h>
 
 #include <machine/limits.h>
 
@@ -859,6 +860,7 @@ sys_pselect(struct sysmsg *sysmsg, const struct pselect_args *uap)
 		SIG_CANTMASK(sigmask);
 		lp->lwp_sigmask = sigmask;
 		lwkt_reltoken(&lp->lwp_proc->p_token);
+		sigirefs_wait(lp->lwp_proc);
 	}
 
 	/*
@@ -884,6 +886,7 @@ sys_pselect(struct sysmsg *sysmsg, const struct pselect_args *uap)
 			 * No handler to run. Restore previous mask immediately.
 			 */
 			lp->lwp_sigmask = lp->lwp_oldsigmask;
+			sigirefs_wait(lp->lwp_proc);
 		}
 		lwkt_reltoken(&lp->lwp_proc->p_token);
 	}
@@ -1286,6 +1289,7 @@ sys_ppoll(struct sysmsg *sysmsg, const struct ppoll_args *uap)
 		SIG_CANTMASK(sigmask);
 		lp->lwp_sigmask = sigmask;
 		lwkt_reltoken(&lp->lwp_proc->p_token);
+		sigirefs_wait(lp->lwp_proc);
 	}
 
 	error = dopoll(uap->nfds, uap->fds, ktsp, &sysmsg->sysmsg_result,
@@ -1308,6 +1312,7 @@ sys_ppoll(struct sysmsg *sysmsg, const struct ppoll_args *uap)
 			 * No handler to run. Restore previous mask immediately.
 			 */
 			lp->lwp_sigmask = lp->lwp_oldsigmask;
+			sigirefs_wait(lp->lwp_proc);
 		}
 		lwkt_reltoken(&lp->lwp_proc->p_token);
 	}

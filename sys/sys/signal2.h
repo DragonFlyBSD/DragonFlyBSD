@@ -36,6 +36,7 @@
 #include <sys/param.h>
 #include <sys/proc.h>
 #include <sys/signalvar.h>
+#include <sys/systm.h>
 
 /*
  * Inline functions:
@@ -167,6 +168,55 @@ __cursig(struct lwp *lp, int mayblock, int maytrace, int *ptok)
 		r = TRUE;	/* simply state the fact */
 
 	return(r);
+}
+
+/*
+ * Generic (non-directed) signal processing on process is in progress
+ */
+static __inline
+void
+sigirefs_hold(struct proc *p)
+{
+	atomic_add_int(&p->p_sigirefs, 1);
+}
+
+/*
+ * Signal processing complete
+ */
+static __inline
+void
+sigirefs_drop(struct proc *p)
+{
+	if (atomic_fetchadd_int(&p->p_sigirefs, -1) == 0x80000001U) {
+		atomic_clear_int(&p->p_sigirefs, 0x80000000U);
+		wakeup(&p->p_sigirefs);
+	}
+}
+
+/*
+ * Wait for generic (non directed) signal processing on process to
+ * complete to interlock against races.  Called after lwp_sigmask
+ * has been changed.
+ */
+static __inline
+void
+sigirefs_wait(struct proc *p)
+{
+	uint32_t refs;
+
+	cpu_mfence();
+	refs = *(volatile uint32_t *)&p->p_sigirefs;
+	if (refs & 0x7FFFFFFF) {
+		while (refs & 0x7FFFFFFF) {
+			tsleep_interlock(&p->p_sigirefs, 0);
+			if (atomic_fcmpset_int(&p->p_sigirefs, &refs,
+						refs | 0x80000000U))
+			{
+				tsleep(&p->p_sigirefs, PINTERLOCKED,
+				       "sirefs", 0);
+			}
+		}
+	}
 }
 
 #endif /* !_SYS_SIGNAL2_H_ */
