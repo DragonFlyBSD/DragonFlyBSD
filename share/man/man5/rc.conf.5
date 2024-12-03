@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd July 18, 2024
+.Dd December 3, 2024
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -302,6 +302,14 @@ program (default
 Additional flags to pass to the
 .Xr dhclient 8
 program.
+.It Va dhclient_flags_ Ns Aq Ar interface
+Additional flags to pass to the
+.Xr dhclient 8
+program running on
+.Ar interface
+only.
+When specified, this variable overrides
+.Va dhclient_flags .
 .It Va dhcpcd_enable
 .Pq Vt bool
 Set to
