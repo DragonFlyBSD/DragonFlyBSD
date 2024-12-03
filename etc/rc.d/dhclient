@@ -13,41 +13,54 @@
 
 name="dhclient"
 rcvar=
-start_cmd="dhclient_start"
+start_precmd="dhclient_prestart"
+stop_precmd="dhclient_precheck"
 stop_cmd="dhclient_stop"
 
-dhclient_start()
+ifn="$2"
+pidfile="/var/run/${name}.${ifn}.pid"
+
+# $rc_force check can only be done at the "run_rc_command" phase,
+# so we're testing it in the pre* hooks.
+dhclient_precheck()
 {
-	# prevent unnecessary restarts
-	# XXX: dhclient had better create a pidfile
-	if [ -x /bin/pgrep ]; then
-		pids=`/bin/pgrep -f "dhclient: $ifn(\$| .*)"`
-		if [ -n "$pids" ]; then
-			exit 0
+	if [ -z "$rc_force" ] && ! dhcpif $ifn; then
+		local msg="'$ifn' is not a DHCP-enabled interface"
+		if [ -z "$rc_quiet" ]; then
+			info "$msg"
+		else
+			debug "$msg"
 		fi
+		exit 1
 	fi
+}
+
+dhclient_prestart()
+{
+	dhclient_precheck
 
 	# Override for $ifn specific flags (see rc.subr for $flags setting)
-	eval specific=\$dhclient_flags_$ifn
+	local specific=$(get_if_var $ifn dhclient_flags_IF)
 	if [ -z "$flags" -a -n "$specific" ]; then
 		rc_flags=$specific
 	fi
 
-	${dhclient_program} ${rc_flags} $ifn
+	rc_flags="$rc_flags $ifn"
 }
 
 dhclient_stop()
 {
+	# Killing the pid couldn't stop the child processes, so use the
+	# "-w" option to let dhclient kill them.
 	${dhclient_program} -x $ifn
 }
-
-ifn="$2"
 
 load_rc_config $name
 load_rc_config network
 
-if ! dhcpif $ifn; then
-	return 1
+# Only complain if a command was specified but no interface.
+if [ -n "$1" ] && [ -z "$ifn" ]; then
+	err 1 "no interface specified"
 fi
 
 run_rc_command "$1"
