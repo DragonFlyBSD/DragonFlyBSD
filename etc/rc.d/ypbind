@@ -13,7 +13,6 @@
 name="ypbind"
 rcvar="nis_client_enable"
 command="/usr/sbin/${name}"
-command_args="${nis_client_flags}"
 start_precmd="ypbind_precmd"
 
 ypbind_precmd()
@@ -32,4 +31,6 @@ ypbind_precmd()
 }
 
 load_rc_config $name
+command_args="${nis_client_flags}"
+
 run_rc_command "$1"

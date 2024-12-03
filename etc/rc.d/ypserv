@@ -12,7 +12,6 @@
 name="ypserv"
 rcvar="nis_server_enable"
 command="/usr/sbin/${name}"
-command_args="${nis_server_flags}"
 start_precmd="ypserv_precmd"
 
 ypserv_precmd()
@@ -35,4 +34,6 @@ ypserv_precmd()
 }
 
 load_rc_config $name
+command_args="${nis_server_flags}"
+
 run_rc_command "$1"

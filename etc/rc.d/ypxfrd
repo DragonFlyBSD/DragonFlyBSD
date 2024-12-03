@@ -11,7 +11,6 @@
 name="ypxfrd"
 rcvar="nis_ypxfrd_enable"
 command="/usr/sbin/rpc.${name}"
-command_args="${nis_ypxfrd_flags}"
 start_precmd="ypxfrd_precmd"
 
 ypxfrd_precmd()
@@ -35,4 +34,6 @@ ypxfrd_precmd()
 }
 
 load_rc_config $name
+command_args="${nis_ypxfrd_flags}"
+
 run_rc_command "$1"

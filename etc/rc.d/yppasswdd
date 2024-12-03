@@ -13,7 +13,6 @@
 name="yppasswdd"
 rcvar="nis_yppasswdd_enable"
 command="/usr/sbin/rpc.${name}"
-command_args="${nis_yppasswdd_flags}"
 start_precmd="yppasswdd_precmd"
 
 yppasswdd_precmd()
@@ -37,4 +36,6 @@ yppasswdd_precmd()
 }
 
 load_rc_config $name
+command_args="${nis_yppasswdd_flags}"
+
 run_rc_command "$1"

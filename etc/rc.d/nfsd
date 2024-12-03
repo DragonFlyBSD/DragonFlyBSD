@@ -13,7 +13,6 @@
 name="nfsd"
 rcvar=`set_rcvar nfs_server`
 command="/sbin/${name}"
-command_args="${nfs_server_flags}"
 start_precmd="nfsd_precmd"
 sig_stop="USR1"
 
@@ -44,4 +43,6 @@ nfsd_precmd()
 }
 
 load_rc_config $name
+command_args="${nfs_server_flags}"
+
 run_rc_command "$1"
