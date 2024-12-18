@@ -699,6 +699,8 @@ usage(int ecode)
     "    version              - Print version info and exit\n"
     "    help                 - Display this screen and exit\n"
     "    status     [ports]   - Dry-run of 'build' with given list\n"
+    "    add        [ports]   - Add listed dports to a new build queue that\n"
+    "                           will be built after the current run finishes.\n"
     "    build      [ports]   - Incrementally build dports based on the given\n"
     "                           list, but asks before updating the repo\n"
     "                           database and system\n"
