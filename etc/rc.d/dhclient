@@ -51,7 +51,7 @@ dhclient_prestart()
 dhclient_stop()
 {
 	# Killing the pid couldn't stop the child processes, so use the
-	# "-w" option to let dhclient kill them.
+	# "-x" option to let dhclient kill them.
 	${dhclient_program} -x $ifn
 }
 
