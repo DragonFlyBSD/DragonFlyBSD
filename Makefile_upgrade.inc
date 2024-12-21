@@ -3929,6 +3929,7 @@ TO_REMOVE+=/etc/mail/mailer.conf.dma
 TO_REMOVE+=/etc/mail/mailer.conf.opensmtpd
 TO_REMOVE+=/etc/mail/mailer.conf.postfix
 TO_REMOVE+=/etc/mail/mailer.conf.sendmail
+TO_REMOVE+=/rescue/diff3
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
