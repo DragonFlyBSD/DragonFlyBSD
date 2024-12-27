@@ -280,10 +280,11 @@ main(int argc, char **argv)
 		_exit(errno == ENOENT ? EXIT_CMD_NOENT : EXIT_CMD_ERROR);
 	}
 
+	/* parent continues here */
+
 	if (sigprocmask(SIG_BLOCK, &signals.sa_mask, NULL) == -1)
 		err(EXIT_FAILURE, "sigprocmask()");
 
-	/* parent continues here */
 	set_interval(first_kill);
 
 	for (;;) {
