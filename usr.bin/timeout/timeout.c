@@ -37,7 +37,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sysexits.h>
 #include <unistd.h>
 
 #define EXIT_TIMEOUT	124
@@ -60,7 +59,7 @@ usage(void)
 	    " [--preserve-status] <duration> <command> <arg ...>\n",
 	    getprogname());
 
-	exit(EX_USAGE);
+	exit(EXIT_FAILURE);
 }
 
 static double
@@ -167,7 +166,7 @@ set_interval(double iv)
 	tim.it_value.tv_usec = (suseconds_t)(iv * 1000000UL);
 
 	if (setitimer(ITIMER_REAL, &tim, NULL) == -1)
-		err(EX_OSERR, "setitimer()");
+		err(EXIT_FAILURE, "setitimer()");
 }
 
 int
@@ -243,7 +242,7 @@ main(int argc, char **argv)
 	if (!foreground) {
 		/* Acquire a reaper */
 		if (procctl(P_PID, getpid(), PROC_REAP_ACQUIRE, NULL) == -1)
-			err(EX_OSERR, "Fail to acquire the reaper");
+			err(EXIT_FAILURE, "Fail to acquire the reaper");
 	}
 
 	memset(&signals, 0, sizeof(signals));
@@ -261,7 +260,7 @@ main(int argc, char **argv)
 	for (i = 0; i < sizeof(signums) / sizeof(signums[0]); i ++) {
 		if (signums[i] != -1 && signums[i] != 0 &&
 		    sigaction(signums[i], &signals, NULL) == -1)
-			err(EX_OSERR, "sigaction()");
+			err(EXIT_FAILURE, "sigaction()");
 	}
 
 	/* Don't stop if background child needs TTY */
@@ -270,7 +269,7 @@ main(int argc, char **argv)
 
 	pid = fork();
 	if (pid == -1)
-		err(EX_OSERR, "fork()");
+		err(EXIT_FAILURE, "fork()");
 	else if (pid == 0) {
 		/* child process */
 		signal(SIGTTIN, SIG_DFL);
@@ -286,7 +285,7 @@ main(int argc, char **argv)
 	}
 
 	if (sigprocmask(SIG_BLOCK, &signals.sa_mask, NULL) == -1)
-		err(EX_OSERR, "sigprocmask()");
+		err(EXIT_FAILURE, "sigprocmask()");
 
 	/* parent continues here */
 	set_interval(first_kill);
@@ -349,7 +348,7 @@ main(int argc, char **argv)
 
 	while (!child_done && wait(&pstat) == -1) {
 		if (errno != EINTR)
-			err(EX_OSERR, "waitpid()");
+			err(EXIT_FAILURE, "waitpid()");
 	}
 
 	if (!foreground)
