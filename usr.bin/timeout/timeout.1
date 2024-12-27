@@ -24,9 +24,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD$
-.\"
-.Dd January 2, 2021
+.Dd December 27, 2024
 .Dt TIMEOUT 1
 .Os
 .Sh NAME
@@ -35,19 +33,20 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl k Ar time | Fl -kill-after Ar time
-.Op Fl s Ar sig | Fl -signal Ar sig
+.Op Fl s Ar signal | Fl -signal Ar signal
 .Op Fl v | Fl -verbose
 .Op Fl -foreground
 .Op Fl -preserve-status
 .Ar duration
 .Ar command
-.Op Ar args ...
+.Op Ar arg ...
 .Sh DESCRIPTION
 .Nm
 starts the
 .Ar command
 with its
-.Ar args .
+.Ar arg
+list.
 If the
 .Ar command
 is still running after
@@ -73,13 +72,12 @@ signal if
 is still running after
 .Ar time
 after the first signal was sent.
-.It Fl s Ar sig , Fl -signal Ar sig
+.It Fl s Ar signal , Fl -signal Ar signal
 Specify the signal to send on timeout.
 By default,
 .Dv SIGTERM
 is sent.
 .It Fl v , Fl -verbose
-Show information to stderr about any signal sent on timeout.
 .It Fl -foreground
 Do not propagate timeout to the children of
 .Ar command .
@@ -87,6 +85,7 @@ Do not propagate timeout to the children of
 Exit with the same status as
 .Ar command ,
 even if it times out and is killed.
+Show information to stderr about any signal sent upon timeout.
 .El
 .Sh DURATION FORMAT
 The
@@ -94,10 +93,10 @@ The
 and
 .Ar time
 are non-negative integer or real (decimal) numbers, with an optional
-unit-specifying suffix.
+suffix specifying the unit.
 Values without an explicit unit are interpreted as seconds.
 .Pp
-Supported unit symbols are:
+Supported unit suffixes are:
 .Bl -tag -offset indent -width indent -compact
 .It Cm s
 seconds
@@ -165,7 +164,7 @@ $ echo $?
 .Pp
 Same as above but preserving status.
 Exit status is 128 + signal number (15 for
-.Va SIGTERM )
+.Va SIGTERM ) :
 .Bd -literal -offset indent
 $ timeout --preserve-status 2 sleep 4
 $ echo $?
@@ -175,7 +174,7 @@ $ echo $?
 Same as above but sending
 .Va SIGALRM
 (signal number 14) instead of
-.Va SIGTERM
+.Va SIGTERM :
 .Bd -literal -offset indent
 $ timeout --preserve-status -s SIGALRM 2 sleep 4
 $ echo $?

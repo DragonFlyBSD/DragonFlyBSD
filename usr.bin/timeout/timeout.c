@@ -25,6 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/cdefs.h>
 #include <sys/procctl.h>
 #include <sys/time.h>
 #include <sys/wait.h>
@@ -54,11 +55,11 @@ static bool verbose = false;
 static void __dead2
 usage(void)
 {
-	fprintf(stderr, "Usage: %s [-k time | --kill-after time]"
-	    " [-s sig | --signal sig] [-v | --verbose] [--foreground]"
-	    " [--preserve-status] <duration> <command> <arg ...>\n",
-	    getprogname());
-
+	fprintf(stderr,
+		"Usage: %s [--foreground] [-k time | --kill-after time]"
+		" [--preserve-status] [-s signal | --signal signal] "
+		" [-v | --verbose] <duration> <command> [arg ...]\n",
+		getprogname());
 	exit(EXIT_FAILURE);
 }
 
@@ -129,7 +130,6 @@ sig_handler(int signo)
 	}
 
 	switch (signo) {
-	case 0:
 	case SIGINT:
 	case SIGHUP:
 	case SIGQUIT:
@@ -150,7 +150,7 @@ send_sig(pid_t pid, int signo)
 {
 	if (verbose) {
 		warnx("sending signal %s(%d) to command '%s'",
-		    sys_signame[signo], signo, command);
+		      sys_signame[signo], signo, command);
 	}
 	kill(pid, signo);
 }
@@ -162,7 +162,7 @@ set_interval(double iv)
 
 	memset(&tim, 0, sizeof(tim));
 	tim.it_value.tv_sec = (time_t)iv;
-	iv -= (double)tim.it_value.tv_sec;
+	iv -= (double)(time_t)iv;
 	tim.it_value.tv_usec = (suseconds_t)(iv * 1000000UL);
 
 	if (setitimer(ITIMER_REAL, &tim, NULL) == -1)
@@ -222,10 +222,8 @@ main(int argc, char **argv)
 			break;
 		case 0:
 			break;
-		case 'h':
 		default:
 			usage();
-			break;
 		}
 	}
 
@@ -242,7 +240,7 @@ main(int argc, char **argv)
 	if (!foreground) {
 		/* Acquire a reaper */
 		if (procctl(P_PID, getpid(), PROC_REAP_ACQUIRE, NULL) == -1)
-			err(EXIT_FAILURE, "Fail to acquire the reaper");
+			err(EXIT_FAILURE, "procctl(PROC_REAP_ACQUIRE)");
 	}
 
 	memset(&signals, 0, sizeof(signals));
@@ -251,14 +249,14 @@ main(int argc, char **argv)
 	if (killsig != SIGKILL && killsig != SIGSTOP)
 		signums[0] = killsig;
 
-	for (i = 0; i < sizeof(signums) / sizeof(signums[0]); i ++)
+	for (i = 0; i < sizeof(signums) / sizeof(signums[0]); i++)
 		sigaddset(&signals.sa_mask, signums[i]);
 
 	signals.sa_handler = sig_handler;
 	signals.sa_flags = SA_RESTART;
 
-	for (i = 0; i < sizeof(signums) / sizeof(signums[0]); i ++) {
-		if (signums[i] != -1 && signums[i] != 0 &&
+	for (i = 0; i < sizeof(signums) / sizeof(signums[0]); i++) {
+		if (signums[i] > 0 &&
 		    sigaction(signums[i], &signals, NULL) == -1)
 			err(EXIT_FAILURE, "sigaction()");
 	}
@@ -268,9 +266,9 @@ main(int argc, char **argv)
 	signal(SIGTTOU, SIG_IGN);
 
 	pid = fork();
-	if (pid == -1)
+	if (pid == -1) {
 		err(EXIT_FAILURE, "fork()");
-	else if (pid == 0) {
+	} else if (pid == 0) {
 		/* child process */
 		signal(SIGTTIN, SIG_DFL);
 		signal(SIGTTOU, SIG_DFL);
@@ -294,11 +292,10 @@ main(int argc, char **argv)
 		if (sig_chld) {
 			sig_chld = 0;
 
+			/* Collect all descendants. */
 			while ((cpid = waitpid(-1, &status, WNOHANG)) != 0) {
 				if (cpid < 0) {
-					if (errno == EINTR)
-						continue;
-					else
+					if (errno != EINTR)
 						break;
 				} else if (cpid == pid) {
 					pstat = status;
@@ -330,28 +327,30 @@ main(int argc, char **argv)
 					&info);
 				if (info.status.pid_head > 0)
 					send_sig(info.status.pid_head, signo);
-			} else
+			} else {
 				send_sig(pid, signo);
+			}
 
 			if (do_second_kill) {
 				set_interval(second_kill);
 				do_second_kill = false;
 				sig_ign = killsig;
 				killsig = SIGKILL;
-			} else
+			} else {
 				break;
+			}
 		}
 	}
 
 	while (!child_done && wait(&pstat) == -1) {
 		if (errno != EINTR)
-			err(EXIT_FAILURE, "waitpid()");
+			err(EXIT_FAILURE, "wait()");
 	}
 
 	if (!foreground)
 		procctl(P_PID, getpid(), PROC_REAP_RELEASE, NULL);
 
-	if (WEXITSTATUS(pstat))
+	if (WIFEXITED(pstat))
 		pstat = WEXITSTATUS(pstat);
 	else if (WIFSIGNALED(pstat))
 		pstat = 128 + WTERMSIG(pstat);
