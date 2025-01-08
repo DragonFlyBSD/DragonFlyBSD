@@ -58,3 +58,4 @@ struct iso_args {
 #define	ISOFSMNT_KICONV		0x00000020	/* Use libiconv to convert chars */
 #define	ISOFSMNT_UID		0x00000040	/* override uid */
 #define	ISOFSMNT_GID		0x00000080	/* override gid */
+#define ISOFSMNT_MODEMASK	0x00000100	/* mask file/dir modes */

@@ -78,7 +78,6 @@ static void	usage(void);
 int
 main(int argc, char **argv)
 {
-	struct stat sb;
 	struct iso_args args;
 	int ch, mntflags, opts, set_mask, set_dirmask;
 	char *dev, *dir, mntpath[MAXPATHLEN];
@@ -115,10 +114,12 @@ main(int argc, char **argv)
 			break;
 		case 'm':
 			args.fmask = a_mask(optarg);
+			opts |= ISOFSMNT_MODEMASK;
 			set_mask = 1;
 			break;
 		case 'M':
 			args.dmask = a_mask(optarg);
+			opts |= ISOFSMNT_MODEMASK;
 			set_dirmask = 1;
 			break;
 		case 'o':
@@ -195,11 +196,23 @@ main(int argc, char **argv)
 			printf("using starting sector %d\n", args.ssector);
 	}
 
+	/*
+	 * Don't set the mount flag, so newer kernels will just ignore
+	 * the fmask and dmask fields when the options are not used.
+	 * Older kernels will still use them so set a backward-compatible
+	 * default.  Do not use the underlying mount point's permsissions
+	 * as a basis.
+	 */
 	if (!set_mask) {
+#if 0
+		struct stat sb;
 		if (stat(mntpath, &sb) == -1)
 			err(EX_OSERR, "stat %s", mntpath);
-		args.fmask = args.dmask =
-			sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
+#endif
+		args.fmask = args.dmask = ACCESSPERMS;
+#if 0
+		args.fmask = sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
+#endif
 	}
 
 	error = getvfsbyname("cd9660", &vfc);

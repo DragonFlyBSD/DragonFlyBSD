@@ -451,8 +451,13 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 		isomp->im_uid = argp->uid;
 	if (argp->flags & ISOFSMNT_GID)
 		isomp->im_gid = argp->gid;
-	isomp->im_fmask = argp->fmask & ACCESSPERMS;
-	isomp->im_dmask = argp->dmask & ACCESSPERMS;
+	if (argp->flags & ISOFSMNT_MODEMASK) {
+		isomp->im_fmask = argp->fmask & ACCESSPERMS;
+		isomp->im_dmask = argp->dmask & ACCESSPERMS;
+	} else {
+		isomp->im_fmask = ACCESSPERMS;
+		isomp->im_dmask = ACCESSPERMS;
+	}
 
 	/* Check the Rock Ridge Extension support */
 	if (!(argp->flags & ISOFSMNT_NORRIP)) {
