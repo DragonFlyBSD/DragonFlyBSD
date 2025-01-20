@@ -425,13 +425,6 @@ mkimg:
 	newfs /dev/`cat ${ISODIR}/vn.which`s2a
 	mount /dev/`cat ${ISODIR}/vn.which`s2a ${IMGMNT}
 	cpdup ${ISOROOT} ${IMGMNT}
-	@echo "STEP: fixup ${IMGMNT}/etc/fstab"
-	echo "/dev/part-by-label/${LABEL}.a / ufs rw,noatime 0 1" > ${IMGMNT}/etc/fstab
-	echo "dummy /tmp tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
-	echo "dummy /var/tmp tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
-	echo "dummy /var/run tmpfs rw,-C 0 0" >> ${IMGMNT}/etc/fstab
-	echo "dummy /usr/obj tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
-	echo "proc /proc procfs rw 0 0" >> ${IMGMNT}/etc/fstab
 	@echo "STEP: fixup ${IMGMNT}/etc/rc.conf"
 	sed -i '' -E -e 's|^(root_rw_mount=.*)$$|#\1|' ${IMGMNT}/etc/rc.conf
 	@echo "STEP: fixup ${IMGMNT}/boot/loader.conf"
