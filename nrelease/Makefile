@@ -428,9 +428,9 @@ mkimg:
 	@echo "STEP: fixup ${IMGMNT}/etc/rc.conf"
 	sed -i '' -E -e 's|^(root_rw_mount=.*)$$|#\1|' ${IMGMNT}/etc/rc.conf
 	@echo "STEP: fixup ${IMGMNT}/boot/loader.conf"
-	-fgrep -v kernel_options ${IMGMNT}/boot/loader.conf > ${IMGMNT}/boot/loader.conf.new
-	echo 'vfs.root.mountfrom="ufs:part-by-label/${LABEL}.a"' >> ${IMGMNT}/boot/loader.conf.new
-	mv ${IMGMNT}/boot/loader.conf.new ${IMGMNT}/boot/loader.conf
+	sed -i '' -E -e 's|^(kernel_options=.*)$$|#\1|' \
+		-e 's|^#?(vfs.root.mountfrom)="ROOT"|\1="ufs:part-by-label/${LABEL}.a"|' \
+		${IMGMNT}/boot/loader.conf
 	@echo "STEP: create /firstboot"
 	touch ${IMGMNT}/firstboot
 	@echo "STEP: cleanup"
