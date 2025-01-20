@@ -432,6 +432,8 @@ mkimg:
 	echo "dummy /var/run tmpfs rw,-C 0 0" >> ${IMGMNT}/etc/fstab
 	echo "dummy /usr/obj tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
 	echo "proc /proc procfs rw 0 0" >> ${IMGMNT}/etc/fstab
+	@echo "STEP: fixup ${IMGMNT}/etc/rc.conf"
+	sed -i '' -E -e 's|^(root_rw_mount=.*)$$|#\1|' ${IMGMNT}/etc/rc.conf
 	@echo "STEP: fixup ${IMGMNT}/boot/loader.conf"
 	-fgrep -v kernel_options ${IMGMNT}/boot/loader.conf > ${IMGMNT}/boot/loader.conf.new
 	echo 'vfs.root.mountfrom="ufs:part-by-label/${LABEL}.a"' >> ${IMGMNT}/boot/loader.conf.new
