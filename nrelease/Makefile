@@ -333,8 +333,6 @@ pkgs:
 mkiso:
 .if ${WORLD_VERSION} < 600106
 	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
-	-if [ -f ${ISODIR}/vn.which ]; then umount ${IMGMNT}; 		\
-	    vnconfig -u `cat ${ISODIR}/vn.which`; fi
 	newfs_msdos -C 400k -F 12 -L EFI -m 0xf8 ${ISOROOT}/boot/efiboot.img
 	vnconfig -l | grep "not in use" | head -n 1 | 			\
 	    cut -f 1 -d: > ${ISODIR}/vn.which
@@ -343,6 +341,9 @@ mkiso:
 	mkdir -p ${IMGMNT}/EFI/BOOT
 	cp ${ISOROOT}/boot/loader.efi ${IMGMNT}/EFI/BOOT/BOOTX64.EFI
 	umount ${IMGMNT}
+	vnconfig -u `cat ${ISODIR}/vn.which`
+	rm -f ${ISODIR}/vn.which
+	rmdir ${IMGMNT}
 .else
 	( tmpdir=`mktemp -d -t nrelease` && mkdir -p "$${tmpdir}/EFI/BOOT" && \
 	    cp ${ISOROOT}/boot/loader.efi $${tmpdir}/EFI/BOOT/BOOTX64.EFI && \
@@ -360,8 +361,6 @@ mkiso:
 
 mkimg:
 	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
-	-if [ -f ${ISODIR}/vn.which ]; then umount ${IMGMNT}; 		\
-	    vnconfig -u `cat ${ISODIR}/vn.which`; fi
 	rm -f ${IMGFILE}
 .ifdef IMGSIZE
 	@echo "STEP: use an image size of ${IMGSIZE} 512-byte sectors"
