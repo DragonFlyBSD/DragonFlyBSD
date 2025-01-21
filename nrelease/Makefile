@@ -439,11 +439,13 @@ clean:
 	-umount ${ISOROOT}/usr/distfiles > /dev/null 2>&1
 	-umount ${ISOROOT}/usr/dports > /dev/null 2>&1
 	-umount ${ISOROOT}/dev > /dev/null 2>&1
-	-if [ -f ${ISODIR}/vn.which ]; then umount ${IMGMNT}; 		\
-	    vnconfig -u `cat ${ISODIR}/vn.which`; fi
+	-if [ -f ${ISODIR}/vn.which ]; then				\
+	    umount ${IMGMNT} > /dev/null 2>&1;				\
+	    vnconfig -u `cat ${ISODIR}/vn.which` > /dev/null 2>&1;	\
+	    rm -f ${ISODIR}/vn.which;					\
+	fi
 	if [ -d ${ISOROOT} ]; then chflags -R noschg ${ISOROOT}; fi
 	rm -rf ${ISOROOT}
-	rm -f ${ISODIR}/.didbootstrap ${ISODIR}/vn.which
 
 realclean:	clean
 	rm -rf ${ISODIR}/packages
