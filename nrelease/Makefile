@@ -334,9 +334,7 @@ mkiso:
 .if ${WORLD_VERSION} < 600106
 	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
 	newfs_msdos -C 400k -F 12 -L EFI -m 0xf8 ${ISOROOT}/boot/efiboot.img
-	vnconfig -l | grep "not in use" | head -n 1 | 			\
-	    cut -f 1 -d: > ${ISODIR}/vn.which
-	vnconfig -e `cat ${ISODIR}/vn.which` ${ISOROOT}/boot/efiboot.img
+	vnconfig -e vn ${ISOROOT}/boot/efiboot.img > ${ISODIR}/vn.which
 	mount_msdos /dev/`cat ${ISODIR}/vn.which` ${IMGMNT}
 	mkdir -p ${IMGMNT}/EFI/BOOT
 	cp ${ISOROOT}/boot/loader.efi ${IMGMNT}/EFI/BOOT/BOOTX64.EFI
@@ -379,9 +377,7 @@ mkimg:
 	    truncate -s $${sz}M ${IMGFILE}
 .endif
 	@echo "STEP: determine free vn device"
-	vnconfig -l | grep "not in use" | head -n 1 | 			\
-	    cut -f 1 -d: > ${ISODIR}/vn.which
-	vnconfig -e `cat ${ISODIR}/vn.which` ${IMGFILE}
+	vnconfig -e vn ${IMGFILE} > ${ISODIR}/vn.which
 	@echo "STEP: set up legacy MBR"
 	fdisk -b ${ISOROOT}/boot/mbr -IB `cat ${ISODIR}/vn.which`
 	fdisk -s `cat ${ISODIR}/vn.which` >${ISODIR}/fdisk.dat
