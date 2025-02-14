@@ -345,16 +345,13 @@ a_uid(const char *s)
 static mode_t
 a_mask(const char *s)
 {
-	int done, rv;
+	long val;
 	char *ep;
 
-	done = 0;
-	rv = -1;
-	if (*s >= '0' && *s <= '7') {
-		done = 1;
-		rv = strtol(optarg, &ep, 8);
-	}
-	if (!done || rv < 0 || *ep)
-		errx(EX_USAGE, "invalid file mode: %s", s);
-	return (rv);
+	errno = 0;
+	val = strtol(s, &ep, 8);
+	if (errno != 0 || *ep != '\0' || val <= 0 || val > (long)ALLPERMS)
+		errx(EX_USAGE, "invalid file/dir mask: %s", s);
+
+	return (mode_t)val;
 }
