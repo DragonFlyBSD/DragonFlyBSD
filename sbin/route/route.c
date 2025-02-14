@@ -40,6 +40,7 @@
 #include <net/if.h>
 #include <net/route.h>
 #include <net/if_dl.h>
+#include <net/if_types.h>
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 #include <arpa/inet.h>
@@ -412,7 +413,28 @@ routename(struct sockaddr *sa)
 #endif
 
 	case AF_LINK:
-		return(link_ntoa((struct sockaddr_dl *)sa));
+	    {
+		struct sockaddr_dl *sdl = (struct sockaddr_dl *)sa;
+
+		if (sdl->sdl_nlen == 0 && sdl->sdl_alen == 0 &&
+		    sdl->sdl_slen == 0) {
+			sprintf(line, "link#%d", sdl->sdl_index);
+			return (line);
+		}
+
+		switch (sdl->sdl_type) {
+		case IFT_ETHER:
+		case IFT_L2VLAN:
+		case IFT_CARP:
+			if (sdl->sdl_alen == ETHER_ADDR_LEN) {
+				return ether_ntoa((struct ether_addr *)
+				    (sdl->sdl_data + sdl->sdl_nlen));
+			}
+			/* FALLTHROUGH */
+		default:
+			return link_ntoa(sdl);
+		}
+	    }
 
 	default:
 	    {
