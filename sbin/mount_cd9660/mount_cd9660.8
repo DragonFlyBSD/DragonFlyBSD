@@ -32,7 +32,7 @@
 .\"     @(#)mount_cd9660.8	8.3 (Berkeley) 3/27/94
 .\" $FreeBSD: src/sbin/mount_cd9660/mount_cd9660.8,v 1.12.2.6 2003/02/24 00:56:41 trhodes Exp $
 .\"
-.Dd March 7, 2024
+.Dd February 14, 2025
 .Dt MOUNT_CD9660 8
 .Os
 .Sh NAME
@@ -80,35 +80,29 @@ version number.
 .It Fl G Ar gid
 Set the group of the files in the file system to
 .Ar gid .
-The default gid on non-Rockridge volumes is zero.
+The default gid on volumes without extended attributes or
+RockRidge extensions is zero.
 .It Fl m Ar mask
-Specify the maximum file permissions for files
-in the file system.
-(For example, a
+Specify the maximum permissions for files in the file system.
+For example, a
 .Ar mask
 of
-.Li 755
-specifies that, by default, the owner should have
-read, write, and execute permissions for files, but
-others should only have read and execute permissions.)
+.Li 544
+limits the owner to read and execute permissions for files
+and others to only read permission.
 See
 .Xr chmod 1
 for more information about octal file modes.
-Only the nine low-order bits of
-.Ar mask
-are used.
 The value of
 .Fl M
 is used if it is supplied and
 .Fl m
 is omitted.
-The default
-.Ar mask
-on non-Rockridge volumes is
-.Li 755 .
+The default permissions on volumes without extended attributes or
+RockRidge extensions are
+.Li 555 .
 .It Fl M Ar mask
-Specify the maximum file permissions for directories
-in the file system.
+Specify the maximum permissions for directories in the file system.
 The value of
 .Fl m
 is used if it is supplied and
@@ -144,7 +138,7 @@ Same as
 .Fl b .
 .El
 .It Fl r
-Do not use any Rockridge extensions included in the file system.
+Do not use any RockRidge extensions included in the file system.
 .It Fl s Ar startsector
 Start the file system at
 .Ar startsector .
@@ -172,7 +166,8 @@ here.
 .It Fl U Ar uid
 Set the owner of the files in the file system to
 .Ar uid .
-The default uid on non-Rockridge volumes is zero.
+The default uid on volumes without extended attributes or
+RockRidge extensions is zero.
 .It Fl v
 Be verbose about the starting sector decisions made.
 .El
@@ -194,8 +189,8 @@ utility first appeared in
 .Sh BUGS
 POSIX device node mapping is currently not supported.
 .Pp
-Version numbers are not stripped if Rockridge extensions are in use.
-In this case, accessing files that do not have Rockridge names without
+Version numbers are not stripped if RockRidge extensions are in use.
+In this case, accessing files that do not have RockRidge names without
 version numbers gets the one with the lowest version number and not
 the one with the highest.
 .Pp

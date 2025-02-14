@@ -79,13 +79,13 @@ int
 main(int argc, char **argv)
 {
 	struct iso_args args;
-	int ch, mntflags, opts, set_mask, set_dirmask;
+	int ch, mntflags, opts;
 	char *dev, *dir, mntpath[MAXPATHLEN];
 	struct vfsconf vfc;
 	int error, verbose;
 	const char *cs_local;
 
-	mntflags = opts = set_mask = set_dirmask = verbose = 0;
+	mntflags = opts = verbose = 0;
 	memset(&args, 0, sizeof args);
 	args.ssector = -1;
 	while ((ch = getopt(argc, argv, "bC:egG:jm:M:o:rs:U:v")) != -1)
@@ -115,12 +115,10 @@ main(int argc, char **argv)
 		case 'm':
 			args.fmask = a_mask(optarg);
 			opts |= ISOFSMNT_MODEMASK;
-			set_mask = 1;
 			break;
 		case 'M':
 			args.dmask = a_mask(optarg);
 			opts |= ISOFSMNT_MODEMASK;
-			set_dirmask = 1;
 			break;
 		case 'o':
 			getmntopts(optarg, mopts, &mntflags, &opts);
@@ -147,14 +145,6 @@ main(int argc, char **argv)
 
 	if (argc != 2)
 		usage();
-
-	if (set_mask && !set_dirmask) {
-		args.dmask = args.fmask;
-		set_dirmask = 1;
-	} else if (set_dirmask && !set_mask) {
-		args.fmask = args.dmask;
-		set_mask = 1;
-	}
 
 	dev = argv[0];
 	dir = argv[1];
@@ -196,24 +186,10 @@ main(int argc, char **argv)
 			printf("using starting sector %d\n", args.ssector);
 	}
 
-	/*
-	 * Don't set the mount flag, so newer kernels will just ignore
-	 * the fmask and dmask fields when the options are not used.
-	 * Older kernels will still use them so set a backward-compatible
-	 * default.  Do not use the underlying mount point's permsissions
-	 * as a basis.
-	 */
-	if (!set_mask) {
-#if 0
-		struct stat sb;
-		if (stat(mntpath, &sb) == -1)
-			err(EX_OSERR, "stat %s", mntpath);
-#endif
-		args.fmask = args.dmask = ACCESSPERMS;
-#if 0
-		args.fmask = sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
-#endif
-	}
+	if (args.dmask == 0 && args.fmask > 0)
+		args.dmask = args.fmask;
+	else if (args.fmask == 0 && args.dmask > 0)
+		args.fmask = args.dmask;
 
 	error = getvfsbyname("cd9660", &vfc);
 	if (error && vfsisloadable("cd9660")) {
