@@ -448,7 +448,8 @@ routename(struct sockaddr *sa)
 		char *cpe = line + sizeof(line);
 
 		while (sp < splim && cps < cpe)
-			cps += snprintf(cps, cpe - cps, " %02x", *sp++);
+			cps += snprintf(cps, cpe - cps, "%02x.", *sp++);
+		cps[-1] = '\0';
 		break;
 	    }
 	}
