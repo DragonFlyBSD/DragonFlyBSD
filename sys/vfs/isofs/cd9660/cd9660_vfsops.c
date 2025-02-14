@@ -444,6 +444,8 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 	isomp->im_mountp = mp;
 	isomp->im_dev = dev;
 	isomp->im_devvp = devvp;
+	/* Use ALLPERMS to include the setuid/setgid/sticky permissions. */
+	isomp->im_fmask = isomp->im_dmask = ALLPERMS;
 
 	dev->si_mountpoint = mp;
 
@@ -452,11 +454,10 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 	if (argp->flags & ISOFSMNT_GID)
 		isomp->im_gid = argp->gid;
 	if (argp->flags & ISOFSMNT_MODEMASK) {
-		isomp->im_fmask = argp->fmask & ACCESSPERMS;
-		isomp->im_dmask = argp->dmask & ACCESSPERMS;
-	} else {
-		isomp->im_fmask = ACCESSPERMS;
-		isomp->im_dmask = ACCESSPERMS;
+		if (argp->fmask > 0)
+			isomp->im_fmask &= argp->fmask;
+		if (argp->dmask > 0)
+			isomp->im_dmask &= argp->dmask;
 	}
 
 	/* Check the Rock Ridge Extension support */
