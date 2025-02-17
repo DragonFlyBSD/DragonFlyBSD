@@ -211,19 +211,29 @@ char *
 rel_rootpath(const char *path)
 {
 	char *rootpath;
+	char *abspath;
 
 	if (DirBase == NULL)
 		DirBase = strdup("/");
 
-	if (strncmp(path, "/boot/", sizeof("/boot/")-1) == 0) {
-		rootpath = strdup(path);
-	} else if (path[0] == '/') {
-		rootpath = malloc(strlen(path) + sizeof("/boot"));
-		sprintf(rootpath, "/boot%s", path);
+	/*
+	 * Convert to absolute path first, because DirBase will be
+	 * "/boot/<kernelname>/" when /boot is on the root filesystem
+	 * instead of being a separate filesystem.
+	 */
+	if (path[0] == '/') {
+		abspath = strdup(path);
 	} else {
-		rootpath = malloc(strlen(DirBase) + strlen(path) +
-				  sizeof("/boot"));
-		sprintf(rootpath, "/boot%s%s", DirBase, path);
+		abspath = malloc(strlen(DirBase) + strlen(path) + 1);
+		sprintf(abspath, "%s%s", DirBase, path);
+	}
+
+	if (strncmp(abspath, "/boot/", sizeof("/boot/")-1) == 0) {
+		rootpath = abspath;
+	} else {
+		rootpath = malloc(strlen(abspath) + sizeof("/boot"));
+		sprintf(rootpath, "/boot%s", abspath);
+		free(abspath);
 	}
 
 	return (rootpath);
