@@ -222,11 +222,10 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
 	setenv("exported_module_path", mptr, 1);
 	free(mptr);
     }
+    printf("%s (from %s) ", filename, fp->f_name);
 #ifdef ELF_VERBOSE
     if (ef.kernel)
-	printf("%s entry at 0x%jx\n", filename, (uintmax_t)dest);
-#else
-    printf("%s ", filename);
+	printf("entry at 0x%jx\n", filename, (uintmax_t)dest);
 #endif
 
     fp->f_size = __elfN(loadimage)(fp, &ef, dest);

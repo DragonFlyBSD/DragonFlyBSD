@@ -811,7 +811,8 @@ mod_search_hints(struct moduledir *mdp, const char *modname,
 	    }
 	    if (ival >= verinfo->md_ver_minimum &&
 		ival <= verinfo->md_ver_maximum &&
-		ival > bestver) {
+		ival > bestver)
+	    {
 		bestver = ival;
 		best = cp;
 		blen = clen;
