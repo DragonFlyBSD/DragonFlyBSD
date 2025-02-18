@@ -482,7 +482,9 @@ cd9660_rrip_loop(struct iso_directory_record *isodir, ISO_RRIP_ANALYZE *ana,
 	isochar(isodir->name, pwhead, ana->imp->joliet_level, &c, NULL,
 		ana->imp->im_flags, ana->imp->im_d2l);
 
-	/* If it's not the '.' entry of the root dir obey SP field */
+	/*
+	 * If it's not the '.' entry of the root dir obey SP field
+	 */
 	if (c != 0 || isonum_733(isodir->extent) != ana->imp->root_extent)
 		pwhead += ana->imp->rr_skip;
 	else
@@ -492,59 +494,89 @@ cd9660_rrip_loop(struct iso_directory_record *isodir, ISO_RRIP_ANALYZE *ana,
 	pend = (ISO_SUSP_HEADER *)((char *)isodir + isonum_711(isodir->length));
 
 	result = 0;
+
 	while (1) {
 		ana->iso_ce_len = 0;
+
 		/*
 		 * Note: "pend" should be more than one SUSP header
 		 */
 		while (pend >= phead + 1) {
 			if (isonum_711(phead->version) == 1) {
 				for (ptable = table; ptable->func; ptable++) {
-					if (*phead->type == *ptable->type
-					    && phead->type[1] == ptable->type[1]) {
-						result |= ptable->func(phead,ana);
+					if (*phead->type == *ptable->type &&
+					    phead->type[1] == ptable->type[1])
+					{
+						result |= ptable->func(phead,
+								       ana);
 						break;
 					}
 				}
 				if (!ana->fields)
 					break;
 			}
-			if (result&ISO_SUSP_STOP) {
+			if (result & ISO_SUSP_STOP) {
 				result &= ~ISO_SUSP_STOP;
 				break;
 			}
-			/* plausibility check */
+			/*
+			 * plausibility check
+			 */
 			if (isonum_711(phead->length) < sizeof(*phead))
 				break;
+
 			/*
 			 * move to next SUSP
 			 * Hopefully this works with newer versions, too
 			 */
-			phead = (ISO_SUSP_HEADER *)((char *)phead + isonum_711(phead->length));
+			phead = (ISO_SUSP_HEADER *)((char *)phead +
+						    isonum_711(phead->length));
 		}
 
-		if (ana->fields && ana->iso_ce_len) {
-			if (ana->iso_ce_blk >= ana->imp->volume_space_size
-			    || ana->iso_ce_off + ana->iso_ce_len > ana->imp->logical_block_size
-			    || bread(ana->imp->im_devvp,
-				     lblktooff(ana->imp, ana->iso_ce_blk),
-				     ana->imp->logical_block_size, &bp))
-				/* what to do now? */
-				break;
-			phead = (ISO_SUSP_HEADER *)(bp->b_data + ana->iso_ce_off);
-			pend = (ISO_SUSP_HEADER *) ((char *)phead + ana->iso_ce_len);
-		} else
+		/*
+		 * Termination
+		 */
+		if (ana->fields == 0 || ana->iso_ce_len == 0)
 			break;
+
+		/*
+		 * Bad fields
+		 */
+		if (ana->iso_ce_blk >= ana->imp->volume_space_size ||
+		    ana->iso_ce_off + ana->iso_ce_len >
+		     ana->imp->logical_block_size)
+		{
+			break;
+		}
+
+		/*
+		 * Recycle the bp for the continuance into a new block.
+		 */
+		if (bp) {
+			brelse(bp);
+			bp = NULL;
+		}
+		if (bread(ana->imp->im_devvp,
+			  lblktooff(ana->imp, ana->iso_ce_blk),
+			  ana->imp->logical_block_size, &bp) != 0)
+		{
+			/* what to do now? */
+			break;
+		}
+		phead = (ISO_SUSP_HEADER *)(bp->b_data + ana->iso_ce_off);
+		pend = (ISO_SUSP_HEADER *)((char *)phead + ana->iso_ce_len);
 	}
 	if (bp)
 		brelse(bp);
+
 	/*
 	 * If we don't find the Basic SUSP stuffs, just set default value
 	 *   (attribute/time stamp)
 	 */
-	for (ptable = table; ptable->func2; ptable++)
-		if (!(ptable->result&result))
-			ptable->func2(isodir,ana);
+	for (ptable = table; ptable->func2; ptable++) {
+		if (!(ptable->result & result))
+			ptable->func2(isodir, ana);
+	}
 
 	return result;
 }
