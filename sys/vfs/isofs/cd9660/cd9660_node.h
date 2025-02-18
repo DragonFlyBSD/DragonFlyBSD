@@ -35,6 +35,9 @@
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.h,v 1.20 1999/12/29 04:54:37 peter Exp $
  */
 
+#ifndef _ISOFS_CD9660_CD9660_NODE_H_
+#define _ISOFS_CD9660_CD9660_NODE_H_
+
 #include <sys/lockf.h>
 
 /*
@@ -122,3 +125,5 @@ int cd9660_tstamp_conv7(u_char *, struct timespec *, enum ISO_FTYPE);
 int cd9660_tstamp_conv17(u_char *, struct timespec *);
 
 #endif /* _KERNEL */
+
+#endif /* _ISOFS_CD9660_CD9660_NODE_H_ */

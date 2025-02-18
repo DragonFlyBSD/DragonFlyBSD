@@ -35,6 +35,9 @@
  * $FreeBSD: head/sys/fs/cd9660/iso.h 151447 2005-10-18 13:35:08Z des $
  */
 
+#ifndef _ISOFS_CD9660_ISO_H_
+#define _ISOFS_CD9660_ISO_H_
+
 #define ISODCL(from, to) (to - from + 1)
 
 struct iso_volume_descriptor {
@@ -344,3 +347,5 @@ isonum_733(const unsigned char *p)
  * Associated files have a leading '='.
  */
 #define	ASSOCCHAR	'='
+
+#endif /* _ISOFS_CD9660_ISO_H_ */

@@ -34,7 +34,12 @@
  *	@(#)cd9660_mount.h	8.1 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_mount.h,v 1.3.2.2 2001/03/14 12:03:50 bp Exp $
  */
+
+#ifndef _ISOFS_CD9660_CD9660_MOUNT_H_
+#define _ISOFS_CD9660_CD9660_MOUNT_H_
+
 #include <sys/iconv.h>
+
 /*
  * Arguments to mount ISO 9660 filesystems.
  */
@@ -59,3 +64,5 @@ struct iso_args {
 #define	ISOFSMNT_UID		0x00000040	/* override uid */
 #define	ISOFSMNT_GID		0x00000080	/* override gid */
 #define	ISOFSMNT_MODEMASK	0x00000100	/* mask file/dir modes */
+
+#endif /* _ISOFS_CD9660_CD9660_MOUNT_H_ */

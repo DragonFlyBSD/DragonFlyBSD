@@ -35,6 +35,9 @@
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_rrip.h,v 1.6 1999/08/28 00:46:06 peter Exp $
  */
 
+#ifndef _ISOFS_CD9660_CD9660_RRIP_H_
+#define _ISOFS_CD9660_CD9660_RRIP_H_
+
 typedef struct {
 	char   type			[ISODCL (  0,    1)];
 	u_char length			[ISODCL (  2,    2)]; /* 711 */
@@ -135,3 +138,5 @@ typedef struct {
 	char offset			[ISODCL ( 12,	19)];
 	char length			[ISODCL ( 20,	27)];
 } ISO_RRIP_CONT;
+
+#endif /* _ISOFS_CD9660_CD9660_RRIP_H_ */

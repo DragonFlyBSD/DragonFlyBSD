@@ -35,6 +35,8 @@
  * $FreeBSD: src/sys/isofs/cd9660/iso_rrip.h,v 1.6 1999/08/28 00:46:07 peter Exp $
  */
 
+#ifndef _ISOFS_CD9660_ISO_RRIP_H_
+#define _ISOFS_CD9660_ISO_RRIP_H_
 
 /*
  *	Analyze function flag (similar to RR field bits)
@@ -54,6 +56,7 @@
 #define	ISO_SUSP_STOP		0x1000
 #define	ISO_SUSP_UNKNOWN	0x8000
 
+#ifdef _KERNEL
 typedef struct {
 	struct iso_node	*inop;
 	int		fields;		/* interesting fields in this analysis */
@@ -80,3 +83,6 @@ int cd9660_rrip_getsymname(struct iso_directory_record *isodir,
 			       struct iso_mnt *imp);
 int cd9660_rrip_offset(struct iso_directory_record *isodir,
 			   struct iso_mnt *imp);
+#endif /* _KERNEL */
+
+#endif /* _ISOFS_CD9660_ISO_RRIP_H_ */
