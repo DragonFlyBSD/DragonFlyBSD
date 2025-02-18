@@ -352,7 +352,7 @@ cd9660_tstamp_conv7(u_char *pi, struct timespec *pu, enum ISO_FTYPE ftype)
 	minute = pi[4];
 	second = pi[5];
 	if(ftype != ISO_FTYPE_HIGH_SIERRA)
-		tz = pi[6];
+		tz = ((signed char *)pi)[6]; /* Timezone value is signed. */
 	else
 		/* original high sierra misses timezone data */
 		tz = 0;
