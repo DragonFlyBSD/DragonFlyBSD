@@ -152,14 +152,12 @@ cd9660_rrip_slink(ISO_RRIP_SLINK *p, ISO_RRIP_ANALYZE *ana)
 
 		case ISO_SUSP_CFLAG_ROOT:
 			/* Inserting slash for ROOT */
-			/* start over from beginning(?) */
-			outbuf -= len;
-			len = 0;
+			/* Double slash, nothing really to do here. */
 			break;
 
 		case ISO_SUSP_CFLAG_VOLROOT:
 			/* Inserting a mount point i.e. "/cdrom" */
-			/* same as above */
+			/* start over from beginning(?) */
 			outbuf -= len;
 			len = 0;
 			error = cache_fullpath(NULL, &ana->imp->im_mountp->mnt_ncmountpt, NULL,
