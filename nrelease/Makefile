@@ -22,7 +22,6 @@ NREL_MAKE_JOBS?= $$(sysctl -n hw.ncpu)
 .if !defined(NOFSCHG)
 MTREE_FSCHG=	-i
 .endif
-WORLD_VERSION!=	${AWK} '/^\#define[[:blank:]]__DragonFly_version/ {print $$3}' < /usr/include/sys/param.h
 
 GITREV!=	sh ${SRCDIR}/tools/gitrev.sh
 
@@ -341,25 +340,13 @@ pkgs:
 .endif  # !empty(DPORTS_PACKAGES)
 
 mkiso:
-.if ${WORLD_VERSION} < 600106
-	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
-	newfs_msdos -C 400k -F 12 -L EFI -m 0xf8 ${ISOROOT}/boot/efiboot.img
-	vnconfig -e vn ${ISOROOT}/boot/efiboot.img > ${ISODIR}/vn.which
-	mount_msdos /dev/`cat ${ISODIR}/vn.which` ${IMGMNT}
-	mkdir -p ${IMGMNT}/EFI/BOOT
-	cp ${ISOROOT}/boot/loader.efi ${IMGMNT}/EFI/BOOT/BOOTX64.EFI
-	umount ${IMGMNT}
-	vnconfig -u `cat ${ISODIR}/vn.which`
-	rm -f ${ISODIR}/vn.which
-	rmdir ${IMGMNT}
-.else
-	( tmpdir=`mktemp -d -t nrelease` && mkdir -p "$${tmpdir}/EFI/BOOT" && \
+	( tmpdir=`mktemp -d -t nrelease` && \
+	    mkdir -p "$${tmpdir}/EFI/BOOT" && \
 	    cp ${ISOROOT}/boot/loader.efi $${tmpdir}/EFI/BOOT/BOOTX64.EFI && \
 	    makefs -t msdos -o fat_type=12 -o sectors_per_cluster=1 \
 		-o volume_label=EFI -o media_descriptor=248 -s 400k \
 		${ISOROOT}/boot/efiboot.img $${tmpdir} && \
 	    rm -rf $${tmpdir} )
-.endif
 	( cd ${ISOROOT}; mkisofs -R -J -o ${ISOFILE} \
 	    -b boot/cdboot -no-emul-boot \
 	    -eltorito-alt-boot -eltorito-platform efi \
