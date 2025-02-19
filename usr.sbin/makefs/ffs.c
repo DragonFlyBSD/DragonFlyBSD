@@ -941,7 +941,7 @@ ffs_write_file(union dinode *din, uint32_t ino, void *buf, fsinfo_t *fsopts)
 	struct inode	in;
 	struct m_buf *	bp;
 	ffs_opt_t	*ffs_opts = fsopts->fs_specific;
-	struct m_vnode vp = { fsopts, NULL };
+	struct m_vnode vp = { .fs = fsopts };
 
 	assert (din != NULL);
 	assert (buf != NULL);
@@ -1034,7 +1034,7 @@ ffs_write_file(union dinode *din, uint32_t ino, void *buf, fsinfo_t *fsopts)
 		if (!isfile)
 			p += chunk;
 	}
-  
+
  write_inode_and_leave:
 	ffs_write_inode(&in.i_din, in.i_number, fsopts);
 	if (fbuf)
@@ -1183,7 +1183,7 @@ ffs_write_inode(union dinode *dp, uint32_t ino, const fsinfo_t *fsopts)
 	if (S_ISDIR(DIP(dp, mode))) {
 		ufs_add32(cgp->cg_cs.cs_ndir, 1, fsopts->needswap);
 		fs->fs_cstotal.cs_ndir++;
-		fs->fs_cs(fs, cg).cs_ndir++; 
+		fs->fs_cs(fs, cg).cs_ndir++;
 	}
 
 #ifndef __DragonFly__ /* XXX UFS2 */

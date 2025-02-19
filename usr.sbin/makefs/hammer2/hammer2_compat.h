@@ -126,7 +126,7 @@
 
 #define NOOFFSET	(-1LL)
 
-#define KNOTE(list, hint)
+#define KNOTE(list, hint)	{}
 
 #define NOTE_DELETE	0x0001
 #define NOTE_WRITE	0x0002

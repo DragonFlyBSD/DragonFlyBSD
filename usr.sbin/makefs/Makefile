@@ -2,15 +2,18 @@
 
 PROG=	makefs
 
-CFLAGS+=-I${.CURDIR} # -g
-
-SRCS=	cd9660.c ffs.c msdos.c hammer2.c \
+SRCS=	cd9660.c \
+	ffs.c \
+	hammer2.c \
 	makefs.c \
+	msdos.c \
 	mtree.c \
 	walk.c
 MAN=	makefs.8
 
 WARNS?=	2
+
+CFLAGS+=-I${.CURDIR} # -g
 
 .include "${.CURDIR}/cd9660/Makefile.inc"
 .include "${.CURDIR}/ffs/Makefile.inc"
