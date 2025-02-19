@@ -1,7 +1,7 @@
 /*	$NetBSD: cd9660_strings.c,v 1.4 2007/01/16 17:32:05 hubertf Exp $	*/
 
 /*-
- * SPDX-License-Identifier: BSD-2-Clause-NetBSD
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * Copyright (c) 2005 Daniel Watt, Walter Deignan, Ryan Gabrys, Alan
  * Perez-Rathke and Ram Vedam.  All rights reserved.
@@ -32,8 +32,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
- *
- * $FreeBSD: head/usr.sbin/makefs/cd9660/cd9660_strings.c 326276 2017-11-27 15:37:16Z pfg $
  */
 
 #include <sys/mount.h>
@@ -46,9 +44,9 @@
 
 
 void
-cd9660_uppercase_characters(char *str, int len)
+cd9660_uppercase_characters(char *str, size_t len)
 {
-	int p;
+	size_t p;
 
 	for (p = 0; p < len; p++) {
 		if (islower((unsigned char)str[p]) )

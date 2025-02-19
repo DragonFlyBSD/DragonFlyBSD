@@ -33,9 +33,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: head/usr.sbin/makefs/makefs.8 331843 2018-03-31 15:04:41Z benno $
-.\"
-.Dd November 2, 2023
+.Dd February 19, 2025
 .Dt MAKEFS 8
 .Os
 .Sh NAME
@@ -115,11 +113,16 @@ Treat duplicate paths in an mtree manifest as warnings not error.
 Enable various levels of debugging, depending upon which bits are
 set in
 .Ar debug-mask .
-XXX: document these
+This option is intended for source debugging.
+.Ar debug-mask
+is a bit map defined in the header file
+.Ar makefs.h .
+See the source for usage, and look for defines starting with
+.Ar DEBUG_ .
 .It Fl F Ar mtree-specfile
 .Em This is almost certainly not the option you are looking for.
 To create an image from a list of files in an mtree format manifest,
-specify it as the last argument on the commandline, not as a the
+specify it as the last argument on the command line, not as a the
 argument to
 .Fl F .
 .Pp
@@ -160,10 +163,10 @@ and
 (in the case of symbolic links).
 If
 .Sy time
-isn't provided, the current time will be used.
+is not provided, the current time will be used.
 If
 .Sy flags
-isn't provided, the current file flags will be used.
+is not provided, the current file flags will be used.
 Missing regular file entries will be created as zero-length files.
 .It Fl f Ar free-files
 Ensure that a minimum of
@@ -227,6 +230,21 @@ Defaults to 512.
 .It Fl s Ar image-size
 Set the size of the file system image to
 .Ar image-size .
+This is equivalent to setting both the minimum
+.Fl ( M )
+and the maximum
+.Fl ( m )
+sizes to the same value.
+For
+.Sy ffs
+and
+.Sy msdos
+the
+.Ar image-size
+does not include the
+.Ar offset .
+.Ar offset
+is not included in that size.
 .It Fl T Ar timestamp
 Specify a timestamp to be set for all filesystem files and directories
 created so that repeatable builds are possible.
@@ -343,9 +361,11 @@ The following keywords are supported:
 Allow the directory structure to exceed the maximum specified in
 the spec.
 .It Sy allow-illegal-chars
-Allow illegal characters in filenames. This option is not implemented.
+Allow illegal characters in filenames.
+This option is not implemented.
 .It Sy allow-lowercase
-Allow lowercase characters in filenames. This option is not implemented.
+Allow lowercase characters in filenames.
+This option is not implemented.
 .It Sy allow-max-name
 Allow 37 instead of 33 characters for filenames by omitting the
 version id.
@@ -353,14 +373,9 @@ version id.
 Allow multiple dots in a filename.
 .It Sy applicationid
 Application ID of the image.
-.It Sy archimedes
-Use the
-.Ql ARCHIMEDES
-extension to encode
-.Tn RISC OS
-metadata.
 .It Sy bootimagedir
-Boot image directory. This option is not implemented.
+Boot image directory.
+This option is not implemented.
 .It Sy chrp-boot
 Write an MBR partition table to the image to allow older CHRP hardware to
 boot.
@@ -372,6 +387,7 @@ Filename of a boot image in the format
 where
 .Dq sysid
 is one of
+.Ql efi ,
 .Ql i386 ,
 .Ql mac68k ,
 .Ql macppc ,

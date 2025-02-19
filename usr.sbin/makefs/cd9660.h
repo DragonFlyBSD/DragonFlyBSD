@@ -1,7 +1,7 @@
-/*	$NetBSD: cd9660.h,v 1.17 2011/06/23 02:35:56 enami Exp $	*/
+/*	$NetBSD: cd9660.h,v 1.21 2015/12/24 15:52:37 christos Exp $	*/
 
 /*-
- * SPDX-License-Identifier: BSD-2-Clause-NetBSD
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * Copyright (c) 2005 Daniel Watt, Walter Deignan, Ryan Gabrys, Alan
  * Perez-Rathke and Ram Vedam.  All rights reserved.
@@ -32,8 +32,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
- *
- * $FreeBSD: head/usr.sbin/makefs/cd9660.h 326276 2017-11-27 15:37:16Z pfg $
  */
 
 #ifndef _MAKEFS_CD9660_H
@@ -65,32 +63,7 @@
 #define	INODE_WARNX(__x)
 #endif /* DEBUG */
 
-#define CD9660MAXPATH 4096
-
-#define ISO_STRING_FILTER_NONE = 0x00
-#define ISO_STRING_FILTER_DCHARS = 0x01
-#define ISO_STRING_FILTER_ACHARS = 0x02
-
-/*
-Extended preferences type, in the spirit of what makefs gives us (only ints)
-*/
-typedef struct {
-	const char  *shortName;		/* Short option */
-	const char	*name;		/* option name */
-	char		*value;		/* where to stuff the value */
-	int		minLength;	/* minimum for value */
-	int		maxLength;	/* maximum for value */
-	const char	*desc;		/* option description */
-	int		filterFlags;
-} string_option_t;
-
 /******** STRUCTURES **********/
-
-/*Defaults*/
-#define ISO_DEFAULT_VOLUMEID "MAKEFS_CD9660_IMAGE"
-#define ISO_DEFAULT_APPID "MAKEFS"
-#define ISO_DEFAULT_PUBLISHER "MAKEFS"
-#define ISO_DEFAULT_PREPARER "MAKEFS"
 
 #define ISO_VOLUME_DESCRIPTOR_STANDARD_ID "CD001"
 #define ISO_VOLUME_DESCRIPTOR_BOOT 0
@@ -99,8 +72,7 @@ typedef struct {
 
 /*30 for name and extension, as well as version number and padding bit*/
 #define ISO_FILENAME_MAXLENGTH_BEFORE_VERSION 30
-#define ISO_FILENAME_MAXLENGTH	36
-#define ISO_FILENAME_MAXLENGTH_WITH_PADDING 37
+#define ISO_FILENAME_MAXLENGTH	38
 
 #define ISO_FLAG_CLEAR 0x00
 #define ISO_FLAG_HIDDEN 0x01
@@ -145,7 +117,7 @@ typedef struct _iso_directory_record_cd9660 {
 	u_char interleave		[ISODCL (28, 28)];	/* 711 */
 	u_char volume_sequence_number	[ISODCL (29, 32)];	/* 723 */
 	u_char name_len			[ISODCL (33, 33)];	/* 711 */
-	char name			[ISO_FILENAME_MAXLENGTH_WITH_PADDING];
+	char name			[ISO_FILENAME_MAXLENGTH];
 } iso_directory_record_cd9660;
 
 /* TODO: Lots of optimization of this structure */
@@ -181,7 +153,7 @@ typedef struct _cd9660node {
 	int fileRecordSize;/*copy of a variable, int for quicker calculations*/
 
 	/* Old name, used for renaming - needs to be optimized but low priority */
-	char o_name [ISO_FILENAME_MAXLENGTH_WITH_PADDING];
+	char o_name [ISO_FILENAME_MAXLENGTH];
 
 	/***** SPACE RESERVED FOR EXTENSIONS *****/
 	/* For memory efficiency's sake - we should move this to a separate struct
@@ -221,7 +193,7 @@ typedef struct _path_table_entry
 	u_char extended_attribute_length[ISODCL (2, 2)];
 	u_char first_sector[ISODCL (3, 6)];
 	u_char parent_number[ISODCL (7, 8)];
-	u_char name[ISO_FILENAME_MAXLENGTH_WITH_PADDING];
+	char name[ISO_FILENAME_MAXLENGTH];
 } path_table_entry;
 
 typedef struct _volume_descriptor
@@ -263,9 +235,7 @@ typedef struct _iso9660_disk {
 
 	int include_padding_areas;
 
-	int follow_sym_links;
 	int verbose_level;
-	int displayHelp;
 	int keep_bad_images;
 
 	/* SUSP options and variables */
@@ -276,10 +246,9 @@ typedef struct _iso9660_disk {
 	int rock_ridge_enabled;
 	/* Other Rock Ridge Variables */
 	char *rock_ridge_renamed_dir_name;
-	int rock_ridge_move_count;
+	unsigned rock_ridge_move_count;
 	cd9660node *rr_moved_dir;
 
-	int archimedes_enabled;
 	int chrp_boot;
 
 	/* Spec breaking options */
@@ -309,7 +278,7 @@ typedef struct _iso9660_disk {
 /************ FUNCTIONS **************/
 int			cd9660_valid_a_chars(const char *);
 int			cd9660_valid_d_chars(const char *);
-void			cd9660_uppercase_characters(char *, int);
+void			cd9660_uppercase_characters(char *, size_t);
 
 /* ISO Data Types */
 void			cd9660_721(uint16_t, unsigned char *);
@@ -347,9 +316,9 @@ void	debug_print_volume_descriptor_information(iso9660_disk *);
 void	debug_dump_to_xml_ptentry(path_table_entry *,int, int);
 void	debug_dump_to_xml_path_table(FILE *, off_t, int, int);
 void	debug_dump_to_xml(FILE *);
-int	debug_get_encoded_number(unsigned char *, int);
-void	debug_dump_integer(const char *, char *,int);
-void	debug_dump_string(const char *,unsigned char *,int);
+int	debug_get_encoded_number(const unsigned char *, int);
+void	debug_dump_integer(const char *, const unsigned char *, int);
+void	debug_dump_string(const char *, const unsigned char *, int);
 void	debug_dump_directory_record_9_1(unsigned char *);
 void	debug_dump_to_xml_volume_descriptor(unsigned char *,int);
 

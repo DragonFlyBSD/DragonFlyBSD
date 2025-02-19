@@ -1,7 +1,7 @@
 /*	$NetBSD: cd9660_conversion.c,v 1.4 2007/03/14 14:11:17 christos Exp $	*/
 
 /*-
- * SPDX-License-Identifier: BSD-2-Clause-NetBSD
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * Copyright (c) 2005 Daniel Watt, Walter Deignan, Ryan Gabrys, Alan
  * Perez-Rathke and Ram Vedam.  All rights reserved.
@@ -32,11 +32,10 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
- *
- * $FreeBSD: head/usr.sbin/makefs/cd9660/cd9660_conversion.c 326276 2017-11-27 15:37:16Z pfg $
  */
 #include "cd9660.h"
 
+#include <sys/cdefs.h>
 static char cd9660_compute_gm_offset(time_t);
 
 #if 0

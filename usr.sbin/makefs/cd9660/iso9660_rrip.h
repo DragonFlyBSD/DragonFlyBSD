@@ -1,7 +1,7 @@
 /*	$NetBSD: iso9660_rrip.h,v 1.5 2009/01/10 22:06:29 bjh21 Exp $	*/
 
 /*-
- * SPDX-License-Identifier: BSD-2-Clause-NetBSD
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * Copyright (c) 2005 Daniel Watt, Walter Deignan, Ryan Gabrys, Alan
  * Perez-Rathke and Ram Vedam.  All rights reserved.
@@ -32,8 +32,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
- *
- * $FreeBSD: head/usr.sbin/makefs/cd9660/iso9660_rrip.h 326276 2017-11-27 15:37:16Z pfg $
  */
 #ifndef __ISO9660_RRIP_H__
 #define __ISO9660_RRIP_H__
@@ -52,17 +50,17 @@
 
 #define	 PX_LENGTH	   0x2C
 #define	 PN_LENGTH	   0x14
-#define	 TF_CREATION	   0x00
-#define	 TF_MODIFY	   0x01
-#define	 TF_ACCESS	   0x02
-#define	 TF_ATTRIBUTES	   0x04
-#define	 TF_BACKUP	   0x08
-#define	 TF_EXPIRATION	   0x10
-#define	 TF_EFFECTIVE	   0x20
-#define	 TF_LONGFORM	   0x40
-#define  NM_CONTINUE	   0x80
-#define	 NM_CURRENT	   0x100
-#define	 NM_PARENT	   0x200
+#define	 TF_CREATION	   0x01
+#define	 TF_MODIFY	   0x02
+#define	 TF_ACCESS	   0x04
+#define	 TF_ATTRIBUTES	   0x08
+#define	 TF_BACKUP	   0x10
+#define	 TF_EXPIRATION	   0x20
+#define	 TF_EFFECTIVE	   0x40
+#define	 TF_LONG_FORM	   0x80
+#define	 NM_CONTINUE	   0x01
+#define	 NM_CURRENT	   0x02
+#define	 NM_PARENT	   0x04
 
 
 #define	 SUSP_LOC_ENTRY	   0x01
