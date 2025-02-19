@@ -36,6 +36,9 @@ GITREV!=	sh ${SRCDIR}/tools/gitrev.sh
 #
 LABEL?=		DRAGONFLY_${GITREV:S/./_/g:C/_g.*$//:tu}
 
+# The publisher ID of the ".iso" file.
+PUBLISHER?=	The DragonFly Project
+
 CHROOT_CMD?=	/usr/sbin/chroot ${ISOROOT} sh -c
 
 ISOFILE?=	${ISODIR}/dfly.iso
@@ -53,7 +56,6 @@ DPORTS_PACKAGES?=	security/ca_root_nss \
 			devel/git-lite \
 			dns/bind-tools \
 			net/isc-dhcp44-server \
-			sysutils/cdrtools \
 			${DPORTS_EXTRA_PACKAGES}
 
 # dports options to use when building packages
@@ -148,12 +150,6 @@ realquick:	realquickrel
 #########################################################################
 
 check:
-.if !exists(/usr/local/bin/mkisofs) && !exists(/usr/pkg/bin/mkisofs)
-	@echo
-	@echo "Your machine does not have cdrtools installed.  You can install it with:"
-	@echo "    pkg install cdrtools"
-.endif
-
 .if make(nopkgs)
 	@echo Not building packages.
 .elif make(binpkgs)
@@ -169,10 +165,6 @@ check:
 	else \
 		echo "Using ${DPORTS_PATH} as the dports tree."; \
 	fi
-.endif
-
-.if !exists(/usr/local/bin/mkisofs) && !exists(/usr/pkg/bin/mkisofs)
-	@/usr/bin/false
 .endif
 
 buildworld1 buildworld2:
@@ -350,11 +342,13 @@ mkiso:
 		-o volume_label=EFI -o media_descriptor=248 -s 400k \
 		${ISOROOT}/boot/efiboot.img $${tmpdir} && \
 	    rm -rf $${tmpdir} )
-	( cd ${ISOROOT}; mkisofs -R -J -o ${ISOFILE} \
-	    -b boot/cdboot -no-emul-boot \
-	    -eltorito-alt-boot -eltorito-platform efi \
-	    -eltorito-boot boot/efiboot.img -no-emul-boot \
-	    -V ${LABEL} . )
+	( cd ${ISOROOT}; makefs -t cd9660 \
+	    -o rockridge \
+	    -o label="${LABEL}" \
+	    -o publisher="${PUBLISHER}" \
+	    -o bootimage="i386;boot/cdboot" -o no-emul-boot \
+	    -o bootimage="efi;boot/efiboot.img" -o no-emul-boot \
+	    ${ISOFILE} . )
 	rm -f ${ISOROOT}/boot/efiboot.img
 
 mkimg:
