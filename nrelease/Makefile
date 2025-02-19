@@ -23,15 +23,18 @@ NREL_MAKE_JOBS?= $$(sysctl -n hw.ncpu)
 MTREE_FSCHG=	-i
 .endif
 
+# Current version in format: <tag>[<n>.g<commit>]
+# e.g., "v6.4.0", "v6.5.0.816.g708615"
 GITREV!=	sh ${SRCDIR}/tools/gitrev.sh
 
 # The label/name of the disklabel64(5) slice in the ".img" file.  This is
 # used to identify the USB device with DragonFly installation image, avoiding
 # hardcoding the USB device name (e.g., "da8").
 #
-# This label is also used as the volume ID of the ".iso" file.
+# Also fix the label for use as the volume ID of the ".iso" file, which has
+# a maximum length of 32 characters and must contain only A-Z, 0-9, and _.
 #
-LABEL?=		DragonFly_${GITREV}
+LABEL?=		DRAGONFLY_${GITREV:S/./_/g:C/_g.*$//:tu}
 
 CHROOT_CMD?=	/usr/sbin/chroot ${ISOROOT} sh -c
 
@@ -351,7 +354,7 @@ mkiso:
 	    -b boot/cdboot -no-emul-boot \
 	    -eltorito-alt-boot -eltorito-platform efi \
 	    -eltorito-boot boot/efiboot.img -no-emul-boot \
-	    -V ${LABEL:C/(^.{32}).*/\1/} . )  # cut label to <= 32 characters
+	    -V ${LABEL} . )
 	rm -f ${ISOROOT}/boot/efiboot.img
 
 mkimg:
