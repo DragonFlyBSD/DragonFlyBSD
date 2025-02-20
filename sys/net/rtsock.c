@@ -1077,6 +1077,26 @@ rt_msgsize(int type, const struct rt_addrinfo *rtinfo)
 }
 
 /*
+ * Copy mask into sa and fix length and family from dst.
+ * We do this because the radix tree discards this information
+ * and only stores a length if the netmask is non zero.
+ */
+static struct sockaddr *
+rt_fix_netmask(struct sockaddr_storage *_sa,
+    const struct sockaddr *mask, const struct sockaddr *dst)
+{
+	struct sockaddr *sa = (struct sockaddr *)_sa;
+
+	memcpy(sa, mask, mask->sa_len ? mask->sa_len : dst->sa_len);
+	if (sa->sa_len == 0)
+		sa->sa_len = offsetof(struct sockaddr, sa_family) +
+		    sizeof(sa->sa_family);
+	if (sa->sa_family == 0x00 || sa->sa_family == 0xff)
+		sa->sa_family = dst->sa_family;
+	return sa;
+}
+
+/*
  * Build a routing message in a buffer.
  * Copy the addresses in the rtinfo->rti_info[] sockaddr array
  * to the end of the buffer after the message header.
@@ -1095,6 +1115,8 @@ rt_msg_buffer(int type, struct rt_addrinfo *rtinfo, void *buf, int msglen)
 	struct rt_msghdr *rtm;
 	char *cp;
 	int dlen, i;
+	struct sockaddr *sa;
+	struct sockaddr_storage ss = { .ss_len = 0 };
 
 	rtm = (struct rt_msghdr *) buf;
 	rtm->rtm_version = RTM_VERSION;
@@ -1104,10 +1126,10 @@ rt_msg_buffer(int type, struct rt_addrinfo *rtinfo, void *buf, int msglen)
 	cp = (char *)buf + rt_msghdrsize(type);
 	rtinfo->rti_addrs = 0;
 	for (i = 0; i < RTAX_MAX; i++) {
-		struct sockaddr *sa;
-
 		if ((sa = rtinfo->rti_info[i]) == NULL)
 			continue;
+		if (i == RTAX_NETMASK && rtinfo->rti_dst != NULL)
+			sa = rt_fix_netmask(&ss, sa, rtinfo->rti_dst);
 		rtinfo->rti_addrs |= (1 << i);
 		dlen = RT_ROUNDUP(sa->sa_len);
 		bcopy(sa, cp, dlen);
@@ -1131,6 +1153,7 @@ rt_msg_mbuf(int type, struct rt_addrinfo *rtinfo)
 	struct mbuf *m, *n;
 	struct rt_msghdr *rtm;
 	struct sockaddr *sa;
+	struct sockaddr_storage ss = { .ss_len = 0 };
 	int hlen, dlen, len, i;
 
 	hlen = rt_msghdrsize(type);
@@ -1141,6 +1164,8 @@ rt_msg_mbuf(int type, struct rt_addrinfo *rtinfo)
 	for (i = 0; i < RTAX_MAX; i++) {
 		if ((sa = rtinfo->rti_info[i]) == NULL)
 			continue;
+		if (i == RTAX_NETMASK && rtinfo->rti_dst != NULL)
+			sa = rt_fix_netmask(&ss, sa, rtinfo->rti_dst);
 		len += RT_ROUNDUP(sa->sa_len);
 	}
 
@@ -1165,6 +1190,8 @@ rt_msg_mbuf(int type, struct rt_addrinfo *rtinfo)
 	for (i = 0; i < RTAX_MAX; i++) {
 		if ((sa = rtinfo->rti_info[i]) == NULL)
 			continue;
+		if (i == RTAX_NETMASK && rtinfo->rti_dst != NULL)
+			sa = rt_fix_netmask(&ss, sa, rtinfo->rti_dst);
 		rtinfo->rti_addrs |= (1 << i);
 		dlen = RT_ROUNDUP(sa->sa_len);
 		m_copyback(m, len, dlen, sa);
