@@ -78,6 +78,11 @@ wg_load_config()
 	local conffile=$1
 	local ifname=$(basename ${conffile} .conf)
 
+	local mode=$(stat -L -f '%Mp%Lp' "${conffile}")
+	if [ ${mode} != "0400" ] && [ ${mode} != "0600" ]; then
+		# TODO: raise to be error later
+		warn "config file (${conffile}) should have mode 0400 or 0600"
+	fi
 	if [ ! -r "${conffile}" ]; then
 		err 1 "cannot read config file: ${conffile}"
 	fi
