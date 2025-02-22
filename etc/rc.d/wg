@@ -78,6 +78,10 @@ wg_load_config()
 	local conffile=$1
 	local ifname=$(basename ${conffile} .conf)
 
+	if [ ! -r "${conffile}" ]; then
+		err 1 "cannot read config file: ${conffile}"
+	fi
+
 	debug "loading [${ifname}] configs from file: ${conffile}"
 	local configs=$(awk -v ifname="${ifname}" -v debugvar="${WG_DEBUG}" '
 	BEGIN {
@@ -413,12 +417,7 @@ wg_start_interface()
 	local ifname=$1
 	info "starting interface [${ifname}] ..."
 
-	local conffile="${wg_config_dir}/${ifname}.conf"
-	if [ ! -r "${conffile}" ]; then
-		err 1 "cannot read config file: ${conffile}"
-	fi
-
-	wg_load_config "${conffile}"
+	wg_load_config "${wg_config_dir}/${ifname}.conf"
 
 	wg_exec_hook preup
 
@@ -451,12 +450,7 @@ wg_stop_interface()
 	local ifname=$1
 	info "stopping interface [${ifname}] ..."
 
-	local conffile="${wg_config_dir}/${ifname}.conf"
-	if [ ! -r "${conffile}" ]; then
-		err 1 "cannot read config file: ${conffile}"
-	fi
-
-	wg_load_config "${conffile}"
+	wg_load_config "${wg_config_dir}/${ifname}.conf"
 
 	wg_exec_hook predown
 
