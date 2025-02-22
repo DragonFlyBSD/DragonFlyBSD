@@ -604,6 +604,7 @@ extern struct objcache *ata_request_cache;
 /* zero the object so objects in the cache are guaranteed to be zero'ed */
 #define ata_free_request(request) { \
 	if (!(request->flags & ATA_R_DANGER2)) { \
+	    callout_terminate(&request->callout); \
 	    bzero(request, sizeof(struct ata_request)); \
 	    objcache_put(ata_request_cache, request); \
 	} \
