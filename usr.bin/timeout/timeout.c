@@ -314,21 +314,24 @@ main(int argc, char **argv)
 			}
 
 		} else if (sig_alrm || sig_term) {
-			int signo = (int)sig_term;
+			int signo;
 
 			if (sig_alrm) {
 				signo = killsig;
 				sig_alrm = 0;
 				timedout = true;
+			} else {
+				signo = sig_term;
+				sig_term = 0;
 			}
 
-			if (!foreground) {
+			if (foreground) {
+				send_sig(pid, signo);
+			} else {
 				procctl(P_PID, getpid(), PROC_REAP_STATUS,
 					&info);
 				if (info.status.pid_head > 0)
 					send_sig(info.status.pid_head, signo);
-			} else {
-				send_sig(pid, signo);
 			}
 
 			if (do_second_kill) {
@@ -350,13 +353,14 @@ main(int argc, char **argv)
 	if (!foreground)
 		procctl(P_PID, getpid(), PROC_REAP_RELEASE, NULL);
 
-	if (WIFEXITED(pstat))
-		pstat = WEXITSTATUS(pstat);
-	else if (WIFSIGNALED(pstat))
-		pstat = 128 + WTERMSIG(pstat);
-
-	if (timedout && !preserve)
+	if (timedout && !preserve) {
 		pstat = EXIT_TIMEOUT;
+	} else {
+		if (WIFEXITED(pstat))
+			pstat = WEXITSTATUS(pstat);
+		else if (WIFSIGNALED(pstat))
+			pstat = 128 + WTERMSIG(pstat);
+	}
 
 	return (pstat);
 }
