@@ -356,6 +356,8 @@ unit-tests/directive-ifnmake.exp
 unit-tests/directive-ifnmake.mk
 unit-tests/directive-include-fatal.exp
 unit-tests/directive-include-fatal.mk
+unit-tests/directive-include-guard.exp
+unit-tests/directive-include-guard.mk
 unit-tests/directive-include.exp
 unit-tests/directive-include.mk
 unit-tests/directive-info.exp
@@ -392,10 +394,6 @@ unit-tests/export-variants.exp
 unit-tests/export-variants.mk
 unit-tests/export.exp
 unit-tests/export.mk
-unit-tests/forloop.exp
-unit-tests/forloop.mk
-unit-tests/forsubst.exp
-unit-tests/forsubst.mk
 unit-tests/gnode-submake.exp
 unit-tests/gnode-submake.mk
 unit-tests/hanoi-include.exp
@@ -404,8 +402,8 @@ unit-tests/impsrc.exp
 unit-tests/impsrc.mk
 unit-tests/include-main.exp
 unit-tests/include-main.mk
-unit-tests/include-sub.mk
-unit-tests/include-subsub.mk
+unit-tests/include-sub.inc
+unit-tests/include-subsub.inc
 unit-tests/job-flags.exp
 unit-tests/job-flags.mk
 unit-tests/job-output-long-lines.exp
@@ -428,10 +426,9 @@ unit-tests/make-exported.exp
 unit-tests/make-exported.mk
 unit-tests/meta-cmd-cmp.exp
 unit-tests/meta-cmd-cmp.mk
+unit-tests/meta-ignore.inc
 unit-tests/moderrs.exp
 unit-tests/moderrs.mk
-unit-tests/modmatch.exp
-unit-tests/modmatch.mk
 unit-tests/modmisc.exp
 unit-tests/modmisc.mk
 unit-tests/objdir-writable.exp
@@ -596,6 +593,8 @@ unit-tests/shell-ksh.exp
 unit-tests/shell-ksh.mk
 unit-tests/shell-sh.exp
 unit-tests/shell-sh.mk
+unit-tests/suff.exp
+unit-tests/suff.mk
 unit-tests/suff-add-later.exp
 unit-tests/suff-add-later.mk
 unit-tests/suff-clear-regular.exp
@@ -652,6 +651,8 @@ unit-tests/var-op-sunsh.exp
 unit-tests/var-op-sunsh.mk
 unit-tests/var-op.exp
 unit-tests/var-op.mk
+unit-tests/var-readonly.exp
+unit-tests/var-readonly.mk
 unit-tests/var-recursive.exp
 unit-tests/var-recursive.mk
 unit-tests/var-scope-cmdline.exp
@@ -710,6 +711,8 @@ unit-tests/varmod-match-escape.exp
 unit-tests/varmod-match-escape.mk
 unit-tests/varmod-match.exp
 unit-tests/varmod-match.mk
+unit-tests/varmod-mtime.exp
+unit-tests/varmod-mtime.mk
 unit-tests/varmod-no-match.exp
 unit-tests/varmod-no-match.mk
 unit-tests/varmod-order-numeric.exp
@@ -758,6 +761,8 @@ unit-tests/varmod-to-one-word.exp
 unit-tests/varmod-to-one-word.mk
 unit-tests/varmod-to-separator.exp
 unit-tests/varmod-to-separator.mk
+unit-tests/varmod-to-title.exp
+unit-tests/varmod-to-title.mk
 unit-tests/varmod-to-upper.exp
 unit-tests/varmod-to-upper.mk
 unit-tests/varmod-undefined.exp

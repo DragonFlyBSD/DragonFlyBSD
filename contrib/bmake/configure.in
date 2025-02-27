@@ -1,11 +1,11 @@
 dnl
 dnl RCSid:
-dnl	$Id: configure.in,v 1.87 2022/09/09 20:00:53 sjg Exp $
+dnl	$Id: configure.in,v 1.108 2024/07/13 15:27:00 sjg Exp $
 dnl
 dnl Process this file with autoconf to produce a configure script
 dnl
 AC_PREREQ([2.71])
-AC_INIT([bmake],[20220909],[sjg@NetBSD.org])
+AC_INIT([bmake],[20240711],[sjg@NetBSD.org])
 AC_CONFIG_HEADERS(config.h)
 
 dnl make srcdir absolute
@@ -27,32 +27,56 @@ use_defshell() {
 	case "$1" in
 	*csh) # we must be desperate
 		DEFSHELL_INDEX=DEFSHELL_INDEX_CSH;;
-	*ksh)
+	*ksh*)
 		DEFSHELL_INDEX=DEFSHELL_INDEX_KSH;;
-	sh|/bin/sh)
+	sh|/bin/sh|*/bsh)
 		DEFSHELL_INDEX=DEFSHELL_INDEX_SH;;
+	*=*)	# eg. sh=/bin/bsh
+		eval `IFS="="; set -- $1; echo name=$1 defshell_path=$2`
+		case "$name" in
+		csh) DEFSHELL_INDEX=DEFSHELL_INDEX_CSH;;
+		ksh) DEFSHELL_INDEX=DEFSHELL_INDEX_KSH;;
+		sh) DEFSHELL_INDEX=DEFSHELL_INDEX_SH;;
+		*) DEFSHELL_INDEX=DEFSHELL_INDEX_CUSTOM;;
+		esac
+		;;
 	*)	DEFSHELL_INDEX=DEFSHELL_INDEX_CUSTOM
 		defshell_path=$1
 		;;
 	esac
-	case "$1" in
-	/bin/*) ;;
-	*/*) defshell_path=$1;;
+	case "$defshell_path,$1" in
+	,/bin/*) ;;
+	,*/*) defshell_path=$1;;
 	esac
 }
 dnl
 AC_ARG_WITH(defshell,
-[  --with-defshell=SHELL  use SHELL by default - must be sh compatible, use sh or ksh to pick the internal definitions],
+[  --with-defshell=[[name=]]SHELL	use SHELL by default
+	optional 'name' can be 'sh' to indicate SHELL is sh compatible
+	eg. --with-defshell=sh=/bin/bsh
+	use just 'sh' or 'ksh' to pick the internal definitions],
 [case "${withval}" in
 yes)   AC_MSG_ERROR(bad value ${withval} given for bmake DEFSHELL) ;;
 no)    ;;
 *)     use_defshell $with_defshell;;
 esac])
 dnl
+dnl sometimes uname -s output is not useful
+FORCE_MAKE_OS=
+make_os=
 case "$OS" in
-CYGWIN*|MINGW*) use_makefile=no;;
+CYGWIN*)
+	use_makefile=no
+	OS=Cygwin
+	FORCE_MAKE_OS=$OS
+	;;
+Darwin|MINGW*) use_makefile=no;;
 *) use_makefile=yes;;
 esac
+if test "x$FORCE_MAKE_OS" != x; then
+	force_make_os=FORCE_
+	make_os=${FORCE_MAKE_OS}
+fi
 AC_ARG_WITH(makefile,
 [  --without-makefile disable use of generated makefile],
 [case "${withval}" in
@@ -102,6 +126,13 @@ dev) ;;
 *) filemon_h=no;;
 esac
 ])
+dnl some systems have broken/incomplete strftime
+AC_ARG_WITH(bmake_strftime,
+[ --with-bmake-strftime force use of bmake strftime],
+[case "${withval}" in
+yes|no) bmake_strftime=$withval;;
+esac])
+dnl
 dnl echo "Note: use_meta=$use_meta use_filemon=$use_filemon filemon_h=$filemon_h" >&6
 case "$use_meta" in
 yes)
@@ -122,27 +153,31 @@ Minix)	CPPFLAGS="${CPPFLAGS} -D_NETBSD_SOURCE"
 	;;
 SCO_SV)	# /bin/sh is not usable
 	ALT_DEF_SHELLS="/bin/lsh /usr/bin/bash /bin/ksh"
-	CPPFLAGS="${CPPFLAGS} -DFORCE_USE_SHELL"
+	FORCE_USE_SHELL=1
 	;;
 esac
+if test "x$FORCE_USE_SHELL" != x; then
+	CPPFLAGS="${CPPFLAGS} -DFORCE_USE_SHELL"
+fi
 dnl
-dnl Not everyone groks TZ=Europe/Berlin
-dnl which is used by the localtime tests
+# Not everyone groks TZ=Europe/Berlin
+# which is used by the localtime tests
 echo $ECHO_N "checking whether system has timezone Europe/Berlin... $ECHO_C" >&6
-if test -f /usr/share/zoneinfo/Europe/Berlin; then
+eval `TZ=UTC date '+utc_H=%H utc_d=%d' 2> /dev/null`
+eval `TZ=Europe/Berlin date '+utc1_H=%H utc1_d=%d' 2> /dev/null`
+if test ${utc1_d-0} = 01 -a ${utc_d-0} -gt ${utc1_d-0} ||
+   test ${utc_d-0} -lt ${utc1_d-0} -o ${utc_H-0} -lt ${utc1_H-0}; then
 	echo yes  >&6
-	# seems a safe bet
 	UTC_1=Europe/Berlin
 else
-	utcH=`TZ=UTC date +%H 2> /dev/null`
-	utc_1H=`TZ=UTC-1 date +%H 2> /dev/null`
-	if test ${utcH-0} -lt ${utc_1H-0}; then
+	eval `TZ=UTC-1 date '+utc1_H=%H utc1_d=%d' 2> /dev/null`
+	if test ${utc1_d-0} = 01 -a ${utc_d-0} -gt ${utc1_d-0} ||
+	   test ${utc_d-0} -lt ${utc1_d-0} -o ${utc_H-0} -lt ${utc1_H-0}; then
 		UTC_1=UTC-1
 		echo no, using UTC-1 >&6
-	else
-		echo no >&6
 	fi
 fi
+test "x$UTC_1" = x && echo no >&6
 dnl
 dnl Add some places to look for compilers
 oldPATH=$PATH
@@ -160,6 +195,10 @@ AC_USE_SYSTEM_EXTENSIONS
 dnl Checks for programs.
 AC_PROG_CC
 AC_PROG_INSTALL
+# We have to override that on some systems
+case "$OS" in
+IRIX*) ac_INSTALL=$srcdir/install-sh;;
+esac
 dnl Executable suffix - normally empty; .exe on os2.
 AC_SUBST(ac_exe_suffix)dnl
 dnl
@@ -174,11 +213,14 @@ if test $bmake_path_max -gt 1024; then
    # this is all we expect
    bmake_path_max=1024
 fi
+if test ${bmake_strftime:-no} = yes; then
+   CPPFLAGS="${CPPFLAGS} -DFORCE_BMAKE_STRFTIME"
+fi
 echo "Using: BMAKE_PATH_MAX=$bmake_path_max" >&6
 AC_SUBST(bmake_path_max)dnl
 dnl
-dnl if type does not work which(1) had better!
-dnl note we cannot rely on type returning non-zero on failure
+# if type does not work which(1) had better!
+# note we cannot rely on type returning non-zero on failure
 if (type cat) > /dev/null 2>&1; then
 : which
 which() {
@@ -225,6 +267,7 @@ AC_CHECK_HEADERS( \
 	paths.h \
 	poll.h \
 	ranlib.h \
+	regex.h \
 	sys/mman.h \
 	sys/select.h \
 	sys/socket.h \
@@ -283,7 +326,6 @@ AC_CHECK_FUNCS( \
 	getenv \
 	getwd \
 	killpg \
-	mmap \
 	putenv \
 	select \
 	setenv \
@@ -523,6 +565,8 @@ bmake) egrep=egrep;;
 esac
 dnl
 AC_SUBST(egrep)
+AC_SUBST(make_os)
+AC_SUBST(force_make_os)
 AC_SUBST(machine)
 AC_SUBST(force_machine)
 AC_SUBST(machine_arch)

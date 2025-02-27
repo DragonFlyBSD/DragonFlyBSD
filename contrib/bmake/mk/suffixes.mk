@@ -1,88 +1,76 @@
-#	$NetBSD: IRIX.sys.mk,v 1.2 2002/12/24 23:03:27 jschauma Exp $
-#	@(#)sys.mk	8.2 (Berkeley) 3/21/94
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# $Id: suffixes.mk,v 1.3 2024/02/17 17:26:57 sjg Exp $
+#
+#	@(#) Copyright (c) 2024, Simon J. Gerraty
+#
+#	This file is provided in the hope that it will
+#	be of use.  There is absolutely NO WARRANTY.
+#	Permission to copy, redistribute or otherwise
+#	use this file is hereby granted provided that
+#	the above copyright notice and this notice are
+#	left intact.
+#
+#	Please send copies of changes and bug-fixes to:
+#	sjg@crufty.net
+#
 
-.ifndef ROOT_GROUP
-OS !=		uname -s
-ROOT_GROUP !=	sed -n '/:0:/{s/:.*//p;q;}' /etc/group
-.export OS ROOT_GROUP
-.endif
-unix ?=		We run ${OS}.
+# some reasonable defaults
+.SUFFIXES: .out .a .ln .o ${PICO} ${PCM} .s .S .c ${CXX_SUFFIXES} \
+	${CCM_SUFFIXES} .F .f .r .y .l .cl .p .h \
+	.sh .m4 .cpp-out
 
-.SUFFIXES: .out .a .ln .o .s .S .c ${CXX_SUFFIXES} .F .f .r .y .l .cl .p .h
-.SUFFIXES: .sh .m4
-
-.LIBS:		.a
-
-AR ?=		ar
-ARFLAGS ?=	r
-RANLIB ?=	ranlib
-
-AS ?=		as
+#
 AFLAGS ?=
+ARFLAGS ?=	r
+.if ${MACHINE_ARCH} == "sparc64"
+AFLAGS+= -Wa,-Av9a
+.endif
+AS ?=		as
+CC ?=		cc
+CFLAGS ?=	${DBG}
+CXX ?=		c++
+CXXFLAGS ?=	${CFLAGS}
+CXXFLAGS ?=	${CFLAGS}
+DBG ?=		-O2
+FC ?=		f77
+FFLAGS ?=	-O
+INSTALL ?=	install
+LD ?=		ld
+LEX ?=		lex
+LFLAGS ?=
+NM ?=		nm
+OBJC ?=		${CC}
+OBJCFLAGS ?=	${CFLAGS}
+PC ?=		pc
+PFLAGS ?=
+RFLAGS ?=
+SIZE ?=		size
+YACC ?=		yacc
+YFLAGS ?=
+
 COMPILE.s ?=	${CC} ${AFLAGS} -c
 LINK.s ?=	${CC} ${AFLAGS} ${LDFLAGS}
 COMPILE.S ?=	${CC} ${AFLAGS} ${CPPFLAGS} -c -traditional-cpp
 LINK.S ?=	${CC} ${AFLAGS} ${CPPFLAGS} ${LDFLAGS}
-
-CC ?=		cc
-NOGCCERROR ?=	# defined
-DBG ?=	-O2
-CFLAGS ?=	${DBG}
 COMPILE.c ?=	${CC} ${CFLAGS} ${CPPFLAGS} -c
 LINK.c ?=	${CC} ${CFLAGS} ${CPPFLAGS} ${LDFLAGS}
-
-CXX ?=		CC
-CXXFLAGS ?=	${CFLAGS}
 COMPILE.cc ?=	${CXX} ${CXXFLAGS} ${CPPFLAGS} -c
+COMPILE.pcm ?=	${COMPILE.cc:N-c} --precompile -c
 LINK.cc ?=	${CXX} ${CXXFLAGS} ${CPPFLAGS} ${LDFLAGS}
-
-OBJC ?=		${CC}
-OBJCFLAGS ?=	${CFLAGS}
 COMPILE.m ?=	${OBJC} ${OBJCFLAGS} ${CPPFLAGS} -c
 LINK.m ?=	${OBJC} ${OBJCFLAGS} ${CPPFLAGS} ${LDFLAGS}
-
-CPP ?=		CC
-CPPFLAGS ?=
-
-FC ?=		f77
-FFLAGS ?=	-O
-RFLAGS ?=
 COMPILE.f ?=	${FC} ${FFLAGS} -c
 LINK.f ?=	${FC} ${FFLAGS} ${LDFLAGS}
 COMPILE.F ?=	${FC} ${FFLAGS} ${CPPFLAGS} -c
 LINK.F ?=	${FC} ${FFLAGS} ${CPPFLAGS} ${LDFLAGS}
 COMPILE.r ?=	${FC} ${FFLAGS} ${RFLAGS} -c
 LINK.r ?=	${FC} ${FFLAGS} ${RFLAGS} ${LDFLAGS}
-
-INSTALL_SH ?=	install-sh
-INSTALL =	${INSTALL_SH}
-
-LEX ?=		lex
-LFLAGS ?=
 LEX.l ?=	${LEX} ${LFLAGS}
-
-LD ?=		ld
-LDFLAGS ?=
-
-LINT ?=		lint
-LINTFLAGS ?=	-chapbxzF
-
-LORDER ?=	lorder
-
-NM ?=		nm
-
-PC ?=		pc
-PFLAGS ?=
 COMPILE.p ?=	${PC} ${PFLAGS} ${CPPFLAGS} -c
 LINK.p ?=	${PC} ${PFLAGS} ${CPPFLAGS} ${LDFLAGS}
-
-SIZE ?=		size
-
-TSORT ?= 	tsort -q
-
-YACC ?=		yacc
-YFLAGS ?=
 YACC.y ?=	${YACC} ${YFLAGS}
+LEX.l ?=	${LEX} ${LFLAGS}
 
 # C
 .c:
@@ -105,6 +93,10 @@ ${CXX_SUFFIXES:%=%.a}:
 	${COMPILE.cc} ${.IMPSRC}
 	${AR} ${ARFLAGS} $@ $*.o
 	rm -f $*.o
+
+# C++ precompiled modules
+${CCM_SUFFIXES:%=%${PCM}}:
+	@${COMPILE.pcm} ${.IMPSRC}
 
 # Fortran/Ratfor
 .f:
@@ -193,3 +185,11 @@ ${CXX_SUFFIXES:%=%.a}:
 	rm -f ${.TARGET}
 	cp ${.IMPSRC} ${.TARGET}
 	chmod a+x ${.TARGET}
+
+
+# this often helps with debugging
+.c.cpp-out:
+	@${COMPILE.c:N-c} -E ${.IMPSRC} | grep -v '^[ 	]*$$'
+
+${CXX_SUFFIXES:%=%.cpp-out}:
+	@${COMPILE.cc:N-c} -E ${.IMPSRC} | grep -v '^[ 	]*$$'

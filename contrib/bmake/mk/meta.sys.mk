@@ -1,7 +1,9 @@
-# $Id: meta.sys.mk,v 1.42 2021/12/13 05:50:55 sjg Exp $
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# $Id: meta.sys.mk,v 1.56 2024/11/22 23:51:48 sjg Exp $
 
 #
-#	@(#) Copyright (c) 2010-2021, Simon J. Gerraty
+#	@(#) Copyright (c) 2010-2023, Simon J. Gerraty
 #
 #	This file is provided in the hope that it will
 #	be of use.  There is absolutely NO WARRANTY.
@@ -17,24 +19,31 @@
 # include this if you want to enable meta mode
 # for maximum benefit, requires filemon(4) driver.
 
-.if ${MAKE_VERSION:U0} > 20100901
-.if !target(.ERROR)
-
-.-include <local.meta.sys.mk>
-
 # absolute path to what we are reading.
-_PARSEDIR = ${.PARSEDIR:tA}
+_PARSEDIR ?= ${.PARSEDIR:tA}
+
+.-include <local.meta.sys.env.mk>
 
 .if !defined(SYS_MK_DIR)
 SYS_MK_DIR := ${_PARSEDIR}
 .endif
 
-META_MODE += meta verbose
+.if !target(.ERROR)
+
+META_MODE += meta
+.if empty(.MAKEFLAGS:M-s)
+META_MODE += verbose
+.endif
 .if ${MAKE_VERSION:U0} > 20130323 && empty(.MAKE.PATH_FILEMON)
 # we do not support filemon
 META_MODE += nofilemon
 MKDEP_MK ?= auto.dep.mk
 .endif
+
+# META_MODE_XTRAS makes it easier to add things like 'env'
+# from the command line when debugging
+# :U avoids problems from := below
+META_MODE += ${META_MODE_XTRAS:U}
 
 .MAKE.MODE ?= ${META_MODE}
 
@@ -65,19 +74,7 @@ META_MODE += silent=yes
 .endif
 .endif
 
-# we use the pseudo machine "host" for the build host.
-# this should be taken care of before we get here
-.if ${OBJTOP:Ua} == ${HOST_OBJTOP:Ub}
-MACHINE = host
-.endif
-
-.if !defined(MACHINE0)
-# it can be handy to know which MACHINE kicked off the build
-# for example, if using Makefild.depend for multiple machines,
-# allowing only MACHINE0 to update can keep things simple.
-MACHINE0 := ${MACHINE}
-.export MACHINE0
-.endif
+.if ${MK_DIRDEPS_BUILD:Uno} == "yes"
 
 .if !defined(META2DEPS)
 .if defined(PYTHON) && exists(${PYTHON})
@@ -92,10 +89,16 @@ META2DEPS := ${META2DEPS}
 
 MAKE_PRINT_VAR_ON_ERROR += \
 	.ERROR_TARGET \
+	.ERROR_EXIT \
 	.ERROR_META_FILE \
 	.MAKE.LEVEL \
 	MAKEFILE \
 	.MAKE.MODE
+
+MK_META_ERROR_TARGET = yes
+.endif
+
+.if ${MK_META_ERROR_TARGET:Uno} == "yes"
 
 .if !defined(SB) && defined(SRCTOP)
 SB = ${SRCTOP:H}
@@ -103,30 +106,30 @@ SB = ${SRCTOP:H}
 ERROR_LOGDIR ?= ${SB}/error
 meta_error_log = ${ERROR_LOGDIR}/meta-${.MAKE.PID}.log
 
-# we are not interested in make telling us a failure happened elsewhere
+.if ${.MAKE.LEVEL} == 0 && !empty(NEWLOG_SH) && exists(${ERROR_LOGDIR})
+.BEGIN:	_rotateErrorLog
+_rotateErrorLog: .NOMETA .NOTMAIN
+	@${NEWLOG_SH} -d -S -n ${ERROR_LOG_GENS:U4} ${ERROR_LOGDIR}
+.endif
+
 .ERROR: _metaError
+# We are interested here in the target(s) that caused the build to fail.
+# We want to ignore targets that were "aborted" due to failure
+# elsewhere per the message below or a sub-make may just exit 6.
 _metaError: .NOMETA .NOTMAIN
-	-@[ "${.ERROR_META_FILE}" ] && { \
+	-@[ ${.ERROR_EXIT:U0} = 6 ] && exit 0; \
+	[ "${.ERROR_META_FILE}" ] && { \
 	grep -q 'failure has been detected in another branch' ${.ERROR_META_FILE} && exit 0; \
 	mkdir -p ${meta_error_log:H}; \
 	cp ${.ERROR_META_FILE} ${meta_error_log}; \
 	echo "ERROR: log ${meta_error_log}" >&2; }; :
 
 .endif
+.endif
 
 # Are we, after all, in meta mode?
 .if ${.MAKE.MODE:Uno:Mmeta*} != ""
 MKDEP_MK ?= meta.autodep.mk
-
-.if ${.MAKE.MAKEFILES:M*sys.dependfile.mk} == ""
-# this does all the smarts of setting .MAKE.DEPENDFILE
-.-include <sys.dependfile.mk>
-# check if we got anything sane
-.if ${.MAKE.DEPENDFILE} == ".depend"
-.undef .MAKE.DEPENDFILE
-.endif
-.MAKE.DEPENDFILE ?= Makefile.depend
-.endif
 
 # we can afford to use cookies to prevent some targets
 # re-running needlessly
@@ -155,25 +158,13 @@ UPDATE_DEPENDFILE= NO
 .endif
 .endif
 
-.if ${.MAKE.LEVEL} == 0
-.if ${MK_DIRDEPS_BUILD:Uyes} == "yes"
-# make sure dirdeps target exists and do it first
-all: dirdeps .WAIT
-dirdeps:
-.NOPATH: dirdeps
+.else				# in meta mode?
 
-.if defined(ALL_MACHINES)
-# the first .MAIN: is what counts
-# by default dirdeps is all we want at level0
-.MAIN: dirdeps
-.endif
-.endif
-
-.endif
-.else
 META_COOKIE_TOUCH=
 # some targets need to be .PHONY in non-meta mode
 META_NOPHONY= .PHONY
 META_NOECHO= echo
-.endif
-.endif
+
+.endif				# in meta mode?
+
+.-include <local.meta.sys.mk>
