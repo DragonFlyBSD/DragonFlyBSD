@@ -31,7 +31,7 @@ SRCS=	\
 srcdir= ${.CURDIR}/../../contrib/bmake
 
 # Base version on src date
-MAKE_VERSION= 20220928
+MAKE_VERSION= 20250125
 .if defined(BOOTSTRAPPING)
 DEFAULT_SYS_PATH = ${.CURDIR}/../../share/mk
 .else

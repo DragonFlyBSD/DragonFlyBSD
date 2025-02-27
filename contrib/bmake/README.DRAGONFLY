@@ -4,10 +4,10 @@ BSD MAKE
 Original source can be downloaded from:
 http://www.crufty.net/ftp/pub/sjg
 
-file = bmake-20220928.tar.gz
-date = 28 September 2022
-size = 821224
-sha1 = d33db8c57e6f69b05c061bf9f34ebbef3db1f984
+file = bmake-20250125.tar.gz
+date = 25 January 2025
+size = 881309
+sha1 = f8f9e7726947fa446d6a12e653800adb0fa23fe8
 
 The file README.DELETED contains a list of deleted files and directories.
 
