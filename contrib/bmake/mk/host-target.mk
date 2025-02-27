@@ -1,7 +1,24 @@
+# SPDX-License-Identifier: BSD-2-Clause
+#
 # RCSid:
-#	$Id: host-target.mk,v 1.14 2022/02/04 18:05:22 sjg Exp $
+#	$Id: host-target.mk,v 1.20 2024/02/17 17:26:57 sjg Exp $
+#
+#	@(#) Copyright (c) 2007-2023 Simon J. Gerraty
+#
+#	This file is provided in the hope that it will
+#	be of use.  There is absolutely NO WARRANTY.
+#	Permission to copy, redistribute or otherwise
+#	use this file is hereby granted provided that
+#	the above copyright notice and this notice are
+#	left intact.
+#
+#	Please send copies of changes and bug-fixes to:
+#	sjg@crufty.net
 
 # Host platform information; may be overridden
+.if !target(__${.PARSEFILE}__)
+__${.PARSEFILE}__: .NOTMAIN
+
 .if !defined(_HOST_OSNAME)
 # use .MAKE.OS if available
 _HOST_OSNAME := ${.MAKE.OS:U${uname -s:L:sh}}
@@ -11,22 +28,26 @@ _HOST_OSNAME := ${.MAKE.OS:U${uname -s:L:sh}}
 _HOST_OSREL  !=	uname -r
 .export _HOST_OSREL
 .endif
-.if !defined(_HOST_MACHINE)
-_HOST_MACHINE != uname -m
-.export _HOST_MACHINE
-.endif
 .if !defined(_HOST_ARCH)
-# for Darwin and NetBSD prefer $MACHINE (amd64 rather than x86_64)
-.if ${_HOST_OSNAME:NDarwin:NNetBSD} == ""
-_HOST_ARCH := ${_HOST_MACHINE}
-.else
 _HOST_ARCH != uname -p 2> /dev/null || uname -m
 # uname -p may produce garbage on linux
 .if ${_HOST_ARCH:[\#]} > 1 || ${_HOST_ARCH:Nunknown} == ""
-_HOST_ARCH := ${_HOST_MACHINE}
-.endif
+_HOST_ARCH = ${_HOST_MACHINE}
+.elif ${_HOST_OSNAME:NDarwin} == "" && ${_HOST_ARCH:Narm:Ni386} == ""
+# _HOST_MACHINE is more explicit/useful
+_HOST_ARCH = ${_HOST_MACHINE}
 .endif
 .export _HOST_ARCH
+.endif
+.if !defined(_HOST_MACHINE)
+_HOST_MACHINE != uname -m
+# just in case
+_HOST_ARCH := ${_HOST_ARCH}
+# uname -m may produce garbage on darwin ppc
+.if ${_HOST_MACHINE:[\#]} > 1
+_HOST_MACHINE := ${_HOST_ARCH}
+.endif
+.export _HOST_MACHINE
 .endif
 .if !defined(HOST_MACHINE)
 HOST_MACHINE := ${_HOST_MACHINE}
@@ -41,10 +62,17 @@ HOST_TARGET  := ${host_os:S,/,,g}${HOST_OSMAJOR}-${_HOST_ARCH}
 # sometimes we want HOST_TARGET32
 MACHINE32.amd64 = i386
 MACHINE32.x86_64 = i386
+.if !defined(_HOST_ARCH32)
 _HOST_ARCH32 := ${MACHINE32.${_HOST_ARCH}:U${_HOST_ARCH:S,64$,,}}
+.export _HOST_ARCH32
+.endif
 HOST_TARGET32 := ${host_os:S,/,,g}${HOST_OSMAJOR}-${_HOST_ARCH32}
+
+.export HOST_TARGET HOST_TARGET32
 
 # tr is insanely non-portable, accommodate the lowest common denominator
 TR ?= tr
 toLower = ${TR} 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
 toUpper = ${TR} 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+.endif

@@ -1,7 +1,10 @@
-#	$Id: prog.mk,v 1.38 2022/07/22 20:08:56 sjg Exp $
+#	$Id: prog.mk,v 1.45 2024/12/12 19:56:36 sjg Exp $
 
-.if !target(__${.PARSEFILE}__)
-__${.PARSEFILE}__: .NOTMAIN
+# should be set properly in sys.mk
+_this ?= ${.PARSEFILE:S,bsd.,,}
+
+.if !target(__${_this}__)
+__${_this}__: .NOTMAIN
 
 .include <init.mk>
 
@@ -11,7 +14,7 @@ _sect:=${MAN:E}
 MAN${_sect}=${MAN}
 .endif
 
-.SUFFIXES: .out .o .c .cc .C .y .l .s .8 .7 .6 .5 .4 .3 .2 .1 .0
+.SUFFIXES: .out .o .c ${CXX_SUFFIXES} .y .l ${CCM_SUFFIXES} ${PCM}
 
 CFLAGS+=	${COPTS}
 
@@ -62,34 +65,47 @@ LDADD_LAST+= ${LDADD_LIBC_P}
 .if defined(SHAREDSTRINGS)
 CLEANFILES+=strings
 .c.o:
-	${CC} -E ${CFLAGS} ${.IMPSRC} | xstr -c -
-	@${CC} ${CFLAGS} -c x.c -o ${.TARGET}
+	@${COMPILE.c:N-c} -E ${.IMPSRC} | xstr -c -
+	@${COMPILE.c} x.c -o ${.TARGET}
 	@rm -f x.c
 
-${CXX_SUFFIXES:%=%.o}:
-	${CXX} -E ${CXXFLAGS} ${.IMPSRC} | xstr -c -
+# precompiled C++ Modules
+${CCM_SUFFIXES:%=%${PCM}}:
+	@${COMIPILE.cc:N-c} -E ${.IMPSRC} | xstr -c -
 	@mv -f x.c x.cc
-	@${CXX} ${CXXFLAGS} -c x.cc -o ${.TARGET}
+	@${COMPILE.pcm} x.cc -o ${.TARGET}
+	@rm -f x.cc
+
+${CXX_SUFFIXES:N.c*m:%=%.o}:
+	@${COMIPILE.cc:N-c} -E ${.IMPSRC} | xstr -c -
+	@mv -f x.c x.cc
+	@${COMPILE.cc} x.cc -o ${.TARGET}
 	@rm -f x.cc
 .endif
 
 .if defined(PROG_CXX)
 PROG=		${PROG_CXX}
-_CCLINK=	${CXX}
 _SUPCXX?=	-lstdc++ -lm
 .endif
-
-_CCLINK?=	${CC}
 
 .if defined(PROG)
 BINDIR ?= ${prefix}/bin
 
-SRCS?=	${PROG}.c
-.for s in ${SRCS:N*.h:N*.sh:M*/*}
-${.o .po .lo:L:@o@${s:T:R}$o@}: $s
+.if empty(SRCS)
+# init.mk handling of QUALIFIED_VAR_LIST means
+# SRCS will be defined - even if empty.
+SRCS = ${PROG}.c
+.endif
+
+SRCS ?=	${PROG}.c
+
+.for s in ${SRCS:${OBJS_SRCS_PRE_FILTER:ts:}:M*/*}
+${.o .po .lo:L:@o@${s:${OBJS_SRCS_FILTER:ts:}}$o@}: $s
 .endfor
-.if !empty(SRCS:N*.h:N*.sh)
-OBJS+=	${SRCS:T:N*.h:N*.sh:R:S/$/.o/g}
+
+OBJS_SRCS = ${SRCS:${OBJS_SRCS_FILTER:ts:}}
+.if !empty(OBJS_SRCS)
+OBJS+=	${OBJS_SRCS:S/$/.o/g}
 LOBJS+=	${LSRCS:.c=.ln} ${SRCS:M*.c:.c=.ln}
 .endif
 
@@ -97,7 +113,7 @@ LOBJS+=	${LSRCS:.c=.ln} ${SRCS:M*.c:.c=.ln}
 .NOPATH: ${OBJS} ${PROG} ${SRCS:M*.[ly]:C/\..$/.c/} ${YHEADER:D${SRCS:M*.y:.y=.h}}
 
 # this is known to work for NetBSD 1.6 and FreeBSD 4.2
-.if ${TARGET_OSNAME} == "NetBSD" || ${TARGET_OSNAME} == "FreeBSD"
+.if ${TARGET_OSNAME:NFreeBSD:NNetBSD} == ""
 _PROGLDOPTS=
 .if ${SHLINKDIR} != "/usr/libexec"	# XXX: change or remove if ld.so moves
 _PROGLDOPTS+=	-Wl,-dynamic-linker=${_SHLINKER}
@@ -114,6 +130,9 @@ ${PROG}: ldorder
 
 .include <ldorder.mk>
 .endif
+# avoid -dL errors
+LDADD_LDORDER ?=
+LDSTATIC ?=
 
 .if defined(DESTDIR) && exists(${LIBCRT0}) && ${LIBCRT0} != "/dev/null"
 

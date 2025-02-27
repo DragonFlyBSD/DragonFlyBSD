@@ -1,5 +1,7 @@
-# $Id: gendirdeps.mk,v 1.48 2022/09/09 17:44:29 sjg Exp $
+# $Id: gendirdeps.mk,v 1.51 2025/01/05 01:16:19 sjg Exp $
 
+# SPDX-License-Identifier: BSD-2-Clause
+#
 # Copyright (c) 2011-2020, Simon J. Gerraty
 # Copyright (c) 2010-2018, Juniper Networks, Inc.
 # All rights reserved.
@@ -41,6 +43,37 @@
 #		symlink to another filesystem.
 #		_objroot must be a prefix match for _objtop
 
+# If any of GENDIRDEPS_FILTER, GENDIRDEPS_FILTER_DIR_VARS
+# or GENDIRDEPS_FILTER_VARS are set, we use them to filter the
+# output from filemon(4).
+# Any references to variables that dirdeps.mk will set
+# such as DEP_MACHINE, DEP_RELDIR etc, should use that form.
+# Thus we want ${DEP_MACHINE} not ${MACHINE} used in DIRDEPS.
+#
+# If any manually maintained Makefile.depend files will use any
+# DEP_* variables in conditionals, precautions are needed to avoid
+# errors when Makefile.depend is read at level 1+ (ie not via
+# dirdeps.mk)
+# Using MACHINE as an example; such makefiles can do:
+#
+# 	DEP_MACHINE ?= ${MACHINE}
+# 	.if ${DEP_MACHINE} == "xyz"
+#
+# or:
+# 
+# 	.if ${DEP_MACHINE:U${MACHINE}} == "xyz"
+#
+# but it might be safer to set GENDIRDEPS_FILTER_DIR_VARS and
+# GENDIRDEPS_FILTER_VARS via local.meta.sys.mk rather than
+# local.gendirdeps.mk and then:
+#
+# 	.if ${.MAKE.LEVEL} > 0
+# 	.for V in ${GENDIRDEPS_FILTER_DIR_VARS:MDEP_*} \
+# 		${GENDIRDEPS_FILTER_VARS:MDEP_*}
+# 	$V ?= ${${V:S,DEP_,,}}
+# 	.endfor
+# 	.endif
+# 
 .MAIN: all
 
 # keep this simple
@@ -69,6 +102,10 @@ _DEPENDFILE := ${_CURDIR}/${.MAKE.DEPENDFILE:T}
 
 # caller should have set this
 META_FILES ?= ${.MAKE.META.FILES}
+# this sometimes needs to be passed separately
+.if !empty(META_XTRAS)
+META_FILES += ${META_XTRAS:N\*.meta}
+.endif
 
 .if !empty(META_FILES)
 
@@ -200,7 +237,7 @@ dir_list != cd ${_OBJDIR} && \
 	sed ${GENDIRDEPS_SEDCMDS}
 
 .if ${dir_list:M*ERROR\:*} != ""
-.warning ${dir_list:tW:C,.*(ERROR),\1,}
+.warning ${dir_list:C,.*(ERROR),\1,W}
 .warning Skipping ${_DEPENDFILE:S,${SRCTOP}/,,}
 # we are not going to update anything
 .else

@@ -1,4 +1,4 @@
-/*	$NetBSD: make.c,v 1.257 2022/09/27 17:46:58 rillig Exp $	*/
+/*	$NetBSD: make.c,v 1.264 2024/06/02 15:31:26 rillig Exp $	*/
 
 /*
  * Copyright (c) 1988, 1989, 1990, 1993
@@ -104,7 +104,7 @@
 #include "job.h"
 
 /*	"@(#)make.c	8.1 (Berkeley) 6/6/93"	*/
-MAKE_RCSID("$NetBSD: make.c,v 1.257 2022/09/27 17:46:58 rillig Exp $");
+MAKE_RCSID("$NetBSD: make.c,v 1.264 2024/06/02 15:31:26 rillig Exp $");
 
 /* Sequence # to detect recursion. */
 static unsigned int checked_seqno = 1;
@@ -127,12 +127,12 @@ debug_printf(const char *fmt, ...)
 	va_end(ap);
 }
 
-static const char *
-GNodeType_ToString(GNodeType type, void **freeIt)
+static char *
+GNodeType_ToString(GNodeType type)
 {
 	Buffer buf;
 
-	Buf_InitSize(&buf, 32);
+	Buf_Init(&buf);
 #define ADD(flag) Buf_AddFlag(&buf, (type & (flag)) != OP_NONE, #flag)
 	ADD(OP_DEPENDS);
 	ADD(OP_FORCE);
@@ -166,44 +166,42 @@ GNodeType_ToString(GNodeType type, void **freeIt)
 	ADD(OP_DEPS_FOUND);
 	ADD(OP_MARK);
 #undef ADD
-	return buf.len == 0 ? "none" : (*freeIt = Buf_DoneData(&buf));
+	if (buf.len == 0)
+		Buf_AddStr(&buf, "none");
+	return Buf_DoneData(&buf);
 }
 
-static const char *
-GNodeFlags_ToString(GNodeFlags flags, void **freeIt)
+static char *
+GNodeFlags_ToString(GNodeFlags flags)
 {
 	Buffer buf;
 
-	Buf_InitSize(&buf, 32);
-#define ADD(flag, name) Buf_AddFlag(&buf, flags.flag, name)
-	ADD(remake, "REMAKE");
-	ADD(childMade, "CHILDMADE");
-	ADD(force, "FORCE");
-	ADD(doneWait, "DONE_WAIT");
-	ADD(doneOrder, "DONE_ORDER");
-	ADD(fromDepend, "FROM_DEPEND");
-	ADD(doneAllsrc, "DONE_ALLSRC");
-	ADD(cycle, "CYCLE");
-	ADD(doneCycle, "DONECYCLE");
-#undef ADD
-	return buf.len == 0 ? "none" : (*freeIt = Buf_DoneData(&buf));
+	Buf_Init(&buf);
+	Buf_AddFlag(&buf, flags.remake, "REMAKE");
+	Buf_AddFlag(&buf, flags.childMade, "CHILDMADE");
+	Buf_AddFlag(&buf, flags.force, "FORCE");
+	Buf_AddFlag(&buf, flags.doneWait, "DONE_WAIT");
+	Buf_AddFlag(&buf, flags.doneOrder, "DONE_ORDER");
+	Buf_AddFlag(&buf, flags.fromDepend, "FROM_DEPEND");
+	Buf_AddFlag(&buf, flags.doneAllsrc, "DONE_ALLSRC");
+	Buf_AddFlag(&buf, flags.cycle, "CYCLE");
+	Buf_AddFlag(&buf, flags.doneCycle, "DONECYCLE");
+	if (buf.len == 0)
+		Buf_AddStr(&buf, "none");
+	return Buf_DoneData(&buf);
 }
 
 void
 GNode_FprintDetails(FILE *f, const char *prefix, const GNode *gn,
 		    const char *suffix)
 {
-	void *type_freeIt = NULL;
-	void *flags_freeIt = NULL;
+	char *type = GNodeType_ToString(gn->type);
+	char *flags = GNodeFlags_ToString(gn->flags);
 
 	fprintf(f, "%s%s, type %s, flags %s%s",
-	    prefix,
-	    GNodeMade_Name(gn->made),
-	    GNodeType_ToString(gn->type, &type_freeIt),
-	    GNodeFlags_ToString(gn->flags, &flags_freeIt),
-	    suffix);
-	free(type_freeIt);
-	free(flags_freeIt);
+	    prefix, GNodeMade_Name(gn->made), type, flags, suffix);
+	free(type);
+	free(flags);
 }
 
 bool
@@ -332,13 +330,12 @@ GNode_IsOODate(GNode *gn)
 		 * out-of-date.
 		 */
 		if (DEBUG(MAKE)) {
-			if (gn->type & OP_FORCE) {
+			if (gn->type & OP_FORCE)
 				debug_printf("! operator...");
-			} else if (gn->type & OP_PHONY) {
+			else if (gn->type & OP_PHONY)
 				debug_printf(".PHONY node...");
-			} else {
+			else
 				debug_printf(".EXEC node...");
-			}
 		}
 		oodate = true;
 	} else if (IsOODateRegular(gn)) {
@@ -442,12 +439,11 @@ Make_HandleUse(GNode *cgn, GNode *pgn)
 		 * We don't need to do this for commands.
 		 * They get expanded properly when we execute.
 		 */
-		if (gn->uname == NULL) {
+		if (gn->uname == NULL)
 			gn->uname = gn->name;
-		} else {
+		else
 			free(gn->name);
-		}
-		(void)Var_Subst(gn->uname, pgn, VARE_WANTRES, &gn->name);
+		gn->name = Var_Subst(gn->uname, pgn, VARE_EVAL);
 		/* TODO: handle errors */
 		if (gn->uname != NULL && strcmp(gn->name, gn->uname) != 0) {
 			/* See if we have a target for this node. */
@@ -548,9 +544,8 @@ Make_Recheck(GNode *gn)
 	 * depend on FRC to be made, so we have to check for gn->children
 	 * being empty as well.
 	 */
-	if (!Lst_IsEmpty(gn->commands) || Lst_IsEmpty(gn->children)) {
+	if (!Lst_IsEmpty(gn->commands) || Lst_IsEmpty(gn->children))
 		gn->mtime = now;
-	}
 #else
 	/*
 	 * This is what Make does and it's actually a good thing, as it
@@ -691,9 +686,8 @@ Make_Update(GNode *cgn)
 	 * now -- some rules won't actually update the file. If the file
 	 * still doesn't exist, make its mtime now.
 	 */
-	if (cgn->made != UPTODATE) {
+	if (cgn->made != UPTODATE)
 		mtime = Make_Recheck(cgn);
-	}
 
 	/*
 	 * If this is a `::' node, we must consult its first instance
@@ -1226,7 +1220,7 @@ MakePrintStatusList(GNodeList *gnodes, int *errors)
 static void
 ExamineLater(GNodeList *examine, GNodeList *toBeExamined)
 {
-	ListNode *ln;
+	GNodeListNode *ln;
 
 	for (ln = toBeExamined->first; ln != NULL; ln = ln->next) {
 		GNode *gn = ln->datum;

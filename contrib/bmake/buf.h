@@ -1,4 +1,4 @@
-/*	$NetBSD: buf.h,v 1.47 2022/01/08 17:25:19 rillig Exp $	*/
+/*	$NetBSD: buf.h,v 1.50 2024/04/28 15:10:19 rillig Exp $	*/
 
 /*
  * Copyright (c) 1988, 1989, 1990 The Regents of the University of California.
@@ -96,7 +96,7 @@ Buf_Clear(Buffer *buf)
 	buf->data[0] = '\0';
 }
 
-/* Buf_AddByte adds a single byte to a buffer. */
+/* Adds a single byte to a buffer. */
 MAKE_INLINE void
 Buf_AddByte(Buffer *buf, char byte)
 {
@@ -116,7 +116,7 @@ Buf_EndsWith(const Buffer *buf, char ch)
 }
 
 void Buf_AddBytes(Buffer *, const char *, size_t);
-void Buf_AddBytesBetween(Buffer *, const char *, const char *);
+void Buf_AddRange(Buffer *, const char *, const char *);
 void Buf_AddStr(Buffer *, const char *);
 void Buf_AddInt(Buffer *, int);
 void Buf_AddFlag(Buffer *, bool, const char *);
@@ -124,6 +124,5 @@ void Buf_Init(Buffer *);
 void Buf_InitSize(Buffer *, size_t);
 void Buf_Done(Buffer *);
 char *Buf_DoneData(Buffer *) MAKE_ATTR_USE;
-char *Buf_DoneDataCompact(Buffer *) MAKE_ATTR_USE;
 
 #endif

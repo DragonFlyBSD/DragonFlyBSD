@@ -1,5 +1,7 @@
+# SPDX-License-Identifier: BSD-2-Clause
+#
 # RCSid:
-#       $Id: dirdeps-targets.mk,v 1.24 2020/12/11 18:15:43 sjg Exp $
+#       $Id: dirdeps-targets.mk,v 1.28 2024/10/19 00:47:38 sjg Exp $
 #
 #       @(#) Copyright (c) 2019-2020 Simon J. Gerraty
 #
@@ -39,6 +41,9 @@
 .if ${.MAKE.LEVEL} == 0
 # pickup customizations
 .-include <local.dirdeps-targets.mk>
+
+# this is what we are here for
+.MAIN: dirdeps
 
 # for DIRDEPS_BUILD this is how we prime the pump
 # include . to allow any directory to work as a target
@@ -113,16 +118,17 @@ tqtdeps := ${DIRDEPS_TARGETS_MACHINE_LIST:@m@${tdeps:M*.$m,*}@:S,/${.MAKE.DEPEND
 .endif
 
 # now work out what we want in DIRDEPS
+DIRDEPS = ${ptdeps}
 .if empty(REQUESTED_MACHINE)
 # we want them all just as found
-DIRDEPS = ${ptdeps} ${mqtdeps} ${tqtdeps}
+DIRDEPS += ${mqtdeps} ${tqtdeps}
 .else
 # we only want those that match REQUESTED_MACHINE/REQUESTED_TARGET_SPEC
 # or REQUESTED_TARGET_SPEC (TARGET_SPEC)
-DIRDEPS = \
-	${ptdeps:@d@$d.${REQUESTED_TARGET_SPEC:U${TARGET_SPEC:U${REQUESTED_MACHINE}}}@} \
+DIRDEPS += \
 	${mqtdeps:M*.${REQUESTED_MACHINE}} \
-	${tqtdeps:M*.${REQUESTED_TARGET_SPEC:U${TARGET_SPEC}}}
+	${tqtdeps:M*.${REQUESTED_TARGET_SPEC:U${TARGET_SPEC}}} \
+
 .endif
 # clean up
 DIRDEPS := ${DIRDEPS:O:u}
@@ -154,6 +160,9 @@ MK_DIRDEPS_CACHE = yes
 .endfor
 .if defined(STATIC_DIRDEPS_CACHE)
 .export STATIC_DIRDEPS_CACHE
+.if !empty(DEBUG_DIRDEPS_TARGETS)
+.info STATIC_DIRDEPS_CACHE=${STATIC_DIRDEPS_CACHE:S,${SRCTOP}/,,}
+.endif
 .endif
 .endif
 

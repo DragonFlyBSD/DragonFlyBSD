@@ -1,4 +1,4 @@
-/*	$NetBSD: make.h,v 1.307 2022/09/24 16:13:48 rillig Exp $	*/
+/*	$NetBSD: make.h,v 1.349 2025/01/19 10:57:10 rillig Exp $	*/
 
 /*
  * Copyright (c) 1988, 1989, 1990, 1993
@@ -114,7 +114,7 @@
 #define MAKE_GNUC_PREREQ(x, y)	0
 #endif
 
-#if MAKE_GNUC_PREREQ(2, 7)
+#if MAKE_GNUC_PREREQ(2, 7) || lint
 #define MAKE_ATTR_UNUSED	__attribute__((__unused__))
 #else
 #define MAKE_ATTR_UNUSED	/* delete */
@@ -139,6 +139,12 @@
 #define MAKE_ATTR_USE		__attribute__((__warn_unused_result__))
 #else
 #define MAKE_ATTR_USE		/* delete */
+#endif
+
+#if MAKE_GNUC_PREREQ(8, 0)
+#define MAKE_ATTR_NOINLINE		__attribute__((__noinline__))
+#else
+#define MAKE_ATTR_NOINLINE		/* delete */
 #endif
 
 #if __STDC_VERSION__ >= 199901L || defined(lint)
@@ -177,6 +183,15 @@ typedef unsigned char bool;
 #define false	0
 #endif
 
+/*
+ * In code coverage mode with gcc>=12, calling vfork/exec does not mark any
+ * further code from the parent process as covered. gcc-10.5.0 is fine, as
+ * are fork/exec calls, as well as posix_spawn.
+ */
+#ifndef FORK_FUNCTION
+#define FORK_FUNCTION vfork
+#endif
+
 #include "lst.h"
 #include "make_malloc.h"
 #include "str.h"
@@ -193,6 +208,13 @@ typedef unsigned char bool;
 
 #if defined(sun) && (defined(__svr4__) || defined(__SVR4))
 # define POSIX_SIGNALS
+#endif
+
+/*
+ * IRIX defines OP_NONE in sys/fcntl.h
+ */
+#if defined(OP_NONE)
+# undef OP_NONE
 #endif
 
 /*
@@ -415,7 +437,7 @@ typedef struct SearchPath {
 
 /*
  * A graph node represents a target that can possibly be made, including its
- * relation to other targets and a lot of other details.
+ * relation to other targets.
  */
 typedef struct GNode {
 	/* The target's name, such as "clean" or "make.c" */
@@ -520,6 +542,7 @@ typedef struct GNode {
 	const char *fname;
 	/* Line number where the GNode got defined, 1-based */
 	unsigned lineno;
+	int exit_status;
 } GNode;
 
 /*
@@ -555,6 +578,14 @@ typedef enum CondResult {
 	CR_ERROR		/* Unknown directive or parse error */
 } CondResult;
 
+typedef struct {
+	enum GuardKind {
+		GK_VARIABLE,
+		GK_TARGET
+	} kind;
+	char *name;
+} Guard;
+
 /* Names of the variables that are "local" to a specific target. */
 #define TARGET	"@"		/* Target of dependency */
 #define OODATE	"?"		/* All out-of-date sources */
@@ -588,8 +619,8 @@ extern GNode *SCOPE_GLOBAL;
 extern GNode *SCOPE_CMDLINE;
 
 /*
- * Value returned by Var_Parse when an error is encountered. It actually
- * points to an empty string, so naive callers needn't worry about it.
+ * Value returned by Var_Parse when an error is encountered. It points to an
+ * empty string, so naive callers needn't worry about it.
  */
 extern char var_Error[];
 
@@ -625,15 +656,6 @@ extern GNode *mainNode;
 extern pid_t myPid;
 
 #define MAKEFLAGS	".MAKEFLAGS"
-#define MAKEOVERRIDES	".MAKEOVERRIDES"
-/* prefix when printing the target of a job */
-#define MAKE_JOB_PREFIX	".MAKE.JOB.PREFIX"
-#define MAKE_EXPORTED	".MAKE.EXPORTED"	/* exported variables */
-#define MAKE_MAKEFILES	".MAKE.MAKEFILES"	/* all loaded makefiles */
-#define MAKE_LEVEL	".MAKE.LEVEL"		/* recursion level */
-#define MAKE_MAKEFILE_PREFERENCE ".MAKE.MAKEFILE_PREFERENCE"
-#define MAKE_DEPENDFILE	".MAKE.DEPENDFILE"	/* .depend */
-#define MAKE_MODE	".MAKE.MODE"
 #ifndef MAKE_LEVEL_ENV
 # define MAKE_LEVEL_ENV	"MAKELEVEL"
 #endif
@@ -694,16 +716,16 @@ typedef enum PrintVarsMode {
 
 /* Command line options */
 typedef struct CmdOpts {
-	/* -B: whether we are make compatible */
+	/* -B: whether to be compatible to traditional make */
 	bool compatMake;
 
 	/*
-	 * -d: debug control: There is one bit per module.  It is up to the
+	 * -d: debug control: There is one flag per module.  It is up to the
 	 * module what debug information to print.
 	 */
 	DebugFlags debug;
 
-	/* -df: debug output is written here - default stderr */
+	/* -dF: debug output is written here - default stderr */
 	FILE *debug_file;
 
 	/*
@@ -793,16 +815,20 @@ typedef struct CmdOpts {
 } CmdOpts;
 
 extern CmdOpts opts;
+extern bool forceJobs;
+extern char **environ;
 
 /* arch.c */
 void Arch_Init(void);
+#ifdef CLEANUP
 void Arch_End(void);
+#endif
 
 bool Arch_ParseArchive(char **, GNodeList *, GNode *);
 void Arch_Touch(GNode *);
 void Arch_TouchLib(GNode *);
-void Arch_UpdateMTime(GNode *gn);
-void Arch_UpdateMemberMTime(GNode *gn);
+void Arch_UpdateMTime(GNode *);
+void Arch_UpdateMemberMTime(GNode *);
 void Arch_FindLib(GNode *, SearchPath *);
 bool Arch_LibOODate(GNode *) MAKE_ATTR_USE;
 bool Arch_IsLib(GNode *) MAKE_ATTR_USE;
@@ -816,6 +842,7 @@ void Compat_Make(GNode *, GNode *);
 extern unsigned int cond_depth;
 CondResult Cond_EvalCondition(const char *) MAKE_ATTR_USE;
 CondResult Cond_EvalLine(const char *) MAKE_ATTR_USE;
+Guard *Cond_ExtractGuard(const char *) MAKE_ATTR_USE;
 void Cond_EndFile(void);
 
 /* dir.c; see also dir.h */
@@ -843,22 +870,27 @@ int For_Eval(const char *) MAKE_ATTR_USE;
 bool For_Accum(const char *, int *) MAKE_ATTR_USE;
 void For_Run(unsigned, unsigned);
 bool For_NextIteration(struct ForLoop *, Buffer *);
-char *ForLoop_Details(struct ForLoop *);
+char *ForLoop_Details(const struct ForLoop *);
 void ForLoop_Free(struct ForLoop *);
 void For_Break(struct ForLoop *);
 
 /* job.c */
 void JobReapChild(pid_t, int, bool);
 
+/* longer than this we use a temp file */
+#ifndef MAKE_CMDLEN_LIMIT
+# define MAKE_CMDLEN_LIMIT 1000
+#endif
 /* main.c */
 void Main_ParseArgLine(const char *);
+int Cmd_Argv(const char *, size_t, const char **, size_t, char *, size_t, bool, bool);
 char *Cmd_Exec(const char *, char **) MAKE_ATTR_USE;
 void Error(const char *, ...) MAKE_ATTR_PRINTFLIKE(1, 2);
 void Fatal(const char *, ...) MAKE_ATTR_PRINTFLIKE(1, 2) MAKE_ATTR_DEAD;
 void Punt(const char *, ...) MAKE_ATTR_PRINTFLIKE(1, 2) MAKE_ATTR_DEAD;
 void DieHorribly(void) MAKE_ATTR_DEAD;
 void Finish(int) MAKE_ATTR_DEAD;
-bool unlink_file(const char *) MAKE_ATTR_USE;
+int unlink_file(const char *) MAKE_ATTR_USE;
 void execDie(const char *, const char *);
 char *getTmpdir(void) MAKE_ATTR_USE;
 bool ParseBoolean(const char *, bool) MAKE_ATTR_USE;
@@ -866,25 +898,30 @@ const char *cached_realpath(const char *, char *);
 bool GetBooleanExpr(const char *, bool);
 
 /* parse.c */
+extern int parseErrors;
 void Parse_Init(void);
+#ifdef CLEANUP
 void Parse_End(void);
+#endif
 
 void PrintLocation(FILE *, bool, const GNode *);
 void PrintStackTrace(bool);
 void Parse_Error(ParseErrorLevel, const char *, ...) MAKE_ATTR_PRINTFLIKE(2, 3);
 bool Parse_VarAssign(const char *, bool, GNode *) MAKE_ATTR_USE;
-void Parse_AddIncludeDir(const char *);
 void Parse_File(const char *, int);
 void Parse_PushInput(const char *, unsigned, unsigned, Buffer,
 		     struct ForLoop *);
 void Parse_MainName(GNodeList *);
-int Parse_NumErrors(void) MAKE_ATTR_USE;
 unsigned int CurFile_CondMinDepth(void) MAKE_ATTR_USE;
+void Parse_GuardElse(void);
+void Parse_GuardEndif(void);
 
 
 /* suff.c */
 void Suff_Init(void);
+#ifdef CLEANUP
 void Suff_End(void);
+#endif
 
 void Suff_ClearSuffixes(void);
 bool Suff_IsTransform(const char *) MAKE_ATTR_USE;
@@ -921,10 +958,16 @@ void Targ_PrintType(GNodeType);
 void Targ_PrintGraph(int);
 void Targ_Propagate(void);
 const char *GNodeMade_Name(GNodeMade) MAKE_ATTR_USE;
+#ifdef CLEANUP
+void Parse_RegisterCommand(char *);
+#else
+MAKE_INLINE
+void Parse_RegisterCommand(char *cmd MAKE_ATTR_UNUSED)
+{
+}
+#endif
 
 /* var.c */
-void Var_Init(void);
-void Var_End(void);
 
 typedef enum VarEvalMode {
 
@@ -934,28 +977,30 @@ typedef enum VarEvalMode {
 	 * TODO: Document what Var_Parse and Var_Subst return in this mode.
 	 *  As of 2021-03-15, they return unspecified, inconsistent results.
 	 */
-	VARE_PARSE_ONLY,
+	VARE_PARSE,
+
+	/*
+	 * Parse text in which '${...}' and '$(...)' are not parsed as
+	 * subexpressions (with all their individual escaping rules) but
+	 * instead simply as text with balanced '${}' or '$()'.  Other '$'
+	 * are copied verbatim.
+	 */
+	VARE_PARSE_BALANCED,
 
 	/* Parse and evaluate the expression. */
-	VARE_WANTRES,
+	VARE_EVAL,
 
 	/*
 	 * Parse and evaluate the expression.  It is an error if a
 	 * subexpression evaluates to undefined.
 	 */
-	VARE_UNDEFERR,
+	VARE_EVAL_DEFINED_LOUD,
 
 	/*
-	 * Parse and evaluate the expression.  Keep '$$' as '$$' instead of
-	 * reducing it to a single '$'.  Subexpressions that evaluate to
-	 * undefined expand to an empty string.
-	 *
-	 * Used in variable assignments using the ':=' operator.  It allows
-	 * multiple such assignments to be chained without accidentally
-	 * expanding '$$file' to '$file' in the first assignment and
-	 * interpreting it as '${f}' followed by 'ile' in the next assignment.
+	 * Parse and evaluate the expression.  It is a silent error if a
+	 * subexpression evaluates to undefined.
 	 */
-	VARE_EVAL_KEEP_DOLLAR,
+	VARE_EVAL_DEFINED,
 
 	/*
 	 * Parse and evaluate the expression.  Keep undefined variables as-is
@@ -968,13 +1013,13 @@ typedef enum VarEvalMode {
 	 *	# way) is still undefined, the updated CFLAGS becomes
 	 *	# "-I.. $(.INCLUDES)".
 	 */
-	VARE_EVAL_KEEP_UNDEF,
+	VARE_EVAL_KEEP_UNDEFINED,
 
 	/*
 	 * Parse and evaluate the expression.  Keep '$$' as '$$' and preserve
 	 * undefined subexpressions.
 	 */
-	VARE_KEEP_DOLLAR_UNDEF
+	VARE_EVAL_KEEP_DOLLAR_AND_UNDEFINED
 } VarEvalMode;
 
 typedef enum VarSetFlags {
@@ -985,36 +1030,16 @@ typedef enum VarSetFlags {
 
 	/*
 	 * Make the variable read-only. No further modification is possible,
-	 * except for another call to Var_Set with the same flag.
+	 * except for another call to Var_Set with the same flag. See the
+	 * special targets '.NOREADONLY' and '.READONLY'.
 	 */
-	VAR_SET_READONLY	= 1 << 1
+	VAR_SET_READONLY	= 1 << 1,
+	VAR_SET_INTERNAL	= 1 << 2
 } VarSetFlags;
 
-/* The state of error handling returned by Var_Parse. */
-typedef enum VarParseResult {
-
-	/* Both parsing and evaluation succeeded. */
-	VPR_OK,
-
-	/* Parsing or evaluating failed, with an error message. */
-	VPR_ERR,
-
-	/*
-	 * Parsing succeeded, undefined expressions are allowed and the
-	 * expression was still undefined after applying all modifiers.
-	 * No error message is printed in this case.
-	 *
-	 * Some callers handle this case differently, so return this
-	 * information to them, for now.
-	 *
-	 * TODO: Instead of having this special return value, rather ensure
-	 *  that VARE_EVAL_KEEP_UNDEF is processed properly.
-	 */
-	VPR_UNDEF
-
-} VarParseResult;
-
 typedef enum VarExportMode {
+	/* .export-all */
+	VEM_ALL,
 	/* .export-env */
 	VEM_ENV,
 	/* .export: Initial export or update an already exported variable. */
@@ -1024,6 +1049,9 @@ typedef enum VarExportMode {
 } VarExportMode;
 
 void Var_Delete(GNode *, const char *);
+#ifdef CLEANUP
+void Var_DeleteAll(GNode *scope);
+#endif
 void Var_Undef(const char *);
 void Var_Set(GNode *, const char *, const char *);
 void Var_SetExpand(GNode *, const char *, const char *);
@@ -1034,19 +1062,24 @@ bool Var_Exists(GNode *, const char *) MAKE_ATTR_USE;
 bool Var_ExistsExpand(GNode *, const char *) MAKE_ATTR_USE;
 FStr Var_Value(GNode *, const char *) MAKE_ATTR_USE;
 const char *GNode_ValueDirect(GNode *, const char *) MAKE_ATTR_USE;
-VarParseResult Var_Parse(const char **, GNode *, VarEvalMode, FStr *);
-VarParseResult Var_Subst(const char *, GNode *, VarEvalMode, char **);
+FStr Var_Parse(const char **, GNode *, VarEvalMode);
+char *Var_Subst(const char *, GNode *, VarEvalMode);
+char *Var_SubstInTarget(const char *, GNode *);
 void Var_Expand(FStr *, GNode *, VarEvalMode);
 void Var_Stats(void);
 void Var_Dump(GNode *);
-void Var_ReexportVars(void);
+void Var_ReexportVars(GNode *);
 void Var_Export(VarExportMode, const char *);
 void Var_ExportVars(const char *);
 void Var_UnExport(bool, const char *);
+void Var_ReadOnly(const char *, bool);
 
 void Global_Set(const char *, const char *);
 void Global_Append(const char *, const char *);
 void Global_Delete(const char *);
+void Global_Set_ReadOnly(const char *, const char *);
+
+void EvalStack_PrintDetails(void);
 
 /* util.c */
 typedef void (*SignalProc)(int);
@@ -1066,7 +1099,7 @@ void PrintOnError(GNode *, const char *);
 void Main_ExportMAKEFLAGS(bool);
 bool Main_SetObjdir(bool, const char *, ...) MAKE_ATTR_PRINTFLIKE(2, 3);
 int mkTempFile(const char *, char *, size_t) MAKE_ATTR_USE;
-int str2Lst_Append(StringList *, char *);
+void AppendWords(StringList *, char *);
 void GNode_FprintDetails(FILE *, const char *, const GNode *, const char *);
 bool GNode_ShouldExecute(GNode *gn) MAKE_ATTR_USE;
 
@@ -1223,7 +1256,8 @@ pp_skip_hspace(char **pp)
 }
 
 #if defined(lint)
-# define MAKE_RCSID(id) extern void do_not_define_rcsid(void)
+void do_not_define_rcsid(void); /* for lint */
+# define MAKE_RCSID(id) void do_not_define_rcsid(void)
 #elif defined(MAKE_NATIVE)
 # include <sys/cdefs.h>
 # ifndef __IDSTRING
@@ -1242,7 +1276,7 @@ pp_skip_hspace(char **pp)
 # define MAKE_RCSID(id) static volatile char \
 	MAKE_RCSID_CONCAT(rcsid_, __COUNTER__)[] = id
 #elif defined(MAKE_ALL_IN_ONE)
-# define MAKE_RCSID(id) extern void do_not_define_rcsid(void)
+# define MAKE_RCSID(id) void do_not_define_rcsid(void)
 #else
 # define MAKE_RCSID(id) static volatile char rcsid[] = id
 #endif

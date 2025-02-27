@@ -1,4 +1,4 @@
-/*	$NetBSD: targ.c,v 1.178 2022/09/27 17:46:58 rillig Exp $	*/
+/*	$NetBSD: targ.c,v 1.184 2024/07/07 09:54:12 rillig Exp $	*/
 
 /*
  * Copyright (c) 1988, 1989, 1990, 1993
@@ -107,7 +107,7 @@
 #include "dir.h"
 
 /*	"@(#)targ.c	8.2 (Berkeley) 3/19/94"	*/
-MAKE_RCSID("$NetBSD: targ.c,v 1.178 2022/09/27 17:46:58 rillig Exp $");
+MAKE_RCSID("$NetBSD: targ.c,v 1.184 2024/07/07 09:54:12 rillig Exp $");
 
 /*
  * All target nodes that appeared on the left-hand side of one of the
@@ -119,25 +119,31 @@ static HashTable allTargetsByName;
 #ifdef CLEANUP
 static GNodeList allNodes = LST_INIT;
 
-static void GNode_Free(void *);
+static void GNode_Free(GNode *);
 #endif
 
 void
 Targ_Init(void)
 {
 	HashTable_Init(&allTargetsByName);
+	SCOPE_INTERNAL = GNode_New("Internal");
+	SCOPE_GLOBAL = GNode_New("Global");
+	SCOPE_CMDLINE = GNode_New("Command");
 }
 
+#ifdef CLEANUP
 void
 Targ_End(void)
 {
-	Targ_Stats();
-#ifdef CLEANUP
+	GNodeListNode *ln;
+
 	Lst_Done(&allTargets);
 	HashTable_Done(&allTargetsByName);
-	Lst_DoneCall(&allNodes, GNode_Free);
-#endif
+	for (ln = allNodes.first; ln != NULL; ln = ln->next)
+		GNode_Free(ln->datum);
+	Lst_Done(&allNodes);
 }
+#endif
 
 void
 Targ_Stats(void)
@@ -159,17 +165,17 @@ Targ_List(void)
 /*
  * Create a new graph node, but don't register it anywhere.
  *
- * Graph nodes that appear on the left-hand side of a dependency line such
+ * Graph nodes that occur on the left-hand side of a dependency line such
  * as "target: source" are called targets.  XXX: In some cases (like the
- * .ALLTARGETS variable), all nodes are called targets as well, even if they
- * never appear on the left-hand side.  This is a mistake.
+ * .ALLTARGETS variable), other nodes are called targets as well, even if
+ * they never occur on the left-hand side of a dependency line.
  *
  * Typical names for graph nodes are:
- *	"src.c" (an ordinary file)
- *	"clean" (a .PHONY target)
- *	".END" (a special hook target)
- *	"-lm" (a library)
- *	"libc.a(isspace.o)" (an archive member)
+ *	"src.c"		an ordinary file
+ *	"clean"		a .PHONY target
+ *	".END"		a special hook target
+ *	"-lm"		a library
+ *	"libm.a(sin.o)"	an archive member
  */
 GNode *
 GNode_New(const char *name)
@@ -201,6 +207,7 @@ GNode_New(const char *name)
 	gn->suffix = NULL;
 	gn->fname = NULL;
 	gn->lineno = 0;
+	gn->exit_status = 0;
 
 #ifdef CLEANUP
 	Lst_Append(&allNodes, gn);
@@ -211,9 +218,9 @@ GNode_New(const char *name)
 
 #ifdef CLEANUP
 static void
-GNode_Free(void *gnp)
+GNode_Free(GNode *gn)
 {
-	GNode *gn = gnp;
+	Var_DeleteAll(gn);
 
 	free(gn->name);
 	free(gn->uname);
@@ -232,20 +239,6 @@ GNode_Free(void *gnp)
 	Lst_Done(&gn->order_succ);
 	Lst_Done(&gn->cohorts);
 
-	/*
-	 * Do not free the variables themselves, even though they are owned
-	 * by this node.
-	 *
-	 * XXX: For the nodes that represent targets or sources (and not
-	 * SCOPE_GLOBAL), it should be safe to free the variables as well,
-	 * since each node manages the memory for all its variables itself.
-	 *
-	 * XXX: The GNodes that are only used as variable scopes (SCOPE_CMD,
-	 * SCOPE_GLOBAL, SCOPE_INTERNAL) are not freed at all (see Var_End,
-	 * where they are not mentioned).  These might be freed at all, if
-	 * their variable values are indeed not used anywhere else (see
-	 * Trace_Init for the only suspicious use).
-	 */
 	HashTable_Done(&gn->vars);
 
 	/*

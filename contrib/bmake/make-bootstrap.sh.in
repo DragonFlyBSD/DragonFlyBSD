@@ -2,6 +2,7 @@
 
 set -e
 
+prefix=@prefix@
 srcdir=@srcdir@
 
 DEFAULT_SYS_PATH="@default_sys_path@"
@@ -18,6 +19,7 @@ MAKE_VERSION=@_MAKE_VERSION@
 MDEFS="-DMAKE_VERSION=\"$MAKE_VERSION\" \
 -D@force_machine@MACHINE=\"@machine@\" \
 -D@force_machine_arch@MACHINE_ARCH=\"@machine_arch@\" \
+-D@force_make_os@MAKE_OS=\"@make_os@\" \
 -D_PATH_DEFSYSPATH=\"${DEFAULT_SYS_PATH}\""
 
 
