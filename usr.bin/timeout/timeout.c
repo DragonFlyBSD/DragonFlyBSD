@@ -153,6 +153,20 @@ send_sig(pid_t pid, int signo)
 		      sys_signame[signo], signo, command);
 	}
 	kill(pid, signo);
+
+	/*
+	 * If the child process was stopped by a signal, POSIX.1-2024
+	 * requires to send a SIGCONT signal.  However, the standard also
+	 * allows to send a SIGCONT regardless of the stop state, as we
+	 * are doing here.
+	 */
+	if (signo != SIGKILL && signo != SIGSTOP && signo != SIGCONT) {
+		if (verbose) {
+			warnx("sending signal %s(%d) to command '%s'",
+			      sys_signame[SIGCONT], SIGCONT, command);
+		}
+		kill(pid, SIGCONT);
+	}
 }
 
 static void
