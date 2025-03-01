@@ -28,7 +28,7 @@
 .\"     @(#)execve.2	8.5 (Berkeley) 6/1/94
 .\" $FreeBSD: src/lib/libc/sys/execve.2,v 1.16.2.10 2001/12/22 01:21:30 jwd Exp $
 .\"
-.Dd February 17, 2021
+.Dd March 1, 2025
 .Dt EXECVE 2
 .Os
 .Sh NAME
@@ -221,16 +221,18 @@ the file descriptor
 need not have been opened with the
 .Dv O_EXEC
 flag.
-However, if the file to be executed denies read permission for the process
-preparing to do the exec, the only way to provide the
+However, if the file to be executed denies read permission for the
+calling process, the only way to provide the
 .Fa fd
 to
 .Fn fexecve
-is to use the
+is to open it with the
 .Dv O_EXEC
-flag when opening
-.Fa fd .
-Note that the file to be executed can not be open for writing.
+flag.
+.Sy Note:
+the file to be executed can not be opened with the
+.Dv O_RDWR
+flag.
 .Sh RETURN VALUES
 As
 .Fn execve
@@ -309,7 +311,7 @@ system call will fail and return to the calling process if:
 .It Bq Er EBADF
 The
 .Fa fd
-argument is not a valid file descriptor open for executing.
+argument is not a valid file descriptor opened for executing.
 .El
 .Sh CAVEATS
 If a program is
