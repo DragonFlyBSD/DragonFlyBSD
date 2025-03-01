@@ -218,8 +218,16 @@ main(int argc, char **argv)
 
 	af = AF_UNSPEC;
 
-	while ((ch = getopt(argc, argv, "Aabc:df:ghI:iLlM:mN:nPp:rSsBtuWw:z")) != -1)
+	while ((ch = getopt(argc, argv, "46Aabc:df:ghI:iLlM:mN:nPp:rSsBtuWw:z")) != -1)
 		switch(ch) {
+		case '4':
+			af = AF_INET;
+			break;
+#ifdef INET6
+		case '6':
+			af = AF_INET6;
+			break;
+#endif /*INET6*/
 		case 'A':
 			Aflag = 1;
 			break;

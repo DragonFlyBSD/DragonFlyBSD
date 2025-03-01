@@ -45,7 +45,7 @@ depending on the options for the information presented.
 .It Xo
 .Bk -words
 .Nm
-.Op Fl AaLlnPSW
+.Op Fl 46AaLlnPSW
 .Op Fl c Ar cpu
 .Op Fl f Ar protocol_family | Fl p Ar protocol
 .Op Fl M Ar core
@@ -271,6 +271,10 @@ is repeated, counters with a value of zero are suppressed.
 .Pp
 Some options have the general meaning:
 .Bl -tag -width flag
+.It Fl 4
+Is	shorthand for -f inet (Show only IPv4)
+.It Fl 6
+Is	shorthand for -f inet6 (Show only IPv6)
 .It Fl c Ar cpu
 On SMP systems the route table is replicated.  This option allows
 the route table for a specific cpu to be accessed and exists
