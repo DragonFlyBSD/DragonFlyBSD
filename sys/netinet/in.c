@@ -79,6 +79,10 @@ static int subnetsarelocal = 0;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, subnets_are_local, CTLFLAG_RW,
     &subnetsarelocal, 0,
     "Count all internet addresses of subnets of the local net as local");
+static int broadcast_lowest = 0;
+SYSCTL_INT(_net_inet_ip, OID_AUTO, broadcast_lowest, CTLFLAG_RW,
+    &broadcast_lowest, 0,
+    "Count all .0 subnets as broadcast");
 
 struct in_multihead in_multihead; /* XXX BSS initialization */
 
@@ -1350,7 +1354,7 @@ in_broadcast(struct in_addr in, struct ifnet *ifp)
 		      * Check for old-style (host 0) broadcast, but
 		      * taking into account that RFC 3021 obsoletes it.
 		      */
-		     (ia->ia_subnetmask != IN_RFC3021_MASK &&
+		     (broadcast_lowest && ia->ia_subnetmask != IN_RFC3021_MASK &&
 		     (t == ia->ia_subnet || t == ia->ia_net))) &&
 		     /*
 		      * Check for an all one subnetmask. These
