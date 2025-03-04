@@ -48,7 +48,6 @@
 static volatile sig_atomic_t sig_chld = 0;
 static volatile sig_atomic_t sig_term = 0;
 static volatile sig_atomic_t sig_alrm = 0;
-static volatile sig_atomic_t sig_ign = 0;
 static const char *command = NULL;
 static bool verbose = false;
 
@@ -124,11 +123,6 @@ parse_signal(const char *str)
 static void
 sig_handler(int signo)
 {
-	if (sig_ign != 0 && signo == sig_ign) {
-		sig_ign = 0;
-		return;
-	}
-
 	switch (signo) {
 	case SIGINT:
 	case SIGHUP:
@@ -186,7 +180,8 @@ set_interval(double iv)
 int
 main(int argc, char **argv)
 {
-	int ch, pstat, status;
+	int ch, status;
+	int pstat = 0;
 	int killsig = SIGTERM;
 	size_t i;
 	pid_t pid, cpid;
@@ -355,17 +350,9 @@ main(int argc, char **argv)
 			if (do_second_kill) {
 				set_interval(second_kill);
 				do_second_kill = false;
-				sig_ign = killsig;
 				killsig = SIGKILL;
-			} else {
-				break;
 			}
 		}
-	}
-
-	while (!child_done && wait(&pstat) == -1) {
-		if (errno != EINTR)
-			err(EXIT_FAILURE, "wait()");
 	}
 
 	if (!foreground)
