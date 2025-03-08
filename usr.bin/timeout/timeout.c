@@ -154,11 +154,19 @@ sig_handler(int signo)
 }
 
 static void
-send_sig(pid_t pid, int signo)
+send_sig(pid_t pid, int signo, bool foreground)
 {
+	struct reaper_kill rk;
+
 	logv("sending signal %s(%d) to command '%s'",
 	     sys_signame[signo], signo, command);
-	kill(pid, signo);
+	if (foreground) {
+		kill(pid, signo);
+	} else {
+		memset(&rk, 0, sizeof(rk));
+		rk.signal = signo;
+		procctl(P_PID, getpid(), PROC_REAP_KILL, &rk);
+	}
 
 	/*
 	 * If the child process was stopped by a signal, POSIX.1-2024
@@ -169,7 +177,13 @@ send_sig(pid_t pid, int signo)
 	if (signo != SIGKILL && signo != SIGSTOP && signo != SIGCONT) {
 		logv("sending signal %s(%d) to command '%s'",
 		     sys_signame[SIGCONT], SIGCONT, command);
-		kill(pid, SIGCONT);
+		if (foreground) {
+			kill(pid, SIGCONT);
+		} else {
+			memset(&rk, 0, sizeof(rk));
+			rk.signal = SIGCONT;
+			procctl(P_PID, getpid(), PROC_REAP_KILL, &rk);
+		}
 	}
 }
 
@@ -373,14 +387,7 @@ main(int argc, char **argv)
 				     sys_signame[signo], signo);
 			}
 
-			if (foreground) {
-				send_sig(pid, signo);
-			} else {
-				procctl(P_PID, getpid(), PROC_REAP_STATUS,
-					&info);
-				if (info.status.pid_head > 0)
-					send_sig(info.status.pid_head, signo);
-			}
+			send_sig(pid, signo, foreground);
 
 			if (do_second_kill) {
 				set_interval(second_kill);
