@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd December 2, 2014
+.Dd March 8, 2025
 .Dt PROCCTL 2
 .Os
 .Sh NAME
@@ -108,6 +108,41 @@ kill the process in question, waitpid it, and loop until no processes
 remain.
 This is guaranteed to ultimately irradicate everything that was directly
 or indirectly started under the reaper.
+.It Dv PROC_REAP_KILL
+Request to deliver a signal to the descendants of the reaper.
+The
+.Fa data
+argument must point to a
+.Vt reaper_kill
+structure, which is used both for parameters and status return.
+.Bd -literal
+struct reaper_kill {
+	uint32_t	flags;
+	int		signal;		/* signal to deliver */
+	uint32_t	killed;		/* number of processes signaled */
+	pid_t		pid_failed;	/* 1st process failed to signal */
+};
+.Ed
+.Pp
+The
+.Fa flags
+field controls how to deliver the signal:
+if the
+.Dv REAPER_KILL_CHILDREN
+flag is set, deliver the signal only to direct children of the reaper;
+otherwise, deliver to all the descendants of the reaper except the
+descendants of any sub-reapers.
+The
+.Fa signal
+field specifies the signal to be delivered.
+.Pp
+Upon return, the
+.Fa killed
+field identifies the number of processes signaled.
+If the
+.Fa pid_failed
+field is greater than 0, it is the pid of the first process for which
+the signal delivery failed, e.g., due to permissions.
 .It Dv PROC_PDEATHSIG_CTL
 The argument is a pointer to an integer specifying the signal that should
 be delivered to the current process when its parent process exits.
@@ -152,6 +187,10 @@ The
 .Fn procctl
 system call first appeared in
 .Dx 4.0 .
+The
+.Dv PROC_REAP_KILL
+request was added in
+.Dx 6.5 .
 .Sh AUTHORS
 .An -nosplit
 The

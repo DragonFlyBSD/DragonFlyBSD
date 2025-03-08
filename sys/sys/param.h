@@ -242,10 +242,12 @@
  * 600302 - change sysctl KERN_PROC behavior
  * 600400 - 6.4 release
  * 600401 - WIFSIGNALED(x) excludes SIGCONT
+ * 600402 - remove DIOCGSLICEINFO and DIOCSYNCSLICEINFO
+ * 600403 - add PROC_REAP_KILL to procctl(2)
  * 600500 - 6.5 development
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600402	/* propagated to newvers */
+#define __DragonFly_version 600403	/* propagated to newvers */
 
 #include <sys/_null.h>
 
