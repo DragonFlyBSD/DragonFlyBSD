@@ -328,7 +328,7 @@ exit1(int rv)
 
 		sysmsg.extargs.kill.signum = SIGKILL;
 		q = p->p_peers;
-		while(q) {
+		while (q) {
 			sysmsg.extargs.kill.pid = q->p_pid;
 			/*
 		         * The interface for kill is better
@@ -337,7 +337,7 @@ exit1(int rv)
 			sys_kill(&sysmsg, &sysmsg.extargs.kill);
 			q = q->p_peers;
 		}
-		while (p->p_peers) 
+		while (p->p_peers)
 			tsleep((caddr_t)p, 0, "exit1", 0);
 	}
 
@@ -347,7 +347,7 @@ exit1(int rv)
 	STOPEVENT(p, S_EXIT, rv);
 	p->p_flags |= P_POSTEXIT;	/* stop procfs stepping */
 
-	/* 
+	/*
 	 * Check if any loadable modules need anything done at process exit.
 	 * e.g. SYSV IPC stuff
 	 * XXX what if one of these generates an error?
@@ -358,7 +358,7 @@ exit1(int rv)
 	 * XXX: imho, the eventhandler stuff is much cleaner than this.
 	 *	Maybe we should move everything to use eventhandler.
 	 */
-	TAILQ_FOREACH(ep, &exit_list, next) 
+	TAILQ_FOREACH(ep, &exit_list, next)
 		(*ep->function)(td);
 
 	if (p->p_flags & P_PROFIL)
@@ -438,7 +438,7 @@ exit1(int rv)
 
 		if (sp->s_ttyvp) {
 			/*
-			 * We are the controlling process.  Signal the 
+			 * We are the controlling process.  Signal the
 			 * foreground process group, drain the controlling
 			 * terminal, and revoke access to the controlling
 			 * terminal.
@@ -1045,7 +1045,7 @@ loop:
 	 * No locks are held so we can safely block the process here.
 	 */
 	if (STOPLWP(q, td->td_lwp))
-            tstop();
+		tstop();
 
 	nfound = 0;
 
@@ -1121,13 +1121,13 @@ loop:
 
 		/*
 		 * This special case handles a kthread spawned by linux_clone
-		 * (see linux_misc.c).  The linux_wait4 and linux_waitpid 
+		 * (see linux_misc.c).  The linux_wait4 and linux_waitpid
 		 * functions need to be able to distinguish between waiting
 		 * on a process and waiting on a thread.  It is a thread if
 		 * p_sigparent is not SIGCHLD, and the WLINUXCLONE option
 		 * signifies we want to wait for threads and not processes.
 		 */
-		if ((p->p_sigparent != SIGCHLD) ^ 
+		if ((p->p_sigparent != SIGCHLD) ^
 		    ((options & WLINUXCLONE) != 0)) {
 			PRELE(p);
 			continue;
@@ -1499,7 +1499,7 @@ proc_reparent(struct proc *child, struct proc *parent)
 /*
  * The next two functions are to handle adding/deleting items on the
  * exit callout list
- * 
+ *
  * at_exit():
  * Take the arguments given and put them onto the exit callout list,
  * However first make sure that it's not already there.
@@ -1513,7 +1513,7 @@ at_exit(exitlist_fn function)
 
 #ifdef INVARIANTS
 	/* Be noisy if the programmer has lost track of things */
-	if (rm_at_exit(function)) 
+	if (rm_at_exit(function))
 		kprintf("WARNING: exit callout entry (%p) already present\n",
 		    function);
 #endif
@@ -1540,7 +1540,7 @@ rm_at_exit(exitlist_fn function)
 			kfree(ep, M_ATEXIT);
 			return(1);
 		}
-	}	
+	}
 	return (0);
 }
 

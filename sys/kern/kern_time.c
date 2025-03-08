@@ -54,11 +54,14 @@
 
 extern struct spinlock ntp_spin;
 
-#define CPUCLOCK_BIT			0x80000000
+#define	CPUCLOCK_BIT			0x80000000
 #define	CPUCLOCK_ID_MASK		~CPUCLOCK_BIT
-#define	CPUCLOCK2LWPID(clock_id)	(((clockid_t)(clock_id) >> 32) & CPUCLOCK_ID_MASK)
-#define	CPUCLOCK2PID(clock_id)		((clock_id) & CPUCLOCK_ID_MASK)
-#define MAKE_CPUCLOCK(pid, lwp_id)	((clockid_t)(lwp_id) << 32 | (pid) | CPUCLOCK_BIT)
+#define	CPUCLOCK2LWPID(clock_id)	\
+	(((clockid_t)(clock_id) >> 32) & CPUCLOCK_ID_MASK)
+#define	CPUCLOCK2PID(clock_id)		\
+	((clock_id) & CPUCLOCK_ID_MASK)
+#define	MAKE_CPUCLOCK(pid, lwp_id)	\
+	((clockid_t)(lwp_id) << 32 | (pid) | CPUCLOCK_BIT)
 
 struct timezone tz;
 
@@ -88,15 +91,15 @@ static int sysctl_gettimeofday_quick(SYSCTL_HANDLER_ARGS);
  * For machines under high loads it might be beneficial to increase min_us
  * to e.g. 1000uS (1ms) so spining processes sleep meaningfully.
  */
-static int     nanosleep_min_us = 10;
-static int     nanosleep_hard_us = 100;
-static int     gettimeofday_quick = 0;
+static int nanosleep_min_us = 10;
+static int nanosleep_hard_us = 100;
+static int gettimeofday_quick = 0;
 SYSCTL_INT(_kern, OID_AUTO, nanosleep_min_us, CTLFLAG_RW,
 	   &nanosleep_min_us, 0, "");
 SYSCTL_INT(_kern, OID_AUTO, nanosleep_hard_us, CTLFLAG_RW,
 	   &nanosleep_hard_us, 0, "");
 SYSCTL_PROC(_kern, OID_AUTO, gettimeofday_quick, CTLTYPE_INT | CTLFLAG_RW,
-	   0, 0, sysctl_gettimeofday_quick, "I", "Quick mode gettimeofday");
+	    0, 0, sysctl_gettimeofday_quick, "I", "Quick mode gettimeofday");
 
 static struct lock masterclock_lock = LOCK_INITIALIZER("mstrclk", 0, 0);
 
@@ -861,7 +864,7 @@ sysctl_adjfreq(SYSCTL_HANDLER_ARGS)
 		error = SYSCTL_IN(req, &freqdelta, sizeof(freqdelta));
 		if (error)
 			return (error);
-		
+
 		freqdelta /= hz;
 		kern_adjfreq(freqdelta);
 	}
@@ -994,7 +997,7 @@ sys_setitimer(struct sysmsg *sysmsg, const struct setitimer_args *uap)
 	if (uap->which == ITIMER_REAL) {
 		if (timevalisset(&p->p_realtimer.it_value))
 			callout_cancel(&p->p_ithandle);
-		if (timevalisset(&aitv.it_value)) 
+		if (timevalisset(&aitv.it_value))
 			callout_reset(&p->p_ithandle,
 			    tvtohz_high(&aitv.it_value), realitexpire, p);
 		getmicrouptime(&ctv);
@@ -1203,7 +1206,7 @@ ratecheck(struct timeval *lasttime, const struct timeval *mininterval)
  *
  * Note that we maintain the struct timeval for compatibility
  * with other bsd systems.  We reuse the storage and just monitor
- * clock ticks for minimal overhead.  
+ * clock ticks for minimal overhead.
  */
 int
 ppsratecheck(struct timeval *lasttime, int *curpps, int maxpps)

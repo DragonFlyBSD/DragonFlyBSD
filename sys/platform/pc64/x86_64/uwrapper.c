@@ -11,7 +11,7 @@ copyinstr(const void *udaddr, void *kaddr, size_t len, size_t *res)
 	return curthread->td_proc->p_vmspace->vm_pmap.copyinstr(udaddr, kaddr, len, res);
 }
 
- int
+int
 copyin(const void *udaddr, void *kaddr, size_t len)
 {
 	return curthread->td_proc->p_vmspace->vm_pmap.copyin(udaddr, kaddr, len);

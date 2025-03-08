@@ -662,8 +662,8 @@ hardclock(systimer_t info, int in_ipi, struct intrframe *frame)
 		if ((ntp_delta > 0 && ntp_delta < ntp_tick_delta) ||
 		    (ntp_delta < 0 && ntp_delta > ntp_tick_delta)) {
 			ntp_tick_delta = ntp_delta;
- 		}
- 	    }
+		}
+	    }
 
 	    /*
 	     * Apply permanent frequency corrections.  (sysctl API)
@@ -678,7 +678,7 @@ hardclock(systimer_t info, int in_ipi, struct intrframe *frame)
 		    nbt->tv_nsec -= (-ntp_tick_acc) >> 32;
 		    ntp_tick_acc += ((-ntp_tick_acc) >> 32) << 32;
 		}
- 	    }
+	    }
 
 	    if (nbt->tv_nsec >= 1000000000) {
 		    nbt->tv_sec++;

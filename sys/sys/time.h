@@ -130,7 +130,8 @@ struct timezone {
 			(vvp)->tv_usec += 1000000;			\
 		}							\
 	} while (0)
-#endif
+
+#endif /* !_KERNEL */
 
 /*
  * Names of the interval timers, and structure

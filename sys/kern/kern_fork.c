@@ -246,7 +246,7 @@ lwp_create1(struct lwp_params *uprm, const cpumask_t *umask)
 		goto fail;
 
 	/*
-	 * Now schedule the new lwp. 
+	 * Now schedule the new lwp.
 	 */
 	p->p_usched->resetpriority(lp);
 	crit_enter();
@@ -525,7 +525,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		bcopy(p1->p_sigacts, p2->p_sigacts, sizeof(*p2->p_sigacts));
 		refcount_init(&p2->p_sigacts->ps_refcnt, 1);
 	}
-	if (flags & RFLINUXTHPN) 
+	if (flags & RFLINUXTHPN)
 	        p2->p_sigparent = SIGUSR1;
 	else
 	        p2->p_sigparent = SIGCHLD;
@@ -566,9 +566,9 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 			fdtol = p1->p_fdtol;
 			fdtol->fdl_refcount++;
 		} else {
-			/* 
+			/*
 			 * Shared file descriptor table, and
-			 * different process leaders 
+			 * different process leaders
 			 */
 			fdtol = filedesc_to_leader_alloc(p1->p_fdtol, p2);
 		}
@@ -920,7 +920,7 @@ rm_at_fork(forklist_fn function)
 			kfree(ep, M_ATFORK);
 			return(1);
 		}
-	}	
+	}
 	return (0);
 }
 
@@ -1008,6 +1008,7 @@ sys_procctl(struct sysmsg *sysmsg, const struct procctl_args *uap)
 		}
 		lwkt_reltoken(&p->p_token);
 		break;
+
 	case PROC_REAP_RELEASE:
 		lwkt_gettoken(&p->p_token);
 release_again:
@@ -1034,6 +1035,7 @@ release_again:
 		}
 		lwkt_reltoken(&p->p_token);
 		break;
+
 	case PROC_REAP_STATUS:
 		bzero(&udata, sizeof(udata));
 		lwkt_gettoken_shared(&p->p_token);
@@ -1062,6 +1064,7 @@ release_again:
 				p->p_deathsig = dsig;
 		}
 		break;
+
 	case PROC_PDEATHSIG_STATUS:
 		error = EINVAL;
 		if (uap->data) {
@@ -1069,6 +1072,7 @@ release_again:
 					sizeof(p->p_deathsig));
 		}
 		break;
+
 	default:
 		error = EINVAL;
 		break;

@@ -209,9 +209,8 @@ struct lwp {
 	stack_t		lwp_sigstk;	/* sp & on stack state variable */
 
 	struct rtprio	lwp_rtprio;	/* Realtime priority. */
-#define	lwp_endcopy	lwp_md
-
 	struct mdproc	lwp_md;		/* Any machine-dependent fields. */
+#define	lwp_endcopy	lwp_md
 
 	struct thread	*lwp_thread;	/* backpointer to proc's thread */
 	struct sys_lpmap *lwp_lpmap;	/* user RW mappable per-thread page */
@@ -231,13 +230,13 @@ struct	proc {
 	struct filedesc	*p_fd;		/* Ptr to open files structure. */
 	struct filedesc_to_leader *p_fdtol; /* Ptr to tracking node XXX lwp */
 	struct plimit	*p_limit;	/* Process limits. */
+#define	p_rlimit	p_limit->pl_rlimit
 	struct pstats	*p_stats;
 	u_int		p_mqueue_cnt;	/* Count of open mqueues. */
 	long		p_waitgen;	/* wait interlock allows late signal */
 	struct sigacts	*p_sigacts;
-#define p_sigignore	p_sigacts->ps_sigignore
-#define p_sigcatch	p_sigacts->ps_sigcatch
-#define	p_rlimit	p_limit->pl_rlimit
+#define	p_sigignore	p_sigacts->ps_sigignore
+#define	p_sigcatch	p_sigacts->ps_sigcatch
 
 	int		p_flags;	/* P_* flags. */
 	enum procstat	p_stat;		/* S* process status. */
@@ -288,7 +287,6 @@ struct	proc {
 
 /* The following fields are all copied upon creation in fork. */
 #define	p_startcopy	p_comm
-
 	char		p_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
 	char		p_pad3;
 	char		p_nice;		/* Process "nice" value. */
@@ -309,6 +307,7 @@ struct	proc {
 	void		*p_unused01;
 /* End area that is copied on creation. */
 #define	p_endcopy	p_unused01
+
 	u_short		p_acflag;	/* Accounting flags. */
 
 	int		p_lock;		/* Prevent proc destruction */
@@ -324,7 +323,7 @@ struct	proc {
 	struct usched	*p_usched;	/* Userland scheduling control */
 	struct vkernel_proc *p_vkernel; /* VKernel support, proc part */
 	struct uidcount *p_uidpcpu;
-	void		(*p_userret)(void);/* p: return-to-user hook */
+	void		(*p_userret)(void); /* p: return-to-user hook */
 
 	struct spinlock p_spin;		/* Spinlock for LWP access to proc */
 	struct lwkt_token p_token;	/* Token for LWP access to proc */
@@ -421,7 +420,7 @@ struct procglob {
 	struct proclist allproc;	/* locked by proc_token */
 	struct pgrplist allpgrp;	/* locked by proc_token */
 	struct sesslist allsess;	/* locked by proc_token */
-	void    *pad01;			/* pad for clarity */
+	void *pad01;			/* pad for clarity */
 } __cachealign;
 
 #ifdef _KERNEL
