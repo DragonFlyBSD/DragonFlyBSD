@@ -34,6 +34,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <signal.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -60,6 +61,19 @@ usage(void)
 		" [-v | --verbose] <duration> <command> [arg ...]\n",
 		getprogname());
 	exit(EXIT_FAILURE);
+}
+
+static void
+logv(const char *fmt, ...)
+{
+	va_list ap;
+
+	if (!verbose)
+		return;
+
+	va_start(ap, fmt);
+	vwarnx(fmt, ap);
+	va_end(ap);
 }
 
 static double
@@ -142,10 +156,8 @@ sig_handler(int signo)
 static void
 send_sig(pid_t pid, int signo)
 {
-	if (verbose) {
-		warnx("sending signal %s(%d) to command '%s'",
-		      sys_signame[signo], signo, command);
-	}
+	logv("sending signal %s(%d) to command '%s'",
+	     sys_signame[signo], signo, command);
 	kill(pid, signo);
 
 	/*
@@ -155,10 +167,8 @@ send_sig(pid_t pid, int signo)
 	 * are doing here.
 	 */
 	if (signo != SIGKILL && signo != SIGSTOP && signo != SIGCONT) {
-		if (verbose) {
-			warnx("sending signal %s(%d) to command '%s'",
-			      sys_signame[SIGCONT], SIGCONT, command);
-		}
+		logv("sending signal %s(%d) to command '%s'",
+		     sys_signame[SIGCONT], SIGCONT, command);
 		kill(pid, SIGCONT);
 	}
 }
@@ -315,7 +325,6 @@ main(int argc, char **argv)
 		if (sig_chld) {
 			sig_chld = 0;
 
-			/* Collect all descendants. */
 			while ((cpid = waitpid(-1, &status, WNOHANG)) != 0) {
 				if (cpid < 0) {
 					if (errno != EINTR)
@@ -323,6 +332,19 @@ main(int argc, char **argv)
 				} else if (cpid == pid) {
 					pstat = status;
 					child_done = true;
+					logv("child terminated: pid=%d, "
+					     "exit=%d, signal=%d",
+					     (int)pid, WEXITSTATUS(status),
+					     WTERMSIG(status));
+				} else {
+					/*
+					 * Collect grandchildren zombies.
+					 * Only effective if we're a reaper.
+					 */
+					logv("collected zombie: pid=%d, "
+					     "exit=%d, signal=%d",
+					     (int)cpid, WEXITSTATUS(status),
+					     WTERMSIG(status));
 				}
 			}
 			if (child_done) {
@@ -343,9 +365,12 @@ main(int argc, char **argv)
 				signo = killsig;
 				sig_alrm = 0;
 				timedout = true;
+				logv("time limit reached or received SIGALRM");
 			} else {
 				signo = sig_term;
 				sig_term = 0;
+				logv("received terminating signal %s(%d)",
+				     sys_signame[signo], signo);
 			}
 
 			if (foreground) {
