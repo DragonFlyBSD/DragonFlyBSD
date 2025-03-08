@@ -85,20 +85,31 @@ struct reaper_status {
 	int		reserved2[15];
 };
 
+struct reaper_kill {
+	uint32_t	flags;
+	int		signal;		/* signal to deliver */
+	uint32_t	killed;		/* number of processes signaled */
+	pid_t		pid_failed;	/* first process failed to signal */
+};
+
 union reaper_info {
 	struct reaper_status	status;
+	struct reaper_kill	kill;
 };
 
 #define _PROCCTL_PRESENT
 
-#define PROC_REAP_ACQUIRE	0x0001
-#define PROC_REAP_RELEASE	0x0002
-#define PROC_REAP_STATUS	0x0003
-#define PROC_PDEATHSIG_CTL	0x0004
-#define PROC_PDEATHSIG_STATUS	0x0005
+#define PROC_REAP_ACQUIRE	0x0001 /* enable reaping */
+#define PROC_REAP_RELEASE	0x0002 /* disable reaping */
+#define PROC_REAP_STATUS	0x0003 /* get reaper status */
+#define PROC_PDEATHSIG_CTL	0x0004 /* set parent death signal */
+#define PROC_PDEATHSIG_STATUS	0x0005 /* get parent death signal */
+#define PROC_REAP_KILL		0x0006 /* kill/signal descendants */
 
 #define REAPER_STAT_OWNED	0x00000001
 #define REAPER_STAT_REALINIT	0x00000002
+
+#define REAPER_KILL_CHILDREN	0x00000001 /* kill direct children only */
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 

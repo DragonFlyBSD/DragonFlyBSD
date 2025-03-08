@@ -335,7 +335,7 @@ struct	proc {
 	forkid_t	p_forkid;	/* unique forkid */
 	struct sysreaper *p_reaper;	/* reaper control */
 	int		p_deathsig;	/* signal us on parent death */
-	int		p_unused03;
+	unsigned int	p_reaptid;	/* reaping transaction id */
 	void		*p_reserveds[2]; /* reserved for future */
 };
 
@@ -599,6 +599,7 @@ int	reaper_sigtest(struct proc *sender, struct proc *target, int reaper_ok);
 struct sysreaper *reaper_exit(struct proc *p);
 void	reaper_init(struct proc *p, struct sysreaper *reap);
 struct proc *reaper_get(struct sysreaper *reap);
+int	reaper_kill(struct sysreaper *reap, struct reaper_kill *rk);
 
 u_int32_t	procrunnable (void);
 

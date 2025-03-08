@@ -253,9 +253,10 @@
  * 600508 - add ND6_IFF_AUTO_LINKLOCAL and ND6_IFF_NO_DAD;
  *          change ip6.accept_rtadv and ip6.auto_linklocal behavior
  * 600509 - add futimesat() (legacy function), add HAVE_FUTIMESAT
+ * 600510 - add PROC_REAP_KILL to procctl(2)
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600509	/* propagated to newvers */
+#define __DragonFly_version 600510	/* propagated to newvers */
 
 #include <sys/_null.h>
 

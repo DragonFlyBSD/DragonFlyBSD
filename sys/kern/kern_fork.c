@@ -88,7 +88,9 @@ static void		lwp_fork2(struct lwp *lp1, struct proc *destproc,
 			    struct lwp *lp2, int flags);
 static int		lwp_create1(struct lwp_params *params,
 			    const cpumask_t *mask);
+
 static struct lock reaper_lock = LOCK_INITIALIZER("reapgl", 0, 0);
+static volatile unsigned int reap_tid = 1; /* reaping transaction id */
 
 int forksleep; /* Place for fork1() to sleep on. */
 
@@ -1054,6 +1056,28 @@ release_again:
 			error = 0;
 		}
 		break;
+
+	case PROC_REAP_KILL:
+		if (uap->data)
+			error = copyin(uap->data, &udata, sizeof(udata.kill));
+		else
+			error = EINVAL;
+		if (error != 0)
+			break;
+
+		lwkt_gettoken(&p->p_token);
+		reap = p->p_reaper;
+		if (reap->p == p)
+			error = reaper_kill(reap, &udata.kill);
+		else
+			error = ENOTCONN;
+		lwkt_reltoken(&p->p_token);
+		if (error == 0) {
+			error = copyout(&udata, uap->data,
+					sizeof(udata.kill));
+		}
+		break;
+
 	case PROC_PDEATHSIG_CTL:
 		error = EINVAL;
 		if (uap->data) {
@@ -1285,4 +1309,146 @@ reaper_sigtest(struct proc *sender, struct proc *target, int reaper_ok)
 	lockmgr(&reaper_lock, LK_RELEASE);
 
 	return r;
+}
+
+/*
+ * Send a signal to direct children or all desendants, but not across
+ * sub-reapers.
+ *
+ * Process (reap->p)'s token must be held on call.
+ */
+int
+reaper_kill(struct sysreaper *reap, struct reaper_kill *rk)
+{
+	struct proc *starting, *parent, *cur, *next;
+	unsigned int tid;
+	bool any_signaled, visited;
+
+	if (!_SIG_VALID(rk->signal))
+		return EINVAL;
+
+	rk->killed = 0;
+	rk->pid_failed = 0;
+
+	tid = atomic_fetchadd_int(&reap_tid, 1);
+	if (tid == 0) /* just in case of wrapping around */
+		tid = atomic_fetchadd_int(&reap_tid, 1);
+
+	reaper_hold(reap);
+
+	any_signaled = true;
+	while (any_signaled) {
+		any_signaled = false;
+
+		/*
+		 * Loop flattened recursion.
+		 *
+		 * Start by pushing into the reaper process to iterate
+		 * its children.
+		 */
+		lockmgr(&reap->lock, LK_EXCLUSIVE);
+		starting = reap->p;
+
+		/* Hold an extra token under the control of the loop. */
+		parent = starting;
+		PHOLD(parent);
+		lwkt_gettoken(&parent->p_token);
+
+		cur = LIST_FIRST(&parent->p_children);
+		if (cur == NULL)
+			goto done;
+
+		PHOLD(cur);
+		lwkt_gettoken(&cur->p_token); /* [p, cur> */
+		visited = false;
+
+		while (true) {
+			/*
+			 * Send signal if not yet.
+			 */
+			KKASSERT(cur->p_pptr == parent);
+			if (cur->p_reaptid != tid) {
+				cur->p_reaptid = tid;
+				any_signaled = true;
+				if (CANSIGNAL(starting, rk->signal, 0)) {
+					ksignal(cur, rk->signal);
+					rk->killed++;
+				} else if (rk->pid_failed == 0) {
+					rk->pid_failed = cur->p_pid;
+				}
+			}
+
+			/*
+			 * Make sure <cur> is still a direct child of the
+			 * <parent>.  Otherwise, restart the iteration.
+			 */
+			if (cur->p_pptr != parent) {
+				any_signaled = true;
+				lwkt_reltoken(&cur->p_token); /* [p> */
+				PRELE(cur);
+				break;
+			}
+
+			/*
+			 * If set the REAPER_KILL_CHILDREN flag, only loop
+			 * the direct children.  Otherwise, loop through all
+			 * descendants, but don't go across sub-reapers.
+			 */
+			if (!visited && !(rk->flags & REAPER_KILL_CHILDREN) &&
+			    cur->p_reaper == reap &&
+			    !LIST_EMPTY(&cur->p_children)) {
+				/*
+				 * Enter children.
+				 */
+				next = LIST_FIRST(&cur->p_children);
+				PHOLD(next);
+				lwkt_token_swap(); /* [cur, p> */
+				lwkt_reltoken(&parent->p_token);
+				PRELE(parent);
+				lwkt_gettoken(&next->p_token); /* [cur, next> */
+				parent = cur; /* keep holding <cur> */
+			} else if (LIST_NEXT(cur, p_sibling) != NULL) {
+				/*
+				 * Choose a sibling.
+				 */
+				next = LIST_NEXT(cur, p_sibling);
+				PHOLD(next);
+				lwkt_reltoken(&cur->p_token);
+				PRELE(cur);
+				lwkt_gettoken(&next->p_token); /* [p, next> */
+				visited = false;
+			} else {
+				/*
+				 * No more siblings, go up.
+				 */
+				/* cur->p_pptr == parent: already held */
+				lwkt_reltoken(&cur->p_token); /* [p> */
+				PRELE(cur);
+				if (parent == starting)
+					break;
+
+				next = parent;
+				parent = next->p_pptr;
+				KASSERT(parent != NULL,
+					("%s: went out of reaper", __func__));
+				PHOLD(parent);
+				lwkt_gettoken(&parent->p_token); /* [p, gp> */
+				lwkt_token_swap(); /* [grandpa, p> */
+				visited = true;
+			}
+
+			cur = next;
+		}
+
+done:
+		lwkt_reltoken(&parent->p_token);
+		PRELE(parent);
+		lockmgr(&reap->lock, LK_RELEASE);
+		if (any_signaled)
+			tsleep(&tid, 0, "reapkill", 1);
+	}
+
+	reaper_drop(reap);
+
+	return 0;
 }
