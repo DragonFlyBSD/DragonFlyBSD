@@ -100,7 +100,7 @@ SYSCTL_INT(_kern, KERN_LOGSIGEXIT, logsigexit, CTLFLAG_RW,
  */
 #define	CANSIGNAL(q, sig, initok)				\
 	((!p_trespass(curproc->p_ucred, (q)->p_ucred) &&	\
-	reaper_sigtest(curproc, p, initok)) ||			\
+	reaper_sigtest(curproc, q, initok)) ||			\
 	((sig) == SIGCONT && (q)->p_session == curproc->p_session))
 
 /*
