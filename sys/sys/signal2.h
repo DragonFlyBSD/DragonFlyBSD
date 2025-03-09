@@ -39,6 +39,16 @@
 #include <sys/systm.h>
 
 /*
+ * Can curproc send the signal sig to process q?  Only processes within
+ * the current reaper or children of the current reaper can be signaled.
+ * Normally the reaper itself cannot be signalled, unless initok is set.
+ */
+#define	CANSIGNAL(q, sig, initok)				\
+	((!p_trespass(curproc->p_ucred, (q)->p_ucred) &&	\
+	reaper_sigtest(curproc, q, initok)) ||			\
+	((sig) == SIGCONT && (q)->p_session == curproc->p_session))
+
+/*
  * Inline functions:
  */
 /*
