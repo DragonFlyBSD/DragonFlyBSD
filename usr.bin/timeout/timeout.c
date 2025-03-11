@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2024-2025 Aaron LI <aly@aaronly.me>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -47,8 +48,10 @@
 #define EXIT_CMD_NOENT	127
 
 static volatile sig_atomic_t sig_chld = 0;
-static volatile sig_atomic_t sig_term = 0;
 static volatile sig_atomic_t sig_alrm = 0;
+static volatile sig_atomic_t sig_term = 0; /* signal to terminate children */
+static volatile sig_atomic_t sig_other = 0; /* signal to propagate */
+static int killsig = SIGTERM; /* signal to kill children */
 static const char *command = NULL;
 static bool verbose = false;
 
@@ -137,18 +140,44 @@ parse_signal(const char *str)
 static void
 sig_handler(int signo)
 {
-	switch (signo) {
-	case SIGINT:
-	case SIGHUP:
-	case SIGQUIT:
-	case SIGTERM:
+	if (signo == killsig) {
 		sig_term = signo;
-		break;
+		return;
+	}
+
+	switch (signo) {
 	case SIGCHLD:
 		sig_chld = 1;
 		break;
 	case SIGALRM:
 		sig_alrm = 1;
+		break;
+	case SIGHUP:
+	case SIGINT:
+	case SIGQUIT:
+	case SIGILL:
+	case SIGTRAP:
+	case SIGABRT:
+	case SIGEMT:
+	case SIGFPE:
+	case SIGBUS:
+	case SIGSEGV:
+	case SIGSYS:
+	case SIGPIPE:
+	case SIGTERM:
+	case SIGXCPU:
+	case SIGXFSZ:
+	case SIGUSR1:
+	case SIGUSR2:
+	case SIGCKPTEXIT: /* DragonFly extension */
+		/*
+		 * Signals with default action to terminate the process.
+		 * See the sigaction(2) man page.
+		 */
+		sig_term = signo;
+		break;
+	default:
+		sig_other = signo;
 		break;
 	}
 }
@@ -204,10 +233,8 @@ set_interval(double iv)
 int
 main(int argc, char **argv)
 {
-	int ch, status;
+	int ch, status, sig;
 	int pstat = 0;
-	int killsig = SIGTERM;
-	size_t i;
 	pid_t pid, cpid;
 	double first_kill;
 	double second_kill = 0;
@@ -217,17 +244,8 @@ main(int argc, char **argv)
 	bool do_second_kill = false;
 	bool child_done = false;
 	sigset_t zeromask, allmask, oldmask;
-	struct sigaction signals;
-	union reaper_info info;
-	int signums[] = {
-		-1,
-		SIGTERM,
-		SIGINT,
-		SIGHUP,
-		SIGCHLD,
-		SIGALRM,
-		SIGQUIT,
-	};
+	struct sigaction sa;
+	struct reaper_status rs;
 
 	const char optstr[] = "+fhk:ps:v";
 	const struct option longopts[] = {
@@ -308,22 +326,17 @@ main(int argc, char **argv)
 
 	/* parent continues here */
 
-	memset(&signals, 0, sizeof(signals));
-	sigemptyset(&signals.sa_mask);
-
-	if (killsig != SIGKILL && killsig != SIGSTOP)
-		signums[0] = killsig;
-
-	for (i = 0; i < sizeof(signums) / sizeof(signums[0]); i++)
-		sigaddset(&signals.sa_mask, signums[i]);
-
-	signals.sa_handler = sig_handler;
-	signals.sa_flags = SA_RESTART;
-
-	for (i = 0; i < sizeof(signums) / sizeof(signums[0]); i++) {
-		if (signums[i] > 0 &&
-		    sigaction(signums[i], &signals, NULL) == -1)
-			err(EXIT_FAILURE, "sigaction()");
+	/* Catch all signals in order to propagate them. */
+	memset(&sa, 0, sizeof(sa));
+	sigfillset(&sa.sa_mask);
+	sa.sa_handler = sig_handler;
+	sa.sa_flags = SA_RESTART;
+	for (sig = 1; sig < sys_nsig; sig++) {
+		if (sig == SIGKILL || sig == SIGSTOP || sig == SIGCONT ||
+		    sig == SIGTTIN || sig == SIGTTOU)
+			continue;
+		if (sigaction(sig, &sa, NULL) == -1)
+			err(EXIT_FAILURE, "sigaction(%d)", sig);
 	}
 
 	/* Don't stop if background child needs TTY */
@@ -365,35 +378,42 @@ main(int argc, char **argv)
 				if (foreground) {
 					break;
 				} else {
+					memset(&rs, 0, sizeof(rs));
 					procctl(P_PID, getpid(),
-						PROC_REAP_STATUS, &info);
-					if (info.status.refs == 0)
+						PROC_REAP_STATUS, &rs);
+					if (rs.refs == 0)
 						break;
 				}
 			}
 
 		} else if (sig_alrm || sig_term) {
-			int signo;
-
 			if (sig_alrm) {
-				signo = killsig;
+				sig = killsig;
 				sig_alrm = 0;
 				timedout = true;
 				logv("time limit reached or received SIGALRM");
 			} else {
-				signo = sig_term;
+				sig = sig_term;
 				sig_term = 0;
 				logv("received terminating signal %s(%d)",
-				     sys_signame[signo], signo);
+				     sys_signame[sig], sig);
 			}
 
-			send_sig(pid, signo, foreground);
+			send_sig(pid, sig, foreground);
 
 			if (do_second_kill) {
 				set_interval(second_kill);
 				do_second_kill = false;
 				killsig = SIGKILL;
 			}
+
+		} else if (sig_other) {
+			/* Propagate any other signals. */
+			sig = sig_other;
+			sig_other = 0;
+			logv("received signal %s(%d)", sys_signame[sig], sig);
+
+			send_sig(pid, sig, foreground);
 		}
 	}
 
