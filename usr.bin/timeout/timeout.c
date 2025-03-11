@@ -228,9 +228,11 @@ set_interval(double iv)
 	struct itimerval tim;
 
 	memset(&tim, 0, sizeof(tim));
-	tim.it_value.tv_sec = (time_t)iv;
-	iv -= (double)(time_t)iv;
-	tim.it_value.tv_usec = (suseconds_t)(iv * 1000000UL);
+	if (iv > 0) {
+		tim.it_value.tv_sec = (time_t)iv;
+		iv -= (double)(time_t)iv;
+		tim.it_value.tv_usec = (suseconds_t)(iv * 1000000UL);
+	}
 
 	if (setitimer(ITIMER_REAL, &tim, NULL) == -1)
 		err(EXIT_FAILURE, "setitimer()");
