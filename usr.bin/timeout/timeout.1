@@ -102,6 +102,9 @@ The options are as follows:
 Only time out the
 .Ar command
 itself, but do not propagate signals to its descendants.
+See the
+.Sx IMPLEMENTATION NOTES
+section for more details.
 .It Fl k Ar time , Fl -kill-after Ar time
 Send a
 .Dv SIGKILL
@@ -126,7 +129,7 @@ about timeouts, signals to be sent, and the
 .Ar command
 exits.
 .El
-.Sh DURATION FORMAT
+.Ss Duration Format
 The
 .Ar duration
 and
@@ -146,6 +149,30 @@ hours
 .It Cm d
 days
 .El
+.Sh IMPLEMENTATION NOTES
+If the
+.Fl -foreground
+option is not specified,
+.Nm
+runs as the reaper (see also
+.Xr procctl 2 )
+of the
+.Ar command
+and its descendants, and will wait for all the descendants to terminate.
+This behavior might cause surprises if there are descendants running
+in the background, because they will ignore
+.Dv SIGINT
+and
+.Dv SIGQUIT
+signals.
+For example, the following command that sends a
+.Dv SIGTERM
+signal will complete in 2 seconds:
+.Dl $ timeout -s TERM 2 sh -c 'sleep 4 & sleep 5'
+However, this command that sends a
+.Dv SIGINT
+signal will complete in 4 seconds:
+.Dl $ timeout -s INT 2 sh -c 'sleep 4 & sleep 5'
 .Sh EXIT STATUS
 If the time limit was reached and the
 .Fl -preserve-status
@@ -199,7 +226,7 @@ $ echo $?
 .Pp
 Same as above but preserving status.
 The exit status is 128 + signal number (15 for
-.Va SIGTERM )
+.Dv SIGTERM )
 for most shells:
 .Bd -literal -offset indent
 $ timeout --preserve-status 2 sleep 4
@@ -208,9 +235,9 @@ $ echo $?
 .Ed
 .Pp
 Same as above but sending
-.Va SIGALRM
+.Dv SIGALRM
 (signal number 14) instead of
-.Va SIGTERM :
+.Dv SIGTERM :
 .Bd -literal -offset indent
 $ timeout --preserve-status -s SIGALRM 2 sleep 4
 $ echo $?
@@ -223,9 +250,9 @@ the single page version of the
 .Fx
 Handbook.
 Send a
-.Va SIGTERM
+.Dv SIGTERM
 signal after 1 minute and send a
-.Va SIGKILL
+.Dv SIGKILL
 signal 5 seconds later if the process refuses to stop:
 .Bd -literal -offset indent
 $ timeout -k 5s 1m fetch \\
@@ -250,9 +277,9 @@ command first appeared in
 and was imported into
 .Dx 5.9 .
 .Pp
-The
+The initial
 .Fx
-work is compatible with GNU
+work was compatible with GNU
 .Nm
 by
 .An Padraig Brady ,
