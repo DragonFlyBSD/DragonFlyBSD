@@ -3,15 +3,29 @@
 
 MAN=	assert.3 bitstring.3 end.3 fpgetround.3 intro.3 queue.3 \
 	stdarg.3 sysexits.3 tgmath.3 tree.3
-MLINKS+=bitstring.3 bit_alloc.3 bitstring.3 bit_clear.3 \
-	bitstring.3 bit_decl.3 bitstring.3 bit_ffc.3 bitstring.3 bit_ffs.3 \
-	bitstring.3 bit_nclear.3 bitstring.3 bit_nset.3 bitstring.3 bit_set.3 \
-	bitstring.3 bitstr_size.3 bitstring.3 bit_test.3 bitstring.3 bit_fls.3 \
+
+MLINKS+=bitstring.3 bit_alloc.3 \
+	bitstring.3 bit_clear.3 \
+	bitstring.3 bit_decl.3 \
+	bitstring.3 bit_ffc.3 \
+	bitstring.3 bit_ffs.3 \
+	bitstring.3 bit_nclear.3 \
+	bitstring.3 bit_nset.3 \
+	bitstring.3 bit_set.3 \
+	bitstring.3 bitstr_size.3 \
+	bitstring.3 bit_test.3 \
+	bitstring.3 bit_fls.3 \
 	bitstring.3 bit_nsearch.3
-MLINKS+=end.3 edata.3 end.3 etext.3
-MLINKS+=fpgetround.3 fpsetround.3 fpgetround.3 fpgetmask.3
-MLINKS+=fpgetround.3 fpsetmask.3 fpgetround.3 fpgetsticky.3
-MLINKS+=fpgetround.3 fpsetprec.3 fpgetround.3 fpgetprec.3
+
+MLINKS+=end.3 edata.3 \
+	end.3 etext.3
+
+MLINKS+=fpgetround.3 fpsetround.3 \
+	fpgetround.3 fpgetmask.3 \
+	fpgetround.3 fpsetmask.3 \
+	fpgetround.3 fpgetsticky.3 \
+	fpgetround.3 fpsetprec.3 \
+	fpgetround.3 fpgetprec.3
 
 MLINKS+=queue.3 LIST_EMPTY.3
 MLINKS+=queue.3 LIST_ENTRY.3
@@ -86,7 +100,8 @@ MLINKS+=queue.3 TAILQ_NEXT.3
 MLINKS+=queue.3 TAILQ_PREV.3
 MLINKS+=queue.3 TAILQ_REMOVE.3
 
-MLINKS+=stdarg.3 va_arg.3 stdarg.3 va_end.3
+MLINKS+=stdarg.3 va_arg.3
+MLINKS+=stdarg.3 va_end.3
 MLINKS+=stdarg.3 va_start.3
 MLINKS+=stdarg.3 va_copy.3
 
