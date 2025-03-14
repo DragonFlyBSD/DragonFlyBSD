@@ -608,24 +608,8 @@ struct	xtcpcb {
 #define	TCPCTL_V6MSSDFLT	13	/* MSS default for IPv6 */
 #define	TCPCTL_MAXID		14
 
-#define TCPCTL_NAMES { \
-	{ 0, 0 }, \
-	{ "rfc1323", CTLTYPE_INT }, \
-	  { "reserved", CTLTYPE_INT},	/* was rfc1644 */	\
-	{ "mssdflt", CTLTYPE_INT }, \
-	{ "stats", CTLTYPE_STRUCT }, \
-	{ "rttdflt", CTLTYPE_INT }, \
-	{ "keepidle", CTLTYPE_INT }, \
-	{ "keepintvl", CTLTYPE_INT }, \
-	{ "sendspace", CTLTYPE_INT }, \
-	{ "recvspace", CTLTYPE_INT }, \
-	{ "keepinit", CTLTYPE_INT }, \
-	{ "pcblist", CTLTYPE_STRUCT }, \
-	{ "delacktime", CTLTYPE_INT }, \
-	{ "v6mssdflt", CTLTYPE_INT }, \
-}
-
 #ifdef _KERNEL
+
 #ifdef SYSCTL_DECL
 SYSCTL_DECL(_net_inet_tcp);
 #endif

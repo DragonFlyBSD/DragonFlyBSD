@@ -447,77 +447,6 @@ struct ip_mreqn {
  */
 #define	IPPROTO_MAXID	(IPPROTO_AH + 1)	/* don't list to IPPROTO_MAX */
 
-#define	CTL_IPPROTO_NAMES { \
-	{ "ip", CTLTYPE_NODE }, \
-	{ "icmp", CTLTYPE_NODE }, \
-	{ "igmp", CTLTYPE_NODE }, \
-	{ "ggp", CTLTYPE_NODE }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ "tcp", CTLTYPE_NODE }, \
-	{ 0, 0 }, \
-	{ "egp", CTLTYPE_NODE }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ "pup", CTLTYPE_NODE }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ "udp", CTLTYPE_NODE }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ "idp", CTLTYPE_NODE }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, \
-	{ 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, \
-	{ 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, \
-	{ 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, \
-	{ 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, \
-	{ 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, \
-	{ 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, \
-	{ 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, \
-	{ 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ "pim", CTLTYPE_NODE }, \
-}
-
 /*
  * Names for IP sysctl objects
  */
@@ -540,23 +469,6 @@ struct ip_mreqn {
 #define	IPCTL_GIF_TTL		16	/* default TTL for gif encap packet */
 #define	IPCTL_MAXID		17
 
-#define	IPCTL_NAMES { \
-	{ 0, 0 }, \
-	{ "forwarding", CTLTYPE_INT }, \
-	{ "redirect", CTLTYPE_INT }, \
-	{ "ttl", CTLTYPE_INT }, \
-	{ "mtu", CTLTYPE_INT }, \
-	{ "rtexpire", CTLTYPE_INT }, \
-	{ "rtminexpire", CTLTYPE_INT }, \
-	{ "rtmaxcache", CTLTYPE_INT }, \
-	{ "sourceroute", CTLTYPE_INT }, \
-	{ "directed-broadcast", CTLTYPE_INT }, \
-	{ "intr-queue-maxlen", CTLTYPE_INT }, \
-	{ "intr-queue-drops", CTLTYPE_INT }, \
-	{ "stats", CTLTYPE_STRUCT }, \
-	{ "accept_sourceroute", CTLTYPE_INT }, \
-	{ "fastforwarding", CTLTYPE_INT }, \
-}
 #endif /* __BSD_VISIBLE */
 
 #ifdef _KERNEL

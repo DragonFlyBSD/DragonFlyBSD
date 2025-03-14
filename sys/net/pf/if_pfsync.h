@@ -111,11 +111,6 @@ struct pfsync_state_bus {
 #define	PFSYNCCTL_STATS		1	/* PFSYNC stats */
 #define	PFSYNCCTL_MAXID		2
 
-#define	PFSYNCCTL_NAMES { \
-	{ 0, 0 }, \
-	{ "stats", CTLTYPE_STRUCT }, \
-}
-
 #ifdef _KERNEL
 
 union sc_statep {

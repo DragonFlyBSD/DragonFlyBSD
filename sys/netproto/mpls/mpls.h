@@ -96,14 +96,6 @@ struct	sockaddr_mpls {
 #define MPLS_MAXLOPS	3
 
 /*
- * Definitions for mpls sysctl operations.
- */
-#define CTL_MPLSPROTO_NAMES {		\
-	{ "mpls", CTLTYPE_NODE },	\
-	{0, 0}				\
-}
-
-/*
  * Names for MPLS sysctl objects.
  */
 #define MPLSCTL_FORWARDING	1

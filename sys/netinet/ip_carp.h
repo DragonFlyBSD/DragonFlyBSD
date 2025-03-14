@@ -160,16 +160,6 @@ struct ifcarpvhaddr {
 #define	CARPCTL_SETROUTE	6	/* change routes */
 #define	CARPCTL_MAXID		7
 
-#define	CARPCTL_NAMES { \
-	{ 0, 0 }, \
-	{ "allow", CTLTYPE_INT }, \
-	{ "preempt", CTLTYPE_INT }, \
-	{ "log", CTLTYPE_INT }, \
-	{ "stats", CTLTYPE_STRUCT }, \
-	{ "arpbalance", CTLTYPE_INT }, \
-	{ "setroute", CTLTYPE_INT }, \
-}
-
 #ifdef _KERNEL
 void		 carp_group_demote_adj(struct ifnet *, int);
 int		 carp_proto_input(struct mbuf **, int *, int);

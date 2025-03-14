@@ -129,15 +129,6 @@ CTASSERT((sizeof(struct udpstat) & __VM_CACHELINE_MASK) == 0);
 #define	UDPCTL_PCBLIST		5	/* list of PCBs for UDP sockets */
 #define UDPCTL_MAXID		6
 
-#define UDPCTL_NAMES { \
-	{ 0, 0 }, \
-	{ "checksum", CTLTYPE_INT }, \
-	{ "stats", CTLTYPE_STRUCT }, \
-	{ "maxdgram", CTLTYPE_INT }, \
-	{ "recvspace", CTLTYPE_INT }, \
-	{ "pcblist", CTLTYPE_STRUCT }, \
-}
-
 #ifdef _KERNEL
 
 #define INP_WASBOUND_NOTANY	INP_FLAG_PROTO1	/* bound to non-null laddr */

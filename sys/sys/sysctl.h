@@ -116,7 +116,7 @@ struct ctlname {
  * technology. This is the way nearly all new sysctl variables should
  * be implemented.
  * e.g. SYSCTL_INT(_parent, OID_AUTO, name, CTLFLAG_RW, &variable, 0, "");
- */ 
+ */
 #define OID_AUTO	(-1)
 
 #ifdef _KERNEL
@@ -482,20 +482,6 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define	CTL_LWKT	10		/* light weight kernel threads */
 #define	CTL_MAXID	11		/* number of valid top-level ids */
 
-#define CTL_NAMES { \
-	{ 0, 0 }, \
-	{ "kern", CTLTYPE_NODE }, \
-	{ "vm", CTLTYPE_NODE }, \
-	{ "vfs", CTLTYPE_NODE }, \
-	{ "net", CTLTYPE_NODE }, \
-	{ "debug", CTLTYPE_NODE }, \
-	{ "hw", CTLTYPE_NODE }, \
-	{ "machdep", CTLTYPE_NODE }, \
-	{ "user", CTLTYPE_NODE }, \
-	{ "p1003_1b", CTLTYPE_NODE }, \
-	{ "lwkt", CTLTYPE_NODE }, \
-}
-
 /*
  * CTL_SYSCTL identifiers
  */
@@ -548,52 +534,10 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define KERN_STATIC_TLS_EXTRA	37	/* int: extra tls space for rtld */
 #define KERN_MAXID		38      /* number of valid kern ids */
 
-#define CTL_KERN_NAMES { \
-	{ 0, 0 }, \
-	{ "ostype", CTLTYPE_STRING }, \
-	{ "osrelease", CTLTYPE_STRING }, \
-	{ "osrevision", CTLTYPE_INT }, \
-	{ "version", CTLTYPE_STRING }, \
-	{ "maxvnodes", CTLTYPE_INT }, \
-	{ "maxproc", CTLTYPE_INT }, \
-	{ "maxfiles", CTLTYPE_INT }, \
-	{ "argmax", CTLTYPE_INT }, \
-	{ "securelevel", CTLTYPE_INT }, \
-	{ "hostname", CTLTYPE_STRING }, \
-	{ "hostid", CTLTYPE_UINT }, \
-	{ "clockrate", CTLTYPE_STRUCT }, \
-	{ "vnode", CTLTYPE_STRUCT }, \
-	{ "proc", CTLTYPE_STRUCT }, \
-	{ "file", CTLTYPE_STRUCT }, \
-	{ "profiling", CTLTYPE_NODE }, \
-	{ "posix1version", CTLTYPE_INT }, \
-	{ "ngroups", CTLTYPE_INT }, \
-	{ "job_control", CTLTYPE_INT }, \
-	{ "saved_ids", CTLTYPE_INT }, \
-	{ "boottime", CTLTYPE_STRUCT }, \
-	{ "nisdomainname", CTLTYPE_STRING }, \
-	{ "update", CTLTYPE_INT }, \
-	{ "osreldate", CTLTYPE_INT }, \
-	{ "ntp_pll", CTLTYPE_NODE }, \
-	{ "bootfile", CTLTYPE_STRING }, \
-	{ "maxfilesperproc", CTLTYPE_INT }, \
-	{ "maxprocperuid", CTLTYPE_INT }, \
-	{ "dumpdev", CTLTYPE_STRUCT }, /* we lie; don't print as int */ \
-	{ "ipc", CTLTYPE_NODE }, \
-	{ "dummy", CTLTYPE_INT }, \
-	{ "ps_strings", CTLTYPE_INT }, \
-	{ "usrstack", CTLTYPE_INT }, \
-	{ "logsigexit", CTLTYPE_INT }, \
-	{ "iov_max", CTLTYPE_INT }, \
-	{ "maxposixlocksperuid", CTLTYPE_INT }, \
-}
-
 /*
  * CTL_VFS identifiers
  */
-#define CTL_VFS_NAMES { \
-	{ "vfsconf", CTLTYPE_STRUCT }, \
-}
+/* empty */
 
 /*
  * KERN_PROC subtypes
@@ -670,30 +614,9 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define	USER_TZNAME_MAX		20	/* int: _POSIX2_TZNAME_MAX */
 #define	USER_MAXID		21	/* number of valid user ids */
 
-#define	CTL_USER_NAMES { \
-	{ 0, 0 }, \
-	{ "cs_path", CTLTYPE_STRING }, \
-	{ "bc_base_max", CTLTYPE_INT }, \
-	{ "bc_dim_max", CTLTYPE_INT }, \
-	{ "bc_scale_max", CTLTYPE_INT }, \
-	{ "bc_string_max", CTLTYPE_INT }, \
-	{ "coll_weights_max", CTLTYPE_INT }, \
-	{ "expr_nest_max", CTLTYPE_INT }, \
-	{ "line_max", CTLTYPE_INT }, \
-	{ "re_dup_max", CTLTYPE_INT }, \
-	{ "posix2_version", CTLTYPE_INT }, \
-	{ "posix2_c_bind", CTLTYPE_INT }, \
-	{ "posix2_c_dev", CTLTYPE_INT }, \
-	{ "posix2_char_term", CTLTYPE_INT }, \
-	{ "posix2_fort_dev", CTLTYPE_INT }, \
-	{ "posix2_fort_run", CTLTYPE_INT }, \
-	{ "posix2_localedef", CTLTYPE_INT }, \
-	{ "posix2_sw_dev", CTLTYPE_INT }, \
-	{ "posix2_upe", CTLTYPE_INT }, \
-	{ "stream_max", CTLTYPE_INT }, \
-	{ "tzname_max", CTLTYPE_INT }, \
-}
-
+/*
+ * P1003_1B definitions
+ */
 #define CTL_P1003_1B_ASYNCHRONOUS_IO		1	/* boolean */
 #define CTL_P1003_1B_MAPPED_FILES		2	/* boolean */
 #define CTL_P1003_1B_MEMLOCK			3	/* boolean */
@@ -721,35 +644,6 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define CTL_P1003_1B_TIMER_MAX			25	/* int */
 
 #define CTL_P1003_1B_MAXID		26
-
-#define	CTL_P1003_1B_NAMES { \
-	{ 0, 0 }, \
-	{ "asynchronous_io", CTLTYPE_INT }, \
-	{ "mapped_files", CTLTYPE_INT }, \
-	{ "memlock", CTLTYPE_INT }, \
-	{ "memlock_range", CTLTYPE_INT }, \
-	{ "memory_protection", CTLTYPE_INT }, \
-	{ "message_passing", CTLTYPE_INT }, \
-	{ "prioritized_io", CTLTYPE_INT }, \
-	{ "priority_scheduling", CTLTYPE_INT }, \
-	{ "realtime_signals", CTLTYPE_INT }, \
-	{ "semaphores", CTLTYPE_INT }, \
-	{ "fsync", CTLTYPE_INT }, \
-	{ "shared_memory_objects", CTLTYPE_INT }, \
-	{ "synchronized_io", CTLTYPE_INT }, \
-	{ "timers", CTLTYPE_INT }, \
-	{ "aio_listio_max", CTLTYPE_INT }, \
-	{ "aio_max", CTLTYPE_INT }, \
-	{ "aio_prio_delta_max", CTLTYPE_INT }, \
-	{ "delaytimer_max", CTLTYPE_INT }, \
-	{ "unused1", CTLTYPE_INT }, \
-	{ "pagesize", CTLTYPE_INT }, \
-	{ "rtsig_max", CTLTYPE_INT }, \
-	{ "nsems_max", CTLTYPE_INT }, \
-	{ "sem_value_max", CTLTYPE_INT }, \
-	{ "sigqueue_max", CTLTYPE_INT }, \
-	{ "timer_max", CTLTYPE_INT }, \
-}
 
 #ifdef _KERNEL
 

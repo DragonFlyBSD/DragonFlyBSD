@@ -138,7 +138,7 @@ struct icmp6_hdr {
 
 #define ICMP6_HADISCOV_REQUEST		202	/* XXX To be defined */
 #define ICMP6_HADISCOV_REPLY		203	/* XXX To be defined */
- 
+
 #ifndef _KERNEL
 #define MLD6_MTRACE_RESP	MLD_MTRACE_RESP
 #define MLD6_MTRACE		MLD_MTRACE
@@ -605,7 +605,7 @@ struct icmp6stat {
 	 * for netinet6 code, it is already available in icp6s_outhist[].
 	 */
 	u_quad_t icp6s_reflect;
-	u_quad_t icp6s_inhist[256];	
+	u_quad_t icp6s_inhist[256];
 	u_quad_t icp6s_nd_toomanyopt;	/* too many ND options */
 	struct icmp6errstat icp6s_outerrhist;
 #define icp6s_odst_unreach_noroute \
@@ -659,30 +659,6 @@ struct icmp6stat {
 #define ICMPV6CTL_ND6_DRLIST	19
 #define ICMPV6CTL_ND6_PRLIST	20
 #define ICMPV6CTL_MAXID		21
-
-#define ICMPV6CTL_NAMES { \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ "rediraccept", CTLTYPE_INT }, \
-	{ "redirtimeout", CTLTYPE_INT }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-	{ "nd6_prune", CTLTYPE_INT }, \
-	{ 0, 0 }, \
-	{ "nd6_delay", CTLTYPE_INT }, \
-	{ "nd6_umaxtries", CTLTYPE_INT }, \
-	{ "nd6_mmaxtries", CTLTYPE_INT }, \
-	{ "nd6_useloopback", CTLTYPE_INT }, \
-	{ 0, 0 }, \
-	{ "nodeinfo", CTLTYPE_INT }, \
-	{ "errppslimit", CTLTYPE_INT }, \
-	{ "nd6_maxnudhint", CTLTYPE_INT }, \
-	{ "mtudisc_hiwat", CTLTYPE_INT }, \
-	{ "mtudisc_lowat", CTLTYPE_INT }, \
-	{ "nd6_debug", CTLTYPE_INT }, \
-	{ 0, 0 }, \
-	{ 0, 0 }, \
-}
 
 #define RTF_PROBEMTU	RTF_PROTO1
 
