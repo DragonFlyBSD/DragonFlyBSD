@@ -325,19 +325,23 @@ DF408.0 {
 };
 
 DF410.0 {
+/*  SYSCALLS  */
     getcpuclockid;
 };
 
 DF504.0 {
+/*  SYSCALLS  */
     wait6;
 };
 
 DF510.0 {
+/*  SYSCALLS  */
     clock_nanosleep;
     fexecve;
 };
 
 DF602.0 {
+/*  SYSCALLS  */
     posix_fallocate;
     fdatasync;
 };
