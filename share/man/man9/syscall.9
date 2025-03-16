@@ -23,7 +23,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd January 19, 2021
+.Dd March 16, 2025
 .Dt SYSCALL 9
 .Os
 .Sh NAME
@@ -53,13 +53,15 @@ The
 .Dq master
 file is a text file consisting of a list of lines for each
 system call.
-Lines may be split by the means of back slashing the end of the line.
+A long line may be split into multiple lines by ending the lines
+with a backslash
+.Pq Sq \e .
 Each line is a set of fields separated by whitespace:
 .Pp
 .D1 Cd number type ...
 .Pp
 Where:
-.Bl -tag -width number -compact
+.Bl -tag -width number -offset indent -compact
 .It number
 is the system call number;
 .It type
@@ -84,9 +86,12 @@ The rest of the line for the STD, NODEF, and NOARGS types is:
 .Pp
 .D1 Cd { pseudo-proto } [alias]
 .Pp
+Where the
 .Nm pseudo-proto
 is a C-like prototype used to generate the system call argument list,
-and alias is an optional name alias for the call.
+and the
+.Nm alias
+is an optional name alias for the call.
 The function in the prototype has to be defined somewhere in
 the kernel sources as it will be used as an entry point for
 the corresponding system call.
@@ -96,18 +101,22 @@ For other types the rest of the line is a comment.
 To generate the header and code files from the
 .Dq master
 file,
+run
 .Cm make sysent
-has to be run from the directory containing the
+from the
+.Pa sys/kern
+directory that contains
+the
 .Dq master
 file.
 Please mind that the string
 .Dq sys_
 is prepended to all system call names, but not to the structures
 holding the arguments.
-So, if one has added this line to the system call
+For example, if one has added this line to the system call
 .Dq master
 file:
-.Bd -literal
+.Bd -literal -offset indent
 503	STD	{ int mycall(int x, int y); }
 .Ed
 .Pp
@@ -210,5 +219,5 @@ system call argument union.
 .Sh HISTORY
 The
 .Nm
-section manual page appeared in
+manual page appeared in
 .Dx 2.3 .
