@@ -240,3 +240,11 @@
 * kern_psignal()
 
   Replace by ksignal()
+
+* callout(9)
+
+  DragonFly allocates an internal '_callout' struct for a 'callout' struct,
+  so the callout_terminate() function must be called to free the internal
+  struct before releasing a 'callout' struct.  FreeBSD fully embeds the
+  info into a 'callout' struct and does not need (actually does not have)
+  the callout_terminate().
