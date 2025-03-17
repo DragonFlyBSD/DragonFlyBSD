@@ -64,7 +64,7 @@
         ..
         upgrade
         ..
-        wireguard
+        wireguard       mode=0700
         ..
     ..
     home
