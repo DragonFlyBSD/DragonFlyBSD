@@ -1366,7 +1366,6 @@ reaper_kill(struct sysreaper *reap, struct reaper_kill *rk)
 			/*
 			 * Send signal if not yet.
 			 */
-			KKASSERT(cur->p_pptr == parent);
 			if (cur->p_reaptid != tid) {
 				cur->p_reaptid = tid;
 				any_signaled = true;
@@ -1379,15 +1378,17 @@ reaper_kill(struct sysreaper *reap, struct reaper_kill *rk)
 			}
 
 			/*
-			 * Make sure <cur> is still a direct child of the
-			 * <parent>.  Otherwise, restart the iteration.
+			 * The p_reaptid will be reset to 0 if the process
+			 * gets reparented.  If that happens, restart the
+			 * iteration.
 			 */
-			if (cur->p_pptr != parent) {
+			if (cur->p_reaptid != tid) {
 				any_signaled = true;
 				lwkt_reltoken(&cur->p_token); /* [p> */
 				PRELE(cur);
 				break;
 			}
+			KKASSERT(cur->p_pptr == parent);
 
 			/*
 			 * If set the REAPER_KILL_CHILDREN flag, only loop
