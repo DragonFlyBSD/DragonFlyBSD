@@ -466,6 +466,7 @@ ratelimit_deinit(struct ratelimit *rl)
 
 	lockmgr(&rl->rl_mtx, LK_EXCLUSIVE);
 	callout_stop(&rl->rl_gc);
+	callout_terminate(&rl->rl_gc);
 	ratelimit_gc(rl, true);
 	lockmgr(&rl->rl_mtx, LK_RELEASE);
 	lockuninit(&rl->rl_mtx);

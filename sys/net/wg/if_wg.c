@@ -667,6 +667,12 @@ wg_peer_destroy(struct wg_peer *peer)
 	taskqueue_drain(peer->p_recv_taskqueue, &peer->p_recv_task);
 	taskqueue_drain(peer->p_send_taskqueue, &peer->p_send_task);
 
+	callout_terminate(&peer->p_new_handshake);
+	callout_terminate(&peer->p_send_keepalive);
+	callout_terminate(&peer->p_retry_handshake);
+	callout_terminate(&peer->p_persistent_keepalive);
+	callout_terminate(&peer->p_zero_key_material);
+
 	wg_queue_deinit(&peer->p_decrypt_serial);
 	wg_queue_deinit(&peer->p_encrypt_serial);
 	wg_queue_deinit(&peer->p_stage_queue);
