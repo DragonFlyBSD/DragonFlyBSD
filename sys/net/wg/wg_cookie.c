@@ -488,9 +488,6 @@ ratelimit_gc_schedule(struct ratelimit *rl)
 	 * there are no entries in the table.  We also want to ensure that
 	 * GC occurs on a regular interval, so don't override a currently
 	 * pending GC.
-	 *
-	 * In the case of a forced ratelimit_gc(), there will be no entries
-	 * left so we will not schedule another GC.
 	 */
 	if (rl->rl_table_num > 0 && !callout_pending(&rl->rl_gc))
 		callout_reset(&rl->rl_gc, ELEMENT_TIMEOUT * hz,
@@ -523,7 +520,14 @@ ratelimit_gc(struct ratelimit *rl, bool force)
 		}
 	}
 
-	ratelimit_gc_schedule(rl);
+	/*
+	 * There will be no entries left after a forced GC, so no need to
+	 * schedule another GC.
+	 */
+	if (force)
+		KKASSERT(rl->rl_table_num == 0);
+	else
+		ratelimit_gc_schedule(rl);
 }
 
 static int
