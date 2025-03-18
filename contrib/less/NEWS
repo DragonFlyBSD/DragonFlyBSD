@@ -11,6 +11,39 @@
 
 ======================================================================
 
+	Major changes between "less" versions 661 and 668
+
+* Make 256/true colors work better on Windows without -Da
+  (github #539, github #546, github #562).
+
+* Fix build using --with-secure (github #544).
+
+* Fix crash when using --header on command line (github #545).
+
+* Fix possible crash when scrolling left/right or toggling -S (github #547).
+
+* Fix bug when using #stop in a lesskey file (github #551).
+
+* Fix bug when using --shift or --match-shift on command line with
+  a parameter starting with '.' (github #554).
+
+* Fix bug in R command when file size changes (github #553).
+
+* Fix bug using --header when file does not fill screen (github #556).
+
+* Fix ^X bug when output is not a terminal (github #558).
+
+* Fix bug where ^Z is not handled immediately (github #563).
+
+* Fix bug where first byte from a LESSOPEN filter is deleted if it is
+  greater than 0x7F (github #568).
+
+* Fix uninitialized variable in edit_ifile (github #573).
+
+* Fix incorrect handling of UTF-8 chars in prompts (github #576).
+
+======================================================================
+
 	Major changes between "less" versions 643 and 661
 
 * Add ^O^N, ^O^P, ^O^L and ^O^O commands and mouse clicks (with --mouse)
