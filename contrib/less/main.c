@@ -25,6 +25,8 @@
 public unsigned less_acp = CP_ACP;
 #endif
 
+#include "option.h"
+
 public char *   every_first_cmd = NULL;
 public lbool    new_file;
 public int      is_tty;
@@ -37,6 +39,7 @@ public int      wscroll;
 public constant char *progname;
 public int      quitting;
 public int      dohelp;
+public char *   init_header = NULL;
 static int      secure_allow_features;
 
 #if LOGFILE
@@ -449,6 +452,12 @@ int main(int argc, constant char *argv[])
 			else if (!no_init)
 				one_screen = get_one_screen();
 		}
+	}
+	if (init_header != NULL)
+	{
+		opt_header(TOGGLE, init_header);
+		free(init_header);
+		init_header = NULL;
 	}
 
 	if (errmsgs > 0)

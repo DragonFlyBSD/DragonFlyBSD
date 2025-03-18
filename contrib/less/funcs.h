@@ -8,6 +8,7 @@ public size_t sprefix(constant char *ps, constant char *s, int uppercase);
 public void quit(int status);
 public int secure_allow(int features);
 public void raw_mode(int on);
+public void screen_size_changed(void);
 public constant char * special_key_str(int key);
 public void init_win_colors(void);
 public void get_term(void);

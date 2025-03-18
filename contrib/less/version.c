@@ -1022,6 +1022,16 @@ v658  6/13/24   Fix double-free in lesskey parser; fix crash using small value
 v659  6/20/24   Fix typo in help.
 v660  6/24/24   Fix bug in ixerror.
 v661  6/29/24   Simpler fix for ixerror bug.
+v662  8/8/24    Fix build with --with-secure; improve true colors on Windows;
+                fix crash with --header; fix crash with -S; fix #stop;
+                fix --shift with fractional parameter; fix EOF bug in R command;
+                fix --header with short file; fix ^X bug when output is not tty.
+v663  8/16/24   Fix ^X bug when output is not a tty.
+v664  8/28/24   Fix Windows compile error, fix output bug on Windows with -Da.
+v665  9/4/24    Fix ^Z bug.
+v666  9/21/24   Fix missing first byte from LESSOPEN if >0x7f.
+v667  9/26/24   Fix uninitialized variable in edit_ifile.
+v668  10/6/24   Fix UTF-8 chars in prompt.
 */
 
-char version[] = "661";
+char version[] = "668";

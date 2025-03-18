@@ -37,9 +37,11 @@ extern int erase_char, erase2_char, kill_char;
 extern int mousecap;
 extern int sc_height;
 
+#if USERFILE
 /* "content" is lesskey source, never binary. */
 static void add_content_table(int (*call_lesskey)(constant char *, lbool), constant char *envname, lbool sysvar);
 static int add_hometable(int (*call_lesskey)(constant char *, lbool), constant char *envname, constant char *def_filename, lbool sysvar);
+#endif /* USERFILE */
 
 #define SK(k) \
 	SK_SPECIAL_KEY, (k), 6, 1, 1, 1
@@ -389,10 +391,10 @@ public void init_cmds(void)
 		 */
 		add_hometable(lesskey, "LESSKEY", LESSKEYFILE, FALSE);
 	}
-#endif
 	
 	add_content_table(lesskey_content, "LESSKEY_CONTENT_SYSTEM", TRUE);
 	add_content_table(lesskey_content, "LESSKEY_CONTENT", FALSE);
+#endif /* USERFILE */
 }
 
 /*
@@ -713,8 +715,10 @@ static int cmd_search(constant char *cmd, constant char *table, constant char *e
 				/*
 				 * A_END_LIST is a special marker that tells 
 				 * us to abort the cmd search.
+				 * Negative action means accept this action
+				 * without searching any more cmd tables.
 				 */
-				return (A_UINVALID);
+				return -a;
 			}
 			while (*p++ != '\0')
 				continue;
@@ -751,8 +755,10 @@ static int cmd_decode(struct tablelist *tlist, constant char *cmd, constant char
 			taction = A_INVALID;
 		if (taction != A_INVALID)
 		{
-			action = taction;
 			*sp = tsp;
+			if (taction < 0)
+				return (-taction);
+			action = taction;
 		}
 	}
 	return (action);
