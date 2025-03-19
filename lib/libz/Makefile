@@ -7,22 +7,24 @@ SHLIBDIR?=	/lib
 MAN=		zlib.3
 WARNS?=		2
 
-CONTRIBDIR=	${.CURDIR}/../../contrib/zlib-1.2
+ZLIBDIR=	${.CURDIR}/../../contrib/zlib-1.2
 
-.PATH: ${CONTRIBDIR}
+VERSION_DEF=	${.CURDIR}/Versions.def
+SYMBOL_MAPS=	${.CURDIR}/Symbol.map
 
-SRCS=	adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c
-SRCS+=	gzwrite.c infback.c
-SRCS+=	inffast.c inflate.c inftrees.c trees.c uncompr.c zutil.c
+.PATH: ${ZLIBDIR}
 
-CFLAGS+=-I${CONTRIBDIR} -I${.CURDIR}
+SRCS=	adler32.c compress.c crc32.c deflate.c \
+	gzclose.c gzlib.c gzread.c gzwrite.c \
+	infback.c inffast.c inflate.c inftrees.c \
+	trees.c uncompr.c zutil.c
+
+CFLAGS+=-I${ZLIBDIR} -I${.CURDIR}
 CFLAGS+=-DHAVE_HIDDEN
 #CFLAGS+=-DZLIB_DEBUG
 
 INCS=		zconf.h zlib.h
 
-VERSION_DEF=	${.CURDIR}/Versions.def
-SYMBOL_MAPS=	${.CURDIR}/Symbol.map
 FILES=		zlib.pc
 FILESDIR=	${LIBDATADIR}/pkgconfig
 
