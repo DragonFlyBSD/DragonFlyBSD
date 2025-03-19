@@ -28,4 +28,18 @@ INCS=		zconf.h zlib.h
 FILES=		zlib.pc
 FILESDIR=	${LIBDATADIR}/pkgconfig
 
+ZLIB_VERSION!=	sed -n '/define.*ZLIB_VERSION/{s,[^0-9.],,gp;q;}' \
+		${ZLIBDIR}/zlib.h
+
+zlib.pc: zlib.pc.in
+	sed -e 's,@prefix@,/usr,g ; \
+		s,@exec_prefix@,$${prefix},g ; \
+		s,@libdir@,${LIBDIR},g ; \
+		s,@sharedlibdir@,${SHLIBDIR},g ; \
+		s,@includedir@,${INCLUDEDIR},g ; \
+		s,@VERSION@,${ZLIB_VERSION},g ;' \
+		${.ALLSRC} > ${.TARGET}
+
+CLEANFILES+=	zlib.pc
+
 .include <bsd.lib.mk>
