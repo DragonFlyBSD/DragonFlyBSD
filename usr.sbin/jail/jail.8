@@ -32,7 +32,7 @@
 .\" ----------------------------------------------------------------------------
 .\"
 .\"
-.Dd October 24, 2023
+.Dd March 19, 2025
 .Dt JAIL 8
 .Os
 .Sh NAME
@@ -99,7 +99,7 @@ distribution, provided that you built world before already:
 D=/here/is/the/jail
 cd /usr/src
 mkdir -p $D
-make installworld DESTDIR=$D
+make installworld DESTDIR=$D -DNO_INITRD
 cd etc
 make distribution DESTDIR=$D
 cd $D
