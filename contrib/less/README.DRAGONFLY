@@ -11,7 +11,7 @@ sha1 = 7f4a99fd98bf63ebc11c5bc85c0a0605376614d4
 
 A list of deleted files is in README.DELETED.
 
-Use "git diff vendor/LESS contrib/less" to see local modifications.
+No local modifications.
 
 When upgrading, remember to update usr.bin/less/defines.h.
 
