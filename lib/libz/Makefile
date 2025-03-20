@@ -7,7 +7,7 @@ SHLIBDIR?=	/lib
 MAN=		zlib.3
 WARNS?=		2
 
-ZLIBDIR=	${.CURDIR}/../../contrib/zlib-1.2
+ZLIBDIR=	${.CURDIR}/../../contrib/zlib
 
 VERSION_DEF=	${.CURDIR}/Versions.def
 SYMBOL_MAPS=	${.CURDIR}/Symbol.map
