@@ -4,10 +4,10 @@ ZLIB
 Original source can be downloaded from:
 https://www.zlib.net
 
-file = zlib-1.2.13.tar.gz
-date = October 13, 2022
-size = 1497445
-sha1 = 55eaa84906f31ac20d725aa26cd20839196b6ba6
+file = zlib-1.3.1.tar.gz
+date = January 22, 2024
+size = 1512791
+sha256 = 9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23
 
 A list of files and directories removed is in README.DELETED.
 

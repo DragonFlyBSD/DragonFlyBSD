@@ -24,4 +24,3 @@ zconf.h.in
 zlib.3.pdf
 zlib.map
 zlib.pc.cmakein
-zlib2ansi
