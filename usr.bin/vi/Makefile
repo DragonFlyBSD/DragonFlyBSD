@@ -2,30 +2,22 @@
 # $FreeBSD: head/usr.bin/vi/Makefile 254225 2013-08-11 20:03:12Z peter $
 #
 
-.include <bsd.own.mk>
-
-SRCDIR=		${.CURDIR}/../../contrib/nvi2
-.if !defined(NO_SHARE)
-SUBDIR+=	vidump catalog
-.endif
-
-WARNS?=	1
-
-VI=	nvi
-EX=	nex
-VIEW=	nview
+SRCDIR=	${.CURDIR}/../../contrib/nvi2
 
 PROG=	nvi
 
-CFLAGS+=	-D__REGEX_PRIVATE
-
-LINKS=	${BINDIR}/${VI} ${BINDIR}/${EX} ${BINDIR}/${VI} ${BINDIR}/${VIEW}
-LINKS+= ${BINDIR}/${VI} ${BINDIR}/vi ${BINDIR}/${EX} ${BINDIR}/ex
-LINKS+= ${BINDIR}/${VI} ${BINDIR}/view
+LINKS=	${BINDIR}/${PROG} ${BINDIR}/vi \
+	${BINDIR}/${PROG} ${BINDIR}/nex \
+	${BINDIR}/${PROG} ${BINDIR}/ex \
+	${BINDIR}/${PROG} ${BINDIR}/nview \
+	${BINDIR}/${PROG} ${BINDIR}/view
 
 MAN=	${SRCDIR}/man/vi.1
-MLINKS+=vi.1 ex.1 vi.1 view.1
-MLINKS+=vi.1 nex.1 vi.1 nview.1 vi.1 nvi.1
+MLINKS+=vi.1 ex.1 \
+	vi.1 view.1 \
+	vi.1 nex.1 \
+	vi.1 nview.1 \
+	vi.1 nvi.1
 
 .PATH:	${SRCDIR}/common
 .PATH:	${SRCDIR}/ex
@@ -38,6 +30,7 @@ CFLAGS+=-I${.CURDIR} -I${SRCDIR} -I${SRCDIR}/regex -I${SRCDIR}/vi
 DPADD=		${LIBUTIL}
 LDADD=		-lutil
 
+CFLAGS+=	-D__REGEX_PRIVATE
 CFLAGS+=	-DUSE_WIDECHAR \
 		-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 DPADD+=		${LIBNCURSESW}
@@ -48,14 +41,15 @@ LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-DUSE_ICONV
 .endif
 
-CLEANFILES+=${EX}
+WARNS?=	1
 
 # Vi curses sources
 SRCS+=	cl_funcs.c cl_main.c cl_read.c cl_screen.c cl_term.c
 
 # General sources.
-SRCS+=	conv.c cut.c delete.c encoding.c exf.c key.c line.c log.c main.c mark.c msg.c options.c \
-	options_f.c put.c recover.c screen.c search.c seq.c util.c
+SRCS+=	conv.c cut.c delete.c encoding.c exf.c key.c line.c log.c \
+	main.c mark.c msg.c options.c options_f.c \
+	put.c recover.c screen.c search.c seq.c util.c
 
 # Ex source.
 SRCS+=	ex.c ex_abbrev.c ex_append.c ex_args.c ex_argv.c ex_at.c ex_bang.c \
@@ -80,5 +74,9 @@ SRCS+=	vs_line.c vs_msg.c vs_refresh.c vs_relative.c vs_smap.c vs_split.c
 
 # Wide char regex
 SRCS+=	regcomp.c regerror.c regexec.c regfree.c
+
+.if !defined(NO_SHARE)
+SUBDIR+=vidump catalog
+.endif
 
 .include <bsd.prog.mk>
