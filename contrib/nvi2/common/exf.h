@@ -6,8 +6,6 @@
  *
  * See the LICENSE file for redistribution information.
  */
-
-#include <sys/timespec.h>
 					/* Undo direction. */
 /*
  * exf --
