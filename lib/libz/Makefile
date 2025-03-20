@@ -5,7 +5,7 @@
 LIB=		z
 SHLIBDIR?=	/lib
 MAN=		zlib.3
-WARNS?=		2
+WARNS?=		3
 
 ZLIBDIR=	${.CURDIR}/../../contrib/zlib
 
