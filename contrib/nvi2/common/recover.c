@@ -34,7 +34,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "version.h"
+#include "../ex/version.h"
 #include "common.h"
 #include "pathnames.h"
 

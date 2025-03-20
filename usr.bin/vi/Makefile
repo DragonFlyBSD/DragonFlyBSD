@@ -25,7 +25,9 @@ MLINKS+=vi.1 ex.1 \
 .PATH:	${SRCDIR}/vi
 .PATH:	${SRCDIR}/regex
 
-CFLAGS+=-I${.CURDIR} -I${SRCDIR} -I${SRCDIR}/regex -I${SRCDIR}/vi
+# Add -I${.CURDIR}/ex for recover.c to find "../ex/version.h".
+CFLAGS+=	-I${.CURDIR} -I${.CURDIR}/ex \
+		-I${SRCDIR} -I${SRCDIR}/regex
 
 DPADD=		${LIBUTIL}
 LDADD=		-lutil
