@@ -94,9 +94,3 @@ ZLIB_1.2.13 {
     crc32_combine_gen64;
     crc32_combine_op;
 };
-
-ZLIBprivate_1.0 {
-    deflate_copyright;
-    inflate_copyright;
-    z_errmsg;
-};
