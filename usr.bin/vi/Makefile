@@ -25,9 +25,7 @@ MLINKS+=vi.1 ex.1 \
 .PATH:	${SRCDIR}/vi
 .PATH:	${SRCDIR}/regex
 
-# Add -I${.CURDIR}/ex for recover.c to find "../ex/version.h".
-CFLAGS+=	-I${.CURDIR} -I${.CURDIR}/ex \
-		-I${SRCDIR} -I${SRCDIR}/regex
+CFLAGS+=	-I${.CURDIR} -I${SRCDIR} -I${SRCDIR}/regex
 
 DPADD=		${LIBUTIL}
 LDADD=		-lutil
@@ -80,6 +78,17 @@ SRCS+=	vs_line.c vs_msg.c vs_refresh.c vs_relative.c vs_smap.c vs_split.c
 
 # Wide char regex
 SRCS+=	regcomp.c regerror.c regexec.c regfree.c
+
+# Generate "ex/version.h", which must be placed in the "ex/" subdirectory
+# because "common/recover.c" requires "../ex/version.h".
+SRCS+=		ex/version.h
+ex/version.h: ${SRCDIR}/README
+	mkdir -p ${.OBJDIR}/ex
+	sed -E -n 's/^.*version ([^)]+\)).*/\#define VI_VERSION "\1"/p;q' \
+		${.ALLSRC} > ${.TARGET}
+
+CFLAGS+=	-I${.OBJDIR}/ex
+CLEANDIRS+=	ex
 
 .if !defined(NO_SHARE)
 SUBDIR+=vidump catalog
