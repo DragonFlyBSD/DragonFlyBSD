@@ -1,3 +1,5 @@
 .gitignore
 CMakeLists.txt
-files/
+INSTALL.md
+files/config.h.in
+files/recover.in

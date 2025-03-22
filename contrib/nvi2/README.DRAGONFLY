@@ -2,11 +2,13 @@ nex/nvi version 2
 =================
 
 Original source can be downloaded from:
-https://github.com/lichray/nvi2/archive
+https://github.com/lichray/nvi2/archive/${file}
 
-file = v2.2.0.tar.gz
-size = 439545
-sha1 = 00606c4ffaa2d3cb7b69ab73722114c59e2d811b
+file = 16de509a8b44fb50acd475473f6829baf2b3ef2c.tar.gz
+date = March 21, 2025
+size = 443651
+sha1 = 4c1d96d8cf80fbdc914269f3eba9d46ae89d665f
 
-A list of files and directories removed is in README.DELETED
-Use "git diff vendor/NVI2 contrib/nvi2" to see local modifications.
+A list of files and directories removed is in README.DELETED.
+
+No local modifications.
