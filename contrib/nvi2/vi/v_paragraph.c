@@ -23,7 +23,7 @@
 #include "../common/common.h"
 #include "vi.h"
 
-#define	INTEXT_CHECK {							\
+#define	INTEXT_CHECK do {						\
 	if (len == 0 || v_isempty(p, len)) {				\
 		if (!--cnt)						\
 			goto found;					\
@@ -39,16 +39,21 @@
 	if (p[0] == '\014') {						\
 		if (!--cnt)						\
 			goto found;					\
+		if (pstate == P_INTEXT && !--cnt)			\
+			goto found;					\
 		continue;						\
 	}								\
 	if (p[0] != '.' || len < 2)					\
 		continue;						\
 	for (lp = VIP(sp)->ps; *lp != '\0'; lp += 2)			\
 		if (lp[0] == p[1] &&					\
-		    (lp[1] == ' ' && len == 2 || lp[1] == p[2]) &&	\
-		    !--cnt)						\
-			goto found;					\
-}
+		    (lp[1] == ' ' && len == 2 || lp[1] == p[2])) {	\
+			if (!--cnt)					\
+				goto found;				\
+			if (pstate == P_INTEXT && !--cnt)		\
+				goto found;				\
+		}							\
+} while (0)
 
 /*
  * v_paragraphf -- [count]}
@@ -83,7 +88,7 @@ v_paragraphf(SCR *sp, VICMD *vp)
 	 * line itself remained.  If somebody complains, don't pause, don't
 	 * hesitate, just hit them.
 	 */
-	if (ISMOTION(vp))
+	if (ISMOTION(vp)) {
 		if (vp->m_start.cno == 0)
 			F_SET(vp, VM_LMODE);
 		else {
@@ -94,6 +99,7 @@ v_paragraphf(SCR *sp, VICMD *vp)
 			if (vp->m_start.cno <= vp->m_stop.cno)
 				F_SET(vp, VM_LMODE);
 		}
+	}
 
 	/* Figure out what state we're currently in. */
 	lno = vp->m_start.lno;
@@ -226,7 +232,7 @@ v_paragraphb(SCR *sp, VICMD *vp)
 	 */
 	lno = vp->m_start.lno;
 
-	if (ISMOTION(vp))
+	if (ISMOTION(vp)) {
 		if (vp->m_start.cno == 0) {
 			if (vp->m_start.lno == 1) {
 				v_sof(sp, &vp->m_start);
@@ -236,6 +242,7 @@ v_paragraphb(SCR *sp, VICMD *vp)
 			F_SET(vp, VM_LMODE);
 		} else
 			--vp->m_start.cno;
+	}
 
 	if (vp->m_start.lno <= 1)
 		goto sof;

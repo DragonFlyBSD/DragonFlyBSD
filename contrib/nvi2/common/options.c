@@ -46,6 +46,8 @@ static int	 	 opts_print(SCR *, OPTLIST const *);
  * VI and EX Text Editors", 1990.
  */
 OPTLIST const optlist[] = {
+/* O_ALTNOTATION */
+	{L("altnotation"),	f_print,	OPT_0BOOL,	0},
 /* O_ALTWERASE	  4.4BSD */
 	{L("altwerase"),	f_altwerase,	OPT_0BOOL,	0},
 /* O_AUTOINDENT	    4BSD */
@@ -179,6 +181,8 @@ OPTLIST const optlist[] = {
 	{L("shellmeta"),	NULL,		OPT_STR,	0},
 /* O_SHIFTWIDTH	    4BSD */
 	{L("shiftwidth"),	NULL,		OPT_NUM,	OPT_NOZERO},
+/* O_SHOWFILENAME */
+	{L("showfilename"),	NULL,		OPT_0BOOL,	0},
 /* O_SHOWMATCH	    4BSD */
 	{L("showmatch"),	NULL,		OPT_0BOOL,	0},
 /* O_SHOWMODE	  4.4BSD */
@@ -313,15 +317,15 @@ opts_init(SCR *sp, int *oargs)
 	argv[1] = &b;
 
 	/* Set numeric and string default values. */
-#define	OI(indx, str) {							\
+#define	OI(indx, str) do {						\
 	a.len = STRLEN(str);						\
-	if ((CHAR_T*)str != b2)	  /* GCC puts strings in text-space. */	\
+	if (STRCMP((CHAR_T*)str, b2) != 0)					\
 		(void)MEMCPY(b2, str, a.len+1);				\
 	if (opts_set(sp, argv, NULL)) {					\
 		 optindx = indx;					\
 		goto err;						\
 	}								\
-}
+} while (0)
 	/*
 	 * Indirect global options to global space.  Specifically, set up
 	 * terminal, lines, columns first, they're used by other options.
@@ -574,13 +578,14 @@ opts_set(SCR *sp, ARGS *argv[], char *usage)
 			 * functions can be expensive.
 			 */
 			isset = !turnoff;
-			if (!F_ISSET(op, OPT_ALWAYS))
+			if (!F_ISSET(op, OPT_ALWAYS)) {
 				if (isset) {
 					if (O_ISSET(sp, offset))
 						break;
 				} else
 					if (!O_ISSET(sp, offset))
 						break;
+			}
 
 			/* Report to subsystems. */
 			if ((op->func != NULL &&
