@@ -30,7 +30,8 @@ CFLAGS+=	-I${.CURDIR} -I${SRCDIR} -I${SRCDIR}/regex
 DPADD=		${LIBUTIL}
 LDADD=		-lutil
 
-CFLAGS+=	-D__REGEX_PRIVATE
+# Define _XOPEN_SOURCE_EXTENDED to get waddnwstr().
+CFLAGS+=	-D__REGEX_PRIVATE -D_XOPEN_SOURCE_EXTENDED
 CFLAGS+=	-DUSE_WIDECHAR \
 		-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 DPADD+=		${LIBNCURSESW}
@@ -100,16 +101,14 @@ ex_def.h: ex_cmd.c
 options_def.h: options.c
 	awk -f ${SRCDIR}/common/options.awk ${.ALLSRC} > ${.TARGET}
 
-# Generate "ex/version.h", which must be placed in the "ex/" subdirectory
-# because "common/recover.c" requires "../ex/version.h".
-SRCS+=		ex/version.h
-ex/version.h: ${SRCDIR}/README
-	mkdir -p ${.OBJDIR}/ex
+# Generate "version.h" from README.
+SRCS+=		version.h
+CLEANFILES+=	version.h
+version.h: ${SRCDIR}/README
 	sed -E -n 's/^.*version ([^)]+\)).*/\#define VI_VERSION "\1"/p;q' \
 		${.ALLSRC} > ${.TARGET}
 
-CFLAGS+=	-I${.OBJDIR} -I${.OBJDIR}/ex
-CLEANDIRS+=	ex
+CFLAGS+=	-I${.OBJDIR}
 
 .if !defined(NO_SHARE)
 SUBDIR+=vidump catalog
