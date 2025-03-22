@@ -81,10 +81,13 @@ REGEX_SRCS=	regcomp.c regerror.c regexec.c regfree.c
 
 SRCS=		${CL_SRCS} ${COMMON_SRCS} ${EX_SRCS} ${VI_SRCS} ${REGEX_SRCS}
 
-# Generate extern headers.
+# Generated headers.
 EXTERNS=	cl_extern.h common_extern.h ex_extern.h vi_extern.h
-SRCS+=		${EXTERNS}
-CLEANFILES+=	${EXTERNS}
+GEN_HDRS=	${EXTERNS}
+GEN_HDRS+=	ex_def.h options_def.h version.h
+SRCS+=		${GEN_HDRS}
+CLEANFILES+=	${GEN_HDRS}
+CFLAGS+=	-I${.OBJDIR}
 
 cl_extern.h: ${CL_SRCS}
 common_extern.h: ${COMMON_SRCS}
@@ -93,22 +96,14 @@ vi_extern.h: ${VI_SRCS}
 ${EXTERNS}:
 	sed -E -n 's/^ \* PUBLIC: (.*)$$/\1/p' ${.ALLSRC} >> ${.TARGET}
 
-# Generate "ex_def.h" and "options_def.h".
-SRCS+=		ex_def.h options_def.h
-CLEANFILES+=	ex_def.h options_def.h
 ex_def.h: ex_cmd.c
 	awk -f ${SRCDIR}/ex/ex.awk ${.ALLSRC} > ${.TARGET}
 options_def.h: options.c
 	awk -f ${SRCDIR}/common/options.awk ${.ALLSRC} > ${.TARGET}
 
-# Generate "version.h" from README.
-SRCS+=		version.h
-CLEANFILES+=	version.h
 version.h: ${SRCDIR}/README
 	sed -E -n 's/^.*version ([^)]+\)).*/\#define VI_VERSION "\1"/p;q' \
 		${.ALLSRC} > ${.TARGET}
-
-CFLAGS+=	-I${.OBJDIR}
 
 .if !defined(NO_SHARE)
 SUBDIR+=vidump catalog
