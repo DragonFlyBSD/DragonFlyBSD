@@ -84,7 +84,7 @@ SRCS=		${CL_SRCS} ${COMMON_SRCS} ${EX_SRCS} ${VI_SRCS} ${REGEX_SRCS}
 # Generated headers.
 EXTERNS=	cl_extern.h common_extern.h ex_extern.h vi_extern.h
 GEN_HDRS=	${EXTERNS}
-GEN_HDRS+=	ex_def.h options_def.h version.h
+GEN_HDRS+=	ex_def.h options_def.h version.h pathnames.h
 SRCS+=		${GEN_HDRS}
 CLEANFILES+=	${GEN_HDRS}
 CFLAGS+=	-I${.OBJDIR}
@@ -103,6 +103,11 @@ options_def.h: options.c
 
 version.h: ${SRCDIR}/README
 	sed -E -n 's/^.*version ([^)]+\)).*/\#define VI_VERSION "\1"/p;q' \
+		${.ALLSRC} > ${.TARGET}
+
+pathnames.h: ${SRCDIR}/files/pathnames.h.in
+	sed	-e 's,@vi_cv_path_msgcat@,${SHAREDIR}/vi/catalog/,' \
+		-e 's,@vi_cv_path_preserve@,/var/tmp/vi.recover/,' \
 		${.ALLSRC} > ${.TARGET}
 
 .if !defined(NO_SHARE)
