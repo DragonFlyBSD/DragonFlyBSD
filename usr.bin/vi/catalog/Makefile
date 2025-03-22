@@ -6,7 +6,7 @@
 V=	${.CURDIR}/../../../contrib/nvi2
 
 CAT=	dutch english french german polish ru_RU.KOI8-R spanish swedish \
-	uk_UA.KOI8-U zh_CN.GB2312
+	tr_TR.ISO8859-9 uk_UA.KOI8-U zh_CN.GB2312
 
 SCAN=	${V}/cl/*.c ${V}/common/*.c ${V}/ex/*.c ${V}/vi/*.c
 
@@ -24,7 +24,7 @@ utf8convert: .PHONY
 	iconv -f KOI8-R -t UTF-8 $V/catalog/ru_RU.KOI8-R.base > ru_RU.UTF-8.base
 	iconv -f KOI8-U -t UTF-8 $V/catalog/uk_UA.KOI8-U.base > uk_UA.UTF-8.base
 
-.for c in dutch french german polish spanish swedish zh_CN ru_RU uk_UA
+.for c in dutch french german polish spanish swedish ru_RU tr_TR uk_UA zh_CN
 CAT+=	$c.UTF-8
 .endfor
 
