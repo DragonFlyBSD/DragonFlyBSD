@@ -92,6 +92,14 @@ vi_extern.h: ${VI_SRCS}
 ${EXTERNS}:
 	sed -E -n 's/^ \* PUBLIC: (.*)$$/\1/p' ${.ALLSRC} >> ${.TARGET}
 
+# Generate "ex_def.h" and "options_def.h".
+SRCS+=		ex_def.h options_def.h
+CLEANFILES+=	ex_def.h options_def.h
+ex_def.h: ex_cmd.c
+	awk -f ${SRCDIR}/ex/ex.awk ${.ALLSRC} > ${.TARGET}
+options_def.h: options.c
+	awk -f ${SRCDIR}/common/options.awk ${.ALLSRC} > ${.TARGET}
+
 # Generate "ex/version.h", which must be placed in the "ex/" subdirectory
 # because "common/recover.c" requires "../ex/version.h".
 SRCS+=		ex/version.h
