@@ -12,3 +12,14 @@ sha1 = 4c1d96d8cf80fbdc914269f3eba9d46ae89d665f
 A list of files and directories removed is in README.DELETED.
 
 No local modifications.
+
+Upgrade Notes
+-------------
+1. Configure and generate config files with cmake.
+2. Merge config.h into usr.bin/vi/config.h, and update usr.bin/vi/Makefile
+   accordingly.
+3. For usr.bin/vi/catalog, update Makefile for any catalog changes, and
+   then do "make utf8convert" and "make check".
+4. Do some tests, including:
+   - The vi(1) is building ok within "initrd" and "rescue".
+   - The vi(1) is working well in the rescue boot mode.
