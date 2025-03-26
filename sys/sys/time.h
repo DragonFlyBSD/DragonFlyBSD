@@ -95,7 +95,6 @@ struct timezone {
 	} while (0)
 
 /* Operations on timevals. */
-
 #define	timevalclear(tvp)		((tvp)->tv_sec = (tvp)->tv_usec = 0)
 #define	timevalisset(tvp)		((tvp)->tv_sec || (tvp)->tv_usec)
 #define	timevalcmp(tvp, uvp, cmp)					\

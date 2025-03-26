@@ -487,7 +487,7 @@ sys_mq_open(struct sysmsg *sysmsg, const struct mq_open_args *uap)
 		 * Allocate new mqueue, initialize data structures,
 		 * copy the name, attributes and set the flag.
 		 */
-		mq_new = kmalloc(sizeof(struct mqueue), M_MQBUF, 
+		mq_new = kmalloc(sizeof(struct mqueue), M_MQBUF,
 					M_WAITOK | M_ZERO | M_NULLOK);
 		if (mq_new == NULL) {
 			kfree(name, M_MQBUF);
@@ -804,7 +804,6 @@ mq_send1(struct lwp *l, mqd_t mqdes, const char *msg_ptr, size_t msg_len,
 	msg = kmalloc(size, M_MQBUF, M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		return (ENOMEM);
-
 
 	/* Get the data from user-space */
 	error = copyin(msg_ptr, msg->msg_ptr, msg_len);

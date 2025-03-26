@@ -74,7 +74,7 @@
 static int elf_loadphdrs(struct file *fp,  Elf_Phdr *phdr, int numsegs);
 static int elf_getnotes(struct lwp *lp, struct file *fp, size_t notesz);
 static int elf_demarshalnotes(void *src, prpsinfo_t *psinfo,
-		 prstatus_t *status, prfpregset_t *fpregset, int nthreads); 
+		 prstatus_t *status, prfpregset_t *fpregset, int nthreads);
 static int elf_loadnotes(struct lwp *, prpsinfo_t *, prstatus_t *,
 		 prfpregset_t *);
 static int elf_getsigs(struct lwp *lp, struct file *fp);
@@ -107,7 +107,7 @@ read_check(struct file *fp, void *buf, size_t nbyte)
 }
 
 static int
-elf_gethdr(struct file *fp, Elf_Ehdr *ehdr) 
+elf_gethdr(struct file *fp, Elf_Ehdr *ehdr)
 {
 	size_t nbyte = sizeof(Elf_Ehdr);
 	int error;
@@ -146,14 +146,14 @@ elf_gethdr(struct file *fp, Elf_Ehdr *ehdr)
 	PRINTF(("Number of Program headers: %d\n", ehdr->e_phnum));
  done:
 	return error;
-} 
+}
 
 static int
-elf_getphdrs(struct file *fp, Elf_Phdr *phdr, size_t nbyte) 
+elf_getphdrs(struct file *fp, Elf_Phdr *phdr, size_t nbyte)
 {
 	int i;
 	int error;
-	int nheaders = nbyte/sizeof(Elf_Phdr); 
+	int nheaders = nbyte/sizeof(Elf_Phdr);
 
 	PRINTF(("reading phdrs section\n"));
 	if ((error = read_check(fp, phdr, nbyte)) != 0)
@@ -182,7 +182,7 @@ elf_getnotes(struct lwp *lp, struct file *fp, size_t notesz)
 	prstatus_t *status;
 	prfpregset_t *fpregset;
 
-	nthreads = (notesz - sizeof(prpsinfo_t))/(sizeof(prstatus_t) + 
+	nthreads = (notesz - sizeof(prpsinfo_t))/(sizeof(prstatus_t) +
 						  sizeof(prfpregset_t));
 	PRINTF(("reading notes header nthreads=%d\n", nthreads));
 	if (nthreads <= 0 || nthreads > CKPT_MAXTHREADS)
@@ -193,7 +193,7 @@ elf_getnotes(struct lwp *lp, struct file *fp, size_t notesz)
 	fpregset  = kmalloc(nthreads*sizeof(prfpregset_t), M_TEMP, M_WAITOK);
 	note = kmalloc(notesz, M_TEMP, M_WAITOK);
 
-	
+
 	PRINTF(("reading notes section\n"));
 	if ((error = read_check(fp, note, notesz)) != 0)
 		goto done;
@@ -224,13 +224,13 @@ ckpt_thaw_proc(struct lwp *lp, struct file *fp)
 	size_t nbyte;
 
 	TRACE_ENTER;
-	
+
 	ehdr = kmalloc(sizeof(Elf_Ehdr), M_TEMP, M_ZERO | M_WAITOK);
 
 	if ((error = elf_gethdr(fp, ehdr)) != 0)
 		goto done;
-	nbyte = sizeof(Elf_Phdr) * ehdr->e_phnum; 
-	phdr = kmalloc(nbyte, M_TEMP, M_WAITOK); 
+	nbyte = sizeof(Elf_Phdr) * ehdr->e_phnum;
+	phdr = kmalloc(nbyte, M_TEMP, M_WAITOK);
 
 	/* fetch description of program writable mappings */
 	if ((error = elf_getphdrs(fp, phdr, nbyte)) != 0)
@@ -282,7 +282,7 @@ done:
 
 static int
 elf_loadnotes(struct lwp *lp, prpsinfo_t *psinfo, prstatus_t *status,
-	   prfpregset_t *fpregset) 
+	   prfpregset_t *fpregset)
 {
 	struct proc *p = lp->lwp_proc;
 	int error;
@@ -305,14 +305,14 @@ elf_loadnotes(struct lwp *lp, prpsinfo_t *psinfo, prstatus_t *status,
 	error = set_fpregs(lp, fpregset);
 	strlcpy(p->p_comm, psinfo->pr_fname, sizeof(p->p_comm));
 	/* XXX psinfo->pr_psargs not yet implemented */
- done:	
+ done:
 	TRACE_EXIT;
 	return error;
 }
 
-static int 
+static int
 elf_getnote(void *src, size_t *off, const char *name, unsigned int type,
-	    void **desc, size_t descsz) 
+	    void **desc, size_t descsz)
 {
 	Elf_Note note;
 	int error;
@@ -323,7 +323,7 @@ elf_getnote(void *src, size_t *off, const char *name, unsigned int type,
 		goto done;
 	}
 	bcopy((char *)src + *off, &note, sizeof note);
-	
+
 	PRINTF(("at offset: %zd expected note of type: %d - got: %d\n",
 	       *off, type, note.n_type));
 	*off += sizeof note;
@@ -352,8 +352,8 @@ elf_getnote(void *src, size_t *off, const char *name, unsigned int type,
 }
 
 static int
-elf_demarshalnotes(void *src, prpsinfo_t *psinfo, prstatus_t *status, 
-		   prfpregset_t *fpregset, int nthreads) 
+elf_demarshalnotes(void *src, prpsinfo_t *psinfo, prstatus_t *status,
+		   prfpregset_t *fpregset, int nthreads)
 {
 	int i;
 	int error;
@@ -388,7 +388,7 @@ elf_demarshalnotes(void *src, prpsinfo_t *psinfo, prstatus_t *status,
 		if (error)
 			goto done;
 	}
-	
+
  done:
 	TRACE_EXIT;
 	return error;
@@ -396,7 +396,7 @@ elf_demarshalnotes(void *src, prpsinfo_t *psinfo, prstatus_t *status,
 
 
 static int
-mmap_phdr(struct file *fp, Elf_Phdr *phdr) 
+mmap_phdr(struct file *fp, Elf_Phdr *phdr)
 {
 	int error;
 	size_t len;
@@ -416,7 +416,7 @@ mmap_phdr(struct file *fp, Elf_Phdr *phdr)
 	if (phdr->p_flags & PF_W)
 		prot |= PROT_WRITE;
 	if (phdr->p_flags & PF_X)
-		prot |= PROT_EXEC;	
+		prot |= PROT_EXEC;
 	if ((error = fp_mmap(addr, len, prot, flags, fp, pos, &addr)) != 0) {
 		PRINTF(("mmap failed: %d\n", error);	   );
 	}
@@ -431,7 +431,7 @@ mmap_phdr(struct file *fp, Elf_Phdr *phdr)
  * file.
  */
 static int
-elf_loadphdrs(struct file *fp, Elf_Phdr *phdr, int numsegs) 
+elf_loadphdrs(struct file *fp, Elf_Phdr *phdr, int numsegs)
 {
 	int i;
 	int error = 0;
@@ -446,7 +446,7 @@ elf_loadphdrs(struct file *fp, Elf_Phdr *phdr, int numsegs)
 }
 
 static int
-elf_getsigs(struct lwp *lp, struct file *fp) 
+elf_getsigs(struct lwp *lp, struct file *fp)
 {
 	struct proc *p = lp->lwp_proc;
 	int error;
@@ -479,7 +479,7 @@ elf_getsigs(struct lwp *lp, struct file *fp)
  * Returns a locked, refd vnode
  */
 static int
-ckpt_fhtovp(fhandle_t *fh, struct vnode **vpp) 
+ckpt_fhtovp(fhandle_t *fh, struct vnode **vpp)
 {
 	struct mount *mp;
 	int error;
@@ -504,7 +504,7 @@ ckpt_fhtovp(fhandle_t *fh, struct vnode **vpp)
 }
 
 static int
-mmap_vp(struct vn_hdr *vnh) 
+mmap_vp(struct vn_hdr *vnh)
 {
 	struct vnode *vp;
 	Elf_Phdr *phdr;
@@ -542,7 +542,7 @@ elf_gettextvp(struct proc *p, struct file *fp)
 	TRACE_ENTER;
 	if ((error = read_check(fp, &vminfo, sizeof(vminfo))) != 0)
 		goto done;
-	if (vminfo.cvm_dsize < 0 || 
+	if (vminfo.cvm_dsize < 0 ||
 	    vminfo.cvm_dsize > p->p_rlimit[RLIMIT_DATA].rlim_cur ||
 	    vminfo.cvm_tsize < 0 ||
 	    (u_quad_t)vminfo.cvm_tsize > maxtsiz ||
@@ -567,7 +567,7 @@ elf_gettextvp(struct proc *p, struct file *fp)
 		if ((error = mmap_vp(&vnh[i])) != 0)
 			goto done;
 	}
-	
+
  done:
 	if (vnh)
 		kfree(vnh, M_TEMP);
@@ -625,7 +625,7 @@ elf_getfiles(struct lwp *lp, struct file *fp)
 			continue;
 
 		/*
-		 * Restore a saved file descriptor.  If CKFIF_ISCKPTFD is 
+		 * Restore a saved file descriptor.  If CKFIF_ISCKPTFD is
 		 * set the descriptor represents the checkpoint file itself,
 		 * probably due to the user calling sys_checkpoint().  We
 		 * want to use the fp being used to restore the checkpoint
@@ -650,7 +650,7 @@ elf_getfiles(struct lwp *lp, struct file *fp)
 
 		/*
 		 * If overwriting a descriptor close the old descriptor.  This
-		 * only occurs if the saved core saved descriptors that we 
+		 * only occurs if the saved core saved descriptors that we
 		 * have not already closed.
 		 */
 		if (cfi->cfi_index < fdp->fd_nfiles &&
@@ -712,7 +712,7 @@ ckpt_freeze_proc(struct lwp *lp, struct file *fp)
 /*
  * MPALMOSTSAFE
  */
-int 
+int
 sys_sys_checkpoint(struct sysmsg *sysmsg,
 		   const struct sys_checkpoint_args *uap)
 {
@@ -797,7 +797,7 @@ checkpoint_signal_handler(struct lwp *lp)
 	}
 
 	log(LOG_INFO, "pid %d (%s), uid %d: checkpointing to %s\n",
-		p->p_pid, p->p_comm, 
+		p->p_pid, p->p_comm,
 		(td->td_ucred ? td->td_ucred->cr_uid : -1),
 		buf);
 

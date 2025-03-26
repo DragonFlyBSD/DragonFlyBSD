@@ -146,7 +146,7 @@ __sig_condblockallsigs(sigset_t *mask, struct lwp *lp)
  *
  * If ptok is non-NULL this function may return with proc->p_token held,
  * indicating that the signal came from the process structure.  This is
- * used by postsig to avoid holding p_token when possible.  Only applicable
+ * used by postsig() to avoid holding p_token when possible.  Only applicable
  * if mayblock is non-zero.
  */
 static __inline
@@ -177,7 +177,7 @@ __cursig(struct lwp *lp, int mayblock, int maytrace, int *ptok)
 	else
 		r = TRUE;	/* simply state the fact */
 
-	return(r);
+	return (r);
 }
 
 /*

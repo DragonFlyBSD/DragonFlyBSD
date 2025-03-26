@@ -97,7 +97,7 @@ __read_mostly static u_long usrstack = USRSTACK;
 SYSCTL_ULONG(_kern, KERN_USRSTACK, usrstack, CTLFLAG_RD, &usrstack, 0, "");
 
 __read_mostly u_long ps_arg_cache_limit = PAGE_SIZE / 16;
-SYSCTL_LONG(_kern, OID_AUTO, ps_arg_cache_limit, CTLFLAG_RW, 
+SYSCTL_LONG(_kern, OID_AUTO, ps_arg_cache_limit, CTLFLAG_RW,
     &ps_arg_cache_limit, 0, "");
 
 __read_mostly int ps_argsopen = 1;
@@ -143,7 +143,7 @@ SYSINIT(exec_objcache, SI_BOOT2_MACHDEP, SI_ORDER_ANY, exec_objcache_init, 0);
 
 /*
  * stackgap_random specifies if the stackgap should have a random size added
- * to it.  It must be a power of 2.  If non-zero, the stack gap will be 
+ * to it.  It must be a power of 2.  If non-zero, the stack gap will be
  * calculated as: ALIGN(karc4random() & (stackgap_random - 1)).
  */
 __read_mostly static int stackgap_random = 1024;
@@ -1081,7 +1081,7 @@ exec_copyin_args(struct image_args *args, char *fname,
 				args->argc++;
 			}
 		}
-	}	
+	}
 
 	args->begin_envv = args->endp;
 

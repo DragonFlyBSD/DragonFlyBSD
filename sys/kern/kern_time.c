@@ -537,7 +537,7 @@ clock_nanosleep1(clockid_t clock_id, int flags,
 			} else {
 				crit_enter_quick(td);
 				systimer_init_oneshot(&info, ns1_systimer,
-						td, tv.tv_usec);
+						      td, tv.tv_usec);
 				lwkt_deschedule_self(td);
 				crit_exit_quick(td);
 				lwkt_switch();
@@ -1030,8 +1030,7 @@ sys_setitimer(struct sysmsg *sysmsg, const struct setitimer_args *uap)
  * that here since we want to appear to be in sync with the clock
  * interrupt even when we're delayed.
  */
-static
-void
+static void
 realitexpire(void *arg)
 {
 	struct proc *p;

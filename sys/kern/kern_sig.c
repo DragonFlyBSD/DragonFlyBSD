@@ -2068,7 +2068,7 @@ issignal(struct lwp *lp, int maytrace, int *ptokp)
 			 *	 we do not re-notify the parent if we have
 			 *	 to loop several times waiting for the parent
 			 *	 to let us continue.  XXX not sure if this is
-			 * 	 still true
+			 *	 still true.
 			 *
 			 * NOTE: Do not tstop here.  Issue the proc_stop()
 			 *	 so other parties see that we know we need
@@ -2083,8 +2083,9 @@ issignal(struct lwp *lp, int maytrace, int *ptokp)
 			proc_stop(p, SSTOP);
 
 			/*
-			 * Normally we don't stop until we return to userland, but
-			 * make an exception when tracing and 'maytrace' is asserted.
+			 * Normally we don't stop until we return to userland,
+			 * but make an exception when tracing and 'maytrace'
+			 * is asserted.
 			 */
 			if (p->p_flags & P_TRACED)
 				tstop();
@@ -2181,7 +2182,7 @@ issignal(struct lwp *lp, int maytrace, int *ptokp)
 					haveptok = 1;
 				}
 				if (p->p_flags & P_TRACED ||
-		    		    (p->p_pgrp->pg_jobc == 0 &&
+				    (p->p_pgrp->pg_jobc == 0 &&
 				    prop & SA_TTYSTOP))
 					break;	/* == ignore */
 				if ((p->p_flags & P_WEXIT) == 0) {
@@ -2601,7 +2602,7 @@ coredump(struct lwp *lp, int sig)
 	vn_unlock(vp);
 
 	error = p->p_sysent->sv_coredump ?
-		  p->p_sysent->sv_coredump(lp, sig, vp, limit) : ENOSYS;
+		p->p_sysent->sv_coredump(lp, sig, vp, limit) : ENOSYS;
 
 out1:
 	lf.l_type = F_UNLCK;

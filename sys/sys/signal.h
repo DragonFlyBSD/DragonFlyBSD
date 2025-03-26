@@ -136,6 +136,9 @@ typedef	__uint32_t	uid_t;
 #define	SIGCKPTEXIT	34	/* checkpoint and exit */
 #endif
 
+#define	SIGRTMIN	65	/* min realtime signal */
+#define	SIGRTMAX	126	/* max realtime signal */
+
 /*-
  * Type of a signal handling function.
  *
@@ -282,7 +285,7 @@ struct	sigvec {
 #define	SV_NODEFER	SA_NODEFER
 #define	SV_NOCLDSTOP	SA_NOCLDSTOP
 #define	SV_SIGINFO	SA_SIGINFO
-#define	sv_onstack sv_flags	/* isn't compatibility wonderful! */
+#define	sv_onstack	sv_flags	/* isn't compatibility wonderful! */
 
 /*
  * Macro for converting signal number to a mask suitable for
@@ -303,7 +306,7 @@ struct	sigvec {
 #endif
 
 /*
- * For historical reasons; programs expect signal's return value to be
+ * For historical reasons, programs expect signal's return value to be
  * defined by <sys/signal.h>.
  */
 __BEGIN_DECLS
