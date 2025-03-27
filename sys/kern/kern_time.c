@@ -201,9 +201,6 @@ get_thread_cputime(struct thread *td, struct timespec *ats)
 	TIMEVAL_TO_TIMESPEC(&user, ats);
 }
 
-/*
- * MPSAFE
- */
 int
 kern_clock_gettime(clockid_t clock_id, struct timespec *ats)
 {
@@ -268,9 +265,6 @@ kern_clock_gettime(clockid_t clock_id, struct timespec *ats)
 	return (0);
 }
 
-/*
- * MPSAFE
- */
 int
 sys_clock_gettime(struct sysmsg *sysmsg, const struct clock_gettime_args *uap)
 {
@@ -305,9 +299,6 @@ kern_clock_settime(clockid_t clock_id, struct timespec *ats)
 	return (error);
 }
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_clock_settime(struct sysmsg *sysmsg, const struct clock_settime_args *uap)
 {
@@ -322,9 +313,6 @@ sys_clock_settime(struct sysmsg *sysmsg, const struct clock_settime_args *uap)
 	return (error);
 }
 
-/*
- * MPSAFE
- */
 int
 kern_clock_getres(clockid_t clock_id, struct timespec *ts)
 {
@@ -373,9 +361,6 @@ kern_clock_getres(clockid_t clock_id, struct timespec *ts)
 	return (0);
 }
 
-/*
- * MPSAFE
- */
 int
 sys_clock_getres(struct sysmsg *sysmsg, const struct clock_getres_args *uap)
 {
@@ -454,8 +439,6 @@ sys_getcpuclockid(struct sysmsg *sysmsg, const struct getcpuclockid_args *uap)
  *	tsleep, then handle the fine-grained delay on the next
  *	loop.  This usually results in two sleeps occuring, a long one
  *	and a short one.
- *
- * MPSAFE
  */
 static void
 ns1_systimer(systimer_t info, int in_ipi __unused,
@@ -577,9 +560,6 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 	return clock_nanosleep1(CLOCK_REALTIME, TIMER_RELTIME, rqt, rmt);
 }
 
-/*
- * MPSAFE
- */
 int
 sys_clock_nanosleep(struct sysmsg *sysmsg,
     const struct clock_nanosleep_args *uap)
@@ -615,9 +595,6 @@ sys_clock_nanosleep(struct sysmsg *sysmsg,
 	return (0);
 }
 
-/*
- * MPSAFE
- */
 int
 sys_nanosleep(struct sysmsg *sysmsg, const struct nanosleep_args *uap)
 {
@@ -674,9 +651,6 @@ sys_gettimeofday(struct sysmsg *sysmsg, const struct gettimeofday_args *uap)
 	return (error);
 }
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_settimeofday(struct sysmsg *sysmsg, const struct settimeofday_args *uap)
 {
@@ -769,9 +743,6 @@ kern_adjfreq(int64_t rate)
 	spin_unlock(&ntp_spin);
 }
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_adjtime(struct sysmsg *sysmsg, const struct adjtime_args *uap)
 {
@@ -923,8 +894,6 @@ SYSCTL_PROC(_kern_ntp, OID_AUTO, adjust,
  * does not suffice, therefore, to reload the real timer .it_value from the
  * real time timers .it_interval.  Rather, we compute the next time in
  * absolute time the timer should go off.
- *
- * MPALMOSTSAFE
  */
 int
 sys_getitimer(struct sysmsg *sysmsg, const struct getitimer_args *uap)
@@ -958,9 +927,6 @@ sys_getitimer(struct sysmsg *sysmsg, const struct getitimer_args *uap)
 	return (copyout(&aitv, uap->itv, sizeof (struct itimerval)));
 }
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_setitimer(struct sysmsg *sysmsg, const struct setitimer_args *uap)
 {
