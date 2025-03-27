@@ -40,6 +40,7 @@
 #include <machine/stdint.h>
 #endif
 
+#include <sys/_clock_id.h>
 #include <sys/_timespec.h>
 #include <sys/_timeval.h>
 #include <sys/select.h>
@@ -156,31 +157,6 @@ struct clockinfo {
 	int	stathz;		/* statistics clock frequency */
 	int	profhz;		/* profiling clock frequency */
 };
-
-/* CLOCK_REALTIME and TIMER_ABSTIME are supposed to be in time.h */
-
-#ifndef CLOCK_REALTIME
-#define CLOCK_REALTIME		0
-#endif
-#define CLOCK_VIRTUAL		1
-#define CLOCK_PROF		2
-#define CLOCK_MONOTONIC		4
-
-#define CLOCK_UPTIME		5	/* from freebsd */
-#define CLOCK_UPTIME_PRECISE	7	/* from freebsd */
-#define CLOCK_UPTIME_FAST	8	/* from freebsd */
-#define CLOCK_REALTIME_PRECISE	9	/* from freebsd */
-#define CLOCK_REALTIME_FAST	10	/* from freebsd */
-#define CLOCK_MONOTONIC_PRECISE	11	/* from freebsd */
-#define CLOCK_MONOTONIC_FAST	12	/* from freebsd */
-#define CLOCK_SECOND		13	/* from freebsd */
-#define CLOCK_THREAD_CPUTIME_ID		14
-#define CLOCK_PROCESS_CPUTIME_ID	15
-
-#define TIMER_RELTIME	0x0	/* relative timer */
-#ifndef TIMER_ABSTIME
-#define TIMER_ABSTIME	0x1	/* absolute timer */
-#endif
 
 #ifdef _KERNEL
 
