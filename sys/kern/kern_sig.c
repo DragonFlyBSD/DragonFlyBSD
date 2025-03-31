@@ -1783,7 +1783,7 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 			SIGFILLSET(lp->lwp_sigmask);
 			SIGDELSET(lp->lwp_sigmask, sig);
 			SIG_CANTMASK(lp->lwp_sigmask);
-			sig = issignal(lp, 1, 0);
+			sig = issignal(lp, 1, NULL);
 			/*
 			 * It may be a STOP signal, in the case, issignal
 			 * returns 0, because we may stop there, and new
