@@ -254,9 +254,10 @@
  *          change ip6.accept_rtadv and ip6.auto_linklocal behavior
  * 600509 - add futimesat() (legacy function), add HAVE_FUTIMESAT
  * 600510 - add PROC_REAP_KILL to procctl(2)
+ * 600511 - remove <timers.h>
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600510	/* propagated to newvers */
+#define __DragonFly_version 600511	/* propagated to newvers */
 
 #include <sys/_null.h>
 

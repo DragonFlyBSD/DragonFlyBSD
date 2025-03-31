@@ -3930,6 +3930,7 @@ TO_REMOVE+=/etc/mail/mailer.conf.opensmtpd
 TO_REMOVE+=/etc/mail/mailer.conf.postfix
 TO_REMOVE+=/etc/mail/mailer.conf.sendmail
 TO_REMOVE+=/rescue/diff3
+TO_REMOVE+=/usr/include/timers.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
