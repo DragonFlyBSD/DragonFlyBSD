@@ -211,7 +211,7 @@ userenter(struct thread *curtd, struct proc *curp)
  * must be completed before we can return to or try to return to userland.
  *
  * Note that td_sticks is a 64 bit quantity, but there's no point doing 64
- * arithmatic on the delta calculation so the absolute tick values are
+ * arithmetic on the delta calculation so the absolute tick values are
  * truncated to an integer.
  */
 static void

@@ -311,7 +311,7 @@ i8254_cputimer_count(void)
  * us to calculate what is needed to convert a system timebase tick 
  * into an 8254 tick for the interrupt timer.  If we can convert to a
  * simple shift, multiplication, or division, we do so.  Otherwise 64
- * bit arithmatic is required every time the interrupt timer is reloaded.
+ * bit arithmetic is required every time the interrupt timer is reloaded.
  */
 static void
 i8254_intr_config(struct cputimer_intr *cti, const struct cputimer *timer)
