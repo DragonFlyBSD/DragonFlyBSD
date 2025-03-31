@@ -47,7 +47,14 @@ DPORTS_EXTRA_PACKAGES?=
 
 # dports packages to be built and installed on the release ISO
 #
-DPORTS_PACKAGES?=	security/ca_root_nss \
+# NOTE:	Since 2025Q1, if the 'ports-mgmt/pkg' package is installed as a
+#	dependency of another package, it will be marked as 'automatic'
+#	and will be removed by a later 'pkg autoremove', which would cause
+#	the nrelease build to fail.  Therefore, explicitly install it to
+#	fix the issue.
+#
+DPORTS_PACKAGES?=	ports-mgmt/pkg \
+			security/ca_root_nss \
 			devel/git-lite \
 			dns/bind-tools \
 			net/isc-dhcp44-server \
