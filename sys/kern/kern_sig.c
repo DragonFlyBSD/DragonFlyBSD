@@ -1172,12 +1172,8 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 * than SIGKILL.  Note that we must still deliver the signal
 		 * if P_WEXIT is set in the process flags.
 		 */
-		if (lp && (lp->lwp_mpflags & LWP_MP_WEXIT) && sig != SIGKILL) {
-			lwkt_reltoken(&lp->lwp_token);
-			LWPRELE(lp);
-			PRELE(p);
-			return;
-		}
+		if (lp && (lp->lwp_mpflags & LWP_MP_WEXIT) && sig != SIGKILL)
+			goto out;
 
 		/*
 		 * If the signal is being ignored, then we forget about
@@ -1190,15 +1186,9 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 			 * lurking in a kqueue.
 			 */
 			KNOTE(&p->p_klist, NOTE_SIGNAL | sig);
-			if (lp) {
-				lwkt_reltoken(&lp->lwp_token);
-				LWPRELE(lp);
-			} else {
-				lwkt_reltoken(&p->p_token);
-			}
-			PRELE(p);
-			return;
+			goto out;
 		}
+
 		if (SIGISMEMBER(p->p_sigcatch, sig))
 			action = SIG_CATCH;
 		else
@@ -1223,16 +1213,9 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 * and don't clear any pending SIGCONT.
 		 */
 		if ((prop & SA_TTYSTOP) && p->p_pgrp->pg_jobc == 0 &&
-		    action == SIG_DFL) {
-			if (lp) {
-				lwkt_reltoken(&lp->lwp_token);
-				LWPRELE(lp);
-			} else {
-				lwkt_reltoken(&p->p_token);
-			}
-			PRELE(p);
-			return;
-		}
+		    action == SIG_DFL)
+			goto out;
+
 		lwkt_gettoken(&p->p_token);
 		SIG_CONTSIGMASK_ATOMIC(p->p_siglist);
 		p->p_flags &= ~P_CONTINUED;
@@ -1249,6 +1232,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 			lwkt_reltoken(&p->p_token);
 			goto not_stopped;
 		}
+
 		sigsetfrompid(curthread, p, sig);
 		if (lp) {
 			spin_lock(&lp->lwp_spin);
@@ -1337,11 +1321,10 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 */
 		lwkt_reltoken(&p->p_token);
 		goto out;
-		/* NOTREACHED */
 	}
+	/* else not stopped */
 not_stopped:
 	;
-	/* else not stopped */
 active_process:
 
 	/*
