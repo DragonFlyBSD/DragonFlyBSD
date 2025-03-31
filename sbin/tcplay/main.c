@@ -256,7 +256,7 @@ main(int argc, char *argv[])
 	    create_vol = 0, modify_vol = 0;
 
 	if ((error = tc_play_init()) != 0) {
-		fprintf(stderr, "Initialization failed, exiting.");
+		fprintf(stderr, "Initialization failed, exiting.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -265,7 +265,7 @@ main(int argc, char *argv[])
 	signal(SIGINFO, sig_handler);
 
 	if ((opts = opts_init()) == NULL) {
-		fprintf(stderr, "Initialization failed (opts), exiting.");
+		fprintf(stderr, "Initialization failed (opts), exiting.\n");
 		exit(EXIT_FAILURE);
 	}
 
