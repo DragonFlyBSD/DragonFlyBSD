@@ -252,7 +252,7 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 	struct lwp *lp;
 	struct sigacts *ps = p->p_sigacts;
 
-	if (sig <= 0 || sig >= _SIG_MAXSIG)
+	if (!_SIG_VALID(sig))
 		return (EINVAL);
 
 	lwkt_gettoken(&p->p_token);
@@ -271,10 +271,12 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 			oact->sa_flags |= SA_NODEFER;
 		if (SIGISMEMBER(ps->ps_siginfo, sig))
 			oact->sa_flags |= SA_SIGINFO;
-		if (sig == SIGCHLD && p->p_sigacts->ps_flag & PS_NOCLDSTOP)
-			oact->sa_flags |= SA_NOCLDSTOP;
-		if (sig == SIGCHLD && p->p_sigacts->ps_flag & PS_NOCLDWAIT)
-			oact->sa_flags |= SA_NOCLDWAIT;
+		if (sig == SIGCHLD) {
+			if (p->p_sigacts->ps_flag & PS_NOCLDSTOP)
+				oact->sa_flags |= SA_NOCLDSTOP;
+			if (p->p_sigacts->ps_flag & PS_NOCLDWAIT)
+				oact->sa_flags |= SA_NOCLDWAIT;
+		}
 	}
 	if (act) {
 		/*
@@ -407,7 +409,7 @@ siginit(struct proc *p)
 	int i;
 
 	for (i = 1; i <= NSIG; i++) {
-		if (sigprop(i) & SA_IGNORE && i != SIGCONT)
+		if ((sigprop(i) & SA_IGNORE) && i != SIGCONT)
 			SIGADDSET(p->p_sigignore, i);
 	}
 
@@ -1134,11 +1136,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 	sig_t action;
 	int prop;
 
-	if (sig >= _SIG_MAXSIG || sig <= 0) {
-		kprintf("lwpsignal: signal %d\n", sig);
-		panic("lwpsignal signal number");
-	}
-
+	KASSERT(_SIG_VALID(sig), ("%s: invalid signal %d", __func__, sig));
 	KKASSERT(lp == NULL || lp->lwp_proc == p);
 
 	/*
