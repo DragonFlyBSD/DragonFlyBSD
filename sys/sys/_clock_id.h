@@ -25,8 +25,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _SYS_SYS__CLOCK_ID_H
-#define	_SYS_SYS__CLOCK_ID_H
+#ifndef _SYS__CLOCK_ID_H_
+#define	_SYS__CLOCK_ID_H_
 
 #if !defined(CLOCK_REALTIME) && __POSIX_VISIBLE >= 199309
 #define	CLOCK_REALTIME		0
