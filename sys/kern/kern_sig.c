@@ -2204,7 +2204,8 @@ issignal(struct lwp *lp, int maytrace, int *ptokp)
 			 */
 			if ((prop & SA_CONT) == 0 &&
 			    (p->p_flags & P_TRACED) == 0)
-				kprintf("issignal\n");
+				kprintf("%s: should not hit signal %d!\n",
+					__func__, sig);
 			break;		/* == ignore */
 
 		default:
