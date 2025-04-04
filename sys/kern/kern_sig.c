@@ -1735,23 +1735,23 @@ static int
 kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 {
 	sigset_t savedmask, set;
+	struct timespec rts, ets, ts;
 	struct proc *p = curproc;
 	struct lwp *lp = curthread->td_lwp;
-	int error, sig, hz, timevalid = 0;
-	struct timespec rts, ets, ts;
-	struct timeval tv;
+	bool timevalid;
+	int error, sig, hz;
 
 	error = 0;
 	sig = 0;
-	ets.tv_sec = 0;		/* silence compiler warning */
-	ets.tv_nsec = 0;	/* silence compiler warning */
 	SIG_CANTMASK(waitset);
 	savedmask = lp->lwp_sigmask;
 
-	if (timeout) {
+	timespecclear(&ets);
+	timevalid = false;
+	if (timeout != NULL) {
 		if (timeout->tv_sec >= 0 && timeout->tv_nsec >= 0 &&
 		    timeout->tv_nsec < 1000000000) {
-			timevalid = 1;
+			timevalid = true;
 			getnanouptime(&rts);
 			timespecadd(&rts, timeout, &ets);
 		}
@@ -1788,8 +1788,8 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 		 * POSIX says this must be checked after looking for pending
 		 * signals.
 		 */
-		if (timeout) {
-			if (timevalid == 0) {
+		if (timeout != NULL) {
+			if (!timevalid) {
 				error = EINVAL;
 				break;
 			}
@@ -1799,8 +1799,7 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 				break;
 			}
 			timespecsub(&ets, &rts, &ts);
-			TIMESPEC_TO_TIMEVAL(&tv, &ts);
-			hz = tvtohz_high(&tv);
+			hz = tstohz_high(&ts);
 		} else {
 			hz = 0;
 		}
@@ -1814,7 +1813,7 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 		 * be broken in lwpsignal().
 		 */
 		error = tsleep(&p->p_sigacts, PCATCH, "sigwt", hz);
-		if (timeout) {
+		if (timeout != NULL) {
 			if (error == ERESTART) {
 				/* can not restart a timeout wait. */
 				error = EINTR;
