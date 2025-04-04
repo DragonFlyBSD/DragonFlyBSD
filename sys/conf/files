@@ -2263,6 +2263,7 @@ crypto/sha2/sha2.c			standard
 crypto/siphash/siphash.c		optional crypto
 crypto/twofish/twofish.c		optional crypto
 crypto/serpent/serpent.c		optional crypto
+crypto/rmd160/rmd160.c			optional crypto
 net/zlib.c				optional crypto
 opencrypto/cast.c			optional crypto
 opencrypto/criov.c			optional crypto
@@ -2272,7 +2273,6 @@ opencrypto/cryptodev_if.m		optional crypto
 opencrypto/cryptosoft.c			optional crypto
 opencrypto/deflate.c			optional crypto
 opencrypto/gmac.c			optional crypto
-opencrypto/rmd160.c			optional crypto
 opencrypto/skipjack.c			optional crypto
 opencrypto/xform.c			optional crypto
 # drm_agpsupport.c must be included if CONFIG_AGP is set

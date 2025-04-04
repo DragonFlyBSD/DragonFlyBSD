@@ -53,11 +53,11 @@
 #include <crypto/serpent/serpent.h>
 #include <crypto/sha1.h>
 #include <crypto/twofish/twofish.h>
+#include <crypto/rmd160/rmd160.h>
 
 #include <opencrypto/cast.h>
 #include <opencrypto/deflate.h>
 #include <opencrypto/gmac.h>
-#include <opencrypto/rmd160.h>
 #include <opencrypto/skipjack.h>
 
 #include <sys/md5.h>

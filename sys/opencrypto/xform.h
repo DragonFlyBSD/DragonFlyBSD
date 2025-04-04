@@ -28,7 +28,7 @@
 #include <sys/md5.h>
 #include <crypto/sha1.h>
 #include <crypto/sha2/sha2.h>
-#include <opencrypto/rmd160.h>
+#include <crypto/rmd160/rmd160.h>
 #include <opencrypto/gmac.h>
 
 /* Declarations */

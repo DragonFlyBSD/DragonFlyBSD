@@ -4,12 +4,15 @@ KMOD=	crypto
 
 .PATH:	${.CURDIR}/../opencrypto
 # excluded: cryptodev.c
-SRCS=	cast.c criov.c crypto.c cryptosoft.c deflate.c gmac.c rmd160.c \
+SRCS=	cast.c criov.c crypto.c cryptosoft.c deflate.c gmac.c \
 	skipjack.c xform.c
 SRCS+=	cryptodev_if.c cryptodev_if.h
 
 SRCS+=	sha1.c
 SRCS+=	chachapoly.c
+
+.PATH:	${.CURDIR}/rmd160
+SRCS+=	rmd160.c
 
 .PATH:	${.CURDIR}/blake2
 SRCS+=	blake2s.c

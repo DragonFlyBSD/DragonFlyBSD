@@ -167,6 +167,8 @@ copies:		mtree_setup
 	cd ${.CURDIR}/../sys; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 crypto/rijndael/rijndael.h \
 		${DESTDIR}/usr/include/crypto; \
+		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 crypto/rmd160/rmd160.h \
+		${DESTDIR}/usr/include/crypto; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 opencrypto/*.h \
 		${DESTDIR}/usr/include/crypto
 	cd ${.CURDIR}/../sys/dev/acpica; \

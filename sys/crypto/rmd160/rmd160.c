@@ -33,7 +33,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/endian.h>
-#include <opencrypto/rmd160.h>
+#include <crypto/rmd160/rmd160.h>
 
 #define PUT_64BIT_LE(cp, value) do { \
 	(cp)[7] = (value) >> 56; \

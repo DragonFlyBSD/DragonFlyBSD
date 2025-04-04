@@ -40,7 +40,7 @@
 
 #include <crypto/blowfish/blowfish.h>
 #include <crypto/sha1.h>
-#include <opencrypto/rmd160.h>
+#include <crypto/rmd160/rmd160.h>
 #include <opencrypto/cast.h>
 #include <opencrypto/skipjack.h>
 #include <sys/md5.h>

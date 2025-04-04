@@ -45,8 +45,8 @@
 #include <sys/md5.h>
 #include <crypto/sha1.h>
 #include <crypto/sha2/sha2.h>
+#include <crypto/rmd160/rmd160.h>
 #include <opencrypto/cryptodev.h>
-#include <opencrypto/rmd160.h>
 #include <machine/cpufunc.h>
 #include <cpu/atomic.h>
 
