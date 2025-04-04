@@ -1,4 +1,4 @@
-SUBDIR=	aesni cryptodev hifn padlock rdrand rndtest safe tpm ubsec
+SUBDIR=	aesni cryptodev rdrand rndtest tpm
 
 # Empty for concurrent build
 #

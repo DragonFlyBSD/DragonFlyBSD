@@ -9,6 +9,21 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 6.4 TO LATER VERSIONS                +
++-----------------------------------------------------------------------+
+
+PADLOCK CRYPTO DRIVER REMOVED
+-----------------------------
+
+Likely no VIA cpus in use on DragonFly.
+
+HIFN, SAFE AND UBSEC CRYPTO DRIVERS REMOVED
+-------------------------------------------
+
+These were removed in OpenBSD 7.1 and it's unlikely that they are still
+in use by someone.
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 6.0 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 

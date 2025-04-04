@@ -504,21 +504,6 @@ PCFCLOCK_MAX_RETRIES	opt_pcfclock.h
 # Network device queue based polling
 IFPOLL_ENABLE		opt_ifpoll.h
 
-# options for ubsec driver
-UBSEC_DEBUG		opt_ubsec.h
-UBSEC_RNDTEST		opt_ubsec.h
-UBSEC_NO_RNG		opt_ubsec.h
-
-# options for hifn driver
-HIFN_DEBUG		opt_hifn.h
-HIFN_RNDTEST		opt_hifn.h
-HIFN_NO_RNG		opt_hifn.h
-
-# options for safenet driver
-SAFE_DEBUG		opt_safe.h
-SAFE_NO_RNG		opt_safe.h
-SAFE_RNDTEST		opt_safe.h
-
 # KTR options
 KTR				opt_global.h
 KTR_ENTRIES			opt_global.h

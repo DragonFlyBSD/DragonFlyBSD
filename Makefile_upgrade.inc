@@ -3931,7 +3931,11 @@ TO_REMOVE+=/etc/mail/mailer.conf.postfix
 TO_REMOVE+=/etc/mail/mailer.conf.sendmail
 TO_REMOVE+=/rescue/diff3
 TO_REMOVE+=/usr/include/timers.h
-
+TO_REMOVE+=/usr/share/man/man4/hifn.4.gz
+TO_REMOVE+=/usr/share/man/man4/padlock.4.gz
+TO_REMOVE+=/usr/share/man/man4/safe.4.gz
+TO_REMOVE+=/usr/share/man/man4/ubsec.4.gz
+ 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
 TO_REMOVE+=/usr/sbin/dfuife_curses

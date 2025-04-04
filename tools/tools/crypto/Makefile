@@ -25,8 +25,7 @@
 # SUCH DAMAGE.
 #
 
-ALL=	cryptotest cryptokeytest cryptostats \
-	ubsecstats hifnstats
+ALL=	cryptotest cryptokeytest cryptostats
 BINDIR=	/usr/local/bin
 PRIVATELIB_LDFLAGS?= -rpath /lib/priv:/usr/lib/priv -L /usr/lib/priv
 
@@ -42,18 +41,6 @@ cryptokeytest: cryptokeytest.c
 cryptostats: cryptostats.c
 	${CC} -o cryptostats cryptostats.c
 
-# program to print statistics kept by the Broadcom driver
-ubsecstats: ubsecstats.c
-	${CC} -o ubsecstats ubsecstats.c
-
-# program to print statistics kept by the HIFN driver
-hifnstats: hifnstats.c
-	${CC} -o hifnstats hifnstats.c
-
-# program to print statistics kept by the SafeNet driver
-#safestats: safestats.c
-#	${CC} -o safestats safestats.c
-#
 clean:
 	rm -f ${ALL} core a.out
 

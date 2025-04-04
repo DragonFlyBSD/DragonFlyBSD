@@ -66,11 +66,6 @@ dev/crypto/aesni/aesencdec_x86_64.S	optional	aesni
 dev/crypto/aesni/aeskeys_x86_64.S	optional	aesni
 dev/crypto/aesni/aesni.c		optional	aesni
 dev/crypto/aesni/aesni_wrap.c		optional	aesni
-dev/crypto/padlock/padlock.c		optional	padlock
-dev/crypto/padlock/padlock_cipher.c	optional	padlock
-dev/crypto/padlock/padlock_hash.c	optional	padlock
-dev/crypto/padlock/padlock_rng.c	optional	padlock
-dev/crypto/padlock/rng_harvest_x86_64.S	optional	padlock
 dev/crypto/rdrand/rdrand.c		optional	rdrand
 dev/crypto/rdrand/rdrand_harvest_x86_64.S	optional	rdrand
 dev/video/fb/fb.c			optional	vga

@@ -1216,7 +1216,6 @@ dev/misc/pps/pps.c		optional pps
 dev/disk/vpo/vpo.c		optional vpo
 dev/disk/vpo/vpoio.c	optional vpo
 dev/crypto/rndtest/rndtest.c	optional rndtest
-dev/crypto/safe/safe.c		optional safe
 dev/netif/sbsh/if_sbsh.c	optional sbsh
 dev/disk/sdhci/sdhci.c		optional sdhci
 dev/disk/sdhci/sdhci_if.m	optional sdhci
@@ -2276,8 +2275,6 @@ opencrypto/gmac.c			optional crypto
 opencrypto/rmd160.c			optional crypto
 opencrypto/skipjack.c			optional crypto
 opencrypto/xform.c			optional crypto
-dev/crypto/hifn/hifn7751.c		optional hifn
-dev/crypto/ubsec/ubsec.c		optional ubsec
 # drm_agpsupport.c must be included if CONFIG_AGP is set
 #dev/drm/drm_agpsupport.c		optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/drm_atomic.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
