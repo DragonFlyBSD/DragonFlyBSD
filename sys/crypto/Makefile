@@ -38,6 +38,9 @@ SRCS+=	poly1305.c
 .PATH:	${.CURDIR}/rijndael
 SRCS+=	rijndael-alg-fst.c rijndael-api.c
 
+.PATH:	${.CURDIR}/aesni
+SRCS+=	aesencdec_${MACHINE_ARCH}.S aeskeys_${MACHINE_ARCH}.S aesni_wrap.c
+
 .PATH:	${.CURDIR}/serpent
 SRCS+=	serpent.c
 

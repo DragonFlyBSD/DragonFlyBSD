@@ -62,10 +62,10 @@ ${OSACPI_MD_DIR}/acpi_wakeup.c		optional        acpi
 #	no-obj no-implicit-rule	before-depend				\
 #	clean		"acpi_wakecode.h"
 #
-dev/crypto/aesni/aesencdec_x86_64.S	optional	aesni
-dev/crypto/aesni/aeskeys_x86_64.S	optional	aesni
+crypto/aesni/aesencdec_x86_64.S		optional	aesni
+crypto/aesni/aeskeys_x86_64.S		optional	aesni
+crypto/aesni/aesni_wrap.c		optional	aesni
 dev/crypto/aesni/aesni.c		optional	aesni
-dev/crypto/aesni/aesni_wrap.c		optional	aesni
 dev/crypto/rdrand/rdrand.c		optional	rdrand
 dev/crypto/rdrand/rdrand_harvest_x86_64.S	optional	rdrand
 dev/video/fb/fb.c			optional	vga

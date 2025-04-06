@@ -33,6 +33,7 @@
 #include <sys/queue.h>
 
 #include <opencrypto/cryptodev.h>
+#include <crypto/aesni/aesni.h>
 
 #if defined(__x86_64__)
 #include <machine/cpufunc.h>
@@ -40,13 +41,6 @@
 #include <machine/md_var.h>
 #include <machine/specialreg.h>
 #endif
-
-#define AESNI_ALIGN	16
-
-#define	AES128_ROUNDS	10
-#define	AES192_ROUNDS	12
-#define	AES256_ROUNDS	14
-#define	AES_SCHED_LEN	((AES256_ROUNDS + 1) * AES_BLOCK_LEN)
 
 struct aesni_session {
 	uint8_t enc_schedule[AES_SCHED_LEN] __aligned(16);
@@ -66,37 +60,10 @@ struct aesni_session {
 #endif
 };
 
-/*
- * Internal functions, implemented in assembler.
- */
-void aesni_enc(int rounds, const uint8_t *key_schedule,
-    const uint8_t from[AES_BLOCK_LEN], uint8_t to[AES_BLOCK_LEN],
-    const uint8_t iv[AES_BLOCK_LEN]);
-void aesni_dec(int rounds, const uint8_t *key_schedule,
-    const uint8_t from[AES_BLOCK_LEN], uint8_t to[AES_BLOCK_LEN],
-    const uint8_t iv[AES_BLOCK_LEN]);
-void aesni_set_enckey(const uint8_t *userkey, uint8_t *encrypt_schedule,
-    int number_of_rounds);
-void aesni_set_deckey(const uint8_t *encrypt_schedule,
-    uint8_t *decrypt_schedule, int number_of_rounds);
-
-/*
- * Slightly more public interfaces.
- */
-void aesni_encrypt_cbc(int rounds, const void *key_schedule, size_t len,
-    const uint8_t *from, uint8_t *to, const uint8_t iv[AES_BLOCK_LEN]);
-void aesni_decrypt_cbc(int rounds, const void *key_schedule, size_t len,
-    const uint8_t *from, const uint8_t iv[AES_BLOCK_LEN]);
-void aesni_encrypt_ecb(int rounds, const void *key_schedule, size_t len,
-    const uint8_t from[AES_BLOCK_LEN], uint8_t to[AES_BLOCK_LEN]);
-void aesni_decrypt_ecb(int rounds, const void *key_schedule, size_t len,
-    const uint8_t from[AES_BLOCK_LEN], uint8_t to[AES_BLOCK_LEN]);
-
 int aesni_cipher_setup(struct aesni_session *ses,
     struct cryptoini *encini);
 int aesni_cipher_process(struct aesni_session *ses,
     struct cryptodesc *enccrd, struct cryptop *crp);
-
 uint8_t *aesni_cipher_alloc(struct cryptodesc *enccrd, struct cryptop *crp,
     int *allocated);
 
