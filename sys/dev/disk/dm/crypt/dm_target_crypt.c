@@ -1468,6 +1468,7 @@ dmtc_mod_handler(module_t mod, int type, void *unused)
 	switch (type) {
 	case MOD_LOAD:
 		if ((dmt = dm_target_lookup("crypt")) != NULL) {
+			kprintf("dm_target_crypt: Error: crypt target already defined\n");
 			dm_target_unbusy(dmt);
 			return EEXIST;
 		}
