@@ -104,12 +104,10 @@ worker_pool_submit_bio_request(struct worker_pool *pool, struct bio *bio)
 	/*
 	 * Enqueue bio request
 	 */
-	bool queue_was_empty = bio_request_queue_is_empty(
-	    &worker->w_bio_requests);
 
 	bio_request_queue_push_back(&worker->w_bio_requests, bio);
 
-	if (queue_was_empty)
+	if (worker->w_is_sleeping)
 		wakeup_one(worker);
 
 out:
@@ -133,12 +131,14 @@ worker_main(void *worker_arg)
 	while (true) {
 		chain = bio_request_queue_take_all(&worker->w_bio_requests);
 
-		if (worker->w_is_closing && chain == NULL)
+		if (chain == NULL && worker->w_is_closing)
 			break;
 
 		if (chain == NULL) {
+			worker->w_is_sleeping = true;
 			lksleep(worker, &worker->w_lock, 0,
 			    "dm_target_crypt: worker queue empty", 0);
+			worker->w_is_sleeping = false;
 			continue;
 		}
 
@@ -228,6 +228,7 @@ worker_pool_init(struct worker_pool *pool, int num_workers,
 		lockinit(&pool->wp_workers[i].w_lock, "dm_target_crypt: worker",
 		    0, LK_CANRECURSE);
 		pool->wp_workers[i].w_is_closing = false;
+		pool->wp_workers[i].w_is_sleeping = false;
 		bio_request_queue_init(&pool->wp_workers[i].w_bio_requests);
 	}
 }

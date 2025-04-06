@@ -103,6 +103,12 @@ struct worker {
 	bool w_is_closing;
 
 	/**
+	 * True, if the worker is "sleeping", waiting for
+	 * work to arrive in it's queue.
+	 */
+	bool w_is_sleeping;
+
+	/**
 	 * bio request queue (Singly-linked Tail queue)
 	 */
 	struct bio_request_queue w_bio_requests;
