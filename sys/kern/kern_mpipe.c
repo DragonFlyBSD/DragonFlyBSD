@@ -191,14 +191,14 @@ mpipe_thread(void *arg)
 
 
 /*
- * Allocate an entry (inline suppot routine).  The allocation is guarenteed
+ * Allocate an entry (inline support routine).  The allocation is guaranteed
  * to return non-NULL up to the nominal count after which it may return NULL.
  * Note that the implementation is defined to be allowed to block for short
  * periods of time.
  *
  * Use mpipe_alloc_callback() for non-blocking operation with a callback
  * Use mpipe_alloc_nowait() for non-blocking operation without a callback
- * Use mpipe_alloc_waitok() for blocking operation & guarenteed non-NULL
+ * Use mpipe_alloc_waitok() for blocking operation & guaranteed non-NULL
  */
 static __inline
 void *
