@@ -52,11 +52,6 @@
 typedef void worker_bio_request_handler(struct bio *bio, void *worker_context);
 
 /**
- * Forward declaration
- */
-struct worker_pool;
-
-/**
  * BIO request queue (FIFO, singly-linked tail queue)
  */
 struct bio_request_queue {
@@ -138,29 +133,28 @@ struct worker_pool {
 /**
  * Initializes the worker pool and allocates memory.
  */
-extern void worker_pool_init(struct worker_pool *pool, int num_workers,
+void worker_pool_init(struct worker_pool *pool, int num_workers,
     int per_worker_local_memory,
     worker_bio_request_handler *bio_request_handler);
 
 /**
  * Starts the worker pool.
  */
-extern void worker_pool_start(struct worker_pool *pool, int cpu_offset);
+void worker_pool_start(struct worker_pool *pool, int cpu_offset);
 
 /**
  * Stops the worker pool.
  */
-extern void worker_pool_stop(struct worker_pool *pool);
+void worker_pool_stop(struct worker_pool *pool);
 
 /**
  * Frees the worker pool.
  */
-extern void worker_pool_free(struct worker_pool *pool);
+void worker_pool_free(struct worker_pool *pool);
 
 /**
  * Submits a BIO request to the worker pool.
  */
-extern int worker_pool_submit_bio_request(struct worker_pool *pool,
-    struct bio *bio);
+int worker_pool_submit_bio_request(struct worker_pool *pool, struct bio *bio);
 
 #endif

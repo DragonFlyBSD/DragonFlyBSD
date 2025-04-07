@@ -136,8 +136,7 @@ worker_main(void *worker_arg)
 
 		if (chain == NULL) {
 			worker->w_is_sleeping = true;
-			lksleep(worker, &worker->w_lock, 0,
-			    "dm_target_crypt: worker queue empty", 0);
+			lksleep(worker, &worker->w_lock, 0, "dmtcidle", 0);
 			worker->w_is_sleeping = false;
 			continue;
 		}
@@ -193,8 +192,7 @@ worker_pool_stop_worker(struct worker *worker)
 
 	while (true) {
 		wakeup(worker);
-		if (tsleep(&worker->w_is_closing, 0, "shutdown workqueue",
-			500) == 0)
+		if (tsleep(&worker->w_is_closing, 0, "dmtcstop", 500) == 0)
 			break;
 	}
 }

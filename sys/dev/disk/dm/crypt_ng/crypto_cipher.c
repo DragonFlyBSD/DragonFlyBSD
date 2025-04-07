@@ -595,7 +595,7 @@ const struct crypto_cipher cipher_aesni_xts = {
  *
  */
 
-const struct crypto_cipher *crypto_ciphers[6] = {
+static const struct crypto_cipher *crypto_ciphers[] = {
 
 	&cipher_null,
 
@@ -603,9 +603,7 @@ const struct crypto_cipher *crypto_ciphers[6] = {
 	&cipher_aesni_cbc, &cipher_aesni_xts,
 
 	/* AES in software */
-	&cipher_aes_cbc, &cipher_aes_xts,
-
-	NULL
+	&cipher_aes_cbc, &cipher_aes_xts
 };
 
 /**
@@ -617,12 +615,14 @@ const struct crypto_cipher *
 crypto_cipher_find(const char *algo_name, const char *mode_name,
     int keysize_in_bits)
 {
-	for (const struct crypto_cipher **cipherpp = crypto_ciphers; *cipherpp;
-	     ++cipherpp) {
-		const struct crypto_cipher *cipherp = *cipherpp;
-		if ((*cipherp->probe)(algo_name, mode_name, keysize_in_bits) ==
+	const struct crypto_cipher *cipher;
+	size_t i;
+
+	for (i = 0; i < nitems(crypto_ciphers); i++) {
+		cipher = crypto_ciphers[i];
+		if ((*cipher->probe)(algo_name, mode_name, keysize_in_bits) ==
 		    0) {
-			return cipherp;
+			return cipher;
 		}
 	}
 
