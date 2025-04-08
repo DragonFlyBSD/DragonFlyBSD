@@ -1398,11 +1398,6 @@ dump_file_data(int wfd, hammer2_off_t fsize,
 		vol = hammer2_get_volume(bref->data_off);
 		if (vol == NULL)
 			continue;
-		if (bref->type == HAMMER2_BREF_TYPE_EMPTY ||
-		    bref->data_off == 0)
-		{
-			continue;
-		}
 
 		poff = (bref->data_off - vol->offset) & ~0x1FL;
 		psize = 1 << (bref->data_off & 0x1F);
