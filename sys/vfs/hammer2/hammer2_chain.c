@@ -5750,9 +5750,6 @@ hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
 		hammer2_inode_drop(ip);
 		if (*chainp)
 			return (*chainp)->error;
-		hammer2_chain_unlock(*chainp);
-		hammer2_chain_drop(*chainp);
-		*chainp = NULL;
 		if (*parentp) {
 			hammer2_chain_unlock(*parentp);
 			hammer2_chain_drop(*parentp);
