@@ -2249,7 +2249,7 @@ postsig(int sig, int haveptok)
 	sigset_t returnmask;
 	int code;
 
-	KASSERT(sig != 0, ("postsig"));
+	KASSERT(_SIG_VALID(sig), ("%s: invalid signal %d", __func__, sig));
 
 	/*
 	 * If we are a virtual kernel running an emulated user process
