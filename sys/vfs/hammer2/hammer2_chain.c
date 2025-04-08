@@ -4921,7 +4921,7 @@ static int
 hammer2_base_find(hammer2_chain_t *parent,
 		  hammer2_blockref_t *base, int count,
 		  hammer2_key_t *key_nextp,
-		  hammer2_key_t key_beg, hammer2_key_t key_end)
+		  hammer2_key_t key_beg, hammer2_key_t key_end __unused)
 {
 	hammer2_blockref_t *scan;
 	hammer2_key_t scan_end;
