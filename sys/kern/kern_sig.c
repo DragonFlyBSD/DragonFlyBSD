@@ -2411,7 +2411,7 @@ sigexit(struct lwp *lp, int sig)
 	/* NOTREACHED */
 }
 
-static char corefilename[MAXPATHLEN+1] = {"%N.core"};
+static char corefilename[MAXPATHLEN+1] = "%N.core";
 SYSCTL_STRING(_kern, OID_AUTO, corefile, CTLFLAG_RW, corefilename,
 	      sizeof(corefilename), "process corefile name format string");
 
@@ -2432,16 +2432,16 @@ expand_name(const char *name, uid_t uid, pid_t pid)
 {
 	char *temp;
 	char buf[11];		/* Buffer for pid/uid -- max 4B */
-	int i, n;
+	int i, l, n;
 	char *format = corefilename;
 	size_t namelen;
 
 	temp = kmalloc(MAXPATHLEN + 1, M_TEMP, M_NOWAIT);
 	if (temp == NULL)
 		return NULL;
+
 	namelen = strlen(name);
 	for (i = 0, n = 0; n < MAXPATHLEN && format[i]; i++) {
-		int l;
 		switch (format[i]) {
 		case '%':	/* Format character */
 			i++;
@@ -2451,7 +2451,9 @@ expand_name(const char *name, uid_t uid, pid_t pid)
 				break;
 			case 'N':	/* process name */
 				if ((n + namelen) > MAXPATHLEN) {
-					log(LOG_ERR, "pid %d (%s), uid (%u):  Path `%s%s' is too long\n",
+					log(LOG_ERR,
+					    "pid %d (%s), uid (%u): "
+					    "Path `%s%s' is too long\n",
 					    pid, name, uid, temp, name);
 					kfree(temp, M_TEMP);
 					return NULL;
@@ -2462,7 +2464,9 @@ expand_name(const char *name, uid_t uid, pid_t pid)
 			case 'P':	/* process id */
 				l = ksprintf(buf, "%u", pid);
 				if ((n + l) > MAXPATHLEN) {
-					log(LOG_ERR, "pid %d (%s), uid (%u):  Path `%s%s' is too long\n",
+					log(LOG_ERR,
+					    "pid %d (%s), uid (%u): "
+					    "Path `%s%s' is too long\n",
 					    pid, name, uid, temp, name);
 					kfree(temp, M_TEMP);
 					return NULL;
@@ -2473,7 +2477,9 @@ expand_name(const char *name, uid_t uid, pid_t pid)
 			case 'U':	/* user id */
 				l = ksprintf(buf, "%u", uid);
 				if ((n + l) > MAXPATHLEN) {
-					log(LOG_ERR, "pid %d (%s), uid (%u):  Path `%s%s' is too long\n",
+					log(LOG_ERR,
+					    "pid %d (%s), uid (%u): "
+					    "Path `%s%s' is too long\n",
 					    pid, name, uid, temp, name);
 					kfree(temp, M_TEMP);
 					return NULL;
@@ -2482,7 +2488,9 @@ expand_name(const char *name, uid_t uid, pid_t pid)
 				n += l;
 				break;
 			default:
-			  	log(LOG_ERR, "Unknown format character %c in `%s'\n", format[i], format);
+				log(LOG_ERR,
+				    "Unknown format character %c in `%s'\n",
+				    format[i], format);
 			}
 			break;
 		default:
