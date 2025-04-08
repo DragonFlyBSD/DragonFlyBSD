@@ -1836,6 +1836,17 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 		lwp_delsig(lp, sig, 1);	/* take the signal! */
 		spin_unlock(&lp->lwp_spin);
 
+#ifdef KTRACE
+		if (KTRPOINT(lp->lwp_thread, KTR_PSIG)) {
+			struct sigacts *ps = p->p_sigacts;
+			sig_t action = ps->ps_sigact[_SIG_IDX(sig)];
+			ktrpsig(lp, sig, action,
+				((lp->lwp_flags & LWP_OLDMASK) ?
+				 &lp->lwp_oldsigmask : &lp->lwp_sigmask),
+				0);
+		}
+#endif
+
 		if (sig == SIGKILL) {
 			sigexit(lp, sig);
 			/* NOT REACHED */
@@ -2269,9 +2280,12 @@ postsig(int sig, int haveptok)
 	spin_unlock(&lp->lwp_spin);
 	action = ps->ps_sigact[_SIG_IDX(sig)];
 #ifdef KTRACE
-	if (KTRPOINT(lp->lwp_thread, KTR_PSIG))
-		ktrpsig(lp, sig, action, lp->lwp_flags & LWP_OLDMASK ?
-			&lp->lwp_oldsigmask : &lp->lwp_sigmask, 0);
+	if (KTRPOINT(lp->lwp_thread, KTR_PSIG)) {
+		ktrpsig(lp, sig, action,
+			((lp->lwp_flags & LWP_OLDMASK) ?
+			 &lp->lwp_oldsigmask : &lp->lwp_sigmask),
+			0);
+	}
 #endif
 	/*
 	 * We don't need p_token after this point.
