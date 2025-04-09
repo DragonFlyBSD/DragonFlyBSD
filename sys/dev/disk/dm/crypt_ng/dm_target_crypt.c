@@ -52,21 +52,9 @@
 #include <sys/proc.h>
 #include <sys/types.h>
 #include <sys/mpipe.h>
-#include <sys/sysctl.h>
-#include <dev/disk/dm/crypt_ng/worker_pool.h>
 
 MALLOC_DEFINE(M_DMCRYPT, "dm_crypt", "Device Mapper Target Crypt");
 
-static int dmtc_writebuf_count = 0;
-
-SYSCTL_NODE(_dev, OID_AUTO, dm_crypt, CTLFLAG_RW, 0, "Device Mapper Target Crypt args");
-SYSCTL_INT(_dev_dm_crypt, OID_AUTO, writebuf_count,
-    CTLFLAG_RW, &dmtc_writebuf_count, 0, "Number of write buffers (0 = auto)");
-
-static void
-dmtc_bio_read_decrypt_request_handler(struct bio* bio, void *worker_context);
-static void
-dmtc_bio_write_encrypt_request_handler(struct bio *bio, void *worker_context);
 
 struct target_crypt_config;
 
@@ -106,19 +94,8 @@ typedef struct target_crypt_config {
 	struct iv_generator	*ivgen;
 	void	*ivgen_priv;
 
+	struct malloc_pipe	read_mpipe;
 	struct malloc_pipe	write_mpipe;
-	
-	/**
-	 * We run two separate pools of worker threads. One pool handles BIO
-	 * read requests (decryption) while the other handles BIO write
-	 * requests (encryption).
-	 *
-	 * NOTE: Read requests do not cause long stalls, as they are synchronous
-	 * operations from userspace, but writes can cause long stalls
-	 * due to write buffering.
-	 */
-	struct worker_pool	bio_read_worker_pool;
-	struct worker_pool	bio_write_worker_pool;
 
 } dm_target_crypt_config_t;
 
@@ -140,19 +117,30 @@ dmtc_find_crypto_cipher(const char *crypto_alg, const char *crypto_mode,
 
 #define DMTC_BUF_SIZE (MAXPHYS)
 
-static void dmtc_crypto_dump(dm_target_crypt_config_t *priv,
-    struct dmtc_dump_helper *dump_helper);
+static void dmtc_bio_read_done(struct bio *bio);
+
+static void dmtc_bio_read_decrypt_start(struct bio *bio);
+
+static void dmtc_bio_read_decrypt_retry(void *arg1, void *arg2);
+
+static void dmtc_bio_read_decrypt(struct bio *bio, uint8_t *data_buf,
+    size_t data_buf_sz);
+
+static void dmtc_bio_write_encrypt_start(struct bio *bio);
+
+static void dmtc_bio_write_encrypt_retry(void *arg1, void *arg2);
+
+static void dmtc_bio_write_encrypt(struct bio *bio, uint8_t *data_buf,
+    size_t data_buf_sz);
+
+static void dmtc_bio_write_done(struct bio *bio);
 
 static int dmtc_bio_encdec(dm_target_crypt_config_t *priv, uint8_t *data_buf,
     int bytes, off_t offset, crypto_cipher_blockfn_t blockfn);
 
-static void
-dmtc_submit_bio_request(dm_target_crypt_config_t *priv,
-		struct worker_pool *pool,
-		struct bio *bio);
 
-static void dmtc_bio_read_done(struct bio *bio);
-static void dmtc_bio_write_done(struct bio *bio);
+static void dmtc_crypto_dump(dm_target_crypt_config_t *priv,
+    struct dmtc_dump_helper *dump_helper);
 
 static ivgen_ctor_t	essiv_ivgen_ctor;
 static ivgen_dtor_t	essiv_ivgen_dtor;
@@ -188,20 +176,34 @@ dmtc_get_nmax(void)
 }
 
 static void
+dmtc_zero_mpipe_buffer(void *buffer, void *priv __unused)
+{
+	explicit_bzero(buffer, DMTC_BUF_SIZE);
+}
+
+static void
 dmtc_init_mpipe(struct target_crypt_config *priv)
 {
 	int nmax = dmtc_get_nmax();
-	int writebuf_count = (dmtc_writebuf_count <= 0) ? nmax : dmtc_writebuf_count;
+	int nmax_read = nmax;
+	int nmax_write = nmax;
 
-	kprintf("dm_target_crypt: Setting %d mpipe write buffers\n", writebuf_count);
+	kprintf("dm_target_crypt: Setting %d mpipe read buffers\n", nmax_read);
+	kprintf("dm_target_crypt: Setting %d mpipe write buffers\n", nmax_read);
+
+	mpipe_init(&priv->read_mpipe, M_DMCRYPT, DMTC_BUF_SIZE,
+		nmax_read, nmax_read, MPF_NOZERO | MPF_CALLBACK,
+		NULL, dmtc_zero_mpipe_buffer, NULL);
+
 	mpipe_init(&priv->write_mpipe, M_DMCRYPT, DMTC_BUF_SIZE,
-		writebuf_count, writebuf_count, MPF_NOZERO | MPF_CALLBACK,
-		NULL, NULL, NULL);
+		nmax_write, nmax_write, MPF_NOZERO | MPF_CALLBACK,
+		NULL, dmtc_zero_mpipe_buffer, NULL);
 }
 
 static void
 dmtc_destroy_mpipe(struct target_crypt_config *priv)
 {
+	mpipe_done(&priv->read_mpipe);
 	mpipe_done(&priv->write_mpipe);
 }
 
@@ -551,30 +553,6 @@ dm_target_crypt_init(dm_table_entry_t *table_en, int argc, char **argv)
 	/* Initialize mpipes */
 	dmtc_init_mpipe(priv);
 
-
-	/**
-	 * Initialize the worker pools for bio read/write requests.
-	 *
-	 * The bio_read_worker_pool needs local memory.
-	 * The bio_write_worker_pool allocates it's memory from the write_mpipe.
-	 */
-	worker_pool_init(
-			&priv->bio_read_worker_pool,
-			ncpus,
-			DMTC_BUF_SIZE,
-			dmtc_bio_read_decrypt_request_handler);
-	worker_pool_init(
-			&priv->bio_write_worker_pool,
-			ncpus,
-			0,
-			dmtc_bio_write_encrypt_request_handler);
-
-	/**
-	 * Start the worker pools.
-	 */
-	worker_pool_start(&priv->bio_read_worker_pool, 0);
-	worker_pool_start(&priv->bio_write_worker_pool, 0);
-
 	return 0;
 
 notsup:
@@ -612,18 +590,6 @@ dm_target_crypt_destroy(dm_table_entry_t *table_en)
 	if (priv == NULL)
 		return 0;
 	dm_pdev_decr(priv->pdev);
-
-	/**
-	 * Stop and free worker pools.
-	 */
-	worker_pool_stop(&priv->bio_read_worker_pool);
-	worker_pool_stop(&priv->bio_write_worker_pool);
-
-	// TODO: wait until all requests are completed.
-	// write requests might still be pending.
-
-	worker_pool_free(&priv->bio_read_worker_pool);
-	worker_pool_free(&priv->bio_write_worker_pool);
 
 	dmtc_destroy_mpipe(priv);
 
@@ -665,6 +631,8 @@ dm_target_crypt_destroy(dm_table_entry_t *table_en)
  * 	- used to chain bio requests. points to next enqueued bio request
  * 	  (only within bio request queue)
  *	- orig b_data pointer (within write path)
+ * bio_caller_info3:
+ * 	- points to the mpipe
  */
 
 /*
@@ -708,7 +676,7 @@ dm_target_crypt_strategy(dm_table_entry_t *table_en, struct buf *bp)
 		bio->bio_offset = bp->b_bio1.bio_offset +
 		    priv->block_offset * DEV_BSIZE;
 		bio->bio_caller_info1.ptr = priv;
-		dmtc_submit_bio_request(priv, &priv->bio_write_worker_pool, bio);
+		dmtc_bio_write_encrypt_start(bio);
 		break;
 	default:
 		vn_strategy(priv->pdev->pdev_vnode, &bp->b_bio1);
@@ -717,29 +685,14 @@ dm_target_crypt_strategy(dm_table_entry_t *table_en, struct buf *bp)
 	return 0;
 }
 
-/**
- * Submits bio request to run in a worker pool.
+/************************************************************************
+ * READ PATH
+ ************************************************************************
+ *
+ * DO IO -> dmtc_bio_read_done -> dmtc_bio_read_decrypt_start ->
+ * (dmtc_bio_read_decrypt_retry) -> dmtc_bio_read_decrypt -> COMPLETE
+ *
  */
-static void
-dmtc_submit_bio_request(dm_target_crypt_config_t *priv,
-		struct worker_pool *pool,
-		struct bio *bio)
-{
-	int error;
-	
-	(void)priv;
-	error = worker_pool_submit_bio_request(pool, bio);
-	if (error) {
-		kprintf(
-		    "dm_target_crypt: failed to submit bio to workqueue with error = %d\n",
-		    error);
-		bio->bio_buf->b_error = error;
-		bio->bio_buf->b_flags |= B_ERROR;
-		struct bio *obio = pop_bio(bio);
-		biodone(obio);
-		return;
-	}
-}
 
 /*
  * Called after read BIO completes
@@ -749,8 +702,6 @@ dmtc_bio_read_done(struct bio *bio)
 {
 	struct bio *obio;
 
-	dm_target_crypt_config_t *priv;
-
 	/*
 	 * If a read error occurs we shortcut the operation, otherwise
 	 * go on to stage 2 (decrypt).
@@ -759,19 +710,56 @@ dmtc_bio_read_done(struct bio *bio)
 		obio = pop_bio(bio);
 		biodone(obio);
 	} else {
-		priv = bio->bio_caller_info1.ptr;
-		dmtc_submit_bio_request(priv, &priv->bio_read_worker_pool, bio);
+		dmtc_bio_read_decrypt_start(bio);
 	}
 }
 
 /**
- * Handles a bio read request (decrypting it) within the context of a worker.
+ * Starts decryption by allocating a buffer.
+ *
+ * If allocation fails, dmtc_bio_read_decrypt_retry is called.
  */
 void
-dmtc_bio_read_decrypt_request_handler(struct bio *bio, void *worker_context)
+dmtc_bio_read_decrypt_start(struct bio *bio)
 {
-	dm_target_crypt_config_t *priv = bio->bio_caller_info1.ptr;
-	uint8_t *data_buf = worker_context;
+	dm_target_crypt_config_t *priv;
+	uint8_t *data_buf;
+
+	priv = bio->bio_caller_info1.ptr;
+
+	KKASSERT(bio->bio_buf->b_cmd == BUF_CMD_READ);
+
+	data_buf = mpipe_alloc_callback(&priv->read_mpipe,
+	    dmtc_bio_read_decrypt_retry, bio, NULL);
+
+	if (data_buf == NULL)
+		return;
+
+	bio->bio_caller_info3.ptr = &priv->read_mpipe;
+	dmtc_bio_read_decrypt(bio, data_buf, DMTC_BUF_SIZE);
+}
+
+/**
+ * Retries the allocation.
+ */
+void
+dmtc_bio_read_decrypt_retry(void *arg1, void *arg2 __unused)
+{
+	dmtc_bio_read_decrypt_start(arg1);
+}
+
+/**
+ * Decrypts the buffer, releases the intermediate mpipe buffer and completes the
+ * bio request.
+ */
+void
+dmtc_bio_read_decrypt(struct bio *bio, uint8_t *data_buf, size_t data_buf_sz)
+{
+	dm_target_crypt_config_t *priv;
+	struct malloc_pipe *mpipe;
+
+	priv = bio->bio_caller_info1.ptr;
+	mpipe = bio->bio_caller_info3.ptr;
 
 	/*
 	 * Note: b_resid no good after read I/O, it will be 0, use
@@ -779,7 +767,8 @@ dmtc_bio_read_decrypt_request_handler(struct bio *bio, void *worker_context)
 	 */
 	int bytes = bio->bio_buf->b_bcount;
 
-	KKASSERT(bytes <= DMTC_BUF_SIZE);
+	if (__predict_false(data_buf_sz < bytes))
+		panic("dmtc: Allocated data buffer is too small");
 
 	/*
 	 * Unconditionally copy in data. Never decrypt in place!
@@ -793,8 +782,7 @@ dmtc_bio_read_decrypt_request_handler(struct bio *bio, void *worker_context)
 	    bio->bio_offset, priv->crypto_cipher->decrypt);
 
 	if (bio->bio_buf->b_error) {
-		kprintf(
-		    "dm_target_crypt: dmtc_bio_read_decrypt error = %d\n",
+		kprintf("dm_target_crypt: dmtc_bio_read_decrypt error = %d\n",
 		    bio->bio_buf->b_error);
 
 		bio->bio_buf->b_flags |= B_ERROR;
@@ -810,23 +798,72 @@ dmtc_bio_read_decrypt_request_handler(struct bio *bio, void *worker_context)
 
 	struct bio *obio = pop_bio(bio);
 	biodone(obio);
+
+	if (mpipe)
+		mpipe_free(mpipe, data_buf);
+}
+
+/************************************************************************
+ * WRITE PATH
+ ************************************************************************
+ *
+ * dmtc_bio_write_encrypt_start -> (dmtc_bio_write_encrypt_retry) ->
+ * dmtc_bio_write_encrypt -> DO IO -> dmtc_bio_write_done -> COMPLETE
+ *
+ */
+
+/**
+ * Allocates a mpipe buffer in order to proceed with encryption.
+ *
+ * If that fails, dmtc_bio_write_encrypt_retry will be called.
+ */
+void
+dmtc_bio_write_encrypt_start(struct bio *bio)
+{
+	dm_target_crypt_config_t *priv;
+	uint8_t *data_buf;
+
+	priv = bio->bio_caller_info1.ptr;
+
+	KKASSERT(bio->bio_buf->b_cmd == BUF_CMD_WRITE);
+
+	data_buf = mpipe_alloc_callback(&priv->write_mpipe,
+	    dmtc_bio_write_encrypt_retry, bio, NULL);
+
+	if (data_buf == NULL)
+		return;
+
+	bio->bio_caller_info3.ptr = &priv->write_mpipe;
+	dmtc_bio_write_encrypt(bio, data_buf, DMTC_BUF_SIZE);
 }
 
 /**
- * Handles a bio write request (encrypting it) within the context of a worker.
+ * Retries the allocation.
  */
 void
-dmtc_bio_write_encrypt_request_handler(struct bio *bio, void *worker_context)
+dmtc_bio_write_encrypt_retry(void *arg1, void *arg2 __unused)
+{
+	dmtc_bio_write_encrypt_start(arg1);
+}
+
+/**
+ *
+ * Encrypts the buffer and sends a write request for the encrypted buffer to the
+ * underlying device via vn_strategy. Once this completes, dmtc_bio_write_done
+ * will be called.
+ */
+void
+dmtc_bio_write_encrypt(struct bio *bio, uint8_t *data_buf, size_t data_buf_sz)
 {
 	dm_target_crypt_config_t *priv = bio->bio_caller_info1.ptr;
-	uint8_t *data_buf = mpipe_alloc_waitok(&priv->write_mpipe);
 
 	/*
 	 * Use b_bcount for consistency
 	 */
 	int bytes = bio->bio_buf->b_bcount;
 
-	KKASSERT(bytes <= DMTC_BUF_SIZE);
+	if (__predict_false(data_buf_sz < bytes))
+		panic("dmtc: Allocated data buffer is too small");
 
 	memcpy(data_buf, bio->bio_buf->b_data, bytes);
 
@@ -834,8 +871,7 @@ dmtc_bio_write_encrypt_request_handler(struct bio *bio, void *worker_context)
 	    bio->bio_offset, priv->crypto_cipher->encrypt);
 
 	if (bio->bio_buf->b_error) {
-		kprintf(
-		    "dm_target_crypt: dmtc_bio_write_encrypt error = %d\n",
+		kprintf("dm_target_crypt: dmtc_bio_write_encrypt error = %d\n",
 		    bio->bio_buf->b_error);
 
 		mpipe_free(&priv->write_mpipe, data_buf);
@@ -843,8 +879,7 @@ dmtc_bio_write_encrypt_request_handler(struct bio *bio, void *worker_context)
 		struct bio *obio = pop_bio(bio);
 		biodone(obio);
 	} else {
-		bio->bio_caller_info2.ptr =
-		    bio->bio_buf->b_data; /* orig_buf */
+		bio->bio_caller_info2.ptr = bio->bio_buf->b_data; /* orig_buf */
 		bio->bio_buf->b_data = data_buf;
 		bio->bio_done = dmtc_bio_write_done;
 
@@ -861,16 +896,22 @@ dmtc_bio_write_encrypt_request_handler(struct bio *bio, void *worker_context)
 	}
 }
 
-static void
+/**
+ * The write completed, so releases the intermediate buffer.
+ */
+void
 dmtc_bio_write_done(struct bio *bio)
 {
 	dm_target_crypt_config_t *priv;
 	uint8_t *data_buf;
+	struct malloc_pipe *mpipe;
 
 	priv = bio->bio_caller_info1.ptr;
 	data_buf = bio->bio_buf->b_data;
+	mpipe = bio->bio_caller_info3.ptr;
 
-	mpipe_free(&priv->write_mpipe, data_buf);
+	if (mpipe)
+		mpipe_free(mpipe, data_buf);
 
 	// Restore original bio buffer
 	bio->bio_buf->b_data = bio->bio_caller_info2.ptr;
@@ -879,12 +920,16 @@ dmtc_bio_write_done(struct bio *bio)
 	biodone(obio);
 }
 
+/************************************************************************
+ * COMMON
+ ************************************************************************/
+
 /**
  * Encrypts or decrypts `data_buf`.
  */
-static int
-dmtc_bio_encdec(dm_target_crypt_config_t *priv, uint8_t *data_buf,
-    int bytes, off_t offset, crypto_cipher_blockfn_t blockfn)
+int
+dmtc_bio_encdec(dm_target_crypt_config_t *priv, uint8_t *data_buf, int bytes,
+    off_t offset, crypto_cipher_blockfn_t blockfn)
 {
 	struct crypto_cipher_iv iv;
 	int sectors = bytes / DEV_BSIZE;    /* Number of sectors */
@@ -903,8 +948,8 @@ dmtc_bio_encdec(dm_target_crypt_config_t *priv, uint8_t *data_buf,
 		priv->ivgen->gen_iv(priv, (uint8_t *)&iv, sizeof(iv),
 		    isector + i);
 
-		error = blockfn(&priv->crypto_context,
-		    data_buf + i * DEV_BSIZE, DEV_BSIZE, &iv);
+		error = blockfn(&priv->crypto_context, data_buf + i * DEV_BSIZE,
+		    DEV_BSIZE, &iv);
 
 		if (error) {
 			break;
@@ -916,7 +961,6 @@ dmtc_bio_encdec(dm_target_crypt_config_t *priv, uint8_t *data_buf,
 
 	return (error);
 }
-
 /* DUMPING MAGIC */
 
 extern int tsleep_crypto_dump;
