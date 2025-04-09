@@ -69,6 +69,7 @@
 
 #include <openssl/sha.h>
 
+#if 0
 typedef struct dirent_entry {
 	struct dirent_entry *next;
 	char		*filename;
@@ -76,6 +77,7 @@ typedef struct dirent_entry {
 	hammer2_key_t	inum;
 	hammer2_off_t	bref_off;
 } dirent_entry_t;
+#endif
 
 typedef struct inode_entry {
 	struct inode_entry *next;
@@ -114,7 +116,7 @@ typedef struct topo_inode_entry {
 	inode_entry_t *iscan;
 } topo_inode_entry_t;
 
-static dirent_entry_t **DirHash;
+/*static dirent_entry_t **DirHash;*/
 static inode_entry_t **InodeHash;
 static inode_entry_t **InodeHash2;	/* secondary multi-variable hash */
 static topology_entry_t **TopologyHash;
@@ -189,7 +191,7 @@ cmd_recover(const char *devpath, const char *pathname,
 
 	StrictMode = strict;
 	hammer2_init_volumes(devpath, 1);
-	DirHash = calloc(HTABLE_SIZE, sizeof(dirent_entry_t *));
+	/*DirHash = calloc(HTABLE_SIZE, sizeof(dirent_entry_t *));*/
 	InodeHash = calloc(HTABLE_SIZE, sizeof(inode_entry_t *));
 	InodeHash2 = calloc(HTABLE_SIZE, sizeof(inode_entry_t *));
 	TopologyHash = calloc(HTABLE_SIZE, sizeof(topology_entry_t *));
@@ -454,19 +456,19 @@ cmd_recover(const char *devpath, const char *pathname,
 	hammer2_cleanup_volumes();
 
 	for (i = 0; i < HTABLE_SIZE; ++i) {
-		dirent_entry_t *dscan;
+		/*dirent_entry_t *dscan;*/
 		inode_entry_t *iscan;
 		topology_entry_t *top_scan;
 		neg_entry_t *negscan;
 		topo_bref_entry_t *topo_bref;
 		topo_inode_entry_t *topo_inode;
-
+		/*
 		while ((dscan = DirHash[i]) != NULL) {
 			DirHash[i] = dscan->next;
 			free(dscan->filename);
 			free(dscan);
 		}
-
+		*/
 		while ((iscan = InodeHash[i]) != NULL) {
 			InodeHash[i] = iscan->next;
 			free(iscan);
@@ -498,7 +500,7 @@ cmd_recover(const char *devpath, const char *pathname,
 	free(TopoBRefHash);
 	free(NegativeHash);
 	free(TopologyHash);
-	free(DirHash);
+	/*free(DirHash);*/
 	free(InodeHash);
 	free(InodeHash2);
 
