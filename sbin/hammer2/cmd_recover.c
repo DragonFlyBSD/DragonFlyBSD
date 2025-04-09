@@ -231,11 +231,9 @@ cmd_recover(const char *devpath, const char *pathname,
 	while ((vol = hammer2_get_volume(loff)) != NULL) {
 		int fd;
 		int xdisp;
-		hammer2_off_t vol_size;
 
 		fd = vol->fd;
 		poff = loff - vol->offset;
-		vol_size = lseek(fd, 0L, SEEK_END);
 		xdisp = 0;
 
 		while (poff < vol->size) {
@@ -337,7 +335,7 @@ cmd_recover(const char *devpath, const char *pathname,
 				       "media %6.2f/%-3.2fG\r",
 					InodeCount,
 					MediaBytes / 1e9,
-					vol_size / 1e9);
+					hammer2_get_total_size() / 1e9);
 				fflush(stdout);
 			}
 		}
