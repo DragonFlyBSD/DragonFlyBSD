@@ -196,7 +196,7 @@ kmem_alloc_nofault(vm_map_t map, vm_size_t size, vm_subsys_t id,
 			     (vm_offset_t) 0, &addr, size,
 			     align, TRUE,
 			     VM_MAPTYPE_NORMAL, id,
-			     VM_PROT_ALL, VM_PROT_ALL, MAP_NOFAULT);
+			     VM_PROT_ALL, VM_PROT_ALL, COWF_NOFAULT);
 	if (result != KERN_SUCCESS)
 		return (0);
 	return (addr);
@@ -224,7 +224,7 @@ kmem_alloc3(vm_map_t map, vm_size_t size, vm_subsys_t id, int kmflags)
 		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 
 	if (kmflags & KM_STACK) {
-		cow = MAP_IS_KSTACK;
+		cow = COWF_IS_KSTACK;
 		gstart = PAGE_SIZE;
 	} else {
 		cow = 0;

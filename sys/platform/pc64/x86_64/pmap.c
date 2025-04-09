@@ -5351,7 +5351,7 @@ pmap_object_init_pt(pmap_t pmap, vm_map_entry_t entry,
 	psize = x86_64_btop(size);
 
 	if ((object->type != OBJT_VNODE) ||
-		((limit & MAP_PREFAULT_PARTIAL) && (psize > MAX_INIT_PT) &&
+		((limit & COWF_PREFAULT_PARTIAL) && (psize > MAX_INIT_PT) &&
 			(object->resident_page_count > MAX_INIT_PT))) {
 		return;
 	}
@@ -5418,7 +5418,7 @@ pmap_object_init_pt_callback(vm_page_t p, void *data)
 	 * don't allow an madvise to blow away our really
 	 * free pages allocating pv entries.
 	 */
-	if ((info->limit & MAP_PREFAULT_MADVISE) &&
+	if ((info->limit & COWF_PREFAULT_MADVISE) &&
 		vmstats.v_free_count < vmstats.v_free_reserved) {
 		    return(-1);
 	}

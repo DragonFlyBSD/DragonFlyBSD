@@ -211,7 +211,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 		 * Get a hint of where to map. It also provides mmap offset
 		 * randomization if enabled.
 		 */
-		addr = vm_map_hint(p, addr, prot);
+		addr = vm_map_hint(p, addr, prot, flags);
 	}
 
 	if (flags & MAP_ANON) {
@@ -1314,7 +1314,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 				lwkt_reltoken(&map->token);
 				return(ENOMEM);
 			}
-			docow = MAP_PREFAULT_PARTIAL;
+			docow = COWF_PREFAULT_PARTIAL;
 		} else {
 			/*
 			 * Implicit single instance of a default memory
@@ -1352,7 +1352,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			 */
 			uksmap = vp->v_rdev->si_ops->d_uksmap;
 			object = NULL;
-			docow = MAP_PREFAULT_PARTIAL;
+			docow = COWF_PREFAULT_PARTIAL;
 			flags &= ~(MAP_PRIVATE|MAP_COPY);
 			flags |= MAP_SHARED;
 		} else if (vp->v_type == VCHR) {
@@ -1375,7 +1375,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 				return(error);
 			}
 
-			docow = MAP_PREFAULT_PARTIAL;
+			docow = COWF_PREFAULT_PARTIAL;
 			flags &= ~(MAP_PRIVATE|MAP_COPY);
 			flags |= MAP_SHARED;
 		} else {
@@ -1392,7 +1392,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 				lwkt_reltoken(&map->token);
 				return (error);
 			}
-			docow = MAP_PREFAULT_PARTIAL;
+			docow = COWF_PREFAULT_PARTIAL;
 			object = vnode_pager_reference(vp);
 			if (object == NULL && vp->v_type == VREG) {
 				lwkt_reltoken(&map->token);
@@ -1415,11 +1415,13 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	 * Deal with the adjusted flags
 	 */
 	if ((flags & (MAP_ANON|MAP_SHARED)) == 0)
-		docow |= MAP_COPY_ON_WRITE;
+		docow |= COWF_COPY_ON_WRITE;
 	if (flags & MAP_NOSYNC)
-		docow |= MAP_DISABLE_SYNCER;
+		docow |= COWF_DISABLE_SYNCER;
 	if (flags & MAP_NOCORE)
-		docow |= MAP_DISABLE_COREDUMP;
+		docow |= COWF_DISABLE_COREDUMP;
+	if (flags & MAP_32BIT)
+		docow |= COWF_32BIT;
 
 	/*
 	 * This may place the area in its own page directory if (size) is

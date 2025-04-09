@@ -664,7 +664,7 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 			    0, &mapbase, round_page(mapsize),
 			    PAGE_SIZE, TRUE,
 			    VM_MAPTYPE_NORMAL, VM_SUBSYS_IMGACT,
-			    VM_PROT_ALL, VM_PROT_ALL, FALSE);
+			    VM_PROT_ALL, VM_PROT_ALL, 0);
 	vm_object_drop(ef->object);
 	if (error) {
 		vm_object_deallocate(ef->object);

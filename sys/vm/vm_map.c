@@ -1283,22 +1283,22 @@ vm_map_insert(vm_map_t map, int *countp,
 
 	protoeflags = 0;
 
-	if (cow & MAP_COPY_ON_WRITE)
+	if (cow & COWF_COPY_ON_WRITE)
 		protoeflags |= MAP_ENTRY_COW|MAP_ENTRY_NEEDS_COPY;
 
-	if (cow & MAP_NOFAULT) {
+	if (cow & COWF_NOFAULT) {
 		protoeflags |= MAP_ENTRY_NOFAULT;
 
 		KASSERT(object == NULL,
-			("vm_map_insert: paradoxical MAP_NOFAULT request"));
+			("vm_map_insert: paradoxical NOFAULT request"));
 	}
-	if (cow & MAP_DISABLE_SYNCER)
+	if (cow & COWF_DISABLE_SYNCER)
 		protoeflags |= MAP_ENTRY_NOSYNC;
-	if (cow & MAP_DISABLE_COREDUMP)
+	if (cow & COWF_DISABLE_COREDUMP)
 		protoeflags |= MAP_ENTRY_NOCOREDUMP;
-	if (cow & MAP_IS_STACK)
+	if (cow & COWF_IS_STACK)
 		protoeflags |= MAP_ENTRY_STACK;
-	if (cow & MAP_IS_KSTACK)
+	if (cow & COWF_IS_KSTACK)
 		protoeflags |= MAP_ENTRY_KSTACK;
 
 	lwkt_gettoken(&map->token);
@@ -1411,10 +1411,11 @@ vm_map_insert(vm_map_t map, int *countp,
 	 * page tables cannot be prepopulated without a lot of work, so
 	 * don't try.
 	 */
-	if ((cow & (MAP_PREFAULT|MAP_PREFAULT_PARTIAL)) &&
-	    maptype != VM_MAPTYPE_UKSMAP) {
+	if ((cow & (COWF_PREFAULT | COWF_PREFAULT_PARTIAL)) &&
+	    maptype != VM_MAPTYPE_UKSMAP)
+    {
 		int dorelock = 0;
-		if (vm_map_relock_enable && (cow & MAP_PREFAULT_RELOCK)) {
+		if (vm_map_relock_enable && (cow & COWF_PREFAULT_RELOCK)) {
 			dorelock = 1;
 			vm_object_lock_swap();
 			vm_object_drop(object);
@@ -1422,7 +1423,7 @@ vm_map_insert(vm_map_t map, int *countp,
 		pmap_object_init_pt(map->pmap, new_entry,
 				    new_entry->ba.start,
 				    new_entry->ba.end - new_entry->ba.start,
-				    cow & MAP_PREFAULT_PARTIAL);
+				    cow & COWF_PREFAULT_PARTIAL);
 		if (dorelock) {
 			vm_object_hold(object);
 			vm_object_lock_swap();
@@ -1477,10 +1478,16 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 	/*
 	 * Use freehint to adjust the start point, hopefully reducing
 	 * the iteration to O(1).
+	 *
+	 * NOTE: The freehint array is not ordered and does not guarantee
+	 *	 that the minimum free address hole will be returned, so
+	 *	 do not use the shortcut for MAP_32BIT.
 	 */
-	hole_start = vm_map_freehint_find(map, length, align);
-	if (start < hole_start)
-		start = hole_start;
+	if ((flags & MAP_32BIT) == 0) {
+		hole_start = vm_map_freehint_find(map, length, align);
+		if (start < hole_start)
+			start = hole_start;
+	}
 	if (vm_map_lookup_entry(map, start, &tmp))
 		start = tmp->ba.end;
 	entry = tmp;	/* may be NULL */
@@ -1511,6 +1518,8 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 		 */
 		end = start + length;
 		if (end > vm_map_max(map) || end < start)
+			return (1);
+		if ((flags & MAP_32BIT) && end > 0x100000000L)
 			return (1);
 
 		/*
@@ -1593,6 +1602,12 @@ vm_map_find(vm_map_t map, void *map_object, void *map_aux,
 	void *aux_info;
 	int result;
 	int count;
+	int flags;
+
+	/*
+	 * Translate cow flags to mmap flags.  A bit of a hack.
+	 */
+	flags = (cow & COWF_32BIT) ? MAP_32BIT : 0;
 
 	/*
 	 * Certain UKSMAPs may need aux_info.
@@ -1635,7 +1650,7 @@ vm_map_find(vm_map_t map, void *map_object, void *map_aux,
 	if (object)
 		vm_object_hold_shared(object);
 	if (fitit) {
-		if (vm_map_findspace(map, start, length, align, 0, addr)) {
+		if (vm_map_findspace(map, start, length, align, flags, addr)) {
 			if (object)
 				vm_object_drop(object);
 			vm_map_unlock(map);
@@ -2442,7 +2457,7 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 				    map->pmap, current,
 				    useStart,
 				    (delta << PAGE_SHIFT),
-				    MAP_PREFAULT_MADVISE
+				    COWF_PREFAULT_MADVISE
 				);
 			}
 		}
@@ -3889,7 +3904,7 @@ vm_map_stack (vm_map_t map, vm_offset_t *addrbos, vm_size_t max_ssize,
 	int		count;
 	vm_offset_t	tmpaddr;
 
-	cow |= MAP_IS_STACK;
+	cow |= COWF_IS_STACK;
 
 	if (max_ssize < sgrowsiz)
 		init_ssize = max_ssize;
@@ -4266,7 +4281,7 @@ vmspace_unshare(struct proc *p)
  * No requirements.
  */
 vm_offset_t
-vm_map_hint(struct proc *p, vm_offset_t addr, vm_prot_t prot)
+vm_map_hint(struct proc *p, vm_offset_t addr, vm_prot_t prot, int flags)
 {
 	struct vmspace *vms = p->p_vmspace;
 	struct rlimit limit;
@@ -4280,6 +4295,14 @@ vm_map_hint(struct proc *p, vm_offset_t addr, vm_prot_t prot)
 		limit.rlim_cur = maxdsiz;
 	dsiz = limit.rlim_cur;
 
+	/*
+	 * dsiz usually exceeds 4GB (default is 32GB).  If requesting
+	 * a 32-bit address space, adjust it down to one page.
+	 */
+	if ((flags & MAP_32BIT) && dsiz > PAGE_SIZE) {
+		dsiz = PAGE_SIZE;
+	}
+
 	if (!randomize_mmap || addr != 0) {
 		/*
 		 * Set a reasonable start point for the hint if it was
@@ -4288,7 +4311,8 @@ vm_map_hint(struct proc *p, vm_offset_t addr, vm_prot_t prot)
 		 */
 		if (addr == 0 ||
 		    (addr >= round_page((vm_offset_t)vms->vm_taddr) &&
-		     addr < round_page((vm_offset_t)vms->vm_daddr + dsiz))) {
+		     addr < round_page((vm_offset_t)vms->vm_daddr + dsiz)))
+		{
 			addr = round_page((vm_offset_t)vms->vm_daddr + dsiz);
 		}
 

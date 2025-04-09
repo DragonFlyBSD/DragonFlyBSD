@@ -295,11 +295,11 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 		vm_object_reference_locked(object);
 
 		/* cow flags: don't dump readonly sections in core */
-		cow = MAP_COPY_ON_WRITE | MAP_PREFAULT;
+		cow = COWF_COPY_ON_WRITE | COWF_PREFAULT;
 		if ((prot & VM_PROT_WRITE) == 0)
-			cow |= MAP_DISABLE_COREDUMP;
+			cow |= COWF_DISABLE_COREDUMP;
 		if (shared == 0)
-			cow |= MAP_PREFAULT_RELOCK;
+			cow |= COWF_PREFAULT_RELOCK;
 
 		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 		vm_map_lock(&vmspace->vm_map);
@@ -1921,7 +1921,7 @@ pie_base_hint(struct proc *p)
 	u_long base;
 
 	if (elf_pie_base_mmap)
-		base = vm_map_hint(p, 0, VM_PROT_READ | VM_PROT_EXECUTE);
+		base = vm_map_hint(p, 0, VM_PROT_READ | VM_PROT_EXECUTE, 0);
 	else
 		base = ET_DYN_LOAD_ADDR;
 	return base;

@@ -560,17 +560,19 @@ vmspace_resident_count(struct vmspace *vmspace)
 /*
  * Copy-on-write flags for vm_map operations
  */
-#define MAP_UNUSED_01		0x0001
-#define MAP_COPY_ON_WRITE	0x0002
-#define MAP_NOFAULT		0x0004
-#define MAP_PREFAULT		0x0008
-#define MAP_PREFAULT_PARTIAL	0x0010
-#define MAP_DISABLE_SYNCER	0x0020
-#define MAP_IS_STACK		0x0040
-#define MAP_IS_KSTACK		0x0080
-#define MAP_DISABLE_COREDUMP	0x0100
-#define MAP_PREFAULT_MADVISE	0x0200	/* from (user) madvise request */
-#define MAP_PREFAULT_RELOCK	0x0200
+#define COWF_UNUSED_01		0x0001
+#define COWF_COPY_ON_WRITE	0x0002
+#define COWF_NOFAULT		0x0004
+#define COWF_PREFAULT		0x0008
+#define COWF_PREFAULT_PARTIAL	0x0010
+#define COWF_DISABLE_SYNCER	0x0020
+#define COWF_IS_STACK		0x0040
+#define COWF_IS_KSTACK		0x0080
+#define COWF_DISABLE_COREDUMP	0x0100
+#define COWF_PREFAULT_MADVISE	0x0200	/* from (user) madvise request */
+#define COWF_PREFAULT_RELOCK	0x0400
+#define COWF_SHARED		0x0800
+#define COWF_32BIT		0x1000
 
 /*
  * vm_fault option flags
@@ -605,7 +607,7 @@ int vm_map_find (vm_map_t, void *, void *,
 		 vm_prot_t, vm_prot_t, int);
 int vm_map_findspace (vm_map_t, vm_offset_t, vm_size_t, vm_size_t,
 		      int, vm_offset_t *);
-vm_offset_t vm_map_hint(struct proc *, vm_offset_t, vm_prot_t);
+vm_offset_t vm_map_hint(struct proc *, vm_offset_t, vm_prot_t, int);
 int vm_map_inherit (vm_map_t, vm_offset_t, vm_offset_t, vm_inherit_t);
 void vm_map_init (struct vm_map *, vm_offset_t, vm_offset_t, pmap_t);
 int vm_map_insert (vm_map_t, int *,
