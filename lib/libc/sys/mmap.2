@@ -256,6 +256,14 @@ or
 .Dv MAP_TRYFIXED
 is used, you cannot count on the returned address matching the hint
 you have provided.
+.It Dv MAP_32BIT
+When specified,
+.Fn mmap
+will allocate memory in the first 4GB of the address space, even if this
+memory is inside the datasize resource limit (which is usually reserved).
+When not specified, address hints are adjusted upward to at least the first
+address above the datasize resource limit... usually above the 32GB mark
+in the address space.
 .It Dv MAP_VPAGETABLE
 Memory accessed via this map is not linearly mapped and will be governed
 by a virtual page table.
