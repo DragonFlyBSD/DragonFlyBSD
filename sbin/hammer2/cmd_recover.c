@@ -187,7 +187,16 @@ cmd_recover(const char *devpath, const char *pathname,
 	hammer2_volume_t *vol;
 	hammer2_off_t loff;
 	hammer2_off_t poff;
+	struct stat st;
 	size_t i;
+
+	if (stat(destdir, &st) == -1) {
+		perror("stat");
+		return 1;
+	} else if (!S_ISDIR(st.st_mode)) {
+		fprintf(stderr, "%s: not a directory\n", destdir);
+		return 1;
+	}
 
 	StrictMode = strict;
 	hammer2_init_volumes(devpath, 1);

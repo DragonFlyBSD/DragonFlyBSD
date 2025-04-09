@@ -307,7 +307,7 @@ main(int ac, char **av)
 		} else {
 			int strict = (strcmp(av[0], "recover-relaxed") != 0);
 			int isafile = (strcmp(av[0], "recover-file") == 0);
-			cmd_recover(av[1], av[2], av[3], strict, isafile);
+			ecode = cmd_recover(av[1], av[2], av[3], strict, isafile);
 		}
 	} else if (strcmp(av[0], "snapshot") == 0 ||
 		   strcmp(av[0], "snapshot-debug") == 0) {
