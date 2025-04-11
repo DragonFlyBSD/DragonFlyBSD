@@ -59,37 +59,79 @@ SYSCTL_INT(_hw, OID_AUTO, aesni_disable, CTLFLAG_RW, &aesni_disable, 0,
  * --------------------------------------
  */
 
-static inline void
+static __inline void
 xor_block(uint8_t *dst, const uint8_t *src, int blocksize)
 {
 	for (int i = 0; i < blocksize; i++)
 		dst[i] ^= src[i];
 }
 
-typedef void (*block_fn_t)(const void *ctx, uint8_t *data, uint8_t *data2);
+static __inline void
+xor_block3(uint8_t *dst, const uint8_t *src1, const uint8_t *src2,
+    int blocksize)
+{
+	for (int i = 0; i < blocksize; i++)
+		dst[i] = src1[i] ^ src2[i];
+}
 
-/*
- * XOR with the IV/previous block, as appropriate.
- */
-#define ENCRYPT_DATA_CBC(block_fn, ctx, data, datalen, blocksize, iv)       \
-	for (int i = 0; i < datalen; i += blocksize) {                      \
-		xor_block(data + i, (i == 0) ? iv : (data + i - blocksize), \
-		    blocksize);                                             \
-		block_fn(ctx, data + i, data + i);                          \
-	}
-
-/*
- * Start at the end, so we don't need to keep the
- * encrypted block as the IV for the next block.
+/**
+ * Typedef of a block-cipher function that encrypts or decrypts a block
+ * of data from `src` to `dst`. Both `src` and `dst` may point to the
+ * same data.
  *
- * XOR with the IV/previous block, as appropriate
+ * The length of the block is the block size of the algorithm.
  */
-#define DECRYPT_DATA_CBC(block_fn, ctx, data, datalen, blocksize, iv)       \
-	for (int i = datalen - blocksize; i >= 0; i -= blocksize) {         \
-		block_fn(ctx, data + i, data + i);                          \
-		xor_block(data + i, (i == 0) ? iv : (data + i - blocksize), \
-		    blocksize);                                             \
+typedef void (*block_fn_t)(const void *ctx, const uint8_t *src, uint8_t *dst);
+
+/**
+ *
+ * Encrypt blocks of data using CBC (Cipher Block Chaining).
+ *
+ * Before encrypting a block with the block cipher, the block is XORed
+ * with the previous block of data or the IV if it is the first block of
+ * data.
+ */
+static __inline int
+encrypt_data_cbc(block_fn_t block_fn, const void *ctx, uint8_t *data,
+    int datalen, int blocksize, const uint8_t *iv)
+{
+	if ((datalen % blocksize) != 0)
+		return EINVAL;
+
+	for (int i = 0; i < datalen; i += blocksize) {
+		xor_block(data + i, (i == 0) ? iv : (data + i - blocksize),
+		    blocksize);
+
+		block_fn(ctx, data + i, data + i);
 	}
+
+	return (0);
+}
+
+/*
+ * Decrypt blocks of data using CBC (Cipher Block Chaining).
+ *
+ * We start decrypting the blocks in reverse order, from the last block
+ * to the first. After decrypting a block with the block cipher, we XOR
+ * it.  The last block is XORed with the second last block (which is
+ * still encrypted), and so on. Finally, the first block is XORed with
+ * the IV after it has been decrypted.
+ */
+static __inline int
+decrypt_data_cbc(block_fn_t block_fn, const void *ctx, uint8_t *data,
+    int datalen, int blocksize, const uint8_t *iv)
+{
+	if ((datalen % blocksize) != 0)
+		return EINVAL;
+
+	for (int i = datalen - blocksize; i >= 0; i -= blocksize) {
+		block_fn(ctx, data + i, data + i);
+		xor_block(data + i, (i == 0) ? iv : (data + i - blocksize),
+		    blocksize);
+	}
+
+	return (0);
+}
 
 /**
  * --------------------------------------
@@ -176,30 +218,32 @@ aes_cbc_setkey(struct crypto_cipher_context *ctx, const uint8_t *keydata,
 	}
 }
 
+static __inline void
+rijndael_encrypt_wrap(const void *ctx, const uint8_t *src, uint8_t *dst)
+{
+	rijndael_encrypt(ctx, src, dst);
+}
+
+static __inline void
+rijndael_decrypt_wrap(const void *ctx, const uint8_t *src, uint8_t *dst)
+{
+	rijndael_decrypt(ctx, src, dst);
+}
+
 static int
 aes_cbc_encrypt(const struct crypto_cipher_context *ctx, uint8_t *data,
     int datalen, struct crypto_cipher_iv *iv)
 {
-	if ((datalen % AES_BLOCK_LEN) != 0)
-		return EINVAL;
-
-	ENCRYPT_DATA_CBC(rijndael_encrypt, (const void *)ctx, data, datalen,
-	    AES_BLOCK_LEN, (uint8_t *)iv);
-
-	return (0);
+	return encrypt_data_cbc(rijndael_encrypt_wrap, (const void *)ctx, data,
+	    datalen, AES_BLOCK_LEN, (uint8_t *)iv);
 }
 
 static int
 aes_cbc_decrypt(const struct crypto_cipher_context *ctx, uint8_t *data,
     int datalen, struct crypto_cipher_iv *iv)
 {
-	if ((datalen % AES_BLOCK_LEN) != 0)
-		return EINVAL;
-
-	DECRYPT_DATA_CBC(rijndael_decrypt, (const void *)ctx, data, datalen,
-	    AES_BLOCK_LEN, (uint8_t *)iv);
-
-	return (0);
+	return decrypt_data_cbc(rijndael_decrypt_wrap, (const void *)ctx, data,
+	    datalen, AES_BLOCK_LEN, (uint8_t *)iv);
 }
 
 const struct crypto_cipher cipher_aes_cbc = {
@@ -225,22 +269,14 @@ const struct crypto_cipher cipher_aes_cbc = {
 #define AES_XTS_ALPHA	  0x87 /* GF(2^128) generator polynomial */
 
 static void
-aes_xts_crypt_block(const struct aes_xts_ctx *ctx, uint8_t *data, uint8_t *iv,
-    bool do_encrypt)
+aes_xts_crypt_block(const void *ctx, uint8_t *data, uint8_t *iv,
+    block_fn_t block_fn, uint8_t block[AES_XTS_BLOCK_LEN])
 {
-	uint8_t block[AES_XTS_BLOCK_LEN];
 	u_int i, carry_in, carry_out;
 
-	for (i = 0; i < AES_XTS_BLOCK_LEN; i++)
-		block[i] = data[i] ^ iv[i];
-
-	if (do_encrypt)
-		rijndael_encrypt(&ctx->key1, block, data);
-	else
-		rijndael_decrypt(&ctx->key1, block, data);
-
-	for (i = 0; i < AES_XTS_BLOCK_LEN; i++)
-		data[i] ^= iv[i];
+	xor_block3(block, data, iv, AES_XTS_BLOCK_LEN);
+	block_fn(ctx, block, data);
+	xor_block(data, iv, AES_XTS_BLOCK_LEN);
 
 	/* Exponentiate tweak */
 	carry_in = 0;
@@ -251,7 +287,6 @@ aes_xts_crypt_block(const struct aes_xts_ctx *ctx, uint8_t *data, uint8_t *iv,
 	}
 	if (carry_in)
 		iv[0] ^= AES_XTS_ALPHA;
-	explicit_bzero(block, sizeof(block));
 }
 
 static bool
@@ -316,6 +351,7 @@ static int
 aes_xts_encrypt(const struct crypto_cipher_context *_ctx, uint8_t *data,
     int datalen, struct crypto_cipher_iv *_iv)
 {
+	uint8_t block[AES_XTS_BLOCK_LEN];
 	uint8_t *iv = _iv->_iv._aes_xts;
 	const struct aes_xts_ctx *ctx = &_ctx->_ctx._aes_xts;
 
@@ -324,8 +360,10 @@ aes_xts_encrypt(const struct crypto_cipher_context *_ctx, uint8_t *data,
 
 	aes_xts_reinit(ctx, iv);
 	for (int i = 0; i < datalen; i += AES_XTS_BLOCK_LEN) {
-		aes_xts_crypt_block(ctx, data + i, iv, true);
+		aes_xts_crypt_block(&ctx->key1, data + i, iv,
+		    rijndael_encrypt_wrap, block);
 	}
+	explicit_bzero(block, sizeof(block));
 
 	return (0);
 }
@@ -334,6 +372,7 @@ static int
 aes_xts_decrypt(const struct crypto_cipher_context *_ctx, uint8_t *data,
     int datalen, struct crypto_cipher_iv *_iv)
 {
+	uint8_t block[AES_XTS_BLOCK_LEN];
 	uint8_t *iv = _iv->_iv._aes_xts;
 	const struct aes_xts_ctx *ctx = &_ctx->_ctx._aes_xts;
 
@@ -342,8 +381,11 @@ aes_xts_decrypt(const struct crypto_cipher_context *_ctx, uint8_t *data,
 
 	aes_xts_reinit(ctx, iv);
 	for (int i = 0; i < datalen; i += AES_XTS_BLOCK_LEN) {
-		aes_xts_crypt_block(ctx, data + i, iv, false);
+		aes_xts_crypt_block(ctx, data + i, iv, rijndael_decrypt_wrap,
+		    block);
 	}
+
+	explicit_bzero(block, sizeof(block));
 
 	return (0);
 }
