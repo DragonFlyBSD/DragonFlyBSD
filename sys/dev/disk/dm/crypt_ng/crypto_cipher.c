@@ -171,15 +171,15 @@ cipher_null_decrypt(const struct crypto_cipher_context *ctx __unused,
 }
 
 const struct crypto_cipher cipher_null = {
-	"null",
-	"null",
-	4,
-	0,
-	0,
-	cipher_null_probe,
-	cipher_null_setkey,
-	cipher_null_encrypt,
-	cipher_null_decrypt,
+	.shortname = "null",
+	.description = "null",
+	.blocksize = 4,
+	.ivsize = 0,
+	.ctxsize = 0,
+	.probe = cipher_null_probe,
+	.setkey = cipher_null_setkey,
+	.encrypt = cipher_null_encrypt,
+	.decrypt = cipher_null_decrypt,
 };
 
 /**
@@ -247,15 +247,15 @@ aes_cbc_decrypt(const struct crypto_cipher_context *ctx, uint8_t *data,
 }
 
 const struct crypto_cipher cipher_aes_cbc = {
-	"aes-cbc",
-	"AES-CBC (Rijndael-128) in software",
-	AES_BLOCK_LEN,
-	AES_BLOCK_LEN,
-	sizeof(rijndael_ctx),
-	aes_cbc_probe,
-	aes_cbc_setkey,
-	aes_cbc_encrypt,
-	aes_cbc_decrypt,
+	.shortname = "aes-cbc",
+	.description = "AES-CBC (Rijndael-128) in software",
+	.blocksize = AES_BLOCK_LEN,
+	.ivsize = AES_BLOCK_LEN,
+	.ctxsize = sizeof(rijndael_ctx),
+	.probe = aes_cbc_probe,
+	.setkey = aes_cbc_setkey,
+	.encrypt = aes_cbc_encrypt,
+	.decrypt = aes_cbc_decrypt,
 };
 
 /**
@@ -391,15 +391,15 @@ aes_xts_decrypt(const struct crypto_cipher_context *_ctx, uint8_t *data,
 }
 
 const struct crypto_cipher cipher_aes_xts = {
-	"aes-xts",
-	"AES-XTS (in software)",
-	AES_XTS_BLOCK_LEN,
-	16,
-	sizeof(struct aes_xts_ctx),
-	aes_xts_probe,
-	aes_xts_setkey,
-	aes_xts_encrypt,
-	aes_xts_decrypt,
+	.shortname = "aes-xts",
+	.description = "AES-XTS (in software)",
+	.blocksize = AES_XTS_BLOCK_LEN,
+	.ivsize = 16,
+	.ctxsize = sizeof(struct aes_xts_ctx),
+	.probe = aes_xts_probe,
+	.setkey = aes_xts_setkey,
+	.encrypt = aes_xts_encrypt,
+	.decrypt = aes_xts_decrypt,
 };
 
 /**
@@ -517,15 +517,15 @@ cipher_aesni_cbc_decrypt(const struct crypto_cipher_context *ctx, uint8_t *data,
 }
 
 const struct crypto_cipher cipher_aesni_cbc = {
-	"aesni-cbc",
-	"AES-CBC w/ CPU AESNI instruction",
-	AES_BLOCK_LEN,
-	AES_BLOCK_LEN,
-	sizeof(aesni_ctx),
-	cipher_aesni_cbc_probe,
-	cipher_aesni_cbc_setkey,
-	cipher_aesni_cbc_encrypt,
-	cipher_aesni_cbc_decrypt,
+	.shortname = "aesni-cbc",
+	.description = "AES-CBC w/ CPU AESNI instruction",
+	.blocksize = AES_BLOCK_LEN,
+	.ivsize = AES_BLOCK_LEN,
+	.ctxsize = sizeof(aesni_ctx),
+	.probe = cipher_aesni_cbc_probe,
+	.setkey = cipher_aesni_cbc_setkey,
+	.encrypt = cipher_aesni_cbc_encrypt,
+	.decrypt = cipher_aesni_cbc_decrypt,
 };
 
 /**
@@ -622,15 +622,15 @@ cipher_aesni_xts_decrypt(const struct crypto_cipher_context *ctx, uint8_t *data,
 }
 
 const struct crypto_cipher cipher_aesni_xts = {
-	"aesni-xts",
-	"AES-XTS w/ CPU AESNI instruction",
-	AES_BLOCK_LEN,
-	AES_BLOCK_LEN,
-	sizeof(aesni_ctx),
-	cipher_aesni_xts_probe,
-	cipher_aesni_xts_setkey,
-	cipher_aesni_xts_encrypt,
-	cipher_aesni_xts_decrypt,
+	.shortname = "aesni-xts",
+	.description = "AES-XTS w/ CPU AESNI instruction",
+	.blocksize = AES_BLOCK_LEN,
+	.ivsize = AES_BLOCK_LEN,
+	.ctxsize = sizeof(aesni_ctx),
+	.probe = cipher_aesni_xts_probe,
+	.setkey = cipher_aesni_xts_setkey,
+	.encrypt = cipher_aesni_xts_encrypt,
+	.decrypt = cipher_aesni_xts_decrypt,
 };
 
 /**
@@ -638,14 +638,15 @@ const struct crypto_cipher cipher_aesni_xts = {
  */
 
 static const struct crypto_cipher *crypto_ciphers[] = {
-
 	&cipher_null,
 
 	/* first probe AESNI, then fallback to software AES */
-	&cipher_aesni_cbc, &cipher_aesni_xts,
+	&cipher_aesni_cbc,
+	&cipher_aesni_xts,
 
 	/* AES in software */
-	&cipher_aes_cbc, &cipher_aes_xts
+	&cipher_aes_cbc,
+	&cipher_aes_xts,
 };
 
 /**
