@@ -35,74 +35,52 @@
 #ifndef _CRYPTO_CIPHER_H_
 #define _CRYPTO_CIPHER_H_
 
-#include <crypto/aesni/aesni.h>
-#include <crypto/rijndael/rijndael.h>
-
-struct aes_xts_ctx {
-	rijndael_ctx key1;
-	rijndael_ctx key2;
-};
-
-typedef struct {
-	uint8_t iv[AES_BLOCK_LEN];
-} aesni_iv;
-
-struct aesni_key_schedules {
-	uint8_t enc_schedule[AES_SCHED_LEN] __aligned(16);
-	uint8_t dec_schedule[AES_SCHED_LEN] __aligned(16);
-	uint8_t xts_schedule[AES_SCHED_LEN] __aligned(16);
-};
-
-struct aesni_key_schedules_padded {
-	struct aesni_key_schedules schedules;
-	uint8_t _padding[AESNI_ALIGN];
-};
-
-typedef struct {
-	struct aesni_key_schedules_padded key_schedules;
-	int rounds;
-} aesni_ctx;
-
-struct crypto_cipher_context {
-	union {
-		rijndael_ctx _rijndael;
-		aesni_ctx _aesni;
-		struct aes_xts_ctx _aes_xts;
-	} _ctx;
-};
-
 struct crypto_cipher_iv {
 	union {
 		uint8_t _rijndael[16];
-		aesni_iv _aesni;
+		uint8_t _aesni[16];
 		uint8_t _aes_xts[16]; /* 16 bytes are used, but the last 8 bytes
 					 are zero */
 	} _iv;
 };
 
-typedef int (*crypto_cipher_blockfn_t)(const struct crypto_cipher_context *ctx,
-    uint8_t *data, int datalen, struct crypto_cipher_iv *iv);
+typedef int crypto_cipher_mode;
 
-typedef int (*crypto_cipher_probe_t)(const char *algo_name,
-    const char *mode_name, int keysize_in_bits);
+#define CRYPTO_CIPHER_ENCRYPT 0
+#define CRYPTO_CIPHER_DECRYPT 1
 
-typedef int (*crypto_cipher_setkey_t)(struct crypto_cipher_context *ctx,
+struct crypto_cipher_spec;
+
+typedef const struct crypto_cipher_spec *crypto_cipher_t;
+
+typedef struct {
+	crypto_cipher_t cipher;
+	void *context;
+	void *origptr;
+} crypto_cipher_session_t;
+
+typedef struct crypto_cipher_context *crypto_cipher_context_t;
+
+crypto_cipher_t crypto_cipher_find(const char *algo_name, const char *mode_name,
+    int keysize_in_bits);
+
+const char *crypto_cipher_get_description(crypto_cipher_t cipher);
+
+int crypto_cipher_initsession(crypto_cipher_t cipher,
+    crypto_cipher_session_t *session);
+
+int crypto_cipher_freesession(crypto_cipher_session_t *session);
+
+int crypto_cipher_setkey(crypto_cipher_session_t *session,
     const uint8_t *keydata, int keylen_in_bytes);
 
-struct crypto_cipher {
-	const char *shortname;
-	const char *description;
-	uint16_t blocksize;
-	uint16_t ivsize;
-	uint16_t ctxsize;
+int crypto_cipher_encrypt(const crypto_cipher_session_t *session, uint8_t *data,
+    int datalen, struct crypto_cipher_iv *iv);
 
-	crypto_cipher_probe_t probe;
-	crypto_cipher_setkey_t setkey;
-	crypto_cipher_blockfn_t encrypt;
-	crypto_cipher_blockfn_t decrypt;
-};
+int crypto_cipher_decrypt(const crypto_cipher_session_t *session, uint8_t *data,
+    int datalen, struct crypto_cipher_iv *iv);
 
-const struct crypto_cipher *crypto_cipher_find(const char *algo_name,
-    const char *mode_name, int keysize_in_bits);
+int crypto_cipher_crypt(const crypto_cipher_session_t *session, uint8_t *data,
+    int datalen, struct crypto_cipher_iv *iv, crypto_cipher_mode mode);
 
 #endif

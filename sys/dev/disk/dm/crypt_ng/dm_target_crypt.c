@@ -72,8 +72,7 @@ struct iv_generator {
 };
 
 struct essiv_ivgen_priv {
-	struct crypto_cipher_context crypto_context;
-	const struct crypto_cipher  *crypto_cipher;
+	crypto_cipher_session_t	crypto_session;
 	size_t			keyhash_len;
 	u_int8_t		crypto_keyhash[SHA512_DIGEST_LENGTH];
 };
@@ -82,10 +81,10 @@ typedef struct target_crypt_config {
 	size_t	params_len;
 	dm_pdev_t *pdev;
 	char	*status_str;
-	const struct crypto_cipher *crypto_cipher;
+	crypto_cipher_t	crypto_cipher;
 	int	crypto_klen;
 	u_int8_t	crypto_key[512>>3];
-	struct crypto_cipher_context	crypto_context;
+	crypto_cipher_session_t crypto_session;
 
 	u_int64_t	block_offset;
 	int64_t		iv_offset;
@@ -111,7 +110,7 @@ struct dmtc_dump_helper {
 static void dmtc_init_mpipe(struct target_crypt_config *priv);
 static void dmtc_destroy_mpipe(struct target_crypt_config *priv);
 
-static const struct crypto_cipher *
+static crypto_cipher_t
 dmtc_find_crypto_cipher(const char *crypto_alg, const char *crypto_mode,
     int klen_in_bits);
 
@@ -136,7 +135,7 @@ static void dmtc_bio_write_encrypt(struct bio *bio, uint8_t *data_buf,
 static void dmtc_bio_write_done(struct bio *bio);
 
 static int dmtc_bio_encdec(dm_target_crypt_config_t *priv, uint8_t *data_buf,
-    int bytes, off_t offset, crypto_cipher_blockfn_t blockfn);
+    int bytes, off_t offset, crypto_cipher_mode mode);
 
 
 static void dmtc_crypto_dump(dm_target_crypt_config_t *priv,
@@ -295,16 +294,25 @@ essiv_ivgen_ctor(struct target_crypt_config *priv, char *iv_hash, void **p_ivpri
 	 *	cipher is a valid iv size for the block cipher.
 	 */
 
-	ivpriv->crypto_cipher = priv->crypto_cipher;
+	error = crypto_cipher_initsession(priv->crypto_cipher, &ivpriv->crypto_session);
+	if (error) {
+		kprintf("dm_target_crypt: Error during crypto_cipher_initsession "
+			"for essiv_ivgen, error = %d\n",
+			error);
+		dmtc_crypto_clear(ivpriv->crypto_keyhash, ivpriv->keyhash_len);
+		kfree(ivpriv, M_DMCRYPT);
+		return ENOTSUP;
+	}
 
-	error = ivpriv->crypto_cipher->setkey(&ivpriv->crypto_context,
+	error = crypto_cipher_setkey(&ivpriv->crypto_session,
 		(const uint8_t *)ivpriv->crypto_keyhash,
 		hashlen / 8);
 
 	if (error) {
-		kprintf("dm_target_crypt: Error during crypto_newsession "
+		kprintf("dm_target_crypt: Error during crypto_cipher_setkey "
 			"for essiv_ivgen, error = %d\n",
 			error);
+		crypto_cipher_freesession(&ivpriv->crypto_session);
 		dmtc_crypto_clear(ivpriv->crypto_keyhash, ivpriv->keyhash_len);
 		kfree(ivpriv, M_DMCRYPT);
 		return ENOTSUP;
@@ -323,7 +331,7 @@ essiv_ivgen_dtor(struct target_crypt_config *priv, void *arg)
 	ivpriv = (struct essiv_ivgen_priv *)arg;
 	KKASSERT(ivpriv != NULL);
 
-	dmtc_crypto_clear(&ivpriv->crypto_context, sizeof(ivpriv->crypto_context));
+	crypto_cipher_freesession(&ivpriv->crypto_session);
 
 	dmtc_crypto_clear(ivpriv->crypto_keyhash, ivpriv->keyhash_len);
 	kfree(ivpriv, M_DMCRYPT);
@@ -347,8 +355,7 @@ essiv_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv,
 	struct crypto_cipher_iv iv2;
 	bzero(&iv2, sizeof(iv2));
 
-	error = ivpriv->crypto_cipher->encrypt(
-			&ivpriv->crypto_context,
+	error = crypto_cipher_encrypt(&ivpriv->crypto_session,
 			(uint8_t*)iv,
 			iv_len,
 			&iv2
@@ -405,7 +412,7 @@ hex2key(char *hex, size_t key_len, u_int8_t *key)
  * naming. It happens that they are identical, but it doesn't have to be this
  * way.
  */
-static const struct crypto_cipher *
+static crypto_cipher_t
 dmtc_find_crypto_cipher(const char *crypto_alg, const char *crypto_mode,
     int klen_in_bits)
 {
@@ -482,7 +489,7 @@ dm_target_crypt_init(dm_table_entry_t *table_en, int argc, char **argv)
 		goto notsup;
 
 	kprintf("dm_target_crypt: using crypto_cipher: %s\n",
-			priv->crypto_cipher->description);
+			crypto_cipher_get_description(priv->crypto_cipher));
 
 	/* Save length of param string */
 	priv->params_len = len;
@@ -527,14 +534,23 @@ dm_target_crypt_init(dm_table_entry_t *table_en, int argc, char **argv)
 
 	priv->ivgen = &ivgens[i];
 
-	error = priv->crypto_cipher->setkey(&priv->crypto_context,
+	error = crypto_cipher_initsession(priv->crypto_cipher, &priv->crypto_session);
+	if (error) {
+		kprintf("dm_target_crypt: Error during crypto_cipher_initsession, "
+			"error = %d\n",
+			error);
+		goto notsup;
+	}
+
+	error = crypto_cipher_setkey(&priv->crypto_session,
 		(const u_int8_t *)priv->crypto_key,
 		priv->crypto_klen / 8);
 
 	if (error) {
-		kprintf("dm_target_crypt: Error during crypto_newsession, "
+		kprintf("dm_target_crypt: Error during crypto_cipher_setkey, "
 			"error = %d\n",
 			error);
+		crypto_cipher_freesession(&priv->crypto_session);
 		goto notsup;
 	}
 
@@ -779,7 +795,7 @@ dmtc_bio_read_decrypt(struct bio *bio, uint8_t *data_buf, size_t data_buf_sz)
 	memcpy(data_buf, bio->bio_buf->b_data, bytes);
 
 	bio->bio_buf->b_error = dmtc_bio_encdec(priv, data_buf, bytes,
-	    bio->bio_offset, priv->crypto_cipher->decrypt);
+	    bio->bio_offset, CRYPTO_CIPHER_DECRYPT);
 
 	if (bio->bio_buf->b_error) {
 		kprintf("dm_target_crypt: dmtc_bio_read_decrypt error = %d\n",
@@ -868,7 +884,7 @@ dmtc_bio_write_encrypt(struct bio *bio, uint8_t *data_buf, size_t data_buf_sz)
 	memcpy(data_buf, bio->bio_buf->b_data, bytes);
 
 	bio->bio_buf->b_error = dmtc_bio_encdec(priv, data_buf, bytes,
-	    bio->bio_offset, priv->crypto_cipher->encrypt);
+	    bio->bio_offset, CRYPTO_CIPHER_ENCRYPT);
 
 	if (bio->bio_buf->b_error) {
 		kprintf("dm_target_crypt: dmtc_bio_write_encrypt error = %d\n",
@@ -929,7 +945,7 @@ dmtc_bio_write_done(struct bio *bio)
  */
 int
 dmtc_bio_encdec(dm_target_crypt_config_t *priv, uint8_t *data_buf, int bytes,
-    off_t offset, crypto_cipher_blockfn_t blockfn)
+    off_t offset, crypto_cipher_mode mode)
 {
 	struct crypto_cipher_iv iv;
 	int sectors = bytes / DEV_BSIZE;    /* Number of sectors */
@@ -948,8 +964,9 @@ dmtc_bio_encdec(dm_target_crypt_config_t *priv, uint8_t *data_buf, int bytes,
 		priv->ivgen->gen_iv(priv, (uint8_t *)&iv, sizeof(iv),
 		    isector + i);
 
-		error = blockfn(&priv->crypto_context, data_buf + i * DEV_BSIZE,
-		    DEV_BSIZE, &iv);
+		error = crypto_cipher_crypt(&priv->crypto_session,
+				data_buf + i * DEV_BSIZE,
+				DEV_BSIZE, &iv, mode);
 
 		if (error) {
 			break;
@@ -1025,7 +1042,7 @@ dmtc_crypto_dump(dm_target_crypt_config_t *priv, struct dmtc_dump_helper *dump_h
 	memcpy(dump_helper->space, dump_helper->data, bytes);
 
 	int error = dmtc_bio_encdec(priv, dump_helper->space, bytes, dump_helper->offset,
-			priv->crypto_cipher->encrypt);
+			CRYPTO_CIPHER_ENCRYPT);
 	if (error != 0) {
 		kprintf("dm_target_crypt: dmtc_crypto_dump = %d\n",
 		error);
