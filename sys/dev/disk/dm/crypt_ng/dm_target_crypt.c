@@ -636,6 +636,8 @@ dm_target_crypt_destroy(dm_table_entry_t *table_en)
 		priv->ivgen->dtor(priv, priv->ivgen_priv);
 	}
 
+	cryptoapi_cipher_freesession(&priv->crypto_session);
+
 	dmtc_crypto_clear(priv, sizeof(dm_target_crypt_config_t));
 	kfree(priv, M_DMCRYPT);
 
