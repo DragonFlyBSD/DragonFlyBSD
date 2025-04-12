@@ -10,7 +10,7 @@ typedef struct
 } twofish_ctx;
 
 void twofish_set_key(twofish_ctx *ctx, const u_int8_t in_key[], int key_len);
-void twofish_encrypt(twofish_ctx *ctx, const u_int8_t in_blk[], u_int8_t out_blk[]);
-void twofish_decrypt(twofish_ctx *ctx, const u_int8_t in_blk[], u_int8_t out_blk[]);
+void twofish_encrypt(const twofish_ctx *ctx, const u_int8_t in_blk[], u_int8_t out_blk[]);
+void twofish_decrypt(const twofish_ctx *ctx, const u_int8_t in_blk[], u_int8_t out_blk[]);
 
 #endif /* __TWOFISH_H */

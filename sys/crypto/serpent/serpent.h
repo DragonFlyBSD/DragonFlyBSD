@@ -9,8 +9,8 @@ typedef struct
 } serpent_ctx;
 
 void serpent_set_key(serpent_ctx *ctx, const u_int8_t in_key[], int key_len);
-void serpent_encrypt(serpent_ctx *ctx, const u_int8_t in_blk[],
+void serpent_encrypt(const serpent_ctx *ctx, const u_int8_t in_blk[],
 		     u_int8_t out_blk[]);
-void serpent_decrypt(serpent_ctx *ctx, const u_int8_t in_blk[],
+void serpent_decrypt(const serpent_ctx *ctx, const u_int8_t in_blk[],
 		     u_int8_t out_blk[]);
 

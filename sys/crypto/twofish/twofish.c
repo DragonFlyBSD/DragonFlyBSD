@@ -100,7 +100,7 @@ static const u_int8_t q_tab[2][256] = {
 #define q(n,x)  q_tab[n][x]
 
 
-static u_int32_t  m_tab[4][256] = {
+static const u_int32_t  m_tab[4][256] = {
    {0xBCBC3275, 0xECEC21F3, 0x202043C6, 0xB3B3C9F4, 0xDADA03DB, 0x02028B7B,
     0xE2E22BFB, 0x9E9EFAC8, 0xC9C9EC4A, 0xD4D409D3, 0x18186BE6, 0x1E1E9F6B,
     0x98980E45, 0xB2B2387D, 0xA6A6D2E8, 0x2626B74B, 0x3C3C57D6, 0x93938A32,
@@ -281,7 +281,7 @@ static u_int32_t  m_tab[4][256] = {
 #define mds(n,x)    m_tab[n][x]
 
 
-static u_int32_t h_fun(twofish_ctx *ctx, const u_int32_t x, const u_int32_t key[])
+static u_int32_t h_fun(const twofish_ctx *ctx, const u_int32_t x, const u_int32_t key[])
 {
     u_int32_t  b0, b1, b2, b3;
 
@@ -459,13 +459,13 @@ void twofish_set_key(twofish_ctx *ctx, const u_int8_t in_key[], int key_len_bits
     blk[0] = rotr(blk[0] ^ (t0 + t1 + l_key[4 * (i) + 10]), 1);     \
     blk[1] = rotl(blk[1], 1) ^ (t0 + 2 * t1 + l_key[4 * (i) + 11])
 
-void twofish_encrypt(twofish_ctx *ctx, const u_int8_t in_blk[],
+void twofish_encrypt(const twofish_ctx *ctx, const u_int8_t in_blk[],
              u_int8_t out_blk[])
 {
     u_int32_t  t0, t1, blk[4];
 
-    u_int32_t *l_key = ctx->l_key;
-    u_int32_t *mk_tab = ctx->mk_tab;
+    const u_int32_t *l_key = ctx->l_key;
+    const u_int32_t *mk_tab = ctx->mk_tab;
 
     blk[0] = LE32(((const u_int32_t *)in_blk)[0]) ^ l_key[0];
     blk[1] = LE32(((const u_int32_t *)in_blk)[1]) ^ l_key[1];
@@ -492,11 +492,11 @@ void twofish_encrypt(twofish_ctx *ctx, const u_int8_t in_blk[],
         blk[0] = rotl(blk[0], 1) ^ (t0 + t1 + l_key[4 * (i) +  8]);     \
         blk[1] = rotr(blk[1] ^ (t0 + 2 * t1 + l_key[4 * (i) +  9]), 1)
 
-void twofish_decrypt(twofish_ctx *ctx, const u_int8_t in_blk[], u_int8_t out_blk[])
+void twofish_decrypt(const twofish_ctx *ctx, const u_int8_t in_blk[], u_int8_t out_blk[])
 {
     u_int32_t  t0, t1, blk[4];
-    u_int32_t *l_key = ctx->l_key;
-    u_int32_t *mk_tab = ctx->mk_tab;
+    const u_int32_t *l_key = ctx->l_key;
+    const u_int32_t *mk_tab = ctx->mk_tab;
 
     blk[0] = LE32(((const u_int32_t *)in_blk)[0]) ^ l_key[4];
     blk[1] = LE32(((const u_int32_t *)in_blk)[1]) ^ l_key[5];

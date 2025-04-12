@@ -527,7 +527,7 @@ void serpent_set_key(serpent_ctx *ctx, const u_int8_t in_key[], int key_len)
 
 // encrypt a block of text
 
-void serpent_encrypt(serpent_ctx *ctx, const u_int8_t in_blk[],
+void serpent_encrypt(const serpent_ctx *ctx, const u_int8_t in_blk[],
 		     u_int8_t out_blk[])
 {
     u_int32_t  a,b,c,d,e,f,g,h;
@@ -579,7 +579,7 @@ void serpent_encrypt(serpent_ctx *ctx, const u_int8_t in_blk[],
 
 // decrypt a block of text
 
-void serpent_decrypt(serpent_ctx *ctx, const u_int8_t in_blk[],
+void serpent_decrypt(const serpent_ctx *ctx, const u_int8_t in_blk[],
 		     u_int8_t out_blk[])
 {
     u_int32_t  a,b,c,d,e,f,g,h;
