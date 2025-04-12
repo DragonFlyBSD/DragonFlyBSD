@@ -37,11 +37,12 @@
 
 struct cryptoapi_cipher_iv {
 	union {
-		uint8_t _rijndael[16];
-		uint8_t _aesni[16];
-		uint8_t _aes_xts[16]; /* 16 bytes are used, but the last 8 bytes
-					 are zero */
-	} _iv;
+		uint8_t iv_rijndael[16];
+		uint8_t iv_aesni[16];
+		uint8_t iv_aes_cbc[16]; /* AES_BLOCK_LEN */
+		uint8_t iv_aes_xts[16]; /* 16 bytes are used, but the last 8
+					 bytes are zero */
+	} iv;
 };
 
 typedef int cryptoapi_cipher_mode;

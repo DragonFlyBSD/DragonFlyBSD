@@ -252,7 +252,7 @@ aes_cbc_encrypt(const void *ctx, uint8_t *data, int datalen,
     struct cryptoapi_cipher_iv *iv)
 {
 	encrypt_data_cbc(rijndael_encrypt_wrap, ctx, data, datalen,
-	    AES_BLOCK_LEN, (uint8_t *)iv);
+	    AES_BLOCK_LEN, iv->iv.iv_aes_cbc);
 }
 
 static void
@@ -260,7 +260,7 @@ aes_cbc_decrypt(const void *ctx, uint8_t *data, int datalen,
     struct cryptoapi_cipher_iv *iv)
 {
 	decrypt_data_cbc(rijndael_decrypt_wrap, ctx, data, datalen,
-	    AES_BLOCK_LEN, (uint8_t *)iv);
+	    AES_BLOCK_LEN, iv->iv.iv_aes_cbc);
 }
 
 const struct cryptoapi_cipher_spec cipher_aes_cbc = {
@@ -377,7 +377,7 @@ aes_xts_encrypt(const void *_ctx, uint8_t *data, int datalen,
     struct cryptoapi_cipher_iv *_iv)
 {
 	uint8_t block[AES_XTS_BLOCK_LEN];
-	uint8_t *iv = _iv->_iv._aes_xts;
+	uint8_t *iv = _iv->iv.iv_aes_xts;
 	const struct aes_xts_ctx *ctx = _ctx;
 
 	aes_xts_reinit(ctx, iv);
@@ -393,7 +393,7 @@ aes_xts_decrypt(const void *_ctx, uint8_t *data, int datalen,
     struct cryptoapi_cipher_iv *_iv)
 {
 	uint8_t block[AES_XTS_BLOCK_LEN];
-	uint8_t *iv = _iv->_iv._aes_xts;
+	uint8_t *iv = _iv->iv.iv_aes_xts;
 	const struct aes_xts_ctx *ctx = _ctx;
 
 	aes_xts_reinit(ctx, iv);
@@ -432,8 +432,6 @@ struct aesni_ctx {
 	uint8_t xts_schedule[AES_SCHED_LEN] __aligned(AESNI_ALIGN);
 	int rounds;
 };
-
-#define AESNI_IV(iv) (iv->_iv._aesni)
 
 #define ASSERT_AESNI_ALIGNED(ptr)                                   \
 	KKASSERT((((uintptr_t)ptr) % AESNI_ALIGN) == 0);            \
@@ -499,7 +497,7 @@ cipher_aesni_cbc_encrypt(const void *_ctx, uint8_t *data, int datalen,
 	const struct aesni_ctx *ctx = _ctx;
 
 	aesni_encrypt_cbc(ctx->rounds, ctx->enc_schedule, datalen, data, data,
-	    AESNI_IV(iv));
+	    iv->iv.iv_aesni);
 }
 
 static void
@@ -509,7 +507,7 @@ cipher_aesni_cbc_decrypt(const void *_ctx, uint8_t *data, int datalen,
 	const struct aesni_ctx *ctx = _ctx;
 
 	aesni_decrypt_cbc(ctx->rounds, ctx->dec_schedule, datalen, data,
-	    AESNI_IV(iv));
+	    iv->iv.iv_aesni);
 }
 
 const struct cryptoapi_cipher_spec cipher_aesni_cbc = {
@@ -589,7 +587,7 @@ cipher_aesni_xts_encrypt(const void *_ctx, uint8_t *data, int datalen,
 	const struct aesni_ctx *ctx = _ctx;
 
 	aesni_encrypt_xts(ctx->rounds, ctx->enc_schedule, ctx->xts_schedule,
-	    datalen, data, data, AESNI_IV(iv));
+	    datalen, data, data, iv->iv.iv_aesni);
 }
 
 static void
@@ -599,7 +597,7 @@ cipher_aesni_xts_decrypt(const void *_ctx, uint8_t *data, int datalen,
 	const struct aesni_ctx *ctx = _ctx;
 
 	aesni_decrypt_xts(ctx->rounds, ctx->dec_schedule, ctx->xts_schedule,
-	    datalen, data, data, AESNI_IV(iv));
+	    datalen, data, data, iv->iv.iv_aesni);
 }
 
 const struct cryptoapi_cipher_spec cipher_aesni_xts = {
@@ -700,6 +698,10 @@ cryptoapi_cipher_initsession(cryptoapi_cipher_t cipher,
 {
 	if (session == NULL)
 		return (EINVAL);
+
+	if (__predict_false(
+		cipher->ivsize > sizeof(struct cryptoapi_cipher_iv)))
+		panic("struct cryptoapi_cipher_iv has wrong size");
 
 	bzero(session, sizeof(cryptoapi_cipher_session_t));
 
