@@ -45,12 +45,12 @@
 
 #include <machine/specialreg.h> /* for CPUID2_AESNI */
 
-#include <dev/disk/dm/crypt_ng/crypto_cipher.h>
-
 #include <crypto/aesni/aesni.h>
 #include <crypto/rijndael/rijndael.h>
 
-MALLOC_DEFINE(M_CRYPTOCIPHER, "crypto_cipher", "Crypto cipher session");
+#include "cryptoapi.h"
+
+MALLOC_DEFINE(M_CRYPTOAPI, "cryptoapi", "Crypto API");
 
 static int aesni_disable = 0;
 // TUNABLE_INT("hw.aesni_disable", &aesni_disable);
@@ -63,7 +63,7 @@ SYSCTL_INT(_hw, OID_AUTO, aesni_disable, CTLFLAG_RW, &aesni_disable, 0,
  * --------------------------------------
  */
 
-struct crypto_cipher_spec {
+struct cryptoapi_cipher_spec {
 	const char *shortname;
 	const char *description;
 	uint16_t blocksize;
@@ -77,10 +77,10 @@ struct crypto_cipher_spec {
 	int (*setkey)(void *ctx, const uint8_t *keydata, int keylen_in_bytes);
 
 	void (*encrypt)(const void *ctx, uint8_t *data, int datalen,
-	    struct crypto_cipher_iv *iv);
+	    struct cryptoapi_cipher_iv *iv);
 
 	void (*decrypt)(const void *ctx, uint8_t *data, int datalen,
-	    struct crypto_cipher_iv *iv);
+	    struct cryptoapi_cipher_iv *iv);
 };
 
 /**
@@ -177,17 +177,17 @@ cipher_null_setkey(void *ctx __unused, const uint8_t *keydata __unused,
 
 static void
 cipher_null_encrypt(const void *ctx __unused, uint8_t *data __unused,
-    int datalen __unused, struct crypto_cipher_iv *iv __unused)
+    int datalen __unused, struct cryptoapi_cipher_iv *iv __unused)
 {
 }
 
 static void
 cipher_null_decrypt(const void *ctx __unused, uint8_t *data, int datalen,
-    struct crypto_cipher_iv *iv __unused)
+    struct cryptoapi_cipher_iv *iv __unused)
 {
 }
 
-const struct crypto_cipher_spec cipher_null = {
+const struct cryptoapi_cipher_spec cipher_null = {
 	.shortname = "null",
 	.description = "null",
 	.blocksize = 1,
@@ -249,7 +249,7 @@ rijndael_decrypt_wrap(const void *ctx, const uint8_t *src, uint8_t *dst)
 
 static void
 aes_cbc_encrypt(const void *ctx, uint8_t *data, int datalen,
-    struct crypto_cipher_iv *iv)
+    struct cryptoapi_cipher_iv *iv)
 {
 	encrypt_data_cbc(rijndael_encrypt_wrap, ctx, data, datalen,
 	    AES_BLOCK_LEN, (uint8_t *)iv);
@@ -257,13 +257,13 @@ aes_cbc_encrypt(const void *ctx, uint8_t *data, int datalen,
 
 static void
 aes_cbc_decrypt(const void *ctx, uint8_t *data, int datalen,
-    struct crypto_cipher_iv *iv)
+    struct cryptoapi_cipher_iv *iv)
 {
 	decrypt_data_cbc(rijndael_decrypt_wrap, ctx, data, datalen,
 	    AES_BLOCK_LEN, (uint8_t *)iv);
 }
 
-const struct crypto_cipher_spec cipher_aes_cbc = {
+const struct cryptoapi_cipher_spec cipher_aes_cbc = {
 	.shortname = "aes-cbc",
 	.description = "AES-CBC (Rijndael-128) in software",
 	.blocksize = AES_BLOCK_LEN,
@@ -374,7 +374,7 @@ aes_xts_reinit(const struct aes_xts_ctx *ctx, u_int8_t *iv)
 
 static void
 aes_xts_encrypt(const void *_ctx, uint8_t *data, int datalen,
-    struct crypto_cipher_iv *_iv)
+    struct cryptoapi_cipher_iv *_iv)
 {
 	uint8_t block[AES_XTS_BLOCK_LEN];
 	uint8_t *iv = _iv->_iv._aes_xts;
@@ -390,7 +390,7 @@ aes_xts_encrypt(const void *_ctx, uint8_t *data, int datalen,
 
 static void
 aes_xts_decrypt(const void *_ctx, uint8_t *data, int datalen,
-    struct crypto_cipher_iv *_iv)
+    struct cryptoapi_cipher_iv *_iv)
 {
 	uint8_t block[AES_XTS_BLOCK_LEN];
 	uint8_t *iv = _iv->_iv._aes_xts;
@@ -405,7 +405,7 @@ aes_xts_decrypt(const void *_ctx, uint8_t *data, int datalen,
 	explicit_bzero(block, sizeof(block));
 }
 
-const struct crypto_cipher_spec cipher_aes_xts = {
+const struct cryptoapi_cipher_spec cipher_aes_xts = {
 	.shortname = "aes-xts",
 	.description = "AES-XTS (in software)",
 	.blocksize = AES_XTS_BLOCK_LEN,
@@ -494,7 +494,7 @@ cipher_aesni_cbc_setkey(void *_ctx, const uint8_t *keydata, int keylen_in_bytes)
 
 static void
 cipher_aesni_cbc_encrypt(const void *_ctx, uint8_t *data, int datalen,
-    struct crypto_cipher_iv *iv)
+    struct cryptoapi_cipher_iv *iv)
 {
 	const struct aesni_ctx *ctx = _ctx;
 
@@ -504,7 +504,7 @@ cipher_aesni_cbc_encrypt(const void *_ctx, uint8_t *data, int datalen,
 
 static void
 cipher_aesni_cbc_decrypt(const void *_ctx, uint8_t *data, int datalen,
-    struct crypto_cipher_iv *iv)
+    struct cryptoapi_cipher_iv *iv)
 {
 	const struct aesni_ctx *ctx = _ctx;
 
@@ -512,7 +512,7 @@ cipher_aesni_cbc_decrypt(const void *_ctx, uint8_t *data, int datalen,
 	    AESNI_IV(iv));
 }
 
-const struct crypto_cipher_spec cipher_aesni_cbc = {
+const struct cryptoapi_cipher_spec cipher_aesni_cbc = {
 	.shortname = "aesni-cbc",
 	.description = "AES-CBC w/ CPU AESNI instruction",
 	.blocksize = AES_BLOCK_LEN,
@@ -584,7 +584,7 @@ cipher_aesni_xts_setkey(void *_ctx, const uint8_t *keydata, int keylen_in_bytes)
 
 static void
 cipher_aesni_xts_encrypt(const void *_ctx, uint8_t *data, int datalen,
-    struct crypto_cipher_iv *iv)
+    struct cryptoapi_cipher_iv *iv)
 {
 	const struct aesni_ctx *ctx = _ctx;
 
@@ -594,7 +594,7 @@ cipher_aesni_xts_encrypt(const void *_ctx, uint8_t *data, int datalen,
 
 static void
 cipher_aesni_xts_decrypt(const void *_ctx, uint8_t *data, int datalen,
-    struct crypto_cipher_iv *iv)
+    struct cryptoapi_cipher_iv *iv)
 {
 	const struct aesni_ctx *ctx = _ctx;
 
@@ -602,7 +602,7 @@ cipher_aesni_xts_decrypt(const void *_ctx, uint8_t *data, int datalen,
 	    datalen, data, data, AESNI_IV(iv));
 }
 
-const struct crypto_cipher_spec cipher_aesni_xts = {
+const struct cryptoapi_cipher_spec cipher_aesni_xts = {
 	.shortname = "aesni-xts",
 	.description = "AES-XTS w/ CPU AESNI instruction",
 	.blocksize = AES_BLOCK_LEN,
@@ -619,7 +619,7 @@ const struct crypto_cipher_spec cipher_aesni_xts = {
  *
  */
 
-static crypto_cipher_t crypto_ciphers[] = {
+static cryptoapi_cipher_t cryptoapi_ciphers[] = {
 	&cipher_null,
 
 	/* first probe AESNI, then fallback to software AES */
@@ -633,18 +633,19 @@ static crypto_cipher_t crypto_ciphers[] = {
 
 /**
  * --------------------------------------
+ *  API
  * --------------------------------------
  */
 
-crypto_cipher_t
-crypto_cipher_find(const char *algo_name, const char *mode_name,
+cryptoapi_cipher_t
+cryptoapi_cipher_find(const char *algo_name, const char *mode_name,
     int keysize_in_bits)
 {
-	crypto_cipher_t cipher;
+	cryptoapi_cipher_t cipher;
 	size_t i;
 
-	for (i = 0; i < nitems(crypto_ciphers); i++) {
-		cipher = crypto_ciphers[i];
+	for (i = 0; i < nitems(cryptoapi_ciphers); i++) {
+		cipher = cryptoapi_ciphers[i];
 		if ((*cipher->probe)(algo_name, mode_name, keysize_in_bits) ==
 		    0) {
 			return cipher;
@@ -655,7 +656,7 @@ crypto_cipher_find(const char *algo_name, const char *mode_name,
 }
 
 const char *
-crypto_cipher_get_description(crypto_cipher_t cipher)
+cryptoapi_cipher_get_description(cryptoapi_cipher_t cipher)
 {
 	if (cipher == NULL)
 		return NULL;
@@ -674,16 +675,16 @@ kmalloc_aligned(int size, int alignment, void **origptr)
 {
 	void *ptr;
 
-	ptr = kmalloc(size, M_CRYPTOCIPHER, M_WAITOK);
+	ptr = kmalloc(size, M_CRYPTOAPI, M_WAITOK);
 
 	if (is_ptr_aligned(ptr, alignment)) {
 		*origptr = ptr;
 		return ptr;
 	}
 
-	kfree(ptr, M_CRYPTOCIPHER);
+	kfree(ptr, M_CRYPTOAPI);
 
-	ptr = kmalloc(size + alignment, M_CRYPTOCIPHER, M_WAITOK);
+	ptr = kmalloc(size + alignment, M_CRYPTOAPI, M_WAITOK);
 
 	uintptr_t offset = alignment - ((uintptr_t)ptr % alignment);
 
@@ -694,13 +695,13 @@ kmalloc_aligned(int size, int alignment, void **origptr)
 }
 
 int
-crypto_cipher_initsession(crypto_cipher_t cipher,
-    crypto_cipher_session_t *session)
+cryptoapi_cipher_initsession(cryptoapi_cipher_t cipher,
+    cryptoapi_cipher_session_t *session)
 {
 	if (session == NULL)
 		return (EINVAL);
 
-	bzero(session, sizeof(crypto_cipher_session_t));
+	bzero(session, sizeof(cryptoapi_cipher_session_t));
 
 	if (cipher->ctxsize > 0) {
 		session->context = kmalloc_aligned(cipher->ctxsize,
@@ -727,7 +728,7 @@ crypto_cipher_initsession(crypto_cipher_t cipher,
 }
 
 int
-crypto_cipher_freesession(crypto_cipher_session_t *session)
+cryptoapi_cipher_freesession(cryptoapi_cipher_session_t *session)
 {
 	if (session == NULL)
 		return (EINVAL);
@@ -741,7 +742,7 @@ crypto_cipher_freesession(crypto_cipher_session_t *session)
 	}
 
 	if (session->origptr) {
-		kfree(session->origptr, M_CRYPTOCIPHER);
+		kfree(session->origptr, M_CRYPTOAPI);
 	}
 
 	bzero(session, sizeof(*session));
@@ -750,16 +751,16 @@ crypto_cipher_freesession(crypto_cipher_session_t *session)
 }
 
 int
-crypto_cipher_setkey(crypto_cipher_session_t *session, const uint8_t *keydata,
-    int keylen_in_bytes)
+cryptoapi_cipher_setkey(cryptoapi_cipher_session_t *session,
+    const uint8_t *keydata, int keylen_in_bytes)
 {
 	return session->cipher->setkey(session->context, keydata,
 	    keylen_in_bytes);
 }
 
 int
-crypto_cipher_encrypt(const crypto_cipher_session_t *session, uint8_t *data,
-    int datalen, struct crypto_cipher_iv *iv)
+cryptoapi_cipher_encrypt(const cryptoapi_cipher_session_t *session,
+    uint8_t *data, int datalen, struct cryptoapi_cipher_iv *iv)
 {
 	if ((datalen % session->cipher->blocksize) != 0)
 		return (EINVAL);
@@ -770,8 +771,8 @@ crypto_cipher_encrypt(const crypto_cipher_session_t *session, uint8_t *data,
 }
 
 int
-crypto_cipher_decrypt(const crypto_cipher_session_t *session, uint8_t *data,
-    int datalen, struct crypto_cipher_iv *iv)
+cryptoapi_cipher_decrypt(const cryptoapi_cipher_session_t *session,
+    uint8_t *data, int datalen, struct cryptoapi_cipher_iv *iv)
 {
 	if ((datalen % session->cipher->blocksize) != 0)
 		return (EINVAL);
@@ -782,14 +783,14 @@ crypto_cipher_decrypt(const crypto_cipher_session_t *session, uint8_t *data,
 }
 
 int
-crypto_cipher_crypt(const crypto_cipher_session_t *session, uint8_t *data,
-    int datalen, struct crypto_cipher_iv *iv, crypto_cipher_mode mode)
+cryptoapi_cipher_crypt(const cryptoapi_cipher_session_t *session, uint8_t *data,
+    int datalen, struct cryptoapi_cipher_iv *iv, cryptoapi_cipher_mode mode)
 {
 	switch (mode) {
-	case CRYPTO_CIPHER_ENCRYPT:
-		return crypto_cipher_encrypt(session, data, datalen, iv);
-	case CRYPTO_CIPHER_DECRYPT:
-		return crypto_cipher_decrypt(session, data, datalen, iv);
+	case CRYPTOAPI_CIPHER_ENCRYPT:
+		return cryptoapi_cipher_encrypt(session, data, datalen, iv);
+	case CRYPTOAPI_CIPHER_DECRYPT:
+		return cryptoapi_cipher_decrypt(session, data, datalen, iv);
 	default:
 		return EINVAL;
 	}

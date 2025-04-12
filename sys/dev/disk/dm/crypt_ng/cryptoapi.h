@@ -32,10 +32,10 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _CRYPTO_CIPHER_H_
-#define _CRYPTO_CIPHER_H_
+#ifndef _CRYPTOAPI_H_
+#define _CRYPTOAPI_H_
 
-struct crypto_cipher_iv {
+struct cryptoapi_cipher_iv {
 	union {
 		uint8_t _rijndael[16];
 		uint8_t _aesni[16];
@@ -44,43 +44,42 @@ struct crypto_cipher_iv {
 	} _iv;
 };
 
-typedef int crypto_cipher_mode;
+typedef int cryptoapi_cipher_mode;
 
-#define CRYPTO_CIPHER_ENCRYPT 0
-#define CRYPTO_CIPHER_DECRYPT 1
+#define CRYPTOAPI_CIPHER_ENCRYPT 0
+#define CRYPTOAPI_CIPHER_DECRYPT 1
 
-struct crypto_cipher_spec;
+struct cryptoapi_cipher_spec;
 
-typedef const struct crypto_cipher_spec *crypto_cipher_t;
+typedef const struct cryptoapi_cipher_spec *cryptoapi_cipher_t;
 
 typedef struct {
-	crypto_cipher_t cipher;
+	cryptoapi_cipher_t cipher;
 	void *context;
 	void *origptr;
-} crypto_cipher_session_t;
+} cryptoapi_cipher_session_t;
 
-typedef struct crypto_cipher_context *crypto_cipher_context_t;
+cryptoapi_cipher_t cryptoapi_cipher_find(const char *algo_name,
+    const char *mode_name, int keysize_in_bits);
 
-crypto_cipher_t crypto_cipher_find(const char *algo_name, const char *mode_name,
-    int keysize_in_bits);
+const char *cryptoapi_cipher_get_description(cryptoapi_cipher_t cipher);
 
-const char *crypto_cipher_get_description(crypto_cipher_t cipher);
+int cryptoapi_cipher_initsession(cryptoapi_cipher_t cipher,
+    cryptoapi_cipher_session_t *session);
 
-int crypto_cipher_initsession(crypto_cipher_t cipher,
-    crypto_cipher_session_t *session);
+int cryptoapi_cipher_freesession(cryptoapi_cipher_session_t *session);
 
-int crypto_cipher_freesession(crypto_cipher_session_t *session);
-
-int crypto_cipher_setkey(crypto_cipher_session_t *session,
+int cryptoapi_cipher_setkey(cryptoapi_cipher_session_t *session,
     const uint8_t *keydata, int keylen_in_bytes);
 
-int crypto_cipher_encrypt(const crypto_cipher_session_t *session, uint8_t *data,
-    int datalen, struct crypto_cipher_iv *iv);
+int cryptoapi_cipher_encrypt(const cryptoapi_cipher_session_t *session,
+    uint8_t *data, int datalen, struct cryptoapi_cipher_iv *iv);
 
-int crypto_cipher_decrypt(const crypto_cipher_session_t *session, uint8_t *data,
-    int datalen, struct crypto_cipher_iv *iv);
+int cryptoapi_cipher_decrypt(const cryptoapi_cipher_session_t *session,
+    uint8_t *data, int datalen, struct cryptoapi_cipher_iv *iv);
 
-int crypto_cipher_crypt(const crypto_cipher_session_t *session, uint8_t *data,
-    int datalen, struct crypto_cipher_iv *iv, crypto_cipher_mode mode);
+int cryptoapi_cipher_crypt(const cryptoapi_cipher_session_t *session,
+    uint8_t *data, int datalen, struct cryptoapi_cipher_iv *iv,
+    cryptoapi_cipher_mode mode);
 
 #endif
