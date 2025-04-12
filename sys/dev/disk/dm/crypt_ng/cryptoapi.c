@@ -192,6 +192,20 @@ crypt_block_xts(const void *ctx, uint8_t *data, uint8_t *iv,
 }
 
 /**
+ * Encrypts/decrypts blocks of data using XTS (without reinit).
+ */
+static __inline void
+crypt_data_xts(const void *ctx, uint8_t *data, int datalen, uint8_t *iv,
+    block_fn_t block_fn, uint8_t *block, int blocklen, int alpha)
+{
+	for (int i = 0; i < datalen; i += blocklen) {
+		crypt_block_xts(ctx, data + i, iv, block_fn, block, blocklen,
+		    alpha);
+	}
+	explicit_bzero(block, blocklen);
+}
+
+/**
  * --------------------------------------
  * Cipher null
  * --------------------------------------
@@ -351,7 +365,7 @@ aes_xts_setkey(void *_ctx, const uint8_t *keydata, int keylen_in_bytes)
 	return (0);
 }
 
-static void
+static __inline void
 aes_xts_reinit(const struct aes_xts_ctx *ctx, u_int8_t *iv)
 {
 #if 0
@@ -374,15 +388,12 @@ aes_xts_crypt(const void *_ctx, uint8_t *data, int datalen,
 	uint8_t block[AES_XTS_BLOCK_LEN];
 	uint8_t *iv = _iv->iv.iv_aes_xts;
 	const struct aes_xts_ctx *ctx = _ctx;
-	block_fn_t block_fn = encrypt ? rijndael_encrypt_wrap :
-					rijndael_decrypt_wrap;
 
 	aes_xts_reinit(ctx, iv);
-	for (int i = 0; i < datalen; i += AES_XTS_BLOCK_LEN) {
-		crypt_block_xts(&ctx->key1, data + i, iv, block_fn, block,
-		    AES_XTS_BLOCK_LEN, AES_XTS_ALPHA);
-	}
-	explicit_bzero(block, sizeof(block));
+
+	crypt_data_xts(&ctx->key1, data, datalen, iv,
+	    encrypt ? rijndael_encrypt_wrap : rijndael_decrypt_wrap, block,
+	    AES_XTS_BLOCK_LEN, AES_XTS_ALPHA);
 }
 
 const struct cryptoapi_cipher_spec cipher_aes_xts = {
@@ -657,7 +668,7 @@ struct twofish_xts_ctx {
 	twofish_ctx key2;
 };
 
-static void
+static __inline void
 twofish_xts_reinit(const struct twofish_xts_ctx *ctx, uint8_t *iv)
 {
 #if 0
@@ -711,15 +722,12 @@ twofish_xts_crypt(const void *_ctx, uint8_t *data, int datalen,
 	uint8_t block[TWOFISH_XTS_BLOCK_LEN];
 	uint8_t *iv = _iv->iv.iv_twofish_xts;
 	const struct twofish_xts_ctx *ctx = _ctx;
-	block_fn_t block_fn = encrypt ? twofish_encrypt_wrap :
-					twofish_decrypt_wrap;
 
 	twofish_xts_reinit(ctx, iv);
-	for (int i = 0; i < datalen; i += TWOFISH_XTS_BLOCK_LEN) {
-		crypt_block_xts(&ctx->key1, data + i, iv, block_fn, block,
-		    TWOFISH_XTS_BLOCK_LEN, AES_XTS_ALPHA);
-	}
-	explicit_bzero(block, sizeof(block));
+
+	crypt_data_xts(&ctx->key1, data, datalen, iv,
+	    encrypt ? twofish_encrypt_wrap : twofish_decrypt_wrap, block,
+	    TWOFISH_XTS_BLOCK_LEN, AES_XTS_ALPHA);
 }
 
 const struct cryptoapi_cipher_spec cipher_twofish_xts = {
@@ -821,7 +829,7 @@ struct serpent_xts_ctx {
 	serpent_ctx key2;
 };
 
-static void
+static __inline void
 serpent_xts_reinit(const struct serpent_xts_ctx *ctx, uint8_t *iv)
 {
 #if 0
@@ -876,15 +884,12 @@ serpent_xts_crypt(const void *_ctx, uint8_t *data, int datalen,
 	uint8_t block[SERPENT_XTS_BLOCK_LEN];
 	uint8_t *iv = _iv->iv.iv_serpent_xts;
 	const struct serpent_xts_ctx *ctx = _ctx;
-	block_fn_t block_fn = encrypt ? serpent_encrypt_wrap :
-					serpent_decrypt_wrap;
 
 	serpent_xts_reinit(ctx, iv);
-	for (int i = 0; i < datalen; i += SERPENT_XTS_BLOCK_LEN) {
-		crypt_block_xts(&ctx->key1, data + i, iv, block_fn, block,
-		    SERPENT_XTS_BLOCK_LEN, AES_XTS_ALPHA);
-	}
-	explicit_bzero(block, sizeof(block));
+
+	crypt_data_xts(&ctx->key1, data, datalen, iv,
+	    encrypt ? serpent_encrypt_wrap : serpent_decrypt_wrap, block,
+	    SERPENT_XTS_BLOCK_LEN, AES_XTS_ALPHA);
 }
 
 const struct cryptoapi_cipher_spec cipher_serpent_xts = {
