@@ -171,6 +171,30 @@ decrypt_data_cbc(block_fn_t block_fn, const void *ctx, uint8_t *data,
 }
 
 /**
+ * Encrypts/decrypts a single block using XTS.
+ */
+static __inline void
+crypt_block_xts(const void *ctx, uint8_t *data, uint8_t *iv,
+    block_fn_t block_fn, uint8_t *block, int blocklen, int alpha)
+{
+	u_int i, carry_in, carry_out;
+
+	xor_block3(block, data, iv, blocklen);
+	block_fn(ctx, block, data);
+	xor_block(data, iv, blocklen);
+
+	/* Exponentiate tweak */
+	carry_in = 0;
+	for (i = 0; i < blocklen; i++) {
+		carry_out = iv[i] & 0x80;
+		iv[i] = (iv[i] << 1) | (carry_in ? 1 : 0);
+		carry_in = carry_out;
+	}
+	if (carry_in)
+		iv[0] ^= alpha;
+}
+
+/**
  * --------------------------------------
  * Cipher null
  * --------------------------------------
@@ -305,27 +329,6 @@ struct aes_xts_ctx {
 	rijndael_ctx key2;
 };
 
-static void
-aes_xts_crypt_block(const void *ctx, uint8_t *data, uint8_t *iv,
-    block_fn_t block_fn, uint8_t block[AES_XTS_BLOCK_LEN])
-{
-	u_int i, carry_in, carry_out;
-
-	xor_block3(block, data, iv, AES_XTS_BLOCK_LEN);
-	block_fn(ctx, block, data);
-	xor_block(data, iv, AES_XTS_BLOCK_LEN);
-
-	/* Exponentiate tweak */
-	carry_in = 0;
-	for (i = 0; i < AES_XTS_BLOCK_LEN; i++) {
-		carry_out = iv[i] & 0x80;
-		iv[i] = (iv[i] << 1) | (carry_in ? 1 : 0);
-		carry_in = carry_out;
-	}
-	if (carry_in)
-		iv[0] ^= AES_XTS_ALPHA;
-}
-
 static bool
 aes_xts_valid_keysize_in_bits(int keysize_in_bits)
 {
@@ -388,8 +391,8 @@ aes_xts_encrypt(const void *_ctx, uint8_t *data, int datalen,
 
 	aes_xts_reinit(ctx, iv);
 	for (int i = 0; i < datalen; i += AES_XTS_BLOCK_LEN) {
-		aes_xts_crypt_block(&ctx->key1, data + i, iv,
-		    rijndael_encrypt_wrap, block);
+		crypt_block_xts(&ctx->key1, data + i, iv, rijndael_encrypt_wrap,
+		    block, AES_XTS_BLOCK_LEN, AES_XTS_ALPHA);
 	}
 	explicit_bzero(block, sizeof(block));
 }
@@ -404,8 +407,8 @@ aes_xts_decrypt(const void *_ctx, uint8_t *data, int datalen,
 
 	aes_xts_reinit(ctx, iv);
 	for (int i = 0; i < datalen; i += AES_XTS_BLOCK_LEN) {
-		aes_xts_crypt_block(ctx, data + i, iv, rijndael_decrypt_wrap,
-		    block);
+		crypt_block_xts(&ctx->key1, data + i, iv, rijndael_decrypt_wrap,
+		    block, AES_XTS_BLOCK_LEN, AES_XTS_ALPHA);
 	}
 
 	explicit_bzero(block, sizeof(block));
@@ -704,27 +707,6 @@ struct twofish_xts_ctx {
 };
 
 static void
-twofish_xts_crypt_block(const void *ctx, uint8_t *data, uint8_t *iv,
-    block_fn_t block_fn, uint8_t block[TWOFISH_XTS_BLOCK_LEN])
-{
-	u_int i, carry_in, carry_out;
-
-	xor_block3(block, data, iv, TWOFISH_XTS_BLOCK_LEN);
-	block_fn(ctx, block, data);
-	xor_block(data, iv, TWOFISH_XTS_BLOCK_LEN);
-
-	/* Exponentiate tweak */
-	carry_in = 0;
-	for (i = 0; i < TWOFISH_XTS_BLOCK_LEN; i++) {
-		carry_out = iv[i] & 0x80;
-		iv[i] = (iv[i] << 1) | (carry_in ? 1 : 0);
-		carry_in = carry_out;
-	}
-	if (carry_in)
-		iv[0] ^= AES_XTS_ALPHA;
-}
-
-static void
 twofish_xts_reinit(const struct twofish_xts_ctx *ctx, uint8_t *iv)
 {
 #if 0
@@ -781,8 +763,8 @@ twofish_xts_encrypt(const void *_ctx, uint8_t *data, int datalen,
 
 	twofish_xts_reinit(ctx, iv);
 	for (int i = 0; i < datalen; i += TWOFISH_XTS_BLOCK_LEN) {
-		twofish_xts_crypt_block(&ctx->key1, data + i, iv,
-		    twofish_encrypt_wrap, block);
+		crypt_block_xts(&ctx->key1, data + i, iv, twofish_encrypt_wrap,
+		    block, TWOFISH_XTS_BLOCK_LEN, AES_XTS_ALPHA);
 	}
 	explicit_bzero(block, sizeof(block));
 }
@@ -797,8 +779,8 @@ twofish_xts_decrypt(const void *_ctx, uint8_t *data, int datalen,
 
 	twofish_xts_reinit(ctx, iv);
 	for (int i = 0; i < datalen; i += TWOFISH_XTS_BLOCK_LEN) {
-		twofish_xts_crypt_block(&ctx->key1, data + i, iv,
-		    twofish_decrypt_wrap, block);
+		crypt_block_xts(&ctx->key1, data + i, iv, twofish_decrypt_wrap,
+		    block, TWOFISH_XTS_BLOCK_LEN, AES_XTS_ALPHA);
 	}
 	explicit_bzero(block, sizeof(block));
 }
@@ -909,27 +891,6 @@ struct serpent_xts_ctx {
 };
 
 static void
-serpent_xts_crypt_block(const void *ctx, uint8_t *data, uint8_t *iv,
-    block_fn_t block_fn, uint8_t block[SERPENT_XTS_BLOCK_LEN])
-{
-	u_int i, carry_in, carry_out;
-
-	xor_block3(block, data, iv, SERPENT_XTS_BLOCK_LEN);
-	block_fn(ctx, block, data);
-	xor_block(data, iv, SERPENT_XTS_BLOCK_LEN);
-
-	/* Exponentiate tweak */
-	carry_in = 0;
-	for (i = 0; i < SERPENT_XTS_BLOCK_LEN; i++) {
-		carry_out = iv[i] & 0x80;
-		iv[i] = (iv[i] << 1) | (carry_in ? 1 : 0);
-		carry_in = carry_out;
-	}
-	if (carry_in)
-		iv[0] ^= AES_XTS_ALPHA;
-}
-
-static void
 serpent_xts_reinit(const struct serpent_xts_ctx *ctx, uint8_t *iv)
 {
 #if 0
@@ -987,8 +948,8 @@ serpent_xts_encrypt(const void *_ctx, uint8_t *data, int datalen,
 
 	serpent_xts_reinit(ctx, iv);
 	for (int i = 0; i < datalen; i += SERPENT_XTS_BLOCK_LEN) {
-		serpent_xts_crypt_block(&ctx->key1, data + i, iv,
-		    serpent_encrypt_wrap, block);
+		crypt_block_xts(&ctx->key1, data + i, iv, serpent_encrypt_wrap,
+		    block, SERPENT_XTS_BLOCK_LEN, AES_XTS_ALPHA);
 	}
 	explicit_bzero(block, sizeof(block));
 }
@@ -1003,8 +964,8 @@ serpent_xts_decrypt(const void *_ctx, uint8_t *data, int datalen,
 
 	serpent_xts_reinit(ctx, iv);
 	for (int i = 0; i < datalen; i += SERPENT_XTS_BLOCK_LEN) {
-		serpent_xts_crypt_block(&ctx->key1, data + i, iv,
-		    serpent_decrypt_wrap, block);
+		crypt_block_xts(&ctx->key1, data + i, iv, serpent_decrypt_wrap,
+		    block, SERPENT_XTS_BLOCK_LEN, AES_XTS_ALPHA);
 	}
 	explicit_bzero(block, sizeof(block));
 }
