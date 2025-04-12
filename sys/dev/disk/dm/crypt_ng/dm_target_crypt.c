@@ -420,22 +420,22 @@ dmtc_find_crypto_cipher(const char *crypto_alg, const char *crypto_mode,
 	((strcmp(crypto_alg, algo) == 0) && (strcmp(crypto_mode, mode) == 0))
 
 	if (ALGO_MODE_EQ("aes", "cbc"))
-		return cryptoapi_cipher_find("aes", "cbc", klen_in_bits);
+		return cryptoapi_cipher_find("aes-cbc", klen_in_bits);
 
 	if (ALGO_MODE_EQ("aes", "xts"))
-		return cryptoapi_cipher_find("aes", "xts", klen_in_bits);
+		return cryptoapi_cipher_find("aes-xts", klen_in_bits);
 
 	if (ALGO_MODE_EQ("twofish", "cbc"))
-		return cryptoapi_cipher_find("twofish", "cbc", klen_in_bits);
+		return cryptoapi_cipher_find("twofish-cbc", klen_in_bits);
 
 	if (ALGO_MODE_EQ("twofish", "xts"))
-		return cryptoapi_cipher_find("twofish", "xts", klen_in_bits);
+		return cryptoapi_cipher_find("twofish-xts", klen_in_bits);
 
 	if (ALGO_MODE_EQ("serpent", "cbc"))
-		return cryptoapi_cipher_find("serpent", "cbc", klen_in_bits);
+		return cryptoapi_cipher_find("serpent-cbc", klen_in_bits);
 
 	if (ALGO_MODE_EQ("serpent", "xts"))
-		return cryptoapi_cipher_find("serpent", "xts", klen_in_bits);
+		return cryptoapi_cipher_find("serpent-xts", klen_in_bits);
 
 	kprintf("dm_target_crypt: unsupported algo: %s and mode: %s\n",
 	    crypto_alg, crypto_mode);

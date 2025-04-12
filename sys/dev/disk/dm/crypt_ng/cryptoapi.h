@@ -66,8 +66,13 @@ typedef struct {
 	void *origptr;
 } cryptoapi_cipher_session_t;
 
-cryptoapi_cipher_t cryptoapi_cipher_find(const char *algo_name,
-    const char *mode_name, int keysize_in_bits);
+/**
+ * Selects a cipher based on the specified ciphername, e.g. "aes-cbc",
+ * the given keysize (in bits), and some platform or system settings,
+ * e.g. whether AESNI is supported by the CPU or enabled by the sysadmin.
+ */
+cryptoapi_cipher_t cryptoapi_cipher_find(const char *ciphername,
+    int keysize_in_bits);
 
 const char *cryptoapi_cipher_get_description(cryptoapi_cipher_t cipher);
 

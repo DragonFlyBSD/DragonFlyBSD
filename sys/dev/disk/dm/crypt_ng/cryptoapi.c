@@ -66,15 +66,30 @@ SYSCTL_INT(_hw, OID_AUTO, aesni_disable, CTLFLAG_RW, &aesni_disable, 0,
  */
 
 struct cryptoapi_cipher_spec {
-	const char *shortname;
+	/**
+	 * The name of the cipher, e.g. "aes-xts" that
+	 * this specification implements.
+	 */
+	const char *ciphername;
+
+	/**
+	 * Human readable description.
+	 */
 	const char *description;
 	uint16_t blocksize;
 	uint16_t ivsize;
 	uint16_t ctxsize;
 	uint16_t ctxalign;
 
-	int (*probe)(const char *algo_name, const char *mode_name,
-	    int keysize_in_bits);
+	/**
+	 * Return 0, if:
+	 *
+	 * - the keysize in bits is supported by the implementation,
+	 * - the implementation is supported by the platform
+	 *   (e.g. AESNI needs special CPU features),
+	 * - and it is enabled by the sysadmin
+	 */
+	int (*probe)(int keysize_in_bits);
 
 	int (*setkey)(void *ctx, const uint8_t *keydata, int keylen_in_bytes);
 
@@ -162,12 +177,9 @@ decrypt_data_cbc(block_fn_t block_fn, const void *ctx, uint8_t *data,
  */
 
 static int
-cipher_null_probe(const char *algo_name, const char *mode_name __unused,
-    int keysize_in_bits __unused)
+cipher_null_probe(int keysize_in_bits __unused)
 {
-	if (strcmp(algo_name, "null") == 0)
-		return (0);
-	return (-1);
+	return (0);
 }
 
 static int
@@ -190,8 +202,8 @@ cipher_null_decrypt(const void *ctx __unused, uint8_t *data, int datalen,
 }
 
 const struct cryptoapi_cipher_spec cipher_null = {
-	.shortname = "null",
-	.description = "null",
+	.ciphername = "null",
+	.description = "null - No encryption",
 	.blocksize = 1,
 	.ivsize = 0,
 	.ctxsize = 0,
@@ -211,11 +223,9 @@ const struct cryptoapi_cipher_spec cipher_null = {
 #define AES_BLOCK_LEN 16
 
 static int
-aes_cbc_probe(const char *algo_name, const char *mode_name, int keysize_in_bits)
+aes_cbc_probe(int keysize_in_bits)
 {
-	if ((strcmp(algo_name, "aes") == 0) &&
-	    (strcmp(mode_name, "cbc") == 0) &&
-	    (keysize_in_bits == 128 || keysize_in_bits == 192 ||
+	if ((keysize_in_bits == 128 || keysize_in_bits == 192 ||
 		keysize_in_bits == 256))
 		return (0);
 	else
@@ -266,7 +276,7 @@ aes_cbc_decrypt(const void *ctx, uint8_t *data, int datalen,
 }
 
 const struct cryptoapi_cipher_spec cipher_aes_cbc = {
-	.shortname = "aes-cbc",
+	.ciphername = "aes-cbc",
 	.description = "AES-CBC (Rijndael-128) in software",
 	.blocksize = AES_BLOCK_LEN,
 	.ivsize = AES_BLOCK_LEN,
@@ -329,14 +339,8 @@ aes_xts_valid_keysize_in_bits(int keysize_in_bits)
 }
 
 static int
-aes_xts_probe(const char *algo_name, const char *mode_name, int keysize_in_bits)
+aes_xts_probe(int keysize_in_bits)
 {
-	if (strcmp(algo_name, "aes") != 0)
-		return (-1);
-
-	if (strcmp(mode_name, "xts") != 0)
-		return (-1);
-
 	if (aes_xts_valid_keysize_in_bits(keysize_in_bits))
 		return (0);
 
@@ -408,7 +412,7 @@ aes_xts_decrypt(const void *_ctx, uint8_t *data, int datalen,
 }
 
 const struct cryptoapi_cipher_spec cipher_aes_xts = {
-	.shortname = "aes-xts",
+	.ciphername = "aes-xts",
 	.description = "AES-XTS (in software)",
 	.blocksize = AES_XTS_BLOCK_LEN,
 	.ivsize = 16,
@@ -441,8 +445,7 @@ struct aesni_ctx {
 		panic("AESNI misaligned");
 
 static int
-cipher_aesni_cbc_probe(const char *algo_name, const char *mode_name,
-    int keysize_in_bits)
+cipher_aesni_cbc_probe(int keysize_in_bits)
 {
 	if (aesni_disable)
 		return (-1);
@@ -450,9 +453,7 @@ cipher_aesni_cbc_probe(const char *algo_name, const char *mode_name,
 	if ((cpu_feature2 & CPUID2_AESNI) == 0)
 		return (EINVAL);
 
-	if ((strcmp(algo_name, "aes") == 0) &&
-	    (strcmp(mode_name, "cbc") == 0) &&
-	    (keysize_in_bits == 128 || keysize_in_bits == 192 ||
+	if ((keysize_in_bits == 128 || keysize_in_bits == 192 ||
 		keysize_in_bits == 256))
 		return (0);
 
@@ -513,7 +514,7 @@ cipher_aesni_cbc_decrypt(const void *_ctx, uint8_t *data, int datalen,
 }
 
 const struct cryptoapi_cipher_spec cipher_aesni_cbc = {
-	.shortname = "aesni-cbc",
+	.ciphername = "aes-cbc",
 	.description = "AES-CBC w/ CPU AESNI instruction",
 	.blocksize = AES_BLOCK_LEN,
 	.ivsize = AES_BLOCK_LEN,
@@ -532,8 +533,7 @@ const struct cryptoapi_cipher_spec cipher_aesni_cbc = {
  */
 
 static int
-cipher_aesni_xts_probe(const char *algo_name, const char *mode_name,
-    int keysize_in_bits)
+cipher_aesni_xts_probe(int keysize_in_bits)
 {
 	if (aesni_disable)
 		return (-1);
@@ -541,9 +541,7 @@ cipher_aesni_xts_probe(const char *algo_name, const char *mode_name,
 	if ((cpu_feature2 & CPUID2_AESNI) == 0)
 		return (EINVAL);
 
-	if ((strcmp(algo_name, "aes") == 0) &&
-	    (strcmp(mode_name, "xts") == 0) &&
-	    (keysize_in_bits == 256 || keysize_in_bits == 512))
+	if ((keysize_in_bits == 256 || keysize_in_bits == 512))
 		return (0);
 
 	return (-1);
@@ -603,7 +601,7 @@ cipher_aesni_xts_decrypt(const void *_ctx, uint8_t *data, int datalen,
 }
 
 const struct cryptoapi_cipher_spec cipher_aesni_xts = {
-	.shortname = "aesni-xts",
+	.ciphername = "aes-xts",
 	.description = "AES-XTS w/ CPU AESNI instruction",
 	.blocksize = AES_BLOCK_LEN,
 	.ivsize = AES_BLOCK_LEN,
@@ -624,12 +622,9 @@ const struct cryptoapi_cipher_spec cipher_aesni_xts = {
 #define TWOFISH_BLOCK_LEN 16
 
 static int
-twofish_cbc_probe(const char *algo_name, const char *mode_name,
-    int keysize_in_bits)
+twofish_cbc_probe(int keysize_in_bits)
 {
-	if ((strcmp(algo_name, "twofish") == 0) &&
-	    (strcmp(mode_name, "cbc") == 0) &&
-	    (keysize_in_bits == 128 || keysize_in_bits == 192 ||
+	if ((keysize_in_bits == 128 || keysize_in_bits == 192 ||
 		keysize_in_bits == 256))
 		return (0);
 	else
@@ -680,8 +675,8 @@ twofish_cbc_decrypt(const void *ctx, uint8_t *data, int datalen,
 }
 
 const struct cryptoapi_cipher_spec cipher_twofish_cbc = {
-	.shortname = "twofish-cbc",
-	.description = "Twofish CBC",
+	.ciphername = "twofish-cbc",
+	.description = "Twofish-CBC",
 	.blocksize = TWOFISH_BLOCK_LEN,
 	.ivsize = TWOFISH_BLOCK_LEN,
 	.ctxsize = sizeof(twofish_ctx),
@@ -750,12 +745,9 @@ twofish_xts_reinit(const struct twofish_xts_ctx *ctx, uint8_t *iv)
 }
 
 static int
-twofish_xts_probe(const char *algo_name, const char *mode_name,
-    int keysize_in_bits)
+twofish_xts_probe(int keysize_in_bits)
 {
-	if ((strcmp(algo_name, "twofish") == 0) &&
-	    (strcmp(mode_name, "xts") == 0) &&
-	    (keysize_in_bits == 256 || keysize_in_bits == 512))
+	if ((keysize_in_bits == 256 || keysize_in_bits == 512))
 		return (0);
 	else
 		return (-1);
@@ -812,8 +804,8 @@ twofish_xts_decrypt(const void *_ctx, uint8_t *data, int datalen,
 }
 
 const struct cryptoapi_cipher_spec cipher_twofish_xts = {
-	.shortname = "twofish-xts",
-	.description = "Twofish XTS",
+	.ciphername = "twofish-xts",
+	.description = "Twofish-XTS",
 	.blocksize = TWOFISH_XTS_BLOCK_LEN,
 	.ivsize = TWOFISH_XTS_IV_LEN,
 	.ctxsize = sizeof(struct twofish_xts_ctx),
@@ -835,12 +827,9 @@ const struct cryptoapi_cipher_spec cipher_twofish_xts = {
 #define SERPENT_BLOCK_LEN 16
 
 static int
-serpent_cbc_probe(const char *algo_name, const char *mode_name,
-    int keysize_in_bits)
+serpent_cbc_probe(int keysize_in_bits)
 {
-	if ((strcmp(algo_name, "serpent") == 0) &&
-	    (strcmp(mode_name, "cbc") == 0) &&
-	    (keysize_in_bits == 128 || keysize_in_bits == 192 ||
+	if ((keysize_in_bits == 128 || keysize_in_bits == 192 ||
 		keysize_in_bits == 256))
 		return (0);
 	else
@@ -891,7 +880,7 @@ serpent_cbc_decrypt(const void *ctx, uint8_t *data, int datalen,
 }
 
 const struct cryptoapi_cipher_spec cipher_serpent_cbc = {
-	.shortname = "serpent-cbc",
+	.ciphername = "serpent-cbc",
 	.description = "Serpent-CBC",
 	.blocksize = SERPENT_BLOCK_LEN,
 	.ivsize = SERPENT_BLOCK_LEN,
@@ -962,12 +951,9 @@ serpent_xts_reinit(const struct serpent_xts_ctx *ctx, uint8_t *iv)
 }
 
 static int
-serpent_xts_probe(const char *algo_name, const char *mode_name,
-    int keysize_in_bits)
+serpent_xts_probe(int keysize_in_bits)
 {
-	if ((strcmp(algo_name, "serpent") == 0) &&
-	    (strcmp(mode_name, "xts") == 0) &&
-	    (keysize_in_bits == 256 || keysize_in_bits == 512))
+	if ((keysize_in_bits == 256 || keysize_in_bits == 512))
 		return (0);
 	else
 		return (-1);
@@ -1024,8 +1010,8 @@ serpent_xts_decrypt(const void *_ctx, uint8_t *data, int datalen,
 }
 
 const struct cryptoapi_cipher_spec cipher_serpent_xts = {
-	.shortname = "serpent-xts",
-	.description = "Serpent XTS",
+	.ciphername = "serpent-xts",
+	.description = "Serpent-XTS",
 	.blocksize = SERPENT_XTS_BLOCK_LEN,
 	.ivsize = SERPENT_XTS_IV_LEN,
 	.ctxsize = sizeof(struct serpent_xts_ctx),
@@ -1066,16 +1052,15 @@ static cryptoapi_cipher_t cryptoapi_ciphers[] = {
  */
 
 cryptoapi_cipher_t
-cryptoapi_cipher_find(const char *algo_name, const char *mode_name,
-    int keysize_in_bits)
+cryptoapi_cipher_find(const char *ciphername, int keysize_in_bits)
 {
 	cryptoapi_cipher_t cipher;
 	size_t i;
 
 	for (i = 0; i < nitems(cryptoapi_ciphers); i++) {
 		cipher = cryptoapi_ciphers[i];
-		if ((*cipher->probe)(algo_name, mode_name, keysize_in_bits) ==
-		    0) {
+		if ((strcasecmp(cipher->ciphername, ciphername) == 0) &&
+		    (cipher->probe(keysize_in_bits) == 0)) {
 			return cipher;
 		}
 	}
