@@ -47,6 +47,8 @@
 
 #include <crypto/aesni/aesni.h>
 #include <crypto/rijndael/rijndael.h>
+#include <crypto/serpent/serpent.h>
+#include <crypto/twofish/twofish.h>
 
 #include "cryptoapi.h"
 
@@ -614,7 +616,430 @@ const struct cryptoapi_cipher_spec cipher_aesni_xts = {
 };
 
 /**
- *
+ * --------------------------------------
+ * TWOFISH-CBC
+ * --------------------------------------
+ */
+
+#define TWOFISH_BLOCK_LEN 16
+
+static int
+twofish_cbc_probe(const char *algo_name, const char *mode_name,
+    int keysize_in_bits)
+{
+	if ((strcmp(algo_name, "twofish") == 0) &&
+	    (strcmp(mode_name, "cbc") == 0) &&
+	    (keysize_in_bits == 128 || keysize_in_bits == 192 ||
+		keysize_in_bits == 256))
+		return (0);
+	else
+		return (-1);
+}
+
+static int
+twofish_cbc_setkey(void *ctx, const uint8_t *keydata, int keylen_in_bytes)
+{
+	switch (keylen_in_bytes * 8) {
+	case 128:
+	case 192:
+	case 256:
+		twofish_set_key(ctx, keydata, keylen_in_bytes * 8);
+		return (0);
+
+	default:
+		return (EINVAL);
+	}
+}
+
+static __inline void
+twofish_encrypt_wrap(const void *ctx, const uint8_t *src, uint8_t *dst)
+{
+	twofish_encrypt((const twofish_ctx *)ctx, src, dst);
+}
+
+static __inline void
+twofish_decrypt_wrap(const void *ctx, const uint8_t *src, uint8_t *dst)
+{
+	twofish_decrypt((const twofish_ctx *)ctx, src, dst);
+}
+
+static void
+twofish_cbc_encrypt(const void *ctx, uint8_t *data, int datalen,
+    struct cryptoapi_cipher_iv *iv)
+{
+	encrypt_data_cbc(twofish_encrypt_wrap, ctx, data, datalen,
+	    TWOFISH_BLOCK_LEN, iv->iv.iv_twofish_cbc);
+}
+
+static void
+twofish_cbc_decrypt(const void *ctx, uint8_t *data, int datalen,
+    struct cryptoapi_cipher_iv *iv)
+{
+	decrypt_data_cbc(twofish_decrypt_wrap, ctx, data, datalen,
+	    TWOFISH_BLOCK_LEN, iv->iv.iv_twofish_cbc);
+}
+
+const struct cryptoapi_cipher_spec cipher_twofish_cbc = {
+	.shortname = "twofish-cbc",
+	.description = "Twofish CBC",
+	.blocksize = TWOFISH_BLOCK_LEN,
+	.ivsize = TWOFISH_BLOCK_LEN,
+	.ctxsize = sizeof(twofish_ctx),
+	/* there are no alignment requirements imposed by the algorithm,
+		but using 16 can't do any harm either */
+	.ctxalign = 16,
+	.probe = twofish_cbc_probe,
+	.setkey = twofish_cbc_setkey,
+	.encrypt = twofish_cbc_encrypt,
+	.decrypt = twofish_cbc_decrypt,
+};
+
+/**
+ * --------------------------------------
+ * TWOFISH-XTS
+ * --------------------------------------
+ */
+
+#define TWOFISH_XTS_BLOCK_LEN 16
+#define TWOFISH_XTS_IV_LEN    8
+
+struct twofish_xts_ctx {
+	twofish_ctx key1;
+	twofish_ctx key2;
+};
+
+static void
+twofish_xts_crypt_block(const void *ctx, uint8_t *data, uint8_t *iv,
+    block_fn_t block_fn, uint8_t block[TWOFISH_XTS_BLOCK_LEN])
+{
+	u_int i, carry_in, carry_out;
+
+	xor_block3(block, data, iv, TWOFISH_XTS_BLOCK_LEN);
+	block_fn(ctx, block, data);
+	xor_block(data, iv, TWOFISH_XTS_BLOCK_LEN);
+
+	/* Exponentiate tweak */
+	carry_in = 0;
+	for (i = 0; i < TWOFISH_XTS_BLOCK_LEN; i++) {
+		carry_out = iv[i] & 0x80;
+		iv[i] = (iv[i] << 1) | (carry_in ? 1 : 0);
+		carry_in = carry_out;
+	}
+	if (carry_in)
+		iv[0] ^= AES_XTS_ALPHA;
+}
+
+static void
+twofish_xts_reinit(const struct twofish_xts_ctx *ctx, uint8_t *iv)
+{
+#if 0
+	u_int64_t blocknum;
+#endif
+
+#if 0
+	/*
+	 * Prepare tweak as E_k2(IV). IV is specified as LE representation
+	 * of a 64-bit block number which we allow to be passed in directly.
+	 */
+	/* XXX: possibly use htole64? */
+#endif
+	/* Last 64 bits of IV are always zero */
+	bzero(iv + TWOFISH_XTS_IV_LEN, TWOFISH_XTS_IV_LEN);
+
+	twofish_encrypt(&ctx->key2, iv, iv);
+}
+
+static int
+twofish_xts_probe(const char *algo_name, const char *mode_name,
+    int keysize_in_bits)
+{
+	if ((strcmp(algo_name, "twofish") == 0) &&
+	    (strcmp(mode_name, "xts") == 0) &&
+	    (keysize_in_bits == 256 || keysize_in_bits == 512))
+		return (0);
+	else
+		return (-1);
+}
+
+static int
+twofish_xts_setkey(void *_ctx, const uint8_t *keydata, int keylen_in_bytes)
+{
+	struct twofish_xts_ctx *ctx = _ctx;
+
+	switch (keylen_in_bytes * 8) {
+	case 256:
+	case 512:
+		twofish_set_key(&ctx->key1, keydata, (keylen_in_bytes / 2) * 8);
+		twofish_set_key(&ctx->key2, keydata + (keylen_in_bytes / 2),
+		    (keylen_in_bytes / 2) * 8);
+		return (0);
+
+	default:
+		return (EINVAL);
+	}
+}
+
+static void
+twofish_xts_encrypt(const void *_ctx, uint8_t *data, int datalen,
+    struct cryptoapi_cipher_iv *_iv)
+{
+	uint8_t block[TWOFISH_XTS_BLOCK_LEN];
+	uint8_t *iv = _iv->iv.iv_twofish_xts;
+	const struct twofish_xts_ctx *ctx = _ctx;
+
+	twofish_xts_reinit(ctx, iv);
+	for (int i = 0; i < datalen; i += TWOFISH_XTS_BLOCK_LEN) {
+		twofish_xts_crypt_block(&ctx->key1, data + i, iv,
+		    twofish_encrypt_wrap, block);
+	}
+	explicit_bzero(block, sizeof(block));
+}
+
+static void
+twofish_xts_decrypt(const void *_ctx, uint8_t *data, int datalen,
+    struct cryptoapi_cipher_iv *_iv)
+{
+	uint8_t block[TWOFISH_XTS_BLOCK_LEN];
+	uint8_t *iv = _iv->iv.iv_twofish_xts;
+	const struct twofish_xts_ctx *ctx = _ctx;
+
+	twofish_xts_reinit(ctx, iv);
+	for (int i = 0; i < datalen; i += TWOFISH_XTS_BLOCK_LEN) {
+		twofish_xts_crypt_block(&ctx->key1, data + i, iv,
+		    twofish_decrypt_wrap, block);
+	}
+	explicit_bzero(block, sizeof(block));
+}
+
+const struct cryptoapi_cipher_spec cipher_twofish_xts = {
+	.shortname = "twofish-xts",
+	.description = "Twofish XTS",
+	.blocksize = TWOFISH_XTS_BLOCK_LEN,
+	.ivsize = TWOFISH_XTS_IV_LEN,
+	.ctxsize = sizeof(struct twofish_xts_ctx),
+	/* there are no alignment requirements imposed by the algorithm,
+		but using 16 can't do any harm either */
+	.ctxalign = 16,
+	.probe = twofish_xts_probe,
+	.setkey = twofish_xts_setkey,
+	.encrypt = twofish_xts_encrypt,
+	.decrypt = twofish_xts_decrypt,
+};
+
+/**
+ * --------------------------------------
+ * Serpent-CBC
+ * --------------------------------------
+ */
+
+#define SERPENT_BLOCK_LEN 16
+
+static int
+serpent_cbc_probe(const char *algo_name, const char *mode_name,
+    int keysize_in_bits)
+{
+	if ((strcmp(algo_name, "serpent") == 0) &&
+	    (strcmp(mode_name, "cbc") == 0) &&
+	    (keysize_in_bits == 128 || keysize_in_bits == 192 ||
+		keysize_in_bits == 256))
+		return (0);
+	else
+		return (-1);
+}
+
+static int
+serpent_cbc_setkey(void *ctx, const uint8_t *keydata, int keylen_in_bytes)
+{
+	switch (keylen_in_bytes * 8) {
+	case 128:
+	case 192:
+	case 256:
+		serpent_set_key(ctx, keydata, keylen_in_bytes * 8);
+		return (0);
+
+	default:
+		return (EINVAL);
+	}
+}
+
+static __inline void
+serpent_encrypt_wrap(const void *ctx, const uint8_t *src, uint8_t *dst)
+{
+	serpent_encrypt((const serpent_ctx *)ctx, src, dst);
+}
+
+static __inline void
+serpent_decrypt_wrap(const void *ctx, const uint8_t *src, uint8_t *dst)
+{
+	serpent_decrypt((const serpent_ctx *)ctx, src, dst);
+}
+
+static void
+serpent_cbc_encrypt(const void *ctx, uint8_t *data, int datalen,
+    struct cryptoapi_cipher_iv *iv)
+{
+	encrypt_data_cbc(serpent_encrypt_wrap, ctx, data, datalen,
+	    SERPENT_BLOCK_LEN, iv->iv.iv_serpent_cbc);
+}
+
+static void
+serpent_cbc_decrypt(const void *ctx, uint8_t *data, int datalen,
+    struct cryptoapi_cipher_iv *iv)
+{
+	decrypt_data_cbc(serpent_decrypt_wrap, ctx, data, datalen,
+	    SERPENT_BLOCK_LEN, iv->iv.iv_serpent_cbc);
+}
+
+const struct cryptoapi_cipher_spec cipher_serpent_cbc = {
+	.shortname = "serpent-cbc",
+	.description = "Serpent-CBC",
+	.blocksize = SERPENT_BLOCK_LEN,
+	.ivsize = SERPENT_BLOCK_LEN,
+	.ctxsize = sizeof(serpent_ctx),
+	/* there are no alignment requirements imposed by the algorithm,
+		but using 16 can't do any harm either */
+	.ctxalign = 16,
+	.probe = serpent_cbc_probe,
+	.setkey = serpent_cbc_setkey,
+	.encrypt = serpent_cbc_encrypt,
+	.decrypt = serpent_cbc_decrypt,
+};
+
+/**
+ * --------------------------------------
+ * Serpent-XTS
+ * --------------------------------------
+ */
+
+#define SERPENT_XTS_BLOCK_LEN 16
+#define SERPENT_XTS_IV_LEN    8
+
+struct serpent_xts_ctx {
+	serpent_ctx key1;
+	serpent_ctx key2;
+};
+
+static void
+serpent_xts_crypt_block(const void *ctx, uint8_t *data, uint8_t *iv,
+    block_fn_t block_fn, uint8_t block[SERPENT_XTS_BLOCK_LEN])
+{
+	u_int i, carry_in, carry_out;
+
+	xor_block3(block, data, iv, SERPENT_XTS_BLOCK_LEN);
+	block_fn(ctx, block, data);
+	xor_block(data, iv, SERPENT_XTS_BLOCK_LEN);
+
+	/* Exponentiate tweak */
+	carry_in = 0;
+	for (i = 0; i < SERPENT_XTS_BLOCK_LEN; i++) {
+		carry_out = iv[i] & 0x80;
+		iv[i] = (iv[i] << 1) | (carry_in ? 1 : 0);
+		carry_in = carry_out;
+	}
+	if (carry_in)
+		iv[0] ^= AES_XTS_ALPHA;
+}
+
+static void
+serpent_xts_reinit(const struct serpent_xts_ctx *ctx, uint8_t *iv)
+{
+#if 0
+	u_int64_t blocknum;
+	u_int i;
+#endif
+
+#if 0
+	/*
+	 * Prepare tweak as E_k2(IV). IV is specified as LE representation
+	 * of a 64-bit block number which we allow to be passed in directly.
+	 */
+	/* XXX: possibly use htole64? */
+#endif
+	/* Last 64 bits of IV are always zero */
+	bzero(iv + SERPENT_XTS_IV_LEN, SERPENT_XTS_IV_LEN);
+
+	serpent_encrypt(&ctx->key2, iv, iv);
+}
+
+static int
+serpent_xts_probe(const char *algo_name, const char *mode_name,
+    int keysize_in_bits)
+{
+	if ((strcmp(algo_name, "serpent") == 0) &&
+	    (strcmp(mode_name, "xts") == 0) &&
+	    (keysize_in_bits == 256 || keysize_in_bits == 512))
+		return (0);
+	else
+		return (-1);
+}
+
+static int
+serpent_xts_setkey(void *_ctx, const uint8_t *keydata, int keylen_in_bytes)
+{
+	struct serpent_xts_ctx *ctx = _ctx;
+
+	switch (keylen_in_bytes * 8) {
+	case 256:
+	case 512:
+		serpent_set_key(&ctx->key1, keydata, (keylen_in_bytes / 2) * 8);
+		serpent_set_key(&ctx->key2, keydata + (keylen_in_bytes / 2),
+		    (keylen_in_bytes / 2) * 8);
+		return (0);
+
+	default:
+		return (EINVAL);
+	}
+}
+
+static void
+serpent_xts_encrypt(const void *_ctx, uint8_t *data, int datalen,
+    struct cryptoapi_cipher_iv *_iv)
+{
+	uint8_t block[SERPENT_XTS_BLOCK_LEN];
+	uint8_t *iv = _iv->iv.iv_serpent_xts;
+	const struct serpent_xts_ctx *ctx = _ctx;
+
+	serpent_xts_reinit(ctx, iv);
+	for (int i = 0; i < datalen; i += SERPENT_XTS_BLOCK_LEN) {
+		serpent_xts_crypt_block(&ctx->key1, data + i, iv,
+		    serpent_encrypt_wrap, block);
+	}
+	explicit_bzero(block, sizeof(block));
+}
+
+static void
+serpent_xts_decrypt(const void *_ctx, uint8_t *data, int datalen,
+    struct cryptoapi_cipher_iv *_iv)
+{
+	uint8_t block[SERPENT_XTS_BLOCK_LEN];
+	uint8_t *iv = _iv->iv.iv_serpent_xts;
+	const struct serpent_xts_ctx *ctx = _ctx;
+
+	serpent_xts_reinit(ctx, iv);
+	for (int i = 0; i < datalen; i += SERPENT_XTS_BLOCK_LEN) {
+		serpent_xts_crypt_block(&ctx->key1, data + i, iv,
+		    serpent_decrypt_wrap, block);
+	}
+	explicit_bzero(block, sizeof(block));
+}
+
+const struct cryptoapi_cipher_spec cipher_serpent_xts = {
+	.shortname = "serpent-xts",
+	.description = "Serpent XTS",
+	.blocksize = SERPENT_XTS_BLOCK_LEN,
+	.ivsize = SERPENT_XTS_IV_LEN,
+	.ctxsize = sizeof(struct serpent_xts_ctx),
+	/* there are no alignment requirements imposed by the algorithm,
+		but using 16 can't do any harm either */
+	.ctxalign = 16,
+	.probe = serpent_xts_probe,
+	.setkey = serpent_xts_setkey,
+	.encrypt = serpent_xts_encrypt,
+	.decrypt = serpent_xts_decrypt,
+};
+
+/**
+ * Cipher registration
  */
 
 static cryptoapi_cipher_t cryptoapi_ciphers[] = {
@@ -627,6 +1052,11 @@ static cryptoapi_cipher_t cryptoapi_ciphers[] = {
 	/* AES in software */
 	&cipher_aes_cbc,
 	&cipher_aes_xts,
+
+	&cipher_twofish_cbc,
+	&cipher_twofish_xts,
+	&cipher_serpent_cbc,
+	&cipher_serpent_xts,
 };
 
 /**

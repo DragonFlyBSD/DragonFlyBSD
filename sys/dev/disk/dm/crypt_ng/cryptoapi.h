@@ -42,6 +42,12 @@ struct cryptoapi_cipher_iv {
 		uint8_t iv_aes_cbc[16]; /* AES_BLOCK_LEN */
 		uint8_t iv_aes_xts[16]; /* 16 bytes are used, but the last 8
 					 bytes are zero */
+
+		uint8_t iv_serpent_cbc[16]; /* SERPENT_BLOCK_LEN */
+		uint8_t iv_serpent_xts[8];  /* SERPENT_XTS_IV_LEN */
+
+		uint8_t iv_twofish_cbc[16]; /* TWOFISH_BLOCK_LEN */
+		uint8_t iv_twofish_xts[8];  /* TWOFISH_XTS_IV_LEN */
 	} iv;
 };
 
