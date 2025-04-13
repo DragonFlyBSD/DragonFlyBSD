@@ -53,6 +53,9 @@ SRCS+=	siphash.c
 .PATH:	${.CURDIR}/twofish
 SRCS+=	twofish.c
 
+.PATH:	${.CURDIR}/cryptoapi
+SRCS+=	cryptoapi.c
+
 SRCS+=	bus_if.h device_if.h opt_ddb.h
 
 SUBDIR=	rc4

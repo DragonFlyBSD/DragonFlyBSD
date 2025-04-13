@@ -55,11 +55,10 @@
 #endif
 
 #include <crypto/aesni/aesni.h>
+#include <crypto/cryptoapi/cryptoapi.h>
 #include <crypto/rijndael/rijndael.h>
 #include <crypto/serpent/serpent.h>
 #include <crypto/twofish/twofish.h>
-
-#include "cryptoapi.h"
 
 #ifdef _KERNEL
 MALLOC_DEFINE(M_CRYPTOAPI, "cryptoapi", "Crypto API");

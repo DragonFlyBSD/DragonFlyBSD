@@ -46,7 +46,7 @@
 #include <crypto/sha1.h>
 #include <crypto/sha2/sha2.h>
 #include <crypto/rmd160/rmd160.h>
-#include <dev/disk/dm/crypt_ng/cryptoapi.h>
+#include <crypto/cryptoapi/cryptoapi.h>
 #include <dev/disk/dm/dm.h>
 
 #include <sys/proc.h>
