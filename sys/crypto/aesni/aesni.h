@@ -69,7 +69,7 @@ void aesni_decrypt_ecb(int rounds, const void *key_schedule, size_t len,
 void aesni_encrypt_ecb(int rounds, const void *key_schedule, size_t len,
     const uint8_t from[AES_BLOCK_LEN], uint8_t to[AES_BLOCK_LEN]);
 void aesni_decrypt_cbc(int rounds, const void *key_schedule, size_t len,
-    const uint8_t *from, const uint8_t iv[AES_BLOCK_LEN]);
+    uint8_t *data, const uint8_t iv[AES_BLOCK_LEN]);
 
 void
 aesni_crypt_xts_block(int rounds, const void *key_schedule, uint8_t *tweak,
