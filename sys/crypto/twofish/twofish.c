@@ -293,10 +293,12 @@ static u_int32_t h_fun(const twofish_ctx *ctx, const u_int32_t x, const u_int32_
             b1 = q(0, (u_int8_t) b1) ^ extract_byte(key[3],1);
             b2 = q(0, (u_int8_t) b2) ^ extract_byte(key[3],2);
             b3 = q(1, (u_int8_t) b3) ^ extract_byte(key[3],3);
+	    /* FALLTHROUGH */
     case 3: b0 = q(1, (u_int8_t) b0) ^ extract_byte(key[2],0);
             b1 = q(1, (u_int8_t) b1) ^ extract_byte(key[2],1);
             b2 = q(0, (u_int8_t) b2) ^ extract_byte(key[2],2);
             b3 = q(0, (u_int8_t) b3) ^ extract_byte(key[2],3);
+	    /* FALLTHROUGH */
     case 2: b0 = q(0, (u_int8_t) (q(0, (u_int8_t) b0) ^ extract_byte(key[1],0))) ^ extract_byte(key[0],0);
             b1 = q(0, (u_int8_t) (q(1, (u_int8_t) b1) ^ extract_byte(key[1],1))) ^ extract_byte(key[0],1);
             b2 = q(1, (u_int8_t) (q(0, (u_int8_t) b2) ^ extract_byte(key[1],2))) ^ extract_byte(key[0],2);
