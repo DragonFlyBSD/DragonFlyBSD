@@ -37,13 +37,22 @@
  * PURPOSE.
  */
 
-#include <sys/types.h>
+#ifdef _KERNEL
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/sysctl.h>
 
 #include <machine/specialreg.h> /* for CPUID2_AESNI */
+#else
+#include <sys/param.h>
+#include <sys/errno.h>
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#endif
 
 #include <crypto/aesni/aesni.h>
 #include <crypto/rijndael/rijndael.h>
@@ -52,12 +61,19 @@
 
 #include "cryptoapi.h"
 
+#ifdef _KERNEL
 MALLOC_DEFINE(M_CRYPTOAPI, "cryptoapi", "Crypto API");
 
 static int aesni_disable = 0;
 // TUNABLE_INT("hw.aesni_disable", &aesni_disable);
 SYSCTL_INT(_hw, OID_AUTO, aesni_disable, CTLFLAG_RW, &aesni_disable, 0,
     "Disable AESNI");
+#define HAVE_AESNI
+#endif
+
+#ifndef _KERNEL
+#define __inline
+#endif
 
 /**
  * --------------------------------------
@@ -174,7 +190,8 @@ static __inline void
 crypt_block_xts(const void *ctx, uint8_t *data, uint8_t *iv,
     block_fn_t block_fn, uint8_t *block, int blocklen, int alpha)
 {
-	u_int i, carry_in, carry_out;
+	int i;
+	u_int carry_in, carry_out;
 
 	xor_block3(block, data, iv, blocklen);
 	block_fn(ctx, block, data);
@@ -416,6 +433,8 @@ const struct cryptoapi_cipher_spec cipher_aes_xts = {
  * --------------------------------------
  */
 
+#ifdef HAVE_AESNI
+
 struct aesni_ctx {
 	uint8_t enc_schedule[AES_SCHED_LEN] __aligned(AESNI_ALIGN);
 	uint8_t dec_schedule[AES_SCHED_LEN] __aligned(AESNI_ALIGN);
@@ -503,11 +522,15 @@ const struct cryptoapi_cipher_spec cipher_aesni_cbc = {
 	.crypt = cipher_aesni_cbc_crypt,
 };
 
+#endif
+
 /**
  * --------------------------------------
  * AES-XTS in hardware (AES-NI)
  * --------------------------------------
  */
+
+#ifdef HAVE_AESNI
 
 static int
 cipher_aesni_xts_probe(int keysize_in_bits)
@@ -582,6 +605,8 @@ const struct cryptoapi_cipher_spec cipher_aesni_xts = {
 	.setkey = cipher_aesni_xts_setkey,
 	.crypt = cipher_aesni_xts_crypt,
 };
+
+#endif
 
 /**
  * --------------------------------------
@@ -913,9 +938,11 @@ const struct cryptoapi_cipher_spec cipher_serpent_xts = {
 static cryptoapi_cipher_t cryptoapi_ciphers[] = {
 	&cipher_null,
 
+#ifdef HAVE_AESNI
 	/* first probe AESNI, then fallback to software AES */
 	&cipher_aesni_cbc,
 	&cipher_aesni_xts,
+#endif
 
 	/* AES in software */
 	&cipher_aes_cbc,
@@ -959,6 +986,7 @@ cryptoapi_cipher_get_description(cryptoapi_cipher_t cipher)
 	return cipher->description;
 }
 
+#ifdef _KERNEL
 static __inline bool
 is_ptr_aligned(void *ptr, int alignment)
 {
@@ -986,8 +1014,14 @@ kmalloc_aligned(int size, int alignment, void **origptr)
 	KKASSERT(offset < alignment);
 
 	*origptr = ptr;
-	return ((uint8_t *)ptr + offset);
+
+	ptr = (uint8_t *)ptr + offset;
+
+	KKASSERT(is_ptr_aligned(ptr, alignment));
+
+	return (ptr);
 }
+#endif
 
 int
 cryptoapi_cipher_initsession(cryptoapi_cipher_t cipher,
@@ -997,25 +1031,39 @@ cryptoapi_cipher_initsession(cryptoapi_cipher_t cipher,
 		return (EINVAL);
 
 	if (__predict_false(
-		cipher->ivsize > sizeof(struct cryptoapi_cipher_iv)))
-		panic("struct cryptoapi_cipher_iv has wrong size");
+		cipher->ivsize > sizeof(struct cryptoapi_cipher_iv))) {
+#ifdef _KERNEL
+		kprintf("FATAL: struct cryptoapi_cipher_iv has wrong size\n");
+#else
+		printf("FATAL: struct cryptoapi_cipher_iv has wrong size\n");
+#endif
+		return (EINVAL);
+	}
 
 	bzero(session, sizeof(cryptoapi_cipher_session_t));
 
 	if (cipher->ctxsize > 0) {
+#ifdef _KERNEL
 		session->context = kmalloc_aligned(cipher->ctxsize,
 		    cipher->ctxalign, &session->origptr);
+#else
+		session->context = session->origptr =
+		    aligned_alloc(cipher->ctxsize, cipher->ctxalign);
+#endif
 
 		if (session->context == NULL)
 			return (ENOMEM);
 
-		KKASSERT(is_ptr_aligned(session->context, cipher->ctxalign));
-
-		/**
-		 * Fill context with random data, just in case
-		 * someone forgets to initialize it.
-		 */
+			/**
+			 * Fill context with random data, just in case
+			 * someone forgets to initialize it.
+			 */
+#ifdef _KERNEL
 		karc4random_buf(session->context, cipher->ctxsize);
+#else
+		arc4random_buf(session->context, cipher->ctxsize);
+#endif
+
 	} else {
 		session->context = NULL;
 		session->origptr = NULL;
@@ -1041,7 +1089,11 @@ cryptoapi_cipher_freesession(cryptoapi_cipher_session_t *session)
 	}
 
 	if (session->origptr) {
+#ifdef _KERNEL
 		kfree(session->origptr, M_CRYPTOAPI);
+#else
+		free(session->origptr);
+#endif
 	}
 
 	bzero(session, sizeof(*session));
