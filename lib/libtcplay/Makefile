@@ -20,11 +20,18 @@ MLINKS+=	tcplay.3	tc_api_task_get_error.3
 CFLAGS+=	-DMAJ_VER=${MAJ_VER} -DMIN_VER=${MIN_VER}
 CFLAGS+=	-D_FILE_OFFSET_BITS=64
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
+CFLAGS+=	-I${.CURDIR}/../../sys
 
 SRCS+=		tcplay.c crc32.c safe_mem.c io.c hdr.c humanize.c
 SRCS+=		crypto.c generic_xts.c
-SRCS+=		crypto-dev.c pbkdf2-openssl.c
+SRCS+=		crypto-api.c pbkdf2-openssl.c
 SRCS+=		tcplay_api.c
+
+SRCS+=		../../sys/crypto/cryptoapi/cryptoapi.c
+SRCS+=		../../sys/crypto/rijndael/rijndael-api.c
+SRCS+=		../../sys/crypto/serpent/serpent.c
+SRCS+=		../../sys/crypto/twofish/twofish.c
+
 
 INCS+=		tcplay_api.h
 
