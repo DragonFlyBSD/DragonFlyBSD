@@ -44,7 +44,9 @@
 #include <sys/sysctl.h>
 
 #include <machine/specialreg.h> /* for CPUID2_AESNI */
-#else
+#endif
+
+#ifndef _KERNEL
 #include <sys/param.h>
 #include <sys/errno.h>
 
@@ -52,6 +54,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define kprintf		  printf
+#define karc4random_buf	  arc4random_buf
+#define kfree(ptr, mtype) free(ptr)
 #endif
 
 #include <crypto/aesni/aesni.h>
@@ -68,10 +74,6 @@ static int aesni_disable = 0;
 SYSCTL_INT(_hw, OID_AUTO, aesni_disable, CTLFLAG_RW, &aesni_disable, 0,
     "Disable AESNI");
 #define HAVE_AESNI
-#endif
-
-#ifndef _KERNEL
-#define __inline
 #endif
 
 /**
@@ -118,14 +120,14 @@ struct cryptoapi_cipher_spec {
  * --------------------------------------
  */
 
-static __inline void
+static inline void
 xor_block(uint8_t *dst, const uint8_t *src, int blocksize)
 {
 	for (int i = 0; i < blocksize; i++)
 		dst[i] ^= src[i];
 }
 
-static __inline void
+static inline void
 xor_block3(uint8_t *dst, const uint8_t *src1, const uint8_t *src2,
     int blocksize)
 {
@@ -150,7 +152,7 @@ typedef void (*block_fn_t)(const void *ctx, const uint8_t *src, uint8_t *dst);
  * with the previous block of data or the IV if it is the first block of
  * data.
  */
-static __inline void
+static void
 encrypt_data_cbc(block_fn_t block_fn, const void *ctx, uint8_t *data,
     int datalen, int blocksize, const uint8_t *iv)
 {
@@ -171,7 +173,7 @@ encrypt_data_cbc(block_fn_t block_fn, const void *ctx, uint8_t *data,
  * still encrypted), and so on. Finally, the first block is XORed with
  * the IV after it has been decrypted.
  */
-static __inline void
+static void
 decrypt_data_cbc(block_fn_t block_fn, const void *ctx, uint8_t *data,
     int datalen, int blocksize, const uint8_t *iv)
 {
@@ -185,7 +187,7 @@ decrypt_data_cbc(block_fn_t block_fn, const void *ctx, uint8_t *data,
 /**
  * Encrypts/decrypts a single block using XTS.
  */
-static __inline void
+static void
 crypt_block_xts(const void *ctx, uint8_t *data, uint8_t *iv,
     block_fn_t block_fn, uint8_t *block, int blocklen, int alpha)
 {
@@ -210,7 +212,7 @@ crypt_block_xts(const void *ctx, uint8_t *data, uint8_t *iv,
 /**
  * Encrypts/decrypts blocks of data using XTS (without reinit).
  */
-static __inline void
+static void
 crypt_data_xts(const void *ctx, uint8_t *data, int datalen, uint8_t *iv,
     block_fn_t block_fn, uint8_t *block, int blocklen, int alpha)
 {
@@ -292,13 +294,13 @@ aes_cbc_setkey(void *ctx, const uint8_t *keydata, int keylen_in_bytes)
 	}
 }
 
-static __inline void
+static inline void
 rijndael_encrypt_wrap(const void *ctx, const uint8_t *src, uint8_t *dst)
 {
 	rijndael_encrypt(ctx, src, dst);
 }
 
-static __inline void
+static inline void
 rijndael_decrypt_wrap(const void *ctx, const uint8_t *src, uint8_t *dst)
 {
 	rijndael_decrypt(ctx, src, dst);
@@ -381,7 +383,7 @@ aes_xts_setkey(void *_ctx, const uint8_t *keydata, int keylen_in_bytes)
 	return (0);
 }
 
-static __inline void
+static inline void
 aes_xts_reinit(const struct aes_xts_ctx *ctx, u_int8_t *iv)
 {
 #if 0
@@ -640,13 +642,13 @@ twofish_cbc_setkey(void *ctx, const uint8_t *keydata, int keylen_in_bytes)
 	}
 }
 
-static __inline void
+static inline void
 twofish_encrypt_wrap(const void *ctx, const uint8_t *src, uint8_t *dst)
 {
 	twofish_encrypt((const twofish_ctx *)ctx, src, dst);
 }
 
-static __inline void
+static inline void
 twofish_decrypt_wrap(const void *ctx, const uint8_t *src, uint8_t *dst)
 {
 	twofish_decrypt((const twofish_ctx *)ctx, src, dst);
@@ -692,7 +694,7 @@ struct twofish_xts_ctx {
 	twofish_ctx key2;
 };
 
-static __inline void
+static inline void
 twofish_xts_reinit(const struct twofish_xts_ctx *ctx, uint8_t *iv)
 {
 #if 0
@@ -801,13 +803,13 @@ serpent_cbc_setkey(void *ctx, const uint8_t *keydata, int keylen_in_bytes)
 	}
 }
 
-static __inline void
+static inline void
 serpent_encrypt_wrap(const void *ctx, const uint8_t *src, uint8_t *dst)
 {
 	serpent_encrypt((const serpent_ctx *)ctx, src, dst);
 }
 
-static __inline void
+static inline void
 serpent_decrypt_wrap(const void *ctx, const uint8_t *src, uint8_t *dst)
 {
 	serpent_decrypt((const serpent_ctx *)ctx, src, dst);
@@ -853,7 +855,7 @@ struct serpent_xts_ctx {
 	serpent_ctx key2;
 };
 
-static __inline void
+static inline void
 serpent_xts_reinit(const struct serpent_xts_ctx *ctx, uint8_t *iv)
 {
 #if 0
@@ -986,13 +988,13 @@ cryptoapi_cipher_get_description(cryptoapi_cipher_t cipher)
 }
 
 #ifdef _KERNEL
-static __inline bool
+static inline bool
 is_ptr_aligned(void *ptr, int alignment)
 {
 	return (((uintptr_t)ptr % alignment) == 0);
 }
 
-static __inline void *
+static inline void *
 kmalloc_aligned(int size, int alignment, void **origptr)
 {
 	void *ptr;
@@ -1031,11 +1033,7 @@ cryptoapi_cipher_initsession(cryptoapi_cipher_t cipher,
 
 	if (__predict_false(
 		cipher->ivsize > sizeof(struct cryptoapi_cipher_iv))) {
-#ifdef _KERNEL
 		kprintf("FATAL: struct cryptoapi_cipher_iv has wrong size\n");
-#else
-		printf("FATAL: struct cryptoapi_cipher_iv has wrong size\n");
-#endif
 		return (EINVAL);
 	}
 
@@ -1053,16 +1051,11 @@ cryptoapi_cipher_initsession(cryptoapi_cipher_t cipher,
 		if (session->context == NULL)
 			return (ENOMEM);
 
-			/**
-			 * Fill context with random data, just in case
-			 * someone forgets to initialize it.
-			 */
-#ifdef _KERNEL
+		/**
+		 * Fill context with random data, just in case
+		 * someone forgets to initialize it.
+		 */
 		karc4random_buf(session->context, cipher->ctxsize);
-#else
-		arc4random_buf(session->context, cipher->ctxsize);
-#endif
-
 	} else {
 		session->context = NULL;
 		session->origptr = NULL;
@@ -1088,11 +1081,7 @@ cryptoapi_cipher_freesession(cryptoapi_cipher_session_t *session)
 	}
 
 	if (session->origptr) {
-#ifdef _KERNEL
 		kfree(session->origptr, M_CRYPTOAPI);
-#else
-		free(session->origptr);
-#endif
 	}
 
 	bzero(session, sizeof(*session));

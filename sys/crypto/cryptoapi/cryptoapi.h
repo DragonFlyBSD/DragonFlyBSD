@@ -35,6 +35,8 @@
 #ifndef _CRYPTOAPI_H_
 #define _CRYPTOAPI_H_
 
+#include <sys/types.h>
+
 struct cryptoapi_cipher_iv {
 	union {
 		uint8_t iv_rijndael[16];
