@@ -99,6 +99,9 @@ syscrypt(struct tc_crypto_algo *cipher, unsigned char *key, size_t klen, unsigne
 		goto err;
 	}
 
+	cryptoapi_cipher_freesession(&session);
+	return (0);
+
 err:
 	cryptoapi_cipher_freesession(&session);
 	return (-1);
