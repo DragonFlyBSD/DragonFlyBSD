@@ -27,11 +27,14 @@ SRCS+=		crypto.c generic_xts.c
 SRCS+=		crypto-api.c pbkdf2-openssl.c
 SRCS+=		tcplay_api.c
 
-SRCS+=		../../sys/crypto/cryptoapi/cryptoapi.c
-SRCS+=		../../sys/crypto/rijndael/rijndael-api.c
-SRCS+=		../../sys/crypto/serpent/serpent.c
-SRCS+=		../../sys/crypto/twofish/twofish.c
-
+.PATH:		${.CURDIR}/../../sys/crypto/cryptoapi
+SRCS+=		cryptoapi.c
+.PATH:		${.CURDIR}/../../sys/crypto/rijndael
+SRCS+=		rijndael-api.c
+.PATH:		${.CURDIR}/../../sys/crypto/serpent
+SRCS+=		serpent.c
+.PATH:		${.CURDIR}/../../sys/crypto/twofish
+SRCS+=		twofish.c
 
 INCS+=		tcplay_api.h
 
