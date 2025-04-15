@@ -30,7 +30,7 @@ SRCS+=		tcplay_api.c
 .PATH:		${.CURDIR}/../../sys/crypto/cryptoapi
 SRCS+=		cryptoapi.c
 .PATH:		${.CURDIR}/../../sys/crypto/rijndael
-SRCS+=		rijndael-api.c
+SRCS+=		rijndael-alg-fst.c rijndael-api.c
 .PATH:		${.CURDIR}/../../sys/crypto/serpent
 SRCS+=		serpent.c
 .PATH:		${.CURDIR}/../../sys/crypto/twofish
