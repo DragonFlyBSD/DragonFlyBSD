@@ -203,7 +203,7 @@ send_sig(pid_t pid, int signo, bool foreground)
 		else if (rk.pid_failed > 0)
 			warnx("failed to signal some processes: first pid=%d",
 			      (int)rk.pid_failed);
-		logv("signaled %d processes", rk.killed);
+		logv("signaled %u processes", rk.killed);
 	}
 
 	/*
@@ -263,6 +263,7 @@ kill_self(int signo)
 	memset(&rl, 0, sizeof(rl));
 	setrlimit(RLIMIT_CORE, &rl);
 
+	logv("killing self with signal %s(%d)", sys_signame[signo], signo);
 	kill(getpid(), signo);
 	err(128 + signo, "signal %s(%d) failed to kill self",
 	    sys_signame[signo], signo);
