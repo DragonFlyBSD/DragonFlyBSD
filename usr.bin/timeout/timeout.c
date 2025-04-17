@@ -168,6 +168,8 @@ sig_handler(int signo)
 	case SIGTERM:
 	case SIGXCPU:
 	case SIGXFSZ:
+	case SIGVTALRM:
+	case SIGPROF:
 	case SIGUSR1:
 	case SIGUSR2:
 	case SIGCKPTEXIT: /* DragonFly extension */
