@@ -83,11 +83,11 @@ exit_numbers_body()
 		-s exit:124 \
 		timeout .1 sleep 1
 
-	# With preserv status exit should be 128 + TERM aka 143
+	# With preserve status exit should be TERM signal
 	atf_check \
 		-o empty \
 		-e empty \
-		-s exit:143 \
+		-s signal:15 \
 		timeout --preserve-status .1 sleep 10
 
 	atf_check \
@@ -127,31 +127,31 @@ invalid_timeout_body()
 {
 	atf_check \
 		-o empty \
-		-e inline:"timeout: invalid duration\n" \
+		-e inline:"timeout: duration is not a number\n" \
 		-s exit:125 \
 		timeout invalid sleep 0
 
 	atf_check \
 		-o empty \
-		-e inline:"timeout: invalid duration\n" \
+		-e inline:"timeout: duration is not a number\n" \
 		-s exit:125 \
 		timeout --kill-after=invalid 1 sleep 0
 
 	atf_check \
 		-o empty \
-		-e inline:"timeout: invalid duration\n" \
+		-e inline:"timeout: duration unit suffix invalid\n" \
 		-s exit:125 \
 		timeout 42D sleep 0
 
 	atf_check \
 		-o empty \
-		-e inline:"timeout: invalid duration\n" \
+		-e inline:"timeout: duration out of range\n" \
 		-s exit:125 \
 		timeout 999999999999999999999999999999999999999999999999999999999999d sleep 0
 
 	atf_check \
 		-o empty \
-		-e inline:"timeout: invalid duration\n" \
+		-e inline:"timeout: duration out of range\n" \
 		-s exit:125 \
 		timeout 2.34e+5d sleep 0
 }
