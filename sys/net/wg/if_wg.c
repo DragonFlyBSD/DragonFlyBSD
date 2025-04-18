@@ -578,7 +578,8 @@ wg_queue_dequeue_parallel(struct wg_queue *parallel)
 /* Peer */
 
 static struct wg_peer *
-wg_peer_create(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE])
+wg_peer_create(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE],
+	       int *errp)
 {
 	static unsigned long peer_counter = 0;
 	struct wg_peer *peer;
@@ -588,7 +589,7 @@ wg_peer_create(struct wg_softc *sc, const uint8_t pub_key[WG_KEY_SIZE])
 	peer = kmalloc(sizeof(*peer), M_WG, M_WAITOK | M_ZERO);
 
 	peer->p_remote = noise_remote_alloc(sc->sc_local, pub_key, peer);
-	if (noise_remote_enable(peer->p_remote) != 0) {
+	if ((*errp = noise_remote_enable(peer->p_remote)) != 0) {
 		noise_remote_free(peer->p_remote);
 		kfree(peer, M_WG);
 		return (NULL);
@@ -2589,11 +2590,9 @@ wg_ioctl_set(struct wg_softc *sc, struct wg_data_io *data)
 			if (peer_o.p_flags & (WG_PEER_REMOVE | WG_PEER_UPDATE))
 				goto next_peer;
 
-			peer = wg_peer_create(sc, peer_o.p_public);
-			if (peer == NULL) {
-				ret = ENOMEM;
+			peer = wg_peer_create(sc, peer_o.p_public, &ret);
+			if (peer == NULL)
 				goto error;
-			}
 
 			/* No allowed IPs to remove for a new peer. */
 			peer_o.p_flags &= ~WG_PEER_REPLACE_AIPS;
