@@ -35,25 +35,25 @@
 
 #include "tcplay.h"
 
-static
-cryptoapi_cipher_t
-get_cryptoapi_cipher(struct tc_crypto_algo *cipher)
+static cryptoapi_cipher_t
+get_cryptoapi_cipher(const char *cipher_name, size_t keysize_in_bits)
 {
-	if	(strcmp(cipher->name, "AES-128-XTS") == 0)
-		return cryptoapi_cipher_find("aes-xts", 128);
-	else if (strcmp(cipher->name, "AES-256-XTS") == 0)
-		return cryptoapi_cipher_find("aes-xts", 256);
-	else if (strcmp(cipher->name, "TWOFISH-128-XTS") == 0)
-		return cryptoapi_cipher_find("twofish-xts", 128);
-	else if (strcmp(cipher->name, "TWOFISH-256-XTS") == 0)
-		return cryptoapi_cipher_find("twofish-xts", 256);
-	else if (strcmp(cipher->name, "SERPENT-128-XTS") == 0)
-		return cryptoapi_cipher_find("serpent-xts", 128);
-	else if (strcmp(cipher->name, "SERPENT-256-XTS") == 0)
-		return cryptoapi_cipher_find("serpent-xts", 256);
+	if (strcmp(cipher_name, "AES-128-XTS") == 0)
+		return cryptoapi_cipher_find("aes-xts", keysize_in_bits);
+	else if (strcmp(cipher_name, "AES-256-XTS") == 0)
+		return cryptoapi_cipher_find("aes-xts", keysize_in_bits);
+	else if (strcmp(cipher_name, "TWOFISH-128-XTS") == 0)
+		return cryptoapi_cipher_find("twofish-xts", keysize_in_bits);
+	else if (strcmp(cipher_name, "TWOFISH-256-XTS") == 0)
+		return cryptoapi_cipher_find("twofish-xts", keysize_in_bits);
+	else if (strcmp(cipher_name, "SERPENT-128-XTS") == 0)
+		return cryptoapi_cipher_find("serpent-xts", keysize_in_bits);
+	else if (strcmp(cipher_name, "SERPENT-256-XTS") == 0)
+		return cryptoapi_cipher_find("serpent-xts", keysize_in_bits);
 	else
 		return NULL;
 }
+
 
 int
 syscrypt(struct tc_crypto_algo *cipher, unsigned char *key, size_t klen, unsigned char *iv ,
@@ -63,47 +63,46 @@ syscrypt(struct tc_crypto_algo *cipher, unsigned char *key, size_t klen, unsigne
 	cryptoapi_cipher_session_t session;
 	cryptoapi_cipher_t crypto_cipher;
 
-	bzero(&session, sizeof(session));
+	session = NULL;
 
-	crypto_cipher = get_cryptoapi_cipher(cipher);
+	crypto_cipher = get_cryptoapi_cipher(cipher->name, klen * 8);
 	if (crypto_cipher == NULL) {
-		tc_log(1, "Cipher %s not found\n",
-		    cipher->name);
+		tc_log(1, "Cipher %s not found\n", cipher->name);
 		return (ENOENT);
 	}
 
-	error = cryptoapi_cipher_initsession(crypto_cipher, &session);
-	if (error) {
-		perror("Failed to init crypto session");
+	session = cryptoapi_cipher_newsession(crypto_cipher);
+	if (session == NULL) {
+		tc_log(1, "Failed to init crypto session\n");
 		goto err;
 	}
 
-	error = cryptoapi_cipher_setkey(&session, key, klen);
+	error = cryptoapi_cipher_setkey(session, key, klen);
 	if (error) {
-		perror("Failed to set crypto key");
+		tc_log(1, "Failed to set crypto key\n");
 		goto err;
 	}
 
 	if (in != out)
-		memcpy(in, out, len);
+		memcpy(out, in, len);
 
 	if (do_encrypt)
-		error = cryptoapi_cipher_encrypt(&session, out, len,
-				(struct cryptoapi_cipher_iv *)iv);
+		error = cryptoapi_cipher_encrypt(session, out, len,
+				iv, sizeof(cryptoapi_cipher_iv));
 	else
-		error = cryptoapi_cipher_decrypt(&session, out, len,
-				(struct cryptoapi_cipher_iv *)iv);
+		error = cryptoapi_cipher_decrypt(session, out, len,
+				iv, sizeof(cryptoapi_cipher_iv));
 
 	if (error) {
-		perror("Failed to encrypt/decrypt");
+		tc_log(1, "Failed to encrypt/decrypt: %d\n", error);
 		goto err;
 	}
 
-	cryptoapi_cipher_freesession(&session);
+	cryptoapi_cipher_freesession(session);
 	return (0);
 
 err:
-	cryptoapi_cipher_freesession(&session);
+	cryptoapi_cipher_freesession(session);
 	return (-1);
 }
 

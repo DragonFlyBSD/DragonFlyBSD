@@ -26,10 +26,8 @@ SRCS+=		tcplay.c crc32.c safe_mem.c io.c hdr.c humanize.c
 SRCS+=		crypto.c generic_xts.c
 SRCS+=		pbkdf2-openssl.c
 SRCS+=		tcplay_api.c
+SRCS+=		crypto-api.c
 
-.if !defined(TCPLAY_CRYPTOAPI)
-SRCS+=		crypto-dev.c
-.else
 .PATH:		${.CURDIR}/../../sys/crypto/cryptoapi
 SRCS+=		cryptoapi.c
 .PATH:		${.CURDIR}/../../sys/crypto/rijndael
@@ -38,7 +36,6 @@ SRCS+=		rijndael-alg-fst.c rijndael-api.c
 SRCS+=		serpent.c
 .PATH:		${.CURDIR}/../../sys/crypto/twofish
 SRCS+=		twofish.c
-.endif
 
 INCS+=		tcplay_api.h
 
