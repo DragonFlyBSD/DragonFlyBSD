@@ -37,21 +37,9 @@
 
 #include <sys/types.h>
 
-struct cryptoapi_cipher_iv {
-	union {
-		uint8_t iv_rijndael[16];
-		uint8_t iv_aesni[16];
-		uint8_t iv_aes_cbc[16]; /* AES_BLOCK_LEN */
-		uint8_t iv_aes_xts[16]; /* 16 bytes are used, but the last 8
-					 bytes are zero */
+#define CRYPTOAPI_MAX_IV_LEN 16
 
-		uint8_t iv_serpent_cbc[16]; /* SERPENT_BLOCK_LEN */
-		uint8_t iv_serpent_xts[8];  /* SERPENT_XTS_IV_LEN */
-
-		uint8_t iv_twofish_cbc[16]; /* TWOFISH_BLOCK_LEN */
-		uint8_t iv_twofish_xts[8];  /* TWOFISH_XTS_IV_LEN */
-	} iv;
-};
+typedef uint8_t cryptoapi_cipher_iv[CRYPTOAPI_MAX_IV_LEN];
 
 typedef int cryptoapi_cipher_mode;
 
@@ -88,13 +76,13 @@ int cryptoapi_cipher_setkey(cryptoapi_cipher_session_t session,
     const uint8_t *keydata, int keylen_in_bytes);
 
 int cryptoapi_cipher_encrypt(const cryptoapi_cipher_session_t session,
-    uint8_t *data, int datalen, struct cryptoapi_cipher_iv *iv);
+    uint8_t *data, int datalen, const uint8_t *iv, int ivlen);
 
 int cryptoapi_cipher_decrypt(const cryptoapi_cipher_session_t session,
-    uint8_t *data, int datalen, struct cryptoapi_cipher_iv *iv);
+    uint8_t *data, int datalen, const uint8_t *iv, int ivlen);
 
 int cryptoapi_cipher_crypt(const cryptoapi_cipher_session_t session,
-    uint8_t *data, int datalen, struct cryptoapi_cipher_iv *iv,
+    uint8_t *data, int datalen, const uint8_t *iv, int ivlen,
     cryptoapi_cipher_mode mode);
 
 #endif

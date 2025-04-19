@@ -64,6 +64,12 @@
 		fprintf(stderr, "ASSERTION FAILED: %s\n", #cond); \
 		abort();                                          \
 	}
+#define panic(msg)                                   \
+	do {                                         \
+		fprintf(stderr, "PANIC: %s\n", msg); \
+		abort();                             \
+	} while (0);
+
 #endif
 
 #include <crypto/aesni/aesni.h>
@@ -130,8 +136,8 @@ struct cryptoapi_cipher_spec {
 
 	int (*setkey)(void *ctx, const uint8_t *keydata, int keylen_in_bytes);
 
-	void (*crypt)(const void *ctx, uint8_t *data, int datalen,
-	    struct cryptoapi_cipher_iv *iv, bool encrypt);
+	void (*crypt)(void *ctx, uint8_t *data, int datalen, const uint8_t *iv,
+	    bool encrypt);
 };
 
 /**
@@ -263,9 +269,8 @@ cipher_null_setkey(void *ctx __unused, const uint8_t *keydata __unused,
 }
 
 static void
-cipher_null_crypt(const void *ctx __unused, uint8_t *data __unused,
-    int datalen __unused, struct cryptoapi_cipher_iv *iv __unused,
-    bool encrypt __unused)
+cipher_null_crypt(void *ctx __unused, uint8_t *data __unused,
+    int datalen __unused, const uint8_t *iv __unused, bool encrypt __unused)
 {
 }
 
@@ -275,7 +280,7 @@ const struct cryptoapi_cipher_spec cipher_null = {
 	.blocksize = 1,
 	.ivsize = 0,
 	.ctxsize = 0,
-	.ctxalign = 0,
+	.ctxalign = 1,
 	.probe = cipher_null_probe,
 	.setkey = cipher_null_setkey,
 	.crypt = cipher_null_crypt,
@@ -327,15 +332,15 @@ rijndael_decrypt_wrap(const void *ctx, const uint8_t *src, uint8_t *dst)
 }
 
 static void
-aes_cbc_crypt(const void *ctx, uint8_t *data, int datalen,
-    struct cryptoapi_cipher_iv *iv, bool encrypt)
+aes_cbc_crypt(void *ctx, uint8_t *data, int datalen, const uint8_t *iv,
+    bool encrypt)
 {
 	if (encrypt)
 		encrypt_data_cbc(rijndael_encrypt_wrap, ctx, data, datalen,
-		    AES_BLOCK_LEN, iv->iv.iv_aes_cbc);
+		    AES_BLOCK_LEN, iv);
 	else
 		decrypt_data_cbc(rijndael_decrypt_wrap, ctx, data, datalen,
-		    AES_BLOCK_LEN, iv->iv.iv_aes_cbc);
+		    AES_BLOCK_LEN, iv);
 }
 
 const struct cryptoapi_cipher_spec cipher_aes_cbc = {
@@ -365,6 +370,7 @@ const struct cryptoapi_cipher_spec cipher_aes_cbc = {
 struct aes_xts_ctx {
 	rijndael_ctx key1;
 	rijndael_ctx key2;
+	uint8_t tweak[AES_XTS_BLOCK_LEN];
 };
 
 static bool
@@ -404,7 +410,7 @@ aes_xts_setkey(void *_ctx, const uint8_t *keydata, int keylen_in_bytes)
 }
 
 static inline void
-aes_xts_reinit(const struct aes_xts_ctx *ctx, u_int8_t *iv)
+aes_xts_reinit(struct aes_xts_ctx *ctx, const uint8_t *iv)
 {
 #if 0
 	/*
@@ -413,23 +419,24 @@ aes_xts_reinit(const struct aes_xts_ctx *ctx, u_int8_t *iv)
 	 */
 	/* XXX: possibly use htole64? */
 #endif
-	/* Last 64 bits of IV are always zero */
-	bzero(iv + AES_XTS_IV_LEN, AES_XTS_IV_LEN);
+	memcpy(ctx->tweak, iv, AES_XTS_IV_LEN);
 
-	rijndael_encrypt(&ctx->key2, iv, iv);
+	/* Last 64 bits of IV are always zero */
+	bzero(ctx->tweak + AES_XTS_IV_LEN, AES_XTS_IV_LEN);
+
+	rijndael_encrypt(&ctx->key2, ctx->tweak, ctx->tweak);
 }
 
 static void
-aes_xts_crypt(const void *_ctx, uint8_t *data, int datalen,
-    struct cryptoapi_cipher_iv *_iv, bool encrypt)
+aes_xts_crypt(void *_ctx, uint8_t *data, int datalen, const uint8_t *iv,
+    bool encrypt)
 {
 	uint8_t block[AES_XTS_BLOCK_LEN];
-	uint8_t *iv = _iv->iv.iv_aes_xts;
-	const struct aes_xts_ctx *ctx = _ctx;
+	struct aes_xts_ctx *ctx = _ctx;
 
 	aes_xts_reinit(ctx, iv);
 
-	crypt_data_xts(&ctx->key1, data, datalen, iv,
+	crypt_data_xts(&ctx->key1, data, datalen, ctx->tweak,
 	    encrypt ? rijndael_encrypt_wrap : rijndael_decrypt_wrap, block,
 	    AES_XTS_BLOCK_LEN, AES_XTS_ALPHA);
 }
@@ -438,7 +445,7 @@ const struct cryptoapi_cipher_spec cipher_aes_xts = {
 	.ciphername = "aes-xts",
 	.description = "AES-XTS (in software)",
 	.blocksize = AES_XTS_BLOCK_LEN,
-	.ivsize = 16,
+	.ivsize = AES_XTS_IV_LEN,
 	.ctxsize = sizeof(struct aes_xts_ctx),
 	/* there are no alignment requirements imposed by the algorithm,
 		but using 16 can't do any harm either */
@@ -477,11 +484,14 @@ cipher_aesni_cbc_probe(int keysize_in_bits)
 	if ((cpu_feature2 & CPUID2_AESNI) == 0)
 		return (EINVAL);
 
-	if ((keysize_in_bits == 128 || keysize_in_bits == 192 ||
-		keysize_in_bits == 256))
+	switch (keysize_in_bits) {
+	case 128:
+	case 192:
+	case 256:
 		return (0);
-
-	return (-1);
+	default:
+		return (-1);
+	}
 }
 
 static int
@@ -518,17 +528,17 @@ cipher_aesni_cbc_setkey(void *_ctx, const uint8_t *keydata, int keylen_in_bytes)
 }
 
 static void
-cipher_aesni_cbc_crypt(const void *_ctx, uint8_t *data, int datalen,
-    struct cryptoapi_cipher_iv *iv, bool encrypt)
+cipher_aesni_cbc_crypt(void *_ctx, uint8_t *data, int datalen,
+    const uint8_t *iv, bool encrypt)
 {
-	const struct aesni_ctx *ctx = _ctx;
+	struct aesni_ctx *ctx = _ctx;
 
 	if (encrypt)
 		aesni_encrypt_cbc(ctx->rounds, ctx->enc_schedule, datalen, data,
-		    data, iv->iv.iv_aesni);
+		    data, iv);
 	else
 		aesni_decrypt_cbc(ctx->rounds, ctx->dec_schedule, datalen, data,
-		    iv->iv.iv_aesni);
+		    iv);
 }
 
 const struct cryptoapi_cipher_spec cipher_aesni_cbc = {
@@ -562,10 +572,13 @@ cipher_aesni_xts_probe(int keysize_in_bits)
 	if ((cpu_feature2 & CPUID2_AESNI) == 0)
 		return (EINVAL);
 
-	if ((keysize_in_bits == 256 || keysize_in_bits == 512))
+	switch (keysize_in_bits) {
+	case 256:
+	case 512:
 		return (0);
-
-	return (-1);
+	default:
+		return (-1);
+	}
 }
 
 static int
@@ -602,24 +615,24 @@ cipher_aesni_xts_setkey(void *_ctx, const uint8_t *keydata, int keylen_in_bytes)
 }
 
 static void
-cipher_aesni_xts_crypt(const void *_ctx, uint8_t *data, int datalen,
-    struct cryptoapi_cipher_iv *iv, bool encrypt)
+cipher_aesni_xts_crypt(void *_ctx, uint8_t *data, int datalen,
+    const uint8_t *iv, bool encrypt)
 {
 	const struct aesni_ctx *ctx = _ctx;
 
 	if (encrypt)
 		aesni_encrypt_xts(ctx->rounds, ctx->enc_schedule,
-		    ctx->xts_schedule, datalen, data, data, iv->iv.iv_aesni);
+		    ctx->xts_schedule, datalen, data, data, iv);
 	else
 		aesni_decrypt_xts(ctx->rounds, ctx->dec_schedule,
-		    ctx->xts_schedule, datalen, data, data, iv->iv.iv_aesni);
+		    ctx->xts_schedule, datalen, data, data, iv);
 }
 
 const struct cryptoapi_cipher_spec cipher_aesni_xts = {
 	.ciphername = "aes-xts",
 	.description = "AES-XTS w/ CPU AESNI instruction",
 	.blocksize = AES_BLOCK_LEN,
-	.ivsize = AES_BLOCK_LEN,
+	.ivsize = AES_XTS_IV_LEN,
 	.ctxsize = sizeof(struct aesni_ctx),
 	.ctxalign = AESNI_ALIGN,
 	.probe = cipher_aesni_xts_probe,
@@ -675,15 +688,15 @@ twofish_decrypt_wrap(const void *ctx, const uint8_t *src, uint8_t *dst)
 }
 
 static void
-twofish_cbc_crypt(const void *ctx, uint8_t *data, int datalen,
-    struct cryptoapi_cipher_iv *iv, bool encrypt)
+twofish_cbc_crypt(void *ctx, uint8_t *data, int datalen, const uint8_t *iv,
+    bool encrypt)
 {
 	if (encrypt)
 		encrypt_data_cbc(twofish_encrypt_wrap, ctx, data, datalen,
-		    TWOFISH_BLOCK_LEN, iv->iv.iv_twofish_cbc);
+		    TWOFISH_BLOCK_LEN, iv);
 	else
 		decrypt_data_cbc(twofish_decrypt_wrap, ctx, data, datalen,
-		    TWOFISH_BLOCK_LEN, iv->iv.iv_twofish_cbc);
+		    TWOFISH_BLOCK_LEN, iv);
 }
 
 const struct cryptoapi_cipher_spec cipher_twofish_cbc = {
@@ -712,10 +725,11 @@ const struct cryptoapi_cipher_spec cipher_twofish_cbc = {
 struct twofish_xts_ctx {
 	twofish_ctx key1;
 	twofish_ctx key2;
+	uint8_t tweak[TWOFISH_XTS_BLOCK_LEN];
 };
 
 static inline void
-twofish_xts_reinit(const struct twofish_xts_ctx *ctx, uint8_t *iv)
+twofish_xts_reinit(struct twofish_xts_ctx *ctx, const uint8_t *iv)
 {
 #if 0
 	u_int64_t blocknum;
@@ -728,10 +742,12 @@ twofish_xts_reinit(const struct twofish_xts_ctx *ctx, uint8_t *iv)
 	 */
 	/* XXX: possibly use htole64? */
 #endif
-	/* Last 64 bits of IV are always zero */
-	bzero(iv + TWOFISH_XTS_IV_LEN, TWOFISH_XTS_IV_LEN);
+	memcpy(ctx->tweak, iv, TWOFISH_XTS_IV_LEN);
 
-	twofish_encrypt(&ctx->key2, iv, iv);
+	/* Last 64 bits of IV are always zero */
+	bzero(ctx->tweak + TWOFISH_XTS_IV_LEN, TWOFISH_XTS_IV_LEN);
+
+	twofish_encrypt(&ctx->key2, ctx->tweak, ctx->tweak);
 }
 
 static int
@@ -762,16 +778,15 @@ twofish_xts_setkey(void *_ctx, const uint8_t *keydata, int keylen_in_bytes)
 }
 
 static void
-twofish_xts_crypt(const void *_ctx, uint8_t *data, int datalen,
-    struct cryptoapi_cipher_iv *_iv, bool encrypt)
+twofish_xts_crypt(void *_ctx, uint8_t *data, int datalen, const uint8_t *iv,
+    bool encrypt)
 {
 	uint8_t block[TWOFISH_XTS_BLOCK_LEN];
-	uint8_t *iv = _iv->iv.iv_twofish_xts;
-	const struct twofish_xts_ctx *ctx = _ctx;
+	struct twofish_xts_ctx *ctx = _ctx;
 
 	twofish_xts_reinit(ctx, iv);
 
-	crypt_data_xts(&ctx->key1, data, datalen, iv,
+	crypt_data_xts(&ctx->key1, data, datalen, ctx->tweak,
 	    encrypt ? twofish_encrypt_wrap : twofish_decrypt_wrap, block,
 	    TWOFISH_XTS_BLOCK_LEN, AES_XTS_ALPHA);
 }
@@ -836,15 +851,15 @@ serpent_decrypt_wrap(const void *ctx, const uint8_t *src, uint8_t *dst)
 }
 
 static void
-serpent_cbc_crypt(const void *ctx, uint8_t *data, int datalen,
-    struct cryptoapi_cipher_iv *iv, bool encrypt)
+serpent_cbc_crypt(void *ctx, uint8_t *data, int datalen, const uint8_t *iv,
+    bool encrypt)
 {
 	if (encrypt)
 		encrypt_data_cbc(serpent_encrypt_wrap, ctx, data, datalen,
-		    SERPENT_BLOCK_LEN, iv->iv.iv_serpent_cbc);
+		    SERPENT_BLOCK_LEN, iv);
 	else
 		decrypt_data_cbc(serpent_decrypt_wrap, ctx, data, datalen,
-		    SERPENT_BLOCK_LEN, iv->iv.iv_serpent_cbc);
+		    SERPENT_BLOCK_LEN, iv);
 }
 
 const struct cryptoapi_cipher_spec cipher_serpent_cbc = {
@@ -873,10 +888,11 @@ const struct cryptoapi_cipher_spec cipher_serpent_cbc = {
 struct serpent_xts_ctx {
 	serpent_ctx key1;
 	serpent_ctx key2;
+	uint8_t tweak[SERPENT_XTS_BLOCK_LEN];
 };
 
 static inline void
-serpent_xts_reinit(const struct serpent_xts_ctx *ctx, uint8_t *iv)
+serpent_xts_reinit(struct serpent_xts_ctx *ctx, const uint8_t *iv)
 {
 #if 0
 	u_int64_t blocknum;
@@ -890,10 +906,13 @@ serpent_xts_reinit(const struct serpent_xts_ctx *ctx, uint8_t *iv)
 	 */
 	/* XXX: possibly use htole64? */
 #endif
-	/* Last 64 bits of IV are always zero */
-	bzero(iv + SERPENT_XTS_IV_LEN, SERPENT_XTS_IV_LEN);
 
-	serpent_encrypt(&ctx->key2, iv, iv);
+	memcpy(ctx->tweak, iv, SERPENT_XTS_IV_LEN);
+
+	/* Last 64 bits of IV are always zero */
+	bzero(ctx->tweak + SERPENT_XTS_IV_LEN, SERPENT_XTS_IV_LEN);
+
+	serpent_encrypt(&ctx->key2, ctx->tweak, ctx->tweak);
 }
 
 static int
@@ -924,16 +943,15 @@ serpent_xts_setkey(void *_ctx, const uint8_t *keydata, int keylen_in_bytes)
 }
 
 static void
-serpent_xts_crypt(const void *_ctx, uint8_t *data, int datalen,
-    struct cryptoapi_cipher_iv *_iv, bool encrypt)
+serpent_xts_crypt(void *_ctx, uint8_t *data, int datalen, const uint8_t *iv,
+    bool encrypt)
 {
 	uint8_t block[SERPENT_XTS_BLOCK_LEN];
-	uint8_t *iv = _iv->iv.iv_serpent_xts;
-	const struct serpent_xts_ctx *ctx = _ctx;
+	struct serpent_xts_ctx *ctx = _ctx;
 
 	serpent_xts_reinit(ctx, iv);
 
-	crypt_data_xts(&ctx->key1, data, datalen, iv,
+	crypt_data_xts(&ctx->key1, data, datalen, ctx->tweak,
 	    encrypt ? serpent_encrypt_wrap : serpent_decrypt_wrap, block,
 	    SERPENT_XTS_BLOCK_LEN, AES_XTS_ALPHA);
 }
@@ -1034,8 +1052,8 @@ cryptoapi_cipher_newsession(cryptoapi_cipher_t cipher)
 	if (cipher == NULL)
 		return NULL;
 
-	if (cipher->ivsize > sizeof(struct cryptoapi_cipher_iv)) {
-		kprintf("FATAL: struct cryptoapi_cipher_iv has wrong size\n");
+	if (cipher->ivsize > sizeof(cryptoapi_cipher_iv)) {
+		kprintf("FATAL: cryptoapi_cipher_iv has wrong size\n");
 		return NULL;
 	}
 
@@ -1095,37 +1113,53 @@ cryptoapi_cipher_setkey(cryptoapi_cipher_session_t session,
 
 int
 cryptoapi_cipher_encrypt(const cryptoapi_cipher_session_t session,
-    uint8_t *data, int datalen, struct cryptoapi_cipher_iv *iv)
+    uint8_t *data, int datalen, const uint8_t *iv, int ivlen)
 {
+	cryptoapi_cipher_iv iv2;
+
 	if ((datalen % session->cipher->blocksize) != 0)
 		return (EINVAL);
 
-	session->cipher->crypt(session->context, data, datalen, iv, true);
+	bzero(iv2, sizeof(iv2));
+	memcpy(iv2, iv, ivlen);
+
+	session->cipher->crypt(session->context, data, datalen, iv2, true);
+
+	explicit_bzero(iv2, sizeof(iv2));
 
 	return (0);
 }
 
 int
 cryptoapi_cipher_decrypt(const cryptoapi_cipher_session_t session,
-    uint8_t *data, int datalen, struct cryptoapi_cipher_iv *iv)
+    uint8_t *data, int datalen, const uint8_t *iv, int ivlen)
 {
+	cryptoapi_cipher_iv iv2;
+
 	if ((datalen % session->cipher->blocksize) != 0)
 		return (EINVAL);
 
-	session->cipher->crypt(session->context, data, datalen, iv, false);
+	bzero(iv2, sizeof(iv2));
+	memcpy(iv2, iv, ivlen);
+
+	session->cipher->crypt(session->context, data, datalen, iv2, false);
+
+	explicit_bzero(iv2, sizeof(iv2));
 
 	return (0);
 }
 
 int
 cryptoapi_cipher_crypt(const cryptoapi_cipher_session_t session, uint8_t *data,
-    int datalen, struct cryptoapi_cipher_iv *iv, cryptoapi_cipher_mode mode)
+    int datalen, const uint8_t *iv, int ivlen, cryptoapi_cipher_mode mode)
 {
 	switch (mode) {
 	case CRYPTOAPI_CIPHER_ENCRYPT:
-		return cryptoapi_cipher_encrypt(session, data, datalen, iv);
+		return cryptoapi_cipher_encrypt(session, data, datalen, iv,
+		    ivlen);
 	case CRYPTOAPI_CIPHER_DECRYPT:
-		return cryptoapi_cipher_decrypt(session, data, datalen, iv);
+		return cryptoapi_cipher_decrypt(session, data, datalen, iv,
+		    ivlen);
 	default:
 		return EINVAL;
 	}
