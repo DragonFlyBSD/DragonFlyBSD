@@ -294,17 +294,16 @@ essiv_ivgen_ctor(struct target_crypt_config *priv, char *iv_hash, void **p_ivpri
 	 *	cipher is a valid iv size for the block cipher.
 	 */
 
-	error = cryptoapi_cipher_initsession(priv->crypto_cipher, &ivpriv->crypto_session);
-	if (error) {
-		kprintf("dm_target_crypt: Error during cryptoapi_cipher_initsession "
-			"for essiv_ivgen, error = %d\n",
-			error);
+	ivpriv->crypto_session = cryptoapi_cipher_newsession(priv->crypto_cipher);
+	if (ivpriv->crypto_session == NULL) {
+		kprintf("dm_target_crypt: Error during cryptoapi_cipher_newsession "
+			"for essiv_ivgen\n");
 		dmtc_crypto_clear(ivpriv->crypto_keyhash, ivpriv->keyhash_len);
 		kfree(ivpriv, M_DMCRYPT);
 		return ENOTSUP;
 	}
 
-	error = cryptoapi_cipher_setkey(&ivpriv->crypto_session,
+	error = cryptoapi_cipher_setkey(ivpriv->crypto_session,
 		(const uint8_t *)ivpriv->crypto_keyhash,
 		hashlen / 8);
 
@@ -312,7 +311,7 @@ essiv_ivgen_ctor(struct target_crypt_config *priv, char *iv_hash, void **p_ivpri
 		kprintf("dm_target_crypt: Error during cryptoapi_cipher_setkey "
 			"for essiv_ivgen, error = %d\n",
 			error);
-		cryptoapi_cipher_freesession(&ivpriv->crypto_session);
+		cryptoapi_cipher_freesession(ivpriv->crypto_session);
 		dmtc_crypto_clear(ivpriv->crypto_keyhash, ivpriv->keyhash_len);
 		kfree(ivpriv, M_DMCRYPT);
 		return ENOTSUP;
@@ -331,7 +330,7 @@ essiv_ivgen_dtor(struct target_crypt_config *priv, void *arg)
 	ivpriv = (struct essiv_ivgen_priv *)arg;
 	KKASSERT(ivpriv != NULL);
 
-	cryptoapi_cipher_freesession(&ivpriv->crypto_session);
+	cryptoapi_cipher_freesession(ivpriv->crypto_session);
 
 	dmtc_crypto_clear(ivpriv->crypto_keyhash, ivpriv->keyhash_len);
 	kfree(ivpriv, M_DMCRYPT);
@@ -352,16 +351,17 @@ essiv_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv,
 	bzero(iv, iv_len);
 	*((off_t *)iv) = htole64(sector + priv->iv_offset);
 
-	struct cryptoapi_cipher_iv iv2;
-	bzero(&iv2, sizeof(iv2));
+	cryptoapi_cipher_iv iv2;
+	bzero(iv2, sizeof(iv2));
 
-	error = cryptoapi_cipher_encrypt(&ivpriv->crypto_session,
-			(uint8_t*)iv,
+	error = cryptoapi_cipher_encrypt(ivpriv->crypto_session,
+			iv,
 			iv_len,
-			&iv2
+			iv2,
+			sizeof(iv2)
 			);
 
-	explicit_bzero(&iv2, sizeof(iv2));
+	explicit_bzero(iv2, sizeof(iv2));
 
 	if (error)
 		kprintf("dm_target_crypt: essiv_ivgen, error = %d\n", error);
@@ -546,15 +546,13 @@ dm_target_crypt_init(dm_table_entry_t *table_en, int argc, char **argv)
 
 	priv->ivgen = &ivgens[i];
 
-	error = cryptoapi_cipher_initsession(priv->crypto_cipher, &priv->crypto_session);
-	if (error) {
-		kprintf("dm_target_crypt: Error during cryptoapi_cipher_initsession, "
-			"error = %d\n",
-			error);
+	priv->crypto_session = cryptoapi_cipher_newsession(priv->crypto_cipher);
+	if (priv->crypto_session == NULL) {
+		kprintf("dm_target_crypt: Error during cryptoapi_cipher_newsession\n");
 		goto notsup;
 	}
 
-	error = cryptoapi_cipher_setkey(&priv->crypto_session,
+	error = cryptoapi_cipher_setkey(priv->crypto_session,
 		(const u_int8_t *)priv->crypto_key,
 		priv->crypto_klen / 8);
 
@@ -562,7 +560,7 @@ dm_target_crypt_init(dm_table_entry_t *table_en, int argc, char **argv)
 		kprintf("dm_target_crypt: Error during cryptoapi_cipher_setkey, "
 			"error = %d\n",
 			error);
-		cryptoapi_cipher_freesession(&priv->crypto_session);
+		cryptoapi_cipher_freesession(priv->crypto_session);
 		goto notsup;
 	}
 
@@ -636,7 +634,7 @@ dm_target_crypt_destroy(dm_table_entry_t *table_en)
 		priv->ivgen->dtor(priv, priv->ivgen_priv);
 	}
 
-	cryptoapi_cipher_freesession(&priv->crypto_session);
+	cryptoapi_cipher_freesession(priv->crypto_session);
 
 	dmtc_crypto_clear(priv, sizeof(dm_target_crypt_config_t));
 	kfree(priv, M_DMCRYPT);
@@ -961,7 +959,7 @@ int
 dmtc_bio_encdec(dm_target_crypt_config_t *priv, uint8_t *data_buf, int bytes,
     off_t offset, cryptoapi_cipher_mode mode)
 {
-	struct cryptoapi_cipher_iv iv;
+	cryptoapi_cipher_iv iv;
 	int sectors = bytes / DEV_BSIZE;    /* Number of sectors */
 	off_t isector = offset / DEV_BSIZE; /* ivgen salt base? */
 	int error = 0;
@@ -975,12 +973,11 @@ dmtc_bio_encdec(dm_target_crypt_config_t *priv, uint8_t *data_buf, int bytes,
 		 *	 int.  Changing it now will break pre-existing
 		 *	 crypt volumes.
 		 */
-		priv->ivgen->gen_iv(priv, (uint8_t *)&iv, sizeof(iv),
-		    isector + i);
+		priv->ivgen->gen_iv(priv, iv, sizeof(iv), isector + i);
 
-		error = cryptoapi_cipher_crypt(&priv->crypto_session,
+		error = cryptoapi_cipher_crypt(priv->crypto_session,
 				data_buf + i * DEV_BSIZE,
-				DEV_BSIZE, &iv, mode);
+				DEV_BSIZE, iv, sizeof(iv), mode);
 
 		if (error) {
 			break;
