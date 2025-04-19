@@ -62,11 +62,12 @@ struct cryptoapi_cipher_spec;
 
 typedef const struct cryptoapi_cipher_spec *cryptoapi_cipher_t;
 
-typedef struct {
-	cryptoapi_cipher_t cipher;
-	void *context;
-	void *origptr;
-} cryptoapi_cipher_session_t;
+/*
+ * Opaque cryptoapi session type.
+ */
+struct cryptoapi_cipher_session;
+
+typedef struct cryptoapi_cipher_session *cryptoapi_cipher_session_t;
 
 /**
  * Selects a cipher based on the specified ciphername, e.g. "aes-cbc",
@@ -78,21 +79,21 @@ cryptoapi_cipher_t cryptoapi_cipher_find(const char *ciphername,
 
 const char *cryptoapi_cipher_get_description(cryptoapi_cipher_t cipher);
 
-int cryptoapi_cipher_initsession(cryptoapi_cipher_t cipher,
-    cryptoapi_cipher_session_t *session);
+cryptoapi_cipher_session_t cryptoapi_cipher_newsession(
+    cryptoapi_cipher_t cipher);
 
-int cryptoapi_cipher_freesession(cryptoapi_cipher_session_t *session);
+void cryptoapi_cipher_freesession(cryptoapi_cipher_session_t session);
 
-int cryptoapi_cipher_setkey(cryptoapi_cipher_session_t *session,
+int cryptoapi_cipher_setkey(cryptoapi_cipher_session_t session,
     const uint8_t *keydata, int keylen_in_bytes);
 
-int cryptoapi_cipher_encrypt(const cryptoapi_cipher_session_t *session,
+int cryptoapi_cipher_encrypt(const cryptoapi_cipher_session_t session,
     uint8_t *data, int datalen, struct cryptoapi_cipher_iv *iv);
 
-int cryptoapi_cipher_decrypt(const cryptoapi_cipher_session_t *session,
+int cryptoapi_cipher_decrypt(const cryptoapi_cipher_session_t session,
     uint8_t *data, int datalen, struct cryptoapi_cipher_iv *iv);
 
-int cryptoapi_cipher_crypt(const cryptoapi_cipher_session_t *session,
+int cryptoapi_cipher_crypt(const cryptoapi_cipher_session_t session,
     uint8_t *data, int datalen, struct cryptoapi_cipher_iv *iv,
     cryptoapi_cipher_mode mode);
 

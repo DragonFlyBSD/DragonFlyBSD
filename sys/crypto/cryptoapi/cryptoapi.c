@@ -55,9 +55,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define kprintf		  printf
-#define karc4random_buf	  arc4random_buf
-#define kfree(ptr, mtype) free(ptr)
+#define kprintf			    printf
+#define karc4random_buf		    arc4random_buf
+#define kmalloc(size, mtype, flags) malloc(size)
+#define kfree(ptr, mtype)	    free(ptr)
+#define KKASSERT(cond)                                            \
+	if (!(cond)) {                                            \
+		fprintf(stderr, "ASSERTION FAILED: %s\n", #cond); \
+		abort();                                          \
+	}
 #endif
 
 #include <crypto/aesni/aesni.h>
@@ -75,6 +81,20 @@ SYSCTL_INT(_hw, OID_AUTO, aesni_disable, CTLFLAG_RW, &aesni_disable, 0,
     "Disable AESNI");
 #define HAVE_AESNI
 #endif
+
+/**
+ * --------------------------------------
+ *  cryptoapi session (header)
+ * --------------------------------------
+ */
+
+struct cryptoapi_cipher_session {
+	cryptoapi_cipher_t cipher;
+	/**
+	 * Points to the aligned context.
+	 */
+	void *context;
+};
 
 /**
  * --------------------------------------
@@ -987,7 +1007,6 @@ cryptoapi_cipher_get_description(cryptoapi_cipher_t cipher)
 	return cipher->description;
 }
 
-#ifdef _KERNEL
 static inline bool
 is_ptr_aligned(void *ptr, int alignment)
 {
@@ -995,102 +1014,79 @@ is_ptr_aligned(void *ptr, int alignment)
 }
 
 static inline void *
-kmalloc_aligned(int size, int alignment, void **origptr)
+align_ptr(void *ptr, size_t alignment)
 {
-	void *ptr;
-
-	ptr = kmalloc(size, M_CRYPTOAPI, M_WAITOK);
-
-	if (is_ptr_aligned(ptr, alignment)) {
-		*origptr = ptr;
+	if (is_ptr_aligned(ptr, alignment))
 		return ptr;
-	}
-
-	kfree(ptr, M_CRYPTOAPI);
-
-	ptr = kmalloc(size + alignment, M_CRYPTOAPI, M_WAITOK);
 
 	uintptr_t offset = alignment - ((uintptr_t)ptr % alignment);
-
 	KKASSERT(offset < alignment);
-
-	*origptr = ptr;
-
-	ptr = (uint8_t *)ptr + offset;
-
-	KKASSERT(is_ptr_aligned(ptr, alignment));
-
-	return (ptr);
+	return ((uint8_t *)ptr + offset);
 }
-#endif
 
-int
-cryptoapi_cipher_initsession(cryptoapi_cipher_t cipher,
-    cryptoapi_cipher_session_t *session)
+cryptoapi_cipher_session_t
+cryptoapi_cipher_newsession(cryptoapi_cipher_t cipher)
 {
-	if (session == NULL)
-		return (EINVAL);
+	void *ptr;
+	size_t sessionsz;
+	cryptoapi_cipher_session_t session;
 
-	if (__predict_false(
-		cipher->ivsize > sizeof(struct cryptoapi_cipher_iv))) {
+	if (cipher == NULL)
+		return NULL;
+
+	if (cipher->ivsize > sizeof(struct cryptoapi_cipher_iv)) {
 		kprintf("FATAL: struct cryptoapi_cipher_iv has wrong size\n");
-		return (EINVAL);
+		return NULL;
 	}
 
-	bzero(session, sizeof(cryptoapi_cipher_session_t));
+	sessionsz = sizeof(struct cryptoapi_cipher_session) + cipher->ctxsize +
+	    (cipher->ctxalign - 1);
+	ptr = kmalloc(sessionsz, M_CRYPTOAPI, M_WAITOK);
+
+	if (ptr == NULL)
+		return NULL;
+
+	bzero(ptr, sessionsz);
+
+	session = (struct cryptoapi_cipher_session *)ptr;
+	session->cipher = cipher;
+	session->context = NULL;
 
 	if (cipher->ctxsize > 0) {
-#ifdef _KERNEL
-		session->context = kmalloc_aligned(cipher->ctxsize,
-		    cipher->ctxalign, &session->origptr);
-#else
-		session->context = session->origptr =
-		    aligned_alloc(cipher->ctxsize, cipher->ctxalign);
-#endif
+		session->context = align_ptr((uint8_t *)ptr +
+			sizeof(struct cryptoapi_cipher_session),
+		    cipher->ctxalign);
 
-		if (session->context == NULL)
-			return (ENOMEM);
+		KKASSERT(is_ptr_aligned(session->context, cipher->ctxalign));
 
 		/**
 		 * Fill context with random data, just in case
 		 * someone forgets to initialize it.
 		 */
 		karc4random_buf(session->context, cipher->ctxsize);
-	} else {
-		session->context = NULL;
-		session->origptr = NULL;
 	}
 
-	session->cipher = cipher;
-
-	return (0);
+	return session;
 }
 
-int
-cryptoapi_cipher_freesession(cryptoapi_cipher_session_t *session)
+void
+cryptoapi_cipher_freesession(cryptoapi_cipher_session_t session)
 {
 	if (session == NULL)
-		return (EINVAL);
-
-	if (session->cipher == NULL)
-		return (EINVAL);
+		return;
 
 	if (session->context) {
 		memset(session->context, 0xFF, session->cipher->ctxsize);
 		explicit_bzero(session->context, session->cipher->ctxsize);
 	}
 
-	if (session->origptr) {
-		kfree(session->origptr, M_CRYPTOAPI);
-	}
-
 	bzero(session, sizeof(*session));
 
-	return (0);
+	kfree(session, M_CRYPTOAPI);
 }
 
 int
-cryptoapi_cipher_setkey(cryptoapi_cipher_session_t *session,
+cryptoapi_cipher_setkey(cryptoapi_cipher_session_t session,
     const uint8_t *keydata, int keylen_in_bytes)
 {
 	return session->cipher->setkey(session->context, keydata,
@@ -1098,7 +1094,7 @@ cryptoapi_cipher_setkey(cryptoapi_cipher_session_t *session,
 }
 
 int
-cryptoapi_cipher_encrypt(const cryptoapi_cipher_session_t *session,
+cryptoapi_cipher_encrypt(const cryptoapi_cipher_session_t session,
     uint8_t *data, int datalen, struct cryptoapi_cipher_iv *iv)
 {
 	if ((datalen % session->cipher->blocksize) != 0)
@@ -1110,7 +1106,7 @@ cryptoapi_cipher_encrypt(const cryptoapi_cipher_session_t *session,
 }
 
 int
-cryptoapi_cipher_decrypt(const cryptoapi_cipher_session_t *session,
+cryptoapi_cipher_decrypt(const cryptoapi_cipher_session_t session,
     uint8_t *data, int datalen, struct cryptoapi_cipher_iv *iv)
 {
 	if ((datalen % session->cipher->blocksize) != 0)
@@ -1122,7 +1118,7 @@ cryptoapi_cipher_decrypt(const cryptoapi_cipher_session_t *session,
 }
 
 int
-cryptoapi_cipher_crypt(const cryptoapi_cipher_session_t *session, uint8_t *data,
+cryptoapi_cipher_crypt(const cryptoapi_cipher_session_t session, uint8_t *data,
     int datalen, struct cryptoapi_cipher_iv *iv, cryptoapi_cipher_mode mode)
 {
 	switch (mode) {
