@@ -81,8 +81,10 @@ cmd_volume_list(int ac, char **av)
 				printf("%s\n", entry->path);
 			}
 		} else {
+			char pfs_name[HAMMER2_INODE_MAXNAME+1];
+			strlcpy(pfs_name, vollist.pfs_name, sizeof(pfs_name));
 			printf("version %d\n", vollist.version);
-			printf("@%s\n", vollist.pfs_name);
+			printf("@%s\n", pfs_name);
 			for (j = 0; j < vollist.nvolumes; ++j) {
 				entry = &vollist.volumes[j];
 				printf("volume%-2d %-*.*s %s",
