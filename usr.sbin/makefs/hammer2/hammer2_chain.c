@@ -4927,7 +4927,7 @@ static int
 hammer2_base_find(hammer2_chain_t *parent,
 		  hammer2_blockref_t *base, int count,
 		  hammer2_key_t *key_nextp,
-		  hammer2_key_t key_beg, hammer2_key_t key_end)
+		  hammer2_key_t key_beg, hammer2_key_t key_end __unused)
 {
 	hammer2_blockref_t *scan;
 	hammer2_key_t scan_end;
@@ -5762,9 +5762,6 @@ hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
 		hammer2_inode_drop(ip);
 		if (*chainp)
 			return (*chainp)->error;
-		hammer2_chain_unlock(*chainp);
-		hammer2_chain_drop(*chainp);
-		*chainp = NULL;
 		if (*parentp) {
 			hammer2_chain_unlock(*parentp);
 			hammer2_chain_drop(*parentp);
