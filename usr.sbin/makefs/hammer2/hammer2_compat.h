@@ -67,9 +67,9 @@
 #define VOP_FSYNC(vp, waitfor, flags)	(0)
 
 #define kprintf(s, ...)		printf(s, ## __VA_ARGS__)
-#define krateprintf(r, X, ...)	kprintf(X, ## __VA_ARGS__)
+#define krateprintf(r, s, ...)	kprintf(s, ## __VA_ARGS__)
 #define ksnprintf(s, n, ...)	snprintf(s, n, ## __VA_ARGS__)
-#define kstrdup(str, type)	strdup(str)
+#define kstrdup(s, type)	strdup(s)
 
 #define kmalloc_create(typep, descr)	do{}while(0)
 #define kmalloc_destroy(typep)		do{}while(0)

@@ -1519,6 +1519,7 @@ void hammer2_adjwritecounter(int btype, size_t bytes);
 /*
  * hammer2_inode.c
  */
+void hammer2_inum_hash_init(hammer2_pfs_t *pmp);
 struct m_vnode *hammer2_igetv(hammer2_inode_t *ip, int *errorp);
 hammer2_inode_t *hammer2_inode_lookup(hammer2_pfs_t *pmp,
 			hammer2_tid_t inum);
@@ -1665,7 +1666,6 @@ void hammer2_trans_assert_strategy(hammer2_pfs_t *pmp);
 /*
  * hammer2_ioctl.c
  */
-void hammer2_inum_hash_init(hammer2_pfs_t *pmp);
 int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
 				int fflag, struct ucred *cred);
 int hammer2_ioctl_version_get(hammer2_inode_t *ip, void *data);

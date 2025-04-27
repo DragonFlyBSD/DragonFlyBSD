@@ -120,5 +120,4 @@ void *hammer2_decompress_LZ4(void *inbuf, size_t insize,
 void *hammer2_decompress_ZLIB(void *inbuf, size_t insize,
 			size_t outsize, int *statusp);
 
-
 #endif /* !HAMMER2_HAMMER2_SUBS_H_ */
