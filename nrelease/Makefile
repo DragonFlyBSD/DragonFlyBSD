@@ -25,6 +25,9 @@ MTREE_FSCHG=	-i
 WORLD_VERSION!=	${AWK} '/^\#define[[:blank:]]__DragonFly_version/ {print $$3}' < /usr/include/sys/param.h
 
 GITREV!=	sh ${SRCDIR}/tools/gitrev.sh
+.if empty(GITREV)
+.error Git failed to determine the current revision.
+.endif
 
 # The label/name of the disklabel64(5) slice in the ".img" file.  This is
 # used to identify the USB device with DragonFly installation image, avoiding
