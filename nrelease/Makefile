@@ -26,6 +26,9 @@ MTREE_FSCHG=	-i
 # Current version in format: <tag>[<n>.g<commit>]
 # e.g., "v6.4.0", "v6.5.0.816.g708615"
 GITREV!=	sh ${SRCDIR}/tools/gitrev.sh
+.if empty(GITREV)
+.error Git failed to determine the current revision.
+.endif
 
 # The label/name of the disklabel64(5) slice in the ".img" file.  This is
 # used to identify the USB device with DragonFly installation image, avoiding
