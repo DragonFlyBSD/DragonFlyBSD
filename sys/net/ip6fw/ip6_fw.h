@@ -213,6 +213,9 @@ struct ip6_fw_chain {
  */
 #ifdef _KERNEL
 
+extern struct route_in6 ip6_forward_rt_array[];
+#define ip6_forward_rt	(ip6_forward_rt_array[mycpuid])
+
 /*
  * Function definitions.
  */

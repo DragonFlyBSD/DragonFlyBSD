@@ -67,7 +67,10 @@
 
 #include <net/net_osdep.h>
 
-struct	route_in6 ip6_forward_rt;
+/*
+ * See ip6_forward_rt define in ip6_fw.h
+ */
+struct	route_in6 ip6_forward_rt_array[MAXCPU];
 
 /*
  * Forward a packet.  If some error occurs return the sender

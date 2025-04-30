@@ -197,8 +197,6 @@ ip6_init2(void *dummy)
 /* This must be after route_init(), which is now SI_ORDER_THIRD */
 SYSINIT(netinet6init2, SI_SUB_PROTO_DOMAIN, SI_ORDER_MIDDLE, ip6_init2, NULL);
 
-extern struct	route_in6 ip6_forward_rt;
-
 static void
 ip6_input(netmsg_t msg)
 {
