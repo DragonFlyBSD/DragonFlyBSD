@@ -96,6 +96,8 @@
 #define	_SA_MINSIZE	(offsetof(struct sockaddr, sa_family) + \
 			 sizeof(((struct sockaddr *)0)->sa_family))
 
+#define	PRESERVED_RTF	(RTF_UP | RTF_GATEWAY | RTF_HOST | RTF_DONE)
+
 MALLOC_DEFINE(M_RTABLE, "routetbl", "routing tables");
 
 static struct route_cb {
@@ -945,6 +947,10 @@ route_output_change_callback(int cmd, struct rt_addrinfo *rtinfo,
 		}
 	}
 	rt_setmetrics(rtm->rtm_inits, &rtm->rtm_rmx, &rt->rt_rmx);
+	if (rt->rt_flags != rtinfo->rti_flags) {
+		rt->rt_flags = (rtinfo->rti_flags & ~PRESERVED_RTF) |
+			(rt->rt_flags & PRESERVED_RTF);
+	}
 	if (rt->rt_ifa && rt->rt_ifa->ifa_rtrequest)
 		rt->rt_ifa->ifa_rtrequest(RTM_ADD, rt);
 	if (rtinfo->rti_genmask != NULL) {
