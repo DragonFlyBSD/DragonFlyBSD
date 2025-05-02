@@ -113,6 +113,7 @@ struct if_data {
 #define	IFF_NPOLLING	0x100000	/* interface is in polling mode */
 #define	IFF_IDIRECT	0x200000	/* direct input */
 #define	IFF_ISBRIDGE	0x400000	/* this is actually a bridge(4) */
+#define	IFF_ANNOUNCE	0x800000	/* proxy interface's routes */
 
 /* flags set internally only: */
 #define	IFF_CANTCHANGE \

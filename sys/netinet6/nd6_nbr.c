@@ -47,6 +47,7 @@
 #include <sys/queue.h>
 #include <sys/callout.h>
 #include <sys/mutex.h>
+#include <sys/resourcevar.h>
 
 #include <sys/thread2.h>
 #include <sys/mutex2.h>
@@ -284,7 +285,31 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 		if (rtifp && rtifp->if_bridge)
 			rtifp = rtifp->if_bridge;
 
-		if (rt != NULL && (rt->rt_flags & RTF_ANNOUNCE) &&
+		if (rt != NULL &&
+		    ((rt->rt_flags & RTF_ANNOUNCE) == 0 &&
+		     (rtifp->if_flags & IFF_ANNOUNCE) == 0)
+		    ) {
+			static struct krate krate_nff = { .freq = 1 };
+			krateprintf(&krate_nff,
+				    "route %p not flagged RTF_ANNOUNCE "
+				    "rtifp %p "
+				    "target %04x:%04x:%04x:%04x:"
+				    "%04x:%04x:%04x:%04x\n",
+				    rt,
+				    rtifp,
+				    taddr6.s6_addr16[0],
+				    taddr6.s6_addr16[1],
+				    taddr6.s6_addr16[2],
+				    taddr6.s6_addr16[3],
+				    taddr6.s6_addr16[4],
+				    taddr6.s6_addr16[5],
+				    taddr6.s6_addr16[6],
+				    taddr6.s6_addr16[7]);
+		}
+
+		if (rt != NULL &&
+		    ((rt->rt_flags & RTF_ANNOUNCE) ||
+		     (rtifp->if_flags & IFF_ANNOUNCE)) &&
 		    (cmpifp != rtifp || (m->m_flags & M_MCAST) == 0)) {
 			ifa = (struct ifaddr *)in6ifa_ifpforlinklocal(cmpifp,
 				IN6_IFF_NOTREADY|IN6_IFF_ANYCAST);

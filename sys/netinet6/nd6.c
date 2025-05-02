@@ -48,6 +48,7 @@
 #include <sys/queue.h>
 #include <sys/sysctl.h>
 #include <sys/mutex.h>
+#include <sys/resourcevar.h>
 
 #include <sys/thread2.h>
 #include <sys/mutex2.h>
@@ -2057,9 +2058,16 @@ nd6_resolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 	if (ln->ln_state > ND6_LLINFO_INCOMPLETE) {
 		struct sockaddr_dl *sdl = SDL(rt->rt_gateway);
 
-		KKASSERT(sdl->sdl_family == AF_LINK && sdl->sdl_alen != 0);
-		bcopy(LLADDR(sdl), desten, sdl->sdl_alen);
-		return 0;
+		//KKASSERT(sdl->sdl_family == AF_LINK && sdl->sdl_alen != 0);
+		if (sdl->sdl_family == AF_LINK && sdl->sdl_alen != 0) {
+			bcopy(LLADDR(sdl), desten, sdl->sdl_alen);
+			return 0;
+		} else {
+			static struct krate krate_nce = { .freq = 1 };
+			krateprintf(&krate_nce,
+				    "nd6_resolve: incomplete neighbor cache "
+				    "ln=%p sdl=%p\n", ln, sdl);
+		}
 	}
 
 	/*

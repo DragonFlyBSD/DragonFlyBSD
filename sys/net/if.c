@@ -487,6 +487,14 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 
 	static int if_indexlim = 8;
 
+	/*
+	 * By default announce non-loopback interfaces when IP
+	 * forwarding is turned on (cross interface proxy arp and
+	 * proxy ipv6 neighbor).
+	 */
+	if ((ifp->if_flags & IFF_LOOPBACK) == 0)
+		ifp->if_flags |= IFF_ANNOUNCE;
+
 	if (ifp->if_serialize != NULL) {
 		KASSERT(ifp->if_deserialize != NULL &&
 			ifp->if_tryserialize != NULL &&
