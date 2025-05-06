@@ -2355,6 +2355,15 @@ changed to the bonding state.
 Both sides of link the member represents must operate in bonding mode
 for this to work, otherwise the remote end may decide to throw away
 half your packets.
+.It Cm proxy
+By default, most interfaces set IFF_ANNOUNCE, aka "proxy".  This can be
+disabled on an interface via the
+.Cm -proxy
+directive.  When set, routes associated with this interface respond to
+neighbor inquiries when ipv6 forwarding is enabled.  Along with other
+conditions.
+If forwarding is not enabled, this flag does nothing.
+The flag may also be used for ipv4 in the future.
 .El
 .\"
 .Ss Generic IP Tunnel Parameters

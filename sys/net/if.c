@@ -488,12 +488,17 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	static int if_indexlim = 8;
 
 	/*
-	 * By default announce non-loopback interfaces when IP
-	 * forwarding is turned on (cross interface proxy arp and
-	 * proxy ipv6 neighbor).
+	 * By default, set IFF_ANNOUNCE on all interfaces initialized
+	 * by this function, including loopback interfaces... because
+	 * local host routes in the route table are associated with
+	 * the loopback.
+	 *
+	 * IFF_ANNOUNCE primarily effects proxy ipv6 neighbor responses
+	 * when ipv6 forwarding is turned on.
+	 *
+	 * //if ((ifp->if_flags & IFF_LOOPBACK) == 0)
 	 */
-	if ((ifp->if_flags & IFF_LOOPBACK) == 0)
-		ifp->if_flags |= IFF_ANNOUNCE;
+	ifp->if_flags |= IFF_ANNOUNCE;
 
 	if (ifp->if_serialize != NULL) {
 		KASSERT(ifp->if_deserialize != NULL &&
