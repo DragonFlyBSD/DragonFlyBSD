@@ -548,6 +548,9 @@ static struct usb_quirk_entry usb_quirks[USB_DEV_QUIRKS_MAX] = {
 
 	/* Holtek USB gaming keyboard */
 	USB_QUIRK(HOLTEK, F85, 0x0000, 0xffff, UQ_KBD_BOOTPROTO),
+
+	/* USB Cameras */
+	USB_QUIRK(CISCOLINKSYS3, ROOMKIT0B01, 0x0000, 0xffff, UQ_UVC_NO_EOF),
 };
 #undef USB_QUIRK_VP
 #undef USB_QUIRK
@@ -621,6 +624,7 @@ static const char *usb_quirk_str[USB_QUIRK_MAX] = {
 	[UQ_SINGLE_CMD_MIDI]		= "UQ_SINGLE_CMD_MIDI",
 	[UQ_MSC_DYMO_EJECT]		= "UQ_MSC_DYMO_EJECT",
 	[UQ_AU_SET_SPDIF_CM6206]	= "UQ_AU_SET_SPDIF_CM6206",
+	[UQ_UVC_NO_EOF]                 = "UQ_UVC_NO_EOF",
 };
 
 /*------------------------------------------------------------------------*

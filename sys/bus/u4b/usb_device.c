@@ -42,6 +42,8 @@
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 #include <sys/devfs.h>
+#include <sys/pciio.h>
+#include <bus/pci/pcivar.h>
 
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
@@ -1586,6 +1588,7 @@ usb_alloc_device(device_t parent_dev, struct usb_bus *bus,
 	lockinit(&udev->enum_lock, "USB config SX lock", 0, LK_CANRECURSE);
 	/* XXX (mp) is this LK_CANRECURSE necessary? */
 	lockinit(&udev->sr_lock, "USB suspend and resume SX lock", 0, LK_CANRECURSE);
+	lockinit(&udev->ctrl_lock, "USB control transfer SX lock", 0, LK_CANRECURSE);
 
 	cv_init(&udev->ctrlreq_cv, "WCTRL");
 	cv_init(&udev->ref_cv, "UGONE");
@@ -2194,6 +2197,7 @@ usb_free_device(struct usb_device *udev, uint8_t flag)
 
 	lockuninit(&udev->enum_lock);
 	lockuninit(&udev->sr_lock);
+	lockuninit(&udev->ctrl_lock);
 
 	cv_destroy(&udev->ctrlreq_cv);
 	cv_destroy(&udev->ref_cv);
@@ -2235,6 +2239,37 @@ usbd_get_iface(struct usb_device *udev, uint8_t iface_index)
 	if (iface_index >= udev->ifaces_max)
 		return (NULL);
 	return (iface);
+}
+
+void
+usbd_get_phys(struct usb_device *udev, char *phys, uint8_t len)
+{
+	struct pci_devinfo *info;
+	uint8_t no[128], tmp[16], index = 128;
+
+	if (!phys)
+		return;
+
+	info = device_get_ivars(device_get_parent(udev->bus->bdev));
+	ksnprintf(phys, len, "usb-%02x:%02x:%02x.%x-",
+			info->cfg.domain, info->cfg.bus,
+			info->cfg.slot, info->cfg.func);
+
+	while (udev && udev->device_index != USB_ROOT_HUB_ADDR && index) {
+		no[--index] = udev->port_no;
+		udev = (udev->parent_hub != NULL) ?
+			udev->parent_hub : udev->parent_hs_hub;
+	}
+
+	while (index < 128) {
+		ksnprintf(tmp, 16, "%d.", no[index]);
+		if (len <= strlen(phys) + strlen(tmp) + 1)
+			break;
+		strcat(phys, tmp);
+		index++;
+	}
+	index = strlen(phys) - 1;
+	phys[index] = '\0';
 }
 
 /*------------------------------------------------------------------------*
@@ -2345,6 +2380,83 @@ struct usb_knowndev {
 #include "usbdevs.h"
 #include "usbdevs_data.h"
 #endif					/* USB_VERBOSE */
+
+void
+device_get_usb_vidpid(device_t dev, uint32_t *vid, uint32_t *pid)
+{
+	struct usb_attach_arg *uaa;
+	struct usb_device *udev;
+	uint8_t do_unlock;
+
+	if (dev == NULL) {
+		/* should not happen */
+		return;
+	}
+	uaa = device_get_ivars(dev);
+	if (uaa == NULL) {
+		/* can happen if called at the wrong time */
+		return;
+	}
+	udev = uaa->device;
+
+	if (udev == NULL)
+		return;
+
+	do_unlock = usbd_ctrl_lock(udev);
+
+	*vid = UGETW(udev->ddesc.idVendor);
+	*pid = UGETW(udev->ddesc.idProduct);
+
+	if (do_unlock)
+		usbd_ctrl_unlock(udev);
+}
+
+void
+device_get_usb_iproduct(device_t dev, char *iProduct, size_t size)
+{
+	struct usb_attach_arg *uaa;
+	struct usb_device *udev;
+	uint8_t do_unlock;
+
+	if (dev == NULL) {
+		/* should not happen */
+		return;
+	}
+	uaa = device_get_ivars(dev);
+	if (uaa == NULL) {
+		/* can happen if called at the wrong time */
+		return;
+	}
+	udev = uaa->device;
+
+	do_unlock = usbd_ctrl_lock(udev);
+	/* get product string */
+	usbd_req_get_string_any(udev, NULL, iProduct, size,
+				udev->ddesc.iProduct);
+	usb_trim_spaces(iProduct);
+	if (do_unlock)
+		usbd_ctrl_unlock(udev);
+
+	device_printf(dev, "%s-%d <%s>\n", __func__, __LINE__, iProduct);
+}
+
+int
+usb_device_is_UVC(struct usb_device *udev)
+{
+	struct usb_device_descriptor *udd = NULL;
+
+	if (!udev)
+		return 0;
+	udd = &udev->ddesc;
+
+	if (udd->bDeviceClass == 0xef &&
+	    udd->bDeviceSubClass == 0x02 &&
+	    udd->bDeviceProtocol == 0x01) {
+		return 1;
+	}
+
+	return 0;
+}
 
 static void
 usbd_set_device_strings(struct usb_device *udev)
@@ -2789,6 +2901,41 @@ void
 usbd_sr_unlock(struct usb_device *udev)
 {
 	lockmgr(&udev->sr_lock, LK_RELEASE);
+}
+
+/*
+ * The following function is used to serialize access to USB control
+ * transfers and the USB scratch area. If the lock is already grabbed
+ * this function returns zero. Else a value of one is returned.
+ */
+uint8_t
+usbd_ctrl_lock(struct usb_device *udev)
+{
+	if (lockstatus(&udev->ctrl_lock, curthread)==LK_EXCLUSIVE)
+		return (0);
+
+	lockmgr(&udev->ctrl_lock, LK_EXCLUSIVE);
+
+	/*
+	 * We need to allow suspend and resume at this point, else the
+	 * control transfer will timeout if the device is suspended!
+	 */
+	if (usbd_enum_is_locked(udev))
+		usbd_sr_unlock(udev);
+	return (1);
+}
+
+void
+usbd_ctrl_unlock(struct usb_device *udev)
+{
+	lockmgr(&udev->ctrl_lock, LK_RELEASE);
+
+	/*
+	 * Restore the suspend and resume lock after we have unlocked
+	 * the USB control transfer lock to avoid LOR:
+	 */
+	if (usbd_enum_is_locked(udev))
+		usbd_sr_lock(udev);
 }
 
 /*

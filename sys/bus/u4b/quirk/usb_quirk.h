@@ -116,6 +116,29 @@ enum {
 	UQ_AU_SET_SPDIF_CM6206,	/* enable S/PDIF audio output */
 	UQ_WMT_IGNORE,          /* device should be ignored by wmt driver */
 
+	UQ_HID_NO_SETIDLE,	/* hid device should not set idle request */
+	UQ_HID_CLEAN_LOGIC,	/* hid report should clean logical min */
+	UQ_HID_LINUX_ALGORITHM,	/* hid driver uses linux algorithm */
+	UQ_HID_SUSPEND,		/* hid auto-suspend at end of attachin driver */
+	UQ_HID_SUSPEND_SYSCTL,	/* hid auto-suspend at end of attachin driver */
+	UQ_POWERD_NO_WAKE,
+	UQ_POWERD_AUTO_SUSPEND,
+	UQ_POWERD_SUSPEND_CON,
+	UQ_RE_ENUM_ONCE_MORE,	/* some devices need re enum once more like linux*/
+	/* samsung galaxy phone need linux like usb initial procedure */
+	UQ_LINUX_LIKE_PROCEDURE,
+	UQ_UVC_BIG_BUFFER,	/*big data buffer*/
+	UQ_UVC_DROP_BIG_FORMAT,	/*big data buffer*/
+	UQ_UVC_COMMIT_IN_ADVANCE,	/*COMMIT in advance*/
+	UQ_UVC_IR_INTRF_DISABLE,    /*IR Camera interface*/
+	UQ_UVC_DISABLE_HUB_U1U2,    /*DISABLE_HUB_U1U2*/
+	UQ_NO_CANCEL_XFER,	/*no cancel xfer*/
+	UQ_CLEAR_DATA_TOGGLE, /*Clear Data Toggle */
+	UQ_SPEAKER_VOLUME_SEQUENCE,
+	UQ_ADEQUATE_BUF,
+	UQ_EP_RESET_FREE,
+	UQ_UVC_NO_EOF,
+
 	USB_QUIRK_MAX
 };
 

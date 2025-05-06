@@ -495,6 +495,10 @@ typedef struct usb_interface_assoc_descriptor usb_interface_assoc_descriptor_t;
 #define	UIPROTO_BLUETOOTH		0x01
 #define	UIPROTO_RNDIS			0x03
 
+#define UICLASS_VIDEO		0x0e		/* uvc */
+#define UISUBCLASS_CTRL		0x01
+#define UISUBCLASS_STREAMING	0x02
+
 #define	UICLASS_IAD		0xEF	/* Interface Association Descriptor */
 #define	UISUBCLASS_SYNC			0x01
 #define	UIPROTO_ACTIVESYNC		0x01

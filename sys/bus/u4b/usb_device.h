@@ -187,6 +187,7 @@ struct usb_device {
 	struct usb_udev_msg cs_msg[2];
 	struct lock enum_lock;
 	struct lock sr_lock;
+	struct lock ctrl_lock;
 	struct lock device_lock;
 	struct cv ctrlreq_cv;
 	struct cv ref_cv;
@@ -321,6 +322,8 @@ uint8_t	usbd_enum_lock(struct usb_device *);
 void	usbd_enum_unlock(struct usb_device *);
 void	usbd_sr_lock(struct usb_device *);
 void	usbd_sr_unlock(struct usb_device *);
+uint8_t	usbd_ctrl_lock(struct usb_device *);
+void	usbd_ctrl_unlock(struct usb_device *);
 uint8_t usbd_enum_is_locked(struct usb_device *);
 
 #if USB_HAVE_TT_SUPPORT
@@ -328,5 +331,6 @@ void	uhub_tt_buffer_reset_async_locked(struct usb_device *, struct usb_endpoint 
 #endif
 
 uint8_t uhub_count_active_host_ports(struct usb_device *, enum usb_dev_speed);
+int    usb_device_is_UVC(struct usb_device *udev);
 
 #endif					/* _USB_DEVICE_H_ */
