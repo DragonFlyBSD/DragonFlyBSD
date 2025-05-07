@@ -57,7 +57,9 @@ if [ $? -ne 0 ]; then
 	rm -f $TMP1
 	exit 1
 fi
+
 trap "/bin/rm -f $TMP1 $TMP2" 0 1 2 13 15
+
 diff $dflags -- $1 $3 > $TMP1
 diff $dflags -- $2 $3 > $TMP2
 $diff3prog $d3flags -- $TMP1 $TMP2 $1 $2 $3
