@@ -1470,6 +1470,22 @@ dump_unified_vec(FILE *f1, FILE *f2, int flags)
 	context_vec_ptr = context_vec_start - 1;
 }
 
+static char *
+print_time(const struct timespec *ts)
+{
+	static char tbuf[128];
+	char buf1[64], buf2[16];
+	struct tm tm;
+
+	localtime_r(&ts->tv_sec, &tm);
+	strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &tm);
+	strftime(buf2, sizeof(buf2), "%z", &tm);
+
+	snprintf(tbuf, sizeof(tbuf), "%s.%.9ld %s", buf1, ts->tv_nsec, buf2);
+
+	return tbuf;
+}
+
 static void
 print_header(const char *file1, const char *file2)
 {
@@ -1477,12 +1493,14 @@ print_header(const char *file1, const char *file2)
 		diff_output("%s %s\n", diff_format == D_CONTEXT ? "***" : "---",
 		    label[0]);
 	else
-		diff_output("%s %s\t%s", diff_format == D_CONTEXT ? "***" : "---",
-		    file1, ctime(&stb1.st_mtime));
+		diff_output("%s %s\t%s\n",
+		    diff_format == D_CONTEXT ? "***" : "---",
+		    file1, print_time(&stb1.st_mtim));
 	if (label[1] != NULL)
 		diff_output("%s %s\n", diff_format == D_CONTEXT ? "---" : "+++",
 		    label[1]);
 	else
-		diff_output("%s %s\t%s", diff_format == D_CONTEXT ? "---" : "+++",
-		    file2, ctime(&stb2.st_mtime));
+		diff_output("%s %s\t%s\n",
+		    diff_format == D_CONTEXT ? "---" : "+++",
+		    file2, print_time(&stb2.st_mtim));
 }
