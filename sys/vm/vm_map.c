@@ -1733,7 +1733,7 @@ vm_map_simplify_entry(vm_map_t map, vm_map_entry_t entry, int *countp)
 		if ((entry->ba.end == next->ba.start) &&
 		    (next->maptype == entry->maptype) &&
 		    (next->ba.object == entry->ba.object) &&
-		     (prev->ba.backing_ba == entry->ba.backing_ba) &&
+		     (next->ba.backing_ba == entry->ba.backing_ba) &&
 		     (!entry->ba.object ||
 			(entry->ba.offset + esize == next->ba.offset)) &&
 		    (next->eflags == entry->eflags) &&
