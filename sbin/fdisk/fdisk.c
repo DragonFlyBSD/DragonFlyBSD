@@ -255,10 +255,14 @@ main(int argc, char *argv[])
 		int j;
 		struct dos_partition *partp;
 
-		if (read_s0())
-			err(1, "read_s0");
 		printf("%s: %d cyl %d hd %d sec\n", disk, dos_cyls, dos_heads,
 		    dos_sectors);
+		if (read_s0()) {
+			if (errno != 0)
+				err(1, "read_s0");
+			else
+				exit(1); /* warning already reported */
+		}
 		printf("Part  %11s %11s Type Flags\n", "Start", "Size");
 		for (j = 0; j < NDOSPART; j++) {
 			partp = ((struct dos_partition *) &mboot.parts) + j;
