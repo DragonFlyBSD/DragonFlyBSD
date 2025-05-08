@@ -66,7 +66,7 @@ static int fd;				/* file descriptor of the given disk */
 static const char *disk;
 static const char *disks[] =
 {
-  "/dev/ad0", "/dev/da0", "/dev/vkd0", 0
+  "/dev/da0", "/dev/ad0", "/dev/vkd0", "/dev/vbd0", NULL,
 };
 
 static int cyls, sectors, heads, cylsecs;
