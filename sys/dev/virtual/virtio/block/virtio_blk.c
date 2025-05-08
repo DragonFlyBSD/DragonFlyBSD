@@ -631,13 +631,26 @@ vtblk_alloc_disk(struct vtblk_softc *sc, struct virtio_blk_config *blkcfg)
 
 	/* blkcfg->capacity is always expressed in 512 byte sectors. */
 	info.d_media_blksize = 512;
-	info.d_media_blocks = blkcfg->capacity;
+	info.d_media_blocks = blkcfg->capacity * (blkcfg->blk_size / 512);
 
 	if (virtio_with_feature(sc->vtblk_dev, VIRTIO_BLK_F_GEOMETRY)) {
 		info.d_ncylinders = blkcfg->geometry.cylinders;
 		info.d_nheads = blkcfg->geometry.heads;
 		info.d_secpertrack = blkcfg->geometry.sectors;
 		info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+
+		/*
+		 * If the virtio device is reporting a legacy cylinder count,
+		 * recalculate ncylinders based on the media size
+		 */
+		if (info.d_ncylinders == 16383) {
+			info.d_ncylinders = info.d_media_blocks /
+			    (info.d_nheads * info.d_secpertrack);
+			device_printf(sc->vtblk_dev,
+				      "Virtio: ncylinders at legacy maximum "
+				      "(16383), recalculating to %d\n",
+				      info.d_ncylinders);
+		}
 	} else {
 		/* Fabricate a geometry */
 		info.d_secpertrack = 1024;
