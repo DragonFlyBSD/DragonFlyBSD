@@ -29,7 +29,6 @@
 #include <sys/param.h>
 #include <sys/diskslice.h>
 #include <sys/diskmbr.h>
-#include <sys/sysctl.h>
 #include <sys/stat.h>
 #include <ctype.h>
 #include <fcntl.h>
@@ -766,42 +765,21 @@ dos(struct dos_partition *partp)
 static void
 erase_partition(int i)
 {
-	struct	  dos_partition *partp;
+	struct dos_partition *partp;
 	off_t ioarg[2];
 
-	char *dev_name = strdup(disk);
-
-	dev_name = strtok(dev_name + strlen("/dev/da"),"s");
-#if 0
-	int trim_enabled = 0;
-	char sysctl_name[64];
-	size_t olen = sizeof(trim_enabled);
-
-	sprintf(sysctl_name, "kern.cam.da.%s.trim_enabled", dev_name);
-	if (sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0) < 0) {
-		printf("Device:%s does not support the TRIM command\n", disk);
-		usage();
-	}
-	if (!trim_enabled) {
-		printf("Erase device option selected, but sysctl (%s) "
-		    "is not enabled\n",sysctl_name);
-		usage();
-	}
-#endif
 	partp = ((struct dos_partition *) &mboot.parts) + i;
-	printf("erase sectors:%u %u\n",
-	    partp->dp_start,
-	    partp->dp_size);
-	
-	/* Trim the Device */	
-	ioarg[0] = partp->dp_start;
-	ioarg[0] *=secsize;
-	ioarg[1] = partp->dp_size;
-	ioarg[1] *=secsize;
-	
+	printf("Erase sectors: start=%u size=%u\n",
+	    partp->dp_start, partp->dp_size);
+
+	ioarg[0] = partp->dp_start * secsize;
+	ioarg[1] = partp->dp_size * secsize;
+
 	if (ioctl(fd, DAIOCTRIM, ioarg) < 0) {
-		printf("Device trim failed\n");
-		usage ();
+		printf("Trim error %s\n", strerror(errno));
+		printf("Continuing\n");
+	} else {
+		printf("Trim completed ok\n");
 	}
 }
 

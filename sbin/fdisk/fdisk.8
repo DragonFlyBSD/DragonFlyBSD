@@ -1,6 +1,6 @@
 .\" $FreeBSD: src/sbin/i386/fdisk/fdisk.8,v 1.17.2.11 2002/04/25 16:25:12 trhodes Exp $
 .\"
-.Dd February 14, 2020
+.Dd May 8, 2025
 .Dt FDISK 8
 .Os
 .Sh NAME
@@ -89,10 +89,8 @@ This typically causes BIOSes to properly detect
 that the disk should be put in Large mode.
 This option may be needed on very old PCs.
 .It Fl E
-Use TRIM to erase the device/partition before creating the file system.
-The underlying device must have the TRIM sysctl enabled.
-Only devices that support TRIM will have such a sysctl option
-.Va ( kern.cam.da.X.trim_enabled ) .
+Use TRIM to erase the device/partition before creating the partitions.
+The operation will continue if TRIM is not supported by the device.
 For use with the
 .Fl I
 or
