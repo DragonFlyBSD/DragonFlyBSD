@@ -889,12 +889,18 @@ get_params(void)
 	    cylsecs = heads * sectors;
 	}
     } else {
-	cyls = partinfo.d_ncylinders;
 	heads = partinfo.d_nheads;
 	sectors = partinfo.d_secpertrack;
 	cylsecs = heads * sectors;
 	secsize = partinfo.media_blksize;
+	cyls = partinfo.media_blocks / (heads * sectors);
+	if ((u_int)cyls != partinfo.d_ncylinders) {
+	    printf("Warning: disk %s provided wrong ncylinders %u; "
+		   "recalculating to %d\n",
+		   disk, partinfo.d_ncylinders, cyls);
+	}
     }
+
     dos_cyls = cyls;
     dos_heads = heads;
     dos_sectors = sectors;
