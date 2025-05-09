@@ -630,8 +630,8 @@ vtblk_alloc_disk(struct vtblk_softc *sc, struct virtio_blk_config *blkcfg)
 		sc->vtblk_sector_size = 512;
 
 	/* blkcfg->capacity is always expressed in 512 byte sectors. */
-	info.d_media_blksize = 512;
-	info.d_media_blocks = blkcfg->capacity * (blkcfg->blk_size / 512);
+	info.d_media_blksize = sc->vtblk_sector_size;
+	info.d_media_blocks = blkcfg->capacity * 512 / info.d_media_blksize;
 
 	if (virtio_with_feature(sc->vtblk_dev, VIRTIO_BLK_F_GEOMETRY)) {
 		info.d_ncylinders = blkcfg->geometry.cylinders;
@@ -699,7 +699,7 @@ vtblk_startio(struct vtblk_softc *sc)
 	enq = 0;
 
 	ASSERT_SERIALIZED(&sc->vtblk_slz);
-	
+
 	if (sc->vtblk_flags & VTBLK_FLAG_SUSPEND)
 		return;
 
@@ -866,7 +866,7 @@ retry:
 	vtblk_startio(sc);
 
 	if (virtqueue_enable_intr(vq) != 0) {
-		/* 
+		/*
 		 * If new virtqueue entries appeared immediately after
 		 * enabling interrupts, process them now. Release and
 		 * retake softcontroller lock to try to avoid blocking
