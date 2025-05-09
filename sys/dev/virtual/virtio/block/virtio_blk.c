@@ -682,10 +682,11 @@ vtblk_alloc_disk(struct vtblk_softc *sc, struct virtio_blk_config *blkcfg)
 		    sc->vtblk_sector_size);
 	}
 	device_printf(sc->vtblk_dev,
-	    "%juMB (%ju 512 byte sectors: %dH %dS/T %dC)\n",
-	    ((uintmax_t)blkcfg->capacity * 512) / (1024*1024),
-	    (uintmax_t)blkcfg->capacity, blkcfg->geometry.heads,
-	    blkcfg->geometry.sectors, blkcfg->geometry.cylinders);
+	    "%juMB (%ju %d byte sectors: %dH %dS/T %dC)\n",
+	    ((uintmax_t)info.d_media_blocks * info.d_media_blksize) >> 20,
+	    (uintmax_t)info.d_media_blocks, info.d_media_blksize,
+	    blkcfg->geometry.heads, blkcfg->geometry.sectors,
+	    blkcfg->geometry.cylinders);
 }
 
 static void
