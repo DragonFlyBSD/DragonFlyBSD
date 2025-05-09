@@ -821,6 +821,7 @@ read_disk(off_t sector, void *buf)
 		for(secsize = MIN_SEC_SIZE; secsize <= MAX_SEC_SIZE; secsize *= 2)
 			{
 			/* try the read */
+			errno = 0;
 			int size = read(fd, buf, secsize);
 			if (size == secsize)
 				/* it worked so return */
