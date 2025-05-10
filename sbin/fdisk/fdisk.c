@@ -51,7 +51,7 @@
 #define Decimal(str, ans, tmp) \
 	if (decimal(str, &tmp, ans)) ans = tmp
 
-#define MAX_SEC_SIZE		2048	/* maximum section size supported */
+#define MAX_SEC_SIZE		4096	/* maximum section size supported */
 #define MIN_SEC_SIZE		512	/* sector size to start sensing at */
 #define MAX_SECTORS_PER_TRACK	0x3f	/* maximum number of sectors per track */
 #define MIN_SECTORS_PER_TRACK	0x1	/* minimum number of sectors per track */
@@ -238,7 +238,7 @@ main(int argc, char *argv[])
 		err(1, "cannot allocate buffer to determine disk sector size");
 	if (read_disk(0, mboot.bootinst) == -1) {
 		free(mboot.bootinst);
-		errx(1, "could not detect sector size");
+		errx(1, "could not read MBR");
 	}
 	free(mboot.bootinst);
 	mboot.bootinst = NULL;
@@ -818,10 +818,12 @@ read_disk(off_t sector, void *buf)
 				return secsize; /* it worked so return */
 		}
 	} else {
-		return read(fd, buf, secsize);
+		size = read(fd, buf, secsize);
+		if (size == secsize)
+			return secsize;
 	}
 
-	/* we failed to read at any of the sizes */
+	warn("failed to read sector %ju", (uintmax_t)sector);
 	return -1;
 }
 
