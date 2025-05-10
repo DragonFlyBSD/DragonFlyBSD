@@ -20,8 +20,14 @@
  *  Carnegie Mellon University
  *  Pittsburgh PA 15213-3890
  *
- * any improvements or extensions that they make and grant Carnegie Mellon
+ * Any improvements or extensions that they make and grant Carnegie Mellon
  * the rights to redistribute these changes.
+ *
+ * Ported to 386bsd by Julian Elischer  Thu Oct 15 20:26:46 PDT 1992
+ *
+ * 14-Dec-89  Robert Baron (rvb) at Carnegie-Mellon University
+ *	Copyright (c) 1989	Robert. V. Baron
+ *	Created.
  *
  * $FreeBSD: /repoman/r/ncvs/src/sbin/i386/fdisk/fdisk.c,v 1.36.2.14 2004/01/30 14:40:47 harti Exp $
  */
@@ -42,87 +48,71 @@
 
 #include <bus/cam/scsi/scsi_daio.h>
 
-#define LBUF 100
-static char lbuf[LBUF];
+#define Decimal(str, ans, tmp) \
+	if (decimal(str, &tmp, ans)) ans = tmp
 
-/*
- *
- * Ported to 386bsd by Julian Elischer  Thu Oct 15 20:26:46 PDT 1992
- *
- * 14-Dec-89  Robert Baron (rvb) at Carnegie-Mellon University
- *	Copyright (c) 1989	Robert. V. Baron
- *	Created.
- */
+#define MAX_SEC_SIZE		2048	/* maximum section size supported */
+#define MIN_SEC_SIZE		512	/* sector size to start sensing at */
+#define MAX_SECTORS_PER_TRACK	0x3f	/* maximum number of sectors per track */
+#define MIN_SECTORS_PER_TRACK	0x1	/* minimum number of sectors per track */
+#define MAX_HEADS		0xff	/* maximum number of heads */
 
-#define Decimal(str, ans, tmp) if (decimal(str, &tmp, ans)) ans = tmp
-#define MAX_SEC_SIZE 2048		/* maximum section size that is supported */
-#define MIN_SEC_SIZE 512		/* the sector size to start sensing at */
-#define MAX_SECTORS_PER_TRACK 0x3f	/* maximum number of sectors per track */
-#define MIN_SECTORS_PER_TRACK 0x1	/* minimum number of sectors per track */
-#define MAX_HEADS 0xff			/* maximum number of head */
-static int secsize = 0;		/* the sensed sector size */
+#define ACTIVE		0x80
+#define DOSSECT(s,c)	((s & MAX_SECTORS_PER_TRACK) | ((c >> 2) & 0xc0))
+#define DOSCYL(c)	(c & 0xff)
+#define MAXCYL		1023
 
-static int fd;				/* file descriptor of the given disk */
-static const char *disk;
-static const char *disks[] =
-{
-  "/dev/da0", "/dev/ad0", "/dev/vkd0", "/dev/vbd0", NULL,
+static const char *disk = NULL;
+static const char *disks[] = {		/* List of disks to try open. */
+	"/dev/da0", "/dev/ad0", "/dev/vkd0", "/dev/vbd0", NULL,
 };
 
-static int cyls, sectors, heads, cylsecs;
-static int64_t disksecs;
-
-struct mboot
-{
-	unsigned char padding[2]; /* force the longs to be long aligned */
-	unsigned char *bootinst;  /* boot code */
+struct mboot {
+	unsigned char padding[2];	/* force the longs to be long aligned */
+	unsigned char *bootinst;	/* boot code */
 	off_t bootinst_size;
-	struct	dos_partition parts[NDOSPART];
+	struct dos_partition parts[NDOSPART];
 };
 static struct mboot mboot;
 
-#define ACTIVE 0x80
-
-int dos_cyls;
-int dos_heads;
-int dos_sectors;
-int dos_cylsecs;
-
-#define DOSSECT(s,c) ((s & MAX_SECTORS_PER_TRACK) | ((c >> 2) & 0xc0))
-#define DOSCYL(c)	(c & 0xff)
-#define MAXCYL		1023
+static int fd;			/* file descriptor of the given disk */
+static int secsize = 0;		/* the sensed sector size */
 static int partition = -1;
+static int current_line_number;
+static int geom_processed = 0;
+static int part_processed = 0;
+static int active_processed = 0;
+static int dos_cyls, dos_heads, dos_sectors, dos_cylsecs;
+static int cyls, sectors, heads, cylsecs;
+static int64_t disksecs;
+
+#define LBUF 100
+static char lbuf[LBUF];
 
 #define MAX_ARGS	10
-static int	current_line_number;
-
-static int	geom_processed = 0;
-static int	part_processed = 0;
-static int	active_processed = 0;
-
 typedef struct cmd {
-    char		cmd;
-    int			n_args;
-    struct arg {
-	char	argtype;
-	long long arg_val;
-    }			args[MAX_ARGS];
+	char cmd;
+	int n_args;
+	struct arg {
+		char argtype;
+		long long arg_val;
+	} args[MAX_ARGS];
 } CMD;
 
-static int B_flag  = 0;		/* replace boot code */
-static int C_flag  = 0;		/* use wrapped values for CHS */
-static int E_flag  = 0;		/* Erase through TRIM */
-static int I_flag  = 0;		/* use entire disk for DragonFly */
-static int a_flag  = 0;		/* set active partition */
+static int B_flag = 0;		/* replace boot code */
+static int C_flag = 0;		/* use wrapped values for CHS */
+static int E_flag = 0;		/* Erase through TRIM */
+static int I_flag = 0;		/* use entire disk for DragonFly */
+static int a_flag = 0;		/* set active partition */
 static char *b_flag = NULL;	/* path to boot code */
-static int i_flag  = 0;		/* replace partition data */
-static int u_flag  = 0;		/* update partition data */
-static int p_flag  = 0;		/* operate on a disk image file */
-static int s_flag  = 0;		/* Print a summary and exit */
-static int t_flag  = 0;		/* test only */
-static int x_flag  = 0;		/* Expand-to-fit device */
 static char *f_flag = NULL;	/* Read config info from file */
-static int v_flag  = 0;		/* Be verbose */
+static int i_flag = 0;		/* replace partition data */
+static int u_flag = 0;		/* update partition data */
+static int p_flag = 0;		/* operate on a disk image file */
+static int s_flag = 0;		/* Print a summary and exit */
+static int t_flag = 0;		/* test only */
+static int v_flag = 0;		/* Be verbose */
+static int x_flag = 0;		/* Expand-to-fit device */
 
 static void print_s0(int which);
 static void print_part(int i);
@@ -155,7 +145,7 @@ main(int argc, char *argv[])
 {
 	int	c, i;
 
-	while ((c = getopt(argc, argv, "BCEIab:f:p:istuvx1234")) != -1)
+	while ((c = getopt(argc, argv, "BCEIab:f:ip:stuvx1234")) != -1) {
 		switch (c) {
 		case 'B':
 			B_flag = 1;
@@ -178,12 +168,12 @@ main(int argc, char *argv[])
 		case 'f':
 			f_flag = optarg;
 			break;
+		case 'i':
+			i_flag = 1;
+			break;
 		case 'p':
 			disk = optarg;
 			p_flag = 1;
-			break;
-		case 'i':
-			i_flag = 1;
 			break;
 		case 's':
 			s_flag = 1;
@@ -209,27 +199,30 @@ main(int argc, char *argv[])
 		default:
 			usage();
 		}
+	}
+
 	if (f_flag || i_flag)
 		u_flag = 1;
 	if (t_flag)
 		v_flag = 1;
+
 	argc -= optind;
 	argv += optind;
 
 	if (argc > 0) {
 		disk = getdevpath(argv[0], 0);
-		if (!disk)
-			err(1, "cannot open disk %s", disk);
+		if (disk == NULL)
+			err(1, "cannot get the path of device %s", argv[0]);
 		if (open_disk() < 0)
 			err(1, "cannot open disk %s", disk);
 	} else if (disk == NULL) {
 		int rv = 0;
 
-		for(i = 0; disks[i]; i++)
-		{
+		for (i = 0; disks[i]; i++) {
 			disk = disks[i];
 			rv = open_disk();
-			if (rv != -2) break;
+			if (rv != -2)
+				break;
 		}
 		if (rv < 0)
 			err(1, "cannot open any disk");
@@ -238,24 +231,23 @@ main(int argc, char *argv[])
 			err(1, "cannot open disk %s", disk);
 	}
 
-	/* (abu)use mboot.bootinst to probe for the sector size */
+	/*
+	 * (abu)use mboot.bootinst to probe for the sector size
+	 */
 	if ((mboot.bootinst = malloc(MAX_SEC_SIZE)) == NULL)
 		err(1, "cannot allocate buffer to determine disk sector size");
-	if (read_disk(0, mboot.bootinst) == -1)
-	{
+	if (read_disk(0, mboot.bootinst) == -1) {
 		free(mboot.bootinst);
 		errx(1, "could not detect sector size");
 	}
 	free(mboot.bootinst);
 	mboot.bootinst = NULL;
 
-	if (s_flag)
-	{
-		int j;
+	if (s_flag) {
 		struct dos_partition *partp;
 
-		printf("%s: %d cyl %d hd %d sec\n", disk, dos_cyls, dos_heads,
-		    dos_sectors);
+		printf("%s: %d cyl %d hd %d sec\n",
+		       disk, dos_cyls, dos_heads, dos_sectors);
 		if (read_s0()) {
 			if (errno != 0)
 				err(1, "read_s0");
@@ -263,22 +255,21 @@ main(int argc, char *argv[])
 				exit(1); /* warning already reported */
 		}
 		printf("Part  %11s %11s Type Flags\n", "Start", "Size");
-		for (j = 0; j < NDOSPART; j++) {
-			partp = ((struct dos_partition *) &mboot.parts) + j;
+		for (i = 0; i < NDOSPART; i++) {
+			partp = ((struct dos_partition *) &mboot.parts) + i;
 			if (partp->dp_start == 0 && partp->dp_size == 0)
 				continue;
-			printf("%4d: %11lu %11lu 0x%02x 0x%02x\n", j + 1,
-			    (u_long) partp->dp_start,
-			    (u_long) partp->dp_size, partp->dp_typ,
-			    partp->dp_flag);
+			printf("%4d: %11lu %11lu 0x%02x 0x%02x\n",
+			       i + 1, (u_long) partp->dp_start,
+			       (u_long) partp->dp_size, partp->dp_typ,
+			       partp->dp_flag);
 		}
 		exit(0);
 	}
 
-	printf("******* Working on device %s *******\n",disk);
+	printf("******* Working on device %s *******\n", disk);
 
-	if (I_flag)
-	{
+	if (I_flag) {
 		struct dos_partition *partp;
 
 		read_s0();
@@ -288,7 +279,8 @@ main(int argc, char *argv[])
 		partp->dp_flag = ACTIVE;
 		partp->dp_start = dos_sectors;
 		if (disksecs - dos_sectors > 0xFFFFFFFFU) {
-			printf("Warning: Ending logical block > 2TB, using max value\n");
+			printf("Warning: Ending logical block > 2TB, "
+			       "using max value\n");
 			partp->dp_size = 0xFFFFFFFFU;
 		} else {
 			partp->dp_size =
@@ -303,94 +295,88 @@ main(int argc, char *argv[])
 			erase_partition(0);
 		}
 
-		if (!t_flag)
+		if (!t_flag) {
 			if (write_s0() == -1)
 				err(1, "can't write fdisk partition table");
+		}
+
 		exit(0);
 	}
-	if (f_flag)
-	{
-	    if (read_s0() || i_flag)
-	    {
-		reset_boot();
-	    }
 
-	    if (!read_config(f_flag))
-	    {
-		exit(1);
-	    }
-	    if (x_flag)
-		x_flag = expand_table();
-	    if (v_flag)
-	    {
-		print_s0(-1);
-	    }
-	    if (!t_flag)
-	    {
-		    if (write_s0() == -1)
-			    err(1, "can't write fdisk partition table");
-	    }
-	}
-	else
-	{
-	    if (u_flag)
-	    {
-		get_params_to_use();
-	    }
-	    else
-	    {
-		print_params();
-	    }
+	if (f_flag) {
+		if (read_s0() || i_flag)
+			reset_boot();
 
-	    if (read_s0())
-		init_sector0(dos_sectors);
+		if (!read_config(f_flag))
+			exit(1);
 
-	    printf("Media sector size is %d\n", secsize);
-	    printf("Warning: BIOS sector numbering starts with sector 1\n");
-	    printf("Information from DOS bootblock is:\n");
-	    if (partition == -1)
-		for (i = 1; i <= NDOSPART; i++)
-		    change_part(i);
-	    else
-		change_part(partition);
-
-	    if (u_flag || a_flag)
-		change_active(partition);
-
-	    if (B_flag)
-		change_code();
-
-	    if (x_flag)
-		x_flag = expand_table();
-
-	    if (x_flag || u_flag || a_flag || B_flag) {
-		if (!t_flag)	{
-		    printf("\nWe haven't changed the partition table yet.  ");
-		    printf("This is your last chance.\n");
-		}
-		print_s0(-1);
-		if (!t_flag)	{
-		    if (ok("Should we write new partition table?")) {
-			if (E_flag && u_flag) {
-			    /* 
-			     * Trim now because we've committed to 
-			     * updating the partition. 
-			     */
-			    if (partition == -1)
-			        for (i = 0; i < NDOSPART; i++)
-			            erase_partition(i);
-				else
-			            erase_partition(partition);
-			}
+		if (x_flag)
+			x_flag = expand_table();
+		if (v_flag)
+			print_s0(-1);
+		if (!t_flag) {
 			if (write_s0() == -1)
 				err(1, "can't write fdisk partition table");
-		    }
 		}
-		else
-		{
-		    printf("\n-t flag specified -- partition table not written.\n");
+
+		exit(0);
+	}
+
+	if (u_flag)
+		get_params_to_use();
+	else
+		print_params();
+
+	if (read_s0())
+		init_sector0(dos_sectors);
+
+	printf("Media sector size is %d\n", secsize);
+	printf("Warning: BIOS sector numbering starts with sector 1\n");
+	printf("Information from DOS bootblock is:\n");
+	if (partition == -1) {
+		for (i = 1; i <= NDOSPART; i++)
+			change_part(i);
+	} else {
+		change_part(partition);
+	}
+
+	if (u_flag || a_flag)
+		change_active(partition);
+	if (B_flag)
+		change_code();
+	if (x_flag)
+		x_flag = expand_table();
+
+	if (x_flag || u_flag || a_flag || B_flag) {
+		if (!t_flag) {
+			printf("\nWe haven't changed the "
+			       "partition table yet.  "
+			       "This is your last chance.\n");
 		}
-	    }
+		print_s0(-1);
+		if (!t_flag) {
+			if (ok("Should we write new partition table?")) {
+				if (E_flag && u_flag) {
+					/*
+					 * Trim now because we've
+					 * committed to updating the
+					 * partition.
+					 */
+					if (partition == -1) {
+						for (i = 0; i < NDOSPART; i++)
+							erase_partition(i);
+					} else {
+						erase_partition(partition);
+					}
+				}
+				if (write_s0() == -1)
+					err(1, "can't write fdisk partition "
+					       "table");
+			}
+		} else {
+			printf("\n-t flag specified -- "
+			       "partition table not written.\n");
+		}
 	}
 
 	exit(0);
@@ -399,8 +385,9 @@ main(int argc, char *argv[])
 static void
 usage(void)
 {
-	fprintf(stderr, "%s%s",
-		"usage: fdisk [-BCEIaistu] [-b bootcode] [-p diskimage] [-1234] [disk]\n",
+	fprintf(stderr, "%s%s%s",
+		"usage: fdisk [-BCEIaistu] [-b bootcode] [-p diskimage]\n",
+		"             [-1234] [disk]\n",
 		"       fdisk -f configfile [-itv] [disk]\n");
         exit(1);
 }
@@ -456,6 +443,7 @@ expand_table(void)
 		dos(best);
 		return 1;
 	}
+
 	return 0;
 }
 
@@ -466,11 +454,12 @@ print_s0(int which)
 
 	print_params();
 	printf("Information from DOS bootblock is:\n");
-	if (which == -1)
+	if (which == -1) {
 		for (i = 1; i <= NDOSPART; i++)
 			printf("%d: ", i), print_part(i);
-	else
+	} else {
 		print_part(which);
+	}
 }
 
 static struct dos_partition mtpart = { 0 };
@@ -478,7 +467,7 @@ static struct dos_partition mtpart = { 0 };
 static void
 print_part(int i)
 {
-	struct	  dos_partition *partp;
+	struct dos_partition *partp;
 	uint64_t part_mb;
 
 	partp = ((struct dos_partition *) &mboot.parts) + i - 1;
@@ -487,26 +476,19 @@ print_part(int i)
 		printf("<UNUSED>\n");
 		return;
 	}
-	/*
-	 * Be careful not to overflow.
-	 */
-	part_mb = partp->dp_size;
-	part_mb *= secsize;
-	part_mb /= (1024 * 1024);
+
+	part_mb = (partp->dp_size * secsize) >> 20;
 	printf("sysid %d,(%s)\n", partp->dp_typ, get_type(partp->dp_typ));
 	printf("    start %lu, size %lu (%jd Meg), flag %x%s\n",
-		(u_long)partp->dp_start,
-		(u_long)partp->dp_size,
-		(intmax_t)part_mb,
-		partp->dp_flag,
-		partp->dp_flag == ACTIVE ? " (active)" : "");
-	printf("\tbeg: cyl %d/ head %d/ sector %d;\n\tend: cyl %d/ head %d/ sector %d\n"
-		,DPCYL(partp->dp_scyl, partp->dp_ssect)
-		,partp->dp_shd
-		,DPSECT(partp->dp_ssect)
-		,DPCYL(partp->dp_ecyl, partp->dp_esect)
-		,partp->dp_ehd
-		,DPSECT(partp->dp_esect));
+	       (u_long)partp->dp_start, (u_long)partp->dp_size,
+	       (intmax_t)part_mb, partp->dp_flag,
+	       partp->dp_flag == ACTIVE ? " (active)" : "");
+	printf("\tbeg: cyl %d/ head %d/ sector %d;\n"
+	       "\tend: cyl %d/ head %d/ sector %d\n",
+	       DPCYL(partp->dp_scyl, partp->dp_ssect),
+	       partp->dp_shd, DPSECT(partp->dp_ssect),
+	       DPCYL(partp->dp_ecyl, partp->dp_esect),
+	       partp->dp_ehd, DPSECT(partp->dp_esect));
 }
 
 
@@ -521,36 +503,35 @@ init_boot(void)
 	if ((boot_fd = open(fname, O_RDONLY)) == -1 ||
 	    fstat(boot_fd, &sb) == -1)
 		err(1, "%s", fname);
-	if ((mboot.bootinst_size = sb.st_size) % secsize != 0)
-	{
+
+	mboot.bootinst_size = sb.st_size;
+	if (mboot.bootinst_size % secsize != 0) {
 		close(boot_fd);
 		errx(1, "%s: length must be a multiple of sector size", fname);
 	}
-	if (mboot.bootinst != NULL)
-		free(mboot.bootinst);
-	if ((mboot.bootinst = malloc(mboot.bootinst_size = sb.st_size)) == NULL)
-	{
+	free(mboot.bootinst);
+	if ((mboot.bootinst = malloc(mboot.bootinst_size)) == NULL) {
 		close(boot_fd);
 		errx(1, "%s: unable to allocate read buffer", fname);
 	}
-	if ((n = read(boot_fd, mboot.bootinst, mboot.bootinst_size)) == -1 ||
-	    close(boot_fd))
+
+	n = read(boot_fd, mboot.bootinst, mboot.bootinst_size);
+	close(boot_fd);
+	if (n == -1)
 		err(1, "%s", fname);
 	if (n != mboot.bootinst_size)
-	{
-		close(boot_fd);
 		errx(1, "%s: short read", fname);
-	}
 }
 
 
 static void
 init_sector0(unsigned long start)
 {
-struct dos_partition *partp = (struct dos_partition *) (&mboot.parts[3]);
+	struct dos_partition *partp;
 
 	init_boot();
 
+	partp = (struct dos_partition *)(&mboot.parts[3]);
 	partp->dp_typ = DOSPTYP_DFLYBSD;
 	partp->dp_flag = ACTIVE;
 	start = roundup(start, dos_sectors);
@@ -558,7 +539,8 @@ struct dos_partition *partp = (struct dos_partition *) (&mboot.parts[3]);
 		start = dos_sectors;
 	partp->dp_start = start;
 	if (disksecs - start > 0xFFFFFFFFU) {
-		printf("Warning: Ending logical block > 2TB, using max value\n");
+		printf("Warning: Ending logical block > 2TB, "
+		       "using max value\n");
 		partp->dp_size = 0xFFFFFFFFU;
 	} else {
 		partp->dp_size = rounddown(disksecs, dos_cylsecs) - start;
@@ -570,19 +552,23 @@ struct dos_partition *partp = (struct dos_partition *) (&mboot.parts[3]);
 static void
 change_part(int i)
 {
-struct dos_partition *partp = ((struct dos_partition *) &mboot.parts) + i - 1;
+	struct dos_partition *partp;
+	int tmp, tsec, tcyl, thd;
 
-    printf("The data for partition %d is:\n", i);
-    print_part(i);
+	partp = ((struct dos_partition *) &mboot.parts) + i - 1;
 
-    if (u_flag && ok("Do you want to change it?")) {
-	int tmp;
+	printf("The data for partition %d is:\n", i);
+	print_part(i);
+
+	if (!u_flag || !ok("Do you want to change it?"))
+		return;
 
 	if (i_flag) {
 		bzero((char *)partp, sizeof (struct dos_partition));
 		if (i == 4) {
 			init_sector0(1);
-			printf("\nThe static data for the DOS partition 4 has been reinitialized to:\n");
+			printf("\nThe static data for the DOS partition 4 "
+			       "has been reinitialized to:\n");
 			print_part(i);
 		}
 	}
@@ -596,9 +582,7 @@ struct dos_partition *partp = ((struct dos_partition *) &mboot.parts) + i - 1;
 			partp->dp_typ = 0;
 		}
 
-		if (ok("Explicitly specify beg/end address ?"))
-		{
-			int	tsec,tcyl,thd;
+		if (ok("Explicitly specify beg/end address ?")) {
 			tcyl = DPCYL(partp->dp_scyl,partp->dp_ssect);
 			thd = partp->dp_shd;
 			tsec = DPSECT(partp->dp_ssect);
@@ -606,7 +590,8 @@ struct dos_partition *partp = ((struct dos_partition *) &mboot.parts) + i - 1;
 			Decimal("beginning head", thd, tmp);
 			Decimal("beginning sector", tsec, tmp);
 			if (tcyl > MAXCYL && C_flag == 0) {
-				printf("Warning: starting cylinder wraps, using all 1's\n");
+				printf("Warning: starting cylinder wraps, "
+				       "using all 1's\n");
 				partp->dp_scyl = -1;
 				partp->dp_ssect = -1;
 				partp->dp_shd = -1;
@@ -623,7 +608,8 @@ struct dos_partition *partp = ((struct dos_partition *) &mboot.parts) + i - 1;
 			Decimal("ending head", thd, tmp);
 			Decimal("ending sector", tsec, tmp);
 			if (tcyl > MAXCYL && C_flag == 0) {
-				printf("Warning: ending cylinder wraps, using all 1's\n");
+				printf("Warning: ending cylinder wraps, "
+				       "using all 1's\n");
 				partp->dp_ecyl = -1;
 				partp->dp_esect = -1;
 				partp->dp_ehd = -1;
@@ -632,25 +618,27 @@ struct dos_partition *partp = ((struct dos_partition *) &mboot.parts) + i - 1;
 				partp->dp_esect = DOSSECT(tsec,tcyl);
 				partp->dp_ehd = thd;
 			}
-		} else
+		} else {
 			dos(partp);
+		}
 
 		print_part(i);
 	} while (!ok("Are we happy with this entry?"));
-    }
 }
 
 static void
 print_params(void)
 {
 	printf("parameters extracted from device are:\n");
-	printf("cylinders=%d heads=%d sectors/track=%d (%d blks/cyl)\n\n"
-			,cyls,heads,sectors,cylsecs);
-	if ((dos_sectors > MAX_SECTORS_PER_TRACK) || (dos_cyls > MAXCYL) || (dos_heads > MAX_HEADS))
-		printf("Figures below won't work with BIOS for partitions not in cyl 1\n");
+	printf("cylinders=%d heads=%d sectors/track=%d (%d blks/cyl)\n\n",
+	       cyls, heads, sectors, cylsecs);
+	if (dos_sectors > MAX_SECTORS_PER_TRACK ||
+	    dos_cyls > MAXCYL || dos_heads > MAX_HEADS)
+		printf("Figures below won't work with BIOS for "
+		       "partitions not in cyl 1\n");
 	printf("parameters to be used for BIOS calculations are:\n");
-	printf("cylinders=%d heads=%d sectors/track=%d (%d blks/cyl)\n\n"
-		,dos_cyls,dos_heads,dos_sectors,dos_cylsecs);
+	printf("cylinders=%d heads=%d sectors/track=%d (%d blks/cyl)\n\n",
+	       dos_cyls, dos_heads, dos_sectors, dos_cylsecs);
 }
 
 static void
@@ -674,13 +662,14 @@ change_active(int which)
 
 	if (!ok("Do you want to change the active partition?"))
 		return;
+
 setactive:
 	do {
 		new = active;
 		Decimal("active partition", new, tmp);
 		if (new < 1 || new > NDOSPART) {
 			printf("Active partition number must be in range 1-4."
-					"  Try again.\n");
+			       "  Try again.\n");
 			goto setactive;
 		}
 		active = new;
@@ -698,22 +687,20 @@ change_code(void)
 		init_boot();
 }
 
-void
+static void
 get_params_to_use(void)
 {
 	int	tmp;
+
 	print_params();
-	if (ok("Do you want to change our idea of what BIOS thinks ?"))
-	{
-		do
-		{
+	if (ok("Do you want to change our idea of what BIOS thinks ?")) {
+		do {
 			Decimal("BIOS's idea of #cylinders", dos_cyls, tmp);
 			Decimal("BIOS's idea of #heads", dos_heads, tmp);
 			Decimal("BIOS's idea of #sectors", dos_sectors, tmp);
 			dos_cylsecs = dos_heads * dos_sectors;
 			print_params();
-		}
-		while(!ok("Are you happy with this choice"));
+		} while(!ok("Are you happy with this choice"));
 	}
 }
 
@@ -736,14 +723,14 @@ dos(struct dos_partition *partp)
 	cy = partp->dp_start / dos_cylsecs;
 	sec = partp->dp_start % dos_sectors + 1;
 	if (cy > MAXCYL && C_flag == 0) {
-	    printf("Warning: starting cylinder wraps, using all 1's\n");
-	    partp->dp_shd = -1;
-	    partp->dp_scyl = -1;
-	    partp->dp_ssect = -1;
+		printf("Warning: starting cylinder wraps, using all 1's\n");
+		partp->dp_shd = -1;
+		partp->dp_scyl = -1;
+		partp->dp_ssect = -1;
 	} else {
-	    partp->dp_shd = partp->dp_start % dos_cylsecs / dos_sectors;
-	    partp->dp_scyl = DOSCYL(cy);
-	    partp->dp_ssect = DOSSECT(sec, cy);
+		partp->dp_shd = partp->dp_start % dos_cylsecs / dos_sectors;
+		partp->dp_scyl = DOSCYL(cy);
+		partp->dp_ssect = DOSSECT(sec, cy);
 	}
 
 	/* End c/h/s. */
@@ -751,14 +738,14 @@ dos(struct dos_partition *partp)
 	cy = end / dos_cylsecs;
 	sec = end % dos_sectors + 1;
 	if (cy > MAXCYL && C_flag == 0) {
-	    printf("Warning: ending cylinder wraps, using all 1's\n");
-	    partp->dp_ehd = -1;
-	    partp->dp_ecyl = -1;
-	    partp->dp_esect = -1;
+		printf("Warning: ending cylinder wraps, using all 1's\n");
+		partp->dp_ehd = -1;
+		partp->dp_ecyl = -1;
+		partp->dp_esect = -1;
 	} else {
-	    partp->dp_ehd = end % dos_cylsecs / dos_sectors;
-	    partp->dp_ecyl = DOSCYL(cy);
-	    partp->dp_esect = DOSSECT(sec, cy);
+		partp->dp_ehd = end % dos_cylsecs / dos_sectors;
+		partp->dp_ecyl = DOSCYL(cy);
+		partp->dp_esect = DOSSECT(sec, cy);
 	}
 }
 
@@ -770,7 +757,7 @@ erase_partition(int i)
 
 	partp = ((struct dos_partition *) &mboot.parts) + i;
 	printf("Erase sectors: start=%u size=%u\n",
-	    partp->dp_start, partp->dp_size);
+	       partp->dp_start, partp->dp_size);
 
 	ioarg[0] = partp->dp_start * secsize;
 	ioarg[1] = partp->dp_size * secsize;
@@ -788,7 +775,7 @@ erase_partition(int i)
 static int
 open_disk(void)
 {
-	struct stat 	st;
+	struct stat st;
 
 	if (stat(disk, &st) == -1) {
 		if (errno == ENOENT)
@@ -798,9 +785,9 @@ open_disk(void)
 	}
 	if (!(st.st_mode & S_IFCHR) && p_flag == 0)
 		warnx("device %s is not character special", disk);
-	if ((fd = open(disk,
-	    (x_flag || a_flag || I_flag ||
-	     B_flag || u_flag) ? O_RDWR : O_RDONLY)) == -1) {
+	fd = open(disk, (x_flag || a_flag || I_flag || B_flag || u_flag) ?
+			O_RDWR : O_RDONLY);
+	if (fd == -1) {
 		if (errno == ENXIO)
 			return -2;
 		warnx("can't open device %s", disk);
@@ -816,19 +803,23 @@ open_disk(void)
 static ssize_t
 read_disk(off_t sector, void *buf)
 {
-	lseek(fd,(sector * 512), 0);
-	if (secsize == 0)
-		for(secsize = MIN_SEC_SIZE; secsize <= MAX_SEC_SIZE; secsize *= 2)
-			{
+	int size;
+
+	lseek(fd, sector * 512, 0);
+	if (secsize == 0) {
+		for (secsize = MIN_SEC_SIZE;
+		     secsize <= MAX_SEC_SIZE;
+		     secsize *= 2)
+		{
 			/* try the read */
 			errno = 0;
-			int size = read(fd, buf, secsize);
+			size = read(fd, buf, secsize);
 			if (size == secsize)
-				/* it worked so return */
-				return secsize;
-			}
-	else
+				return secsize; /* it worked so return */
+		}
+	} else {
 		return read(fd, buf, secsize);
+	}
 
 	/* we failed to read at any of the sizes */
 	return -1;
@@ -837,7 +828,7 @@ read_disk(off_t sector, void *buf)
 static ssize_t
 write_disk(off_t sector, void *buf)
 {
-	lseek(fd,(sector * 512), 0);
+	lseek(fd, sector * 512, 0);
 	/* write out in the size that the read_disk found worked */
 	return write(fd, buf, secsize);
 }
@@ -845,49 +836,49 @@ write_disk(off_t sector, void *buf)
 static int
 get_params(void)
 {
-    struct partinfo partinfo;	/* disk parameters */
-    struct stat st;
+	struct partinfo partinfo;	/* disk parameters */
+	struct stat st;
 
-    /*
-     * NOTE: When faking up the CHS for a file image (e.g. for USB),
-     *	     we must use max values.  If we do not then an overflowed
-     *       cylinder count will, by convention, set the CHS fields to
-     *       all 1's.  The heads and sectors in the CHS fields will then
-     *       exceed the basic geometry which can cause BIOSes to brick.
-     */
-    if (ioctl(fd, DIOCGPART, &partinfo) == -1) {
-	if (p_flag && fstat(fd, &st) == 0 && st.st_size) {
-	    sectors = MAX_SECTORS_PER_TRACK;
-	    heads = MAX_HEADS;
-	    cylsecs = heads * sectors;
-	    cyls = st.st_size / 512 / cylsecs;
+	/*
+	* NOTE: When faking up the CHS for a file image (e.g. for USB),
+	*       we must use max values.  If we do not then an overflowed
+	*       cylinder count will, by convention, set the CHS fields to
+	*       all 1's.  The heads and sectors in the CHS fields will then
+	*       exceed the basic geometry which can cause BIOSes to brick.
+	*/
+	if (ioctl(fd, DIOCGPART, &partinfo) == -1) {
+		if (p_flag && fstat(fd, &st) == 0 && st.st_size) {
+			sectors = MAX_SECTORS_PER_TRACK;
+			heads = MAX_HEADS;
+			cylsecs = heads * sectors;
+			cyls = st.st_size / 512 / cylsecs;
+		} else {
+			warnx("can't get disk parameters on %s; "
+			      "supplying dummy ones", disk);
+			heads = 1;
+			cylsecs = heads * sectors;
+		}
 	} else {
-	    warnx("can't get disk parameters on %s; supplying dummy ones",
-		  disk);
-	    heads = 1;
-	    cylsecs = heads * sectors;
+		heads = partinfo.d_nheads;
+		sectors = partinfo.d_secpertrack;
+		cylsecs = heads * sectors;
+		secsize = partinfo.media_blksize;
+		cyls = partinfo.media_blocks / (heads * sectors);
+		if ((u_int)cyls != partinfo.d_ncylinders) {
+			printf("Warning: disk %s provided wrong ncylinders %u; "
+			       "recalculating to %d\n",
+			       disk, partinfo.d_ncylinders, cyls);
+		}
 	}
-    } else {
-	heads = partinfo.d_nheads;
-	sectors = partinfo.d_secpertrack;
-	cylsecs = heads * sectors;
-	secsize = partinfo.media_blksize;
-	cyls = partinfo.media_blocks / (heads * sectors);
-	if ((u_int)cyls != partinfo.d_ncylinders) {
-	    printf("Warning: disk %s provided wrong ncylinders %u; "
-		   "recalculating to %d\n",
-		   disk, partinfo.d_ncylinders, cyls);
-	}
-    }
 
-    dos_cyls = cyls;
-    dos_heads = heads;
-    dos_sectors = sectors;
-    dos_cylsecs = cylsecs;
-    disksecs = (int64_t)cyls * heads * sectors;
-    return (disksecs);
+	dos_cyls = cyls;
+	dos_heads = heads;
+	dos_sectors = sectors;
+	dos_cylsecs = cylsecs;
+	disksecs = (int64_t)cyls * heads * sectors;
+
+	return (0);
 }
-
 
 static int
 read_s0(void)
@@ -949,7 +940,6 @@ write_s0(void)
 	return(0);
 }
 
-
 static int
 ok(const char *str)
 {
@@ -959,9 +949,8 @@ ok(const char *str)
 		exit(1);
 	lbuf[strlen(lbuf)-1] = 0;
 
-	if (*lbuf &&
-		(!strcmp(lbuf, "yes") || !strcmp(lbuf, "YES") ||
-		 !strcmp(lbuf, "y") || !strcmp(lbuf, "Y")))
+	if (strcmp(lbuf, "yes") == 0 || strcmp(lbuf, "YES") == 0 ||
+	    strcmp(lbuf, "y") == 0 || strcmp(lbuf, "Y") == 0)
 		return 1;
 	else
 		return 0;
@@ -984,7 +973,8 @@ decimal(const char *str, int *num, int deflt)
 			return 0;
 
 		cp = lbuf;
-		while ((c = *cp) && (c == ' ' || c == '\t')) cp++;
+		while ((c = *cp) && (c == ' ' || c == '\t'))
+			cp++;
 		if (!c)
 			return 0;
 		while ((c = *cp++)) {
@@ -994,15 +984,16 @@ decimal(const char *str, int *num, int deflt)
 				break;
 		}
 		if (c == ' ' || c == '\t')
-			while ((c = *cp) && (c == ' ' || c == '\t')) cp++;
+			while ((c = *cp) && (c == ' ' || c == '\t'))
+				cp++;
 		if (!c) {
 			*num = acc;
 			return 1;
-		} else
+		} else {
 			printf("%s is an invalid decimal number.  Try again.\n",
-				lbuf);
+			       lbuf);
+		}
 	}
-
 }
 
 static const char *
@@ -1012,499 +1003,444 @@ get_type(int type)
 	int	counter = 0;
 	const struct dos_ptype *ptr = dos_ptypes;
 
-
-	while(counter < numentries)
-	{
+	while (counter < numentries) {
 		if (ptr->type == type)
-		{
-			return(ptr->name);
-		}
+			return (ptr->name);
 		ptr++;
 		counter++;
 	}
+
 	return("unknown");
 }
-
 
 static void
 parse_config_line(char *line, CMD *command)
 {
-    char	*cp, *end;
+	char	*cp, *end;
 
-    cp = line;
-    while (1)	/* dirty trick used to insure one exit point for this
-		   function */
-    {
-	memset(command, 0, sizeof(*command));
+	cp = line;
+	/* dirty trick used to insure one exit point for this function */
+	while (1) {
+		memset(command, 0, sizeof(*command));
 
-	while (isspace(*cp)) ++cp;
-	if (*cp == '\0' || *cp == '#')
-	{
-	    break;
+		while (isspace(*cp))
+			++cp;
+		if (*cp == '\0' || *cp == '#')
+			break;
+
+		command->cmd = *cp++;
+
+		/* Parse args */
+		while (1) {
+			while (isspace(*cp))
+				++cp;
+			if (*cp == '#')
+				break;		/* found comment */
+			if (isalpha(*cp))
+				command->args[command->n_args].argtype = *cp++;
+			if (!isdigit(*cp))
+				break;		/* assume end of line */
+
+			end = NULL;
+			command->args[command->n_args].arg_val =
+				strtoll(cp, &end, 0);
+			if (cp == end)
+				break;		/* couldn't parse number */
+			cp = end;
+			command->n_args++;
+		}
+		break;
 	}
-	command->cmd = *cp++;
-
-	/*
-	 * Parse args
-	 */
-	while (1)
-	{
-	    while (isspace(*cp)) ++cp;
-	    if (*cp == '#')
-	    {
-		break;		/* found comment */
-	    }
-	    if (isalpha(*cp))
-	    {
-		command->args[command->n_args].argtype = *cp++;
-	    }
-	    if (!isdigit(*cp))
-	    {
-		break;		/* assume end of line */
-	    }
-	    end = NULL;
-	    command->args[command->n_args].arg_val = strtoll(cp, &end, 0);
-	    if (cp == end)
-	    {
-		break;		/* couldn't parse number */
-	    }
-	    cp = end;
-	    command->n_args++;
-	}
-	break;
-    }
 }
-
 
 static int
 process_geometry(CMD *command)
 {
-    int		status = 1, i;
+	int status = 1, i;
 
-    while (1)
-    {
-	geom_processed = 1;
-	if (part_processed)
-	{
-	    warnx(
-	"ERROR line %d: the geometry specification line must occur before\n\
-    all partition specifications",
-		    current_line_number);
-	    status = 0;
-	    break;
-	}
-	if (command->n_args != 3)
-	{
-	    warnx("ERROR line %d: incorrect number of geometry args",
-		    current_line_number);
-	    status = 0;
-	    break;
-	}
-	dos_cyls = -1;
-	dos_heads = -1;
-	dos_sectors = -1;
-	for (i = 0; i < 3; ++i)
-	{
-	    switch (command->args[i].argtype)
-	    {
-	    case 'c':
-		dos_cyls = command->args[i].arg_val;
+	while (1) {
+		geom_processed = 1;
+		if (part_processed) {
+			warnx("ERROR line %d: the geometry specification line "
+			      "must occur before all partition specifications",
+			      current_line_number);
+			status = 0;
+			break;
+		}
+		if (command->n_args != 3) {
+			warnx("ERROR line %d: incorrect number of "
+			      "geometry args", current_line_number);
+			status = 0;
+			break;
+		}
+		dos_cyls = -1;
+		dos_heads = -1;
+		dos_sectors = -1;
+		for (i = 0; i < 3; ++i) {
+			switch (command->args[i].argtype) {
+			case 'c':
+				dos_cyls = command->args[i].arg_val;
+				break;
+			case 'h':
+				dos_heads = command->args[i].arg_val;
+				break;
+			case 's':
+				dos_sectors = command->args[i].arg_val;
+				break;
+			default:
+				warnx("ERROR line %d: unknown geometry "
+				      "arg type: '%c' (0x%02x)",
+				      current_line_number,
+				      command->args[i].argtype,
+				      command->args[i].argtype);
+				status = 0;
+				break;
+			}
+		}
+		if (status == 0)
+			break;
+
+		dos_cylsecs = dos_heads * dos_sectors;
+
+		/*
+		 * Do sanity checks on parameter values
+		 */
+		if (dos_cyls < 0) {
+			warnx("ERROR line %d: number of cylinders "
+			      "not specified", current_line_number);
+			status = 0;
+		}
+		if (dos_cyls == 0 || dos_cyls > 1024) {
+			warnx("WARNING line %d: number of cylinders (%d) "
+			      "may be out-of-range\n"
+			      "(must be within 1-1024 for normal BIOS "
+			      "operation, unless the entire disk "
+			      "is dedicated to DragonFly)",
+			      current_line_number, dos_cyls);
+		}
+		if (dos_heads < 0) {
+			warnx("ERROR line %d: number of heads not specified",
+			      current_line_number);
+			status = 0;
+		} else if (dos_heads < 1 || dos_heads > 256) {
+			warnx("ERROR line %d: number of heads must be within "
+			      "(1-256)", current_line_number);
+			status = 0;
+		}
+		if (dos_sectors < 0) {
+			warnx("ERROR line %d: number of sectors not specified",
+			      current_line_number);
+			status = 0;
+		} else if (dos_sectors < MIN_SECTORS_PER_TRACK ||
+			   dos_sectors > MAX_SECTORS_PER_TRACK) {
+			warnx("ERROR line %d: number of sectors must be within "
+			      "(1-63)", current_line_number);
+			status = 0;
+		}
+
 		break;
-	    case 'h':
-		dos_heads = command->args[i].arg_val;
-		break;
-	    case 's':
-		dos_sectors = command->args[i].arg_val;
-		break;
-	    default:
-		warnx(
-		"ERROR line %d: unknown geometry arg type: '%c' (0x%02x)",
-			current_line_number, command->args[i].argtype,
-			command->args[i].argtype);
-		status = 0;
-		break;
-	    }
-	}
-	if (status == 0)
-	{
-	    break;
 	}
 
-	dos_cylsecs = dos_heads * dos_sectors;
-
-	/*
-	 * Do sanity checks on parameter values
-	 */
-	if (dos_cyls < 0)
-	{
-	    warnx("ERROR line %d: number of cylinders not specified",
-		    current_line_number);
-	    status = 0;
-	}
-	if (dos_cyls == 0 || dos_cyls > 1024)
-	{
-	    warnx(
-	"WARNING line %d: number of cylinders (%d) may be out-of-range\n\
-    (must be within 1-1024 for normal BIOS operation, unless the entire disk\n\
-    is dedicated to DragonFly)",
-		    current_line_number, dos_cyls);
-	}
-
-	if (dos_heads < 0)
-	{
-	    warnx("ERROR line %d: number of heads not specified",
-		    current_line_number);
-	    status = 0;
-	}
-	else if (dos_heads < 1 || dos_heads > 256)
-	{
-	    warnx("ERROR line %d: number of heads must be within (1-256)",
-		    current_line_number);
-	    status = 0;
-	}
-
-	if (dos_sectors < 0)
-	{
-	    warnx("ERROR line %d: number of sectors not specified",
-		    current_line_number);
-	    status = 0;
-	}
-	else if (dos_sectors < MIN_SECTORS_PER_TRACK || dos_sectors > MAX_SECTORS_PER_TRACK)
-	{
-	    warnx("ERROR line %d: number of sectors must be within (1-63)",
-		    current_line_number);
-	    status = 0;
-	}
-
-	break;
-    }
-    return (status);
+	return (status);
 }
-
 
 static int
 process_partition(CMD *command)
 {
-    int				status = 0, part;
-    uint32_t			prev_head_boundary, prev_cyl_boundary;
-    uint32_t			adj_size, max_end;
-    struct dos_partition	*partp;
+	int			status = 0, part;
+	uint32_t		prev_head_boundary, prev_cyl_boundary;
+	uint32_t		adj_size, max_end;
+	struct dos_partition	*partp;
 
-    while (1)
-    {
-	part_processed = 1;
-	if (command->n_args != 4)
-	{
-	    warnx("ERROR line %d: incorrect number of partition args",
-		    current_line_number);
-	    break;
-	}
-	part = command->args[0].arg_val;
-	if (part < 1 || part > NDOSPART)
-	{
-	    warnx("ERROR line %d: invalid partition number %d",
-		    current_line_number, part);
-	    break;
-	}
-	partp = ((struct dos_partition *) &mboot.parts) + part - 1;
-	bzero((char *)partp, sizeof (struct dos_partition));
-	partp->dp_typ = command->args[1].arg_val;
-	partp->dp_start = command->args[2].arg_val;
-	partp->dp_size = command->args[3].arg_val;
-	max_end = partp->dp_start + partp->dp_size;
+	while (1) {
+		part_processed = 1;
+		if (command->n_args != 4) {
+			warnx("ERROR line %d: incorrect number of "
+			      "partition args", current_line_number);
+			break;
+		}
 
-	if (partp->dp_typ == 0)
-	{
-	    /*
-	     * Get out, the partition is marked as unused.
-	     */
-	    /*
-	     * Insure that it's unused.
-	     */
-	    bzero((char *)partp, sizeof (struct dos_partition));
-	    status = 1;
-	    break;
-	}
+		part = command->args[0].arg_val;
+		if (part < 1 || part > NDOSPART) {
+			warnx("ERROR line %d: invalid partition number %d",
+			      current_line_number, part);
+			break;
+		}
 
-	/*
-	 * Adjust start upwards, if necessary, to fall on an head boundary.
-	 */
-	if (partp->dp_start % dos_sectors != 0)
-	{
-	    prev_head_boundary = rounddown(partp->dp_start, dos_sectors);
-	    if (max_end < (uint32_t)dos_sectors ||
-		prev_head_boundary > max_end - dos_sectors)
-	    {
+		partp = ((struct dos_partition *) &mboot.parts) + part - 1;
+		bzero((char *)partp, sizeof (struct dos_partition));
+		partp->dp_typ = command->args[1].arg_val;
+		partp->dp_start = command->args[2].arg_val;
+		partp->dp_size = command->args[3].arg_val;
+		max_end = partp->dp_start + partp->dp_size;
+
+		if (partp->dp_typ == 0) {
+			/*
+			 * Get out, the partition is marked as unused.
+			 * Ensure that it's unused.
+			 */
+			bzero((char *)partp, sizeof (struct dos_partition));
+			status = 1;
+			break;
+		}
+
 		/*
-		 * Can't go past end of partition
+		 * Adjust start upwards, if necessary, to fall on an head
+		 * boundary.
 		 */
-		warnx(
-	"ERROR line %d: unable to adjust start of partition %d to fall on\n\
-    a head boundary",
-			current_line_number, part);
+		if (partp->dp_start % dos_sectors != 0) {
+			prev_head_boundary =
+				rounddown(partp->dp_start, dos_sectors);
+			if (max_end < (uint32_t)dos_sectors ||
+			    prev_head_boundary > max_end - dos_sectors) {
+				/*
+				 * Can't go past end of partition
+				 */
+				warnx("ERROR line %d: unable to adjust start "
+				      "of partition %d to fall on "
+				      "a head boundary",
+				      current_line_number, part);
+				break;
+			}
+			warnx("WARNING: adjusting start offset of "
+			      "partition %d from %u to %u, "
+			      "to fall on a head boundary",
+			      part, (u_int)partp->dp_start,
+			      (u_int)(prev_head_boundary + dos_sectors));
+			partp->dp_start = prev_head_boundary + dos_sectors;
+		}
+
+		/*
+		 * Adjust size downwards, if necessary, to fall on a cylinder
+		 * boundary.
+		 */
+		prev_cyl_boundary = rounddown(partp->dp_start + partp->dp_size,
+					      dos_cylsecs);
+		if (prev_cyl_boundary > partp->dp_start) {
+			adj_size = prev_cyl_boundary - partp->dp_start;
+		} else {
+			warnx("ERROR: could not adjust partition to start on a "
+			      "head boundary and end on a cylinder boundary.");
+			return (0);
+		}
+		if (adj_size != partp->dp_size) {
+			warnx("WARNING: adjusting size of partition %d from "
+			      "%u to %u to end on a cylinder boundary",
+			      part, (u_int)partp->dp_size, (u_int)adj_size);
+			partp->dp_size = adj_size;
+		}
+		if (partp->dp_size == 0) {
+			warnx("ERROR line %d: size of partition %d is zero",
+			      current_line_number, part);
+			break;
+		}
+
+		dos(partp);
+		status = 1;
 		break;
-	    }
-	    warnx(
-	"WARNING: adjusting start offset of partition %d\n\
-    from %u to %u, to fall on a head boundary",
-		    part, (u_int)partp->dp_start,
-		    (u_int)(prev_head_boundary + dos_sectors));
-	    partp->dp_start = prev_head_boundary + dos_sectors;
 	}
 
-	/*
-	 * Adjust size downwards, if necessary, to fall on a cylinder
-	 * boundary.
-	 */
-	prev_cyl_boundary =
-	    rounddown(partp->dp_start + partp->dp_size, dos_cylsecs);
-	if (prev_cyl_boundary > partp->dp_start)
-	    adj_size = prev_cyl_boundary - partp->dp_start;
-	else
-	{
-	    warnx(
-	"ERROR: could not adjust partition to start on a head boundary\n\
-    and end on a cylinder boundary.");
-	    return (0);
-	}
-	if (adj_size != partp->dp_size)
-	{
-	    warnx(
-	"WARNING: adjusting size of partition %d from %u to %u\n\
-    to end on a cylinder boundary",
-		    part, (u_int)partp->dp_size, (u_int)adj_size);
-	    partp->dp_size = adj_size;
-	}
-	if (partp->dp_size == 0)
-	{
-	    warnx("ERROR line %d: size of partition %d is zero",
-		    current_line_number, part);
-	    break;
-	}
-
-	dos(partp);
-	status = 1;
-	break;
-    }
-    return (status);
+	return (status);
 }
-
 
 static int
 process_active(CMD *command)
 {
-    int				status = 0, part, i;
-    struct dos_partition	*partp;
+	int			status = 0, part, i;
+	struct dos_partition	*partp;
 
-    while (1)
-    {
-	active_processed = 1;
-	if (command->n_args != 1)
-	{
-	    warnx("ERROR line %d: incorrect number of active args",
-		    current_line_number);
-	    status = 0;
-	    break;
-	}
-	part = command->args[0].arg_val;
-	if (part < 1 || part > NDOSPART)
-	{
-	    warnx("ERROR line %d: invalid partition number %d",
-		    current_line_number, part);
-	    break;
-	}
-	/*
-	 * Reset active partition
-	 */
-	partp = ((struct dos_partition *) &mboot.parts);
-	for (i = 0; i < NDOSPART; i++)
-	    partp[i].dp_flag = 0;
-	partp[part-1].dp_flag = ACTIVE;
+	while (1) {
+		active_processed = 1;
+		if (command->n_args != 1) {
+			warnx("ERROR line %d: incorrect number of active args",
+			      current_line_number);
+			status = 0;
+			break;
+		}
+		part = command->args[0].arg_val;
+		if (part < 1 || part > NDOSPART) {
+			warnx("ERROR line %d: invalid partition number %d",
+			      current_line_number, part);
+			break;
+		}
+		/*
+		 * Reset active partition
+		 */
+		partp = ((struct dos_partition *) &mboot.parts);
+		for (i = 0; i < NDOSPART; i++)
+			partp[i].dp_flag = 0;
+		partp[part-1].dp_flag = ACTIVE;
 
-	status = 1;
-	break;
-    }
-    return (status);
+		status = 1;
+		break;
+	}
+
+	return (status);
 }
-
 
 static int
 process_line(char *line)
 {
-    CMD		command;
-    int		status = 1;
+	CMD	command;
+	int	status = 1;
 
-    while (1)
-    {
-	parse_config_line(line, &command);
-	switch (command.cmd)
-	{
-	case 0:
-	    /*
-	     * Comment or blank line
-	     */
-	    break;
-	case 'g':
-	    /*
-	     * Set geometry
-	     */
-	    status = process_geometry(&command);
-	    break;
-	case 'p':
-	    status = process_partition(&command);
-	    break;
-	case 'a':
-	    status = process_active(&command);
-	    break;
-	default:
-	    status = 0;
-	    break;
+	while (1) {
+		parse_config_line(line, &command);
+		switch (command.cmd) {
+		case 0:
+			/* Comment or blank line */
+			break;
+		case 'g':
+			/* Set geometry */
+			status = process_geometry(&command);
+			break;
+		case 'p':
+			status = process_partition(&command);
+			break;
+		case 'a':
+			status = process_active(&command);
+			break;
+		default:
+			status = 0;
+			break;
+		}
+		break;
 	}
-	break;
-    }
-    return (status);
-}
 
+	return (status);
+}
 
 static int
 read_config(char *config_file)
 {
-    FILE	*fp = NULL;
-    int		status = 1;
-    char	buf[1010];
+	FILE	*fp = NULL;
+	int	status = 1;
+	char	buf[1010];
 
-    while (1)	/* dirty trick used to insure one exit point for this
-		   function */
-    {
-	if (strcmp(config_file, "-") != 0)
-	{
-	    /*
-	     * We're not reading from stdin
-	     */
-	    if ((fp = fopen(config_file, "r")) == NULL)
-	    {
-		status = 0;
+	/* dirty trick used to insure one exit point for this function */
+	while (1) {
+		if (strcmp(config_file, "-") != 0) {
+			/* We're not reading from stdin */
+			if ((fp = fopen(config_file, "r")) == NULL) {
+				status = 0;
+				break;
+			}
+		} else {
+			fp = stdin;
+		}
+
+		current_line_number = 0;
+		while (!feof(fp)) {
+			if (fgets(buf, sizeof(buf), fp) == NULL)
+				break;
+			++current_line_number;
+			status = process_line(buf);
+			if (status == 0)
+				break;
+		}
+
 		break;
-	    }
 	}
-	else
-	{
-	    fp = stdin;
+
+	if (fp) {
+		/*
+		 * It doesn't matter if we're reading from stdin, as we've
+		 * reached EOF.
+		 */
+		fclose(fp);
 	}
-	current_line_number = 0;
-	while (!feof(fp))
-	{
-	    if (fgets(buf, sizeof(buf), fp) == NULL)
-	    {
-		break;
-	    }
-	    ++current_line_number;
-	    status = process_line(buf);
-	    if (status == 0)
-	    {
-		break;
-	    }
-	}
-	break;
-    }
-    if (fp)
-    {
-	/*
-	 * It doesn't matter if we're reading from stdin, as we've reached EOF
-	 */
-	fclose(fp);
-    }
-    return (status);
+
+	return (status);
 }
-
 
 static void
 reset_boot(void)
 {
-    int				i;
-    struct dos_partition	*partp;
+	int i;
+	struct dos_partition *partp;
 
-    init_boot();
-    for (i = 0; i < NDOSPART; ++i)
-    {
-	partp = ((struct dos_partition *) &mboot.parts) + i;
-	bzero((char *)partp, sizeof (struct dos_partition));
-    }
+	init_boot();
+
+	for (i = 0; i < NDOSPART; ++i) {
+		partp = ((struct dos_partition *) &mboot.parts) + i;
+		bzero((char *)partp, sizeof(struct dos_partition));
+	}
 }
 
 static int
 sanitize_partition(struct dos_partition *partp)
 {
-    uint32_t			prev_head_boundary, prev_cyl_boundary;
-    uint32_t			max_end, size, start;
+	uint32_t prev_head_boundary, prev_cyl_boundary;
+	uint32_t max_end, size, start;
 
-    start = partp->dp_start;
-    size = partp->dp_size;
-    max_end = start + size;
-    /* Only allow a zero size if the partition is being marked unused. */
-    if (size == 0) {
-	if (start == 0 && partp->dp_typ == 0)
-	    return (1);
-	warnx("ERROR: size of partition is zero");
-	return (0);
-    }
-    /* Return if no adjustment is necessary. */
-    if (start % dos_sectors == 0 && (start + size) % dos_sectors == 0)
+	start = partp->dp_start;
+	size = partp->dp_size;
+	max_end = start + size;
+
+	/* Only allow a zero size if the partition is being marked unused. */
+	if (size == 0) {
+		if (start == 0 && partp->dp_typ == 0)
+			return (1);
+		warnx("ERROR: size of partition is zero");
+		return (0);
+	}
+
+	/* Return if no adjustment is necessary. */
+	if (start % dos_sectors == 0 && (start + size) % dos_sectors == 0)
+		return (1);
+
+	if (start == 0) {
+		warnx("WARNING: partition overlaps with partition table");
+		if (ok("Correct this automatically?"))
+			start = dos_sectors;
+	}
+	if (start % dos_sectors != 0)
+		warnx("WARNING: partition does not start on a head boundary");
+	if ((start  +size) % dos_sectors != 0)
+		warnx("WARNING: partition does not end on a cylinder boundary");
+	warnx("WARNING: this may confuse the BIOS or some operating systems");
+
+	if (!ok("Correct this automatically?"))
+		return (1);
+
+	/*
+	 * Adjust start upwards, if necessary, to fall on an head boundary.
+	 */
+	if (start % dos_sectors != 0) {
+		prev_head_boundary = rounddown(start, dos_sectors);
+		if (max_end < (uint32_t)dos_sectors ||
+		    prev_head_boundary >= max_end - dos_sectors) {
+			/* Can't go past end of partition */
+			warnx("ERROR: unable to adjust start of partition "
+			      "to fall on a head boundary");
+			return (0);
+		}
+		start = prev_head_boundary + dos_sectors;
+	}
+
+	/*
+	 * Adjust size downwards, if necessary, to fall on a cylinder boundary.
+	 */
+	prev_cyl_boundary = rounddown(start + size, dos_cylsecs);
+	if (prev_cyl_boundary > start) {
+		size = prev_cyl_boundary - start;
+	} else {
+		warnx("ERROR: could not adjust partition to start on a "
+		      "head boundary and end on a cylinder boundary.");
+		return (0);
+	}
+
+	/* Finally, commit any changes to partp and return. */
+	if (start != partp->dp_start) {
+		warnx("WARNING: adjusting start offset of partition to %u",
+	              (u_int)start);
+		partp->dp_start = start;
+	}
+	if (size != partp->dp_size) {
+		warnx("WARNING: adjusting size of partition to %u",
+		      (u_int)size);
+		partp->dp_size = size;
+	}
+
 	return (1);
-
-    if (start == 0) {
-	    warnx("WARNING: partition overlaps with partition table");
-	    if (ok("Correct this automatically?"))
-		    start = dos_sectors;
-    }
-    if (start % dos_sectors != 0)
-	warnx("WARNING: partition does not start on a head boundary");
-    if ((start  +size) % dos_sectors != 0)
-	warnx("WARNING: partition does not end on a cylinder boundary");
-    warnx("WARNING: this may confuse the BIOS or some operating systems");
-    if (!ok("Correct this automatically?"))
-	return (1);
-
-    /*
-     * Adjust start upwards, if necessary, to fall on an head boundary.
-     */
-    if (start % dos_sectors != 0) {
-	prev_head_boundary = rounddown(start, dos_sectors);
-	if (max_end < (uint32_t)dos_sectors ||
-	    prev_head_boundary >= max_end - dos_sectors) {
-	    /*
-	     * Can't go past end of partition
-	     */
-	    warnx(
-    "ERROR: unable to adjust start of partition to fall on a head boundary");
-	    return (0);
-        }
-	start = prev_head_boundary + dos_sectors;
-    }
-
-    /*
-     * Adjust size downwards, if necessary, to fall on a cylinder
-     * boundary.
-     */
-    prev_cyl_boundary = rounddown(start + size, dos_cylsecs);
-    if (prev_cyl_boundary > start)
-	size = prev_cyl_boundary - start;
-    else {
-	warnx("ERROR: could not adjust partition to start on a head boundary\n\
-    and end on a cylinder boundary.");
-	return (0);
-    }
-
-    /* Finally, commit any changes to partp and return. */
-    if (start != partp->dp_start) {
-	warnx("WARNING: adjusting start offset of partition to %u",
-	    (u_int)start);
-	partp->dp_start = start;
-    }
-    if (size != partp->dp_size) {
-	warnx("WARNING: adjusting size of partition to %u", (u_int)size);
-	partp->dp_size = size;
-    }
-
-    return (1);
 }
