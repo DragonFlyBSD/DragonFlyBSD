@@ -55,7 +55,7 @@ static char lbuf[LBUF];
  */
 
 #define Decimal(str, ans, tmp) if (decimal(str, &tmp, ans)) ans = tmp
-#define MAX_SEC_SIZE 2048		/* maximum section size that is supported */
+#define MAX_SEC_SIZE 4096		/* maximum section size that is supported */
 #define MIN_SEC_SIZE 512		/* the sector size to start sensing at */
 #define MAX_SECTORS_PER_TRACK 0x3f	/* maximum number of sectors per track */
 #define MIN_SECTORS_PER_TRACK 0x1	/* minimum number of sectors per track */
@@ -244,7 +244,7 @@ main(int argc, char *argv[])
 	if (read_disk(0, mboot.bootinst) == -1)
 	{
 		free(mboot.bootinst);
-		errx(1, "could not detect sector size");
+		errx(1, "could not read MBR");
 	}
 	free(mboot.bootinst);
 	mboot.bootinst = NULL;
@@ -816,21 +816,26 @@ open_disk(void)
 static ssize_t
 read_disk(off_t sector, void *buf)
 {
+	int size;
+
 	lseek(fd,(sector * 512), 0);
-	if (secsize == 0)
+	if (secsize == 0) {
 		for(secsize = MIN_SEC_SIZE; secsize <= MAX_SEC_SIZE; secsize *= 2)
 			{
 			/* try the read */
 			errno = 0;
-			int size = read(fd, buf, secsize);
+			size = read(fd, buf, secsize);
 			if (size == secsize)
 				/* it worked so return */
 				return secsize;
 			}
-	else
-		return read(fd, buf, secsize);
+	} else {
+		size = read(fd, buf, secsize);
+		if (size == secsize)
+			return secsize;
+	}
 
-	/* we failed to read at any of the sizes */
+	warn("failed to read sector %ju", (uintmax_t)sector);
 	return -1;
 }
 
