@@ -30,6 +30,7 @@
 #include <sys/diskmbr.h>
 
 #include <err.h>
+#include <libutil.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -83,7 +84,12 @@ show(int fd __unused)
 	struct mbr *mbr;
 	struct gpt_ent *ent;
 	unsigned int i;
-	char *s;
+	char *s, humansz[sizeof("99.9GB")];
+
+	humanize_number(humansz, sizeof(humansz), (int64_t)mediasz, "B",
+			HN_AUTOSCALE, HN_FRACTIONAL | HN_NOSPACE);
+	printf("Disk %s: %s (%llu %u-byte sectors)\n",
+	       device_name, humansz, (long long)(mediasz / secsz), secsz);
 
 	printf("  %*s", lbawidth, "start");
 	printf("  %*s", lbawidth, "size");
@@ -206,12 +212,12 @@ cmd_show(int argc, char *argv[])
 		fd = gpt_open(argv[optind++]);
 		if (fd == -1) {
 			warn("unable to open device '%s'", device_name);
-			continue;
+		} else {
+			show(fd);
+			gpt_close(fd);
 		}
-
-		show(fd);
-
-		gpt_close(fd);
+		if (optind != argc)
+			putchar('\n');
 	}
 
 	return (0);
