@@ -1,23 +1,22 @@
-# $DragonFly: src/etc/defaults/uuids,v 1.4 2008/07/27 22:12:10 thomas Exp $
-#
+# NOTE: should keep in sync with <sys/gpt.h>
 #
 # EFI
-# 
+#
 00000000-0000-0000-0000-000000000000	"Unused"
 c12a7328-f81f-11d2-ba4b-00a0c93ec93b	"EFI System"
 024dee41-33e7-11d3-9d69-0008c781f39f	"MBR"
 #
 # DragonFly
 #
-9d087404-1ca5-11dc-8817-01301bb8a9f5	"DragonFly Label32"
-9d58fdbd-1ca5-11dc-8817-01301bb8a9f5	"DragonFly Swap"
-9d94ce7c-1ca5-11dc-8817-01301bb8a9f5	"DragonFly UFS1"
-9dd4478f-1ca5-11dc-8817-01301bb8a9f5	"DragonFly Vinum"
 dbd5211b-1ca5-11dc-8817-01301bb8a9f5	"DragonFly CCD"
+9d087404-1ca5-11dc-8817-01301bb8a9f5	"DragonFly Label32"
 3d48ce54-1d16-11dc-8696-01301bb8a9f5	"DragonFly Label64"
 bd215ab2-1d16-11dc-8696-01301bb8a9f5	"DragonFly Legacy"
 61dc63ac-6e38-11dc-8513-01301bb8a9f5	"DragonFly HAMMER"
 5cbb9ad1-862d-11dc-a94d-01301bb8a9f5	"DragonFly HAMMER2"
+9d58fdbd-1ca5-11dc-8817-01301bb8a9f5	"DragonFly Swap"
+9d94ce7c-1ca5-11dc-8817-01301bb8a9f5	"DragonFly UFS1"
+9dd4478f-1ca5-11dc-8817-01301bb8a9f5	"DragonFly Vinum"
 #
 # FreeBSD
 #
@@ -25,17 +24,67 @@ bd215ab2-1d16-11dc-8696-01301bb8a9f5	"DragonFly Legacy"
 516e7cb5-6ecf-11d6-8ff8-00022d09712b	"FreeBSD Swap"
 516e7cb6-6ecf-11d6-8ff8-00022d09712b	"FreeBSD UFS/UFS2"
 516e7cb8-6ecf-11d6-8ff8-00022d09712b	"FreeBSD Vinum"
+83bd6b9d-7f41-11dc-be0b-001560b84f0f	"FreeBSD Boot"
+74ba7dd9-a689-11e1-bd04-00e081286acf	"FreeBSD NANDFS"
+516e7cba-6ecf-11d6-8ff8-00022d09712b	"FreeBSD ZFS"
+#
+# NetBSD
+#
+49f48d5a-b10e-11dc-b99b-0019d1879648	"NetBSD FFS"
+49f48d82-b10e-11dc-b99b-0019d1879648	"NetBSD LFS"
+49f48d32-b10e-11dc-B99B-0019d1879648	"NetBSD Swap"
+49f48daa-b10e-11dc-b99b-0019d1879648	"NetBSD RAID"
+2db519c4-b10f-11dc-b99b-0019d1879648	"NetBSD CCD"
+2db519ec-b10f-11dc-b99b-0019d1879648	"NetBSD CGD"
+#
+# OpenBSD
+#
+824cc7a0-36a8-11e3-890a-952519ad3f61	"OpenBSD Data"
 #
 # Microsoft
 #
-e3c9e316-0b5c-4db8-817d-f92df00215ae	"MS Reserved"
-ebd0a0a2-b9e5-4433-87c0-68b6b72699c7	"MS/Linux Basic Data"
-5808c8aa-7e8f-42e0-85d2-e1e90434cfb3	"MS LDM Metadata"
+ebd0a0a2-b9e5-4433-87c0-68b6b72699c7	"MS Basic Data"
 af9b60a0-1431-4f62-bc68-3311714a69ad	"MS LDM Data"
+5808c8aa-7e8f-42e0-85d2-e1e90434cfb3	"MS LDM Metadata"
+de94bba4-06d1-4d40-a16a-bfd50179d6ac	"MS Recovery"
+e3c9e316-0b5c-4db8-817d-f92df00215ae	"MS Reserved"
+e75caf8f-f680-4cee-afa3-b001e56efc2d	"MS Spaces"
 #
 # Linux
 #
-a19d880f-05fc-4d3b-a006-743f0f84911e	"Linux Raid"
+0fc63daf-8483-4772-8e79-3d69d8477de4	"Linux Data"
+a19d880f-05fc-4d3b-a006-743f0f84911e	"Linux RAID"
 0657fd6d-a4ab-43c4-84e5-0933c84b4f4f	"Linux Swap"
 e6d6d379-f507-44c2-a23c-238f2a3df928	"Linux LVM"
+#
+# ChromeOS
+#
+cab6e88e-abf3-4102-a07a-d4bb9be3c1d3	"ChromeOS Firmware"
+fe3a2a5d-4f32-41a7-b725-accc3285a309	"ChromeOS Kernel"
+2e0a753d-9e48-43b0-8337-b15192cb1b5e	"ChromeOS Reserved"
+3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec	"ChromeOS Root"
+#
+# Apple
+#
+426F6F74-0000-11aa-aa11-00306543ecac	"Apple Boot"
 48465300-0000-11aa-aa11-00306543ecac	"Apple HFS"
+55465300-0000-11aa-aa11-00306543ecac	"Apple UFS"
+6a898cc3-1dd2-11b2-99a6-080020736631	"Apple ZFS"
+52414944-0000-11aa-aa22-00306543ecac	"Apple RAID"
+52414944-5f4f-11aa-aa22-00306543ecac	"Apple RAID Offline"
+4C616265-6c00-11aa-aa11-00306543ecac	"Apple Label"
+5265636f-7665-11AA-aa11-00306543ecac	"Apple TV Recovery"
+53746f72-6167-11AA-aa11-00306543ecac	"Apple Core Storage"
+7c3457ef-0000-11aa-aa11-00306543ecac	"Apple APFS"
+#
+# VMWare
+#
+aa31e02a-400f-11db-9590-000c2911d1b8	"VMWare VMFS"
+9d275380-40ad-11db-bf97-000c2911d1b8	"VMWare Diagostic"
+9198effc-31c0-11db-8f78-000c2911d1b8	"VMWare Reserved"
+381cfccc-7288-11e0-92ee-000c2911d0b2	"VMWare VSAN"
+#
+# Misc.
+#
+21686148-6449-6e6f-744e-656564454649	"BIOS Boot"
+9e1a2d38-c612-4316-aa26-8b49521e5a8b	"PowerPC Boot"
