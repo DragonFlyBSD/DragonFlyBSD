@@ -122,7 +122,7 @@ add(int fd)
 		return;
 	}
 
-	le_uuid_enc(&ent->ent_type, &type);
+	uuid_enc_le(&ent->ent_type, &type);
 	ent->ent_lba_start = htole64(map->map_start);
 	ent->ent_lba_end = htole64(map->map_start + map->map_size - 1LL);
 
@@ -137,7 +137,7 @@ add(int fd)
 	hdr = tpg->map_data;
 	ent = (void*)((char*)lbt->map_data + i * le32toh(hdr->hdr_entsz));
 
-	le_uuid_enc(&ent->ent_type, &type);
+	uuid_enc_le(&ent->ent_type, &type);
 	ent->ent_lba_start = htole64(map->map_start);
 	ent->ent_lba_end = htole64(map->map_start + map->map_size - 1LL);
 

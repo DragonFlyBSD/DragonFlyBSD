@@ -183,7 +183,7 @@ create(int fd)
 	hdr->hdr_lba_start = htole64(tbl->map_start + blocks);
 	hdr->hdr_lba_end = htole64(last - blocks - 1LL);
 	uuid_create(&uuid, NULL);
-	le_uuid_enc(&hdr->hdr_uuid, &uuid);
+	uuid_enc_le(&hdr->hdr_uuid, &uuid);
 	hdr->hdr_lba_table = htole64(tbl->map_start);
 	hdr->hdr_entries = htole32((blocks * secsz) / sizeof(struct gpt_ent));
 	if (le32toh(hdr->hdr_entries) > parts)
@@ -193,7 +193,7 @@ create(int fd)
 	ent = tbl->map_data;
 	for (i = 0; i < le32toh(hdr->hdr_entries); i++) {
 		uuid_create(&uuid, NULL);
-		le_uuid_enc(&ent[i].ent_uuid, &uuid);
+		uuid_enc_le(&ent[i].ent_uuid, &uuid);
 	}
 
 	hdr->hdr_crc_table = htole32(crc32(ent, le32toh(hdr->hdr_entries) *

@@ -35,8 +35,6 @@
 
 #include <uuid.h>
 
-void	le_uuid_dec(void const *, uuid_t *);
-void	le_uuid_enc(void *, uuid_t const *);
 int	parse_uuid(const char *, uuid_t *);
 
 struct mbr_part {

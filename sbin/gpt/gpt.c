@@ -225,38 +225,6 @@ utf8_to_utf16(const uint8_t *s8, uint16_t *s16, size_t s16len)
 	} while (c != 0);
 }
 
-void
-le_uuid_dec(void const *buf, uuid_t *uuid)
-{
-	u_char const *p;
-	int i;
-
-	p = buf;
-	uuid->time_low = le32dec(p);
-	uuid->time_mid = le16dec(p + 4);
-	uuid->time_hi_and_version = le16dec(p + 6);
-	uuid->clock_seq_hi_and_reserved = p[8];
-	uuid->clock_seq_low = p[9];
-	for (i = 0; i < _UUID_NODE_LEN; i++)
-		uuid->node[i] = p[10 + i];
-}
-
-void
-le_uuid_enc(void *buf, uuid_t const *uuid)
-{
-	u_char *p;
-	int i;
-
-	p = buf;
-	le32enc(p, uuid->time_low);
-	le16enc(p + 4, uuid->time_mid);
-	le16enc(p + 6, uuid->time_hi_and_version);
-	p[8] = uuid->clock_seq_hi_and_reserved;
-	p[9] = uuid->clock_seq_low;
-	for (i = 0; i < _UUID_NODE_LEN; i++)
-		p[10 + i] = uuid->node[i];
-}
-
 static const struct {
 	const char *alias;
 	uuid_t uuid;
@@ -521,7 +489,7 @@ gpt_gpt(int fd, off_t lba)
 		size = le64toh(ent->ent_lba_end) - le64toh(ent->ent_lba_start) +
 		    1LL;
 		if (verbose > 2) {
-			le_uuid_dec(&ent->ent_type, &type);
+			uuid_dec_le(&ent->ent_type, &type);
 			uuid_to_string(&type, &s, NULL);
 			warnx(
 	"%s: GPT partition: type=%s, start=%llu, size=%llu", device_name, s,

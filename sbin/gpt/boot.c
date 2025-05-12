@@ -109,7 +109,7 @@ bootset(int fd)
 	block = map->map_start;
 	size  = map->map_size;
 
-	le_uuid_enc(&ent->ent_type, &uuid);
+	uuid_enc_le(&ent->ent_type, &uuid);
 	ent->ent_lba_start = htole64(map->map_start);
 	ent->ent_lba_end = htole64(map->map_start + map->map_size - 1LL);
 
@@ -124,7 +124,7 @@ bootset(int fd)
 
 	hdr = tpg->map_data;
 	ent = (void*)((char*)lbt->map_data + entry * le32toh(hdr->hdr_entsz));
-	le_uuid_enc(&ent->ent_type, &uuid);
+	uuid_enc_le(&ent->ent_type, &uuid);
 	ent->ent_lba_start = htole64(map->map_start);
 	ent->ent_lba_end = htole64(map->map_start + map->map_size - 1LL);
 
