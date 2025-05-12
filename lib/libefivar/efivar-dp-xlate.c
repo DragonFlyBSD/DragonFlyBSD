@@ -39,6 +39,7 @@
 #include <paths.h>
 #include <stdio.h>
 #include <string.h>
+#include <uuid.h>
 
 #include "libefivar_int.h"
 
@@ -95,7 +96,7 @@ find_slice_by_efimedia(char *buf, char **dev)
 				continue;
 			ent = m->map_data;
 			s = NULL;
-			le_uuid_dec(&ent->ent_uuid, &guid);
+			uuid_dec_le(&ent->ent_uuid, &guid);
 			uuid_to_string(&guid, &s, NULL);
 			snprintf(efimedia, sizeof(efimedia),
 			    "HD(%d,GPT,%s,%#jx,%#jx)", m->map_index + 1, s,
@@ -369,7 +370,7 @@ efivar_device_path_to_unix_path(const_efidp dp, char **dev, char **relpath, char
  *		but /path/to must be. It must reside on a local filesystem
  *		mounted on a GPT or MBR partition.
  *	2) //path/to/file -- Shorthand for 'On the EFI partition, \path\to\file'
- *		where 'The EFI Partition' is a partiton that's type is 'efi'
+ *		where 'The EFI Partition' is a partition that's type is 'efi'
  *		on the same disk that / is mounted from. If there are multiple
  *		or no 'efi' parittions on that disk, or / isn't on a disk that
  *		we can trace back to a physical device, an error will result
@@ -468,7 +469,7 @@ find_slice_efimedia(const char *slice)
 		if (m->map_index == sliceno) {
 			ent = m->map_data;
 			s = NULL;
-			le_uuid_dec(&ent->ent_uuid, &guid);
+			uuid_dec_le(&ent->ent_uuid, &guid);
 			uuid_to_string(&guid, &s, NULL);
 			snprintf(efimedia, sizeof(efimedia),
 			    "HD(%d,GPT,%s,%#jx,%#jx)", m->map_index + 1, s,

@@ -42,10 +42,10 @@ CFLAGS+=	-I${EFIBOOT}/include
 CFLAGS+=	-I${.CURDIR} -I${EDK2INC}
 
 .PATH:		${.CURDIR}/../../sbin/gpt
-SRCS+=		gpt.c map.c
+SRCS+=		map.c
 FLAGS_GROUPS=	gpt
-gpt_FLAGS=	-I${.CURDIR}/../../sbin/gpt -D_LIBEFIVAR
-gpt_FLAGS_FILES=efivar-dp-xlate.c gpt.c map.c
+gpt_FLAGS=	-I${.CURDIR}/../../sbin/gpt
+gpt_FLAGS_FILES=efivar-dp-xlate.c map.c
 
 MLINKS+=efivar.3 efi_variables_supported.3 \
 	efivar.3 efi_del_variable.3 \
