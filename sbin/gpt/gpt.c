@@ -231,8 +231,6 @@ static const struct {
 } uuid_aliases[] = {
 	{ "efi",		GPT_ENT_TYPE_EFI },
 	{ "bios",		GPT_ENT_TYPE_BIOS_BOOT },
-	{ "swap",		GPT_ENT_TYPE_FREEBSD_SWAP },
-	{ "ufs",		GPT_ENT_TYPE_FREEBSD_UFS },
 	/* DragonFly */
 	{ "ccd",		GPT_ENT_TYPE_DRAGONFLY_CCD },
 	{ "label32",		GPT_ENT_TYPE_DRAGONFLY_LABEL32 },
@@ -241,6 +239,8 @@ static const struct {
 	{ "dragonfly",		GPT_ENT_TYPE_DRAGONFLY_LABEL64 },
 	{ "hammer",		GPT_ENT_TYPE_DRAGONFLY_HAMMER },
 	{ "hammer2",		GPT_ENT_TYPE_DRAGONFLY_HAMMER2 },
+	{ "swap",		GPT_ENT_TYPE_DRAGONFLY_SWAP },
+	{ "ufs",		GPT_ENT_TYPE_DRAGONFLY_UFS1 },
 	{ "vinum",		GPT_ENT_TYPE_DRAGONFLY_VINUM },
 	/* FreeBSD */
 	{ "freebsd-legacy",	GPT_ENT_TYPE_FREEBSD },
