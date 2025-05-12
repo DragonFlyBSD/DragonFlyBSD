@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
 .\"
-.Dd March 2, 2019
+.Dd May 10, 2025
 .Dt GPT 8
 .Os
 .Sh NAME
@@ -137,25 +137,88 @@ The
 option allows the user to specify the partition type.
 The type is given as an UUID, but
 .Nm
-accepts
-.Cm efi , swap , ufs , hfs , linux , dfly , hammer, hammer2
-and
-.Cm windows
-as aliases for the most commonly used partition types.
-.Cm ufs
-is a
-.Fx
-UFS UUID.
-.Cm dfly
-has the alias
-.Cm dragonfly
-and is a
+accepts the following aliases for the most commonly used partition types:
+.Bl -tag -width "windows-reserved" -offset indent -compact
+.It Cm apple-apfs
+Apple APFS
+.It Cm apple-hfs
+Apple HFS
+.It Cm apple-ufs
+Apple UFS
+.It Cm apple-zfs
+Apple ZFS
+.It Cm bios
+BIOS Boot (e.g., used by GRUB 2)
+.It Cm ccd
+.Dx
+.Xr ccd (4)
+.It Cm dfly
 .Dx
 .Xr disklabel64 5
-UUID.
-You may also specify any symbolic name in the system
+.It Cm dragonfly
+An alias for
+.Cm dfly
+.It Cm efi
+EFI System
+.It Cm freebsd-legacy
+FreeBSD Legacy
+.It Cm freebsd-boot
+FreeBSD Boot
+.It Cm freebsd-swap
+FreeBSD Swap
+.It Cm freebsd-ufs
+FreeBSD UFS/UFS2
+.It Cm freebsd-zfs
+FreeBSD ZFS
+.It Cm hammer
+.Dx
+.Xr HAMMER 5
+.It Cm hammer2
+.Dx
+HAMMER2
+.It Cm label32
+.Dx
+.Xr disklabel32 5
+.It Cm label64
+.Dx
+.Xr disklabel64 5
+.It Cm linux
+Linux Data
+.It Cm linux-lvm
+Linux LVM
+.It Cm linux-raid
+Linux RAID
+.It Cm linux-swap
+Linux Swap
+.It Cm netbsd-ccd
+NetBSD CCD
+.It Cm netbsd-cgd
+NetBSD CGD
+.It Cm netbsd-ffs
+NetBSD FFSv1/FFSv2
+.It Cm netbsd-lfs
+NetBSD LFS
+.It Cm netbsd-swap
+NetBSD Swap
+.It Cm openbsd
+OpenBSD Data
+.It Cm swap
+FreeBSD Swap
+.It Cm ufs
+FreeBSD UFS/UFS2
+.It Cm vinum
+.Dx
+.Xr vinum 4
+.It Cm windows
+Microsoft Basic Data
+.It Cm windows-reserved
+Microsoft Reserved
+.It Cm windows-recovery
+Microsoft Recovery
+.El
+Any symbolic name in the system
 .Xr uuids 5
-files.
+files may also be specified.
 .Pp
 .Em NOTE!
 If you don't specify a beginning sector with

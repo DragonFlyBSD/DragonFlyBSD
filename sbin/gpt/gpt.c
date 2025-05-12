@@ -257,75 +257,69 @@ le_uuid_enc(void *buf, uuid_t const *uuid)
 		p[10 + i] = uuid->node[i];
 }
 
+static const struct {
+	const char *alias;
+	uuid_t uuid;
+} uuid_aliases[] = {
+	{ "efi",		GPT_ENT_TYPE_EFI },
+	{ "bios",		GPT_ENT_TYPE_BIOS_BOOT },
+	{ "swap",		GPT_ENT_TYPE_FREEBSD_SWAP },
+	{ "ufs",		GPT_ENT_TYPE_FREEBSD_UFS },
+	/* DragonFly */
+	{ "ccd",		GPT_ENT_TYPE_DRAGONFLY_CCD },
+	{ "label32",		GPT_ENT_TYPE_DRAGONFLY_LABEL32 },
+	{ "label64",		GPT_ENT_TYPE_DRAGONFLY_LABEL64 },
+	{ "dfly",		GPT_ENT_TYPE_DRAGONFLY_LABEL64 },
+	{ "dragonfly",		GPT_ENT_TYPE_DRAGONFLY_LABEL64 },
+	{ "hammer",		GPT_ENT_TYPE_DRAGONFLY_HAMMER },
+	{ "hammer2",		GPT_ENT_TYPE_DRAGONFLY_HAMMER2 },
+	{ "vinum",		GPT_ENT_TYPE_DRAGONFLY_VINUM },
+	/* FreeBSD */
+	{ "freebsd-legacy",	GPT_ENT_TYPE_FREEBSD },
+	{ "freebsd-boot",	GPT_ENT_TYPE_FREEBSD_BOOT },
+	{ "freebsd-swap",	GPT_ENT_TYPE_FREEBSD_SWAP },
+	{ "freebsd-ufs",	GPT_ENT_TYPE_FREEBSD_UFS },
+	{ "freebsd-zfs",	GPT_ENT_TYPE_FREEBSD_ZFS },
+	/* NetBSD */
+	{ "netbsd-ccd",		GPT_ENT_TYPE_NETBSD_CCD },
+	{ "netbsd-cgd",		GPT_ENT_TYPE_NETBSD_CGD },
+	{ "netbsd-ffs",		GPT_ENT_TYPE_NETBSD_FFS },
+	{ "netbsd-lfs",		GPT_ENT_TYPE_NETBSD_LFS },
+	{ "netbsd-swap",	GPT_ENT_TYPE_NETBSD_SWAP },
+	/* OpenBSD */
+	{ "openbsd",		GPT_ENT_TYPE_OPENBSD_DATA },
+	/* Apple */
+	{ "apple-apfs",		GPT_ENT_TYPE_APPLE_APFS },
+	{ "apple-hfs",		GPT_ENT_TYPE_APPLE_HFS },
+	{ "apple-ufs",		GPT_ENT_TYPE_APPLE_UFS },
+	{ "apple-zfs",		GPT_ENT_TYPE_APPLE_ZFS },
+	/* Linux */
+	{ "linux",		GPT_ENT_TYPE_LINUX_DATA },
+	{ "linux-lvm",		GPT_ENT_TYPE_LINUX_LVM },
+	{ "linux-raid",		GPT_ENT_TYPE_LINUX_RAID },
+	{ "linux-swap",		GPT_ENT_TYPE_LINUX_SWAP },
+	/* Windows */
+	{ "windows",		GPT_ENT_TYPE_MS_BASIC_DATA },
+	{ "windows-reserved",	GPT_ENT_TYPE_MS_RESERVED },
+	{ "windows-recovery",	GPT_ENT_TYPE_MS_RECOVERY },
+};
+
 int
 parse_uuid(const char *s, uuid_t *uuid)
 {
 	uint32_t status;
 	uuid_t tmp;
+	size_t i;
 
 	uuid_from_string(s, uuid, &status);
 	if (status == uuid_s_ok)
 		return (0);
 
-	switch (*s) {
-	case 'd':
-		if (strcmp(s, "dfly") == 0 || strcmp(s, "dragonfly") == 0) {
-			s = "DragonFly Label64";
-			/* fall through to lookup at end */
-		}
-		break;
-	case 'e':
-		if (strcmp(s, "efi") == 0) {
-			uuid_t efi = GPT_ENT_TYPE_EFI;
-			*uuid = efi;
+	for (i = 0; i < NELEM(uuid_aliases); i++) {
+		if (strcmp(s, uuid_aliases[i].alias) == 0) {
+			*uuid = uuid_aliases[i].uuid;
 			return (0);
 		}
-		break;
-	case 'h':
-		if (strcmp(s, "hammer2") == 0) {
-			uuid_t hammer2 = GPT_ENT_TYPE_DRAGONFLY_HAMMER2;
-			*uuid = hammer2;
-			return (0);
-		}
-		if (strcmp(s, "hammer") == 0) {
-			uuid_t hammer = GPT_ENT_TYPE_DRAGONFLY_HAMMER;
-			*uuid = hammer;
-			return (0);
-		}
-		if (strcmp(s, "hfs") == 0) {
-			uuid_t hfs = GPT_ENT_TYPE_APPLE_HFS;
-			*uuid = hfs;
-			return (0);
-		}
-		break;
-	case 'l':
-		if (strcmp(s, "linux") == 0) {
-			uuid_t lnx = GPT_ENT_TYPE_MS_BASIC_DATA;
-			*uuid = lnx;
-			return (0);
-		}
-		break;
-	case 's':
-		if (strcmp(s, "swap") == 0) {
-			uuid_t sw = GPT_ENT_TYPE_FREEBSD_SWAP;
-			*uuid = sw;
-			return (0);
-		}
-		break;
-	case 'u':
-		if (strcmp(s, "ufs") == 0) {
-			uuid_t ufs = GPT_ENT_TYPE_FREEBSD_UFS;
-			*uuid = ufs;
-			return (0);
-		}
-		break;
-	case 'w':
-		if (strcmp(s, "windows") == 0) {
-			uuid_t win = GPT_ENT_TYPE_MS_BASIC_DATA;
-			*uuid = win;
-			return (0);
-		}
-		break;
 	}
 
 	uuid_name_lookup(&tmp, s, &status);
@@ -334,10 +328,11 @@ parse_uuid(const char *s, uuid_t *uuid)
 		return(0);
 	}
 
+	warnx("unknown partition type: %s", s);
 	return (EINVAL);
 }
 
-void*
+void *
 gpt_read(int fd, off_t lba, size_t count)
 {
 	off_t ofs;
