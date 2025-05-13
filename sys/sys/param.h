@@ -255,9 +255,10 @@
  * 600509 - add futimesat() (legacy function), add HAVE_FUTIMESAT
  * 600510 - add PROC_REAP_KILL to procctl(2)
  * 600511 - remove <timers.h>
+ * 600512 - remove obsolete DSO_COMPATMBR from <sys/disk.h>
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600511	/* propagated to newvers */
+#define __DragonFly_version 600512	/* propagated to newvers */
 
 #include <sys/_null.h>
 

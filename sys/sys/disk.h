@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,7 +30,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
  * <phk@FreeBSD.ORG> wrote this file.  As long as you retain this notice you
@@ -105,9 +105,6 @@ struct disk_info {
  *		  cd's don't have disklabels and the default compat label
  *		  does not implement an 'a' partition.
  *
- * COMPATMBR	- used by the vn device to request that one sector be
- *		  reserved as if an MBR were present even when one isn't.
- *
  * MBRQUIET	- silently ignore MBR probe if unable to read sector 0.
  *		  used by VN.
  *
@@ -121,7 +118,7 @@ struct disk_info {
 #define DSO_ONESLICE		0x0002
 #define DSO_COMPATLABEL		0x0004
 #define DSO_COMPATPARTA		0x0008
-#define DSO_COMPATMBR		0x0010
+/* 0x0010 unused; was DSO_COMPATMBR */
 #define DSO_RAWEXTENSIONS	0x0020
 #define DSO_MBRQUIET		0x0040
 #define DSO_DEVICEMAPPER	0x0080

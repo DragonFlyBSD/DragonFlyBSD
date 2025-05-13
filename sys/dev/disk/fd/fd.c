@@ -396,23 +396,23 @@ fd_cmd(struct fdc_data *fdc, int n_out, ...)
 	return 0;
 }
 
-static int 
+static int
 enable_fifo(fdc_p fdc)
 {
 	int i, j;
 
 	if ((fdc->flags & FDC_HAS_FIFO) == 0) {
-		
+
 		/*
-		 * XXX: 
+		 * XXX:
 		 * Cannot use fd_cmd the normal way here, since
 		 * this might be an invalid command. Thus we send the
 		 * first byte, and check for an early turn of data directon.
 		 */
-		
+
 		if (out_fdc(fdc, I8207X_CONFIGURE) < 0)
 			return fdc_err(fdc, "Enable FIFO failed\n");
-		
+
 		/* If command is invalid, return */
 		j = FDSTS_TIMEOUT;
 		while ((i = fdsts_rd(fdc) & (NE7_DIO | NE7_RQM))
@@ -423,7 +423,7 @@ enable_fifo(fdc_p fdc)
 			}
 			DELAY(1);
 		}
-		if (j<0 || 
+		if (j<0 ||
 		    fd_cmd(fdc, 3,
 			   0, (fifo_threshold - 1) & 0xf, 0, 0) < 0) {
 			fdc_reset(fdc);
@@ -541,7 +541,7 @@ fdc_alloc_resources(struct fdc_data *fdc)
 	 * one with offset 7 as control register.
 	 */
 	fdc->res_ioport = bus_alloc_resource(dev, SYS_RES_IOPORT,
-					     &fdc->rid_ioport, 0ul, ~0ul, 
+					     &fdc->rid_ioport, 0ul, ~0ul,
 					     ispcmcia ? 8 : (ispnp ? 1 : 6),
 					     RF_ACTIVE);
 	if (fdc->res_ioport == NULL) {
@@ -602,7 +602,7 @@ fdc_alloc_resources(struct fdc_data *fdc)
 	}
 
 	fdc->res_irq = bus_alloc_resource(dev, SYS_RES_IRQ,
-					  &fdc->rid_irq, 0ul, ~0ul, 1, 
+					  &fdc->rid_irq, 0ul, ~0ul, 1,
 					  RF_ACTIVE);
 	if (fdc->res_irq == NULL) {
 		device_printf(dev, "cannot reserve interrupt line\n");
@@ -611,7 +611,7 @@ fdc_alloc_resources(struct fdc_data *fdc)
 
 	if ((fdc->flags & FDC_NODMA) == 0) {
 		fdc->res_drq = bus_alloc_resource(dev, SYS_RES_DRQ,
-						  &fdc->rid_drq, 0ul, ~0ul, 1, 
+						  &fdc->rid_drq, 0ul, ~0ul, 1,
 						  RF_ACTIVE);
 		if (fdc->res_drq == NULL) {
 			device_printf(dev, "cannot reserve DMA request line\n");
@@ -712,7 +712,7 @@ fdc_probe(device_t dev)
 	fdout_wr(fdc, FDO_FRST);
 
 	/* see if it can handle a command */
-	if (fd_cmd(fdc, 3, NE7CMD_SPECIFY, NE7_SPEC_1(3, 240), 
+	if (fd_cmd(fdc, 3, NE7CMD_SPECIFY, NE7_SPEC_1(3, 240),
 		   NE7_SPEC_2(2, 0), 0)) {
 		error = ENXIO;
 		goto out;
@@ -833,7 +833,7 @@ fdc_print_child(device_t me, device_t child)
 	retval += bus_print_child_header(me, child);
 	retval += kprintf(" on %s drive %d\n", device_get_nameunit(me),
 	       fdc_get_fdunit(child));
-	
+
 	return (retval);
 }
 
@@ -867,7 +867,7 @@ DRIVER_MODULE(fdc, acpi, fdc_driver, fdc_devclass, NULL, NULL);
 
 /******************************************************************/
 /*
- * devices attached to the controller section.  
+ * devices attached to the controller section.
  */
 static int
 fd_probe(device_t dev)
@@ -1054,7 +1054,7 @@ fd_attach(device_t dev)
 	make_dev(&fd_ops, dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128 + 10),
 		 UID_ROOT, GID_WHEEL, 0600, "fd%d.1232", fd->fdu);
 
-	devstat_add_entry(&fd->device_stats, device_get_name(dev), 
+	devstat_add_entry(&fd->device_stats, device_get_name(dev),
 			  device_get_unit(dev), 512, DEVSTAT_NO_ORDERED_TAGS,
 			  DEVSTAT_TYPE_FLOPPY | DEVSTAT_TYPE_IF_OTHER,
 			  DEVSTAT_PRIORITY_FD);
@@ -1064,7 +1064,7 @@ fd_attach(device_t dev)
 		ft = &fd_types[fd->type - 1];
 		info.d_media_blksize = 128 << ft->secsize;
 		info.d_media_blocks = ft->size;
-		info.d_dsflags = DSO_COMPATPARTA | DSO_COMPATMBR;
+		info.d_dsflags = DSO_COMPATPARTA;
 		info.d_nheads = ft->heads;
 		info.d_secpertrack = ft->sectrac;
 		info.d_secpercyl = ft->sectrac * ft->heads;
@@ -1430,9 +1430,9 @@ Fdopen(struct dev_open_args *ap)
 	ft = &fd->ft;
 	info.d_media_blksize = 128 << ft->secsize;
 	info.d_media_blocks = ft->size;
-	info.d_dsflags = DSO_COMPATPARTA | DSO_COMPATMBR;
+	info.d_dsflags = DSO_COMPATPARTA;
 	info.d_nheads = ft->heads;
-	info.d_secpertrack = ft->sectrac; 
+	info.d_secpertrack = ft->sectrac;
 	info.d_secpercyl = ft->sectrac * ft->heads;
 	info.d_ncylinders = ft->size / info.d_secpercyl;
 	disk_setdiskinfo(&fd->disk, &info);
@@ -1980,9 +1980,9 @@ fdstate(fdc_p fdc)
 		callout_reset(&fd->tohandle, hz, fd_iotimeout, fdc);
 		return (0);	/* will return later */
 	case PIOREAD:
-		/* 
+		/*
 		 * actually perform the PIO read.  The IOCOMPLETE case
-		 * removes the timeout for us.  
+		 * removes the timeout for us.
 		 */
 		(void)fdcpio(fdc,bp->b_cmd,bp->b_data+fd->skip,fdblk);
 		fdc->state = IOCOMPLETE;
@@ -2262,7 +2262,7 @@ fdformat(cdev_t dev, struct fd_formb *finfo, struct ucred *cred)
 	 * calculate a fake blkno, so fdstrategy() would initiate a
 	 * seek to the requested cylinder
 	 */
-	bp->b_bio1.bio_offset = (off_t)(finfo->cyl * 
+	bp->b_bio1.bio_offset = (off_t)(finfo->cyl *
 		(fd->ft.sectrac * fd->ft.heads)
 		+ finfo->head * fd->ft.sectrac) * fdblk;
 	bp->b_bio1.bio_driver_info = dev;

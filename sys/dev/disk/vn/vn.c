@@ -231,7 +231,7 @@ vnopen(struct dev_open_args *ap)
 	 * the slice/parition code for vn accesses through partitions, and
 	 * used directly if you open the 'whole disk' device.
 	 *
-	 * si_bsize_best must be reinitialized in case VN has been 
+	 * si_bsize_best must be reinitialized in case VN has been
 	 * reconfigured, plus make it at least VN_BSIZE_BEST for efficiency.
 	 */
 	dev->si_bsize_phys = vn->sc_secsize;
@@ -311,8 +311,8 @@ vnstrategy(struct dev_strategy_args *ap)
 		/*
 		 * VNODE I/O
 		 *
-		 * If an error occurs, we set B_ERROR but we do not set 
-		 * B_INVAL because (for a write anyway), the buffer is 
+		 * If an error occurs, we set B_ERROR but we do not set
+		 * B_INVAL because (for a write anyway), the buffer is
 		 * still valid.
 		 */
 		struct uio auio;
@@ -525,7 +525,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 	struct disk_info info;
 
 	flags = FREAD|FWRITE;
-	error = nlookup_init(&nd, vio->vn_file, 
+	error = nlookup_init(&nd, vio->vn_file,
 				UIO_USERSPACE, NLC_FOLLOW|NLC_LOCKVP);
 	if (error)
 		return (error);
@@ -576,11 +576,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 	bzero(&info, sizeof(struct disk_info));
 	info.d_media_blksize = vn->sc_secsize;
 	info.d_media_blocks = vn->sc_size;
-	/*
-	 * reserve mbr sector for backwards compatibility
-	 * when no slices exist.
-	 */
-	info.d_dsflags = DSO_COMPATMBR | DSO_RAWPSIZE;
+	info.d_dsflags = DSO_RAWPSIZE;
 	info.d_secpertrack = 32;
 	info.d_nheads = 64 / (vn->sc_secsize / DEV_BSIZE);
 	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
@@ -627,7 +623,7 @@ vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 	 * sc_secsize is PAGE_SIZE'd
 	 *
 	 * vio->vn_size is in PAGE_SIZE'd chunks.
-	 * sc_size must be in PAGE_SIZE'd chunks.  
+	 * sc_size must be in PAGE_SIZE'd chunks.
 	 * Note the truncation.
 	 */
 
@@ -654,11 +650,7 @@ vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 		bzero(&info, sizeof(struct disk_info));
 		info.d_media_blksize = vn->sc_secsize;
 		info.d_media_blocks = vn->sc_size;
-		/*
-		 * reserve mbr sector for backwards compatibility
-		 * when no slices exist.
-		 */
-		info.d_dsflags = DSO_COMPATMBR | DSO_RAWPSIZE;
+		info.d_dsflags = DSO_RAWPSIZE;
 		info.d_secpertrack = 32;
 		info.d_nheads = 64 / (vn->sc_secsize / DEV_BSIZE);
 		info.d_secpercyl = info.d_secpertrack * info.d_nheads;
@@ -762,7 +754,7 @@ vnclear(struct vn_softc *vn)
 static int
 vnget(cdev_t dev, struct vn_softc *vn, struct vn_user *vnu)
 {
-	int error, found = 0; 
+	int error, found = 0;
 	char *freepath, *fullpath;
 	struct vattr vattr;
 
@@ -797,14 +789,14 @@ vnget(cdev_t dev, struct vn_softc *vn, struct vn_user *vnu)
 					vn->sc_vp);
 				return(error);
 			}
-			
+
 			strlcpy(vnu->vnu_file, fullpath,
 				sizeof(vnu->vnu_file));
 			kfree(freepath, M_TEMP);
 			vnu->vnu_dev = vattr.va_fsid;
 			vnu->vnu_ino = vattr.va_fileid;
 
-		} 
+		}
 		else if (vn->sc_flags & VNF_INITED && vn->sc_object != NULL){
 
 			strlcpy(vnu->vnu_file, _VN_USER_SWAP,
@@ -879,7 +871,7 @@ vn_create(int unit, int clone)
 	return ret_dev;
 }
 
-static int 
+static int
 vn_modevent(module_t mod, int type, void *data)
 {
 	struct vn_softc *vn;

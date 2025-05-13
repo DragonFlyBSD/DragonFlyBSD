@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,7 +30,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  */
 /*
  * Copyright (c) 1995 Jason R. Thorpe.
@@ -290,7 +290,7 @@ ccdattach(void)
 	else
 		kprintf("ccd0: Concatenated disk driver\n");
 
-	ccd_softc = kmalloc(num * sizeof(struct ccd_softc), M_DEVBUF, 
+	ccd_softc = kmalloc(num * sizeof(struct ccd_softc), M_DEVBUF,
 			    M_WAITOK | M_ZERO);
 	ccddevs = kmalloc(num * sizeof(struct ccddevice), M_DEVBUF,
 			  M_WAITOK | M_ZERO);
@@ -408,7 +408,7 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 
 	lockinit(&cs->sc_lock, "ccdlck", 0, 0);
 	ccdlock(cs);
-	
+
 	/*
 	 * Verify that each component piece exists and record
 	 * relevant information about it.
@@ -455,7 +455,7 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 #endif
 			goto fail;
 		}
-		if (dpart.fstype != FS_CCD && 
+		if (dpart.fstype != FS_CCD &&
 		    !kuuid_is_ccd(&dpart.fstype_uuid)) {
 			kprintf("ccd%d: %s: filesystem type must be 'ccd'\n",
 				ccd->ccd_unit, ci->ci_path);
@@ -540,7 +540,7 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 			/*
 			 * Check to see if an even number of components
 			 * have been specified.  The interleave must also
-			 * be non-zero in order for us to be able to 
+			 * be non-zero in order for us to be able to
 			 * guarentee the topology.
 			 */
 			if (cs->sc_nccdisks % 2) {
@@ -698,7 +698,7 @@ ccdinterleave(struct ccd_softc *cs, int unit)
 		ii->ii_startblk = bn / cs->sc_ileave;
 
 		/*
-		 * Record starting component block using an sc_ileave 
+		 * Record starting component block using an sc_ileave
 		 * blocksize.  This value is relative to the beginning of
 		 * a component disk.
 		 */
@@ -709,7 +709,7 @@ ccdinterleave(struct ccd_softc *cs, int unit)
 		 * and record their indices.
 		 */
 		ix = 0;
-		for (ci = cs->sc_cinfo; 
+		for (ci = cs->sc_cinfo;
 		    ci < &cs->sc_cinfo[cs->sc_nccdisks]; ci++) {
 			if (ci->ci_size >= smallci->ci_size) {
 				ii->ii_index[ix++] = ci - cs->sc_cinfo;
@@ -898,9 +898,9 @@ ccdstart(struct ccd_softc *cs, struct bio *bio)
 			 * also try to avoid hogging.
 			 */
 			if (cbp[0]->cb_buf.b_cmd != BUF_CMD_READ) {
-				vn_strategy(cbp[0]->cb_vp, 
+				vn_strategy(cbp[0]->cb_vp,
 					    &cbp[0]->cb_buf.b_bio1);
-				vn_strategy(cbp[1]->cb_vp, 
+				vn_strategy(cbp[1]->cb_vp,
 					    &cbp[1]->cb_buf.b_bio1);
 			} else {
 				int pick = cs->sc_pick;
@@ -911,7 +911,7 @@ ccdstart(struct ccd_softc *cs, struct bio *bio)
 					cs->sc_pick = pick = 1 - pick;
 				}
 				cs->sc_blk[pick] = doffset + rcount;
-				vn_strategy(cbp[pick]->cb_vp, 
+				vn_strategy(cbp[pick]->cb_vp,
 					    &cbp[pick]->cb_buf.b_bio1);
 			}
 		} else {
@@ -985,8 +985,8 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio,
 		ii--;
 
 		/*
-		 * off is the logical superblock relative to the beginning 
-		 * of this interleave block.  
+		 * off is the logical superblock relative to the beginning
+		 * of this interleave block.
 		 */
 		off = cbn - ii->ii_startblk;
 
@@ -997,7 +997,7 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio,
 		 * adding 'off' and ii->ii_startoff together.  However, 'off'
 		 * must typically be divided by the number of components in
 		 * this interleave array to be properly convert it from a
-		 * CCD-relative logical superblock number to a 
+		 * CCD-relative logical superblock number to a
 		 * component-relative superblock number.
 		 */
 		if (ii->ii_ndisk == 1) {
@@ -1014,7 +1014,7 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio,
 				 * in a single interleave array.  We double
 				 * up on the first half of the available
 				 * components and our mirror is in the second
-				 * half.  This only works with a single 
+				 * half.  This only works with a single
 				 * interleave array because doubling up
 				 * doubles the number of sectors, so there
 				 * cannot be another interleave array because
@@ -1026,7 +1026,7 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio,
 				cbn = ii->ii_startoff + off / ndisk2;
 				ci2 = &cs->sc_cinfo[ccdisk + ndisk2];
 			} else if (cs->sc_cflags & CCDF_PARITY) {
-				/* 
+				/*
 				 * XXX not implemented yet
 				 */
 				int ndisk2 = ii->ii_ndisk - 1;
@@ -1187,7 +1187,7 @@ ccdiodone(struct bio *bio)
 #endif
 
 	/*
-	 * If an error occured, report it.  If this is a mirrored 
+	 * If an error occured, report it.  If this is a mirrored
 	 * configuration and the first of two possible reads, do not
 	 * set the error in the bp yet because the second read may
 	 * succeed.
@@ -1200,7 +1200,7 @@ ccdiodone(struct bio *bio)
 		    (cbp->cb_pflags & CCDPF_MIRROR_DONE) == 0) {
 			/*
 			 * We will try our read on the other disk down
-			 * below, also reverse the default pick so if we 
+			 * below, also reverse the default pick so if we
 			 * are doing a scan we do not keep hitting the
 			 * bad disk first.
 			 */
@@ -1209,7 +1209,7 @@ ccdiodone(struct bio *bio)
 			sc->sc_blk[sc->sc_pick] = obio->bio_offset;
 		} else {
 			obp->b_flags |= B_ERROR;
-			obp->b_error = cbp->cb_buf.b_error ? 
+			obp->b_error = cbp->cb_buf.b_error ?
 			    cbp->cb_buf.b_error : EIO;
 		}
 		kprintf("ccd%d: error %d on component %d "
@@ -1225,7 +1225,7 @@ ccdiodone(struct bio *bio)
 	 * buffers and we fall through only after both are finished.
 	 *
 	 * If we are reading only one I/O is initiated at a time.  If an
-	 * error occurs we initiate the second I/O and return, otherwise 
+	 * error occurs we initiate the second I/O and return, otherwise
 	 * we free the second I/O without initiating it.
 	 */
 
@@ -1245,15 +1245,15 @@ ccdiodone(struct bio *bio)
 		} else {
 			/*
 			 * When reading, either dispose of the second buffer
-			 * or initiate I/O on the second buffer if an error 
+			 * or initiate I/O on the second buffer if an error
 			 * occured with this one.
 			 */
 			if ((cbp->cb_pflags & CCDPF_MIRROR_DONE) == 0) {
 				if (cbp->cb_buf.b_flags & B_ERROR) {
-					cbp->cb_mirror->cb_pflags |= 
+					cbp->cb_mirror->cb_pflags |=
 					    CCDPF_MIRROR_DONE;
 					vn_strategy(
-					    cbp->cb_mirror->cb_vp, 
+					    cbp->cb_mirror->cb_vp,
 					    &cbp->cb_mirror->cb_buf.b_bio1
 					);
 					putccdbuf(cbp);
@@ -1320,7 +1320,7 @@ ccdioctl(struct dev_ioctl_args *ap)
 			ccdunlock(cs);
 			return (EINVAL);
 		}
- 
+
 		/* Fill in some important bits. */
 		ccd.ccd_unit = unit;
 		ccd.ccd_interleave = ccio->ccio_ileave;
@@ -1415,13 +1415,6 @@ ccdioctl(struct dev_ioctl_args *ap)
 		info.d_secpertrack   = cs->sc_geom.ccg_nsectors;
 		info.d_ncylinders    = cs->sc_geom.ccg_ncylinders;
 		info.d_secpercyl     = info.d_nheads * info.d_secpertrack;
-
-		/*
-		 * For cases where a label is directly applied to the ccd,
-		 * without slices, DSO_COMPATMBR forces one sector be 
-		 * reserved for backwards compatibility.
-		 */
-		info.d_dsflags	     = DSO_COMPATMBR;
 		disk_setdiskinfo(&cs->sc_disk, &info);
 
 		ccdunlock(cs);
@@ -1535,7 +1528,7 @@ ccdlookup(char *path, struct vnode **vpp)
 		goto done;
 	}
 
-	if (!vn_isdisk(vp, &error)) 
+	if (!vn_isdisk(vp, &error))
 		goto done;
 
 #ifdef DEBUG
@@ -1560,7 +1553,7 @@ static int
 ccdlock(struct ccd_softc *cs)
 {
 	lockmgr(&cs->sc_lock, LK_EXCLUSIVE);
-	
+
 	return (0);
 }
 
