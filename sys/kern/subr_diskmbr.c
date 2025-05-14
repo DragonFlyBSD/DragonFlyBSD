@@ -39,9 +39,6 @@
 #include <sys/buf.h>
 #include <sys/conf.h>
 #include <sys/diskslice.h>
-#define	DOSPTYP_EXTENDED	5
-#define	DOSPTYP_EXTENDEDX	15
-#define	DOSPTYP_ONTRACK		84
 #include <sys/diskmbr.h>
 #include <sys/disk.h>
 #include <sys/malloc.h>
@@ -300,8 +297,8 @@ reread_mbr:
 	/* Handle extended partitions. */
 	sp -= NDOSPART;
 	for (dospart = 0; dospart < NDOSPART; dospart++, sp++) {
-		if (sp->ds_type == DOSPTYP_EXTENDED ||
-		    sp->ds_type == DOSPTYP_EXTENDEDX) {
+		if (sp->ds_type == DOSPTYP_EXT ||
+		    sp->ds_type == DOSPTYP_EXTLBA) {
 			mbr_extended(wdev, info, ssp,
 				     sp->ds_offset, sp->ds_size, sp->ds_offset,
 				     max_nsectors, max_ntracks, mbr_offset, 1);
@@ -472,8 +469,8 @@ mbr_extended(cdev_t dev, struct disk_info *info, struct diskslices *ssp,
 		if (dp->dp_scyl == 0 && dp->dp_shd == 0 && dp->dp_ssect == 0
 		    && dp->dp_start == 0 && dp->dp_size == 0)
 			continue;
-		if (dp->dp_typ == DOSPTYP_EXTENDED ||
-		    dp->dp_typ == DOSPTYP_EXTENDEDX) {
+		if (dp->dp_typ == DOSPTYP_EXT ||
+		    dp->dp_typ == DOSPTYP_EXTLBA) {
 			static char buf[32];
 
 			sname = dsname(dev, dkunit(dev), WHOLE_DISK_SLICE,

@@ -56,6 +56,7 @@
 #define	DOSPTYP_EFI	0xef	/* EFI system partition */
 #define	DOSPTYP_EXT	0x05	/* DOS extended partition */
 #define	DOSPTYP_EXTLBA	0x0f	/* DOS extended partition */
+#define	DOSPTYP_ONTRACK	0x54	/* Ontrack Disk Manager */
 
 #ifndef _STANDALONE
 static const struct dos_ptype
