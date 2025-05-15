@@ -46,8 +46,10 @@
 #include <sys/device.h>
 #include <sys/gpt.h>
 
+#define	MAX_GPT_ENTRIES	128	/* max number of GPT entries */
+
 static void gpt_setslice(const char *sname, struct disk_info *info,
-			 struct diskslice *sp, struct gpt_ent *sent);
+			 struct diskslice *sp, const struct gpt_ent *sent);
 
 /*
  * Handle GPT on raw disk.  Note that GPTs are not recursive.  The MBR is
@@ -76,7 +78,7 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	uint32_t crc;
 	uint32_t table_lba;
 	uint32_t table_blocks;
-	int i, j;
+	int i;
 	const char *dname;
 
 	error = 0;
@@ -130,9 +132,11 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	table_lba = le32toh(gpt->hdr_lba_table);
 	table_blocks = (entries * entsz + info->d_media_blksize - 1) /
 		       info->d_media_blksize;
-	if (entries < 1 || entries > 128 ||
-	    entsz < 128 || (entsz & 7) || entsz > MAXBSIZE / entries ||
-	    table_lba < 2 || table_lba + table_blocks > info->d_media_blocks) {
+	if (entries < 1 || entries > MAX_GPT_ENTRIES ||
+	    entsz < sizeof(struct gpt_ent) || (entsz & 7) ||
+	    entsz > MAXBSIZE / entries ||
+	    table_lba < 2 || table_lba + table_blocks > info->d_media_blocks)
+	{
 		kprintf("%s: GPT partition table is out of bounds\n", dname);
 		error = EINVAL;
 		goto done;
@@ -167,15 +171,16 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	 *
 	 */
 	kfree(*sspp, M_DEVBUF);
-	ssp = *sspp = dsmakeslicestruct(BASE_SLICE+128, info);
+	ssp = *sspp = dsmakeslicestruct(BASE_SLICE + MAX_GPT_ENTRIES, info);
 
 	/*
 	 * Create a slice for each partition.
 	 */
-	for (i = 0; i < (int)entries && i < 128; ++i) {
+	for (i = 0; i < (int)entries && i < MAX_GPT_ENTRIES; ++i) {
 		struct gpt_ent sent;
 		char partname[2];
 		char *sname;
+		size_t j;
 
 		ent = (void *)((char *)bp2->b_data + i * entsz);
 		le_uuid_dec(&ent->ent_type, &sent.ent_type);
@@ -229,7 +234,7 @@ done:
 
 static void
 gpt_setslice(const char *sname, struct disk_info *info, struct diskslice *sp,
-	     struct gpt_ent *sent)
+	     const struct gpt_ent *sent)
 {
 	sp->ds_offset = sent->ent_lba_start;
 	sp->ds_size   = sent->ent_lba_end + 1 - sent->ent_lba_start;
