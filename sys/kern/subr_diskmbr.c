@@ -147,10 +147,13 @@ reread_mbr:
 	cp = bp->b_data;
 	sname = dsname(dev, 0, 0, 0, NULL);
 	if (cp[0x1FE] != 0x55 || cp[0x1FF] != 0xAA) {
-		if (bootverbose)
-			kprintf("%s: invalid primary partition table: no magic\n",
-			       sname);
-		error = EINVAL;
+		if ((info->d_dsflags & DSO_NOMBR) == 0) {
+			if (bootverbose)
+				kprintf("%s: invalid primary partition table"
+					": no magic\n", sname);
+			error = EINVAL;
+		}
+		/* else: assume a COMPATIBILITY_SLICE (s0) */
 		goto done;
 	}
 

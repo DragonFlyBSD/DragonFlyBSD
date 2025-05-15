@@ -576,7 +576,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 	bzero(&info, sizeof(struct disk_info));
 	info.d_media_blksize = vn->sc_secsize;
 	info.d_media_blocks = vn->sc_size;
-	info.d_dsflags = DSO_RAWPSIZE;
+	info.d_dsflags = DSO_RAWPSIZE | DSO_NOMBR;
 	info.d_secpertrack = 32;
 	info.d_nheads = 64 / (vn->sc_secsize / DEV_BSIZE);
 	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
@@ -650,7 +650,7 @@ vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 		bzero(&info, sizeof(struct disk_info));
 		info.d_media_blksize = vn->sc_secsize;
 		info.d_media_blocks = vn->sc_size;
-		info.d_dsflags = DSO_RAWPSIZE;
+		info.d_dsflags = DSO_RAWPSIZE | DSO_NOMBR;
 		info.d_secpertrack = 32;
 		info.d_nheads = 64 / (vn->sc_secsize / DEV_BSIZE);
 		info.d_secpercyl = info.d_secpertrack * info.d_nheads;
