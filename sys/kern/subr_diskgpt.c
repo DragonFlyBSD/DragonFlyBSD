@@ -45,6 +45,7 @@
 #include <sys/bus.h>
 #include <sys/device.h>
 #include <sys/gpt.h>
+#include <sys/uuid.h>
 
 #define	MAX_GPT_ENTRIES	128	/* max number of GPT entries */
 
@@ -236,9 +237,26 @@ static void
 gpt_setslice(const char *sname, struct disk_info *info, struct diskslice *sp,
 	     const struct gpt_ent *sent)
 {
+	static const struct {
+		struct uuid	uuid;
+		int		type;
+	} slice_types[] = {
+		{ GPT_ENT_TYPE_DRAGONFLY_LABEL32,	DOSPTYP_DFLYBSD },
+		{ GPT_ENT_TYPE_DRAGONFLY_LABEL64,	DOSPTYP_DFLYBSD },
+		{ GPT_ENT_TYPE_DRAGONFLY_LEGACY,	DOSPTYP_DFLYBSD },
+		{ GPT_ENT_TYPE_FREEBSD,			DOSPTYP_386BSD },
+	};
+	size_t i;
+
+	for (i = 0; i < NELEM(slice_types); i++) {
+		if (kuuid_compare(&slice_types[i].uuid, &sent->ent_type) == 0) {
+			sp->ds_type = slice_types[i].type;
+			break;
+		}
+	}
+
 	sp->ds_offset = sent->ent_lba_start;
 	sp->ds_size   = sent->ent_lba_end + 1 - sent->ent_lba_start;
-	sp->ds_type   = 1;	/* XXX */
 	sp->ds_type_uuid = sent->ent_type;
 	sp->ds_stor_uuid = sent->ent_uuid;
 	sp->ds_reserved = 0;	/* no reserved sectors */
