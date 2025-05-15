@@ -70,8 +70,7 @@ struct disklabel32 {
 	u_int32_t d_magic;		/* the magic number */
 	u_int16_t d_type;		/* drive type */
 	u_int16_t d_subtype;		/* controller/d_type specific */
-	char	  d_typename[16];	/* type name, e.g. "eagle" */
-
+	char	d_typename[16];		/* type name, e.g. "eagle" */
 	char	d_packname[16];		/* pack identifier */
 
 	/* disk geometry: */

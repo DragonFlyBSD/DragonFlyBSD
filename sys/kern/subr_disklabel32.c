@@ -206,32 +206,35 @@ l32_readdisklabel(cdev_t dev, struct diskslice *sp, disklabel_t *lpp,
 	bp->b_cmd = BUF_CMD_READ;
 	bp->b_flags |= B_FAILONDIS;
 	dev_dstrategy(dev, &bp->b_bio1);
-	if (biowait(&bp->b_bio1, "labrd"))
+	if (biowait(&bp->b_bio1, "labrd")) {
 		msg = "I/O error";
-	else for (dlp = (struct disklabel32 *)bp->b_data;
-	    dlp <= (struct disklabel32 *)((char *)bp->b_data +
-	    secsize - sizeof(*dlp));
-	    dlp = (struct disklabel32 *)((char *)dlp + sizeof(long))) {
-		if (dlp->d_magic != DISKMAGIC32 ||
-		    dlp->d_magic2 != DISKMAGIC32) {
-			/*
-			 * NOTE! dsreadandsetlabel() does a strcmp() on
-			 * this string.
-			 */
-			if (msg == NULL)
-				msg = "no disk label";
-		} else if (dlp->d_npartitions > MAXPARTITIONS32 ||
-			   dkcksum32(dlp) != 0) {
-			msg = "disk label corrupted";
-		} else {
-			lpx.lab32 = dlp;
-			msg = l32_fixlabel(NULL, sp, lpx, FALSE);
-			if (msg == NULL) {
-				(*lpp).lab32 = kmalloc(sizeof(*dlp),
-						       M_DEVBUF, M_WAITOK|M_ZERO);
-				*(*lpp).lab32 = *dlp;
+	} else {
+		for (dlp = (struct disklabel32 *)bp->b_data;
+		     dlp <= (struct disklabel32 *)
+		         ((char *)bp->b_data + secsize - sizeof(*dlp));
+		     dlp = (struct disklabel32 *)((char *)dlp + sizeof(long)))
+		{
+			if (dlp->d_magic != DISKMAGIC32 ||
+			    dlp->d_magic2 != DISKMAGIC32) {
+				/*
+				 * NOTE! dsreadandsetlabel() does a strcmp() on
+				 * this string.
+				 */
+				if (msg == NULL)
+					msg = "no disk label";
+			} else if (dlp->d_npartitions > MAXPARTITIONS32 ||
+				   dkcksum32(dlp) != 0) {
+				msg = "disk label corrupted";
+			} else {
+				lpx.lab32 = dlp;
+				msg = l32_fixlabel(NULL, sp, lpx, FALSE);
+				if (msg == NULL) {
+					(*lpp).lab32 = kmalloc(sizeof(*dlp),
+					    M_DEVBUF, M_WAITOK | M_ZERO);
+					*(*lpp).lab32 = *dlp;
+				}
+				break;
 			}
-			break;
 		}
 	}
 	bp->b_flags |= B_INVAL | B_AGE;
@@ -353,9 +356,10 @@ l32_writedisklabel(cdev_t dev, struct diskslices *ssp, struct diskslice *sp,
 	if (error)
 		goto done;
 	for (dlp = (struct disklabel32 *)bp->b_data;
-	    dlp <= (struct disklabel32 *)
-	      ((char *)bp->b_data + lp->d_secsize - sizeof(*dlp));
-	    dlp = (struct disklabel32 *)((char *)dlp + sizeof(long))) {
+	     dlp <= (struct disklabel32 *)
+	         ((char *)bp->b_data + lp->d_secsize - sizeof(*dlp));
+	     dlp = (struct disklabel32 *)((char *)dlp + sizeof(long)))
+	{
 		if (dlp->d_magic == DISKMAGIC32 &&
 		    dlp->d_magic2 == DISKMAGIC32 && dkcksum32(dlp) == 0) {
 			*dlp = *lp;
@@ -557,9 +561,9 @@ l32_fixlabel(const char *sname, struct diskslice *sp,
 	}
 	if (pp->p_offset != start) {
 		if (sname != NULL) {
-			kprintf(
-"%s: rejecting BSD label: raw partition offset != slice offset\n",
-			       sname);
+			kprintf("%s: rejecting BSD label: "
+				"raw partition offset != slice offset\n",
+				sname);
 			slice_info(sname, sp);
 			partition_info(sname, RAW_PART, pp);
 		}
@@ -591,9 +595,10 @@ l32_fixlabel(const char *sname, struct diskslice *sp,
 			    || pp->p_offset + pp->p_size > end
 			    || pp->p_offset + pp->p_size < pp->p_offset) {
 				if (sname != NULL) {
-					kprintf(
-"%s: rejecting partition in BSD label: it isn't entirely within the slice\n",
-					       sname);
+					kprintf("%s: rejecting partition in "
+						"BSD label: it isn't entirely "
+						"within the slice\n",
+						sname);
 					if (!warned) {
 						slice_info(sname, sp);
 						warned = TRUE;
@@ -609,8 +614,8 @@ l32_fixlabel(const char *sname, struct diskslice *sp,
 	}
 	lp->d_ncylinders = sp->ds_size / lp->d_secpercyl;
 	lp->d_secperunit = sp->ds_size;
- 	lp->d_checksum = 0;
- 	lp->d_checksum = dkcksum32(lp);
+	lp->d_checksum = 0;
+	lp->d_checksum = dkcksum32(lp);
 	return (NULL);
 }
 

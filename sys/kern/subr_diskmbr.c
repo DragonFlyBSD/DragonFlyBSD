@@ -159,27 +159,27 @@ reread_mbr:
 
 	/* Make a copy of the partition table to avoid alignment problems. */
 	memcpy(&dpcopy[0], cp + DOSPARTOFF, sizeof(dpcopy));
-
 	dp0 = &dpcopy[0];
 
 	/*
-	 * Check for "Ontrack Diskmanager" or GPT.  If a GPT is found in
-	 * the first dos partition, ignore the rest of the MBR and go
-	 * to GPT processing.
+	 * Check for "Ontrack Disk Manager" or GPT.
+	 *
+	 * If a GPT is found in the first DOS partition, ignore the rest of the
+	 * MBR and go to GPT processing.
 	 */
 	for (dospart = 0, dp = dp0; dospart < NDOSPART; dospart++, dp++) {
 		if (dospart == 0 && dp->dp_typ == DOSPTYP_PMBR) {
 			if (bootverbose)
-				kprintf(
-	    "%s: Found GPT in slice #%d\n", sname, dospart + 1);
+				kprintf("%s: Found GPT in slice #%d\n",
+					sname, dospart + 1);
 			error = gptinit(dev, info, sspp);
 			goto done;
 		}
 
 		if (dp->dp_typ == DOSPTYP_ONTRACK) {
 			if (bootverbose)
-				kprintf(
-	    "%s: Found \"Ontrack Disk Manager\" on this disk.\n", sname);
+				kprintf("%s: Found \"Ontrack Disk Manager\" "
+					"on this disk.\n", sname);
 			bp->b_flags |= B_INVAL | B_AGE;
 			brelse(bp);
 			mbr_offset = 63;
@@ -190,15 +190,15 @@ reread_mbr:
 	if (bcmp(dp0, historical_bogus_partition_table,
 		 sizeof historical_bogus_partition_table) == 0 ||
 	    bcmp(dp0, historical_bogus_partition_table_fixed,
-		 sizeof historical_bogus_partition_table_fixed) == 0) {
+		 sizeof historical_bogus_partition_table_fixed) == 0)
+	{
 #if 0
 		TRACE(("%s: invalid primary partition table: historical\n",
 		       sname));
 #endif /* 0 */
 		if (bootverbose)
-			kprintf(
-     "%s: invalid primary partition table: Dangerously Dedicated (ignored)\n",
-			       sname);
+			kprintf("%s: invalid primary partition table: "
+				"Dangerously Dedicated (ignored)\n", sname);
 		error = EINVAL;
 		goto done;
 	}
@@ -357,7 +357,8 @@ check_part(char *sname, struct dos_partition *dp, u_int64_t offset,
 		 || (secpercyl != 0
 		     && (ssector1 - ssector) % (1024 * secpercyl) == 0)))
 	    || (dp->dp_scyl == 255 && dp->dp_shd == 255
-		&& dp->dp_ssect == 255)) {
+		&& dp->dp_ssect == 255))
+	{
 		TRACE(("%s: C/H/S start %d/%d/%d, start %llu: allow\n",
 		       sname, chs_scyl, dp->dp_shd, chs_ssect,
 		       (long long)ssector1));
@@ -382,7 +383,8 @@ check_part(char *sname, struct dos_partition *dp, u_int64_t offset,
 		 || (secpercyl != 0
 		     && (esector1 - esector) % (1024 * secpercyl) == 0)))
 	    || (dp->dp_ecyl == 255 && dp->dp_ehd == 255
-		&& dp->dp_esect == 255)) {
+		&& dp->dp_esect == 255))
+	{
 		TRACE(("%s: C/H/S end %d/%d/%d, end %llu: allow\n",
 		       sname, chs_ecyl, dp->dp_ehd, chs_esect,
 		       (long long)esector1));
@@ -406,8 +408,7 @@ check_part(char *sname, struct dos_partition *dp, u_int64_t offset,
 	return (error);
 }
 
-static
-void
+static void
 mbr_extended(cdev_t dev, struct disk_info *info, struct diskslices *ssp,
 	    u_int64_t ext_offset, u_int64_t ext_size, u_int64_t base_ext_offset,
 	    int nsectors, int ntracks, u_int64_t mbr_offset, int level)
@@ -425,9 +426,8 @@ mbr_extended(cdev_t dev, struct disk_info *info, struct diskslices *ssp,
 	struct diskslice *sp;
 
 	if (level >= 16) {
-		kprintf(
-	"%s: excessive recursion in search for slices; aborting search\n",
-		       devtoname(dev));
+		kprintf("%s: excessive recursion in search for slices; "
+			"aborting search\n", devtoname(dev));
 		return;
 	}
 
@@ -456,7 +456,7 @@ mbr_extended(cdev_t dev, struct disk_info *info, struct diskslices *ssp,
 			       partname);
 		if (bootverbose)
 			kprintf("%s: invalid extended partition table: no magic\n",
-			       sname);
+				sname);
 		goto done;
 	}
 

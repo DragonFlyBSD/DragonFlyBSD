@@ -83,7 +83,7 @@ static void set_ds_wlabel (struct diskslices *ssp, int slice, int wlabel);
  *	o Finish cleaning this up.
  *
  * This function returns 1 on success, 0 if transfer equates
- * to EOF (end of disk) or -1 on failure.  The appropriate 
+ * to EOF (end of disk) or -1 on failure.  The appropriate
  * 'errno' value is also set in bp->b_error and bp->b_flags
  * is marked with B_ERROR.
  */
@@ -108,7 +108,7 @@ dscheck(cdev_t dev, struct bio *bio, struct diskslices *ssp)
 	part  = dkpart(dev);
 
 	if (bio->bio_offset < 0) {
-		kprintf("dscheck(%s): negative bio_offset %lld\n", 
+		kprintf("dscheck(%s): negative bio_offset %lld\n",
 			devtoname(dev), (long long)bio->bio_offset);
 		goto bad;
 	}
@@ -189,7 +189,7 @@ doshift:
 		endsecno = sp->ds_size;
 		slicerel_secno = secno;
 	} else if (part == WHOLE_SLICE_PART) {
-		/* 
+		/*
 		 * NOTE! opens on a whole-slice partition will not attempt
 		 * to read a disklabel in, so there may not be an in-core
 		 * disklabel even if there is one on the disk.
@@ -277,20 +277,20 @@ doshift:
 	}
 
 	nbio = push_bio(bio);
-	nbio->bio_offset = (off_t)(sp->ds_offset + slicerel_secno) * 
+	nbio->bio_offset = (off_t)(sp->ds_offset + slicerel_secno) *
 			   ssp->dss_secsize;
 	return (nbio);
 
 bad_bcount:
-	kprintf(
-	"dscheck(%s): b_bcount %d is not on a sector boundary (ssize %d)\n",
-	    devtoname(dev), bp->b_bcount, ssp->dss_secsize);
+	kprintf("dscheck(%s): b_bcount %d is not on a sector boundary "
+		"(ssize %d)\n",
+		devtoname(dev), bp->b_bcount, ssp->dss_secsize);
 	goto bad;
 
 bad_blkno:
-	kprintf(
-	"dscheck(%s): bio_offset %lld is not on a sector boundary (ssize %d)\n",
-	    devtoname(dev), (long long)bio->bio_offset, ssp->dss_secsize);
+	kprintf("dscheck(%s): bio_offset %lld is not on a sector boundary "
+		"(ssize %d)\n",
+		devtoname(dev), (long long)bio->bio_offset, ssp->dss_secsize);
 bad:
 	bp->b_error = EINVAL;
 	/* fall through */
@@ -718,7 +718,7 @@ dsmakeslicestruct(int nslices, struct disk_info *info)
 	struct diskslices *ssp;
 
 	ssp = kmalloc(offsetof(struct diskslices, dss_slices) +
-		     nslices * sizeof *sp, M_DEVBUF, M_WAITOK);
+		      nslices * sizeof(*sp), M_DEVBUF, M_WAITOK);
 	ssp->dss_first_bsd_slice = COMPATIBILITY_SLICE;
 	ssp->dss_nslices = nslices;
 	ssp->dss_oflags = 0;
@@ -728,7 +728,8 @@ dsmakeslicestruct(int nslices, struct disk_info *info)
 	 * use mod/multply to translate byte offsets into sector numbers.
 	 */
 	if ((info->d_media_blksize ^ (info->d_media_blksize - 1)) ==
-	     (info->d_media_blksize << 1) - 1) {
+	    (info->d_media_blksize << 1) - 1)
+	{
 		ssp->dss_secmult = info->d_media_blksize / DEV_BSIZE;
 		if (ssp->dss_secmult & (ssp->dss_secmult - 1))
 			ssp->dss_secshift = -1;
@@ -740,7 +741,7 @@ dsmakeslicestruct(int nslices, struct disk_info *info)
 	}
 	ssp->dss_secsize = info->d_media_blksize;
 	sp = &ssp->dss_slices[0];
-	bzero(sp, nslices * sizeof *sp);
+	bzero(sp, nslices * sizeof(*sp));
 	sp[WHOLE_DISK_SLICE].ds_size = info->d_media_blocks;
 	return (ssp);
 }
@@ -757,7 +758,7 @@ dsname(cdev_t dev, int unit, int slice, int part, char *partname)
  * strategy routine must be special to allow activity.
  */
 int
-dsopen(cdev_t dev, int mode, u_int flags, 
+dsopen(cdev_t dev, int mode, u_int flags,
        struct diskslices **sspp, struct disk_info *info)
 {
 	struct diskslice *sp;

@@ -238,9 +238,7 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 					 */
 					ndev->si_flags |= SI_REPROBE_TEST;
 
-					/*
-					 * Destroy old UUID alias
-					 */
+					/* Destroy old UUID alias */
 					destroy_dev_alias(ndev,
 							  "part-by-uuid/*");
 					destroy_dev_alias(ndev,
@@ -254,7 +252,8 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 						make_dev_alias(ndev,
 						    "part-by-uuid/%s",
 						    uuid_buf);
-						udev_dict_set_cstr(ndev, "uuid", uuid_buf);
+						udev_dict_set_cstr(ndev,
+						    "uuid", uuid_buf);
 					}
 					if (packname[0]) {
 						make_dev_alias(ndev,
@@ -431,9 +430,7 @@ disk_probe(struct disk *dp, int reprobe)
 			 */
 			ndev->si_flags |= SI_REPROBE_TEST;
 
-			/*
-			 * Destroy old UUID alias
-			 */
+			/* Destroy old UUID alias */
 			destroy_dev_alias(ndev, "slice-by-uuid/*");
 
 			/* Create UUID alias */
