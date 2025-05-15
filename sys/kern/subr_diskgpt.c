@@ -76,7 +76,7 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	uint32_t crc;
 	uint32_t table_lba;
 	uint32_t table_blocks;
-	int i = 0, j;
+	int i, j;
 	const char *dname;
 
 	error = 0;
