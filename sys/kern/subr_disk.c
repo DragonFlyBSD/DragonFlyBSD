@@ -116,7 +116,7 @@ static int disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 static void disk_probe(struct disk *dp, int reprobe);
 static void _setdiskinfo(struct disk *disk, struct disk_info *info);
 static void bioqwritereorder(struct bio_queue_head *bioq);
-static void disk_cleanserial(char *serno);
+static void disk_cleanname(char *name);
 static int disk_debug(int, char *, ...) __printflike(2, 3);
 static cdev_t _disk_create_named(const char *name, int unit, struct disk *dp,
     struct dev_ops *raw_ops, int clone);
@@ -217,6 +217,7 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 			sp->ds_reserved = 0;
 
 		ops->op_getpackname(sp->ds_label, packname, sizeof(packname));
+		disk_cleanname(packname);
 
 		destroy_dev_alias(dev, "by-label/*");
 		if (packname[0])
@@ -804,7 +805,7 @@ _setdiskinfo(struct disk *disk, struct disk_info *info)
 	if (info->d_serialno && info->d_serialno[0] &&
 	    (info->d_serialno[0] != ' ' || strlen(info->d_serialno) > 1)) {
 		info->d_serialno = kstrdup(info->d_serialno, M_TEMP);
-		disk_cleanserial(info->d_serialno);
+		disk_cleanname(info->d_serialno);
 		if (disk->d_cdev) {
 			make_dev_alias(disk->d_cdev, "serno/%s",
 				       info->d_serialno);
@@ -1566,14 +1567,15 @@ disk_uninit(void)
 }
 
 /*
- * Clean out illegal characters in serial numbers.
+ * Clean out illegal characters in a name, such as a serial number,
+ * a disklabel packname.
  */
 static void
-disk_cleanserial(char *serno)
+disk_cleanname(char *name)
 {
 	char c;
 
-	while ((c = *serno) != 0) {
+	while ((c = *name) != 0) {
 		if (c >= 'a' && c <= 'z')
 			;
 		else if (c >= 'A' && c <= 'Z')
@@ -1584,7 +1586,7 @@ disk_cleanserial(char *serno)
 			;
 		else
 			c = '_';
-		*serno++= c;
+		*name++ = c;
 	}
 }
 
