@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
 .\"
-.Dd May 10, 2025
+.Dd May 16, 2025
 .Dt GPT 8
 .Os
 .Sh NAME
@@ -105,13 +105,11 @@ There is no formalized definition of the different levels yet.
 .Xc
 The
 .Ic add
-command allows the user to add a new partition to an existing table,
-the name of the disk slice for the added partition is printed.
+command allows the user to add a new partition to an existing table.
 By default, it will create a
 .Cm dfly
 partition covering the first available block
 of an unused disk space.
-The command-specific options can be used to control this behaviour.
 .Pp
 The
 .Fl b Ar number
@@ -222,9 +220,9 @@ files may also be specified.
 .Pp
 .Em NOTE!
 If you don't specify a beginning sector with
-.Fl b Ar number
-, the new partition will be aligned to 1MiB in size and position
-(in case of 512 byte sector sizes).
+.Fl b Ar number ,
+the new partition will be aligned to 1MiB in size and position
+(in case of 512 byte sector size).
 .\" ==== boot ====
 .It Nm Ic boot Ar device ...
 The
@@ -303,22 +301,30 @@ to destroy the table in a way that it can be recovered.
 .It Nm Ic expand Ar device
 The
 .Ic expand
-command will expand an existing gpt label to cover a device which
+command will expand an existing GPT label to cover a device which
 has grown in size, and will also expand the size of the last GPT
 partition to fit.
-This is typically the first step when expanding a hammer2 filesystem,
-after which disklabel -x and hammer2 growfs are run.
+This is typically the first step when expanding a HAMMER2 filesystem,
+after which commands
+.Cm disklabel -x
+and
+.Cm hammer2 growfs
+are run.
 .\" ==== init ====
 .It Nm Ic init Fl f Oo Fl B Oc Oo Fl E Oc Ar device ...
 The
 .Ic init
-command allows the user to create a new GPT similar
-to the create command, but will also populate it with
-a boot slice (s0) and a
+command will create a new GPT similar
+to the
+.Cm create
+command, but also populate it with a boot slice (s0) and a
 .Dx
 slice (s1).
-The boot slice will be dos-formatted.
-The disklabel will be left empty and ready to edit.
+The boot slice (s0) will be formatted with
+.Xr newfs_msdos 8 .
+The disklabel in the
+.Dx
+slice (s1) will be left empty and ready to edit.
 .Pp
 Due to the destructive nature of this directive, the
 .Fl f
@@ -326,16 +332,19 @@ option must also be specified.
 .Pp
 If the
 .Fl B
-option is specified, /boot/bootx64.efi will be copied into
-the msdos slice (s0), and the disklabel will be initialized
-with -B in addition to the normal -r -w.
+option is specified, the boot loader
+.Pa /boot/boot1.efi
+will be copied into the boot slice (s0), and the disklabel will be
+initialized with
+.Cm disklabel -r -w -B .
 .Pp
 If the
 .Fl E
-option is specified, the drive is TRIMed prior to the installation
-of the new label, if supported.  The operation will continue if not
-supported.  Note that this will complete destroy the contents of the
-drive.
+option is specified, the device will be first erased by using the
+.Dv TRIM
+command, if supported.
+The operation will continue if not supported.
+Note that this will completely destroy the contents of the device.
 .\" ==== label ====
 .It Xo
 .Nm
@@ -370,13 +379,13 @@ option selects the partition that starts at the given block number.
 .Pp
 The
 .Fl i Ar index
-option selects the partition with the given partition number.
-Partition numbers start at 0.
+option selects the partition with the given partition index.
+Partition indexes start at 0.
 .Pp
 The
 .Fl s Ar count
 option selects all partitions that have the given size.
-This can cause multiple partitions to be removed.
+This can cause multiple partitions to be labeled.
 .Pp
 The
 .Fl t Ar type
@@ -384,7 +393,7 @@ option selects all partitions that have the given type.
 The type is given as an UUID or by the aliases that the
 .Ic add
 command accepts.
-This can cause multiple partitions to be removed.
+This can cause multiple partitions to be labeled.
 .Pp
 The
 .Fl f Ar file
@@ -396,10 +405,10 @@ The
 option is used to read the label from the specified file.
 Only the first line is read from the file and the trailing newline
 character is stripped.
-If the file name is the dash or minus sign
-.Pq Fl ,
-the label is read from
-the standard input.
+If the file name is
+.Sq Cm -
+(dash),
+the label is read from the standard input.
 The
 .Fl l Ar label
 option is used to specify the label in the command line.
@@ -581,7 +590,7 @@ umount /mnt
 .Sh COMPATIBILITY
 The GPT that
 .Nm
-manipulates is part of the EFI standard and is supported by many OSs.
+manipulates is part of the EFI standard and is supported by many OSes.
 GPT uses 64 bits to store number of sectors, this supports very large disks.
 With the prevalent sector size of 512B this is 8 billion TB.
 .Sh SEE ALSO
@@ -601,7 +610,7 @@ The
 .Nm
 utility appeared in
 .Fx 5.0
-for ia64.
+for IA64.
 It was imported to
 .Dx 1.9 .
 .Sh BUGS
