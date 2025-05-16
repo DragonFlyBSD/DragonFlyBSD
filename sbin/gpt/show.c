@@ -92,14 +92,19 @@ show(int fd __unused)
 	printf("Disk %s: %s (%llu %u-byte sectors)\n",
 	       device_name, humansz, (long long)(mediasz / secsz), secsz);
 
-	printf("  %*s", lbawidth, "start");
-	printf("  %*s", lbawidth, "size");
-	printf("  index  contents\n");
+	printf("  %*s", lbawidth, "Start");
+	printf("  %*s", lbawidth, "Sectors");
+	printf("  %*s", (int)(sizeof(humansz) - 1), "Size");
+	printf("  Index  Contents\n");
 
 	m = map_first();
 	while (m != NULL) {
 		printf("  %*llu", lbawidth, (long long)m->map_start);
 		printf("  %*llu", lbawidth, (long long)m->map_size);
+		humanize_number(humansz, sizeof(humansz),
+				(int64_t)(m->map_size * secsz), "B",
+				HN_AUTOSCALE, HN_FRACTIONAL | HN_NOSPACE);
+		printf("  %*s", (int)(sizeof(humansz) - 1), humansz);
 		putchar(' ');
 		putchar(' ');
 		if (m->map_index != NOENTRY)
