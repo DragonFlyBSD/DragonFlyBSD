@@ -594,6 +594,7 @@ gpt_close(int fd)
 	close(fd);
 }
 
+#ifndef _LIBEFIVAR
 static struct {
 	int (*fptr)(int, char *[]);
 	const char *name;
@@ -684,3 +685,4 @@ main(int argc, char *argv[])
 	prefix(cmd);
 	return ((*cmdsw[i].fptr)(argc, argv));
 }
+#endif /* !_LIBEFIVAR */
