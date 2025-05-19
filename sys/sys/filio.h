@@ -57,4 +57,7 @@ struct fiodname_args {
 #define	FIODTYPE	_IOR('f', 122, int)	/* get d_flags type part */
 #define	FIOGETLBA	_IOR('f', 121, int)	/* get start blk # */
 #define FIODNAME	_IOW('f', 120, struct fiodname_args) /* get name of device on that fildesc */
+/* Handle lseek SEEK_DATA and SEEK_HOLE for holey file knowledge. */
+#define	FIOSEEKDATA	_IOWR('f', 97, off_t)	/* SEEK_DATA */
+#define	FIOSEEKHOLE	_IOWR('f', 98, off_t)	/* SEEK_HOLE */
 #endif /* !_SYS_FILIO_H_ */

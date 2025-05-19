@@ -40,6 +40,7 @@
 #include <sys/uio.h>
 #include <sys/fcntl.h>
 #include <sys/file.h>
+#include <sys/file2.h>
 #include <sys/stat.h>
 #include <sys/proc.h>
 #include <sys/caps.h>
@@ -54,6 +55,7 @@
 #include <sys/syslog.h>
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
+#include <sys/unistd.h>
 
 #include <sys/mplock2.h>
 
@@ -1202,6 +1204,7 @@ vn_seek(struct file *fp, off_t offset, int whence, off_t *res)
 	/*
 	 * NOTE: devfs_dev_fileops uses exact same code
 	 */
+	struct thread *td = curthread;
 	struct vnode *vp;
 	struct vattr_lite lva;
 	off_t new_offset;
@@ -1223,6 +1226,22 @@ vn_seek(struct file *fp, off_t offset, int whence, off_t *res)
 	case L_SET:
 		new_offset = offset;
 		error = 0;
+		spin_lock(&fp->f_spin);
+		break;
+	case SEEK_DATA:
+		error = fo_ioctl(fp, FIOSEEKDATA, (caddr_t)&offset,
+		    td->td_ucred, NULL);
+		if (error == ENOTTY)
+			error = EINVAL;
+		new_offset = offset;
+		spin_lock(&fp->f_spin);
+		break;
+	case SEEK_HOLE:
+		error = fo_ioctl(fp, FIOSEEKHOLE, (caddr_t)&offset,
+		    td->td_ucred, NULL);
+		if (error == ENOTTY)
+			error = EINVAL;
+		new_offset = offset;
 		spin_lock(&fp->f_spin);
 		break;
 	default:
