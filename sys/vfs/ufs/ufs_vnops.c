@@ -44,6 +44,7 @@
 #include <sys/uio.h>
 #include <sys/kernel.h>
 #include <sys/fcntl.h>
+#include <sys/filio.h>
 #include <sys/stat.h>
 #include <sys/buf.h>
 #include <sys/proc.h>
@@ -1889,6 +1890,27 @@ ufsfifo_close(struct vop_close_args *ap)
 }
 
 /*
+ * Return POSIX pathconf information applicable to ufs filesystems.
+ */
+static int
+ufs_pathconf(struct vop_pathconf_args *ap)
+{
+	int error;
+
+	error = 0;
+	switch (ap->a_name) {
+	case _PC_MIN_HOLE_SIZE:
+		*ap->a_retval = ap->a_vp->v_mount->mnt_stat.f_iosize;
+		break;
+
+	default:
+		error = vop_stdpathconf(ap);
+		break;
+	}
+	return (error);
+}
+
+/*
  * Kqfilter wrapper for fifos.
  *
  * Fall through to ufs kqfilter routines if needed 
@@ -2107,6 +2129,20 @@ bad:
 }
 
 static int
+ufs_ioctl(struct vop_ioctl_args *ap)
+{
+
+	switch (ap->a_command) {
+	case FIOSEEKDATA:
+	case FIOSEEKHOLE:
+		return (vn_bmap_seekhole(ap->a_vp, ap->a_command,
+		    (off_t *)ap->a_data, ap->a_cred));
+	default:
+		return (ENOTTY);
+	}
+}
+
+static int
 ufs_missingop(struct vop_generic_args *ap)
 {
 	panic("no vop function for %s in ufs child", ap->a_desc->sd_name);
@@ -2229,11 +2265,12 @@ static struct vop_ops ufs_vnode_vops = {
 	.vop_old_create =	ufs_create,
 	.vop_getattr =		ufs_getattr,
 	.vop_inactive =		ufs_inactive,
+	.vop_ioctl =		ufs_ioctl,
 	.vop_old_link =		ufs_link,
 	.vop_old_mkdir =	ufs_mkdir,
 	.vop_old_mknod =	ufs_mknod,
 	.vop_open =		vop_stdopen,
-	.vop_pathconf =		vop_stdpathconf,
+	.vop_pathconf =		ufs_pathconf,
 	.vop_kqfilter =		ufs_kqfilter,
 	.vop_print =		ufs_print,
 	.vop_readdir =		ufs_readdir,

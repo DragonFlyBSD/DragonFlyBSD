@@ -595,6 +595,11 @@ void	vn_syncer_thr_stop(struct mount *);
 void	vn_syncer_one(struct mount *);
 long	vn_syncer_count(struct mount *);
 
+int	vn_bmap_seekhole_locked(struct vnode *vp, u_long cmd, off_t *off,
+	    struct ucred *cred);
+int	vn_bmap_seekhole(struct vnode *vp, u_long cmd, off_t *off,
+	    struct ucred *cred);
+
 u_quad_t init_va_filerev(void);
 
 extern	struct vop_ops default_vnode_vops;

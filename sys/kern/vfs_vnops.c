@@ -59,6 +59,10 @@
 
 #include <sys/mplock2.h>
 
+#include <vm/vm_object.h>
+
+#include <machine/limits.h>
+
 static int vn_closefile (struct file *fp);
 static int vn_ioctl (struct file *fp, u_long com, caddr_t data,
 		struct ucred *cred, struct sysmsg *msg);
@@ -1195,6 +1199,79 @@ vn_kqfilter(struct file *fp, struct knote *kn)
 	int error;
 
 	error = VOP_KQFILTER(((struct vnode *)fp->f_data), kn);
+	return (error);
+}
+
+int
+vn_bmap_seekhole_locked(struct vnode *vp, u_long cmd, off_t *off,
+    struct ucred *cred)
+{
+	struct vattr vattr;
+	off_t size;
+	uint64_t bsize;
+	off_t noff, doff;
+	int error;
+
+	KASSERT(cmd == FIOSEEKHOLE || cmd == FIOSEEKDATA,
+	    ("%s: Wrong command %lu", __func__, cmd));
+	KKASSERT(vn_islocked(vp) == LK_EXCLUSIVE);
+
+	if (vp->v_type != VREG) {
+		error = ENOTTY;
+		goto out;
+	}
+	error = VOP_GETATTR(vp, &vattr);
+	if (vattr.va_size <= OFF_MAX)
+		size = vattr.va_size;
+	else
+		error = EFBIG;
+	if (error != 0)
+		goto out;
+	noff = *off;
+	if (noff < 0 || noff >= size) {
+		error = ENXIO;
+		goto out;
+	}
+
+	vm_object_page_clean(vp->v_object, 0, 0, OBJPC_SYNC);
+
+	bsize = vp->v_mount->mnt_stat.f_iosize;
+	for (; noff < size; noff += bsize - noff % bsize) {
+		error = VOP_BMAP(vp, noff, &doff, NULL, NULL, BUF_CMD_READ);
+		if (error == EOPNOTSUPP) {
+			error = ENOTTY;
+			goto out;
+		}
+		if ((doff == NOOFFSET && cmd == FIOSEEKHOLE) ||
+		    (doff != NOOFFSET && cmd == FIOSEEKDATA)) {
+			if (noff < *off)
+				noff = *off;
+			goto out;
+		}
+	}
+	if (noff > size)
+		noff = size;
+	/* noff == size. There is an implicit hole at the end of file. */
+	if (cmd == FIOSEEKDATA)
+		error = ENXIO;
+out:
+	if (error == 0)
+		*off = noff;
+	return (error);
+}
+
+int
+vn_bmap_seekhole(struct vnode *vp, u_long cmd, off_t *off, struct ucred *cred)
+{
+	int error;
+
+	KASSERT(cmd == FIOSEEKHOLE || cmd == FIOSEEKDATA,
+	    ("%s: Wrong command %lu", __func__, cmd));
+
+	if (vn_lock(vp, LK_EXCLUSIVE) != 0)
+		return (EBADF);
+	error = vn_bmap_seekhole_locked(vp, cmd, off, cred);
+	vn_unlock(vp);
 	return (error);
 }
 

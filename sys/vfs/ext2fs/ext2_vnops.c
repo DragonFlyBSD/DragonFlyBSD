@@ -1914,6 +1914,20 @@ ext2_read(struct vop_read_args *ap)
 	return (error);
 }
 
+static int
+ext2_ioctl(struct vop_ioctl_args *ap)
+{
+
+	switch (ap->a_command) {
+	case FIOSEEKDATA:
+	case FIOSEEKHOLE:
+		return (vn_bmap_seekhole(ap->a_vp, ap->a_command,
+		    (off_t *)ap->a_data, ap->a_cred));
+	default:
+		return (ENOTTY);
+	}
+}
+
 /*
  * Vnode op for writing.
  */
@@ -2116,6 +2130,7 @@ struct vop_ops ext2_vnodeops = {
 	.vop_putpages =		vop_stdputpages,
 	.vop_getattr =		ext2_getattr,
 	.vop_inactive =		ext2_inactive,
+	.vop_ioctl =		ext2_ioctl,
 	.vop_old_link =		ext2_link,
 	.vop_old_lookup =	ext2_lookup,
 	.vop_old_mkdir =	ext2_mkdir,
