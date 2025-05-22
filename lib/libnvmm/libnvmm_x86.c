@@ -732,6 +732,15 @@ assist_io_batch(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	return iocnt;
 }
 
+/*
+ * GCC 15 -Wdangling-pointer false positive: iobuf is a local array whose
+ * address is stored in io.data, but both have the same lifetime and the
+ * callbacks invoked via vcpu->cbs.io are synchronous.
+ */
+#if __GNUC__ >= 12
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdangling-pointer"
+#endif
 int
 nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
@@ -874,6 +883,9 @@ out:
 
 	return 0;
 }
+#if __GNUC__ >= 12
+#pragma GCC diagnostic pop
+#endif
 
 /* -------------------------------------------------------------------------- */
 
@@ -3207,6 +3219,11 @@ assist_mem_double_movs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 /*
  * Single memory operand, covers most instructions.
  */
+/* Same as nvmm_assist_io: membuf is local, same lifetime as mem. */
+#if __GNUC__ >= 12
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdangling-pointer"
+#endif
 static int
 assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
     struct x86_instr *instr)
@@ -3330,6 +3347,9 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 
 	return 0;
 }
+#if __GNUC__ >= 12
+#pragma GCC diagnostic pop
+#endif
 
 int
 nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)

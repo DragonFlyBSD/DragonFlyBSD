@@ -730,7 +730,7 @@ save(const char *outfile)
 #endif
 
 	sum = htonl(crc_get(&sf->crc));
-	if (savefile_binwrite(sf, &sum, sizeof(&sum))) {
+	if (savefile_binwrite(sf, &sum, sizeof(sum))) {
 		savefile_close(sf);
 		return 1;
 	}
@@ -838,7 +838,7 @@ restore(const char *infile)
 	}
 #endif
 
-	if (savefile_binread(sf, &sum, sizeof(&sum))) {
+	if (savefile_binread(sf, &sum, sizeof(sum))) {
 		savefile_close(sf);
 		return 1;
 	}

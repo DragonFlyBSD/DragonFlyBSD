@@ -1495,7 +1495,7 @@ http_print_html(FILE *out, FILE *in)
 		for (p = q = line; q < line + len; ++q) {
 			if (comment && *q == '-') {
 				if (q + 2 < line + len &&
-				    strcmp(q, "-->") == 0) {
+				    strncmp(q, "-->", 3) == 0) {
 					tag = comment = 0;
 					q += 2;
 				}
@@ -1507,7 +1507,7 @@ http_print_html(FILE *out, FILE *in)
 					fwrite(p, q - p, 1, out);
 				tag = 1;
 				if (q + 3 < line + len &&
-				    strcmp(q, "<!--") == 0) {
+				    strncmp(q, "<!--", 4) == 0) {
 					comment = 1;
 					q += 3;
 				}

@@ -554,11 +554,18 @@ static inline void *
 AllocateCopyPool(size_t l, const void *p)
 {
 	void *rv;
-		
+	const void *src = p;
+
 	rv = malloc(l);
 	if (rv == NULL)
 		return NULL;
-	memcpy(rv, p, l);
+	/*
+	 * Use a volatile pointer to prevent GCC from inferring the source
+	 * object size from the caller's pointer type, which triggers a
+	 * false -Wstringop-overread when copying from structs with
+	 * trailing flexible array members declared as [1].
+	 */
+	memcpy(rv, *(void *const volatile *)&src, l);
 	return (rv);
 }
 
