@@ -58,7 +58,7 @@ _thread_printf(int fd, const char *fmt, ...)
 void
 _thread_vprintf(int fd, const char *fmt, va_list ap)
 {
-	static const char digits[16] = "0123456789abcdef";
+	static const char digits[17] = "0123456789abcdef";
 	char buf[20];
 	char *s;
 	unsigned long r, u;

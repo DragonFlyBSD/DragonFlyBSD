@@ -69,7 +69,7 @@ static const char header[] = "Adventure save file\n";
  * Map 16 plain values into 90 coded values and back.
  */
 
-static const char coding[90] =
+static const char coding[91] =
 	"Db.GOyT]7a6zpF(c*5H9oK~0[WVAg&kR)ml,2^q-1Y3v+"
 	"X/=JirZL$C>_N?:}B{dfnsxU<@MQ%8|P!4h`ESt;euwIj"
 ;

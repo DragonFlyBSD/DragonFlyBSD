@@ -121,7 +121,7 @@ enum token {
 #define TOKEN_TYPE(token) ((token) & 0xff00)
 
 static const struct t_op {
-	char op_text[2];
+	char op_text[3];
 	short op_num;
 } ops1[] = {
 	{"=",	STREQ},

@@ -119,7 +119,7 @@ pbnum(int n)
 void
 pbnumbase(int n, int base, int d)
 {
-	static char digits[36] = "0123456789abcdefghijklmnopqrstuvwxyz";
+	static char digits[37] = "0123456789abcdefghijklmnopqrstuvwxyz";
 	int num;
 	int printed = 0;
 
