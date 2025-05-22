@@ -108,7 +108,7 @@ static
 void
 addTag(tag_t *basep, const char *name, int flags)
 {
-    tag_t tag = calloc(sizeof(struct tag), 1);
+    tag_t tag = calloc(1, sizeof(struct tag));
 
     while ((*basep) != NULL)
 	basep = &(*basep)->next;

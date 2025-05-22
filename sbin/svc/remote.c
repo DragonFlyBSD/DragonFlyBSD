@@ -69,7 +69,7 @@ connect_t **CNextP = &CHead;
 void
 remote_execute(command_t *cmd, const char *label)
 {
-	connect_t *conn = calloc(sizeof(*conn), 1);
+	connect_t *conn = calloc(1, sizeof(*conn));
 
 	conn->fd = -1;
 	conn->cmd = cmd;
@@ -214,7 +214,7 @@ remote_listener(command_t *cmd, int lfd)
 	/*
 	 * child, create our unix domain socket listener thread.
 	 */
-	conn = calloc(sizeof(*conn), 1);
+	conn = calloc(1, sizeof(*conn));
 	conn->fd = lfd;
 	conn->cmd = cmd;
 	conn->label = strdup(cmd->label);
@@ -233,7 +233,7 @@ remote_listener_thread(void *arg)
 	struct sockaddr_un sou;
 	socklen_t len;
 
-	conn = calloc(sizeof(*conn), 1);
+	conn = calloc(1, sizeof(*conn));
 	for (;;) {
 		len = sizeof(sou);
 		conn->fd = accept(lconn->fd, (void *)&sou, &len);
@@ -244,7 +244,7 @@ remote_listener_thread(void *arg)
 			break;
 		}
 		pthread_create(&conn->td, NULL, remote_accepted_thread, conn);
-		conn = calloc(sizeof(*conn), 1);
+		conn = calloc(1, sizeof(*conn));
 	}
 	free(conn);
 
@@ -341,7 +341,7 @@ decode_args(connect_t *conn __unused, char ***avp, const char *ptr, size_t len)
 		if (ptr[i] == ' ')
 			++acmax;
 	}
-	av = calloc(sizeof(char *), acmax);
+	av = calloc(acmax, sizeof(char *));
 	av[0] = NULL;
 	ac = 1;
 

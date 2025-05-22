@@ -207,7 +207,7 @@ static struct hashtab *
 ehash_new(void)
 {
 	struct hashtab *tab;
-	if (!(tab = calloc(sizeof(struct hashtab), 1)))
+	if (!(tab = calloc(1, sizeof(struct hashtab))))
 		return tab;
 	tab->hashfunc = &hashfunc_pointer;
 	tab->cmpfunc = &cmpfunc_pointer;

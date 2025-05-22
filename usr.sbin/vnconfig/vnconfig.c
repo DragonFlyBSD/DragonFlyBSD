@@ -222,7 +222,7 @@ main(int argc, char *argv[])
 	if (all) {
 		readconfig(flags);
 	} else {
-		vndisks = calloc(sizeof(struct vndisk), 1);
+		vndisks = calloc(1, sizeof(struct vndisk));
 		if (argc < optind + 1)
 			usage();
 		vndisks[0].dev = argv[optind++];

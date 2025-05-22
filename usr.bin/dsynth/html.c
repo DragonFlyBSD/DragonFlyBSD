@@ -94,7 +94,7 @@ HtmlInit(void)
 	time_t t;
 	int i;
 
-	HtmlSlots = calloc(sizeof(char *), MaxWorkers);
+	HtmlSlots = calloc(MaxWorkers, sizeof(char *));
 	HtmlLast = 0;
 	HtmlStart = time(NULL);
 

@@ -215,7 +215,7 @@ load_client_broadcast_tags(tag_t tag, const char *tagName)
 			if (i == RTAX_BRD) {
 			    asprintf(&name, "%s:%s",
 				    inet_ntoa(sain->sin_addr), tagName);
-			    ntag = calloc(sizeof(struct tag), 1);
+			    ntag = calloc(1, sizeof(struct tag));
 			    ntag->name = name;
 			    ntag->flags = 0;
 			    ntag->next = tag->next;

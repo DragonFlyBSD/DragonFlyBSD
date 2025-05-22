@@ -86,7 +86,7 @@ adup(char ***aryp)
 	if (ary) {
 		for (i = 0; ary[i]; ++i)
 			;
-		nary = calloc(sizeof(char *), i + 1);
+		nary = calloc(i + 1, sizeof(char *));
 		bcopy(ary, nary, sizeof(char *) * (i + 1));
 		for (i = 0; nary[i]; ++i)
 			nary[i] = strdup(nary[i]);

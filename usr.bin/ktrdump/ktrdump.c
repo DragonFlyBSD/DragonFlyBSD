@@ -333,7 +333,7 @@ main(int ac, char **av)
 				usleep(1000000 / 10);
 		} while (lflag);
 	} else {
-		u_int64_t *last_timestamp = calloc(sizeof(u_int64_t), ncpus);
+		u_int64_t *last_timestamp = calloc(ncpus, sizeof(u_int64_t));
 		do {
 			load_bufs(ktr_bufs, ktr_kbuf, ktr_idx);
 			for (n = 0; n < ncpus; ++n)

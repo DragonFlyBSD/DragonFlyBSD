@@ -149,7 +149,7 @@ NewSet(void)
 
 	ds = calloc(1, sizeof *ds);
 	ds->lpoints = 100000;
-	ds->points = calloc(sizeof *ds->points, ds->lpoints);
+	ds->points = calloc(ds->lpoints, sizeof *ds->points);
 	return(ds);
 }
 
@@ -161,7 +161,7 @@ AddPoint(struct dataset *ds, double a)
 	if (ds->n >= ds->lpoints) {
 		dp = ds->points;
 		ds->lpoints *= 4;
-		ds->points = calloc(sizeof *ds->points, ds->lpoints);
+		ds->points = calloc(ds->lpoints, sizeof *ds->points);
 		memcpy(ds->points, dp, sizeof *dp * ds->n);
 		free(dp);
 	}
@@ -345,7 +345,7 @@ PlotSet(struct dataset *ds, int val)
 		bar = 0;
 
 	if (pl->bar == NULL)
-		pl->bar = calloc(sizeof(char *), pl->num_datasets);
+		pl->bar = calloc(pl->num_datasets, sizeof(char *));
 	if (pl->bar[bar] == NULL) {
 		pl->bar[bar] = malloc(pl->width);
 		memset(pl->bar[bar], 0, pl->width);

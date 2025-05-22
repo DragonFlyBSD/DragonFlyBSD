@@ -108,7 +108,7 @@ next_driver_fd(int fd)
 			drivers = realloc(drivers, sizeof *driver * maxdrivers);
 		} else {
 			maxdrivers = 16;
-			drivers = calloc(sizeof *driver, maxdrivers);
+			drivers = calloc(maxdrivers, sizeof *driver);
 		}
 		if (drivers == NULL)
 			err(1, "malloc");
