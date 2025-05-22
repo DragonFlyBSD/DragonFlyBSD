@@ -147,15 +147,15 @@ common:			if (set->cmd2 & CMD2_CLR) {
 #define	ADDCMD(a, b, c, d)						\
 	if (set >= endset) {						\
 		BITCMD *newset;						\
+		ptrdiff_t setoff = set - saveset;			\
 		setlen += SET_LEN_INCR;					\
 		newset = realloc(saveset, sizeof(BITCMD) * setlen);	\
 		if (!newset) {						\
-			if (saveset)					\
-				free(saveset);				\
+			free(saveset);					\
 			saveset = NULL;					\
 			return (NULL);					\
 		}							\
-		set = newset + (set - saveset);				\
+		set = newset + setoff;					\
 		saveset = newset;					\
 		endset = newset + (setlen - 2);				\
 	}								\
