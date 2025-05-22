@@ -63,6 +63,11 @@ _alloc_safe_mem(size_t req_sz, const char *file, int line)
 	if ((mem = malloc(alloc_sz)) == NULL)
 		return NULL;
 
+	/* GCC >= 15 false positive: mem is checked non-NULL above */
+#if __GNUC__ >= 15
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 	if (mlock(mem, alloc_sz) < 0) {
 		free(mem);
 		return NULL;
@@ -93,6 +98,9 @@ _alloc_safe_mem(size_t req_sz, const char *file, int line)
 	}
 
 	return user_mem;
+#if __GNUC__ >= 15
+#pragma GCC diagnostic pop
+#endif
 }
 
 void
