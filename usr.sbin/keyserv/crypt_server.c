@@ -181,7 +181,7 @@ load_des(int warn, char *libpath)
 	} else
 		snprintf(dlpath, sizeof(dlpath), "%s", libpath);
 
-	if (dlpath != NULL && (dlhandle = dlopen(dlpath, 0444)) != NULL)
+	if (dlpath[0] != '\0' && (dlhandle = dlopen(dlpath, 0444)) != NULL)
 		_my_crypt = (int (*)())dlsym(dlhandle, "_des_crypt");
 
 	if (_my_crypt == NULL) {

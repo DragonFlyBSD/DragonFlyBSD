@@ -147,10 +147,8 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 	if (p->p_ucred) {
 		kp->kp_uid = p->p_ucred->cr_uid;
 		kp->kp_ngroups = p->p_ucred->cr_ngroups;
-		if (p->p_ucred->cr_groups) {
-			bcopy(p->p_ucred->cr_groups, kp->kp_groups,
-			      NGROUPS * sizeof(kp->kp_groups[0]));
-		}
+		bcopy(p->p_ucred->cr_groups, kp->kp_groups,
+		      NGROUPS * sizeof(kp->kp_groups[0]));
 		kp->kp_ruid = p->p_ucred->cr_ruid;
 		kp->kp_svuid = p->p_ucred->cr_svuid;
 		kp->kp_rgid = p->p_ucred->cr_rgid;

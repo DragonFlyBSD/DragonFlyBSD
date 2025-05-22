@@ -496,7 +496,7 @@ update_ifinfo(struct ifilist_head_t *ifi_head, int ifindex)
 
 			/* ifname */
 			if_indextoname(ifm->ifm_index, ifi->ifi_ifname);
-			if (ifi->ifi_ifname == NULL) {
+			if (ifi->ifi_ifname[0] == '\0') {
 				syslog(LOG_WARNING,
 				    "<%s> ifname not found (idx=%d)",
 				    __func__, ifm->ifm_index);

@@ -321,7 +321,7 @@ right_align_string(if_stat_t *ifp)
 	int	 str_len = 0, pad_len = 0;
 	char	*newstr = NULL, *ptr = NULL;
 
-	if (ifp == NULL || ifp->if_mib.ifmd_name == NULL)
+	if (ifp == NULL || ifp->if_mib.ifmd_name[0] == '\0')
 		return;
 	else {
 		/* string length + '\0' */

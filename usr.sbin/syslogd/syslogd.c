@@ -1007,7 +1007,7 @@ logmsg(int pri, const char *msg, const char *from, int flags)
 		 */
 		if (no_compress - (f->f_type != F_PIPE) < 1 &&
 		    (flags & MARK) == 0 && msglen == f->f_prevlen &&
-		    f->f_prevline && !strcmp(msg, f->f_prevline) &&
+		    f->f_prevline[0] != '\0' && !strcmp(msg, f->f_prevline) &&
 		    !strcasecmp(from, f->f_prevhost)) {
 			(void)strlcpy(f->f_lasttime, timestamp,
 				sizeof(f->f_lasttime));
