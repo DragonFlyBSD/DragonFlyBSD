@@ -305,8 +305,8 @@ atkbdc_setup(atkbdc_softc_t *sc, bus_space_tag_t tag, bus_space_handle_t h0,
 	 * On certain chipsets AT keyboard controller isn't present and is
 	 * emulated by BIOS using SMI interrupt. On those chipsets reading
 	 * from the status port may be thousand times slower than usually.
-	 * Sometimes this emilation is not working properly resulting in
-	 * commands timing our and since we assume that inb() operation
+	 * Sometimes this emulation is not working properly resulting in
+	 * commands timing out and since we assume that inb() operation
 	 * takes very little time to complete we need to adjust number of
 	 * retries to keep waiting time within a designed limits (100ms).
 	 * Measure time it takes to make read_status() call and adjust
