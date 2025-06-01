@@ -191,6 +191,8 @@ atkbdc_probe(device_t dev)
 	if (i == 0) {
 		bus_release_resource(dev, SYS_RES_IOPORT, 0, port0);
 		bus_release_resource(dev, SYS_RES_IOPORT, 1, port1);
+		if (bootverbose)
+			device_printf(dev, "AT keyboard controller not found\n");
 		return ENXIO;
 	}
 #endif
