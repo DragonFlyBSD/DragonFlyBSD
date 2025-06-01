@@ -471,7 +471,7 @@ static int
 wait_for_data(struct atkbdc_softc *kbdc)
 {
 	/* CPU will stay inside the loop for 200msec at most */
-	TOTALDELAY retry = { 200000, 0 }; /* 200ms */
+	TOTALDELAY retry = { .us = 200000, .last_clock = 0 }; /* 200ms */
 	int f;
 
 	while ((f = read_status(kbdc) & KBDS_ANY_BUFFER_FULL) == 0) {
@@ -488,7 +488,7 @@ static int
 wait_for_kbd_data(struct atkbdc_softc *kbdc)
 {
 	/* CPU will stay inside the loop for 200msec at most */
-	TOTALDELAY retry = { 200000, 0 }; /* 200ms */
+	TOTALDELAY retry = { .us = 200000, .last_clock = 0 }; /* 200ms */
 	int f;
 	unsigned char c;
 
@@ -515,7 +515,7 @@ static int
 wait_for_kbd_ack(struct atkbdc_softc *kbdc)
 {
 	/* CPU will stay inside the loop for 200msec at most */
-	TOTALDELAY retry = { 200000, 0 }; /* 200ms */
+	TOTALDELAY retry = { .us = 200000, .last_clock = 0 }; /* 200ms */
 	int f;
 	int b;
 
@@ -543,7 +543,7 @@ static int
 wait_for_aux_data(struct atkbdc_softc *kbdc)
 {
 	/* CPU will stay inside the loop for 200msec at most */
-	TOTALDELAY retry = { 200000, 0 }; /* 200ms */
+	TOTALDELAY retry = { .us = 200000, .last_clock = 0 }; /* 200ms */
 	int f;
 	unsigned char b;
 
@@ -570,7 +570,7 @@ static int
 wait_for_aux_ack(struct atkbdc_softc *kbdc)
 {
 	/* CPU will stay inside the loop for 200msec at most */
-	TOTALDELAY retry = { 200000, 0 }; /* 200ms */
+	TOTALDELAY retry = { .us = 200000, .last_clock = 0 }; /* 200ms */
 	int f;
 	int b;
 
