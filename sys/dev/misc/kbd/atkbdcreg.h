@@ -235,7 +235,6 @@ typedef struct atkbdc_softc {
     int lock;			/* FIXME: XXX not quite a semaphore... */
     kbdkqueue kbd;		/* keyboard data queue */
     kbdkqueue aux;		/* auxiliary data queue */
-    int retry;
     int quirks;			/* controller doesn't like deactivate */
 #define KBDC_QUIRK_KEEP_ACTIVATED	(1 << 0)
 #define KBDC_QUIRK_IGNORE_PROBE_RESULT	(1 << 1)

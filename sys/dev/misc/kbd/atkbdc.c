@@ -281,9 +281,6 @@ static int
 atkbdc_setup(atkbdc_softc_t *sc, bus_space_tag_t tag, bus_space_handle_t h0,
     bus_space_handle_t h1)
 {
-	u_int64_t tscval[3], read_delay;
-	register_t flags;
-
 	if (sc->ioh0 == 0) { /* XXX */
 		sc->command_byte = -1;
 		sc->command_mask = 0;
@@ -301,28 +298,6 @@ atkbdc_setup(atkbdc_softc_t *sc, bus_space_tag_t tag, bus_space_handle_t h0,
 	sc->iot = tag;
 	sc->ioh0 = h0;
 	sc->ioh1 = h1;
-	/*
-	 * On certain chipsets AT keyboard controller isn't present and is
-	 * emulated by BIOS using SMI interrupt. On those chipsets reading
-	 * from the status port may be thousand times slower than usually.
-	 * Sometimes this emulation is not working properly resulting in
-	 * commands timing out and since we assume that inb() operation
-	 * takes very little time to complete we need to adjust number of
-	 * retries to keep waiting time within a designed limits (100ms).
-	 * Measure time it takes to make read_status() call and adjust
-	 * number of retries accordingly.
-	 */
-	flags = intr_disable();
-	tscval[0] = rdtsc();
-	read_status(sc);
-	tscval[1] = rdtsc();
-	DELAY(1000);
-	tscval[2] = rdtsc();
-	intr_restore(flags);
-	read_delay = tscval[1] - tscval[0];
-	read_delay /= (tscval[2] - tscval[1]) / 1000;
-	sc->retry = 100000 / ((KBDD_DELAYTIME * 2) + read_delay);
-
 	sc->quirks = atkbdc_getquirks();
 
 	return 0;
