@@ -90,7 +90,8 @@ typedef enum buf_cmd {
 	BUF_CMD_WRITE,
 	BUF_CMD_FREEBLKS,
 	BUF_CMD_FORMAT,
-	BUF_CMD_FLUSH
+	BUF_CMD_FLUSH,
+	BUF_CMD_SEEK,
 } buf_cmd_t;
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)

@@ -90,6 +90,7 @@
 #include <sys/mutex.h>
 #include <sys/lock.h>
 #include <sys/file.h>
+#include <sys/filio.h>
 #include <sys/objcache.h>
 
 #ifdef _KERNEL
@@ -1010,6 +1011,12 @@ struct hammer2_xop_flush {
 	hammer2_xop_head_t	head;
 };
 
+struct hammer2_xop_bmap {
+	hammer2_xop_head_t	head;
+	hammer2_off_t		loffset;
+	hammer2_off_t		offset;
+};
+
 typedef struct hammer2_xop_readdir hammer2_xop_readdir_t;
 typedef struct hammer2_xop_nresolve hammer2_xop_nresolve_t;
 typedef struct hammer2_xop_unlink hammer2_xop_unlink_t;
@@ -1026,6 +1033,7 @@ typedef struct hammer2_xop_scanall hammer2_xop_scanall_t;
 typedef struct hammer2_xop_lookup hammer2_xop_lookup_t;
 typedef struct hammer2_xop_connect hammer2_xop_connect_t;
 typedef struct hammer2_xop_flush hammer2_xop_flush_t;
+typedef struct hammer2_xop_bmap hammer2_xop_bmap_t;
 
 union hammer2_xop {
 	hammer2_xop_head_t	head;
@@ -1045,6 +1053,7 @@ union hammer2_xop {
 	hammer2_xop_lookup_t	xop_lookup;
 	hammer2_xop_flush_t	xop_flush;
 	hammer2_xop_connect_t	xop_connect;
+	hammer2_xop_bmap_t	xop_bmap;
 };
 
 typedef union hammer2_xop hammer2_xop_t;
@@ -1786,6 +1795,7 @@ void hammer2_xop_inode_connect(hammer2_xop_t *xop, void *scratch, int clindex);
 void hammer2_xop_inode_flush(hammer2_xop_t *xop, void *scratch, int clindex);
 void hammer2_xop_strategy_read(hammer2_xop_t *xop, void *scratch, int clindex);
 void hammer2_xop_strategy_write(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_xop_bmap(hammer2_xop_t *xop, void *scratch, int clindex);
 
 void hammer2_dmsg_ipcluster(hammer2_xop_t *xop, void *scratch, int clindex);
 void hammer2_dmsg_readdir(hammer2_xop_t *xop, void *scratch, int clindex);
@@ -1851,6 +1861,7 @@ extern hammer2_xop_desc_t hammer2_inode_connect_desc;
 extern hammer2_xop_desc_t hammer2_inode_flush_desc;
 extern hammer2_xop_desc_t hammer2_strategy_read_desc;
 extern hammer2_xop_desc_t hammer2_strategy_write_desc;
+extern hammer2_xop_desc_t hammer2_bmap_desc;
 
 /*
  * hammer2_msgops.c

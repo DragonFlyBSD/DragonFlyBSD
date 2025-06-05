@@ -166,6 +166,12 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 		if (error == 0)
 			error = hammer2_ioctl_volume_list(ip, data);
 		break;
+	case FIOSEEKDATA:
+	case FIOSEEKHOLE:
+		if (error == 0)
+			error = vn_bmap_seekhole(ip->vp, com, (off_t *)data,
+			    cred);
+		break;
 	default:
 		error = EOPNOTSUPP;
 		break;

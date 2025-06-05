@@ -1237,7 +1237,7 @@ vn_bmap_seekhole_locked(struct vnode *vp, u_long cmd, off_t *off,
 
 	bsize = vp->v_mount->mnt_stat.f_iosize;
 	for (; noff < size; noff += bsize - noff % bsize) {
-		error = VOP_BMAP(vp, noff, &doff, NULL, NULL, BUF_CMD_READ);
+		error = VOP_BMAP(vp, noff, &doff, NULL, NULL, BUF_CMD_SEEK);
 		if (error == EOPNOTSUPP) {
 			error = ENOTTY;
 			goto out;
