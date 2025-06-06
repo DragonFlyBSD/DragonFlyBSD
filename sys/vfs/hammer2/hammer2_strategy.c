@@ -352,7 +352,7 @@ hammer2_xop_strategy_read(hammer2_xop_t *arg, void *scratch, int clindex)
 		error = HAMMER2_ERROR_EIO;
 		chain = NULL;
 	}
-	error = hammer2_xop_feed(&xop->head, chain, clindex, error);
+	hammer2_xop_feed(&xop->head, chain, clindex, error);
 	if (chain) {
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
