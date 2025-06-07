@@ -1322,6 +1322,7 @@ next_hmp:
 		spmp->iroot = hammer2_inode_get(spmp, &xop, -1, -1);
 		spmp->spmp_hmp = hmp;
 		spmp->pfs_types[0] = ripdata->meta.pfs_type;
+		spmp->ronly = ronly;
 		hammer2_inode_ref(spmp->iroot);
 		hammer2_inode_unlock(spmp->iroot);
 		hammer2_cluster_unlock(&xop.cluster);
@@ -1458,6 +1459,7 @@ next_hmp:
 		return EBUSY;
 	}
 
+	pmp->ronly = ronly;
 	pmp->hflags = info.hflags;
 	mp->mnt_flag |= MNT_LOCAL;
 	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;   /* all entry pts are SMP */
@@ -1606,6 +1608,7 @@ hammer2_remount(hammer2_dev_t *hmp, struct mount *mp, char *path __unused,
 	if (result == 0) {
 		kprintf("hammer2: enable read/write\n");
 		hmp->ronly = 0;
+		MPTOPMP(mp)->ronly = 0;
 	}
 
 	return result;
