@@ -1576,9 +1576,16 @@ int
 hammer2_remount(hammer2_dev_t *hmp, struct mount *mp, char *path __unused,
 		struct ucred *cred)
 {
+	hammer2_pfs_t *pmp;
 	hammer2_volume_t *vol;
 	struct vnode *devvp;
 	int i, error, result = 0;
+
+	pmp = MPTOPMP(mp);
+	if (pmp->ronly == 1 && (mp->mnt_kern_flag & MNTK_WANTRDWR))
+		pmp->ronly = 0;
+	else if (pmp->ronly == 0 && (mp->mnt_flag & MNT_RDONLY))
+		pmp->ronly = 1;
 
 	if (!(hmp->ronly && (mp->mnt_kern_flag & MNTK_WANTRDWR)))
 		return 0;
@@ -1608,7 +1615,7 @@ hammer2_remount(hammer2_dev_t *hmp, struct mount *mp, char *path __unused,
 	if (result == 0) {
 		kprintf("hammer2: enable read/write\n");
 		hmp->ronly = 0;
-		MPTOPMP(mp)->ronly = 0;
+		hmp->spmp->ronly = 0; /* never used */
 	}
 
 	return result;
