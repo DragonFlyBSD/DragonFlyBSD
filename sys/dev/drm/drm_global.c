@@ -1,7 +1,6 @@
 /**************************************************************************
  *
  * Copyright 2008-2009 VMware, Inc., Palo Alto, CA., USA
- * All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -28,7 +27,6 @@
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
  */
 
-#include <drm/drmP.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/module.h>

@@ -95,17 +95,8 @@ void intel_uc_fw_fetch(struct drm_i915_private *dev_priv,
 	uc_fw->ucode_offset = uc_fw->header_offset + uc_fw->header_size;
 	uc_fw->ucode_size = (css->size_dw - css->header_size_dw) * sizeof(u32);
 
-	/* Header and uCode will be loaded to WOPCM */
-	size = uc_fw->header_size + uc_fw->ucode_size;
-	if (size > intel_guc_wopcm_size(dev_priv)) {
-		DRM_WARN("%s: Firmware is too large to fit in WOPCM\n",
-			 intel_uc_fw_type_repr(uc_fw->type));
-		err = -E2BIG;
-		goto fail;
-	}
-
 	/* now RSA */
-	if (css->key_size_dw != UOS_RSA_SCRATCH_MAX_COUNT) {
+	if (css->key_size_dw != UOS_RSA_SCRATCH_COUNT) {
 		DRM_WARN("%s: Mismatched firmware RSA key size (%u)\n",
 			 intel_uc_fw_type_repr(uc_fw->type), css->key_size_dw);
 		err = -ENOEXEC;
@@ -197,24 +188,26 @@ fail:
 
 /**
  * intel_uc_fw_upload - load uC firmware using custom loader
- *
  * @uc_fw: uC firmware
- * @loader: custom uC firmware loader function
+ * @xfer: custom uC firmware loader function
  *
  * Loads uC firmware using custom loader and updates internal flags.
+ *
+ * Return: 0 on success, non-zero on failure.
  */
 int intel_uc_fw_upload(struct intel_uc_fw *uc_fw,
 		       int (*xfer)(struct intel_uc_fw *uc_fw,
 				   struct i915_vma *vma))
 {
 	struct i915_vma *vma;
+	u32 ggtt_pin_bias;
 	int err;
 
 	DRM_DEBUG_DRIVER("%s fw load %s\n",
 			 intel_uc_fw_type_repr(uc_fw->type), uc_fw->path);
 
 	if (uc_fw->fetch_status != INTEL_UC_FIRMWARE_SUCCESS)
-		return -EIO;
+		return -ENOEXEC;
 
 	uc_fw->load_status = INTEL_UC_FIRMWARE_PENDING;
 	DRM_DEBUG_DRIVER("%s fw load %s\n",
@@ -229,8 +222,9 @@ int intel_uc_fw_upload(struct intel_uc_fw *uc_fw,
 		goto fail;
 	}
 
+	ggtt_pin_bias = to_i915(uc_fw->obj->base.dev)->ggtt.pin_bias;
 	vma = i915_gem_object_ggtt_pin(uc_fw->obj, NULL, 0, 0,
-				       PIN_OFFSET_BIAS | GUC_WOPCM_TOP);
+				       PIN_OFFSET_BIAS | ggtt_pin_bias);
 	if (IS_ERR(vma)) {
 		err = PTR_ERR(vma);
 		DRM_DEBUG_DRIVER("%s fw ggtt-pin err=%d\n",
@@ -299,7 +293,7 @@ void intel_uc_fw_fini(struct intel_uc_fw *uc_fw)
  *
  * Pretty printer for uC firmware.
  */
-void intel_uc_fw_dump(struct intel_uc_fw *uc_fw, struct drm_printer *p)
+void intel_uc_fw_dump(const struct intel_uc_fw *uc_fw, struct drm_printer *p)
 {
 	drm_printf(p, "%s firmware: %s\n",
 		   intel_uc_fw_type_repr(uc_fw->type), uc_fw->path);

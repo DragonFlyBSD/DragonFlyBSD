@@ -61,6 +61,13 @@ request_firmware_nowait(struct module *module, bool uevent,
 	return 0;
 }
 
+static inline int
+request_firmware_direct(const struct firmware **fw, const char *name,
+    struct device *device)
+{
+	return request_firmware(fw, name, device);
+}
+
 static inline void
 release_firmware(const struct firmware *fw) {
 	if (fw != NULL) {

@@ -281,3 +281,4 @@ struct radeon_fence *si_copy_dma(struct radeon_device *rdev,
 
 	return fence;
 }
+

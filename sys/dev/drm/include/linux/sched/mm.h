@@ -41,4 +41,7 @@ mmget_not_zero(struct mm_struct *mm)
 
 void mmput(struct mm_struct *);
 
+#define fs_reclaim_acquire(x)
+#define fs_reclaim_release(x)
+
 #endif	/* _LINUX_SCHED_MM_H_ */

@@ -26,6 +26,11 @@
 #ifndef	_LINUX_TYPECHECK_H_
 #define	_LINUX_TYPECHECK_H_
 
-#define typecheck(type,x)
+#define typecheck(type,x) \
+({      type __var1; \
+        typeof(x) __var2; \
+        (void)(&__var1 == &__var2); \
+        1; \
+})
 
 #endif	/* _LINUX_TYPECHECK_H_ */

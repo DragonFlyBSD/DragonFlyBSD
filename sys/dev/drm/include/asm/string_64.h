@@ -30,6 +30,15 @@
 #include <linux/jump_label.h>
 
 static inline void *
+memset32(uint32_t *b, uint32_t c, size_t len)
+{
+        uint32_t *dst = b;
+        while (len--)
+                *dst++ = c;
+        return b;
+}
+
+static inline void *
 memset64(u64 *s, uint64_t v, size_t n)
 {
 	u64 *dest = s;
@@ -40,6 +49,12 @@ memset64(u64 *s, uint64_t v, size_t n)
 		: "memory");		/* clobbers */
 
 	return s;
+}
+
+static inline void *
+memset_p(void **p, void *v, size_t n)
+{
+        return memset64((u64 *)p, (uint64_t)v, n);
 }
 
 #endif	/* _ASM_STRING_64_H */

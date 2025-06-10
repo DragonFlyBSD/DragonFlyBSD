@@ -86,10 +86,10 @@ do {									\
 	callout_reset(&(timer)->timer_callout,				\
 	    (timer)->expires - jiffies, _timer_fn, (timer));		\
 
-static inline void
+static inline int
 del_timer(struct timer_list *timer)
 {
-	callout_stop(&(timer)->timer_callout);
+	return callout_stop(&(timer)->timer_callout);
 }
 
 static inline int

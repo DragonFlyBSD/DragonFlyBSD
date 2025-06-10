@@ -381,7 +381,7 @@ NETGRAPH_VJC		opt_netgraph.h
 AGP_DEBUG		opt_agp.h
 
 # DRM options
-DRM_DEBUG		opt_drm.h
+# DRM_DEBUG		opt_drm.h
 VGA_SWITCHEROO		opt_drm.h
 
 # DPT driver debug flags

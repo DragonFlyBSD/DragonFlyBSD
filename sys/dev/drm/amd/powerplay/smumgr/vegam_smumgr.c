@@ -643,6 +643,9 @@ static int vegam_get_dependency_volt_by_clk(struct pp_hwmgr *hwmgr,
 
 	/* sclk is bigger than max sclk in the dependence table */
 	*voltage |= (dep_table->entries[i - 1].vddc * VOLTAGE_SCALE) << VDDC_SHIFT;
+	vddci = phm_find_closest_vddci(&(data->vddci_voltage_table),
+			(dep_table->entries[i - 1].vddc -
+					(uint16_t)VDDC_VDDCI_DELTA));
 
 	if (SMU7_VOLTAGE_CONTROL_NONE == data->vddci_control)
 		*voltage |= (data->vbios_boot_state.vddci_bootup_value *
@@ -650,13 +653,8 @@ static int vegam_get_dependency_volt_by_clk(struct pp_hwmgr *hwmgr,
 	else if (dep_table->entries[i - 1].vddci)
 		*voltage |= (dep_table->entries[i - 1].vddci *
 				VOLTAGE_SCALE) << VDDC_SHIFT;
-	else {
-		vddci = phm_find_closest_vddci(&(data->vddci_voltage_table),
-				(dep_table->entries[i - 1].vddc -
-						(uint16_t)VDDC_VDDCI_DELTA));
-
+	else
 		*voltage |= (vddci * VOLTAGE_SCALE) << VDDCI_SHIFT;
-	}
 
 	if (SMU7_VOLTAGE_CONTROL_NONE == data->mvdd_control)
 		*mvdd = data->vbios_boot_state.mvdd_bootup_value * VOLTAGE_SCALE;
@@ -1011,6 +1009,7 @@ static int vegam_populate_single_memory_level(struct pp_hwmgr *hwmgr,
 	mem_level->DisplayWatermark = PPSMC_DISPLAY_WATERMARK_LOW;
 
 	data->display_timing.num_existing_displays = hwmgr->display_config->num_display;
+	data->display_timing.vrefresh = hwmgr->display_config->vrefresh;
 
 	if (mclk_stutter_mode_threshold &&
 		(clock <= mclk_stutter_mode_threshold) &&

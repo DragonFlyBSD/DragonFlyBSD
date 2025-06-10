@@ -31,6 +31,20 @@
 #include "drm_internal.h"
 #include "drm_legacy.h"
 
+#include <sys/bus.h>
+
+static void
+drm_pci_busdma_callback(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
+{
+	drm_dma_handle_t *dmah = arg;
+
+	if (error != 0)
+		return;
+
+	KASSERT(nsegs == 1, ("drm_pci_busdma_callback: bad dma segment count"));
+	dmah->busaddr = segs[0].ds_addr;
+}
+
 /**
  * drm_pci_alloc - Allocate a PCI consistent memory block, for DMA.
  * @dev: DRM device
@@ -45,6 +59,51 @@
  */
 drm_dma_handle_t *drm_pci_alloc(struct drm_device * dev, size_t size, size_t align)
 {
+#ifdef __DragonFly__
+	drm_dma_handle_t *dmah;
+	int ret;
+
+	/* Need power-of-two alignment, so fail the allocation if it isn't. */
+	if ((align & (align - 1)) != 0) {
+		DRM_ERROR("drm_pci_alloc with non-power-of-two alignment %d\n",
+		    (int)align);
+		return NULL;
+	}
+
+	dmah = kmalloc(sizeof(drm_dma_handle_t), M_DRM, M_ZERO | M_NOWAIT);
+	if (dmah == NULL)
+		return NULL;
+
+	ret = bus_dma_tag_create(
+	    bus_get_dma_tag(dev->dev->bsddev), /* parent */
+	    align, 0, /* align, boundary */
+	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, /* lowaddr, highaddr */
+	    size, 1, size, /* maxsize, nsegs, maxsegsize */
+	    0, /* flags */
+	    &dmah->tag);
+	if (ret != 0) {
+		kfree(dmah);
+		return NULL;
+	}
+
+	ret = bus_dmamem_alloc(dmah->tag, (void **)&dmah->vaddr,
+	    BUS_DMA_WAITOK | BUS_DMA_ZERO | BUS_DMA_NOCACHE, &dmah->map);
+	if (ret != 0) {
+		bus_dma_tag_destroy(dmah->tag);
+		kfree(dmah);
+		return NULL;
+	}
+
+	ret = bus_dmamap_load(dmah->tag, dmah->map, dmah->vaddr, size,
+	    drm_pci_busdma_callback, dmah, BUS_DMA_NOWAIT);
+	if (ret != 0) {
+		bus_dmamem_free(dmah->tag, dmah->vaddr, dmah->map);
+		bus_dma_tag_destroy(dmah->tag);
+		kfree(dmah);
+		return NULL;
+	}
+	return dmah;
+#else
 	drm_dma_handle_t *dmah;
 	unsigned long addr;
 	size_t sz;
@@ -80,6 +139,7 @@ drm_dma_handle_t *drm_pci_alloc(struct drm_device * dev, size_t size, size_t ali
 	}
 
 	return dmah;
+#endif
 }
 
 EXPORT_SYMBOL(drm_pci_alloc);
@@ -91,6 +151,14 @@ EXPORT_SYMBOL(drm_pci_alloc);
  */
 void __drm_legacy_pci_free(struct drm_device * dev, drm_dma_handle_t * dmah)
 {
+#ifdef __DragonFly__
+	if (dmah == NULL)
+		return;
+
+	bus_dmamap_unload(dmah->tag, dmah->map);
+	bus_dmamem_free(dmah->tag, dmah->vaddr, dmah->map);
+	bus_dma_tag_destroy(dmah->tag);
+#else
 	unsigned long addr;
 	size_t sz;
 
@@ -106,6 +174,7 @@ void __drm_legacy_pci_free(struct drm_device * dev, drm_dma_handle_t * dmah)
 		dma_free_coherent(&dev->pdev->dev, dmah->size, dmah->vaddr,
 				  dmah->busaddr);
 	}
+#endif
 }
 
 /**
@@ -190,14 +259,14 @@ int drm_irq_by_busid(struct drm_device *dev, void *data,
 	struct drm_irq_busid *p = data;
 
 	if (!drm_core_check_feature(dev, DRIVER_LEGACY))
-		return -EINVAL;
+		return -EOPNOTSUPP;
 
 	/* UMS was only ever support on PCI devices. */
 	if (WARN_ON(!dev->pdev))
 		return -EINVAL;
 
 	if (!drm_core_check_feature(dev, DRIVER_HAVE_IRQ))
-		return -EINVAL;
+		return -EOPNOTSUPP;
 
 	return drm_pci_irq_by_busid(dev, p);
 }
@@ -339,64 +408,6 @@ int drm_legacy_pci_init(struct drm_driver *driver, struct pci_driver *pdriver)
 	return 0;
 }
 EXPORT_SYMBOL(drm_legacy_pci_init);
-
-int drm_pcie_get_speed_cap_mask(struct drm_device *dev, u32 *mask)
-{
-	struct pci_dev *root;
-	u32 lnkcap, lnkcap2;
-
-	*mask = 0;
-	if (!dev->pdev)
-		return -EINVAL;
-
-	root = dev->pdev->bus->self;
-
-	/* we've been informed via and serverworks don't make the cut */
-	if (root->vendor == PCI_VENDOR_ID_VIA ||
-	    root->vendor == PCI_VENDOR_ID_SERVERWORKS)
-		return -EINVAL;
-
-	pcie_capability_read_dword(root, PCI_EXP_LNKCAP, &lnkcap);
-	pcie_capability_read_dword(root, PCI_EXP_LNKCAP2, &lnkcap2);
-
-	if (lnkcap2) {	/* PCIe r3.0-compliant */
-		if (lnkcap2 & PCI_EXP_LNKCAP2_SLS_2_5GB)
-			*mask |= DRM_PCIE_SPEED_25;
-		if (lnkcap2 & PCI_EXP_LNKCAP2_SLS_5_0GB)
-			*mask |= DRM_PCIE_SPEED_50;
-		if (lnkcap2 & PCI_EXP_LNKCAP2_SLS_8_0GB)
-			*mask |= DRM_PCIE_SPEED_80;
-	} else {	/* pre-r3.0 */
-		if (lnkcap & PCI_EXP_LNKCAP_SLS_2_5GB)
-			*mask |= DRM_PCIE_SPEED_25;
-		if (lnkcap & PCI_EXP_LNKCAP_SLS_5_0GB)
-			*mask |= (DRM_PCIE_SPEED_25 | DRM_PCIE_SPEED_50);
-	}
-
-	DRM_INFO("probing gen 2 caps for device %x:%x = %x/%x\n", root->vendor, root->device, lnkcap, lnkcap2);
-	return 0;
-}
-EXPORT_SYMBOL(drm_pcie_get_speed_cap_mask);
-
-int drm_pcie_get_max_link_width(struct drm_device *dev, u32 *mlw)
-{
-	struct pci_dev *root;
-	u32 lnkcap;
-
-	*mlw = 0;
-	if (!dev->pdev)
-		return -EINVAL;
-
-	root = dev->pdev->bus->self;
-
-	pcie_capability_read_dword(root, PCI_EXP_LNKCAP, &lnkcap);
-
-	*mlw = (lnkcap & PCI_EXP_LNKCAP_MLW) >> 4;
-
-	DRM_INFO("probing mlw for device %x:%x = %x\n", root->vendor, root->device, lnkcap);
-	return 0;
-}
-EXPORT_SYMBOL(drm_pcie_get_max_link_width);
 
 #else
 

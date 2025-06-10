@@ -68,86 +68,23 @@
 #define __malloc
 #define __must_check			__heedresult
 
-#define __printf(a,b)			__printflike(a,b)
+#define __printf(a,b)			__printf0like(a,b)
 
-
-#define barrier()	cpu_ccfence()
+#define	barrier()			__asm__ __volatile__("": : :"memory")
 
 #ifdef _KERNEL		/* This file is included by kdump(1) */
 
 #include <sys/param.h>
 
-/*
- * The READ_ONCE() and WRITE_ONCE() macros force volatile accesses to
- * various data types.
- * Their complexity is caused by the necessity to work-around
- * compiler cleverness and bugs.
- * Some GCC versions drop the volatile modifier if the variable used
- * is not of a scalar type.
- */
-static inline void
-__volatile_read(const volatile void *x, int size, void *result)
-{
-	switch(size) {
-	case 8:
-		*(uint64_t *)result = *(const volatile uint64_t *)x;
-		break;
-	case 4:
-		*(uint32_t *)result = *(const volatile uint32_t *)x;
-		break;
-	case 2:
-		*(uint16_t *)result = *(const volatile uint16_t *)x;
-		break;
-	case 1:
-		*(uint8_t *)result = *(const volatile uint8_t *)x;
-		break;
-	default:
-		panic("__volatile_read called with size %d\n", size);
-	}
-}
-
-static inline void
-__volatile_write(volatile void *var, int size, void *value)
-{
-	switch(size) {
-	case 8:
-		*(volatile uint64_t *)var = *(uint64_t *)value;
-		break;
-	case 4:
-		*(volatile uint32_t *)var = *(uint32_t *)value;
-		break;
-	case 2:
-		*(volatile uint16_t *)var = *(uint16_t *)value;
-		break;
-	case 1:
-		*(volatile uint8_t *)var = *(uint8_t *)value;
-		break;
-	default:
-		panic("__volatile_write called with size %d\n", size);
-	}
-
-}
-
-#define READ_ONCE(x) ({						\
-	union {							\
-		__typeof(x) initial_type;			\
-		uint8_t nc_type;				\
-	} result;						\
-								\
-	result.nc_type = 0;					\
-	__volatile_read(&(x), sizeof(x), &result.nc_type);	\
-	result.initial_type;					\
+#define READ_ONCE(x) ({							\
+	typeof(x) __tmp = *(volatile typeof(x) *)&(x);			\
+	__tmp;								\
 })
 
-#define WRITE_ONCE(var, value) ({				\
-	union {							\
-		__typeof(var) initial_type;			\
-		uint8_t nc_type;				\
-	} result;						\
-								\
-	result.initial_type = value;				\
-	__volatile_write(&(var), sizeof(var), &result.nc_type);	\
-	result.initial_type;					\
+#define WRITE_ONCE(x, val) ({						\
+	typeof(x) __tmp = (val);					\
+	*(volatile typeof(x) *)(uintptr_t)&(x) = __tmp;				\
+	__tmp;								\
 })
 
 #define __rcu

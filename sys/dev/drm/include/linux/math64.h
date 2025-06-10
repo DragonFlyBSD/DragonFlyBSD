@@ -85,4 +85,10 @@ mul_u32_u32(u32 a, u32 b)
 	return (uint64_t)a * b;
 }
 
+static inline uint64_t
+mul_u64_u32_div(u64 x, u32 y, u32 div)
+{
+        return (x * y) / div;
+}
+
 #endif	/* _LINUX_MATH64_H */

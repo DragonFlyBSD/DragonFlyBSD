@@ -238,6 +238,7 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define	PCIM_BRPM_64		0x1
 #define	PCIM_BRPM_MASK		0xf
 
+#define	PCIR_BIOS_1	0x38
 #define	PCIR_BRIDGECTL_1 0x3e
 
 /* config registers for header type 2 (CardBus) devices */

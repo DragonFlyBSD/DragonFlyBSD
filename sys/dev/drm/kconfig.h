@@ -22,6 +22,7 @@
 
 #define CONFIG_DRM_AMD_DC 1
 #define CONFIG_DRM_AMD_DC_DCN1_0 1
+#define CONFIG_DRM_AMD_DC_DCN1_01 1
 
 // CONFIG_GENERIC_ATOMIC64 is not set on x86
 

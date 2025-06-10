@@ -35,5 +35,8 @@
 
 #define trace_amd_sched_job(job)
 #define trace_amd_sched_process_job(job)
+#define trace_drm_sched_job(sched_job, entity)
+#define trace_drm_sched_job_wait_dep(sched_job, dependency)
+#define trace_drm_sched_process_job(s_fence)
 
 #endif	/* _GPU_SCHED_TRACE_H_ */

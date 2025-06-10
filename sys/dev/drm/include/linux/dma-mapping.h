@@ -30,6 +30,7 @@
 #include <linux/string.h>
 #include <linux/device.h>
 #include <linux/err.h>
+#include <linux/dma-attrs.h>
 #include <linux/dma-direction.h>
 #include <linux/scatterlist.h>
 #include <linux/bug.h>
@@ -38,11 +39,24 @@
 
 #define DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : (1ULL<<(n)) - 1)
 
+static inline int
+dma_set_max_seg_size(struct device *dev, unsigned int sz)
+{
+    return 0;
+}
+
 static inline dma_addr_t
 dma_map_page(struct device *dev, struct page *page,
     unsigned long offset, size_t size, enum dma_data_direction direction)
 {
 	return VM_PAGE_TO_PHYS((struct vm_page *)page) + offset;
+}
+
+static inline dma_addr_t
+dma_map_page_attrs(struct device *dev, struct page *page,
+    unsigned long offset, size_t size, enum dma_data_direction direction, unsigned long attrs)
+{
+    return VM_PAGE_TO_PHYS((struct vm_page *)page) + offset;
 }
 
 static inline void dma_unmap_page(struct device *dev, dma_addr_t addr,
@@ -59,6 +73,19 @@ dma_mapping_error(struct device *dev, dma_addr_t dma_addr)
 static inline int
 dma_map_sg(struct device *dev, struct scatterlist *sg,
 	   int nents, enum dma_data_direction dir)
+{
+	struct scatterlist *s;
+	int i;
+
+	for_each_sg(sg, s, nents, i)
+		s->dma_address = sg_phys(s);
+
+	return nents;
+}
+
+static inline int
+dma_map_sg_attrs(struct device *dev, struct scatterlist *sg,
+	   int nents, enum dma_data_direction dir, unsigned long attrs)
 {
 	struct scatterlist *s;
 	int i;

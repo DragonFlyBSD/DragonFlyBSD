@@ -27,8 +27,6 @@
 #include "intel_ringbuffer.h"
 #include "i915_gem_context.h"
 
-#define GEN8_LR_CONTEXT_ALIGN I915_GTT_MIN_ALIGNMENT
-
 /* Execlists regs */
 #define RING_ELSP(engine)			_MMIO((engine)->mmio_base + 0x230)
 #define RING_EXECLIST_STATUS_LO(engine)		_MMIO((engine)->mmio_base + 0x234)
@@ -37,10 +35,14 @@
 #define	  CTX_CTRL_INHIBIT_SYN_CTX_SWITCH	(1 << 3)
 #define	  CTX_CTRL_ENGINE_CTX_RESTORE_INHIBIT	(1 << 0)
 #define   CTX_CTRL_RS_CTX_ENABLE                (1 << 1)
+#define	  CTX_CTRL_ENGINE_CTX_SAVE_INHIBIT	(1 << 2)
 #define RING_CONTEXT_STATUS_BUF_BASE(engine)	_MMIO((engine)->mmio_base + 0x370)
 #define RING_CONTEXT_STATUS_BUF_LO(engine, i)	_MMIO((engine)->mmio_base + 0x370 + (i) * 8)
 #define RING_CONTEXT_STATUS_BUF_HI(engine, i)	_MMIO((engine)->mmio_base + 0x370 + (i) * 8 + 4)
 #define RING_CONTEXT_STATUS_PTR(engine)		_MMIO((engine)->mmio_base + 0x3a0)
+#define RING_EXECLIST_SQ_CONTENTS(engine)	_MMIO((engine)->mmio_base + 0x510)
+#define RING_EXECLIST_CONTROL(engine)		_MMIO((engine)->mmio_base + 0x550)
+#define	  EL_CTRL_LOAD				(1 << 0)
 
 /* The docs specify that the write pointer wraps around after 5h, "After status
  * is written out to the last available status QW at offset 5h, this pointer
@@ -100,16 +102,6 @@ struct i915_gem_context;
 
 void intel_lr_context_resume(struct drm_i915_private *dev_priv);
 
-static inline uint64_t
-intel_lr_context_descriptor(struct i915_gem_context *ctx,
-			    struct intel_engine_cs *engine)
-{
-	return ctx->engine[engine->id].lrc_desc;
-}
-
-
-/* Execlists */
-int intel_sanitize_enable_execlists(struct drm_i915_private *dev_priv,
-				    int enable_execlists);
+void intel_execlists_set_default_submission(struct intel_engine_cs *engine);
 
 #endif /* _INTEL_LRC_H_ */

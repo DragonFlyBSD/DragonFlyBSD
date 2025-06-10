@@ -70,6 +70,10 @@ void dce110_fill_display_configs(
 
 uint32_t dce110_get_min_vblank_time_us(const struct dc_state *context);
 
+#if 0 /* redundant */
+void dp_receiver_power_ctrl(struct dc_link *link, bool on);
+#endif
+
 void hwss_edp_power_control(
 		struct dc_link *link,
 		bool power_up);

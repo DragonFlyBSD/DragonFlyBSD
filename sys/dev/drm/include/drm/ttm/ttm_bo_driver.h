@@ -491,6 +491,34 @@ struct ttm_bo_device {
 };
 
 /**
+ * struct ttm_lru_bulk_move_pos
+ *
+ * @first: first BO in the bulk move range
+ * @last: last BO in the bulk move range
+ *
+ * Positions for a lru bulk move.
+ */
+struct ttm_lru_bulk_move_pos {
+	struct ttm_buffer_object *first;
+	struct ttm_buffer_object *last;
+};
+
+/**
+ * struct ttm_lru_bulk_move
+ *
+ * @tt: first/last lru entry for BOs in the TT domain
+ * @vram: first/last lru entry for BOs in the VRAM domain
+ * @swap: first/last lru entry for BOs on the swap list
+ *
+ * Helper structure for bulk moves on the LRU list.
+ */
+struct ttm_lru_bulk_move {
+	struct ttm_lru_bulk_move_pos tt[TTM_MAX_BO_PRIORITY];
+	struct ttm_lru_bulk_move_pos vram[TTM_MAX_BO_PRIORITY];
+	struct ttm_lru_bulk_move_pos swap[TTM_MAX_BO_PRIORITY];
+};
+
+/**
  * ttm_flag_masked
  *
  * @old: Pointer to the result and original value.
@@ -597,6 +625,9 @@ int ttm_mem_io_lock(struct ttm_mem_type_manager *man, bool interruptible);
 void ttm_mem_io_unlock(struct ttm_mem_type_manager *man);
 
 void ttm_bo_del_sub_from_lru(struct ttm_buffer_object *bo);
+#if 0
+void ttm_bo_add_to_lru(struct ttm_buffer_object *bo);
+#endif
 
 /**
  * __ttm_bo_reserve:

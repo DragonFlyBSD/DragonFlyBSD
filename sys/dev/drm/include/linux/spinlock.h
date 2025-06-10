@@ -56,22 +56,26 @@
 static inline void spin_lock_irq(spinlock_t *lock)
 {
 	local_irq_disable();
-	preempt_disable();
 	lockmgr(lock, LK_EXCLUSIVE);
+}
+
+static inline int spin_trylock_irq(spinlock_t *lock)
+{
+	local_irq_disable();
+	preempt_disable();
+	return lockmgr_try(lock, LK_EXCLUSIVE);
 }
 
 static inline void spin_unlock_irq(spinlock_t *lock)
 {
 	lockmgr(lock, LK_RELEASE);
 	local_irq_enable();
-	preempt_enable();
 }
 
-#define spin_lock_irqsave(lock, flags)	\
-({					\
-	local_irq_save(flags);		\
-	preempt_disable();		\
-	lockmgr(lock, LK_EXCLUSIVE);	\
+#define spin_lock_irqsave(lock, flags)  \
+({                                      \
+        local_irq_save(flags);          \
+        lockmgr(lock, LK_EXCLUSIVE);    \
 })
 
 static inline void
@@ -79,7 +83,6 @@ spin_unlock_irqrestore(spinlock_t *lock, unsigned long flags)
 {
 	lockmgr(lock, LK_RELEASE);
 	local_irq_restore(flags);
-	preempt_enable();
 }
 
 /*

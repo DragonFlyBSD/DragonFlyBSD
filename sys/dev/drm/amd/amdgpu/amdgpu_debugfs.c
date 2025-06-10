@@ -239,7 +239,7 @@ static ssize_t amdgpu_debugfs_regs_pcie_read(struct file *f, char __user *buf,
 	while (size) {
 		uint32_t value;
 
-		value = RREG32_PCIE(*pos);
+		value = RREG32_PCIE(*pos >> 2);
 		r = put_user(value, (uint32_t *)buf);
 		if (r)
 			return r;
@@ -282,7 +282,7 @@ static ssize_t amdgpu_debugfs_regs_pcie_write(struct file *f, const char __user 
 		if (r)
 			return r;
 
-		WREG32_PCIE(*pos, value);
+		WREG32_PCIE(*pos >> 2, value);
 
 		result += 4;
 		buf += 4;
@@ -694,11 +694,11 @@ static ssize_t amdgpu_debugfs_gpr_read(struct file *f, char __user *buf,
 	ssize_t result = 0;
 	uint32_t offset, se, sh, cu, wave, simd, thread, bank, *data;
 
-	if (size > 4096 || size & 3 || *pos & 3)
+	if (size & 3 || *pos & 3)
 		return -EINVAL;
 
 	/* decode offset */
-	offset = (*pos & GENMASK_ULL(11, 0)) >> 2;
+	offset = *pos & GENMASK_ULL(11, 0);
 	se = (*pos & GENMASK_ULL(19, 12)) >> 12;
 	sh = (*pos & GENMASK_ULL(27, 20)) >> 20;
 	cu = (*pos & GENMASK_ULL(35, 28)) >> 28;
@@ -707,7 +707,7 @@ static ssize_t amdgpu_debugfs_gpr_read(struct file *f, char __user *buf,
 	thread = (*pos & GENMASK_ULL(59, 52)) >> 52;
 	bank = (*pos & GENMASK_ULL(61, 60)) >> 60;
 
-	data = kcalloc(1024, sizeof(*data), GFP_KERNEL);
+	data = kmalloc_array(1024, sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
 
@@ -729,7 +729,7 @@ static ssize_t amdgpu_debugfs_gpr_read(struct file *f, char __user *buf,
 	while (size) {
 		uint32_t value;
 
-		value = data[result >> 2];
+		value = data[offset++];
 		r = put_user(value, (uint32_t *)buf);
 		if (r) {
 			result = r;
@@ -826,21 +826,13 @@ int amdgpu_debugfs_regs_init(struct amdgpu_device *adev)
 {
 	struct drm_minor *minor = adev->ddev->primary;
 	struct dentry *ent, *root = minor->debugfs_root;
-	unsigned i, j;
+	unsigned int i;
 
 	for (i = 0; i < ARRAY_SIZE(debugfs_regs); i++) {
 		ent = debugfs_create_file(debugfs_regs_names[i],
 					  S_IFREG | S_IRUGO, root,
 					  adev, debugfs_regs[i]);
-		if (IS_ERR(ent)) {
-			for (j = 0; j < i; j++) {
-				debugfs_remove(adev->debugfs_regs[i]);
-				adev->debugfs_regs[i] = NULL;
-			}
-			return PTR_ERR(ent);
-		}
-
-		if (!i)
+		if (!i && !IS_ERR_OR_NULL(ent))
 			i_size_write(ent->d_inode, adev->rmmio_size);
 		adev->debugfs_regs[i] = ent;
 	}

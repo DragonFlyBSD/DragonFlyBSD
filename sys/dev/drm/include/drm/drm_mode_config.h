@@ -36,6 +36,7 @@ struct drm_device;
 struct drm_atomic_state;
 struct drm_mode_fb_cmd2;
 struct drm_format_info;
+struct drm_display_mode;
 
 /**
  * struct drm_mode_config_funcs - basic driver provided mode setting functions
@@ -100,6 +101,17 @@ struct drm_mode_config_funcs {
 	 * there's no reason this is a core function.
 	 */
 	void (*output_poll_changed)(struct drm_device *dev);
+
+	/**
+	 * @mode_valid:
+	 *
+	 * Device specific validation of display modes. Can be used to reject
+	 * modes that can never be supported. Only device wide constraints can
+	 * be checked here. crtc/encoder/bridge/connector specific constraints
+	 * should be checked in the .mode_valid() hook for each specific object.
+	 */
+	enum drm_mode_status (*mode_valid)(struct drm_device *dev,
+					   const struct drm_display_mode *mode);
 
 	/**
 	 * @atomic_check:
@@ -269,6 +281,9 @@ struct drm_mode_config_funcs {
 	 * state easily. If this hook is implemented, drivers must also
 	 * implement @atomic_state_clear and @atomic_state_free.
 	 *
+	 * Subclassing of &drm_atomic_state is deprecated in favour of using
+	 * &drm_private_state and &drm_private_obj.
+	 *
 	 * RETURNS:
 	 *
 	 * A new &drm_atomic_state on success or NULL on failure.
@@ -290,6 +305,9 @@ struct drm_mode_config_funcs {
 	 *
 	 * Drivers that implement this must call drm_atomic_state_default_clear()
 	 * to clear common state.
+	 *
+	 * Subclassing of &drm_atomic_state is deprecated in favour of using
+	 * &drm_private_state and &drm_private_obj.
 	 */
 	void (*atomic_state_clear)(struct drm_atomic_state *state);
 
@@ -302,16 +320,19 @@ struct drm_mode_config_funcs {
 	 *
 	 * Drivers that implement this must call
 	 * drm_atomic_state_default_release() to release common resources.
+	 *
+	 * Subclassing of &drm_atomic_state is deprecated in favour of using
+	 * &drm_private_state and &drm_private_obj.
 	 */
 	void (*atomic_state_free)(struct drm_atomic_state *state);
 };
 
 /**
  * struct drm_mode_config - Mode configuration control structure
- * @min_width: minimum pixel width on this device
- * @min_height: minimum pixel height on this device
- * @max_width: maximum pixel width on this device
- * @max_height: maximum pixel height on this device
+ * @min_width: minimum fb pixel width on this device
+ * @min_height: minimum fb pixel height on this device
+ * @max_width: maximum fb pixel width on this device
+ * @max_height: maximum fb pixel height on this device
  * @funcs: core driver provided mode setting functions
  * @fb_base: base address of the framebuffer
  * @poll_enabled: track polling support for this device
@@ -706,6 +727,11 @@ struct drm_mode_config {
 	 */
 	struct drm_property *aspect_ratio_property;
 	/**
+	 * @content_type_property: Optional connector property to control the
+	 * HDMI infoframe content type setting.
+	 */
+	struct drm_property *content_type_property;
+	/**
 	 * @degamma_lut_property: Optional CRTC property to set the LUT used to
 	 * convert the framebuffer's colors to linear gamma.
 	 */
@@ -751,8 +777,53 @@ struct drm_mode_config {
 	 */
 	struct drm_property *non_desktop_property;
 
+	/**
+	 * @panel_orientation_property: Optional connector property indicating
+	 * how the lcd-panel is mounted inside the casing (e.g. normal or
+	 * upside-down).
+	 */
+	struct drm_property *panel_orientation_property;
+
+	/**
+	 * @writeback_fb_id_property: Property for writeback connectors, storing
+	 * the ID of the output framebuffer.
+	 * See also: drm_writeback_connector_init()
+	 */
+	struct drm_property *writeback_fb_id_property;
+
+	/**
+	 * @writeback_pixel_formats_property: Property for writeback connectors,
+	 * storing an array of the supported pixel formats for the writeback
+	 * engine (read-only).
+	 * See also: drm_writeback_connector_init()
+	 */
+	struct drm_property *writeback_pixel_formats_property;
+	/**
+	 * @writeback_out_fence_ptr_property: Property for writeback connectors,
+	 * fd pointer representing the outgoing fences for a writeback
+	 * connector. Userspace should provide a pointer to a value of type s32,
+	 * and then cast that pointer to u64.
+	 * See also: drm_writeback_connector_init()
+	 */
+	struct drm_property *writeback_out_fence_ptr_property;
+
 	/* dumb ioctl parameters */
 	uint32_t preferred_depth, prefer_shadow;
+	bool quirk_addfb_prefer_xbgr_30bpp;
+
+	/**
+	 * @quirk_addfb_prefer_host_byte_order:
+	 *
+	 * When set to true drm_mode_addfb() will pick host byte order
+	 * pixel_format when calling drm_mode_addfb2().  This is how
+	 * drm_mode_addfb() should have worked from day one.  It
+	 * didn't though, so we ended up with quirks in both kernel
+	 * and userspace drivers to deal with the broken behavior.
+	 * Simply fixing drm_mode_addfb() unconditionally would break
+	 * these drivers, so add a quirk bit here to allow drivers
+	 * opt-in.
+	 */
+	bool quirk_addfb_prefer_host_byte_order;
 
 	/**
 	 * @async_page_flip: Does this device support async flips on the primary
@@ -768,13 +839,30 @@ struct drm_mode_config {
 	bool allow_fb_modifiers;
 
 	/**
-	 * @modifiers: Plane property to list support modifier/format
+	 * @normalize_zpos:
+	 *
+	 * If true the drm core will call drm_atomic_normalize_zpos() as part of
+	 * atomic mode checking from drm_atomic_helper_check()
+	 */
+	bool normalize_zpos;
+
+	/**
+	 * @modifiers_property: Plane property to list support modifier/format
 	 * combination.
 	 */
 	struct drm_property *modifiers_property;
 
 	/* cursor size */
 	uint32_t cursor_width, cursor_height;
+
+	/**
+	 * @suspend_state:
+	 *
+	 * Atomic state when suspended.
+	 * Set by drm_mode_config_helper_suspend() and cleared by
+	 * drm_mode_config_helper_resume().
+	 */
+	struct drm_atomic_state *suspend_state;
 
 	const struct drm_mode_config_helper_funcs *helper_private;
 };

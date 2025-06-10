@@ -60,6 +60,7 @@ extern void fb_set_suspend(struct fb_info *info, int state);
 extern int fb_get_options(const char *name, char **option);
 
 #define FBINFO_STATE_RUNNING	0
+#define FBINFO_STATE_SUSPENDED	1
 
 struct device_node;
 

@@ -38,13 +38,17 @@ extern "C" {
 #define DRM_DISPLAY_MODE_LEN	32
 #define DRM_PROP_NAME_LEN	32
 
-#define DRM_MODE_TYPE_BUILTIN	(1<<0)
-#define DRM_MODE_TYPE_CLOCK_C	((1<<1) | DRM_MODE_TYPE_BUILTIN)
-#define DRM_MODE_TYPE_CRTC_C	((1<<2) | DRM_MODE_TYPE_BUILTIN)
+#define DRM_MODE_TYPE_BUILTIN	(1<<0) /* deprecated */
+#define DRM_MODE_TYPE_CLOCK_C	((1<<1) | DRM_MODE_TYPE_BUILTIN) /* deprecated */
+#define DRM_MODE_TYPE_CRTC_C	((1<<2) | DRM_MODE_TYPE_BUILTIN) /* deprecated */
 #define DRM_MODE_TYPE_PREFERRED	(1<<3)
-#define DRM_MODE_TYPE_DEFAULT	(1<<4)
+#define DRM_MODE_TYPE_DEFAULT	(1<<4) /* deprecated */
 #define DRM_MODE_TYPE_USERDEF	(1<<5)
 #define DRM_MODE_TYPE_DRIVER	(1<<6)
+
+#define DRM_MODE_TYPE_ALL	(DRM_MODE_TYPE_PREFERRED |	\
+				 DRM_MODE_TYPE_USERDEF |	\
+				 DRM_MODE_TYPE_DRIVER)
 
 /* Video mode flags */
 /* bit compatible with the xrandr RR_ definitions (bits 0-13)
@@ -66,8 +70,8 @@ extern "C" {
 #define DRM_MODE_FLAG_PCSYNC			(1<<7)
 #define DRM_MODE_FLAG_NCSYNC			(1<<8)
 #define DRM_MODE_FLAG_HSKEW			(1<<9) /* hskew provided */
-#define DRM_MODE_FLAG_BCAST			(1<<10)
-#define DRM_MODE_FLAG_PIXMUX			(1<<11)
+#define DRM_MODE_FLAG_BCAST			(1<<10) /* deprecated */
+#define DRM_MODE_FLAG_PIXMUX			(1<<11) /* deprecated */
 #define DRM_MODE_FLAG_DBLCLK			(1<<12)
 #define DRM_MODE_FLAG_CLKDIV2			(1<<13)
  /*
@@ -89,6 +93,15 @@ extern "C" {
 #define DRM_MODE_PICTURE_ASPECT_NONE		0
 #define DRM_MODE_PICTURE_ASPECT_4_3		1
 #define DRM_MODE_PICTURE_ASPECT_16_9		2
+#define DRM_MODE_PICTURE_ASPECT_64_27		3
+#define DRM_MODE_PICTURE_ASPECT_256_135		4
+
+/* Content type options */
+#define DRM_MODE_CONTENT_TYPE_NO_DATA		0
+#define DRM_MODE_CONTENT_TYPE_GRAPHICS		1
+#define DRM_MODE_CONTENT_TYPE_PHOTO		2
+#define DRM_MODE_CONTENT_TYPE_CINEMA		3
+#define DRM_MODE_CONTENT_TYPE_GAME		4
 
 /* Aspect ratio flag bitmask (4 bits 22:19) */
 #define DRM_MODE_FLAG_PIC_AR_MASK		(0x0F<<19)
@@ -98,6 +111,24 @@ extern "C" {
 			(DRM_MODE_PICTURE_ASPECT_4_3<<19)
 #define  DRM_MODE_FLAG_PIC_AR_16_9 \
 			(DRM_MODE_PICTURE_ASPECT_16_9<<19)
+#define  DRM_MODE_FLAG_PIC_AR_64_27 \
+			(DRM_MODE_PICTURE_ASPECT_64_27<<19)
+#define  DRM_MODE_FLAG_PIC_AR_256_135 \
+			(DRM_MODE_PICTURE_ASPECT_256_135<<19)
+
+#define  DRM_MODE_FLAG_ALL	(DRM_MODE_FLAG_PHSYNC |		\
+				 DRM_MODE_FLAG_NHSYNC |		\
+				 DRM_MODE_FLAG_PVSYNC |		\
+				 DRM_MODE_FLAG_NVSYNC |		\
+				 DRM_MODE_FLAG_INTERLACE |	\
+				 DRM_MODE_FLAG_DBLSCAN |	\
+				 DRM_MODE_FLAG_CSYNC |		\
+				 DRM_MODE_FLAG_PCSYNC |		\
+				 DRM_MODE_FLAG_NCSYNC |		\
+				 DRM_MODE_FLAG_HSKEW |		\
+				 DRM_MODE_FLAG_DBLCLK |		\
+				 DRM_MODE_FLAG_CLKDIV2 |	\
+				 DRM_MODE_FLAG_3D_MASK)
 
 /* DPMS flags */
 /* bit compatible with the xorg definitions. */
@@ -112,11 +143,6 @@ extern "C" {
 #define DRM_MODE_SCALE_FULLSCREEN	1 /* Full screen, ignore aspect */
 #define DRM_MODE_SCALE_CENTER		2 /* Centered, no scaling */
 #define DRM_MODE_SCALE_ASPECT		3 /* Full screen, preserve aspect */
-
-/* Picture aspect ratio options */
-#define DRM_MODE_PICTURE_ASPECT_NONE	0
-#define DRM_MODE_PICTURE_ASPECT_4_3	1
-#define DRM_MODE_PICTURE_ASPECT_16_9	2
 
 /* Dithering mode options */
 #define DRM_MODE_DITHERING_OFF	0
@@ -160,8 +186,9 @@ extern "C" {
 /*
  * DRM_MODE_REFLECT_<axis>
  *
- * Signals that the contents of a drm plane is reflected in the <axis> axis,
+ * Signals that the contents of a drm plane is reflected along the <axis> axis,
  * in the same way as mirroring.
+ * See kerneldoc chapter "Plane Composition Properties" for more details.
  *
  * This define is provided as a convenience, looking up the property id
  * using the name->prop id lookup is the preferred method.
@@ -178,53 +205,10 @@ extern "C" {
 		DRM_MODE_REFLECT_X | \
 		DRM_MODE_REFLECT_Y)
 
-
-/*
- * DRM_MODE_ROTATE_<degrees>
- *
- * Signals that a drm plane is been rotated <degrees> degrees in counter
- * clockwise direction.
- *
- * This define is provided as a convenience, looking up the property id
- * using the name->prop id lookup is the preferred method.
- */
-#define DRM_MODE_ROTATE_0       (1<<0)
-#define DRM_MODE_ROTATE_90      (1<<1)
-#define DRM_MODE_ROTATE_180     (1<<2)
-#define DRM_MODE_ROTATE_270     (1<<3)
-
-/*
- * DRM_MODE_ROTATE_MASK
- *
- * Bitmask used to look for drm plane rotations.
- */
-#define DRM_MODE_ROTATE_MASK (\
-		DRM_MODE_ROTATE_0  | \
-		DRM_MODE_ROTATE_90  | \
-		DRM_MODE_ROTATE_180 | \
-		DRM_MODE_ROTATE_270)
-
-/*
- * DRM_MODE_REFLECT_<axis>
- *
- * Signals that the contents of a drm plane is reflected in the <axis> axis,
- * in the same way as mirroring.
- *
- * This define is provided as a convenience, looking up the property id
- * using the name->prop id lookup is the preferred method.
- */
-#define DRM_MODE_REFLECT_X      (1<<4)
-#define DRM_MODE_REFLECT_Y      (1<<5)
-
-/*
- * DRM_MODE_REFLECT_MASK
- *
- * Bitmask used to look for drm plane reflections.
- */
-#define DRM_MODE_REFLECT_MASK (\
-		DRM_MODE_REFLECT_X | \
-		DRM_MODE_REFLECT_Y)
-
+/* Content Protection Flags */
+#define DRM_MODE_CONTENT_PROTECTION_UNDESIRED	0
+#define DRM_MODE_CONTENT_PROTECTION_DESIRED     1
+#define DRM_MODE_CONTENT_PROTECTION_ENABLED     2
 
 struct drm_mode_modeinfo {
 	__u32 clock;
@@ -368,6 +352,7 @@ enum drm_mode_subconnector {
 #define DRM_MODE_CONNECTOR_VIRTUAL      15
 #define DRM_MODE_CONNECTOR_DSI		16
 #define DRM_MODE_CONNECTOR_DPI		17
+#define DRM_MODE_CONNECTOR_WRITEBACK	18
 
 struct drm_mode_get_connector {
 
@@ -393,7 +378,7 @@ struct drm_mode_get_connector {
 	__u32 pad;
 };
 
-#define DRM_MODE_PROP_PENDING	(1<<0)
+#define DRM_MODE_PROP_PENDING	(1<<0) /* deprecated, do not use */
 #define DRM_MODE_PROP_RANGE	(1<<1)
 #define DRM_MODE_PROP_IMMUTABLE	(1<<2)
 #define DRM_MODE_PROP_ENUM	(1<<3) /* enumerated type with text strings */
@@ -628,8 +613,11 @@ struct drm_mode_crtc_lut {
 };
 
 struct drm_color_ctm {
-	/* Conversion matrix in S31.32 format. */
-	__s64 matrix[9];
+	/*
+	 * Conversion matrix in S31.32 sign-magnitude
+	 * (not two's complement!) format.
+	 */
+	__u64 matrix[9];
 };
 
 struct drm_color_lut {

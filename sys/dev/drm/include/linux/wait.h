@@ -174,6 +174,16 @@ void finish_wait(wait_queue_head_t *q, wait_queue_entry_t *wait);
 #define wait_event_timeout(wq, condition, timeout)			\
 		__wait_event_common(wq, condition, timeout, 0, false)
 
+#define wait_event_killable(wq, condition)				\
+({									\
+	long retval;							\
+									\
+	retval = __wait_event_common(wq, condition, 0, PCATCH, false);	\
+	if (retval != -ERESTARTSYS)					\
+		retval = 0;						\
+	retval;								\
+})
+
 #define wait_event_interruptible(wq, condition)				\
 ({									\
 	long retval;							\

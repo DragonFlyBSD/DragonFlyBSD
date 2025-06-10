@@ -244,16 +244,10 @@ int amdgpu_gem_create_ioctl(struct drm_device *dev, void *data,
 			return -EINVAL;
 		}
 		flags |= AMDGPU_GEM_CREATE_NO_CPU_ACCESS;
-		if (args->in.domains == AMDGPU_GEM_DOMAIN_GDS)
-			size = size << AMDGPU_GDS_SHIFT;
-		else if (args->in.domains == AMDGPU_GEM_DOMAIN_GWS)
-			size = size << AMDGPU_GWS_SHIFT;
-		else if (args->in.domains == AMDGPU_GEM_DOMAIN_OA)
-			size = size << AMDGPU_OA_SHIFT;
-		else
-			return -EINVAL;
+		/* GDS allocations must be DW aligned */
+		if (args->in.domains & AMDGPU_GEM_DOMAIN_GDS)
+			size = ALIGN(size, 4);
 	}
-	size = roundup(size, PAGE_SIZE);
 
 	if (flags & AMDGPU_GEM_CREATE_VM_ALWAYS_VALID) {
 		r = amdgpu_bo_reserve(vm->root.base.bo, false);
@@ -567,7 +561,6 @@ int amdgpu_gem_va_ioctl(struct drm_device *dev, void *data,
 	struct ww_acquire_ctx ticket;
 	struct list_head list, duplicates;
 	uint64_t va_flags;
-	uint64_t vm_size;
 	int r = 0;
 
 	if (args->va_address < AMDGPU_VA_RESERVED_SIZE) {
@@ -577,25 +570,16 @@ int amdgpu_gem_va_ioctl(struct drm_device *dev, void *data,
 		return -EINVAL;
 	}
 
-	if (args->va_address >= AMDGPU_VA_HOLE_START &&
-	    args->va_address < AMDGPU_VA_HOLE_END) {
+	if (args->va_address >= AMDGPU_GMC_HOLE_START &&
+	    args->va_address < AMDGPU_GMC_HOLE_END) {
 		dev_dbg(&dev->pdev->dev,
 			"va_address 0x%LX is in VA hole 0x%LX-0x%LX\n",
-			args->va_address, AMDGPU_VA_HOLE_START,
-			AMDGPU_VA_HOLE_END);
+			args->va_address, AMDGPU_GMC_HOLE_START,
+			AMDGPU_GMC_HOLE_END);
 		return -EINVAL;
 	}
 
-	args->va_address &= AMDGPU_VA_HOLE_MASK;
-
-	vm_size = adev->vm_manager.max_pfn * AMDGPU_GPU_PAGE_SIZE;
-	vm_size -= AMDGPU_VA_RESERVED_SIZE;
-	if (args->va_address + args->map_size > vm_size) {
-		dev_dbg(&dev->pdev->dev,
-			"va_address 0x%llx is in top reserved area 0x%lx\n",
-			args->va_address + args->map_size, vm_size);
-		return -EINVAL;
-	}
+	args->va_address &= AMDGPU_GMC_HOLE_MASK;
 
 	if ((args->flags & ~valid_flags) && (args->flags & ~prt_flags)) {
 		dev_dbg(&dev->pdev->dev, "invalid flags combination 0x%08X\n",

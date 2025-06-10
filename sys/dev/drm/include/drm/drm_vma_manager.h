@@ -40,13 +40,12 @@ struct drm_vma_offset_file {
 struct drm_vma_offset_node {
 	struct lock vm_lock;
 	struct drm_mm_node vm_node;
-	struct rb_node vm_rb;
 	struct rb_root vm_files;
+	bool readonly:1;
 };
 
 struct drm_vma_offset_manager {
 	struct lock vm_lock;
-	struct rb_root vm_addr_space_rb;
 	struct drm_mm vm_addr_space_mm;
 };
 
@@ -154,7 +153,7 @@ static inline void drm_vma_node_reset(struct drm_vma_offset_node *node)
  * Start address of @node for page-based addressing. 0 if the node does not
  * have an offset allocated.
  */
-static inline unsigned long drm_vma_node_start(struct drm_vma_offset_node *node)
+static inline unsigned long drm_vma_node_start(const struct drm_vma_offset_node *node)
 {
 	return node->vm_node.start;
 }
@@ -174,19 +173,6 @@ static inline unsigned long drm_vma_node_start(struct drm_vma_offset_node *node)
 static inline unsigned long drm_vma_node_size(struct drm_vma_offset_node *node)
 {
 	return node->vm_node.size;
-}
-
-/**
- * drm_vma_node_has_offset() - Check whether node is added to offset manager
- * @node: Node to be checked
- *
- * RETURNS:
- * true iff the node was previously allocated an offset and added to
- * an vma offset manager.
- */
-static inline bool drm_vma_node_has_offset(struct drm_vma_offset_node *node)
-{
-	return drm_mm_node_allocated(&node->vm_node);
 }
 
 /**
@@ -222,7 +208,7 @@ static inline __u64 drm_vma_node_offset_addr(struct drm_vma_offset_node *node)
 static inline void drm_vma_node_unmap(struct drm_vma_offset_node *node,
 				      struct address_space *file_mapping)
 {
-	if (file_mapping && drm_vma_node_has_offset(node))
+	if (drm_mm_node_allocated(&node->vm_node))
 		unmap_mapping_range(file_mapping,
 				    drm_vma_node_offset_addr(node),
 				    drm_vma_node_size(node) << PAGE_SHIFT, 1);

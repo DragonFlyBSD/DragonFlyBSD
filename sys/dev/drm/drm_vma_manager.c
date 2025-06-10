@@ -85,7 +85,6 @@ void drm_vma_offset_manager_init(struct drm_vma_offset_manager *mgr,
 				 unsigned long page_offset, unsigned long size)
 {
 	lockinit(&mgr->vm_lock, "drmvml", 0, LK_CANRECURSE);
-	mgr->vm_addr_space_rb = LINUX_RB_ROOT;
 	drm_mm_init(&mgr->vm_addr_space_mm, page_offset, size);
 }
 EXPORT_SYMBOL(drm_vma_offset_manager_init);
@@ -103,10 +102,7 @@ EXPORT_SYMBOL(drm_vma_offset_manager_init);
  */
 void drm_vma_offset_manager_destroy(struct drm_vma_offset_manager *mgr)
 {
-	/* take the lock to protect against buggy drivers */
-	lockmgr(&mgr->vm_lock, LK_EXCLUSIVE);
 	drm_mm_takedown(&mgr->vm_addr_space_mm);
-	lockmgr(&mgr->vm_lock, LK_RELEASE);
 }
 EXPORT_SYMBOL(drm_vma_offset_manager_destroy);
 
@@ -144,16 +140,16 @@ struct drm_vma_offset_node *drm_vma_offset_lookup_locked(struct drm_vma_offset_m
 							 unsigned long start,
 							 unsigned long pages)
 {
-	struct drm_vma_offset_node *node, *best;
+	struct drm_mm_node *node, *best;
 	struct rb_node *iter;
 	unsigned long offset;
 
-	iter = mgr->vm_addr_space_rb.rb_node;
+	iter = mgr->vm_addr_space_mm.interval_tree.rb_root.rb_node;
 	best = NULL;
 
 	while (likely(iter)) {
-		node = rb_entry(iter, struct drm_vma_offset_node, vm_rb);
-		offset = node->vm_node.start;
+		node = rb_entry(iter, struct drm_mm_node, rb);
+		offset = node->start;
 		if (start >= offset) {
 			iter = iter->rb_right;
 			best = node;
@@ -166,38 +162,17 @@ struct drm_vma_offset_node *drm_vma_offset_lookup_locked(struct drm_vma_offset_m
 
 	/* verify that the node spans the requested area */
 	if (best) {
-		offset = best->vm_node.start + best->vm_node.size;
+		offset = best->start + best->size;
 		if (offset < start + pages)
 			best = NULL;
 	}
 
-	return best;
+	if (!best)
+		return NULL;
+
+	return container_of(best, struct drm_vma_offset_node, vm_node);
 }
 EXPORT_SYMBOL(drm_vma_offset_lookup_locked);
-
-/* internal helper to link @node into the rb-tree */
-static void _drm_vma_offset_add_rb(struct drm_vma_offset_manager *mgr,
-				   struct drm_vma_offset_node *node)
-{
-	struct rb_node **iter = &mgr->vm_addr_space_rb.rb_node;
-	struct rb_node *parent = NULL;
-	struct drm_vma_offset_node *iter_node;
-
-	while (likely(*iter)) {
-		parent = *iter;
-		iter_node = rb_entry(*iter, struct drm_vma_offset_node, vm_rb);
-
-		if (node->vm_node.start < iter_node->vm_node.start)
-			iter = &(*iter)->rb_left;
-		else if (node->vm_node.start > iter_node->vm_node.start)
-			iter = &(*iter)->rb_right;
-		else
-			BUG();
-	}
-
-	rb_link_node(&node->vm_rb, parent, iter);
-	rb_insert_color(&node->vm_rb, &mgr->vm_addr_space_rb);
-}
 
 /**
  * drm_vma_offset_add() - Add offset node to manager
@@ -225,23 +200,16 @@ static void _drm_vma_offset_add_rb(struct drm_vma_offset_manager *mgr,
 int drm_vma_offset_add(struct drm_vma_offset_manager *mgr,
 		       struct drm_vma_offset_node *node, unsigned long pages)
 {
-	int ret;
+	int ret = 0;
 
 	lockmgr(&mgr->vm_lock, LK_EXCLUSIVE);
 
-	if (drm_mm_node_allocated(&node->vm_node)) {
-		ret = 0;
-		goto out_unlock;
-	}
+	if (!drm_mm_node_allocated(&node->vm_node))
+		ret = drm_mm_insert_node(&mgr->vm_addr_space_mm,
+					 &node->vm_node, pages);
 
-	ret = drm_mm_insert_node(&mgr->vm_addr_space_mm, &node->vm_node, pages);
-	if (ret)
-		goto out_unlock;
-
-	_drm_vma_offset_add_rb(mgr, node);
-
-out_unlock:
 	lockmgr(&mgr->vm_lock, LK_RELEASE);
+
 	return ret;
 }
 EXPORT_SYMBOL(drm_vma_offset_add);
@@ -263,7 +231,6 @@ void drm_vma_offset_remove(struct drm_vma_offset_manager *mgr,
 	lockmgr(&mgr->vm_lock, LK_EXCLUSIVE);
 
 	if (drm_mm_node_allocated(&node->vm_node)) {
-		rb_erase(&node->vm_rb, &mgr->vm_addr_space_rb);
 		drm_mm_remove_node(&node->vm_node);
 		memset(&node->vm_node, 0, sizeof(node->vm_node));
 	}
@@ -303,7 +270,7 @@ int drm_vma_node_allow(struct drm_vma_offset_node *node, struct drm_file *tag)
 	 * unlikely that an open-file is added twice to a single node so we
 	 * don't optimize for this case. OOM is checked below only if the entry
 	 * is actually used. */
-	new = kmalloc(sizeof(*entry), M_DRM, M_WAITOK);
+	new = kmalloc(sizeof(*entry), M_DRM, GFP_KERNEL);
 
 	lockmgr(&node->vm_lock, LK_EXCLUSIVE);
 

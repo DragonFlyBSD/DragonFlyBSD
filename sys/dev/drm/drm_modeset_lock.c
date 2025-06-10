@@ -113,6 +113,7 @@ retry:
 		kfree(ctx);
 		return;
 	}
+	ww_acquire_done(&ctx->ww_ctx);
 
 	WARN_ON(config->acquire_ctx);
 
@@ -284,7 +285,7 @@ static inline int modeset_lock(struct drm_modeset_lock *lock,
 		info->lock = lock;
 		info->ctx = ctx;
 		list_add(&info->ctx_entry, &ctx->locked);
-		list_add(&info->lock_entry, &lock->head);
+		list_add(&info->lock_entry, &lock->locked);
 	}
 
 	return ret;
@@ -324,7 +325,7 @@ EXPORT_SYMBOL(drm_modeset_backoff);
 void drm_modeset_lock_init(struct drm_modeset_lock *lock)
 {
 	ww_mutex_init(&lock->mutex, &crtc_ww_class);
-	INIT_LIST_HEAD(&lock->head);
+	INIT_LIST_HEAD(&lock->locked);
 }
 EXPORT_SYMBOL(drm_modeset_lock_init);
 
@@ -381,8 +382,8 @@ void drm_modeset_unlock(struct drm_modeset_lock *lock)
 	struct drm_modeset_lock_info *info;
 
 	/* undo in reverse order */
-	if (!list_empty(&lock->head)) {
-		info = list_last_entry(&lock->head,
+	if (!list_empty(&lock->locked)) {
+		info = list_last_entry(&lock->locked,
 				struct drm_modeset_lock_info, lock_entry);
 		list_del_init(&info->lock_entry);
 		if (info->ctx)

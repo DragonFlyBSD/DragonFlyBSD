@@ -2172,7 +2172,6 @@ static void get_active_converter_info(
 	uint8_t data, struct dc_link *link)
 {
 	union dp_downstream_port_present ds_port = { .byte = data };
-	memset(&link->dpcd_caps.dongle_caps, 0, sizeof(link->dpcd_caps.dongle_caps));
 
 	/* decode converter info*/
 	if (!ds_port.fields.PORT_PRESENT) {
@@ -2391,6 +2390,9 @@ static bool retrieve_link_cap(struct dc_link *link)
 
 	dp_wa_power_up_0010FA(link, dpcd_data, sizeof(dpcd_data));
 
+	down_strm_port_count.raw = dpcd_data[DP_DOWN_STREAM_PORT_COUNT -
+				 DP_DPCD_REV];
+
 	link->dpcd_caps.allow_invalid_MSA_timing_param =
 		down_strm_port_count.bits.IGNORE_MSA_TIMING_PARAM;
 
@@ -2439,17 +2441,6 @@ static bool retrieve_link_cap(struct dc_link *link)
 		link->dpcd_caps.sink_dev_id_str,
 		sink_id.ieee_device_id,
 		sizeof(sink_id.ieee_device_id));
-
-	/* Quirk Apple MBP 2017 15" Retina panel: Wrong DP_MAX_LINK_RATE */
-	{
-		uint8_t str_mbp_2017[] = { 101, 68, 21, 101, 98, 97 };
-
-		if ((link->dpcd_caps.sink_dev_id == 0x0010fa) &&
-		    !memcmp(link->dpcd_caps.sink_dev_id_str, str_mbp_2017,
-			    sizeof(str_mbp_2017))) {
-			link->reported_link_cap.link_rate = 0x0c;
-		}
-	}
 
 	core_link_read_dpcd(
 		link,

@@ -58,19 +58,17 @@
 
 static inline void __free_page(struct page *page)
 {
-	vm_page_free_contig((struct vm_page *)page, PAGE_SIZE);
+	vm_page_freezwq((vm_page_t)page);
 }
 
 static inline struct page * alloc_page(int flags)
 {
-	vm_paddr_t high = ~0LLU;
+	vm_paddr_t high = BUS_SPACE_MAXADDR;
 
 	if (flags & GFP_DMA32)
 		high = BUS_SPACE_MAXADDR_32BIT;
-
-	return (struct page *)vm_page_alloc_contig(0LLU, ~0LLU,
-			PAGE_SIZE, PAGE_SIZE, PAGE_SIZE,
-			VM_MEMATTR_DEFAULT);
+	return (struct page *)vm_page_alloczwq(0, VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM |
+				  VM_ALLOC_INTERRUPT);
 }
 
 static inline bool

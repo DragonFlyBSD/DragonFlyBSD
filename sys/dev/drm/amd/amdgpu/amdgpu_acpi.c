@@ -31,6 +31,7 @@
 #include <drm/drm_crtc_helper.h>
 #include "amdgpu.h"
 #include "amdgpu_pm.h"
+#include "amdgpu_display.h"
 #include "amd_acpi.h"
 #include "atom.h"
 
@@ -417,7 +418,8 @@ static void amdgpu_atif_handler(struct amdgpu_device *adev,
 			}
 		}
 		if (req.pending & ATIF_DGPU_DISPLAY_EVENT) {
-			if (adev->flags & AMD_IS_PX) {
+			if ((adev->flags & AMD_IS_PX) &&
+			    amdgpu_atpx_dgpu_req_power_for_displays()) {
 				pm_runtime_get_sync(adev->ddev->dev);
 				/* Just fire off a uevent and let userspace tell us what to do */
 				drm_helper_hpd_irq_event(adev->ddev);

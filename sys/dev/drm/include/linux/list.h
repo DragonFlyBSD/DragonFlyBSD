@@ -130,7 +130,7 @@ _list_add(struct list_head *new, struct list_head *prev,
 
 static inline void
 list_del_init(struct list_head *entry)
-{	
+{
 
 	list_del(entry);
 	INIT_LIST_HEAD(entry);
@@ -174,6 +174,11 @@ list_del_init(struct list_head *entry)
 #define list_for_each_entry_from(p, h, field) \
 	for ( ; &(p)->field != (h); \
 	    p = list_entry((p)->field.next, typeof(*p), field))
+
+#define list_for_each_entry_from_reverse(pos, head, member)		\
+    for (;								\
+	&pos->member != (head);					 	\
+	pos = list_entry(pos->member.prev, __typeof(*pos), member))
 
 #define list_for_each_entry_continue(p, h, field)			\
 	for (p = list_next_entry((p), field); &p->field != (h);		\
@@ -231,6 +236,18 @@ list_move_tail(struct list_head *entry, struct list_head *head)
 }
 
 static inline void
+list_bulk_move_tail(struct list_head *head, struct list_head *first,
+    struct list_head *last)
+{
+	first->prev->next = last->next;
+	last->next->prev = first->prev;
+	head->prev->next = first;
+	first->prev = head->prev;
+	last->next = head;
+	head->prev = last;
+}
+
+static inline void
 _list_splice(const struct list_head *list, struct list_head *prev,  
     struct list_head *next)
 {
@@ -266,7 +283,7 @@ list_splice_init(struct list_head *list, struct list_head *head)
 {
 
 	_list_splice(list, head, head->next);
-	INIT_LIST_HEAD(list);   
+	INIT_LIST_HEAD(list);
 }
  
 static inline void

@@ -126,6 +126,20 @@ dma_fence_is_signaled(struct dma_fence *fence)
 	return false;
 }
 
+static inline bool
+dma_fence_is_signaled_locked(struct dma_fence *fence)
+{
+	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags))
+		return true;
+
+	if (fence->ops->signaled && fence->ops->signaled(fence)) {
+		dma_fence_signal_locked(fence);
+		return true;
+	}
+
+	return false;
+}
+
 void dma_fence_enable_sw_signaling(struct dma_fence *fence);
 
 signed long dma_fence_default_wait(struct dma_fence *fence,
@@ -168,6 +182,8 @@ static inline void
 dma_fence_set_error(struct dma_fence *fence, int error)
 {
 	fence->error = error;
+kprintf("fence error: context=%llx, seqno=%d, error=%d\n", fence->context, fence->seqno, error);
+print_backtrace(-1);
 }
 
 static inline struct dma_fence *

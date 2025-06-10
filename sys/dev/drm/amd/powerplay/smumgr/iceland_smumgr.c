@@ -232,14 +232,8 @@ static int iceland_request_smu_load_specific_fw(struct pp_hwmgr *hwmgr,
 
 static int iceland_start_smu(struct pp_hwmgr *hwmgr)
 {
+	struct iceland_smumgr *priv = hwmgr->smu_backend;
 	int result;
-
-	result = iceland_smu_upload_firmware_image(hwmgr);
-	if (result)
-		return result;
-	result = iceland_smu_start_smc(hwmgr);
-	if (result)
-		return result;
 
 	if (!smu7_is_smc_ram_running(hwmgr)) {
 		pr_info("smu not running, upload firmware again \n");
@@ -247,10 +241,16 @@ static int iceland_start_smu(struct pp_hwmgr *hwmgr)
 		if (result)
 			return result;
 
-		result = iceland_smu_start_smc(hwmgr);
-		if (result)
-			return result;
+		iceland_smu_start_smc(hwmgr);
 	}
+
+	/* Setup SoftRegsStart here to visit the register UcodeLoadStatus
+	 * to check fw loading state
+	 */
+	smu7_read_smc_sram_dword(hwmgr,
+			SMU71_FIRMWARE_HEADER_LOCATION +
+			offsetof(SMU71_Firmware_Header, SoftRegisters),
+			&(priv->smu7_data.soft_regs_start), 0x40000);
 
 	result = smu7_request_smu_load_fw(hwmgr);
 
@@ -1280,6 +1280,7 @@ static int iceland_populate_single_memory_level(
 	memory_level->DisplayWatermark = PPSMC_DISPLAY_WATERMARK_LOW;
 
 	data->display_timing.num_existing_displays = hwmgr->display_config->num_display;
+	data->display_timing.vrefresh = hwmgr->display_config->vrefresh;
 
 	/* stutter mode not support on iceland */
 
@@ -2664,7 +2665,7 @@ const struct pp_smumgr_func iceland_smu_funcs = {
 	.smu_fini = &smu7_smu_fini,
 	.start_smu = &iceland_start_smu,
 	.check_fw_load_finish = &smu7_check_fw_load_finish,
-	.request_smu_load_fw = &smu7_reload_firmware,
+	.request_smu_load_fw = &smu7_request_smu_load_fw,
 	.request_smu_load_specific_fw = &iceland_request_smu_load_specific_fw,
 	.send_msg_to_smc = &smu7_send_msg_to_smc,
 	.send_msg_to_smc_with_parameter = &smu7_send_msg_to_smc_with_parameter,

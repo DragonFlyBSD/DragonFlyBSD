@@ -28,8 +28,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _AGP_INTEL_GTT_H_
-#define _AGP_INTEL_GTT_H_
+#ifndef _DRM_INTEL_GTT_H_
+#define _DRM_INTEL_GTT_H_
 
 #include <sys/param.h>
 
@@ -77,9 +77,8 @@ void agp_intel_gtt_insert_pages(device_t dev, u_int first_entry,
     u_int num_entries, vm_page_t *pages, u_int flags);
 
 void intel_gtt_get(u64 *gtt_total,
-		   u32 *stolen_size,
 		   phys_addr_t *mappable_base,
-		   u64 *mappable_end);
+		   resource_size_t *mappable_end);
 
 int intel_gtt_chipset_flush(void);
 void intel_gtt_clear_range(u_int first_entry, u_int num_entries);
@@ -101,4 +100,4 @@ void intel_gtt_insert_page(dma_addr_t addr,
 			   unsigned int pg,
 			   unsigned int flags);
 
-#endif		/* _AGP_INTEL_GTT_H_ */
+#endif		/* _DRM_INTEL_GTT_H_ */

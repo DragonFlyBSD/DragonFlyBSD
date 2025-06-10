@@ -85,6 +85,9 @@ static fInt fDecodeLeakageID (uint32_t leakageID_fuse, fInt ln_max_div_min, fInt
  * Some of the following functions take two INTs as their input - This is unsafe for a variety of reasons.
  */
 static fInt Divide (int, int);                            /* Divide two INTs and return result as FINT */
+#if 0 /* redundant, defined at line 58 */
+static fInt fNegate(fInt);
+#endif
 
 static int uGetScaledDecimal (fInt);                      /* Internal function */
 static int GetReal (fInt A);                              /* Internal function */

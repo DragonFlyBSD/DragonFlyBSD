@@ -72,6 +72,9 @@ extern	int	szsigcode;
 extern	uint64_t *vm_page_dump;
 extern	vm_offset_t vm_page_dump_size;
 
+extern vm_paddr_t intel_graphics_stolen_base;
+extern vm_paddr_t intel_graphics_stolen_size;
+void pci_early_quirks(void);
 
 typedef void alias_for_inthand_t(u_int cs, u_int ef, u_int esp, u_int ss);
 struct	thread;

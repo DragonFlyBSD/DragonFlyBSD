@@ -914,6 +914,12 @@ static bool radeon_dpm_single_display(struct radeon_device *rdev)
 			single_display = false;
 	}
 
+	/* 120hz tends to be problematic even if they are under the
+	 * vblank limit.
+	 */
+	if (single_display && (r600_dpm_get_vrefresh(rdev) >= 120))
+		single_display = false;
+
 	return single_display;
 }
 
@@ -924,12 +930,6 @@ static struct radeon_ps *radeon_dpm_pick_power_state(struct radeon_device *rdev,
 	struct radeon_ps *ps;
 	u32 ui_class;
 	bool single_display = radeon_dpm_single_display(rdev);
-
-	/* 120hz tends to be problematic even if they are under the
-	 * vblank limit.
-	 */
-	if (single_display && (r600_dpm_get_vrefresh(rdev) >= 120))
-		single_display = false;
 
 	/* certain older asics have a separare 3D performance state,
 	 * so try that first if the user selected performance
@@ -1140,6 +1140,8 @@ force:
 
 	/* update display watermarks based on new power state */
 	radeon_bandwidth_update(rdev);
+	/* update displays */
+	radeon_dpm_display_configuration_changed(rdev);
 
 	/* wait for the rings to drain */
 	for (i = 0; i < RADEON_NUM_RINGS; i++) {
@@ -1159,9 +1161,6 @@ force:
 	rdev->pm.dpm.current_active_crtcs = rdev->pm.dpm.new_active_crtcs;
 	rdev->pm.dpm.current_active_crtc_count = rdev->pm.dpm.new_active_crtc_count;
 	rdev->pm.dpm.single_display = single_display;
-
-	/* update displays */
-	radeon_dpm_display_configuration_changed(rdev);
 
 	if (rdev->asic->dpm.force_performance_level) {
 		if (rdev->pm.dpm.thermal_active) {
@@ -1813,6 +1812,7 @@ static void radeon_pm_compute_clocks_dpm(struct radeon_device *rdev)
 	struct drm_device *ddev = rdev->ddev;
 	struct drm_crtc *crtc;
 	struct radeon_crtc *radeon_crtc;
+	struct radeon_connector *radeon_connector;
 
 	if (!rdev->pm.dpm_enabled)
 		return;
@@ -1822,6 +1822,7 @@ static void radeon_pm_compute_clocks_dpm(struct radeon_device *rdev)
 	/* update active crtc counts */
 	rdev->pm.dpm.new_active_crtcs = 0;
 	rdev->pm.dpm.new_active_crtc_count = 0;
+	rdev->pm.dpm.high_pixelclock_count = 0;
 	if (rdev->num_crtc && rdev->mode_info.mode_config_initialized) {
 		list_for_each_entry(crtc,
 				    &ddev->mode_config.crtc_list, head) {
@@ -1829,6 +1830,12 @@ static void radeon_pm_compute_clocks_dpm(struct radeon_device *rdev)
 			if (crtc->enabled) {
 				rdev->pm.dpm.new_active_crtcs |= (1 << radeon_crtc->crtc_id);
 				rdev->pm.dpm.new_active_crtc_count++;
+				if (!radeon_crtc->connector)
+					continue;
+
+				radeon_connector = to_radeon_connector(radeon_crtc->connector);
+				if (radeon_connector->pixelclock_for_modeset > 297000)
+					rdev->pm.dpm.high_pixelclock_count++;
 			}
 		}
 	}

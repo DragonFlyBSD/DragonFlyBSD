@@ -31,6 +31,12 @@
 
 #include <sys/libkern.h>
 
+static inline uint32_t
+get_random_u32(void)
+{
+	return karc4random();
+}
+
 static inline unsigned int
 get_random_int(void)
 {

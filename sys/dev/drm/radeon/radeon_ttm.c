@@ -694,7 +694,7 @@ static struct ttm_backend_func radeon_backend_func = {
 };
 
 static struct ttm_tt *radeon_ttm_tt_create(struct ttm_buffer_object *bo,
-                                           uint32_t page_flags)
+					   uint32_t page_flags)
 {
 	struct radeon_device *rdev;
 	struct radeon_ttm_tt *gtt;
@@ -702,8 +702,8 @@ static struct ttm_tt *radeon_ttm_tt_create(struct ttm_buffer_object *bo,
 	rdev = radeon_get_rdev(bo->bdev);
 #if IS_ENABLED(CONFIG_AGP)
 	if (rdev->flags & RADEON_IS_AGP) {
-		return ttm_agp_tt_create(bdev, rdev->ddev->agp->agpdev,
-					 size, page_flags, dummy_read_page);
+		return ttm_agp_tt_create(bo, rdev->ddev->agp->bridge,
+					 page_flags);
 	}
 #endif
 
@@ -728,7 +728,7 @@ static struct radeon_ttm_tt *radeon_ttm_tt_to_gtt(struct ttm_tt *ttm)
 }
 
 static int radeon_ttm_tt_populate(struct ttm_tt *ttm,
-				  struct ttm_operation_ctx *ctx)
+			struct ttm_operation_ctx *ctx)
 {
 	struct radeon_ttm_tt *gtt = radeon_ttm_tt_to_gtt(ttm);
 	struct radeon_device *rdev;
@@ -737,9 +737,6 @@ static int radeon_ttm_tt_populate(struct ttm_tt *ttm,
 #ifdef DUMBBELL_WIP
 	bool slave = !!(ttm->page_flags & TTM_PAGE_FLAG_SG);
 #endif /* DUMBBELL_WIP */
-
-	if (ttm->state != tt_unpopulated)
-		return 0;
 
 #if 0
 	if (gtt && gtt->userptr) {
@@ -769,13 +766,13 @@ static int radeon_ttm_tt_populate(struct ttm_tt *ttm,
 	rdev = radeon_get_rdev(ttm->bdev);
 #if IS_ENABLED(CONFIG_AGP)
 	if (rdev->flags & RADEON_IS_AGP) {
-		return ttm_agp_tt_populate(ttm);
+		return ttm_agp_tt_populate(ttm, ctx);
 	}
 #endif
 
 #ifdef CONFIG_SWIOTLB
-	if (swiotlb_nr_tbl()) {
-		return ttm_dma_populate(&gtt->ttm, rdev->dev);
+	if (rdev->need_swiotlb && swiotlb_nr_tbl()) {
+		return ttm_dma_populate(&gtt->ttm, rdev->dev, ctx);
 	}
 #endif
 
@@ -830,7 +827,7 @@ static void radeon_ttm_tt_unpopulate(struct ttm_tt *ttm)
 #endif
 
 #ifdef CONFIG_SWIOTLB
-	if (swiotlb_nr_tbl()) {
+	if (rdev->need_swiotlb && swiotlb_nr_tbl()) {
 		ttm_dma_unpopulate(&gtt->ttm, rdev->dev);
 		return;
 	}
@@ -873,13 +870,6 @@ bool radeon_ttm_tt_is_readonly(struct ttm_tt *ttm)
 	return !!(gtt->userflags & RADEON_GEM_USERPTR_READONLY);
 }
 
-static unsigned long radeon_ttm_io_mem_pfn(struct ttm_buffer_object *bo,
-                                        unsigned long page_offset)
-{
-        return ((bo->mem.bus.base + bo->mem.bus.offset) >> PAGE_SHIFT)
-                + page_offset;
-}
-
 static struct ttm_bo_driver radeon_bo_driver = {
 	.ttm_tt_create = &radeon_ttm_tt_create,
 	.ttm_tt_populate = &radeon_ttm_tt_populate,
@@ -894,7 +884,6 @@ static struct ttm_bo_driver radeon_bo_driver = {
 	.fault_reserve_notify = &radeon_bo_fault_reserve_notify,
 	.io_mem_reserve = &radeon_ttm_io_mem_reserve,
 	.io_mem_free = &radeon_ttm_io_mem_free,
-	.io_mem_pfn = &radeon_ttm_io_mem_pfn,
 };
 
 int radeon_ttm_init(struct radeon_device *rdev)
@@ -1007,11 +996,11 @@ void radeon_ttm_set_active_vram_size(struct radeon_device *rdev, u64 size)
 static struct vm_operations_struct radeon_ttm_vm_ops;
 static const struct vm_operations_struct *ttm_vm_ops = NULL;
 
-static int radeon_ttm_fault(struct vm_fault *vmf)
+static vm_fault_t radeon_ttm_fault(struct vm_fault *vmf)
 {
 	struct ttm_buffer_object *bo;
 	struct radeon_device *rdev;
-	int r;
+	vm_fault_t ret;
 
 	bo = (struct ttm_buffer_object *)vmf->vma->vm_private_data;
 	if (bo == NULL) {
@@ -1019,9 +1008,9 @@ static int radeon_ttm_fault(struct vm_fault *vmf)
 	}
 	rdev = radeon_get_rdev(bo->bdev);
 	down_read(&rdev->pm.mclk_lock);
-	r = ttm_vm_ops->fault(vmf);
+	ret = ttm_vm_ops->fault(vmf);
 	up_read(&rdev->pm.mclk_lock);
-	return r;
+	return ret;
 }
 
 int radeon_mmap(struct file *filp, struct vm_area_struct *vma)
@@ -1067,6 +1056,7 @@ static int radeon_mm_dump_table(struct seq_file *m, void *data)
 	man->func->debug(man, &p);
 	return 0;
 }
+
 
 static int ttm_pl_vram = TTM_PL_VRAM;
 static int ttm_pl_tt = TTM_PL_TT;
@@ -1211,7 +1201,7 @@ static int radeon_ttm_debugfs_init(struct radeon_device *rdev)
 	count = ARRAY_SIZE(radeon_ttm_debugfs_list);
 
 #ifdef CONFIG_SWIOTLB
-	if (!swiotlb_nr_tbl())
+	if (!(rdev->need_swiotlb && swiotlb_nr_tbl()))
 		--count;
 #endif
 

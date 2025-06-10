@@ -34,6 +34,11 @@
 
 #include <sys/sysctl.h>
 
+#ifdef __DragonFly__
+/* for vm_area_struct */
+#include <linux/mm_types.h>
+#endif
+
 #include <drm/drm_device.h>
 
 struct drm_file;
@@ -43,6 +48,7 @@ struct drm_minor;
 struct dma_buf_attachment;
 struct drm_display_mode;
 struct drm_mode_create_dumb;
+struct drm_printer;
 
 /* driver capabilities and requirements mask */
 #define DRIVER_USE_AGP			0x1
@@ -59,7 +65,6 @@ struct drm_mode_create_dumb;
 #define DRIVER_ATOMIC			0x10000
 #define DRIVER_KMS_LEGACY_CONTEXT	0x20000
 #define DRIVER_SYNCOBJ                  0x40000
-#define DRIVER_PREFER_XBGR_30BPP        0x80000
 
 /**
  * struct drm_driver - DRM driver structure
@@ -434,6 +439,20 @@ struct drm_driver {
 	void (*gem_close_object) (struct drm_gem_object *, struct drm_file *);
 
 	/**
+	 * @gem_print_info:
+	 *
+	 * If driver subclasses struct &drm_gem_object, it can implement this
+	 * optional hook for printing additional driver specific info.
+	 *
+	 * drm_printf_indent() should be used in the callback passing it the
+	 * indent argument.
+	 *
+	 * This callback is called from drm_gem_print_info().
+	 */
+	void (*gem_print_info)(struct drm_printer *p, unsigned int indent,
+			       const struct drm_gem_object *obj);
+
+	/**
 	 * @gem_create_object: constructor for gem objects
 	 *
 	 * Hook for allocating the GEM object struct, for use by core
@@ -602,11 +621,6 @@ struct drm_driver {
 #endif /* __DragonFly__ */
 };
 
-void drm_dev_printk(const struct device *dev, const char *level,
-		    unsigned int category, const char *function_name,
-		    const char *prefix, const char *format, ...);
-void drm_printk(const char *level, unsigned int category,
-		const char *format, ...);
 extern unsigned int drm_debug;
 
 int drm_dev_init(struct drm_device *dev,
@@ -623,6 +637,8 @@ void drm_dev_get(struct drm_device *dev);
 void drm_dev_put(struct drm_device *dev);
 void drm_dev_unref(struct drm_device *dev);
 void drm_put_dev(struct drm_device *dev);
+bool drm_dev_enter(struct drm_device *dev, int *idx);
+void drm_dev_exit(int idx);
 void drm_dev_unplug(struct drm_device *dev);
 
 /**
@@ -634,11 +650,45 @@ void drm_dev_unplug(struct drm_device *dev);
  * unplugged, these two functions guarantee that any store before calling
  * drm_dev_unplug() is visible to callers of this function after it completes
  */
-static inline int drm_dev_is_unplugged(struct drm_device *dev)
+static inline bool drm_dev_is_unplugged(struct drm_device *dev)
 {
-	int ret = atomic_read(&dev->unplugged);
-	smp_rmb();
-	return ret;
+	int idx;
+
+	if (drm_dev_enter(dev, &idx)) {
+		drm_dev_exit(idx);
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * drm_core_check_feature - check driver feature flags
+ * @dev: DRM device to check
+ * @feature: feature flag
+ *
+ * This checks @dev for driver features, see &drm_driver.driver_features,
+ * &drm_device.driver_features, and the various DRIVER_\* flags.
+ *
+ * Returns true if the @feature is supported, false otherwise.
+ */
+static inline bool drm_core_check_feature(struct drm_device *dev, u32 feature)
+{
+	return dev->driver->driver_features & dev->driver_features & feature;
+}
+
+/**
+ * drm_drv_uses_atomic_modeset - check if the driver implements
+ * atomic_commit()
+ * @dev: DRM device
+ *
+ * This check is useful if drivers do not have DRIVER_ATOMIC set but
+ * have atomic modesetting internally implemented.
+ */
+static inline bool drm_drv_uses_atomic_modeset(struct drm_device *dev)
+{
+	return drm_core_check_feature(dev, DRIVER_ATOMIC) ||
+		(dev->mode_config.funcs && dev->mode_config.funcs->atomic_commit != NULL);
 }
 
 

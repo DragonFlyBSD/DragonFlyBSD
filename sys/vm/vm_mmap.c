@@ -230,6 +230,9 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 			return (EBADF);
 		if (fp->f_type != DTYPE_VNODE) {
 			error = EINVAL;
+			if (fp->f_type == DTYPE_DMABUF) {
+				kprintf("dmabuf-mmap-attempt\n");
+			}
 			goto done;
 		}
 		/*

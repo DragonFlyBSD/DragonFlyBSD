@@ -35,7 +35,6 @@ static void radeon_do_test_moves(struct radeon_device *rdev, int flag)
 {
 	struct radeon_bo *vram_obj = NULL;
 	struct radeon_bo **gtt_obj = NULL;
-	struct radeon_fence *fence = NULL;
 	u64 gtt_addr, vram_addr;
 	unsigned n, size;
 	int i, r, ring;
@@ -85,6 +84,7 @@ static void radeon_do_test_moves(struct radeon_device *rdev, int flag)
 		void *gtt_map, *vram_map;
 		void **gtt_start, **gtt_end;
 		void **vram_start, **vram_end;
+		struct radeon_fence *fence = NULL;
 
 		r = radeon_bo_create(rdev, size, PAGE_SIZE, true,
 				     RADEON_GEM_DOMAIN_GTT, 0, NULL, NULL,

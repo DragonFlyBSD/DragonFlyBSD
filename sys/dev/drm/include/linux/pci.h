@@ -618,4 +618,27 @@ pcie_get_width_cap(struct pci_dev *dev)
 
 #include <linux/pci-dma-compat.h>
 
+struct linux_resource {
+	resource_size_t start;
+	resource_size_t end;
+};
+
+#define DEFINE_RES_MEM(_start, _size)		\
+	{					\
+		.start = (_start),		\
+		.end = (_start) + (_size) - 1,	\
+	}
+
+static inline resource_size_t
+resource_size(const struct linux_resource *res)
+{
+	return res->end - res->start + 1;
+}
+
+static inline bool
+resource_contains(struct linux_resource *a, struct linux_resource *b)
+{
+	return a->start <= b->start && a->end >= b->end;
+}
+
 #endif /* LINUX_PCI_H */

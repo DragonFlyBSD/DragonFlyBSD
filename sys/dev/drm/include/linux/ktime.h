@@ -72,6 +72,13 @@ ktime_add_ms(const ktime_t kt, const u64 ms)
 	return ktime_add_ns(kt, NSEC_PER_MSEC * ms);
 }
 
+static inline ktime_t
+ktime_add_us(ktime_t kt, int64_t us)
+{
+
+	return (ktime_add_ns(kt, us * NSEC_PER_USEC));
+}
+
 static inline ktime_t ktime_sub_ns(ktime_t kt, int64_t ns)
 {
 	return kt - ns;
@@ -85,10 +92,23 @@ static inline ktime_t ktime_get(void)
 	return (ts.tv_sec * NSEC_PER_SEC) + ts.tv_nsec;
 }
 
+static inline ktime_t ktime_get_real_seconds(void)
+{
+	struct timespec ts;
+	nanouptime(&ts);
+	return (ts.tv_sec);
+}
+
 static inline ktime_t
 ktime_sub(ktime_t lhs, ktime_t rhs)
 {
 	return lhs - rhs;
+}
+
+static inline ktime_t
+ktime_add(ktime_t lhs, ktime_t rhs)
+{
+        return lhs + rhs;
 }
 
 static inline ktime_t

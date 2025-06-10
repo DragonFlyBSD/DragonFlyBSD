@@ -52,6 +52,8 @@ struct ttm_placement;
 
 struct ttm_place;
 
+struct ttm_lru_bulk_move;
+
 /**
  * struct ttm_bus_placement
  *
@@ -313,6 +315,24 @@ ttm_bo_reference(struct ttm_buffer_object *bo)
 }
 
 /**
+ * ttm_bo_get_unless_zero - reference a struct ttm_buffer_object unless
+ * its refcount has already reached zero.
+ * @bo: The buffer object.
+ *
+ * Used to reference a TTM buffer object in lookups where the object is removed
+ * from the lookup structure during the destructor and for RCU lookups.
+ *
+ * Returns: @bo if the referencing was successful, NULL otherwise.
+ */
+static inline __must_check struct ttm_buffer_object *
+ttm_bo_get_unless_zero(struct ttm_buffer_object *bo)
+{
+	if (!kref_get_unless_zero(&bo->kref))
+		return NULL;
+	return bo;
+}
+
+/**
  * ttm_bo_wait - wait for buffer idle.
  *
  * @bo:  The buffer object.
@@ -407,12 +427,24 @@ void ttm_bo_del_from_lru(struct ttm_buffer_object *bo);
  * ttm_bo_move_to_lru_tail
  *
  * @bo: The buffer object.
+ * @bulk: optional bulk move structure to remember BO positions
  *
  * Move this BO to the tail of all lru lists used to lookup and reserve an
  * object. This function must be called with struct ttm_bo_global::lru_lock
  * held, and is used to make a BO less likely to be considered for eviction.
  */
-void ttm_bo_move_to_lru_tail(struct ttm_buffer_object *bo);
+void ttm_bo_move_to_lru_tail(struct ttm_buffer_object *bo,
+			     struct ttm_lru_bulk_move *bulk);
+
+/**
+ * ttm_bo_bulk_move_lru_tail
+ *
+ * @bulk: bulk move structure
+ *
+ * Bulk move BOs to the LRU tail, only valid to use when driver makes sure that
+ * BO order never changes. Should be called with ttm_bo_global::lru_lock held.
+ */
+void ttm_bo_bulk_move_lru_tail(struct ttm_lru_bulk_move *bulk);
 
 /**
  * ttm_bo_lock_delayed_workqueue
@@ -540,6 +572,10 @@ int ttm_bo_init_reserved(struct ttm_bo_device *bdev,
  * @page_alignment: Data alignment in pages.
  * @interruptible: If needing to sleep to wait for GPU resources,
  * sleep interruptible.
+ * pinned in physical memory. If this behaviour is not desired, this member
+ * holds a pointer to a persistent shmem object. Typically, this would
+ * point to the shmem object backing a GEM object if TTM is used to back a
+ * GEM user interface.
  * @acc_size: Accounted size for this object.
  * @resv: Pointer to a reservation_object, or NULL to let ttm allocate one.
  * @destroy: Destroy function. Use NULL for kfree().

@@ -23,8 +23,11 @@
  */
 
 #include "intel_uc.h"
+#include "intel_guc_submission.h"
+#include "intel_guc.h"
 #include "i915_drv.h"
-#include "i915_guc_submission.h"
+
+static void guc_free_load_err_log(struct intel_guc *guc);
 
 /* Reset GuC providing us with fresh state for both GuC and HuC.
  */
@@ -33,9 +36,9 @@ static int __intel_uc_reset_hw(struct drm_i915_private *dev_priv)
 	int ret;
 	u32 guc_status;
 
-	ret = intel_guc_reset(dev_priv);
+	ret = intel_reset_guc(dev_priv);
 	if (ret) {
-		DRM_ERROR("GuC reset failed, ret = %d\n", ret);
+		DRM_ERROR("Failed to reset GuC, ret = %d\n", ret);
 		return ret;
 	}
 
@@ -47,73 +50,151 @@ static int __intel_uc_reset_hw(struct drm_i915_private *dev_priv)
 	return ret;
 }
 
-void intel_uc_sanitize_options(struct drm_i915_private *dev_priv)
+static int __get_platform_enable_guc(struct drm_i915_private *i915)
 {
-	if (!HAS_GUC(dev_priv)) {
-		if (i915_modparams.enable_guc_loading > 0 ||
-		    i915_modparams.enable_guc_submission > 0)
-			DRM_INFO("Ignoring GuC options, no hardware\n");
+	struct intel_uc_fw *guc_fw = &i915->guc.fw;
+	struct intel_uc_fw *huc_fw = &i915->huc.fw;
+	int enable_guc = 0;
 
-		i915_modparams.enable_guc_loading = 0;
-		i915_modparams.enable_guc_submission = 0;
-		return;
-	}
+	/* Default is to enable GuC/HuC if we know their firmwares */
+	if (intel_uc_fw_is_selected(guc_fw))
+		enable_guc |= ENABLE_GUC_SUBMISSION;
+	if (intel_uc_fw_is_selected(huc_fw))
+		enable_guc |= ENABLE_GUC_LOAD_HUC;
+
+	/* Any platform specific fine-tuning can be done here */
+
+	return enable_guc;
+}
+
+static int __get_default_guc_log_level(struct drm_i915_private *i915)
+{
+	int guc_log_level;
+
+	if (!HAS_GUC(i915) || !intel_uc_is_using_guc())
+		guc_log_level = GUC_LOG_LEVEL_DISABLED;
+	else if (IS_ENABLED(CONFIG_DRM_I915_DEBUG) ||
+		 IS_ENABLED(CONFIG_DRM_I915_DEBUG_GEM))
+		guc_log_level = GUC_LOG_LEVEL_MAX;
+	else
+		guc_log_level = GUC_LOG_LEVEL_NON_VERBOSE;
+
+	/* Any platform specific fine-tuning can be done here */
+
+	return guc_log_level;
+}
+
+/**
+ * sanitize_options_early - sanitize uC related modparam options
+ * @i915: device private
+ *
+ * In case of "enable_guc" option this function will attempt to modify
+ * it only if it was initially set to "auto(-1)". Default value for this
+ * modparam varies between platforms and it is hardcoded in driver code.
+ * Any other modparam value is only monitored against availability of the
+ * related hardware or firmware definitions.
+ *
+ * In case of "guc_log_level" option this function will attempt to modify
+ * it only if it was initially set to "auto(-1)" or if initial value was
+ * "enable(1..4)" on platforms without the GuC. Default value for this
+ * modparam varies between platforms and is usually set to "disable(0)"
+ * unless GuC is enabled on given platform and the driver is compiled with
+ * debug config when this modparam will default to "enable(1..4)".
+ */
+static void sanitize_options_early(struct drm_i915_private *i915)
+{
+	struct intel_uc_fw *guc_fw = &i915->guc.fw;
+	struct intel_uc_fw *huc_fw = &i915->huc.fw;
 
 	/* A negative value means "use platform default" */
-	if (i915_modparams.enable_guc_loading < 0)
-		i915_modparams.enable_guc_loading = HAS_GUC_UCODE(dev_priv);
+	if (i915_modparams.enable_guc < 0)
+		i915_modparams.enable_guc = __get_platform_enable_guc(i915);
 
-	/* Verify firmware version */
-	if (i915_modparams.enable_guc_loading) {
-		if (HAS_HUC_UCODE(dev_priv))
-			intel_huc_select_fw(&dev_priv->huc);
+	DRM_DEBUG_DRIVER("enable_guc=%d (submission:%s huc:%s)\n",
+			 i915_modparams.enable_guc,
+			 yesno(intel_uc_is_using_guc_submission()),
+			 yesno(intel_uc_is_using_huc()));
 
-		if (intel_guc_fw_select(&dev_priv->guc))
-			i915_modparams.enable_guc_loading = 0;
+	/* Verify GuC firmware availability */
+	if (intel_uc_is_using_guc() && !intel_uc_fw_is_selected(guc_fw)) {
+		DRM_WARN("Incompatible option detected: %s=%d, %s!\n",
+			 "enable_guc", i915_modparams.enable_guc,
+			 !HAS_GUC(i915) ? "no GuC hardware" :
+					  "no GuC firmware");
 	}
 
-	/* Can't enable guc submission without guc loaded */
-	if (!i915_modparams.enable_guc_loading)
-		i915_modparams.enable_guc_submission = 0;
+	/* Verify HuC firmware availability */
+	if (intel_uc_is_using_huc() && !intel_uc_fw_is_selected(huc_fw)) {
+		DRM_WARN("Incompatible option detected: %s=%d, %s!\n",
+			 "enable_guc", i915_modparams.enable_guc,
+			 !HAS_HUC(i915) ? "no HuC hardware" :
+					  "no HuC firmware");
+	}
 
-	/* A negative value means "use platform default" */
-	if (i915_modparams.enable_guc_submission < 0)
-		i915_modparams.enable_guc_submission = HAS_GUC_SCHED(dev_priv);
+	/* A negative value means "use platform/config default" */
+	if (i915_modparams.guc_log_level < 0)
+		i915_modparams.guc_log_level =
+			__get_default_guc_log_level(i915);
+
+	if (i915_modparams.guc_log_level > 0 && !intel_uc_is_using_guc()) {
+		DRM_WARN("Incompatible option detected: %s=%d, %s!\n",
+			 "guc_log_level", i915_modparams.guc_log_level,
+			 !HAS_GUC(i915) ? "no GuC hardware" :
+					  "GuC not enabled");
+		i915_modparams.guc_log_level = 0;
+	}
+
+	if (i915_modparams.guc_log_level > GUC_LOG_LEVEL_MAX) {
+		DRM_WARN("Incompatible option detected: %s=%d, %s!\n",
+			 "guc_log_level", i915_modparams.guc_log_level,
+			 "verbosity too high");
+		i915_modparams.guc_log_level = GUC_LOG_LEVEL_MAX;
+	}
+
+	DRM_DEBUG_DRIVER("guc_log_level=%d (enabled:%s, verbose:%s, verbosity:%d)\n",
+			 i915_modparams.guc_log_level,
+			 yesno(i915_modparams.guc_log_level),
+			 yesno(GUC_LOG_LEVEL_IS_VERBOSE(i915_modparams.guc_log_level)),
+			 GUC_LOG_LEVEL_TO_VERBOSITY(i915_modparams.guc_log_level));
+
+	/* Make sure that sanitization was done */
+	GEM_BUG_ON(i915_modparams.enable_guc < 0);
+	GEM_BUG_ON(i915_modparams.guc_log_level < 0);
 }
 
-void intel_uc_init_early(struct drm_i915_private *dev_priv)
+void intel_uc_init_early(struct drm_i915_private *i915)
 {
-	intel_guc_init_early(&dev_priv->guc);
+	struct intel_guc *guc = &i915->guc;
+	struct intel_huc *huc = &i915->huc;
+
+	intel_guc_init_early(guc);
+	intel_huc_init_early(huc);
+
+	sanitize_options_early(i915);
 }
 
-void intel_uc_init_fw(struct drm_i915_private *dev_priv)
+void intel_uc_cleanup_early(struct drm_i915_private *i915)
 {
-	intel_uc_fw_fetch(dev_priv, &dev_priv->huc.fw);
-	intel_uc_fw_fetch(dev_priv, &dev_priv->guc.fw);
-}
+	struct intel_guc *guc = &i915->guc;
 
-void intel_uc_fini_fw(struct drm_i915_private *dev_priv)
-{
-	intel_uc_fw_fini(&dev_priv->guc.fw);
-	intel_uc_fw_fini(&dev_priv->huc.fw);
+	guc_free_load_err_log(guc);
 }
 
 /**
  * intel_uc_init_mmio - setup uC MMIO access
- *
- * @dev_priv: device private
+ * @i915: device private
  *
  * Setup minimal state necessary for MMIO accesses later in the
  * initialization sequence.
  */
-void intel_uc_init_mmio(struct drm_i915_private *dev_priv)
+void intel_uc_init_mmio(struct drm_i915_private *i915)
 {
-	intel_guc_init_send_regs(&dev_priv->guc);
+	intel_guc_init_send_regs(&i915->guc);
 }
 
 static void guc_capture_load_err_log(struct intel_guc *guc)
 {
-	if (!guc->log.vma || i915_modparams.guc_log_level < 0)
+	if (!guc->log.vma || !intel_guc_log_get_level(&guc->log))
 		return;
 
 	if (!guc->load_err_log)
@@ -130,57 +211,150 @@ static void guc_free_load_err_log(struct intel_guc *guc)
 
 static int guc_enable_communication(struct intel_guc *guc)
 {
-	struct drm_i915_private *dev_priv = guc_to_i915(guc);
+	struct drm_i915_private *i915 = guc_to_i915(guc);
 
-	if (HAS_GUC_CT(dev_priv))
-		return intel_guc_enable_ct(guc);
+	gen9_enable_guc_interrupts(i915);
+
+	if (HAS_GUC_CT(i915))
+		return intel_guc_ct_enable(&guc->ct);
 
 	guc->send = intel_guc_send_mmio;
+	guc->handler = intel_guc_to_host_event_handler_mmio;
 	return 0;
 }
 
 static void guc_disable_communication(struct intel_guc *guc)
 {
-	struct drm_i915_private *dev_priv = guc_to_i915(guc);
+	struct drm_i915_private *i915 = guc_to_i915(guc);
 
-	if (HAS_GUC_CT(dev_priv))
-		intel_guc_disable_ct(guc);
+	if (HAS_GUC_CT(i915))
+		intel_guc_ct_disable(&guc->ct);
+
+	gen9_disable_guc_interrupts(i915);
 
 	guc->send = intel_guc_send_nop;
+	guc->handler = intel_guc_to_host_event_handler_nop;
 }
 
-int intel_uc_init_hw(struct drm_i915_private *dev_priv)
+int intel_uc_init_misc(struct drm_i915_private *i915)
 {
-	struct intel_guc *guc = &dev_priv->guc;
-	int ret, attempts;
+	struct intel_guc *guc = &i915->guc;
+	struct intel_huc *huc = &i915->huc;
+	int ret;
 
-	if (!i915_modparams.enable_guc_loading)
+	if (!USES_GUC(i915))
 		return 0;
 
-	guc_disable_communication(guc);
-	gen9_reset_guc_interrupts(dev_priv);
+	ret = intel_guc_init_misc(guc);
+	if (ret)
+		return ret;
 
-	/* We need to notify the guc whenever we change the GGTT */
-	i915_ggtt_enable_guc(dev_priv);
-
-	if (i915_modparams.enable_guc_submission) {
-		/*
-		 * This is stuff we need to have available at fw load time
-		 * if we are planning to enable submission later
-		 */
-		ret = i915_guc_submission_init(dev_priv);
+	if (USES_HUC(i915)) {
+		ret = intel_huc_init_misc(huc);
 		if (ret)
 			goto err_guc;
 	}
 
-	/* init WOPCM */
-	I915_WRITE(GUC_WOPCM_SIZE, intel_guc_wopcm_size(dev_priv));
-	I915_WRITE(DMA_GUC_WOPCM_OFFSET,
-		   GUC_WOPCM_OFFSET_VALUE | HUC_LOADING_AGENT_GUC);
+	return 0;
+
+err_guc:
+	intel_guc_fini_misc(guc);
+	return ret;
+}
+
+void intel_uc_fini_misc(struct drm_i915_private *i915)
+{
+	struct intel_guc *guc = &i915->guc;
+	struct intel_huc *huc = &i915->huc;
+
+	if (!USES_GUC(i915))
+		return;
+
+	if (USES_HUC(i915))
+		intel_huc_fini_misc(huc);
+
+	intel_guc_fini_misc(guc);
+}
+
+int intel_uc_init(struct drm_i915_private *i915)
+{
+	struct intel_guc *guc = &i915->guc;
+	int ret;
+
+	if (!USES_GUC(i915))
+		return 0;
+
+	if (!HAS_GUC(i915))
+		return -ENODEV;
+
+	ret = intel_guc_init(guc);
+	if (ret)
+		return ret;
+
+	if (USES_GUC_SUBMISSION(i915)) {
+		/*
+		 * This is stuff we need to have available at fw load time
+		 * if we are planning to enable submission later
+		 */
+		ret = intel_guc_submission_init(guc);
+		if (ret) {
+			intel_guc_fini(guc);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+void intel_uc_fini(struct drm_i915_private *i915)
+{
+	struct intel_guc *guc = &i915->guc;
+
+	if (!USES_GUC(i915))
+		return;
+
+	GEM_BUG_ON(!HAS_GUC(i915));
+
+	if (USES_GUC_SUBMISSION(i915))
+		intel_guc_submission_fini(guc);
+
+	intel_guc_fini(guc);
+}
+
+void intel_uc_sanitize(struct drm_i915_private *i915)
+{
+	struct intel_guc *guc = &i915->guc;
+	struct intel_huc *huc = &i915->huc;
+
+	if (!USES_GUC(i915))
+		return;
+
+	GEM_BUG_ON(!HAS_GUC(i915));
+
+	guc_disable_communication(guc);
+
+	intel_huc_sanitize(huc);
+	intel_guc_sanitize(guc);
+
+	__intel_uc_reset_hw(i915);
+}
+
+int intel_uc_init_hw(struct drm_i915_private *i915)
+{
+	struct intel_guc *guc = &i915->guc;
+	struct intel_huc *huc = &i915->huc;
+	int ret, attempts;
+
+	if (!USES_GUC(i915))
+		return 0;
+
+	GEM_BUG_ON(!HAS_GUC(i915));
+
+	gen9_reset_guc_interrupts(i915);
 
 	/* WaEnableuKernelHeaderValidFix:skl */
 	/* WaEnableGuCBootHashCheckNotSet:skl,bxt,kbl */
-	if (IS_GEN9(dev_priv))
+	if (IS_GEN9(i915))
 		attempts = 3;
 	else
 		attempts = 1;
@@ -190,11 +364,16 @@ int intel_uc_init_hw(struct drm_i915_private *dev_priv)
 		 * Always reset the GuC just before (re)loading, so
 		 * that the state and timing are fairly predictable
 		 */
-		ret = __intel_uc_reset_hw(dev_priv);
+		ret = __intel_uc_reset_hw(i915);
 		if (ret)
-			goto err_submission;
+			goto err_out;
 
-		intel_huc_init_hw(&dev_priv->huc);
+		if (USES_HUC(i915)) {
+			ret = intel_huc_fw_upload(huc);
+			if (ret)
+				goto err_out;
+		}
+
 		intel_guc_init_params(guc);
 		ret = intel_guc_fw_upload(guc);
 		if (ret == 0 || ret != -EAGAIN)
@@ -212,79 +391,105 @@ int intel_uc_init_hw(struct drm_i915_private *dev_priv)
 	if (ret)
 		goto err_log_capture;
 
-	intel_huc_auth(&dev_priv->huc);
-	if (i915_modparams.enable_guc_submission) {
-		if (i915_modparams.guc_log_level >= 0)
-			gen9_enable_guc_interrupts(dev_priv);
-
-		ret = i915_guc_submission_enable(dev_priv);
+	if (USES_HUC(i915)) {
+		ret = intel_huc_auth(huc);
 		if (ret)
-			goto err_interrupts;
+			goto err_communication;
 	}
 
-	dev_info(dev_priv->drm.dev, "GuC %s (firmware %s [version %u.%u])\n",
-		 i915_modparams.enable_guc_submission ? "submission enabled" :
-							"loaded",
-		 guc->fw.path,
+	if (USES_GUC_SUBMISSION(i915)) {
+		ret = intel_guc_submission_enable(guc);
+		if (ret)
+			goto err_communication;
+	} else if (INTEL_GEN(i915) < 11) {
+		ret = intel_guc_sample_forcewake(guc);
+		if (ret)
+			goto err_communication;
+	}
+
+	dev_info(i915->drm.dev, "GuC firmware version %u.%u\n",
 		 guc->fw.major_ver_found, guc->fw.minor_ver_found);
+	dev_info(i915->drm.dev, "GuC submission %s\n",
+		 enableddisabled(USES_GUC_SUBMISSION(i915)));
+	dev_info(i915->drm.dev, "HuC %s\n",
+		 enableddisabled(USES_HUC(i915)));
 
 	return 0;
 
 	/*
 	 * We've failed to load the firmware :(
-	 *
-	 * Decide whether to disable GuC submission and fall back to
-	 * execlist mode, and whether to hide the error by returning
-	 * zero or to return -EIO, which the caller will treat as a
-	 * nonfatal error (i.e. it doesn't prevent driver load, but
-	 * marks the GPU as wedged until reset).
 	 */
-err_interrupts:
+err_communication:
 	guc_disable_communication(guc);
-	gen9_disable_guc_interrupts(dev_priv);
 err_log_capture:
 	guc_capture_load_err_log(guc);
-err_submission:
-	if (i915_modparams.enable_guc_submission)
-		i915_guc_submission_fini(dev_priv);
-err_guc:
-	i915_ggtt_disable_guc(dev_priv);
+err_out:
+	/*
+	 * Note that there is no fallback as either user explicitly asked for
+	 * the GuC or driver default option was to run with the GuC enabled.
+	 */
+	if (GEM_WARN_ON(ret == -EIO))
+		ret = -EINVAL;
 
-	if (i915_modparams.enable_guc_loading > 1 ||
-	    i915_modparams.enable_guc_submission > 1) {
-		DRM_ERROR("GuC init failed. Firmware loading disabled.\n");
-		ret = -EIO;
-	} else {
-		DRM_NOTE("GuC init failed. Firmware loading disabled.\n");
-		ret = 0;
-	}
-
-	if (i915_modparams.enable_guc_submission) {
-		i915_modparams.enable_guc_submission = 0;
-		DRM_NOTE("Falling back from GuC submission to execlist mode\n");
-	}
-
-	i915_modparams.enable_guc_loading = 0;
-
+	dev_err(i915->drm.dev, "GuC initialization failed %d\n", ret);
 	return ret;
 }
 
-void intel_uc_fini_hw(struct drm_i915_private *dev_priv)
+void intel_uc_fini_hw(struct drm_i915_private *i915)
 {
-	guc_free_load_err_log(&dev_priv->guc);
+	struct intel_guc *guc = &i915->guc;
 
-	if (!i915_modparams.enable_guc_loading)
+	if (!USES_GUC(i915))
 		return;
 
-	if (i915_modparams.enable_guc_submission)
-		i915_guc_submission_disable(dev_priv);
+	GEM_BUG_ON(!HAS_GUC(i915));
 
-	guc_disable_communication(&dev_priv->guc);
+	if (USES_GUC_SUBMISSION(i915))
+		intel_guc_submission_disable(guc);
 
-	if (i915_modparams.enable_guc_submission) {
-		gen9_disable_guc_interrupts(dev_priv);
-		i915_guc_submission_fini(dev_priv);
+	guc_disable_communication(guc);
+}
+
+int intel_uc_suspend(struct drm_i915_private *i915)
+{
+	struct intel_guc *guc = &i915->guc;
+	int err;
+
+	if (!USES_GUC(i915))
+		return 0;
+
+	if (guc->fw.load_status != INTEL_UC_FIRMWARE_SUCCESS)
+		return 0;
+
+	err = intel_guc_suspend(guc);
+	if (err) {
+		DRM_DEBUG_DRIVER("Failed to suspend GuC, err=%d", err);
+		return err;
 	}
 
-	i915_ggtt_disable_guc(dev_priv);
+	gen9_disable_guc_interrupts(i915);
+
+	return 0;
+}
+
+int intel_uc_resume(struct drm_i915_private *i915)
+{
+	struct intel_guc *guc = &i915->guc;
+	int err;
+
+	if (!USES_GUC(i915))
+		return 0;
+
+	if (guc->fw.load_status != INTEL_UC_FIRMWARE_SUCCESS)
+		return 0;
+
+	gen9_enable_guc_interrupts(i915);
+
+	err = intel_guc_resume(guc);
+	if (err) {
+		DRM_DEBUG_DRIVER("Failed to resume GuC, err=%d", err);
+		return err;
+	}
+
+	return 0;
 }

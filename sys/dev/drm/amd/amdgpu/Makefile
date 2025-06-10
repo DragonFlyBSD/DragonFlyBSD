@@ -47,7 +47,8 @@ KMOD=	amdgpu
 	${.CURDIR}/../display/dc/dce100 \
 	${.CURDIR}/../display/dc/dce80 \
 	${.CURDIR}/../display/modules/freesync \
-	${.CURDIR}/../display/modules/color
+	${.CURDIR}/../display/modules/color \
+	${.CURDIR}/../display/modules/info_packet
 
 SRCS=	amdgpu_drv.c
 
@@ -65,12 +66,13 @@ SRCS+= amdgpu_device.c amdgpu_kms.c \
 	amdgpu_prime.c amdgpu_vm.c amdgpu_ib.c amdgpu_pll.c \
 	amdgpu_ucode.c amdgpu_bo_list.c amdgpu_ctx.c amdgpu_sync.c \
 	amdgpu_gtt_mgr.c amdgpu_vram_mgr.c amdgpu_virt.c amdgpu_atomfirmware.c \
-	amdgpu_queue_mgr.c amdgpu_vf_error.c amdgpu_sched.c amdgpu_debugfs.c \
-	amdgpu_ids.c
+	amdgpu_vf_error.c amdgpu_sched.c amdgpu_debugfs.c \
+	amdgpu_ids.c \
+	amdgpu_gmc.c amdgpu_xgmi.c
 
 SRCS+= \
 	vi.c mxgpu_vi.c nbio_v6_1.c soc15.c emu_soc.c mxgpu_ai.c nbio_v7_0.c vega10_reg_init.c \
-	vega20_reg_init.c
+	vega20_reg_init.c nbio_v7_4.o
 
 # add DF block
 SRCS+= \
@@ -81,7 +83,7 @@ SRCS+= \
 SRCS+= \
 	gmc_v7_0.c \
 	gmc_v8_0.c \
-	gfxhub_v1_0.c mmhub_v1_0.c gmc_v9_0.c
+	gfxhub_v1_0.c mmhub_v1_0.c gmc_v9_0.c gfxhub_v1_1.c
 
 # add IH block
 SRCS+= \
@@ -96,7 +98,8 @@ SRCS+= \
 SRCS+= \
 	amdgpu_psp.c \
 	psp_v3_1.c \
-	psp_v10_0.c
+	psp_v10_0.c \
+	psp_v11_0.c
 
 # add SMC block
 SRCS+= \
@@ -116,6 +119,7 @@ SRCS+= \
 
 # add async DMA block
 SRCS+= \
+	amdgpu_sdma.c \
 	sdma_v2_4.c \
 	sdma_v3_0.c \
 	sdma_v4_0.c
@@ -146,8 +150,9 @@ SRCS+= amdgpu_cgs.c
 
 # GPU scheduler
 SRCS+= \
-	gpu_scheduler.c \
+	sched_entity.c \
 	sched_fence.c \
+	sched_main.c \
 	amdgpu_job.c
 
 SRCS+= amdgpu_acpi.c
@@ -165,13 +170,15 @@ SRCS+= hwmgr.c processpptables.c \
 		vega10_thermal.c smu10_hwmgr.c pp_psm.c\
 		vega12_processpptables.c vega12_hwmgr.c \
 		vega12_thermal.c \
-		pp_overdriver.c smu_helper.c
+		pp_overdriver.c smu_helper.c \
+		vega20_processpptables.c vega20_hwmgr.c vega20_powertune.c \
+		vega20_thermal.c
 
 # powerplay/smumgr
 SRCS+= smumgr.c smu8_smumgr.c tonga_smumgr.c fiji_smumgr.c \
 	  polaris10_smumgr.c iceland_smumgr.c \
 	  smu7_smumgr.c vega10_smumgr.c smu10_smumgr.c ci_smumgr.c \
-	  vega12_smumgr.c vegam_smumgr.c smu9_smumgr.c
+	  vega12_smumgr.c vegam_smumgr.c smu9_smumgr.c vega20_smumgr.c
 
 # display core component (CONFIG_DRM_AMD_DC)
 # amdgpu_dm
@@ -210,7 +217,8 @@ SRCS+= dcn_calcs.c dcn_calc_math.c dcn_calc_auto.c
 # dc/dce
 SRCS+= dce_audio.c dce_stream_encoder.c dce_link_encoder.c dce_hwseq.c \
 	dce_mem_input.c dce_clock_source.c dce_scl_filters.c dce_transform.c \
-	dce_clocks.c dce_opp.c dce_dmcu.c dce_abm.c dce_ipp.c dce_aux.c
+	dce_clocks.c dce_opp.c dce_dmcu.c dce_abm.c dce_ipp.c dce_aux.c \
+	dce_i2c.c dce_i2c_hw.c dce_i2c_sw.c
 
 # dc/gpio
 SRCS+= gpio_base.c gpio_service.c hw_factory.c \
@@ -279,7 +287,7 @@ SRCS+= irq_service_dcn10.c
 SRCS+= virtual_link_encoder.c virtual_stream_encoder.c
 
 # dc/dcn10
-SRCS+= dcn10_resource.c dcn10_ipp.c dcn10_hw_sequencer.c \
+SRCS+= dcn10_resource.c dcn10_ipp.c dcn10_hw_sequencer.c dcn10_hw_sequencer_debug.c \
 	dcn10_dpp.c dcn10_opp.c dcn10_optc.c \
 	dcn10_hubp.c dcn10_mpc.c \
 	dcn10_dpp_dscl.c dcn10_dpp_cm.c dcn10_cm_common.c \
@@ -319,6 +327,10 @@ SRCS+= freesync.c
 
 # modules/color
 SRCS+= color_gamma.c
+
+# modules/info_packet
+SRCS+= info_packet.c
+
 # end display core component (CONFIG_DRM_AMD_DC)
 
 SRCS+= \

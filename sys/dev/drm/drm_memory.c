@@ -53,6 +53,12 @@
 
 
 #else /*  CONFIG_AGP  */
+static inline void *agp_remap(unsigned long offset, unsigned long size,
+			      struct drm_device * dev)
+{
+	return NULL;
+}
+
 #endif /* CONFIG_AGP */
 
 void drm_legacy_ioremap(struct drm_local_map *map, struct drm_device *dev)
@@ -75,3 +81,18 @@ void drm_legacy_ioremapfree(struct drm_local_map *map, struct drm_device *dev)
 	pmap_unmapdev((vm_offset_t) map->handle, map->size);
 }
 EXPORT_SYMBOL(drm_legacy_ioremapfree);
+
+#if 0
+u64 drm_get_max_iomem(void)
+{
+	struct resource *tmp;
+	resource_size_t max_iomem = 0;
+
+	for (tmp = iomem_resource.child; tmp; tmp = tmp->sibling) {
+		max_iomem = max(max_iomem,  tmp->end);
+	}
+
+	return max_iomem;
+}
+EXPORT_SYMBOL(drm_get_max_iomem);
+#endif

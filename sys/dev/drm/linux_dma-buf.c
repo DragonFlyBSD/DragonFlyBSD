@@ -35,10 +35,14 @@
 #include <linux/reservation.h>
 #include <linux/mm.h>
 
+struct fileops dmabuf_fileops;
+
 static int
 dmabuf_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 {
-	struct dma_buf *dmabuf = fp->f_data;
+STUB();
+	KASSERT(fp->f_type == DTYPE_DMABUF, ("fp is not DMABUF"));
+	struct dma_buf *dmabuf = fp->private_data;
 
 	memset(sb, 0, sizeof(*sb));
 	sb->st_size = dmabuf->size;
@@ -50,17 +54,64 @@ dmabuf_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 static int
 dmabuf_close(struct file *fp)
 {
-	kprintf("dmabuf_close(): not implemented\n");
-	return (EINVAL);
+	struct dma_buf *dmabuf;
+	if (fp->f_ops != &dmabuf_fileops) {
+		kprintf("dmabuf_close(): file->f_ops != &dmabuf_fileops\n");
+		return EINVAL;
+	}
+	dmabuf = fp->private_data;
+	dmabuf->ops->release(dmabuf);
+	kfree(dmabuf);
+
+	//kprintf("dmabuf_close(): success\n");
+	return 0;
+}
+
+static int
+dmabuf_ioctl(struct file *fp, u_long com, caddr_t data,
+	    struct ucred *cred, struct sysmsg *msgv)
+{
+	kprintf("dmabuf_ioctl: com=%lu\n", com);
+	return (EBADF);
+}
+
+static int
+dmabuf_seek(struct file *fp, off_t offset, int whence, off_t *res)
+{
+	KASSERT(fp->f_type == DTYPE_DMABUF, ("fp is not DMABUF"));
+	struct dma_buf *dmabuf = fp->private_data;
+	off_t newoff;
+
+	if (offset != 0) {
+		return EINVAL;
+	}
+
+	switch (whence) {
+	case SEEK_SET:
+		newoff = 0;
+		break;
+	case SEEK_END:
+		newoff = dmabuf->size;
+		break;
+	default:
+		return EINVAL;
+	}
+	spin_lock(&fp->f_spin);
+	fp->f_offset = newoff;
+	spin_unlock(&fp->f_spin);
+	*res = newoff;
+	return 0;
+	
 }
 
 struct fileops dmabuf_fileops = {
 	.fo_read	= badfo_readwrite,
 	.fo_write	= badfo_readwrite,
-	.fo_ioctl	= badfo_ioctl,
+	.fo_ioctl	= dmabuf_ioctl,
 	.fo_kqfilter	= badfo_kqfilter,
 	.fo_stat	= dmabuf_stat,
 	.fo_close	= dmabuf_close,
+	.fo_seek	= dmabuf_seek,
 };
 
 struct dma_buf *
@@ -125,12 +176,12 @@ dma_buf_get(int fd)
 
 	if (fp->f_ops != &dmabuf_fileops) {
 		kprintf("dma_buf_get(): file->f_ops != &dmabuf_fileops\n");
-		fdrop(fp);
+		dropfp(curthread, fd, fp);
 		return ERR_PTR(-EBADF);
 	}
 
 	dmabuf = fp->private_data;
-	fdrop(fp);
+	dropfp(curthread, fd, fp);
 
 	return dmabuf;
 }
@@ -139,6 +190,7 @@ struct sg_table *
 dma_buf_map_attachment(struct dma_buf_attachment *attach,
 				enum dma_data_direction direction)
 {
+STUB();
 	struct sg_table *sg_table;
 
 	if (attach == NULL)
@@ -158,5 +210,6 @@ void dma_buf_unmap_attachment(struct dma_buf_attachment *attach,
 				struct sg_table *sg_table,
 				enum dma_data_direction direction)
 {
+STUB();
 }
 

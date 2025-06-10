@@ -67,6 +67,7 @@
 #include <drm/drmP.h>
 #include <drm/drm_vma_manager.h>
 #include <drm/drm_gem.h>
+#include <drm/drm_print.h>
 #include "drm_internal.h"
 
 #ifdef __DragonFly__
@@ -360,7 +361,6 @@ drm_gem_handle_delete(struct drm_file *filp, u32 handle)
 	lockmgr(&filp->table_lock, LK_EXCLUSIVE);
 	idr_remove(&filp->object_idr, handle);
 	lockmgr(&filp->table_lock, LK_RELEASE);
-
 	return 0;
 }
 EXPORT_SYMBOL(drm_gem_handle_delete);
@@ -411,7 +411,7 @@ EXPORT_SYMBOL_GPL(drm_gem_dumb_map_offset);
  * @file: drm file-private structure to remove the dumb handle from
  * @dev: corresponding drm_device
  * @handle: the dumb handle to remove
- * 
+ *
  * This implements the &drm_driver.dumb_destroy kms driver callback for drivers
  * which use gem to manage their backing storage.
  */
@@ -428,7 +428,7 @@ EXPORT_SYMBOL(drm_gem_dumb_destroy);
  * @file_priv: drm file-private structure to register the handle for
  * @obj: object to register
  * @handlep: pointer to return the created handle to the caller
- * 
+ *
  * This expects the &drm_device.object_name_lock to be held already and will
  * drop it before returning. Used to avoid races in establishing new handles
  * when importing an object from either an flink name or a dma-buf.
@@ -498,9 +498,12 @@ err_unref:
  * @obj: object to register
  * @handlep: pionter to return the created handle to the caller
  *
- * Create a handle for this object. This adds a handle reference
- * to the object, which includes a regular reference count. Callers
- * will likely want to dereference the object afterwards.
+ * Create a handle for this object. This adds a handle reference to the object,
+ * which includes a regular reference count. Callers will likely want to
+ * dereference the object afterwards.
+ *
+ * Since this publishes @obj to userspace it must be fully set up by this point,
+ * drivers must call this last in their buffer object creation callbacks.
  */
 int drm_gem_handle_create(struct drm_file *file_priv,
 			  struct drm_gem_object *obj,
@@ -511,6 +514,7 @@ int drm_gem_handle_create(struct drm_file *file_priv,
 	return drm_gem_handle_create_tail(file_priv, obj, handlep);
 }
 EXPORT_SYMBOL(drm_gem_handle_create);
+
 
 /**
  * drm_gem_free_mmap_offset - release a fake mmap offset for an object
@@ -647,7 +651,7 @@ drm_gem_close_ioctl(struct drm_device *dev, void *data,
 	int ret;
 
 	if (!drm_core_check_feature(dev, DRIVER_GEM))
-		return -ENODEV;
+		return -EOPNOTSUPP;
 
 	ret = drm_gem_handle_delete(file_priv, args->handle);
 
@@ -674,7 +678,7 @@ drm_gem_flink_ioctl(struct drm_device *dev, void *data,
 	int ret;
 
 	if (!drm_core_check_feature(dev, DRIVER_GEM))
-		return -ENODEV;
+		return -EOPNOTSUPP;
 
 	obj = drm_gem_object_lookup(file_priv, args->handle);
 	if (obj == NULL)
@@ -725,7 +729,7 @@ drm_gem_open_ioctl(struct drm_device *dev, void *data,
 	u32 handle;
 
 	if (!drm_core_check_feature(dev, DRIVER_GEM))
-		return -ENODEV;
+		return -EOPNOTSUPP;
 
 	mutex_lock(&dev->object_name_lock);
 	obj = idr_find(&dev->object_name_idr, (int) args->name);
@@ -1017,6 +1021,15 @@ int drm_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 		return -EACCES;
 	}
 
+	if (node->readonly) {
+		if (vma->vm_flags & VM_WRITE) {
+			drm_gem_object_put_unlocked(obj);
+			return -EINVAL;
+		}
+
+		vma->vm_flags &= ~VM_MAYWRITE;
+	}
+
 	ret = drm_gem_mmap_obj(obj, drm_vma_node_size(node) << PAGE_SHIFT,
 			       vma);
 
@@ -1026,6 +1039,25 @@ int drm_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 }
 EXPORT_SYMBOL(drm_gem_mmap);
 #endif
+
+void drm_gem_print_info(struct drm_printer *p, unsigned int indent,
+			const struct drm_gem_object *obj)
+{
+#ifdef __DragonFly__
+	drm_printf_indent(p, indent, "gem_obj=%p\n", obj);
+#endif
+	drm_printf_indent(p, indent, "name=%d\n", obj->name);
+	drm_printf_indent(p, indent, "refcount=%u\n",
+			  kref_read(&obj->refcount));
+	drm_printf_indent(p, indent, "start=%08lx\n",
+			  drm_vma_node_start(&obj->vma_node));
+	drm_printf_indent(p, indent, "size=%zu\n", obj->size);
+	drm_printf_indent(p, indent, "imported=%s\n",
+			  obj->import_attach ? "yes" : "no");
+
+	if (obj->dev->driver->gem_print_info)
+		obj->dev->driver->gem_print_info(p, indent, obj);
+}
 
 #ifdef __DragonFly__
 static struct drm_gem_object *
@@ -1056,6 +1088,7 @@ drm_gem_mmap_single(struct drm_device *dev, vm_ooffset_t *offset, vm_size_t size
 
 	DRM_LOCK(dev);
 	gem_obj = drm_gem_object_from_offset(dev, *offset);
+	DRM_DEBUG("gem_obj=%p, offset=0x%lx\n", gem_obj, *offset);
 	if (gem_obj == NULL) {
 		DRM_UNLOCK(dev);
 		return (ENODEV);

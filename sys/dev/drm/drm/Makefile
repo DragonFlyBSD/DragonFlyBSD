@@ -1,8 +1,10 @@
 .PATH:	${.CURDIR}/.. ${.CURDIR}/../ttm
+
 KMOD	= drm
 SRCS	= \
 	drm_atomic.c \
 	drm_atomic_helper.c \
+	drm_atomic_uapi.c \
 	drm_auth.c \
 	drm_blend.c \
 	drm_bridge.c \
@@ -45,6 +47,7 @@ SRCS	= \
 	drm_modeset_lock.c \
 	drm_modeset_helper.c \
 	drm_panel.c \
+	drm_panel_orientation_quirks.c \
 	drm_pci.c \
 	drm_plane.c \
 	drm_plane_helper.c \
@@ -98,8 +101,6 @@ SRCS	= \
 	ttm_bo_util.c \
 	ttm_bo_vm.c \
 	ttm_module.c \
-	ttm_object.c \
-	ttm_lock.c \
 	ttm_execbuf_util.c \
 	ttm_page_alloc.c \
 	ttm_bo_manager.c \

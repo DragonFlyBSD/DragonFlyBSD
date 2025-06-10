@@ -2095,7 +2095,7 @@ device		drm
 device		"i915"
 device		radeon
 
-options 	DRM_DEBUG
+# options 	DRM_DEBUG
 options		VGA_SWITCHEROO
 
 #

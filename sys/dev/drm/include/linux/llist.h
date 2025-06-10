@@ -63,11 +63,11 @@ llist_del_first(struct llist_head *head)
 static inline bool
 llist_add(struct llist_node *new, struct llist_head *head)
 {
-	struct llist_node *first = READ_ONCE(head->first);
+	struct llist_node *first;
 
 	do {
-		new->next = first;
-	} while (cmpxchg(&head->first, first, new) != first);
+		new->next = first = head->first;
+	} while (!atomic_cmpset_ptr(&head->first, first, new));
 
 	return (first == NULL);
 }

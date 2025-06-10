@@ -92,5 +92,7 @@ extern void call_rcu(struct rcu_head *head, void (*func)(struct rcu_head *));
 #define rcu_pointer_handoff(p)	(p)
 
 #define synchronize_rcu()
+#define cond_synchronize_rcu(x)  cpu_mfence()
+#define get_state_synchronize_rcu()	0
 
 #endif  /* _LINUX_RCUPDATE_H_ */

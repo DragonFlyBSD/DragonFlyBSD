@@ -64,6 +64,16 @@
 #define trace_i915_gem_request_wait_begin(req, flags)
 #define trace_i915_gem_request_wait_end(req)
 
+#define trace_i915_request_queue(a, b)
+#define trace_i915_request_submit(a)
+#define trace_i915_request_execute(a)
+#define trace_i915_request_retire(a)
+#define trace_i915_request_add(a)
+#define trace_i915_request_in(a, b)
+#define trace_i915_request_out(req)
+#define trace_i915_request_wait_begin(a, b)
+#define trace_i915_request_wait_end(a)
+
 #define trace_i915_gem_ring_dispatch(a,b)
 #define trace_i915_gem_ring_flush(a,b,c)
 #define trace_i915_gem_ring_sync_to(to, from)

@@ -155,7 +155,7 @@ static int radeon_cs_parser_relocs(struct radeon_cs_parser *p)
 
 #if 0
 		if (radeon_ttm_tt_has_userptr(p->relocs[i].robj->tbo.ttm)) {
-			uint32_t domain = p->relocs[i].prefered_domains;
+			uint32_t domain = p->relocs[i].preferred_domains;
 			if (!(domain & RADEON_GEM_DOMAIN_GTT)) {
 				DRM_ERROR("Only RADEON_GEM_DOMAIN_GTT is "
 					  "allowed for userptr BOs\n");

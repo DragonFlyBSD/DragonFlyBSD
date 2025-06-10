@@ -216,7 +216,6 @@ struct pp_smumgr_func {
 	bool (*is_hw_avfs_present)(struct pp_hwmgr  *hwmgr);
 	int (*update_dpm_settings)(struct pp_hwmgr *hwmgr, void *profile_setting);
 	int (*smc_table_manager)(struct pp_hwmgr *hwmgr, uint8_t *table, uint16_t table_id, bool rw); /*rw: true for read, false for write */
-	int (*stop_smc)(struct pp_hwmgr *hwmgr);
 };
 
 struct pp_hwmgr_func {
@@ -248,6 +247,7 @@ struct pp_hwmgr_func {
 	int (*powerdown_uvd)(struct pp_hwmgr *hwmgr);
 	void (*powergate_vce)(struct pp_hwmgr *hwmgr, bool bgate);
 	void (*powergate_uvd)(struct pp_hwmgr *hwmgr, bool bgate);
+	void (*powergate_acp)(struct pp_hwmgr *hwmgr, bool bgate);
 	uint32_t (*get_mclk)(struct pp_hwmgr *hwmgr, bool low);
 	uint32_t (*get_sclk)(struct pp_hwmgr *hwmgr, bool low);
 	int (*power_state_set)(struct pp_hwmgr *hwmgr,
@@ -298,7 +298,6 @@ struct pp_hwmgr_func {
 	int (*display_clock_voltage_request)(struct pp_hwmgr *hwmgr,
 			struct pp_display_clock_request *clock);
 	int (*get_max_high_clocks)(struct pp_hwmgr *hwmgr, struct amd_pp_simple_clock_info *clocks);
-	int (*gfx_off_control)(struct pp_hwmgr *hwmgr, bool enable);
 	int (*power_off_asic)(struct pp_hwmgr *hwmgr);
 	int (*force_clock_level)(struct pp_hwmgr *hwmgr, enum pp_clock_type type, uint32_t mask);
 	int (*print_clock_levels)(struct pp_hwmgr *hwmgr, enum pp_clock_type type, char *buf);
@@ -329,6 +328,8 @@ struct pp_hwmgr_func {
 	int (*set_power_limit)(struct pp_hwmgr *hwmgr, uint32_t n);
 	int (*powergate_mmhub)(struct pp_hwmgr *hwmgr);
 	int (*smus_notify_pwe)(struct pp_hwmgr *hwmgr);
+	int (*powergate_sdma)(struct pp_hwmgr *hwmgr, bool bgate);
+	int (*enable_mgpu_fan_boost)(struct pp_hwmgr *hwmgr);
 };
 
 struct pp_table_func {
@@ -584,6 +585,7 @@ struct phm_ppt_v3_information
 	uint32_t *power_saving_clock_max;
 	uint32_t *power_saving_clock_min;
 
+	uint8_t *od_feature_capabilities;
 	uint32_t *od_settings_max;
 	uint32_t *od_settings_min;
 
@@ -678,7 +680,6 @@ struct pp_thermal_controller_info {
 	uint8_t ucType;
 	uint8_t ucI2cLine;
 	uint8_t ucI2cAddress;
-	uint8_t use_hw_fan_control;
 	struct pp_fan_info fanInfo;
 	struct pp_advance_fan_control_parameters advanceFanControlParameters;
 };
@@ -733,7 +734,6 @@ struct pp_hwmgr {
 	void *smu_backend;
 	const struct pp_smumgr_func *smumgr_funcs;
 	bool is_kicker;
-	bool reload_fw;
 
 	enum PP_DAL_POWERLEVEL dal_power_level;
 	struct phm_dynamic_state_info dyn_state;

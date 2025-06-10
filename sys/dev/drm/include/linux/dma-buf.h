@@ -56,7 +56,7 @@ struct dma_buf_ops {
 	void (*vunmap)(struct dma_buf *, void *vaddr);
 	int (*begin_cpu_access)(struct dma_buf *, enum dma_data_direction);
 	int (*end_cpu_access)(struct dma_buf *, enum dma_data_direction);
-	int (*attach)(struct dma_buf *, struct device *, struct dma_buf_attachment *);
+	int (*attach)(struct dma_buf *, struct dma_buf_attachment *);
 	void (*detach)(struct dma_buf *, struct dma_buf_attachment *);
 };
 
@@ -96,12 +96,8 @@ void dma_buf_unmap_attachment(struct dma_buf_attachment *,
 static inline struct dma_buf_attachment *
 dma_buf_attach(struct dma_buf *dmabuf, struct device *dev)
 {
-	/* XXX: this function is a stub */
-	struct dma_buf_attachment *attach;
-
-	attach = kmalloc(sizeof(struct dma_buf_attachment), M_DRM, M_WAITOK | M_ZERO);
-
-	return attach;
+	STUB();
+	return NULL;
 }
 
 static inline void
@@ -113,12 +109,12 @@ get_dma_buf(struct dma_buf *dmabuf)
 static inline void
 dma_buf_put(struct dma_buf *dmabuf)
 {
+	//kprintf("dma_buf_put: dmabuf=%p, dmabuf->file=%p\n", dmabuf, dmabuf ? dmabuf->file : NULL);
 	if (dmabuf == NULL)
 		return;
 
 	if (dmabuf->file == NULL)
 		return;
-
 	fdrop(dmabuf->file);
 }
 
@@ -130,7 +126,7 @@ static inline void
 dma_buf_detach(struct dma_buf *dmabuf,
 	       struct dma_buf_attachment *dmabuf_attach)
 {
-	kprintf("dma_buf_detach: Not implemented\n");
+	panic("dma_buf_attach is not implemented");
 }
 
 #endif /* LINUX_DMA_BUF_H */

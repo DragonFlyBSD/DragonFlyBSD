@@ -108,6 +108,8 @@
 #include <machine/intr_machdep.h>
 #include <machine/framebuffer.h>
 
+#include <bus/pci/x86_64/pci_early_quirks.h>
+
 #ifdef OLD_BUS_ARCH
 #include <bus/isa/isa_device.h>
 #endif
@@ -2750,6 +2752,8 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	}
 
 	lidt(&r_idt_arr[0]);
+
+	pci_early_quirks();
 
 	/*
 	 * Initialize the console before we print anything out.

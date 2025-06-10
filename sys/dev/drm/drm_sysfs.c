@@ -36,7 +36,7 @@ int drm_sysfs_connector_add(struct drm_connector *connector)
 		return 0;
 
 	/* Linux uses device_create_with_groups() here */
-	connector->kdev = kzalloc(sizeof(struct device), M_WAITOK);
+	connector->kdev = kzalloc(sizeof(struct device), GFP_KERNEL);
 	connector->kdev->kobj.name = kasprintf(GFP_KERNEL, "card%d-%s",
 					       dev->primary->index,
 					       connector->name);

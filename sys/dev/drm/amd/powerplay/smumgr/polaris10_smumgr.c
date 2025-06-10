@@ -1103,6 +1103,7 @@ static int polaris10_populate_single_memory_level(struct pp_hwmgr *hwmgr,
 	mem_level->DisplayWatermark = PPSMC_DISPLAY_WATERMARK_LOW;
 
 	data->display_timing.num_existing_displays = hwmgr->display_config->num_display;
+	data->display_timing.vrefresh = hwmgr->display_config->vrefresh;
 
 	if (mclk_stutter_mode_threshold &&
 		(clock <= mclk_stutter_mode_threshold) &&
@@ -2038,10 +2039,6 @@ static int polaris10_thermal_setup_fan_table(struct pp_hwmgr *hwmgr)
 				PHM_PlatformCaps_MicrocodeFanControl);
 		return 0;
 	}
-
-	/* use hardware fan control */
-	if (hwmgr->thermal_controller.use_hw_fan_control)
-		return 0;
 
 	tmp64 = hwmgr->thermal_controller.advanceFanControlParameters.
 			usPWMMin * duty100;

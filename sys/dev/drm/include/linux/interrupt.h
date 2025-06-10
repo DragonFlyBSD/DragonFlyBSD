@@ -70,6 +70,10 @@ void tasklet_schedule(struct tasklet_struct *t);
 void tasklet_hi_schedule(struct tasklet_struct *t);
 void tasklet_kill(struct tasklet_struct *t);
 
+int tasklet_trylock(struct tasklet_struct *t);
+void tasklet_unlock(struct tasklet_struct *t);
+void tasklet_unlock_wait(struct tasklet_struct *t);
+
 static inline void
 tasklet_enable(struct tasklet_struct *t)
 {

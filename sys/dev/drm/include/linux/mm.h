@@ -48,6 +48,8 @@
 #include <asm/pgtable.h>
 #include <asm/processor.h>
 
+#define PFN_PHYS(x)		((x) << PAGE_SHIFT)
+
 static inline struct page *
 nth_page(struct page *page, int n)
 {
@@ -201,5 +203,11 @@ long get_user_pages(unsigned long start, unsigned long nr_pages,
 		    struct vm_area_struct **vmas);
 
 void release_pages(struct page **pages, unsigned long nr_pages);
+
+static inline unsigned long
+totalram_pages(void)
+{
+	return ((unsigned long)physmem);
+}
 
 #endif	/* _LINUX_MM_H_ */

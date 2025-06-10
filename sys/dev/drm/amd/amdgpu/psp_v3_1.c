@@ -41,8 +41,6 @@ MODULE_FIRMWARE("amdgpufw_vega10_sos");
 MODULE_FIRMWARE("amdgpufw_vega10_asd");
 MODULE_FIRMWARE("amdgpufw_vega12_sos");
 MODULE_FIRMWARE("amdgpufw_vega12_asd");
-MODULE_FIRMWARE("amdgpufw_vega20_sos");
-MODULE_FIRMWARE("amdgpufw_vega20_asd");
 
 
 #define smnMP1_FIRMWARE_FLAGS 0x3010028

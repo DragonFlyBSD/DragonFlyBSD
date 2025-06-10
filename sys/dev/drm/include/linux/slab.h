@@ -33,6 +33,7 @@
 MALLOC_DECLARE(M_DRM);
 
 #define kzalloc(size, flags)	kmalloc(size, M_DRM, flags | M_ZERO)
+#define kvzalloc(size, flags)	kmalloc(size, M_DRM, (flags) | M_ZERO)
 
 #undef kfree
 #define kfree(ptr)	do {			\
@@ -96,6 +97,12 @@ static inline void
 kmem_cache_free(struct kmem_cache *kc, void *ptr)
 {
 	kfree(ptr);
+}
+
+static inline int
+kmem_cache_shrink(struct kmem_cache *c)
+{
+        return 0;
 }
 
 #endif	/* _LINUX_SLAB_H_ */

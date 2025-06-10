@@ -27,6 +27,8 @@
 #ifndef _LINUX_UACCESS_H_
 #define _LINUX_UACCESS_H_
 
+#include <asm/uaccess.h>
+
 static inline void pagefault_disable(void)
 {
 	atomic_set_int(&curthread->td_flags, TDF_NOFAULT);

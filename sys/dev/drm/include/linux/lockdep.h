@@ -45,5 +45,6 @@ struct lock_class_key {
 
 #define lock_acquire_shared_recursive(lock, b, c, d, e)	do {} while (0)
 #define lock_release(lock, b, c)			do {} while (0)
+#define lockdep_set_subclass(a, b)
 
 #endif	/* _LINUX_LOCKDEP_H_ */

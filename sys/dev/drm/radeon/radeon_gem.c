@@ -291,6 +291,7 @@ int radeon_gem_create_ioctl(struct drm_device *dev, void *data,
 int radeon_gem_userptr_ioctl(struct drm_device *dev, void *data,
 			     struct drm_file *filp)
 {
+	struct ttm_operation_ctx ctx = { true, false };
 	struct radeon_device *rdev = dev->dev_private;
 	struct drm_radeon_gem_userptr *args = data;
 	struct drm_gem_object *gobj;
@@ -349,7 +350,7 @@ int radeon_gem_userptr_ioctl(struct drm_device *dev, void *data,
 		}
 
 		radeon_ttm_placement_from_domain(bo, RADEON_GEM_DOMAIN_GTT);
-		r = ttm_bo_validate(&bo->tbo, &bo->placement, true, false);
+		r = ttm_bo_validate(&bo->tbo, &bo->placement, &ctx);
 		radeon_bo_unreserve(bo);
 		up_read(&current->mm->mmap_sem);
 		if (r)
@@ -385,7 +386,6 @@ int radeon_gem_set_domain_ioctl(struct drm_device *dev, void *data,
 	struct radeon_device *rdev = dev->dev_private;
 	struct drm_radeon_gem_set_domain *args = data;
 	struct drm_gem_object *gobj;
-	struct radeon_bo *robj;
 	int r;
 
 	/* for now if someone requests domain CPU -
@@ -398,13 +398,12 @@ int radeon_gem_set_domain_ioctl(struct drm_device *dev, void *data,
 		up_read(&rdev->exclusive_lock);
 		return -ENOENT;
 	}
-	robj = gem_to_radeon_bo(gobj);
 
 	r = radeon_gem_set_domain(gobj, args->read_domains, args->write_domain);
 
 	drm_gem_object_put_unlocked(gobj);
 	up_read(&rdev->exclusive_lock);
-	r = radeon_gem_handle_lockup(robj->rdev, r);
+	r = radeon_gem_handle_lockup(rdev, r);
 	return r;
 }
 

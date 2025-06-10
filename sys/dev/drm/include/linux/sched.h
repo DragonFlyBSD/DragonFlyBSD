@@ -80,23 +80,23 @@ struct seq_file;
 #define TASK_COMM_LEN	MAXCOMLEN
 
 struct task_struct {
-	struct thread *dfly_td;
-	volatile long state;
+	struct thread    *dfly_td;
+	volatile long     state;
 	struct mm_struct *mm;	/* mirror copy in p->p_linux_mm */
-	int prio;
+	int               prio;
 
 	/* kthread-specific data */
-	unsigned long		kt_flags;
-	int			(*kt_fn)(void *data);
-	void			*kt_fndata;
-	int			kt_exitvalue;
+	unsigned long     kt_flags;
+	int             (*kt_fn)(void *data);
+	void             *kt_fndata;
+	int               kt_exitvalue;
 
 	/* executable name without path */
-	char			comm[TASK_COMM_LEN];
+	char              comm[TASK_COMM_LEN];
 
-	atomic_t usage_counter;
-	pid_t pid;
-	struct spinlock		kt_spin;
+	atomic_t          usage_counter;
+	pid_t             pid;
+	struct spinlock   kt_spin;
 };
 
 #define __set_current_state(state_value)	current->state = (state_value);
@@ -114,13 +114,14 @@ do {						\
 static inline long
 schedule_timeout(signed long timeout)
 {
+	int timo, flags, error;
 	unsigned long time_before, time_after;
 	long slept, ret = 0;
-	int timo;
 
 	if (timeout < 0) {
 		kprintf("schedule_timeout(): timeout cannot be negative\n");
-		goto done;
+		current->state = TASK_RUNNING;
+		return 0;
 	}
 
 	/*
@@ -128,44 +129,60 @@ schedule_timeout(signed long timeout)
 	 * also translating to an integer.  The first conditional will
 	 * cover both but to code defensively test both.
 	 */
-	if (timeout >= INT_MAX || timeout == MAX_SCHEDULE_TIMEOUT)
-		timo = 0;
-	else
-		timo = timeout;
+	timo = timeout >= INT_MAX || timeout == MAX_SCHEDULE_TIMEOUT
+		? 0
+		: timeout;
 
 	spin_lock(&current->kt_spin);
 
 	switch (current->state) {
 	case TASK_INTERRUPTIBLE:
-		time_before = ticks;
-		ssleep(current, &current->kt_spin, PCATCH, "lstim", timo);
-		time_after = ticks;
-		slept = time_after - time_before;
-		ret = timeout - slept;
-		if (ret < 0)
-			ret = 0;
+		flags = PCATCH;
 		break;
 	case TASK_UNINTERRUPTIBLE:
-		ssleep(current, &current->kt_spin, 0, "lstim", timo);
+		flags = 0;
 		break;
+
+	case TASK_RUNNING:
+		/* bail early, timeout strictly >= 0 */
+		spin_unlock(&current->kt_spin);
+		return timeout;
+
 	default:
 		/*
-		 * Task has been flagged running before we could
-		 * enter the sleep.
-		 *
-		 * XXX should be able to remove this ssleep(), have it
-		 * here to protect against live-locks in case we mess
-		 * up the task->state.
+		 * do not handle currently not ported:
+		 * __TASK_STOPPED and __TASK_TRACED
 		 */
-		ssleep(current, &current->kt_spin, 0, "lst1", 1);
-		break;
+		panic("unreachable state %ld\n", current->state);
+	}
+	time_before = ticks;
+	error = ssleep(current, &current->kt_spin, flags, "lstim", timo);
+	time_after = ticks;
+
+	/* assume timeout actually expired */
+	ret = 0;
+
+	/*
+	 * timeout is not expired
+	 * ERESTART, EINTR, or wakeup have to result in non-zero return code
+	 */
+	if (error != EWOULDBLOCK) {
+		if (timeout == MAX_SCHEDULE_TIMEOUT) {
+			ret = MAX_SCHEDULE_TIMEOUT;
+		} else {
+			slept = time_after - time_before;
+			ret = timeout - slept;
+
+			/*
+			 * differentiate between timeout expiration and
+			 * signal/wakeup delivery
+			 */
+			if (ret <= 0)
+				ret = 1;
+		}
 	}
 
 	spin_unlock(&current->kt_spin);
-
-done:
-	if (timeout == MAX_SCHEDULE_TIMEOUT)
-		ret = MAX_SCHEDULE_TIMEOUT;
 
 	current->state = TASK_RUNNING;
 	return ret;
@@ -222,8 +239,8 @@ wake_up_process(struct task_struct *tsk)
 	ostate = tsk->state;
 	tsk->state = TASK_RUNNING;
 	spin_unlock(&tsk->kt_spin);
-	/* if (ostate != TASK_RUNNING) */
-	wakeup(tsk);
+	if (ostate != TASK_RUNNING)
+		wakeup(tsk);
 
 	return 1;	/* Always indicate the process was woken up */
 }

@@ -35,9 +35,15 @@
 
 #include "dcn_calc_math.h"
 
-
 #define DC_LOGGER \
 	dc->ctx->logger
+
+#define WM_SET_COUNT 4
+#define WM_A 0
+#define WM_B 1
+#define WM_C 2
+#define WM_D 3
+
 /*
  * NOTE:
  *   This file is gcc-parseable HW gospel, coming straight from HW engineers.
@@ -846,8 +852,9 @@ bool dcn_validate_bandwidth(
 		v->v_sync_plus_back_porch[input_idx] = pipe->stream->timing.v_total
 				- v->vactive[input_idx]
 				- pipe->stream->timing.v_front_porch;
-		v->pixel_clock[input_idx] = pipe->stream->timing.pix_clk_khz / 1000.0f;
-
+		v->pixel_clock[input_idx] = pipe->stream->timing.pix_clk_khz/1000.0;
+		if (pipe->stream->timing.timing_3d_format == TIMING_3D_FORMAT_HW_FRAME_PACKING)
+			v->pixel_clock[input_idx] *= 2;
 		if (!pipe->plane_state) {
 			v->dcc_enable[input_idx] = dcn_bw_yes;
 			v->source_pixel_format[input_idx] = dcn_bw_rgb_sub_32;
@@ -1089,9 +1096,9 @@ bool dcn_validate_bandwidth(
 			if (pipe->top_pipe && pipe->top_pipe->plane_state == pipe->plane_state)
 				continue;
 
-			pipe->pipe_dlg_param.vupdate_width = v->v_update_width[input_idx][v->dpp_per_plane[input_idx] == 2 ? 1 : 0];
-			pipe->pipe_dlg_param.vupdate_offset = v->v_update_offset[input_idx][v->dpp_per_plane[input_idx] == 2 ? 1 : 0];
-			pipe->pipe_dlg_param.vready_offset = v->v_ready_offset[input_idx][v->dpp_per_plane[input_idx] == 2 ? 1 : 0];
+			pipe->pipe_dlg_param.vupdate_width = v->v_update_width_pix[input_idx];
+			pipe->pipe_dlg_param.vupdate_offset = v->v_update_offset_pix[input_idx];
+			pipe->pipe_dlg_param.vready_offset = v->v_ready_offset_pix[input_idx];
 			pipe->pipe_dlg_param.vstartup_start = v->v_startup[input_idx];
 
 			pipe->pipe_dlg_param.htotal = pipe->stream->timing.h_total;
@@ -1130,9 +1137,9 @@ bool dcn_validate_bandwidth(
 					 TIMING_3D_FORMAT_SIDE_BY_SIDE))) {
 					if (hsplit_pipe && hsplit_pipe->plane_state == pipe->plane_state) {
 						/* update previously split pipe */
-						hsplit_pipe->pipe_dlg_param.vupdate_width = v->v_update_width[input_idx][v->dpp_per_plane[input_idx] == 2 ? 1 : 0];
-						hsplit_pipe->pipe_dlg_param.vupdate_offset = v->v_update_offset[input_idx][v->dpp_per_plane[input_idx] == 2 ? 1 : 0];
-						hsplit_pipe->pipe_dlg_param.vready_offset = v->v_ready_offset[input_idx][v->dpp_per_plane[input_idx] == 2 ? 1 : 0];
+						hsplit_pipe->pipe_dlg_param.vupdate_width = v->v_update_width_pix[input_idx];
+						hsplit_pipe->pipe_dlg_param.vupdate_offset = v->v_update_offset_pix[input_idx];
+						hsplit_pipe->pipe_dlg_param.vready_offset = v->v_ready_offset_pix[input_idx];
 						hsplit_pipe->pipe_dlg_param.vstartup_start = v->v_startup[input_idx];
 
 						hsplit_pipe->pipe_dlg_param.htotal = pipe->stream->timing.h_total;
@@ -1347,49 +1354,33 @@ void dcn_bw_update_from_pplib(struct dc *dc)
 	struct dc_context *ctx = dc->ctx;
 	struct dm_pp_clock_levels_with_voltage fclks = {0}, dcfclks = {0};
 	bool res;
-	unsigned vmin0p65_idx, vmid0p72_idx, vnom0p8_idx, vmax0p9_idx;
+
+	kernel_fpu_begin();
 
 	/* TODO: This is not the proper way to obtain fabric_and_dram_bandwidth, should be min(fclk, memclk) */
 	res = dm_pp_get_clock_levels_by_type_with_voltage(
 			ctx, DM_PP_CLOCK_TYPE_FCLK, &fclks);
 
-	kernel_fpu_begin();
-
 	if (res)
 		res = verify_clock_values(&fclks);
 
 	if (res) {
-		ASSERT(fclks.num_levels);
-
-		vmin0p65_idx = 0;
-		vmid0p72_idx = fclks.num_levels -
-			(fclks.num_levels > 2 ? 3 : (fclks.num_levels > 1 ? 2 : 1));
-		vnom0p8_idx = fclks.num_levels - (fclks.num_levels > 1 ? 2 : 1);
-		vmax0p9_idx = fclks.num_levels - 1;
-
-		dc->dcn_soc->fabric_and_dram_bandwidth_vmin0p65 =
-			32 * (fclks.data[vmin0p65_idx].clocks_in_khz / 1000.0) / 1000.0;
-		dc->dcn_soc->fabric_and_dram_bandwidth_vmid0p72 =
-			dc->dcn_soc->number_of_channels *
-			(fclks.data[vmid0p72_idx].clocks_in_khz / 1000.0)
-			* ddr4_dram_factor_single_Channel / 1000.0;
-		dc->dcn_soc->fabric_and_dram_bandwidth_vnom0p8 =
-			dc->dcn_soc->number_of_channels *
-			(fclks.data[vnom0p8_idx].clocks_in_khz / 1000.0)
-			* ddr4_dram_factor_single_Channel / 1000.0;
-		dc->dcn_soc->fabric_and_dram_bandwidth_vmax0p9 =
-			dc->dcn_soc->number_of_channels *
-			(fclks.data[vmax0p9_idx].clocks_in_khz / 1000.0)
-			* ddr4_dram_factor_single_Channel / 1000.0;
+		ASSERT(fclks.num_levels >= 3);
+		dc->dcn_soc->fabric_and_dram_bandwidth_vmin0p65 = 32 * (fclks.data[0].clocks_in_khz / 1000.0) / 1000.0;
+		dc->dcn_soc->fabric_and_dram_bandwidth_vmid0p72 = dc->dcn_soc->number_of_channels *
+				(fclks.data[fclks.num_levels - (fclks.num_levels > 2 ? 3 : 2)].clocks_in_khz / 1000.0)
+				* ddr4_dram_factor_single_Channel / 1000.0;
+		dc->dcn_soc->fabric_and_dram_bandwidth_vnom0p8 = dc->dcn_soc->number_of_channels *
+				(fclks.data[fclks.num_levels - 2].clocks_in_khz / 1000.0)
+				* ddr4_dram_factor_single_Channel / 1000.0;
+		dc->dcn_soc->fabric_and_dram_bandwidth_vmax0p9 = dc->dcn_soc->number_of_channels *
+				(fclks.data[fclks.num_levels - 1].clocks_in_khz / 1000.0)
+				* ddr4_dram_factor_single_Channel / 1000.0;
 	} else
 		BREAK_TO_DEBUGGER();
 
-	kernel_fpu_end();
-
 	res = dm_pp_get_clock_levels_by_type_with_voltage(
 			ctx, DM_PP_CLOCK_TYPE_DCFCLK, &dcfclks);
-
-	kernel_fpu_begin();
 
 	if (res)
 		res = verify_clock_values(&dcfclks);

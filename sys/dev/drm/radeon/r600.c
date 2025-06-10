@@ -3707,8 +3707,8 @@ int r600_irq_init(struct radeon_device *rdev)
 	}
 
 	/* setup interrupt control */
-	/* set dummy read address to ring address */
-	WREG32(INTERRUPT_CNTL2, rdev->ih.gpu_addr >> 8);
+	/* set dummy read address to dummy page address */
+	WREG32(INTERRUPT_CNTL2, rdev->dummy_page.addr >> 8);
 	interrupt_cntl = RREG32(INTERRUPT_CNTL);
 	/* IH_DUMMY_RD_OVERRIDE=0 - dummy read disabled with msi, enabled without msi
 	 * IH_DUMMY_RD_OVERRIDE=1 - dummy read controlled by IH_DUMMY_RD_EN
@@ -4128,7 +4128,7 @@ restart_ih:
 		return IRQ_NONE;
 
 	rptr = rdev->ih.rptr;
-	DRM_DEBUG_VBLANK("r600_irq_process start: rptr %d, wptr %d\n", rptr, wptr);
+	DRM_DEBUG("r600_irq_process start: rptr %d, wptr %d\n", rptr, wptr);
 
 	/* Order reading of wptr vs. reading of IH ring data */
 	rmb();
@@ -4157,7 +4157,7 @@ restart_ih:
 				if (atomic_read(&rdev->irq.pflip[0]))
 					radeon_crtc_handle_vblank(rdev, 0);
 				rdev->irq.stat_regs.r600.disp_int &= ~LB_D1_VBLANK_INTERRUPT;
-				DRM_DEBUG_VBLANK("IH: D1 vblank\n");
+				DRM_DEBUG("IH: D1 vblank\n");
 
 				break;
 			case 1: /* D1 vline */
@@ -4165,7 +4165,7 @@ restart_ih:
 				    DRM_DEBUG("IH: D1 vline - IH event w/o asserted irq bit?\n");
 
 				rdev->irq.stat_regs.r600.disp_int &= ~LB_D1_VLINE_INTERRUPT;
-				DRM_DEBUG_VBLANK("IH: D1 vline\n");
+				DRM_DEBUG("IH: D1 vline\n");
 
 				break;
 			default:
@@ -4187,7 +4187,7 @@ restart_ih:
 				if (atomic_read(&rdev->irq.pflip[1]))
 					radeon_crtc_handle_vblank(rdev, 1);
 				rdev->irq.stat_regs.r600.disp_int &= ~LB_D2_VBLANK_INTERRUPT;
-				DRM_DEBUG_VBLANK("IH: D2 vblank\n");
+				DRM_DEBUG("IH: D2 vblank\n");
 
 				break;
 			case 1: /* D1 vline */
@@ -4195,7 +4195,7 @@ restart_ih:
 					DRM_DEBUG("IH: D2 vline - IH event w/o asserted irq bit?\n");
 
 				rdev->irq.stat_regs.r600.disp_int &= ~LB_D2_VLINE_INTERRUPT;
-				DRM_DEBUG_VBLANK("IH: D2 vline\n");
+				DRM_DEBUG("IH: D2 vline\n");
 
 				break;
 			default:
@@ -4204,12 +4204,12 @@ restart_ih:
 			}
 			break;
 		case 9: /* D1 pflip */
-			DRM_DEBUG_VBLANK("IH: D1 flip\n");
+			DRM_DEBUG("IH: D1 flip\n");
 			if (radeon_use_pflipirq > 0)
 				radeon_crtc_handle_flip(rdev, 0);
 			break;
 		case 11: /* D2 pflip */
-			DRM_DEBUG_VBLANK("IH: D2 flip\n");
+			DRM_DEBUG("IH: D2 flip\n");
 			if (radeon_use_pflipirq > 0)
 				radeon_crtc_handle_flip(rdev, 1);
 			break;
@@ -4503,7 +4503,6 @@ static void r600_pcie_gen2_enable(struct radeon_device *rdev)
 {
 	u32 link_width_cntl, lanes, speed_cntl, training_cntl, tmp;
 	u16 link_cntl2;
-	u32 mask;
 
 	if (radeon_pcie_gen2 == 0)
 		return;
@@ -4521,12 +4520,6 @@ static void r600_pcie_gen2_enable(struct radeon_device *rdev)
 	/* only RV6xx+ chips are supported */
 	if (rdev->family <= CHIP_R600)
 		return;
-
-#ifdef __DragonFly__
-	if (drm_pcie_get_speed_cap_mask(rdev->ddev, &mask) != 0)
-		return;
-	rdev->pdev->bus->max_bus_speed = (mask & 0xff);
-#endif
 
 	if ((rdev->pdev->bus->max_bus_speed != PCIE_SPEED_5_0GT) &&
 		(rdev->pdev->bus->max_bus_speed != PCIE_SPEED_8_0GT))

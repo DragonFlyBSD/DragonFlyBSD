@@ -42,6 +42,7 @@
 #define jiffies			ticks
 #define jiffies_64		ticks /* XXX hmmm */
 #define time_after(a,b)		((long)(b) - (long)(a) < 0)
+#define time_after32(a,b)       ((int32_t)((uint32_t)(b) - (uint32_t)(a)) < 0)
 #define time_after_eq(a,b)	((long)(b) - (long)(a) <= 0)
 
 #define time_before(a,b)	time_after(b,a)

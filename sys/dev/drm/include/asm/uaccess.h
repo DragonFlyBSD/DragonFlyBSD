@@ -66,7 +66,7 @@ __copy_from_user(void *to, const void *from, unsigned len)
 static inline int
 __copy_from_user_inatomic(void *dst, const void __user *src, unsigned size)
 {
-	if (copyin_nofault(src, dst, size))
+	if (copyin(src, dst, size))
 		return size;
 	return 0;
 }
@@ -74,7 +74,7 @@ __copy_from_user_inatomic(void *dst, const void __user *src, unsigned size)
 static inline int
 __copy_to_user_inatomic(void __user *to, const void *from, unsigned n)
 {
-	return (copyout_nofault(from, to, n) != 0 ? n : 0);
+	return (copyout(from, to, n) != 0 ? n : 0);
 }
 
 static inline unsigned long
@@ -105,6 +105,22 @@ __copy_from_user_inatomic_nocache(void *to, const void __user *from,
 	if (unlikely(__put_user(x, ptr))) \
 		goto err; \
 } while (0)
+
+/* TODO: check me, taken from FreeBSD */
+static inline int
+access_ok(const void *uaddr, size_t len)
+{
+	uintptr_t saddr;
+	uintptr_t eaddr;
+	
+	/* get start and end address */
+	saddr = (uintptr_t)uaddr;
+	eaddr = (uintptr_t)uaddr + len;
+	
+	/* verify addresses are valid for userspace */
+	return ((saddr == eaddr) ||
+	    (eaddr > saddr && eaddr <= VM_MAX_USER_ADDRESS));
+}
 
 #define user_access_begin()
 #define user_access_end()

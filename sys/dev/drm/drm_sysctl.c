@@ -38,10 +38,12 @@
 SYSCTL_NODE(_hw, OID_AUTO, dri, CTLFLAG_RD, 0, "DRI Graphics");
 SYSCTL_INT(_hw_dri, OID_AUTO, debug, CTLFLAG_RW, &drm_debug, 0,
 	    "Enable debugging output");
+#if 0
 SYSCTL_INT(_hw_dri, OID_AUTO, vblank_offdelay, CTLFLAG_RW,
 	    &drm_vblank_offdelay, 0, "Delay until vblank irq auto-disable");
 SYSCTL_INT(_hw_dri, OID_AUTO, timestamp_precision, CTLFLAG_RW,
 	    &drm_timestamp_precision, 0, "Max. error on timestamps");
+#endif
 
 static int	   drm_name_info DRM_SYSCTL_HANDLER_ARGS;
 static int	   drm_vm_info DRM_SYSCTL_HANDLER_ARGS;

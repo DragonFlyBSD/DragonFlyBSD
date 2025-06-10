@@ -136,9 +136,8 @@ int amdgpu_fence_emit(struct amdgpu_ring *ring, struct dma_fence **f,
 {
 	struct amdgpu_device *adev = ring->adev;
 	struct amdgpu_fence *fence;
-	struct dma_fence __rcu **ptr;
+	struct dma_fence *old, **ptr;
 	uint32_t seq;
-	int r;
 
 	fence = kmem_cache_alloc(amdgpu_fence_slab, GFP_KERNEL);
 	if (fence == NULL)
@@ -154,24 +153,15 @@ int amdgpu_fence_emit(struct amdgpu_ring *ring, struct dma_fence **f,
 			       seq, flags | AMDGPU_FENCE_FLAG_INT);
 
 	ptr = &ring->fence_drv.fences[seq & ring->fence_drv.num_fences_mask];
-	if (unlikely(rcu_dereference_protected(*ptr, 1))) {
-		struct dma_fence *old;
-
-		rcu_read_lock();
-		old = dma_fence_get_rcu_safe(ptr);
-		rcu_read_unlock();
-
-		if (old) {
-			r = dma_fence_wait(old, false);
-			dma_fence_put(old);
-			if (r)
-				return r;
-		}
-	}
-
 	/* This function can't be called concurrently anyway, otherwise
 	 * emitting the fence would mess up the hardware ring buffer.
 	 */
+	old = rcu_dereference_protected(*ptr, 1);
+	if (old && !dma_fence_is_signaled(old)) {
+		DRM_INFO("rcu slot is busy\n");
+		dma_fence_wait(old, false);
+	}
+
 	rcu_assign_pointer(*ptr, dma_fence_get(&fence->base));
 
 	*f = &fence->base;
@@ -226,23 +216,31 @@ static void amdgpu_fence_schedule_fallback(struct amdgpu_ring *ring)
  * Checks the current fence value and calculates the last
  * signalled fence value. Wakes the fence queue if the
  * sequence number has increased.
+ *
+ * Returns true if fence was processed
  */
-void amdgpu_fence_process(struct amdgpu_ring *ring)
+bool amdgpu_fence_process(struct amdgpu_ring *ring)
 {
 	struct amdgpu_fence_driver *drv = &ring->fence_drv;
 	uint32_t seq, last_seq;
 	int r;
+
 	do {
 		last_seq = atomic_read(&ring->fence_drv.last_seq);
 		seq = amdgpu_fence_read(ring);
+
 	} while (atomic_cmpxchg(&drv->last_seq, last_seq, seq) != last_seq);
-	if (seq != ring->fence_drv.sync_seq)
+
+	if (del_timer(&ring->fence_drv.fallback_timer) &&
+	    seq != ring->fence_drv.sync_seq)
 		amdgpu_fence_schedule_fallback(ring);
+
 	if (unlikely(seq == last_seq))
-		return;
+		return false;
 
 	last_seq &= drv->num_fences_mask;
 	seq &= drv->num_fences_mask;
+
 	do {
 		struct dma_fence *fence, **ptr;
 
@@ -256,13 +254,17 @@ void amdgpu_fence_process(struct amdgpu_ring *ring)
 
 		if (!fence)
 			continue;
+
 		r = dma_fence_signal(fence);
 		if (!r)
 			DMA_FENCE_TRACE(fence, "signaled from irq context\n");
 		else
 			BUG();
+
 		dma_fence_put(fence);
 	} while (last_seq != seq);
+
+	return true;
 }
 
 /**
@@ -277,7 +279,8 @@ static void amdgpu_fence_fallback(struct timer_list *t)
 	struct amdgpu_ring *ring = from_timer(ring, t,
 					      fence_drv.fallback_timer);
 
-	amdgpu_fence_process(ring);
+	if (amdgpu_fence_process(ring))
+		DRM_WARN("Fence fallback timer expired on ring %s\n", ring->name);
 }
 
 /**
@@ -389,9 +392,7 @@ int amdgpu_fence_driver_start_ring(struct amdgpu_ring *ring,
 		ring->fence_drv.gpu_addr = adev->uvd.inst[ring->me].gpu_addr + index;
 	}
 	amdgpu_fence_write(ring, atomic_read(&ring->fence_drv.last_seq));
-
-	if (irq_src)
-		amdgpu_irq_get(adev, irq_src, irq_type);
+	amdgpu_irq_get(adev, irq_src, irq_type);
 
 	ring->fence_drv.irq_src = irq_src;
 	ring->fence_drv.irq_type = irq_type;
@@ -503,9 +504,8 @@ void amdgpu_fence_driver_fini(struct amdgpu_device *adev)
 			/* no need to trigger GPU reset as we are unloading */
 			amdgpu_fence_driver_force_completion(ring);
 		}
-		if (ring->fence_drv.irq_src)
-			amdgpu_irq_put(adev, ring->fence_drv.irq_src,
-				       ring->fence_drv.irq_type);
+		amdgpu_irq_put(adev, ring->fence_drv.irq_src,
+			       ring->fence_drv.irq_type);
 		drm_sched_fini(&ring->sched);
 		del_timer_sync(&ring->fence_drv.fallback_timer);
 		for (j = 0; j <= ring->fence_drv.num_fences_mask; ++j)
@@ -541,9 +541,8 @@ void amdgpu_fence_driver_suspend(struct amdgpu_device *adev)
 		}
 
 		/* disable the interrupt */
-		if (ring->fence_drv.irq_src)
-			amdgpu_irq_put(adev, ring->fence_drv.irq_src,
-				       ring->fence_drv.irq_type);
+		amdgpu_irq_put(adev, ring->fence_drv.irq_src,
+			       ring->fence_drv.irq_type);
 	}
 }
 
@@ -569,9 +568,8 @@ void amdgpu_fence_driver_resume(struct amdgpu_device *adev)
 			continue;
 
 		/* enable the interrupt */
-		if (ring->fence_drv.irq_src)
-			amdgpu_irq_get(adev, ring->fence_drv.irq_src,
-				       ring->fence_drv.irq_type);
+		amdgpu_irq_get(adev, ring->fence_drv.irq_src,
+			       ring->fence_drv.irq_type);
 	}
 }
 
@@ -709,7 +707,7 @@ static int amdgpu_debugfs_gpu_recover(struct seq_file *m, void *data)
 	struct amdgpu_device *adev = dev->dev_private;
 
 	seq_printf(m, "gpu recover\n");
-	amdgpu_device_gpu_recover(adev, NULL, true);
+	amdgpu_device_gpu_recover(adev, NULL);
 
 	return 0;
 }

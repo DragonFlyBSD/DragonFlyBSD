@@ -37,7 +37,8 @@
 #include <linux/cpumask.h>
 
 #define WQ_HIGHPRI	1
-#define WQ_UNBOUND	2
+#define WQ_FREEZABLE	2
+#define WQ_UNBOUND	4
 
 struct workqueue_worker;
 

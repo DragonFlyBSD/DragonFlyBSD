@@ -67,7 +67,6 @@ static int tasklet_pending = 0;
 #define PROCESS_TASKLET_LIST(which_list) do { \
 	STAILQ_FOREACH_MUTABLE(te, &which_list, tasklet_entries, tmp_te) { \
 		struct tasklet_struct *t = te->ts;			\
-									\
 		/*							\
 		   This tasklet is dying, remove it from the list.	\
 		   We allow to it to run one last time if it has	\
@@ -82,19 +81,19 @@ static int tasklet_pending = 0;
 		if (atomic_read(&t->count) != 0)			\
 			continue;					\
 									\
-		/* This tasklet is not scheduled, try the next one */	\
-		if (!test_bit(TASKLET_STATE_SCHED, &t->state))		\
+		/* If tasklet is not scheduled, try the next one */	\
+		if (!test_and_clear_bit(TASKLET_STATE_SCHED, &t->state)) \
 			continue;					\
 									\
-		clear_bit(TASKLET_STATE_SCHED, &t->state);		\
-		set_bit(TASKLET_STATE_RUN, &t->state);			\
+		if (!tasklet_trylock(t)) 				\
+			continue;					\
 									\
 		lockmgr(&tasklet_lock, LK_RELEASE);			\
 		if (t->func)						\
 			t->func(t->data);				\
 		lockmgr(&tasklet_lock, LK_EXCLUSIVE);			\
 									\
-		clear_bit(TASKLET_STATE_RUN, &t->state);		\
+		tasklet_unlock(t);					\
 	}								\
 } while (0)
 
@@ -136,20 +135,22 @@ tasklet_init(struct tasklet_struct *t,
 	struct tasklet_entry *te;				\
 								\
 	lockmgr(&tasklet_lock, LK_EXCLUSIVE);			\
-	set_bit(TASKLET_STATE_SCHED, &t->state);		\
+	if (test_and_set_bit(TASKLET_STATE_SCHED, &t->state))	\
+		goto skip;	/* already scheduled */		\
 								\
 	STAILQ_FOREACH(te, &(list), tasklet_entries) {		\
 		if (te->ts == t)				\
 			goto found_and_done;			\
 	}							\
 								\
-	te = kzalloc(sizeof(struct tasklet_entry), M_WAITOK);	\
+	te = kmalloc(sizeof(struct tasklet_entry), M_DRM, M_CACHEALIGN | M_INTWAIT);	\
 	te->ts = t;						\
 	STAILQ_INSERT_TAIL(&(list), te, tasklet_entries);	\
 								\
 found_and_done:							\
 	tasklet_pending = 1;					\
 	wakeup(&tasklet_runner);				\
+skip:								\
 	lockmgr(&tasklet_lock, LK_RELEASE);			\
 } while (0)
 
@@ -170,6 +171,28 @@ tasklet_kill(struct tasklet_struct *t)
 {
 	set_bit(TASKLET_IS_DYING, &t->state);
 	wakeup(&tasklet_runner);
+	tasklet_unlock_wait(t);
+}
+
+int
+tasklet_trylock(struct tasklet_struct *t)
+{
+	return !test_and_set_bit(TASKLET_STATE_RUN, &t->state);
+}
+
+void
+tasklet_unlock(struct tasklet_struct *t)
+{
+	clear_bit(TASKLET_STATE_RUN, &t->state);
+}
+
+void
+tasklet_unlock_wait(struct tasklet_struct *t)
+{
+	int ident = 0;
+	while (test_bit(TASKLET_STATE_RUN, &t->state)) {
+		tsleep(&ident, 0, "tletunlock", 1);
+	}
 }
 
 static int init_tasklets(void *arg)

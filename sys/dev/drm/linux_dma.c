@@ -32,6 +32,7 @@ void *
 dma_alloc_coherent(struct device *dev, size_t size, dma_addr_t *dma_handle,
     gfp_t flag)
 {
+#if 1
 	vm_paddr_t high;
 	size_t align;
 	void *mem;
@@ -49,6 +50,27 @@ dma_alloc_coherent(struct device *dev, size_t size, dma_addr_t *dma_handle,
 	else
 		*dma_handle = 0;
 	return (mem);
+#endif
+
+#if 0
+	size_t align = PAGE_SIZE << get_order(size);
+	int error;
+	drm_dma_handle_t *dmah;
+
+	dmah = kmalloc(sizeof(drm_dma_handle_t), M_DRM, M_ZERO | M_NOWAIT);
+	if (dmah == NULL)
+		return NULL;
+
+	error = bus_dmamem_coherent_any(
+		bus_get_dma_tag(dev->dev->bsddev),
+		align, size, BUS_DMA_WAITOK | BUS_DMA_ZERO | BUS_DMA_NOCACHE,
+		&dmah->tag, &dmah->map, &dmah->vaddr);
+	if (error != 0) {
+		kfree(dmah);
+		return NULL;
+	}	
+	return dmah;
+#endif
 }
 
 void

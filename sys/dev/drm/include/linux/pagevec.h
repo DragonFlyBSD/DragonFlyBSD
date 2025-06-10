@@ -43,6 +43,12 @@ pagevec_init(struct pagevec *pvec)
 	pvec->nr = 0;
 }
 
+static inline void
+pagevec_reinit(struct pagevec *pvec)
+{
+        pvec->nr = 0;
+}
+
 static inline unsigned int
 pagevec_count(struct pagevec *pvec)
 {

@@ -3499,6 +3499,7 @@ static void evergreen_gpu_init(struct radeon_device *rdev)
 		tmp = r6xx_remap_render_backend(rdev, tmp, rdev->config.evergreen.max_backends,
 						EVERGREEN_MAX_BACKENDS, disabled_rb_mask);
 	}
+	rdev->config.evergreen.backend_map = tmp;
 	WREG32(GB_BACKEND_MAP, tmp);
 
 	WREG32(CGTS_SYS_TCC_DISABLE, 0);
@@ -4707,7 +4708,7 @@ restart_ih:
 		return IRQ_NONE;
 
 	rptr = rdev->ih.rptr;
-	DRM_DEBUG_VBLANK("evergreen_irq_process start: rptr %d, wptr %d\n", rptr, wptr);
+	DRM_DEBUG("evergreen_irq_process start: rptr %d, wptr %d\n", rptr, wptr);
 
 	/* Order reading of wptr vs. reading of IH ring data */
 	rmb();
@@ -4768,7 +4769,7 @@ restart_ih:
 		case 14: /* D4 page flip */
 		case 16: /* D5 page flip */
 		case 18: /* D6 page flip */
-			DRM_DEBUG_VBLANK("IH: D%d flip\n", ((src_id - 8) >> 1) + 1);
+			DRM_DEBUG("IH: D%d flip\n", ((src_id - 8) >> 1) + 1);
 			if (radeon_use_pflipirq > 0)
 				radeon_crtc_handle_flip(rdev, (src_id - 8) >> 1);
 			break;
@@ -5316,7 +5317,6 @@ void evergreen_fini(struct radeon_device *rdev)
 void evergreen_pcie_gen2_enable(struct radeon_device *rdev)
 {
 	u32 link_width_cntl, speed_cntl;
-	u32 mask;
 
 	if (radeon_pcie_gen2 == 0)
 		return;
@@ -5330,13 +5330,6 @@ void evergreen_pcie_gen2_enable(struct radeon_device *rdev)
 	/* x2 cards have a special sequence */
 	if (ASIC_IS_X2(rdev))
 		return;
-
-#ifdef __DragonFly__
-	if (drm_pcie_get_speed_cap_mask(rdev->ddev, &mask) != 0)
-		return;
-
-	rdev->pdev->bus->max_bus_speed = (mask &0xff);
-#endif
 
 	if ((rdev->pdev->bus->max_bus_speed != PCIE_SPEED_5_0GT) &&
 		(rdev->pdev->bus->max_bus_speed != PCIE_SPEED_8_0GT))

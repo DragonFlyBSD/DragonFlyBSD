@@ -1632,16 +1632,14 @@ intel_gtt_clear_range(u_int first_entry, u_int num_entries)
 }
 
 void intel_gtt_get(u64 *gtt_total,
-		   u32 *stolen_size,
 		   phys_addr_t *mappable_base,
-		   u64 *mappable_end)
+		   resource_size_t *mappable_end)
 {
 	struct agp_info ainfo;
 
 	intel_private.base = agp_intel_gtt_get(intel_agp);
 
 	*gtt_total = intel_private.base.gtt_total_entries << PAGE_SHIFT;
-	*stolen_size = intel_private.base.stolen_size;
 	agp_get_info(intel_agp, &ainfo);
 	*mappable_base = ainfo.ai_aperture_base;
 	*mappable_end = intel_private.base.gtt_mappable_entries << PAGE_SHIFT;

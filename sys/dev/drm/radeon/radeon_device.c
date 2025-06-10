@@ -29,6 +29,7 @@
 #include <drm/drmP.h>
 #include "drm/drm_legacy.h"		/* for drm_dma_handle_t */
 #include <drm/drm_crtc_helper.h>
+#include <drm/drm_cache.h>
 #include <drm/radeon_drm.h>
 #include <linux/vgaarb.h>
 #include <linux/vga_switcheroo.h>
@@ -138,7 +139,11 @@ static struct radeon_px_quirk radeon_px_quirk_list[] = {
 	/* Asus K53TK laptop with AMD A6-3420M APU and Radeon 7670m GPU
 	 * https://bugs.freedesktop.org/show_bug.cgi?id=101491
 	 */
-	{ PCI_VENDOR_ID_ATI, 0x6840, 0x1043, 0x2122, RADEON_PX_QUIRK_DISABLE_PX },
+	{ PCI_VENDOR_ID_ATI, 0x6741, 0x1043, 0x2122, RADEON_PX_QUIRK_DISABLE_PX },
+	/* Asus K73TK laptop with AMD A6-3420M APU and Radeon 7670m GPU
+	 * https://bugzilla.kernel.org/show_bug.cgi?id=51381#c52
+	 */
+	{ PCI_VENDOR_ID_ATI, 0x6840, 0x1043, 0x2123, RADEON_PX_QUIRK_DISABLE_PX },
 	{ 0, 0, 0, 0, 0 },
 };
 
@@ -390,37 +395,6 @@ void radeon_doorbell_free(struct radeon_device *rdev, u32 doorbell)
 {
 	if (doorbell < rdev->doorbell.num_doorbells)
 		__clear_bit(doorbell, rdev->doorbell.used);
-}
-
-/**
- * radeon_doorbell_get_kfd_info - Report doorbell configuration required to
- *                                setup KFD
- *
- * @rdev: radeon_device pointer
- * @aperture_base: output returning doorbell aperture base physical address
- * @aperture_size: output returning doorbell aperture size in bytes
- * @start_offset: output returning # of doorbell bytes reserved for radeon.
- *
- * Radeon and the KFD share the doorbell aperture. Radeon sets it up,
- * takes doorbells required for its own rings and reports the setup to KFD.
- * Radeon reserved doorbells are at the start of the doorbell aperture.
- */
-void radeon_doorbell_get_kfd_info(struct radeon_device *rdev,
-				  phys_addr_t *aperture_base,
-				  size_t *aperture_size,
-				  size_t *start_offset)
-{
-	/* The first num_doorbells are used by radeon.
-	 * KFD takes whatever's left in the aperture. */
-	if (rdev->doorbell.size > rdev->doorbell.num_doorbells * sizeof(u32)) {
-		*aperture_base = rdev->doorbell.base;
-		*aperture_size = rdev->doorbell.size;
-		*start_offset = rdev->doorbell.num_doorbells * sizeof(u32);
-	} else {
-		*aperture_base = 0;
-		*aperture_size = 0;
-		*start_offset = 0;
-	}
 }
 
 /*
@@ -1036,6 +1010,7 @@ void radeon_atombios_fini(struct radeon_device *rdev)
 {
 	if (rdev->mode_info.atom_context) {
 		kfree(rdev->mode_info.atom_context->scratch);
+		kfree(rdev->mode_info.atom_context->iio);
 	}
 	kfree(rdev->mode_info.atom_context);
 	rdev->mode_info.atom_context = NULL;
@@ -1345,11 +1320,11 @@ int radeon_device_init(struct radeon_device *rdev,
 	lockinit(&rdev->pm.mutex, "drdpmm", 0, LK_CANRECURSE);
 	lockinit(&rdev->gpu_clock_mutex, "radeon_clockmtx", 0, LK_CANRECURSE);
 	lockinit(&rdev->srbm_mutex, "radeon_srbm_mutex", 0, LK_CANRECURSE);
-	lockinit(&rdev->grbm_idx_mutex, "drgim", 0, LK_CANRECURSE);
 	lockinit(&rdev->pm.mclk_lock, "drpmml", 0, LK_CANRECURSE);
 	lockinit(&rdev->exclusive_lock, "drdel", 0, LK_CANRECURSE);
 	init_waitqueue_head(&rdev->irq.vblank_queue);
 	lockinit(&rdev->mn_lock, "drrml", 0, LK_CANRECURSE);
+	hash_init(rdev->mn_hash);
 	r = radeon_gem_init(rdev);
 	if (r)
 		return r;
@@ -1654,7 +1629,7 @@ int radeon_suspend_kms(struct drm_device *dev, bool suspend,
 	/* unpin the front buffers and cursors */
 	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
 		struct radeon_crtc *radeon_crtc = to_radeon_crtc(crtc);
-		struct radeon_framebuffer *rfb = to_radeon_framebuffer(crtc->primary->fb);
+		struct drm_framebuffer *fb = crtc->primary->fb;
 		struct radeon_bo *robj;
 
 		if (radeon_crtc->cursor_bo) {
@@ -1666,10 +1641,10 @@ int radeon_suspend_kms(struct drm_device *dev, bool suspend,
 			}
 		}
 
-		if (rfb == NULL || rfb->obj == NULL) {
+		if (fb == NULL || fb->obj[0] == NULL) {
 			continue;
 		}
-		robj = gem_to_radeon_bo(rfb->obj);
+		robj = gem_to_radeon_bo(fb->obj[0]);
 		/* don't unpin kernel fb objects */
 		if (!radeon_fbdev_robj_is_fb(rdev, robj)) {
 			r = radeon_bo_reserve(robj, false);

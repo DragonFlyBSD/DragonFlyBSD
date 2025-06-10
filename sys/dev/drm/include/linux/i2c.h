@@ -38,6 +38,7 @@
 
 #define I2C_M_RD	IIC_M_RD
 #define I2C_M_NOSTART	IIC_M_NOSTART
+#define I2C_M_STOP I2CSTOP
 
 struct i2c_lock_operations;
 

@@ -38,6 +38,13 @@
 
 #include <drm/drm_prime.h>
 
+#ifdef __DragonFly__
+/* for struct kqinfo */
+#include <sys/event.h>
+/* for d_open_t, d_close_t, and d_read_t */
+#include <sys/device.h>
+#endif
+
 struct dma_fence;
 struct drm_file;
 struct drm_device;
@@ -48,6 +55,9 @@ struct device;
  * header include loops we need it here for now.
  */
 
+/* Note that the order of this enum is ABI (it determines
+ * /dev/dri/renderD* numbers).
+ */
 enum drm_minor_type {
 	DRM_MINOR_PRIMARY,
 	DRM_MINOR_CONTROL,
@@ -181,6 +191,21 @@ struct drm_file {
 
 	/** @atomic: True if client understands atomic properties. */
 	unsigned atomic:1;
+
+	/**
+	 * @aspect_ratio_allowed:
+	 *
+	 * True, if client can handle picture aspect ratios, and has requested
+	 * to pass this information along with the mode.
+	 */
+	unsigned aspect_ratio_allowed:1;
+
+	/**
+	 * @writeback_connectors:
+	 *
+	 * True if client understands writeback connectors
+	 */
+	unsigned writeback_connectors:1;
 
 	/**
 	 * @is_master:
@@ -354,18 +379,6 @@ static inline bool drm_is_render_client(const struct drm_file *file_priv)
 	return file_priv->minor->type == DRM_MINOR_RENDER;
 }
 
-/**
- * drm_is_control_client - is this an open file of the control node
- * @file_priv: DRM file
- *
- * Control nodes are deprecated and in the process of getting removed from the
- * DRM userspace API. Do not ever use!
- */
-static inline bool drm_is_control_client(const struct drm_file *file_priv)
-{
-	return file_priv->minor->type == DRM_MINOR_CONTROL;
-}
-
 #ifdef __DragonFly__
 d_open_t drm_open;
 d_close_t drm_close;
@@ -375,8 +388,12 @@ int drm_open(struct inode *inode, struct file *filp);
 ssize_t drm_read(struct file *filp, char __user *buffer,
 		 size_t count, loff_t *offset);
 #endif
+
 int drm_release(struct inode *inode, struct file *filp);
+#if 0
+/* not used yet */
 unsigned int drm_poll(struct file *filp, struct poll_table_struct *wait);
+#endif
 int drm_event_reserve_init_locked(struct drm_device *dev,
 				  struct drm_file *file_priv,
 				  struct drm_pending_event *p,

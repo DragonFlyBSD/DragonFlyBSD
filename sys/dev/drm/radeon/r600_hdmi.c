@@ -542,3 +542,4 @@ void r600_hdmi_enable(struct drm_encoder *encoder, bool enable)
 	DRM_DEBUG("%sabling HDMI interface @ 0x%04X for encoder 0x%x\n",
 		  enable ? "En" : "Dis", dig->afmt->offset, radeon_encoder->encoder_id);
 }
+

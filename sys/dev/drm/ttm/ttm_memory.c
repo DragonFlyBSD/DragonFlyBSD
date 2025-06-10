@@ -375,7 +375,7 @@ void ttm_mem_global_release(struct ttm_mem_global *glob)
 		zone = glob->zones[i];
 		kobject_del(&zone->kobj);
 		kobject_put(&zone->kobj);
-	}
+			}
 	kobject_del(&glob->kobj);
 	kobject_put(&glob->kobj);
 }
@@ -442,7 +442,6 @@ ttm_check_under_lowerlimit(struct ttm_mem_global *glob,
 			uint64_t num_pages,
 			struct ttm_operation_ctx *ctx)
 {
-	STUB();
 	return false;
 #if 0
 	int64_t available;

@@ -31,11 +31,22 @@
 #include <linux/types.h>
 #include <linux/posix_types.h>
 
+#ifdef __DragonFly__
+#include <sys/filedesc.h>
+#endif
+
 static inline int
 get_unused_fd_flags(unsigned flags)
 {
-	kprintf("get_unused_fd_flags(): not implemented\n");
-	return -1;
+kprintf("get_unused_fd_flags: is incomplete\n");
+	struct file *file;
+	int error;
+	int fd;
+
+	error = falloc(curthread->td_lwp, &file, &fd);
+	if (error)
+		return -error;
+	return fd;
 }
 
 static inline void
