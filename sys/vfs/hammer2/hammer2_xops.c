@@ -211,11 +211,15 @@ hammer2_xop_readdir(hammer2_xop_t *arg, void *scratch, int clindex)
 	 * lock so do not unlock it on the iteration.
 	 */
 	chain = hammer2_chain_lookup(&parent, &key_next, lkey, lkey,
-				     &error, HAMMER2_LOOKUP_SHARED);
+				     &error,
+				     HAMMER2_LOOKUP_ALWAYS |
+				     HAMMER2_LOOKUP_SHARED);
 	if (chain == NULL) {
 		chain = hammer2_chain_lookup(&parent, &key_next,
 					     lkey, HAMMER2_KEY_MAX,
-					     &error, HAMMER2_LOOKUP_SHARED);
+					     &error,
+					     HAMMER2_LOOKUP_ALWAYS |
+					     HAMMER2_LOOKUP_SHARED);
 	}
 	while (chain) {
 		error = hammer2_xop_feed(&xop->head, chain, clindex, 0);
@@ -223,7 +227,9 @@ hammer2_xop_readdir(hammer2_xop_t *arg, void *scratch, int clindex)
 			goto break2;
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next, HAMMER2_KEY_MAX,
-					   &error, HAMMER2_LOOKUP_SHARED);
+					   &error,
+					   HAMMER2_LOOKUP_ALWAYS |
+					   HAMMER2_LOOKUP_SHARED);
 	}
 break2:
 	if (chain) {
