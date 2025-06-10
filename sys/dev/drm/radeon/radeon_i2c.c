@@ -967,6 +967,10 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 		i2c->bit.timeout = usecs_to_jiffies(2200);	/* from VESA */
 		i2c->bit.data = i2c;
 		ret = i2c_bit_add_bus(&i2c->adapter);
+#ifdef __DragonFly__
+		/* setup lock_ops */
+		i2c_add_adapter(&i2c->adapter);
+#endif
 		if (ret) {
 			DRM_ERROR("Failed to register bit i2c %s\n", name);
 			goto out_free;
