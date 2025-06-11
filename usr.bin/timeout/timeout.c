@@ -194,12 +194,12 @@ send_sig(pid_t pid, int signo, bool foreground)
 	     sys_signame[signo], signo, command);
 	if (foreground) {
 		if (kill(pid, signo) == -1)
-			warnx("kill(%d, %s)", (int)pid, sys_signame[signo]);
+			warn("kill(%d, %s)", (int)pid, sys_signame[signo]);
 	} else {
 		memset(&rk, 0, sizeof(rk));
 		rk.signal = signo;
 		if (procctl(P_PID, getpid(), PROC_REAP_KILL, &rk) == -1)
-			warnx("procctl(PROC_REAP_KILL)");
+			warn("procctl(PROC_REAP_KILL)");
 		else if (rk.pid_failed > 0)
 			warnx("failed to signal some processes: first pid=%d",
 			      (int)rk.pid_failed);
