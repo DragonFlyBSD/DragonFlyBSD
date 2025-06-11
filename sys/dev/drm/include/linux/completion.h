@@ -101,6 +101,8 @@ __wait_for_completion_generic(struct completion *c,
 			break;
 		}
 	}
+	if (c->done && c->done != UINT_MAX)
+		--c->done;
 	lockmgr(&c->wait.lock, LK_RELEASE);
 
 	if (awakened) {
