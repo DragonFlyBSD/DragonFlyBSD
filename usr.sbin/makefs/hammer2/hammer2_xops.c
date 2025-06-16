@@ -214,11 +214,15 @@ hammer2_xop_readdir(hammer2_xop_t *arg, void *scratch, int clindex)
 	 * lock so do not unlock it on the iteration.
 	 */
 	chain = hammer2_chain_lookup(&parent, &key_next, lkey, lkey,
-				     &error, HAMMER2_LOOKUP_SHARED);
+				     &error,
+				     HAMMER2_LOOKUP_ALWAYS |
+				     HAMMER2_LOOKUP_SHARED);
 	if (chain == NULL) {
 		chain = hammer2_chain_lookup(&parent, &key_next,
 					     lkey, HAMMER2_KEY_MAX,
-					     &error, HAMMER2_LOOKUP_SHARED);
+					     &error,
+					     HAMMER2_LOOKUP_ALWAYS |
+					     HAMMER2_LOOKUP_SHARED);
 	}
 	while (chain) {
 		error = hammer2_xop_feed(&xop->head, chain, clindex, 0);
@@ -226,7 +230,9 @@ hammer2_xop_readdir(hammer2_xop_t *arg, void *scratch, int clindex)
 			goto break2;
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next, HAMMER2_KEY_MAX,
-					   &error, HAMMER2_LOOKUP_SHARED);
+					   &error,
+					   HAMMER2_LOOKUP_ALWAYS |
+					   HAMMER2_LOOKUP_SHARED);
 	}
 break2:
 	if (chain) {
@@ -303,7 +309,7 @@ hammer2_xop_nresolve(hammer2_xop_t *arg, void *scratch, int clindex)
 		error = chain->error;
 	}
 done:
-	error = hammer2_xop_feed(&xop->head, chain, clindex, error);
+	hammer2_xop_feed(&xop->head, chain, clindex, error);
 	if (chain) {
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
@@ -1631,4 +1637,55 @@ done:
 		hammer2_chain_drop(parent);
 	}
 	hammer2_xop_feed(&xop->head, NULL, clindex, error);
+}
+
+/*
+ * Backend for hammer2_vop_bmap()
+ */
+void
+hammer2_xop_bmap(hammer2_xop_t *arg, void *scratch, int clindex)
+{
+	hammer2_xop_bmap_t *xop = &arg->xop_bmap;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_inode_t *ip;
+	hammer2_key_t lbase;
+	hammer2_key_t key_dummy;
+	int error = 0;
+
+	ip = xop->head.ip1;
+	chain = NULL;
+	parent = hammer2_inode_chain(ip, clindex,
+				     HAMMER2_RESOLVE_ALWAYS |
+				     HAMMER2_RESOLVE_SHARED);
+	if (parent == NULL) {
+		kprintf("xop_bmap: NULL parent\n");
+		error = HAMMER2_ERROR_EIO;
+		goto done;
+	}
+
+	xop->offset = HAMMER2_OFF_MASK;
+	lbase = xop->loffset & ~HAMMER2_OFF_MASK_RADIX;
+	chain = hammer2_chain_lookup(&parent, &key_dummy, lbase, lbase,
+				     &error,
+				     HAMMER2_LOOKUP_SHARED);
+	if (error == 0) {
+		if (chain) {
+			error = chain->error;
+			if (error == 0)
+				xop->offset = chain->bref.data_off;
+		} else {
+			error = HAMMER2_ERROR_ENOENT;
+		}
+	}
+done:
+	hammer2_xop_feed(&xop->head, chain, clindex, error);
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+	}
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
 }

@@ -66,6 +66,7 @@ H2XOPDESCRIPTOR(inode_connect);
 H2XOPDESCRIPTOR(inode_flush);
 H2XOPDESCRIPTOR(strategy_read);
 H2XOPDESCRIPTOR(strategy_write);
+H2XOPDESCRIPTOR(bmap);
 
 //struct objcache *cache_xops;
 static struct thread dummy_td;

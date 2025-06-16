@@ -120,6 +120,40 @@ hammer2_vop_strategy(struct vop_strategy_args *ap)
 	return (error);
 }
 
+static int
+hammer2_vop_bmap_impl(struct vop_bmap_args *ap)
+{
+	hammer2_xop_bmap_t *xop;
+	hammer2_inode_t *ip;
+	int error;
+
+	ip = VTOI(ap->a_vp);
+
+	if (ap->a_doffsetp == NULL)
+		return (0);
+	if (ap->a_runp)
+		*ap->a_runp = 0; /* unsupported */
+	if (ap->a_runb)
+		*ap->a_runb = 0; /* unsupported */
+
+	xop = hammer2_xop_alloc(ip, 0);
+	xop->loffset = ap->a_loffset;
+	hammer2_xop_start(&xop->head, &hammer2_bmap_desc);
+	error = hammer2_xop_collect(&xop->head, 0);
+	error = hammer2_error_to_errno(error);
+	if (error) {
+		if (error == ENOENT)
+			error = 0; /* sparse */
+		*ap->a_doffsetp = NOOFFSET;
+	} else {
+		KKASSERT(xop->offset != HAMMER2_OFF_MASK);
+		*ap->a_doffsetp = xop->offset;
+	}
+	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+
+	return (error);
+}
+
 /*
  * Return the largest contiguous physical disk range for the logical
  * request, in bytes.
@@ -134,6 +168,9 @@ hammer2_vop_strategy(struct vop_strategy_args *ap)
 int
 hammer2_vop_bmap(struct vop_bmap_args *ap)
 {
+	if (ap->a_cmd == BUF_CMD_SEEK)
+		return (hammer2_vop_bmap_impl(ap));
+
 	*ap->a_doffsetp = NOOFFSET;
 	if (ap->a_runp)
 		*ap->a_runp = 0;
@@ -327,7 +364,7 @@ hammer2_xop_strategy_read(hammer2_xop_t *arg, void *scratch, int clindex)
 		error = HAMMER2_ERROR_EIO;
 		chain = NULL;
 	}
-	error = hammer2_xop_feed(&xop->head, chain, clindex, error);
+	hammer2_xop_feed(&xop->head, chain, clindex, error);
 	if (chain) {
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);

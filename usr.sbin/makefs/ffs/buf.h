@@ -64,6 +64,7 @@ typedef enum buf_cmd {
 	BUF_CMD_READ = 1,
 	BUF_CMD_WRITE,
 	BUF_CMD_FLUSH,
+	BUF_CMD_SEEK,
 } buf_cmd_t;
 
 struct m_buf {
