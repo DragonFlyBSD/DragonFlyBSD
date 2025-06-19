@@ -657,7 +657,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map,
 		error = fclrfdflags(p->p_fd, fd, UF_EXCLOSE);
 		goto done;
 	case FIOCLEX:
-		error = fsetfdflags(p->p_fd, fd, UF_EXCLOSE);
+		error = faddfdflags(p->p_fd, fd, UF_EXCLOSE);
 		goto done;
 	}
 
@@ -1704,7 +1704,7 @@ socket_wait(struct socket *so, struct timespec *ts, int *res)
 	fp->f_ops = &socketops;
 	fp->f_data = so;
 	fsetfd(td->td_lwp->lwp_proc->p_fd, fp, fd);
-	fsetfdflags(td->td_proc->p_fd, fd, UF_EXCLOSE);
+	faddfdflags(td->td_proc->p_fd, fd, UF_EXCLOSE);
 
 	bzero(&kq, sizeof(kq));
 	kqueue_init(&kq, td->td_lwp->lwp_proc->p_fd);

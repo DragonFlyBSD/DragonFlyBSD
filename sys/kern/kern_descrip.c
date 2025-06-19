@@ -717,14 +717,14 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 	case F_GETFD:
 		error = fgetfdflags(p->p_fd, fd, &tmp);
 		if (error == 0)
-			dat->fc_cloexec = (tmp & UF_EXCLOSE) ? FD_CLOEXEC : 0;
+			dat->fc_fdflags = ((tmp & UF_EXCLOSE) ? FD_CLOEXEC : 0) |
+			    ((tmp & UF_FOCLOSE) ? FD_CLOFORK : 0);
 		return (error);
 
 	case F_SETFD:
-		if (dat->fc_cloexec & FD_CLOEXEC)
-			error = fsetfdflags(p->p_fd, fd, UF_EXCLOSE);
-		else
-			error = fclrfdflags(p->p_fd, fd, UF_EXCLOSE);
+		error = fsetfdflags(p->p_fd, fd,
+		    ((dat->fc_fdflags & FD_CLOEXEC) ? UF_EXCLOSE : 0) |
+		    ((dat->fc_fdflags & FD_CLOFORK) ? UF_FOCLOSE : 0));
 		return (error);
 	case F_DUPFD:
 		newmin = dat->fc_fd;
@@ -736,6 +736,11 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 		error = kern_dup(DUP_VARIABLE | DUP_CLOEXEC | DUP_FCNTL,
 		    fd, newmin, &dat->fc_fd);
 		return (error);
+	case F_DUPFD_CLOFORK:
+		newmin = dat->fc_fd;
+		error = kern_dup(DUP_VARIABLE | DUP_CLOFORK | DUP_FCNTL,
+		    fd, newmin, &dat->fc_fd);
+		return (error);
 	case F_DUP2FD:
 		newmin = dat->fc_fd;
 		error = kern_dup(DUP_FIXED, fd, newmin, &dat->fc_fd);
@@ -745,8 +750,26 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 		error = kern_dup(DUP_FIXED | DUP_CLOEXEC, fd, newmin,
 				 &dat->fc_fd);
 		return (error);
+	case F_DUP2FD_CLOFORK:
+		newmin = dat->fc_fd;
+		error = kern_dup(DUP_FIXED | DUP_CLOFORK, fd, newmin,
+				 &dat->fc_fd);
+		return (error);
 	default:
-		break;
+		if ((cmd & ((1u << F_DUP3FD_SHIFT) - 1)) != F_DUP3FD)
+			break;
+		/* Handle F_DUP3FD */
+		nflags = (cmd >> F_DUP3FD_SHIFT);
+		if ((nflags & ~(FD_CLOEXEC | FD_CLOFORK)) != 0) {
+			error = EINVAL;
+			break;
+		}
+		newmin = dat->fc_fd;
+		error = kern_dup(DUP_FIXED |
+		    ((nflags & FD_CLOEXEC) != 0 ? DUP_CLOEXEC : 0) |
+		    ((nflags & FD_CLOFORK) != 0 ? DUP_CLOFORK : 0),
+		    fd, newmin, &dat->fc_fd);
+		return (error);
 	}
 
 	/*
@@ -931,10 +954,12 @@ sys_fcntl(struct sysmsg *sysmsg, const struct fcntl_args *uap)
 	case F_DUP2FD:
 	case F_DUPFD_CLOEXEC:
 	case F_DUP2FD_CLOEXEC:
+	case F_DUPFD_CLOFORK:
+	case F_DUP2FD_CLOFORK:
 		dat.fc_fd = uap->arg;
 		break;
 	case F_SETFD:
-		dat.fc_cloexec = uap->arg;
+		dat.fc_fdflags = uap->arg;
 		break;
 	case F_SETFL:
 		dat.fc_flags = uap->arg;
@@ -950,6 +975,10 @@ sys_fcntl(struct sysmsg *sysmsg, const struct fcntl_args *uap)
 		if (error)
 			return (error);
 		break;
+	default:
+		if ((uap->cmd & ((1u << F_DUP3FD_SHIFT) - 1)) == F_DUP3FD)
+			dat.fc_fd = uap->arg;
+		break;
 	}
 
 	error = kern_fcntl(uap->fd, uap->cmd, &dat, curthread->td_ucred);
@@ -960,10 +989,12 @@ sys_fcntl(struct sysmsg *sysmsg, const struct fcntl_args *uap)
 		case F_DUP2FD:
 		case F_DUPFD_CLOEXEC:
 		case F_DUP2FD_CLOEXEC:
+		case F_DUPFD_CLOFORK:
+		case F_DUP2FD_CLOFORK:
 			sysmsg->sysmsg_result = dat.fc_fd;
 			break;
 		case F_GETFD:
-			sysmsg->sysmsg_result = dat.fc_cloexec;
+			sysmsg->sysmsg_result = dat.fc_fdflags;
 			break;
 		case F_GETFL:
 			sysmsg->sysmsg_result = dat.fc_flags;
@@ -980,6 +1011,10 @@ sys_fcntl(struct sysmsg *sysmsg, const struct fcntl_args *uap)
 					strlen(dat.fc_path.ptr) + 1);
 			kfree(dat.fc_path.buf, M_TEMP);
 			break;
+		default:
+			if ((uap->cmd & ((1u << F_DUP3FD_SHIFT) - 1)) == F_DUP3FD)
+				sysmsg->sysmsg_result = dat.fc_fd;
+			break;
 		}
 	}
 
@@ -989,17 +1024,18 @@ sys_fcntl(struct sysmsg *sysmsg, const struct fcntl_args *uap)
 /*
  * Common code for dup, dup2, and fcntl(F_DUPFD).
  *
- * There are four type flags: DUP_FCNTL, DUP_FIXED, DUP_VARIABLE, and
- * DUP_CLOEXEC.
+ * There are four type flags: DUP_FCNTL, DUP_FIXED, DUP_VARIABLE,
+ * DUP_CLOEXEC and DUP_CLOFORK
  *
  * DUP_FCNTL is for handling EINVAL vs. EBADF differences between
- * fcntl()'s F_DUPFD and F_DUPFD_CLOEXEC and dup2() (per POSIX).
+ * fcntl()'s F_DUPFD, F_DUPFD_CLOEXEC, F_DUPFD_CLOFORK and dup2() (per POSIX).
  * The next two flags are mutually exclusive, and the fourth is optional.
  * DUP_FIXED tells kern_dup() to destructively dup over an existing file
  * descriptor if "new" is already open.  DUP_VARIABLE tells kern_dup()
  * to find the lowest unused file descriptor that is greater than or
  * equal to "new".  DUP_CLOEXEC, which works with either of the first
  * two flags, sets the close-on-exec flag on the "new" file descriptor.
+ * Same with DUP_CLOFORK.
  */
 int
 kern_dup(int flags, int old, int new, int *res)
@@ -1018,7 +1054,7 @@ kern_dup(int flags, int old, int new, int *res)
 	/*
 	 * Verify that we have a valid descriptor to dup from and
 	 * possibly to dup to. When the new descriptor is out of
-	 * bounds, fcntl()'s F_DUPFD and F_DUPFD_CLOEXEC must
+	 * bounds, fcntl()'s F_DUPFD, F_DUPFD_CLOEXEC and F_DUPFD_CLOFORK must
 	 * return EINVAL, while dup2() returns EBADF in
 	 * this case.
 	 *
@@ -1046,6 +1082,8 @@ retry:
 		*res = new;
 		if (flags & DUP_CLOEXEC)
 			fdp->fd_files[new].fileflags |= UF_EXCLOSE;
+		if (flags & DUP_CLOFORK)
+			fdp->fd_files[new].fileflags |= UF_FOCLOSE;
 		spin_unlock(&fdp->fd_spin);
 		return (0);
 	}
@@ -1158,10 +1196,11 @@ retry:
 	 * The fd_files[] array inherits fp's hold reference.
 	 */
 	fsetfd_locked(fdp, fp, new);
+	fdp->fd_files[new].fileflags = oldflags & ~(UF_EXCLOSE | UF_FOCLOSE);
 	if ((flags & DUP_CLOEXEC) != 0)
-		fdp->fd_files[new].fileflags = oldflags | UF_EXCLOSE;
-	else
-		fdp->fd_files[new].fileflags = oldflags & ~UF_EXCLOSE;
+		fdp->fd_files[new].fileflags |= UF_EXCLOSE;
+	if ((flags & DUP_CLOFORK) != 0)
+		fdp->fd_files[new].fileflags |= UF_FOCLOSE;
 	spin_unlock(&fdp->fd_spin);
 	fdrop(fp);
 	*res = new;
@@ -2222,7 +2261,7 @@ fgetfdflags(struct filedesc *fdp, int fd, int *flagsp)
  * WARNING: May not be called before initial fsetfd().
  */
 int
-fsetfdflags(struct filedesc *fdp, int fd, int add_flags)
+faddfdflags(struct filedesc *fdp, int fd, int add_flags)
 {
 	int error;
 
@@ -2233,6 +2272,29 @@ fsetfdflags(struct filedesc *fdp, int fd, int add_flags)
 		error = EBADF;
 	} else {
 		fdp->fd_files[fd].fileflags |= add_flags;
+		error = 0;
+	}
+	spin_unlock(&fdp->fd_spin);
+
+	return (error);
+}
+
+/*
+ * WARNING: May not be called before initial fsetfd().
+ */
+int
+fsetfdflags(struct filedesc *fdp, int fd, int set_flags)
+{
+	int error;
+
+	spin_lock(&fdp->fd_spin);
+	if (((u_int)fd) >= fdp->fd_nfiles) {
+		error = EBADF;
+	} else if (fdp->fd_files[fd].fp == NULL) {
+		error = EBADF;
+	} else {
+		/* fileflags is char */
+		fdp->fd_files[fd].fileflags = set_flags & 0x7f;
 		error = 0;
 	}
 	spin_unlock(&fdp->fd_spin);
@@ -2509,7 +2571,8 @@ again:
 			fdfixup_locked(newfdp, i);
 		} else if (fdnode->fp) {
 			bzero(&fdnode->tdcache, sizeof(fdnode->tdcache));
-			if (fdnode->fp->f_type == DTYPE_KQUEUE) {
+			if (fdnode->fp->f_type == DTYPE_KQUEUE ||
+			    (fdnode->fileflags & UF_FOCLOSE) != 0) {
 				(void)funsetfd_locked(newfdp, i);
 			} else {
 				fhold(fdnode->fp);
@@ -2882,6 +2945,12 @@ fdcloseexec(struct proc *p)
 	 * them out from under us.
 	 */
 	for (i = 0; i <= fdp->fd_lastfile; i++) {
+		/*
+		 * https://austingroupbugs.net/view.php?id=1851
+		 * FD_CLOFORK should not be preserved across exec
+		 */
+		if (fdp->fd_files[i].fileflags & UF_FOCLOSE)
+			fdp->fd_files[i].fileflags &= ~UF_FOCLOSE;
 		if (fdp->fd_files[i].fp != NULL &&
 		    (fdp->fd_files[i].fileflags & UF_EXCLOSE)) {
 			struct file *fp;

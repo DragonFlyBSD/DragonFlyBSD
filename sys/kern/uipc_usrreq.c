@@ -1648,6 +1648,8 @@ unp_fp_externalize(struct lwp *lp, struct file *fp, int fd, int flags)
 			if (error == 0) {
 				if (flags & MSG_CMSG_CLOEXEC)
 					fdp->fd_files[fd].fileflags |= UF_EXCLOSE;
+				if (flags & MSG_CMSG_CLOFORK)
+					fdp->fd_files[fd].fileflags |= UF_FOCLOSE;
 				fsetfd(fdp, fx, fd);
 				fdrop(fx);
 			} else {
@@ -1656,6 +1658,8 @@ unp_fp_externalize(struct lwp *lp, struct file *fp, int fd, int flags)
 		} else {
 			if (flags & MSG_CMSG_CLOEXEC)
 				fdp->fd_files[fd].fileflags |= UF_EXCLOSE;
+			if (flags & MSG_CMSG_CLOFORK)
+				fdp->fd_files[fd].fileflags |= UF_FOCLOSE;
 			fsetfd(fdp, fp, fd);
 		}
 	}
