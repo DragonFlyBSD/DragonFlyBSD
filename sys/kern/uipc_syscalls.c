@@ -111,6 +111,10 @@ kern_socket(int domain, int type, int protocol, int *res)
 		type &= ~SOCK_CLOEXEC;
 		oflags |= O_CLOEXEC;
 	}
+	if (type & SOCK_CLOFORK) {
+		type &= ~SOCK_CLOFORK;
+		oflags |= O_CLOFORK;
+	}
 
 	error = falloc(td->td_lwp, &fp, &fd);
 	if (error)
@@ -125,6 +129,8 @@ kern_socket(int domain, int type, int protocol, int *res)
 		fp->f_data = so;
 		if (oflags & O_CLOEXEC)
 			fdp->fd_files[fd].fileflags |= UF_EXCLOSE;
+		if (oflags & O_CLOFORK)
+			fdp->fd_files[fd].fileflags |= UF_FOCLOSE;
 		*res = fd;
 		fsetfd(fdp, fp, fd);
 	}
@@ -416,6 +422,8 @@ done:
 	} else {
 		if (sockflags & SOCK_CLOEXEC)
 			fdp->fd_files[fd].fileflags |= UF_EXCLOSE;
+		if (sockflags & SOCK_CLOFORK)
+			fdp->fd_files[fd].fileflags |= UF_FOCLOSE;
 		*res = fd;
 		fsetfd(fdp, nfp, fd);
 	}
@@ -513,7 +521,7 @@ sys_accept4(struct sysmsg *sysmsg, const struct accept4_args *uap)
 	int error;
 	int sockflags;
 
-	if (uap->flags & ~(SOCK_NONBLOCK | SOCK_CLOEXEC))
+	if (uap->flags & ~(SOCK_NONBLOCK | SOCK_CLOEXEC | SOCK_CLOFORK))
 		return (EINVAL);
 	sockflags = uap->flags | SOCK_KERN_NOINHERIT;
 
@@ -688,6 +696,10 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 		type &= ~SOCK_CLOEXEC;
 		oflags |= O_CLOEXEC;
 	}
+	if (type & SOCK_CLOFORK) {
+		type &= ~SOCK_CLOFORK;
+		oflags |= O_CLOFORK;
+	}
 
 	fdp = td->td_proc->p_fd;
 	error = socreate(domain, &so1, type, protocol, td);
@@ -723,6 +735,10 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 	if (oflags & O_CLOEXEC) {
 		fdp->fd_files[fd1].fileflags |= UF_EXCLOSE;
 		fdp->fd_files[fd2].fileflags |= UF_EXCLOSE;
+	}
+	if (oflags & O_CLOFORK) {
+		fdp->fd_files[fd1].fileflags |= UF_FOCLOSE;
+		fdp->fd_files[fd2].fileflags |= UF_FOCLOSE;
 	}
 	fsetfd(fdp, fp1, fd1);
 	fsetfd(fdp, fp2, fd2);

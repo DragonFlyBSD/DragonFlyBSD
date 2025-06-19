@@ -2268,6 +2268,8 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	 */
 	if (oflags & O_CLOEXEC)
 		fdp->fd_files[indx].fileflags |= UF_EXCLOSE;
+	if (oflags & O_CLOFORK)
+		fdp->fd_files[indx].fileflags |= UF_FOCLOSE;
 	fsetfd(fdp, fp, indx);
 	fdrop(fp);
 	*res = indx;
@@ -4964,6 +4966,8 @@ sys_fhopen(struct sysmsg *sysmsg, const struct fhopen_args *uap)
 	vput(vp);
 	if (uap->flags & O_CLOEXEC)
 		fdp->fd_files[indx].fileflags |= UF_EXCLOSE;
+	if (uap->flags & O_CLOFORK)
+		fdp->fd_files[indx].fileflags |= UF_FOCLOSE;
 	fsetfd(fdp, fp, indx);
 	fdrop(fp);
 	sysmsg->sysmsg_result = indx;
