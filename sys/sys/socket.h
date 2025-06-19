@@ -100,6 +100,7 @@ typedef __socklen_t	socklen_t;
  */
 #define SOCK_CLOEXEC	0x10000000
 #define SOCK_NONBLOCK	0x20000000
+#define SOCK_CLOFORK	0x40000000
 #ifdef _KERNEL
 /*
  * For kern_accept(): don't inherit FNONBLOCK or FASYNC.
@@ -429,6 +430,7 @@ struct msghdr {
 #if __BSD_VISIBLE
 #define	MSG_SYNC	0x00000800	/* No asynchronized pru_send */
 #define	MSG_CMSG_CLOEXEC 0x00001000	/* make received fds close-on-exec */
+#define	MSG_CMSG_CLOFORK 0x00002000	/* make received fds close-on-fork */
 /* 0x2000 unused */
 /* 0x4000 unused */
 /* 0x8000 unused */
