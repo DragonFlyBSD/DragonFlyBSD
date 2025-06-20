@@ -208,6 +208,7 @@
 #if __BSD_VISIBLE
 #define	F_DUP2FD_CLOEXEC 18		/* Like F_DUP2FD with FD_CLOEXEC set */
 #define	F_GETPATH	19		/* retrieve full path to file associated with fd */
+#define F_MAXFD 	20		/* return the max open fd */
 #endif
 
 /* file descriptor flags (F_GETFD, F_SETFD) */

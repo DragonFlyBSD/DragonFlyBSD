@@ -918,6 +918,15 @@ sys_fcntl(struct sysmsg *sysmsg, const struct fcntl_args *uap)
 	int error;
 
 	switch (uap->cmd) {
+	case F_MAXFD: {
+		struct thread *td = curthread;
+		struct proc *p = td->td_proc;
+		struct filedesc *fdp;
+		KKASSERT(p);
+		fdp = p->p_fd;
+		sysmsg->sysmsg_result = fdp->fd_lastfile;
+		return (0);
+	}
 	case F_DUPFD:
 	case F_DUP2FD:
 	case F_DUPFD_CLOEXEC:
