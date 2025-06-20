@@ -268,6 +268,8 @@ sys_pipe(struct sysmsg *sysmsg, const struct pipe_args *uap)
 int
 sys_pipe2(struct sysmsg *sysmsg, const struct pipe2_args *uap)
 {
+	if ((uap->flags & ~(O_CLOEXEC | O_NONBLOCK)) != 0)
+		return (EINVAL);
 	return kern_pipe(sysmsg->sysmsg_fds, uap->flags);
 }
 
