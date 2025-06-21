@@ -106,8 +106,10 @@
 #define	O_FOFFSET	0x00200000	/* force specific offset */
 #define	O_FSYNCWRITE	0x00400000	/* force synchronous write */
 #define	O_FASYNCWRITE	0x00800000	/* force asynchronous write */
+#if __POSIX_VISIBLE >= 200809
+#define	O_CLOFORK	0x01000000	/* atomically set FD_CLOFORK */
+#endif
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-#define	O_UNUSED24	0x01000000
 #define	O_UNUSED25	0x02000000
 #define	O_UNUSED26	0x04000000
 #endif
@@ -208,10 +210,17 @@
 #if __BSD_VISIBLE
 #define	F_DUP2FD_CLOEXEC 18		/* Like F_DUP2FD with FD_CLOEXEC set */
 #define	F_GETPATH	19		/* retrieve full path to file associated with fd */
+#define F_MAXFD 	20		/* return the max open fd */
+#define F_DUPFD_CLOFORK	21		/* Like F_DUPFD with FD_CLOFORK set */
+#define F_DUP2FD_CLOFORK 22		/* Like F_DUP2FD with FD_CLOFORK set */
+
+#define F_DUP3FD	23		/* Used for dup3() */
+#define F_DUP3FD_SHIFT	16              /* Shift used for F_DUP3FD */
 #endif
 
 /* file descriptor flags (F_GETFD, F_SETFD) */
 #define	FD_CLOEXEC	1		/* close-on-exec flag */
+#define	FD_CLOFORK	2		/* close-on-fork flag */
 
 /* record locking flags (F_GETLK, F_SETLK, F_SETLKW) */
 #define	F_RDLCK		1		/* shared or read lock */
@@ -240,7 +249,7 @@ struct flock {
 #ifdef _KERNEL
 union fcntl_dat {
 	int		fc_fd;		/* F_DUPFD */
-	int		fc_cloexec;	/* F_GETFD/F_SETFD */
+	int		fc_fdflags;	/* F_GETFD/F_SETFD */
 	int		fc_flags;	/* F_GETFL/F_SETFL */
 	int		fc_owner;	/* F_GETOWN/F_SETOWN */
 	struct flock	fc_flock;	/* F_GETLK/F_SETLK */

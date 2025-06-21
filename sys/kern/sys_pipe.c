@@ -268,6 +268,8 @@ sys_pipe(struct sysmsg *sysmsg, const struct pipe_args *uap)
 int
 sys_pipe2(struct sysmsg *sysmsg, const struct pipe2_args *uap)
 {
+	if ((uap->flags & ~(O_CLOEXEC | O_CLOFORK | O_NONBLOCK)) != 0)
+		return (EINVAL);
 	return kern_pipe(sysmsg->sysmsg_fds, uap->flags);
 }
 
@@ -309,6 +311,8 @@ kern_pipe(long *fds, int flags)
 		rf->f_flag |= O_NONBLOCK;
 	if (flags & O_CLOEXEC)
 		fdp->fd_files[fd1].fileflags |= UF_EXCLOSE;
+	if (flags & O_CLOFORK)
+		fdp->fd_files[fd1].fileflags |= UF_FOCLOSE;
 
 	error = falloc(td->td_lwp, &wf, &fd2);
 	if (error) {
@@ -327,6 +331,8 @@ kern_pipe(long *fds, int flags)
 		wf->f_flag |= O_NONBLOCK;
 	if (flags & O_CLOEXEC)
 		fdp->fd_files[fd2].fileflags |= UF_EXCLOSE;
+	if (flags & O_CLOFORK)
+		fdp->fd_files[fd2].fileflags |= UF_FOCLOSE;
 
 	fds[1] = fd2;
 
