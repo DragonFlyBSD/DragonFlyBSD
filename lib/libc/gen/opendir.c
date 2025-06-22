@@ -100,6 +100,7 @@ __fdopendir2(int fd, int flags)
 	int incr;
 	int saved_errno;
 	struct stat statb;
+	int fdflags;
 
 	dirp = NULL;
 
@@ -109,7 +110,9 @@ __fdopendir2(int fd, int flags)
 		errno = ENOTDIR;
 		goto fail;
 	}
-	if (_fcntl(fd, F_SETFD, FD_CLOEXEC) == -1 ||
+	fdflags = _fcntl(fd, F_GETFD, 0);
+	if (fdflags == -1 || ((fdflags & FD_CLOEXEC) == 0 &&
+	    _fcntl(fd, F_SETFD, fdflags | FD_CLOEXEC) == -1) ||
 	    (dirp = malloc(sizeof(DIR))) == NULL)
 		goto fail;
 
