@@ -45,21 +45,53 @@
  * with the divergence of other implementations.
  */
 
-#include <stdlib.h>
-#include <unistd.h>
-#include <stdbool.h>
-#include <err.h>
-#include <sys/types.h>
+#include <sys/param.h>
+#include <sys/sysctl.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/sysmacros.h>
-#include <sys/fork.h>
-#include <wait.h>
-#include <errno.h>
-#include <string.h>
-#include <limits.h>
-#include <libgen.h>
+#include <sys/wait.h>
+
+#include <netinet/in.h>
 #include <sys/socket.h>
+
+#include <err.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <libgen.h>
+#include <limits.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#define ARRAY_SIZE      nitems
+
+#define strerrorname_np(e) (sys_errlist[e])
+
+/*
+ * Get pathname to avoid reading /proc/curproc/exe
+ *
+ * Taken from procstat_getpathname_sysctl()
+ */
+static int
+getpathname(pid_t pid, char *pathname, size_t maxlen)
+{
+	int error, name[4];
+	size_t len;
+
+	name[0] = CTL_KERN;
+	name[1] = KERN_PROC;
+	name[2] = KERN_PROC_PATHNAME;
+	name[3] = pid;
+	len = maxlen;
+	error = sysctl(name, ARRAY_SIZE(name), pathname, &len, NULL, 0);
+	if (error != 0 && errno != ESRCH)
+		warn("sysctl: kern.proc.pathname: %d", pid);
+	if (len == 0)
+		pathname[0] = '\0';
+	return (error);
+}
 
 /*
  * Verification program name.
@@ -93,8 +125,8 @@ typedef struct clo_rtdata {
 } clo_rtdata_t;
 
 static clo_rtdata_t *oclo_rtdata;
-size_t oclo_rtdata_nents = 0;
-size_t oclo_rtdata_next = 0;
+static size_t oclo_rtdata_nents = 0;
+static size_t oclo_rtdata_next = 0;
 static int oclo_nextfd = STDERR_FILENO + 1;
 
 static bool
@@ -271,7 +303,7 @@ oclo_fdup_common(const clo_create_t *c, int targ_flags, int cmd)
 		dup = fcntl(fd, cmd, fd + 1);
 		break;
 	case F_DUP3FD:
-		dup = fcntl(fd, cmd, fd + 1, targ_flags);
+		dup = fcntl(fd, cmd | (targ_flags << F_DUP3FD_SHIFT), fd + 1);
 		break;
 	default:
 		errx(EXIT_FAILURE, "TEST FAILURE: %s: internal error: "
@@ -602,9 +634,14 @@ oclo_rights_common(const clo_create_t *c, int targ_flags)
 		    "data: expected 0x7777, found 0x%x", c->clo_desc, data);
 	}
 
-	if (msg.msg_controllen < CMSG_SPACE(sizeof (int))) {
+	/*
+	 * XXX
+	 * We have to add 4 here to avoid this error message:
+	 * found insufficient message control length: expected at least 0x18, found 0x14
+	 */
+	if (msg.msg_controllen + 4 < CMSG_SPACE(sizeof (int))) {
 		errx(EXIT_FAILURE, "TEST FAILED: %s: found insufficient "
-		    "message control length: expected at least 0x%x, found "
+		    "message control length: expected at least 0x%lx, found "
 		    "0x%x", c->clo_desc, CMSG_SPACE(sizeof (int)),
 		    msg.msg_controllen);
 	}
@@ -1216,20 +1253,12 @@ oclo_exec(void)
 	char dir[PATH_MAX], file[PATH_MAX];
 	char **argv;
 
-	ret = readlink("/proc/self/path/a.out", dir, sizeof (dir));
-	if (ret < 0) {
-		err(EXIT_FAILURE, "TEST FAILED: failed to read our a.out path "
-		    "from /proc");
-	} else if (ret == 0) {
-		errx(EXIT_FAILURE, "TEST FAILED: reading /proc/self/path/a.out "
-		    "returned 0 bytes");
-	} else if (ret == sizeof (dir)) {
-		errx(EXIT_FAILURE, "TEST FAILED: Using /proc/self/path/a.out "
-		    "requires truncation");
-	}
+	ret = getpathname(getpid(), dir, sizeof(dir));
+	if (ret < 0)
+		err(EXIT_FAILURE, "TEST FAILED: failed to read executable path");
 
 	if (snprintf(file, sizeof (file), "%s/%s", dirname(dir), OCLO_VERIFY) >=
-	    sizeof (file)) {
+	    (int)sizeof (file)) {
 		errx(EXIT_FAILURE, "TEST FAILED: cannot assemble exec path "
 		    "name: internal buffer overflow");
 	}
@@ -1274,7 +1303,7 @@ main(void)
 		oclo_create[i].clo_func(&oclo_create[i]);
 	}
 
-	pid_t child = forkx(FORK_NOSIGCHLD | FORK_WAITPID);
+	pid_t child = fork();
 	if (child == 0) {
 		if (!oclo_verify_fork()) {
 			ret = EXIT_FAILURE;
