@@ -118,6 +118,7 @@ struct filedesc_to_leader {
  * Per-process open flags.
  */
 #define	UF_EXCLOSE 	0x01		/* auto-close on exec */
+#define	UF_FOCLOSE 	0x02		/* auto-close on fork */
 
 /*
  * This structure that holds the information needed to send a SIGIO or
@@ -148,7 +149,8 @@ SLIST_HEAD(sigiolst, sigio);
 #define DUP_FIXED	0x1	/* Copy to specific fd even if in use */
 #define DUP_VARIABLE	0x2	/* Copy fd to an unused fd */
 #define DUP_CLOEXEC	0x4	/* Set fd close on exec flag */
-#define DUP_FCNTL	0x8	/* Set for F_DUPFD and F_DUPFD_CLOEXEC */
+#define DUP_FCNTL	0x8	/* Set for F_DUPFD, F_DUPFD_CLO{EXEC,FORK} */
+#define DUP_CLOFORK	0x10	/* Set fd close on fork flag */
 
 struct thread;
 struct proc;
@@ -162,7 +164,8 @@ int	fdavail (struct proc *p, int n);
 int	falloc (struct lwp *lp, struct file **resultfp, int *resultfd);
 void	fsetfd (struct filedesc *fdp, struct file *fp, int fd);
 int	fgetfdflags(struct filedesc *fdp, int fd, int *flagsp);
-int	fsetfdflags(struct filedesc *fdp, int fd, int add_flags);
+int	faddfdflags(struct filedesc *fdp, int fd, int add_flags);
+int	fsetfdflags(struct filedesc *fdp, int fd, int set_flags);
 int	fclrfdflags(struct filedesc *fdp, int fd, int rem_flags);
 void	fsetcred (struct file *fp, struct ucred *cr);
 void	fdinit_bootstrap(struct proc *p0, struct filedesc *fdp0, int cmask);
