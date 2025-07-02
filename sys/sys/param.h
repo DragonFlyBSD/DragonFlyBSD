@@ -210,6 +210,7 @@
  * 500705 - Move us to utmpx only, delete utmp
  * 500706 - Switch to the now common three argument versions of the
  *	    timespecadd() and timespecsub() macros in <sys/time.h>
+ *	    Also: RTM_VERSION bump to 7; CMSG alignment raised from 4B to 8B
  * 500707 - libradius/libtacplus removal
  * 500708 - Handle SIOCSIFMTU directly in tap(4) to support MTU > 1500
  * 500709 - Implement lwp_getname() and signal safety
