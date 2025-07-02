@@ -13,6 +13,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <assert.h>
 
 void sendfd(int s, int fd);
 int recvfd(int s);
@@ -77,7 +78,7 @@ sendfd(int s, int fd)
     struct msghdr msg;
     struct {
 	struct cmsghdr cmsg;
-	int fd;
+	char buf[CMSG_SPACE(sizeof(int))];
     } cmsg;
     struct iovec iov;
 
@@ -94,8 +95,8 @@ sendfd(int s, int fd)
 
     cmsg.cmsg.cmsg_level = SOL_SOCKET;
     cmsg.cmsg.cmsg_type = SCM_RIGHTS;
-    cmsg.cmsg.cmsg_len = sizeof(cmsg);
-    cmsg.fd = fd;
+    cmsg.cmsg.cmsg_len = CMSG_LEN(sizeof(int));
+    *(int *)CMSG_DATA(&cmsg) = fd;
 
     if (sendmsg(s, &msg, 0) < 0) {
 	printf("sendfd: failed %s\n", strerror(errno));
@@ -109,7 +110,7 @@ recvfd(int s)
     struct msghdr msg;
     struct {
 	struct cmsghdr cmsg;
-	int fd;
+	char buf[CMSG_SPACE(sizeof(int))];
     } cmsg;
     struct iovec iov;
     int r;
@@ -130,12 +131,13 @@ recvfd(int s)
     cmsg.cmsg.cmsg_level = SOL_SOCKET;
     cmsg.cmsg.cmsg_type = SCM_RIGHTS;
 #endif
-    cmsg.cmsg.cmsg_len = sizeof(cmsg);
-    cmsg.fd = -1;
+    cmsg.cmsg.cmsg_len = CMSG_LEN(sizeof(int));
+    *(int *)CMSG_DATA(&cmsg) = -1;
 
     if ((r = recvmsg(s, &msg, MSG_EOR)) < 0) {
 	printf("recvmsg: failed %s\n", strerror(errno));
 	return(-1);
     }
-    return(cmsg.fd);
+    assert(cmsg.cmsg.cmsg_type == SCM_RIGHTS);
+    return(*(int *)CMSG_DATA(&cmsg));
 }
