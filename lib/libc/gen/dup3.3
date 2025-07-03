@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: head/lib/libc/gen/dup3.3 254488 2013-08-18 13:25:18Z jilles $
 .\"
-.Dd August 16, 2013
+.Dd July 03, 2025
 .Dt DUP3 3
 .Os
 .Sh NAME
@@ -46,6 +46,11 @@ while allowing the value of the new descriptor to be specified.
 .Pp
 The close-on-exec flag on the new file descriptor is determined by the
 .Dv O_CLOEXEC
+bit in
+.Fa flags .
+.Pp
+The close-on-fork flag on the new file descriptor is determined by the
+.Dv O_CLOFORK
 bit in
 .Fa flags .
 .Pp
@@ -93,7 +98,9 @@ argument.
 The
 .Fa flags
 argument has bits set other than
-.Dv O_CLOEXEC .
+.Dv O_CLOEXEC
+or
+.Dv O_CLOFORK .
 .El
 .Sh SEE ALSO
 .Xr accept 2 ,
@@ -116,3 +123,10 @@ function appeared in
 .Fx 10.0
 and
 .Dx 5.5 .
+.Pp
+The
+.Dv O_CLOFORK
+flag appeared in
+.Fx 15.0
+and
+.Dx 6.5 .

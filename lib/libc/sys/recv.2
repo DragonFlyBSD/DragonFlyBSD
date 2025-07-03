@@ -28,7 +28,7 @@
 .\"     @(#)recv.2	8.3 (Berkeley) 2/21/94
 .\" $FreeBSD: src/lib/libc/sys/recv.2,v 1.8.2.8 2001/12/14 18:34:01 ru Exp $
 .\"
-.Dd August 7, 2019
+.Dd July 03, 2025
 .Dt RECV 2
 .Os
 .Sh NAME
@@ -127,6 +127,7 @@ one or more of the values:
 .It Dv MSG_WAITALL Ta wait for full request or error
 .It Dv MSG_DONTWAIT Ta do not block
 .It Dv MSG_CMSG_CLOEXEC Ta set received fds close-on-exec
+.It Dv MSG_CMSG_CLOFORK Ta set received fds close-on-fork
 .El
 .Pp
 The
