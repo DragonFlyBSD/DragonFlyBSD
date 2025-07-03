@@ -28,7 +28,7 @@
 .\"     @(#)pipe.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/pipe.2,v 1.13.2.5 2001/12/14 18:34:01 ru Exp $
 .\"
-.Dd June 4, 1993
+.Dd July 03, 2025
 .Dt PIPE 2
 .Os
 .Sh NAME
@@ -67,6 +67,8 @@ list, defined in
 .Bl -tag -width ".Dv O_NONBLOCK"
 .It Dv O_CLOEXEC
 Set the close-on-exec flag for the new file descriptors.
+.It Dv O_CLOFORK
+Set the close-on-fork flag for the new file descriptors.
 .It Dv O_NONBLOCK
 Set the non-blocking flag for the ends of the pipe.
 .El
@@ -152,3 +154,10 @@ function call appeared in
 .Pp
 Bidirectional pipes were first used on
 .At V.4 .
+.Pp
+The
+.Dv O_CLOFORK
+flag appeared in
+.Fx 15.0
+and
+.Dx 6.5 .

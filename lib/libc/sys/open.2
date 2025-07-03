@@ -28,7 +28,7 @@
 .\"     @(#)open.2	8.2 (Berkeley) 11/16/93
 .\" $FreeBSD: src/lib/libc/sys/open.2,v 1.11.2.9 2001/12/14 18:34:01 ru Exp $
 .\"
-.Dd February 17, 2021
+.Dd July 03, 2025
 .Dt OPEN 2
 .Os
 .Sh NAME
@@ -116,6 +116,7 @@ O_FSYNC		synchronous writes
 O_NOFOLLOW	do not follow symlinks
 O_DIRECTORY	error if file is not a directory
 O_CLOEXEC	set FD_CLOEXEC upon open
+O_CLOFORK	set FD_CLOFORK upon open
 .Ed
 .Pp
 Opening a file with
@@ -201,6 +202,15 @@ such as device nodes.
 may be used to atomically set the
 .Dv FD_CLOEXEC
 flag for the newly returned file descriptor.
+.Pp
+.Dv O_CLOFORK
+may be used to atomically set the
+.Dv FD_CLOFORK
+flag for the newly returned file descriptor.
+The file will be closed on any child process created with
+.Fn fork 2
+or
+.Fn vfork 2
 .Pp
 If successful,
 .Fn open
@@ -382,6 +392,11 @@ An
 .Fn openat
 function call appeared first in Solaris and was ported to
 .Dx 2.3 .
+.Dv O_CLOFORK
+appeared in
+.Fx 15.0
+and
+.Dx 6.5 .
 .Sh BUGS
 The Open Group Extended API Set 2 specification requires that the test
 for
