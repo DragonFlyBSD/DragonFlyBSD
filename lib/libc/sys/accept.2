@@ -29,7 +29,7 @@
 .\" $FreeBSD: src/lib/libc/sys/accept.2,v 1.10.2.11 2002/05/09 02:24:40 silby Exp $
 .\" $DragonFly: src/lib/libc/sys/accept.2,v 1.4 2006/06/25 10:55:51 corecode Exp $
 .\"
-.Dd October 29, 2015
+.Dd July 03, 2025
 .Dt ACCEPT 2
 .Os
 .Sh NAME
@@ -91,6 +91,13 @@ property is cleared,
 the signal destination is cleared
 and the close-on-exec flag on the new file descriptor can be set via the
 .Dv SOCK_CLOEXEC
+flag in the
+.Fa flags
+argument.
+Similarly, the
+.Dv O_CLOFORK
+property can be set via the
+.Dv SOCK_CLOFORK
 flag in the
 .Fa flags
 argument.
@@ -225,3 +232,10 @@ The
 .Fn accept4
 system call appeared in
 .Dx 4.3 .
+.Pp
+The
+.Dv SOCK_CLOFORK
+flag appeared in
+.Fx 15.0
+and
+.Dx 6.5 .

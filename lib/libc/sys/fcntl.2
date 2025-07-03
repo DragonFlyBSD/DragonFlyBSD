@@ -28,7 +28,7 @@
 .\"     @(#)fcntl.2	8.2 (Berkeley) 1/12/94
 .\" $FreeBSD: src/lib/libc/sys/fcntl.2,v 1.16.2.13 2002/07/22 15:15:16 bde Exp $
 .\"
-.Dd March 30, 2021
+.Dd July 03, 2025
 .Dt FCNTL 2
 .Os
 .Sh NAME
@@ -79,6 +79,13 @@ associated with the new file descriptor is cleared, so the file descriptor is
 to remain open across
 .Xr execve 2
 system calls.
+.It
+The fork-on-exec flag
+.Dv FD_CLOFORK
+associated with the new file descriptor is cleared, so the file descriptor is
+to remain open across
+.Xr fork 2
+system calls.
 .El
 .It Dv F_DUPFD_CLOEXEC
 Like
@@ -88,6 +95,15 @@ but the
 flag associated with the new file descriptor is set, so the file descriptor
 is closed when
 .Xr execve 2
+system call executes.
+.It Dv F_DUPFD_CLOFORK
+Like
+.Dv F_DUPFD ,
+but the
+.Dv FD_CLOFORK
+flag associated with the new file descriptor is set, so the file descriptor
+is closed when
+.Xr fork 2
 system call executes.
 .It Dv F_DUP2FD
 It is functionally equivalent to
@@ -100,22 +116,32 @@ Like
 but the
 .Dv FD_CLOEXEC
 flag associated with the new file descriptor is set.
+.It Dv F_DUP2FD_CLOFORK
+Like
+.Dv F_DUP2FD ,
+but the
+.Dv FD_CLOFORK
+flag associated with the new file descriptor is set.
 .Pp
 The
-.Dv F_DUP2FD
-and
+.Dv F_DUP2FD ,
 .Dv F_DUP2FD_CLOEXEC
+and
+.Dv F_DUP2FD_CLOFORK
 constants are not portable, so they should not be used if
 portability is needed.
 Use
 .Fn dup2
 instead of
 .Dv F_DUP2FD .
+.It Dv F_DUP3FD
+Used to implement the
+.Fn dup3
+call.
+Do not use it.
 .It Dv F_GETFD
-Get the close-on-exec flag associated with the file descriptor
-.Fa fd
-as
-.Dv FD_CLOEXEC .
+Get the flags associated with the file descriptor
+.Fa fd .
 If the returned value ANDed with
 .Dv FD_CLOEXEC
 is 0,
@@ -125,16 +151,17 @@ otherwise the file will be closed upon execution of
 .Fn exec
 .Fa ( arg
 is ignored).
+.It Dv FD_CLOFORK
+The file will be closed upon execution of the
+.Fn fork
+family of system calls.
 .It Dv F_SETFD
-Set the close-on-exec flag associated with
-.Fa fd
-to
-.Fa arg ,
-where
-.Fa arg
-is either 0 or
-.Dv FD_CLOEXEC ,
-as described above.
+Set flags associated with
+.Fa fd .
+The available flags are
+.Dv FD_CLOEXEC
+and
+.Dv FD_CLOFORK
 .It Dv F_GETFL
 Get descriptor status flags, as described below
 .Fa ( arg
@@ -613,8 +640,10 @@ for the reasons as stated in
 .Sh STANDARDS
 The
 .Dv F_DUP2FD
-constant is non portable.
-It is provided for compatibility with AIX and Solaris.
+and
+.Dv F_DUP3FD
+constants are not portable.
+They are provided for compatibility with AIX and Solaris.
 .Sh HISTORY
 The
 .Fn fcntl
@@ -633,3 +662,17 @@ The
 .Dv F_GETPATH
 constant was introduced in
 .Dx 5.9 .
+.Pp
+The
+.Dv F_DUPFD_CLOFORK
+and
+.Dv F_DUP3FD
+constants appeared in
+.Fx 15.0
+and
+.Dx 6.5 .
+.Pp
+The
+.Dv F_DUP2FD_CLOFORK
+constant appeared in
+.Dx 6.5 .
