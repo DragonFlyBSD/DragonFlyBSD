@@ -64,8 +64,9 @@ fdopen(int fd, const char *mode)
 	if ((fp = __sfp()) == NULL)
 		return (NULL);
 
-	if (oflags & O_CLOEXEC)
-		_fcntl(fd, F_SETFD, FD_CLOEXEC);    /* silently ignore err */
+	if ((oflags & O_CLOEXEC) != 0 &&
+	    ((tmp = _fcntl(fd, F_GETFD, 0)) & FD_CLOEXEC) == 0)
+		_fcntl(fd, F_SETFD, tmp | FD_CLOEXEC);    /* silently ignore err */
 
 	fp->pub._flags = flags;
 	/*

@@ -114,7 +114,7 @@ _gettemp(char *path, int *doopen, int domkdir, int slen, int oflags)
 	char carrybuf[MAXPATHLEN];
 
 	if ((oflags & ~(O_APPEND | O_DIRECT | O_SHLOCK |
-		        O_EXLOCK | O_SYNC | O_CLOEXEC)) != 0) {
+		        O_EXLOCK | O_SYNC | O_CLOEXEC | O_CLOFORK)) != 0) {
 		errno = EINVAL;
 		return (0);
 	}
