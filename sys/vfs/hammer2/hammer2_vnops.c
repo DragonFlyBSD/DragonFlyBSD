@@ -506,6 +506,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 				kflags |= NOTE_WRITE | NOTE_EXTEND;
 			}
 			hammer2_inode_modify(ip);
+			ip->meta.ctime = ctime;
 			ip->meta.mtime = ctime;
 			vclrflags(vp, VLASTWRITETS);
 			break;
@@ -1489,6 +1490,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 		hammer2_update_time(&mtime);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
+		dip->meta.ctime = mtime;
 		/*hammer2_inode_unlock(dip);*/
 	}
 	hammer2_inode_unlock(dip);
@@ -1685,6 +1687,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 		hammer2_update_time(&mtime);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
+		dip->meta.ctime = mtime;
 		/*hammer2_inode_unlock(dip);*/
 	}
 	hammer2_inode_unlock(dip);
@@ -1764,6 +1767,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 		hammer2_update_time(&mtime);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
+		dip->meta.ctime = mtime;
 		/*hammer2_inode_unlock(dip);*/
 	}
 	hammer2_inode_unlock(dip);
@@ -1875,6 +1879,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 		hammer2_update_time(&mtime);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
+		dip->meta.ctime = mtime;
 		/*hammer2_inode_unlock(dip);*/
 	}
 	hammer2_inode_unlock(dip);
@@ -1982,6 +1987,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 		hammer2_update_time(&mtime);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
+		dip->meta.ctime = mtime;
 		/*hammer2_inode_unlock(dip);*/
 	}
 	hammer2_inode_unlock(dip);
@@ -2062,6 +2068,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 		hammer2_update_time(&mtime);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
+		dip->meta.ctime = mtime;
 		/*hammer2_inode_unlock(dip);*/
 	}
 	hammer2_inode_unlock(dip);
