@@ -404,9 +404,7 @@ again:
 		}
 
 		/*
-		 * Check directory typing and delete the entry.  Note that
-		 * nlinks adjustments are made on the real inode by the
-		 * frontend, not here.
+		 * Check directory typing and delete the entry.
 		 *
 		 * Unfortunately, checkdirempty() may have to unlock (parent).
 		 * If it no longer matches chain->parent after re-locking,

@@ -1563,15 +1563,6 @@ hammer2_inode_inode_count(const hammer2_inode_t *ip)
 /*
  * Called with a locked inode to finish unlinking an inode after xop_unlink
  * had been run.  This function is responsible for decrementing nlinks.
- *
- * We don't bother decrementing nlinks if the file is not open and this was
- * the last link.
- *
- * If the inode is a hardlink target it's chain has not yet been deleted,
- * otherwise it's chain has been deleted.
- *
- * If isopen then any prior deletion was not permanent and the inode is
- * left intact with nlinks == 0;
  */
 int
 hammer2_inode_unlink_finisher(hammer2_inode_t *ip, struct vnode **vprecyclep)
