@@ -66,9 +66,11 @@ struct file;
 struct klist;
 struct fdcache;
 
+typedef char fileflags_t;
+
 struct fdnode {
 	struct file *fp;
-	char	fileflags;
+	fileflags_t fileflags;
 	char	isfull;
 	char	iterator;
 	char	reserved;		/* descriptor has been reserved */

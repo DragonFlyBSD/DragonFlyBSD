@@ -2293,8 +2293,8 @@ fsetfdflags(struct filedesc *fdp, int fd, int set_flags)
 	} else if (fdp->fd_files[fd].fp == NULL) {
 		error = EBADF;
 	} else {
-		/* fileflags is char */
-		fdp->fd_files[fd].fileflags = set_flags & 0x7f;
+		/* fileflags is a smaller type, avoid compiler warning */
+		fdp->fd_files[fd].fileflags = (fileflags_t)set_flags;
 		error = 0;
 	}
 	spin_unlock(&fdp->fd_spin);
