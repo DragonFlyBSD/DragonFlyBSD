@@ -257,9 +257,10 @@
  * 600510 - add PROC_REAP_KILL to procctl(2)
  * 600511 - remove <timers.h>
  * 600512 - remove obsolete DSO_COMPATMBR from <sys/disk.h>
+ * 600513 - add F_MAXFD and support POSIX O_CLOFORK
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600512	/* propagated to newvers */
+#define __DragonFly_version 600513	/* propagated to newvers */
 
 #include <sys/_null.h>
 
