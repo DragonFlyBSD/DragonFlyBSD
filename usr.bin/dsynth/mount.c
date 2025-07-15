@@ -230,6 +230,12 @@ DoWorkerMounts(worker_t *work)
 	if (UseUsrSrc)
 		domount(work, NULLFS_RO, "$/usr/src", "/usr/src", NULL);
 	domount(work, NULLFS_RO, DPortsPath, "/xports", NULL);
+	if (DFlyPortsBaseOpt) {
+		char *pdfly;
+		asprintf(&pdfly, "%s/dragonfly", DPortsPath);
+		domount(work, NULLFS_RO, pdfly, "/xports/dragonfly", NULL);
+		free(pdfly);
+	}
 	domount(work, NULLFS_RW, OptionsPath, "/options", NULL);
 	domount(work, NULLFS_RW, PackagesPath, "/packages", NULL);
 	domount(work, NULLFS_RW, DistFilesPath, "/distfiles", NULL);
@@ -281,6 +287,8 @@ DoWorkerUnmounts(worker_t *work)
 		dounmount(work, "/distfiles");
 		dounmount(work, "/packages");
 		dounmount(work, "/options");
+		if (DFlyPortsBaseOpt)
+			dounmount(work, "/xports/dragonfly");
 		dounmount(work, "/xports");
 		dounmount(work, "/usr/share");
 		dounmount(work, "/usr/sbin");

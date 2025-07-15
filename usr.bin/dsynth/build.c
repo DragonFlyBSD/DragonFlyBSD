@@ -1991,6 +1991,8 @@ WorkerProcess(int ac, char **av)
 		FetchOnlyOpt = 1;
 	if (WorkerProcFlags & WORKER_PROC_PKGV17)
 		PkgVersionPkgSuffix = 1;
+	if (WorkerProcFlags & WORKER_PROC_PORTSBASEOPT)
+		DFlyPortsBaseOpt = 1;
 
 	bzero(&wmsg, sizeof(wmsg));
 

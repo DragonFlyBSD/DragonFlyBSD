@@ -454,6 +454,7 @@ typedef enum os_id os_id_t;
 #define WORKER_PROC_DEINSTALL	0x0010
 #define WORKER_PROC_PKGV17	0x0020
 #define WORKER_PROC_FETCHONLY	0x0040
+#define WORKER_PROC_PORTSBASEOPT 0x0080
 
 /*
  * Misc
@@ -531,6 +532,7 @@ extern int MaskProbeAbort;
 extern int ColorOpt;
 extern int SlowStartOpt;
 extern int ForceOpt;
+extern int DFlyPortsBaseOpt;
 extern int OverridePkgDeleteOpt;
 extern int FetchOnlyOpt;
 extern int YesOpt;

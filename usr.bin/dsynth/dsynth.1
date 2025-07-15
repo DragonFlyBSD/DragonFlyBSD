@@ -40,7 +40,7 @@
 .Nd dsynth bulk dports builder utility
 .Sh SYNOPSIS
 .Nm
-.Op Fl dfhvxyDNPS
+.Op Fl dfghvxyDNPS
 .Op Fl p Ar profile
 .Op Fl s Ar n
 .Op Fl m Ar gb
@@ -160,6 +160,11 @@ output, along with additional spew.
 .It Fl f
 Force dangerous directives to run despite pkglist scan errors.  Applies only
 to purge-distfiles at the moment.
+.It Fl g
+Tells dsynth to null-mount the */dports/dragonfly subdirectory in addition
+to the */dports directory (used for the WITH_DPORTS option with make
+build-all).  This allows the subdirectory to itself be a null-mount from
+.Pa /usr/src .
 .It Fl h
 Quickly output a synopsis of options and directives and exit.
 .It Fl m Ar gb

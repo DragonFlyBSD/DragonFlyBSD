@@ -44,6 +44,7 @@ static void usage(int ecode) __dead2;
 
 int ForceOpt;
 int OverridePkgDeleteOpt;
+int DFlyPortsBaseOpt;
 int FetchOnlyOpt;
 int YesOpt;
 int DebugOpt;
@@ -109,10 +110,14 @@ main(int ac, char **av)
 	 * Process options and make sure the directive is present
 	 */
 	sopt = 0;
-	while ((c = getopt(ac, av, "dfhm:p:vxys:C:DPM:NS")) != -1) {
+	while ((c = getopt(ac, av, "dfghm:p:vxys:C:DPM:NS")) != -1) {
 		switch(c) {
 		case 'f':
 			++ForceOpt;
+			break;
+		case 'g':
+			++DFlyPortsBaseOpt;
+			WorkerProcFlags |= WORKER_PROC_PORTSBASEOPT;
 			break;
 		case 'x':
 			++OverridePkgDeleteOpt;
