@@ -241,6 +241,7 @@ TASKQUEUE_DEFINE_THREAD(hdac);
  * Function prototypes
  ****************************************************************************/
 static void	hdac_intr_handler(void *);
+static void	hdac_one_intr(struct hdac_softc *sc, uint32_t intsts);
 static int	hdac_reset(struct hdac_softc *, int);
 static int	hdac_get_capabilities(struct hdac_softc *);
 static void	hdac_dma_cb(void *, bus_dma_segment_t *, int, int);
@@ -338,20 +339,35 @@ static void
 hdac_intr_handler(void *context)
 {
 	struct hdac_softc *sc;
-	device_t dev;
 	uint32_t intsts;
-	uint8_t rirbsts;
-	int i;
 
 	sc = (struct hdac_softc *)context;
-	hdac_lock(sc);
 
-	/* Do we have anything to do? */
+	/*
+	 * Loop until HDAC_INTSTS_GIS gets clear.
+	 * It is plausible that hardware interrupts a host only when GIS goes
+	 * from zero to one.  GIS is formed by OR-ing multiple hardware
+	 * statuses, so it's possible that a previously cleared status gets set
+	 * again while another status has not been cleared yet.  Thus, there
+	 * will be no new interrupt as GIS always stayed set.  If we don't
+	 * re-examine GIS then we can leave it set and never get an interrupt
+	 * again.
+	 */
+	hdac_lock(sc);
 	intsts = HDAC_READ_4(&sc->mem, HDAC_INTSTS);
-	if ((intsts & HDAC_INTSTS_GIS) == 0) {
-		hdac_unlock(sc);
-		return;
+	while (intsts != 0xffffffff && (intsts & HDAC_INTSTS_GIS) != 0) {
+		hdac_one_intr(sc, intsts);
+		intsts = HDAC_READ_4(&sc->mem, HDAC_INTSTS);
 	}
+	hdac_unlock(sc);
+}
+
+static void
+hdac_one_intr(struct hdac_softc *sc, uint32_t intsts)
+{
+	device_t dev;
+	uint8_t rirbsts;
+	int i;
 
 	/* Was this a controller interrupt? */
 	if (intsts & HDAC_INTSTS_CIS) {
@@ -379,9 +395,7 @@ hdac_intr_handler(void *context)
 			}
 		}
 	}
-
 	HDAC_WRITE_4(&sc->mem, HDAC_INTSTS, intsts);
-	hdac_unlock(sc);
 }
 
 static void
@@ -1269,9 +1283,6 @@ hdac_attach(device_t dev)
 	result = hdac_mem_alloc(sc);
 	if (result != 0)
 		goto hdac_attach_fail;
-	result = hdac_irq_alloc(sc);
-	if (result != 0)
-		goto hdac_attach_fail;
 
 	hdac_reset(sc, 1);
 
@@ -1341,6 +1352,10 @@ hdac_attach(device_t dev)
 	/* Initialize the CORB and RIRB */
 	hdac_corb_init(sc);
 	hdac_rirb_init(sc);
+
+	result = hdac_irq_alloc(sc);
+	if (result != 0)
+		goto hdac_attach_fail;
 
 	/* Defer remaining of initialization until interrupts are enabled */
 	sc->intrhook.ich_func = hdac_attach2;
