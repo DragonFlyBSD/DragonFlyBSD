@@ -511,7 +511,7 @@ buildports: umountports mountports
 installports: umountports mountports
 	cd ${WORLDDEST} && tar xvzpf ${WORLDDEST}/chroot/build/synth/live_packages/All/pkg-*.pkg > /dev/null 2>&1
 	cat ${.CURDIR}/dports.base/pkg.conf | sed -e 's#/build#${WORLDDEST}/chroot/build#' > ${WORLDDEST}/chroot/build/pkg.conf
-	${WORLDDEST}/usr/local/sbin/pkg-static --rootdir ${DESTDIR}/ -R ${WORLDDEST}/chroot/build install dragonfly-base
+	${WORLDDEST}/usr/local/sbin/pkg-static --rootdir ${DESTDIR}/ -R ${WORLDDEST}/chroot/build install -y dragonfly-base
 	@(cd ${.CURDIR}; ${MAKE} umountports)
 
 .ORDER: build-all install-all
