@@ -1554,7 +1554,7 @@ vm_pageout_scan_active(int pass, int q,
 		 * actcount is only valid if the object ref_count is non-zero.
 		 * If the page does not have an object, actcount will be zero.
 		 */
-		if (actcount && m->object->ref_count != 0) {
+		if (actcount && m->object && m->object->ref_count != 0) {
 #if 0
 			vm_page_and_queue_spin_lock(m);
 			if (m->queue - m->pc == PQ_ACTIVE) {
@@ -1569,7 +1569,7 @@ vm_pageout_scan_active(int pass, int q,
 #endif
 			vm_page_wakeup(m);
 		} else {
-			switch(m->object->type) {
+			switch((m->object ? m->object->type : OBJT_DEFAULT)) {
 			case OBJT_DEFAULT:
 			case OBJT_SWAP:
 				m->act_count -= min(m->act_count,
