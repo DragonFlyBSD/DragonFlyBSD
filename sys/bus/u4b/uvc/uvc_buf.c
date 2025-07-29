@@ -423,6 +423,7 @@ uvc_buf_queue_dequeue_buf(struct uvc_buf_queue *bq,
 			switch (buf->status) {
 			case UVC_BUF_STATE_ERROR:
 				ret = EIO;
+				/* FALLTHROUGH */
 			case UVC_BUF_STATE_DONE:
 				buf->status = UVC_BUF_STATE_IDLE;
 				break;

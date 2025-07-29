@@ -111,45 +111,45 @@ uvc_ctrl_init_sub_info(struct uvc_ctrl_info *info,
 	if (info->topo_type == UVC_TOPO_TYPE_PROCESSING_UNIT) {
 		switch (id) {
 		case V4L2_CID_BRIGHTNESS:
-			ksprintf(name, "Brightness");
+			ksnprintf(name, sizeof(name), "Brightness");
 			bit_size = 16;
 			break;
 		case V4L2_CID_CONTRAST:
-			ksprintf(name, "Contrast");
+			ksnprintf(name, sizeof(name), "Contrast");
 			bit_size = 16;
 			break;
 		case V4L2_CID_HUE:
-			ksprintf(name, "Hue");
+			ksnprintf(name, sizeof(name), "Hue");
 			bit_size = 16;
 			superior_id = V4L2_CID_HUE_AUTO;
 			break;
 		case V4L2_CID_SATURATION:
-			ksprintf(name, "Saturation");
+			ksnprintf(name, sizeof(name), "Saturation");
 			bit_size = 16;
 			break;
 		case V4L2_CID_SHARPNESS:
-			ksprintf(name, "Sharpness");
+			ksnprintf(name, sizeof(name), "Sharpness");
 			bit_size = 16;
 			break;
 		case V4L2_CID_GAMMA:
-			ksprintf(name, "Gamma");
+			ksnprintf(name, sizeof(name), "Gamma");
 			bit_size = 16;
 			break;
 		case V4L2_CID_BACKLIGHT_COMPENSATION:
-			ksprintf(name, "Backlight Compensation");
+			ksnprintf(name, sizeof(name), "Backlight Compensation");
 			bit_size = 16;
 			break;
 		case V4L2_CID_GAIN:
-			ksprintf(name, "Gain");
+			ksnprintf(name, sizeof(name), "Gain");
 			bit_size = 16;
 			break;
 		case V4L2_CID_POWER_LINE_FREQUENCY:
-			ksprintf(name, "Power Line Frequency");
+			ksnprintf(name, sizeof(name), "Power Line Frequency");
 			type = V4L2_CTRL_TYPE_MENU;
 			bit_size = 2;
 			break;
 		case V4L2_CID_HUE_AUTO:
-			ksprintf(name, "Hue, Auto");
+			ksnprintf(name, sizeof(name), "Hue, Auto");
 			type = V4L2_CTRL_TYPE_BOOLEAN;
 			bit_size = 1;
 			sub_info->inferior_v4l2_ids[0] = V4L2_CID_HUE;
@@ -157,14 +157,14 @@ uvc_ctrl_init_sub_info(struct uvc_ctrl_info *info,
 		case V4L2_CID_AUTO_WHITE_BALANCE:
 			if (info->selector ==
 			    UVC_PU_WHITE_BALANCE_TEMPERATURE_AUTO_CONTROL) {
-				ksprintf(name, "White Balance Temperature, Auto");
+				ksnprintf(name, sizeof(name), "White Balance Temperature, Auto");
 				type = V4L2_CTRL_TYPE_BOOLEAN;
 				bit_size = 1;
 				inferior_ids[0] =
 				    V4L2_CID_WHITE_BALANCE_TEMPERATURE;
 			} else if (info->selector ==
 			    UVC_PU_WHITE_BALANCE_COMPONENT_AUTO_CONTROL) {
-				ksprintf(name, "White Balance Component, Auto");
+				ksnprintf(name, sizeof(name), "White Balance Component, Auto");
 				type = V4L2_CTRL_TYPE_BOOLEAN;
 				bit_size = 1;
 				inferior_ids[0] = V4L2_CID_BLUE_BALANCE;
@@ -174,17 +174,17 @@ uvc_ctrl_init_sub_info(struct uvc_ctrl_info *info,
 			}
 			break;
 		case V4L2_CID_WHITE_BALANCE_TEMPERATURE:
-			ksprintf(name, "White Balance Temperature");
+			ksnprintf(name, sizeof(name), "White Balance Temperature");
 			bit_size = 16;
 			superior_id = V4L2_CID_AUTO_WHITE_BALANCE;
 			break;
 		case V4L2_CID_BLUE_BALANCE:
-			ksprintf(name, "White Balance Blue Component");
+			ksnprintf(name, sizeof(name), "White Balance Blue Component");
 			bit_size = 16;
 			superior_id = V4L2_CID_AUTO_WHITE_BALANCE;
 			break;
 		case V4L2_CID_RED_BALANCE:
-			ksprintf(name, "White Balance Red Component");
+			ksnprintf(name, sizeof(name), "White Balance Red Component");
 			bit_offset = 16;
 			bit_size = 16;
 			superior_id = V4L2_CID_AUTO_WHITE_BALANCE;
@@ -197,69 +197,69 @@ uvc_ctrl_init_sub_info(struct uvc_ctrl_info *info,
 	} else if (info->topo_type == UVC_TOPO_TYPE_CAMERA_TERMINAL) {
 		switch (id) {
 		case V4L2_CID_EXPOSURE_AUTO:
-			ksprintf(name, "Exposure, Auto");
+			ksnprintf(name, sizeof(name), "Exposure, Auto");
 			type = V4L2_CTRL_TYPE_MENU;
 			bit_size = 4;
 			inferior_ids[0] = V4L2_CID_EXPOSURE_ABSOLUTE;
 			break;
 		case V4L2_CID_EXPOSURE_AUTO_PRIORITY:
-			ksprintf(name, "Exposure, Auto Priority");
+			ksnprintf(name, sizeof(name), "Exposure, Auto Priority");
 			type = V4L2_CTRL_TYPE_BOOLEAN;
 			bit_size = 1;
 			break;
 		case V4L2_CID_EXPOSURE_ABSOLUTE:
-			ksprintf(name, "Exposure (Absolute)");
+			ksnprintf(name, sizeof(name), "Exposure (Absolute)");
 			bit_size = 32;
 			superior_id = V4L2_CID_EXPOSURE_AUTO;
 			superior_manual = V4L2_EXPOSURE_MANUAL;
 			break;
 		case V4L2_CID_FOCUS_ABSOLUTE:
-			ksprintf(name, "Focus (absolute)");
+			ksnprintf(name, sizeof(name), "Focus (absolute)");
 			bit_size = 16;
 			superior_id = V4L2_CID_FOCUS_AUTO;
 			break;
 		case V4L2_CID_FOCUS_AUTO:
-			ksprintf(name, "Focus, Auto");
+			ksnprintf(name, sizeof(name), "Focus, Auto");
 			type = V4L2_CTRL_TYPE_BOOLEAN;
 			bit_size = 1;
 			inferior_ids[0] = V4L2_CID_FOCUS_ABSOLUTE;
 			break;
 		case V4L2_CID_IRIS_ABSOLUTE:
-			ksprintf(name, "Iris, Absolute");
+			ksnprintf(name, sizeof(name), "Iris, Absolute");
 			bit_size = 16;
 			break;
 		case V4L2_CID_IRIS_RELATIVE:
-			ksprintf(name, "Iris, Relative");
+			ksnprintf(name, sizeof(name), "Iris, Relative");
 			bit_size = 8;
 			break;
 		case V4L2_CID_ZOOM_ABSOLUTE:
-			ksprintf(name, "Zoom, Absolute");
+			ksnprintf(name, sizeof(name), "Zoom, Absolute");
 			bit_size = 16;
 			break;
 		case V4L2_CID_ZOOM_CONTINUOUS:
-			ksprintf(name, "Zoom, Continuous");
+			ksnprintf(name, sizeof(name), "Zoom, Continuous");
 			bit_size = 0; // should use get/set
 			break;
 		case V4L2_CID_PAN_ABSOLUTE:
-			ksprintf(name, "Pan (Absolute)");
+			ksnprintf(name, sizeof(name), "Pan (Absolute)");
 			bit_size = 32;
 			break;
 		case V4L2_CID_TILT_ABSOLUTE:
-			ksprintf(name, "Tilt (Absolute)");
+			ksnprintf(name, sizeof(name), "Tilt (Absolute)");
 			bit_offset = 32;
 			bit_size = 32;
 			break;
 		case V4L2_CID_PAN_SPEED:
-			ksprintf(name, "Pan (Speed)");
+			ksnprintf(name, sizeof(name), "Pan (Speed)");
 			bit_size = 16;
 			break;
 		case V4L2_CID_TILT_SPEED:
-			ksprintf(name, "Tilt (Speed)");
+			ksnprintf(name, sizeof(name), "Tilt (Speed)");
 			bit_offset = 16;
 			bit_size = 16;
 			break;
 		case V4L2_CID_PRIVACY:
-			ksprintf(name, "Privacy");
+			ksnprintf(name, sizeof(name), "Privacy");
 			type = V4L2_CTRL_TYPE_BOOLEAN;
 			bit_size = 1;
 			break;

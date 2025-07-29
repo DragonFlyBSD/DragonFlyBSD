@@ -2325,7 +2325,8 @@ uvc_drv_parse_standard_ctrl(struct uvc_softc *sc,
 		if (pu_desc->iProcessing != 0) {
 			kprintf("WARNING: need to get usb string by id\n");
 		} else
-			ksnprintf(topo_node->node_name, 64, "Processing %u", topo_node->node_id);
+			ksnprintf(topo_node->node_name, sizeof(topo_node->node_name),
+				"Processing %u", topo_node->node_id);
 
 		STAILQ_INSERT_TAIL(&ctrl->topo_nodes, topo_node, link);
 		break;
@@ -2375,7 +2376,8 @@ uvc_drv_parse_standard_ctrl(struct uvc_softc *sc,
 		if (*(&xu_desc->iExtension + ctrls_mask_size + src_ids_num) != 0)
 			kprintf("WARNING: need to get usb string by id\n");
 		else
-			ksprintf(topo_node->node_name, "Extension %u", topo_node->node_id);
+			ksnprintf(topo_node->node_name, sizeof(topo_node->node_name),
+				"Extension %u", topo_node->node_id);
 
 		STAILQ_INSERT_TAIL(&ctrl->topo_nodes, topo_node, link);
 		break;
