@@ -188,7 +188,7 @@ dmtc_init_mpipe(struct target_crypt_config *priv)
 	int nmax_write = nmax;
 
 	kprintf("dm_target_crypt: Setting %d mpipe read buffers\n", nmax_read);
-	kprintf("dm_target_crypt: Setting %d mpipe write buffers\n", nmax_read);
+	kprintf("dm_target_crypt: Setting %d mpipe write buffers\n", nmax_write);
 
 	mpipe_init(&priv->read_mpipe, M_DMCRYPT, DMTC_BUF_SIZE,
 		nmax_read, nmax_read, MPF_NOZERO | MPF_CALLBACK,
