@@ -56,6 +56,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libc \
 	libc_rtld \
 	libcalendar \
+	libcuse \
 	libcompat \
 	libdevattr \
 	libdevinfo \
