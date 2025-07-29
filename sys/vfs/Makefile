@@ -3,7 +3,8 @@
 
 SUBDIR=	fifofs msdosfs nfs procfs \
 	hpfs ntfs smbfs isofs mfs udf \
-	nullfs hammer tmpfs autofs ext2fs fuse
+	nullfs hammer tmpfs autofs ext2fs \
+	fuse cuse
 
 SUBDIR+= hammer2
 
