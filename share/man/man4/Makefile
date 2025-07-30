@@ -384,6 +384,7 @@ MAN=	aac.4 \
 	virtio_blk.4 \
 	virtio_random.4 \
 	virtio_scsi.4 \
+	vkbd.4 \
 	vlan.4 \
 	vmbus.4 \
 	vmx.4 \
