@@ -16,7 +16,7 @@ SRCS+=  __errno_location.c _once_stub.c _pthread_stubs.c _rand48.c \
 	clock.c clock_getcpuclockid.c closedir.c confstr.c creat.c \
 	ctermid.c daemon.c devname.c dirfd.c dirname.c disklabel.c disktab.c \
 	dlfcn.c drand48.c dup3.c elf_utils.c erand48.c err.c errlst.c exec.c \
-	fdevname.c fmtcheck.c fmtmsg.c fnmatch.c fpclassify.c \
+	fdevname.c feature_present.c fmtcheck.c fmtmsg.c fnmatch.c fpclassify.c \
 	frexp.c fstab.c ftok.c fts.c ftw.c getbootfile.c getbsize.c \
 	getcap.c getcwd.c getdevpath.c getdomainname.c \
 	getentropy.c \
@@ -93,6 +93,7 @@ MLINKS+=arc4random.3 arc4random_addrandom.3 \
 MLINKS+=ctermid.3 ctermid_r.3
 MLINKS+=devname.3 devname_r.3 \
 	devname.3 fdevname.3 \
+	devname.3 feature_present.3 \
 	devname.3 fdevname_r.3
 MLINKS+=directory.3 closedir.3 \
 	directory.3 dirfd.3 \
