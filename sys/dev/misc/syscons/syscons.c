@@ -144,9 +144,15 @@ static	bios_values_t	bios_value;
 static	int		enable_panic_key;
 SYSCTL_INT(_machdep, OID_AUTO, enable_panic_key, CTLFLAG_RW, &enable_panic_key,
 	   0, "Enable the panic key (CTRL-ALT-SHIFT-ESC)");
+
 static	int		syscons_async;
+static	int		enable_bell = TRUE;
+
+static SYSCTL_NODE(_kern, OID_AUTO, syscons, CTLFLAG_RD, 0, "syscons");
 SYSCTL_INT(_kern, OID_AUTO, syscons_async, CTLFLAG_RW, &syscons_async,
 	   0, "Asynchronous bulk syscons fb updates");
+SYSCTL_INT(_kern_syscons, OID_AUTO, enable_bell, CTLFLAG_RW, &enable_bell,
+	   0, "Enable bell");
 
 static int desired_cols = 0;
 TUNABLE_INT("kern.kms_columns", &desired_cols);
@@ -4312,7 +4318,7 @@ sc_paste(scr_stat *scp, u_char *p, int count)
 void
 sc_bell(scr_stat *scp, int pitch, int duration)
 {
-    if (cold || shutdown_in_progress)
+    if (cold || shutdown_in_progress || !enable_bell)
 	return;
 
     if (scp != scp->sc->cur_scp && (scp->sc->flags & SC_QUIET_BELL)) {

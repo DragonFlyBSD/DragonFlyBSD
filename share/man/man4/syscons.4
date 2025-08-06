@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/syscons.4,v 1.10.2.14 2003/04/25 21:21:36 brueffer Exp $
 .\"
-.Dd June 18, 2022
+.Dd August 6, 2025
 .Dt SYSCONS 4
 .Os
 .Sh NAME
@@ -295,7 +295,7 @@ The following
 variable is available and can be either set via
 .Xr sysctl.conf 5
 or from the command line.
-.Bl -tag -width ".Va kern.syscons_async"
+.Bl -tag -width ".Va kern.syscons.enable_bell"
 .It Va kern.syscons_async
 Set to 1 to enable asynchronous bulk framebuffer updates.
 It is intended to help with
@@ -306,6 +306,8 @@ scrolls during playback.
 It is not enabled by default because on certain machines it has led to
 subtle issues with for example
 .Xr ddb 4 .
+.It Va kern.syscons.enable_bell
+Enable the terminal bell. On by default.
 .El
 .Ss Kernel Configuration Options
 The following kernel configuration options control the
