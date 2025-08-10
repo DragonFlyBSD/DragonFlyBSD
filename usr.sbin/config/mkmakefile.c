@@ -503,10 +503,6 @@ doneparam:
 		tp->f_flags |= BEFORE_DEPEND;
 	if (nowerror)
 		tp->f_flags |= NOWERROR;
-	if (imp_rule)
-		tp->f_flags |= NO_IMPLCT_RULE;
-	if (no_obj)
-		tp->f_flags |= NO_OBJ;
 	tp->f_needs = needs;
 	tp->f_special = special;
 	tp->f_depends = depends;
