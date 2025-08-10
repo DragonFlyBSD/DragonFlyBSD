@@ -71,7 +71,7 @@ A
 .Xr read 2
 call will return the virtual AT keyboard status structure
 (defined in
-.In dev/vkbd/vkbd_var.h )
+.In dev/misc/vkbd/vkbd_var.h )
 if one is available;
 if not, it will either block until one is or return
 .Er EWOULDBLOCK ,
@@ -90,6 +90,10 @@ the size of the buffer passed to
 .Xr write 2
 still should be in bytes, i.e.,
 .Bd -literal -offset indent
+#include <err.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 static unsigned int     codes[] =
 {
 /*      Make    Break */
@@ -101,7 +105,7 @@ main(void)
 {
         int     fd, len;
 
-        fd = open("/dev/vkbdctl0", O_RDWR);
+        fd = open("/dev/vkbdctl", O_RDWR);
         if (fd < 0)
                 err(1, "open");
 
@@ -128,8 +132,7 @@ All queued scan codes are thrown away.
 .Xr kbdcontrol 1 ,
 .Xr atkbdc 4 ,
 .Xr psm 4 ,
-.Xr syscons 4 ,
-.Xr vt 4
+.Xr syscons 4
 .Sh HISTORY
 The
 .Nm
@@ -143,11 +146,3 @@ The
 interface is a software loopback mechanism, and, thus
 .Xr ddb 4
 will not work with it.
-Current implementation of the
-.Xr syscons 4
-driver can accept input from only one keyboard, even if it is virtual.
-Thus it is not possible to have both wired and virtual keyboard to be active
-at the same time.
-It is, however, in principal possible to obtain AT scan
-codes from the different sources and write them into the same virtual keyboard.
-The virtual keyboard state synchronization is the user's responsibility.

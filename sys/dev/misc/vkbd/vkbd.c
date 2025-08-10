@@ -189,6 +189,8 @@ static struct dev_ops	vkbd_dev_cdevsw = {
 #endif
 };
 
+static int vkbd_refcnt = 0;	/* module reference count */
+
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 static struct clonedevs	*vkbd_dev_clones = NULL;
 
@@ -223,7 +225,7 @@ vkbd_dev_clone(struct dev_clone_args *ap)
 	int unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(vkbd), 0);
 
 	ap->a_dev = make_only_dev(&vkbd_dev_cdevsw, unit, UID_ROOT, GID_WHEEL,
-				  0600, DEVICE_NAME "%d", unit);
+				  0600, "%s%d", DEVICE_NAME, unit);
 
 	return 0;
 }
@@ -277,6 +279,8 @@ vkbd_dev_open(struct dev_open_args *ap)
 
 	VKBD_UNLOCK(state);
 
+	vkbd_refcnt++;
+
 	return (0);
 }
 
@@ -321,6 +325,11 @@ vkbd_dev_close(struct dev_close_args *ap)
 
 	/* XXX FIXME: dev->si_drv1 locking */
 	dev->si_drv1 = NULL;
+	destroy_dev(dev);
+
+	--vkbd_refcnt;
+	if (vkbd_refcnt < 0)
+		vkbd_refcnt = 0;
 
 	return (0);
 }
@@ -1482,6 +1491,7 @@ KEYBOARD_DRIVER(vkbd, vkbdsw, vkbd_configure);
 static int
 vkbd_modevent(module_t mod, int type, void *data)
 {
+	static cdev_t dev = NULL;
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	static eventhandler_tag	tag;
 #endif
@@ -1495,7 +1505,7 @@ vkbd_modevent(module_t mod, int type, void *data)
 			return (ENOMEM);
 		}
 #endif
-		make_autoclone_dev(&vkbd_dev_cdevsw, &DEVFS_CLONE_BITMAP(vkbd),
+		dev = make_autoclone_dev(&vkbd_dev_cdevsw, &DEVFS_CLONE_BITMAP(vkbd),
 				   vkbd_dev_clone, UID_ROOT, GID_WHEEL, 0600, DEVICE_NAME);
 
 		kbd_add_driver(&vkbd_kbd_driver);
@@ -1503,15 +1513,16 @@ vkbd_modevent(module_t mod, int type, void *data)
 		break;
 
 	case MOD_UNLOAD:
+		if (vkbd_refcnt > 0)
+			return (EBUSY);
 		kbd_delete_driver(&vkbd_kbd_driver);
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 		EVENTHANDLER_DEREGISTER(dev_clone, tag);
 		clone_cleanup(&vkbd_dev_clones);
 #endif
 
-		devfs_clone_handler_del("vkbd");
 		dev_ops_remove_all(&vkbd_dev_cdevsw);
-		devfs_clone_bitmap_uninit(&DEVFS_CLONE_BITMAP(vkbd));
+		destroy_autoclone_dev(dev, &DEVFS_CLONE_BITMAP(vkbd));
 
 		break;
 
