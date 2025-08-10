@@ -1,0 +1,28 @@
+GCC-12 Release
+==================
+
+Original source of man pages can be downloaded from:
+http://ftp.gnu.org/gnu/gcc
+
+file = gcc-12.5.0.tar.xz
+date = 11 Jul 2025
+size = 85897368
+sha1 = a045ea36603aaea19b1b0994e22a87600dd93bd0
+
+The source files are pulled directly from GCC's git repository,
+From the tag: releases/gcc-12.5.0
+
+The file README.DELETED contains a list of deleted files and directories.
+
+Configured with
+===============
+  --with-bugurl=http://bugs.dragonflybsd.org
+  --enable-languages=c,c++,lto --enable-threads=posix --enable-__cxa_atexit
+  --disable-libunwind-exceptions --disable-libstdcxx-pch
+  --disable-libquadmath --disable-libitm --enable-libstdcxx-dual-abi=yes
+  --enable-lto --enable-plugin --enable-gnu-indirect-function
+  --enable-checking=release --with-pkgversion="[DragonFly]"
+  --disable-nls --disable-multilib --disable-bootstrap
+
+The following files have been patched (* planned)
+=================================================
