@@ -24,6 +24,46 @@ Configured with
   --enable-checking=release --with-pkgversion="[DragonFly]"
   --disable-nls --disable-multilib --disable-bootstrap
 
+Steps to prepare the makefiles
+==============================
+* Create contrib/gcc-12/README.DELETED based on previous version
+** Check if any of the mentions files don't exist, and use git log -- $f
+   to follow what happened to them
+** Check for any new files/directories
+*** new languages in gcc/
+*** new platforms/configs in gcc/config/, libgcc/config/
+* Configure gcc local
+** Install build-time dependencies
+*** pkg install gmp mpfr mpc gmake
+** wget http://ftp.gnu.org/gnu/gcc/gcc-12.5.0/gcc-12.5.0.tar.xz
+** tar xf gcc-12.5.0.tar.xz
+** mkdir gcc-build
+** cd gcc-build
+** ../gcc-12.5.0/configure ${ARGS} --with-gmp=/usr/local
+** gmake
+   Note: this step actually fails, but it produces the data required
+* Create the makefiles by copying the previous directories
+** gnu/lib/ccXXX
+** gnu/usr.bin/ccXXX
+** etc/mtree/BSD.{usr,include}.dist
+* Attach the compiler as an alternative option
+** Makefile.inc1
+** gnu/lib/Makefile
+** gnu/usr.bin/Makefile
+* Update config.h
+** Multiple directories contain config.h files that are copies
+   of the file from the locally built version
+** update these from the version in gcc-build
+* Build
+** make crossworld
+   Note: make sure the WORLD_ALTCOMPILER=ccXXX is set
+** make buildworld
+*** set new compiler as WORLD_CCVER
+* Fixing build errors
+** Check the Makefile for the relevant SUBDIR that failed
+   Big lists of source files generally say which Makefile.in
+   they were taken from, use meld to compare
+
 The following files have been patched (* planned)
 =================================================
   gcc/c-family/c-format.cc		extra TZ "%+" format for strftime()

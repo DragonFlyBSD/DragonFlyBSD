@@ -1044,6 +1044,7 @@ bstrap-${_tool}!
 #
 _gcc47_cross= gnu/usr.bin/cc47
 _gcc80_cross= gnu/usr.bin/cc80
+_gcc120_cross= gnu/usr.bin/cc120
 _gcc_common_cross= lib/libz gnu/usr.bin/gmp gnu/usr.bin/mpfr gnu/usr.bin/mpc
 
 .if !defined(NO_ALTCOMPILER)
@@ -1140,6 +1141,13 @@ _startup_libs80=	gnu/usr.bin/cc80/cc_prep \
 			gnu/lib/gcc80/libgcc \
 			gnu/lib/gcc80/libgcc_eh \
 			gnu/lib/gcc80/libgcc_pic
+
+_startup_libs120=	gnu/usr.bin/cc120/cc_prep \
+			gnu/usr.bin/cc120/cc_tools \
+			gnu/lib/gcc120/csu \
+			gnu/lib/gcc120/libgcc \
+			gnu/lib/gcc120/libgcc_eh \
+			gnu/lib/gcc120/libgcc_pic
 
 .if !defined(NO_ALTCOMPILER)
 . if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})

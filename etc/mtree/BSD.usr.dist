@@ -56,6 +56,28 @@
             profile
             ..
         ..
+        gcc120
+            plugin
+                include
+                    ada
+                        gcc-interface
+                        ..
+                    ..
+                    objc
+                    ..
+                    c-family
+                    ..
+                    config
+                        i386
+                        ..
+                    ..
+                    cp
+                    ..
+                ..
+            ..
+            profile
+            ..
+        ..
         i18n
         ..
         priv
@@ -75,6 +97,10 @@
             ..
         ..
         gcc80
+            ssp
+            ..
+        ..
+        gcc120
             ssp
             ..
         ..
@@ -107,6 +133,8 @@
         gcc47
         ..
         gcc80
+        ..
+        gcc120
         ..
         lpr
             ru

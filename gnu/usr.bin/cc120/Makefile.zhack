@@ -1,0 +1,42 @@
+.if defined(NO_CROSSTOOLS) && defined(BOOTSTRAPPING)
+
+SCRIPTS=	${GENTOOLS}
+GENTOOLS=	cc.sh cpp.sh c++.sh gcc.sh
+NOMAN=
+BINDIR?=	${REALGCC}
+
+FILES=		cross_specs
+FILESDIR=	/usr/libexec/gcc120
+
+REALGCC=	/usr/libexec/gcc120
+CROSS_SPECS=	${DESTDIR}/${REALGCC}/cross_specs
+CSPECS=		--sysroot=${USRDATA_PREFIX} -specs ${CROSS_SPECS}
+SEDLIB=		s@-L/usr/@-L${USRDATA_PREFIX}/usr/@g
+SEDSYS=		/--eh-frame/s@^@--sysroot=${USRDATA_PREFIX} @g
+
+.for _tool in ${GENTOOLS}
+${_tool}:
+	echo "#!/bin/sh" > ${.TARGET}
+	echo "" >> ${.TARGET}
+	echo "exec ${REALGCC}/${.TARGET:T:R} ${CSPECS}" '"$$@"' >> ${.TARGET}
+.endfor
+
+cross_specs:
+	echo "*link:" > ${.TARGET}
+	${REALGCC}/cc -dumpspecs | grep eh-frame-hdr | sed \
+	    -e "${SEDLIB}" -e "${SEDSYS}" >> ${.TARGET}
+
+.if !defined(DESTDIR) || ${DESTDIR} == "" || ${DESTDIR} == "/"
+.error "refusing to install wrappers to base"
+.endif
+
+CLEANFILES= ${GENTOOLS} cross_specs
+
+.include <bsd.prog.mk>
+
+.else
+# these must be left alone
+SUBDIR_ORDERED=	cc_prep cc_tools
+SUBDIR=		cc_prep cc_tools
+.include <bsd.subdir.mk>
+.endif
