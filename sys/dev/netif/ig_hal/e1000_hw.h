@@ -267,6 +267,7 @@ enum e1000_mac_type {
 	e1000_82580,
 	e1000_i350,
 	e1000_i354,
+	e1000_i225,
 	e1000_i210,
 	e1000_i211,
 	e1000_vfadapt,
@@ -317,6 +318,7 @@ enum e1000_phy_type {
 	e1000_phy_82580,
 	e1000_phy_vf,
 	e1000_phy_i210,
+	e1000_phy_i225,
 };
 
 enum e1000_bus_type {
@@ -1015,6 +1017,12 @@ struct e1000_dev_spec_ich8lan {
 	bool during_dpg_exit;
 };
 
+struct e1000_dev_spec_i225 {
+	bool eee_disable;
+	bool clear_semaphore_once;
+	u32 mtu;
+};
+
 struct e1000_hw {
 	void *back;
 
@@ -1039,6 +1047,7 @@ struct e1000_hw {
 		struct e1000_dev_spec_ich8lan ich8lan;
 		struct e1000_dev_spec_82575 _82575;
 		struct e1000_dev_spec_vf vf;
+		struct e1000_dev_spec_i225 _i225;
 	} dev_spec;
 
 	u16 device_id;
@@ -1056,6 +1065,7 @@ struct e1000_hw {
 #include "e1000_ich8lan.h"
 #include "e1000_82575.h"
 #include "e1000_i210.h"
+#include "e1000_i225.h"
 
 /* These functions must be implemented by drivers */
 void e1000_pci_clear_mwi(struct e1000_hw *hw);
