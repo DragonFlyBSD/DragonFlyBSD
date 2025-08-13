@@ -90,8 +90,11 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #undef  LINK_SPEC
 #define LINK_SPEC DFBSD_LINK_SPEC
 
+#if 1  /* DragonFly base: Prefer to use /libexec/ for dynamic linker */
+#define DFBSD_DYNAMIC_LINKER "/libexec/ld-elf.so.2"
+#else
 #define DFBSD_DYNAMIC_LINKER "/usr/libexec/ld-elf.so.2"
-
+#endif
 
 /* Use --as-needed -lgcc_s for eh support.  */
 #ifdef HAVE_LD_AS_NEEDED

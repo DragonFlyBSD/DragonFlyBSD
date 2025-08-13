@@ -910,6 +910,9 @@ static const format_char_info time_char_table[] =
   /* GNU conversion specifiers.  */
   { "kls",		0, STD_EXT, NOLENGTHS, "-_0Ow",  "",   NULL },
   { "P",		0, STD_EXT, NOLENGTHS, "",       "",   NULL },
+#if 1  /* DragonFly base: strftime() %+ specifier. */
+  { "+",		0, STD_EXT, NOLENGTHS, "E",      "3",  NULL },
+#endif
   { NULL,		0, STD_C89, NOLENGTHS, NULL, NULL, NULL }
 };
 

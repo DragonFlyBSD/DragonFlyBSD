@@ -35,6 +35,8 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #include "config.h"
 #ifdef HAVE_ALLOCA_H
 # include <alloca.h>
+#else
+# include <stdlib.h>
 #endif
 #ifdef HAVE_MALLOC_H
 # include <malloc.h>

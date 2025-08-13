@@ -26,3 +26,15 @@ Configured with
 
 The following files have been patched (* planned)
 =================================================
+  gcc/c-family/c-format.cc		extra TZ "%+" format for strftime()
+  gcc/config/dragonfly.h		default dynamic linker path
+  gcc/gcc.cc				default paths for base tools
+					add -save-temps=objects option
+  libgcc/gthr-posix.h			avoid weakref (ld.gold issue)
+  libgcc/unwind-dw2-fde-dip.c		avoid redefining ElfW
+  libssp/ssp.c				include <stdlib.h> for alloca()
+  libstdc++-v3/include/c_global/cstdio	remove throw() decorations
+  libstdc++-v3/include/c_global/cstdlib	remove throw() decorations
+  libstdc++-v3/include/c_global/cwchar	remove throw() decorations
+  libstdc++-v3/config/locale/dragonfly/codecvt_members.cc	fix codecvt::do_length
+  libstdc++-v3/config/os/bsd/dragonfly/os_defines.h		fix _GLIBCXX_USE_C99_LONG_LONG_DYNAMIC
