@@ -1047,7 +1047,7 @@ IpcpDecodeConfig(struct fsm *fp, u_char *cp, u_char *end, int mode_type,
   u_int32_t compproto;
   struct compreq *pcomp;
   struct in_addr ipaddr, dstipaddr, have_ip;
-  char tbuff[100], tbuff2[100];
+  char tbuff[100], tbuff2[120];
   struct fsm_opt *opt, nak;
 
   gotdnsnak = 0;

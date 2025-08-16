@@ -1559,7 +1559,7 @@ pr_retip(struct ip *ip)
 static char *
 pr_ntime (n_time timestamp)
 {
-	static char buf[10];
+	static char buf[12];
 	int hour, min, sec;
 
 	sec = ntohl(timestamp) / 1000;

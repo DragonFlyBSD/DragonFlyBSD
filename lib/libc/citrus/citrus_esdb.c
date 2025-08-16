@@ -249,6 +249,10 @@ _citrus_esdb_free_list(char **list, size_t num)
 	free(list);
 }
 
+#ifndef MIN
+#define MIN(a,b) ((a<b)?(a):(b))
+#endif
+
 /*
  * _citrus_esdb_get_list:
  *	get esdb entries.
@@ -259,7 +263,7 @@ _citrus_esdb_get_list(char ***rlist, size_t *rnum, bool sorted)
 	struct _citrus_lookup *cla, *cld;
 	struct _region key, data;
 	char **list, **q;
-	char buf[PATH_MAX];
+	char buf[PATH_MAX*2];
 	size_t num;
 	int ret;
 
@@ -332,7 +336,7 @@ _citrus_esdb_get_list(char ***rlist, size_t *rnum, bool sorted)
 			if ((p = strstr(buf1, ".esdb")) != NULL)
 				*p = '\0';
 			snprintf(buf, sizeof(buf), "%s/%.*s", buf1,
-			    (int)_region_size(&key),
+			    MIN((int)_region_size(&key), 1024),
 			    (const char *)_region_head(&key));
 		}
 		_bcs_convert_to_upper(buf);

@@ -11,6 +11,7 @@ DPADD=		${LIBDEVSTAT}
 LDADD=		-ldevstat
 
 CFLAGS+=	${PRIVATELIB_CFLAGS}
+CFLAGS+=	-Wno-format-truncation -Wno-format-overflow
 DPADD+=		${LIBEDIT} ${LIBNCURSES}
 LDADD+=		-lprivate_edit -lprivate_ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}

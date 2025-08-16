@@ -14,6 +14,8 @@ LINKS=	${BINDIR}/mail ${BINDIR}/Mail ${BINDIR}/mail ${BINDIR}/mailx
 MLINKS=	mail.1 Mail.1 mail.1 mailx.1
 WARNS?=	2
 
+CFLAGS+= -Wno-format-truncation
+
 .PATH: ${.CURDIR}/misc
 
 etc-mailrc:

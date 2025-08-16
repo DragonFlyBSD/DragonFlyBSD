@@ -305,7 +305,7 @@ open_serial_mapper(struct _citrus_mapper_area *__restrict ma,
     struct _citrus_mapper * __restrict * __restrict rcm,
     const char *src, const char *pivot, const char *dst)
 {
-	char buf[PATH_MAX];
+	char buf[PATH_MAX*2+4];
 
 	snprintf(buf, sizeof(buf), "%s/%s,%s/%s", src, pivot, pivot, dst);
 

@@ -4,4 +4,6 @@ PROG=	newsyslog
 MAN=	newsyslog.8 newsyslog.conf.5
 SRCS=	newsyslog.c ptimes.c
 
+CFLAGS+=-Wno-format-truncation
+
 .include <bsd.prog.mk>

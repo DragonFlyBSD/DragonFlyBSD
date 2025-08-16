@@ -7,4 +7,6 @@ MAN=	rpc.umntall.8
 
 NO_WCAST_FUNCTION_TYPE=
 
+CFLAGS+= -Wno-format-truncation
+
 .include <bsd.prog.mk>

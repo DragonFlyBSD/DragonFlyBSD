@@ -13,5 +13,6 @@ LDADD=	-lutil
 CFLAGS+= -DINET6
 CFLAGS+= -I${.CURDIR}/../../usr.bin/wall
 NO_STRICT_ALIASING=
+CFLAGS+= -Wno-format-truncation
 
 .include <bsd.prog.mk>

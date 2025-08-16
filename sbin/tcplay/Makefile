@@ -35,6 +35,7 @@ CFLAGS+=	-I${.CURDIR}/../../sys
 CFLAGS+=	-I${TCPLAY_DIR}
 CFLAGS+=	-DMAJ_VER=${MAJ_VER} -DMIN_VER=${MIN_VER}
 CFLAGS+=	-D_FILE_OFFSET_BITS=64
+CFLAGS+=	-Wno-format-truncation
 
 .PATH: ${TCPLAY_DIR}
 

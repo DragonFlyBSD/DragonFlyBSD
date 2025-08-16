@@ -3287,7 +3287,7 @@ logcmd(char *cmd, char *file1, char *file2, off_t cnt)
 static void
 logxfer(char *name, off_t size, time_t start)
 {
-	char buf[MAXPATHLEN + 1024];
+	char buf[MAXPATHLEN + 1024 + 150];
 	char path[MAXPATHLEN + 1];
 	time_t now;
 

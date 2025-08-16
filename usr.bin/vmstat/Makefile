@@ -5,6 +5,7 @@
 PROG=	vmstat
 MAN=	vmstat.8
 CFLAGS+=-I${.CURDIR}/../../sys
+CFLAGS+=-Wno-format-truncation
 BINGRP=	kmem
 BINMODE=2555
 DPADD=	${LIBKINFO} ${LIBKVM} ${LIBDEVSTAT}

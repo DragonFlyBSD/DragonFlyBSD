@@ -14,6 +14,8 @@ CFLAGS+= -I${.CURDIR}/../../sys -I. -DUSE_MPT_IOCTLS
 # Avoid dirdep dependency on libutil
 CFLAGS+= -I${.CURDIR}/../../lib/libutil
 
+CFLAGS+=-Wno-format-truncation -Wno-implicit-fallthrough
+
 # Here be dragons
 .ifdef DEBUG
 CFLAGS+= -DDEBUG

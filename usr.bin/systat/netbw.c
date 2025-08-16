@@ -425,7 +425,7 @@ numtok(double value)
 const char *
 netaddrstr(u_char af, union in_dependaddr *depaddr, u_int16_t port)
 {
-	static char buf[MAXINDEXES][64];
+	static char buf[MAXINDEXES][72];
 	static int nexta;
 	char bufip[64];
 

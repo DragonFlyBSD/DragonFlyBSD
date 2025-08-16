@@ -20,6 +20,8 @@ CFLAGS+=-I${.CURDIR} -I${.OBJDIR} -I${CONTRIBDIR} \
 # Avoid symbol conflict with ncurses(lib_trace.c:void trace(unsigned))
 CFLAGS+=-Dtrace=ftp_trace
 
+CFLAGS+=-Wno-format-overflow -Wno-implicit-fallthrough
+
 LDADD=	-lutil
 DPADD=	${LIBUTIL}
 

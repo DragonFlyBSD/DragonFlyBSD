@@ -14,6 +14,7 @@ DPADD=		${LIBSSL} ${LIBCRYPTO}
 LDADD=		-lprivate_ssl -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../../crypto/libressl/include
+CFLAGS+=	-Wno-format-truncation
 
 BINOWN= root
 BINGRP= mail

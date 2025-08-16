@@ -709,7 +709,7 @@ printsub(char direction, unsigned char *pointer, int length)
 		    break;
 		}
 		{
-		    char tbuf[32];
+		    char tbuf[40];
 		    sprintf(tbuf, "%s%s%s%s%s",
 			pointer[2]&MODE_EDIT ? "|EDIT" : "",
 			pointer[2]&MODE_TRAPSIG ? "|TRAPSIG" : "",

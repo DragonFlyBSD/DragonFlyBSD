@@ -226,6 +226,8 @@ CFLAGS+= \
 #    -DACPI_CHECKSUM_ABORT=TRUE
 #endif
 
+CFLAGS+=-Wno-cast-function-type
+
 LDADD+=	-lpthread
 DPADD+=	${LIBPTHREAD}
 

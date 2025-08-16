@@ -331,7 +331,7 @@ mfi_pd_inq_string(struct mfi_pd_info *info)
 {
 	struct scsi_inquiry_data *inq_data;
 	char vendor[16], product[48], revision[16], rstr[12], serial[SID_VENDOR_SPECIFIC_0_SIZE];
-	static char inq_string[64];
+	static char inq_string[125];
 
 	inq_data = (struct scsi_inquiry_data *)info->inquiry_data;
 	if (SID_QUAL_IS_VENDOR_UNIQUE(inq_data))

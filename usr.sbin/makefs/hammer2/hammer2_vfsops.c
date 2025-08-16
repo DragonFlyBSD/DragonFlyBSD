@@ -993,8 +993,8 @@ hammer2_vfs_mount(struct m_vnode *makefs_devvp, struct mount *mp,
 	pmp = NULL;
 	devstr = NULL;
 
-	kprintf("hammer2_mount: device=\"%s\" label=\"%s\" rdonly=%d\n",
-		devstr, label, ronly);
+	kprintf("hammer2_mount: label=\"%s\" rdonly=%d\n",
+		label, ronly);
 
 	/*
 	 * Initialize all device vnodes.
@@ -1002,7 +1002,7 @@ hammer2_vfs_mount(struct m_vnode *makefs_devvp, struct mount *mp,
 	TAILQ_INIT(&devvpl);
 	error = hammer2_init_devvp(makefs_devvp, &devvpl);
 	if (error) {
-		kprintf("hammer2: failed to initialize devvp in %s\n", devstr);
+		kprintf("hammer2: failed to initialize devvp\n");
 		hammer2_cleanup_devvp(&devvpl);
 		return error;
 	}

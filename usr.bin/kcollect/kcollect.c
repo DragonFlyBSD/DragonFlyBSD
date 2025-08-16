@@ -546,7 +546,7 @@ dump_text(kcollect_t *ary, size_t count, size_t total_count,
 	uintmax_t scale;
 	uintmax_t value;
 	char fmt;
-	char sbuf[20];
+	char sbuf[24];
 	struct tm *tmv;
 	time_t t;
 

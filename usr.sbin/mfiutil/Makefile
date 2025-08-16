@@ -13,4 +13,6 @@ LDADD=	-lutil
 CFLAGS+= -DDEBUG
 .endif
 
+CFLAGS+=-Wno-address-of-packed-member
+
 .include <bsd.prog.mk>

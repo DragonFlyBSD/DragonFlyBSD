@@ -7,6 +7,7 @@ WARNS?=	3
 
 CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
+CFLAGS+=	-Wno-format-truncation
 DPADD=		${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
 LDADD=		-lprivate_ssh -lprivate_crypto -lutil -lz
 LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}

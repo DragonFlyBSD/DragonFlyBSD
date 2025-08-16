@@ -51,7 +51,7 @@
 static void do_percentm(char *obuf, size_t size, char *ibuf);
 
 static char mbuf[1024];
-static char fbuf[1024];
+static char fbuf[1024 + 10];
 
 int warnings_occurred;
 

@@ -209,7 +209,7 @@ get_shared(struct _citrus_iconv_shared * __restrict * __restrict rci,
     const char *src, const char *dst)
 {
 	struct _citrus_iconv_shared * ci;
-	char convname[PATH_MAX];
+	char convname[PATH_MAX*2];
 	int hashval, ret = 0;
 
 	snprintf(convname, sizeof(convname), "%s/%s", src, dst);

@@ -141,7 +141,7 @@ main(int argc, char *argv[])
 
     disk = getdevpath(*argv, 0);
     if (!disk)
-	err(1, "cannot open disk %s", disk);
+	err(1, "cannot open disk %s", *argv);
 
     up = B_flag || d_arg != -1 || m_arg != -1 || o_flag || s_arg != -1
 	|| t_arg != -1;

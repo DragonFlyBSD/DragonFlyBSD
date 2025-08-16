@@ -723,7 +723,7 @@ fingerprint_name_entry(struct name_list *list, char *name)
 void
 print_name_list(int opts, struct name_list *nml, const char *prefix)
 {
-	char newprefix[32];
+	char newprefix[35];
 	struct name_entry *nm;
 
 	LIST_FOREACH(nm, nml, nm_entry) {

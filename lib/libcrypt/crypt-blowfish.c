@@ -139,14 +139,15 @@ decode_base64(u_int8_t *buffer, u_int16_t len, u_int8_t *data)
 static void
 encode_salt(char *salt, u_int8_t *csalt, u_int16_t clen, u_int8_t logr)
 {
-	salt[0] = '$';
-	salt[1] = BCRYPT_VERSION;
-	salt[2] = 'a';
-	salt[3] = '$';
+	int offset = 0;
+	salt[offset++] = '$';
+	salt[offset++] = BCRYPT_VERSION;
+	salt[offset++] = 'a';
+	salt[offset++] = '$';
 
-	snprintf(salt + 4, 4, "%2.2u$", logr);
+	offset += snprintf(salt + offset, 5, "%2.2u$", logr);
 
-	encode_base64((u_int8_t *) salt + 7, csalt, clen);
+	encode_base64((u_int8_t *) salt + offset, csalt, clen);
 }
 /* Generates a salt for this version of crypt.
    Since versions may change. Keeping this here
@@ -279,9 +280,9 @@ crypt_blowfish(const char *key, const char *salt)
 		encrypted[i++] = minor;
 	encrypted[i++] = '$';
 
-	snprintf(encrypted + i, 4, "%2.2u$", logr);
+	i += snprintf(encrypted + i, 5, "%2.2u$", logr);
 
-	encode_base64((u_int8_t *) encrypted + i + 3, csalt, BCRYPT_MAXSALT);
+	encode_base64((u_int8_t *) encrypted + (i - 1), csalt, BCRYPT_MAXSALT);
 	encode_base64((u_int8_t *) encrypted + strlen(encrypted), ciphertext,
 	    4 * BCRYPT_BLOCKS - 1);
 	return encrypted;

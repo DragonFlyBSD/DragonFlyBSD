@@ -5,4 +5,6 @@ SRCS=	input.c screen.c shapes.c scores.c tetris.c
 MAN=	tetris.6
 GAMESCURSES=
 
+CFLAGS+=-Wno-format-truncation
+
 .include <bsd.prog.mk>

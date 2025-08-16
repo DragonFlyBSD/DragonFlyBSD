@@ -8,7 +8,7 @@ MAN=	openssl.1 openssl.cnf.5
 CFLAGS+=	-DLIBRESSL_INTERNAL
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 CFLAGS+= 	-I${.CURDIR}
-
+CFLAGS+=	-Wno-format-truncation
 DPADD+=		${LIBSSL} ${LIBCRYPTO}
 LDADD+=		-lprivate_ssl -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}

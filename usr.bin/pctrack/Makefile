@@ -5,4 +5,6 @@ DPADD=	${LIBKVM}
 LDADD=	-lkvm
 MAN=	pctrack.8
 
+CFLAGS+= -Wno-format-truncation
+
 .include <bsd.prog.mk>

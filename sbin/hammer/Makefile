@@ -11,6 +11,7 @@ MAN=	hammer.8
 
 CFLAGS+= -I${.CURDIR}/../../sys
 CFLAGS+=	${PRIVATELIB_CFLAGS}
+CFLAGS+=	-Wno-address-of-packed-member
 DPADD=		${LIBM} ${LIBUTIL} ${LIBHAMMER} ${LIBCRYPTO}
 LDADD=		-lm -lutil -lhammer -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}

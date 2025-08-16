@@ -350,7 +350,7 @@ bpf_open(void)
 	do {
 		sprintf(device, "/dev/bpf%d", n++);
 		fd = open(device, O_RDWR);
-	} while ((fd == -1) && (errno == EBUSY));
+	} while ((fd == -1) && (errno == EBUSY) && n < 1000);
 
 	if (fd == -1) {
 		logmsg(LOG_ERR, "%s: %m", device);

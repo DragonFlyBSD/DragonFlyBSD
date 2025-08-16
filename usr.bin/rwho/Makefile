@@ -3,4 +3,6 @@
 
 PROG=	rwho
 
+CFLAGS+= -Wno-format-overflow
+
 .include <bsd.prog.mk>

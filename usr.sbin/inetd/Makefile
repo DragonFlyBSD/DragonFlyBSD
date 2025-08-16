@@ -8,6 +8,7 @@ MLINKS=	inetd.8 inetd.conf.5
 
 CFLAGS+=-DINET6 -DLOGIN_CAP
 #CFLAGS+= -DSANITY_CHECK
+CFLAGS+=-Wno-cast-function-type
 
 DPADD+=	${LIBUTIL} ${LIBWRAP}
 LDADD+=	-lutil -lwrap

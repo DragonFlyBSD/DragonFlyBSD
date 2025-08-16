@@ -89,6 +89,7 @@ CFLAGS+=	-I${.CURDIR} -I${.CURDIR}/../../crypto/openssh
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 CFLAGS+=	-I${.CURDIR}/../../contrib/ldns
 CFLAGS+=	-I${.CURDIR}/../libldns
+CFLAGS+=	-Wno-format-truncation
 DPADD=		${LIBCRYPTO} ${LIBLDNS} ${LIBUTIL} ${LIBZ}
 LDADD=		-lprivate_crypto -lprivate_ldns -lutil -lz
 LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}

@@ -5,4 +5,6 @@
 PROG=	tunefs
 MAN=	tunefs.8
 
+CFLAGS+=	-Wno-format-truncation
+
 .include <bsd.prog.mk>

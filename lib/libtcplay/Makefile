@@ -19,6 +19,7 @@ MLINKS+=	tcplay.3	tc_api_task_get_error.3
 
 CFLAGS+=	-DMAJ_VER=${MAJ_VER} -DMIN_VER=${MIN_VER}
 CFLAGS+=	-D_FILE_OFFSET_BITS=64
+CFLAGS+=	-Wno-format-truncation
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 CFLAGS+=	-I${.CURDIR}/../../sys
 

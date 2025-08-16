@@ -75,7 +75,7 @@ void
 read_symbols(const char *file)
 {
 	char buf[256];
-	char cmd[256];
+	char cmd[262];
 	size_t buflen = sizeof(buf);
 	FILE *fp;
 	struct symdata *lsym;

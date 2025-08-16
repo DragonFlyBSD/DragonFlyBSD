@@ -14,4 +14,6 @@ LDADD=	-lcam -lsbuf -lutil
 CFLAGS+= -DDEBUG
 .endif
 
+CFLAGS+=-Wno-format-truncation
+
 .include <bsd.prog.mk>

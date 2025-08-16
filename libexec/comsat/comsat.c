@@ -151,7 +151,7 @@ notify(struct utmpx *utp, char file[], off_t offset, int folder)
 	FILE *tp;
 	struct stat stb;
 	struct termios tio;
-	char tty[20];
+	char tty[40];
 	const char *s = utp->ut_line;
 
 	if (strncmp(s, "pts/", 4) == 0)

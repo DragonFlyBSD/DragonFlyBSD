@@ -6,6 +6,7 @@ MAN+=	tbl.7 makewhatis.8
 WARNS?=	3
 
 CFLAGS+=-I${.CURDIR}
+CFLAGS+=-Wno-format-truncation
 
 # libmandoc
 SRCS=	man.c man_macro.c man_validate.c

@@ -11,5 +11,6 @@ DPADD=	${LIBUTIL}
 LDADD=	-lutil
 
 CFLAGS+=-I${.CURDIR}/../../usr.bin/wall
+CFLAGS+=-Wno-format-truncation
 
 .include <bsd.prog.mk>

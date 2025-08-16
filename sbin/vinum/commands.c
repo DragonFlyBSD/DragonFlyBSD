@@ -928,8 +928,8 @@ vinum_attach(int argc, char *argv[], char *argv0[])
     const char *supername = argv[1];
     int sdno = -1;
     int plexno = -1;
-    char oldname[MAXNAME + 8];
-    char newname[MAXNAME + 8];
+    char oldname[MAXNAME + 12];
+    char newname[MAXNAME + 12];
     int rename = 0;					    /* set if we want to rename the object */
 
     if ((argc < 2)
@@ -1212,7 +1212,7 @@ vinum_rename_2(char *oldname, char *newname)
 		get_plex_info(&plex, vol.plex[plexno]);	    /* find out who we are */
 		msg.type = sd_object;
 		for (sdno = 0; sdno < plex.subdisks; sdno++) {
-		    char sdname[MAXPLEXNAME + 8];
+		    char sdname[MAXPLEXNAME + 20];
 
 		    get_plex_sd_info(&sd, plex.plexno, sdno); /* get info about the subdisk */
 		    sprintf(sdname, "%s.s%d", plexname, sdno);

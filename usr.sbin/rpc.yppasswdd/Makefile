@@ -20,6 +20,7 @@ CFLAGS+= -I${.CURDIR}/../vipw \
 	 -I${.CURDIR}/../ypserv \
 	 -I${.CURDIR}/../../libexec/ypxfr \
 	 -I${.CURDIR} -I.
+CFLAGS+= -Wno-format-truncation
 DPADD=	${LIBRPCSVC} ${LIBCRYPT} ${LIBUTIL}
 LDADD=	-lrpcsvc -lcrypt -lutil
 

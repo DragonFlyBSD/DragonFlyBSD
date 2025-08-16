@@ -113,7 +113,7 @@ static const char *mfi_status_codes[] = {
 const char *
 mfi_status(u_int status_code)
 {
-	static char buffer[16];
+	static char buffer[20];
 
 	if (status_code == MFI_STAT_INVALID_STATUS)
 		return ("Invalid status");

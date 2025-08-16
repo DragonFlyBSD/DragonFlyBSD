@@ -24,4 +24,6 @@ CFLAGS+=-DEMBED_LIB_SRC
 .endif
 .endif
 
+CFLAGS+= -Wno-format-truncation
+
 .include <bsd.prog.mk>

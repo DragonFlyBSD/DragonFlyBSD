@@ -639,7 +639,7 @@ void
 rtprior(const KINFO *k, const struct varent *vent)
 {
 	struct rtprio *prtp;
-	char str[8];
+	char str[16];
 	unsigned prio, type;
  
 	prtp = &KI_LWP(k, rtprio);

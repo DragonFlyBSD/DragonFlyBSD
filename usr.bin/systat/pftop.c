@@ -463,7 +463,7 @@ numtok(double value, double template)
 static const char *
 netaddrstr(sa_family_t af, struct pf_addr *addr, u_int16_t port)
 {
-	static char buf[MAXINDEXES][64];
+	static char buf[MAXINDEXES][72];
 	static int nexta;
 	char bufip[64];
 

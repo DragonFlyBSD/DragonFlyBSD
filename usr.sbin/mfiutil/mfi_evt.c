@@ -338,7 +338,7 @@ simple_hex(void *ptr, size_t length, const char *separator)
 static const char *
 pdrive_location(struct mfi_evt_pd *pd)
 {
-	static char buffer[16];
+	static char buffer[18];
 
 	if (pd->enclosure_index == 0)
 		snprintf(buffer, sizeof(buffer), "%02d(s%d)", pd->device_id,

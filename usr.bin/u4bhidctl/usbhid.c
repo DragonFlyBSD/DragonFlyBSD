@@ -69,7 +69,7 @@ parceargs(report_desc_t r, int all, int nnames, char **names)
 	struct hid_data *d;
 	struct hid_item h;
 	char colls[1000];
-	char hname[1000], *tmp1, *tmp2;
+	char hname[1010], *tmp1, *tmp2;
 	struct variable *var, **pnext;
 	int i, instance, cp, t;
 

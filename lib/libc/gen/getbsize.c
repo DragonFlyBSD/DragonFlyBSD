@@ -39,7 +39,7 @@
 char *
 getbsize(int *headerlenp, long *blocksizep)
 {
-	static char header[20];
+	static char header[30];
 	long n, max, mul, blocksize;
 	char *ep, *p;
 	const char *form;

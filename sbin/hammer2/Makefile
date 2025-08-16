@@ -18,6 +18,7 @@ DPADD=	${LIBDMSG} ${LIBM} ${LIBUTIL}
 LDADD=	-ldmsg -lm -lutil
 
 CFLAGS+=	${PRIVATELIB_CFLAGS}
+CFLAGS+=	-Wno-address-of-packed-member
 DPADD+=		${LIBCRYPTO}
 LDADD+=		-lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}

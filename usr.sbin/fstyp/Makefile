@@ -6,5 +6,6 @@ MAN=	fstyp.8
 WARNS?=	2
 
 CFLAGS+=-I${.CURDIR}/../../sys
+CFLAGS+=-Wno-address-of-packed-member
 
 .include <bsd.prog.mk>

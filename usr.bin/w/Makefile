@@ -12,6 +12,8 @@ LINKS=	${BINDIR}/w ${BINDIR}/uptime
 WARNS?=	3
 NO_STRICT_ALIASING=
 
+CFLAGS+=-Wno-format-truncation
+
 .PATH: ${.CURDIR}/../../bin/ps
 
 .include <bsd.prog.mk>

@@ -23,5 +23,6 @@ DPADD=	${LIBUTIL}
 LDADD=	-lutil
 
 CFLAGS+= -DHAVE_ARC4RANDOM
+CFLAGS+= -Wno-address-of-packed-member
 
 .include <bsd.prog.mk>

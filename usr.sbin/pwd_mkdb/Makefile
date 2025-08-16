@@ -10,4 +10,6 @@ SRCS=	pw_scan.c pwd_mkdb.c
 
 CFLAGS+= -I${.CURDIR}/../../lib/libc/gen		# for pw_scan.h
 
+CFLAGS+=-Wno-format-truncation
+
 .include <bsd.prog.mk>

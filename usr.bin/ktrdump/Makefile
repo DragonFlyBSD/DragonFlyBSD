@@ -5,4 +5,6 @@ DPADD=	${LIBKVM} ${LIBEVTR} ${LIBDEVINFO}
 LDADD=	-lkvm -levtr -ldevinfo
 MAN=	ktrdump.8
 
+CFLAGS+= -Wno-address-of-packed-member
+
 .include <bsd.prog.mk>

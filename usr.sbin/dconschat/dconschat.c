@@ -501,7 +501,7 @@ dconschat_init_socket(struct dcons_state *dc, int port, char *host, int sport)
 {
 	struct addrinfo hints, *res;
 	int on = 1, error;
-	char service[10];
+	char service[12];
 	struct kevent kev;
 	struct dcons_port *p;
 

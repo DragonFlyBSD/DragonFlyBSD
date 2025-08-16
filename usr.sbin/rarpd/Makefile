@@ -6,4 +6,6 @@ PROG=	rarpd
 MAN=	rarpd.8
 WARNS?=	2
 
+CFLAGS+= -Wno-array-bounds
+
 .include <bsd.prog.mk>

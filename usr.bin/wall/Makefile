@@ -11,5 +11,6 @@ DPADD+=	${LIBUTIL}
 LDADD+=	-lutil
 
 CFLAGS+= -I${.CURDIR}/../who
+CFLAGS+= -Wno-format-truncation
 
 .include <bsd.prog.mk>

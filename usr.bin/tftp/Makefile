@@ -6,6 +6,7 @@ SRCS=	main.c tftp.c tftpsubs.c
 NO_WARRAY_BOUNDS=
 
 CFLAGS+=	${PRIVATELIB_CFLAGS}
+CFLAGS+=	-Wno-stringop-overflow
 DPADD+=		${LIBEDIT} ${LIBNCURSES}
 LDADD+=		-lprivate_edit -lprivate_ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}

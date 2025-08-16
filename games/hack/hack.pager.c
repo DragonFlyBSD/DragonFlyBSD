@@ -108,7 +108,7 @@ dowhatis(void)
 					if (buf[1] == '\t') {
 						buf = bufr;
 						buf[0] = q;
-						(void) strncpy(buf + 1, "       ", 7);
+						(void) strncpy(buf + 1, "       ", 8);
 					}
 					pline("%s", buf);
 					if (ep[-1] == ';') {

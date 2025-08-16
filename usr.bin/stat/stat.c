@@ -623,7 +623,7 @@ format1(const struct stat *st,
 	u_int64_t data;
 	char *stmp, lfmt[24], tmp[20];
 	const char *sdata;
-	char smode[12], sid[12], path[PATH_MAX + 4];
+	char smode[12], sid[14], path[PATH_MAX + 4];
 	struct passwd *pw;
 	struct group *gr;
 	const struct timespec *tsp;
