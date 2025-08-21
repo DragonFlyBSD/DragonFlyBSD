@@ -69,6 +69,8 @@ static void print_AMD_info(void);
 static void print_INTEL_info(void);
 static void print_via_padlock_info(void);
 static void print_xsave_info(void);
+static void print_svm_info(void);
+static void print_vmx_info(void);
 
 int	cpu_class;
 char machine[] = "x86_64";
@@ -497,6 +499,12 @@ printcpuinfo(void)
 
 			if (cpu_vendor_id == CPU_VENDOR_CENTAUR)
 				print_via_padlock_info();
+
+			if (cpu_feature2 & CPUID2_VMX)
+				print_vmx_info();
+
+			if (amd_feature2 & AMDID2_SVM)
+				print_svm_info();
 
 			/*
 			 * INVALID CPU TOPOLOGY INFORMATION PRINT
@@ -1263,4 +1271,205 @@ print_xsave_info(void)
 		"\003XGETBV"
 		"\004XSAVES"
 		, regs[0]);
+}
+
+static void
+print_svm_info(void)
+{
+	u_int features, regs[4];
+	uint64_t msr;
+
+	kprintf("\n  SVM: ");
+	do_cpuid(0x8000000A, regs);
+	features = regs[3];
+
+	msr = rdmsr(MSR_AMD_VM_CR);
+	if ((msr & VM_CR_SVMDIS) && (msr & VM_CR_LOCK))
+		kprintf("(disabled in BIOS) ");
+
+	kprintf("Features=0x%pb%i",
+		"\020"
+		"\001NP"		/* Nested paging */
+		"\002LbrVirt"		/* LBR virtualization */
+		"\003SVML"		/* SVM lock */
+		"\004NRIPS"		/* NRIP save */
+		"\005TscRateMsr"	/* MSR-based TSC rate control */
+		"\006VmcbClean"		/* VMCB clean bits */
+		"\007FlushByAsid"	/* Flush by ASID */
+		"\010DecodeAssist"	/* Decode Assists support */
+		"\011<b8>"
+		"\012<b9>"
+		"\013PauseFilter"	/* PAUSE intercept filter */
+		"\014EncryptedMcodePatch"
+		"\015PauseFilterThreshold" /* PAUSE filter threshold */
+		"\016AVIC"		/* Advanced Virtual Interrupt Controller */
+		"\017<b14>"
+		"\020V_VMSAVE_VMLOAD"	/* VMSAVE/VMLOAD virtualization */
+		"\021vGIF"		/* Global Interrupt Flag virtualization */
+		"\022GMET"		/* Guest Mode Execute Trap */
+		"\023<b18>"
+		"\024<b19>"
+		"\025SpecCtrl"		/* SPEC_CTRL virtualization */
+		"\026<b21>"
+		"\027<b22>"
+		"\030<b23>"
+		"\031TlbICtrl"		/* TLB Intercept Control */
+		"\032<b25>"
+		"\033<b26>"
+		"\034<b27>"
+		"\035<b28>"
+		"\036<b29>"
+		"\037<b30>"
+		"\040<b31>"
+		, features);
+	kprintf("\n       Revision=%d, ASIDs=%d", regs[0] & 0xff, regs[1]);
+}
+
+static u_int
+vmx_settable(uint64_t basic, int msr, int true_msr)
+{
+	uint64_t val;
+
+	if (basic & (1ULL << 55))
+		val = rdmsr(true_msr);
+	else
+		val = rdmsr(msr);
+
+	/* Just report the controls that can be set to 1. */
+	return (u_int)(val >> 32);
+}
+
+static void
+print_vmx_info(void)
+{
+	uint64_t basic, msr;
+	u_int entry_ctls, exit_ctls, pin_ctls, proc_ctls, proc2_ctls;
+
+	kprintf("\n  VT-x: ");
+	msr = rdmsr(MSR_IA32_FEATURE_CONTROL);
+	if ((msr & IA32_FEATURE_CONTROL_LOCK) != 0 &&
+	    (msr & IA32_FEATURE_CONTROL_OUT_SMX) == 0)
+		kprintf("(disabled in BIOS) ");
+
+	basic = rdmsr(MSR_VMX_BASIC);
+	pin_ctls = vmx_settable(basic, MSR_VMX_PINBASED_CTLS,
+				MSR_VMX_TRUE_PINBASED_CTLS);
+	proc_ctls = vmx_settable(basic, MSR_VMX_PROCBASED_CTLS,
+				 MSR_VMX_TRUE_PROCBASED_CTLS);
+	proc2_ctls = 0;
+	if (proc_ctls & (1U << 31 /* activate secondary ctls */)) {
+		proc2_ctls = vmx_settable(basic, MSR_VMX_PROCBASED_CTLS2,
+					  MSR_VMX_PROCBASED_CTLS2);
+	}
+	exit_ctls = vmx_settable(basic, MSR_VMX_EXIT_CTLS,
+				 MSR_VMX_TRUE_EXIT_CTLS);
+	entry_ctls = vmx_settable(basic, MSR_VMX_ENTRY_CTLS,
+				  MSR_VMX_TRUE_ENTRY_CTLS);
+
+	kprintf("Basic Features=0x%pb%i",
+		"\020"
+		"\02132PA"		/* 32-bit physical addresses */
+		"\022SMM"		/* SMM dual-monitor */
+		"\027INS/OUTS"		/* VM-exit info for INS and OUTS */
+		"\030TRUE"		/* TRUE_CTLS MSRs */
+		, (u_int)(basic >> 32));
+	kprintf("\n        Pin-Based Controls=0x%pb%i",
+		"\020"
+		"\001ExtINT"		/* External-interrupt exiting */
+		"\004NMI"		/* NMI exiting */
+		"\006VNMI"		/* Virtual NMIs */
+		"\007PreTmr"		/* Activate VMX-preemption timer */
+		"\010PostIntr"		/* Process posted interrupts */
+		, pin_ctls);
+	kprintf("\n        Primary Processor Controls=0x%pb%i",
+		"\020"
+		"\003INTWIN"		/* Interrupt-window exiting */
+		"\004TSCOff"		/* Use TSC offsetting */
+		"\010HLT"		/* HLT exiting */
+		"\012INVLPG"		/* INVLPG exiting */
+		"\013MWAIT"		/* MWAIT exiting */
+		"\014RDPMC"		/* RDPMC exiting */
+		"\015RDTSC"		/* RDTSC exiting */
+		"\020CR3-LD"		/* CR3-load exiting */
+		"\021CR3-ST"		/* CR3-store exiting */
+		"\024CR8-LD"		/* CR8-load exiting */
+		"\025CR8-ST"		/* CR8-store exiting */
+		"\026TPR"		/* Use TPR shadow */
+		"\027NMIWIN"		/* NMI-window exiting */
+		"\030MOV-DR"		/* MOV-DR exiting */
+		"\031IO"		/* Unconditional I/O exiting */
+		"\032IOmap"		/* Use I/O bitmaps */
+		"\034MTF"		/* Monitor trap flag */
+		"\035MSRmap"		/* Use MSR bitmaps */
+		"\036MONITOR"		/* MONITOR exiting */
+		"\037PAUSE"		/* PAUSE exiting */
+		, proc_ctls);
+	if (proc2_ctls != 0) {
+		kprintf("\n        Secondary Processor Controls=0x%pb%i",
+			"\020"
+			"\001APIC"		/* Virtualize APIC accesses */
+			"\002EPT"		/* Enable EPT */
+			"\003DT"		/* Descriptor-table exiting */
+			"\004RDTSCP"		/* Enable RDTSCP */
+			"\005x2APIC"		/* Virtualize x2APIC mode */
+			"\006VPID"		/* Enable VPID */
+			"\007WBINVD"		/* WBINVD exiting */
+			"\010UG"		/* Unrestricted guest */
+			"\011APIC-reg"		/* APIC-register virtualization */
+			"\012VID"		/* Virtual-interrupt delivery */
+			"\013PAUSE-loop"	/* PAUSE-loop exiting */
+			"\014RDRAND"		/* RDRAND exiting */
+			"\015INVPCID"		/* Enable INVPCID */
+			"\016VMFUNC"		/* Enable VM functions */
+			"\017VMCS"		/* VMCS shadowing */
+			"\020EPT#VE"		/* EPT-violation #VE */
+			"\021XSAVES"		/* Enable XSAVES/XRSTORS */
+			, proc2_ctls);
+	}
+	kprintf("\n        Exit Controls=0x%pb%i",
+		"\020"
+		"\003DR"		/* Save debug controls */
+		"\015PERF"		/* Load MSR_PERF_GLOBAL_CTRL */
+		"\012HostLMA"		/* Host Long Mode */
+		"\020AckInt"		/* Acknowledge interrupt on exit */
+		"\023PAT-SV"		/* Save MSR_PAT */
+		"\024PAT-LD"		/* Load MSR_PAT */
+		"\025EFER-SV"		/* Save MSR_EFER */
+		"\026EFER-LD"		/* Load MSR_EFER */
+		"\027PTMR-SV"		/* Save VMX-preemption timer value */
+		, exit_ctls);
+	kprintf("\n        Entry Controls=0x%pb%i",
+		"\020"
+		"\003DR"		/* Save debug controls */
+		"\012GuestLMA"		/* Guest Long Mode */
+		"\016PERF"		/* Load MSR_PERF_GLOBAL_CTRL */
+		"\017PAT"		/* Load MSR_PAT */
+		"\020EFER"		/* Load MSR_EFER */
+		, entry_ctls);
+	if ((proc2_ctls & (1U << 1 /* Enable EPT */)) ||
+	    (proc2_ctls & (1U << 5 /* Enable VPID */)))
+	{
+		msr = rdmsr(MSR_VMX_EPT_VPID_CAP);
+		kprintf("\n        EPT Features=0x%pb%i",
+			"\020"
+			"\001XO"	/* Execute-only translations */
+			"\007PW4"	/* Page-walk length of 4 */
+			"\011UC"	/* EPT paging-structure mem can be UC */
+			"\017WB"	/* EPT paging-structure mem can be WB */
+			"\0212M"	/* EPT PDE can map a 2-Mbyte page */
+			"\0221G"	/* EPT PDPTE can map a 1-Gbyte page */
+			"\025INVEPT"	/* INVEPT is supported */
+			"\026AD"	/* Accessed and dirty flags for EPT */
+			"\032single"	/* INVEPT single-context type */
+			"\033all"	/* INVEPT all-context type */
+			, (u_int)msr);
+		kprintf("\n        VPID Features=0x%pb%i",
+			"\020"
+			"\001INVVPID"	/* INVVPID is supported */
+			"\011individual" /* INVVPID individual-address type */
+			"\012single"	/* INVVPID single-context type */
+			"\013all"	/* INVVPID all-context type */
+			"\014single-globals" /* INVVPID single-context-retaining-globals type */
+			, (u_int)(msr >> 32));
+	}
 }
