@@ -66,6 +66,7 @@ void panicifcpuunsupported(void);
 
 static u_int find_cpu_vendor_id(void);
 static void print_AMD_info(void);
+static void print_INTEL_info(void);
 static void print_via_padlock_info(void);
 static void print_xsave_info(void);
 
@@ -606,6 +607,8 @@ printcpuinfo(void)
 	if (bootverbose) {
 		if (cpu_vendor_id == CPU_VENDOR_AMD)
 			print_AMD_info();
+		else if (cpu_vendor_id == CPU_VENDOR_INTEL)
+			print_INTEL_info();
 	}
 
 	if (cpu_feature2 & CPUID2_VMM) {
@@ -866,6 +869,393 @@ print_AMD_info(void)
 		kprintf(", %d bytes/line", regs[2] & 0xff);
 		kprintf(", %d lines/tag", (regs[2] >> 8) & 0x0f);
 		print_AMD_l2_assoc((regs[2] >> 12) & 0x0f);
+	}
+}
+
+static void
+print_INTEL_TLB(u_int data)
+{
+	switch (data) {
+	case 0x0:
+	case 0x40:
+	default:
+		break;
+	case 0x1:
+		kprintf("Instruction TLB: 4 KB pages, 4-way set associative, 32 entries\n");
+		break;
+	case 0x2:
+		kprintf("Instruction TLB: 4 MB pages, fully associative, 2 entries\n");
+		break;
+	case 0x3:
+		kprintf("Data TLB: 4 KB pages, 4-way set associative, 64 entries\n");
+		break;
+	case 0x4:
+		kprintf("Data TLB: 4 MB Pages, 4-way set associative, 8 entries\n");
+		break;
+	case 0x6:
+		kprintf("1st-level instruction cache: 8 KB, 4-way set associative, 32 byte line size\n");
+		break;
+	case 0x8:
+		kprintf("1st-level instruction cache: 16 KB, 4-way set associative, 32 byte line size\n");
+		break;
+	case 0x9:
+		kprintf("1st-level instruction cache: 32 KB, 4-way set associative, 64 byte line size\n");
+		break;
+	case 0xa:
+		kprintf("1st-level data cache: 8 KB, 2-way set associative, 32 byte line size\n");
+		break;
+	case 0xb:
+		kprintf("Instruction TLB: 4 MByte pages, 4-way set associative, 4 entries\n");
+		break;
+	case 0xc:
+		kprintf("1st-level data cache: 16 KB, 4-way set associative, 32 byte line size\n");
+		break;
+	case 0xd:
+		kprintf("1st-level data cache: 16 KBytes, 4-way set associative, 64 byte line size");
+		break;
+	case 0xe:
+		kprintf("1st-level data cache: 24 KBytes, 6-way set associative, 64 byte line size\n");
+		break;
+	case 0x1d:
+		kprintf("2nd-level cache: 128 KBytes, 2-way set associative, 64 byte line size\n");
+		break;
+	case 0x21:
+		kprintf("2nd-level cache: 256 KBytes, 8-way set associative, 64 byte line size\n");
+		break;
+	case 0x22:
+		kprintf("3rd-level cache: 512 KB, 4-way set associative, sectored cache, 64 byte line size\n");
+		break;
+	case 0x23:
+		kprintf("3rd-level cache: 1 MB, 8-way set associative, sectored cache, 64 byte line size\n");
+		break;
+	case 0x24:
+		kprintf("2nd-level cache: 1 MBytes, 16-way set associative, 64 byte line size\n");
+		break;
+	case 0x25:
+		kprintf("3rd-level cache: 2 MB, 8-way set associative, sectored cache, 64 byte line size\n");
+		break;
+	case 0x29:
+		kprintf("3rd-level cache: 4 MB, 8-way set associative, sectored cache, 64 byte line size\n");
+		break;
+	case 0x2c:
+		kprintf("1st-level data cache: 32 KB, 8-way set associative, 64 byte line size\n");
+		break;
+	case 0x30:
+		kprintf("1st-level instruction cache: 32 KB, 8-way set associative, 64 byte line size\n");
+		break;
+	case 0x39: /* De-listed in SDM rev. 54 */
+		kprintf("2nd-level cache: 128 KB, 4-way set associative, sectored cache, 64 byte line size\n");
+		break;
+	case 0x3b: /* De-listed in SDM rev. 54 */
+		kprintf("2nd-level cache: 128 KB, 2-way set associative, sectored cache, 64 byte line size\n");
+		break;
+	case 0x3c: /* De-listed in SDM rev. 54 */
+		kprintf("2nd-level cache: 256 KB, 4-way set associative, sectored cache, 64 byte line size\n");
+		break;
+	case 0x41:
+		kprintf("2nd-level cache: 128 KB, 4-way set associative, 32 byte line size\n");
+		break;
+	case 0x42:
+		kprintf("2nd-level cache: 256 KB, 4-way set associative, 32 byte line size\n");
+		break;
+	case 0x43:
+		kprintf("2nd-level cache: 512 KB, 4-way set associative, 32 byte line size\n");
+		break;
+	case 0x44:
+		kprintf("2nd-level cache: 1 MB, 4-way set associative, 32 byte line size\n");
+		break;
+	case 0x45:
+		kprintf("2nd-level cache: 2 MB, 4-way set associative, 32 byte line size\n");
+		break;
+	case 0x46:
+		kprintf("3rd-level cache: 4 MB, 4-way set associative, 64 byte line size\n");
+		break;
+	case 0x47:
+		kprintf("3rd-level cache: 8 MB, 8-way set associative, 64 byte line size\n");
+		break;
+	case 0x48:
+		kprintf("2nd-level cache: 3MByte, 12-way set associative, 64 byte line size\n");
+		break;
+	case 0x49:
+		if (CPUID_TO_FAMILY(cpu_id) == 0xf &&
+		    CPUID_TO_MODEL(cpu_id) == 0x6)
+			kprintf("3rd-level cache: 4MB, 16-way set associative, 64-byte line size\n");
+		else
+			kprintf("2nd-level cache: 4 MByte, 16-way set associative, 64 byte line size\n");
+		break;
+	case 0x4a:
+		kprintf("3rd-level cache: 6MByte, 12-way set associative, 64 byte line size\n");
+		break;
+	case 0x4b:
+		kprintf("3rd-level cache: 8MByte, 16-way set associative, 64 byte line size\n");
+		break;
+	case 0x4c:
+		kprintf("3rd-level cache: 12MByte, 12-way set associative, 64 byte line size\n");
+		break;
+	case 0x4d:
+		kprintf("3rd-level cache: 16MByte, 16-way set associative, 64 byte line size\n");
+		break;
+	case 0x4e:
+		kprintf("2nd-level cache: 6MByte, 24-way set associative, 64 byte line size\n");
+		break;
+	case 0x4f:
+		kprintf("Instruction TLB: 4 KByte pages, 32 entries\n");
+		break;
+	case 0x50:
+		kprintf("Instruction TLB: 4 KB, 2 MB or 4 MB pages, fully associative, 64 entries\n");
+		break;
+	case 0x51:
+		kprintf("Instruction TLB: 4 KB, 2 MB or 4 MB pages, fully associative, 128 entries\n");
+		break;
+	case 0x52:
+		kprintf("Instruction TLB: 4 KB, 2 MB or 4 MB pages, fully associative, 256 entries\n");
+		break;
+	case 0x55:
+		kprintf("Instruction TLB: 2-MByte or 4-MByte pages, fully associative, 7 entries\n");
+		break;
+	case 0x56:
+		kprintf("Data TLB0: 4 MByte pages, 4-way set associative, 16 entries\n");
+		break;
+	case 0x57:
+		kprintf("Data TLB0: 4 KByte pages, 4-way associative, 16 entries\n");
+		break;
+	case 0x59:
+		kprintf("Data TLB0: 4 KByte pages, fully associative, 16 entries\n");
+		break;
+	case 0x5a:
+		kprintf("Data TLB0: 2-MByte or 4 MByte pages, 4-way set associative, 32 entries\n");
+		break;
+	case 0x5b:
+		kprintf("Data TLB: 4 KB or 4 MB pages, fully associative, 64 entries\n");
+		break;
+	case 0x5c:
+		kprintf("Data TLB: 4 KB or 4 MB pages, fully associative, 128 entries\n");
+		break;
+	case 0x5d:
+		kprintf("Data TLB: 4 KB or 4 MB pages, fully associative, 256 entries\n");
+		break;
+	case 0x60:
+		kprintf("1st-level data cache: 16 KB, 8-way set associative, sectored cache, 64 byte line size\n");
+		break;
+	case 0x61:
+		kprintf("Instruction TLB: 4 KByte pages, fully associative, 48 entries\n");
+		break;
+	case 0x63:
+		kprintf("Data TLB: 2 MByte or 4 MByte pages, 4-way set associative, 32 entries and a separate array with 1 GByte pages, 4-way set associative, 4 entries\n");
+		break;
+	case 0x64:
+		kprintf("Data TLB: 4 KBytes pages, 4-way set associative, 512 entries\n");
+		break;
+	case 0x66:
+		kprintf("1st-level data cache: 8 KB, 4-way set associative, sectored cache, 64 byte line size\n");
+		break;
+	case 0x67:
+		kprintf("1st-level data cache: 16 KB, 4-way set associative, sectored cache, 64 byte line size\n");
+		break;
+	case 0x68:
+		kprintf("1st-level data cache: 32 KB, 4 way set associative, sectored cache, 64 byte line size\n");
+		break;
+	case 0x6a:
+		kprintf("uTLB: 4KByte pages, 8-way set associative, 64 entries\n");
+		break;
+	case 0x6b:
+		kprintf("DTLB: 4KByte pages, 8-way set associative, 256 entries\n");
+		break;
+	case 0x6c:
+		kprintf("DTLB: 2M/4M pages, 8-way set associative, 128 entries\n");
+		break;
+	case 0x6d:
+		kprintf("DTLB: 1 GByte pages, fully associative, 16 entries\n");
+		break;
+	case 0x70:
+		kprintf("Trace cache: 12K-uops, 8-way set associative\n");
+		break;
+	case 0x71:
+		kprintf("Trace cache: 16K-uops, 8-way set associative\n");
+		break;
+	case 0x72:
+		kprintf("Trace cache: 32K-uops, 8-way set associative\n");
+		break;
+	case 0x76:
+		kprintf("Instruction TLB: 2M/4M pages, fully associative, 8 entries\n");
+		break;
+	case 0x78:
+		kprintf("2nd-level cache: 1 MB, 4-way set associative, 64-byte line size\n");
+		break;
+	case 0x79:
+		kprintf("2nd-level cache: 128 KB, 8-way set associative, sectored cache, 64 byte line size\n");
+		break;
+	case 0x7a:
+		kprintf("2nd-level cache: 256 KB, 8-way set associative, sectored cache, 64 byte line size\n");
+		break;
+	case 0x7b:
+		kprintf("2nd-level cache: 512 KB, 8-way set associative, sectored cache, 64 byte line size\n");
+		break;
+	case 0x7c:
+		kprintf("2nd-level cache: 1 MB, 8-way set associative, sectored cache, 64 byte line size\n");
+		break;
+	case 0x7d:
+		kprintf("2nd-level cache: 2-MB, 8-way set associative, 64-byte line size\n");
+		break;
+	case 0x7f:
+		kprintf("2nd-level cache: 512-KB, 2-way set associative, 64-byte line size\n");
+		break;
+	case 0x80:
+		kprintf("2nd-level cache: 512 KByte, 8-way set associative, 64-byte line size\n");
+		break;
+	case 0x82:
+		kprintf("2nd-level cache: 256 KB, 8-way set associative, 32 byte line size\n");
+		break;
+	case 0x83:
+		kprintf("2nd-level cache: 512 KB, 8-way set associative, 32 byte line size\n");
+		break;
+	case 0x84:
+		kprintf("2nd-level cache: 1 MB, 8-way set associative, 32 byte line size\n");
+		break;
+	case 0x85:
+		kprintf("2nd-level cache: 2 MB, 8-way set associative, 32 byte line size\n");
+		break;
+	case 0x86:
+		kprintf("2nd-level cache: 512 KB, 4-way set associative, 64 byte line size\n");
+		break;
+	case 0x87:
+		kprintf("2nd-level cache: 1 MB, 8-way set associative, 64 byte line size\n");
+		break;
+	case 0xa0:
+		kprintf("DTLB: 4k pages, fully associative, 32 entries\n");
+		break;
+	case 0xb0:
+		kprintf("Instruction TLB: 4 KB Pages, 4-way set associative, 128 entries\n");
+		break;
+	case 0xb1:
+		kprintf("Instruction TLB: 2M pages, 4-way, 8 entries or 4M pages, 4-way, 4 entries\n");
+		break;
+	case 0xb2:
+		kprintf("Instruction TLB: 4KByte pages, 4-way set associative, 64 entries\n");
+		break;
+	case 0xb3:
+		kprintf("Data TLB: 4 KB Pages, 4-way set associative, 128 entries\n");
+		break;
+	case 0xb4:
+		kprintf("Data TLB1: 4 KByte pages, 4-way associative, 256 entries\n");
+		break;
+	case 0xb5:
+		kprintf("Instruction TLB: 4KByte pages, 8-way set associative, 64 entries\n");
+		break;
+	case 0xb6:
+		kprintf("Instruction TLB: 4KByte pages, 8-way set associative, 128 entries\n");
+		break;
+	case 0xba:
+		kprintf("Data TLB1: 4 KByte pages, 4-way associative, 64 entries\n");
+		break;
+	case 0xc0:
+		kprintf("Data TLB: 4 KByte and 4 MByte pages, 4-way associative, 8 entries\n");
+		break;
+	case 0xc1:
+		kprintf("Shared 2nd-Level TLB: 4 KByte/2MByte pages, 8-way associative, 1024 entries\n");
+		break;
+	case 0xc2:
+		kprintf("DTLB: 4 KByte/2 MByte pages, 4-way associative, 16 entries\n");
+		break;
+	case 0xc3:
+		kprintf("Shared 2nd-Level TLB: 4 KByte /2 MByte pages, 6-way associative, 1536 entries. Also 1GBbyte pages, 4-way, 16 entries\n");
+		break;
+	case 0xc4:
+		kprintf("DTLB: 2M/4M Byte pages, 4-way associative, 32 entries\n");
+		break;
+	case 0xca:
+		kprintf("Shared 2nd-Level TLB: 4 KByte pages, 4-way associative, 512 entries\n");
+		break;
+	case 0xd0:
+		kprintf("3rd-level cache: 512 KByte, 4-way set associative, 64 byte line size\n");
+		break;
+	case 0xd1:
+		kprintf("3rd-level cache: 1 MByte, 4-way set associative, 64 byte line size\n");
+		break;
+	case 0xd2:
+		kprintf("3rd-level cache: 2 MByte, 4-way set associative, 64 byte line size\n");
+		break;
+	case 0xd6:
+		kprintf("3rd-level cache: 1 MByte, 8-way set associative, 64 byte line size\n");
+		break;
+	case 0xd7:
+		kprintf("3rd-level cache: 2 MByte, 8-way set associative, 64 byte line size\n");
+		break;
+	case 0xd8:
+		kprintf("3rd-level cache: 4 MByte, 8-way set associative, 64 byte line size\n");
+		break;
+	case 0xdc:
+		kprintf("3rd-level cache: 1.5 MByte, 12-way set associative, 64 byte line size\n");
+		break;
+	case 0xdd:
+		kprintf("3rd-level cache: 3 MByte, 12-way set associative, 64 byte line size\n");
+		break;
+	case 0xde:
+		kprintf("3rd-level cache: 6 MByte, 12-way set associative, 64 byte line size\n");
+		break;
+	case 0xe2:
+		kprintf("3rd-level cache: 2 MByte, 16-way set associative, 64 byte line size\n");
+		break;
+	case 0xe3:
+		kprintf("3rd-level cache: 4 MByte, 16-way set associative, 64 byte line size\n");
+		break;
+	case 0xe4:
+		kprintf("3rd-level cache: 8 MByte, 16-way set associative, 64 byte line size\n");
+		break;
+	case 0xea:
+		kprintf("3rd-level cache: 12MByte, 24-way set associative, 64 byte line size\n");
+		break;
+	case 0xeb:
+		kprintf("3rd-level cache: 18MByte, 24-way set associative, 64 byte line size\n");
+		break;
+	case 0xec:
+		kprintf("3rd-level cache: 24MByte, 24-way set associative, 64 byte line size\n");
+		break;
+	case 0xf0:
+		kprintf("64-Byte prefetching\n");
+		break;
+	case 0xf1:
+		kprintf("128-Byte prefetching\n");
+		break;
+	}
+}
+
+static void
+print_INTEL_info(void)
+{
+	u_int regs[4];
+	u_int rounds, regnum;
+	u_int nwaycode, nway;
+
+	if (cpu_high >= 2) {
+		rounds = 0;
+		do {
+			do_cpuid(0x2, regs);
+			if (rounds == 0 && (rounds = (regs[0] & 0xff)) == 0)
+				break;	/* we have a buggy CPU */
+
+			for (regnum = 0; regnum <= 3; ++regnum) {
+				if (regs[regnum] & (1<<31))
+					continue;
+				if (regnum != 0)
+					print_INTEL_TLB(regs[regnum] & 0xff);
+				print_INTEL_TLB((regs[regnum] >> 8) & 0xff);
+				print_INTEL_TLB((regs[regnum] >> 16) & 0xff);
+				print_INTEL_TLB((regs[regnum] >> 24) & 0xff);
+			}
+		} while (--rounds > 0);
+	}
+
+	if (cpu_exthigh >= 0x80000006) {
+		do_cpuid(0x80000006, regs);
+		nwaycode = (regs[2] >> 12) & 0x0f;
+		if (nwaycode >= 0x02 && nwaycode <= 0x08)
+			nway = 1 << (nwaycode / 2);
+		else
+			nway = 0;
+		kprintf("L2 cache: %u kbytes, %u-way associative, "
+			"%u bytes/line\n",
+			(regs[2] >> 16) & 0xffff, nway, regs[2] & 0xff);
 	}
 }
 
