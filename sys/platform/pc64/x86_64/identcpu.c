@@ -66,7 +66,6 @@ void panicifcpuunsupported(void);
 
 static u_int find_cpu_vendor_id(void);
 static void print_AMD_info(void);
-static void print_AMD_assoc(int i);
 static void print_via_padlock_info(void);
 static void print_xsave_info(void);
 
@@ -102,7 +101,7 @@ static struct {
 	{ CENTAUR_VENDOR_ID,	CPU_VENDOR_CENTAUR },	/* CentaurHauls */
 };
 
-#ifdef foo
+#if 0
 static int cpu_cores;
 static int cpu_logical;
 #endif
@@ -363,7 +362,7 @@ printcpuinfo(void)
 				"\017<b14>"
 				"\020LWP"	/* Lightweight Profiling */
 				"\021FMA4"	/* 4-operand FMA instructions */
-				"\022TCE"       /* Translation Cache Extension */
+				"\022TCE"	/* Translation Cache Extension */
 				"\023<b18>"
 				"\024NodeId"	/* NodeId MSR support */
 				"\025<b20>"
@@ -375,7 +374,7 @@ printcpuinfo(void)
 				"\033DBE"	/* Data Breakpoint Extension */
 				"\034PTSC"	/* Performance TSC */
 				"\035PCX_L2I"	/* L2I Performance Counter */
-		       	        "\036MWAITX"	/* MONITORX/MWAITX instructions */
+				"\036MWAITX"	/* MONITORX/MWAITX instructions */
 				"\037ADMSKX"	/* Address Mask Extension */
 				"\040<b31>"
 				, amd_feature2);
@@ -574,12 +573,11 @@ printcpuinfo(void)
 					cmp = ((regs[0] >> 26) & 0x3f) + 1;
 			}
 #endif
-#ifdef foo
+#if 0
 			/*
 			 * XXX For Intel CPUs, this is max number of cores per
 			 * package, not the actual cores per package.
 			 */
-#if 0
 			cpu_cores = cmp;
 			cpu_logical = htt / cmp;
 
@@ -589,7 +587,6 @@ printcpuinfo(void)
 				kprintf("\n  Logical CPUs per core: %d",
 				    cpu_logical);
 			}
-#endif
 #endif
 		}
 	}
@@ -911,4 +908,3 @@ print_xsave_info(void)
 		"\004XSAVES"
 		, regs[0]);
 }
-
