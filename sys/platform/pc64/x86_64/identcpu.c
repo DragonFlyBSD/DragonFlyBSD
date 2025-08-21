@@ -607,6 +607,18 @@ printcpuinfo(void)
 		if (cpu_vendor_id == CPU_VENDOR_AMD)
 			print_AMD_info();
 	}
+
+	if (cpu_feature2 & CPUID2_VMM) {
+		/*
+		 * The vmm_vendor may be empty.  For example, VirtualBox
+		 * doesn't advertise the vendor name when using the
+		 * "Minimal" paravirtualization interface.
+		 */
+		if (*vmm_vendor != '\0')
+			kprintf("VMM/Hypervisor: Origin=\"%s\"\n", vmm_vendor);
+		else
+			kprintf("VMM/Hypervisor: Origin=(unknown)\n");
+	}
 }
 
 void
