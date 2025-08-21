@@ -382,163 +382,117 @@ printcpuinfo(void)
 			}
 
 			if (cpu_stdext_feature != 0) {
-				kprintf("\n  Structured Extended "
-					"Features=0x%pb%i",
-				        "\020"
-				        /* RDFSBASE/RDGSBASE/WRFSBASE/WRGSBASE */
-				        "\001GSFSBASE"
-				        /* IA32_TSC_ADJUST MSR */
-				        "\002TSCADJ"
-				        /* Bit Manipulation Instructions */
-				        "\004BMI1"
-				        /* Hardware Lock Elision */
-				        "\005HLE"
-				        /* Advanced Vector Instructions 2 */
-				        "\006AVX2"
-				        /* FDP_EXCPTN_ONLY */
-				        "\007FDPEXC"
-				        /* Supervisor Mode Execution Prot. */
-				        "\010SMEP"
-				        /* Bit Manipulation Instructions 2 */
-				        "\011BMI2"
-				        /* Enhanced REP MOVSB/STOSB */
-				        "\012ENHMOVSB"
-				        /* Invalidate Processor Context ID */
-				        "\013INVPCID"
-				        /* Restricted Transactional Memory */
-				        "\014RTM"
-				        /* Platform QoS Monitoring */
-				        "\015PQM"
-				        /* Deprecate FPU CS/DS values */
-				        "\016NFPUSG"
-				        /* Intel Memory Protection Extensions */
-				        "\017MPX"
-				        /* Platform QoS Enforcement */
-				        "\020PQE"
-				        /* AVX512 Foundation */
-				        "\021AVX512F"
-				        /* AVX512 Double/Quadword */
-				        "\022AVX512DQ"
-				        /* Enhanced NRBG */
-				        "\023RDSEED"
-				        /* ADCX + ADOX */
-				        "\024ADX"
-				        /* Supervisor Mode Access Prevention */
-				        "\025SMAP"
-				        /* AVX512 Integer Fused Multiply Add */
-				        "\026AVX512IFMA"
-				        /* Formerly PCOMMIT */
-				        "\027<b22>"
-				        /* Cache Line FLUSH OPTimized */
-				        "\030CLFLUSHOPT"
-				        /* Cache Line Write Back */
-				        "\031CLWB"
-				        /* Processor Trace */
-				        "\032PROCTRACE"
-				        /* AVX512 Prefetch */
-				        "\033AVX512PF"
-				        /* AVX512 Exponential and Reciprocal */
-				        "\034AVX512ER"
-				        /* AVX512 Conflict Detection */
-				        "\035AVX512CD"
-				        /* SHA Extension */
-				        "\036SHA"
-				        /* AVX512 Byte and Word */
-				        "\037AVX512BW"
-				        /* AVX512 Vector Length */
-				        "\040AVX512VL",
-				        cpu_stdext_feature
-				);
+				kprintf("\n  Structured Extended Features=0x%pb%i",
+				"\020"
+				"\001GSFSBASE"	/* RDFSBASE/RDGSBASE/WRFSBASE/WRGSBASE */
+				"\002TSCADJ"	/* IA32_TSC_ADJUST MSR */
+				"\004BMI1"	/* Bit Manipulation Instructions */
+				"\005HLE"	/* Hardware Lock Elision */
+				"\006AVX2"	/* Advanced Vector Instructions 2 */
+				"\007FDPEXC"	/* FDP_EXCPTN_ONLY */
+				"\010SMEP"	/* Supervisor Mode Execution Prot. */
+				"\011BMI2"	/* Bit Manipulation Instructions 2 */
+				"\012ENHMOVSB"	/* Enhanced REP MOVSB/STOSB */
+				"\013INVPCID"	/* Invalidate Processor Context ID */
+				"\014RTM"	/* Restricted Transactional Memory */
+				"\015PQM"	/* Platform QoS Monitoring */
+				"\016NFPUSG"	/* Deprecate FPU CS/DS values */
+				"\017MPX"	/* Intel Memory Protection Extensions */
+				"\020PQE"	/* Platform QoS Enforcement */
+				"\021AVX512F"	/* AVX512 Foundation */
+				"\022AVX512DQ"	/* AVX512 Double/Quadword */
+				"\023RDSEED"	/* Enhanced NRBG */
+				"\024ADX"	/* ADCX + ADOX */
+				"\025SMAP"	/* Supervisor Mode Access Prevention */
+				"\026AVX512IFMA" /* AVX512 Integer Fused Multiply Add */
+				"\027<b22>"	/* Formerly PCOMMIT */
+				"\030CLFLUSHOPT" /* Cache Line FLUSH OPTimized */
+				"\031CLWB"	/* Cache Line Write Back */
+				"\032PROCTRACE"	/* Processor Trace */
+				"\033AVX512PF"	/* AVX512 Prefetch */
+				"\034AVX512ER"	/* AVX512 Exponential and Reciprocal */
+				"\035AVX512CD"	/* AVX512 Conflict Detection */
+				"\036SHA"	/* SHA Extension */
+				"\037AVX512BW"	/* AVX512 Byte and Word */
+				"\040AVX512VL"	/* AVX512 Vector Length */
+				, cpu_stdext_feature);
 			}
 
 			if (cpu_stdext_feature2 != 0) {
-				kprintf("\n  Structured Extended "
-					"Features2=0x%pb%i",
-				        "\020"
-				        "\001PREFETCHWT1"
-				        "\002AVX512VBMI"
-				        "\003UMIP"
-				        "\004PKU"
-				        "\005OSPKE"
-				        "\006WAITPKG"
-				        "\007AVX512VBMI2"
-				        "\010CET_SS"
-				        "\011GFNI"
-				        "\012VAES"
-				        "\013VPCLMULQDQ"
-				        "\014AVX512VNNI"
-				        "\015AVX512BITALG"
-				        "\016TME"
-				        "\017AVX512VPOPCNTDQ"
-				        "\021LA57"
-				        "\027RDPID"
-				        "\030KL"
-				        "\031BUS_LOCK_DETECT"
-				        "\032CLDEMOTE"
-				        "\034MOVDIRI"
-				        "\035MOVDIR64B"
-				        "\036ENQCMD"
-				        "\037SGXLC"
-				        "\040PKS",
-				        cpu_stdext_feature2
-			       );
+				kprintf("\n  Structured Extended Features2=0x%pb%i",
+				"\020"
+				"\001PREFETCHWT1"	/* PREFETCHWT1 instruction */
+				"\002AVX512VBMI"	/* AVX-512 Vector Byte Manipulation */
+				"\003UMIP"		/* User-Mode Instruction prevention */
+				"\004PKU"		/* Protection Keys for User-mode pages */
+				"\005OSPKE"		/* PKU enabled by OS */
+				"\006WAITPKG"		/* Timed pause and user-level monitor/wait */
+				"\007AVX512VBMI2"	/* AVX-512 Vector Byte Manipulation 2 */
+				"\010CET_SS"		/* CET Shadow Stack */
+				"\011GFNI"		/* Galois Field instructions */
+				"\012VAES"		/* Vector AES instruction set */
+				"\013VPCLMULQDQ"	/* CLMUL instruction set */
+				"\014AVX512VNNI"	/* Vector Neural Network instructions */
+				"\015AVX512BITALG"	/* BITALG instructions */
+				"\016TME"		/* Total Memory Encryption */
+				"\017AVX512VPOPCNTDQ"	/* Vector Population Count Double/Quadword */
+				"\021LA57"		/* 57-bit linear addr & 5-level paging */
+				"\027RDPID"		/* RDPID and IA32_TSC_AUX */
+				"\030KL"		/* Key Locker */
+				"\031BUS_LOCK_DETECT"	/* Bus-Lock Detection */
+				"\032CLDEMOTE"		/* Cache line demote */
+				"\034MOVDIRI"		/* MOVDIRI instruction */
+				"\035MOVDIR64B"		/* MOVDIR64B instruction */
+				"\036ENQCMD"		/* Enqueue Stores */
+				"\037SGXLC"		/* SGX Launch Configuration */
+				"\040PKS"		/* Protection Keys for kern-mode pages */
+				, cpu_stdext_feature2);
 			}
 
 			if (cpu_stdext_feature3 != 0) {
-				kprintf("\n  Structured Extended "
-					"Features3=0x%pb%i",
-				        "\020"
-				        "\003AVX512_4VNNIW"
-				        "\004AVX512_4FMAPS"
-				        "\005FSRM"
-				        "\006UINTR"
-				        "\011AVX512VP2INTERSECT"
-				        "\012MCUOPT"
-				        "\013MD_CLEAR"
-				        "\016TSXFA"
-				        "\017SERIALIZE"
-				        "\020HYBRID"
-				        "\021TSXLDTRK"
-				        "\023PCONFIG"
-				        "\025IBT"
-				        "\033IBPB"
-				        "\034STIBP"
-				        "\035L1DFL"
-				        "\036ARCH_CAP"
-				        "\037CORE_CAP"
-				        "\040SSBD",
-				        cpu_stdext_feature3
-			       );
+				kprintf("\n  Structured Extended Features3=0x%pb%i",
+				"\020"
+				"\003AVX512_4VNNIW"	/* AVX512 4-reg Neural Network instructions */
+				"\004AVX512_4FMAPS"	/* AVX512 4-reg Multiply Accumulation Single precision */
+				"\005FSRM"		/* Fast Short REP MOVE */
+				"\006UINTR"		/* User Interrupts */
+				"\011AVX512VP2INTERSECT" /* AVX512 VP2INTERSECT */
+				"\012MCUOPT"		/* IA32_MCU_OPT_CTRL */
+				"\013MD_CLEAR"		/* VERW clears CPU buffers */
+				"\016TSXFA"		/* MSR_TSX_FORCE_ABORT bit 0 */
+				"\017SERIALIZE"		/* SERIALIZE instruction */
+				"\020HYBRID"		/* Hybrid part */
+				"\021TSXLDTRK"		/* TSX suspend load addr tracking */
+				"\023PCONFIG"		/* Platform configuration */
+				"\025IBT"		/* CET Indirect Branch Tracking */
+				"\033IBPB"		/* IBRS / IBPB Speculation Control */
+				"\034STIBP"		/* STIBP Speculation Control */
+				"\035L1DFL"		/* IA32_FLUSH_CMD MSR */
+				"\036ARCH_CAP"		/* IA32_ARCH_CAPABILITIES */
+				"\037CORE_CAP"		/* IA32_CORE_CAPABILITIES */
+				"\040SSBD"		/* Speculative Store Bypass Disable */
+				, cpu_stdext_feature3);
 			}
 
 			if (cpu_thermal_feature != 0) {
 				kprintf("\n  Thermal and PM Features=0x%pb%i",
-				    "\020"
-				    /* Digital temperature sensor */
-				    "\001SENSOR"
-				    /* Turbo boost */
-				    "\002TURBO"
-				    /* APIC-Timer-always-running */
-				    "\003ARAT"
-				    /* Power limit notification controls */
-				    "\005PLN"
-				    /* Clock modulation duty cycle extension */
-				    "\006ECMD"
-				    /* Package thermal management */
-				    "\007PTM"
-				    /* Hardware P-states */
-				    "\010HWP"
-				    , cpu_thermal_feature);
+				"\020"
+				"\001SENSOR"	/* Digital temperature sensor */
+				"\002TURBO"	/* Turbo boost */
+				"\003ARAT"	/* APIC-Timer-always-running */
+				"\005PLN"	/* Power limit notification controls */
+				"\006ECMD"	/* Clock modulation duty cycle extension */
+				"\007PTM"	/* Package thermal management */
+				"\010HWP"	/* Hardware P-states */
+				, cpu_thermal_feature);
 			}
 
 			if (cpu_mwait_feature != 0) {
 				kprintf("\n  MONITOR/MWAIT Features=0x%pb%i",
-				    "\020"
-				    /* Enumeration of Monitor-Mwait extension */
-				    "\001CST"
-				    /*  interrupts as break-event for MWAIT */
-				    "\002INTBRK"
-				    , cpu_mwait_feature);
+				"\020"
+				"\001CST"	/* Enumeration of Monitor-Mwait extension */
+				"\002INTBRK"	/* Interrupts as break-event for MWAIT */
+				, cpu_mwait_feature);
 			}
 
 			if (cpu_vendor_id == CPU_VENDOR_CENTAUR)
