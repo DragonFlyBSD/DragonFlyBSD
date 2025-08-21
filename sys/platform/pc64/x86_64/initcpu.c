@@ -1,21 +1,21 @@
 /*-
  * Copyright (c) KATO Takenori, 1997, 1998.
  * Copyright (c) 2008 The DragonFly Project.
- * 
+ *
  * All rights reserved.  Unpublished rights reserved under the copyright
  * laws of Japan.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer as
  *    the first lines of this file unmodified.
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -155,11 +155,26 @@ init_via(void)
 	}
 }
 
+static struct {
+	const char		*vendor;
+	enum vmm_guest_type	guest;
+} vmm_vendors[] = {
+	{ "___ NVMM ___",	VMM_GUEST_NVMM },	/* NVMM */
+	{ "bhyve bhyve ",	VMM_GUEST_BHYVE },	/* bhyve */
+	{ "BHyVe BHyVe ",	VMM_GUEST_BHYVE },	/* bhyve */
+	{ "KVMKVMKVM",		VMM_GUEST_KVM },	/* KVM */
+	{ "Microsoft Hv",	VMM_GUEST_HYPERV },	/* Microsoft Hyper-V */
+	{ "VBoxVBoxVBox",	VMM_GUEST_VBOX },	/* VirtualBox */
+	{ "VMwareVMware",	VMM_GUEST_VMWARE },	/* VMware VM */
+	{ "XenVMMXenVMM",	VMM_GUEST_XEN },	/* XEN */
+};
+
 static enum vmm_guest_type
 detect_vmm(void)
 {
 	enum vmm_guest_type guest;
 	char vendor[16];
+	int i;
 
 	/*
 	 * [RFC] CPUID usage for interaction between Hypervisors and Linux.
@@ -179,14 +194,11 @@ detect_vmm(void)
 		vendor[12] = '\0';
 		if (regs[0] >= 0x40000000) {
 			memcpy(vmm_vendor, vendor, 13);
-			if (strcmp(vmm_vendor, "VMwareVMware") == 0)
-				return VMM_GUEST_VMWARE;
-			else if (strcmp(vmm_vendor, "Microsoft Hv") == 0)
-				return VMM_GUEST_HYPERV;
-			else if (strcmp(vmm_vendor, "KVMKVMKVM") == 0)
-				return VMM_GUEST_KVM;
-			else if (strcmp(vmm_vendor, "___ NVMM ___") == 0)
-				return VMM_GUEST_NVMM;
+			for (i = 0; i < NELEM(vmm_vendors); i++) {
+				if (strcmp(vmm_vendor, vmm_vendors[i].vendor)
+				    == 0)
+					return vmm_vendors[i].guest;
+			}
 		} else if (regs[0] == 0) {
 			/* Also detect old KVM versions with regs[0] == 0 */
 			if (strcmp(vendor, "KVMKVMKVM") == 0) {
