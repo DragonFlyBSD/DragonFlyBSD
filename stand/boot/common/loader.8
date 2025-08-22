@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
 .\"
-.Dd May 20, 2019
+.Dd August 22, 2025
 .Dt LOADER 8
 .Os
 .Sh NAME
@@ -653,6 +653,11 @@ are also accepted and indicate kilobytes, megabytes and gigabytes
 respectively.
 An invalid suffix will result in the variable being ignored by the
 kernel.
+.It Va hw.tsc_cputimer_force
+If set to 1 and a TSC is present, the system will force invariant
+and MP synchronization operation for the TSC and always use the TSC
+as the CPU timer.
+This is primarily useful for running as a guest in QEMU.
 .It Va hw.usb.hack_defer_exploration
 The USB keyboard will sometimes not attach properly unless you set this
 variable to 0.
