@@ -57,9 +57,7 @@ static int slice;
 static void
 usage_migrate(void)
 {
-
-	fprintf(stderr,
-	    "usage: %s [-fs] device ...\n", getprogname());
+	fprintf(stderr, "usage: %s [-fs] device ...\n", getprogname());
 	exit(1);
 }
 

@@ -223,8 +223,7 @@ create(int fd)
 	}
 }
 
-static
-void
+static void
 dosys(const char *ctl, ...)
 {
 	va_list va;
@@ -293,21 +292,21 @@ cmd_init(int argc, char *argv[])
 
 	while ((ch = getopt(argc, argv, "fBEI")) != -1) {
 		switch(ch) {
-		case 'f':
-			force = 1;
-			break;
-		case 'I':
-			fprintf(stderr, "Maybe you were trying to supply "
-					"fdisk options.  This is the gpt "
-					"program\n");
-			usage_init();
-			/* NOT REACHED */
+		case 'B':
+			with_boot = 1;
 			break;
 		case 'E':
 			with_trim = 1;
 			break;
-		case 'B':
-			with_boot = 1;
+		case 'f':
+			force = 1;
+			break;
+		case 'I':
+			fprintf(stderr,
+				"Maybe you were trying to supply fdisk "
+				"options.  This is the gpt program\n");
+			usage_init();
+			/* NOT REACHED */
 			break;
 		default:
 			usage_init();

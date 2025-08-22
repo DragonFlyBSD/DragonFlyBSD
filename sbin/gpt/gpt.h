@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/gpt.h,v 1.11 2006/06/22 22:05:28 marcel Exp $
- * $DragonFly: src/sbin/gpt/gpt.h,v 1.2 2008/07/30 00:45:26 dillon Exp $
  */
 
 #ifndef _GPT_H_
@@ -34,8 +33,6 @@
 #include <sys/gpt.h>
 
 #include <uuid.h>
-
-int	parse_uuid(const char *, uuid_t *);
 
 struct mbr_part {
 	uint8_t		part_flag;		/* bootstrap flags */
@@ -70,6 +67,7 @@ void	gpt_close(int);
 int	gpt_open(const char *);
 void*	gpt_read(int, off_t, size_t);
 int	gpt_write(int, map_t *);
+int	parse_uuid(const char *, uuid_t *);
 
 uint8_t *utf16_to_utf8(uint16_t *);
 void	utf8_to_utf16(const uint8_t *, uint16_t *, size_t);

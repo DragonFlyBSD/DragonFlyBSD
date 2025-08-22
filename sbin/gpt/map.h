@@ -31,11 +31,11 @@
 #define	_MAP_H_
 
 typedef struct map {
-	off_t	map_start;
-	off_t	map_size;
-	struct map *map_next;
-	struct map *map_prev;
-	int	map_type;
+	off_t		map_start;
+	off_t		map_size;
+	struct map	*map_next;
+	struct map	*map_prev;
+	int		map_type;
 #define	MAP_TYPE_UNUSED		0
 #define	MAP_TYPE_MBR		1
 #define	MAP_TYPE_MBR_PART	2
@@ -45,22 +45,20 @@ typedef struct map {
 #define	MAP_TYPE_SEC_GPT_TBL	6
 #define	MAP_TYPE_GPT_PART	7
 #define	MAP_TYPE_PMBR		8
-	unsigned int map_index;
-#define NOENTRY		((unsigned int)-1)
-	void 	*map_data;
+	unsigned int	map_index;
+#define	NOENTRY		((unsigned int)-1)
+	void		*map_data;
 } map_t;
 
 extern int lbawidth;
 
 map_t *mkmap(off_t start, off_t size, int type);
-map_t *map_add(off_t, off_t, int, void*);
+map_t *map_add(off_t, off_t, int, void *);
 map_t *map_alloc(off_t, off_t);
 map_t *map_find(int);
 map_t *map_first(void);
 map_t *map_last(void);
-
 off_t map_free(off_t, off_t);
-
 void map_init(off_t);
 
 #endif /* _MAP_H_ */

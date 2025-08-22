@@ -48,16 +48,15 @@ static bool show_uuid = false;
 static void
 usage_show(void)
 {
-	fprintf(stderr,
-	    "usage: %s [-glu] device ...\n", getprogname());
+	fprintf(stderr, "usage: %s [-glu] device ...\n", getprogname());
 	exit(1);
 }
 
 static const char *
 friendly(uuid_t *t)
 {
-	static char *save_name1 /*= NULL*/;
-	static char *save_name2 /*= NULL*/;
+	static char *save_name1 = NULL;
+	static char *save_name2 = NULL;
 
 	if (show_uuid)
 		goto unfriendly;

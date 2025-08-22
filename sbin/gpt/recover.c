@@ -44,9 +44,7 @@ static int recoverable;
 static void
 usage_recover(void)
 {
-
-	fprintf(stderr,
-	    "usage: %s device ...\n", getprogname());
+	fprintf(stderr, "usage: %s device ...\n", getprogname());
 	exit(1);
 }
 

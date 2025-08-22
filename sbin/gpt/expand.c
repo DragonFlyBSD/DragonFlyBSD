@@ -58,16 +58,16 @@ cmd_expand(int argc, char *argv[])
 
 		gpt_close(fd);
 	}
+
 	return 0;
 }
 
 static void
-expand(int fd __unused)
+expand(int fd)
 {
 	map_t *pmbr;
 	map_t *gpt, *gpt2;
 	map_t *tbl, *tbl2;
-	map_t *map __unused;
 	struct mbr *mbr;
 	off_t last;
 	off_t blocks;

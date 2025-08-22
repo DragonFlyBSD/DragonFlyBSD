@@ -47,12 +47,9 @@
 #include "gpt.h"
 
 char	*device_name;
-
 off_t	mediasz;
-
 u_int	parts;
 u_int	secsz;
-
 int	readonly, verbose;
 
 static uint32_t crc32_tab[] = {
@@ -412,6 +409,7 @@ gpt_mbr(int fd, off_t lba)
 				return (-1);
 			m->map_index = i;
 		} else {
+			/* Extended boot record (LBA) */
 			if (gpt_mbr(fd, start) == -1)
 				return (-1);
 		}
@@ -468,13 +466,13 @@ gpt_gpt(int fd, off_t lba)
 		warnx("%s: %s GPT at sector %llu", device_name,
 		    (lba == 1) ? "Pri" : "Sec", (long long)lba);
 
-	m = map_add(lba, 1, (lba == 1)
-	    ? MAP_TYPE_PRI_GPT_HDR : MAP_TYPE_SEC_GPT_HDR, hdr);
+	m = map_add(lba, 1,
+	    (lba == 1) ? MAP_TYPE_PRI_GPT_HDR : MAP_TYPE_SEC_GPT_HDR, hdr);
 	if (m == NULL)
 		return (-1);
 
-	m = map_add(le64toh(hdr->hdr_lba_table), blocks, (lba == 1)
-	    ? MAP_TYPE_PRI_GPT_TBL : MAP_TYPE_SEC_GPT_TBL, p);
+	m = map_add(le64toh(hdr->hdr_lba_table), blocks,
+	    (lba == 1) ? MAP_TYPE_PRI_GPT_TBL : MAP_TYPE_SEC_GPT_TBL, p);
 	if (m == NULL)
 		return (-1);
 
@@ -491,8 +489,9 @@ gpt_gpt(int fd, off_t lba)
 		if (verbose > 2) {
 			uuid_dec_le(&ent->ent_type, &type);
 			uuid_to_string(&type, &s, NULL);
-			warnx(
-	"%s: GPT partition: type=%s, start=%llu, size=%llu", device_name, s,
+			warnx("%s: GPT partition: type=%s, start=%llu, "
+			    "size=%llu",
+			    device_name, s,
 			    (long long)le64toh(ent->ent_lba_start),
 			    (long long)size);
 			free(s);
@@ -599,21 +598,21 @@ static struct {
 	int (*fptr)(int, char *[]);
 	const char *name;
 } cmdsw[] = {
-	{ cmd_add, "add" },
-	{ cmd_boot, "boot" },
-	{ cmd_create, "create" },
-	{ cmd_destroy, "destroy" },
-	{ cmd_expand, "expand" },
-	{ NULL, "help" },
-	{ cmd_init, "init" },
-	{ cmd_label, "label" },
-	{ cmd_migrate, "migrate" },
-	{ cmd_recover, "recover" },
-	{ cmd_remove, "remove" },
-	{ NULL, "rename" },
-	{ cmd_show, "show" },
-	{ NULL, "verify" },
-	{ NULL, NULL }
+	{ cmd_add,	"add" },
+	{ cmd_boot,	"boot" },
+	{ cmd_create,	"create" },
+	{ cmd_destroy,	"destroy" },
+	{ cmd_expand,	"expand" },
+	{ NULL,		"help" },
+	{ cmd_init,	"init" },
+	{ cmd_label,	"label" },
+	{ cmd_migrate,	"migrate" },
+	{ cmd_recover,	"recover" },
+	{ cmd_remove,	"remove" },
+	{ NULL,		"rename" },
+	{ cmd_show,	"show" },
+	{ NULL,		"verify" },
+	{ NULL,		NULL },
 };
 
 static void
@@ -670,15 +669,15 @@ main(int argc, char *argv[])
 			usage();
 		}
 	}
-	if (!parts)
+	if (parts == 0)
 		parts = 128;
 
 	if (argc == optind)
 		usage();
 
 	cmd = argv[optind++];
-	for (i = 0; cmdsw[i].name != NULL && strcmp(cmd, cmdsw[i].name); i++);
-
+	for (i = 0; cmdsw[i].name != NULL && strcmp(cmd, cmdsw[i].name); i++)
+		;
 	if (cmdsw[i].fptr == NULL)
 		errx(1, "unknown command: %s", cmd);
 

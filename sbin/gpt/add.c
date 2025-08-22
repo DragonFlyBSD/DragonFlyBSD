@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/add.c,v 1.15 2006/10/04 18:20:25 marcel Exp $
- * $DragonFly: src/sbin/gpt/add.c,v 1.6 2008/07/17 01:15:59 dillon Exp $
  */
 
 #include <sys/types.h>

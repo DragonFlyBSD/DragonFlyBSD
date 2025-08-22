@@ -33,9 +33,9 @@
 
 #include "map.h"
 
-#define ROUNDTO 2048	// must be a power of two
-#define ROUNDDOWN(x) rounddown2(x - 1, ROUNDTO)
-#define ROUNDUP(x) (ROUNDDOWN(x) + ROUNDTO)
+#define ROUNDTO 2048	/* must be a power of two */
+#define ROUNDDOWN(x)	rounddown2(x - 1, ROUNDTO)
+#define ROUNDUP(x)	(ROUNDDOWN(x) + ROUNDTO)
 
 int lbawidth;
 
@@ -151,7 +151,8 @@ map_alloc(off_t start, off_t size)
 			continue;
 		if (start != 0 && m->map_start > start)
 			return (NULL);
-		delta = (start != 0) ? start - m->map_start : ROUNDUP(m->map_start) - m->map_start;
+		delta = (start != 0) ? start - m->map_start :
+			ROUNDUP(m->map_start) - m->map_start;
 		if (size == 0 || m->map_size - delta >= size) {
 			if (m->map_size - delta <= 0)
 				continue;
