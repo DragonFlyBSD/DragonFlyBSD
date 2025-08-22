@@ -132,10 +132,6 @@
 
 extern u_int64_t hammer_time(u_int64_t, u_int64_t);
 
-extern void printcpuinfo(void);	/* XXX header file */
-extern void identify_cpu(void);
-extern void panicifcpuunsupported(void);
-
 static void cpu_startup(void *);
 static void pic_finish(void *);
 static void cpu_finish(void *);

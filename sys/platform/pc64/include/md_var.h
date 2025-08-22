@@ -84,6 +84,10 @@ struct  dbreg;
 struct __mcontext;
 struct dumperinfo;
 
+void	printcpuinfo(void);
+void	identify_cpu(void);
+void	panicifcpuunsupported(void);
+
 void	busdma_swi(void);
 void	cpu_gdinit (struct mdglobaldata *gd, int cpu);
 void	cpu_idle_restore (void);	/* cannot be called from C */

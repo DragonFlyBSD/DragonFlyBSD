@@ -58,12 +58,6 @@
 #include <machine/md_var.h>
 #include <machine/npx.h>
 
-/* XXX - should be in header file: */
-void printcpuinfo(void);
-void identify_cpu(void);
-void earlysetcpuclass(void);
-void panicifcpuunsupported(void);
-
 static u_int find_cpu_vendor_id(void);
 static void print_AMD_info(void);
 static void print_INTEL_info(void);
