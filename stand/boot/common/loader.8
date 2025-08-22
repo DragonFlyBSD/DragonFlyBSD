@@ -796,7 +796,8 @@ The default is 8192 which works with most servers.
 suggested values are 8192, 16384, or 32768.
 .It Va nfsroot.rahead
 Override the default read-ahead used by netbooted root mounts.
-The default is 4 which is reasonable.  Suggested values are 1 through 8.
+The default is 4 which is reasonable.
+Suggested values are 1 through 8.
 .El
 .Sh FILES
 .Bl -tag -width /boot/defaults/dloader.menu -compact
@@ -806,12 +807,15 @@ bootstrapping script.
 Deprecated
 .It Pa /boot/defaults/dloader.menu
 .Nm
-menu setup commands -- do not change this file
+menu setup commands.
+.Sy Note:
+do not change this file.
 .It Pa /boot/defaults/loader.conf
 .Nm
 configuration file, see
-.Xr loader.conf 5
--- do not change this file
+.Xr loader.conf 5 .
+.Sy Note:
+do not change this file.
 .It Pa /boot/dloader.menu
 .Nm
 menu setup commands
