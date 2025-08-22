@@ -184,6 +184,15 @@ vmx_sti(void)
 	__asm volatile ("sti" ::: "memory");
 }
 
+/*
+ * XXX: workaround the conflict with <machine/specialreg.h>
+ * TODO: be self-contained and get rid of <machine/specialreg.h>
+ */
+#undef MSR_IA32_FEATURE_CONTROL
+#undef IA32_FEATURE_CONTROL_LOCK
+#undef IA32_FEATURE_CONTROL_IN_SMX
+#undef IA32_FEATURE_CONTROL_OUT_SMX
+
 #define MSR_IA32_FEATURE_CONTROL	0x003A
 #define		IA32_FEATURE_CONTROL_LOCK	__BIT(0)
 #define		IA32_FEATURE_CONTROL_IN_SMX	__BIT(1)
