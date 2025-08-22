@@ -230,7 +230,7 @@ clkintr(void *dummy, void *frame_arg)
 	    if (TAILQ_FIRST(&gscan->gd_systimerq) == NULL)
 		continue;
 	    if (gscan != gd) {
-		lwkt_send_ipiq3(gscan, (ipifunc3_t)systimer_intr, 
+		lwkt_send_ipiq3(gscan, (ipifunc3_t)systimer_intr,
 				&sysclock_count, 1);
 	    } else {
 		systimer_intr(&sysclock_count, 0, frame_arg);
@@ -308,7 +308,7 @@ i8254_cputimer_count(void)
 
 /*
  * This function is called whenever the system timebase changes, allowing
- * us to calculate what is needed to convert a system timebase tick 
+ * us to calculate what is needed to convert a system timebase tick
  * into an 8254 tick for the interrupt timer.  If we can convert to a
  * simple shift, multiplication, or division, we do so.  Otherwise 64
  * bit arithmatic is required every time the interrupt timer is reloaded.
@@ -598,7 +598,7 @@ calibrate_clocks(void)
 	prev_count = sys_cputimer->count();
 	tot_count = 0;
 
-	if (tsc_present) 
+	if (tsc_present)
 		old_tsc = rdtsc();
 	else
 		old_tsc = 0;		/* shut up gcc */
@@ -608,7 +608,7 @@ calibrate_clocks(void)
 	 * counter for each iteration since this is convenient and only
 	 * costs a few usec of inaccuracy. The timing of the final reads
 	 * of the counters almost matches the timing of the initial reads,
-	 * so the main cause of inaccuracy is the varying latency from 
+	 * so the main cause of inaccuracy is the varying latency from
 	 * inside getit() or rtcin(RTC_STATUSA) to the beginning of the
 	 * rtcin(RTC_SEC) that returns a changed seconds count.  The
 	 * maximum inaccuracy from this cause is < 10 usec on 486's.
@@ -745,7 +745,7 @@ rtc_restore(void)
  * Restore all the timers.
  *
  * This function is called to resynchronize our core timekeeping after a
- * long halt, e.g. from apm_default_resume() and friends.  It is also 
+ * long halt, e.g. from apm_default_resume() and friends.  It is also
  * called if after a BIOS call we have detected munging of the 8254.
  * It is necessary because cputimer_count() counter's delta may have grown
  * too large for nanouptime() and friends to handle, or (in the case of 8254
@@ -854,10 +854,11 @@ startrtclock(void)
 {
 	const timecounter_init_t **list;
 	sysclock_t delta, freq;
+	int forced_invariant = 0;
 
 	callout_init_mp(&sysbeepstop_ch);
 
-	/* 
+	/*
 	 * Can we use the TSC?
 	 *
 	 * NOTE: If running under qemu, probably a good idea to force the
@@ -868,6 +869,7 @@ startrtclock(void)
 	if (cpu_feature & CPUID_TSC) {
 		tsc_present = 1;
 		TUNABLE_INT_FETCH("hw.tsc_cputimer_force", &tsc_invariant);
+		forced_invariant = tsc_invariant;
 
 		if ((cpu_vendor_id == CPU_VENDOR_INTEL ||
 		     cpu_vendor_id == CPU_VENDOR_AMD) &&
@@ -875,8 +877,10 @@ startrtclock(void)
 			u_int regs[4];
 
 			do_cpuid(0x80000007, regs);
-			if (regs[3] & 0x100)
+			if (regs[3] & 0x100) {
 				tsc_invariant = 1;
+				forced_invariant = 0;
+			}
 		}
 	} else {
 		tsc_present = 0;
@@ -901,7 +905,7 @@ startrtclock(void)
 		goto done;
 
 	/*
-	 * Set the 8254 timer0 in TIMER_SWSTROBE mode and cause it to 
+	 * Set the 8254 timer0 in TIMER_SWSTROBE mode and cause it to
 	 * generate an interrupt, which we will ignore for now.
 	 *
 	 * Set the 8254 timer1 in TIMER_RATEGEN mode and load 0x0000
@@ -943,7 +947,7 @@ startrtclock(void)
 	 * Otherwise use the default, and don't use the calibrated i586
 	 * frequency.
 	 */
-	delta = freq > i8254_cputimer.freq ? 
+	delta = freq > i8254_cputimer.freq ?
 		freq - i8254_cputimer.freq : i8254_cputimer.freq - freq;
 	if (delta < i8254_cputimer.freq / 100) {
 		if (calibrate_timers_with_rtc == 0) {
@@ -1040,9 +1044,10 @@ skip_rtc_based:
 
 done:
 	if (tsc_present) {
-		kprintf("TSC%s clock: %jd Hz\n",
-		    tsc_invariant ? " invariant" : "",
-		    (intmax_t)tsc_frequency);
+		kprintf("TSC clock: %jd Hz, %sinvariant%s\n",
+			(intmax_t)tsc_frequency,
+			tsc_invariant ? "" : "NOT ",
+			forced_invariant ? " (forced)" : "");
 	}
 	tsc_oneus_approx = ((tsc_frequency|1) + 999999) / 1000000;
 
@@ -1349,7 +1354,7 @@ tsc_get_timecount(struct timecounter *tc)
 static u_long tsc[KERN_TIMESTAMP_SIZE] ;
 SYSCTL_OPAQUE(_debug, OID_AUTO, timestamp, CTLFLAG_RD, tsc,
 	sizeof(tsc), "LU", "Kernel timestamps");
-void  
+void
 _TSTMP(u_int32_t x)
 {
 	static int i;
