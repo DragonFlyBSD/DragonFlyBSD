@@ -854,6 +854,7 @@ startrtclock(void)
 {
 	const timecounter_init_t **list;
 	sysclock_t delta, freq;
+	int forced_invariant = 0;
 
 	callout_init_mp(&sysbeepstop_ch);
 
@@ -868,6 +869,7 @@ startrtclock(void)
 	if (cpu_feature & CPUID_TSC) {
 		tsc_present = 1;
 		TUNABLE_INT_FETCH("hw.tsc_cputimer_force", &tsc_invariant);
+		forced_invariant = tsc_invariant;
 
 		if ((cpu_vendor_id == CPU_VENDOR_INTEL ||
 		     cpu_vendor_id == CPU_VENDOR_AMD) &&
@@ -875,8 +877,10 @@ startrtclock(void)
 			u_int regs[4];
 
 			do_cpuid(0x80000007, regs);
-			if (regs[3] & 0x100)
+			if (regs[3] & 0x100) {
 				tsc_invariant = 1;
+				forced_invariant = 0;
+			}
 		}
 	} else {
 		tsc_present = 0;
@@ -1040,9 +1044,10 @@ skip_rtc_based:
 
 done:
 	if (tsc_present) {
-		kprintf("TSC%s clock: %jd Hz\n",
-		    tsc_invariant ? " invariant" : "",
-		    (intmax_t)tsc_frequency);
+		kprintf("TSC clock: %jd Hz, %sinvariant%s",
+			(intmax_t)tsc_frequency,
+			tsc_invariant ? "" : "not ",
+			forced_invariant ? " (forced)" : "");
 	}
 	tsc_oneus_approx = ((tsc_frequency|1) + 999999) / 1000000;
 
