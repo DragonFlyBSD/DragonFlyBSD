@@ -51,7 +51,6 @@ static int	hw_instruction_sse;
 SYSCTL_INT(_hw, OID_AUTO, instruction_sse, CTLFLAG_RD,
     &hw_instruction_sse, 0, "SIMD/MMX2 instructions available in CPU");
 
-int	cpu_type;		/* XXX CPU_CLAWHAMMER */
 u_int	cpu_feature;		/* Feature flags */
 u_int	cpu_feature2;		/* Feature flags */
 u_int	amd_feature;		/* AMD feature flags */

@@ -66,7 +66,9 @@ static void print_xsave_info(void);
 static void print_svm_info(void);
 static void print_vmx_info(void);
 
+int	cpu_type;
 int	cpu_class;
+
 char machine[] = "x86_64";
 SYSCTL_STRING(_hw, HW_MACHINE, machine, CTLFLAG_RD,
     machine, 0, "Machine class");
@@ -109,7 +111,6 @@ printcpuinfo(void)
 	u_int regs[4], i;
 	char *brand;
 
-	cpu_class = x86_64_cpus[cpu_type].cpu_class;
 	kprintf("CPU: ");
 	strncpy(cpu_model, x86_64_cpus[cpu_type].cpu_name, sizeof (cpu_model));
 
@@ -713,6 +714,7 @@ identify_cpu(void)
 
 	/* XXX */
 	cpu_type = CPU_CLAWHAMMER;
+	cpu_class = x86_64_cpus[cpu_type].cpu_class;
 
 	if (cpu_feature & CPUID_SSE2)
 		cpu_mi_feature |= CPU_MI_BZERONT;
