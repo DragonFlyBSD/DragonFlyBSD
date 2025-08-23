@@ -184,19 +184,35 @@ vmx_sti(void)
 	__asm volatile ("sti" ::: "memory");
 }
 
-/*
- * XXX: workaround the conflict with <machine/specialreg.h>
- * TODO: be self-contained and get rid of <machine/specialreg.h>
- */
-#undef MSR_IA32_FEATURE_CONTROL
-#undef IA32_FEATURE_CONTROL_LOCK
-#undef IA32_FEATURE_CONTROL_IN_SMX
-#undef IA32_FEATURE_CONTROL_OUT_SMX
+#define	MSR_IA32_PLATFORM_ID		0x0017
 
 #define MSR_IA32_FEATURE_CONTROL	0x003A
 #define		IA32_FEATURE_CONTROL_LOCK	__BIT(0)
 #define		IA32_FEATURE_CONTROL_IN_SMX	__BIT(1)
 #define		IA32_FEATURE_CONTROL_OUT_SMX	__BIT(2)
+
+#define	MSR_IA32_BIOS_SIGN_ID		0x008B
+
+#define MSR_IA32_ARCH_CAPABILITIES	0x010A
+#define		IA32_ARCH_RDCL_NO		__BIT(0)
+#define		IA32_ARCH_IBRS_ALL		__BIT(1)
+#define		IA32_ARCH_RSBA			__BIT(2)
+#define		IA32_ARCH_SKIP_L1DFL_VMENTRY	__BIT(3)
+#define		IA32_ARCH_SSB_NO		__BIT(4)
+#define		IA32_ARCH_MDS_NO		__BIT(5)
+#define		IA32_ARCH_IF_PSCHANGE_MC_NO	__BIT(6)
+#define		IA32_ARCH_TSX_CTRL		__BIT(7)
+#define		IA32_ARCH_TAA_NO		__BIT(8)
+
+#define MSR_IA32_FLUSH_CMD		0x010B
+#define		IA32_FLUSH_CMD_L1D_FLUSH	__BIT(0)
+
+#define MSR_IA32_MISC_ENABLE		0x01A0
+#define		IA32_MISC_PERFMON_EN		__BIT(7)
+#define		IA32_MISC_BTS_UNAVAIL		__BIT(11)
+#define		IA32_MISC_PEBS_UNAVAIL		__BIT(12)
+#define		IA32_MISC_EISST_EN		__BIT(16)
+#define		IA32_MISC_MWAIT_EN		__BIT(18)
 
 #define MSR_IA32_VMX_BASIC		0x0480
 #define		IA32_VMX_BASIC_IDENT		__BITS(30,0)
@@ -1856,7 +1872,7 @@ vmx_exit_io(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 }
 
 static const uint64_t msr_ignore_list[] = {
-	MSR_BIOS_SIGN,
+	MSR_IA32_BIOS_SIGN_ID,
 	MSR_IA32_PLATFORM_ID
 };
 
@@ -1875,7 +1891,7 @@ vmx_inkernel_handle_msr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			cpudata->gprs[NVMM_X64_GPR_RDX] = (val >> 32);
 			goto handled;
 		}
-		if (exit->u.rdmsr.msr == MSR_MISC_ENABLE) {
+		if (exit->u.rdmsr.msr == MSR_IA32_MISC_ENABLE) {
 			val = cpudata->gmsr_misc_enable;
 			cpudata->gprs[NVMM_X64_GPR_RAX] = (val & 0xFFFFFFFF);
 			cpudata->gprs[NVMM_X64_GPR_RDX] = (val >> 32);
@@ -1922,7 +1938,7 @@ vmx_inkernel_handle_msr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			vmx_vmwrite(VMCS_GUEST_IA32_PAT, val);
 			goto handled;
 		}
-		if (exit->u.wrmsr.msr == MSR_MISC_ENABLE) {
+		if (exit->u.wrmsr.msr == MSR_IA32_MISC_ENABLE) {
 			/* Don't care. */
 			goto handled;
 		}
@@ -3025,7 +3041,7 @@ vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	vmx_vmwrite(VMCS_EPTP, eptp);
 
 	/* Init IA32_MISC_ENABLE. */
-	cpudata->gmsr_misc_enable = rdmsr(MSR_MISC_ENABLE);
+	cpudata->gmsr_misc_enable = rdmsr(MSR_IA32_MISC_ENABLE);
 	cpudata->gmsr_misc_enable &=
 	    ~(IA32_MISC_PERFMON_EN|IA32_MISC_EISST_EN|IA32_MISC_MWAIT_EN);
 	cpudata->gmsr_misc_enable |=

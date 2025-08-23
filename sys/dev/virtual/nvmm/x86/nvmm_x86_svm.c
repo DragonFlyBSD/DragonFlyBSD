@@ -49,14 +49,21 @@ svm_stgi(void)
 	__asm volatile ("stgi" ::: "memory");
 }
 
-#define	MSR_VM_HSAVE_PA	0xC0010117
+#define MSR_NB_CFG		0xC001001F	/* Northbridge Configuration */
+#define		NB_CFG_INITAPICCPUIDLO	__BIT(54)
 
-#define MSR_VM_CR	0xc0010114	/* Virtual Machine Control Register */
-#define 	VM_CR_DPD	0x00000001	/* Debug port disable */
-#define 	VM_CR_RINIT	0x00000002	/* Intercept init */
-#define 	VM_CR_DISA20	0x00000004	/* Disable A20 masking */
-#define 	VM_CR_LOCK	0x00000008	/* SVM Lock */
-#define 	VM_CR_SVMED	0x00000010	/* SVME Disable */
+#define MSR_CMPHALT		0xC0010055	/* Interrupt Pending and CMP-Halt */
+#define MSR_VM_HSAVE_PA		0xC0010117	/* Host Save Area Physical Address */
+#define MSR_IC_CFG		0xC0011021	/* Instruction Cache Configuration */
+#define MSR_DE_CFG		0xC0011029	/* Decode Configuration */
+#define MSR_UCODE_AMD_PATCHLEVEL 0x0000008B
+
+#define MSR_VM_CR	0xC0010114	/* Virtual Machine Control Register */
+#define		VM_CR_DPD	__BIT(0)	/* Debug port disable */
+#define		VM_CR_RINIT	__BIT(1)	/* Intercept init */
+#define		VM_CR_DISA20	__BIT(2)	/* Disable A20 masking */
+#define		VM_CR_LOCK	__BIT(3)	/* SVM Lock */
+#define		VM_CR_SVMED	__BIT(4)	/* SVME Disable */
 
 /* -------------------------------------------------------------------------- */
 
@@ -1171,7 +1178,7 @@ svm_exit_io(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 }
 
 static const uint64_t msr_ignore_list[] = {
-	0xc0010055, /* MSR_CMPHALT */
+	MSR_CMPHALT,
 	MSR_DE_CFG,
 	MSR_IC_CFG,
 	MSR_UCODE_AMD_PATCHLEVEL

@@ -29,12 +29,6 @@
 #ifndef _NVMM_X86_H_
 #define _NVMM_X86_H_
 
-#if defined(__NetBSD__)
-#include <x86/specialreg.h>
-#elif defined(__DragonFly__)
-#include <machine/specialreg.h>
-#endif
-
 /* -------------------------------------------------------------------------- */
 
 #ifndef ASM_NVMM
@@ -654,38 +648,72 @@ struct nvmm_vcpu_conf_tpr {
 /* -------------------------------------------------------------------------- */
 
 /*
- * Register defines. We mainly rely on the already-existing OS definitions.
+ * Register defines.
  */
 
-#if defined(__DragonFly__)
+/* Bits in CR0 control register */
+#define CR0_PE	__BIT(0)	/* Protected mode Enable */
+#define CR0_MP	__BIT(1)	/* "Math" Present (NPX or NPX emulator) */
+#define CR0_EM	__BIT(2)	/* EMulate non-NPX coproc. (trap ESC only) */
+#define CR0_TS	__BIT(3)	/* Task Switched (if MP, trap ESC and WAIT) */
+#define CR0_ET	__BIT(4)	/* Extension Type (387 (if set) vs 287) */
+#define CR0_NE	__BIT(5)	/* Numeric Error enable (EX16 vs IRQ13) */
+#define CR0_WP	__BIT(16)	/* Write Protect (honor page protect in all modes) */
+#define CR0_AM	__BIT(18)	/* Alignment Mask (set to enable AC flag) */
+#define CR0_NW	__BIT(29)	/* Not Write-through */
+#define CR0_CD	__BIT(30)	/* Cache Disable */
+#define CR0_PG	__BIT(31)	/* PaGing enable */
 
-#define XCR0_X87		CPU_XFEATURE_X87	/* 0x00000001 */
-#define XCR0_SSE		CPU_XFEATURE_SSE	/* 0x00000002 */
+/* Bits in CR4 control register */
+#define CR4_VME		__BIT(0)	/* Virtual 8086 mode extensions */
+#define CR4_PVI		__BIT(1)	/* Protected-mode virtual interrupts */
+#define CR4_TSD		__BIT(2)	/* Time stamp disable */
+#define CR4_DE		__BIT(3)	/* Debugging extensions */
+#define CR4_PSE		__BIT(4)	/* Page size extensions */
+#define CR4_PAE		__BIT(5)	/* Physical address extension */
+#define CR4_MCE		__BIT(6)	/* Machine check enable */
+#define CR4_PGE		__BIT(7)	/* Page global enable */
+#define CR4_PCE		__BIT(8)	/* Performance monitoring counter enable */
+#define CR4_OSFXSR	__BIT(9)	/* Fast FPU save/restore used by OS */
+#define CR4_OSXMMEXCPT	__BIT(10)	/* Enable SIMD/MMX2 to use except 16 */
+#define CR4_UMIP	__BIT(11)	/* User Mode Instruction Prevention */
+#define CR4_LA57	__BIT(12)	/* Enable 57-bit linear address */
+#define CR4_VMXE	__BIT(13)	/* Enable VMX - Intel specific */
+#define CR4_SMXE	__BIT(14)	/* Enable SMX - Intel specific */
+#define CR4_FSGSBASE	__BIT(16)	/* Enable *FSBASE and *GSBASE instructions */
+#define CR4_PCIDE	__BIT(17)	/* Enable Process Context IDentifiers */
+#define CR4_OSXSAVE	__BIT(18)	/* Enable XSave (for AVX Instructions) */
+#define CR4_SMEP	__BIT(20)	/* Supervisor-Mode Execution Prevent */
+#define CR4_SMAP	__BIT(21)	/* Supervisor-Mode Access Prevent */
+#define CR4_PKE		__BIT(22)	/* Protection Keys Enable for user pages */
+#define CR4_CET		__BIT(23)	/* Enable CET */
+#define CR4_PKS		__BIT(24)	/* Protection Keys Enable for kern pages */
 
-#define MSR_MISC_ENABLE		MSR_IA32_MISC_ENABLE	/* 0x1a0 */
-#define MSR_CR_PAT		MSR_PAT			/* 0x277 */
-#define MSR_SFMASK		MSR_SF_MASK		/* 0xc0000084 */
-#define MSR_KERNELGSBASE	MSR_KGSBASE		/* 0xc0000102 */
-#define MSR_NB_CFG		MSR_AMD_NB_CFG		/* 0xc001001f */
-#define MSR_IC_CFG		MSR_AMD_IC_CFG		/* 0xc0011021 */
-#define MSR_DE_CFG		MSR_AMD_DE_CFG		/* 0xc0011029 */
-#define MSR_UCODE_AMD_PATCHLEVEL MSR_AMD_PATCH_LEVEL	/* 0x0000008b */
+/* Extended Control Register XCR0 */
+#define XCR0_X87	__BIT(0)	/* x87 FPU/MMX state */
+#define XCR0_SSE	__BIT(1)	/* SSE state */
+#define XCR0_AVX	__BIT(2)	/* AVX state */
 
-/* MSR_IA32_ARCH_CAPABILITIES (0x10a) */
-#define 	IA32_ARCH_RDCL_NO	IA32_ARCH_CAP_RDCL_NO
-#define 	IA32_ARCH_IBRS_ALL	IA32_ARCH_CAP_IBRS_ALL
-#define 	IA32_ARCH_RSBA		IA32_ARCH_CAP_RSBA
-#define 	IA32_ARCH_SKIP_L1DFL_VMENTRY	IA32_ARCH_CAP_SKIP_L1DFL_VMENTRY
-#define 	IA32_ARCH_SSB_NO	IA32_ARCH_CAP_SSB_NO
-#define 	IA32_ARCH_MDS_NO	IA32_ARCH_CAP_MDS_NO
-#define 	IA32_ARCH_IF_PSCHANGE_MC_NO	IA32_ARCH_CAP_IF_PSCHANGE_MC_NO
-#define 	IA32_ARCH_TSX_CTRL	IA32_ARCH_CAP_TSX_CTRL
-#define 	IA32_ARCH_TAA_NO	IA32_ARCH_CAP_TAA_NO
+#define MSR_TSC			0x0010
+#define MSR_SYSENTER_CS		0x0174
+#define MSR_SYSENTER_ESP	0x0175
+#define MSR_SYSENTER_EIP	0x0176
+#define MSR_CR_PAT		0x0277		/* Page Attribute Table (PAT) */
+#define MSR_STAR		0xC0000081	/* legacy mode SYSCALL target/cs/ss */
+#define MSR_LSTAR		0xC0000082	/* long mode SYSCALL target rip */
+#define MSR_CSTAR		0xC0000083	/* compat mode SYSCALL target rip */
+#define MSR_SFMASK		0xC0000084	/* SYSCALL Flag Mask */
+#define MSR_KERNELGSBASE	0xC0000102	/* Kernel GS Base Register */
 
-/* MSR_IA32_FLUSH_CMD (0x10b) */
-#define 	IA32_FLUSH_CMD_L1D_FLUSH	IA32_FLUSH_CMD_L1D
-
-#endif /* __DragonFly__ */
+#define MSR_EFER	0xC0000080	/* Extended Feature Enable Register */
+#define		EFER_SCE	__BIT(0)	/* SYSCALL Enable (R/W) */
+#define		EFER_LME	__BIT(8)	/* Long Mode Enable (R/W) */
+#define		EFER_LMA	__BIT(10)	/* Long Mode Active (R) */
+#define		EFER_NXE	__BIT(11)	/* PTE No-Execute Enable (R/W) */
+#define		EFER_SVME	__BIT(12)	/* SVM Enable (R/W) */
+#define		EFER_LMSLE	__BIT(13)	/* Long Mode Segment Limit Enable */
+#define		EFER_FFXSR	__BIT(14)	/* Fast FXSAVE/FXRSTOR Enable */
+#define		EFER_TCE	__BIT(15)	/* Translation Cache Extension */
 
 /* -------------------------------------------------------------------------- */
 
