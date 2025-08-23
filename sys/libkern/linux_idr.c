@@ -258,7 +258,7 @@ idr_find_free(struct idr *idp, int want, int lim)
  * Caller must hold a blockable lock.
  */
 int
-idr_pre_get(struct idr *idp, __unused unsigned gfp_mask)
+idr_pre_get(struct idr *idp, unsigned gfp_mask __unused)
 {
 	int want = idp->idr_maxwant;
 	int lim = INT_MAX;
@@ -355,7 +355,7 @@ idr_get_new_above(struct idr *idp, void *ptr, int sid, int *id)
  * end:   maximum id, exclusive or INT_MAX if end is negative
  */
 int
-idr_alloc(struct idr *idp, void *ptr, int start, int end, unsigned gfp_mask)
+idr_alloc(struct idr *idp, void *ptr, int start, int end, unsigned gfp_mask __unused)
 {
 	int lim = end > 0 ? end - 1 : INT_MAX;
 	int want = start;
