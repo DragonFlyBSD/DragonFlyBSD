@@ -27,9 +27,11 @@
 #ifndef _ASM_CPUFEATURE_H_
 #define _ASM_CPUFEATURE_H_
 
+#include <asm/cpufeatures.h>
 #include <asm/processor.h>
 
-#include <asm/cpufeatures.h>
+#include <machine/specialreg.h>
+#include <machine/md_var.h>
 
 static inline bool
 static_cpu_has(uint16_t feature)

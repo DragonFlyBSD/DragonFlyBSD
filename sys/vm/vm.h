@@ -65,7 +65,7 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-#include <machine/specialreg.h>
+#include <machine/pat.h>
 
 typedef char vm_inherit_t;	/* inheritance codes */
 

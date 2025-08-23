@@ -75,6 +75,7 @@
 #include <machine/cpu.h>
 #include <machine/pcb.h>
 #include <machine/smp.h>
+#include <machine/specialreg.h>
 #include <machine/thread.h>
 #include <machine/clock.h>
 #include <machine/vmparam.h>
