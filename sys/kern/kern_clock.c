@@ -510,8 +510,8 @@ set_timeofday(struct timespec *ts)
 	nbt->tv_sec = ts->tv_sec - nbt->tv_sec;
 	nbt->tv_nsec = ts->tv_nsec - nbt->tv_nsec;
 	if (nbt->tv_nsec < 0) {
-	    nbt->tv_nsec += 1000000000;
-	    --nbt->tv_sec;
+		nbt->tv_nsec += 1000000000;
+		--nbt->tv_sec;
 	}
 
 	/*

@@ -312,7 +312,7 @@ halt(void)
  * constraint because "i" isn't a valid constraint when the port
  * isn't constant.  This only matters for -O0 because otherwise
  * the non-working version gets optimized away.
- * 
+ *
  * Use an expression-statement instead of a conditional expression
  * because gcc-2.6.0 would promote the operands of the conditional
  * and produce poor code for "if ((inb(var) & const1) == const2)".
@@ -995,7 +995,7 @@ void	intr_restore(register_t rf);
 #endif	/* __GNUC__ */
 
 int	rdmsr_safe(u_int msr, uint64_t *val);
-int wrmsr_safe(u_int msr, uint64_t newval);
+int	wrmsr_safe(u_int msr, uint64_t newval);
 void	reset_dbregs(void);
 void	smap_open(void);
 void	smap_close(void);
