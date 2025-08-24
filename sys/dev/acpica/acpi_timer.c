@@ -28,15 +28,10 @@
  */
 #include "opt_acpi.h"
 #include <sys/param.h>
-#include <sys/bus.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/sysctl.h>
 #include <sys/systimer.h>
-#include <sys/rman.h>
-
-#include <machine/lock.h>
-#include <bus/pci/pcivar.h>
 
 #include "acpi.h"
 #include "accommon.h"
@@ -77,7 +72,6 @@ static int	acpi_timer_identify(driver_t *driver, device_t parent);
 static int	acpi_timer_probe(device_t dev);
 static int	acpi_timer_attach(device_t dev);
 static int	acpi_timer_sysctl_freq(SYSCTL_HANDLER_ARGS);
-
 static int	acpi_timer_test(void);
 
 static device_method_t acpi_timer_methods[] = {
@@ -321,13 +315,13 @@ acpi_timer_get_timecount_safe(void)
 
 /*
  * Timecounter freqency adjustment interface.
- */ 
+ */
 static int
 acpi_timer_sysctl_freq(SYSCTL_HANDLER_ARGS)
 {
     int error;
     u_int freq;
- 
+
     if (acpi_cputimer.freq == 0)
 	return (EOPNOTSUPP);
     freq = acpi_cputimer.freq;
@@ -337,7 +331,7 @@ acpi_timer_sysctl_freq(SYSCTL_HANDLER_ARGS)
 
     return (error);
 }
- 
+
 SYSCTL_PROC(_machdep, OID_AUTO, acpi_timer_freq, CTLTYPE_INT | CTLFLAG_RW,
     0, sizeof(u_int), acpi_timer_sysctl_freq, "I", "ACPI timer frequency");
 
