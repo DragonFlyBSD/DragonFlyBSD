@@ -192,18 +192,8 @@ acpi_timer_construct(struct cputimer *timer, sysclock_t oldclock)
 /*
  * Fetch current time value from reliable hardware.
  *
- * The cputimer interface requires a 32 bit return value.  If the ACPI timer
- * is only 24 bits then we have to keep track of the upper 8 bits on our
- * own.
- *
- * per-cpu tracking fields can cause problems on VMs if one or more cpus
- * stalls long-enough for the timer to turn-over twice, so instead optimize
- * the locking case by not updating acpi_cputimer.base until the timer
- * has gone more than 1/16 its full range.
- *
- * These are horrible hacks, but at least the SMP interference is minimal
- * with them.  Note that just reading the ACPI timer itself represents a
- * bottleneck due to the slow I/O.
+ * The cputimer interface requires a 64 bit return value, so we have to keep
+ * track of the upper bits on our own and check for wraparounds.
  */
 static sysclock_t
 acpi_timer_get_timecount24(void)
