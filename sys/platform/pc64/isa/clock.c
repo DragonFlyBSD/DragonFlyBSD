@@ -282,7 +282,7 @@ DB_SHOW_COMMAND(rtc, rtc)
 #endif /* DDB */
 
 /*
- * Return the current cpu timer count as a 32 bit integer.
+ * Return the current cpu timer count.
  */
 static
 sysclock_t
@@ -438,7 +438,7 @@ DODELAY(int n, int doswitch)
 #ifdef DELAYDEBUG
 	if (state == 1)
 		kprintf(" %d calls to getit() at %d usec each\n",
-		       getit_calls, (n + 5) / getit_calls);
+			getit_calls, (n + 5) / getit_calls);
 #endif
 }
 
@@ -1074,7 +1074,7 @@ resettodr_on_shutdown(void *arg __unused)
 void
 inittodr(time_t base)
 {
-	unsigned long	sec, days;
+	time_t		sec, days;
 	int		year, month;
 	int		y, m;
 	struct timespec ts;
@@ -1126,8 +1126,7 @@ inittodr(time_t base)
 
 	sec += tz.tz_minuteswest * 60 + (wall_cmos_clock ? adjkerntz : 0);
 
-	y = (int)(time_second - sec);
-	if (y <= -2 || y >= 2) {
+	if (time_second <= sec - 2 || time_second >= sec + 2) {
 		/* badly off, adjust it */
 		ts.tv_sec = sec;
 		ts.tv_nsec = 0;
