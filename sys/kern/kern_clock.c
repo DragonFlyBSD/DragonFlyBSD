@@ -326,8 +326,8 @@ initclocks(void *dummy)
 	initclocks_pcpu();
 	clocks_running = 1;
 	if (kpmap) {
-	    kpmap->tsc_freq = tsc_frequency;
-	    kpmap->tick_freq = hz;
+		kpmap->tsc_freq = tsc_frequency;
+		kpmap->tick_freq = hz;
 	}
 }
 
@@ -346,13 +346,13 @@ initclocks_pcpu(void)
 
 	crit_enter();
 	if (gd->gd_cpuid == 0) {
-	    gd->gd_time_seconds = 1;
-	    gd->gd_cpuclock_base = sys_cputimer->count();
-	    hardtime[0].time_second = gd->gd_time_seconds;
-	    hardtime[0].cpuclock_base = gd->gd_cpuclock_base;
+		gd->gd_time_seconds = 1;
+		gd->gd_cpuclock_base = sys_cputimer->count();
+		hardtime[0].time_second = gd->gd_time_seconds;
+		hardtime[0].cpuclock_base = gd->gd_cpuclock_base;
 	} else {
-	    gd->gd_time_seconds = globaldata_find(0)->gd_time_seconds;
-	    gd->gd_cpuclock_base = globaldata_find(0)->gd_cpuclock_base;
+		gd->gd_time_seconds = globaldata_find(0)->gd_time_seconds;
+		gd->gd_cpuclock_base = globaldata_find(0)->gd_cpuclock_base;
 	}
 
 	systimer_intr_enable();
@@ -405,7 +405,7 @@ collect_cputime_callback(int n)
 
 /*
  * This routine is called on just the BSP, just after SMP initialization
- * completes to * finish initializing any clocks that might contend/block
+ * completes, to finish initializing any clocks that might contend/block
  * (e.g. like on a token).  We can't do this in initclocks_pcpu() because
  * that function is called from the idle thread bootstrap for each cpu and
  * not allowed to block at all.
