@@ -581,8 +581,10 @@ hardclock(systimer_t info, int in_ipi, struct intrframe *frame)
 		cputicks = info->time - gd->gd_cpuclock_base;
 		if (cputicks >= sys_cputimer->freq) {
 			cputicks /= sys_cputimer->freq;
-			if (cputicks != 0 && cputicks != 1)
-				kprintf("Warning: hardclock missed > 1 sec\n");
+			if (cputicks > 1) {
+				kprintf("Warning: hardclock missed "
+					"%ju seconds\n", (uintmax_t)cputicks);
+			}
 			gd->gd_time_seconds += cputicks;
 			gd->gd_cpuclock_base += sys_cputimer->freq * cputicks;
 			/* uncorrected monotonic 1-sec gran */
