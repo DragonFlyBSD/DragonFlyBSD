@@ -104,7 +104,8 @@ void systimer_init_oneshot(systimer_t, systimer_func_t, void *, int64_t);
  * The 64 bit versions of the frequency are used for converting count
  * values into uS or nS as follows:
  *
- *	usec = (sys_cputimer->freq64_usec * count) >> 32
+ *	usec = muldivu64(sys_cputimer->freq64_usec, count, 1L << 32);
+ *	nsec = muldivu64(sys_cputimer->freq64_nsec, count, 1L << 32);
  *
  * NOTE: If count > sys_cputimer->freq, above conversion may overflow.
  *
