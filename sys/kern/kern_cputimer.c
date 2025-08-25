@@ -91,6 +91,7 @@ void
 cputimer_select(struct cputimer *timer, int pri)
 {
     sysclock_t oldclock;
+    struct cputimer *oldtimer;
 
     /*
      * Calculate helper fields
@@ -104,16 +105,14 @@ cputimer_select(struct cputimer *timer, int pri)
      */
     if (pri == 0)
 	pri = timer->pri;
-    if (timer == NULL || pri >= sys_cputimer->pri) {
-	oldclock = sys_cputimer->count();
-	sys_cputimer->destruct(sys_cputimer);
-	sys_cputimer = &dummy_cputimer;
-	if (timer) {
-	    sys_cputimer = timer;
-	    timer->construct(timer, oldclock);
-	    cputimer_intr_config(timer);
-	    systimer_changed();
-	}
+    if (pri >= sys_cputimer->pri) {
+	oldtimer = sys_cputimer;
+	oldclock = oldtimer->count();
+	timer->construct(timer, oldclock);
+	cputimer_intr_config(timer);
+	sys_cputimer = timer;
+	oldtimer->destruct(oldtimer);
+	systimer_changed();
     }
 }
 
