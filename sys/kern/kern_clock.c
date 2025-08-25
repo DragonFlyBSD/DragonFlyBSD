@@ -527,6 +527,7 @@ set_timeofday(struct timespec *ts)
 	 */
 	spin_lock(&ntp_spin);
 	boottime.tv_sec = nbt->tv_sec;
+	boottime.tv_nsec = nbt->tv_nsec;
 	ntp_delta = 0;
 
 	/*
