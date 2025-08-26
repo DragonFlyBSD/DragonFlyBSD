@@ -59,6 +59,7 @@ ACPI_MODULE_NAME("HPET")
 static bus_space_handle_t	acpi_hpet_bsh;
 static bus_space_tag_t		acpi_hpet_bst;
 static u_long			acpi_hpet_res_start;
+static uint32_t			acpi_hpet_offset;
 
 struct acpi_hpet_softc {
 	device_t		dev;
@@ -116,11 +117,14 @@ static devclass_t acpi_hpet_devclass;
 DRIVER_MODULE(acpi_hpet, acpi, acpi_hpet_driver, acpi_hpet_devclass, NULL, NULL);
 MODULE_DEPEND(acpi_hpet, acpi, 1, 1, 1);
 
-static uint32_t
-acpi_hpet_read(void)
+static __inline __always_inline uint32_t
+_acpi_get_timer(void)
 {
-	return bus_space_read_4(acpi_hpet_bst, acpi_hpet_bsh,
-				HPET_MAIN_COUNTER);
+	uint32_t counter;
+
+	counter = bus_space_read_4(acpi_hpet_bst, acpi_hpet_bsh,
+				   HPET_MAIN_COUNTER);
+	return counter + acpi_hpet_offset;
 }
 
 #if !defined(KLD_MODULE)
@@ -128,6 +132,12 @@ static vm_offset_t ptr = 0;
 
 static int acpi_hpet_for_calibration = 1;
 TUNABLE_INT("hw.calibrate_timers_with_hpet", &acpi_hpet_for_calibration);
+
+static __inline __always_inline uint32_t
+_acpi_get_timer_early(void)
+{
+	return readl(ptr + HPET_MAIN_COUNTER) + acpi_hpet_offset;
+}
 
 static sysclock_t
 acpi_hpet_early_get_timecount(void)
@@ -139,7 +149,7 @@ acpi_hpet_early_get_timecount(void)
 	last_counter = acpi_hpet_timer.base;
 	for (;;) {
 		cpu_ccfence();
-		counter = readl(ptr + HPET_MAIN_COUNTER);
+		counter = _acpi_get_timer_early();
 		next_counter = (last_counter & ACPI_HPET_HIBITS) | counter;
 		if (counter < (last_counter & ACPI_HPET_MASK))
 			next_counter += (1LU << 32);
@@ -159,8 +169,10 @@ acpi_hpet_early_construct(struct cputimer *timer, sysclock_t oldclock)
 	val = readl(ptr + HPET_CONFIG);
 	writel(ptr + HPET_CONFIG, val | HPET_CNF_ENABLE);
 
-	timer->base = 0;
-	timer->base = oldclock - acpi_hpet_early_get_timecount();
+	/* See also the comment for acpi_hpet_construct() below. */
+	acpi_hpet_offset = 0;
+	acpi_hpet_offset = (uint32_t)oldclock - _acpi_get_timer_early();
+	timer->base = oldclock;
 }
 
 static void
@@ -504,13 +516,16 @@ acpi_hpet_attach(device_t dev)
 
 /*
  * Construct the timer.  Adjust the base so the system clock does not
- * jump weirdly.
+ * jump weirdly.  We want it to remain monotonic, so setup acpi_hpet_offset
+ * such that the low 32 bits continues sequencing relative to the low bits of
+ * oldclock.
  */
 static void
 acpi_hpet_construct(struct cputimer *timer, sysclock_t oldclock)
 {
-	timer->base = 0;
-	timer->base = oldclock - acpi_hpet_get_timecount();
+	acpi_hpet_offset = 0;
+	acpi_hpet_offset = (uint32_t)oldclock - _acpi_get_timer();
+	timer->base = oldclock;
 }
 
 static sysclock_t
@@ -523,7 +538,7 @@ acpi_hpet_get_timecount(void)
 	last_counter = acpi_hpet_timer.base;
 	for (;;) {
 		cpu_ccfence();
-		counter = acpi_hpet_read();
+		counter = _acpi_get_timer();
 		next_counter = (last_counter & ACPI_HPET_HIBITS) | counter;
 		if (counter < (last_counter & ACPI_HPET_MASK))
 			next_counter += (1LU << 32);
