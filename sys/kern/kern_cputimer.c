@@ -90,7 +90,7 @@ static struct lwkt_serialize cputimer_intr_ps_slize =
 void
 cputimer_select(struct cputimer *timer, int pri)
 {
-    sysclock_t oldclock;
+    sysclock_t oldclock, newclock;
     struct cputimer *oldtimer;
 
     /*
@@ -109,6 +109,12 @@ cputimer_select(struct cputimer *timer, int pri)
 	oldtimer = sys_cputimer;
 	oldclock = oldtimer->count();
 	timer->construct(timer, oldclock);
+	newclock = timer->count();
+	if (newclock < oldclock) {
+		kprintf("Warning: timer %s jumped backward! "
+			"oldclock=%ju, newclock=%ju\n",
+			timer->name, (uintmax_t)oldclock, (uintmax_t)newclock);
+	}
 	cputimer_intr_config(timer);
 	sys_cputimer = timer;
 	oldtimer->destruct(oldtimer);
