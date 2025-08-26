@@ -47,6 +47,11 @@
 #define _COMPONENT	ACPI_TIMER
 ACPI_MODULE_NAME("TIMER")
 
+#define ACPI_TIMER32_MASK	((1UL << 32) - 1)
+#define ACPI_TIMER32_HIBITS	(~ACPI_TIMER32_MASK)
+#define ACPI_TIMER24_MASK	((1UL << 24) - 1)
+#define ACPI_TIMER24_HIBITS	(~ACPI_TIMER24_MASK)
+
 static device_t			acpi_timer_dev;
 static uint32_t			acpi_timer_resolution;
 static uint32_t			acpi_global_offset;
@@ -235,18 +240,15 @@ acpi_timer_get_timecount24(void)
 
     last_counter = acpi_cputimer.base;
     for (;;) {
-	    cpu_ccfence();
-	    counter = _acpi_get_timer() & 0x00FFFFFFU;
-	    if (counter < (last_counter & 0x00FFFFFFU))
-		next_counter = ((last_counter + 0x01000000LU) &
-			        0xFFFFFFFFFF000000LU) | counter;
-	    else
-		next_counter = (last_counter &
-			        0xFFFFFFFFFF000000LU) | counter;
-	    if (atomic_fcmpset_long(&acpi_cputimer.base, &last_counter,
-				    next_counter)) {
-		break;
-	    }
+	cpu_ccfence();
+	counter = _acpi_get_timer() & (uint32_t)ACPI_TIMER24_MASK;
+	next_counter = (last_counter & ACPI_TIMER24_HIBITS) | counter;
+	if (counter < (last_counter & ACPI_TIMER24_MASK))
+	    next_counter += (1LU << 24);
+	if (atomic_fcmpset_long(&acpi_cputimer.base, &last_counter,
+				next_counter)) {
+	    break;
+	}
     }
     return next_counter;
 }
@@ -260,18 +262,15 @@ acpi_timer_get_timecount(void)
 
     last_counter = acpi_cputimer.base;
     for (;;) {
-	    cpu_ccfence();
-	    counter = _acpi_get_timer();
-	    if (counter < (last_counter & 0xFFFFFFFFU))
-		next_counter = ((last_counter + 0x0100000000LU) &
-			        0xFFFFFFFF00000000LU) | counter;
-	    else
-		next_counter = (last_counter &
-			        0xFFFFFFFF00000000LU) | counter;
-	    if (atomic_fcmpset_long(&acpi_cputimer.base, &last_counter,
-				    next_counter)) {
-		break;
-	    }
+	cpu_ccfence();
+	counter = _acpi_get_timer();
+	next_counter = (last_counter & ACPI_TIMER32_HIBITS) | counter;
+	if (counter < (last_counter & ACPI_TIMER32_MASK))
+	    next_counter += (1LU << 32);
+	if (atomic_fcmpset_long(&acpi_cputimer.base, &last_counter,
+				next_counter)) {
+	    break;
+	}
     }
     return next_counter;
 }
@@ -285,28 +284,22 @@ acpi_timer_get_timecount_safe(void)
 
     last_counter = acpi_cputimer.base;
     for (;;) {
-	    cpu_ccfence();
-	    counter = _acpi_get_timer_safe();
-	    if (acpi_timer_resolution == 32) {
-		    if (counter < (last_counter & 0xFFFFFFFFU))
-			next_counter = ((last_counter + 0x0100000000LU) &
-					0xFFFFFFFF00000000LU) | counter;
-		    else
-			next_counter = (last_counter &
-					0xFFFFFFFF00000000LU) | counter;
-	    } else {
-		    counter &= 0x00FFFFFFU;
-		    if (counter < (last_counter & 0x00FFFFFFU))
-			next_counter = ((last_counter + 0x01000000LU) &
-					0xFFFFFFFFFF000000LU) | counter;
-		    else
-			next_counter = (last_counter &
-					0xFFFFFFFFFF000000LU) | counter;
-	    }
-	    if (atomic_fcmpset_long(&acpi_cputimer.base, &last_counter,
-				    next_counter)) {
-		break;
-	    }
+	cpu_ccfence();
+	counter = _acpi_get_timer_safe();
+	if (acpi_timer_resolution == 32) {
+	    next_counter = (last_counter & ACPI_TIMER32_HIBITS) | counter;
+	    if (counter < (last_counter & ACPI_TIMER32_MASK))
+		next_counter += (1LU << 32);
+	} else {
+	    counter &= (uint32_t)ACPI_TIMER24_MASK;
+	    next_counter = (last_counter & ACPI_TIMER24_HIBITS) | counter;
+	    if (counter < (last_counter & ACPI_TIMER24_MASK))
+		next_counter += (1LU << 24);
+	}
+	if (atomic_fcmpset_long(&acpi_cputimer.base, &last_counter,
+				next_counter)) {
+	    break;
+	}
     }
     return next_counter;
 }
