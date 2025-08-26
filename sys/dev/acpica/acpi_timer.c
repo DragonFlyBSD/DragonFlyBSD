@@ -54,7 +54,7 @@ ACPI_MODULE_NAME("TIMER")
 
 static device_t			acpi_timer_dev;
 static uint32_t			acpi_timer_resolution;
-static uint32_t			acpi_global_offset;
+static uint32_t			acpi_timer_offset;
 
 static sysclock_t acpi_timer_get_timecount(void);
 static sysclock_t acpi_timer_get_timecount24(void);
@@ -119,7 +119,7 @@ _acpi_get_timer_safe(void)
 	AcpiGetTimer(&u3);
     } while (u1 > u2 || u2 > u3);
 
-    return (u2 + acpi_global_offset);
+    return (u2 + acpi_timer_offset);
 }
 
 static __inline uint32_t
@@ -128,7 +128,7 @@ _acpi_get_timer(void)
     uint32_t u1;
 
     AcpiGetTimer(&u1);
-    return (u1 + acpi_global_offset);
+    return (u1 + acpi_timer_offset);
 }
 
 /*
@@ -219,15 +219,15 @@ acpi_timer_attach(device_t dev)
 
 /*
  * Construct the timer.  Adjust the base so the system clock does not
- * jump weirdly.  We want it to remain monotonic, so setup
- * acpi_global_offset such that the low 24 or 32 bits continues
- * sequencing relative to the low bits of oldclock.
+ * jump weirdly.  We want it to remain monotonic, so setup acpi_timer_offset
+ * such that the low 24 or 32 bits continues sequencing relative to the low
+ * bits of oldclock.
  */
 static void
 acpi_timer_construct(struct cputimer *timer, sysclock_t oldclock)
 {
-    acpi_global_offset = 0;
-    acpi_global_offset = (uint32_t)oldclock - _acpi_get_timer_safe();
+    acpi_timer_offset = 0;
+    acpi_timer_offset = (uint32_t)oldclock - _acpi_get_timer_safe();
     timer->base = oldclock;
 }
 
