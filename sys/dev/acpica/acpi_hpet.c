@@ -53,6 +53,9 @@
 #define _COMPONENT	ACPI_TIMER
 ACPI_MODULE_NAME("HPET")
 
+#define ACPI_HPET_MASK		((1UL << 32) - 1)
+#define ACPI_HPET_HIBITS	(~ACPI_HPET_MASK)
+
 static bus_space_handle_t	acpi_hpet_bsh;
 static bus_space_tag_t		acpi_hpet_bst;
 static u_long			acpi_hpet_res_start;
@@ -75,7 +78,6 @@ static int		acpi_hpet_resume(device_t);
 static int		acpi_hpet_suspend(device_t);
 
 static void		acpi_hpet_test(struct acpi_hpet_softc *sc);
-static u_int		acpi_hpet_read(void);
 static void		acpi_hpet_enable(struct acpi_hpet_softc *);
 static void		acpi_hpet_disable(struct acpi_hpet_softc *);
 
@@ -114,7 +116,7 @@ static devclass_t acpi_hpet_devclass;
 DRIVER_MODULE(acpi_hpet, acpi, acpi_hpet_driver, acpi_hpet_devclass, NULL, NULL);
 MODULE_DEPEND(acpi_hpet, acpi, 1, 1, 1);
 
-static u_int
+static uint32_t
 acpi_hpet_read(void)
 {
 	return bus_space_read_4(acpi_hpet_bst, acpi_hpet_bsh,
@@ -138,12 +140,9 @@ acpi_hpet_early_get_timecount(void)
 	for (;;) {
 		cpu_ccfence();
 		counter = readl(ptr + HPET_MAIN_COUNTER);
-		if (counter < (last_counter & 0xFFFFFFFFU))
-			next_counter = ((last_counter + 0x0100000000U) &
-					0xFFFFFFFF00000000LU) | counter;
-		else
-			next_counter = (last_counter &
-					0xFFFFFFFF00000000LU) | counter;
+		next_counter = (last_counter & ACPI_HPET_HIBITS) | counter;
+		if (counter < (last_counter & ACPI_HPET_MASK))
+			next_counter += (1LU << 32);
 		if (atomic_fcmpset_long(&acpi_hpet_timer.base, &last_counter,
 					next_counter)) {
 			break;
@@ -294,7 +293,7 @@ done:
 }
 
 TIMECOUNTER_INIT(acpi_hpet_init, acpi_hpet_cputimer_register);
-#endif
+#endif /* !KLD_MODULE */
 
 /*
  * Locate the ACPI timer using the FADT, set up and allocate the I/O resources
@@ -525,12 +524,9 @@ acpi_hpet_get_timecount(void)
 	for (;;) {
 		cpu_ccfence();
 		counter = acpi_hpet_read();
-		if (counter < (last_counter & 0xFFFFFFFFU))
-			next_counter = ((last_counter + 0x0100000000U) &
-					0xFFFFFFFF00000000LU) | counter;
-		else
-			next_counter = (last_counter &
-					0xFFFFFFFF00000000LU) | counter;
+		next_counter = (last_counter & ACPI_HPET_HIBITS) | counter;
+		if (counter < (last_counter & ACPI_HPET_MASK))
+			next_counter += (1LU << 32);
 		if (atomic_fcmpset_long(&acpi_hpet_timer.base, &last_counter,
 					next_counter)) {
 			break;
@@ -600,7 +596,7 @@ acpi_hpet_resume(device_t dev)
 	}
 	return 0;
 }
- 
+
 /* Print some basic latency/rate information to assist in debugging. */
 static void
 acpi_hpet_test(struct acpi_hpet_softc *sc)
