@@ -106,7 +106,7 @@ MODULE_DEPEND(acpi_timer, acpi, 1, 1, 1);
  * against the fact that the bits can be wrong in two directions.  If
  * we only cared about monosity, two reads would be enough.
  */
-static __inline uint32_t
+static __inline __always_inline uint32_t
 _acpi_get_timer_safe(void)
 {
     uint32_t u1, u2, u3;
@@ -122,7 +122,7 @@ _acpi_get_timer_safe(void)
     return (u2 + acpi_timer_offset);
 }
 
-static __inline uint32_t
+static __inline __always_inline uint32_t
 _acpi_get_timer(void)
 {
     uint32_t u1;
