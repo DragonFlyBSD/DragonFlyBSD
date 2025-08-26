@@ -208,7 +208,7 @@
 #endif
 
 #if __GNUC_PREREQ__(3, 1)
-#define	__always_inline	__attribute__((__always_inline__))
+#define	__always_inline	__inline __attribute__((__always_inline__))
 #define	__noinline	__attribute__((__noinline__))
 #else
 #define	__always_inline
@@ -764,7 +764,6 @@
  * GLOBL macro exists to preserve __start_set_* and __stop_set_* sections
  * of kernel modules which are discarded from binutils 2.17.50+ otherwise.
  */
-
 #define	__GLOBL1(sym)	__asm__(".globl " #sym)
 #define	__GLOBL(sym)	__GLOBL1(sym)
 
