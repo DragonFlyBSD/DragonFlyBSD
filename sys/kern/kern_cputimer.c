@@ -99,9 +99,7 @@ cputimer_select(struct cputimer *timer, int pri)
     cputimer_set_frequency(timer, timer->freq);
 
     /*
-     * Install a new cputimer if its priority allows it.  If timer is
-     * passed as NULL we deinstall the current timer and revert to our
-     * dummy.
+     * Install a new cputimer if its priority allows it.
      */
     if (pri == 0)
 	pri = timer->pri;
