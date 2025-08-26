@@ -1044,9 +1044,9 @@ skip_rtc_based:
 
 done:
 	if (tsc_present) {
-		kprintf("TSC clock: %jd Hz, %sinvariant%s",
+		kprintf("TSC clock: %jd Hz, %sinvariant%s\n",
 			(intmax_t)tsc_frequency,
-			tsc_invariant ? "" : "not ",
+			tsc_invariant ? "" : "NOT ",
 			forced_invariant ? " (forced)" : "");
 	}
 	tsc_oneus_approx = ((tsc_frequency|1) + 999999) / 1000000;
