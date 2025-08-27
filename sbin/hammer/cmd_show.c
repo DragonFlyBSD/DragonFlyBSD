@@ -882,7 +882,7 @@ hexdump_record(const void *ptr, int length, const char *hdr)
 		printf("%s....\n", hdr);
 }
 
-static __inline __always_inline
+static __always_inline
 unsigned long
 _strtoul(const char *p, int base)
 {
@@ -897,7 +897,7 @@ _strtoul(const char *p, int base)
 	return retval;
 }
 
-static __inline __always_inline
+static __always_inline
 unsigned long long
 _strtoull(const char *p, int base)
 {
