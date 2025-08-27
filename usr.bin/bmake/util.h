@@ -42,7 +42,7 @@
 
 static void (*efunc)(int, const char *, ...) = err;
 
-static __inline __always_inline char *
+static __always_inline char *
 estrdup(const char *s)
 {
 	char *d = strdup(s);
@@ -51,7 +51,7 @@ estrdup(const char *s)
 	return d;
 }
 
-static __inline __always_inline char *
+static __always_inline char *
 estrndup(const char *s, size_t len)
 {
 	char *d = strndup(s, len);
@@ -60,7 +60,7 @@ estrndup(const char *s, size_t len)
 	return d;
 }
 
-static __inline __always_inline void *
+static __always_inline void *
 emalloc(size_t n)
 {
 	void *p = malloc(n);
@@ -69,7 +69,7 @@ emalloc(size_t n)
 	return p;
 }
 
-static __inline __always_inline void *
+static __always_inline void *
 ecalloc(size_t n, size_t s)
 {
 	void *p = calloc(n, s);
@@ -78,7 +78,7 @@ ecalloc(size_t n, size_t s)
 	return p;
 }
 
-static __inline __always_inline void *
+static __always_inline void *
 erealloc(void *p, size_t n)
 {
 	void *q = realloc(p, n);
