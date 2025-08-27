@@ -117,7 +117,7 @@ static devclass_t acpi_hpet_devclass;
 DRIVER_MODULE(acpi_hpet, acpi, acpi_hpet_driver, acpi_hpet_devclass, NULL, NULL);
 MODULE_DEPEND(acpi_hpet, acpi, 1, 1, 1);
 
-static __inline __always_inline uint32_t
+static __always_inline uint32_t
 _acpi_get_timer(void)
 {
 	uint32_t counter;
@@ -133,7 +133,7 @@ static vm_offset_t ptr = 0;
 static int acpi_hpet_for_calibration = 1;
 TUNABLE_INT("hw.calibrate_timers_with_hpet", &acpi_hpet_for_calibration);
 
-static __inline __always_inline uint32_t
+static __always_inline uint32_t
 _acpi_get_timer_early(void)
 {
 	return readl(ptr + HPET_MAIN_COUNTER) + acpi_hpet_offset;

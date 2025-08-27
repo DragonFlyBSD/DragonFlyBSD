@@ -149,7 +149,7 @@ __extension__ ({ __uint16_t __X = (x); \
 
 #endif	/* __OPTIMIZE__ */
 
-static __inline __always_inline __uint64_t
+static __always_inline __uint64_t
 __bswap64(__uint64_t _x)
 {
 #if __GNUC_PREREQ__(4, 8) && defined(__cplusplus)
@@ -159,7 +159,7 @@ __bswap64(__uint64_t _x)
 #endif
 }
 
-static __inline __always_inline __uint32_t
+static __always_inline __uint32_t
 __bswap32(__uint32_t _x)
 {
 #if __GNUC_PREREQ__(4, 8) && defined(__cplusplus)
@@ -169,7 +169,7 @@ __bswap32(__uint32_t _x)
 #endif
 }
 
-static __inline __always_inline __uint16_t
+static __always_inline __uint16_t
 __bswap16(__uint16_t _x)
 {
 #if __GNUC_PREREQ__(4, 8) && defined(__cplusplus)

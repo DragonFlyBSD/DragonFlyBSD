@@ -271,7 +271,7 @@ void	*_kmalloc(unsigned long size, struct malloc_type *type, int flags)
 void	*_kmalloc_obj(unsigned long size, struct malloc_type *type, int flags)
 		 __malloclike __heedresult __alloc_size(1);
 
-static __inline __always_inline void *
+static __always_inline void *
 __kmalloc(size_t _size, struct malloc_type *_type, int _flags)
 {
 	if (__builtin_constant_p(_size) && __builtin_constant_p(_flags) &&
@@ -287,7 +287,7 @@ __kmalloc(size_t _size, struct malloc_type *_type, int _flags)
 	return (_kmalloc(_size, _type, _flags));
 }
 
-static __inline __always_inline void *
+static __always_inline void *
 __kmalloc_obj(size_t _size, struct malloc_type *_type, int _flags)
 {
 	if (__builtin_constant_p(_size) && __builtin_constant_p(_flags) &&

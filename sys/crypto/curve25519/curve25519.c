@@ -41,7 +41,7 @@ curve25519_generate_public(uint8_t pub[CURVE25519_KEY_SIZE],
 	return curve25519(pub, secret, base_point);
 }
 
-static __inline __always_inline uint32_t
+static __always_inline uint32_t
 get_unaligned_le32(const uint8_t *a)
 {
 	uint32_t l;
@@ -62,7 +62,7 @@ typedef struct fe { uint32_t v[10]; } fe;
  */
 typedef struct fe_loose { uint32_t v[10]; } fe_loose;
 
-static __inline __always_inline void
+static __always_inline void
 fe_frombytes_impl(uint32_t h[10], const uint8_t *s)
 {
 	/* Ignores top bit of s. */
@@ -86,13 +86,13 @@ fe_frombytes_impl(uint32_t h[10], const uint8_t *s)
 	h[9] = (a7>> 6)&((1<<25)-1); /*                                     25 */
 }
 
-static __inline __always_inline void
+static __always_inline void
 fe_frombytes(fe *h, const uint8_t *s)
 {
 	fe_frombytes_impl(h->v, s);
 }
 
-static __inline __always_inline uint8_t /*bool*/
+static __always_inline uint8_t /*bool*/
 addcarryx_u25(uint8_t /*bool*/ c, uint32_t a, uint32_t b, uint32_t *low)
 {
 	/* This function extracts 25 bits of result and 1 bit of carry
@@ -103,7 +103,7 @@ addcarryx_u25(uint8_t /*bool*/ c, uint32_t a, uint32_t b, uint32_t *low)
 	return (x >> 25) & 1;
 }
 
-static __inline __always_inline uint8_t /*bool*/
+static __always_inline uint8_t /*bool*/
 addcarryx_u26(uint8_t /*bool*/ c, uint32_t a, uint32_t b, uint32_t *low)
 {
 	/* This function extracts 26 bits of result and 1 bit of carry
@@ -114,7 +114,7 @@ addcarryx_u26(uint8_t /*bool*/ c, uint32_t a, uint32_t b, uint32_t *low)
 	return (x >> 26) & 1;
 }
 
-static __inline __always_inline uint8_t /*bool*/
+static __always_inline uint8_t /*bool*/
 subborrow_u25(uint8_t /*bool*/ c, uint32_t a, uint32_t b, uint32_t *low)
 {
 	/* This function extracts 25 bits of result and 1 bit of borrow
@@ -125,7 +125,7 @@ subborrow_u25(uint8_t /*bool*/ c, uint32_t a, uint32_t b, uint32_t *low)
 	return x >> 31;
 }
 
-static __inline __always_inline uint8_t /*bool*/
+static __always_inline uint8_t /*bool*/
 subborrow_u26(uint8_t /*bool*/ c, uint32_t a, uint32_t b, uint32_t *low)
 {
 	/* This function extracts 26 bits of result and 1 bit of borrow
@@ -136,14 +136,14 @@ subborrow_u26(uint8_t /*bool*/ c, uint32_t a, uint32_t b, uint32_t *low)
 	return x >> 31;
 }
 
-static __inline __always_inline uint32_t
+static __always_inline uint32_t
 cmovznz32(uint32_t t, uint32_t z, uint32_t nz)
 {
 	t = -!!t; /* all set if nonzero, 0 if 0 */
 	return (t&nz) | ((~t)&z);
 }
 
-static __inline __always_inline void
+static __always_inline void
 fe_freeze(uint32_t out[10], const uint32_t in1[10])
 {
 	const uint32_t x17 = in1[9];
@@ -199,7 +199,7 @@ fe_freeze(uint32_t out[10], const uint32_t in1[10])
 	out[9] = x88;
 }
 
-static __inline __always_inline void
+static __always_inline void
 fe_tobytes(uint8_t s[32], const fe *f)
 {
 	uint32_t h[10];
@@ -239,27 +239,27 @@ fe_tobytes(uint8_t s[32], const fe *f)
 }
 
 /* h = f */
-static __inline __always_inline void
+static __always_inline void
 fe_copy(fe *h, const fe *f)
 {
 	memmove(h, f, sizeof(uint32_t) * 10);
 }
 
-static __inline __always_inline void
+static __always_inline void
 fe_copy_lt(fe_loose *h, const fe *f)
 {
 	memmove(h, f, sizeof(uint32_t) * 10);
 }
 
 /* h = 0 */
-static __inline __always_inline void
+static __always_inline void
 fe_0(fe *h)
 {
 	memset(h, 0, sizeof(uint32_t) * 10);
 }
 
 /* h = 1 */
-static __inline __always_inline void
+static __always_inline void
 fe_1(fe *h)
 {
 	memset(h, 0, sizeof(uint32_t) * 10);
@@ -304,7 +304,7 @@ fe_add_impl(uint32_t out[10], const uint32_t in1[10], const uint32_t in2[10])
 /* h = f + g
  * Can overlap h with f or g.
  */
-static __inline __always_inline void
+static __always_inline void
 fe_add(fe_loose *h, const fe *f, const fe *g)
 {
 	fe_add_impl(h->v, f->v, g->v);
@@ -348,7 +348,7 @@ fe_sub_impl(uint32_t out[10], const uint32_t in1[10], const uint32_t in2[10])
 /* h = f - g
  * Can overlap h with f or g.
  */
-static __inline __always_inline void
+static __always_inline void
 fe_sub(fe_loose *h, const fe *f, const fe *g)
 {
 	fe_sub_impl(h->v, f->v, g->v);
@@ -470,19 +470,19 @@ fe_mul_impl(uint32_t out[10], const uint32_t in1[10], const uint32_t in2[10])
 	out[9] = x114;
 }
 
-static __inline __always_inline void
+static __always_inline void
 fe_mul_ttt(fe *h, const fe *f, const fe *g)
 {
 	fe_mul_impl(h->v, f->v, g->v);
 }
 
-static __inline __always_inline void
+static __always_inline void
 fe_mul_tlt(fe *h, const fe_loose *f, const fe *g)
 {
 	fe_mul_impl(h->v, f->v, g->v);
 }
 
-static __inline __always_inline void
+static __always_inline void
 fe_mul_tll(fe *h, const fe_loose *f, const fe_loose *g)
 {
 	fe_mul_impl(h->v, f->v, g->v);
@@ -594,19 +594,19 @@ fe_sqr_impl(uint32_t out[10], const uint32_t in1[10])
 	out[9] = x93;
 }
 
-static __inline __always_inline void
+static __always_inline void
 fe_sq_tl(fe *h, const fe_loose *f)
 {
 	fe_sqr_impl(h->v, f->v);
 }
 
-static __inline __always_inline void
+static __always_inline void
 fe_sq_tt(fe *h, const fe *f)
 {
 	fe_sqr_impl(h->v, f->v);
 }
 
-static __inline __always_inline void
+static __always_inline void
 fe_loose_invert(fe *out, const fe_loose *z)
 {
 	fe t0;
@@ -657,7 +657,7 @@ fe_loose_invert(fe *out, const fe_loose *z)
 	fe_mul_ttt(out, &t1, &t0);
 }
 
-static __inline __always_inline void
+static __always_inline void
 fe_invert(fe *out, const fe *z)
 {
 	fe_loose l;
@@ -670,7 +670,7 @@ fe_invert(fe *out, const fe *z)
  *
  * Preconditions: b in {0,1}
  */
-static __inline __always_inline void
+static __always_inline void
 fe_cswap(fe *f, fe *g, unsigned int b)
 {
 	unsigned i;
@@ -684,7 +684,7 @@ fe_cswap(fe *f, fe *g, unsigned int b)
 }
 
 /* NOTE: based on fiat-crypto fe_mul, edited for in2=121666, 0, 0.*/
-static __inline __always_inline void
+static __always_inline void
 fe_mul_121666_impl(uint32_t out[10], const uint32_t in1[10])
 {
 	const uint32_t x20 = in1[9];
@@ -800,7 +800,7 @@ fe_mul_121666_impl(uint32_t out[10], const uint32_t in1[10])
 	out[9] = x114;
 }
 
-static __inline __always_inline void
+static __always_inline void
 fe_mul121666(fe *h, const fe_loose *f)
 {
 	fe_mul_121666_impl(h->v, f->v);

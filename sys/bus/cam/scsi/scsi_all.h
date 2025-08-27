@@ -1361,7 +1361,7 @@ scsi_2btoul(u_int8_t *bytes)
 	return (rv);
 }
 
-static __inline __always_inline uint64_t
+static __always_inline uint64_t
 scsi_8btou64(uint8_t *bytes)
 {
 	uint64_t rv;
