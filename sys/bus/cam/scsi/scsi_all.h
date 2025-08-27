@@ -52,9 +52,9 @@ extern int scsi_delay;
 #define	SCSI_CMD_LUN		0xA0	/* these two should not be needed */
 #define	SCSI_CMD_LUN_SHIFT	5	/* LUN in the cmd is no longer SCSI */
 
-#define SCSI_MAX_CDBLEN		16	/* 
-					 * 16 byte commands are in the 
-					 * SCSI-3 spec 
+#define SCSI_MAX_CDBLEN		16	/*
+					 * 16 byte commands are in the
+					 * SCSI-3 spec
 					 */
 #if defined(CAM_MAX_CDBLEN) && (CAM_MAX_CDBLEN < SCSI_MAX_CDBLEN)
 #error "CAM_MAX_CDBLEN cannot be less than SCSI_MAX_CDBLEN"
@@ -424,7 +424,7 @@ struct scsi_sync_cache
 	u_int8_t begin_lba[4];
 	u_int8_t reserved;
 	u_int8_t lb_count[2];
-	u_int8_t control;	
+	u_int8_t control;
 };
 
 
@@ -644,9 +644,9 @@ struct ata_pass_16 {
 #define	T_FIXED		0
 
 /*
- * This length is the initial inquiry length used by the probe code, as    
- * well as the legnth necessary for scsi_print_inquiry() to function 
- * correctly.  If either use requires a different length in the future, 
+ * This length is the initial inquiry length used by the probe code, as
+ * well as the legnth necessary for scsi_print_inquiry() to function
+ * correctly.  If either use requires a different length in the future,
  * the two values should be de-coupled.
  */
 #define	SHORT_INQUIRY_LENGTH	36
@@ -914,7 +914,7 @@ struct scsi_sense_data
 #define	SSD_ERRCODE			0x7F
 #define		SSD_CURRENT_ERROR	0x70
 #define		SSD_DEFERRED_ERROR	0x71
-#define	SSD_ERRCODE_VALID	0x80	
+#define	SSD_ERRCODE_VALID	0x80
 	u_int8_t segment;
 	u_int8_t flags;
 #define	SSD_KEY				0x0F
@@ -929,11 +929,11 @@ struct scsi_sense_data
 #define		SSD_KEY_BLANK_CHECK	0x08
 #define		SSD_KEY_Vendor_Specific	0x09
 #define		SSD_KEY_COPY_ABORTED	0x0a
-#define		SSD_KEY_ABORTED_COMMAND	0x0b		
+#define		SSD_KEY_ABORTED_COMMAND	0x0b
 #define		SSD_KEY_EQUAL		0x0c
 #define		SSD_KEY_VOLUME_OVERFLOW	0x0d
 #define		SSD_KEY_MISCOMPARE	0x0e
-#define		SSD_KEY_RESERVED	0x0f			
+#define		SSD_KEY_RESERVED	0x0f
 #define	SSD_ILI		0x20
 #define	SSD_EOM		0x40
 #define	SSD_FILEMARK	0x80
@@ -1011,7 +1011,7 @@ struct scsi_inquiry_pattern {
 	const char *vendor;
 	const char *product;
 	const char *revision;
-}; 
+};
 
 struct scsi_static_inquiry_pattern {
 	u_int8_t   type;
@@ -1140,9 +1140,9 @@ int		scsi_sense_sbuf(struct ccb_scsiio *csio, struct sbuf *sb,
 char *		scsi_sense_string(struct ccb_scsiio *csio,
 				  char *str, int str_len);
 void		scsi_sense_print(struct ccb_scsiio *csio);
-int		scsi_interpret_sense(union ccb *ccb, 
+int		scsi_interpret_sense(union ccb *ccb,
 				     u_int32_t sense_flags,
-				     u_int32_t *relsim_flags, 
+				     u_int32_t *relsim_flags,
 				     u_int32_t *reduction,
 				     u_int32_t *timeout,
 				     scsi_sense_action error_action);
@@ -1152,15 +1152,15 @@ int		scsi_command_string(struct cam_device *device,
 int		scsi_sense_sbuf(struct cam_device *device,
 				struct ccb_scsiio *csio, struct sbuf *sb,
 				scsi_sense_string_flags flags);
-char *		scsi_sense_string(struct cam_device *device, 
+char *		scsi_sense_string(struct cam_device *device,
 				  struct ccb_scsiio *csio,
 				  char *str, int str_len);
-void		scsi_sense_print(struct cam_device *device, 
+void		scsi_sense_print(struct cam_device *device,
 				 struct ccb_scsiio *csio, FILE *ofile);
 int		scsi_interpret_sense(struct cam_device *device,
 				     union ccb *ccb,
 				     u_int32_t sense_flags,
-				     u_int32_t *relsim_flags, 
+				     u_int32_t *relsim_flags,
 				     u_int32_t *reduction,
 				     u_int32_t *timeout,
 				     scsi_sense_action error_action);
@@ -1172,7 +1172,7 @@ int		scsi_interpret_sense(struct cam_device *device,
 #define SF_PRINT_ALWAYS	0x08
 
 
-const char *	scsi_op_desc(u_int16_t opcode, 
+const char *	scsi_op_desc(u_int16_t opcode,
 			     struct scsi_inquiry_data *inq_data);
 char *		scsi_cdb_string(u_int8_t *cdb_ptr, char *cdb_string,
 				size_t len);
@@ -1181,15 +1181,15 @@ void		scsi_print_inquiry(struct scsi_inquiry_data *inq_data);
 
 u_int		scsi_calc_syncsrate(u_int period_factor);
 u_int		scsi_calc_syncparam(u_int period);
-	
+
 void		scsi_test_unit_ready(struct ccb_scsiio *csio, u_int32_t retries,
-				     void (*cbfcnp)(struct cam_periph *, 
+				     void (*cbfcnp)(struct cam_periph *,
 						    union ccb *),
-				     u_int8_t tag_action, 
+				     u_int8_t tag_action,
 				     u_int8_t sense_len, u_int32_t timeout);
 
 void		scsi_request_sense(struct ccb_scsiio *csio, u_int32_t retries,
-				   void (*cbfcnp)(struct cam_periph *, 
+				   void (*cbfcnp)(struct cam_periph *,
 						  union ccb *),
 				   void *data_ptr, u_int8_t dxfer_len,
 				   u_int8_t tag_action, u_int8_t sense_len,
@@ -1198,7 +1198,7 @@ void		scsi_request_sense(struct ccb_scsiio *csio, u_int32_t retries,
 #ifndef CAM_NO_SCSI_INQUIRY	/* hack for cdparanoia */
 void		scsi_inquiry(struct ccb_scsiio *csio, u_int32_t retries,
 			     void (*cbfcnp)(struct cam_periph *, union ccb *),
-			     u_int8_t tag_action, u_int8_t *inq_buf, 
+			     u_int8_t tag_action, u_int8_t *inq_buf,
 			     u_int32_t inq_len, int evpd, u_int8_t page_code,
 			     u_int8_t sense_len, u_int32_t timeout);
 #endif
@@ -1257,8 +1257,8 @@ void		scsi_prevent(struct ccb_scsiio *csio, u_int32_t retries,
 			     u_int8_t sense_len, u_int32_t timeout);
 
 void		scsi_read_capacity(struct ccb_scsiio *csio, u_int32_t retries,
-				   void (*cbfcnp)(struct cam_periph *, 
-				   union ccb *), u_int8_t tag_action, 
+				   void (*cbfcnp)(struct cam_periph *,
+				   union ccb *), u_int8_t tag_action,
 				   struct scsi_read_capacity_data *,
 				   u_int8_t sense_len, u_int32_t timeout);
 void		scsi_read_capacity_16(struct ccb_scsiio *csio, uint32_t retries,
@@ -1270,23 +1270,23 @@ void		scsi_read_capacity_16(struct ccb_scsiio *csio, uint32_t retries,
 				    uint32_t timeout);
 
 void		scsi_report_luns(struct ccb_scsiio *csio, u_int32_t retries,
-				 void (*cbfcnp)(struct cam_periph *, 
-				 union ccb *), u_int8_t tag_action, 
+				 void (*cbfcnp)(struct cam_periph *,
+				 union ccb *), u_int8_t tag_action,
 				 u_int8_t select_report,
 				 struct scsi_report_luns_data *rpl_buf,
 				 u_int32_t alloc_len, u_int8_t sense_len,
 				 u_int32_t timeout);
 
-void		scsi_synchronize_cache(struct ccb_scsiio *csio, 
+void		scsi_synchronize_cache(struct ccb_scsiio *csio,
 				       u_int32_t retries,
-				       void (*cbfcnp)(struct cam_periph *, 
-				       union ccb *), u_int8_t tag_action, 
+				       void (*cbfcnp)(struct cam_periph *,
+				       union ccb *), u_int8_t tag_action,
 				       u_int32_t begin_lba, u_int16_t lb_count,
 				       u_int8_t sense_len, u_int32_t timeout);
 
 void scsi_read_write(struct ccb_scsiio *csio, u_int32_t retries,
 		     void (*cbfcnp)(struct cam_periph *, union ccb *),
-		     u_int8_t tag_action, int readop, u_int8_t byte2, 
+		     u_int8_t tag_action, int readop, u_int8_t byte2,
 		     int minimum_cmd_size, u_int64_t lba,
 		     u_int32_t block_count, u_int8_t *data_ptr,
 		     u_int32_t dxfer_len, u_int8_t sense_len,
@@ -1300,21 +1300,6 @@ void scsi_start_stop(struct ccb_scsiio *csio, u_int32_t retries,
 int		scsi_inquiry_match(caddr_t inqbuffer, caddr_t table_entry);
 int		scsi_static_inquiry_match(caddr_t inqbuffer,
 					  caddr_t table_entry);
-
-static __inline void scsi_extract_sense(struct scsi_sense_data *sense,
-					int *error_code, int *sense_key,
-					int *asc, int *ascq);
-static __inline void scsi_ulto2b(u_int32_t val, u_int8_t *bytes);
-static __inline void scsi_ulto3b(u_int32_t val, u_int8_t *bytes);
-static __inline void scsi_ulto4b(u_int32_t val, u_int8_t *bytes);
-static __inline void scsi_u64to8b(u_int64_t val, u_int8_t *bytes);
-static __inline u_int32_t scsi_2btoul(u_int8_t *bytes);
-static __inline u_int32_t scsi_3btoul(u_int8_t *bytes);
-static __inline int32_t scsi_3btol(u_int8_t *bytes);
-static __inline u_int32_t scsi_4btoul(u_int8_t *bytes);
-static __inline __always_inline u_int64_t scsi_8btou64(u_int8_t *bytes);
-static __inline void *find_mode_page_6(struct scsi_mode_header_6 *mode_header);
-static __inline void *find_mode_page_10(struct scsi_mode_header_10 *mode_header);
 
 static __inline void
 scsi_extract_sense(struct scsi_sense_data *sense, int *error_code,
@@ -1403,11 +1388,11 @@ scsi_3btoul(u_int8_t *bytes)
 	return (rv);
 }
 
-static __inline int32_t 
+static __inline int32_t
 scsi_3btol(u_int8_t *bytes)
 {
 	u_int32_t rc = scsi_3btoul(bytes);
- 
+
 	if (rc & 0x00800000)
 		rc |= 0xff000000;
 
