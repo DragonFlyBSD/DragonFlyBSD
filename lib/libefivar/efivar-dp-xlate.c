@@ -146,7 +146,7 @@ efi_hd_to_unix(const_efidp dp, char **dev, char **relpath, char **abspath)
 		return (EINVAL);
 
 	/*
-	 * Format this node. We're going to look for it as a efimedia
+	 * Format this node. We're going to look for it as an efimedia
 	 * attribute of some geom node. Once we find that node, we use it
 	 * as the device it comes from, at least provisionally.
 	 */
@@ -292,7 +292,7 @@ errout:
  *
  * Extract the path from the File path node(s). translate any \ file separators
  * to /. Append the result to the mount point. Copy the resulting path into
- * *path.  Stat that path. If it is not found, return the errorr from stat.
+ * *path.  Stat that path. If it is not found, return the error from stat.
  *
  * Finally, check to make sure the resulting path is still on the same
  * device. If not, return ENODEV.
@@ -390,7 +390,7 @@ efivar_device_path_to_unix_path(const_efidp dp, char **dev, char **relpath, char
  *		return ENXIO
  *	Create a media device path node.
  *	append the relative path from the mountpoint to the media device node
- * 		as a file path.
+ *		as a file path.
  *
  * For paths matching the second form:
  *	find the EFI partition corresponding to the root fileystem.
