@@ -100,7 +100,7 @@ static const struct dos_ptype
 	{ 0x51, "DM" },
 	{ 0x52, "CP/M or Microport SysV/AT" },
 	{ 0x53, "DM6 Aux3" },
-	{ 0x54, "DM6" },
+	{ DOSPTYP_ONTRACK, "DM6" },
 	{ 0x55, "EZ-Drive (disk manager)" },
 	{ 0x56, "GB" },
 	{ 0x5C, "Priam Edisk (disk manager)" }, /* according to S. Widlake */
