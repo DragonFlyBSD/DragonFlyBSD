@@ -42,21 +42,21 @@
 #define	DOSMAGICOFF	510
 #define	DOSMAGIC	0xAA55
 
-/*
- * NOTE: DragonFly BSD had been using 0xA5 forever but after many years
- *	 we're finally shifting to our own as A5 causes conflicts in grub.
- */
-#define	DOSPTYP_DFLYBSD	0x6c	/* DragonFly BSD partition type */
-#define	DOSPTYP_386BSD	0xa5	/* 386BSD partition type */
-#define	DOSPTYP_OPENBSD	0xa6	/* OpenBSD partition type */
-#define	DOSPTYP_NETBSD	0xa9	/* NetBSD partition type */
+#define	DOSPTYP_EXT	0x05	/* DOS extended partition */
+#define	DOSPTYP_EXTLBA	0x0F	/* DOS extended partition */
+#define	DOSPTYP_ONTRACK	0x54	/* Ontrack Disk Manager */
+#define	DOSPTYP_DFLYBSD	0x6C	/* DragonFly BSD partition type */
+				/* NOTE: DragonFly BSD had been using 0xA5
+				 * forever but after many years we're finally
+				 * shifting to our own as 0xA5 causes conflicts
+				 * in GRUB. */
 #define	DOSPTYP_LINSWP	0x82	/* Linux swap partition */
 #define	DOSPTYP_LINUX	0x83	/* Linux partition */
-#define	DOSPTYP_PMBR	0xee	/* GPT Protective MBR */
-#define	DOSPTYP_EFI	0xef	/* EFI system partition */
-#define	DOSPTYP_EXT	0x05	/* DOS extended partition */
-#define	DOSPTYP_EXTLBA	0x0f	/* DOS extended partition */
-#define	DOSPTYP_ONTRACK	0x54	/* Ontrack Disk Manager */
+#define	DOSPTYP_386BSD	0xA5	/* 386BSD partition type */
+#define	DOSPTYP_OPENBSD	0xA6	/* OpenBSD partition type */
+#define	DOSPTYP_NETBSD	0xA9	/* NetBSD partition type */
+#define	DOSPTYP_PMBR	0xEE	/* GPT Protective MBR */
+#define	DOSPTYP_EFI	0xEF	/* EFI system partition */
 
 #ifndef _STANDALONE
 static const struct dos_ptype
