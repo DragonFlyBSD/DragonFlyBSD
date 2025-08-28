@@ -26,13 +26,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/create.c,v 1.11 2005/08/31 01:47:19 marcel Exp $
- * $DragonFly: src/sbin/gpt/create.c,v 1.1 2007/06/16 22:29:27 dillon Exp $
  */
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/errno.h>
-#include <sys/param.h>
 #include <bus/cam/scsi/scsi_daio.h>
 
 #include <err.h>
