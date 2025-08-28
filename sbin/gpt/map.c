@@ -51,7 +51,7 @@ mkmap(off_t start, off_t size, int type)
 	m->map_size = size;
 	m->map_next = m->map_prev = NULL;
 	m->map_type = type;
-	m->map_index = NOENTRY;
+	m->map_index = MAP_NOENTRY;
 	m->map_data = NULL;
 	return (m);
 }

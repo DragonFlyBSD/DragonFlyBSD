@@ -108,7 +108,7 @@ show(int fd __unused)
 		printf("  %*s", (int)(sizeof(humansz) - 1), humansz);
 		putchar(' ');
 		putchar(' ');
-		if (m->map_index != NOENTRY)
+		if (m->map_index != MAP_NOENTRY)
 			printf("%5d", m->map_index);
 		else
 			printf("    -");

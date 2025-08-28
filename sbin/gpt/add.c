@@ -39,7 +39,7 @@
 
 static uuid_t type;
 static off_t block, size;
-static unsigned int entry = NOENTRY;
+static unsigned int entry = MAP_NOENTRY;
 
 static void
 usage_add(void)
@@ -83,13 +83,13 @@ add(int fd)
 	}
 
 	hdr = gpt->map_data;
-	if (entry != NOENTRY && entry > le32toh(hdr->hdr_entries)) {
+	if (entry != MAP_NOENTRY && entry > le32toh(hdr->hdr_entries)) {
 		warnx("%s: error: index %u out of range (%u max)", device_name,
 		    entry, le32toh(hdr->hdr_entries));
 		return;
 	}
 
-	if (entry != NOENTRY) {
+	if (entry != MAP_NOENTRY) {
 		i = entry;
 		ent = (void*)((char*)tbl->map_data + i *
 		    le32toh(hdr->hdr_entsz));
@@ -187,10 +187,10 @@ cmd_add(int argc, char *argv[])
 				usage_add();
 			break;
 		case 'i':
-			if (entry != NOENTRY)
+			if (entry != MAP_NOENTRY)
 				usage_add();
 			entry = strtoul(optarg, &p, 10);
-			if (*p != 0 || entry == NOENTRY)
+			if (*p != 0 || entry == MAP_NOENTRY)
 				usage_add();
 			break;
 		case 's':

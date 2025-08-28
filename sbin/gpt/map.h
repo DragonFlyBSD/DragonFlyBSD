@@ -45,7 +45,7 @@ typedef struct map {
 #define	MAP_TYPE_GPT_PART	7
 #define	MAP_TYPE_PMBR		8
 	unsigned int	map_index;
-#define	NOENTRY		((unsigned int)-1)
+#define	MAP_NOENTRY	((unsigned int)-1)
 	void		*map_data;
 } map_t;
 
