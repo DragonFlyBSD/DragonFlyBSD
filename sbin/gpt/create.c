@@ -172,11 +172,7 @@ create(int fd)
 	hdr = gpt->map_data;
 	memcpy(hdr->hdr_sig, GPT_HDR_SIG, sizeof(hdr->hdr_sig));
 	hdr->hdr_revision = htole32(GPT_HDR_REVISION);
-	/*
-	 * XXX struct gpt_hdr is not a multiple of 8 bytes in size and thus
-	 * contains padding we must not include in the size.
-	 */
-	hdr->hdr_size = htole32(offsetof(struct gpt_hdr, padding));
+	hdr->hdr_size = htole32(GPT_MIN_HDR_SIZE);
 	hdr->hdr_lba_self = htole64(gpt->map_start);
 	hdr->hdr_lba_alt = htole64(last);
 	hdr->hdr_lba_start = htole64(tbl->map_start + blocks);
