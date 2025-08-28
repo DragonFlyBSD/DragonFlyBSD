@@ -81,7 +81,12 @@ show(int fd __unused)
 	struct mbr *mbr;
 	struct gpt_ent *ent;
 	unsigned int i;
-	char *s, humansz[sizeof("99.9GB")];
+	char *s, humansz[sizeof("99.9GB")], lwbuf[32];
+	int lbawidth;
+
+	lbawidth = sprintf(lwbuf, "%llu", (long long)(mediasz / secsz));
+	if (lbawidth < 5)
+		lbawidth = 5;
 
 	humanize_number(humansz, sizeof(humansz), (int64_t)mediasz, "B",
 			HN_AUTOSCALE, HN_FRACTIONAL | HN_NOSPACE);

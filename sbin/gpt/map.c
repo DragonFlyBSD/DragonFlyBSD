@@ -37,8 +37,6 @@
 #define ROUNDDOWN(x)	rounddown2(x - 1, ROUNDTO)
 #define ROUNDUP(x)	(ROUNDDOWN(x) + ROUNDTO)
 
-int lbawidth;
-
 static map_t *mediamap;
 
 map_t *
@@ -216,10 +214,5 @@ map_free(off_t start, off_t size)
 void
 map_init(off_t size)
 {
-	char buf[32];
-
 	mediamap = mkmap(0LL, size, MAP_TYPE_UNUSED);
-	lbawidth = sprintf(buf, "%llu", (long long)size);
-	if (lbawidth < 5)
-		lbawidth = 5;
 }
