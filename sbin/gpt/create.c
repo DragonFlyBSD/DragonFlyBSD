@@ -29,6 +29,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/diskmbr.h>
 #include <sys/stat.h> /* mkdir() */
 #include <bus/cam/scsi/scsi_daio.h> /* DAIOCTRIM */
 
@@ -109,7 +110,7 @@ create(int fd)
 		mbr->mbr_part[0].part_shd = 0xff;
 		mbr->mbr_part[0].part_ssect = 0xff;
 		mbr->mbr_part[0].part_scyl = 0xff;
-		mbr->mbr_part[0].part_typ = 0xee;
+		mbr->mbr_part[0].part_typ = DOSPTYP_PMBR;
 		mbr->mbr_part[0].part_ehd = 0xff;
 		mbr->mbr_part[0].part_esect = 0xff;
 		mbr->mbr_part[0].part_ecyl = 0xff;

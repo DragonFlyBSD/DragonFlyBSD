@@ -33,6 +33,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/diskmbr.h>
 
 #include <err.h>
 #include <stddef.h>
@@ -171,8 +172,7 @@ bootset(int fd)
 	mbr->mbr_part[1].part_start_hi = htole16((block) >> 16);
 	mbr->mbr_part[1].part_size_lo = htole16(size);
 	mbr->mbr_part[1].part_size_hi = htole16(size >> 16);
-
-	mbr->mbr_part[1].part_typ = 108;
+	mbr->mbr_part[1].part_typ = DOSPTYP_DFLYBSD;
 	mbr->mbr_part[1].part_flag = 0x80;
 
 	gpt_write(fd, map);

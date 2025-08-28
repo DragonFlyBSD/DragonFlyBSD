@@ -28,6 +28,7 @@
 
 #include <sys/types.h>
 #include <sys/disklabel32.h>
+#include <sys/diskmbr.h>
 #include <sys/dtype.h>
 
 #include <err.h>
@@ -248,11 +249,11 @@ migrate(int fd)
 		case 0:
 			continue;
 #if 0
-		case 108:
+		case DOSPTYP_DFLYBSD:
 			/* TODO: Port to DragonFly and test */
 			continue;
 #endif
-		case 165: {	/* FreeBSD */
+		case DOSPTYP_386BSD: {
 			if (slice) {
 				uuid_t freebsd = GPT_ENT_TYPE_FREEBSD;
 				uuid_enc_le(&ent->ent_type, &freebsd);
@@ -265,7 +266,7 @@ migrate(int fd)
 				ent = migrate_disklabel(fd, start, ent);
 			break;
 		}
-		case 239: {	/* EFI */
+		case DOSPTYP_EFI: {
 			uuid_t efi_slice = GPT_ENT_TYPE_EFI;
 			uuid_enc_le(&ent->ent_type, &efi_slice);
 			ent->ent_lba_start = htole64((uint64_t)start);
@@ -315,7 +316,7 @@ migrate(int fd)
 	mbr->mbr_part[0].part_shd = 0xff;
 	mbr->mbr_part[0].part_ssect = 0xff;
 	mbr->mbr_part[0].part_scyl = 0xff;
-	mbr->mbr_part[0].part_typ = 0xee;
+	mbr->mbr_part[0].part_typ = DOSPTYP_PMBR;
 	mbr->mbr_part[0].part_ehd = 0xff;
 	mbr->mbr_part[0].part_esect = 0xff;
 	mbr->mbr_part[0].part_ecyl = 0xff;

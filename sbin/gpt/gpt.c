@@ -29,8 +29,9 @@
  */
 
 #include <sys/param.h>
-#include <sys/stat.h>
+#include <sys/diskmbr.h>
 #include <sys/diskslice.h>
+#include <sys/stat.h>
 
 #include <err.h>
 #include <errno.h>
@@ -359,7 +360,7 @@ gpt_mbr(int fd, off_t lba)
 	for (i = 0; i < 4; i++) {
 		if (mbr->mbr_part[i].part_typ == 0)
 			continue;
-		if (mbr->mbr_part[i].part_typ == 0xee)
+		if (mbr->mbr_part[i].part_typ == DOSPTYP_PMBR)
 			pmbr++;
 		else
 			break;
@@ -385,7 +386,7 @@ gpt_mbr(int fd, off_t lba)
 		return (-1);
 	for (i = 0; i < 4; i++) {
 		if (mbr->mbr_part[i].part_typ == 0 ||
-		    mbr->mbr_part[i].part_typ == 0xee)
+		    mbr->mbr_part[i].part_typ == DOSPTYP_PMBR)
 			continue;
 		start = le16toh(mbr->mbr_part[i].part_start_hi);
 		start = (start << 16) + le16toh(mbr->mbr_part[i].part_start_lo);
@@ -402,7 +403,7 @@ gpt_mbr(int fd, off_t lba)
 			warnx("%s: MBR part: type=%d, start=%llu, size=%llu",
 			    device_name, mbr->mbr_part[i].part_typ,
 			    (long long)start, (long long)size);
-		if (mbr->mbr_part[i].part_typ != 15) {
+		if (mbr->mbr_part[i].part_typ != DOSPTYP_EXTLBA) {
 			m = map_add(start, size, MAP_TYPE_MBR_PART, p);
 			if (m == NULL)
 				return (-1);
