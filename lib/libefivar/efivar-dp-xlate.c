@@ -637,7 +637,7 @@ int
 efivar_unix_path_to_device_path(const char *path, efidp *dp)
 {
 	char *modpath = NULL, *cp;
-	int rv = ENOMEM;
+	int rv;
 
 	/*
 	 * Fail early for clearly bogus things
@@ -651,7 +651,8 @@ efivar_unix_path_to_device_path(const char *path, efidp *dp)
 	 */
 	modpath = strdup(path);
 	if (modpath == NULL)
-		goto out;
+		return (ENOMEM);
+
 	for (cp = modpath; *cp; cp++)
 		if (*cp == '\\')
 			*cp = '/';
@@ -663,8 +664,6 @@ efivar_unix_path_to_device_path(const char *path, efidp *dp)
 	else						/* Handle /a/b/c */
 		rv = path_to_dp(modpath, dp);
 
-out:
 	free(modpath);
-
 	return (rv);
 }
