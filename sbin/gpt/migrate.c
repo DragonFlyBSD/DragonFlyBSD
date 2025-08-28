@@ -41,17 +41,6 @@
 #include "map.h"
 #include "gpt.h"
 
-/*
- * Allow compilation on platforms that do not have a BSD label.
- * The values are valid for x86_64, i386 and ia64 disklabels.
- */
-#ifndef LABELOFFSET
-#define	LABELOFFSET	0
-#endif
-#ifndef LABELSECTOR
-#define	LABELSECTOR	1
-#endif
-
 static int force;
 static int slice;
 
