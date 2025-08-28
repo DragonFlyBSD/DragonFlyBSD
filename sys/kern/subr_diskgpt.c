@@ -79,6 +79,8 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	int i = 0, j;
 	const char *dname;
 
+	error = 0;
+
 	/*
 	 * The GPT starts in sector 1.
 	 */
@@ -213,7 +215,6 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	}
 	ssp->dss_nslices = BASE_SLICE + i;
 
-	error = 0;
 done:
 	if (bp1) {
 		bp1->b_flags |= B_INVAL | B_AGE;
@@ -223,8 +224,6 @@ done:
 		bp2->b_flags |= B_INVAL | B_AGE;
 		relpbuf(bp2, NULL);
 	}
-	if (error == EINVAL)
-		error = 0;
 	return (error);
 }
 

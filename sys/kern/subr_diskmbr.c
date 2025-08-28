@@ -107,6 +107,7 @@ mbrinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	struct diskslices *ssp;
 	cdev_t wdev;
 
+	error = 0;
 	mbr_offset = DOSBBSECTOR;
 reread_mbr:
 	/*
@@ -235,7 +236,6 @@ reread_mbr:
 	 * Check for overlaps.
 	 * Check against d_secperunit if the latter is reliable.
 	 */
-	error = 0;
 	for (dospart = 0, dp = dp0; dospart < NDOSPART; dospart++, dp++) {
 		if (dp->dp_scyl == 0 && dp->dp_shd == 0 && dp->dp_ssect == 0
 		    && dp->dp_start == 0 && dp->dp_size == 0)
@@ -316,8 +316,6 @@ reread_mbr:
 done:
 	bp->b_flags |= B_INVAL | B_AGE;
 	relpbuf(bp, NULL);
-	if (error == EINVAL)
-		error = 0;
 	return (error);
 }
 
