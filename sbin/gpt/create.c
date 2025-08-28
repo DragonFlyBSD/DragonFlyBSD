@@ -29,11 +29,11 @@
  */
 
 #include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/errno.h>
-#include <bus/cam/scsi/scsi_daio.h>
+#include <sys/stat.h> /* mkdir() */
+#include <bus/cam/scsi/scsi_daio.h> /* DAIOCTRIM */
 
 #include <err.h>
+#include <errno.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
