@@ -57,7 +57,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.22 2007/06/19 06:07:51 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -212,7 +211,7 @@ struct partinfo {
 	 * partitions.  If not known, they will be set to a nil uuid.
 	 *
 	 * fstype_uuid represents the slice or partition type, e.g.
-	 * like GPT_ENT_TYPE_DRAGONFLY_DISKLABEL32.  If not nil,
+	 * like GPT_ENT_TYPE_DRAGONFLY_LABEL64.  If not nil,
 	 * storage_uuid uniquely identifies the physical storage.
 	 */
 	struct uuid	fstype_uuid;
