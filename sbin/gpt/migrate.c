@@ -28,7 +28,6 @@
 
 #include <sys/types.h>
 #include <sys/disklabel32.h>
-#include <sys/diskmbr.h>
 #include <sys/dtype.h>
 
 #include <err.h>
@@ -224,12 +223,10 @@ migrate(int fd)
 
 	/* Mirror partitions. */
 	for (i = 0; i < 4; i++) {
-		start = le16toh(mbr->mbr_part[i].part_start_hi);
-		start = (start << 16) + le16toh(mbr->mbr_part[i].part_start_lo);
-		size = le16toh(mbr->mbr_part[i].part_size_hi);
-		size = (size << 16) + le16toh(mbr->mbr_part[i].part_size_lo);
+		start = le32toh(mbr->mbr_part[i].dp_start);
+		size = le32toh(mbr->mbr_part[i].dp_size);
 
-		switch (mbr->mbr_part[i].part_typ) {
+		switch (mbr->mbr_part[i].dp_typ) {
 		case 0:
 			continue;
 #if 0
@@ -263,7 +260,7 @@ migrate(int fd)
 		default:
 			if (!force) {
 				warnx("%s: error: unknown partition type (%d)",
-				    device_name, mbr->mbr_part[i].part_typ);
+				    device_name, mbr->mbr_part[i].dp_typ);
 				return;
 			}
 		}
@@ -297,21 +294,18 @@ migrate(int fd)
 	 * Turn the MBR into a Protective MBR.
 	 */
 	bzero(mbr->mbr_part, sizeof(mbr->mbr_part));
-	mbr->mbr_part[0].part_shd = 0xff;
-	mbr->mbr_part[0].part_ssect = 0xff;
-	mbr->mbr_part[0].part_scyl = 0xff;
-	mbr->mbr_part[0].part_typ = DOSPTYP_PMBR;
-	mbr->mbr_part[0].part_ehd = 0xff;
-	mbr->mbr_part[0].part_esect = 0xff;
-	mbr->mbr_part[0].part_ecyl = 0xff;
-	mbr->mbr_part[0].part_start_lo = htole16(1);
-	if (last > 0xffffffff) {
-		mbr->mbr_part[0].part_size_lo = htole16(0xffff);
-		mbr->mbr_part[0].part_size_hi = htole16(0xffff);
-	} else {
-		mbr->mbr_part[0].part_size_lo = htole16(last);
-		mbr->mbr_part[0].part_size_hi = htole16(last >> 16);
-	}
+	mbr->mbr_part[0].dp_shd = 0xff;
+	mbr->mbr_part[0].dp_ssect = 0xff;
+	mbr->mbr_part[0].dp_scyl = 0xff;
+	mbr->mbr_part[0].dp_typ = DOSPTYP_PMBR;
+	mbr->mbr_part[0].dp_ehd = 0xff;
+	mbr->mbr_part[0].dp_esect = 0xff;
+	mbr->mbr_part[0].dp_ecyl = 0xff;
+	mbr->mbr_part[0].dp_start = htole32(1U);
+	if (last > 0xffffffff)
+		mbr->mbr_part[0].dp_size = htole32(0xffffffffU);
+	else
+		mbr->mbr_part[0].dp_size = htole32((uint32_t)last);
 	gpt_write(fd, map);
 }
 

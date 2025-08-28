@@ -27,7 +27,6 @@
  */
 
 #include <sys/types.h>
-#include <sys/diskmbr.h>
 
 #include <err.h>
 #include <libutil.h>
@@ -138,9 +137,7 @@ show(int fd __unused)
 			printf("MBR part ");
 			mbr = p->map_data;
 			for (i = 0; i < 4; i++) {
-				start = le16toh(mbr->mbr_part[i].part_start_hi);
-				start = (start << 16) +
-				    le16toh(mbr->mbr_part[i].part_start_lo);
+				start = le32toh(mbr->mbr_part[i].dp_start);
 				if (m->map_start == p->map_start + start)
 					break;
 			}
@@ -148,8 +145,8 @@ show(int fd __unused)
 				/* wasn't there */
 				printf("[partition not found?]");
 			} else {
-				printf("%d%s", mbr->mbr_part[i].part_typ,
-				    mbr->mbr_part[i].part_flag == 0x80 ?
+				printf("%d%s", mbr->mbr_part[i].dp_typ,
+				    mbr->mbr_part[i].dp_flag == 0x80 ?
 				    " (active)" : "");
 			}
 			break;
@@ -174,8 +171,8 @@ show(int fd __unused)
 		case MAP_TYPE_PMBR:
 			printf("PMBR");
 			mbr = m->map_data;
-			if (mbr->mbr_part[0].part_typ == DOSPTYP_PMBR &&
-			    mbr->mbr_part[0].part_flag == 0x80)
+			if (mbr->mbr_part[0].dp_typ == DOSPTYP_PMBR &&
+			    mbr->mbr_part[0].dp_flag == 0x80)
 				printf(" (active)");
 			break;
 		default:

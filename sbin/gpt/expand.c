@@ -118,13 +118,10 @@ expand(int fd)
 	/*
 	 * Update the PMBR
 	 */
-	if (last > 0xffffffff) {
-		mbr->mbr_part[0].part_size_lo = htole16(0xffff);
-		mbr->mbr_part[0].part_size_hi = htole16(0xffff);
-	} else {
-		mbr->mbr_part[0].part_size_lo = htole16(last);
-		mbr->mbr_part[0].part_size_hi = htole16(last >> 16);
-	}
+	if (last > 0xffffffff)
+		mbr->mbr_part[0].dp_size = htole32(0xffffffffU);
+	else
+		mbr->mbr_part[0].dp_size = htole32((uint32_t)last);
 
 	/*
 	 * Calculate expansion size

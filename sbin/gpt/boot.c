@@ -33,7 +33,6 @@
  */
 
 #include <sys/types.h>
-#include <sys/diskmbr.h>
 
 #include <err.h>
 #include <stddef.h>
@@ -161,18 +160,16 @@ bootset(int fd)
 	/*
 	 * Generate partition #1
 	 */
-	mbr->mbr_part[1].part_shd = 0xff;
-	mbr->mbr_part[1].part_ssect = 0xff;
-	mbr->mbr_part[1].part_scyl = 0xff;
-	mbr->mbr_part[1].part_ehd = 0xff;
-	mbr->mbr_part[1].part_esect = 0xff;
-	mbr->mbr_part[1].part_ecyl = 0xff;
-	mbr->mbr_part[1].part_start_lo = htole16(block);
-	mbr->mbr_part[1].part_start_hi = htole16((block) >> 16);
-	mbr->mbr_part[1].part_size_lo = htole16(size);
-	mbr->mbr_part[1].part_size_hi = htole16(size >> 16);
-	mbr->mbr_part[1].part_typ = DOSPTYP_DFLYBSD;
-	mbr->mbr_part[1].part_flag = 0x80;
+	mbr->mbr_part[1].dp_shd = 0xff;
+	mbr->mbr_part[1].dp_ssect = 0xff;
+	mbr->mbr_part[1].dp_scyl = 0xff;
+	mbr->mbr_part[1].dp_ehd = 0xff;
+	mbr->mbr_part[1].dp_esect = 0xff;
+	mbr->mbr_part[1].dp_ecyl = 0xff;
+	mbr->mbr_part[1].dp_start = htole32((uint32_t)block);
+	mbr->mbr_part[1].dp_size = htole32((uint32_t)size);
+	mbr->mbr_part[1].dp_typ = DOSPTYP_DFLYBSD;
+	mbr->mbr_part[1].dp_flag = 0x80;
 
 	gpt_write(fd, map);
 }

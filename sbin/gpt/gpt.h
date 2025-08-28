@@ -29,6 +29,8 @@
 #ifndef _GPT_H_
 #define	_GPT_H_
 
+#include <sys/cdefs.h>
+#include <sys/diskmbr.h>
 #include <sys/endian.h>
 #include <sys/gpt.h>
 
@@ -36,27 +38,12 @@
 
 #include "map.h"
 
-struct mbr_part {
-	uint8_t		part_flag;		/* bootstrap flags */
-	uint8_t		part_shd;		/* starting head */
-	uint8_t		part_ssect;		/* starting sector */
-	uint8_t		part_scyl;		/* starting cylinder */
-	uint8_t		part_typ;		/* partition type */
-	uint8_t		part_ehd;		/* end head */
-	uint8_t		part_esect;		/* end sector */
-	uint8_t		part_ecyl;		/* end cylinder */
-	uint16_t	part_start_lo;		/* absolute starting ... */
-	uint16_t	part_start_hi;		/* ... sector number */
-	uint16_t	part_size_lo;		/* partition size ... */
-	uint16_t	part_size_hi;		/* ... in sectors */
+struct __packed mbr {
+	uint16_t		mbr_code[223];
+	struct dos_partition	mbr_part[4];
+	uint16_t		mbr_sig;
 };
-
-struct mbr {
-	uint16_t	mbr_code[223];
-	struct mbr_part	mbr_part[4];
-	uint16_t	mbr_sig;
-#define	MBR_SIG		0xAA55
-};
+CTASSERT(sizeof(struct mbr) == 512);
 
 extern char *device_name;
 extern off_t mediasz;

@@ -29,7 +29,6 @@
  */
 
 #include <sys/types.h>
-#include <sys/diskmbr.h>
 #include <sys/stat.h> /* mkdir() */
 #include <bus/cam/scsi/scsi_daio.h> /* DAIOCTRIM */
 
@@ -105,22 +104,19 @@ create(int fd)
 		}
 		mbr = gpt_read(fd, 0LL, 1);
 		bzero(mbr, sizeof(*mbr));
-		mbr->mbr_sig = htole16(MBR_SIG);
-		mbr->mbr_part[0].part_shd = 0xff;
-		mbr->mbr_part[0].part_ssect = 0xff;
-		mbr->mbr_part[0].part_scyl = 0xff;
-		mbr->mbr_part[0].part_typ = DOSPTYP_PMBR;
-		mbr->mbr_part[0].part_ehd = 0xff;
-		mbr->mbr_part[0].part_esect = 0xff;
-		mbr->mbr_part[0].part_ecyl = 0xff;
-		mbr->mbr_part[0].part_start_lo = htole16(1);
-		if (last > 0xffffffff) {
-			mbr->mbr_part[0].part_size_lo = htole16(0xffff);
-			mbr->mbr_part[0].part_size_hi = htole16(0xffff);
-		} else {
-			mbr->mbr_part[0].part_size_lo = htole16(last);
-			mbr->mbr_part[0].part_size_hi = htole16(last >> 16);
-		}
+		mbr->mbr_sig = htole16(DOSMAGIC);
+		mbr->mbr_part[0].dp_shd = 0xff;
+		mbr->mbr_part[0].dp_ssect = 0xff;
+		mbr->mbr_part[0].dp_scyl = 0xff;
+		mbr->mbr_part[0].dp_typ = DOSPTYP_PMBR;
+		mbr->mbr_part[0].dp_ehd = 0xff;
+		mbr->mbr_part[0].dp_esect = 0xff;
+		mbr->mbr_part[0].dp_ecyl = 0xff;
+		mbr->mbr_part[0].dp_start = htole32(1U);
+		if (last > 0xffffffff)
+			mbr->mbr_part[0].dp_size = htole32(0xffffffffU);
+		else
+			mbr->mbr_part[0].dp_size = htole32((uint32_t)last);
 		map = map_add(0LL, 1LL, MAP_TYPE_PMBR, mbr);
 		gpt_write(fd, map);
 	}

@@ -29,7 +29,6 @@
  */
 
 #include <sys/param.h>
-#include <sys/diskmbr.h>
 #include <sys/diskslice.h>
 #include <sys/stat.h>
 
@@ -342,7 +341,7 @@ gpt_mbr(int fd, off_t lba)
 	if (mbr == NULL)
 		return (-1);
 
-	if (mbr->mbr_sig != htole16(MBR_SIG)) {
+	if (mbr->mbr_sig != htole16(DOSMAGIC)) {
 		if (verbose)
 			warnx("%s: MBR not found at sector %llu", device_name,
 			    (long long)lba);
@@ -357,9 +356,9 @@ gpt_mbr(int fd, off_t lba)
 	 */
 	pmbr = 0;
 	for (i = 0; i < 4; i++) {
-		if (mbr->mbr_part[i].part_typ == 0)
+		if (mbr->mbr_part[i].dp_typ == 0)
 			continue;
-		if (mbr->mbr_part[i].part_typ == DOSPTYP_PMBR)
+		if (mbr->mbr_part[i].dp_typ == DOSPTYP_PMBR)
 			pmbr++;
 		else
 			break;
@@ -384,13 +383,11 @@ gpt_mbr(int fd, off_t lba)
 	if (p == NULL)
 		return (-1);
 	for (i = 0; i < 4; i++) {
-		if (mbr->mbr_part[i].part_typ == 0 ||
-		    mbr->mbr_part[i].part_typ == DOSPTYP_PMBR)
+		if (mbr->mbr_part[i].dp_typ == 0 ||
+		    mbr->mbr_part[i].dp_typ == DOSPTYP_PMBR)
 			continue;
-		start = le16toh(mbr->mbr_part[i].part_start_hi);
-		start = (start << 16) + le16toh(mbr->mbr_part[i].part_start_lo);
-		size = le16toh(mbr->mbr_part[i].part_size_hi);
-		size = (size << 16) + le16toh(mbr->mbr_part[i].part_size_lo);
+		start = le32toh(mbr->mbr_part[i].dp_start);
+		size = le32toh(mbr->mbr_part[i].dp_size);
 		if (start == 0 && size == 0) {
 			warnx("%s: Malformed MBR at sector %llu", device_name,
 			    (long long)lba);
@@ -400,9 +397,9 @@ gpt_mbr(int fd, off_t lba)
 		start += lba;
 		if (verbose > 2)
 			warnx("%s: MBR part: type=%d, start=%llu, size=%llu",
-			    device_name, mbr->mbr_part[i].part_typ,
+			    device_name, mbr->mbr_part[i].dp_typ,
 			    (long long)start, (long long)size);
-		if (mbr->mbr_part[i].part_typ != DOSPTYP_EXTLBA) {
+		if (mbr->mbr_part[i].dp_typ != DOSPTYP_EXTLBA) {
 			m = map_add(start, size, MAP_TYPE_MBR_PART, p);
 			if (m == NULL)
 				return (-1);
