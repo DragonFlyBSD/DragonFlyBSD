@@ -43,7 +43,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include "map.h"
 #include "gpt.h"
 
 static void

@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/map.h,v 1.6 2005/08/31 01:47:19 marcel Exp $
- * $DragonFly: src/sbin/gpt/map.h,v 1.2 2007/06/17 08:34:59 dillon Exp $
  */
 
 #ifndef _MAP_H_

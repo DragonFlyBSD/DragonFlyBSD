@@ -38,7 +38,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "map.h"
 #include "gpt.h"
 
 static bool show_guid = false;

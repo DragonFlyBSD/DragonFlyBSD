@@ -34,6 +34,8 @@
 
 #include <uuid.h>
 
+#include "map.h"
+
 struct mbr_part {
 	uint8_t		part_flag;		/* bootstrap flags */
 	uint8_t		part_shd;		/* starting head */

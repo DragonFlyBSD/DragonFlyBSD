@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/remove.c,v 1.10 2006/10/04 18:20:25 marcel Exp $
- * $DragonFly: src/sbin/gpt/remove.c,v 1.2 2007/06/17 08:34:59 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -36,7 +35,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "map.h"
 #include "gpt.h"
 
 static int all;

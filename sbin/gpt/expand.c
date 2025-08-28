@@ -33,7 +33,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "map.h"
 #include "gpt.h"
 
 static void expand(int fd);
