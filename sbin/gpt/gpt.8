@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
 .\"
-.Dd May 16, 2025
+.Dd August 29, 2025
 .Dt GPT 8
 .Os
 .Sh NAME
@@ -43,10 +43,7 @@ utility provides the necessary functionality to manipulate GUID partition
 tables (GPTs), but see
 .Sx BUGS
 below for how and where functionality is missing.
-GPT partitions are accessed as
-.Dx
-disk slices, with same number as GPT partition,
-127 slices per disk device are supported.
+.Pp
 The basic usage model of the
 .Nm
 tool follows that of the
