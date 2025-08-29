@@ -29,6 +29,8 @@
 #ifndef _MAP_H_
 #define	_MAP_H_
 
+#include <sys/types.h>
+
 typedef struct map {
 	off_t		map_start;
 	off_t		map_size;
