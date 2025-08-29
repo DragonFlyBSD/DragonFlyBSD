@@ -363,6 +363,12 @@ option prevents migrating
 .Bx
 disk labels into GPT partitions by creating
 the GPT equivalent of a slice.
+.\" ==== recover ====
+.It Nm Ic recover
+The
+.Ic recover
+command tries to recover the primary GPT table from the secondary/backup table
+at the end of the disk, or vice versa.
 .\" ==== remove ====
 .It Nm Ic remove Oo Fl a Oc Ar device ...
 .It Xo
