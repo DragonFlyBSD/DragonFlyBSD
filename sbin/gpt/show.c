@@ -194,7 +194,7 @@ cmd_show(int argc, char *argv[])
 {
 	int ch, fd;
 
-	while ((ch = getopt(argc, argv, "glu")) != -1) {
+	while ((ch = getopt(argc, argv, "ghlu")) != -1) {
 		switch(ch) {
 		case 'g':
 			show_guid = true;
@@ -205,6 +205,7 @@ cmd_show(int argc, char *argv[])
 		case 'u':
 			show_uuid = true;
 			break;
+		case 'h':
 		default:
 			usage_show();
 		}

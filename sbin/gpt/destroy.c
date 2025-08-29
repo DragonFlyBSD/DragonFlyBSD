@@ -85,11 +85,12 @@ cmd_destroy(int argc, char *argv[])
 {
 	int ch, fd;
 
-	while ((ch = getopt(argc, argv, "r")) != -1) {
+	while ((ch = getopt(argc, argv, "hr")) != -1) {
 		switch(ch) {
 		case 'r':
 			recoverable = 1;
 			break;
+		case 'h':
 		default:
 			usage_destroy();
 		}

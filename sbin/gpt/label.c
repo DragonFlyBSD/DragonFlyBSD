@@ -173,7 +173,7 @@ cmd_label(int argc, char *argv[])
 	int ch, fd;
 
 	/* Get the label options */
-	while ((ch = getopt(argc, argv, "ab:f:i:l:s:t:")) != -1) {
+	while ((ch = getopt(argc, argv, "ab:f:hi:l:s:t:")) != -1) {
 		switch(ch) {
 		case 'a':
 			if (all > 0)
@@ -217,6 +217,7 @@ cmd_label(int argc, char *argv[])
 			if (parse_uuid(optarg, &type) != 0)
 				usage_label();
 			break;
+		case 'h':
 		default:
 			usage_label();
 		}

@@ -37,15 +37,29 @@
 
 static void expand(int fd);
 
+static void
+usage_expand(void)
+{
+	fprintf(stderr, "usage: %s device...\n", getprogname());
+	exit(1);
+}
+
 int
 cmd_expand(int argc, char *argv[])
 {
-	int fd;
+	int ch, fd;
 
-	if (argc == optind) {
-		fprintf(stderr, "usage: gpt expand <device>...\n");
-		exit(1);
+	while ((ch = getopt(argc, argv, "h")) != -1) {
+		switch(ch) {
+		case 'h':
+		default:
+			usage_expand();
+		}
 	}
+
+	if (argc == optind)
+		usage_expand();
+
 	while (optind < argc) {
 		fd = gpt_open(argv[optind++]);
 		if (fd == -1) {

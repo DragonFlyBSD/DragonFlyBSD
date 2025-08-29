@@ -143,8 +143,9 @@ cmd_recover(int argc, char *argv[])
 {
 	int ch, fd;
 
-	while ((ch = getopt(argc, argv, "")) != -1) {
+	while ((ch = getopt(argc, argv, "h")) != -1) {
 		switch(ch) {
+		case 'h':
 		default:
 			usage_recover();
 		}

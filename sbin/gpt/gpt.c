@@ -643,7 +643,7 @@ main(int argc, char *argv[])
 	int ch, i;
 
 	/* Get the generic options */
-	while ((ch = getopt(argc, argv, "p:rv")) != -1) {
+	while ((ch = getopt(argc, argv, "hp:rv")) != -1) {
 		switch(ch) {
 		case 'p':
 			if (parts > 0)
@@ -658,6 +658,7 @@ main(int argc, char *argv[])
 		case 'v':
 			verbose++;
 			break;
+		case 'h':
 		default:
 			usage();
 		}

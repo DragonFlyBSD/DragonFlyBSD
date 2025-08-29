@@ -236,7 +236,7 @@ cmd_create(int argc, char *argv[])
 {
 	int ch, fd;
 
-	while ((ch = getopt(argc, argv, "fp")) != -1) {
+	while ((ch = getopt(argc, argv, "fhp")) != -1) {
 		switch(ch) {
 		case 'f':
 			force = 1;
@@ -244,6 +244,7 @@ cmd_create(int argc, char *argv[])
 		case 'p':
 			primary_only = 1;
 			break;
+		case 'h':
 		default:
 			usage_create();
 		}
@@ -280,7 +281,7 @@ cmd_init(int argc, char *argv[])
 	int with_boot = 0;
 	int with_trim = 0;
 
-	while ((ch = getopt(argc, argv, "fBEI")) != -1) {
+	while ((ch = getopt(argc, argv, "fBEhI")) != -1) {
 		switch(ch) {
 		case 'B':
 			with_boot = 1;
@@ -298,6 +299,7 @@ cmd_init(int argc, char *argv[])
 			usage_init();
 			/* NOT REACHED */
 			break;
+		case 'h':
 		default:
 			usage_init();
 			/* NOT REACHED */

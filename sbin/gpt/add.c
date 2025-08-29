@@ -177,7 +177,7 @@ cmd_add(int argc, char *argv[])
 	int ch, fd;
 
 	/* Get the migrate options */
-	while ((ch = getopt(argc, argv, "b:i:s:t:")) != -1) {
+	while ((ch = getopt(argc, argv, "b:hi:s:t:")) != -1) {
 		switch(ch) {
 		case 'b':
 			if (block > 0)
@@ -206,6 +206,7 @@ cmd_add(int argc, char *argv[])
 			if (parse_uuid(optarg, &type) != 0)
 				usage_add();
 			break;
+		case 'h':
 		default:
 			usage_add();
 		}

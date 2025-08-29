@@ -315,7 +315,7 @@ cmd_migrate(int argc, char *argv[])
 	int ch, fd;
 
 	/* Get the migrate options */
-	while ((ch = getopt(argc, argv, "fs")) != -1) {
+	while ((ch = getopt(argc, argv, "fhs")) != -1) {
 		switch(ch) {
 		case 'f':
 			force = 1;
@@ -323,6 +323,7 @@ cmd_migrate(int argc, char *argv[])
 		case 's':
 			slice = 1;
 			break;
+		case 'h':
 		default:
 			usage_migrate();
 		}
