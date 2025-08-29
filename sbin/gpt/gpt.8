@@ -49,9 +49,9 @@ The basic usage model of the
 tool follows that of the
 .Xr cvs 1
 tool.
-The general options are described in the following paragraph.
-The remaining paragraphs describe the individual commands with their options.
-Here we conclude by mentioning that a
+The general options are described in the following subsection.
+The remaining subsections describe the individual commands with their options.
+A
 .Ar device
 is either a special file
 corresponding to a disk-like device or a regular file.
@@ -63,31 +63,23 @@ The general options allow the user to change default settings or otherwise
 change the behaviour that is applicable to all commands.
 Not all commands use all default settings, so some general options may not
 have an effect on all commands.
-.Pp
-The
-.Fl p Ar count
-option allows the user to change the number of partitions the GPT can
-accommodate.
+.Bl -tag -width indent
+.It Fl p Ar count
+Specify the number of partitions the GPT can accommodate.
 This is used whenever a new GPT is created.
 By default, the
 .Nm
 utility will create space for 128 partitions (or 32 sectors of 512 bytes).
-.Pp
-The
-.Fl r
-option causes the
-.Nm
-utility to open the device for reading only.
+.It Fl r
+Open the device for reading only.
 Currently this option is primarily useful for the
 .Ic show
-command, but the intent
-is to use it to implement dry-run behaviour.
-.Pp
-The
-.Fl v
-option controls the verbosity level.
+command, but the intent is to use it to implement dry-run behaviour.
+.It Fl v
+Control the verbosity level.
 The level increases with every occurrence of this option.
 There is no formalized definition of the different levels yet.
+.El
 .Ss Commands
 .Bl -tag -width indent
 .\" ==== add ====
