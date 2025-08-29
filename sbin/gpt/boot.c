@@ -54,28 +54,22 @@ usage_boot(void)
 static void
 bootset(int fd)
 {
-	uuid_t uuid;
 	off_t  block;
 	off_t  size;
-	unsigned int entry;
 	map_t *gpt, *tpg;
 	map_t *tbl, *lbt;
 	map_t *map;
-	u_int32_t status;
 	struct gpt_hdr *hdr;
 	struct gpt_ent *ent;
 	struct mbr *mbr;
 	int bfd;
 
 	/*
-	 * Paramters for boot partition
+	 * Paramters for boot partition (entry #0)
 	 */
-	uuid_name_lookup(&uuid, "DragonFly Label32", &status);
-	if (status != uuid_s_ok)
-		err(1, "unable to find uuid for 'DragonFly Label32'");
-	entry = 0;
+	uuid_t uuid = GPT_ENT_TYPE_DRAGONFLY_LABEL32;
 	block = 0;
-	size = (off_t)1024 * 1024 * 1024 / 512;		/* 1GB */
+	size = (off_t)1024 * 1024 * 1024 / secsz;		/* 1GB */
 
 	gpt = map_find(MAP_TYPE_PRI_GPT_HDR);
 	if (gpt == NULL)
@@ -86,28 +80,23 @@ bootset(int fd)
 	tbl = map_find(MAP_TYPE_PRI_GPT_TBL);
 	lbt = map_find(MAP_TYPE_SEC_GPT_TBL);
 	if (tbl == NULL || lbt == NULL) {
-		errx(1, "%s: error: no primary or secondary gpt table",
+		errx(1, "%s: error: no primary or secondary GPT table",
 		     device_name);
 	}
 
 	hdr = gpt->map_data;
-	if (entry > le32toh(hdr->hdr_entries)) {
-		errx(1, "%s: error: index %u out of range (%u max)",
-		     device_name, entry, le32toh(hdr->hdr_entries));
-	}
-
-	ent = (void *)((char *)tbl->map_data + entry *
-		       le32toh(hdr->hdr_entsz));
-	if (!uuid_is_nil(&ent->ent_type, NULL)) {
-		errx(1, "%s: error: entry at index %d is not free",
-		     device_name, entry);
-	}
+	ent = tbl->map_data; /* entry #0 */
+	if (!uuid_is_nil(&ent->ent_type, NULL))
+		errx(1, "%s: error: entry #0 is not free", device_name);
 	map = map_alloc(block, size);
 	if (map == NULL)
 		errx(1, "%s: error: no space available on device", device_name);
 	block = map->map_start;
 	size  = map->map_size;
 
+	/*
+	 * Write primary GPT table
+	 */
 	uuid_enc_le(&ent->ent_type, &uuid);
 	ent->ent_lba_start = htole64(map->map_start);
 	ent->ent_lba_end = htole64(map->map_start + map->map_size - 1LL);
@@ -121,8 +110,11 @@ bootset(int fd)
 	gpt_write(fd, gpt);
 	gpt_write(fd, tbl);
 
+	/*
+	 * Write secondary GPT table
+	 */
 	hdr = tpg->map_data;
-	ent = (void*)((char*)lbt->map_data + entry * le32toh(hdr->hdr_entsz));
+	ent = lbt->map_data; /* entry #0 */
 	uuid_enc_le(&ent->ent_type, &uuid);
 	ent->ent_lba_start = htole64(map->map_start);
 	ent->ent_lba_end = htole64(map->map_start + map->map_size - 1LL);
