@@ -103,7 +103,7 @@ create(int fd)
 	 * Create PMBR.
 	 */
 	if (map_find(MAP_TYPE_PMBR) == NULL) {
-		if (map_free(0LL, 1LL) == 0) {
+		if (map_free(0LL) == 0) {
 			warnx("%s: error: no room for the PMBR", device_name);
 			return;
 		}
@@ -127,7 +127,7 @@ create(int fd)
 	}
 
 	/* Get the amount of free space after the MBR */
-	blocks = map_free(1LL, 0LL);
+	blocks = map_free(1LL);
 	if (blocks == 0LL) {
 		warnx("%s: error: no room for the GPT header", device_name);
 		return;

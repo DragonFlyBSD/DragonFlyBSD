@@ -195,19 +195,19 @@ map_last(void)
 	return (m);
 }
 
+/*
+ * Get the number of free blocks after position <start>.
+ */
 off_t
-map_free(off_t start, off_t size)
+map_free(off_t start)
 {
 	map_t *m;
 
 	m = mediamap;
-
 	while (m != NULL && m->map_start + m->map_size <= start)
 		m = m->map_next;
 	if (m == NULL || m->map_type != MAP_TYPE_UNUSED)
 		return (0LL);
-	if (size)
-		return ((m->map_start + m->map_size >= start + size) ? 1 : 0);
 	return (m->map_size - (start - m->map_start));
 }
 

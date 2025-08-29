@@ -156,7 +156,7 @@ migrate(int fd)
 	}
 
 	/* Get the amount of free space after the MBR */
-	blocks = map_free(1LL, 0LL);
+	blocks = map_free(1LL);
 	if (blocks == 0LL) {
 		warnx("%s: error: no room for the GPT header", device_name);
 		return;
