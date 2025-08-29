@@ -45,20 +45,25 @@
 
 static int force;
 static int primary_only;
+static uint32_t parts;
 
 static void do_erase(int fd);
 
 static void
 usage_create(void)
 {
-	fprintf(stderr, "usage: %s [-fp] device ...\n", getprogname());
+	fprintf(stderr,
+		"usage: %s [-fP] [-p nparts] device ...\n",
+		getprogname());
 	exit(1);
 }
 
 static void
 usage_init(void)
 {
-	fprintf(stderr, "usage: %s -f [-B] [-E] device ...\n", getprogname());
+	fprintf(stderr,
+		"usage: %s -f [-B] [-E] [-p nparts] device ...\n",
+		getprogname());
 	fprintf(stderr, "\tnote: -f is mandatory for this command\n");
 	exit(1);
 }
@@ -234,21 +239,29 @@ dosys(const char *ctl, ...)
 int
 cmd_create(int argc, char *argv[])
 {
+	char *p;
 	int ch, fd;
 
-	while ((ch = getopt(argc, argv, "fhp")) != -1) {
+	while ((ch = getopt(argc, argv, "fhPp")) != -1) {
 		switch(ch) {
 		case 'f':
 			force = 1;
 			break;
-		case 'p':
+		case 'P':
 			primary_only = 1;
+			break;
+		case 'p':
+			parts = (uint32_t)strtol(optarg, &p, 10);
+			if (*p != 0 || parts == 0)
+				usage_create();
 			break;
 		case 'h':
 		default:
 			usage_create();
 		}
 	}
+	if (parts == 0)
+		parts = 128;
 
 	if (argc == optind)
 		usage_create();
@@ -277,11 +290,12 @@ cmd_create(int argc, char *argv[])
 int
 cmd_init(int argc, char *argv[])
 {
+	char *p;
 	int ch, fd;
 	int with_boot = 0;
 	int with_trim = 0;
 
-	while ((ch = getopt(argc, argv, "fBEhI")) != -1) {
+	while ((ch = getopt(argc, argv, "fBEhIp")) != -1) {
 		switch(ch) {
 		case 'B':
 			with_boot = 1;
@@ -299,6 +313,11 @@ cmd_init(int argc, char *argv[])
 			usage_init();
 			/* NOT REACHED */
 			break;
+		case 'p':
+			parts = (uint32_t)strtol(optarg, &p, 10);
+			if (*p != 0 || parts == 0)
+				usage_init();
+			break;
 		case 'h':
 		default:
 			usage_init();
@@ -306,6 +325,8 @@ cmd_init(int argc, char *argv[])
 			break;
 		}
 	}
+	if (parts == 0)
+		parts = 128;
 
 	if (argc == optind) {
 		usage_init();

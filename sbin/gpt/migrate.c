@@ -41,11 +41,14 @@
 
 static int force;
 static int slice;
+static uint32_t parts;
 
 static void
 usage_migrate(void)
 {
-	fprintf(stderr, "usage: %s [-fs] device ...\n", getprogname());
+	fprintf(stderr,
+		"usage: %s [-fs] [-p nparts] device ...\n",
+		getprogname());
 	exit(1);
 }
 
@@ -312,13 +315,19 @@ migrate(int fd)
 int
 cmd_migrate(int argc, char *argv[])
 {
+	char *p;
 	int ch, fd;
 
 	/* Get the migrate options */
-	while ((ch = getopt(argc, argv, "fhs")) != -1) {
+	while ((ch = getopt(argc, argv, "fhps")) != -1) {
 		switch(ch) {
 		case 'f':
 			force = 1;
+			break;
+		case 'p':
+			parts = (uint32_t)strtol(optarg, &p, 10);
+			if (*p != 0 || parts == 0)
+				usage_migrate();
 			break;
 		case 's':
 			slice = 1;
@@ -328,6 +337,8 @@ cmd_migrate(int argc, char *argv[])
 			usage_migrate();
 		}
 	}
+	if (parts == 0)
+		parts = 128;
 
 	if (argc == optind)
 		usage_migrate();

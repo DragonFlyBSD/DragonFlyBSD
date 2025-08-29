@@ -46,7 +46,6 @@
 
 char	*device_name;
 off_t	mediasz;
-u_int	parts;
 u_int	secsz;
 int	readonly, verbose;
 
@@ -614,7 +613,7 @@ usage(void)
 	const char *prgname = getprogname();
 
 	fprintf(stderr,
-	    "usage: %s [-rv] [-p nparts] <command> [options] <device> ...\n"
+	    "usage: %s [-rv] <command> [options] <device> ...\n"
 	    "       %s show <device>\n",
 	    prgname, prgname);
 	exit(1);
@@ -639,19 +638,12 @@ prefix(const char *cmd)
 int
 main(int argc, char *argv[])
 {
-	char *cmd, *p;
+	char *cmd;
 	int ch, i;
 
 	/* Get the generic options */
-	while ((ch = getopt(argc, argv, "hp:rv")) != -1) {
+	while ((ch = getopt(argc, argv, "h:rv")) != -1) {
 		switch(ch) {
-		case 'p':
-			if (parts > 0)
-				usage();
-			parts = strtol(optarg, &p, 10);
-			if (*p != 0 || parts < 1)
-				usage();
-			break;
 		case 'r':
 			readonly = 1;
 			break;
@@ -663,8 +655,6 @@ main(int argc, char *argv[])
 			usage();
 		}
 	}
-	if (parts == 0)
-		parts = 128;
 
 	if (argc == optind)
 		usage();
