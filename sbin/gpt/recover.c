@@ -37,8 +37,6 @@
 
 #include "gpt.h"
 
-static int recoverable;
-
 static void
 usage_recover(void)
 {
@@ -145,11 +143,8 @@ cmd_recover(int argc, char *argv[])
 {
 	int ch, fd;
 
-	while ((ch = getopt(argc, argv, "r")) != -1) {
+	while ((ch = getopt(argc, argv, "")) != -1) {
 		switch(ch) {
-		case 'r':
-			recoverable = 1;
-			break;
 		default:
 			usage_recover();
 		}
