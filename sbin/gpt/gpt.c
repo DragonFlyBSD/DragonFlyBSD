@@ -599,15 +599,12 @@ static struct {
 	{ cmd_create,	"create" },
 	{ cmd_destroy,	"destroy" },
 	{ cmd_expand,	"expand" },
-	{ NULL,		"help" },
 	{ cmd_init,	"init" },
 	{ cmd_label,	"label" },
 	{ cmd_migrate,	"migrate" },
 	{ cmd_recover,	"recover" },
 	{ cmd_remove,	"remove" },
-	{ NULL,		"rename" },
 	{ cmd_show,	"show" },
-	{ NULL,		"verify" },
 	{ NULL,		NULL },
 };
 
