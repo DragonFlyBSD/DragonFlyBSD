@@ -88,7 +88,7 @@ _cnowarnflags	+=	-Wno-unused-but-set-variable
 .  if ${WARNS} == 3 && ${_WCCVER:Mgcc*}
 _cnowarnflags	+=	-Wno-unused-but-set-parameter
 .  endif
-.  if ${WARNS} == 3 && (${_WCCVER:Mgcc49} || ${_WCCVER:Mgcc[5-]*})
+.  if ${WARNS} == 3 && (${_WCCVER:Mgcc49} || ${_WCCVER:Mgcc[5-9]*})
 _cnowarnflags	+=	-Wno-unused-value
 .  endif
 .  if ${WARNS} == 3 && ${_WCCVER:Mgcc8*}
