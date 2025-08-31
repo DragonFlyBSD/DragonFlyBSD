@@ -202,10 +202,11 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 
 		if (sent.ent_lba_start < table_lba + table_blocks ||
 		    sent.ent_lba_end >= info->d_media_blocks ||
-		    sent.ent_lba_start >= sent.ent_lba_end) {
-			kprintf("%s part %d: unavailable, bad start or "
-				"ending lba\n",
-				sname, i);
+		    sent.ent_lba_start > sent.ent_lba_end) {
+			kprintf("%s part %d: bad lba_start=%ju or "
+				"lba_end=%ju\n",
+				sname, i, (uintmax_t)sent.ent_lba_start,
+				(uintmax_t)sent.ent_lba_end);
 		} else {
 			gpt_setslice(sname, info, sp, &sent);
 		}
