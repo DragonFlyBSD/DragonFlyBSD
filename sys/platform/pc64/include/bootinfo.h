@@ -105,9 +105,4 @@ extern struct bootinfo	bootinfo;
 	((unit) << B_UNITSHIFT) | ((partition) << B_PARTITIONSHIFT) | \
 	B_DEVMAGIC)
 
-#define	BASE_SLICE		2
-#define	COMPATIBILITY_SLICE	0
-#define	MAX_SLICES		16
-#define	WHOLE_DISK_SLICE	1
-
 #endif	/* !_MACHINE_BOOTINFO_H_ */
