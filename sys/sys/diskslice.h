@@ -83,8 +83,10 @@
 #endif
 #endif
 
+#define	COMPATIBILITY_SLICE	0	/* e.g. ad0s0 */
+					/* 1 is WHOLE_DISK_SLICE; see below */
 #define	BASE_SLICE		2	/* e.g. ad0s1 */
-#define	COMPATIBILITY_SLICE	0	/* e.g. ad0a-j */
+
 				/* 101 - compat disklabel DIOCGDINFO	*/
 				/* 102 - compat disklabel DIOCSDINFO	*/
 				/* 103 - compat disklabel DIOCWDINFO	*/
@@ -97,7 +99,6 @@
 #define DIOCRECLUSTER		_IOWR('d', 134, struct disk_ioc_recluster)
 #define	DIOCGMEDIASIZE		_IOR('d', 135, off_t)
 #define	DIOCGSECTORSIZE		_IOR('d', 136, u_int)
-#define	MAX_SLICES		16
 
 /*
  * Support limits
@@ -113,6 +114,12 @@
  */
 #define	WHOLE_DISK_SLICE	1
 #define WHOLE_SLICE_PART	(DKMAXPARTITIONS - 1)
+
+/*
+ * The max number of slices to probe for MBR disks.
+ * GPT disks use more slices; see dsmakeslicestruct().
+ */
+#define	MAX_SLICES		16
 
 #ifdef MAXPARTITIONS			/* XXX don't depend on disklabel.h */
 #if MAXPARTITIONS !=	16		/* but check consistency if possible */
@@ -166,7 +173,7 @@ struct diskslices {
 	int	dss_secshift;		/* block to sector shift (or -1) */
 	int	dss_secsize;		/* sector size */
 	struct diskslice
-		dss_slices[MAX_SLICES];	/* actually usually less */
+		dss_slices[MAX_SLICES];	/* usually less; can allocate more */
 };
 
 struct disk_ioc_recluster {
