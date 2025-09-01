@@ -83,6 +83,7 @@ There is no formalized definition of the different levels yet.
 .Op Fl a Ar alignment
 .Op Fl b Ar number
 .Op Fl i Ar index
+.Op Fl l Ar label
 .Op Fl s Ar size
 .Op Fl t Ar type
 .Ar device ...
@@ -118,6 +119,10 @@ option specifies which (free) entry in the GPT table is to
 be used for the new partition.
 By default, the first free entry is selected.
 Entries start at index 0 representing partition 0 of the GPT.
+.Pp
+The
+.Fl l Ar label
+option specifies the label for the partition.
 .Pp
 The
 .Fl s Ar size

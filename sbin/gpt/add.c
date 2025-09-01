@@ -41,12 +41,13 @@
 static uuid_t type;
 static off_t block, size, alignment;
 static unsigned int entry = MAP_NOENTRY;
+static const char *name;
 
 static void
 usage_add(void)
 {
 	fprintf(stderr,
-		"usage: %s [-a alignment] [-b block] [-i index] "
+		"usage: %s [-a alignment] [-b block] [-i index] [-l label] "
 		"[-s size] [-t uuid/alias] device ...\n",
 		getprogname());
 	exit(1);
@@ -127,6 +128,8 @@ add(int fd)
 	uuid_enc_le(&ent->ent_type, &type);
 	ent->ent_lba_start = htole64(map->map_start);
 	ent->ent_lba_end = htole64(map->map_start + map->map_size - 1LL);
+	if (name != NULL)
+		utf8_to_utf16(name, ent->ent_name, 36);
 
 	hdr->hdr_crc_table = htole32(crc32(tbl->map_data,
 	    le32toh(hdr->hdr_entries) * le32toh(hdr->hdr_entsz)));
@@ -142,6 +145,8 @@ add(int fd)
 	uuid_enc_le(&ent->ent_type, &type);
 	ent->ent_lba_start = htole64(map->map_start);
 	ent->ent_lba_end = htole64(map->map_start + map->map_size - 1LL);
+	if (name != NULL)
+		utf8_to_utf16(name, ent->ent_name, 36);
 
 	hdr->hdr_crc_table = htole32(crc32(lbt->map_data,
 	    le32toh(hdr->hdr_entries) * le32toh(hdr->hdr_entsz)));
@@ -269,7 +274,7 @@ cmd_add(int argc, char *argv[])
 	int64_t v;
 
 	is_sector = false;
-	while ((ch = getopt(argc, argv, "a:b:hi:s:t:")) != -1) {
+	while ((ch = getopt(argc, argv, "a:b:hi:l:s:t:")) != -1) {
 		switch(ch) {
 		case 'a':
 			if (alignment > 0)
@@ -292,6 +297,9 @@ cmd_add(int argc, char *argv[])
 			entry = strtoul(optarg, &p, 10);
 			if (*p != 0 || entry == MAP_NOENTRY)
 				errx(1, "invalid entry: %s", optarg);
+			break;
+		case 'l':
+			name = optarg;
 			break;
 		case 's':
 			if (size > 0)
