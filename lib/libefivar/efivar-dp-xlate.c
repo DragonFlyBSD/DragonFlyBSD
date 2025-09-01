@@ -91,7 +91,7 @@ find_slice_by_efimedia(char *buf, char **dev)
 		if (fd == -1)
 			continue;
 		for (m = map_first(); m != NULL; m = m->map_next) {
-			if (m->map_index == NOENTRY ||
+			if (m->map_index == MAP_NOENTRY ||
 			    m->map_type != MAP_TYPE_GPT_PART)
 				continue;
 			ent = m->map_data;
@@ -462,7 +462,7 @@ find_slice_efimedia(const char *slice)
 	if (fd == -1)
 		return (NULL);
 	for (m = map_first(); m != NULL; m = m->map_next) {
-		if (m->map_index == NOENTRY ||
+		if (m->map_index == MAP_NOENTRY ||
 		    m->map_type != MAP_TYPE_GPT_PART)
 			continue;
 		if (m->map_index == sliceno) {
