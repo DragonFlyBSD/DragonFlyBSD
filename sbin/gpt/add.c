@@ -157,7 +157,7 @@ void
 add_defaults(int fd)
 {
 	entry = 0;
-	size = 524288;
+	size = (off_t)256 * 1024 * 1024 / secsz; /* 256MB */
 	if (parse_uuid("EFI System", &type) != 0) {
 		fprintf(stderr, "Unable to lookup uuid 'EFI System'\n");
 		exit(1);
@@ -165,7 +165,7 @@ add_defaults(int fd)
 	add(fd);
 
 	entry = 1;
-	size = 0;
+	size = 0; /* all free space */
 	if (parse_uuid("DragonFly Label64", &type) != 0) {
 		fprintf(stderr, "Unable to lookup uuid 'DragonFly Label64'\n");
 		exit(1);
@@ -184,30 +184,30 @@ cmd_add(int argc, char *argv[])
 		switch(ch) {
 		case 'b':
 			if (block > 0)
-				usage_add();
+				errx(1, "-b block already specified");
 			block = strtoll(optarg, &p, 10);
 			if (*p != 0 || block < 1)
-				usage_add();
+				errx(1, "invalid block: %s", optarg);
 			break;
 		case 'i':
 			if (entry != MAP_NOENTRY)
-				usage_add();
+				errx(1, "-i index already specified");
 			entry = strtoul(optarg, &p, 10);
 			if (*p != 0 || entry == MAP_NOENTRY)
-				usage_add();
+				errx(1, "invalid entry: %s", optarg);
 			break;
 		case 's':
 			if (size > 0)
-				usage_add();
+				errx(1, "-s size already specified");
 			size = strtoll(optarg, &p, 10);
 			if (*p != 0 || size < 1)
-				usage_add();
+				errx(1, "invalid size: %s", optarg);
 			break;
 		case 't':
 			if (!uuid_is_nil(&type, NULL))
-				usage_add();
+				errx(1, "-t type already specified");
 			if (parse_uuid(optarg, &type) != 0)
-				usage_add();
+				errx(1, "invalid type: %s", optarg);
 			break;
 		case 'h':
 		default:
@@ -218,12 +218,8 @@ cmd_add(int argc, char *argv[])
 	if (argc == optind)
 		usage_add();
 
-	/* Create DragonFly 64 bit label partitions by default. */
 	if (uuid_is_nil(&type, NULL)) {
-		uint32_t status;
-
-		uuid_name_lookup(&type, "DragonFly Label64", &status);
-		if (status != uuid_s_ok)
+		if (parse_uuid("DragonFly Label64", &type) != 0)
 			err(1, "unable to find uuid for 'DragonFly Label64'");
 	}
 
