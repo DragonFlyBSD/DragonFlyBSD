@@ -33,10 +33,6 @@
 
 #include "map.h"
 
-#define ROUNDTO 2048	// must be a power of two
-#define ROUNDDOWN(x) rounddown2(x - 1, ROUNDTO)
-#define ROUNDUP(x) (ROUNDDOWN(x) + ROUNDTO)
-
 int lbawidth;
 
 static map_t *mediamap;
@@ -138,31 +134,48 @@ map_add(off_t start, off_t size, int type, void *data)
 	return (m);
 }
 
+/*
+ * Try to allocate a new partition from the free space.
+ *
+ * If <start> is zero, use the first region that has enough free space.
+ * If <size> is zero, use all the free space in the matched region.
+ * If <alignment> is given, align both the <start> and <size>.
+ */
 map_t *
-map_alloc(off_t start, off_t size)
+map_alloc(off_t start, off_t size, off_t alignment)
 {
-	off_t delta;
+	off_t delta, msize;
 	map_t *m;
 
-	if (start == 0 && size != 0)
-		size = ROUNDUP(size);
+	if (alignment > 1) {
+		start = (start + alignment - 1) / alignment * alignment;
+		size = (size + alignment - 1) / alignment * alignment;
+	}
+
 	for (m = mediamap; m != NULL; m = m->map_next) {
 		if (m->map_type != MAP_TYPE_UNUSED || m->map_start < 2)
 			continue;
 		if (start != 0 && m->map_start > start)
 			return (NULL);
-		delta = (start != 0) ? start - m->map_start : ROUNDUP(m->map_start) - m->map_start;
-		if (size == 0 || m->map_size - delta >= size) {
-			if (m->map_size - delta <= 0)
-				continue;
-			if (size == 0) {
-				size = m->map_size - delta;
-				if (start == 0)
-					size = ROUNDDOWN(size);
-			}
-			return (map_add(m->map_start + delta, size,
-				    MAP_TYPE_GPT_PART, NULL));
-		}
+
+		if (start != 0)
+			delta = start - m->map_start;
+		else if (alignment > 1)
+			delta = ((m->map_start + alignment - 1) /
+				 alignment * alignment) - m->map_start;
+		else
+			delta = 0;
+		if (m->map_size <= delta)
+			continue;
+
+		msize = (size != 0) ? size : m->map_size - delta;
+		if (alignment > 1)
+			msize = msize / alignment * alignment;
+		if (msize == 0 || msize + delta > m->map_size)
+			continue;
+
+		return map_add(m->map_start + delta, msize,
+			       MAP_TYPE_GPT_PART, NULL);
 	}
 
 	return (NULL);

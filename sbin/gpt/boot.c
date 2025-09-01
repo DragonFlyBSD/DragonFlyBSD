@@ -58,6 +58,7 @@ bootset(int fd)
 	uuid_t uuid;
 	off_t  block;
 	off_t  size;
+	off_t  alignment;
 	unsigned int entry;
 	map_t *gpt, *tpg;
 	map_t *tbl, *lbt;
@@ -76,7 +77,8 @@ bootset(int fd)
 		err(1, "unable to find uuid for 'DragonFly Label32'");
 	entry = 0;
 	block = 0;
-	size = (off_t)1024 * 1024 * 1024 / 512;		/* 1GB */
+	size = (off_t)1024 * 1024 * 1024 / secsz;		/* 1GB */
+	alignment = (off_t)1024 * 1024 / secsz;			/* 1MB */
 
 	gpt = map_find(MAP_TYPE_PRI_GPT_HDR);
 	if (gpt == NULL)
@@ -103,7 +105,7 @@ bootset(int fd)
 		errx(1, "%s: error: entry at index %d is not free",
 		     device_name, entry);
 	}
-	map = map_alloc(block, size);
+	map = map_alloc(block, size, alignment);
 	if (map == NULL)
 		errx(1, "%s: error: no space available on device", device_name);
 	block = map->map_start;

@@ -40,7 +40,7 @@
 #include "gpt.h"
 
 static uuid_t type;
-static off_t block, size;
+static off_t block, size, alignment;
 static unsigned int entry = NOENTRY;
 
 static void
@@ -62,6 +62,9 @@ add(int fd)
 	struct gpt_hdr *hdr;
 	struct gpt_ent *ent;
 	unsigned int i;
+
+	if (alignment == 0)
+		alignment = (off_t)1024 * 1024 / secsz; /* 1MB */
 
 	gpt = map_find(MAP_TYPE_PRI_GPT_HDR);
 	if (gpt == NULL) {
@@ -116,7 +119,7 @@ add(int fd)
 		}
 	}
 
-	map = map_alloc(block, size);
+	map = map_alloc(block, size, alignment);
 	if (map == NULL) {
 		warnx("%s: error: no space available on device", device_name);
 		return;
