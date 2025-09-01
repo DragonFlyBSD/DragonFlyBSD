@@ -30,6 +30,7 @@
 #include <sys/types.h>
 
 #include <err.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,10 +47,10 @@ static unsigned int entry = NOENTRY;
 static void
 usage_add(void)
 {
-
 	fprintf(stderr,
-	    "usage: %s [-b lba] [-i index] [-s count] [-t uuid] device ...\n",
-	    getprogname());
+		"usage: %s [-a alignment] [-b block] [-i index] "
+		"[-s size] [-t uuid/alias] device ...\n",
+		getprogname());
 	exit(1);
 }
 
@@ -175,15 +176,111 @@ add_defaults(int fd)
 	add(fd);
 }
 
+static int64_t
+parse_number(const char *s)
+{
+	int64_t v;
+	char *suffix;
+
+	v = (int64_t)strtol(s, &suffix, 0);
+	if (suffix == s)
+		return (-1);
+	if (*suffix == '\0')
+		return (v);
+	if (suffix[1] != '\0')
+		return (-1);
+
+	switch (*suffix) {
+	case 'g':
+	case 'G':
+		v *= 1024;
+		/* FALLTHROUGH */
+	case 'm':
+	case 'M':
+		v *= 1024;
+		/* FALLTHROUGH */
+	case 'k':
+	case 'K':
+		v *= 1024;
+		break;
+	default:
+		return (-1);
+	}
+
+	return (v);
+}
+
+static int64_t
+parse_size(const char *s, bool *is_sector)
+{
+	int64_t v;
+	char *suffix;
+
+	v = (int64_t)strtol(s, &suffix, 0);
+	if (suffix == s)
+		return (-1);
+	if (*suffix == '\0') {
+		*is_sector = true;
+		return (v);
+	}
+	if (suffix[1] != '\0')
+		return (-1);
+
+	switch (*suffix) {
+	case 's':
+	case 'S':
+		*is_sector = true;
+		break;
+	case 'p':
+	case 'P':
+		v *= 1024;
+		/* FALLTHROUGH */
+	case 't':
+	case 'T':
+		v *= 1024;
+		/* FALLTHROUGH */
+	case 'g':
+	case 'G':
+		v *= 1024;
+		/* FALLTHROUGH */
+	case 'm':
+	case 'M':
+		v *= 1024;
+		/* FALLTHROUGH */
+	case 'k':
+	case 'K':
+		v *= 1024;
+		/* FALLTHROUGH */
+	case 'b':
+	case 'B':
+		*is_sector = false;
+		break;
+	default:
+		return (-1);
+	}
+
+	return (v);
+}
+
 int
 cmd_add(int argc, char *argv[])
 {
 	char *p;
 	int ch, fd;
+	bool is_sector;
+	int64_t v;
 
-	/* Get the migrate options */
-	while ((ch = getopt(argc, argv, "b:i:s:t:")) != -1) {
+	is_sector = false;
+	while ((ch = getopt(argc, argv, "a:b:i:s:t:")) != -1) {
 		switch(ch) {
+		case 'a':
+			if (alignment > 0)
+				errx(1, "-a alignment already specified");
+			v = parse_number(optarg);
+			if (v < 0)
+				errx(1, "invalid alignment: %s", optarg);
+			alignment = (off_t)v;
+			break;
 		case 'b':
 			if (block > 0)
 				usage_add();
@@ -200,10 +297,11 @@ cmd_add(int argc, char *argv[])
 			break;
 		case 's':
 			if (size > 0)
-				usage_add();
-			size = strtoll(optarg, &p, 10);
-			if (*p != 0 || size < 1)
-				usage_add();
+				errx(1, "-s size already specified");
+			v = parse_size(optarg, &is_sector);
+			if (v < 0)
+				errx(1, "invalid size: %s", optarg);
+			size = (off_t)v;
 			break;
 		case 't':
 			if (!uuid_is_nil(&type, NULL))
@@ -233,6 +331,21 @@ cmd_add(int argc, char *argv[])
 		if (fd == -1) {
 			warn("unable to open device '%s'", device_name);
 			continue;
+		}
+
+		if (alignment > 0) {
+			if (alignment % secsz != 0)
+				warnx("alignment (%lld) not multiple of "
+				      "sector size (%u)",
+				      (long long)alignment, secsz);
+			alignment = (alignment + secsz - 1) / secsz;
+		}
+		if (size > 0 && !is_sector) {
+			if (size % secsz != 0)
+				warnx("size (%lld) not multiple of "
+				      "sector size (%u)",
+				      (long long)size, secsz);
+			size = (size + secsz - 1) / secsz;
 		}
 
 		add(fd);
