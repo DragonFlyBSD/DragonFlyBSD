@@ -56,6 +56,7 @@ bootset(int fd)
 {
 	off_t  block;
 	off_t  size;
+	off_t  alignment;
 	map_t *gpt, *tpg;
 	map_t *tbl, *lbt;
 	map_t *map;
@@ -70,6 +71,7 @@ bootset(int fd)
 	uuid_t uuid = GPT_ENT_TYPE_DRAGONFLY_LABEL32;
 	block = 0;
 	size = (off_t)1024 * 1024 * 1024 / secsz;		/* 1GB */
+	alignment = (off_t)1024 * 1024 / secsz;			/* 1MB */
 
 	gpt = map_find(MAP_TYPE_PRI_GPT_HDR);
 	if (gpt == NULL)
@@ -88,7 +90,7 @@ bootset(int fd)
 	ent = tbl->map_data; /* entry #0 */
 	if (!uuid_is_nil(&ent->ent_type, NULL))
 		errx(1, "%s: error: entry #0 is not free", device_name);
-	map = map_alloc(block, size);
+	map = map_alloc(block, size, alignment);
 	if (map == NULL)
 		errx(1, "%s: error: no space available on device", device_name);
 	block = map->map_start;
