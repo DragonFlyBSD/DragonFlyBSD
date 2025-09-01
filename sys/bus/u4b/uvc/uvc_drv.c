@@ -352,7 +352,7 @@ uvc_drv_xu_ctrl_query(struct uvc_drv_video *v, struct uvc_xu_control_query *q)
 	DPRINTF("%s query:%x unit:%d selector:%d size:%d\n",
 		__func__, q->query, q->unit, q->selector, q->size);
 
-	memset(tmp, 0, 128);
+	memset(tmp, 0, sizeof(tmp));
 
 	if (!(q->query & 0x80))
 		ret = copyin(q->data, tmp, q->size);

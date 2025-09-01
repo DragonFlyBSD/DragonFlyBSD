@@ -129,7 +129,7 @@ uvc_v4l2_query_cap(struct uvc_drv_video *v, void *addr)
 	udev = v->sc->udev;
 	if (!udev)
 		return EINVAL;
-	usbd_get_phys(udev, bus_info, 128);
+	usbd_get_phys(udev, bus_info, sizeof(bus_info));
 	ksnprintf(cap.bus_info, sizeof(cap.bus_info), "%s", bus_info);
 	cap.version = V4L_VERSION(3, 14, 1);
 
