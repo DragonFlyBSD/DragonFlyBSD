@@ -33,7 +33,7 @@
 
 static map_t *mediamap;
 
-map_t *
+static map_t *
 mkmap(off_t start, off_t size, int type)
 {
 	map_t *m;

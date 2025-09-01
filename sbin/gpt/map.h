@@ -51,7 +51,6 @@ typedef struct map {
 	void		*map_data;
 } map_t;
 
-map_t *mkmap(off_t start, off_t size, int type);
 map_t *map_add(off_t, off_t, int, void *);
 map_t *map_alloc(off_t, off_t, off_t);
 map_t *map_find(int);
