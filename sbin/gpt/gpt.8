@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
 .\"
-.Dd August 29, 2025
+.Dd September 1, 2025
 .Dt GPT 8
 .Os
 .Sh NAME
@@ -80,9 +80,10 @@ There is no formalized definition of the different levels yet.
 .It Xo
 .Nm
 .Ic add
+.Op Fl a Ar alignment
 .Op Fl b Ar number
 .Op Fl i Ar index
-.Op Fl s Ar count
+.Op Fl s Ar size
 .Op Fl t Ar type
 .Ar device ...
 .Xc
@@ -91,27 +92,55 @@ The
 command allows the user to add a new partition to an existing table.
 By default, it will create a
 .Cm dfly
-partition covering the first available block
-of an unused disk space.
+partition covering the first available block of an unused disk space.
+.Pp
+The
+.Fl a Ar alignment
+option specifies the alignment of the partition position and size.
+The alignment is given in bytes and may have the
+.Cm k , K , m , M , g
+and
+.Cm G
+suffixes to indicate KB, MB and GB, respectively.
+By default,
+.Nm
+will align the partition to 1MB in size and position.
 .Pp
 The
 .Fl b Ar number
-option allows the user to specify the starting (beginning) sector number of
-the partition.
+option specifies the starting (beginning) sector number of the partition.
 The minimum sector number is 1, but has to fall inside an unused region of
 disk space that is covered by the GPT.
 .Pp
 The
 .Fl i Ar index
-option allows the user to specify which (free) entry in the GPT table is to
+option specifies which (free) entry in the GPT table is to
 be used for the new partition.
 By default, the first free entry is selected.
 Entries start at index 0 representing partition 0 of the GPT.
 .Pp
 The
-.Fl s Ar count
-option allows the user to specify the size of the partition in sectors.
-The minimum size is 1.
+.Fl s Ar size
+option specifies the size of the partition.
+If there is no suffix, the size is in sectors;
+otherwise, the following suffixes may be used:
+.Bl -tag -width indent -offset indent -compact
+.It Cm s , S
+sectors
+.It Cm b , B
+bytes (B)
+.It Cm k , K
+kilobytes (KB)
+.It Cm m , M
+megabytes (MB)
+.It Cm g , G
+gigabytes (GB)
+.It Cm t , T
+terabytes (TB)
+.It Cm p , P
+petabytes (PB)
+.El
+The minimum size is 1 sector.
 .Pp
 The
 .Fl t Ar type
@@ -202,12 +231,6 @@ Microsoft Recovery
 Any symbolic name in the system
 .Xr uuids 5
 files may also be specified.
-.Pp
-.Em NOTE!
-If you don't specify a beginning sector with
-.Fl b Ar number ,
-the new partition will be aligned to 1MiB in size and position
-(in case of 512 byte sector size).
 .\" ==== boot ====
 .It Nm Ic boot Ar device ...
 The
