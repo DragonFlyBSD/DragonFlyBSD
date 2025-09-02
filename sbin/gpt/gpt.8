@@ -468,6 +468,7 @@ The
 .Ic recover
 command tries to recover the primary GPT table from the secondary/backup table
 at the end of the disk, or vice versa.
+If the PMBR is missing, it will be recreated as well.
 .\" ==== remove ====
 .It Nm Ic remove Oo Fl a Oc Ar device ...
 .It Xo
