@@ -349,12 +349,19 @@ gpt_read(int fd, off_t lba, size_t count)
 		return (NULL);
 
 	ofs = lba * secsz;
-	if (lseek(fd, ofs, SEEK_SET) == ofs &&
-	    read(fd, buf, count) == (ssize_t)count)
-		return (buf);
+	if (lseek(fd, ofs, SEEK_SET) != ofs) {
+		free(buf);
+		return (NULL);
+	}
 
-	free(buf);
-	return (NULL);
+	if (read(fd, buf, count) != (ssize_t)count) {
+		if (errno == 0) /* partial read */
+			errno = E2BIG;
+		free(buf);
+		return (NULL);
+	}
+
+	return (buf);
 }
 
 int
