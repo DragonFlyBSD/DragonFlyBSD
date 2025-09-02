@@ -26,9 +26,7 @@
  * $FreeBSD: src/sbin/gpt/map.c,v 1.6 2005/08/31 01:47:19 marcel Exp $
  */
 
-#include <sys/param.h>
 #include <err.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "map.h"
