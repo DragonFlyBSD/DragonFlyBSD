@@ -450,7 +450,6 @@ find_slice_efimedia(const char *slice)
 		if (strncmp(slice, disk, strlen(disk)) == 0) {
 			snprintf(disk_path, sizeof(disk_path), "%s%s",
 			    _PATH_DEV, disk);
-			/* XXX should base be 36 here? */
 			sliceno = strtoul(slice + sizeof(disk) + 1, &ep, 10);
 			if (*ep != 0)
 				return (NULL);
