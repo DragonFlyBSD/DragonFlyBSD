@@ -74,7 +74,7 @@ find_slice_by_efimedia(char *buf, char **dev)
 	uuid_t guid;
 	struct gpt_ent *ent;
 
-	len = 1024;
+	len = sizeof(disks);
 	if (sysctlbyname("kern.disks", disks, &len, NULL, 0) < 0)
 		return -1;
 	disk_ptr = disks;
@@ -435,7 +435,7 @@ find_slice_efimedia(const char *slice)
 	uuid_t guid;
 	struct gpt_ent *ent;
 
-	len = 1024;
+	len = sizeof(disks);
 	if (sysctlbyname("kern.disks", disks, &len, NULL, 0) < 0)
 		return (NULL);
 	disk_ptr = disks;
