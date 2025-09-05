@@ -22,6 +22,24 @@ CFLAGS+=	-Wold-style-declaration \
 		-finline-limit=${INLINE_LIMIT} \
 		--param inline-unit-growth=100 \
 		--param large-function-growth=1000
+.if ${CCVER:Mgcc1[0-9]0}
+CWARNFLAGS+=   -Wno-address-of-packed-member
+CWARNFLAGS+=   -Wno-array-bounds
+CWARNFLAGS+=   -Wno-maybe-uninitialized
+CWARNFLAGS+=   -Wno-format-overflow
+CWARNFLAGS+=   -Wno-nonnull
+CWARNFLAGS+=   -Wno-stringop-overflow
+CWARNFLAGS+=   -Wno-uninitialized
+.endif
+.if ${CCVER:Mgcc1[1-9]0}
+CWARNFLAGS+=   -Wno-stringop-overread
+CWARNFLAGS+=   -Wno-array-parameter
+.endif
+.if ${CCVER:Mgcc1[2-9]0}
+CWARNFLAGS+=	-Wno-infinite-recursion
+CWARNFLAGS+=	-Wno-address
+CWARNFLAGS+=	-Wno-dangling-pointer
+.endif
 CWARNFLAGS+=	-Wno-unused-but-set-variable
 .endif
 
