@@ -17,7 +17,6 @@ files.  In most cases it is only interesting to include bsd.prog.mk or
 bsd.lib.mk.
 
 bsd.cpu.custom.mk	- handle CPU flags for custom compilers
-bsd.cpu.gcc47.mk	- handle GCC 4.7 specific CPU flags & variables
 bsd.cpu.gcc80.mk	- handle GCC 8.0 specific CPU flags & variables
 bsd.cpu.gcc120.mk	- handle GCC 12.0 specific CPU flags & variables
 bsd.cpu.mk		- handle CPU flags & variables

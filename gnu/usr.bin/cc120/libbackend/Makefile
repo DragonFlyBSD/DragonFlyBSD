@@ -523,11 +523,6 @@ SRCS+= ${ANALYZER_SRCS}
 
 ${ANALYZER_SRCS}: analyzer_dir
 
-# for gimple-ssa-sprintf.c
-.if ${CCVER:Mgcc47}
-CXXFLAGS+=	-Wno-pragmas
-.endif
-
 # for tree-ssa-structalias.c, tree-vect-stmts.c, i386.c
 .if (${CCVER:Mgcc80} || ${CCVER:Mgcc1*0})
 CXXFLAGS+=	-Wno-narrowing

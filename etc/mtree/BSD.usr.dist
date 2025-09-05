@@ -16,24 +16,6 @@
     lib
         debug
         ..
-        gcc47
-            plugin
-                include
-                    c-family
-                    ..
-                    objc
-                    ..
-                    config
-                        i386
-                        ..
-                    ..
-                    cp
-                    ..
-                ..
-            ..
-            profile
-            ..
-        ..
         gcc80
             plugin
                 include
@@ -92,10 +74,6 @@
         ..
     ..
     libdata
-        gcc47
-            ssp
-            ..
-        ..
         gcc80
             ssp
             ..
@@ -129,8 +107,6 @@
         custom
         ..
         dhcpcd-hooks
-        ..
-        gcc47
         ..
         gcc80
         ..
