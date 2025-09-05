@@ -1048,8 +1048,8 @@ _gcc120_cross= gnu/usr.bin/cc120
 _gcc_common_cross= lib/libz gnu/usr.bin/gmp gnu/usr.bin/mpfr gnu/usr.bin/mpc
 
 .if !defined(NO_ALTCOMPILER)
-. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
-_altcompiler_cross+= ${_gcc47_cross}
+. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc120})
+_altcompiler_cross+= ${_gcc120_cross}
 . endif
 .endif
 
@@ -1110,10 +1110,10 @@ libraries:
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc80 \
 		make -f Makefile.inc1 _startup_libs80 -DSYSBUILD -DLIBGCC_ONLY;
 .if !defined(NO_ALTCOMPILER)
-. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
+. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc120})
 	cd ${.CURDIR}; \
-	    HOST_CCVER=${HOST_CCVER} CCVER=gcc47 \
-		make -f Makefile.inc1 _startup_libs47 -DSYSBUILD -DLIBGCC_ONLY;
+	    HOST_CCVER=${HOST_CCVER} CCVER=gcc120 \
+		make -f Makefile.inc1 _startup_libs120 -DSYSBUILD -DLIBGCC_ONLY;
 . endif
 .endif
 	cd ${.CURDIR}; \
@@ -1150,8 +1150,8 @@ _startup_libs120=	gnu/usr.bin/cc120/cc_prep \
 			gnu/lib/gcc120/libgcc_pic
 
 .if !defined(NO_ALTCOMPILER)
-. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
-_startup_libs_alt+=	_startup_libs47
+. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc120})
+_startup_libs_alt+=	_startup_libs120
 . endif
 .endif
 
