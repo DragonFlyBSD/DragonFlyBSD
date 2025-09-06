@@ -70,6 +70,7 @@ The following files have been patched (* planned)
   gcc/config/dragonfly.h		default dynamic linker path
   gcc/gcc.cc				default paths for base tools
 					add -save-temps=objects option
+  gcc/genhooks.cc			remove include of d-target.def
   gcc/omp-device-properties.h		manually generated
   libgcc/gthr-posix.h			avoid weakref (ld.gold issue)
   libgcc/unwind-dw2-fde-dip.c		avoid redefining ElfW
