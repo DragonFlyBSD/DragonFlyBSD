@@ -276,9 +276,10 @@ static enum save_temps {
   SAVE_TEMPS_NONE,		/* no -save-temps */
   SAVE_TEMPS_CWD,		/* -save-temps in current directory */
   SAVE_TEMPS_DUMP,              /* -save-temps in dumpdir */
-  SAVE_TEMPS_OBJ,		/* -save-temps in object directory */
-  SAVE_TEMPS_OBJZ		/* -save-temps in object directory with mangling */
+  SAVE_TEMPS_OBJ		/* -save-temps in object directory */
 } save_temps_flag;
+/* Keep the suffix of the object file */
+static bool keep_suffix = false;
 
 /* Set this iff the dumppfx implied by a -save-temps=* option is to
    override a -dumpdir option, if any.  */
@@ -4450,7 +4451,10 @@ driver_handle_option (struct gcc_options *opts,
 	       || strcmp (arg, "object") == 0)
 	save_temps_flag = SAVE_TEMPS_OBJ;
       else if (strcmp (arg, "objects") == 0)
-        save_temps_flag = SAVE_TEMPS_OBJZ;
+	{
+	  keep_suffix = true;
+	  save_temps_flag = SAVE_TEMPS_OBJ;
+	}
       else
 	fatal_error (input_location, "%qs is an unknown %<-save-temps%> option",
 		     decoded->orig_option_with_args_text);
@@ -5325,9 +5329,12 @@ process_command (unsigned int decoded_options_count,
       else if (output_file && !not_actual_file_p (output_file))
 	{
 	  outbase = xstrdup (lbasename (output_file));
-	  char *p = strrchr (outbase + 1, '.');
-	  if (p)
-	    *p = '\0';
+	  if (!keep_suffix)
+	    {
+	      char *p = strrchr (outbase + 1, '.');
+	      if (p)
+	        *p = '\0';
+            }
 	}
 
       if (outbase)
