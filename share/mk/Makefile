@@ -2,8 +2,9 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/8/93
 
 FILES=	bsd.README
-FILES+=	bsd.cpu.mk bsd.cpu.gcc47.mk bsd.cpu.custom.mk
+FILES+=	bsd.cpu.mk bsd.cpu.custom.mk
 FILES+=	bsd.cpu.gcc80.mk
+FILES+=	bsd.cpu.gcc120.mk
 FILES+=	bsd.crunchgen.mk
 FILES+=	bsd.dep.mk bsd.files.mk
 FILES+=	bsd.incs.mk bsd.init.mk

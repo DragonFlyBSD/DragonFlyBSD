@@ -5,7 +5,7 @@
 # The same approach is used for the two sets of binutils
 
 CC_PRIMARY=	gcc80
-CC_BACKUP=	gcc47
+CC_BACKUP=	gcc120
 
 .if defined(COMPVERSION)
 .if (${COMPVERSION} == ${CC_PRIMARY})

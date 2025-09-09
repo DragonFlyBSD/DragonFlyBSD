@@ -1,0 +1,238 @@
+.include "Makefile.inc"
+
+COMPVERSION=	gcc120
+
+lang_tree_files+=	cp/cp-tree.def
+lang_tree_files+=	objc/objc-tree.def
+
+optionsfiles+=		${GCCDIR}/gcc/lto/lang.opt
+optionsfiles+=		${GCCDIR}/gcc/c-family/c.opt
+optionsfiles+=		${GCCDIR}/gcc/common.opt
+optionsfiles+=		${GCCDIR}/gcc/params.opt
+optionsfiles+=		${GCCDIR}/gcc/analyzer/analyzer.opt
+optionsfiles+=		${GCCDIR}/gcc/config/fused-madd.opt
+optionsfiles+=		${GCCDIR}/gcc/config/i386/i386.opt
+optionsfiles+=		${GCCDIR}/gcc/config/rpath.opt
+optionsfiles+=		${GCCDIR}/gcc/config/dragonfly.opt
+
+header_name=		config.h system.h coretypes.h options.h tm.h
+header_name_save=	config.h system.h coretypes.h tm.h
+
+LANG_SPECS_FILES=	cp/lang-specs.h \
+			lto/lang-specs.h
+
+# Object files for gcc driver.
+GCC_SRCS = gcc.cc gcc-main.cc ggc-none.cc
+EXTRA_GCC_SRCS = driver-i386.cc
+
+# this is directly from GCC's Makefile, beware evil
+# gtype-desc.h will generate wrong if language order changed
+GTFILES = $(CPP_ID_DATA_H) $(srcdir)/input.h $(srcdir)/coretypes.h \
+  $(host_xm_file_list) \
+  $(tm_file_list) $(HASHTAB_H) $(SPLAY_TREE_H) $(srcdir)/bitmap.h \
+  $(srcdir)/wide-int.h $(srcdir)/alias.h \
+  $(srcdir)/coverage.cc  $(srcdir)/rtl.h \
+  $(srcdir)/optabs.h $(srcdir)/tree.h $(srcdir)/tree-core.h \
+  $(srcdir)/libfuncs.h $(SYMTAB_H) \
+  $(srcdir)/real.h $(srcdir)/function.h $(srcdir)/insn-addr.h $(srcdir)/hwint.h \
+  $(srcdir)/fixed-value.h \
+  $(srcdir)/function-abi.h \
+  $(srcdir)/output.h $(srcdir)/cfgloop.h $(srcdir)/cfg.h $(srcdir)/profile-count.h \
+  $(srcdir)/cselib.h $(srcdir)/basic-block.h  $(srcdir)/ipa-ref.h $(srcdir)/cgraph.h \
+  $(srcdir)/symtab-thunks.h $(srcdir)/symtab-thunks.cc \
+  $(srcdir)/symtab-clones.h \
+  $(srcdir)/reload.h $(srcdir)/caller-save.cc $(srcdir)/symtab.cc \
+  $(srcdir)/alias.cc $(srcdir)/bitmap.cc $(srcdir)/cselib.cc $(srcdir)/cgraph.cc \
+  $(srcdir)/ipa-prop.cc $(srcdir)/ipa-cp.cc $(srcdir)/ipa-utils.h \
+  $(srcdir)/ipa-param-manipulation.h $(srcdir)/ipa-sra.cc $(srcdir)/dbxout.cc \
+  $(srcdir)/ipa-modref.h $(srcdir)/ipa-modref.cc \
+  $(srcdir)/ipa-modref-tree.h \
+  $(srcdir)/signop.h \
+  $(srcdir)/diagnostic-spec.h $(srcdir)/diagnostic-spec.cc \
+  $(srcdir)/dwarf2out.h \
+  $(srcdir)/dwarf2asm.cc \
+  $(srcdir)/dwarf2cfi.cc \
+  $(srcdir)/dwarf2ctf.cc \
+  $(srcdir)/dwarf2out.cc \
+  $(srcdir)/ctfc.h \
+  $(srcdir)/ctfout.cc \
+  $(srcdir)/btfout.cc \
+  $(srcdir)/tree-vect-generic.cc \
+  $(srcdir)/gimple-isel.cc \
+  $(srcdir)/dojump.cc $(srcdir)/emit-rtl.h \
+  $(srcdir)/emit-rtl.cc $(srcdir)/except.h $(srcdir)/explow.cc $(srcdir)/expr.cc \
+  $(srcdir)/expr.h \
+  $(srcdir)/function.cc $(srcdir)/except.cc \
+  $(srcdir)/ggc-tests.cc \
+  $(srcdir)/gcse.cc $(srcdir)/godump.cc \
+  $(srcdir)/lists.cc $(srcdir)/optabs-libfuncs.cc \
+  $(srcdir)/profile.cc $(srcdir)/mcf.cc \
+  $(srcdir)/reg-stack.cc $(srcdir)/cfgrtl.cc \
+  $(srcdir)/stor-layout.cc \
+  $(srcdir)/stringpool.cc $(srcdir)/tree.cc $(srcdir)/varasm.cc \
+  $(srcdir)/gimple.h \
+  $(srcdir)/gimple-ssa.h \
+  $(srcdir)/tree-ssanames.cc $(srcdir)/tree-eh.cc $(srcdir)/tree-ssa-address.cc \
+  $(srcdir)/tree-cfg.cc $(srcdir)/tree-ssa-loop-ivopts.cc \
+  $(srcdir)/tree-dfa.cc \
+  $(srcdir)/tree-iterator.cc $(srcdir)/gimple-expr.cc \
+  $(srcdir)/tree-chrec.h \
+  $(srcdir)/tree-scalar-evolution.cc \
+  $(srcdir)/tree-ssa-operands.h \
+  $(srcdir)/tree-profile.cc $(srcdir)/tree-nested.cc \
+  $(srcdir)/omp-offload.h \
+  $(srcdir)/omp-general.cc \
+  $(srcdir)/omp-low.cc \
+  $(srcdir)/targhooks.cc $(out_file) $(srcdir)/passes.cc \
+  $(srcdir)/cgraphclones.cc \
+  $(srcdir)/tree-phinodes.cc \
+  $(srcdir)/tree-ssa-alias.h \
+  $(srcdir)/tree-ssanames.h \
+  $(srcdir)/tree-vrp.h \
+  $(srcdir)/value-range.h \
+  $(srcdir)/ipa-prop.h \
+  $(srcdir)/trans-mem.cc \
+  $(srcdir)/lto-streamer.h \
+  $(srcdir)/target-globals.h \
+  $(srcdir)/ipa-predicate.h \
+  $(srcdir)/ipa-fnsummary.h \
+  $(srcdir)/vtable-verify.cc \
+  $(srcdir)/asan.cc \
+  $(srcdir)/ubsan.cc \
+  $(srcdir)/tsan.cc \
+  $(srcdir)/sanopt.cc \
+  $(srcdir)/sancov.cc \
+  $(srcdir)/ipa-devirt.cc \
+  $(srcdir)/internal-fn.h \
+  $(srcdir)/calls.cc \
+  $(srcdir)/omp-general.h
+
+# Arch specific
+GTFILES_ARCH+= \
+	$(srcdir)/config/i386/i386-builtins.cc \
+	$(srcdir)/config/i386/i386-expand.cc \
+	$(srcdir)/config/i386/i386-options.cc
+
+# C
+GTFILES_C+= \
+  [c] \
+  $(srcdir)/c/c-lang.cc \
+  $(srcdir)/c/c-tree.h \
+  $(srcdir)/c/c-decl.cc \
+  $(srcdir)/c-family/c-common.cc \
+  $(srcdir)/c-family/c-common.h \
+  $(srcdir)/c-family/c-objc.h \
+  $(srcdir)/c-family/c-cppbuiltin.cc \
+  $(srcdir)/c-family/c-pragma.h \
+  $(srcdir)/c-family/c-pragma.cc \
+  $(srcdir)/c-family/c-format.cc \
+  $(srcdir)/c/c-objc-common.cc \
+  $(srcdir)/c/c-parser.h \
+  $(srcdir)/c/c-parser.cc \
+  $(srcdir)/c/c-lang.h
+
+GTFILES_CPP= \
+  [cp] \
+  $(srcdir)/cp/name-lookup.h \
+  $(srcdir)/cp/cp-tree.h \
+  $(srcdir)/c-family/c-common.h \
+  $(srcdir)/c-family/c-objc.h \
+  $(srcdir)/c-family/c-pragma.h \
+  $(srcdir)/cp/decl.h \
+  $(srcdir)/cp/parser.h \
+  $(srcdir)/c-family/c-common.cc \
+  $(srcdir)/c-family/c-format.cc \
+  $(srcdir)/c-family/c-cppbuiltin.cc \
+  $(srcdir)/c-family/c-pragma.cc \
+  $(srcdir)/cp/call.cc \
+  $(srcdir)/cp/class.cc \
+  $(srcdir)/cp/constexpr.cc \
+  $(srcdir)/cp/constraint.cc \
+  $(srcdir)/cp/coroutines.cc \
+  $(srcdir)/cp/cp-gimplify.cc \
+  $(srcdir)/cp/cp-lang.cc \
+  $(srcdir)/cp/cp-objcp-common.cc \
+  $(srcdir)/cp/decl.cc \
+  $(srcdir)/cp/decl2.cc \
+  $(srcdir)/cp/except.cc \
+  $(srcdir)/cp/friend.cc \
+  $(srcdir)/cp/init.cc \
+  $(srcdir)/cp/lambda.cc \
+  $(srcdir)/cp/lex.cc \
+  $(srcdir)/cp/logic.cc \
+  $(srcdir)/cp/mangle.cc \
+  $(srcdir)/cp/method.cc \
+  $(srcdir)/cp/module.cc \
+  $(srcdir)/cp/name-lookup.cc \
+  $(srcdir)/cp/parser.cc \
+  $(srcdir)/cp/pt.cc \
+  $(srcdir)/cp/rtti.cc \
+  $(srcdir)/cp/semantics.cc \
+  $(srcdir)/cp/tree.cc \
+  $(srcdir)/cp/typeck2.cc \
+  $(srcdir)/cp/vtable-class-hierarchy.cc
+
+GTFILES_LTO= \
+  [lto] \
+  $(srcdir)/lto/lto-tree.h \
+  $(srcdir)/lto/lto-lang.cc \
+  $(srcdir)/lto/lto.cc \
+  $(srcdir)/lto/lto.h \
+  $(srcdir)/lto/lto-common.h \
+  $(srcdir)/lto/lto-common.cc \
+  $(srcdir)/lto/lto-dump.cc
+
+# Careful! Order matters, should be sorted.
+GTFILES+= ${GTFILES_ARCH} ${GTFILES_C} ${GTFILES_CPP} ${GTFILES_LTO}
+
+# verbatim from gcc/Makefile
+# Language-specific object files shared by all C-family front ends.
+C_COMMON_OBJS= c-family/c-common.o c-family/c-cppbuiltin.o c-family/c-dump.o \
+  c-family/c-format.o c-family/c-gimplify.o c-family/c-indentation.o \
+  c-family/c-lex.o c-family/c-omp.o c-family/c-opts.o c-family/c-pch.o \
+  c-family/c-ppoutput.o c-family/c-pragma.o c-family/c-pretty-print.o \
+  c-family/c-semantics.o c-family/c-ada-spec.o \
+  c-family/c-ubsan.o c-family/known-headers.o \
+  c-family/c-attribs.o c-family/c-warn.o c-family/c-spellcheck.o
+
+C_COMMON_SRCS=
+
+C_TARGET_OBJS=i386-c.o default-c.o
+
+CXX_TARGET_OBJS=i386-c.o default-c.o
+
+# verbatim from c/Make-lang.in
+# Language-specific object files for C
+C_AND_OBJC_OBJS = attribs.o c/c-errors.o c/c-decl.o c/c-typeck.o \
+  c/c-convert.o c/c-aux-info.o c/c-objc-common.o c/c-parser.o \
+  c/c-fold.o c/gimple-parser.o \
+  $(C_COMMON_OBJS) $(C_TARGET_OBJS)
+
+# Language-specific object files for C.
+C_OBJS = c/c-lang.o c-family/stub-objc.o $(C_AND_OBJC_OBJS)
+
+# Shared with C front end:
+CXX_C_OBJS = attribs.o incpath.o \
+	$(C_COMMON_OBJS) $(CXX_TARGET_OBJS)
+
+# verbatim from cp/Make-lang.in
+# Language-specific object files for c++.
+CXX_OBJS = \
+	cp/call.o cp/class.o cp/constexpr.o cp/constraint.o \
+	cp/coroutines.o cp/cp-gimplify.o \
+	cp/cp-objcp-common.o cp/cp-ubsan.o \
+	cp/cvt.o cp/cxx-pretty-print.o \
+	cp/decl.o cp/decl2.o cp/dump.o \
+	cp/error.o cp/except.o cp/expr.o \
+	cp/friend.o cp/init.o \
+	cp/lambda.o cp/lex.o cp/logic.o \
+	cp/mangle.o cp/mapper-client.o cp/mapper-resolver.o \
+	cp/method.o cp/module.o \
+	cp/name-lookup.o cp/optimize.o \
+	cp/parser.o cp/pt.o cp/ptree.o \
+	cp/rtti.o \
+	cp/search.o cp/semantics.o \
+	cp/tree.o cp/typeck.o cp/typeck2.o \
+	cp/vtable-class-hierarchy.o $(CXX_C_OBJS)
+
+CXX_COMMON_SRCS= ${C_COMMON_SRCS}

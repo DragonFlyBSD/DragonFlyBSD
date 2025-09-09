@@ -1042,13 +1042,13 @@ bstrap-${_tool}!
 # gcc80 is now the default compiler.  See sys.mk for WORLD_ALTCOMPILER default
 # and this file for WORLD_CCVER.
 #
-_gcc47_cross= gnu/usr.bin/cc47
 _gcc80_cross= gnu/usr.bin/cc80
+_gcc120_cross= gnu/usr.bin/cc120
 _gcc_common_cross= lib/libz gnu/usr.bin/gmp gnu/usr.bin/mpfr gnu/usr.bin/mpc
 
 .if !defined(NO_ALTCOMPILER)
-. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
-_altcompiler_cross+= ${_gcc47_cross}
+. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc120})
+_altcompiler_cross+= ${_gcc120_cross}
 . endif
 .endif
 
@@ -1109,10 +1109,10 @@ libraries:
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc80 \
 		make -f Makefile.inc1 _startup_libs80 -DSYSBUILD -DLIBGCC_ONLY;
 .if !defined(NO_ALTCOMPILER)
-. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
+. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc120})
 	cd ${.CURDIR}; \
-	    HOST_CCVER=${HOST_CCVER} CCVER=gcc47 \
-		make -f Makefile.inc1 _startup_libs47 -DSYSBUILD -DLIBGCC_ONLY;
+	    HOST_CCVER=${HOST_CCVER} CCVER=gcc120 \
+		make -f Makefile.inc1 _startup_libs120 -DSYSBUILD -DLIBGCC_ONLY;
 . endif
 .endif
 	cd ${.CURDIR}; \
@@ -1127,13 +1127,6 @@ libraries:
 # shared libraries for ELF.  The target for _startup_libsXX is
 # specifically built using gccXX.
 #
-_startup_libs47=	gnu/usr.bin/cc47/cc_prep \
-			gnu/usr.bin/cc47/cc_tools \
-			gnu/lib/gcc47/csu \
-			gnu/lib/gcc47/libgcc \
-			gnu/lib/gcc47/libgcc_eh \
-			gnu/lib/gcc47/libgcc_pic
-
 _startup_libs80=	gnu/usr.bin/cc80/cc_prep \
 			gnu/usr.bin/cc80/cc_tools \
 			gnu/lib/gcc80/csu \
@@ -1141,9 +1134,16 @@ _startup_libs80=	gnu/usr.bin/cc80/cc_prep \
 			gnu/lib/gcc80/libgcc_eh \
 			gnu/lib/gcc80/libgcc_pic
 
+_startup_libs120=	gnu/usr.bin/cc120/cc_prep \
+			gnu/usr.bin/cc120/cc_tools \
+			gnu/lib/gcc120/csu \
+			gnu/lib/gcc120/libgcc \
+			gnu/lib/gcc120/libgcc_eh \
+			gnu/lib/gcc120/libgcc_pic
+
 .if !defined(NO_ALTCOMPILER)
-. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
-_startup_libs_alt+=	_startup_libs47
+. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc120})
+_startup_libs_alt+=	_startup_libs120
 . endif
 .endif
 

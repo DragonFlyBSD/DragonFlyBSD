@@ -16,12 +16,16 @@
     lib
         debug
         ..
-        gcc47
+        gcc80
             plugin
                 include
-                    c-family
+                    ada
+                        gcc-interface
+                        ..
                     ..
                     objc
+                    ..
+                    c-family
                     ..
                     config
                         i386
@@ -34,7 +38,7 @@
             profile
             ..
         ..
-        gcc80
+        gcc120
             plugin
                 include
                     ada
@@ -70,11 +74,11 @@
         ..
     ..
     libdata
-        gcc47
+        gcc80
             ssp
             ..
         ..
-        gcc80
+        gcc120
             ssp
             ..
         ..
@@ -104,9 +108,9 @@
         ..
         dhcpcd-hooks
         ..
-        gcc47
-        ..
         gcc80
+        ..
+        gcc120
         ..
         lpr
             ru
