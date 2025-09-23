@@ -88,7 +88,7 @@ case ${CNAME} in
 		;;
 	cc)
 		CUSTOM_CC=`eval echo \$\{${CCVER}_CC\}`
-		if [ -n ${CUSTOM_CC} ]; then
+		if [ -n "${CUSTOM_CC}" ]; then
 			COMPILER=${CUSTOM_CC}
 			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
 		else
@@ -98,7 +98,7 @@ case ${CNAME} in
 		;;
 	c++|CC)
 		CUSTOM_CXX=`eval echo \$\{${CCVER}_CXX\}`
-		if [ -n ${CUSTOM_CXX} ]; then
+		if [ -n "${CUSTOM_CXX}" ]; then
 			COMPILER=${CUSTOM_CXX}
 			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
 			INCOPTCXX=`eval echo \$\{${CCVER}_INCOPTCXX\}`
@@ -109,7 +109,7 @@ case ${CNAME} in
 		;;
 	cpp)
 		CUSTOM_CPP=`eval echo \$\{${CCVER}_CPP\}`
-		if [ -n ${CUSTOM_CPP} ]; then
+		if [ -n "${CUSTOM_CPP}" ]; then
 			COMPILER=${CUSTOM_CPP}
 			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
 		else
