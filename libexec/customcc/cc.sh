@@ -33,9 +33,11 @@
 
 CNAME=$(basename $0)
 
-INCPREFIX=@@INCPREFIX@@
-MACHARCH=@@MACHARCH@@
-MACHREL=@@MACHREL@@
+# In order to improve the wrapper script efficiency, pre-determine these
+# variables at build time instead of at runtime.
+INCPREFIX=@@INCPREFIX@@	# e.g., /
+MACHARCH=@@MACHARCH@@	# e.g., x86_64
+MACHREL=@@MACHREL@@	# e.g., 6.5
 
 . /etc/defaults/compilers.conf
 [ -f /etc/compilers.conf ] && . /etc/compilers.conf
