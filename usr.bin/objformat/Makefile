@@ -3,10 +3,6 @@
 PROG=		objformat
 NOSHARED?=	YES
 
-.if defined(TARGET_ARCH)
-CFLAGS+=	-DTARGET_ARCH="${TARGET_ARCH}"
-.endif
-
 .if defined(OBJFORMAT_BUILTIN_CCVER_DEFAULT)
 CFLAGS+=	-DCCVER_DEFAULT="\"${OBJFORMAT_BUILTIN_CCVER_DEFAULT}\""
 .endif
@@ -18,6 +14,7 @@ CFLAGS+=	-DOBJFORMAT_PATH_DEFAULT="\"${TOOLS_PREFIX}\""
 .elif defined(OBJFORMAT_BUILTIN_PATH_DEFAULT)
 CFLAGS+=	-DOBJFORMAT_PATH_DEFAULT="\"${OBJFORMAT_BUILTIN_PATH_DEFAULT}\""
 .endif
+
 # These will exec /usr/libexec/${BINUTILSVER}/<objformat>/<name>
 #
 LINKS+=	${BINDIR}/objformat ${BINDIR}/addr2line
