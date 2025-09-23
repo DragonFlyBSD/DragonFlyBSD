@@ -28,6 +28,7 @@
  */
 
 #include <err.h>
+#include <limits.h> /* PATH_MAX */
 #include <objformat.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -95,8 +96,9 @@ main(int argc, char **argv)
 	char ld_alt[] = LINKER_ALT;
 	struct command *cmds;
 	char objformat[32];
+	char newcmd[PATH_MAX];
 	char *path, *chunk;
-	char *cmd, *newcmd = NULL;
+	char *cmd;
 	char *ldcmd = ld_def;
 	const char *objformat_path;
 	const char *ccver;
@@ -185,19 +187,13 @@ again:
 	 * objformat_path could be sequence of colon-separated paths.
 	 */
 	while ((chunk = strsep(&path, ":")) != NULL) {
-		if (newcmd != NULL) {
-			free(newcmd);
-			newcmd = NULL;
-		}
 		if (use_objformat) {
-			asprintf(&newcmd, "%s%s/%s/%s/%s",
+			snprintf(newcmd, sizeof(newcmd), "%s%s/%s/%s/%s",
 				chunk, base_path, env_value, objformat, cmd);
 		} else {
-			asprintf(&newcmd, "%s%s/%s/%s",
+			snprintf(newcmd, sizeof(newcmd), "%s%s/%s/%s",
 				chunk, base_path, env_value, cmd);
 		}
-		if (newcmd == NULL)
-			err(1, "cannot allocate memory");
 
 		argv[0] = newcmd;
 		execv(newcmd, argv);
