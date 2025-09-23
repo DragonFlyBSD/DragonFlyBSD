@@ -27,8 +27,6 @@
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
  */
 
-#include <sys/param.h>
-
 #include <err.h>
 #include <objformat.h>
 #include <stdio.h>
@@ -51,11 +49,6 @@
 
 #ifndef OBJFORMAT_PATH_DEFAULT
 #define OBJFORMAT_PATH_DEFAULT ""
-#endif
-
-/* Macro for array size */
-#ifndef NELEM
-#define NELEM(ary)      (sizeof(ary) / sizeof((ary)[0]))
 #endif
 
 enum cmd_type { OBJFORMAT, COMPILER, BINUTILS, LINKER };
@@ -91,7 +84,7 @@ static struct command commands[] = {
 	{"strings",		BINUTILS},
 	{"strip",		BINUTILS},
 	{"objformat",		OBJFORMAT},
-	{"",			-1}
+	{NULL,			-1},
 };
 
 int
@@ -124,44 +117,42 @@ main(int argc, char **argv)
 	else
 		cmd = argv[0];
 
-	for (cmds = commands; cmds < &commands[NELEM(commands) - 1]; ++cmds) {
+	for (cmds = commands; cmds->cmd != NULL; ++cmds) {
 		if (strcmp(cmd, cmds->cmd) == 0)
 			break;
 	}
 
-	if (cmds) {
-		switch (cmds->type) {
-		case COMPILER:
-			ccver = getenv("CCVER");
-			if ((ccver == NULL) || ccver[0] == 0)
-			    ccver = CCVER_DEFAULT;
-			use_objformat = 0;
-			env_value = ccver;
-			break;
-		case BINUTILS:
-			buver = getenv("BINUTILSVER");
-			if (buver == NULL)
-			    buver = BINUTILSVER_DEFAULT;
-			use_objformat = 1;
-			env_value = buver;
-			break;
-		case LINKER:
-			buver = getenv("BINUTILSVER");
-			if (buver == NULL)
-			    buver = BINUTILSVER_DEFAULT;
-			ldver = getenv("LDVER");
-			if ((ldver != NULL) && (strcmp(ldver, ld_alt) == 0))
-			    ldcmd = ld_alt;
-			use_objformat = 1;
-			env_value = buver;
-			cmd = ldcmd;
-			break;
-		case OBJFORMAT:
-			break;
-		default:
-			errx(1, "unknown command type");
-			break;
-		}
+	switch (cmds->type) {
+	case COMPILER:
+		ccver = getenv("CCVER");
+		if ((ccver == NULL) || ccver[0] == 0)
+			ccver = CCVER_DEFAULT;
+		use_objformat = 0;
+		env_value = ccver;
+		break;
+	case BINUTILS:
+		buver = getenv("BINUTILSVER");
+		if (buver == NULL)
+			buver = BINUTILSVER_DEFAULT;
+		use_objformat = 1;
+		env_value = buver;
+		break;
+	case LINKER:
+		buver = getenv("BINUTILSVER");
+		if (buver == NULL)
+			buver = BINUTILSVER_DEFAULT;
+		ldver = getenv("LDVER");
+		if ((ldver != NULL) && (strcmp(ldver, ld_alt) == 0))
+			ldcmd = ld_alt;
+		use_objformat = 1;
+		env_value = buver;
+		cmd = ldcmd;
+		break;
+	case OBJFORMAT:
+		break;
+	default:
+		errx(1, "unknown command type");
+		break;
 	}
 
 	/*
@@ -216,8 +207,7 @@ again:
 	 * Fallback:  if we're searching for a compiler, but didn't
 	 * find any, try again using the custom compiler driver.
 	 */
-	if (cmds && cmds->type == COMPILER &&
-	    strcmp(env_value, "custom") != 0) {
+	if (cmds->type == COMPILER && strcmp(env_value, "custom") != 0) {
 		env_value = "custom";
 		goto again;
 	}
