@@ -156,4 +156,8 @@ case ${CNAME} in
 		CUSTOM_CPPFLAGS=`eval echo \$\{${CCVER}_CPPFLAGS\}`
 		exec ${COMPILER} ${INCOPT} ${CUSTOM_CPPFLAGS} "$@"
 		;;
+	*)
+		echo "customcc: unrecognized command '${CNAME}'"
+		exit 1
+		;;
 esac
