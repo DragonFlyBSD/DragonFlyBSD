@@ -72,9 +72,9 @@ static struct command commands[] = {
 	{"as",			BINUTILS},
 	{"c++filt",		BINUTILS},
 	{"elfedit",		BINUTILS},
-	{"gprof",       	BINUTILS},
-	{"ld.bfd",       	BINUTILS},
-	{"ld.gold",       	BINUTILS},
+	{"gprof",		BINUTILS},
+	{"ld.bfd",		BINUTILS},
+	{"ld.gold",		BINUTILS},
 	{"nm",			BINUTILS},
 	{"objcopy",		BINUTILS},
 	{"objdump",		BINUTILS},
@@ -204,7 +204,7 @@ again:
 	}
 
 	/*
-	 * Fallback:  if we're searching for a compiler, but didn't
+	 * Fallback: if we're searching for a compiler, but didn't
 	 * find any, try again using the custom compiler driver.
 	 */
 	if (cmds->type == COMPILER && strcmp(env_value, "custom") != 0) {
