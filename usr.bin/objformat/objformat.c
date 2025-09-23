@@ -97,6 +97,7 @@ static struct command commands[] = {
 int
 main(int argc, char **argv)
 {
+	const char *base_path = "/usr/libexec";
 	char ld_def[] = LINKER_DEFAULT;
 	char ld_alt[] = LINKER_ALT;
 	struct command *cmds;
@@ -109,7 +110,6 @@ main(int argc, char **argv)
 	const char *buver;
 	const char *ldver;
 	const char *env_value = NULL;
-	const char *base_path = NULL;
 	int use_objformat = 0;
 
 	if (getobjformat(objformat, sizeof objformat, &argc, argv) == -1)
@@ -135,7 +135,6 @@ main(int argc, char **argv)
 			ccver = getenv("CCVER");
 			if ((ccver == NULL) || ccver[0] == 0)
 			    ccver = CCVER_DEFAULT;
-			base_path = "/usr/libexec";
 			use_objformat = 0;
 			env_value = ccver;
 			break;
@@ -143,7 +142,6 @@ main(int argc, char **argv)
 			buver = getenv("BINUTILSVER");
 			if (buver == NULL)
 			    buver = BINUTILSVER_DEFAULT;
-			base_path = "/usr/libexec";
 			use_objformat = 1;
 			env_value = buver;
 			break;
@@ -154,7 +152,6 @@ main(int argc, char **argv)
 			ldver = getenv("LDVER");
 			if ((ldver != NULL) && (strcmp(ldver, ld_alt) == 0))
 			    ldcmd = ld_alt;
-			base_path = "/usr/libexec";
 			use_objformat = 1;
 			env_value = buver;
 			cmd = ldcmd;
