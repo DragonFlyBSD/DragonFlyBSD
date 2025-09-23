@@ -61,7 +61,7 @@ case ${CNAME} in
 		else
 			COMPILER=/usr/libexec/gcc80/g++
 			INCOPT=${GCC_INCOPT}
-			INCOPTCXX="-isystem /usr/include/c++/4.7"
+			INCOPTCXX="-isystem /usr/include/c++/8.0"
 		fi
 		;;
 	clang)
@@ -83,7 +83,7 @@ case ${CNAME} in
 		else
 			COMPILER=/usr/libexec/clangbase/clang++
 			INCOPT=${CLANG_INCOPT}
-			INCOPTCXX="-isystem /usr/include/c++/4.7"
+			INCOPTCXX="-isystem /usr/include/c++/8.0"
 		fi
 		;;
 	cc)
