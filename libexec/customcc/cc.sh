@@ -148,7 +148,7 @@ case ${CNAME} in
 		;;
 	g++|clang++|c++|CC)
 		CUSTOM_CXXFLAGS=`eval echo \$\{${CCVER}_CXXFLAGS\}`
-		exec ${COMPILER} ${INCOPT} ${INCOPTCXX} ${CUSTOM_CFLAGS} "$@"
+		exec ${COMPILER} ${INCOPT} ${INCOPTCXX} ${CUSTOM_CXXFLAGS} "$@"
 		;;
 	cpp|clang-cpp)
 		CUSTOM_CPPFLAGS=`eval echo \$\{${CCVER}_CPPFLAGS\}`
