@@ -177,6 +177,9 @@ main(int argc, char **argv)
 		exit(0);
 	}
 
+	if (setenv("OBJFORMAT", objformat, 1) == -1)
+		err(1, "setenv: cannot set OBJFORMAT=%s", objformat);
+
 	/*
 	 * make buildworld glue and CCVER overrides.
 	 */
@@ -186,9 +189,6 @@ main(int argc, char **argv)
 
 again:
 	path = strdup(objformat_path);
-
-	if (setenv("OBJFORMAT", objformat, 1) == -1)
-		err(1, "setenv: cannot set OBJFORMAT=%s", objformat);
 
 	/*
 	 * objformat_path could be sequence of colon-separated paths.
