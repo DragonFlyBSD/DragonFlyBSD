@@ -45,21 +45,21 @@ MACHREL=@@MACHREL@@	# e.g., 6.5
 
 case ${CNAME} in
 	gcc)
-		CUSTOM_GCC=`eval echo \$\{${CCVER}_GCC\}`
-		if [ -n  "${CUSTOM_GCC}" ]; then
+		eval 'CUSTOM_GCC=${'${CCVER}'_GCC}'
+		if [ -n "${CUSTOM_GCC}" ]; then
 			COMPILER=${CUSTOM_GCC}
-			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
+			eval 'INCOPT=${'${CCVER}'_INCOPT}'
 		else
 			COMPILER=/usr/libexec/gcc80/gcc
 			INCOPT=${STD_INCOPT}
 		fi
 		;;
 	g++)
-		CUSTOM_GXX=`eval echo \$\{${CCVER}_GXX\}`
-		if [ -n  "${CUSTOM_GXX}" ]; then
+		eval 'CUSTOM_GXX=${'${CCVER}'_GXX}'
+		if [ -n "${CUSTOM_GXX}" ]; then
 			COMPILER=${CUSTOM_GXX}
-			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
-			INCOPTCXX=`eval echo \$\{${CCVER}_INCOPTCXX\}`
+			eval 'INCOPT=${'${CCVER}'_INCOPT}'
+			eval 'INCOPTCXX=${'${CCVER}'_INCOPTCXX}'
 		else
 			COMPILER=/usr/libexec/gcc80/g++
 			INCOPT=${GCC_INCOPT}
@@ -67,21 +67,21 @@ case ${CNAME} in
 		fi
 		;;
 	clang)
-		CUSTOM_CLANG=`eval echo \$\{${CCVER}_CLANG\}`
-		if [ -n  "${CUSTOM_CLANG}" ]; then
+		eval 'CUSTOM_CLANG=${'${CCVER}'_CLANG}'
+		if [ -n "${CUSTOM_CLANG}" ]; then
 			COMPILER=${CUSTOM_CLANG}
-			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
+			eval 'INCOPT=${'${CCVER}'_INCOPT}'
 		else
 			COMPILER=/usr/libexec/clangbase/clang
 			INCOPT=${STD_INCOPT}
 		fi
 		;;
 	clang++)
-		CUSTOM_CLANGCXX=`eval echo \$\{${CCVER}_CLANGCXX\}`
-		if [ -n  "${CUSTOM_CLANGCXX}" ]; then
+		eval 'CUSTOM_CLANGCXX=${'${CCVER}'_CLANGCXX}'
+		if [ -n "${CUSTOM_CLANGCXX}" ]; then
 			COMPILER=${CUSTOM_CLANGCXX}
-			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
-			INCOPTCXX=`eval echo \$\{${CCVER}_INCOPTCXX\}`
+			eval 'INCOPT=${'${CCVER}'_INCOPT}'
+			eval 'INCOPTCXX=${'${CCVER}'_INCOPTCXX}'
 		else
 			COMPILER=/usr/libexec/clangbase/clang++
 			INCOPT=${CLANG_INCOPT}
@@ -89,48 +89,48 @@ case ${CNAME} in
 		fi
 		;;
 	cc)
-		CUSTOM_CC=`eval echo \$\{${CCVER}_CC\}`
+		eval 'CUSTOM_CC=${'${CCVER}'_CC}'
 		if [ -n "${CUSTOM_CC}" ]; then
 			COMPILER=${CUSTOM_CC}
-			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
+			eval 'INCOPT=${'${CCVER}'_INCOPT}'
 		else
 			echo "${CCVER}_CC undefined, see compilers.conf(5)"
 			exit 1
 		fi
 		;;
 	c++|CC)
-		CUSTOM_CXX=`eval echo \$\{${CCVER}_CXX\}`
+		eval 'CUSTOM_CXX=${'${CCVER}'_CXX}'
 		if [ -n "${CUSTOM_CXX}" ]; then
 			COMPILER=${CUSTOM_CXX}
-			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
-			INCOPTCXX=`eval echo \$\{${CCVER}_INCOPTCXX\}`
+			eval 'INCOPT=${'${CCVER}'_INCOPT}'
+			eval 'INCOPTCXX=${'${CCVER}'_INCOPTCXX}'
 		else
 			echo "${CCVER}_CXX undefined, see compilers.conf(5)"
 			exit 1
 		fi
 		;;
 	cpp)
-		CUSTOM_CPP=`eval echo \$\{${CCVER}_CPP\}`
+		eval 'CUSTOM_CPP=${'${CCVER}'_CPP}'
 		if [ -n "${CUSTOM_CPP}" ]; then
 			COMPILER=${CUSTOM_CPP}
-			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
+			eval 'INCOPT=${'${CCVER}'_INCOPT}'
 		else
 			echo "${CCVER}_CPP undefined, see compilers.conf(5)"
 			exit 1
 		fi
 		;;
 	clang-cpp)
-		CUSTOM_CLANGCPP=`eval echo \$\{${CCVER}_CLANGCPP\}`
+		eval 'CUSTOM_CLANGCPP=${'${CCVER}'_CLANGCPP}'
 		if [ -n  "${CUSTOM_CLANGCPP}" ]; then
 			COMPILER=${CUSTOM_CLANGCPP}
-			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
+			eval 'INCOPT=${'${CCVER}'_INCOPT}'
 		else
 			COMPILER=/usr/libexec/clangbase/clang-cpp
 			INCOPT=${CLANG_INCOPT}
 		fi
 		;;
 	gcov)
-		CUSTOM_GCOV=`eval echo \$\{${CCVER}_GCOV\}`
+		eval 'CUSTOM_GCOV=${'${CCVER}'_GCOV}'
 		if [ -n  "${CUSTOM_GCOV}" ]; then
 			exec ${CUSTOM_GCOV} "$@"
 		else
@@ -145,15 +145,15 @@ esac
 
 case ${CNAME} in
 	gcc|clang|cc)
-		CUSTOM_CFLAGS=`eval echo \$\{${CCVER}_CFLAGS\}`
+		eval 'CUSTOM_CFLAGS=${'${CCVER}'_CFLAGS}'
 		exec ${COMPILER} ${INCOPT} ${CUSTOM_CFLAGS} "$@"
 		;;
 	g++|clang++|c++|CC)
-		CUSTOM_CXXFLAGS=`eval echo \$\{${CCVER}_CXXFLAGS\}`
+		eval 'CUSTOM_CXXFLAGS=${'${CCVER}'_CXXFLAGS}'
 		exec ${COMPILER} ${INCOPT} ${INCOPTCXX} ${CUSTOM_CFLAGS} "$@"
 		;;
 	cpp|clang-cpp)
-		CUSTOM_CPPFLAGS=`eval echo \$\{${CCVER}_CPPFLAGS\}`
+		eval 'CUSTOM_CPPFLAGS=${'${CCVER}'_CPPFLAGS}'
 		exec ${COMPILER} ${INCOPT} ${CUSTOM_CPPFLAGS} "$@"
 		;;
 	*)
