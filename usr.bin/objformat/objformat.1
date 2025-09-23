@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/usr.bin/objformat/objformat.1,v 1.3.2.4 2002/06/21 15:28:32 charnier Exp $
 .\"
-.Dd November 14, 2015
+.Dd September 23, 2025
 .Dt OBJFORMAT 1
 .Os
 .Sh NAME
@@ -74,6 +74,13 @@ defaults to the current compiler used by
 and can be overridden using the
 .Ev CCVER
 environment variable.
+If none of the
+.Pa /usr/libexec/<ccver>/ Ns Nm prog
+exists,
+it falls back to try
+.Pa /usr/libexec/custom/ Ns Nm prog
+to access the external compilers defined by
+.Xr compilers.conf 5 .
 .Sh ENVIRONMENT
 .Bl -tag -width OBJFORMAT_PATH
 .It Ev BINUTILSVER
@@ -89,8 +96,8 @@ If this variable is defined as
 .Dq ld.bfd
 then the ld command will be an alias for the classic
 .Dq GNU ld
-linker. If it is undefined or any other value, the ld command will
-execute the newer
+linker.
+If it is undefined or any other value, the ld command will execute the newer
 .Dq GNU gold
 linker.
 .It Ev OBJFORMAT_PATH
@@ -112,7 +119,8 @@ if called with an improper number of arguments, or if
 could not be executed.
 .Sh SEE ALSO
 .Xr file 1 ,
-.Xr getobjformat 3
+.Xr getobjformat 3 ,
+.Xr compilers.conf 5
 .Sh HISTORY
 The
 .Nm

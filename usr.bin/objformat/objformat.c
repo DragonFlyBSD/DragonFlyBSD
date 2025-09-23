@@ -200,8 +200,9 @@ again:
 	}
 
 	/*
-	 * Fallback: if we're searching for a compiler, but didn't
-	 * find any, try again using the custom compiler driver.
+	 * Fallback: if we're searching for a compiler, but didn't find any,
+	 * try again using the custom compiler driver to access the external
+	 * compilers defined by compilers.conf(5).
 	 */
 	if (cmds->type == COMPILER && strcmp(env_value, "custom") != 0) {
 		env_value = "custom";
