@@ -3935,7 +3935,11 @@ TO_REMOVE+=/usr/share/man/man4/padlock.4.gz
 TO_REMOVE+=/usr/share/man/man4/safe.4.gz
 TO_REMOVE+=/usr/share/man/man4/ubsec.4.gz
 TO_REMOVE+=/boot/kernel/dm_target_crypt_ng.ko
- 
+TO_REMOVE+=/boot/kernel/hifn.ko
+TO_REMOVE+=/boot/kernel/padlock.ko
+TO_REMOVE+=/boot/kernel/safe.ko
+TO_REMOVE+=/boot/kernel/ubsec.ko
+
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
 TO_REMOVE+=/usr/sbin/dfuife_curses
