@@ -315,6 +315,9 @@ MACHINE_PLATFORM!=/sbin/sysctl -n hw.platform
 # that no longer can bootstrap itself.
 
 # Private helper for handling alternative compilers and Makefile.inc1 tester.
+# This variable is used to choose the one or more alternative compilers to
+# build for world.  If set to "all", then all available alternative compilers
+# are built.
 WORLD_ALTCOMPILER?= gcc47
 
 # Include global user settings.
