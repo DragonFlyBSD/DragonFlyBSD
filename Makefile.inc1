@@ -1046,8 +1046,8 @@ _gcc47_cross= gnu/usr.bin/cc47
 _gcc80_cross= gnu/usr.bin/cc80
 _gcc_common_cross= lib/libz gnu/usr.bin/gmp gnu/usr.bin/mpfr gnu/usr.bin/mpc
 
-.if !defined(NO_ALTCOMPILER)
-. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
+.if !defined(NO_ALTCOMPILER) && defined(WORLD_ALTCOMPILER)
+. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47}
 _altcompiler_cross+= ${_gcc47_cross}
 . endif
 .endif
@@ -1108,8 +1108,8 @@ libraries:
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc80 \
 		make -f Makefile.inc1 _startup_libs80 -DSYSBUILD -DLIBGCC_ONLY;
-.if !defined(NO_ALTCOMPILER)
-. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
+.if !defined(NO_ALTCOMPILER) && defined(WORLD_ALTCOMPILER)
+. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47}
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc47 \
 		make -f Makefile.inc1 _startup_libs47 -DSYSBUILD -DLIBGCC_ONLY;
