@@ -547,13 +547,15 @@ virtqueue_dequeue(struct virtqueue *vq, uint32_t *len)
 	void *cookie;
 	uint16_t used_idx, desc_idx;
 
-	if (vq->vq_used_cons_idx == vq->vq_ring.used->idx)
+	used_idx = vq->vq_ring.used->idx;
+	cpu_lfence();
+
+	if (vq->vq_used_cons_idx == used_idx)
 		return (NULL);
 
 	used_idx = vq->vq_used_cons_idx++ & (vq->vq_nentries - 1);
 	uep = &vq->vq_ring.used->ring[used_idx];
 
-	cpu_lfence();
 	desc_idx = (uint16_t) uep->id;
 	if (len != NULL)
 		*len = uep->len;
