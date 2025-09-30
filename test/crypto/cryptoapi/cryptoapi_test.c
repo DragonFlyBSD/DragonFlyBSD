@@ -1,65 +1,154 @@
 /**
- * Tests encryption / decryption by comparing
- * output between cryptodev and cryptoapi.
+ * Test encryption / decryption using different crypto backends
+ * (cryptodev and cryptoapi).
  */
 
 #include <sys/param.h>
-
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-struct test_param {
-	const char *cipher_name;
+typedef struct
+{
+	char *cipher_name;
+	int do_encrypt;
 	size_t klen;
-};
+	size_t datalen;
+	size_t ivlen;
+	uint8_t *key;
+	uint8_t *data;
+	uint8_t *iv;
+} test_fixture;
 
-static const struct test_param test_params[] = {
+#define panic_if(cond)                                                         \
+	if (cond) {                                                            \
+		fprintf(stderr, "PANIC: %d\n", __LINE__);                      \
+		exit(1);                                                       \
+	}
 
-	{ .cipher_name = "AES-128-XTS", .klen = 32 },
-	{ .cipher_name = "AES-128-XTS", .klen = 64 },
-	{ .cipher_name = "AES-256-XTS", .klen = 32 },
-	{ .cipher_name = "AES-256-XTS", .klen = 64 },
+static const char *get_test_fixture_header(void);
+static void print_test_fixture_header(FILE *out);
+static void print_test_fixture(FILE *out, test_fixture *fix);
+static void read_test_fixture(char *line, test_fixture *fix);
+static void free_test_fixture(test_fixture *fix);
+static void print_hex(FILE *out, const uint8_t *bytes, size_t len);
+static void read_hex(const char *str, uint8_t *bytes, size_t len);
 
-	{ .cipher_name = "TWOFISH-128-XTS", .klen = 32 },
-	{ .cipher_name = "TWOFISH-128-XTS", .klen = 64 },
+typedef int(crypt_impl_t)(
+    const char *cipher_name, unsigned char *key, size_t klen, unsigned char *iv,
+    unsigned char *in, unsigned char *out, size_t len, int do_encrypt);
 
-	{ .cipher_name = "TWOFISH-256-XTS", .klen = 32 },
-	{ .cipher_name = "TWOFISH-256-XTS", .klen = 64 },
+crypt_impl_t syscrypt_cryptodev;
+crypt_impl_t syscrypt_cryptoapi;
 
-	{ .cipher_name = "SERPENT-128-XTS", .klen = 32 },
-	{ .cipher_name = "SERPENT-128-XTS", .klen = 64 },
-
-	{ .cipher_name = "SERPENT-256-XTS", .klen = 32 },
-	{ .cipher_name = "SERPENT-256-XTS", .klen = 64 }
-
-};
-
-int syscrypt_cryptodev(const char *cipher_name, unsigned char *key, size_t klen,
-    unsigned char *iv, unsigned char *in, unsigned char *out, size_t len,
-    int do_encrypt);
-
-int syscrypt_cryptoapi(const char *cipher_name, unsigned char *key, size_t klen,
-    unsigned char *iv, unsigned char *in, unsigned char *out, size_t len,
-    int do_encrypt);
-
-typedef int (*syscrypt_impl)(const char *cipher_name, unsigned char *key,
-    size_t klen, unsigned char *iv, unsigned char *in, unsigned char *out,
-    size_t len, int do_encrypt);
-
-static uint8_t *safe_syscrypt(const char *cipher_name, syscrypt_impl impl,
-    const uint8_t *key, size_t klen, const uint8_t *iv, size_t ivlen,
-    const uint8_t *data, size_t datalen, int do_encrypt);
-
-int testcase(const char *cipher_name, const char *key, size_t klen,
+static uint8_t *safe_syscrypt(
+    const char *cipher_name, crypt_impl_t *impl, const uint8_t *key,
+    size_t klen, const uint8_t *iv, size_t ivlen, const uint8_t *data,
     size_t datalen, int do_encrypt);
+
+const char *get_test_fixture_header(void)
+{
+	return "cipher;do_encrypt;klen;datalen;ivlen;key;data;iv\n";
+}
+
+void print_test_fixture_header(FILE *out)
+{
+	fprintf(out, "%s", get_test_fixture_header());
+}
+
+void print_test_fixture(FILE *out, test_fixture *fix)
+{
+	fprintf(
+	    out, "%s;%d;%ld;%ld;%ld;", fix->cipher_name, fix->do_encrypt,
+	    fix->klen, fix->datalen, fix->ivlen);
+	print_hex(out, fix->key, fix->klen);
+	fprintf(out, ";");
+	print_hex(out, fix->data, fix->datalen);
+	fprintf(out, ";");
+	print_hex(out, fix->iv, fix->ivlen);
+	fprintf(out, "\n");
+}
+
+void read_test_fixture(char *line, test_fixture *fix)
+{
+	char *token;
+	bzero(fix, sizeof(*fix));
+
+	token = strsep(&line, ";");
+	panic_if(token == NULL);
+	fix->cipher_name = strdup(token);
+
+	token = strsep(&line, ";");
+	panic_if(token == NULL);
+	fix->do_encrypt = atoi(token);
+
+	token = strsep(&line, ";");
+	panic_if(token == NULL);
+	fix->klen = atoi(token);
+
+	token = strsep(&line, ";");
+	panic_if(token == NULL);
+	fix->datalen = atoi(token);
+
+	token = strsep(&line, ";");
+	panic_if(token == NULL);
+	fix->ivlen = atoi(token);
+
+	token = strsep(&line, ";");
+	panic_if(token == NULL);
+	fix->key = malloc(fix->klen);
+	bzero(fix->key, fix->klen);
+	read_hex(token, fix->key, fix->klen);
+
+	token = strsep(&line, ";");
+	panic_if(token == NULL);
+	fix->data = malloc(fix->datalen);
+	bzero(fix->data, fix->datalen);
+	read_hex(token, fix->data, fix->datalen);
+
+	token = strsep(&line, ";");
+	panic_if(token == NULL);
+	fix->iv = malloc(fix->ivlen);
+	bzero(fix->iv, fix->ivlen);
+	read_hex(token, fix->iv, fix->ivlen);
+}
+
+void free_test_fixture(test_fixture *fix)
+{
+	free(fix->cipher_name);
+	free(fix->key);
+	free(fix->data);
+	free(fix->iv);
+}
+
+void print_hex(FILE *out, const uint8_t *bytes, size_t len)
+{
+	for (size_t i = 0; i < len; ++i) {
+		fprintf(out, "%02x", bytes[i]);
+	}
+}
+
+void read_hex(const char *str, uint8_t *bytes, size_t len)
+{
+	char hex[3];
+	int byte;
+
+	for (; len > 0; --len) {
+		hex[0] = *(str++);
+		hex[1] = *(str++);
+		hex[2] = '\0';
+
+		panic_if(sscanf(hex, "%x", &byte) != 1);
+		*(bytes++) = byte;
+	}
+}
 
 /**
  * On success, returns the encyrypted/decrypted data (allocated).
  */
-static uint8_t *
-safe_syscrypt(const char *cipher_name, syscrypt_impl impl, const uint8_t *key,
+static uint8_t *safe_syscrypt(
+    const char *cipher_name, crypt_impl_t *impl, const uint8_t *key,
     size_t klen, const uint8_t *iv, size_t ivlen, const uint8_t *data,
     size_t datalen, int do_encrypt)
 {
@@ -102,8 +191,9 @@ safe_syscrypt(const char *cipher_name, syscrypt_impl impl, const uint8_t *key,
 	memset(ivcopy, 0, sizeof(ivcopy));
 	memcpy(ivcopy, iv, ivlen);
 
-	int error = impl(cipher_name, keycopy, klen, ivcopy, inbuf, outbuf,
-	    datalen, do_encrypt);
+	int error = impl(
+	    cipher_name, keycopy, klen, ivcopy, inbuf, outbuf, datalen,
+	    do_encrypt);
 
 	if (error) {
 		printf("syscrypt impl failed with: %d\n", error);
@@ -116,96 +206,65 @@ safe_syscrypt(const char *cipher_name, syscrypt_impl impl, const uint8_t *key,
 	return outbuf;
 }
 
-#define AES_BLOCK_LEN 16
-
-int
-testcase(const char *cipher_name, const char *key, size_t klen, size_t datalen,
-    int do_encrypt)
+int main(int argc, char **argv)
 {
-	char *data;
-	char *out_cryptoapi;
-	char *out_cryptodev;
-	const char *errmsg;
-	uint8_t iv[AES_BLOCK_LEN];
+	char line[1024];
+	test_fixture fix;
+	char *out;
+	FILE *f;
+	crypt_impl_t *crypt_impl;
+	char *filename;
 
-	data = NULL;
-	out_cryptoapi = NULL;
-	out_cryptodev = NULL;
+	--argc;
+	if (argc != 2)
+		exit(1);
 
-	printf("TC\tc:%s\tklen:%ld\tdatalen:%ld\tencdec:%d\t", cipher_name,
-	    klen, datalen, do_encrypt);
+	filename = argv[1];
 
-	data = malloc(datalen);
-	if (data == NULL) {
-		errmsg = "No memory";
-		goto err;
+	if (strcmp(argv[2], "cryptoapi") == 0)
+		crypt_impl = &syscrypt_cryptoapi;
+	else if (strcmp(argv[2], "cryptodev") == 0)
+		crypt_impl = &syscrypt_cryptodev;
+	else
+		exit(1);
+
+	f = fopen(filename, "r");
+	panic_if(f == NULL);
+
+	fgets(line, sizeof(line), f);
+	panic_if(strcmp(line, get_test_fixture_header()) != 0);
+
+	printf("# Test Results\n\n");
+
+	for (int i = 1; fgets(line, sizeof(line), f); ++i) {
+		read_test_fixture(line, &fix);
+
+		printf("## Test %d\n\n", i);
+
+		printf("Fixture:\n\n");
+		printf("```\n");
+		print_test_fixture_header(stdout);
+		print_test_fixture(stdout, &fix);
+		printf("```\n\n");
+
+		out = safe_syscrypt(
+		    fix.cipher_name, crypt_impl, fix.key, fix.klen, fix.iv,
+		    fix.ivlen, fix.data, fix.datalen, fix.do_encrypt);
+
+		printf("Result:\n\n");
+
+		if (out == NULL) {
+			printf("FAILED\n");
+		} else {
+			printf("```\n");
+			print_hex(stdout, out, fix.datalen);
+			printf("\n```\n\n");
+		}
+
+		free_test_fixture(&fix);
 	}
 
-	arc4random_buf(data, datalen);
-	arc4random_buf(iv, sizeof(iv));
+	fclose(f);
 
-	out_cryptoapi = safe_syscrypt(cipher_name, syscrypt_cryptoapi, key,
-	    klen, iv, sizeof(iv), data, datalen, do_encrypt);
-
-	if (out_cryptoapi == NULL) {
-		errmsg = "cryptoapi failed";
-		goto err;
-	}
-
-	out_cryptodev = safe_syscrypt(cipher_name, syscrypt_cryptodev, key,
-	    klen, iv, sizeof(iv), data, datalen, do_encrypt);
-
-	if (out_cryptodev == NULL) {
-		errmsg = "cryptodev failed";
-		goto err;
-	}
-
-	if (memcmp(out_cryptoapi, out_cryptodev, datalen) != 0) {
-		errmsg = "wrong result";
-		goto err;
-	}
-
-	printf("OK\n");
-	free(data);
-	free(out_cryptoapi);
-	free(out_cryptodev);
-	return (0);
-err:
-
-	if (data)
-		free(data);
-	if (out_cryptoapi)
-		free(out_cryptoapi);
-	if (out_cryptodev)
-		free(out_cryptodev);
-
-	printf("FAILED (%s)\n", errmsg);
-	return (1);
-}
-
-int
-main(int argc __unused, char **argv __unused)
-{
-	char key[64];
-	int total, failed;
-
-	arc4random_buf(key, sizeof(key));
-
-	total = 0;
-	failed = 0;
-
-	for (size_t i = 0; i < nitems(test_params); ++i)
-		for (int do_encrypt = 0; do_encrypt <= 1; ++do_encrypt)
-			for (int block_cnt = 1; block_cnt <= 10; ++block_cnt) {
-				++total;
-				failed += testcase(test_params[i].cipher_name,
-				    key, test_params[i].klen,
-				    block_cnt * AES_BLOCK_LEN, do_encrypt);
-			}
-
-	printf("Total test cases: %d, failed: %d\n", total, failed);
-	if (failed > 0) {
-		return 1;
-	}
 	return 0;
 }
