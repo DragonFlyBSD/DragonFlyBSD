@@ -1141,8 +1141,8 @@ _startup_libs80=	gnu/usr.bin/cc80/cc_prep \
 			gnu/lib/gcc80/libgcc_eh \
 			gnu/lib/gcc80/libgcc_pic
 
-.if !defined(NO_ALTCOMPILER)
-. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
+.if !defined(NO_ALTCOMPILER) && defined(WORLD_ALTCOMPILER)
+. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47}
 _startup_libs_alt+=	_startup_libs47
 . endif
 .endif
