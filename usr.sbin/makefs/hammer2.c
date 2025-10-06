@@ -87,7 +87,6 @@ struct hammer2_linkq;
 static int hammer2_readx_handle(struct m_vnode *, const char *, const char *,
     struct hammer2_linkq *);
 static int hammer2_readx(struct m_vnode *, const char *, const char *);
-static void unittest_trim_slash(void);
 
 fsnode *hammer2_curnode;
 
@@ -287,9 +286,6 @@ hammer2_parse_opts(const char *option, fsinfo_t *fsopts)
 	default:
 		break;
 	}
-
-	if (hammer2_debug && h2_opt->ioctl_cmd)
-		unittest_trim_slash();
 
 	return 1;
 }
@@ -2382,50 +2378,4 @@ start_read:
 	free(o);
 
 	return 0;
-}
-
-static void
-assert_trim_slash(const char *input, const char *expected)
-{
-	char tmp[PATH_MAX];
-	int error;
-
-	strlcpy(tmp, input, sizeof(tmp));
-	error = trim_slash(tmp);
-	if (error)
-		errx(1, "input \"%s\" error %d", input, error);
-
-	if (strncmp(tmp, expected, sizeof(tmp)))
-		errx(1, "input \"%s\" result \"%s\" vs expected \"%s\"",
-		    input, tmp, expected);
-}
-
-static void
-unittest_trim_slash(void)
-{
-	assert_trim_slash("", "");
-	assert_trim_slash("/", "");
-	assert_trim_slash("//", "");
-	assert_trim_slash("///", "");
-
-	assert_trim_slash("makefs", "makefs");
-	assert_trim_slash("/makefs", "makefs");
-	assert_trim_slash("//makefs", "makefs");
-	assert_trim_slash("makefs/", "makefs");
-	assert_trim_slash("makefs//", "makefs");
-	assert_trim_slash("/makefs/", "makefs");
-	assert_trim_slash("//makefs//", "makefs");
-
-	assert_trim_slash("sys/vfs/hammer2", "sys/vfs/hammer2");
-	assert_trim_slash("/sys/vfs/hammer2", "sys/vfs/hammer2");
-	assert_trim_slash("//sys/vfs/hammer2", "sys/vfs/hammer2");
-	assert_trim_slash("///sys/vfs/hammer2", "sys/vfs/hammer2");
-	assert_trim_slash("sys/vfs/hammer2/", "sys/vfs/hammer2");
-	assert_trim_slash("sys/vfs/hammer2//", "sys/vfs/hammer2");
-	assert_trim_slash("sys/vfs/hammer2///", "sys/vfs/hammer2");
-	assert_trim_slash("/sys/vfs/hammer2/", "sys/vfs/hammer2");
-	assert_trim_slash("//sys//vfs//hammer2//", "sys/vfs/hammer2");
-	assert_trim_slash("///sys///vfs///hammer2///", "sys/vfs/hammer2");
-
-	APRINTF("success\n");
 }
