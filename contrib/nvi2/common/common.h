@@ -11,11 +11,7 @@
 #define TCSASOFT 0
 #endif
 
-#ifdef DB_H_ABS_PATH
-#include DB_H_ABS_PATH
-#else
 #include <db.h>
-#endif
 #include <regex.h>		/* May refer to the bundled regex. */
 #include <stdint.h>
 
@@ -93,3 +89,10 @@ typedef enum { SEQ_ABBREV, SEQ_COMMAND, SEQ_INPUT } seq_t;
 #include "mem.h"
 
 #include "common_extern.h"
+
+#ifndef SLIST_REMOVE_AFTER
+#define SLIST_REMOVE_AFTER(elm, field) do {				\
+	SLIST_NEXT(elm, field) =					\
+	    SLIST_NEXT(SLIST_NEXT(elm, field), field);			\
+} while (0)
+#endif
