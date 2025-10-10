@@ -25,14 +25,14 @@ MLINKS+=vi.1 ex.1 \
 .PATH:	${SRCDIR}/vi
 .PATH:	${SRCDIR}/regex
 
-CFLAGS+=	-I${.CURDIR} -I${SRCDIR} -I${SRCDIR}/regex
+CFLAGS+=	-I${.CURDIR} -I${SRCDIR}
+CFLAGS+=	-D__REGEX_PRIVATE -I${SRCDIR}/regex
 
 DPADD=		${LIBUTIL}
 LDADD=		-lutil
 
 # Define _XOPEN_SOURCE_EXTENDED to get waddnwstr().
-CFLAGS+=	-D__REGEX_PRIVATE -D_XOPEN_SOURCE_EXTENDED
-CFLAGS+=	-DUSE_WIDECHAR \
+CFLAGS+=	-D_XOPEN_SOURCE_EXTENDED \
 		-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 DPADD+=		${LIBNCURSESW}
 LDADD+=		-lprivate_ncursesw

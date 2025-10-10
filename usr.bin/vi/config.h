@@ -1,5 +1,5 @@
 /* Define when using wide characters */
-/* #define USE_WIDECHAR set by Makefile */
+#define USE_WIDECHAR
 
 /* Define when iconv can be used */
 /* #define USE_ICONV set by Makefile */
