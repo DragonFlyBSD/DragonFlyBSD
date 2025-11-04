@@ -427,11 +427,16 @@ main(int ac, char **av)
 		 * Raw dump of filesystem.  Use -v to check all crc's, and
 		 * -vv to dump bulk file data.
 		 */
-		if (ac != 2) {
+		switch(ac) {
+		case 2:
+			cmd_show(av[1], NULL, 0);
+			break;
+		case 3:
+			cmd_show(av[1], av[2], 0);
+			break;
+		default:
 			fprintf(stderr, "show: requires device path\n");
 			usage(1);
-		} else {
-			cmd_show(av[1], 0);
 		}
 	} else if (strcmp(av[0], "freemap") == 0) {
 		/*
@@ -442,7 +447,7 @@ main(int ac, char **av)
 			fprintf(stderr, "freemap: requires device path\n");
 			usage(1);
 		} else {
-			cmd_show(av[1], 1);
+			cmd_show(av[1], NULL, 1);
 		}
 	} else if (strcmp(av[0], "volhdr") == 0) {
 		/*
@@ -452,7 +457,7 @@ main(int ac, char **av)
 			fprintf(stderr, "volhdr: requires device path\n");
 			usage(1);
 		} else {
-			cmd_show(av[1], 2);
+			cmd_show(av[1], NULL, 2);
 		}
 	} else if (strcmp(av[0], "volume-list") == 0) {
 		/*
@@ -620,8 +625,9 @@ usage(int code)
 			"Grow a filesystem into resized partition\n"
 		"    rsainit [<path>]                  "
 			"Initialize rsa fields\n"
-		"    show <devpath>                    "
+		"    show <devpath> [chainspec]        "
 			"Raw hammer2 media dump for topology\n"
+			"or specific block w/chainspec %%jx.%%02x\n"
 		"    freemap <devpath>                 "
 			"Raw hammer2 media dump for freemap\n"
 		"    volhdr <devpath>                  "

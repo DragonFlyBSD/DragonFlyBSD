@@ -464,10 +464,17 @@ Create the
 directory and initialize a public/private keypair in that directory for
 use by the network cluster protocols.
 .\" ==== show ====
-.It Cm show Ar devpath
+.It Cm show Ar devpath Op chainspec
 Dump the radix tree for the HAMMER2 filesystem by scanning a
 block device directly.
 No mount is required.
+If a chainspec is given, this function dumps the requested block.
+A chainspec looks something like this example: 000001559a68900a.01,
+it is the offset, block size, and type information format hammer2
+uses in its blockrefs.  Basically a partition-relative byte offset
+with the low nibble a power 2 of indicating the buffer size (1KB in this
+example), then a dot and a 2 hex-digit block type... 01 in this case means
+an inode.
 .\" ==== freemap ====
 .It Cm freemap Ar devpath
 Dump the freemap tree for the HAMMER2 filesystem by scanning a

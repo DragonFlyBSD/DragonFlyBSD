@@ -409,8 +409,15 @@ get_next_volume(hammer2_volume_data_t *voldata, hammer2_off_t volu_loff)
 	return ret;
 }
 
+/*
+ * show device_path [chainspec]
+ *
+ * chainspec is a bref specification like  000001559a68900a.01,
+ * which is basically an offset with an embedded blocksize and
+ * the type.
+ */
 int
-cmd_show(const char *devpath, int which)
+cmd_show(const char *devpath, const char *chspec, int which)
 {
 	hammer2_blockref_t broot;
 	hammer2_media_data_t media;
@@ -464,6 +471,25 @@ cmd_show(const char *devpath, int which)
 
 	hammer2_init_volumes(devpath, 1);
 	int all_volume_headers = VerboseOpt >= 3 || show_all_volume_headers;
+
+	/*
+	 * If chspec is non-NULL, construct a bref out of the spec
+	 */
+	if (chspec) {
+		int btype;
+		long boff;
+		if (sscanf(chspec, "%jx.%02x", &boff, &btype) != 2) {
+			fprintf(stderr, "bad chainspec: %%llx.%%02x\n");
+			goto done;
+		}
+		bzero(&broot, sizeof(broot));
+		broot.data_off = boff;
+		broot.type = btype;
+		broot.methods = HAMMER2_ENC_CHECK(HAMMER2_CHECK_XXHASH64);
+
+		show_bref(&media.voldata, 0, 0, &broot, 0);
+		goto done;
+	}
 
 	/*
 	 * Get best volume header for all volumes first.
@@ -552,6 +578,8 @@ cmd_show(const char *devpath, int which)
 		printf("Total freemap storage:       %6.3fGB\n",
 		       (double)TotalFreemap / GIG);
 	}
+
+done:
 	hammer2_cleanup_volumes();
 
 	return 0;
