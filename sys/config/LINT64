@@ -408,7 +408,7 @@ options                ACCEPT_FILTER_HTTP
 # carried in TCP option 19.
 # This is enabled on a per-socket basis using the TCP_SIGNATURE_ENABLE
 # socket option.
-# This requires the use of 'device crypto' or 'device cryptodev'.
+# This requires the use of 'device crypto'
 #
 # XXX disabled for now until building with it is fixed, which broke
 # after removing IPsec.
@@ -2022,7 +2022,6 @@ options		DCONS_FORCE_GDB=1	# force to be the gdb device
 # been fed back to openbsd (and hopefully will be included).
 
 device		crypto		# core crypto support
-device		cryptodev	# /dev/crypto for access to h/w
 
 device		rndtest		# FIPS 140-2 entropy tester
 

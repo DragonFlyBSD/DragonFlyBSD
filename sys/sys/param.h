@@ -260,9 +260,10 @@
  * 600513 - add F_MAXFD and support POSIX O_CLOFORK
  * 600514 - libusb(3) added libusb_get_version(), libusb_get_port_number(),
  *          and libusb_set_auto_detach_kernel_driver().
+ * 600515 - remove /dev/crypto pseudo-device / cryptodev(4)
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600514	/* propagated to newvers */
+#define __DragonFly_version 600515	/* propagated to newvers */
 
 #include <sys/_null.h>
 

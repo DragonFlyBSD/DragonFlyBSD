@@ -12,6 +12,24 @@
 +         UPGRADING DRAGONFLY FROM 6.4 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+CRYPTODEV PSEUDO-DEVICE REMOVED
+-------------------------------
+
+The /dev/crypto pseudo-device has been removed. OpenBSD did this step
+back in release 5.7 (2015).
+
+The only applications within DragonFly that ever made use of /dev/crypto
+were tcplay(8), cryptsetup(8) and cryptdisks(8) via libtcplay. But this
+dependency on /dev/crypto was dropped in commit
+ede102cd94449fe52fa9da25631d9f15af6d62ef as of April 21, 2025 in favor
+of doing the crypto operations directly in userland without any help
+from the kernel via /dev/crypto.
+
+Userland libraries or applications like OpenSSH and OpenSSL do not use
+/dev/crypto, mainly for performance reasons (and portability).
+
+Please remove "device cryptodev" from your KERNCONF!
+
 PADLOCK CRYPTO DRIVER REMOVED
 -----------------------------
 

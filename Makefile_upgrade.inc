@@ -3939,6 +3939,9 @@ TO_REMOVE+=/boot/kernel/hifn.ko
 TO_REMOVE+=/boot/kernel/padlock.ko
 TO_REMOVE+=/boot/kernel/safe.ko
 TO_REMOVE+=/boot/kernel/ubsec.ko
+TO_REMOVE+=/boot/kernel/cryptodev.ko
+TO_REMOVE+=/usr/share/man/man4/crypto.4.gz
+TO_REMOVE+=/usr/share/man/man4/cryptodev.4.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

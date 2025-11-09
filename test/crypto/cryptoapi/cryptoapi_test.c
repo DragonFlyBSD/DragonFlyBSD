@@ -49,7 +49,6 @@ typedef int(crypt_impl_t)(
     unsigned char *in, unsigned char *out, size_t len, int do_encrypt,
     int repetitions);
 
-crypt_impl_t syscrypt_cryptodev;
 crypt_impl_t syscrypt_cryptoapi;
 
 static uint8_t *safe_syscrypt(
@@ -386,8 +385,6 @@ int main(int argc, char *argv[])
 
 	if (strcmp(crypt_impl_name, "cryptoapi") == 0)
 		crypt_impl = &syscrypt_cryptoapi;
-	else if (strcmp(crypt_impl_name, "cryptodev") == 0)
-		crypt_impl = &syscrypt_cryptodev;
 	else {
 		usage();
 		exit(2);

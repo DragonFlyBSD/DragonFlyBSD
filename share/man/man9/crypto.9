@@ -17,7 +17,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/crypto.9,v 1.14 2007/09/19 16:28:46 brueffer Exp $
 .\"
-.Dd April 21, 2018
+.Dd August 7, 2025
 .Dt CRYPTO 9
 .Os
 .Sh NAME
@@ -126,10 +126,7 @@ struct cryptkop {
 is a framework for drivers of cryptographic hardware to register with
 the kernel so
 .Dq consumers
-(other kernel subsystems, and
-users through the
-.Pa /dev/crypto
-device) are able to make use of it.
+(other kernel subsystems) are able to make use of it.
 Drivers register with the framework the algorithms they support,
 and provide entry points (functions) the framework may call to
 establish, use, and tear down sessions.

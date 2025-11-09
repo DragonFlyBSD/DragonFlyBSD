@@ -3,7 +3,6 @@
 KMOD=	crypto
 
 .PATH:	${.CURDIR}/../opencrypto
-# excluded: cryptodev.c
 SRCS=	cast.c criov.c crypto.c cryptosoft.c deflate.c gmac.c \
 	skipjack.c xform.c
 SRCS+=	cryptodev_if.c cryptodev_if.h
