@@ -96,6 +96,7 @@ MLINKS += libusb.3 libusb_get_driver_np.3
 MLINKS += libusb.3 libusb_detach_kernel_driver.3
 MLINKS += libusb.3 libusb_detach_kernel_driver_np.3
 MLINKS += libusb.3 libusb_attach_kernel_driver.3
+MLINKS += libusb.3 libusb_set_auto_detach_kernel_driver.3
 MLINKS += libusb.3 libusb_get_device_descriptor.3
 MLINKS += libusb.3 libusb_get_active_config_descriptor.3
 MLINKS += libusb.3 libusb_get_config_descriptor.3
