@@ -1,13 +1,14 @@
 /**
- * Test encryption / decryption using different crypto backends
- * (cryptodev and cryptoapi).
+ * Test encryption / decryption using cryptoapi.
  */
 
 #include <sys/param.h>
+#include <sys/time.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 typedef struct
 {
@@ -27,6 +28,7 @@ typedef struct
 		exit(1);                                                       \
 	}
 
+static void usage(void);
 static const char *get_test_fixture_header(void);
 static void print_test_fixture_header(FILE *out);
 static void print_test_fixture(FILE *out, test_fixture *fix);
@@ -37,7 +39,8 @@ static void read_hex(const char *str, uint8_t *bytes, size_t len);
 
 typedef int(crypt_impl_t)(
     const char *cipher_name, unsigned char *key, size_t klen, unsigned char *iv,
-    unsigned char *in, unsigned char *out, size_t len, int do_encrypt);
+    unsigned char *in, unsigned char *out, size_t len, int do_encrypt,
+    int repetitions);
 
 crypt_impl_t syscrypt_cryptodev;
 crypt_impl_t syscrypt_cryptoapi;
@@ -45,7 +48,7 @@ crypt_impl_t syscrypt_cryptoapi;
 static uint8_t *safe_syscrypt(
     const char *cipher_name, crypt_impl_t *impl, const uint8_t *key,
     size_t klen, const uint8_t *iv, size_t ivlen, const uint8_t *data,
-    size_t datalen, int do_encrypt);
+    size_t datalen, int do_encrypt, int repetitions);
 
 const char *get_test_fixture_header(void)
 {
@@ -150,11 +153,12 @@ void read_hex(const char *str, uint8_t *bytes, size_t len)
 static uint8_t *safe_syscrypt(
     const char *cipher_name, crypt_impl_t *impl, const uint8_t *key,
     size_t klen, const uint8_t *iv, size_t ivlen, const uint8_t *data,
-    size_t datalen, int do_encrypt)
+    size_t datalen, int do_encrypt, int repetitions)
 {
 	char keycopy[64];
 	char ivcopy[256];
 	char *inbuf, *outbuf;
+	int error;
 
 	inbuf = outbuf = NULL;
 
@@ -191,9 +195,9 @@ static uint8_t *safe_syscrypt(
 	memset(ivcopy, 0, sizeof(ivcopy));
 	memcpy(ivcopy, iv, ivlen);
 
-	int error = impl(
+	error = impl(
 	    cipher_name, keycopy, klen, ivcopy, inbuf, outbuf, datalen,
-	    do_encrypt);
+	    do_encrypt, repetitions);
 
 	if (error) {
 		printf("syscrypt impl failed with: %d\n", error);
@@ -206,35 +210,89 @@ static uint8_t *safe_syscrypt(
 	return outbuf;
 }
 
-int main(int argc, char **argv)
+void usage(void)
 {
-	char line[1024];
+	printf("Usage: cryptoapi_test [OPTIONS]\n\n");
+	printf("Options:\n");
+	printf(
+	    "    -t CRYPTOIMPL       Crypto implementation to test [default: "
+	    "cryptoapi]\n");
+	printf(
+	    "    -f FIXTURE          Test fixture [default: fixtures.csv]\n");
+	printf(
+	    "    -n REPETITIONS      Repetitions. Useful for benchmarking "
+	    "[default: 1]\n");
+	printf("    -h                  Print this help message\n");
+}
+
+int main(int argc, char *argv[])
+{
+	static char line[4096];
 	test_fixture fix;
 	char *out;
 	FILE *f;
-	crypt_impl_t *crypt_impl;
-	char *filename;
+	struct timespec start, stop, tv;
+	int ch;
 
-	--argc;
-	if (argc != 2)
-		exit(1);
+	const char *crypt_impl_name = "cryptoapi";
+	const char *fixtures_filename = "fixtures.csv";
+	int repetitions = 1;
+	crypt_impl_t *crypt_impl = NULL;
 
-	filename = argv[1];
+	while ((ch = getopt(argc, argv, "t:f:n:h")) != -1) {
+		switch (ch) {
+		case 't':
+			crypt_impl_name = optarg;
+			break;
+		case 'f':
+			fixtures_filename = optarg;
+			break;
+		case 'n':
+			repetitions = atoi(optarg);
+			break;
+		case 'h':
+			/* fall-through */
+			usage();
+			exit(0);
+			break;
 
-	if (strcmp(argv[2], "cryptoapi") == 0)
+		default:
+			usage();
+			exit(1);
+			break;
+		}
+	}
+
+	if (strcmp(crypt_impl_name, "cryptoapi") == 0)
 		crypt_impl = &syscrypt_cryptoapi;
-	else if (strcmp(argv[2], "cryptodev") == 0)
+	else if (strcmp(crypt_impl_name, "cryptodev") == 0)
 		crypt_impl = &syscrypt_cryptodev;
-	else
-		exit(1);
+	else {
+		usage();
+		exit(2);
+	}
 
-	f = fopen(filename, "r");
+	if (repetitions < 1)
+		exit(2);
+
+	fprintf(stderr, "--------------------------------------------\n");
+	fprintf(
+	    stderr, "%-22s %21s\n", "crypto implementation:", crypt_impl_name);
+	fprintf(stderr, "%-22s %21s\n", "fixtures:", fixtures_filename);
+	fprintf(stderr, "%-22s %21d\n", "repetitions:", repetitions);
+	fprintf(stderr, "--------------------------------------------\n");
+
+	f = fopen(fixtures_filename, "r");
 	panic_if(f == NULL);
 
 	fgets(line, sizeof(line), f);
 	panic_if(strcmp(line, get_test_fixture_header()) != 0);
 
 	printf("# Test Results\n\n");
+
+	fprintf(
+	    stderr, "%15s %5s %9s %5s %6s\n", "Cipher", "Mode", "Blocklen",
+	    "Time", "MiB/s");
 
 	for (int i = 1; fgets(line, sizeof(line), f); ++i) {
 		read_test_fixture(line, &fix);
@@ -247,9 +305,21 @@ int main(int argc, char **argv)
 		print_test_fixture(stdout, &fix);
 		printf("```\n\n");
 
+		clock_gettime(CLOCK_REALTIME, &start);
 		out = safe_syscrypt(
 		    fix.cipher_name, crypt_impl, fix.key, fix.klen, fix.iv,
-		    fix.ivlen, fix.data, fix.datalen, fix.do_encrypt);
+		    fix.ivlen, fix.data, fix.datalen, fix.do_encrypt,
+		    repetitions);
+		clock_gettime(CLOCK_REALTIME, &stop);
+		timespecsub(&stop, &start, &tv);
+		double secs =
+		    (double)tv.tv_sec + (double)tv.tv_nsec / 1000000000.0;
+		double mib_per_second = ((double)fix.datalen * repetitions) /
+					(1024.0 * 1024.0) / secs;
+		fprintf(
+		    stderr, "%15s %5s %9ld %5.2f %6.1f\n", fix.cipher_name,
+		    (fix.do_encrypt ? "ENC" : "DEC"), fix.datalen, secs,
+		    mib_per_second);
 
 		printf("Result:\n\n");
 

@@ -37,12 +37,12 @@
 #include <string.h>
 #include <unistd.h>
 
-int syscrypt_cryptodev(const char *cipher_name, unsigned char *key, size_t klen,
-    unsigned char *iv, unsigned char *in, unsigned char *out, size_t len,
-    int do_encrypt);
+int syscrypt_cryptodev(
+    const char *cipher_name, unsigned char *key, size_t klen, unsigned char *iv,
+    unsigned char *in, unsigned char *out, size_t len, int do_encrypt,
+    int repetitions);
 
-static int
-get_cryptodev_cipher_id(const char *cipher_name)
+static int get_cryptodev_cipher_id(const char *cipher_name)
 {
 	if (strcmp(cipher_name, "AES-128-XTS") == 0)
 		return CRYPTO_AES_XTS;
@@ -60,10 +60,10 @@ get_cryptodev_cipher_id(const char *cipher_name)
 		return -1;
 }
 
-int
-syscrypt_cryptodev(const char *cipher_name, unsigned char *key, size_t klen,
-    unsigned char *iv, unsigned char *in, unsigned char *out, size_t len,
-    int do_encrypt)
+int syscrypt_cryptodev(
+    const char *cipher_name, unsigned char *key, size_t klen, unsigned char *iv,
+    unsigned char *in, unsigned char *out, size_t len, int do_encrypt,
+    int repetitions)
 {
 	struct session_op session;
 	struct crypt_op cryp;
@@ -92,18 +92,20 @@ syscrypt_cryptodev(const char *cipher_name, unsigned char *key, size_t klen,
 		perror("CIOCGSESSION failed");
 		goto err;
 	}
-	memset(&cryp, 0, sizeof(cryp));
-	cryp.ses = session.ses;
-	cryp.op = do_encrypt ? COP_ENCRYPT : COP_DECRYPT;
-	cryp.flags = 0;
-	cryp.len = len;
-	cryp.src = (caddr_t)in;
-	cryp.dst = (caddr_t)out;
-	cryp.iv = (caddr_t)iv;
-	cryp.mac = 0;
-	if (ioctl(fd, CIOCCRYPT, &cryp) == -1) {
-		perror("CIOCCRYPT failed");
-		goto err;
+	for (int i = 0; i < repetitions; ++i) {
+		memset(&cryp, 0, sizeof(cryp));
+		cryp.ses = session.ses;
+		cryp.op = do_encrypt ? COP_ENCRYPT : COP_DECRYPT;
+		cryp.flags = 0;
+		cryp.len = len;
+		cryp.src = (caddr_t)in;
+		cryp.dst = (caddr_t)out;
+		cryp.iv = (caddr_t)iv;
+		cryp.mac = 0;
+		if (ioctl(fd, CIOCCRYPT, &cryp) == -1) {
+			perror("CIOCCRYPT failed");
+			goto err;
+		}
 	}
 	if (ioctl(fd, CIOCFSESSION, &session.ses) == -1) {
 		perror("CIOCFSESSION failed");

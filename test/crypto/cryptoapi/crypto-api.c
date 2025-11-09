@@ -32,9 +32,10 @@
 #include <stdio.h>
 #include <string.h>
 
-int syscrypt_cryptoapi(const char *cipher_name, unsigned char *key, size_t klen,
-    unsigned char *iv, unsigned char *in, unsigned char *out, size_t len,
-    int do_encrypt);
+int syscrypt_cryptoapi(
+    const char *cipher_name, unsigned char *key, size_t klen, unsigned char *iv,
+    unsigned char *in, unsigned char *out, size_t len, int do_encrypt,
+    int repetitions);
 
 static cryptoapi_cipher_t
 get_cryptoapi_cipher(const char *cipher_name, size_t keysize_in_bits)
@@ -55,10 +56,10 @@ get_cryptoapi_cipher(const char *cipher_name, size_t keysize_in_bits)
 		return NULL;
 }
 
-int
-syscrypt_cryptoapi(const char *cipher_name, unsigned char *key, size_t klen,
-    unsigned char *iv, unsigned char *in, unsigned char *out, size_t len,
-    int do_encrypt)
+int syscrypt_cryptoapi(
+    const char *cipher_name, unsigned char *key, size_t klen, unsigned char *iv,
+    unsigned char *in, unsigned char *out, size_t len, int do_encrypt,
+    int repetitions)
 {
 	int error;
 	cryptoapi_cipher_session_t session;
@@ -88,12 +89,16 @@ syscrypt_cryptoapi(const char *cipher_name, unsigned char *key, size_t klen,
 	if (in != out)
 		memcpy(out, in, len);
 
-	if (do_encrypt)
-		error = cryptoapi_cipher_encrypt(session, out, len, iv,
-		    sizeof(cryptoapi_cipher_iv));
-	else
-		error = cryptoapi_cipher_decrypt(session, out, len, iv,
-		    sizeof(cryptoapi_cipher_iv));
+	for (int i = 0; i < repetitions; ++i) {
+		if (do_encrypt)
+			error = cryptoapi_cipher_encrypt(
+			    session, out, len, iv, sizeof(cryptoapi_cipher_iv));
+		else
+			error = cryptoapi_cipher_decrypt(
+			    session, out, len, iv, sizeof(cryptoapi_cipher_iv));
+		if (error)
+			break;
+	}
 
 	if (error) {
 		printf("Failed to encrypt/decrypt: %s\n", strerror(error));
