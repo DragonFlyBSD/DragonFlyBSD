@@ -71,6 +71,7 @@ MLINKS += libusb.3 libusb_set_debug.3
 MLINKS += libusb.3 libusb_get_device_list.3
 MLINKS += libusb.3 libusb_free_device_list.3
 MLINKS += libusb.3 libusb_get_bus_number.3
+MLINKS += libusb.3 libusb_get_port_number.3
 MLINKS += libusb.3 libusb_get_device_address.3
 MLINKS += libusb.3 libusb_get_device_speed.3
 MLINKS += libusb.3 libusb_get_max_packet_size.3
