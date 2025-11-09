@@ -20,14 +20,14 @@ SRCS+=		twofish.c
 
 run-tests: cryptoapi_test
 	sysctl kern.cryptodevallowsoft=1
-	./cryptoapi_test -t cryptodev | diff - expected_output.md
-	./cryptoapi_test -t cryptoapi | diff - expected_output.md
+	./cryptoapi_test -t cryptodev
+	./cryptoapi_test -t cryptoapi
 
 run-bench: cryptoapi_test
-	@./cryptoapi_test -t cryptodev -n 1000000 2>&1 >/dev/null
-	@./cryptoapi_test -t cryptoapi -n 1000000 2>&1 >/dev/null
+	@./cryptoapi_test -t cryptodev -b 1000000 2>&1 >/dev/null
+	@./cryptoapi_test -t cryptoapi -b 1000000 2>&1 >/dev/null
 
 commit-test-fixtures: cryptoapi_test fixtures.csv
-	./cryptoapi_test -t cryptoapi > expected_output.md
+	./cryptoapi_test -t cryptoapi -o fixtures.csv
 
 .include <bsd.prog.mk>

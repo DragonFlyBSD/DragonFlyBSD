@@ -44,30 +44,18 @@ int syscrypt_cryptodev(
 
 static int get_cryptodev_cipher_id(const char *cipher_name)
 {
-	if (strcmp(cipher_name, "AES-128-XTS") == 0)
-		return CRYPTO_AES_XTS;
-	else if (strcmp(cipher_name, "AES-256-XTS") == 0)
-		return CRYPTO_AES_XTS;
-	else if (strcmp(cipher_name, "TWOFISH-128-XTS") == 0)
-		return CRYPTO_TWOFISH_XTS;
-	else if (strcmp(cipher_name, "TWOFISH-256-XTS") == 0)
-		return CRYPTO_TWOFISH_XTS;
-	else if (strcmp(cipher_name, "SERPENT-128-XTS") == 0)
-		return CRYPTO_SERPENT_XTS;
-	else if (strcmp(cipher_name, "SERPENT-256-XTS") == 0)
-		return CRYPTO_SERPENT_XTS;
-	if (strcmp(cipher_name, "AES-128-CBC") == 0)
+	if (strcmp(cipher_name, "AES-CBC") == 0)
 		return CRYPTO_AES_CBC;
-	else if (strcmp(cipher_name, "AES-256-CBC") == 0)
-		return CRYPTO_AES_CBC;
-	else if (strcmp(cipher_name, "TWOFISH-128-CBC") == 0)
-		return CRYPTO_TWOFISH_CBC;
-	else if (strcmp(cipher_name, "TWOFISH-256-CBC") == 0)
-		return CRYPTO_TWOFISH_CBC;
-	else if (strcmp(cipher_name, "SERPENT-128-CBC") == 0)
+	else if (strcmp(cipher_name, "AES-XTS") == 0)
+		return CRYPTO_AES_XTS;
+	else if (strcmp(cipher_name, "SERPENT-CBC") == 0)
 		return CRYPTO_SERPENT_CBC;
-	else if (strcmp(cipher_name, "SERPENT-256-CBC") == 0)
-		return CRYPTO_SERPENT_CBC;
+	else if (strcmp(cipher_name, "SERPENT-XTS") == 0)
+		return CRYPTO_SERPENT_XTS;
+	else if (strcmp(cipher_name, "TWOFISH-CBC") == 0)
+		return CRYPTO_TWOFISH_CBC;
+	else if (strcmp(cipher_name, "TWOFISH-XTS") == 0)
+		return CRYPTO_TWOFISH_XTS;
 	else
 		return -1;
 }

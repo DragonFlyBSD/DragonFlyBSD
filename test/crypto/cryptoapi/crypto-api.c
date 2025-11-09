@@ -40,30 +40,18 @@ int syscrypt_cryptoapi(
 static cryptoapi_cipher_t
 get_cryptoapi_cipher(const char *cipher_name, size_t keysize_in_bits)
 {
-	if (strcmp(cipher_name, "AES-128-XTS") == 0)
-		return cryptoapi_cipher_find("aes-xts", keysize_in_bits);
-	else if (strcmp(cipher_name, "AES-256-XTS") == 0)
-		return cryptoapi_cipher_find("aes-xts", keysize_in_bits);
-	else if (strcmp(cipher_name, "TWOFISH-128-XTS") == 0)
-		return cryptoapi_cipher_find("twofish-xts", keysize_in_bits);
-	else if (strcmp(cipher_name, "TWOFISH-256-XTS") == 0)
-		return cryptoapi_cipher_find("twofish-xts", keysize_in_bits);
-	else if (strcmp(cipher_name, "SERPENT-128-XTS") == 0)
-		return cryptoapi_cipher_find("serpent-xts", keysize_in_bits);
-	else if (strcmp(cipher_name, "SERPENT-256-XTS") == 0)
-		return cryptoapi_cipher_find("serpent-xts", keysize_in_bits);
-	else if (strcmp(cipher_name, "AES-128-CBC") == 0)
+	if (strcmp(cipher_name, "AES-CBC") == 0)
 		return cryptoapi_cipher_find("aes-cbc", keysize_in_bits);
-	else if (strcmp(cipher_name, "AES-256-CBC") == 0)
-		return cryptoapi_cipher_find("aes-cbc", keysize_in_bits);
-	else if (strcmp(cipher_name, "TWOFISH-128-CBC") == 0)
-		return cryptoapi_cipher_find("twofish-cbc", keysize_in_bits);
-	else if (strcmp(cipher_name, "TWOFISH-256-CBC") == 0)
-		return cryptoapi_cipher_find("twofish-cbc", keysize_in_bits);
-	else if (strcmp(cipher_name, "SERPENT-128-CBC") == 0)
+	else if (strcmp(cipher_name, "AES-XTS") == 0)
+		return cryptoapi_cipher_find("aes-xts", keysize_in_bits);
+	else if (strcmp(cipher_name, "SERPENT-CBC") == 0)
 		return cryptoapi_cipher_find("serpent-cbc", keysize_in_bits);
-	else if (strcmp(cipher_name, "SERPENT-256-CBC") == 0)
-		return cryptoapi_cipher_find("serpent-cbc", keysize_in_bits);
+	else if (strcmp(cipher_name, "SERPENT-XTS") == 0)
+		return cryptoapi_cipher_find("serpent-xts", keysize_in_bits);
+	else if (strcmp(cipher_name, "TWOFISH-CBC") == 0)
+		return cryptoapi_cipher_find("twofish-cbc", keysize_in_bits);
+	else if (strcmp(cipher_name, "TWOFISH-XTS") == 0)
+		return cryptoapi_cipher_find("twofish-xts", keysize_in_bits);
 	else
 		return NULL;
 }
