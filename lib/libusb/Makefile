@@ -131,6 +131,7 @@ MLINKS += libusb.3 libusb_set_pollfd_notifiers.3
 MLINKS += libusb.3 libusb_get_pollfds.3
 MLINKS += libusb.3 libusb_hotplug_register_callback.3
 MLINKS += libusb.3 libusb_hotplug_deregister_callback.3
+MLINKS += libusb.3 libusb_get_version.3
 
 # LibUSB v0.1
 MLINKS += libusb.3 usb_open.3
