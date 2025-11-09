@@ -12,6 +12,16 @@
 +         UPGRADING DRAGONFLY FROM 6.4 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+AESNI DRIVER REMOVED
+--------------------
+
+Only the device and aesni.ko are removed, not the functionality!
+
+AESNI is a CPU instruction and is used by default if it is supported by
+the CPU, unless disabled by tunable/sysctl hw.aesni_disable.
+
+Please remove "device aesni" from your KERNCONF!
+
 CRYPTODEV PSEUDO-DEVICE REMOVED
 -------------------------------
 

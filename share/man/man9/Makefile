@@ -37,7 +37,6 @@ MAN=	accept_filter.9 \
 	copy.9 \
 	CPUMASK.9 \
 	crit_enter.9 \
-	crypto.9 \
 	DB_COMMAND.9 \
 	DECLARE_MODULE.9 \
 	DELAY.9 \
@@ -445,23 +444,6 @@ MLINKS+=crit_enter.9 crit_enter_gd.9 \
 	crit_enter.9 crit_exit.9 \
 	crit_enter.9 crit_exit_gd.9 \
 	crit_enter.9 crit_exit_id.9
-MLINKS+=crypto.9 crypto_dispatch.9 \
-	crypto.9 crypto_done.9 \
-	crypto.9 crypto_find_device_byhid.9 \
-	crypto.9 crypto_find_driver.9 \
-	crypto.9 crypto_freereq.9 \
-	crypto.9 crypto_freesession.9 \
-	crypto.9 crypto_getcaps.9 \
-	crypto.9 crypto_get_driverid.9 \
-	crypto.9 crypto_getreq.9 \
-	crypto.9 crypto_kdispatch.9 \
-	crypto.9 crypto_kdone.9 \
-	crypto.9 crypto_kregister.9 \
-	crypto.9 crypto_newsession.9 \
-	crypto.9 crypto_register.9 \
-	crypto.9 crypto_unblock.9 \
-	crypto.9 crypto_unregister.9 \
-	crypto.9 crypto_unregister_all.9
 MLINKS+=DB_COMMAND.9 DB_COMMAND_FLAG.9 \
 	DB_COMMAND.9 DB_SHOW_COMMAND.9
 MLINKS+=devclass_add_driver.9 devclass_delete_driver.9 \

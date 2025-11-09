@@ -2014,18 +2014,11 @@ options		DCONS_FORCE_GDB=1	# force to be the gdb device
 #####################################################################
 # crypto subsystem
 #
-# This is a port of the openbsd crypto framework.  Include this when
-# you have a h/w crypto device to accelerate user applications that
-# link to openssl.
-#
-# Drivers are ports from openbsd with some simple enhancements that have
-# been fed back to openbsd (and hopefully will be included).
 
 device		crypto		# core crypto support
 
 device		rndtest		# FIPS 140-2 entropy tester
 
-device		aesni		# hardware crypto/RNG for AES-NI
 device		rdrand		# hardware RNG for RdRand
 
 #

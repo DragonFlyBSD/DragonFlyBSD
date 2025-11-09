@@ -82,7 +82,7 @@
 MALLOC_DEFINE(M_CRYPTOAPI, "cryptoapi", "Crypto API");
 
 static int aesni_disable = 0;
-// TUNABLE_INT("hw.aesni_disable", &aesni_disable);
+TUNABLE_INT("hw.aesni_disable", &aesni_disable);
 SYSCTL_INT(_hw, OID_AUTO, aesni_disable, CTLFLAG_RW, &aesni_disable, 0,
     "Disable AESNI");
 #define HAVE_AESNI

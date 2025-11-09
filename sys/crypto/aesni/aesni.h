@@ -32,10 +32,9 @@
 #include <sys/types.h>
 #include <sys/_null.h>
 
-/**
- * AES_BLOCK_LEN is also defined in opencrypto/cryptodev.h
- */
-#ifndef AES_BLOCK_LEN
+#ifdef AES_BLOCK_LEN
+#error "AES_BLOCK_LEN already defined!"
+#else
 #define AES_BLOCK_LEN	16
 #endif
 

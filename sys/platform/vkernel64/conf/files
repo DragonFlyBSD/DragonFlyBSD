@@ -5,6 +5,10 @@ crypto/blowfish/bf_enc.c		optional	crypto
 crypto/des/des_enc.c			optional	crypto
 crypto/des/des_ecb.c			optional	crypto
 crypto/des/des_setkey.c			optional	crypto
+crypto/aesni/aesencdec_x86_64.S		optional	crypto
+crypto/aesni/aeskeys_x86_64.S		optional	crypto
+crypto/aesni/aesni_wrap.c		optional	crypto
+
 kern/link_elf_obj.c		standard
 vfs/smbfs/smbfs_io.c		optional	smbfs
 vfs/smbfs/smbfs_node.c		optional	smbfs

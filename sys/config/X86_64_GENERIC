@@ -327,7 +327,6 @@ device		sdhci
 
 # RNG
 #
-device		aesni		# hardware crypto/RNG for AES-NI
 device		rdrand		# hardware RNG for RdRand
 
 device		gpio_acpi

@@ -187,8 +187,6 @@
     ..
     cpu
     ..
-    crypto
-    ..
     dev
         acpica
         ..

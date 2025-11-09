@@ -261,9 +261,11 @@
  * 600514 - libusb(3) added libusb_get_version(), libusb_get_port_number(),
  *          and libusb_set_auto_detach_kernel_driver().
  * 600515 - remove /dev/crypto pseudo-device / cryptodev(4)
+ * 600516 - remove in-kernel crypto(9) framework, aesni(4) and
+ *          /usr/include/crypto
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600515	/* propagated to newvers */
+#define __DragonFly_version 600516	/* propagated to newvers */
 
 #include <sys/_null.h>
 

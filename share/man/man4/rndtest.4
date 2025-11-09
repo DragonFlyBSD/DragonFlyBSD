@@ -36,8 +36,7 @@
 .Sh DESCRIPTION
 The
 .Nm
-driver ``hooks up'' to hardware crypto devices to monitor the
-entropy data passed to the
+driver monitors entropy data passed to the
 .Xr random 4
 subsystem.
 This data is periodically tested for FIPS 140-2 compliance and
@@ -47,8 +46,7 @@ it is discarded and testing is continuously applied until ``good data''
 is received from the device.
 Failures are optionally reported on the console.
 .Sh SEE ALSO
-.Xr random 4 ,
-.Xr crypto 9
+.Xr random 4
 .Sh HISTORY
 The idea for this and the original code came from Jason L. Wright.
 The

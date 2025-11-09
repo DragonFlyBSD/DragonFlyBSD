@@ -2249,6 +2249,7 @@ crypto/blowfish/bf_skey.c		optional crypto
 crypto/camellia/camellia.c		optional crypto
 crypto/camellia/camellia-api.c		optional crypto
 crypto/chacha20/chacha.c		optional crypto
+crypto/crypto.c				optional crypto
 crypto/chachapoly.c			optional crypto
 crypto/cryptoapi/cryptoapi.c		optional crypto
 crypto/curve25519/curve25519.c		optional crypto
@@ -2265,16 +2266,6 @@ crypto/sha1.c				optional crypto
 crypto/sha2/sha2.c			standard
 crypto/siphash/siphash.c		optional crypto
 crypto/twofish/twofish.c		optional crypto
-net/zlib.c				optional crypto
-opencrypto/cast.c			optional crypto
-opencrypto/criov.c			optional crypto
-opencrypto/crypto.c			optional crypto
-opencrypto/cryptodev_if.m		optional crypto
-opencrypto/cryptosoft.c			optional crypto
-opencrypto/deflate.c			optional crypto
-opencrypto/gmac.c			optional crypto
-opencrypto/skipjack.c			optional crypto
-opencrypto/xform.c			optional crypto
 # drm_agpsupport.c must be included if CONFIG_AGP is set
 #dev/drm/drm_agpsupport.c		optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/drm_atomic.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
@@ -3101,4 +3092,8 @@ OBSOLETE				optional padlock	\
 OBSOLETE				optional cryptodev	\
 	no-obj							\
 	warning "device cryptodev was removed"
+
+OBSOLETE				optional aesni		\
+	no-obj							\
+	warning "device aesni was removed"
 
