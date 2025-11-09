@@ -178,7 +178,7 @@ typedef void (*block_fn_t)(const void *ctx, const uint8_t *src, uint8_t *dst);
  * with the previous block of data or the IV if it is the first block of
  * data.
  */
-static inline void
+static void
 encrypt_data_cbc(block_fn_t block_fn, const void *ctx, uint8_t *data,
     int datalen, int blocksize, const uint8_t *iv)
 {
@@ -199,7 +199,7 @@ encrypt_data_cbc(block_fn_t block_fn, const void *ctx, uint8_t *data,
  * still encrypted), and so on. Finally, the first block is XORed with
  * the IV after it has been decrypted.
  */
-static inline void
+static void
 decrypt_data_cbc(block_fn_t block_fn, const void *ctx, uint8_t *data,
     int datalen, int blocksize, const uint8_t *iv)
 {
@@ -213,7 +213,7 @@ decrypt_data_cbc(block_fn_t block_fn, const void *ctx, uint8_t *data,
 /**
  * Encrypts/decrypts a single block using XTS.
  */
-static inline void
+static void
 crypt_block_xts(const void *ctx, uint8_t *data, uint8_t *iv,
     block_fn_t block_fn, uint8_t *block, int blocksize, uint8_t alpha)
 {
@@ -238,7 +238,7 @@ crypt_block_xts(const void *ctx, uint8_t *data, uint8_t *iv,
 /**
  * Encrypts/decrypts blocks of data using XTS (without reinit).
  */
-static inline void
+static void
 crypt_data_xts(const void *ctx, uint8_t *data, int datalen, uint8_t *iv,
     block_fn_t block_fn, uint8_t *block, int blocksize, uint8_t alpha)
 {
