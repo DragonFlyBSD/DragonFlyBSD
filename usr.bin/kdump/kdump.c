@@ -70,6 +70,7 @@ static void	usage(void);
 int timestamp, decimal, fancy = 1, tail, maxdata = 64;
 int fixedformat;
 int cpustamp;
+int dumphex;
 const char *tracefile = DEF_TRACEFILE;
 struct ktr_header ktr_header;
 
@@ -86,7 +87,7 @@ main(int argc, char **argv)
 
 	setlocale(LC_CTYPE, "");
 
-	while ((ch = getopt(argc,argv,"acf:djlm:np:RTt:")) != -1)
+	while ((ch = getopt(argc,argv,"acf:dhjlm:np:RTt:")) != -1)
 		switch((char)ch) {
 		case 'f':
 			tracefile = optarg;
@@ -103,6 +104,9 @@ main(int argc, char **argv)
 			break;
 		case 'd':
 			decimal = 1;
+			break;
+		case 'h':
+			dumphex = 1;
 			break;
 		case 'l':
 			tail = 1;
@@ -856,42 +860,59 @@ ktrgenio(struct ktr_genio *ktr, int len)
 		datalen == 1 ? "" : "s");
 	if (maxdata && datalen > maxdata)
 		datalen = maxdata;
-	printf("       \"");
-	col = 8;
-	for (;datalen > 0; datalen--, dp++) {
-		vis(visbuf, *dp, VIS_CSTYLE, *(dp+1));
-		cp = visbuf;
-		/*
-		 * Keep track of printables and
-		 * space chars (like fold(1)).
-		 */
-		if (col == 0) {
-			putchar('\t');
-			col = 8;
+
+	if (dumphex) {
+		col = 0;
+		for (;datalen > 0; datalen--, dp++) {
+			if (col == 0) {
+			    printf("       ");
+			}
+			printf(" %02x", (uint8_t)*dp);
+			if (++col == 16) {
+				printf("\n");
+				col = 0;
+			}
 		}
-		switch(*cp) {
-		case '\n':
-			col = 0;
-			putchar('\n');
-			continue;
-		case '\t':
-			width = 8 - (col&07);
-			break;
-		default:
-			width = strlen(cp);
+		if (col && col != 16)
+			printf("\n");
+	} else {
+		printf("       \"");
+		col = 8;
+		for (;datalen > 0; datalen--, dp++) {
+			vis(visbuf, *dp, VIS_CSTYLE, *(dp+1));
+			cp = visbuf;
+			/*
+			 * Keep track of printables and
+			 * space chars (like fold(1)).
+			 */
+			if (col == 0) {
+				putchar('\t');
+				col = 8;
+			}
+			switch(*cp) {
+			case '\n':
+				col = 0;
+				putchar('\n');
+				continue;
+			case '\t':
+				width = 8 - (col&07);
+				break;
+			default:
+				width = strlen(cp);
+			}
+			if (col + width > (screenwidth-2)) {
+				printf("\\\n\t");
+				col = 8;
+			}
+			col += width;
+			do {
+				putchar(*cp++);
+			} while (*cp);
 		}
-		if (col + width > (screenwidth-2)) {
-			printf("\\\n\t");
-			col = 8;
-		}
-		col += width;
-		do {
-			putchar(*cp++);
-		} while (*cp);
+		if (col == 0)
+			printf("       ");
+		printf("\"\n");
 	}
-	if (col == 0)
-		printf("       ");
-	printf("\"\n");
 }
 
 const char *signames[NSIG] = {
