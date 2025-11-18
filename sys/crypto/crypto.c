@@ -22,13 +22,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/param.h>
-#include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/module.h>
+#include <sys/systm.h>
 
-int crypto_modevent(module_t mod, int type, void *unused);
-
-int
+static int
 crypto_modevent(module_t mod __unused, int type, void *unused __unused)
 {
 	switch (type) {
@@ -43,4 +41,10 @@ crypto_modevent(module_t mod __unused, int type, void *unused __unused)
 	}
 }
 
+static moduledata_t crypto_mod = {
+	"crypto",
+	crypto_modevent,
+	NULL
+};
+DECLARE_MODULE(crypto, crypto_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
 MODULE_VERSION(crypto, 1);

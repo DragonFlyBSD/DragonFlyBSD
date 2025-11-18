@@ -3962,16 +3962,6 @@ TO_REMOVE+=/usr/share/man/man9/crypto_unregister.9.gz
 TO_REMOVE+=/usr/share/man/man9/crypto.9.gz
 TO_REMOVE+=/usr/share/man/man4/aesni.4.gz
 TO_REMOVE+=/boot/kernel/aesni.ko
-TO_REMOVE+=/usr/include/crypto/cast.h
-TO_REMOVE+=/usr/include/crypto/castsb.h
-TO_REMOVE+=/usr/include/crypto/cryptodev.h
-TO_REMOVE+=/usr/include/crypto/cryptosoft.h
-TO_REMOVE+=/usr/include/crypto/deflate.h
-TO_REMOVE+=/usr/include/crypto/gmac.h
-TO_REMOVE+=/usr/include/crypto/rijndael.h
-TO_REMOVE+=/usr/include/crypto/rmd160.h
-TO_REMOVE+=/usr/include/crypto/skipjack.h
-TO_REMOVE+=/usr/include/crypto/xform.h
 TO_REMOVE+=/usr/include/crypto
 
 .if !defined(WANT_INSTALLER)
