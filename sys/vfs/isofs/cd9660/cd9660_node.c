@@ -75,7 +75,7 @@ cd9660_init(struct vfsconf *vfsp)
 
 	hsize = vfs_inodehashsize();
 
-	if (hsize < CD9660_HASH_SIZE_LIMIT)
+	if (hsize > CD9660_HASH_SIZE_LIMIT)
 		hsize = CD9660_HASH_SIZE_LIMIT;
 
 	isohash = 16;
