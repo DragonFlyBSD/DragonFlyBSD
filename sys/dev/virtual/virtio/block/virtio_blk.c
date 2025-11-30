@@ -132,7 +132,7 @@ static d_strategy_t	vtblk_strategy;
 static d_dump_t		vtblk_dump;
 
 static struct dev_ops vbd_disk_ops = {
-	{ "vbd", 200, D_DISK | D_MPSAFE },
+	{ "vbd", 200, D_DISK | D_MPSAFE | D_KVABIO },
 	.d_open		= vtblk_open,
 	.d_close	= nullclose,
 	.d_read		= physread,
@@ -451,6 +451,10 @@ vtblk_dump(struct dev_dump_args *ap)
 	return (error);
 }
 
+/*
+ * WARNING! We are using the KVABIO API and must not access memory
+ *          through bp->b_data without first calling bkvasync(bp).
+ */
 static int
 vtblk_strategy(struct dev_strategy_args *ap)
 {
