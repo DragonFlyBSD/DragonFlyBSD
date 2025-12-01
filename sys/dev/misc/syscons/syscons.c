@@ -331,6 +331,8 @@ register_framebuffer(struct fb_info *info)
 {
 	sc_softc_t *sc;
 
+	KKASSERT(info->depth <= 32);
+
 	lwkt_gettoken(&vga_token);
 	sc = sc_get_softc(0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
 	if (sc == NULL) {
@@ -373,8 +375,8 @@ register_framebuffer(struct fb_info *info)
 	sc->fbi_generation++;
 	syscons_unlock();
 
-	kprintf("kms console: xpixels %d ypixels %d\n",
-	    sc->fbi->width, sc->fbi->height);
+	kprintf("kms console: xpixels %d ypixels %d depth %d\n",
+	    sc->fbi->width, sc->fbi->height, sc->fbi->depth);
 	sc_update_render(sc->cur_scp);
 	if (info->fbops.fb_set_par != NULL)
 		info->fbops.fb_set_par(info);
