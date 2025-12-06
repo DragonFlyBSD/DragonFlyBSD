@@ -16,6 +16,8 @@
  * $OpenBSD: atascsi.h,v 1.33 2009/02/16 21:19:06 miod Exp $
  */
 
+#include <sys/bitops.h>
+
 struct atascsi;
 struct scsi_link;
 
@@ -105,12 +107,16 @@ struct ata_identify {
 	u_int16_t	reserved5[2];	/*  73 */
 	u_int16_t	qdepth;		/*  75 */
 	u_int16_t	satacap;	/*  76 */
+#define SATA_CAP_SUP_HIPM		__BIT(9)
+#define SATA_CAP_SUP_HOSTAPST		__BIT(13)
+#define SATA_CAP_SUP_DEVAPST		__BIT(14)
 	u_int16_t	satacap2;	/*  77 */
 #define SATA_CAP2_SNDRCV_FPDMA		(1 << 6)
 	u_int16_t	satafsup;	/*  78 */
-#define SATA_FEATURE_SUP_DEVIPS		0x0008
-#define SATA_FEATURE_SUP_DEVSLEEP	0x0100
+#define SATA_FEATURE_SUP_DEVIPS		__BIT(3)
+#define SATA_FEATURE_SUP_DEVSLEEP	__BIT(8)
 	u_int16_t	satafen;	/*  79 */
+#define SATA_FEATURE_EN_DEVAPST		__BIT(7)
 	u_int16_t	majver;		/*  80 */
 	u_int16_t	minver;		/*  81 */
 	u_int16_t	cmdset82;	/*  82 */

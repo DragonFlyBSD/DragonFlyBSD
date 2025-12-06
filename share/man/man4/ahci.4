@@ -213,7 +213,15 @@ hw.ahci.synchronous_boot=0
 .Sh SYSCTL VARIABLES
 Link power management can be set with the sysctl
 .Va dev.ahci.%d.%d.link_pwr_mgmt
-to 0 for `disabled', 1 for `medium', and 2 for `aggressive'.
+.Bl -tag -width 0
+.It "0"
+`disabled'
+.It "1"
+`medium' (uses only "partial" state)
+.It "2"
+`aggressive' (uses "partial" and "slumber" states).
+.El
+.Pp
 Link power state can be read with the sysctl
 .Va dev.ahci.%d.%d.link_pwr_state .
 .Sh SEE ALSO

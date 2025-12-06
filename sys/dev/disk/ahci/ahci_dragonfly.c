@@ -254,21 +254,18 @@ ahci_os_start_port(struct ahci_port *ap)
 				SYSCTL_CHILDREN(soid),
 				OID_AUTO, name, CTLFLAG_RD, 0, "");
 
-	if ((ap->ap_sc->sc_cap & AHCI_REG_CAP_SALP) &&
-	    (ap->ap_sc->sc_cap & (AHCI_REG_CAP_PSC | AHCI_REG_CAP_SSC))) {
+	if ((ap->ap_sc->sc_cap & (AHCI_REG_CAP_PSC | AHCI_REG_CAP_SSC))) {
 		SYSCTL_ADD_PROC(&ap->sysctl_ctx,
 			SYSCTL_CHILDREN(ap->sysctl_tree), OID_AUTO,
 			"link_pwr_mgmt", CTLTYPE_INT | CTLFLAG_RW, ap, 0,
 			ahci_sysctl_link_pwr_mgmt, "I",
 			"Link power management policy "
 			"(0 = disabled, 1 = medium, 2 = aggressive)");
-		SYSCTL_ADD_PROC(&ap->sysctl_ctx,
-			SYSCTL_CHILDREN(ap->sysctl_tree), OID_AUTO,
-			"link_pwr_state", CTLTYPE_STRING | CTLFLAG_RD, ap, 0,
-			ahci_sysctl_link_pwr_state, "A",
-			"Link power management state");
-
 	}
+	SYSCTL_ADD_PROC(&ap->sysctl_ctx,
+		SYSCTL_CHILDREN(ap->sysctl_tree), OID_AUTO,
+		"link_pwr_state", CTLTYPE_STRING | CTLFLAG_RD, ap, 0,
+		ahci_sysctl_link_pwr_state, "A", "Link power management state");
 
 	kthread_create(ahci_port_thread, ap, &ap->ap_thread,
 		       "%s", PORTNAME(ap));
