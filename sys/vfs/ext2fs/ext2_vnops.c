@@ -493,8 +493,8 @@ ext2_fsync(struct vop_fsync_args *ap)
 	info.vp = vp;
 loop:
 	info.waitfor = ap->a_waitfor;
-	count = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL, ext2_fsync_bp,
-	    &info);
+	count = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL,
+			ext2_fsync_bp, &info);
 	if (count)
 		goto loop;
 

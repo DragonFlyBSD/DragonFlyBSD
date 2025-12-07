@@ -248,7 +248,8 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 			  HAMMER2_INODE_RESIZED |
 			  HAMMER2_INODE_DIRTYDATA)) == 0 &&
 	    RB_EMPTY(&vp->v_rbdirty_tree) &&
-	    !bio_track_active(&vp->v_track_write)) {
+	    !bio_track_active(&vp->v_track_write))
+	{
 		vclrisdirty(vp);
 	}
 	hammer2_inode_unlock(ip);

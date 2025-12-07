@@ -1016,7 +1016,8 @@ ffs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 	 */
 	if (vp->v_type == VNON || (ip == NULL) || ((ip->i_flag &
 	     (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE)) == 0 &&
-	     RB_EMPTY(&vp->v_rbdirty_tree))) {
+	     RB_EMPTY(&vp->v_rbdirty_tree)))
+	{
 		return(-1);
 	}
 	return(0);
@@ -1036,7 +1037,8 @@ ffs_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	if (vp->v_type == VNON || vp->v_type == VBAD ||
 	     ((ip->i_flag &
 	      (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE)) == 0 &&
-	     RB_EMPTY(&vp->v_rbdirty_tree))) {
+	     RB_EMPTY(&vp->v_rbdirty_tree)))
+	{
 		return(0);
 	}
 	if (vp->v_type != VCHR) {

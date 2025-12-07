@@ -850,7 +850,8 @@ dirfs_node_setpassive(dirfs_mount_t dmp, dirfs_node_t dnp, int state)
 		    dnp->dn_fd != DIRFS_NOFD &&
 		    !dirfs_node_isroot(dnp) &&
 		    (vp->v_flag & (VINACTIVE|VOBJDIRTY)) == VINACTIVE &&
-		    RB_EMPTY(&vp->v_rbdirty_tree)) {
+		    RB_EMPTY(&vp->v_rbdirty_tree))
+		{
 			dbg(9, "passive cache: closing %d\n", dnp->dn_fd);
 			close(dnp->dn_fd);
 			dnp->dn_fd = DIRFS_NOFD;

@@ -290,7 +290,7 @@ nvtruncbuf_bp_trunc(struct buf *bp, void *data)
 		atomic_add_int(&bp->b_refs, 1);
 		if (BUF_LOCK(bp, LK_EXCLUSIVE|LK_SLEEPFAIL) == 0)
 			BUF_UNLOCK(bp);
-		atomic_subtract_int(&bp->b_refs, 1);
+		atomic_add_int(&bp->b_refs, -1);
 	} else if ((info->clean && (bp->b_flags & B_DELWRI)) ||
 		   (info->clean == 0 && (bp->b_flags & B_DELWRI) == 0) ||
 		   bp->b_vp != info->vp ||
@@ -333,7 +333,7 @@ nvtruncbuf_bp_metasync(struct buf *bp, void *data)
 		atomic_add_int(&bp->b_refs, 1);
 		if (BUF_LOCK(bp, LK_EXCLUSIVE|LK_SLEEPFAIL) == 0)
 			BUF_UNLOCK(bp);
-		atomic_subtract_int(&bp->b_refs, 1);
+		atomic_add_int(&bp->b_refs, -1);
 	} else if ((bp->b_flags & B_DELWRI) == 0 ||
 		   bp->b_vp != info->vp ||
 		   nvtruncbuf_bp_metasync_cmp(bp, data)) {
