@@ -3433,8 +3433,10 @@ nfs_flush_bp(struct buf *bp, void *data)
 				lkflags = LK_EXCLUSIVE | LK_SLEEPFAIL;
 				if (info->slpflag & PCATCH)
 					lkflags |= LK_PCATCH;
+				atomic_add_int(&bp->b_refs, 1);
 				error = BUF_TIMELOCK(bp, lkflags, "nfsfsync",
 						     info->slptimeo);
+				atomic_add_int(&bp->b_refs, -1);
 			}
 		}
 

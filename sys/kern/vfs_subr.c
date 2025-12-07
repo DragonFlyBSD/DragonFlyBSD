@@ -409,7 +409,7 @@ vinvalbuf_bp(struct buf *bp, void *data)
 		atomic_add_int(&bp->b_refs, 1);
 		error = BUF_TIMELOCK(bp, info->lkflags,
 				     "vinvalbuf", info->slptimeo);
-		atomic_subtract_int(&bp->b_refs, 1);
+		atomic_add_int(&bp->b_refs, -1);
 		if (error == 0) {
 			BUF_UNLOCK(bp);
 			error = ENOLCK;
@@ -591,11 +591,12 @@ vtruncbuf_bp_trunc(struct buf *bp, void *data)
 		atomic_add_int(&bp->b_refs, 1);
 		if (BUF_LOCK(bp, LK_EXCLUSIVE|LK_SLEEPFAIL) == 0)
 			BUF_UNLOCK(bp);
-		atomic_subtract_int(&bp->b_refs, 1);
+		atomic_add_int(&bp->b_refs, -1);
 	} else if ((info->clean && (bp->b_flags & B_DELWRI)) ||
 		   (info->clean == 0 && (bp->b_flags & B_DELWRI) == 0) ||
 		   bp->b_vp != info->vp ||
-		   vtruncbuf_bp_trunc_cmp(bp, data)) {
+		   vtruncbuf_bp_trunc_cmp(bp, data))
+        {
 		BUF_UNLOCK(bp);
 	} else {
 		bremfree(bp);
@@ -627,7 +628,7 @@ vtruncbuf_bp_metasync(struct buf *bp, void *data)
 		atomic_add_int(&bp->b_refs, 1);
 		if (BUF_LOCK(bp, LK_EXCLUSIVE|LK_SLEEPFAIL) == 0)
 			BUF_UNLOCK(bp);
-		atomic_subtract_int(&bp->b_refs, 1);
+		atomic_add_int(&bp->b_refs, -1);
 	} else if ((bp->b_flags & B_DELWRI) == 0 ||
 		   bp->b_vp != info->vp ||
 		   vtruncbuf_bp_metasync_cmp(bp, data)) {
@@ -864,19 +865,25 @@ vfsync_bp(struct buf *bp, void *data)
 		 * Normal pass, give the buffer a little time to become
 		 * available to us.
 		 */
+		atomic_add_int(&bp->b_refs, 1);
 		if (BUF_TIMELOCK(bp, LK_EXCLUSIVE, "bflst2", hz / 10)) {
+			atomic_add_int(&bp->b_refs, -1);
 			++info->skippedbufs;
 			return(0);
 		}
+		atomic_add_int(&bp->b_refs, -1);
 	} else {
 		/*
 		 * Synchronous pass, give the buffer a lot of time before
 		 * giving up.
 		 */
+		atomic_add_int(&bp->b_refs, 1);
 		if (BUF_TIMELOCK(bp, LK_EXCLUSIVE, "bflst3", hz * 10)) {
+			atomic_add_int(&bp->b_refs, -1);
 			++info->skippedbufs;
 			return(0);
 		}
+		atomic_add_int(&bp->b_refs, -1);
 	}
 
 	/*
@@ -884,7 +891,8 @@ vfsync_bp(struct buf *bp, void *data)
 	 */
 	if ((bp->b_flags & B_DELWRI) == 0 ||
 	    bp->b_vp != info->vp ||
-	    info->cmpfunc(bp, data)) {
+	    info->cmpfunc(bp, data))
+	{
 		BUF_UNLOCK(bp);
 		return(0);
 	}
