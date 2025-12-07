@@ -956,7 +956,8 @@ vfsync_bp(struct buf *bp, void *data)
 }
 
 /*
- * Associate a buffer with a vnode.
+ * Associate a buffer with a vnode.  bp and vp must be locked.  bp's on
+ * the vnode rbtrees do not add refs or holds to the vp.
  *
  * MPSAFE
  */
@@ -1014,13 +1015,14 @@ bgetvp(struct vnode *vp, struct buf *bp, int testsize)
 	bp->b_flags |= B_VNCLEAN;
 	if (buf_rb_tree_RB_INSERT(&vp->v_rbclean_tree, bp))
 		panic("reassignbuf: dup lblk/clean vp %p bp %p", vp, bp);
-	/*vhold(vp);*/
 	lwkt_reltoken(&vp->v_token);
+
 	return(0);
 }
 
 /*
- * Disassociate a buffer from a vnode.
+ * Disassociate a buffer from a vnode.  bp must be locked.  vp might not
+ * be.
  *
  * MPSAFE
  */
@@ -1032,10 +1034,14 @@ brelvp(struct buf *bp)
 	KASSERT(bp->b_vp != NULL, ("brelvp: NULL"));
 
 	/*
-	 * Delete from old vnode list, if on one.
+	 * Delete from old vnode list, if on one.  vp token can be
+	 * broken during syncer adjustments so hold the vp across the
+	 * operation.
 	 */
 	vp = bp->b_vp;
+	vhold(vp);
 	lwkt_gettoken(&vp->v_token);
+
 	if (bp->b_flags & (B_VNDIRTY | B_VNCLEAN)) {
 		if (bp->b_flags & B_VNDIRTY)
 			buf_rb_tree_RB_REMOVE(&vp->v_rbdirty_tree, bp);
@@ -1047,27 +1053,32 @@ brelvp(struct buf *bp)
 		buf_rb_hash_RB_REMOVE(&vp->v_rbhash_tree, bp);
 		bp->b_flags &= ~B_HASHED;
 	}
+	bp->b_vp = NULL;
 
 	/*
 	 * Only remove from synclist when no dirty buffers are left AND
 	 * the VFS has not flagged the vnode's inode as being dirty.
+	 * Our token can be temporarily lost in vn_syncer_remove(), so
+	 * vn_syncer_remove() will re-check these flags.
 	 */
 	if ((vp->v_flag & (VONWORKLST | VISDIRTY | VOBJDIRTY)) == VONWORKLST &&
-	    RB_EMPTY(&vp->v_rbdirty_tree)) {
+	    RB_EMPTY(&vp->v_rbdirty_tree))
+	{
 		vn_syncer_remove(vp, 0);
 	}
-	bp->b_vp = NULL;
 
 	lwkt_reltoken(&vp->v_token);
 
-	/*vdrop(vp);*/
+	vdrop(vp);
 }
 
 /*
  * Reassign the buffer to the proper clean/dirty list based on B_DELWRI.
  * This routine is called when the state of the B_DELWRI bit is changed.
  *
- * Must be called with vp->v_token held.
+ * Must be called with vp->v_token held.  We must hold the vp temporarily
+ * while reassigning the buffer.
+ *
  * MPSAFE
  */
 void
@@ -1078,6 +1089,7 @@ reassignbuf(struct buf *bp)
 
 	ASSERT_LWKT_TOKEN_HELD(&vp->v_token);
 	++reassignbufcalls;
+	vhold(vp);
 
 	/*
 	 * B_PAGING flagged buffers cannot be reassigned because their vp
@@ -1142,11 +1154,12 @@ reassignbuf(struct buf *bp)
 		 * dirty.
 		 */
 		if ((vp->v_flag & (VONWORKLST | VISDIRTY | VOBJDIRTY)) ==
-		     VONWORKLST &&
-		    RB_EMPTY(&vp->v_rbdirty_tree)) {
+		     VONWORKLST && RB_EMPTY(&vp->v_rbdirty_tree))
+		{
 			vn_syncer_remove(vp, 0);
 		}
 	}
+	vdrop(vp);
 }
 
 /*
