@@ -52,7 +52,6 @@ none_init(struct ieee80211vap *vap)
 static void
 none_deinit(struct ieee80211vap *vap)
 {
-	IEEE80211_FREE(vap->iv_rs, M_80211_RATECTL);
 }
 
 static void
