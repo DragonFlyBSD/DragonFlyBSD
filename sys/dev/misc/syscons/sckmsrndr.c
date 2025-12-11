@@ -455,7 +455,7 @@ fill_rect16(scr_stat *scp, vm_offset_t draw_pos, int width, int height,
 
 	for (i = 0; i < height; i++) {
 		for (j = 0; j < width; j++)
-			writel(draw_pos + j * 2, fg);
+			writew(draw_pos + j * 2, fg);
 		draw_pos += line_width;
 	}
 }
