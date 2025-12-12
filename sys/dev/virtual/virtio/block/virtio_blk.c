@@ -99,9 +99,12 @@ static struct virtio_feature_desc vtblk_feature_desc[] = {
 	{ VIRTIO_BLK_F_RO,		"ReadOnly"	},
 	{ VIRTIO_BLK_F_BLK_SIZE,	"BlockSize"	},
 	{ VIRTIO_BLK_F_SCSI,		"SCSICmds"	},
-	{ VIRTIO_BLK_F_WCE,		"WriteCache"	},
+	{ VIRTIO_BLK_F_FLUSH,		"FlushCommand"	},
 	{ VIRTIO_BLK_F_TOPOLOGY,	"Topology"	},
 	{ VIRTIO_BLK_F_CONFIG_WCE,	"ConfigWCE"	},
+	{ VIRTIO_BLK_F_MQ,		"MultiQueue"	},
+	{ VIRTIO_BLK_F_DISCARD,		"Discard"	},
+	{ VIRTIO_BLK_F_WRITE_ZEROES,	"WriteZeroes"	},
 
 	{ 0, NULL }
 };
@@ -181,8 +184,9 @@ TUNABLE_INT("hw.vtblk.writecache_mode", &vtblk_writecache_mode);
      VIRTIO_BLK_F_GEOMETRY		| \
      VIRTIO_BLK_F_RO			| \
      VIRTIO_BLK_F_BLK_SIZE		| \
-     VIRTIO_BLK_F_WCE			| \
+     VIRTIO_BLK_F_FLUSH			| \
      VIRTIO_BLK_F_CONFIG_WCE		| \
+     VIRTIO_BLK_F_MQ			| \
      VIRTIO_RING_F_INDIRECT_DESC)
 
 /*
@@ -579,7 +583,7 @@ vtblk_write_cache_enabled(struct vtblk_softc *sc,
 		else
 			wc = blkcfg->writeback;
 	} else
-		wc = virtio_with_feature(sc->vtblk_dev, VIRTIO_BLK_F_WCE);
+		wc = virtio_with_feature(sc->vtblk_dev, VIRTIO_BLK_F_FLUSH);
 
 	return (wc);
 }
