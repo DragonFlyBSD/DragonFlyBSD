@@ -150,8 +150,6 @@ static int	vtblk_execute_request(struct vtblk_softc *,
 		    struct vtblk_request *);
 static void	vtblk_vq_intr(void *);
 
-static void	vtblk_stop(struct vtblk_softc *);
-
 static void	vtblk_prepare_dump(struct vtblk_softc *);
 static int	vtblk_write_dump(struct vtblk_softc *, void *, off_t, size_t);
 static int	vtblk_flush_dump(struct vtblk_softc *);
@@ -344,14 +342,17 @@ vtblk_detach(device_t dev)
 
 	virtio_teardown_intr(dev, 0);
 
-	lwkt_serialize_enter(&sc->vtblk_slz);
 	sc->vtblk_flags |= VTBLK_FLAG_DETACH;
-	if (device_is_attached(dev))
-		vtblk_stop(sc);
+	// Once VTBLK_FLAG_DETACH is set, we just need to take the virtqueue
+	// serializer once, to make sure that any pending d_strategy call is
+	// finished, or will return ENXIO.
+	lwkt_serialize_enter(&sc->vtblk_slz);
 	lwkt_serialize_exit(&sc->vtblk_slz);
+	virtio_stop(sc->vtblk_dev);
 
+	// Now the device is fully stopped, and we can clean up everything
+	// safely.
 	vtblk_drain(sc);
-
 	if (sc->cdev != NULL) {
 		disk_destroy(&sc->vtblk_disk);
 		sc->cdev = NULL;
@@ -880,14 +881,6 @@ retry:
 }
 
 static void
-vtblk_stop(struct vtblk_softc *sc)
-{
-
-	virtqueue_disable_intr(sc->vtblk_vq);
-	virtio_stop(sc->vtblk_dev);
-}
-
-static void
 vtblk_prepare_dump(struct vtblk_softc *sc)
 {
 	device_t dev;
@@ -896,7 +889,8 @@ vtblk_prepare_dump(struct vtblk_softc *sc)
 	dev = sc->vtblk_dev;
 	vq = sc->vtblk_vq;
 
-	vtblk_stop(sc);
+	virtqueue_disable_intr(sc->vtblk_vq);
+	virtio_stop(sc->vtblk_dev);
 
 	/*
 	 * Drain all requests caught in-flight in the virtqueue,
