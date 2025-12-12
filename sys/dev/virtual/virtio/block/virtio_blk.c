@@ -61,9 +61,18 @@ enum vtblk_cache_mode {
 	VTBLK_CACHE_MAX
 };
 
+struct vtblk_queue {
+	struct vtblk_softc	*vtblk_sc;
+	struct virtqueue	*vtblk_vq;
+	struct sglist		*vtblk_sglist;
+	struct bio_queue_head	 vtblk_bioq;
+	SLIST_HEAD(, vtblk_request)
+				 vtblk_req_free;
+	struct lwkt_serialize	 vtblk_slz;
+};
+
 struct vtblk_softc {
 	device_t		 vtblk_dev;
-	struct lwkt_serialize	 vtblk_slz;
 	uint64_t		 vtblk_features;
 	uint32_t		 vtblk_flags;
 #define VTBLK_FLAG_INDIRECT	0x0001
@@ -73,15 +82,14 @@ struct vtblk_softc {
 #define VTBLK_FLAG_DUMPING	0x0010
 #define VTBLK_FLAG_WC_CONFIG	0x0020
 
-	struct virtqueue	*vtblk_vq;
-	struct sglist		*vtblk_sglist;
 	struct disk		 vtblk_disk;
 	cdev_t			 cdev;
 	struct devstat		 stats;
 
-	struct bio_queue_head	 vtblk_bioq;
-	SLIST_HEAD(, vtblk_request)
-				 vtblk_req_free;
+	struct vtblk_queue	 vtblk_queues[SMP_MAXCPU];
+	u_int			 vtblk_nqs;
+	u_int			 vtblk_nintrs;
+	int			 vtblk_vqmap[SMP_MAXCPU];
 
 	int			 vtblk_sector_size;
 	int			 vtblk_max_nsegs;
@@ -117,10 +125,10 @@ static int	vtblk_resume(device_t);
 static int	vtblk_shutdown(device_t);
 
 static void	vtblk_negotiate_features(struct vtblk_softc *);
-static int	vtblk_alloc_intr(struct vtblk_softc *);
+static int	vtblk_alloc_intrs(struct vtblk_softc *);
 static int	vtblk_maximum_segments(struct vtblk_softc *,
 		    struct virtio_blk_config *);
-static int	vtblk_alloc_virtqueue(struct vtblk_softc *);
+static int	vtblk_alloc_virtqueues(struct vtblk_softc *);
 static void	vtblk_set_write_cache(struct vtblk_softc *, int);
 static int	vtblk_write_cache_enabled(struct vtblk_softc *,
 		    struct virtio_blk_config *);
@@ -144,9 +152,9 @@ static struct dev_ops vbd_disk_ops = {
 	.d_dump		= vtblk_dump,
 };
 
-static void	vtblk_startio(struct vtblk_softc *);
-static struct vtblk_request * vtblk_bio_request(struct vtblk_softc *);
-static int	vtblk_execute_request(struct vtblk_softc *,
+static void	vtblk_vq_startio(struct vtblk_queue *);
+static struct vtblk_request * vtblk_bio_request(struct vtblk_queue *);
+static int	vtblk_execute_request(struct vtblk_queue *,
 		    struct vtblk_request *);
 static void	vtblk_vq_intr(void *);
 
@@ -156,13 +164,13 @@ static int	vtblk_flush_dump(struct vtblk_softc *);
 static int	vtblk_poll_request(struct vtblk_softc *,
 		    struct vtblk_request *);
 
-static void	vtblk_drain_vq(struct vtblk_softc *, int);
+static void	vtblk_drain_vq(struct vtblk_queue *, int);
 static void	vtblk_drain(struct vtblk_softc *);
 
-static int	vtblk_alloc_requests(struct vtblk_softc *);
+static int	vtblk_alloc_requests(struct vtblk_queue *);
 static void	vtblk_free_requests(struct vtblk_softc *);
-static struct vtblk_request * vtblk_dequeue_request(struct vtblk_softc *);
-static void	vtblk_enqueue_request(struct vtblk_softc *,
+static struct vtblk_request * vtblk_dequeue_request(struct vtblk_queue *);
+static void	vtblk_enqueue_request(struct vtblk_queue *,
 		    struct vtblk_request *);
 
 static int	vtblk_request_error(struct vtblk_request *);
@@ -174,6 +182,8 @@ static int	vtblk_tunable_int(struct vtblk_softc *, const char *, int);
 /* Tunables. */
 static int vtblk_writecache_mode = -1;
 TUNABLE_INT("hw.vtblk.writecache_mode", &vtblk_writecache_mode);
+static int vtblk_max_queues = SMP_MAXCPU;
+TUNABLE_INT("hw.vtblk.max_queues", &vtblk_max_queues);
 
 /* Features desired/implemented by this driver. */
 #define VTBLK_FEATURES \
@@ -234,14 +244,10 @@ vtblk_attach(device_t dev)
 	struct vtblk_softc *sc;
 	struct virtio_blk_config blkcfg;
 	int error;
+	int i, max_queues;
 
 	sc = device_get_softc(dev);
 	sc->vtblk_dev = dev;
-
-	lwkt_serialize_init(&sc->vtblk_slz);
-
-	bioq_init(&sc->vtblk_bioq);
-	SLIST_INIT(&sc->vtblk_req_free);
 
 	virtio_set_feature_desc(dev, vtblk_feature_desc);
 	vtblk_negotiate_features(sc);
@@ -268,7 +274,7 @@ vtblk_attach(device_t dev)
 			error = ENOTSUP;
 			device_printf(dev, "host requires unsupported "
 			    "maximum segment size feature\n");
-			goto fail;
+			return error;
 		}
 	}
 
@@ -277,51 +283,87 @@ vtblk_attach(device_t dev)
 		error = EINVAL;
 		device_printf(dev, "fewer than minimum number of segments "
 		    "allowed: %d\n", sc->vtblk_max_nsegs);
-		goto fail;
+		return error;
 	}
 
-	/*
-	 * Allocate working sglist. The number of segments may be too
-	 * large to safely store on the stack.
-	 */
-	sc->vtblk_sglist = sglist_alloc(sc->vtblk_max_nsegs, M_INTWAIT);
-	if (sc->vtblk_sglist == NULL) {
-		error = ENOMEM;
-		device_printf(dev, "cannot allocate sglist\n");
-		goto fail;
+	if (blkcfg.num_queues >= ncpus) {
+		sc->vtblk_nqs = ncpus;
+	} else {
+		sc->vtblk_nqs = blkcfg.num_queues;
+	}
+	max_queues = vtblk_tunable_int(sc, "max_queues", vtblk_max_queues);
+	sc->vtblk_nqs = imin(sc->vtblk_nqs, max_queues);
+	sc->vtblk_nintrs =
+	    imin(virtio_intr_count(sc->vtblk_dev), sc->vtblk_nqs);
+	// Limit to a 1:1 mapping of IRQs to Virtqueue for now.
+	sc->vtblk_nqs = imin(sc->vtblk_nqs, sc->vtblk_nintrs);
+
+	for (i = 0; i < sc->vtblk_nqs; i++) {
+		struct vtblk_queue *vq = &sc->vtblk_queues[i];
+
+		vq->vtblk_sc = sc;
+		lwkt_serialize_init(&vq->vtblk_slz);
+		bioq_init(&vq->vtblk_bioq);
+		SLIST_INIT(&vq->vtblk_req_free);
+		/*
+		 * Allocate working sglist. The number of segments may be too
+		 * large to safely store on the stack.
+		 */
+		vq->vtblk_sglist = sglist_alloc(sc->vtblk_max_nsegs, M_INTWAIT);
+		if (vq->vtblk_sglist == NULL) {
+			error = ENOMEM;
+			device_printf(dev, "cannot allocate sglist\n");
+			goto fail;
+		}
 	}
 
-	error = vtblk_alloc_intr(sc);
+	for (i = 0; i < ncpus; i++) {
+		// Could be improved to take the CPU topology into account.
+		sc->vtblk_vqmap[i] = i % sc->vtblk_nqs;
+	}
+
+	error = vtblk_alloc_intrs(sc);
 	if (error) {
-		device_printf(dev, "cannot allocate interrupt\n");
+		device_printf(dev, "cannot allocate interrupts\n");
 		goto fail;
 	}
 
-	error = vtblk_alloc_virtqueue(sc);
+	error = vtblk_alloc_virtqueues(sc);
 	if (error) {
-		device_printf(dev, "cannot allocate virtqueue\n");
+		device_printf(dev, "cannot allocate virtqueues\n");
 		goto fail;
 	}
 
-	error = virtio_bind_intr(sc->vtblk_dev, 0, 0, vtblk_vq_intr, sc);
-	if (error) {
-		device_printf(dev, "cannot assign virtqueue to interrupt\n");
-		goto fail;
+	for (i = 0; i < sc->vtblk_nqs; i++) {
+		error = virtio_bind_intr(sc->vtblk_dev, i, i,
+					 vtblk_vq_intr, &sc->vtblk_queues[i]);
+		if (error) {
+			device_printf(dev,
+			    "cannot assign virtqueue to interrupt\n");
+			goto fail;
+		}
 	}
 
-	error = vtblk_alloc_requests(sc);
-	if (error) {
-		device_printf(dev, "cannot preallocate requests\n");
-		goto fail;
+	for (i = 0; i < sc->vtblk_nqs; i++) {
+		error = vtblk_alloc_requests(&sc->vtblk_queues[i]);
+		if (error) {
+			device_printf(dev, "cannot preallocate requests\n");
+			goto fail;
+		}
 	}
 
-	error = virtio_setup_intr(dev, 0, &sc->vtblk_slz);
-	if (error) {
-		device_printf(dev, "cannot setup virtqueue interrupt\n");
-		goto fail;
+	for (i = 0; i < sc->vtblk_nintrs; i++) {
+		error = virtio_setup_intr(dev, i,
+					  &sc->vtblk_queues[i].vtblk_slz);
+		if (error) {
+			device_printf(dev,
+				      "cannot setup virtqueue interrupt\n");
+			goto fail;
+		}
 	}
 
-	virtqueue_enable_intr(sc->vtblk_vq);
+	for (i = 0; i < sc->vtblk_nqs; i++)
+		virtqueue_enable_intr(sc->vtblk_queues[i].vtblk_vq);
 
 	vtblk_alloc_disk(sc, &blkcfg);
 	vtblk_setup_sysctl(sc);
@@ -337,17 +379,23 @@ static int
 vtblk_detach(device_t dev)
 {
 	struct vtblk_softc *sc;
+	int i;
 
 	sc = device_get_softc(dev);
 
-	virtio_teardown_intr(dev, 0);
+	for (i = 0; i < sc->vtblk_nintrs; i++)
+		virtio_teardown_intr(dev, i);
 
 	sc->vtblk_flags |= VTBLK_FLAG_DETACH;
 	// Once VTBLK_FLAG_DETACH is set, we just need to take the virtqueue
-	// serializer once, to make sure that any pending d_strategy call is
+	// serializers once, to make sure that any pending d_strategy call is
 	// finished, or will return ENXIO.
-	lwkt_serialize_enter(&sc->vtblk_slz);
-	lwkt_serialize_exit(&sc->vtblk_slz);
+	for (i = 0; i < sc->vtblk_nqs; i++) {
+		struct vtblk_queue *vq = &sc->vtblk_queues[i];
+
+		lwkt_serialize_enter(&vq->vtblk_slz);
+		lwkt_serialize_exit(&vq->vtblk_slz);
+	}
 	virtio_stop(sc->vtblk_dev);
 
 	// Now the device is fully stopped, and we can clean up everything
@@ -358,9 +406,13 @@ vtblk_detach(device_t dev)
 		sc->cdev = NULL;
 	}
 
-	if (sc->vtblk_sglist != NULL) {
-		sglist_free(sc->vtblk_sglist);
-		sc->vtblk_sglist = NULL;
+	for (i = 0; i < sc->vtblk_nqs; i++) {
+		struct vtblk_queue *vq = &sc->vtblk_queues[i];
+
+		if (vq->vtblk_sglist != NULL) {
+			sglist_free(vq->vtblk_sglist);
+			vq->vtblk_sglist = NULL;
+		}
 	}
 
 	return (0);
@@ -369,14 +421,15 @@ vtblk_detach(device_t dev)
 static int
 vtblk_suspend(device_t dev)
 {
-	struct vtblk_softc *sc;
+	struct vtblk_softc *sc = device_get_softc(dev);
+	int i;
 
-	sc = device_get_softc(dev);
-
-	lwkt_serialize_enter(&sc->vtblk_slz);
 	sc->vtblk_flags |= VTBLK_FLAG_SUSPEND;
-	/* XXX BMV: virtio_stop(), etc needed here? */
-	lwkt_serialize_exit(&sc->vtblk_slz);
+	for (i = 0; i < sc->vtblk_nqs; i++) {
+		lwkt_serialize_enter(&sc->vtblk_queues[i].vtblk_slz);
+		/* XXX BMV: virtio_stop(), etc needed here? */
+		lwkt_serialize_exit(&sc->vtblk_queues[i].vtblk_slz);
+	}
 
 	return (0);
 }
@@ -384,17 +437,18 @@ vtblk_suspend(device_t dev)
 static int
 vtblk_resume(device_t dev)
 {
-	struct vtblk_softc *sc;
+	struct vtblk_softc *sc = device_get_softc(dev);
+	int i;
 
-	sc = device_get_softc(dev);
-
-	lwkt_serialize_enter(&sc->vtblk_slz);
-	/* XXX BMV: virtio_reinit(), etc needed here? */
 	sc->vtblk_flags &= ~VTBLK_FLAG_SUSPEND;
+	for (i = 0; i < sc->vtblk_nqs; i++) {
+		lwkt_serialize_enter(&sc->vtblk_queues[i].vtblk_slz);
+		/* XXX BMV: virtio_reinit(), etc needed here? */
 #if 0 /* XXX Resume IO? */
-	vtblk_startio(sc);
+		vtblk_vq_startio(&sc->vtblk_queues[i]);
 #endif
-	lwkt_serialize_exit(&sc->vtblk_slz);
+		lwkt_serialize_exit(&sc->vtblk_queues[i].vtblk_slz);
+	}
 
 	return (0);
 }
@@ -436,7 +490,7 @@ vtblk_dump(struct dev_dump_args *ap)
         buf_start = ap->a_offset;
         buf_len = ap->a_length;
 
-//	lwkt_serialize_enter(&sc->vtblk_slz);
+//	lwkt_serialize_enter(&sc->vtblk_queues[0].vtblk_slz);
 
 	if ((sc->vtblk_flags & VTBLK_FLAG_DUMPING) == 0) {
 		vtblk_prepare_dump(sc);
@@ -453,7 +507,7 @@ vtblk_dump(struct dev_dump_args *ap)
 		sc->vtblk_flags &= ~VTBLK_FLAG_DUMPING;
 	}
 
-//	lwkt_serialize_exit(&sc->vtblk_slz);
+//	lwkt_serialize_exit(&sc->vtblk_queues[0].vtblk_slz);
 
 	return (error);
 }
@@ -469,19 +523,20 @@ vtblk_strategy(struct dev_strategy_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	sc = dev->si_drv1;
 	struct bio *bio = ap->a_bio;
+	struct vtblk_queue *q = &sc->vtblk_queues[sc->vtblk_vqmap[mycpuid]];
 
 	if (sc == NULL) {
 		vtblk_finish_bio(bio, EINVAL);
 		return EINVAL;
 	}
 
-	lwkt_serialize_enter(&sc->vtblk_slz);
+	lwkt_serialize_enter(&q->vtblk_slz);
 	if ((sc->vtblk_flags & VTBLK_FLAG_DETACH) == 0) {
-		bioqdisksort(&sc->vtblk_bioq, bio);
-		vtblk_startio(sc);
-		lwkt_serialize_exit(&sc->vtblk_slz);
+		bioqdisksort(&q->vtblk_bioq, bio);
+		vtblk_vq_startio(q);
+		lwkt_serialize_exit(&q->vtblk_slz);
 	} else {
-		lwkt_serialize_exit(&sc->vtblk_slz);
+		lwkt_serialize_exit(&q->vtblk_slz);
 		vtblk_finish_bio(bio, ENXIO);
 	}
 	return 0;
@@ -533,32 +588,47 @@ vtblk_maximum_segments(struct vtblk_softc *sc,
 }
 
 static int
-vtblk_alloc_intr(struct vtblk_softc *sc)
+vtblk_alloc_intrs(struct vtblk_softc *sc)
 {
-	int cnt = 1;
+	int cnt = sc->vtblk_nintrs;
+	int *cpus = NULL;
 	int error;
 
-	error = virtio_intr_alloc(sc->vtblk_dev, &cnt, 0, NULL);
+	if (cnt > 1) {
+		// We can re-use the cpuid-to-virtqueue mapping here.
+		// TODO: Actually take CPU topology into account, for a better
+		//       distribution.
+		cpus = sc->vtblk_vqmap;
+	}
+
+	error = virtio_intr_alloc(sc->vtblk_dev, &cnt, 0, cpus);
 	if (error != 0)
 		return (error);
-	else if (cnt != 1)
+	else if (cnt != sc->vtblk_nqs)
 		return (ENXIO);
 
 	return (0);
 }
 
 static int
-vtblk_alloc_virtqueue(struct vtblk_softc *sc)
+vtblk_alloc_virtqueues(struct vtblk_softc *sc)
 {
-	device_t dev;
-	struct vq_alloc_info vq_info;
+	device_t dev = sc->vtblk_dev;
+	struct vq_alloc_info *vq_info =
+	    kmalloc(sc->vtblk_nqs * sizeof(struct vq_alloc_info),
+	    M_TEMP, M_WAITOK | M_ZERO);
+	int i;
+	int error;
 
-	dev = sc->vtblk_dev;
+	for (i = 0; i < sc->vtblk_nqs; i++) {
+		VQ_ALLOC_INFO_INIT(&vq_info[i], sc->vtblk_max_nsegs,
+		    &sc->vtblk_queues[i].vtblk_vq, "%s request %d",
+		    device_get_nameunit(dev), i);
+	}
 
-	VQ_ALLOC_INFO_INIT(&vq_info, sc->vtblk_max_nsegs,
-	    &sc->vtblk_vq, "%s request", device_get_nameunit(dev));
-
-	return (virtio_alloc_virtqueues(dev, 1, &vq_info));
+	error = virtio_alloc_virtqueues(dev, sc->vtblk_nqs, vq_info);
+	kfree(vq_info, M_TEMP);
+	return error;
 }
 
 static void
@@ -609,10 +679,11 @@ vtblk_write_cache_sysctl(SYSCTL_HANDLER_ARGS)
 	if (oldwc == wc)
 		return (0);
 
-	lwkt_serialize_enter(&sc->vtblk_slz);
+	// Not used outside this SYSCTL right now, so no locking needed.
+	//lwkt_serialize_enter(&sc->vtblk_queues[0].vtblk_slz);
 	sc->vtblk_write_cache = wc;
 	vtblk_set_write_cache(sc, sc->vtblk_write_cache);
-	lwkt_serialize_exit(&sc->vtblk_slz);
+	//lwkt_serialize_exit(&sc->vtblk_queues[0].vtblk_slz);
 
 	return (0);
 }
@@ -691,28 +762,29 @@ vtblk_alloc_disk(struct vtblk_softc *sc, struct virtio_blk_config *blkcfg)
 }
 
 static void
-vtblk_startio(struct vtblk_softc *sc)
+vtblk_vq_startio(struct vtblk_queue *q)
 {
+	struct vtblk_softc *sc = q->vtblk_sc;
 	struct virtqueue *vq;
 	struct vtblk_request *req;
 	int enq;
 
-	vq = sc->vtblk_vq;
+	vq = q->vtblk_vq;
 	enq = 0;
 
-	ASSERT_SERIALIZED(&sc->vtblk_slz);
+	ASSERT_SERIALIZED(&q->vtblk_slz);
 
 	if (sc->vtblk_flags & VTBLK_FLAG_SUSPEND)
 		return;
 
 	while (!virtqueue_full(vq)) {
-		req = vtblk_bio_request(sc);
+		req = vtblk_bio_request(q);
 		if (req == NULL)
 			break;
 
-		if (vtblk_execute_request(sc, req) != 0) {
-			bioqdisksort(&sc->vtblk_bioq, req->vbr_bio);
-			vtblk_enqueue_request(sc, req);
+		if (vtblk_execute_request(q, req) != 0) {
+			bioqdisksort(&q->vtblk_bioq, req->vbr_bio);
+			vtblk_enqueue_request(q, req);
 			break;
 		}
 		devstat_start_transaction(&sc->stats);
@@ -721,23 +793,23 @@ vtblk_startio(struct vtblk_softc *sc)
 	}
 
 	if (enq > 0)
-		virtqueue_notify(vq, &sc->vtblk_slz);
+		virtqueue_notify(vq, &q->vtblk_slz);
 }
 
 static struct vtblk_request *
-vtblk_bio_request(struct vtblk_softc *sc)
+vtblk_bio_request(struct vtblk_queue *q)
 {
 	struct bio_queue_head *bioq;
 	struct vtblk_request *req;
 	struct bio *bio;
 	struct buf *bp;
 
-	bioq = &sc->vtblk_bioq;
+	bioq = &q->vtblk_bioq;
 
 	if (bioq_first(bioq) == NULL)
 		return (NULL);
 
-	req = vtblk_dequeue_request(sc);
+	req = vtblk_dequeue_request(q);
 	if (req == NULL)
 		return (NULL);
 
@@ -769,14 +841,14 @@ vtblk_bio_request(struct vtblk_softc *sc)
 }
 
 static int
-vtblk_execute_request(struct vtblk_softc *sc, struct vtblk_request *req)
+vtblk_execute_request(struct vtblk_queue *q, struct vtblk_request *req)
 {
 	struct sglist *sg;
 	struct bio *bio;
 	struct buf *bp;
 	int writable, error;
 
-	sg = sc->vtblk_sglist;
+	sg = q->vtblk_sglist;
 	bio = req->vbr_bio;
 	bp = bio->bio_buf;
 	writable = 0;
@@ -806,7 +878,7 @@ vtblk_execute_request(struct vtblk_softc *sc, struct vtblk_request *req)
 	KASSERT(sg->sg_nseg >= VTBLK_MIN_SEGMENTS,
 	    ("fewer than min segments: %d", sg->sg_nseg));
 
-	error = virtqueue_enqueue(sc->vtblk_vq, req, sg,
+	error = virtqueue_enqueue(q->vtblk_vq, req, sg,
 				  sg->sg_nseg - writable, writable);
 
 	sglist_reset(sg);
@@ -817,19 +889,20 @@ vtblk_execute_request(struct vtblk_softc *sc, struct vtblk_request *req)
 static void
 vtblk_vq_intr(void *arg)
 {
-	struct vtblk_softc *sc = arg;
-	struct virtqueue *vq = sc->vtblk_vq;
+	struct vtblk_queue *q = arg;
+	struct vtblk_softc *sc = q->vtblk_sc;
+	struct virtqueue *vq = q->vtblk_vq;
 	struct vtblk_request *req;
 	struct bio *bio;
 	struct buf *bp;
 
-	ASSERT_SERIALIZED(&sc->vtblk_slz);
+	ASSERT_SERIALIZED(&q->vtblk_slz);
 
 	if (!virtqueue_pending(vq))
 		return;
 
-	lwkt_serialize_handler_disable(&sc->vtblk_slz);
-	virtqueue_disable_intr(sc->vtblk_vq);
+	lwkt_serialize_handler_disable(&q->vtblk_slz);
+	virtqueue_disable_intr(q->vtblk_vq);
 
 retry:
 	if (sc->vtblk_flags & VTBLK_FLAG_DETACH)
@@ -852,7 +925,7 @@ retry:
 
 		devstat_end_transaction_buf(&sc->stats, bio->bio_buf);
 
-		lwkt_serialize_exit(&sc->vtblk_slz);
+		lwkt_serialize_exit(&q->vtblk_slz);
 		/*
 		 * Unlocking the controller around biodone() does not allow
 		 * processing further device interrupts; when we queued
@@ -860,12 +933,12 @@ retry:
 		 * concurrent vtblk_strategy/_startio command dispatches.
 		 */
 		biodone(bio);
-		lwkt_serialize_enter(&sc->vtblk_slz);
+		lwkt_serialize_enter(&q->vtblk_slz);
 
-		vtblk_enqueue_request(sc, req);
+		vtblk_enqueue_request(q, req);
 	}
 
-	vtblk_startio(sc);
+	vtblk_vq_startio(q);
 
 	if (virtqueue_enable_intr(vq) != 0) {
 		/*
@@ -877,35 +950,38 @@ retry:
 		virtqueue_disable_intr(vq);
 		goto retry;
 	}
-	lwkt_serialize_handler_enable(&sc->vtblk_slz);
+	lwkt_serialize_handler_enable(&q->vtblk_slz);
 }
 
 static void
 vtblk_prepare_dump(struct vtblk_softc *sc)
 {
 	device_t dev;
-	struct virtqueue *vq;
+	int i;
 
 	dev = sc->vtblk_dev;
-	vq = sc->vtblk_vq;
 
-	virtqueue_disable_intr(sc->vtblk_vq);
+	for (i = 0 ; i < sc->vtblk_nqs; i++)
+		virtqueue_disable_intr(sc->vtblk_queues[i].vtblk_vq);
+
 	virtio_stop(sc->vtblk_dev);
 
 	/*
-	 * Drain all requests caught in-flight in the virtqueue,
+	 * Drain all requests caught in-flight in the virtqueues,
 	 * skipping biodone(). When dumping, only one request is
 	 * outstanding at a time, and we just poll the virtqueue
 	 * for the response.
 	 */
-	vtblk_drain_vq(sc, 1);
+	for (i = 0 ; i < sc->vtblk_nqs; i++)
+		vtblk_drain_vq(&sc->vtblk_queues[i], 1);
 
 	if (virtio_reinit(dev, sc->vtblk_features) != 0) {
 		panic("%s: cannot reinit VirtIO block device during dump",
 		    device_get_nameunit(dev));
 	}
 
-	virtqueue_disable_intr(vq);
+	for (i = 0 ; i < sc->vtblk_nqs; i++)
+		virtqueue_disable_intr(sc->vtblk_queues[i].vtblk_vq);
 	virtio_reinit_complete(dev);
 }
 
@@ -964,12 +1040,12 @@ vtblk_poll_request(struct vtblk_softc *sc, struct vtblk_request *req)
 	struct virtqueue *vq;
 	int error;
 
-	vq = sc->vtblk_vq;
+	vq = sc->vtblk_queues[0].vtblk_vq;
 
 	if (!virtqueue_empty(vq))
 		return (EBUSY);
 
-	error = vtblk_execute_request(sc, req);
+	error = vtblk_execute_request(&sc->vtblk_queues[0], req);
 	if (error)
 		return (error);
 
@@ -986,20 +1062,19 @@ vtblk_poll_request(struct vtblk_softc *sc, struct vtblk_request *req)
 }
 
 static void
-vtblk_drain_vq(struct vtblk_softc *sc, int skip_done)
+vtblk_drain_vq(struct vtblk_queue *q, int skip_done)
 {
-	struct virtqueue *vq;
+	struct virtqueue *vq = q->vtblk_vq;
 	struct vtblk_request *req;
 	int last;
 
-	vq = sc->vtblk_vq;
 	last = 0;
 
 	while ((req = virtqueue_drain(vq, &last)) != NULL) {
 		if (!skip_done)
 			vtblk_finish_bio(req->vbr_bio, ENXIO);
 
-		vtblk_enqueue_request(sc, req);
+		vtblk_enqueue_request(q, req);
 	}
 
 	KASSERT(virtqueue_empty(vq), ("virtqueue not empty"));
@@ -1008,29 +1083,35 @@ vtblk_drain_vq(struct vtblk_softc *sc, int skip_done)
 static void
 vtblk_drain(struct vtblk_softc *sc)
 {
+	struct vtblk_queue *q;
 	struct bio_queue_head *bioq;
 	struct bio *bio;
+	int i;
 
-	bioq = &sc->vtblk_bioq;
+	for (i = 0; i < sc->vtblk_nqs; i++) {
+		q = &sc->vtblk_queues[i];
+		bioq = &q->vtblk_bioq;
 
-	if (sc->vtblk_vq != NULL)
-		vtblk_drain_vq(sc, 0);
+		if (q->vtblk_vq != NULL)
+			vtblk_drain_vq(q, 0);
 
-	while (bioq_first(bioq) != NULL) {
-		bio = bioq_takefirst(bioq);
-		vtblk_finish_bio(bio, ENXIO);
+		while (bioq_first(bioq) != NULL) {
+			bio = bioq_takefirst(bioq);
+			vtblk_finish_bio(bio, ENXIO);
+		}
 	}
 
 	vtblk_free_requests(sc);
 }
 
 static int
-vtblk_alloc_requests(struct vtblk_softc *sc)
+vtblk_alloc_requests(struct vtblk_queue *vq)
 {
+	struct vtblk_softc *sc = vq->vtblk_sc;
 	struct vtblk_request *req;
 	int i, nreqs;
 
-	nreqs = virtqueue_size(sc->vtblk_vq);
+	nreqs = virtqueue_size(vq->vtblk_vq);
 
 	/*
 	 * Preallocate sufficient requests to keep the virtqueue full. Each
@@ -1052,7 +1133,7 @@ vtblk_alloc_requests(struct vtblk_softc *sc)
 		    == 1);
 
 		sc->vtblk_request_count++;
-		vtblk_enqueue_request(sc, req);
+		vtblk_enqueue_request(vq, req);
 	}
 
 	return (0);
@@ -1062,33 +1143,37 @@ static void
 vtblk_free_requests(struct vtblk_softc *sc)
 {
 	struct vtblk_request *req;
+	int i;
 
-	while ((req = vtblk_dequeue_request(sc)) != NULL) {
-		sc->vtblk_request_count--;
-		contigfree(req, sizeof(struct vtblk_request), M_DEVBUF);
+	for (i = 0; i < sc->vtblk_nqs; i++) {
+		struct vtblk_queue *q = &sc->vtblk_queues[i];
+		while ((req = vtblk_dequeue_request(q)) != NULL) {
+			sc->vtblk_request_count--;
+			contigfree(req, sizeof(struct vtblk_request), M_DEVBUF);
+		}
 	}
 
 	KASSERT(sc->vtblk_request_count == 0, ("leaked requests"));
 }
 
 static struct vtblk_request *
-vtblk_dequeue_request(struct vtblk_softc *sc)
+vtblk_dequeue_request(struct vtblk_queue *q)
 {
 	struct vtblk_request *req;
 
-	req = SLIST_FIRST(&sc->vtblk_req_free);
+	req = SLIST_FIRST(&q->vtblk_req_free);
 	if (req != NULL)
-		SLIST_REMOVE_HEAD(&sc->vtblk_req_free, vbr_link);
+		SLIST_REMOVE_HEAD(&q->vtblk_req_free, vbr_link);
 
 	return (req);
 }
 
 static void
-vtblk_enqueue_request(struct vtblk_softc *sc, struct vtblk_request *req)
+vtblk_enqueue_request(struct vtblk_queue *vq, struct vtblk_request *req)
 {
 
 	bzero(req, sizeof(struct vtblk_request));
-	SLIST_INSERT_HEAD(&sc->vtblk_req_free, req, vbr_link);
+	SLIST_INSERT_HEAD(&vq->vtblk_req_free, req, vbr_link);
 }
 
 static int

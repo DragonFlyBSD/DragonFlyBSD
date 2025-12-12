@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/virtio_blk.4 267938 2014-06-26 21:46:14Z bapt $
 .\"
-.Dd December 10, 2014
+.Dd December 18, 2025
 .Dt VIRTIO_BLK 4
 .Os
 .Sh NAME
@@ -74,6 +74,10 @@ The mode can changed only if the ConfigWCE feature is negotiated.
 Set to 0 for writethrough mode, 1 for writeback mode, and -1 to leave
 it as-is.
 The default value is to leave as-is.
+.It Va hw.vtblk.max_queues
+.It Va hw.vtblk. Ns Ar X Ns Va .max_queues
+.Pp
+These tunables specify the maximum number of queues used globally or per-device.
 .El
 .Sh SYSCTL VARIABLES
 The following variables are available as
