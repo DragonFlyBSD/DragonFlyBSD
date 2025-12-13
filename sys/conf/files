@@ -2902,6 +2902,21 @@ bus/u4b/net/if_urndis.c			optional urndis uether
 #
 # USB WLAN drivers
 #
+bus/u4b/wlan/if_mtw.c			optional mtw
+mtw7601ufw.c				optional mtwfw			\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk run.fw:mtw7601ufw -m mtw7601ufw -c ${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"mtw7601ufw.c"
+mtw7601ufw.fwo				optional mtwfw			\
+	dependency	"mtw.fw"					\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"mtw7601ufw.fwo"
+mtw.fw					optional mtwfw			\
+	dependency	"$S/contrib/dev/mtw/mtw-mt7601u.fw.uu"		\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"mtw.fw"
 bus/u4b/wlan/if_rum.c			optional rum
 bus/u4b/wlan/if_run.c			optional run
 runfw.c					optional runfw			\

@@ -1967,6 +1967,10 @@ device		udav
 
 # USB wireless NICs, requires wlan_amrr
 #
+# MediaTek MT7601U USB wireless driver
+device		mtw
+device		mtwfw
+#
 # Ralink Technology RT2501USB/RT2601USB
 device		rum
 #

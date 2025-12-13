@@ -744,6 +744,7 @@ vendor TPLINK		0x2357	TP-Link
 vendor WESTMOUNTAIN	0x2405	West Mountain Radio
 vendor TRIPPLITE	0x2478	Tripp-Lite
 vendor HIROSE		0x2631	Hirose Electric
+vendor XIAOMI		0x2717	Xiaomi
 vendor NHJ		0x2770	NHJ
 vendor PLANEX		0x2c02	Planex Communications
 vendor MERCUSYS		0x2c4e	Mercusys
@@ -1719,6 +1720,7 @@ product EDIMAX EW7318USG	0x7318	USB Wireless dongle
 product EDIMAX RTL8192SU_1	0x7611	RTL8192SU
 product EDIMAX RTL8192SU_2	0x7612	RTL8192SU
 product EDIMAX EW7622UMN	0x7622	EW-7622UMn
+product EDIMAX MT7601U		0x7710	MT7601U
 product EDIMAX RT2870_1		0x7711	RT2870
 product EDIMAX EW7717		0x7717	EW-7717
 product EDIMAX EW7718		0x7718	EW-7718
@@ -3757,6 +3759,7 @@ product RALINK RT3572		0x3572	RT3572
 product RALINK RT3573		0x3573	RT3573
 product RALINK RT5370		0x5370	RT5370
 product RALINK RT5572		0x5572	RT5572
+product RALINK MT7601U		0x7601	MT7601 Mediatek Wireless Adpater
 product RALINK RT8070		0x8070	RT8070
 product RALINK RT2570_3		0x9020	RT2500USB Wireless Adapter
 product RALINK RT2573_2		0x9021	RT2501USB Wireless Adapter
@@ -4586,6 +4589,9 @@ product WISTRONNEWEB AR5523_2_NF	0x0829	AR5523 (no firmware)
 
 /* Xerox products */
 product XEROX WCM15		0xffef	WorkCenter M15
+
+/* Xiaomi products */
+product XIAOMI MT7601U		0x4106	MT7601U
 
 /* Xirlink products */
 product XIRLINK PCCAM		0x8080	IBM PC Camera

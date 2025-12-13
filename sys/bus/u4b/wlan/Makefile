@@ -1,5 +1,5 @@
-SUBDIR=	runfw urtwnfw
+SUBDIR=	mtwfw runfw urtwnfw
 
-SUBDIR+= rum run urtwn
+SUBDIR+= mtw rum run urtwn
 
 .include <bsd.subdir.mk>
