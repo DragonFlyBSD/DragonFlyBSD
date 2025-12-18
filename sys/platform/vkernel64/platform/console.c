@@ -77,6 +77,7 @@ struct vcons_ctl_client {
 	struct kqueue_info	*kqinfo;
 	char			buf[VCONS_CTL_BUFSIZE];
 	int			buflen;
+	int			attached;	/* attached to comconsole */
 };
 
 static struct vcons_ctl_client ctl_clients[VCONS_CTL_MAX_CLIENTS];
@@ -90,6 +91,26 @@ static void vcons_ctl_client_handler(void *arg, struct intrframe *frame);
 static void vcons_ctl_process_cmd(struct vcons_ctl_client *client);
 static void vcons_ctl_send(struct vcons_ctl_client *client, const char *msg);
 static void vcons_ctl_close_client(struct vcons_ctl_client *client);
+
+/*
+ * Multiplex console output to stdout and all attached socket clients.
+ * This allows external viewers to see console output in real-time.
+ */
+static void
+vcons_output_multiplex(const char *buf, int len)
+{
+	int i;
+
+	/* Always write to stdout (fd 1) */
+	pwrite(1, buf, len, -1);
+
+	/* Write to all attached clients */
+	for (i = 0; i < VCONS_CTL_MAX_CLIENTS; i++) {
+		if (ctl_clients[i].fd > 0 && ctl_clients[i].attached) {
+			write(ctl_clients[i].fd, buf, len);
+		}
+	}
+}
 
 /*
  * Register the control socket with kqueue.
@@ -221,16 +242,31 @@ vcons_ctl_process_cmd(struct vcons_ctl_client *client)
 
 	if (strcasecmp(cmd, "ATTACH") == 0) {
 		if (*arg == '\0') {
-			/* ATTACH - comconsole */
-			vcons_ctl_send(client,
-			    "ERR comconsole attach not implemented\n");
+			/* ATTACH - comconsole (read-only viewer in default mode) */
+			client->attached = 1;
+			vcons_ctl_send(client, "OK\n");
 		} else {
 			/* ATTACH N - ttyvN */
 			vcons_ctl_send(client,
 			    "ERR ttyv attach not implemented\n");
 		}
 	} else if (strcasecmp(cmd, "LIST") == 0) {
-		vcons_ctl_send(client, "comconsole - stdin\n");
+		int i, nviewers = 0;
+		char response[64];
+
+		for (i = 0; i < VCONS_CTL_MAX_CLIENTS; i++) {
+			if (ctl_clients[i].fd > 0 && ctl_clients[i].attached)
+				nviewers++;
+		}
+		if (nviewers > 0) {
+			ksnprintf(response, sizeof(response),
+			    "comconsole - stdin+%d viewer%s\n",
+			    nviewers, nviewers > 1 ? "s" : "");
+		} else {
+			ksnprintf(response, sizeof(response),
+			    "comconsole - stdin\n");
+		}
+		vcons_ctl_send(client, response);
 		vcons_ctl_send(client, "OK\n");
 	} else if (strcasecmp(cmd, "DETACH") == 0) {
 		vcons_ctl_send(client, "ERR detach not implemented\n");
@@ -265,6 +301,7 @@ vcons_ctl_close_client(struct vcons_ctl_client *client)
 		client->fd = 0;
 	}
 	client->buflen = 0;
+	client->attached = 0;
 	ctl_client_count--;
 }
 
@@ -405,7 +442,7 @@ vcons_tty_start(struct tty *tp)
 		 * Dummy up ttyv1, etc.
 		 */
 		if (minor(tp->t_dev) == 0) {
-			pwrite(1, buf, n, -1);
+			vcons_output_multiplex(buf, n);
 		}
 	}
 	tp->t_state &= ~TS_BUSY;
@@ -647,7 +684,7 @@ vconsputc(void *private, int c)
 {
 	char cc = c;
 
-	pwrite(1, &cc, 1, -1);
+	vcons_output_multiplex(&cc, 1);
 }
 
 void
