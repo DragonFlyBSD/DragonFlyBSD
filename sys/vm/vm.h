@@ -97,7 +97,7 @@ typedef u_char vm_maptype_t;	/* type of vm_map_entry */
  */
 #define VM_MAPTYPE_UNSPECIFIED	0
 #define VM_MAPTYPE_NORMAL	1
-#define VM_MAPTYPE_UNUSED02	2	/* was VPAGETABLE */
+#define VM_MAPTYPE_VPAGETABLE	2	/* vkernel software page table */
 #define VM_MAPTYPE_SUBMAP	3
 #define VM_MAPTYPE_UKSMAP	4	/* user-kernel shared memory */
 

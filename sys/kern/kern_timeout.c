@@ -531,19 +531,25 @@ loop:
 			/*
 			 * Double check the validity of the callout, detect
 			 * if the originator's structure has been ripped out.
+			 *
+			 * Skip the address range check for virtual kernels
+			 * since vkernel addresses are in host user space.
 			 */
+#ifndef _KERNEL_VIRTUAL
 			if ((uintptr_t)c->verifier < VM_MAX_USER_ADDRESS) {
 				spin_unlock(&wheel->spin);
 				panic("_callout %p verifier %p failed "
 				      "func %p/%p\n",
 				      c, c->verifier, c->rfunc, c->qfunc);
 			}
+#endif
 
 			if (c->verifier->toc != c) {
 				spin_unlock(&wheel->spin);
-				panic("_callout %p verifier %p failed "
+				panic("_callout %p verifier %p toc %p (expected %p) "
 				      "func %p/%p\n",
-				      c, c->verifier, c->rfunc, c->qfunc);
+				      c, c->verifier, c->verifier->toc, c,
+				      c->rfunc, c->qfunc);
 			}
 
 			/*

@@ -83,6 +83,8 @@ extern  pthread_t ap_tids[MAXCPU];
 extern  char    cpu_vendor[];	/* XXX belongs in pc64 */
 extern  u_int   cpu_vendor_id;	/* XXX belongs in pc64 */
 extern  u_int   cpu_id;		/* XXX belongs in pc64 */
+extern  u_int   cpu_feature;	/* XXX belongs in pc64 */
+extern  u_int   cpu_feature2;	/* XXX belongs in pc64 */
 
 extern struct vkdisk_info DiskInfo[VKDISK_MAX];
 extern int	DiskNum;

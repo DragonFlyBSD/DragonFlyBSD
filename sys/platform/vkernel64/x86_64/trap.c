@@ -350,11 +350,6 @@ user_trap(struct trapframe *frame)
 		eva = frame->tf_addr;
 	else
 		eva = 0;
-#if 0
-	kprintf("USER_TRAP AT %08lx xflags %ld trapno %ld eva %08lx\n",
-		frame->tf_rip, frame->tf_xflags, frame->tf_trapno, eva);
-#endif
-
 	/*
 	 * Everything coming from user mode runs through user_trap,
 	 * including system calls.
@@ -1408,6 +1403,7 @@ go_user(struct intrframe *frame)
 		 */
 		gd = mycpu;
 		gd->gd_flags |= GDF_VIRTUSER;
+
 		r = vmspace_ctl(id, VMSPACE_CTL_RUN, tf,
 				&curthread->td_savevext);
 
@@ -1423,12 +1419,13 @@ go_user(struct intrframe *frame)
 		}
 		crit_exit();
 		gd->gd_flags &= ~GDF_VIRTUSER;
-#if 0
-		kprintf("GO USER %d trap %ld EVA %08lx RIP %08lx RSP %08lx XFLAGS %02lx/%02lx\n",
-			r, tf->tf_trapno, tf->tf_addr, tf->tf_rip, tf->tf_rsp,
-			tf->tf_xflags, frame->if_xflags);
-#endif
+
+		/* DEBUG: Only log errors and FPU-related traps */
+
 		if (r < 0) {
+			if (errno == EFAULT) {
+				panic("vmspace_ctl failed with EFAULT");
+			}
 			if (errno != EINTR)
 				panic("vmspace_ctl failed error %d", errno);
 		} else {

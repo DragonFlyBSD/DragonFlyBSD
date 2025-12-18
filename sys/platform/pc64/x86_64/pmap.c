@@ -4789,6 +4789,24 @@ pmap_remove_all(vm_page_t m)
 	if ((m->flags & PG_MAPPED) == 0)
 		return;
 
+	/*
+	 * Pages mapped via VPAGETABLE cannot be found via the backing_list
+	 * scan because the VA formula doesn't apply.  The vkernel is
+	 * responsible for calling MADV_INVAL to remove real PTEs when it
+	 * modifies its page tables.
+	 *
+	 * For PG_VPTMAPPED pages, conservatively assume the page is
+	 * modified and referenced.  The backing_list scan below won't
+	 * find these mappings, but that's OK - the vkernel should have
+	 * already removed them via MADV_INVAL.
+	 *
+	 * Clear PG_VPTMAPPED along with PG_MAPPED at the end.
+	 */
+	if (m->flags & PG_VPTMAPPED) {
+		vm_page_dirty(m);
+		vm_page_flag_set(m, PG_REFERENCED);
+	}
+
 	retry = ticks + hz * 60;
 again:
 	PMAP_PAGE_BACKING_SCAN(m, NULL, ipmap, iptep, ipte, iva) {
@@ -4858,7 +4876,8 @@ again:
 			      m, m->md.interlock_count);
 		}
 	}
-	vm_page_flag_clear(m, PG_MAPPED | PG_MAPPEDMULTI | PG_WRITEABLE);
+	vm_page_flag_clear(m, PG_MAPPED | PG_MAPPEDMULTI | PG_WRITEABLE |
+			      PG_VPTMAPPED);
 }
 
 /*
@@ -5684,6 +5703,17 @@ pmap_testbit(vm_page_t m, int bit)
 		return FALSE;
 
 	/*
+	 * Pages mapped via VPAGETABLE cannot be found via the backing_list
+	 * scan because the VA formula doesn't apply (vkernel can map any
+	 * physical page to any VA).  Return TRUE conservatively - the page
+	 * may have the bit set in a vkernel's mapping.  The vkernel is
+	 * responsible for calling MADV_INVAL when it modifies its page
+	 * tables.
+	 */
+	if (m->flags & PG_VPTMAPPED)
+		return TRUE;
+
+	/*
 	 * Iterate the mapping
 	 */
 	PMAP_PAGE_BACKING_SCAN(m, NULL, ipmap, iptep, ipte, iva) {
@@ -5737,6 +5767,22 @@ pmap_clearbit(vm_page_t m, int bit_index)
 	}
 	if ((m->flags & (PG_MAPPED | PG_WRITEABLE)) == 0)
 		return;
+
+	/*
+	 * Pages mapped via VPAGETABLE cannot be found via the backing_list
+	 * scan.  The vkernel is responsible for calling MADV_INVAL when it
+	 * modifies its page tables.
+	 *
+	 * For the RW bit: conservatively mark page dirty, clear WRITEABLE.
+	 * For other bits: cannot clear, just return (vkernel handles this).
+	 */
+	if (m->flags & PG_VPTMAPPED) {
+		if (bit_index == PG_RW_IDX) {
+			vm_page_dirty(m);
+			vm_page_flag_clear(m, PG_WRITEABLE);
+		}
+		return;
+	}
 
 	/*
 	 * Being asked to clear other random bits, we don't track them
@@ -5896,6 +5942,16 @@ pmap_ts_referenced(vm_page_t m)
 
 	if (__predict_false(!pmap_initialized || (m->flags & PG_FICTITIOUS)))
 		return rval;
+
+	/*
+	 * Pages mapped via VPAGETABLE cannot be found via the backing_list
+	 * scan.  Return non-zero conservatively to indicate the page may
+	 * be referenced.  The vkernel is responsible for calling MADV_INVAL
+	 * when it modifies its page tables.
+	 */
+	if (m->flags & PG_VPTMAPPED)
+		return 1;
+
 	PMAP_PAGE_BACKING_SCAN(m, NULL, ipmap, iptep, ipte, iva) {
 		if (ipte & ipmap->pmap_bits[PG_A_IDX]) {
 			npte = ipte & ~ipmap->pmap_bits[PG_A_IDX];

@@ -37,6 +37,7 @@
 #include <cpu/lwbuf.h>
 #include <vm/vm_page.h>
 #include <vm/vm_extern.h>
+#include <vm/pmap.h>
 #include <assert.h>
 
 #include <sys/stat.h>
