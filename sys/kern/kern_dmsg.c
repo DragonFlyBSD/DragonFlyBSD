@@ -294,13 +294,19 @@ kdmsg_iocom_uninit(kdmsg_iocom_t *iocom)
 	}
 
 	/*
+	 * Drain any remaining messages in the queue, including the
+	 * DMSG_LNK_PING we just allocated above.  This can happen if
+	 * no connection was ever established.
+	 */
+	kdmsg_drain_msgq(iocom);
+
+	/*
 	 * Cleanup caches
 	 */
 	if ((state = iocom->freerd_state) != NULL) {
 		iocom->freerd_state = NULL;
 		kdmsg_state_drop(state);
 	}
-
 	if ((state = iocom->freewr_state) != NULL) {
 		iocom->freewr_state = NULL;
 		kdmsg_state_drop(state);
