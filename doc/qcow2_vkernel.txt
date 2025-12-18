@@ -1,0 +1,329 @@
+QCOW2 Support for Vkernel Virtual Disks
+=======================================
+
+Date: January 2025 (updated March 2025)
+Context: Extend the vkernel virtual disk driver (vkd) to support QCOW2 images,
+enabling sparse storage, backing file chains, and snapshots. All code must be
+BSD-licensed; base implementation on Google's crosvm qcow2 module (BSD-3-Clause).
+
+TABLE OF CONTENTS
+-----------------
+1. Background
+2. Requirements
+3. Constraints
+4. Reference Implementation: crosvm
+5. QCOW2 Format Summary
+6. Architectural Overview
+7. Data Structures
+8. Snapshot Handling
+9. Implementation Plan
+10. Testing Strategy
+11. Open Questions
+
+==============================================================================
+1. BACKGROUND
+==============================================================================
+
+The current vkernel disk driver (sys/dev/virtual/vkernel/disk/vdisk.c) only
+supports raw image files. Users rely on qemu-img convert to pre-expand qcow2
+images, which loses sparse allocations and snapshots. Adding native qcow2
+support lets vkernels boot directly from upstream DragonFly images and improves
+the developer workflow.
+
+Adding qcow2 enables:
+  * Sparse allocation without consuming full disk space
+  * Backing file chains for layering test environments
+  * Snapshot creation and rewind during kernel debugging
+  * Compatibility with tooling that already produces qcow2 images
+
+==============================================================================
+2. REQUIREMENTS
+==============================================================================
+
+Functional
+----------
+1. Accept qcow2 version 2 and 3 files (v3 required for full snapshot support).
+2. Support the following qcow2 primitives:
+   * Cluster-based allocation and refcounting
+   * Lazy refcount rebuild (read-only ok, full rebuild optional)
+   * Backing files (single layer initially, multi-level later)
+   * Read/write guest clusters, including copy-on-write semantics
+   * Snapshot directory: load entries, switch snapshot at attach time
+3. Expose snapshots through new vkd command-line syntax (e.g. "file@snap").
+4. Maintain deterministic behaviour when a qcow2 image is shared read-only.
+5. Preserve existing raw/COW (-r/-R) disk behavior unchanged.
+
+Non-Functional
+--------------
+1. BSD/MIT licensed implementation only. Use crosvm (BSD-3-Clause) as primary
+   reference. Do not incorporate GPL code (QEMU/libqcow).
+2. Minimal impact on non-qcow2 code paths; raw disks must remain fast.
+3. Avoid modifying sys/vm structures per AGENTS.md instructions.
+
+==============================================================================
+3. CONSTRAINTS
+==============================================================================
+
+* No GPL/LGPL-licensed code; only BSD/MIT/Apache sources may be referenced.
+* No kernel struct layout changes under sys/vm/.
+* Work stays inside vkernel-specific code: sys/dev/virtual/vkernel/,
+  sys/platform/vkernel64/.
+* Cooperative MADV_INVAL mechanism remains the only reverse-mapping strategy.
+* qcow2 parsing operates entirely in cothread context (blocking syscalls OK).
+* Snapshots must be exposed without requiring new host syscalls.
+* Library must coexist with the existing raw path; raw remains the default.
+
+==============================================================================
+4. REFERENCE IMPLEMENTATION: crosvm
+==============================================================================
+
+crosvm (https://github.com/google/crosvm) contains a BSD-licensed qcow2 stack:
+  * `disk/src/qcow/mod.rs` - high-level entry points and metadata management.
+  * `qcow_raw_file.rs` - cluster-level I/O helpers.
+  * `refcount.rs` - refcount table/block maintenance, including rebuild logic.
+  * `vec_cache.rs` - small cache abstraction for L1/L2 tables.
+
+We will translate the relevant algorithms to C, maintaining structure parity to
+simplify validation. Key ideas to reuse:
+  * Strict header parsing with feature masks.
+  * L1/L2 cache eviction that writes back dirty tables.
+  * Refcount rebuild path for inconsistent images.
+  * Backing file abstraction layered under main file I/O.
+
+==============================================================================
+5. QCOW2 FORMAT SUMMARY
+==============================================================================
+
+Version & Header
+----------------
+- Magic "QFI\xfb", version 2 or 3 (v3 preferred for snapshots/refcounts).
+- Key header fields: cluster_bits (usually 16), l1_size + offsets, refcount
+  table offset/size, snapshot table offset, feature bitmasks.
+- Read the 104-byte v3 header, validate magic, version, cluster bits, table
+  sizes, refcount order, and compatible feature flags.
+
+Mapping Tables
+--------------
+- Two-level L1/L2 pointer tables map guest clusters to host clusters.
+- Each L2 entry encodes cluster offset, zero flag, COW/refcount state.
+- Extended L2 entries (bit 4) allow per-subcluster allocation. We will target
+  standard entries first; design API to extend later.
+
+Refcount Infrastructure
+-----------------------
+- Refcount table -> refcount blocks (one cluster each). Each entry stores a
+  16-bit reference count (refcount_order default 4).
+- Cluster allocation/deallocation must update refcounts; lazy refcounts
+  (compatible feature bit 0) may be leveraged for performance.
+- Keep a dirty bitmap and write clusters back during flush.
+
+Backing Files
+-------------
+- If header lists a backing path, open it read-only through the existing raw
+  helper. Resolve relative paths against the qcow2 directory.
+- Reads: if cluster unallocated, fall back to backing file or zero-fill.
+
+Snapshots
+---------
+- Snapshot directory: nb_snapshots + snapshots_offset. Each entry stores the
+  L1 table pointer, timestamps, VM state size, optional extra fields.
+- Creating a snapshot copies the active L1 table and bumps refcounts for all
+  reachable L2/data clusters.
+- Loading a snapshot switches L1 pointer and re-computes valid bits from
+  refcounts.
+
+==============================================================================
+6. ARCHITECTURAL OVERVIEW
+==============================================================================
+
+Driver Layers
+-------------
+
+1. `vkd.c`: Existing block interface. We introduce a new `VDISK_BACKEND_QCOW2`
+   mode that hooks into the qcow2 backend while preserving the cothread I/O
+   pipeline.
+2. `vdisk_qcow2.c` (new): Implements qcow2 parsing, header validation, L1/L2
+   lookup, refcount management, and snapshot metadata parsing.
+3. `vdisk_file.c` (existing raw path): untouched except for backend selection.
+
+New files under `sys/dev/virtual/vkernel/disk/`:
+  * `qcow2.h` - on-disk structures, constants, in-memory state.
+  * `qcow2.c` - parser, cluster mapping, refcount handling, snapshot ops.
+  * `qcow2_refcount.c` (optional split) - refcount table management.
+
+Cothread Execution
+------------------
+
+All qcow2 disk I/O occurs in the existing cothread to avoid blocking kernel
+LWKT threads. The cothread calls into the qcow2 backend which issues
+pread()/pwrite()/fsync operations against the image file.
+
+Backend Selection
+-----------------
+
+Detect qcow2 header at open time: if the header matches "QFI\xfb", the qcow2
+state machine is created. Otherwise fall back to the raw path.
+
+==============================================================================
+7. DATA STRUCTURES
+==============================================================================
+
+struct vkd_backend {
+    enum { VDISK_BACKEND_RAW, VDISK_BACKEND_QCOW2 } type;
+    union {
+        struct raw_backend raw;
+        struct qcow2_backend qcow;
+    } u;
+};
+
+struct qcow2_backend {
+    int fd;
+    off_t virtual_size;
+    off_t cluster_size;
+    uint32_t l1_size;
+    uint32_t cluster_bits;
+    uint32_t refcount_order;
+    off_t l1_table_offset;
+    off_t refcount_table_offset;
+    uint32_t refcount_table_clusters;
+    uint64_t incompatible_features;
+    uint64_t compatible_features;
+    uint64_t autoclear_features;
+    uint64_t snapshots_offset;
+    uint32_t nb_snapshots;
+    struct qcow2_snapshot *snaps;
+    struct qcow2_cache l2_cache;
+    struct qcow2_cache refcount_cache;
+    struct qcow2_backing *backing; /* optional */
+};
+
+Caches reuse crosvm concepts (VecCache, CacheMap) but rewritten in C: ring of
+recent L2 tables and refcount blocks. Cache size tunables go in sysctl.
+
+==============================================================================
+8. SNAPSHOT HANDLING
+==============================================================================
+
+Minimum Feature Set
+-------------------
+- List existing internal snapshots (names, IDs, timestamps).
+- Load (activate) a snapshot by switching the active L1 pointer and rebuilding
+  cached L2/refcount information.
+- Create a new snapshot from the running state by duplicating the active L1
+  table and bumping refcounts (lazy refcount bit allows deferred metadata).
+- Delete an existing snapshot: walk its L1/L2 tables, decrement refcounts,
+  reclaim orphaned clusters.
+
+Implementation Notes
+--------------------
+- Snapshot table parsed during backend initialization.
+- Provide selection via CLI: `-r qcow2file@snapname` attaches the named
+  snapshot by selecting its L1 table. Default is active L1 (current state).
+- Snapshot metadata manipulation happens entirely inside qcow2 code; the rest
+  of the kernel sees a single logical disk.
+- Ensure snapshot directory updates are crash-safe: write new entry, fsync
+  metadata clusters, then update nb_snapshots.
+- When switching snapshots, mark L1/L2 "refcount == 1" hints invalid and
+  recompute based on refcount data.
+- Store VM state size fields but ignore actual VM state blobs (vkernel does
+  not dump guest RAM snapshots today).
+
+==============================================================================
+9. IMPLEMENTATION PLAN
+==============================================================================
+
+Phase 1: Infrastructure
+-----------------------
+1. Detect qcow2 header (magic + version) when opening `-r/-R` disks.
+2. Create `qcow2.c` + `qcow2.h` with helpers to read header, load L1 table,
+   and perform L2 lookup for read requests.
+3. Add qcow2 type flag to `vkdisk_info` and disk command-line parser.
+4. Integrate backend selection into vkd init path. Add sysctl to report
+   attached qcow2 images.
+
+Phase 2: Write Path and Refcounts
+---------------------------------
+1. Implement refcount table reader/writer using crosvm logic.
+2. Support cluster allocation (refcount zero -> allocate, fsync metadata).
+3. Implement cluster allocation path for writes with COW semantics.
+4. Add punch-hole zeroing for sparse writes.
+
+Phase 3: Backing Files
+----------------------
+1. Backing file chains: recursively open parent image, layering read fallbacks.
+2. Support single-level initially; multi-level chain support later.
+
+Phase 4: Snapshot Enumeration
+-----------------------------
+1. Parse snapshot table (nb_snapshots, snapshots_offset).
+2. Implement snapshot list/load/create/delete routines.
+3. Provide user interface via command-line syntax to select snapshot.
+4. Document limitations (create/delete may be deferred).
+
+Phase 5: Advanced Features (Future)
+-----------------------------------
+1. Lazy refcount rebuild: detect dirty bit, run scan on open.
+2. Optional zstd/deflate support for compressed clusters.
+3. Extended L2 entries for per-subcluster allocation.
+
+==============================================================================
+10. TESTING STRATEGY
+==============================================================================
+
+Host-Side Unit Tests
+--------------------
+- Add test harness under tools/regression/qcow2 to exercise qcow2 parsing
+  against known-good test images.
+- Test vectors covering: header parsing for v2/v3, invalid cluster bits,
+  invalid refcount tables, L1/L2 translation correctness, refcount allocator
+  cycles, snapshot selection.
+- Introduce fuzz testing for headers (reject malformed files cleanly).
+
+VM Integration Tests
+--------------------
+1. Boot vkernel from a qcow2 root image, run fsck, write files, reboot.
+2. Create snapshots with qemu-img, boot from different snapshots by name.
+3. Stress test with concurrent readers/writers (`dd` + `fsx` inside guest).
+4. Validate that `qemu-img check` sees no corruption after vkernel writes,
+   and that qemu can boot the same image afterwards.
+
+Regression Tests
+----------------
+- Ensure raw disk path is unaffected (existing tests + host buildworld inside
+  vkernel on raw disk).
+- Measure cothread latency vs raw disks; adjust cache sizes if needed.
+
+==============================================================================
+11. OPEN QUESTIONS
+==============================================================================
+
+1. Compression Support:
+   - Defer or implement basic zlib/zstd decoding? Initially reject compressed
+     clusters with EOPNOTSUPP and document the limitation.
+
+2. External Data Files:
+   - Out of scope for initial merge (incompatible bit 2). Parser must detect
+     and fail with a clear error.
+
+3. Extended L2 Entries:
+   - Improves sparse performance but adds complexity. Defer to future phase.
+
+4. Snapshot Control Interface:
+   - CLI knobs vs. ioctl vs. sysctl - determine how operators trigger snapshot
+     actions at runtime (vs. boot-time selection).
+
+5. Thread Safety:
+   - Multiple vkd instances per vkernel - do we need additional locking within
+     qcow2 backend beyond cothread serialization?
+
+6. Format Detection:
+   - Auto-detect qcow2 via header magic, or require explicit option? Hybrid
+     approach (auto unless overridden) seems most user-friendly.
+
+7. Performance Tuning:
+   - L2 cache size, write batching, and flush intervals might need tuning
+     after initial deployment.
+
+---
+Next steps: Implement qcow2 core module per this plan, wire into vdisk.c, and
+prepare regression tests to validate against known-good qcow2 images.
