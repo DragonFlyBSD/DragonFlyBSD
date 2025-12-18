@@ -1,0 +1,355 @@
+Vkernel Console Subsystem Redesign
+===================================
+
+Date: December 2024
+Context: Enable remote and on-demand console access to vkernels, allowing
+attachment to running vkernels started in the background or via daemon mode.
+
+TABLE OF CONTENTS
+-----------------
+1. Background
+2. Requirements
+3. Constraints
+4. Architectural Overview
+5. Console Types
+6. Control Socket Protocol
+7. Data Flow
+8. Implementation Plan
+9. Testing Strategy
+10. Open Questions
+
+==============================================================================
+1. BACKGROUND
+==============================================================================
+
+The current vkernel console implementation (sys/platform/vkernel64/platform/
+console.c) is hardcoded to use the host process's stdin/stdout for console
+I/O. This works well for interactive use but has significant limitations:
+
+  * If the vkernel is started in the background, console access is lost
+  * No way to attach to a running vkernel from another terminal
+  * No support for multiple independent console sessions (ttyv0-N)
+  * Cannot run vkernel as a daemon with later console attachment
+
+Other virtualization solutions (QEMU, bhyve, Proxmox containers) provide
+mechanisms to attach/detach from consoles. This document describes a similar
+capability for vkernels.
+
+==============================================================================
+2. REQUIREMENTS
+==============================================================================
+
+Functional
+----------
+1. Maintain full backwards compatibility: vkernel with no special options
+   should behave exactly as today (stdin/stdout for console).
+2. Always create a control socket allowing external tools to interact with
+   the running vkernel.
+3. Support attaching to the system console (comconsole) from external clients.
+4. Support on-demand PTY-based virtual terminals (ttyv0-N) for independent
+   login sessions.
+5. Provide a client utility (vkcons) to attach to consoles.
+6. Support headless mode where stdin/stdout are not used.
+
+Non-Functional
+--------------
+1. Simple text-based control protocol.
+2. Minimal changes to existing console code paths.
+3. No new kernel syscalls required - use existing Unix socket and PTY APIs.
+
+==============================================================================
+3. CONSTRAINTS
+==============================================================================
+
+* Control socket always created, even in default interactive mode.
+* When stdin/stdout are active (default mode), they have input priority over
+  socket clients attached to comconsole.
+* Socket clients attached to comconsole are read-only viewers when stdin is
+  active.
+* Only one client may be attached to a given ttyvN at a time; new attachment
+  kicks the previous client.
+* vkcons is purely a client; it never starts the vkernel process.
+
+==============================================================================
+4. ARCHITECTURAL OVERVIEW
+==============================================================================
+
+                    VKERNEL PROCESS
+    ┌─────────────────────────────────────────────────────┐
+    │                                                     │
+    │  ┌─────────────────────────────────────────────┐   │
+    │  │            Console Subsystem                 │   │
+    │  │                                             │   │
+    │  │  comconsole ◄────┬────► stdin/stdout        │   │
+    │  │  (system)        │      (default mode)      │   │
+    │  │                  │                          │   │
+    │  │                  └────► socket clients      │   │
+    │  │                         (read-only if       │   │
+    │  │                          stdin active)      │   │
+    │  │                                             │   │
+    │  │  ttyv0 ◄─────────────► PTY (on-demand)      │   │
+    │  │  ttyv1 ◄─────────────► PTY (on-demand)      │   │
+    │  │  ...                                        │   │
+    │  └─────────────────────────────────────────────┘   │
+    │                       │                            │
+    │                       ▼                            │
+    │       /var/run/vkernel.{pid}.sock                  │
+    │       (control socket)                             │
+    │                                                    │
+    └────────────────────────────────────────────────────┘
+                            │
+                            ▼
+    ┌─────────────────────────────────────────────────────┐
+    │                    vkcons                           │
+    │              (client utility)                       │
+    └─────────────────────────────────────────────────────┘
+
+==============================================================================
+5. CONSOLE TYPES
+==============================================================================
+
+System Console (comconsole)
+---------------------------
+The system console receives kernel messages, panic output, and is used for
+single-user mode. It behaves like a serial console.
+
+Default mode:
+  - Output goes to both stdin/stdout AND any attached socket clients
+  - Input comes from stdin only (socket clients are read-only)
+
+Headless mode (-C none):
+  - stdin/stdout not used
+  - Input/output only via socket clients
+  - First attached client gets input control
+
+Virtual Terminals (ttyv0-N)
+---------------------------
+Independent login sessions, similar to virtual consoles on a physical machine.
+Each ttyvN:
+  - Activated on-demand when a client requests it
+  - Backed by a PTY pair (master/slave)
+  - Master fd passed to client via SCM_RIGHTS
+  - Client is responsible for running getty or shell
+  - Only one client per ttyvN at a time
+
+==============================================================================
+6. CONTROL SOCKET PROTOCOL
+==============================================================================
+
+The control socket uses a simple text-based protocol. Commands are newline-
+terminated. After certain commands, the connection transitions to raw I/O mode.
+
+Socket Path
+-----------
+/var/run/vkernel.{pid}.sock
+
+Commands (Client -> Vkernel)
+----------------------------
+ATTACH
+    Attach to system console (comconsole).
+    Response: OK
+    After OK, connection becomes raw console I/O.
+    If stdin active: client receives output only (read-only viewer).
+    If headless: client has full I/O control.
+
+ATTACH <N>
+    Request virtual terminal ttyvN (where N is 0-7).
+    Response: OK (with PTY master fd passed via SCM_RIGHTS)
+    Response: ERR <message> (if ttyvN cannot be allocated)
+    After OK, client should interact via the received PTY fd.
+    If ttyvN is in use, previous client is disconnected.
+
+LIST
+    List active console sessions.
+    Response: Multi-line list followed by OK
+    Format: <type> <id> <status>
+    Example:
+        comconsole - stdin+socket
+        ttyv0 pty active
+        ttyv1 pty active
+        OK
+
+DETACH <N>
+    Forcibly disconnect client from ttyvN.
+    Response: OK or ERR <message>
+
+Responses (Vkernel -> Client)
+-----------------------------
+OK
+    Command succeeded.
+
+OK <info>
+    Command succeeded with additional info.
+
+ERR <message>
+    Command failed.
+
+==============================================================================
+7. DATA FLOW
+==============================================================================
+
+Comconsole Output (kernel messages, etc.)
+-----------------------------------------
+
+    Kernel kprintf()
+         │
+         ▼
+    comconsole output buffer
+         │
+         ├────────────────► stdout (if interactive mode)
+         │
+         └────────────────► socket client(s) (if attached)
+
+
+Comconsole Input
+----------------
+
+Interactive mode:
+    stdin ─────────────────► comconsole input
+    socket clients: ignored (read-only)
+
+Headless mode:
+    socket client ─────────► comconsole input
+    (first/only attached client)
+
+
+Virtual Terminal I/O (ttyvN)
+----------------------------
+
+    vkcons (client)
+         │
+         │ PTY master fd (received via SCM_RIGHTS)
+         │
+         ▼
+    ┌─────────┐
+    │ PTY     │
+    │ master  │◄────────────────────────┐
+    └────┬────┘                         │
+         │                              │
+         ▼                              │
+    ┌─────────┐      ┌─────────────┐    │
+    │ PTY     │◄────►│   ttyvN     │────┘
+    │ slave   │      │  (vkernel)  │
+    └─────────┘      └─────────────┘
+                           │
+                           ▼
+                     getty/login/shell
+                     (inside vkernel)
+
+==============================================================================
+8. IMPLEMENTATION PLAN
+==============================================================================
+
+Phase 1: Control Socket Infrastructure
+--------------------------------------
+1. Add socket creation to vkernel init (sys/platform/vkernel64/platform/init.c)
+   - Create /var/run/vkernel.{pid}.sock on startup
+   - Clean up socket on shutdown
+   - Add kqueue monitoring for socket connections
+
+2. Add command parser (sys/platform/vkernel64/platform/console.c)
+   - Parse ATTACH, LIST, DETACH commands
+   - Implement basic responses
+
+Phase 2: Comconsole Socket Attachment
+-------------------------------------
+1. Modify comconsole output path to multiplex to socket clients
+   - Maintain list of attached comconsole clients
+   - Write output to stdout AND all attached clients
+
+2. Implement ATTACH (no argument) command
+   - Add client to comconsole viewer list
+   - Transition connection to raw I/O mode
+
+Phase 3: PTY-Based Virtual Terminals
+------------------------------------
+1. Implement PTY allocation for ttyvN
+   - On ATTACH N, allocate PTY pair
+   - Pass master fd to client via SCM_RIGHTS
+   - Connect slave to ttyvN device
+
+2. Implement ttyvN backend
+   - Replace dummy ttyv1-7 with functional PTY-backed terminals
+   - Support proper TTY semantics (termios, winsize, etc.)
+
+3. Implement session management
+   - Track active ttyvN sessions
+   - Handle client disconnection (close PTY)
+   - Implement DETACH command
+
+Phase 4: vkcons Client Utility
+------------------------------
+1. Create usr.bin/vkcons/
+   - Socket connection handling
+   - Terminal raw mode setup
+   - SIGWINCH forwarding
+   - Graceful disconnect (restore terminal)
+
+2. Implement commands:
+   - vkcons -s <socket> attach
+   - vkcons -s <socket> attach <N>
+   - vkcons -s <socket> list
+   - vkcons -s <socket> detach <N>
+
+Phase 5: Headless Mode
+----------------------
+1. Add -C option to vkernel
+   - -C none: do not use stdin/stdout for console
+   - Default: current behavior (stdin/stdout active)
+
+2. Modify input priority logic
+   - Headless: socket client gets input control
+   - Interactive: stdin has priority
+
+==============================================================================
+9. TESTING STRATEGY
+==============================================================================
+
+Unit Tests
+----------
+1. Control socket protocol parsing
+2. PTY allocation and fd passing
+3. Client connection/disconnection handling
+
+Integration Tests
+-----------------
+1. Start vkernel interactively, verify stdin/stdout work as before
+2. Start vkernel interactively, attach vkcons, verify output mirroring
+3. Start vkernel in background, attach vkcons, verify full I/O
+4. Request ttyv0, verify PTY works, run getty
+5. Multiple ttyvN sessions simultaneously
+6. Detach/reattach to same ttyvN
+7. Kill client, verify ttyvN properly cleaned up
+
+Regression Tests
+----------------
+1. Existing vkernel boot tests must pass unchanged
+2. Single-user mode via comconsole
+3. Multi-user mode with getty on ttyv0
+
+==============================================================================
+10. DESIGN DECISIONS
+==============================================================================
+
+1. Socket Permissions
+   The control socket is created with mode 0600, owned by the effective UID
+   of the vkernel process. Only the user who started the vkernel can attach.
+
+2. Maximum Clients
+   Limit comconsole viewers to a sensible maximum (e.g., 8) to prevent
+   resource exhaustion.
+
+3. Authentication
+   No additional authentication beyond Unix socket permissions. Attaching to
+   a ttyvN will present the login prompt, which provides sufficient access
+   control.
+
+4. Window Size
+   Use TIOCSWINSZ ioctl over the socket connection. Client sends window size
+   after ATTACH command and on SIGWINCH. This is the standard mechanism used
+   by SSH and terminal emulators.
+
+5. Console Selection at Boot
+   No selection mechanism. The system console (comconsole) always receives
+   kernel messages and is used for single-user mode. Virtual terminals
+   (ttyv0-N) are for additional login sessions only.
