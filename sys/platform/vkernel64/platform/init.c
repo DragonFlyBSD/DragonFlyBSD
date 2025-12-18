@@ -94,6 +94,8 @@ int DiskNum;
 struct vknetif_info NetifInfo[VKNETIF_MAX];
 int NetifNum;
 char *pid_file;
+char *ConsoleSocketPath;		/* control socket path */
+int ConsoleSocketFd = -1;		/* control socket fd */
 vm_offset_t KvaStart;
 vm_offset_t KvaEnd;
 vm_offset_t KvaSize;
@@ -142,6 +144,8 @@ static void init_disk(char **diskExp, int *diskFlags, int diskFileNum, enum vkdi
 static void init_netif(char *netifExp[], int netifFileNum);
 static void writepid(void);
 static void cleanpid(void);
+static void init_console_sock(void);
+static void clean_console_sock(void);
 static int unix_connect(const char *path);
 static void usage_err(const char *ctl, ...) __printflike(1, 2);
 static void usage_help(_Bool);
@@ -447,6 +451,7 @@ main(int ac, char **av)
 	init_vkernel();
 	setrealcpu();
 	init_kqueue();
+	init_console_sock();
 
 	vmm_guest = VMM_GUEST_VKERNEL;
 
@@ -1415,6 +1420,101 @@ cleanpid( void )
 	}
 }
 
+/*
+ * Create the control socket for vkcons(1) connections.
+ * Socket is created at /var/run/vkernel.{pid}.sock with mode 0600.
+ */
+static
+void
+init_console_sock(void)
+{
+	struct sockaddr_un sunx;
+	int fd;
+	int len;
+
+	/*
+	 * Build socket path
+	 */
+	ConsoleSocketPath = malloc(PATH_MAX);
+	if (ConsoleSocketPath == NULL) {
+		warn("Failed to allocate console socket path");
+		return;
+	}
+	snprintf(ConsoleSocketPath, PATH_MAX, "/var/run/vkernel.%ld.sock",
+	    (long)getpid());
+
+	/*
+	 * Create and bind the socket
+	 */
+	fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (fd < 0) {
+		warn("Failed to create console control socket");
+		free(ConsoleSocketPath);
+		ConsoleSocketPath = NULL;
+		return;
+	}
+
+	/*
+	 * Remove any stale socket
+	 */
+	unlink(ConsoleSocketPath);
+
+	bzero(&sunx, sizeof(sunx));
+	sunx.sun_family = AF_UNIX;
+	snprintf(sunx.sun_path, sizeof(sunx.sun_path), "%s", ConsoleSocketPath);
+	len = offsetof(struct sockaddr_un, sun_path[strlen(sunx.sun_path)]);
+	sunx.sun_len = len;
+
+	if (bind(fd, (struct sockaddr *)&sunx, len) < 0) {
+		warn("Failed to bind console control socket to %s",
+		    ConsoleSocketPath);
+		close(fd);
+		free(ConsoleSocketPath);
+		ConsoleSocketPath = NULL;
+		return;
+	}
+
+	/*
+	 * Set permissions to 0600 (use chmod on path, not fchmod on fd)
+	 */
+	if (chmod(ConsoleSocketPath, 0600) < 0) {
+		warn("Failed to set console socket permissions");
+	}
+
+	if (listen(fd, 4) < 0) {
+		warn("Failed to listen on console control socket");
+		close(fd);
+		unlink(ConsoleSocketPath);
+		free(ConsoleSocketPath);
+		ConsoleSocketPath = NULL;
+		return;
+	}
+
+	/*
+	 * Set non-blocking. Kqueue registration is deferred via SYSINIT
+	 * in console.c because kmalloc isn't available this early.
+	 */
+	fcntl(fd, F_SETFL, O_NONBLOCK);
+	ConsoleSocketFd = fd;
+
+	printf("Console control socket: %s\n", ConsoleSocketPath);
+}
+
+static
+void
+clean_console_sock(void)
+{
+	if (ConsoleSocketFd >= 0) {
+		close(ConsoleSocketFd);
+		ConsoleSocketFd = -1;
+	}
+	if (ConsoleSocketPath != NULL) {
+		unlink(ConsoleSocketPath);
+		free(ConsoleSocketPath);
+		ConsoleSocketPath = NULL;
+	}
+}
+
 static
 void
 usage_err(const char *ctl, ...)
@@ -1477,6 +1577,7 @@ cpu_reset(void)
 {
 	kprintf("cpu reset, rebooting vkernel\n");
 	closefrom(3);
+	clean_console_sock();
 	cleanpid();
 	exit(EX_VKERNEL_REBOOT);
 }
@@ -1485,6 +1586,7 @@ void
 cpu_halt(void)
 {
 	kprintf("cpu halt, exiting vkernel\n");
+	clean_console_sock();
 	cleanpid();
 	exit(EX_OK);
 }

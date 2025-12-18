@@ -45,15 +45,228 @@
 #include <sys/eventhandler.h>
 #include <sys/interrupt.h>
 #include <sys/bus.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <machine/md_var.h>
 #include <unistd.h>
 #include <termios.h>
 #include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 
 static int console_stolen_by_kernel;
 static struct kqueue_info *kqueue_console_info;
 static struct tty *kqueue_console_tty;
 static int vcons_started;
+
+/* From init.c */
+extern int ConsoleSocketFd;
+
+/************************************************************************
+ *		    CONTROL SOCKET CLIENT HANDLING			*
+ ************************************************************************
+ *
+ * Handle connections from vkcons(1) utility via the control socket.
+ */
+
+#define VCONS_CTL_MAX_CLIENTS	8
+#define VCONS_CTL_BUFSIZE	256
+
+struct vcons_ctl_client {
+	int			fd;
+	struct kqueue_info	*kqinfo;
+	char			buf[VCONS_CTL_BUFSIZE];
+	int			buflen;
+};
+
+static struct vcons_ctl_client ctl_clients[VCONS_CTL_MAX_CLIENTS];
+static int ctl_client_count;
+static struct kqueue_info *ctl_sock_kqinfo;
+
+/* Forward declaration for kqueue handler */
+static void vcons_ctl_sock_handler(void *arg, struct intrframe *frame);
+
+static void vcons_ctl_client_handler(void *arg, struct intrframe *frame);
+static void vcons_ctl_process_cmd(struct vcons_ctl_client *client);
+static void vcons_ctl_send(struct vcons_ctl_client *client, const char *msg);
+static void vcons_ctl_close_client(struct vcons_ctl_client *client);
+
+/*
+ * Register the control socket with kqueue.
+ * Called via SYSINIT after kmalloc is available.
+ */
+static void
+vcons_ctl_sock_init(void *arg __unused)
+{
+	if (ConsoleSocketFd >= 0 && ctl_sock_kqinfo == NULL) {
+		ctl_sock_kqinfo = kqueue_add(ConsoleSocketFd,
+		    vcons_ctl_sock_handler, NULL);
+	}
+}
+SYSINIT(vcons_ctl_sock, SI_SUB_DRIVERS, SI_ORDER_ANY, vcons_ctl_sock_init, NULL);
+
+/*
+ * Called when a new connection arrives on the control socket.
+ * Accept the connection and register it with kqueue.
+ */
+static void
+vcons_ctl_sock_handler(void *arg __unused, struct intrframe *frame __unused)
+{
+	struct sockaddr_un sunx;
+	socklen_t len;
+	int fd;
+	int i;
+
+	len = sizeof(sunx);
+	fd = accept(ConsoleSocketFd, (struct sockaddr *)&sunx, &len);
+	if (fd < 0) {
+		if (errno != EAGAIN && errno != EWOULDBLOCK)
+			kprintf("vcons: accept failed: %s\n", strerror(errno));
+		return;
+	}
+
+	/*
+	 * Find a free client slot
+	 */
+	for (i = 0; i < VCONS_CTL_MAX_CLIENTS; i++) {
+		if (ctl_clients[i].fd == 0)
+			break;
+	}
+	if (i >= VCONS_CTL_MAX_CLIENTS) {
+		const char *msg = "ERR too many clients\n";
+		write(fd, msg, strlen(msg));
+		close(fd);
+		return;
+	}
+
+	/*
+	 * Initialize client and register with kqueue
+	 */
+	fcntl(fd, F_SETFL, O_NONBLOCK);
+	ctl_clients[i].fd = fd;
+	ctl_clients[i].buflen = 0;
+	ctl_clients[i].kqinfo = kqueue_add(fd, vcons_ctl_client_handler,
+	    &ctl_clients[i]);
+	ctl_client_count++;
+}
+
+/*
+ * Called when a client sends data.
+ */
+static void
+vcons_ctl_client_handler(void *arg, struct intrframe *frame __unused)
+{
+	struct vcons_ctl_client *client = arg;
+	char *newline;
+	int n;
+
+	/*
+	 * Read available data
+	 */
+	n = read(client->fd, client->buf + client->buflen,
+	    VCONS_CTL_BUFSIZE - client->buflen - 1);
+	if (n <= 0) {
+		if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+			return;
+		/* EOF or error - close client */
+		vcons_ctl_close_client(client);
+		return;
+	}
+	client->buflen += n;
+	client->buf[client->buflen] = '\0';
+
+	/*
+	 * Process complete lines
+	 */
+	while ((newline = strchr(client->buf, '\n')) != NULL) {
+		*newline = '\0';
+		vcons_ctl_process_cmd(client);
+		/* Shift remaining data */
+		n = newline - client->buf + 1;
+		memmove(client->buf, newline + 1, client->buflen - n);
+		client->buflen -= n;
+	}
+
+	/*
+	 * Buffer overflow protection
+	 */
+	if (client->buflen >= VCONS_CTL_BUFSIZE - 1) {
+		vcons_ctl_send(client, "ERR command too long\n");
+		client->buflen = 0;
+	}
+}
+
+/*
+ * Process a single command from a client.
+ */
+static void
+vcons_ctl_process_cmd(struct vcons_ctl_client *client)
+{
+	char *cmd = client->buf;
+	char *arg;
+
+	/* Skip leading whitespace */
+	while (*cmd == ' ' || *cmd == '\t')
+		cmd++;
+
+	/* Find argument (if any) */
+	arg = cmd;
+	while (*arg && *arg != ' ' && *arg != '\t')
+		arg++;
+	if (*arg) {
+		*arg++ = '\0';
+		while (*arg == ' ' || *arg == '\t')
+			arg++;
+	}
+
+	if (strcasecmp(cmd, "ATTACH") == 0) {
+		if (*arg == '\0') {
+			/* ATTACH - comconsole */
+			vcons_ctl_send(client,
+			    "ERR comconsole attach not implemented\n");
+		} else {
+			/* ATTACH N - ttyvN */
+			vcons_ctl_send(client,
+			    "ERR ttyv attach not implemented\n");
+		}
+	} else if (strcasecmp(cmd, "LIST") == 0) {
+		vcons_ctl_send(client, "comconsole - stdin\n");
+		vcons_ctl_send(client, "OK\n");
+	} else if (strcasecmp(cmd, "DETACH") == 0) {
+		vcons_ctl_send(client, "ERR detach not implemented\n");
+	} else if (*cmd == '\0') {
+		/* Empty command, ignore */
+	} else {
+		vcons_ctl_send(client, "ERR unknown command\n");
+	}
+}
+
+/*
+ * Send a response to a client.
+ */
+static void
+vcons_ctl_send(struct vcons_ctl_client *client, const char *msg)
+{
+	write(client->fd, msg, strlen(msg));
+}
+
+/*
+ * Close a client connection.
+ */
+static void
+vcons_ctl_close_client(struct vcons_ctl_client *client)
+{
+	if (client->kqinfo != NULL) {
+		kqueue_del(client->kqinfo);
+		client->kqinfo = NULL;
+	}
+	if (client->fd > 0) {
+		close(client->fd);
+		client->fd = 0;
+	}
+	client->buflen = 0;
+	ctl_client_count--;
+}
 
 /************************************************************************
  *			    CONSOLE DEVICE				*
