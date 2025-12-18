@@ -1,0 +1,553 @@
+MAP_VPAGETABLE Re-implementation Analysis
+==========================================
+
+Date: December 2024
+Context: Analysis of commit 4d4f84f5f26bf5e9fe4d0761b34a5f1a3784a16f which
+removed MAP_VPAGETABLE support, breaking vkernel functionality.
+
+TABLE OF CONTENTS
+-----------------
+1. Background
+2. Why MAP_VPAGETABLE Was Removed
+3. Current VM Architecture
+4. The Reverse-Mapping Problem
+5. Cost Analysis of Current Mechanisms
+6. Proposed Solutions
+7. Recommendation
+8. Open Questions
+
+==============================================================================
+1. BACKGROUND
+==============================================================================
+
+MAP_VPAGETABLE was a DragonFly BSD feature that allowed the vkernel (virtual
+kernel) to implement software page tables without requiring hardware
+virtualization support (Intel VT-x / AMD-V).
+
+The vkernel runs as a userspace process but provides a full kernel
+environment. It needs to manage its own "guest" page tables for processes
+running inside the vkernel. MAP_VPAGETABLE allowed this by:
+
+  1. Creating an mmap region with MAP_VPAGETABLE flag
+  2. The vkernel writes software page table entries (VPTEs) into this region
+  3. On page faults, the host kernel walks these VPTEs to translate
+     guest virtual addresses to host physical addresses
+
+The key advantage was lightweight virtualization - no hypervisor, no special
+CPU features required. The vkernel was just a process with some extra kernel
+support for the virtual page tables.
+
+==============================================================================
+2. WHY MAP_VPAGETABLE WAS REMOVED
+==============================================================================
+
+From the commit message:
+
+  "The basic problem is that the VM system is moving to an extent-based
+   mechanism for tracking VM pages entered into PMAPs and is no longer
+   indexing individual terminal PTEs with pv_entry's.
+
+   This means that the VM system is no longer able to get an exact list of
+   PTEs in PMAPs that a particular vm_page is using. It just has a flag
+   'this page is in at least one pmap' or 'this page is not in any pmaps'.
+   To track down the PTEs, the VM system must run through the extents via
+   the vm_map_backing structures hanging off the related VM object.
+
+   This mechanism does not work with MAP_VPAGETABLE. Short of scanning
+   the entire real pmap, the kernel has no way to reverse-index a page
+   that might be indirected through MAP_VPAGETABLE."
+
+The core issue: DragonFly optimized memory by removing per-page tracking
+(pv_entry lists) in favor of extent-based tracking (vm_map_backing lists).
+This works for normal mappings but breaks VPAGETABLE.
+
+==============================================================================
+3. CURRENT VM ARCHITECTURE
+==============================================================================
+
+3.1 Key Data Structures
+-----------------------
+
+vm_object:
+  - Contains pages (rb_memq tree)
+  - Has a backing_list: TAILQ of vm_map_backing entries
+  - Each vm_map_backing represents an extent that maps part of this object
+
+vm_map_backing:
+  - Links a vm_map_entry to a vm_object
+  - Contains: pmap, start, end, offset
+  - Tracks "pages [offset, offset+size) of this object are mapped at
+    virtual addresses [start, end) in this pmap"
+
+vm_page:
+  - PG_MAPPED flag: "this page MIGHT be mapped somewhere"
+  - PG_WRITEABLE flag: "this page MIGHT have a writable mapping"
+  - md.interlock_count: race detection between pmap_enter/pmap_remove_all
+
+3.2 Reverse-Mapping Mechanism
+-----------------------------
+
+The PMAP_PAGE_BACKING_SCAN macro (sys/platform/pc64/x86_64/pmap.c:176-220)
+finds all PTEs mapping a given physical page:
+
+  for each vm_map_backing in page->object->backing_list:
+      if page->pindex is within backing's range:
+          compute va = backing->start + (pindex - offset) * PAGE_SIZE
+          look up PTE at va in backing->pmap
+          if PTE maps our physical page:
+              found it!
+
+This works because for NORMAL mappings, the relationship between object
+pindex and virtual address is fixed and computable.
+
+3.3 Why This Doesn't Work for VPAGETABLE
+----------------------------------------
+
+With VPAGETABLE:
+  - One vm_map_backing covers the entire VPAGETABLE region
+  - The vkernel's software page tables can map ANY physical page to
+    ANY virtual address within that region
+  - The formula "va = start + (pindex - offset) * PAGE_SIZE" is WRONG
+  - The actual VA depends on what the vkernel wrote into its guest PTEs
+
+Example:
+  - VPAGETABLE region: VA 0x1000000-0x2000000
+  - Physical page at object pindex 42
+  - Expected VA by formula: 0x1000000 + 42*4096 = 0x102a000
+  - Actual VA per guest PTEs: 0x1500000 (and maybe also 0x1800000!)
+  - The scan looks at 0x102a000, finds nothing, misses the real mappings
+
+==============================================================================
+4. THE REVERSE-MAPPING PROBLEM
+==============================================================================
+
+4.1 When Reverse-Mapping is Needed
+----------------------------------
+
+The backing_list scan is used by these functions (7 call sites in pmap.c):
+
+  pmap_remove_all()      - Remove page from ALL pmaps (page reclaim, COW)
+  pmap_remove_specific() - Remove page from ONE specific pmap
+  pmap_testbit()         - Check if Modified bit is set
+  pmap_clearbit()        - Clear Access/Modified/Write bits
+  pmap_ts_referenced()   - Check/clear reference bits for page aging
+
+4.2 When Reverse-Mapping is NOT Needed
+--------------------------------------
+
+Normal page faults do NOT use backing_list scans. They:
+  1. Look up vm_map_entry by faulting VA
+  2. Walk the vm_map_backing chain to find/create the page
+  3. Call pmap_enter() to install PTE
+  
+This is O(1) with respect to other mappings - no scanning.
+
+4.3 The vkernel's Existing Cooperative Mechanism
+------------------------------------------------
+
+The vkernel already has a way to notify the host of PTE changes:
+
+  madvise(addr, len, MADV_INVAL)
+
+This tells the host kernel: "I've modified my guest page tables, please
+invalidate your cached PTEs for this range."
+
+The host responds with pmap_remove() on the range (vm_map.c:2361-2374).
+
+This mechanism still exists in the codebase and could be leveraged.
+
+==============================================================================
+5. COST ANALYSIS OF CURRENT MECHANISMS
+==============================================================================
+
+5.1 The O(N) in backing_list Scan
+---------------------------------
+
+N = number of vm_map_backing entries on the object's backing_list
+
+For typical objects:
+  - Private anonymous memory: N = 1 (only owner maps it)
+  - Small private files: N = 1-10
+  - Shared libraries (libc.so): N = hundreds to thousands
+
+The scan itself is cheap (pointer chasing + range check), but for shared
+objects with many mappings, N can be significant.
+
+5.2 Early Exit Optimizations
+----------------------------
+
+pmap_ts_referenced() stops after finding 4 mappings - doesn't need all.
+
+PG_MAPPED flag check allows skipping pages that are definitely unmapped.
+
+5.3 When Scans Actually Happen
+------------------------------
+
+Scans are triggered by:
+  - Page reclaim (pageout daemon) - relatively rare per-page
+  - COW fault resolution - once per COW page
+  - msync/fsync - when writing dirty pages
+  - Process exit - when cleaning up address space
+
+They do NOT happen on every fault, read, or write. The common paths
+(fault-in, access already-mapped page) are O(1).
+
+==============================================================================
+6. PROPOSED SOLUTIONS
+==============================================================================
+
+6.1 Option A: Cooperative Invalidation Only (Simplest)
+------------------------------------------------------
+
+Concept: Don't do reverse-mapping for VPAGETABLE at all. Rely entirely
+on the vkernel calling MADV_INVAL when it modifies guest PTEs.
+
+Implementation:
+  1. Re-add VM_MAPTYPE_VPAGETABLE and vm_fault_vpagetable()
+  2. Add PG_VPTMAPPED flag to vm_page
+  3. Set PG_VPTMAPPED when a page is mapped via VPAGETABLE
+  4. In pmap_remove_all() etc, skip backing_list scan for VPAGETABLE
+     entries (they won't find anything anyway)
+  5. When reclaiming a PG_VPTMAPPED page, send a signal/notification
+     to all vkernel processes, or do a full TLB flush for them
+
+Pros:
+  - Minimal code changes
+  - No per-mapping memory overhead
+  - Fast path stays fast
+
+Cons:
+  - Relies on vkernel being well-behaved with MADV_INVAL
+  - May need a "big hammer" (full flush) when reclaiming pages
+  - Race window between vkernel modifying PTEs and calling MADV_INVAL
+
+Cost: O(1) normal case, O(vkernels) for VPTMAPPED page reclaim
+
+
+6.2 Option B: Per-Page VPAGETABLE Tracking List
+-----------------------------------------------
+
+Concept: Add per-page reverse-map tracking, but ONLY for VPAGETABLE
+mappings. Normal mappings continue using backing_list.
+
+Implementation:
+  1. Extend struct md_page:
+     
+     struct vpte_rmap {
+         pmap_t pmap;
+         vm_offset_t va;
+         TAILQ_ENTRY(vpte_rmap) link;
+     };
+     
+     struct md_page {
+         long interlock_count;
+         TAILQ_HEAD(, vpte_rmap) vpte_list;
+     };
+
+  2. In vm_fault_vpagetable(), when establishing a mapping:
+     - Allocate vpte_rmap entry
+     - Add to page's vpte_list
+
+  3. In pmap_remove() for VPAGETABLE regions:
+     - Remove corresponding vpte_rmap entries
+
+  4. In pmap_remove_all() etc:
+     - After backing_list scan, also walk page's vpte_list
+
+Pros:
+  - Precise tracking of all VPAGETABLE mappings
+  - Works with existing pmap infrastructure
+  - No reliance on vkernel cooperation
+
+Cons:
+  - Memory overhead: ~24 bytes per VPAGETABLE mapping
+  - Requires vpte_rmap allocation/free on every mapping change
+  - Adds complexity to fault path
+
+Cost: O(k) where k = number of VPAGETABLE mappings for this page
+
+
+6.3 Option C: Lazy Tracking with Bloom Filter
+---------------------------------------------
+
+Concept: Use probabilistic data structure to quickly determine if a page
+MIGHT be VPAGETABLE-mapped, avoiding expensive scans for the common case.
+
+Implementation:
+  1. Each VPAGETABLE pmap has a Bloom filter
+  2. When mapping a page via VPAGETABLE, add its PA to the filter
+  3. When checking reverse-maps:
+     - Test each VPAGETABLE pmap's bloom filter
+     - If negative: definitely not mapped there (skip)
+     - If positive: might be mapped, do full scan of that pmap
+
+Pros:
+  - Very fast negative lookups (~O(1))
+  - Low memory overhead (fixed-size filter per pmap)
+  - No per-mapping tracking needed
+
+Cons:
+  - False positives require fallback to full scan
+  - Bloom filter cannot handle deletions (need rebuilding or counting)
+  - Still requires some form of scan on positive match
+
+Cost: O(1) for negative, O(pmap_size) for positive (with ~1% false positive rate)
+
+
+6.4 Option D: Shadow PTE Table
+------------------------------
+
+Concept: Maintain a kernel-side shadow of the vkernel's page tables,
+indexed by physical address for reverse lookups.
+
+Implementation:
+  1. Per-VPAGETABLE pmap, maintain an RB-tree or hash table:
+     Key: physical page address
+     Value: list of (guest_va, vpte_pointer) pairs
+
+  2. Intercept all writes to VPAGETABLE regions:
+     - Make VPAGETABLE regions read-only initially
+     - On write fault, update shadow table and allow write
+
+  3. For reverse-mapping:
+     - Look up physical address in shadow table
+     - Get all VAs directly
+
+Pros:
+  - O(log n) or O(1) reverse lookups
+  - Precise tracking
+  - No vkernel cooperation required
+
+Cons:
+  - High overhead for intercepting every PTE write
+  - Memory overhead for shadow table
+  - Complexity of keeping shadow in sync
+
+Cost: O(1) lookup, but O(1) overhead on every guest PTE modification
+
+
+6.5 Option E: Hardware Virtualization (Long-term)
+-------------------------------------------------
+
+Concept: Use Intel EPT or AMD NPT for vkernel, as suggested in the
+original commit message.
+
+Implementation:
+  - vkernel runs as a proper VM guest
+  - Hardware handles guest-to-host address translation
+  - Host kernel manages EPT/NPT tables
+  - Normal backing_list mechanism works
+
+Pros:
+  - Native hardware performance
+  - Clean architecture
+  - Industry-standard approach
+
+Cons:
+  - Requires VT-x/AMD-V CPU support
+  - vkernel becomes a "real" VM, loses lightweight process nature
+  - Significant implementation effort
+  - Different architecture than original vkernel design
+
+Cost: Best possible performance, but changes vkernel's nature
+
+
+==============================================================================
+7. RECOMMENDATION
+==============================================================================
+
+For re-enabling VPAGETABLE with minimal disruption, I recommend a
+HYBRID APPROACH combining Options A and B:
+
+Phase 1: Cooperative + Flag (Quick Win)
+---------------------------------------
+  1. Re-add VM_MAPTYPE_VPAGETABLE
+  2. Add PG_VPTMAPPED flag to track "might be VPAGETABLE-mapped"
+  3. Restore vm_fault_vpagetable() to walk guest page tables
+  4. In reverse-mapping functions, for PG_VPTMAPPED pages:
+     - Skip the normal backing_list scan (won't find anything)
+     - Call MADV_INVAL equivalent on all VPAGETABLE regions
+       that MIGHT contain this page
+  5. Require vkernel to be cooperative with MADV_INVAL
+
+This gets vkernel working again with minimal changes.
+
+Phase 2: Optional Per-Page Tracking (If Needed)
+-----------------------------------------------
+If Phase 1 proves insufficient (too many unnecessary invalidations,
+race conditions, etc.), add Option B's per-page vpte_list:
+  
+  1. Track (pmap, va) pairs for each VPAGETABLE mapping
+  2. Use for precise invalidation instead of broad MADV_INVAL
+  3. Memory cost is bounded by actual VPAGETABLE usage
+
+Phase 3: Long-term Hardware Support (Optional)
+----------------------------------------------
+If demand exists for better vkernel performance:
+  1. Implement EPT/NPT support as Option E
+  2. Keep VPAGETABLE as fallback for non-VT-x systems
+  3. Auto-detect and use best available method
+
+
+==============================================================================
+8. OPEN QUESTIONS
+==============================================================================
+
+Q1: How important is precise tracking vs. over-invalidation?
+    - If we can tolerate occasional unnecessary TLB flushes for vkernel
+      processes, Option A alone may be sufficient.
+    - Need to understand vkernel workload characteristics.
+
+Q2: How many active VPAGETABLE regions would typically exist?
+    - Usually one vkernel with one region
+    - Or multiple vkernels running simultaneously?
+    - Affects cost of "scan all VPAGETABLE regions" approach
+
+Q3: Is the vkernel already disciplined about calling MADV_INVAL?
+    - The mechanism exists and was used before
+    - Need to verify vkernel code still does this properly
+    - If so, cooperative invalidation is viable
+
+Q4: What are the performance expectations for vkernel?
+    - Is it acceptable to be slower than native?
+    - How much slower is acceptable?
+    - This affects whether we need precise tracking
+
+Q5: Is hardware virtualization an acceptable long-term direction?
+    - Would change vkernel's nature from "lightweight process" to "VM"
+    - May or may not align with project goals
+    - Affects investment in software VPAGETABLE solutions
+
+
+==============================================================================
+APPENDIX A: Key Source Files
+==============================================================================
+
+sys/vm/vm_fault.c          - Page fault handling, vm_fault_vpagetable removed
+sys/vm/vm_map.c            - Address space management, MADV_INVAL handling
+sys/vm/vm_map.h            - vm_map_entry, vm_map_backing structures
+sys/vm/vm_object.h         - vm_object with backing_list
+sys/vm/vm_page.h           - vm_page, md_page structures
+sys/vm/vm.h                - VM_MAPTYPE_* definitions
+
+sys/platform/pc64/x86_64/pmap.c    - Real kernel pmap, PMAP_PAGE_BACKING_SCAN
+sys/platform/pc64/include/pmap.h   - Real kernel md_page (no pv_list)
+
+sys/platform/vkernel64/platform/pmap.c   - vkernel pmap (HAS pv_list!)
+sys/platform/vkernel64/include/pmap.h    - vkernel md_page with pv_list
+
+sys/sys/vkernel.h          - vkernel definitions
+sys/sys/mman.h             - MAP_VPAGETABLE definition
+
+
+==============================================================================
+APPENDIX B: Relevant Commit
+==============================================================================
+
+Commit: 4d4f84f5f26bf5e9fe4d0761b34a5f1a3784a16f
+Author: Matthew Dillon <dillon@apollo.backplane.com>
+Date:   Thu Jan 7 11:54:11 2021 -0800
+
+    kernel - Remove MAP_VPAGETABLE
+    
+    * This will break vkernel support for now, but after a lot of mulling
+      there's just no other way forward. MAP_VPAGETABLE was basically a
+      software page-table feature for mmap()s that allowed the vkernel
+      to implement page tables without needing hardware virtualization support.
+    
+    * The basic problem is that the VM system is moving to an extent-based
+      mechanism for tracking VM pages entered into PMAPs and is no longer
+      indexing individual terminal PTEs with pv_entry's.
+      [... see full commit message for details ...]
+    
+    * We will need actual hardware mmu virtualization to get the vkernel
+      working again.
+
+
+==============================================================================
+APPENDIX C: Implementation Progress (Phase 1)
+==============================================================================
+
+Branch: vpagetable-analysis
+
+COMPLETED CHANGES:
+-----------------
+
+1. sys/vm/vm.h
+   - Changed VM_MAPTYPE_UNUSED02 back to VM_MAPTYPE_VPAGETABLE (value 2)
+
+2. sys/sys/mman.h
+   - Updated comment to indicate MAP_VPAGETABLE is supported
+
+3. sys/vm/vm_page.h
+   - Added PG_VPTMAPPED flag (0x00000001) using existing PG_UNUSED0001 slot
+   - Documents that it tracks pages mapped via VPAGETABLE regions
+
+4. sys/vm/vm_fault.c
+   - Added forward declaration for vm_fault_vpagetable()
+   - Added struct vm_map_ilock and didilock variables to vm_fault()
+   - Added full vm_fault_vpagetable() function (~140 lines)
+   - Added VPAGETABLE check in vm_fault() before vm_fault_object()
+   - Added VPAGETABLE check in vm_fault_bypass() to return KERN_FAILURE
+   - Added VPAGETABLE check in vm_fault_page()
+   - Added VM_MAPTYPE_VPAGETABLE case to vm_fault_wire()
+
+5. sys/vm/vm_map.c (COMPLETE)
+   - Added VM_MAPTYPE_VPAGETABLE to switch statements:
+     * vmspace_swap_count()
+     * vmspace_anonymous_count()
+     * vm_map_backing_attach()
+     * vm_map_backing_detach()
+     * vm_map_entry_dispose()
+     * vm_map_clean() (first switch)
+     * vm_map_delete()
+     * vm_map_backing_replicated()
+     * vmspace_fork()
+   - Restored MADV_SETMAP functionality
+   - vm_map_insert(): Skip prefault for VPAGETABLE
+   - vm_map_madvise(): Allow VPAGETABLE for MADV_INVAL (critical for cooperative invalidation)
+   - vm_map_lookup(): Recognize VPAGETABLE as object-based
+   - vm_map_backing_adjust_start/end(): Include VPAGETABLE for clipping
+   - vm_map_protect(): Include VPAGETABLE in vnode write timestamp update
+   - vm_map_user_wiring/vm_map_kernel_wiring(): Include VPAGETABLE for shadow setup
+   - vm_map_copy_entry(): Accept VPAGETABLE in assert
+
+
+NOT RESTORING (Strategic decisions):
+
+1. vm_map_entry_shadow/allocate_object large object (0x7FFFFFFF)
+   OLD CODE: Created absurdly large objects because vkernel could map
+   any page to any VA.
+   WHY NOT: With cooperative invalidation (MADV_INVAL), we don't need
+   this hack. Normal-sized objects work because the vkernel invalidates
+   mappings when it changes its page tables.
+
+2. vm_map_clean() whole-object flush for VPAGETABLE
+   OLD CODE: Flushed entire object for VPAGETABLE instead of range.
+   WHY NOT: With cooperative invalidation, range-based cleaning works.
+   The vkernel is responsible for calling MADV_INVAL after PTE changes.
+
+3. vmspace_fork_normal_entry() backing chain collapse skip
+   OLD CODE: Skipped backing chain optimization for VPAGETABLE.
+   WHY NOT: The optimization should work fine. If issues arise, the
+   vkernel will call MADV_INVAL.
+
+
+FUTURE WORK (After vm_map.c):
+-----------------------------
+
+1. Update pmap reverse-mapping (sys/platform/pc64/x86_64/pmap.c)
+   - Handle PG_VPTMAPPED pages in PMAP_PAGE_BACKING_SCAN
+   - Skip normal scan, use cooperative invalidation instead
+
+2. Track active VPAGETABLE pmaps
+   - Mechanism to broadcast invalidation to all vkernels
+   - Needed when reclaiming PG_VPTMAPPED pages
+
+3. Verify vkernel code
+   - Check sys/platform/vkernel64/ properly calls MADV_INVAL
+   - Ensure cooperative invalidation contract is maintained
+
+4. Test compilation and runtime
+   - Build kernel with changes
+   - Test vkernel functionality

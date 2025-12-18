@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd September 7, 2021
+.Dd December 18, 2025
 .Dt VKERNEL 7
 .Os
 .Sh NAME
@@ -48,10 +48,9 @@
 .Op Fl hstUvz
 .Op Fl c Ar file
 .Op Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
-.Op Fl i Ar file
 .Op Fl I Ar interface Ns Op Ar :address1 Ns Oo Ar :address2 Oc Ns Oo Ar /netmask Oc Ns Oo Ar =mac Oc
 .Op Fl l Ar cpulock
-.Op Fl m Ar size
+.Fl m Ar size
 .Op Fl n Ar numcpus Ns Op Ar :lbits Ns Oo Ar :cbits Oc
 .Op Fl p Ar pidfile
 .Op Fl r Ar file Ns Op Ar :serno
@@ -87,18 +86,6 @@ Specify an environment to be used by the kernel.
 This option can be specified more than once.
 .It Fl h
 Shows a list of available options, each with a short description.
-.It Fl i Ar file
-Specify a memory image
-.Ar file
-to be used by the virtual kernel.
-If no
-.Fl i
-option is given, the kernel will generate a name of the form
-.Pa /var/vkernel/memimg.XXXXXX ,
-with the trailing
-.Ql X Ns s
-being replaced by a sequential number, e.g.\&
-.Pa memimg.000001 .
 .It Fl I Ar interface Ns Op Ar :address1 Ns Oo Ar :address2 Oc Ns Oo Ar /netmask Oc Ns Oo Ar =MAC Oc
 Create a virtual network device, with the first
 .Fl I
@@ -189,7 +176,7 @@ locks all virtual CPUs to the real CPU specified by
 Locking the vkernel to a set of cpus is recommended on multi-socket systems
 to improve NUMA locality of reference.
 .It Fl m Ar size
-Specify the amount of memory to be used by the kernel in bytes,
+Specify the amount of memory for the virtual kernel in bytes,
 .Cm K
 .Pq kilobytes ,
 .Cm M
@@ -202,6 +189,7 @@ Lowercase versions of
 and
 .Cm G
 are allowed.
+This option is mandatory.
 .It Fl n Ar numcpus Ns Op Ar :lbits Ns Oo Ar :cbits Oc
 .Ar numcpus
 specifies the number of CPUs you wish to emulate.
@@ -360,6 +348,48 @@ to the virtual kernel triggers a clean shutdown by passing a
 to the virtual kernel's
 .Xr init 8
 process.
+.Sh MEMORY MANAGEMENT
+The virtual kernel's memory is backed by a temporary file created in
+.Pa /var/vkernel
+and immediately unlinked.
+The file descriptor is kept open for the lifetime of the virtual kernel process.
+Both the
+.Dv MAP_VPAGETABLE
+mapping, which implements the virtual kernel's page tables, and the
+direct memory access
+.Pq DMAP
+region reference this backing store.
+.Pp
+When the virtual kernel exits, the file descriptor is closed and the
+backing store is automatically reclaimed by the operating system.
+This ensures proper cleanup of memory resources even if the virtual
+kernel terminates abnormally.
+.Pp
+The following
+.Xr sysctl 8
+variables provide statistics and debugging for the
+.Dv MAP_VPAGETABLE
+mechanism:
+.Bl -tag -width "vm.vpagetable_faults" -compact
+.It Va vm.vpagetable_mmap
+Number of
+.Dv MAP_VPAGETABLE
+mappings created.
+.It Va vm.vpagetable_setmap
+Number of
+.Dv MADV_SETMAP
+operations performed.
+.It Va vm.vpagetable_inval
+Number of
+.Dv MADV_INVAL
+operations performed.
+.It Va vm.vpagetable_faults
+Number of page faults handled through VPTE translation.
+.It Va vm.debug_vpagetable
+Enable debug output for
+.Dv MAP_VPAGETABLE
+operations.
+.El
 .Sh DEBUGGING
 It is possible to directly gdb the virtual kernel's process.
 It is recommended that you do a

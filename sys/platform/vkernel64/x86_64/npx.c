@@ -67,8 +67,8 @@
 #define	fnstcw(addr)		__asm __volatile("fnstcw %0" : "=m" (*(addr)))
 #define	fnstsw(addr)		__asm __volatile("fnstsw %0" : "=m" (*(addr)))
 #define	frstor(addr)		__asm("frstor %0" : : "m" (*(addr)))
-#define	fxrstor(addr)		__asm("fxrstor %0" : : "m" (*(addr)))
-#define	fxsave(addr)		__asm __volatile("fxsave %0" : "=m" (*(addr)))
+#define	fxrstor(addr)		__asm("fxrstor64 %0" : : "m" (*(addr)))
+#define	fxsave(addr)		__asm __volatile("fxsave64 %0" : "=m" (*(addr)))
 #define	ldmxcsr(csr)		__asm __volatile("ldmxcsr %0" : : "m" (csr))
 
 static	void	fpu_clean_state(void);
@@ -387,11 +387,8 @@ npxdna(struct trapframe *frame)
 	 * fnsave are broken, so our treatment breaks fnclex if it is the
 	 * first FPU instruction after a context switch.
 	 */
-	if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF) && cpu_fxsr) {
-		krateprintf(&badfprate,
-			    "FXRSTOR: illegal FP MXCSR %08x didinit = %d\n",
-			    td->td_savefpu->sv_xmm.sv_env.en_mxcsr, didinit);
-		td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= 0xFFBF;
+	if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~npx_mxcsr_mask) && cpu_fxsr) {
+		td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= npx_mxcsr_mask;
 		lwpsignal(curproc, curthread->td_lwp, SIGFPE);
 	}
 	fpurstor(curthread->td_savefpu, 0);
@@ -513,7 +510,7 @@ npxpop(mcontext_t *mctx)
 		if (td == mdcpu->gd_npxthread)
 			npxsave(td->td_savefpu);
 		bcopy(mctx->mc_fpregs, td->td_savefpu, sizeof(*td->td_savefpu));
-		if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF) &&
+		if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~npx_mxcsr_mask) &&
 		    cpu_fxsr) {
 			krateprintf(&badfprate,
 				    "pid %d (%s) signal return from user: "
@@ -521,7 +518,7 @@ npxpop(mcontext_t *mctx)
 				    td->td_proc->p_pid,
 				    td->td_proc->p_comm,
 				    td->td_savefpu->sv_xmm.sv_env.en_mxcsr);
-			td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= 0xFFBF;
+			td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= npx_mxcsr_mask;
 		}
 		td->td_flags |= TDF_USINGFP;
 		break;

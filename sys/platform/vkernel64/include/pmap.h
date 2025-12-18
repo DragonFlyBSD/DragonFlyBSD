@@ -203,6 +203,10 @@ typedef struct vm_page *vm_page_t;
 #define __VM_MEMATTR_T_DEFINED__
 typedef char vm_memattr_t;
 #endif
+#ifndef __VM_PROT_T_DEFINED__
+#define __VM_PROT_T_DEFINED__
+typedef u_char vm_prot_t;
+#endif
 
 void	pmap_bootstrap(vm_paddr_t *, int64_t);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);

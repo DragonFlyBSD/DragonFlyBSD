@@ -163,6 +163,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	char *sp;
 
 	regs = lp->lwp_md.md_regs;
+
 	oonstack = (lp->lwp_sigstk.ss_flags & SS_ONSTACK) ? 1 : 0;
 
 	/* Save user context */
@@ -868,6 +869,17 @@ identcpu(void)
 
 	do_cpuid(1, regs);
 	cpu_feature = regs[3];
+	cpu_feature2 = regs[2];
+
+	/*
+	 * The vkernel uses fxsave64/fxrstor64 for FPU state management,
+	 * not xsave/xrstor.  Mask out AVX/XSAVE features that we don't
+	 * support, otherwise userland (libc/libm) may try to use AVX
+	 * instructions and the FPU state won't be properly saved/restored,
+	 * leading to FPE or corrupted state.
+	 */
+	cpu_feature2 &= ~(CPUID2_XSAVE | CPUID2_OSXSAVE | CPUID2_AVX |
+			  CPUID2_FMA | CPUID2_F16C);
 }
 
 

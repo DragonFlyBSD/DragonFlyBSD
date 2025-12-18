@@ -112,6 +112,7 @@ vpte_t	*KernelPTA;	/* Warning: Offset for direct VA translation */
 void *dmap_min_address;
 void *vkernel_stack;
 u_int cpu_feature;	/* XXX */
+u_int cpu_feature2;	/* XXX */
 int tsc_present;
 int tsc_invariant;
 int tsc_mpsync;
@@ -181,7 +182,6 @@ main(int ac, char **av)
 	int eflag;
 	int real_vkernel_enable;
 	int supports_sse;
-	uint32_t mxcsr_mask;
 	size_t vsize;
 	size_t msize;
 	size_t kenv_size;
@@ -466,12 +466,15 @@ main(int ac, char **av)
 	tsc_oneus_approx = ((tsc_frequency|1) + 999999) / 1000000;
 
 	/*
-	 * Check SSE
+	 * Check SSE and get the host's MXCSR mask.  The mask must be set
+	 * before init_fpu() because npxprobemask() may not work correctly
+	 * in userspace context.
 	 */
 	vsize = sizeof(supports_sse);
 	supports_sse = 0;
 	sysctlbyname("hw.instruction_sse", &supports_sse, &vsize, NULL, 0);
-	sysctlbyname("hw.mxcsr_mask", &mxcsr_mask, &msize, NULL, 0);
+	msize = sizeof(npx_mxcsr_mask);
+	sysctlbyname("hw.mxcsr_mask", &npx_mxcsr_mask, &msize, NULL, 0);
 	init_fpu(supports_sse);
 	if (supports_sse)
 		cpu_feature |= CPUID_SSE | CPUID_FXSR;
@@ -504,26 +507,35 @@ handle_term(int sig)
 
 /*
  * Initialize system memory.  This is the virtual kernel's 'RAM'.
+ *
+ * We always use an anonymous memory file (created in /tmp or /var/vkernel
+ * and immediately unlinked).  This ensures proper cleanup of PG_VPTMAPPED
+ * pages when the vkernel exits - the backing object is destroyed and all
+ * pages are freed.
+ *
+ * The -i option is deprecated but still accepted for compatibility.
  */
 static
 void
 init_sys_memory(char *imageFile)
 {
-	struct stat st;
-	int i;
 	int fd;
+	char *tmpfile;
 
 	/*
-	 * Figure out the system memory image size.  If an image file was
-	 * specified and -m was not specified, use the image file's size.
+	 * Warn if -i was specified (deprecated)
 	 */
-	if (imageFile && stat(imageFile, &st) == 0 && Maxmem_bytes == 0)
-		Maxmem_bytes = (vm_paddr_t)st.st_size;
-	if ((imageFile == NULL || stat(imageFile, &st) < 0) &&
-	    Maxmem_bytes == 0) {
-		errx(1, "Cannot create new memory file %s unless "
-		       "system memory size is specified with -m",
-		       imageFile);
+	if (imageFile != NULL) {
+		fprintf(stderr,
+		    "WARNING: -i option is deprecated and ignored.\n"
+		    "         Memory is now always anonymous (unlinked file).\n");
+	}
+
+	/*
+	 * Require -m to be specified
+	 */
+	if (Maxmem_bytes == 0) {
+		errx(1, "System memory size must be specified with -m");
 		/* NOT REACHED */
 	}
 
@@ -538,42 +550,29 @@ init_sys_memory(char *imageFile)
 	}
 
 	/*
-	 * Generate an image file name if necessary, then open/create the
-	 * file exclusively locked.  Do not allow multiple virtual kernels
-	 * to use the same image file.
-	 *
-	 * Don't iterate through a million files if we do not have write
-	 * access to the directory, stop if our open() failed on a
-	 * non-existant file.  Otherwise opens can fail for any number
+	 * Create an anonymous memory backing file.  We create a temp file
+	 * and immediately unlink it.  The file descriptor keeps the file
+	 * alive until the vkernel exits, at which point all pages are
+	 * properly freed (including clearing PG_VPTMAPPED).
 	 */
-	if (imageFile == NULL) {
-		for (i = 0; i < 1000000; ++i) {
-			asprintf(&imageFile, "/var/vkernel/memimg.%06d", i);
-			fd = open(imageFile,
-				  O_RDWR|O_CREAT|O_EXLOCK|O_NONBLOCK, 0644);
-			if (fd < 0 && stat(imageFile, &st) == 0) {
-				free(imageFile);
-				continue;
-			}
-			break;
-		}
-	} else {
-		fd = open(imageFile, O_RDWR|O_CREAT|O_EXLOCK|O_NONBLOCK, 0644);
-	}
-	fprintf(stderr, "Using memory file: %s\n", imageFile);
-	if (fd < 0 || fstat(fd, &st) < 0) {
-		err(1, "Unable to open/create %s", imageFile);
-		/* NOT REACHED */
-	}
+	asprintf(&tmpfile, "/var/vkernel/.memimg.%d", (int)getpid());
+	fd = open(tmpfile, O_RDWR|O_CREAT|O_EXCL, 0600);
+	if (fd < 0)
+		err(1, "Unable to create %s", tmpfile);
+	unlink(tmpfile);
+	free(tmpfile);
+
+	fprintf(stderr, "Using anonymous memory (%llu MB)\n",
+		(unsigned long long)Maxmem_bytes / (1024 * 1024));
 
 	/*
-	 * Truncate or extend the file as necessary.  Clean out the contents
-	 * of the file, we want it to be full of holes so we don't waste
-	 * time reading in data from an old file that we no longer care
-	 * about.
+	 * Size the file.  It will be sparse (no actual disk space used
+	 * until pages are faulted in).
 	 */
-	ftruncate(fd, 0);
-	ftruncate(fd, Maxmem_bytes);
+	if (ftruncate(fd, Maxmem_bytes) < 0) {
+		err(1, "Unable to size memory backing file");
+		/* NOT REACHED */
+	}
 
 	MemImageFd = fd;
 	Maxmem = Maxmem_bytes >> PAGE_SHIFT;
@@ -1443,10 +1442,10 @@ usage_help(_Bool help)
 		    "\t-c\tSpecify a readonly CD-ROM image file to be used by the kernel.\n"
 		    "\t-e\tSpecify an environment to be used by the kernel.\n"
 		    "\t-h\tThis list of options.\n"
-		    "\t-i\tSpecify a memory image file to be used by the virtual kernel.\n"
+		    "\t-i\t(DEPRECATED) Memory is now always anonymous.\n"
 		    "\t-I\tCreate a virtual network device.\n"
 		    "\t-l\tSpecify which, if any, real CPUs to lock virtual CPUs to.\n"
-		    "\t-m\tSpecify the amount of memory to be used by the kernel in bytes.\n"
+		    "\t-m\tSpecify the amount of memory to be used by the kernel in bytes (required).\n"
 		    "\t-n\tSpecify the number of CPUs and the topology you wish to emulate:\n"
 		    "\t\t\tnumcpus - number of cpus\n"
 		    "\t\t\tlbits - specify the number of bits within APICID(=CPUID)\n"
