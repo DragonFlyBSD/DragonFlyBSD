@@ -287,7 +287,7 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
  * The m->flags field is generally categorized as follows.  Unless otherwise
  * noted, a flag may only be updated while the page is hard-busied.
  *
- * PG_VPTMAPPED    - Indicates that this page MIGHT be mapped via a
+ * PG_VPTMAPPED	   - Indicates that this page MIGHT be mapped via a
  *		     VPAGETABLE region. Used by vkernels. The backing_list
  *		     scan cannot find these mappings, so cooperative
  *		     invalidation via MADV_INVAL is required.
@@ -373,7 +373,11 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
  *		     at any time by the VM system (usually while holding the
  *		     related vm_object's lock).
  */
+#if 0
 #define	PG_VPTMAPPED	0x00000001	/* mapped via VPAGETABLE */
+#else
+#define	PG_UNUSED0001	0x00000001
+#endif
 #define	PG_UNUSED0002	0x00000002
 #define PG_WINATCFLS	0x00000004	/* flush dirty page on inactive q */
 #define	PG_FICTITIOUS	0x00000008	/* No reverse-map or tracking */

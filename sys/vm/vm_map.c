@@ -185,7 +185,7 @@ static void vm_map_backing_detach (vm_map_entry_t entry, vm_map_backing_t ba);
 static void _vm_map_clip_end (vm_map_t, vm_map_entry_t, vm_offset_t, int *);
 static void _vm_map_clip_start (vm_map_t, vm_map_entry_t, vm_offset_t, int *);
 static void vm_map_entry_delete (vm_map_t, vm_map_entry_t, int *);
-static void vm_map_entry_unwire (vm_map_t, vm_map_entry_t);
+static void vm_map_entry_unwire_all (vm_map_t, vm_map_entry_t);
 static void vm_map_copy_entry (vm_map_t, vm_map_t, vm_map_entry_t,
 		vm_map_entry_t);
 static void vm_map_unclip_range (vm_map_t map, vm_map_entry_t start_entry,
@@ -490,16 +490,15 @@ vmspace_terminate(struct vmspace *vm, int final)
 		 * Get rid of most of the resources.  Leave the kernel pmap
 		 * intact.
 		 *
-		 * If the pmap does not contain wired pages we can bulk-delete
-		 * the pmap as a performance optimization before removing the
-		 * related mappings.
-		 *
-		 * If the pmap contains wired pages we cannot do this
-		 * pre-optimization because currently vm_fault_unwire()
-		 * expects the pmap pages to exist and will not decrement
-		 * p->wire_count if they do not.
+		 * We can bulk-delete the pmap as a performance optimization
+		 * before removing the related mappings.
 		 */
 		shmexit(vm);
+		pmap_remove_pages(vmspace_pmap(vm), VM_MIN_USER_ADDRESS,
+				  VM_MAX_USER_ADDRESS);
+		vm_map_remove(&vm->vm_map, VM_MIN_USER_ADDRESS,
+			      VM_MAX_USER_ADDRESS);
+#if 0
 		if (vmspace_pmap(vm)->pm_stats.wired_count) {
 			vm_map_remove(&vm->vm_map, VM_MIN_USER_ADDRESS,
 				      VM_MAX_USER_ADDRESS);
@@ -511,6 +510,7 @@ vmspace_terminate(struct vmspace *vm, int final)
 			vm_map_remove(&vm->vm_map, VM_MIN_USER_ADDRESS,
 				      VM_MAX_USER_ADDRESS);
 		}
+#endif
 		lwkt_reltoken(&vm->vm_map.token);
 	} else {
 		KKASSERT((vm->vm_flags & VMSPACE_EXIT1) != 0);
@@ -1315,6 +1315,9 @@ vm_map_insert(vm_map_t map, int *countp,
 	if (cow & COWF_IS_KSTACK)
 		protoeflags |= MAP_ENTRY_KSTACK;
 
+	if (maptype == VM_MAPTYPE_VPAGETABLE)
+		protoeflags |= MAP_ENTRY_VPAGETABLE_WIRED;
+
 	lwkt_gettoken(&map->token);
 
 	if (object) {
@@ -1392,10 +1395,18 @@ vm_map_insert(vm_map_t map, int *countp,
 	new_entry->ba.flags = 0;
 	new_entry->ba.pmap = map->pmap;
 
+	if (protoeflags & MAP_ENTRY_VPAGETABLE_WIRED)
+		new_entry->ba.flags |= VM_MAP_BACK_VPAGETABLE;
+
 	new_entry->inheritance = VM_INHERIT_DEFAULT;
 	new_entry->protection = prot;
 	new_entry->max_protection = max;
-	new_entry->wired_count = 0;
+	if (protoeflags & MAP_ENTRY_VPAGETABLE_WIRED)
+		new_entry->wired_count = 1;
+	else
+		new_entry->wired_count = 0;
+	if (protoeflags & MAP_ENTRY_USER_WIRED)
+		++new_entry->wired_count;
 
 	/*
 	 * Insert the new entry into the list
@@ -2644,9 +2655,10 @@ vm_map_user_wiring(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 			if (rv) {
 				CLIP_CHECK_BACK(entry, save_start);
 				for (;;) {
-					KASSERT(entry->wired_count == 1, ("bad wired_count on entry"));
+					KASSERT(entry->wired_count >= 1,
+						("bad wired_count on entry"));
 					entry->eflags &= ~MAP_ENTRY_USER_WIRED;
-					entry->wired_count = 0;
+					--entry->wired_count;
 					if (entry->ba.end == save_end)
 						break;
 					entry = vm_map_rb_tree_RB_NEXT(entry);
@@ -2722,9 +2734,7 @@ vm_map_user_wiring(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 			KASSERT(entry->eflags & MAP_ENTRY_USER_WIRED,
 				("expected USER_WIRED on entry %p", entry));
 			entry->eflags &= ~MAP_ENTRY_USER_WIRED;
-			entry->wired_count--;
-			if (entry->wired_count == 0)
-				vm_fault_unwire(map, entry);
+			vm_fault_unwire(map, entry);
 			entry = vm_map_rb_tree_RB_NEXT(entry);
 		}
 	}
@@ -2930,9 +2940,7 @@ vm_map_kernel_wiring(vm_map_t map, vm_offset_t start,
 		 */
 		entry = start_entry;
 		while (entry && entry->ba.start < end) {
-			entry->wired_count--;
-			if (entry->wired_count == 0)
-				vm_fault_unwire(map, entry);
+			vm_fault_unwire(map, entry);
 			entry = vm_map_rb_tree_RB_NEXT(entry);
 		}
 	}
@@ -2967,7 +2975,7 @@ vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size,
 	scan = entry;
 	while (scan && scan->ba.start < addr + size) {
 		KKASSERT(scan->wired_count == 0);
-		scan->wired_count = 1;
+		++scan->wired_count;
 		scan = vm_map_rb_tree_RB_NEXT(scan);
 	}
 	vm_map_unclip_range(map, entry, addr, addr + size,
@@ -3175,16 +3183,24 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 }
 
 /*
- * Make the region specified by this entry pageable.
+ * Make the region specified by this entry pageable.  Used during
+ * vm_map_entry destruction.
  *
  * The vm_map must be exclusively locked.
  */
 static void 
-vm_map_entry_unwire(vm_map_t map, vm_map_entry_t entry)
+vm_map_entry_unwire_all(vm_map_t map, vm_map_entry_t entry)
 {
-	entry->eflags &= ~MAP_ENTRY_USER_WIRED;
-	entry->wired_count = 0;
-	vm_fault_unwire(map, entry);
+	if (entry->eflags & MAP_ENTRY_USER_WIRED) {
+		entry->eflags &= ~MAP_ENTRY_USER_WIRED;
+		vm_fault_unwire(map, entry);
+	}
+	if (entry->eflags & MAP_ENTRY_VPAGETABLE_WIRED) {
+		entry->eflags &= ~MAP_ENTRY_VPAGETABLE_WIRED;
+		vm_fault_unwire(map, entry);
+	}
+	while (entry->wired_count)
+		vm_fault_unwire(map, entry);
 }
 
 /*
@@ -3301,8 +3317,8 @@ again:
 		 * to not blindly iterate the range when pt and pd pages
 		 * are missing.
 		 */
-		if (entry->wired_count != 0)
-			vm_map_entry_unwire(map, entry);
+		if (entry->wired_count)
+			vm_map_entry_unwire_all(map, entry);
 
 		offidxend = offidxstart + count;
 
@@ -3823,7 +3839,10 @@ vmspace_fork_normal_entry(vm_map_t old_map, vm_map_t new_map,
 		*new_entry = *old_entry;
 
 		new_entry->eflags &= ~MAP_ENTRY_USER_WIRED;
-		new_entry->wired_count = 0;
+		if (new_entry->eflags & MAP_ENTRY_VPAGETABLE_WIRED)
+			new_entry->wired_count = 1;
+		else
+			new_entry->wired_count = 0;
 
 		/*
 		 * Replicate and index the vm_map_backing.  Don't share
@@ -3855,7 +3874,10 @@ vmspace_fork_normal_entry(vm_map_t old_map, vm_map_t new_map,
 		*new_entry = *old_entry;
 
 		new_entry->eflags &= ~MAP_ENTRY_USER_WIRED;
-		new_entry->wired_count = 0;
+		if (new_entry->eflags & MAP_ENTRY_VPAGETABLE_WIRED)
+			new_entry->wired_count = 1;
+		else
+			new_entry->wired_count = 0;
 
 		vm_map_backing_replicated(new_map, new_entry, 0);
 		vm_map_entry_link(new_map, new_entry);
@@ -3910,7 +3932,10 @@ vmspace_fork_uksmap_entry(struct proc *p2, struct lwp *lp2,
 	*new_entry = *old_entry;
 
 	new_entry->eflags &= ~MAP_ENTRY_USER_WIRED;
-	new_entry->wired_count = 0;
+	if (new_entry->eflags & MAP_ENTRY_VPAGETABLE_WIRED)
+		new_entry->wired_count = 1;
+	else
+		new_entry->wired_count = 0;
 	KKASSERT(new_entry->ba.backing_ba == NULL);
 
 	if (new_entry->aux.dev) {
@@ -4499,8 +4524,9 @@ RetryLookup:
 	}
 
 	/*
-	 * Flag regular pages that are supposed to be wired.  Remove prior
-	 * semantics that disallowed protection changes for such pages.
+	 * Flag regular pages that are supposed to be wired.  Wired pages
+	 * are just like regular pages and simply prevent the pageout code
+	 * from operating on them.
 	 *
 	 * The prior semantics are not used by modern systems.  Applications
 	 * do not assume an inability to change protection modes and may
@@ -4511,12 +4537,8 @@ RetryLookup:
 	 * or fork() may still cause page faults on the locked memory.
 	 */
 	*wflags = 0;
-	if (entry->wired_count) {
+	if (entry->wired_count)
 		*wflags |= FW_WIRED;
-#if 0
-		prot = fault_type = entry->protection;
-#endif
-	}
 
 	if (curthread->td_lwp && curthread->td_lwp->lwp_vmspace &&
 	    pmap_emulate_ad_bits(&curthread->td_lwp->lwp_vmspace->vm_pmap)) {

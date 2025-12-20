@@ -215,6 +215,10 @@ static void vm_prefault(pmap_t pmap, vm_offset_t addra,
 static void vm_prefault_quick(pmap_t pmap, vm_offset_t addra,
 			vm_map_entry_t entry, int prot, int fault_flags);
 
+#if 0
+static struct krate vkrate = { 1 };
+#endif
+
 static __inline void
 release_page(struct faultstate *fs)
 {
@@ -372,12 +376,13 @@ virtual_copy_ok(struct faultstate *fs)
  *
  * We only need to try the pager if this is not a default object (default
  * objects are zero-fill and have no real pager), and if we are not taking
- * a wiring fault or if the FS entry is wired.
+ * a wiring fault forcing backing operation.
+ *
+ * Regular faults on wired areas do not force pager operation.
  */
 #define TRYPAGER(fs)	\
 		(fs->ba->object->type != OBJT_DEFAULT &&		\
-		(((fs->fault_flags & VM_FAULT_WIRE_MASK) == 0) ||	\
-		 (fs->wflags & FW_WIRED)))
+		(((fs->fault_flags & VM_FAULT_WIRE_MASK) == 0)))
 
 /*
  * vm_fault:
@@ -605,6 +610,10 @@ RetryFault:
 		goto done2;
 	}
 
+#if 0
+	/*
+	 * REMOVED - The wiring flag does change fault behaviors
+	 */
 	/*
 	 * If the entry is wired the page protection level is limited to
 	 * what the vm_map_lookup() allowed us.
@@ -615,6 +624,7 @@ RetryFault:
 	 */
 	if (fs.wflags & FW_WIRED)
 		fault_type = fs.first_prot;
+#endif
 
 	/*
 	 * We generally want to avoid unnecessary exclusive modes on backing
@@ -702,6 +712,10 @@ RetryFault:
 		result = vm_fault_vpagetable(&fs, &first_pindex,
 					     fs.entry->aux.master_pde,
 					     fault_type, 1);
+#if 0
+		krateprintf(&vkrate, "VKF va=%016jx m=%p res=%d\n",
+			vaddr, fs.mary[0], result);
+#endif
 		if (result == KERN_TRY_AGAIN) {
 			vm_map_deinterlock(fs.map, &ilock);
 			++retry;
@@ -763,6 +777,7 @@ success:
 	KKASSERT(fs.lookup_still_valid != 0);
 	vm_page_flag_set(fs.mary[0], PG_REFERENCED);
 
+#if 0
 	/*
 	 * Mark pages mapped via VPAGETABLE so the pmap layer knows
 	 * that the backing_list scan won't find these mappings.
@@ -773,6 +788,7 @@ success:
 		for (n = 0; n < mextcount; ++n)
 			vm_page_flag_set(fs.mary[n], PG_VPTMAPPED);
 	}
+#endif
 
 	for (n = 0; n < mextcount; ++n) {
 		pmap_enter(fs.map->pmap, vaddr + (n << PAGE_SHIFT),
@@ -797,10 +813,13 @@ success:
 			vm_page_sbusy_drop(fs.mary[n]);
 		} else {
 			if (fs.fault_flags & VM_FAULT_WIRE_MASK) {
+#if 0
+				/* now handled by pmap_enter */
 				if (fs.wflags & FW_WIRED)
 					vm_page_wire(fs.mary[n]);
 				else
 					vm_page_unwire(fs.mary[n], 1);
+#endif
 			} else {
 				vm_page_activate(fs.mary[n]);
 			}
@@ -1305,6 +1324,10 @@ RetryFault:
 		goto done2;
 	}
 
+#if 0
+	/*
+	 * REMOVED - The wiring flag does change fault behaviors
+	 */
 	/*
 	 * If the entry is wired the page protection level is limited to
 	 * what the vm_map_lookup() allowed us.
@@ -1315,6 +1338,7 @@ RetryFault:
 	 */
 	if (fs.wflags & FW_WIRED)
 		fault_type = fs.first_prot;
+#endif
 
 	/*
 	 * Make a reference to this object to prevent its disposal while we
@@ -1408,12 +1432,14 @@ RetryFault:
 	 */
 	vm_page_flag_set(fs.mary[0], PG_REFERENCED);
 
+#if 0
 	/*
 	 * Mark pages mapped via VPAGETABLE so the pmap layer knows
 	 * that the backing_list scan won't find these mappings.
 	 */
 	if (fs.entry->maptype == VM_MAPTYPE_VPAGETABLE)
 		vm_page_flag_set(fs.mary[0], PG_VPTMAPPED);
+#endif
 
 #if 0
 	pmap_enter(fs.map->pmap, vaddr, fs.mary[0], fs.prot,
@@ -2605,9 +2631,9 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry,
 	for (va = start; va < end; va += PAGE_SIZE) {
 		rv = vm_fault(map, va, wire_prot, fault_flags);
 		if (rv) {
-			while (va > start) {
-				va -= PAGE_SIZE;
-				m = pmap_unwire(pmap, va);
+			vm_offset_t rva = start;
+			while (rva < va) {
+				m = pmap_unwire(pmap, &rva);
 				if (m && !fictitious) {
 					vm_page_busy_wait(m, FALSE, "vmwrpg");
 					vm_page_unwire(m, 1);
@@ -2638,6 +2664,15 @@ vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
 	pmap_t pmap;
 	vm_page_t m;
 
+	/*
+	 * We only actually unwire stuff once the entry's wired_count
+	 * reaches 0.  More than one frontend might have been wiring the
+	 * entry.
+	 */
+	KKASSERT(entry->wired_count);
+	if (--entry->wired_count > 0)
+		return;
+
 	pmap = vm_map_pmap(map);
 	start = entry->ba.start;
 	end = entry->ba.end;
@@ -2648,11 +2683,12 @@ vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
 		start += PAGE_SIZE;
 
 	/*
-	 * Since the pages are wired down, we must be able to get their
-	 * mappings from the physical map system.
+	 * Unwire any wired pages found.  Not all the pages in the
+	 * range will necessarily be wired.
 	 */
-	for (va = start; va < end; va += PAGE_SIZE) {
-		m = pmap_unwire(pmap, va);
+	va = start;
+	while (va < end) {
+		m = pmap_unwire(pmap, &va);
 		if (m && !fictitious) {
 			vm_page_busy_wait(m, FALSE, "vmwrpg");
 			vm_page_unwire(m, 1);

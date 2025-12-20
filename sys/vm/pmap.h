@@ -171,7 +171,7 @@ kva_p(const void *addr)
 #endif
 }
 
-vm_page_t	 pmap_unwire (pmap_t, vm_offset_t);
+vm_page_t	 pmap_unwire (pmap_t, vm_offset_t *);
 void		 pmap_clear_modify (struct vm_page *m);
 void		 pmap_clear_reference (struct vm_page *m);
 void		 pmap_collect (void);

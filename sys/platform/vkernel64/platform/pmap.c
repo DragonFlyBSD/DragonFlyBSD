@@ -321,6 +321,25 @@ pmap_pte(pmap_t pmap, vm_offset_t va)
 	return (pmap_pde_to_pte(pde, va));
 }
 
+/*
+ * Return the next possibly occupied VA >= va to optimize pmap
+ * scans.
+ */
+static __inline vm_offset_t
+pmap_nextva(pmap_t pmap, vm_offset_t va)
+{
+	if (pmap_pml4e(pmap, va) == NULL)
+		va = (va & ~(long)(NBPML4 - 1)) + NBPML4;
+	else if (pmap_pdpe(pmap, va) == NULL)
+		va = (va & ~(long)(NBPDP - 1)) + NBPDP;
+	else if (pmap_pde(pmap, va) == NULL)
+		va = (va & ~(long)(NBPDR - 1)) + NBPDR;
+	else
+		va = va + PAGE_SIZE;
+
+	return va;
+}
+
 static PMAP_INLINE pt_entry_t *
 vtopte(vm_offset_t va)
 {
@@ -1824,8 +1843,6 @@ pmap_remove_pte(struct pmap *pmap, pt_entry_t *ptq, pt_entry_t oldpte,
 	if (ptq)
 		oldpte = pmap_inval_loadandclear(ptq, pmap, va);
 
-	if (oldpte & VPTE_WIRED)
-		atomic_add_long(&pmap->pm_stats.wired_count, -1);
 	KKASSERT(pmap->pm_stats.wired_count >= 0);
 
 #if 0
@@ -1858,8 +1875,14 @@ pmap_remove_pte(struct pmap *pmap, pt_entry_t *ptq, pt_entry_t oldpte,
 		}
 		if (oldpte & VPTE_A)
 			vm_page_flag_set(m, PG_REFERENCED);
+		if (oldpte & VPTE_WIRED) {
+			atomic_add_long(&pmap->pm_stats.wired_count, -1);
+			vm_page_unwire(m, -1);
+		}
 		error = pmap_remove_entry(pmap, m, va);
 	} else {
+		if (oldpte & VPTE_WIRED)
+			atomic_add_long(&pmap->pm_stats.wired_count, -1);
 		error = pmap_unuse_pt(pmap, va, NULL);
 	}
 	return error;
@@ -2058,9 +2081,6 @@ restart:
 		KKASSERT(pte != NULL);
 
 		tpte = pmap_inval_loadandclear(pte, pmap, pv->pv_va);
-		if (tpte & VPTE_WIRED)
-			atomic_add_long(&pmap->pm_stats.wired_count, -1);
-		KKASSERT(pmap->pm_stats.wired_count >= 0);
 
 		if (tpte & VPTE_A)
 			vm_page_flag_set(m, PG_REFERENCED);
@@ -2079,6 +2099,11 @@ restart:
 			pmap_track_modified(pmap, pv->pv_va);
 			vm_page_dirty(m);
 		}
+		if (tpte & VPTE_WIRED) {
+			atomic_add_long(&pmap->pm_stats.wired_count, -1);
+			vm_page_unwire(m, -1);
+		}
+		KKASSERT(pmap->pm_stats.wired_count >= 0);
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 		if (TAILQ_EMPTY(&m->md.pv_list))
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
@@ -2120,9 +2145,6 @@ again:
 		KKASSERT(pte != NULL);
 
 		tpte = pmap_inval_loadandclear(pte, pmap, pv->pv_va);
-		if (tpte & VPTE_WIRED)
-			atomic_add_long(&pmap->pm_stats.wired_count, -1);
-		KKASSERT(pmap->pm_stats.wired_count >= 0);
 
 		if (tpte & VPTE_A)
 			vm_page_flag_set(m, PG_REFERENCED);
@@ -2134,6 +2156,11 @@ again:
 			pmap_track_modified(pmap, pv->pv_va);
 			vm_page_dirty(m);
 		}
+		if (tpte & VPTE_WIRED) {
+			atomic_add_long(&pmap->pm_stats.wired_count, -1);
+			vm_page_unwire(m, -1);
+		}
+		KKASSERT(pmap->pm_stats.wired_count >= 0);
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 		pv_entry_rb_tree_RB_REMOVE(&pmap->pm_pvroot, pv);
 		atomic_add_int(&pmap->pm_generation, 1);
@@ -2251,6 +2278,10 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
  * Enter a managed page into a pmap.  If the page is not wired related pmap
  * data can be destroyed at any time for later demand-operation.
  *
+ * This function will increment m->wire_count if wired is TRUE, and if
+ * replacing a previous entry that was wired, wire_count on oldm will
+ * be decremented.
+ *
  * Insert the vm_page (m) at virtual address (v) in (pmap), with the
  * specified protection, and wire the mapping if requested.
  *
@@ -2327,10 +2358,13 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		 * are valid mappings in them. Hence, if a user page is wired,
 		 * the PT page will be also.
 		 */
-		if (wired && ((origpte & VPTE_WIRED) == 0))
+		if (wired && ((origpte & VPTE_WIRED) == 0)) {
 			atomic_add_long(&pmap->pm_stats.wired_count, 1);
-		else if (!wired && (origpte & VPTE_WIRED))
+			vm_page_wire(m);
+		} else if (!wired && (origpte & VPTE_WIRED)) {
 			atomic_add_long(&pmap->pm_stats.wired_count, -1);
+			vm_page_unwire(m, -1);
+		}
 
 		if (origpte & VPTE_MANAGED) {
 			pa |= VPTE_MANAGED;
@@ -2392,8 +2426,10 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * Increment counters
 	 */
 	atomic_add_long(&pmap->pm_stats.resident_count, 1);
-	if (wired)
+	if (wired) {
 		atomic_add_long(&pmap->pm_stats.wired_count, 1);
+		vm_page_wire(m);
+	}
 
 validate:
 	/*
@@ -2583,20 +2619,26 @@ pmap_prefault_ok(pmap_t pmap, vm_offset_t addr)
  * No other requirements.
  */
 vm_page_t
-pmap_unwire(pmap_t pmap, vm_offset_t va)
+pmap_unwire(pmap_t pmap, vm_offset_t *pva)
 {
 	pt_entry_t *pte;
 	vm_paddr_t pa;
 	vm_page_t m;
+	vm_offset_t va = *pva;
 
+	*pva += PAGE_SIZE;
 	if (pmap == NULL)
 		return NULL;
 
+	/*
+	 * Find pte
+	 */
 	vm_object_hold(pmap->pm_pteobj);
 	pte = pmap_pte(pmap, va);
-
-	if (pte == NULL || (*pte & VPTE_V) == 0) {
+	if ((*pte & VPTE_V) == 0) {
+		*pva = pmap_nextva(pmap, va);
 		vm_object_drop(pmap->pm_pteobj);
+
 		return NULL;
 	}
 
@@ -2607,13 +2649,15 @@ pmap_unwire(pmap_t pmap, vm_offset_t va)
 	 * the pmap_inval_*() API that is)... it's ok to do this for simple
 	 * wiring changes.
 	 */
-	if (pmap_pte_w(pte))
+	if (pmap_pte_w(pte)) {
 		atomic_add_long(&pmap->pm_stats.wired_count, -1);
-	/* XXX else return NULL so caller doesn't unwire m ? */
-	atomic_clear_long(pte, VPTE_WIRED);
-
-	pa = *pte & VPTE_FRAME;
-	m = PHYS_TO_VM_PAGE(pa);	/* held by wired count */
+		atomic_clear_long(pte, VPTE_WIRED);
+		pa = *pte & VPTE_FRAME;
+		m = PHYS_TO_VM_PAGE(pa);	/* held by wired count */
+		/* caller handles m->wire_count */
+	} else {
+		m = NULL;
+	}
 
 	vm_object_drop(pmap->pm_pteobj);
 

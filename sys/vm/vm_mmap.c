@@ -1090,13 +1090,10 @@ sys_mlockall(struct sysmsg *sysmsg, const struct mlockall_args *uap)
 
 done:
 	RB_FOREACH(entry, vm_map_rb_tree, &map->rb_root) {
-		if ((entry->eflags & MAP_ENTRY_USER_WIRED) == 0)
-			continue;
-
-		entry->eflags &= ~MAP_ENTRY_USER_WIRED;
-		entry->wired_count--;
-		if (entry->wired_count == 0)
+		if (entry->eflags & MAP_ENTRY_USER_WIRED) {
+			entry->eflags &= ~MAP_ENTRY_USER_WIRED;
 			vm_fault_unwire(map, entry);
+		}
 	}
 
 	vm_map_unlock(map);
@@ -1156,9 +1153,7 @@ retry:
 	
 		/* Drop wired count, if it hits zero, unwire the entry */
 		entry->eflags &= ~MAP_ENTRY_USER_WIRED;
-		entry->wired_count--;
-		if (entry->wired_count == 0)
-			vm_fault_unwire(map, entry);
+		vm_fault_unwire(map, entry);
 	}
 
 	vm_map_unlock(map);

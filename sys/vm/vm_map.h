@@ -207,6 +207,7 @@ struct vm_map_backing {
 typedef struct vm_map_backing *vm_map_backing_t;
 
 #define VM_MAP_BACK_EXCL_HEUR	0x00000001U
+#define VM_MAP_BACK_VPAGETABLE	0x00000002U
 
 /*
  * Address map entries consist of start and end addresses, a VM object
@@ -256,6 +257,7 @@ typedef struct vm_map_entry *vm_map_entry_t;
 #define MAP_ENTRY_NEEDS_WAKEUP		0x0200	/* waiter's in transition */
 #define MAP_ENTRY_NOCOREDUMP		0x0400	/* don't include in a core */
 #define MAP_ENTRY_KSTACK		0x0800	/* guarded kernel stack */
+#define MAP_ENTRY_VPAGETABLE_WIRED	0x1000	/* wired for vpagetable */
 
 /*
  * flags for vm_map_[un]clip_range()

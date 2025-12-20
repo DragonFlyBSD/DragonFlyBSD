@@ -509,9 +509,7 @@ handle_term(int sig)
  * Initialize system memory.  This is the virtual kernel's 'RAM'.
  *
  * We always use an anonymous memory file (created in /tmp or /var/vkernel
- * and immediately unlinked).  This ensures proper cleanup of PG_VPTMAPPED
- * pages when the vkernel exits - the backing object is destroyed and all
- * pages are freed.
+ * and immediately unlinked).
  *
  * The -i option is deprecated but still accepted for compatibility.
  */
@@ -553,7 +551,7 @@ init_sys_memory(char *imageFile)
 	 * Create an anonymous memory backing file.  We create a temp file
 	 * and immediately unlink it.  The file descriptor keeps the file
 	 * alive until the vkernel exits, at which point all pages are
-	 * properly freed (including clearing PG_VPTMAPPED).
+	 * properly freed.
 	 */
 	asprintf(&tmpfile, "/var/vkernel/.memimg.%d", (int)getpid());
 	fd = open(tmpfile, O_RDWR|O_CREAT|O_EXCL, 0600);

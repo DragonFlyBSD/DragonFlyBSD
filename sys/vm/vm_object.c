@@ -907,7 +907,7 @@ vm_object_terminate_callback(vm_page_t p, void *data)
 				"wired page %p on queue %d\n", p, p->queue);
 			if (vm_object_debug > 0) {
 				--vm_object_debug;
-				print_backtrace(10);
+				print_backtrace(15);
 			}
 		}
 		if (pmap_mapped_sync(p) & (PG_MAPPED | PG_WRITEABLE))
@@ -1533,10 +1533,12 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
 	 * Wired pages cannot be destroyed, but they can be invalidated
 	 * and we do so if clean_only (limit) is not set.
 	 *
-	 * WARNING!  The page may be wired due to being part of a buffer
-	 *	     cache buffer, and the buffer might be marked B_CACHE.
-	 *	     This is fine as part of a truncation but VFSs must be
-	 *	     sure to fix the buffer up when re-extending the file.
+	 * WARNING!  The page may be wired for a multitude of reasons.
+	 *	     it may be part of the buffer cache, wired by
+	 *	     mlock*(), or wired for other reasons.
+	 *
+	 * WARNING!  vm_page_protect() may not be able to reach all
+	 *	     wired pages (VPAGETABLE mappings for example).
 	 *
 	 * NOTE!     PG_NEED_COMMIT is ignored.
 	 */

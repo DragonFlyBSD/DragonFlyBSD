@@ -3288,12 +3288,15 @@ vm_page_wire(vm_page_t m)
  * the wire_count will not be adjusted in any way for a PG_FICTITIOUS
  * page.
  *
+ * The page must be busied unless -1 is passed for activate, which disables
+ * any queuing operations.
+ *
  * This routine may not block.
  */
 void
 vm_page_unwire(vm_page_t m, int activate)
 {
-	KKASSERT(m->busy_count & PBUSY_LOCKED);
+	KKASSERT(activate < 0 || (m->busy_count & PBUSY_LOCKED));
 	if (m->flags & PG_FICTITIOUS) {
 		/* do nothing */
 	} else if ((int)m->wire_count <= 0) {
@@ -3301,7 +3304,7 @@ vm_page_unwire(vm_page_t m, int activate)
 	} else {
 		if (atomic_fetchadd_int(&m->wire_count, -1) == 1) {
 			atomic_add_long(&mycpu->gd_vmstats_adj.v_wire_count,-1);
-			if (m->flags & PG_UNQUEUED) {
+			if (activate < 0 || (m->flags & PG_UNQUEUED)) {
 				;
 			} else if (activate || (m->flags & PG_NEED_COMMIT)) {
 				vm_page_activate(m);

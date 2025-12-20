@@ -195,6 +195,11 @@ vm_contig_pg_clean(int queue, vm_pindex_t count)
 			vm_page_wakeup(m);
 			continue;
 		}
+
+		/*
+		 * NOTE: wire_count and hold_count must NOT have queue
+		 *	 side effects.
+		 */
 		if (m->wire_count || m->hold_count) {
 			vm_page_wakeup(m);
 			continue;
