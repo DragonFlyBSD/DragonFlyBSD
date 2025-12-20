@@ -91,6 +91,7 @@ zalloc(vm_zone_t z)
 	void *item;
 	void *scan;
 	int tryagain;
+	long zmax;
 	long n;
 
 #ifdef INVARIANTS
@@ -129,9 +130,12 @@ retry:
 	 * If we do not have an item in hand, deterministically shift
 	 * more itemsm from the all-cpus zone pool to the pcpu pool and retry.
 	 */
-	n = z->zmax_pcpu / 10 + 1;
+	zmax = z->zmax_pcpu;
+	if (zmax < 1024)
+		zmax = 1024;
+	n = zmax / 10 + 1;
 	if (item) {
-		if (zpcpu->zfreecnt >= n)
+		if (zpcpu->zfreecnt >= n * 4)
 			return item;
 		if (spin_trylock(&z->zspin) == 0)
 			return item;
@@ -246,7 +250,7 @@ zfree(vm_zone_t z, void *item)
 	 * else get it deterministically.
 	 */
 	zmove = zmax / 10 + 1;
-	if (zpcpu->zfreecnt < zmax + zmove) {
+	if (zpcpu->zfreecnt < zmax + zmove * 4) {
 		if (spin_trylock(&z->zspin) == 0) {
 			crit_exit_gd(gd);
 			return;
@@ -393,7 +397,7 @@ zinitna(vm_zone_t z, char *name, size_t size, long nentries, uint32_t flags)
 		 * In particular, pvzone can wind up being excessive and
 		 * waste memory unnecessarily.
 		 */
-		z->zmax_pcpu = z->zmax / ncpus / 64;
+		z->zmax_pcpu = z->zmax / ncpus / 32;
 		if (z->zmax_pcpu < 1024)
 			z->zmax_pcpu = 1024;
 		if (z->zmax_pcpu * z->zsize > 16*1024*1024)
