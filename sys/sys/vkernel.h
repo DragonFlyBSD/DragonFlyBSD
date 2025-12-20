@@ -69,14 +69,19 @@ RB_PROTOTYPE(vmspace_rb_tree, vmspace_entry, rb_entry, rb_vmspace_compare);
  * original VM space and trap context is saved in the process's vkernel
  * structure.
  */
+#define VE_CACHE_COUNT	4		/* power of 2 */
+
 struct vkernel_lwp {
 	struct trapframe save_trapframe;	/* swapped context */
 	struct vextframe save_vextframe;
 	struct trapframe *user_trapframe;	/* copyback to vkernel */
 	struct vextframe *user_vextframe;
 	struct vmspace_entry *ve;
-	struct vmspace_entry *ve_cache;
+	struct vmspace_entry *ve_cache[VE_CACHE_COUNT];
+	int	ve_cache_rover;
+	int	ve_unused01;
 };
+
 
 struct vkernel_proc {
 	RB_HEAD(vmspace_rb_tree, vmspace_entry) root;

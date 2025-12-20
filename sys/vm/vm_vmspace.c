@@ -59,8 +59,77 @@ static int vmspace_entry_delete(struct vmspace_entry *ve,
 static void vmspace_entry_cache_ref(struct vmspace_entry *ve);
 static void vmspace_entry_cache_drop(struct vmspace_entry *ve);
 static void vmspace_entry_drop(struct vmspace_entry *ve);
+static void ve_cache_enter(struct vkernel_lwp *vklp, struct vmspace_entry *ve);
+static struct vmspace_entry *ve_cache_find(struct vkernel_lwp *vklp, void *id);
 
 static MALLOC_DEFINE(M_VKERNEL, "vkernel", "VKernel structures");
+
+/*
+ * Cache helper, enter ve into per-lwp cache (avoid vkp->token use)
+ */
+static
+void
+ve_cache_enter(struct vkernel_lwp *vklp, struct vmspace_entry *ve)
+{
+	int i;
+
+	++vklp->ve_cache_rover;
+	i = vklp->ve_cache_rover & (VE_CACHE_COUNT - 1);
+	vmspace_entry_cache_ref(ve);
+	if (vklp->ve_cache[i])
+		vmspace_entry_cache_drop(vklp->ve_cache[i]);
+	vklp->ve_cache[i] = ve;
+}
+
+/*
+ * Cache helper, locate ve in per-lwp cache (avoid vkp->token use)
+ */
+static
+struct vmspace_entry *
+ve_cache_find(struct vkernel_lwp *vklp, void *id)
+{
+	struct vmspace_entry *ve;
+	uint32_t n;
+	int i;
+
+	for (i = 0; i < VE_CACHE_COUNT; ++i) {
+		ve = vklp->ve_cache[i];
+		if (ve == NULL)
+			continue;
+
+		if (ve->id == id) {
+			/*
+			 * Bump active refs, check to see if the cache
+			 * entry is safe.  If so, we are good.
+			 */
+			n = atomic_fetchadd_int(&ve->refs, 1);
+			if ((n & VKE_REF_DELETED) == 0) {
+				KKASSERT(ve->vmspace);
+				return ve;
+			}
+
+			/*
+			 * Cache stale
+			 */
+			vklp->ve_cache[i] = NULL;
+			vmspace_entry_drop(ve);
+			vmspace_entry_cache_drop(ve);
+		} else if (ve->refs & VKE_REF_DELETED) {
+			/*
+			 * Remove stale entries on the fly
+			 */
+			n = atomic_fetchadd_int(&ve->refs, 1);
+			if (n & VKE_REF_DELETED) {
+				vklp->ve_cache[i] = NULL;
+				vmspace_entry_drop(ve);
+				vmspace_entry_cache_drop(ve);
+			} else {
+				vmspace_entry_drop(ve);
+			}
+		}
+	}
+	return NULL;
+}
 
 /*
  * vmspace_create (void *id, int type, void *data)
@@ -212,12 +281,7 @@ sys_vmspace_ctl(struct sysmsg *sysmsg,
 			vklp = kmalloc(sizeof(*vklp), M_VKERNEL,
 				       M_WAITOK|M_ZERO);
 			lp->lwp_vkernel = vklp;
-		}
-		if (ve && vklp->ve_cache != ve) {
-			vmspace_entry_cache_ref(ve);
-			if (vklp->ve_cache)
-				vmspace_entry_cache_drop(vklp->ve_cache);
-			vklp->ve_cache = ve;
+			ve_cache_enter(vklp, ve);
 		}
 		vklp->user_trapframe = ua.tframe;
 		vklp->user_vextframe = ua.vframe;
@@ -553,7 +617,8 @@ rb_vmspace_delete(struct vmspace_entry *ve, void *data)
  * 0 is returned on success, EBUSY on failure.  On success the caller must
  * drop the last cache_refs.  We have dropped the callers active refs.
  *
- * The caller must hold vkp->token.
+ * The caller must hold vkp->token.  The token will be temporarily dropped
+ * and then reacquired by this routine.
  */
 static
 int
@@ -577,12 +642,19 @@ vmspace_entry_delete(struct vmspace_entry *ve, struct vkernel_proc *vkp,
 	}
 	RB_REMOVE(vmspace_rb_tree, &vkp->root, ve);
 
+	/*
+	 * Shouldn't be any other references so we can drop the token
+	 * to do the nasty work, reducing contension with operations on
+	 * other cores.
+	 */
+	lwkt_reltoken(&vkp->token);
 	pmap_remove_pages(vmspace_pmap(ve->vmspace),
 			  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 	vm_map_remove(&ve->vmspace->vm_map,
 			  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 	vmspace_rel(ve->vmspace);
 	ve->vmspace = NULL; /* safety */
+	lwkt_gettoken(&vkp->token);
 
 	return 0;
 }
@@ -649,27 +721,10 @@ vkernel_find_vmspace(struct vkernel_proc *vkp, void *id, int excl)
 	 * ve->refs.
 	 */
 	if ((vklp = lp->lwp_vkernel) != NULL) {
-		ve = vklp->ve_cache;
-		if (ve && ve->id == id) {
-			uint32_t n;
-
-			/*
-			 * Bump active refs, check to see if the cache
-			 * entry is stale.  If not, we are good.
-			 */
-			n = atomic_fetchadd_int(&ve->refs, 1);
-			if ((n & VKE_REF_DELETED) == 0) {
-				KKASSERT(ve->vmspace);
-				return ve;
-			}
-
-			/*
-			 * Cache is stale, clean it out and fall through
-			 * to a normal search.
-			 */
-			vklp->ve_cache = NULL;
-			vmspace_entry_drop(ve);
-			vmspace_entry_cache_drop(ve);
+		ve = ve_cache_find(vklp, id);
+		if (ve) {
+			KKASSERT(ve->vmspace);
+			return ve;
 		}
 	}
 
@@ -689,6 +744,8 @@ vkernel_find_vmspace(struct vkernel_proc *vkp, void *id, int excl)
 	}
 	if (excl == 0)
 		lwkt_reltoken(&vkp->token);
+	if (vklp && ve)
+		ve_cache_enter(vklp, ve);
 	return (ve);
 }
 
@@ -755,6 +812,7 @@ vkernel_lwp_exit(struct lwp *lp)
 {
 	struct vkernel_lwp *vklp;
 	struct vmspace_entry *ve;
+	int i;
 
 	if ((vklp = lp->lwp_vkernel) != NULL) {
 		/*
@@ -768,9 +826,12 @@ vkernel_lwp_exit(struct lwp *lp)
 			KKASSERT(ve->refs > 0);
 			vmspace_entry_drop(ve);
 		}
-		if ((ve = vklp->ve_cache) != NULL) {
-			vklp->ve_cache = NULL;
-			vmspace_entry_cache_drop(ve);
+		for (i = 0; i < VE_CACHE_COUNT; ++i) {
+			ve = vklp->ve_cache[i];
+			if (ve) {
+				vklp->ve_cache[i] = NULL;
+				vmspace_entry_cache_drop(ve);
+			}
 		}
 
 		lp->lwp_vkernel = NULL;
