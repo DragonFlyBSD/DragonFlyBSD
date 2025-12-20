@@ -75,8 +75,6 @@ static MALLOC_DEFINE(M_ZONE, "ZONE", "Zone header");
 
 #define	ZENTRY_FREE	0x12342378
 
-long zone_burst = 128;
-
 static void *zget(vm_zone_t z, int *tryagainp);
 
 /*
@@ -91,6 +89,7 @@ zalloc(vm_zone_t z)
 	globaldata_t gd = mycpu;
 	vm_zpcpu_t *zpcpu;
 	void *item;
+	void *scan;
 	int tryagain;
 	long n;
 
@@ -103,6 +102,7 @@ retry:
 	/*
 	 * Avoid spinlock contention by allocating from a per-cpu queue
 	 */
+	item = NULL;
 	if (zpcpu->zfreecnt > 0) {
 		crit_enter_gd(gd);
 		if (zpcpu->zfreecnt > 0) {
@@ -117,49 +117,84 @@ retry:
 			zpcpu->zitems = ((void **) item)[0];
 			--zpcpu->zfreecnt;
 			++zpcpu->znalloc;
-			crit_exit_gd(gd);
-
-			return item;
 		}
 		crit_exit_gd(gd);
 	}
 
 	/*
-	 * Per-zone spinlock for the remainder.  Always load at least one
-	 * item.
+	 * If we have an item in-hand, opportunistically shift more
+	 * items from the all-cpus zone pool to the pcpu pool if its getting
+	 * low.
+	 *
+	 * If we do not have an item in hand, deterministically shift
+	 * more itemsm from the all-cpus zone pool to the pcpu pool and retry.
 	 */
-	spin_lock(&z->zspin);
+	n = z->zmax_pcpu / 10 + 1;
+	if (item) {
+		if (zpcpu->zfreecnt >= n)
+			return item;
+		if (spin_trylock(&z->zspin) == 0)
+			return item;
+		/* spinlock obtained */
+	} else {
+		spin_lock(&z->zspin);
+	}
+
+	/*
+	 * Per-zone spinlock for the remainder.
+	 *
+	 * Try to move (n) items from the all-cpus zone pool to the pcpu pool
+	 */
 	if (z->zfreecnt > z->zfreemin) {
-		n = zone_burst;
 		do {
-			item = z->zitems;
+			scan = z->zitems;
 #ifdef INVARIANTS
-			KASSERT(item != NULL, ("zitems unexpectedly NULL"));
-			if (((void **)item)[1] != (void *)ZENTRY_FREE)
+			KASSERT(scan != NULL, ("zitems unexpectedly NULL"));
+			if (((void **)scan)[1] != (void *)ZENTRY_FREE)
 				zerror(ZONE_ERROR_NOTFREE);
 #endif
-			z->zitems = ((void **)item)[0];
+			z->zitems = ((void **)scan)[0];
 			--z->zfreecnt;
-			((void **)item)[0] = zpcpu->zitems;
-			zpcpu->zitems = item;
+			((void **)scan)[0] = zpcpu->zitems;
+			zpcpu->zitems = scan;
 			++zpcpu->zfreecnt;
 		} while (--n > 0 && z->zfreecnt > z->zfreemin);
 		spin_unlock(&z->zspin);
-		goto retry;
-	} else {
-		spin_unlock(&z->zspin);
-		tryagain = 0;
-		item = zget(z, &tryagain);
-		if (tryagain)
-			goto retry;
 
 		/*
-		 * PANICFAIL allows the caller to assume that the zalloc()
-		 * will always succeed.  If it doesn't, we panic here.
+		 * We moved at least one, either return the item we already
+		 * have in-hand, or retry.
 		 */
-		if (item == NULL && (z->zflags & ZONE_PANICFAIL))
-			panic("zalloc(%s) failed", z->zname);
+		if (item == NULL)
+			goto retry;
+		return item;
 	}
+	spin_unlock(&z->zspin);
+
+	/*
+	 * The pcpu pool is too small and the all-cpus zone pool is too small.
+	 * But if we have an item in-hand, stop here. zget() is very
+	 * heavy-weight and there is no need to call it if we can still
+	 * get items.
+	 */
+	if (item)
+		return item;
+
+	/*
+	 * Expand the zone pool
+	 */
+	tryagain = 0;
+	item = zget(z, &tryagain);
+	if (tryagain)
+		goto retry;
+
+	/*
+	 * PANICFAIL allows the caller to assume that the zalloc()
+	 * will always succeed.  If it doesn't, we panic here.
+	 */
+	if (item == NULL && (z->zflags & ZONE_PANICFAIL))
+		panic("zalloc(%s) failed", z->zname);
+
 	return item;
 }
 
@@ -176,6 +211,7 @@ zfree(vm_zone_t z, void *item)
 	void *tail_item;
 	long count;
 	long zmax;
+	long zmove;
 
 	zpcpu = &z->zpcpu[gd->gd_cpuid];
 
@@ -205,29 +241,38 @@ zfree(vm_zone_t z, void *item)
 	}
 
 	/*
-	 * Hystereis, move (zmax) (calculated below) items to the pool.
+	 * Hystereis, move extra items to the all-cpus zone pool.  Try to get
+	 * the spin-lock opportunistically if it hasn't gotten too bloated,
+	 * else get it deterministically.
 	 */
-	zmax = zmax / 2;
-	if (zmax > zone_burst)
-		zmax = zone_burst;
+	zmove = zmax / 10 + 1;
+	if (zpcpu->zfreecnt < zmax + zmove) {
+		if (spin_trylock(&z->zspin) == 0) {
+			crit_exit_gd(gd);
+			return;
+		}
+		/* spinlock succeeded */
+	} else {
+		zmove += zmax - zpcpu->zfreecnt;
+		if (zmove <= 2)
+			zmove = 2;
+		spin_lock(&z->zspin);
+	}
+
+	/*
+	 * Zone spinlock held, try to move zmove items
+	 * from the pcpu pool back to the zone pool.
+	 */
 	tail_item = item;
 	count = 1;
-
-	while (count < zmax) {
+	while (count < zmove && ((void **)tail_item)[0]) {
 		tail_item = ((void **)tail_item)[0];
 		++count;
 	}
-	zpcpu->zitems = ((void **)tail_item)[0];
+	zpcpu->zitems = ((void **)tail_item)[0];	/* pcpu adj */
 	zpcpu->zfreecnt -= count;
 
-	/*
-	 * Per-zone spinlock for the remainder.
-	 *
-	 * Also implement hysteresis by freeing a number of pcpu
-	 * entries.
-	 */
-	spin_lock(&z->zspin);
-	((void **)tail_item)[0] = z->zitems;
+	((void **)tail_item)[0] = z->zitems;		/* zone adj */
 	z->zitems = item;
 	z->zfreecnt += count;
 	spin_unlock(&z->zspin);
@@ -744,7 +789,7 @@ zget(vm_zone_t z, int *tryagainp)
 	spin_unlock(&z->zspin);
 
 	/*
-	 * Release the per-zone global lock after the items have been
+	 * Release the per-zone all-cpus lock after the items have been
 	 * added.  Any other threads blocked in zget()'s zgetlk will
 	 * then retry rather than potentially exhaust the per-cpu cache
 	 * of vm_map_entry structures doing their own kmem_alloc() calls,
@@ -854,8 +899,6 @@ SYSCTL_OID(_vm, OID_AUTO, zone, CTLTYPE_STRING|CTLFLAG_RD, \
 
 SYSCTL_LONG(_vm, OID_AUTO, zone_kmem_pages,
 	CTLFLAG_RD, &zone_kmem_pages, 0, "Number of interrupt safe pages allocated by zone");
-SYSCTL_LONG(_vm, OID_AUTO, zone_burst,
-	CTLFLAG_RW, &zone_burst, 0, "Burst from depot to pcpu cache");
 SYSCTL_LONG(_vm, OID_AUTO, zone_kmem_kvaspace,
 	CTLFLAG_RD, &zone_kmem_kvaspace, 0, "KVA space allocated by zone");
 SYSCTL_LONG(_vm, OID_AUTO, zone_kern_pages,
