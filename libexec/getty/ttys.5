@@ -177,9 +177,6 @@ ttyh1	"/usr/libexec/getty std.115200"	vt100	on group=dialup		# 459 Evans
 ttyv0	"/usr/local/bin/xterm -display :0"	xterm	on window="/usr/local/bin/X :0"
 # enable the video tty only if it exists
 ttyv1	"/usr/libexec/getty Pc"		cons25	on secure ifexists
-# Network pseudo ttys -- don't enable getty
-ttyp0	none	network 	group=pty
-ttyp1	none	network	off	group=pty
 .Ed
 .Sh SEE ALSO
 .Xr login 1 ,

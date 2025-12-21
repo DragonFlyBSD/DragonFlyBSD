@@ -1037,11 +1037,11 @@ uses these environment variables:
 .Ev TERMCAP ,
 .Ev WINDOW_ID .
 .Sh FILES
-.Bl -tag -width /dev/[pt]ty[pq]? -compact
+.Bl -tag -width /dev/pts/[0-9]+ -compact
 .It Pa ~/.windowrc
 startup command file.
-.It Pa /dev/[pt]ty[pq]?
-pseudo-terminal devices.
+.It Pa /dev/pts/[0-9]+
+pseudo-terminal slave devices.
 .El
 .Sh EXAMPLES
 The following example
