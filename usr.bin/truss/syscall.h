@@ -2,14 +2,15 @@
  * See i386-fbsd.c for copyright and license terms.
  *
  * System call arguments come in several flavours:
- * Hex -- values that should be printed in hex (addresses)
+ * Hex -- 32bit integer values that should be printed in hex
  * Octal -- Same as above, but octal
- * Int -- normal integer values (file descriptors, for example)
+ * Int -- normal 32bit integer values (file descriptors, for example)
+ * Hex64 -- 64bit values that should be printed in hex (addresses)
+ * Int64 -- normal 64bit integer values
  * String -- pointers to sensible data.  Note that we treat read() and
  *	write() arguments as such, even though they may *not* be
  *	printable data.
  * Ptr -- pointer to some specific structure.  Just print as hex for now.
- * Quad -- a double-word value.  e.g., lseek(int, offset_t, int)
  * Stat -- a pointer to a stat buffer.  Currently unused.
  * Ioctl -- an ioctl command.  Woefully limited.
  *
@@ -22,8 +23,8 @@
  * $DragonFly: src/usr.bin/truss/syscall.h,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
 
-enum Argtype { None = 1, Hex, Octal, Int, String, Ptr, Stat, Ioctl, Quad,
-	Signal, Sockaddr };
+enum Argtype { None = 1, Hex, Hex64, Octal, Int, Int64,
+	String, Ptr, Stat, Ioctl, Signal, Sockaddr };
 
 #define ARG_MASK	0xff
 #define OUT	0x100

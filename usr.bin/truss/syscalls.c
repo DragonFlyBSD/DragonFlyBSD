@@ -60,14 +60,14 @@
 
 struct syscall syscalls[] = {
 	{ "readlink", 1, 3,
-	  { { String, 0 } , { String | OUT, 1 }, { Int, 2 }}},
+	  { { String, 0 } , { String | OUT, 1 }, { Int64, 2 }}},
 	{ "lseek", 2, 3,
-	  { { Int, 0 }, {Quad, 2 }, { Int, 4 }}},
+	  { { Int, 0 }, {Hex64, 1 }, { Int64, 2 }}},
 	{ "mmap", 2, 6,
-	  { { Hex, 0 }, {Int, 1}, {Hex, 2}, {Hex, 3}, {Int, 4}, {Quad, 6}}},
+	  { { Hex64, 0 }, {Hex64, 1}, {Hex, 2}, {Hex, 3}, {Int, 4}, {Hex64, 5}}},
 	{ "open", 1, 3,
 	  { { String | IN, 0} , { Hex, 1}, {Octal, 2}}},
-	{ "close", 1, 1, { { Int, 0 } } },
+	{ "close", 1, 1, { { Int | IN, 0 } } },
 	{ "fstat", 1, 2,
 	  { { Int, 0},  {Ptr | OUT , 1 }}},
 	{ "stat", 1, 2,
@@ -75,24 +75,26 @@ struct syscall syscalls[] = {
 	{ "lstat", 1, 2,
 	  { { String | IN, 0 }, { Ptr | OUT, 1 }}},
 	{ "write", 1, 3,
-	  { { Int, 0}, { Ptr | IN, 1 }, { Int, 2 }}},
+	  { { Int, 0}, { Ptr | IN, 1 }, { Int64, 2 }}},
 	{ "ioctl", 1, 3,
-	  { { Int, 0}, { Ioctl, 1 }, { Hex, 2 }}},
-	{ "break", 1, 1, { { Hex, 0 }}},
-	{ "exit", 0, 1, { { Hex, 0 }}},
+	  { { Int, 0}, { Ioctl, 1 }, { Hex64, 2 }}},
+	{ "break", 1, 1, { { Hex64, 0 }}},
+	{ "exit", 0, 1, { { Int, 0 }}},
 	{ "access", 1, 2, { { String | IN, 0 }, { Int, 1 }}},
+	{ "chdir", 1, 1, { { String | IN, 0 }}},
+	{ "fchdir", 1, 1, { { Int | IN, 0 }}},
 	{ "sigaction", 1, 3,
 	  { { Signal, 0 }, { Ptr | IN, 1 }, { Ptr | OUT, 2 }}},
 	{ "accept", 1, 3,
-	  { { Hex, 0 }, { Sockaddr | OUT, 1 }, { Ptr | OUT, 2 } } },
+	  { { Int, 0 }, { Sockaddr | OUT, 1 }, { Ptr | OUT, 2 } } },
 	{ "bind", 1, 3,
-	  { { Hex, 0 }, { Sockaddr | IN, 1 }, { Int, 2 } } },
+	  { { Int, 0 }, { Sockaddr | IN, 1 }, { Int, 2 } } },
 	{ "connect", 1, 3,
-	  { { Hex, 0 }, { Sockaddr | IN, 1 }, { Int, 2 } } },
+	  { { Int, 0 }, { Sockaddr | IN, 1 }, { Int, 2 } } },
 	{ "getpeername", 1, 3,
-	  { { Hex, 0 }, { Sockaddr | OUT, 1 }, { Ptr | OUT, 2 } } },
+	  { { Int, 0 }, { Sockaddr | OUT, 1 }, { Ptr | OUT, 2 } } },
 	{ "getsockname", 1, 3,
-	  { { Hex, 0 }, { Sockaddr | OUT, 1 }, { Ptr | OUT, 2 } } },
+	  { { Int, 0 }, { Sockaddr | OUT, 1 }, { Ptr | OUT, 2 } } },
 	{ 0, 0, 0, { { 0, 0 }}},
 };
 
@@ -184,23 +186,6 @@ get_string(int procfd, void *offset, int max) {
 
 
 /*
- * Gag.  This is really unportable.  Multiplication is more portable.
- * But slower, from the code I saw.
- */
-
-static long long
-make_quad(unsigned long p1, unsigned long p2) {
-  union {
-    long long ll;
-    unsigned long l[2];
-  } t;
-  t.l[0] = p1;
-  t.l[1] = p2;
-  return t.ll;
-}
-
-
-/*
  * print_arg
  * Converts a syscall argument into a string.  Said string is
  * allocated via malloc(), so needs to be free()'d.  The file
@@ -216,14 +201,22 @@ print_arg(int fd, struct syscall_args *sc, unsigned long *args) {
   switch (sc->type & ARG_MASK) {
   case Hex:
     tmp = malloc(12);
-    sprintf(tmp, "0x%lx", args[sc->offset]);
+    sprintf(tmp, "0x%x", (uint32_t)args[sc->offset]);
     break;
   case Octal:
     tmp = malloc(13);
-    sprintf(tmp, "0%lo", args[sc->offset]);
+    sprintf(tmp, "0%o", (uint32_t)args[sc->offset]);
     break;
   case Int:
     tmp = malloc(12);
+    sprintf(tmp, "%d", (int32_t)args[sc->offset]);
+    break;
+  case Hex64:
+    tmp = malloc(24);
+    sprintf(tmp, "0x%lx", args[sc->offset]);
+    break;
+  case Int64:
+    tmp = malloc(25);
     sprintf(tmp, "%ld", args[sc->offset]);
     break;
   case String:
@@ -235,19 +228,8 @@ print_arg(int fd, struct syscall_args *sc, unsigned long *args) {
       free(tmp2);
     }
   break;
-  case Quad:
-    {
-      unsigned long long t;
-      unsigned long l1, l2;
-      l1 = args[sc->offset];
-      l2 = args[sc->offset+1];
-      t = make_quad(l1, l2);
-      tmp = malloc(24);
-      sprintf(tmp, "0x%qx", t);
-      break;
-    }
   case Ptr:
-    tmp = malloc(12);
+    tmp = malloc(24);
     sprintf(tmp, "0x%lx", args[sc->offset]);
     break;
   case Ioctl:
@@ -256,7 +238,7 @@ print_arg(int fd, struct syscall_args *sc, unsigned long *args) {
       if (temp)
 	tmp = strdup(temp);
       else {
-	tmp = malloc(12);
+	tmp = malloc(24);
 	sprintf(tmp, "0x%lx", args[sc->offset]);
       }
     }

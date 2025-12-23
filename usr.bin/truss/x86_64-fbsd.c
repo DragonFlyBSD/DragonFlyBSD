@@ -114,6 +114,7 @@ x86_64_syscall_entry(struct trussinfo *trussinfo, int nargs) {
   struct reg regs = { .r_err = 0 };
   int syscall_num;
   int i, reg;
+  int is_xsyscall;
   struct syscall *sc;
 
   if (fd == -1 || trussinfo->pid != cpid) {
@@ -140,9 +141,11 @@ x86_64_syscall_entry(struct trussinfo *trussinfo, int nargs) {
    */
   reg = 0;
   syscall_num = regs.r_rax;
+  is_xsyscall = 0;
   switch (syscall_num) {
   case SYS_syscall:
   case SYS___syscall:
+    is_xsyscall = 1;
     syscall_num = regs.r_rdi;
     reg++;
     break;
@@ -155,10 +158,27 @@ x86_64_syscall_entry(struct trussinfo *trussinfo, int nargs) {
     fprintf(trussinfo->outfile, "-- UNKNOWN SYSCALL %d --\n", syscall_num);
   }
 
-  if (nargs == 0)
-    return;
+  sc = fsc.name ? get_syscall(fsc.name) : NULL;
+  if (sc) {
+    fsc.nargs = sc->nargs;
+  } else {
+#ifdef DEBUG
+    fprintf(trussinfo->outfile, "unknown syscall %s -- setting args to %d\n",
+	   fsc.name, nargs);
+#endif
+    fsc.nargs = nargs;
+  }
 
-  fsc.args = malloc((1+nargs) * sizeof(unsigned long));
+  if (is_xsyscall) {
+    /* We need to figure out nargs ourselves in case of xsyscall() for now. */
+    if (nargs == 0)
+      nargs = fsc.nargs;
+  }
+  if (nargs == 0) {
+    return;
+  }
+
+fsc.args = malloc((1+nargs) * sizeof(unsigned long));
   for (i = 0; i < nargs && reg < 6; i++, reg++) {
     switch (reg) {
     case 0: fsc.args[i] = regs.r_rdi; break;
@@ -171,19 +191,10 @@ x86_64_syscall_entry(struct trussinfo *trussinfo, int nargs) {
   }
   if (nargs > i) {
     lseek(Procfd, regs.r_rsp + sizeof(register_t), SEEK_SET);
-    if (read(Procfd, &fsc.args[i], (nargs-i) * sizeof(register_t)) == -1)
+    if (read(Procfd, &fsc.args[i], (nargs-i) * sizeof(register_t)) == -1) {
+      free(fsc.args);
       return;
-  }
-
-  sc = fsc.name ? get_syscall(fsc.name) : NULL;
-  if (sc) {
-    fsc.nargs = sc->nargs;
-  } else {
-#ifdef DEBUG
-    fprintf(trussinfo->trussinfo->outfile, "unknown syscall %s -- setting args to %d\n",
-	   fsc.name, nargs);
-#endif
-    fsc.nargs = nargs;
+    }
   }
 
   fsc.s_args = malloc((1+fsc.nargs) * sizeof(char*));
@@ -205,7 +216,7 @@ x86_64_syscall_entry(struct trussinfo *trussinfo, int nargs) {
 #endif
     for (i = 0; i < fsc.nargs; i++) {
 #ifdef DEBUG
-      fprintf(stderr, "0x%x%s",
+      fprintf(stderr, "0x%lx%s",
 	     sc
 	     ? fsc.args[sc->args[i].offset]
 	     : fsc.args[i],
@@ -221,7 +232,7 @@ x86_64_syscall_entry(struct trussinfo *trussinfo, int nargs) {
   }
 
 #ifdef DEBUG
-  fprintf(trussinfo->trussinfo->outfile, "\n");
+  fprintf(trussinfo->outfile, "\n");
 #endif
 
   /*
