@@ -286,17 +286,14 @@ vtblk_attach(device_t dev)
 		return error;
 	}
 
-	if (blkcfg.num_queues >= ncpus) {
-		sc->vtblk_nqs = ncpus;
-	} else {
-		sc->vtblk_nqs = blkcfg.num_queues;
-	}
+	sc->vtblk_nqs = min(blkcfg.num_queues, ncpus);
+	sc->vtblk_nqs = min(sc->vtblk_nqs, VIRTIO_MAX_VIRTQUEUES);
 	max_queues = vtblk_tunable_int(sc, "max_queues", vtblk_max_queues);
-	sc->vtblk_nqs = imin(sc->vtblk_nqs, max_queues);
+	sc->vtblk_nqs = min(sc->vtblk_nqs, max_queues);
 	sc->vtblk_nintrs =
-	    imin(virtio_intr_count(sc->vtblk_dev), sc->vtblk_nqs);
+	    min(virtio_intr_count(sc->vtblk_dev), sc->vtblk_nqs);
 	// Limit to a 1:1 mapping of IRQs to Virtqueue for now.
-	sc->vtblk_nqs = imin(sc->vtblk_nqs, sc->vtblk_nintrs);
+	sc->vtblk_nqs = min(sc->vtblk_nqs, sc->vtblk_nintrs);
 
 	for (i = 0; i < sc->vtblk_nqs; i++) {
 		struct vtblk_queue *vq = &sc->vtblk_queues[i];
