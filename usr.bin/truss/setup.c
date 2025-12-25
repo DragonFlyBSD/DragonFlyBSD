@@ -96,19 +96,9 @@ setup_and_wait(char *command[]) {
     if (ioctl(fd, PIOCSFL, flags) == -1)
       warn("cannot set PF_LINGER");
     execvp(command[0], command);
-    mask = ~0;
-    ioctl(fd, PIOCBIC, ~0);
     err(4, "execvp %s", command[0]);
   }
   /* Only in the parent here */
-
-  if (waitpid(pid, NULL, WNOHANG) != 0) {
-    /*
-     * Process exited before it got to us -- meaning the exec failed
-     * miserably -- so we just quietly exit.
-     */
-    exit(1);
-  }
 
   asprintf(&buf, "%s/%d/mem", procfs_path, pid);
   if (buf == NULL)
@@ -122,7 +112,7 @@ setup_and_wait(char *command[]) {
   if (ioctl(fd, PIOCWAIT, &pfs) == -1)
     err(6, "PIOCWAIT");
   if (pfs.why == S_EXIT) {
-    fprintf(stderr, "process exited before exec'ing\n");
+    fprintf (stderr, "process failed to exec, rval = %lu\n", pfs.val);
     ioctl(fd, PIOCCONT, 0);
     wait(0);
     exit(7);
