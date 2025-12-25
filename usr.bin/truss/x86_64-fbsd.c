@@ -178,7 +178,7 @@ x86_64_syscall_entry(struct trussinfo *trussinfo, int nargs) {
     return;
   }
 
-fsc.args = malloc((1+nargs) * sizeof(unsigned long));
+  fsc.args = malloc((1+nargs) * sizeof(unsigned long));
   for (i = 0; i < nargs && reg < 6; i++, reg++) {
     switch (reg) {
     case 0: fsc.args[i] = regs.r_rdi; break;
@@ -190,7 +190,7 @@ fsc.args = malloc((1+nargs) * sizeof(unsigned long));
     }
   }
   if (nargs > i) {
-    lseek(Procfd, regs.r_rsp + sizeof(register_t), SEEK_SET);
+    lseek(Procfd, regs.r_rsp + 2*sizeof(register_t), SEEK_SET);
     if (read(Procfd, &fsc.args[i], (nargs-i) * sizeof(register_t)) == -1) {
       free(fsc.args);
       return;
@@ -247,6 +247,9 @@ fsc.args = malloc((1+nargs) * sizeof(unsigned long));
     print_syscall(trussinfo, fsc.name, fsc.nargs, fsc.s_args);
   }
 
+  if (sc != NULL && sc->ret_type == 0)
+    fprintf(trussinfo->outfile, "\n");
+
   return;
 }
 
@@ -298,7 +301,7 @@ x86_64_syscall_exit(struct trussinfo *trussinfo, int syscall_num __unused) {
   sc = fsc.sc;
   if (!sc) {
     for (i = 0; i < fsc.nargs; i++) {
-      fsc.s_args[i] = malloc(12);
+      fsc.s_args[i] = malloc(24);
       sprintf(fsc.s_args[i], "0x%lx", fsc.args[i]);
     }
   } else {
@@ -314,7 +317,7 @@ x86_64_syscall_exit(struct trussinfo *trussinfo, int syscall_num __unused) {
 	 * it may not be valid.
 	 */
 	if (errorp) {
-	  temp = malloc(12);
+	  temp = malloc(24);
 	  sprintf(temp, "0x%lx", fsc.args[sc->args[i].offset]);
 	} else {
 	  temp = print_arg(Procfd, &sc->args[i], fsc.args);
