@@ -244,7 +244,7 @@ vtblk_attach(device_t dev)
 	struct vtblk_softc *sc;
 	struct virtio_blk_config blkcfg;
 	int error;
-	int i, max_queues;
+	int i;
 
 	sc = device_get_softc(dev);
 	sc->vtblk_dev = dev;
@@ -286,14 +286,20 @@ vtblk_attach(device_t dev)
 		return error;
 	}
 
-	sc->vtblk_nqs = min(blkcfg.num_queues, ncpus);
-	sc->vtblk_nqs = min(sc->vtblk_nqs, VIRTIO_MAX_VIRTQUEUES);
-	max_queues = vtblk_tunable_int(sc, "max_queues", vtblk_max_queues);
-	sc->vtblk_nqs = min(sc->vtblk_nqs, max_queues);
-	sc->vtblk_nintrs =
-	    min(virtio_intr_count(sc->vtblk_dev), sc->vtblk_nqs);
-	// Limit to a 1:1 mapping of IRQs to Virtqueue for now.
-	sc->vtblk_nqs = min(sc->vtblk_nqs, sc->vtblk_nintrs);
+	if (virtio_with_feature(dev, VIRTIO_BLK_F_MQ)) {
+		int max_queues =
+		    vtblk_tunable_int(sc, "max_queues", vtblk_max_queues);
+		sc->vtblk_nqs = min(blkcfg.num_queues, ncpus);
+		sc->vtblk_nqs = min(sc->vtblk_nqs, VIRTIO_MAX_VIRTQUEUES);
+		sc->vtblk_nqs = min(sc->vtblk_nqs, max_queues);
+		sc->vtblk_nintrs =
+		    min(virtio_intr_count(sc->vtblk_dev), sc->vtblk_nqs);
+		// Limit to a 1:1 mapping of IRQs to Virtqueue for now.
+		sc->vtblk_nqs = min(sc->vtblk_nqs, sc->vtblk_nintrs);
+	} else {
+		sc->vtblk_nqs = 1;
+		sc->vtblk_nintrs = 1;
+	}
 
 	for (i = 0; i < sc->vtblk_nqs; i++) {
 		struct vtblk_queue *vq = &sc->vtblk_queues[i];
