@@ -202,37 +202,30 @@ print_arg(int fd, struct syscall_args *sc, unsigned long *args) {
   char *tmp = NULL;
   switch (sc->type & ARG_MASK) {
   case Hex:
-    tmp = malloc(12);
-    sprintf(tmp, "0x%x", (uint32_t)args[sc->offset]);
+    asprintf(&tmp, "0x%x", (uint32_t)args[sc->offset]);
     break;
   case Octal:
-    tmp = malloc(13);
-    sprintf(tmp, "0%o", (uint32_t)args[sc->offset]);
+    asprintf(&tmp, "0%o", (uint32_t)args[sc->offset]);
     break;
   case Int:
-    tmp = malloc(12);
-    sprintf(tmp, "%d", (int32_t)args[sc->offset]);
+    asprintf(&tmp, "%d", (int32_t)args[sc->offset]);
     break;
   case Hex64:
-    tmp = malloc(24);
-    sprintf(tmp, "0x%lx", args[sc->offset]);
+    asprintf(&tmp, "0x%lx", args[sc->offset]);
     break;
   case Int64:
-    tmp = malloc(25);
-    sprintf(tmp, "%ld", args[sc->offset]);
+    asprintf(&tmp, "%ld", args[sc->offset]);
     break;
   case String:
     {
       char *tmp2;
       tmp2 = get_string(fd, (void*)args[sc->offset], 0);
-      tmp = malloc(strlen(tmp2) + 3);
-      sprintf(tmp, "\"%s\"", tmp2);
+      asprintf(&tmp, "\"%s\"", tmp2);
       free(tmp2);
     }
   break;
   case Ptr:
-    tmp = malloc(24);
-    sprintf(tmp, "0x%lx", args[sc->offset]);
+    asprintf(&tmp, "0x%lx", args[sc->offset]);
     break;
   case Ioctl:
     {
@@ -240,8 +233,7 @@ print_arg(int fd, struct syscall_args *sc, unsigned long *args) {
       if (temp)
 	tmp = strdup(temp);
       else {
-	tmp = malloc(24);
-	sprintf(tmp, "0x%lx", args[sc->offset]);
+	asprintf(&tmp, "0x%lx", args[sc->offset]);
       }
     }
     break;
@@ -250,14 +242,13 @@ print_arg(int fd, struct syscall_args *sc, unsigned long *args) {
       long sig;
 
       sig = args[sc->offset];
-      tmp = malloc(12);
       if (sig > 0 && sig < NSIG) {
 	int i;
-	sprintf(tmp, "sig%s", sys_signame[sig]);
+	asprintf(&tmp, "sig%s", sys_signame[sig]);
 	for (i = 0; tmp[i] != '\0'; ++i)
 	  tmp[i] = toupper(tmp[i]);
       } else {
-        sprintf(tmp, "%ld", sig);
+        asprintf(&tmp, "%ld", sig);
       }
     }
     break;

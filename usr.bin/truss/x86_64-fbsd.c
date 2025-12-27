@@ -88,14 +88,11 @@ static struct freebsd_syscall {
 /* Clear up and free parts of the fsc structure. */
 static inline void
 clear_fsc(void) {
-  if (fsc.args) {
-    free(fsc.args);
-  }
+  free(fsc.args);
   if (fsc.s_args) {
     int i;
     for (i = 0; i < fsc.nargs; i++)
-      if (fsc.s_args[i])
-	free(fsc.s_args[i]);
+      free(fsc.s_args[i]);
     free(fsc.s_args);
   }
   memset(&fsc, 0, sizeof(fsc));
@@ -197,8 +194,7 @@ x86_64_syscall_entry(struct trussinfo *trussinfo, int nargs) {
     }
   }
 
-  fsc.s_args = malloc((1+fsc.nargs) * sizeof(char*));
-  memset(fsc.s_args, 0, fsc.nargs * sizeof(char*));
+  fsc.s_args = calloc(1+fsc.nargs, sizeof(char*));
   fsc.sc = sc;
 
   /*
@@ -300,10 +296,8 @@ x86_64_syscall_exit(struct trussinfo *trussinfo, int syscall_num __unused) {
 
   sc = fsc.sc;
   if (!sc) {
-    for (i = 0; i < fsc.nargs; i++) {
-      fsc.s_args[i] = malloc(24);
-      sprintf(fsc.s_args[i], "0x%lx", fsc.args[i]);
-    }
+    for (i = 0; i < fsc.nargs; i++)
+      asprintf(&fsc.s_args[i], "0x%lx", fsc.args[i]);
   } else {
     /*
      * Here, we only look for arguments that have OUT masked in --
@@ -317,8 +311,7 @@ x86_64_syscall_exit(struct trussinfo *trussinfo, int syscall_num __unused) {
 	 * it may not be valid.
 	 */
 	if (errorp) {
-	  temp = malloc(24);
-	  sprintf(temp, "0x%lx", fsc.args[sc->args[i].offset]);
+	  asprintf(&temp, "0x%lx", fsc.args[sc->args[i].offset]);
 	} else {
 	  temp = print_arg(Procfd, &sc->args[i], fsc.args);
 	}
