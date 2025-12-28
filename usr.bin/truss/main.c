@@ -230,9 +230,12 @@ main(int ac, char **av) {
   do {
     int val = 0;
 
-    if (ioctl(Procfd, PIOCWAIT, &pfs) == -1)
-      warn("PIOCWAIT top of loop");
-    else {
+    if (ioctl(Procfd, PIOCWAIT, &pfs) == -1) {
+      if (errno == EPERM)
+	err(1, "PIOCWAIT top of loop");
+      else
+	warn("PIOCWAIT top of loop");
+    } else {
       switch(i = pfs.why) {
       case S_SCE:
 	funcs->enter_syscall(trussinfo, pfs.val);
