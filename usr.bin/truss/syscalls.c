@@ -37,6 +37,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <netinet/in.h>
@@ -124,66 +125,39 @@ get_syscall(const char *name) {
  */
 
 static int
-get_struct(int procfd, void *offset, void *buf, int len) {
-	char *pos;
-	FILE *p;
-	int c, fd;
+get_struct(int procfd, off_t offset, void *buf, int len) {
+	ssize_t count;
 
-	if ((fd = dup(procfd)) == -1)
-		err(1, "dup");
-	if ((p = fdopen(fd, "r")) == NULL)
-		err(1, "fdopen");
-	fseeko(p, (uintptr_t)offset, SEEK_SET);
-	for (pos = (char *)buf; len--; pos++) {
-		if ((c = fgetc(p)) == EOF)
-			return -1;
-		*pos = c;
-	}
-	fclose(p);
-	return 0;
+	count = pread(procfd, buf, len, offset);
+	if (count != len)
+		return -1;
+	else
+		return 0;
 }
 
 /*
  * get_string
- * Copy a string from the process.  Note that it is
- * expected to be a C string, but if max is set, it will
- * only get that much.
+ * Copy a C string from the process. The maximum length of the string is
+ * max if non-zero, and MAXPATHLEN otherwise.
+ * The returned buffer is allocated with malloc(), and needs to be free()'d
+ * after use.
  */
 
 char *
-get_string(int procfd, void *offset, int max) {
-	char *buf;
-	int size, len, c, fd;
-	FILE *p;
+get_string(int procfd, off_t offset, size_t max) {
+	char *buf, *str;
 
-	if ((fd = dup(procfd)) == -1)
-		err(1, "dup");
-	if ((p = fdopen(fd, "r")) == NULL)
-		err(1, "fdopen");
-	buf = malloc( size = (max ? max : 64 ) );
-	len = 0;
-	buf[0] = 0;
-	fseeko(p, (uintptr_t)offset, SEEK_SET);
-	while ((c = fgetc(p)) != EOF) {
-		buf[len++] = c;
-		if (c == 0 || len == max) {
-			buf[len] = 0;
-			break;
-		}
-		if (len == size) {
-			char *tmp;
-			tmp = realloc(buf, size+64);
-			if (tmp == NULL) {
-				buf[len] = 0;
-				fclose(p);
-				return buf;
-			}
-			size += 64;
-			buf = tmp;
-		}
-	}
-	fclose(p);
-	return buf;
+	max = max ? max : MAXPATHLEN;
+	buf = malloc(max);
+	ssize_t count;
+
+	count = pread(procfd, buf, max, offset);
+	if (count <= 0)
+		buf[0] = '\0';
+
+	str = strndup(buf, count);
+	free(buf);
+	return str;
 }
 
 
@@ -219,7 +193,7 @@ print_arg(int fd, struct syscall_args *sc, unsigned long *args) {
   case String:
     {
       char *tmp2;
-      tmp2 = get_string(fd, (void*)args[sc->offset], 0);
+      tmp2 = get_string(fd, (off_t)args[sc->offset], 0);
       asprintf(&tmp, "\"%s\"", tmp2);
       free(tmp2);
     }
@@ -265,17 +239,17 @@ print_arg(int fd, struct syscall_args *sc, unsigned long *args) {
       int i;
 
       /* yuck: get ss_len */
-      if (get_struct(fd, (void *)args[sc->offset], &ss,
+      if (get_struct(fd, (off_t)args[sc->offset], &ss,
 	sizeof(ss.ss_len) + sizeof(ss.ss_family)) == -1)
 	err(1, "get_struct %p", (void *)args[sc->offset]);
       /* sockaddr_un never have the length filled in! */
       if (ss.ss_family == AF_UNIX) {
-	if (get_struct(fd, (void *)args[sc->offset], &ss,
+	if (get_struct(fd, (off_t)args[sc->offset], &ss,
 	  sizeof(*sun))
 	  == -1)
 	  err(2, "get_struct %p", (void *)args[sc->offset]);
       } else {
-	if (get_struct(fd, (void *)args[sc->offset], &ss,
+	if (get_struct(fd, (off_t)args[sc->offset], &ss,
 	    ss.ss_len < sizeof(ss) ? ss.ss_len : sizeof(ss))
 	  == -1)
 	  err(2, "get_struct %p", (void *)args[sc->offset]);

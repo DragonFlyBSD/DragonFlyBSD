@@ -44,7 +44,7 @@ struct syscall {
 };
 
 struct syscall *get_syscall(const char*);
-char *get_string(int, void*, int);
+char *get_string(int, off_t, size_t);
 char *print_arg(int, struct syscall_args *, unsigned long*);
 void print_syscall(struct trussinfo *, const char *, int, char **);
 void print_syscall_ret(struct trussinfo *, const char *, int, char **, int, int);

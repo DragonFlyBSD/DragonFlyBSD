@@ -128,8 +128,7 @@ x86_64_syscall_entry(struct trussinfo *trussinfo, int nargs) {
   }
 
   clear_fsc();
-  lseek(fd, 0L, 0);
-  i = read(fd, &regs, sizeof(regs));
+  i = pread(fd, &regs, sizeof(regs), 0L);
 
   /*
    * FreeBSD has two special kinds of system call redirctions --
@@ -187,8 +186,8 @@ x86_64_syscall_entry(struct trussinfo *trussinfo, int nargs) {
     }
   }
   if (nargs > i) {
-    lseek(Procfd, regs.r_rsp + 2*sizeof(register_t), SEEK_SET);
-    if (read(Procfd, &fsc.args[i], (nargs-i) * sizeof(register_t)) == -1) {
+    if (pread(Procfd, &fsc.args[i], (nargs-i) * sizeof(register_t),
+	      regs.r_rsp + 2*sizeof(register_t)) == -1) {
       free(fsc.args);
       return;
     }
@@ -281,8 +280,7 @@ x86_64_syscall_exit(struct trussinfo *trussinfo, int syscall_num __unused) {
     cpid = trussinfo->pid;
   }
 
-  lseek(fd, 0L, 0);
-  if (read(fd, &regs, sizeof(regs)) != sizeof(regs)) {
+  if (pread(fd, &regs, sizeof(regs), 0L) != sizeof(regs)) {
 	  fprintf(trussinfo->outfile, "\n");
 	  return 0;
   }
