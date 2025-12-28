@@ -81,7 +81,7 @@ struct syscall syscalls[] = {
 	  { { Int, 0}, { Ioctl, 1 }, { Hex64, 2 }}},
 	{ "execve", 0, 3,
 	  { { String | IN, 0} , { Ptr, 1}, {Ptr, 2}}},
-	{ "break", 1, 1, { { Hex64, 0 }}},
+	{ "sbrk", 1, 1, { { Hex64, 0 }}},
 	{ "exit", 0, 1, { { Int, 0 }}},
 	{ "access", 1, 2, { { String | IN, 0 }, { Int, 1 }}},
 	{ "chdir", 1, 1, { { String | IN, 0 }}},
@@ -206,9 +206,8 @@ print_arg(int fd, struct syscall_args *sc, unsigned long *args) {
       const char *temp = ioctlname(args[sc->offset]);
       if (temp)
 	tmp = strdup(temp);
-      else {
+      else
 	asprintf(&tmp, "0x%lx", args[sc->offset]);
-      }
     }
     break;
   case Signal:
@@ -216,7 +215,7 @@ print_arg(int fd, struct syscall_args *sc, unsigned long *args) {
       long sig;
 
       sig = args[sc->offset];
-      if (sig > 0 && sig < NSIG) {
+      if (sig > 0 && sig < sys_nsig) {
 	int i;
 	asprintf(&tmp, "sig%s", sys_signame[sig]);
 	for (i = 0; tmp[i] != '\0'; ++i)

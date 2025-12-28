@@ -136,10 +136,9 @@ main(int ac, char **av) {
   struct trussinfo *trussinfo;
 
   /* Initialize the trussinfo struct */
-  trussinfo = (struct trussinfo *)malloc(sizeof(struct trussinfo));
+  trussinfo = (struct trussinfo *)calloc(1, sizeof(struct trussinfo));
   if (trussinfo == NULL)
-	  errx(1, "malloc() failed");
-  bzero(trussinfo, sizeof(struct trussinfo));
+	  err(1, "calloc()");
   trussinfo->outfile = stderr;
 
   /* Check where procfs is mounted if it is mounted */
@@ -163,8 +162,7 @@ main(int ac, char **av) {
       trussinfo->pid = atoi(optarg);
       if (trussinfo->pid == getpid()) {
 	      /* make sure truss doesn't trace itself */
-	      fprintf(stderr, "truss: attempt to self trace: %d\n", trussinfo->pid);
-	      exit(2);
+	      errx(2, "truss: attempt to self trace: %d\n", trussinfo->pid);
       }
       break;
     case 'o':	/* Specified output file */

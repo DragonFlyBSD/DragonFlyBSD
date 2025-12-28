@@ -69,14 +69,12 @@ setup_and_wait(char *command[]) {
   char *buf;
   int fd;
   int pid;
-  int flags;
 
   pid = fork();
   if (pid == -1) {
     err(1, "fork failed");
   }
   if (pid == 0) {	/* Child */
-    int mask = S_EXEC | S_EXIT;
     asprintf(&buf, "%s/curproc/mem", procfs_path);
     if (buf == NULL)
       err(1, "Out of memory");
@@ -84,16 +82,15 @@ setup_and_wait(char *command[]) {
     free(buf);
     if (fd == -1)
       err(2, "cannot open %s", buf);
-    fcntl(fd, F_SETFD, 1);
-    if (ioctl(fd, PIOCBIS, mask) == -1)
+    fcntl(fd, F_SETFD, FD_CLOEXEC);
+    if (ioctl(fd, PIOCBIS, S_EXEC | S_EXIT) == -1)
       err(3, "PIOCBIS");
-    flags = PF_LINGER;
     /*
      * The PF_LINGER flag tells procfs not to wake up the
      * process on last close; normally, this is the behaviour
      * we want.
      */
-    if (ioctl(fd, PIOCSFL, flags) == -1)
+    if (ioctl(fd, PIOCSFL, PF_LINGER) == -1)
       warn("cannot set PF_LINGER");
     execvp(command[0], command);
     err(4, "execvp %s", command[0]);
