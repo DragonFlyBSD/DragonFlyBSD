@@ -70,7 +70,6 @@ procfs_dofpregs(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 			error = procfs_write_fpregs(lp, &r);
 	}
 	LWPRELE(lp);
-	uio->uio_offset = 0;
 
 	return (error);
 }
