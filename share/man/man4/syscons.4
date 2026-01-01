@@ -254,16 +254,7 @@ for more details.
 .Ss Loader Tunables
 The following tunables are available and can be set in
 .Xr loader.conf 5 .
-.Bl -tag -width ".Va kern.kms_console"
-.It Va kern.kms_console
-Setting this tunable to 0 disables experimental framebuffer support
-in conjunction with the
-.Xr amdgpu 4 ,
-.Xr i915 4
-or
-.Xr radeon 4
-drivers.
-It is 1 by default.
+.Bl -tag -width ".Va kern.kms_columns"
 .It Va kern.kms_columns
 The number of columns to use in conjunction with the
 .Xr amdgpu 4 ,
@@ -272,9 +263,6 @@ and
 .Xr radeon 4
 drivers.
 The font size is scaled to match the requested number of columns.
-This requires
-.Va kern.kms_console
-to be set to 1.
 By default,
 .Nm
 tries to find a more or less pleasant looking default.
