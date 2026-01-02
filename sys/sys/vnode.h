@@ -96,7 +96,7 @@ struct mountctl_opt {
 };
 
 /*
- * The vnode infrastructure is being reorgranized.  Most reference-related
+ * The vnode infrastructure is being reorganized.  Most reference-related
  * fields are locked by the BGL, and most file I/O related operations and
  * vnode teardown functions are locked by the vnode lock.
  *

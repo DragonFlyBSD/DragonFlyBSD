@@ -128,7 +128,7 @@ retry:
 	 * low.
 	 *
 	 * If we do not have an item in hand, deterministically shift
-	 * more itemsm from the all-cpus zone pool to the pcpu pool and retry.
+	 * more items from the all-cpus zone pool to the pcpu pool and retry.
 	 */
 	zmax = z->zmax_pcpu;
 	if (zmax < 1024)
@@ -245,7 +245,7 @@ zfree(vm_zone_t z, void *item)
 	}
 
 	/*
-	 * Hystereis, move extra items to the all-cpus zone pool.  Try to get
+	 * Hysteresis, move extra items to the all-cpus zone pool.  Try to get
 	 * the spin-lock opportunistically if it hasn't gotten too bloated,
 	 * else get it deterministically.
 	 */

@@ -620,7 +620,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	 * Handle artificial entries.  To ensure that only positive 64 bit
 	 * quantities are returned to userland we always strip off bit 63.
 	 * The hash code is designed such that codes 0x0000-0x7FFF are not
-	 * used, allowing us to use these codes for articial entries.
+	 * used, allowing us to use these codes for artificial entries.
 	 *
 	 * Entry 0 is used for '.' and entry 1 is used for '..'.  Do not
 	 * allow '..' to cross the mount point into (e.g.) the super-root.

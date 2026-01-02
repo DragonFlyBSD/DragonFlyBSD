@@ -265,7 +265,7 @@ This parameter allows us to do larger bursts.
 The larger bursts also tend to improve SSD performance as the SSD itself
 can do a better job write-combining and erasing blocks.
 .Pp
-.It Va vm_swapcache.maxswappct
+.It Va vm.swapcache.maxswappct
 This controls the maximum amount of swapspace
 .Nm
 may use, in percentage terms.
@@ -356,7 +356,7 @@ system, though in fact swapcache can help if you use NFS heavily
 as a client.
 .Pp
 The
-.Va vm_swapcache.maxswappct
+.Va vm.swapcache.maxswappct
 sysctl may be used to change the default.
 You may have to change this default if you also use
 .Xr tmpfs 5 ,

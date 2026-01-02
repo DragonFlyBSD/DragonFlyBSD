@@ -47,7 +47,7 @@
  */
 struct spinlock {
 	int lock;		/* main spinlock */
-	int update;		/* udpdate counter */
+	int update;		/* update counter */
 };
 
 #define SPINLOCK_INITIALIZER(head, d)	{ 0, 0 }

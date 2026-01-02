@@ -848,7 +848,7 @@ bremfree_locked(struct buf *bp)
 }
 
 /*
- * This version of bread issues any required I/O asyncnronously and
+ * This version of bread issues any required I/O asynchronously and
  * makes a callback on completion.
  *
  * The callback must check whether BIO_DONE is set in the bio and issue

@@ -1466,7 +1466,7 @@ vm_map_insert(vm_map_t map, int *countp,
  * Find sufficient space for `length' bytes in the given map, starting at
  * `start'.  Returns 0 on success, 1 on no space.
  *
- * This function will returned an arbitrarily aligned pointer.  If no
+ * This function will return an arbitrarily aligned pointer.  If no
  * particular alignment is required you should pass align as 1.  Note that
  * the map may return PAGE_SIZE aligned pointers if all the lengths used in
  * the map are a multiple of PAGE_SIZE, even if you pass a smaller align
