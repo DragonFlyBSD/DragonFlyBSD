@@ -1901,55 +1901,53 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 		error = EPERM;
 		goto done;
 	}
-	if (req->oldptr) {
-		if (lp && lp->lwp_lpmap != NULL &&
-		    lp->lwp_lpmap->thread_title[0]) {
-			/*
-			 * Args set via writable user thread mmap or
-			 * sysctl().
-			 *
-			 * We must calculate the string length manually
-			 * because the user data can change at any time.
-			 */
-			size_t n;
-			char *base;
+	if (lp && lp->lwp_lpmap != NULL &&
+	    lp->lwp_lpmap->thread_title[0]) {
+		/*
+		 * Args set via writable user thread mmap or
+		 * sysctl().
+		 *
+		 * We must calculate the string length manually
+		 * because the user data can change at any time.
+		 */
+		size_t n;
+		char *base;
 
-			base = lp->lwp_lpmap->thread_title;
-			for (n = 0; n < LPMAP_MAXTHREADTITLE - 1; ++n) {
-				if (base[n] == 0)
-					break;
-			}
-			error = SYSCTL_OUT(req, base, n);
-			if (error == 0)
-				error = SYSCTL_OUT(req, "", 1);
-		} else if (p->p_upmap != NULL && p->p_upmap->proc_title[0]) {
-			/*
-			 * Args set via writable user process mmap or
-			 * sysctl().
-			 *
-			 * We must calculate the string length manually
-			 * because the user data can change at any time.
-			 */
-			size_t n;
-			char *base;
-
-			base = p->p_upmap->proc_title;
-			for (n = 0; n < UPMAP_MAXPROCTITLE - 1; ++n) {
-				if (base[n] == 0)
-					break;
-			}
-			error = SYSCTL_OUT(req, base, n);
-			if (error == 0)
-				error = SYSCTL_OUT(req, "", 1);
-		} else if ((pa = p->p_args) != NULL) {
-			/*
-			 * Default/original arguments.
-			 */
-			refcount_acquire(&pa->ar_ref);
-			error = SYSCTL_OUT(req, pa->ar_args, pa->ar_length);
-			if (refcount_release(&pa->ar_ref))
-				kfree(pa, M_PARGS);
+		base = lp->lwp_lpmap->thread_title;
+		for (n = 0; n < LPMAP_MAXTHREADTITLE - 1; ++n) {
+			if (base[n] == 0)
+				break;
 		}
+		error = SYSCTL_OUT(req, base, n);
+		if (error == 0)
+			error = SYSCTL_OUT(req, "", 1);
+	} else if (p->p_upmap != NULL && p->p_upmap->proc_title[0]) {
+		/*
+		 * Args set via writable user process mmap or
+		 * sysctl().
+		 *
+		 * We must calculate the string length manually
+		 * because the user data can change at any time.
+		 */
+		size_t n;
+		char *base;
+
+		base = p->p_upmap->proc_title;
+		for (n = 0; n < UPMAP_MAXPROCTITLE - 1; ++n) {
+			if (base[n] == 0)
+				break;
+		}
+		error = SYSCTL_OUT(req, base, n);
+		if (error == 0)
+			error = SYSCTL_OUT(req, "", 1);
+	} else if ((pa = p->p_args) != NULL) {
+		/*
+		 * Default/original arguments.
+		 */
+		refcount_acquire(&pa->ar_ref);
+		error = SYSCTL_OUT(req, pa->ar_args, pa->ar_length);
+		if (refcount_release(&pa->ar_ref))
+			kfree(pa, M_PARGS);
 	}
 	if (req->newptr == NULL)
 		goto done;
@@ -2054,7 +2052,7 @@ sysctl_kern_proc_cwd(SYSCTL_HANDLER_ARGS)
 	if ((!ps_argsopen) && p_trespass(cr1, p->p_ucred))
 		goto done;
 
-	if (req->oldptr && p->p_fd != NULL && p->p_fd->fd_ncdir.ncp) {
+	if (p->p_fd != NULL && p->p_fd->fd_ncdir.ncp) {
 		struct nchandle nch;
 
 		cache_copy(&p->p_fd->fd_ncdir, &nch);
