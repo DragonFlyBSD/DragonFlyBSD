@@ -175,6 +175,11 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 	case FIOSEEKHOLE:
 		if (error == 0)
 			error = EOPNOTSUPP;
+#if 0
+			/* doesn't work correctly yet */
+			error = vn_bmap_seekhole(ip->vp, com, (off_t *)data,
+			    cred);
+#endif
 		break;
 	default:
 		error = EOPNOTSUPP;

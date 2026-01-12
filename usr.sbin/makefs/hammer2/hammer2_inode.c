@@ -1571,26 +1571,20 @@ hammer2_inode_inode_count(const hammer2_inode_t *ip)
 /*
  * Called with a locked inode to finish unlinking an inode after xop_unlink
  * had been run.  This function is responsible for decrementing nlinks.
- *
- * We don't bother decrementing nlinks if the file is not open and this was
- * the last link.
- *
- * If the inode is a hardlink target it's chain has not yet been deleted,
- * otherwise it's chain has been deleted.
- *
- * If isopen then any prior deletion was not permanent and the inode is
- * left intact with nlinks == 0;
  */
 int
 hammer2_inode_unlink_finisher(hammer2_inode_t *ip, struct m_vnode **vprecyclep)
 {
 	struct m_vnode *vp;
+	uint64_t ctime;
 
 	/*
 	 * Decrement nlinks.  Catch a bad nlinks count here too (e.g. 0 or
 	 * negative), and just assume a transition to 0.
 	 */
-	if ((int64_t)ip->meta.nlinks <= 1) {
+	if ((int64_t)ip->meta.nlinks > 1) {
+		hammer2_update_time(&ctime, false);
+	} else {
 		atomic_set_int(&ip->flags, HAMMER2_INODE_ISUNLINKED);
 
 		/*
@@ -1634,10 +1628,12 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, struct m_vnode **vprecyclep)
 	 * Adjust nlinks and retain the inode on the media for now
 	 */
 	hammer2_inode_modify(ip);
-	if ((int64_t)ip->meta.nlinks > 1)
+	if ((int64_t)ip->meta.nlinks > 1) {
 		--ip->meta.nlinks;
-	else
+		ip->meta.ctime = ctime;
+	} else {
 		ip->meta.nlinks = 0;
+	}
 
 	return 0;
 }

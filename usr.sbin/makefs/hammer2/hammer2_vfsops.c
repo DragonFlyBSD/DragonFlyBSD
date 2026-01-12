@@ -2681,9 +2681,10 @@ restart:
 			lwkt_gettoken(NULL);
 			if ((ip->flags & (HAMMER2_INODE_MODIFIED |
 					  HAMMER2_INODE_RESIZED |
-					  HAMMER2_INODE_DIRTYDATA)) == 0) {
+					  HAMMER2_INODE_DIRTYDATA)) == 0)
 			    //RB_EMPTY(&vp->v_rbdirty_tree) &&
-			    //!bio_track_active(&vp->v_track_write)) {
+			    //!bio_track_active(&vp->v_track_write))
+			{
 				vclrisdirty(vp);
 			} else {
 				hammer2_inode_delayed_sideq(ip);

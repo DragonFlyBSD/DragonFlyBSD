@@ -268,7 +268,8 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 			  HAMMER2_INODE_RESIZED |
 			  HAMMER2_INODE_DIRTYDATA)) == 0 &&
 	    RB_EMPTY(&vp->v_rbdirty_tree) &&
-	    !bio_track_active(&vp->v_track_write)) {
+	    !bio_track_active(&vp->v_track_write))
+	{
 		vclrisdirty(vp);
 	}
 	hammer2_inode_unlock(ip);
@@ -538,6 +539,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 				kflags |= NOTE_WRITE | NOTE_EXTEND;
 			}
 			hammer2_inode_modify(ip);
+			ip->meta.ctime = ctime;
 			ip->meta.mtime = ctime;
 			vclrflags(vp, VLASTWRITETS);
 			break;
@@ -679,7 +681,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	 * Handle artificial entries.  To ensure that only positive 64 bit
 	 * quantities are returned to userland we always strip off bit 63.
 	 * The hash code is designed such that codes 0x0000-0x7FFF are not
-	 * used, allowing us to use these codes for articial entries.
+	 * used, allowing us to use these codes for artificial entries.
 	 *
 	 * Entry 0 is used for '.' and entry 1 is used for '..'.  Do not
 	 * allow '..' to cross the mount point into (e.g.) the super-root.
@@ -1763,6 +1765,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 		hammer2_update_time(&mtime, true);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
+		dip->meta.ctime = mtime;
 		/*hammer2_inode_unlock(dip);*/
 	}
 	hammer2_inode_unlock(dip);
@@ -2019,6 +2022,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 		hammer2_update_time(&mtime, true);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
+		dip->meta.ctime = mtime;
 		/*hammer2_inode_unlock(dip);*/
 	}
 	hammer2_inode_unlock(dip);
@@ -2127,6 +2131,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 		hammer2_update_time(&mtime, true);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
+		dip->meta.ctime = mtime;
 		/*hammer2_inode_unlock(dip);*/
 	}
 	hammer2_inode_unlock(dip);
@@ -2267,6 +2272,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 		hammer2_update_time(&mtime, true);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
+		dip->meta.ctime = mtime;
 		/*hammer2_inode_unlock(dip);*/
 	}
 	hammer2_inode_unlock(dip);
@@ -2352,11 +2358,6 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	hammer2_trans_init(dip->pmp, 0);
 	hammer2_inode_lock(dip, 0);
 
-	/*
-	 * The unlink XOP unlinks the path from the directory and
-	 * locates and returns the cluster associated with the real inode.
-	 * We have to handle nlinks here on the frontend.
-	 */
 	xop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
 	hammer2_xop_setname(&xop->head, ncp->nc_name, ncp->nc_nlen);
 
@@ -2364,11 +2365,6 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	xop->dopermanent = 0;
 	hammer2_xop_start(&xop->head, &hammer2_unlink_desc);
 
-	/*
-	 * Collect the real inode and adjust nlinks, destroy the real
-	 * inode if nlinks transitions to 0 and it was the real inode
-	 * (else it has already been removed).
-	 */
 	error = hammer2_xop_collect(&xop->head, 0);
 	error = hammer2_error_to_errno(error);
 	vprecycle = NULL;
@@ -2405,6 +2401,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 		hammer2_update_time(&mtime);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
+		dip->meta.ctime = mtime;
 		/*hammer2_inode_unlock(dip);*/
 	}
 	hammer2_inode_unlock(dip);
@@ -2457,11 +2454,6 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	xop->dopermanent = 0;
 	hammer2_xop_start(&xop->head, &hammer2_unlink_desc);
 
-	/*
-	 * Collect the real inode and adjust nlinks, destroy the real
-	 * inode if nlinks transitions to 0 and it was the real inode
-	 * (else it has already been removed).
-	 */
 	error = hammer2_xop_collect(&xop->head, 0);
 	error = hammer2_error_to_errno(error);
 	vprecycle = NULL;
@@ -2488,6 +2480,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 		hammer2_update_time(&mtime);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
+		dip->meta.ctime = mtime;
 		/*hammer2_inode_unlock(dip);*/
 	}
 	hammer2_inode_unlock(dip);
