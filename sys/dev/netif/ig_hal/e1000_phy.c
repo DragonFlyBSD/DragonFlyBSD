@@ -2186,6 +2186,7 @@ s32 e1000_check_downshift_generic(struct e1000_hw *hw)
 		offset = IGP01E1000_PHY_LINK_HEALTH;
 		mask = IGP01E1000_PLHR_SS_DOWNGRADE;
 		break;
+	case e1000_phy_i225:
 	default:
 		/* speed downshift not supported */
 		phy->speed_downgraded = FALSE;
@@ -4257,4 +4258,71 @@ bool e1000_is_mphy_ready(struct e1000_hw *hw)
 		DEBUGOUT("ERROR READING mPHY control register, phy is busy.\n");
 
 	return ready;
+}
+
+/**
+ *  e1000_write_phy_reg_gpy - Write GPY PHY register
+ *  @hw: pointer to the HW structure
+ *  @offset: register offset to write to
+ *  @data: data to write at register offset
+ *
+ *  Acquires semaphore, if necessary, then writes the data to PHY register
+ *  at the offset.  Release any acquired semaphores before exiting.
+ **/
+s32 e1000_write_phy_reg_gpy(struct e1000_hw *hw, u32 offset, u16 data)
+{
+	s32 ret_val;
+	u8 dev_addr = (offset & GPY_MMD_MASK) >> GPY_MMD_SHIFT;
+
+	DEBUGFUNC("e1000_write_phy_reg_gpy");
+
+	offset = offset & GPY_REG_MASK;
+
+	if (!dev_addr) {
+		ret_val = hw->phy.ops.acquire(hw);
+		if (ret_val)
+			return ret_val;
+		ret_val = e1000_write_phy_reg_mdic(hw, offset, data);
+		if (ret_val)
+			return ret_val;
+		hw->phy.ops.release(hw);
+	} else {
+		ret_val = e1000_write_xmdio_reg(hw, (u16)offset, dev_addr,
+						data);
+	}
+	return ret_val;
+}
+
+/**
+ *  e1000_read_phy_reg_gpy - Read GPY PHY register
+ *  @hw: pointer to the HW structure
+ *  @offset: lower half is register offset to read to
+ *     upper half is MMD to use.
+ *  @data: data to read at register offset
+ *
+ *  Acquires semaphore, if necessary, then reads the data in the PHY register
+ *  at the offset.  Release any acquired semaphores before exiting.
+ **/
+s32 e1000_read_phy_reg_gpy(struct e1000_hw *hw, u32 offset, u16 *data)
+{
+	s32 ret_val;
+	u8 dev_addr = (offset & GPY_MMD_MASK) >> GPY_MMD_SHIFT;
+
+	DEBUGFUNC("e1000_read_phy_reg_gpy");
+
+	offset = offset & GPY_REG_MASK;
+
+	if (!dev_addr) {
+		ret_val = hw->phy.ops.acquire(hw);
+		if (ret_val)
+			return ret_val;
+		ret_val = e1000_read_phy_reg_mdic(hw, offset, data);
+		if (ret_val)
+			return ret_val;
+		hw->phy.ops.release(hw);
+	} else {
+		ret_val = e1000_read_xmdio_reg(hw, (u16)offset, dev_addr,
+					       data);
+	}
+	return ret_val;
 }
