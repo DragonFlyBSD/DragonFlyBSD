@@ -758,7 +758,7 @@ static int smu8_set_deep_sleep_sclk_threshold(struct pp_hwmgr *hwmgr)
 		if (clks == 0)
 			clks = SMU8_MIN_DEEP_SLEEP_SCLK;
 
-		PP_DBG_LOG("Setting Deep Sleep Clock: %d\n", clks);
+		DRM_DEBUG_DRIVER("Setting Deep Sleep Clock: %d\n", clks);
 
 		smum_send_msg_to_smc_with_parameter(hwmgr,
 				PPSMC_MSG_SetMinDeepSleepSclk,
@@ -786,13 +786,13 @@ static int smu8_nbdpm_pstate_enable_disable(struct pp_hwmgr *hwmgr, bool enable,
 
 	if (hw_data->is_nb_dpm_enabled) {
 		if (enable) {
-			PP_DBG_LOG("enable Low Memory PState.\n");
+			DRM_DEBUG_DRIVER("enable Low Memory PState.\n");
 
 			return smum_send_msg_to_smc_with_parameter(hwmgr,
 						PPSMC_MSG_EnableLowMemoryPstate,
 						(lock ? 1 : 0));
 		} else {
-			PP_DBG_LOG("disable Low Memory PState.\n");
+			DRM_DEBUG_DRIVER("disable Low Memory PState.\n");
 
 			return smum_send_msg_to_smc_with_parameter(hwmgr,
 						PPSMC_MSG_DisableLowMemoryPstate,
