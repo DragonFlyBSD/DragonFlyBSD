@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (c) 2022 The DragonFly Project.  All rights reserved.
+.\" Copyright (c) 2026 The DragonFly Project.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd June 18, 2022
+.Dd Jan 17, 2026
 .Dt AMDGPU 4
 .Os
 .Sh NAME
@@ -59,8 +59,19 @@ Section "Device"
         Option "AccelMethod" "None"
 EndSection
 .Ed
+.Sh LOADER TUNABLES
+Tunables can be set at the
+.Xr loader 8
+prompt before booting the kernel or stored in
+.Xr loader.conf 5 .
+.Bl -tag -width "xxxxxx"
+.It Va drm.amdgpu.cik_support
+Enable/Disable support for CIK GPU generation (KAVERI, BONAIRE, HAWAII, KABINI,
+and MULLINS). These GPUs are handled by the radeon(4) driver by default.
+1 = enable, 0 = disable (default)
 .Sh SEE ALSO
 .Xr drm 4 ,
+.Xr radeon 4
 .Xr syscons 4
 .Sh HISTORY
 The
@@ -69,3 +80,15 @@ driver was first available for Linux.
 .Sh CAVEATS
 Currently, only the modesetting driver is supported for
 .Xr Xorg 1 .
+.Pp
+When using the optional support for CIK GPUs, it may be necessary to use the
+.Va drm.video.<connector>
+tunable documented in the
+.Sx LOADER TUNABLES
+section in
+.Xr drm 4
+to force a console framebuffer in 16bpp or 32bpp mode. This is due to
+.Nm
+sometimes defaulting to an 8bpp framebuffer console which is currently
+not supported in
+.Xr syscons 4 .

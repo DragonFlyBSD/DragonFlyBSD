@@ -334,15 +334,17 @@ int radeon_si_support = 1;
 MODULE_PARM_DESC(si_support, "SI support (1 = enabled (default), 0 = disabled)");
 module_param_named(si_support, radeon_si_support, int, 0444);
 
-int radeon_cik_support = 1;
-MODULE_PARM_DESC(cik_support, "CIK support (1 = enabled (default), 0 = disabled)");
-module_param_named(cik_support, radeon_cik_support, int, 0444);
-
 #ifdef CONFIG_DRM_AMDGPU_CIK
+#ifdef __DragonFly__
+int radeon_cik_support = 1;
+TUNABLE_INT("drm.radeon.cik_support", &radeon_cik_support);
+MODULE_PARM_DESC(cik_support, "CIK support (1 = enabled (default), 0 = disabled)");
+#else	 /* !__DragonFly__ */
 int radeon_cik_support = 0;
 MODULE_PARM_DESC(cik_support, "CIK support (1 = enabled, 0 = disabled (default))");
 module_param_named(cik_support, radeon_cik_support, int, 0444);
-#endif
+#endif	/* __DragonFly__ */
+#endif	/* CONFIG_DRM_AMDGPU_CIK */
 
 static struct pci_device_id pciidlist[] = {
 	radeon_PCI_IDS
@@ -380,14 +382,17 @@ static int radeon_kick_out_firmware_fb(struct pci_dev *pdev)
 static int radeon_pci_probe(struct pci_dev *pdev,
 			    const struct pci_device_id *ent)
 {
+	unsigned long flags;
 #if 0
 	int ret;
+#endif
 
 	if (!ent)
-		return -ENODEV; /* Avoid NULL-ptr deref in drm_get_pci_dev */
+		return ENXIO; /* Avoid NULL-ptr deref in drm_get_pci_dev */
 
 	flags = ent->driver_data;
 
+#if 0
 	if (!radeon_si_support) {
 		switch (flags & RADEON_FAMILY_MASK) {
 		case CHIP_TAHITI:
@@ -400,6 +405,17 @@ static int radeon_pci_probe(struct pci_dev *pdev,
 			return -ENODEV;
 		}
 	}
+
+	if (vga_switcheroo_client_probe_defer(pdev))
+		return -EPROBE_DEFER;
+
+	/* Get rid of things like offb */
+	ret = radeon_kick_out_firmware_fb(pdev);
+	if (ret)
+		return ret;
+#endif
+
+#ifdef CONFIG_DRM_AMDGPU_CIK
 	if (!radeon_cik_support) {
 		switch (flags & RADEON_FAMILY_MASK) {
 		case CHIP_KAVERI:
@@ -409,17 +425,9 @@ static int radeon_pci_probe(struct pci_dev *pdev,
 		case CHIP_MULLINS:
 			dev_info(&pdev->dev,
 				 "CIK support disabled by module param\n");
-			return -ENODEV;
+			return ENODEV;
 		}
 	}
-
-	if (vga_switcheroo_client_probe_defer(pdev))
-		return -EPROBE_DEFER;
-
-	/* Get rid of things like offb */
-	ret = radeon_kick_out_firmware_fb(pdev);
-	if (ret)
-		return ret;
 #endif
 
 	return drm_get_pci_dev(pdev, ent, &kms_driver);

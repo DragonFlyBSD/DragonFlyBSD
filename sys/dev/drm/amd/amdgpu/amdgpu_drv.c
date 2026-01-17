@@ -524,16 +524,21 @@ module_param_named(si_support, amdgpu_si_support, int, 0444);
  */
 #ifdef CONFIG_DRM_AMDGPU_CIK
 
+#ifdef __DragonFly__
+int amdgpu_cik_support = 0;
+TUNABLE_INT("drm.amdgpu.cik_support", &amdgpu_cik_support);
+#else
 #if defined(CONFIG_DRM_RADEON) || defined(CONFIG_DRM_RADEON_MODULE)
 int amdgpu_cik_support = 0;
 MODULE_PARM_DESC(cik_support, "CIK support (1 = enabled, 0 = disabled (default))");
-#else
+#else	/* !__DragonFly__ */
 int amdgpu_cik_support = 1;
 MODULE_PARM_DESC(cik_support, "CIK support (1 = enabled (default), 0 = disabled)");
 #endif
+#endif	/* __DragonFly__ */
 
 module_param_named(cik_support, amdgpu_cik_support, int, 0444);
-#endif
+#endif	/* CONFIG_DRM_AMDGPU_CIK */
 
 /**
  * DOC: smu_memory_pool_size (uint)

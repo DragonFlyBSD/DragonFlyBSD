@@ -1382,8 +1382,10 @@ static void cik_pcie_gen3_enable(struct amdgpu_device *adev)
 	int i;
 	u16 tmp16;
 
+#if 0
 	if (pci_is_root_bus(adev->pdev->bus))
 		return;
+#endif
 
 	if (amdgpu_pcie_gen2 == 0)
 		return;
@@ -1544,8 +1546,10 @@ static void cik_program_aspm(struct amdgpu_device *adev)
 	if (amdgpu_aspm == 0)
 		return;
 
+#if 0
 	if (pci_is_root_bus(adev->pdev->bus))
 		return;
+#endif
 
 	/* XXX double check APUs */
 	if (adev->flags & AMD_IS_APU)
