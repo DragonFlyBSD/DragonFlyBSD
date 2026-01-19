@@ -67,6 +67,12 @@
 .Fn idr_replace "struct idr *idp" "void *ptr" "int id"
 .Sh DESCRIPTION
 The
+.Nm
+API is a generic facility to manage ID allocations and
+provides the ability to map an ID to a pointer.
+It is implemented and expected to be compatible with the Linux implementation.
+.Pp
+The
 .Fn idr_alloc
 function allocates an unused ID in the range specified by
 .Fa start
@@ -154,7 +160,10 @@ The
 function removes the specified
 .Fa id
 from the tree, returning its pointer.
-NULL is returned if the id could not be found.
+.Dv NULL
+is returned if the
+.Fa id
+could not be found.
 .Pp
 The
 .Fn idr_remove_all
@@ -171,6 +180,27 @@ with the new pointer
 .Fa ptr .
 It returns
 .Dv NULL
-if the id is not found.
-This behavior is different from the Linux API, which returns ERR_PTR(-ENOENT)
-if the id could not be found.
+if the
+.Fa id
+is not found.
+.Sy Warning:
+This behavior is different from the Linux API, which returns
+.Fl Ns Er ENOENT
+if the
+.Fa id
+could not be found.
+.Sh HISTORY
+The
+.Nm
+API first appeared in
+.Dx
+3.3
+as an alternative to the
+.Fx
+.Xr unr 9
+API.
+.Sh AUTHORS
+.An Vishesh Yadav Aq Mt vishesh3y@gmail.com ,
+.An François Tigeot Aq Mt ftigeot@wolfpond.org ,
+and
+.An Matthew Dillon Aq Mt dillon@apollo.backplane.com .
