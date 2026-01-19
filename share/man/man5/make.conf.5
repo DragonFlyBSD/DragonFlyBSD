@@ -412,7 +412,9 @@ Set to not build
 .Xr gdb 1
 .It Va NO_INITRD
 .Pq Vt bool
-Set to not build initrd image.
+Set to not build
+.Xr initrd 7
+image.
 .It Va NO_LPR
 .Pq Vt bool
 Set to not build
@@ -434,7 +436,8 @@ instead of
 .Dq Li "${MAKE} cleandir" .
 .It Va NOFSCHG
 .Pq Vt bool
-Set to not install certain components with flag schg.
+Set to not install certain components with flag
+.Cm schg .
 This is useful in a jailed environment.
 .It Va NOMAN
 .Pq Vt bool
