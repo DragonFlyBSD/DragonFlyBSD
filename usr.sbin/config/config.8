@@ -142,8 +142,7 @@ system when compiling a
 kernel.
 A debug kernel contains complete symbols for all the source files, and
 enables an experienced kernel programmer to analyse the cause of a problem.
-The
-debuggers available prior to
+The debuggers available prior to
 .Bx 4.4 Lite
 were able to find some information
 from a normal kernel;
@@ -158,14 +157,14 @@ installs kernel and modules unstripped.
 Debug information is not loaded into memory, so the only impact is
 the extra space consumption.
 Those wishing to install stripped down kernel and modules can specify two new
-makeoptions in their kernel config file or when they run the
+make options in their kernel config file or when they run the
 kernel-related targets to make:
 .Bl -tag -width ".Va INSTALLSTRIPPEDMODULES=1"
 .It Va INSTALLSTRIPPED=1
 The installed kernel and modules will be stripped of debug info.
 .It Va INSTALLSTRIPPEDMODULES=1
-The installed modules will be stripped of debug info. The kernel will
-be left with debug info intact.
+The installed modules will be stripped of debug info.
+The kernel will be left with debug info intact.
 .El
 .Pp
 Backup copies of the kernel and modules are automatically stripped of
