@@ -73,6 +73,19 @@ provides the ability to map an ID to a pointer.
 It is implemented and expected to be compatible with the Linux implementation.
 .Pp
 The
+.Fn idr_init
+function initialize an
+.Nm
+handle that will be used by other functions of this API.
+.Pp
+The
+.Fn idr_destroy
+function frees all resources taken by the specified
+.Nm
+handle
+.Fa idp .
+.Pp
+The
 .Fn idr_alloc
 function allocates an unused ID in the range specified by
 .Fa start
@@ -92,19 +105,6 @@ The
 .Fa gfp_mask
 is only present for compatibility with the Linux implementation and is unused on
 .Dx .
-.Pp
-The
-.Fn idr_init
-function initialize an
-.Nm
-handle that will be used by other functions of this API.
-.Pp
-The
-.Fn idr_destroy
-function frees all resources taken by the specified
-.Nm
-handle
-.Fa idp .
 .Pp
 The
 .Fn idr_find
