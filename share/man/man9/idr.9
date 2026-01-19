@@ -110,6 +110,13 @@ The
 .Fn idr_find
 function returns the data pointer that is mapped with the specified
 .Fa id .
+A
+.Dv NULL
+return may indicate that the
+.Fa id
+is not allocated or that the
+.Dv NULL
+pointer was associated with this ID.
 .Pp
 The
 .Fn idr_for_each
