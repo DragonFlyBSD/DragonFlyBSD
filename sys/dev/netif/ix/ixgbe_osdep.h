@@ -49,14 +49,12 @@
 #include <sys/rman.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
-#include <machine/clock.h>
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 
 #define ASSERT(x) if(!(x)) panic("IXGBE: x")
 #define EWARN(H, W) kprintf(W)
 
-/* The happy-fun DELAY macro is defined in /usr/src/sys/i386/include/clock.h */
 #define usec_delay(x) DELAY(x)
 #define msec_delay(x) DELAY(1000*(x))
 
