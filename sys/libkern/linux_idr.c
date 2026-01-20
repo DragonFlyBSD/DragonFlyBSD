@@ -554,7 +554,7 @@ idr_replace(struct idr *idp, void *ptr, int id)
 	lwkt_gettoken(&idp->idr_token);
 	idrnp = idr_get_node(idp, id);
 	if (idrnp == NULL) {
-		ret = NULL;
+		ret = (void *)(unsigned long)-ENOENT;
 	} else {
 		ret = idrnp->data;
 		idrnp->data = ptr;
