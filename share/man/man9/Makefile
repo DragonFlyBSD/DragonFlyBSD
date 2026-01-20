@@ -502,7 +502,8 @@ MLINKS+=hashinit.9 hashdestroy.9 \
 	hashinit.9 hashinit_ext.9 \
 	hashinit.9 phashinit.9 \
 	hashinit.9 phashinit_ext.9
-MLINKS+=idr.9 idr_destroy.9 \
+MLINKS+=idr.9 idr_alloc.9 \
+	idr.9 idr_destroy.9 \
 	idr.9 idr_find.9 \
 	idr.9 idr_for_each.9 \
 	idr.9 idr_get_new.9 \
