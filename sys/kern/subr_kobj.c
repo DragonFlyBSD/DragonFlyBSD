@@ -62,7 +62,7 @@ SYSINIT(kobj, SI_BOOT1_LOCK, SI_ORDER_ANY, kobj_init_token, NULL);
  * descriptors.
  */
 static const struct kobj_method null_method = {
-	0, 0,
+	NULL, NULL,
 };
 
 int
@@ -131,7 +131,7 @@ kobj_lookup_method_class(kobj_class_t cls, kobjop_desc_t desc)
 		if (ce->desc == desc)
 			return(ce);
 
-	return(0);
+	return(NULL);
 }
 
 static kobj_method_t *
@@ -153,7 +153,7 @@ kobj_lookup_method_mi(kobj_class_t cls, kobjop_desc_t desc)
 		}
 	}
 
-	return(0);
+	return(NULL);
 }
 
 kobj_method_t*
@@ -204,7 +204,7 @@ kobj_class_free(kobj_class_t cls)
 	 * Free memory and clean up.
 	 */
 	kfree(cls->ops, M_KOBJ);
-	cls->ops = 0;
+	cls->ops = NULL;
 }
 
 void
@@ -247,7 +247,7 @@ kobj_create(kobj_class_t cls,
 	 */
 	obj = kmalloc(cls->size, mtype, mflags | M_ZERO);
 	if (!obj)
-		return 0;
+		return NULL;
 	kobj_init(obj, cls);
 
 	return obj;
@@ -267,7 +267,7 @@ kobj_delete(kobj_t obj, struct malloc_type *mtype)
 
 	kobj_class_uninstantiate(cls);
 
-	obj->ops = 0;
+	obj->ops = NULL;
 	if (mtype)
 		kfree(obj, mtype);
 }
