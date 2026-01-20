@@ -351,11 +351,12 @@ idr_get_new_above(struct idr *idp, void *ptr, int sid, int *id)
 }
 
 /*
- * start: minimum id, inclusive
- * end:   maximum id, exclusive or INT_MAX if end is negative
+ * start: minimum id (inclusive)
+ * end:   maximum id (exclusive); or INT_MAX+1 if end <= 0
  */
 int
-idr_alloc(struct idr *idp, void *ptr, int start, int end, unsigned gfp_mask __unused)
+idr_alloc(struct idr *idp, void *ptr, int start, int end,
+	  unsigned gfp_mask __unused)
 {
 	int lim = end > 0 ? end - 1 : INT_MAX;
 	int want = start;
@@ -567,7 +568,7 @@ idr_init(struct idr *idp)
 {
 	bzero(idp, sizeof(struct idr));
 	idp->idr_nodes = kmalloc(IDR_DEFAULT_SIZE * sizeof(struct idr_node),
-						M_IDR, M_WAITOK | M_ZERO);
+				 M_IDR, M_WAITOK | M_ZERO);
 	idp->idr_count = IDR_DEFAULT_SIZE;
 	idp->idr_lastindex = -1;
 	idp->idr_maxwant = 0;
