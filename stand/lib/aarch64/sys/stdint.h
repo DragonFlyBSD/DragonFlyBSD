@@ -12,7 +12,7 @@ typedef __uint32_t uint32_t;
 typedef __int64_t int64_t;
 typedef __uint64_t uint64_t;
 
-typedef __int64_t intmax_t;
-typedef __uint64_t uintmax_t;
+typedef long intmax_t;
+typedef unsigned long uintmax_t;
 
 #endif
