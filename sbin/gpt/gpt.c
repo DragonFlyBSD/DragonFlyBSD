@@ -180,15 +180,15 @@ utf8_to_utf16(const uint8_t *s8, uint16_t *s16, size_t s16len)
 	while (s8[s8len++] != 0)
 		;
 	s8idx = s16idx = 0;
+	utfchar = 0;
 	utfbytes = 0;
 	do {
-		utfchar = 0;
 		c = s8[s8idx++];
 		if ((c & 0xc0) != 0x80) {
 			/* Initial characters. */
 			if (utfbytes != 0) {
 				/* Incomplete encoding. */
-				s16[s16idx++] = 0xfffd;
+				s16[s16idx++] = htole16(0xfffd);
 				if (s16idx == s16len)
 					return; /* No NUL-termination */
 			}
@@ -217,10 +217,12 @@ utf8_to_utf16(const uint8_t *s8, uint16_t *s16, size_t s16len)
 			if (utfchar >= 0x10000 && s16idx + 2 >= s16len)
 				utfchar = 0xfffd;
 			if (utfchar >= 0x10000) {
-				s16[s16idx++] = 0xd800 | ((utfchar>>10)-0x40);
-				s16[s16idx++] = 0xdc00 | (utfchar & 0x3ff);
+				s16[s16idx++] =
+				    htole16(0xd800 | ((utfchar >> 10) - 0x40));
+				s16[s16idx++] =
+				    htole16(0xdc00 | (utfchar & 0x3ff));
 			} else
-				s16[s16idx++] = utfchar;
+				s16[s16idx++] = htole16(utfchar);
 			if (s16idx == s16len)
 				return; /* No NUL-termination */
 		}
