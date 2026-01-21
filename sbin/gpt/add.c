@@ -26,7 +26,7 @@
  * $FreeBSD: src/sbin/gpt/add.c,v 1.15 2006/10/04 18:20:25 marcel Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 
 #include <err.h>
 #include <stdbool.h>
@@ -129,7 +129,7 @@ add(int fd)
 	ent->ent_lba_start = htole64(map->map_start);
 	ent->ent_lba_end = htole64(map->map_start + map->map_size - 1LL);
 	if (name != NULL)
-		utf8_to_utf16(name, ent->ent_name, 36);
+		utf8_to_utf16(name, ent->ent_name, NELEM(ent->ent_name));
 
 	hdr->hdr_crc_table = htole32(crc32(tbl->map_data,
 	    le32toh(hdr->hdr_entries) * le32toh(hdr->hdr_entsz)));
@@ -146,7 +146,7 @@ add(int fd)
 	ent->ent_lba_start = htole64(map->map_start);
 	ent->ent_lba_end = htole64(map->map_start + map->map_size - 1LL);
 	if (name != NULL)
-		utf8_to_utf16(name, ent->ent_name, 36);
+		utf8_to_utf16(name, ent->ent_name, NELEM(ent->ent_name));
 
 	hdr->hdr_crc_table = htole32(crc32(lbt->map_data,
 	    le32toh(hdr->hdr_entries) * le32toh(hdr->hdr_entsz)));

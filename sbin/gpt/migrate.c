@@ -26,7 +26,7 @@
  * $FreeBSD: src/sbin/gpt/migrate.c,v 1.16 2005/09/01 02:42:52 marcel Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/disklabel32.h>
 #include <sys/dtype.h>
 
@@ -90,21 +90,21 @@ migrate_disklabel(int fd, off_t start, struct gpt_ent *ent)
 			uuid_t swap = GPT_ENT_TYPE_FREEBSD_SWAP;
 			uuid_enc_le(&ent->ent_type, &swap);
 			utf8_to_utf16("FreeBSD swap partition",
-			    ent->ent_name, 36);
+			    ent->ent_name, NELEM(ent->ent_name));
 			break;
 		}
 		case FS_BSDFFS: {
 			uuid_t ufs = GPT_ENT_TYPE_FREEBSD_UFS;
 			uuid_enc_le(&ent->ent_type, &ufs);
 			utf8_to_utf16("FreeBSD UFS partition",
-			    ent->ent_name, 36);
+			    ent->ent_name, NELEM(ent->ent_name));
 			break;
 		}
 		case FS_VINUM: {
 			uuid_t vinum = GPT_ENT_TYPE_FREEBSD_VINUM;
 			uuid_enc_le(&ent->ent_type, &vinum);
 			utf8_to_utf16("FreeBSD vinum partition",
-			    ent->ent_name, 36);
+			    ent->ent_name, NELEM(ent->ent_name));
 			break;
 		}
 		default:
@@ -244,7 +244,7 @@ migrate(int fd)
 				ent->ent_lba_start = htole64((uint64_t)start);
 				ent->ent_lba_end = htole64(start + size - 1LL);
 				utf8_to_utf16("FreeBSD disklabel partition",
-				    ent->ent_name, 36);
+				    ent->ent_name, NELEM(ent->ent_name));
 				ent++;
 			} else
 				ent = migrate_disklabel(fd, start, ent);
@@ -256,7 +256,7 @@ migrate(int fd)
 			ent->ent_lba_start = htole64((uint64_t)start);
 			ent->ent_lba_end = htole64(start + size - 1LL);
 			utf8_to_utf16("EFI system partition",
-			    ent->ent_name, 36);
+			    ent->ent_name, NELEM(ent->ent_name));
 			ent++;
 			break;
 		}
