@@ -32,6 +32,12 @@
 #include <stddef.h>
 
 #if defined(__aarch64__)
+#ifndef R_AARCH64_NONE
+#define R_AARCH64_NONE 0
+#endif
+#ifndef R_AARCH64_RELATIVE
+#define R_AARCH64_RELATIVE 1027
+#endif
 #define	ElfW_Rel	Elf64_Rela
 #define	ElfW_Dyn	Elf64_Dyn
 #define	ELFW_R_TYPE	ELF64_R_TYPE
