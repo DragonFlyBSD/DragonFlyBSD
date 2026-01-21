@@ -183,64 +183,63 @@ utf16_to_utf8(const uint16_t *s16, size_t s16len, char *s8, size_t s8len)
 void
 utf8_to_utf16(const char *s8, uint16_t *s16, size_t s16len)
 {
-	size_t s16idx, s8idx, s8len;
+	size_t s16idx, s8idx;
 	uint32_t utfchar;
-	unsigned char c, utfbytes;
+	uint8_t c, utfbytes;
 	const unsigned char *us8 = (const unsigned char *)s8;
 
-	s8len = 0;
-	while (us8[s8len++] != 0)
-		;
 	s8idx = s16idx = 0;
 	utfchar = 0;
-	utfbytes = 0;
-	do {
-		c = us8[s8idx++];
-		if ((c & 0xc0) != 0x80) {
-			/* Initial characters. */
-			if (utfbytes != 0) {
-				/* Incomplete encoding. */
-				s16[s16idx++] = htole16(0xfffd);
-				if (s16idx == s16len)
-					return; /* No NUL-termination */
-			}
-			if ((c & 0xf8) == 0xf0) {
-				utfchar = c & 0x07;
-				utfbytes = 3;
-			} else if ((c & 0xf0) == 0xe0) {
-				utfchar = c & 0x0f;
-				utfbytes = 2;
-			} else if ((c & 0xe0) == 0xc0) {
-				utfchar = c & 0x1f;
-				utfbytes = 1;
-			} else {
-				utfchar = c & 0x7f;
-				utfbytes = 0;
-			}
+	while ((c = us8[s8idx++]) != 0) {
+		if ((c & 0x80) == 0x00) {
+			/* ASCII */
+			utfchar = c;
+			utfbytes = 0;
+		} else if ((c & 0xe0) == 0xc0) {
+			utfchar = c & 0x1f;
+			utfbytes = 1;
+		} else if ((c & 0xf0) == 0xe0) {
+			utfchar = c & 0x0f;
+			utfbytes = 2;
+		} else if ((c & 0xf8) == 0xf0) {
+			utfchar = c & 0x07;
+			utfbytes = 3;
 		} else {
-			/* Followup characters. */
-			if (utfbytes > 0) {
-				utfchar = (utfchar << 6) + (c & 0x3f);
-				utfbytes--;
-			} else if (utfbytes == 0)
-				utfbytes = (unsigned char)~0;
+			/* Invalid leading byte */
+			utfchar = 0xfffd;
+			utfbytes = 0;
 		}
-		if (utfbytes == 0) {
-			if (utfchar >= 0x10000 && s16idx + 2 >= s16len)
-				utfchar = 0xfffd;
-			if (utfchar >= 0x10000) {
-				s16[s16idx++] =
-				    htole16(0xd800 | ((utfchar >> 10) - 0x40));
-				s16[s16idx++] =
-				    htole16(0xdc00 | (utfchar & 0x3ff));
-			} else
-				s16[s16idx++] = htole16(utfchar);
-			if (s16idx == s16len)
-				return; /* No NUL-termination */
-		}
-	} while (c != 0);
 
-	/* Pad with zeros */
+		while (utfbytes-- > 0) {
+			c = us8[s8idx++];
+			if ((c & 0xc0) != 0x80) {
+				utfchar = 0xfffd;
+				break;
+			}
+			utfchar = (utfchar << 6) | (c & 0x3f);
+		}
+
+		/* Reject invalid Unicode scalar values */
+		if (utfchar > 0x10ffff ||
+		    (utfchar >= 0xd800 && utfchar <= 0xdfff)) {
+			utfchar = 0xfffd;
+		}
+
+		if (utfchar < 0x10000) {
+			if (s16idx + 1 > s16len)
+				break;
+			s16[s16idx++] = htole16((uint16_t)utfchar);
+		} else {
+			/* Surrogate pair */
+			if (s16idx + 2 > s16len)
+				break;
+			utfchar -= 0x10000;
+			s16[s16idx++] = htole16(0xd800 | (utfchar >> 10));
+			s16[s16idx++] = htole16(0xdc00 | (utfchar & 0x3ff));
+		}
+	}
+
+	/* Pad with zeros, but no need of explicit NUL termination */
 	while (s16idx < s16len)
 		s16[s16idx++] = 0;
 }
