@@ -32,6 +32,13 @@
 #include "stand.h"
 #include <limits.h>
 
+#ifndef LONG_MAX
+#define LONG_MAX __LONG_MAX__
+#endif
+#ifndef LONG_MIN
+#define LONG_MIN (-LONG_MAX - 1L)
+#endif
+
 /*
  * Convert a string to a long integer.
  *
