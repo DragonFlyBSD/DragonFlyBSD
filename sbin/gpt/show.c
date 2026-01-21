@@ -84,7 +84,7 @@ show(int fd __unused)
 	struct gpt_ent *ent;
 	unsigned int i;
 	char *s;
-	uint8_t utfbuf[NELEM(ent->ent_name) * 3 + 1];
+	char utfbuf[NELEM(ent->ent_name) * 3 + 1];
 
 	printf("  %*s", lbawidth, "start");
 	printf("  %*s", lbawidth, "size");
@@ -152,7 +152,7 @@ show(int fd __unused)
 				utf16_to_utf8(ent->ent_name,
 				    NELEM(ent->ent_name),
 				    utfbuf, sizeof(utfbuf));
-				printf("- \"%s\"", (char *)utfbuf);
+				printf("- \"%s\"", utfbuf);
 			} else if (show_guid) {
 				s = NULL;
 				le_uuid_dec(&ent->ent_uuid, &guid);
