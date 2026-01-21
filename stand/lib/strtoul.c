@@ -38,6 +38,10 @@
 #include "stand.h"
 #include <limits.h>
 
+#ifndef ULONG_MAX
+#define ULONG_MAX __ULONG_MAX__
+#endif
+
 /*
  * Convert a string to an unsigned long integer.
  *
