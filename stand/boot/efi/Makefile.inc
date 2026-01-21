@@ -7,10 +7,10 @@ BINDIR?=	/boot
 CFLAGS+=	-O
 CFLAGS+=	-D_STANDALONE
 CFLAGS+=	-ffreestanding -Wformat
-CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3 -msoft-float
 LDFLAGS+=	-nostdlib
 
 .if ${MACHINE_ARCH} == "x86_64"
+CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3 -msoft-float
 CFLAGS+=	-fshort-wchar
 CFLAGS+=	-mno-red-zone
 CFLAGS+=	-mno-aes
