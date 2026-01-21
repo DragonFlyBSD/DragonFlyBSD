@@ -116,11 +116,12 @@ crc32(const void *buf, size_t size)
  * a size of (s16len * 3 + 1).
  */
 void
-utf16_to_utf8(const uint16_t *s16, size_t s16len, uint8_t *s8, size_t s8len)
+utf16_to_utf8(const uint16_t *s16, size_t s16len, char *s8, size_t s8len)
 {
 	size_t s8idx, s16idx;
 	uint32_t utfchar;
 	unsigned int c;
+	unsigned char *us8 = (unsigned char *)s8;
 
 	for (s16idx = 0; s16idx < s16len; s16idx++) {
 		if (s16[s16idx] == 0) {
@@ -141,28 +142,28 @@ utf16_to_utf8(const uint16_t *s16, size_t s16len, uint8_t *s8, size_t s8len)
 		if (utfchar < 0x80) {
 			if (s8idx + 1 >= s8len)
 				break;
-			s8[s8idx++] = utfchar;
+			us8[s8idx++] = utfchar;
 		} else if (utfchar < 0x800) {
 			if (s8idx + 2 >= s8len)
 				break;
-			s8[s8idx++] = 0xc0 | (utfchar >> 6);
-			s8[s8idx++] = 0x80 | (utfchar & 0x3f);
+			us8[s8idx++] = 0xc0 | (utfchar >> 6);
+			us8[s8idx++] = 0x80 | (utfchar & 0x3f);
 		} else if (utfchar < 0x10000) {
 			if (s8idx + 3 >= s8len)
 				break;
-			s8[s8idx++] = 0xe0 | (utfchar >> 12);
-			s8[s8idx++] = 0x80 | ((utfchar >> 6) & 0x3f);
-			s8[s8idx++] = 0x80 | (utfchar & 0x3f);
+			us8[s8idx++] = 0xe0 | (utfchar >> 12);
+			us8[s8idx++] = 0x80 | ((utfchar >> 6) & 0x3f);
+			us8[s8idx++] = 0x80 | (utfchar & 0x3f);
 		} else if (utfchar < 0x200000) {
 			if (s8idx + 4 >= s8len)
 				break;
-			s8[s8idx++] = 0xf0 | (utfchar >> 18);
-			s8[s8idx++] = 0x80 | ((utfchar >> 12) & 0x3f);
-			s8[s8idx++] = 0x80 | ((utfchar >> 6) & 0x3f);
-			s8[s8idx++] = 0x80 | (utfchar & 0x3f);
+			us8[s8idx++] = 0xf0 | (utfchar >> 18);
+			us8[s8idx++] = 0x80 | ((utfchar >> 12) & 0x3f);
+			us8[s8idx++] = 0x80 | ((utfchar >> 6) & 0x3f);
+			us8[s8idx++] = 0x80 | (utfchar & 0x3f);
 		}
 	}
-	s8[s8idx] = 0;
+	us8[s8idx] = 0;
 }
 
 /*
@@ -170,20 +171,21 @@ utf16_to_utf8(const uint16_t *s16, size_t s16len, uint8_t *s8, size_t s8len)
  * UTF-8 string.
  */
 void
-utf8_to_utf16(const uint8_t *s8, uint16_t *s16, size_t s16len)
+utf8_to_utf16(const char *s8, uint16_t *s16, size_t s16len)
 {
 	size_t s16idx, s8idx, s8len;
 	uint32_t utfchar;
-	unsigned int c, utfbytes;
+	unsigned char c, utfbytes;
+	const unsigned char *us8 = (const unsigned char *)s8;
 
 	s8len = 0;
-	while (s8[s8len++] != 0)
+	while (us8[s8len++] != 0)
 		;
 	s8idx = s16idx = 0;
 	utfchar = 0;
 	utfbytes = 0;
 	do {
-		c = s8[s8idx++];
+		c = us8[s8idx++];
 		if ((c & 0xc0) != 0x80) {
 			/* Initial characters. */
 			if (utfbytes != 0) {
@@ -211,7 +213,7 @@ utf8_to_utf16(const uint8_t *s8, uint16_t *s16, size_t s16len)
 				utfchar = (utfchar << 6) + (c & 0x3f);
 				utfbytes--;
 			} else if (utfbytes == 0)
-				utfbytes = -1;
+				utfbytes = (unsigned char)~0;
 		}
 		if (utfbytes == 0) {
 			if (utfchar >= 0x10000 && s16idx + 2 >= s16len)

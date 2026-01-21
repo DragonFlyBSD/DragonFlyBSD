@@ -57,8 +57,8 @@ void*	gpt_read(int, off_t, size_t);
 int	gpt_write(int, map_t *);
 int	parse_uuid(const char *, uuid_t *);
 
-void	utf16_to_utf8(const uint16_t *, size_t, uint8_t *, size_t);
-void	utf8_to_utf16(const uint8_t *, uint16_t *, size_t);
+void	utf16_to_utf8(const uint16_t *, size_t, char *, size_t);
+void	utf8_to_utf16(const char *, uint16_t *, size_t);
 
 int	cmd_add(int, char *[]);
 int	cmd_boot(int, char *[]);

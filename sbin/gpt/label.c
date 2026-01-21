@@ -41,7 +41,7 @@ static int all;
 static uuid_t type;
 static off_t block, size;
 static unsigned int entry = MAP_NOENTRY;
-static uint8_t *name;
+static char *name;
 
 static void
 usage_label(void)
