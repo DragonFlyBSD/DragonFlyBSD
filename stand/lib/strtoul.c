@@ -39,7 +39,7 @@
 #include <limits.h>
 
 #ifndef ULONG_MAX
-#define ULONG_MAX __ULONG_MAX__
+#define ULONG_MAX (~0UL)
 #endif
 
 /*
