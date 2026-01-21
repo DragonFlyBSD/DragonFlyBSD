@@ -14,6 +14,8 @@ LDFLAGS+=	-nostdlib
 CFLAGS+=	-fshort-wchar
 CFLAGS+=	-mno-red-zone
 CFLAGS+=	-mno-aes
+.elif ${MACHINE_ARCH} == "aarch64"
+CFLAGS+=	-fshort-wchar
 .endif
 
 # post binutils-2.27 ld.gold workaround for linker script handling
