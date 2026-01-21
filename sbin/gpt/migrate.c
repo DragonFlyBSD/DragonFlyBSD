@@ -108,9 +108,13 @@ migrate_disklabel(int fd, off_t start, struct gpt_ent *ent)
 			break;
 		}
 		default:
-			warnx("%s: warning: unknown FreeBSD partition (%d)",
-			    device_name, dl->d_partitions[i].p_fstype);
-			continue;
+			warnx("%s: %s: unknown FreeBSD partition (%d)",
+			    device_name, (force ? "warning" : "error"),
+			    dl->d_partitions[i].p_fstype);
+			if (force)
+				continue;
+			else
+				return (NULL);
 		}
 
 		ofs = (le32toh(dl->d_partitions[i].p_offset) *
@@ -246,8 +250,11 @@ migrate(int fd)
 				utf8_to_utf16("FreeBSD disklabel partition",
 				    ent->ent_name, NELEM(ent->ent_name));
 				ent++;
-			} else
+			} else {
 				ent = migrate_disklabel(fd, start, ent);
+				if (ent == NULL)
+					return;
+			}
 			break;
 		}
 		case DOSPTYP_EFI: {
@@ -261,15 +268,15 @@ migrate(int fd)
 			break;
 		}
 		default:
-			if (!force) {
-				warnx("%s: error: unknown partition type (%d)",
-				    device_name, mbr->mbr_part[i].dp_typ);
+			warnx("%s: %s: partition %d: unknown type (%d)",
+			    device_name, (force ? "warning" : "error"),
+			    i, mbr->mbr_part[i].dp_typ);
+			if (!force)
 				return;
-			}
 		}
 	}
-	ent = tbl->map_data;
 
+	ent = tbl->map_data;
 	hdr->hdr_crc_table = htole32(crc32(ent, le32toh(hdr->hdr_entries) *
 	    le32toh(hdr->hdr_entsz)));
 	hdr->hdr_crc_self = htole32(crc32(hdr, le32toh(hdr->hdr_size)));
