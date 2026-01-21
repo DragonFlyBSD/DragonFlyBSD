@@ -35,6 +35,10 @@ CFLAGS+=	-fno-builtin	# LTO exposes too much stuff
 CFLAGS+=	-mno-red-zone -fPIC
 .endif
 
+.if ${LIBSTAND_ARCH} == "aarch64"
+CFLAGS+=	-I${LIBSTAND_SRC}/aarch64
+.endif
+
 .if ${LIBSTAND_ARCH} == "i386"
 .if ${CCVER:Mgcc*}
 CFLAGS+=	-mpreferred-stack-boundary=2

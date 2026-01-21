@@ -44,6 +44,10 @@ CFLAGS+=	-I${.CURDIR}/../../dloader
 CFLAGS+=	-I${.CURDIR}/../../../lib
 CFLAGS+=	-DNO_PCI -DEFI
 
+.if ${MACHINE_ARCH} == "aarch64"
+CFLAGS+=	-I${.CURDIR}/../../../lib/aarch64
+.endif
+
 # make buildenv doesn't set DESTDIR, this means LIBSTAND
 # will be wrong when crossbuilding.
 .if exists(${.OBJDIR}/../../../lib/libstand.a)
