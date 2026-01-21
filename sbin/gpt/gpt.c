@@ -119,26 +119,35 @@ void
 utf16_to_utf8(const uint16_t *s16, size_t s16len, char *s8, size_t s8len)
 {
 	size_t s8idx, s16idx;
-	uint32_t utfchar;
-	unsigned int c;
+	uint32_t utfchar, low;
 	unsigned char *us8 = (unsigned char *)s8;
 
-	for (s16idx = 0; s16idx < s16len; s16idx++) {
-		if (s16[s16idx] == 0) {
-			s16len = s16idx;
-			break;
-		}
-	}
 	s8idx = s16idx = 0;
-	while (s16idx < s16len) {
+	while (s16idx < s16len && s16[s16idx] != 0) {
 		utfchar = le16toh(s16[s16idx++]);
-		if ((utfchar & 0xf800) == 0xd800) {
-			c = le16toh(s16[s16idx]);
-			if ((utfchar & 0x400) != 0 || (c & 0xfc00) != 0xdc00)
+
+		/* Handle surrogate pairs */
+		if (utfchar >= 0xd800 && utfchar <= 0xdbff) {
+			/* high surrogate */
+			if (s16idx < s16len) {
+				low = le16toh(s16[s16idx]);
+				if (low >= 0xdc00 && low <= 0xdfff) {
+					s16idx++;
+					utfchar = 0x10000 +
+					    ((utfchar - 0xd800) << 10) +
+					    (low - 0xdc00);
+				} else {
+					utfchar = 0xfffd;
+				}
+			} else {
 				utfchar = 0xfffd;
-			else
-				s16idx++;
+			}
+		} else if (utfchar >= 0xdc00 && utfchar <= 0xdfff) {
+			/* lone low surrogate */
+			utfchar = 0xfffd;
 		}
+
+		/* Encode as UTF-8 */
 		if (utfchar < 0x80) {
 			if (s8idx + 1 >= s8len)
 				break;
@@ -154,7 +163,7 @@ utf16_to_utf8(const uint16_t *s16, size_t s16len, char *s8, size_t s8len)
 			us8[s8idx++] = 0xe0 | (utfchar >> 12);
 			us8[s8idx++] = 0x80 | ((utfchar >> 6) & 0x3f);
 			us8[s8idx++] = 0x80 | (utfchar & 0x3f);
-		} else if (utfchar < 0x200000) {
+		} else {
 			if (s8idx + 4 >= s8len)
 				break;
 			us8[s8idx++] = 0xf0 | (utfchar >> 18);
@@ -163,6 +172,7 @@ utf16_to_utf8(const uint16_t *s16, size_t s16len, char *s8, size_t s8len)
 			us8[s8idx++] = 0x80 | (utfchar & 0x3f);
 		}
 	}
+
 	us8[s8idx] = 0;
 }
 
