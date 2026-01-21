@@ -15,7 +15,6 @@ SRCS=	autoload.c \
 	copy.c \
 	devicename.c \
 	efi_main.c \
-	i386_module.c \
 	main.c \
 	self_reloc.c \
 	smbios.c \
@@ -25,6 +24,10 @@ SRCS=	autoload.c \
 # For smbios.c and i386_module.c
 .PATH: ${.CURDIR}/../../pc32/libi386
 .include "${.CURDIR}/arch/${MACHINE}/Makefile.inc"
+
+.if ${MACHINE_ARCH} == "x86_64"
+SRCS+=	i386_module.c
+.endif
 
 BOOT_DLOADER=	yes
 
@@ -78,6 +81,8 @@ OBJCOPY?=	objcopy
 
 .if ${MACHINE_ARCH} == "x86_64"
 EFI_TARGET=	pei-x86-64
+.elif ${MACHINE_ARCH} == "aarch64"
+EFI_TARGET=	pei-aarch64
 .else
 EFI_TARGET=	binary
 .endif

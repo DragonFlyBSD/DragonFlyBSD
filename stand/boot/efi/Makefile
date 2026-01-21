@@ -2,6 +2,8 @@
 
 .if ${MACHINE_ARCH} == "x86_64"
 SUBDIR+=	libefi loader boot1
+.elif ${MACHINE_ARCH} == "aarch64"
+SUBDIR+=	libefi loader
 .endif
 
 .include <bsd.subdir.mk>

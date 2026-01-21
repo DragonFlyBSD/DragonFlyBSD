@@ -28,10 +28,16 @@
 
 #include "loader_efi.h"
 
+#if defined(__x86_64__)
 extern int i386_autoload(void);
+#endif
 
 int
 efi_autoload(void)
 {
+#if defined(__x86_64__)
 	return i386_autoload();
+#else
+	return 0;
+#endif
 }

@@ -10,6 +10,9 @@ SRCS=	delay.c efi_console.c efinet.c efipart.c errno.c handles.c \
 .if ${MACHINE_ARCH} == "x86_64"
 CFLAGS+= -fPIC -mno-red-zone
 CFLAGS+= -I${.CURDIR}/../../../contrib/edk2/MdePkg/Include/X64
+.elif ${MACHINE_ARCH} == "aarch64"
+CFLAGS+= -fPIC
+CFLAGS+= -I${.CURDIR}/../../../contrib/edk2/MdePkg/Include/AArch64
 .endif
 CFLAGS+= -I${.CURDIR}/../include
 CFLAGS+= -I${.CURDIR}/../../../contrib/edk2/MdePkg/Include
