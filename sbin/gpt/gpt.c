@@ -116,23 +116,23 @@ crc32(const void *buf, size_t size)
 	return crc ^ ~0U;
 }
 
-uint8_t *
-utf16_to_utf8(uint16_t *s16)
+/*
+ * Produce a NUL-terminated UTF-8 string from the non-NUL-terminated
+ * UTF-16LE string.  The destination buffer (s8) is suggested to have
+ * a size of (s16len * 3 + 1).
+ */
+void
+utf16_to_utf8(const uint16_t *s16, size_t s16len, uint8_t *s8, size_t s8len)
 {
-	static uint8_t *s8 = NULL;
-	static size_t s8len = 0;
-	size_t s8idx, s16idx, s16len;
+	size_t s8idx, s16idx;
 	uint32_t utfchar;
 	unsigned int c;
 
-	s16len = 0;
-	while (s16[s16len++] != 0)
-		;
-	if (s8len < s16len * 3) {
-		if (s8 != NULL)
-			free(s8);
-		s8len = s16len * 3;
-		s8 = calloc(s16len, 3);
+	for (s16idx = 0; s16idx < s16len; s16idx++) {
+		if (s16[s16idx] == 0) {
+			s16len = s16idx;
+			break;
+		}
 	}
 	s8idx = s16idx = 0;
 	while (s16idx < s16len) {
@@ -145,22 +145,30 @@ utf16_to_utf8(uint16_t *s16)
 				s16idx++;
 		}
 		if (utfchar < 0x80) {
+			if (s8idx + 1 >= s8len)
+				break;
 			s8[s8idx++] = utfchar;
 		} else if (utfchar < 0x800) {
+			if (s8idx + 2 >= s8len)
+				break;
 			s8[s8idx++] = 0xc0 | (utfchar >> 6);
 			s8[s8idx++] = 0x80 | (utfchar & 0x3f);
 		} else if (utfchar < 0x10000) {
+			if (s8idx + 3 >= s8len)
+				break;
 			s8[s8idx++] = 0xe0 | (utfchar >> 12);
 			s8[s8idx++] = 0x80 | ((utfchar >> 6) & 0x3f);
 			s8[s8idx++] = 0x80 | (utfchar & 0x3f);
 		} else if (utfchar < 0x200000) {
+			if (s8idx + 4 >= s8len)
+				break;
 			s8[s8idx++] = 0xf0 | (utfchar >> 18);
 			s8[s8idx++] = 0x80 | ((utfchar >> 12) & 0x3f);
 			s8[s8idx++] = 0x80 | ((utfchar >> 6) & 0x3f);
 			s8[s8idx++] = 0x80 | (utfchar & 0x3f);
 		}
 	}
-	return (s8);
+	s8[s8idx] = 0;
 }
 
 void

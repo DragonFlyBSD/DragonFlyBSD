@@ -26,7 +26,7 @@
  * $FreeBSD: src/sbin/gpt/show.c,v 1.14 2006/06/22 22:22:32 marcel Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/diskmbr.h>
 
 #include <err.h>
@@ -84,6 +84,7 @@ show(int fd __unused)
 	struct gpt_ent *ent;
 	unsigned int i;
 	char *s;
+	uint8_t utfbuf[NELEM(ent->ent_name) * 3 + 1];
 
 	printf("  %*s", lbawidth, "start");
 	printf("  %*s", lbawidth, "size");
@@ -148,8 +149,10 @@ show(int fd __unused)
 			printf("GPT part ");
 			ent = m->map_data;
 			if (show_label) {
-				printf("- \"%s\"",
-				    utf16_to_utf8(ent->ent_name));
+				utf16_to_utf8(ent->ent_name,
+				    NELEM(ent->ent_name),
+				    utfbuf, sizeof(utfbuf));
+				printf("- \"%s\"", (char *)utfbuf);
 			} else if (show_guid) {
 				s = NULL;
 				le_uuid_dec(&ent->ent_uuid, &guid);
