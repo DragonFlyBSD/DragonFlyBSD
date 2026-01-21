@@ -1,6 +1,7 @@
 #ifndef _STRING_H_
 #define _STRING_H_
 
+#include <stddef.h>
 #include <sys/types.h>
 
 void *memcpy(void *dst, const void *src, size_t n);
