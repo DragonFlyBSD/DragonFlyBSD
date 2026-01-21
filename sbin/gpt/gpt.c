@@ -165,6 +165,10 @@ utf16_to_utf8(const uint16_t *s16, size_t s16len, uint8_t *s8, size_t s8len)
 	s8[s8idx] = 0;
 }
 
+/*
+ * Produce a non-NUL-terminated UTF-16LE string from the NUL-terminated
+ * UTF-8 string.
+ */
 void
 utf8_to_utf16(const uint8_t *s8, uint16_t *s16, size_t s16len)
 {
@@ -185,10 +189,8 @@ utf8_to_utf16(const uint8_t *s8, uint16_t *s16, size_t s16len)
 			if (utfbytes != 0) {
 				/* Incomplete encoding. */
 				s16[s16idx++] = 0xfffd;
-				if (s16idx == s16len) {
-					s16[--s16idx] = 0;
-					return;
-				}
+				if (s16idx == s16len)
+					return; /* No NUL-termination */
 			}
 			if ((c & 0xf8) == 0xf0) {
 				utfchar = c & 0x07;
@@ -219,12 +221,14 @@ utf8_to_utf16(const uint8_t *s8, uint16_t *s16, size_t s16len)
 				s16[s16idx++] = 0xdc00 | (utfchar & 0x3ff);
 			} else
 				s16[s16idx++] = utfchar;
-			if (s16idx == s16len) {
-				s16[--s16idx] = 0;
-				return;
-			}
+			if (s16idx == s16len)
+				return; /* No NUL-termination */
 		}
 	} while (c != 0);
+
+	/* Pad with zeros */
+	while (s16idx < s16len)
+		s16[s16idx++] = 0;
 }
 
 static const struct {
