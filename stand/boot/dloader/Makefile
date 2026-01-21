@@ -10,8 +10,10 @@ WORLD_CCOPTLEVEL=	1	# Force -O1, -O2 implodes
 CFLAGS+=	-fno-stack-protector
 
 # For i386, dloader32/Makefile takes care of the extra CFLAGS
-.if ${MACHINE_ARCH} != "i386"
+.if ${MACHINE_ARCH} == "x86_64"
 CFLAGS+=	-fPIC -mno-red-zone
+.elif ${MACHINE_ARCH} != "i386"
+CFLAGS+=	-fPIC
 CFLAGS+=	-ffreestanding
 CFLAGS+=	-D_STANDALONE
 .endif

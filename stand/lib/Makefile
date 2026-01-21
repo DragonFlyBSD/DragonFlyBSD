@@ -58,7 +58,8 @@ SRCS+=	strcasecmp.c
 
 # string functions from libc
 .PATH:	${LIBSTAND_SRC}/../../lib/libc/string
-.if ${LIBSTAND_ARCH} == "x86_64" || ${LIBSTAND_ARCH} == "i386"
+.if ${LIBSTAND_ARCH} == "x86_64" || ${LIBSTAND_ARCH} == "i386" || \
+    ${LIBSTAND_ARCH} == "aarch64"
 SRCS+=	bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
         memcpy.c memmove.c memset.c qdivrem.c rindex.c strcat.c strchr.c \
         strcmp.c strcpy.c strcspn.c strlen.c strncat.c strncmp.c strncpy.c \
@@ -74,8 +75,8 @@ qdivrem.o:	qdivrem.c
 .if ${LIBSTAND_ARCH} == "x86_64" || ${LIBSTAND_ARCH} == "i386"
 # really only required for i386
 CFLAGS+=-I${LIBSTAND_SRC}/../../lib/libc/${MACHINE_ARCH}
-.endif
 SRCS+=	_setjmp.S
+.endif
 
 # decompression functionality from libz
 # NOTE: crc32.c is used from libz and not libkern
