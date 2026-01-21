@@ -44,4 +44,7 @@ typedef int64_t quad_t;
 typedef u_int64_t u_quad_t;
 typedef int64_t daddr_t;
 
+typedef int64_t intmax_t;
+typedef u_int64_t uintmax_t;
+
 #endif
