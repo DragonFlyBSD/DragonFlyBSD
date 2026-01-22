@@ -240,7 +240,9 @@ main(int argc, CHAR16 *argv[])
 
 	debug_putc('b');  /* archsw set up */
 
-	has_kbd = has_keyboard();
+	/* Skip has_keyboard() for now - it seems to have issues with free() */
+	has_kbd = 0;
+	/* has_kbd = has_keyboard(); */
 
 	debug_putc('c');  /* has_keyboard done */
 
