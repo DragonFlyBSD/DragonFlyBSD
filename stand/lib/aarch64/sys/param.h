@@ -3,6 +3,7 @@
 
 #include <sys/stdint.h>
 #include <sys/types.h>
+#include <sys/endian.h>
 
 #define DEV_BSIZE 512
 #define DEV_BSHIFT 9
