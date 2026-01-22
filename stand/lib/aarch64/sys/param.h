@@ -10,6 +10,7 @@
 #define PAGE_SHIFT 12
 #define PATH_MAX 1024
 #define MAXPATHLEN PATH_MAX
+#define SPECNAMELEN 63
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
