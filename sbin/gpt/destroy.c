@@ -39,7 +39,6 @@
 #include "gpt.h"
 
 static bool recoverable = false;
-static bool quiet = false;
 
 static void
 usage_destroy(void)
@@ -49,8 +48,8 @@ usage_destroy(void)
 	exit(1);
 }
 
-static void
-destroy(int fd)
+void
+destroy(int fd, bool quiet)
 {
 	map_t *pri_hdr, *sec_hdr;
 
@@ -107,18 +106,10 @@ cmd_destroy(int argc, char *argv[])
 			continue;
 		}
 
-		destroy(fd);
+		destroy(fd, false);
 
 		gpt_close(fd);
 	}
 
 	return (0);
-}
-
-void
-do_destroy(int fd)
-{
-	quiet = true;
-	destroy(fd);
-	quiet = false;
 }

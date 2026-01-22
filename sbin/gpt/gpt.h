@@ -75,6 +75,6 @@ int	cmd_remove(int, char *[]);
 int	cmd_show(int, char *[]);
 
 void	add_defaults(int fd);
-void	do_destroy(int fd);
+void	destroy(int fd, bool quiet);
 
 #endif /* _GPT_H_ */

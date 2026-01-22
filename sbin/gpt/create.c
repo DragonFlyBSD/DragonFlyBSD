@@ -357,7 +357,7 @@ cmd_init(int argc, char *argv[])
 				continue;
 			}
 		}
-		do_destroy(fd);
+		destroy(fd, true);
 		gpt_close(fd);
 		sleep(1);
 
