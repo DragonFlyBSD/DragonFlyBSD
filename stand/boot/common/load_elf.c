@@ -49,6 +49,13 @@
 #define ELF_TARG_MACH   EM_X86_64
 #endif
 
+#if defined(__aarch64__)
+#undef ELF_TARG_CLASS
+#undef ELF_TARG_MACH
+#define ELF_TARG_CLASS  ELFCLASS64
+#define ELF_TARG_MACH   EM_AARCH64
+#endif
+
 typedef struct elf_file {
     Elf_Phdr 	*ph;
     Elf_Ehdr	*ehdr;
