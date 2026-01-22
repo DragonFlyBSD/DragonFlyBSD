@@ -28,6 +28,7 @@
  */
 
 #include <stand.h>
+#include <stdint.h>
 
 extern EFI_HANDLE		IH;
 extern EFI_SYSTEM_TABLE		*ST;
