@@ -357,6 +357,9 @@ gpt_write(int fd, map_t *map)
 	if (lseek(fd, ofs, SEEK_SET) == ofs &&
 	    write(fd, map->map_data, count) == (ssize_t)count)
 		return (0);
+
+	warnx("%s: failed to write %lld sectors starting at %lld",
+	    device_name, (long long)map->map_size, (long long)map->map_start);
 	return (-1);
 }
 
