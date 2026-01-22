@@ -1,5 +1,8 @@
 /*
  * Freestanding elf.h for aarch64 EFI loader build.
+ *
+ * Note: ELF_R_TYPE and ELF_R_SYM are provided by sys/elf_generic.h
+ * (included via machine/elf.h), so we don't define them here.
  */
 
 #ifndef _ELF_H_
@@ -25,8 +28,5 @@ typedef Elf64_Sym	Elf_Sym;
 typedef Elf64_Phdr	Elf_Phdr;
 typedef Elf64_Ehdr	Elf_Ehdr;
 typedef Elf64_Shdr	Elf_Shdr;
-
-#define ELF_R_TYPE	ELF64_R_TYPE
-#define ELF_R_SYM	ELF64_R_SYM
 
 #endif /* !_ELF_H_ */

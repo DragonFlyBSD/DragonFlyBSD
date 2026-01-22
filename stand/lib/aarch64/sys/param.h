@@ -9,6 +9,7 @@
 #define DEV_BSHIFT 9
 #define PAGE_SIZE 4096
 #define PAGE_SHIFT 12
+#define PAGE_MASK (PAGE_SIZE - 1)
 #define PATH_MAX 1024
 #define MAXPATHLEN PATH_MAX
 #define SPECNAMELEN 63

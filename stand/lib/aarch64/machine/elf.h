@@ -13,6 +13,14 @@
 #include <sys/elf64.h>
 #include <sys/elf_generic.h>
 
+/*
+ * EM_AARCH64 is not defined in DragonFly's elf_common.h yet.
+ * Standard ELF value for AArch64 is 183.
+ */
+#ifndef EM_AARCH64
+#define	EM_AARCH64	183
+#endif
+
 #define	ELF_ARCH	EM_AARCH64
 
 #define	ELF_MACHINE_OK(x) ((x) == EM_AARCH64)
