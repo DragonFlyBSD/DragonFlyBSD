@@ -30,6 +30,28 @@
 #include <eficonsctl.h>
 #include <efilib.h>
 
+/* DEBUG: Direct UART output for QEMU virt (PL011 at 0x09000000) */
+#if defined(__aarch64__)
+static inline void debug_uart_putc(char c)
+{
+	volatile unsigned int *uart = (volatile unsigned int *)0x09000000;
+	while (uart[0x18/4] & 0x20)  /* Wait while TX FIFO full */
+		;
+	uart[0] = c;
+}
+static inline void debug_uart_puts(const char *s)
+{
+	while (*s) {
+		if (*s == '\n')
+			debug_uart_putc('\r');
+		debug_uart_putc(*s++);
+	}
+}
+#else
+#define debug_uart_putc(c) ((void)0)
+#define debug_uart_puts(s) ((void)0)
+#endif
+
 static EFI_PHYSICAL_ADDRESS heap;
 static UINTN heapsize;
 
@@ -78,16 +100,22 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	EFI_STATUS status;
 	int argc, addprog;
 
+	debug_uart_puts("A");  /* Entered efi_main */
+
 	IH = image_handle;
 	ST = system_table;
 	BS = ST->BootServices;
 	RS = ST->RuntimeServices;
+
+	debug_uart_puts("B");  /* Got EFI pointers */
 
 	status = BS->LocateProtocol(&console_control_protocol, NULL,
 	    (VOID **)&console_control);
 	if (status == EFI_SUCCESS)
 		(void)console_control->SetMode(console_control,
 		    EfiConsoleControlScreenText);
+
+	debug_uart_puts("C");  /* Console control done */
 
 #if 1
 	heapsize = 3 * 1024 * 1024;
@@ -99,13 +127,19 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	if (status != EFI_SUCCESS)
 		BS->Exit(IH, status, 0, NULL);
 
+	debug_uart_puts("D");  /* Heap allocated */
+
 	setheap((void *)(uintptr_t)heap, (void *)(uintptr_t)(heap + heapsize));
+
+	debug_uart_puts("E");  /* Heap set */
 
 	/* Use efi_exit() from here on... */
 
 	status = BS->HandleProtocol(IH, &image_protocol, (VOID**)&img);
 	if (status != EFI_SUCCESS)
 		efi_exit(status);
+
+	debug_uart_puts("F");  /* Got image protocol */
 
 	/*
 	 * Pre-process the (optional) load options. If the option string
@@ -130,6 +164,8 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 		}
 	} else
 		args = NULL;
+
+	debug_uart_puts("G");  /* Args processed */
 
 	/*
 	 * Use a quick and dirty algorithm to build the argv vector. We
@@ -184,7 +220,12 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	}
 	argv[argc] = NULL;
 
+	debug_uart_puts("H");  /* About to call main */
+
 	status = main(argc, argv);
+
+	debug_uart_puts("I");  /* main returned */
+
 	efi_exit(status);
 	return (status);
 }
