@@ -37,16 +37,15 @@ BOOT_DLOADER=	yes
 CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.CURDIR}/arch/${MACHINE}
 CFLAGS+=	-I${.CURDIR}/../include
+.if ${MACHINE_ARCH} == "aarch64"
+CFLAGS+=	-I${.CURDIR}/../../../lib/aarch64
+.endif
 CFLAGS+=	-I${.CURDIR}/../../../../sys/contrib/dev/acpica/source/include
 CFLAGS+=	-I${.CURDIR}/../../../../sys
 CFLAGS+=	-I${.CURDIR}/../../pc32/libi386
 CFLAGS+=	-I${.CURDIR}/../../dloader
 CFLAGS+=	-I${.CURDIR}/../../../lib
 CFLAGS+=	-DNO_PCI -DEFI
-
-.if ${MACHINE_ARCH} == "aarch64"
-CFLAGS+=	-I${.CURDIR}/../../../lib/aarch64
-.endif
 
 # make buildenv doesn't set DESTDIR, this means LIBSTAND
 # will be wrong when crossbuilding.

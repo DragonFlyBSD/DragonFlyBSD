@@ -14,5 +14,6 @@ typedef __uintlp_t __size_t;
 typedef __intlp_t __ssize_t;
 typedef __int64_t __time_t;
 typedef __int32_t __timer_t;
+typedef __uintlp_t vm_offset_t;
 
 #endif
