@@ -61,7 +61,12 @@ migrate_disklabel(int fd, off_t start, struct gpt_ent *ent)
 	int i;
 
 	buf = gpt_read(fd, start + LABELSECTOR32, 1);
-	dl = (void*)(buf + LABELOFFSET32);
+	if (buf == NULL) {
+		warnx("%s: error: reading disklabel failed", device_name);
+		return (NULL);
+	}
+
+	dl = (void *)(buf + LABELOFFSET32);
 
 	if (le32toh(dl->d_magic) != DISKMAGIC32 ||
 	    le32toh(dl->d_magic2) != DISKMAGIC32) {

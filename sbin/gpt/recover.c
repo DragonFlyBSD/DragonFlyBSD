@@ -148,6 +148,11 @@ recover(int fd)
 		}
 
 		mbr = gpt_read(fd, 0LL, 1);
+		if (mbr == NULL) {
+			warnx("%s: error: reading PMBR failed", device_name);
+			return;
+		}
+
 		bzero(mbr, sizeof(*mbr));
 		mbr->mbr_sig = htole16(DOSMAGIC);
 		mbr->mbr_part[0].dp_shd = 0xff;
