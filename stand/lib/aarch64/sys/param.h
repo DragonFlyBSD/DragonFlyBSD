@@ -1,6 +1,9 @@
 #ifndef _SYS_PARAM_H_
 #define _SYS_PARAM_H_
 
+#include <sys/stdint.h>
+#include <sys/types.h>
+
 #define DEV_BSIZE 512
 #define PAGE_SIZE 4096
 
