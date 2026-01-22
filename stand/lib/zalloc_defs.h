@@ -36,10 +36,13 @@
  * DEFS.H
  */
 
+/* Disable guards for now to debug arm64 issues */
+#if 0
 #define USEGUARD		/* use stard/end guard bytes */
 #define USEENDGUARD
 #define DMALLOCDEBUG		/* add debugging code to gather stats */
 #define ZALLOCDEBUG
+#endif
 
 #include <string.h>
 #include "stand.h"
