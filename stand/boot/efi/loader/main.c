@@ -129,22 +129,31 @@ has_keyboard(void)
 	UINTN sz;
 	int retval = 0;
 
+	debug_putc('K');  /* entered has_keyboard */
+
 	/*
 	 * Find all the handles that support the SIMPLE_TEXT_INPUT_PROTOCOL and
 	 * do the typical dance to get the right sized buffer.
 	 */
 	sz = 0;
 	hin = NULL;
+	debug_putc('L');  /* about to call LocateHandle */
 	status = BS->LocateHandle(ByProtocol, &inputid, 0, &sz, 0);
+	debug_putc('M');  /* LocateHandle returned */
 	if (status == EFI_BUFFER_TOO_SMALL) {
+		debug_putc('N');  /* need to allocate */
 		hin = (EFI_HANDLE *)malloc(sz);
+		debug_putc('O');  /* malloc done */
 		status = BS->LocateHandle(ByProtocol, &inputid, 0, &sz,
 		    hin);
+		debug_putc('P');  /* second LocateHandle done */
 		if (EFI_ERROR(status))
 			free(hin);
 	}
 	if (EFI_ERROR(status))
 		return retval;
+
+	debug_putc('Q');  /* about to iterate */
 
 	/*
 	 * Look at each of the handles. If it supports the device path protocol,
