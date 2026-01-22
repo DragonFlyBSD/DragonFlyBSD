@@ -15,6 +15,7 @@
 #define EINVAL 22
 #define EMFILE 24
 #define EFBIG 27
+#define ENOSPC 28
 #define EROFS 30
 #define ERANGE 34
 #define EOPNOTSUPP 95
