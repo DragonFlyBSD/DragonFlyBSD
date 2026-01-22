@@ -158,14 +158,9 @@ _start:
 	cmp	x0, x1
 	b.lo	1b
 
-	/* Perform self-relocation */
-	adrp	x0, ImageBase
-	add	x0, x0, :lo12:ImageBase
-	adrp	x1, _DYNAMIC
-	add	x1, x1, :lo12:_DYNAMIC
-
-	bl	self_reloc
-
+	/* Skip self-relocation for now - just call efi_main */
+	/* NOTE: This will fail if there are any relocations needed */
+	
 	/* Restore boot params and call efi_main */
 	ldp	x0, x1, [sp], #16
 
