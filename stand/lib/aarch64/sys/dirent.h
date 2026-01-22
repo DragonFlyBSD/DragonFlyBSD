@@ -24,5 +24,6 @@ struct dirent {
 #define DT_LNK 10
 #define DT_SOCK 12
 #define DT_WHT 14
+#define DT_DBF 15
 
 #endif
