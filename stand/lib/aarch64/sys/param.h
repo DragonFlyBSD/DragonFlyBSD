@@ -24,4 +24,7 @@
 #define btodb(bytes) ((daddr_t)((bytes) >> DEV_BSHIFT))
 #define dbtob(db) ((off_t)(db) << DEV_BSHIFT)
 
+#define NELEM(ary) (sizeof(ary) / sizeof((ary)[0]))
+#define nitems(x) NELEM(x)
+
 #endif

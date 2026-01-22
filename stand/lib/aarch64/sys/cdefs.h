@@ -21,6 +21,11 @@
 #define __packed __attribute__((__packed__))
 #define __aligned(x) __attribute__((__aligned__(x)))
 #define __always_inline __attribute__((__always_inline__))
+#define __section(x) __attribute__((__section__(x)))
+#define __used __attribute__((__used__))
+
+#define __GLOBL1(sym) __asm__(".globl " #sym)
+#define __GLOBL(sym) __GLOBL1(sym)
 
 #define __FBSDID(s) struct __hack
 
