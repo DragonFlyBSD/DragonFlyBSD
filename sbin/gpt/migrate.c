@@ -157,8 +157,8 @@ migrate_disklabel32(const struct disklabel32 *dl, off_t start,
 	for (i = 0; i < le16toh(dl->d_npartitions); i++) {
 		if (convert_fstype(dl->d_partitions[i].p_fstype, &uuid) < 0) {
 			warnx("%s: %s: unknown partition type (%d)",
-			    device_name, (force ? "warning" : "error"),
-			    dl->d_partitions[i].p_fstype);
+			      device_name, (force ? "warning" : "error"),
+			      dl->d_partitions[i].p_fstype);
 			if (!force)
 				return (NULL);
 		}
@@ -191,8 +191,8 @@ migrate_disklabel64(const struct disklabel64 *dl, off_t start,
 	for (i = 0; i < le32toh(dl->d_npartitions); i++) {
 		if (convert_fstype(dl->d_partitions[i].p_fstype, &uuid) < 0) {
 			warnx("%s: %s: unknown partition type (%d)",
-			    device_name, (force ? "warning" : "error"),
-			    dl->d_partitions[i].p_fstype);
+			      device_name, (force ? "warning" : "error"),
+			      dl->d_partitions[i].p_fstype);
 			if (!force)
 				return (NULL);
 		}
@@ -366,8 +366,8 @@ migrate(int fd)
 		}
 		default:
 			warnx("%s: %s: partition %d: unknown type (%d)",
-			    device_name, (force ? "warning" : "error"),
-			    i, mbr->mbr_part[i].dp_typ);
+			      device_name, (force ? "warning" : "error"),
+			      i, mbr->mbr_part[i].dp_typ);
 			if (!force)
 				return;
 		}

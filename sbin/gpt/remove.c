@@ -45,11 +45,10 @@ static unsigned int entry = MAP_NOENTRY;
 static void
 usage_remove(void)
 {
-
 	fprintf(stderr,
-	    "usage: %s -a device ...\n"
-	    "       %s [-b lba] [-i index] [-s lba] [-t uuid] device ...\n",
-	    getprogname(), getprogname());
+		"usage: %s -a device ...\n"
+		"       %s [-b lba] [-i index] [-s lba] [-t uuid] device ...\n",
+		getprogname(), getprogname());
 	exit(1);
 }
 
@@ -100,7 +99,7 @@ rem(int fd)
 		i = m->map_index;
 
 		hdr = gpt->map_data;
-		ent = (void*)((char*)tbl->map_data + i *
+		ent = (void *)((char *)tbl->map_data + i *
 		    le32toh(hdr->hdr_entsz));
 		uuid_dec_le(&ent->ent_type, &uuid);
 		if (!uuid_is_nil(&type, NULL) &&
@@ -119,10 +118,10 @@ rem(int fd)
 		gpt_write(fd, tbl);
 
 		hdr = tpg->map_data;
-		ent = (void*)((char*)lbt->map_data + i *
+		ent = (void *)((char *)lbt->map_data + i *
 		    le32toh(hdr->hdr_entsz));
 
-		/* Remove the secundary entry. */
+		/* Remove the secondary entry. */
 		uuid_create_nil(&ent->ent_type, NULL);
 
 		hdr->hdr_crc_table = htole32(crc32(lbt->map_data,

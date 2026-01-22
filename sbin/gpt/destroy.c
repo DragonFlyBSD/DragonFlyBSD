@@ -44,7 +44,7 @@ static void
 usage_destroy(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-r] device ...\n", getprogname());
+		"usage: %s [-r] device ...\n", getprogname());
 	exit(1);
 }
 

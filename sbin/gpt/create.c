@@ -312,8 +312,8 @@ cmd_init(int argc, char *argv[])
 			break;
 		case 'I':
 			fprintf(stderr,
-				"Maybe you were trying to supply fdisk "
-				"options.  This is the gpt program\n");
+				"Maybe you were trying to supply fdisk(8) "
+				"options.  This is the gpt(8) program!\n");
 			usage_init();
 			/* NOT REACHED */
 			break;
@@ -440,9 +440,9 @@ do_erase(int fd)
 	ioarg[1] = mediasz;
 
 	if (ioctl(fd, DAIOCTRIM, ioarg) < 0) {
-		printf("Trim error %s\n", strerror(errno));
+		warn("%s: Trim error", device_name);
 		printf("Continuing\n");
 	} else {
-		printf("Trim completed ok\n");
+		printf("%s: Trim completed ok\n", device_name);
 	}
 }

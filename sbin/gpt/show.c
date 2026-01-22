@@ -85,14 +85,14 @@ show(int fd __unused)
 	char utfbuf[NELEM(ent->ent_name) * 3 + 1];
 	int lbawidth;
 
-	lbawidth = sprintf(lwbuf, "%llu", (long long)(mediasz / secsz));
+	lbawidth = sprintf(lwbuf, "%ju", (uintmax_t)(mediasz / secsz));
 	if (lbawidth < 5)
 		lbawidth = 5;
 
 	humanize_number(humansz, sizeof(humansz), (int64_t)mediasz, "B",
 			HN_AUTOSCALE, HN_FRACTIONAL | HN_NOSPACE);
-	printf("Disk %s: %s (%llu %u-byte sectors)\n",
-	       device_name, humansz, (long long)(mediasz / secsz), secsz);
+	printf("Disk %s: %s (%ju %u-byte sectors)\n",
+	       device_name, humansz, (uintmax_t)(mediasz / secsz), secsz);
 
 	printf("  %*s", lbawidth, "Start");
 	printf("  %*s", lbawidth, "Sectors");
@@ -101,8 +101,8 @@ show(int fd __unused)
 
 	m = map_first();
 	while (m != NULL) {
-		printf("  %*llu", lbawidth, (long long)m->map_start);
-		printf("  %*llu", lbawidth, (long long)m->map_size);
+		printf("  %*ju", lbawidth, (uintmax_t)m->map_start);
+		printf("  %*ju", lbawidth, (uintmax_t)m->map_size);
 		humanize_number(humansz, sizeof(humansz),
 				(int64_t)(m->map_size * secsz), "B",
 				HN_AUTOSCALE, HN_FRACTIONAL | HN_NOSPACE);
@@ -152,8 +152,8 @@ show(int fd __unused)
 				printf("[partition not found?]");
 			} else {
 				printf("%d%s", mbr->mbr_part[i].dp_typ,
-				    mbr->mbr_part[i].dp_flag == 0x80 ?
-				    " (active)" : "");
+				       mbr->mbr_part[i].dp_flag == 0x80 ?
+				       " (active)" : "");
 			}
 			break;
 		case MAP_TYPE_GPT_PART:

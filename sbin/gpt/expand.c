@@ -154,20 +154,20 @@ expand(int fd)
 		new_end = le64toh(last_ent->ent_lba_start) + new_size - 1;
 
 		if ((off_t)le64toh(last_ent->ent_lba_end) < new_end) {
-			printf("%s: expand entry %d ending %lld => %lld\n",
+			printf("%s: expand entry %d ending %ju => %ju\n",
 			       device_name, last_i,
-			       (long long)le64toh(last_ent->ent_lba_end),
-			       (long long)new_end);
+			       (uintmax_t)le64toh(last_ent->ent_lba_end),
+			       (uintmax_t)new_end);
 			last_ent->ent_lba_end = htole64(new_end);
 		} else if ((off_t)le64toh(last_ent->ent_lba_end) == new_end) {
 			printf("%s: entry %d size unchanged\n",
 			       device_name, last_i);
 		} else {
 			warnx("%s: error: cannot shrink entry %d "
-			      "(ending %lld => %lld)",
+			      "(ending %ju => %ju)",
 			      device_name, last_i,
-			      (long long)le64toh(last_ent->ent_lba_end),
-			      (long long)new_end);
+			      (uintmax_t)le64toh(last_ent->ent_lba_end),
+			      (uintmax_t)new_end);
 			return;
 		}
 	} else {
@@ -181,9 +181,9 @@ expand(int fd)
 	if (delta == 0) {
 		printf("%s: disk size unchanged\n", device_name);
 	} else {
-		printf("%s: %s GPT by %lld sectors\n", device_name,
+		printf("%s: %s GPT by %ju sectors\n", device_name,
 		       delta > 0 ? "expand" : "shrink",
-		       delta > 0 ? (long long)delta : (long long)-delta);
+		       delta > 0 ? (uintmax_t)delta : (uintmax_t)-delta);
 		hdr->hdr_lba_alt = htole64(last);
 	}
 	hdr->hdr_crc_table = htole32(crc32(tbl->map_data,
@@ -232,12 +232,12 @@ expand(int fd)
 	 * Write out.
 	 *
 	 * NOTE! We don't even try to manage the in-memory media links
-	 *	 and tbl2's data is the same pointer as tbl's data.  Don't
+	 *	 and lbt's data is the same pointer as tbl's data.  Don't
 	 *	 try to clean up here or be fancy.
 	 */
 	gpt_write(fd, lbt);	/* secondary partition table */
 	gpt_write(fd, tpg);	/* secondary header */
-	gpt_write(fd, gpt);	/* primary partition table */
-	gpt_write(fd, tbl);	/* primary header */
+	gpt_write(fd, tbl);	/* primary partition table */
+	gpt_write(fd, gpt);	/* primary header */
 	gpt_write(fd, pmbr);
 }

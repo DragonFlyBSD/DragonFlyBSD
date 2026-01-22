@@ -64,9 +64,9 @@ map_add(off_t start, off_t size, int type, void *data)
 	if (n->map_start + n->map_size < start + size) {
 		warnx("error: map entry doesn't fit media: "
 		      "new_start + new_size < start + size "
-		      "(%lld + %lld < %lld + %lld)",
-		      (long long)n->map_start, (long long)n->map_size,
-		      (long long)start, (long long)size);
+		      "(%ju + %ju < %ju + %ju)",
+		      (uintmax_t)n->map_start, (uintmax_t)n->map_size,
+		      (uintmax_t)start, (uintmax_t)size);
 		return (NULL);
 	}
 
@@ -74,8 +74,8 @@ map_add(off_t start, off_t size, int type, void *data)
 		if (n->map_type != MAP_TYPE_UNUSED) {
 			if (n->map_type != MAP_TYPE_MBR_PART ||
 			    type != MAP_TYPE_GPT_PART) {
-				warnx("warning: partition(%llu,%llu) mirrored",
-				    (long long)start, (long long)size);
+				warnx("warning: partition(%ju,%ju) mirrored",
+				      (uintmax_t)start, (uintmax_t)size);
 			}
 		}
 		n->map_type = type;

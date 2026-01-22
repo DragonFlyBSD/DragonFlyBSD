@@ -338,16 +338,16 @@ cmd_add(int argc, char *argv[])
 
 		if (alignment > 0) {
 			if (alignment % secsz != 0)
-				warnx("alignment (%lld) not multiple of "
+				warnx("alignment (%ju) not multiple of "
 				      "sector size (%u)",
-				      (long long)alignment, secsz);
+				      (uintmax_t)alignment, secsz);
 			alignment = (alignment + secsz - 1) / secsz;
 		}
 		if (size > 0 && !is_sector) {
 			if (size % secsz != 0)
-				warnx("size (%lld) not multiple of "
+				warnx("size (%ju) not multiple of "
 				      "sector size (%u)",
-				      (long long)size, secsz);
+				      (uintmax_t)size, secsz);
 			size = (size + secsz - 1) / secsz;
 		}
 
