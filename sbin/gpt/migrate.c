@@ -31,6 +31,7 @@
 #include <sys/dtype.h>
 
 #include <err.h>
+#include <errno.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,29 +53,41 @@ usage_migrate(void)
 	exit(1);
 }
 
-static struct gpt_ent*
-migrate_disklabel(int fd, off_t start, struct gpt_ent *ent)
+static int
+read_disklabel32(int fd, off_t start, struct disklabel32 **dlp)
 {
 	char *buf;
 	struct disklabel32 *dl;
-	off_t ofs, rawofs;
-	int i;
 
 	buf = gpt_read(fd, start + LABELSECTOR32, 1);
 	if (buf == NULL) {
-		warnx("%s: error: reading disklabel failed", device_name);
-		return (NULL);
+		warnx("%s: error: reading disklabel32 failed", device_name);
+		return (EIO);
 	}
 
 	dl = (void *)(buf + LABELOFFSET32);
-
 	if (le32toh(dl->d_magic) != DISKMAGIC32 ||
 	    le32toh(dl->d_magic2) != DISKMAGIC32) {
-		warnx("%s: warning: FreeBSD slice without disklabel",
-		    device_name);
-		return (ent);
+		warnx("%s: warning: no disklabel32 in slice", device_name);
+		free(buf);
+		return (ENOENT);
 	}
 
+	*dlp = dl;
+	return 0;
+}
+
+static struct gpt_ent*
+migrate_disklabel32(const struct disklabel32 *dl, off_t start,
+		    struct gpt_ent *ent)
+{
+	off_t ofs, rawofs;
+	int i;
+
+	/*
+	 * If any partition starts before RAW_PART, then RAW_PART is not acting
+	 * as a base coordinate; i.e., partition offsets are already absolute.
+	 */
 	rawofs = le32toh(dl->d_partitions[RAW_PART].p_offset) *
 	    le32toh(dl->d_secsize);
 	for (i = 0; i < le16toh(dl->d_npartitions); i++) {
@@ -248,9 +261,19 @@ migrate(int fd)
 				ent->ent_lba_end = htole64(start + size - 1LL);
 				ent++;
 			} else {
-				ent = migrate_disklabel(fd, start, ent);
-				if (ent == NULL)
+				struct disklabel32 *dl32;
+				int err;
+
+				err = read_disklabel32(fd, start, &dl32);
+				if (err == 0) {
+					ent = migrate_disklabel32(
+					    dl32, start, ent);
+					free(dl32);
+					if (ent == NULL)
+						return;
+				} else if (err != ENOENT) {
 					return;
+				}
 			}
 			break;
 		}
