@@ -1,65 +1,173 @@
-# ARM64 EFI Loader MVP Part 1 (Console Bring-up)
+# ARM64 EFI Loader MVP
 
-## Goal (MVP Part 1)
+## Overview
 
-Produce an AArch64 UEFI loader binary that executes under QEMU+EDK2 and prints to the UEFI console. This is the first part of the MVP and does not load a kernel.
+This document tracks the arm64 EFI loader and kernel bring-up for DragonFly BSD.
 
-## Scope
+---
 
-- UEFI loader only (`BOOTAA64.EFI`)
-- Console banner output via existing `efi_main`/`main`
-- No kernel loading, no `boot1.efi`, no device autoload changes beyond what is required to build
+## MVP Part 1: EFI Loader Console Bring-up (COMPLETE)
 
-## Implementation Plan
+### Goal
 
-1. **Enable arm64 build gating**
-   - Update `stand/boot/efi/Makefile` so `libefi` and `loader` build for `MACHINE_ARCH=aarch64`.
+Produce an AArch64 UEFI loader binary that executes under QEMU+EDK2 and prints to the UEFI console.
 
-2. **Add arm64 arch scaffolding**
-   - Create `stand/boot/efi/loader/arch/aarch64/Makefile.inc` with minimal sources and AArch64 UEFI include paths.
-   - Add `stand/boot/efi/loader/arch/aarch64/start.S` to call `self_reloc(ImageBase, _DYNAMIC)` and `efi_main()`.
-   - Add `stand/boot/efi/loader/arch/aarch64/ldscript.aarch64` mirroring the x86_64 linker script but using AArch64 ELF output.
+### Status: COMPLETE
 
-3. **Adjust loader build glue**
-   - In `stand/boot/efi/loader/Makefile`, set `EFI_TARGET=pei-aarch64` for arm64.
-   - Build `i386_module.c` only on x86_64; keep `smbios.c` available for shared EFI code paths.
+The arm64 EFI loader now:
+- Loads as valid PE32+ EFI application
+- Self-relocates correctly (fixed RELA relocation bug)
+- Initializes EFI services (BS, RS, ST, IH)
+- Allocates heap via EFI
+- Initializes console - prints "Console: EFI console"
+- Displays DragonFly banner and EFI firmware info
+- Shows autoboot spinner countdown
+- Drops to interactive `OK` prompt
 
-4. **Console output validation**
-   - Rely on existing `stand/boot/efi/loader/main.c` output (banner, EFI firmware info).
-   - Ensure `cons_probe()` runs successfully and `interact()` starts, confirming the loader is alive.
+### Key Fixes Applied
 
-5. **Package as BOOTAA64.EFI**
-   - Use the resulting `loader.efi` as `EFI/BOOT/BOOTAA64.EFI` on the ESP.
+1. **RELA Relocation Bug** - `self_reloc.c` was double-adding the addend for RELA relocations. Fixed by assigning instead of adding: `*newaddr = baseaddr + rel->r_addend;`
 
-## Build Instructions (VM)
+2. **PE32+ Header** - Using embedded PE header in `start.S` (FreeBSD approach)
 
-Assuming the tree is in `/usr/src` on the VM:
+3. **Malloc Guard Issue** - Temporarily disabled guards in `stand/lib/zalloc_defs.h` to work around a `free()` crash. Root cause TBD.
 
-```sh
-cd /usr/src
-make -C stand/boot/efi/loader MACHINE_ARCH=aarch64 MACHINE=aarch64 MACHINE_PLATFORM=aarch64
+### Files Modified
+
+```
+stand/boot/efi/loader/
+├── arch/aarch64/
+│   ├── start.S              # Entry + embedded PE header
+│   ├── ldscript.aarch64     # Linker script for PE layout
+│   └── elf64_freebsd.c      # Stub (returns EFTYPE)
+├── self_reloc.c             # Fixed RELA relocation
+├── efi_main.c               # EFI initialization
+└── main.c                   # Loader main loop
+
+stand/lib/
+└── zalloc_defs.h            # Disabled guards temporarily
 ```
 
-To find the output directory:
+### Build Instructions (VM)
 
 ```sh
-make -C stand/boot/efi/loader -V .OBJDIR
+# Build libstand
+cd /usr/src/stand/lib
+make clean && make MACHINE_ARCH=aarch64 MACHINE=aarch64 CC=aarch64-none-elf-gcc
+
+# Build loader
+cd /usr/src/stand/boot/efi/loader
+make clean && make MACHINE_ARCH=aarch64 MACHINE=aarch64 CC=aarch64-none-elf-gcc
 ```
 
-The binary is `loader.efi` in that object directory.
+### Test Instructions (Host)
 
-## Copy to Host
+See `tools/arm64-test/Makefile` for the test environment.
 
 ```sh
-scp -P 6021 root@devbox.sector.int:/path/to/obj/stand/boot/efi/loader/loader.efi ./BOOTAA64.EFI
+cd tools/arm64-test
+make copy-loader    # Fetch loader from VM
+make run-gui        # Run with graphical display
+make test           # Run with 25s timeout (headless)
 ```
 
-## Stage on the ESP
+---
 
-Place it as:
+## MVP Part 2: Stub Kernel (PLANNED)
 
-`EFI/BOOT/BOOTAA64.EFI`
+### Goal
 
-## Smoke Test
+Create a minimal arm64 kernel that the EFI loader can load and execute, prints a message to UART, and halts.
 
-Boot QEMU with EDK2 and the ESP. Success for MVP Part 1 is the loader banner/EFI info printed on the UEFI console and an interactive prompt.
+### Approach
+
+Two components:
+1. **Loader**: Implement `elf64_exec()` to load and jump to kernel
+2. **Kernel**: Create stub that prints to PL011 UART (0x09000000 on QEMU virt)
+
+### Part A: Loader Changes
+
+**File:** `stand/boot/efi/loader/arch/aarch64/elf64_freebsd.c`
+
+Implement `elf64_exec()` to:
+1. Build module metadata (modulep)
+2. Call `ExitBootServices()` to take control from UEFI
+3. Flush caches (D-cache clean, I-cache invalidate)
+4. Jump to kernel entry point with `modulep` in x0
+
+### Part B: Kernel Platform Structure
+
+Create `sys/platform/arm64/` with proper directory structure:
+
+```
+sys/platform/arm64/
+├── Makefile.inc           # Platform build rules
+├── conf/
+│   └── files              # File list for kernel config
+├── include/
+│   └── (placeholder)      # Machine headers (later)
+└── aarch64/
+    ├── locore.S           # Entry point: _start
+    ├── machdep.c          # Stub init functions
+    └── Makefile           # Build the kernel
+```
+
+**Kernel entry (`locore.S`):**
+1. Entry at `_start`, receive `modulep` in x0
+2. Write "DragonFly arm64 kernel!\n" to PL011 UART at 0x09000000
+3. Infinite loop (halt)
+
+### Part C: Kernel Entry Signature
+
+The loader passes a single argument to the kernel:
+
+```c
+void _start(vm_offset_t modulep);  // modulep in x0
+```
+
+The `modulep` pointer references preload metadata - a linked list of module information containing kernel address, size, environment, boot flags, EFI memory map, etc.
+
+### Tasks
+
+| # | Task | Files |
+|---|------|-------|
+| 1 | Implement `elf64_exec()` in loader | `stand/boot/efi/loader/arch/aarch64/elf64_freebsd.c` |
+| 2 | Create platform directory structure | `sys/platform/arm64/` |
+| 3 | Write `locore.S` stub entry point | `sys/platform/arm64/aarch64/locore.S` |
+| 4 | Create minimal `machdep.c` | `sys/platform/arm64/aarch64/machdep.c` |
+| 5 | Create Makefiles for kernel build | `sys/platform/arm64/Makefile.inc`, etc. |
+| 6 | Update test Makefile | `tools/arm64-test/Makefile` |
+| 7 | Build and test on VM | - |
+
+### Success Criteria
+
+- Loader successfully loads ELF64 kernel
+- Loader exits boot services and jumps to kernel
+- Kernel prints "DragonFly arm64 kernel!" to UART
+- Message visible in QEMU serial output
+
+---
+
+## Development Environment
+
+- **Local repo:** `/Users/tuxillo/s/dragonfly`
+- **VM repo:** `/usr/src`
+- **Branch:** `port-arm64`
+- **VM access:** `ssh root@devbox.sector.int -p 6021`
+- **Workflow:** commit locally, push to Gitea, pull on VM, build, copy back to test
+
+---
+
+## Debug Output Key (MVP Part 1)
+
+These debug markers were added during bring-up:
+
+**From start.S:** `1`=entry, `2`=BSS cleared, `3`=before reloc, `4`=after reloc, `5`=before efi_main
+
+**From efi_main.c:** `A`=entered, `B`=got EFI ptrs, `C`=console ctrl, `D`=heap alloc, `E`=setheap, `F`=img protocol, `G`=args, `H`=calling main
+
+**From main.c:** `a`=entered, `b`=archsw set, `c`=has_kbd done, `d`=cons_probe done, `e`=args parsed, `f`=efi_copy_init, `g`=devs probed, `h`=printing
+
+---
+
+*Last updated: 2026-01-22*

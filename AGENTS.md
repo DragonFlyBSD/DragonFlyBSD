@@ -124,6 +124,44 @@ We're going to use a x86_64 VM for development, which is hosted remotely and can
 - Branch: `port-arm64`
 - Sync workflow: commit locally, push to Gitea, then pull in `/usr/src` on the VM
 
+### ARM64 Test Environment
+
+The `tools/arm64-test/` directory contains a Makefile for testing the arm64 EFI loader and kernel in QEMU.
+
+**Quick Start:**
+
+```sh
+cd tools/arm64-test
+make copy-loader    # Fetch loader from VM
+make run-gui        # Run with graphical display
+make test           # Run with 25s timeout (headless)
+```
+
+**Available Targets:**
+
+| Target | Description |
+|--------|-------------|
+| `make run` | Run loader interactively (Ctrl-A X to exit) |
+| `make run-gui` | Run loader with graphical display |
+| `make test` | Run loader with 25s timeout |
+| `make setup` | Create EFI disk structure and copy loader |
+| `make copy-loader` | Copy loader from remote VM |
+| `make copy-kernel` | Copy kernel from remote VM (placeholder) |
+| `make clean` | Remove temporary test files |
+
+**Configuration Variables:**
+
+- `VM_DIR` - Directory for VM files (default: `$HOME/vms`)
+- `LOADER_EFI` - Path to loader.efi (default: `$VM_DIR/loader.efi`)
+- `DISK_IMAGE` - Path to qcow2 disk (default: `$VM_DIR/dfly.qcow2`)
+- `TEST_TIMEOUT` - Timeout in seconds (default: 25)
+- `USE_DISK=1` - Use qcow2 disk instead of FAT directory
+
+**Requirements:**
+
+- `qemu-system-aarch64`
+- EDK2 AARCH64 firmware (`edk2-aarch64-code.fd`)
+
 ---
 
 ## Contact
@@ -132,4 +170,4 @@ For questions about these guidelines, contact:  [maintainer contact info]
 
 ---
 
-*Last updated:  2026-01-21*
+*Last updated:  2026-01-22*
