@@ -37,4 +37,7 @@ char *strtok(char *s, const char *delim);
 char *strsep(char **stringp, const char *delim);
 char *strerror(int errnum);
 
+/* From strings.h, but often included via string.h */
+int ffs(int i);
+
 #endif

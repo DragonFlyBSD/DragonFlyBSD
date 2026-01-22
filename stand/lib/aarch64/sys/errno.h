@@ -8,6 +8,7 @@
 #define ENOEXEC 8
 #define EBADF 9
 #define ENOMEM 12
+#define EBUSY 16
 #define EEXIST 17
 #define ENODEV 19
 #define ENOTDIR 20
