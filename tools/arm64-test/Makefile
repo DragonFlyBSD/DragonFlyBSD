@@ -2,9 +2,11 @@
 #
 # Usage:
 #   make run          - Run loader interactively (Ctrl-A X to exit)
+#   make run-gui      - Run loader with graphical display
 #   make test         - Run loader with timeout (auto-exits after 25s)
 #   make setup        - Create EFI disk structure and copy loader
 #   make copy-loader  - Copy loader from VM to local test environment
+#   make copy-kernel  - Copy kernel from VM to local test environment
 #   make clean        - Remove temporary test files
 #
 # Requirements:
@@ -15,6 +17,7 @@
 # Paths - adjust these as needed
 VM_DIR          ?= $(HOME)/vms
 LOADER_EFI      ?= $(VM_DIR)/loader.efi
+KERNEL_ELF      ?= $(VM_DIR)/kernel
 DISK_IMAGE      ?= $(VM_DIR)/dfly.qcow2
 EFI_TEST_DIR    ?= /tmp/efi_test
 EFI_BOOT_DIR    ?= $(EFI_TEST_DIR)/EFI/BOOT
@@ -33,6 +36,7 @@ VM_HOST         ?= devbox.sector.int
 VM_PORT         ?= 6021
 VM_USER         ?= root
 VM_LOADER_PATH  ?= /usr/src/stand/boot/efi/loader/loader.efi
+VM_KERNEL_PATH  ?= /usr/src/sys/platform/arm64/aarch64/kernel
 
 # QEMU base arguments (common to all modes)
 QEMU_ARGS_BASE = \
@@ -52,7 +56,7 @@ else
 QEMU_DRIVE = -drive file=fat:rw:$(EFI_TEST_DIR),format=raw,media=disk
 endif
 
-.PHONY: all run run-gui test setup copy-loader copy-kernel clean help check-deps
+.PHONY: all run run-gui test setup copy-loader copy-kernel copy-all clean help check-deps
 
 all: help
 
@@ -65,18 +69,20 @@ help:
 	@echo "  make test         - Run loader with $(TEST_TIMEOUT)s timeout"
 	@echo "  make setup        - Create EFI disk structure and copy loader"
 	@echo "  make copy-loader  - Copy loader from remote VM"
-	@echo "  make copy-kernel  - Copy kernel from remote VM (placeholder)"
+	@echo "  make copy-kernel  - Copy kernel from remote VM"
+	@echo "  make copy-all     - Copy both loader and kernel from remote VM"
 	@echo "  make clean        - Remove temporary test files"
 	@echo ""
 	@echo "Variables (override with VAR=value):"
 	@echo "  VM_DIR=$(VM_DIR)"
 	@echo "  LOADER_EFI=$(LOADER_EFI)"
+	@echo "  KERNEL_ELF=$(KERNEL_ELF)"
 	@echo "  DISK_IMAGE=$(DISK_IMAGE)"
 	@echo "  TEST_TIMEOUT=$(TEST_TIMEOUT)"
 	@echo "  USE_DISK=1        - Use qcow2 disk instead of FAT directory"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make test TEST_TIMEOUT=60"
+	@echo "  make copy-all && make test"
 	@echo "  make run-gui"
 	@echo "  make run USE_DISK=1"
 
@@ -108,10 +114,18 @@ copy-loader:
 	cp $(LOADER_EFI) $(BOOTAA64_EFI)
 	@echo "Loader copied to $(LOADER_EFI) and $(BOOTAA64_EFI)"
 
-# Placeholder for kernel copy (for future MVP Part 2)
+# Copy kernel from remote VM
 copy-kernel:
-	@echo "TODO: Copy kernel from VM"
-	@echo "This will be implemented for kernel loading support"
+	@echo "Copying kernel from $(VM_USER)@$(VM_HOST)..."
+	@mkdir -p $(VM_DIR)
+	@mkdir -p $(EFI_TEST_DIR)
+	scp -P $(VM_PORT) $(VM_USER)@$(VM_HOST):$(VM_KERNEL_PATH) $(KERNEL_ELF)
+	cp $(KERNEL_ELF) $(EFI_TEST_DIR)/kernel
+	@echo "Kernel copied to $(KERNEL_ELF) and $(EFI_TEST_DIR)/kernel"
+
+# Copy both loader and kernel
+copy-all: copy-loader copy-kernel
+	@echo "Both loader and kernel copied successfully"
 
 # Run QEMU interactively
 run: check-deps
