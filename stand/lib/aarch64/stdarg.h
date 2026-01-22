@@ -8,7 +8,12 @@ typedef __builtin_va_list va_list;
 #define va_arg(ap, type) __builtin_va_arg(ap, type)
 #define va_copy(dest, src) __builtin_va_copy(dest, src)
 
+#ifndef __va_start
 #define __va_start va_start
+#endif
+
+#ifndef __va_end
 #define __va_end va_end
+#endif
 
 #endif
