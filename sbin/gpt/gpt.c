@@ -506,7 +506,7 @@ gpt_gpt(int fd, off_t lba)
 
 	if (verbose > 1) {
 		warnx("%s: %s GPT at sector %ju", device_name,
-		      (lba == 1) ? "Pri" : "Sec", (uintmax_t)lba);
+		      (lba == 1) ? "Primary" : "Secondary", (uintmax_t)lba);
 	}
 
 	m = map_add(lba, 1,
