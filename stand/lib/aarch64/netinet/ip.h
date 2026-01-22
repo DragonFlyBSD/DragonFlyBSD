@@ -32,5 +32,6 @@ struct ip {
 /* Max time to live (seconds) */
 #define	MAXTTL		255
 #define	IPDEFTTL	64
+#define	IP_TTL		64
 
 #endif
