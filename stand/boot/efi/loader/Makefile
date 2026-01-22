@@ -85,8 +85,7 @@ OBJCOPY?=	objcopy
 .if ${MACHINE_ARCH} == "x86_64"
 EFI_TARGET=	pei-x86-64
 .elif ${MACHINE_ARCH} == "aarch64"
-# For aarch64, the PE header is embedded in start.S, so we output raw binary
-EFI_TARGET=	binary
+EFI_TARGET=	pei-aarch64-little
 .else
 EFI_TARGET=	binary
 .endif
@@ -98,20 +97,12 @@ loader.efi: ${PROG}
 		echo "Undefined symbols in ${.ALLSRC}"; \
 		exit 1; \
 	fi
-.if ${MACHINE_ARCH} == "aarch64"
-	# For aarch64, PE header is embedded in start.S - output raw binary
-	${OBJCOPY} -j .peheader -j .text -j .sdata -j .data \
-		-j .dynamic -j .dynsym -j .rel.dyn \
-		-j .rela.dyn -j .reloc -j set_Xcommand_set \
-		--output-target=${EFI_TARGET} ${.ALLSRC} ${.TARGET}
-.else
 	# No "-j .eh_frame", otherwise the loader doesn't run.
 	${OBJCOPY} -j .peheader -j .text -j .sdata -j .data \
 		-j .dynamic -j .dynsym -j .rel.dyn \
 		-j .rela.dyn -j .reloc -j set_Xcommand_set \
 		${EFI_GOLD_OBJCOPY_FLAGS} --subsystem efi-app \
 		--output-target=${EFI_TARGET} ${.ALLSRC} ${.TARGET}
-.endif
 
 LIBEFI=		${.OBJDIR}/../libefi/libefi.a
 
