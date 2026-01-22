@@ -114,8 +114,12 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
      */
     if (filename == NULL)	/* can't handle nameless */
 	return(EFTYPE);
-    if ((ef.fd = rel_open(filename, NULL, O_RDONLY)) == -1)
+    printf("elf64_loadfile: trying to open '%s'\n", filename);
+    if ((ef.fd = rel_open(filename, NULL, O_RDONLY)) == -1) {
+	printf("elf64_loadfile: rel_open failed, errno=%d\n", errno);
 	return(errno);
+    }
+    printf("elf64_loadfile: opened fd=%d\n", ef.fd);
     ef.firstpage = malloc(PAGE_SIZE);
     if (ef.firstpage == NULL) {
 	close(ef.fd);
@@ -139,6 +143,9 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
 	ehdr->e_ident[EI_VERSION] != EV_CURRENT ||	/* Version ? */
 	ehdr->e_version != EV_CURRENT ||
 	ehdr->e_machine != ELF_TARG_MACH) {		/* Machine ? */
+	printf("elf" __XSTRING(__ELF_WORD_SIZE) "_loadfile: ELF header mismatch for %s\n", filename);
+	printf("  e_machine=%d, expected ELF_TARG_MACH=%d\n", ehdr->e_machine, ELF_TARG_MACH);
+	printf("  e_ident[EI_CLASS]=%d, expected ELF_TARG_CLASS=%d\n", ehdr->e_ident[EI_CLASS], ELF_TARG_CLASS);
 	err = EFTYPE;
 	goto oerr;
     }
