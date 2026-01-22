@@ -320,6 +320,7 @@ typedef Elf_Note Elf_Nhdr;
 #define EM_K1OM 	181	/* Intel K1OM */
 #define EM_INTEL182	182	/* Reserved by Intel */
 #define EM_res183	183	/* Reserved by ARM */
+#define EM_AARCH64	183	/* ARM 64-bit Architecture (AArch64) */
 #define EM_res184	184	/* Reserved by ARM */
 #define EM_AVR32	185	/* Atmel Corporation 32-bit microprocessor family */
 #define EM_STM8 	186	/* STMicroeletronics STM8 8-bit microcontroller */
