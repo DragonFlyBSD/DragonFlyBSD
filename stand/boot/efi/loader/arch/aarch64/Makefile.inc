@@ -1,4 +1,5 @@
-SRCS+=	start.S
+SRCS+=	start.S \
+	elf64_freebsd.c
 
 # Disable stack protector
 CFLAGS+=	-fno-stack-protector
