@@ -9,6 +9,10 @@ SRCS+=	load_elf32.c load_elf32_obj.c reloc_elf32.c
 SRCS+=	load_elf64.c load_elf64_obj.c reloc_elf64.c
 .endif
 
+.if ${MACHINE_ARCH} == "aarch64"
+SRCS+=	load_elf64.c load_elf64_obj.c reloc_elf64.c
+.endif
+
 .if defined(LOADER_NET_SUPPORT)
 SRCS+=	dev_net.c
 .endif
