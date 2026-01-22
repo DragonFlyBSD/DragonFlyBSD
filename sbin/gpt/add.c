@@ -164,18 +164,12 @@ add_defaults(int fd)
 {
 	entry = 0;
 	size = (off_t)256 * 1024 * 1024 / secsz; /* 256MB */
-	if (parse_uuid("EFI System", &type) != 0) {
-		fprintf(stderr, "Unable to lookup uuid 'EFI System'\n");
-		exit(1);
-	}
+	type = (uuid_t)GPT_ENT_TYPE_EFI;
 	add(fd);
 
 	entry = 1;
 	size = 0; /* all free space */
-	if (parse_uuid("DragonFly Label64", &type) != 0) {
-		fprintf(stderr, "Unable to lookup uuid 'DragonFly Label64'\n");
-		exit(1);
-	}
+	type = (uuid_t)GPT_ENT_TYPE_DRAGONFLY_LABEL64;
 	add(fd);
 }
 
@@ -274,6 +268,8 @@ cmd_add(int argc, char *argv[])
 	int64_t v;
 
 	is_sector = false;
+	type = (uuid_t)GPT_ENT_TYPE_DRAGONFLY_LABEL64;
+
 	while ((ch = getopt(argc, argv, "a:b:hi:l:s:t:")) != -1) {
 		switch(ch) {
 		case 'a':
@@ -310,8 +306,6 @@ cmd_add(int argc, char *argv[])
 			size = (off_t)v;
 			break;
 		case 't':
-			if (!uuid_is_nil(&type, NULL))
-				errx(1, "-t type already specified");
 			if (parse_uuid(optarg, &type) != 0)
 				errx(1, "invalid type: %s", optarg);
 			break;
@@ -323,11 +317,6 @@ cmd_add(int argc, char *argv[])
 
 	if (argc == optind)
 		usage_add();
-
-	if (uuid_is_nil(&type, NULL)) {
-		if (parse_uuid("DragonFly Label64", &type) != 0)
-			err(1, "unable to find uuid for 'DragonFly Label64'");
-	}
 
 	while (optind < argc) {
 		fd = gpt_open(argv[optind++]);
