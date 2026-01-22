@@ -466,8 +466,11 @@ gpt_gpt(int fd, off_t lba)
 	uint32_t crc;
 
 	hdr = gpt_read(fd, lba, 1);
-	if (hdr == NULL)
+	if (hdr == NULL) {
+		warn("%s: Reading GPT header at sector %ju failed",
+		     device_name, (uintmax_t)lba);
 		return (-1);
+	}
 
 	if (memcmp(hdr->hdr_sig, GPT_HDR_SIG, sizeof(hdr->hdr_sig)))
 		goto fail_hdr;
@@ -487,8 +490,11 @@ gpt_gpt(int fd, off_t lba)
 
 	/* Use generic pointer to deal with hdr->hdr_entsz != sizeof(*ent). */
 	p = gpt_read(fd, le64toh(hdr->hdr_lba_table), blocks);
-	if (p == NULL)
+	if (p == NULL) {
+		warn("%s: Reading GPT table at sector %ju failed",
+		     device_name, (uintmax_t)le64toh(hdr->hdr_lba_table));
 		return (-1);
+	}
 
 	if (crc32(p, tblsz) != le32toh(hdr->hdr_crc_table)) {
 		if (verbose) {
@@ -515,7 +521,7 @@ gpt_gpt(int fd, off_t lba)
 		return (-1);
 
 	if (lba != 1)
-		return (0);
+		return (1); /* found; skip reading the secondary table */
 
 	for (i = 0; i < le32toh(hdr->hdr_entries); i++) {
 		ent = (void*)(p + i * le32toh(hdr->hdr_entsz));
@@ -541,14 +547,14 @@ gpt_gpt(int fd, off_t lba)
 		m->map_index = i;
 	}
 
-	return (0);
+	return (1); /* found */
 
  fail_ent:
 	free(p);
 
  fail_hdr:
 	free(hdr);
-	return (0);
+	return (0); /* not found */
 }
 
 int
@@ -556,7 +562,7 @@ gpt_open(const char *dev)
 {
 	struct stat sb;
 	static char device_path[MAXPATHLEN];
-	int fd, mode;
+	int fd, mode, found;
 
 	mode = readonly ? O_RDONLY : O_RDWR|O_EXCL;
 
@@ -564,17 +570,17 @@ gpt_open(const char *dev)
 	device_name = device_path;
 
 	if ((fd = open(device_path, mode)) != -1)
-		goto found;
+		goto opened;
 
 	snprintf(device_path, sizeof(device_path), "%s%s", _PATH_DEV, dev);
 	device_name = device_path + strlen(_PATH_DEV);
 	errno = 0;
 	if ((fd = open(device_path, mode)) != -1)
-		goto found;
+		goto opened;
 
 	return (-1);
 
- found:
+ opened:
 	if (fstat(fd, &sb) == -1)
 		goto close;
 
@@ -615,10 +621,29 @@ gpt_open(const char *dev)
 
 	if (gpt_mbr(fd, 0LL) == -1)
 		goto close;
-	if (gpt_gpt(fd, 1LL) == -1)
+	if ((found = gpt_gpt(fd, 1LL)) == -1)
 		goto close;
-	if (gpt_gpt(fd, mediasz / secsz - 1LL) == -1)
-		goto close;
+
+	if (found) {
+		/*
+		 * Read secondary GPT from position stored in the primary
+		 * header.
+		 */
+		struct gpt_hdr *hdr;
+		map_t *map;
+		off_t lba;
+
+		map = map_find(MAP_TYPE_PRI_GPT_HDR);
+		hdr = map->map_data;
+		lba = le64toh(hdr->hdr_lba_alt);
+		if (lba < mediasz / secsz) {
+			if (gpt_gpt(fd, lba) == -1)
+				goto close;
+		}
+	} else {
+		if (gpt_gpt(fd, mediasz / secsz - 1LL) == -1)
+			goto close;
+	}
 
 	return (fd);
 
