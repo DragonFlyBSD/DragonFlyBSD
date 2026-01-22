@@ -457,14 +457,10 @@ gpt_mbr(int fd, off_t lba)
 static int
 gpt_gpt(int fd, off_t lba)
 {
-	uuid_t type;
-	off_t size;
-	struct gpt_ent *ent;
 	struct gpt_hdr *hdr;
-	char *p, *s;
+	char *p;
 	map_t *m;
 	size_t blocks, tblsz;
-	unsigned int i;
 	uint32_t crc;
 
 	hdr = gpt_read(fd, lba, 1);
@@ -521,15 +517,44 @@ gpt_gpt(int fd, off_t lba)
 	if (m == NULL)
 		return (-1);
 
-	if (lba != 1)
-		return (1); /* found; skip reading the secondary table */
+	return (1); /* found */
+
+ fail_ent:
+	free(p);
+
+ fail_hdr:
+	free(hdr);
+	return (0); /* not found */
+}
+
+static int
+gpt_read_table(bool primary)
+{
+	struct gpt_hdr *hdr;
+	struct gpt_ent *ent;
+	map_t *map, *tbl;
+	uuid_t type;
+	off_t size;
+	uint32_t i;
+	char *s;
+
+	if (primary) {
+		map = map_find(MAP_TYPE_PRI_GPT_HDR);
+		hdr = map->map_data;
+		tbl = map_find(MAP_TYPE_PRI_GPT_TBL);
+	} else {
+		map = map_find(MAP_TYPE_SEC_GPT_HDR);
+		hdr = map->map_data;
+		tbl = map_find(MAP_TYPE_SEC_GPT_TBL);
+	}
 
 	for (i = 0; i < le32toh(hdr->hdr_entries); i++) {
 		/*
 		 * Use generic pointer to deal with
 		 * hdr->hdr_entsz != sizeof(*ent).
 		 */
-		ent = (void *)(p + i * le32toh(hdr->hdr_entsz));
+		ent = (void *)((char *)tbl->map_data + i *
+		    le32toh(hdr->hdr_entsz));
 		if (uuid_is_nil(&ent->ent_type, NULL))
 			continue;
 
@@ -545,21 +570,16 @@ gpt_gpt(int fd, off_t lba)
 			      (uintmax_t)size);
 			free(s);
 		}
-		m = map_add(le64toh(ent->ent_lba_start), size,
+
+		map = map_add(le64toh(ent->ent_lba_start), size,
 		    MAP_TYPE_GPT_PART, ent);
-		if (m == NULL)
+		if (map == NULL)
 			return (-1);
-		m->map_index = i;
+
+		map->map_index = i;
 	}
 
-	return (1); /* found */
-
- fail_ent:
-	free(p);
-
- fail_hdr:
-	free(hdr);
-	return (0); /* not found */
+	return (0);
 }
 
 int
@@ -630,14 +650,17 @@ gpt_open(const char *dev)
 		goto close;
 
 	if (found) {
-		/*
-		 * Read secondary GPT from position stored in the primary
-		 * header.
-		 */
 		struct gpt_hdr *hdr;
 		map_t *map;
 		off_t lba;
 
+		if (gpt_read_table(true) < 0)
+			goto close;
+
+		/*
+		 * Read secondary GPT from position stored in the primary
+		 * header.
+		 */
 		map = map_find(MAP_TYPE_PRI_GPT_HDR);
 		hdr = map->map_data;
 		lba = le64toh(hdr->hdr_lba_alt);
@@ -646,7 +669,9 @@ gpt_open(const char *dev)
 				goto close;
 		}
 	} else {
-		if (gpt_gpt(fd, mediasz / secsz - 1LL) == -1)
+		if (gpt_gpt(fd, mediasz / secsz - 1LL) != 1)
+			goto close;
+		if (gpt_read_table(false) < 0)
 			goto close;
 	}
 
