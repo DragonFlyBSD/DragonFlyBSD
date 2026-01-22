@@ -120,7 +120,7 @@ cp16to8(const CHAR16 *src, char *dst, size_t len)
 		dst[i] = (char)src[i];
 }
 
-static int
+static int __attribute__((unused))
 has_keyboard(void)
 {
 	EFI_STATUS status;
