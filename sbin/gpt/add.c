@@ -96,7 +96,7 @@ add(int fd)
 
 	if (entry != MAP_NOENTRY) {
 		i = entry;
-		ent = (void*)((char*)tbl->map_data + i *
+		ent = (void *)((char *)tbl->map_data + i *
 		    le32toh(hdr->hdr_entsz));
 		if (!uuid_is_nil(&ent->ent_type, NULL)) {
 			warnx("%s: error: entry at index %u is not free",
@@ -107,7 +107,7 @@ add(int fd)
 		/* Find empty slot in GPT table. */
 		ent = NULL;
 		for (i = 0; i < le32toh(hdr->hdr_entries); i++) {
-			ent = (void*)((char*)tbl->map_data + i *
+			ent = (void *)((char *)tbl->map_data + i *
 			    le32toh(hdr->hdr_entsz));
 			if (uuid_is_nil(&ent->ent_type, NULL))
 				break;

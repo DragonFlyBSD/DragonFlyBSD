@@ -102,7 +102,7 @@ label(int fd)
 		i = m->map_index;
 
 		hdr = gpt->map_data;
-		ent = (void*)((char*)tbl->map_data + i *
+		ent = (void *)((char *)tbl->map_data + i *
 		    le32toh(hdr->hdr_entsz));
 		uuid_dec_le(&ent->ent_type, &uuid);
 		if (!uuid_is_nil(&type, NULL) &&
@@ -121,7 +121,7 @@ label(int fd)
 		gpt_write(fd, tbl);
 
 		hdr = tpg->map_data;
-		ent = (void*)((char*)lbt->map_data + i *
+		ent = (void *)((char *)lbt->map_data + i *
 		    le32toh(hdr->hdr_entsz));
 
 		/* Label the secundary entry. */
