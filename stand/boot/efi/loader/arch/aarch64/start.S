@@ -144,6 +144,10 @@ _start:
 	/* Save the boot params to the stack */
 	stp	x0, x1, [sp, #-16]!
 
+	/* DEBUG: Output '1' - entry point reached */
+	mov	x2, #'1'
+	bl	debug_putc
+
 	adrp	x0, __bss_start
 	add	x0, x0, :lo12:__bss_start
 	adrp	x1, __bss_end
@@ -157,15 +161,47 @@ _start:
 	cmp	x0, x1
 	b.lo	1b
 
+	/* DEBUG: Output '2' - BSS cleared */
+	mov	x2, #'2'
+	bl	debug_putc
+
 	adrp	x0, ImageBase
 	add	x0, x0, :lo12:ImageBase
 	adrp	x1, _DYNAMIC
 	add	x1, x1, :lo12:_DYNAMIC
 
+	/* DEBUG: Output '3' - about to call self_reloc */
+	mov	x2, #'3'
+	bl	debug_putc
+
 	bl	self_reloc
 
+	/* DEBUG: Output '4' - self_reloc returned */
+	mov	x2, #'4'
+	bl	debug_putc
+
 	ldp	x0, x1, [sp], #16
+
+	/* DEBUG: Output '5' - about to call efi_main */
+	mov	x2, #'5'
+	bl	debug_putc
 
 	bl	efi_main
 
 1:	b	1b
+
+/*
+ * Debug: output character in x2 to PL011 UART (QEMU virt)
+ * UART base: 0x09000000
+ * Preserves x0, x1.
+ */
+debug_putc:
+	stp	x3, x4, [sp, #-16]!
+	ldr	x3, =0x09000000		/* PL011 UART base */
+1:
+	ldr	w4, [x3, #0x18]		/* UARTFR (flags register) */
+	tst	w4, #0x20		/* TXFF bit - TX FIFO full? */
+	b.ne	1b			/* Wait if full */
+	str	w2, [x3]		/* Write character to UARTDR */
+	ldp	x3, x4, [sp], #16
+	ret
