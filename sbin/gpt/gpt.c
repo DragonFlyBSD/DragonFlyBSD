@@ -488,7 +488,6 @@ gpt_gpt(int fd, off_t lba)
 	tblsz = le32toh(hdr->hdr_entries) * le32toh(hdr->hdr_entsz);
 	blocks = tblsz / secsz + ((tblsz % secsz) ? 1 : 0);
 
-	/* Use generic pointer to deal with hdr->hdr_entsz != sizeof(*ent). */
 	p = gpt_read(fd, le64toh(hdr->hdr_lba_table), blocks);
 	if (p == NULL) {
 		warn("%s: Reading GPT table at sector %ju failed",
@@ -524,7 +523,11 @@ gpt_gpt(int fd, off_t lba)
 		return (1); /* found; skip reading the secondary table */
 
 	for (i = 0; i < le32toh(hdr->hdr_entries); i++) {
-		ent = (void*)(p + i * le32toh(hdr->hdr_entsz));
+		/*
+		 * Use generic pointer to deal with
+		 * hdr->hdr_entsz != sizeof(*ent).
+		 */
+		ent = (void *)(p + i * le32toh(hdr->hdr_entsz));
 		if (uuid_is_nil(&ent->ent_type, NULL))
 			continue;
 
