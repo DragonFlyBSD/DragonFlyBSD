@@ -5,7 +5,9 @@
 #include <sys/types.h>
 
 #define DEV_BSIZE 512
+#define DEV_BSHIFT 9
 #define PAGE_SIZE 4096
+#define PAGE_SHIFT 12
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -13,5 +15,8 @@
 #define howmany(x, y) (((x) + ((y) - 1)) / (y))
 #define roundup(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
 #define rounddown(x, y) (((x) / (y)) * (y))
+
+#define btodb(bytes) ((daddr_t)((bytes) >> DEV_BSHIFT))
+#define dbtob(db) ((off_t)(db) << DEV_BSHIFT)
 
 #endif
