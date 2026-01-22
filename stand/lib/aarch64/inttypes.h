@@ -50,14 +50,6 @@
 #define PRIxPTR		"lx"
 #define PRIXPTR		"lX"
 
-/* intmax_t - just use int64_t */
-#ifndef _INTMAX_T_DECLARED
-#define _INTMAX_T_DECLARED
-typedef int64_t		intmax_t;
-#endif
-#ifndef _UINTMAX_T_DECLARED
-#define _UINTMAX_T_DECLARED
-typedef uint64_t	uintmax_t;
-#endif
+/* intmax_t and uintmax_t are defined in sys/types.h */
 
 #endif /* !_INTTYPES_H_ */
