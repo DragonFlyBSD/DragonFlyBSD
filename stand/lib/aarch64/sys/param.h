@@ -17,6 +17,8 @@
 #define howmany(x, y) (((x) + ((y) - 1)) / (y))
 #define roundup(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
 #define rounddown(x, y) (((x) / (y)) * (y))
+#define roundup2(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
+#define rounddown2(x, y) ((x) & ~((y) - 1))
 
 #define btodb(bytes) ((daddr_t)((bytes) >> DEV_BSHIFT))
 #define dbtob(db) ((off_t)(db) << DEV_BSHIFT)
