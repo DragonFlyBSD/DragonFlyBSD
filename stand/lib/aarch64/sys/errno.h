@@ -22,6 +22,7 @@
 #define ESTALE 70
 #define EBADRPC 72
 #define EFTYPE 79
+#define ENAMETOOLONG 63
 
 #define ELAST 100
 

@@ -20,7 +20,9 @@ int stat(const char *path, struct stat *sb);
 int fstat(int fd, struct stat *sb);
 
 #define S_IFMT  0170000
+#define S_IFCHR 0020000
 #define S_IFDIR 0040000
+#define S_IFBLK 0060000
 #define S_IFREG 0100000
 #define S_IFLNK 0120000
 
