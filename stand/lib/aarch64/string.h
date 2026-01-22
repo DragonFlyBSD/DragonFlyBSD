@@ -2,6 +2,7 @@
 #define _STRING_H_
 
 #include <stddef.h>
+#include <sys/cdefs.h>
 #include <sys/types.h>
 
 
