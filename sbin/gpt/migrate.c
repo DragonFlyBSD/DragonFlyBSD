@@ -105,22 +105,37 @@ migrate_disklabel32(const struct disklabel32 *dl, off_t start,
 		case FS_UNUSED:
 			continue;
 		case FS_SWAP: {
-			uuid_t swap = GPT_ENT_TYPE_FREEBSD_SWAP;
+			uuid_t swap = GPT_ENT_TYPE_DRAGONFLY_SWAP;
 			uuid_enc_le(&ent->ent_type, &swap);
 			break;
 		}
 		case FS_BSDFFS: {
-			uuid_t ufs = GPT_ENT_TYPE_FREEBSD_UFS;
+			uuid_t ufs = GPT_ENT_TYPE_DRAGONFLY_UFS1;
 			uuid_enc_le(&ent->ent_type, &ufs);
 			break;
 		}
 		case FS_VINUM: {
-			uuid_t vinum = GPT_ENT_TYPE_FREEBSD_VINUM;
+			uuid_t vinum = GPT_ENT_TYPE_DRAGONFLY_VINUM;
 			uuid_enc_le(&ent->ent_type, &vinum);
 			break;
 		}
+		case FS_CCD: {
+			uuid_t ccd = GPT_ENT_TYPE_DRAGONFLY_CCD;
+			uuid_enc_le(&ent->ent_type, &ccd);
+			break;
+		}
+		case FS_HAMMER: {
+			uuid_t hammer = GPT_ENT_TYPE_DRAGONFLY_HAMMER;
+			uuid_enc_le(&ent->ent_type, &hammer);
+			break;
+		}
+		case FS_HAMMER2: {
+			uuid_t hammer2 = GPT_ENT_TYPE_DRAGONFLY_HAMMER2;
+			uuid_enc_le(&ent->ent_type, &hammer2);
+			break;
+		}
 		default:
-			warnx("%s: %s: unknown FreeBSD partition (%d)",
+			warnx("%s: %s: unknown partition type (%d)",
 			    device_name, (force ? "warning" : "error"),
 			    dl->d_partitions[i].p_fstype);
 			if (force)
