@@ -43,6 +43,9 @@ typedef __uintlp_t uintptr_t;
 typedef int64_t quad_t;
 typedef u_int64_t u_quad_t;
 typedef int64_t daddr_t;
+typedef char *caddr_t;
+typedef const char *c_caddr_t;
+typedef volatile char *v_caddr_t;
 
 typedef long intmax_t;
 typedef u_long uintmax_t;
