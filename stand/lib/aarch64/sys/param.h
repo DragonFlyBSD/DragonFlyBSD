@@ -12,6 +12,7 @@
 #define PATH_MAX 1024
 #define MAXPATHLEN PATH_MAX
 #define SPECNAMELEN 63
+#define MAXHOSTNAMELEN 256	/* max hostname size */
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))

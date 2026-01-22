@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 
+typedef u_int16_t n_short;	/* short as received from the net */
 typedef u_int32_t n_long;
 typedef u_int32_t n_time;
 
