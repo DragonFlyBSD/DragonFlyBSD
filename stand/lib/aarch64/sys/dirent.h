@@ -6,12 +6,14 @@
 #define MAXNAMLEN 255
 
 struct dirent {
-	ino_t d_fileno;
+	ino_t d_ino;
 	u_int16_t d_reclen;
 	u_int8_t d_type;
 	u_int8_t d_namlen;
 	char d_name[MAXNAMLEN + 1];
 };
+
+#define d_fileno d_ino
 
 #define DT_UNKNOWN 0
 #define DT_FIFO 1
