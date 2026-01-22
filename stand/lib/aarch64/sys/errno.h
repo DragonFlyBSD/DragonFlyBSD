@@ -15,6 +15,7 @@
 #define EMFILE 24
 #define EFBIG 27
 #define EROFS 30
+#define ERANGE 34
 #define EOPNOTSUPP 95
 #define ETIMEDOUT 60
 #define ESTALE 70
