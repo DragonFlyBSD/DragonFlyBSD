@@ -26,8 +26,9 @@
  * $FreeBSD: src/sbin/gpt/migrate.c,v 1.16 2005/09/01 02:42:52 marcel Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/disklabel32.h>
+#include <sys/disklabel64.h>
 #include <sys/dtype.h>
 
 #include <err.h>
@@ -77,10 +78,63 @@ read_disklabel32(int fd, off_t start, struct disklabel32 **dlp)
 	return 0;
 }
 
+static int
+read_disklabel64(int fd, off_t start, struct disklabel64 **dlp)
+{
+	struct disklabel64 *dl;
+
+	dl = gpt_read(fd, start, roundup2(sizeof(*dl), secsz) / secsz);
+	if (dl == NULL) {
+		warnx("%s: error: reading disklabel64 failed", device_name);
+		return (EIO);
+	}
+
+	if (le32toh(dl->d_magic) != DISKMAGIC64) {
+		warnx("%s: warning: no disklabel64 in slice", device_name);
+		free(dl);
+		return (ENOENT);
+	}
+
+	*dlp = dl;
+	return 0;
+}
+
+static int
+convert_fstype(uint8_t fstype, uuid_t *uuid)
+{
+	switch (fstype) {
+	case FS_UNUSED:
+		uuid_create_nil(uuid, NULL);
+		return 0;
+	case FS_SWAP:
+		*uuid = (uuid_t)GPT_ENT_TYPE_DRAGONFLY_SWAP;
+		return 0;
+	case FS_BSDFFS:
+		*uuid = (uuid_t)GPT_ENT_TYPE_DRAGONFLY_UFS1;
+		return 0;
+	case FS_VINUM:
+		*uuid = (uuid_t)GPT_ENT_TYPE_DRAGONFLY_VINUM;
+		return 0;
+	case FS_CCD:
+		*uuid = (uuid_t)GPT_ENT_TYPE_DRAGONFLY_CCD;
+		return 0;
+	case FS_HAMMER:
+		*uuid = (uuid_t)GPT_ENT_TYPE_DRAGONFLY_HAMMER;
+		return 0;
+	case FS_HAMMER2:
+		*uuid = (uuid_t)GPT_ENT_TYPE_DRAGONFLY_HAMMER2;
+		return 0;
+	default:
+		uuid_create_nil(uuid, NULL);
+		return (-1);
+	}
+}
+
 static struct gpt_ent*
 migrate_disklabel32(const struct disklabel32 *dl, off_t start,
 		    struct gpt_ent *ent)
 {
+	uuid_t uuid;
 	off_t ofs, rawofs;
 	int i;
 
@@ -101,48 +155,17 @@ migrate_disklabel32(const struct disklabel32 *dl, off_t start,
 	rawofs /= secsz;
 
 	for (i = 0; i < le16toh(dl->d_npartitions); i++) {
-		switch (dl->d_partitions[i].p_fstype) {
-		case FS_UNUSED:
-			continue;
-		case FS_SWAP: {
-			uuid_t swap = GPT_ENT_TYPE_DRAGONFLY_SWAP;
-			uuid_enc_le(&ent->ent_type, &swap);
-			break;
-		}
-		case FS_BSDFFS: {
-			uuid_t ufs = GPT_ENT_TYPE_DRAGONFLY_UFS1;
-			uuid_enc_le(&ent->ent_type, &ufs);
-			break;
-		}
-		case FS_VINUM: {
-			uuid_t vinum = GPT_ENT_TYPE_DRAGONFLY_VINUM;
-			uuid_enc_le(&ent->ent_type, &vinum);
-			break;
-		}
-		case FS_CCD: {
-			uuid_t ccd = GPT_ENT_TYPE_DRAGONFLY_CCD;
-			uuid_enc_le(&ent->ent_type, &ccd);
-			break;
-		}
-		case FS_HAMMER: {
-			uuid_t hammer = GPT_ENT_TYPE_DRAGONFLY_HAMMER;
-			uuid_enc_le(&ent->ent_type, &hammer);
-			break;
-		}
-		case FS_HAMMER2: {
-			uuid_t hammer2 = GPT_ENT_TYPE_DRAGONFLY_HAMMER2;
-			uuid_enc_le(&ent->ent_type, &hammer2);
-			break;
-		}
-		default:
+		if (convert_fstype(dl->d_partitions[i].p_fstype, &uuid) < 0) {
 			warnx("%s: %s: unknown partition type (%d)",
 			    device_name, (force ? "warning" : "error"),
 			    dl->d_partitions[i].p_fstype);
-			if (force)
-				continue;
-			else
+			if (!force)
 				return (NULL);
 		}
+		if (uuid_is_nil(&uuid, NULL))
+			continue;
+
+		uuid_enc_le(&ent->ent_type, &uuid);
 
 		ofs = (le32toh(dl->d_partitions[i].p_offset) *
 		    le32toh(dl->d_secsize)) / secsz;
@@ -150,6 +173,39 @@ migrate_disklabel32(const struct disklabel32 *dl, off_t start,
 		ent->ent_lba_start = htole64(start + ofs);
 		ent->ent_lba_end = htole64(start + ofs +
 		    le32toh(dl->d_partitions[i].p_size) - 1LL);
+
+		ent++;
+	}
+
+	return (ent);
+}
+
+static struct gpt_ent*
+migrate_disklabel64(const struct disklabel64 *dl, off_t start,
+		    struct gpt_ent *ent)
+{
+	uuid_t uuid;
+	off_t offset, blocks;
+	uint32_t i;
+
+	for (i = 0; i < le32toh(dl->d_npartitions); i++) {
+		if (convert_fstype(dl->d_partitions[i].p_fstype, &uuid) < 0) {
+			warnx("%s: %s: unknown partition type (%d)",
+			    device_name, (force ? "warning" : "error"),
+			    dl->d_partitions[i].p_fstype);
+			if (!force)
+				return (NULL);
+		}
+		if (uuid_is_nil(&uuid, NULL))
+			continue;
+
+		uuid_enc_le(&ent->ent_type, &uuid);
+
+		offset = le64toh(dl->d_partitions[i].p_boffset) / secsz;
+		blocks = le64toh(dl->d_partitions[i].p_bsize) / secsz;
+		ent->ent_lba_start = htole64(start + offset);
+		ent->ent_lba_end = htole64(start + offset + blocks - 1LL);
+
 		ent++;
 	}
 
@@ -262,34 +318,42 @@ migrate(int fd)
 
 		switch (mbr->mbr_part[i].dp_typ) {
 		case 0:
-			continue;
-#if 0
+			break;
 		case DOSPTYP_DFLYBSD:
-			/* TODO: Port to DragonFly and test */
-			continue;
-#endif
 		case DOSPTYP_386BSD: {
+			struct disklabel32 *dl32 = NULL;
+			struct disklabel64 *dl64 = NULL;
+			int err;
+
+			err = read_disklabel64(fd, start, &dl64);
+			if (err == ENOENT)
+				err = read_disklabel32(fd, start, &dl32);
+			if (err == ENOENT)
+				break;
+			else if (err != 0)
+				return;
+
 			if (slice) {
-				uuid_t freebsd = GPT_ENT_TYPE_FREEBSD;
-				uuid_enc_le(&ent->ent_type, &freebsd);
+				if (dl64 != NULL) {
+					uuid = (uuid_t)
+					    GPT_ENT_TYPE_DRAGONFLY_LABEL64;
+				} else {
+					uuid = (uuid_t)
+					    GPT_ENT_TYPE_DRAGONFLY_LABEL32;
+				}
+				uuid_enc_le(&ent->ent_type, &uuid);
 				ent->ent_lba_start = htole64((uint64_t)start);
 				ent->ent_lba_end = htole64(start + size - 1LL);
 				ent++;
+			} else if (dl64 != NULL) {
+				ent = migrate_disklabel64(dl64, start, ent);
 			} else {
-				struct disklabel32 *dl32;
-				int err;
-
-				err = read_disklabel32(fd, start, &dl32);
-				if (err == 0) {
-					ent = migrate_disklabel32(
-					    dl32, start, ent);
-					free(dl32);
-					if (ent == NULL)
-						return;
-				} else if (err != ENOENT) {
-					return;
-				}
+				ent = migrate_disklabel32(dl32, start, ent);
 			}
+			free(dl64);
+			free(dl32);
+			if (ent == NULL)
+				return;
 			break;
 		}
 		case DOSPTYP_EFI: {
