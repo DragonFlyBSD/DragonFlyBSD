@@ -106,10 +106,17 @@ self_reloc(Elf_Addr baseaddr, ElfW_Dyn *dynamic)
 		case RELOC_TYPE_RELATIVE:
 			/* Address relative to the base address. */
 			newaddr = (Elf_Addr *)(rel->r_offset + baseaddr);
-			*newaddr += baseaddr;
-			/* Add the addend when the ABI uses them */ 
 #ifdef ELF_RELA
-			*newaddr += rel->r_addend;
+			/*
+			 * For RELA, the addend is in the relocation entry,
+			 * not at the target location. The linker may also
+			 * store the addend at the target, so we must not
+			 * add the existing value - just overwrite it.
+			 */
+			*newaddr = baseaddr + rel->r_addend;
+#else
+			/* For REL, the addend is stored at the target. */
+			*newaddr += baseaddr;
 #endif
 			break;
 		default:

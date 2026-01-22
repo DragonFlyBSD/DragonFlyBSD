@@ -85,7 +85,8 @@ OBJCOPY?=	objcopy
 .if ${MACHINE_ARCH} == "x86_64"
 EFI_TARGET=	pei-x86-64
 .elif ${MACHINE_ARCH} == "aarch64"
-EFI_TARGET=	pei-aarch64-little
+# arm64 uses embedded PE header in start.S, so we output raw binary
+EFI_TARGET=	binary
 .else
 EFI_TARGET=	binary
 .endif
