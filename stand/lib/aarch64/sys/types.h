@@ -4,6 +4,10 @@
 #include <machine/types.h>
 #include <machine/stdint.h>
 
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
 typedef __int8_t int8_t;
 typedef __uint8_t u_int8_t;
 typedef __int16_t int16_t;
