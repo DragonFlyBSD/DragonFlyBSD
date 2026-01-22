@@ -162,12 +162,16 @@ has_keyboard(void)
 	 * legacy device path for keyboards.
 	 */
 	hin_end = &hin[sz / sizeof(*hin)];
+	debug_putc('R');  /* calculated hin_end */
 	for (walker = hin; walker < hin_end; walker++) {
+		debug_putc('.');  /* handle iteration */
 		status = OpenProtocolByHandle(*walker, &devid, (VOID **)&path);
 		if (EFI_ERROR(status))
 			continue;
 
+		debug_putc(':');  /* got device path */
 		while (!IsDevicePathEnd(path)) {
+			debug_putc('-');  /* path iteration */
 			/*
 			 * Check for the ACPI keyboard node. All PNP3xx nodes
 			 * are keyboards of different flavors. Note: It is
@@ -206,8 +210,11 @@ has_keyboard(void)
 			path = NextDevicePathNode(path);
 		}
 	}
+	debug_putc('S');  /* iteration done */
 out:
+	debug_putc('T');  /* about to free */
 	free(hin);
+	debug_putc('U');  /* returning */
 	return retval;
 }
 
