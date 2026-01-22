@@ -44,6 +44,19 @@
 
 #include "loader_efi.h"
 
+/* DEBUG: Direct UART output for QEMU virt (PL011 at 0x09000000) */
+#if defined(__aarch64__)
+static inline void debug_putc(char c)
+{
+	volatile unsigned int *uart = (volatile unsigned int *)0x09000000;
+	while (uart[0x18/4] & 0x20)
+		;
+	uart[0] = c;
+}
+#else
+#define debug_putc(c) ((void)0)
+#endif
+
 extern char bootprog_name[];
 extern char bootprog_rev[];
 extern char bootprog_date[];
@@ -201,13 +214,19 @@ main(int argc, CHAR16 *argv[])
 	UINTN k;
 	int has_kbd;
 
+	debug_putc('a');  /* Entered main */
+
 	archsw.arch_autoload = efi_autoload;
 	archsw.arch_getdev = efi_getdev;
 	archsw.arch_copyin = efi_copyin;
 	archsw.arch_copyout = efi_copyout;
 	archsw.arch_readin = efi_readin;
 
+	debug_putc('b');  /* archsw set up */
+
 	has_kbd = has_keyboard();
+
+	debug_putc('c');  /* has_keyboard done */
 
 	/*
 	 * XXX Chicken-and-egg problem; we want to have console output
@@ -216,6 +235,8 @@ main(int argc, CHAR16 *argv[])
 	 * printf() etc. once this is done.
 	 */
 	cons_probe();
+
+	debug_putc('d');  /* cons_probe done */
 
 	/*
 	 * Parse the args to set the console settings, etc
@@ -308,10 +329,14 @@ main(int argc, CHAR16 *argv[])
 		setenv("console", "comconsole" , 1);
 	}
 
+	debug_putc('e');  /* args parsed */
+
 	if (efi_copy_init()) {
 		printf("failed to allocate staging area\n");
 		return (EFI_BUFFER_TOO_SMALL);
 	}
+
+	debug_putc('f');  /* efi_copy_init done */
 
 	/*
 	 * March through the device switch probing for things.
@@ -320,8 +345,12 @@ main(int argc, CHAR16 *argv[])
 		if (devsw[i]->dv_init != NULL)
 			(devsw[i]->dv_init)();
 
+	debug_putc('g');  /* device probe done */
+
 	/* Get our loaded image protocol interface structure. */
 	OpenProtocolByHandle(IH, &imgid, (VOID**)&img);
+
+	debug_putc('h');  /* about to print */
 
 	printf("Command line arguments:");
 	for (i = 0; i < argc; i++) {
