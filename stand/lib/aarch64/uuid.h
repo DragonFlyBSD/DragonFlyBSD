@@ -2,6 +2,7 @@
 #define _UUID_H_
 
 #include <sys/types.h>
+#include <stdint.h>
 #include <sys/uuid.h>
 
 #define uuid_s_ok 0
