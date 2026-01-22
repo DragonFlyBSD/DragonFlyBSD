@@ -29,6 +29,7 @@
 #include <sys/param.h>
 
 #include <err.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,7 +38,7 @@
 
 #include "gpt.h"
 
-static int all;
+static bool all = false;
 static uuid_t type;
 static off_t block, size;
 static unsigned int entry = MAP_NOENTRY;
@@ -176,9 +177,7 @@ cmd_label(int argc, char *argv[])
 	while ((ch = getopt(argc, argv, "ab:f:hi:l:s:t:")) != -1) {
 		switch(ch) {
 		case 'a':
-			if (all > 0)
-				usage_label();
-			all = 1;
+			all = true;
 			break;
 		case 'b':
 			if (block > 0)

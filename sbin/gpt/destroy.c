@@ -29,6 +29,7 @@
 #include <sys/types.h>
 
 #include <err.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,8 +38,8 @@
 
 #include "gpt.h"
 
-static int recoverable;
-static int quiet;
+static bool recoverable = false;
+static bool quiet = false;
 
 static void
 usage_destroy(void)
@@ -57,7 +58,7 @@ destroy(int fd)
 	sec_hdr = map_find(MAP_TYPE_SEC_GPT_HDR);
 
 	if (pri_hdr == NULL && sec_hdr == NULL) {
-		if (quiet == 0) {
+		if (!quiet) {
 			warnx("%s: error: device doesn't contain a GPT",
 			      device_name);
 		}
@@ -88,7 +89,7 @@ cmd_destroy(int argc, char *argv[])
 	while ((ch = getopt(argc, argv, "hr")) != -1) {
 		switch(ch) {
 		case 'r':
-			recoverable = 1;
+			recoverable = true;
 			break;
 		case 'h':
 		default:
@@ -117,7 +118,7 @@ cmd_destroy(int argc, char *argv[])
 void
 do_destroy(int fd)
 {
-	quiet = 1;
+	quiet = true;
 	destroy(fd);
-	quiet = 0;
+	quiet = false;
 }

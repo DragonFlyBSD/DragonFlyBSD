@@ -36,6 +36,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <paths.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,7 +48,8 @@
 char	*device_name;
 off_t	mediasz;
 u_int	secsz;
-int	readonly, verbose;
+bool	readonly;
+int	verbose;
 
 static uint32_t crc32_tab[] = {
 	0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,
@@ -719,7 +721,7 @@ main(int argc, char *argv[])
 	while ((ch = getopt(argc, argv, "h:rv")) != -1) {
 		switch(ch) {
 		case 'r':
-			readonly = 1;
+			readonly = true;
 			break;
 		case 'v':
 			verbose++;

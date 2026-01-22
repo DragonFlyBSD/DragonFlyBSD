@@ -34,6 +34,7 @@
 #include <sys/endian.h>
 #include <sys/gpt.h>
 
+#include <stdbool.h>
 #include <uuid.h>
 
 #include "map.h"
@@ -48,7 +49,8 @@ CTASSERT(sizeof(struct mbr) == 512);
 extern char *device_name;
 extern off_t mediasz;
 extern u_int secsz;
-extern int readonly, verbose;
+extern bool readonly;
+extern int verbose;
 
 uint32_t crc32(const void *, size_t);
 void	gpt_close(int);

@@ -33,6 +33,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,9 +42,9 @@
 
 #include "gpt.h"
 
-static int force;
-static int slice;
-static uint32_t parts;
+static bool force = false;
+static bool keep_slice = false;
+static uint32_t parts = 128;
 
 static void
 usage_migrate(void)
@@ -333,7 +334,7 @@ migrate(int fd)
 			else if (err != 0)
 				return;
 
-			if (slice) {
+			if (keep_slice) {
 				if (dl64 != NULL) {
 					uuid = (uuid_t)
 					    GPT_ENT_TYPE_DRAGONFLY_LABEL64;
@@ -426,7 +427,7 @@ cmd_migrate(int argc, char *argv[])
 	while ((ch = getopt(argc, argv, "fhps")) != -1) {
 		switch(ch) {
 		case 'f':
-			force = 1;
+			force = true;
 			break;
 		case 'p':
 			parts = (uint32_t)strtol(optarg, &p, 10);
@@ -434,15 +435,13 @@ cmd_migrate(int argc, char *argv[])
 				usage_migrate();
 			break;
 		case 's':
-			slice = 1;
+			keep_slice = true;
 			break;
 		case 'h':
 		default:
 			usage_migrate();
 		}
 	}
-	if (parts == 0)
-		parts = 128;
 
 	if (argc == optind)
 		usage_migrate();

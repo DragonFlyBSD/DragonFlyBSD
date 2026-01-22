@@ -34,6 +34,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,9 +44,9 @@
 
 #include "gpt.h"
 
-static int force;
-static int primary_only;
-static uint32_t parts;
+static bool force = false;
+static bool primary_only = false;
+static uint32_t parts = 128;
 
 static void do_erase(int fd);
 
@@ -249,10 +250,10 @@ cmd_create(int argc, char *argv[])
 	while ((ch = getopt(argc, argv, "fhPp")) != -1) {
 		switch(ch) {
 		case 'f':
-			force = 1;
+			force = true;
 			break;
 		case 'P':
-			primary_only = 1;
+			primary_only = true;
 			break;
 		case 'p':
 			parts = (uint32_t)strtol(optarg, &p, 10);
@@ -264,8 +265,6 @@ cmd_create(int argc, char *argv[])
 			usage_create();
 		}
 	}
-	if (parts == 0)
-		parts = 128;
 
 	if (argc == optind)
 		usage_create();
@@ -296,19 +295,19 @@ cmd_init(int argc, char *argv[])
 {
 	char *p;
 	int ch, fd;
-	int with_boot = 0;
-	int with_trim = 0;
+	bool with_boot = false;
+	bool with_trim = false;
 
 	while ((ch = getopt(argc, argv, "fBEhIp")) != -1) {
 		switch(ch) {
 		case 'B':
-			with_boot = 1;
+			with_boot = true;
 			break;
 		case 'E':
-			with_trim = 1;
+			with_trim = true;
 			break;
 		case 'f':
-			force = 1;
+			force = true;
 			break;
 		case 'I':
 			fprintf(stderr,
@@ -329,8 +328,6 @@ cmd_init(int argc, char *argv[])
 			break;
 		}
 	}
-	if (parts == 0)
-		parts = 128;
 
 	if (argc == optind) {
 		usage_init();
