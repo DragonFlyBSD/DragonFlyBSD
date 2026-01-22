@@ -26,6 +26,8 @@ size_t strlen(const char *s);
 char *strdup(const char *s);
 char *strchr(const char *s, int c);
 char *strrchr(const char *s, int c);
+char *index(const char *s, int c);
+char *rindex(const char *s, int c);
 char *strstr(const char *s, const char *find);
 char *strpbrk(const char *s, const char *accept);
 size_t strspn(const char *s, const char *accept);
