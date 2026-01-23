@@ -30,6 +30,7 @@
 #include <linux/export.h>
 #include <linux/types.h>
 #include <linux/notifier.h>
+#include <linux/pm_qos.h>
 #include <linux/reboot.h>
 #include <asm/byteorder.h>
 #include <drm/drmP.h>

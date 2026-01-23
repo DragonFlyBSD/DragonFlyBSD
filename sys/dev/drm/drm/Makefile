@@ -82,6 +82,7 @@ SRCS	= \
 	linux_kthread.c \
 	linux_list_sort.c \
 	linux_pci.c \
+	linux_pm_qos.c \
 	linux_printf.c \
 	linux_radix.c \
 	linux_rcu.c \

@@ -164,6 +164,8 @@ cpumask_t smp_idleinvl_reqs;
 __read_mostly static int cpu_mwait_halt_global;
 __read_mostly static int clock_debug1;
 __read_mostly static int flame_poll_debug;
+/* Forces most shallow C-state if positive. */
+__read_mostly static uint32_t cpu_mwait_inhibit_deep_sleep = 0;
 
 SYSCTL_INT(_debug, OID_AUTO, flame_poll_debug,
 	CTLFLAG_RW, &flame_poll_debug, 0, "");
@@ -1127,7 +1129,11 @@ cpu_mwait_cx_hint(struct cpu_idle_stat *stat)
 	int hint, cx_idx;
 	u_int idx;
 
-	hint = stat->hint;
+	if (atomic_load_32(&cpu_mwait_inhibit_deep_sleep) > 0)
+		hint = cpu_mwait_hints[0];
+	else
+		hint = stat->hint;
+
 	if (hint >= 0)
 		goto done;
 
@@ -3710,4 +3716,28 @@ cpu_interrupt_running(struct thread *td)
 	} else {
 		return 0;
 	}
+}
+
+static void
+dummy_nop(void *arg)
+{
+	/* Nothing */
+}
+
+void
+cpu_inhibit_deep_sleep(int set)
+{
+	uint32_t val;
+
+	val = atomic_fetchadd_32(&cpu_mwait_inhibit_deep_sleep, set ? 1 : -1);
+	/*
+	 * Need to wakeup all cores, to force the change. Either forces wakeup
+	 * from deep sleep, or allows going from shallow sleep to deep sleep.
+	 *
+	 * TODO: Technically, we only need one of each hyper-threading pair to
+	 *       get woken up here.
+	 */
+	if ((set && val == 0) || (!set && val == 1))
+		lwkt_send_ipiq_mask(smp_active_mask, (void *)dummy_nop, NULL);
+
 }

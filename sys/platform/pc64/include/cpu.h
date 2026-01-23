@@ -12,5 +12,7 @@
 #define CLKF_USERMODE(framep) \
 	(ISPL((framep)->if_cs) == SEL_UPL)
 
+void	cpu_inhibit_deep_sleep(int set);
+
 #endif
 

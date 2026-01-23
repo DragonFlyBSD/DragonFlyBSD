@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2026 Imre Vadász <imre@vdsz.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,17 +24,17 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_PM_QOS_H_
-#define _LINUX_PM_QOS_H_
+#include <linux/pm_qos.h>
 
-struct pm_qos_request {
-};
+#include <sys/param.h>
+#include <machine/cpu.h>
 
-#define PM_QOS_DEFAULT_VALUE 1
-
-#define pm_qos_add_request(a,b,c)
-#define pm_qos_remove_request(a)
-
-void pm_qos_update_request(struct pm_qos_request *handle, int target_value);
-
-#endif	/* _LINUX_PM_QOS_H_ */
+void
+pm_qos_update_request(struct pm_qos_request *handle, int target_value)
+{
+	if (target_value == 0) {
+		cpu_inhibit_deep_sleep(1);
+	} else {
+		cpu_inhibit_deep_sleep(0);
+	}
+}
