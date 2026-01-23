@@ -2348,6 +2348,7 @@ dev/drm/linux_kobject.c			optional drm compile-with "${NORMAL_C} -include $S/dev
 dev/drm/linux_kthread.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/linux_list_sort.c		optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/linux_pci.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
+dev/drm/linux_pm_qos.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/linux_printf.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/linux_radix.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/linux_rcu.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"

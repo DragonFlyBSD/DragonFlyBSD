@@ -33,6 +33,9 @@
 #include <linux/wait.h>
 #include <linux/timer.h>
 
+#include <sys/systimer.h>
+#include <sys/taskqueue.h>
+
 enum hrtimer_mode {
 	HRTIMER_MODE_ABS = 0x0,
 	HRTIMER_MODE_REL = 0x1,
@@ -44,12 +47,18 @@ enum hrtimer_restart {
 };
 
 struct hrtimer {
-	struct callout timer_callout;
+	struct task		task;
+	struct systimer		st;
 	clockid_t 		clock_id;
 	enum hrtimer_mode	ht_mode;
-	bool active;
+	u64			timeout_us;
+	bool			active;
+	bool			running;
+	bool			cancel;
+	bool			is_rel;
+	struct globaldata	*gd;
 	enum hrtimer_restart	(*function)(struct hrtimer *);
-	struct lwkt_token timer_token;
+	struct lwkt_token	timer_token;
 };
 
 extern void hrtimer_init(struct hrtimer *timer, clockid_t which_clock,

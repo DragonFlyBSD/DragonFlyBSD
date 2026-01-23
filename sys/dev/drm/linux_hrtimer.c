@@ -27,24 +27,45 @@
 #include <linux/hrtimer.h>
 #include <linux/bug.h>
 
-static inline void
-__hrtimer_function(void *arg)
+#include <sys/systimer.h>
+#include <sys/taskqueue.h>
+
+static void
+__hrtimer_function(systimer_t info, int in_ipi, struct intrframe *frame)
+{
+	struct hrtimer *timer = info->data;
+	struct taskqueue *tq = taskqueue_thread[mycpuid];
+
+	BUG_ON(taskqueue_enqueue(tq, &timer->task) != 0);
+}
+
+static void
+__hrtimer_task(void *arg, int pending)
 {
 	struct hrtimer *timer = arg;
-	enum hrtimer_restart restart = HRTIMER_RESTART;
+	enum hrtimer_restart restart;
 
-	if (timer->function) {
-		restart = timer->function(timer);
-	}
-
-	if (restart == HRTIMER_RESTART) {
-		/*
-		 * XXX Not implemented yet, we would need to store the
-		 *     expiration period, to do the callout_reset here.
-		 */
-	} else {
+	lwkt_gettoken(&timer->timer_token);
+	timer->running = true;
+	if (timer->cancel) {
+		timer->running = false;
 		timer->active = false;
+		goto done;
 	}
+	lwkt_reltoken(&timer->timer_token);
+	KKASSERT(timer->function != NULL);
+	restart = timer->function(timer);
+	lwkt_gettoken(&timer->timer_token);
+	timer->running = false;
+	timer->active = false;
+	if (!timer->cancel && restart == HRTIMER_RESTART) {
+		KKASSERT(timer->is_rel);
+		timer->active = true;
+		systimer_init_oneshot(&timer->st, __hrtimer_function,
+		    timer, timer->timeout_us);
+	}
+done:
+	lwkt_reltoken(&timer->timer_token);
 }
 
 void hrtimer_init(struct hrtimer *timer, clockid_t clock_id,
@@ -55,28 +76,44 @@ void hrtimer_init(struct hrtimer *timer, clockid_t clock_id,
 	memset(timer, 0, sizeof(struct hrtimer));
 	timer->clock_id = clock_id;
 	timer->ht_mode = mode;
-
+	timer->active = false;
+	timer->running = false;
+	timer->cancel = false;
+	timer->gd = NULL;
+	TASK_INIT(&timer->task, 1, __hrtimer_task, timer);
 	lwkt_token_init(&timer->timer_token, "timer token");
-	callout_init_mp(&(timer)->timer_callout);
 }
 
 void
 hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
 		       u64 range_ns, const enum hrtimer_mode mode)
 {
-	int expire_ticks = tim / (NSEC_PER_SEC / hz);
+	if (mode == HRTIMER_MODE_ABS) {
+		struct timespec ts;
+		ktime_t curtime;
 
-	if (mode == HRTIMER_MODE_ABS)
-		expire_ticks -= ticks;
-
-	if (expire_ticks <= 0)
-		expire_ticks = 1;
+		timer->is_rel = false;
+		nanouptime(&ts);
+		curtime = ts.tv_sec * 1000000000 + ts.tv_nsec;
+		if (curtime > tim)
+			timer->timeout_us = 500;
+		else
+			timer->timeout_us = (tim - curtime) / 1000;
+	} else {
+		timer->timeout_us = tim / 1000;
+		timer->is_rel = true;
+	}
+	/* Prevent arbitrarily short timeouts from being scheduled. */
+	timer->timeout_us = max(500, timer->timeout_us);
 
 	lwkt_gettoken(&timer->timer_token);
 
+	timer->cancel = false;
+	timer->running = false;
 	timer->active = true;
-	callout_reset(&timer->timer_callout,
-		      expire_ticks, __hrtimer_function, timer);
+	timer->gd = mycpu;
+	systimer_init_oneshot(&timer->st, __hrtimer_function, timer,
+	    timer->timeout_us);
 
 	lwkt_reltoken(&timer->timer_token);
 }
@@ -84,13 +121,43 @@ hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
 int
 hrtimer_cancel(struct hrtimer *timer)
 {
-	return callout_cancel(&timer->timer_callout) == 0;
+	int ret = 0;
+
+	lwkt_gettoken(&timer->timer_token);
+	if (timer->active) {
+		struct taskqueue *tq = taskqueue_thread[timer->gd->gd_cpuid];
+		bool running = timer->running;
+
+		ret = 1;
+		timer->cancel = true;
+		lwkt_reltoken(&timer->timer_token);
+		if (running) {
+			/* Nothing */
+		} else if (timer->gd == mycpu) {
+			systimer_del(&timer->st);
+		} else {
+			struct globaldata *oldcpu = mycpu;
+			lwkt_setcpu_self(timer->gd);
+			systimer_del(&timer->st);
+			lwkt_setcpu_self(oldcpu);
+		}
+		while (taskqueue_cancel(tq, &timer->task, NULL))
+			taskqueue_drain(tq, &timer->task);
+	} else {
+		lwkt_reltoken(&timer->timer_token);
+	}
+	return ret;
 }
 
-/* Returns non-zero if the timer is already on the queue */
+/* Returns non-zero if the timer is queued or running */
 bool
 hrtimer_active(const struct hrtimer *const_timer)
 {
+	bool ret;
 	struct hrtimer *timer = __DECONST(struct hrtimer *, const_timer);
-	return callout_pending(&timer->timer_callout);
+
+	lwkt_gettoken(&timer->timer_token);
+	ret = timer->active;
+	lwkt_reltoken(&timer->timer_token);
+	return ret;
 }
