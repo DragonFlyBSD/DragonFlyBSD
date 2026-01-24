@@ -44,6 +44,8 @@
 
 #include "loader_efi.h"
 
+int efi_console_preferred(void);
+
 #if defined(__aarch64__) && defined(LOADER_DEBUG_UART)
 static inline void debug_putc(char c)
 {
@@ -265,6 +267,14 @@ main(int argc, CHAR16 *argv[])
 	debug_putc('c');  /* has_keyboard done */
 
 	efi_parse_early_console(argc, argv);
+
+	if (getenv("console") == NULL) {
+		int pref = efi_console_preferred();
+		if (pref & 1)
+			setenv("console", "eficom", 1);
+		else if (pref & 2)
+			setenv("console", "efi", 1);
+	}
 
 	/*
 	 * XXX Chicken-and-egg problem; we want to have console output

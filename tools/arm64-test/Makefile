@@ -135,7 +135,7 @@ copy-all: copy-loader copy-kernel
 run: check-deps
 	@test -f $(BOOTAA64_EFI) || \
 		{ echo "Error: $(BOOTAA64_EFI) not found. Run 'make setup' first."; exit 1; }
-	@printf "BOOTAA64.EFI console=eficom\r\n" > $(STARTUP_NSH)
+	@printf "BOOTAA64.EFI\r\n" > $(STARTUP_NSH)
 	@echo "Starting QEMU (press Ctrl-A X to exit)..."
 	$(QEMU) $(QEMU_ARGS) $(QEMU_DRIVE)
 
@@ -151,7 +151,7 @@ run-gui: check-deps
 test: check-deps
 	@test -f $(BOOTAA64_EFI) || \
 		{ echo "Error: $(BOOTAA64_EFI) not found. Run 'make setup' first."; exit 1; }
-	@printf "BOOTAA64.EFI console=eficom\r\n" > $(STARTUP_NSH)
+	@printf "BOOTAA64.EFI\r\n" > $(STARTUP_NSH)
 	@echo "Starting QEMU with $(TEST_TIMEOUT)s timeout..."
 	@( $(QEMU) $(QEMU_ARGS_TEST) $(QEMU_DRIVE) & \
 		QEMU_PID=$$!; \

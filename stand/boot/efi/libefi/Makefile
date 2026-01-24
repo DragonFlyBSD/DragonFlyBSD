@@ -4,8 +4,8 @@ LIB=	efi
 INTERNALLIB=
 WARNS?=	2
 
-SRCS=	delay.c efi_console.c eficom.c efinet.c efipart.c errno.c handles.c \
-	libefi.c time.c
+SRCS=	delay.c efi_console.c eficom.c eficonsole_select.c efinet.c \
+	efipart.c errno.c handles.c libefi.c time.c
 
 .if ${MACHINE_ARCH} == "x86_64"
 CFLAGS+= -fPIC -mno-red-zone
