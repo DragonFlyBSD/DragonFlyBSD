@@ -3,7 +3,7 @@
  *
  * Copyright (c) 1996-2000 Whistle Communications, Inc.
  * All rights reserved.
- * 
+ *
  * Subject to the following obligations and disclaimer of warranty, use and
  * redistribution of this software, in source or object code forms, with or
  * without modifications are expressly permitted by Whistle Communications;
@@ -14,7 +14,7 @@
  *    Communications, Inc. trademarks, including the mark "WHISTLE
  *    COMMUNICATIONS" on advertising, endorsements, or otherwise except as
  *    such appears in the above copyright notice or in the software.
- * 
+ *
  * THIS SOFTWARE IS BEING PROVIDED BY WHISTLE COMMUNICATIONS "AS IS", AND
  * TO THE MAXIMUM EXTENT PERMITTED BY LAW, WHISTLE COMMUNICATIONS MAKES NO
  * REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED, REGARDING THIS SOFTWARE,
@@ -63,10 +63,10 @@ rc4_init(struct rc4_state *const state, const u_char *key, int keylen)
 
 	/* Initialize state with identity permutation */
 	for (i = 0; i < 256; i++)
-		state->perm[i] = (u_char)i; 
+		state->perm[i] = (u_char)i;
 	state->index1 = 0;
 	state->index2 = 0;
-  
+
 	/* Randomize the permutation using key data */
 	for (j = i = k = 0; i < 256; i++) {
 		j += state->perm[i] + key[k];
@@ -120,7 +120,7 @@ rc4_modevent(module_t mod, int type, void *unused)
 static moduledata_t rc4_mod = {
 	"rc4",
 	rc4_modevent,
-	0
+	NULL,
 };
 DECLARE_MODULE(rc4, rc4_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
 MODULE_VERSION(rc4, 1);
