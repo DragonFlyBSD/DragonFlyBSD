@@ -162,9 +162,10 @@ Completed so far:
 - Initial TTBR1 kernel mapping stub (L0/L1 with 1GB block)
 - High-VA trampoline to validate TTBR1 mapping
 - Synchronous exception handler prints ESR/FAR/ELR over UART
+- Loader allocates an executable window for the kernel (no MMU-disable handoff)
 
 Not done yet:
-- Remove the loader-side MMU disable workaround (still required to avoid instruction aborts at entry)
+- Remove the loader-side MMU disable workaround
 - Establish kernel virtual mapping with TTBR1 (text RO+X, data XN)
 - Implement real early C init (boot flags/envp, EFI map, pmap bootstrap)
 
