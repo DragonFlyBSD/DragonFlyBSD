@@ -81,6 +81,25 @@ EFI_GUID esrt = EFI_SYSTEM_RESOURCE_TABLE_GUID;
 EFI_GUID lzmadecomp = LZMA_CUSTOM_DECOMPRESS_GUID;
 EFI_GUID amiromlayout = AMI_ROM_LAYOUT_GUID;
 
+static void
+efi_parse_early_console(int argc, CHAR16 *argv[])
+{
+	char var[128];
+	int i, j;
+
+	for (i = 1; i < argc; i++) {
+		if (argv[i][0] == '-')
+			continue;
+		for (j = 0; j < (int)sizeof(var) - 1 && argv[i][j] != 0; j++)
+			var[j] = (char)argv[i][j];
+		var[j] = 0;
+		if (strncmp(var, "console=", 8) == 0) {
+			setenv("console", var + 8, 1);
+			return;
+		}
+	}
+}
+
 /*
  * Need this because EFI uses UTF-16 unicode string constants, but we
  * use UTF-8. We can't use printf due to the possibility of \0 and we
@@ -244,6 +263,8 @@ main(int argc, CHAR16 *argv[])
 	/* has_kbd = has_keyboard(); */
 
 	debug_putc('c');  /* has_keyboard done */
+
+	efi_parse_early_console(argc, argv);
 
 	/*
 	 * XXX Chicken-and-egg problem; we want to have console output
