@@ -141,6 +141,19 @@ elf64_exec(struct preloaded_file *fp)
 	clean_caches();
 
 	/*
+	 * Disable MMU before jumping to kernel.
+	 * EFI page tables may not have execute permission for the kernel
+	 * load address. The kernel will set up its own page tables.
+	 */
+	__asm __volatile(
+	    "mrs x1, sctlr_el1\n"
+	    "bic x1, x1, #1\n"		/* Clear M bit to disable MMU */
+	    "msr sctlr_el1, x1\n"
+	    "isb\n"
+	    ::: "x1", "memory"
+	);
+
+	/*
 	 * Jump to the kernel entry point.
 	 * On arm64, the calling convention passes the first argument in x0.
 	 * The kernel expects modulep in x0.
