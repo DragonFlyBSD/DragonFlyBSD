@@ -59,6 +59,10 @@
 .equ	PTE_BLOCK_DEVICE, 0x0060000000000701
 .equ	PTE_BLOCK_NORMAL, 0x0000000040000705
 
+.equ	KERNBASE, 0xffffff8000000000
+.equ	KERN_LOAD, 0x0000000040100000
+.equ	KERNBASE_OFFSET, KERNBASE - KERN_LOAD
+
 	.text
 	.globl	_start
 	.type	_start, @function
@@ -104,6 +108,12 @@ print_loop:
 	b	print_loop		/* Continue */
 
 done:
+	/* Switch to high VA for the final halt loop */
+	ldr	x0, =high_halt
+	ldr	x1, =KERNBASE_OFFSET
+	add	x0, x0, x1
+	br	x0
+
 	/*
 	 * Halt: infinite loop with WFI (Wait For Interrupt)
 	 * This is the proper way to halt on ARM64
@@ -111,6 +121,10 @@ done:
 halt:
 	wfi
 	b	halt
+
+high_halt:
+	wfi
+	b	high_halt
 
 	.align	3
 banner:
