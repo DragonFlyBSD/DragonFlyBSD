@@ -27,7 +27,15 @@
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/linker.h>
-#include <string.h>
+static int
+md_strcmp(const char *a, const char *b)
+{
+	while (*a != '\0' && *a == *b) {
+		a++;
+		b++;
+	}
+	return ((unsigned char)*a - (unsigned char)*b);
+}
 
 #define	ARM64_KERNBASE	0xffffff8000000000ULL
 #define	ARM64_PHYSBASE	0x0000000040000000ULL
@@ -98,7 +106,7 @@ preload_search_by_type(const char *type)
 		if (hdr[0] == MODINFO_NAME)
 			lname = curp;
 		if (hdr[0] == MODINFO_TYPE &&
-		    strcmp(type, curp + sizeof(u_int32_t) * 2) == 0)
+		    md_strcmp(type, curp + sizeof(u_int32_t) * 2) == 0)
 			return (lname);
 		next = sizeof(u_int32_t) * 2 + hdr[1];
 		next = roundup(next, sizeof(u_long));
