@@ -81,11 +81,6 @@ lwp_delsig(struct lwp *lp, int sig, int fromproc)
 		SIGDELSET_ATOMIC(lp->lwp_proc->p_siglist, sig);
 }
 
-#define	CURSIG(lp)			__cursig(lp, 1, 0, NULL)
-#define	CURSIG_TRACE(lp)		__cursig(lp, 1, 1, NULL)
-#define	CURSIG_LCK_TRACE(lp, ptok)	__cursig(lp, 1, 1, ptok)
-#define CURSIG_NOBLOCK(lp)		__cursig(lp, 0, 0, NULL)
-
 /*
  * This inline checks lpmap->blockallsigs, a user r/w accessible
  * memory-mapped variable that allows a user thread to instantly
@@ -179,6 +174,11 @@ __cursig(struct lwp *lp, int mayblock, int maytrace, int *ptok)
 
 	return (r);
 }
+
+#define	CURSIG(lp)			__cursig(lp, 1, 0, NULL)
+#define	CURSIG_TRACE(lp)		__cursig(lp, 1, 1, NULL)
+#define	CURSIG_LCK_TRACE(lp, ptok)	__cursig(lp, 1, 1, ptok)
+#define	CURSIG_NOBLOCK(lp)		__cursig(lp, 0, 0, NULL)
 
 /*
  * Generic (non-directed) signal processing on process is in progress
