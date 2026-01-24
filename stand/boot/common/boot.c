@@ -191,6 +191,8 @@ autoboot(int timeout, char *prompt)
     int		c, yes;
     char	*argv[2], *cp, *ep;
     char	*kernelname;
+    const char	*console;
+    int	quiet_serial;
 
     autoboot_tried = 1;
 
@@ -219,8 +221,14 @@ autoboot(int timeout, char *prompt)
     otime = time(NULL);
     when = otime + timeout;	/* when to boot */
     yes = 0;
+    console = getenv("console");
+    quiet_serial = (console != NULL && strstr(console, "eficom") != NULL);
 
-    printf("%s\n", (prompt == NULL) ? "Hit [Enter] to boot immediately, or any other key for command prompt." : prompt);
+    if (!quiet_serial) {
+    	printf("%s\n", (prompt == NULL) ?
+    	    "Hit [Enter] to boot immediately, or any other key for command prompt." :
+    	    prompt);
+    }
 
     for (;;) {
 	if (ischar()) {
@@ -236,15 +244,21 @@ autoboot(int timeout, char *prompt)
 	}
 
 	if (ntime != otime) {
-	    printf("\rBooting [%s] in %d second%s... ",
+	    if (!quiet_serial) {
+	    	printf("\rBooting [%s] in %d second%s... ",
 	    		kernelname, (int)(when - ntime),
 			(when-ntime)==1?"":"s");
+	    }
 	    otime = ntime;
 	}
     }
     if (yes)
-	printf("\rBooting [%s]...               ", kernelname);
-    putchar('\n');
+	if (!quiet_serial)
+	    printf("\rBooting [%s]...               ", kernelname);
+	else
+	    printf("Booting [%s]...\n", kernelname);
+    if (!quiet_serial)
+	putchar('\n');
     if (yes) {
 	argv[0] = "boot";
 	argv[1] = NULL;
@@ -379,4 +393,3 @@ loadakernel(int try, int argc, char* argv[])
 		return 1;
 	return 0;
 }
-
