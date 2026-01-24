@@ -79,6 +79,18 @@ static u_int64_t arm64_boot_alloc_end;
 static u_int64_t arm64_boot_alloc_next;
 static u_int64_t arm64_ttbr1_candidate;
 
+static void uart_puts(const char *str);
+static void uart_puthex(u_int64_t value);
+
+static void
+arm64_high_trampoline(void)
+{
+	volatile u_int64_t scratch = 0;
+
+	scratch++;
+	uart_puts("[arm64] high-va ok\r\n");
+}
+
 static void
 arm64_zero_page(u_int64_t addr)
 {
@@ -100,9 +112,6 @@ arm64_boot_alloc(u_int64_t size, u_int64_t align)
 	arm64_boot_alloc_next = addr + size;
 	return (addr);
 }
-
-static void uart_puts(const char *str);
-static void uart_puthex(u_int64_t value);
 
 static void
 arm64_pmap_bootstrap(struct arm64_phys_range *ranges, int count)
@@ -164,6 +173,8 @@ arm64_pmap_bootstrap(struct arm64_phys_range *ranges, int count)
 		arm64_zero_page(pt + 4096);
 		((u_int64_t *)(uintptr_t)pt)[0] =
 		    ((pt + 4096) & ~0xfffULL) | 0x3;
+		((u_int64_t *)(uintptr_t)pt)[511] =
+		    ((pt + 4096) & ~0xfffULL) | 0x3;
 
 		u_int64_t l2 = arm64_boot_alloc(4096, 4096);
 		if (l2 != 0) {
@@ -221,6 +232,9 @@ arm64_ttbr1_switch(void)
 	    "dsb sy\n"
 	    "isb\n"
 	    :: "r" (arm64_ttbr1_candidate) : "memory");
+	void (*tramp)(void) =
+	    (void (*)(void))((uintptr_t)&arm64_high_trampoline + ARM64_PTOTV_OFF);
+	tramp();
 	uart_puts("[arm64] ttbr1 switch active\r\n");
 }
 
