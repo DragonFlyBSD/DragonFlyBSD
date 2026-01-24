@@ -418,7 +418,8 @@ initarm(uintptr_t modulep)
 		uart_puthex(count);
 		uart_puts("\r\n");
 		u_int64_t usable = 0;
-		u_int8_t *desc = (u_int8_t *)(efihdr + 1);
+		u_int64_t efisz = (sizeof(*efihdr) + 0xf) & ~0xf;
+		u_int8_t *desc = (u_int8_t *)efihdr + efisz;
 		for (u_int64_t i = 0; i < count; i++) {
 			struct efi_md *md = (struct efi_md *)(void *)desc;
 			if (md->type == EFI_MD_TYPE_CONVENTIONAL) {
