@@ -30,6 +30,11 @@ typedef unsigned long uintptr_t;
 
 static volatile uint32_t *const uart_base = (uint32_t *)0x09000000;
 
+static const uint32_t modinfo_end = 0x0000;
+static const uint32_t modinfo_name = 0x0001;
+static const uint32_t modinfo_metadata = 0x8000;
+static const uint32_t modinfomd_kernend = 0x0008;
+
 uintptr_t boot_modulep;
 
 static void
@@ -56,12 +61,59 @@ uart_puthex(uint64_t value)
 		uart_putc(hex[(value >> shift) & 0xf]);
 }
 
+static uintptr_t
+roundup_uintptr(uintptr_t value, uintptr_t align)
+{
+	return (value + align - 1) & ~(align - 1);
+}
+
+static void
+parse_modulep(uintptr_t modulep)
+{
+	uint32_t *hdr;
+	uintptr_t next;
+	const char *name;
+	uintptr_t kernend;
+
+	hdr = (uint32_t *)modulep;
+	kernend = 0;
+
+	for (;;) {
+		if (hdr[0] == modinfo_end && hdr[1] == modinfo_end)
+			break;
+		if (hdr[0] == modinfo_name) {
+			name = (const char *)(hdr + 2);
+			uart_puts("[arm64] module: ");
+			uart_puts(name);
+			uart_puts("\r\n");
+		} else if (hdr[0] == (modinfo_metadata | modinfomd_kernend)) {
+			kernend = *(uintptr_t *)(hdr + 2);
+		}
+		next = sizeof(uint32_t) * 2 + hdr[1];
+		next = roundup_uintptr(next, sizeof(uintptr_t));
+		hdr = (uint32_t *)((uintptr_t)hdr + next);
+	}
+
+	if (kernend != 0) {
+		uart_puts("[arm64] kernend=0x");
+		uart_puthex((uint64_t)kernend);
+		uart_puts("\r\n");
+	}
+}
+
 void
 initarm(uintptr_t modulep)
 {
 	boot_modulep = modulep;
 
+	if (modulep == 0) {
+		uart_puts("[arm64] initarm: modulep missing\r\n");
+		return;
+	}
+
 	uart_puts("[arm64] initarm: modulep=0x");
 	uart_puthex((uint64_t)modulep);
 	uart_puts("\r\n");
+
+	parse_modulep(modulep);
 }
