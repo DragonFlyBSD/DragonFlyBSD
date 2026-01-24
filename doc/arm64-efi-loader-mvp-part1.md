@@ -164,6 +164,8 @@ Completed so far:
 - Synchronous exception handler prints ESR/FAR/ELR over UART
 - Loader allocates an executable window for the kernel (no MMU-disable handoff)
 - Serial console auto-selection for headless runs (eficom)
+- Phase A metadata consumption (boothowto/envp/EFI handle) wired in initarm
+- Loader staging window expanded to 8MB to capture metadata
 
 Not done yet:
 - Implement real early C init (boot flags/envp, EFI map, pmap bootstrap)
@@ -320,6 +322,13 @@ Exact plan (do not skip any step):
 - `EFI Firmware:` line has no UTF-16 garbage.
 - Kernel UART output remains visible.
 
+### FUTURE TODO
+
+- Align arm64 EFI staging window size with FreeBSD defaults.
+  - FreeBSD uses `DEFAULT_EFI_STAGING_SIZE` = 64MB for non-arm32.
+  - DragonFly currently uses an 8MB fixed window for arm64.
+  - Decide whether to switch to 64MB or make `EFI_STAGING_SIZE` configurable.
+
 ---
 
 ## Development Environment
@@ -344,4 +353,4 @@ These debug markers were added during bring-up:
 
 ---
 
-*Last updated: 2026-01-22*
+*Last updated: 2026-01-24*

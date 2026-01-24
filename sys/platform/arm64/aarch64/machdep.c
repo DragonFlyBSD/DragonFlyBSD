@@ -51,6 +51,17 @@ struct efi_map_header {
 	u_int32_t	descriptor_version;
 };
 
+struct efi_md {
+	u_int32_t	type;
+	u_int32_t	pad;
+	u_int64_t	phys_start;
+	u_int64_t	virt_start;
+	u_int64_t	num_pages;
+	u_int64_t	attribute;
+};
+
+#define	EFI_MD_TYPE_CONVENTIONAL	7
+
 static volatile u_int32_t *const uart_base = (u_int32_t *)0x09000000;
 
 static const u_int32_t modinfo_end = 0x0000;
@@ -350,6 +361,17 @@ initarm(uintptr_t modulep)
 		u_int64_t count = efihdr->memory_size / efihdr->descriptor_size;
 		uart_puts("[arm64] efi_map entries=");
 		uart_puthex(count);
+		uart_puts("\r\n");
+		u_int64_t usable = 0;
+		u_int8_t *desc = (u_int8_t *)(efihdr + 1);
+		for (u_int64_t i = 0; i < count; i++) {
+			struct efi_md *md = (struct efi_md *)(void *)desc;
+			if (md->type == EFI_MD_TYPE_CONVENTIONAL)
+				usable += md->num_pages;
+			desc += efihdr->descriptor_size;
+		}
+		uart_puts("[arm64] efi_map usable_pages=");
+		uart_puthex(usable);
 		uart_puts("\r\n");
 	} else {
 		uart_puts("[arm64] no efi map\r\n");
