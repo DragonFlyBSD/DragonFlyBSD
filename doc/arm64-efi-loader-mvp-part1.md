@@ -73,7 +73,7 @@ make test           # Run with 25s timeout (headless)
 
 ---
 
-## MVP Part 2: Stub Kernel (PLANNED)
+## MVP Part 2: Stub Kernel (COMPLETE)
 
 ### Goal
 
@@ -143,7 +143,7 @@ The `modulep` pointer references preload metadata - a linked list of module info
 
 - Loader successfully loads ELF64 kernel
 - Loader exits boot services and jumps to kernel
-- Kernel prints "DragonFly arm64 kernel!" to UART
+- Kernel prints "DragonFly/arm64 kernel started!" to UART
 - Message visible in QEMU serial output
 
 ---
@@ -163,11 +163,11 @@ Completed so far:
 - High-VA trampoline to validate TTBR1 mapping
 - Synchronous exception handler prints ESR/FAR/ELR over UART
 - Loader allocates an executable window for the kernel (no MMU-disable handoff)
+- Serial console auto-selection for headless runs (eficom)
 
 Not done yet:
-- Remove the loader-side MMU disable workaround
-- Establish kernel virtual mapping with TTBR1 (text RO+X, data XN)
 - Implement real early C init (boot flags/envp, EFI map, pmap bootstrap)
+- Stabilize TTBR1 validation and idle loop (no stray output)
 
 ### FreeBSD Reference (Do Not Copy Without License)
 
