@@ -160,7 +160,7 @@ Completed so far:
 - Early TTBR0 identity map and MMU enable in `sys/platform/arm64/aarch64/locore.S`
 - Early C entry (`initarm`) with modulep printing and minimal metadata parsing
 - Initial TTBR1 kernel mapping stub (L0/L1 with 1GB block)
-- High-VA halt jump to validate TTBR1 mapping
+- High-VA trampoline to validate TTBR1 mapping
 - Synchronous exception handler prints ESR/FAR/ELR over UART
 
 Not done yet:

@@ -108,8 +108,8 @@ print_loop:
 	b	print_loop		/* Continue */
 
 done:
-	/* Switch to high VA for the final halt loop */
-	ldr	x0, =high_halt
+	/* Switch to high VA for a TTBR1 trampoline */
+	ldr	x0, =high_trampoline
 	ldr	x1, =KERNBASE_OFFSET
 	add	x0, x0, x1
 	br	x0
@@ -122,13 +122,12 @@ halt:
 	wfi
 	b	halt
 
-high_halt:
-	mov	w0, #0x48
-	bl	uart_putc
-
-	high_halt_loop:
-	wfi
-	b	high_halt_loop
+high_trampoline:
+	ldr	x0, =0x09000000
+	mov	w1, #0x48
+	strb	w1, [x0]
+	ldr	x0, =halt
+	br	x0
 
 	.align	3
 banner:
