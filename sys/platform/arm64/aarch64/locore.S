@@ -91,7 +91,8 @@ _start:
 	bl	start_mmu
 
 	/* Set up a temporary stack for early C code */
-	adr	x1, initstack_end
+	adrp	x1, initstack_end
+	add	x1, x1, :lo12:initstack_end
 	mov	sp, x1
 
 	/* Call early C entry with modulep */
@@ -216,8 +217,10 @@ uart_puthex:
 	ret
 
 create_pagetables:
-	adr	x1, ttbr0_l0
-	adr	x2, ttbr0_l1
+	adrp	x1, ttbr0_l0
+	add	x1, x1, :lo12:ttbr0_l0
+	adrp	x2, ttbr0_l1
+	add	x2, x2, :lo12:ttbr0_l1
 	mov	x3, xzr
 	mov	x4, #0
 
@@ -229,8 +232,10 @@ create_pagetables:
 	b.lo	1b
 
 	/* L0 entry 0 -> L1 table */
-	adr	x1, ttbr0_l0
-	adr	x2, ttbr0_l1
+	adrp	x1, ttbr0_l0
+	add	x1, x1, :lo12:ttbr0_l0
+	adrp	x2, ttbr0_l1
+	add	x2, x2, :lo12:ttbr0_l1
 	orr	x3, x2, #PTE_TABLE
 	str	x3, [x1]
 
@@ -243,14 +248,18 @@ create_pagetables:
 	str	x3, [x2, #8]
 
 	/* TTBR1 L0 entry 511 -> L1 table */
-	adr	x1, ttbr1_l0
-	adr	x2, ttbr1_l1
+	adrp	x1, ttbr1_l0
+	add	x1, x1, :lo12:ttbr1_l0
+	adrp	x2, ttbr1_l1
+	add	x2, x2, :lo12:ttbr1_l1
 	orr	x3, x2, #PTE_TABLE
 	str	x3, [x1, #4088]
 
 	/* TTBR1 L1 entry 0 -> L2 table */
-	adr	x1, ttbr1_l1
-	adr	x2, ttbr1_l2
+	adrp	x1, ttbr1_l1
+	add	x1, x1, :lo12:ttbr1_l1
+	adrp	x2, ttbr1_l2
+	add	x2, x2, :lo12:ttbr1_l2
 	orr	x3, x2, #PTE_TABLE
 	str	x3, [x1]
 
@@ -270,9 +279,11 @@ start_mmu:
 	ldr	x0, =exception_vectors
 	msr	vbar_el1, x0
 
-	adr	x0, ttbr0_l0
+	adrp	x0, ttbr0_l0
+	add	x0, x0, :lo12:ttbr0_l0
 	msr	ttbr0_el1, x0
-	adr	x0, ttbr1_l0
+	adrp	x0, ttbr1_l0
+	add	x0, x0, :lo12:ttbr1_l0
 	msr	ttbr1_el1, x0
 	isb
 
