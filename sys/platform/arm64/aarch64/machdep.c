@@ -64,6 +64,7 @@ char *kern_envp;
 uintptr_t efi_systbl_phys;
 
 static caddr_t preload_metadata;
+static caddr_t preload_kmdp;
 
 static void
 preload_bootstrap_relocate(vm_offset_t offset)
@@ -121,6 +122,37 @@ preload_search_by_type(const char *type)
 		curp += next;
 	}
 	return (NULL);
+}
+
+static void
+preload_initkmdp(void)
+{
+	caddr_t curp, lname;
+	u_int32_t *hdr;
+	int next;
+
+	preload_kmdp = NULL;
+	if (preload_metadata == NULL)
+		return;
+
+	curp = preload_metadata;
+	lname = NULL;
+	for (;;) {
+		hdr = (u_int32_t *)curp;
+		if (hdr[0] == 0 && hdr[1] == 0)
+			break;
+		if (hdr[0] == MODINFO_NAME)
+			lname = curp;
+		if (hdr[0] == MODINFO_TYPE &&
+		    (md_strcmp("elf kernel", curp + sizeof(u_int32_t) * 2) == 0 ||
+		    md_strcmp("elf64 kernel", curp + sizeof(u_int32_t) * 2) == 0)) {
+			preload_kmdp = lname;
+			return;
+		}
+		next = sizeof(u_int32_t) * 2 + hdr[1];
+		next = roundup(next, sizeof(u_long));
+		curp += next;
+	}
 }
 
 static caddr_t
@@ -258,20 +290,17 @@ initarm(uintptr_t modulep)
 
 	preload_metadata = (caddr_t)modulep;
 	preload_bootstrap_relocate(0);
-
-	caddr_t kmdp = preload_search_by_type("elf kernel");
-	if (kmdp == NULL)
-		kmdp = preload_search_by_type("elf64 kernel");
-	if (kmdp == NULL) {
+	preload_initkmdp();
+	if (preload_kmdp == NULL) {
 		uart_puts("[arm64] no kernel metadata\r\n");
 		return;
 	}
 
-	boothowto = md_fetch_int(kmdp, MODINFOMD_HOWTO);
-	kern_envp = (char *)md_fetch_uintptr(kmdp, MODINFOMD_ENVP);
-	efi_systbl_phys = md_fetch_uintptr(kmdp, MODINFOMD_FW_HANDLE);
+	boothowto = md_fetch_int(preload_kmdp, MODINFOMD_HOWTO);
+	kern_envp = (char *)md_fetch_uintptr(preload_kmdp, MODINFOMD_ENVP);
+	efi_systbl_phys = md_fetch_uintptr(preload_kmdp, MODINFOMD_FW_HANDLE);
 	struct efi_map_header *efihdr =
-	    (struct efi_map_header *)md_fetch_ptr(kmdp, MODINFOMD_EFI_MAP);
+	    (struct efi_map_header *)md_fetch_ptr(preload_kmdp, MODINFOMD_EFI_MAP);
 
 	uart_puts("[arm64] boothowto=0x");
 	uart_puthex((u_int64_t)boothowto);
