@@ -123,8 +123,12 @@ halt:
 	b	halt
 
 high_halt:
+	mov	w0, #0x48
+	bl	uart_putc
+
+	high_halt_loop:
 	wfi
-	b	high_halt
+	b	high_halt_loop
 
 	.align	3
 banner:
