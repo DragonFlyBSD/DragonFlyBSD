@@ -47,6 +47,7 @@ QEMU_ARGS_BASE = \
 
 # Console mode arguments
 QEMU_ARGS = $(QEMU_ARGS_BASE) -nographic
+QEMU_ARGS_TEST = $(QEMU_ARGS_BASE) -serial stdio -device ramfb -display none
 QEMU_ARGS_GUI = $(QEMU_ARGS_BASE) -serial stdio -device ramfb -device qemu-xhci -device usb-kbd
 
 # Drive configuration - use disk image if it exists, otherwise FAT directory
@@ -146,7 +147,7 @@ test: check-deps
 	@test -f $(BOOTAA64_EFI) || \
 		{ echo "Error: $(BOOTAA64_EFI) not found. Run 'make setup' first."; exit 1; }
 	@echo "Starting QEMU with $(TEST_TIMEOUT)s timeout..."
-	@( $(QEMU) $(QEMU_ARGS) $(QEMU_DRIVE) & \
+	@( $(QEMU) $(QEMU_ARGS_TEST) $(QEMU_DRIVE) & \
 		QEMU_PID=$$!; \
 		sleep $(TEST_TIMEOUT); \
 		kill $$QEMU_PID 2>/dev/null ) 2>&1

@@ -196,6 +196,7 @@ _start:
  * Preserves x0, x1.
  */
 debug_putc:
+#ifdef LOADER_DEBUG_UART
 	stp	x3, x4, [sp, #-16]!
 	ldr	x3, =0x09000000		/* PL011 UART base */
 1:
@@ -204,4 +205,5 @@ debug_putc:
 	b.ne	1b			/* Wait if full */
 	str	w2, [x3]		/* Write character to UARTDR */
 	ldp	x3, x4, [sp], #16
+#endif
 	ret
