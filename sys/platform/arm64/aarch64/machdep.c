@@ -43,6 +43,8 @@ md_strcmp(const char *a, const char *b)
 
 typedef u_long vm_offset_t;
 
+#define	PTE_BLOCK_NORMAL_FLAGS	0x705
+
 #define	MODINFOMD_EFI_MAP	0x1004
 
 struct efi_map_header {
@@ -161,8 +163,13 @@ arm64_pmap_bootstrap(struct arm64_phys_range *ranges, int count)
 		arm64_zero_page(pt + 4096);
 		((u_int64_t *)(uintptr_t)pt)[0] =
 		    ((pt + 4096) & ~0xfffULL) | 0x3;
+		((u_int64_t *)(uintptr_t)(pt + 4096))[0] =
+		    ARM64_PHYSBASE | PTE_BLOCK_NORMAL_FLAGS;
 		uart_puts("[arm64] pt l0[0]=0x");
 		uart_puthex(((u_int64_t *)(uintptr_t)pt)[0]);
+		uart_puts("\r\n");
+		uart_puts("[arm64] pt l1[0]=0x");
+		uart_puthex(((u_int64_t *)(uintptr_t)(pt + 4096))[0]);
 		uart_puts("\r\n");
 	} else {
 		uart_puts("[arm64] boot_alloc pt failed\r\n");
