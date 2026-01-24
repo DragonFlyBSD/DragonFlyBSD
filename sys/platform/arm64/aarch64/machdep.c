@@ -106,6 +106,8 @@ initarm(uintptr_t modulep)
 {
 	boot_modulep = modulep;
 
+	uart_puts("\033[2J\033[H");
+
 	if (modulep == 0) {
 		uart_puts("[arm64] initarm: modulep missing\r\n");
 		return;
