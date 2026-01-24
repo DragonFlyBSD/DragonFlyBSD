@@ -43,6 +43,14 @@ md_strcmp(const char *a, const char *b)
 
 typedef u_long vm_offset_t;
 
+#define	MODINFOMD_EFI_MAP	0x1004
+
+struct efi_map_header {
+	u_int64_t	memory_size;
+	u_int64_t	descriptor_size;
+	u_int32_t	descriptor_version;
+};
+
 static volatile u_int32_t *const uart_base = (u_int32_t *)0x09000000;
 
 static const u_int32_t modinfo_end = 0x0000;
@@ -151,6 +159,12 @@ md_fetch_uintptr(caddr_t mdp, int info)
 	return (ptr == NULL) ? 0 : *ptr;
 }
 
+static void *
+md_fetch_ptr(caddr_t mdp, int info)
+{
+	return preload_search_info(mdp, MODINFO_METADATA | info);
+}
+
 static int
 md_fetch_int(caddr_t mdp, int info)
 {
@@ -256,6 +270,8 @@ initarm(uintptr_t modulep)
 	boothowto = md_fetch_int(kmdp, MODINFOMD_HOWTO);
 	kern_envp = (char *)md_fetch_uintptr(kmdp, MODINFOMD_ENVP);
 	efi_systbl_phys = md_fetch_uintptr(kmdp, MODINFOMD_FW_HANDLE);
+	struct efi_map_header *efihdr =
+	    (struct efi_map_header *)md_fetch_ptr(kmdp, MODINFOMD_EFI_MAP);
 
 	uart_puts("[arm64] boothowto=0x");
 	uart_puthex((u_int64_t)boothowto);
@@ -266,4 +282,13 @@ initarm(uintptr_t modulep)
 	uart_puts("[arm64] efi_systbl=0x");
 	uart_puthex((u_int64_t)efi_systbl_phys);
 	uart_puts("\r\n");
+
+	if (efihdr != NULL && efihdr->descriptor_size != 0) {
+		u_int64_t count = efihdr->memory_size / efihdr->descriptor_size;
+		uart_puts("[arm64] efi_map entries=");
+		uart_puthex(count);
+		uart_puts("\r\n");
+	} else {
+		uart_puts("[arm64] no efi map\r\n");
+	}
 }
