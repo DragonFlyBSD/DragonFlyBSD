@@ -71,7 +71,9 @@ _start:
 
 	/* Ensure MMU and caches are off before reprogramming TTBRs */
 	mrs	x1, sctlr_el1
-	bic	x1, x1, #(SCTLR_M | SCTLR_C | SCTLR_I)
+	bic	x1, x1, #SCTLR_M
+	bic	x1, x1, #SCTLR_C
+	bic	x1, x1, #SCTLR_I
 	msr	sctlr_el1, x1
 	isb
 
@@ -180,11 +182,11 @@ start_mmu:
 
 	ret
 
+	.size	_start, . - _start
+
 	.bss
 	.align	12
 ttbr0_l0:
 	.space	4096
 ttbr0_l1:
 	.space	4096
-
-	.size	_start, . - _start
