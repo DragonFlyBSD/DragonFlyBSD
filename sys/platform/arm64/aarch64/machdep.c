@@ -27,6 +27,7 @@
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/linker.h>
+#include <string.h>
 
 #define	ARM64_KERNBASE	0xffffff8000000000ULL
 #define	ARM64_PHYSBASE	0x0000000040000000ULL
@@ -46,10 +47,92 @@ int boothowto;
 char *kern_envp;
 uintptr_t efi_systbl_phys;
 
-extern caddr_t preload_metadata;
-void preload_bootstrap_relocate(vm_offset_t offset);
-caddr_t preload_search_by_type(const char *type);
-caddr_t preload_search_info(caddr_t mod, int inf);
+static caddr_t preload_metadata;
+
+static void
+preload_bootstrap_relocate(vm_offset_t offset)
+{
+	caddr_t curp;
+	u_int32_t *hdr;
+	vm_offset_t *ptr;
+	int next;
+
+	if (preload_metadata == NULL)
+		return;
+
+	curp = preload_metadata;
+	for (;;) {
+		hdr = (u_int32_t *)curp;
+		if (hdr[0] == 0 && hdr[1] == 0)
+			break;
+		switch (hdr[0]) {
+		case MODINFO_ADDR:
+		case MODINFO_METADATA | MODINFOMD_SSYM:
+		case MODINFO_METADATA | MODINFOMD_ESYM:
+			ptr = (vm_offset_t *)(curp + (sizeof(u_int32_t) * 2));
+			*ptr += offset;
+			break;
+		}
+		next = sizeof(u_int32_t) * 2 + hdr[1];
+		next = roundup(next, sizeof(u_long));
+		curp += next;
+	}
+}
+
+static caddr_t
+preload_search_by_type(const char *type)
+{
+	caddr_t curp, lname;
+	u_int32_t *hdr;
+	int next;
+
+	if (preload_metadata == NULL)
+		return (NULL);
+
+	curp = preload_metadata;
+	lname = NULL;
+	for (;;) {
+		hdr = (u_int32_t *)curp;
+		if (hdr[0] == 0 && hdr[1] == 0)
+			break;
+		if (hdr[0] == MODINFO_NAME)
+			lname = curp;
+		if (hdr[0] == MODINFO_TYPE &&
+		    strcmp(type, curp + sizeof(u_int32_t) * 2) == 0)
+			return (lname);
+		next = sizeof(u_int32_t) * 2 + hdr[1];
+		next = roundup(next, sizeof(u_long));
+		curp += next;
+	}
+	return (NULL);
+}
+
+static caddr_t
+preload_search_info(caddr_t mod, int inf)
+{
+	caddr_t curp;
+	u_int32_t *hdr;
+	u_int32_t type = 0;
+	int next;
+
+	curp = mod;
+	for (;;) {
+		hdr = (u_int32_t *)curp;
+		if (hdr[0] == 0 && hdr[1] == 0)
+			break;
+		if (type == 0) {
+			type = hdr[0];
+		} else if (hdr[0] == type) {
+			break;
+		}
+		if (hdr[0] == inf)
+			return (curp + (sizeof(u_int32_t) * 2));
+		next = sizeof(u_int32_t) * 2 + hdr[1];
+		next = roundup(next, sizeof(u_long));
+		curp += next;
+	}
+	return (NULL);
+}
 
 static uintptr_t
 md_fetch_uintptr(caddr_t mdp, int info)
