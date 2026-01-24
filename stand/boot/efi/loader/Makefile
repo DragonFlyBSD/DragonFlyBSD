@@ -91,7 +91,7 @@ EFI_TARGET=	binary
 EFI_TARGET=	binary
 .endif
 
-all: loader.efi
+all: ${PROG} loader.efi
 
 loader.efi: ${PROG}
 	if ${NM} ${.ALLSRC} | grep ' U '; then \
