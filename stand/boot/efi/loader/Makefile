@@ -107,6 +107,10 @@ loader.efi: ${PROG}
 
 LIBEFI=		${.OBJDIR}/../libefi/libefi.a
 
+${LIBEFI}:
+	${MAKE} -C ${.CURDIR}/../libefi MACHINE_ARCH=${MACHINE_ARCH} \
+	    MACHINE=${MACHINE} CC=${CC}
+
 DPADD=		${LIBEFI} ${LIBSTAND} ${LIBDLOADER} ${LDSCRIPT}
 LDADD=		${LIBEFI} ${LIBSTAND} ${LIBDLOADER}
 
