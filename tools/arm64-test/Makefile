@@ -31,6 +31,7 @@ QEMU_CPU        ?= cortex-a72
 QEMU_MEMORY     ?= 512M
 QEMU_BIOS       ?= /opt/homebrew/share/qemu/edk2-aarch64-code.fd
 TEST_TIMEOUT    ?= 25
+EFI_SERIAL_LOG  ?= /tmp/efi-serial.log
 
 # Remote VM (for copying fresh builds)
 VM_HOST         ?= devbox.sector.int
@@ -44,7 +45,9 @@ QEMU_ARGS_BASE = \
 	-M $(QEMU_MACHINE) \
 	-cpu $(QEMU_CPU) \
 	-m $(QEMU_MEMORY) \
-	-bios $(QEMU_BIOS)
+	-bios $(QEMU_BIOS) \
+	-serial file:$(EFI_SERIAL_LOG) \
+	-serial stdio
 
 # Console mode arguments
 QEMU_ARGS = $(QEMU_ARGS_BASE) -serial stdio -device ramfb -display none
@@ -133,7 +136,7 @@ copy-all: copy-loader copy-kernel
 run: check-deps
 	@test -f $(BOOTAA64_EFI) || \
 		{ echo "Error: $(BOOTAA64_EFI) not found. Run 'make setup' first."; exit 1; }
-	@printf "BOOTAA64.EFI console=eficom\r\n" > $(STARTUP_NSH)
+	@printf "BOOTAA64.EFI console=eficom efi_com_port=1\r\n" > $(STARTUP_NSH)
 	@echo "Starting QEMU (press Ctrl-A X to exit)..."
 	$(QEMU) $(QEMU_ARGS) $(QEMU_DRIVE)
 
@@ -149,7 +152,7 @@ run-gui: check-deps
 test: check-deps
 	@test -f $(BOOTAA64_EFI) || \
 		{ echo "Error: $(BOOTAA64_EFI) not found. Run 'make setup' first."; exit 1; }
-	@printf "BOOTAA64.EFI console=eficom\r\n" > $(STARTUP_NSH)
+	@printf "BOOTAA64.EFI console=eficom efi_com_port=1\r\n" > $(STARTUP_NSH)
 	@echo "Starting QEMU with $(TEST_TIMEOUT)s timeout..."
 	@( $(QEMU) $(QEMU_ARGS_TEST) $(QEMU_DRIVE) & \
 		QEMU_PID=$$!; \
