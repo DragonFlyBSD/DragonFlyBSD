@@ -154,6 +154,18 @@ The `modulep` pointer references preload metadata - a linked list of module info
 
 Replace the loader-side MMU disable workaround with a FreeBSD-derived, kernel-controlled page table setup that enables the MMU early and preserves the DragonFly boot flow.
 
+### Status: IN PROGRESS
+
+Completed so far:
+- Early TTBR0 identity map and MMU enable in `sys/platform/arm64/aarch64/locore.S`
+- Early C entry (`initarm`) with modulep printing and minimal metadata parsing
+- Synchronous exception handler prints ESR/FAR/ELR over UART
+
+Not done yet:
+- Remove the loader-side MMU disable workaround (still required to avoid instruction aborts at entry)
+- Establish kernel virtual mapping with TTBR1 (text RO+X, data XN)
+- Implement real early C init (boot flags/envp, EFI map, pmap bootstrap)
+
 ### FreeBSD Reference (Do Not Copy Without License)
 
 Reference these files and follow their order of operations. Any reused code must include compatible FreeBSD license headers and be adapted to DragonFlyBSD subsystems and conventions.

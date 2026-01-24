@@ -116,24 +116,82 @@ halt:
 banner:
 	.asciz	"\r\n\r\nDragonFly/arm64 kernel started!\r\nmodulep received, halting.\r\n"
 
+exc_sync_msg:
+	.asciz	"\r\n[arm64] sync exception: ESR=0x"
+exc_far_msg:
+	.asciz	" FAR=0x"
+exc_elr_msg:
+	.asciz	" ELR=0x"
+exc_end_msg:
+	.asciz	"\r\n"
+hex_digits:
+	.asciz	"0123456789abcdef"
+
 	.align	11
 exception_vectors:
-	b	.
-	b	.
-	b	.
-	b	.
-	b	.
-	b	.
-	b	.
-	b	.
-	b	.
-	b	.
-	b	.
-	b	.
-	b	.
-	b	.
-	b	.
-	b	.
+	b	exception_sync
+	b	exception_spin
+	b	exception_spin
+	b	exception_spin
+	b	exception_sync
+	b	exception_spin
+	b	exception_spin
+	b	exception_spin
+	b	exception_spin
+	b	exception_spin
+	b	exception_spin
+	b	exception_spin
+	b	exception_spin
+	b	exception_spin
+	b	exception_spin
+	b	exception_spin
+
+exception_sync:
+	ldr	x0, =exc_sync_msg
+	bl	uart_puts
+	mrs	x0, esr_el1
+	bl	uart_puthex
+	ldr	x0, =exc_far_msg
+	bl	uart_puts
+	mrs	x0, far_el1
+	bl	uart_puthex
+	ldr	x0, =exc_elr_msg
+	bl	uart_puts
+	mrs	x0, elr_el1
+	bl	uart_puthex
+	ldr	x0, =exc_end_msg
+	bl	uart_puts
+
+exception_spin:
+	wfi
+	b	exception_spin
+
+uart_putc:
+	ldr	x1, =0x09000000
+	strb	w0, [x1]
+	ret
+
+uart_puts:
+	ldrb	w1, [x0], #1
+	cbz	w1, 1f
+	mov	w0, w1
+	bl	uart_putc
+	b	uart_puts
+1:
+	ret
+
+uart_puthex:
+	ldr	x2, =hex_digits
+	mov	x3, #60
+1:
+	lsr	x4, x0, x3
+	and	x4, x4, #0xf
+	ldrb	w4, [x2, x4]
+	mov	w0, w4
+	bl	uart_putc
+	subs	x3, x3, #4
+	b.ge	1b
+	ret
 
 create_pagetables:
 	adr	x1, ttbr0_l0
