@@ -28,7 +28,7 @@ typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 typedef unsigned long uintptr_t;
 
-static volatile uint32_t *const uart_base = (uint32_t *)0x09000000;
+static volatile uint32_t *const uart_base = (uint32_t *)0x09010000;
 
 static const uint32_t modinfo_end = 0x0000;
 static const uint32_t modinfo_name = 0x0001;
