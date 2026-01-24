@@ -91,7 +91,7 @@ EFI_TARGET=	binary
 EFI_TARGET=	binary
 .endif
 
-all: loader.efi
+all: libefi loader.efi
 
 loader.efi: ${PROG}
 	if ${NM} ${.ALLSRC} | grep ' U '; then \
@@ -115,10 +115,5 @@ libefi:
 DPADD=		${LIBEFI} ${LIBSTAND} ${LIBDLOADER} ${LDSCRIPT}
 LDADD=		${LIBEFI} ${LIBSTAND} ${LIBDLOADER}
 
-${PROG}: libefi
-
-loader.efi: libefi
-
-.ORDER: libefi ${PROG} loader.efi
 
 .include <bsd.prog.mk>
