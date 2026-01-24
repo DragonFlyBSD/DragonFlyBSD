@@ -62,6 +62,16 @@ struct efi_md {
 
 #define	EFI_MD_TYPE_CONVENTIONAL	7
 
+#define	ARM64_MAX_PHYSMEM_RANGES	16
+
+struct arm64_phys_range {
+	u_int64_t	start;
+	u_int64_t	end;
+};
+
+static struct arm64_phys_range arm64_physmem[ARM64_MAX_PHYSMEM_RANGES];
+static int arm64_physmem_count;
+
 static volatile u_int32_t *const uart_base = (u_int32_t *)0x09000000;
 
 static const u_int32_t modinfo_end = 0x0000;
@@ -366,13 +376,33 @@ initarm(uintptr_t modulep)
 		u_int8_t *desc = (u_int8_t *)(efihdr + 1);
 		for (u_int64_t i = 0; i < count; i++) {
 			struct efi_md *md = (struct efi_md *)(void *)desc;
-			if (md->type == EFI_MD_TYPE_CONVENTIONAL)
+			if (md->type == EFI_MD_TYPE_CONVENTIONAL) {
 				usable += md->num_pages;
+				if (arm64_physmem_count < ARM64_MAX_PHYSMEM_RANGES) {
+					struct arm64_phys_range *range =
+					    &arm64_physmem[arm64_physmem_count++];
+					range->start = md->phys_start;
+					range->end = md->phys_start +
+					    (md->num_pages * 4096);
+				}
+			}
 			desc += efihdr->descriptor_size;
 		}
 		uart_puts("[arm64] efi_map usable_pages=");
 		uart_puthex(usable);
 		uart_puts("\r\n");
+		uart_puts("[arm64] physmem ranges=");
+		uart_puthex((u_int64_t)arm64_physmem_count);
+		uart_puts("\r\n");
+		for (int i = 0; i < arm64_physmem_count; i++) {
+			uart_puts("[arm64] physmem[");
+			uart_puthex((u_int64_t)i);
+			uart_puts("] 0x");
+			uart_puthex(arm64_physmem[i].start);
+			uart_puts("-0x");
+			uart_puthex(arm64_physmem[i].end);
+			uart_puts("\r\n");
+		}
 	} else {
 		uart_puts("[arm64] no efi map\r\n");
 	}
