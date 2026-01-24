@@ -140,6 +140,17 @@ arm64_pmap_bootstrap(struct arm64_phys_range *ranges, int count)
 	} else {
 		uart_puts("[arm64] boot_alloc scratch failed\r\n");
 	}
+
+	u_int64_t pt = arm64_boot_alloc(2 * 4096, 4096);
+	if (pt != 0) {
+		uart_puts("[arm64] boot_alloc pt 0x");
+		uart_puthex(pt);
+		uart_puts("-0x");
+		uart_puthex(pt + (2 * 4096));
+		uart_puts("\r\n");
+	} else {
+		uart_puts("[arm64] boot_alloc pt failed\r\n");
+	}
 }
 
 static volatile u_int32_t *const uart_base = (u_int32_t *)0x09000000;
