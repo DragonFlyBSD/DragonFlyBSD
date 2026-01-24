@@ -44,8 +44,7 @@ QEMU_ARGS_BASE = \
 	-M $(QEMU_MACHINE) \
 	-cpu $(QEMU_CPU) \
 	-m $(QEMU_MEMORY) \
-	-bios $(QEMU_BIOS) \
-	-serial stdio
+	-bios $(QEMU_BIOS)
 
 # Console mode arguments
 QEMU_ARGS = $(QEMU_ARGS_BASE) -serial stdio -device ramfb -display none
