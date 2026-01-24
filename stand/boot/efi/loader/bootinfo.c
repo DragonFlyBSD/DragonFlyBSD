@@ -410,6 +410,9 @@ bi_load(char *args, vm_offset_t *modulep, vm_offset_t *kernendp)
 
 	/* Copy module list and metadata. */
 	(void)bi_copymodules(addr);
+	printf("bi_load: modulep=0x%lx header=%08x %08x\n",
+	    (unsigned long)addr,
+	    ((uint32_t *)addr)[0], ((uint32_t *)addr)[1]);
 
 	return (0);
 }
