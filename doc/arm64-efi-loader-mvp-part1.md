@@ -169,6 +169,37 @@ Not done yet:
 - Implement real early C init (boot flags/envp, EFI map, pmap bootstrap)
 - Stabilize TTBR1 validation and idle loop (no stray output)
 
+### Early C Init Plan (No FDT)
+
+This is the immediate roadmap for the remaining MVP Part 3 work. The focus
+is to consume loader metadata and bootstrap enough kernel state to proceed
+without relying on ad-hoc UART prints or loader workarounds.
+
+Phase A: Metadata consumption (modulep)
+1. Set `preload_metadata` from `modulep` and relocate metadata pointers
+   (`preload_bootstrap_relocate`) with the arm64 phys->virt offset.
+2. Locate the kernel metadata record (`preload_search_by_type` for
+   "elf kernel"/"elf64 kernel").
+3. Fetch required metadata:
+   - `boothowto = MD_FETCH(kmdp, MODINFOMD_HOWTO, int)`
+   - `kern_envp = MD_FETCH(kmdp, MODINFOMD_ENVP, char *) + offset`
+   - `efi_systbl_phys = MD_FETCH(kmdp, MODINFOMD_FW_HANDLE, vm_paddr_t)`
+4. Print minimal diagnostics over UART to confirm the values.
+
+Phase B: EFI memory map ingestion
+1. Fetch EFI map header via `MODINFOMD_EFI_MAP`.
+2. Validate descriptor size/version and count entries.
+3. Build a minimal physmem list for bootstrap (no allocations yet).
+
+Phase C: Pmap bootstrap skeleton
+1. Introduce an arm64 pmap bootstrap entrypoint using the physmem list.
+2. Transition from locore tables to pmap-managed tables (TTBR switch).
+3. Keep UART working and avoid synchronous exceptions.
+
+Phase D: Console framework handoff
+1. Replace ad-hoc UART prints with a proper early console hook.
+2. Enable `printf()` via the console framework as early as possible.
+
 ### FreeBSD Reference (Do Not Copy Without License)
 
 Reference these files and follow their order of operations. Any reused code must include compatible FreeBSD license headers and be adapted to DragonFlyBSD subsystems and conventions.

@@ -24,9 +24,18 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/types.h>
+#include <sys/param.h>
+#include <sys/linker.h>
+
 typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 typedef unsigned long uintptr_t;
+typedef uintptr_t vm_offset_t;
+
+#define	ARM64_KERNBASE	0xffffff8000000000ULL
+#define	ARM64_PHYSBASE	0x0000000040000000ULL
+#define	ARM64_PTOTV_OFF	(ARM64_KERNBASE - ARM64_PHYSBASE)
 
 static volatile uint32_t *const uart_base = (uint32_t *)0x09000000;
 
@@ -36,6 +45,13 @@ static const uint32_t modinfo_metadata = 0x8000;
 static const uint32_t modinfomd_kernend = 0x0008;
 
 uintptr_t boot_modulep;
+int boothowto;
+char *kern_envp;
+uintptr_t efi_systbl_phys;
+
+extern caddr_t preload_metadata;
+void preload_bootstrap_relocate(vm_offset_t offset);
+caddr_t preload_search_by_type(const char *type);
 
 static void
 uart_putc(char ch)
@@ -118,4 +134,29 @@ initarm(uintptr_t modulep)
 	uart_puts("\r\n");
 
 	parse_modulep(modulep);
+
+	preload_metadata = (caddr_t)(modulep + ARM64_PTOTV_OFF);
+	preload_bootstrap_relocate(ARM64_PTOTV_OFF);
+
+	caddr_t kmdp = preload_search_by_type("elf kernel");
+	if (kmdp == NULL)
+		kmdp = preload_search_by_type("elf64 kernel");
+	if (kmdp == NULL) {
+		uart_puts("[arm64] no kernel metadata\r\n");
+		return;
+	}
+
+	boothowto = MD_FETCH(kmdp, MODINFOMD_HOWTO, int);
+	kern_envp = MD_FETCH(kmdp, MODINFOMD_ENVP, char *) + ARM64_PTOTV_OFF;
+	efi_systbl_phys = MD_FETCH(kmdp, MODINFOMD_FW_HANDLE, uintptr_t);
+
+	uart_puts("[arm64] boothowto=0x");
+	uart_puthex((uint64_t)boothowto);
+	uart_puts("\r\n");
+	uart_puts("[arm64] kern_envp=0x");
+	uart_puthex((uint64_t)kern_envp);
+	uart_puts("\r\n");
+	uart_puts("[arm64] efi_systbl=0x");
+	uart_puthex((uint64_t)efi_systbl_phys);
+	uart_puts("\r\n");
 }
