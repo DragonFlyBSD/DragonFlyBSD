@@ -125,6 +125,9 @@ elf64_exec(struct preloaded_file *fp)
 		printf("bi_load failed: %d\n", err);
 		return (err);
 	}
+	printf("modulep=0x%lx header=%08x %08x\n",
+	    (unsigned long)modulep,
+	    ((uint32_t *)modulep)[0], ((uint32_t *)modulep)[1]);
 
 	/*
 	 * At this point:
