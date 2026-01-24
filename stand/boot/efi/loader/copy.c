@@ -111,9 +111,11 @@ efi_copyin(const void *src, vm_offset_t dest, const size_t len)
 		EFI_STATUS	status;
 		size_t		pages;
 		EFI_PHYSICAL_ADDRESS base;
+		EFI_PHYSICAL_ADDRESS align;
 
-		pages = STAGE_PAGES;
-		base = (EFI_PHYSICAL_ADDRESS)dest;
+		align = 2 * 1024 * 1024;
+		pages = EFI_SIZE_TO_PAGES(align);
+		base = (EFI_PHYSICAL_ADDRESS)dest & ~(align - 1);
 		status = BS->AllocatePages(AllocateAddress, EfiLoaderCode,
 		    pages, &base);
 		if (EFI_ERROR(status)) {
@@ -165,9 +167,11 @@ efi_readin(const int fd, vm_offset_t dest, const size_t len)
 		EFI_STATUS	status;
 		size_t		pages;
 		EFI_PHYSICAL_ADDRESS base;
+		EFI_PHYSICAL_ADDRESS align;
 
-		pages = STAGE_PAGES;
-		base = (EFI_PHYSICAL_ADDRESS)dest;
+		align = 2 * 1024 * 1024;
+		pages = EFI_SIZE_TO_PAGES(align);
+		base = (EFI_PHYSICAL_ADDRESS)dest & ~(align - 1);
 		status = BS->AllocatePages(AllocateAddress, EfiLoaderCode,
 		    pages, &base);
 		if (EFI_ERROR(status)) {
