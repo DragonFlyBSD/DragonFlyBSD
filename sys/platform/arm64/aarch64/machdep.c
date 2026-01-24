@@ -297,6 +297,9 @@ initarm(uintptr_t modulep)
 		return;
 	}
 
+	if (modulep < ARM64_KERNBASE)
+		modulep += ARM64_PTOTV_OFF;
+
 	uart_puts("[arm64] initarm: modulep=0x");
 	uart_puthex((u_int64_t)modulep);
 	uart_puts("\r\n");
