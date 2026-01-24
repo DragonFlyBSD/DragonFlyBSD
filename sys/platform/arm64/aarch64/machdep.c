@@ -237,18 +237,17 @@ roundup_uintptr(uintptr_t value, uintptr_t align)
 }
 
 static void
-parse_modulep(uintptr_t modulep)
+dump_modulep_headers(const char *label, uintptr_t modulep)
 {
 	u_int32_t *hdr;
 	uintptr_t next;
-	const char *name;
-	uintptr_t kernend;
 	int i;
 
 	hdr = (u_int32_t *)modulep;
-	kernend = 0;
 
-	uart_puts("[arm64] modulep header: ");
+	uart_puts("[arm64] ");
+	uart_puts(label);
+	uart_puts(" header: ");
 	for (i = 0; i < 4; i++) {
 		uart_puthex(hdr[0]);
 		uart_putc(' ');
@@ -259,6 +258,23 @@ parse_modulep(uintptr_t modulep)
 		hdr = (u_int32_t *)((uintptr_t)hdr + next);
 	}
 	uart_puts("\r\n");
+
+}
+
+static void
+parse_modulep(uintptr_t modulep)
+{
+	u_int32_t *hdr;
+	uintptr_t next;
+	const char *name;
+	uintptr_t kernend;
+
+	dump_modulep_headers("modulep", modulep);
+	if (modulep > ARM64_PTOTV_OFF)
+		dump_modulep_headers("modulep-pa", modulep - ARM64_PTOTV_OFF);
+
+	hdr = (u_int32_t *)modulep;
+	kernend = 0;
 
 	hdr = (u_int32_t *)modulep;
 
