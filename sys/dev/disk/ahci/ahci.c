@@ -769,6 +769,16 @@ ahci_port_link_pwr_state(struct ahci_port *ap)
 	uint32_t r;
 
 	r = ahci_pread(ap, AHCI_PREG_SSTS);
+	switch (r & AHCI_PREG_SSTS_DET) {
+	case SATA_PM_SSTS_DET_NONE:
+		return 5;
+	case SATA_PM_SSTS_DET_DEV_NE:
+		return 6;
+	case SATA_PM_SSTS_DET_PHYOFFLINE:
+		return 7;
+	default:
+		break;
+	}
 	switch (r & AHCI_PREG_SSTS_IPM) {
 	case AHCI_PREG_SSTS_IPM_ACTIVE:
 		return 1;
