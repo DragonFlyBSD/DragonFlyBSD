@@ -114,4 +114,6 @@ ${LIBEFI}:
 DPADD=		${LIBEFI} ${LIBSTAND} ${LIBDLOADER} ${LDSCRIPT}
 LDADD=		${LIBEFI} ${LIBSTAND} ${LIBDLOADER}
 
+${PROG}: ${LIBEFI}
+
 .include <bsd.prog.mk>
