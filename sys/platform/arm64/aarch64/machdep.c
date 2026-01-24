@@ -77,6 +77,7 @@ static int arm64_physmem_count;
 static u_int64_t arm64_boot_alloc_base;
 static u_int64_t arm64_boot_alloc_end;
 static u_int64_t arm64_boot_alloc_next;
+static u_int64_t arm64_ttbr1_candidate;
 
 static void
 arm64_zero_page(u_int64_t addr)
@@ -185,6 +186,7 @@ arm64_pmap_bootstrap(struct arm64_phys_range *ranges, int count)
 		} else {
 			uart_puts("[arm64] boot_alloc l2 failed\r\n");
 		}
+		arm64_ttbr1_candidate = pt;
 		uart_puts("[arm64] pt l0[0]=0x");
 		uart_puthex(((u_int64_t *)(uintptr_t)pt)[0]);
 		uart_puts("\r\n");
@@ -194,6 +196,20 @@ arm64_pmap_bootstrap(struct arm64_phys_range *ranges, int count)
 	} else {
 		uart_puts("[arm64] boot_alloc pt failed\r\n");
 	}
+}
+
+static void
+arm64_ttbr1_dryrun(void)
+{
+	u_int64_t current;
+
+	__asm __volatile("mrs %0, ttbr1_el1" : "=r" (current));
+	uart_puts("[arm64] ttbr1 current=0x");
+	uart_puthex(current);
+	uart_puts("\r\n");
+	uart_puts("[arm64] ttbr1 candidate=0x");
+	uart_puthex(arm64_ttbr1_candidate);
+	uart_puts("\r\n");
 }
 
 static volatile u_int32_t *const uart_base = (u_int32_t *)0x09000000;
@@ -529,6 +545,8 @@ initarm(uintptr_t modulep)
 			uart_puts("\r\n");
 		}
 		arm64_pmap_bootstrap(arm64_physmem, arm64_physmem_count);
+		if (arm64_ttbr1_candidate != 0)
+			arm64_ttbr1_dryrun();
 	} else {
 		uart_puts("[arm64] no efi map\r\n");
 	}
