@@ -76,6 +76,20 @@ static u_int64_t arm64_boot_alloc_base;
 static u_int64_t arm64_boot_alloc_end;
 static u_int64_t arm64_boot_alloc_next;
 
+static u_int64_t
+arm64_boot_alloc(u_int64_t size, u_int64_t align)
+{
+	u_int64_t addr;
+
+	if (align == 0)
+		align = 4096;
+	addr = roundup(arm64_boot_alloc_next, align);
+	if (addr + size > arm64_boot_alloc_end)
+		return (0);
+	arm64_boot_alloc_next = addr + size;
+	return (addr);
+}
+
 static void uart_puts(const char *str);
 static void uart_puthex(u_int64_t value);
 
@@ -115,6 +129,17 @@ arm64_pmap_bootstrap(struct arm64_phys_range *ranges, int count)
 	uart_puts("-0x");
 	uart_puthex(arm64_boot_alloc_end);
 	uart_puts("\r\n");
+
+	u_int64_t scratch = arm64_boot_alloc(2 * 4096, 4096);
+	if (scratch != 0) {
+		uart_puts("[arm64] boot_alloc scratch 0x");
+		uart_puthex(scratch);
+		uart_puts("-0x");
+		uart_puthex(scratch + (2 * 4096));
+		uart_puts("\r\n");
+	} else {
+		uart_puts("[arm64] boot_alloc scratch failed\r\n");
+	}
 }
 
 static volatile u_int32_t *const uart_base = (u_int32_t *)0x09000000;
