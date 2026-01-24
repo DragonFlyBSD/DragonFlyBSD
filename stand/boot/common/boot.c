@@ -252,11 +252,12 @@ autoboot(int timeout, char *prompt)
 	    otime = ntime;
 	}
     }
-    if (yes)
+    if (yes) {
 	if (!quiet_serial)
 	    printf("\rBooting [%s]...               ", kernelname);
 	else
 	    printf("Booting [%s]...\n", kernelname);
+    }
     if (!quiet_serial)
 	putchar('\n');
     if (yes) {
