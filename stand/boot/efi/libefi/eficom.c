@@ -34,7 +34,8 @@
 
 static EFI_GUID serial = EFI_SERIAL_IO_PROTOCOL_GUID;
 static EFI_GUID devpath_guid = DEVICE_PATH_PROTOCOL;
-static EFI_GUID global = EFI_GLOBAL_VARIABLE;
+static EFI_GUID global = { 0x8be4df61, 0x93ca, 0x11d2,
+    { 0xaa, 0x0d, 0x00, 0xe0, 0x98, 0x03, 0x2b, 0x8c } };
 
 #define	COMC_TXWAIT	0x40000		/* transmit timeout */
 
@@ -67,6 +68,7 @@ static EFI_DEVICE_PATH *efi_lookup_devpath(EFI_HANDLE handle);
 static void	efi_close_devpath(EFI_HANDLE handle __unused);
 static EFI_STATUS efi_global_getenv(const char *name, void *data,
     size_t *sz);
+static CHAR16 *ascii_to_ucs2(const char *str);
 
 static struct serial	*comc_port;
 extern struct console efi_console;
@@ -601,8 +603,7 @@ efi_global_getenv(const char *name, void *data, size_t *sz)
 	EFI_STATUS status;
 	UINTN datasz;
 
-	var = NULL;
-	var = utf8_to_ucs2(name);
+	var = ascii_to_ucs2(name);
 	if (var == NULL)
 		return (EFI_OUT_OF_RESOURCES);
 	datasz = (UINTN)*sz;
@@ -610,4 +611,21 @@ efi_global_getenv(const char *name, void *data, size_t *sz)
 	free(var);
 	*sz = (size_t)datasz;
 	return (status);
+}
+
+static CHAR16 *
+ascii_to_ucs2(const char *str)
+{
+	CHAR16 *out;
+	size_t len;
+	size_t i;
+
+	len = strlen(str);
+	out = malloc((len + 1) * sizeof(*out));
+	if (out == NULL)
+		return (NULL);
+	for (i = 0; i < len; i++)
+		out[i] = (unsigned char)str[i];
+	out[len] = 0;
+	return (out);
 }
