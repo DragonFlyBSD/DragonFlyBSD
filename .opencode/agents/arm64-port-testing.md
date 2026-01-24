@@ -28,11 +28,11 @@ What “testing” means in this project:
 - VM access: ssh root@devbox.sector.int -p 6021
 - Repo root on VM: /usr/src
 - Pull: cd /usr/src && git pull
-- Rebuild loader:
+- Rebuild loader (allow up to 180s):
   - cd /usr/src/stand/boot/efi/loader
   - make clean
   - make MACHINE_ARCH=aarch64 MACHINE=aarch64 CC=aarch64-none-elf-gcc
-- Rebuild kernel:
+- Rebuild kernel (allow up to 180s):
   - cd /usr/src/sys/platform/arm64/aarch64
   - make clean
   - make
@@ -48,10 +48,10 @@ Important: the kernel must be placed at /tmp/efi_test/KERNEL/kernel for the load
 If the harness currently copies the kernel somewhere else, create the KERNEL directory and copy it into place as part of testing.
 
 3) Run QEMU test
-- Default timeout: 300 seconds
+- Default timeout: 25 seconds
 - Command:
   - cd tools/arm64-test
-  - make test TEST_TIMEOUT=300
+  - make test TEST_TIMEOUT=25
 
 What to report to the primary agent:
 - Status: PASS/FAIL
