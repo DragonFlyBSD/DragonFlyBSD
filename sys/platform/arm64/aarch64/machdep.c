@@ -163,8 +163,28 @@ arm64_pmap_bootstrap(struct arm64_phys_range *ranges, int count)
 		arm64_zero_page(pt + 4096);
 		((u_int64_t *)(uintptr_t)pt)[0] =
 		    ((pt + 4096) & ~0xfffULL) | 0x3;
-		((u_int64_t *)(uintptr_t)(pt + 4096))[0] =
-		    ARM64_PHYSBASE | PTE_BLOCK_NORMAL_FLAGS;
+
+		u_int64_t l2 = arm64_boot_alloc(4096, 4096);
+		if (l2 != 0) {
+			arm64_zero_page(l2);
+			((u_int64_t *)(uintptr_t)(pt + 4096))[0] =
+			    (l2 & ~0xfffULL) | 0x3;
+			((u_int64_t *)(uintptr_t)l2)[0] =
+			    ARM64_PHYSBASE | PTE_BLOCK_NORMAL_FLAGS;
+			((u_int64_t *)(uintptr_t)l2)[1] =
+			    (ARM64_PHYSBASE + 0x200000) | PTE_BLOCK_NORMAL_FLAGS;
+			uart_puts("[arm64] pt l2=0x");
+			uart_puthex(l2);
+			uart_puts("\r\n");
+			uart_puts("[arm64] pt l2[0]=0x");
+			uart_puthex(((u_int64_t *)(uintptr_t)l2)[0]);
+			uart_puts("\r\n");
+			uart_puts("[arm64] pt l2[1]=0x");
+			uart_puthex(((u_int64_t *)(uintptr_t)l2)[1]);
+			uart_puts("\r\n");
+		} else {
+			uart_puts("[arm64] boot_alloc l2 failed\r\n");
+		}
 		uart_puts("[arm64] pt l0[0]=0x");
 		uart_puthex(((u_int64_t *)(uintptr_t)pt)[0]);
 		uart_puts("\r\n");
