@@ -22,6 +22,7 @@ DISK_IMAGE      ?= $(VM_DIR)/dfly.qcow2
 EFI_TEST_DIR    ?= /tmp/efi_test
 EFI_BOOT_DIR    ?= $(EFI_TEST_DIR)/EFI/BOOT
 BOOTAA64_EFI    ?= $(EFI_BOOT_DIR)/BOOTAA64.EFI
+STARTUP_NSH     ?= $(EFI_TEST_DIR)/startup.nsh
 
 # QEMU settings
 QEMU            ?= qemu-system-aarch64
@@ -132,6 +133,7 @@ copy-all: copy-loader copy-kernel
 run: check-deps
 	@test -f $(BOOTAA64_EFI) || \
 		{ echo "Error: $(BOOTAA64_EFI) not found. Run 'make setup' first."; exit 1; }
+	@printf "BOOTAA64.EFI console=eficom\r\n" > $(STARTUP_NSH)
 	@echo "Starting QEMU (press Ctrl-A X to exit)..."
 	$(QEMU) $(QEMU_ARGS) $(QEMU_DRIVE)
 
@@ -139,6 +141,7 @@ run: check-deps
 run-gui: check-deps
 	@test -f $(BOOTAA64_EFI) || \
 		{ echo "Error: $(BOOTAA64_EFI) not found. Run 'make setup' first."; exit 1; }
+	@printf "BOOTAA64.EFI\r\n" > $(STARTUP_NSH)
 	@echo "Starting QEMU with graphical display (close window to exit)..."
 	$(QEMU) $(QEMU_ARGS_GUI) $(QEMU_DRIVE)
 
@@ -146,6 +149,7 @@ run-gui: check-deps
 test: check-deps
 	@test -f $(BOOTAA64_EFI) || \
 		{ echo "Error: $(BOOTAA64_EFI) not found. Run 'make setup' first."; exit 1; }
+	@printf "BOOTAA64.EFI console=eficom\r\n" > $(STARTUP_NSH)
 	@echo "Starting QEMU with $(TEST_TIMEOUT)s timeout..."
 	@( $(QEMU) $(QEMU_ARGS_TEST) $(QEMU_DRIVE) & \
 		QEMU_PID=$$!; \

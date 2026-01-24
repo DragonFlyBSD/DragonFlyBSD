@@ -54,6 +54,9 @@ struct netif_driver *netif_drivers[] = {
 };
 
 extern struct console efi_console;
+#if defined(__aarch64__)
+extern struct console eficom;
+#endif
 #if defined(__x86_64__)
 extern struct console comconsole;
 extern struct console nullconsole;
@@ -61,6 +64,9 @@ extern struct console nullconsole;
 
 struct console *consoles[] = {
 	&efi_console,
+#if defined(__aarch64__)
+	&eficom,
+#endif
 #if defined(__x86_64__)
 	&comconsole,
 	&nullconsole,

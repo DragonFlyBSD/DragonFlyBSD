@@ -379,11 +379,17 @@ main(int argc, CHAR16 *argv[])
 	printf("Image base: 0x%lx\n", (u_long)img->ImageBase);
 	printf("EFI version: %d.%02d\n", ST->Hdr.Revision >> 16,
 	    ST->Hdr.Revision & 0xffff);
-	printf("EFI Firmware: ");
-	/* printf doesn't understand EFI Unicode */
-	ST->ConOut->OutputString(ST->ConOut, ST->FirmwareVendor);
-	printf(" (rev %d.%02d)\n", ST->FirmwareRevision >> 16,
-	    ST->FirmwareRevision & 0xffff);
+	if (strstr(getenv("console") ? getenv("console") : "", "eficom") != NULL) {
+		printf("EFI Firmware: (eficom) (rev %d.%02d)\n",
+		    ST->FirmwareRevision >> 16,
+		    ST->FirmwareRevision & 0xffff);
+	} else {
+		printf("EFI Firmware: ");
+		/* printf doesn't understand EFI Unicode */
+		ST->ConOut->OutputString(ST->ConOut, ST->FirmwareVendor);
+		printf(" (rev %d.%02d)\n", ST->FirmwareRevision >> 16,
+		    ST->FirmwareRevision & 0xffff);
+	}
 
 	printf("\n");
 	printf("%s, Revision %s\n", bootprog_name, bootprog_rev);
