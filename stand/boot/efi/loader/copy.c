@@ -160,6 +160,28 @@ efi_copyout(const vm_offset_t src, void *dest, const size_t len)
 ssize_t
 efi_readin(const int fd, vm_offset_t dest, const size_t len)
 {
+	if (!stage_offset_set) {
+#if defined(__aarch64__)
+		EFI_STATUS	status;
+		size_t		pages;
+		EFI_PHYSICAL_ADDRESS base;
+
+		pages = STAGE_PAGES;
+		base = (EFI_PHYSICAL_ADDRESS)dest;
+		status = BS->AllocatePages(AllocateAddress, EfiLoaderCode,
+		    pages, &base);
+		if (EFI_ERROR(status)) {
+			printf("failed to allocate kernel pages at 0x%llx: %llu\n",
+			    (unsigned long long)base, status);
+			errno = ENOMEM;
+			return (-1);
+		}
+		staging = base;
+		staging_end = staging + pages * EFI_PAGE_SIZE;
+		stage_offset = 0;
+		stage_offset_set = 1;
+#endif
+	}
 
 	if (dest + stage_offset + len > staging_end) {
 		errno = ENOMEM;
