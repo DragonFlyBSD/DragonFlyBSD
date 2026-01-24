@@ -1,0 +1,12 @@
+# Minimal ARM64 kernel config for bring-up
+
+machine		arm64
+cpu		AARCH64
+ident		ARM64_GENERIC
+
+options		PL011
+
+makeoptions	DEBUG=-g
+
+options		DDB
+options		KDB
