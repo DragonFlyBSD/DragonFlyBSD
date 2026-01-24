@@ -107,13 +107,14 @@ loader.efi: ${PROG}
 
 LIBEFI=		${.OBJDIR}/../libefi/libefi.a
 
-${LIBEFI}:
+.PHONY: libefi
+libefi:
 	${MAKE} -C ${.CURDIR}/../libefi MACHINE_ARCH=${MACHINE_ARCH} \
 	    MACHINE=${MACHINE} CC=${CC}
 
 DPADD=		${LIBEFI} ${LIBSTAND} ${LIBDLOADER} ${LDSCRIPT}
 LDADD=		${LIBEFI} ${LIBSTAND} ${LIBDLOADER}
 
-${PROG}: ${LIBEFI}
+${PROG}: libefi
 
 .include <bsd.prog.mk>
