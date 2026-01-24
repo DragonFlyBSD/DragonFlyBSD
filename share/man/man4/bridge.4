@@ -33,7 +33,7 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\"
-.Dd June 20, 2024
+.Dd January 24, 2026
 .Dt BRIDGE 4
 .Os
 .Sh NAME
@@ -66,7 +66,7 @@ manual page for further information on configuring bridges.
 A bridge can be used to provide several services, such as a simple
 802.11-to-Ethernet bridge for wireless hosts, and traffic isolation.
 .Pp
-A bridge works like a hub, forwarding traffic from one interface
+A bridge works like a switch, forwarding traffic from one interface
 to another.
 Multicast and broadcast packets are always forwarded to all
 interfaces that are part of the bridge.
@@ -85,7 +85,7 @@ options.
 .Bl -tag -width indent
 .It Cm link0
 The link0 option enables transparent bridging mode.
-The bridge will make every effort to retain the ethernet header
+The bridge will make every effort to retain the Ethernet header
 when forwarding packets between interfaces, making the bridging
 function work more like a hardware bridge device.
 .It Cm link1
@@ -98,29 +98,35 @@ This option is implemented by sending CFG updates on the hello interval
 to the remote.
 The link is considered lost after 10 intervals (typically 20 seconds).
 .It Cm link2
-The link2 option enables channel bonding (see also ifbondweight, ifpriority).
-All member interfaces with the same mac address are considered to
+The link2 option enables channel bonding (see also
+.Cm ifbondweight
+and
+.Cm ifpriority
+parameters).
+All member interfaces with the same MAC address are considered to
 be in a bonding group.  Packets will be sent on the highest priority
 interface(s) in the bonding group, and will round-robin output interfaces
 when multiple (highest priority) interfaces have the same priority.
 When something like
 .Xr tap 4
-is used, you can manually control or copy the mac to create bonding groups.
-When interface bonding is enabled normally blocked interfaces belonging
+is used, you can manually control or copy the MAC to create bonding groups.
+When interface bonding is enabled, normally blocked interfaces belonging
 to the same bonding group as an active forwarding interface will be
 changed to the bonding state.
 Both sides of link the member represents must operate in bonding mode
 for this to work, otherwise the remote end may decide to throw away
 half your packets.
 .El
-.Pp
-If your network becomes glitchy, with long pauses in tcp sessions, then
+.Sh TROUBLESHOOTING
+If your network becomes glitchy, with long pauses in TCP sessions, then
 transparent bridging mode is likely the cause.  This mode should only be
 used when you are bridging networks with devices that do MAC-based security
-or firewalling (for example, the supremely braindead at&t uverse router),
+or firewalling (for example, the supremely braindead AT&T U-verse router),
 or which impose severe limitations on MAC:IP assignments.
 .Pp
-If member interfaces constantly enter a 'blocked (link1)' state then the
+If member interfaces constantly enter a
+.Dq blocked
+(link1) state then the
 other end of those interfaces is not implementing the link1 keepalive.
 Both sides must implement the keepalive.
 .Pp
@@ -159,7 +165,7 @@ and set
 .Va net.link.bridge.pfil_onlyip
 to
 .Li 1
-to only allow IP and IPv6 packets to be forawarded when filtering is
+to only allow IP and IPv6 packets to be forwarded when filtering is
 enabled.
 For example, setting
 .Va net.link.bridge.pfil_onlyip
@@ -187,7 +193,7 @@ Specifying
 .Cm link0
 on the bridge interface places the bridge in transparent bridging mode.
 The bridge will make every attempt to retain the original source MAC in
-the ethernet link header.
+the Ethernet link header.
 .Pp
 Specifying
 .Cm link1
@@ -201,8 +207,10 @@ all interface participating in the STP protocol.
 .Pp
 An interface which fails to receive a 802.11d frame within 10 times
 the hello interval (usually 20 seconds) automatically goes into
-l1blocking mode, which can be observed in the ifconfig output for
-the bridge.  This removes the interface from consideration and the
+link1 blocking mode, which can be observed in the
+.Xr ifconfig 8
+output for the bridge.
+This removes the interface from consideration and the
 bridge code automatically routes around it.
 .Pp
 Using
@@ -211,15 +219,18 @@ and
 .Cm link1
 together between two
 .Dx
-boxes allows you to maintain multiple parallel vpns between those
+boxes allows you to maintain multiple parallel links between those
 boxes via different networks (if you happen to be on more than one
 with internet access).
-Use separate openvpn instances and tap devices for each vpn link
-to accomplish this, placing them in the same bridge interface on
-the two endpoints.
-The tap devices do not need any IP configuration when bridged and
-can be assigned the same ether MAC (in fact they have to be
-if you want the failover to work nicely).
+For example, use separate OpenVPN instances and
+.Xr tap 4
+devices for each VPN link to accomplish this, placing them in the same
+bridge interface on the two endpoints.
+The
+.Xr tap 4
+devices do not need any IP configuration when bridged and
+can be assigned the same MAC address;
+in fact, they have to be if you want the failover to work nicely.
 .Sh SEE ALSO
 .Xr pf 4 ,
 .Xr ifconfig 8
@@ -249,5 +260,5 @@ driver has been heavily modified from the original version by
 .Sh BUGS
 The
 .Nm
-driver currently supports only Ethernet and Ethernet-like (e.g. 802.11)
+driver currently supports only Ethernet and Ethernet-like (e.g., 802.11)
 network devices, with exactly the same interface MTU size as the bridge device.
