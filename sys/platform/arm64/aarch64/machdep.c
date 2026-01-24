@@ -72,6 +72,10 @@ struct arm64_phys_range {
 static struct arm64_phys_range arm64_physmem[ARM64_MAX_PHYSMEM_RANGES];
 static int arm64_physmem_count;
 
+static u_int64_t arm64_boot_alloc_base;
+static u_int64_t arm64_boot_alloc_end;
+static u_int64_t arm64_boot_alloc_next;
+
 static void uart_puts(const char *str);
 static void uart_puthex(u_int64_t value);
 
@@ -100,6 +104,16 @@ arm64_pmap_bootstrap(struct arm64_phys_range *ranges, int count)
 	uart_puthex(ranges[best].start);
 	uart_puts("-0x");
 	uart_puthex(ranges[best].end);
+	uart_puts("\r\n");
+
+	arm64_boot_alloc_base = roundup(ranges[best].start, 4096);
+	arm64_boot_alloc_end = ranges[best].end;
+	arm64_boot_alloc_next = arm64_boot_alloc_base;
+
+	uart_puts("[arm64] boot_alloc range 0x");
+	uart_puthex(arm64_boot_alloc_base);
+	uart_puts("-0x");
+	uart_puthex(arm64_boot_alloc_end);
 	uart_puts("\r\n");
 }
 
