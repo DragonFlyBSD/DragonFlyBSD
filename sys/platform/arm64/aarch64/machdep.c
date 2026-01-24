@@ -72,6 +72,24 @@ struct arm64_phys_range {
 static struct arm64_phys_range arm64_physmem[ARM64_MAX_PHYSMEM_RANGES];
 static int arm64_physmem_count;
 
+static void uart_puts(const char *str);
+static void uart_puthex(u_int64_t value);
+
+static void
+arm64_pmap_bootstrap(struct arm64_phys_range *ranges, int count)
+{
+	if (count == 0) {
+		uart_puts("[arm64] pmap bootstrap: no ranges\r\n");
+		return;
+	}
+
+	uart_puts("[arm64] pmap bootstrap: first range 0x");
+	uart_puthex(ranges[0].start);
+	uart_puts("-0x");
+	uart_puthex(ranges[0].end);
+	uart_puts("\r\n");
+}
+
 static volatile u_int32_t *const uart_base = (u_int32_t *)0x09000000;
 
 static const u_int32_t modinfo_end = 0x0000;
@@ -403,6 +421,7 @@ initarm(uintptr_t modulep)
 			uart_puthex(arm64_physmem[i].end);
 			uart_puts("\r\n");
 		}
+		arm64_pmap_bootstrap(arm64_physmem, arm64_physmem_count);
 	} else {
 		uart_puts("[arm64] no efi map\r\n");
 	}
