@@ -242,8 +242,8 @@ initarm(uintptr_t modulep)
 
 	parse_modulep(modulep);
 
-	preload_metadata = (caddr_t)(modulep + ARM64_PTOTV_OFF);
-	preload_bootstrap_relocate(ARM64_PTOTV_OFF);
+	preload_metadata = (caddr_t)modulep;
+	preload_bootstrap_relocate(0);
 
 	caddr_t kmdp = preload_search_by_type("elf kernel");
 	if (kmdp == NULL)
@@ -254,7 +254,7 @@ initarm(uintptr_t modulep)
 	}
 
 	boothowto = md_fetch_int(kmdp, MODINFOMD_HOWTO);
-	kern_envp = (char *)(md_fetch_uintptr(kmdp, MODINFOMD_ENVP) + ARM64_PTOTV_OFF);
+	kern_envp = (char *)md_fetch_uintptr(kmdp, MODINFOMD_ENVP);
 	efi_systbl_phys = md_fetch_uintptr(kmdp, MODINFOMD_FW_HANDLE);
 
 	uart_puts("[arm64] boothowto=0x");
