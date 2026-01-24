@@ -54,8 +54,13 @@ efi_copy_init(void)
 {
 	EFI_STATUS	status;
 	size_t		pages = STAGE_PAGES;
+	EFI_MEMORY_TYPE	alloc_type = EfiLoaderData;
 
-	status = BS->AllocatePages(AllocateAnyPages, EfiLoaderData,
+#if defined(__aarch64__)
+	alloc_type = EfiLoaderCode;
+#endif
+
+	status = BS->AllocatePages(AllocateAnyPages, alloc_type,
 	    pages, &staging);
 	if (EFI_ERROR(status)) {
 		printf("failed to allocate %uMB staging area: %llu\n",
@@ -63,7 +68,7 @@ efi_copy_init(void)
 		printf("retrying with smaller %uMB allocation\n",
 		    EFI_STAGING_SIZE/2);
 		pages /= 2;
-		status = BS->AllocatePages(AllocateAnyPages, EfiLoaderData,
+		status = BS->AllocatePages(AllocateAnyPages, alloc_type,
 		    pages, &staging);
 	}
 	if (EFI_ERROR(status)) {
