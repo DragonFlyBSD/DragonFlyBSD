@@ -31,7 +31,7 @@
 #include <efilib.h>
 
 /* DEBUG: Direct UART output for QEMU virt (PL011 at 0x09000000) */
-#if defined(__aarch64__)
+#if defined(__aarch64__) && defined(LOADER_DEBUG_UART)
 static inline void debug_uart_putc(char c)
 {
 	volatile unsigned int *uart = (volatile unsigned int *)0x09000000;
