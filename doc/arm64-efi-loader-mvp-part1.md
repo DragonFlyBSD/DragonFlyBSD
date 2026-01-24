@@ -83,7 +83,7 @@ Create a minimal arm64 kernel that the EFI loader can load and execute, prints a
 
 Two components:
 1. **Loader**: Implement `elf64_exec()` to load and jump to kernel
-2. **Kernel**: Create stub that prints to PL011 UART (0x09000000 on QEMU virt)
+2. **Kernel**: Create stub that prints to PL011 UART (0x09010000 on QEMU virt)
 
 ### Part A: Loader Changes
 
@@ -114,7 +114,7 @@ sys/platform/arm64/
 
 **Kernel entry (`locore.S`):**
 1. Entry at `_start`, receive `modulep` in x0
-2. Write "DragonFly arm64 kernel!\n" to PL011 UART at 0x09000000
+2. Write "DragonFly arm64 kernel!\n" to PL011 UART at 0x09010000
 3. Infinite loop (halt)
 
 ### Part C: Kernel Entry Signature

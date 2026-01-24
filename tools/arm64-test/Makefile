@@ -31,6 +31,7 @@ QEMU_CPU        ?= cortex-a72
 QEMU_MEMORY     ?= 512M
 QEMU_BIOS       ?= /opt/homebrew/share/qemu/edk2-aarch64-code.fd
 TEST_TIMEOUT    ?= 25
+EFI_SERIAL_LOG  ?= /tmp/efi-serial.log
 
 # Remote VM (for copying fresh builds)
 VM_HOST         ?= devbox.sector.int
@@ -44,7 +45,9 @@ QEMU_ARGS_BASE = \
 	-M $(QEMU_MACHINE) \
 	-cpu $(QEMU_CPU) \
 	-m $(QEMU_MEMORY) \
-	-bios $(QEMU_BIOS)
+	-bios $(QEMU_BIOS) \
+	-serial file:$(EFI_SERIAL_LOG) \
+	-serial stdio
 
 # Console mode arguments
 QEMU_ARGS = $(QEMU_ARGS_BASE) -serial stdio -device ramfb -display none
