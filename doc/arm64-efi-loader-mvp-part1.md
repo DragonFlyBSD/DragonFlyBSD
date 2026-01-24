@@ -148,6 +148,87 @@ The `modulep` pointer references preload metadata - a linked list of module info
 
 ---
 
+## MVP Part 3: Early MMU Bootstrap (PLANNED)
+
+### Goal
+
+Replace the loader-side MMU disable workaround with a FreeBSD-derived, kernel-controlled page table setup that enables the MMU early and preserves the DragonFly boot flow.
+
+### FreeBSD Reference (Do Not Copy Without License)
+
+Reference these files and follow their order of operations. Any reused code must include compatible FreeBSD license headers and be adapted to DragonFlyBSD subsystems and conventions.
+
+**Loader:**
+- `.freebsd.orig/stand/efi/loader/arch/arm64/exec.c`
+- `.freebsd.orig/stand/efi/loader/arch/arm64/start.S`
+
+**Kernel entry/MMU:**
+- `.freebsd.orig/sys/arm64/arm64/locore.S`
+- `.freebsd.orig/sys/arm64/arm64/machdep.c`
+- `.freebsd.orig/sys/arm64/arm64/machdep_boot.c`
+- `.freebsd.orig/sys/arm64/include/machdep.h`
+- `.freebsd.orig/sys/arm64/arm64/pmap.c`
+
+### Plan (Clear Steps by Section)
+
+#### 1) Loader Handoff (No New Work Required)
+
+1. Keep the existing DragonFly loader flow: `dev_cleanup()`, `bi_load()`, cache flush, jump to kernel entry with `modulep` in x0.
+2. Once kernel MMU setup is implemented, remove the loader-side MMU disable workaround.
+
+#### 2) Kernel Entry Order (locore.S)
+
+1. Enter the kernel exception level (EL1) and ensure MMU is off in EL2 entry cases.
+2. Compute the physical load address (FreeBSD uses `get_load_phys_addr`).
+3. Build page tables (see section 3).
+4. Enable MMU (see section 4).
+5. Switch to the virtual address space.
+6. Set up an initial stack, zero BSS.
+7. Build a bootparams struct containing at least: modulep, kern_stack, kern_ttbr0, boot_el.
+8. Branch to early C init (DragonFly equivalent of `initarm`).
+
+#### 3) Early Page Tables (Identity + Kernel + UART)
+
+1. Create TTBR1 mappings for the kernel virtual region:
+   - Text: read-only, executable
+   - Data/BSS: read-write, XN
+2. Create a TTBR0 bootstrap identity map for the kernel load address (VA=PA).
+3. Map UART/PL011 device region early (device memory type) so early prints keep working.
+4. Keep the layout minimal: only the kernel and UART mappings needed to reach C init.
+
+#### 4) MMU Enable Sequence
+
+1. Set exception vectors (VBAR_EL1).
+2. Load TTBR0/TTBR1 with bootstrap + kernel tables.
+3. Invalidate TLBs and synchronize (DSB/ISB).
+4. Program MAIR_EL1 with device and normal WB attributes.
+5. Program TCR_EL1 for 4K pages, inner/outer WBWA, shareability.
+6. Enable SCTLR_EL1 MMU + caches and issue ISB.
+
+#### 5) Early C Init (DragonFly-side)
+
+1. Parse boot metadata from `modulep` (FreeBSD uses `parse_boot_param`).
+2. Initialize per-CPU data needed by pmap bootstrap.
+3. Bootstrap DMAP (or DragonFly equivalent) and exclude EFI ranges as needed.
+4. Complete pmap bootstrap.
+5. Initialize console (`cninit`) and switch to final TTBR0 if required.
+
+#### 6) Tests
+
+1. Rebuild loader and kernel on the VM.
+2. Copy artifacts with `tools/arm64-test/Makefile` targets.
+3. Run `make test TEST_TIMEOUT=300`.
+4. Expect UART output from the kernel without needing to disable MMU in the loader.
+
+### Success Criteria
+
+- Kernel boots with MMU enabled by the kernel (no loader-side MMU disable).
+- Early UART output works after enabling MMU.
+- No instruction aborts on kernel entry.
+- Boot metadata is readable in C init.
+
+---
+
 ## Development Environment
 
 - **Local repo:** `/Users/tuxillo/s/dragonfly`
