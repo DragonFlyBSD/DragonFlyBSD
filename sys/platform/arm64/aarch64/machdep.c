@@ -78,15 +78,28 @@ static void uart_puthex(u_int64_t value);
 static void
 arm64_pmap_bootstrap(struct arm64_phys_range *ranges, int count)
 {
+	u_int64_t best_size;
+	int best;
+
 	if (count == 0) {
 		uart_puts("[arm64] pmap bootstrap: no ranges\r\n");
 		return;
 	}
 
-	uart_puts("[arm64] pmap bootstrap: first range 0x");
-	uart_puthex(ranges[0].start);
+	best = 0;
+	best_size = ranges[0].end - ranges[0].start;
+	for (int i = 1; i < count; i++) {
+		u_int64_t size = ranges[i].end - ranges[i].start;
+		if (size > best_size) {
+			best = i;
+			best_size = size;
+		}
+	}
+
+	uart_puts("[arm64] pmap bootstrap: largest range 0x");
+	uart_puthex(ranges[best].start);
 	uart_puts("-0x");
-	uart_puthex(ranges[0].end);
+	uart_puthex(ranges[best].end);
 	uart_puts("\r\n");
 }
 
