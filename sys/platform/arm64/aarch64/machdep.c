@@ -24,12 +24,44 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
+typedef unsigned int uint32_t;
+typedef unsigned long long uint64_t;
+typedef unsigned long uintptr_t;
+
+static volatile uint32_t *const uart_base = (uint32_t *)0x09000000;
 
 uintptr_t boot_modulep;
+
+static void
+uart_putc(char ch)
+{
+	*uart_base = (uint32_t)(unsigned char)ch;
+}
+
+static void
+uart_puts(const char *str)
+{
+	while (*str != '\0') {
+		uart_putc(*str++);
+	}
+}
+
+static void
+uart_puthex(uint64_t value)
+{
+	const char *hex = "0123456789abcdef";
+	int shift;
+
+	for (shift = 60; shift >= 0; shift -= 4)
+		uart_putc(hex[(value >> shift) & 0xf]);
+}
 
 void
 initarm(uintptr_t modulep)
 {
 	boot_modulep = modulep;
+
+	uart_puts("[arm64] initarm: modulep=0x");
+	uart_puthex((uint64_t)modulep);
+	uart_puts("\r\n");
 }
