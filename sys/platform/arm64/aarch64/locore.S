@@ -123,9 +123,8 @@ halt:
 	b	halt
 
 high_trampoline:
-	ldr	x0, =0x09000000
-	mov	w1, #0x48
-	strb	w1, [x0]
+	ldr	x0, =high_msg
+	bl	uart_puts
 	ldr	x0, =halt
 	br	x0
 
@@ -143,6 +142,8 @@ exc_end_msg:
 	.asciz	"\r\n"
 hex_digits:
 	.asciz	"0123456789abcdef"
+high_msg:
+	.asciz	"\r\n[arm64] high-va\r\n"
 
 	.align	11
 exception_vectors:
