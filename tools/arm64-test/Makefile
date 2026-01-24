@@ -46,6 +46,7 @@ QEMU_ARGS_BASE = \
 	-cpu $(QEMU_CPU) \
 	-m $(QEMU_MEMORY) \
 	-bios $(QEMU_BIOS) \
+	-monitor none \
 	-serial file:$(EFI_SERIAL_LOG) \
 	-serial stdio
 
