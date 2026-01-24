@@ -199,11 +199,11 @@ create_pagetables:
 	mov	x3, xzr
 	mov	x4, #0
 
-	/* Clear L0 and L1 tables (2 pages) */
+	/* Clear L0/L1 tables for TTBR0/TTBR1 (4 pages) */
 1:
 	stp	x3, x3, [x1], #16
 	add	x4, x4, #16
-	cmp	x4, #(4096 * 2)
+	cmp	x4, #(4096 * 4)
 	b.lo	1b
 
 	/* L0 entry 0 -> L1 table */
@@ -220,6 +220,16 @@ create_pagetables:
 	ldr	x3, =PTE_BLOCK_NORMAL
 	str	x3, [x2, #8]
 
+	/* TTBR1 L0 entry 511 -> L1 table */
+	adr	x1, ttbr1_l0
+	adr	x2, ttbr1_l1
+	orr	x3, x2, #PTE_TABLE
+	str	x3, [x1, #4088]
+
+	/* TTBR1 L1 entry 0: map kernel at KERNBASE -> PA 0x40000000 */
+	ldr	x3, =PTE_BLOCK_NORMAL
+	str	x3, [x2]
+
 	ret
 
 start_mmu:
@@ -230,7 +240,8 @@ start_mmu:
 
 	adr	x0, ttbr0_l0
 	msr	ttbr0_el1, x0
-	msr	ttbr1_el1, xzr
+	adr	x0, ttbr1_l0
+	msr	ttbr1_el1, x0
 	isb
 
 	tlbi	vmalle1
@@ -260,4 +271,8 @@ initstack_end:
 ttbr0_l0:
 	.space	4096
 ttbr0_l1:
+	.space	4096
+ttbr1_l0:
+	.space	4096
+ttbr1_l1:
 	.space	4096
