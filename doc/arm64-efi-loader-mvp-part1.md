@@ -159,7 +159,7 @@ Replace the loader-side MMU disable workaround with a FreeBSD-derived, kernel-co
 Completed so far:
 - Early TTBR0 identity map and MMU enable in `sys/platform/arm64/aarch64/locore.S`
 - Early C entry (`initarm`) with modulep printing and minimal metadata parsing
-- Initial TTBR1 kernel mapping stub (L0/L1 with 1GB block)
+- TTBR1 mapping split into RX text + RW/XN data (2MB blocks)
 - High-VA trampoline to validate TTBR1 mapping
 - Synchronous exception handler prints ESR/FAR/ELR over UART
 - Loader allocates an executable window for the kernel (no MMU-disable handoff)

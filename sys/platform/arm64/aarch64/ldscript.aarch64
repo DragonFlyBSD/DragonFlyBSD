@@ -1,0 +1,22 @@
+ENTRY(_start)
+
+SECTIONS
+{
+	. = 0x40100000;
+	.text : {
+		*(.text*)
+	}
+	.rodata : {
+		*(.rodata*)
+	}
+
+	. = ALIGN(2M);
+	.data : {
+		*(.data*)
+	}
+	.bss : {
+		*(.bss*)
+		*(COMMON)
+	}
+	. = ALIGN(16);
+}

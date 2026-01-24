@@ -53,11 +53,15 @@
 .equ	PTE_TABLE, 0x3
 .equ	PTE_AF, 0x400
 .equ	PTE_SH_INNER, 0x300
+.equ	PTE_AP_RO, 0x80
+.equ	PTE_ATTRIDX_NORMAL, 0x4
 .equ	PTE_PXN, 0x0020000000000000
 .equ	PTE_UXN, 0x0040000000000000
 
 .equ	PTE_BLOCK_DEVICE, 0x0060000000000701
 .equ	PTE_BLOCK_NORMAL, 0x0000000040000705
+.equ	PTE_L2_TEXT, 0x0000000040000785
+.equ	PTE_L2_DATA, 0x0060000040200705
 
 .equ	KERNBASE, 0xffffff8000000000
 .equ	KERN_LOAD, 0x0000000040000000
@@ -221,7 +225,7 @@ create_pagetables:
 1:
 	stp	x3, x3, [x1], #16
 	add	x4, x4, #16
-	cmp	x4, #(4096 * 4)
+	cmp	x4, #(4096 * 5)
 	b.lo	1b
 
 	/* L0 entry 0 -> L1 table */
@@ -244,9 +248,19 @@ create_pagetables:
 	orr	x3, x2, #PTE_TABLE
 	str	x3, [x1, #4088]
 
-	/* TTBR1 L1 entry 0: map kernel at KERNBASE -> PA 0x40000000 */
-	ldr	x3, =PTE_BLOCK_NORMAL
+	/* TTBR1 L1 entry 0 -> L2 table */
+	adr	x1, ttbr1_l1
+	adr	x2, ttbr1_l2
+	orr	x3, x2, #PTE_TABLE
+	str	x3, [x1]
+
+	/* TTBR1 L2 entry 0: RX text at 0x40000000 */
+	ldr	x3, =PTE_L2_TEXT
 	str	x3, [x2]
+
+	/* TTBR1 L2 entry 1: RW/XN data at 0x40200000 */
+	ldr	x3, =PTE_L2_DATA
+	str	x3, [x2, #8]
 
 	ret
 
@@ -293,4 +307,6 @@ ttbr0_l1:
 ttbr1_l0:
 	.space	4096
 ttbr1_l1:
+	.space	4096
+ttbr1_l2:
 	.space	4096

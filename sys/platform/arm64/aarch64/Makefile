@@ -32,7 +32,7 @@ CFLAGS=		-ffreestanding -nostdlib -O2 -fno-builtin
 ASFLAGS=	-march=armv8-a
 
 # Linker flags - create a static ELF64 executable
-LDFLAGS=	-nostdlib -static -Ttext=$(KERNEL_LOADADDR) -e _start
+LDFLAGS=	-nostdlib -static -T ldscript.aarch64 -e _start
 
 .PHONY: all clean dump
 
