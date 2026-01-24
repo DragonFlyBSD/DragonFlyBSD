@@ -33,6 +33,8 @@
 #include <Protocol/SerialIo.h>
 
 static EFI_GUID serial = EFI_SERIAL_IO_PROTOCOL_GUID;
+static EFI_GUID devpath_guid = DEVICE_PATH_PROTOCOL;
+static EFI_GUID global = EFI_GLOBAL_VARIABLE;
 
 #define	COMC_TXWAIT	0x40000		/* transmit timeout */
 
@@ -61,6 +63,10 @@ static bool	comc_setup(void);
 static int	comc_parse_intval(const char *, unsigned *);
 static int	comc_port_set(struct env_var *, int, const void *);
 static int	comc_speed_set(struct env_var *, int, const void *);
+static EFI_DEVICE_PATH *efi_lookup_devpath(EFI_HANDLE handle);
+static void	efi_close_devpath(EFI_HANDLE handle __unused);
+static EFI_STATUS efi_global_getenv(const char *name, void *data,
+    size_t *sz);
 
 static struct serial	*comc_port;
 extern struct console efi_console;
@@ -116,7 +122,6 @@ static int
 efi_serial_get_index(EFI_DEVICE_PATH *devpath, int idx)
 {
 	ACPI_HID_DEVICE_PATH  *acpi;
-	CHAR16 *text;
 
 	while (!IsDevicePathEnd(devpath)) {
 		if (DevicePathType(devpath) == MESSAGING_DEVICE_PATH &&
@@ -248,11 +253,9 @@ comc_probe(struct console *sc)
 {
 	EFI_STATUS status;
 	EFI_HANDLE handle;
-	char name[20];
 	char value[20];
 	unsigned val;
-	char *env, *buf, *ep;
-	size_t sz;
+	char *env;
 
 #ifdef __amd64__
 	/*
@@ -482,7 +485,7 @@ comc_port_set(struct env_var *ev, int flags, const void *value)
 	    (void**)&sio, IH, NULL, EFI_OPEN_PROTOCOL_GET_PROTOCOL);
 
 	if (EFI_ERROR(status)) {
-		printf("OpenProtocol: %lu\n", DECODE_ERROR(status));
+		printf("OpenProtocol: %lu\n", (unsigned long)status);
 		return (CMD_ERROR);
 	}
 
@@ -571,4 +574,40 @@ comc_setup(void)
 	eficom.c_flags |= (C_PRESENTIN | C_PRESENTOUT);
 
 	return (true);
+}
+
+static EFI_DEVICE_PATH *
+efi_lookup_devpath(EFI_HANDLE handle)
+{
+	EFI_DEVICE_PATH *devpath;
+	EFI_STATUS status;
+
+	status = OpenProtocolByHandle(handle, &devpath_guid,
+	    (void **)&devpath);
+	if (EFI_ERROR(status))
+		return (NULL);
+	return (devpath);
+}
+
+static void
+efi_close_devpath(EFI_HANDLE handle __unused)
+{
+}
+
+static EFI_STATUS
+efi_global_getenv(const char *name, void *data, size_t *sz)
+{
+	CHAR16 *var;
+	EFI_STATUS status;
+	UINTN datasz;
+
+	var = NULL;
+	var = utf8_to_ucs2(name);
+	if (var == NULL)
+		return (EFI_OUT_OF_RESOURCES);
+	datasz = (UINTN)*sz;
+	status = RS->GetVariable(var, &global, NULL, &datasz, data);
+	free(var);
+	*sz = (size_t)datasz;
+	return (status);
 }
