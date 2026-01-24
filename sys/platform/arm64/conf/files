@@ -1,0 +1,3 @@
+# files marked standard are always included.
+#
+dev/serial/pl011/pl011_cons.c	optional	pl011
