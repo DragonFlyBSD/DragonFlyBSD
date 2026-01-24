@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  */
 
+.equ	BOOT_STACK_SIZE, 16384
 /*
  * ARM64 Kernel Entry Point (Stub)
  *
@@ -80,6 +81,14 @@ _start:
 	/* Build minimal identity page tables and enable MMU */
 	bl	create_pagetables
 	bl	start_mmu
+
+	/* Set up a temporary stack for early C code */
+	adr	x1, initstack_end
+	mov	sp, x1
+
+	/* Call early C entry with modulep */
+	mov	x0, x19
+	bl	initarm
 
 	/*
 	 * Print banner to PL011 UART at 0x09000000
@@ -185,6 +194,10 @@ start_mmu:
 	.size	_start, . - _start
 
 	.bss
+	.align	12
+initstack:
+	.space	BOOT_STACK_SIZE
+initstack_end:
 	.align	12
 ttbr0_l0:
 	.space	4096

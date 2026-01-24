@@ -18,12 +18,15 @@ OBJDUMP=	aarch64-none-elf-objdump
 KERNEL=		kernel
 
 # Source files
-SRCS=		locore.S
-OBJS=		locore.o
+SRCS=		locore.S machdep.c
+OBJS=		locore.o machdep.o
 
 # Kernel load address - must match what the loader expects
 # Using 0x40000000 (1GB) as a reasonable physical address for QEMU virt
 KERNEL_LOADADDR=	0x40100000
+
+# Compiler flags
+CFLAGS=		-ffreestanding -nostdlib -O2 -fno-builtin
 
 # Assembler flags
 ASFLAGS=	-march=armv8-a
@@ -42,6 +45,9 @@ $(KERNEL): $(OBJS)
 
 locore.o: locore.S
 	$(AS) $(ASFLAGS) -o $@ $<
+
+machdep.o: machdep.c
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 # Show disassembly for debugging
 dump: $(KERNEL)
