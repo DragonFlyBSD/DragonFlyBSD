@@ -2160,7 +2160,9 @@ compatibility.
 .El
 .\"
 .Ss Bridge Interface Parameters
-The following parameters are specific to bridge interfaces:
+The following parameters are specific to
+.Xr bridge 4
+interfaces:
 .Bl -tag -width indent
 .It Cm addm Ar interface
 Add the interface named by
@@ -2191,7 +2193,7 @@ Display the addresses that have been learned by the bridge.
 .It Cm static Ar interface-name Ar address
 Add a static entry into the address cache pointing to
 .Ar interface-name .
-Static entries are never aged out of the cache or re-placed, even if the
+Static entries are never aged out of the cache or replaced, even if the
 address is seen on a different interface.
 .It Cm deladdr Ar address
 Delete
@@ -2349,7 +2351,7 @@ packets will be round-robined between them.
 When something like
 .Xr tap 4
 is used, you can manually control or copy the MAC to create bonding groups.
-When interface bonding is enabled normally blocked interfaces belonging
+When interface bonding is enabled, normally blocked interfaces belonging
 to the same bonding group as an active forwarding interface will be
 changed to the bonding state.
 Both sides of link the member represents must operate in bonding mode
