@@ -273,6 +273,8 @@ main(int argc, CHAR16 *argv[])
 	 * printf() etc. once this is done.
 	 */
 	cons_probe();
+	if (strstr(getenv("console") ? getenv("console") : "", "eficom") != NULL)
+		printf("\033[2J\033[H");
 
 	debug_putc('d');  /* cons_probe done */
 
