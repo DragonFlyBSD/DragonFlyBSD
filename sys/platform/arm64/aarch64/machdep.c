@@ -210,6 +210,24 @@ arm64_ttbr1_dryrun(void)
 	uart_puts("[arm64] ttbr1 candidate=0x");
 	uart_puthex(arm64_ttbr1_candidate);
 	uart_puts("\r\n");
+	if (arm64_ttbr1_candidate != 0) {
+		__asm __volatile(
+		    "dsb sy\n"
+		    "msr ttbr1_el1, %0\n"
+		    "isb\n"
+		    "tlbi vmalle1\n"
+		    "dsb sy\n"
+		    "isb\n"
+		    :: "r" (arm64_ttbr1_candidate) : "memory");
+		__asm __volatile(
+		    "msr ttbr1_el1, %0\n"
+		    "isb\n"
+		    "tlbi vmalle1\n"
+		    "dsb sy\n"
+		    "isb\n"
+		    :: "r" (current) : "memory");
+		uart_puts("[arm64] ttbr1 switch ok\r\n");
+	}
 }
 
 static volatile u_int32_t *const uart_base = (u_int32_t *)0x09000000;
