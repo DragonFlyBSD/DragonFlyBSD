@@ -255,12 +255,13 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 		}
 		proc.p_pgrp = &pgrp;
 		if (proc.p_pptr) {
-		  if (KREAD(kd, (u_long)proc.p_pptr, &pproc)) {
-			_kvm_err(kd, kd->program, "can't read pproc at %p",
-				 proc.p_pptr);
-			return (-1);
-		  }
-		  proc.p_pptr = &pproc;
+			if (KREAD(kd, (u_long)proc.p_pptr, &pproc)) {
+				_kvm_err(kd, kd->program,
+					 "can't read pproc at %p",
+					 proc.p_pptr);
+				return (-1);
+			}
+			proc.p_pptr = &pproc;
 		}
 
 		if (proc.p_sigacts) {
