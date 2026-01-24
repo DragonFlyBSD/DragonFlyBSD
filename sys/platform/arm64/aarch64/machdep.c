@@ -199,7 +199,7 @@ arm64_pmap_bootstrap(struct arm64_phys_range *ranges, int count)
 }
 
 static void
-arm64_ttbr1_dryrun(void)
+arm64_ttbr1_switch(void)
 {
 	u_int64_t current;
 
@@ -210,24 +210,18 @@ arm64_ttbr1_dryrun(void)
 	uart_puts("[arm64] ttbr1 candidate=0x");
 	uart_puthex(arm64_ttbr1_candidate);
 	uart_puts("\r\n");
-	if (arm64_ttbr1_candidate != 0) {
-		__asm __volatile(
-		    "dsb sy\n"
-		    "msr ttbr1_el1, %0\n"
-		    "isb\n"
-		    "tlbi vmalle1\n"
-		    "dsb sy\n"
-		    "isb\n"
-		    :: "r" (arm64_ttbr1_candidate) : "memory");
-		__asm __volatile(
-		    "msr ttbr1_el1, %0\n"
-		    "isb\n"
-		    "tlbi vmalle1\n"
-		    "dsb sy\n"
-		    "isb\n"
-		    :: "r" (current) : "memory");
-		uart_puts("[arm64] ttbr1 switch ok\r\n");
-	}
+	if (arm64_ttbr1_candidate == 0)
+		return;
+
+	__asm __volatile(
+	    "dsb sy\n"
+	    "msr ttbr1_el1, %0\n"
+	    "isb\n"
+	    "tlbi vmalle1\n"
+	    "dsb sy\n"
+	    "isb\n"
+	    :: "r" (arm64_ttbr1_candidate) : "memory");
+	uart_puts("[arm64] ttbr1 switch active\r\n");
 }
 
 static volatile u_int32_t *const uart_base = (u_int32_t *)0x09000000;
@@ -563,8 +557,7 @@ initarm(uintptr_t modulep)
 			uart_puts("\r\n");
 		}
 		arm64_pmap_bootstrap(arm64_physmem, arm64_physmem_count);
-		if (arm64_ttbr1_candidate != 0)
-			arm64_ttbr1_dryrun();
+		arm64_ttbr1_switch();
 	} else {
 		uart_puts("[arm64] no efi map\r\n");
 	}
