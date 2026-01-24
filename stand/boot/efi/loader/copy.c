@@ -113,7 +113,7 @@ efi_copyin(const void *src, vm_offset_t dest, const size_t len)
 		EFI_PHYSICAL_ADDRESS base;
 		EFI_PHYSICAL_ADDRESS align;
 
-		align = 2 * 1024 * 1024;
+		align = 8 * 1024 * 1024;
 		pages = EFI_SIZE_TO_PAGES(align);
 		base = (EFI_PHYSICAL_ADDRESS)dest & ~(align - 1);
 		status = BS->AllocatePages(AllocateAddress, EfiLoaderCode,
@@ -138,6 +138,9 @@ efi_copyin(const void *src, vm_offset_t dest, const size_t len)
 
 	/* XXX: Callers do not check for failure. */
 	if (dest + stage_offset + len > staging_end) {
+		printf("efi_copyin: dest=0x%lx len=0x%lx end=0x%llx\n",
+		    (unsigned long)dest, (unsigned long)len,
+		    (unsigned long long)staging_end);
 		errno = ENOMEM;
 		return (-1);
 	}
@@ -169,7 +172,7 @@ efi_readin(const int fd, vm_offset_t dest, const size_t len)
 		EFI_PHYSICAL_ADDRESS base;
 		EFI_PHYSICAL_ADDRESS align;
 
-		align = 2 * 1024 * 1024;
+		align = 8 * 1024 * 1024;
 		pages = EFI_SIZE_TO_PAGES(align);
 		base = (EFI_PHYSICAL_ADDRESS)dest & ~(align - 1);
 		status = BS->AllocatePages(AllocateAddress, EfiLoaderCode,
@@ -188,6 +191,9 @@ efi_readin(const int fd, vm_offset_t dest, const size_t len)
 	}
 
 	if (dest + stage_offset + len > staging_end) {
+		printf("efi_readin: dest=0x%lx len=0x%lx end=0x%llx\n",
+		    (unsigned long)dest, (unsigned long)len,
+		    (unsigned long long)staging_end);
 		errno = ENOMEM;
 		return (-1);
 	}
