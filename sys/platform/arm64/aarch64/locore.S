@@ -37,61 +37,26 @@
  * QEMU virt machine PL011 UART is at 0x09000000
  */
 
-#define	SCTLR_M		(1 << 0)
-#define	SCTLR_C		(1 << 2)
-#define	SCTLR_I		(1 << 12)
-#define	SCTLR_RES1	((1 << 29) | (1 << 28) | (1 << 23) | (1 << 22) | \
-			 (1 << 20) | (1 << 11) | (1 << 8))
-#define	SCTLR_MMU_OFF	(SCTLR_RES1)
-#define	SCTLR_MMU_ON	(SCTLR_RES1 | SCTLR_M | SCTLR_C | SCTLR_I)
+.equ	SCTLR_M, 0x00000001
+.equ	SCTLR_C, 0x00000004
+.equ	SCTLR_I, 0x00001000
+.equ	SCTLR_RES1, 0x30d00900
+.equ	SCTLR_MMU_OFF, SCTLR_RES1
+.equ	SCTLR_MMU_ON, 0x30d01905
 
-#define	TCR_T0SZ_SHIFT	0
-#define	TCR_T1SZ_SHIFT	16
-#define	TCR_TG0_SHIFT	14
-#define	TCR_TG1_SHIFT	30
-#define	TCR_SH0_SHIFT	12
-#define	TCR_SH1_SHIFT	28
-#define	TCR_ORGN0_SHIFT	10
-#define	TCR_ORGN1_SHIFT	26
-#define	TCR_IRGN0_SHIFT	8
-#define	TCR_IRGN1_SHIFT	24
-#define	TCR_IPS_SHIFT	32
+.equ	TCR_VALUE, 0xb5103510
 
-#define	TCR_T0SZ	(16)
-#define	TCR_T1SZ	(16)
-#define	TCR_TG0_4K	(0)
-#define	TCR_TG1_4K	(2)
-#define	TCR_SH_INNER	(3)
-#define	TCR_WBWA	(1)
+.equ	MAIR_VALUE, 0x0000ff00
 
-#define	TCR_VALUE	((TCR_T0SZ << TCR_T0SZ_SHIFT) | \
-			 (TCR_T1SZ << TCR_T1SZ_SHIFT) | \
-			 (TCR_TG0_4K << TCR_TG0_SHIFT) | \
-			 (TCR_TG1_4K << TCR_TG1_SHIFT) | \
-			 (TCR_SH_INNER << TCR_SH0_SHIFT) | \
-			 (TCR_SH_INNER << TCR_SH1_SHIFT) | \
-			 (TCR_WBWA << TCR_ORGN0_SHIFT) | \
-			 (TCR_WBWA << TCR_ORGN1_SHIFT) | \
-			 (TCR_WBWA << TCR_IRGN0_SHIFT) | \
-			 (TCR_WBWA << TCR_IRGN1_SHIFT))
+.equ	PTE_BLOCK, 0x1
+.equ	PTE_TABLE, 0x3
+.equ	PTE_AF, 0x400
+.equ	PTE_SH_INNER, 0x300
+.equ	PTE_PXN, 0x0020000000000000
+.equ	PTE_UXN, 0x0040000000000000
 
-#define	MAIR_DEVICE_nGnRnE	0x00
-#define	MAIR_NORMAL_WB		0xFF
-#define	MAIR_VALUE	((MAIR_DEVICE_nGnRnE << 0) | (MAIR_NORMAL_WB << 8))
-
-#define	PTE_BLOCK	(1 << 0)
-#define	PTE_TABLE	(3 << 0)
-#define	PTE_AF		(1 << 10)
-#define	PTE_SH_INNER	(3 << 8)
-#define	PTE_ATTRIDX(n)	((n) << 2)
-#define	PTE_PXN		0x0020000000000000
-#define	PTE_UXN		0x0040000000000000
-
-#define	PTE_BLOCK_DEVICE	(0x00000000 | PTE_BLOCK | PTE_AF | \
-					 PTE_SH_INNER | PTE_ATTRIDX(0) | \
-					 PTE_PXN | PTE_UXN)
-#define	PTE_BLOCK_NORMAL	(0x40000000 | PTE_BLOCK | PTE_AF | \
-					 PTE_SH_INNER | PTE_ATTRIDX(1))
+.equ	PTE_BLOCK_DEVICE, 0x0060000000000701
+.equ	PTE_BLOCK_NORMAL, 0x0000000040000705
 
 	.text
 	.globl	_start
