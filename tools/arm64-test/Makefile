@@ -47,7 +47,7 @@ QEMU_ARGS_BASE = \
 
 # Console mode arguments
 QEMU_ARGS = $(QEMU_ARGS_BASE) -nographic
-QEMU_ARGS_GUI = $(QEMU_ARGS_BASE) -device ramfb -device qemu-xhci -device usb-kbd
+QEMU_ARGS_GUI = $(QEMU_ARGS_BASE) -serial stdio -device ramfb -device qemu-xhci -device usb-kbd
 
 # Drive configuration - use disk image if it exists, otherwise FAT directory
 ifdef USE_DISK
