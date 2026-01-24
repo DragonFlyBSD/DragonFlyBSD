@@ -37,6 +37,7 @@
  */
 
 #include <sys/types.h>
+#include <string.h>
 #include "stand.h"
 
 /* Extra functions from NetBSD standalone printf.c */
@@ -45,6 +46,11 @@ void
 twiddle(void)
 {
 	static int pos;
+	const char *console;
+
+	console = getenv("console");
+	if (console != NULL && strstr(console, "eficom") != NULL)
+		return;
 
 	putchar("|/-\\"[pos++ & 3]);
 	putchar('\b');
