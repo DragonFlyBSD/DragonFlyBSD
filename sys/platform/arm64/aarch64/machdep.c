@@ -28,21 +28,18 @@
 #include <sys/param.h>
 #include <sys/linker.h>
 
-typedef unsigned int uint32_t;
-typedef unsigned long long uint64_t;
-typedef unsigned long uintptr_t;
-typedef uintptr_t vm_offset_t;
-
 #define	ARM64_KERNBASE	0xffffff8000000000ULL
 #define	ARM64_PHYSBASE	0x0000000040000000ULL
 #define	ARM64_PTOTV_OFF	(ARM64_KERNBASE - ARM64_PHYSBASE)
 
-static volatile uint32_t *const uart_base = (uint32_t *)0x09000000;
+typedef u_long vm_offset_t;
 
-static const uint32_t modinfo_end = 0x0000;
-static const uint32_t modinfo_name = 0x0001;
-static const uint32_t modinfo_metadata = 0x8000;
-static const uint32_t modinfomd_kernend = 0x0008;
+static volatile u_int32_t *const uart_base = (u_int32_t *)0x09000000;
+
+static const u_int32_t modinfo_end = 0x0000;
+static const u_int32_t modinfo_name = 0x0001;
+static const u_int32_t modinfo_metadata = 0x8000;
+static const u_int32_t modinfomd_kernend = 0x0008;
 
 uintptr_t boot_modulep;
 int boothowto;
@@ -52,11 +49,30 @@ uintptr_t efi_systbl_phys;
 extern caddr_t preload_metadata;
 void preload_bootstrap_relocate(vm_offset_t offset);
 caddr_t preload_search_by_type(const char *type);
+caddr_t preload_search_info(caddr_t mod, int inf);
+
+static uintptr_t
+md_fetch_uintptr(caddr_t mdp, int info)
+{
+	uintptr_t *ptr;
+
+	ptr = (uintptr_t *)preload_search_info(mdp, MODINFO_METADATA | info);
+	return (ptr == NULL) ? 0 : *ptr;
+}
+
+static int
+md_fetch_int(caddr_t mdp, int info)
+{
+	int *ptr;
+
+	ptr = (int *)preload_search_info(mdp, MODINFO_METADATA | info);
+	return (ptr == NULL) ? 0 : *ptr;
+}
 
 static void
 uart_putc(char ch)
 {
-	*uart_base = (uint32_t)(unsigned char)ch;
+	*uart_base = (u_int32_t)(unsigned char)ch;
 }
 
 static void
@@ -68,7 +84,7 @@ uart_puts(const char *str)
 }
 
 static void
-uart_puthex(uint64_t value)
+uart_puthex(u_int64_t value)
 {
 	const char *hex = "0123456789abcdef";
 	int shift;
@@ -86,12 +102,12 @@ roundup_uintptr(uintptr_t value, uintptr_t align)
 static void
 parse_modulep(uintptr_t modulep)
 {
-	uint32_t *hdr;
+	u_int32_t *hdr;
 	uintptr_t next;
 	const char *name;
 	uintptr_t kernend;
 
-	hdr = (uint32_t *)modulep;
+	hdr = (u_int32_t *)modulep;
 	kernend = 0;
 
 	for (;;) {
@@ -105,14 +121,14 @@ parse_modulep(uintptr_t modulep)
 		} else if (hdr[0] == (modinfo_metadata | modinfomd_kernend)) {
 			kernend = *(uintptr_t *)(hdr + 2);
 		}
-		next = sizeof(uint32_t) * 2 + hdr[1];
+		next = sizeof(u_int32_t) * 2 + hdr[1];
 		next = roundup_uintptr(next, sizeof(uintptr_t));
-		hdr = (uint32_t *)((uintptr_t)hdr + next);
+		hdr = (u_int32_t *)((uintptr_t)hdr + next);
 	}
 
 	if (kernend != 0) {
 		uart_puts("[arm64] kernend=0x");
-		uart_puthex((uint64_t)kernend);
+		uart_puthex((u_int64_t)kernend);
 		uart_puts("\r\n");
 	}
 }
@@ -130,7 +146,7 @@ initarm(uintptr_t modulep)
 	}
 
 	uart_puts("[arm64] initarm: modulep=0x");
-	uart_puthex((uint64_t)modulep);
+	uart_puthex((u_int64_t)modulep);
 	uart_puts("\r\n");
 
 	parse_modulep(modulep);
@@ -146,17 +162,17 @@ initarm(uintptr_t modulep)
 		return;
 	}
 
-	boothowto = MD_FETCH(kmdp, MODINFOMD_HOWTO, int);
-	kern_envp = MD_FETCH(kmdp, MODINFOMD_ENVP, char *) + ARM64_PTOTV_OFF;
-	efi_systbl_phys = MD_FETCH(kmdp, MODINFOMD_FW_HANDLE, uintptr_t);
+	boothowto = md_fetch_int(kmdp, MODINFOMD_HOWTO);
+	kern_envp = (char *)(md_fetch_uintptr(kmdp, MODINFOMD_ENVP) + ARM64_PTOTV_OFF);
+	efi_systbl_phys = md_fetch_uintptr(kmdp, MODINFOMD_FW_HANDLE);
 
 	uart_puts("[arm64] boothowto=0x");
-	uart_puthex((uint64_t)boothowto);
+	uart_puthex((u_int64_t)boothowto);
 	uart_puts("\r\n");
 	uart_puts("[arm64] kern_envp=0x");
-	uart_puthex((uint64_t)kern_envp);
+	uart_puthex((u_int64_t)kern_envp);
 	uart_puts("\r\n");
 	uart_puts("[arm64] efi_systbl=0x");
-	uart_puthex((uint64_t)efi_systbl_phys);
+	uart_puthex((u_int64_t)efi_systbl_phys);
 	uart_puts("\r\n");
 }
