@@ -243,9 +243,24 @@ parse_modulep(uintptr_t modulep)
 	uintptr_t next;
 	const char *name;
 	uintptr_t kernend;
+	int i;
 
 	hdr = (u_int32_t *)modulep;
 	kernend = 0;
+
+	uart_puts("[arm64] modulep header: ");
+	for (i = 0; i < 4; i++) {
+		uart_puthex(hdr[0]);
+		uart_putc(' ');
+		uart_puthex(hdr[1]);
+		uart_putc(' ');
+		next = sizeof(u_int32_t) * 2 + hdr[1];
+		next = roundup_uintptr(next, sizeof(uintptr_t));
+		hdr = (u_int32_t *)((uintptr_t)hdr + next);
+	}
+	uart_puts("\r\n");
+
+	hdr = (u_int32_t *)modulep;
 
 	for (;;) {
 		if (hdr[0] == modinfo_end && hdr[1] == modinfo_end)
