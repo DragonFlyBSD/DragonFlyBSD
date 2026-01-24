@@ -76,6 +76,14 @@ static u_int64_t arm64_boot_alloc_base;
 static u_int64_t arm64_boot_alloc_end;
 static u_int64_t arm64_boot_alloc_next;
 
+static void
+arm64_zero_page(u_int64_t addr)
+{
+	volatile u_int64_t *p = (volatile u_int64_t *)(uintptr_t)addr;
+	for (u_int64_t i = 0; i < (4096 / sizeof(u_int64_t)); i++)
+		p[i] = 0;
+}
+
 static u_int64_t
 arm64_boot_alloc(u_int64_t size, u_int64_t align)
 {
@@ -147,6 +155,14 @@ arm64_pmap_bootstrap(struct arm64_phys_range *ranges, int count)
 		uart_puthex(pt);
 		uart_puts("-0x");
 		uart_puthex(pt + (2 * 4096));
+		uart_puts("\r\n");
+
+		arm64_zero_page(pt);
+		arm64_zero_page(pt + 4096);
+		((u_int64_t *)(uintptr_t)pt)[0] =
+		    ((pt + 4096) & ~0xfffULL) | 0x3;
+		uart_puts("[arm64] pt l0[0]=0x");
+		uart_puthex(((u_int64_t *)(uintptr_t)pt)[0]);
 		uart_puts("\r\n");
 	} else {
 		uart_puts("[arm64] boot_alloc pt failed\r\n");
