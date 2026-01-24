@@ -43,15 +43,12 @@ QEMU_ARGS_BASE = \
 	-M $(QEMU_MACHINE) \
 	-cpu $(QEMU_CPU) \
 	-m $(QEMU_MEMORY) \
-	-bios $(QEMU_BIOS) \
-	-serial none \
-	-chardev stdio,id=uart1,signal=off \
-	-device pl011,chardev=uart1,addr=0x09010000
+	-bios $(QEMU_BIOS)
 
 # Console mode arguments
-QEMU_ARGS = $(QEMU_ARGS_BASE) -device ramfb -display none
+QEMU_ARGS = $(QEMU_ARGS_BASE) -serial stdio -device ramfb -display none
 QEMU_ARGS_TEST = $(QEMU_ARGS)
-QEMU_ARGS_GUI = $(QEMU_ARGS_BASE) -device ramfb -device qemu-xhci -device usb-kbd
+QEMU_ARGS_GUI = $(QEMU_ARGS_BASE) -serial stdio -device ramfb -device qemu-xhci -device usb-kbd
 
 # Drive configuration - use disk image if it exists, otherwise FAT directory
 ifdef USE_DISK

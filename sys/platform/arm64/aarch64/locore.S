@@ -35,7 +35,7 @@
  * Entry:
  *   x0 = modulep (pointer to preload metadata)
  *
- * QEMU virt machine PL011 UART is at 0x09010000 (secondary UART)
+ * QEMU virt machine PL011 UART is at 0x09000000
  */
 
 .equ	SCTLR_M, 0x00000001
@@ -103,7 +103,7 @@ _start:
 	 * Print banner to PL011 UART at 0x09000000
 	 * PL011 UARTDR (data register) is at offset 0x00
 	 */
-	ldr	x1, =0x09010000		/* UART base address */
+	ldr	x1, =0x09000000		/* UART base address */
 	adr	x2, banner		/* Address of banner string */
 
 print_loop:
@@ -190,7 +190,7 @@ exception_spin:
 	b	exception_spin
 
 uart_putc:
-	ldr	x1, =0x09010000
+	ldr	x1, =0x09000000
 	strb	w0, [x1]
 	ret
 
