@@ -532,8 +532,9 @@ comc_setup(void)
 	/*
 	 * If the device isn't active, or there's no port present.
 	 */
-    if (comc_port == NULL)
-        return (false);
+	if (comc_port == NULL) {
+		return (false);
+	}
 
 	if (comc_port->sio->Reset != NULL) {
 		status = comc_port->sio->Reset(comc_port->sio);
