@@ -937,7 +937,7 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 int
 sys_fcntl(struct sysmsg *sysmsg, const struct fcntl_args *uap)
 {
-	union fcntl_dat dat;
+	union fcntl_dat dat = { 0 };
 	int error;
 
 	switch (uap->cmd) {
