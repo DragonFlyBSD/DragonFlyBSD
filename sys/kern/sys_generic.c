@@ -126,6 +126,7 @@ sys_read(struct sysmsg *sysmsg, const struct read_args *uap)
 	struct uio auio;
 	struct iovec aiov;
 	int error;
+	int szresult;
 
 	if ((ssize_t)uap->nbyte < 0)
 		error = EINVAL;
@@ -140,7 +141,8 @@ sys_read(struct sysmsg *sysmsg, const struct read_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_preadv(uap->fd, &auio, 0, &sysmsg->sysmsg_szresult);
+	error = kern_preadv(uap->fd, &auio, 0, &szresult);
+	sysmsg->sysmsg_szresult = szresult;
 	return(error);
 }
 
@@ -157,6 +159,7 @@ sys_extpread(struct sysmsg *sysmsg, const struct extpread_args *uap)
 	struct iovec aiov;
 	int error;
 	int flags;
+	int szresult;
 
 	if ((ssize_t)uap->nbyte < 0)
 		return(EINVAL);
@@ -175,7 +178,8 @@ sys_extpread(struct sysmsg *sysmsg, const struct extpread_args *uap)
 	if (uap->offset != (off_t)-1)
 		flags |= O_FOFFSET;
 
-	error = kern_preadv(uap->fd, &auio, flags, &sysmsg->sysmsg_szresult);
+	error = kern_preadv(uap->fd, &auio, flags, &szresult);
+	sysmsg->sysmsg_szresult = szresult;
 	return(error);
 }
 
