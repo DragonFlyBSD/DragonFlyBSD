@@ -236,8 +236,7 @@ retry_on_discontinuity:
     } else {
 	error = EBUSY;
     }
-done:
-    return(error);
+	return(error);
 }
 
 /*
