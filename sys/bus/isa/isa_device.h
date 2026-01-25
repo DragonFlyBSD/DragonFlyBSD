@@ -37,6 +37,8 @@
 
 #if defined(__x86_64__)
 #include "x86_64/isa_device.h"
+#elif defined(__aarch64__)
+#include "aarch64/isa_device.h"
 #else
 #error "No isa_device.h for this architecture"
 #endif
