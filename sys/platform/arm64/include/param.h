@@ -101,6 +101,9 @@
 
 #define	MAXPAGESIZES	4		/* maximum number of supported page sizes */
 
+#define	MAXPHYS		(128 * 1024)	/* max raw I/O transfer size */
+#define	MAXDUMPPGS	(MAXPHYS / PAGE_SIZE)
+
 #ifndef KSTACK_PAGES
 #if defined(KASAN) || defined(KMSAN)
 #define	KSTACK_PAGES	6
