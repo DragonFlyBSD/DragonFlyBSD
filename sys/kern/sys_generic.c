@@ -195,6 +195,7 @@ sys_readv(struct sysmsg *sysmsg, const struct readv_args *uap)
 	struct uio auio;
 	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
 	int error;
+	size_t szresult;
 
 	error = iovec_copyin(uap->iovp, &iov, aiov, uap->iovcnt,
 			     &auio.uio_resid);
@@ -207,7 +208,8 @@ sys_readv(struct sysmsg *sysmsg, const struct readv_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_preadv(uap->fd, &auio, 0, &sysmsg->sysmsg_szresult);
+	error = kern_preadv(uap->fd, &auio, 0, &szresult);
+	sysmsg->sysmsg_szresult = szresult;
 
 	iovec_free(&iov, aiov);
 	return (error);
@@ -227,6 +229,7 @@ sys_extpreadv(struct sysmsg *sysmsg, const struct extpreadv_args *uap)
 	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
 	int error;
 	int flags;
+	size_t szresult;
 
 	error = iovec_copyin(uap->iovp, &iov, aiov, uap->iovcnt,
 			     &auio.uio_resid);
@@ -243,7 +246,8 @@ sys_extpreadv(struct sysmsg *sysmsg, const struct extpreadv_args *uap)
 	if (uap->offset != (off_t)-1)
 		flags |= O_FOFFSET;
 
-	error = kern_preadv(uap->fd, &auio, flags, &sysmsg->sysmsg_szresult);
+	error = kern_preadv(uap->fd, &auio, flags, &szresult);
+	sysmsg->sysmsg_szresult = szresult;
 
 	iovec_free(&iov, aiov);
 	return(error);
