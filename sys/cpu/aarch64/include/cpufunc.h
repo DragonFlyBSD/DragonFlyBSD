@@ -66,6 +66,11 @@ cpu_enable_intr(void)
 }
 
 static __inline void
+cpu_disable_intr(void)
+{
+}
+
+static __inline void
 cpu_pause(void)
 {
 	__asm __volatile("" ::: "memory");
@@ -78,6 +83,12 @@ rdtsc(void)
 
 	__asm __volatile("mrs %0, cntvct_el0" : "=r" (value));
 	return (value);
+}
+
+static __inline u_long
+read_rflags(void)
+{
+	return (0);
 }
 
 static __inline u_int
