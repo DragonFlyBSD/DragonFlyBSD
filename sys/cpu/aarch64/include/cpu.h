@@ -46,6 +46,9 @@
 #define	user_resched_wanted()			\
 	(mycpu->gd_reqflags & RQF_AST_USER_RESCHED)
 
+#define	sched_action_wanted_gd(gd)	\
+	((gd)->gd_reqflags & RQF_SCHED_MASK)
+
 #define	signotify()				\
 	atomic_set_int(&mycpu->gd_reqflags, RQF_AST_SIGNAL)
 
