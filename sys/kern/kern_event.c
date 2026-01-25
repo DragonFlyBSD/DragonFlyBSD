@@ -1084,8 +1084,13 @@ sys_kevent(struct sysmsg *sysmsg, const struct kevent_args *uap)
 	kap->eventlist = uap->eventlist;
 	kap->changelist = uap->changelist;
 
-	error = kern_kevent(kq, uap->nevents, &sysmsg->sysmsg_result, kap,
+	{
+		int result;
+
+		error = kern_kevent(kq, uap->nevents, &result, kap,
 			    kevent_copyin, kevent_copyout, tsp, 0);
+		sysmsg->sysmsg_result = result;
+	}
 
 	dropfp(td, uap->fd, fp);
 
