@@ -27,6 +27,7 @@
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/linker.h>
+#include <sys/systm.h>
 #include <machine/cpumask.h>
 #include <machine/smp.h>
 #include <machine/md_var.h>
