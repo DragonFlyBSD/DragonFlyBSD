@@ -12,6 +12,8 @@
 
 #ifndef LOCORE
 
+#include <machine/cpumask.h>
+
 void	initializecpu(int cpu);
 
 extern cpumask_t		smp_active_mask;
