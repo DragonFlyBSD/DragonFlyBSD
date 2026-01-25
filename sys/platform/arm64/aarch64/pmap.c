@@ -53,9 +53,9 @@
 static struct pmap kernel_pmap_store;
 struct pmap *kernel_pmap = &kernel_pmap_store;
 
-vm_paddr_t phys_avail[16];
-vm_paddr_t dump_avail[16];
-int physmem;
+vm_phystable_t phys_avail[16];
+vm_phystable_t dump_avail[16];
+long physmem;
 
 vm_offset_t virtual_start;
 vm_offset_t virtual_end;
@@ -190,9 +190,10 @@ pmap_protect(pmap_t pmap __unused, vm_offset_t sva __unused,
 /*
  * Unwire a page.
  */
-void
-pmap_unwire(pmap_t pmap __unused, vm_offset_t va __unused)
+vm_page_t
+pmap_unwire(pmap_t pmap __unused, vm_offset_t *vap __unused)
 {
+	return (NULL);
 }
 
 /*
@@ -244,17 +245,19 @@ pmap_kenter(vm_offset_t va __unused, vm_paddr_t pa __unused)
 /*
  * Enter a kernel mapping without invalidation.
  */
-void
+int
 pmap_kenter_noinval(vm_offset_t va __unused, vm_paddr_t pa __unused)
 {
+	return (0);
 }
 
 /*
  * Enter a kernel mapping quickly.
  */
-void
+int
 pmap_kenter_quick(vm_offset_t va __unused, vm_paddr_t pa __unused)
 {
+	return (0);
 }
 
 /*
@@ -334,10 +337,10 @@ pmap_copy_page(vm_paddr_t src __unused, vm_paddr_t dst __unused)
 /*
  * Page is modified?
  */
-int
+boolean_t
 pmap_is_modified(struct vm_page *m __unused)
 {
-	return (0);
+	return (FALSE);
 }
 
 /*
