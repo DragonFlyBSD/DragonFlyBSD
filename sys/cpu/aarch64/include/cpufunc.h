@@ -53,4 +53,10 @@ cpu_enable_intr(void)
 {
 }
 
+static __inline void
+cpu_pause(void)
+{
+	__asm __volatile("" ::: "memory");
+}
+
 #endif /* _CPU_CPUFUNC_H_ */
