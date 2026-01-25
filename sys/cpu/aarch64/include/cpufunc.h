@@ -43,6 +43,12 @@ cpu_sfence(void)
 }
 
 static __inline void
+cpu_mfence(void)
+{
+	__asm __volatile("dmb ish" ::: "memory");
+}
+
+static __inline void
 cpu_lfence(void)
 {
 	__asm __volatile("" ::: "memory");
