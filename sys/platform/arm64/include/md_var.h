@@ -54,5 +54,6 @@ extern vm_offset_t vm_page_dump_size;
 void cpu_gdinit(struct mdglobaldata *gd, int cpu);
 void cpu_idle(void);
 void cpu_setregs(void);
+void initarm(uintptr_t);
 
 #endif /* !_MACHINE_MD_VAR_H_ */

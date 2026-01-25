@@ -28,7 +28,10 @@
 #include <sys/param.h>
 #include <sys/linker.h>
 #include <machine/cpumask.h>
+#include <machine/smp.h>
+#include <machine/md_var.h>
 #include <cpu/tls.h>
+
 static int
 md_strcmp(const char *a, const char *b)
 {
@@ -255,10 +258,10 @@ char *ptvmmap;
 
 volatile cpumask_t stopped_cpus;
 
-static caddr_t preload_metadata;
+caddr_t preload_metadata;
 static caddr_t preload_kmdp;
 
-static void
+void
 preload_bootstrap_relocate(vm_offset_t offset)
 {
 	caddr_t curp;
@@ -288,7 +291,7 @@ preload_bootstrap_relocate(vm_offset_t offset)
 	}
 }
 
-static caddr_t
+caddr_t
 preload_search_by_type(const char *type)
 {
 	caddr_t curp, lname;
@@ -347,7 +350,7 @@ preload_initkmdp(void)
 	}
 }
 
-static caddr_t
+caddr_t
 preload_search_info(caddr_t mod, int inf)
 {
 	caddr_t curp;

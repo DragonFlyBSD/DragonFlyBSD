@@ -19,6 +19,9 @@ int	stop_cpus(cpumask_t);
 int	restart_cpus(cpumask_t);
 void	cpu_send_ipiq(int);
 int	cpu_send_ipiq_passive(int);
+void	smp_invltlb(void);
+void	smp_sniff(void);
+void	cpu_sniff(int);
 
 extern volatile cpumask_t	stopped_cpus;
 
