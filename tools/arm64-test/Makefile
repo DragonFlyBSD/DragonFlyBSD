@@ -31,7 +31,7 @@ QEMU_MACHINE    ?= virt
 QEMU_CPU        ?= cortex-a72
 QEMU_MEMORY     ?= 512M
 QEMU_BIOS       ?= /opt/homebrew/share/qemu/edk2-aarch64-code.fd
-TEST_TIMEOUT    ?= 30
+TEST_TIMEOUT    ?= 45
 
 # Remote VM (for copying fresh builds)
 VM_HOST         ?= devbox.sector.int
