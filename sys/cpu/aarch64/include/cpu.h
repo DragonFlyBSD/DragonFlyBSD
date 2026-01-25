@@ -49,6 +49,9 @@
 #define	sched_action_wanted_gd(gd)	\
 	((gd)->gd_reqflags & RQF_SCHED_MASK)
 
+#define	need_lwkt_resched()			\
+	atomic_set_int(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
+
 #define	signotify()				\
 	atomic_set_int(&mycpu->gd_reqflags, RQF_AST_SIGNAL)
 
