@@ -64,10 +64,20 @@ typedef struct pmap *pmap_t;
 
 #define pmap_resident_count(pmap)	((pmap)->pm_stats.resident_count)
 #define pmap_wired_count(pmap)		((pmap)->pm_stats.wired_count)
+#define pmap_resident_tlnw_count(pmap)	\
+	((pmap)->pm_stats.resident_count - (pmap)->pm_stats.wired_count)
 
 #ifdef _KERNEL
 extern struct pmap *kernel_pmap;
 extern char *ptvmmap;
-#endif
+
+/*
+ * ARM64 does not emulate AD bits in software; the hardware handles them.
+ */
+static __inline int
+pmap_emulate_ad_bits(pmap_t pmap __unused) {
+	return (0);
+}
+#endif /* _KERNEL */
 
 #endif /* !_MACHINE_PMAP_H_ */

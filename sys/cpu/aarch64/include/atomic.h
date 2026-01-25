@@ -127,6 +127,18 @@ atomic_clear_short(volatile u_short *p, u_short v)
 }
 
 static __inline void
+atomic_set_char(volatile u_char *p, u_char v)
+{
+	__atomic_fetch_or(p, v, __ATOMIC_SEQ_CST);
+}
+
+static __inline void
+atomic_clear_char(volatile u_char *p, u_char v)
+{
+	__atomic_fetch_and(p, (u_char)~v, __ATOMIC_SEQ_CST);
+}
+
+static __inline void
 atomic_set_long(volatile u_long *p, u_long v)
 {
 	__atomic_fetch_or(p, v, __ATOMIC_SEQ_CST);
