@@ -325,16 +325,17 @@ exit1(int rv)
 	/* are we a task leader? */
 	if (p == p->p_leader) {
 		struct sysmsg sysmsg;
+		struct kill_args kill_args;
 
-		sysmsg.extargs.kill.signum = SIGKILL;
+		kill_args.signum = SIGKILL;
 		q = p->p_peers;
 		while (q) {
-			sysmsg.extargs.kill.pid = q->p_pid;
+			kill_args.pid = q->p_pid;
 			/*
 		         * The interface for kill is better
 			 * than the internal signal
 			 */
-			sys_kill(&sysmsg, &sysmsg.extargs.kill);
+			sys_kill(&sysmsg, &kill_args);
 			q = q->p_peers;
 		}
 		while (p->p_peers)
