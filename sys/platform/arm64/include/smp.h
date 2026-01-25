@@ -16,6 +16,9 @@
 
 void	initializecpu(int cpu);
 int	stop_cpus(cpumask_t);
+int	restart_cpus(cpumask_t);
+
+extern volatile cpumask_t	stopped_cpus;
 
 extern cpumask_t		smp_active_mask;
 

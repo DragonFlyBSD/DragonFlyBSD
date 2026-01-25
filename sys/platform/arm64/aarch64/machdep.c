@@ -251,6 +251,8 @@ int boothowto;
 char *kern_envp;
 uintptr_t efi_systbl_phys;
 
+volatile cpumask_t stopped_cpus;
+
 static caddr_t preload_metadata;
 static caddr_t preload_kmdp;
 
@@ -590,6 +592,12 @@ smp_invltlb(void)
 
 int
 stop_cpus(cpumask_t map)
+{
+	return (1);
+}
+
+int
+restart_cpus(cpumask_t map)
 {
 	return (1);
 }
