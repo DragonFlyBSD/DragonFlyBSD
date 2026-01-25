@@ -113,4 +113,10 @@ atomic_readandclear_long(volatile u_long *p)
 	return (__atomic_exchange_n(p, 0, __ATOMIC_SEQ_CST));
 }
 
+static __inline u_int
+atomic_fetchadd_int(volatile u_int *p, u_int v)
+{
+	return (__atomic_fetch_add(p, v, __ATOMIC_SEQ_CST));
+}
+
 #endif /* !_CPU_ATOMIC_H_ */
