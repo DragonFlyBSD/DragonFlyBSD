@@ -45,6 +45,8 @@ extern char kstack[];
 extern char sigcode[];
 extern int szsigcode;
 
+#define	pagezero(addr)	bzero((addr), PAGE_SIZE)
+
 void cpu_gdinit(struct mdglobaldata *gd, int cpu);
 void cpu_idle(void);
 void cpu_setregs(void);
