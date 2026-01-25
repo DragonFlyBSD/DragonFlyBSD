@@ -412,6 +412,7 @@ sys_mmap(struct sysmsg *sysmsg, const struct mmap_args *uap)
 	int error;
 	int flags = uap->flags;
 	off_t upos = uap->pos;
+	void *resultp = NULL;
 
 	/*
 	 * Work around fairly serious problems with trying to have an
@@ -440,7 +441,8 @@ sys_mmap(struct sysmsg *sysmsg, const struct mmap_args *uap)
 
 	error = kern_mmap(curproc->p_vmspace, uap->addr, uap->len,
 			  uap->prot, flags,
-			  uap->fd, upos, &sysmsg->sysmsg_resultp);
+			  uap->fd, upos, &resultp);
+	sysmsg->sysmsg_resultp = resultp;
 
 	return (error);
 }

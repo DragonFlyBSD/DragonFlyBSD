@@ -71,6 +71,8 @@ typedef struct pmap *pmap_t;
 extern struct pmap *kernel_pmap;
 extern char *ptvmmap;
 
+void	pmap_release(struct pmap *pmap);
+
 /*
  * ARM64 does not emulate AD bits in software; the hardware handles them.
  */
