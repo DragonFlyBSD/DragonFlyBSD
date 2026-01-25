@@ -65,6 +65,7 @@
 #include <sys/spinlock2.h>
 
 #include <machine/cpu.h>
+#include <machine/md_var.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -788,4 +789,3 @@ mi_gdinit(struct globaldata *gd, int cpuid)
 	ATOMIC_CPUMASK_ORBIT(usched_global_cpumask, cpuid);
 	gd->gd_vmstats = vmstats;
 }
-
