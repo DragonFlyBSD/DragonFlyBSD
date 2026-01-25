@@ -937,7 +937,7 @@ sys_wait4(struct sysmsg *sysmsg, const struct wait_args *uap)
 	}
 
 	{
-		int result;
+		int result = 0;
 
 		error = kern_wait(idtype, id, &status, options, &wrusage,
 			    NULL, &result);
@@ -988,7 +988,7 @@ sys_wait6(struct sysmsg *sysmsg, const struct wait6_args *uap)
 	}
 
 	{
-		int result;
+		int result = 0;
 
 		error = kern_wait(idtype, id, &status, options,
 			    &wrusage, infop, &result);
