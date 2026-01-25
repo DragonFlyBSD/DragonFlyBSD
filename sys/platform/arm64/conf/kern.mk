@@ -4,3 +4,4 @@ CC=		/usr/local/bin/aarch64-none-elf-gcc
 LD=		/usr/local/bin/aarch64-none-elf-ld
 OBJCOPY=	/usr/local/bin/aarch64-none-elf-objcopy
 AS=		/usr/local/bin/aarch64-none-elf-as
+CFLAGS+=	-D__DragonFly__
