@@ -259,6 +259,13 @@ char *ptvmmap;
 
 volatile cpumask_t stopped_cpus;
 
+/*
+ * Dummy variable used by _get_mycpu() to force the compiler to
+ * generate a memory reference.  On arm64, TPIDR_EL1 is used for
+ * per-CPU data, but the inline assembly needs a memory clobber.
+ */
+int __mycpu__dummy;
+
 caddr_t preload_metadata;
 static caddr_t preload_kmdp;
 
