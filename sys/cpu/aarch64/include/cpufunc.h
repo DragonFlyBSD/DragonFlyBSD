@@ -85,6 +85,12 @@ rdtsc(void)
 	return (value);
 }
 
+static __inline tsc_uclock_t
+rdtsc_ordered(void)
+{
+	return (rdtsc());
+}
+
 static __inline u_long
 read_rflags(void)
 {
