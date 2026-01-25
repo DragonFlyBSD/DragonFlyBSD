@@ -262,15 +262,27 @@ pipe_end_uio(int *ipp)
 int
 sys_pipe(struct sysmsg *sysmsg, const struct pipe_args *uap)
 {
-	return kern_pipe(sysmsg->sysmsg_fds, 0);
+	long fds[2];
+	int error;
+
+	error = kern_pipe(fds, 0);
+	sysmsg->sysmsg_fds[0] = fds[0];
+	sysmsg->sysmsg_fds[1] = fds[1];
+	return error;
 }
 
 int
 sys_pipe2(struct sysmsg *sysmsg, const struct pipe2_args *uap)
 {
+	long fds[2];
+	int error;
+
 	if ((uap->flags & ~(O_CLOEXEC | O_CLOFORK | O_NONBLOCK)) != 0)
 		return (EINVAL);
-	return kern_pipe(sysmsg->sysmsg_fds, uap->flags);
+	error = kern_pipe(fds, uap->flags);
+	sysmsg->sysmsg_fds[0] = fds[0];
+	sysmsg->sysmsg_fds[1] = fds[1];
+	return error;
 }
 
 int

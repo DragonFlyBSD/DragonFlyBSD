@@ -126,10 +126,10 @@ sys_read(struct sysmsg *sysmsg, const struct read_args *uap)
 	struct uio auio;
 	struct iovec aiov;
 	int error;
-	size_t szresult;
+	size_t szresult = 0;
 
 	if ((ssize_t)uap->nbyte < 0)
-		error = EINVAL;
+		return (EINVAL);
 
 	aiov.iov_base = uap->buf;
 	aiov.iov_len = uap->nbyte;
@@ -159,7 +159,7 @@ sys_extpread(struct sysmsg *sysmsg, const struct extpread_args *uap)
 	struct iovec aiov;
 	int error;
 	int flags;
-	size_t szresult;
+	size_t szresult = 0;
 
 	if ((ssize_t)uap->nbyte < 0)
 		return(EINVAL);
@@ -195,7 +195,7 @@ sys_readv(struct sysmsg *sysmsg, const struct readv_args *uap)
 	struct uio auio;
 	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
 	int error;
-	size_t szresult;
+	size_t szresult = 0;
 
 	error = iovec_copyin(uap->iovp, &iov, aiov, uap->iovcnt,
 			     &auio.uio_resid);
@@ -229,7 +229,7 @@ sys_extpreadv(struct sysmsg *sysmsg, const struct extpreadv_args *uap)
 	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
 	int error;
 	int flags;
-	size_t szresult;
+	size_t szresult = 0;
 
 	error = iovec_copyin(uap->iovp, &iov, aiov, uap->iovcnt,
 			     &auio.uio_resid);
@@ -340,10 +340,10 @@ sys_write(struct sysmsg *sysmsg, const struct write_args *uap)
 	struct uio auio;
 	struct iovec aiov;
 	int error;
-	size_t szresult;
+	size_t szresult = 0;
 
 	if ((ssize_t)uap->nbyte < 0)
-		error = EINVAL;
+		return (EINVAL);
 
 	aiov.iov_base = (void *)(uintptr_t)uap->buf;
 	aiov.iov_len = uap->nbyte;
@@ -374,10 +374,10 @@ sys_extpwrite(struct sysmsg *sysmsg, const struct extpwrite_args *uap)
 	struct iovec aiov;
 	int error;
 	int flags;
-	size_t szresult;
+	size_t szresult = 0;
 
 	if ((ssize_t)uap->nbyte < 0)
-		error = EINVAL;
+		return (EINVAL);
 
 	aiov.iov_base = (void *)(uintptr_t)uap->buf;
 	aiov.iov_len = uap->nbyte;
@@ -407,7 +407,7 @@ sys_writev(struct sysmsg *sysmsg, const struct writev_args *uap)
 	struct uio auio;
 	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
 	int error;
-	size_t szresult;
+	size_t szresult = 0;
 
 	error = iovec_copyin(uap->iovp, &iov, aiov, uap->iovcnt,
 			     &auio.uio_resid);
@@ -441,7 +441,7 @@ sys_extpwritev(struct sysmsg *sysmsg, const struct extpwritev_args *uap)
 	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
 	int error;
 	int flags;
-	size_t szresult;
+	size_t szresult = 0;
 
 	error = iovec_copyin(uap->iovp, &iov, aiov, uap->iovcnt,
 			     &auio.uio_resid);
@@ -816,6 +816,7 @@ sys_select(struct sysmsg *sysmsg, const struct select_args *uap)
 	struct timeval ktv;
 	struct timespec *ktsp, kts;
 	int error;
+	int result;
 
 	/*
 	 * Get timeout if any.
@@ -833,8 +834,8 @@ sys_select(struct sysmsg *sysmsg, const struct select_args *uap)
 	/*
 	 * Do real work.
 	 */
-	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktsp,
-			 &sysmsg->sysmsg_result);
+	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktsp, &result);
+	sysmsg->sysmsg_result = result;
 
 	return (error);
 }
@@ -851,6 +852,7 @@ sys_pselect(struct sysmsg *sysmsg, const struct pselect_args *uap)
 	struct timespec *ktsp, kts;
 	sigset_t sigmask;
 	int error;
+	int result;
 
 	/*
 	 * Get timeout if any.
@@ -882,8 +884,8 @@ sys_pselect(struct sysmsg *sysmsg, const struct pselect_args *uap)
 	/*
 	 * Do real job.
 	 */
-	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktsp,
-			 &sysmsg->sysmsg_result);
+	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktsp, &result);
+	sysmsg->sysmsg_result = result;
 
 	if (uap->sigmask != NULL) {
 		lwkt_gettoken(&lp->lwp_proc->p_token);
@@ -1251,6 +1253,7 @@ sys_poll(struct sysmsg *sysmsg, const struct poll_args *uap)
 {
 	struct timespec ts, *tsp;
 	int error;
+	int result;
 
 	if (uap->timeout != INFTIM) {
 		if (uap->timeout < 0)
@@ -1262,7 +1265,8 @@ sys_poll(struct sysmsg *sysmsg, const struct poll_args *uap)
 		tsp = NULL;
 	}
 
-	error = dopoll(uap->nfds, uap->fds, tsp, &sysmsg->sysmsg_result, 0);
+	error = dopoll(uap->nfds, uap->fds, tsp, &result, 0);
+	sysmsg->sysmsg_result = result;
 
 	return (error);
 }
@@ -1280,6 +1284,7 @@ sys_ppoll(struct sysmsg *sysmsg, const struct ppoll_args *uap)
 	struct timespec *ktsp, kts;
 	sigset_t sigmask;
 	int error;
+	int result;
 
 	/*
 	 * Get timeout if any.
@@ -1308,8 +1313,9 @@ sys_ppoll(struct sysmsg *sysmsg, const struct ppoll_args *uap)
 		sigirefs_wait(lp->lwp_proc);
 	}
 
-	error = dopoll(uap->nfds, uap->fds, ktsp, &sysmsg->sysmsg_result,
+	error = dopoll(uap->nfds, uap->fds, ktsp, &result,
 	    ktsp != NULL ? KEVENT_TIMEOUT_PRECISE : 0);
+	sysmsg->sysmsg_result = result;
 
 	if (uap->sigmask != NULL) {
 		lwkt_gettoken(&lp->lwp_proc->p_token);
