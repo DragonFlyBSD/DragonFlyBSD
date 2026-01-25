@@ -40,11 +40,11 @@
 #include <sys/sysmsg.h>
 #include <sys/sysproto.h>
 #include <sys/signal2.h>
+#include <sys/reg.h>
 #include <machine/cpumask.h>
 #include <machine/smp.h>
 #include <machine/md_var.h>
 #include <machine/globaldata.h>
-#include <machine/reg.h>
 #include <machine/pcb.h>
 #include <cpu/tls.h>
 #include <vm/vm.h>
