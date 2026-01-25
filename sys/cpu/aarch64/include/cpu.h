@@ -37,6 +37,9 @@
 #define	need_ipiq()					\
 	atomic_set_int(&mycpu->gd_reqflags, RQF_IPIQ)
 
+#define	need_user_resched()				\
+	atomic_set_int(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
+
 #define	CLKF_USERMODE(framep)	((framep)->spsr & (1U << 4))
 #define	CLKF_PC(framep)		((framep)->elr)
 
