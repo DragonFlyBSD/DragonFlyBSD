@@ -236,12 +236,9 @@ atomic_fcmpset_long(volatile u_long *p, u_long *cmpv, u_long newv)
 	    __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));
 }
 
-static __inline int
-atomic_cmpset_ptr(volatile void *p, void *cmpv, void *newv)
-{
-	return (__atomic_compare_exchange_n((void * volatile *)p, &cmpv, newv, 0,
-	    __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));
-}
+#define atomic_cmpset_ptr(dst, old, new) \
+	atomic_cmpset_long((volatile u_long *)(dst), (u_long)(old), \
+	    (u_long)(new))
 
 #define atomic_fcmpset_ptr(dst, old, new) \
 	atomic_fcmpset_long((volatile u_long *)(dst), (u_long *)(old), \
