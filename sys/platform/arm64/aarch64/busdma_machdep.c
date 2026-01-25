@@ -250,17 +250,10 @@ bus_dmamap_load_mbuf_segment(bus_dma_tag_t dmat, bus_dmamap_t map,
 	return (0);
 }
 
-int
-bus_dmamap_load_mbuf_defrag(bus_dma_tag_t dmat, bus_dmamap_t map,
-    struct mbuf **mbuf, bus_dma_segment_t *segs, int maxsegs,
-    int *nsegs, int flags)
-{
-	if (mbuf == NULL || *mbuf == NULL)
-		return (EINVAL);
-
-	return bus_dmamap_load_mbuf_segment(dmat, map, *mbuf, segs,
-	    maxsegs, nsegs, flags);
-}
+/*
+ * Note: bus_dmamap_load_mbuf_defrag() is implemented in kern/subr_busdma.c
+ * using bus_dmamap_load_mbuf_segment() from above.
+ */
 
 int
 bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,

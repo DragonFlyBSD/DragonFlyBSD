@@ -1,7 +1,8 @@
 # files marked standard are always included.
 #
-platform/arm64/aarch64/genassym.c	standard
-platform/arm64/aarch64/locore.s	standard
+# NOTE: genassym.c and locore.s are handled specially by kern.post.mk
+# and should NOT be listed here to avoid duplicate object file linkage.
+#
 platform/arm64/aarch64/machdep.c	standard
 platform/arm64/aarch64/pmap.c	standard
 platform/arm64/aarch64/support.c	standard
