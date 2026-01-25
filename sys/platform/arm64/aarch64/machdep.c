@@ -604,6 +604,17 @@ restart_cpus(cpumask_t map)
 }
 
 void
+cpu_send_ipiq(int ipi)
+{
+}
+
+int
+cpu_send_ipiq_passive(int ipi)
+{
+	return (0);
+}
+
+void
 cpu_sniff(int dcpu)
 {
 }

@@ -17,6 +17,8 @@
 void	initializecpu(int cpu);
 int	stop_cpus(cpumask_t);
 int	restart_cpus(cpumask_t);
+void	cpu_send_ipiq(int);
+int	cpu_send_ipiq_passive(int);
 
 extern volatile cpumask_t	stopped_cpus;
 
