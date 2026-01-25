@@ -37,6 +37,17 @@
 #endif
 
 struct pmap;
+struct vm_page;
+struct vm_object;
+
+struct md_page {
+	long interlock_count;
+	long writeable_count_unused;
+};
+
+struct md_object {
+	void *dummy_unused;
+};
 
 struct pmap_statistics {
 	long resident_count;
