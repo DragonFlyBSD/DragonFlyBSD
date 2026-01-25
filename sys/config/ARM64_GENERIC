@@ -9,5 +9,3 @@ ident		ARM64_GENERIC
 options		PL011
 
 makeoptions	DEBUG=-g
-
-options		DDB
