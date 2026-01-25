@@ -44,6 +44,11 @@ void *memmove(void *, const void *, size_t);
 int bcmp(const void *, const void *, size_t);
 int copyin(const void *, void *, size_t);
 int copyout(const void *, void *, size_t);
+int copyinstr(const void *, void *, size_t, size_t *);
+int subyte(volatile void *, int);
+int suword32(volatile void *, int);
+int suword64(volatile void *, long);
+long fuword64(const volatile void *);
 
 /*
  * memset - fill memory with a constant byte

@@ -29,6 +29,8 @@
 #include <sys/linker.h>
 #include <sys/systm.h>
 #include <sys/globaldata.h>
+#include <sys/proc.h>
+#include <sys/mbuf.h>
 #include <machine/cpumask.h>
 #include <machine/smp.h>
 #include <machine/md_var.h>
@@ -36,6 +38,8 @@
 #include <cpu/tls.h>
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
+#include <net/if.h>
+#include <net/if_var.h>
 
 static int
 md_strcmp(const char *a, const char *b)
@@ -649,19 +653,20 @@ cpu_sanitize_tls(struct savetls *tls __unused)
 /*
  * SMP related stubs
  */
-cpumask_t smp_active_mask = CPUMASK_SIMPLE(1);
+cpumask_t smp_active_mask;
 int naps;	/* Number of application processors (non-boot CPUs) */
 
 /*
  * globaldata_find - find globaldata for given CPU
  *
  * For UP system, only CPU 0 exists.
+ * Returns mycpu for cpu 0, NULL otherwise.
  */
 struct globaldata *
 globaldata_find(int cpu)
 {
 	if (cpu == 0)
-		return (&CPU_prvspace[0]->mdgd.mi);
+		return (mycpu);
 	return (NULL);
 }
 
