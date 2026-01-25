@@ -48,6 +48,7 @@ struct trapframe {
 };
 
 struct intrframe {
+	register_t	if_vec;
 	register_t	regs[31];
 	register_t	sp;
 	register_t	elr;
