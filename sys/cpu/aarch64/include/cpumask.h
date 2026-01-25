@@ -156,4 +156,11 @@ typedef __cpumask_t cpumask_t;
 		(mask).ary[3] |= (val).ary[3];		\
 	} while (0)
 
+#define CPUMASK_INVMASK(mask)		do { \
+					(mask).ary[0] ^= -1L; \
+					(mask).ary[1] ^= -1L; \
+					(mask).ary[2] ^= -1L; \
+					(mask).ary[3] ^= -1L; \
+					} while (0)
+
 #endif /* !_CPU_CPUMASK_H_ */
