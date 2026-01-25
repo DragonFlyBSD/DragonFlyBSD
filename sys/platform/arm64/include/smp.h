@@ -15,6 +15,7 @@
 #include <machine/cpumask.h>
 
 void	initializecpu(int cpu);
+int	stop_cpus(cpumask_t);
 
 extern cpumask_t		smp_active_mask;
 

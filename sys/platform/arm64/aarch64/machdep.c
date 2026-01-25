@@ -27,6 +27,7 @@
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/linker.h>
+#include <machine/cpumask.h>
 static int
 md_strcmp(const char *a, const char *b)
 {
@@ -585,6 +586,12 @@ smp_sniff(void)
 void
 smp_invltlb(void)
 {
+}
+
+int
+stop_cpus(cpumask_t map)
+{
+	return (1);
 }
 
 void
