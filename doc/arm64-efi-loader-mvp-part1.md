@@ -141,7 +141,7 @@ sys/cpu/aarch64/include/   # CPU headers (cpu/*.h)
 
 Replace the loader-side MMU disable workaround with a FreeBSD-derived, kernel-controlled page table setup that enables the MMU early and preserves the DragonFly boot flow.
 
-### Status: IN PROGRESS (Phase C Complete)
+### Status: IN PROGRESS (Phase C.6 Complete)
 
 **Completed:**
 
@@ -169,6 +169,13 @@ Phase C.5 - config(8) kernel build: ✅ COMPLETE
 - Cross-compiler: `/usr/local/bin/aarch64-none-elf-gcc`
 - Kernel links successfully with ~300 stub functions
 
+Phase C.6 - TTBR1 switch and high-VA execution: ✅ COMPLETE
+- Debug output added to identify failure point in TTBR1 switch
+- Discovered page tables only mapped 4MB, but trampoline at L2 index 2
+- Extended L2 table to map 16MB (8 × 2MB blocks)
+- TTBR1 switch now succeeds, high-VA trampoline executes
+- Kernel continues boot in high-VA space
+
 **Current Boot Output:**
 ```
 [arm64] initarm: modulep(phys)=0x0000000040caf000
@@ -182,13 +189,22 @@ Phase C.5 - config(8) kernel build: ✅ COMPLETE
 [arm64] physmem ranges=0000000000000008
 [arm64] pmap bootstrap: largest range 0x0000000048000000-0x000000005c13b000
 [arm64] boot_alloc range 0x0000000048000000-0x000000005c13b000
-[arm64] pt l2=0x0000000048004000
+[arm64] pt l2=0x0000000048004000 (8 entries, 16MB)
+[arm64] pt l0[0]=0x0000000048003003
+[arm64] pt l1[0]=0x0000000048004003
 [arm64] ttbr1 current=0x00000000406bd000
 [arm64] ttbr1 candidate=0x0000000048002000
+[arm64] ttbr1 switching...
+[arm64] ttbr1 switch done, calling trampoline
+[arm64] trampoline addr=0xffffff800040d9a0
+[arm64] high-va ok
+[arm64] ttbr1 switch active
+
+DragonFly/arm64 kernel started!
+modulep received, halting.
 ```
 
 **Not done yet:**
-- TTBR1 switch and high-VA trampoline execution
 - Wire PL011 console backend into DragonFly console framework (Phase D)
 - Replace ad-hoc UART prints with `kprintf()` via console framework
 
@@ -204,13 +220,12 @@ Phase C.5 - config(8) kernel build: ✅ COMPLETE
    - modulep at ~12MB needs TTBR0 identity map access
    - Fixed in `machdep.c`: don't convert to high VA prematurely
 
-### Remaining Work (Phases C.6 and D)
+3. **TTBR1 page tables mapped too little** - Extended from 4MB to 16MB
+   - Trampoline function at VA 0xffffff800040d9a0 requires L2 index 2
+   - Only L2[0] and L2[1] were mapped (4MB total)
+   - Fixed: map 8 L2 entries (16MB) to cover full kernel
 
-Phase C.6: TTBR1 switch and high-VA execution
-1. Switch TTBR1 from locore bootstrap tables to pmap-allocated tables
-2. Execute high-VA trampoline to validate kernel mapping
-3. Ensure UART remains accessible after switch (device mapping)
-4. Continue boot in high-VA space
+### Remaining Work (Phase D)
 
 Phase D: Console framework handoff
 1. Replace ad-hoc UART prints with proper early console hook
