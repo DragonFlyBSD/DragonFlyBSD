@@ -45,6 +45,10 @@ extern char kstack[];
 extern char sigcode[];
 extern int szsigcode;
 
+/* minidump/coredump support */
+extern uint64_t *vm_page_dump;
+extern vm_offset_t vm_page_dump_size;
+
 #define	pagezero(addr)	bzero((addr), PAGE_SIZE)
 
 void cpu_gdinit(struct mdglobaldata *gd, int cpu);

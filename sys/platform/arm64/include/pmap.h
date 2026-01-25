@@ -45,6 +45,9 @@ struct md_page {
 	long writeable_count_unused;
 };
 
+#define MD_PAGE_FREEABLE(m)	\
+	(((m)->flags & (PG_MAPPED | PG_WRITEABLE)) == 0)
+
 struct md_object {
 	void *dummy_unused;
 };
@@ -72,6 +75,7 @@ extern struct pmap *kernel_pmap;
 extern char *ptvmmap;
 
 void	pmap_release(struct pmap *pmap);
+void	pmap_page_set_memattr(struct vm_page *m, vm_memattr_t ma);
 
 /*
  * ARM64 does not emulate AD bits in software; the hardware handles them.

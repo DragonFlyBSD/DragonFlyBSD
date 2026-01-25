@@ -40,6 +40,19 @@ get_apicid_from_cpuid(int cpuid)
 	return cpuid;   /* 1:1 mapping on arm64 */
 }
 
+/*
+ * ARM64 stubs for x86 APIC-style topology functions.
+ * These are used by generic VM code for NUMA topology.
+ */
+#define CPUID_TO_APICID(cpuid)	(cpuid)		/* 1:1 mapping on arm64 */
+#define APICID_TO_CPUID(apicid)	(apicid)	/* 1:1 mapping on arm64 */
+
+static __inline int
+get_chip_ID_from_APICID(int apicid)
+{
+	return 0;	/* Single chip/package assumed for now */
+}
+
 /* CPU topology detection stubs - arm64 topology via devicetree/ACPI */
 static __inline void
 detect_cpu_topology(void)
