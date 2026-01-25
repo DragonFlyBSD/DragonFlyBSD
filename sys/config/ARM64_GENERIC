@@ -11,4 +11,3 @@ options		PL011
 makeoptions	DEBUG=-g
 
 options		DDB
-options		KDB
