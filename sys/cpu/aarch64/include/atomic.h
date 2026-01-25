@@ -83,6 +83,24 @@ atomic_subtract_long(volatile u_long *p, u_long v)
 	__atomic_fetch_sub(p, v, __ATOMIC_SEQ_CST);
 }
 
+#define	atomic_set_acq_int		atomic_set_int
+#define	atomic_set_rel_int		atomic_set_int
+#define	atomic_clear_acq_int		atomic_clear_int
+#define	atomic_clear_rel_int		atomic_clear_int
+#define	atomic_add_acq_int		atomic_add_int
+#define	atomic_add_rel_int		atomic_add_int
+#define	atomic_subtract_acq_int		atomic_subtract_int
+#define	atomic_subtract_rel_int		atomic_subtract_int
+
+#define	atomic_set_acq_long		atomic_set_long
+#define	atomic_set_rel_long		atomic_set_long
+#define	atomic_clear_acq_long		atomic_clear_long
+#define	atomic_clear_rel_long		atomic_clear_long
+#define	atomic_add_acq_long		atomic_add_long
+#define	atomic_add_rel_long		atomic_add_long
+#define	atomic_subtract_acq_long	atomic_subtract_long
+#define	atomic_subtract_rel_long	atomic_subtract_long
+
 static __inline u_int
 atomic_readandclear_int(volatile u_int *p)
 {
