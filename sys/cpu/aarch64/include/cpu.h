@@ -46,6 +46,12 @@
 #define	user_resched_wanted()			\
 	(mycpu->gd_reqflags & RQF_AST_USER_RESCHED)
 
+#define	lwkt_resched_wanted()			\
+	(mycpu->gd_reqflags & RQF_AST_LWKT_RESCHED)
+
+#define	any_resched_wanted()			\
+	(mycpu->gd_reqflags & (RQF_AST_LWKT_RESCHED | RQF_AST_USER_RESCHED))
+
 #define	sched_action_wanted_gd(gd)	\
 	((gd)->gd_reqflags & RQF_SCHED_MASK)
 
