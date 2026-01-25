@@ -45,6 +45,7 @@ struct trapframe {
 	register_t	sp;
 	register_t	elr;
 	register_t	spsr;
+	register_t	tf_trapno;
 };
 
 struct intrframe {
