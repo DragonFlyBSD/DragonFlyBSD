@@ -583,6 +583,11 @@ smp_sniff(void)
 }
 
 void
+smp_invltlb(void)
+{
+}
+
+void
 cpu_sniff(int dcpu)
 {
 }

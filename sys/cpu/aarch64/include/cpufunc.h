@@ -79,6 +79,7 @@ rdtsc(void)
 	return (value);
 }
 
+void	smp_invltlb(void);
 void	smp_sniff(void);
 void	cpu_sniff(int);
 
