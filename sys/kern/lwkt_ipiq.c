@@ -277,7 +277,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 	}
 	atomic_swap_int(&ip->ip_drain, olimit);
 	DEBUG_POP_INFO();
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(__aarch64__)
 	write_rflags(rflags);
 #else
 #error "no write_*flags"
