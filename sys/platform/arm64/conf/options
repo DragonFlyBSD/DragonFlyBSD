@@ -1,1 +1,2 @@
+AARCH64		opt_cpu.h
 PL011		opt_pl011.h
