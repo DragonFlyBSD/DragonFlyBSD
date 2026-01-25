@@ -510,7 +510,7 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 		cpu_lfence();
 	    }
 	    DEBUG_POP_INFO();
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(__aarch64__)
 	    write_rflags(rflags);
 #else
 #error "no write_*flags"
