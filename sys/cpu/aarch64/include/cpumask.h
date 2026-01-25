@@ -25,6 +25,11 @@ typedef __cpumask_t cpumask_t;
 
 #define CPUMASK_ADDR(mask, cpu)	(&(mask).ary[((cpu) >> 6) & 3])
 
+#define BSRCPUMASK(val)		((val).ary[3] ? 192 + bsrq((val).ary[3]) : \
+				((val).ary[2] ? 128 + bsrq((val).ary[2]) : \
+				((val).ary[1] ? 64 + bsrq((val).ary[1]) : \
+						bsrq((val).ary[0]))))
+
 #define BSFCPUMASK(val)		((val).ary[0] ? (int)__builtin_ctzll((val).ary[0]) : \
 				((val).ary[1] ? 64 + (int)__builtin_ctzll((val).ary[1]) : \
 				((val).ary[2] ? 128 + (int)__builtin_ctzll((val).ary[2]) : \
