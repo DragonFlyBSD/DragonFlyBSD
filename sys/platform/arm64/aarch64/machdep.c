@@ -250,6 +250,7 @@ uintptr_t boot_modulep;
 int boothowto;
 char *kern_envp;
 uintptr_t efi_systbl_phys;
+char *ptvmmap;
 
 volatile cpumask_t stopped_cpus;
 

@@ -67,6 +67,7 @@ typedef struct pmap *pmap_t;
 
 #ifdef _KERNEL
 extern struct pmap *kernel_pmap;
+extern char *ptvmmap;
 #endif
 
 #endif /* !_MACHINE_PMAP_H_ */
