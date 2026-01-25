@@ -350,9 +350,13 @@ sys_vmspace_mmap(struct sysmsg *sysmsg,
 		goto done2;
 	}
 
-	error = kern_mmap(ve->vmspace, uap->addr, uap->len,
-			  uap->prot, uap->flags,
-			  uap->fd, uap->offset, &sysmsg->sysmsg_resultp);
+	{
+		void *resultp = NULL;
+		error = kern_mmap(ve->vmspace, uap->addr, uap->len,
+				  uap->prot, uap->flags,
+				  uap->fd, uap->offset, &resultp);
+		sysmsg->sysmsg_resultp = resultp;
+	}
 
 	vmspace_entry_drop(ve);
 done2:

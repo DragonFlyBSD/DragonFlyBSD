@@ -28,6 +28,7 @@
 #include <sys/param.h>
 #include <sys/linker.h>
 #include <machine/cpumask.h>
+#include <cpu/tls.h>
 static int
 md_strcmp(const char *a, const char *b)
 {
@@ -617,4 +618,15 @@ cpu_send_ipiq_passive(int ipi)
 void
 cpu_sniff(int dcpu)
 {
+}
+
+/*
+ * TLS sanitization stub for arm64.
+ * ARM64 uses TPIDR_EL0 register for TLS, no segment descriptor
+ * validation needed like x86.
+ */
+int
+cpu_sanitize_tls(struct savetls *tls __unused)
+{
+	return (0);
 }

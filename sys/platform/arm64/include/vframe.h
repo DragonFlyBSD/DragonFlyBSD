@@ -34,7 +34,13 @@
 #ifndef _MACHINE_VFRAME_H_
 #define _MACHINE_VFRAME_H_
 
+#include <cpu/tls.h>
+
+/*
+ * ARM64 vkernel extended frame (stub).
+ */
 struct vextframe {
+	struct savetls vx_tls;
 };
 
 #endif /* _MACHINE_VFRAME_H_ */

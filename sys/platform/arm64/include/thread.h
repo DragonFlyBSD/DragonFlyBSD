@@ -30,13 +30,17 @@
 #ifndef	_MACHINE_THREAD_H_
 #define	_MACHINE_THREAD_H_
 
+#include <cpu/tls.h>
+
 struct md_thread {
 	unsigned int	mtd_cpl;
+	struct savetls	mtd_savetls;	/* vkernel TLS save area */
 };
 
 #ifdef _KERNEL
 
 #define td_cpl	td_mach.mtd_cpl
+#define td_tls	td_mach.mtd_savetls
 
 struct globaldata;
 

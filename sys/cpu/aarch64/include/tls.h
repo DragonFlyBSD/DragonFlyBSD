@@ -68,4 +68,12 @@ struct tls_dtv {
 #define RTLD_STATIC_TLS_EXTRA_DEFAULT	6144
 #define RTLD_STATIC_TLS_VARIANT_II
 
+/*
+ * ARM64 TLS save structure for vkernel support (stub).
+ * ARM64 uses TPIDR_EL0 for TLS, no descriptor tables needed.
+ */
+struct savetls {
+	void	*tls_base;	/* TLS base pointer (from TPIDR_EL0) */
+};
+
 #endif /* !_CPU_TLS_H_ */
