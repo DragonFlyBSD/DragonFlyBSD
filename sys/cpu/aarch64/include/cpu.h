@@ -30,4 +30,14 @@
 
 /* Placeholder for arm64 cpu definitions. */
 
+#ifndef _CPU_FRAME_H_
+#include <machine/frame.h>
+#endif
+
+#define	need_ipiq()					\
+	atomic_set_int(&mycpu->gd_reqflags, RQF_IPIQ)
+
+#define	CLKF_USERMODE(framep)	((framep)->spsr & (1U << 4))
+#define	CLKF_PC(framep)		((framep)->elr)
+
 #endif /* _CPU_CPU_H_ */
