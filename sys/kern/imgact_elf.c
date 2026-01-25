@@ -98,7 +98,7 @@ static u_long pie_base_hint(struct proc *p);
 static int elf_legacy_coredump = 0;
 static int __elfN(fallback_brand) = -1;
 static int elf_pie_base_mmap = 0;
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(__aarch64__)
 SYSCTL_NODE(_kern, OID_AUTO, elf64, CTLFLAG_RW, 0, "");
 SYSCTL_INT(_debug, OID_AUTO, elf64_legacy_coredump, CTLFLAG_RW,
     &elf_legacy_coredump, 0, "legacy coredump mode");
@@ -1877,7 +1877,7 @@ __elfN(bsd_trans_osrel)(const Elf_Note *note, int32_t *osrel)
 /*
  * Tell kern_execve.c about it, with a little help from the linker.
  */
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(__aarch64__)
 static struct execsw elf_execsw = {exec_elf64_imgact, "ELF64"};
 EXEC_SET_ORDERED(elf64, elf_execsw, SI_ORDER_FIRST);
 #else /* i386 assumed */
