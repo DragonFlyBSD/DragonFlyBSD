@@ -86,6 +86,12 @@ bsfl(u_int mask)
 	return (__builtin_ctz(mask));
 }
 
+static __inline u_int
+bsrl(u_int mask)
+{
+	return (31 - __builtin_clz(mask));
+}
+
 void	smp_invltlb(void);
 void	smp_sniff(void);
 void	cpu_sniff(int);
