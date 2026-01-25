@@ -1,6 +1,8 @@
 # Minimal ARM64 kernel config for bring-up
 
+platform	arm64
 machine		arm64
+machine_arch	aarch64
 cpu		AARCH64
 ident		ARM64_GENERIC
 

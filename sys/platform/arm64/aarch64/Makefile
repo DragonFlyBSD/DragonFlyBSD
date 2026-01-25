@@ -18,7 +18,7 @@ OBJDUMP=	aarch64-none-elf-objdump
 KERNEL=		kernel
 
 # Source files
-SRCS=		locore.S machdep.c
+SRCS=		locore.s machdep.c
 OBJS=		locore.o machdep.o
 
 # Kernel load address - must match what the loader expects
@@ -43,7 +43,7 @@ $(KERNEL): $(OBJS)
 	@echo "Kernel built: $@"
 	@$(OBJDUMP) -f $@ | grep -E '(file format|start address)'
 
-locore.o: locore.S
+locore.o: locore.s
 	$(AS) $(ASFLAGS) -o $@ $<
 
 machdep.o: machdep.c

@@ -107,12 +107,12 @@ sys/platform/arm64/
 ├── include/
 │   └── (placeholder)      # Machine headers (later)
 └── aarch64/
-    ├── locore.S           # Entry point: _start
+    ├── locore.s           # Entry point: _start
     ├── machdep.c          # Stub init functions
     └── Makefile           # Build the kernel
 ```
 
-**Kernel entry (`locore.S`):**
+**Kernel entry (`locore.s`):**
 1. Entry at `_start`, receive `modulep` in x0
 2. Write "DragonFly arm64 kernel!\n" to PL011 UART at 0x09000000
 3. Infinite loop (halt)
@@ -133,7 +133,7 @@ The `modulep` pointer references preload metadata - a linked list of module info
 |---|------|-------|
 | 1 | Implement `elf64_exec()` in loader | `stand/boot/efi/loader/arch/aarch64/elf64_freebsd.c` |
 | 2 | Create platform directory structure | `sys/platform/arm64/` |
-| 3 | Write `locore.S` stub entry point | `sys/platform/arm64/aarch64/locore.S` |
+| 3 | Write `locore.s` stub entry point | `sys/platform/arm64/aarch64/locore.s` |
 | 4 | Create minimal `machdep.c` | `sys/platform/arm64/aarch64/machdep.c` |
 | 5 | Create Makefiles for kernel build | `sys/platform/arm64/Makefile.inc`, etc. |
 | 6 | Update test Makefile | `tools/arm64-test/Makefile` |
@@ -157,7 +157,7 @@ Replace the loader-side MMU disable workaround with a FreeBSD-derived, kernel-co
 ### Status: IN PROGRESS
 
 Completed so far:
-- Early TTBR0 identity map and MMU enable in `sys/platform/arm64/aarch64/locore.S`
+- Early TTBR0 identity map and MMU enable in `sys/platform/arm64/aarch64/locore.s`
 - Early C entry (`initarm`) with modulep printing and minimal metadata parsing
 - TTBR1 mapping split into RX text + RW/XN data (2MB blocks)
 - High-VA trampoline to validate TTBR1 mapping
@@ -166,9 +166,14 @@ Completed so far:
 - Serial console auto-selection for headless runs (eficom)
 - Phase A metadata consumption (boothowto/envp/EFI handle) wired in initarm
 - Loader staging window expanded to 8MB to capture metadata
+- Phase B EFI map parsing (entries, usable pages, physmem ranges)
+- Phase C bootstrap allocator from largest EFI range
+- Phase C L0/L1/L2 tables built from bootstrap allocator
+- TTBR1 switch active + high-VA trampoline executed
 
 Not done yet:
 - Implement real early C init (boot flags/envp, EFI map, pmap bootstrap)
+- Wire PL011 console backend into DragonFly console framework (Phase D)
 - Stabilize TTBR1 validation and idle loop (no stray output)
 
 ### Early C Init Plan (No FDT)
@@ -198,9 +203,59 @@ Phase C: Pmap bootstrap skeleton
 2. Transition from locore tables to pmap-managed tables (TTBR switch).
 3. Keep UART working and avoid synchronous exceptions.
 
+Phase C.5: Switch to `config(8)` kernel build (compile-only milestone)
+0. Make `ARM64_GENERIC` a valid config input: add `platform arm64`,
+   `machine_arch aarch64`, and keep a single `cpu` token for arm64.
+1. Add minimal platform scaffolding required by config:
+   - `sys/platform/arm64/Makefile.inc`
+   - keep `sys/platform/arm64/conf/Makefile`, `kern.mk`, `ldscript.aarch64`
+2. Provide MI-required platform files:
+   - `sys/platform/arm64/aarch64/locore.s`
+   - `sys/platform/arm64/aarch64/genassym.c`
+3. Create CPU include tree for `machine_arch aarch64`:
+   - `sys/cpu/aarch64/include/*.h` (minimal headers for forwarding)
+4. Populate `sys/platform/arm64/include/` with the minimal `machine/*.h`
+   surface required to compile MI kernel code.
+5. Expand `sys/platform/arm64/conf/files` to include arm64 MD objects
+   beyond `pl011_cons.c` so the kernel can link.
+6. Build attempt (compile-only):
+   - `config -r -g ARM64_GENERIC`
+   - `make depend` and `make` in `sys/compile/ARM64_GENERIC`
+7. Iterate on missing headers/symbols until the build completes.
+
 Phase D: Console framework handoff
 1. Replace ad-hoc UART prints with a proper early console hook.
 2. Enable `printf()` via the console framework as early as possible.
+
+### Phase D Implementation Plan (PL011 Console Backend)
+
+We will follow the DragonFly console framework and place the PL011 console
+driver under `sys/dev/serial/pl011/` to avoid duplicate implementations
+and match the tree layout.
+
+1) Add a PL011 console backend (DragonFly consdev)
+- New files under `sys/dev/serial/pl011/`:
+  - `pl011_cons.c` (probe/init/putc)
+  - `pl011_reg.h` (register offsets and flags)
+- Implement a minimal `struct consdev` using `CONS_DRIVER`:
+  - `cn_probe`: mark `cn_pri = CN_REMOTE`, `cn_probegood = 1`
+  - `cn_init`: set base address (QEMU virt PL011 at `0x09000000`)
+  - `cn_putc`: busy-wait on UARTFR, write UARTDR
+
+2) Do not wire `cninit()` yet
+- Keep the stub using `uart_put*` until the real kernel build is ready.
+- The PL011 consdev will be compiled but not activated yet.
+
+3) Activation point (later)
+- When we switch from the stub Makefile to a real DragonFly kernel build:
+  - Add the PL011 console driver to the arm64 kernel config/files.
+  - Call `cninit()` in the early arm64 init path.
+  - Replace `uart_put*` with `kprintf` once `cnputc` is live.
+
+4) FreeBSD alignment (reference only)
+- FreeBSD uses `uart_dev_pl011.c` for PL011 in its UART framework.
+- We will borrow register definitions/behavior where needed, preserving
+  FreeBSD license headers if code is reused.
 
 ### FreeBSD Reference (Do Not Copy Without License)
 
@@ -224,7 +279,7 @@ Reference these files and follow their order of operations. Any reused code must
 1. Keep the existing DragonFly loader flow: `dev_cleanup()`, `bi_load()`, cache flush, jump to kernel entry with `modulep` in x0.
 2. Once kernel MMU setup is implemented, remove the loader-side MMU disable workaround.
 
-#### 2) Kernel Entry Order (locore.S)
+#### 2) Kernel Entry Order (locore.s)
 
 1. Enter the kernel exception level (EL1) and ensure MMU is off in EL2 entry cases.
 2. Compute the physical load address (FreeBSD uses `get_load_phys_addr`).
@@ -353,4 +408,4 @@ These debug markers were added during bring-up:
 
 ---
 
-*Last updated: 2026-01-24*
+*Last updated: 2026-01-25*
