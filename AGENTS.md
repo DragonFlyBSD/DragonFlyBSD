@@ -65,6 +65,7 @@ This file provides explicit instructions for AI coding agents working in this re
 - [x] Document what was changed and why (in commit messages/PR descriptions)
 - [x] Work on a branch, never in the default branch.
 - [x] Read `doc/arm64-efi-loader-mvp-part1.md` before starting arm64 work.
+- [x] Keep `doc/arm64-efi-loader-mvp-part1.md` up to date after completing work.
 - [x] For unimplemented or missing features, follow FreeBSD in `.freebsd.orig` while preserving DragonFly directory layout and conventions.
 
 ---
