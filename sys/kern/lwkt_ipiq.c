@@ -464,7 +464,7 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
     if (target != mycpu) {
 	ip = &mycpu->gd_ipiq[target->gd_cpuid];
 	if ((int)(ip->ip_xindex - seq) < 0) {
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(__aarch64__)
 	    unsigned long rflags = read_rflags();
 #else
 #error "no read_*flags"
