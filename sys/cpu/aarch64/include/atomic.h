@@ -203,6 +203,12 @@ atomic_swap_int(volatile int *p, int v)
 	return (__atomic_exchange_n(p, v, __ATOMIC_SEQ_CST));
 }
 
+static __inline long
+atomic_swap_long(volatile long *p, long v)
+{
+	return (__atomic_exchange_n(p, v, __ATOMIC_SEQ_CST));
+}
+
 static __inline u_int
 atomic_fetchadd_int(volatile u_int *p, u_int v)
 {

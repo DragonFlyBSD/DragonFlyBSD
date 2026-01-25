@@ -124,4 +124,33 @@ void	smp_invltlb(void);
 void	smp_sniff(void);
 void	cpu_sniff(int);
 
+/*
+ * TLB invalidation routines for arm64.
+ */
+static __inline void
+cpu_invltlb(void)
+{
+	__asm __volatile(
+	    "dsb	ishst\n"
+	    "tlbi	vmalle1\n"
+	    "dsb	ish\n"
+	    "isb"
+	    ::: "memory"
+	);
+}
+
+static __inline void
+cpu_invlpg(void *va)
+{
+	uint64_t r = (uint64_t)va >> 12;
+
+	__asm __volatile(
+	    "dsb	ishst\n"
+	    "tlbi	vaae1is, %0\n"
+	    "dsb	ish\n"
+	    "isb"
+	    :: "r"(r) : "memory"
+	);
+}
+
 #endif /* _CPU_CPUFUNC_H_ */
