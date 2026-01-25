@@ -119,6 +119,13 @@
 #define	DEV_BSIZE	(1<<DEV_BSHIFT)
 #define	DEV_BMASK	(DEV_BSIZE - 1)
 
+/*
+ * MMU segment size (level 2 block = 2MB)
+ */
+#define	SEG_SHIFT	21
+#define	SEG_SIZE	(1<<SEG_SHIFT)	/* bytes per mmu segment (level 2) */
+#define	SEG_MASK	(SEG_SIZE-1)
+
 #ifndef KSTACK_PAGES
 #if defined(KASAN) || defined(KMSAN)
 #define	KSTACK_PAGES	6
