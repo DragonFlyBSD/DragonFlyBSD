@@ -5,9 +5,23 @@
 #ifndef _CPU_ELF_H_
 #define _CPU_ELF_H_
 
+/*
+ * ELF definitions for the aarch64 architecture.
+ */
 #ifndef EM_AARCH64
 #define EM_AARCH64 183
 #endif
+
+#ifndef __ELF_WORD_SIZE
+#define __ELF_WORD_SIZE	64
+#endif
+#include <sys/elf32.h>
+#include <sys/elf64.h>
+#include <sys/elf_generic.h>
+
+#define ELF_ARCH	EM_AARCH64
+
+#define ELF_MACHINE_OK(x)	((x) == EM_AARCH64)
 
 /*
  * aarch64 load base for PIE binaries (placeholder).
