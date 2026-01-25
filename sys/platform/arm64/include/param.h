@@ -65,7 +65,7 @@
 #define	MAXCPU		1024
 #endif
 #else
-#define	MAXCPU		1
+#define	MAXCPU		256
 #endif
 
 #ifndef SMP_MAXCPU
