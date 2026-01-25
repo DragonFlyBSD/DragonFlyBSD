@@ -300,11 +300,11 @@ start_mmu:
 	.size	_start, . - _start
 
 	.bss
-	.align	12
+	.p2align	12
 initstack:
 	.space	BOOT_STACK_SIZE
 initstack_end:
-	.align	12
+	.p2align	12
 ttbr0_l0:
 	.space	4096
 ttbr0_l1:
