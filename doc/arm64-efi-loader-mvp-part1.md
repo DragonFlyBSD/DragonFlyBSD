@@ -51,24 +51,27 @@ stand/lib/
 ### Build Instructions (VM)
 
 ```sh
-# Build libstand
-cd /usr/src/stand/lib
-make clean && make MACHINE_ARCH=aarch64 MACHINE=aarch64 CC=aarch64-none-elf-gcc
+# Cross-compiler on VM
+CC=/usr/local/bin/aarch64-none-elf-gcc
 
 # Build loader
 cd /usr/src/stand/boot/efi/loader
-make clean && make MACHINE_ARCH=aarch64 MACHINE=aarch64 CC=aarch64-none-elf-gcc
+make clean && make -j8 MACHINE_ARCH=aarch64 MACHINE=aarch64 CC=$CC
+
+# Build kernel (via config(8))
+cd /usr/src/sys/compile/ARM64_GENERIC
+make clean && make -j8 kernel.debug
 ```
 
 ### Test Instructions (Host)
 
-See `tools/arm64-test/Makefile` for the test environment.
+Use the build/test agent or manual workflow:
 
 ```sh
 cd tools/arm64-test
-make copy-loader    # Fetch loader from VM
+make copy-all       # Fetch loader and kernel from VM
+make test           # Run with 45s timeout (headless)
 make run-gui        # Run with graphical display
-make test           # Run with 25s timeout (headless)
 ```
 
 ---
@@ -79,183 +82,156 @@ make test           # Run with 25s timeout (headless)
 
 Create a minimal arm64 kernel that the EFI loader can load and execute, prints a message to UART, and halts.
 
-### Approach
+### Status: COMPLETE
 
-Two components:
-1. **Loader**: Implement `elf64_exec()` to load and jump to kernel
-2. **Kernel**: Create stub that prints to PL011 UART (0x09000000 on QEMU virt)
+The stub kernel milestone has been achieved and significantly exceeded. The kernel now:
+- Loads via EFI loader with full module metadata
+- Enters at `_start` with MMU enabled (identity-mapped)
+- Parses boot metadata (modulep) including EFI memory map
+- Runs `initarm()` C code successfully
+- Prints diagnostic output to PL011 UART
 
-### Part A: Loader Changes
+### Key Implementation
 
-**File:** `stand/boot/efi/loader/arch/aarch64/elf64_freebsd.c`
+**Loader (`stand/boot/efi/loader/arch/aarch64/elf64_freebsd.c`):**
+- `elf64_exec()` builds module metadata via `bi_load()`
+- Calls `ExitBootServices()` to take control from UEFI
+- Flushes caches (D-cache clean, I-cache invalidate)
+- Jumps to kernel entry with `modulep` in x0
 
-Implement `elf64_exec()` to:
-1. Build module metadata (modulep)
-2. Call `ExitBootServices()` to take control from UEFI
-3. Flush caches (D-cache clean, I-cache invalidate)
-4. Jump to kernel entry point with `modulep` in x0
-
-### Part B: Kernel Platform Structure
-
-Create `sys/platform/arm64/` with proper directory structure:
-
+**Kernel Platform Structure:**
 ```
 sys/platform/arm64/
 ├── Makefile.inc           # Platform build rules
 ├── conf/
-│   └── files              # File list for kernel config
-├── include/
-│   └── (placeholder)      # Machine headers (later)
+│   ├── ARM64_GENERIC      # Kernel config file
+│   ├── Makefile           # Kernel build Makefile
+│   ├── files              # File list for kernel config
+│   ├── kern.mk            # Kernel build rules
+│   └── ldscript.aarch64   # Linker script
+├── include/               # Machine headers (machine/*.h)
 └── aarch64/
-    ├── locore.s           # Entry point: _start
-    ├── machdep.c          # Stub init functions
-    └── Makefile           # Build the kernel
+    ├── locore.s           # Entry point with MMU setup
+    ├── machdep.c          # initarm() and early C init
+    ├── pmap.c             # Pmap stubs for linking
+    ├── support.c          # Support routines (copy/fetch)
+    └── genassym.c         # Assembly constants
+
+sys/cpu/aarch64/include/   # CPU headers (cpu/*.h)
 ```
 
-**Kernel entry (`locore.s`):**
-1. Entry at `_start`, receive `modulep` in x0
-2. Write "DragonFly arm64 kernel!\n" to PL011 UART at 0x09000000
-3. Infinite loop (halt)
+**Kernel entry flow:**
+1. `_start` in `locore.s` receives `modulep` in x0
+2. Sets up early identity map (TTBR0) for physical addresses
+3. Enables MMU with 4KB pages
+4. Calls `initarm(modulep)` in C
 
-### Part C: Kernel Entry Signature
+### Success Criteria (All Met)
 
-The loader passes a single argument to the kernel:
-
-```c
-void _start(vm_offset_t modulep);  // modulep in x0
-```
-
-The `modulep` pointer references preload metadata - a linked list of module information containing kernel address, size, environment, boot flags, EFI memory map, etc.
-
-### Tasks
-
-| # | Task | Files |
-|---|------|-------|
-| 1 | Implement `elf64_exec()` in loader | `stand/boot/efi/loader/arch/aarch64/elf64_freebsd.c` |
-| 2 | Create platform directory structure | `sys/platform/arm64/` |
-| 3 | Write `locore.s` stub entry point | `sys/platform/arm64/aarch64/locore.s` |
-| 4 | Create minimal `machdep.c` | `sys/platform/arm64/aarch64/machdep.c` |
-| 5 | Create Makefiles for kernel build | `sys/platform/arm64/Makefile.inc`, etc. |
-| 6 | Update test Makefile | `tools/arm64-test/Makefile` |
-| 7 | Build and test on VM | - |
-
-### Success Criteria
-
-- Loader successfully loads ELF64 kernel
-- Loader exits boot services and jumps to kernel
-- Kernel prints "DragonFly/arm64 kernel started!" to UART
-- Message visible in QEMU serial output
+- ✅ Loader successfully loads ELF64 kernel
+- ✅ Loader exits boot services and jumps to kernel
+- ✅ Kernel prints to UART (diagnostic output visible)
+- ✅ Message visible in QEMU serial output
 
 ---
 
-## MVP Part 3: Early MMU Bootstrap (PLANNED)
+## MVP Part 3: Early MMU Bootstrap (IN PROGRESS)
 
 ### Goal
 
 Replace the loader-side MMU disable workaround with a FreeBSD-derived, kernel-controlled page table setup that enables the MMU early and preserves the DragonFly boot flow.
 
-### Status: IN PROGRESS
+### Status: IN PROGRESS (Phase C Complete)
 
-Completed so far:
-- Early TTBR0 identity map and MMU enable in `sys/platform/arm64/aarch64/locore.s`
-- Early C entry (`initarm`) with modulep printing and minimal metadata parsing
-- TTBR1 mapping split into RX text + RW/XN data (2MB blocks)
-- High-VA trampoline to validate TTBR1 mapping
-- Synchronous exception handler prints ESR/FAR/ELR over UART
-- Loader allocates an executable window for the kernel (no MMU-disable handoff)
-- Serial console auto-selection for headless runs (eficom)
-- Phase A metadata consumption (boothowto/envp/EFI handle) wired in initarm
-- Loader staging window expanded to 8MB to capture metadata
-- Phase B EFI map parsing (entries, usable pages, physmem ranges)
-- Phase C bootstrap allocator from largest EFI range
-- Phase C L0/L1/L2 tables built from bootstrap allocator
-- TTBR1 switch active + high-VA trampoline executed
+**Completed:**
 
-Not done yet:
-- Implement real early C init (boot flags/envp, EFI map, pmap bootstrap)
+Phase A - Metadata consumption (modulep): ✅ COMPLETE
+- `initarm()` receives modulep as physical address
+- Parses module metadata to find kernel record
+- Extracts: `boothowto`, `kern_envp`, `efi_systbl_phys`
+- Prints diagnostic values over UART
+
+Phase B - EFI memory map ingestion: ✅ COMPLETE
+- Fetches EFI map header via `MODINFOMD_EFI_MAP`
+- Validates descriptor size/version, counts 36 entries
+- Builds physmem list: 8 usable ranges, ~112K pages (~440MB)
+- Identifies largest contiguous range for bootstrap allocator
+
+Phase C - Pmap bootstrap skeleton: ✅ COMPLETE
+- Bootstrap allocator initialized from largest EFI range (0x48000000-0x5c13b000)
+- L0/L1/L2 page tables allocated from bootstrap memory
+- TTBR1 page tables built for kernel high-VA mapping
+- Page table entries populated (2MB blocks for kernel text/data)
+
+Phase C.5 - config(8) kernel build: ✅ COMPLETE
+- `ARM64_GENERIC` kernel config works with `config -r -g`
+- Full kernel build via `make kernel.debug` in `sys/compile/ARM64_GENERIC`
+- Cross-compiler: `/usr/local/bin/aarch64-none-elf-gcc`
+- Kernel links successfully with ~300 stub functions
+
+**Current Boot Output:**
+```
+[arm64] initarm: modulep(phys)=0x0000000040caf000
+[arm64] module: /boot/KERNEL/kernel
+[arm64] kernend=0x0000000040cb0000
+[arm64] boothowto=0x0000000000000000
+[arm64] kern_envp=0x0000000040cae000
+[arm64] efi_systbl=0x000000005ffd0018
+[arm64] efi_map entries=0000000000000024
+[arm64] efi_map usable_pages=000000000001b7f3
+[arm64] physmem ranges=0000000000000008
+[arm64] pmap bootstrap: largest range 0x0000000048000000-0x000000005c13b000
+[arm64] boot_alloc range 0x0000000048000000-0x000000005c13b000
+[arm64] pt l2=0x0000000048004000
+[arm64] ttbr1 current=0x00000000406bd000
+[arm64] ttbr1 candidate=0x0000000048002000
+```
+
+**Not done yet:**
+- TTBR1 switch and high-VA trampoline execution
 - Wire PL011 console backend into DragonFly console framework (Phase D)
-- Stabilize TTBR1 validation and idle loop (no stray output)
+- Replace ad-hoc UART prints with `kprintf()` via console framework
 
-### Early C Init Plan (No FDT)
+### Key Fixes Applied This Session
 
-This is the immediate roadmap for the remaining MVP Part 3 work. The focus
-is to consume loader metadata and bootstrap enough kernel state to proceed
-without relying on ad-hoc UART prints or loader workarounds.
+1. **Loader staging area too small** - Increased from 8MB to 32MB in `copy.c`
+   - modulep was at ~12.7MB offset, beyond 8MB staging area
+   - `efi_copyin()` was silently failing for modulep data
+   - Fixed: staging now covers full kernel + metadata
 
-Phase A: Metadata consumption (modulep)
-1. Set `preload_metadata` from `modulep` and relocate metadata pointers
-   (`preload_bootstrap_relocate`) with the arm64 phys->virt offset.
-2. Locate the kernel metadata record (`preload_search_by_type` for
-   "elf kernel"/"elf64 kernel").
-3. Fetch required metadata:
-   - `boothowto = MD_FETCH(kmdp, MODINFOMD_HOWTO, int)`
-   - `kern_envp = MD_FETCH(kmdp, MODINFOMD_ENVP, char *) + offset`
-   - `efi_systbl_phys = MD_FETCH(kmdp, MODINFOMD_FW_HANDLE, vm_paddr_t)`
-4. Print minimal diagnostics over UART to confirm the values.
+2. **modulep physical vs virtual address** - Keep modulep as physical in early boot
+   - Early page tables only map first 4MB at high VA
+   - modulep at ~12MB needs TTBR0 identity map access
+   - Fixed in `machdep.c`: don't convert to high VA prematurely
 
-Phase B: EFI memory map ingestion
-1. Fetch EFI map header via `MODINFOMD_EFI_MAP`.
-2. Validate descriptor size/version and count entries.
-3. Build a minimal physmem list for bootstrap (no allocations yet).
+### Remaining Work (Phases C.6 and D)
 
-Phase C: Pmap bootstrap skeleton
-1. Introduce an arm64 pmap bootstrap entrypoint using the physmem list.
-2. Transition from locore tables to pmap-managed tables (TTBR switch).
-3. Keep UART working and avoid synchronous exceptions.
-
-Phase C.5: Switch to `config(8)` kernel build (compile-only milestone)
-0. Make `ARM64_GENERIC` a valid config input: add `platform arm64`,
-   `machine_arch aarch64`, and keep a single `cpu` token for arm64.
-1. Add minimal platform scaffolding required by config:
-   - `sys/platform/arm64/Makefile.inc`
-   - keep `sys/platform/arm64/conf/Makefile`, `kern.mk`, `ldscript.aarch64`
-2. Provide MI-required platform files:
-   - `sys/platform/arm64/aarch64/locore.s`
-   - `sys/platform/arm64/aarch64/genassym.c`
-3. Create CPU include tree for `machine_arch aarch64`:
-   - `sys/cpu/aarch64/include/*.h` (minimal headers for forwarding)
-4. Populate `sys/platform/arm64/include/` with the minimal `machine/*.h`
-   surface required to compile MI kernel code.
-5. Expand `sys/platform/arm64/conf/files` to include arm64 MD objects
-   beyond `pl011_cons.c` so the kernel can link.
-6. Build attempt (compile-only):
-   - `config -r -g ARM64_GENERIC`
-   - `make depend` and `make` in `sys/compile/ARM64_GENERIC`
-7. Iterate on missing headers/symbols until the build completes.
+Phase C.6: TTBR1 switch and high-VA execution
+1. Switch TTBR1 from locore bootstrap tables to pmap-allocated tables
+2. Execute high-VA trampoline to validate kernel mapping
+3. Ensure UART remains accessible after switch (device mapping)
+4. Continue boot in high-VA space
 
 Phase D: Console framework handoff
-1. Replace ad-hoc UART prints with a proper early console hook.
-2. Enable `printf()` via the console framework as early as possible.
+1. Replace ad-hoc UART prints with proper early console hook
+2. Enable `kprintf()` via console framework
+3. Wire PL011 driver into DragonFly `CONS_DRIVER` framework
 
 ### Phase D Implementation Plan (PL011 Console Backend)
 
-We will follow the DragonFly console framework and place the PL011 console
-driver under `sys/dev/serial/pl011/` to avoid duplicate implementations
-and match the tree layout.
+The PL011 console driver exists under `sys/dev/serial/pl011/`:
+- `pl011_cons.c` - probe/init/putc implementation
+- `pl011_reg.h` - register offsets and flags
 
-1) Add a PL011 console backend (DragonFly consdev)
-- New files under `sys/dev/serial/pl011/`:
-  - `pl011_cons.c` (probe/init/putc)
-  - `pl011_reg.h` (register offsets and flags)
-- Implement a minimal `struct consdev` using `CONS_DRIVER`:
-  - `cn_probe`: mark `cn_pri = CN_REMOTE`, `cn_probegood = 1`
-  - `cn_init`: set base address (QEMU virt PL011 at `0x09000000`)
-  - `cn_putc`: busy-wait on UARTFR, write UARTDR
+Current state:
+- Driver compiles and is included in kernel build
+- Uses `CONS_DRIVER` macro for DragonFly console framework
+- Early boot uses direct UART writes via `uart_putc()` in `machdep.c`
 
-2) Do not wire `cninit()` yet
-- Keep the stub using `uart_put*` until the real kernel build is ready.
-- The PL011 consdev will be compiled but not activated yet.
-
-3) Activation point (later)
-- When we switch from the stub Makefile to a real DragonFly kernel build:
-  - Add the PL011 console driver to the arm64 kernel config/files.
-  - Call `cninit()` in the early arm64 init path.
-  - Replace `uart_put*` with `kprintf` once `cnputc` is live.
-
-4) FreeBSD alignment (reference only)
-- FreeBSD uses `uart_dev_pl011.c` for PL011 in its UART framework.
-- We will borrow register definitions/behavior where needed, preserving
-  FreeBSD license headers if code is reused.
+Remaining work:
+- Call `cninit()` in early arm64 init path
+- Replace `uart_put*` with `kprintf()` once `cnputc` is live
+- Verify console works after TTBR1 switch (device mapping required)
 
 ### FreeBSD Reference (Do Not Copy Without License)
 
@@ -379,10 +355,10 @@ Exact plan (do not skip any step):
 
 ### FUTURE TODO
 
-- Align arm64 EFI staging window size with FreeBSD defaults.
-  - FreeBSD uses `DEFAULT_EFI_STAGING_SIZE` = 64MB for non-arm32.
-  - DragonFly currently uses an 8MB fixed window for arm64.
-  - Decide whether to switch to 64MB or make `EFI_STAGING_SIZE` configurable.
+- Consider increasing arm64 EFI staging window to match FreeBSD defaults (64MB)
+  - FreeBSD uses `DEFAULT_EFI_STAGING_SIZE` = 64MB for non-arm32
+  - DragonFly currently uses 32MB fixed window for arm64 (increased from 8MB)
+  - 32MB is sufficient for current kernel (~5MB) + metadata
 
 ---
 
@@ -408,4 +384,4 @@ These debug markers were added during bring-up:
 
 ---
 
-*Last updated: 2026-01-25*
+*Last updated: 2026-01-26*
