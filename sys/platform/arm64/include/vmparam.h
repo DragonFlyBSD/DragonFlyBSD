@@ -68,4 +68,7 @@
 #define VM_MIN_KERNEL_ADDRESS	((vm_offset_t)0xffff000000000000UL)
 #define VM_MAX_KERNEL_ADDRESS	((vm_offset_t)0xffffffffffffffffUL)
 
+#define PHYS_TO_DMAP(x)		((vm_offset_t)(x))
+#define DMAP_TO_PHYS(x)		((vm_paddr_t)(x))
+
 #endif /* _MACHINE_VMPARAM_H_ */

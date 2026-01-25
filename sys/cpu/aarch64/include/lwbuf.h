@@ -11,6 +11,12 @@
 #ifndef _SYS_PARAM_H_
 #include <sys/param.h>
 #endif
+#ifndef _VM_VM_PAGE_H_
+#include <vm/vm_page.h>
+#endif
+#ifndef _MACHINE_VMPARAM_H_
+#include <machine/vmparam.h>
+#endif
 
 struct vm_page;
 typedef struct vm_page *vm_page_t;
@@ -39,7 +45,7 @@ lwbuf_alloc(vm_page_t m, struct lwbuf *lwb_cache)
 	struct lwbuf *lwb = lwb_cache;
 
 	lwb->m = m;
-	lwb->kva = 0;
+	lwb->kva = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(lwb->m));
 
 	return (lwb);
 }
