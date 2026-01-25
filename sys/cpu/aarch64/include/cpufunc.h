@@ -80,6 +80,12 @@ rdtsc(void)
 	return (value);
 }
 
+static __inline u_int
+bsfl(u_int mask)
+{
+	return (__builtin_ctz(mask));
+}
+
 void	smp_invltlb(void);
 void	smp_sniff(void);
 void	cpu_sniff(int);
