@@ -376,9 +376,10 @@ pmap_page_protect(struct vm_page *m __unused, vm_prot_t prot __unused)
 /*
  * Synchronize mapped state.
  */
-void
+int
 pmap_mapped_sync(struct vm_page *m __unused)
 {
+	return (0);
 }
 
 /*
@@ -409,20 +410,19 @@ pmap_remove_specific(pmap_t pmap __unused, struct vm_page *m __unused)
 /*
  * Grow kernel VA.
  */
-vm_offset_t
-pmap_growkernel(vm_offset_t addr)
+void
+pmap_growkernel(vm_offset_t kstart __unused, vm_offset_t kend __unused)
 {
-	return (addr);
 }
 
 /*
  * Map physical memory.
  */
-void *
+vm_offset_t
 pmap_map(vm_offset_t *virt __unused, vm_paddr_t start __unused,
     vm_paddr_t end __unused, int prot __unused)
 {
-	return (NULL);
+	return (0);
 }
 
 /*
@@ -445,10 +445,9 @@ pmap_object_free(struct vm_object *object __unused)
  * Initialize page table for object.
  */
 void
-pmap_object_init_pt(pmap_t pmap __unused, vm_offset_t addr __unused,
-    vm_prot_t prot __unused, struct vm_object *object __unused,
-    vm_pindex_t pindex __unused, vm_size_t size __unused,
-    int limit __unused)
+pmap_object_init_pt(pmap_t pmap __unused, struct vm_map_entry *entry __unused,
+    vm_offset_t addr __unused, vm_offset_t size __unused,
+    int pagelimit __unused)
 {
 }
 
@@ -473,10 +472,9 @@ pmap_mincore(pmap_t pmap __unused, vm_offset_t addr __unused)
 /*
  * Maybe threaded check.
  */
-int
+void
 pmap_maybethreaded(pmap_t pmap __unused)
 {
-	return (0);
 }
 
 /*
