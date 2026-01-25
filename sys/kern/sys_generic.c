@@ -126,7 +126,7 @@ sys_read(struct sysmsg *sysmsg, const struct read_args *uap)
 	struct uio auio;
 	struct iovec aiov;
 	int error;
-	int szresult;
+	size_t szresult;
 
 	if ((ssize_t)uap->nbyte < 0)
 		error = EINVAL;
@@ -159,7 +159,7 @@ sys_extpread(struct sysmsg *sysmsg, const struct extpread_args *uap)
 	struct iovec aiov;
 	int error;
 	int flags;
-	int szresult;
+	size_t szresult;
 
 	if ((ssize_t)uap->nbyte < 0)
 		return(EINVAL);
