@@ -1319,8 +1319,10 @@ sys_mountctl(struct sysmsg *sysmsg, const struct mountctl_args *uap)
 	/*
 	 * Execute the internal kernel function and clean up.
 	 */
+	int result = 0;
 	error = kern_mountctl(path, uap->op, fp, ctl, uap->ctllen,
-			      buf, uap->buflen, &sysmsg->sysmsg_result);
+			      buf, uap->buflen, &result);
+	sysmsg->sysmsg_result = result;
 	if (fp)
 		dropfp(td, uap->fd, fp);
 	if (error == 0 && sysmsg->sysmsg_result > 0)
@@ -2288,11 +2290,12 @@ sys_open(struct sysmsg *sysmsg, const struct open_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
+	int result = 0;
 
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
-		error = kern_open(&nd, uap->flags,
-				    uap->mode, &sysmsg->sysmsg_result);
+		error = kern_open(&nd, uap->flags, uap->mode, &result);
+		sysmsg->sysmsg_result = result;
 	}
 	nlookup_done(&nd);
 	return (error);
@@ -2307,11 +2310,12 @@ sys_openat(struct sysmsg *sysmsg, const struct openat_args *uap)
 	struct nlookupdata nd;
 	int error;
 	struct file *fp;
+	int result = 0;
 
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
-		error = kern_open(&nd, uap->flags, uap->mode, 
-					&sysmsg->sysmsg_result);
+		error = kern_open(&nd, uap->flags, uap->mode, &result);
+		sysmsg->sysmsg_result = result;
 	}
 	nlookup_done_at(&nd, fp);
 	return (error);
@@ -2873,9 +2877,10 @@ int
 sys_lseek(struct sysmsg *sysmsg, const struct lseek_args *uap)
 {
 	int error;
+	off_t offset = 0;
 
-	error = kern_lseek(uap->fd, uap->offset, uap->whence,
-			   &sysmsg->sysmsg_offset);
+	error = kern_lseek(uap->fd, uap->offset, uap->whence, &offset);
+	sysmsg->sysmsg_offset = offset;
 
 	return (error);
 }
@@ -3154,8 +3159,12 @@ kern_pathconf(char *path, int name, int flags, register_t *sysmsg_regp)
 int
 sys_pathconf(struct sysmsg *sysmsg, const struct pathconf_args *uap)
 {
-	return (kern_pathconf(uap->path, uap->name, NLC_FOLLOW,
-		&sysmsg->sysmsg_reg));
+	register_t reg = 0;
+	int error;
+
+	error = kern_pathconf(uap->path, uap->name, NLC_FOLLOW, &reg);
+	sysmsg->sysmsg_reg = reg;
+	return (error);
 }
 
 /*
@@ -3166,7 +3175,12 @@ sys_pathconf(struct sysmsg *sysmsg, const struct pathconf_args *uap)
 int
 sys_lpathconf(struct sysmsg *sysmsg, const struct lpathconf_args *uap)
 {
-	return (kern_pathconf(uap->path, uap->name, 0, &sysmsg->sysmsg_reg));
+	register_t reg = 0;
+	int error;
+
+	error = kern_pathconf(uap->path, uap->name, 0, &reg);
+	sysmsg->sysmsg_reg = reg;
+	return (error);
 }
 
 /*
@@ -3218,11 +3232,12 @@ sys_readlink(struct sysmsg *sysmsg, const struct readlink_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
+	int result = 0;
 
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
-		error = kern_readlink(&nd, uap->buf, uap->count,
-					&sysmsg->sysmsg_result);
+		error = kern_readlink(&nd, uap->buf, uap->count, &result);
+		sysmsg->sysmsg_result = result;
 	}
 	nlookup_done(&nd);
 	return (error);

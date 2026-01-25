@@ -122,6 +122,10 @@ build_topology_tree(int *children_no_per_level,
 {
 	int i;
 
+	/* Safety check to silence compiler array bounds warnings */
+	if (cur_level >= LEVEL_NO)
+		return;
+
 	node->child_no = children_no_per_level[cur_level];
 	node->type = level_types[cur_level];
 	CPUMASK_ASSZERO(node->members);
