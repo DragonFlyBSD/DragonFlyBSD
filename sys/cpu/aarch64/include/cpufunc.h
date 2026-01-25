@@ -29,6 +29,8 @@
 #define	_CPU_CPUFUNC_H_
 
 #include <sys/cdefs.h>
+#include <sys/types.h>
+#include <machine/clock.h>
 #ifdef _KERNEL
 #include <machine/smp.h>
 #endif
@@ -66,6 +68,15 @@ static __inline void
 cpu_pause(void)
 {
 	__asm __volatile("" ::: "memory");
+}
+
+static __inline tsc_uclock_t
+rdtsc(void)
+{
+	u_int64_t value;
+
+	__asm __volatile("mrs %0, cntvct_el0" : "=r" (value));
+	return (value);
 }
 
 void	smp_sniff(void);
