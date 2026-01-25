@@ -40,6 +40,12 @@
 #define	need_user_resched()				\
 	atomic_set_int(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
 
+#define	clear_user_resched()			\
+	atomic_clear_int(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
+
+#define	user_resched_wanted()			\
+	(mycpu->gd_reqflags & RQF_AST_USER_RESCHED)
+
 #define	signotify()				\
 	atomic_set_int(&mycpu->gd_reqflags, RQF_AST_SIGNAL)
 
