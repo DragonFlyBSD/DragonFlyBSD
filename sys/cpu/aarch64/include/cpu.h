@@ -52,6 +52,9 @@
 #define	need_lwkt_resched()			\
 	atomic_set_int(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
 
+#define	clear_lwkt_resched()			\
+	atomic_clear_int(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
+
 #define	signotify()				\
 	atomic_set_int(&mycpu->gd_reqflags, RQF_AST_SIGNAL)
 
