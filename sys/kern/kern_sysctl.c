@@ -1521,7 +1521,7 @@ userland_sysctl(int *name, u_int namelen,
 		void *new, size_t newlen, size_t *retval)
 {
 	struct thread *td = curthread;
-	struct lwp *lp = td->td_lwp;
+	struct lwp *lp __unused = td->td_lwp;
 	int error = 0;
 	struct sysctl_req req;
 
