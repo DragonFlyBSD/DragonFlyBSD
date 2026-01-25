@@ -28,6 +28,29 @@
 #ifndef _CPU_CPUFUNC_H_
 #define	_CPU_CPUFUNC_H_
 
-/* Placeholder for arm64 cpu functions. */
+#include <sys/cdefs.h>
+
+static __inline void
+cpu_ccfence(void)
+{
+	__asm __volatile("" ::: "memory");
+}
+
+static __inline void
+cpu_sfence(void)
+{
+	__asm __volatile("" ::: "memory");
+}
+
+static __inline void
+cpu_lfence(void)
+{
+	__asm __volatile("" ::: "memory");
+}
+
+static __inline void
+cpu_enable_intr(void)
+{
+}
 
 #endif /* _CPU_CPUFUNC_H_ */

@@ -131,4 +131,17 @@ atomic_fetchadd_int(volatile u_int *p, u_int v)
 	return (__atomic_fetch_add(p, v, __ATOMIC_SEQ_CST));
 }
 
+static __inline int
+atomic_cmpset_int(volatile u_int *p, u_int cmpv, u_int newv)
+{
+	return (__atomic_compare_exchange_n(p, &cmpv, newv, 0,
+	    __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));
+}
+
+static __inline void
+atomic_add_int_nonlocked(volatile u_int *p, u_int v)
+{
+	__atomic_fetch_add(p, v, __ATOMIC_RELAXED);
+}
+
 #endif /* !_CPU_ATOMIC_H_ */

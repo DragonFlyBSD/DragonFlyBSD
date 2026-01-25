@@ -115,6 +115,8 @@
 #define	KSTACK_GUARD_PAGES	1	/* pages of kstack guard; 0 disables */
 #define	PCPU_PAGES		1
 
+#define	UPAGES			4
+
 #ifdef PERTHREAD_SSP
 #define	NO_PERTHREAD_SSP	__nostackprotector
 #else
