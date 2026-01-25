@@ -30,9 +30,11 @@
 #include <sys/types.h>
 
 #define	MODINFOMD_SMAP		0x1001
-#define	MODINFOMD_EFI_MAP	0x1001
-#define	MODINFOMD_DTBP		0x1002
-#define	MODINFOMD_EFI_FB	0x1003
+#define	MODINFOMD_RES1		0x1002
+#define	MODINFOMD_RES2		0x1003
+#define	MODINFOMD_EFI_MAP	0x1004
+#define	MODINFOMD_EFI_FB	0x1005
+#define	MODINFOMD_DTBP		0x1006
 
 /*
  * This is not the same as the UEFI standard EFI_MEMORY_ATTRIBUTES_TABLE, though
