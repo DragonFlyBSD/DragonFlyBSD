@@ -55,6 +55,11 @@ struct pmap_statistics {
 };
 
 typedef struct pmap_statistics *pmap_statistics_t;
+
+struct pmap {
+	struct pmap_statistics pm_stats;
+};
+
 typedef struct pmap *pmap_t;
 
 #define pmap_resident_count(pmap)	((pmap)->pm_stats.resident_count)
