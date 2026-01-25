@@ -258,6 +258,8 @@ arm64_ttbr1_switch(void)
 	if (arm64_ttbr1_candidate == 0)
 		return;
 
+	uart_puts("[arm64] ttbr1 switching...\r\n");
+
 	__asm __volatile(
 	    "dsb sy\n"
 	    "msr ttbr1_el1, %0\n"
@@ -266,8 +268,16 @@ arm64_ttbr1_switch(void)
 	    "dsb sy\n"
 	    "isb\n"
 	    :: "r" (arm64_ttbr1_candidate) : "memory");
+
+	uart_puts("[arm64] ttbr1 switch done, calling trampoline\r\n");
+
 	void (*tramp)(void) =
 	    (void (*)(void))((uintptr_t)&arm64_high_trampoline + ARM64_PTOTV_OFF);
+
+	uart_puts("[arm64] trampoline addr=0x");
+	uart_puthex((u_int64_t)(uintptr_t)tramp);
+	uart_puts("\r\n");
+
 	tramp();
 	uart_puts("[arm64] ttbr1 switch active\r\n");
 }
