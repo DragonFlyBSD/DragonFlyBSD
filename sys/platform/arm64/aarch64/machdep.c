@@ -1076,16 +1076,18 @@ set_fpregs(struct lwp *lp __unused, struct fpreg *fpregs __unused)
  * Context switch functions - stubs for now
  * These need assembly implementations for proper context switching.
  */
-void
+struct thread *
 cpu_lwkt_switch(struct thread *ntd __unused)
 {
 	panic("cpu_lwkt_switch: not implemented");
+	return (NULL);	/* not reached */
 }
 
-void
+struct thread *
 cpu_heavy_switch(struct thread *ntd __unused)
 {
 	panic("cpu_heavy_switch: not implemented");
+	return (NULL);	/* not reached */
 }
 
 void
@@ -1216,6 +1218,8 @@ cpu_prepare_lwp(struct lwp *lp __unused, struct lwp_params *params __unused)
  * This is a minimal stub - real implementation would need full division.
  */
 typedef unsigned __int128 uint128_t;
+
+uint128_t __udivti3(uint128_t a, uint128_t b);
 
 uint128_t
 __udivti3(uint128_t a, uint128_t b)
