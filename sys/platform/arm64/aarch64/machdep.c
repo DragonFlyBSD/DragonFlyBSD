@@ -35,11 +35,14 @@
 #include <sys/msgbuf.h>
 #include <sys/diskslice.h>
 #include <sys/ptrace.h>
+#include <sys/kerneldump.h>
+#include <sys/memrange.h>
 #include <machine/cpumask.h>
 #include <machine/smp.h>
 #include <machine/md_var.h>
 #include <machine/globaldata.h>
 #include <machine/reg.h>
+#include <machine/pcb.h>
 #include <cpu/tls.h>
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
@@ -274,8 +277,6 @@ static const u_int32_t modinfo_metadata = 0x8000;
 static const u_int32_t modinfomd_kernend = 0x0008;
 
 uintptr_t boot_modulep;
-int boothowto;
-char *kern_envp;
 uintptr_t efi_systbl_phys;
 char *ptvmmap;
 
@@ -288,66 +289,7 @@ volatile cpumask_t stopped_cpus;
  */
 int __mycpu__dummy;
 
-caddr_t preload_metadata;
 static caddr_t preload_kmdp;
-
-void
-preload_bootstrap_relocate(vm_offset_t offset)
-{
-	caddr_t curp;
-	u_int32_t *hdr;
-	vm_offset_t *ptr;
-	int next;
-
-	if (preload_metadata == NULL)
-		return;
-
-	curp = preload_metadata;
-	for (;;) {
-		hdr = (u_int32_t *)curp;
-		if (hdr[0] == 0 && hdr[1] == 0)
-			break;
-		switch (hdr[0]) {
-		case MODINFO_ADDR:
-		case MODINFO_METADATA | MODINFOMD_SSYM:
-		case MODINFO_METADATA | MODINFOMD_ESYM:
-			ptr = (vm_offset_t *)(curp + (sizeof(u_int32_t) * 2));
-			*ptr += offset;
-			break;
-		}
-		next = sizeof(u_int32_t) * 2 + hdr[1];
-		next = roundup(next, sizeof(u_long));
-		curp += next;
-	}
-}
-
-caddr_t
-preload_search_by_type(const char *type)
-{
-	caddr_t curp, lname;
-	u_int32_t *hdr;
-	int next;
-
-	if (preload_metadata == NULL)
-		return (NULL);
-
-	curp = preload_metadata;
-	lname = NULL;
-	for (;;) {
-		hdr = (u_int32_t *)curp;
-		if (hdr[0] == 0 && hdr[1] == 0)
-			break;
-		if (hdr[0] == MODINFO_NAME)
-			lname = curp;
-		if (hdr[0] == MODINFO_TYPE &&
-		    md_strcmp(type, curp + sizeof(u_int32_t) * 2) == 0)
-			return (lname);
-		next = sizeof(u_int32_t) * 2 + hdr[1];
-		next = roundup(next, sizeof(u_long));
-		curp += next;
-	}
-	return (NULL);
-}
 
 static void
 preload_initkmdp(void)
@@ -378,33 +320,6 @@ preload_initkmdp(void)
 		next = roundup(next, sizeof(u_long));
 		curp += next;
 	}
-}
-
-caddr_t
-preload_search_info(caddr_t mod, int inf)
-{
-	caddr_t curp;
-	u_int32_t *hdr;
-	u_int32_t type = 0;
-	int next;
-
-	curp = mod;
-	for (;;) {
-		hdr = (u_int32_t *)curp;
-		if (hdr[0] == 0 && hdr[1] == 0)
-			break;
-		if (type == 0) {
-			type = hdr[0];
-		} else if (hdr[0] == type) {
-			break;
-		}
-		if (hdr[0] == inf)
-			return (curp + (sizeof(u_int32_t) * 2));
-		next = sizeof(u_int32_t) * 2 + hdr[1];
-		next = roundup(next, sizeof(u_long));
-		curp += next;
-	}
-	return (NULL);
 }
 
 static uintptr_t
@@ -857,14 +772,6 @@ splz(void)
 }
 
 /*
- * splz_check - check if splz processing is needed
- */
-void
-splz_check(void)
-{
-}
-
-/*
  * setsofttq - set software taskqueue interrupt pending
  */
 void
@@ -990,4 +897,145 @@ mbrinit(cdev_t dev __unused, struct disk_info *info __unused,
     struct diskslices **sspp __unused)
 {
 	return (EOPNOTSUPP);
+}
+
+/*
+ * flsl - find last set bit (long version)
+ *
+ * Returns the position of the most significant bit set (1-indexed),
+ * or 0 if no bits are set.
+ */
+int
+flsl(long mask)
+{
+	int bit;
+
+	if (mask == 0)
+		return (0);
+	for (bit = 1; mask != 1; bit++)
+		mask = (unsigned long)mask >> 1;
+	return (bit);
+}
+
+/*
+ * TSC (timestamp counter) stubs
+ * ARM64 doesn't have x86 TSC, uses different counters.
+ */
+int tsc_present;
+tsc_uclock_t tsc_frequency;
+tsc_uclock_t tsc_oneus_approx = 1;
+
+/*
+ * DELAY - spin-wait for specified number of microseconds
+ */
+void
+DELAY(int usec)
+{
+	volatile int i;
+
+	/* Very rough delay - needs proper timer implementation */
+	while (usec-- > 0) {
+		for (i = 0; i < 100; i++)
+			;
+	}
+}
+
+/*
+ * cpu_reset - reset the CPU
+ */
+void
+cpu_reset(void)
+{
+	/* ARM64: would use PSCI or direct register write */
+	for (;;)
+		;
+}
+
+/*
+ * cpu_halt - halt the CPU
+ */
+void
+cpu_halt(void)
+{
+	/* ARM64: WFI instruction in loop */
+	for (;;)
+		__asm __volatile("wfi");
+}
+
+/*
+ * Crash dump support stubs
+ */
+cdev_t dumpdev;
+
+void
+md_dumpsys(struct dumperinfo *di __unused)
+{
+}
+
+void
+savectx(struct pcb *pcb __unused)
+{
+}
+
+/*
+ * I/O privilege level stubs (x86-specific concept)
+ * On ARM64 these are no-ops.
+ */
+int
+cpu_set_iopl(void)
+{
+	return (0);
+}
+
+int
+cpu_clr_iopl(void)
+{
+	return (0);
+}
+
+/*
+ * kvm_access_check - check kernel memory access (stub)
+ */
+int
+kvm_access_check(vm_offset_t saddr __unused, vm_offset_t eaddr __unused,
+    int prot __unused)
+{
+	return (0);	/* Allow access for now */
+}
+
+/*
+ * User memory access stubs
+ */
+uint32_t
+fuwordadd32(volatile uint32_t *base __unused, uint32_t v __unused)
+{
+	return ((uint32_t)-1);	/* Fail */
+}
+
+vm_paddr_t
+uservtophys(vm_offset_t va __unused)
+{
+	return ((vm_paddr_t)-1);	/* Invalid */
+}
+
+/*
+ * Thread/CPU support stubs
+ */
+void
+cpu_thread_exit(void)
+{
+	/* Function is __dead2 (noreturn) - loop forever */
+	for (;;)
+		;
+}
+
+void
+cpu_set_thread_handler(struct thread *td __unused,
+    void (*retfunc)(void) __unused, void *func __unused, void *arg __unused)
+{
+}
+
+void
+cpu_smp_stopped(void)
+{
 }
