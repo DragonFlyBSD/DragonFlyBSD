@@ -41,6 +41,7 @@
 #include <sys/sysproto.h>
 #include <sys/signal2.h>
 #include <sys/reg.h>
+#include <sys/cons.h>
 #include <machine/cpumask.h>
 #include <machine/smp.h>
 #include <machine/md_var.h>
@@ -542,6 +543,23 @@ initarm(uintptr_t modulep)
 		}
 		arm64_pmap_bootstrap(arm64_physmem, arm64_physmem_count);
 		arm64_ttbr1_switch();
+
+		/*
+		 * Initialize the console before we print anything out via
+		 * kprintf(). The PL011 driver will probe and register as
+		 * the console. Prior to this, we use uart_puts() for early
+		 * output.
+		 */
+		uart_puts("[arm64] calling cninit()\r\n");
+		cninit();
+		uart_puts("[arm64] cninit() done\r\n");
+
+		/*
+		 * Test kprintf() - this should go through the console
+		 * framework now.
+		 */
+		kprintf("\nDragonFly/arm64 kernel started!\n");
+		kprintf("Console initialized via PL011 driver.\n");
 	} else {
 		uart_puts("[arm64] no efi map\r\n");
 	}
