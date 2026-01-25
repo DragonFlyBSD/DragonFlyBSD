@@ -150,6 +150,13 @@ atomic_cmpset_int(volatile u_int *p, u_int cmpv, u_int newv)
 	    __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));
 }
 
+static __inline int
+atomic_cmpset_ptr(volatile void *p, void *cmpv, void *newv)
+{
+	return (__atomic_compare_exchange_n((void * volatile *)p, &cmpv, newv, 0,
+	    __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));
+}
+
 static __inline void
 atomic_add_int_nonlocked(volatile u_int *p, u_int v)
 {
