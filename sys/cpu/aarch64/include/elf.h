@@ -21,6 +21,15 @@
 
 #define ELF_ARCH	EM_AARCH64
 
+#if __ELF_WORD_SIZE == 32
+#define ELF_TARG_CLASS	ELFCLASS32
+#else
+#define ELF_TARG_CLASS	ELFCLASS64
+#endif
+#define ELF_TARG_DATA	ELFDATA2LSB
+#define ELF_TARG_MACH	EM_AARCH64
+#define ELF_TARG_VER	1
+
 #define ELF_MACHINE_OK(x)	((x) == EM_AARCH64)
 
 /*
