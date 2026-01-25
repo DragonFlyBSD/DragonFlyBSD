@@ -14,6 +14,8 @@
 
 void	initializecpu(int cpu);
 
+extern cpumask_t		smp_active_mask;
+
 #endif /* !LOCORE */
 
 #endif /* _KERNEL */

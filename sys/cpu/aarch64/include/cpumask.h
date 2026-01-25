@@ -49,6 +49,13 @@ typedef __cpumask_t cpumask_t;
 					 (val).ary[2] != 0 || \
 					 (val).ary[3] != 0)
 
+#define CPUMASK_ANDMASK(mask, val)		do { \
+					(mask).ary[0] &= (val).ary[0]; \
+					(mask).ary[1] &= (val).ary[1]; \
+					(mask).ary[2] &= (val).ary[2]; \
+					(mask).ary[3] &= (val).ary[3]; \
+					} while (0)
+
 #define ATOMIC_CPUMASK_ORBIT(mask, i)	CPUMASK_ORBIT(mask, i)
 
 #define CPUMASK_ORBIT(mask, i)		((mask).ary[((i) >> 6) & 3] |= \
