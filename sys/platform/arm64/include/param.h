@@ -108,6 +108,10 @@
 #define	MAXPHYS		(128 * 1024)	/* max raw I/O transfer size */
 #define	MAXDUMPPGS	(MAXPHYS / PAGE_SIZE)
 
+#define	DEV_BSHIFT	9		/* log2(DEV_BSIZE) */
+#define	DEV_BSIZE	(1<<DEV_BSHIFT)
+#define	DEV_BMASK	(DEV_BSIZE - 1)
+
 #ifndef KSTACK_PAGES
 #if defined(KASAN) || defined(KMSAN)
 #define	KSTACK_PAGES	6
