@@ -354,7 +354,8 @@ sys_write(struct sysmsg *sysmsg, const struct write_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_pwritev(uap->fd, &auio, 0, &sysmsg->sysmsg_szresult);
+	error = kern_pwritev(uap->fd, &auio, 0, &szresult);
+	sysmsg->sysmsg_szresult = szresult;
 
 	return(error);
 }
@@ -372,6 +373,7 @@ sys_extpwrite(struct sysmsg *sysmsg, const struct extpwrite_args *uap)
 	struct iovec aiov;
 	int error;
 	int flags;
+	size_t szresult;
 
 	if ((ssize_t)uap->nbyte < 0)
 		error = EINVAL;
@@ -389,7 +391,8 @@ sys_extpwrite(struct sysmsg *sysmsg, const struct extpwrite_args *uap)
 	flags = uap->flags & O_FMASK;
 	if (uap->offset != (off_t)-1)
 		flags |= O_FOFFSET;
-	error = kern_pwritev(uap->fd, &auio, flags, &sysmsg->sysmsg_szresult);
+	error = kern_pwritev(uap->fd, &auio, flags, &szresult);
+	sysmsg->sysmsg_szresult = szresult;
 	return(error);
 }
 
@@ -403,6 +406,7 @@ sys_writev(struct sysmsg *sysmsg, const struct writev_args *uap)
 	struct uio auio;
 	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
 	int error;
+	size_t szresult;
 
 	error = iovec_copyin(uap->iovp, &iov, aiov, uap->iovcnt,
 			     &auio.uio_resid);
@@ -415,7 +419,8 @@ sys_writev(struct sysmsg *sysmsg, const struct writev_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_pwritev(uap->fd, &auio, 0, &sysmsg->sysmsg_szresult);
+	error = kern_pwritev(uap->fd, &auio, 0, &szresult);
+	sysmsg->sysmsg_szresult = szresult;
 
 	iovec_free(&iov, aiov);
 	return (error);
@@ -435,6 +440,7 @@ sys_extpwritev(struct sysmsg *sysmsg, const struct extpwritev_args *uap)
 	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
 	int error;
 	int flags;
+	size_t szresult;
 
 	error = iovec_copyin(uap->iovp, &iov, aiov, uap->iovcnt,
 			     &auio.uio_resid);
@@ -451,7 +457,8 @@ sys_extpwritev(struct sysmsg *sysmsg, const struct extpwritev_args *uap)
 	if (uap->offset != (off_t)-1)
 		flags |= O_FOFFSET;
 
-	error = kern_pwritev(uap->fd, &auio, flags, &sysmsg->sysmsg_szresult);
+	error = kern_pwritev(uap->fd, &auio, flags, &szresult);
+	sysmsg->sysmsg_szresult = szresult;
 
 	iovec_free(&iov, aiov);
 	return(error);
