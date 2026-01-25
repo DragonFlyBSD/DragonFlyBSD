@@ -59,6 +59,8 @@ struct pmap_statistics {
 
 typedef struct pmap_statistics *pmap_statistics_t;
 
+typedef char vm_memattr_t;	/* memory attribute type */
+
 struct pmap {
 	struct pmap_statistics pm_stats;
 };
