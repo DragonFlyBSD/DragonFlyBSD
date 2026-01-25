@@ -45,6 +45,9 @@
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
 #endif
+#ifndef _CPU_CPUMASK_H_
+#include <machine/cpumask.h>
+#endif
 #include <machine/stdarg.h>
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
