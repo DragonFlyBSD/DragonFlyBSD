@@ -215,19 +215,19 @@ arm64_pmap_bootstrap(struct arm64_phys_range *ranges, int count)
 			arm64_zero_page(l2);
 			((u_int64_t *)(uintptr_t)(pt + 4096))[0] =
 			    (l2 & ~0xfffULL) | 0x3;
-			((u_int64_t *)(uintptr_t)l2)[0] =
-			    ARM64_PHYSBASE | PTE_BLOCK_NORMAL_FLAGS;
-			((u_int64_t *)(uintptr_t)l2)[1] =
-			    (ARM64_PHYSBASE + 0x200000) | PTE_BLOCK_NORMAL_FLAGS;
+			/*
+			 * Map 16MB of kernel space (8 x 2MB blocks).
+			 * kernend is around 0x40cb0000 (~12MB), so we need
+			 * at least 7 entries. Map 8 to be safe.
+			 */
+			for (int i = 0; i < 8; i++) {
+				((u_int64_t *)(uintptr_t)l2)[i] =
+				    (ARM64_PHYSBASE + (i * 0x200000)) |
+				    PTE_BLOCK_NORMAL_FLAGS;
+			}
 			uart_puts("[arm64] pt l2=0x");
 			uart_puthex(l2);
-			uart_puts("\r\n");
-			uart_puts("[arm64] pt l2[0]=0x");
-			uart_puthex(((u_int64_t *)(uintptr_t)l2)[0]);
-			uart_puts("\r\n");
-			uart_puts("[arm64] pt l2[1]=0x");
-			uart_puthex(((u_int64_t *)(uintptr_t)l2)[1]);
-			uart_puts("\r\n");
+			uart_puts(" (8 entries, 16MB)\r\n");
 		} else {
 			uart_puts("[arm64] boot_alloc l2 failed\r\n");
 		}
