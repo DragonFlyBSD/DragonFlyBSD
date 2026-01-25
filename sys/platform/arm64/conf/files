@@ -1,3 +1,6 @@
 # files marked standard are always included.
 #
+platform/arm64/aarch64/genassym.c	standard
+platform/arm64/aarch64/locore.s	standard
+platform/arm64/aarch64/machdep.c	standard
 dev/serial/pl011/pl011_cons.c	optional	pl011
