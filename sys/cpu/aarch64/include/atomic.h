@@ -97,6 +97,23 @@ atomic_intr_cond_dec(__atomic_intr_t *p)
 {
 }
 
+static __inline int
+atomic_intr_handler_disable(__atomic_intr_t *p)
+{
+	return (0);
+}
+
+static __inline void
+atomic_intr_handler_enable(__atomic_intr_t *p)
+{
+}
+
+static __inline int
+atomic_intr_handler_is_enabled(__atomic_intr_t *p)
+{
+	return (0);
+}
+
 static __inline void
 atomic_set_short(volatile u_short *p, u_short v)
 {
