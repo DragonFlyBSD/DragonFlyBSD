@@ -232,6 +232,7 @@ sys_ptrace(struct sysmsg *sysmsg, const struct ptrace_args *uap)
 	} r;
 	void *addr;
 	int error = 0;
+	int result = 0;
 
 	addr = &r;
 	switch (uap->req) {
@@ -261,8 +262,8 @@ sys_ptrace(struct sysmsg *sysmsg, const struct ptrace_args *uap)
 	if (error)
 		return (error);
 
-	error = kern_ptrace(p, uap->req, uap->pid, addr, uap->data,
-			&sysmsg->sysmsg_result);
+	error = kern_ptrace(p, uap->req, uap->pid, addr, uap->data, &result);
+	sysmsg->sysmsg_result = result;
 	if (error)
 		return (error);
 

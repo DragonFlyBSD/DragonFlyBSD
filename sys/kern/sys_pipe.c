@@ -262,7 +262,7 @@ pipe_end_uio(int *ipp)
 int
 sys_pipe(struct sysmsg *sysmsg, const struct pipe_args *uap)
 {
-	long fds[2];
+	long fds[2] = {0, 0};
 	int error;
 
 	error = kern_pipe(fds, 0);
@@ -274,7 +274,7 @@ sys_pipe(struct sysmsg *sysmsg, const struct pipe_args *uap)
 int
 sys_pipe2(struct sysmsg *sysmsg, const struct pipe2_args *uap)
 {
-	long fds[2];
+	long fds[2] = {0, 0};
 	int error;
 
 	if ((uap->flags & ~(O_CLOEXEC | O_CLOFORK | O_NONBLOCK)) != 0)
