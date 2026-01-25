@@ -8,5 +8,6 @@
 #include <sys/types.h>
 
 typedef u_int64_t bus_addr_t;
+typedef u_int64_t bus_size_t;
 
 #endif /* !_CPU_BUS_DMA_H_ */
