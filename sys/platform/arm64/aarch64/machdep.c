@@ -35,6 +35,7 @@
 #include <machine/smp.h>
 #include <machine/md_var.h>
 #include <machine/globaldata.h>
+#include <machine/reg.h>
 #include <cpu/tls.h>
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
@@ -749,4 +750,84 @@ if_simloop(struct ifnet *ifp __unused, struct mbuf *m __unused,
     int af __unused, int hlen __unused)
 {
 	return (0);
+}
+
+/*
+ * arp_gratuitous - send gratuitous ARP (stub)
+ */
+void
+arp_gratuitous(struct ifnet *ifp __unused, struct ifaddr *ifa __unused)
+{
+}
+
+/*
+ * Root device - will be set during boot
+ */
+cdev_t rootdev;
+
+/*
+ * inittodr - initialize time of day register
+ */
+void
+inittodr(time_t base __unused)
+{
+}
+
+/*
+ * procfs register access stubs
+ */
+int
+procfs_read_regs(struct lwp *lp __unused, struct reg *regs __unused)
+{
+	return (EOPNOTSUPP);
+}
+
+int
+procfs_write_regs(struct lwp *lp __unused, struct reg *regs __unused)
+{
+	return (EOPNOTSUPP);
+}
+
+int
+procfs_read_fpregs(struct lwp *lp __unused, struct fpreg *fpregs __unused)
+{
+	return (EOPNOTSUPP);
+}
+
+int
+procfs_write_fpregs(struct lwp *lp __unused, struct fpreg *fpregs __unused)
+{
+	return (EOPNOTSUPP);
+}
+
+int
+procfs_read_dbregs(struct lwp *lp __unused, struct dbreg *dbregs __unused)
+{
+	return (EOPNOTSUPP);
+}
+
+int
+procfs_write_dbregs(struct lwp *lp __unused, struct dbreg *dbregs __unused)
+{
+	return (EOPNOTSUPP);
+}
+
+/*
+ * Vkernel stubs - these are called from generic vm_vmspace.c but
+ * vkernel is not implemented on arm64. Return errors/do nothing.
+ */
+int
+cpu_sanitize_frame(struct trapframe *frame __unused)
+{
+	return (ENOSYS);
+}
+
+void
+cpu_vkernel_trap(struct trapframe *frame __unused, int error __unused)
+{
+}
+
+void
+set_vkernel_fp(struct trapframe *frame __unused)
+{
 }

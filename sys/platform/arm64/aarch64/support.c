@@ -45,6 +45,7 @@ int bcmp(const void *, const void *, size_t);
 int copyin(const void *, void *, size_t);
 int copyout(const void *, void *, size_t);
 int copyinstr(const void *, void *, size_t, size_t *);
+int copystr(const void *, void *, size_t, size_t *);
 int subyte(volatile void *, int);
 int suword32(volatile void *, int);
 int suword64(volatile void *, long);
@@ -214,4 +215,35 @@ long
 fuword64(const volatile void *base)
 {
 	return (*(const volatile long *)base);
+}
+
+/*
+ * copystr - copy a null-terminated string (kernel to kernel)
+ */
+int
+copystr(const void *src, void *dst, size_t len, size_t *done)
+{
+	const char *s = src;
+	char *d = dst;
+	size_t i;
+
+	if (len == 0) {
+		if (done)
+			*done = 0;
+		return (ENAMETOOLONG);
+	}
+
+	for (i = 0; i < len; i++) {
+		d[i] = s[i];
+		if (s[i] == '\0') {
+			if (done)
+				*done = i + 1;
+			return (0);
+		}
+	}
+
+	d[len - 1] = '\0';
+	if (done)
+		*done = len;
+	return (ENAMETOOLONG);
 }
