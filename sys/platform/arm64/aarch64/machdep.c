@@ -31,6 +31,10 @@
 #include <sys/globaldata.h>
 #include <sys/proc.h>
 #include <sys/mbuf.h>
+#include <sys/machintr.h>
+#include <sys/msgbuf.h>
+#include <sys/diskslice.h>
+#include <sys/ptrace.h>
 #include <machine/cpumask.h>
 #include <machine/smp.h>
 #include <machine/md_var.h>
@@ -839,4 +843,151 @@ cpu_vkernel_trap(struct trapframe *frame __unused, int error __unused)
 void
 set_vkernel_fp(struct trapframe *frame __unused)
 {
+}
+
+/*
+ * splz - process software interrupts when lowering SPL
+ *
+ * On arm64 this is a stub for now. Full implementation will need to
+ * process pending software interrupts.
+ */
+void
+splz(void)
+{
+}
+
+/*
+ * splz_check - check if splz processing is needed
+ */
+void
+splz_check(void)
+{
+}
+
+/*
+ * setsofttq - set software taskqueue interrupt pending
+ */
+void
+setsofttq(void)
+{
+}
+
+/*
+ * resettodr - reset time of day register to system time
+ */
+void
+resettodr(void)
+{
+}
+
+/*
+ * MachIntrABI - machine interrupt ABI
+ *
+ * Stub implementation with NULL function pointers. The kernel will
+ * need proper interrupt controller support (GIC) before this works.
+ */
+static void machintr_stub_intr_disable(int intr __unused) {}
+static void machintr_stub_intr_enable(int intr __unused) {}
+static void machintr_stub_intr_setup(int intr __unused, int flags __unused) {}
+static void machintr_stub_intr_teardown(int intr __unused) {}
+static void machintr_stub_legacy_intr_config(int intr __unused,
+    enum intr_trigger trig __unused, enum intr_polarity pola __unused) {}
+static int machintr_stub_legacy_intr_cpuid(int intr __unused) { return 0; }
+static int machintr_stub_legacy_intr_find(int intr __unused,
+    enum intr_trigger trig __unused, enum intr_polarity pola __unused)
+    { return -1; }
+static int machintr_stub_legacy_intr_find_bygsi(int gsi __unused,
+    enum intr_trigger trig __unused, enum intr_polarity pola __unused)
+    { return -1; }
+static int machintr_stub_msi_alloc(int intrs[] __unused, int count __unused,
+    int cpuid __unused) { return EOPNOTSUPP; }
+static void machintr_stub_msi_release(const int intrs[] __unused,
+    int count __unused, int cpuid __unused) {}
+static void machintr_stub_msi_map(int intr __unused, uint64_t *addr __unused,
+    uint32_t *data __unused, int cpuid __unused) {}
+static int machintr_stub_msix_alloc(int *intr __unused, int cpuid __unused)
+    { return EOPNOTSUPP; }
+static void machintr_stub_msix_release(int intr __unused, int cpuid __unused) {}
+static void machintr_stub_finalize(void) {}
+static void machintr_stub_cleanup(void) {}
+static void machintr_stub_setdefault(void) {}
+static void machintr_stub_stabilize(void) {}
+static void machintr_stub_initmap(void) {}
+static void machintr_stub_rman_setup(struct rman *rm __unused) {}
+
+struct machintr_abi MachIntrABI = {
+	.type = MACHINTR_GENERIC,
+	.intr_disable = machintr_stub_intr_disable,
+	.intr_enable = machintr_stub_intr_enable,
+	.intr_setup = machintr_stub_intr_setup,
+	.intr_teardown = machintr_stub_intr_teardown,
+	.legacy_intr_config = machintr_stub_legacy_intr_config,
+	.legacy_intr_cpuid = machintr_stub_legacy_intr_cpuid,
+	.legacy_intr_find = machintr_stub_legacy_intr_find,
+	.legacy_intr_find_bygsi = machintr_stub_legacy_intr_find_bygsi,
+	.msi_alloc = machintr_stub_msi_alloc,
+	.msi_release = machintr_stub_msi_release,
+	.msi_map = machintr_stub_msi_map,
+	.msix_alloc = machintr_stub_msix_alloc,
+	.msix_release = machintr_stub_msix_release,
+	.finalize = machintr_stub_finalize,
+	.cleanup = machintr_stub_cleanup,
+	.setdefault = machintr_stub_setdefault,
+	.stabilize = machintr_stub_stabilize,
+	.initmap = machintr_stub_initmap,
+	.rman_setup = machintr_stub_rman_setup,
+};
+
+/*
+ * Kernel message buffer pointer
+ */
+struct msgbuf *msgbufp;
+
+/*
+ * ffs - find first set bit (LSB)
+ *
+ * Returns the position of the least significant bit set (1-indexed),
+ * or 0 if no bits are set.
+ */
+int
+ffs(int mask)
+{
+	int bit;
+
+	if (mask == 0)
+		return (0);
+	for (bit = 1; (mask & 1) == 0; bit++)
+		mask = (unsigned int)mask >> 1;
+	return (bit);
+}
+
+/*
+ * ptrace_set_pc - set program counter for ptrace
+ */
+int
+ptrace_set_pc(struct lwp *lp __unused, unsigned long addr __unused)
+{
+	return (EOPNOTSUPP);
+}
+
+/*
+ * ptrace_single_step - enable single-stepping for ptrace
+ */
+int
+ptrace_single_step(struct lwp *lp __unused)
+{
+	return (EOPNOTSUPP);
+}
+
+/*
+ * mbrinit - initialize MBR partition table (stub)
+ *
+ * This is called from disk subsystem but arm64 systems typically
+ * use GPT. Return EOPNOTSUPP for now.
+ */
+int
+mbrinit(cdev_t dev __unused, struct disk_info *info __unused,
+    struct diskslices **sspp __unused)
+{
+	return (EOPNOTSUPP);
 }
