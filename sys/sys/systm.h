@@ -370,7 +370,7 @@ typedef void timeout_t (void *);	/* timeout function type */
  * For the alpha arch, some of these functions are static __inline, and
  * the others should be.
  */
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(__aarch64__)
 void		setdelayed (void);
 void		setsoftcambio (void);
 void		setsoftcamnet (void);
