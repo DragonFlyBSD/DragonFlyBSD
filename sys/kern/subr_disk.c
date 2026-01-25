@@ -695,7 +695,8 @@ _disk_create_named(const char *name, int unit, struct disk *dp,
 	cdev_t rawdev;
 	struct dev_ops *dops;
 
-	disk_debug(1, "disk_create (begin): %s%d\n", name, unit);
+	disk_debug(1, "disk_create (begin): %s%d\n", name ? name : "(null)",
+	    unit);
 
 	if (name) {
 		rawdev = make_only_dev(raw_ops, dkmakewholedisk(unit),
