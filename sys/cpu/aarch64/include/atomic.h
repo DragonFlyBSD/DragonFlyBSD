@@ -113,6 +113,17 @@ atomic_subtract_long(volatile u_long *p, u_long v)
 #define	atomic_subtract_acq_long	atomic_subtract_long
 #define	atomic_subtract_rel_long	atomic_subtract_long
 
+#define	atomic_load_acq_64		atomic_load_acq_long
+#define	atomic_store_rel_64		atomic_store_rel_long
+#define	atomic_swap_64			atomic_swap_long
+#define	atomic_fetchadd_64		atomic_fetchadd_long
+#define	atomic_add_64			atomic_add_long
+#define	atomic_subtract_64		atomic_subtract_long
+#define	atomic_cmpset_64		atomic_cmpset_long
+#define	atomic_fcmpset_64		atomic_fcmpset_long
+#define	atomic_set_64			atomic_set_long
+#define	atomic_clear_64			atomic_clear_long
+
 static __inline u_int
 atomic_readandclear_int(volatile u_int *p)
 {
