@@ -324,7 +324,6 @@ ip_dn_ip_input(netmsg_t nmsg)
 	struct dn_pkt *pkt;
 	ip_dn_unref_priv_t unref_priv;
 	void *priv;
-	struct ip *ip;
 
 	nmp = &nmsg->packet;
 	m = nmp->nm_packet;
@@ -349,7 +348,7 @@ ip_dn_ip_input(netmsg_t nmsg)
 	priv = pkt->dn_priv;
 	unref_priv = pkt->dn_unref_priv;
 
-	KKASSERT(m->m_len >= sizeof(*ip));
+	KKASSERT(m->m_len >= sizeof(struct ip));
 
 	ip_input(m);
 
