@@ -143,6 +143,12 @@ atomic_fetchadd_int(volatile u_int *p, u_int v)
 	return (__atomic_fetch_add(p, v, __ATOMIC_SEQ_CST));
 }
 
+static __inline u_long
+atomic_fetchadd_long(volatile u_long *p, u_long v)
+{
+	return (__atomic_fetch_add(p, v, __ATOMIC_SEQ_CST));
+}
+
 static __inline int
 atomic_cmpset_int(volatile u_int *p, u_int cmpv, u_int newv)
 {
