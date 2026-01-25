@@ -576,3 +576,13 @@ initarm(uintptr_t modulep)
 		uart_puts("[arm64] no efi map\r\n");
 	}
 }
+
+void
+smp_sniff(void)
+{
+}
+
+void
+cpu_sniff(int dcpu)
+{
+}

@@ -59,4 +59,7 @@ cpu_pause(void)
 	__asm __volatile("" ::: "memory");
 }
 
+void	smp_sniff(void);
+void	cpu_sniff(int);
+
 #endif /* _CPU_CPUFUNC_H_ */
