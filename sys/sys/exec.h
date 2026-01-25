@@ -39,6 +39,10 @@
 #ifndef _SYS_EXEC_H_
 #define _SYS_EXEC_H_
 
+#ifndef _MACHINE_VMPARAM_H_
+#include <machine/vmparam.h>
+#endif
+
 /*
  * The following structure is found at the top of the user stack of each
  * user process. The ps program uses it to locate argv and environment
