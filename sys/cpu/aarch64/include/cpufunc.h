@@ -29,6 +29,9 @@
 #define	_CPU_CPUFUNC_H_
 
 #include <sys/cdefs.h>
+#ifdef _KERNEL
+#include <machine/smp.h>
+#endif
 
 static __inline void
 cpu_ccfence(void)
