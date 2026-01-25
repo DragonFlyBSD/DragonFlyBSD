@@ -31,6 +31,6 @@
 #ifndef _CPU_INTTYPES_H_
 #define _CPU_INTTYPES_H_
 
-#include <machine/_inttypes.h>
+#include <cpu/_inttypes.h>
 
 #endif /* !_CPU_INTTYPES_H_ */
