@@ -60,6 +60,18 @@ atomic_subtract_int(volatile u_int *p, u_int v)
 }
 
 static __inline void
+atomic_set_short(volatile u_short *p, u_short v)
+{
+	__atomic_fetch_or(p, v, __ATOMIC_SEQ_CST);
+}
+
+static __inline void
+atomic_clear_short(volatile u_short *p, u_short v)
+{
+	__atomic_fetch_and(p, (u_short)~v, __ATOMIC_SEQ_CST);
+}
+
+static __inline void
 atomic_set_long(volatile u_long *p, u_long v)
 {
 	__atomic_fetch_or(p, v, __ATOMIC_SEQ_CST);
