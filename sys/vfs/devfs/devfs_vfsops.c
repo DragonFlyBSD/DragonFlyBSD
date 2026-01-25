@@ -204,14 +204,14 @@ devfs_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 		 struct fid *fhp, struct vnode **vpp)
 {
 	struct vnode		*vp;
-	struct devfs_fid	*dfhp;
+	struct devfs_fid	dfh;
 
-	dfhp = (struct devfs_fid *)fhp;
+	memcpy(&dfh, fhp, sizeof(dfh));
 
-	if (dfhp->fid_gen != boottime.tv_sec)
+	if (dfh.fid_gen != boottime.tv_sec)
 		return EINVAL;
 
-	vp = devfs_inode_to_vnode(mp, dfhp->fid_ino);
+	vp = devfs_inode_to_vnode(mp, dfh.fid_ino);
 
 	if (vp == NULL)
 		return ENOENT;
@@ -227,13 +227,14 @@ static int
 devfs_vfs_vptofh(struct vnode *vp, struct fid *fhp)
 {
 	struct devfs_node	*node;
-	struct devfs_fid	*dfhp;
+	struct devfs_fid	dfh;
 
 	if ((node = DEVFS_NODE(vp)) != NULL) {
-		dfhp = (struct devfs_fid *)fhp;
-		dfhp->fid_len = sizeof(struct devfs_fid);
-		dfhp->fid_ino = node->d_dir.d_ino;
-		dfhp->fid_gen = boottime.tv_sec;
+		dfh.fid_len = sizeof(struct devfs_fid);
+		dfh.fid_pad = 0;
+		dfh.fid_ino = node->d_dir.d_ino;
+		dfh.fid_gen = boottime.tv_sec;
+		memcpy(fhp, &dfh, sizeof(dfh));
 	} else {
 		return ENOENT;
 	}
