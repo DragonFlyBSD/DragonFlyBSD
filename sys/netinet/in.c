@@ -913,7 +913,7 @@ in_lifaddr_ioctl(u_long cmd, caddr_t data, struct ifnet *ifp, struct thread *td)
 			if (!cmp)
 				break;
 			candidate.s_addr =
-			((struct sockaddr_in *)&ifa->ifa_addr)->sin_addr.s_addr;
+			((struct sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr;
 			candidate.s_addr &= mask.s_addr;
 			if (candidate.s_addr == match.s_addr)
 				break;
