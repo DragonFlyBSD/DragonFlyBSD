@@ -81,6 +81,7 @@ typedef __cpumask_t cpumask_t;
 
 #define ATOMIC_CPUMASK_ORBIT(mask, i)	CPUMASK_ORBIT(mask, i)
 #define ATOMIC_CPUMASK_NANDBIT(mask, i)	CPUMASK_NANDBIT(mask, i)
+#define ATOMIC_CPUMASK_ORMASK(mask, val)	CPUMASK_ORMASK(mask, val)
 
 #define CPUMASK_ORBIT(mask, i)		((mask).ary[((i) >> 6) & 3] |= \
 					 CPUMASK_SIMPLE((i) & 63))
