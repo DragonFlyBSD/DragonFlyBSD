@@ -61,6 +61,10 @@
 #define	MAXCPU		1
 #endif
 
+#ifndef SMP_MAXCPU
+#define	SMP_MAXCPU	MAXCPU
+#endif
+
 #ifndef MAXMEMDOM
 #define	MAXMEMDOM	8
 #endif
