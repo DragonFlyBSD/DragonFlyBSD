@@ -34,7 +34,11 @@
 #define	_CPU_ENDIAN_H_
 
 #include <sys/cdefs.h>
-#include <stdint.h>
+
+typedef unsigned char	__uint8_t;
+typedef unsigned short	__uint16_t;
+typedef unsigned int	__uint32_t;
+typedef unsigned long	__uint64_t;
 
 /*
  * Definitions for byte order, according to byte significance from low
