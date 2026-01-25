@@ -88,6 +88,31 @@ typedef __cpumask_t cpumask_t;
 #define CPUMASK_NANDBIT(mask, i)	((mask).ary[((i) >> 6) & 3] &= \
 					 ~CPUMASK_SIMPLE((i) & 63))
 
+#define CPUMASK_ASSNBMASK(mask, i)			\
+	do {							\
+		if ((i) < 64) {					\
+			(mask).ary[0] = ~(CPUMASK_SIMPLE(i) - 1); \
+			(mask).ary[1] = (__uint64_t)-1; \
+			(mask).ary[2] = (__uint64_t)-1; \
+			(mask).ary[3] = (__uint64_t)-1; \
+		} else if ((i) < 128) {			\
+			(mask).ary[0] = 0; \
+			(mask).ary[1] = ~(CPUMASK_SIMPLE((i) - 64) - 1); \
+			(mask).ary[2] = (__uint64_t)-1; \
+			(mask).ary[3] = (__uint64_t)-1; \
+		} else if ((i) < 192) {			\
+			(mask).ary[0] = 0; \
+			(mask).ary[1] = 0; \
+			(mask).ary[2] = ~(CPUMASK_SIMPLE((i) - 128) - 1); \
+			(mask).ary[3] = (__uint64_t)-1; \
+		} else {					\
+			(mask).ary[0] = 0; \
+			(mask).ary[1] = 0; \
+			(mask).ary[2] = 0; \
+			(mask).ary[3] = ~(CPUMASK_SIMPLE((i) - 192) - 1); \
+		}						\
+	} while (0)
+
 #define CPUMASK_NANDMASK(mask1, mask2)			\
 	do {							\
 		(mask1).ary[0] &= ~(mask2).ary[0];	\
