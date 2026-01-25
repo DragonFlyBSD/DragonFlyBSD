@@ -195,7 +195,7 @@ atomic_cmpset_ptr(volatile void *p, void *cmpv, void *newv)
 static __inline void *
 atomic_swap_ptr(volatile void **addr, void *value)
 {
-	return (__atomic_exchange_n((void * volatile *)addr, value,
+	return ((void *)__atomic_exchange_n(addr, value,
 	    __ATOMIC_SEQ_CST));
 }
 
