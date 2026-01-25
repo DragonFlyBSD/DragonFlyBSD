@@ -119,6 +119,10 @@
 #define	DEV_BSIZE	(1<<DEV_BSHIFT)
 #define	DEV_BMASK	(DEV_BSIZE - 1)
 
+#ifndef BLKDEV_IOSIZE
+#define	BLKDEV_IOSIZE	PAGE_SIZE	/* default block device I/O size */
+#endif
+
 /*
  * MMU segment size (level 2 block = 2MB)
  */
