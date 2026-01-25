@@ -27,16 +27,17 @@ What "testing" means in this project:
 1) Verify VM is in sync and rebuild
 - VM access: ssh root@devbox.sector.int -p 6021
 - Repo root on VM: /usr/src
+- First, get CPU count for parallel builds: `sysctl -n hw.ncpu` (use this value for -j flag)
 - Verify sync: compare `git log -1 --format=%H` on host vs VM; if mismatch, report and stop
 - Sync VM: cd /usr/src && git fetch gitea && git reset --hard gitea/port-arm64
 - Rebuild loader (allow up to 180s):
   - cd /usr/src/stand/boot/efi/loader
   - make clean
-  - make MACHINE_ARCH=aarch64 MACHINE=aarch64 CC=/usr/local/bin/aarch64-none-elf-gcc
+  - make -j<ncpu> MACHINE_ARCH=aarch64 MACHINE=aarch64 CC=/usr/local/bin/aarch64-none-elf-gcc
 - Rebuild kernel (allow up to 180s):
   - cd /usr/src/sys/compile/ARM64_GENERIC
   - make clean
-  - make kernel.debug
+  - make -j<ncpu> kernel.debug
 
 2) Copy fresh artifacts to the host test environment
 - Use the existing test harness in tools/arm64-test/
