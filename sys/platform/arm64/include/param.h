@@ -135,6 +135,8 @@
 #define	arm64_btop(x)		((unsigned long)(x) >> PAGE_SHIFT)
 #define	arm64_ptob(x)		((unsigned long)(x) << PAGE_SHIFT)
 
+#define	pgtok(x)		((x) * (PAGE_SIZE / 1024))
+
 #define	round_page(x)	((((unsigned long)(x)) + PAGE_MASK) & ~(unsigned long)(PAGE_MASK))
 #define	trunc_page(x)	((unsigned long)(x) & ~(unsigned long)(PAGE_MASK))
 
