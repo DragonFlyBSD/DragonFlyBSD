@@ -7,5 +7,6 @@ cpu		AARCH64
 ident		ARM64_GENERIC
 
 options		PL011
+options		INET
 
 makeoptions	DEBUG=-g
