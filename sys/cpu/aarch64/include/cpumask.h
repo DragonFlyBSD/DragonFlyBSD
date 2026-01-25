@@ -79,6 +79,11 @@ typedef __cpumask_t cpumask_t;
 					 (val).ary[2] != 0 || \
 					 (val).ary[3] != 0)
 
+#define CPUMASK_CMPMASKNEQ(val1, val2)	((val1).ary[0] != (val2).ary[0] || \
+					 (val1).ary[1] != (val2).ary[1] || \
+					 (val1).ary[2] != (val2).ary[2] || \
+					 (val1).ary[3] != (val2).ary[3])
+
 #define CPUMASK_TESTZERO(val)		((val).ary[0] == 0 && \
 					 (val).ary[1] == 0 && \
 					 (val).ary[2] == 0 && \
