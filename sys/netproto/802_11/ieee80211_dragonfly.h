@@ -651,7 +651,9 @@ typedef struct lock	ieee80211_rt_lock_t;
 #define CURVNET_RESTORE()
 #define ifa_free(ifa)
 
+#ifndef ALIGNED_POINTER
 #define ALIGNED_POINTER(p, t)	(((uintptr_t)(p) & (sizeof(t) - 1)) == 0)
+#endif
 
 #define osdep_va_list		__va_list
 #define osdep_va_start		__va_start
