@@ -91,6 +91,11 @@ read_rflags(void)
 	return (0);
 }
 
+static __inline void
+write_rflags(u_long rf)
+{
+}
+
 static __inline u_int
 bsfl(u_int mask)
 {
