@@ -24,6 +24,47 @@ extern volatile cpumask_t	stopped_cpus;
 
 extern cpumask_t		smp_active_mask;
 
+/*
+ * CPU topology stub functions for arm64.
+ * ARM64 does not use APIC IDs - provide simple stubs.
+ */
+static __inline int
+get_cpuid_from_apicid(int apicid)
+{
+	return apicid;  /* 1:1 mapping on arm64 */
+}
+
+static __inline int
+get_apicid_from_cpuid(int cpuid)
+{
+	return cpuid;   /* 1:1 mapping on arm64 */
+}
+
+/* CPU topology detection stubs - arm64 topology via devicetree/ACPI */
+static __inline void
+detect_cpu_topology(void)
+{
+	/* TODO: implement via MPIDR or ACPI PPTT */
+}
+
+static __inline int
+get_chip_ID(int cpuid)
+{
+	return 0;       /* Single chip for now */
+}
+
+static __inline int
+get_core_number_within_chip(int cpuid)
+{
+	return cpuid;   /* Each CPU is its own core for now */
+}
+
+static __inline int
+get_logical_CPU_number_within_core(int cpuid)
+{
+	return 0;       /* No SMT assumed */
+}
+
 #endif /* !LOCORE */
 
 #endif /* _KERNEL */

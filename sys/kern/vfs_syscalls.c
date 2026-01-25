@@ -3240,11 +3240,12 @@ sys_readlinkat(struct sysmsg *sysmsg, const struct readlinkat_args *uap)
 	struct nlookupdata nd;
 	struct file *fp;
 	int error;
+	int result = 0;
 
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
-		error = kern_readlink(&nd, uap->buf, uap->bufsize,
-					&sysmsg->sysmsg_result);
+		error = kern_readlink(&nd, uap->buf, uap->bufsize, &result);
+		sysmsg->sysmsg_result = result;
 	}
 	nlookup_done_at(&nd, fp);
 	return (error);
@@ -4663,9 +4664,11 @@ sys_getdirentries(struct sysmsg *sysmsg, const struct getdirentries_args *uap)
 {
 	long base;
 	int error;
+	int result = 0;
 
 	error = kern_getdirentries(uap->fd, uap->buf, uap->count, &base,
-				   &sysmsg->sysmsg_result, UIO_USERSPACE);
+				   &result, UIO_USERSPACE);
+	sysmsg->sysmsg_result = result;
 
 	if (error == 0 && uap->basep)
 		error = copyout(&base, uap->basep, sizeof(*uap->basep));
@@ -4679,9 +4682,11 @@ int
 sys_getdents(struct sysmsg *sysmsg, const struct getdents_args *uap)
 {
 	int error;
+	int result = 0;
 
 	error = kern_getdirentries(uap->fd, uap->buf, uap->count, NULL,
-				   &sysmsg->sysmsg_result, UIO_USERSPACE);
+				   &result, UIO_USERSPACE);
+	sysmsg->sysmsg_result = result;
 
 	return (error);
 }
