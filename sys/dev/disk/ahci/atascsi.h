@@ -248,16 +248,50 @@ struct ata_fis_d2h {
 } __packed;
 
 /*
- * SATA log page 10h -
+ * SATA log address 10h - Queued Error Log -
  * looks like a D2H FIS, with errored tag number in first byte.
  */
-struct ata_log_page_10h {
+struct ata_log_address_10h {
 	struct ata_fis_d2h	err_regs;
 #define ATA_LOG_10H_TYPE_NOTQUEUED	0x80
 #define ATA_LOG_10H_TYPE_TAG_MASK	0x1f
 	u_int8_t		reserved[256 - sizeof(struct ata_fis_d2h)];
 	u_int8_t		vendor_specific[255];
 	u_int8_t		checksum;
+} __packed;
+
+/*
+ * SATA log address 30h page 08h - Serial ATA settings
+ */
+struct ata_log_address_30h_page_08h {
+	/* Serial ATA Page Information Header */
+	uint16_t		revision;
+	uint16_t		page;
+	uint32_t		reserved1; /* highest bit shall be 1 */
+	/* SATA Capabilities - These are all copied in IDENTIFY DEVICE */
+	uint64_t		capabilities;
+	/* Current SATA Settings - These are all copied in IDENTIFY DEVICE */
+	uint64_t		settings;
+	/* 24..39 Reserved */
+	uint64_t		reserved2;
+	uint64_t		reserved3;
+	/* Current Hardware Feature Control Identifier */
+	uint16_t		current_feature_control;
+	/* Supported Hardware Feature Control Identifier */
+	uint16_t		supported_feature_control;
+	/* 44..47 Reserved */
+	uint32_t		reserved4;
+	/* DevSleep Timing Variables */
+	uint64_t		devslp_timing;
+#define ATA_DEVSLP_TIMING_SUPPORTED	__BIT64(63)
+#define ATA_DEVSLP_EXIT_TIMEOUT		__BITS64(8,15)	/* DETO in ms */
+#define ATA_DEVSLP_MIN_ASSERT		__BITS64(0,4)	/* MDAT in ms */
+	/* Transitional Energy Reporting */
+	uint64_t		transitional_energy1;
+	/* Transitional Energy Reporting Extended */
+	uint64_t		transitional_energy2;
+	/* 72..511 Reserved */
+	uint8_t			reserved5[440];
 } __packed;
 
 /*
@@ -293,6 +327,8 @@ struct ahci_port;
 
 struct ata_port {
 	struct ata_identify	at_identify;	/* only if ATA_PORT_T_DISK */
+	uint8_t			at_devsleep_deto; /* only ATA_PORT_T_DISK */
+	uint8_t			at_devsleep_mdat; /* only ATA_PORT_T_DISK */
 	struct ahci_port	*at_ahci_port;
 	int			at_type;
 #define ATA_PORT_T_NONE			0

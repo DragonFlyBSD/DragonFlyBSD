@@ -3452,7 +3452,7 @@ ahci_put_err_ccb(struct ahci_ccb *ccb)
 int
 ahci_port_read_ncq_error(struct ahci_port *ap, int target)
 {
-	struct ata_log_page_10h	*log;
+	struct ata_log_address_10h *log;
 	struct ahci_ccb		*ccb;
 	struct ahci_ccb		*ccb2;
 	struct ahci_cmd_hdr	*cmd_slot;
@@ -3509,7 +3509,7 @@ ahci_port_read_ncq_error(struct ahci_port *ap, int target)
 	 * Success, extract failed register set and tags from the scratch
 	 * space.
 	 */
-	log = (struct ata_log_page_10h *)ap->ap_err_scratch;
+	log = (struct ata_log_address_10h *)ap->ap_err_scratch;
 	if (log->err_regs.type & ATA_LOG_10H_TYPE_NOTQUEUED) {
 		/* Not queued bit was set - wasn't an NCQ error? */
 		kprintf("%s: read NCQ error page, but not an NCQ error?\n",
@@ -4098,6 +4098,44 @@ ahci_set_feature(struct ahci_port *ap, struct ata_port *atx,
 	xa->complete = ahci_dummy_done;
 	xa->datalen = 0;
 	xa->flags = ATA_F_POLL;
+	xa->timeout = 1000;
+
+	if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
+		error = 0;
+	else
+		error = EIO;
+	ahci_ata_put_xfer(xa);
+	return(error);
+}
+
+/* Reads a 512b Log Page into buffer */
+int
+ahci_read_log(struct ahci_port *ap, struct ata_port *atx,
+		 uint8_t address, uint16_t page, char *buffer)
+{
+	struct ata_port *at;
+	struct ata_xfer *xa;
+	int error;
+
+	at = atx ? atx : ap->ap_ata[0];
+
+	xa = ahci_ata_get_xfer(ap, atx);
+
+	xa->fis->type = ATA_FIS_TYPE_H2D;
+	xa->fis->flags = ATA_H2D_FLAGS_CMD | at->at_target;
+	xa->fis->command = ATA_C_READ_LOG_EXT;
+	xa->fis->sector_count = 1;	/* number of sectors (1) */
+	xa->fis->sector_count_exp = 0;
+	xa->fis->lba_low = address;	/* LOG ADDRESS field */
+	xa->fis->lba_mid = page & 0x00ff; /* PAGE NUMBER field (7:0) */
+	xa->fis->lba_mid_exp = page >> 8; /* PAGE NUMBER field (15:8) */
+	xa->fis->device = 0;
+	xa->fis->control = 0;
+
+        xa->data = buffer;
+	xa->complete = ahci_dummy_done;
+	xa->datalen = 512;
+	xa->flags = ATA_F_READ | ATA_F_POLL;
 	xa->timeout = 1000;
 
 	if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)

@@ -613,6 +613,8 @@ int	ahci_port_clo(struct ahci_port *ap);
 void	ahci_flush_tfd(struct ahci_port *ap);
 int	ahci_set_feature(struct ahci_port *ap, struct ata_port *atx,
 			int feature, int enable);
+int	ahci_read_log(struct ahci_port *ap, struct ata_port *atx,
+			uint8_t address, uint16_t page, char *buffer);
 
 int	ahci_cam_attach(struct ahci_port *ap);
 void	ahci_cam_changed(struct ahci_port *ap, struct ata_port *at, int found);

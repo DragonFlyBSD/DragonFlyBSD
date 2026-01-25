@@ -601,6 +601,41 @@ ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *atx)
 		ahci_ata_put_xfer(xa);
 	}
 
+	if (at->at_identify.satafsup & SATA_FEATURE_SUP_DEVSLEEP) {
+		if (ahci_read_log(ap, at, 0x30, 0x08, ap->ap_err_scratch)==0) {
+			struct ata_log_address_30h_page_08h *log;
+			uint64_t timing;
+
+			log = (struct ata_log_address_30h_page_08h *)
+			    ap->ap_err_scratch;
+			/* Check validity by checking always one bits. */
+			if (log->page != 8 || !(log->reserved1 & __BIT(31)) ||
+			    !(log->capabilities & __BIT64(63)) ||
+			    !(log->settings & __BIT64(63))) {
+				kprintf("%s: Log 30h page 08h looks invalid\n",
+				    ATANAME(ap, atx));
+				goto out_devslp;
+			}
+			timing = log->devslp_timing;
+			if (timing & ATA_DEVSLP_TIMING_SUPPORTED) {
+				at->at_devsleep_deto =
+				    __SHIFTOUT(timing, ATA_DEVSLP_EXIT_TIMEOUT);
+				at->at_devsleep_mdat =
+				    __SHIFTOUT(timing, ATA_DEVSLP_MIN_ASSERT);
+				if (bootverbose) {
+					kprintf("%s: DevSleep DETO=%u "
+					    "MDAT=%u\n", ATANAME(ap, atx),
+					    at->at_devsleep_deto,
+					    at->at_devsleep_mdat);
+				}
+			}
+		} else {
+			kprintf("%s: Unable to read ATA Log 30h page 08h\n",
+				ATANAME(ap, atx));
+		}
+	}
+out_devslp:
+
 	return (0);
 }
 
