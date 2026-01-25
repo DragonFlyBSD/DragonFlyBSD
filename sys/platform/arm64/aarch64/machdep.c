@@ -37,6 +37,9 @@
 #include <sys/ptrace.h>
 #include <sys/kerneldump.h>
 #include <sys/memrange.h>
+#include <sys/sysmsg.h>
+#include <sys/sysproto.h>
+#include <sys/signal2.h>
 #include <machine/cpumask.h>
 #include <machine/smp.h>
 #include <machine/md_var.h>
@@ -1038,4 +1041,195 @@ cpu_set_thread_handler(struct thread *td __unused,
 void
 cpu_smp_stopped(void)
 {
+}
+
+/*
+ * Register access functions for ptrace/core dumps
+ */
+int
+fill_regs(struct lwp *lp __unused, struct reg *regs)
+{
+	bzero(regs, sizeof(*regs));
+	return (0);
+}
+
+int
+set_regs(struct lwp *lp __unused, struct reg *regs __unused)
+{
+	return (0);
+}
+
+int
+fill_fpregs(struct lwp *lp __unused, struct fpreg *fpregs)
+{
+	bzero(fpregs, sizeof(*fpregs));
+	return (0);
+}
+
+int
+set_fpregs(struct lwp *lp __unused, struct fpreg *fpregs __unused)
+{
+	return (0);
+}
+
+/*
+ * Context switch functions - stubs for now
+ * These need assembly implementations for proper context switching.
+ */
+void
+cpu_lwkt_switch(struct thread *ntd __unused)
+{
+	panic("cpu_lwkt_switch: not implemented");
+}
+
+void
+cpu_heavy_switch(struct thread *ntd __unused)
+{
+	panic("cpu_heavy_switch: not implemented");
+}
+
+void
+cpu_set_fork_handler(struct lwp *lp __unused,
+    void (*func)(void *, struct trapframe *) __unused, void *arg __unused)
+{
+}
+
+/*
+ * Signal handling
+ */
+void
+sendsig(sig_t catcher __unused, int sig __unused, sigset_t *mask __unused,
+    u_long code __unused)
+{
+	panic("sendsig: not implemented");
+}
+
+/*
+ * sigcode - signal trampoline code
+ * This is machine code that gets copied to user stack for signal return.
+ * On ARM64, this will be ARM64 instructions for sigreturn syscall.
+ */
+char sigcode[] = {
+	0x00, 0x00, 0x00, 0x00	/* placeholder - needs real signal trampoline */
+};
+int szsigcode = sizeof(sigcode);
+
+/*
+ * Syscall stubs
+ */
+int
+sys_xsyscall(struct sysmsg *sysmsg __unused,
+    const struct nosys_args *uap __unused)
+{
+	return (ENOSYS);
+}
+
+int
+sys_sysarch(struct sysmsg *sysmsg __unused,
+    const struct sysarch_args *uap __unused)
+{
+	return (EOPNOTSUPP);
+}
+
+int
+sys_sigreturn(struct sysmsg *sysmsg __unused,
+    const struct sigreturn_args *uap __unused)
+{
+	return (EOPNOTSUPP);
+}
+
+int
+sys_set_tls_area(struct sysmsg *sysmsg __unused,
+    const struct set_tls_area_args *uap __unused)
+{
+	return (EOPNOTSUPP);
+}
+
+int
+sys_get_tls_area(struct sysmsg *sysmsg __unused,
+    const struct get_tls_area_args *uap __unused)
+{
+	return (EOPNOTSUPP);
+}
+
+/*
+ * ELF relocation stubs
+ * These are needed for kernel module loading.
+ */
+int
+elf_reloc(linker_file_t lf __unused, Elf_Addr relocbase __unused,
+    const void *data __unused, int type __unused,
+    elf_lookup_fn lookup __unused)
+{
+	return (EOPNOTSUPP);
+}
+
+int
+elf_reloc_local(linker_file_t lf __unused, Elf_Addr relocbase __unused,
+    const void *data __unused, int type __unused,
+    elf_lookup_fn lookup __unused)
+{
+	return (EOPNOTSUPP);
+}
+
+/*
+ * Interrupt/timer support stubs
+ */
+int
+cpu_interrupt_running(struct thread *td __unused)
+{
+	return (0);
+}
+
+void
+setdelayed(void)
+{
+}
+
+/*
+ * exec_setregs - set registers for new process after exec
+ */
+void
+exec_setregs(u_long entry __unused, u_long stack __unused,
+    u_long ps_strings __unused)
+{
+}
+
+/*
+ * LWP support functions
+ */
+void
+cpu_lwp_exit(void)
+{
+	panic("cpu_lwp_exit: not implemented");
+}
+
+int
+cpu_prepare_lwp(struct lwp *lp __unused, struct lwp_params *params __unused)
+{
+	return (0);
+}
+
+/*
+ * 128-bit division support for compiler
+ * GCC generates calls to this for 128-bit integer division.
+ * This is a minimal stub - real implementation would need full division.
+ */
+typedef unsigned __int128 uint128_t;
+
+uint128_t
+__udivti3(uint128_t a, uint128_t b)
+{
+	/* Minimal stub - will fail for large values */
+	if (b == 0)
+		panic("__udivti3: division by zero");
+	if (b == 1)
+		return a;
+	/* Very slow fallback for small divisors */
+	uint128_t result = 0;
+	while (a >= b) {
+		a -= b;
+		result++;
+	}
+	return result;
 }

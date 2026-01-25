@@ -324,54 +324,7 @@ _bus_dmamap_unload(bus_dma_tag_t dmat __unused, bus_dmamap_t map)
 	}
 }
 
-int
-bus_dmamem_coherent(bus_dma_tag_t parent, bus_size_t alignment,
-    bus_size_t boundary, bus_addr_t lowaddr, bus_addr_t highaddr,
-    bus_size_t maxsize, int flags, bus_dmamem_t *dmem)
-{
-	int error;
-
-	if (dmem == NULL)
-		return (EINVAL);
-
-	error = bus_dma_tag_create(parent, alignment, boundary,
-	    lowaddr, highaddr, maxsize, 1, maxsize, flags, &dmem->dmem_tag);
-	if (error)
-		return (error);
-
-	error = bus_dmamem_alloc(dmem->dmem_tag, &dmem->dmem_addr,
-	    flags | BUS_DMA_COHERENT, &dmem->dmem_map);
-	if (error) {
-		bus_dma_tag_destroy(dmem->dmem_tag);
-		dmem->dmem_tag = NULL;
-		return (error);
-	}
-
-	/* Identity mapping for stub */
-	dmem->dmem_busaddr = (bus_addr_t)(uintptr_t)dmem->dmem_addr;
-
-	return (0);
-}
-
-void *
-bus_dmamem_coherent_any(bus_dma_tag_t parent, bus_size_t alignment,
-    bus_size_t maxsize, int flags, bus_dma_tag_t *dtag,
-    bus_dmamap_t *dmap, bus_addr_t *busaddr)
-{
-	bus_dmamem_t dmem;
-	int error;
-
-	error = bus_dmamem_coherent(parent, alignment, 0,
-	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, maxsize, flags, &dmem);
-	if (error)
-		return (NULL);
-
-	if (dtag != NULL)
-		*dtag = dmem.dmem_tag;
-	if (dmap != NULL)
-		*dmap = dmem.dmem_map;
-	if (busaddr != NULL)
-		*busaddr = dmem.dmem_busaddr;
-
-	return (dmem.dmem_addr);
-}
+/*
+ * Note: bus_dmamem_coherent() and bus_dmamem_coherent_any() are
+ * implemented in kern/subr_busdma.c using the primitives above.
+ */
