@@ -32,7 +32,17 @@
 
 #include <sys/types.h>
 #include <sys/param.h>
-#include <sys/errno.h>
+
+/*
+ * Function prototypes - declared here to avoid macro expansion from
+ * sys/systm.h which redefines memset/memcpy/memmove as __builtin_*.
+ */
+void *memset(void *, int, size_t);
+void *memcpy(void *, const void *, size_t);
+void *memmove(void *, const void *, size_t);
+int bcmp(const void *, const void *, size_t);
+int copyin(const void *, void *, size_t);
+int copyout(const void *, void *, size_t);
 
 /*
  * memset - fill memory with a constant byte
