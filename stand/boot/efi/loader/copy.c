@@ -111,11 +111,15 @@ efi_copyin(const void *src, vm_offset_t dest, const size_t len)
 		EFI_STATUS	status;
 		size_t		pages;
 		EFI_PHYSICAL_ADDRESS base;
-		EFI_PHYSICAL_ADDRESS align;
 
-		align = 8 * 1024 * 1024;
-		pages = EFI_SIZE_TO_PAGES(align);
-		base = (EFI_PHYSICAL_ADDRESS)dest & ~(align - 1);
+		/*
+		 * Allocate a 32MB staging area aligned to 2MB for arm64.
+		 * This needs to hold the kernel (~5MB), environment, and
+		 * module metadata. The 2MB alignment is required for the
+		 * kernel's page table setup.
+		 */
+		pages = EFI_SIZE_TO_PAGES(32 * 1024 * 1024);
+		base = (EFI_PHYSICAL_ADDRESS)dest & ~((2 * 1024 * 1024) - 1);
 		status = BS->AllocatePages(AllocateAddress, EfiLoaderCode,
 		    pages, &base);
 		if (EFI_ERROR(status)) {
@@ -170,11 +174,12 @@ efi_readin(const int fd, vm_offset_t dest, const size_t len)
 		EFI_STATUS	status;
 		size_t		pages;
 		EFI_PHYSICAL_ADDRESS base;
-		EFI_PHYSICAL_ADDRESS align;
 
-		align = 8 * 1024 * 1024;
-		pages = EFI_SIZE_TO_PAGES(align);
-		base = (EFI_PHYSICAL_ADDRESS)dest & ~(align - 1);
+		/*
+		 * Allocate a 32MB staging area aligned to 2MB for arm64.
+		 */
+		pages = EFI_SIZE_TO_PAGES(32 * 1024 * 1024);
+		base = (EFI_PHYSICAL_ADDRESS)dest & ~((2 * 1024 * 1024) - 1);
 		status = BS->AllocatePages(AllocateAddress, EfiLoaderCode,
 		    pages, &base);
 		if (EFI_ERROR(status)) {
