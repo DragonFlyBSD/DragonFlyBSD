@@ -28,10 +28,14 @@
 #include <sys/param.h>
 #include <sys/linker.h>
 #include <sys/systm.h>
+#include <sys/globaldata.h>
 #include <machine/cpumask.h>
 #include <machine/smp.h>
 #include <machine/md_var.h>
+#include <machine/globaldata.h>
 #include <cpu/tls.h>
+#include <vm/vm.h>
+#include <vm/vm_extern.h>
 
 static int
 md_strcmp(const char *a, const char *b)
@@ -638,6 +642,106 @@ cpu_sniff(int dcpu)
  */
 int
 cpu_sanitize_tls(struct savetls *tls __unused)
+{
+	return (0);
+}
+
+/*
+ * SMP related stubs
+ */
+cpumask_t smp_active_mask = CPUMASK_SIMPLE(1);
+int naps;	/* Number of application processors (non-boot CPUs) */
+
+/*
+ * globaldata_find - find globaldata for given CPU
+ *
+ * For UP system, only CPU 0 exists.
+ */
+struct globaldata *
+globaldata_find(int cpu)
+{
+	if (cpu == 0)
+		return (&CPU_prvspace[0]->mdgd.mi);
+	return (NULL);
+}
+
+/*
+ * cpu_fork - machine-dependent fork handling
+ */
+void
+cpu_fork(struct lwp *lp1 __unused, struct lwp *lp2 __unused, int flags __unused)
+{
+}
+
+/*
+ * cpu_vmspace_alloc - allocate machine-dependent vmspace structures
+ */
+void
+cpu_vmspace_alloc(struct vmspace *vm __unused)
+{
+}
+
+/*
+ * cpu_vmspace_free - free machine-dependent vmspace structures
+ */
+void
+cpu_vmspace_free(struct vmspace *vm __unused)
+{
+}
+
+/*
+ * set_user_TLS - set user TLS
+ */
+void
+set_user_TLS(void)
+{
+}
+
+/*
+ * fls - find last set bit
+ *
+ * Returns the position of the most significant bit set, or 0 if no bits set.
+ */
+int
+fls(int mask)
+{
+	int bit;
+
+	if (mask == 0)
+		return (0);
+	for (bit = 1; mask != 1; bit++)
+		mask = (unsigned int)mask >> 1;
+	return (bit);
+}
+
+/*
+ * VM page dump variables - used for crash dumps
+ */
+uint64_t *vm_page_dump;
+vm_offset_t vm_page_dump_size;
+
+/*
+ * Loopback interface pointer - will be set by loopback driver
+ */
+struct ifnet *loif;
+
+/*
+ * Ethernet stubs - these need proper implementations for networking
+ */
+void
+ether_demux_oncpu(struct ifnet *ifp __unused, struct mbuf *m __unused)
+{
+}
+
+int
+ether_output_frame(struct ifnet *ifp __unused, struct mbuf *m __unused)
+{
+	return (0);
+}
+
+int
+if_simloop(struct ifnet *ifp __unused, struct mbuf *m __unused,
+    int af __unused, int hlen __unused)
 {
 	return (0);
 }

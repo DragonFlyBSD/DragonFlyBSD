@@ -52,6 +52,7 @@ This file provides explicit instructions for AI coding agents working in this re
 - [ ] Removing code deemed "unnecessary"
 - [x] NEVER push to origin, ever.
 - [x] Run commands that could damage the host or run sudo.
+- [x] Do NOT implement or stub vkernel functionality - it is incomplete and x86_64-specific.
 
 ---
 

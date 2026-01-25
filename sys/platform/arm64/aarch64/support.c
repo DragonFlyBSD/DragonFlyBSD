@@ -32,6 +32,7 @@
 
 #include <sys/types.h>
 #include <sys/param.h>
+#include <sys/errno.h>
 
 /*
  * Function prototypes - declared here to avoid macro expansion from
@@ -134,4 +135,78 @@ copyin(const void *uaddr, void *kaddr, size_t len)
 {
 	memcpy(kaddr, uaddr, len);
 	return (0);
+}
+
+/*
+ * copyinstr - copy a null-terminated string from user space
+ *
+ * Returns 0 on success, ENAMETOOLONG if string doesn't fit,
+ * EFAULT if address is invalid (not implemented for MVP).
+ */
+int
+copyinstr(const void *uaddr, void *kaddr, size_t len, size_t *done)
+{
+	const char *src = uaddr;
+	char *dst = kaddr;
+	size_t i;
+
+	if (len == 0) {
+		if (done)
+			*done = 0;
+		return (ENAMETOOLONG);
+	}
+
+	for (i = 0; i < len; i++) {
+		dst[i] = src[i];
+		if (src[i] == '\0') {
+			if (done)
+				*done = i + 1;
+			return (0);
+		}
+	}
+
+	/* String didn't fit */
+	dst[len - 1] = '\0';
+	if (done)
+		*done = len;
+	return (ENAMETOOLONG);
+}
+
+/*
+ * subyte - store a byte to user space
+ */
+int
+subyte(volatile void *base, int byte)
+{
+	*(volatile unsigned char *)base = (unsigned char)byte;
+	return (0);
+}
+
+/*
+ * suword32 - store a 32-bit word to user space
+ */
+int
+suword32(volatile void *base, int word)
+{
+	*(volatile int *)base = word;
+	return (0);
+}
+
+/*
+ * suword64 - store a 64-bit word to user space
+ */
+int
+suword64(volatile void *base, long word)
+{
+	*(volatile long *)base = word;
+	return (0);
+}
+
+/*
+ * fuword64 - fetch a 64-bit word from user space
+ */
+long
+fuword64(const volatile void *base)
+{
+	return (*(const volatile long *)base);
 }
