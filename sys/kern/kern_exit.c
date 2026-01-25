@@ -936,8 +936,13 @@ sys_wait4(struct sysmsg *sysmsg, const struct wait_args *uap)
 		idtype = P_PID;
 	}
 
-	error = kern_wait(idtype, id, &status, options, &wrusage,
-			  NULL, &sysmsg->sysmsg_result);
+	{
+		int result;
+
+		error = kern_wait(idtype, id, &status, options, &wrusage,
+			    NULL, &result);
+		sysmsg->sysmsg_result = result;
+	}
 
 	if (error == 0 && uap->status)
 		error = copyout(&status, uap->status, sizeof(*uap->status));
@@ -982,8 +987,13 @@ sys_wait6(struct sysmsg *sysmsg, const struct wait6_args *uap)
 		break;
 	}
 
-	error = kern_wait(idtype, id, &status, options,
-			  &wrusage, infop, &sysmsg->sysmsg_result);
+	{
+		int result;
+
+		error = kern_wait(idtype, id, &status, options,
+			    &wrusage, infop, &result);
+		sysmsg->sysmsg_result = result;
+	}
 
 	if (error == 0 && uap->status)
 		error = copyout(&status, uap->status, sizeof(*uap->status));
