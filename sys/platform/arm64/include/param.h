@@ -121,6 +121,8 @@
 /*
  * Mach derived conversion macros
  */
+#define	ctob(x)		((x) << PAGE_SHIFT)
+#define	btoc(x)		(((unsigned)(x) + PAGE_MASK) >> PAGE_SHIFT)
 #define	arm64_btop(x)		((unsigned long)(x) >> PAGE_SHIFT)
 #define	arm64_ptob(x)		((unsigned long)(x) << PAGE_SHIFT)
 
