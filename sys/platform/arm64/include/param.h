@@ -53,6 +53,13 @@
 #define	MACHINE_ARCH32	"armv7"
 #endif
 
+#ifndef _MACHINE_PLATFORM
+#define	_MACHINE_PLATFORM	arm64
+#endif
+#ifndef MACHINE_PLATFORM
+#define	MACHINE_PLATFORM	"arm64"
+#endif
+
 #ifdef SMP
 #ifndef MAXCPU
 #define	MAXCPU		1024
