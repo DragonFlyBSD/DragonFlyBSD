@@ -49,6 +49,11 @@ typedef __cpumask_t cpumask_t;
 					 (val).ary[2] != 0 || \
 					 (val).ary[3] != 0)
 
+#define CPUMASK_ISUP(val)		((val).ary[0] == 1 && \
+					 (val).ary[1] == 0 && \
+					 (val).ary[2] == 0 && \
+					 (val).ary[3] == 0)
+
 #define CPUMASK_TESTBIT(val, i)		((val).ary[((i) >> 6) & 3] & \
 					 CPUMASK_SIMPLE((i) & 63))
 
