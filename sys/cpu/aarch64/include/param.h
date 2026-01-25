@@ -28,6 +28,8 @@
 #ifndef _CPU_PARAM_H_
 #define	_CPU_PARAM_H_
 
-/* Placeholder for arm64 cpu param overrides. */
+#define DEV_BSHIFT	9		/* log2(DEV_BSIZE) */
+#define DEV_BSIZE	(1<<DEV_BSHIFT)
+#define DEV_BMASK	(DEV_BSIZE - 1)
 
 #endif /* _CPU_PARAM_H_ */
