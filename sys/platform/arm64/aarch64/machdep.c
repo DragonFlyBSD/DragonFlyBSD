@@ -41,6 +41,15 @@
 #include <vm/vm_extern.h>
 #include <net/if.h>
 #include <net/if_var.h>
+#include <netinet/if_ether.h>
+
+/* procfs prototypes - avoid including procfs.h due to vop dependencies */
+int procfs_read_regs(struct lwp *, struct reg *);
+int procfs_write_regs(struct lwp *, struct reg *);
+int procfs_read_fpregs(struct lwp *, struct fpreg *);
+int procfs_write_fpregs(struct lwp *, struct fpreg *);
+int procfs_read_dbregs(struct lwp *, struct dbreg *);
+int procfs_write_dbregs(struct lwp *, struct dbreg *);
 
 static int
 md_strcmp(const char *a, const char *b)
