@@ -33,6 +33,7 @@
 #include <machine/clock.h>
 #ifdef _KERNEL
 #include <machine/smp.h>
+#include <machine/md_var.h>
 #endif
 
 static __inline void

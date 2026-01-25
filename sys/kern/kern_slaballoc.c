@@ -1752,10 +1752,8 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	base_vmflags |= VM_ALLOC_SYSTEM;
     if (flags & M_USE_INTERRUPT_RESERVE)
         base_vmflags |= VM_ALLOC_INTERRUPT;
-    if ((flags & (M_RNOWAIT|M_WAITOK)) == 0) {
-	panic("kmem_slab_alloc: bad flags %08x (%p)",
-	      flags, ((int **)&size)[-1]);
-    }
+    if ((flags & (M_RNOWAIT|M_WAITOK)) == 0)
+	panic("kmem_slab_alloc: bad flags %08x", flags);
 
     /*
      * Allocate the pages.  Do not map them yet.  VM_ALLOC_NORMAL can only
