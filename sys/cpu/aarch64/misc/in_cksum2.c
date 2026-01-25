@@ -33,6 +33,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/in_cksum.h>
 
 /*
  * asm_ones32(32bitalignedbuffer, numberof32bitwords)
