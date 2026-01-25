@@ -5,4 +5,3 @@ LD=		/usr/local/bin/aarch64-none-elf-ld
 OBJCOPY=	/usr/local/bin/aarch64-none-elf-objcopy
 AS=		/usr/local/bin/aarch64-none-elf-as
 CFLAGS+=	-D__DragonFly__
-CFLAGS+=	-D__x86_64__
