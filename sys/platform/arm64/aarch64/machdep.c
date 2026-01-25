@@ -412,9 +412,7 @@ parse_modulep(uintptr_t modulep)
 	const char *name;
 	uintptr_t kernend;
 
-	dump_modulep_headers("modulep", modulep);
-	if (modulep > ARM64_PTOTV_OFF)
-		dump_modulep_headers("modulep-pa", modulep - ARM64_PTOTV_OFF);
+	dump_modulep_headers("modulep(phys)", modulep);
 
 	hdr = (u_int32_t *)modulep;
 	kernend = 0;
@@ -456,10 +454,16 @@ initarm(uintptr_t modulep)
 		return;
 	}
 
-	if (modulep < ARM64_KERNBASE)
-		modulep += ARM64_PTOTV_OFF;
+	/*
+	 * Keep modulep as physical address for now.
+	 * Early page tables only map first 4MB at high VA, but modulep
+	 * may be at ~12MB offset. TTBR0 identity maps 0x40000000-0x7fffffff
+	 * so we can access physical addresses directly.
+	 */
+	if (modulep >= ARM64_KERNBASE)
+		modulep -= ARM64_PTOTV_OFF;
 
-	uart_puts("[arm64] initarm: modulep=0x");
+	uart_puts("[arm64] initarm: modulep(phys)=0x");
 	uart_puthex((u_int64_t)modulep);
 	uart_puts("\r\n");
 
