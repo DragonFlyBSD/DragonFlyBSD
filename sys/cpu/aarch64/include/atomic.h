@@ -66,6 +66,38 @@ atomic_intr_init(__atomic_intr_t *p)
 }
 
 static __inline void
+atomic_intr_cond_enter(__atomic_intr_t *p, void (*func)(void *), void *arg)
+{
+}
+
+static __inline int
+atomic_intr_cond_try(__atomic_intr_t *p)
+{
+	return (0);
+}
+
+static __inline int
+atomic_intr_cond_test(__atomic_intr_t *p)
+{
+	return (0);
+}
+
+static __inline void
+atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg)
+{
+}
+
+static __inline void
+atomic_intr_cond_inc(__atomic_intr_t *p)
+{
+}
+
+static __inline void
+atomic_intr_cond_dec(__atomic_intr_t *p)
+{
+}
+
+static __inline void
 atomic_set_short(volatile u_short *p, u_short v)
 {
 	__atomic_fetch_or(p, v, __ATOMIC_SEQ_CST);
