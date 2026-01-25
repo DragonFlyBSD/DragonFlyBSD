@@ -81,6 +81,7 @@ in_cksum_hdr(const struct ip *ip)
 
 #endif
 
+#if defined(__x86_64__)
 static __inline u_short
 in_addword(u_short sum, u_short b)
 {
@@ -102,5 +103,28 @@ in_pseudo(u_int sum, u_int b, u_int c)
 	sum -= 0xffff;
     return (sum);
 }
+#elif defined(__aarch64__)
+static __inline u_short
+in_addword(u_short sum, u_short b)
+{
+    u_int t = (u_int)sum + (u_int)b;
+    if (t > 0xffff)
+	t -= 0xffff;
+    return ((u_short)t);
+}
+
+static __inline u_short
+in_pseudo(u_int sum, u_int b, u_int c)
+{
+    __uint64_t t = (__uint64_t)sum + b + c;
+    t = (t >> 32) + (t & 0xffffffff);
+    t = (t >> 16) + (t & 0xffff);
+    if (t > 0xffff)
+	t -= 0xffff;
+    return ((u_short)t);
+}
+#else
+#error "Unsupported architecture for in_cksum"
+#endif
 
 #endif /* _MACHINE_IN_CKSUM_H_ */

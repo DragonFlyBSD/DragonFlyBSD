@@ -3,4 +3,6 @@
 platform/arm64/aarch64/genassym.c	standard
 platform/arm64/aarch64/locore.s	standard
 platform/arm64/aarch64/machdep.c	standard
+cpu/aarch64/misc/in_cksum2.c		optional	inet
+cpu/aarch64/misc/in_cksum2.c		optional	inet6
 dev/serial/pl011/pl011_cons.c	optional	pl011

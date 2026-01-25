@@ -852,9 +852,12 @@ findpcb:
 		}
 	} else {
 		if (isipv6) {
+			struct in6_addr src6, dst6;
+			src6 = ip6->ip6_src;
+			dst6 = ip6->ip6_dst;
 			inp = in6_pcblookup_hash(&tcbinfo[0],
-						 &ip6->ip6_src, th->th_sport,
-						 &ip6->ip6_dst, th->th_dport,
+						 &src6, th->th_sport,
+						 &dst6, th->th_dport,
 						 1, m->m_pkthdr.rcvif);
 		} else {
 			cpu = mycpu->gd_cpuid;
@@ -880,11 +883,14 @@ findpcb:
 			char dbuf[INET_ADDRSTRLEN], sbuf[INET_ADDRSTRLEN];
 #endif
 			if (isipv6) {
+				struct in6_addr dst6, src6;
+				dst6 = ip6->ip6_dst;
+				src6 = ip6->ip6_src;
 				strcpy(dbuf, "[");
-				strcat(dbuf, ip6_sprintf(&ip6->ip6_dst));
+				strcat(dbuf, ip6_sprintf(&dst6));
 				strcat(dbuf, "]");
 				strcpy(sbuf, "[");
-				strcat(sbuf, ip6_sprintf(&ip6->ip6_src));
+				strcat(sbuf, ip6_sprintf(&src6));
 				strcat(sbuf, "]");
 			} else {
 				kinet_ntoa(ip->ip_dst, dbuf);
