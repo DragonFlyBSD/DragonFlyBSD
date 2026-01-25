@@ -89,6 +89,7 @@
 #include <sys/exislock.h>
 #include <vm/vm_extern.h>
 #include <machine/atomic.h>
+#include <machine/vmparam.h>
 
 #include <sys/spinlock2.h>
 #include <sys/thread2.h>
