@@ -1528,7 +1528,7 @@ __elfN(putnote)(elf_buf_t target, const char *name, int type,
 		bcopy(name, dst, note.n_namesz);
 	target->off = roundup2(target->off, sizeof(Elf_Word));
 	dst = target_reserve(target, note.n_descsz, &error);
-	if (dst != NULL)
+	if (dst != NULL && note.n_descsz != 0 && desc != NULL)
 		bcopy(desc, dst, note.n_descsz);
 	target->off = roundup2(target->off, sizeof(Elf_Word));
 	return (error);
