@@ -129,6 +129,14 @@
 #define	arm64_btop(x)		((unsigned long)(x) >> PAGE_SHIFT)
 #define	arm64_ptob(x)		((unsigned long)(x) << PAGE_SHIFT)
 
+#define	round_page(x)	((((unsigned long)(x)) + PAGE_MASK) & ~(unsigned long)(PAGE_MASK))
+#define	trunc_page(x)	((unsigned long)(x) & ~(unsigned long)(PAGE_MASK))
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#define	atop(x)		((vm_pindex_t)((x) >> PAGE_SHIFT))
+#define	ptoa(x)		((vm_paddr_t)(x) << PAGE_SHIFT)
+#endif
+
 #endif /* !_MACHINE_PARAM_H_ */
 
 #endif /* !__arm__ */
