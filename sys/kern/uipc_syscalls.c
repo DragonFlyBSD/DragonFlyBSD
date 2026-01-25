@@ -145,9 +145,10 @@ int
 sys_socket(struct sysmsg *sysmsg, const struct socket_args *uap)
 {
 	int error;
+	int result = 0;
 
-	error = kern_socket(uap->domain, uap->type, uap->protocol,
-			    &sysmsg->sysmsg_iresult);
+	error = kern_socket(uap->domain, uap->type, uap->protocol, &result);
+	sysmsg->sysmsg_iresult = result;
 
 	return (error);
 }
@@ -444,14 +445,14 @@ sys_accept(struct sysmsg *sysmsg, const struct accept_args *uap)
 	struct sockaddr *sa = NULL;
 	int sa_len;
 	int error;
+	int result = 0;
 
 	if (uap->name) {
 		error = copyin(uap->anamelen, &sa_len, sizeof(sa_len));
 		if (error)
 			return (error);
 
-		error = kern_accept(uap->s, 0, &sa, &sa_len,
-				    &sysmsg->sysmsg_iresult, 0);
+		error = kern_accept(uap->s, 0, &sa, &sa_len, &result, 0);
 
 		if (error == 0) {
 			prison_local_ip(curthread, sa);
@@ -464,9 +465,9 @@ sys_accept(struct sysmsg *sysmsg, const struct accept_args *uap)
 		if (sa)
 			kfree(sa, M_SONAME);
 	} else {
-		error = kern_accept(uap->s, 0, NULL, 0,
-				    &sysmsg->sysmsg_iresult, 0);
+		error = kern_accept(uap->s, 0, NULL, 0, &result, 0);
 	}
+	sysmsg->sysmsg_iresult = result;
 	return (error);
 }
 
@@ -482,14 +483,14 @@ sys_extaccept(struct sysmsg *sysmsg, const struct extaccept_args *uap)
 	int sa_len;
 	int error;
 	int fflags = uap->flags & O_FMASK;
+	int result = 0;
 
 	if (uap->name) {
 		error = copyin(uap->anamelen, &sa_len, sizeof(sa_len));
 		if (error)
 			return (error);
 
-		error = kern_accept(uap->s, fflags, &sa, &sa_len,
-				    &sysmsg->sysmsg_iresult, 0);
+		error = kern_accept(uap->s, fflags, &sa, &sa_len, &result, 0);
 
 		if (error == 0) {
 			prison_local_ip(curthread, sa);
@@ -502,9 +503,9 @@ sys_extaccept(struct sysmsg *sysmsg, const struct extaccept_args *uap)
 		if (sa)
 			kfree(sa, M_SONAME);
 	} else {
-		error = kern_accept(uap->s, fflags, NULL, 0,
-				    &sysmsg->sysmsg_iresult, 0);
+		error = kern_accept(uap->s, fflags, NULL, 0, &result, 0);
 	}
+	sysmsg->sysmsg_iresult = result;
 	return (error);
 }
 
@@ -520,6 +521,7 @@ sys_accept4(struct sysmsg *sysmsg, const struct accept4_args *uap)
 	int sa_len;
 	int error;
 	int sockflags;
+	int result = 0;
 
 	if (uap->flags & ~(SOCK_NONBLOCK | SOCK_CLOEXEC | SOCK_CLOFORK))
 		return (EINVAL);
@@ -530,8 +532,7 @@ sys_accept4(struct sysmsg *sysmsg, const struct accept4_args *uap)
 		if (error)
 			return (error);
 
-		error = kern_accept(uap->s, 0, &sa, &sa_len,
-				    &sysmsg->sysmsg_iresult, sockflags);
+		error = kern_accept(uap->s, 0, &sa, &sa_len, &result, sockflags);
 
 		if (error == 0) {
 			prison_local_ip(curthread, sa);
@@ -544,9 +545,9 @@ sys_accept4(struct sysmsg *sysmsg, const struct accept4_args *uap)
 		if (sa)
 			kfree(sa, M_SONAME);
 	} else {
-		error = kern_accept(uap->s, 0, NULL, 0,
-				    &sysmsg->sysmsg_iresult, sockflags);
+		error = kern_accept(uap->s, 0, NULL, 0, &result, sockflags);
 	}
+	sysmsg->sysmsg_iresult = result;
 	return (error);
 }
 
@@ -853,6 +854,7 @@ sys_sendto(struct sysmsg *sysmsg, const struct sendto_args *uap)
 	struct iovec aiov;
 	struct sockaddr *sa = NULL;
 	int error;
+	size_t szresult = 0;
 
 	if (uap->to) {
 		error = getsockaddr(&sa, uap->to, uap->tolen);
@@ -873,8 +875,8 @@ sys_sendto(struct sysmsg *sysmsg, const struct sendto_args *uap)
 	auio.uio_rw = UIO_WRITE;
 	auio.uio_td = td;
 
-	error = kern_sendmsg(uap->s, sa, &auio, NULL, uap->flags,
-			     &sysmsg->sysmsg_szresult);
+	error = kern_sendmsg(uap->s, sa, &auio, NULL, uap->flags, &szresult);
+	sysmsg->sysmsg_szresult = szresult;
 
 	if (sa)
 		kfree(sa, M_SONAME);
@@ -896,6 +898,7 @@ sys_sendmsg(struct sysmsg *sysmsg, const struct sendmsg_args *uap)
 	struct sockaddr *sa = NULL;
 	struct mbuf *control = NULL;
 	int error;
+	size_t szresult = 0;
 
 	error = copyin(uap->msg, (caddr_t)&msg, sizeof(msg));
 	if (error)
@@ -947,8 +950,8 @@ sys_sendmsg(struct sysmsg *sysmsg, const struct sendmsg_args *uap)
 		}
 	}
 
-	error = kern_sendmsg(uap->s, sa, &auio, control, uap->flags,
-			     &sysmsg->sysmsg_szresult);
+	error = kern_sendmsg(uap->s, sa, &auio, control, uap->flags, &szresult);
+	sysmsg->sysmsg_szresult = szresult;
 
 cleanup:
 	iovec_free(&iov, aiov);
@@ -1042,6 +1045,7 @@ sys_recvfrom(struct sysmsg *sysmsg, const struct recvfrom_args *uap)
 	struct sockaddr *sa = NULL;
 	int error, fromlen;
 	int flags;
+	size_t szresult = 0;
 
 	if (uap->from && uap->fromlenaddr) {
 		error = copyin(uap->fromlenaddr, &fromlen, sizeof(fromlen));
@@ -1064,7 +1068,8 @@ sys_recvfrom(struct sysmsg *sysmsg, const struct recvfrom_args *uap)
 	flags = uap->flags;
 
 	error = kern_recvmsg(uap->s, uap->from ? &sa : NULL, &auio, NULL,
-			     &flags, &sysmsg->sysmsg_szresult);
+			     &flags, &szresult);
+	sysmsg->sysmsg_szresult = szresult;
 
 	if (error == 0 && uap->from) {
 		/* note: sa may still be NULL */
@@ -1103,6 +1108,7 @@ sys_recvmsg(struct sysmsg *sysmsg, const struct recvmsg_args *uap)
 	caddr_t ctlbuf;
 	socklen_t *ufromlenp, *ucontrollenp;
 	int error, fromlen, controllen, len, flags, *uflagsp;
+	size_t szresult = 0;
 
 	/*
 	 * This copyin handles everything except the iovec.
@@ -1142,7 +1148,8 @@ sys_recvmsg(struct sysmsg *sysmsg, const struct recvmsg_args *uap)
 	error = kern_recvmsg(uap->s,
 			     (msg.msg_name ? &sa : NULL), &auio,
 			     (msg.msg_control ? &control : NULL), &flags,
-			     &sysmsg->sysmsg_szresult);
+			     &szresult);
+	sysmsg->sysmsg_szresult = szresult;
 
 	/*
 	 * Conditionally copyout the name and populate the namelen field.
