@@ -1938,6 +1938,7 @@ dfly_choose_worst_queue(dfly_pcpu_t dd, int forceit)
 
 		cpub = NULL;
 		highest_load = -0x7FFFFFFFFFFFFFFFLL;
+		highest_runqcount = 0;
 
 		for (n = 0; n < cpup->child_no; ++n) {
 			/*
