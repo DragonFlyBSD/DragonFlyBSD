@@ -29,6 +29,7 @@
 #include <sys/linker.h>
 #include <sys/systm.h>
 #include <sys/globaldata.h>
+#include <sys/thread.h>
 #include <sys/proc.h>
 #include <sys/mbuf.h>
 #include <sys/machintr.h>
@@ -121,7 +122,26 @@ static u_int64_t arm64_ttbr1_candidate;
  * thread0 is declared in <sys/proc.h> (from kern/init_main.c).
  */
 static struct mdglobaldata arm64_gd0 __attribute__((aligned(64)));
+static struct arm64_privatespace arm64_prvspace0 __attribute__((aligned(PAGE_SIZE)));
 
+/*
+ * proc0paddr - stack area for thread0/proc0.
+ * This is passed to mi_proc0init() which calls lwkt_init_thread().
+ * Size is LWKT_THREAD_STACK = UPAGES * PAGE_SIZE.
+ */
+char proc0paddr_buff[LWKT_THREAD_STACK] __attribute__((aligned(PAGE_SIZE)));
+struct user *proc0paddr;
+
+/*
+ * arm64_init_globaldata - Initialize CPU 0 globaldata early in boot.
+ *
+ * This sets up the minimum needed for the kernel to function:
+ * - curthread points to thread0
+ * - x18 register holds globaldata pointer (ARM64 per-CPU convention)
+ * - Tokens work (curthread must be valid)
+ *
+ * Called before cninit(), so uart_puts() is used for debug output.
+ */
 static void
 arm64_init_globaldata(void)
 {
@@ -130,21 +150,56 @@ arm64_init_globaldata(void)
 	/* Zero out the globaldata structure */
 	bzero(gd, sizeof(*gd));
 
-	/* Set up basic fields needed for tokens to work */
+	/* Link to private space (contains idle stack) */
+	gd->gd_prvspace = &arm64_prvspace0;
+
+	/*
+	 * Note: on both UP and SMP curthread must be set non-NULL
+	 * early in the boot sequence because the system assumes
+	 * that 'curthread' is never NULL.
+	 */
 	gd->mi.gd_curthread = &thread0;
-	gd->mi.gd_cpuid = 0;
-
-	/* Initialize thread0's back-pointer to globaldata */
 	thread0.td_gd = &gd->mi;
-
-	/* Initialize thread0's token array */
-	thread0.td_toks_stop = &thread0.td_toks_base;
 
 	/*
 	 * Set x18 to point to our globaldata structure.
-	 * This is the ARM64 convention for per-CPU data.
+	 * This is the ARM64 convention for per-CPU data (like GS base on x86).
 	 */
 	__asm __volatile("mov x18, %0" :: "r" (gd) : "x18");
+}
+
+/*
+ * arm64_gdinit_full - Complete globaldata initialization.
+ *
+ * Called after init_param1() to finish setting up globaldata,
+ * proc0, lwp0, and thread0 for full kernel operation.
+ */
+static void
+arm64_gdinit_full(void)
+{
+	struct mdglobaldata *gd = &arm64_gd0;
+
+	/*
+	 * Machine-independent globaldata initialization.
+	 * Sets up systimerq, cpumask, lwkt queues, sleep structures, etc.
+	 */
+	mi_gdinit(&gd->mi, 0);
+
+	/*
+	 * Machine-dependent globaldata initialization.
+	 * Sets up the idle thread for this CPU.
+	 */
+	cpu_gdinit(gd, 0);
+
+	/*
+	 * Set up proc0paddr and initialize proc0/lwp0/thread0.
+	 * This links thread0 to proc0 and lwp0, sets up the scheduler,
+	 * and marks thread0 as running.
+	 */
+	proc0paddr = (struct user *)proc0paddr_buff;
+	mi_proc0init(&gd->mi, proc0paddr);
+
+	kprintf("arm64_gdinit_full() done\n");
 }
 
 static void uart_puts(const char *str);
@@ -609,6 +664,15 @@ initarm(uintptr_t modulep)
 		 */
 		init_param1();
 		kprintf("init_param1() done, hz=%d\n", hz);
+
+		/*
+		 * Complete globaldata initialization now that basic
+		 * tunables are set. This sets up:
+		 * - MI globaldata (systimerq, cpumask, lwkt queues)
+		 * - Idle thread for CPU 0
+		 * - proc0, lwp0, thread0 linkage
+		 */
+		arm64_gdinit_full();
 	} else {
 		uart_puts("[arm64] no efi map\r\n");
 	}
@@ -681,6 +745,33 @@ globaldata_find(int cpu)
 	if (cpu == 0)
 		return (mycpu);
 	return (NULL);
+}
+
+/*
+ * cpu_gdinit - Initialize machine-dependent portions of globaldata.
+ *
+ * This is called after mi_gdinit() to set up the idle thread for each CPU.
+ * For CPU 0, curthread is already set to thread0.
+ * For other CPUs (when SMP is implemented), curthread will be set to
+ * the idle thread.
+ *
+ * Note: the idlethread's cpl is 0
+ *
+ * WARNING! Called from early boot, 'mycpu' may not work yet.
+ */
+void
+cpu_gdinit(struct mdglobaldata *gd, int cpu)
+{
+	if (cpu)
+		gd->mi.gd_curthread = &gd->mi.gd_idlethread;
+
+	lwkt_init_thread(&gd->mi.gd_idlethread,
+			gd->gd_prvspace->idlestack,
+			sizeof(gd->gd_prvspace->idlestack),
+			0, &gd->mi);
+	lwkt_set_comm(&gd->mi.gd_idlethread, "idle_%d", cpu);
+	gd->mi.gd_idlethread.td_switch = cpu_lwkt_switch;
+	/* TODO: set up idle_restore once assembly is implemented */
 }
 
 /*
@@ -1156,11 +1247,31 @@ set_fpregs(struct lwp *lp __unused, struct fpreg *fpregs __unused)
 /*
  * Context switch functions - stubs for now
  * These need assembly implementations for proper context switching.
+ *
+ * During early boot before mi_startup() is called, we're single-threaded
+ * and context switching should not occur. Return curthread as a no-op.
+ * Once multi-threading starts, this will panic until proper assembly
+ * implementations are added.
  */
 struct thread *
-cpu_lwkt_switch(struct thread *ntd __unused)
+cpu_lwkt_switch(struct thread *ntd)
 {
-	panic("cpu_lwkt_switch: not implemented");
+	struct thread *otd = curthread;
+
+	/*
+	 * During boot, if we're "switching" to ourselves, just return.
+	 * This handles the case where lwkt code wants to switch but
+	 * there's only one runnable thread.
+	 */
+	if (ntd == otd)
+		return (otd);
+
+	/*
+	 * Real switch needed - not implemented yet.
+	 * This will happen when mi_startup() runs SYSINITs that create
+	 * new threads and try to yield.
+	 */
+	panic("cpu_lwkt_switch: real context switch not implemented");
 	return (NULL);	/* not reached */
 }
 

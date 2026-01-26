@@ -40,8 +40,17 @@
 #include <machine/param.h>
 #endif
 
+/*
+ * Minimal privatespace for arm64 - just an idle stack.
+ * Unlike x86_64, we don't need TSS, trampoline frames, etc.
+ */
+struct arm64_privatespace {
+	char		idlestack[UPAGES * PAGE_SIZE];
+};
+
 struct mdglobaldata {
 	struct globaldata mi;
+	struct arm64_privatespace *gd_prvspace;	/* per-cpu private data */
 };
 
 #define MDGLOBALDATA_BASEALLOC_SIZE	\
