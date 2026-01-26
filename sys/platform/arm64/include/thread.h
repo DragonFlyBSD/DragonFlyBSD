@@ -52,7 +52,12 @@ _get_mycpu(void)
 {
 	struct globaldata *gd;
 
-	__asm ("mov x0, x0" : "=r" (gd) : "m"(__mycpu__dummy));
+	/*
+	 * ARM64 uses x18 as a dedicated per-CPU data pointer register.
+	 * This follows FreeBSD convention. The register is set up during
+	 * early boot to point to the mdglobaldata structure for this CPU.
+	 */
+	__asm __volatile("mov %0, x18" : "=r" (gd));
 	return (gd);
 }
 

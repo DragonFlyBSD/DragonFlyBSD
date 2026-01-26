@@ -114,6 +114,39 @@ static u_int64_t arm64_boot_alloc_end;
 static u_int64_t arm64_boot_alloc_next;
 static u_int64_t arm64_ttbr1_candidate;
 
+/*
+ * Early boot globaldata and thread0.
+ * These are minimal structures needed for cninit() to work.
+ * The token subsystem requires curthread to be valid.
+ * thread0 is declared in <sys/proc.h> (from kern/init_main.c).
+ */
+static struct mdglobaldata arm64_gd0 __attribute__((aligned(64)));
+
+static void
+arm64_init_globaldata(void)
+{
+	struct mdglobaldata *gd = &arm64_gd0;
+
+	/* Zero out the globaldata structure */
+	bzero(gd, sizeof(*gd));
+
+	/* Set up basic fields needed for tokens to work */
+	gd->mi.gd_curthread = &thread0;
+	gd->mi.gd_cpuid = 0;
+
+	/* Initialize thread0's back-pointer to globaldata */
+	thread0.td_gd = &gd->mi;
+
+	/* Initialize thread0's token array */
+	thread0.td_toks_stop = &thread0.td_toks_base;
+
+	/*
+	 * Set x18 to point to our globaldata structure.
+	 * This is the ARM64 convention for per-CPU data.
+	 */
+	__asm __volatile("mov x18, %0" :: "r" (gd) : "x18");
+}
+
 static void uart_puts(const char *str);
 static void uart_puthex(u_int64_t value);
 
@@ -543,6 +576,14 @@ initarm(uintptr_t modulep)
 		}
 		arm64_pmap_bootstrap(arm64_physmem, arm64_physmem_count);
 		arm64_ttbr1_switch();
+
+		/*
+		 * Initialize globaldata and thread0 before calling cninit().
+		 * The token subsystem requires curthread (accessed via x18
+		 * register on arm64) to be valid.
+		 */
+		uart_puts("[arm64] setting up globaldata\r\n");
+		arm64_init_globaldata();
 
 		/*
 		 * Initialize the console before we print anything out via
