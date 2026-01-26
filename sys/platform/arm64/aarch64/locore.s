@@ -103,19 +103,38 @@ _start:
 	 */
 	mov	x20, x0			/* Save returned SP in x20 */
 
-	/* Debug: print the SP value before switching */
-	ldr	x0, =sp_msg
-	bl	uart_puts
+	/* Debug: print a marker character 'A' to UART directly */
+	ldr	x1, =0x09000000		/* PL011 UART base */
+	mov	w2, #'A'
+	strb	w2, [x1]
+	mov	w2, #'\r'
+	strb	w2, [x1]
+	mov	w2, #'\n'
+	strb	w2, [x1]
+
+	/* Debug: print the SP value using uart_puthex */
 	mov	x0, x20
 	bl	uart_puthex
-	ldr	x0, =newline_msg
-	bl	uart_puts
+
+	/* Debug: print another marker 'B' */
+	ldr	x1, =0x09000000
+	mov	w2, #'B'
+	strb	w2, [x1]
+	mov	w2, #'\r'
+	strb	w2, [x1]
+	mov	w2, #'\n'
+	strb	w2, [x1]
 
 	mov	sp, x20			/* Switch to new stack */
 
-	/* Debug: confirm we're about to call mi_startup */
-	ldr	x0, =mi_startup_msg
-	bl	uart_puts
+	/* Debug: print marker 'C' after stack switch */
+	ldr	x1, =0x09000000
+	mov	w2, #'C'
+	strb	w2, [x1]
+	mov	w2, #'\r'
+	strb	w2, [x1]
+	mov	w2, #'\n'
+	strb	w2, [x1]
 
 	/*
 	 * Call mi_startup() to run SYSINIT entries.
