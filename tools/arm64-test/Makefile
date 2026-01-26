@@ -28,10 +28,21 @@ STARTUP_NSH     := $(EFI_DIR)/startup.nsh
 # QEMU settings
 QEMU            ?= qemu-system-aarch64
 QEMU_MACHINE    ?= virt
-QEMU_CPU        ?= cortex-a72
 QEMU_MEMORY     ?= 512M
 QEMU_BIOS       ?= /opt/homebrew/share/qemu/edk2-aarch64-code.fd
 TEST_TIMEOUT    ?= 45
+
+# Acceleration: hvf (macOS), kvm (Linux), or tcg (software, portable)
+# HVF provides near-native speed on Apple Silicon Macs
+QEMU_ACCEL      ?= hvf
+
+# CPU model: use 'host' for hvf/kvm, 'cortex-a72' for tcg
+# 'host' uses the real CPU features, 'max' enables all QEMU features
+ifeq ($(QEMU_ACCEL),tcg)
+QEMU_CPU        ?= cortex-a72
+else
+QEMU_CPU        ?= host
+endif
 
 # Remote VM (for copying fresh builds)
 VM_HOST         ?= devbox.sector.int
@@ -44,6 +55,7 @@ VM_KERNEL_PATH  ?= /usr/src/sys/compile/ARM64_GENERIC/kernel.stripped
 QEMU_ARGS_BASE = \
 	-M $(QEMU_MACHINE) \
 	-cpu $(QEMU_CPU) \
+	-accel $(QEMU_ACCEL) \
 	-m $(QEMU_MEMORY) \
 	-bios $(QEMU_BIOS) \
 	-monitor none \
@@ -77,6 +89,7 @@ help:
 	@echo "Variables:"
 	@echo "  VM_DIR=$(VM_DIR)"
 	@echo "  TEST_TIMEOUT=$(TEST_TIMEOUT)"
+	@echo "  QEMU_ACCEL=$(QEMU_ACCEL)  (hvf, kvm, or tcg)"
 	@echo ""
 	@echo "Example workflow:"
 	@echo "  make copy-all && make test"
