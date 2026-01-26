@@ -683,6 +683,7 @@ static uint64_t vmx_tlb_flush_op __read_mostly;
 static uint64_t vmx_ept_flush_op __read_mostly;
 static uint64_t vmx_eptp_type __read_mostly;
 static bool vmx_ept_has_ad __read_mostly;
+static bool vmx_cpu_has_arch_cap __read_mostly;
 
 static uint64_t vmx_pinbased_ctls __read_mostly;
 static uint64_t vmx_procbased_ctls __read_mostly;
@@ -1375,6 +1376,9 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			if (vmx_procbased_ctls2 & PROC_CTLS2_INVPCID_ENABLE) {
 				cpudata->gprs[NVMM_X64_GPR_RBX] |= CPUID_0_07_EBX_INVPCID;
 			}
+			if (vmx_cpu_has_arch_cap) {
+				cpudata->gprs[NVMM_X64_GPR_RDX] |= CPUID_0_07_EDX_ARCH_CAP;
+			}
 			break;
 		default:
 			cpudata->gprs[NVMM_X64_GPR_RAX] = 0;
@@ -1898,13 +1902,7 @@ vmx_inkernel_handle_msr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			goto handled;
 		}
 		if (exit->u.rdmsr.msr == MSR_IA32_ARCH_CAPABILITIES) {
-			cpuid_desc_t descs;
-			x86_get_cpuid(0x00000000, &descs);
-			if (descs.eax < 7) {
-				goto error;
-			}
-			x86_get_cpuid(0x00000007, &descs);
-			if (!(descs.edx & CPUID_0_07_EDX_ARCH_CAP)) {
+			if (!vmx_cpu_has_arch_cap) {
 				goto error;
 			}
 			val = rdmsr(MSR_IA32_ARCH_CAPABILITIES);
@@ -3475,6 +3473,15 @@ vmx_ident(void)
 	if (!(msr & IA32_VMX_EPT_VPID_UC) && !(msr & IA32_VMX_EPT_VPID_WB)) {
 		os_printf("nvmm: EPT UC/WB memory types not supported\n");
 		return false;
+	}
+
+	vmx_cpu_has_arch_cap = false;
+	x86_get_cpuid(0x00000000, &descs);
+	if (descs.eax >= 7) {
+		x86_get_cpuid(0x00000007, &descs);
+		if (descs.edx & CPUID_0_07_EDX_ARCH_CAP) {
+			vmx_cpu_has_arch_cap = true;
+		}
 	}
 
 	return true;

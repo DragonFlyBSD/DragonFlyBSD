@@ -339,14 +339,14 @@ const struct nvmm_x86_cpuid_mask nvmm_cpuid_00000007 = {
 	    /* CPUID_0_07_EDX_SRBDS_CTRL excluded */
 	    CPUID_0_07_EDX_MD_CLEAR |
 	    /* CPUID_0_07_EDX_TSX_FORCE_ABORT excluded */
-	    CPUID_0_07_EDX_SERIALIZE |
+	    CPUID_0_07_EDX_SERIALIZE,
 	    /* CPUID_0_07_EDX_HYBRID excluded */
 	    /* CPUID_0_07_EDX_TSXLDTRK excluded */
 	    /* CPUID_0_07_EDX_CET_IBT excluded */
 	    /* CPUID_0_07_EDX_IBRS excluded */
 	    /* CPUID_0_07_EDX_STIBP excluded */
 	    /* CPUID_0_07_EDX_L1D_FLUSH excluded */
-	    CPUID_0_07_EDX_ARCH_CAP
+	    /* CPUID_0_07_EDX_ARCH_CAP excluded, but re-included in VMX */
 	    /* CPUID_0_07_EDX_CORE_CAP excluded */
 	    /* CPUID_0_07_EDX_SSBD excluded */
 };
