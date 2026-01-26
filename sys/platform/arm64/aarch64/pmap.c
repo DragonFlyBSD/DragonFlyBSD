@@ -235,11 +235,14 @@ pmap_extract_done(void *handle __unused)
 
 /*
  * Extract kernel virtual address to physical.
+ *
+ * For arm64 with identity DMAP, VA == PA for physical memory.
+ * This will need to be updated when we have a real DMAP offset.
  */
 vm_paddr_t
-pmap_kextract(vm_offset_t va __unused)
+pmap_kextract(vm_offset_t va)
 {
-	return (0);
+	return (DMAP_TO_PHYS(va));
 }
 
 /*
@@ -261,10 +264,14 @@ pmap_kenter_noinval(vm_offset_t va __unused, vm_paddr_t pa __unused)
 
 /*
  * Enter a kernel mapping quickly.
+ *
+ * For arm64 early boot with identity DMAP, this is a no-op since
+ * physical memory is already accessible via TTBR0 identity map.
  */
 int
 pmap_kenter_quick(vm_offset_t va __unused, vm_paddr_t pa __unused)
 {
+	/* Identity map via TTBR0 - no explicit mapping needed */
 	return (0);
 }
 
@@ -320,26 +327,31 @@ pmap_qremove_noinval(vm_offset_t va __unused, int count __unused)
 
 /*
  * Zero a page.
+ *
+ * With identity DMAP, we can directly access the physical address.
  */
 void
-pmap_zero_page(vm_paddr_t pa __unused)
+pmap_zero_page(vm_paddr_t pa)
 {
+	bzero((void *)PHYS_TO_DMAP(pa), PAGE_SIZE);
 }
 
 /*
  * Zero a page area.
  */
 void
-pmap_zero_page_area(vm_paddr_t pa __unused, int off __unused, int size __unused)
+pmap_zero_page_area(vm_paddr_t pa, int off, int size)
 {
+	bzero((char *)PHYS_TO_DMAP(pa) + off, size);
 }
 
 /*
  * Copy a page.
  */
 void
-pmap_copy_page(vm_paddr_t src __unused, vm_paddr_t dst __unused)
+pmap_copy_page(vm_paddr_t src, vm_paddr_t dst)
 {
+	bcopy((void *)PHYS_TO_DMAP(src), (void *)PHYS_TO_DMAP(dst), PAGE_SIZE);
 }
 
 /*
@@ -428,12 +440,26 @@ pmap_growkernel(vm_offset_t kstart __unused, vm_offset_t kend __unused)
 
 /*
  * Map physical memory.
+ *
+ * For arm64, we use the direct map (DMAP) approach like FreeBSD.
+ * Physical addresses are directly accessible via PHYS_TO_DMAP().
+ * This works because we maintain identity mapping in TTBR0 during
+ * early boot, and later will set up a proper DMAP region.
+ *
+ * The virt pointer is advanced by the mapped size for compatibility
+ * with callers that expect sequential virtual allocations.
  */
 vm_offset_t
-pmap_map(vm_offset_t *virt __unused, vm_paddr_t start __unused,
-    vm_paddr_t end __unused, int prot __unused)
+pmap_map(vm_offset_t *virt, vm_paddr_t start, vm_paddr_t end, int prot __unused)
 {
-	return (0);
+	vm_size_t size = end - start;
+
+	/* Advance the virtual address pointer (for caller tracking) */
+	if (virt != NULL)
+		*virt += size;
+
+	/* Return direct-mapped address */
+	return (PHYS_TO_DMAP(start));
 }
 
 /*
