@@ -97,14 +97,35 @@ vm_mem_init(void *dummy)
 	 * Initializes resident memory structures. From here on, all physical
 	 * memory is accounted for, and we use only virtual addresses.
 	 */
+#ifdef __aarch64__
+	kprintf("vm_mem_init: calling vm_set_page_size\n");
+#endif
 	vm_set_page_size();
+#ifdef __aarch64__
+	kprintf("vm_mem_init: calling vm_page_startup\n");
+#endif
 	vm_page_startup();
 
 	/*
 	 * Initialize other VM packages
 	 */
+#ifdef __aarch64__
+	kprintf("vm_mem_init: calling vm_object_init1\n");
+#endif
 	vm_object_init1();
+#ifdef __aarch64__
+	kprintf("vm_mem_init: calling vm_map_startup\n");
+#endif
 	vm_map_startup();
+#ifdef __aarch64__
+	kprintf("vm_mem_init: calling kmem_init\n");
+#endif
 	kmem_init();
+#ifdef __aarch64__
+	kprintf("vm_mem_init: calling pmap_init\n");
+#endif
 	pmap_init();
+#ifdef __aarch64__
+	kprintf("vm_mem_init: done\n");
+#endif
 }

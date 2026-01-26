@@ -272,7 +272,14 @@ restart:
 #endif
 
 #ifdef __aarch64__
-		kprintf("SYSINIT: %08x %p\n", sip->subsystem, sip->func);
+		/* Only print subsystem changes to reduce output */
+		{
+			static int last_subsystem = -1;
+			if (sip->subsystem != last_subsystem) {
+				kprintf("SYSINIT: subsystem %08x\n", sip->subsystem);
+				last_subsystem = sip->subsystem;
+			}
+		}
 #endif
 
 		/* Call function */
