@@ -112,12 +112,31 @@ _start:
 	mov	w2, #'\n'
 	strb	w2, [x1]
 
-	/* Debug: print the SP value using uart_puthex */
-	mov	x0, x20
-	bl	uart_puthex
+	/*
+	 * Print the SP value (x20) directly using nibble extraction.
+	 * This avoids any memory loads from hex_digits table.
+	 */
+	mov	x3, #60			/* Start from top nibble */
+2:
+	lsr	x4, x20, x3		/* Shift value right */
+	and	x4, x4, #0xf		/* Extract nibble */
+	cmp	x4, #10
+	blt	3f
+	add	x4, x4, #('a' - 10)	/* a-f */
+	b	4f
+3:
+	add	x4, x4, #'0'		/* 0-9 */
+4:
+	strb	w4, [x1]		/* Print to UART */
+	subs	x3, x3, #4
+	bge	2b
+
+	mov	w2, #'\r'
+	strb	w2, [x1]
+	mov	w2, #'\n'
+	strb	w2, [x1]
 
 	/* Debug: print another marker 'B' */
-	ldr	x1, =0x09000000
 	mov	w2, #'B'
 	strb	w2, [x1]
 	mov	w2, #'\r'
@@ -128,7 +147,6 @@ _start:
 	mov	sp, x20			/* Switch to new stack */
 
 	/* Debug: print marker 'C' after stack switch */
-	ldr	x1, =0x09000000
 	mov	w2, #'C'
 	strb	w2, [x1]
 	mov	w2, #'\r'
