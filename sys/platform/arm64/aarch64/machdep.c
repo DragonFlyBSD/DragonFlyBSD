@@ -723,6 +723,7 @@ initarm(uintptr_t modulep)
 	 * before calling mi_startup(). This follows the x86_64
 	 * pattern from hammer_time().
 	 */
+	kprintf("initarm: returning SP=%p (td_pcb)\n", thread0.td_pcb);
 	return ((uint64_t)thread0.td_pcb);
 }
 
