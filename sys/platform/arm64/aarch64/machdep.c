@@ -133,6 +133,15 @@ char proc0paddr_buff[LWKT_THREAD_STACK] __attribute__((aligned(PAGE_SIZE)));
 struct user *proc0paddr;
 
 /*
+ * Early message buffer - statically allocated.
+ * Use a smaller size (64KB) for early boot. The real msgbuf will be
+ * allocated from VM later. MSGBUF_SIZE is 1MB which is too large for
+ * static allocation.
+ */
+#define	ARM64_EARLY_MSGBUF_SIZE	(64 * 1024)
+static char arm64_msgbuf[ARM64_EARLY_MSGBUF_SIZE] __attribute__((aligned(PAGE_SIZE)));
+
+/*
  * arm64_init_globaldata - Initialize CPU 0 globaldata early in boot.
  *
  * This sets up the minimum needed for the kernel to function:
@@ -625,6 +634,14 @@ initarm(uintptr_t modulep)
 		uart_puts("[arm64] efi_map usable_pages=");
 		uart_puthex(usable);
 		uart_puts("\r\n");
+
+		/*
+		 * Set physmem to the number of usable pages.
+		 * This is used by init_param2() to scale various
+		 * kernel parameters (maxproc, maxfiles, etc.)
+		 */
+		physmem = usable;
+
 		uart_puts("[arm64] physmem ranges=");
 		uart_puthex((u_int64_t)arm64_physmem_count);
 		uart_puts("\r\n");
@@ -681,6 +698,22 @@ initarm(uintptr_t modulep)
 		 * - proc0, lwp0, thread0 linkage
 		 */
 		arm64_gdinit_full();
+
+		/*
+		 * Initialize parameters that depend on the amount of
+		 * physical memory (maxproc, maxfiles, nbuf, etc.)
+		 */
+		init_param2(physmem);
+		kprintf("init_param2() done, physmem=%ld pages (%ld MB)\n",
+		    physmem, (physmem * PAGE_SIZE) / (1024 * 1024));
+
+		/*
+		 * Initialize the message buffer for kprintf output.
+		 * Use a static buffer for early boot. The buffer will
+		 * be properly allocated from VM later during boot.
+		 */
+		msgbufinit(arm64_msgbuf, ARM64_EARLY_MSGBUF_SIZE);
+		kprintf("msgbufinit() done\n");
 	} else {
 		uart_puts("[arm64] no efi map\r\n");
 	}
