@@ -138,7 +138,7 @@ struct user *proc0paddr;
  * This sets up the minimum needed for the kernel to function:
  * - curthread points to thread0
  * - x18 register holds globaldata pointer (ARM64 per-CPU convention)
- * - Tokens work (curthread must be valid)
+ * - Tokens work (curthread must be valid, td_toks_stop initialized)
  *
  * Called before cninit(), so uart_puts() is used for debug output.
  */
@@ -159,7 +159,15 @@ arm64_init_globaldata(void)
 	 * that 'curthread' is never NULL.
 	 */
 	gd->mi.gd_curthread = &thread0;
+	gd->mi.gd_cpuid = 0;
 	thread0.td_gd = &gd->mi;
+
+	/*
+	 * Initialize thread0's token array.
+	 * This is CRITICAL - the token subsystem checks td_toks_stop
+	 * to verify no tokens are held before releasing.
+	 */
+	thread0.td_toks_stop = &thread0.td_toks_base;
 
 	/*
 	 * Set x18 to point to our globaldata structure.
