@@ -98,24 +98,10 @@ _start:
 	bl	initarm
 
 	/*
-	 * Print banner to PL011 UART at 0x09000000
-	 * PL011 UARTDR (data register) is at offset 0x00
+	 * initarm() has initialized the console and printed the boot banner.
+	 * For now, halt here. Future work will continue to mi_startup().
 	 */
-	ldr	x1, =0x09000000		/* UART base address */
-	adr	x2, banner			/* Address of banner string */
-
-print_loop:
-	ldrb	w3, [x2], #1		/* Load byte, post-increment */
-	cbz	w3, done			/* If null terminator, we're done */
-	strb	w3, [x1]			/* Write byte to UART */
-	b	print_loop			/* Continue */
-
-done:
-	/* Switch to high VA for a TTBR1 trampoline */
-	ldr	x0, =high_trampoline
-	ldr	x1, =KERNBASE_OFFSET
-	add	x0, x0, x1
-	br	x0
+	b	halt
 
 	/*
 	 * Halt: infinite loop with WFI (Wait For Interrupt)
@@ -124,14 +110,6 @@ done:
 halt:
 	wfi
 	b	halt
-
-high_trampoline:
-	ldr	x0, =halt
-	br	x0
-
-	.align	3
-banner:
-	.asciz	"\r\n\r\nDragonFly/arm64 kernel started!\r\nmodulep received, halting.\r\n"
 
 exc_sync_msg:
 	.asciz	"\r\n[arm64] sync exception: ESR=0x"

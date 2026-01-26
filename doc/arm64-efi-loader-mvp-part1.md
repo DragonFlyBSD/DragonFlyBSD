@@ -135,13 +135,13 @@ sys/cpu/aarch64/include/   # CPU headers (cpu/*.h)
 
 ---
 
-## MVP Part 3: Early MMU Bootstrap (IN PROGRESS)
+## MVP Part 3: Early MMU Bootstrap (COMPLETE)
 
 ### Goal
 
 Replace the loader-side MMU disable workaround with a FreeBSD-derived, kernel-controlled page table setup that enables the MMU early and preserves the DragonFly boot flow.
 
-### Status: IN PROGRESS (Phase C.6 Complete)
+### Status: COMPLETE (All Phases Done)
 
 **Completed:**
 
@@ -176,6 +176,12 @@ Phase C.6 - TTBR1 switch and high-VA execution: ✅ COMPLETE
 - TTBR1 switch now succeeds, high-VA trampoline executes
 - Kernel continues boot in high-VA space
 
+Phase D - Console framework integration: ✅ COMPLETE
+- Fixed `_get_mycpu()` to read x18 register (ARM64 per-CPU data convention)
+- Added `arm64_init_globaldata()` to set up thread0 and globaldata before cninit()
+- `cninit()` now works - PL011 driver registers as console
+- `kprintf()` outputs through console framework
+
 **Current Boot Output:**
 ```
 [arm64] initarm: modulep(phys)=0x0000000040caf000
@@ -199,14 +205,26 @@ Phase C.6 - TTBR1 switch and high-VA execution: ✅ COMPLETE
 [arm64] trampoline addr=0xffffff800040d9a0
 [arm64] high-va ok
 [arm64] ttbr1 switch active
+[arm64] setting up globaldata
+[arm64] calling cninit()
+[arm64] cninit() done
+
+DragonFly/arm64 kernel started!
+Console initialized via PL011 driver.
+
 
 DragonFly/arm64 kernel started!
 modulep received, halting.
 ```
 
-**Not done yet:**
-- Wire PL011 console backend into DragonFly console framework (Phase D)
-- Replace ad-hoc UART prints with `kprintf()` via console framework
+Note: The "DragonFly/arm64 kernel started!" message appears twice - once from
+kprintf() via the console framework, and once from the old locore.s banner.
+The locore.s banner should be removed as part of cleanup.
+
+**Next steps:**
+- Clean up duplicate boot messages (remove old locore.s banner)
+- Remove early uart_puts() debug output once stable
+- Continue to Phase E: kernel main (mi_startup path)
 
 ### Key Fixes Applied This Session
 
@@ -225,28 +243,30 @@ modulep received, halting.
    - Only L2[0] and L2[1] were mapped (4MB total)
    - Fixed: map 8 L2 entries (16MB) to cover full kernel
 
-### Remaining Work (Phase D)
+### Completed Work (Phase D)
 
-Phase D: Console framework handoff
-1. Replace ad-hoc UART prints with proper early console hook
-2. Enable `kprintf()` via console framework
-3. Wire PL011 driver into DragonFly `CONS_DRIVER` framework
+Phase D: Console framework integration - COMPLETE
+1. ✅ Fixed `_get_mycpu()` in `sys/platform/arm64/include/thread.h`
+2. ✅ Added `arm64_init_globaldata()` in `machdep.c`
+3. ✅ Call `cninit()` in early arm64 init path
+4. ✅ `kprintf()` now works through PL011 driver
+5. Remaining: Clean up old uart_puts() debug output
 
-### Phase D Implementation Plan (PL011 Console Backend)
+### Phase D Implementation (COMPLETE)
 
 The PL011 console driver exists under `sys/dev/serial/pl011/`:
 - `pl011_cons.c` - probe/init/putc implementation
 - `pl011_reg.h` - register offsets and flags
 
-Current state:
+Implementation completed:
 - Driver compiles and is included in kernel build
 - Uses `CONS_DRIVER` macro for DragonFly console framework
-- Early boot uses direct UART writes via `uart_putc()` in `machdep.c`
+- `cninit()` called after globaldata/thread0 setup
+- `kprintf()` works through console framework
 
-Remaining work:
-- Call `cninit()` in early arm64 init path
-- Replace `uart_put*` with `kprintf()` once `cnputc` is live
-- Verify console works after TTBR1 switch (device mapping required)
+Key fix: ARM64 uses x18 register for per-CPU globaldata pointer. The
+`_get_mycpu()` function was fixed to read from x18, and `arm64_init_globaldata()`
+sets up the minimal structures needed for the token subsystem (used by cninit).
 
 ### FreeBSD Reference (Do Not Copy Without License)
 
@@ -377,6 +397,105 @@ Exact plan (do not skip any step):
 
 ---
 
+## MVP Part 4: Kernel Main (Phase E) - IN PROGRESS
+
+### Goal
+
+Continue kernel initialization to reach `mi_startup()`, which runs SYSINIT
+entries that bring up the rest of the kernel subsystems.
+
+### Status: IN PROGRESS
+
+### Current State After Phase D
+
+- `initarm()` is called with modulep
+- EFI memory map is parsed, physmem ranges identified
+- TTBR1 page tables built, high-VA execution works
+- Minimal globaldata/thread0 initialized (for cninit tokens)
+- `cninit()` works, `kprintf()` outputs to PL011
+- Kernel halts after printing banner
+
+### What x86_64 Does (hammer_time reference)
+
+From `sys/platform/pc64/x86_64/machdep.c`, the `hammer_time()` function does:
+
+1. Set up globaldata (`CPU_prvspace[0]->mdglobaldata`)
+2. Set `gd_curthread = &thread0`, `thread0.td_gd = &gd->mi`
+3. Parse preload metadata, set `boothowto`, `kern_envp`
+4. `init_param1()` - basic tunables (hz, etc.)
+5. Set up GDT, IDT (x86-specific)
+6. `mi_gdinit()` / `cpu_gdinit()` - per-CPU init
+7. `mi_proc0init()` - initialize proc0/lwp0/thread0 properly
+8. `init_locks()` - spinlocks and BGL
+9. Set up exception vectors
+10. `cninit()` - console init
+11. `getmemsize()` - memory sizing
+12. `init_param2(physmem)` - memory-dependent params
+13. `msgbufinit()` - message buffer
+14. Return stack pointer for mi_startup()
+
+Then `locore.s` calls `mi_startup()`.
+
+### Incremental Plan (Option C)
+
+We'll implement this incrementally to isolate failures:
+
+#### Phase E.1: init_param1()
+- Call `init_param1()` for basic tunable setup
+- Should be straightforward, establishes hz and other basics
+
+#### Phase E.2: Globaldata and Proc0 Init
+- Allocate `proc0paddr` buffer (can be static for now)
+- Expand `arm64_init_globaldata()` to call `mi_gdinit()`
+- Create arm64 `cpu_gdinit()` (minimal version)
+- Call `mi_proc0init()` to properly initialize proc0/lwp0/thread0
+- Stub `cpu_lwkt_switch` to return curthread (single-threaded boot)
+
+#### Phase E.3: Memory and Message Buffer Init
+- Calculate physmem count from EFI map
+- Call `init_param2(physmem)`
+- Allocate and call `msgbufinit()`
+
+#### Phase E.4: Call mi_startup()
+- Modify `initarm()` to return proper stack pointer
+- Modify `locore.s` to call `mi_startup()` after `initarm()`
+- Debug SYSINIT failures as they occur
+
+### Prerequisites Checklist
+
+| Item | Description | Status |
+|------|-------------|--------|
+| `init_param1()` | Basic tunables | ❌ |
+| `mi_gdinit()` | Globaldata MI init | ❌ |
+| `cpu_gdinit()` | Arm64 CPU-specific gd init | ❌ |
+| `mi_proc0init()` | Proc0/thread0 full init | ❌ |
+| `init_locks()` | Spinlocks/BGL | ❌ |
+| `init_param2()` | Memory-dependent params | ❌ |
+| `msgbufinit()` | Message buffer | ❌ |
+| `cpu_lwkt_switch` stub | Context switch (minimal) | ❌ |
+| locore.s `mi_startup` call | Assembly changes | ❌ |
+
+### Key Dependencies
+
+1. **`mi_proc0init()` requires**:
+   - `proc0paddr` - kernel stack for proc0 (can be static buffer)
+   - Proper globaldata with `gd_prvspace`
+   - `cpu_lwkt_switch` (stub OK for boot)
+
+2. **`init_param2()` requires**:
+   - `physmem` count from memory map
+
+3. **`msgbufinit()` requires**:
+   - `msgbufp` pointer to message buffer area
+
+### Success Criteria
+
+- Kernel calls `mi_startup()` without crashing
+- First SYSINIT entries execute (copyright banner prints)
+- Kernel may panic later in SYSINIT, but reaches mi_startup
+
+---
+
 ## Development Environment
 
 - **Local repo:** `/Users/tuxillo/s/dragonfly`
@@ -399,4 +518,4 @@ These debug markers were added during bring-up:
 
 ---
 
-*Last updated: 2026-01-26*
+*Last updated: 2026-01-26 (Phase E planning)*
