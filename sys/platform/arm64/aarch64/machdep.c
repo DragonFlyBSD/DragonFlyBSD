@@ -601,6 +601,14 @@ initarm(uintptr_t modulep)
 		 */
 		kprintf("\nDragonFly/arm64 kernel started!\n");
 		kprintf("Console initialized via PL011 driver.\n");
+
+		/*
+		 * Initialize basic tunables (hz, stathz, etc.).
+		 * This must be after kern_envp is set since TUNABLE_*
+		 * macros access it.
+		 */
+		init_param1();
+		kprintf("init_param1() done, hz=%d\n", hz);
 	} else {
 		uart_puts("[arm64] no efi map\r\n");
 	}
