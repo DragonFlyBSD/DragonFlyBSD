@@ -145,10 +145,17 @@ pmap_page_init(struct vm_page *m __unused)
 
 /*
  * Initialize the thread pmap.
+ *
+ * Set up td_pcb at the top of the kernel stack, properly aligned.
+ * This is called from lwkt_init_thread() after td_kstack is set.
  */
 void
-pmap_init_thread(struct thread *td __unused)
+pmap_init_thread(struct thread *td)
 {
+	/* Place PCB at top of kernel stack, 16-byte aligned */
+	td->td_pcb = (struct pcb *)(td->td_kstack + td->td_kstack_size) - 1;
+	td->td_pcb = (struct pcb *)((intptr_t)td->td_pcb & ~(intptr_t)0xF);
+	td->td_sp = (char *)td->td_pcb;
 }
 
 /*

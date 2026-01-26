@@ -98,9 +98,32 @@ _start:
 	bl	initarm
 
 	/*
-	 * initarm() has initialized the console and printed the boot banner.
-	 * For now, halt here. Future work will continue to mi_startup().
+	 * initarm() returns the kernel stack pointer (thread0.td_pcb).
+	 * Set SP to this value before calling mi_startup().
 	 */
+	mov	x20, x0			/* Save returned SP in x20 */
+
+	/* Debug: print the SP value before switching */
+	ldr	x0, =sp_msg
+	bl	uart_puts
+	mov	x0, x20
+	bl	uart_puthex
+	ldr	x0, =newline_msg
+	bl	uart_puts
+
+	mov	sp, x20			/* Switch to new stack */
+
+	/* Debug: confirm we're about to call mi_startup */
+	ldr	x0, =mi_startup_msg
+	bl	uart_puts
+
+	/*
+	 * Call mi_startup() to run SYSINIT entries.
+	 * This never returns - it eventually calls cpu_idle().
+	 */
+	bl	mi_startup
+
+	/* Should not reach here */
 	b	halt
 
 	/*
@@ -118,6 +141,12 @@ exc_far_msg:
 exc_elr_msg:
 	.asciz	" ELR=0x"
 exc_end_msg:
+	.asciz	"\r\n"
+sp_msg:
+	.asciz	"[arm64] SP from initarm: 0x"
+mi_startup_msg:
+	.asciz	"[arm64] calling mi_startup()\r\n"
+newline_msg:
 	.asciz	"\r\n"
 hex_digits:
 	.asciz	"0123456789abcdef"

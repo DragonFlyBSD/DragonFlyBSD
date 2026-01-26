@@ -558,7 +558,7 @@ parse_modulep(uintptr_t modulep)
 	}
 }
 
-void
+uint64_t
 initarm(uintptr_t modulep)
 {
 	boot_modulep = modulep;
@@ -717,6 +717,13 @@ initarm(uintptr_t modulep)
 	} else {
 		uart_puts("[arm64] no efi map\r\n");
 	}
+
+	/*
+	 * Return the kernel stack pointer for locore.s to use
+	 * before calling mi_startup(). This follows the x86_64
+	 * pattern from hammer_time().
+	 */
+	return ((uint64_t)thread0.td_pcb);
 }
 
 void
