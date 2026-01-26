@@ -51,6 +51,7 @@ struct region_descriptor;
 struct pmap;
 
 __BEGIN_DECLS
+
 #define readb(va)	(*(volatile u_int8_t *) (va))
 #define readw(va)	(*(volatile u_int16_t *) (va))
 #define readl(va)	(*(volatile u_int32_t *) (va))
@@ -404,10 +405,9 @@ invd(void)
 	__asm __volatile("invd");
 }
 
-#if defined(_KERNEL)
+#ifdef _KERNEL
 
 #ifndef _CPU_INVLPG_DEFINED
-
 /*
  * Invalidate a particular VA on this cpu only
  *
@@ -419,7 +419,6 @@ cpu_invlpg(void *addr)
 {
 	__asm __volatile("invlpg %0" : : "m" (*(char *)addr) : "memory");
 }
-
 #endif
 
 static __inline void
@@ -731,6 +730,7 @@ load_es(u_short sel)
 }
 
 #ifdef _KERNEL
+
 /* This is defined in <machine/specialreg.h> but is too painful to get to */
 #ifndef	MSR_FSBASE
 #define	MSR_FSBASE	0xc0000100
@@ -757,8 +757,10 @@ load_gs(u_short sel)
 	__asm __volatile("pushfq; cli; rdmsr; movw %0,%%gs; wrmsr; popfq"
             : : "rm" (sel), "c" (MSR_GSBASE) : "eax", "edx");
 }
-#else
+
+#else /* !_KERNEL */
 /* Usable by userland */
+
 static __inline void
 load_fs(u_short sel)
 {
@@ -770,7 +772,8 @@ load_gs(u_short sel)
 {
 	__asm __volatile("movw %0,%%gs" : : "rm" (sel));
 }
-#endif
+
+#endif /* _KERNEL */
 
 /* void lidt(struct region_descriptor *addr); */
 static __inline void
