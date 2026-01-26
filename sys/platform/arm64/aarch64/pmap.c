@@ -46,6 +46,7 @@
 #include <vm/vm_pager.h>
 #include <machine/pmap.h>
 #include <machine/md_var.h>
+#include <machine/pcb.h>
 
 /*
  * Kernel pmap and VM globals
