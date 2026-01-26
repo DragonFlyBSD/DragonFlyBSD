@@ -70,9 +70,13 @@ Use the build/test agent or manual workflow:
 ```sh
 cd tools/arm64-test
 make copy-all       # Fetch loader and kernel from VM
-make test           # Run with 45s timeout (headless)
+make test           # Run with 45s timeout (headless, HVF accelerated)
 make run-gui        # Run with graphical display
 ```
+
+**QEMU Acceleration:** The test harness defaults to HVF (Hypervisor.framework)
+on Apple Silicon Macs for near-native speed. Override with `QEMU_ACCEL=tcg`
+for portable software emulation.
 
 ---
 
@@ -397,23 +401,63 @@ Exact plan (do not skip any step):
 
 ---
 
-## MVP Part 4: Kernel Main (Phase E) - IN PROGRESS
+## MVP Part 4: Kernel Main (Phase E) - PHASE E.4 COMPLETE
 
 ### Goal
 
 Continue kernel initialization to reach `mi_startup()`, which runs SYSINIT
 entries that bring up the rest of the kernel subsystems.
 
-### Status: IN PROGRESS
+### Status: PHASE E.4 COMPLETE - Kernel reaches mi_startup()
 
-### Current State After Phase D
+The kernel now successfully:
+1. `initarm()` returns kernel stack pointer (`thread0.td_pcb`)
+2. `locore.s` sets SP and calls `mi_startup()`
+3. `mi_startup()` runs, sorting and executing 323 SYSINITs
+4. Copyright banner prints (SI_BOOT1_COPYRIGHT = 0x0800000)
+5. Boot continues through SI_BOOT1_LOCK (0x0900000) into SI_BOOT1_VM (0x1000000)
 
-- `initarm()` is called with modulep
-- EFI memory map is parsed, physmem ranges identified
-- TTBR1 page tables built, high-VA execution works
-- Minimal globaldata/thread0 initialized (for cninit tokens)
-- `cninit()` works, `kprintf()` outputs to PL011
-- Kernel halts after printing banner
+### Current Boot Output (Phase E.4)
+
+```
+DragonFly/arm64 kernel started!
+Console initialized via PL011 driver.
+init_param1() done, hz=100
+arm64_gdinit_full() done
+init_param2() done, physmem=112627 pages (439 MB)
+msgbufinit() done
+initarm: returning SP=0x40cc2ee0 (td_pcb)
+A
+0000000040cc2ee0
+B
+C
+mi_startup() entered
+mi_startup: sorting 323 SYSINITs
+mi_startup: starting SYSINIT execution
+SYSINIT: 00700000 0x4014f770
+... [executes ~52 SYSINITs]
+SYSINIT: 00800000 0x40105f30
+Copyright (c) 2003-2026 The DragonFly Project.
+Copyright (c) 1992-2003 The FreeBSD Project.
+Copyright (c) 1979, 1980, 1983, 1986, 1988, 1989, 1991, 1992, 1993, 1994
+	The Regents of the University of California. All rights reserved.
+SYSINIT: 00900000 0x4022c3c0
+SYSINIT: 00900000 0x40123d00
+SYSINIT: 00900000 0x40105580
+SYSINIT: 01000000 0x403b3060
+```
+
+The kernel currently stalls at SI_BOOT1_VM (0x1000000), likely in VM initialization.
+
+### Current State After Phase E.4
+
+- `initarm()` fully initializes globaldata, proc0, thread0
+- `init_param1()`, `init_param2()`, `msgbufinit()` all complete
+- `initarm()` returns `thread0.td_pcb` as kernel stack pointer
+- `locore.s` sets SP from return value and calls `mi_startup()`
+- `mi_startup()` sorts 323 SYSINITs and begins execution
+- Boot progresses through SI_BOOT1_TUNABLES, SI_BOOT1_COPYRIGHT, SI_BOOT1_LOCK
+- Stalls at SI_BOOT1_VM - VM initialization needs arm64 support
 
 ### What x86_64 Does (hammer_time reference)
 
@@ -465,15 +509,15 @@ We'll implement this incrementally to isolate failures:
 
 | Item | Description | Status |
 |------|-------------|--------|
-| `init_param1()` | Basic tunables | ❌ |
-| `mi_gdinit()` | Globaldata MI init | ❌ |
-| `cpu_gdinit()` | Arm64 CPU-specific gd init | ❌ |
-| `mi_proc0init()` | Proc0/thread0 full init | ❌ |
-| `init_locks()` | Spinlocks/BGL | ❌ |
-| `init_param2()` | Memory-dependent params | ❌ |
-| `msgbufinit()` | Message buffer | ❌ |
-| `cpu_lwkt_switch` stub | Context switch (minimal) | ❌ |
-| locore.s `mi_startup` call | Assembly changes | ❌ |
+| `init_param1()` | Basic tunables | ✅ |
+| `mi_gdinit()` | Globaldata MI init | ✅ |
+| `cpu_gdinit()` | Arm64 CPU-specific gd init | ✅ |
+| `mi_proc0init()` | Proc0/thread0 full init | ✅ |
+| `init_locks()` | Spinlocks/BGL | ✅ |
+| `init_param2()` | Memory-dependent params | ✅ |
+| `msgbufinit()` | Message buffer | ✅ |
+| `cpu_lwkt_switch` stub | Context switch (minimal) | ✅ |
+| locore.s `mi_startup` call | Assembly changes | ✅ |
 
 ### Key Dependencies
 
@@ -490,9 +534,16 @@ We'll implement this incrementally to isolate failures:
 
 ### Success Criteria
 
-- Kernel calls `mi_startup()` without crashing
-- First SYSINIT entries execute (copyright banner prints)
-- Kernel may panic later in SYSINIT, but reaches mi_startup
+- ✅ Kernel calls `mi_startup()` without crashing
+- ✅ First SYSINIT entries execute (copyright banner prints)
+- ⏳ Kernel stalls at SI_BOOT1_VM - VM initialization needs arm64 pmap support
+
+### Next Steps (Phase E.5)
+
+1. **Remove debug output** - SYSINIT tracing in `init_main.c` slows boot significantly
+2. **Implement arm64 VM support** - `pmap_init()` and related functions for SI_BOOT1_VM
+3. **Debug SYSINIT failures** - As boot progresses, more arm64-specific stubs will need implementation
+4. **Consider**: Reducing arm64 debug output in `locore.s` and `machdep.c` once stable
 
 ---
 
@@ -518,4 +569,4 @@ These debug markers were added during bring-up:
 
 ---
 
-*Last updated: 2026-01-26 (Phase E planning)*
+*Last updated: 2026-01-26 (Phase E.4 complete, mi_startup reached)*
