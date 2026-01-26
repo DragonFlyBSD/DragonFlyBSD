@@ -567,7 +567,7 @@ initarm(uintptr_t modulep)
 
 	if (modulep == 0) {
 		uart_puts("[arm64] initarm: modulep missing\r\n");
-		return;
+		return (0);	/* Will fault - invalid SP */
 	}
 
 	/*
@@ -590,7 +590,7 @@ initarm(uintptr_t modulep)
 	preload_initkmdp();
 	if (preload_kmdp == NULL) {
 		uart_puts("[arm64] no kernel metadata\r\n");
-		return;
+		return (0);	/* Will fault - invalid SP */
 	}
 
 	boothowto = md_fetch_int(preload_kmdp, MODINFOMD_HOWTO);
