@@ -51,6 +51,7 @@
 #include <cpu/tls.h>
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
+#include <vm/pmap.h>
 #include <net/if.h>
 #include <net/if_var.h>
 #include <netinet/if_ether.h>
@@ -654,6 +655,22 @@ initarm(uintptr_t modulep)
 			uart_puthex(arm64_physmem[i].end);
 			uart_puts("\r\n");
 		}
+
+		/*
+		 * Populate phys_avail[] for vm_page_startup().
+		 * This array defines the physical memory available for
+		 * page allocation. It must be terminated by a zero entry.
+		 */
+		for (int i = 0; i < arm64_physmem_count && i < 15; i++) {
+			phys_avail[i].phys_beg = arm64_physmem[i].start;
+			phys_avail[i].phys_end = arm64_physmem[i].end;
+			phys_avail[i].flags = 0;
+			phys_avail[i].affinity = 0;
+		}
+		/* Terminate the array */
+		phys_avail[arm64_physmem_count < 15 ? arm64_physmem_count : 15].phys_beg = 0;
+		phys_avail[arm64_physmem_count < 15 ? arm64_physmem_count : 15].phys_end = 0;
+
 		arm64_pmap_bootstrap(arm64_physmem, arm64_physmem_count);
 		arm64_ttbr1_switch();
 
@@ -698,6 +715,47 @@ initarm(uintptr_t modulep)
 		 * - proc0, lwp0, thread0 linkage
 		 */
 		arm64_gdinit_full();
+
+		/*
+		 * Initialize kernel virtual address space parameters.
+		 * These are used by kmem_init() during VM initialization.
+		 *
+		 * KvaStart/KvaEnd define the full kernel VA range.
+		 * virtual_start/virtual_end define the available KVA for
+		 * dynamic allocations (after kernel text/data/bss).
+		 *
+		 * For now, use a simple 1GB KVA range starting after KERNBASE.
+		 * The kernel is loaded at ~0xffffff8040000000 (KERNBASE + 1GB),
+		 * so we start virtual_start after kernend.
+		 */
+		KvaStart = VM_MIN_KERNEL_ADDRESS;
+		KvaEnd = VM_MAX_KERNEL_ADDRESS;
+		KvaSize = KvaEnd - KvaStart;
+
+		/*
+		 * virtual_start begins after the kernel's static allocations.
+		 * Use arm64_boot_alloc_next which tracks our bootstrap allocations.
+		 * Convert to high VA for kernel space.
+		 */
+		virtual_start = KERNBASE + (arm64_boot_alloc_next - ARM64_PHYSBASE);
+		virtual_end = VM_MAX_KERNEL_ADDRESS;
+
+		/* No secondary KVA range for now */
+		virtual2_start = 0;
+		virtual2_end = 0;
+
+		kprintf("KvaStart=0x%lx KvaEnd=0x%lx KvaSize=0x%lx\n",
+		    (unsigned long)KvaStart, (unsigned long)KvaEnd,
+		    (unsigned long)KvaSize);
+		kprintf("virtual_start=0x%lx virtual_end=0x%lx\n",
+		    (unsigned long)virtual_start, (unsigned long)virtual_end);
+
+		/*
+		 * kernel_vm_end tracks the end of kernel VA allocations.
+		 * Start it at virtual_start; it will grow as pmap_growkernel()
+		 * is called.
+		 */
+		kernel_vm_end = virtual_start;
 
 		/*
 		 * Initialize parameters that depend on the amount of
