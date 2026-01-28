@@ -1791,7 +1791,8 @@ svm_vcpu_setstate_seg(const struct nvmm_x64_state_seg *seg,
 }
 
 static void
-svm_vcpu_getstate_seg(struct nvmm_x64_state_seg *seg, struct vmcb_segment *vseg)
+svm_vcpu_getstate_seg(struct nvmm_x64_state_seg *seg,
+    const struct vmcb_segment *vseg)
 {
 	seg->selector = vseg->selector;
 	seg->attrib.type = __SHIFTOUT(vseg->attrib, SVM_SEG_ATTRIB_TYPE);
@@ -1993,7 +1994,7 @@ svm_vcpu_getstate(struct nvmm_cpu *vcpu)
 	struct nvmm_comm_page *comm = vcpu->comm;
 	struct nvmm_x64_state *state = &comm->state;
 	struct svm_cpudata *cpudata = vcpu->cpudata;
-	struct vmcb *vmcb = cpudata->vmcb;
+	const struct vmcb *vmcb = cpudata->vmcb;
 	uint64_t flags;
 
 	flags = comm->state_wanted;
