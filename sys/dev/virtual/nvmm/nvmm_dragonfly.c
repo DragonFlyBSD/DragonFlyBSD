@@ -301,6 +301,7 @@ dfbsd_nvmm_open(struct dev_open_args *ap)
 		return EINVAL;
 
 	if (OFLAGS(flags) & O_WRONLY) {
+		/* Opened by the nvmmctl(8) utility. */
 		owner = &nvmm_root_owner;
 	} else {
 		owner = os_mem_alloc(sizeof(*owner));
