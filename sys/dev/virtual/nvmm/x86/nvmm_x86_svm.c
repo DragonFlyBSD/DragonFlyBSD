@@ -942,9 +942,11 @@ svm_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			cpudata->vmcb->state.rax = svm_xcr0_mask & 0xFFFFFFFF;
 			cpudata->gprs[NVMM_X64_GPR_RDX] = svm_xcr0_mask >> 32;
 			/* XSAVE size for currently enabled XCR0 features. */
-			cpudata->gprs[NVMM_X64_GPR_RBX] = nvmm_x86_xsave_size(cpudata->gxcr0);
+			cpudata->gprs[NVMM_X64_GPR_RBX] =
+			    nvmm_x86_xsave_size(cpudata->gxcr0);
 			/* XSAVE size for all supported XCR0 features. */
-			cpudata->gprs[NVMM_X64_GPR_RCX] = nvmm_x86_xsave_size(svm_xcr0_mask);
+			cpudata->gprs[NVMM_X64_GPR_RCX] =
+			    nvmm_x86_xsave_size(svm_xcr0_mask);
 			break;
 		case 1:
 			cpudata->vmcb->state.rax &=
@@ -1808,8 +1810,8 @@ svm_vcpu_getstate_seg(struct nvmm_x64_state_seg *seg,
 }
 
 static inline bool
-svm_state_gtlb_flush(const struct vmcb *vmcb, const struct nvmm_x64_state *state,
-    uint64_t flags)
+svm_state_gtlb_flush(const struct vmcb *vmcb,
+    const struct nvmm_x64_state *state, uint64_t flags)
 {
 	if (flags & NVMM_X64_STATE_CRS) {
 		if ((vmcb->state.cr0 ^
