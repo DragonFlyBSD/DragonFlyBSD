@@ -335,9 +335,8 @@ struct thread {
     struct fdcache    td_fdcache[NFDCACHE];
 
     /*
-     * Linux and FreeBSD compat fields
+     * FreeBSD compat fields
      */
-    void	*td_linux_task;		/* drm/linux support */
     struct sleepqueue_wchan *td_sqwc;	/* freebsd sleepq*() API */
     sbintime_t	td_sqtimo;		/* freebsd sleepq*() API */
     int		td_sqqueue;		/* freebsd sleepq*() API */
@@ -475,9 +474,6 @@ struct thread {
 
 #ifdef _KERNEL
 
-extern void (*linux_task_drop_callback)(struct thread *);
-extern void (*linux_proc_drop_callback)(struct proc *);
-
 /*
  * Global tokens
  */
@@ -572,4 +568,3 @@ void lwkt_remove_tdallq(struct thread *);
 #endif /* _KERNEL */
 
 #endif /* !_SYS_THREAD_H_ */
-

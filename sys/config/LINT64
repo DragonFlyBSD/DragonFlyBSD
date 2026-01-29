@@ -2074,29 +2074,6 @@ device		acpi_dock
 
 device		aibs		# ASUSTeK AI Booster (ACPI ASOC ATK0110)
 
-# DRM options:
-# drm:		General DRM code
-# i915:		Intel integrated GPUs, starting from the 830M family
-# radeon:	ATI/AMD Radeon cards
-#
-# DRM_DEBUG:	include debug printfs, very slow
-#
-# DRM requires AGP in the kernel.
-#
-# Also you'll need to have the following 3 lines in the kernel config.
-#	device acpi
-#	device iicbus
-#	device iicbb
-
-device		drm
-
-# For testing and debugging.
-device		"i915"
-device		radeon
-
-# options 	DRM_DEBUG
-options		VGA_SWITCHEROO
-
 #
 # Misc devices
 #

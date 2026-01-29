@@ -283,8 +283,6 @@ struct	proc {
 
 	struct rusage	p_ru;		/* stats for this proc */
 	struct rusage	p_cru;		/* sum of stats for reaped children */
-	void		*p_linux_mm;	/* helper for drm */
-
 /* The following fields are all copied upon creation in fork. */
 #define	p_startcopy	p_comm
 	char		p_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */

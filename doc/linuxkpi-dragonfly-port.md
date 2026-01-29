@@ -58,6 +58,21 @@ Phase 0 is the audit and readiness phase. The goal is to understand dependencies
 
 ## Phase 0 checklist (calculated targets)
 
+## Phase 0 execution todo
+
+- [x] Remove `dev/drm/*` build glue from `sys/conf/files` (line span 2272-2590).
+- [x] Remove DRM options from `sys/conf/options` (drop `DRM_DEBUG`/`VGA_SWITCHEROO`).
+- [x] Remove DRM-local thread/proc hooks (`td_linux_task`, `p_linux_mm`, and drop callbacks).
+- [x] Remove `share/man/man4/drm.4` to avoid stale userland guidance.
+- [x] Remove `drm.4` entry from `share/man/man4/Makefile`.
+- [x] Remove `sys/libkern/linux_idr.c` to avoid conflicts with FreeBSD LinuxKPI.
+- [x] Remove DRM Makefiles to prevent build recursion into DRM subtrees.
+- [x] Remove `drm` from `sys/dev/Makefile` subdir list.
+- [x] Remove DRM devices/options from `sys/config/LINT64`.
+- [x] Remove `sys/dev/drm/**` sources from the repository.
+
+Note: `sys/dev/drm/**` sources are removed; this leaves only non-DRM consumers to be addressed by the incoming FreeBSD LinuxKPI import.
+
 ### Build glue to remove
 - `sys/conf/files`: remove every line that starts with `dev/drm/` (this includes DRM core, TTM, driver sources, and all `linux_*.c` shims). This currently covers:
   - `dev/drm/*.c` (DRM core, helpers, and sysctl/sysfs glue)

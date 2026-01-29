@@ -5,7 +5,6 @@ SUBDIR=	\
 	agp \
 	crypto \
 	disk \
-	drm \
 	misc \
 	netif \
 	pccard \
