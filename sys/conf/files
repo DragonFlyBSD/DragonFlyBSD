@@ -46,17 +46,17 @@ bus/cam/scsi/scsi_target.c		optional targ
 bus/cam/scsi/scsi_targ_bh.c		optional targbh
 
 # Concurrency Kit (RCU support for LinuxKPI)
-contrib/ck/src/ck_array.c			standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
-contrib/ck/src/ck_barrier_centralized.c		standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
-contrib/ck/src/ck_barrier_combining.c		standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
-contrib/ck/src/ck_barrier_dissemination.c	standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
-contrib/ck/src/ck_barrier_mcs.c			standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
-contrib/ck/src/ck_barrier_tournament.c		standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
-contrib/ck/src/ck_epoch.c			standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
-contrib/ck/src/ck_hp.c				standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
-contrib/ck/src/ck_hs.c				standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
-contrib/ck/src/ck_ht.c				standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
-contrib/ck/src/ck_rhs.c				standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
+contrib/ck/src/ck_array.c			standard
+contrib/ck/src/ck_barrier_centralized.c		standard
+contrib/ck/src/ck_barrier_combining.c		standard
+contrib/ck/src/ck_barrier_dissemination.c	standard
+contrib/ck/src/ck_barrier_mcs.c			standard
+contrib/ck/src/ck_barrier_tournament.c		standard
+contrib/ck/src/ck_epoch.c			standard
+contrib/ck/src/ck_hp.c				standard
+contrib/ck/src/ck_hs.c				standard
+contrib/ck/src/ck_ht.c				standard
+contrib/ck/src/ck_rhs.c				standard
 
 dev/disk/dm/device-mapper.c		optional dm
 dev/disk/dm/dm_dev.c			optional dm

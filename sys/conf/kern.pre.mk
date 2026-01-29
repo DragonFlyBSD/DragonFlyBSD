@@ -77,6 +77,9 @@ INCLUDES+= -I${.OBJDIR} -I$S/${OSACPI_MI_DIR} -I$S/${ACPICA_DIR}/include
 # ... and the same for Atheros HAL
 INCLUDES+= -I$S/dev/netif/ath/ath_hal -I$S/contrib/dev/ath/ath_hal
 
+# Concurrency Kit includes (for RCU support in LinuxKPI)
+INCLUDES+= -I$S/contrib/ck/include
+
 COPTS=	${INCLUDES} ${IDENT} -D_KERNEL -DHAVE_KERNEL_OPTION_HEADERS -include opt_global.h
 CFLAGS=	${COPTFLAGS} ${KCFLAGS} ${CWARNFLAGS} -std=${CSTD} ${DEBUG} ${COPTS}
 
