@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  */
 
-#if defined(__FreeBSD__) && defined(_KERNEL)
+#if (defined(__FreeBSD__) || defined(__DragonFly__)) && defined(_KERNEL)
 #include <sys/systm.h>
 #else
 #include <string.h>
