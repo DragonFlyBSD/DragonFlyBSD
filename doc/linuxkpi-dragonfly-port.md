@@ -122,6 +122,40 @@ After removing the DRM stack and Linux-compat glue in Phase 0, we must verify th
 4. Confirm kernel boots without DRM-related errors
 5. Validate that no kernel configs reference removed devices
 
+### Development Environment Setup
+
+#### VM Access
+
+The DragonFly VM is accessible via SSH:
+```bash
+ssh -p 6021 root@devbox
+```
+
+Source code location on VM: `/usr/src`
+
+#### Syncing Changes to VM
+
+The workflow for syncing changes from local repository to VM:
+
+1. **Push changes to gitea remote** (from local repo):
+   ```bash
+   git push gitea port-linuxkpi
+   ```
+
+2. **Update VM source** (on VM):
+   ```bash
+   cd /usr/src
+   git fetch gitea port-linuxkpi
+   git reset --hard gitea/port-linuxkpi
+   ```
+
+3. **Clean and rebuild** (if needed):
+   ```bash
+   rm -rf /usr/obj/*
+   make -j$(sysctl -n hw.ncpu) buildworld
+   make -j$(sysctl -n hw.ncpu) buildkernel KERNCONF=X86_64_GENERIC
+   ```
+
 ### Build Verification Steps
 
 #### Step 1: Clean Build Environment
@@ -144,9 +178,10 @@ make -j$(sysctl -n hw.ncpu) buildworld
 - All userland utilities compile successfully
 
 #### Step 3: Build Kernel
+
 ```bash
 cd /usr/src
-make -j$(sysctl -n hw.ncpu) buildkernel KERNCONF=GENERIC
+make -j$(sysctl -n hw.ncpu) buildkernel KERNCONF=X86_64_GENERIC
 ```
 
 **Success Criteria:**
@@ -167,10 +202,10 @@ grep -r "device.*drm\|device.*i915\|device.*amdgpu\|device.*radeon" /usr/src/sys
 grep -r "options.*DRM\|options.*VGA_SWITCHEROO" /usr/src/sys/config/
 
 # Verify no DRM in linker sets
-nm /usr/obj/usr/src/sys/GENERIC/kernel | grep -E "drm_|i915_|amdgpu_|radeon_"
+nm /usr/obj/usr/src/sys/X86_64_GENERIC/kernel.debug | grep -E "drm_|i915_|amdgpu_|radeon_"
 
 # Check for linux_task_drop_callback references
-nm /usr/obj/usr/src/sys/GENERIC/kernel | grep linux_task_drop
+nm /usr/obj/usr/src/sys/X86_64_GENERIC/kernel.debug | grep linux_task_drop
 ```
 
 **Expected Results:**
@@ -181,7 +216,7 @@ nm /usr/obj/usr/src/sys/GENERIC/kernel | grep linux_task_drop
 
 ```bash
 # Install the new kernel
-make installkernel KERNCONF=GENERIC
+make installkernel KERNCONF=X86_64_GENERIC
 
 # Reboot to test
 reboot
@@ -201,15 +236,18 @@ ls -la /dev/dri  # Should return "No such file or directory"
 cat /var/log/messages | grep -i drm
 ```
 
-### Common Issues and Fixes
+### Common Issues and Fixes Found During Phase 0.A
 
 | Issue | Cause | Fix |
 |-------|-------|-----|
-| `undefined reference to 'linux_task_drop_callback'` | Stale reference in kern_exit.c | Verify removal from sys/kern/kern_exit.c |
-| `undefined reference to 'drm_*'` | Stale build glue in sys/conf/files | Check sys/conf/files for remaining drm entries |
-| `cannot find linux/drm/*.h` | Missing include path cleanup | Verify drm include paths removed |
-| `device drm not found` | Stale kernel config | Remove drm/i915/amdgpu from kernel configs |
-| `module drm.ko not found` | Stale module references | Clean /usr/obj and rebuild |
+| `cd: /usr/src/sys/dev/drm/include/linux: No such file or directory` | include/Makefile tries to install DRM headers | Remove DRM header installation rules from include/Makefile |
+| `fatal error: linux/slab.h: No such file or directory` (agp) | agp module includes DRM headers | Remove agp from kernel config (X86_64_GENERIC) |
+| `fatal error: linux/fb.h: No such file or directory` (vga) | vga_switcheroo requires DRM headers | Remove video from DEV_SUPPORT in sys/platform/pc64/Makefile.inc |
+| `fatal error: linux/types.h: No such file or directory` (apple_gmux) | apple_gmux requires DRM headers | Remove apple_gmux from build (clear sys/gnu/dev/misc/Makefile) |
+| `cc1: error: /usr/src/sys/dev/drm/include: No such file or directory` | Kernel includes DRM paths | Remove INCLUDES from sys/conf/kern.pre.mk |
+| `fatal error: drm/drm.h: No such file or directory` (kdump) | kdump includes DRM headers for ioctl decoding | Remove DRM includes from usr.bin/kdump/Makefile and mkioctls |
+| `fatal error: drm/drm.h: No such file or directory` (truss) | truss includes DRM headers | Remove DRM include from usr.bin/truss/Makefile |
+| `fatal error: uapi_drm/drm.h: No such file or directory` (testvblank) | testvblank test requires DRM | Remove testvblank from test/debug/Makefile |
 
 ### Success Criteria for Phase 0.A
 
