@@ -179,30 +179,6 @@ copies:		mtree_setup
 	cd ${.CURDIR}/../sys/dev/misc/evdev; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 input-event-codes.h \
 		${DESTDIR}/usr/include/compat/linux
-	cd ${.CURDIR}/../sys/dev/drm/include/linux; \
-		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 compiler.h \
-		${DESTDIR}/usr/include/compat/linux
-	cd ${.CURDIR}/../sys/dev/drm/include/linux; \
-		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 posix_types.h \
-		${DESTDIR}/usr/include/compat/linux
-	cd ${.CURDIR}/../sys/dev/drm/include/linux; \
-		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 types.h \
-		${DESTDIR}/usr/include/compat/linux
-	cd ${.CURDIR}/../sys/dev/drm/include/uapi; \
-		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 asm-generic/int-ll64.h \
-		${DESTDIR}/usr/include/compat/uapi/asm-generic
-	cd ${.CURDIR}/../sys/dev/drm/include/uapi; \
-		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 linux/types.h \
-		${DESTDIR}/usr/include/compat/uapi/linux
-	cd ${.CURDIR}/../sys/dev/drm/include/asm; \
-		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 bitsperlong.h \
-		${DESTDIR}/usr/include/compat/asm
-	cd ${.CURDIR}/../sys/dev/drm/include/asm; \
-		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 int-ll64.h \
-		${DESTDIR}/usr/include/compat/asm
-	cd ${.CURDIR}/../sys/dev/drm/include/asm; \
-		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 ioctl.h \
-		${DESTDIR}/usr/include/compat/asm
 .if exists(${.CURDIR}/../sys/cpu/${MACHINE_ARCH}/include)
 	cd ${.CURDIR}/../sys/cpu/${MACHINE_ARCH}/include; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 *.h \
