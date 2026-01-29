@@ -1,0 +1,39 @@
+LinuxKPI (Linux Kernel Programming Interface) import for DragonFly
+
+Source: FreeBSD sys/compat/linuxkpi/
+Imported Commit: 79b05e7f80eb482287c700f10da9084824199a05
+Import Date: 2026-01-30
+Purpose: Provide Linux kernel compatibility layer for DRM drivers
+
+Architecture: x86_64 (initially)
+
+Structure:
+- common/include/ - Linux API headers (285 files)
+  - linux/ - Core Linux headers (sched.h, mm.h, slab.h, etc.)
+  - asm/ - Architecture-specific headers (x86_64/)
+  - asm-generic/ - Generic ASM implementations
+  - net/ - Networking headers (wireless - optional for DRM)
+  - crypto/ - Crypto API headers (optional for DRM)
+  - video/ - Video/display headers
+  - uapi/ - Userspace API headers
+- common/src/ - Implementation files (45 files)
+  - Core: compat, slab, lock, rcu, work, wait
+  - Device model: kobject, kthread
+  - Data structures: idr, xarray, radix
+  - PCI/DMA: pci, dma_buf, fence
+  - Graphics: aperture, backlight (optional)
+- dummy/include/ - Stub headers for unimplemented APIs (107 files)
+
+DragonFly-specific changes:
+- Added __DragonFly__ to FreeBSD checks in:
+  - net/mac80211.h
+  - linux_aperture.c
+
+Key dependencies:
+- Concurrency Kit (CK) for RCU support
+- DragonFly kernel headers
+
+Excluded from FreeBSD import:
+- None - full import
+
+See README.DELETED for list of any excluded files (none currently).

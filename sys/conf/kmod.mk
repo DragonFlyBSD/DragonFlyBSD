@@ -165,6 +165,23 @@ CFLAGS+=	${DEBUG_FLAGS}
 CFLAGS+=	-fno-omit-frame-pointer
 .endif
 
+# LinuxKPI (Linux Kernel Programming Interface) support
+LINUXKPI_GENSRCS+= \
+	backlight_if.h \
+	bus_if.h \
+	device_if.h \
+	iicbus_if.h \
+	iicbb_if.h \
+	pci_if.h \
+	pci_iov_if.h \
+	pcib_if.h \
+	vnode_if.h
+
+LINUXKPI_INCLUDES+= \
+	-I${SYSDIR}/compat/linuxkpi/common/include \
+	-I${SYSDIR}/compat/linuxkpi/dummy/include \
+	-include ${SYSDIR}/compat/linuxkpi/common/include/linux/kconfig.h
+
 .if defined(FIRMWS)
 #AWK=/usr/bin/awk
 .if !exists(dragonfly)

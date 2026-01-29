@@ -627,26 +627,37 @@ From `sys/compat/linuxkpi/common/src/`, these files are **essential**:
 
 ### Updated Implementation Priority for DRM Focus
 
-#### Phase 1A: Core Foundation (Weeks 1-2)
-**Goal:** Basic LinuxKPI framework builds
+#### Phase 1A: Core Foundation - COMPLETED ✓
+**Goal:** Port Concurrency Kit (CK) for RCU support
 
-1. Port Concurrency Kit (`sys/contrib/ck/`) - **BLOCKER**
-2. Import LinuxKPI headers to `sys/compat/linuxkpi/`
-3. Port core implementation:
-   - `linux_compat.c` (basic types, macros)
-   - `linux_slab.c` (memory allocation)
-   - `linux_lock.c` (locking primitives)
-   - `linux_rcu.c` (RCU using ck_epoch)
-   - `linux_work.c` (workqueues)
-   - `linux_wait.c` (wait queues)
-4. Port data structures:
-   - `linux_idr.c`, `linux_xarray.c`, `linux_radix.c`
-   - `linux_rbtree.c`, `linux_interval_tree.c`
-5. Port device model:
-   - `linux_kobject.c` (kobject/sysfs)
-   - `linux_kmod.c` (module support)
+**Status:** COMPLETED - CK has been successfully ported to DragonFly
 
-**Success Criteria:** `linuxkpi.ko` module builds and loads.
+**Completed Tasks:**
+1. ✓ Created vendor/CK branch with upstream CK 0.7.0 (commit 2265c784)
+2. ✓ Applied FreeBSD exclusions (doc/, regressions/, tools/, etc.)
+3. ✓ Merged vendor/CK to port-linuxkpi branch
+4. ✓ Added DragonFly-specific modifications:
+   - `sys/contrib/ck/include/ck_md.h` - Machine-dependent configuration
+   - Modified standard headers for DragonFly kernel support
+   - Fixed `ck_hp.c` to use DragonFly's `kqsort()`/`kbsearch()`
+5. ✓ Added build integration to `sys/conf/files` and `sys/conf/kern.pre.mk`
+6. ✓ Added README.DRAGONFLY and README.DELETED
+
+**Verification:**
+- ✓ Kernel builds successfully with CK
+- ✓ CK symbols present in kernel (`_ck_epoch_addref`, `_ck_epoch_delref`)
+- ✓ No build errors
+
+---
+
+#### Phase 1B: Import LinuxKPI Headers and Core Implementation
+**Goal:** Import FreeBSD LinuxKPI headers and core implementation files
+
+**Approach:** Big bang import from FreeBSD commit 79b05e7f80eb482287c700f10da9084824199a05
+**Architecture:** x86_64 only for now
+**Branch:** port-linuxkpi
+
+**Tasks:**
 
 #### Phase 1B: Memory & Synchronization (Weeks 3-4)
 **Goal:** GPU memory management support
