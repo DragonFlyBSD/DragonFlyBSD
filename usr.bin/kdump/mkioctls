@@ -41,9 +41,6 @@ ioctl_includes=`
 	printf '#include <dev/disk/nvme/nvme_ns.h>\\\\n'
 	printf '#include <dev/disk/nvme/nvme_chipset.h>\\\\n'
 	printf '#include <dev/disk/nvme/nvme_ioctl.h>\\\\n'
-	printf '#include <dev/drm/include/uapi/drm/drm.h>\\\\n'
-	printf '#include <dev/drm/include/uapi/drm/i915_drm.h>\\\\n'
-	printf '#include <dev/drm/include/uapi/drm/radeon_drm.h>\\\\n'
 	printf '#include <dev/misc/gpio/gpio.h>\\\\n'
 	printf '#include <netproto/802_11/ieee80211_radiotap.h>\\\\n'
 	printf '#include <dev/netif/ath/ath/if_athioctl.h>\\\\n'
@@ -58,7 +55,7 @@ ioctl_includes=`
 `
 
 awk -v x="$ioctl_includes" 'BEGIN {print x}' |
-	gcc -D_KERNEL_STRUCTURES -E -I$1 -I$2/../../sys -I$2/../../sys/dev/drm/include -dM - |
+	gcc -D_KERNEL_STRUCTURES -E -I$1 -I$2/../../sys -dM - |
 	awk -v ioctl_includes="$ioctl_includes" -v use_switch="$use_switch" '
 BEGIN {
 	print "/* XXX obnoxious prerequisites. */"
