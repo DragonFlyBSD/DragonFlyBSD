@@ -59,6 +59,13 @@
 #include <ck_stdbool.h>
 #include <ck_stddef.h>
 #include <ck_stdlib.h>
+
+/* DragonFly kernel uses kqsort/kbsearch instead of qsort/bsearch */
+#if defined(__DragonFly__) && defined(_KERNEL)
+#include <sys/libkern.h>
+#define qsort(a, b, c, d) kqsort((a), (b), (c), (int (*)(const void *, const void *))(d))
+#define bsearch(a, b, c, d, e) kbsearch((a), (b), (c), (d), (int (*)(const void *, const void *))(e))
+#endif
 #include <ck_string.h>
 
 CK_STACK_CONTAINER(struct ck_hp_record, global_entry, ck_hp_record_container)
