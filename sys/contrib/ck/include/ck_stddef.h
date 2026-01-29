@@ -24,8 +24,10 @@
  * SUCH DAMAGE.
  */
 
-#if (defined(__FreeBSD__) || defined(__DragonFly__)) && defined(_KERNEL)
+#if defined(__FreeBSD__) && defined(_KERNEL)
 #include <sys/stddef.h>
+#elif defined(__DragonFly__) && defined(_KERNEL)
+/* DragonFly kernel provides stddef types through sys/types.h and sys/cdefs.h */
 #else
 #include <stddef.h>
 #endif
