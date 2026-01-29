@@ -1,0 +1,24 @@
+Concurrency Kit import for DragonFly
+
+Source Repository: https://github.com/concurrencykit/ck
+Imported Commit: 2265c7846f4ce667f5216456afe2779b23c3e5f7
+Import Date: 2026-01-29
+Purpose: RCU (ck_epoch) support for LinuxKPI
+
+Exclusions (same as FreeBSD):
+- LICENSE, Makefile.in, README
+- build/, configure, doc/
+- regressions/, tools/
+- include/ck_md.h.in, include/freebsd/ck_md.h.in
+- src/Makefile.in
+
+This import provides the Concurrency Kit library which includes:
+- ck_epoch: Epoch-based safe memory reclamation (RCU implementation)
+- ck_pr: Concurrency primitives and memory barriers
+- ck_stack: Lock-free stack implementation
+- Various lock-free data structures
+
+The primary use case for DragonFly is to provide RCU support for
+the LinuxKPI (Linux Kernel Programming Interface) compatibility layer.
+
+See README.DELETED for list of excluded files.

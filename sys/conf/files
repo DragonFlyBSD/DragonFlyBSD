@@ -45,6 +45,19 @@ bus/cam/scsi/scsi_sg.c			optional sg
 bus/cam/scsi/scsi_target.c		optional targ
 bus/cam/scsi/scsi_targ_bh.c		optional targbh
 
+# Concurrency Kit (RCU support for LinuxKPI)
+contrib/ck/src/ck_array.c			standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
+contrib/ck/src/ck_barrier_centralized.c		standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
+contrib/ck/src/ck_barrier_combining.c		standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
+contrib/ck/src/ck_barrier_dissemination.c	standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
+contrib/ck/src/ck_barrier_mcs.c			standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
+contrib/ck/src/ck_barrier_tournament.c		standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
+contrib/ck/src/ck_epoch.c			standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
+contrib/ck/src/ck_hp.c				standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
+contrib/ck/src/ck_hs.c				standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
+contrib/ck/src/ck_ht.c				standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
+contrib/ck/src/ck_rhs.c				standard compile-with "${NORMAL_C} -I$S/contrib/ck/include"
+
 dev/disk/dm/device-mapper.c		optional dm
 dev/disk/dm/dm_dev.c			optional dm
 dev/disk/dm/dm_ioctl.c			optional dm
