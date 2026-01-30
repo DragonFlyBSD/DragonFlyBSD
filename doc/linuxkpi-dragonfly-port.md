@@ -653,14 +653,109 @@ From `sys/compat/linuxkpi/common/src/`, these files are **essential**:
 
 ---
 
-#### Phase 1B: Import LinuxKPI Headers and Core Implementation
+#### Phase 1B: Import LinuxKPI Headers and Core Implementation - COMPLETED ✓
 **Goal:** Import FreeBSD LinuxKPI headers and core implementation files
 
-**Approach:** Big bang import from FreeBSD commit 79b05e7f80eb482287c700f10da9084824199a05
-**Architecture:** x86_64 only for now
-**Branch:** port-linuxkpi
+**Status:** COMPLETED - LinuxKPI imported successfully
 
-**Tasks:**
+**Completed Tasks:**
+1. ✓ Created directory structure `sys/compat/linuxkpi/`
+2. ✓ Imported 285 headers from `common/include/` (linux/, asm/, net/, video/, etc.)
+3. ✓ Imported 107 dummy headers from `dummy/include/`
+4. ✓ Imported 45 implementation files from `common/src/`
+5. ✓ Added DragonFly-specific adaptations (__DragonFly__ checks)
+6. ✓ Created README.DRAGONFLY documenting the import
+7. ✓ Added build integration to `sys/conf/kmod.mk` and `sys/conf/kern.pre.mk`
+
+**Verification:**
+- ✓ All files imported from FreeBSD commit 79b05e7f80eb482287c700f10da9084824199a05
+- ✓ Build infrastructure in place (LINUXKPI_INCLUDES, LINUXKPI_C)
+
+---
+
+#### Phase 1C: Build Integration and Compilation Fixes
+**Goal:** Add LinuxKPI source files to kernel build and fix compilation errors
+
+**Approach:** Batched fixes with compatibility wrappers (don't modify LinuxKPI headers)
+**Strategy:** 
+- Batch 3-5 related fixes per commit
+- Create DragonFly compatibility wrappers in separate headers
+- Implement proper DragonFly equivalents (not stubs)
+- Test every 3-5 fixes
+
+**Implementation Plan:**
+
+**Phase 1C.1: Add LinuxKPI Sources to Kernel Build**
+- Add all 45 LinuxKPI source files to `sys/conf/files`
+- Group by functionality (core, memory, pci, etc.)
+- Compile with `${LINUXKPI_C}` for proper includes
+- Commit: "linuxkpi: Add LinuxKPI source files to kernel build"
+
+**Phase 1C.2: Initial Build Test**
+- Run buildkernel with clean build to reveal all errors
+- Categorize errors: Missing APIs, header conflicts, undefined types, structure differences
+- Expected: 10-30 initial errors
+
+**Phase 1C.3: Fix Compilation Errors (Batched)**
+
+*Batch 1: Core Compatibility Layer*
+- Focus: `linux_compat.c` and foundation headers
+- Create: `sys/compat/linuxkpi/common/include/linux/dragonfly_compat.h`
+- Wrap: `curthread`, `p_timetick`, FreeBSD-specific macros
+- Test and commit
+
+*Batch 2: Memory and Slab Layer*
+- Focus: `linux_slab.c`, `linux_page.c`
+- Wrap: `malloc` flags, `M_LINUXKM` equivalent
+- Test and commit
+
+*Batch 3: Locking and Synchronization*
+- Focus: `linux_lock.c`, `linux_rcu.c`
+- Verify RCU uses CK (should work with minor tweaks)
+- Test and commit
+
+*Batch 4: Threading and Workqueues*
+- Focus: `linux_kthread.c`, `linux_work.c`, `linux_wait.c`
+- Map kthread_create, taskqueue adaptation
+- Test and commit
+
+*Batch 5: Data Structures*
+- Focus: `linux_idr.c`, `linux_xarray.c`, `linux_radix.c`
+- Test and commit
+
+*Batch 6: Device Model (Kobject)*
+- Focus: `linux_kobject.c`
+- Adapt sysfs or stub for DragonFly device model
+- Test and commit
+
+*Batch 7: PCI and Bus Support*
+- Focus: `linux_pci.c`, `linux_i2c.c`
+- Map PCI config access, adapt I2C interface
+- Test and commit
+
+*Batch 8: DMA and Graphics*
+- Focus: `linux_dma_buf.c`, `linux_fence.c`, `linux_aperture.c`
+- Adapt DMA to bus_dma, implement fences
+- Test and commit
+
+*Batch 9: Remaining Files*
+- Focus: All remaining source files
+- Test and commit
+
+**Phase 1C.4: Final Verification**
+- Full clean buildkernel test
+- Verify all 45 files compile
+- Check for undefined symbols
+- Optional: Boot test on VM
+
+**Success Criteria:**
+- ✅ All 45 LinuxKPI source files compile
+- ✅ No undefined symbols in kernel
+- ✅ Kernel links successfully
+- ✅ No modifications to LinuxKPI headers (wrappers only)
+- ✅ Clean git history (batched commits)
+
+**Estimated Timeline:** 6-8 hours total (spread across sessions)
 
 #### Phase 1B: Memory & Synchronization (Weeks 3-4)
 **Goal:** GPU memory management support

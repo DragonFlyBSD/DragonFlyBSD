@@ -30,6 +30,11 @@
 #ifndef	_LINUXKPI_LINUX_KERNEL_H_
 #define	_LINUXKPI_LINUX_KERNEL_H_
 
+/* DragonFly compatibility - must be first */
+#ifdef __DragonFly__
+#include <linux/dragonfly_compat.h>
+#endif
+
 #include <sys/types.h>
 #include <sys/systm.h>
 #include <sys/param.h>
