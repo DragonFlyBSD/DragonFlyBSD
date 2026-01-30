@@ -48,16 +48,20 @@
 #ifndef _SYS_SMP_H_
 #define _SYS_SMP_H_
 
-#include <sys/cpu.h>
+/* 
+ * NOTE: sys/cpu.h does NOT exist in DragonFly
+ * CPU count (ncpus) is declared in sys/systm.h and sys/kernel.h
+ * which are already included above.
+ */
 
 /* DragonFly uses ncpus instead of mp_ncpus */
 #define mp_ncpus ncpus
 
-/* CPU identification */
+/* CPU identification - DragonFly uses ncpus from systm.h */
 #define CPU_FOREACH(cpu) for ((cpu) = 0; (cpu) < ncpus; (cpu)++)
 
-/* smp_processor_id equivalent */
-#define smp_processor_id curcpu
+/* smp_processor_id equivalent - use curcpu inline function */
+#define smp_processor_id() curcpu
 
 #endif /* _SYS_SMP_H_ */
 
@@ -87,6 +91,40 @@ kdb_active(void)
 }
 
 #endif /* _SYS_KDB_H_ */
+
+/* Missing sys/domainset.h - FreeBSD NUMA domain sets */
+#ifndef _SYS_DOMAINSET_H_
+#define _SYS_DOMAINSET_H_
+
+#include <sys/_cpuset.h>
+
+typedef cpuset_t domainset_t;
+
+#define DOMAINSET_NULL NULL
+#define DOMAINSET_SIZE(n) CPUSET_SIZE
+#define DOMAINSET_SET(n, p) CPU_SET(n, p)
+#define DOMAINSET_CLR(n, p) CPU_CLR(n, p)
+#define DOMAINSET_ISSET(n, p) CPU_ISSET(n, p)
+#define DOMAINSET_COPY(f, t) CPU_COPY(f, t)
+#define DOMAINSET_ZERO(p) CPU_ZERO(p)
+#define DOMAINSET_FSET(p) CPU_FSET(p)
+#define DOMAINSET_PCNT(p) CPU_COUNT(p)
+#define DOMAINSET_SUB(s1, s2, d) CPU_SUB(s1, s2, d)
+#define DOMAINSET_CMP(s1, s2) CPU_CMP(s1, s2)
+
+#define domainset_first setfirst
+
+#endif /* _SYS_DOMAINSET_H_ */
+
+/* Missing sys/eventfd.h - Linux eventfd emulation */
+#ifndef _SYS_EVENTFD_H_
+#define _SYS_EVENTFD_H_
+
+#define EFD_SEMAPHORE 1
+#define EFD_CLOEXEC 2
+#define EFD_NONBLOCK 4
+
+#endif /* _SYS_EVENTFD_H_ */
 
 /* Missing sys/mutex2.h - FreeBSD internal mutex details */
 #ifndef _SYS_MUTEX2_H_
