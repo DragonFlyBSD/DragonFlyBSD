@@ -70,6 +70,7 @@ Phase 0 is the audit and readiness phase. The goal is to understand dependencies
 - [x] Remove `drm` from `sys/dev/Makefile` subdir list.
 - [x] Remove DRM devices/options from `sys/config/LINT64`.
 - [x] Remove `sys/dev/drm/**` sources from the repository.
+- [x] Remove orphaned `sys/contrib/dev/drm/**` firmware files (227 Radeon GPU firmware binaries).
 
 Note: `sys/dev/drm/**` sources are removed; this leaves only non-DRM consumers to be addressed by the incoming FreeBSD LinuxKPI import.
 
@@ -81,6 +82,7 @@ Note: `sys/dev/drm/**` sources are removed; this leaves only non-DRM consumers t
   - `dev/drm/i915/*.c`, `dev/drm/radeon/*.c`, `dev/drm/amd/*.c` (drivers)
 - Current line span in `sys/conf/files`: 2272-2590
 - `sys/conf/options`: remove `DRM_DEBUG` if no longer referenced
+- `sys/contrib/dev/drm/**`: remove all Radeon GPU firmware binaries (227 .bin.uu files)
 
 ### Makefiles to remove or refactor
 - `sys/dev/drm/Makefile`
@@ -107,6 +109,7 @@ If the intent is to remove everything related to the DRM stack (i915/amdgpu/rade
 - DRM-local Linux-compat headers: `sys/dev/drm/include/linux/**`, `sys/dev/drm/include/asm/**`, `sys/dev/drm/include/asm-generic/**`
 - DRM-local Linux-compat shims: `sys/dev/drm/linux_*.c`
 - Shared IDR used by those headers/shims: `sys/libkern/linux_idr.c`
+- DRM GPU firmware binaries: `sys/contrib/dev/drm/**` (Radeon firmware files)
 
 This list is meant to pair with `doc/linuxkpi-freebsd-impl.md`, which explains what the glue implements.
 
