@@ -265,8 +265,8 @@ struct ata_log_address_10h {
  */
 struct ata_log_address_30h_page_08h {
 	/* Serial ATA Page Information Header */
-	uint16_t		revision;
-	uint16_t		page;
+	uint16_t		revision;	/* shall be set to 0001h */
+	uint16_t		page;		/* shall be set to 08h */
 	uint32_t		reserved1; /* highest bit shall be 1 */
 	/* SATA Capabilities - These are all copied in IDENTIFY DEVICE */
 	uint64_t		capabilities;
