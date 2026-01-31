@@ -1145,7 +1145,7 @@ svm_exit_io(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	exit->u.io.in = (info & SVM_EXIT_IO_IN) != 0;
 	exit->u.io.port = __SHIFTOUT(info, SVM_EXIT_IO_PORT);
 
-	if (svm_decode_assist) {
+	if (__predict_true(svm_decode_assist)) {
 		OS_ASSERT(__SHIFTOUT(info, SVM_EXIT_IO_SEG) < 6);
 		exit->u.io.seg = __SHIFTOUT(info, SVM_EXIT_IO_SEG);
 	} else {
