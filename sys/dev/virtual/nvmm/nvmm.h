@@ -55,6 +55,11 @@ typedef uint32_t	nvmm_cpuid_t;
 #endif
 #endif /* __x86_64__ */
 
+/*
+ * v1: Initial version
+ * v2: Create VCPU comm page in nvmm_vcpu_create() in kernel
+ * v3: Add 'nvmm_capability.comm_size' for unmapping the comm page
+ */
 #define NVMM_KERN_VERSION		3
 
 struct nvmm_capability {
