@@ -171,7 +171,7 @@ MALLOC_DECLARE(M_NVMM);
 #include <machine/atomic.h>
 #define os_atomic_inc_uint(x)	atomic_add_int(x, 1)
 #define os_atomic_dec_uint(x)	atomic_subtract_int(x, 1)
-#define os_atomic_load_uint(x)	atomic_load_acq_int(x)
+#define os_atomic_load_uint(x)	atomic_load_int(x)
 #define os_atomic_inc_64(x)	atomic_add_64(x, 1)
 #endif
 
