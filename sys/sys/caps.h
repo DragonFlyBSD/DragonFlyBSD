@@ -94,6 +94,7 @@ typedef struct syscap_base {
 #define __SYSCAP_INPARENT	0x00010000	/* set in parent process */
 #define __SYSCAP_NULLCRED	0x00020000	/* null cred ok */
 #define __SYSCAP_NOROOTTEST	0x00040000	/* don't test uid */
+#define __SYSCAP_WHEELOK	0x00080000	/* don't test uid if wheel */
 
 #define __SYSCAP_GROUP_0	0x00000000
 #define __SYSCAP_GROUP_1	0x00000010
@@ -146,6 +147,8 @@ typedef struct syscap_base {
 
 /*
  * Automatic if SYSCAP_RESTRICTEDROOT is set
+ *
+ * reboot includes shutdown
  */
 #define SYSCAP_NODRIVER		(__SYSCAP_GROUP_1 | 0)
 #define SYSCAP_NOVM_MLOCK	(__SYSCAP_GROUP_1 | 1)
@@ -156,7 +159,7 @@ typedef struct syscap_base {
 #define SYSCAP_NOKENV_WR	(__SYSCAP_GROUP_1 | 6)
 #define SYSCAP_NOKLD		(__SYSCAP_GROUP_1 | 7)
 #define SYSCAP_NOKERN_WR	(__SYSCAP_GROUP_1 | 8)
-#define SYSCAP_NOREBOOT		(__SYSCAP_GROUP_1 | 9)	/* incs shutdown */
+#define SYSCAP_NOREBOOT		(__SYSCAP_GROUP_1 | 9)
 
 /*
  * Automatic if SYSCAP_SENSITIVEROOT is set
@@ -379,5 +382,4 @@ int caps_priv_check_self(int cap);
 int caps_priv_check_td(struct thread *td, int cap);
 
 #endif
-
 #endif

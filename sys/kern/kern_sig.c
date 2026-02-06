@@ -783,7 +783,7 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 		 * Sending a signal to pid 1 as root requires that we
 		 * are not reboot-restricted.
 		 */
-		if (pid == 1 && caps_priv_check_self(SYSCAP_NOREBOOT))
+		if (pid == 1 && caps_priv_check_self(SYSCAP_NOREBOOT | __SYSCAP_WHEELOK))
 			return EPERM;
 
 		/*

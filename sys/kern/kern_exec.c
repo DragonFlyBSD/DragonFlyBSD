@@ -665,7 +665,7 @@ sys_execve(struct sysmsg *sysmsg, const struct execve_args *uap)
 	/*
 	 * General exec ok?
 	 */
-	if (caps_priv_check_self(SYSCAP_NOEXEC))
+	if (caps_priv_check_self(SYSCAP_NOEXEC | __SYSCAP_NOROOTTEST))
 		return EACCES;
 
 	/*
@@ -716,7 +716,7 @@ sys_fexecve(struct sysmsg *sysmsg, const struct fexecve_args *uap)
 	/*
 	 * General exec ok?
 	 */
-	if (caps_priv_check_self(SYSCAP_NOEXEC))
+	if (caps_priv_check_self(SYSCAP_NOEXEC | __SYSCAP_NOROOTTEST))
 		return EACCES;
 
 	/*
@@ -1300,9 +1300,9 @@ exec_check_permissions(struct image_params *imgp, struct mount *topmnt)
 	/*
 	 * Capability restrictions on suid or sgid exec?
 	 */
-	if ((lvap->va_mode & VSUID) && caps_priv_check_self(SYSCAP_NOEXEC_SUID))
+	if ((lvap->va_mode & VSUID) && caps_priv_check_self(SYSCAP_NOEXEC_SUID | __SYSCAP_NOROOTTEST))
 		return EACCES;
-	if ((lvap->va_mode & VSGID) && caps_priv_check_self(SYSCAP_NOEXEC_SGID))
+	if ((lvap->va_mode & VSGID) && caps_priv_check_self(SYSCAP_NOEXEC_SGID | __SYSCAP_NOROOTTEST))
 		return EACCES;
 
 	/*

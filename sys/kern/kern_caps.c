@@ -321,9 +321,14 @@ caps_priv_check(struct ucred *cred, int cap)
 	/*
 	 * Uid must be 0 unless NOROOTTEST is requested.  If requested
 	 * it means the caller is depending on e.g. /dev/blah perms.
+	 *
+	 * When root is generally required, the WHEELOK flag allows wheel
+	 * group rather than root.
 	 */
-	if (cred->cr_uid != 0 && (cap & __SYSCAP_NOROOTTEST) == 0)
-		return EPERM;
+	if (cred->cr_uid != 0 && (cap & __SYSCAP_NOROOTTEST) == 0) {
+		if ((cap & __SYSCAP_WHEELOK) == 0 || !groupmember(0, cred))
+			return EPERM;
+	}
 
 	res = caps_check_cred(cred, cap);
 	if (cap & __SYSCAP_GROUP_MASK) {
@@ -343,12 +348,7 @@ caps_priv_check_td(thread_t td, int cap)
 	if (td->td_lwp == NULL)			/* not user thread */
 		return 0;
 	cred = td->td_ucred;
-        if (cred == NULL)
-		return (EPERM);
-						/* must pass restrictions */
-	if (caps_check_cred(cred, cap) & __SYSCAP_SELF)
-		return EPERM;
-	return (prison_priv_check(cred, cap));
+	return caps_priv_check(cred, cap);
 }
 
 int

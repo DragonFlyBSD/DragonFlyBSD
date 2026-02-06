@@ -183,7 +183,9 @@ sys_reboot(struct sysmsg *sysmsg, const struct reboot_args *uap)
 {
 	int error;
 
-	if ((error = caps_priv_check_self(SYSCAP_NOREBOOT)))
+	kprintf("reboot check: %d\n", caps_priv_check_self(SYSCAP_NOREBOOT | __SYSCAP_WHEELOK));
+
+	if ((error = caps_priv_check_self(SYSCAP_NOREBOOT | __SYSCAP_WHEELOK)))
 		return (error);
 
 	get_mplock();

@@ -151,7 +151,11 @@ sys_mount(struct sysmsg *sysmsg, const struct mount_args *uap)
 	 */
 	priv = get_fscap(fstypename);
 
-	if (usermount == 0 && (error = caps_priv_check_td(td, priv)))
+	if (usermount)
+		error = caps_priv_check_td(td, priv | __SYSCAP_NOROOTTEST);
+	else
+		error = caps_priv_check_td(td, priv);
+	if (error)
 		goto done;
 
 	/*
@@ -641,7 +645,11 @@ sys_unmount(struct sysmsg *sysmsg, const struct unmount_args *uap)
 	ksnprintf(fstypename, MFSNAMELEN, "%s", mp->mnt_vfc->vfc_name);
 	priv = get_fscap(fstypename);
 
-	if (usermount == 0 && (error = caps_priv_check_td(td, priv))) {
+	if (usermount)
+		error = caps_priv_check_td(td, priv | __SYSCAP_NOROOTTEST);
+	else
+		error = caps_priv_check_td(td, priv);
+	if (error) {
 		nlookup_done(&nd);
 		goto done;
 	}
