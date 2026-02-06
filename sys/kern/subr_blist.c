@@ -204,9 +204,10 @@ blist_create(swblk_t blocks)
 #if defined(BLIST_DEBUG)
 	kprintf(
 		"BLIST representing %lu blocks (%lu MB of swap)"
-		", requiring %6.2fM of ram\n",
+		", requiring %d entries and %6.2fM of ram\n",
 		bl->bl_blocks,
 		bl->bl_blocks * 4 / 1024,
+		bl->bl_rootblks,
 		(bl->bl_rootblks * sizeof(blmeta_t) + 1023) / (1024.0 * 1024.0)
 	);
 	kprintf("BLIST raw radix tree: %lu records, top-radix %lu\n",
@@ -946,10 +947,14 @@ blst_radix_init(blmeta_t *scan, int64_t radix, swblk_t skip, swblk_t count)
 			count = 0;
 		} else {
 			/*
-			 * Add terminator and break out
+			 * Add terminator and break out.  The terminator
+			 * eats an array entry so we have to include it
+			 * in the allocation by incrementing (i) before
+			 * breaking out.
 			 */
 			if (scan)
 				scan[i].bm_bighint = (swblk_t)-1;
+			++i;
 			break;
 		}
 	}

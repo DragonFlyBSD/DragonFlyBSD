@@ -115,19 +115,19 @@ void panic(const char *ctl, ...);
 
 static alist_blk_t alst_leaf_alloc(almeta_t *scan, alist_blk_t blk,
 				alist_blk_t start, alist_blk_t count);
-static alist_blk_t alst_meta_alloc(almeta_t *scan, alist_blk_t blk,
+static alist_blk_t alst_meta_alloc(alist_t bl, almeta_t *scan, alist_blk_t blk,
 				alist_blk_t start, alist_blk_t count,
 				alist_blk_t radix, alist_blk_t skip);
 static void alst_leaf_free(almeta_t *scan, alist_blk_t relblk,
 				alist_blk_t count);
-static void alst_meta_free(almeta_t *scan, alist_blk_t freeBlk,
+static void alst_meta_free(alist_t bl, almeta_t *scan, alist_blk_t freeBlk,
 				alist_blk_t count, alist_blk_t radix,
 				alist_blk_t skip, alist_blk_t blk);
 static alist_blk_t alst_radix_init(almeta_t *scan, alist_blk_t blk,
 				alist_blk_t radix, alist_blk_t skip,
 				alist_blk_t count);
 #ifndef _KERNEL
-static void	alst_radix_print(almeta_t *scan, alist_blk_t blk,
+static void	alst_radix_print(alist_t bl, almeta_t *scan, alist_blk_t blk,
 					alist_blk_t radix, alist_blk_t skip,
 					int tab);
 #endif
@@ -169,9 +169,10 @@ alist_create(alist_blk_t blocks, struct malloc_type *mtype)
 #if defined(ALIST_DEBUG)
 	kprintf(
 		"ALIST representing %d blocks (%d MB of swap)"
-		", requiring %dK (%d bytes) of ram\n",
+		", requiring %d entries and %dK (%d bytes) of ram\n",
 		bl->bl_blocks,
 		bl->bl_blocks * 4 / 1024,
+		bl->bl_rootblks,
 		(bl->bl_rootblks * sizeof(almeta_t) + 1023) / 1024,
 		(bl->bl_rootblks * sizeof(almeta_t))
 	);
@@ -211,9 +212,10 @@ alist_init(alist_t bl, alist_blk_t blocks,
 #if defined(ALIST_DEBUG)
 	kprintf(
 		"ALIST representing %d blocks (%d MB of swap)"
-		", requiring %dK (%d bytes) of ram\n",
+		", requiring %d entries and %dK (%d bytes) of ram\n",
 		bl->bl_blocks,
 		bl->bl_blocks * 4 / 1024,
+		bl->bl_rootblks,
 		(bl->bl_rootblks * sizeof(almeta_t) + 1023) / 1024,
 		(bl->bl_rootblks * sizeof(almeta_t))
 	);
@@ -263,7 +265,7 @@ alist_alloc(alist_t bl, alist_blk_t start, alist_blk_t count)
 		if (bl->bl_radix == ALIST_BMAP_RADIX) {
 			blk = alst_leaf_alloc(bl->bl_root, 0, start, count);
 		} else {
-			blk = alst_meta_alloc(bl->bl_root, 0, start, count,
+			blk = alst_meta_alloc(bl, bl->bl_root, 0, start, count,
 					      bl->bl_radix, bl->bl_skip);
 		}
 		if (blk != ALIST_BLOCK_NONE)
@@ -285,7 +287,7 @@ alist_free(alist_t bl, alist_blk_t blkno, alist_blk_t count)
 		if (bl->bl_radix == ALIST_BMAP_RADIX) {
 			alst_leaf_free(bl->bl_root, blkno, count);
 		} else {
-			alst_meta_free(bl->bl_root, blkno, count,
+			alst_meta_free(bl, bl->bl_root, blkno, count,
 				       bl->bl_radix, bl->bl_skip, 0);
 		}
 		bl->bl_free += count;
@@ -393,7 +395,7 @@ void
 alist_print(alist_t bl)
 {
 	kprintf("ALIST {\n");
-	alst_radix_print(bl->bl_root, 0, bl->bl_radix, bl->bl_skip, 4);
+	alst_radix_print(bl, bl->bl_root, 0, bl->bl_radix, bl->bl_skip, 4);
 	kprintf("}\n");
 }
 
@@ -516,7 +518,7 @@ alst_leaf_alloc(almeta_t *scan, alist_blk_t blk, alist_blk_t start,
  * and we have a few optimizations strewn in as well.
  */
 static alist_blk_t
-alst_meta_alloc(almeta_t *scan, alist_blk_t blk, alist_blk_t start,
+alst_meta_alloc(alist_t bl, almeta_t *scan, alist_blk_t blk, alist_blk_t start,
 		alist_blk_t count, alist_blk_t radix, alist_blk_t skip)
 {
 	alist_blk_t i;
@@ -572,12 +574,22 @@ alst_meta_alloc(almeta_t *scan, alist_blk_t blk, alist_blk_t start,
 	pmask = 0x00000001;
 	orig_blk = blk;
 	for (i = 1; i <= skip; i += next_skip) {
-		if (scan[i].bm_bighint == (alist_blk_t)-1) {
-			/* 
-			 * Terminator
-			 */
+		/*
+		 * Stop if recursion exceeds number of blocks to avoid
+		 * indexing beyond our record allocation.
+		 */
+		if (blk >= bl->bl_blocks)
 			break;
-		}
+
+#if 0
+		/*
+		 * REMOVED - terminators removed from alist code.
+		 *
+		 * Stop at Terminator (if terminators implemented)
+		 */
+		if (scan[i].bm_bighint == (alist_blk_t)-1)
+			break;
+#endif
 
 		/*
 		 * If the element is marked completely free (11), initialize
@@ -611,7 +623,7 @@ alst_meta_alloc(almeta_t *scan, alist_blk_t blk, alist_blk_t start,
 				r = alst_leaf_alloc(&scan[i], blk, start,
 						    count);
 			} else {
-				r = alst_meta_alloc(&scan[i], blk, start,
+				r = alst_meta_alloc(bl, &scan[i], blk, start,
 						    count,
 						    radix, next_skip - 1);
 			}
@@ -681,7 +693,8 @@ alst_leaf_free(almeta_t *scan, alist_blk_t blk, alist_blk_t count)
  * an arbitrary range).
  */
 static void 
-alst_meta_free(almeta_t *scan, alist_blk_t freeBlk, alist_blk_t count,
+alst_meta_free(alist_t bl, almeta_t *scan, alist_blk_t freeBlk,
+	       alist_blk_t count,
 	       alist_blk_t radix, alist_blk_t skip, alist_blk_t blk)
 {
 	alist_blk_t next_skip = ((u_int)skip / ALIST_META_RADIX);
@@ -711,8 +724,13 @@ alst_meta_free(almeta_t *scan, alist_blk_t freeBlk, alist_blk_t count,
 		if (v > count)
 			v = count;
 
+#if 0
+		/*
+		 * REMOVED - Terminators removed from alist code
+		 */
 		if (scan->bm_bighint == (alist_blk_t)-1)
 			panic("%s: freeing unexpected range", __func__);
+#endif
 
 		/*
 		 * WARNING on bighint updates.  When we free an element in
@@ -733,7 +751,7 @@ alst_meta_free(almeta_t *scan, alist_blk_t freeBlk, alist_blk_t count,
 			KKASSERT((scan->bm_bitmap & mask) == 0);
 			scan->bm_bitmap |= mask;
 			scan->bm_bighint = radix * ALIST_META_RADIX;
-		} else {
+		} else if (freeBlk < bl->bl_blocks) {
 			/*
 			 * If we were previously marked all-allocated, fix-up
 			 * the next layer so we can recurse down into it.
@@ -750,7 +768,7 @@ alst_meta_free(almeta_t *scan, alist_blk_t freeBlk, alist_blk_t count,
 			if (next_skip == 1) {
 				alst_leaf_free(&scan[i], freeBlk, v);
 			} else {
-				alst_meta_free(&scan[i], freeBlk, v,
+				alst_meta_free(bl, &scan[i], freeBlk, v,
 					       radix, next_skip - 1, blk);
 			}
 			if (scan[i].bm_bitmap == (alist_bmap_t)-1) {
@@ -762,6 +780,9 @@ alst_meta_free(almeta_t *scan, alist_blk_t freeBlk, alist_blk_t count,
 				if (scan->bm_bighint < scan[i].bm_bighint)
 				    scan->bm_bighint = scan[i].bm_bighint;
 			}
+		} else {
+			panic("alst_meta_free: attempt to free block %d "
+			      "beyond limit of %d\n", freeBlk, bl->bl_blocks);
 		}
 		mask <<= 2;
 		pmask <<= 2;
@@ -835,6 +856,14 @@ alst_radix_init(almeta_t *scan, alist_blk_t blk, alist_blk_t radix,
 						    next_skip - 1, count);
 			/* already marked as wholely allocated */
 		} else {
+			/* stop short (do not implement terminators) */
+			break;
+#if 0
+			/*
+			 * REMOVED - This would overflow the array.  Instead,
+			 *	     we now check the block limit in the
+			 *	     alst_meta_*() functions.
+			 */
 			/*
 			 * Add terminator but continue the loop.  Populate
 			 * all terminators.
@@ -844,19 +873,21 @@ alst_radix_init(almeta_t *scan, alist_blk_t blk, alist_blk_t radix,
 				scan[i].bm_bitmap = 0;
 			}
 			/* already marked as wholely allocated */
+#endif
 		}
 		mask <<= 2;
 		pmask <<= 2;
 		blk += radix;
 	}
 	memindex += ALIST_META_RADIX;
+
 	return(memindex);
 }
 
 #ifdef ALIST_DEBUG
 
 static void	
-alst_radix_print(almeta_t *scan, alist_blk_t blk, alist_blk_t radix,
+alst_radix_print(alist_t bl, almeta_t *scan, alist_blk_t blk, alist_blk_t radix,
 		 alist_blk_t skip, int tab)
 {
 	alist_blk_t i;
@@ -908,9 +939,18 @@ alst_radix_print(almeta_t *scan, alist_blk_t blk, alist_blk_t radix,
 	mask = 0x00000003;
 
 	for (i = 1; i <= skip; i += next_skip) {
+		/*
+		 * Unallocated space beyond blocks in alist, stop
+		 */
+		if (blk >= bl->bl_blocks)
+			break;
+
+		/*
+		 * Dump content, recursively if necessary.
+		 */
 		if (scan[i].bm_bighint == (alist_blk_t)-1) {
 			kprintf(
-			    "%*.*s(%04x,%d): Terminator\n",
+			    "%*.*s(%04x,%d): Terminator (shouldn't exist)\n",
 			    tab, tab, "",
 			    blk, radix
 			);
@@ -930,6 +970,7 @@ alst_radix_print(almeta_t *scan, alist_blk_t blk, alist_blk_t radix,
 			);
 		} else {
 			alst_radix_print(
+			    bl,
 			    &scan[i],
 			    blk,
 			    radix,
