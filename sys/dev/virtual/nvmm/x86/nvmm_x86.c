@@ -29,6 +29,7 @@
 #include "../nvmm.h"
 #include "../nvmm_internal.h"
 #include "nvmm_x86.h"
+#include "nvmm_x86_internal.h"
 
 /*
  * Code shared between x86-SVM and x86-VMX.
