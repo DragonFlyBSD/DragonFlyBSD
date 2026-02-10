@@ -3022,6 +3022,11 @@ store_to_gva(struct nvmm_x64_state *state, struct x86_instr *instr,
 			 * disp16-only. */
 		} else {
 			gva = gpr_read_address(instr, state, store->u.reg->num);
+			if (store->u.reg == &gpr_map__rip) {
+				/* RIP-relative addressing: the base is the
+				 * start of the next instruction. */
+				gva += instr->len;
+			}
 		}
 	} else if (store->type == STORE_DUALREG) {
 		gva = gpr_read_address(instr, state, store->u.dualreg.reg1) +
