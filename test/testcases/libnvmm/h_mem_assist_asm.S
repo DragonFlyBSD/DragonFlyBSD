@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2026 The DragonFly Project
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -42,6 +43,8 @@
 	.globl	test14_begin, test14_end
 	.globl	test_64bit_15_begin, test_64bit_15_end
 	.globl	test_64bit_16_begin, test_64bit_16_end
+	.globl	test_64bit_17_begin, test_64bit_17_end
+	.globl	test_64bit_18_begin, test_64bit_18_end
 	.text
 	.code64
 
@@ -321,6 +324,69 @@ test_64bit_16_begin:
 
 	TEST_END
 test_64bit_16_end:
+
+/*
+ * Test: RIP-relative MOV write to MMIO
+ *
+ * Writes 0xAB1234 to GPA 0x1000 using a RIP-relative store.
+ *
+ * Instruction: movq %rax, <disp32>(%rip)
+ * Encoding:    REX.W  89  ModRM(mod=00,reg=rax=0,rm=101)  disp32
+ *              48     89  05                              <4 bytes>
+ *
+ * The 4-byte disp32 field must be hand-encoded with .long using the
+ * assembler's location-counter arithmetic:
+ *
+ *	.long	0x1000 - (0x2000 + (. - testN_begin) + 4)
+ *
+ * where 0x1000 is the MMIO GPA, (0x2000 + (. - testN_begin) + 4) is the
+ * address of the next instruction (RIP_next) after copying the bytes in
+ * [testN_begin, testN_end) verbatim to instbuf mapped at GPA 0x2000.
+ *
+ * Wanted: mmiobuf[0] == 0xAB1234
+ *
+ * NOTE:
+ * This test and the following one do not exercise the RIP-relative address
+ * calculation path in store_to_gva():
+ *   - The MMIO exits are handled by assist_mem_single(), which does not call
+ *     store_to_gva();
+ *   - The effective GPA is already provided in 'exit->u.mem.gpa', so no
+ *     RIP-relative address calculation is required in libnvmm.
+ * These tests are nevertheless retained to validate the x86 instruction
+ * decoder for RIP-relative addressing.
+ */
+	.align	64
+test_64bit_17_begin:
+	movq	$0xAB1234,%rax
+	.byte	0x48, 0x89, 0x05	/* REX.W MOV r/m64,r64 ModRM=05 */
+	.long	0x1000 - (0x2000 + (. - test_64bit_17_begin) + 4)
+
+	TEST_END
+test_64bit_17_end:
+
+/*
+ * Test: RIP-relative OR read-modify-write to MMIO
+ *
+ * Seeds GPA 0x1000 with 0xFF00, then ORs 0x00AB into it with a RIP-relative
+ * instruction.
+ *
+ * Instruction: orq %rbx, <disp32>(%rip)
+ * Encoding:    REX.W  09  ModRM(mod=00,reg=rbx=3,rm=101)  disp32
+ *              48     09  1d                              <4 bytes>
+ *
+ * Wanted: mmiobuf[0] == 0xFFAB
+ */
+	.align	64
+test_64bit_18_begin:
+	movq	$0x1000,%rcx
+	movq	$0xFF00,(%rcx)
+
+	movq	$0x00AB,%rbx
+	.byte	0x48, 0x09, 0x1d	/* REX.W OR r/m64,r64 ModRM=1d */
+	.long	0x1000 - (0x2000 + (. - test_64bit_18_begin) + 4)
+
+	TEST_END
+test_64bit_18_end:
 
 /* -------------------------------------------------------------------------- */
 
