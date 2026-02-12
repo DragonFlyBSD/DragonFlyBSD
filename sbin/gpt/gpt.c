@@ -410,7 +410,9 @@ gpt_mbr(int fd, off_t lba)
 			      (uintmax_t)lba);
 		}
 		p = map_add(lba, 1LL, MAP_TYPE_PMBR, mbr);
-		return ((p == NULL) ? -1 : 0);
+		if (p == NULL)
+			return (-1);
+		return (0); /* PMBR found, but MBR not found */
 	}
 	if (pmbr) {
 		warnx("%s: Suspicious MBR at sector %ju", device_name,
@@ -451,7 +453,8 @@ gpt_mbr(int fd, off_t lba)
 				return (-1);
 		}
 	}
-	return (0);
+
+	return (1); /* MBR found */
 }
 
 static int
@@ -644,35 +647,47 @@ gpt_open(const char *dev)
 
 	map_init(mediasz / secsz);
 
-	if (gpt_mbr(fd, 0LL) == -1)
-		goto close;
-	if ((found = gpt_gpt(fd, 1LL)) == -1)
+	if ((found = gpt_mbr(fd, 0LL)) == -1)
 		goto close;
 
-	if (found) {
-		struct gpt_hdr *hdr;
-		map_t *map;
-		off_t lba;
-
-		if (gpt_read_table(true) < 0)
-			goto close;
-
+	if (!found) {
 		/*
-		 * Read secondary GPT from position stored in the primary
-		 * header.
+		 * MBR not found; try GPT.
 		 */
-		map = map_find(MAP_TYPE_PRI_GPT_HDR);
-		hdr = map->map_data;
-		lba = le64toh(hdr->hdr_lba_alt);
-		if (lba < mediasz / secsz) {
-			if (gpt_gpt(fd, lba) == -1)
+		if ((found = gpt_gpt(fd, 1LL)) == -1)
+			goto close;
+
+		if (found) {
+			struct gpt_hdr *hdr;
+			map_t *map;
+			off_t lba;
+
+			if (gpt_read_table(true) < 0)
 				goto close;
+
+			/*
+			 * Read secondary GPT from position stored in the
+			 * primary header.
+			 */
+			map = map_find(MAP_TYPE_PRI_GPT_HDR);
+			hdr = map->map_data;
+			lba = le64toh(hdr->hdr_lba_alt);
+			if (lba < mediasz / secsz) {
+				if (gpt_gpt(fd, lba) == -1)
+					goto close;
+			}
+		} else {
+			/*
+			 * Try read secondary GPT at the end of the disk.
+			 */
+			found = gpt_gpt(fd, mediasz / secsz - 1LL);
+			if (found == -1) {
+				goto close;
+			} else if (found) {
+				if (gpt_read_table(false) < 0)
+					goto close;
+			}
 		}
-	} else {
-		if (gpt_gpt(fd, mediasz / secsz - 1LL) != 1)
-			goto close;
-		if (gpt_read_table(false) < 0)
-			goto close;
 	}
 
 	return (fd);
