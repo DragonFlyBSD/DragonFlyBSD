@@ -21,9 +21,10 @@ YEARISTYPE=	${.OBJDIR}/yearistype
 YEARISTYPE=	${.CURDIR}/yearistype
 .endif
 
-FILES=			iso3166.tab zone.tab
+FILES=			iso3166.tab leap-seconds.list zone.tab
 FILESDIR_iso3166.tab=	${SHAREDIR}/misc
 FILESNAME_iso3166.tab=	iso3166
+FILESDIR_leap-seconds.list=${SHAREDIR}/zoneinfo
 FILESDIR_zone.tab=	${SHAREDIR}/zoneinfo
 
 all: yearistype
