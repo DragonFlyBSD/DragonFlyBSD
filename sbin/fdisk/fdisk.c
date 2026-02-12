@@ -477,11 +477,11 @@ print_part(int i)
 		return;
 	}
 
-	part_mb = (partp->dp_size * secsize) >> 20;
+	part_mb = ((uint64_t)partp->dp_size * secsize) >> 20;
 	printf("sysid %d,(%s)\n", partp->dp_typ, get_type(partp->dp_typ));
-	printf("    start %lu, size %lu (%jd Meg), flag %x%s\n",
+	printf("    start %lu, size %lu (%ju MB), flag %x%s\n",
 	       (u_long)partp->dp_start, (u_long)partp->dp_size,
-	       (intmax_t)part_mb, partp->dp_flag,
+	       (uintmax_t)part_mb, partp->dp_flag,
 	       partp->dp_flag == ACTIVE ? " (active)" : "");
 	printf("\tbeg: cyl %d/ head %d/ sector %d;\n"
 	       "\tend: cyl %d/ head %d/ sector %d\n",
