@@ -85,7 +85,7 @@ be	bel	bel	Belarusian
 bn	ben	ben	Bengali
 	ber	ber	Berber languages
 	bho	bho	Bhojpuri
-bh	bih	bih	Bihari languages
+	bih	bih	Bihari languages
 	bik	bik	Bikol
 	bin	bin	Bini; Edo
 bi	bis	bis	Bislama
@@ -141,7 +141,7 @@ da	dan	dan	Danish
 	day	day	Land Dayak languages
 	del	del	Delaware
 	den	den	Slave (Athapascan)
-	dgr	dgr	Dogrib
+	dgr	dgr	Tlicho; Dogrib
 	din	din	Dinka
 dv	div	div	Divehi; Dhivehi; Maldivian
 	doi	doi	Dogri
@@ -197,7 +197,7 @@ gv	glv	glv	Manx
 	got	got	Gothic
 	grb	grb	Grebo
 	grc	grc	Greek, Ancient (to 1453)
-el	gre	ell	Greek, Modern (1453-)
+el	gre	ell	Modern Greek (1453-)
 gn	grn	grn	Guarani
 	gsw	gsw	Swiss German; Alemannic; Alsatian
 gu	guj	guj	Gujarati
@@ -336,17 +336,17 @@ mn	mon	mon	Mongolian
 	nap	nap	Neapolitan
 na	nau	nau	Nauru
 nv	nav	nav	Navajo; Navaho
-nr	nbl	nbl	Ndebele, South; South Ndebele
-nd	nde	nde	Ndebele, North; North Ndebele
+nr	nbl	nbl	South Ndebele
+nd	nde	nde	North Ndebele
 ng	ndo	ndo	Ndonga
 	nds	nds	Low German; Low Saxon; German, Low; Saxon, Low
 ne	nep	nep	Nepali
-	new	new	Nepal Bhasa; Newari
+	new	new	Nepal Bhasa; Newar; Newari
 	nia	nia	Nias
 	nic	nic	Niger-Kordofanian languages
 	niu	niu	Niuean
-nn	nno	nno	Norwegian Nynorsk; Nynorsk, Norwegian
-nb	nob	nob	Bokmål, Norwegian; Norwegian Bokmål
+nn	nno	nno	Norwegian Nynorsk
+nb	nob	nob	Norwegian Bokmål
 	nog	nog	Nogai
 	non	non	Norse, Old
 no	nor	nor	Norwegian
