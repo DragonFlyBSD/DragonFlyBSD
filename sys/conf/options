@@ -510,7 +510,6 @@ KTR_ENTRIES			opt_global.h
 KTR_ALL				opt_ktr.h
 KTR_ACPI_EC			opt_ktr.h
 KTR_CTXSW			opt_ktr.h
-KTR_DMCRYPT			opt_ktr.h
 KTR_ETHERNET			opt_ktr.h
 KTR_HAMMER			opt_ktr.h
 KTR_IFQ				opt_ktr.h

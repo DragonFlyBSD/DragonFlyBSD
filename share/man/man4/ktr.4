@@ -37,7 +37,6 @@
 .Cd options KTR_ALL
 .Cd options KTR_ACPI_EC
 .Cd options KTR_CTXSW
-.Cd options KTR_DMCRYPT
 .Cd options KTR_ETHERNET
 .\".Cd options KTR_HAMMER
 .Cd options KTR_IF_BGE
@@ -87,11 +86,6 @@ turns on all options
 ACPI Embedded Controller related data
 .It Dv KTR_CTXSW
 context switches
-.It Dv KTR_DMCRYPT
-read and write strategy paths of
-.Xr dm 4 Ap s
-.Pa crypt
-target
 .It Dv KTR_ETHERNET
 cost of
 .Fn ether_input
