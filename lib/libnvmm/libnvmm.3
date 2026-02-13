@@ -329,11 +329,11 @@ structure helps emulator software identify the capabilities offered by NVMM on
 the host:
 .Bd -literal
 struct nvmm_capability {
-	uint64_t version;
-	uint64_t state_size;
-	uint64_t comm_size;
-	uint64_t max_machines;
-	uint64_t max_vcpus;
+	uint32_t version;
+	uint32_t state_size;
+	uint32_t comm_size;
+	uint32_t max_machines;
+	uint32_t max_vcpus;
 	uint64_t max_ram;
 	struct {
 		...
@@ -782,6 +782,8 @@ An inappropriate parameter was used.
 The maximum number of machines or VCPUs was reached.
 .It Bq Er ENOENT
 A query was made on a machine or a VCPU that does not exist.
+.It Bq Er ENODEV
+The guest instruction could not be decoded or emulated.
 .It Bq Er EPERM
 An attempt was made to access a machine that does not belong to the process.
 .El
