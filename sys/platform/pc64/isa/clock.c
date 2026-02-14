@@ -1620,7 +1620,7 @@ tsc_mpsync_test(void)
 				hi_delta = delta;
 			last = next;
 		}
-		kprintf("TSC cpu-delta test complete, %ldnS to %ldnS ",
+		kprintf("TSC cpu-delta test complete, %ldns to %ldns ",
 			muldivu64(lo_delta, 1000000000, tsc_frequency),
 			muldivu64(hi_delta, 1000000000, tsc_frequency));
 		if (error != TSCOK) {
