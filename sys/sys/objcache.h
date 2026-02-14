@@ -43,16 +43,20 @@
 #include <sys/_malloc.h>
 #endif
 
+#ifndef _KERNEL
+#include <stdbool.h>
+#endif
+
 #define OC_MFLAGS	0x0000ffff	/* same as malloc flags */
 
-typedef __boolean_t (objcache_ctor_fn)(void *obj, void *privdata, int ocflags);
-typedef void (objcache_dtor_fn)(void *obj, void *privdata);
+typedef bool  (objcache_ctor_fn)(void *obj, void *privdata, int ocflags);
+typedef void  (objcache_dtor_fn)(void *obj, void *privdata);
 
 /*
  * Underlying allocator.
  */
 typedef void *(objcache_alloc_fn)(void *allocator_args, int ocflags);
-typedef void (objcache_free_fn)(void *obj, void *allocator_args);
+typedef void  (objcache_free_fn)(void *obj, void *allocator_args);
 
 #ifdef	_KERNEL
 
@@ -77,7 +81,7 @@ void	 objcache_put(struct objcache *oc, void *obj);
 void	 objcache_dtor(struct objcache *oc, void *obj);
 void	 objcache_populate_linear(struct objcache *oc, void *elts, int nelts,
 				  int size);
-__boolean_t objcache_reclaimlist(struct objcache *oc[], int nlist);
+bool	 objcache_reclaimlist(struct objcache *oc[], int nlist);
 void	 objcache_destroy(struct objcache *oc);
 
 #endif	/* _KERNEL */

@@ -26,8 +26,6 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $DragonFly: src/sys/net/netmsg.h,v 1.10 2008/10/27 02:56:30 sephe Exp $
  */
 
 #ifndef _NET_NETMSG_H_
@@ -48,6 +46,10 @@ typedef void (*netisr_hashfn_t)(struct mbuf **, int);
 typedef void (*netisr_hashck_t)(struct mbuf *, const struct pktinfo *);
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
+#ifndef _KERNEL
+#include <stdbool.h>
+#endif
 
 /*
  * The base netmsg prefixes all netmsgs and includes an embedded LWKT
@@ -109,7 +111,7 @@ struct netmsg_genpkt {
 struct netmsg_forward {
 	struct netmsg_base	base;
 	struct mbuf		*nm_packet;
-	__boolean_t		using_srcrt;
+	bool			using_srcrt;
 };
 
 struct netmsg_pr_timeout {
@@ -117,7 +119,7 @@ struct netmsg_pr_timeout {
 };
 
 struct netmsg_so_notify;
-typedef __boolean_t (*msg_predicate_fn_t)(struct netmsg_so_notify *);
+typedef bool (*msg_predicate_fn_t)(struct netmsg_so_notify *);
 
 struct netmsg_so_notify {
 	struct netmsg_base	base;

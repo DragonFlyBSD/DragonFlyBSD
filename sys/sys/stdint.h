@@ -42,7 +42,11 @@
 #ifdef _KERNEL
 #include <machine/int_limits.h>
 
-typedef	__boolean_t	boolean_t;		/* kernel only */
+#if __STDC_VERSION__ < 199901L && !__GNUC_PREREQ__(3, 0)
+typedef	int		boolean_t;
+#else
+typedef	_Bool		boolean_t;
+#endif
 
 #if !defined(__bool_true_false_are_defined) && !defined(__cplusplus)
 #define	__bool_true_false_are_defined	1
