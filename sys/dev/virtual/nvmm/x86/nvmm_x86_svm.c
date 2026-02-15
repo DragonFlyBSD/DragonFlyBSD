@@ -530,9 +530,9 @@ static uint64_t svm_xcr0_mask __read_mostly;
  * - CR0_NE: proper FPU error handling; must always be 1
  * - CR0_CD, CR0_NW: cache control; must be forced to 0 for performance
  */
-#define CR0_STATIC_MASK \
-	(CR0_ET | CR0_NW | CR0_CD)
-#define CR0_MANDATORY \
+#define CR0_FORCE_ZERO \
+	(CR0_NW | CR0_CD)
+#define CR0_FORCE_ONE \
 	(CR0_ET | CR0_NE)
 
 /* Does not include EFER_LMSLE. */
@@ -1165,7 +1165,7 @@ svm_exit_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	} else {
 		cr0 = cpudata->gprs[gpr];
 	}
-	cr0 = (cr0 & ~CR0_STATIC_MASK) | CR0_MANDATORY;
+	cr0 = (cr0 & ~CR0_FORCE_ZERO) | CR0_FORCE_ONE;
 
 	if (cr0 & CR0_PG) {
 		efer = vmcb->state.efer;
@@ -1965,8 +1965,8 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 
 	if (flags & NVMM_X64_STATE_CRS) {
 		vmcb->state.cr0 =
-		    (state->crs[NVMM_X64_CR_CR0] & ~CR0_STATIC_MASK) |
-		    CR0_MANDATORY;
+		    (state->crs[NVMM_X64_CR_CR0] & ~CR0_FORCE_ZERO) |
+		    CR0_FORCE_ONE;
 		vmcb->state.cr2 = state->crs[NVMM_X64_CR_CR2];
 		vmcb->state.cr3 = state->crs[NVMM_X64_CR_CR3];
 		vmcb->state.cr4 = state->crs[NVMM_X64_CR_CR4];
