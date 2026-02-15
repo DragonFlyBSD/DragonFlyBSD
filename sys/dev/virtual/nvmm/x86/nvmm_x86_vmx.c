@@ -761,8 +761,20 @@ static uint64_t vmx_xcr0_mask __read_mostly;
 #define MSRBM_NPAGES	1
 #define MSRBM_SIZE	(MSRBM_NPAGES * PAGE_SIZE)
 
+/* Guest/host CR0 mask: bits owned by the host */
 #define CR0_STATIC_MASK \
 	(CR0_ET | CR0_NW | CR0_CD)
+
+/*
+ * Guest real CR0 bits that must be handled specially:
+ * - CR0_ET: hardwired to 1 in modern CPUs; must always be 1
+ * - CR0_NE: proper FPU error handling; must always be 1
+ * - CR0_CD, CR0_NW: cache control; must be forced to 0 for performance
+ */
+#define CR0_FORCE_ZERO \
+	(CR0_NW | CR0_CD)
+#define CR0_FORCE_ONE \
+	(CR0_ET | CR0_NE)
 
 #define CR4_VALID \
 	(CR4_VME |			\
@@ -1652,19 +1664,9 @@ vmx_inkernel_handle_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	} else {
 		fakecr0 = cpudata->gprs[gpr];
 	}
+	fakecr0 |= CR0_ET; /* Force ET=1 for consistency. */
 
-	/*
-	 * fakecr0 is the value the guest believes is in %cr0. realcr0 is the
-	 * actual value in %cr0.
-	 *
-	 * In fakecr0 we must force CR0_ET to 1.
-	 *
-	 * In realcr0 we must force CR0_NW and CR0_CD to 0, and CR0_ET and
-	 * CR0_NE to 1.
-	 */
-	fakecr0 |= CR0_ET;
-	realcr0 = (fakecr0 & ~CR0_STATIC_MASK) | CR0_ET | CR0_NE;
-
+	realcr0 = (fakecr0 & ~CR0_FORCE_ZERO) | CR0_FORCE_ONE;
 	if (vmx_check_cr(realcr0, vmx_cr0_fixed0, vmx_cr0_fixed1) == -1) {
 		return -1;
 	}
@@ -2649,17 +2651,12 @@ vmx_vcpu_setstate(struct nvmm_cpu *vcpu)
 	}
 
 	if (flags & NVMM_X64_STATE_CRS) {
-		/*
-		 * CR0_ET must be 1 both in the shadow and the real register.
-		 * CR0_NE must be 1 in the real register.
-		 * CR0_NW and CR0_CD must be 0 in the real register.
-		 */
 		vmx_vmwrite(VMCS_CR0_SHADOW,
 		    (state->crs[NVMM_X64_CR_CR0] & CR0_STATIC_MASK) |
 		    CR0_ET);
 		vmx_vmwrite(VMCS_GUEST_CR0,
-		    (state->crs[NVMM_X64_CR_CR0] & ~CR0_STATIC_MASK) |
-		    CR0_ET | CR0_NE);
+		    (state->crs[NVMM_X64_CR_CR0] & ~CR0_FORCE_ZERO) |
+		    CR0_FORCE_ONE);
 
 		cpudata->gcr2 = state->crs[NVMM_X64_CR_CR2];
 
