@@ -45,7 +45,6 @@
 #include <sys/cons.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
-#include <sys/caps.h>
 #include <sys/reboot.h>
 #include <sys/sysctl.h>
 #include <sys/tty.h>

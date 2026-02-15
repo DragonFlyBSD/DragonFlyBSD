@@ -44,7 +44,6 @@
 #include <sys/caps.h>
 #include <sys/conf.h>
 #include <sys/proc.h>
-#include <sys/caps.h>
 #include <sys/signalvar.h>
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>

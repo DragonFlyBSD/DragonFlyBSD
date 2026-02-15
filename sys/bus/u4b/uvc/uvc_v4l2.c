@@ -49,7 +49,6 @@
 #include <sys/fcntl.h>
 #include <sys/device.h>
 #include <sys/devfs.h>
-#include <sys/conf.h>
 
 #include <bus/u4b/usb.h>
 #define USB_DEBUG_VAR uvc_debug
