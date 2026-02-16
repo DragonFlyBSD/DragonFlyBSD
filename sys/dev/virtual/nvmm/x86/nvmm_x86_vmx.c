@@ -2957,7 +2957,7 @@ vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	vmx_vmcs_enter(vcpu);
 
 	/* No link pointer. */
-	vmx_vmwrite(VMCS_LINK_POINTER, 0xFFFFFFFFFFFFFFFF);
+	vmx_vmwrite(VMCS_LINK_POINTER, 0xFFFFFFFFFFFFFFFFULL);
 
 	/* Install the CTLSs. */
 	vmx_vmwrite(VMCS_PINBASED_CTLS, vmx_pinbased_ctls);
