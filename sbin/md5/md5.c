@@ -164,10 +164,13 @@ digestbig(const char *fname, char * const buf, const Algorithm_t *alg)
 
 	while ((bytes = read(fd, buffer, sizeof(buffer))) > 0)
 		alg->Update(&context, buffer, (size_t)bytes);
-	if (bytes == 0) /* EOF */
+	if (bytes == 0) {
+		/* EOF */
 		result = digestend(alg, &context, buf);
-	else
+	} else {
 		result = NULL;
+		warn("can't read %s", fname);
+	}
 
 	close(fd);
 	return result;
@@ -372,11 +375,6 @@ main(int argc, char *argv[])
 			else
 				p = digestbig(*argv, buf, Algorithm + digest);
 			if (!p) {
-				/* digestfile() outputs its own diagnostics */
-#if 0
-				if (!useoffsets)
-					warn("%s", *argv);
-#endif
 				failed++;
 			} else {
 				if (qflag) {
