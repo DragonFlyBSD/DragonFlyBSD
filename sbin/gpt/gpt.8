@@ -150,7 +150,7 @@ The minimum size is 1 sector.
 The
 .Fl t Ar type
 option allows the user to specify the partition type.
-The type is given as an UUID, but
+The type is given as a UUID, but
 .Nm
 accepts the following aliases for the most commonly used partition types:
 .Bl -tag -width "windows-reserved" -offset indent -compact
@@ -166,7 +166,7 @@ Apple ZFS
 BIOS Boot (e.g., used by GRUB 2)
 .It Cm ccd
 .Dx
-.Xr ccd (4)
+.Xr ccd 4
 .It Cm dfly
 .Dx
 .Xr disklabel64 5
@@ -222,7 +222,7 @@ OpenBSD Data
 Swap
 .It Cm ufs
 .Dx
-UFS1
+.Xr UFS 5
 .It Cm vinum
 .Dx
 .Xr vinum 4
@@ -271,13 +271,13 @@ command,
 .Sq packet
 option usually needs to be set.
 .Pp
-.Em NOTE!
+.Sy NOTE!
 A disk setup with the
-.Ar boot
+.Ic boot
 command may not be shared with another OS,
 as it doesn't use a fully standard GPT.
 .Pp
-.Em WARNING!
+.Sy WARNING!
 Some BIOSes may not be able to deal with this hack, your mileage may vary.
 .\" ==== create ====
 .It Nm Ic create Oo Fl fP Oc Oo Fl p Ar nparts Oc Ar device ...
@@ -304,7 +304,7 @@ The
 .Fl P
 option tells
 .Nm
-to create only the primary table and not the backup table.
+to create only the primary table but not the secondary/backup table.
 This option is only useful for debugging and should not be used otherwise.
 .\" ==== destroy ====
 .It Nm Ic destroy Oo Fl r Oc Ar device ...
@@ -321,7 +321,7 @@ to destroy the table in a way that it can be recovered.
 .It Nm Ic expand Ar device
 The
 .Ic expand
-command will expand an existing GPT label to cover a device which
+command will expand an existing GPT table to cover a device which
 has grown in size, and will also expand the size of the last GPT
 partition to fit.
 This is typically the first step when expanding a HAMMER2 filesystem,
@@ -410,7 +410,7 @@ This can cause multiple partitions to be labeled.
 The
 .Fl t Ar type
 option selects all partitions that have the given type.
-The type is given as an UUID or by the aliases that the
+The type is given as a UUID or by the aliases that the
 .Ic add
 command accepts.
 This can cause multiple partitions to be labeled.
@@ -460,7 +460,7 @@ The
 .Fl s
 option prevents migrating
 .Bx
-disk labels into GPT partitions by creating
+disklabels into GPT partitions by creating
 the GPT equivalent of a slice.
 .\" ==== recover ====
 .It Nm Ic recover
@@ -582,7 +582,7 @@ with GPT for booting, using the
 .Ic boot
 command.
 .Pp
-.Em WARNING!
+.Sy WARNING!
 Any previous data on disk installed to will be deleted.
 .Bd -literal -offset indent
 gpt create -f da1
@@ -629,10 +629,11 @@ GPT uses 64 bits to store number of sectors, this supports very large disks.
 With the prevalent sector size of 512B this is 8 billion TB.
 .Sh SEE ALSO
 .Xr uuid 3 ,
+.Xr disklabel32 5 ,
 .Xr disklabel64 5 ,
 .Xr uuids 5 ,
 .Xr boot0cfg 8 ,
-.Xr disklabel 8 ,
+.Xr disklabel32 8 ,
 .Xr disklabel64 8 ,
 .Xr fdisk 8 ,
 .Xr mount 8 ,
