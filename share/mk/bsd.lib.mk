@@ -38,7 +38,7 @@ TARGET_SHLIBDIR?=	${SHLIBDIR}
 TARGET_LIBDIR?=		${LIBDIR}/priv
 TARGET_DEBUGLIBDIR?=	${DEBUGLIBDIR:S!/debug$!/priv/debug!}
 TARGET_PROFLIBDIR?=	${PROFLIBDIR:S!/profile$!/priv/profile!}
-.if !empty(PRIVATELIB) && ${PRIVATELIB} == "shpub"
+. if !empty(PRIVATELIB) && ${PRIVATELIB} == "shpub"
 TARGET_SHLIBDIR?=	${SHLIBDIR}
 . else
 TARGET_SHLIBDIR?=	${SHLIBDIR}/priv
@@ -80,7 +80,7 @@ PO_CXXFLAGS=${CXXFLAGS:N-ffunction-sections}
 	${CXX} ${_${.IMPSRC:T}_FLAGS} ${PICFLAG} -DPIC ${SHARED_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .f.o:
-	${FC} ${_${.IMPSRC:T}_FLAGS} ${FFLAGS} -o ${.TARGET} -c ${.IMPSRC} 
+	${FC} ${_${.IMPSRC:T}_FLAGS} ${FFLAGS} -o ${.TARGET} -c ${.IMPSRC}
 
 .f.po:
 	${FC} ${_${.IMPSRC:T}_FLAGS} ${PO_FLAG} ${FFLAGS} -o ${.TARGET} -c ${.IMPSRC}
