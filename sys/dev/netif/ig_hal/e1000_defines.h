@@ -331,6 +331,7 @@
 #define E1000_STATUS_SPEED_10		0x00000000 /* Speed 10Mb/s */
 #define E1000_STATUS_SPEED_100		0x00000040 /* Speed 100Mb/s */
 #define E1000_STATUS_SPEED_1000		0x00000080 /* Speed 1000Mb/s */
+#define E1000_STATUS_SPEED_2500		0x00400000 /* Speed 2.5Gb/s indication for I225 */
 #define E1000_STATUS_LAN_INIT_DONE	0x00000200 /* Lan Init Compltn by NVM */
 #define E1000_STATUS_PHYRA		0x00000400 /* PHY Reset Asserted */
 #define E1000_STATUS_GIO_MASTER_ENABLE	0x00080000 /* Master request status */
@@ -856,6 +857,7 @@
 #define E1000_THSTAT_LINK_THROTTLE	0x00000002 /* Link Spd Throttle Event */
 
 /* I350 EEE defines */
+#define E1000_IPCNFG_EEE_2_5G_AN	0x00000010 /* IPCNFG EEE Ena 2.5G AN */
 #define E1000_IPCNFG_EEE_1G_AN		0x00000008 /* IPCNFG EEE Ena 1G AN */
 #define E1000_IPCNFG_EEE_100M_AN	0x00000004 /* IPCNFG EEE Ena 100M AN */
 #define E1000_EEER_TX_LPI_EN		0x00010000 /* EEER Tx LPI Enable */
@@ -1073,6 +1075,8 @@
 #define E1000_I210_FIFO_SEL_TX_LEGACY	E1000_I210_FIFO_SEL_TX_QAV(0)
 #define E1000_I210_FIFO_SEL_BMC2OS_TX	0x06
 #define E1000_I210_FIFO_SEL_BMC2OS_RX	0x01
+#define E1000_FLSECU_BLK_SW_ACCESS_I225	0x00000004 /* Block SW access */
+#define E1000_FWSM_FW_VALID_I225	0x8000 /* FW valid bit */
 
 #define E1000_I210_FLASH_SECTOR_SIZE	0x1000 /* 4KB FLASH sector unit size */
 /* Secure FLASH mode requires removing MSb */
@@ -1505,6 +1509,34 @@
 #define I210_RXPBSIZE_DEFAULT		0x000000A2 /* RXPBSIZE default */
 #define I210_TXPBSIZE_DEFAULT		0x04000014 /* TXPBSIZE default */
 
+#define E1000_LTRC_EEEMS_EN		0x00000020 /* Enable EEE LTR max send */
+
+#define E1000_TW_SYSTEM_1000_MASK		0x000000FF
+
+#define E1000_TW_SYSTEM_100_MASK		0x0000FF00
+#define E1000_TW_SYSTEM_100_SHIFT		8
+#define E1000_LTRMINV_LTRV_MASK		0x000003FF /* LTR minimum value */
+#define E1000_LTRMAXV_LTRV_MASK		0x000003FF /* LTR maximum value */
+#define E1000_LTRMINV_SCALE_MASK		0x00001C00 /* LTR minimum scale */
+#define E1000_LTRMINV_SCALE_SHIFT		10
+#define E1000_LTRMINV_SCALE_SHIFT		10
+/* Reg val to set scale to 1024 nsec */
+#define E1000_LTRMINV_SCALE_1024		2
+/* Reg val to set scale to 32768 nsec */
+#define E1000_LTRMINV_SCALE_32768		3
+#define E1000_LTRMINV_LSNP_REQ		0x00008000 /* LTR Snoop Requirement */
+#define E1000_LTRMAXV_SCALE_MASK		0x00001C00 /* LTR maximum scale */
+#define E1000_LTRMAXV_SCALE_SHIFT		10
+/* Reg val to set scale to 1024 nsec */
+#define E1000_LTRMAXV_SCALE_1024		2
+/* Reg val to set scale to 32768 nsec */
+#define E1000_LTRMAXV_SCALE_32768		3
+#define E1000_LTRMAXV_LSNP_REQ		0x00008000 /* LTR Snoop Requirement */
+
+#define I225_RXPBSIZE_DEFAULT		0x000000A2 /* RXPBSIZE default */
+#define I225_TXPBSIZE_DEFAULT		0x04000014 /* TXPBSIZE default */
+#define E1000_RXPBS_SIZE_I225_MASK	0x0000003F /* Rx packet buffer size */
+#define E1000_TXPB0S_SIZE_I225_MASK	0x0000003F /* Tx packet buffer 0 size */
 
 /* Proxy Filter Control */
 #define E1000_PROXYFC_D0		0x00000001 /* Enable offload in D0 */
