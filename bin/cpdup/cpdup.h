@@ -23,6 +23,9 @@
 #include <pwd.h>
 #include <fnmatch.h>
 #include <assert.h>
+#ifndef NOCHECKSUM
+#include <openssl/evp.h>
+#endif
 
 /*
  * See ./mklinux script
@@ -61,14 +64,14 @@ int16_t hc_bswap16(int16_t var);
 int32_t hc_bswap32(int32_t var);
 int64_t hc_bswap64(int64_t var);
 
-#ifndef NOMD5
-int md5_check(const char *spath, const char *dpath);
-void md5_flush(void);
+#ifndef NOCHECKSUM
+int csum_check(const EVP_MD *algo, const char *spath, const char *dpath);
+void csum_flush(void);
 #endif
 
 extern const char *UseCpFile;
-extern const char *MD5CacheFile;
 extern const char *UseHLPath;
+extern char *CsumCacheFile;
 
 extern int AskConfirmation;
 extern int SafetyOpt;
