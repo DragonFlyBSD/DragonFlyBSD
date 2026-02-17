@@ -7,6 +7,7 @@ Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
 Copyright (c) Microsoft Corporation.<BR>
 Portions Copyright (c) 2020, Hewlett Packard Enterprise Development LP. All rights reserved.<BR>
 Portions Copyright (c) 2022, Loongson Technology Corporation Limited. All rights reserved.<BR>
+Copyright (c) 2023 - 2024, Arm Limited. All rights reserved.<BR>
 
 SPDX-License-Identifier: BSD-2-Clause-Patent
 
@@ -76,26 +77,6 @@ typedef struct {
 
 #endif // defined (MDE_CPU_EBC)
 
-#if defined (MDE_CPU_ARM)
-
-typedef struct {
-  UINT32    R3;  ///< A copy of R13.
-  UINT32    R4;
-  UINT32    R5;
-  UINT32    R6;
-  UINT32    R7;
-  UINT32    R8;
-  UINT32    R9;
-  UINT32    R10;
-  UINT32    R11;
-  UINT32    R12;
-  UINT32    R14;
-} BASE_LIBRARY_JUMP_BUFFER;
-
-#define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT  4
-
-#endif // defined (MDE_CPU_ARM)
-
 #if defined (MDE_CPU_AARCH64)
 typedef struct {
   // GP regs
@@ -125,6 +106,92 @@ typedef struct {
 } BASE_LIBRARY_JUMP_BUFFER;
 
 #define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT  8
+
+/**
+  Reads the current value of CNTPCT_EL0 register.
+
+  Reads and returns the current value of CNTPCT_EL0.
+  This function is only available on AARCH64.
+
+  @return The current value of CNTPCT_EL0
+**/
+UINT64
+EFIAPI
+ArmReadCntPctReg (
+  VOID
+  );
+
+//
+// Bit shifts for the ID_AA64ISAR0_EL1 register.
+//
+#define ARM_ID_AA64ISAR0_EL1_AES_SHIFT     (4U)
+#define ARM_ID_AA64ISAR0_EL1_SHA1_SHIFT    (8U)
+#define ARM_ID_AA64ISAR0_EL1_SHA2_SHIFT    (12U)
+#define ARM_ID_AA64ISAR0_EL1_CRC32_SHIFT   (16U)
+#define ARM_ID_AA64ISAR0_EL1_ATOMIC_SHIFT  (20U)
+#define ARM_ID_AA64ISAR0_EL1_RDM_SHIFT     (28U)
+#define ARM_ID_AA64ISAR0_EL1_SHA3_SHIFT    (32U)
+#define ARM_ID_AA64ISAR0_EL1_SM3_SHIFT     (36U)
+#define ARM_ID_AA64ISAR0_EL1_SM4_SHIFT     (40U)
+#define ARM_ID_AA64ISAR0_EL1_DP_SHIFT      (44U)
+#define ARM_ID_AA64ISAR0_EL1_FHM_SHIFT     (48U)
+#define ARM_ID_AA64ISAR0_EL1_TS_SHIFT      (52U)
+#define ARM_ID_AA64ISAR0_EL1_TLB_SHIFT     (56U)
+#define ARM_ID_AA64ISAR0_EL1_RNDR_SHIFT    (60U)
+
+//
+// Bit masks for the ID_AA64ISAR0_EL1 fields.
+//
+#define ARM_ID_AA64ISAR0_EL1_AES_MASK     (0xFU)
+#define ARM_ID_AA64ISAR0_EL1_SHA1_MASK    (0xFU)
+#define ARM_ID_AA64ISAR0_EL1_SHA2_MASK    (0xFU)
+#define ARM_ID_AA64ISAR0_EL1_CRC32_MASK   (0xFU)
+#define ARM_ID_AA64ISAR0_EL1_ATOMIC_MASK  (0xFU)
+#define ARM_ID_AA64ISAR0_EL1_RDM_MASK     (0xFU)
+#define ARM_ID_AA64ISAR0_EL1_SHA3_MASK    (0xFU)
+#define ARM_ID_AA64ISAR0_EL1_SM3_MASK     (0xFU)
+#define ARM_ID_AA64ISAR0_EL1_SM4_MASK     (0xFU)
+#define ARM_ID_AA64ISAR0_EL1_DP_MASK      (0xFU)
+#define ARM_ID_AA64ISAR0_EL1_FHM_MASK     (0xFU)
+#define ARM_ID_AA64ISAR0_EL1_TS_MASK      (0xFU)
+#define ARM_ID_AA64ISAR0_EL1_TLB_MASK     (0xFU)
+#define ARM_ID_AA64ISAR0_EL1_RNDR_MASK    (0xFU)
+
+//
+// Bit masks for the ID_AA64ISAR0_EL1 field values.
+//
+#define ARM_ID_AA64ISAR0_EL1_AES_FEAT_AES_MASK        (0x1U)
+#define ARM_ID_AA64ISAR0_EL1_AES_FEAT_PMULL_MASK      (0x2U)
+#define ARM_ID_AA64ISAR0_EL1_SHA1_FEAT_SHA1_MASK      (0x1U)
+#define ARM_ID_AA64ISAR0_EL1_SHA2_FEAT_SHA256_MASK    (0x1U)
+#define ARM_ID_AA64ISAR0_EL1_SHA2_FEAT_SHA512_MASK    (0x2U)
+#define ARM_ID_AA64ISAR0_EL1_CRC32_HAVE_CRC32_MASK    (0x1U)
+#define ARM_ID_AA64ISAR0_EL1_ATOMIC_FEAT_LSE_MASK     (0x2U)
+#define ARM_ID_AA64ISAR0_EL1_RDM_FEAT_RDM_MASK        (0x1U)
+#define ARM_ID_AA64ISAR0_EL1_SHA3_FEAT_SHA3_MASK      (0x1U)
+#define ARM_ID_AA64ISAR0_EL1_SM3_FEAT_SM3_MASK        (0x1U)
+#define ARM_ID_AA64ISAR0_EL1_SM4_FEAT_SM4_MASK        (0x1U)
+#define ARM_ID_AA64ISAR0_EL1_DP_FEAT_DOTPROD_MASK     (0x1U)
+#define ARM_ID_AA64ISAR0_EL1_FHM_FEAT_FHM_MASK        (0x1U)
+#define ARM_ID_AA64ISAR0_EL1_TS_FEAT_FLAGM_MASK       (0x1U)
+#define ARM_ID_AA64ISAR0_EL1_TS_FEAT_FLAGM2_MASK      (0x2U)
+#define ARM_ID_AA64ISAR0_EL1_TLB_FEAT_TLBIOS_MASK     (0x1U)
+#define ARM_ID_AA64ISAR0_EL1_TLB_FEAT_TLBIRANGE_MASK  (0x2U)
+#define ARM_ID_AA64ISAR0_EL1_RNDR_FEAT_RNG_MASK       (0x1U)
+
+/**
+  Reads the current value of ID_AA64ISAR0_EL1 register.
+
+  Reads and returns the current value of ID_AA64ISAR0_EL1.
+  This function is only available on AARCH64.
+
+  @return The current value of ID_AA64ISAR0_EL1
+**/
+UINT64
+EFIAPI
+ArmReadIdAA64Isar0Reg (
+  VOID
+  );
 
 #endif // defined (MDE_CPU_AARCH64)
 
@@ -182,8 +249,18 @@ RiscVSetSupervisorAddressTranslationRegister (
   );
 
 UINT64
+RiscVGetSupervisorAddressTranslationRegister (
+  VOID
+  );
+
+UINT64
 RiscVReadTimer (
   VOID
+  );
+
+VOID
+RiscVSetSupervisorTimeCompareRegister (
+  IN UINT64
   );
 
 VOID
@@ -199,6 +276,59 @@ RiscVDisableTimerInterrupt (
 VOID
 RiscVClearPendingTimerInterrupt (
   VOID
+  );
+
+/**
+  RISC-V invalidate instruction cache.
+
+**/
+VOID
+EFIAPI
+RiscVInvalidateInstCacheFenceAsm (
+  VOID
+  );
+
+/**
+  RISC-V invalidate data cache.
+
+**/
+VOID
+EFIAPI
+RiscVInvalidateDataCacheFenceAsm (
+  VOID
+  );
+
+/**
+  RISC-V flush cache block. Atomically perform a clean operation
+  followed by an invalidate operation
+
+**/
+VOID
+EFIAPI
+RiscVCpuCacheFlushCmoAsm (
+  IN UINTN
+  );
+
+/**
+Perform a write transfer to another cache or to memory if the
+data in the copy of the cache block have been modified by a store
+operation
+
+**/
+VOID
+EFIAPI
+RiscVCpuCacheCleanCmoAsm (
+  IN UINTN
+  );
+
+/**
+Deallocate the copy of the cache block
+
+**/
+VOID
+EFIAPI
+RiscVCpuCacheInvalCmoAsm (
+  IN UINTN
   );
 
 #endif // defined (MDE_CPU_RISCV64)
@@ -223,6 +353,227 @@ typedef struct {
 } BASE_LIBRARY_JUMP_BUFFER;
 
 #define BASE_LIBRARY_JUMP_BUFFER_ALIGNMENT  8
+
+/*
+ * Set the exception base address for LoongArch.
+ *
+ * @param  ExceptionBaseAddress   The exception base address, must be aligned greater than or qeual to 4K .
+ */
+VOID
+SetExceptionBaseAddress (
+  IN UINT64
+  );
+
+/*
+ * Set the TlbRebase address for LoongArch.
+ *
+ * @param  TlbRebaseAddress   The TlbRebase address, must be aligned greater than or qeual to 4K .
+ */
+VOID
+SetTlbRebaseAddress (
+  IN UINT64
+  );
+
+/**
+  Enables local CPU interrupts.
+
+  @param  Needs to enable local interrupt bit.
+**/
+VOID
+EnableLocalInterrupts (
+  IN UINT16
+  );
+
+/**
+  Disables local CPU interrupts.
+
+  @param  Needs to disable local interrupt bit.
+**/
+VOID
+DisableLocalInterrupts (
+  IN UINT16
+  );
+
+/**
+  Read CPUCFG register.
+
+  @param  Index  Specifies the register number of the CPUCFG to read the data.
+  @param  Data   A pointer to the variable used to store the CPUCFG register value.
+**/
+VOID
+AsmCpucfg (
+  IN  UINT32  Index,
+  OUT UINT32  *Data
+  );
+
+/**
+  Gets the timer count value.
+
+  @param[] VOID
+  @retval  timer count value.
+
+**/
+UINTN
+AsmReadStableCounter (
+  VOID
+  );
+
+/**
+  CSR read operation.
+
+  @param[in]  Select   CSR read instruction select values.
+
+  @return     The return value of csrrd instruction, return -1 means no CSR instruction
+              is found.
+**/
+UINTN
+CsrRead (
+  IN UINT16  Select
+  );
+
+/**
+  CSR write operation.
+
+  @param[in]  Select   CSR write instruction select values.
+  @param[in]  Value    The csrwr will write the value.
+
+  @return     The return value of csrwr instruction, that is, store the old value of
+              the register, return -1 means no CSR instruction is found.
+**/
+UINTN
+CsrWrite (
+  IN UINT16  Select,
+  IN UINTN   Value
+  );
+
+/**
+  CSR exchange operation.
+
+  @param[in]  Select   CSR exchange instruction select values.
+  @param[in]  Value    The csrxchg will write the value.
+  @param[in]  Mask     The csrxchg mask value.
+
+  @return     The return value of csrxchg instruction, that is, store the old value of
+              the register, return -1 means no CSR instruction is found.
+**/
+UINTN
+CsrXChg (
+  IN UINT16  Select,
+  IN UINTN   Value,
+  IN UINTN   Mask
+  );
+
+/**
+  IO CSR read byte operation.
+
+  @param[in]  Select   IO CSR read instruction select values.
+
+  @return     The return value of iocsrrd.b instruction.
+
+**/
+UINT8
+IoCsrRead8 (
+  IN UINTN  Select
+  );
+
+/**
+  IO CSR read half word operation.
+
+  @param[in]  Select   IO CSR read instruction select values.
+
+  @return     The return value of iocsrrd.h instruction.
+
+**/
+UINT16
+IoCsrRead16 (
+  IN UINTN  Select
+  );
+
+/**
+  IO CSR read word operation.
+
+  @param[in]  Select   IO CSR read instruction select values.
+
+  @return     The return value of iocsrrd.w instruction.
+
+**/
+UINT32
+IoCsrRead32 (
+  IN UINTN  Select
+  );
+
+/**
+  IO CSR read double word operation. Only for LoongArch64.
+
+  @param[in]  Select   IO CSR read instruction select values.
+
+  @return     The return value of iocsrrd.d instruction.
+
+**/
+UINT64
+IoCsrRead64 (
+  IN UINTN  Select
+  );
+
+/**
+  IO CSR write byte operation.
+
+  @param[in]  Select   IO CSR write instruction select values.
+  @param[in]  Value    The iocsrwr.b will write the value.
+
+  @return     VOID.
+
+**/
+VOID
+IoCsrWrite8 (
+  IN UINTN  Select,
+  IN UINT8  Value
+  );
+
+/**
+  IO CSR write half word operation.
+
+  @param[in]  Select   IO CSR write instruction select values.
+  @param[in]  Value    The iocsrwr.h will write the value.
+
+  @return     VOID.
+
+**/
+VOID
+IoCsrWrite16 (
+  IN UINTN   Select,
+  IN UINT16  Value
+  );
+
+/**
+  IO CSR write word operation.
+
+  @param[in]  Select   IO CSR write instruction select values.
+  @param[in]  Value    The iocsrwr.w will write the value.
+
+  @return     VOID.
+
+**/
+VOID
+IoCsrWrite32 (
+  IN UINTN   Select,
+  IN UINT32  Value
+  );
+
+/**
+  IO CSR write double word operation. Only for LoongArch64.
+
+  @param[in]  Select   IO CSR write instruction select values.
+  @param[in]  Value    The iocsrwr.d will write the value.
+
+  @return     VOID.
+
+**/
+VOID
+IoCsrWrite64 (
+  IN UINTN   Select,
+  IN UINT64  Value
+  );
 
 #endif // defined (MDE_CPU_LOONGARCH64)
 
@@ -4344,6 +4695,101 @@ BitFieldCountOnes64 (
   IN       UINTN   EndBit
   );
 
+/*******************************************************************************
+
+  UUID (Universally Unique IDentifier), as defined in RFC4122
+  (https://datatracker.ietf.org/doc/html/rfc4122#section-4.1), is a 128-bit number
+  used to uniquely identify information in computer systems.
+
+  UUIDs contains 5 fields:
+  - time_low: 32 bits
+  - time_mid: 16 bits
+  - time_hi_and_version: 16 bits
+  - clock_seq_hi_and_reserved: 8 bits
+  - clock_seq_low: 8 bits
+  - node: 8 bits * 6
+
+  Each field encoded with the Most Significant Byte first (known as network byte
+  order, or big-endian).
+
+  GUID (Globally Unique Identifier), on the other hand, is a 128-bit number used
+  in UEFI environments, which is similar to UUID but has a different byte order
+  in memory. See https://uefi.org/specs/UEFI/2.11/Apx_A_GUID_and_Time_Formats.html
+
+  GUID also contains 5 fields:
+  - TimeLow: 32 bits
+  - TimeMid: 16 bits
+  - TimeHiAndVersion: 16 bits
+  - ClockSeqHighAndReserved: 16 bits
+  - ClockSeqLow: 8 bits
+  - Node: 8 bits * 6
+
+  TimeLow, TimeMid, TimeHighAndVersion fields in the EFI are encoded with the Least
+  Significant Byte first (also known as little-endian).
+
+  Example:
+  Consider the same string representation/registry format for MM communication v2:
+  "378daedc-f06b-4446-8314-40ab933c87a3"
+
+  In UUID format, it is represented as:
+  - Data fields:
+    - time_low: 0x37 0x8d 0xae 0xdc (0x378daedc in big-endian)
+    - time_mid: 0xf0 0x6b (0xf06b in big-endian)
+    - time_hi_and_version: 0x44 0x46 (0x4446 in big-endian)
+    - clock_seq_hi_and_reserved: 0x83
+    - clock_seq_low: 0x14
+    - node: 0x00, 0xab, 0x93, 0x3c, 0x87, 0xa3
+  - Byte representation in memory:
+    - 37 8d ae dc f0 6b 44 46 83 14 40 ab 93 3c 87 a3
+
+  However, in GUID format, it is represented as:
+  - Data fields:
+    - TimeLow: 0xdc 0xae 0x8d 0x37 (0x378daedc in little-endian)
+    - TimeMid: 0x6b 0xf0 (0xf06b in little-endian)
+    - TimeHiAndVersion: 0x46 0x44 (0x4446 in little-endian)
+    - ClockSeqHighAndReserved: 0x83
+    - ClockSeqLow: 0x14
+    - Node: 0x00, 0xab, 0x93, 0x3c, 0x87, 0xa3
+  - Byte representation in memory:
+    - dc ae 8d 37 6b f0 46 44 83 14 40 ab 93 3c 87 a3
+
+*******************************************************************************/
+
+/**
+  This function converts a GUID in UEFI format to a UUID in RFC4122 format.
+
+  The conversion is done by swapping the byte order of the TimeLow, TimeMid, and
+  TimeHiAndVersion fields, while keeping the ClockSeq and Node fields unchanged.
+
+  @param [in] FromGuid  GUID in format to be converted to UUID RFC4122 format.
+  @param [out] ToUuid   Pointer to a GUID structure that will hold the converted
+                        UUID in RFC4122 format.
+**/
+VOID
+EFIAPI
+ConvertGuidToUuid (
+  IN   GUID  *FromGuid,
+  OUT  GUID  *ToUuid
+  );
+
+/**
+  This function converts a UUID in RFC4122 format to a GUID in UEFI format.
+
+  The conversion is done by swapping the byte order of the time_low, time_mid, and
+  time_hi_and_version fields, while keeping the ClockSeq and Node fields unchanged.
+  This function is symmetric to ConvertGuidToUuid.
+
+  @param [in] FromUuid  UUID in RFC4122 format to be converted to GUID in UEFI format.
+  @param [out] ToGuid   Pointer to a GUID structure that will hold the converted
+                        GUID in UEFI format.
+**/
+VOID
+EFIAPI
+ConvertUuidToGuid (
+  IN   GUID  *FromUuid,
+  OUT  GUID  *ToGuid
+  );
+
 //
 // Base Library Checksum Functions
 //
@@ -4594,6 +5040,11 @@ CalculateCrc16Ansi (
   IN  UINT16      InitialValue
   );
 
+//
+// Initial value for the CRC16-ANSI algorithm, when no prior checksum has been calculated.
+//
+#define CRC16ANSI_INIT  0xffff
+
 /**
    Calculates the CRC32c checksum of the given buffer.
 
@@ -4609,6 +5060,23 @@ CalculateCrc32c (
   IN CONST VOID  *Buffer,
   IN UINTN       Length,
   IN UINT32      InitialValue
+  );
+
+/**
+  Calculates the CRC16-CCITT-FALSE checksum of the given buffer.
+
+  @param[in]      Buffer        Pointer to the buffer.
+  @param[in]      Length        Length of the buffer, in bytes.
+  @param[in]      InitialValue  Initial value of the CRC.
+
+  @return The CRC16-CCITT-FALSE checksum.
+**/
+UINT16
+EFIAPI
+CalculateCrc16CcittF (
+  IN CONST VOID  *Buffer,
+  IN UINTN       Length,
+  IN UINT16      InitialValue
   );
 
 //
@@ -4866,8 +5334,6 @@ SpeculationBarrier (
   VOID
   );
 
-#if defined (MDE_CPU_X64) || defined (MDE_CPU_IA32)
-
 /**
   The TDCALL instruction causes a VM exit to the Intel TDX module.  It is
   used to call guest-side Intel TDX functions, either local or a TD exit
@@ -4930,7 +5396,17 @@ TdIsEnabled (
   VOID
   );
 
-#endif
+/**
+  Probe if running as some kind of SEV guest.
+
+  @return FALSE   Not running as a guest under any kind of SEV
+  @return TRUE    Running as a guest under any kind of SEV
+**/
+BOOLEAN
+EFIAPI
+SevGuestIsEnabled (
+  VOID
+  );
 
 #if defined (MDE_CPU_X64)
 //
@@ -7585,6 +8061,45 @@ VOID
 EFIAPI
 AsmVmgExit (
   VOID
+  );
+
+///
+/// The structure used to supply and return data to and from the SVSM.
+///
+typedef struct {
+  VOID      *Caa;
+  UINT64    RaxIn;
+  UINT64    RcxIn;
+  UINT64    RdxIn;
+  UINT64    R8In;
+  UINT64    R9In;
+  UINT64    RaxOut;
+  UINT64    RcxOut;
+  UINT64    RdxOut;
+  UINT64    R8Out;
+  UINT64    R9Out;
+  UINT8     *CallPending;
+} SVSM_CALL_DATA;
+
+/**
+  Executes a VMGEXIT instruction (VMMCALL with a REP prefix) with arguments
+  and return code
+
+  Executes a VMGEXIT instruction placing the specified arguments in the
+  corresponding registers before invocation. Upon return an XCHG is done to
+  atomically clear and retrieve the SVSM call pending value. The returned RAX
+  register value becomes the function return code. This function is intended
+  for use with an SVSM. This function is only available on IA-32 and x64.
+
+  @param[in,out]  SvsmCallPending  Pointer to the location of the SVSM call data
+
+  @return                          Value of the RAX register on return
+
+**/
+UINT32
+EFIAPI
+AsmVmgExitSvsm (
+  IN OUT SVSM_CALL_DATA  *SvsmCallData
   );
 
 /**

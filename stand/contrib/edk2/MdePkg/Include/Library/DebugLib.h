@@ -8,6 +8,13 @@
   of size reduction when compiler optimization is disabled. If MDEPKG_NDEBUG is
   defined, then debug and assert related macros wrapped by it are the NULL implementations.
 
+  The implementations of the macros used when MDEPKG_NDEBUG is defined rely on the fact that
+  directly unreachable code is pruned, even with compiler optimization disabled (which has
+  been confirmed by generated code size tests on supported compilers). The advantage of
+  implementations which consume their arguments within directly unreachable code is that
+  compilers understand this, and stop warning about variables which would become unused when
+  MDEPKG_NDEBUG is defined if the macros had completely empty definitions.
+
 Copyright (c) 2006 - 2020, Intel Corporation. All rights reserved.<BR>
 SPDX-License-Identifier: BSD-2-Clause-Patent
 
@@ -29,26 +36,29 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 //
 // Declare bits for PcdDebugPrintErrorLevel and the ErrorLevel parameter of DebugPrint()
 //
-#define DEBUG_INIT      0x00000001  // Initialization
-#define DEBUG_WARN      0x00000002  // Warnings
-#define DEBUG_LOAD      0x00000004  // Load events
-#define DEBUG_FS        0x00000008  // EFI File system
-#define DEBUG_POOL      0x00000010  // Alloc & Free (pool)
-#define DEBUG_PAGE      0x00000020  // Alloc & Free (page)
-#define DEBUG_INFO      0x00000040  // Informational debug messages
-#define DEBUG_DISPATCH  0x00000080  // PEI/DXE/SMM Dispatchers
-#define DEBUG_VARIABLE  0x00000100  // Variable
-#define DEBUG_BM        0x00000400  // Boot Manager
-#define DEBUG_BLKIO     0x00001000  // BlkIo Driver
-#define DEBUG_NET       0x00004000  // Network Io Driver
-#define DEBUG_UNDI      0x00010000  // UNDI Driver
-#define DEBUG_LOADFILE  0x00020000  // LoadFile
-#define DEBUG_EVENT     0x00080000  // Event messages
-#define DEBUG_GCD       0x00100000  // Global Coherency Database changes
-#define DEBUG_CACHE     0x00200000  // Memory range cachability changes
-#define DEBUG_VERBOSE   0x00400000  // Detailed debug messages that may
-                                    // significantly impact boot performance
-#define DEBUG_ERROR  0x80000000     // Error
+#define DEBUG_INIT      0x00000001       // Initialization
+#define DEBUG_WARN      0x00000002       // Warnings
+#define DEBUG_LOAD      0x00000004       // Load events
+#define DEBUG_FS        0x00000008       // EFI File system
+#define DEBUG_POOL      0x00000010       // Alloc & Free (pool)
+#define DEBUG_PAGE      0x00000020       // Alloc & Free (page)
+#define DEBUG_INFO      0x00000040       // Informational debug messages
+#define DEBUG_DISPATCH  0x00000080       // PEI/DXE/SMM Dispatchers
+#define DEBUG_VARIABLE  0x00000100       // Variable
+#define DEBUG_BM        0x00000400       // Boot Manager
+#define DEBUG_BLKIO     0x00001000       // BlkIo Driver
+#define DEBUG_NET       0x00004000       // Network Io Driver
+#define DEBUG_UNDI      0x00010000       // UNDI Driver
+#define DEBUG_LOADFILE  0x00020000       // LoadFile
+#define DEBUG_EVENT     0x00080000       // Event messages
+#define DEBUG_GCD       0x00100000       // Global Coherency Database changes
+#define DEBUG_CACHE     0x00200000       // Memory range cachability changes
+#define DEBUG_VERBOSE   0x00400000       // Detailed debug messages that may
+                                         // significantly impact boot performance
+#define DEBUG_MANAGEABILITY  0x00800000  // Detailed debug and payload manageability messages
+                                         // related to modules such as Redfish, IPMI, MCTP etc.
+#define DEBUG_SECURITY  0x01000000       // Security and security HW related messages, such as TPM
+#define DEBUG_ERROR     0x80000000       // Error
 
 //
 // Aliases of debug message mask bits
@@ -340,13 +350,13 @@ UnitTestDebugAssert (
   #if defined (_ASSERT)
     #undef _ASSERT
   #endif
-  #if defined (__clang__) && defined (__FILE_NAME__)
+  #if defined (__FILE_NAME__)
 #define _ASSERT(Expression)  UnitTestDebugAssert (__FILE_NAME__, DEBUG_LINE_NUMBER, DEBUG_EXPRESSION_STRING (Expression))
   #else
 #define _ASSERT(Expression)  UnitTestDebugAssert (__FILE__, DEBUG_LINE_NUMBER, DEBUG_EXPRESSION_STRING (Expression))
   #endif
 #else
-  #if defined (__clang__) && defined (__FILE_NAME__)
+  #if defined (__FILE_NAME__)
 #define _ASSERT(Expression)  DebugAssert (__FILE_NAME__, DEBUG_LINE_NUMBER, DEBUG_EXPRESSION_STRING (Expression))
   #else
 #define _ASSERT(Expression)  DebugAssert (__FILE__, DEBUG_LINE_NUMBER, DEBUG_EXPRESSION_STRING (Expression))
@@ -373,9 +383,9 @@ UnitTestDebugAssert (
         DebugPrint (PrintLevel, ##__VA_ARGS__);      \
       }                                              \
     } while (FALSE)
-#define _DEBUG(Expression)  _DEBUG_PRINT Expression
+#define _DEBUGLIB_DEBUG(Expression)  _DEBUG_PRINT Expression
 #else
-#define _DEBUG(Expression)  DebugPrint Expression
+#define _DEBUGLIB_DEBUG(Expression)  DebugPrint Expression
 #endif
 
 /**
@@ -401,7 +411,12 @@ UnitTestDebugAssert (
       }                             \
     } while (FALSE)
 #else
-#define ASSERT(Expression)
+#define ASSERT(Expression)       \
+    do {                           \
+      if (FALSE) {                 \
+        (VOID) (Expression);       \
+      }                            \
+    } while (FALSE)
 #endif
 
 /**
@@ -420,11 +435,16 @@ UnitTestDebugAssert (
 #define DEBUG(Expression)        \
     do {                           \
       if (DebugPrintEnabled ()) {  \
-        _DEBUG (Expression);       \
+        _DEBUGLIB_DEBUG (Expression);       \
       }                            \
     } while (FALSE)
 #else
-#define DEBUG(Expression)
+#define DEBUG(Expression)        \
+    do {                           \
+      if (FALSE) {                 \
+        _DEBUGLIB_DEBUG (Expression);       \
+      }                            \
+    } while (FALSE)
 #endif
 
 /**
@@ -450,7 +470,12 @@ UnitTestDebugAssert (
       }                                                                                  \
     } while (FALSE)
 #else
-#define ASSERT_EFI_ERROR(StatusParameter)
+#define ASSERT_EFI_ERROR(StatusParameter)                                             \
+    do {                                                                                \
+      if (FALSE) {                                                                      \
+        (VOID) (StatusParameter);                                                       \
+      }                                                                                 \
+    } while (FALSE)
 #endif
 
 /**
@@ -477,7 +502,12 @@ UnitTestDebugAssert (
       }                                                                 \
     } while (FALSE)
 #else
-#define ASSERT_RETURN_ERROR(StatusParameter)
+#define ASSERT_RETURN_ERROR(StatusParameter)                          \
+    do {                                                                \
+      if (FALSE) {                                                      \
+        (VOID) (StatusParameter);                                       \
+      }                                                                 \
+    } while (FALSE)
 #endif
 
 /**
@@ -532,7 +562,10 @@ UnitTestDebugAssert (
   are not included in a module.
 
 **/
-#define DEBUG_CODE_BEGIN()  do { if (DebugCodeEnabled ()) { UINT8  __DebugCodeLocal
+#define DEBUG_CODE_BEGIN()     \
+  do {                         \
+    if (DebugCodeEnabled ()) { \
+      do { } while (FALSE)
 
 /**
   The macro that marks the end of debug source code.
@@ -543,7 +576,9 @@ UnitTestDebugAssert (
   are not included in a module.
 
 **/
-#define DEBUG_CODE_END()  __DebugCodeLocal = 0; __DebugCodeLocal++; } } while (FALSE)
+#define DEBUG_CODE_END()         \
+    }                            \
+  } while (FALSE)
 
 /**
   The macro that declares a section of debug source code.
@@ -586,8 +621,12 @@ UnitTestDebugAssert (
   If MDEPKG_NDEBUG is defined or the DEBUG_PROPERTY_DEBUG_ASSERT_ENABLED bit
   of PcdDebugProperyMask is clear, then this macro computes the offset, in bytes,
   of the field specified by Field from the beginning of the data structure specified
-  by TYPE.  This offset is subtracted from Record, and is used to return a pointer
-  to a data structure of the type specified by TYPE.
+  by TYPE.  This offset is subtracted from Record, and is used to compute a pointer
+  to a data structure of the type specified by TYPE.  The Signature field of the
+  data structure specified by TYPE is compared to TestSignature.  If the signatures
+  match, then a pointer to the pointer to a data structure of the type specified by
+  TYPE is returned.  If the signatures do not match, then NULL is returned to
+  signify that the passed in data structure is invalid.
 
   If MDEPKG_NDEBUG is not defined and the DEBUG_PROPERTY_DEBUG_ASSERT_ENABLED bit
   of PcdDebugProperyMask is set, then this macro computes the offset, in bytes,
@@ -621,9 +660,13 @@ UnitTestDebugAssert (
 #define CR(Record, TYPE, Field, TestSignature)                                              \
     (DebugAssertEnabled () && (BASE_CR (Record, TYPE, Field)->Signature != TestSignature)) ?  \
     (TYPE *) (_ASSERT (CR has Bad Signature), Record) :                                       \
+    (BASE_CR (Record, TYPE, Field)->Signature != TestSignature) ?                             \
+    NULL :                                                                                    \
     BASE_CR (Record, TYPE, Field)
 #else
 #define CR(Record, TYPE, Field, TestSignature)                                              \
+    (BASE_CR (Record, TYPE, Field)->Signature != TestSignature) ?                           \
+    NULL :                                                                                  \
     BASE_CR (Record, TYPE, Field)
 #endif
 
