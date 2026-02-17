@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
 .\"
-.Dd January 22, 2026
+.Dd February 17, 2026
 .Dt GPT 8
 .Os
 .Sh NAME
@@ -520,6 +520,8 @@ The order of precedence of the options are:
 The default
 .Sq boot0
 image.
+.It Pa /boot/boot1.efi
+The first stage UEFI bootstrap.
 .It Pa /etc/defaults/uuids
 A list of UUIDs
 and their symbolic names provided by the OS vendor.
@@ -529,97 +531,46 @@ and their symbolic names provided by the system administrator.
 .El
 .Sh EXAMPLES
 To install an empty GPT on
-.Pa ad6 :
+.Pa da1 :
 .Pp
-.Dl "gpt create ad6"
+.Dl "gpt create da1"
 .Pp
-GPT partitions are defined in number of sectors, the sector size is usually 512B,
-which is assumed in the examples below, it can be found using:
+To add a GPT partition of size 200MB with type
+.Cm efi :
 .Pp
-.Dl "gpt -v show ad6"
-.Pp
-To add a dummy GPT partition 0:
-.Pp
-.Dl "gpt add -i0 -s16 ad6"
-.Pp
-You might want to do this to not use slice 0 for data;
-when GPT is not used on a disk, slice 0 is the compatibility slice,
-which is used for
-.Dq dangerously dedicated
-disks.
-For GPT slice 0 has no special meaning, it is just the first slice on the disk.
-.Pp
-To add a GPT partition of size approx. 100GB:
-.Pp
-.Dl "gpt add -s200000000 ad6"
-.Pp
-This will be GPT partition 1 as it is the first one free,
-it will be accessible as
-.Pa ad6s1 ,
-which is also printed by the command.
-The type will be
-.Dq DragonFly Label64 ,
-it will have to be set up by
-.Xr disklabel64 8 .
+.Dl "gpt add -s 200M -t efi da1"
 .Pp
 To add GPT partition 5 with type
-.Dq DragonFly HAMMER
+.Cm hammer2
 using the remaining free space:
-.Bd -literal -offset indent
-gpt add -i5 -t "DragonFly HAMMER" ad6
-.Ed
+.Pp
+.Dl "gpt add -i 5 -t hammer2 da1"
 .Pp
 To print the contents of the GPT:
 .Pp
-.Dl "gpt show ad6"
+.Dl "gpt show da1"
 .Ss Boot Setup
-To setup a disk using GPT for booting, the steps below can be used.
-System is copied from an already installed disk,
-e.g.\& a hard disk or an install CD.
-This example will setup disk
-.Pa da1
-with GPT for booting, using the
-.Ic boot
-command.
+To setup a disk using GPT for UEFI booting, the steps below can be used.
+Adjust the partition scheme and sizes to your needs.
 .Pp
 .Sy WARNING!
 Any previous data on disk installed to will be deleted.
 .Bd -literal -offset indent
-gpt create -f da1
-gpt boot da1
-boot0cfg -s 2 da1
-disklabel -B -r -w da1s0 auto
-disklabel -e da1s0	# add `a: * * 4.2BSD', to add `a' partition
-			#   with fstype `4.2BSD' covering whole slice
+# Setup disk partitions
+gpt create -f da1		# WARNING! DATA WILL BE DELETED!
+gpt add -s 200M -t efi da1	# EFI system partition
+gpt add -s 2G -t ufs da1	# UFS boot partition
+gpt add -s 8G -t swap da1	# recommended to be twice of physical memory
+gpt add -s 100G -t hammer2 da1	# root partition
+gpt add -t hammer2 da1		# home partition using remaining free space
 
-gpt add da1
-disklabel64 -r -w da1s1 auto
-disklabel64 -e da1s1	# add `b: 4G * swap', to add `b' partition
-			#   with fstype `swap' and size 4GB,
-			# add `a: * * HAMMER', to add `a' partition
-			#   with fstype `HAMMER' covering rest of slice
-newfs_hammer -L ROOT /dev/da1s1a
-mount_hammer /dev/da1s1a /mnt
-
-newfs /dev/da1s0a
-mkdir /mnt/boot
-mount /dev/da1s0a /mnt/boot
-
-cpdup / /mnt		# copy each file system you need, e.g.
-cpdup /boot /mnt/boot
-cpdup /var /mnt/var
-cpdup /var/tmp /mnt/var/tmp
-cpdup /usr /mnt/usr
-
-cd /mnt
-vi etc/fstab		# add `/dev/da1s1a / hammer rw',
-			# add `/dev/da1s1b none swap sw',
-			# add `/dev/da1s0a /boot ufs rw 1 1',
-			# delete lines for file systems cpdup'ed above
-vi boot/loader.conf	# add `vfs.root.mountfrom="hammer:da1s1a"'
-cd
-umount /mnt/boot
-umount /mnt
+# Setup UEFI bootstrap
+newfs_msdos -F 16 -L EFI /dev/da1s0
+mkdir /mnt/efi
+mount -t msdos /dev/da1s0 /mnt/efi
+mkdir -p /mnt/efi/EFI/BOOT
+cp /boot/boot1.efi /mnt/efi/EFI/BOOT/BOOTX64.efi
+umount /mnt/efi
 .Ed
 .Sh COMPATIBILITY
 The GPT that
@@ -635,11 +586,14 @@ With the prevalent sector size of 512B this is 8 billion TB.
 .Xr boot0cfg 8 ,
 .Xr disklabel32 8 ,
 .Xr disklabel64 8 ,
+.Xr efibootmgr 8 ,
 .Xr fdisk 8 ,
 .Xr mount 8 ,
 .Xr newfs 8 ,
 .Xr newfs_hammer 8 ,
-.Xr swapon 8
+.Xr newfs_hammer2 8 ,
+.Xr swapon 8 ,
+.Xr uefi 8
 .Sh HISTORY
 The
 .Nm
