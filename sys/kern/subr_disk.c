@@ -355,6 +355,7 @@ disk_probe(struct disk *dp, int reprobe)
 	struct diskslice *sp;
 	struct dev_ops *dops;
 	char uuid_buf[128];
+	char name_buf[64];
 
 	/*
 	 * d_media_blksize can be 0 for non-disk storage devices such
@@ -418,9 +419,13 @@ disk_probe(struct disk *dp, int reprobe)
 		if (sp->ds_size == 0)
 			continue;
 
+		ksnprintf(name_buf, sizeof(name_buf),
+			  ((info->d_dsflags & DSO_DEVICEMAPPER)
+			   ? "%s.s%d" : "%ss%d"),
+			  dev->si_name, sno);
+
 		if (reprobe &&
-		    (ndev = devfs_find_device_by_name("%ss%d",
-						      dev->si_name, sno))) {
+		    (ndev = devfs_find_device_by_name("%s", name_buf))) {
 			/*
 			 * Device already exists and is still valid
 			 */
@@ -445,8 +450,7 @@ disk_probe(struct disk *dp, int reprobe)
 			ndev = make_dev_covering(dops, dp->d_rawdev->si_ops,
 					dkmakewholeslice(dkunit(dev), i),
 					UID_ROOT, GID_OPERATOR, 0640,
-					(info->d_dsflags & DSO_DEVICEMAPPER)?
-					"%s.s%d" : "%ss%d", dev->si_name, sno);
+					"%s", name_buf);
 			ndev->si_parent = dev;
 			ndev->si_iosize_max = dev->si_iosize_max;
 			udev_dict_set_cstr(ndev, "subsystem", "disk");
