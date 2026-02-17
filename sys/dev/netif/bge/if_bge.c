@@ -2064,7 +2064,7 @@ bge_attach(device_t dev)
 		pci_write_config(dev, PCIR_INTLINE, irq, 4);
 		pci_write_config(dev, BGE_PCI_BAR0, mem, 4);
 	}
-#endif	/* !BURN_BRIDGE */
+#endif	/* !BURN_BRIDGES */
 
 	/*
 	 * Map control/status registers.

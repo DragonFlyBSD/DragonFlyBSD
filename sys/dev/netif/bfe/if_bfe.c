@@ -343,7 +343,7 @@ bfe_attach(device_t dev)
 		pci_write_config(dev, BFE_PCI_MEMLO, membase, 4);
 		pci_write_config(dev, BFE_PCI_INTLINE, irq, 4);
 	}
-#endif	/* !BURN_BRIDGE */
+#endif	/* !BURN_BRIDGES */
 
 	/*
 	 * Map control/status registers.

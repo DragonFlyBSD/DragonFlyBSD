@@ -786,7 +786,7 @@ jme_attach(device_t dev)
 		pci_write_config(dev, PCIR_INTLINE, irq, 4);
 		pci_write_config(dev, JME_PCIR_BAR, mem, 4);
 	}
-#endif	/* !BURN_BRIDGE */
+#endif	/* !BURN_BRIDGES */
 
 	/* Enable bus mastering */
 	pci_enable_busmaster(dev);
