@@ -124,16 +124,16 @@ show(int fd __unused)
 				printf("Extended ");
 			printf("MBR");
 			break;
-		case MAP_TYPE_PRI_GPT_HDR:
+		case MAP_TYPE_GPT_PRI_HDR:
 			printf("Primary GPT header");
 			break;
-		case MAP_TYPE_SEC_GPT_HDR:
+		case MAP_TYPE_GPT_SEC_HDR:
 			printf("Secondary GPT header");
 			break;
-		case MAP_TYPE_PRI_GPT_TBL:
+		case MAP_TYPE_GPT_PRI_TBL:
 			printf("Primary GPT table");
 			break;
-		case MAP_TYPE_SEC_GPT_TBL:
+		case MAP_TYPE_GPT_SEC_TBL:
 			printf("Secondary GPT table");
 			break;
 		case MAP_TYPE_MBR_PART:

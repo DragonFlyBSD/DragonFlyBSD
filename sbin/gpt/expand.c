@@ -100,13 +100,13 @@ expand(int fd)
 		return;
 	}
 
-	gpt = map_find(MAP_TYPE_PRI_GPT_HDR);
+	gpt = map_find(MAP_TYPE_GPT_PRI_HDR);
 	if (gpt == NULL) {
 		warnx("%s: error: no primary GPT header; run create or recover",
 		      device_name);
 		return;
 	}
-	tbl = map_find(MAP_TYPE_PRI_GPT_TBL);
+	tbl = map_find(MAP_TYPE_GPT_PRI_TBL);
 	if (tbl == NULL) {
 		warnx("%s: error: no primary partition table; run recover",
 		      device_name);
@@ -194,17 +194,17 @@ expand(int fd)
 	/*
 	 * Update or create the secondary GPT table.
 	 */
-	tpg = map_find(MAP_TYPE_SEC_GPT_HDR);
-	lbt = map_find(MAP_TYPE_SEC_GPT_TBL);
+	tpg = map_find(MAP_TYPE_GPT_SEC_HDR);
+	lbt = map_find(MAP_TYPE_GPT_SEC_TBL);
 	if (tpg == NULL) {
 		warnx("%s: no secondary GPT header; creating\n", device_name);
-		tpg = map_add(last, 1LL, MAP_TYPE_SEC_GPT_HDR,
+		tpg = map_add(last, 1LL, MAP_TYPE_GPT_SEC_HDR,
 			      calloc(1, secsz));
 		memcpy(tpg->map_data, gpt->map_data, secsz);
 	}
 	if (lbt == NULL) {
 		warnx("%s: no secondary GPT table; creating\n", device_name);
-		lbt = map_add(last - blocks, blocks, MAP_TYPE_SEC_GPT_TBL,
+		lbt = map_add(last - blocks, blocks, MAP_TYPE_GPT_SEC_TBL,
 			      tbl->map_data);
 	}
 	hdr = tpg->map_data;

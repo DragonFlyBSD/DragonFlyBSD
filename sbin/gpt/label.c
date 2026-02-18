@@ -67,22 +67,22 @@ label(int fd)
 	struct gpt_ent *ent;
 	unsigned int i;
 
-	gpt = map_find(MAP_TYPE_PRI_GPT_HDR);
+	gpt = map_find(MAP_TYPE_GPT_PRI_HDR);
 	if (gpt == NULL) {
 		warnx("%s: error: no primary GPT header; run create or recover",
 		    device_name);
 		return;
 	}
 
-	tpg = map_find(MAP_TYPE_SEC_GPT_HDR);
+	tpg = map_find(MAP_TYPE_GPT_SEC_HDR);
 	if (tpg == NULL) {
 		warnx("%s: error: no secondary GPT header; run recover",
 		    device_name);
 		return;
 	}
 
-	tbl = map_find(MAP_TYPE_PRI_GPT_TBL);
-	lbt = map_find(MAP_TYPE_SEC_GPT_TBL);
+	tbl = map_find(MAP_TYPE_GPT_PRI_TBL);
+	lbt = map_find(MAP_TYPE_GPT_SEC_TBL);
 	if (tbl == NULL || lbt == NULL) {
 		warnx("%s: error: run recover -- trust me", device_name);
 		return;

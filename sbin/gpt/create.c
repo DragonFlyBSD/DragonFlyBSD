@@ -84,8 +84,8 @@ create(int fd)
 
 	last = mediasz / secsz - 1LL;
 
-	if (map_find(MAP_TYPE_PRI_GPT_HDR) != NULL ||
-	    map_find(MAP_TYPE_SEC_GPT_HDR) != NULL) {
+	if (map_find(MAP_TYPE_GPT_PRI_HDR) != NULL ||
+	    map_find(MAP_TYPE_GPT_SEC_HDR) != NULL) {
 		warnx("%s: error: device already contains a GPT", device_name);
 		return;
 	}
@@ -147,8 +147,8 @@ create(int fd)
 		blocks = ((last + 1LL) >> 1) - 1LL;
 
 	blocks--;		/* Number of blocks in the GPT table. */
-	gpt = map_add(1LL, 1LL, MAP_TYPE_PRI_GPT_HDR, calloc(1, secsz));
-	tbl = map_add(2LL, blocks, MAP_TYPE_PRI_GPT_TBL,
+	gpt = map_add(1LL, 1LL, MAP_TYPE_GPT_PRI_HDR, calloc(1, secsz));
+	tbl = map_add(2LL, blocks, MAP_TYPE_GPT_PRI_TBL,
 	    calloc(blocks, secsz));
 	if (gpt == NULL || tbl == NULL) {
 		warnx("%s: error: failed to create primary GPT", device_name);
@@ -188,9 +188,9 @@ create(int fd)
 	 * Create backup GPT if the user didn't suppress it.
 	 */
 	if (!primary_only) {
-		tpg = map_add(last, 1LL, MAP_TYPE_SEC_GPT_HDR,
+		tpg = map_add(last, 1LL, MAP_TYPE_GPT_SEC_HDR,
 		    calloc(1, secsz));
-		lbt = map_add(last - blocks, blocks, MAP_TYPE_SEC_GPT_TBL,
+		lbt = map_add(last - blocks, blocks, MAP_TYPE_GPT_SEC_TBL,
 		    tbl->map_data);
 		if (tpg == NULL || lbt == NULL) {
 			warnx("%s: error: failed to create backup GPT",

@@ -40,10 +40,10 @@ typedef struct map {
 #define	MAP_TYPE_UNUSED		0
 #define	MAP_TYPE_MBR		1
 #define	MAP_TYPE_MBR_PART	2
-#define	MAP_TYPE_PRI_GPT_HDR	3
-#define	MAP_TYPE_SEC_GPT_HDR	4
-#define	MAP_TYPE_PRI_GPT_TBL	5
-#define	MAP_TYPE_SEC_GPT_TBL	6
+#define	MAP_TYPE_GPT_PRI_HDR	3
+#define	MAP_TYPE_GPT_PRI_TBL	4
+#define	MAP_TYPE_GPT_SEC_HDR	5
+#define	MAP_TYPE_GPT_SEC_TBL	6
 #define	MAP_TYPE_GPT_PART	7
 #define	MAP_TYPE_PMBR		8
 	unsigned int	map_index;

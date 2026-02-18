@@ -53,8 +53,8 @@ destroy(int fd, bool quiet)
 {
 	map_t *pri_hdr, *sec_hdr;
 
-	pri_hdr = map_find(MAP_TYPE_PRI_GPT_HDR);
-	sec_hdr = map_find(MAP_TYPE_SEC_GPT_HDR);
+	pri_hdr = map_find(MAP_TYPE_GPT_PRI_HDR);
+	sec_hdr = map_find(MAP_TYPE_GPT_SEC_HDR);
 
 	if (pri_hdr == NULL && sec_hdr == NULL) {
 		if (!quiet) {

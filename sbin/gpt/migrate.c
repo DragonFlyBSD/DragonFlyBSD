@@ -237,8 +237,8 @@ migrate(int fd)
 
 	mbr = map->map_data;
 
-	if (map_find(MAP_TYPE_PRI_GPT_HDR) != NULL ||
-	    map_find(MAP_TYPE_SEC_GPT_HDR) != NULL) {
+	if (map_find(MAP_TYPE_GPT_PRI_HDR) != NULL ||
+	    map_find(MAP_TYPE_GPT_SEC_HDR) != NULL) {
 		warnx("%s: error: device already contains a GPT", device_name);
 		return;
 	}
@@ -280,15 +280,15 @@ migrate(int fd)
 	}
 
 	blocks--;		/* Number of blocks in the GPT table. */
-	gpt = map_add(1LL, 1LL, MAP_TYPE_PRI_GPT_HDR, calloc(1, secsz));
-	tbl = map_add(2LL, blocks, MAP_TYPE_PRI_GPT_TBL,
+	gpt = map_add(1LL, 1LL, MAP_TYPE_GPT_PRI_HDR, calloc(1, secsz));
+	tbl = map_add(2LL, blocks, MAP_TYPE_GPT_PRI_TBL,
 	    calloc(blocks, secsz));
 	if (gpt == NULL || tbl == NULL)
 		return;
 
-	lbt = map_add(last - blocks, blocks, MAP_TYPE_SEC_GPT_TBL,
+	lbt = map_add(last - blocks, blocks, MAP_TYPE_GPT_SEC_TBL,
 	    tbl->map_data);
-	tpg = map_add(last, 1LL, MAP_TYPE_SEC_GPT_HDR, calloc(1, secsz));
+	tpg = map_add(last, 1LL, MAP_TYPE_GPT_SEC_HDR, calloc(1, secsz));
 
 	hdr = gpt->map_data;
 	memcpy(hdr->hdr_sig, GPT_HDR_SIG, sizeof(hdr->hdr_sig));

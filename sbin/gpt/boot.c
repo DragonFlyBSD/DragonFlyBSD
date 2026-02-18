@@ -73,14 +73,14 @@ bootset(int fd)
 	size = (off_t)1024 * 1024 * 1024 / secsz;		/* 1GB */
 	alignment = (off_t)1024 * 1024 / secsz;			/* 1MB */
 
-	gpt = map_find(MAP_TYPE_PRI_GPT_HDR);
+	gpt = map_find(MAP_TYPE_GPT_PRI_HDR);
 	if (gpt == NULL)
 		errx(1, "%s: error: no primary GPT header", device_name);
-	tpg = map_find(MAP_TYPE_SEC_GPT_HDR);
+	tpg = map_find(MAP_TYPE_GPT_SEC_HDR);
 	if (tpg == NULL)
 		errx(1, "%s: error: no secondary GPT header", device_name);
-	tbl = map_find(MAP_TYPE_PRI_GPT_TBL);
-	lbt = map_find(MAP_TYPE_SEC_GPT_TBL);
+	tbl = map_find(MAP_TYPE_GPT_PRI_TBL);
+	lbt = map_find(MAP_TYPE_GPT_SEC_TBL);
 	if (tbl == NULL || lbt == NULL) {
 		errx(1, "%s: error: no primary or secondary GPT table",
 		     device_name);

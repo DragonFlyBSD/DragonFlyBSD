@@ -57,10 +57,10 @@ recover(int fd)
 		return;
 	}
 
-	gpt = map_find(MAP_TYPE_PRI_GPT_HDR);
-	tpg = map_find(MAP_TYPE_SEC_GPT_HDR);
-	tbl = map_find(MAP_TYPE_PRI_GPT_TBL);
-	lbt = map_find(MAP_TYPE_SEC_GPT_TBL);
+	gpt = map_find(MAP_TYPE_GPT_PRI_HDR);
+	tpg = map_find(MAP_TYPE_GPT_SEC_HDR);
+	tbl = map_find(MAP_TYPE_GPT_PRI_TBL);
+	lbt = map_find(MAP_TYPE_GPT_SEC_TBL);
 
 	if (gpt == NULL && tpg == NULL) {
 		warnx("%s: no primary or secondary GPT headers, can't recover",
@@ -77,7 +77,7 @@ recover(int fd)
 
 	if (tbl != NULL && lbt == NULL) {
 		lbt = map_add(last - tbl->map_size, tbl->map_size,
-		    MAP_TYPE_SEC_GPT_TBL, tbl->map_data);
+		    MAP_TYPE_GPT_SEC_TBL, tbl->map_data);
 		if (lbt == NULL) {
 			warnx("%s: adding secondary GPT table failed",
 			    device_name);
@@ -87,7 +87,7 @@ recover(int fd)
 		warnx("%s: recovered secondary GPT table from primary",
 		    device_name);
 	} else if (tbl == NULL && lbt != NULL) {
-		tbl = map_add(2LL, lbt->map_size, MAP_TYPE_PRI_GPT_TBL,
+		tbl = map_add(2LL, lbt->map_size, MAP_TYPE_GPT_PRI_TBL,
 		    lbt->map_data);
 		if (tbl == NULL) {
 			warnx("%s: adding primary GPT table failed",
@@ -100,7 +100,7 @@ recover(int fd)
 	}
 
 	if (gpt != NULL && tpg == NULL) {
-		tpg = map_add(last, 1LL, MAP_TYPE_SEC_GPT_HDR,
+		tpg = map_add(last, 1LL, MAP_TYPE_GPT_SEC_HDR,
 		    calloc(1, secsz));
 		if (tpg == NULL) {
 			warnx("%s: adding secondary GPT header failed",
@@ -118,7 +118,7 @@ recover(int fd)
 		warnx("%s: recovered secondary GPT header from primary",
 		    device_name);
 	} else if (gpt == NULL && tpg != NULL) {
-		gpt = map_add(1LL, 1LL, MAP_TYPE_PRI_GPT_HDR,
+		gpt = map_add(1LL, 1LL, MAP_TYPE_GPT_PRI_HDR,
 		    calloc(1, secsz));
 		if (gpt == NULL) {
 			warnx("%s: adding primary GPT header failed",
