@@ -727,7 +727,7 @@ sysctl_rman(SYSCTL_HANDLER_ARGS)
 done:
 	lwkt_reltoken(&rman_tok);
 
-	return (ENOENT);
+	return (error);
 }
 
 SYSCTL_NODE(_hw_bus, OID_AUTO, rman, CTLFLAG_RD, sysctl_rman,
