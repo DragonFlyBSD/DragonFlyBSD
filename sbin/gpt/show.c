@@ -99,8 +99,7 @@ show(int fd __unused)
 	printf("  %*s", (int)(sizeof(humansz) - 1), "Size");
 	printf("  Index  Contents\n");
 
-	m = map_first();
-	while (m != NULL) {
+	for (m = map_first(); m != NULL; m = m->map_next) {
 		printf("  %*ju", lbawidth, (uintmax_t)m->map_start);
 		printf("  %*ju", lbawidth, (uintmax_t)m->map_size);
 		humanize_number(humansz, sizeof(humansz),
@@ -188,7 +187,6 @@ show(int fd __unused)
 			break;
 		}
 		putchar('\n');
-		m = m->map_next;
 	}
 }
 

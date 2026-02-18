@@ -283,8 +283,10 @@ migrate(int fd)
 	gpt = map_add(1LL, 1LL, MAP_TYPE_GPT_PRI_HDR, calloc(1, secsz));
 	tbl = map_add(2LL, blocks, MAP_TYPE_GPT_PRI_TBL,
 	    calloc(blocks, secsz));
-	if (gpt == NULL || tbl == NULL)
+	if (gpt == NULL || tbl == NULL) {
+		warnx("%s: error: failed to create primary GPT", device_name);
 		return;
+	}
 
 	lbt = map_add(last - blocks, blocks, MAP_TYPE_GPT_SEC_TBL,
 	    tbl->map_data);
@@ -357,14 +359,13 @@ migrate(int fd)
 				return;
 			break;
 		}
-		case DOSPTYP_EFI: {
-			uuid_t efi_slice = GPT_ENT_TYPE_EFI;
-			uuid_enc_le(&ent->ent_type, &efi_slice);
+		case DOSPTYP_EFI:
+			uuid = (uuid_t)GPT_ENT_TYPE_EFI;
+			uuid_enc_le(&ent->ent_type, &uuid);
 			ent->ent_lba_start = htole64((uint64_t)start);
 			ent->ent_lba_end = htole64(start + size - 1LL);
 			ent++;
 			break;
-		}
 		default:
 			warnx("%s: %s: partition %d: unknown type (%d)",
 			      device_name, (force ? "warning" : "error"),
