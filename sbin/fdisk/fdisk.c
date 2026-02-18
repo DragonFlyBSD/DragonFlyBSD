@@ -898,7 +898,8 @@ read_s0(void)
 		return -1;
 	}
 	if (*(uint16_t *)&mboot.bootinst[DOSMAGICOFF] != DOSMAGIC) {
-		warnx("invalid fdisk partition table found");
+		if (!(i_flag || I_flag))
+			warnx("invalid fdisk partition table found");
 		/* So should we initialize things */
 		return -1;
 	}
