@@ -179,6 +179,13 @@ migrate_disklabel32(const struct disklabel32 *dl, off_t start,
 		    le32toh(dl->d_partitions[i].p_size) - 1LL);
 
 		ent++;
+		if (verbose > 1) {
+			warnx("%s: migrated slice partition %d: "
+			      "type=%d, start=%ju, size=%u",
+			      device_name, i, dl->d_partitions[i].p_fstype,
+			      (uintmax_t)(start + ofs),
+			      le32toh(dl->d_partitions[i].p_size));
+		}
 	}
 
 	return (ent);
@@ -211,6 +218,12 @@ migrate_disklabel64(const struct disklabel64 *dl, off_t start,
 		ent->ent_lba_end = htole64(start + offset + blocks - 1LL);
 
 		ent++;
+		if (verbose > 1) {
+			warnx("%s: migrated slice partition %d: "
+			      "type=%d, start=%ju, size=%ju",
+			      device_name, i, dl->d_partitions[i].p_fstype,
+			      (uintmax_t)(start + offset), (uintmax_t)blocks);
+		}
 	}
 
 	return (ent);
@@ -252,6 +265,10 @@ migrate(int fd)
 		warnx("%s: error: no room for the GPT header", device_name);
 		return;
 	}
+	if (verbose > 1) {
+		warnx("%s: found %ju free blocks after MBR",
+		      device_name, (uintmax_t)blocks);
+	}
 
 	/* Don't create more than parts entries. */
 	if ((uint64_t)(blocks - 1) * secsz > parts * sizeof(struct gpt_ent)) {
@@ -283,6 +300,10 @@ migrate(int fd)
 	}
 
 	blocks--;		/* Number of blocks in the GPT table. */
+	if (verbose > 1) {
+		warnx("%s: create GPT table with %ju blocks",
+		      device_name, (uintmax_t)blocks);
+	}
 	gpt = map_add(1LL, 1LL, MAP_TYPE_GPT_PRI_HDR, calloc(1, secsz));
 	tbl = map_add(2LL, blocks, MAP_TYPE_GPT_PRI_TBL,
 	    calloc(blocks, secsz));
@@ -364,6 +385,12 @@ migrate(int fd)
 			free(dl32);
 			if (ent == NULL)
 				return;
+			if (verbose > 1) {
+				warnx("%s: migrated partition %d: "
+				      "disklabel%s, start=%u, size=%u",
+				      device_name, i, dl64 ? "64" : "32",
+				      start, size);
+			}
 			break;
 		}
 		case DOSPTYP_EFI:
@@ -372,6 +399,11 @@ migrate(int fd)
 			ent->ent_lba_start = htole64((uint64_t)start);
 			ent->ent_lba_end = htole64(start + size - 1LL);
 			ent++;
+			if (verbose > 1) {
+				warnx("%s: migrated partition %d: "
+				      "EFI, start=%u, size=%u",
+				      device_name, i, start, size);
+			}
 			break;
 		default:
 			warnx("%s: %s: partition %d: unknown type (%d)",
