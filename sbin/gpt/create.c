@@ -95,43 +95,39 @@ create(int fd)
 			warnx("%s: error: device contains a MBR", device_name);
 			return;
 		}
+	}
 
-		/* Nuke the MBR in our internal map. */
-		map->map_type = MAP_TYPE_UNUSED;
+	if (map_init(mediasz / secsz) == -1) {
+		warnx("%s: error: map initialization failed", device_name);
+		return;
 	}
 
 	/*
 	 * Create PMBR.
 	 */
-	if (map_find(MAP_TYPE_PMBR) == NULL) {
-		if (map_free(0LL) == 0) {
-			warnx("%s: error: no room for the PMBR", device_name);
-			return;
-		}
-		mbr = gpt_read(fd, 0LL, 1);
-		if (mbr == NULL) {
-			warnx("%s: error: reading PMBR failed", device_name);
-			return;
-		}
-		bzero(mbr, sizeof(*mbr));
-		mbr->mbr_sig = htole16(DOSMAGIC);
-		mbr->mbr_part[0].dp_shd = 0xff;
-		mbr->mbr_part[0].dp_ssect = 0xff;
-		mbr->mbr_part[0].dp_scyl = 0xff;
-		mbr->mbr_part[0].dp_typ = DOSPTYP_PMBR;
-		mbr->mbr_part[0].dp_ehd = 0xff;
-		mbr->mbr_part[0].dp_esect = 0xff;
-		mbr->mbr_part[0].dp_ecyl = 0xff;
-		mbr->mbr_part[0].dp_start = htole32(1U);
-		if (last > 0xffffffff)
-			mbr->mbr_part[0].dp_size = htole32(0xffffffffU);
-		else
-			mbr->mbr_part[0].dp_size = htole32((uint32_t)last);
-		map = map_add(0LL, 1LL, MAP_TYPE_PMBR, mbr);
-		gpt_write(fd, map);
+	mbr = gpt_read(fd, 0LL, 1);
+	if (mbr == NULL) {
+		warnx("%s: error: reading PMBR failed", device_name);
+		return;
 	}
+	bzero(mbr, sizeof(*mbr));
+	mbr->mbr_sig = htole16(DOSMAGIC);
+	mbr->mbr_part[0].dp_shd = 0xff;
+	mbr->mbr_part[0].dp_ssect = 0xff;
+	mbr->mbr_part[0].dp_scyl = 0xff;
+	mbr->mbr_part[0].dp_typ = DOSPTYP_PMBR;
+	mbr->mbr_part[0].dp_ehd = 0xff;
+	mbr->mbr_part[0].dp_esect = 0xff;
+	mbr->mbr_part[0].dp_ecyl = 0xff;
+	mbr->mbr_part[0].dp_start = htole32(1U);
+	if (last > 0xffffffff)
+		mbr->mbr_part[0].dp_size = htole32(0xffffffffU);
+	else
+		mbr->mbr_part[0].dp_size = htole32((uint32_t)last);
+	map = map_add(0LL, 1LL, MAP_TYPE_PMBR, mbr);
+	gpt_write(fd, map);
 
-	/* Get the amount of free space after the MBR */
+	/* Get the amount of free space after the PMBR */
 	blocks = map_free(1LL);
 	if (blocks == 0LL) {
 		warnx("%s: error: no room for the GPT header", device_name);
@@ -150,29 +146,14 @@ create(int fd)
 	if ((blocks + 1LL) > ((last + 1LL) >> 1))
 		blocks = ((last + 1LL) >> 1) - 1LL;
 
-	/*
-	 * Get the amount of free space at the end of the device and
-	 * calculate the size for the GPT structures.
-	 */
-	map = map_last();
-	if (map->map_type != MAP_TYPE_UNUSED) {
-		warnx("%s: error: no room for the backup header", device_name);
-		return;
-	}
-
-	if (map->map_size < blocks)
-		blocks = map->map_size;
-	if (blocks == 1LL) {
-		warnx("%s: error: no room for the GPT table", device_name);
-		return;
-	}
-
 	blocks--;		/* Number of blocks in the GPT table. */
 	gpt = map_add(1LL, 1LL, MAP_TYPE_PRI_GPT_HDR, calloc(1, secsz));
 	tbl = map_add(2LL, blocks, MAP_TYPE_PRI_GPT_TBL,
 	    calloc(blocks, secsz));
-	if (gpt == NULL || tbl == NULL)
+	if (gpt == NULL || tbl == NULL) {
+		warnx("%s: error: failed to create primary GPT", device_name);
 		return;
+	}
 
 	hdr = gpt->map_data;
 	memcpy(hdr->hdr_sig, GPT_HDR_SIG, sizeof(hdr->hdr_sig));
@@ -211,6 +192,11 @@ create(int fd)
 		    calloc(1, secsz));
 		lbt = map_add(last - blocks, blocks, MAP_TYPE_SEC_GPT_TBL,
 		    tbl->map_data);
+		if (tpg == NULL || lbt == NULL) {
+			warnx("%s: error: failed to create backup GPT",
+			      device_name);
+			return;
+		}
 		memcpy(tpg->map_data, gpt->map_data, secsz);
 		hdr = tpg->map_data;
 		hdr->hdr_lba_self = htole64(tpg->map_start);
