@@ -80,9 +80,10 @@ show(int fd __unused)
 	map_t *m, *p;
 	struct mbr *mbr;
 	struct gpt_ent *ent;
-	unsigned int i;
+	size_t i, j;
 	char *s, humansz[sizeof("99.9GB")], lwbuf[32];
 	char utfbuf[NELEM(ent->ent_name) * 3 + 1];
+	const char *name;
 	int lbawidth;
 
 	lbawidth = sprintf(lwbuf, "%ju", (uintmax_t)(mediasz / secsz));
@@ -150,9 +151,20 @@ show(int fd __unused)
 				/* wasn't there */
 				printf("[partition not found?]");
 			} else {
-				printf("%d%s", mbr->mbr_part[i].dp_typ,
-				       mbr->mbr_part[i].dp_flag == 0x80 ?
-				       " (active)" : "");
+				name = NULL;
+				for (j = 0; j < NELEM(dos_ptypes); j++) {
+					if (dos_ptypes[j].type ==
+					    mbr->mbr_part[i].dp_typ) {
+						name = dos_ptypes[j].name;
+						break;
+					}
+				}
+				if (name != NULL)
+					printf("- %s", name);
+				else
+					printf("- %d", mbr->mbr_part[i].dp_typ);
+				if (mbr->mbr_part[i].dp_flag == 0x80)
+					printf(" (active)");
 			}
 			break;
 		case MAP_TYPE_GPT_PART:
