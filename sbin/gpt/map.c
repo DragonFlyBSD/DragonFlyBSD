@@ -41,6 +41,7 @@ mkmap(off_t start, off_t size, int type)
 	m = malloc(sizeof(*m));
 	if (m == NULL)
 		return (NULL);
+
 	m->map_start = start;
 	m->map_size = size;
 	m->map_next = m->map_prev = NULL;
@@ -119,6 +120,9 @@ map_add(off_t start, off_t size, int type, void *data)
 		p->map_size -= size;
 	} else {
 		p = mkmap(n->map_start, start - n->map_start, n->map_type);
+		if (p == NULL)
+			return (NULL);
+
 		n->map_start += p->map_size + m->map_size;
 		n->map_size -= (p->map_size + m->map_size);
 		p->map_prev = n->map_prev;
@@ -226,8 +230,11 @@ map_free(off_t start)
 	return (m->map_size - (start - m->map_start));
 }
 
-void
+int
 map_init(off_t size)
 {
 	mediamap = mkmap(0LL, size, MAP_TYPE_UNUSED);
+	if (mediamap == NULL)
+		return (-1);
+	return (0);
 }

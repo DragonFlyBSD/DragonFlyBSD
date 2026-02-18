@@ -645,7 +645,10 @@ gpt_open(const char *dev)
 		      (uintmax_t)(mediasz / secsz));
 	}
 
-	map_init(mediasz / secsz);
+	if (map_init(mediasz / secsz) == -1) {
+		warnx("%s: error: map initialization failed", device_name);
+		goto close;
+	}
 
 	if ((found = gpt_mbr(fd, 0LL)) == -1)
 		goto close;
