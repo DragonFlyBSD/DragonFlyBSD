@@ -113,6 +113,9 @@ convert_fstype(uint8_t fstype, uuid_t *uuid)
 	case FS_BSDFFS:
 		*uuid = (uuid_t)GPT_ENT_TYPE_DRAGONFLY_UFS1;
 		return 0;
+	case FS_MSDOS:
+		*uuid = (uuid_t)GPT_ENT_TYPE_MS_BASIC_DATA;
+		return 0;
 	case FS_VINUM:
 		*uuid = (uuid_t)GPT_ENT_TYPE_DRAGONFLY_VINUM;
 		return 0;
