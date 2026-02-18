@@ -291,6 +291,10 @@ migrate(int fd)
 	lbt = map_add(last - blocks, blocks, MAP_TYPE_GPT_SEC_TBL,
 	    tbl->map_data);
 	tpg = map_add(last, 1LL, MAP_TYPE_GPT_SEC_HDR, calloc(1, secsz));
+	if (lbt == NULL || tpg == NULL) {
+		warnx("%s: error: failed to create backup GPT", device_name);
+		return;
+	}
 
 	hdr = gpt->map_data;
 	memcpy(hdr->hdr_sig, GPT_HDR_SIG, sizeof(hdr->hdr_sig));
