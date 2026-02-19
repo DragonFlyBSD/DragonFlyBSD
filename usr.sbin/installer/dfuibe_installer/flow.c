@@ -488,10 +488,6 @@ state_configure_menu(struct i_fn_args *a)
 		    "a", "assign_hostname_domain",
 		    _("Configure hostname and domain"),
 		    _("Configure the hostname and domain for this system"), "",
-		    /*
-		    "a", "select_services", "Select Services",
-		    "Enable/Disable system services (servers, daemons, etc.)", "",
-		    */
 		    "a", "set_vidfont",
 		    _("Set console font"),
 		    _("Set how the characters on your video console look"), "",
@@ -516,8 +512,6 @@ state_configure_menu(struct i_fn_args *a)
 			fn_assign_ip(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "assign_hostname_domain") == 0) {
 			fn_assign_hostname_domain(a);
-		} else if (strcmp(dfui_response_get_action_id(r), "select_services") == 0) {
-			fn_select_services(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "set_kbdmap") == 0) {
 			fn_set_kbdmap(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "set_vidfont") == 0) {

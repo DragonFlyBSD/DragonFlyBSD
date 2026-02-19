@@ -56,7 +56,6 @@ void		 fn_get_passphrase(struct i_fn_args *, int);
 
 void 		 fn_root_passwd(struct i_fn_args *);
 void 		 fn_add_user(struct i_fn_args *);
-void		 fn_select_services(struct i_fn_args *);
 
 int		 mount_target_system(struct i_fn_args *);
 

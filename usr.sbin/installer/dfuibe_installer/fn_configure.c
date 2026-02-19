@@ -83,8 +83,6 @@
 struct config_vars	*rc_conf;
 struct config_vars	*resolv_conf;
 
-static const char	*yes_to_y(const char *);
-
 /** CONFIGURE FUNCTIONS **/
 
 #define	GECOS_NOT_ALLOWED	":,\\\""
@@ -1149,85 +1147,6 @@ fn_assign_ip(struct i_fn_args *a)
 		break;
 	default:
 		abort_backend();
-	}
-
-	dfui_form_free(f);
-	dfui_response_free(r);
-}
-
-static const char *
-yes_to_y(const char *value)
-{
-	return(strcasecmp(value, "YES") == 0 ? "Y" : "N");
-}
-
-void
-fn_select_services(struct i_fn_args *a)
-{
-	struct dfui_dataset *ds;
-	struct dfui_form *f;
-	struct dfui_response *r;
-
-	if (!config_vars_read(a, rc_conf, CONFIG_TYPE_SH, "%s%setc/rc.conf",
-		a->os_root, a->cfg_root)) {
-		inform(a->c, _("Couldn't read %s%setc/rc.conf."),
-		    a->os_root, a->cfg_root);
-		a->result = 0;
-		return;
-	}
-
-	f = dfui_form_create(
-	    "select_services",
-	    _("Select Services"),
-	    _("Please select which services you would like "
-	      "started at boot time."),
-	    "",
-
-	    "f", "syslogd", "syslogd",
-		_("System Logging Daemon"), "",
-		"p", "control", "checkbox",
-	    "f", "inetd", "inetd",
-		_("Internet Super-Server"), "",
-		"p", "control", "checkbox",
-	    "f", "named", "named",
-		_("BIND Name Server"), "",
-		"p", "control", "checkbox",
-	    "f", "ntpd", "ntpd",
-		_("Network Time Protocol Daemon"), "",
-		"p", "control", "checkbox",
-	    "f", "sshd", "sshd",
-		_("Secure Shell Daemon"), "",
-		"p", "control", "checkbox",
-
-	    "a", "ok", _("Enable/Disable Services"),
-	        "", "",
-	    "a", "cancel", _("Return to Utilities Menu"),
-		"", "",
-	        "p", "accelerator", "ESC",
-
-	    NULL
-	);
-
-	ds = dfui_dataset_new();
-	dfui_dataset_celldata_add(ds, "syslogd",
-	    yes_to_y(config_var_get(rc_conf, "syslogd_enable")));
-	dfui_dataset_celldata_add(ds, "inetd",
-	    yes_to_y(config_var_get(rc_conf, "inetd_enable")));
-	dfui_dataset_celldata_add(ds, "named",
-	    yes_to_y(config_var_get(rc_conf, "named_enable")));
-	dfui_dataset_celldata_add(ds, "ntpd",
-	    yes_to_y(config_var_get(rc_conf, "ntpd_enable")));
-	dfui_dataset_celldata_add(ds, "sshd",
-	    yes_to_y(config_var_get(rc_conf, "sshd_enable")));
-	dfui_form_dataset_add(f, ds);
-
-	if (!dfui_be_present(a->c, f, &r))
-		abort_backend();
-
-	if (strcmp(dfui_response_get_action_id(r), "cancel") == 0) {
-		dfui_form_free(f);
-		dfui_response_free(r);
-		return;
 	}
 
 	dfui_form_free(f);
