@@ -78,6 +78,7 @@
 #include "pathnames.h"
 
 struct config_vars	*rc_conf;
+struct config_vars	*resolv_conf;
 
 static const char	*yes_to_y(const char *);
 
@@ -790,15 +791,10 @@ fn_assign_hostname_domain(struct i_fn_args *a)
 	struct dfui_form *f;
 	struct dfui_response *r;
 	struct dfui_dataset *ds, *new_ds;
-	struct config_vars *resolv_conf;
 	const char *domain, *hostname;
 	char *fqdn, buf[MAXHOSTNAMELEN];
 
-	resolv_conf = config_vars_new();
-	config_vars_read(a, resolv_conf, CONFIG_TYPE_RESOLV,
-	    "%s%setc/resolv.conf", a->os_root, a->cfg_root);
 	domain = config_var_get(resolv_conf, "search");
-
 	snprintf(buf, sizeof(buf), "%s", config_var_get(rc_conf, "hostname"));
 	strip_domain(buf, domain);
 	hostname = buf;
@@ -843,11 +839,8 @@ fn_assign_hostname_domain(struct i_fn_args *a)
 		free(fqdn);
 
 		config_var_set(resolv_conf, "search", domain);
-		config_vars_write(resolv_conf, CONFIG_TYPE_RESOLV,
-		    "%s%setc/resolv.conf", a->os_root, a->cfg_root);
 	}
 
-	config_vars_free(resolv_conf);
 	dfui_form_free(f);
 	dfui_response_free(r);
 }
@@ -858,7 +851,6 @@ fn_assign_ip(struct i_fn_args *a)
 	FILE *p;
 	struct commands *cmds;
 	struct command *cmd;
-	struct config_vars *resolv_conf;
 	struct dfui_dataset *ds, *new_ds;
 	struct dfui_form *f;
 	struct dfui_action *k;
@@ -869,7 +861,7 @@ fn_assign_ip(struct i_fn_args *a)
 	char *word;
 	char interface[256];
 	char line[256], buf[MAXHOSTNAMELEN];
-	int write_config = 0;
+	int write_config;
 
 	/*
 	 * Get interface list.
@@ -913,11 +905,7 @@ fn_assign_ip(struct i_fn_args *a)
 
 	strlcpy(interface, dfui_response_get_action_id(r), 256);
 
-	resolv_conf = config_vars_new();
-	config_vars_read(a, resolv_conf, CONFIG_TYPE_RESOLV,
-	    "%s%setc/resolv.conf", a->os_root, a->cfg_root);
 	domain = config_var_get(resolv_conf, "search");
-
 	snprintf(buf, sizeof(buf), "%s", config_var_get(rc_conf, "hostname"));
 	strip_domain(buf, domain);
 	hostname = buf;
@@ -928,8 +916,7 @@ fn_assign_ip(struct i_fn_args *a)
 	    "an IP address from a nearby DHCP server.\n\n"
 	    "Would you like to enable DHCP for %s?"), interface)) {
 	case 1:
-		asprintf(&string, "ifconfig_%s", interface);
-
+		write_config = 0;
 		cmds = commands_new();
 		cmd = command_add(cmds, "%s%s dhclient",
 		    a->os_root, cmd_name(a, "KILLALL"));
@@ -958,8 +945,12 @@ fn_assign_ip(struct i_fn_args *a)
 			}
 		}
 		commands_free(cmds);
-		config_var_set(rc_conf, string, "DHCP");
-		free(string);
+
+		if (write_config) {
+			asprintf(&string, "ifconfig_%s", interface);
+			config_var_set(rc_conf, string, "DHCP");
+			free(string);
+		}
 		break;
 	case 2:
 		dfui_form_free(f);
@@ -1005,63 +996,66 @@ fn_assign_ip(struct i_fn_args *a)
 		if (!dfui_be_present(a->c, f, &r))
 			abort_backend();
 
-		if (strcmp(dfui_response_get_action_id(r), "ok") == 0) {
-			new_ds = dfui_response_dataset_get_first(r);
+		if (strcmp(dfui_response_get_action_id(r), "cancel") == 0)
+			break;
 
-			interface_ip = dfui_dataset_get_value(
-						new_ds, "interface_ip");
-			interface_netmask = dfui_dataset_get_value(
-						new_ds, "interface_netmask");
-			defaultrouter = dfui_dataset_get_value(
-						new_ds, "defaultrouter");
-			dns_resolver = dfui_dataset_get_value(
-						new_ds, "dns_resolver");
-			hostname = dfui_dataset_get_value(
-						new_ds, "hostname");
-			domain = dfui_dataset_get_value(
-						new_ds, "domain");
+		new_ds = dfui_response_dataset_get_first(r);
 
+		interface_ip = dfui_dataset_get_value(
+					new_ds, "interface_ip");
+		interface_netmask = dfui_dataset_get_value(
+					new_ds, "interface_netmask");
+		defaultrouter = dfui_dataset_get_value(
+					new_ds, "defaultrouter");
+		dns_resolver = dfui_dataset_get_value(
+					new_ds, "dns_resolver");
+		hostname = dfui_dataset_get_value(
+					new_ds, "hostname");
+		domain = dfui_dataset_get_value(
+					new_ds, "domain");
+
+		cmds = commands_new();
+		command_add(cmds, "%s%s %s %s netmask %s",
+		    a->os_root, cmd_name(a, "IFCONFIG"),
+		    interface, interface_ip, interface_netmask);
+		command_add(cmds, "%s%s add default %s",
+		    a->os_root, cmd_name(a, "ROUTE"),
+		    defaultrouter);
+
+		write_config = 0;
+		if (commands_execute(a, cmds)) {
+			/* XXX sleep(3); */
+			show_ifconfig(a->c, interface);
+			write_config = 1;
+		} else {
+			switch (dfui_be_present_dialog(a->c,
+			    _("ifconfig Failure"),
+			    _("Yes|No"),
+			    _("Warning: could not assign IP address "
+			      "or default gateway.\n\n"
+			      "Write the corresponding settings to "
+			      "rc.conf anyway?"))) {
+			case 1:
+				write_config = 1;
+				break;
+			case 2:
+				write_config = 0;
+				break;
+			default:
+				abort_backend();
+			}
+		}
+		commands_free(cmds);
+
+		if (write_config) {
 			asprintf(&string, "ifconfig_%s", interface);
 			asprintf(&string1, "inet %s netmask %s",
 			    interface_ip, interface_netmask);
-
-			cmds = commands_new();
-			command_add(cmds, "%s%s %s %s netmask %s",
-			    a->os_root, cmd_name(a, "IFCONFIG"),
-			    interface, interface_ip, interface_netmask);
-			command_add(cmds, "%s%s add default %s",
-			    a->os_root, cmd_name(a, "ROUTE"),
-			    defaultrouter);
-
-			if (commands_execute(a, cmds)) {
-				/* XXX sleep(3); */
-				show_ifconfig(a->c, interface);
-				write_config = 1;
-			} else {
-				switch (dfui_be_present_dialog(a->c,
-				    _("ifconfig Failure"),
-				    _("Yes|No"),
-				    _("Warning: could not assign IP address "
-				      "or default gateway.\n\n"
-				      "Write the corresponding settings to "
-				      "rc.conf anyway?"))) {
-				case 1:
-					write_config = 1;
-					break;
-				case 2:
-					write_config = 0;
-					break;
-				default:
-					abort_backend();
-				}
-			}
-			commands_free(cmds);
-
 			config_var_set(rc_conf, string, string1);
-			config_var_set(rc_conf, "defaultrouter", defaultrouter);
-
 			free(string);
 			free(string1);
+
+			config_var_set(rc_conf, "defaultrouter", defaultrouter);
 
 			if (strlen(domain) == 0)
 				asprintf(&string, "%s", hostname);
@@ -1077,16 +1071,6 @@ fn_assign_ip(struct i_fn_args *a)
 	default:
 		abort_backend();
 	}
-
-	if (write_config) {
-		/*
-		 * Save out changes to /etc/rc.conf and /etc/resolv.conf.
-		 */
-		config_vars_write(resolv_conf, CONFIG_TYPE_RESOLV,
-		    "%s%setc/resolv.conf", a->os_root, a->cfg_root);
-	}
-
-	config_vars_free(resolv_conf);
 
 	dfui_form_free(f);
 	dfui_response_free(r);
