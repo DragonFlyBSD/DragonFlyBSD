@@ -81,6 +81,34 @@ int use_hammer;		/* 0=UFS 1=HAMMER 2=HAMMER2 */
 int use_uefi;
 int during_install;
 
+/*** LOCAL FUNCTIONS ***/
+
+static void
+save_vars(struct i_fn_args *a)
+{
+	int ok;
+
+	/* Update rc.conf and resolv.conf. */
+	ok = config_vars_write(rc_conf, CONFIG_TYPE_SH,
+			       "%s%setc/rc.conf", a->os_root, a->cfg_root);
+	if (!ok) {
+		inform(a->c, _("Couldn't write %s%setc/rc.conf."),
+		       a->os_root, a->cfg_root);
+	}
+	ok = config_vars_write(resolv_conf, CONFIG_TYPE_RESOLV,
+			       "%s%setc/resolv.conf", a->os_root, a->cfg_root);
+	if (!ok) {
+		inform(a->c, _("Couldn't write %s%setc/resolv.conf."),
+		       a->os_root, a->cfg_root);
+	}
+
+	/* Clear out the in-memory config vars. */
+	config_vars_free(rc_conf);
+	config_vars_free(resolv_conf);
+	rc_conf = config_vars_new();
+	resolv_conf = config_vars_new();
+}
+
 /*** STATES ***/
 
 /*
@@ -391,8 +419,6 @@ state_configure_menu(struct i_fn_args *a)
 		}
 	}
 
-	a->cfg_root = "mnt";
-
 	if (during_install == 0) {
 		switch (dfui_be_present_dialog(a->c, _("Select file system"),
 		    _("HAMMER2|HAMMER1|UFS|Return to Welcome Menu"),
@@ -421,11 +447,14 @@ state_configure_menu(struct i_fn_args *a)
 		}
 	}
 
+	a->cfg_root = "mnt";
 	if (!mount_target_system(a)) {
 		inform(a->c, _("Target system could not be mounted."));
 		state = state_welcome;
 		return;
 	}
+
+	a->cfg_root = "mnt/";
 
 	snprintf(msg_buf[0], sizeof(msg_buf[0]),
 	    _("The options on this menu allow you to configure a "
@@ -479,8 +508,6 @@ state_configure_menu(struct i_fn_args *a)
 		if (!dfui_be_present(a->c, f, &r))
 			abort_backend();
 
-		/* XXX set up a */
-		a->cfg_root = "mnt/";
 		if (strcmp(dfui_response_get_action_id(r), "root_passwd") == 0) {
 			fn_root_passwd(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "add_user") == 0) {
@@ -510,17 +537,7 @@ state_configure_menu(struct i_fn_args *a)
 		dfui_response_free(r);
 	}
 
-	/*
-	 * Before unmounting the system, write out any changes to rc.conf.
-	 */
-	config_vars_write(rc_conf, CONFIG_TYPE_SH,
-	    "%s%setc/rc.conf", a->os_root, a->cfg_root);
-
-	/*
-	 * Clear out configuration variable table in memory.
-	 */
-	config_vars_free(rc_conf);
-	rc_conf = config_vars_new();
+	save_vars(a);
 
 	/*
 	 * Finally, unmount the system we mounted on /mnt and remove mappings.
@@ -598,6 +615,8 @@ state_environment_menu(struct i_fn_args *a)
 	int done = 0;
 	char msg_buf[2][1024];
 
+	a->cfg_root = "";
+
 	snprintf(msg_buf[0], sizeof(msg_buf[0]),
 	    _("On this menu you will find utilities to help you "
 	    "set up your Live CD environment.\n\nNote "
@@ -651,8 +670,6 @@ state_environment_menu(struct i_fn_args *a)
 		if (!dfui_be_present(a->c, f, &r))
 			abort_backend();
 
-		/* Set up a */
-		a->cfg_root = "";
 		if (strcmp(dfui_response_get_action_id(r), "set_kbdmap") == 0) {
 			fn_set_kbdmap(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "set_vidfont") == 0) {
@@ -675,6 +692,8 @@ state_environment_menu(struct i_fn_args *a)
 		dfui_form_free(f);
 		dfui_response_free(r);
 	}
+
+	save_vars(a);
 }
 
 void
@@ -1521,6 +1540,7 @@ flow(int transport, char *rendezvous, char *os_root,
 	struct i_fn_args *a;
 
 	rc_conf = config_vars_new();
+	resolv_conf = config_vars_new();
 
 	if ((a = i_fn_args_new(os_root, DEFAULT_INSTALLER_TEMP,
 			       DEFAULT_CMDNAMES_FILE, transport,
@@ -1552,6 +1572,7 @@ flow(int transport, char *rendezvous, char *os_root,
 		state(a);
 
 	config_vars_free(rc_conf);
+	config_vars_free(resolv_conf);
 
 	i_fn_args_free(a);
 

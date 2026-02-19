@@ -769,10 +769,14 @@ fn_install_os(struct i_fn_args *a)
 	cmds = commands_new();
 
 	if (a->result) {
-		config_vars_write(rc_conf, CONFIG_TYPE_SH, "%smnt/etc/rc.conf",
-		    a->os_root);
+		config_vars_write(rc_conf, CONFIG_TYPE_SH,
+		    "%smnt/etc/rc.conf", a->os_root);
+		config_vars_write(resolv_conf, CONFIG_TYPE_RESOLV,
+		    "%smnt/etc/resolv.conf", a->os_root);
 		config_vars_free(rc_conf);
+		config_vars_free(resolv_conf);
 		rc_conf = config_vars_new();
+		resolv_conf = config_vars_new();
 	}
 
 	/*
