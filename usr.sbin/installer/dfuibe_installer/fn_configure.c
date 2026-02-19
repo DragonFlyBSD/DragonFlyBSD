@@ -39,8 +39,8 @@
  * $Id: fn_configure.c,v 1.82 2005/03/25 05:24:00 cpressey Exp $
  */
 
+#include <sys/param.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 
 #include <ctype.h>
 #include <dirent.h>
@@ -767,6 +767,23 @@ fn_assign_datetime(struct i_fn_args *a)
 	}
 }
 
+static void
+strip_domain(char *hostname, const char *domain)
+{
+	size_t hlen, dlen;
+
+	if (domain == NULL || domain[0] == '\0')
+		return;
+
+	hlen = strlen(hostname);
+	dlen = strlen(domain);
+	if (hlen > dlen + 1 &&
+	    hostname[hlen - dlen - 1] == '.' &&
+	    strcmp(hostname + hlen - dlen, domain) == 0) {
+		hostname[hlen - dlen - 1] = '\0';
+	}
+}
+
 void
 fn_assign_hostname_domain(struct i_fn_args *a)
 {
@@ -775,7 +792,16 @@ fn_assign_hostname_domain(struct i_fn_args *a)
 	struct dfui_dataset *ds, *new_ds;
 	struct config_vars *resolv_conf;
 	const char *domain, *hostname;
-	char *fqdn;
+	char *fqdn, buf[MAXHOSTNAMELEN];
+
+	resolv_conf = config_vars_new();
+	config_vars_read(a, resolv_conf, CONFIG_TYPE_RESOLV,
+	    "%s%setc/resolv.conf", a->os_root, a->cfg_root);
+	domain = config_var_get(resolv_conf, "search");
+
+	snprintf(buf, sizeof(buf), "%s", config_var_get(rc_conf, "hostname"));
+	strip_domain(buf, domain);
+	hostname = buf;
 
 	f = dfui_form_create(
 	    "set_hostname_domain",
@@ -796,8 +822,8 @@ fn_assign_hostname_domain(struct i_fn_args *a)
 	);
 
 	ds = dfui_dataset_new();
-	dfui_dataset_celldata_add(ds, "hostname", "");
-	dfui_dataset_celldata_add(ds, "domain", "");
+	dfui_dataset_celldata_add(ds, "hostname", hostname);
+	dfui_dataset_celldata_add(ds, "domain", domain);
 	dfui_form_dataset_add(f, ds);
 
 	if (!dfui_be_present(a->c, f, &r))
@@ -813,18 +839,15 @@ fn_assign_hostname_domain(struct i_fn_args *a)
 		else
 			asprintf(&fqdn, "%s.%s", hostname, domain);
 
-		resolv_conf = config_vars_new();
-
 		config_var_set(rc_conf, "hostname", fqdn);
+		free(fqdn);
+
 		config_var_set(resolv_conf, "search", domain);
 		config_vars_write(resolv_conf, CONFIG_TYPE_RESOLV,
 		    "%s%setc/resolv.conf", a->os_root, a->cfg_root);
-
-		config_vars_free(resolv_conf);
-
-		free(fqdn);
 	}
 
+	config_vars_free(resolv_conf);
 	dfui_form_free(f);
 	dfui_response_free(r);
 }
@@ -845,7 +868,7 @@ fn_assign_ip(struct i_fn_args *a)
 	char *string, *string1;
 	char *word;
 	char interface[256];
-	char line[256];
+	char line[256], buf[MAXHOSTNAMELEN];
 	int write_config = 0;
 
 	/*
@@ -891,6 +914,13 @@ fn_assign_ip(struct i_fn_args *a)
 	strlcpy(interface, dfui_response_get_action_id(r), 256);
 
 	resolv_conf = config_vars_new();
+	config_vars_read(a, resolv_conf, CONFIG_TYPE_RESOLV,
+	    "%s%setc/resolv.conf", a->os_root, a->cfg_root);
+	domain = config_var_get(resolv_conf, "search");
+
+	snprintf(buf, sizeof(buf), "%s", config_var_get(rc_conf, "hostname"));
+	strip_domain(buf, domain);
+	hostname = buf;
 
 	switch (dfui_be_present_dialog(a->c, _("Use DHCP?"),
 	    _("Use DHCP|Configure Manually"),
@@ -963,12 +993,13 @@ fn_assign_ip(struct i_fn_args *a)
 		);
 
 		ds = dfui_dataset_new();
+		dfui_dataset_celldata_add(ds, "interface_ip", "");
 		dfui_dataset_celldata_add(ds, "interface_netmask", "");
 		dfui_dataset_celldata_add(ds, "defaultrouter", "");
-		dfui_dataset_celldata_add(ds, "dns_resolver", "");
-		dfui_dataset_celldata_add(ds, "hostname", "");
-		dfui_dataset_celldata_add(ds, "domain", "");
-		dfui_dataset_celldata_add(ds, "interface_ip", "");
+		dfui_dataset_celldata_add(ds, "dns_resolver",
+		    config_var_get(resolv_conf, "nameserver"));
+		dfui_dataset_celldata_add(ds, "hostname", hostname);
+		dfui_dataset_celldata_add(ds, "domain", domain);
 		dfui_form_dataset_add(f, ds);
 
 		if (!dfui_be_present(a->c, f, &r))
