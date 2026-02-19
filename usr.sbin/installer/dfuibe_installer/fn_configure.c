@@ -1063,7 +1063,10 @@ fn_assign_ip(struct i_fn_args *a)
 			free(string);
 			free(string1);
 
-			asprintf(&string, "%s.%s", hostname, domain);
+			if (strlen(domain) == 0)
+				asprintf(&string, "%s", hostname);
+			else
+				asprintf(&string, "%s.%s", hostname, domain);
 			config_var_set(rc_conf, "hostname", string);
 			free(string);
 
