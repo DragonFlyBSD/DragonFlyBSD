@@ -166,21 +166,15 @@ config_vars_write(const struct config_vars *cvs, int config_type,
 }
 
 /*
- * Read variables from a file.
- * Returns 1 if the variables could be read successfully, 0 if not.
+ * Read variables from CONFIG_TYPE_SH file.
  */
-int
-config_vars_read(struct i_fn_args *a, struct config_vars *cvs,
-		 int config_type __unused, const char *fmt, ...)
+static int
+config_vars_read_sh(struct i_fn_args *a, struct config_vars *cvs,
+		    const char *filename)
 {
 	struct commands *cmds;
-	char *filename, *tmp_filename, line[1024], *value;
+	char *tmp_filename, line[1024], *value;
 	FILE *f, *script;
-	va_list args;
-
-	va_start(args, fmt);
-	vasprintf(&filename, fmt, args);
-	va_end(args);
 
 	asprintf(&tmp_filename, "%sextract_vars", a->tmp);
 	script = fopen(tmp_filename, "w");
@@ -224,19 +218,107 @@ config_vars_read(struct i_fn_args *a, struct config_vars *cvs,
 	free(tmp_filename);
 	if (f == NULL)
 		return(0);
-	while (fgets(line, 1024, f) != NULL) {
-		if (strlen(line) > 0)
-			line[strlen(line) - 1] = '\0';
+	while (fgets(line, sizeof(line), f) != NULL) {
+		/* strip trailing newline */
+		line[strcspn(line, "\n")] = '\0';
 		/* split line at first = */
 		for (value = line; *value != '=' && *value != '\0'; value++)
 			;
 		if (*value == '\0')
-			break;
-		*value = '\0';
-		value++;
+			continue;
+		*value++ = '\0';
 		config_var_set(cvs, line, value);
 	}
 	fclose(f);
 
 	return(1);
+}
+
+/*
+ * Read variables from CONFIG_TYPE_RESOLV file.
+ * XXX: don't support repeated keys, e.g., multiple 'nameserver'!
+ */
+static int
+config_vars_read_resolv(struct i_fn_args *a, struct config_vars *cvs,
+			const char *filename)
+{
+	FILE *f;
+	char *fullpath, *key, *value, *end;
+	char line[1024];
+
+	asprintf(&fullpath, "%s%s", a->os_root, filename);
+	f = fopen(fullpath, "r");
+	free(fullpath);
+	if (f == NULL)
+		return(0);
+
+	while (fgets(line, sizeof(line), f) != NULL) {
+		/* strip trailing whitespace */
+		end = line + strlen(line);
+		while (end > line && isspace((unsigned char)*(end - 1)))
+			end--;
+		*end = '\0';
+
+		/* Skip leading whitespace */
+		key = line;
+		while (isspace((unsigned char)*key))
+			key++;
+
+		/* Ignore comments and blank lines */
+		if (*key == '\0' || *key == '#')
+			continue;
+
+		/* Locate end of key */
+		value = key;
+		while (*value != '\0' &&
+		       !isspace((unsigned char)*value))
+			value++;
+		if (*value == '\0')
+			continue;
+
+		*value++ = '\0';
+
+		/* Skip whitespace before value */
+		while (isspace((unsigned char)*value))
+			value++;
+		if (*value == '\0')
+			continue;
+
+		config_var_set(cvs, key, value);
+	}
+
+	fclose(f);
+	return(1);
+}
+
+/*
+ * Read variables from a file.
+ * Returns 1 if the variables could be read successfully, 0 if not.
+ */
+int
+config_vars_read(struct i_fn_args *a, struct config_vars *cvs,
+		 int config_type, const char *fmt, ...)
+{
+	char *filename;
+	va_list args;
+	int rv;
+
+	va_start(args, fmt);
+	vasprintf(&filename, fmt, args);
+	va_end(args);
+
+	switch (config_type) {
+	case CONFIG_TYPE_SH:
+		rv = config_vars_read_sh(a, cvs, filename);
+		break;
+	case CONFIG_TYPE_RESOLV:
+		rv = config_vars_read_resolv(a, cvs, filename);
+		break;
+	default:
+		rv = 0;
+		break;
+	}
+
+	free(filename);
+	return(rv);
 }
