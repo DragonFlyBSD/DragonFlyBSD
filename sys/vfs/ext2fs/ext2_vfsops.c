@@ -1482,6 +1482,8 @@ ext2_vptofh(struct vnode *vp, struct fid *fhp)
 {
 	struct inode *ip;
 	struct ufid *ufhp;
+	_Static_assert(sizeof(struct ufid) <= sizeof(struct fid),
+		"struct ufid cannot be larger than struct fid");
 
 	ip = VTOI(vp);
 	ufhp = (struct ufid *)fhp;
