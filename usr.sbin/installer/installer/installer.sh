@@ -144,10 +144,7 @@ installer_start()
 		RESULT=$?
 		;;
 	Xcursesvty)
-		ps auwwwxxx > /tmp/ps.txt
-		if grep -q dfuife_curses /tmp/ps.txt; then
-			# Frontend is already running.
-		else
+		if ! pgrep -qx dfuife_curses; then
 			ESCDELAY=$pfi_curses_escdelay \
 			    /usr/sbin/dfuife_curses \
 				-r $RENDEZVOUS \
@@ -155,7 +152,6 @@ installer_start()
 				-b /usr/share/installer/fred.txt \
 			    2>/dev/ttyv0 <$TTY >$TTY &
 		fi
-		rm -f /tmp/ps.txt
 		sleep 1
 		vidcontrol -s 2 </dev/ttyv0
 		$pfi_backend \
@@ -168,10 +164,7 @@ installer_start()
 		vidcontrol -s 1 </dev/ttyv0
 		;;
 	Xcurseslog)
-		ps auwwwxxx > /tmp/ps.txt
-		if grep -q dfuife_curses /tmp/ps.txt; then
-			# Frontend is already running.
-		else
+		if ! pgrep -qx dfuife_curses; then
 			ESCDELAY=$pfi_curses_escdelay \
 			    /usr/sbin/dfuife_curses \
 				-r $RENDEZVOUS \
@@ -179,7 +172,6 @@ installer_start()
 				-b /usr/share/installer/fred.txt \
 			    2>/tmp/dfuife_curses.log <$TTY >$TTY &
 		fi
-		rm -f /tmp/ps.txt
 		sleep 1
 		$pfi_backend \
 		    -o $SOURCE_DIR \
@@ -191,10 +183,7 @@ installer_start()
 		killall -q dfuife_curses
 		;;
 	Xcursesx11)
-		ps auwwwxxx > /tmp/ps.txt
-		if grep -q dfuife_curses /tmp/ps.txt; then
-			echo "Frontend is already running"
-		else
+		if ! pgrep -qx dfuife_curses; then
 			ESCDELAY=$pfi_curses_escdelay \
 			/usr/sbin/dfuife_curses \
 			-r $RENDEZVOUS \
@@ -202,7 +191,6 @@ installer_start()
 			-b /usr/share/installer/fred.txt \
 			>$TTY_INST <$TTY_INST 2>&1 &
 		fi
-		rm -f /tmp/ps.txt
 		sleep 1
 		$pfi_backend \
 		    -o $SOURCE_DIR \
@@ -273,12 +261,7 @@ else
 	SOURCE_DIR=/
 fi
 
-ps auwwwxxx > /tmp/ps.txt
-if grep -q dfuibe_installer /tmp/ps.txt; then
-	# Installer is already running. Log in normally.
-	rm -f /tmp/ps.txt
-else
-	rm -f /tmp/ps.txt
+if ! pgrep -qx dfuibe_installer; then
 	installer_start
 fi
 
