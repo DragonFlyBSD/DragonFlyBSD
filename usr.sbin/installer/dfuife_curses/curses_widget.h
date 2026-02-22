@@ -106,6 +106,7 @@ int			 curses_textbox_delete_char(struct curses_widget *);
 int			 curses_textbox_set_text(struct curses_widget *, const char *);
 
 int			 curses_checkbox_toggle(struct curses_widget *);
+int			 curses_checkbox_set(struct curses_widget *, const char *);
 
 int			 curses_progress_spin(struct curses_widget *);
 

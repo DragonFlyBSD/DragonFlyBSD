@@ -100,9 +100,9 @@ struct dfui_option	*dfui_decode_option(struct aura_buffer *);
 struct dfui_option	*dfui_decode_options(struct aura_buffer *);
 
 struct dfui_action	*dfui_decode_action(struct aura_buffer *);
-struct dfui_action 	*dfui_decode_actions(struct aura_buffer *);
+struct dfui_action	*dfui_decode_actions(struct aura_buffer *);
 
-struct dfui_form 	*dfui_decode_form(struct aura_buffer *);
+struct dfui_form	*dfui_decode_form(struct aura_buffer *);
 
 struct dfui_response	*dfui_decode_response(struct aura_buffer *);
 

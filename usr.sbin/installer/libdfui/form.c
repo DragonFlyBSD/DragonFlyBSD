@@ -230,6 +230,8 @@ dfui_field_new(const char *id, struct dfui_info *info)
 	fi->option_head = NULL;
 	fi->property_head = NULL;
 	fi->next = NULL;
+	fi->callback.func = NULL;
+	fi->callback.userdata = NULL;
 
 	dfui_field_property_set(fi, "editable", "true");
 
@@ -327,6 +329,24 @@ dfui_field_property_is(const struct dfui_field *fi, const char *name, const char
 	if ((h = dfui_property_find(fi->property_head, name)) == NULL)
 		return(0);
 	return(!strcmp(h->value, value));
+}
+
+void
+dfui_field_set_callback(struct dfui_field *fi, dfui_callback_field_changed func,
+			void *userdata)
+{
+	if (fi == NULL)
+		return;
+	fi->callback.func = func;
+	fi->callback.userdata = userdata;
+}
+
+int
+dfui_field_has_callback(const struct dfui_field *fi)
+{
+	if (fi == NULL)
+		return(0);
+	return(fi->callback.func != NULL);
 }
 
 /*** OPTIONS ***/
@@ -836,6 +856,26 @@ dfui_form_is_extensible(const struct dfui_form *f)
 	return(f->extensible);
 }
 
+int
+dfui_form_trigger_callbacks(struct dfui_form *f, const char *field_id,
+			    const char *new_value)
+{
+	struct dfui_field *fi;
+
+	for (fi = f->field_head; fi != NULL; fi = fi->next) {
+		if (strcmp(fi->id, field_id) == 0)
+			break;
+	}
+	if (fi == NULL || fi->callback.func == NULL)
+		return(0);
+
+	dfui_dataset_set_value(f->dataset_head, field_id, new_value);
+
+	dfui_debug("triggered callbacks: field_id=`%s', new_value=`%s'\n",
+		   field_id, new_value);
+	return(fi->callback.func(f, fi, new_value, fi->callback.userdata));
+}
+
 /*** CELLDATAS ***/
 
 struct dfui_celldata *
@@ -916,6 +956,17 @@ dfui_celldata_get_value(const struct dfui_celldata *cd)
 	} else {
 		return("");
 	}
+}
+
+int
+dfui_celldata_set_value(struct dfui_celldata *cd, const char *value)
+{
+	if (cd == NULL)
+		return(-1);
+
+	free(cd->value);
+	cd->value = aura_strdup(value);
+	return(0);
 }
 
 /*** DATASETS ***/
@@ -1036,6 +1087,18 @@ char *
 dfui_dataset_dup_value(const struct dfui_dataset *ds, const char *id)
 {
 	return(aura_strdup(dfui_dataset_get_value(ds, id)));
+}
+
+int
+dfui_dataset_set_value(struct dfui_dataset *ds, const char *id, const char *value)
+{
+	struct dfui_celldata *cd;
+
+	if (ds == NULL)
+		return(-1);
+
+	cd = dfui_dataset_celldata_find(ds, id);
+	return(dfui_celldata_set_value(cd, value));
 }
 
 /*** RESPONSES ***/

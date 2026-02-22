@@ -84,6 +84,7 @@ typedef	int		dfui_err_t;
 #define DFUI_BE_MSG_PROG_END	'e'	/* stop showing the progress bar */
 
 #define DFUI_BE_MSG_SET_GLOBAL	'G'	/* set a global setting in the f/e */
+#define DFUI_BE_MSG_FIELD_CHANGED_ACK 'F'	/* ACK field change, return complete dataset */
 
 #define DFUI_FE_MSG_READY	'r'	/* send me a form or something */
 
@@ -91,6 +92,7 @@ typedef	int		dfui_err_t;
 #define DFUI_FE_MSG_CONTINUE	'c'	/* nothing stopping a progress bar */
 #define DFUI_FE_MSG_CANCEL	'C'	/* user cancelled a progress bar */
 #define DFUI_FE_MSG_ABORT	'X'	/* something catastrophic (^C?) */
+#define DFUI_FE_MSG_FIELD_CHANGED 'f'	/* field value changed */
 
 /*
  * STRUCTURE PROTOTYPES
@@ -104,10 +106,26 @@ struct dfui_dataset;
 struct dfui_celldata;
 struct dfui_form;
 struct dfui_field;
+struct dfui_callback;
 struct dfui_option;
 struct dfui_action;
 struct dfui_response;
 struct dfui_progress;
+
+/*
+ * Callback function type for FIELD_CHANGED event.
+ * Called on backend when frontend reports field value change.
+ *
+ * Returns:
+ *   0 = success (accept change)
+ *   -1 = error (reject change, show error to user)
+ */
+typedef int (*dfui_callback_field_changed)(
+    struct dfui_form *form,
+    struct dfui_field *field,
+    const char *new_value,
+    void *userdata
+);
 
 /*
  * STRUCTURE DEFINITIONS
@@ -168,6 +186,11 @@ struct dfui_property {
 	char *value;
 };
 
+struct dfui_callback {
+	dfui_callback_field_changed func;
+	void *userdata;
+};
+
 /* Form objects */
 
 struct dfui_form {
@@ -187,6 +210,7 @@ struct dfui_field {
 	struct dfui_field *next;
 	struct dfui_option *option_head;
 	struct dfui_property *property_head;
+	struct dfui_callback callback;
 };
 
 struct dfui_option {
@@ -225,6 +249,7 @@ struct dfui_payload {
 	struct dfui_form *form;
 	struct dfui_progress *progress;
 	struct dfui_property *global_setting;
+	struct dfui_dataset *datasets;
 };
 
 #endif /* NEEDS_DFUI_STRUCTURE_DEFINITIONS */
@@ -262,6 +287,7 @@ struct dfui_celldata		*dfui_celldata_find(struct dfui_celldata *, const char *);
 struct dfui_celldata		*dfui_celldata_get_next(const struct dfui_celldata *);
 const char *			 dfui_celldata_get_field_id(const struct dfui_celldata *);
 const char *			 dfui_celldata_get_value(const struct dfui_celldata *);
+int				 dfui_celldata_set_value(struct dfui_celldata *, const char *);
 
 struct dfui_dataset		*dfui_dataset_new(void);
 struct dfui_dataset		*dfui_dataset_dup(const struct dfui_dataset *);
@@ -274,6 +300,8 @@ struct dfui_celldata		*dfui_dataset_celldata_find(const struct dfui_dataset *, c
 struct dfui_dataset		*dfui_dataset_get_next(const struct dfui_dataset *);
 const char			*dfui_dataset_get_value(const struct dfui_dataset *, const char *);
 char				*dfui_dataset_dup_value(const struct dfui_dataset *, const char *);
+int				 dfui_dataset_set_value(struct dfui_dataset *,
+					const char *, const char *);
 
 struct dfui_field		*dfui_field_new(const char *, struct dfui_info *);
 void				 dfui_field_free(struct dfui_field *);
@@ -286,6 +314,9 @@ int				 dfui_field_property_is(const struct dfui_field *, const char *, const ch
 struct dfui_field		*dfui_field_get_next(const struct dfui_field *);
 const char			*dfui_field_get_id(const struct dfui_field *);
 struct dfui_info		*dfui_field_get_info(const struct dfui_field *);
+void				 dfui_field_set_callback(struct dfui_field *,
+					dfui_callback_field_changed func, void *);
+int				 dfui_field_has_callback(const struct dfui_field *);
 
 struct dfui_option		*dfui_option_new(const char *);
 void				 dfui_option_free(struct dfui_option *);
@@ -334,6 +365,8 @@ void				 dfui_form_set_multiple(struct dfui_form *, int);
 int				 dfui_form_is_multiple(const struct dfui_form *);
 void				 dfui_form_set_extensible(struct dfui_form *, int);
 int				 dfui_form_is_extensible(const struct dfui_form *);
+int				 dfui_form_trigger_callbacks(struct dfui_form *,
+					const char *, const char *);
 
 struct dfui_response		*dfui_response_new(const char *, const char *);
 void				 dfui_response_free(struct dfui_response *);
@@ -358,6 +391,7 @@ void				 dfui_payload_free(struct dfui_payload *);
 char				 dfui_payload_get_msg_type(const struct dfui_payload *);
 struct dfui_form		*dfui_payload_get_form(const struct dfui_payload *);
 struct dfui_progress		*dfui_payload_get_progress(const struct dfui_payload *);
+struct dfui_dataset		*dfui_payload_get_datasets(const struct dfui_payload *);
 
 /*
  * PROTOCOL
@@ -399,6 +433,7 @@ dfui_err_t		dfui_fe_disconnect(struct dfui_connection *);
 
 dfui_err_t		dfui_fe_receive(struct dfui_connection *, char *, void **);
 struct dfui_payload    *dfui_fe_receive_payload(struct dfui_connection *);
+dfui_err_t		dfui_fe_send(struct dfui_connection *, char, struct aura_buffer *);
 dfui_err_t		dfui_fe_submit(struct dfui_connection *, struct dfui_response *);
 dfui_err_t		dfui_fe_progress_continue(struct dfui_connection *);
 dfui_err_t		dfui_fe_progress_cancel(struct dfui_connection *);

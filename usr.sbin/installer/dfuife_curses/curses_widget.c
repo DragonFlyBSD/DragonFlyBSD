@@ -435,6 +435,17 @@ curses_checkbox_toggle(struct curses_widget *w)
 	return(1);
 }
 
+int
+curses_checkbox_set(struct curses_widget *w, const char *value)
+{
+	if (value == NULL || value[0] == '\0')
+		return(0);
+	w->amount = (value[0] == 'Y' ? 1 : 0);
+	curses_widget_draw(w);
+	curses_form_refresh(w->form);
+	return(1);
+}
+
 /*** PROGRESS WIDGETS ***/
 
 char spinny[5] = "/-\\|";
