@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
 .\"
-.Dd February 17, 2026
+.Dd February 22, 2026
 .Dt GPT 8
 .Os
 .Sh NAME
@@ -550,11 +550,13 @@ To print the contents of the GPT:
 .Pp
 .Dl "gpt show da1"
 .Ss Boot Setup
-To setup a disk using GPT for UEFI booting, the steps below can be used.
+To setup a disk using GPT for UEFI booting, the following examples may be used.
 Adjust the partition scheme and sizes to your needs.
 .Pp
 .Sy WARNING!
 Any previous data on disk installed to will be deleted.
+.Pp
+This example only uses GPT partitions.
 .Bd -literal -offset indent
 # Setup disk partitions
 gpt create -f da1		# WARNING! DATA WILL BE DELETED!
@@ -571,6 +573,70 @@ mount -t msdos /dev/da1s0 /mnt/efi
 mkdir -p /mnt/efi/EFI/BOOT
 cp /boot/boot1.efi /mnt/efi/EFI/BOOT/BOOTX64.efi
 umount /mnt/efi
+.Ed
+.Pp
+The follwoing example combines GPT partitions with
+.Xr disklabel 8 .
+The system is copied from an already installed disk,
+e.g., an installation CD.
+.Pp
+.Sy NOTE!
+This example uses the
+.Cm boot
+command to create a hybrid MBR/GPT partition table.
+This is not standard GPT and may not work with other OSes.
+.Bd -literal -offset indent
+# Setup slices and partitions
+gpt create -f da1	# WARNING! DATA WILL BE DELETED!
+gpt boot da1		# create hybrid MBR
+boot0cfg -s 2 da1
+disklabel -B -r -w da1s0
+disklabel -e da1s0	# add `a: * * 4.2BSD', to add `a' partition
+			#   with fstype `4.2BSD' covering whole slice
+gpt add da1
+disklabel64 -r -w da1s1
+disklabel64 -e da1s1	# add `b: 4G * swap', to add `b' partition
+			#   with fstype `swap' and size 4GB
+			# add `a: * * HAMMER2', to add `a' partition
+			#   with fstype `HAMMER2' covering rest of slice
+
+# Format partitions and mount filesystems
+newfs /dev/da1s0a
+newfs_hammer2 -L ROOT /dev/da1s1a
+mount_hammer2 /dev/da1s1a@ROOT /mnt
+mkdir /mnt/boot
+mount /dev/da1s0a /mnt/boot
+
+# Copy system
+cpdup / /mnt
+cpdup /boot /mnt/boot
+cpdup /var /mnt/var
+cpdup /var/tmp /mnt/var/tmp
+cpdup /usr /mnt/usr
+
+# Delete unwanted files from installation CD
+cd /mnt
+rm -rf README* autorun* dflybsd.ico index.html
+rm -rf etc
+mv etc.hdd etc
+
+# Create/edit necessary configs
+vi boot/loader.conf	# add `vfs.root.mountfrom="hammer2:da1s1a@ROOT"'
+vi etc/fstab		# add `/dev/da1s1a@ROOT / hammer2 rw 1 1'
+			# add `/dev/da1s1b none swap sw 0 0'
+			# add `/dev/da1s0a /boot ufs rw 2 2'
+vi etc/rc.conf		# add `dumpdev="/dev/da1s1b"'
+			# add other configs per your needs
+
+# Update user and password
+pwd_mkdb -p -d /mnt/etc /mnt/etc/master.passwd
+pw -V /mnt/etc userdel installer
+chroot /mnt passwd
+
+# Umount
+cd
+umount /mnt/boot
+umount /mnt
 .Ed
 .Sh COMPATIBILITY
 The GPT that
