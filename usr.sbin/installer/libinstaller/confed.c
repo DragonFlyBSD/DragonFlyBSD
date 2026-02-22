@@ -137,7 +137,6 @@ config_vars_write(const struct config_vars *cvs, int config_type,
 
 	switch (config_type) {
 	case CONFIG_TYPE_SH:
-
 		aura_dict_rewind(cvs->d);
 		while (!aura_dict_eof(cvs->d)) {
 			aura_dict_get_current_key(cvs->d, &rk, &rk_len),

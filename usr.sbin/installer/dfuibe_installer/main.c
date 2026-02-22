@@ -120,8 +120,7 @@ main(int argc, char **argv)
 			rendezvous = aura_strdup("test");
 	}
 
-	do_reboot = flow(transport, rendezvous, os_root,
-	    flags);
+	do_reboot = flow(transport, rendezvous, os_root, flags);
 	free(rendezvous);
 
 	if (do_reboot)

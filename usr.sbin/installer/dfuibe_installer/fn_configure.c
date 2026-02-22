@@ -1034,7 +1034,7 @@ fn_assign_ip(struct i_fn_args *a)
 
 		    "f", "interface_ip", _("IP Address"),
 		    _("Enter the IP Address you would like to use"), "",
-		    "f", "interface_netmask",	_("Netmask"),
+		    "f", "interface_netmask", _("Netmask"),
 		    _("Enter the netmask of the IP address"), "",
 		    "f", "defaultrouter", _("Default Router"),
 		    _("Enter the IP address of the default router"), "",

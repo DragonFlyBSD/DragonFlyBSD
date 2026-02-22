@@ -222,22 +222,22 @@ installer_start()
 
 is_installmedia()
 {
-    local _ttyv1=$(grep -w "^ttyv1" /etc/ttys)
-    local guest=$(sysctl -n kern.vmm_guest)
+	local _ttyv1=$(grep -w "^ttyv1" /etc/ttys)
+	local guest=$(sysctl -n kern.vmm_guest)
 
-    #
-    # ttyv1 isn't configured for the install media so use
-    # that as a clue for now. Vkernels will be forced
-    # to use 'curseslog' to avoid polluting its only
-    # terminal.
-    #
-    [ "${guest}" = "vkernel" ] && return 1;
+	#
+	# ttyv1 isn't configured for the install media so use
+	# that as a clue for now. Vkernels will be forced
+	# to use 'curseslog' to avoid polluting its only
+	# terminal.
+	#
+	[ "${guest}" = "vkernel" ] && return 1;
 
-    if [ -z "${_ttyv1}" ]; then
-	return 0	# Return success, it's a USB image, ISO etc.
-    else
-	return 1
-    fi
+	if [ -z "${_ttyv1}" ]; then
+		return 0	# Return success, it's a USB image, ISO etc.
+	else
+		return 1
+	fi
 }
 
 ### MAIN ###

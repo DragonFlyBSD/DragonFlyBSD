@@ -111,20 +111,20 @@ dfui_connection_new(int transport, const char *rendezvous)
 
 #ifdef HAS_TCP
 	case DFUI_TRANSPORT_TCP:
-                AURA_MALLOC(c->t_data, dfui_conn_tcp);
+		AURA_MALLOC(c->t_data, dfui_conn_tcp);
 		T_TCP(c)->listen_sd = -1;
 		T_TCP(c)->connected_sd = -1;
 		T_TCP(c)->is_connected = 0;
 
-                /*
-                 * Set up dispatch functions.
-                 */
-                c->be_start = dfui_tcp_be_start;
-                c->be_stop = dfui_tcp_be_stop;
+		/*
+		 * Set up dispatch functions.
+		 */
+		c->be_start = dfui_tcp_be_start;
+		c->be_stop = dfui_tcp_be_stop;
 		c->be_ll_exchange = dfui_tcp_be_ll_exchange;
 
-                c->fe_connect = dfui_tcp_fe_connect;
-                c->fe_disconnect = dfui_tcp_fe_disconnect;
+		c->fe_connect = dfui_tcp_fe_connect;
+		c->fe_disconnect = dfui_tcp_fe_disconnect;
 		c->fe_ll_request = dfui_tcp_fe_ll_request;
 		break;
 #endif /* HAS_TCP */
