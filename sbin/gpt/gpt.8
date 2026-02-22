@@ -560,11 +560,12 @@ This example only uses GPT partitions.
 .Bd -literal -offset indent
 # Setup disk partitions
 gpt create -f da1		# WARNING! DATA WILL BE DELETED!
-gpt add -s 200M -t efi da1	# EFI system partition
-gpt add -s 2G -t ufs da1	# UFS boot partition
-gpt add -s 8G -t swap da1	# recommended to be twice of physical memory
-gpt add -s 100G -t hammer2 da1	# root partition
-gpt add -t hammer2 da1		# home partition using remaining free space
+gpt add -s 200M -t efi da1	# da1s0: EFI system partition
+gpt add -s 2G -t ufs da1	# da1s1: UFS boot partition
+gpt add -s 8G -t swap da1	# da1s2: recommended to be twice of RAM
+gpt add -s 100G -t hammer2 da1	# da1s3: root partition; add to loader.conf:
+				#   `vfs.root.mountfrom="hammer2:da1s3@ROOT"'
+gpt add -t hammer2 da1		# da1s4: home partition; using free space
 
 # Setup UEFI bootstrap
 newfs_msdos -F 16 -L EFI /dev/da1s0
