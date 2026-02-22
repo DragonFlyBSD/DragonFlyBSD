@@ -142,6 +142,11 @@ dfui_decode_field(struct aura_buffer *e)
 	fi = dfui_field_new(id, i);
 	fi->option_head = dfui_decode_options(e);
 	fi->property_head = dfui_decode_properties(e);
+	/*
+	 * The callback func is only called by the backend.
+	 * This allows dfui_field_has_callback() to work as expected.
+	 */
+	fi->callback.func = (void *)(uintptr_t)dfui_decode_bool(e);
 	free(id);
 
 	return(fi);

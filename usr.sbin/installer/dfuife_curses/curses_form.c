@@ -51,11 +51,14 @@
 
 #include "libaura/mem.h"
 
+#include "libdfui/dfui.h"
 #include "libdfui/dump.h"
+#include "libdfui/encoding.h"
 
 #include "curses_form.h"
 #include "curses_widget.h"
 #include "curses_util.h"
+#include "curses_xlat.h"
 
 /*** FORMS ***/
 
@@ -782,15 +785,70 @@ curses_form_show_help(const char *text)
 	curses_form_free(cf);
 }
 
+/*
+ * Send field change request to backend and wait for ACK with updates.
+ */
+static int
+notify_field_changed(struct dfui_connection *c, struct curses_form *cf,
+		     struct curses_widget *w)
+{
+	struct dfui_field *field;
+	struct dfui_dataset *datasets;
+	struct aura_buffer *buf;
+	void *payload;
+	char msgtype;
+	int ret;
+
+	if (c == NULL || w == NULL)
+		return(-1);
+	if (w->type != CURSES_TEXTBOX && w->type != CURSES_CHECKBOX)
+		return(0);
+
+	field = w->userdata;
+	if (!dfui_field_has_callback(field))
+		return(0);
+
+	/* Build and send FIELD_CHANGED message. */
+	buf = aura_buffer_new(16384);
+	dfui_encode_string(buf, dfui_field_get_id(field));
+	dfui_encode_string(buf, curses_widget_xlat_value(w));
+	dfui_fe_send(c, DFUI_FE_MSG_FIELD_CHANGED, buf);
+	aura_buffer_free(buf);
+
+	/* Wait for backend acknowledgement. */
+	dfui_fe_receive(c, &msgtype, &payload);
+	if (msgtype != DFUI_BE_MSG_FIELD_CHANGED_ACK) {
+		dfui_debug("%s: unexpected message: type=`%c', wanted=`%c'\n",
+			   __func__, msgtype, DFUI_BE_MSG_FIELD_CHANGED_ACK);
+		return(-1);
+	}
+
+	datasets = (struct dfui_dataset *)payload;
+	if (datasets == NULL)
+		return(-1);
+
+	ret = curses_form_sync_datasets(cf, datasets);
+	dfui_datasets_free(datasets);
+
+	/* Redraw the full form to correctly display the cursor. */
+	curses_form_draw(cf);
+	curses_form_refresh(cf);
+
+	return(ret);
+}
+
 #define CTRL(c) (char)(c - 'a' + 1)
 
 struct curses_widget *
-curses_form_frob(struct curses_form *cf)
+curses_form_frob_with_callbacks(struct curses_form *cf, struct dfui_connection *c)
 {
-	int key;
+	struct curses_widget *w;
+	int key, field_changed;
 
 	flushinp();
 	for (;;) {
+		w = cf->widget_focus;
+		field_changed = 0;
 		key = getch();
 		switch(key) {
 		case KEY_DOWN:
@@ -845,6 +903,7 @@ curses_form_frob(struct curses_form *cf)
 				}
 			} else if (cf->widget_focus->type == CURSES_CHECKBOX) {
 				curses_checkbox_toggle(cf->widget_focus);
+				field_changed = 1;
 			} else {
 				beep();
 			}
@@ -912,6 +971,7 @@ curses_form_frob(struct curses_form *cf)
 				}
 			} else if (cf->widget_focus->type == CURSES_CHECKBOX) {
 				curses_checkbox_toggle(cf->widget_focus);
+				field_changed = 1;
 			} else {
 				beep();
 			}
@@ -968,7 +1028,22 @@ curses_form_frob(struct curses_form *cf)
 			}
 			break;
 		}
+
+		if (c != NULL && ((w != NULL && w != cf->widget_focus) ||
+				  field_changed)) {
+			/*
+			 * Focused widget changed or field changed;
+			 * check for callbacks.
+			 */
+			notify_field_changed(c, cf, w);
+		}
 	}
+}
+
+struct curses_widget *
+curses_form_frob(struct curses_form *cf)
+{
+	return(curses_form_frob_with_callbacks(cf, NULL));
 }
 
 /*** GENERIC CALLBACKS ***/

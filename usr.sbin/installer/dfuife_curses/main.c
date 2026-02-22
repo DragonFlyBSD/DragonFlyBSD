@@ -95,11 +95,7 @@ abort_frontend(struct dfui_connection *c)
 #endif
 
 static struct dfui_response *
-#ifdef SIGNAL_HANDLING
 present_form(struct dfui_connection *c, struct dfui_form *f)
-#else
-present_form(struct dfui_connection *c __unused, struct dfui_form *f)
-#endif
 {
 	struct dfui_response *r = NULL;
 	struct curses_form *cf;
@@ -108,7 +104,7 @@ present_form(struct dfui_connection *c __unused, struct dfui_form *f)
 	cf = curses_form_construct_from_dfui_form(f);
 	curses_form_draw(cf);
 	curses_form_refresh(cf);
-	cw = curses_form_frob(cf);
+	cw = curses_form_frob_with_callbacks(cf, c);
 #ifdef SIGNAL_HANDLING
 	if (caught_signal) abort_frontend(c);
 #endif

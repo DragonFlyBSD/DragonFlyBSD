@@ -130,6 +130,11 @@ dfui_encode_field(struct aura_buffer *e, struct dfui_field *fi)
 	dfui_encode_info(e, fi->info);
 	dfui_encode_options(e, fi->option_head);
 	dfui_encode_properties(e, fi->property_head);
+	/*
+	 * The frontend only needs to know whether a callback exists, so just
+	 * use a boolean.
+	 */
+	dfui_encode_bool(e, fi->callback.func != NULL);
 }
 
 void

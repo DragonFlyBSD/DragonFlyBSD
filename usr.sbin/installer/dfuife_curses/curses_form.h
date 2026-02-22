@@ -73,6 +73,8 @@ struct curses_form {
 	char *help_text;	/* if non-NULL, text shown in help window */
 };
 
+struct dfui_connection;
+
 struct curses_form	*curses_form_new(const char *);
 void			 curses_form_free(struct curses_form *);
 struct curses_widget	*curses_form_widget_add(struct curses_form *,
@@ -114,6 +116,7 @@ void			 curses_form_scroll_delta(struct curses_form *, int, int);
 int			 curses_form_widget_is_visible(struct curses_widget *);
 void			 curses_form_widget_ensure_visible(struct curses_widget *);
 struct curses_widget	*curses_form_frob(struct curses_form *);
+struct curses_widget	*curses_form_frob_with_callbacks(struct curses_form *, struct dfui_connection *);
 
 int			 cb_click_close_form(struct curses_widget *);
 

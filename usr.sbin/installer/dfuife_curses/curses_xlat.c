@@ -347,6 +347,50 @@ curses_form_create_widget_row(struct curses_form *cf, struct curses_widget *cw,
 	return(ins_x);
 }
 
+/*
+ * Sync the curses form with the given datasets, e.g., provided by the
+ * backend via the FIELD_CHANGED_ACK message.
+ */
+int
+curses_form_sync_datasets(struct curses_form *cf, struct dfui_dataset *head)
+{
+	struct curses_widget *cw;
+	struct curses_form_userdata *cfu;
+	const struct dfui_form *f;
+	struct dfui_field *field;
+	struct dfui_celldata *cd;
+	const char *value;
+
+	if (head == NULL)
+		return(-1);
+
+	cfu = cf->userdata;
+	f = cfu->f;
+
+	if (dfui_form_is_multiple(f)) {
+		/* TODO: how to clear rows and re-create new ones ?? */
+		return(-1);
+	}
+
+	for (cw = cf->widget_head; cw != NULL; cw = cw->next) {
+		if (cw->type != CURSES_TEXTBOX && cw->type != CURSES_CHECKBOX)
+			continue;
+
+		field = cw->userdata;
+		cd = dfui_dataset_celldata_find(head, dfui_field_get_id(field));
+		if (cd == NULL)
+			continue;
+
+		value = dfui_celldata_get_value(cd);
+		if (cw->type == CURSES_TEXTBOX)
+			curses_textbox_set_text(cw, value);
+		else
+			curses_checkbox_set(cw, value);
+	}
+
+	return(0);
+}
+
 static struct curses_widget *
 center_buttons(struct curses_form *cf, struct curses_widget *row_start, int is_menu)
 {
@@ -861,7 +905,7 @@ curses_widgets_update_from_dfui_progress(const struct dfui_progress *pr,
 	last_update = now;
 }
 
-static const char *
+const char *
 curses_widget_xlat_value(const struct curses_widget *cw)
 {
 	if (cw->type == CURSES_TEXTBOX)
