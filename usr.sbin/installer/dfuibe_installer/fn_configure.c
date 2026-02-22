@@ -41,6 +41,9 @@
 
 #include <sys/param.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <ctype.h>
 #include <dirent.h>
@@ -845,6 +848,75 @@ fn_assign_hostname_domain(struct i_fn_args *a)
 	dfui_response_free(r);
 }
 
+static int
+set_interface_router(char *router, size_t len, const char *ip, const char *netmask)
+{
+	struct in_addr in_ip, in_netmask, in_gw;
+
+	memset(router, 0, len);
+
+	if (ip == NULL || strlen(ip) == 0)
+		return(0);
+	if (netmask == NULL || strlen(netmask) == 0)
+		return(0);
+
+	if (inet_pton(AF_INET, ip, &in_ip) != 1)
+		return(-1);
+	if (inet_pton(AF_INET, netmask, &in_netmask) != 1)
+		return(-1);
+
+	in_gw.s_addr = ntohl(in_ip.s_addr) & ntohl(in_netmask.s_addr);
+	in_gw.s_addr = htonl(in_gw.s_addr + 1); /* network + 1 */
+	inet_ntop(AF_INET, &in_gw, router, len);
+
+	return(0);
+}
+
+static int
+cb_field_interface_ip(struct dfui_form *form, struct dfui_field *field __unused,
+		      const char *new_value, void *userdata __unused)
+{
+	struct dfui_dataset *ds;
+	const char *netmask;
+	char router[INET_ADDRSTRLEN];
+
+	if (new_value == NULL || strlen(new_value) == 0)
+		return(0);
+
+	ds = dfui_form_dataset_get_first(form);
+	netmask = dfui_dataset_get_value(ds, "interface_netmask");
+
+	if (set_interface_router(router, sizeof(router), new_value, netmask) != 0)
+		return(-1);
+
+	dfui_dataset_set_value(ds, "defaultrouter", router);
+
+	return(0);
+}
+
+static int
+cb_field_interface_netmask(struct dfui_form *form,
+			   struct dfui_field *field __unused,
+			   const char *new_value, void *userdata __unused)
+{
+	struct dfui_dataset *ds;
+	const char *ip;
+	char router[INET_ADDRSTRLEN];
+
+	if (new_value == NULL || strlen(new_value) == 0)
+		return(0);
+
+	ds = dfui_form_dataset_get_first(form);
+	ip = dfui_dataset_get_value(ds, "interface_ip");
+
+	if (set_interface_router(router, sizeof(router), ip, new_value) != 0)
+		return(-1);
+
+	dfui_dataset_set_value(ds, "defaultrouter", router);
+
+	return(0);
+}
+
 void
 fn_assign_ip(struct i_fn_args *a)
 {
@@ -853,6 +925,7 @@ fn_assign_ip(struct i_fn_args *a)
 	struct command *cmd;
 	struct dfui_dataset *ds, *new_ds;
 	struct dfui_form *f;
+	struct dfui_field *fi;
 	struct dfui_action *k;
 	struct dfui_response *r;
 	const char *domain, *hostname;
@@ -985,13 +1058,19 @@ fn_assign_ip(struct i_fn_args *a)
 
 		ds = dfui_dataset_new();
 		dfui_dataset_celldata_add(ds, "interface_ip", "");
-		dfui_dataset_celldata_add(ds, "interface_netmask", "");
+		dfui_dataset_celldata_add(ds, "interface_netmask",
+		    "255.255.255.0");
 		dfui_dataset_celldata_add(ds, "defaultrouter", "");
 		dfui_dataset_celldata_add(ds, "dns_resolver",
 		    config_var_get(resolv_conf, "nameserver"));
 		dfui_dataset_celldata_add(ds, "hostname", hostname);
 		dfui_dataset_celldata_add(ds, "domain", domain);
 		dfui_form_dataset_add(f, ds);
+
+		fi = dfui_form_field_find(f, "interface_ip");
+		dfui_field_set_callback(fi, cb_field_interface_ip, NULL);
+		fi = dfui_form_field_find(f, "interface_netmask");
+		dfui_field_set_callback(fi, cb_field_interface_netmask, NULL);
 
 		if (!dfui_be_present(a->c, f, &r))
 			abort_backend();
