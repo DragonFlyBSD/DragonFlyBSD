@@ -136,7 +136,7 @@ THREAD_LIB?=	thread_xu
 # BTOOLS	(Natively built) All non-cross-development tools that the
 #		main build needs.  This includes things like 'mkdir' and 'rm'.
 #		We will not use the native system's exec path once we start
-#		on WORLD.  (bootstrap-tools and build-tools or BTOOLS)
+#		on WORLD.  (bootstrap-tools or BTOOLS)
 #
 # CTOOLS	(Natively built) Cross development tools which are specific
 #		to the target architecture.
@@ -156,7 +156,7 @@ BTOOLSDEST=	${DESTDIRBASE}/btools_${MACHINE_ARCH}
 CTOOLSDEST=	${DESTDIRBASE}/ctools_${MACHINE_ARCH}_${TARGET_ARCH}
 WORLDDEST=	${DESTDIRBASE}/world_${TARGET_ARCH}
 
-# The bootstrap-tools path is used by the bootstrap-tools, build-tools, and
+# The bootstrap-tools path is used by the bootstrap-tools, and
 # cross-tools stages to augment the existing command path to access newer
 # versions of certain utilities that the cross-tools stage might expect.
 #
@@ -183,19 +183,14 @@ TMPPID!=	echo $$$$
 #
 # 1. bootstrap-tool stage [BMAKE]
 #	This stage is responsible for creating programs that
-#	are needed for backward compatibility reasons. They
-#	are not built as cross-tools.
-# 2. build-tool stage [TMAKE]
-#	This stage is responsible for creating the object
-#	tree and building any tools that are needed during
-#	the build process.
-# 3. cross-tool stage [XMAKE]
+#	are needed for building the cross-tools.
+# 2. cross-tool stage [XMAKE]
 #	This stage is responsible for creating any tools that
 #	are needed for cross-builds. A cross-compiler is one
 #	of them.
-# 4. world stage [WMAKE]
+# 3. world stage [WMAKE]
 #	This stage actually builds the world.
-# 5. install stage (optional) [IMAKE]
+# 4. install stage (optional) [IMAKE]
 #	This stage installs a previously built world.
 #
 # In all cases we must carefully adjust the environment so the proper
@@ -223,19 +218,6 @@ BMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 BMAKE=		${BMAKEENV} make -f Makefile.inc1 -DBOOTSTRAPPING \
 		-DNOMAN -DNOPIC -DNOPROFILE -DNOSHARED \
 		-DNO_WERROR -DNO_NLS -DSYSBUILD
-
-# build-tool stage
-#
-TMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
-		OBJTREE=${OBJTREE} \
-		DESTDIR= \
-		LC_ALL=C \
-		PATH=${BTOOLSPATH}:${PATH} \
-		M4=${BTOOLSDEST}/usr/bin/m4 \
-		INSTALL="sh ${.CURDIR}/tools/install.sh"
-
-TMAKE=		${TMAKEENV} make -f Makefile.inc1 -DBOOTSTRAPPING \
-		-DNOSHARED -DSYSBUILD
 
 # cross-tool stage
 #
@@ -359,12 +341,6 @@ _obj:
 	@echo ">>> stage 2b: rebuilding the object tree"
 	@echo "--------------------------------------------------------------"
 	cd ${.CURDIR}; ${WMAKE} par-obj
-_build-tools:
-	@echo
-	@echo "--------------------------------------------------------------"
-	@echo ">>> stage 2c: build tools"
-	@echo "--------------------------------------------------------------"
-	cd ${.CURDIR}; ${TMAKE} build-tools
 _cross-tools:
 	@echo
 	@echo "--------------------------------------------------------------"
@@ -434,7 +410,7 @@ WMAKE_TGTS=
 .if !defined(SUBDIR_OVERRIDE)
 WMAKE_TGTS+=	_worldtmp _bootstrap-tools
 .endif
-WMAKE_TGTS+=	_obj _build-tools
+WMAKE_TGTS+=	_obj
 .if !defined(SUBDIR_OVERRIDE)
 WMAKE_TGTS+=	_cross-tools
 .endif
@@ -453,7 +429,7 @@ quickworld: _qwinit ${QMAKE_TGTS} _qwdone
 
 realquickworld: _qwinit _mtreetmp _obj _includes _libraries everything _qwdone
 
-crossworld: _worldtmp _bootstrap-tools _obj _build-tools _cross-tools
+crossworld: _worldtmp _bootstrap-tools _obj _cross-tools
 
 .ORDER: umountports mountports
 GENLOGDIR=	/usr/obj${.CURDIR}
@@ -965,8 +941,7 @@ installkernel reinstallkernel:
 
 # bootstrap-tools: Build all tools required to build all tools.  Note that
 # order is important in a number of cases and also note that the bootstrap
-# and build tools stages have access to earlier binaries they themselves
-# had generated.
+# tools stages have access to earlier binaries they themselves had generated.
 #
 # [x]install:	dependencies on various new install features
 # rpcgen:	old rpcgen used a hardwired cpp path, newer OBJFORMAT_PATH
@@ -1026,22 +1001,16 @@ bstrap-${_tool}!
 		make DIRPRFX=${_tool}/ DESTDIR=${BTOOLSDEST} install
 .endfor
 
-# build-tools: Build special purpose build tools.
 #
-# XXX we may be able to remove or consolidate this into bootstrap-tools
-# now that we have the native helper (.nx/.no) infrastructure.
+# cross-tools: Build cross-building tools
 #
-# XXX we should separate this into new Makefile.inc2.
-# Just to prepare for reduction of ORDER: that slows down parallel crossworld.
 
 # Make sure Makefile.inc1 logic is intact.
+# See sys.mk for WORLD_ALTCOMPILER default.
 .if !defined(WORLD_ALTCOMPILER)
 .warning undefined WORLD_ALTCOMPILER
 .endif
 
-# gcc80 is now the default compiler.  See sys.mk for WORLD_ALTCOMPILER default
-# and this file for WORLD_CCVER.
-#
 _gcc47_cross= gnu/usr.bin/cc47
 _gcc80_cross= gnu/usr.bin/cc80
 _gcc_common_cross= lib/libz gnu/usr.bin/gmp gnu/usr.bin/mpfr gnu/usr.bin/mpc
@@ -1052,19 +1021,11 @@ _altcompiler_cross+= ${_gcc47_cross}
 . endif
 .endif
 
+# gcc80 is now the default compiler.
 _basecompiler_cross= ${_gcc80_cross}
 
 _custom_cross= libexec/customcc
 _binutils= gnu/usr.bin/${WORLD_BINUTILSVER}
-
-build-tools: build-tools-targets
-	touch ${BTOOLSDEST}/.build_done
-
-build-tools-targets: ${BTOOLSDIRS:S/^/btools-/}
-
-#
-# cross-tools: Build cross-building tools
-#
 
 CTOOLSDIRS= usr.bin/objformat
 
@@ -1251,12 +1212,6 @@ bmake:
 
 bmakeenv:
 	@echo '${BMAKEENV} /bin/sh'
-
-tmake:
-	@echo '${TMAKEENV} make ${TMAKE_ARGS} -DSYSBUILD'
-
-tmakeenv:
-	@echo '${TMAKEENV} /bin/sh'
 
 xmake:
 	@echo '${XMAKEENV} make ${XMAKE_ARGS} -DSYSBUILD'
