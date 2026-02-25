@@ -907,7 +907,7 @@
 
 /* Define to 1 if you have the `fflush_unlocked' function. */
 #ifndef USED_FOR_TARGET
-/* #undef HAVE_FFLUSH_UNLOCKED */
+#define HAVE_FFLUSH_UNLOCKED 1
 #endif
 
 
@@ -943,25 +943,25 @@
 
 /* Define to 1 if you have the `fputc_unlocked' function. */
 #ifndef USED_FOR_TARGET
-/* #undef HAVE_FPUTC_UNLOCKED */
+#define HAVE_FPUTC_UNLOCKED 1
 #endif
 
 
 /* Define to 1 if you have the `fputs_unlocked' function. */
 #ifndef USED_FOR_TARGET
-/* #undef HAVE_FPUTS_UNLOCKED */
+#define HAVE_FPUTS_UNLOCKED 1
 #endif
 
 
 /* Define to 1 if you have the `fread_unlocked' function. */
 #ifndef USED_FOR_TARGET
-/* #undef HAVE_FREAD_UNLOCKED */
+#define HAVE_FREAD_UNLOCKED 1
 #endif
 
 
 /* Define to 1 if you have the `fwrite_unlocked' function. */
 #ifndef USED_FOR_TARGET
-/* #undef HAVE_FWRITE_UNLOCKED */
+#define HAVE_FWRITE_UNLOCKED 1
 #endif
 
 

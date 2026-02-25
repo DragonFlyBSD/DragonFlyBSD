@@ -127,7 +127,7 @@
 #define HAVE_FERROR_UNLOCKED 1
 
 /* Define to 1 if you have the `fflush_unlocked' function. */
-/* #undef HAVE_FFLUSH_UNLOCKED */
+#define HAVE_FFLUSH_UNLOCKED 1
 
 /* Define to 1 if you have the `fgetc_unlocked' function. */
 /* #undef HAVE_FGETC_UNLOCKED */
@@ -142,16 +142,16 @@
 /* #undef HAVE_FPRINTF_UNLOCKED */
 
 /* Define to 1 if you have the `fputc_unlocked' function. */
-/* #undef HAVE_FPUTC_UNLOCKED */
+#define HAVE_FPUTC_UNLOCKED 1
 
 /* Define to 1 if you have the `fputs_unlocked' function. */
-/* #undef HAVE_FPUTS_UNLOCKED */
+#define HAVE_FPUTS_UNLOCKED 1
 
 /* Define to 1 if you have the `fread_unlocked' function. */
-/* #undef HAVE_FREAD_UNLOCKED */
+#define HAVE_FREAD_UNLOCKED 1
 
 /* Define to 1 if you have the `fwrite_unlocked' function. */
-/* #undef HAVE_FWRITE_UNLOCKED */
+#define HAVE_FWRITE_UNLOCKED 1
 
 /* Define to 1 if you have the `getchar_unlocked' function. */
 #define HAVE_GETCHAR_UNLOCKED 1
