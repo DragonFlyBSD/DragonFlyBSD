@@ -41,6 +41,7 @@
  */
 
 #include "use_isa.h"
+#include "use_pci.h"
 #include "opt_cpu.h"
 #include "opt_ddb.h"
 #include "opt_inet.h"
@@ -2755,7 +2756,9 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 
 	lidt(&r_idt_arr[0]);
 
+#if NPCI > 0
 	pci_early_quirks();
+#endif
 
 	/*
 	 * Initialize the console before we print anything out.
@@ -2767,7 +2770,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 		kprintf("WARNING: loader(8) metadata is missing!\n");
 #endif
 
-#if	NISA >0
+#if NISA > 0
 	elcr_probe();
 	isa_defaultirq();
 #endif

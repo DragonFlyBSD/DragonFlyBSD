@@ -1521,7 +1521,9 @@ userland_sysctl(int *name, u_int namelen,
 		void *new, size_t newlen, size_t *retval)
 {
 	struct thread *td = curthread;
+#ifdef KTRACE
 	struct lwp *lp = td->td_lwp;
+#endif
 	int error = 0;
 	struct sysctl_req req;
 
