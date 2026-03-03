@@ -1059,9 +1059,6 @@ hierarchy:
 # interdependencies (__L) are built automatically by the
 # ${.CURDIR}/tools/make_libdeps.sh script.
 #
-# .makeenv does not work when bootstrapping from 4.x, so we must be sure
-# to specify the correct CCVER or 'cc' will not exec the correct compiler.
-#
 libraries:
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc80 \
