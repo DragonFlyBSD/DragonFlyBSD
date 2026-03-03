@@ -432,7 +432,6 @@ realquickworld: _qwinit _mtreetmp _obj _includes _libraries everything _qwdone
 crossworld: _worldtmp _bootstrap-tools _obj _cross-tools
 
 .ORDER: umountports mountports
-GENLOGDIR=	/usr/obj${.CURDIR}
 
 # Build a chroot environment for buildports
 #
@@ -445,14 +444,14 @@ GENLOGDIR=	/usr/obj${.CURDIR}
 buildportschroot: umountports
 	mkdir -p ${WORLDDEST}/chroot
 	mkdir -p ${WORLDDEST}/chroot/usr/src
-	@echo "building chroot, logfile in: ${GENLOGDIR}/chroot.out"
-	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` installworld DESTDIR=${WORLDDEST}/chroot > ${GENLOGDIR}/chroot.out 2>&1)
-	@(cd ${.CURDIR}/etc; ${MAKE} -j `sysctl -n hw.ncpu` distribution DESTDIR=${WORLDDEST}/chroot >> ${GENLOGDIR}/chroot.out 2>&1)
+	@echo "building chroot, logfile in: ${DESTDIRBASE}/chroot.out"
+	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` installworld DESTDIR=${WORLDDEST}/chroot > ${DESTDIRBASE}/chroot.out 2>&1)
+	@(cd ${.CURDIR}/etc; ${MAKE} -j `sysctl -n hw.ncpu` distribution DESTDIR=${WORLDDEST}/chroot >> ${DESTDIRBASE}/chroot.out 2>&1)
 	@echo "mounting procfs, devfs, tmpfs in chroot"
-	@(cd ${.CURDIR}; ${MAKE} mountports >> ${GENLOGDIR}/chroot.out 2>&1)
-	chroot ${WORLDDEST}/chroot /bin/csh -c "cd /etc/rc.d; sh ldconfig start"
+	@(cd ${.CURDIR}; ${MAKE} mountports >> ${DESTDIRBASE}/chroot.out 2>&1)
+	chroot ${WORLDDEST}/chroot /bin/sh -c "rcrestart ldconfig"
 	cp /etc/resolv.conf ${WORLDDEST}/chroot/etc/
-	@(cd ${.CURDIR}; ${MAKE} umountports >> ${GENLOGDIR}/chroot.out 2>&1)
+	@(cd ${.CURDIR}; ${MAKE} umountports >> ${DESTDIRBASE}/chroot.out 2>&1)
 
 # Build dragonfly/base dports using the chroot environment setup by
 # buildportschroot.
@@ -525,37 +524,35 @@ umountports:
 #
 # build
 build-all: _bwcleanup
-	@echo "Building world, log file in ${GENLOGDIR}/bw.out"
-	@mkdir -p ${GENLOGDIR}
-	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` buildworld > ${GENLOGDIR}/bw.out 2>&1)
+	@echo "Building world, log file in ${DESTDIRBASE}/bw.out"
+	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` buildworld > ${DESTDIRBASE}/bw.out 2>&1)
 	@sync
-	@echo "Building kernel, log file in ${GENLOGDIR}/bk.out"
-	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` buildkernel > ${GENLOGDIR}/bk.out 2>&1)
+	@echo "Building kernel, log file in ${DESTDIRBASE}/bk.out"
+	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` buildkernel > ${DESTDIRBASE}/bk.out 2>&1)
 	@echo "build-all main buildworld and buildkernel completed ok"
 	@sync
 .if defined(WITH_DPORTS)
-	@echo "Building dragonfly/base dports, logs in ${GENLOGDIR}/bp.out"
+	@echo "Building dragonfly/base dports, logs in ${DESTDIRBASE}/bp.out"
 	@echo "IF YOU INTERRUPT THE MAKE, THEN RUN make umountports"
-	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` buildportschroot > ${GENLOGDIR}/bp.out 2>&1)
-	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` buildports > ${GENLOGDIR}/bp.out 2>&1)
+	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` buildportschroot > ${DESTDIRBASE}/bp.out 2>&1)
+	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` buildports > ${DESTDIRBASE}/bp.out 2>&1)
 .endif
 
 install-all:
-	@echo "Installing kernel, log file in ${GENLOGDIR}/bk.out"
-	@mkdir -p ${GENLOGDIR}
-	@(cd ${.CURDIR}; ${MAKE} -j 1 installkernel >> ${GENLOGDIR}/bk.out 2>&1)
+	@echo "Installing kernel, log file in ${DESTDIRBASE}/bk.out"
+	@(cd ${.CURDIR}; ${MAKE} -j 1 installkernel >> ${DESTDIRBASE}/bk.out 2>&1)
 	@sync
-	@echo "Installing world, log file in ${GENLOGDIR}/bw.out"
-	@(cd ${.CURDIR}; ${MAKE} -j 1 installworld >> ${GENLOGDIR}/bw.out 2>&1)
+	@echo "Installing world, log file in ${DESTDIRBASE}/bw.out"
+	@(cd ${.CURDIR}; ${MAKE} -j 1 installworld >> ${DESTDIRBASE}/bw.out 2>&1)
 	@sync
 	@echo "Upgrading world"
-	@(cd ${.CURDIR}; ${MAKE} -j 1 upgrade >> ${GENLOGDIR}/bw.out 2>&1)
+	@(cd ${.CURDIR}; ${MAKE} -j 1 upgrade >> ${DESTDIRBASE}/bw.out 2>&1)
 	@sync
 	@echo "install-all main world and kernel completed ok."
 .if defined(WITH_DPORTS)
-	@echo "Installing dragonfly/base dports, log file in ${GENLOGDIR}/bp.out"
+	@echo "Installing dragonfly/base dports, log file in ${DESTDIRBASE}/bp.out"
 	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` installports)
-	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` umountports >> ${GENLOGDIR}/bp.out 2>&1)
+	@(cd ${.CURDIR}; ${MAKE} -j `sysctl -n hw.ncpu` umountports >> ${DESTDIRBASE}/bp.out 2>&1)
 .endif
 	@echo "reboot recommended and after that, "
 	@echo "when doing a major upgrade, 'pkg upgrade -f' after rebooting"
