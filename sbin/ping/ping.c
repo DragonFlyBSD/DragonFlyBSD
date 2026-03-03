@@ -1501,9 +1501,9 @@ pr_iph(struct ip *ip)
 	printf(" %1x  %1x  %02x %04x %04x",
 	    ip->ip_v, ip->ip_hl, ip->ip_tos, ntohs(ip->ip_len),
 	    ntohs(ip->ip_id));
-	printf("   %1lx %04lx",
-	    (u_long) (ntohl(ip->ip_off) & 0xe000) >> 13,
-	    (u_long) ntohl(ip->ip_off) & 0x1fff);
+	printf("   %1x %04x",
+	    (ntohs(ip->ip_off) & 0xe000) >> 13,
+	    ntohs(ip->ip_off) & 0x1fff);
 	printf("  %02x  %02x %04x", ip->ip_ttl, ip->ip_p, ntohs(ip->ip_sum));
 	printf(" %s ", inet_ntoa(*(struct in_addr *)&ip->ip_src.s_addr));
 	printf(" %s ", inet_ntoa(*(struct in_addr *)&ip->ip_dst.s_addr));
