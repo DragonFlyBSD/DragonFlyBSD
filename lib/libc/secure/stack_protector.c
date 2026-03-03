@@ -28,7 +28,6 @@
 
 #include "namespace.h"
 #include <sys/param.h>
-#include <sys/sysctl.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
