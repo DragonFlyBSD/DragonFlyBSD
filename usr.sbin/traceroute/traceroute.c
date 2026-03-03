@@ -540,7 +540,7 @@ main(int argc, char *argv[])
 		ip->ip_dst = gateway[0];
 	} else
 		ip->ip_dst = to.sin_addr;
-	ip->ip_off = htons(0);
+	ip->ip_off = 0;
 	ip->ip_hl = (sizeof(struct ip) + lsrrlen) >> 2;
 	ip->ip_p = proto;
 	ip->ip_v = IPVERSION;
@@ -902,7 +902,7 @@ send_probe(int seq, u_int8_t ttl, int iflag, struct sockaddr_in *to)
 	struct timeval tv;
 	int i;
 
-	ip->ip_len = datalen;
+	ip->ip_len = htons(datalen);
 	ip->ip_ttl = ttl;
 	ip->ip_id = htons(ident+seq);
 
