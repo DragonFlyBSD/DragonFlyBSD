@@ -283,6 +283,15 @@ send_packet(struct in_addr from, struct sockaddr_in *to,
 	if (to->sin_addr.s_addr == INADDR_BROADCAST) {
 		result = writev(ifi->wfdesc, iov, IOVCNT);
 	} else {
+		struct ip *ip = (struct ip *)buf;
+
+		/*
+		 * DragonFly's raw socket expects ip_len/ip_off
+		 * in host byte order.
+		 */
+		ip->ip_len = ntohs(ip->ip_len);
+		ip->ip_off = ntohs(ip->ip_off);
+
 		memset(&msg, 0, sizeof(msg));
 		msg.msg_name = (struct sockaddr *)to;
 		msg.msg_namelen = sizeof(*to);
