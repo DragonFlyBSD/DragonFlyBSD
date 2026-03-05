@@ -18,7 +18,7 @@ all:
 	@echo "--------------------------------------------------------------"
 .for _dir in ${RESCUE_SUBDIRS} ${INITRD_SUBDIRS}
 	(cd ${.CURDIR}/${_dir}; \
-	    ${INITRD_MAKE} obj; \
+	    ${INITRD_MAKE} obj && \
 	    ${INITRD_MAKE} depend all)
 .endfor
 	@echo "--------------------------------------------------------------"
@@ -46,7 +46,7 @@ install:
 	rm -rf ${STAGEDIR}
 .for _dir in ${INITRD_SUBDIRS}
 	(cd ${.CURDIR}/${_dir}; \
-	    mkdir -p ${STAGEDIR}/${_dir}; \
+	    mkdir -p ${STAGEDIR}/${_dir} && \
 	    ${INITRD_MAKE} BINDIR=${STAGEDIR}/${_dir} DESTDIR="" install)
 .endfor
 	sh ${.CURDIR}/mkinitrd.sh \
