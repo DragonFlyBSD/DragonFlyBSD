@@ -147,13 +147,8 @@ reread_mbr:
 	/* Weakly verify it. */
 	cp = bp->b_data;
 	if (cp[0x1FE] != 0x55 || cp[0x1FF] != 0xAA) {
-		if ((info->d_dsflags & DSO_NOMBR) == 0) {
-			if (bootverbose)
-				kprintf("%s: invalid primary partition table"
-					": no magic\n", sname);
-			error = EINVAL;
-		}
-		/* else: assume a COMPATIBILITY_SLICE (s0) */
+		kprintf("%s: MBR magic not found; "
+			"assume a COMPATIBILITY_SLICE (s0)\n", sname);
 		goto done;
 	}
 
