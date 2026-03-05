@@ -77,6 +77,14 @@ NOCLEAN=	# defined
 MAKEOBJDIRPREFIX?=	/usr/obj
 OBJTREE?=		${MAKEOBJDIRPREFIX}
 
+# As described in <bsd.obj.mk>, MAKEOBJDIRPREFIX works properly only if set
+# as an *environment* variable, not as a global or command-line variable!
+# build(7) also lists MAKEOBJDIRPREFIX in the ENVIRONMENT section.
+.if !empty(.MAKEOVERRIDES:MMAKEOBJDIRPREFIX)
+.warning MAKEOBJDIRPREFIX must be set as an environment variable.
+.error Use: env MAKEOBJDIRPREFIX=${MAKEOBJDIRPREFIX} ${MAKE} ...
+.endif
+
 # Used for stage installs and pathing
 #
 DESTDIRBASE:=		${OBJTREE}${.CURDIR}
