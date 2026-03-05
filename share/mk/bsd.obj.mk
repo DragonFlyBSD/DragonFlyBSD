@@ -9,7 +9,7 @@
 #
 # CLEANFILES	Additional files to remove for the clean target.
 #
-# MAKEOBJDIR 	A pathname for the directory where the targets 
+# MAKEOBJDIR 	A pathname for the directory where the targets
 #		are built.  Note: MAKEOBJDIR is an *environment* variable
 #		and works properly only if set as an environment variable,
 #		not as a global or command line variable!
@@ -117,8 +117,8 @@ cleanobj:
 	@cd ${.CURDIR} && ${MAKE} clean cleandepend
 .endif
 	@if [ -L ${.CURDIR}/obj ]; then \
-	  echo rm -f ${.CURDIR}/obj; \
-	  rm -f ${.CURDIR}/obj; \
+		echo rm -f ${.CURDIR}/obj; \
+		rm -f ${.CURDIR}/obj; \
 	fi
 
 # Tell bmake not to look for generated files via .PATH
@@ -129,7 +129,7 @@ cleanobj:
 .if !target(clean)
 clean:
 .if defined(CLEANFILES) && !empty(CLEANFILES)
-	rm -f ${CLEANFILES} 
+	rm -f ${CLEANFILES}
 .endif
 .if defined(CLEANDIRS) && !empty(CLEANDIRS)
 	rm -rf ${CLEANDIRS}
