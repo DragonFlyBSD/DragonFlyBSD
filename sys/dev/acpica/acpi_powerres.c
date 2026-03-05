@@ -356,8 +356,9 @@ acpi_pwr_switch_consumer(ACPI_HANDLE consumer, int state)
     default:
 	goto out;
     }
-    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "setup to switch %s D%d -> D%d\n",
-		     acpi_name(consumer), pc->ac_state, state));
+    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "setup to switch %s %s -> %s\n",
+		     acpi_name(consumer), acpi_d_state_to_str(pc->ac_state),
+		     acpi_d_state_to_str(state)));
 
     /*
      * Verify that this state is supported, ie. one of method or
@@ -381,7 +382,8 @@ acpi_pwr_switch_consumer(ACPI_HANDLE consumer, int state)
 	}
 	if (state != ACPI_STATE_D3) {
 	    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS,
-		"attempt to set unsupported state D%d\n", state));
+		"attempt to set unsupported state %s\n",
+		acpi_d_state_to_str(state)));
 	    goto out;
 	}
 
@@ -392,21 +394,23 @@ acpi_pwr_switch_consumer(ACPI_HANDLE consumer, int state)
 	if (ACPI_FAILURE(AcpiGetHandle(consumer, "_PR0", &pr0_handle))) {
 	    status = AE_NOT_FOUND;
 	    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS,
-		"device missing _PR0 (desired state was D%d)\n", state));
+		"device missing _PR0 (desired state was %s)\n",
+		acpi_d_state_to_str(state)));
 	    goto out;
 	}
 	reslist_buffer.Length = ACPI_ALLOCATE_BUFFER;
 	status = AcpiEvaluateObject(pr0_handle, NULL, NULL, &reslist_buffer);
 	if (ACPI_FAILURE(status)) {
 	    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS,
-		"can't evaluate _PR0 for device %s, state D%d\n",
-		acpi_name(consumer), state));
+		"can't evaluate _PR0 for device %s, state %s\n",
+		acpi_name(consumer), acpi_d_state_to_str(state)));
 	    goto out;
 	}
 	reslist_object = (ACPI_OBJECT *)reslist_buffer.Pointer;
 	if (!ACPI_PKG_VALID(reslist_object, 1)) {
 	    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS,
-		"invalid package object for state D%d\n", state));
+		"invalid package object for state %s\n",
+		acpi_d_state_to_str(state)));
 	    status = AE_TYPE;
 	    goto out;
 	}
@@ -462,8 +466,8 @@ acpi_pwr_switch_consumer(ACPI_HANDLE consumer, int state)
      */
     if (ACPI_FAILURE(status = acpi_pwr_switch_power())) {
 	ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS,
-			 "failed to switch resources from %s to D%d\n",
-			  acpi_name(consumer), state));
+			 "failed to switch resources from %s to %s\n",
+			  acpi_name(consumer), acpi_d_state_to_str(state)));
 
 	/* XXX is this appropriate?  Should we return to previous state? */
 	goto out;

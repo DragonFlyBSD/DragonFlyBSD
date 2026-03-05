@@ -955,8 +955,9 @@ sis_attach(device_t dev)
 			irq = pci_read_config(dev, SIS_PCI_INTLINE, 4);
 
 			/* Reset the power state. */
-			device_printf(dev, "chip is in D%d power mode "
-			    "-- setting to D0\n", command & SIS_PSTATE_MASK);
+			device_printf(dev, "chip is in %s power mode "
+			    "-- setting to D0\n",
+			    pci_powerstate_to_str(command & SIS_PSTATE_MASK));
 			command &= 0xFFFFFFFC;
 			pci_write_config(dev, SIS_PCI_PWRMGMTCTRL, command, 4);
 

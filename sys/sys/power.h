@@ -29,9 +29,7 @@
 #ifndef _SYS_POWER_H_
 #define _SYS_POWER_H_
 
-#ifndef _KERNEL
-#error "This file should not be included by userland programs."
-#endif
+#ifdef _KERNEL
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -69,6 +67,16 @@ void	power_profile_set_state(int);
 
 typedef void (*power_profile_change_hook)(void *, int);
 EVENTHANDLER_DECLARE(power_profile_change, power_profile_change_hook);
+
+#endif /* _KERNEL */
+
+static __inline const char *
+powerstate_to_str(int state)
+{
+	static const char * const strs[] = { "D0", "D1", "D2", "D3" };
+
+	return (strs[state]);
+}
 
 #endif	/* !_SYS_POWER_H_ */
 

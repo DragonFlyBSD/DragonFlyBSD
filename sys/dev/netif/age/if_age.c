@@ -523,8 +523,9 @@ age_attach(device_t dev)
 		irq = pci_read_config(dev, PCIR_INTLINE, 4);
 		mem = pci_read_config(dev, AGE_PCIR_BAR, 4);
 
-		device_printf(dev, "chip is in D%d power mode "
-		    "-- setting to D0\n", pci_get_powerstate(dev));
+		device_printf(dev, "chip is in %s power mode "
+		    "-- setting to D0\n",
+		    pci_powerstate_to_str(pci_get_powerstate(dev)));
 
 		pci_set_powerstate(dev, PCI_POWERSTATE_D0);
 

@@ -2234,9 +2234,10 @@ pci_set_powerstate_method(device_t dev, device_t child, int state)
 
 	if (bootverbose)
 		kprintf(
-		    "pci%d:%d:%d:%d: Transition from D%d to D%d\n",
+		    "pci%d:%d:%d:%d: Transition from %s to %s\n",
 		    dinfo->cfg.domain, dinfo->cfg.bus, dinfo->cfg.slot,
-		    dinfo->cfg.func, oldstate, state);
+		    dinfo->cfg.func, pci_powerstate_to_str(oldstate),
+		    pci_powerstate_to_str(state));
 
 	PCI_WRITE_CONFIG(dev, child, cfg->pp.pp_status, status, 2);
 	if (delay)
@@ -2409,11 +2410,11 @@ pci_print_verbose(struct pci_devinfo *dinfo)
 			uint16_t status;
 
 			status = pci_read_config(cfg->dev, cfg->pp.pp_status, 2);
-			kprintf("\tpowerspec %d  supports D0%s%s D3  current D%d\n",
+			kprintf("\tpowerspec %d  supports D0%s%s D3  current %s\n",
 			    cfg->pp.pp_cap & PCIM_PCAP_SPEC,
 			    cfg->pp.pp_cap & PCIM_PCAP_D1SUPP ? " D1" : "",
 			    cfg->pp.pp_cap & PCIM_PCAP_D2SUPP ? " D2" : "",
-			    status & PCIM_PSTAT_DMASK);
+			    pci_powerstate_to_str(status & PCIM_PSTAT_DMASK));
 		}
 		if (cfg->msi.msi_location) {
 			int ctrl;

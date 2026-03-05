@@ -746,8 +746,9 @@ nge_attach(device_t dev)
 			irq = pci_read_config(dev, NGE_PCI_INTLINE, 4);
 
 			/* Reset the power state. */
-			kprintf("nge%d: chip is in D%d power mode "
-			"-- setting to D0\n", unit, command & NGE_PSTATE_MASK);
+			kprintf("nge%d: chip is in %s power mode "
+			    "-- setting to D0\n", unit,
+			    pci_powerstate_to_str(command & NGE_PSTATE_MASK));
 			command &= 0xFFFFFFFC;
 			pci_write_config(dev, NGE_PCI_PWRMGMTCTRL, command, 4);
 

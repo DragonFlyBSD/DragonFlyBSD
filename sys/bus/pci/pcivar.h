@@ -29,9 +29,9 @@
 #ifndef _PCIVAR_H_
 #define	_PCIVAR_H_
 
-#ifndef _SYS_QUEUE_H_
+#include <sys/power.h>
 #include <sys/queue.h>
-#endif
+#include <sys/systm.h>
 
 /* some PCI bus constants */
 
@@ -417,7 +417,17 @@ uint16_t pcie_get_max_readrq(device_t);
 #define	PCI_POWERSTATE_D1	1
 #define	PCI_POWERSTATE_D2	2
 #define	PCI_POWERSTATE_D3	3
+#define	PCI_POWERSTATE_MAX	PCI_POWERSTATE_D3
+#define	PCI_POWERSTATE_COUNT	4
 #define	PCI_POWERSTATE_UNKNOWN	-1
+
+static __inline const char *
+pci_powerstate_to_str(int state)
+{
+    KASSERT(state >= PCI_POWERSTATE_D0 && state <= PCI_POWERSTATE_MAX,
+	("state out of bounds"));
+    return powerstate_to_str(state);
+}
 
 static __inline int
 pci_set_powerstate(device_t dev, int state)

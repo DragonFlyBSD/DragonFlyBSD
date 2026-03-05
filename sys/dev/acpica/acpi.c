@@ -1589,8 +1589,9 @@ acpi_set_powerstate_method(device_t bus, device_t child, int state)
     status = acpi_pwr_switch_consumer(h, state);
     if (ACPI_FAILURE(status) && status != AE_NOT_FOUND
 	&& status != AE_BAD_PARAMETER)
-	device_printf(bus, "failed to set ACPI power state D%d on %s: %s\n",
-	    state, acpi_name(h), AcpiFormatException(status));
+	device_printf(bus, "failed to set ACPI power state %s on %s: %s\n",
+	    acpi_d_state_to_str(state), acpi_name(h),
+	    AcpiFormatException(status));
 
     return (error);
 }

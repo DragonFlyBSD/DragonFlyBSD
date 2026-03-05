@@ -506,8 +506,9 @@ pcn_attach(device_t dev)
 			irq = pci_read_config(dev, PCN_PCI_INTLINE, 4);
 
 			/* Reset the power state. */
-			kprintf("pcn%d: chip is in D%d power mode "
-			"-- setting to D0\n", unit, command & PCN_PSTATE_MASK);
+			kprintf("pcn%d: chip is in %s power mode "
+			    "-- setting to D0\n", unit,
+			    pci_powerstate_to_str(command & PCN_PSTATE_MASK));
 			command &= 0xFFFFFFFC;
 			pci_write_config(dev, PCN_PCI_PWRMGMTCTRL, command, 4);
 

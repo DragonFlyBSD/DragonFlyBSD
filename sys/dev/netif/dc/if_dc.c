@@ -1624,8 +1624,9 @@ dc_acpi(device_t dev)
 		sc = device_get_softc(dev);
 		/* Reset the power state. */
 		if_printf(&sc->arpcom.ac_if,
-			  "chip is in D%d power mode "
-			  "-- setting to D0\n", pci_get_powerstate(dev));
+			  "chip is in %s power mode "
+			  "-- setting to D0\n",
+			  pci_powerstate_to_str(pci_get_powerstate(dev)));
 		pci_set_powerstate(dev, PCI_POWERSTATE_D0);
 
 		/* Restore PCI config data. */

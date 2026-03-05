@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <sys/agpio.h>
 #include <sys/pciio.h>
+#include <sys/power.h>
 
 #include <dev/agp/agpreg.h>
 #include <bus/pci/pcireg.h>
@@ -53,11 +54,11 @@ cap_power(int fd, struct pci_conf *p, uint8_t ptr)
 
 	cap = read_config(fd, &p->pc_sel, ptr + PCIR_POWER_CAP, 2);
 	status = read_config(fd, &p->pc_sel, ptr + PCIR_POWER_STATUS, 2);
-	printf("powerspec %d  supports D0%s%s D3  current D%d",
+	printf("powerspec %d  supports D0%s%s D3  current %s",
 	    cap & PCIM_PCAP_SPEC,
 	    cap & PCIM_PCAP_D1SUPP ? " D1" : "",
 	    cap & PCIM_PCAP_D2SUPP ? " D2" : "",
-	    status & PCIM_PSTAT_DMASK);
+	    powerstate_to_str(status & PCIM_PSTAT_DMASK));
 }
 
 static void

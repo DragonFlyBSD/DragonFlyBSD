@@ -215,8 +215,9 @@ ral_pci_attach(device_t dev)
 #if defined(__DragonFly__)
 	/* still needed? XXX */
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
-		device_printf(dev, "chip is in D%d power mode "
-		    "-- setting to D0\n", pci_get_powerstate(dev));
+		device_printf(dev, "chip is in %s power mode "
+		    "-- setting to D0\n",
+		    pci_powerstate_to_str(pci_get_powerstate(dev)));
 		pci_set_powerstate(dev, PCI_POWERSTATE_D0);
 	}
 #endif

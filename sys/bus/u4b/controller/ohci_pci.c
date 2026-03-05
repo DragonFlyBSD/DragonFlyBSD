@@ -96,8 +96,9 @@ ohci_pci_take_controller(device_t self)
 	uint32_t int_line;
 
 	if (pci_get_powerstate(self) != PCI_POWERSTATE_D0) {
-		device_printf(self, "chip is in D%d mode "
-		    "-- setting to D0\n", pci_get_powerstate(self));
+		device_printf(self, "chip is in %s mode "
+		    "-- setting to D0\n",
+		    pci_powerstate_to_str(pci_get_powerstate(self)));
 		reg = pci_read_config(self, PCI_CBMEM, 4);
 		int_line = pci_read_config(self, PCIR_INTLINE, 4);
 		pci_set_powerstate(self, PCI_POWERSTATE_D0);

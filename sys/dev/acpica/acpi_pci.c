@@ -43,9 +43,6 @@
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pci_private.h>
 
-#include "pcib_if.h"
-#include "pci_if.h"
-
 /* Hooks for the ACPICA debugging infrastructure. */
 #define _COMPONENT	ACPI_BUS
 ACPI_MODULE_NAME("PCI")
@@ -189,8 +186,9 @@ acpi_pci_set_powerstate_method(device_t dev, device_t child, int state)
 	status = acpi_pwr_switch_consumer(h, state);
 	if (ACPI_FAILURE(status) && status != AE_NOT_FOUND)
 		device_printf(dev,
-		    "Failed to set ACPI power state D%d on %s: %s\n",
-		    state, acpi_name(h), AcpiFormatException(status));
+		    "Failed to set ACPI power state %s on %s: %s\n",
+		    acpi_d_state_to_str(state), acpi_name(h),
+		    AcpiFormatException(status));
 	if (old_state > state)
 		error = pci_set_powerstate_method(dev, child, state);
 
