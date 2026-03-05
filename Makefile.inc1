@@ -315,9 +315,9 @@ _mtreetmp:
 	${LN} -sf ${.CURDIR}/sys ${WORLDDEST}
 
 _bwcleanup: umountports
-	mkdir -p ${DESTDIRBASE}
-	chflags -R noschg ${DESTDIRBASE}
+	-chflags -R noschg ${DESTDIRBASE} > /dev/null 2>&1
 	rm -rxf ${DESTDIRBASE}
+	mkdir -p ${DESTDIRBASE}
 
 _bwinit:
 	@echo "--------------------------------------------------------------"
