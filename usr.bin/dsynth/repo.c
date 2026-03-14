@@ -267,8 +267,64 @@ repackage(const char *basepath, const char *basefile,
 }
 
 void
-DoUpgradePkgs(pkg_t *pkgs __unused, int ask __unused)
+DoUpgradePkgs(pkg_t *list, int ask __unused)
 {
+	pkg_t *scan;
+	char *buf;
+	char *path;
+	FILE *fp;
+
+	// (askyn("Delete %d of %d items? ", delcount, count))
+	/*
+	 * Build local.conf file in {BuildBase}/repos
+	 */
+	asprintf(&path, "%s/repos", BuildBase);
+	mkdir(path, 0755);
+	free(path);
+	asprintf(&path, "%s/repos/local.conf", BuildBase);
+	fp = fopen(path, "w");
+	if (fp) {
+		fprintf(fp,
+			"Local: {\n"
+			"\turl : file://%s,\n"
+			"\tenabled: yes\n"
+			"}\n",
+
+			PackagesPath
+		);
+		fclose(fp);
+	}
+	free(path);
+
+	for (scan = list; scan; scan = scan->bnext) {
+		if ((scan->flags & PKGF_MANUALSEL) == 0)
+			continue;
+		if (scan->pkgfile) {
+			int len;
+
+			if (strrchr(scan->pkgfile, '.')) {
+				len = (int)(strrchr(scan->pkgfile, '.') -
+					    scan->pkgfile);
+			} else {
+				len = strlen(scan->pkgfile);
+			}
+
+			printf("pkg -R %s/repos install -y %*.*s\n",
+				BuildBase,
+				len, len, scan->pkgfile);
+			asprintf(&buf, "pkg -R %s/repos install -y %*.*s\n",
+				BuildBase,
+				len, len, scan->pkgfile);
+			system(buf);
+			free(buf);
+		}
+#if 0
+		if (scan->pkgfile == NULL ||
+		    (scan->flags & (PKGF_DUMMY | PKGF_META))) {
+			removePackagesMetaRecurse(scan);
+		}
+#endif
+	}
 }
 
 void
