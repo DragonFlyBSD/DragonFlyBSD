@@ -48,6 +48,7 @@ int DFlyPortsBaseOpt;
 int FetchOnlyOpt;
 int YesOpt;
 int DebugOpt;
+int GlobalExitCode;
 int MaskProbeAbort;
 int ColorOpt = 1;
 int NullStdinOpt = 1;
@@ -458,7 +459,7 @@ main(int ac, char **av)
 		pkgs = ParsePackageList(ac - 1, av + 1, 0);
 		DoBuild(pkgs);
 		DoRebuildRepo(!CheckAddReExec(lkfd));
-		DoUpgradePkgs(pkgs, 1);
+		//DoUpgradePkgs(pkgs, 1);
 		doadds = 1;
 	} else if (strcmp(av[0], "just-build") == 0) {
 		DoCleanBuild(1);
@@ -481,7 +482,7 @@ main(int ac, char **av)
 		RemovePackages(pkgs);
 		DoBuild(pkgs);
 		DoRebuildRepo(!CheckAddReExec(lkfd));
-		DoUpgradePkgs(pkgs, 1);
+		//DoUpgradePkgs(pkgs, 1);
 		doadds = 1;
 	} else if (strcmp(av[0], "test") == 0) {
 		WorkerProcFlags |= WORKER_PROC_CHECK_PLIST |
@@ -510,7 +511,7 @@ main(int ac, char **av)
 	if (doadds && CheckAddReExec(lkfd))
 		DoAddReExec(lkfd, optind + 1, av - optind);
 
-	return 0;
+	return GlobalExitCode;
 }
 
 /*

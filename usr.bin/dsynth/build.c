@@ -1208,6 +1208,7 @@ workercomplete(worker_t *work)
 			free(reason);
 		} else {
 			++BuildFailCount;
+			GlobalExitCode = 1;
 			dlog(DLOG_FAIL | DLOG_RED,
 			     "[%03d] FAILURE %s%s ##%16.16s %02d:%02d:%02d\n",
 			     work->index, pkg->portdir, skipbuf,

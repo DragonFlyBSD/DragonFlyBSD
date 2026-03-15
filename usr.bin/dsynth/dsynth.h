@@ -513,6 +513,7 @@ extern runstats_t NCursesRunStats;
 extern runstats_t MonitorRunStats;
 extern runstats_t HtmlRunStats;
 
+extern int GlobalExitCode;
 extern int BuildCount;
 extern int BuildTotal;
 extern int BuildFailCount;
