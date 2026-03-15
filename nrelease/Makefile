@@ -5,7 +5,7 @@
 # Optional targets may be specified which set make variables which enhance
 # the build in various ways.
 #
-gui nopkgs binpkgs:
+gui nopkgs binpkgs curses:
 
 #########################################################################
 #				SETUP					#
