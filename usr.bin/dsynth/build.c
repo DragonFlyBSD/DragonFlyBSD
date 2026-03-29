@@ -1088,6 +1088,7 @@ startworker(pkg_t *pkg, worker_t *work)
 		pthread_cond_signal(&work->cond);
 		++RunningWorkers;
 		/*RunStatsUpdate(work);*/
+		doHook(pkg, "hook_pkg_started", HookPkgStarted, 0);
 		break;
 	case WORKER_PENDING:
 	case WORKER_RUNNING:
@@ -3213,6 +3214,8 @@ childHookRun(bulk_t *bulk)
 			benv[bi].data = "ignored";
 		} else if (strcmp(bulk->s2, "hook_pkg_skipped") == 0) {
 			benv[bi].data = "skipped";
+		} else if (strcmp(bulk->s2, "hook_pkg_started") == 0) {
+			benv[bi].data = "started";
 		} else {
 			dfatal("Unknown hook id: %s", bulk->s2);
 			/* NOT REACHED */

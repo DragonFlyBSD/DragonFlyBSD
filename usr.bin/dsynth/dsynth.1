@@ -492,6 +492,8 @@ Hooks are run via
 This hook triggers when the overall build process starts.
 .It Pa hook_run_end
 This hook is called when the overall build process ends.
+.It Pa hook_pkg_started
+This hook triggers when a port starts building.
 .It Pa hook_pkg_success
 For each successful port built this hook will trigger.
 .It Pa hook_pkg_failure
@@ -540,8 +542,8 @@ The number of ports that where ignored and, hence, not built
 The number of ports that were skipped in the build (only for
 .Pa hook_run_end ) .
 .It Ev RESULT
-The result (success, failure, ignored, skipped) for the build of an individual
-port (only for
+The result (started, success, failure, ignored, skipped) for the build of an
+individual port (only for
 .Pa hook_pkg_* ) .
 .It Ev ORIGIN
 The origin of a port (only for

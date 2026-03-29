@@ -591,6 +591,7 @@ extern const char *HookPkgSuccess;
 extern const char *HookPkgFailure;
 extern const char *HookPkgIgnored;
 extern const char *HookPkgSkipped;
+extern const char *HookPkgStarted;
 
 void _dfatal(const char *file, int line, const char *func, int do_errno,
 	     const char *fmt, ...);

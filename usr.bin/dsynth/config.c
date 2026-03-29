@@ -86,6 +86,7 @@ const char *HookPkgSuccess;
 const char *HookPkgFailure;
 const char *HookPkgIgnored;
 const char *HookPkgSkipped;
+const char *HookPkgStarted;
 
 const char *ConfigBase;				/* The config base we found */
 const char *ConfigBase1 = "/etc/dsynth";
@@ -177,6 +178,7 @@ ParseConfiguration(int isworker)
 	HookPkgFailure = checkhook("hook_pkg_failure");
 	HookPkgIgnored = checkhook("hook_pkg_ignored");
 	HookPkgSkipped = checkhook("hook_pkg_skipped");
+	HookPkgStarted = checkhook("hook_pkg_started");
 
 	/*
 	 * Parse the configuration file(s).  This may override some of
