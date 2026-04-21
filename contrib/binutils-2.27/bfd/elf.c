@@ -709,7 +709,8 @@ setup_group (bfd *abfd, Elf_Internal_Shdr *hdr, asection *newsect)
 	      if (num_group == 0)
 		{
 		  elf_tdata (abfd)->group_sect_ptr = NULL;
-		  elf_tdata (abfd)->num_group = num_group = -1;
+		  elf_tdata (abfd)->num_group = -1;
+		  num_group = (unsigned)-1;
 		  (*_bfd_error_handler) (_("%B: no valid group sections found"), abfd);
 		  bfd_set_error (bfd_error_bad_value);
 		}

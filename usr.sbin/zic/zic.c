@@ -1995,7 +1995,8 @@ outzone(const struct zone * const zpfirst, const int zonecount)
 	/*
 	** Reserve type 0.
 	*/
-	gmtoffs[0] = isdsts[0] = ttisstds[0] = ttisgmts[0] = abbrinds[0] = -1;
+	gmtoffs[0] = isdsts[0] = ttisstds[0] = ttisgmts[0] = -1;
+	abbrinds[0] = (unsigned char)-1;
 	typecnt = 1;
 	for (i = 0; i < zonecount; ++i) {
 		zp = &zpfirst[i];
