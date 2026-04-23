@@ -14,8 +14,8 @@ GUTS_TARGETO=	${C_TARGET_OBJS:T}
 OBJS=		${GUTS_TARGETO}
 
 # hack to force c++ compiler to compile *.c files to create library
-.for cfile in ${GUTS_TARGETO}
-${cfile}: ${cfile:.o=.c}
+.for ofile in ${GUTS_TARGETO}
+${ofile}: ${ofile:.o=.c}
 	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 .endfor
 

@@ -433,8 +433,8 @@ CXXFLAGS+=	-Wno-c++11-narrowing
 .endif
 
 # hack to force c++ compiler to compile *.c files to create library
-.for cfile in ${BACKEND_OBJS}
-${cfile}: ${cfile:.o=.c}
+.for ofile in ${BACKEND_OBJS}
+${ofile}: ${ofile:.o=.c}
 	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 .endfor
 

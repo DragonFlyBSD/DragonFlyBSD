@@ -14,8 +14,8 @@ OBJS=		${GUTS_COMMONO}
 SRCS=		${C_COMMON_SRCS}
 
 # hack to force c++ compiler to compile *.c files to create library
-.for cfile in ${GUTS_COMMONO}
-${cfile}: ${cfile:.o=.c}
+.for ofile in ${GUTS_COMMONO}
+${ofile}: ${ofile:.o=.c}
 	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 .endfor
 

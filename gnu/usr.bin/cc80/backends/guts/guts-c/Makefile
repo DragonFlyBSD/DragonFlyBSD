@@ -20,8 +20,8 @@ GUTS_CO+=	${object:T}
 OBJS=		${GUTS_CO}
 
 # hack to force c++ compiler to compile *.c files to create library
-.for cfile in ${GUTS_CO}
-${cfile}: ${cfile:.o=.c}
+.for ofile in ${GUTS_CO}
+${ofile}: ${ofile:.o=.c}
 	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 .endfor
 
