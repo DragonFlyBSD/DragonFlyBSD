@@ -41,4 +41,9 @@ afterdepend: libcpp.na
 
 CLEANFILES=	localedir.h config.h
 
-.include "../../Makefile.intcxx_lib"
+.include <bsd.hostlib.mk>
+
+# hack to force c++ compiler to compile *.c files to create library
+MKDEPCC:=	${CXX}
+CC:=		${CXX}
+CFLAGS:=	${CXXFLAGS}
