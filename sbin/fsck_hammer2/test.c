@@ -1037,7 +1037,8 @@ end:
 	{
 		assert(bytes);
 		add_blockref_entry(droot, bref, dstats, sizeof(*dstats));
-		print_blockref_debug(stdout, &info, "cache-add");
+		if (DebugOpt >= 3)
+			print_blockref_debug(stdout, &info, "cache-add");
 	}
 
 	return 0;
