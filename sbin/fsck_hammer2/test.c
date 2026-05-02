@@ -142,8 +142,8 @@ static void print_blockref_stats(const blockref_stats_t *, bool);
 static int verify_volume_header(const hammer2_volume_data_t *);
 static int read_media(const hammer2_blockref_t *, hammer2_media_data_t *,
     size_t *);
-static int verify_blockref(recurse_info_t *parent, const hammer2_blockref_t *, bool, blockref_stats_t *,
-    struct blockref_tree *, delta_stats_t *, int, int);
+static int verify_blockref(recurse_info_t *parent, const hammer2_blockref_t *,
+    bool, blockref_stats_t *, struct blockref_tree *, delta_stats_t *, int, int);
 static void print_pfs(const hammer2_inode_data_t *);
 static char *get_inode_filename(const hammer2_inode_data_t *);
 static int init_pfs_blockref(const hammer2_blockref_t *,
@@ -534,9 +534,6 @@ print_blockref_debug(FILE *fp, const recurse_info_t *info, const char *msg)
 		print_blockref_debug_rev(fp, info->parent);
 	__print_blockref(fp, info->depth, info->index, &info->bref, msg);
 #if 0
-
-
-
 	const hammer2_blockref_t *bref = &info->bref;
 	const recurse_info_t *scan;
 	int tab = 0;
