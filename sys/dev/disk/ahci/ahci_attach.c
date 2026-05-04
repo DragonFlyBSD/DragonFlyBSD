@@ -59,9 +59,13 @@ static int	ahci_nvidia_mcp_attach(device_t);
 static int	ahci_pci_attach(device_t);
 static int	ahci_pci_detach(device_t);
 
+static int	ahci_samsung_apple_attach(device_t dev);
+
 static const struct ahci_device ahci_devices[] = {
 	{ PCI_VENDOR_VIATECH,	PCI_PRODUCT_VIATECH_VT8251_SATA,
 	    ahci_vt8251_attach, ahci_pci_detach, "ViaTech-VT8251-SATA" },
+	{ PCI_VENDOR_SAMSUNG,	PCI_PRODUCT_SAMSUNG_APPLE_AHCI,
+	    ahci_samsung_apple_attach, ahci_pci_detach, "Samsung-Apple-PCIe-SSD" },
 	{ PCI_VENDOR_ATI,	PCI_PRODUCT_ATI_SB600_SATA,
 	    ahci_ati_sb600_attach, ahci_pci_detach, "ATI-SB600-SATA" },
 	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_2,
@@ -107,7 +111,10 @@ static const struct ahci_pciid ahci_msi_blacklist[] = {
 	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_5, 0xa2 },
 	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_6, 0xa2 },
 	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_7, 0xa2 },
-	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_8, 0xa2 }
+	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP65_AHCI_8, 0xa2 },
+
+	/* Samsung Apple PCIe SSD: MSI fires once at init then goes silent */
+	{ PCI_VENDOR_SAMSUNG,	PCI_PRODUCT_SAMSUNG_APPLE_AHCI, -1 }
 };
 
 static int	ahci_msi_enable = 1;
@@ -196,6 +203,15 @@ ahci_nvidia_mcp_attach(device_t dev)
 	struct ahci_softc *sc = device_get_softc(dev);
 
 	sc->sc_flags |= AHCI_F_IGN_FR;
+	return (ahci_pci_attach(dev));
+}
+
+static int
+ahci_samsung_apple_attach(device_t dev)
+{
+	struct ahci_softc *sc = device_get_softc(dev);
+
+	sc->sc_flags |= AHCI_F_IGN_FR | AHCI_F_IGN_CR | AHCI_F_FAST_COMRESET;
 	return (ahci_pci_attach(dev));
 }
 

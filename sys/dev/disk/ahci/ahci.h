@@ -551,6 +551,7 @@ struct ahci_softc {
 #define AHCI_F_IGN_CR			0x00000010
 #define AHCI_F_CYCLE_FR			0x00000020
 #define AHCI_F_FORCE_SCLO		0x00000040
+#define AHCI_F_FAST_COMRESET		0x00000080	/* skip 1s sleeps in comreset (embedded SSDs) */
 
 	u_int			sc_ncmds;
 

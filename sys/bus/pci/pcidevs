@@ -85,6 +85,7 @@ vendor LEVELONE		0x1394	Level One
 vendor HIFN		0x13a3	Hifn
 vendor SUNDANCETI	0x13f0	Sundance Technology
 vendor EDIMAX		0x1432	Edimax
+vendor SAMSUNG		0x144d	Samsung
 vendor ASKEY		0x144f	Askey Computer Corp.
 vendor AVERMEDIA	0x1461	Avermedia Technologies
 vendor MSI		0x1462	MSI
@@ -183,6 +184,9 @@ product APPLE BCM5701		0x1645	BCM5701
 /* ATI products */
 product ATI SB600_SATA		0x4380  SB600 SATA
 product ATI SB700_AHCI		0x4391	SB700 AHCI
+
+/* Samsung products */
+product SAMSUNG APPLE_AHCI	0x1600	Apple AHCI SSD
 
 /* Atheros products */
 product ATHEROS AR5210		0x0007 AR5210

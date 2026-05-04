@@ -155,11 +155,6 @@ ahci_init(struct ahci_softc *sc)
 		device_printf(sc->sc_dev, "unable to reset controller\n");
 		return (1);
 	}
-	if (ahci_read(sc, AHCI_REG_GHC) & AHCI_REG_GHC_AE) {
-		device_printf(sc->sc_dev, "AE did not auto-clear!\n");
-		ahci_write(sc, AHCI_REG_GHC, 0);
-		ahci_os_sleep(250);
-	}
 
 	/*
 	 * Enable ahci (global interrupts disabled)
@@ -1543,7 +1538,10 @@ retry:
 	 * Give the new power management state time to settle, then clear
 	 * pending status.
 	 */
-	ahci_os_sleep(1000);
+	if (ap->ap_sc->sc_flags & AHCI_F_FAST_COMRESET)
+		ahci_os_sleep(10);
+	else
+		ahci_os_sleep(1000);
 	ahci_flush_tfd(ap);
 	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
 
@@ -1576,7 +1574,10 @@ retry:
 		break;
 	}
 	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
-	ahci_os_sleep(1000);
+	if (ap->ap_sc->sc_flags & AHCI_F_FAST_COMRESET)
+		ahci_os_sleep(10);
+	else
+		ahci_os_sleep(1000);
 
 	ap->ap_flags &= ~AP_F_HARSH_REINIT;
 
@@ -1599,7 +1600,10 @@ retry:
 	r &= ~AHCI_PREG_SCTL_DET_INIT;
 	r |= AHCI_PREG_SCTL_DET_NONE;
 	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
-	ahci_os_sleep(1000);
+	if (ap->ap_sc->sc_flags & AHCI_F_FAST_COMRESET)
+		ahci_os_sleep(10);
+	else
+		ahci_os_sleep(1000);
 
 	/*
 	 * Try to determine if there is a device on the port.  This operation
