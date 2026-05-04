@@ -1232,6 +1232,10 @@ bus/smbus/ichiic/ig4_acpi.c	optional ichiic acpi
 bus/smbus/ichsmb/ichsmb.c	optional ichsmb
 bus/smbus/ichsmb/ichsmb_pci.c	optional ichsmb pci
 bus/smbus/smbacpi/smbacpi.c	optional smbacpi acpi
+dev/apple/smc/smc.c		optional apple_smc acpi
+dev/apple/smc/smc_io.c		optional apple_smc acpi
+dev/apple/smc/smc_mmio.c	optional apple_smc acpi
+dev/apple/smc/smc_sysctl.c	optional apple_smc acpi
 dev/smbus/smb/smb.c		optional smb
 dev/netif/bwn/siba/siba_bwn.c	optional siba_bwn pci
 dev/netif/bwn/siba/siba_core.c	optional siba_bwn pci
