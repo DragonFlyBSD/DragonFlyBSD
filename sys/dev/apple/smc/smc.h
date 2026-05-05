@@ -96,6 +96,9 @@ struct apple_smc_softc {
 	int			sc_light_count;
 	char			*sc_temp_sensors[ASMC_TEMP_MAX];
 	int			sc_temp_count;
+	char			*sc_dts_sensors[ASMC_TEMP_MAX];
+	int			sc_dts_count;
+	int			sc_tj_max;	/* Tj,max in degrees C (from MSR 0x1A2) */
 	int			sc_has_sms;
 	int			sc_has_light;
 	int			sc_light_len;
@@ -216,6 +219,7 @@ int	apple_smc_mb_sysctl_fanmaxspeed(SYSCTL_HANDLER_ARGS);
 int	apple_smc_mb_sysctl_fantargetspeed(SYSCTL_HANDLER_ARGS);
 int	apple_smc_mb_sysctl_fanmanual(SYSCTL_HANDLER_ARGS);
 int	apple_smc_temp_sysctl(SYSCTL_HANDLER_ARGS);
+int	apple_smc_dts_sysctl(SYSCTL_HANDLER_ARGS);
 int	apple_smc_mb_sysctl_sms_x(SYSCTL_HANDLER_ARGS);
 int	apple_smc_mb_sysctl_sms_y(SYSCTL_HANDLER_ARGS);
 int	apple_smc_mb_sysctl_sms_z(SYSCTL_HANDLER_ARGS);

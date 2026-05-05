@@ -200,6 +200,26 @@ apple_smc_temp_sysctl(SYSCTL_HANDLER_ARGS)
 }
 
 int
+apple_smc_dts_sysctl(SYSCTL_HANDLER_ARGS)
+{
+	device_t dev = (device_t)arg1;
+	struct apple_smc_softc *sc = device_get_softc(dev);
+	int error, val;
+
+	if (arg2 < 0 || arg2 >= sc->sc_dts_count)
+		return (EINVAL);
+	error = apple_smc_sensor_read(dev, sc->sc_dts_sensors[arg2], &val);
+	if (error != 0)
+		return (error);
+	/* Sentinel check: a disconnected key can return 0x8x00 at runtime too. */
+	if (val <= -120000)
+		return (ENODEV);
+	/* DTS value is a negative offset from Tj,max; convert to absolute. */
+	val = sc->sc_tj_max * 1000 + val;
+	return (sysctl_handle_int(oidp, &val, 0, req));
+}
+
+int
 apple_smc_sensor_sysctl(SYSCTL_HANDLER_ARGS)
 {
 	device_t dev = (device_t)arg1;

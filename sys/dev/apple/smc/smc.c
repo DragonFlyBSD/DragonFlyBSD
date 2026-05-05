@@ -24,6 +24,9 @@
 
 #include "smc.h"
 
+#include <machine/specialreg.h>
+#include <machine/cpufunc.h>
+
 #define _COMPONENT	ACPI_OEM
 ACPI_MODULE_NAME("APPLE_SMC")
 
@@ -191,6 +194,17 @@ apple_smc_attach(device_t dev)
 		goto err;
 	}
 
+	/* Read Tj,max from MSR 0x1A2 bits[23:16] (Intel Sandy Bridge+). */
+	sc->sc_tj_max = 100;	/* safe default */
+	{
+		uint64_t msr;
+		if (rdmsr_safe(MSR_IA32_TEMPERATURE_TARGET, &msr) == 0) {
+			int tj = (int)((msr >> 16) & 0xff);
+			if (tj > 0)
+				sc->sc_tj_max = tj;
+		}
+	}
+
 	apple_smc_detect_capabilities(dev);
 	apple_smc_detect_sensors(dev);
 
@@ -263,6 +277,23 @@ apple_smc_attach(device_t dev)
 		    CTLTYPE_INT | CTLFLAG_RD,
 		    dev, i, apple_smc_temp_sysctl, "I",
 		    apple_smc_temp_desc(sc->sc_temp_sensors[i]));
+	}
+
+	/* DTS (distance-to-Tj,max) sensors, decoded as absolute temps */
+	if (sc->sc_dts_count > 0) {
+		struct sysctl_oid *dts_tree;
+
+		dts_tree = SYSCTL_ADD_NODE(sysctlctx,
+		    SYSCTL_CHILDREN(sc->sc_temp_tree), OID_AUTO, "dts",
+		    CTLFLAG_RD, 0, "CPU DTS temperature sensors");
+		for (i = 0; i < sc->sc_dts_count; i++) {
+			SYSCTL_ADD_PROC(sysctlctx,
+			    SYSCTL_CHILDREN(dts_tree),
+			    OID_AUTO, sc->sc_dts_sensors[i],
+			    CTLTYPE_INT | CTLFLAG_RD,
+			    dev, i, apple_smc_dts_sysctl, "I",
+			    apple_smc_temp_desc(sc->sc_dts_sensors[i]));
+		}
 	}
 
 	/* light tree */
@@ -457,6 +488,7 @@ apple_smc_detach(device_t dev)
 	struct apple_smc_softc *sc = device_get_softc(dev);
 
 	apple_smc_free_sensors(sc->sc_temp_sensors,    sc->sc_temp_count);
+	apple_smc_free_sensors(sc->sc_dts_sensors,     sc->sc_dts_count);
 	apple_smc_free_sensors(sc->sc_voltage_sensors, sc->sc_voltage_count);
 	apple_smc_free_sensors(sc->sc_current_sensors, sc->sc_current_count);
 	apple_smc_free_sensors(sc->sc_power_sensors,   sc->sc_power_count);
@@ -645,23 +677,53 @@ apple_smc_detect_sensors(device_t dev)
 	if (sc->sc_nkeys == 0)
 		return (0);
 
-	/* Temperature: T..U range, sp78 only */
+	/* Temperature: T..U range, sp78 only.
+	 * Probe-read each key: values consistently below -10000 millideg are
+	 * Intel DTS (distance-to-Tj,max) readings, not absolute temperatures.
+	 * Values at or below -120000 millideg are "not connected" sentinels
+	 * (Apple encodes these as 0x8000/0x8100/0x8200 in sp78) and are
+	 * dropped entirely.  DTS sensors are stored separately and decoded in
+	 * the sysctl handler as: actual = sc_tj_max*1000 + dts_millideg. */
 	error = apple_smc_key_search(dev, "T\0\0\0", &start);
 	if (error == 0)
 		error = apple_smc_key_search(dev, "U\0\0\0", &end);
 	if (error == 0) {
 		for (i = start; i < end; i++) {
+			int probe;
+
 			if (apple_smc_key_dump_by_index(dev, i,
 			    key, type, &len))
 				continue;
 			if (len != 2 || strncmp(type, "sp78", 4) != 0)
 				continue;
-			if (sc->sc_temp_count >= ASMC_TEMP_MAX)
-				break;
+
+			/* Probe read to classify the sensor. */
+			if (apple_smc_sensor_read(dev, key, &probe) != 0)
+				continue;
+
+			/* Disconnected sentinel: drop. */
+			if (probe <= -120000)
+				continue;
+
 			sensor_key = kmalloc(ASMC_KEYLEN + 1,
 			    M_DEVBUF, M_WAITOK);
 			memcpy(sensor_key, key, ASMC_KEYLEN + 1);
-			sc->sc_temp_sensors[sc->sc_temp_count++] = sensor_key;
+
+			if (probe < -10000) {
+				/* DTS sensor. */
+				if (sc->sc_dts_count < ASMC_TEMP_MAX)
+					sc->sc_dts_sensors[sc->sc_dts_count++] =
+					    sensor_key;
+				else
+					kfree(sensor_key, M_DEVBUF);
+			} else {
+				/* Absolute temperature sensor. */
+				if (sc->sc_temp_count < ASMC_TEMP_MAX)
+					sc->sc_temp_sensors[sc->sc_temp_count++] =
+					    sensor_key;
+				else
+					kfree(sensor_key, M_DEVBUF);
+			}
 		}
 	}
 
