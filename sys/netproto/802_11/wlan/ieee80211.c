@@ -46,6 +46,7 @@ __FBSDID("$FreeBSD$");
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/ethernet.h>
 
 #include <netproto/802_11/ieee80211_var.h>
@@ -715,6 +716,7 @@ ieee80211_vap_attach(struct ieee80211vap *vap, ifm_change_cb_t media_change,
 		ifp->if_baudrate = IF_Mbps(maxrate);
 
 #if defined(__DragonFly__)
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ether_ifattach(ifp, macaddr, &wlan_global_serializer);
 #else
 	ether_ifattach(ifp, macaddr);
