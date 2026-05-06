@@ -2072,6 +2072,10 @@ device		acpi_video
 # ACPI Docking Station
 device		acpi_dock
 
+# Apple System Management Controller
+device		apple_smc
+options 	APPLE_SMC_DEBUG
+
 device		aibs		# ASUSTeK AI Booster (ACPI ASOC ATK0110)
 
 # DRM options:

@@ -3,6 +3,7 @@
 SUBDIR=	\
 	acpica \
 	agp \
+	apple \
 	crypto \
 	disk \
 	drm \

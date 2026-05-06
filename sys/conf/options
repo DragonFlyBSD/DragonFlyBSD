@@ -40,6 +40,7 @@ TWA_DEBUG		opt_twa.h
 
 #options for ACPI support
 ACPI_DEBUG		opt_acpi.h
+APPLE_SMC_DEBUG	opt_apple_smc.h
 
 # Miscellaneous options.
 COMPILING_LINT	opt_lint.h
