@@ -255,6 +255,15 @@ TUNABLE_STR("hw.acpi.remove_interface", acpi_remove_interface,
     sizeof(acpi_remove_interface));
 
 /*
+ * Install Darwin _OSI on Apple hardware so OSDW() returns 1.
+ * Apple firmware checks _OSI("Darwin") in _INI and sets OSYS=0x2710.
+ * Without this, dual-GPU Macs hide the iGPU and many _DSM methods
+ * gate behind OSDW().  Linux and FreeBSD do the same.
+ */
+static int acpi_apple_darwin_osi = 1;
+TUNABLE_INT("hw.acpi.apple_darwin_osi", &acpi_apple_darwin_osi);
+
+/*
  * Use this tunable to disable the control method auto-serialization
  * mechanism that was added in 20140214 and superseded the previous
  * AcpiGbl_SerializeAllMethods global.
@@ -3846,6 +3855,31 @@ acpi_reset_interfaces(device_t dev)
 				    list.data[i]);
 		}
 		acpi_free_interfaces(&list);
+	}
+
+	/* Install Darwin _OSI on Apple hardware. */
+	if (acpi_apple_darwin_osi) {
+		char *vendor = kgetenv("smbios.system.maker");
+		if (vendor != NULL) {
+			if (strcmp(vendor, "Apple Inc.") == 0 ||
+			    strcmp(vendor, "Apple Computer, Inc.") == 0) {
+				status = AcpiUpdateInterfaces(
+				    ACPI_DISABLE_ALL_VENDOR_STRINGS);
+				if (ACPI_SUCCESS(status))
+					status = AcpiInstallInterface("Darwin");
+				if (bootverbose) {
+					if (ACPI_SUCCESS(status))
+						device_printf(dev,
+						    "installed Darwin OSI\n");
+					else
+						device_printf(dev,
+						    "could not install "
+						    "Darwin OSI: %s\n",
+						    AcpiFormatException(status));
+				}
+			}
+			kfreeenv(vendor);
+		}
 	}
 }
 

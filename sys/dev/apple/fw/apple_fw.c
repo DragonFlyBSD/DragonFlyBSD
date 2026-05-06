@@ -13,6 +13,7 @@
  */
 
 #include "apple_fw.h"
+#include <contrib/dev/acpica/source/include/acnamesp.h>
 
 #define _COMPONENT	ACPI_OEM
 ACPI_MODULE_NAME("APPLE_FW")
@@ -26,6 +27,7 @@ static int	apple_fw_detach(device_t);
 
 static void	apple_fw_enumerate_ssdts(device_t);
 static void	apple_fw_eval_osdw(device_t);
+static void	apple_fw_fixup_osys(device_t);
 
 static device_method_t apple_fw_methods[] = {
 	DEVMETHOD(device_identify,	apple_fw_identify),
@@ -65,7 +67,7 @@ apple_fw_is_apple(void)
 }
 
 /*
- * Tag value for our synthetic child — used by probe to distinguish
+ * Tag value for our synthetic child -- used by probe to distinguish
  * the device we create from real ACPI-enumerated devices.
  */
 #define	DEV_APPLE_FW(x)	\
@@ -124,8 +126,16 @@ apple_fw_attach(device_t dev)
 	/* Enumerate Apple-specific SSDTs */
 	apple_fw_enumerate_ssdts(dev);
 
-	/* Check OSDW (macOS detection) state */
+	/*
+	 * If the Darwin OSI tunable is enabled but the early path
+	 * didn't run (module loaded late), fix up OSYS ourselves.
+	 * If the tunable is disabled, the user opted out -- skip.
+	 */
+	int darwin_osi = 1;
+	TUNABLE_INT_FETCH("hw.acpi.apple_darwin_osi", &darwin_osi);
 	apple_fw_eval_osdw(dev);
+	if (darwin_osi && sc->sc_osdw == 0)
+		apple_fw_fixup_osys(dev);
 
 	/* Discover _DSM device properties via DTGP */
 	apple_fw_discover_dsm_devices(dev);
@@ -143,6 +153,62 @@ apple_fw_detach(device_t dev)
 
 	lockuninit(&sc->sc_lock);
 	return (0);
+}
+
+/*
+ * Fix up OSYS when Darwin OSI was not installed before AcpiLoadTables.
+ *
+ * Install the Darwin interface (affects future _OSI queries), then
+ * re-evaluate PINI which re-checks _OSI and sets OSYS=0x2710.
+ * If PINI is not present, write OSYS directly via the namespace.
+ */
+#define APPLE_OSYS_DARWIN	0x2710
+
+static void
+apple_fw_fixup_osys(device_t dev)
+{
+	struct apple_fw_softc *sc = device_get_softc(dev);
+	ACPI_STATUS status;
+
+	/* Install Darwin so future _OSI("Darwin") calls return true */
+	AcpiInstallInterface("Darwin");
+
+	/* Try re-evaluating PINI (Apple's _OSI->OSYS dispatcher) */
+	status = AcpiEvaluateObject(NULL, "\\PINI", NULL, NULL);
+	if (ACPI_SUCCESS(status)) {
+		apple_fw_eval_osdw(dev);
+		if (sc->sc_osdw != 0) {
+			device_printf(dev, "Darwin OSI fixup via PINI\n");
+			return;
+		}
+	}
+
+	/* PINI missing or didn't help -- write OSYS directly */
+	{
+		ACPI_HANDLE handle;
+		ACPI_NAMESPACE_NODE *node;
+		ACPI_OPERAND_OBJECT *obj;
+
+		status = AcpiGetHandle(NULL, "\\OSYS", &handle);
+		if (ACPI_FAILURE(status)) {
+			device_printf(dev,
+			    "Darwin OSI fixup failed: no \\OSYS\n");
+			return;
+		}
+
+		node = AcpiNsValidateHandle(handle);
+		if (node == NULL)
+			return;
+
+		obj = AcpiNsGetAttachedObject(node);
+		if (obj != NULL &&
+		    obj->Common.Type == ACPI_TYPE_INTEGER) {
+			obj->Integer.Value = APPLE_OSYS_DARWIN;
+			apple_fw_eval_osdw(dev);
+			device_printf(dev,
+			    "Darwin OSI fixup via OSYS poke\n");
+		}
+	}
 }
 
 /*

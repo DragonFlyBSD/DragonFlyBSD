@@ -1232,6 +1232,9 @@ bus/smbus/ichiic/ig4_acpi.c	optional ichiic acpi
 bus/smbus/ichsmb/ichsmb.c	optional ichsmb
 bus/smbus/ichsmb/ichsmb_pci.c	optional ichsmb pci
 bus/smbus/smbacpi/smbacpi.c	optional smbacpi acpi
+dev/apple/fw/apple_fw.c		optional apple_fw acpi
+dev/apple/fw/apple_fw_dsm.c	optional apple_fw acpi
+dev/apple/fw/apple_fw_sysctl.c	optional apple_fw acpi
 dev/apple/smc/smc.c		optional apple_smc acpi
 dev/apple/smc/smc_io.c		optional apple_smc acpi
 dev/apple/smc/smc_mmio.c	optional apple_smc acpi
