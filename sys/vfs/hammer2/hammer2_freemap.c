@@ -324,14 +324,23 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 				     mtid, 0, 0);
 		KKASSERT(error == 0);
 		if (error == 0) {
-			hammer2_chain_modify(chain, mtid, 0, 0);
-			bzero(&chain->data->bmdata[0],
-			      HAMMER2_FREEMAP_LEVELN_PSIZE);
-			chain->bref.check.freemap.bigmask = (uint32_t)-1;
-			chain->bref.check.freemap.avail = l1size;
-			/* bref.methods should already be inherited */
+			/*
+			 * An error should not be possible here because freemap
+			 * blocks are laid out algorithmically, not dynamically.
+			 *
+			 * But have an error path anyway.
+			 */
+			error = hammer2_chain_modify(chain, mtid, 0, 0);
+			if (error == 0) {
+				bzero(&chain->data->bmdata[0],
+				      HAMMER2_FREEMAP_LEVELN_PSIZE);
+				chain->bref.check.freemap.bigmask =
+					(uint32_t)-1;
+				chain->bref.check.freemap.avail = l1size;
+				/* bref.methods should already be inherited */
 
-			hammer2_freemap_init(hmp, key, chain);
+				hammer2_freemap_init(hmp, key, chain);
+			}
 		}
 	} else if (chain->error) {
 		/*
@@ -350,8 +359,13 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 	} else {
 		/*
 		 * Modify existing chain to setup for adjustment.
+		 *
+		 * An error should not be possible here because freemap
+		 * blocks are laid out algorithmically, not dynamically.
+		 *
+		 * But have an error path anyway.
 		 */
-		hammer2_chain_modify(chain, mtid, 0, 0);
+		error = hammer2_chain_modify(chain, mtid, 0, 0);
 	}
 
 	/*
@@ -368,7 +382,16 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 		start = (int)((iter->bnext - key) >>
 			      HAMMER2_FREEMAP_LEVEL0_RADIX);
 		KKASSERT(start >= 0 && start < HAMMER2_FREEMAP_COUNT);
-		hammer2_chain_modify(chain, mtid, 0, 0);
+
+		/*
+		 * An error should not be possible here because freemap
+		 * blocks are laid out algorithmically, not dynamically.
+		 *
+		 * But have an error path anyway.
+		 */
+		error = hammer2_chain_modify(chain, mtid, 0, 0);
+		if (error)
+			goto skip_scan;
 
 		error = HAMMER2_ERROR_ENOSPC;
 		for (count = 0; count < HAMMER2_FREEMAP_COUNT; ++count) {
@@ -476,6 +499,8 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 				(uint32_t)~((size_t)1 << radix);
 		}
 		/* XXX also scan down from original count */
+skip_scan:
+		;
 	}
 
 	if (error == 0) {
