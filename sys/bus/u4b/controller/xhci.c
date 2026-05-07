@@ -79,6 +79,11 @@
    ((struct xhci_softc *)(((uint8_t *)(bus)) - \
     ((uint8_t *)&(((struct xhci_softc *)0)->sc_bus))))
 
+#define XHCI_GET_CTX(sc, which, field, ptr) \
+	((sc)->sc_ctx_is_64_byte ? \
+	    &((struct which##64 *)(ptr))->field.ctx : \
+	    &((struct which *)(ptr))->field)
+
 static SYSCTL_NODE(_hw_usb, OID_AUTO, xhci, CTLFLAG_RW, 0, "USB XHCI");
 
 static int xhcistreams;
@@ -3819,6 +3824,27 @@ alloc_dma_set:
 	}
 }
 
+static uint8_t
+xhci_get_endpoint_state(struct usb_device *udev, uint8_t epno)
+{
+	struct xhci_softc *sc = XHCI_BUS2SC(udev->bus);
+	struct usb_page_search buf_dev;
+	struct xhci_hw_dev *hdev;
+	struct xhci_endp_ctx *endp;
+	uint32_t temp;
+
+	hdev =  &sc->sc_hw.devs[udev->controller_slot_id];
+
+	usbd_get_page(&hdev->device_pc, 0, &buf_dev);
+	endp = XHCI_GET_CTX(sc, xhci_dev_ctx, ctx_ep[epno - 1],
+			    buf_dev.buffer);
+	usb_pc_cpu_invalidate(&hdev->device_pc);
+
+	temp = le32toh(endp->dwEpCtx0);
+
+	return (XHCI_EPCTX_0_EPSTATE_GET(temp));
+}
+
 static usb_error_t
 xhci_configure_reset_endpoint(struct usb_xfer *xfer)
 {
@@ -3830,8 +3856,10 @@ xhci_configure_reset_endpoint(struct usb_xfer *xfer)
 	struct usb_page_cache *pcinp;
 	usb_error_t err;
 	usb_stream_t stream_id;
+	uint32_t mask;
 	uint8_t index;
 	uint8_t epno;
+	uint8_t drop;
 
 	pepext = xhci_get_endpoint_ext(xfer->xroot->udev,
 	    xfer->endpoint->edesc);
@@ -3871,16 +3899,26 @@ xhci_configure_reset_endpoint(struct usb_xfer *xfer)
 	 * Get the endpoint into the stopped state according to the
 	 * endpoint context state diagram in the XHCI specification:
 	 */
-
-	err = xhci_cmd_stop_ep(sc, 0, epno, index);
-
-	if (err != 0)
-		DPRINTF("Could not stop endpoint %u\n", epno);
-
-	err = xhci_cmd_reset_ep(sc, 0, epno, index);
-
-	if (err != 0)
-		DPRINTF("Could not reset endpoint %u\n", epno);
+	switch (xhci_get_endpoint_state(udev, epno)) {
+	case XHCI_EPCTX_0_EPSTATE_DISABLED:
+		drop = 0;
+		break;
+	case XHCI_EPCTX_0_EPSTATE_STOPPED:
+		drop = 1;
+		break;
+	case XHCI_EPCTX_0_EPSTATE_HALTED:
+		err = xhci_cmd_reset_ep(sc, 0, epno, index);
+		drop = (err != 0);
+		if (drop)
+			DPRINTF("Could not reset endpoint %u\n", epno);
+		break;
+	default:
+		drop = 1;
+		err = xhci_cmd_stop_ep(sc, 0, epno, index);
+		if (err != 0)
+			DPRINTF("Could not stop endpoint %u\n", epno);
+		break;
+	}
 
 	err = xhci_cmd_set_tr_dequeue_ptr(sc,
 	    (pepext->physaddr + (stream_id * sizeof(struct xhci_trb) *
@@ -3894,15 +3932,45 @@ xhci_configure_reset_endpoint(struct usb_xfer *xfer)
 	 * Get the endpoint into the running state according to the
 	 * endpoint context state diagram in the XHCI specification:
 	 */
+	mask = (1U << epno);
 
-	xhci_configure_mask(udev, (1U << epno) | 1U, 0);
+	/*
+	 * So-called control and isochronous transfer types have
+	 * predefined data toggles (USB 2.0) or sequence numbers (USB
+	 * 3.0) and does not need to be dropped.
+	 */
+	if (drop != 0 &&
+	    (edesc->bmAttributes & UE_XFERTYPE) != UE_CONTROL &&
+	    (edesc->bmAttributes & UE_XFERTYPE) != UE_ISOCHRONOUS) {
+		/* drop endpoint context to reset data toggle value, if any. */
+		xhci_configure_mask(udev, mask, 1);
+		err = xhci_cmd_configure_ep(sc, buf_inp.physaddr, 0, index);
+		if (err != 0) {
+			DPRINTF("Could not drop "
+			    "endpoint %u at slot %u.\n", epno, index);
+		} else {
+			sc->sc_hw.devs[index].ep_configured &= ~mask;
+		}
+	}
+
+	/*
+	 * Always need to evaluate the slot context, because the maximum
+	 * number of endpoint contexts is stored there.
+	 */
+	xhci_configure_mask(udev, mask | 1U, 0);
 
 	err = xhci_cmd_evaluate_ctx(sc, buf_inp.physaddr, index);
 
 	if (err != 0)
 		DPRINTF("Could not configure endpoint %u\n", epno);
 
-	err = xhci_cmd_configure_ep(sc, buf_inp.physaddr, 0, index);
+	if (!(sc->sc_hw.devs[index].ep_configured & mask)) {
+		err = xhci_cmd_configure_ep(sc, buf_inp.physaddr, 0, index);
+		if (err == 0)
+			sc->sc_hw.devs[index].ep_configured |= mask;
+	} else {
+		err = xhci_cmd_evaluate_ctx(sc, buf_inp.physaddr, index);
+	}
 
 	if (err != 0)
 		DPRINTF("Could not configure endpoint %u\n", epno);
@@ -4019,6 +4087,9 @@ xhci_ep_init(struct usb_device *udev, struct usb_endpoint_descriptor *edesc,
     struct usb_endpoint *ep)
 {
 	struct xhci_endpoint_ext *pepext;
+	struct xhci_softc *sc;
+	uint8_t index;
+	uint8_t epno;
 
 	DPRINTFN(2, "endpoint=%p, addr=%d, endpt=%d, mode=%d\n",
 	    ep, udev->address, edesc->bEndpointAddress, udev->flags.usb_mode);
@@ -4035,19 +4106,68 @@ xhci_ep_init(struct usb_device *udev, struct usb_endpoint_descriptor *edesc,
 	USB_BUS_LOCK(udev->bus);
 	pepext->trb_halted = 1;
 	pepext->trb_running = 0;
+
+	if ((edesc->bEndpointAddress & UE_ADDR) != 0) {
+		sc = XHCI_BUS2SC(udev->bus);
+		index = udev->controller_slot_id;
+		epno = XHCI_EPNO2EPID(edesc->bEndpointAddress);
+		sc->sc_hw.devs[index].ep_configured &= ~(1U << epno);
+	}
+
 	USB_BUS_UNLOCK(udev->bus);
 }
 
 static void
 xhci_ep_uninit(struct usb_device *udev, struct usb_endpoint *ep)
 {
+	struct xhci_softc *sc = XHCI_BUS2SC(udev->bus);
+	const struct usb_endpoint_descriptor *edesc = ep->edesc;
+	struct usb_page_search buf_inp;
+	struct usb_page_cache *pcinp;
+	uint32_t mask;
+	uint8_t index;
+	uint8_t epno;
+	usb_error_t err;
 
+	if (udev->parent_hub == NULL) {
+		/* root HUB has special endpoint handling */
+		return;
+	}
+
+	if ((edesc->bEndpointAddress & UE_ADDR) == 0) {
+		/* control endpoint is never unconfigured */
+		return;
+	}
+
+	XHCI_CMD_LOCK(sc);
+	index = udev->controller_slot_id;
+	epno = XHCI_EPNO2EPID(edesc->bEndpointAddress);
+	mask = 1U << epno;
+
+	if (sc->sc_hw.devs[index].ep_configured & mask) {
+		USB_BUS_LOCK(udev->bus);
+		xhci_configure_mask(udev, mask, 1);
+		USB_BUS_UNLOCK(udev->bus);
+
+		pcinp = &sc->sc_hw.devs[index].input_pc;
+		usbd_get_page(pcinp, 0, &buf_inp);
+		err = xhci_cmd_configure_ep(sc, buf_inp.physaddr, 0, index);
+		if (err) {
+			DPRINTF("Unconfiguring endpoint failed: %d\n", err);
+		} else {
+			USB_BUS_LOCK(udev->bus);
+			sc->sc_hw.devs[index].ep_configured &= ~mask;
+			USB_BUS_UNLOCK(udev->bus);
+		}
+	}
+	XHCI_CMD_UNLOCK(sc);
 }
 
 static void
 xhci_ep_clear_stall(struct usb_device *udev, struct usb_endpoint *ep)
 {
 	struct xhci_endpoint_ext *pepext;
+	struct usb_endpoint_descriptor *edesc = ep->edesc;
 
 	DPRINTF("\n");
 
@@ -4060,11 +4180,13 @@ xhci_ep_clear_stall(struct usb_device *udev, struct usb_endpoint *ep)
 		return;
 	}
 
-	pepext = xhci_get_endpoint_ext(udev, ep->edesc);
+	pepext = xhci_get_endpoint_ext(udev, edesc);
 
 	USB_BUS_LOCK(udev->bus);
+
 	pepext->trb_halted = 1;
 	pepext->trb_running = 0;
+
 	USB_BUS_UNLOCK(udev->bus);
 }
 
@@ -4267,6 +4389,7 @@ xhci_device_state_change(struct usb_device *udev)
 
 		/* set default state */
 		sc->sc_hw.devs[index].state = XHCI_ST_DEFAULT;
+		sc->sc_hw.devs[index].ep_configured = 3U;
 
 		/* reset number of contexts */
 		sc->sc_hw.devs[index].context_num = 0;
@@ -4284,6 +4407,7 @@ xhci_device_state_change(struct usb_device *udev)
 			break;
 
 		sc->sc_hw.devs[index].state = XHCI_ST_ADDRESSED;
+		sc->sc_hw.devs[index].ep_configured = 3U;
 
 		err = xhci_cmd_configure_ep(sc, 0, 1, index);
 
@@ -4299,6 +4423,7 @@ xhci_device_state_change(struct usb_device *udev)
 
 		/* set configured state */
 		sc->sc_hw.devs[index].state = XHCI_ST_CONFIGURED;
+		sc->sc_hw.devs[index].ep_configured = 3U;
 
 		/* reset number of contexts */
 		sc->sc_hw.devs[index].context_num = 0;
