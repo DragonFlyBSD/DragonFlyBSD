@@ -527,6 +527,7 @@ usb_error_t xhci_halt_controller(struct xhci_softc *);
 usb_error_t xhci_init(struct xhci_softc *, device_t, uint8_t);
 usb_error_t xhci_start_controller(struct xhci_softc *);
 void	xhci_interrupt(struct xhci_softc *);
+void	xhci_interrupt_locked(struct xhci_softc *);
 void	xhci_uninit(struct xhci_softc *);
 
 #endif					/* _XHCI_H_ */

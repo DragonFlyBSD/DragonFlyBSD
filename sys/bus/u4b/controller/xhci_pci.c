@@ -153,9 +153,7 @@ xhci_interrupt_poll(void *_sc)
 {
 	struct xhci_softc *sc = _sc;
 
-	USB_BUS_UNLOCK(&sc->sc_bus);
-	xhci_interrupt(sc);
-	USB_BUS_LOCK(&sc->sc_bus);
+	xhci_interrupt_locked(sc);
 	usb_callout_reset(&sc->sc_callout, 1, (void *)&xhci_interrupt_poll, sc);
 }
 
@@ -316,10 +314,14 @@ xhci_pci_attach(device_t self)
 	if (err == 0)
 		err = xhci_start_controller(sc);
 
+	/*
+	 * Start callout polling
+	 */
 	if (sc->sc_irq_res == NULL || sc->sc_intr_hdl == NULL) {
 		if (xhci_use_polling() != 0) {
 			device_printf(self, "Interrupt polling at %dHz\n", hz);
-			xhci_interrupt_poll(sc);
+			usb_callout_reset(&sc->sc_callout, 1,
+					  (void *)&xhci_interrupt_poll, sc);
 		} else {
 			goto error;
 		}

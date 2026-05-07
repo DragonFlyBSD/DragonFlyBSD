@@ -1613,14 +1613,24 @@ xhci_cmd_reset_dev(struct xhci_softc *sc, uint8_t slot_id)
 
 /*------------------------------------------------------------------------*
  *	xhci_interrupt - XHCI interrupt handler
- *------------------------------------------------------------------------*/
+ *------------------------------------------------------------------------*
+ *
+ * xhci_interrupt() called from interrupt subsystem
+ * xhci_interrupt_locked() called from polling callout
+ */
 void
 xhci_interrupt(struct xhci_softc *sc)
 {
+	USB_BUS_LOCK(&sc->sc_bus);
+	xhci_interrupt_locked(sc);
+	USB_BUS_UNLOCK(&sc->sc_bus);
+}
+
+void
+xhci_interrupt_locked(struct xhci_softc *sc)
+{
 	uint32_t status;
 	uint32_t temp;
-
-	USB_BUS_LOCK(&sc->sc_bus);
 
 	status = XREAD4(sc, oper, XHCI_USBSTS);
 
@@ -1640,8 +1650,8 @@ xhci_interrupt(struct xhci_softc *sc)
 	xhci_interrupt_poll(sc);
 
 	if (status & (XHCI_STS_PCD | XHCI_STS_HCH |
-	    XHCI_STS_HSE | XHCI_STS_HCE)) {
-
+		      XHCI_STS_HSE | XHCI_STS_HCE))
+        {
 		if (status & XHCI_STS_PCD) {
 			xhci_root_intr(sc);
 		}
@@ -1661,7 +1671,6 @@ xhci_interrupt(struct xhci_softc *sc)
 			   __func__);
 		}
 	}
-	USB_BUS_UNLOCK(&sc->sc_bus);
 }
 
 /*------------------------------------------------------------------------*
