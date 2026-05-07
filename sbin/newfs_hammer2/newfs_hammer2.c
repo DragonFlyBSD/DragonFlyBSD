@@ -63,6 +63,8 @@ main(int ac, char **av)
 	 * Parse arguments.
 	 */
 	while ((ch = getopt(ac, av, "L:b:r:V:s:d")) != -1) {
+		int i;
+
 		switch(ch) {
 		case 'b':
 			opt.BootAreaSize = getsize(optarg,
@@ -87,6 +89,13 @@ main(int ac, char **av)
 			label_specified = 1;
 			if (strcasecmp(optarg, "none") == 0) {
 				break;
+			}
+			for (i = 0; i < opt.NLabels; i++) {
+				if (strcasecmp(opt.Label[i], optarg) == 0) {
+					errx(1, "duplicate label \"%s\"; "
+					    "note \"LOCAL\" is auto-created",
+					    optarg);
+				}
 			}
 			if (opt.NLabels >= MAXLABELS) {
 				errx(1, "Limit of %d local labels",
