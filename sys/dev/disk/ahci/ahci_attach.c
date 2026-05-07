@@ -481,48 +481,13 @@ ahci_pci_attach(device_t dev)
 
 	pi = ahci_read(sc, AHCI_REG_PI);
 	DPRINTF(AHCI_D_VERBOSE, "%s: ports implemented: 0x%08x\n",
-	    DEVNAME(sc), pi);
+	    device_get_nameunit(sc->sc_dev), pi);
 
 	sc->sc_ipm_disable = AHCI_PREG_SCTL_IPM_NOPARTIAL |
 			     AHCI_PREG_SCTL_IPM_NOSLUMBER;
 	if (sc->sc_cap2 & AHCI_REG_CAP2_SDS)
 		sc->sc_ipm_disable |= AHCI_PREG_SCTL_IPM_NODEVSLP;
 
-#ifdef AHCI_COALESCE
-	/* Naive coalescing support - enable for all ports. */
-	if (cap & AHCI_REG_CAP_CCCS) {
-		u_int16_t		ccc_timeout = 20;
-		u_int8_t		ccc_numcomplete = 12;
-		u_int32_t		ccc_ctl;
-
-		/* disable coalescing during reconfiguration. */
-		ccc_ctl = ahci_read(sc, AHCI_REG_CCC_CTL);
-		ccc_ctl &= ~0x00000001;
-		ahci_write(sc, AHCI_REG_CCC_CTL, ccc_ctl);
-
-		sc->sc_ccc_mask = 1 << AHCI_REG_CCC_CTL_INT(ccc_ctl);
-		if (pi & sc->sc_ccc_mask) {
-			/* A conflict with the implemented port list? */
-			printf("%s: coalescing interrupt/implemented port list "
-			    "conflict, PI: %08x, ccc_mask: %08x\n",
-			    DEVNAME(sc), pi, sc->sc_ccc_mask);
-			sc->sc_ccc_mask = 0;
-			goto noccc;
-		}
-
-		/* ahci_port_start will enable each port when it starts. */
-		sc->sc_ccc_ports = pi;
-		sc->sc_ccc_ports_cur = 0;
-
-		/* program thresholds and enable overall coalescing. */
-		ccc_ctl &= ~0xffffff00;
-		ccc_ctl |= (ccc_timeout << 16) | (ccc_numcomplete << 8);
-		ahci_write(sc, AHCI_REG_CCC_CTL, ccc_ctl);
-		ahci_write(sc, AHCI_REG_CCC_PORTS, 0);
-		ahci_write(sc, AHCI_REG_CCC_CTL, ccc_ctl | 1);
-	}
-noccc:
-#endif
 	/*
 	 * Allocate per-port resources
 	 *

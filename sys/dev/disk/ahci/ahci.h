@@ -91,11 +91,6 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define  AHCI_REG_VS_1_3		0x00010300 /* 1.3 */
 #define  AHCI_REG_VS_1_4		0x00010400 /* 1.4 */
 #define  AHCI_REG_VS_1_5		0x00010500 /* 1.5 (future...) */
-
-#define AHCI_REG_CCC_CTL	0x014 /* Coalescing Control */
-#define  AHCI_REG_CCC_CTL_INT(_r)	(((_r) & 0xf8) >> 3) /* CCC INT slot */
-
-#define AHCI_REG_CCC_PORTS	0x018 /* Coalescing Ports */
 #define AHCI_REG_EM_LOC		0x01c /* Enclosure Mgmt Location */
 #define AHCI_REG_EM_CTL		0x020 /* Enclosure Mgmt Control */
 
@@ -557,13 +552,7 @@ struct ahci_softc {
 
 	struct ahci_port	*sc_ports[AHCI_MAX_PORTS];
 
-#ifdef AHCI_COALESCE
-	u_int32_t		sc_ccc_mask;
-	u_int32_t		sc_ccc_ports;
-	u_int32_t		sc_ccc_ports_cur;
-#endif
 };
-#define DEVNAME(_s)		((_s)->sc_dev.dv_xname)
 
 struct ahci_device {
 	pci_vendor_id_t		ad_vendor;

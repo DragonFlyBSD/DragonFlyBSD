@@ -454,10 +454,6 @@ nomem:
 	       AHCI_PREG_IE_DHRE | AHCI_PREG_IE_SDBE;
 	if (ap->ap_sc->sc_cap & AHCI_REG_CAP_SSNTF)
 		data |= AHCI_PREG_IE_IPME;
-#ifdef AHCI_COALESCE
-	if (sc->sc_ccc_ports & (1 << port)
-		data &= ~(AHCI_PREG_IE_SDBE | AHCI_PREG_IE_DHRE);
-#endif
 	ap->ap_intmask = data;
 
 	/*
@@ -1112,17 +1108,6 @@ ahci_port_start(struct ahci_port *ap)
 		return (1);
 	}
 
-#ifdef AHCI_COALESCE
-	/*
-	 * (Re-)enable coalescing on the port.
-	 */
-	if (ap->ap_sc->sc_ccc_ports & (1 << ap->ap_num)) {
-		ap->ap_sc->sc_ccc_ports_cur |= (1 << ap->ap_num);
-		ahci_write(ap->ap_sc, AHCI_REG_CCC_PORTS,
-		    ap->ap_sc->sc_ccc_ports_cur);
-	}
-#endif
-
 	return (0);
 }
 
@@ -1140,17 +1125,6 @@ int
 ahci_port_stop(struct ahci_port *ap, int stop_fis_rx)
 {
 	u_int32_t	r;
-
-#ifdef AHCI_COALESCE
-	/*
-	 * Disable coalescing on the port while it is stopped.
-	 */
-	if (ap->ap_sc->sc_ccc_ports & (1 << ap->ap_num)) {
-		ap->ap_sc->sc_ccc_ports_cur &= ~(1 << ap->ap_num);
-		ahci_write(ap->ap_sc, AHCI_REG_CCC_PORTS,
-		    ap->ap_sc->sc_ccc_ports_cur);
-	}
-#endif
 
 	/*
 	 * Turn off ST, then wait for CR to go off.
@@ -2514,16 +2488,6 @@ ahci_intr(void *arg)
 		return;
 	}
 	is &= sc->sc_portmask;
-
-#ifdef AHCI_COALESCE
-	/* Check coalescing interrupt first */
-	if (is & sc->sc_ccc_mask) {
-		DPRINTF(AHCI_D_INTR, "%s: command coalescing interrupt\n",
-		    DEVNAME(sc));
-		is &= ~sc->sc_ccc_mask;
-		is |= sc->sc_ccc_ports_cur;
-	}
-#endif
 
 	/*
 	 * Process interrupts for each port in a non-blocking fashion.
