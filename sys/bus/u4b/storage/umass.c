@@ -2112,6 +2112,7 @@ umass_cam_attach_sim(struct umass_softc *sc)
 	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 
 	if (xpt_bus_register(sc->sc_sim, sc->sc_unit) != CAM_SUCCESS) {
+		cam_sim_free(sc->sc_sim);
 		lockmgr(&sc->sc_lock, LK_RELEASE);
 		return (ENOMEM);
 	}
