@@ -1,5 +1,6 @@
-/* $FreeBSD: head/sys/dev/usb/usb_busdma.c 261505 2014-02-05 08:02:52Z hselasky $ */
 /*-
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -83,11 +84,9 @@ usbd_get_page(struct usb_page_cache *pc, usb_frlength_t offset,
 	struct usb_page *page;
 
 	if (pc->page_start) {
-
 		/* Case 1 - something has been loaded into DMA */
 
 		if (pc->buffer) {
-
 			/* Case 1a - Kernel Virtual Address */
 
 			res->buffer = USB_ADD_BYTES(pc->buffer, offset);
@@ -99,7 +98,6 @@ usbd_get_page(struct usb_page_cache *pc, usb_frlength_t offset,
 		page = pc->page_start;
 
 		if (pc->ismultiseg) {
-
 			page += (offset / USB_PAGE_SIZE);
 
 			offset %= USB_PAGE_SIZE;
@@ -111,7 +109,6 @@ usbd_get_page(struct usb_page_cache *pc, usb_frlength_t offset,
 			res->physaddr = page->physaddr + offset;
 		}
 		if (!pc->buffer) {
-
 			/* Case 1b - Non Kernel Virtual Address */
 
 			res->buffer = USB_ADD_BYTES(page->buffer, offset);
@@ -138,7 +135,6 @@ usbd_copy_in(struct usb_page_cache *cache, usb_frlength_t offset,
 	struct usb_page_search buf_res;
 
 	while (len != 0) {
-
 		usbd_get_page(cache, offset, &buf_res);
 
 		if (buf_res.length > len) {
@@ -168,7 +164,6 @@ usbd_copy_in_user(struct usb_page_cache *cache, usb_frlength_t offset,
 	int error;
 
 	while (len != 0) {
-
 		usbd_get_page(cache, offset, &buf_res);
 
 		if (buf_res.length > len) {
@@ -198,7 +193,7 @@ struct usb_m_copy_in_arg {
 static int
 usbd_m_copy_in_cb(void *arg, void *src, uint32_t count)
 {
-	register struct usb_m_copy_in_arg *ua = arg;
+	struct usb_m_copy_in_arg *ua = arg;
 
 	usbd_copy_in(ua->cache, ua->dst_offset, src, count);
 	ua->dst_offset += count;
@@ -226,7 +221,6 @@ usb_uiomove(struct usb_page_cache *pc, struct uio *uio,
 	int error = 0;
 
 	while (len != 0) {
-
 		usbd_get_page(pc, pc_offset, &res);
 
 		if (res.length > len) {
@@ -258,7 +252,6 @@ usbd_copy_out(struct usb_page_cache *cache, usb_frlength_t offset,
 	struct usb_page_search res;
 
 	while (len != 0) {
-
 		usbd_get_page(cache, offset, &res);
 
 		if (res.length > len) {
@@ -288,7 +281,6 @@ usbd_copy_out_user(struct usb_page_cache *cache, usb_frlength_t offset,
 	int error;
 
 	while (len != 0) {
-
 		usbd_get_page(cache, offset, &res);
 
 		if (res.length > len) {
@@ -316,7 +308,6 @@ usbd_frame_zero(struct usb_page_cache *cache, usb_frlength_t offset,
 	struct usb_page_search res;
 
 	while (len != 0) {
-
 		usbd_get_page(cache, offset, &res);
 
 		if (res.length > len) {
@@ -361,8 +352,10 @@ usb_dma_tag_create(struct usb_dma_tag *udt,
 	     /* lowaddr   */ (2ULL << (udt->tag_parent->dma_bits - 1)) - 1,
 	     /* highaddr  */ BUS_SPACE_MAXADDR,
 	     /* maxsize   */ size,
-	     /* nsegments */ (align == 1 && size > 1) ? (2 + (size / USB_PAGE_SIZE)) : 1,
-	     /* maxsegsz  */ (align == 1 && size > USB_PAGE_SIZE) ? USB_PAGE_SIZE : size,
+	     /* nsegments */ (align == 1 && size > 1) ?
+	    (2 + (size / USB_PAGE_SIZE)) : 1,
+	     /* maxsegsz  */ (align == 1 && size > USB_PAGE_SIZE) ?
+	    USB_PAGE_SIZE : size,
 	     /* flags     */ BUS_DMA_KEEP_PG_OFFSET,
 	    &tag)) {
 		tag = NULL;
@@ -434,13 +427,22 @@ usb_pc_common_mem_cb(void *arg, bus_dma_segment_t *segs,
 	pc->page_offset_buf = rem;
 	pc->page_offset_end += rem;
 #ifdef USB_DEBUG
-	if (rem != (USB_P2U(pc->buffer) & (USB_PAGE_SIZE - 1))) {
-		/*
-		 * This check verifies that the physical address is correct:
-		 */
-		DPRINTFN(0, "Page offset was not preserved\n");
-		error = 1;
-		goto done;
+	if (nseg > 1) {
+		int x;
+
+		for (x = 0; x != nseg - 1; x++) {
+			if (((segs[x].ds_addr + segs[x].ds_len) & (USB_PAGE_SIZE - 1)) ==
+			    ((segs[x + 1].ds_addr & (USB_PAGE_SIZE - 1))))
+				continue;
+			/*
+			 * This check verifies there is no page offset
+			 * hole between any of the segments. See the
+			 * BUS_DMA_KEEP_PG_OFFSET flag.
+			 */
+			DPRINTFN(0, "Page offset was not preserved\n");
+			error = 1;
+			goto done;
+		}
 	}
 #endif
 	while (pc->ismultiseg) {
@@ -508,7 +510,7 @@ usb_pc_alloc_mem(struct usb_page_cache *pc, struct usb_page *pg,
 		/*
 		 * XXX BUS-DMA workaround - FIXME later:
 		 *
-		 * We assume that that the aligment at this point of
+		 * We assume that the alignment at this point of
 		 * the code is greater than or equal to the size and
 		 * less than two times the size, so that if we double
 		 * the size, the size will be greater than the
@@ -562,6 +564,7 @@ usb_pc_alloc_mem(struct usb_page_cache *pc, struct usb_page *pg,
 		bus_dmamem_free(utag->tag, ptr, map);
 		goto error;
 	}
+	pc->isloaded = 1;
 	memset(ptr, 0, size);
 
 	usb_pc_cpu_flush(pc);
@@ -574,6 +577,7 @@ error:
 	pc->page_start = NULL;
 	pc->page_offset_buf = 0;
 	pc->page_offset_end = 0;
+	pc->isloaded = 0;
 	pc->map = NULL;
 	pc->tag = NULL;
 	return (1);
@@ -588,12 +592,13 @@ void
 usb_pc_free_mem(struct usb_page_cache *pc)
 {
 	if (pc && pc->buffer) {
-
-		bus_dmamap_unload(pc->tag, pc->map);
+		if (pc->isloaded)
+			bus_dmamap_unload(pc->tag, pc->map);
 
 		bus_dmamem_free(pc->tag, pc->buffer, pc->map);
 
 		pc->buffer = NULL;
+		pc->isloaded = 0;
 	}
 }
 
@@ -625,7 +630,8 @@ usb_pc_load_mem(struct usb_page_cache *pc, usb_size_t size, uint8_t sync)
 			 * We have to unload the previous loaded DMA
 			 * pages before trying to load a new one!
 			 */
-			bus_dmamap_unload(pc->tag, pc->map);
+			if (pc->isloaded)
+				bus_dmamap_unload(pc->tag, pc->map);
 
 			/*
 			 * Try to load memory into DMA.
@@ -638,15 +644,16 @@ usb_pc_load_mem(struct usb_page_cache *pc, usb_size_t size, uint8_t sync)
 				err = 0;
 			}
 			if (err || uptag->dma_error) {
+				pc->isloaded = 0;
 				return (1);
 			}
 		} else {
-
 			/*
 			 * We have to unload the previous loaded DMA
 			 * pages before trying to load a new one!
 			 */
-			bus_dmamap_unload(pc->tag, pc->map);
+			if (pc->isloaded)
+				bus_dmamap_unload(pc->tag, pc->map);
 
 			/*
 			 * Try to load memory into DMA. The callback
@@ -657,6 +664,7 @@ usb_pc_load_mem(struct usb_page_cache *pc, usb_size_t size, uint8_t sync)
 			    &usb_pc_load_mem_cb, pc, BUS_DMA_WAITOK)) {
 			}
 		}
+		pc->isloaded = 1;
 	} else {
 		if (!sync) {
 			/*
@@ -749,6 +757,8 @@ void
 usb_pc_dmamap_destroy(struct usb_page_cache *pc)
 {
 	if (pc && pc->tag) {
+		if (pc->isloaded)
+			bus_dmamap_unload(pc->tag, pc->map);
 		bus_dmamap_destroy(pc->tag, pc->map);
 		pc->tag = NULL;
 		pc->map = NULL;
@@ -772,7 +782,6 @@ usb_dma_tag_find(struct usb_dma_parent_tag *udpt,
 	nudt = udpt->utag_max;
 
 	while (nudt--) {
-
 		if (udt->align == 0) {
 			usb_dma_tag_create(udt, size, align);
 			if (udt->tag == NULL) {
@@ -839,7 +848,6 @@ usb_dma_tag_unsetup(struct usb_dma_parent_tag *udpt)
 	nudt = udpt->utag_max;
 
 	while (nudt--) {
-
 		if (udt->align) {
 			/* destroy the USB DMA tag */
 			usb_dma_tag_destroy(udt);
@@ -945,7 +953,6 @@ usb_bdma_work_loop(struct usb_xfer_queue *pq)
 			pg += (xfer->frlengths[nframes] / USB_PAGE_SIZE);
 			pg += 2;
 		}
-
 	}
 	if (info->dma_error) {
 		USB_BUS_LOCK(info->bus);
@@ -954,7 +961,6 @@ usb_bdma_work_loop(struct usb_xfer_queue *pq)
 		return;
 	}
 	if (info->dma_currframe != info->dma_nframes) {
-
 		if (info->dma_currframe == 0) {
 			/* special case */
 			usb_pc_load_mem(xfer->frbuffers,
@@ -1027,7 +1033,6 @@ usb_bdma_pre_sync(struct usb_xfer *xfer)
 	pc = xfer->frbuffers;
 
 	while (nframes--) {
-
 		if (pc->isread) {
 			usb_pc_cpu_invalidate(pc);
 		} else {

@@ -1,5 +1,6 @@
-/* $FreeBSD: head/sys/dev/usb/usb_busdma.h 266969 2014-06-02 07:08:34Z hselasky $ */
 /*-
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,13 +33,11 @@
 
 #include <sys/bus.h>
 
-#define USB_HAVE_BUSDMA 1
-
 /* defines */
 
 #define	USB_PAGE_SIZE PAGE_SIZE		/* use system PAGE_SIZE */
 
-#define	USB_GET_DMA_TAG(dev) NULL	/* XXX */
+#define	USB_GET_DMA_TAG(dev) bus_get_dma_tag(dev)
 
 /* structure prototypes */
 
@@ -58,7 +57,7 @@ typedef void (usb_dma_callback_t)(struct usb_dma_parent_tag *udpt);
  */
 struct usb_page {
 #if USB_HAVE_BUSDMA
-	bus_size_t physaddr;
+	bus_addr_t physaddr;
 	void   *buffer;			/* non Kernel Virtual Address */
 #endif
 };
@@ -71,7 +70,7 @@ struct usb_page {
 struct usb_page_search {
 	void   *buffer;
 #if USB_HAVE_BUSDMA
-	bus_size_t physaddr;
+	bus_addr_t physaddr;
 #endif
 	usb_size_t length;
 };
@@ -81,7 +80,6 @@ struct usb_page_search {
  * memory allocation.
  */
 struct usb_page_cache {
-
 #if USB_HAVE_BUSDMA
 	bus_dma_tag_t tag;
 	bus_dmamap_t map;
@@ -96,6 +94,7 @@ struct usb_page_cache {
 					 * from the memory. Else write. */
 	uint8_t	ismultiseg:1;		/* set if we can have multiple
 					 * segments */
+	uint8_t isloaded:1;		/* Set if map is currently loaded. */
 #endif
 };
 
