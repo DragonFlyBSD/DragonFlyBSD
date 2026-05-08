@@ -794,31 +794,64 @@ module_exit(i915_exit);
 MODULE_AUTHOR("Tungsten Graphics, Inc.");
 MODULE_AUTHOR("Intel Corporation");
 
-static int
-i915_pci_probe_dfly(device_t kdev)
+static const struct pci_device_id *
+i915_pci_device_id_dfly(device_t kdev)
 {
-	int device, i = 0;
-	const struct pci_device_id *ent;
-	static struct pci_dev *pdev = NULL;
-	static device_t bsddev;
+	int device, i;
 
 	if (pci_get_class(kdev) != PCIC_DISPLAY)
-		return ENXIO;
+		return NULL;
 
 	if (pci_get_vendor(kdev) != PCI_VENDOR_ID_INTEL)
-		return ENXIO;
+		return NULL;
 
 	device = pci_get_device(kdev);
 
 	for (i = 0; pciidlist[i].device != 0; i++) {
-		if (pciidlist[i].device == device) {
-			ent = &pciidlist[i];
-			goto found;
-		}
+		if (pciidlist[i].device == device)
+			return &pciidlist[i];
 	}
 
-	return ENXIO;
-found:
+	return NULL;
+}
+
+static int
+i915_pci_probe_dfly(device_t kdev)
+{
+	const struct pci_device_id *ent;
+	struct intel_device_info *intel_info;
+
+	ent = i915_pci_device_id_dfly(kdev);
+	if (ent == NULL)
+		return ENXIO;
+
+	/*
+	 * Reject secondary PCI functions.  Early Intel generations used
+	 * function 1 as a placeholder for multi-head with the same PCI ID.
+	 */
+	if (pci_get_function(kdev) != 0)
+		return ENXIO;
+
+	/* Reject alpha-quality hardware unless explicitly enabled. */
+	intel_info = (struct intel_device_info *)ent->driver_data;
+	if (IS_ALPHA_SUPPORT(intel_info) && !i915_modparams.alpha_support)
+		return ENXIO;
+
+	return 0;
+}
+
+static int
+i915_driver_attach(device_t kdev)
+{
+	const struct pci_device_id *ent;
+	struct pci_dev *pdev = NULL;
+	device_t bsddev;
+	int error;
+
+	ent = i915_pci_device_id_dfly(kdev);
+	if (ent == NULL)
+		return ENXIO;
+
 	if (!strcmp(device_get_name(kdev), "drmsub"))
 		bsddev = device_get_parent(kdev);
 	else
@@ -829,12 +862,11 @@ found:
 	/* Print the contents of pdev struct. */
 	drm_print_pdev(pdev);
 
-	return i915_pci_probe(pdev, ent);
-}
+	error = i915_pci_probe(pdev, ent);
+	if (error != 0)
+		drm_fini_pdev(&pdev);
 
-static int i915_driver_attach(device_t kdev)
-{
-	return 0;
+	return error;
 }
 
 static device_method_t i915_methods[] = {
@@ -845,7 +877,7 @@ static device_method_t i915_methods[] = {
 	DEVMETHOD(device_suspend,	i915_suspend_switcheroo),
 	DEVMETHOD(device_resume,	i915_resume_switcheroo),
 #endif
-	DEVMETHOD(device_detach,	drm_release),
+	DEVMETHOD(device_detach,	drm_device_detach),
 	DEVMETHOD_END
 };
 

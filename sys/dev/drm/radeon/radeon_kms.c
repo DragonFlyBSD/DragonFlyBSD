@@ -75,8 +75,6 @@ void radeon_driver_unload_kms(struct drm_device *dev)
 	radeon_device_fini(rdev);
 
 done_free:
-	/* XXX pending drm update, after this accessing pdev is illegal! */
-	drm_fini_pdev(&dev->pdev);
 	kfree(rdev);
 	dev->dev_private = NULL;
 }

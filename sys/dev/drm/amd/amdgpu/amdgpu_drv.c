@@ -976,38 +976,81 @@ err_free:
 }
 
 #ifdef __DragonFly__
-const struct pci_device_id *ent;        /* XXX hack */
-
-static int
-amdgpu_pci_probe_dfly(device_t kdev)
+static const struct pci_device_id *
+amdgpu_pci_device_id_dfly(device_t kdev)
 {
-	int device, i = 0;
+	int device, i;
 
 	if (pci_get_class(kdev) != PCIC_DISPLAY)
-		return ENXIO;
+		return NULL;
 
 	if (pci_get_vendor(kdev) != PCI_VENDOR_ID_ATI)
-		return ENXIO;
+		return NULL;
 
 	device = pci_get_device(kdev);
 
 	for (i = 0; pciidlist[i].device != 0; i++) {
-		if (pciidlist[i].device == device) {
-			ent = &pciidlist[i];
-			goto found;
-		}
+		if (pciidlist[i].device == device)
+			return &pciidlist[i];
 	}
 
-	return ENXIO;
-found:
-       return 0;
+	return NULL;
+}
+
+static int
+amdgpu_pci_probe_dfly(device_t kdev)
+{
+	const struct pci_device_id *ent;
+	unsigned long flags;
+
+	ent = amdgpu_pci_device_id_dfly(kdev);
+	if (ent == NULL)
+		return ENXIO;
+
+	flags = ent->driver_data;
+
+#ifdef CONFIG_DRM_AMDGPU_SI
+	if (!amdgpu_si_support) {
+		switch (flags & AMD_ASIC_MASK) {
+		case CHIP_TAHITI:
+		case CHIP_PITCAIRN:
+		case CHIP_VERDE:
+		case CHIP_OLAND:
+		case CHIP_HAINAN:
+			return ENXIO;
+		}
+	}
+#endif
+#ifdef CONFIG_DRM_AMDGPU_CIK
+	if (!amdgpu_cik_support) {
+		switch (flags & AMD_ASIC_MASK) {
+		case CHIP_KAVERI:
+		case CHIP_BONAIRE:
+		case CHIP_HAWAII:
+		case CHIP_KABINI:
+		case CHIP_MULLINS:
+			return ENXIO;
+		}
+	}
+#endif
+
+	if ((flags & AMD_EXP_HW_SUPPORT) && !amdgpu_exp_hw_support)
+		return ENXIO;
+
+	return 0;
 }
 
 static int
 amdgpu_attach_dfly(device_t kdev)
 {
-       struct pci_dev *pdev = NULL;
-       static device_t bsddev;
+	const struct pci_device_id *ent;
+	struct pci_dev *pdev = NULL;
+	device_t bsddev;
+	int error;
+
+	ent = amdgpu_pci_device_id_dfly(kdev);
+	if (ent == NULL)
+		return ENXIO;
 
 	if (!strcmp(device_get_name(kdev), "drmsub"))
 		bsddev = device_get_parent(kdev);
@@ -1019,14 +1062,11 @@ amdgpu_attach_dfly(device_t kdev)
 	/* Print the contents of pdev struct. */
 	drm_print_pdev(pdev);
 
-       /*
-          The device_probe function can be called multiple times on DragonFly
-          and amdgpu_pci_probe() is supposed to be called only once.
-          Call it from the DragonFly device_attach function.
-       */
-	return amdgpu_pci_probe(pdev, ent);
+	error = amdgpu_pci_probe(pdev, ent);
+	if (error != 0)
+		drm_fini_pdev(&pdev);
 
-	return 0;
+	return error;
 }
 #endif
 
@@ -1378,14 +1418,14 @@ static device_method_t amdgpu_methods[] = {
 	DEVMETHOD(device_suspend,	amdgpu_suspend_switcheroo),
 	DEVMETHOD(device_resume,	amdgpu_resume_switcheroo),
 #endif
-	DEVMETHOD(device_detach,	drm_release),
+	DEVMETHOD(device_detach,	drm_device_detach),
 	DEVMETHOD_END
 };
 
 static driver_t amdgpu_driver = {
 	"drm",
 	amdgpu_methods,
-	sizeof(struct drm_device)
+	sizeof(struct drm_softc)
 };
 
 extern devclass_t drm_devclass;

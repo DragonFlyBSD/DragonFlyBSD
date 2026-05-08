@@ -88,6 +88,11 @@ request_irq(unsigned int irq, irq_handler_t handler,
 		kprintf("request_irq: failed in bus_setup_intr()\n");
 		bus_release_resource(bdev, SYS_RES_IRQ,
 		    irq_entry->rid, irq_entry->resource);
+		if (ddev->pdev->_irq_type == PCI_INTR_TYPE_MSI) {
+			pci_release_msi(bdev);
+			ddev->pdev->_irq_type = 0;
+		}
+		ddev->pdev->_irqr = NULL;
 		kfree(irq_entry);
 		return -error;
 	}
@@ -123,8 +128,11 @@ free_irq(unsigned int irq, void *dev_id)
 
 	bus_teardown_intr(bsddev, res, irq_entry->cookiep);
 	bus_release_resource(bsddev, SYS_RES_IRQ, irq_entry->rid, res);
-	if (ddev->pdev->_irq_type == PCI_INTR_TYPE_MSI)
+	if (ddev->pdev->_irq_type == PCI_INTR_TYPE_MSI) {
 		pci_release_msi(bsddev);
+		ddev->pdev->_irq_type = 0;
+	}
+	ddev->pdev->_irqr = NULL;
 
 	lockmgr(&irqdata_lock, LK_EXCLUSIVE);
 	SLIST_REMOVE(&irq_list, irq_entry, irq_data, id_irq_entries);

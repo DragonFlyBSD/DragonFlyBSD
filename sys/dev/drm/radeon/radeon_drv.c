@@ -433,6 +433,27 @@ static int radeon_pci_probe(struct pci_dev *pdev,
 	return drm_get_pci_dev(pdev, ent, &kms_driver);
 }
 
+static const struct pci_device_id *
+radeon_pci_device_id_dfly(device_t kdev)
+{
+	int device, i;
+
+	if (pci_get_class(kdev) != PCIC_DISPLAY)
+		return NULL;
+
+	if (pci_get_vendor(kdev) != PCI_VENDOR_ID_ATI)
+		return NULL;
+
+	device = pci_get_device(kdev);
+
+	for (i = 0; pciidlist[i].device != 0; i++) {
+		if (pciidlist[i].device == device)
+			return &pciidlist[i];
+	}
+
+	return NULL;
+}
+
 #ifdef DUMBBELL_WIP
 static void
 radeon_pci_remove(struct pci_dev *pdev)
@@ -752,28 +773,54 @@ static void __exit radeon_exit(void)
 static int
 radeon_pci_probe_dfly(device_t kdev)
 {
-	int device, i = 0;
 	const struct pci_device_id *ent;
-	static struct pci_dev *pdev = NULL;
-	static device_t bsddev;
+	unsigned long flags;
 
-	if (pci_get_class(kdev) != PCIC_DISPLAY)
+	ent = radeon_pci_device_id_dfly(kdev);
+	if (ent == NULL)
 		return ENXIO;
 
-	if (pci_get_vendor(kdev) != PCI_VENDOR_ID_ATI)
-		return ENXIO;
+	flags = ent->driver_data;
 
-	device = pci_get_device(kdev);
-
-	for (i = 0; pciidlist[i].device != 0; i++) {
-		if (pciidlist[i].device == device) {
-			ent = &pciidlist[i];
-			goto found;
+	if (!radeon_si_support) {
+		switch (flags & RADEON_FAMILY_MASK) {
+		case CHIP_TAHITI:
+		case CHIP_PITCAIRN:
+		case CHIP_VERDE:
+		case CHIP_OLAND:
+		case CHIP_HAINAN:
+			return ENXIO;
 		}
 	}
 
-	return ENXIO;
-found:
+#ifdef CONFIG_DRM_AMDGPU_CIK
+	if (!radeon_cik_support) {
+		switch (flags & RADEON_FAMILY_MASK) {
+		case CHIP_KAVERI:
+		case CHIP_BONAIRE:
+		case CHIP_HAWAII:
+		case CHIP_KABINI:
+		case CHIP_MULLINS:
+			return ENXIO;
+		}
+	}
+#endif
+
+	return 0;
+}
+
+static int
+radeon_driver_attach(device_t kdev)
+{
+	const struct pci_device_id *ent;
+	struct pci_dev *pdev = NULL;
+	device_t bsddev;
+	int error;
+
+	ent = radeon_pci_device_id_dfly(kdev);
+	if (ent == NULL)
+		return ENXIO;
+
 	if (!strcmp(device_get_name(kdev), "drmsub"))
 		bsddev = device_get_parent(kdev);
 	else
@@ -784,12 +831,11 @@ found:
 	/* Print the contents of pdev struct. */
 	drm_print_pdev(pdev);
 
-	return radeon_pci_probe(pdev, ent);
-}
+	error = radeon_pci_probe(pdev, ent);
+	if (error != 0)
+		drm_fini_pdev(&pdev);
 
-static int radeon_driver_attach(device_t kdev)
-{
-	return 0;
+	return error;
 }
 
 static int

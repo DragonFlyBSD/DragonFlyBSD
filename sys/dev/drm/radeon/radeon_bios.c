@@ -105,32 +105,60 @@ static bool radeon_read_bios(struct radeon_device *rdev)
 	return true;
 }
 
+/*
+ * Read VBIOS directly from the PCI ROM BAR, bypassing vga_pci resource
+ * allocation.  This is needed on Apple systems where vga_pci already holds
+ * the ROM resource and vga_pci_alloc_resource() fails for the DRM subdevice.
+ * The ROM BAR is temporarily enabled, mapped via pmap_mapdev(), copied, then
+ * restored to its original state.
+ */
 static bool radeon_read_platform_bios(struct radeon_device *rdev)
 {
-	uint8_t __iomem *bios;
+	device_t bsddev = rdev->pdev->dev.bsddev;
+	vm_paddr_t rom_addr;
+	uint32_t saved_rom_bar;
+	uint8_t *bios;
 	size_t size;
 
 	rdev->bios = NULL;
 
-#if 0
-	// XXX: FIXME
-	bios = pci_platform_rom(rdev->pdev, &size);
-#else
-	size = 0;
-	bios = NULL;
-#endif
-	if (!bios) {
+	saved_rom_bar = pci_read_config(bsddev, PCIR_BIOS, 4);
+	rom_addr = saved_rom_bar & ~1U; /* strip enable bit */
+	if (rom_addr == 0 || rom_addr == 0xFFFFFFFEU)
+		return false;
+
+	/* Enable ROM decode */
+	pci_write_config(bsddev, PCIR_BIOS, saved_rom_bar | 1, 4);
+
+	/* Map conservatively; VBIOS is always < 256 KB */
+	bios = pmap_mapdev(rom_addr, 256 * 1024);
+	if (bios == NULL) {
+		pci_write_config(bsddev, PCIR_BIOS, saved_rom_bar, 4);
 		return false;
 	}
 
-	if (size == 0 || bios[0] != 0x55 || bios[1] != 0xaa) {
+	if (bios[0] != 0x55 || bios[1] != 0xaa) {
+		pmap_unmapdev((vm_offset_t)bios, 256 * 1024);
+		pci_write_config(bsddev, PCIR_BIOS, saved_rom_bar, 4);
 		return false;
 	}
+
+	size = (size_t)bios[2] * 512;
+	if (size == 0 || size > 256 * 1024) {
+		pmap_unmapdev((vm_offset_t)bios, 256 * 1024);
+		pci_write_config(bsddev, PCIR_BIOS, saved_rom_bar, 4);
+		return false;
+	}
+
 	rdev->bios = kmemdup(bios, size, GFP_KERNEL);
-	if (rdev->bios == NULL) {
-		return false;
-	}
+	pmap_unmapdev((vm_offset_t)bios, 256 * 1024);
+	pci_write_config(bsddev, PCIR_BIOS, saved_rom_bar, 4);
 
+	if (rdev->bios == NULL)
+		return false;
+
+	DRM_INFO("radeon: VBIOS read from PCI ROM BAR at 0x%08lx (%zu bytes)\n",
+	    (unsigned long)rom_addr, size);
 	return true;
 }
 
