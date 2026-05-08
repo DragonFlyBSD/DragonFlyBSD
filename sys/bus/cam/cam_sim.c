@@ -164,6 +164,8 @@ cam_sim_alloc(sim_action_func sim_action, sim_poll_func sim_poll,
 {
 	struct cam_sim *sim;
 
+	KKASSERT(lock != NULL);
+
 	/*
 	 * XXX ahd was limited to 256 instead of 512 for unknown reasons,
 	 * move that to a global limit here.  We may be able to remove this
@@ -181,9 +183,6 @@ cam_sim_alloc(sim_action_func sim_action, sim_poll_func sim_poll,
 		queue = cam_simq_alloc(max_tagged_dev_transactions);
 	else
 		cam_devq_reference(queue);
-
-	if (lock == NULL)
-		return (NULL);
 
 	sim = kmalloc(sizeof(struct cam_sim), M_CAMSIM, M_INTWAIT | M_ZERO);
 	sim->sim_action = sim_action;
