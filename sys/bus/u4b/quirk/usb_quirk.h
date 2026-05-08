@@ -1,6 +1,5 @@
-/* $FreeBSD: head/sys/dev/usb/quirk/usb_quirk.h 326255 2017-11-27 14:52:40Z pfg $ */
 /*-
- * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
@@ -57,6 +56,7 @@ enum {
 	UQ_MS_BAD_CLASS,	/* doesn't identify properly */
 	UQ_MS_LEADING_BYTE,	/* mouse sends an unknown leading byte */
 	UQ_MS_REVZ,		/* mouse has Z-axis reversed */
+	UQ_MS_VENDOR_BTN,	/* mouse has buttons in vendor usage page */
 	UQ_NO_STRINGS,		/* string descriptors are broken */
 	UQ_POWER_CLAIM,		/* hub lies about power status */
 	UQ_SPUR_BUT_UP,		/* spurious mouse button up events */
@@ -67,6 +67,7 @@ enum {
 	UQ_CFG_INDEX_4,		/* select configuration index 4 by default */
 	UQ_CFG_INDEX_0,		/* select configuration index 0 by default */
 	UQ_ASSUME_CM_OVER_DATA,	/* assume cm over data feature */
+	UQ_IGNORE_CDC_CM,	/* ignore cm descriptor */
 
 	/*
 	 * USB Mass Storage Quirks. See "storage/umass.c" for a
@@ -95,6 +96,7 @@ enum {
 	UQ_MSC_FORCE_PROTO_ATAPI,	/* force ATAPI command protocol */
 	UQ_MSC_FORCE_PROTO_UFI,		/* force UFI command protocol */
 	UQ_MSC_FORCE_PROTO_RBC,		/* force RBC command protocol */
+	UQ_MSC_IGNORE,			/* device should be ignored by umass */
 
 	/* Ejection of mass storage (driver disk) */
 	UQ_MSC_EJECT_HUAWEI,		/* ejects after Huawei USB command */
@@ -107,6 +109,8 @@ enum {
 	UQ_MSC_EJECT_SAEL_M460,		/* ejects after Sael USB commands */ 
 	UQ_MSC_EJECT_HUAWEISCSI,	/* ejects after Huawei SCSI command */
 	UQ_MSC_EJECT_HUAWEISCSI2,	/* ejects after Huawei SCSI 2 command */
+	UQ_MSC_EJECT_HUAWEISCSI3,	/* ejects after Huawei SCSI 3 command */
+	UQ_MSC_EJECT_HUAWEISCSI4,	/* ejects after Huawei SCSI 4 command */
 	UQ_MSC_EJECT_TCT,		/* ejects after TCT SCSI command */
 
 	UQ_BAD_MIDI,		/* device claims MIDI class, but isn't */
@@ -127,13 +131,13 @@ enum {
 	UQ_RE_ENUM_ONCE_MORE,	/* some devices need re enum once more like linux*/
 	/* samsung galaxy phone need linux like usb initial procedure */
 	UQ_LINUX_LIKE_PROCEDURE,
-	UQ_UVC_BIG_BUFFER,	/*big data buffer*/
-	UQ_UVC_DROP_BIG_FORMAT,	/*big data buffer*/
-	UQ_UVC_COMMIT_IN_ADVANCE,	/*COMMIT in advance*/
-	UQ_UVC_IR_INTRF_DISABLE,    /*IR Camera interface*/
-	UQ_UVC_DISABLE_HUB_U1U2,    /*DISABLE_HUB_U1U2*/
-	UQ_NO_CANCEL_XFER,	/*no cancel xfer*/
-	UQ_CLEAR_DATA_TOGGLE, /*Clear Data Toggle */
+	UQ_UVC_BIG_BUFFER,		/* big data buffer */
+	UQ_UVC_DROP_BIG_FORMAT,		/* big data buffer */
+	UQ_UVC_COMMIT_IN_ADVANCE,	/* COMMIT in advance */
+	UQ_UVC_IR_INTRF_DISABLE,	/* IR Camera interface */
+	UQ_UVC_DISABLE_HUB_U1U2,	/* DISABLE_HUB_U1U2 */
+	UQ_NO_CANCEL_XFER,		/* no cancel xfer */
+	UQ_CLEAR_DATA_TOGGLE,		/* Clear Data Toggle */
 	UQ_SPEAKER_VOLUME_SEQUENCE,
 	UQ_ADEQUATE_BUF,
 	UQ_EP_RESET_FREE,

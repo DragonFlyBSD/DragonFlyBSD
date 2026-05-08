@@ -213,7 +213,6 @@ static const STRUCT_USB_HOST_ID uftdi_devs[] = {
 	UFTDI_DEV(FTDI, SERIAL_8U100AX, SIO),
 	UFTDI_DEV(FTDI, SERIAL_2232C, 8U232AM),
 	UFTDI_DEV(FTDI, SERIAL_2232D, 8U232AM),
-	UFTDI_DEV(FTDI, BEAGLEBONE, 8U232AM),
 	UFTDI_DEV(FTDI, SERIAL_4232H, 8U232AM),
 	UFTDI_DEV(FTDI, SERIAL_8U232AM, 8U232AM),
 	UFTDI_DEV(FTDI, SERIAL_8U232AM4, 8U232AM),
@@ -225,6 +224,7 @@ static const STRUCT_USB_HOST_ID uftdi_devs[] = {
 	UFTDI_DEV(FTDI, CFA_635, 8U232AM),
 	UFTDI_DEV(FTDI, USB_UIRT, 8U232AM),
 	UFTDI_DEV(FTDI, USBSERIAL, 8U232AM),
+	UFTDI_DEV(FTDI, XDS100V2, 8U232AM),
 	UFTDI_DEV(FTDI, KBS, 8U232AM),
 	UFTDI_DEV(FTDI, MX2_3, 8U232AM),
 	UFTDI_DEV(FTDI, MX4_5, 8U232AM),
@@ -366,7 +366,7 @@ uftdi_cfg_open(struct ucom_softc *ucom)
 	USETW(req.wValue, FTDI_SIO_RESET_SIO);
 	USETW(req.wIndex, wIndex);
 	USETW(req.wLength, 0);
-	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom, 
+	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom,
 	    &req, NULL, 0, 1000);
 
 	/* turn on RTS/CTS flow control */
@@ -376,7 +376,7 @@ uftdi_cfg_open(struct ucom_softc *ucom)
 	USETW(req.wValue, 0);
 	USETW2(req.wIndex, FTDI_SIO_RTS_CTS_HS, wIndex);
 	USETW(req.wLength, 0);
-	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom, 
+	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom,
 	    &req, NULL, 0, 1000);
 
 	/*
@@ -505,7 +505,7 @@ uftdi_cfg_set_dtr(struct ucom_softc *ucom, uint8_t onoff)
 	USETW(req.wValue, wValue);
 	USETW(req.wIndex, wIndex);
 	USETW(req.wLength, 0);
-	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom, 
+	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom,
 	    &req, NULL, 0, 1000);
 }
 
@@ -524,7 +524,7 @@ uftdi_cfg_set_rts(struct ucom_softc *ucom, uint8_t onoff)
 	USETW(req.wValue, wValue);
 	USETW(req.wIndex, wIndex);
 	USETW(req.wLength, 0);
-	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom, 
+	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom,
 	    &req, NULL, 0, 1000);
 }
 
@@ -549,7 +549,7 @@ uftdi_cfg_set_break(struct ucom_softc *ucom, uint8_t onoff)
 	USETW(req.wValue, wValue);
 	USETW(req.wIndex, wIndex);
 	USETW(req.wLength, 0);
-	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom, 
+	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom,
 	    &req, NULL, 0, 1000);
 }
 
@@ -682,7 +682,7 @@ uftdi_cfg_param(struct ucom_softc *ucom, struct termios *t)
 	USETW(req.wValue, cfg.rate);
 	USETW(req.wIndex, wIndex);
 	USETW(req.wLength, 0);
-	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom, 
+	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom,
 	    &req, NULL, 0, 1000);
 
 	req.bmRequestType = UT_WRITE_VENDOR_DEVICE;
@@ -690,7 +690,7 @@ uftdi_cfg_param(struct ucom_softc *ucom, struct termios *t)
 	USETW(req.wValue, cfg.lcr);
 	USETW(req.wIndex, wIndex);
 	USETW(req.wLength, 0);
-	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom, 
+	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom,
 	    &req, NULL, 0, 1000);
 
 	req.bmRequestType = UT_WRITE_VENDOR_DEVICE;
@@ -698,7 +698,7 @@ uftdi_cfg_param(struct ucom_softc *ucom, struct termios *t)
 	USETW2(req.wValue, cfg.v_stop, cfg.v_start);
 	USETW2(req.wIndex, cfg.v_flow, wIndex);
 	USETW(req.wLength, 0);
-	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom, 
+	ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom,
 	    &req, NULL, 0, 1000);
 }
 
