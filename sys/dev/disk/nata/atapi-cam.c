@@ -892,7 +892,7 @@ free_softc(struct atapi_xpt_softc *scp)
 	    xpt_free_path(scp->path);
 	}
 	if ((scp->flags & BUS_REGISTERED) != 0) {
-	    if (xpt_bus_deregister(cam_sim_path(scp->sim)) == CAM_REQ_CMP)
+	    if (xpt_bus_deregister(cam_sim_path(scp->sim)) == 0)
 		scp->flags &= ~BUS_REGISTERED;
 	}
 	if (scp->sim != NULL) {

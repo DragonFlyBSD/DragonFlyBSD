@@ -205,7 +205,7 @@ sili_cam_detach(struct sili_port *ap)
 	}
 	if (ap->ap_flags & AP_F_BUS_REGISTERED) {
 		error = xpt_bus_deregister(cam_sim_path(ap->ap_sim));
-		KKASSERT(error == CAM_REQ_CMP);
+		KKASSERT(error == 0);
 		ap->ap_flags &= ~AP_F_BUS_REGISTERED;
 	}
 	if (ap->ap_sim) {

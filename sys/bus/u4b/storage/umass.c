@@ -2200,15 +2200,18 @@ umass_cam_attach(struct umass_softc *sc)
 static void
 umass_cam_detach_sim(struct umass_softc *sc)
 {
+	int error;
+
 	if (sc->sc_sim != NULL) {
 		usb_callout_stop(&sc->sc_rescan_timeout);
-		if (xpt_bus_deregister(cam_sim_path(sc->sc_sim))) {
+		error = xpt_bus_deregister(cam_sim_path(sc->sc_sim));
+		if (error == 0) {
 			/* accessing the softc is not possible after this */
 			sc->sc_sim->softc = NULL;
 			cam_sim_free(sc->sc_sim);
 		} else {
-			panic("%s: CAM layer is busy\n",
-			    sc->sc_name);
+			panic("%s: %s: CAM layer is busy: errno %d\n",
+			    __func__, sc->sc_name, error);
 		}
 		sc->sc_sim = NULL;
 	}

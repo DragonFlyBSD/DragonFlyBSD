@@ -1445,6 +1445,7 @@ xpt_init(void *dummy)
 	struct cam_path *path;
 	struct cam_devq *devq;
 	cam_status status;
+	int error;
 
 	TAILQ_INIT(&xsoftc.xpt_busses);
 	TAILQ_INIT(&cam_simq);
@@ -1489,10 +1490,10 @@ xpt_init(void *dummy)
 	xpt_sim->max_ccbs = 16;
 
 	lockmgr(&xsoftc.xpt_lock, LK_EXCLUSIVE);
-	if ((status = xpt_bus_register(xpt_sim, /*bus #*/0)) != CAM_SUCCESS) {
+	if ((error = xpt_bus_register(xpt_sim, /*bus #*/0)) != CAM_SUCCESS) {
 		lockmgr(&xsoftc.xpt_lock, LK_RELEASE);
-		kprintf("xpt_init: xpt_bus_register failed with status %#x,"
-		       " failing attach\n", status);
+		kprintf("xpt_init: xpt_bus_register failed with errno %d,"
+		       " failing attach\n", error);
 		return (EINVAL);
 	}
 
@@ -4293,7 +4294,7 @@ xpt_release_ccb(union ccb *free_ccb)
  * information specified by the user.  Once interrupt services are
  * availible, the bus will be probed.
  */
-int32_t
+int
 xpt_bus_register(struct cam_sim *sim, u_int32_t bus)
 {
 	struct cam_eb *new_bus;
@@ -4356,7 +4357,7 @@ xpt_bus_register(struct cam_sim *sim, u_int32_t bus)
  * This routine is typically called prior to cam_sim_free() (e.g. see
  * dev/usbmisc/umass/umass.c)
  */
-int32_t
+int
 xpt_bus_deregister(path_id_t pathid)
 {
 	struct cam_path bus_path;
@@ -4373,7 +4374,7 @@ xpt_bus_deregister(path_id_t pathid)
 	status = xpt_compile_path(&bus_path, NULL, pathid,
 				  CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
 	if (status != CAM_REQ_CMP)
-		return (status);
+		return (ENOMEM);
 
 	/*
 	 * This should clear out all pending requests and timeouts, but
@@ -4482,7 +4483,7 @@ again:
 	/* Release the ref we got when the bus was registered */
 	cam_sim_release(ccbsim, 0);
 
-	return (CAM_REQ_CMP);
+	return (CAM_SUCCESS);
 }
 
 /*
