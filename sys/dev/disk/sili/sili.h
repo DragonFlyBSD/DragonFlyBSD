@@ -834,7 +834,6 @@ struct sili_softc {
 
 	struct sili_port	*sc_ports[SILI_MAX_PORTS];
 };
-#define DEVNAME(_s)		((_s)->sc_dev.dv_xname)
 
 struct sili_device {
 	pci_vendor_id_t		ad_vendor;
