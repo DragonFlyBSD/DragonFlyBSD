@@ -105,6 +105,17 @@ interact(void)
      */
     if (include("dloader.rc") != CMD_OK)
 	include("boot.conf");
+
+    /*
+     * Re-evaluate base after dloader.rc may have changed currdev.
+     * When loader.efi lives on the ESP and dloader.rc redirects
+     * currdev to the real boot partition, the initial chdir("/boot")
+     * resolved against the ESP.  Now that currdev points to the
+     * correct device, re-resolve so paths work.
+     */
+    chdir("/boot");
+    setenv("base", DirBase, 1);
+
     printf("\n");
     /*
      * Before interacting, we might want to autoboot.

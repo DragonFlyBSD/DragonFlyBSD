@@ -228,7 +228,25 @@ main(int argc, CHAR16 *argv[])
 	 * args from UCS-2 to ASCII (16 to 8 bit) as they are copied.
 	 */
 	howto = 0;
-	for (i = 1; i < argc; i++) {
+	for (i = 0; i < argc; i++) {
+		/*
+		 * Skip argv[0] if it looks like a program name rather
+		 * than an option.  Boot managers (e.g. rEFInd) pass
+		 * LoadOptions without a leading program name, so
+		 * "currdev=part5:" ends up in argv[0].
+		 */
+		if (i == 0) {
+			int has_eq = 0;
+
+			for (k = 0; argv[0][k] != 0; k++) {
+				if (argv[0][k] == '=') {
+					has_eq = 1;
+					break;
+				}
+			}
+			if (argv[0][0] != '-' && !has_eq)
+				continue;
+		}
 		if (argv[i][0] == '-') {
 			for (j = 1; argv[i][j] != 0; j++) {
 				int ch;
@@ -354,6 +372,23 @@ main(int argc, CHAR16 *argv[])
 	 */
 	BS->SetWatchdogTimer(0, 0, 0, NULL);
 
+	/*
+	 * If currdev was set via command line args (e.g. from a UEFI boot
+	 * manager like rEFInd), honor it instead of deriving from
+	 * DeviceHandle.  This supports placing loader.efi directly on the
+	 * ESP with an explicit boot partition override.
+	 */
+	{
+		const char *cdev = getenv("currdev");
+		if (cdev != NULL) {
+			env_setenv("currdev", EV_VOLATILE, cdev,
+				   efi_setcurrdev, env_nounset);
+			env_setenv("loaddev", EV_VOLATILE, cdev,
+				   env_noset, env_nounset);
+			goto currdev_done;
+		}
+	}
+
 	if (efi_handle_lookup(img->DeviceHandle, &dev, &unit, &pool_guid) != 0)
 		return (EFI_NOT_FOUND);
 
@@ -372,6 +407,7 @@ main(int argc, CHAR16 *argv[])
 		break;
 	}
 	}
+currdev_done:
 
 	/* enable EHCI */
 	setenv("ehci_load", "YES", 1);
