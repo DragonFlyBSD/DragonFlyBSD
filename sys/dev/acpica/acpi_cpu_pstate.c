@@ -172,6 +172,9 @@ static struct acpi_pstate	*acpi_pstates;
 
 static const struct acpi_pst_md	*acpi_pst_md;
 
+static int			acpi_pst_ppc = -1;
+TUNABLE_INT("hw.acpi.cpu.pst.ppc", &acpi_pst_ppc);
+
 static int			acpi_pst_pdl = -1;
 TUNABLE_INT("hw.acpi.cpu.pst.pdl", &acpi_pst_pdl);
 
@@ -659,6 +662,26 @@ fetch_ppc:
 	sstart = 0;
 
 	/*
+	 * Allow users to override _PPC (e.g. Apple firmware sets
+	 * CPLT to the most restrictive value, locking the CPU to
+	 * the lowest P-State on non-macOS).
+	 */
+	if (acpi_pst_ppc >= 0) {
+		if (acpi_pst_ppc < acpi_npstates) {
+			if (bootverbose) {
+				device_printf(dev, "_PPC override %d\n",
+				    acpi_pst_ppc);
+			}
+			sstart = acpi_pst_ppc;
+			goto proc_ppc;
+		} else {
+			device_printf(dev, "Invalid _PPC override %d, "
+			    "must be less than %d\n", acpi_pst_ppc,
+			    acpi_npstates);
+		}
+	}
+
+	/*
 	 * Adjust the usable first entry of P-State table,
 	 * if there is _PPC object.
 	 */
@@ -667,6 +690,7 @@ fetch_ppc:
 		return error;
 	else if (!error)
 		sc->pst_flags |= ACPI_PST_FLAG_PPC;
+proc_ppc:
 	if (acpi_pstate_start < 0) {
 		acpi_pstate_start = sstart;
 	} else if (acpi_pstate_start != sstart) {
