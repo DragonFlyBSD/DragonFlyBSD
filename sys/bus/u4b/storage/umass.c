@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Copyright (c) 1999 MAEKAWA Masahide <bishop@rr.iij4u.or.jp>,
  *		      Nick Hibma <n_hibma@FreeBSD.org>
  * All rights reserved.
@@ -23,8 +25,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	$FreeBSD$
  *	$NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  */
 
@@ -168,13 +168,12 @@
 #define	UDMASS_CBI	0x00400000	/* CBI transfers */
 #define	UDMASS_WIRE	(UDMASS_BBB|UDMASS_CBI)
 #define	UDMASS_ALL	0xffff0000	/* all of the above */
-static int umass_debug = 0;
-static int umass_throttle = 0;
+static int umass_debug;
+static int umass_throttle;
 
 static SYSCTL_NODE(_hw_usb, OID_AUTO, umass, CTLFLAG_RW, 0, "USB umass");
 SYSCTL_INT(_hw_usb_umass, OID_AUTO, debug, CTLFLAG_RW,
     &umass_debug, 0, "umass debug level");
-
 TUNABLE_INT("hw.usb.umass.debug", &umass_debug);
 SYSCTL_INT(_hw_usb_umass, OID_AUTO, throttle, CTLFLAG_RW,
     &umass_throttle, 0, "Forced delay between commands in milliseconds");
@@ -309,7 +308,7 @@ typedef void (umass_callback_t)(struct umass_softc *sc, union ccb *ccb,
 #define	STATUS_CMD_FAILED	2	/* transfer was ok, command failed */
 #define	STATUS_WIRE_FAILED	3	/* couldn't even get command across */
 
-typedef uint8_t (umass_transform_t)(struct umass_softc *sc, uint8_t *cmd_ptr,
+typedef bool (umass_transform_t)(struct umass_softc *sc, uint8_t *cmd_ptr,
     	uint8_t cmd_len);
 
 /* Wire and command protocol */
@@ -374,8 +373,27 @@ typedef uint8_t (umass_transform_t)(struct umass_softc *sc, uint8_t *cmd_ptr,
 	/* Device does not support 'PREVENT/ALLOW MEDIUM REMOVAL'. */
 #define	NO_PREVENT_ALLOW	0x8000
 
-struct umass_softc {
+#define UMASS_QUIRKS_STRING		\
+	"\020"				\
+	"\001NO_TEST_UNIT_READY"	\
+	"\002RS_NO_CLEAR_UA"		\
+	"\003NO_START_STOP"		\
+	"\004FORCE_SHORT_INQUIRY"	\
+	"\005SHUTTLE_INIT"		\
+	"\006ALT_IFACE_1"		\
+	"\007FLOPPY_SPEED"		\
+	"\010IGNORE_RESIDUE"		\
+	"\011NO_GETMAXLUN"		\
+	"\012WRONG_CSWSIG"		\
+	"\013NO_INQUIRY"		\
+	"\014NO_INQUIRY_EVPD"		\
+	"\015RBC_PAD_TO_12"		\
+	"\016READ_CAPACITY_OFFBY1"	\
+	"\017NO_SYNCHRONIZE_CACHE"	\
+	"\020NO_PREVENT_ALLOW"		\
 
+
+struct umass_softc {
 	struct scsi_sense cam_scsi_sense;
 	struct scsi_test_unit_ready cam_scsi_test_unit_ready;
 	struct lock sc_lock;
@@ -482,13 +500,13 @@ static void	umass_cam_sense_cb(struct umass_softc *, union ccb *, uint32_t,
 		    uint8_t);
 static void	umass_cam_quirk_cb(struct umass_softc *, union ccb *, uint32_t,
 		    uint8_t);
-static uint8_t	umass_scsi_transform(struct umass_softc *, uint8_t *, uint8_t);
-static uint8_t	umass_rbc_transform(struct umass_softc *, uint8_t *, uint8_t);
-static uint8_t	umass_ufi_transform(struct umass_softc *, uint8_t *, uint8_t);
-static uint8_t	umass_atapi_transform(struct umass_softc *, uint8_t *,
-		    uint8_t);
-static uint8_t	umass_no_transform(struct umass_softc *, uint8_t *, uint8_t);
-static uint8_t	umass_std_transform(struct umass_softc *, union ccb *, uint8_t
+static void	umass_cam_illegal_request(union ccb *ccb);
+static bool	umass_scsi_transform(struct umass_softc *, uint8_t *, uint8_t);
+static bool	umass_rbc_transform(struct umass_softc *, uint8_t *, uint8_t);
+static bool	umass_ufi_transform(struct umass_softc *, uint8_t *, uint8_t);
+static bool	umass_atapi_transform(struct umass_softc *, uint8_t *, uint8_t);
+static bool	umass_no_transform(struct umass_softc *, uint8_t *, uint8_t);
+static bool	umass_std_transform(struct umass_softc *, union ccb *, uint8_t
 		    *, uint8_t);
 
 #ifdef USB_DEBUG
@@ -500,7 +518,6 @@ static void	umass_dump_buffer(struct umass_softc *, uint8_t *, uint32_t,
 #endif
 
 static struct usb_config umass_bbb_config[UMASS_T_BBB_MAX] = {
-
 	[UMASS_T_BBB_RESET1] = {
 		.type = UE_CONTROL,
 		.endpoint = 0x00,	/* Control pipe */
@@ -590,7 +607,6 @@ static struct usb_config umass_bbb_config[UMASS_T_BBB_MAX] = {
 };
 
 static struct usb_config umass_cbi_config[UMASS_T_CBI_MAX] = {
-
 	[UMASS_T_CBI_RESET1] = {
 		.type = UE_CONTROL,
 		.endpoint = 0x00,	/* Control pipe */
@@ -706,6 +722,7 @@ static device_method_t umass_methods[] = {
 	DEVMETHOD(device_probe, umass_probe),
 	DEVMETHOD(device_attach, umass_attach),
 	DEVMETHOD(device_detach, umass_detach),
+
 	DEVMETHOD_END
 };
 
@@ -724,6 +741,9 @@ DRIVER_MODULE(umass, uhub, umass_driver, umass_devclass, NULL, NULL);
 MODULE_DEPEND(umass, usb, 1, 1, 1);
 MODULE_DEPEND(umass, cam, 1, 1, 1);
 MODULE_VERSION(umass, 1);
+#if 0  /* Not implemented by DragonFly */
+USB_PNP_HOST_INFO(umass_devs);
+#endif
 
 /*
  * USB device probe/attach/detach
@@ -791,6 +811,12 @@ umass_probe_proto(device_t dev, struct usb_attach_arg *uaa)
 
 	memset(&ret, 0, sizeof(ret));
 	ret.error = BUS_PROBE_GENERIC;
+
+	/* Check if we should deny probing. */
+	if (usb_test_quirk(uaa, UQ_MSC_IGNORE)) {
+		ret.error = ENXIO;
+		goto done;
+	}
 
 	/* Search for protocol enforcement */
 
@@ -963,7 +989,7 @@ umass_attach(device_t dev)
 		    sc->sc_proto & UMASS_PROTO_WIRE);
 	}
 
-	kprintf("; quirks = 0x%04x\n", sc->sc_quirks);
+	kprintf("; quirks = 0x%pb%i\n", UMASS_QUIRKS_STRING, sc->sc_quirks);
 #endif
 
 	if (sc->sc_quirks & ALT_IFACE_1) {
@@ -979,7 +1005,6 @@ umass_attach(device_t dev)
 	/* allocate all required USB transfers */
 
 	if (sc->sc_proto & UMASS_PROTO_BBB) {
-
 		err = usbd_transfer_setup(uaa->device,
 		    &uaa->info.bIfaceIndex, sc->sc_xfer, umass_bbb_config,
 		    UMASS_T_BBB_MAX, sc, &sc->sc_lock);
@@ -988,7 +1013,6 @@ umass_attach(device_t dev)
 		sc->sc_last_xfer_index = UMASS_T_BBB_COMMAND;
 
 	} else if (sc->sc_proto & (UMASS_PROTO_CBI | UMASS_PROTO_CBI_I)) {
-
 		err = usbd_transfer_setup(uaa->device,
 		    &uaa->info.bIfaceIndex, sc->sc_xfer, umass_cbi_config,
 		    UMASS_T_CBI_MAX, sc, &sc->sc_lock);
@@ -1092,7 +1116,6 @@ static void
 umass_init_shuttle(struct umass_softc *sc)
 {
 	struct usb_device_request req;
-	usb_error_t err;
 	uint8_t status[2] = {0, 0};
 
 	/*
@@ -1105,7 +1128,7 @@ umass_init_shuttle(struct umass_softc *sc)
 	req.wIndex[0] = sc->sc_iface_no;
 	req.wIndex[1] = 0;
 	USETW(req.wLength, sizeof(status));
-	err = usbd_do_request(sc->sc_udev, NULL, &req, &status);
+	usbd_do_request(sc->sc_udev, NULL, &req, &status);
 
 	DPRINTF(sc, UDMASS_GEN, "Shuttle init returned 0x%02x%02x\n",
 	    status[0], status[1]);
@@ -1146,9 +1169,7 @@ umass_cancel_ccb(struct umass_softc *sc)
 {
 	union ccb *ccb;
 
-#if 0
-	KKASSERT(lockstatus(&sc->sc_lock, curthread) != 0);
-#endif
+	KKASSERT(lockowned(&sc->sc_lock));
 
 	ccb = sc->sc_transfer.ccb;
 	sc->sc_transfer.ccb = NULL;
@@ -1167,7 +1188,6 @@ umass_tr_error(struct usb_xfer *xfer, usb_error_t error)
 	struct umass_softc *sc = usbd_xfer_softc(xfer);
 
 	if (error != USB_ERR_CANCELLED) {
-
 		DPRINTF(sc, UDMASS_GEN, "transfer error, %s -> "
 		    "reset\n", usbd_errstr(error));
 	}
@@ -1287,7 +1307,6 @@ umass_t_bbb_command_callback(struct usb_xfer *xfer, usb_error_t error)
 		sc->sc_status_try = 0;
 
 		if (ccb) {
-
 			/*
 		         * the initial value is not important,
 		         * as long as the values are unique:
@@ -1505,7 +1524,6 @@ umass_t_bbb_status_callback(struct usb_xfer *xfer, usb_error_t error)
 		}
 		/* translate weird command-status signatures: */
 		if (sc->sc_quirks & WRONG_CSWSIG) {
-
 			uint32_t temp = UGETDW(sc->csw.dCSWSignature);
 
 			if ((temp == CSWSIGNATURE_OLYMPUS_C1) ||
@@ -1808,7 +1826,6 @@ umass_t_cbi_command_callback(struct usb_xfer *xfer, usb_error_t error)
 	case USB_ST_SETUP:
 
 		if (ccb) {
-
 			/*
 		         * do a CBI transfer with cmd_len bytes from
 		         * cmd_data, possibly a data phase of data_len
@@ -2005,20 +2022,23 @@ umass_t_cbi_status_callback(struct usb_xfer *xfer, usb_error_t error)
 		/* dissect the information in the buffer */
 
 		if (sc->sc_proto & UMASS_PROTO_UFI) {
-
 			/*
 			 * Section 3.4.3.1.3 specifies that the UFI command
 			 * protocol returns an ASC and ASCQ in the interrupt
-			 * data block.
+			 * data block. However, we might also be fetching the
+			 * sense explicitly, where they are likely to be
+			 * non-zero, in which case we should succeed.
 			 */
 
 			DPRINTF(sc, UDMASS_CBI, "UFI CCI, ASC = 0x%02x, "
 			    "ASCQ = 0x%02x\n", sc->sbl.ufi.asc,
 			    sc->sbl.ufi.ascq);
 
-			status = (((sc->sbl.ufi.asc == 0) &&
-			    (sc->sbl.ufi.ascq == 0)) ?
-			    STATUS_CMD_OK : STATUS_CMD_FAILED);
+			if ((sc->sbl.ufi.asc == 0 && sc->sbl.ufi.ascq == 0) ||
+			    sc->sc_transfer.cmd_data[0] == REQUEST_SENSE)
+				status = STATUS_CMD_OK;
+			else
+				status = STATUS_CMD_FAILED;
 
 			sc->sc_transfer.ccb = NULL;
 
@@ -2030,14 +2050,12 @@ umass_t_cbi_status_callback(struct usb_xfer *xfer, usb_error_t error)
 			break;
 
 		} else {
-
 			/* Command Interrupt Data Block */
 
 			DPRINTF(sc, UDMASS_CBI, "type=0x%02x, value=0x%02x\n",
 			    sc->sbl.common.type, sc->sbl.common.value);
 
 			if (sc->sbl.common.type == IDB_TYPE_CCI) {
-
 				status = (sc->sbl.common.value & IDB_VALUE_STATUS_MASK);
 
 				status = ((status == IDB_VALUE_PASS) ? STATUS_CMD_OK :
@@ -2101,23 +2119,21 @@ umass_cam_attach_sim(struct umass_softc *sc)
 	    1 /* maximum device openings */ ,
 	    0 /* maximum tagged device openings */ ,
 	    devq);
-
 	cam_simq_release(devq);
-
 	if (sc->sc_sim == NULL) {
 		return (ENOMEM);
 	}
+
 	usb_callout_init_mtx(&sc->sc_rescan_timeout, &sc->sc_lock, 0);
 
 	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
-
 	if (xpt_bus_register(sc->sc_sim, sc->sc_unit) != CAM_SUCCESS) {
 		cam_sim_free(sc->sc_sim);
 		lockmgr(&sc->sc_lock, LK_RELEASE);
 		return (ENOMEM);
 	}
-
 	lockmgr(&sc->sc_lock, LK_RELEASE);
+
 	return (0);
 }
 
@@ -2175,7 +2191,7 @@ umass_cam_rescan(void *addr)
 	xpt_action_async(ccb);
 
 	/* The scan is in progress now. */
-} 
+}
 
 static void
 umass_cam_attach(struct umass_softc *sc)
@@ -2188,7 +2204,7 @@ umass_cam_attach(struct umass_softc *sc)
 		    sc->sc_unit, CAM_LUN_WILDCARD,
 		    cam_sim_path(sc->sc_sim));
 
-	if(!cold) {
+	if (!cold) {
 		usb_callout_reset(&sc->sc_rescan_timeout, USB_MS_TO_TICKS(200),
 		   umass_cam_rescan, sc);
 	}
@@ -2225,7 +2241,7 @@ umass_cam_detach_sim(struct umass_softc *sc)
 static void
 umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 {
-	struct umass_softc *sc = (struct umass_softc *)sim->softc;
+	struct umass_softc *sc = cam_sim_softc(sim);
 
 	if (sc == NULL) {
 		ccb->ccb_h.status = CAM_SEL_TIMEOUT;
@@ -2284,9 +2300,15 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 			 * command format needed by the specific command set
 			 * and return the converted command in
 			 * "sc->sc_transfer.cmd_data"
+			 *
+			 * For commands we know the device doesn't support, we
+			 * either complete them with an illegal request, or fake
+			 * the completion, based on what upper layers tolerate.
+			 * Ideally, we'd let the periph drivers know and not
+			 * fake things up, but some periphs fall short of the
+			 * ideal.
 			 */
 			if (umass_std_transform(sc, ccb, cmd, ccb->csio.cdb_len)) {
-
 				if (sc->sc_transfer.cmd_data[0] == INQUIRY) {
 					const char *pserial;
 
@@ -2318,22 +2340,7 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 					 */
 					if ((sc->sc_quirks & (NO_INQUIRY_EVPD | NO_INQUIRY)) &&
 					    (sc->sc_transfer.cmd_data[1] & SI_EVPD)) {
-						struct scsi_sense_data *sense;
-
-						sense = &ccb->csio.sense_data;
-						bzero(sense, sizeof(*sense));
-						sense->error_code = SSD_CURRENT_ERROR;
-						sense->flags = SSD_KEY_ILLEGAL_REQUEST;
-						sense->add_sense_code = 0x24;
-						sense->extra_len = 10;
-
-						ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
-						ccb->ccb_h.status =
-						    CAM_SCSI_STATUS_ERROR |
-						    CAM_AUTOSNS_VALID |
-						    CAM_DEV_QFRZN;
-						xpt_freeze_devq(ccb->ccb_h.path, 1);
-						xpt_done(ccb);
+						umass_cam_illegal_request(ccb);
 						goto done;
 					}
 					/*
@@ -2360,9 +2367,7 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 					}
 				} else if (sc->sc_transfer.cmd_data[0] == SYNCHRONIZE_CACHE) {
 					if (sc->sc_quirks & NO_SYNCHRONIZE_CACHE) {
-						ccb->csio.scsi_status = SCSI_STATUS_OK;
-						ccb->ccb_h.status = CAM_REQ_CMP;
-						xpt_done(ccb);
+						umass_cam_illegal_request(ccb);
 						goto done;
 					}
 				}
@@ -2506,7 +2511,7 @@ done:
 static void
 umass_cam_poll(struct cam_sim *sim)
 {
-	struct umass_softc *sc = (struct umass_softc *)sim->softc;
+	struct umass_softc *sc = cam_sim_softc(sim);
 
 	if (sc == NULL)
 		return;
@@ -2516,6 +2521,30 @@ umass_cam_poll(struct cam_sim *sim)
 	usbd_transfer_poll(sc->sc_xfer, UMASS_T_MAX);
 }
 
+/* umass_cam_illegal_request
+ *	Complete the command as an illegal command with invalid field
+ */
+
+static void
+umass_cam_illegal_request(union ccb *ccb)
+{
+	struct scsi_sense_data *sense;
+
+	sense = &ccb->csio.sense_data;
+	bzero(sense, sizeof(*sense));
+	sense->error_code = SSD_CURRENT_ERROR;
+	sense->flags = SSD_KEY_ILLEGAL_REQUEST;
+	sense->add_sense_code = 0x24;
+	sense->extra_len = 10;
+
+	ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
+	ccb->ccb_h.status =
+	    CAM_SCSI_STATUS_ERROR |
+	    CAM_AUTOSNS_VALID |
+	    CAM_DEV_QFRZN;
+	xpt_freeze_devq(ccb->ccb_h.path, 1);
+	xpt_done(ccb);
+}
 
 /* umass_cam_cb
  *	finalise a completed CAM command
@@ -2577,11 +2606,6 @@ umass_cam_cb(struct umass_softc *sc, union ccb *ccb, uint32_t residue,
 
 		if (umass_std_transform(sc, ccb, &sc->cam_scsi_sense.opcode,
 		    sizeof(sc->cam_scsi_sense))) {
-
-			if ((sc->sc_quirks & FORCE_SHORT_INQUIRY) &&
-			    (sc->sc_transfer.cmd_data[0] == INQUIRY)) {
-				ccb->csio.sense_len = SHORT_INQUIRY_LENGTH;
-			}
 			umass_command_start(sc, DIR_IN, &ccb->csio.sense_data.error_code,
 			    ccb->csio.sense_len, ccb->ccb_h.timeout,
 			    &umass_cam_sense_cb, ccb);
@@ -2669,11 +2693,14 @@ umass_cam_sense_cb(struct umass_softc *sc, union ccb *ccb, uint32_t residue,
 			DPRINTF(sc, UDMASS_SCSI, "Doing a sneaky"
 			    "TEST_UNIT_READY\n");
 
-			/* the rest of the command was filled in at attach */
-
-			if ((sc->sc_transform)(sc,
+			/*
+			 * Transform the TUR and if successful, send it.  Pass
+			 * NULL for the ccb so we don't override the above
+			 * status.
+			 */
+			if (umass_std_transform(sc, NULL,
 			    &sc->cam_scsi_test_unit_ready.opcode,
-			    sizeof(sc->cam_scsi_test_unit_ready)) == 1) {
+			    sizeof(sc->cam_scsi_test_unit_ready))) {
 				umass_command_start(sc, DIR_NONE, NULL, 0,
 				    ccb->ccb_h.timeout,
 				    &umass_cam_quirk_cb, ccb);
@@ -2720,56 +2747,18 @@ umass_cam_quirk_cb(struct umass_softc *sc, union ccb *ccb, uint32_t residue,
  * SCSI specific functions
  */
 
-static uint8_t
+static bool
 umass_scsi_transform(struct umass_softc *sc, uint8_t *cmd_ptr,
     uint8_t cmd_len)
 {
-	if ((cmd_len == 0) ||
-	    (cmd_len > sizeof(sc->sc_transfer.cmd_data))) {
-		DPRINTF(sc, UDMASS_SCSI, "Invalid command "
-		    "length: %d bytes\n", cmd_len);
-		return (0);		/* failure */
-	}
 	sc->sc_transfer.cmd_len = cmd_len;
 
-	switch (cmd_ptr[0]) {
-	case TEST_UNIT_READY:
-		if (sc->sc_quirks & NO_TEST_UNIT_READY) {
-			DPRINTF(sc, UDMASS_SCSI, "Converted TEST_UNIT_READY "
-			    "to START_UNIT\n");
-			memset(sc->sc_transfer.cmd_data, 0, cmd_len);
-			sc->sc_transfer.cmd_data[0] = START_STOP_UNIT;
-			sc->sc_transfer.cmd_data[4] = SSS_START;
-			return (1);
-		}
-		break;
-
-	case INQUIRY:
-		/*
-		 * some drives wedge when asked for full inquiry
-		 * information.
-		 */
-		if (sc->sc_quirks & FORCE_SHORT_INQUIRY) {
-			memcpy(sc->sc_transfer.cmd_data, cmd_ptr, cmd_len);
-			sc->sc_transfer.cmd_data[4] = SHORT_INQUIRY_LENGTH;
-			return (1);
-		}
-		break;
-	}
-
-	memcpy(sc->sc_transfer.cmd_data, cmd_ptr, cmd_len);
-	return (1);
+	return (true);
 }
 
-static uint8_t
+static bool
 umass_rbc_transform(struct umass_softc *sc, uint8_t *cmd_ptr, uint8_t cmd_len)
 {
-	if ((cmd_len == 0) ||
-	    (cmd_len > sizeof(sc->sc_transfer.cmd_data))) {
-		DPRINTF(sc, UDMASS_SCSI, "Invalid command "
-		    "length: %d bytes\n", cmd_len);
-		return (0);		/* failure */
-	}
 	switch (cmd_ptr[0]) {
 		/* these commands are defined in RBC: */
 	case READ_10:
@@ -2777,8 +2766,7 @@ umass_rbc_transform(struct umass_softc *sc, uint8_t *cmd_ptr, uint8_t cmd_len)
 	case START_STOP_UNIT:
 	case SYNCHRONIZE_CACHE:
 	case WRITE_10:
-	case 0x2f:			/* VERIFY_10 is absent from
-					 * scsi_all.h??? */
+	/* case VERIFY_10: */ /* Not implemented by DragonFly */
 	case INQUIRY:
 	case MODE_SELECT_10:
 	case MODE_SENSE_10:
@@ -2791,40 +2779,28 @@ umass_rbc_transform(struct umass_softc *sc, uint8_t *cmd_ptr, uint8_t cmd_len)
 		 */
 	case REQUEST_SENSE:
 	case PREVENT_ALLOW:
-
-		memcpy(sc->sc_transfer.cmd_data, cmd_ptr, cmd_len);
-
 		if ((sc->sc_quirks & RBC_PAD_TO_12) && (cmd_len < 12)) {
 			memset(sc->sc_transfer.cmd_data + cmd_len,
 			    0, 12 - cmd_len);
 			cmd_len = 12;
 		}
 		sc->sc_transfer.cmd_len = cmd_len;
-		return (1);		/* sucess */
+		return (true);		/* success */
 
 		/* All other commands are not legal in RBC */
 	default:
 		DPRINTF(sc, UDMASS_SCSI, "Unsupported RBC "
 		    "command 0x%02x\n", cmd_ptr[0]);
-		return (0);		/* failure */
+		return (false);		/* failure */
 	}
 }
 
-static uint8_t
+static bool
 umass_ufi_transform(struct umass_softc *sc, uint8_t *cmd_ptr,
     uint8_t cmd_len)
 {
-	if ((cmd_len == 0) ||
-	    (cmd_len > sizeof(sc->sc_transfer.cmd_data))) {
-		DPRINTF(sc, UDMASS_SCSI, "Invalid command "
-		    "length: %d bytes\n", cmd_len);
-		return (0);		/* failure */
-	}
 	/* An UFI command is always 12 bytes in length */
 	sc->sc_transfer.cmd_len = UFI_COMMAND_LENGTH;
-
-	/* Zero the command data */
-	memset(sc->sc_transfer.cmd_data, 0, UFI_COMMAND_LENGTH);
 
 	switch (cmd_ptr[0]) {
 		/*
@@ -2832,25 +2808,12 @@ umass_ufi_transform(struct umass_softc *sc, uint8_t *cmd_ptr,
 		 * should work. Copy the command into the (zeroed out)
 		 * destination buffer.
 		 */
-	case TEST_UNIT_READY:
-		if (sc->sc_quirks & NO_TEST_UNIT_READY) {
-			/*
-			 * Some devices do not support this command. Start
-			 * Stop Unit should give the same results
-			 */
-			DPRINTF(sc, UDMASS_UFI, "Converted TEST_UNIT_READY "
-			    "to START_UNIT\n");
-
-			sc->sc_transfer.cmd_data[0] = START_STOP_UNIT;
-			sc->sc_transfer.cmd_data[4] = SSS_START;
-			return (1);
-		}
-		break;
 
 	case REZERO_UNIT:
 	case REQUEST_SENSE:
 	case FORMAT_UNIT:
 	case INQUIRY:
+	case TEST_UNIT_READY:
 	case START_STOP_UNIT:
 	case SEND_DIAGNOSTIC:
 	case PREVENT_ALLOW:
@@ -2869,40 +2832,29 @@ umass_ufi_transform(struct umass_softc *sc, uint8_t *cmd_ptr,
 
 		/*
 		 * SYNCHRONIZE_CACHE isn't supported by UFI, nor should it be
-		 * required for UFI devices, so it is appropriate to fake
-		 * success.
+		 * required for UFI devices. Just fail it, the upper layers
+		 * know what to do.
 		 */
 	case SYNCHRONIZE_CACHE:
-		return (2);
-
+		return (false);
 	default:
 		DPRINTF(sc, UDMASS_SCSI, "Unsupported UFI "
 		    "command 0x%02x\n", cmd_ptr[0]);
-		return (0);		/* failure */
+		return (false);		/* failure */
 	}
 
-	memcpy(sc->sc_transfer.cmd_data, cmd_ptr, cmd_len);
-	return (1);			/* success */
+	return (true);			/* success */
 }
 
 /*
  * 8070i (ATAPI) specific functions
  */
-static uint8_t
+static bool
 umass_atapi_transform(struct umass_softc *sc, uint8_t *cmd_ptr,
     uint8_t cmd_len)
 {
-	if ((cmd_len == 0) ||
-	    (cmd_len > sizeof(sc->sc_transfer.cmd_data))) {
-		DPRINTF(sc, UDMASS_SCSI, "Invalid command "
-		    "length: %d bytes\n", cmd_len);
-		return (0);		/* failure */
-	}
 	/* An ATAPI command is always 12 bytes in length. */
 	sc->sc_transfer.cmd_len = ATAPI_COMMAND_LENGTH;
-
-	/* Zero the command data */
-	memset(sc->sc_transfer.cmd_data, 0, ATAPI_COMMAND_LENGTH);
 
 	switch (cmd_ptr[0]) {
 		/*
@@ -2910,32 +2862,11 @@ umass_atapi_transform(struct umass_softc *sc, uint8_t *cmd_ptr,
 		 * should work. Copy the command into the destination
 		 * buffer.
 		 */
-	case INQUIRY:
-		/*
-		 * some drives wedge when asked for full inquiry
-		 * information.
-		 */
-		if (sc->sc_quirks & FORCE_SHORT_INQUIRY) {
-			memcpy(sc->sc_transfer.cmd_data, cmd_ptr, cmd_len);
-
-			sc->sc_transfer.cmd_data[4] = SHORT_INQUIRY_LENGTH;
-			return (1);
-		}
-		break;
-
-	case TEST_UNIT_READY:
-		if (sc->sc_quirks & NO_TEST_UNIT_READY) {
-			DPRINTF(sc, UDMASS_SCSI, "Converted TEST_UNIT_READY "
-			    "to START_UNIT\n");
-			sc->sc_transfer.cmd_data[0] = START_STOP_UNIT;
-			sc->sc_transfer.cmd_data[4] = SSS_START;
-			return (1);
-		}
-		break;
-
 	case REZERO_UNIT:
 	case REQUEST_SENSE:
+	case INQUIRY:
 	case START_STOP_UNIT:
+	case TEST_UNIT_READY:
 	case SEND_DIAGNOSTIC:
 	case PREVENT_ALLOW:
 	case READ_CAPACITY:
@@ -2977,37 +2908,62 @@ umass_atapi_transform(struct umass_softc *sc, uint8_t *cmd_ptr,
 		break;
 	}
 
-	memcpy(sc->sc_transfer.cmd_data, cmd_ptr, cmd_len);
-	return (1);			/* success */
+	return (true);			/* success */
 }
 
-static uint8_t
+static bool
 umass_no_transform(struct umass_softc *sc, uint8_t *cmd,
     uint8_t cmdlen)
 {
-	return (0);			/* failure */
+	return (false);			/* failure */
 }
 
-static uint8_t
+static bool
 umass_std_transform(struct umass_softc *sc, union ccb *ccb,
-    uint8_t *cmd, uint8_t cmdlen)
+    uint8_t *cmd, uint8_t cmd_len)
 {
-	uint8_t retval;
-
-	retval = (sc->sc_transform) (sc, cmd, cmdlen);
-
-	if (retval == 2) {
-		ccb->ccb_h.status = CAM_REQ_CMP;
-		xpt_done(ccb);
-		return (0);
-	} else if (retval == 0) {
-		xpt_freeze_devq(ccb->ccb_h.path, 1);
-		ccb->ccb_h.status = CAM_REQ_INVALID | CAM_DEV_QFRZN;
-		xpt_done(ccb);
-		return (0);
+	if (cmd_len == 0 || cmd_len > sizeof(sc->sc_transfer.cmd_data)) {
+		DPRINTF(sc, UDMASS_SCSI, "Invalid command length: %d bytes\n",
+		    cmd_len);
+		return (false);		/* failure */
 	}
-	/* Command should be executed */
-	return (1);
+
+	/*
+	 * Copy the CDB to the cmd_data buffer and then apply the common quirks
+	 * to the code. We then pass the transformed command down to allow
+	 * further transforms.
+	 */
+	memset(sc->sc_transfer.cmd_data, 0, sizeof(sc->sc_transfer.cmd_data));
+	memcpy(sc->sc_transfer.cmd_data, cmd, cmd_len);
+	switch (cmd[0]) {
+	case TEST_UNIT_READY:
+		/*
+		 * Some drive choke on TEST UNIT READY. Convert it to START STOP
+		 * UNIT to get similar status.
+		 */
+		if ((sc->sc_quirks & NO_TEST_UNIT_READY) != 0) {
+			DPRINTF(sc, UDMASS_SCSI,
+			    "Converted TEST_UNIT_READY to START_UNIT\n");
+			memset(sc->sc_transfer.cmd_data, 0, cmd_len);
+			sc->sc_transfer.cmd_data[0] = START_STOP_UNIT;
+			sc->sc_transfer.cmd_data[4] = SSS_START;
+		}
+		break;
+
+	case INQUIRY:
+		/*
+		 * some drives wedge when asked for full inquiry
+		 * information.
+		 */
+		if ((sc->sc_quirks & FORCE_SHORT_INQUIRY) != 0)
+			sc->sc_transfer.cmd_data[4] = SHORT_INQUIRY_LENGTH;
+		break;
+	}
+	if (sc->sc_transform(sc, cmd, cmd_len))
+		return (true);	/* Execute command */
+	if (ccb)
+		umass_cam_illegal_request(ccb);
+	return (false);		/* Already failed -- don't submit */
 }
 
 #ifdef USB_DEBUG
