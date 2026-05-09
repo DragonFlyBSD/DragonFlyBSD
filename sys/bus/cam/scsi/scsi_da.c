@@ -1183,7 +1183,7 @@ daregister(struct cam_periph *periph, void *arg)
 	 * device supports it or not and if it doesn't the port can
 	 * brick.
 	 */
-	if (strncmp(periph->sim->sim_name, "umass", 4) == 0) {
+	if (strncmp(periph->sim->sim_name, "umass", 5) == 0) {
 		softc->quirks |= DA_Q_NO_SYNC_CACHE;
 	}
 

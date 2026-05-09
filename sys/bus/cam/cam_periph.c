@@ -540,7 +540,7 @@ camperiphunit(struct periph_driver *p_drv,
 	 * or other scsi attachments.
 	 */
 	if (hit == 0 && sim) {
-		if (strncmp(sim->sim_name, "umass", 4) == 0 && unit < 8)
+		if (strncmp(sim->sim_name, "umass", 5) == 0 && unit < 8)
 			unit = 8;
 	}
 
