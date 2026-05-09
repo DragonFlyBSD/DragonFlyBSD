@@ -280,23 +280,11 @@ int
 cbb_detach(device_t brdev)
 {
 	struct cbb_softc *sc = device_get_softc(brdev);
-	int numdevs;
-	device_t *devlist;
-	int tmp;
 	int error;
 
-	device_get_children(brdev, &devlist, &numdevs);
-
-	error = 0;
-	for (tmp = 0; tmp < numdevs; tmp++) {
-		if (device_detach(devlist[tmp]) == 0)
-			device_delete_child(brdev, devlist[tmp]);
-		else
-			error++;
-	}
-	kfree(devlist, M_TEMP);
-	if (error > 0)
-		return (ENXIO);
+	error = device_delete_children(brdev);
+	if (error != 0)
+		return (error);
 
 	/* 
 	 * XXX do we teardown all the ones still registered to guard against
