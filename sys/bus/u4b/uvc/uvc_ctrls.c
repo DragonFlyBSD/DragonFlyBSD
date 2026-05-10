@@ -63,13 +63,7 @@
 #define UVC_LOCK(lkp)   lockmgr(lkp, LK_EXCLUSIVE)
 #define UVC_UNLOCK(lkp) lockmgr(lkp, LK_RELEASE)
 
-/*
- * DragonFly does not implement _SAFE macros because they are generally not
- * actually safe in a MP environment, and so it is bad programming practice
- * to use them.
- */
-#define STAILQ_FOREACH_SAFE(scan, list, next, save)	\
-	for (scan = STAILQ_FIRST(list); (save = scan ? STAILQ_NEXT(scan, next) : NULL), scan; scan = save) 	\
+#define STAILQ_FOREACH_SAFE	STAILQ_FOREACH_MUTABLE
 
 #define UVC_CTRL_DATA_CURRENT	0
 #define UVC_CTRL_DATA_BACKUP	1

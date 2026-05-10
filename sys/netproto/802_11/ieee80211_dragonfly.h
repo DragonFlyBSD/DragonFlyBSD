@@ -658,12 +658,11 @@ typedef struct lock	ieee80211_rt_lock_t;
 #define osdep_va_end		__va_end
 
 /*
- * DragonFly does not implement _SAFE macros because they are generally not
+ * DragonFly names the _SAFE macros as _MUTABLE because they are generally not
  * actually safe in a MP environment, and so it is bad programming practice
  * to use them.
  */
-#define TAILQ_FOREACH_SAFE(scan, list, next, save)	\
-	for (scan = TAILQ_FIRST(list); (save = scan ? TAILQ_NEXT(scan, next) : NULL), scan; scan = save) 	\
+#define TAILQ_FOREACH_SAFE	TAILQ_FOREACH_MUTABLE
 
 #define callout_init_mtx(callo, lk, flags)		\
 				callout_init_lk(callo, lk)
