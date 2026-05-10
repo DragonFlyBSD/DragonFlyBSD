@@ -1,10 +1,16 @@
-# NOTE: should keep in sync with <sys/gpt.h>
+# NOTE: types also defined in <sys/gpt.h> are used by gpt(8) for -t aliases.
+# Additional entries here are for display (uuid_addr_lookup) only.
 #
-# EFI
+# EFI / Generic
 #
 00000000-0000-0000-0000-000000000000	"Unused"
 c12a7328-f81f-11d2-ba4b-00a0c93ec93b	"EFI System"
 024dee41-33e7-11d3-9d69-0008c781f39f	"MBR"
+21686148-6449-6e6f-744e-656564454649	"BIOS Boot"
+d3bfe2de-3daf-11df-ba40-e3a556d89593	"Intel Fast Flash"
+f4019732-066e-4e12-8273-346c5641494f	"Sony Boot"
+bfbfafe7-a34f-448a-9a5b-6213eb736c22	"Lenovo Boot"
+9e1a2d38-c612-4316-aa26-8b49521e5a8b	"PowerPC PReP Boot"
 #
 # DragonFly
 #
@@ -30,9 +36,9 @@ bd215ab2-1d16-11dc-8696-01301bb8a9f5	"DragonFly Legacy"
 #
 # NetBSD
 #
+49f48d32-b10e-11dc-b99b-0019d1879648	"NetBSD Swap"
 49f48d5a-b10e-11dc-b99b-0019d1879648	"NetBSD FFS"
 49f48d82-b10e-11dc-b99b-0019d1879648	"NetBSD LFS"
-49f48d32-b10e-11dc-B99B-0019d1879648	"NetBSD Swap"
 49f48daa-b10e-11dc-b99b-0019d1879648	"NetBSD RAID"
 2db519c4-b10f-11dc-b99b-0019d1879648	"NetBSD CCD"
 2db519ec-b10f-11dc-b99b-0019d1879648	"NetBSD CGD"
@@ -41,14 +47,61 @@ bd215ab2-1d16-11dc-8696-01301bb8a9f5	"DragonFly Legacy"
 #
 824cc7a0-36a8-11e3-890a-952519ad3f61	"OpenBSD Data"
 #
+# MidnightBSD
+#
+85d5e45e-237c-11e1-b4b3-e89a8f7fc3a7	"MidnightBSD Boot"
+85d5e45a-237c-11e1-b4b3-e89a8f7fc3a7	"MidnightBSD Data"
+85d5e45b-237c-11e1-b4b3-e89a8f7fc3a7	"MidnightBSD Swap"
+0394ef8b-237e-11e1-b4b3-e89a8f7fc3a7	"MidnightBSD UFS"
+85d5e45c-237c-11e1-b4b3-e89a8f7fc3a7	"MidnightBSD Vinum"
+85d5e45d-237c-11e1-b4b3-e89a8f7fc3a7	"MidnightBSD ZFS"
+#
+# Plan 9
+#
+c91818f9-8025-47af-89d2-f030d7000c2c	"Plan 9"
+#
+# Haiku
+#
+42465331-3ba3-10f1-802a-4861696b7521	"Haiku BFS"
+#
+# QNX
+#
+cef5a9ad-73bc-4601-89f3-cdeeeee321a1	"QNX6 Power-Safe"
+#
+# HP-UX
+#
+75894c1e-3aeb-11d3-b7c1-7b03a0000000	"HP-UX Data"
+e2a1e728-32e3-11d6-a682-7b03a0000000	"HP-UX Service"
+#
+# Solaris/illumos
+#
+6a82cb45-1dd2-11b2-99a6-080020736631	"Solaris Boot"
+6a85cf4d-1dd2-11b2-99a6-080020736631	"Solaris Root"
+6a87c46f-1dd2-11b2-99a6-080020736631	"Solaris Swap"
+6a8b642b-1dd2-11b2-99a6-080020736631	"Solaris Backup"
+6a898cc3-1dd2-11b2-99a6-080020736631	"Solaris /usr"
+6a8ef2e9-1dd2-11b2-99a6-080020736631	"Solaris /var"
+6a90ba39-1dd2-11b2-99a6-080020736631	"Solaris /home"
+6a9283a5-1dd2-11b2-99a6-080020736631	"Solaris Alternate Sector"
+6a945a3b-1dd2-11b2-99a6-080020736631	"Solaris Reserved"
+6a9630d1-1dd2-11b2-99a6-080020736631	"Solaris Reserved"
+6a96237f-1dd2-11b2-99a6-080020736631	"Solaris Reserved"
+6a8d2ac7-1dd2-11b2-99a6-080020736631	"Solaris Reserved"
+#
+# Minix
+#
+481b2a38-0561-420b-b72a-f1c4988efc16	"Minix"
+#
 # Microsoft
 #
 ebd0a0a2-b9e5-4433-87c0-68b6b72699c7	"MS Basic Data"
-af9b60a0-1431-4f62-bc68-3311714a69ad	"MS LDM Data"
-5808c8aa-7e8f-42e0-85d2-e1e90434cfb3	"MS LDM Metadata"
-de94bba4-06d1-4d40-a16a-bfd50179d6ac	"MS Recovery"
 e3c9e316-0b5c-4db8-817d-f92df00215ae	"MS Reserved"
+5808c8aa-7e8f-42e0-85d2-e1e90434cfb3	"MS LDM Metadata"
+af9b60a0-1431-4f62-bc68-3311714a69ad	"MS LDM Data"
+de94bba4-06d1-4d40-a16a-bfd50179d6ac	"MS Recovery"
 e75caf8f-f680-4cee-afa3-b001e56efc2d	"MS Spaces"
+558d43c5-a1ac-43c0-aac8-d1472b2923d1	"MS Storage Replica"
+37affc90-ef7d-4e96-91c3-2d7ae055b174	"IBM GPFS"
 #
 # Linux
 #
@@ -56,35 +109,198 @@ e75caf8f-f680-4cee-afa3-b001e56efc2d	"MS Spaces"
 a19d880f-05fc-4d3b-a006-743f0f84911e	"Linux RAID"
 0657fd6d-a4ab-43c4-84e5-0933c84b4f4f	"Linux Swap"
 e6d6d379-f507-44c2-a23c-238f2a3df928	"Linux LVM"
+933ac7e1-2eb4-4f13-b844-0e14e2aef915	"Linux /home"
+3b8f8425-20e0-4f3b-907f-1a25a76f98e8	"Linux /srv"
+4d21b016-b534-45c2-a9fb-5c16e091fd2d	"Linux /var"
+7ffec5c9-2d00-49b7-8941-3ea10a5586b7	"Linux dm-crypt"
+ca7d7ccb-63ed-4c53-861c-1742536059cc	"Linux LUKS"
+bc13c2ff-59e6-4262-a352-b275fd6f7172	"Linux /boot"
+773f91ef-66d4-49b5-bd83-d683bf40ad16	"Linux Per-user Home"
+8da63339-0007-60c0-c436-083ac8230908	"Linux Reserved"
+# Linux Root partitions (architecture-specific)
+44479540-f297-41b2-9af7-d131d5f0458a	"Linux Root (x86)"
+4f68bce3-e8cd-4db1-96e7-fbcaf984b709	"Linux Root (x86-64)"
+69dad710-2ce4-4e3c-b16c-21a1d49abed3	"Linux Root (ARM)"
+b921b045-1df0-41c3-af44-4c6f280d3fae	"Linux Root (AArch64)"
+993d8d3d-f80e-4225-855a-9daf8ed7ea97	"Linux Root (IA-64)"
+60d5a7fe-8e7d-435c-b714-3dd8162144e1	"Linux Root (RISC-V 32)"
+72ec70a6-cf74-40e6-bd49-4bda08e8f224	"Linux Root (RISC-V 64)"
+1de3f1ef-fa98-47b5-8dcd-4a860a654d78	"Linux Root (PPC32)"
+912ade1d-a839-4913-8964-a10eee08fbd2	"Linux Root (PPC64 BE)"
+c31c45e6-3f39-412e-80fb-4809c4980599	"Linux Root (PPC64 LE)"
+77055800-792c-4f94-b39a-98c91b762bb6	"Linux Root (LoongArch64)"
+08a7acea-624c-4a20-91e8-6e0fa67d23f9	"Linux Root (s390)"
+5eead9a9-fe09-4a1e-a1d7-520d00531306	"Linux Root (s390x)"
+6523f8ae-3eb1-4e2a-a05a-18b695ae656f	"Linux Root (Alpha)"
+d27f46ed-2919-4cb8-bd25-9531f3c16534	"Linux Root (ARC)"
+1aacdb3b-5444-4138-bd9e-e5c2239b2346	"Linux Root (PA-RISC)"
+e9434544-6e2c-47cc-bae2-12d6deafb44c	"Linux Root (MIPS BE)"
+d113af76-80ef-41b4-bdb6-0cff4d3d4a25	"Linux Root (MIPS64 BE)"
+37c58c8a-d913-4156-a25f-48b1b64e07f0	"Linux Root (MIPS LE)"
+700bda43-7a34-4507-b179-eeb93d7a7ca3	"Linux Root (MIPS64 LE)"
+# Linux /usr partitions (architecture-specific)
+75250d76-8cc6-458e-bd66-bd47cc81a812	"Linux /usr (x86)"
+8484680c-9521-48c6-9c11-b0720656f69e	"Linux /usr (x86-64)"
+7d0359a3-02b3-4f0a-865c-654403e70625	"Linux /usr (ARM)"
+b0e01050-ee5f-4390-949a-9101b17104e9	"Linux /usr (AArch64)"
+4301d2a6-4e3b-4b2a-bb94-9e0b2c4225ea	"Linux /usr (IA-64)"
+b933fb22-5c3f-4f91-af90-e2bb0fa50702	"Linux /usr (RISC-V 32)"
+beaec34b-8442-439b-a40b-984381ed097d	"Linux /usr (RISC-V 64)"
+7d14fec5-cc71-415d-9d6c-06bf0b3c3eaf	"Linux /usr (PPC32)"
+2c9739e2-f068-46b3-9fd0-01c5a9afbcca	"Linux /usr (PPC64 BE)"
+15bb03af-77e7-4d4a-b12b-c0d084f7491c	"Linux /usr (PPC64 LE)"
+e611c702-575c-4cbe-9a46-434fa0bf7e3f	"Linux /usr (LoongArch64)"
+cd0f869b-d0fb-4ca0-b141-9ea87cc78d66	"Linux /usr (s390)"
+8a4f5770-50aa-4ed3-874a-99b710db6fea	"Linux /usr (s390x)"
+e18cf08c-33ec-4c0d-8246-c6c6fb3da024	"Linux /usr (Alpha)"
+7978a683-6316-4922-bbee-38bff5a2fecc	"Linux /usr (ARC)"
+dc4a4480-6917-4262-a4ec-db9384949f25	"Linux /usr (PA-RISC)"
+773b2abc-2a99-4398-8bf5-03baac40d02b	"Linux /usr (MIPS BE)"
+57e13958-7331-4365-8e6e-35eeee17c61b	"Linux /usr (MIPS64 BE)"
+0f4868e9-9952-4706-979f-3ed3a473e947	"Linux /usr (MIPS LE)"
+c97c1f32-ba06-40b4-9f22-236061b08aa8	"Linux /usr (MIPS64 LE)"
 #
 # ChromeOS
 #
 cab6e88e-abf3-4102-a07a-d4bb9be3c1d3	"ChromeOS Firmware"
 fe3a2a5d-4f32-41a7-b725-accc3285a309	"ChromeOS Kernel"
-2e0a753d-9e48-43b0-8337-b15192cb1b5e	"ChromeOS Reserved"
 3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec	"ChromeOS Root"
+2e0a753d-9e48-43b0-8337-b15192cb1b5e	"ChromeOS Reserved"
+09845860-705f-4bb5-b16c-8a8a099caf52	"ChromeOS miniOS"
+3f0f8318-f146-4e6b-8222-c28c8f02e0d5	"ChromeOS Hibernate"
+#
+# Container Linux (CoreOS)
+#
+5dfbf5f4-2848-4bac-aa5e-0d9a20b745a6	"CoreOS /usr"
+3884dd41-8582-4404-b9a8-e9b84f2df50e	"CoreOS Resize"
+c95dc21a-df0e-4340-8d7b-26cbfa9a03e0	"CoreOS OEM"
+be9067b9-ea49-4f15-b4f6-f36f8c9e1818	"CoreOS Root RAID"
 #
 # Apple
 #
-426F6F74-0000-11aa-aa11-00306543ecac	"Apple Boot"
-48465300-0000-11aa-aa11-00306543ecac	"Apple HFS"
+426f6f74-0000-11aa-aa11-00306543ecac	"Apple Boot"
+48465300-0000-11aa-aa11-00306543ecac	"Apple HFS+"
+7c3457ef-0000-11aa-aa11-00306543ecac	"Apple APFS"
 55465300-0000-11aa-aa11-00306543ecac	"Apple UFS"
 6a898cc3-1dd2-11b2-99a6-080020736631	"Apple ZFS"
 52414944-0000-11aa-aa22-00306543ecac	"Apple RAID"
 52414944-5f4f-11aa-aa22-00306543ecac	"Apple RAID Offline"
-4C616265-6c00-11aa-aa11-00306543ecac	"Apple Label"
-5265636f-7665-11AA-aa11-00306543ecac	"Apple TV Recovery"
-53746f72-6167-11AA-aa11-00306543ecac	"Apple Core Storage"
-7c3457ef-0000-11aa-aa11-00306543ecac	"Apple APFS"
+4c616265-6c00-11aa-aa11-00306543ecac	"Apple Label"
+5265636f-7665-11aa-aa11-00306543ecac	"Apple TV Recovery"
+53746f72-6167-11aa-aa11-00306543ecac	"Apple Core Storage"
+69646961-6700-11aa-aa11-00306543ecac	"Apple APFS Preboot"
+52637672-7900-11aa-aa11-00306543ecac	"Apple APFS Recovery"
 #
-# VMWare
+# VMware
 #
-aa31e02a-400f-11db-9590-000c2911d1b8	"VMWare VMFS"
-9d275380-40ad-11db-bf97-000c2911d1b8	"VMWare Diagostic"
-9198effc-31c0-11db-8f78-000c2911d1b8	"VMWare Reserved"
-381cfccc-7288-11e0-92ee-000c2911d0b2	"VMWare VSAN"
+aa31e02a-400f-11db-9590-000c2911d1b8	"VMware VMFS"
+9d275380-40ad-11db-bf97-000c2911d1b8	"VMware Diagnostic"
+9198effc-31c0-11db-8f78-000c2911d1b8	"VMware Reserved"
+381cfccc-7288-11e0-92ee-000c2911d0b2	"VMware VSAN"
+#
+# Ceph
+#
+45b0969e-9b03-4f30-b4c6-b4b80ceff106	"Ceph Journal"
+45b0969e-9b03-4f30-b4c6-5ec00ceff106	"Ceph dm-crypt Journal"
+4fbd7e29-9d25-41b8-afd0-062c0ceff05d	"Ceph OSD"
+4fbd7e29-9d25-41b8-afd0-5ec00ceff05d	"Ceph dm-crypt OSD"
+89c57f98-2fe5-4dc0-89c1-f3ad0ceff2be	"Ceph Disk in Creation"
+89c57f98-2fe5-4dc0-89c1-5ec00ceff2be	"Ceph dm-crypt Disk in Creation"
+cafecafe-9b03-4f30-b4c6-b4b80ceff106	"Ceph Block"
+30cd0809-c2b2-499c-8879-2d6b78529876	"Ceph Block DB"
+5ce17fce-4087-4169-b7ff-056cc58473f9	"Ceph Block WAL"
+fb3aabf9-d25f-47cc-bf5e-721d1816496b	"Ceph Lockbox"
+cafecafe-9b03-4f30-b4c6-5ec00ceff106	"Ceph dm-crypt Block"
+93b0052d-02d9-4d8a-a43b-33a3ee4dfbc3	"Ceph dm-crypt Block DB"
+306e8683-4fe2-4330-b7c0-00a917c16966	"Ceph dm-crypt Block WAL"
+cafecafe-9b03-4f30-b4c6-35865ceff106	"Ceph dm-crypt LUKS Block"
+166418da-c469-4022-adf4-b30afd37f176	"Ceph dm-crypt LUKS Block DB"
+86a32090-3647-40b9-bbbd-38d8c573aa86	"Ceph dm-crypt LUKS Block WAL"
+4fbd7e29-9d25-41b8-afd0-35865ceff05d	"Ceph dm-crypt LUKS OSD"
+45b0969e-9b03-4f30-b4c6-35865ceff106	"Ceph dm-crypt LUKS Journal"
+#
+# Fuchsia
+#
+fe8a2634-5e2e-46ba-99e3-3a192091a350	"Fuchsia Bootloader"
+d9fd4535-106c-4cec-8d37-dfc020ca87cb	"Fuchsia System Data"
+a409e16b-78aa-4acc-995c-302352621a41	"Fuchsia Bootloader Data"
+f95d940e-caba-4578-9b93-bb6c90f29d3e	"Fuchsia Factory System"
+10b8dbaa-d2bf-42a9-98c6-a7c5db3701e7	"Fuchsia Factory Boot"
+49fd7cb8-df15-4e73-b9d9-992070127f0f	"Fuchsia Volume Manager"
+421a8bfc-85d9-4d85-acda-b64eec0133e9	"Fuchsia Verified Boot"
+9b37fff6-2e58-466a-983a-f7926d0b04e0	"Fuchsia Zircon Boot"
+606b000b-b7c7-4653-a7d5-b737332c899d	"Fuchsia System"
+08185f0c-892d-428a-a789-dbeec8f55e6a	"Fuchsia Data"
+48435546-4953-2041-494e-5354414c4c52	"Fuchsia Install"
+2967380e-134c-4cbb-b6da-17e7ce1ca45d	"Fuchsia Blob"
+#
+# Android
+#
+2568845d-2332-4675-bc39-8fa5a4748d15	"Android Bootloader"
+114eaffe-1552-4022-b26e-9b053604cf84	"Android Bootloader2"
+49a4d17f-93a3-45c1-a0de-f50b2ebe2599	"Android Boot"
+4177c722-9e92-4aab-8644-43502bfd5506	"Android Recovery"
+ef32a33b-a409-486c-9141-9ffb711f6266	"Android Misc"
+20ac26be-20b7-11e3-84c5-6cfdb94711e9	"Android Metadata"
+38f428e6-d326-425d-9140-6e0ea133647c	"Android System"
+a893ef21-e428-470a-9e55-0668fd91a2d9	"Android Cache"
+dc76dda9-5ac1-491c-af42-a82591580c0d	"Android Data"
+ebc597d0-2053-4b15-8b64-e0aac75f4db1	"Android Persistent"
+c5a0aeec-13ea-11e5-a1b1-001e67ca0c3c	"Android Vendor"
+19a710a2-b3ca-11e4-b026-10604b889dcf	"Android Meta"
+193d1ea4-b3ca-11e4-b075-10604b889dcf	"Android EXT"
+#
+# ONIE
+#
+7412f7d5-a156-4b13-81dc-867174929325	"ONIE Boot"
+d4e6e2cd-4469-46f3-b5cb-1bff57afc149	"ONIE Config"
+#
+# Atari TOS
+#
+734e5afe-f61a-11e6-bc64-92361f002671	"Atari TOS Basic Data"
+35540011-b055-499f-842d-c69aeca357b7	"Atari TOS Raw Data"
+#
+# OS/2
+#
+90b6ff38-b98f-4358-a21f-48f35b4a8ad3	"OS/2 ArcaOS Type 1"
+#
+# AmigaOS
+#
+3f82eebc-87c9-4097-8165-89d6540557c0	"Emu68/AmigaOS RDB"
+#
+# VeraCrypt
+#
+8c8f8eff-ac95-4770-814a-21994f2dbc8f	"VeraCrypt Data"
+#
+# Embedded / Bootloaders
+#
+4778ed65-bf42-45fa-9c5b-287a1dc4aab1	"barebox-state"
+3de21764-95bd-54bd-a5c3-4abe786f38a8	"U-Boot Environment"
+7c5222bd-8f5d-4087-9c00-bf9843c7b58c	"SPDK Block Device"
+#
+# SoftRAID
+#
+b6fa30da-92d2-4a9a-96f1-871ec6486200	"SoftRAID Status"
+2e313465-19b9-463f-8126-8a7993773801	"SoftRAID Scratch"
+fa709c7e-65b1-4593-bfd5-e71d61de9b02	"SoftRAID Volume"
+bbba6df5-f46f-4a89-8f59-8765b2727503	"SoftRAID Cache"
+#
+# Sony PS4 (Orbis OS)
+#
+17800f17-b9e1-425d-b937-0119a0813172	"Sony PS4 preinst"
+ccb52e94-ebef-48c4-a195-9e2da5b0292c	"Sony PS4 preinst2"
+145268bf-63ad-47c1-9378-9aacd9beed7c	"Sony PS4 eap_kernel"
+6e0c5310-8445-4066-b571-9b65fdb75935	"Sony PS4 eap_vsh"
+eabbf00b-c299-4488-9de9-b2839bce7546	"Sony PS4 system"
+dc85025f-a694-4109-be44-fa0c063e8b81	"Sony PS4 system_ex"
+76a9a5b4-44b0-472a-bde3-3107472adee2	"Sony PS4 swap"
+80dd49e3-a985-4887-81de-1daca47aed90	"Sony PS4 app_tmp"
+a71ff62d-1421-4dd9-935d-25dabd81bec5	"Sony PS4 system_data"
+fdb5ede1-73c3-4c43-8c5b-2d3dcfcddff8	"Sony PS4 update"
+c638477a-e002-4b57-a454-a27fb63a33a8	"Sony PS4 user"
+21e4dfb4-0040-4934-a037-ea9dc058eea6	"Sony PS4 eap_user"
+3ef7290a-de81-4887-a11f-46fba765c71c	"Sony PS4 app_reserved"
 #
 # Misc.
 #
-21686148-6449-6e6f-744e-656564454649	"BIOS Boot"
-9e1a2d38-c612-4316-aa26-8b49521e5a8b	"PowerPC Boot"
+993ec906-b4e2-11e7-a205-a0a8cd3ea1de	"Weka Data"
