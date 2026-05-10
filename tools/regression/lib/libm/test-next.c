@@ -36,10 +36,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef	__i386__
-#include <ieeefp.h>
-#endif
-
 #define	ALL_STD_EXCEPT	(FE_DIVBYZERO | FE_INEXACT | FE_INVALID |\
 			 FE_OVERFLOW | FE_UNDERFLOW)
 #define	test(exp, ans, ex)	do {			\
@@ -80,9 +76,6 @@ main(int argc, char *argv[])
 
 	printf("1..5\n");
 
-#ifdef	__i386__
-	fpsetprec(FP_PE);
-#endif
 	/*
 	 * We can't use a compile-time constant here because gcc on
 	 * FreeBSD/i386 assumes long doubles are truncated to the

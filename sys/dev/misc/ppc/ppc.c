@@ -137,15 +137,6 @@ static char *ppc_modes[] = {
 
 static char *ppc_epp_protocol[] = { " (EPP 1.9)", " (EPP 1.7)", 0 };
 
-#ifdef __i386__
-/*
- * BIOS printer list - used by BIOS probe.
- */
-#define	BIOS_PPC_PORTS	0x408
-#define	BIOS_PORTS	(short *)(KERNBASE+BIOS_PPC_PORTS)
-#define	BIOS_MAX_PPC	4
-#endif
-
 /*
  * ppc_ecp_sync()		XXX
  */
@@ -1829,9 +1820,6 @@ static struct isa_pnp_id lpc_ids[] = {
 static int
 ppc_probe(device_t dev)
 {
-#ifdef __i386__
-	static short next_bios_ppc = 0;
-#endif
 	struct ppc_data *ppc;
 	device_t parent;
 	int error;
@@ -1857,25 +1845,6 @@ ppc_probe(device_t dev)
 	/* retrieve ISA parameters */
 	error = bus_get_resource(dev, SYS_RES_IOPORT, 0, &port, NULL);
 
-#ifdef __i386__
-	/*
-	 * If port not specified, use bios list.
-	 */
-	if (error) {
-		if((next_bios_ppc < BIOS_MAX_PPC) &&
-				(*(BIOS_PORTS+next_bios_ppc) != 0) ) {
-			port = *(BIOS_PORTS+next_bios_ppc++);
-			if (bootverbose)
-			  device_printf(dev, "parallel port found at 0x%x\n",
-					(int) port);
-		} else {
-			device_printf(dev, "parallel port not found.\n");
-			return ENXIO;
-		}
-		bus_set_resource(dev, SYS_RES_IOPORT, 0, port,
-				 IO_LPTSIZE_EXTENDED, -1);
-	}
-#endif
 
 	/* IO port is mandatory */
 

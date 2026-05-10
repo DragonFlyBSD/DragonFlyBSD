@@ -36,10 +36,6 @@
 #include <math.h>
 #include <stdio.h>
 
-#ifdef __i386__
-#include <ieeefp.h>
-#endif
-
 #define	ALL_STD_EXCEPT	(FE_DIVBYZERO | FE_INEXACT | FE_INVALID | \
 			 FE_OVERFLOW | FE_UNDERFLOW)
 
@@ -156,10 +152,6 @@ main(int argc, char *argv[])
 	run_generic_tests();
 	printf("ok 1 - exponential\n");
 
-#ifdef __i386__
-	fpsetprec(FP_PE);
-	run_generic_tests();
-#endif
 	printf("ok 2 - exponential\n");
 
 	run_exp2_tests();

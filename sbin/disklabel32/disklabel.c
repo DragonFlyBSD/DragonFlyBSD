@@ -530,10 +530,6 @@ makebootarea(char *boot, struct disklabel32 *dp, int f)
 #if NUMBOOT > 0
 	struct stat sb;
 #endif
-#ifdef __i386__
-	char *tmpbuf;
-	unsigned int i, found;
-#endif
 
 	/* XXX */
 	if (dp->d_secsize == 0) {
@@ -593,32 +589,9 @@ makebootarea(char *boot, struct disklabel32 *dp, int f)
 	if (b < 0)
 		err(4, "%s", xxboot);
 #if NUMBOOT > 1
-#ifdef __i386__
-	/*
-	 * XXX Botch alert.
-	 * The i386 has the so-called fdisk table embedded into the
-	 * primary bootstrap.  We take care to not clobber it, but
-	 * only if it does already contain some data.  (Otherwise,
-	 * the xxboot provides a template.)
-	 */
-	if ((tmpbuf = (char *)malloc((int)dp->d_secsize)) == NULL)
-		err(4, "%s", xxboot);
-	memcpy((void *)tmpbuf, (void *)boot, (int)dp->d_secsize);
-#endif /* i386 */
 	if (read(b, boot, (int)dp->d_secsize) < 0)
 		err(4, "%s", xxboot);
 	close(b);
-#ifdef __i386__
-	for (i = DOSPARTOFF, found = 0;
-	     !found && i < DOSPARTOFF + NDOSPART*sizeof(struct dos_partition);
-	     i++)
-		found = tmpbuf[i] != 0;
-	if (found)
-		memcpy((void *)&boot[DOSPARTOFF],
-		       (void *)&tmpbuf[DOSPARTOFF],
-		       NDOSPART * sizeof(struct dos_partition));
-	free(tmpbuf);
-#endif /* i386 */
 	b = open(bootxx, O_RDONLY);
 	if (b < 0)
 		err(4, "%s", bootxx);

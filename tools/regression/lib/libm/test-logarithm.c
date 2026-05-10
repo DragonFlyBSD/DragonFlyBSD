@@ -36,10 +36,6 @@
 #include <math.h>
 #include <stdio.h>
 
-#ifdef __i386__
-#include <ieeefp.h>
-#endif
-
 #define	ALL_STD_EXCEPT	(FE_DIVBYZERO | FE_INEXACT | FE_INVALID | \
 			 FE_OVERFLOW | FE_UNDERFLOW)
 

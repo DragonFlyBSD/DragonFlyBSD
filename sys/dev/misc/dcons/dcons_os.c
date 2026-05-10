@@ -429,10 +429,6 @@ dcons_cnputc(void *private, int c)
 static int
 dcons_drv_init(int stage)
 {
-#ifdef __i386__
-	quad_t addr, size;
-#endif
-
 	if (drv_init)
 		return(drv_init);
 
@@ -444,23 +440,6 @@ dcons_drv_init(int stage)
 	dg.buf = NULL;
 	dg.size = DCONS_BUF_SIZE;
 
-#ifdef __i386__
-	if (kgetenv_quad("dcons.addr", &addr) > 0 &&
-	    kgetenv_quad("dcons.size", &size) > 0) {
-		vm_paddr_t pa;
-		/*
-		 * Allow read/write access to dcons buffer.
-		 */
-		for (pa = trunc_page(addr); pa < addr + size; pa += PAGE_SIZE)
-			pmap_kmodify_rw((vm_offset_t)(KERNBASE + pa));
-		cpu_invltlb();
-		/* XXX P to V */
-		dg.buf = (struct dcons_buf *)(vm_offset_t)(KERNBASE + addr);
-		dg.size = size;
-		if (dcons_load_buffer(dg.buf, dg.size, sc) < 0)
-			dg.buf = NULL;
-	}
-#endif
 	if (dg.buf != NULL)
 		goto ok;
 

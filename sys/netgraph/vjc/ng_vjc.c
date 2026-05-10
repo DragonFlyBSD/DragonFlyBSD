@@ -106,11 +106,7 @@ static const struct ng_parse_type ng_vjc_config_type = {
 
 /* Parse type for the 'last_cs' and 'cs_next' fields in struct slcompress,
    which are pointers converted to integer indices, so parse them that way. */
-#ifndef __LP64__
-#define NG_VJC_TSTATE_PTR_TYPE	&ng_parse_uint32_type
-#else
 #define NG_VJC_TSTATE_PTR_TYPE	&ng_parse_uint64_type
-#endif
 
 /* Parse type for the 'cs_hdr' field in a struct cstate. Ideally we would
    like to use a 'struct ip' type instead of a simple array of bytes. */

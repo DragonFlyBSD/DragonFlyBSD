@@ -96,14 +96,8 @@ typedef void VOID;
 /*
  * Finally, we need to define the processor we are in EDK2 terms.
  */
-#if defined(__i386__)
-#define MDE_CPU_IA32
-#elif defined(__amd64__)
+#if defined(__amd64__) || defined(__x86_64__)
 #define MDE_CPU_X64
-#elif defined(__arm__)
-#define MDE_CPU_ARM
-#elif defined(__aarch64__)
-#define MDE_CPU_AARCH64
 #endif
 /* FreeBSD doesn't have/use MDE_CPU_EBC or MDE_CPU_IPF (ia64) */
 

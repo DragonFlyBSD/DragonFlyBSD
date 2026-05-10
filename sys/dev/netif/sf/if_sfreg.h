@@ -671,9 +671,6 @@ struct sf_rx_bufdesc_type0 {
 				sf_end:1,
 				sf_addrlo:30;
 	u_int32_t		sf_pad0;
-#ifndef __LP64__
-	u_int32_t		sf_pad1;
-#endif
 	struct mbuf		*sf_mbuf;
 };
 
@@ -685,9 +682,6 @@ struct sf_rx_bufdesc_type1 {
 				sf_end:1,
 				sf_addrlo:30;
 	u_int32_t		sf_addrhi;
-#ifndef __LP64__
-	u_int32_t		sf_pad;
-#endif
 	struct mbuf		*sf_mbuf;
 };
 
@@ -815,9 +809,6 @@ struct sf_frag_msdos {
  * 128 bytes per descriptor, we have room for 128 descriptors in the queue.
  */
 struct sf_tx_bufdesc_type0 {
-#ifndef __LP64__
-	u_int32_t		sf_pad;
-#endif
 	struct mbuf		*sf_mbuf;
 	u_int32_t		sf_rsvd0:24,
 				sf_crcen:1,
@@ -836,9 +827,6 @@ struct sf_tx_bufdesc_type0 {
  * maps a single fragment.
  */
 struct sf_tx_bufdesc_type1 {
-#ifndef __LP64__
-	u_int32_t		sf_pad;
-#endif
 	struct mbuf		*sf_mbuf;
 	u_int32_t		sf_fraglen:16,
 				sf_fragcnt:8,
@@ -855,9 +843,6 @@ struct sf_tx_bufdesc_type1 {
  * maps a single fragment.
  */
 struct sf_tx_bufdesc_type2 {
-#ifndef __LP64__
-	u_int32_t		sf_pad;
-#endif
 	struct mbuf		*sf_mbuf;
 	u_int32_t		sf_fraglen:16,
 				sf_fragcnt:8,
@@ -879,9 +864,6 @@ struct sf_tx_bufdesc_type2 {
  * to optimize copies in MS-DOS and OS/2 drivers.
  */
 struct sf_tx_bufdesc_type4 {
-#ifndef __LP64__
-	u_int32_t		sf_pad;
-#endif
 	struct mbuf		*sf_mbuf;
 	u_int32_t		sf_rsvd0:24,
 				sf_crcen:1,

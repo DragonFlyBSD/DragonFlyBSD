@@ -36,10 +36,6 @@
 #include <math.h>
 #include <stdio.h>
 
-#ifdef	__i386__
-#include <ieeefp.h>
-#endif
-
 /*
  * XXX The volatile here is to avoid gcc's bogus constant folding and work
  *     around the lack of support for the FENV_ACCESS pragma.
@@ -137,10 +133,6 @@ main(int argc, char *argv[])
 	printf("1..1\n");
 
 	run_tests();
-#ifdef	__i386__
-	fpsetprec(FP_PE);
-	run_tests();
-#endif
 
 	printf("ok 1 - lrint\n");
 
