@@ -54,6 +54,7 @@
 #define USB_DEBUG_VAR uvc_debug
 #include <bus/u4b/usb_debug.h>
 #include <bus/u4b/usbdi.h>
+#include <bus/u4b/usb_device.h>
 
 #include <contrib/v4l/videodev.h>
 #include <contrib/v4l/videodev2.h>

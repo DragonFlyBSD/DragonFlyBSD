@@ -331,6 +331,10 @@ void	uhub_tt_buffer_reset_async_locked(struct usb_device *, struct usb_endpoint 
 #endif
 
 uint8_t uhub_count_active_host_ports(struct usb_device *, enum usb_dev_speed);
-int    usb_device_is_UVC(struct usb_device *udev);
+
+void	device_get_usb_iproduct(device_t dev, char *iProduct, size_t size);
+void	device_get_usb_vidpid(device_t dev, uint32_t *vid, uint32_t *pid);
+int	usb_device_is_UVC(struct usb_device *udev);
+void	usbd_get_phys(struct usb_device *udev, char *phys, uint8_t len);
 
 #endif					/* _USB_DEVICE_H_ */
