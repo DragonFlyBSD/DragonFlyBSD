@@ -130,7 +130,11 @@ kgdb_trgt_open(char *filename, int from_tty)
 	kgdb_dmesg();
 
 	gdbarch_info_init (&info);
+#if defined (__x86_64__)
 	info.bfd_arch_info = bfd_scan_arch ("i386:x86-64");
+#else
+#error platform not recognized
+#endif
 	info.byte_order = BFD_ENDIAN_LITTLE;
 	gdbarch_info_fill (&info);
 	kgdbarch = gdbarch_find_by_info (info);
