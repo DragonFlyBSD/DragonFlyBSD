@@ -119,6 +119,7 @@ static int
 apple_fw_attach(device_t dev)
 {
 	struct apple_fw_softc *sc = device_get_softc(dev);
+	int darwin_osi = 1;
 
 	sc->sc_dev = dev;
 	lockinit(&sc->sc_lock, "apple_fw", 0, LK_CANRECURSE);
@@ -131,7 +132,6 @@ apple_fw_attach(device_t dev)
 	 * didn't run (module loaded late), fix up OSYS ourselves.
 	 * If the tunable is disabled, the user opted out -- skip.
 	 */
-	int darwin_osi = 1;
 	TUNABLE_INT_FETCH("hw.acpi.apple_darwin_osi", &darwin_osi);
 	apple_fw_eval_osdw(dev);
 	if (darwin_osi && sc->sc_osdw == 0)
