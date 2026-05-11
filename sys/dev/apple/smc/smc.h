@@ -244,4 +244,4 @@ int	apple_smc_raw_len_sysctl(SYSCTL_HANDLER_ARGS);
 int	apple_smc_raw_type_sysctl(SYSCTL_HANDLER_ARGS);
 #endif
 
-#endif /* _DEV_APPLE_SMC_SMC_H_ */
+#endif /* !_DEV_APPLE_SMC_SMC_H_ */

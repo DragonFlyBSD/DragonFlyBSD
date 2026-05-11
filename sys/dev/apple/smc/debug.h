@@ -19,4 +19,4 @@
 #define SMC_DEBUG_KEY(dev, key, val)	do {} while (0)
 #endif
 
-#endif /* _DEV_APPLE_SMC_DEBUG_H_ */
+#endif /* !_DEV_APPLE_SMC_DEBUG_H_ */

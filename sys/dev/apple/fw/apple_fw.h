@@ -83,4 +83,4 @@ void	apple_fw_discover_dsm_devices(device_t dev);
 /* apple_fw_sysctl.c */
 void	apple_fw_sysctl_init(device_t dev);
 
-#endif /* _DEV_APPLE_FW_APPLE_FW_H_ */
+#endif /* !_DEV_APPLE_FW_APPLE_FW_H_ */
