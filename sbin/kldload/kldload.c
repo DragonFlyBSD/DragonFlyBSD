@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Copyright (c) 1997 Doug Rabson
  * All rights reserved.
  *
@@ -22,18 +24,34 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sbin/kldload/kldload.c,v 1.6.2.2 2002/12/07 08:44:02 jmallett Exp $
- * $DragonFly: src/sbin/kldload/kldload.c,v 1.3 2005/04/02 16:04:41 liamfoy Exp $
  */
 #include <sys/param.h>
 #include <sys/linker.h>
+#include <sys/stat.h>
 
 #include <err.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
+
+static void
+check_path(const char *kldname, const struct kld_file_stat *kldst)
+{
+    struct stat st1, st2;
+
+    if (strchr(kldname, '/') != NULL || strstr(kldname, ".ko") == NULL)
+	return;
+    if (stat(kldname, &st1) != 0)
+	return;
+    if (stat(kldst->pathname, &st2) != 0)
+	return;
+
+    if (st1.st_dev != st2.st_dev || st1.st_ino != st2.st_ino)
+	warnx("module %s was loaded from %s, not the current directory",
+	    kldname, kldst->pathname);
+}
 
 static void
 usage(void)
@@ -50,10 +68,12 @@ main(int argc, char **argv)
     int fileid;
     int verbose;
     int check_loaded;
+    struct kld_file_stat kldst;
 
     errors = 0;
     verbose = 0;
     check_loaded = 0;
+    kldst.version = sizeof(struct kld_file_stat);
 
     while ((c = getopt(argc, argv, "nv")) != -1)
 	switch (c) {
@@ -85,8 +105,8 @@ main(int argc, char **argv)
 			"in kernel", argv[0]);
 		    break;
 		case ENOEXEC:
-		    warnx("an error occurred while loading the module. "
-			"Please check dmesg(8) for more details.");
+		    warnx("an error occurred while loading module %s. "
+			"Please check dmesg(8) for more details.", argv[0]);
 		    break;
 		default:
 		    warn("can't load %s", argv[0]);
@@ -95,8 +115,12 @@ main(int argc, char **argv)
 		errors++;
 	    }
 	} else {
+	    if (kldstat(fileid, &kldst) != 0)
+		warn("kldstat(id=%d)", fileid);
 	    if (verbose)
-		printf("Loaded %s, id=%d\n", argv[0], fileid);
+		printf("Loaded %s, id=%d, path=%s\n", argv[0], fileid,
+		    kldst.pathname);
+	    check_path(argv[0], &kldst);
 	}
 	argv++;
     }

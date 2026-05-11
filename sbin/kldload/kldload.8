@@ -23,9 +23,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/sbin/kldload/kldload.8,v 1.7.2.10 2002/12/07 08:44:02 jmallett Exp $
-.\"
-.Dd October 27, 2017
+.Dd May 11, 2026
 .Dt KLDLOAD 8
 .Os
 .Sh NAME
@@ -43,9 +41,22 @@ utility loads
 into the kernel using the kernel linker.
 Note that if multiple modules are specified then an attempt will
 be made to load them all, even if some fail.
-List of search directories is provided by
-.Va kern.module_path
-variable.
+The
+.Pa .ko
+extension name is not mandatory when loading a given module
+using
+.Nm .
+It does not hurt to specify it though.
+.Pp
+If a bare filename is requested it will only be loaded if it is found within
+the module path as defined by the sysctl
+.Va kern.module_path .
+To load a module from the current directory it must be specified as a full or
+relative path.
+The
+.Nm
+utility will warn if a module is requested as a bare filename and is present
+in the current directory.
 .Pp
 The following options are available:
 .Bl -tag -width indent
@@ -54,6 +65,13 @@ Do not try to load module if already loaded.
 .It Fl v
 Be more verbose.
 .El
+.Sh NOTES
+The kernel security level settings may prevent a module from being
+loaded by giving
+.Er EPERM .
+Refer to
+.Xr security 7
+for details.
 .Sh FILES
 .Bl -tag -width /boot/modules.local -compact
 .It Pa /boot/kernel
@@ -67,16 +85,43 @@ and wrapped external firmware images; see
 .El
 .Sh EXIT STATUS
 .Ex -std
+.Sh EXAMPLES
+To load by module name:
+.Bd -literal -offset indent
+# kldload foo
+.Ed
+.Pp
+To load by file name within the module path:
+.Bd -literal -offset indent
+# kldload foo.ko
+.Ed
+.Pp
+To load by relative path:
+.Bd -literal -offset indent
+# kldload ./foo.ko
+.Ed
+.Pp
+To load by full path:
+.Bd -literal -offset indent
+# kldload /boot/kernel/foo.ko
+.Ed
 .Sh AUTOMATICALLY LOADING MODULES
 Some modules (ipfw, etc.) may be automatically loaded at boot
 time by having their operation enabled in
 .Xr rc.conf 5 .
 Modules may also be auto-loaded through their addition to
 .Xr loader.conf 5 .
+.Pp
+Only those modules necessary for booting the system, including those
+required for mounting the root filesystem, should be handled by
+.Xr loader.conf 5 .
 .Sh SEE ALSO
+.Xr kenv 1 ,
 .Xr kldload 2 ,
 .Xr loader.conf 5 ,
 .Xr rc.conf 5 ,
+.Xr security 7 ,
+.Xr kldconfig 8 ,
 .Xr kldstat 8 ,
 .Xr kldunload 8
 .Sh HISTORY
