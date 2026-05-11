@@ -2072,6 +2072,9 @@ device		acpi_video
 # ACPI Docking Station
 device		acpi_dock
 
+# Apple Firmware Properties
+device		apple_fw
+
 # Apple System Management Controller
 device		apple_smc
 options 	APPLE_SMC_DEBUG
