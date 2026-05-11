@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/sbin/kldunload/kldunload.8,v 1.9.2.2 2001/08/16 11:35:46 ru Exp $
 .\"
-.Dd April 25, 1997
+.Dd May 11, 2026
 .Dt KLDUNLOAD 8
 .Os
 .Sh NAME
@@ -56,10 +56,18 @@ Unload the file with this name.
 .It Ar name
 Unload the file with this name.
 .El
+.Sh NOTES
+The kernel security level settings may prevent a module from being
+unloaded by giving
+.Er EPERM .
+Refer to
+.Xr security 7
+for details.
 .Sh EXIT STATUS
 .Ex -std
 .Sh SEE ALSO
 .Xr kldunload 2 ,
+.Xr security 7 ,
 .Xr kldload 8 ,
 .Xr kldstat 8
 .Sh HISTORY
