@@ -612,7 +612,7 @@ apple_smc_raw_value_sysctl(SYSCTL_HANDLER_ARGS)
 		unsigned int val;
 		char tmp[3] = { hexbuf[i*2], hexbuf[i*2+1], 0 };
 
-		if (sscanf(tmp, "%02x", &val) == 1) {
+		if (ksscanf(tmp, "%02x", &val) == 1) {
 			sc->sc_rawval[i] = (uint8_t)val;
 		}
 	}
