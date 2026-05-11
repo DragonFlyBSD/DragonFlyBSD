@@ -338,7 +338,7 @@ Elf_Addr elf_relocaddr(linker_file_t, Elf_Addr);
 #endif /* _KERNEL */
 
 struct kld_file_stat {
-    int		version;	/* set to sizeof(linker_file_stat) */
+    int		version;	/* set to sizeof(struct kld_file_stat) */
     char        name[MAXPATHLEN];
     char        pathname[MAXPATHLEN];
     int		refs;
