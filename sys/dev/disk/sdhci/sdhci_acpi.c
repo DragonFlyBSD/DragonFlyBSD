@@ -166,6 +166,9 @@ static struct {
 	{"80865ACC", NULL,
 	    SDHCI_QUIRK_BROKEN_DMA |	/* APL18 erratum */
 	    INTEL_ATOM_QUIRKS_EMMC},
+	/* AMD eMMC Controllers */
+	{"AMDI0040", NULL, SDHCI_QUIRK_WHITELIST_ADMA2 | SDHCI_QUIRK_MMC_DDR52},
+	{"AMDI0041", NULL, SDHCI_QUIRK_WHITELIST_ADMA2 | SDHCI_QUIRK_MMC_DDR52},
 };
 
 static char *sdhci_ids[] = {
@@ -173,6 +176,8 @@ static char *sdhci_ids[] = {
 	"80860F16",
 	"80865ACA",
 	"80865ACC",
+	"AMDI0040",
+	"AMDI0041",
 	NULL
 };
 
