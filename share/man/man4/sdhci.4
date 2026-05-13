@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/sdhci.4,v 1.2 2009/01/16 19:28:25 mav Exp $
 .\"
-.Dd May 13, 2017
+.Dd May 13, 2026
 .Dt SDHCI 4
 .Os
 .Sh NAME
@@ -46,13 +46,18 @@ following lines in
 mmc_load="YES"
 mmcsd_load="YES"
 sdhci_pci_load="YES"
+sdhci_acpi_load="YES"
 .Ed
 .Sh DESCRIPTION
 The
 .Nm
 driver supports PCI devices with class 8 and subclass 5 according to
-SD Host Controller Specification.
-Driver supports up to six high speed 4bit MMC/SD slots per controller.
+SD Host Controller Specification, as well as various controllers discovered
+via ACPI.
+Driver supports up to six slots per controller for either 1 or 4bit SD cards,
+or 1, 4 or 8bit MMC/eMMC slots per controller.
+Supports up to 50MHz HighSpeed transfer speed on SD and MMC/eMMC cards, as
+well as DDR52 transfer mode on eMMC.
 Driver attaches mmc bus to the respective slot on card insertion and
 detaches it on card removing.
 .Sh HARDWARE
@@ -72,6 +77,10 @@ RICOH R5C822
 RICOH R5CE823
 .It
 TI PCIXX21/XX11
+.It
+Intel Bay-/Cherry-Trail
+.It
+AMDI0040 eMMC controller (AMD Zen+ SoC)
 .El
 .Sh LOADER TUNABLES
 .Bl -tag -width indent
@@ -88,6 +97,16 @@ Set to 1 to disable the ADMA2 transfer mode.
 Set bit mask of quirks to clear.
 .It Va hw.sdhci.quirk_set
 Set bit mask of quirks to set, this is applied after the clearing mask.
+.It Va hw.sdhci_enable_msi
+Set to 0 to disable MSI interrupt use.
+.El
+.Sh SYSCTL VARIABLES
+.Bl -tag -width indent
+.It Va hw.sdhci.debug
+Set verbose debugging level.
+.It Va dev.sdhci_acpi.X.timeout
+.It Va dev.sdhci_pci.X.timeout
+Maximum timeout for SDHCI transfers (in secs).
 .El
 .Sh SEE ALSO
 .Xr mmc 4 ,
