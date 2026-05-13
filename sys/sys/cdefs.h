@@ -488,11 +488,18 @@
 #define	__usereg
 #endif
 
+#if __GNUC_PREREQ__(9, 1) || __has_attribute(__copy__)
+#define	__copy_attr(symbol)	__attribute__((__copy__(symbol)))
+#else
+#define	__copy_attr(symbol)
+#endif
+
 #ifdef __GNUC__
-#define	__strong_reference(sym,aliassym)	\
-	extern __typeof (sym) aliassym __attribute__ ((__alias__ (#sym)))
+#define	__strong_reference(sym,aliassym) \
+	extern __typeof (sym) aliassym	\
+	__copy_attr(sym) __attribute__((__alias__(#sym)))
 #define	__weak_reference(sym,aliassym)	\
-	__strong_reference(sym,aliassym) __attribute__ ((__weak__))
+	__strong_reference(sym,aliassym) __attribute__((__weak__))
 #define	__weak_reference_asm(sym,alias)	\
 	__asm__(".weak " #alias);	\
 	__asm__(".equ "  #alias ", " #sym)
