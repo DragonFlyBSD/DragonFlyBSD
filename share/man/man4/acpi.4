@@ -240,6 +240,10 @@ Default is 0 (disabled).
 Set this to 1 to disable all of ACPI.
 If ACPI has been disabled on your system due to a blacklist entry for your
 BIOS, you can set this to 0 to re-enable ACPI for testing.
+.It Va hw.acpi.auto_serialize_methods
+Auto-serialization of control methods to proactively prevent problems with
+ill-behaved reentrant control methods that create named ACPI objects.
+Default is 1 (enabled).
 .It Va hw.acpi.ec.poll_timeout
 Delay in milliseconds to wait for the EC to respond.
 Try increasing this number if you get the error
@@ -281,10 +285,6 @@ Enables calling the VESA reset BIOS vector on the resume path.
 This can fix some graphics cards that have problems such as LCD white-out
 after resume.
 Default is 0 (disabled).
-.It Va hw.acpi.auto_serialize_methods
-Auto-serialization of control methods to proactively prevent problems with
-ill-behaved reentrant control methods that create named ACPI objects.
-Default is 1 (enabled).
 .It Va hw.acpi.verbose
 Turn on verbose debugging information about what ACPI is doing.
 .It Va hw.pci.link.%s.%d.irq
