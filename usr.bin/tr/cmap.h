@@ -57,7 +57,7 @@ wint_t		cmap_lookup_hard(struct cmap *, wint_t);
 void		cmap_cache(struct cmap *);
 wint_t		cmap_default(struct cmap *, wint_t);
 
-static __inline wint_t
+static __always_inline wint_t
 cmap_lookup(struct cmap *cm, wint_t from)
 {
 

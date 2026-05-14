@@ -62,7 +62,7 @@ void			cset_invert(struct cset *);
 bool			cset_in_hard(struct cset *, wchar_t);
 void			cset_cache(struct cset *);
 
-static __inline bool
+static __always_inline bool
 cset_in(struct cset *cs, wchar_t ch)
 {
 
