@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/acpi.4,v 1.61.8.1 2009/04/15 03:14:26 kensmith Exp $
 .\"
-.Dd July 25, 2024
+.Dd May 14, 2026
 .Dt ACPI 4
 .Os
 .Sh NAME
@@ -240,6 +240,10 @@ Default is 0 (disabled).
 Set this to 1 to disable all of ACPI.
 If ACPI has been disabled on your system due to a blacklist entry for your
 BIOS, you can set this to 0 to re-enable ACPI for testing.
+.It Va hw.acpi.apple_darwin_osi
+Apply the Darwin OSI on Apple Mac hardware to obtain access to full ACPI
+hardware support on supported platforms.
+Default is 0 (disabled).
 .It Va hw.acpi.auto_serialize_methods
 Auto-serialization of control methods to proactively prevent problems with
 ill-behaved reentrant control methods that create named ACPI objects.

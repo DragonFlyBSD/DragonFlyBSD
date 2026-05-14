@@ -255,10 +255,12 @@ TUNABLE_STR("hw.acpi.remove_interface", acpi_remove_interface,
     sizeof(acpi_remove_interface));
 
 /*
- * Install Darwin _OSI on Apple hardware so OSDW() returns 1.
- * Apple firmware checks _OSI("Darwin") in _INI and sets OSYS=0x2710.
- * Without this, dual-GPU Macs hide the iGPU and many _DSM methods
- * gate behind OSDW().  Linux and FreeBSD do the same.
+ * Automatically apply the Darwin OSI on Apple Mac hardware to obtain
+ * access to full ACPI hardware support on supported platforms.
+ *
+ * This flag automatically overrides any values set by
+ * `hw.acpi.acpi_install_interface` and unset by
+ * `hw.acpi.acpi_remove_interface`.
  */
 static int acpi_apple_darwin_osi = 1;
 TUNABLE_INT("hw.acpi.apple_darwin_osi", &acpi_apple_darwin_osi);
@@ -3857,7 +3859,32 @@ acpi_reset_interfaces(device_t dev)
 		acpi_free_interfaces(&list);
 	}
 
-	/* Install Darwin _OSI on Apple hardware. */
+	/*
+	 * Apple Mac hardware quirk: install Darwin OSI.
+	 *
+	 * On Apple hardware, install the Darwin OSI and remove the Windows OSI
+	 * to match Linux behavior.
+	 *
+	 * This is required for dual-GPU MacBook Pro systems
+	 * (Intel iGPU + AMD/NVIDIA dGPU) where the iGPU is hidden when the
+	 * firmware doesn't see Darwin OSI, but it also unlocks additional ACPI
+	 * support on non-MacBook Pro Apple platforms.
+	 *
+	 * Apple's ACPI firmware checks _OSI("Darwin") and sets OSYS=10000
+	 * for macOS. Many device methods use OSDW() which checks OSYS==10000
+	 * for macOS-specific behavior including GPU visibility and power
+	 * management.
+	 *
+	 * Linux enables Darwin OSI by default on Apple hardware and disables
+	 * all Windows OSI strings (drivers/acpi/osi.c). Users can override
+	 * this behavior with acpi_osi=!Darwin to get Windows-like behavior,
+	 * in general, but this logic makes that process unnecessary.
+	 *
+	 * Detect Apple via SMBIOS and enable Darwin while disabling Windows
+	 * vendor strings. This makes both GPUs visible on dual-GPU MacBook Pro
+	 * systems (Intel iGPU + AMD dGPU) and unlocks full platform
+	 * ACPI support.
+	 */
 	if (acpi_apple_darwin_osi) {
 		char *vendor = kgetenv("smbios.system.maker");
 		if (vendor != NULL) {
@@ -3865,18 +3892,26 @@ acpi_reset_interfaces(device_t dev)
 			    strcmp(vendor, "Apple Computer, Inc.") == 0) {
 				status = AcpiUpdateInterfaces(
 				    ACPI_DISABLE_ALL_VENDOR_STRINGS);
-				if (ACPI_SUCCESS(status))
+				if (ACPI_SUCCESS(status)) {
+					/* Install Darwin OSI */
 					status = AcpiInstallInterface("Darwin");
+				}
 				if (bootverbose) {
-					if (ACPI_SUCCESS(status))
+					if (ACPI_SUCCESS(status)) {
 						device_printf(dev,
+						    "disabled non-Darwin OSI & "
 						    "installed Darwin OSI\n");
-					else
+					} else {
 						device_printf(dev,
 						    "could not install "
 						    "Darwin OSI: %s\n",
 						    AcpiFormatException(status));
+					}
 				}
+			} else if (bootverbose) {
+				device_printf(dev,
+				    "Not installing Darwin OSI on unsupported platform: %s\n",
+				    vendor);
 			}
 			kfreeenv(vendor);
 		}
