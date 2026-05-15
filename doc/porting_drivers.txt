@@ -89,8 +89,9 @@
 	mtx_assert(&my_mtx, MA_OWNED) -> KKASSERT(lockstatus(&my_lock, curthread) != 0)
 	mtx_assert(&my_mtx, MA_NOTOWNED) -> KKASSERT(lockstatus(&my_lock, curthread) == 0)
 
-  In DragonFly, lockstatus() does not return information about whether there have been
-  recursive lock acquisitions, so there is no generic way to emulate the
+  In DragonFly, lockstatus() does not return information about whether there
+  have been recursive lock acquisitions, so there is no generic way to emulate
+  the
 
 	mtx_assert(&my_mtx, MA_OWNED|MA_RECURSED);
 	mtx_assert(&my_mtx, MA_OWNED|MA_NOTRECURSED);
@@ -174,13 +175,14 @@
   particular proc subsystem locking semantics differ enough between FreeBSD
   and DragonFly that this would cause problems
 
-* In DragonFly 5.1 format specifier %b was replaced by args safe "%pb%i" version
-  that only needs argument swapping. Replacement functions where not added.
+* In DragonFly 5.1 the format specifier %b was replaced by args safe "%pb%i"
+  version that only needs argument swapping. Replacement functions were not
+  added.
 
 	kvcprintf("reg=%pb%i\n", "\10\2BITTWO\1BITONE\n", 3);
 
-* In DragonFly 5.1 format specifier %r was removed from kprintf. As a
-  replacement function makedev_unit_b32() was added.
+* In DragonFly 5.1 the format specifier %r was removed from kprintf(). As a
+  replacement the makedev_unit_b32() function was added.
 
   - Unit suffix encoded as base32 for make_dev() device creation:
 
@@ -194,8 +196,8 @@
 
 	kprintf("%c\n", hex2ascii(n % base));
 
-* In DragonFly 3.3 format specifier %D was removed from kprintf. As a
-  replacement functions kether_ntoa() and hexncpy() were added.
+* In DragonFly 3.3 the format specifier %D was removed from kprintf(). As a
+  replacement the kether_ntoa() and hexncpy() functions were added.
 
   - Ethernet address (MAC) to its hexadecimal form:
 
