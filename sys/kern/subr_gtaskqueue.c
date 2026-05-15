@@ -85,7 +85,7 @@ struct gtaskqueue {
 #define	TQ_LOCK(tq)		lockmgr(&(tq)->tq_lock, LK_EXCLUSIVE)
 #define	TQ_ASSERT_LOCKED(tq)	KKASSERT(lockstatus(&(tq)->tq_lock, NULL) != 0)
 #define	TQ_UNLOCK(tq)		lockmgr(&(tq)->tq_lock, LK_RELEASE);
-#define	TQ_ASSERT_UNLOCKED(tq)	KKASSERT(lockstatus(&(tq)->tq_lock) == 0)
+#define	TQ_ASSERT_UNLOCKED(tq)	KKASSERT(lockstatus(&(tq)->tq_lock, NULL) == 0)
 
 #ifdef INVARIANTS
 static void
