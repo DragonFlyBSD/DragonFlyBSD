@@ -34,6 +34,8 @@
 /*
  * Command dispatcher.
  */
+#include "use_acpi.h"
+
 #include <sys/param.h>
 #include <sys/linker_set.h>
 #include <sys/reboot.h>
@@ -47,6 +49,10 @@
 
 #include <machine/md_var.h>	/* needed for db_reset() */
 #include <machine/setjmp.h>
+#if NACPI > 0
+#include "opt_acpi.h"
+#include <acpi.h>
+#endif
 
 /*
  * Exported global variables
@@ -621,5 +627,19 @@ db_gdb(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 static void
 db_reset(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char * dummy4)
 {
+#if NACPI > 0
+	// AcpiReset() should simply fail with AE_NOT_EXIST when called in
+	// early boot, before the FADT has been parsed.
+	ACPI_STATUS Status = AcpiReset();
+	if (Status == AE_NOT_EXIST) {
+		goto no_acpi_reset;
+	} else if (ACPI_FAILURE(Status)) {
+		kprintf("ACPI Reset failed\n");
+	}
+	DELAY(500000);
+	kprintf("ACPI reset did not work, attempting next method\n");
+	DELAY(1000000);
+no_acpi_reset:
+#endif
 	cpu_reset();
 }
