@@ -60,7 +60,7 @@ CWARNFLAGS	+=	-Wchar-subscripts -Winline -Wnested-externs\
 			-Wredundant-decls
 .  endif
 .  if ${WARNS} >= 2 && ${WARNS} <= 6
-# Delete -Wno-pointer-sign from -Wall by default (C only).
+# Delete -Wpointer-sign from -Wall by default (C only).
 _cnowarnflags	+=	-Wno-pointer-sign
 .  endif
 .  if ${WARNS} >= 2 && ${WARNS} <= 4
