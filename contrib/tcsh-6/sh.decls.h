@@ -40,6 +40,7 @@ extern	void		  dosource	(Char **, struct command *);
 extern	void		  exitstat	(void) __attribute__((__noreturn__));
 extern	void		  goodbye	(Char **, struct command *);
 extern	void		  importpath	(Char *);
+extern	void		  exportpath	(Char **);
 extern	void		  initdesc	(void);
 extern	void		  pintr		(void);
 extern	void		  pintr1	(int);
