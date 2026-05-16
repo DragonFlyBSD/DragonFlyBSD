@@ -366,7 +366,9 @@ again:
 		return;
 	}
 	if (buf[0] != '\n') {
-		strcpy(magtape, buf);
+		free(magtape);
+		if ((magtape = strdup(buf)) == NULL)
+			err(1, NULL);
 		magtape[strlen(magtape) - 1] = '\0';
 	}
 #ifdef RRESTORE
