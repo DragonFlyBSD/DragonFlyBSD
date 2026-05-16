@@ -113,7 +113,7 @@ struct amdsmb_softc {
 
 #define	AMDSMB_LOCK(amdsmb)		lockmgr(&(amdsmb)->lock, LK_EXCLUSIVE)
 #define	AMDSMB_UNLOCK(amdsmb)		lockmgr(&(amdsmb)->lock, LK_RELEASE)
-#define	AMDSMB_LOCK_ASSERT(amdsmb)	KKASSERT(lockstatus(&(amdsmb)->lock, curthread) != 0)
+#define	AMDSMB_LOCK_ASSERT(amdsmb)	KKASSERT(lockowned(&(amdsmb)->lock))
 
 #define	AMDSMB_ECINB(amdsmb, register)					\
 	(bus_read_1(amdsmb->res, register))

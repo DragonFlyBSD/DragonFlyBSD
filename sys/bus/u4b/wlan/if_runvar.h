@@ -265,6 +265,6 @@ struct run_softc {
 
 #define	RUN_LOCK(sc)		lockmgr(&(sc)->sc_lock, LK_EXCLUSIVE)
 #define	RUN_UNLOCK(sc)		lockmgr(&(sc)->sc_lock, LK_RELEASE)
-#define	RUN_LOCK_ASSERT(sc, t)	KKASSERT(lockstatus(&(sc)->sc_lock, curthread) != 0)
+#define	RUN_LOCK_ASSERT(sc, t)	KKASSERT(lockowned(&(sc)->sc_lock))
 
 #endif	/* _IF_RUNVAR_H_ */

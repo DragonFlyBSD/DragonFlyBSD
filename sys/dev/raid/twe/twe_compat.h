@@ -112,5 +112,5 @@ static __inline void
 twe_lockassert(struct lock *lockp)
 {
 	if (panicstr == NULL && !dumping)
-		KKASSERT(lockstatus(lockp, curthread) != 0);
+		KKASSERT(lockowned(lockp));
 }

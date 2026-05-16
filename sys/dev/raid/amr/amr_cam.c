@@ -403,7 +403,7 @@ amr_cam_action(struct cam_sim *sim, union ccb *ccb)
 		break;
 	}
 
-	KKASSERT(lockstatus(&sc->amr_list_lock, curthread) != 0);
+	KKASSERT(lockowned(&sc->amr_list_lock));
 	xpt_done(ccb);
 }
 

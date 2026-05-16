@@ -99,8 +99,8 @@ static int slot_printf(struct sdhci_slot *slot, const char * fmt, ...)
 #define	SDHCI_UNLOCK(_slot)		lockmgr(&(_slot)->lock, LK_RELEASE)
 #define SDHCI_LOCK_INIT(_slot)		lockinit(&(_slot)->lock, "sdhci", 0, LK_CANRECURSE)
 #define SDHCI_LOCK_DESTROY(_slot)	lockuninit(&(_slot)->lock);
-#define SDHCI_ASSERT_LOCKED(_slot)	KKASSERT(lockstatus(&(_slot)->lock, curthread) != 0);
-#define SDHCI_ASSERT_UNLOCKED(_slot)	KKASSERT(lockstatus(&(_slot)->lock, curthread) == 0);
+#define SDHCI_ASSERT_LOCKED(_slot)	KKASSERT(lockowned(&(_slot)->lock));
+#define SDHCI_ASSERT_UNLOCKED(_slot)	KKASSERT(!lockowned(&(_slot)->lock));
 
 #define	SDHCI_DEFAULT_MAX_FREQ	50
 

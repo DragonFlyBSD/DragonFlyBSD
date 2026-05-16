@@ -638,7 +638,7 @@ static __inline int
 aac_alloc_sync_fib(struct aac_softc *sc, struct aac_fib **fib)
 {
 
-	KKASSERT(lockstatus(&sc->aac_io_lock, curthread) != 0);
+	KKASSERT(lockowned(&sc->aac_io_lock));
 	*fib = &sc->aac_common->ac_sync_fib;
 	return (0);
 }
@@ -646,6 +646,6 @@ static __inline void
 aac_release_sync_fib(struct aac_softc *sc)
 {
 
-	KKASSERT(lockstatus(&sc->aac_io_lock, curthread) != 0);
+	KKASSERT(lockowned(&sc->aac_io_lock));
 }
 

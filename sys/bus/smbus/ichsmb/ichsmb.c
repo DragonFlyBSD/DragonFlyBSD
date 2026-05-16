@@ -633,7 +633,7 @@ ichsmb_wait(sc_p sc)
 
 	KASSERT(sc->ich_cmd != -1,
 	    ("%s: ich_cmd=%d", __func__ , sc->ich_cmd));
-	KKASSERT(lockstatus(&sc->mutex, curthread) != 0);
+	KKASSERT(lockowned(&sc->mutex));
 	error = lksleep(sc, &sc->mutex, 0, "ichsmb", hz / 4);
 	DBG("msleep -> %d\n", error);
 	switch (error) {

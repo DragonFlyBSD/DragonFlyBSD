@@ -763,7 +763,7 @@ mpt_assign_serno(struct mpt_softc *mpt, request_t *req)
 #define	MPT_LOCK(mpt)		lockmgr(&(mpt)->mpt_lock, LK_EXCLUSIVE)
 #define	MPT_UNLOCK(mpt)		lockmgr(&(mpt)->mpt_lock, LK_RELEASE)
 #define	MPT_OWNED(mpt)		lockstatus(&(mpt)->mpt_lock, curthread)
-#define	MPT_LOCK_ASSERT(mpt)	KKASSERT(lockstatus(&(mpt)->mpt_lock, curthread) != 0)
+#define	MPT_LOCK_ASSERT(mpt)	KKASSERT(lockowned(&(mpt)->mpt_lock))
 #define mpt_sleep(mpt, ident, priority, wmesg, timo) \
 	lksleep(ident, &(mpt)->mpt_lock, priority, wmesg, timo)
 #define mpt_req_timeout(req, ticks, func, arg) \

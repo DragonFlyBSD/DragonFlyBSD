@@ -127,7 +127,7 @@ struct alpm_softc {
 
 #define	ALPM_LOCK(alpm)		lockmgr(&(alpm)->lock, LK_EXCLUSIVE)
 #define	ALPM_UNLOCK(alpm)	lockmgr(&(alpm)->lock, LK_RELEASE)
-#define	ALPM_LOCK_ASSERT(alpm)	KKASSERT(lockstatus(&(alpm)->lock, curthread) != 0)
+#define	ALPM_LOCK_ASSERT(alpm)	KKASSERT(lockowned(&(alpm)->lock))
 
 #define ALPM_SMBINB(alpm,register) \
 	(bus_space_read_1(alpm->smbst, alpm->smbsh, register))

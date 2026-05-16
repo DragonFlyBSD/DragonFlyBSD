@@ -487,10 +487,8 @@ alloc_unrl(struct unrhdr *uh)
 	struct unrb *ub;
 	u_int x;
 	int y;
-	struct lock *ml __debugvar = uh->lock;
-	struct thread *td __debugvar = curthread;
 
-	KKASSERT(lockstatus(ml, td) != 0);
+	KKASSERT(lockowned(uh->lock));
 	check_unrhdr(uh, __LINE__);
 	x = uh->low + uh->first;
 

@@ -221,7 +221,7 @@ tws_insert2_empty_q(struct tws_softc *sc, struct tws_request *req,
                                 u_int8_t q_type )
 {
 
-    KKASSERT(lockstatus(&sc->q_lock, curthread) != 0);
+    KKASSERT(lockowned(&sc->q_lock));
     req->next = req->prev = NULL;
     sc->q_head[q_type] = sc->q_tail[q_type] = req;
 
@@ -233,7 +233,7 @@ tws_q_insert_head(struct tws_softc *sc, struct tws_request *req,
                                 u_int8_t q_type )
 {
 
-    KKASSERT(lockstatus(&sc->q_lock, curthread) != 0);
+    KKASSERT(lockowned(&sc->q_lock));
     if ( sc->q_head[q_type] == NULL ) {
         tws_insert2_empty_q(sc, req, q_type);
     } else {
@@ -251,7 +251,7 @@ tws_q_insert_tail(struct tws_softc *sc, struct tws_request *req,
                                 u_int8_t q_type )
 {
 
-    KKASSERT(lockstatus(&sc->q_lock, curthread) != 0);
+    KKASSERT(lockowned(&sc->q_lock));
     if ( sc->q_tail[q_type] == NULL ) {
         tws_insert2_empty_q(sc, req, q_type);
     } else {
@@ -270,7 +270,7 @@ tws_q_remove_head(struct tws_softc *sc, u_int8_t q_type )
 
     struct tws_request *r;
 
-    KKASSERT(lockstatus(&sc->q_lock, curthread) != 0);
+    KKASSERT(lockowned(&sc->q_lock));
     r = sc->q_head[q_type];
     if ( !r )
         return(NULL);
@@ -293,7 +293,7 @@ tws_q_remove_tail(struct tws_softc *sc, u_int8_t q_type )
 
     struct tws_request *r;
 
-    KKASSERT(lockstatus(&sc->q_lock, curthread) != 0);
+    KKASSERT(lockowned(&sc->q_lock));
     r = sc->q_tail[q_type];
     if ( !r )
         return(NULL);
@@ -318,7 +318,7 @@ tws_q_remove_request(struct tws_softc *sc, struct tws_request *req,
 
     struct tws_request *r;
 
-    KKASSERT(lockstatus(&sc->q_lock, curthread) != 0);
+    KKASSERT(lockowned(&sc->q_lock));
     if ( req == NULL ) {
         TWS_TRACE_DEBUG(sc, "null req", 0, q_type);
         return(NULL);

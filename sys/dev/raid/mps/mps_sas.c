@@ -898,7 +898,7 @@ mpssas_action(struct cam_sim *sim, union ccb *ccb)
 
 	mps_dprint(sassc->sc, MPS_TRACE, "%s func 0x%x\n", __func__,
 	    ccb->ccb_h.func_code);
-	KKASSERT(lockstatus(&sassc->sc->mps_lock, curthread) != 0);
+	KKASSERT(lockowned(&sassc->sc->mps_lock));
 
 	switch (ccb->ccb_h.func_code) {
 	case XPT_PATH_INQ:
@@ -1034,7 +1034,7 @@ mpssas_complete_all_commands(struct mps_softc *sc)
 	int completed;
 
 	mps_printf(sc, "%s\n", __func__);
-	KKASSERT(lockstatus(&sc->mps_lock, curthread) != 0);
+	KKASSERT(lockowned(&sc->mps_lock));
 
 	/* complete all commands with a NULL reply */
 	for (i = 1; i < sc->num_reqs; i++) {
@@ -1487,7 +1487,7 @@ mpssas_scsiio_timeout(void *data)
 	cm = (struct mps_command *)data;
 	sc = cm->cm_sc;
 
-	KKASSERT(lockstatus(&sc->mps_lock, curthread) != 0);
+	KKASSERT(lockowned(&sc->mps_lock));
 
 	mps_printf(sc, "%s checking sc %p cm %p\n", __func__, sc, cm);
 
@@ -1565,7 +1565,7 @@ mpssas_action_scsiio(struct mpssas_softc *sassc, union ccb *ccb)
 
 	sc = sassc->sc;
 	mps_dprint(sc, MPS_TRACE, "%s ccb %p\n", __func__, ccb);
-	KKASSERT(lockstatus(&sc->mps_lock, curthread) != 0);
+	KKASSERT(lockowned(&sc->mps_lock));
 
 	csio = &ccb->csio;
 	targ = &sassc->targets[csio->ccb_h.target_id];
@@ -1798,7 +1798,7 @@ mpssas_scsiio_complete(struct mps_softc *sc, struct mps_command *cm)
 	    cm->cm_targ->outstanding);
 
 	callout_stop(&cm->cm_callout);
-	KKASSERT(lockstatus(&sc->mps_lock, curthread) != 0);
+	KKASSERT(lockowned(&sc->mps_lock));
 
 	sassc = sc->sassc;
 	ccb = cm->cm_complete_data;
@@ -2759,7 +2759,7 @@ mpssas_action_resetdev(struct mpssas_softc *sassc, union ccb *ccb)
 	struct mpssas_target *targ;
 
 	mps_dprint(sassc->sc, MPS_TRACE, __func__);
-	KKASSERT(lockstatus(&sassc->sc->mps_lock, curthread) != 0);
+	KKASSERT(lockowned(&sassc->sc->mps_lock));
 
 	sc = sassc->sc;
 	tm = mps_alloc_command(sc);
@@ -2794,7 +2794,7 @@ mpssas_resetdev_complete(struct mps_softc *sc, struct mps_command *tm)
 	union ccb *ccb;
 
 	mps_dprint(sc, MPS_TRACE, __func__);
-	KKASSERT(lockstatus(&sc->mps_lock, curthread) != 0);
+	KKASSERT(lockowned(&sc->mps_lock));
 
 	resp = (MPI2_SCSI_TASK_MANAGE_REPLY *)tm->cm_reply;
 	ccb = tm->cm_complete_data;
@@ -2862,7 +2862,7 @@ mpssas_rescan_done(struct cam_periph *periph, union ccb *done_ccb)
 
 	sassc = (struct mpssas_softc *)done_ccb->ccb_h.ppriv_ptr1;
 
-	KKASSERT(lockstatus(&sassc->sc->mps_lock, curthread) != 0);
+	KKASSERT(lockowned(&sassc->sc->mps_lock));
 
 	xpt_path_string(done_ccb->ccb_h.path, path_str, sizeof(path_str));
 	mps_dprint(sassc->sc, MPS_INFO, "Completing rescan for %s\n", path_str);
@@ -2930,7 +2930,7 @@ mpssas_rescan(struct mpssas_softc *sassc, union ccb *ccb)
 
 	mps_dprint(sassc->sc, MPS_TRACE, "%s\n", __func__);
 
-	KKASSERT(lockstatus(&sassc->sc->mps_lock, curthread) != 0);
+	KKASSERT(lockowned(&sassc->sc->mps_lock));
 
 	if (ccb == NULL)
 		return;

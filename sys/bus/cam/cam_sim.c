@@ -103,7 +103,7 @@ sim_lock_assert_owned(sim_lock *lock)
 		if (lock == &sim_mplock)
 			ASSERT_MP_LOCK_HELD();
 		else
-			KKASSERT(lockstatus(lock, curthread) != 0);
+			KKASSERT(lockowned(lock));
 	}
 }
 
@@ -112,7 +112,7 @@ sim_lock_assert_unowned(sim_lock *lock)
 {
 	if (lock) {
 		if (lock != &sim_mplock)
-			KKASSERT(lockstatus(lock, curthread) == 0);
+			KKASSERT(!lockowned(lock));
 	}
 }
 
@@ -124,7 +124,7 @@ sim_lock_sleep(void *ident, int flags, const char *wmesg, int timo,
 
 	if (lock != &sim_mplock) {
 		/* lock should be held already */
-		KKASSERT(lockstatus(lock, curthread) != 0);
+		KKASSERT(lockowned(lock));
 		tsleep_interlock(ident, flags);
 		lockmgr(lock, LK_RELEASE);
 		retval = tsleep(ident, flags | PINTERLOCKED, wmesg, timo);

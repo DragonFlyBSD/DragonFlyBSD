@@ -289,7 +289,7 @@ mps_reinit(struct mps_softc *sc)
 
 	mps_printf(sc, "%s sc %p\n", __func__, sc);
 
-	KKASSERT(lockstatus(&sc->mps_lock, curthread) != 0);
+	KKASSERT(lockowned(&sc->mps_lock));
 
 	if (sc->mps_flags & MPS_FLAGS_DIAGRESET) {
 		mps_printf(sc, "%s reset already in progress\n", __func__);
@@ -524,9 +524,8 @@ mps_enqueue_request(struct mps_softc *sc, struct mps_command *cm)
 	    cm->cm_desc.Default.SMID, cm, cm->cm_ccb);
 
 	if ((sc->mps_flags & MPS_FLAGS_ATTACH_DONE) &&
-	    !(sc->mps_flags & MPS_FLAGS_SHUTDOWN)) {
-		KKASSERT(lockstatus(&sc->mps_lock, curthread) != 0);
-	}
+	    !(sc->mps_flags & MPS_FLAGS_SHUTDOWN))
+		KKASSERT(lockowned(&sc->mps_lock));
 
 	if (++sc->io_cmds_active > sc->io_cmds_highwater)
 		sc->io_cmds_highwater++;
@@ -2120,7 +2119,7 @@ mps_wait_command(struct mps_softc *sc, struct mps_command *cm, int timeout)
 {
 	int error;
 
-	KKASSERT(lockstatus(&sc->mps_lock, curthread) != 0);
+	KKASSERT(lockowned(&sc->mps_lock));
 
 	cm->cm_complete = NULL;
 	cm->cm_flags |= MPS_CM_FLAGS_WAKEUP;

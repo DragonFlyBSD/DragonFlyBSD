@@ -566,7 +566,7 @@ static __inline void
 mfi_lockassert(struct lock *lockp)
 {
 	if (panicstr == NULL && !dumping)
-		KKASSERT(lockstatus(lockp, curthread) != 0);
+		KKASSERT(lockowned(lockp));
 }
 
 #define MFI_WRITE4(sc, reg, val)	bus_space_write_4((sc)->mfi_btag, \

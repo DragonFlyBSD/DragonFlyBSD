@@ -62,7 +62,7 @@ struct intsmb_softc {
 
 #define	INTSMB_LOCK(sc)		lockmgr(&(sc)->lock, LK_EXCLUSIVE)
 #define	INTSMB_UNLOCK(sc)	lockmgr(&(sc)->lock, LK_RELEASE)
-#define	INTSMB_LOCK_ASSERT(sc)	KKASSERT(lockstatus(&(sc)->lock, curthread) != 0)
+#define	INTSMB_LOCK_ASSERT(sc)	KKASSERT(lockowned(&(sc)->lock))
 
 static int intsmb_probe(device_t);
 static int intsmb_attach(device_t);

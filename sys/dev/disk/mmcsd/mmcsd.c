@@ -108,8 +108,8 @@ static int mmcsd_bus_bit_width(device_t dev);
 #define	MMCSD_UNLOCK(_sc)	lockmgr(&(_sc)->sc_lock, LK_RELEASE)
 #define MMCSD_LOCK_INIT(_sc)	lockinit(&(_sc)->sc_lock, "mmcsd", 0, LK_CANRECURSE)
 #define MMCSD_LOCK_DESTROY(_sc)	lockuninit(&(_sc)->sc_lock);
-#define MMCSD_ASSERT_LOCKED(_sc) KKASSERT(lockstatus(&(_sc)->sc_lock, curthread) != 0);
-#define MMCSD_ASSERT_UNLOCKED(_sc) KKASSERT(lockstatus(&(_sc)->sc_lock, curthread) == 0);
+#define MMCSD_ASSERT_LOCKED(_sc) KKASSERT(lockowned(&(_sc)->sc_lock));
+#define MMCSD_ASSERT_UNLOCKED(_sc) KKASSERT(!lockowned(&(_sc)->sc_lock));
 
 static struct dev_ops mmcsd_ops = {
 	{ "mmcsd", 0, D_DISK | D_MPSAFE },

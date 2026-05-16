@@ -126,7 +126,7 @@ struct amdpm_softc {
 
 #define	AMDPM_LOCK(amdpm)		lockmgr(&(amdpm)->lock, LK_EXCLUSIVE)
 #define	AMDPM_UNLOCK(amdpm)		lockmgr(&(amdpm)->lock, LK_RELEASE)
-#define	AMDPM_LOCK_ASSERT(amdpm)	KKASSERT(lockstatus(&(amdpm)->lock, curthread) != 0)
+#define	AMDPM_LOCK_ASSERT(amdpm)	KKASSERT(lockowned(&(amdpm)->lock))
 
 #define AMDPM_SMBINB(amdpm,register) \
 	(bus_read_1(amdpm->res, register))

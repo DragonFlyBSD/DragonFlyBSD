@@ -3110,7 +3110,7 @@ isptargstart(struct cam_periph *periph, union ccb *iccb)
 	uint32_t data_len, flags;
 	struct ccb_hdr *ccbh;
 
-	KKASSERT(lockstatus(periph->sim->mtx, curthread) != 0);
+	KKASSERT(lockowned(periph->sim->mtx));
 	ISP_PATH_PRT(softc->isp, ISP_LOGTDEBUG0, iccb->ccb_h.path, "%s: function code 0x%x INOTQ=%c WORKQ=%c REWORKQ=%c\n", __func__, iccb->ccb_h.func_code,
 	    TAILQ_FIRST(&softc->inot_queue)? 'y' : 'n', TAILQ_FIRST(&softc->work_queue)? 'y' : 'n', TAILQ_FIRST(&softc->rework_queue)? 'y' : 'n');
 	/*
@@ -4290,7 +4290,7 @@ isp_action(struct cam_sim *sim, union ccb *ccb)
 	CAM_DEBUG(ccb->ccb_h.path, CAM_DEBUG_TRACE, ("isp_action\n"));
 
 	isp = (ispsoftc_t *)cam_sim_softc(sim);
-	KKASSERT(lockstatus(&isp->isp_lock, curthread) != 0);
+	KKASSERT(lockowned(&isp->isp_lock));
 
 	if (isp->isp_state != ISP_RUNSTATE && ccb->ccb_h.func_code == XPT_SCSI_IO) {
 		isp_init(isp);

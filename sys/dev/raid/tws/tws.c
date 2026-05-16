@@ -648,7 +648,7 @@ tws_dmamap_cmds_load_cbfn(void *arg, bus_dma_segment_t *segs,
 void
 tws_send_event(struct tws_softc *sc, u_int8_t event)
 {
-    KKASSERT(lockstatus(&sc->gen_lock, curthread) != 0);
+    KKASSERT(lockowned(&sc->gen_lock));
     TWS_TRACE_DEBUG(sc, "received event ", 0, event);
     switch (event) {
 

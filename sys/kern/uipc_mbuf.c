@@ -878,8 +878,7 @@ mbupdatelimits(void)
 {
 	int limit, mb_limit, cl_limit, ncl_limit, jcl_limit;
 
-	KASSERT(lockstatus(&mbupdate_lk, curthread) != 0,
-		("mbupdate_lk is not held"));
+	KASSERT(lockowned(&mbupdate_lk), ("mbupdate_lk is not held"));
 
 	/*
 	 * Figure out adjustments to object caches after nmbufs, nmbclusters,

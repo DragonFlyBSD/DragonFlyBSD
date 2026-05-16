@@ -350,7 +350,7 @@ varsymlookup(struct varsymset *vss, const char *name, int namelen)
 {
     struct varsyment *ve;
 
-    KKASSERT(lockstatus(&vss->vx_lock, curthread) != 0);
+    KKASSERT(lockowned(&vss->vx_lock));
     TAILQ_FOREACH(ve, &vss->vx_queue, ve_entry) {
 	varsym_t var = ve->ve_sym;
 	if (var->vs_namelen == namelen && 

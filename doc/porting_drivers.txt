@@ -74,10 +74,12 @@
   with
 	lockmgr(&my_lock, LK_RELEASE);
 
-  For testing the lock status, one would use
-	lockstatus(&my_lock, curthread);
+  For checking lock ownership one would use
+	lockowned(&my_lock);
   in place of
 	mtx_owned(&my_mtx);
+  More detailed information about the lock status can be obtained with
+  lockstatus().
 
   An
 	mtx_trylock(&my_mtx);
@@ -86,8 +88,8 @@
 
   As for mtx_assert() calls, translate them like this:
 
-	mtx_assert(&my_mtx, MA_OWNED) -> KKASSERT(lockstatus(&my_lock, curthread) != 0)
-	mtx_assert(&my_mtx, MA_NOTOWNED) -> KKASSERT(lockstatus(&my_lock, curthread) == 0)
+	mtx_assert(&my_mtx, MA_OWNED) -> KKASSERT(lockowned(&my_lock))
+	mtx_assert(&my_mtx, MA_NOTOWNED) -> KKASSERT(!lockowned(&my_lock))
 
   In DragonFly, lockstatus() does not return information about whether there
   have been recursive lock acquisitions, so there is no generic way to emulate

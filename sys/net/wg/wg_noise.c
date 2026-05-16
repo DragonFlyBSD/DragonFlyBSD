@@ -403,7 +403,7 @@ noise_local_keys(struct noise_local *l, uint8_t public[NOISE_PUBLIC_KEY_LEN],
 static void
 noise_precompute_ss(struct noise_local *l, struct noise_remote *r)
 {
-	KKASSERT(lockstatus(&l->l_identity_lock, curthread) != 0);
+	KKASSERT(lockowned(&l->l_identity_lock));
 
 	lockmgr(&r->r_handshake_lock, LK_EXCLUSIVE);
 	if (!l->l_has_identity ||

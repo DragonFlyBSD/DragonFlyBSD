@@ -198,7 +198,7 @@ static int drm_alloc_resource(struct drm_device *dev, int resource)
 	struct resource *res;
 	int rid;
 
-	KKASSERT(lockstatus(&dev->struct_mutex, curthread) != 0);
+	KKASSERT(lockowned(&dev->struct_mutex));
 
 	if (resource >= DRM_MAX_PCI_RESOURCE) {
 		DRM_ERROR("Resource %d too large\n", resource);

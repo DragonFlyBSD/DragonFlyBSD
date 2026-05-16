@@ -2056,7 +2056,7 @@ aac_sync_fib(struct aac_softc *sc, u_int32_t command, u_int32_t xferstate,
 {
 	fwprintf(sc, HBA_FLAGS_DBG_FUNCTION_ENTRY_B, "");
 #if 0 /* XXX swildner */
-	KKASSERT(lockstatus(&sc->aac_io_lock, curthread) != 0);
+	KKASSERT(lockowned(&sc->aac_io_lock));
 #endif
 
 	if (datasize > AAC_FIB_DATASIZE)
@@ -2961,7 +2961,7 @@ aac_ioctl_event(struct aac_softc *sc, struct aac_event *event, void *arg)
 
 	switch (event->ev_type) {
 	case AAC_EVENT_CMFREE:
-		KKASSERT(lockstatus(&sc->aac_io_lock, curthread) != 0);
+		KKASSERT(lockowned(&sc->aac_io_lock));
 		if (aac_alloc_command(sc, (struct aac_command **)arg)) {
 			aac_add_event(sc, event);
 			return;

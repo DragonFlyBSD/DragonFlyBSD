@@ -344,7 +344,7 @@ struct tws_event_packet *aen)
     struct tws_event_packet *q = (struct tws_event_packet *)cq->q;
     volatile u_int16_t head, tail;
     u_int8_t retr;
-    KKASSERT(lockstatus(&sc->gen_lock, curthread) != 0);
+    KKASSERT(lockowned(&sc->gen_lock));
 
     head = cq->head;
     tail = cq->tail;

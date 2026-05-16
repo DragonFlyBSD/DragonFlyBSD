@@ -2013,7 +2013,7 @@ cuse_client_kqfilter_read_event(struct knote *kn, long hint)
 
 	pcc = (struct cuse_client *)kn->kn_hook;
 
-	KKASSERT(lockstatus(&pcc->server->mtx, curthread) != 0);
+	KKASSERT(lockowned(&pcc->server->mtx));
 
 	return ((pcc->cflags & CUSE_CLI_KNOTE_NEED_READ) ? 1 : 0);
 }
@@ -2025,7 +2025,7 @@ cuse_client_kqfilter_write_event(struct knote *kn, long hint)
 
 	pcc = (struct cuse_client *)kn->kn_hook;
 
-	KKASSERT(lockstatus(&pcc->server->mtx, curthread) != 0);
+	KKASSERT(lockowned(&pcc->server->mtx));
 
 	return ((pcc->cflags & CUSE_CLI_KNOTE_NEED_WRITE) ? 1 : 0);
 }

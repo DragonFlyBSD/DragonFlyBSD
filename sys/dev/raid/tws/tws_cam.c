@@ -223,7 +223,7 @@ tws_bus_scan(struct tws_softc *sc)
 
     TWS_TRACE_DEBUG(sc, "entry", sc, 0);
     KASSERT(sc->sim, ("sim not allocated"));
-    KKASSERT(lockstatus(&sc->sim_lock, curthread) != 0);
+    KKASSERT(lockowned(&sc->sim_lock));
 
     ccb = sc->scan_ccb;
 
@@ -689,7 +689,7 @@ tws_execute_scsi(struct tws_softc *sc, union ccb *ccb)
     int error;
     u_int16_t lun;
 
-    KKASSERT(lockstatus(&sc->sim_lock, curthread) != 0);
+    KKASSERT(lockowned(&sc->sim_lock));
     if (ccb_h->target_id >= TWS_MAX_NUM_UNITS) {
         TWS_TRACE_DEBUG(sc, "traget id too big", ccb_h->target_id, ccb_h->target_lun);
         ccb_h->status |= CAM_TID_INVALID;
@@ -1286,7 +1286,7 @@ tws_freeze_simq(struct tws_softc *sc)
 {
 
     TWS_TRACE_DEBUG(sc, "freezeing", 0, 0);
-    KKASSERT(lockstatus(&sc->sim_lock, curthread) != 0);
+    KKASSERT(lockowned(&sc->sim_lock));
     xpt_freeze_simq(sc->sim, 1);
 
 }
@@ -1295,7 +1295,7 @@ tws_release_simq(struct tws_softc *sc)
 {
 
     TWS_TRACE_DEBUG(sc, "unfreezeing", 0, 0);
-    KKASSERT(lockstatus(&sc->sim_lock, curthread) != 0);
+    KKASSERT(lockowned(&sc->sim_lock));
     xpt_release_simq(sc->sim, 1);
 
 }

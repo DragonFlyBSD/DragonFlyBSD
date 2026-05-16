@@ -193,8 +193,7 @@ extern struct lock sysctllock;
 #define	SYSCTL_XUNLOCK()	_sysctl_xunlock()
 #define	SYSCTL_SLOCK()		lockmgr(&mycpu->gd_sysctllock, LK_SHARED)
 #define	SYSCTL_SUNLOCK()	lockmgr(&mycpu->gd_sysctllock, LK_RELEASE)
-#define	SYSCTL_ASSERT_LOCKED() \
-	KKASSERT(lockstatus(&mycpu->gd_sysctllock, curthread) != 0)
+#define	SYSCTL_ASSERT_LOCKED()	KKASSERT(lockowned(&mycpu->gd_sysctllock))
 
 /*
  * These functions are used to add/remove an oid from the mib.

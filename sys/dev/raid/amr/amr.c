@@ -1709,7 +1709,7 @@ amr_abort_load(struct amr_command *ac)
     ac_qhead_t head;
     struct amr_softc *sc = ac->ac_sc;
 
-    KKASSERT(lockstatus(&sc->amr_list_lock, curthread) != 0);
+    KKASSERT(lockowned(&sc->amr_list_lock));
 
     ac->ac_status = AMR_STATUS_ABORTED;
     amr_init_qhead(&head);
