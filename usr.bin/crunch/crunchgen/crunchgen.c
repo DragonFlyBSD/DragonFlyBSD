@@ -943,7 +943,7 @@ gen_output_cfile(void)
 		fprintf(outcf, "%s\n", *cp);
 
 	for (p = progs; p != NULL; p = p->next)
-		fprintf(outcf, "extern int _crunched_%s_stub();\n", p->ident);
+		fprintf(outcf, "extern int _crunched_%s_stub(int, char **, char **);\n", p->ident);
 
 	fprintf(outcf, "\nstatic const struct stub entry_points[] = {\n");
 	for (p = progs; p != NULL; p = p->next) {
