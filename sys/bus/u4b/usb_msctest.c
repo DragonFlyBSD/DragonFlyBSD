@@ -1,6 +1,8 @@
-/* $FreeBSD: head/sys/dev/usb/usb_msctest.c 269578 2014-08-05 09:59:16Z n_hibma $ */
 /*-
- * Copyright (c) 2008,2011 Hans Petter Selasky. All rights reserved.
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
+ * Copyright (c) 2008-2022 Hans Petter Selasky.
+ * Copyright (c) 2021-2022 Idwer Vollering.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,9 +29,6 @@
 /*
  * The following file contains code that will detect USB autoinstall
  * disks.
- *
- * TODO: Potentially we could add code to automatically detect USB
- * mass storage quirks for not supported SCSI commands!
  */
 
 #include <sys/stdint.h>
@@ -85,19 +84,26 @@ enum {
 #define	SCSI_SENSE_LEN	0xFF
 #define	SCSI_FIXED_BLOCK_SIZE 512	/* bytes */
 
-static uint8_t scsi_test_unit_ready[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-static uint8_t scsi_inquiry[] = { 0x12, 0x00, 0x00, 0x00, SCSI_INQ_LEN, 0x00 };
-static uint8_t scsi_rezero_init[] =     { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00 };
-static uint8_t scsi_start_stop_unit[] = { 0x1b, 0x00, 0x00, 0x00, 0x02, 0x00 };
-static uint8_t scsi_ztestor_eject[] =   { 0x85, 0x01, 0x01, 0x01, 0x18, 0x01,
+static uint8_t scsi_test_unit_ready[] =	{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+static uint8_t scsi_inquiry[] =		{ 0x12, 0x00, 0x00, 0x00, SCSI_INQ_LEN, 0x00 };
+static uint8_t scsi_rezero_init[] =	{ 0x01, 0x00, 0x00, 0x00, 0x00, 0x00 };
+static uint8_t scsi_start_unit[] =	{ 0x1b, 0x00, 0x00, 0x00, 0x01, 0x00 };
+static uint8_t scsi_stop_unit[] =	{ 0x1b, 0x00, 0x00, 0x00, 0x02, 0x00 };
+static uint8_t scsi_ztestor_eject[] =	{ 0x85, 0x01, 0x01, 0x01, 0x18, 0x01,
 					  0x01, 0x01, 0x01, 0x01, 0x00, 0x00 };
-static uint8_t scsi_cmotech_eject[] =   { 0xff, 0x52, 0x44, 0x45, 0x56, 0x43,
+static uint8_t scsi_cmotech_eject[] =	{ 0xff, 0x52, 0x44, 0x45, 0x56, 0x43,
 					  0x48, 0x47 };
 static uint8_t scsi_huawei_eject[] =	{ 0x11, 0x06, 0x00, 0x00, 0x00, 0x00,
 					  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 					  0x00, 0x00, 0x00, 0x00 };
 static uint8_t scsi_huawei_eject2[] =	{ 0x11, 0x06, 0x20, 0x00, 0x00, 0x01,
 					  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					  0x00, 0x00, 0x00, 0x00 };
+static uint8_t scsi_huawei_eject3[] =	{ 0x11, 0x06, 0x20, 0x00, 0x00, 0x01,
+					  0x01, 0x00, 0x01, 0x00, 0x00, 0x00,
+					  0x00, 0x00, 0x00, 0x00 };
+static uint8_t scsi_huawei_eject4[] =	{ 0x11, 0x06, 0x30, 0x00, 0x00, 0x00,
+					  0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
 					  0x00, 0x00, 0x00, 0x00 };
 static uint8_t scsi_tct_eject[] =	{ 0x06, 0xf5, 0x04, 0x02, 0x52, 0x70 };
 static uint8_t scsi_sync_cache[] =	{ 0x35, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -156,7 +162,7 @@ struct bbb_transfer {
 	usb_size_t data_rem;		/* bytes */
 	usb_timeout_t data_timeout;	/* ms */
 	usb_frlength_t actlen;		/* bytes */
-	usb_frlength_t buffer_size;    	/* bytes */
+	usb_frlength_t buffer_size;	/* bytes */
 
 	uint8_t	cmd_len;		/* bytes */
 	uint8_t	dir;
@@ -186,7 +192,6 @@ static struct bbb_transfer *bbb_attach(struct usb_device *, uint8_t, uint8_t);
 static void	bbb_detach(struct bbb_transfer *);
 
 static const struct usb_config bbb_config[ST_MAX] = {
-
 	[ST_COMMAND] = {
 		.type = UE_BULK,
 		.endpoint = UE_ADDR_ANY,
@@ -246,7 +251,6 @@ static const struct usb_config bbb_config[ST_MAX] = {
 };
 
 static const struct usb_config bbb_raw_config[1] = {
-
 	[0] = {
 		.type = UE_BULK_INTR,
 		.endpoint = UE_ADDR_ANY,
@@ -730,13 +734,11 @@ usb_iface_is_cdrom(struct usb_device *udev, uint8_t iface_index)
 	return (is_cdrom);
 }
 
-static uint8_t
+static int
 usb_msc_get_max_lun(struct usb_device *udev, uint8_t iface_index)
 {
 	struct usb_device_request req;
-	usb_error_t err;
 	uint8_t buf = 0;
-
 
 	/* The Get Max Lun command is a class-specific request. */
 	req.bmRequestType = UT_READ_CLASS_INTERFACE;
@@ -746,25 +748,41 @@ usb_msc_get_max_lun(struct usb_device *udev, uint8_t iface_index)
 	req.wIndex[1] = 0;
 	USETW(req.wLength, 1);
 
-	err = usbd_do_request(udev, NULL, &req, &buf);
-	if (err)
-		buf = 0;
-
-	return (buf);
+	return usbd_do_request(udev, NULL, &req, &buf);
 }
 
+#define	USB_ADD_QUIRK(udev, any, which) do { \
+	if (usb_get_manufacturer(udev) != NULL && usb_get_product(udev) != NULL) { \
+		DPRINTFN(0, #which " set for USB mass storage device %s %s (0x%04x:0x%04x)\n", \
+			usb_get_manufacturer(udev), \
+			usb_get_product(udev), \
+			UGETW(udev->ddesc.idVendor), \
+			UGETW(udev->ddesc.idProduct)); \
+	} else { \
+		DPRINTFN(0, #which " set for USB mass storage device, 0x%04x:0x%04x\n", \
+			UGETW(udev->ddesc.idVendor), \
+			UGETW(udev->ddesc.idProduct)); \
+	} \
+	usbd_add_dynamic_quirk(udev, which); \
+	any = 1; \
+} while (0)
+
 usb_error_t
-usb_msc_auto_quirk(struct usb_device *udev, uint8_t iface_index)
+usb_msc_auto_quirk(struct usb_device *udev, uint8_t iface_index,
+    const struct usb_attach_arg *uaa)
 {
 	struct bbb_transfer *sc;
 	uint8_t timeout;
 	uint8_t is_no_direct;
 	uint8_t sid_type;
+	uint8_t any_quirk;
 	int err;
 
 	sc = bbb_attach(udev, iface_index, UICLASS_MASS);
 	if (sc == NULL)
 		return (0);
+
+	any_quirk = 0;
 
 	/*
 	 * Some devices need a delay after that the configuration
@@ -772,9 +790,10 @@ usb_msc_auto_quirk(struct usb_device *udev, uint8_t iface_index)
 	 */
 	usb_pause_mtx(NULL, hz);
 
-	if (usb_msc_get_max_lun(udev, iface_index) == 0) {
-		DPRINTF("Device has only got one LUN.\n");
-		usbd_add_dynamic_quirk(udev, UQ_MSC_NO_GETMAXLUN);
+	if (usb_test_quirk(uaa, UQ_MSC_NO_GETMAXLUN) == 0 &&
+	    usb_msc_get_max_lun(udev, iface_index) != 0) {
+		DPRINTF("Device can't handle GETMAXLUN\n");
+		USB_ADD_QUIRK(udev, any_quirk, UQ_MSC_NO_GETMAXLUN);
 	}
 
 	is_no_direct = 1;
@@ -801,50 +820,49 @@ usb_msc_auto_quirk(struct usb_device *udev, uint8_t iface_index)
 		goto done;
 	}
 
-	err = bbb_command_start(sc, DIR_IN, 0, NULL, 0,
-	    &scsi_test_unit_ready, sizeof(scsi_test_unit_ready),
-	    USB_MS_HZ);
-
-	if (err != 0) {
-		if (err != ERR_CSW_FAILED)
-			goto error;
-		DPRINTF("Test unit ready failed\n");
-	}
-
-	err = bbb_command_start(sc, DIR_OUT, 0, NULL, 0,
-	    &scsi_prevent_removal, sizeof(scsi_prevent_removal),
-	    USB_MS_HZ);
-
-	if (err == 0) {
-		err = bbb_command_start(sc, DIR_OUT, 0, NULL, 0,
-		    &scsi_allow_removal, sizeof(scsi_allow_removal),
+	if (usb_test_quirk(uaa, UQ_MSC_NO_TEST_UNIT_READY) == 0) {
+		err = bbb_command_start(sc, DIR_NONE, 0, NULL, 0,
+		    &scsi_test_unit_ready, sizeof(scsi_test_unit_ready),
 		    USB_MS_HZ);
+
+		if (err != 0) {
+			if (err != ERR_CSW_FAILED)
+				goto error;
+			USB_ADD_QUIRK(udev, any_quirk, UQ_MSC_NO_TEST_UNIT_READY);
+		}
 	}
 
-	if (err != 0) {
-		if (err != ERR_CSW_FAILED)
-			goto error;
-		DPRINTF("Device doesn't handle prevent and allow removal\n");
-		usbd_add_dynamic_quirk(udev, UQ_MSC_NO_PREVENT_ALLOW);
+	if (usb_test_quirk(uaa, UQ_MSC_NO_PREVENT_ALLOW) == 0) {
+		err = bbb_command_start(sc, DIR_NONE, 0, NULL, 0,
+		    &scsi_prevent_removal, sizeof(scsi_prevent_removal),
+		    USB_MS_HZ);
+
+		if (err == 0) {
+			err = bbb_command_start(sc, DIR_NONE, 0, NULL, 0,
+			    &scsi_allow_removal, sizeof(scsi_allow_removal),
+			    USB_MS_HZ);
+		}
+
+		if (err != 0) {
+			if (err != ERR_CSW_FAILED)
+				goto error;
+			USB_ADD_QUIRK(udev, any_quirk, UQ_MSC_NO_PREVENT_ALLOW);
+		}
 	}
 
 	timeout = 1;
 
 retry_sync_cache:
-	err = bbb_command_start(sc, DIR_IN, 0, NULL, 0,
+	err = bbb_command_start(sc, DIR_NONE, 0, NULL, 0,
 	    &scsi_sync_cache, sizeof(scsi_sync_cache),
 	    USB_MS_HZ);
 
 	if (err != 0) {
-
 		if (err != ERR_CSW_FAILED)
 			goto error;
 
-		DPRINTF("Device doesn't handle synchronize cache\n");
-
-		usbd_add_dynamic_quirk(udev, UQ_MSC_NO_SYNC_CACHE);
+		USB_ADD_QUIRK(udev, any_quirk, UQ_MSC_NO_SYNC_CACHE);
 	} else {
-
 		/*
 		 * Certain Kingston memory sticks fail the first
 		 * read capacity after a synchronize cache command
@@ -868,15 +886,23 @@ retry_sync_cache:
 				if (timeout--)
 					goto retry_sync_cache;
 
-				DPRINTF("Device most likely doesn't "
-				    "handle synchronize cache\n");
-
-				usbd_add_dynamic_quirk(udev,
-				    UQ_MSC_NO_SYNC_CACHE);
+				USB_ADD_QUIRK(udev, any_quirk, UQ_MSC_NO_SYNC_CACHE);
 			} else {
 				if (err != ERR_CSW_FAILED)
 					goto error;
 			}
+		}
+	}
+
+	if (usb_test_quirk(uaa, UQ_MSC_NO_START_STOP) == 0) {
+		err = bbb_command_start(sc, DIR_NONE, 0, NULL, 0,
+		    &scsi_start_unit, sizeof(scsi_start_unit),
+		    USB_MS_HZ);
+
+		if (err != 0) {
+			if (err != ERR_CSW_FAILED)
+				goto error;
+			USB_ADD_QUIRK(udev, any_quirk, UQ_MSC_NO_START_STOP);
 		}
 	}
 
@@ -889,7 +915,6 @@ retry_sync_cache:
 	DPRINTF("Inquiry = %d\n", err);
 
 	if (err != 0) {
-
 		if (err != ERR_CSW_FAILED)
 			goto error;
 	}
@@ -901,35 +926,38 @@ retry_sync_cache:
 	DPRINTF("Request sense = %d\n", err);
 
 	if (err != 0) {
-
 		if (err != ERR_CSW_FAILED)
 			goto error;
 	}
-
-done:
-	bbb_detach(sc);
-	return (0);
+	goto done;
 
 error:
- 	bbb_detach(sc);
+	/* Apply most quirks */
+	USB_ADD_QUIRK(udev, any_quirk, UQ_MSC_NO_SYNC_CACHE);
+	USB_ADD_QUIRK(udev, any_quirk, UQ_MSC_NO_PREVENT_ALLOW);
+	USB_ADD_QUIRK(udev, any_quirk, UQ_MSC_NO_TEST_UNIT_READY);
+	USB_ADD_QUIRK(udev, any_quirk, UQ_MSC_NO_START_STOP);
+done:
+	bbb_detach(sc);
 
-	DPRINTF("Device did not respond, enabling all quirks\n");
+	if (any_quirk) {
+		/* Unconfigure device, to clear software data toggle. */
+		usbd_set_config_index(udev, USB_UNCONFIG_INDEX);
 
-	usbd_add_dynamic_quirk(udev, UQ_MSC_NO_SYNC_CACHE);
-	usbd_add_dynamic_quirk(udev, UQ_MSC_NO_PREVENT_ALLOW);
-	usbd_add_dynamic_quirk(udev, UQ_MSC_NO_TEST_UNIT_READY);
+		/* Need to re-enumerate the device to clear its state. */
+		usbd_req_re_enumerate(udev, NULL);
+		return (USB_ERR_STALLED);
+	}
 
-	/* Need to re-enumerate the device */
-	usbd_req_re_enumerate(udev, NULL);
-
-	return (USB_ERR_STALLED);
+	/* No quirks were added, continue as usual. */
+	return (0);
 }
 
 usb_error_t
 usb_msc_eject(struct usb_device *udev, uint8_t iface_index, int method)
 {
 	struct bbb_transfer *sc;
-	usb_error_t err;
+	usb_error_t err __usbdebug_used;
 
 	sc = bbb_attach(udev, iface_index, UICLASS_MASS);
 	if (sc == NULL)
@@ -942,7 +970,7 @@ usb_msc_eject(struct usb_device *udev, uint8_t iface_index, int method)
 		    USB_MS_HZ);
 		DPRINTF("Test unit ready status: %s\n", usbd_errstr(err));
 		err = bbb_command_start(sc, DIR_IN, 0, NULL, 0,
-		    &scsi_start_stop_unit, sizeof(scsi_start_stop_unit),
+		    &scsi_stop_unit, sizeof(scsi_stop_unit),
 		    USB_MS_HZ);
 		break;
 	case MSC_EJECT_REZERO:
@@ -968,6 +996,16 @@ usb_msc_eject(struct usb_device *udev, uint8_t iface_index, int method)
 	case MSC_EJECT_HUAWEI2:
 		err = bbb_command_start(sc, DIR_IN, 0, NULL, 0,
 		    &scsi_huawei_eject2, sizeof(scsi_huawei_eject2),
+		    USB_MS_HZ);
+		break;
+	case MSC_EJECT_HUAWEI3:
+		err = bbb_command_start(sc, DIR_IN, 0, NULL, 0,
+		    &scsi_huawei_eject3, sizeof(scsi_huawei_eject3),
+		    USB_MS_HZ);
+		break;
+	case MSC_EJECT_HUAWEI4:
+		err = bbb_command_start(sc, DIR_IN, 0, NULL, 0,
+		    &scsi_huawei_eject4, sizeof(scsi_huawei_eject4),
 		    USB_MS_HZ);
 		break;
 	case MSC_EJECT_TCT:

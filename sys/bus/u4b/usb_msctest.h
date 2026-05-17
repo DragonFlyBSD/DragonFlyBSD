@@ -1,6 +1,7 @@
-/* $FreeBSD: head/sys/dev/usb/usb_msctest.h 269576 2014-08-05 09:35:25Z n_hibma $ */
 /*-
- * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
+ * Copyright (c) 2008-2022 Hans Petter Selasky.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,6 +35,8 @@ enum {
 	MSC_EJECT_CMOTECH,
 	MSC_EJECT_HUAWEI,
 	MSC_EJECT_HUAWEI2,
+	MSC_EJECT_HUAWEI3,
+	MSC_EJECT_HUAWEI4,
 	MSC_EJECT_TCT,
 };
 
@@ -42,7 +45,7 @@ int usb_iface_is_cdrom(struct usb_device *udev,
 usb_error_t usb_msc_eject(struct usb_device *udev,
 	    uint8_t iface_index, int method);
 usb_error_t usb_msc_auto_quirk(struct usb_device *udev,
-	    uint8_t iface_index);
+	    uint8_t iface_index, const struct usb_attach_arg *uaa);
 usb_error_t usb_msc_read_10(struct usb_device *udev,
 	    uint8_t iface_index, uint32_t lba, uint32_t blocks,
 	    void *buffer);
