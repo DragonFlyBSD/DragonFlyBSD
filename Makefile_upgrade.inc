@@ -3998,6 +3998,7 @@ TO_REMOVE+=/usr/share/man/man1/gcc47.1.gz
 TO_REMOVE+=/usr/share/man/man1/gcov47.1.gz
 TO_REMOVE+=/usr/share/mk/bsd.cpu.gcc47.mk
 TO_REMOVE+=/usr/include/sys/priv.h
+TO_REMOVE+=/usr/share/man/man9/BACKLIGHT_SET_STATUS.9.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

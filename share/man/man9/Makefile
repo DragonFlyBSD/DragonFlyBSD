@@ -254,7 +254,6 @@ MLINKS+=atomic.9 atomic_add.9 \
 	atomic.9 atomic_subtract.9 \
 	atomic.9 atomic_store.9
 MLINKS+=backlight.9 BACKLIGHT_GET_STATUS.9 \
-	backlight.9 BACKLIGHT_SET_STATUS.9 \
 	backlight.9 backlight_register.9 \
 	backlight.9 backlight_destroy.9
 MLINKS+=bios.9 BIOS_PADDRTOVADDR.9 \

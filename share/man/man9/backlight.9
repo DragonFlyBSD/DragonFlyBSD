@@ -29,8 +29,7 @@
 .Nm backlight ,
 .Nm backlight_register ,
 .Nm backlight_destroy ,
-.Nm BACKLIGHT_GET_STATUS ,
-.Nm BACKLIGHT_SET_STATUS
+.Nm BACKLIGHT_GET_STATUS
 .Nd BACKLIGHT methods
 .Sh SYNOPSIS
 .Cd "device backlight"
@@ -38,8 +37,6 @@
 .In "sys/sys/backlight.h"
 .Ft int
 .Fn BACKLIGHT_GET_STATUS "device_t bus" "struct backlight_props *props"
-.Ft int
-.Fn BACKLIGHT_SET_STATUS "device_t bus" "struct backlight_props *props"
 .Ft struct cdev *
 .Fn backlight_register "const char *name" "device_t dev"
 .Ft int
@@ -50,18 +47,13 @@ The backlight driver provides a generic way for handling a panel backlight.
 Drivers for backlight system register themselves globally using the
 .Fn backlight_register
 function.
-They must define two methods,
+They must define
 .Fn BACKLIGHT_GET_STATUS
-which is used to query the current brightness level and
-.Fn BACKLIGHT_SET_STATUS
-which is used to update it.
+which is used to query the current brightness level.
 .Sh INTERFACE
 .Bl -tag -width indent
 .It Fn BACKLIGHT_GET_STATUS "device_t bus" "struct backlight_props *props"
 Driver fills the current brightless level and the optional supported levels.
-.It Fn BACKLIGHT_SET_STATUS "device_t bus" "struct backlight_props *props"
-Driver update the backlight level based on the brightness member of the props
-struct.
 .El
 .Sh FILES
 .Bl -tag -width "/dev/backlight/*"

@@ -73,7 +73,6 @@ tmpfs mounts.  The following capabilities are commonly employed when
 creating such environments: SYSCAP_RESTRICTEDROOT, SYSCAP_SENSITIVEROOT,
 SYSCAP_NONET_SENSITIVE, SYSCAP_NOVFS_SENSITIVE, SYSCAP_NOMOUNT, and
 possibly also SYSCAP_NOEXEC_SUID and SYSCAP_NOEXEC_SGID.
-.Pp
 .Sh GROUP 0 CAPABILITIES (also disable their related sub-groups)
 .Bl -tag -width Dv
 .It Dv SYSCAP_ANY
@@ -211,7 +210,6 @@ Do not allow use of raw sockets.
 .El
 .Sh GROUP 7 CAPABILITIES (ALSO DISABLED BY SYSCAP_NONET_SENSITIVE)
 .Bl -tag -width Dv
-
 .It Dv SYSCAP_NONET_IFCONFIG
 Do not allow modifications to NICs via ifconfig.
 .It Dv SYSCAP_NONET_ROUTE

@@ -182,7 +182,7 @@ Marks the
 .Pa resolv.conf
 as private if the
 .Fl a
-command is given, otherwise 
+command is given, otherwise
 .Pa resolv.conf
 entries having their key matching
 .Ar pattern
