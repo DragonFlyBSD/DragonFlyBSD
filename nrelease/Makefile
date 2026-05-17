@@ -569,6 +569,7 @@ help:
 	@echo "  gui         - add GUI packages (else just base packages)"
 	@echo "  binpkgs     - use current host binary repo config to"
 	@echo "                quickly install packages."
+	@echo "  nopkgs      - do not install any packages"
 	@echo "  curses      - run dsynth in curses mode, else console mode"
 	@echo ""
 	@echo "Variables:"
