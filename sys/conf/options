@@ -480,7 +480,6 @@ ALT_BREAK_TO_DEBUGGER	opt_comconsole.h
 BUS_DEBUG		opt_bus.h
 
 # options for USB support
-OHCI_DEBUG		opt_usb.h
 USB_DEBUG		opt_usb.h
 
 # options for the Realtek RTL8188*U/RTL8192CU driver (urtwn)
@@ -611,9 +610,6 @@ DCONS_BUF_SIZE		opt_dcons.h
 DCONS_POLL_HZ		opt_dcons.h
 DCONS_FORCE_CONSOLE	opt_dcons.h
 DCONS_FORCE_GDB		opt_dcons.h
-
-# deprecated drivers and options
-I_WANT_DEPRECATED_STUFF	opt_deprecated.h
 
 # Receive Side Scaling (now basecode)
 RSS_DEBUG		opt_rss.h
