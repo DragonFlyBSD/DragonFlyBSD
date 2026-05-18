@@ -1115,20 +1115,8 @@ dpt_send_eata_command(dpt_softc_t *dpt, eata_ccb_t *cmd_block,
 			DELAY(50);
 	}
 
-	if (loop < retries) {
-#ifdef DPT_MEASURE_PERFORMANCE
-		if (loop > dpt->performance.max_eata_tries)
-			dpt->performance.max_eata_tries = loop;
-
-		if (loop < dpt->performance.min_eata_tries)
-			dpt->performance.min_eata_tries = loop;
-#endif
-	} else {
-#ifdef DPT_MEASURE_PERFORMANCE
-		++dpt->performance.command_too_busy;
-#endif
+	if (loop >= retries)
 		return (1);
-	}
 
 	/* The controller is alive, advance the wedge timer */
 #ifdef DPT_RESET_HBA
@@ -1177,10 +1165,6 @@ dpt_alloc(device_t dev, bus_space_tag_t tag, bus_space_handle_t bsh)
 	TAILQ_INSERT_TAIL(&dpt_softcs, dpt, links);
 	for (i = 0; i < MAX_CHANNELS; i++)
 		dpt->resetlevel[i] = DPT_HA_OK;
-
-#ifdef DPT_MEASURE_PERFORMANCE
-	dpt_reset_performance(dpt);
-#endif /* DPT_MEASURE_PERFORMANCE */
 	return (dpt);
 }
 
@@ -1547,10 +1531,6 @@ dpt_intr(void *arg)
 			kprintf("dpt%d ERROR: Request %d received with "
 			       "clear EOC.\n     Marking as LOST.\n",
 			       dpt->unit, dccb->transaction_id);
-
-#ifdef DPT_HANDLE_TIMEOUTS
-			dccb->state |= DPT_CCB_STATE_MARKED_LOST;
-#endif
 			/* This CLEARS the interrupt! */
 			status = dpt_inb(dpt, HA_RSTATUS);
 			continue;

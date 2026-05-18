@@ -896,12 +896,6 @@ typedef struct dpt_ccb {
 	u_int32_t	 result;
 	caddr_t		 data;
 	SLIST_ENTRY(dpt_ccb) links;
-
-#ifdef DPT_MEASURE_PERFORMANCE
-	u_int32_t	 submitted_time;
-	struct		 timeval command_started;
-	struct		 timeval command_ended;
-#endif
 } dpt_ccb_t;
 
 /*
@@ -958,60 +952,6 @@ typedef struct {
 #define DptStat_Reset_BUSY(x)			\
  ((x)->msg[0] = 0xA5, (x)->EOC = 0,		\
   (x)->ccb_busaddr = ~0)
-
-#ifdef DPT_MEASURE_PERFORMANCE
-#define BIG_ENOUGH	0x8fffffff	
-typedef struct dpt_metrics {
-	u_int32_t command_count[256]; /* We assume MAX 256 SCSI commands */
-	u_int32_t max_command_time[256];
-	u_int32_t min_command_time[256];
-
-	u_int32_t min_intr_time;
-	u_int32_t max_intr_time;
-	u_int32_t aborted_interrupts;
-	u_int32_t spurious_interrupts;
-
-	u_int32_t max_waiting_count;
-	u_int32_t max_submit_count;
-	u_int32_t max_complete_count;
-    
-	u_int32_t min_waiting_time;
-	u_int32_t min_submit_time;
-	u_int32_t min_complete_time;
-    
-	u_int32_t max_waiting_time; 
-	u_int32_t max_submit_time;
-	u_int32_t max_complete_time;
-    
-	u_int32_t command_collisions;
-	u_int32_t command_too_busy;
-	u_int32_t max_eata_tries;
-	u_int32_t min_eata_tries;
-
-	u_int32_t read_by_size_count[10];
-	u_int32_t write_by_size_count[10];
-	u_int32_t read_by_size_min_time[10];
-	u_int32_t read_by_size_max_time[10];
-	u_int32_t write_by_size_min_time[10];
-	u_int32_t write_by_size_max_time[10];
-
-#define SIZE_512	0
-#define SIZE_1K		1
-#define SIZE_2K		2
-#define SIZE_4K		3
-#define SIZE_8K		4
-#define SIZE_16K	5
-#define SIZE_32K	6
-#define SIZE_64K	7
-#define SIZE_BIGGER	8
-#define SIZE_OTHER	9
-
-	struct	  timeval intr_started;
-
-	u_int32_t warm_starts;
-	u_int32_t cold_boots;
-} dpt_perf_t;
-#endif
 
 struct sg_map_node {
 	bus_dmamap_t		 sg_dmamap;
@@ -1108,11 +1048,6 @@ typedef struct dpt_softc {
 #define DPT_LOST_IRQ_ACTIVE	0x20000000
 #endif
 	
-#ifdef DPT_HANDLE_TIMEOUTS
-#define DPT_HA_TIMEOUTS_SET	0x40000000
-#define DPT_HA_TIMEOUTS_ACTIVE	0x80000000
-#endif
-
 	u_int8_t  primary;	/* true if primary */	
 
 	u_int8_t  more_support		:1,	/* HBA supports MORE flag */
@@ -1142,10 +1077,6 @@ typedef struct dpt_softc {
 	 * kernel it is running with.
 	 * This isi most visible with usr/sbin/dpt_softc(8)
 	 */
-
-#ifdef DPT_MEASURE_PERFORMANCE
-	dpt_perf_t performance;
-#endif
 
 #ifdef DPT_RESET_HBA
 	struct timeval last_contact;
