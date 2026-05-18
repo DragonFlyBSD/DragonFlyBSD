@@ -324,7 +324,7 @@ ip_dn_ip_input(netmsg_t nmsg)
 	struct dn_pkt *pkt;
 	ip_dn_unref_priv_t unref_priv;
 	void *priv;
-	struct ip *ip;
+	struct ip *ip __debugvar;
 
 	nmp = &nmsg->packet;
 	m = nmp->nm_packet;
