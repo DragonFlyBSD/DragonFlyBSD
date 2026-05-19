@@ -333,7 +333,7 @@ extern	void		  resetwatch	(void);
 extern	void		  watch_login	(int);
 extern	char	 	 *who_info	(ptr_t, int);
 extern	void		  dolog		(Char **, struct command *);
-# ifdef HAVE_STRUCT_UTMP_UT_HOST
+# if defined (HAVE_STRUCT_UTMP_UT_HOST) || defined(HAVE_STRUCT_UTMPX_UT_HOST)
 extern	char		 *utmphost	(void);
 extern	size_t		  utmphostsize	(void);
 # endif /* HAVE_STRUCT_UTMP_UT_HOST */

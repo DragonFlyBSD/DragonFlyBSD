@@ -6,8 +6,6 @@
 #
 # To profile, put -DPROF in DEFS and -pg in CFLAGS, and recompile.
 
-WARNS?=	2
-
 TCSHDIR= ${.CURDIR}/../../../contrib/tcsh-6
 CONTRIBDIR=${TCSHDIR}
 .PATH: ${TCSHDIR}
@@ -53,12 +51,6 @@ calloc_FLAGS_FILES= tc.alloc.c
 . if ${CFLAGS:M-flto}
 LDFLAGS+=	-Wl,--allow-multiple-definition
 . endif
-.endif
-
-# XXX pending tcsh update
-.if !defined(WARNS_AUDIT)
-WARNS= 1
-CFLAGS+=	-w
 .endif
 
 LINKS=	${BINDIR}/csh ${BINDIR}/tcsh
