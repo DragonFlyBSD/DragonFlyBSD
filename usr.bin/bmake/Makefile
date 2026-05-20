@@ -66,8 +66,6 @@ COPTS.job.c=	-Wno-format-nonliteral
 COPTS.parse.c=	-Wno-format-nonliteral
 COPTS.var.c=	-Wno-format-nonliteral
 
-WARNS=	3
-
 .PATH:	${srcdir}
 
 MAN=	make.1
