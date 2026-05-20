@@ -6,6 +6,6 @@ LIBCRON=${.OBJDIR}/../lib/libcron.a
 LIBCRON=${.CURDIR}/../lib/libcron.a
 .endif
 
-WARNS?=	2
+WARNS?=	4
 
 .include "../Makefile.inc"

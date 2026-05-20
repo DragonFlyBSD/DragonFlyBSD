@@ -30,9 +30,8 @@
 #define TMAX(a,b) ((a)>(b)?(a):(b))
 
 
-static	void		process_crontab(char *, char *, char *,
-					     struct stat *,
-					     cron_db *, cron_db *);
+static	void	process_crontab(const char *, const char *, const char *,
+				struct stat *, cron_db *, cron_db *);
 
 
 void
@@ -168,9 +167,8 @@ unlink_user(cron_db *db, user *u)
 
 
 user *
-find_user(cron_db *db, char *name)
+find_user(cron_db *db, const char *name)
 {
-	char	*env_get();
 	user	*u;
 
 	for (u = db->head;  u != NULL;  u = u->next)
@@ -181,8 +179,8 @@ find_user(cron_db *db, char *name)
 
 
 static void
-process_crontab(char *uname, char *fname, char *tabname, struct stat *statbuf,
-                cron_db *new_db, cron_db *old_db)
+process_crontab(const char *uname, const char *fname, const char *tabname,
+		struct stat *statbuf, cron_db *new_db, cron_db *old_db)
 {
 	struct passwd	*pw = NULL;
 	int		crontab_fd = OK - 1;

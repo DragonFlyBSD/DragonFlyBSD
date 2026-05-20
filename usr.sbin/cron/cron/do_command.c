@@ -15,14 +15,10 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/do_command.c,v 1.27 2007/06/17 17:25:53 yar Exp $
- * $DragonFly: src/usr.sbin/cron/cron/do_command.c,v 1.8 2008/01/07 14:11:23 matthias Exp $
  */
 
 #include "cron.h"
 #include <sys/signal.h>
-#if defined(sequent)
-# include <sys/universe.h>
-#endif
 #if defined(SYSLOG)
 # include <syslog.h>
 #endif
@@ -34,8 +30,7 @@
 # include <security/openpam.h>
 #endif
 
-static void		child_process(entry *, user *),
-			do_univ(user *);
+static void		child_process(entry *, user *);
 
 
 void
@@ -253,12 +248,6 @@ child_process(entry *e, user *u)
 		 */
 		close(stdin_pipe[READ_PIPE]);
 		close(stdout_pipe[WRITE_PIPE]);
-
-		/* set our login universe.  Do this in the grandchild
-		 * so that the child can invoke /usr/lib/sendmail
-		 * without surprises.
-		 */
-		do_univ(u);
 
 # if defined(LOGIN_CAP)
 		/* Set user's entire context, but skip the environment
@@ -555,41 +544,4 @@ child_process(entry *e, user *u)
 			Debug(DPROC, (", dumped core"))
 		Debug(DPROC, ("\n"))
 	}
-}
-
-
-static void
-do_univ(user *u)
-{
-#if defined(sequent)
-/* Dynix (Sequent) hack to put the user associated with
- * the passed user structure into the ATT universe if
- * necessary.  We have to dig the gecos info out of
- * the user's password entry to see if the magic
- * "universe(att)" string is present.
- */
-
-	struct	passwd	*p;
-	char	*s;
-	int	i;
-
-	p = getpwuid(u->uid);
-	endpwent();
-
-	if (p == NULL)
-		return;
-
-	s = p->pw_gecos;
-
-	for (i = 0; i < 4; i++)
-	{
-		if ((s = strchr(s, ',')) == NULL)
-			return;
-		s++;
-	}
-	if (strcmp(s, "universe(att)"))
-		return;
-
-	universe(U_ATT);
-#endif
 }

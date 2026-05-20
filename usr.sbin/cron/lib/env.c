@@ -15,7 +15,6 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/lib/env.c,v 1.7.2.1 2000/07/01 10:35:07 ps Exp $
- * $DragonFly: src/usr.sbin/cron/lib/env.c,v 1.5 2004/12/18 22:48:03 swildner Exp $
  */
 
 #include "cron.h"
@@ -183,7 +182,7 @@ load_env(char *envstr, FILE *f)
 
 
 char *
-env_get(char *name, char **envp)
+env_get(const char *name, char **envp)
 {
 	int len;
 	char *p, *q;

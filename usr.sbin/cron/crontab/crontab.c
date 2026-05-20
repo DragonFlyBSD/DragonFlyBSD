@@ -48,7 +48,7 @@
 enum opt_t	{ opt_unknown, opt_list, opt_delete, opt_edit, opt_replace };
 
 #if DEBUGGING
-static char	*Options[] = { "???", "list", "delete", "edit", "replace" };
+static const char *Options[] = { "???", "list", "delete", "edit", "replace" };
 #endif
 
 
@@ -69,7 +69,7 @@ static	int		replace_cmd(void);
 
 
 static void
-usage(char *msg)
+usage(const char *msg)
 {
 	fprintf(stderr, "crontab: usage error: %s\n", msg);
 	fprintf(stderr, "%s\n%s\n",
@@ -116,7 +116,7 @@ main(int argc, char **argv)
 	case opt_unknown:
 				break;
 	}
-	exit(0);
+	exit(exitstatus);
 	/*NOTREACHED*/
 }
 
@@ -295,7 +295,8 @@ check_error(const char *msg)
 static void
 edit_cmd(void)
 {
-	char		n[MAX_FNAME], q[MAX_TEMPSTR], *editor;
+	char		n[MAX_FNAME], q[MAX_TEMPSTR];
+	const char	*editor;
 	FILE		*f;
 	int		ch, t, x;
 	struct stat	statbuf, fsbuf;
@@ -412,14 +413,14 @@ edit_cmd(void)
 
 	/* parent */
 	{
-	void (*f[4])();
-	f[0] = signal(SIGHUP, SIG_IGN);
-	f[1] = signal(SIGINT, SIG_IGN);
-	f[2] = signal(SIGTERM, SIG_IGN);
+	void (*fn[4])(int);
+	fn[0] = signal(SIGHUP, SIG_IGN);
+	fn[1] = signal(SIGINT, SIG_IGN);
+	fn[2] = signal(SIGTERM, SIG_IGN);
 	xpid = wait(&waiter);
-	signal(SIGHUP, f[0]);
-	signal(SIGINT, f[1]);
-	signal(SIGTERM, f[2]);
+	signal(SIGHUP, fn[0]);
+	signal(SIGINT, fn[1]);
+	signal(SIGTERM, fn[2]);
 	}
 	if (xpid != pid) {
 		warnx("wrong PID (%d != %d) from \"%s\"", xpid, pid, editor);

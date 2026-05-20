@@ -45,7 +45,7 @@ log_error(const char *msg)
 }
 
 user *
-load_user(int crontab_fd, struct passwd *pw, char *name)
+load_user(int crontab_fd, struct passwd *pw, const char *name)
 /* pw == NULL implies syscrontab */
 {
 	char	envstr[MAX_ENVSTR];

@@ -49,7 +49,7 @@ static PID_T *pids;
 static int fds;
 
 FILE *
-cron_popen(char *program, char *type, entry *e)
+cron_popen(char *program, const char *type, entry *e)
 {
 	char *cp;
 	FILE *iop;

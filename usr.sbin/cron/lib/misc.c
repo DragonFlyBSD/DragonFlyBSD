@@ -304,7 +304,7 @@ unget_char(int ch, FILE *file)
  *		(4) returns EOF or terminating character, whichever
  */
 int
-get_string(char *string, int size, FILE *file, char *terms)
+get_string(char *string, int size, FILE *file, const char *terms)
 {
 	int	ch;
 
@@ -419,7 +419,7 @@ allowed(char *username)
 
 
 void
-log_it(char *username, int xpid, char *event, const char *detail)
+log_it(const char *username, int xpid, const char *event, const char *detail)
 {
 	PID_T pid = xpid;
 #if defined(LOG_FILE)
@@ -521,7 +521,7 @@ log_close(void) {
  * t	terminators, implicitly including \0
  */
 char *
-first_word(char *s, char *t)
+first_word(char *s, const char *t)
 {
 	static char retbuf[2][MAX_TEMPSTR + 1];	/* sure wish C had GC */
 	static int retsel = 0;
@@ -551,7 +551,7 @@ first_word(char *s, char *t)
 /* warning:
  *	heavily ascii-dependent.
  */
-void
+static void
 mkprint(char *dst, unsigned char *src, int len)
 {
 	while (len-- > 0)
@@ -627,21 +627,10 @@ swap_uids(void)
 	save_euid = geteuid();
 	return seteuid(getuid());
 }
-int
-swap_uids_back(void)
-{
-
-	return seteuid(save_euid);
-}
 #else /*HAVE_SAVED_UIDS*/
 int
 swap_uids(void)
 {
 	return setreuid(geteuid(), getuid());
-}
-int
-swap_uids_back(void)
-{
-	return swap_uids();
 }
 #endif /*HAVE_SAVED_UIDS*/

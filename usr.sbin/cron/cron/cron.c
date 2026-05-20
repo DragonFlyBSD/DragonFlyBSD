@@ -15,7 +15,6 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/cron.c,v 1.9.2.2 2001/05/28 23:37:26 babkin Exp $
- * $DragonFly: src/usr.sbin/cron/cron/cron.c,v 1.8 2006/03/18 20:29:50 dillon Exp $
  */
 
 #define	MAIN_PROGRAM
@@ -48,7 +47,7 @@ static int	dst_enabled = 0;
 static void
 usage(void)
 {
-    char **dflags;
+	const char **dflags;
 
 	fprintf(stderr, "usage: cron [-j jitter] [-J rootjitter] "
 			"[-s] [-o] [-x debugflag[,...]]\n");
@@ -372,7 +371,7 @@ cron_clean(cron_db *db)
 
 #ifdef USE_SIGCHLD
 static void
-sigchld_handler(int x)
+sigchld_handler(__unused int x)
 {
 	WAIT_T		waiter;
 	PID_T		pid;
@@ -403,7 +402,7 @@ sigchld_handler(int x)
 
 
 static void
-sighup_handler(int x)
+sighup_handler(__unused int x)
 {
 	log_close();
 }

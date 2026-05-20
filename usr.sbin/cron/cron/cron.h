@@ -213,13 +213,13 @@ void		set_cron_uid(void),
 		free_entry(entry *),
 		acquire_daemonlock(int),
 		skip_comments(FILE *),
-		log_it(char *, int, char *, const char *),
+		log_it(const char *, int, const char *, const char *),
 		log_close(void);
 
 int		job_runqueue(void),
 		set_debug_flags(char *),
 		get_char(FILE *),
-		get_string(char *, int, FILE *, char *),
+		get_string(char *, int, FILE *, const char *),
 		swap_uids(void),
 		load_env(char *, FILE *),
 		cron_pclose(FILE *),
@@ -227,21 +227,21 @@ int		job_runqueue(void),
 		allowed(char *),
 		strdtb(char *);
 
-char		*env_get(char *, char **),
+char		*env_get(const char *, char **),
 		*arpadate(time_t *),
 		*mkprints(unsigned char *, unsigned int),
-		*first_word(char *, char *),
+		*first_word(char *, const char *),
 		**env_init(void),
 		**env_copy(char **),
 		**env_set(char **, char *);
 
-user		*load_user(int, struct passwd *, char *),
-		*find_user(cron_db *, char *);
+user		*load_user(int, struct passwd *, const char *),
+		*find_user(cron_db *, const char *);
 
 entry		*load_entry(FILE *, void (*)(const char *),
 				 struct passwd *, char **);
 
-FILE		*cron_popen(char *, char *, entry *);
+FILE		*cron_popen(char *, const char *, entry *);
 
 
 				/* in the C tradition, we only create
@@ -251,19 +251,19 @@ FILE		*cron_popen(char *, char *, entry *);
 
 #ifdef MAIN_PROGRAM
 # if !defined(LINT) && !defined(lint)
-char	*copyright[] = {
+const char *copyright[] = {
 		"@(#) Copyright 1988,1989,1990,1993,1994 by Paul Vixie",
 		"@(#) All rights reserved"
 	};
 # endif
 
-char	*MonthNames[] = {
+const char *MonthNames[] = {
 		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 		NULL
 	};
 
-char	*DowNames[] = {
+const char *DowNames[] = {
 		"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun",
 		NULL
 	};
@@ -276,7 +276,7 @@ time_t	TargetTime;
 
 # if DEBUGGING
 int	DebugFlags;
-char	*DebugFlagNames[] = {	/* sync with #defines */
+const char *DebugFlagNames[] = {	/* sync with #defines */
 		"ext", "sch", "proc", "pars", "load", "misc", "test", "bit",
 		NULL		/* NULL must be last element */
 	};
