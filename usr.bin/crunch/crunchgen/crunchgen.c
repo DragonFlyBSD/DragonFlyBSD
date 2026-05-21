@@ -1173,9 +1173,10 @@ prog_makefile_rules(FILE *outmk, prog_t *p)
 	fprintf(outmk, "%s_stub.c:\n", p->name);
 	fprintf(outmk, "\techo \""
 	    "extern int main(int, char **, char **); "
+	    "int _crunched_%s_stub(int, char **, char **); "
 	    "int _crunched_%s_stub(int argc, char **argv, char **envp)"
 	    "{return main(argc,argv,envp);}\" >%s_stub.c\n",
-	    p->ident, p->name);
+	    p->ident, p->ident, p->name);
 	fprintf(outmk, "%s_stub.o: %s_stub.c\n",
 	    p->name, p->name);
 	fprintf(outmk, "\t${CC} ${CFLAGS:N-flto*} -c %s_stub.c -o %s_stub.o",
