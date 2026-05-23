@@ -45,14 +45,12 @@ COORD *
 rnd_pos(void)
 {
 	static COORD pos;
-	static int call = 0;
 
 	do {
 		pos.y = rnd(Y_FIELDSIZE - 1) + 1;
 		pos.x = rnd(X_FIELDSIZE - 1) + 1;
 		refresh();
 	} while (Field[pos.y][pos.x] != 0);
-	call++;
 	return &pos;
 }
 
