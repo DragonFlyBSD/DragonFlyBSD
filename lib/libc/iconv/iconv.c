@@ -277,12 +277,14 @@ iconvctl(iconv_t cd, int request, void *argument)
 	switch (request) {
 	case ICONV_TRIVIALP:
 		convname = cv->cv_shared->ci_convname;
+		if (convname == NULL)
+			return (-1);
 		dst = strchr(convname, '/');
+		if (dst == NULL)
+			return (-1);
 
 		strlcpy(src, convname, dst - convname + 1);
 		dst++;
-		if ((convname == NULL) || (dst == NULL))
-			return (-1);
 		*i = strcmp(src, dst) == 0 ? 1 : 0;
 		return (0);
 	case ICONV_GET_TRANSLITERATE:
