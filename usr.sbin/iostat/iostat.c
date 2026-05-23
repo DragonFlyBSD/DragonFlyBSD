@@ -146,7 +146,7 @@ int
 main(int argc, char **argv)
 {
 	int c;
-	int tflag = 0, hflag = 0, cflag = 0, wflag = 0, nflag = 0;
+	int hflag = 0, cflag = 0, wflag = 0, nflag = 0;
 	int count = 0, waittime = 0;
 	struct devstat_match *matches;
 	int num_matches = 0;
@@ -202,8 +202,7 @@ main(int argc, char **argv)
 				oflag++;
 				break;
 			case 't':
-				tflag++;
-				if (buildmatch(optarg, &matches, 
+				if (buildmatch(optarg, &matches,
 					       &num_matches) != 0)
 					errx(1, "%s", devstat_errbuf);
 				break;
