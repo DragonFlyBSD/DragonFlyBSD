@@ -1162,7 +1162,7 @@ fprintlog(struct filed *f, int flags, const char *msg)
 		v->iov_base = repbuf;
 		v->iov_len = snprintf(repbuf, sizeof repbuf,
 		    "last message repeated %d times", f->f_prevcount);
-	} else if (f->f_prevline) {
+	} else if (f->f_prevline[0]) {
 		v->iov_base = f->f_prevline;
 		v->iov_len = f->f_prevlen;
 	} else {
