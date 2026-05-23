@@ -1179,7 +1179,6 @@ dozmem(u_int interval, int reps)
 	struct vm_zone	*kz;
 	struct vm_zone	zone;
 	struct vm_zone	save[MAXSAVE];
-	long zfreecnt_prev;
 	long znalloc_prev;
 	long zfreecnt_next;
 	long znalloc_next;
@@ -1202,10 +1201,8 @@ again:
 			perror("kvm_read");
 			break;
 		}
-		zfreecnt_prev = save[i].zfreecnt;
 		znalloc_prev = save[i].znalloc;
 		for (n = 0; n < ncpus; ++n) {
-			zfreecnt_prev += save[i].zpcpu[n].zfreecnt;
 			znalloc_prev += save[i].zpcpu[n].znalloc;
 		}
 
