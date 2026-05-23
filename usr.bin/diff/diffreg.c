@@ -139,8 +139,7 @@
  *	With J in hand, the matches there recorded are
  *	check'ed against reality to assure that no spurious
  *	matches have crept in due to hashing. If they have,
- *	they are broken, and "jackpot" is recorded--a harmless
- *	matter except that a true match for a spuriously
+ *	they are broken.  A true match for a spuriously
  *	mated line may now be unnecessarily reported as a change.
  *
  *	Much of the complexity of the program comes simply
@@ -692,20 +691,19 @@ unravel(int p)
 /*
  * Check does double duty:
  *  1.	ferret out any fortuitous correspondences due
- *	to confounding by hashing (which result in "jackpot")
+ *	to confounding by hashing
  *  2.  collect random access indexes to the two files
  */
 static void
 check(FILE *f1, FILE *f2, int flags)
 {
-	int i, j, jackpot, c, d;
+	int i, j, c, d;
 	long ctold, ctnew;
 
 	rewind(f1);
 	rewind(f2);
 	j = 1;
 	ixold[0] = ixnew[0] = 0;
-	jackpot = 0;
 	ctold = ctnew = 0;
 	for (i = 1; i <= len[0]; i++) {
 		if (J[i] == 0) {
@@ -758,7 +756,6 @@ check(FILE *f1, FILE *f2, int flags)
 					}
 				}
 				if (chrtran[c] != chrtran[d]) {
-					jackpot++;
 					J[i] = 0;
 					if (c != '\n' && c != EOF)
 						ctold += skipline(f1);
@@ -774,7 +771,6 @@ check(FILE *f1, FILE *f2, int flags)
 				ctold++;
 				ctnew++;
 				if ((c = getc(f1)) != (d = getc(f2))) {
-					/* jackpot++; */
 					J[i] = 0;
 					if (c != '\n' && c != EOF)
 						ctold += skipline(f1);
@@ -792,10 +788,6 @@ check(FILE *f1, FILE *f2, int flags)
 	}
 	for (; j <= len[1]; j++)
 		ixnew[j] = ctnew += skipline(f2);
-	/*
-	 * if (jackpot)
-	 *	fprintf(stderr, "jackpot\n");
-	 */
 }
 
 /* shellsort CACM #201 */
