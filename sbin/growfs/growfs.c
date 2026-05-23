@@ -657,7 +657,7 @@ cond_bl_upd(ufs_daddr_t *block, struct gfs_bpp *field,
 static void
 updjcg(int cylno, time_t utime, int fsi, int fso, unsigned int Nflag)
 {
-	daddr_t	cbase, dmax, dupper;
+	daddr_t	cbase, dmax;
 	struct csum	*cs;
 	int	i,k;
 	int	j=0;
@@ -706,11 +706,6 @@ updjcg(int cylno, time_t utime, int fsi, int fso, unsigned int Nflag)
 	dmax = cbase + sblock.fs_fpg;
 	if (dmax > sblock.fs_size)
 		dmax = sblock.fs_size;
-	dupper = cgdmin(&sblock, cylno) - cbase;
-	if (cylno == 0) { /* XXX fscs may be relocated */
-		dupper += howmany(sblock.fs_cssize, sblock.fs_fsize);
-	}
-
 	/*
 	 * Set pointer to the cylinder summary for our cylinder group.
 	 */
