@@ -77,7 +77,6 @@ where(void)
 void
 printsq(int sqn, bool eoln)
 {
-	int rnt;
 	PROP *pp;
 	SQUARE *sqp;
 
@@ -139,8 +138,6 @@ printsq(int sqn, bool eoln)
 		}
 		printf(" %d Railroad 200", sqp->owner+1);
 		printmorg(sqp);
-		rnt = 25;
-		rnt <<= play[sqp->owner].num_rr - 1;
 		printf("%d %4d", play[sqp->owner].num_rr,
 		    25 << (play[sqp->owner].num_rr - 1));
 		break;
