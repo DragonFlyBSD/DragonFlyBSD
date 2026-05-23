@@ -482,7 +482,7 @@ get_influx_series(const char *val)
 
 static
 void
-dump_influxdb(kcollect_t *ary, size_t count, size_t total_count,
+dump_influxdb(kcollect_t *ary, size_t count, size_t total_count __unused,
 	  __unused const char* display_fmt)
 {
 	int j;
@@ -531,7 +531,6 @@ dump_influxdb(kcollect_t *ary, size_t count, size_t total_count,
 			    hostname, colname, value, ts_nsec);
 		}
 		printf("\n");
-		++total_count;
 	}
 
 }
