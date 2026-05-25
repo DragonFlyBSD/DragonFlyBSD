@@ -2603,8 +2603,8 @@ fwohci_arcv_swap(struct fw_pkt *fp, int len)
 	case FWOHCITCODE_PHY:
 #if BYTE_ORDER == BIG_ENDIAN
 		slen = 12;
-		break;
 #endif
+		break;
 	case FWTCODE_RREQB:
 	case FWTCODE_WREQB:
 	case FWTCODE_LREQ:
@@ -2612,8 +2612,8 @@ fwohci_arcv_swap(struct fw_pkt *fp, int len)
 	case FWTCODE_LRES:
 #if BYTE_ORDER == BIG_ENDIAN
 		slen = 16;
-		break;
 #endif
+		break;
 	default:
 		kprintf("Unknown tcode %d\n", fp0->mode.common.tcode);
 		return(0);
