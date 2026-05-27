@@ -214,16 +214,20 @@ hammer2_ioctl_recluster(hammer2_inode_t *ip, void *data)
 		error = VFS_ROOT(ip->pmp->mp, &vproot);
 		if (error == 0) {
 			cluster = &ip->pmp->iroot->cluster;
-			kprintf("reconnect to cluster: nc=%d focus=%p\n",
-				cluster->nchains, cluster->focus);
-			if (cluster->nchains != 1 || cluster->focus == NULL) {
-				kprintf("not a local device mount\n");
-				error = EINVAL;
-			} else {
+			if (cluster->focus != NULL) {
 				hammer2_cluster_reconnect(cluster->focus->hmp,
 							  fp);
-				kprintf("ok\n");
 				error = 0;
+			} else if (cluster->nchains == 1 &&
+				   cluster->array[0].chain != NULL) {
+				hammer2_cluster_reconnect(
+					cluster->array[0].chain->hmp, fp);
+				error = 0;
+			} else {
+				kprintf("hammer2: recluster: "
+					"nchains=%d focus=%p\n",
+					cluster->nchains, cluster->focus);
+				error = EINVAL;
 			}
 			vput(vproot);
 		}
