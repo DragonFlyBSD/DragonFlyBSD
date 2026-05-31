@@ -85,6 +85,7 @@ struct u_rman {
 	u_long		rm_start;		/* base of managed region */
 	u_long		rm_size;		/* size of managed region */
 	enum rman_type	rm_type;		/* region type */
+	int		rm_cpuid;		/* owner cpuid */
 };
 
 #ifdef _KERNEL

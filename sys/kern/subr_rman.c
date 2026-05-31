@@ -685,6 +685,7 @@ sysctl_rman(SYSCTL_HANDLER_ARGS)
 		urm.rm_start = rm->rm_start;
 		urm.rm_size = rm->rm_end - rm->rm_start + 1;
 		urm.rm_type = rm->rm_type;
+		urm.rm_cpuid = rm->rm_cpuid;
 
 		error = SYSCTL_OUT(req, &urm, sizeof(urm));
 		goto done;

@@ -62,6 +62,8 @@ struct devinfo_rman {
 	unsigned long		dm_size;	/* resource size */
     
 	char			*dm_desc;	/* resource description */
+
+	int			dm_cpuid;	/* owner cpuid */
 };
 
 struct devinfo_res {

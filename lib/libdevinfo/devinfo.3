@@ -113,6 +113,7 @@ struct devinfo_rman {
     u_long		dm_start;	/* resource start */
     u_long		dm_size;	/* resource size */
     char		*dm_desc;	/* resource description */
+    int			dm_cpuid;	/* owner cpuid */
 };
 
 struct devinfo_res {

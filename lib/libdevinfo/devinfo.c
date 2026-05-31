@@ -309,6 +309,7 @@ devinfo_init_resources(int generation)
 		dm->dm_rman.dm_size = urman.rm_size;
 		snprintf(dm->dm_desc, DEVINFO_STRLEN, "%s", urman.rm_descr);
 		dm->dm_rman.dm_desc = &dm->dm_desc[0];
+		dm->dm_rman.dm_cpuid = urman.rm_cpuid;
 		TAILQ_INSERT_TAIL(&devinfo_rman, dm, dm_link);
 
 		/*

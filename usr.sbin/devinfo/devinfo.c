@@ -116,7 +116,11 @@ print_device_rman_resources(struct devinfo_rman *rman, void *arg)
 		/* there are, print header */
 		for (i = 0; i < indent; i++)
 			printf(" ");
-		printf("%s:\n", rman->dm_desc);
+
+		if (rman->dm_cpuid >= 0)
+			printf("%s cpu%d:\n", rman->dm_desc, rman->dm_cpuid);
+		else
+			printf("%s:\n", rman->dm_desc);
 
 		/* print resources */
 		ia->indent = indent + 4;
