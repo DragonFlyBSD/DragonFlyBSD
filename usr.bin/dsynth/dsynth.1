@@ -346,6 +346,9 @@ fetches all source distributions required to build the whole of
 .Pp
 Any existing distfiles which do not match the expected
 signature will be re-fetched.
+.It Cm list-only Op Ar ports/everything
+Generate a list of all likely build dependencies required to build
+the specified targets.  The output is written to the file "build.txt"
 .It Cm upgrade-system
 NOT CURRENTLY IMPLEMENTED.
 Incrementally build and upgrade your locally

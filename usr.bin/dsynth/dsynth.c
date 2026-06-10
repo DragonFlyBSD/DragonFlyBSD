@@ -392,6 +392,28 @@ main(int ac, char **av)
 		}
 		DoBuild(pkgs);
 		doadds = 1;
+	} else if (strcmp(av[0], "list-only") == 0) {
+		FILE *fp;
+
+		++YesOpt;
+		//WorkerProcFlags |= WORKER_PROC_FETCHONLY;
+		DoCleanBuild(1);
+		OptimizeEnv();
+		if (ac == 2 && strcmp(av[1], "everything") == 0) {
+			MaskProbeAbort = 1;
+			pkgs = GetFullPackageList();
+		} else {
+			pkgs = ParsePackageList(ac - 1, av + 1, 0);
+		}
+		printf("Writing build.txt file\n");
+		if ((fp = fopen("build.txt", "w")) != NULL) {
+			while (pkgs) {
+				fprintf(fp, "%s\t%s\n",
+					pkgs->portdir, pkgs->pkgfile);
+				pkgs = pkgs->bnext;
+			}
+			fclose(fp);
+		}
 	} else if (strcmp(av[0], "list-system") == 0) {
 		FILE *fp;
 
@@ -717,6 +739,7 @@ usage(int ecode)
     "				(also infers -P)\n"
     "    debug      [ports]   - like 'test' but leaves mounts intact\n"
     "    fetch-only [ports]   - Fetch src dists only ('everything' ok)\n"
+    "    list-only  [ports]   - Dump deps (port & pkgs) to build.txt ('everything' ok)\n"
     "    monitor    [datfile] - Monitor a running dsynth\n"
     "\n"
     "    [ports] is a space-delimited list of origins, e.g. editors/joe.  It\n"
