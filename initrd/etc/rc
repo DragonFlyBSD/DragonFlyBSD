@@ -38,16 +38,18 @@ done
 
 echo "Mounting real root partition at $NEW_ROOT ..."
 
-IFS=':'
 REAL_ROOT=$(sysctl -n vfs.real_root)
 if [ $? -ne 0 ]; then
-	echo "ERROR: vfs.real_root sysctl no exist. The kernel is too old."
+	echo "ERROR: vfs.real_root sysctl not exist. The kernel is too old."
 	rescue_shell
 fi
 if [ -z "${REAL_ROOT}" ]; then
 	echo "ERROR: vfs.real_root sysctl not set."
 	rescue_shell
 fi
+
+echo "Real root: $REAL_ROOT"
+IFS=':'
 set -- $REAL_ROOT
 unset IFS
 
@@ -69,5 +71,4 @@ cd /
 umount /var
 
 echo "Mounting devfs on real root ..."
-#mount_devfs $NEW_ROOT/dev
 mount_null /dev $NEW_ROOT/dev
