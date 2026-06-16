@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (c) 2018
+.\" Copyright (c) 2018,2026
 .\"	The DragonFly Project.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd June 2, 2018
+.Dd June 16, 2026
 .Dt INITRD 7
 .Os
 .Sh NAME
@@ -98,39 +98,61 @@ Its general syntax is:
 vfs.root.realroot="<type>:[arg1[:arg2[:...]]]"
 .Ed
 .Pp
-Currently, the supported types of real root partition are:
-.Pa local ,
-.Pa crypt ,
+The supported types of real root partition are:
+.Cm local ,
+.Cm crypt ,
 and
-.Pa tcplay .
+.Cm tcplay .
 The
-.Pa local
+.Cm local
 type allows to mount any local filesystem that does not require any
 special setup apart from the initial discovery and calling the
 .Xr mount 8
 program.
 The general format is as follows:
 .Bd -literal -offset indent
-vfs.root.realroot="local:<FS-TYPE>:<DEVICE-PATH>[:<OPTIONS>]"
+vfs.root.realroot="local:<FS-TYPE>:<DEVICE-PATH>[@LABEL][:<OPTIONS>]"
 .Ed
 .Pp
+where the
+.Ar @LABEL
+option may be used to specify the PFS label of a HAMMER/HAMMER2 filesystem,
+and the
+.Ar OPTIONS
+specifies the extra options for
+.Xr mount 8 .
+.Pp
 The
-.Pa crypt
+.Cm crypt
 and
-.Pa tcplay
+.Cm tcplay
 types allow to mount volumes supported by
 .Xr cryptsetup 8
 and
 .Xr tcplay 8 ,
 respectively.
 The device will be set up after asking the user for the key,
-and this volume will then be mounted as the root.
+and then be mounted as the root.
 The general formats are as follows:
 .Bd -literal -offset indent
-vfs.root.realroot="crypt:<FS-TYPE>:<DEVICE-PATH>:<MAPPING-NAME>[:<OPTIONS>]"
+vfs.root.realroot="crypt:<FS-TYPE>:<DEVICE-PATH>[@LABEL]:<MAPPING-NAME>[:<OPTIONS>]"
 
-vfs.root.realroot="tcplay:<FS-TYPE>:<DEVICE-PATH>:<MAPPING-NAME>[:<OPTIONS>]"
+vfs.root.realroot="tcplay:<FS-TYPE>:<DEVICE-PATH>[@LABEL]:<MAPPING-NAME>[:<OPTIONS>]"
 .Ed
+.Pp
+where the
+.Ar MAPPING-NAME
+specifies the device name to be created under
+.Pa /dev/mapper/ ,
+which may be further used in
+.Pa /etc/fstab ;
+the
+.Ar OPTIONS
+is passed to
+.Xr cryptsetup 8
+and
+.Xr tcplay 8 ,
+respectively.
 .Sh FILES
 .Bl -tag -width "/boot/kernel/initrd.img.gz"
 .It Pa /boot/kernel/initrd.img.gz
@@ -139,14 +161,19 @@ Location of the compressed
 image.
 .El
 .Sh EXAMPLES
-.Bd -literal -offset indent
+.Bd -literal
 vfs.root.realroot="local:ufs:/dev/vg00/lv0[:OPTIONS]"
 
 vfs.root.realroot="crypt:ufs:/dev/ad0s0a:secvolume[:OPTIONS]"
 
 vfs.root.realroot="crypt:hammer2:/dev/serno/XXXXXX.s1d:root[:OPTIONS]"
+
+vfs.root.realroot="crypt:hammer2:/dev/serno/XXXXXX.s3@ROOT:root[:OPTIONS]"
+
+vfs.root.realroot="crypt:hammer2:/dev/serno/XXXXXX.s3@ROOT.20260616:root[:OPTIONS]"
 .Ed
 .Sh SEE ALSO
+.Xr kenv 1 ,
 .Xr md 4 ,
 .Xr loader.conf 5 ,
 .Xr build 7 ,
