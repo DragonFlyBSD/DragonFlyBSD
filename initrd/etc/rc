@@ -52,13 +52,7 @@ set -- $REAL_ROOT
 unset IFS
 
 TYPE=$1
-if [ "$TYPE" = "local" ]; then
-	FSTYPE=$2
-	MOUNTFROM="/dev/${3#/dev/}"
-	echo "Executing: mount -t $FSTYPE $4 $MOUNTFROM $NEW_ROOT"
-	mount -o ro -t $FSTYPE $4 $MOUNTFROM $NEW_ROOT ||
-	    rescue_shell
-elif [ -x "/etc/rcmount_${TYPE}" ]; then
+if [ -x "/etc/rcmount_${TYPE}" ]; then
 	. /etc/rcmount_${TYPE} "$@" ||
 	    rescue_shell
 else
