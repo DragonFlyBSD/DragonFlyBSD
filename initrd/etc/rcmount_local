@@ -1,0 +1,7 @@
+#!/bin/sh
+
+FSTYPE=$2
+MOUNTFROM="/dev/${3#/dev/}"
+OPTIONS=$4
+
+mount -o ro -t $FSTYPE $OPTIONS $MOUNTFROM $NEW_ROOT || return 3
