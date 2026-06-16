@@ -5,5 +5,11 @@ MOUNTFROM="/dev/${3#/dev/}"
 VOLUME=$4
 OPTIONS=$5
 
-tcplay -m $VOLUME -d $MOUNTFROM $OPTIONS || return 2
-mount -o ro -t $FSTYPE /dev/mapper/$VOLUME $NEW_ROOT || return 3
+tcplay -m $VOLUME -d $MOUNTFROM $OPTIONS || {
+	echo "ERROR: failed to open tcplay device: $MOUNTFROM"
+	return 2
+}
+mount -o ro -t $FSTYPE /dev/mapper/$VOLUME $NEW_ROOT || {
+	echo "ERROR: failed to mount $FSTYPE from /dev/mapper/$VOLUME"
+	return 3
+}
