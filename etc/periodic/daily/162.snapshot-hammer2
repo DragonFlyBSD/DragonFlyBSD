@@ -55,7 +55,9 @@ case "${snap_enable}" in
 		_df=$(df ${dir} | grep -oE "[0-9]+%")
 		_pcnt=${_df%%%}
 		if [ ${_pcnt} -le ${snap_capacity} ]; then
-			hammer2 snapshot ${dir} ${dir}.${snap_tag}.$(date +%Y%m%d.%H:%M) \
+			# NOTE: avoid using ':' in name so that the snapshot
+			# can be used in 'vfs.root.realroot'; see initrd(7).
+			hammer2 snapshot ${dir} ${dir}.${snap_tag}.$(date +%Y%m%d) \
 				|| rc=1
 		else
 			echo "snapshot creation omitted, not enough free space"
