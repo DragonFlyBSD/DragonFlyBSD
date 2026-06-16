@@ -1,19 +1,29 @@
 #!/bin/sh
 
 FSTYPE=$2
-MOUNTFROM="/dev/${3#/dev/}"
+DEVICE="/dev/${3#/dev/}"
 VOLUME=$4
 OPTIONS=$5
 
-cryptsetup isLuks $MOUNTFROM || {
-	echo "ERROR: not a LUKS device: $MOUNTFROM"
+# Handle the PFS label of a HAMMER/HAMMER2 filesystem.
+LABEL=
+case $DEVICE in
+*@*)
+	LABEL="@${DEVICE#*@}"
+	DEVICE=${DEVICE%@*}
+	;;
+esac
+MOUNTFROM="/dev/mapper/${VOLUME}${LABEL}"
+
+cryptsetup isLuks $DEVICE || {
+	echo "ERROR: not a LUKS device: $DEVICE"
 	return 1
 }
-cryptsetup $OPTIONS luksOpen $MOUNTFROM $VOLUME || {
-	echo "ERROR: failed to open LUKS device: $MOUNTFROM"
+cryptsetup $OPTIONS luksOpen $DEVICE $VOLUME || {
+	echo "ERROR: failed to open LUKS device: $DEVICE"
 	return 2
 }
-mount -o ro -t $FSTYPE /dev/mapper/$VOLUME $NEW_ROOT || {
-	echo "ERROR: failed to mount $FSTYPE from /dev/mapper/$VOLUME"
+mount -o ro -t $FSTYPE $MOUNTFROM $NEW_ROOT || {
+	echo "ERROR: failed to mount $FSTYPE from $MOUNTFROM"
 	return 3
 }
