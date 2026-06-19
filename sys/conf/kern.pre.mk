@@ -99,7 +99,6 @@ CFLAGS+= -MD
 .endif
 
 NORMAL_C= ${CC} -c ${CFLAGS} ${.IMPSRC}
-NORMAL_C_C= ${CC} -c ${CFLAGS} ${.IMPSRC}
 NORMAL_S= ${CC} -c ${ASM_CFLAGS} ${.IMPSRC}
 
 NORMAL_M= awk -f $S/tools/makeobjops.awk -- -c $<; \
