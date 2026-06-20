@@ -40,9 +40,6 @@ SECTIONS
   .rela.dtors     : { *(.rela.dtors) }
   .rela.got       : { *(.rela.got) }
   .rela.bss       : { *(.rela.bss .rela.bss.* .rela.gnu.linkonce.b.*) }
-  .rela.ldata     : { *(.rela.ldata .rela.ldata.* .rela.gnu.linkonce.l.*) }
-  .rela.lbss      : { *(.rela.lbss .rela.lbss.* .rela.gnu.linkonce.lb.*) }
-  .rela.lrodata   : { *(.rela.lrodata .rela.lrodata.* .rela.gnu.linkonce.lr.*) }
   .rela.ifunc     : { *(.rela.ifunc) }
   .rela.plt       :
     {
@@ -187,23 +184,6 @@ SECTIONS
       pad the .data section.  */
    . = ALIGN(. != 0 ? 64 / 8 : 1);
   }
-  .lbss   :
-  {
-    *(.dynlbss)
-    *(.lbss .lbss.* .gnu.linkonce.lb.*)
-    *(LARGE_COMMON)
-  }
-  . = ALIGN(64 / 8);
-  .lrodata   ALIGN(kernmxps) + (. & (kernmxps - 1)) :
-  {
-    *(.lrodata .lrodata.* .gnu.linkonce.lr.*)
-  }
-  .ldata   ALIGN(kernmxps) + (. & (kernmxps - 1)) :
-  {
-    *(.ldata .ldata.* .gnu.linkonce.l.*)
-    . = ALIGN(. != 0 ? 64 / 8 : 1);
-  }
-  . = ALIGN(64 / 8);
   _end = .; PROVIDE (end = .);
   . = DATA_SEGMENT_END (.);
   /* Stabs debugging sections.  */
