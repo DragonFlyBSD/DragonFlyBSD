@@ -143,8 +143,7 @@ SYSTEM_LD+= ${CFLAGS}
 SYSTEM_LD+= -Wl,-z,max-page-size=0x200000
 .endif
 
-SYSTEM_LD_TAIL= @${OBJCOPY} --strip-symbol gcc2_compiled. ${.TARGET} ; \
-	${SIZE} ${.TARGET} ; chmod 755 ${.TARGET}
+SYSTEM_LD_TAIL= @${SIZE} ${.TARGET} ; chmod 755 ${.TARGET}
 SYSTEM_DEP+= $S/platform/$P/conf/ldscript.$M
 
 # Normalize output files to make it absolutely crystal clear to
