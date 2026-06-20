@@ -22,5 +22,3 @@ CFLAGS+=	-mindirect-branch=thunk-inline
 
 # Remove the dynamic library hack for now
 SYSTEM_OBJS:= ${SYSTEM_OBJS:Nhack.So}
-
-INLINE_LIMIT=	8000

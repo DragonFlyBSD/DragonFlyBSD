@@ -26,5 +26,3 @@ CFLAGS+=	-mno-fp-ret-in-387
 .if ${CCVER:Mgcc*} && ${CCVER:S/gcc//} >= 80
 CFLAGS+=	-mindirect-branch=thunk-inline
 .endif
-
-INLINE_LIMIT?=	8000

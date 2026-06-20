@@ -15,13 +15,7 @@ CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wno-pointer-sign -Winit-self -Wundef
 
 .if ${CCVER:Mgcc*}
-# All flags inside this block are gcc-specific except for --param
-# Since inline-limit wasn't recognized, and since --param squawks on clang
-# when it isn't used, it was shift to GCC compilers only.
-CFLAGS+=	-Wold-style-declaration \
-		-finline-limit=${INLINE_LIMIT} \
-		--param inline-unit-growth=100 \
-		--param large-function-growth=1000
+CFLAGS+=	-Wold-style-declaration
 CWARNFLAGS+=	-Wno-unused-but-set-variable
 .endif
 
