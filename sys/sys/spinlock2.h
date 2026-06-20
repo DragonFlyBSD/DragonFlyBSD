@@ -103,7 +103,7 @@ spin_held(struct spinlock *spin)
  * SPINLOCK_SHARED bit to already be set, in which case the contested
  * code is called to fix it up.
  */
-static __inline void
+static __always_inline void
 _spin_lock_quick(globaldata_t gd, struct spinlock *spin, const char *ident)
 {
 	int count;
@@ -144,7 +144,7 @@ _spin_lock(struct spinlock *spin, const char *ident)
  * NOTE: Actually works for shared OR exclusive spinlocks.  spin_unlock_any()
  *	 assumes this too.
  */
-static __inline void
+static __always_inline void
 spin_unlock_quick(globaldata_t gd, struct spinlock *spin)
 {
 #ifdef DEBUG_LOCKS
@@ -199,7 +199,7 @@ spin_unlock_any(struct spinlock *spin)
  *	     just unconditionally set the SHARED bit on previous-count == 0.
  *	     Doing so will interfere with the exclusive contended code.
  */
-static __inline void
+static __always_inline void
 _spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin,
 			const char *ident)
 {
@@ -241,7 +241,7 @@ _spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin,
  *	    in mind that as of now the spinlock could actually be in an
  *	    exclusive state.
  */
-static __inline void
+static __always_inline void
 spin_unlock_shared_quick(globaldata_t gd, struct spinlock *spin)
 {
 #ifdef DEBUG_LOCKS

@@ -175,7 +175,7 @@ static void slotimer_callback(void *arg);
  * NOTE: The cc-vs-c frontend-vs-backend might be disconnected during the
  *	 operation, but the EXIS lock prevents (c) from being destroyed.
  */
-static __inline
+static
 void
 _callout_update_spinlocked(struct _callout *c)
 {
@@ -707,7 +707,7 @@ slotimer_callback(void *arg)
  * API FUNCTIONS
  */
 
-static __inline
+static __always_inline
 struct _callout *
 _callout_gettoc(struct callout *cc)
 {
@@ -854,7 +854,7 @@ callout_reset_bycpu(struct callout *cc, int to_ticks, void (*ftn)(void *),
 /*
  * Issue synchronous or asynchronous cancel or stop
  */
-static __inline
+static
 int
 _callout_cancel_or_stop(struct callout *cc, uint32_t flags, int sync)
 {

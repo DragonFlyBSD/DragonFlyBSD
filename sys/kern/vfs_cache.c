@@ -242,7 +242,7 @@ __read_mostly static int ncmount_cache_enable = 1;
 SYSCTL_INT(_debug, OID_AUTO, ncmount_cache_enable, CTLFLAG_RW,
 	   &ncmount_cache_enable, 0, "mount point cache");
 
-static __inline void _cache_drop(struct namecache *ncp);
+static void _cache_drop(struct namecache *ncp);
 static int cache_resolve_mp(struct mount *mp, int adjgen);
 static int cache_findmount_callback(struct mount *mp, void *data);
 static void _cache_setunresolved(struct namecache *ncp, int adjgen);
@@ -501,7 +501,7 @@ cache_clearmntcache(struct mount *target __unused)
  *	     unconditional call to cache_validate() or cache_resolve()
  *	     after cache_lock() returns.
  */
-static __inline
+static __always_inline
 void
 _cache_lock(struct namecache *ncp)
 {
@@ -536,7 +536,7 @@ _cache_lock(struct namecache *ncp)
  * A concurrent shared-lock acquisition or acquisition/release can
  * race bit 31 so only drop the ncp if bit 31 was set.
  */
-static __inline
+static __always_inline
 void
 _cache_unlock(struct namecache *ncp)
 {
@@ -546,7 +546,7 @@ _cache_unlock(struct namecache *ncp)
 /*
  * Lock ncp exclusively, non-blocking.  Return 0 on success.
  */
-static __inline
+static __always_inline
 int
 _cache_lock_nonblock(struct namecache *ncp)
 {
@@ -570,7 +570,7 @@ _cache_lock_nonblock(struct namecache *ncp)
  * We want _cache_lock_special() (on success) to return a definitively
  * usable vnode or a definitively unresolved ncp.
  */
-static __inline
+static __always_inline
 int
 _cache_lock_special(struct namecache *ncp)
 {
@@ -595,7 +595,7 @@ _cache_lock_special(struct namecache *ncp)
  * If it is not set then we are responsible for setting it, and this
  * responsibility does not race with anyone else.
  */
-static __inline
+static __always_inline
 void
 _cache_lock_shared(struct namecache *ncp)
 {
@@ -627,7 +627,7 @@ _cache_lock_shared(struct namecache *ncp)
 /*
  * Shared lock, guarantees vp held.  Non-blocking.  Returns 0 on success
  */
-static __inline
+static __always_inline
 int
 _cache_lock_shared_nonblock(struct namecache *ncp)
 {
@@ -657,7 +657,7 @@ _cache_lock_shared_nonblock(struct namecache *ncp)
  *
  *	    This is very evident in dsynth's initial scans.
  */
-static __inline
+static __always_inline
 int
 _cache_lock_shared_special(struct namecache *ncp)
 {
@@ -696,7 +696,7 @@ _cache_lock_shared_special(struct namecache *ncp)
  *	 0	Not locked
  *	(v)	LK_SHARED or LK_EXCLUSIVE
  */
-static __inline
+static __always_inline
 int
 _cache_lockstatus(struct namecache *ncp)
 {
@@ -728,7 +728,7 @@ _cache_lockstatus(struct namecache *ncp)
  * This is a rare case where callers are allowed to hold a spinlock,
  * so we can't ourselves.
  */
-static __inline
+static __always_inline
 struct namecache *
 _cache_hold(struct namecache *ncp)
 {
@@ -746,7 +746,7 @@ _cache_hold(struct namecache *ncp)
  * ncp's destruction, then that other thread might wind up being the
  * one to drop the last ref.
  */
-static __inline
+static __always_inline
 void
 _cache_drop(struct namecache *ncp)
 {
@@ -859,7 +859,7 @@ _cache_link_parent(struct namecache *ncp, struct namecache *par,
  *
  * nhcpp must be spin-locked.  This routine eats the spin-lock.
  */
-static __inline void
+static void
 _cache_unlink_parent(struct namecache *par, struct namecache *ncp,
 		     struct nchash_head *nchpp)
 {
@@ -1310,7 +1310,7 @@ cache_get_maybe_shared(struct nchandle *nch, struct nchandle *target, int excl)
 /*
  * Release a held and locked ncp
  */
-static __inline
+static __always_inline
 void
 _cache_put(struct namecache *ncp)
 {
