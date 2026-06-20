@@ -33,6 +33,13 @@ ${FULLKERNEL}: ${SYSTEM_DEP} vers.o
 	${SYSTEM_LD}
 	${SYSTEM_LD_TAIL}
 
+# Early fail the build in case there are any duplicate objects, because
+# they are all placed in the same directory for linking the kernel.
+.if ${SYSTEM_OBJS:O} != ${SYSTEM_OBJS:O:u}
+_DUP_OBJS!= echo "${SYSTEM_OBJS:O}" | tr ' ' '\n' | uniq -d
+.error Duplicate objects: ${_DUP_OBJS}
+.endif
+
 .if !exists(.depend)
 ${SYSTEM_OBJS}: ${BEFORE_DEPEND:M*.h} ${MFILES:T:S/.m$/.h/}
 .endif
