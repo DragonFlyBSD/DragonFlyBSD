@@ -1096,7 +1096,6 @@ top_makefile_rules(FILE *outmk)
 	    execfname, execfname);
 	fprintf(outmk, "\t\t${CRUNCHED_OBJS} ${LIBS_INT} ${LIBS}\n");
 	fprintf(outmk, ".endif\n");
-	fprintf(outmk, "\tstrip %s\n", execfname);
 	fprintf(outmk, "realclean: clean subclean\n");
 	fprintf(outmk, "clean:\n\trm -f %s *.lo *.o *_stub.c\n", execfname);
 	fprintf(outmk, "subclean: ${SUBCLEAN_TARGETS}\n");
