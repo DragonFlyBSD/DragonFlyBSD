@@ -117,7 +117,7 @@ SYSTEM_SFILES= $S/platform/$P/$M/locore.s
 SYSTEM_DEP= Makefile ${SYSTEM_OBJS}
 SYSTEM_OBJS= locore.o ${OBJS} ioconf.o config.o hack.So
 SYSTEM_LD= @${CC} -nostdlib -ffreestanding -Wl,--hash-style=sysv \
-	-Wl,-Bdynamic -Wl,-T,$S/platform/$P/conf/ldscript.$M \
+	-Wl,-Bdynamic -Wl,-L,$S/conf -Wl,-T,$S/platform/$P/conf/ldscript.$M \
 	-Wl,--export-dynamic -Wl,--dynamic-linker,/red/herring \
 	-o ${.TARGET} -Wl,-X ${SYSTEM_OBJS} vers.o
 
