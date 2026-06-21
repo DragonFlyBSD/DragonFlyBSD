@@ -83,14 +83,13 @@ crunched_main(int argc, char **argv, char **envp)
 static int
 cmpstringp(const void *p1, const void *p2)
 {
-	const char *s1 = *(const char **)p1;
-	const char *s2 = *(const char **)p2;
-	return strcmp(s1, s2);
+	return strcmp((const char *)p1, (const char *)p2);
 }
 
 
+__dead2
 static void
-crunched_usage()
+crunched_usage(void)
 {
 	int nprog = 0, columns = 0;
 	int i, len;
