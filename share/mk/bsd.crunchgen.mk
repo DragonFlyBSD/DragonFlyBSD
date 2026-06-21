@@ -33,9 +33,9 @@
 # If CRUNCH_USE_SYMLINKS is defined, then soft links will be used instead
 # of hard links.
 #
-
 # $FreeBSD: head/share/mk/bsd.crunchgen.mk 305257 2016-09-01 23:52:20Z bdrewery $
 
+.include <bsd.init.mk>
 
 CONF=	${PROG}.conf
 OUTMK=	${PROG}.mk
