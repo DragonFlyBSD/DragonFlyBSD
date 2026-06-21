@@ -95,6 +95,50 @@ SYSCTL_STRING(_kern, KERN_OSTYPE, ostype, CTLFLAG_RD | CTLFLAG_NOLOCK,
 SYSCTL_INT(_kern, KERN_OSRELDATE, osreldate, CTLFLAG_RD,
     &osreldate, 0, "Operating system release date");
 
+/*
+ * The build-id is copied from the ELF section .note.gnu.build-id.  The linker
+ * script defines two variables to expose the beginning and end.
+ */
+extern char __build_id_start[];
+extern char __build_id_end[];
+
+#define	BUILD_ID_HEADER_LEN	0x10
+#define	BUILD_ID_HASH_MAXLEN	0x14 /* SHA-1 */
+
+static int
+sysctl_build_id(SYSCTL_HANDLER_ARGS)
+{
+	uintptr_t sectionlen = (uintptr_t)(__build_id_end - __build_id_start);
+	int hashlen;
+	char buf[2*BUILD_ID_HASH_MAXLEN+1];
+
+	/*
+	 * The ELF note section has a four byte length for the vendor name,
+	 * four byte length for the value, and a four byte vendor specific
+	 * type.  The name for the build id is "GNU\0".  We skip the first 16
+	 * bytes to read the build hash.  We will return the remaining bytes up
+	 * to 20 (SHA-1) hash size.  If the hash happens to be a custom number
+	 * of bytes we will pad the value with zeros, as the section should be
+	 * four byte aligned.
+	 */
+	if (sectionlen <= BUILD_ID_HEADER_LEN ||
+	    sectionlen > (BUILD_ID_HEADER_LEN + BUILD_ID_HASH_MAXLEN)) {
+		return (ENOENT);
+	}
+
+	hashlen = sectionlen - BUILD_ID_HEADER_LEN;
+	for (int i = 0; i < hashlen; i++) {
+		uint8_t c = __build_id_start[i+BUILD_ID_HEADER_LEN];
+		ksnprintf(&buf[2*i], 3, "%02x", c);
+	}
+
+	return (SYSCTL_OUT(req, buf, strlen(buf) + 1));
+}
+
+SYSCTL_PROC(_kern, OID_AUTO, build_id,
+    CTLTYPE_STRING | CTLFLAG_RD,
+    NULL, 0, sysctl_build_id, "A", "Operating system build-id");
+
 static int tls_extra = RTLD_STATIC_TLS_EXTRA_DEFAULT;
 SYSCTL_INT(_kern, KERN_STATIC_TLS_EXTRA, tls_extra, CTLFLAG_RW | CTLFLAG_NOLOCK,
     &tls_extra, 0, "Extra static tls space for libraries");
