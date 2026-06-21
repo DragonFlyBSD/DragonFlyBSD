@@ -1,15 +1,8 @@
-# SPDX-License-Identifier: BSD-2-Clause
+# $Id: auto.obj.mk,v 1.21 2025/08/09 22:42:24 sjg Exp $
 #
-# $Id: auto.obj.mk,v 1.17 2024/02/17 17:26:57 sjg Exp $
+#	@(#) Copyright (c) 2004-2025, Simon J. Gerraty
 #
-#	@(#) Copyright (c) 2004, Simon J. Gerraty
-#
-#	This file is provided in the hope that it will
-#	be of use.  There is absolutely NO WARRANTY.
-#	Permission to copy, redistribute or otherwise
-#	use this file is hereby granted provided that
-#	the above copyright notice and this notice are
-#	left intact.
+#	SPDX-License-Identifier: BSD-2-Clause
 #
 #	Please send copies of changes and bug-fixes to:
 #	sjg@crufty.net
@@ -50,7 +43,12 @@ __objdir?= ${.CURDIR}
 __objdir?= ${MAKEOBJDIRPREFIX}${.CURDIR}
 .endif
 __objdir?= ${MAKEOBJDIR:Uobj}
-__objdir:= ${__objdir}
+# relative dirs can cause trouble below
+# keep it simple and convert to absolute path now if needed
+.if ${__objdir:M/*} == ""
+# avoid ugly ${.CURDIR}/./obj etc.
+__objdir:= ${.CURDIR}/${__objdir:S,^./,,}
+.endif
 .if ${.OBJDIR:tA} != ${__objdir:tA}
 # We need to chdir, make the directory if needed
 .if !exists(${__objdir}/) && \
@@ -65,10 +63,8 @@ __objdir_made != echo ${__objdir}/; umask ${OBJDIR_UMASK:U002}; \
 .if ${.OBJDIR:tA} != ${__objdir:tA}
 # we did not get what we want - do we care?
 .if ${__objdir_made:Uno:M${__objdir}/*} != ""
-# watch out for __objdir being relative path
-.if !(${__objdir:M/*} == "" && ${.OBJDIR:tA} == ${${.CURDIR}/${__objdir}:L:tA})
+# we attempted to make ${__objdir} and failed
 .error could not use ${__objdir}: .OBJDIR=${.OBJDIR}
-.endif
 .endif
 # apparently we can live with it
 # make sure we know what we have

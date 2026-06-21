@@ -1,4 +1,4 @@
-/*	$NetBSD: dir.c,v 1.295 2024/07/07 07:50:57 rillig Exp $	*/
+/*	$NetBSD: dir.c,v 1.298 2026/04/06 17:13:54 rillig Exp $	*/
 
 /*
  * Copyright (c) 1988, 1989, 1990 The Regents of the University of California.
@@ -132,7 +132,7 @@
 #include "job.h"
 
 /*	"@(#)dir.c	8.2 (Berkeley) 1/2/94"	*/
-MAKE_RCSID("$NetBSD: dir.c,v 1.295 2024/07/07 07:50:57 rillig Exp $");
+MAKE_RCSID("$NetBSD: dir.c,v 1.298 2026/04/06 17:13:54 rillig Exp $");
 
 /*
  * A search path is a list of CachedDir structures. A CachedDir has in it the
@@ -492,7 +492,7 @@ Dir_InitDot(void)
 
 	dir = SearchPath_Add(NULL, ".");
 	if (dir == NULL) {
-		Error("Cannot open `.' (%s)", strerror(errno));
+		Error("Cannot open \".\": %s", strerror(errno));
 		exit(2);	/* Not 1 so -q can distinguish error */
 	}
 
@@ -1123,7 +1123,7 @@ FindFileAbsolute(SearchPath *path, bool seenDotLast,
 	DEBUG0(DIR, "   Trying exact path matches...\n");
 
 	if (!seenDotLast && cur != NULL &&
-	    ((file = DirLookupAbs(cur, name, base)) != NULL))
+	    (file = DirLookupAbs(cur, name, base)) != NULL)
 		goto found;
 
 	for (ln = path->dirs.first; ln != NULL; ln = ln->next) {
@@ -1135,7 +1135,7 @@ FindFileAbsolute(SearchPath *path, bool seenDotLast,
 	}
 
 	if (seenDotLast && cur != NULL &&
-	    ((file = DirLookupAbs(cur, name, base)) != NULL))
+	    (file = DirLookupAbs(cur, name, base)) != NULL)
 		goto found;
 
 	return false;
@@ -1365,7 +1365,7 @@ ResolveMovedDepends(GNode *gn)
 	gn->path = bmake_strdup(fullName);
 	if (!Job_RunTarget(".STALE", gn->fname))
 		fprintf(stdout,	/* XXX: Why stdout? */
-		    "%s: %s, %u: ignoring stale %s for %s, found %s\n",
+		    "%s: %s:%u: ignoring stale %s for %s, found %s\n",
 		    progname, gn->fname, gn->lineno,
 		    makeDependfile, gn->name, fullName);
 

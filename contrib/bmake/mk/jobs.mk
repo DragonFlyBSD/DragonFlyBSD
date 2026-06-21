@@ -1,15 +1,8 @@
-# SPDX-License-Identifier: BSD-2-Clause
+# $Id: jobs.mk,v 1.20 2025/08/09 22:42:24 sjg Exp $
 #
-# $Id: jobs.mk,v 1.17 2024/02/17 17:26:57 sjg Exp $
+#	@(#) Copyright (c) 2012-2025, Simon J. Gerraty
 #
-#	@(#) Copyright (c) 2012-2023, Simon J. Gerraty
-#
-#	This file is provided in the hope that it will
-#	be of use.  There is absolutely NO WARRANTY.
-#	Permission to copy, redistribute or otherwise
-#	use this file is hereby granted provided that
-#	the above copyright notice and this notice are
-#	left intact.
+#	SPDX-License-Identifier: BSD-2-Clause
 #
 #	Please send copies of changes and bug-fixes to:
 #	sjg@crufty.net
@@ -68,7 +61,7 @@ NEWLOG_SH := ${(type newlog.sh) 2> /dev/null:L:sh:M/*}
 .endif
 .endif
 .if !empty(NEWLOG_SH) && exists(${NEWLOG_SH})
-NEWLOG := sh ${NEWLOG_SH}
+NEWLOG := ${.SHELL:Ush} ${NEWLOG_SH}
 JOB_NEWLOG_ARGS ?= -S -n ${JOB_LOG_GENS}
 .else
 NEWLOG = :

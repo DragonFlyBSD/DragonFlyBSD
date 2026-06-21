@@ -1,16 +1,8 @@
-# SPDX-License-Identifier: BSD-2-Clause
-#
-# $Id: meta.sys.mk,v 1.56 2024/11/22 23:51:48 sjg Exp $
-
+# $Id: meta.sys.mk,v 1.58 2026/04/24 19:56:01 sjg Exp $
 #
 #	@(#) Copyright (c) 2010-2023, Simon J. Gerraty
 #
-#	This file is provided in the hope that it will
-#	be of use.  There is absolutely NO WARRANTY.
-#	Permission to copy, redistribute or otherwise
-#	use this file is hereby granted provided that
-#	the above copyright notice and this notice are
-#	left intact.
+#	SPDX-License-Identifier: BSD-2-Clause
 #
 #	Please send copies of changes and bug-fixes to:
 #	sjg@crufty.net
@@ -74,7 +66,7 @@ META_MODE += silent=yes
 .endif
 .endif
 
-.if ${MK_DIRDEPS_BUILD:Uno} == "yes"
+.if ${MK_META_AUTODEP:Uno} == "yes"
 
 .if !defined(META2DEPS)
 .if defined(PYTHON) && exists(${PYTHON})
@@ -87,6 +79,7 @@ META2DEPS := ${META2DEPS}
 .export META2DEPS
 .endif
 
+.if ${MK_DIRDEPS_BUILD:Uno} == "yes"
 MAKE_PRINT_VAR_ON_ERROR += \
 	.ERROR_TARGET \
 	.ERROR_EXIT \
@@ -96,6 +89,7 @@ MAKE_PRINT_VAR_ON_ERROR += \
 	.MAKE.MODE
 
 MK_META_ERROR_TARGET = yes
+.endif
 .endif
 
 .if ${MK_META_ERROR_TARGET:Uno} == "yes"
@@ -129,7 +123,9 @@ _metaError: .NOMETA .NOTMAIN
 
 # Are we, after all, in meta mode?
 .if ${.MAKE.MODE:Uno:Mmeta*} != ""
+.if ${MK_META_AUTODEP:Uno} == "yes"
 MKDEP_MK ?= meta.autodep.mk
+.endif
 
 # we can afford to use cookies to prevent some targets
 # re-running needlessly

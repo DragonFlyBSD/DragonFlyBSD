@@ -1,15 +1,8 @@
-# SPDX-License-Identifier: BSD-2-Clause
-#
-# $Id: sys.mk,v 1.61 2024/10/30 23:46:26 sjg Exp $
+# $Id: sys.mk,v 1.68 2026/04/24 19:56:01 sjg Exp $
 #
 #	@(#) Copyright (c) 2003-2023, Simon J. Gerraty
 #
-#	This file is provided in the hope that it will
-#	be of use.  There is absolutely NO WARRANTY.
-#	Permission to copy, redistribute or otherwise
-#	use this file is hereby granted provided that
-#	the above copyright notice and this notice are
-#	left intact.
+#	SPDX-License-Identifier: BSD-2-Clause
 #
 #	Please send copies of changes and bug-fixes to:
 #	sjg@crufty.net
@@ -93,14 +86,17 @@ EGREP ?= egrep
 # some options we need to know early
 OPTIONS_DEFAULT_NO += \
 	DIRDEPS_BUILD \
-	DIRDEPS_CACHE
+	DIRDEPS_CACHE \
 
 OPTIONS_DEFAULT_DEPENDENT += \
 	AUTO_OBJ/DIRDEPS_BUILD \
+	META_AUTODEP/DIRDEPS_BUILD \
 	META_ERROR_TARGET/DIRDEPS_BUILD \
 	META_MODE/DIRDEPS_BUILD \
 	STAGING/DIRDEPS_BUILD \
 	STATIC_DIRDEPS_CACHE/DIRDEPS_CACHE \
+	UPDATE_DEPENDFILE/DIRDEPS_BUILD \
+	UPDATE_DIRDEPS_CACHE/DIRDEPS_CACHE \
 
 .-include <options.mk>
 
@@ -110,7 +106,12 @@ OPTIONS_DEFAULT_DEPENDENT += \
 .endif
 .if ${MK_META_MODE:Uno} == "yes"
 .-include <meta.sys.mk>
-.MAKE.MODE ?= meta verbose {META_MODE}
+.MAKE.MODE ?= meta verbose ${META_MODE}
+.elif ${MK_META_AUTODEP:Uno} == "yes"
+MK_META_AUTODEP = no
+.if ${.MAKE.LEVEL} == 0
+.warning ignoring META_AUTODEP: requires META_MODE
+.endif
 .endif
 # make sure we have a harmless value
 .MAKE.MODE ?= normal

@@ -1,3 +1,223 @@
+2026-06-19  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* install-mk (MK_VERSION): 20260619
+
+	* install-new.mk: for POSIX_SHELL we need .new*
+	rather than just .new
+
+2026-05-21  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* meta2deps.{py,sh}: skip pathnames with spaces - not worth the pain.
+
+2026-05-09  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* gendirdeps.mk: also apply ':S,/$,,' and ':C,/(\.[^.]*)$,\1,'
+	when setting DIRDEPS prior to saving.
+
+	* dirdeps.mk: when debugging it is handy to be able to skip
+	recursing so if DEBUG_DIRDEPS contains 'norecurse' we will only
+	process the immediate DIRDEPS.
+	Also if DEBUG_DIRDEPS contains '-V' we process sections normally
+	skipped when doing 'make -V'.
+	o ensure we do not get duplicate build dirs due to someone
+	adding a trailing '/' or '/.${TARGET_SPEC}' to a DIRDEPS entry.
+	Add ':S,/$,,' when setting '__depdirs' and
+	add ':C,/(\.[^.]*)$,\1,' when setting '__qual_depdirs'.
+
+2026-04-24  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* install-mk (MK_VERSION): 20260424
+
+	* Use MK_META_AUTODEP to control use of meta.autodep.mk
+	so it can be used independently of MK_DIRDEPS_BUILD for
+	bootstrapping.
+
+	* sys.vars.mk (M_type): use :sh rather than :sh1 to avoid
+	surprises in a .for loop.
+
+2026-03-12  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* install-mk (MK_VERSION): 20260313
+
+	* sys.vars.mk: use .MAKE.VERSION
+	M_type can simply use '$x'
+
+2026-02-22  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* install-mk (MK_VERSION): 20260222
+
+	* dirdeps.mk, sys.mk: add dependent option
+	UPDATE_DIRDEPS_CACHE/DIRDEPS_CACHE.
+	It can be useful to use -DWITHOUT_UPDATE_DIRDEPS_CACHE to
+	temporarily treat dynamic DIRDEPS_CACHE as static.
+
+2026-01-10  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* meta.autodep.mk (${_DEPENDFILE}): add .NOMETA
+
+2026-01-08  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* rust.mk: better accommodation for RUST_LIBS.
+	Set RUST_{LIBS,PROGS}_CARGO_BUILD_OUTPUT_LIST to
+	simplify staging.
+
+2025-12-08  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* install-mk (MK_VERSION): 20251207
+
+	* sys.vars.mk: replace MAKE_POSIX_SHELL usage with isPOSIX_SHELL
+	Using ${isPOSIX_SHELL:U:Nfalse} provides a boolean for make
+	and ${isPOSIX_SHELL:Ufalse} does the same for target scripts.
+	Both will be false if isPOSIX_SHELL is not set or set to false.
+
+	This has the advantage that if only POSIX shells are expected
+	sys.mk (or something it includes) can simply do isPOSIX_SHELL?=:
+
+2025-11-18  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* sys.vars.mk: set MAKE_POSIX_SHELL to 1 if .SHELL is POSIX, 0 if not.
+	set isPOSIX_SHELL for use in target scripts.
+
+	* meta.stage.mk: set MAKE_POSIX_SHELL if needed.
+
+	* install-new.mk: use ${isPOSIX_SHELL:Ufalse} to see if we can
+	avoid running 'expr'.
+
+	* install-new.mk: Allow use of cp or mv - controlled by CPMV_OP
+	(default mv).
+
+2025-11-13  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* sys.vars.mk: add M_sh1 so we can handle older bmake that does
+	not support :sh1
+
+2025-11-11  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* install-mk (MK_VERSION): 20251111
+
+	* meta2deps.sh: reset some vars for each new meta file
+	set meta_file to path of meta file.
+	If meta2deps appears in DEBUG_SH set -x.
+
+2025-09-16  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* options.mk: Add OPTIONS_DEFAULT_DEPENDENT_REQUIRED of the form
+	OPTION/REQUIRED[/VALUE]
+	if OPTION is $VALUE (default is "yes"), then REQUIRED must be too.
+	We add OPTIONS_DEFAULT_DEPENDENT_REQUIRED (sans any /{yes,no}) to
+	OPTIONS_DEFAULT_DEPENDENT so DEPENDENT/REQUIRED follow the same
+	processing.
+
+	Also add OPTIONS_FORCED_VALUES of the form OPTION/{yes,no}
+	we add any OPTIONS_FORCED_NO and OPTIONS_FORCED_YES before
+	processing.
+
+	Simplify the processing of OPTIONS_DEFAULT_VALUES and
+	OPTIONS_DEFAULT_DEPENDENT by splitting the tuples and use two
+	iterator variables in the .for loops.
+
+2025-08-09  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* install-mk (MK_VERSION): 20250808
+
+	* replace sjg license with just BSD-2-Clause SPDX tag
+
+2025-07-24  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* install-mk (MK_VERSION): 20250724
+
+	* meta2deps: Allow X record to have 3 or 4 args.
+	V4 filemon on Linux produces 3
+	V5 filemon on FreeBSD produces 4
+
+2025-07-22  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* install-mk (MK_VERSION): 20250721
+
+	* meta2deps.{py,sh}: detect corrupted filemon output (an issue on
+	Linux) by checking each record type has the correct number of
+	words.  Throw an error if necessary so that gendirdeps.mk will not
+	update Makefile.depend
+
+2025-07-04  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* prog.mk: .MADE is a special source not a target!
+
+2025-05-28  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* install-mk (MK_VERSION): 20250528
+
+	* add dirdeps2dplibs.mk
+
+2025-05-18  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* install-mk (MK_VERSION): 20250518
+
+	* meta.autodep.mk (META_FILES): re-work to fix filtering.
+	if OPTIMIZE_OBJECT_META_FILES==yes
+	provide a default META_FILE_OBJ_FILTER that selects a valid
+	.SUFFIX to match *o.meta, there's no guarantee that it will be as
+	simple as .o or .So etc.
+	We have to defer evaluation until the target script is run
+	for any of these filters to have any effect.
+	Use :S,${.OBJDIR}/,, rather than :T incase there are objects
+	in sub-dirs.
+
+	* lib.mk: leverage ${.SUFFIXES} when setting dependencies.
+
+	* add UPDATE_DEPENDFILE as a dependent option - follows
+	DIRDEPS_BUILD and use MK_UPDATE_DEPENDFILE as default for
+	UPDATE_DEPENDFILE when we think it should be yes.
+	This allows override with -DWITH[OUT]_UPDATE_DEPENDFILE
+	without overriding UPDATE_DEPENDFILE directly - which can lead to
+	trouble.
+
+2025-05-16  Simon J Gerraty  <sjg@beast.crufty.net>
+	
+	* install-mk (MK_VERSION): 20250515
+
+	* meta2deps.py: resolve the target of a Move or Link first
+	and track the last path resolved, then if the src is a relative
+	path we can easily use that last path to resolve the src correctly.
+
+	* meta2deps.sh: for a Move or Link add the dir of target path to
+	the list used to resolve the src path.
+
+2025-04-18  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* init.mk: include Skipping ${RELDIR} when _SKIP_BUILD is not empty.
+
+2025-04-14  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* install-mk (MK_VERSION): 20250414
+
+	* init.mk: check ONLY_*_LIST and NOT_*_LIST for SKIP_BUILD_VAR_LIST
+	to set _SKIP_BUILD
+
+	* genfiles.mk: add FILTER support
+
+	* rst2htm.mk: latest docutils drops .py extensions
+
+2025-03-26  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* install-mk (MK_VERSION): 20250326
+
+	* auto.obj.mk: fix and simplify handling of relative __objdir,
+	convert it to absolute before checking against .OBJDIR
+
+2025-03-14  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* install-mk (MK_VERSION): 20250314
+
+	* meta.stage.mk: StageFiles --subdir: preserve the dir part of
+	each file under $dest 
+
+2025-03-12  Simon J Gerraty  <sjg@beast.crufty.net>
+
+	* meta.autodep.mk: do a better job of handling MAKESYSPATH in
+	GENDIRDEPS_ENV.  If we have MAKE_VERSION >= 20230123 we can just
+	use .SYSPATH, otherwise it is a bit more complicated.
+
 2025-01-10  Simon J Gerraty  <sjg@beast.crufty.net>
 
 	* rust.mk: use RUST_LIBS and RUST_PROGS

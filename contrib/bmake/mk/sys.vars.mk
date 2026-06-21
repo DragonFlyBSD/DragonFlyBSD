@@ -1,15 +1,8 @@
-# SPDX-License-Identifier: BSD-2-Clause
-#
-# $Id: sys.vars.mk,v 1.17 2024/09/28 04:06:47 sjg Exp $
+# $Id: sys.vars.mk,v 1.28 2026/04/24 19:50:26 sjg Exp $
 #
 #	@(#) Copyright (c) 2003-2023, Simon J. Gerraty
 #
-#	This file is provided in the hope that it will
-#	be of use.  There is absolutely NO WARRANTY.
-#	Permission to copy, redistribute or otherwise
-#	use this file is hereby granted provided that
-#	the above copyright notice and this notice are
-#	left intact.
+#	SPDX-License-Identifier: BSD-2-Clause
 #
 #	Please send copies of changes and bug-fixes to:
 #	sjg@crufty.net
@@ -31,10 +24,22 @@ MAKE_VERSION ?= 0
 MAKE_VERSION := ${MAKE_VERSION:[1]:C,.*-,,}
 .endif
 
-.if ${MAKE_VERSION} < 20100414
+# from (20260210) .MAKE.VERSION is read-only
+.MAKE.VERSION ?= ${MAKE_VERSION}
+
+.if ${.MAKE.VERSION} < 20100414
 _this = ${.PARSEDIR}/${.PARSEFILE}
 .else
 _this = ${.PARSEDIR:tA}/${.PARSEFILE}
+.endif
+
+# This is a boolean we can use in makefiles:
+#	.if ${isPOSIX_SHELL:U:Nfalse}
+# as well as in target scripts:
+#	if ${isPOSIX_SHELL:Ufalse}; then
+.if empty(isPOSIX_SHELL)
+isPOSIX_SHELL != (echo $${PATH%:*}) > /dev/null 2>&1 && echo : || echo false
+.export isPOSIX_SHELL
 .endif
 
 # some useful modifiers
@@ -56,8 +61,15 @@ M_ListToSkip= O:u:S,^,N,:ts:
 _type_sh = which
 .endif
 
+# :sh1 evaluates command only once and caches the result.
+.if ${.MAKE.VERSION} < 20251111
+M_sh1 = sh
+.else
+M_sh1 = sh1
+.endif
+
 # AUTOCONF := ${autoconf:L:${M_whence}}
-M_type = @x@(${_type_sh:Utype} $$x) 2> /dev/null; echo;@:sh:[0]:N* found*:[@]:C,[()],,g
+M_type = @x@(${_type_sh:Utype} $x) 2> /dev/null; echo;@:sh:[0]:N* found*:[@]:C,[()],,g
 M_whence = ${M_type}:M/*:[1]
 
 # produce similar output to jot(1) or seq(1)
@@ -82,7 +94,7 @@ M_JOT = [1]:@x@i=1;while [ $$$$i -le $$x ]; do echo $$$$i; i=$$$$((i + 1)); done
 .endif
 
 # ${LIST:${M_RANGE}} is 1 2 3 4 5 if LIST has 5 words
-.if ${MAKE_VERSION} < 20170130
+.if ${.MAKE.VERSION} < 20170130
 M_RANGE = [#]:${M_JOT}
 .else
 M_RANGE = range
@@ -92,7 +104,7 @@ M_RANGE = range
 M_P2V = tu:C,[./-],_,g
 
 # convert path to absolute
-.if ${MAKE_VERSION} < 20100414
+.if ${.MAKE.VERSION} < 20100414
 M_tA = C,.*,('cd' & \&\& 'pwd') 2> /dev/null || echo &,:sh
 .else
 M_tA = tA
@@ -101,7 +113,7 @@ M_tA = tA
 # absoulte path to what we are reading.
 _PARSEDIR = ${.PARSEDIR:${M_tA}}
 
-.if ${MAKE_VERSION} >= 20170130
+.if ${.MAKE.VERSION} >= 20170130
 # M_cmpv allows comparing dotted versions like 3.1.2
 # ${3.1.2:L:${M_cmpv}} -> 3001002
 # we use big jumps to handle 3 digits per dot:
@@ -116,7 +128,7 @@ M_cmpv = S,., ,g:C,^0*([0-9]),\1,:_:range:@i@+ $${_:[-$$i]} \* $${M_cmpv.units:[
 M_M.M.P_VERSION = L:@v@$${MAJOR MINOR PATCH:L:@t@$${$$v_$$t_VERSION:U0}@}@:ts.
 
 # numeric sort
-.if ${MAKE_VERSION} < 20210803
+.if ${.MAKE.VERSION} < 20210803
 M_On = O
 M_Onr = O
 .else
@@ -140,8 +152,9 @@ M_mtime = tW:S,^,${STAT:Ustat} -f %m ,:sh
 M_mtime = mtime${M_mtime_fallback:U}
 .endif
 
-# This line noise allows doing .tab and .bel below
+# This line noise allows doing .bel .space and .tab below
 # don't expect sane results if input is more than a single word
 M_CharLiteral = L:@c@$${x x:L:$${:Uts$$c}:S/x//Wg}@
-.tab := ${\t:${M_CharLiteral}}
 .bel := ${\007:${M_CharLiteral}}
+.space := ${\040:${M_CharLiteral}}
+.tab := ${\t:${M_CharLiteral}}

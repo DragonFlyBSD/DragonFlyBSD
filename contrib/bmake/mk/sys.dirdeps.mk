@@ -1,15 +1,8 @@
-# SPDX-License-Identifier: BSD-2-Clause
-#
-# $Id: sys.dirdeps.mk,v 1.15 2024/04/18 17:18:31 sjg Exp $
+# $Id: sys.dirdeps.mk,v 1.21 2026/05/22 00:32:40 sjg Exp $
 #
 #	@(#) Copyright (c) 2012-2023, Simon J. Gerraty
 #
-#	This file is provided in the hope that it will
-#	be of use.  There is absolutely NO WARRANTY.
-#	Permission to copy, redistribute or otherwise
-#	use this file is hereby granted provided that
-#	the above copyright notice and this notice are
-#	left intact.
+#	SPDX-License-Identifier: BSD-2-Clause
 #
 #	Please send copies of changes and bug-fixes to:
 #	sjg@crufty.net
@@ -23,6 +16,7 @@
 # we should not be here otherwise
 MK_DIRDEPS_BUILD ?= yes
 # these are all implied
+MK_META_AUTODEP ?= yes
 MK_AUTO_OBJ ?= yes
 MK_META_MODE ?= yes
 MK_STAGING ?= yes
@@ -103,10 +97,15 @@ TARGET_SPEC = ${TARGET_SPEC_VARS:@v@${$v:U}@:ts,}
 
 .if ${TARGET_SPEC_VARS:[#]} > 1
 TARGET_SPEC_VARSr := ${TARGET_SPEC_VARS:[-1..1]}
-# alternatives might be
-# TARGET_OBJ_SPEC = ${TARGET_SPEC_VARSr:@v@${$v:U}@:ts/}
-# TARGET_OBJ_SPEC = ${TARGET_SPEC_VARS:@v@${$v:U}@:ts/}
-TARGET_OBJ_SPEC ?= ${TARGET_SPEC_VARS:@v@${$v:U}@:ts.}
+#
+# local.sys.*mk can control the format of TARGET_OBJ_SPEC
+# by setting eg.
+# TARGET_OBJ_SPEC_VARS = ${TARGET_SPEC_VARSr}
+# TARGET_OBJ_SPEC_SEP = /
+#
+TARGET_OBJ_SPEC_VARS ?= ${TARGET_SPEC_VARS}
+TARGET_OBJ_SPEC_SEP ?= .
+TARGET_OBJ_SPEC = ${TARGET_OBJ_SPEC_VARS:@v@${$v:U}@:ts${TARGET_OBJ_SPEC_SEP}}
 .else
 TARGET_OBJ_SPEC ?= ${MACHINE}
 .endif
@@ -194,7 +193,7 @@ RELSRCTOP?= ${RELTOP}
 .undef .MAKE.DEPENDFILE
 .endif
 # just in case
-.MAKE.DEPENDFILE ?= Makefile.depend
+.MAKE.DEPENDFILE ?= ${.MAKE.DEPENDFILE_PREFIX}
 
 # Makefile.depend* often refer to DEP_MACHINE etc,
 # we need defaults for both first include in a leaf dir

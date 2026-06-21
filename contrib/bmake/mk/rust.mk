@@ -1,16 +1,8 @@
-# SPDX-License-Identifier: BSD-2-Clause
+# $Id: rust.mk,v 1.40 2026/01/08 20:34:30 sjg Exp $
 #
-# RCSid:
-#	$Id: rust.mk,v 1.37 2025/01/11 03:17:36 sjg Exp $
+#	@(#) Copyright (c) 2024-2026, Simon J. Gerraty
 #
-#	@(#) Copyright (c) 2024, Simon J. Gerraty
-#
-#	This file is provided in the hope that it will
-#	be of use.  There is absolutely NO WARRANTY.
-#	Permission to copy, redistribute or otherwise
-#	use this file is hereby granted provided that
-#	the above copyright notice and this notice are
-#	left intact.
+#	SPDX-License-Identifier: BSD-2-Clause
 #
 #	Please send copies of changes and bug-fixes to:
 #	sjg@crufty.net
@@ -188,15 +180,24 @@ all: cargo.clippy
 .if !defined(RUST_LIBS)
 RUST_PROGS ?= ${RUST_PROJECT_DIR:T}
 .endif
-.if !empty(RUST_PROGS)
-BINDIR ?= ${prefix}/bin
+.if  !empty(RUST_LIBS) || !empty(RUST_PROGS)
 # there could be a target triple involved
 RUST_CARGO_TARGET_DIR ?= ${CARGO_TARGET_DIR}
 RUST_CARGO_OUTPUT_DIR ?= ${RUST_CARGO_TARGET_DIR}/${RUST_CARGO_TARGET}
 
-RUST_CARGO_BUILD_OUTPUT_LIST := ${RUST_PROGS:S,^,${RUST_CARGO_OUTPUT_DIR}/,}
+.if !empty(RUST_LIBS)
+LIBDIR ?= ${prefix}/lib
+RUST_LIBS_CARGO_BUILD_OUTPUT_LIST := ${RUST_LIBS:S,^,${RUST_CARGO_OUTPUT_DIR}/,}
 
-${RUST_CARGO_BUILD_OUTPUT_LIST}: cargo.build
+${RUST_LIBS_CARGO_BUILD_OUTPUT_LIST}: cargo.build
+.endif
+
+.if !empty(RUST_PROGS)
+BINDIR ?= ${prefix}/bin
+RUST_PROGS_CARGO_BUILD_OUTPUT_LIST := ${RUST_PROGS:S,^,${RUST_CARGO_OUTPUT_DIR}/,}
+
+${RUST_PROGS_CARGO_BUILD_OUTPUT_LIST}: cargo.build
+.endif
 .endif
 
 # for late customizations

@@ -1,4 +1,4 @@
-#	$Id: Makefile,v 1.132 2024/09/22 19:56:26 sjg Exp $
+#	$Id: Makefile,v 1.137 2026/03/13 15:37:22 sjg Exp $
 
 PROG = bmake
 
@@ -27,9 +27,6 @@ SRCS = \
 
 .MAIN: all
 
-MAN = ${PROG}.1
-SRCS.${MAN} = ${srcdir}/make.1
-
 .-include "VERSION"
 .-include "Makefile.inc"
 
@@ -45,6 +42,9 @@ prefix ?= /usr
 srcdir ?= ${.PARSEDIR}
 srcdir := ${srcdir}
 
+MAN ?= ${PROG}.1
+SRCS.${MAN} ?= ${srcdir}/make.1
+
 DEFAULT_SYS_PATH ?= ${prefix}/share/mk
 
 CPPFLAGS += -DUSE_META
@@ -54,7 +54,13 @@ CFLAGS += -I. -I${srcdir} ${XDEFS} -DMAKE_NATIVE
 CFLAGS += ${COPTS.${.ALLSRC:M*.c:T:u}}
 COPTS.main.c += "-DMAKE_VERSION=\"${_MAKE_VERSION}\""
 
-.for x in FORCE_MAKE_OS FORCE_MACHINE FORCE_MACHINE_ARCH
+# bmake defaults to the traditional behavior
+MAKE_SAVE_DOLLARS_DEFAULT ?= no
+
+VARS.main += FORCE_MAKE_OS FORCE_MACHINE FORCE_MACHINE_ARCH \
+	MAKE_SAVE_DOLLARS_DEFAULT \
+
+.for x in ${VARS.main}
 .ifdef $x
 COPTS.main.c += "-D$x=\"${$x}\""
 .endif
@@ -65,7 +71,7 @@ COPTS.main.c += "-D$x=\"${$x}\""
 USE_FILEMON ?= no
 .if ${USE_FILEMON:tl} != "no"
 .PATH:	${srcdir}/filemon
-SRCS+=	filemon_${USE_FILEMON}.c
+SRCS += filemon_${USE_FILEMON}.c
 COPTS.meta.c += -DUSE_FILEMON -DUSE_FILEMON_${USE_FILEMON:tu}
 COPTS.job.c += ${COPTS.meta.c}
 
@@ -134,7 +140,7 @@ SYMLINKS += ${PROG_NAME} ${BINDIR}/${PROG}
 .endif
 .endif
 
-EXTRACT_MAN=no
+EXTRACT_MAN = no
 # end-delete1
 
 .if make(obj) || make(clean)
@@ -182,7 +188,7 @@ SED_CMDS.${MAN} += -e 's/^\.Nx/NetBSD/'
 ${MAN}:	${SRCS.${MAN}} _GENFILES_USE
 
 all man beforeinstall: ${MAN}
-_mfromdir=.
+_mfromdir = .
 .endif
 .endif				# MK_GEN_MAN
 
@@ -206,7 +212,8 @@ SHAREDIR = ${SHAREDIR.bmake:U${prefix}/share}
 BINDIR = ${BINDIR.bmake:U${prefix}/bin}
 MANDIR = ${MANDIR.bmake:U${SHAREDIR}/man}
 
-${OBJS}: config.h
+${OBJS}: .META config.h
+${PROG}: .META
 
 # start-delete2 for bsd.after-import.mk
 

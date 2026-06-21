@@ -1,4 +1,4 @@
-/*	$NetBSD: parse.c,v 1.738 2025/01/14 21:34:09 rillig Exp $	*/
+/*	$NetBSD: parse.c,v 1.757 2026/06/09 08:27:08 rillig Exp $	*/
 
 /*
  * Copyright (c) 1988, 1989, 1990, 1993
@@ -110,7 +110,7 @@
 #include "pathnames.h"
 
 /*	"@(#)parse.c	8.3 (Berkeley) 3/19/94"	*/
-MAKE_RCSID("$NetBSD: parse.c,v 1.738 2025/01/14 21:34:09 rillig Exp $");
+MAKE_RCSID("$NetBSD: parse.c,v 1.757 2026/06/09 08:27:08 rillig Exp $");
 
 /* Detects a multiple-inclusion guard in a makefile. */
 typedef enum {
@@ -130,7 +130,7 @@ typedef struct IncludedFile {
 	unsigned forBodyReadLines; /* the number of physical lines that have
 				 * been read from the file above the body of
 				 * the .for loop */
-	unsigned int condMinDepth; /* depth of nested 'if' directives, at the
+	unsigned condMinDepth;	/* depth of nested 'if' directives, at the
 				 * beginning of the file */
 	bool depending;		/* state of doing_depend on EOF */
 
@@ -342,7 +342,7 @@ CurFile(void)
 	return GetInclude(includes.len - 1);
 }
 
-unsigned int
+unsigned
 CurFile_CondMinDepth(void)
 {
 	return CurFile()->condMinDepth;
@@ -372,7 +372,7 @@ LoadFile(const char *path, int fd)
 		assert(buf.len < buf.cap);
 		n = read(fd, buf.data + buf.len, buf.cap - buf.len);
 		if (n < 0) {
-			Error("%s: read error: %s", path, strerror(errno));
+			Error("%s: %s", path, strerror(errno));
 			exit(2);	/* Not 1 so -q can distinguish error */
 		}
 		if (n == 0)
@@ -388,26 +388,47 @@ LoadFile(const char *path, int fd)
 	return buf;		/* may not be null-terminated */
 }
 
+const char *
+GetParentStackTrace(void)
+{
+	static bool initialized;
+	static const char *parentStackTrace;
+
+	if (!initialized) {
+		const char *env = getenv("MAKE_STACK_TRACE");
+		parentStackTrace = env == NULL ? NULL
+		    : env[0] == '\t' ? bmake_strdup(env)
+		    : strcmp(env, "yes") == 0 ? bmake_strdup("")
+		    : NULL;
+		initialized = true;
+	}
+	return parentStackTrace;
+}
+
 /*
  * Print the current chain of .include and .for directives.  In Parse_Fatal
  * or other functions that already print the location, includingInnermost
  * would be redundant, but in other cases like Error or Fatal it needs to be
  * included.
  */
-void
-PrintStackTrace(bool includingInnermost)
+char *
+GetStackTrace(bool includingInnermost)
 {
+	const char *parentStackTrace;
+	Buffer buffer, *buf = &buffer;
 	const IncludedFile *entries;
 	size_t i, n;
+	bool hasDetails;
 
-	EvalStack_PrintDetails();
-
+	Buf_Init(buf);
+	hasDetails = EvalStack_Details(buf);
 	n = includes.len;
 	if (n == 0)
-		return;
+		goto add_parent_stack_trace;
 
 	entries = GetInclude(0);
-	if (!includingInnermost && entries[n - 1].forLoop == NULL)
+	if (!includingInnermost && !(hasDetails && n > 1)
+	    && entries[n - 1].forLoop == NULL)
 		n--;		/* already in the diagnostic */
 
 	for (i = n; i-- > 0;) {
@@ -423,16 +444,49 @@ PrintStackTrace(bool includingInnermost)
 
 		if (entry->forLoop != NULL) {
 			char *details = ForLoop_Details(entry->forLoop);
-			debug_printf("\tin .for loop from %s:%u with %s\n",
-			    fname, entry->forHeadLineno, details);
+			Buf_AddStr(buf, "\tin .for loop from ");
+			Buf_AddStr(buf, fname);
+			Buf_AddStr(buf, ":");
+			Buf_AddInt(buf, (int)entry->forHeadLineno);
+			Buf_AddStr(buf, " with ");
+			Buf_AddStr(buf, details);
+			Buf_AddStr(buf, "\n");
 			free(details);
 		} else if (i + 1 < n && entries[i + 1].forLoop != NULL) {
 			/* entry->lineno is not a useful line number */
-		} else
-			debug_printf("\tin %s:%u\n", fname, entry->lineno);
+		} else {
+			Buf_AddStr(buf, "\tin ");
+			Buf_AddStr(buf, fname);
+			Buf_AddStr(buf, ":");
+			Buf_AddInt(buf, (int)entry->lineno);
+			Buf_AddStr(buf, "\n");
+		}
 	}
-	if (makelevel > 0)
-		debug_printf("\tin directory %s\n", curdir);
+
+add_parent_stack_trace:
+	parentStackTrace = GetParentStackTrace();
+	if ((makelevel > 0 && (n > 0 || !includingInnermost))
+	    || parentStackTrace != NULL) {
+		Buf_AddStr(buf, "\tin ");
+		Buf_AddStr(buf, progname);
+		Buf_AddStr(buf, " in directory \"");
+		Buf_AddStr(buf, curdir);
+		Buf_AddStr(buf, "\"\n");
+	}
+
+	if (parentStackTrace != NULL)
+		Buf_AddStr(buf, parentStackTrace);
+
+	return Buf_DoneData(buf);
+}
+
+void
+PrintStackTrace(FILE *f, bool includingInnermost)
+{
+	char *stackTrace = GetStackTrace(includingInnermost);
+	fprintf(f, "%s", stackTrace);
+	fflush(f);
+	free(stackTrace);
 }
 
 /* Check if the current character is escaped on the current line. */
@@ -501,7 +555,7 @@ PrintLocation(FILE *f, bool useVars, const GNode *gn)
 		return;
 
 	if (!useVars || fname[0] == '/' || strcmp(fname, "(stdin)") == 0) {
-		(void)fprintf(f, "\"%s\" line %u: ", fname, lineno);
+		(void)fprintf(f, "%s:%u: ", fname, lineno);
 		return;
 	}
 
@@ -515,7 +569,7 @@ PrintLocation(FILE *f, bool useVars, const GNode *gn)
 	if (base.str == NULL)
 		base.str = str_basename(fname);
 
-	(void)fprintf(f, "\"%s/%s\" line %u: ", dir.str, base.str, lineno);
+	(void)fprintf(f, "%s/%s:%u: ", dir.str, base.str, lineno);
 
 	FStr_Done(&base);
 	FStr_Done(&dir);
@@ -546,8 +600,9 @@ ParseVErrorInternal(FILE *f, bool useVars, const GNode *gn,
 		parseErrors++;
 	}
 
-	if (level == PARSE_FATAL || DEBUG(PARSE))
-		PrintStackTrace(false);
+	if (level == PARSE_FATAL || DEBUG(PARSE)
+	    || (gn == NULL && includes.len == 0 /* see PrintLocation */))
+		PrintStackTrace(f, false);
 }
 
 static void MAKE_ATTR_PRINTFLIKE(3, 4)
@@ -669,7 +724,7 @@ TryApplyDependencyOperator(GNode *gn, GNodeType op)
 	 * operator also defines a dependency, they must match.
 	 */
 	if ((op & OP_OPMASK) && (gn->type & OP_OPMASK) &&
-	    ((op & OP_OPMASK) != (gn->type & OP_OPMASK))) {
+	    (op & OP_OPMASK) != (gn->type & OP_OPMASK)) {
 		Parse_Error(PARSE_FATAL, "Inconsistent operator for %s",
 		    gn->name);
 		return false;
@@ -712,7 +767,7 @@ TryApplyDependencyOperator(GNode *gn, GNodeType op)
 		cohort->centurion = gn;
 		gn->unmade_cohorts++;
 		snprintf(cohort->cohort_num, sizeof cohort->cohort_num, "#%d",
-		    (unsigned int)gn->unmade_cohorts % 1000000);
+		    (unsigned)gn->unmade_cohorts % 1000000);
 	} else {
 		gn->type |= op;	/* preserve any previous flags */
 	}
@@ -899,10 +954,10 @@ InvalidLineType(const char *line, const char *unexpanded_line)
 		Parse_Error(PARSE_FATAL, "Unknown directive \"%.*s\"",
 		    (int)(dirend - dirstart), dirstart);
 	} else if (strcmp(line, unexpanded_line) == 0)
-		Parse_Error(PARSE_FATAL, "Invalid line '%s'", line);
+		Parse_Error(PARSE_FATAL, "Invalid line \"%s\"", line);
 	else
 		Parse_Error(PARSE_FATAL,
-		    "Invalid line '%s', expanded to '%s'",
+		    "Invalid line \"%s\", expanded to \"%s\"",
 		    unexpanded_line, line);
 }
 
@@ -1008,7 +1063,7 @@ HandleDependencyTargetPath(const char *suffixName,
 	path = Suff_GetPath(suffixName);
 	if (path == NULL) {
 		Parse_Error(PARSE_FATAL,
-		    "Suffix '%s' not defined (yet)", suffixName);
+		    "Suffix \"%s\" not defined (yet)", suffixName);
 		return false;
 	}
 
@@ -1104,7 +1159,7 @@ SkipExtraTargets(char **pp, const char *lstart)
 	if (warning) {
 		const char *start = *pp;
 		cpp_skip_whitespace(&start);
-		Parse_Error(PARSE_WARNING, "Extra target '%.*s' ignored",
+		Parse_Error(PARSE_WARNING, "Extra target \"%.*s\" ignored",
 		    (int)(p - start), start);
 	}
 
@@ -1317,6 +1372,7 @@ HandleDependencySourcesEmpty(ParseSpecial special, SearchPathList *paths)
 			 * otherwise it is an extension.
 			 */
 			Global_Set("%POSIX", "1003.2");
+			posix_state = PS_SET;
 			IncludeFile("posix.mk", true, false, true);
 		}
 		break;
@@ -1390,7 +1446,8 @@ ApplyDependencyTarget(char *name, char *nameEnd, ParseSpecial *inout_special,
 	if (*inout_special == SP_NOT && *name != '\0')
 		HandleDependencyTargetMundane(name);
 	else if (*inout_special == SP_PATH && *name != '.' && *name != '\0')
-		Parse_Error(PARSE_WARNING, "Extra target (%s) ignored", name);
+		Parse_Error(PARSE_WARNING, "Extra target \"%s\" ignored",
+		    name);
 
 	*nameEnd = savedNameEnd;
 	return true;
@@ -1928,46 +1985,6 @@ Parse_Var(VarAssign *var, GNode *scope)
 }
 
 
-/*
- * See if the command possibly calls a sub-make by using the
- * expressions ${.MAKE}, ${MAKE} or the plain word "make".
- */
-static bool
-MaybeSubMake(const char *cmd)
-{
-	const char *start;
-
-	for (start = cmd; *start != '\0'; start++) {
-		const char *p = start;
-		char endc;
-
-		/* XXX: What if progname != "make"? */
-		if (strncmp(p, "make", 4) == 0)
-			if (start == cmd || !ch_isalnum(p[-1]))
-				if (!ch_isalnum(p[4]))
-					return true;
-
-		if (*p != '$')
-			continue;
-		p++;
-
-		if (*p == '{')
-			endc = '}';
-		else if (*p == '(')
-			endc = ')';
-		else
-			continue;
-		p++;
-
-		if (*p == '.')	/* Accept either ${.MAKE} or ${MAKE}. */
-			p++;
-
-		if (strncmp(p, "MAKE", 4) == 0 && p[4] == endc)
-			return true;
-	}
-	return false;
-}
-
 /* Append the command to the target node. */
 static void
 GNode_AddCommand(GNode *gn, char *cmd)
@@ -1978,8 +1995,6 @@ GNode_AddCommand(GNode *gn, char *cmd)
 	/* if target already supplied, ignore commands */
 	if (!(gn->type & OP_HAS_COMMANDS)) {
 		Lst_Append(&gn->commands, cmd);
-		if (MaybeSubMake(cmd))
-			gn->type |= OP_SUBMAKE;
 		RememberLocation(gn);
 	} else {
 		Parse_Error(PARSE_WARNING,
@@ -2010,7 +2025,7 @@ ParseInclude(char *directive)
 
 	if (*p != '"' && *p != '<') {
 		Parse_Error(PARSE_FATAL,
-		    ".include filename must be delimited by '\"' or '<'");
+		    ".include filename must be delimited by \"\" or <>");
 		return;
 	}
 
@@ -2022,7 +2037,7 @@ ParseInclude(char *directive)
 
 	if (*p != endc) {
 		Parse_Error(PARSE_FATAL,
-		    "Unclosed .include filename. '%c' expected", endc);
+		    "Unclosed .include filename, \"%c\" expected", endc);
 		return;
 	}
 
@@ -2161,8 +2176,8 @@ Parse_PushInput(const char *name, unsigned lineno, unsigned readLines,
 	else
 		TrackInput(name);
 
-	DEBUG3(PARSE, "Parse_PushInput: %s %s, line %u\n",
-	    forLoop != NULL ? ".for loop in": "file", name, lineno);
+	DEBUG3(PARSE, "Parse_PushInput: %s%s:%u\n",
+	    forLoop != NULL ? ".for loop in ": "", name, lineno);
 
 	curFile = Vector_Push(&includes);
 	curFile->name = FStr_InitOwn(bmake_strdup(name));
@@ -2340,7 +2355,7 @@ ParseEOF(void)
 	}
 
 	curFile = CurFile();
-	DEBUG2(PARSE, "ParseEOF: returning to file %s, line %u\n",
+	DEBUG2(PARSE, "ParseEOF: returning to %s:%u\n",
 	    curFile->name.str, curFile->readLines + 1);
 
 	SetParseFile(curFile->name.str);
@@ -2617,7 +2632,7 @@ ReadHighLevelLine(void)
 		line = ReadLowLevelLine(LK_NONEMPTY);
 		if (posix_state == PS_MAYBE_NEXT_LINE)
 			posix_state = PS_NOW_OR_NEVER;
-		else
+		else if (posix_state != PS_SET)
 			posix_state = PS_TOO_LATE;
 		if (line == NULL)
 			return NULL;
@@ -2823,22 +2838,23 @@ Parse_GuardEndif(void)
 static char *
 FindSemicolon(char *p)
 {
-	int depth = 0;
+	if (strchr(p, ';') == NULL)
+		return NULL;
 
-	for (; *p != '\0'; p++) {
-		if (*p == '\\' && p[1] != '\0') {
+	while (*p != '\0') {
+		if (*p == ';')
+			return p;
+		if (*p == '$' && p[1] == '$')
+			p += 2;
+		else if (*p == '$') {
+			const char *cp = p;
+			FStr value = Var_Parse(&cp, SCOPE_GLOBAL, VARE_PARSE);
+			FStr_Done(&value);
+			p += cp - p;
+		} else
 			p++;
-			continue;
-		}
-
-		if (*p == '$' && (p[1] == '(' || p[1] == '{'))
-			depth++;
-		else if (depth > 0 && (*p == ')' || *p == '}'))
-			depth--;
-		else if (depth == 0 && *p == ';')
-			break;
 	}
-	return p;
+	return NULL;
 }
 
 static void
@@ -2849,7 +2865,7 @@ ParseDependencyLine(char *line)
 
 	{
 		char *semicolon = FindSemicolon(line);
-		if (*semicolon != '\0') {
+		if (semicolon != NULL) {
 			/* Terminate the dependency list at the ';' */
 			*semicolon = '\0';
 			shellcmd = semicolon + 1;

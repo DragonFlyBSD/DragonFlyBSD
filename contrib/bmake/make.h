@@ -1,4 +1,4 @@
-/*	$NetBSD: make.h,v 1.349 2025/01/19 10:57:10 rillig Exp $	*/
+/*	$NetBSD: make.h,v 1.366 2026/04/06 17:13:54 rillig Exp $	*/
 
 /*
  * Copyright (c) 1988, 1989, 1990, 1993
@@ -294,7 +294,7 @@ typedef enum GNodeType {
 	/*
 	 * The dependency operator '::' behaves like ':', except that it
 	 * allows multiple dependency groups to be defined.  Each of these
-	 * groups is executed on its own, independently from the others. Each
+	 * groups is executed on its own, independently of the others. Each
 	 * individual dependency group is called a cohort.
 	 */
 	OP_DOUBLEDEP	= 1 << 2,
@@ -419,17 +419,19 @@ typedef struct GNodeFlags {
 	bool fromDepend:1;
 	/* We do it once only */
 	bool doneAllsrc:1;
+	/* Have we checked for submake? */
+	bool doneSubmake:1;
 	/* Used by MakePrintStatus */
 	bool cycle:1;
 	/* Used by MakePrintStatus */
 	bool doneCycle:1;
 } GNodeFlags;
 
-typedef struct List StringList;
-typedef struct ListNode StringListNode;
+typedef List StringList;
+typedef ListNode StringListNode;
 
-typedef struct List GNodeList;
-typedef struct ListNode GNodeListNode;
+typedef List GNodeList;
+typedef ListNode GNodeListNode;
 
 typedef struct SearchPath {
 	List /* of CachedDir */ dirs;
@@ -517,7 +519,7 @@ typedef struct GNode {
 	struct GNode *centurion;
 
 	/* Last time (sequence number) we tried to make this node */
-	unsigned int checked_seqno;
+	unsigned checked_seqno;
 
 	/*
 	 * The "local" variables that are specific to this target and this
@@ -553,6 +555,7 @@ extern enum PosixState {
 	PS_NOT_YET,
 	PS_MAYBE_NEXT_LINE,
 	PS_NOW_OR_NEVER,
+	PS_SET,
 	PS_TOO_LATE
 } posix_state;
 
@@ -613,7 +616,7 @@ extern GNode *defaultNode;
  * by makefiles.
  */
 extern GNode *SCOPE_INTERNAL;
-/* Variables defined in a global scope, e.g in the makefile itself. */
+/* Variables defined in a global scope, e.g. in the makefile itself. */
 extern GNode *SCOPE_GLOBAL;
 /* Variables defined on the command line. */
 extern GNode *SCOPE_CMDLINE;
@@ -839,7 +842,7 @@ void Compat_MakeAll(GNodeList *);
 void Compat_Make(GNode *, GNode *);
 
 /* cond.c */
-extern unsigned int cond_depth;
+extern unsigned cond_depth;
 CondResult Cond_EvalCondition(const char *) MAKE_ATTR_USE;
 CondResult Cond_EvalLine(const char *) MAKE_ATTR_USE;
 Guard *Cond_ExtractGuard(const char *) MAKE_ATTR_USE;
@@ -883,13 +886,14 @@ void JobReapChild(pid_t, int, bool);
 #endif
 /* main.c */
 void Main_ParseArgLine(const char *);
-int Cmd_Argv(const char *, size_t, const char **, size_t, char *, size_t, bool, bool);
+void Cmd_Argv(const char *, size_t, const char *[5], char *, size_t,
+    bool, bool);
 char *Cmd_Exec(const char *, char **) MAKE_ATTR_USE;
+void Var_ExportStackTrace(const char *, const char *);
 void Error(const char *, ...) MAKE_ATTR_PRINTFLIKE(1, 2);
 void Fatal(const char *, ...) MAKE_ATTR_PRINTFLIKE(1, 2) MAKE_ATTR_DEAD;
 void Punt(const char *, ...) MAKE_ATTR_PRINTFLIKE(1, 2) MAKE_ATTR_DEAD;
 void DieHorribly(void) MAKE_ATTR_DEAD;
-void Finish(int) MAKE_ATTR_DEAD;
 int unlink_file(const char *) MAKE_ATTR_USE;
 void execDie(const char *, const char *);
 char *getTmpdir(void) MAKE_ATTR_USE;
@@ -905,14 +909,16 @@ void Parse_End(void);
 #endif
 
 void PrintLocation(FILE *, bool, const GNode *);
-void PrintStackTrace(bool);
+const char *GetParentStackTrace(void);
+char *GetStackTrace(bool);
+void PrintStackTrace(FILE *, bool);
 void Parse_Error(ParseErrorLevel, const char *, ...) MAKE_ATTR_PRINTFLIKE(2, 3);
 bool Parse_VarAssign(const char *, bool, GNode *) MAKE_ATTR_USE;
 void Parse_File(const char *, int);
 void Parse_PushInput(const char *, unsigned, unsigned, Buffer,
 		     struct ForLoop *);
 void Parse_MainName(GNodeList *);
-unsigned int CurFile_CondMinDepth(void) MAKE_ATTR_USE;
+unsigned CurFile_CondMinDepth(void) MAKE_ATTR_USE;
 void Parse_GuardElse(void);
 void Parse_GuardEndif(void);
 
@@ -991,14 +997,16 @@ typedef enum VarEvalMode {
 	VARE_EVAL,
 
 	/*
-	 * Parse and evaluate the expression.  It is an error if a
-	 * subexpression evaluates to undefined.
+	 * Only for Var_Parse, not for Var_Subst or Var_Expand: Parse and
+	 * evaluate the expression.  It is an error if the expression
+	 * evaluates to undefined.  Subexpressions or indirect expressions
+	 * may evaluate to undefined, though.
 	 */
 	VARE_EVAL_DEFINED_LOUD,
 
 	/*
 	 * Parse and evaluate the expression.  It is a silent error if a
-	 * subexpression evaluates to undefined.
+	 * top-level expression evaluates to undefined.
 	 */
 	VARE_EVAL_DEFINED,
 
@@ -1048,6 +1056,8 @@ typedef enum VarExportMode {
 	VEM_LITERAL
 } VarExportMode;
 
+#define MAKE_SAVE_DOLLARS ".MAKE.SAVE_DOLLARS"
+
 void Var_Delete(GNode *, const char *);
 #ifdef CLEANUP
 void Var_DeleteAll(GNode *scope);
@@ -1079,7 +1089,9 @@ void Global_Append(const char *, const char *);
 void Global_Delete(const char *);
 void Global_Set_ReadOnly(const char *, const char *);
 
-void EvalStack_PrintDetails(void);
+void EvalStack_PushMakeflags(const char *);
+void EvalStack_Pop(void);
+bool EvalStack_Details(Buffer *buf) MAKE_ATTR_USE;
 
 /* util.c */
 typedef void (*SignalProc)(int);
@@ -1093,7 +1105,7 @@ time_t Make_Recheck(GNode *) MAKE_ATTR_USE;
 void Make_HandleUse(GNode *, GNode *);
 void Make_Update(GNode *);
 void GNode_SetLocalVars(GNode *);
-bool Make_Run(GNodeList *);
+bool Make_MakeParallel(GNodeList *);
 bool shouldDieQuietly(GNode *, int) MAKE_ATTR_USE;
 void PrintOnError(GNode *, const char *);
 void Main_ExportMAKEFLAGS(bool);
@@ -1102,6 +1114,7 @@ int mkTempFile(const char *, char *, size_t) MAKE_ATTR_USE;
 void AppendWords(StringList *, char *);
 void GNode_FprintDetails(FILE *, const char *, const GNode *, const char *);
 bool GNode_ShouldExecute(GNode *gn) MAKE_ATTR_USE;
+char *GNodeType_ToString(GNodeType);
 
 #ifndef HAVE_STRLCPY
 size_t strlcpy(char *, const char *, size_t);
@@ -1207,6 +1220,8 @@ MAKE_INLINE bool MAKE_ATTR_USE
 ch_isdigit(char ch) { return isdigit((unsigned char)ch) != 0; }
 MAKE_INLINE bool MAKE_ATTR_USE
 ch_islower(char ch) { return islower((unsigned char)ch) != 0; }
+MAKE_INLINE bool MAKE_ATTR_USE
+ch_isprint(char ch) { return isprint((unsigned char)ch) != 0; }
 MAKE_INLINE bool MAKE_ATTR_USE
 ch_isspace(char ch) { return isspace((unsigned char)ch) != 0; }
 MAKE_INLINE bool MAKE_ATTR_USE
