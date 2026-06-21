@@ -2,12 +2,12 @@ BSD MAKE
 ========
 
 Original source can be downloaded from:
-http://www.crufty.net/ftp/pub/sjg
+https://www.crufty.net/ftp/pub/sjg
 
-file = bmake-20250125.tar.gz
-date = 25 January 2025
-size = 881309
-sha1 = f8f9e7726947fa446d6a12e653800adb0fa23fe8
+file = bmake-20260619.tar.gz
+date = 19 June 2026
+size = 901163
+sha1 = 49c2ae4c3827d85c9456bfbd8ece37e300113a14
 
 The file README.DELETED contains a list of deleted files and directories.
 
