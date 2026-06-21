@@ -27,7 +27,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)uname.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/uname/uname.c,v 1.4.6.2 2002/10/17 07:47:29 jmallett Exp $
  */
@@ -208,36 +207,34 @@ print_uname(void)
 	printf("\n");
 }
 
-#define	NATIVE_SYSCTL2_GET(var,mib0,mib1)	\
-static void						\
-native_##var(void)				\
-{						\
-	int mib[] = { (mib0), (mib1) };		\
-	size_t len;				\
-	static char buf[1024];			\
-	char **varp = &(var);			\
-						\
-	len = sizeof buf;			\
-	if (sysctl(mib, NELEM(mib),		\
-	   &buf, &len, NULL, 0) == -1)		\
-		err(1, "sysctl");
+#define	NATIVE_SYSCTL2_GET(var, mib0, mib1)				\
+static void								\
+native_##var(void)							\
+{									\
+	int mib[] = { (mib0), (mib1) };					\
+	size_t len;							\
+	static char buf[1024];						\
+	char **varp = &(var);						\
+									\
+	len = sizeof buf;						\
+	if (sysctl(mib, NELEM(mib), &buf, &len, NULL, 0) == -1)		\
+		err(1, "sysctl(%s,%s)", #mib0, #mib1);
 
-#define	NATIVE_SYSCTLNAME_GET(var,name)		\
-static void						\
-native_##var(void)				\
-{						\
-	size_t len;				\
-	static char buf[1024];			\
-	char **varp = &(var);			\
-						\
-	len = sizeof buf;			\
-	if (sysctlbyname(name, &buf, &len, NULL,\
-	    0) == -1)				\
-		err(1, "sysctlbyname");
+#define	NATIVE_SYSCTLNAME_GET(var, name)				\
+static void								\
+native_##var(void)							\
+{									\
+	size_t len;							\
+	static char buf[1024];						\
+	char **varp = &(var);						\
+									\
+	len = sizeof buf;						\
+	if (sysctlbyname(name, &buf, &len, NULL, 0) == -1)		\
+		err(1, "sysctlbyname(%s)", name);
 
-#define	NATIVE_SET				\
-	*varp = buf;				\
-	return;					\
+#define	NATIVE_SET							\
+	*varp = buf;							\
+	return;								\
 }	struct __hack
 
 #define	NATIVE_BUFFER	(buf)
@@ -272,8 +269,8 @@ NATIVE_SYSCTL2_GET(arch, CTL_HW, HW_MACHINE_ARCH) {
 NATIVE_SYSCTLNAME_GET(ident, "kern.ident") {
 } NATIVE_SET;
 
-static void						\
-native_pkgabi(void)				\
+static void
+native_pkgabi(void)
 {
 	char osrel[64];
 	char mach[64];
