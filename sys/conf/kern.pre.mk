@@ -132,6 +132,8 @@ ELDFLAGS+= ${CFLAGS}
 ELDFLAGS+= -Wl,-z,max-page-size=0x200000
 .endif
 
+ELDFLAGS+= -Wl,--build-id=sha1
+
 GEN_CFILES= $S/platform/$P/$M/genassym.c
 SYSTEM_CFILES= ioconf.c config.c
 SYSTEM_SFILES= $S/platform/$P/$M/locore.s

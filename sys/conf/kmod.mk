@@ -200,6 +200,8 @@ PROG=	${KMOD}.ko
 ELDFLAGS+= ${CFLAGS}
 .endif
 
+ELDFLAGS+= -Wl,--build-id=sha1
+
 .if ${MACHINE_ARCH} == x86_64
 ${PROG}: ${OBJS}
 	${CC} ${ELDFLAGS} -nostdlib -Wl,--hash-style=sysv \
