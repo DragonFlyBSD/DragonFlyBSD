@@ -36,7 +36,6 @@
 #include <string.h>
 #include <machine/elf.h>
 #include <stand.h>
-#define FREEBSD_ELF
 #include <link.h>
 
 #include "bootstrap.h"

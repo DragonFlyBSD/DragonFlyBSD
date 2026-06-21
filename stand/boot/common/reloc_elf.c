@@ -31,11 +31,8 @@
 
 #include <sys/types.h>
 #include <machine/elf.h>
-
 #include <errno.h>
 #include <stand.h>
-
-#define FREEBSD_ELF
 #include <link.h>
 
 #include "bootstrap.h"
