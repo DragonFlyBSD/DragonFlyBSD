@@ -6,6 +6,10 @@
 
 PROG= rescue
 
+# TODO: remove this after a period of time when most people have done a *full*
+# buildworld + installworld, because crunchgen(1) is a cross tool.
+WARNS=	2
+
 SCRIPTS= dowpa ${.CURDIR}/../../sbin/dhclient/dhclient-script
 
 # Programs from 'bin'

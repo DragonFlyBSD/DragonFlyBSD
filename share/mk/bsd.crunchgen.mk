@@ -153,6 +153,7 @@ ${OUTPUTS}: ${CONF}
 # ${OUTMK} above.
 ${PROG}: ${OUTPUTS} objs .NOMETA .PHONY
 	${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS} \
+	    CFLAGS="${CFLAGS:N-flto*}" \
 	    ${MAKE} .MAKE.MODE="${.MAKE.MODE} curdirOk=yes" \
 	    .MAKE.META.IGNORE_PATHS="${.MAKE.META.IGNORE_PATHS}" \
 	    -f ${OUTMK} exe
