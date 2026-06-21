@@ -130,15 +130,13 @@ __elfN(obj_loadfile)(char *filename, u_int64_t dest,
 
 	kfp = file_findfile(NULL, NULL);
 	if (kfp == NULL) {
-		printf("elf" __XSTRING(__ELF_WORD_SIZE)
-		    "_obj_loadfile: can't load module before kernel\n");
+		printf("%s: can't load module before kernel\n", __func__);
 		err = EPERM;
 		goto oerr;
 	}
 	if (strcmp(__elfN(obj_kerneltype), kfp->f_type)) {
-		printf("elf" __XSTRING(__ELF_WORD_SIZE)
-		    "_obj_loadfile: can't load module with kernel type '%s'\n",
-		    kfp->f_type);
+		printf("%s: can't load module with kernel type '%s'\n",
+		    __func__, kfp->f_type);
 		err = EPERM;
 		goto oerr;
 	}
@@ -151,8 +149,7 @@ __elfN(obj_loadfile)(char *filename, u_int64_t dest,
 	 */
 	fp = file_alloc();
 	if (fp == NULL) {
-		printf("elf" __XSTRING(__ELF_WORD_SIZE)
-		    "_obj_loadfile: cannot allocate module info\n");
+		printf("%s: cannot allocate module info\n", __func__);
 		err = EPERM;
 		goto out;
 	}
@@ -206,8 +203,7 @@ __elfN(obj_loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
 	shdrbytes = hdr->e_shnum * hdr->e_shentsize;
 	shdr = alloc_pread(ef->fd, (off_t)hdr->e_shoff, shdrbytes);
 	if (shdr == NULL) {
-		printf("\nelf" __XSTRING(__ELF_WORD_SIZE)
-		    "_obj_loadimage: read section headers failed\n");
+		printf("\n%s: read section headers failed\n", __func__);
 		goto out;
 	}
 	ef->e_shdr = shdr;
@@ -244,8 +240,7 @@ __elfN(obj_loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
 		}
 	}
 	if (nsym != 1) {
-		printf("\nelf" __XSTRING(__ELF_WORD_SIZE)
-		    "_obj_loadimage: file has no valid symbol table\n");
+		printf("\n%s: file has no valid symbol table\n", __func__);
 		goto out;
 	}
 	lastaddr = roundup(lastaddr, shdr[ef->symtabindex].sh_addralign);
@@ -255,8 +250,7 @@ __elfN(obj_loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
 	symstrindex = shdr[ef->symtabindex].sh_link;
 	if (symstrindex < 0 || symstrindex >= hdr->e_shnum ||
 	    shdr[symstrindex].sh_type != SHT_STRTAB) {
-		printf("\nelf" __XSTRING(__ELF_WORD_SIZE)
-		    "_obj_loadimage: file has invalid symbol strings\n");
+		printf("\n%s: file has invalid symbol strings\n", __func__);
 		goto out;
 	}
 	lastaddr = roundup(lastaddr, shdr[symstrindex].sh_addralign);
@@ -266,8 +260,7 @@ __elfN(obj_loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
 	/* Section names. */
 	if (hdr->e_shstrndx == 0 || hdr->e_shstrndx >= hdr->e_shnum ||
 	    shdr[hdr->e_shstrndx].sh_type != SHT_STRTAB) {
-		printf("\nelf" __XSTRING(__ELF_WORD_SIZE)
-		    "_obj_loadimage: file has no section names\n");
+		printf("\n%s: file has no section names\n", __func__);
 		goto out;
 	}
 	ef->shstrindex = hdr->e_shstrndx;
@@ -296,8 +289,7 @@ __elfN(obj_loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
 			continue;
 		if (kern_pread(ef->fd, (vm_offset_t)shdr[i].sh_addr,
 		    shdr[i].sh_size, (off_t)shdr[i].sh_offset) != 0) {
-			printf("\nelf" __XSTRING(__ELF_WORD_SIZE)
-			    "_obj_loadimage: read failed\n");
+			printf("\n%s: read failed\n", __func__);
 			goto out;
 		}
 	}

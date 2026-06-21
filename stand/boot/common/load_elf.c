@@ -143,12 +143,13 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
     if (ehdr->e_type == ET_DYN) {
 	/* Looks like a kld module */
 	if (kfp == NULL) {
-	    printf("elf" __XSTRING(__ELF_WORD_SIZE) "_loadfile: can't load module before kernel\n");
+	    printf("%s: can't load module before kernel\n", __func__);
 	    err = EPERM;
 	    goto oerr;
 	}
 	if (strcmp(__elfN(kerneltype), kfp->f_type)) {
-	    printf("elf" __XSTRING(__ELF_WORD_SIZE) "_loadfile: can't load module with kernel type '%s'\n", kfp->f_type);
+	    printf("%s: can't load module with kernel type '%s'\n",
+		   __func__, kfp->f_type);
 	    err = EPERM;
 	    goto oerr;
 	}
@@ -164,7 +165,7 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
     } else if (ehdr->e_type == ET_EXEC) {
 	/* Looks like a kernel */
 	if (kfp != NULL) {
-	    printf("elf" __XSTRING(__ELF_WORD_SIZE) "_loadfile: kernel already loaded\n");
+	    printf("%s: kernel already loaded\n", __func__);
 	    err = EPERM;
 	    goto oerr;
 	}
@@ -173,7 +174,7 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
 	 */
 	dest = ehdr->e_entry;
 	if (dest == 0) {
-	    printf("elf" __XSTRING(__ELF_WORD_SIZE) "_loadfile: not a kernel (maybe static binary?)\n");
+	    printf("%s: not a kernel (maybe static binary?)\n", __func__);
 	    err = EPERM;
 	    goto oerr;
 	}
@@ -189,7 +190,7 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
      */
     fp = file_alloc();
     if (fp == NULL) {
-	printf("elf" __XSTRING(__ELF_WORD_SIZE) "_loadfile: cannot allocate module info\n");
+	printf("%s: cannot allocate module info\n", __func__);
 	err = EPERM;
 	goto out;
     }
@@ -297,7 +298,7 @@ __elfN(loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
     ef->off = off;
 
     if ((ehdr->e_phoff + ehdr->e_phnum * sizeof(*phdr)) > ef->firstlen) {
-	printf("elf" __XSTRING(__ELF_WORD_SIZE) "_loadimage: program header not within first page\n");
+	printf("%s: program header not within first page\n", __func__);
 	goto out;
     }
     phdr = (Elf_Phdr *)(ef->firstpage + ehdr->e_phoff);
@@ -330,9 +331,9 @@ __elfN(loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
 	}
 	if (phdr[i].p_filesz > fpcopy) {
 	    if (kern_pread(ef->fd, phdr[i].p_vaddr + off + fpcopy,
-		phdr[i].p_filesz - fpcopy, phdr[i].p_offset + fpcopy) != 0) {
-		printf("\nelf" __XSTRING(__ELF_WORD_SIZE)
-		    "_loadimage: read failed\n");
+			   phdr[i].p_filesz - fpcopy,
+			   phdr[i].p_offset + fpcopy) != 0) {
+		printf("%s: read failed\n", __func__);
 		goto out;
 	    }
 	}
@@ -343,7 +344,6 @@ __elfN(loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
 		(long)(phdr[i].p_vaddr + off + phdr[i].p_filesz),
 		(long)(phdr[i].p_vaddr + off + phdr[i].p_memsz - 1));
 #endif
-
 	    kern_bzero(phdr[i].p_vaddr + off + phdr[i].p_filesz,
 		phdr[i].p_memsz - phdr[i].p_filesz);
 	}
@@ -369,8 +369,7 @@ __elfN(loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
 	goto nosyms;
     shdr = alloc_pread(ef->fd, ehdr->e_shoff, chunk);
     if (shdr == NULL) {
-	printf("\nelf" __XSTRING(__ELF_WORD_SIZE)
-	    "_loadimage: failed to read section headers");
+	printf("\n%s: failed to read section headers", __func__);
 	goto nosyms;
     }
     symtabindex = -1;
@@ -435,14 +434,14 @@ __elfN(loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
 #endif
 
 	if (lseek(ef->fd, (off_t)shdr[i].sh_offset, SEEK_SET) == -1) {
-	    printf("\nelf" __XSTRING(__ELF_WORD_SIZE) "_loadimage: could not seek for symbols - skipped!");
+	    printf("\n%s: could not seek for symbols - skipped!", __func__);
 	    lastaddr = ssym;
 	    ssym = 0;
 	    goto nosyms;
 	}
 	result = archsw.arch_readin(ef->fd, lastaddr, shdr[i].sh_size);
 	if (result < 0 || (size_t)result != shdr[i].sh_size) {
-	    printf("\nelf" __XSTRING(__ELF_WORD_SIZE) "_loadimage: could not read symbols - skipped!");
+	    printf("\n%s: could not read symbols - skipped!", __func__);
 	    lastaddr = ssym;
 	    ssym = 0;
 	    goto nosyms;
@@ -683,7 +682,6 @@ elf_hash(const char *name)
     return h;
 }
 
-static const char __elfN(bad_symtable)[] = "elf" __XSTRING(__ELF_WORD_SIZE) "_lookup_symbol: corrupt symbol table\n";
 int
 __elfN(lookup_symbol)(struct preloaded_file *fp, elf_file_t ef, const char* name,
 		  Elf_Sym *symp)
@@ -698,13 +696,13 @@ __elfN(lookup_symbol)(struct preloaded_file *fp, elf_file_t ef, const char* name
 
     while (symnum != STN_UNDEF) {
 	if (symnum >= ef->nchains) {
-	    printf(__elfN(bad_symtable));
+	    printf("%s: corrupt symbol table\n", __func__);
 	    return ENOENT;
 	}
 
 	COPYOUT(ef->symtab + symnum, &sym, sizeof(sym));
 	if (sym.st_name == 0) {
-	    printf(__elfN(bad_symtable));
+	    printf("%s: corrupt symbol table\n", __func__);
 	    return ENOENT;
 	}
 
