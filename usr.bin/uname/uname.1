@@ -27,9 +27,8 @@
 .\"
 .\"	@(#)uname.1	8.3 (Berkeley) 4/8/94
 .\" $FreeBSD: src/usr.bin/uname/uname.1,v 1.8.2.4 2002/10/17 07:47:29 jmallett Exp $
-.\" $DragonFly: src/usr.bin/uname/uname.1,v 1.5 2007/07/30 22:11:33 swildner Exp $
 .\"
-.Dd July 8, 2021
+.Dd June 21, 2026
 .Dt UNAME 1
 .Os
 .Sh NAME
@@ -37,7 +36,7 @@
 .Nd display information about the system
 .Sh SYNOPSIS
 .Nm
-.Op Fl aiKmnprsUvP
+.Op Fl abiKmnprsUvP
 .Sh DESCRIPTION
 The
 .Nm
@@ -54,6 +53,8 @@ Behave as though the options
 and
 .Fl v
 were specified.
+.It Fl b
+Write the kernel's linker-generated build-id to standard output.
 .It Fl i
 Write the kernel ident to standard output.
 .It Fl K
