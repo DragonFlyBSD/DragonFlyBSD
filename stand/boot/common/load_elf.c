@@ -225,7 +225,7 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
     printf("%s (from %s) ", filename, fp->f_name);
 #ifdef ELF_VERBOSE
     if (ef.kernel)
-	printf("entry at 0x%jx\n", filename, (uintmax_t)dest);
+	printf("entry at 0x%jx\n", (uintmax_t)dest);
 #endif
 
     fp->f_size = __elfN(loadimage)(fp, &ef, dest);
