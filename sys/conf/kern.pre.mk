@@ -111,23 +111,13 @@ NORMAL_FWO= ${LD} -b binary -d -warn-common -r -o ${.TARGET} ${.ALLSRC:M*.fw}
 WERROR=-Werror
 .endif
 
-GEN_CFILES= $S/platform/$P/$M/genassym.c
-SYSTEM_CFILES= ioconf.c config.c
-SYSTEM_SFILES= $S/platform/$P/$M/locore.s
-SYSTEM_DEP= Makefile ${SYSTEM_OBJS}
-SYSTEM_OBJS= locore.o ${OBJS} ioconf.o config.o hack.So
-SYSTEM_LD= @${CC} -nostdlib -ffreestanding -Wl,--hash-style=sysv \
-	-Wl,-Bdynamic -Wl,-L,$S/conf -Wl,-T,$S/platform/$P/conf/ldscript.$M \
-	-Wl,--export-dynamic -Wl,--dynamic-linker,/red/herring \
-	-o ${.TARGET} -Wl,-X ${SYSTEM_OBJS} vers.o
-
 # In case of LTO provide all standard CFLAGS!
 .if ${CFLAGS:M-flto}
-SYSTEM_LD+= ${CFLAGS}
-## This one eats a lot of ram, may be needed to correctly link the kernel.
+ELDFLAGS+= ${CFLAGS}
+## This one eats a lot of RAM, may be needed to correctly link the kernel.
 ## Default "balanced" might create kernel that "Fatal trap 12" on boot!!!
 #. if !${CFLAGS:M-flto-partition=*}
-#SYSTEM_LD+= -flto-partition=one -flto-report-wpa
+#ELDFLAGS+= -flto-partition=one -flto-report-wpa
 #. endif
 .endif
 
@@ -138,13 +128,21 @@ SYSTEM_LD+= ${CFLAGS}
 # required.  The only application that needs such a large page size is the
 # kernel itself, so leave the gold default alone and treat the kernel
 # page size as an exception.
-#
 .if ${P} == "pc64"
-SYSTEM_LD+= -Wl,-z,max-page-size=0x200000
+ELDFLAGS+= -Wl,-z,max-page-size=0x200000
 .endif
 
-SYSTEM_LD_TAIL= @${SIZE} ${.TARGET} ; chmod 755 ${.TARGET}
+GEN_CFILES= $S/platform/$P/$M/genassym.c
+SYSTEM_CFILES= ioconf.c config.c
+SYSTEM_SFILES= $S/platform/$P/$M/locore.s
+SYSTEM_OBJS= locore.o ${OBJS} ioconf.o config.o hack.So
+SYSTEM_DEP= Makefile ${SYSTEM_OBJS}
 SYSTEM_DEP+= $S/platform/$P/conf/ldscript.$M
+SYSTEM_LD= @${CC} ${ELDFLAGS} -nostdlib -ffreestanding -Wl,--hash-style=sysv \
+	-Wl,-Bdynamic -Wl,-L,$S/conf -Wl,-T,$S/platform/$P/conf/ldscript.$M \
+	-Wl,--export-dynamic -Wl,--dynamic-linker,/red/herring ${LDFLAGS} \
+	-o ${.TARGET} -Wl,-X ${SYSTEM_OBJS} vers.o
+SYSTEM_LD_TAIL= @${SIZE} ${.TARGET} ; chmod 755 ${.TARGET}
 
 # Normalize output files to make it absolutely crystal clear to
 # anyone examining the build directory.
@@ -161,7 +159,6 @@ FULLKERNEL=	${KERNEL}.nodebug
 SELECTEDKERNEL= ${KERNEL}.stripped
 .endif
 
-
 MKMODULESENV=	MAKEOBJDIRPREFIX=${.OBJDIR} KERNBUILDDIR=${.OBJDIR}
 .if defined(MODULES_OVERRIDE)
 MKMODULESENV+=	MODULES_OVERRIDE="${MODULES_OVERRIDE}"
@@ -173,4 +170,3 @@ MKMODULESENV+=	DEBUG="${DEBUG}" DEBUG_FLAGS="${DEBUG}"
 MKMODULESENV+=	INSTALLSTRIPPEDMODULES=1
 .endif
 MKMODULESENV+=  MACHINE_ARCH=${MACHINE_ARCH} MACHINE=${MACHINE} MACHINE_PLATFORM=${MACHINE_PLATFORM}
-
