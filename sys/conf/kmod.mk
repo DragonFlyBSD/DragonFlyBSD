@@ -8,7 +8,7 @@
 # +++ variables +++
 # CLEANFILES	Additional files to remove for the clean and cleandir targets.
 #
-# KMOD          The name of the kernel module to build.
+# KMOD		The name of the kernel module to build.
 #
 # KMODDIR	Base path for kernel modules (see kld(4)).
 #		[${DESTKERNDIR}]
@@ -23,10 +23,10 @@
 #
 # KMODUNLOAD	Command to unload a kernel module [/sbin/kldunload]
 #
-# PROG          The name of the kernel module to build.
+# PROG		The name of the kernel module to build.
 #		If not supplied, ${KMOD}.o is used.
 #
-# SRCS          List of source files
+# SRCS		List of source files
 #
 # DESTKERNDIR	Change the tree where the kernel and the modules get
 #		installed. [/boot]  ${DESTDIR} changes the root of the tree
@@ -46,17 +46,17 @@
 #
 # +++ targets +++
 #
-# 	install:
-#               install the kernel module and its manual pages; if the Makefile
-#               does not itself define the target install, the targets
-#               beforeinstall and afterinstall may also be used to cause
-#               actions immediately before and after the install target
+#	install:
+#		install the kernel module and its manual pages; if the Makefile
+#		does not itself define the target install, the targets
+#		beforeinstall and afterinstall may also be used to cause
+#		actions immediately before and after the install target
 #		is executed.
 #
-# 	load:
+#	load:
 #		Load KLD.
 #
-# 	unload:
+#	unload:
 #		Unload KLD.
 #
 # bsd.obj.mk: clean, cleandir and obj
@@ -165,7 +165,8 @@ ${KMOD:S/$/.c/}: dragonfly
 .else
 ${KMOD:S/$/.c/}: dragonfly/tools/fw_stub.awk
 .endif
-	${AWK} -f dragonfly/tools/fw_stub.awk ${FIRMWS} -m ${KMOD} -c ${KMOD:S/$/.c/g} \
+	${AWK} -f dragonfly/tools/fw_stub.awk ${FIRMWS} \
+	    -m ${KMOD} -c ${KMOD:S/$/.c/g} \
 	    ${FIRMWARE_LICENSE:C/.+/-l/}${FIRMWARE_LICENSE}
 
 SRCS+=	${KMOD:S/$/.c/}
@@ -199,20 +200,17 @@ PROG=	${KMOD}.ko
 ELDFLAGS+= ${CFLAGS}
 .endif
 
-.if ${MACHINE_ARCH} != x86_64
-${PROG}: ${KMOD}.kld
-	${CC} ${ELDFLAGS} -nostdlib -Wl,--hash-style=sysv \
-	-Wl,-Bshareable ${LDFLAGS} -o ${.TARGET} ${KMOD}.kld
-.endif
-
-.if ${MACHINE_ARCH} != x86_64
-${KMOD}.kld: ${OBJS}
-	${CC} ${ELDFLAGS} -nostdlib -Wl,--hash-style=sysv \
-	${LDFLAGS} -r -o ${.TARGET} ${OBJS}
-.else
+.if ${MACHINE_ARCH} == x86_64
 ${PROG}: ${OBJS}
 	${CC} ${ELDFLAGS} -nostdlib -Wl,--hash-style=sysv \
-	${LDFLAGS} -r -Wl,-d -o ${.TARGET} ${OBJS}
+	    ${LDFLAGS} -r -Wl,-d -o ${.TARGET} ${OBJS}
+.else
+${PROG}: ${KMOD}.kld
+	${CC} ${ELDFLAGS} -nostdlib -Wl,--hash-style=sysv \
+	    -Wl,-Bshareable ${LDFLAGS} -o ${.TARGET} ${KMOD}.kld
+${KMOD}.kld: ${OBJS}
+	${CC} ${ELDFLAGS} -nostdlib -Wl,--hash-style=sysv \
+	    ${LDFLAGS} -r -o ${.TARGET} ${OBJS}
 .endif
 
 # links to platform and cpu architecture include files.  If we are
