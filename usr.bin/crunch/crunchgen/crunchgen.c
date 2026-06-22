@@ -934,8 +934,7 @@ gen_output_cfile(void)
 		return;
 	}
 
-	fprintf(outcf,
-	    "/* %s - generated from %s by crunchgen %s */\n",
+	fprintf(outcf, "/* %s - generated from %s by crunchgen %s */\n",
 	    outcfname, infilename, CRUNCH_VERSION);
 
 	fprintf(outcf, "#define EXECNAME \"%s\"\n", execfname);
@@ -1081,23 +1080,25 @@ top_makefile_rules(FILE *outmk)
 	fprintf(outmk, "\n\n");
 	free_list(intlibs);
 
-	fprintf(outmk, "all: objs exe\nobjs: ${SUBMAKE_TARGETS}\n");
+	fprintf(outmk, "all: objs exe\n");
+	fprintf(outmk, "objs: ${SUBMAKE_TARGETS}\n");
 	fprintf(outmk, "exe: %s\n", execfname);
 	fprintf(outmk, "%s: %s.o ${CRUNCHED_OBJS} ${SUBMAKE_TARGETS}\n",
 	    execfname, execfname);
-	fprintf(outmk, ".if defined(LIBS_SO) && !empty(LIBS_SO)\n");
-	fprintf(outmk, "\t${CC} ${LINKOPTS} -o %s %s.o \\\n",
+	fprintf(outmk,
+	    ".if defined(LIBS_SO) && !empty(LIBS_SO)\n"
+	    "\t${CC} ${LINKOPTS} -o ${.TARGET} %s.o \\\n"
+	    "\t\t${CRUNCHED_OBJS} ${LIBS_INT} \\\n"
+	    "\t\t-Xlinker -Bstatic ${LIBS} \\\n"
+	    "\t\t-Xlinker -Bdynamic ${LIBS_SO}\n"
+	    ".else\n"
+	    "\t${CC} ${LINKOPTS} -static -o ${.TARGET} %s.o \\\n"
+	    "\t\t${CRUNCHED_OBJS} ${LIBS_INT} ${LIBS}\n"
+	    ".endif\n",
 	    execfname, execfname);
-	fprintf(outmk, "\t\t${CRUNCHED_OBJS} ${LIBS_INT} \\\n");
-	fprintf(outmk, "\t\t-Xlinker -Bstatic ${LIBS} \\\n");
-	fprintf(outmk, "\t\t-Xlinker -Bdynamic ${LIBS_SO}\n");
-	fprintf(outmk, ".else\n");
-	fprintf(outmk, "\t${CC} ${LINKOPTS} -static -o %s %s.o \\\n",
-	    execfname, execfname);
-	fprintf(outmk, "\t\t${CRUNCHED_OBJS} ${LIBS_INT} ${LIBS}\n");
-	fprintf(outmk, ".endif\n");
 	fprintf(outmk, "realclean: clean subclean\n");
-	fprintf(outmk, "clean:\n\trm -f %s *.lo *.o *_stub.c\n", execfname);
+	fprintf(outmk, "clean:\n");
+	fprintf(outmk, "\trm -f %s *.lo *.o *_stub.c\n", execfname);
 	fprintf(outmk, "subclean: ${SUBCLEAN_TARGETS}\n");
 }
 
@@ -1113,7 +1114,7 @@ prog_makefile_rules(FILE *outmk, prog_t *p)
 	if (p->objdir)
 		fprintf(outmk, "%s", p->objdir);
 	else
-		fprintf(outmk, "${MAKEOBJDIRPREFIX}/${%s_REALSRCDIR}\n",
+		fprintf(outmk, "${MAKEOBJDIRPREFIX}/${%s_REALSRCDIR}",
 		    p->ident);
 	fprintf(outmk, "\n");
 
@@ -1133,30 +1134,31 @@ prog_makefile_rules(FILE *outmk, prog_t *p)
 
 		fprintf(outmk, "%s_OBJS=", p->ident);
 		output_strlst(outmk, p->objs);
+
 		if (p->buildopts != NULL) {
 			fprintf(outmk, "%s_OPTS+=", p->ident);
 			output_strlst(outmk, p->buildopts);
 		}
+
 		fprintf(outmk, "%s_make:\n", p->ident);
-		fprintf(outmk, "\t(cd ${%s_SRCDIR} && ", p->ident);
+		fprintf(outmk, "\t(cd ${%s_SRCDIR} && \\\n", p->ident);
 		if (makeobj)
-			fprintf(outmk, "${CRUNCHMAKE} obj && ");
-		fprintf(outmk, "\\\n");
-		fprintf(outmk, "\t\t${CRUNCHMAKE} ${BUILDOPTS} ${%s_OPTS} depend && ",
-		    p->ident);
-		fprintf(outmk, "\\\n");
+			fprintf(outmk, "\t\t${CRUNCHMAKE} obj && \\\n");
 		fprintf(outmk, "\t\t${CRUNCHMAKE} ${BUILDOPTS} ${%s_OPTS} "
-		    "${%s_OBJS})",
-		    p->ident, p->ident);
-		fprintf(outmk, "\n");
+		    "depend && \\\n", p->ident);
+		fprintf(outmk, "\t\t${CRUNCHMAKE} ${BUILDOPTS} ${%s_OPTS} "
+		    "${%s_OBJS})\n", p->ident, p->ident);
+
 		fprintf(outmk, "%s_clean:\n", p->ident);
-		fprintf(outmk, "\t(cd ${%s_SRCDIR} && ${CRUNCHMAKE} ${BUILDOPTS} clean cleandepend)\n\n",
-		    p->ident);
+		fprintf(outmk, "\t(cd ${%s_SRCDIR} && \\\n", p->ident);
+		fprintf(outmk, "\t\t${CRUNCHMAKE} ${BUILDOPTS} ${%s_OPTS} "
+		    "clean cleandepend)\n", p->ident);
 	} else {
 		fprintf(outmk, "%s_make:\n", p->ident);
-		fprintf(outmk, "\t@echo \"** cannot make objs for %s\"\n\n",
+		fprintf(outmk, "\t@echo \"** cannot make objs for %s\"\n",
 		    p->name);
 	}
+	fprintf(outmk, "\n");
 
 	if (p->libs_int) {
 		fprintf(outmk, "%s_LIBS_INT=", p->ident);
@@ -1170,32 +1172,26 @@ prog_makefile_rules(FILE *outmk, prog_t *p)
 	}
 
 	fprintf(outmk, "%s_stub.c:\n", p->name);
-	fprintf(outmk, "\techo \""
+	fprintf(outmk, "\t@echo \""
 	    "extern int main(int, char **, char **); "
 	    "int _crunched_%s_stub(int, char **, char **); "
 	    "int _crunched_%s_stub(int argc, char **argv, char **envp)"
-	    "{return main(argc,argv,envp);}\" >%s_stub.c\n",
-	    p->ident, p->ident, p->name);
+	    "{ return main(argc, argv, envp); }\" > ${.TARGET}\n",
+	    p->ident, p->ident);
 	fprintf(outmk, "%s.lo: %s_stub.o ${%s_OBJPATHS}",
 	    p->name, p->name, p->ident);
 	if (p->libs_int)
 		fprintf(outmk, " ${%s_LIBS_INT}", p->ident);
 	if (p->libs)
 		fprintf(outmk, " ${%s_LIBS}", p->ident);
+	fprintf(outmk, "\n");
 
-	fprintf(outmk, "\n");
 	fprintf(outmk, "\t${CC} -nostdlib -Wl,-dc -r "
-	    "-o %s.lo %s_stub.o ${%s_OBJPATHS}",
-	    p->name, p->name, p->ident);
-	if (p->libs)
-		fprintf(outmk, " ${%s_LIBS}", p->ident);
-	if (p->libs_int)
-		fprintf(outmk, " ${%s_LIBS_INT}", p->ident);
-	fprintf(outmk, "\n");
+	    "-o ${.TARGET} ${.ALLSRC}\n");
 	fprintf(outmk, "\tcrunchide -k _crunched_%s_stub ", p->ident);
 	for (lst = p->keeplist; lst != NULL; lst = lst->next)
 		fprintf(outmk, "-k %s ", lst->str);
-	fprintf(outmk, "%s.lo\n", p->name);
+	fprintf(outmk, "${.TARGET}\n");
 }
 
 
@@ -1222,18 +1218,18 @@ intlib_makefile_rules(FILE *outmk, char *path)
 	fprintf(outmk, "%s_LIB=${%s_OBJDIR}/%s\n", libname, libname, libname);
 
 	fprintf(outmk, "%s_make:\n", libname);
-	fprintf(outmk, "\t(cd ${%s_SRCDIR} && ", libname);
+	fprintf(outmk, "\t(cd ${%s_SRCDIR} && \\\n", libname);
 	if (makeobj)
-		fprintf(outmk, "${CRUNCHMAKE} obj && ");
-	fprintf(outmk, "\\\n");
-	fprintf(outmk, "\t\t${CRUNCHMAKE} ${BUILDOPTS} ${%s_OPTS} depend && ",
-	    libname);
-	fprintf(outmk, "\\\n");
+		fprintf(outmk, "\t\t${CRUNCHMAKE} obj && \\\n");
+	fprintf(outmk, "\t\t${CRUNCHMAKE} ${BUILDOPTS} ${%s_OPTS} "
+	    "depend && \\\n", libname);
 	fprintf(outmk, "\t\t${CRUNCHMAKE} ${BUILDOPTS} ${%s_OPTS} %s)\n",
 	    libname, libname);
+
 	fprintf(outmk, "%s_clean:\n", libname);
-	fprintf(outmk, "\t(cd ${%s_SRCDIR} && ${CRUNCHMAKE} ${BUILDOPTS} clean cleandepend)\n",
-	    libname);
+	fprintf(outmk, "\t(cd ${%s_SRCDIR} && \\\n", libname);
+	fprintf(outmk, "\t\t${CRUNCHMAKE} ${BUILDOPTS} ${%s_OPTS} "
+	    "clean cleandepend)\n", libname);
 }
 
 
