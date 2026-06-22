@@ -2,9 +2,13 @@ ONE TRUE AWK
 ============
 
 Original source is available from:
+https://github.com/onetrueawk/awk/archive/${file}
 
-https://github.com/onetrueawk/awk
+file = 20260426.tar.gz
+date = 26 April 2026
+size = 1846240
+sha1 = 5e2c5c45ad588d2627bff1b8f68e908ba641d603
 
-A list of files removed is in README.DELETED.
+A list of files and directories removed is in README.DELETED.
 
-Use "git diff vendor/AWK contrib/awk" to see local modifications.
+No local modifications.

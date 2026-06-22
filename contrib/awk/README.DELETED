@@ -1,6 +1,7 @@
-.git/
 .gitignore
 ChangeLog
+FIXES
+FIXES.1e
 REGRESS
 TODO
 bugs-fixed/
