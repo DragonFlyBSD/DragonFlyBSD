@@ -1,0 +1,304 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\" Copyright (c) 2026 Abdelkader Boudih <dragonflybsd@seuros.com>
+.\"
+.Dd June 22, 2026
+.Dt APPLE_SMC 4
+.Os
+.Sh NAME
+.Nm apple_smc
+.Nd Apple System Management Controller driver
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following line in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device apple_smc"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+apple_smc_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver provides support for the System Management Controller (SMC) found
+in Apple Macintosh computers.
+The SMC manages fans, temperature sensors, keyboard backlight,
+ambient light sensors, the Sudden Motion Sensor (SMS), and various
+system state keys.
+.Pp
+The driver supports two hardware backends:
+.Bl -bullet -offset indent
+.It
+ISA I/O port (port 0x300) on Intel Macs through iMac13,x.
+.It
+MMIO register window on newer Intel Macs (iMac14,x and later),
+including those with an Apple T2 security chip.
+.El
+.Pp
+The MMIO backend is probed first.
+If a memory-mapped BAR is present and responds, the driver uses MMIO;
+otherwise it falls back to ISA port I/O.
+T2 Macs are identified by an
+.Va RGEN
+key value of 3.
+.Pp
+All sensor values and controls are exposed through the
+.Xr sysctl 8
+interface under
+.Va dev.apple_smc.0 .
+.Sh SYSCTL VARIABLES
+.Ss Fan Controls
+Each fan is exposed under
+.Va dev.apple_smc.0.fan.<N>
+where
+.Aq N
+is the fan number starting from 0.
+.Bl -tag -width indent
+.It Va dev.apple_smc.0.fan.<N>.id
+.Pq read-only
+Fan model identification string.
+.It Va dev.apple_smc.0.fan.<N>.speed
+.Pq read-only
+Current fan speed in RPM.
+.It Va dev.apple_smc.0.fan.<N>.safespeed
+.Pq read-only
+Fan safe speed in RPM.
+Only present if the hardware reports a safe speed key.
+.It Va dev.apple_smc.0.fan.<N>.minspeed
+Minimum fan speed in RPM.
+.It Va dev.apple_smc.0.fan.<N>.maxspeed
+Maximum fan speed in RPM.
+.It Va dev.apple_smc.0.fan.<N>.targetspeed
+Target fan speed in RPM.
+.It Va dev.apple_smc.0.fan.<N>.manual
+Fan manual mode.
+Set to 1 to disable automatic fan control, 0 to re-enable it.
+On T2 Macs this uses the per-fan
+.Va F<N>Md
+key; on older Macs it uses the global
+.Va FS!\&
+bitmask.
+.El
+.Ss Temperature Sensors
+Temperature sensors are auto-detected at attach time by scanning the
+SMC key namespace for keys in the
+.Ql T
+range with
+.Va sp78
+type (signed 8.8 fixed-point, millidegrees Celsius).
+.Pp
+Sensors whose probe read returns a value below \-10000 millidegrees
+are classified as Intel DTS (distance-to-Tj,max) sensors and placed
+under a separate
+.Va dts
+subtree.
+The sysctl handler converts DTS readings to absolute temperature using
+the Tj,max value read from MSR 0x1A2 at attach time.
+Sensors returning \-120000 or below are treated as disconnected and
+are not registered.
+.Bl -tag -width indent
+.It Va dev.apple_smc.0.temp.<KEY>
+.Pq read-only
+Absolute temperature in millidegrees Celsius.
+.Aq KEY
+is the 4-character SMC key name, e.g.\&
+.Ql TC0D
+for CPU die temperature.
+.It Va dev.apple_smc.0.temp.dts.<KEY>
+.Pq read-only
+DTS sensor converted to absolute temperature.
+.El
+.Ss Voltage, Current, and Power Sensors
+Voltage, current, and power sensors are auto-detected by scanning the
+.Ql V ,
+.Ql I ,
+and
+.Ql P
+key ranges respectively.
+Values are reported in millivolts, milliamps, or milliwatts.
+.Bl -tag -width indent
+.It Va dev.apple_smc.0.voltage.<KEY>
+.Pq read-only
+Voltage in millivolts.
+.It Va dev.apple_smc.0.current.<KEY>
+.Pq read-only
+Current in milliamps.
+.It Va dev.apple_smc.0.power.<KEY>
+.Pq read-only
+Power in milliwatts.
+.El
+.Ss Ambient Light Sensors
+.Bl -tag -width indent
+.It Va dev.apple_smc.0.ambient.<KEY>
+.Pq read-only
+Ambient light sensor reading.
+Keys are typically
+.Ql ALV0 ,
+.Ql ALV1 ,
+etc.
+.El
+.Ss Keyboard Backlight
+.Bl -tag -width indent
+.It Va dev.apple_smc.0.light.left
+.Pq read-only
+Left ambient light sensor value used for keyboard backlight.
+On newer models with 10-byte payloads, a dedicated decoder is used.
+.It Va dev.apple_smc.0.light.right
+.Pq read-only
+Right ambient light sensor value.
+Only present on models with a separate right sensor and 6-byte payloads.
+.It Va dev.apple_smc.0.light.control
+Keyboard backlight brightness, 0 (off) to 255 (maximum).
+The value is cached and restored on resume from suspend.
+.El
+.Ss Sudden Motion Sensor (SMS)
+The SMS provides three-axis accelerometer data.
+It is only present on MacBook and MacBook Pro models with
+a built-in hard disk motion sensor.
+.Pp
+SMS events are delivered to
+.Xr devd 8
+with system
+.Ql ACPI ,
+subsystem
+.Ql apple_smc ,
+and type
+.Ql SMS .
+The notify value encodes the event type:
+0 = shock, 1 = high acceleration, 2 = free fall.
+.Bl -tag -width indent
+.It Va dev.apple_smc.0.sms.x
+.Pq read-only
+Accelerometer X axis value.
+.It Va dev.apple_smc.0.sms.y
+.Pq read-only
+Accelerometer Y axis value.
+.It Va dev.apple_smc.0.sms.z
+.Pq read-only
+Accelerometer Z axis value.
+.El
+.Ss System State
+These sysctls are only present if the corresponding SMC key exists
+on the hardware.
+.Bl -tag -width indent
+.It Va dev.apple_smc.0.system.shutdown_cause
+.Pq read-only
+Last shutdown cause as reported by the
+.Va MSSD
+key, decoded to a human-readable string where known
+.Pq e.g.\& Dq 5 (good-shutdown) .
+.It Va dev.apple_smc.0.system.sleep_cause
+.Pq read-only
+Last sleep cause
+.Pq Va MSSP .
+.It Va dev.apple_smc.0.system.thermal_status
+.Pq read-only
+Thermal subsystem alert flags
+.Pq Va MSAL .
+Decoded bits include TSS, thermal validity, calibration validity,
+PROCHOT assertion, and power limits.
+.It Va dev.apple_smc.0.system.time_of_day
+.Pq read-only
+SMC clock: seconds since midnight
+.Pq Va CLKT .
+.It Va dev.apple_smc.0.system.power_state
+.Pq read-only
+SMC power state index
+.Pq Va MSPS .
+.It Va dev.apple_smc.0.system.board_id
+.Pq read-only
+Apple board codename, e.g.\&
+.Ql Mac-27ADBB7B4CEE8E61
+.Pq Va RPlt .
+.It Va dev.apple_smc.0.system.chip_gen
+.Pq read-only
+Apple chip generation; a value of 3 indicates a T2 coprocessor
+.Pq Va RGEN .
+.El
+.Ss Battery Charge Limit (T2 only)
+.Bl -tag -width indent
+.It Va dev.apple_smc.0.battery_charge_limit
+Battery charge limit percentage, 0 to 100
+.Pq Va BCLM .
+Only present on T2 Macs.
+.El
+.Ss Auto Power-On
+.Bl -tag -width indent
+.It Va dev.apple_smc.0.auto_poweron
+Auto power-on after AC power loss.
+Set to 1 to enable, 0 to disable
+.Pq Va AUPO .
+.El
+.Ss Debug Interface
+When the kernel is compiled with
+.Dv APPLE_SMC_DEBUG ,
+a raw key access interface is available under
+.Va dev.apple_smc.0.raw :
+.Bl -tag -width indent
+.It Va dev.apple_smc.0.raw.key
+Write a 4-character SMC key name to select it.
+.It Va dev.apple_smc.0.raw.value
+Read or write the selected key's value as a hexadecimal string.
+.It Va dev.apple_smc.0.raw.len
+.Pq read-only
+Length of the selected key's value in bytes.
+.It Va dev.apple_smc.0.raw.type
+.Pq read-only
+4-character type code of the selected key.
+.El
+.Sh HARDWARE
+The
+.Nm
+driver supports any Intel Mac with ACPI device
+.Ql APP0001 .
+.Sh EXAMPLES
+Read the CPU die temperature:
+.Bd -literal -offset indent
+sysctl dev.apple_smc.0.temp.TC0D
+.Ed
+.Pp
+Set fan 0 to manual mode at 2000 RPM:
+.Bd -literal -offset indent
+sysctl dev.apple_smc.0.fan.0.manual=1
+sysctl dev.apple_smc.0.fan.0.targetspeed=2000
+.Ed
+.Pp
+Check the last shutdown cause:
+.Bd -literal -offset indent
+sysctl dev.apple_smc.0.system.shutdown_cause
+.Ed
+.Pp
+Limit battery charge to 80% on a T2 Mac:
+.Bd -literal -offset indent
+sysctl dev.apple_smc.0.battery_charge_limit=80
+.Ed
+.Sh SEE ALSO
+.Xr acpi 4 ,
+.Xr apple_fw 4 ,
+.Xr sysctl.conf 5 ,
+.Xr devd 8 ,
+.Xr sysctl 8
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Dx 6.5 .
+.Sh AUTHORS
+The
+.Nm
+driver and this manual page were written by
+.An Abdelkader Boudih Aq Mt dragonflybsd@seuros.com .
+.Sh CAVEATS
+On headless iMacs with the LCD panel disconnected, the SMC may enter a
+thermal panic mode due to missing temperature sensors
+.Pq e.g.\& TL0P, TL1P ,
+asserting PROCHOT and throttling the CPU to its minimum frequency.
+The
+.Va thermal_status
+sysctl can be used to diagnose this condition.
+Fan manual mode overrides can be used to manage fan speeds in this
+scenario.

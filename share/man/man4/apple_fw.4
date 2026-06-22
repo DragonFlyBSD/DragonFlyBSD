@@ -1,0 +1,70 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\" Copyright (c) 2026 Abdelkader Boudih <dragonflybsd@seuros.com>
+.\"
+.Dd June 22, 2026
+.Dt APPLE_FW 4
+.Os
+.Sh NAME
+.Nm apple_fw
+.Nd Apple EFI firmware properties driver
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following line in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device apple_fw"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+apple_fw_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver extracts hardware configuration properties stored in the Apple
+EFI firmware via the ACPI
+.Fn _DSM
+(Device Specific Method) interface.
+.Pp
+On Apple Macintosh computers, the EFI firmware populates ACPI device
+nodes with a vendor-specific
+.Fn _DSM
+that returns key-value pairs describing hardware configuration such
+as device model strings, firmware versions, and hardware addresses.
+The
+.Nm
+driver identifies Apple ACPI root devices by the
+.Ql AAPL
+HID prefix, invokes
+.Fn _DSM
+with the Apple-specific UUID, and exposes the discovered properties
+through the
+.Xr sysctl 8
+interface.
+.Sh SYSCTL VARIABLES
+Properties are exported under
+.Va dev.apple_fw.0 :
+.Bl -tag -width indent
+.It Va dev.apple_fw.0.<key>
+Each property discovered from the EFI firmware is exposed as a
+read-only sysctl node.
+The key names and values are determined by the firmware and vary
+by Mac model.
+.El
+.Sh SEE ALSO
+.Xr acpi 4 ,
+.Xr apple_smc 4 ,
+.Xr sysctl 8
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Dx 6.5 .
+.Sh AUTHORS
+The
+.Nm
+driver and this manual page were written by
+.An Abdelkader Boudih Aq Mt dragonflybsd@seuros.com .
