@@ -1202,8 +1202,8 @@ prog_makefile_rules(FILE *outmk, prog_t *p)
 static void
 intlib_makefile_rules(FILE *outmk, char *path)
 {
-	char *pathcopy, *libname, *srcdir, *objdir;
-	char realsrcdir[MAXPATHLEN], line[MAXPATHLEN];
+	char *pathcopy, *libname, *srcdir;
+	char realsrcdir[MAXPATHLEN], objdir[MAXPATHLEN];
 
 	libname = basename(path);
 	if ((pathcopy = strdup(path)) == NULL)
@@ -1211,18 +1211,13 @@ intlib_makefile_rules(FILE *outmk, char *path)
 	srcdir = dirname(pathcopy);
 	if ((realpath(srcdir, realsrcdir)) == NULL)
 		errx(1, "Can't get realpath on: %s\n", srcdir);
+	snprintf(objdir, sizeof(objdir), "%s/%s", objprefix, realsrcdir);
+	if (!is_dir(objdir))
+		strlcpy(objdir, realsrcdir, sizeof(objdir));
 
 	fprintf(outmk, "\n# -------- %s\n\n", libname);
 	fprintf(outmk, "%s_SRCDIR=%s\n", libname, srcdir);
 	fprintf(outmk, "%s_REALSRCDIR=%s\n", libname, realsrcdir);
-
-	snprintf(line, sizeof line, "%s/%s", objprefix, realsrcdir);
-	if (is_dir(line)) {
-		if ((objdir = strdup(line)) == NULL)
-			out_of_memory();
-	} else {
-		objdir = realsrcdir;
-	}
 	fprintf(outmk, "%s_OBJDIR=%s\n", libname, objdir);
 	fprintf(outmk, "%s_LIB=${%s_OBJDIR}/%s\n", libname, libname, libname);
 
@@ -1246,7 +1241,7 @@ static void
 output_strlst(FILE *outf, strlst_t *lst)
 {
 	for (; lst != NULL; lst = lst->next)
-		if ( strlen(lst->str) )
+		if (strlen(lst->str))
 			fprintf(outf, " %s", lst->str);
 	fprintf(outf, "\n");
 }
@@ -1300,7 +1295,7 @@ add_string(strlst_t **listp, char *str, int nodup)
 	if (p2) {
 		p2->next = NULL;
 		p2->str = strdup(str);
-    	}
+	}
 	if (!p2 || !p2->str)
 		out_of_memory();
 
