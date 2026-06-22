@@ -17,9 +17,4 @@ WARNS= 5
 
 CLEANFILES+=	awkgram.tab.h y.tab.h awkgram.c
 
-build-tools: maketab.nx
-
-# this setup is used in place, it is not installed anywhere
-install:
-
 .include <bsd.hostprog.mk>

@@ -18,6 +18,6 @@ awkgram.tab.h: awkgram.h
 	${LN} -sf ${.ALLSRC} ${.TARGET}
 
 proctab.c: awkgram.tab.h ${AWKSRC}/maketab.c
-	${.OBJDIR}/../maketab/maketab.nx awkgram.tab.h > ${.OBJDIR}/proctab.c
+	${.OBJDIR}/../maketab/maketab.nx awkgram.tab.h > ${.TARGET}
 
 .include <bsd.prog.mk>
