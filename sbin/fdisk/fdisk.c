@@ -455,8 +455,10 @@ print_s0(int which)
 	print_params();
 	printf("Information from DOS bootblock is:\n");
 	if (which == -1) {
-		for (i = 1; i <= NDOSPART; i++)
-			printf("%d: ", i), print_part(i);
+		for (i = 1; i <= NDOSPART; i++) {
+			printf("%d: ", i);
+			print_part(i);
+		}
 	} else {
 		print_part(which);
 	}
