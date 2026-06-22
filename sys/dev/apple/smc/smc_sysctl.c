@@ -72,50 +72,34 @@ apple_smc_mb_sysctl_fansafespeed(SYSCTL_HANDLER_ARGS)
 	return (sysctl_handle_int(oidp, &v, 0, req));
 }
 
+/*
+ * Fan speed keys that support both read and write.
+ * Index into this table is packed in arg2 bits [15:8].
+ */
+static const char *apple_smc_fan_rw_keys[] = {
+	ASMC_KEY_FANMINSPEED,		/* 0 */
+	ASMC_KEY_FANMAXSPEED,		/* 1 */
+	ASMC_KEY_FANTARGETSPEED,	/* 2 */
+};
+
 int
-apple_smc_mb_sysctl_fanminspeed(SYSCTL_HANDLER_ARGS)
+apple_smc_mb_sysctl_fanrw(SYSCTL_HANDLER_ARGS)
 {
 	device_t dev = (device_t)arg1;
-	int fan = arg2;
+	int key_idx = (arg2 >> 8) & 0xFF;
+	int fan = arg2 & 0xFF;
+	const char *key;
 	int error;
 	int32_t v;
 
-	v = apple_smc_fan_getvalue(dev, ASMC_KEY_FANMINSPEED, fan);
+	if (key_idx >= (int)nitems(apple_smc_fan_rw_keys))
+		return (EINVAL);
+	key = apple_smc_fan_rw_keys[key_idx];
+
+	v = apple_smc_fan_getvalue(dev, key, fan);
 	error = sysctl_handle_int(oidp, &v, 0, req);
 	if (error == 0 && req->newptr != NULL) {
-		error = apple_smc_fan_setvalue(dev, ASMC_KEY_FANMINSPEED, fan, v);
-	}
-	return (error);
-}
-
-int
-apple_smc_mb_sysctl_fanmaxspeed(SYSCTL_HANDLER_ARGS)
-{
-	device_t dev = (device_t)arg1;
-	int fan = arg2;
-	int error;
-	int32_t v;
-
-	v = apple_smc_fan_getvalue(dev, ASMC_KEY_FANMAXSPEED, fan);
-	error = sysctl_handle_int(oidp, &v, 0, req);
-	if (error == 0 && req->newptr != NULL) {
-		error = apple_smc_fan_setvalue(dev, ASMC_KEY_FANMAXSPEED, fan, v);
-	}
-	return (error);
-}
-
-int
-apple_smc_mb_sysctl_fantargetspeed(SYSCTL_HANDLER_ARGS)
-{
-	device_t dev = (device_t)arg1;
-	int fan = arg2;
-	int error;
-	int32_t v;
-
-	v = apple_smc_fan_getvalue(dev, ASMC_KEY_FANTARGETSPEED, fan);
-	error = sysctl_handle_int(oidp, &v, 0, req);
-	if (error == 0 && req->newptr != NULL) {
-		error = apple_smc_fan_setvalue(dev, ASMC_KEY_FANTARGETSPEED, fan, v);
+		error = apple_smc_fan_setvalue(dev, key, fan, v);
 	}
 	return (error);
 }
@@ -280,22 +264,19 @@ apple_smc_sms_axis(device_t dev, const char *key,
 	return (sysctl_handle_int(oidp, &v, 0, req));
 }
 
-int
-apple_smc_mb_sysctl_sms_x(SYSCTL_HANDLER_ARGS)
-{
-	return (apple_smc_sms_axis((device_t)arg1, ASMC_KEY_SMS_X, oidp, req));
-}
+static const char *apple_smc_sms_keys[] = {
+	ASMC_KEY_SMS_X,		/* 0 */
+	ASMC_KEY_SMS_Y,		/* 1 */
+	ASMC_KEY_SMS_Z,		/* 2 */
+};
 
 int
-apple_smc_mb_sysctl_sms_y(SYSCTL_HANDLER_ARGS)
+apple_smc_mb_sysctl_sms(SYSCTL_HANDLER_ARGS)
 {
-	return (apple_smc_sms_axis((device_t)arg1, ASMC_KEY_SMS_Y, oidp, req));
-}
-
-int
-apple_smc_mb_sysctl_sms_z(SYSCTL_HANDLER_ARGS)
-{
-	return (apple_smc_sms_axis((device_t)arg1, ASMC_KEY_SMS_Z, oidp, req));
+	if (arg2 < 0 || arg2 >= (int)nitems(apple_smc_sms_keys))
+		return (EINVAL);
+	return (apple_smc_sms_axis((device_t)arg1, apple_smc_sms_keys[arg2],
+	    oidp, req));
 }
 
 static int
@@ -314,18 +295,18 @@ apple_smc_light_sensor(device_t dev, const char *key,
 	return (sysctl_handle_int(oidp, &v, 0, req));
 }
 
-int
-apple_smc_mbp_sysctl_light_left(SYSCTL_HANDLER_ARGS)
-{
-	return (apple_smc_light_sensor((device_t)arg1, ASMC_KEY_LIGHTLEFT,
-	    oidp, req));
-}
+static const char *apple_smc_light_keys[] = {
+	ASMC_KEY_LIGHTLEFT,	/* 0 */
+	ASMC_KEY_LIGHTRIGHT,	/* 1 */
+};
 
 int
-apple_smc_mbp_sysctl_light_right(SYSCTL_HANDLER_ARGS)
+apple_smc_mbp_sysctl_light(SYSCTL_HANDLER_ARGS)
 {
-	return (apple_smc_light_sensor((device_t)arg1, ASMC_KEY_LIGHTRIGHT,
-	    oidp, req));
+	if (arg2 < 0 || arg2 >= (int)nitems(apple_smc_light_keys))
+		return (EINVAL);
+	return (apple_smc_light_sensor((device_t)arg1,
+	    apple_smc_light_keys[arg2], oidp, req));
 }
 
 int
@@ -433,38 +414,31 @@ apple_smc_cause_str(int8_t cause)
 	}
 }
 
-static int
-apple_smc_cause_sysctl(device_t dev, const char *key,
-    struct sysctl_oid *oidp, struct sysctl_req *req)
+static const char *apple_smc_cause_keys[] = {
+	ASMC_KEY_MSSD,		/* 0 */
+	ASMC_KEY_MSSP,		/* 1 */
+};
+
+int
+apple_smc_cause_sysctl(SYSCTL_HANDLER_ARGS)
 {
+	device_t dev = (device_t)arg1;
+	const char *key, *desc;
 	int8_t cause;
-	const char *desc;
 	char buf[48];
 
-	if (apple_smc_key_read(dev, key, (uint8_t *)&cause, 1) != 0) {
+	if (arg2 < 0 || arg2 >= (int)nitems(apple_smc_cause_keys))
+		return (EINVAL);
+	key = apple_smc_cause_keys[arg2];
+
+	if (apple_smc_key_read(dev, key, (uint8_t *)&cause, 1) != 0)
 		return (EIO);
-	}
 	desc = apple_smc_cause_str(cause);
-	if (desc) {
+	if (desc)
 		ksnprintf(buf, sizeof(buf), "%d (%s)", (int)cause, desc);
-	} else {
+	else
 		ksnprintf(buf, sizeof(buf), "%d", (int)cause);
-	}
 	return (sysctl_handle_string(oidp, buf, sizeof(buf), req));
-}
-
-int
-apple_smc_mssd_sysctl(SYSCTL_HANDLER_ARGS)
-{
-	return (apple_smc_cause_sysctl((device_t)arg1, ASMC_KEY_MSSD,
-	    oidp, req));
-}
-
-int
-apple_smc_mssp_sysctl(SYSCTL_HANDLER_ARGS)
-{
-	return (apple_smc_cause_sysctl((device_t)arg1, ASMC_KEY_MSSP,
-	    oidp, req));
 }
 
 int

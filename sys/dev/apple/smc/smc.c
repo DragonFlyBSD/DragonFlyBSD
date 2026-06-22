@@ -213,56 +213,67 @@ apple_smc_attach(device_t dev)
 	    SYSCTL_CHILDREN(sysctlnode), OID_AUTO, "fan",
 	    CTLFLAG_RD, 0, "Fan Root Tree");
 
-	for (i = 1; i <= sc->sc_nfan; i++) {
-		j = i - 1;
-		name[0] = '0' + j;
-		name[1] = 0;
-		sc->sc_fan_tree[i] = SYSCTL_ADD_NODE(sysctlctx,
-		    SYSCTL_CHILDREN(sc->sc_fan_tree[0]), OID_AUTO, name,
-		    CTLFLAG_RD, 0, "Fan Subtree");
+	{
+		/*
+		 * Per-fan sysctl table.  arg2_key encodes the key index
+		 * for apple_smc_mb_sysctl_fanrw in bits [15:8]; the fan
+		 * number is OR'd into bits [7:0] at registration time.
+		 * Entries with arg2_key == -1 pass fan index directly.
+		 */
+		static const struct {
+			const char	*name;
+			int		type;
+			int		arg2_key;
+			int		(*handler)(SYSCTL_HANDLER_ARGS);
+			const char	*desc;
+			int		need_safespeed;
+		} fan_sysctls[] = {
+			{ "id", CTLTYPE_STRING | CTLFLAG_RD, -1,
+			    apple_smc_mb_sysctl_fanid,
+			    "Fan ID", 0 },
+			{ "speed", CTLTYPE_INT | CTLFLAG_RD, -1,
+			    apple_smc_mb_sysctl_fanspeed,
+			    "Fan speed in RPM", 0 },
+			{ "safespeed", CTLTYPE_INT | CTLFLAG_RD, -1,
+			    apple_smc_mb_sysctl_fansafespeed,
+			    "Fan safe speed in RPM", 1 },
+			{ "minspeed", CTLTYPE_INT | CTLFLAG_RW, 0 << 8,
+			    apple_smc_mb_sysctl_fanrw,
+			    "Fan minimum speed in RPM", 0 },
+			{ "maxspeed", CTLTYPE_INT | CTLFLAG_RW, 1 << 8,
+			    apple_smc_mb_sysctl_fanrw,
+			    "Fan maximum speed in RPM", 0 },
+			{ "targetspeed", CTLTYPE_INT | CTLFLAG_RW, 2 << 8,
+			    apple_smc_mb_sysctl_fanrw,
+			    "Fan target speed in RPM", 0 },
+			{ "manual", CTLTYPE_INT | CTLFLAG_RW, -1,
+			    apple_smc_mb_sysctl_fanmanual,
+			    "Fan manual mode (0=auto, 1=manual)", 0 },
+		};
+		unsigned int fi;
 
-		SYSCTL_ADD_PROC(sysctlctx,
-		    SYSCTL_CHILDREN(sc->sc_fan_tree[i]),
-		    OID_AUTO, "id", CTLTYPE_STRING | CTLFLAG_RD,
-		    dev, j, apple_smc_mb_sysctl_fanid, "I", "Fan ID");
+		for (i = 1; i <= sc->sc_nfan; i++) {
+			j = i - 1;
+			name[0] = '0' + j;
+			name[1] = 0;
+			sc->sc_fan_tree[i] = SYSCTL_ADD_NODE(sysctlctx,
+			    SYSCTL_CHILDREN(sc->sc_fan_tree[0]), OID_AUTO,
+			    name, CTLFLAG_RD, 0, "Fan Subtree");
 
-		SYSCTL_ADD_PROC(sysctlctx,
-		    SYSCTL_CHILDREN(sc->sc_fan_tree[i]),
-		    OID_AUTO, "speed", CTLTYPE_INT | CTLFLAG_RD,
-		    dev, j, apple_smc_mb_sysctl_fanspeed, "I",
-		    "Fan speed in RPM");
-
-		if (sc->sc_has_safespeed) {
-			SYSCTL_ADD_PROC(sysctlctx,
-			    SYSCTL_CHILDREN(sc->sc_fan_tree[i]),
-			    OID_AUTO, "safespeed", CTLTYPE_INT | CTLFLAG_RD,
-			    dev, j, apple_smc_mb_sysctl_fansafespeed, "I",
-			    "Fan safe speed in RPM");
+			for (fi = 0; fi < nitems(fan_sysctls); fi++) {
+				if (fan_sysctls[fi].need_safespeed &&
+				    !sc->sc_has_safespeed)
+					continue;
+				SYSCTL_ADD_PROC(sysctlctx,
+				    SYSCTL_CHILDREN(sc->sc_fan_tree[i]),
+				    OID_AUTO, fan_sysctls[fi].name,
+				    fan_sysctls[fi].type, dev,
+				    fan_sysctls[fi].arg2_key == -1 ?
+				        j : (fan_sysctls[fi].arg2_key | j),
+				    fan_sysctls[fi].handler, "I",
+				    fan_sysctls[fi].desc);
+			}
 		}
-
-		SYSCTL_ADD_PROC(sysctlctx,
-		    SYSCTL_CHILDREN(sc->sc_fan_tree[i]),
-		    OID_AUTO, "minspeed", CTLTYPE_INT | CTLFLAG_RW,
-		    dev, j, apple_smc_mb_sysctl_fanminspeed, "I",
-		    "Fan minimum speed in RPM");
-
-		SYSCTL_ADD_PROC(sysctlctx,
-		    SYSCTL_CHILDREN(sc->sc_fan_tree[i]),
-		    OID_AUTO, "maxspeed", CTLTYPE_INT | CTLFLAG_RW,
-		    dev, j, apple_smc_mb_sysctl_fanmaxspeed, "I",
-		    "Fan maximum speed in RPM");
-
-		SYSCTL_ADD_PROC(sysctlctx,
-		    SYSCTL_CHILDREN(sc->sc_fan_tree[i]),
-		    OID_AUTO, "targetspeed", CTLTYPE_INT | CTLFLAG_RW,
-		    dev, j, apple_smc_mb_sysctl_fantargetspeed, "I",
-		    "Fan target speed in RPM");
-
-		SYSCTL_ADD_PROC(sysctlctx,
-		    SYSCTL_CHILDREN(sc->sc_fan_tree[i]),
-		    OID_AUTO, "manual", CTLTYPE_INT | CTLFLAG_RW,
-		    dev, j, apple_smc_mb_sysctl_fanmanual, "I",
-		    "Fan manual mode (0=auto, 1=manual)");
 	}
 
 	/* temp tree */
@@ -307,7 +318,7 @@ apple_smc_attach(device_t dev)
 		    OID_AUTO, "left", CTLTYPE_INT | CTLFLAG_RD, dev, 0,
 		    sc->sc_light_len == ASMC_LIGHT_LONGLEN ?
 		        apple_smc_mbp_sysctl_light_left_10byte :
-		        apple_smc_mbp_sysctl_light_left,
+		        apple_smc_mbp_sysctl_light,
 		    "I", "Keyboard backlight left sensor");
 
 		if (sc->sc_light_len != ASMC_LIGHT_LONGLEN &&
@@ -316,7 +327,7 @@ apple_smc_attach(device_t dev)
 			SYSCTL_ADD_PROC(sysctlctx,
 			    SYSCTL_CHILDREN(sc->sc_light_tree),
 			    OID_AUTO, "right", CTLTYPE_INT | CTLFLAG_RD,
-			    dev, 0, apple_smc_mbp_sysctl_light_right,
+			    dev, 1, apple_smc_mbp_sysctl_light,
 			    "I", "Keyboard backlight right sensor");
 		}
 
@@ -362,60 +373,62 @@ apple_smc_attach(device_t dev)
 
 	/* system state subtree */
 	{
+		static const struct {
+			const char	*smc_key;
+			const char	*name;
+			int		type;
+			int		arg2;
+			int		(*handler)(SYSCTL_HANDLER_ARGS);
+			const char	*fmt;
+			const char	*desc;
+		} sys_sysctls[] = {
+			{ ASMC_KEY_MSSD, "shutdown_cause",
+			    CTLTYPE_STRING | CTLFLAG_RD, 0,
+			    apple_smc_cause_sysctl, "A",
+			    "Last shutdown cause (MSSD)" },
+			{ ASMC_KEY_MSSP, "sleep_cause",
+			    CTLTYPE_STRING | CTLFLAG_RD, 1,
+			    apple_smc_cause_sysctl, "A",
+			    "Last sleep cause (MSSP)" },
+			{ ASMC_KEY_MSAL, "thermal_status",
+			    CTLTYPE_STRING | CTLFLAG_RD, 0,
+			    apple_smc_msal_sysctl, "A",
+			    "Thermal subsystem status (MSAL)" },
+			{ ASMC_KEY_CLKT, "time_of_day",
+			    CTLTYPE_UINT | CTLFLAG_RD, 0,
+			    apple_smc_clkt_sysctl, "IU",
+			    "Seconds since midnight (CLKT)" },
+			{ ASMC_KEY_MSPS, "power_state",
+			    CTLTYPE_UINT | CTLFLAG_RD, 0,
+			    apple_smc_msps_sysctl, "IU",
+			    "SMC power state index (MSPS)" },
+			{ ASMC_KEY_RPLT, "board_id",
+			    CTLTYPE_STRING | CTLFLAG_RD, 0,
+			    apple_smc_rplt_sysctl, "A",
+			    "Apple board codename (RPlt)" },
+			{ ASMC_KEY_RGEN, "chip_gen",
+			    CTLTYPE_UINT | CTLFLAG_RD, 0,
+			    apple_smc_rgen_sysctl, "IU",
+			    "Apple chip generation (RGEN; 3=T2)" },
+		};
 		struct sysctl_oid *sys_tree;
+		unsigned int si;
 
 		sys_tree = SYSCTL_ADD_NODE(sysctlctx,
 		    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO,
 		    "system", CTLFLAG_RD, 0, "System state and board identity");
 
-		if (apple_smc_key_getinfo(dev, ASMC_KEY_MSSD, NULL, NULL) == 0)
+		for (si = 0; si < nitems(sys_sysctls); si++) {
+			if (apple_smc_key_getinfo(dev,
+			    sys_sysctls[si].smc_key, NULL, NULL) != 0)
+				continue;
 			SYSCTL_ADD_PROC(sysctlctx,
 			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
-			    "shutdown_cause", CTLTYPE_STRING | CTLFLAG_RD,
-			    dev, 0, apple_smc_mssd_sysctl, "A",
-			    "Last shutdown cause (MSSD)");
-
-		if (apple_smc_key_getinfo(dev, ASMC_KEY_MSSP, NULL, NULL) == 0)
-			SYSCTL_ADD_PROC(sysctlctx,
-			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
-			    "sleep_cause", CTLTYPE_STRING | CTLFLAG_RD,
-			    dev, 0, apple_smc_mssp_sysctl, "A",
-			    "Last sleep cause (MSSP)");
-
-		if (apple_smc_key_getinfo(dev, ASMC_KEY_MSAL, NULL, NULL) == 0)
-			SYSCTL_ADD_PROC(sysctlctx,
-			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
-			    "thermal_status", CTLTYPE_STRING | CTLFLAG_RD,
-			    dev, 0, apple_smc_msal_sysctl, "A",
-			    "Thermal subsystem status (MSAL)");
-
-		if (apple_smc_key_getinfo(dev, ASMC_KEY_CLKT, NULL, NULL) == 0)
-			SYSCTL_ADD_PROC(sysctlctx,
-			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
-			    "time_of_day", CTLTYPE_UINT | CTLFLAG_RD,
-			    dev, 0, apple_smc_clkt_sysctl, "IU",
-			    "Seconds since midnight (CLKT)");
-
-		if (apple_smc_key_getinfo(dev, ASMC_KEY_MSPS, NULL, NULL) == 0)
-			SYSCTL_ADD_PROC(sysctlctx,
-			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
-			    "power_state", CTLTYPE_UINT | CTLFLAG_RD,
-			    dev, 0, apple_smc_msps_sysctl, "IU",
-			    "SMC power state index (MSPS)");
-
-		if (apple_smc_key_getinfo(dev, ASMC_KEY_RPLT, NULL, NULL) == 0)
-			SYSCTL_ADD_PROC(sysctlctx,
-			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
-			    "board_id", CTLTYPE_STRING | CTLFLAG_RD,
-			    dev, 0, apple_smc_rplt_sysctl, "A",
-			    "Apple board codename (RPlt)");
-
-		if (apple_smc_key_getinfo(dev, ASMC_KEY_RGEN, NULL, NULL) == 0)
-			SYSCTL_ADD_PROC(sysctlctx,
-			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
-			    "chip_gen", CTLTYPE_UINT | CTLFLAG_RD,
-			    dev, 0, apple_smc_rgen_sysctl, "IU",
-			    "Apple chip generation (RGEN; 3=T2)");
+			    sys_sysctls[si].name, sys_sysctls[si].type,
+			    dev, sys_sysctls[si].arg2,
+			    sys_sysctls[si].handler, sys_sysctls[si].fmt,
+			    sys_sysctls[si].desc);
+		}
 	}
 
 	if (!sc->sc_has_sms)
@@ -427,20 +440,24 @@ apple_smc_attach(device_t dev)
 	    SYSCTL_CHILDREN(sysctlnode), OID_AUTO, "sms",
 	    CTLFLAG_RD, 0, "Sudden Motion Sensor");
 
-	SYSCTL_ADD_PROC(sysctlctx, SYSCTL_CHILDREN(sc->sc_sms_tree),
-	    OID_AUTO, "x", CTLTYPE_INT | CTLFLAG_RD,
-	    dev, 0, apple_smc_mb_sysctl_sms_x, "I",
-	    "Sudden Motion Sensor X value");
+	{
+		static const char *sms_names[] = { "x", "y", "z" };
+		static const char *sms_descs[] = {
+			"Sudden Motion Sensor X value",
+			"Sudden Motion Sensor Y value",
+			"Sudden Motion Sensor Z value",
+		};
+		unsigned int si;
 
-	SYSCTL_ADD_PROC(sysctlctx, SYSCTL_CHILDREN(sc->sc_sms_tree),
-	    OID_AUTO, "y", CTLTYPE_INT | CTLFLAG_RD,
-	    dev, 0, apple_smc_mb_sysctl_sms_y, "I",
-	    "Sudden Motion Sensor Y value");
-
-	SYSCTL_ADD_PROC(sysctlctx, SYSCTL_CHILDREN(sc->sc_sms_tree),
-	    OID_AUTO, "z", CTLTYPE_INT | CTLFLAG_RD,
-	    dev, 0, apple_smc_mb_sysctl_sms_z, "I",
-	    "Sudden Motion Sensor Z value");
+		for (si = 0; si < nitems(sms_names); si++) {
+			SYSCTL_ADD_PROC(sysctlctx,
+			    SYSCTL_CHILDREN(sc->sc_sms_tree),
+			    OID_AUTO, sms_names[si],
+			    CTLTYPE_INT | CTLFLAG_RD,
+			    dev, si, apple_smc_mb_sysctl_sms, "I",
+			    sms_descs[si]);
+		}
+	}
 
 	sc->sc_sms_tq = NULL;
 	TASK_INIT(&sc->sc_sms_task, 0, apple_smc_sms_task, sc);
