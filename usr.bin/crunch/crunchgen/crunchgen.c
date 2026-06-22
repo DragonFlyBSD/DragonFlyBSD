@@ -686,7 +686,7 @@ fillin_program(prog_t *p)
 	}
 
 	/* Unless the option to make object files was specified the
-	* the objects will be built in the source directory unless
+	* objects will be built in the source directory unless
 	* an object directory already exists.
 	*/
 	if (!makeobj && !p->objdir && p->srcdir) {
@@ -819,10 +819,12 @@ remove_error_progs(void)
 {
 	prog_t *p1, *p2;
 
-	p1 = NULL; p2 = progs;
+	p1 = NULL;
+	p2 = progs;
 	while (p2 != NULL) {
 		if (!p2->goterror) {
-			p1 = p2, p2 = p2->next;
+			p1 = p2;
+			p2 = p2->next;
 		} else {
 			/* delete it from linked list */
 			warnx("%s: %s: ignoring program because of errors",
