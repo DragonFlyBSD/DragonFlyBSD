@@ -1259,6 +1259,11 @@ product APPLE IPHONE_4S		0x12a0	iPhone 4S
 product APPLE IPHONE_5		0x12a8  iPhone 5
 product APPLE IPAD		0x129a	iPad
 product APPLE ETHERNET		0x1402	Ethernet A1277
+product APPLE IR_RECV1		0x8240	IR Receiver
+product APPLE IR_RECV2		0x8241	IR Receiver
+product APPLE IR_RECV3		0x8242	IR Receiver
+product APPLE IR_RECV4		0x8243	IR Receiver
+product APPLE IR_RECV5		0x1440	IR Receiver
 
 /* Arkmicro Technologies */
 product ARKMICRO ARK3116	0x0232	ARK3116 Serial

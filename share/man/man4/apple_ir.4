@@ -1,0 +1,113 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\" Copyright (c) 2026 Abdelkader Boudih <dragonflybsd@seuros.com>
+.\"
+.Dd June 22, 2026
+.Dt APPLE_IR 4
+.Os
+.Sh NAME
+.Nm apple_ir
+.Nd Apple IR receiver driver
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following line in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device apple_ir"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+apple_ir_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver provides support for Apple IR receivers found in Mac computers
+(2006\(en2011 era).
+It supports both Apple Remote controls and generic IR remotes using the
+NEC infrared protocol.
+.Pp
+The driver attaches to the USB HID interface of the receiver and
+delivers key events through an
+evdev input device at
+.Pa /dev/input/eventX .
+.Pp
+The Apple Remote uses a proprietary 5-byte protocol.
+Button presses generate key-down reports; the hardware does not send
+key-up events, so the driver synthesizes them via a 125ms timer.
+Some buttons (Enter, Play/Pause via the middle button) use a two-packet
+sequence where the first packet sets a flag and the second completes
+the command.
+.Pp
+Generic IR remotes using the NEC protocol are also supported.
+The driver validates the NEC checksum
+.Pq code + ~code = 0xFF
+and maps known codes to evdev key events.
+.Ss Apple Remote Keymap
+.Bl -column "play/pause" "KEY_PLAYPAUSE" -offset indent
+.It Sy Button Ta Sy evdev Code
+.It menu Ta KEY_MENU
+.It play/pause Ta KEY_PLAYPAUSE
+.It >> Ta KEY_FORWARD
+.It << Ta KEY_BACK
+.It + Ta KEY_VOLUMEUP
+.It \- Ta KEY_VOLUMEDOWN
+.It center Ta KEY_ENTER
+.El
+.Ss Generic IR (NEC) Keymap
+.Bl -column "Code" "KEY_CHANNELDOWN" -offset indent
+.It Sy Code Ta Sy evdev Code
+.It 0xe1 Ta KEY_VOLUMEUP
+.It 0xe9 Ta KEY_VOLUMEDOWN
+.It 0xed Ta KEY_CHANNELUP
+.It 0xf3 Ta KEY_CHANNELDOWN
+.It 0xf5 Ta KEY_PLAYPAUSE
+.It 0xf9 Ta KEY_POWER
+.It 0xfb Ta KEY_MUTE
+.It 0xfe Ta KEY_OK
+.El
+.Pp
+A low-battery condition is reported once per attach as a kernel message.
+.Sh HARDWARE
+The
+.Nm
+driver supports Apple IR receivers with USB vendor ID 0x05ac and the
+following product IDs:
+.Pp
+.Bl -tag -width "0x8242" -compact
+.It 0x8240
+Apple IR Receiver (first generation)
+.It 0x8241
+Apple IR Receiver
+.It 0x8242
+Apple IR Receiver (Mac Mini 2011, MacBook Pro 3,1)
+.It 0x8243
+Apple IR Receiver
+.It 0x1440
+Apple IR Receiver (slim)
+.El
+.Sh FILES
+.Bl -tag -width ".Pa /dev/input/eventX" -compact
+.It Pa /dev/input/eventX
+evdev input device node
+.El
+.Sh SEE ALSO
+.Xr apple_smc 4 ,
+.Xr usb 4 ,
+.Xr loader.conf 5 ,
+.Xr sysctl 8
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Dx 6.5 .
+.Sh AUTHORS
+The
+.Nm
+driver and this manual page were written by
+.An Abdelkader Boudih Aq Mt dragonflybsd@seuros.com .
+.Pp
+The Apple Remote protocol was reverse-engineered by James McKenzie
+and others.

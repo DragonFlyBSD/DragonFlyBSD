@@ -2067,6 +2067,9 @@ device		apple_fw
 device		apple_smc
 options 	APPLE_SMC_DEBUG
 
+# Apple IR Receiver (USB)
+device		apple_ir
+
 device		aibs		# ASUSTeK AI Booster (ACPI ASOC ATK0110)
 
 # DRM options:

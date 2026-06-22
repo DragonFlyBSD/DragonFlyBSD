@@ -1,4 +1,4 @@
-SUBDIR=	fw smc
+SUBDIR=	fw ir smc
 
 # Empty for concurrent build
 #
