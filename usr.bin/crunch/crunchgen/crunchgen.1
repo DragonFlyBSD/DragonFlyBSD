@@ -31,16 +31,14 @@
 .Nm crunchgen
 .Nd generates build environment for a crunched binary
 .Sh SYNOPSIS
-.Bk -words
 .Nm
-.Op Fl foql
+.Op Fl floq
+.Op Fl c Ar c-file-name
+.Op Fl e Ar exec-file-name
 .Op Fl h Ar makefile-header-name
 .Op Fl m Ar makefile-name
 .Op Fl p Ar obj-prefix
-.Op Fl c Ar c-file-name
-.Op Fl e Ar exec-file-name
-.Op Ar conf-file
-.Ek
+.Ar conf-file
 .Sh DESCRIPTION
 A crunched binary is a program made up of many other programs linked
 together into a single executable.
@@ -421,9 +419,9 @@ The crunched binary
 can be built as follows:
 .Bd -literal -offset indent
 % crunchgen -m Makefile kcopy.conf    # gen Makefile and kcopy.c
-% make objs             # build the component programs' .o files
-% make                  # build the crunched binary kcopy
-% ./kcopy sh            # test that this invokes the sh shell
+% make objs		# build the component programs' .o files
+% make			# build the crunched binary kcopy
+% ./kcopy sh		# test that this invokes the sh shell
 $			# it works!
 .Ed
 .Pp

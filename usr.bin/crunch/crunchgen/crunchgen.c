@@ -232,10 +232,10 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-	fprintf(stderr, "%s%s\n\t%s%s\n", "usage: crunchgen [-foq] ",
-	    "[-h <makefile-header-name>] [-m <makefile>]",
-	    "[-p <obj-prefix>] [-c <c-file-name>] [-e <exec-file>] ",
-	    "<conffile>");
+	fprintf(stderr,
+	    "usage: crunchgen [-floq] [-c <c-file-name>] [-e <exec-file>]\n"
+	    "                 [-h <makefile-header-name>] [-m <makefile>]\n"
+	    "                 [-p <obj-prefix>] <conffile>\n");
 	exit(1);
 }
 
