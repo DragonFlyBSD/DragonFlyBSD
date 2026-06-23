@@ -98,7 +98,7 @@ static char *path_make;
 static int linenum = -1;
 static int goterror = 0;
 
-static int verbose, readcache;	/* options */
+static int quiet, readcache;	/* options */
 static int reading_cache;
 static int makeobj = 0;		/* add 'make obj' rules to the makefile */
 
@@ -131,7 +131,7 @@ main(int argc, char **argv)
 	char *p;
 	int optc;
 
-	verbose = 1;
+	quiet = 0;
 	readcache = 1;
 	*outmkname = *outcfname = *execfname = '\0';
 
@@ -154,7 +154,7 @@ main(int argc, char **argv)
 			makeobj = 1;
 			break;
 		case 'q':
-			verbose = 0;
+			quiet++;
 			break;
 
 		case 'm':
@@ -177,7 +177,7 @@ main(int argc, char **argv)
 
 		case 'l':
 			list_mode++;
-			verbose = 0;
+			quiet++;
 			break;
 
 		case '?':
@@ -714,11 +714,11 @@ fillin_program(prog_t *p)
 	if (!p->objs && p->srcdir && is_nonempty_file(path))
 		fillin_program_objs(p, path);
 
-	if (!p->srcdir && !p->objdir && verbose)
+	if (!p->srcdir && !p->objdir && quiet < 2)
 		warnx("%s: %s: %s",
 		    "warning: could not find source directory",
 		    infilename, p->name);
-	if (!p->objs && verbose)
+	if (!p->objs && quiet < 2)
 		warnx("%s: %s: warning: could not find any .o files",
 		    infilename, p->name);
 
@@ -1257,7 +1257,7 @@ status(const char *str)
 	static int lastlen = 0;
 	int len, spaces;
 
-	if (!verbose)
+	if (quiet)
 		return;
 
 	len = strlen(str);
