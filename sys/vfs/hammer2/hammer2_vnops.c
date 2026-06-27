@@ -66,6 +66,23 @@ static void hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize);
 static void hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize);
 
 /*
+ * Update directory mtime/ctime after a successful operation.
+ *
+ * hammer2_inode_modify() is MPSAFE w/a shared lock, so we allow the
+ * meta.mtime update SMP race.
+ */
+static void
+hammer2_update_dir_mtime(hammer2_inode_t *dip)
+{
+	uint64_t mtime;
+
+	hammer2_update_time(&mtime);
+	hammer2_inode_modify(dip);
+	dip->meta.mtime = mtime;
+	dip->meta.ctime = mtime;
+}
+
+/*
  * Last reference to a vnode is going away but it is still cached.
  */
 static
@@ -1478,22 +1495,8 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 		hammer2_inode_unlock(nip);
 	}
 
-	/*
-	 * Update dip's mtime
-	 *
-	 * We can use a shared inode lock and allow the meta.mtime update
-	 * SMP race.  hammer2_inode_modify() is MPSAFE w/a shared lock.
-	 */
-	if (error == 0) {
-		uint64_t mtime;
-
-		/*hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);*/
-		hammer2_update_time(&mtime);
-		hammer2_inode_modify(dip);
-		dip->meta.mtime = mtime;
-		dip->meta.ctime = mtime;
-		/*hammer2_inode_unlock(dip);*/
-	}
+	if (error == 0)
+		hammer2_update_dir_mtime(dip);
 	hammer2_inode_unlock(dip);
 
 	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
@@ -1678,19 +1681,8 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 		hammer2_inode_unlock(nip);
 	}
 
-	/*
-	 * Update dip's mtime
-	 */
-	if (error == 0) {
-		uint64_t mtime;
-
-		/*hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);*/
-		hammer2_update_time(&mtime);
-		hammer2_inode_modify(dip);
-		dip->meta.mtime = mtime;
-		dip->meta.ctime = mtime;
-		/*hammer2_inode_unlock(dip);*/
-	}
+	if (error == 0)
+		hammer2_update_dir_mtime(dip);
 	hammer2_inode_unlock(dip);
 
 	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
@@ -1758,19 +1750,8 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 		hammer2_inode_unlock(nip);
 	}
 
-	/*
-	 * Update dip's mtime
-	 */
-	if (error == 0) {
-		uint64_t mtime;
-
-		/*hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);*/
-		hammer2_update_time(&mtime);
-		hammer2_inode_modify(dip);
-		dip->meta.mtime = mtime;
-		dip->meta.ctime = mtime;
-		/*hammer2_inode_unlock(dip);*/
-	}
+	if (error == 0)
+		hammer2_update_dir_mtime(dip);
 	hammer2_inode_unlock(dip);
 
 	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
@@ -1870,19 +1851,8 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 		hammer2_inode_unlock(nip);
 	}
 
-	/*
-	 * Update dip's mtime
-	 */
-	if (error == 0) {
-		uint64_t mtime;
-
-		/*hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);*/
-		hammer2_update_time(&mtime);
-		hammer2_inode_modify(dip);
-		dip->meta.mtime = mtime;
-		dip->meta.ctime = mtime;
-		/*hammer2_inode_unlock(dip);*/
-	}
+	if (error == 0)
+		hammer2_update_dir_mtime(dip);
 	hammer2_inode_unlock(dip);
 
 	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
@@ -1968,19 +1938,8 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	}
 
-	/*
-	 * Update dip's mtime
-	 */
-	if (error == 0) {
-		uint64_t mtime;
-
-		/*hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);*/
-		hammer2_update_time(&mtime);
-		hammer2_inode_modify(dip);
-		dip->meta.mtime = mtime;
-		dip->meta.ctime = mtime;
-		/*hammer2_inode_unlock(dip);*/
-	}
+	if (error == 0)
+		hammer2_update_dir_mtime(dip);
 	hammer2_inode_unlock(dip);
 
 	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
@@ -2044,19 +2003,8 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	}
 
-	/*
-	 * Update dip's mtime
-	 */
-	if (error == 0) {
-		uint64_t mtime;
-
-		/*hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);*/
-		hammer2_update_time(&mtime);
-		hammer2_inode_modify(dip);
-		dip->meta.mtime = mtime;
-		dip->meta.ctime = mtime;
-		/*hammer2_inode_unlock(dip);*/
-	}
+	if (error == 0)
+		hammer2_update_dir_mtime(dip);
 	hammer2_inode_unlock(dip);
 
 	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
