@@ -48,6 +48,31 @@ static int hammer_check_volume(hammer_mount_t, hammer_off_t*);
 static void hammer_skip_volume(hammer_off_t *offsetp);
 
 /*
+ * Verify layer1/layer2 CRC with double-check under lock to handle races.
+ */
+static __inline void
+hammer_verify_layer1_crc(hammer_mount_t hmp, hammer_blockmap_layer1_t layer1)
+{
+	if (!hammer_crc_test_layer1(hmp->version, layer1)) {
+		hammer_lock_ex(&hmp->blkmap_lock);
+		if (!hammer_crc_test_layer1(hmp->version, layer1))
+			hpanic("CRC FAILED: LAYER1");
+		hammer_unlock(&hmp->blkmap_lock);
+	}
+}
+
+static __inline void
+hammer_verify_layer2_crc(hammer_mount_t hmp, hammer_blockmap_layer2_t layer2)
+{
+	if (!hammer_crc_test_layer2(hmp->version, layer2)) {
+		hammer_lock_ex(&hmp->blkmap_lock);
+		if (!hammer_crc_test_layer2(hmp->version, layer2))
+			hpanic("CRC FAILED: LAYER2");
+		hammer_unlock(&hmp->blkmap_lock);
+	}
+}
+
+/*
  * Reserved big-blocks red-black tree support
  */
 RB_GENERATE2(hammer_res_rb_tree, hammer_reserve, rb_node,
@@ -175,15 +200,7 @@ again:
 		goto failed;
 	}
 
-	/*
-	 * Check CRC.
-	 */
-	if (!hammer_crc_test_layer1(hmp->version, layer1)) {
-		hammer_lock_ex(&hmp->blkmap_lock);
-		if (!hammer_crc_test_layer1(hmp->version, layer1))
-			hpanic("CRC FAILED: LAYER1");
-		hammer_unlock(&hmp->blkmap_lock);
-	}
+	hammer_verify_layer1_crc(hmp, layer1);
 
 	/*
 	 * If we are at a big-block boundary and layer1 indicates no
@@ -223,15 +240,10 @@ again:
 	}
 
 	/*
-	 * Check CRC.  This can race another thread holding the lock
+	 * This can race another thread holding the lock
 	 * and in the middle of modifying layer2.
 	 */
-	if (!hammer_crc_test_layer2(hmp->version, layer2)) {
-		hammer_lock_ex(&hmp->blkmap_lock);
-		if (!hammer_crc_test_layer2(hmp->version, layer2))
-			hpanic("CRC FAILED: LAYER2");
-		hammer_unlock(&hmp->blkmap_lock);
-	}
+	hammer_verify_layer2_crc(hmp, layer2);
 
 	/*
 	 * Skip the layer if the zone is owned by someone other then us.
@@ -488,15 +500,7 @@ again:
 	if (*errorp)
 		goto failed;
 
-	/*
-	 * Check CRC.
-	 */
-	if (!hammer_crc_test_layer1(hmp->version, layer1)) {
-		hammer_lock_ex(&hmp->blkmap_lock);
-		if (!hammer_crc_test_layer1(hmp->version, layer1))
-			hpanic("CRC FAILED: LAYER1");
-		hammer_unlock(&hmp->blkmap_lock);
-	}
+	hammer_verify_layer1_crc(hmp, layer1);
 
 	/*
 	 * If we are at a big-block boundary and layer1 indicates no
@@ -521,16 +525,7 @@ again:
 	if (*errorp)
 		goto failed;
 
-	/*
-	 * Check CRC if not allocating into uninitialized space (which we
-	 * aren't when reserving space).
-	 */
-	if (!hammer_crc_test_layer2(hmp->version, layer2)) {
-		hammer_lock_ex(&hmp->blkmap_lock);
-		if (!hammer_crc_test_layer2(hmp->version, layer2))
-			hpanic("CRC FAILED: LAYER2");
-		hammer_unlock(&hmp->blkmap_lock);
-	}
+	hammer_verify_layer2_crc(hmp, layer2);
 
 	/*
 	 * Skip the layer if the zone is owned by someone other then us.
@@ -812,12 +807,7 @@ hammer_blockmap_free(hammer_transaction_t trans,
 		goto failed;
 	KKASSERT(layer1->phys_offset &&
 		 layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
-	if (!hammer_crc_test_layer1(hmp->version, layer1)) {
-		hammer_lock_ex(&hmp->blkmap_lock);
-		if (!hammer_crc_test_layer1(hmp->version, layer1))
-			hpanic("CRC FAILED: LAYER1");
-		hammer_unlock(&hmp->blkmap_lock);
-	}
+	hammer_verify_layer1_crc(hmp, layer1);
 
 	/*
 	 * Dive layer 2, each entry represents a big-block.
@@ -827,12 +817,7 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	layer2 = hammer_bread(hmp, layer2_offset, &error, &buffer2);
 	if (error)
 		goto failed;
-	if (!hammer_crc_test_layer2(hmp->version, layer2)) {
-		hammer_lock_ex(&hmp->blkmap_lock);
-		if (!hammer_crc_test_layer2(hmp->version, layer2))
-			hpanic("CRC FAILED: LAYER2");
-		hammer_unlock(&hmp->blkmap_lock);
-	}
+	hammer_verify_layer2_crc(hmp, layer2);
 
 	hammer_lock_ex(&hmp->blkmap_lock);
 
@@ -945,12 +930,7 @@ hammer_blockmap_dedup(hammer_transaction_t trans,
 		goto failed;
 	KKASSERT(layer1->phys_offset &&
 		 layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
-	if (!hammer_crc_test_layer1(hmp->version, layer1)) {
-		hammer_lock_ex(&hmp->blkmap_lock);
-		if (!hammer_crc_test_layer1(hmp->version, layer1))
-			hpanic("CRC FAILED: LAYER1");
-		hammer_unlock(&hmp->blkmap_lock);
-	}
+	hammer_verify_layer1_crc(hmp, layer1);
 
 	/*
 	 * Dive layer 2, each entry represents a big-block.
@@ -960,12 +940,7 @@ hammer_blockmap_dedup(hammer_transaction_t trans,
 	layer2 = hammer_bread(hmp, layer2_offset, &error, &buffer2);
 	if (error)
 		goto failed;
-	if (!hammer_crc_test_layer2(hmp->version, layer2)) {
-		hammer_lock_ex(&hmp->blkmap_lock);
-		if (!hammer_crc_test_layer2(hmp->version, layer2))
-			hpanic("CRC FAILED: LAYER2");
-		hammer_unlock(&hmp->blkmap_lock);
-	}
+	hammer_verify_layer2_crc(hmp, layer2);
 
 	hammer_lock_ex(&hmp->blkmap_lock);
 
@@ -1054,12 +1029,7 @@ hammer_blockmap_finalize(hammer_transaction_t trans,
 		goto failed;
 	KKASSERT(layer1->phys_offset &&
 		 layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
-	if (!hammer_crc_test_layer1(hmp->version, layer1)) {
-		hammer_lock_ex(&hmp->blkmap_lock);
-		if (!hammer_crc_test_layer1(hmp->version, layer1))
-			hpanic("CRC FAILED: LAYER1");
-		hammer_unlock(&hmp->blkmap_lock);
-	}
+	hammer_verify_layer1_crc(hmp, layer1);
 
 	/*
 	 * Dive layer 2, each entry represents a big-block.
@@ -1069,12 +1039,7 @@ hammer_blockmap_finalize(hammer_transaction_t trans,
 	layer2 = hammer_bread(hmp, layer2_offset, &error, &buffer2);
 	if (error)
 		goto failed;
-	if (!hammer_crc_test_layer2(hmp->version, layer2)) {
-		hammer_lock_ex(&hmp->blkmap_lock);
-		if (!hammer_crc_test_layer2(hmp->version, layer2))
-			hpanic("CRC FAILED: LAYER2");
-		hammer_unlock(&hmp->blkmap_lock);
-	}
+	hammer_verify_layer2_crc(hmp, layer2);
 
 	hammer_lock_ex(&hmp->blkmap_lock);
 
@@ -1176,12 +1141,7 @@ hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
 		goto failed;
 	}
 	KKASSERT(layer1->phys_offset);
-	if (!hammer_crc_test_layer1(hmp->version, layer1)) {
-		hammer_lock_ex(&hmp->blkmap_lock);
-		if (!hammer_crc_test_layer1(hmp->version, layer1))
-			hpanic("CRC FAILED: LAYER1");
-		hammer_unlock(&hmp->blkmap_lock);
-	}
+	hammer_verify_layer1_crc(hmp, layer1);
 
 	/*
 	 * Dive layer 2, each entry represents a big-block.
@@ -1196,12 +1156,7 @@ hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
 		bytes = 0;
 		goto failed;
 	}
-	if (!hammer_crc_test_layer2(hmp->version, layer2)) {
-		hammer_lock_ex(&hmp->blkmap_lock);
-		if (!hammer_crc_test_layer2(hmp->version, layer2))
-			hpanic("CRC FAILED: LAYER2");
-		hammer_unlock(&hmp->blkmap_lock);
-	}
+	hammer_verify_layer2_crc(hmp, layer2);
 	KKASSERT(layer2->zone == zone);
 
 	bytes = layer2->bytes_free;
@@ -1268,12 +1223,7 @@ hammer_blockmap_lookup_verify(hammer_mount_t hmp, hammer_off_t zone_offset,
 	if (*errorp)
 		goto failed;
 	KKASSERT(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
-	if (!hammer_crc_test_layer1(hmp->version, layer1)) {
-		hammer_lock_ex(&hmp->blkmap_lock);
-		if (!hammer_crc_test_layer1(hmp->version, layer1))
-			hpanic("CRC FAILED: LAYER1");
-		hammer_unlock(&hmp->blkmap_lock);
-	}
+	hammer_verify_layer1_crc(hmp, layer1);
 
 	/*
 	 * Dive layer 2, each entry represents a big-block.
@@ -1294,12 +1244,7 @@ hammer_blockmap_lookup_verify(hammer_mount_t hmp, hammer_off_t zone_offset,
 	} else if (layer2->zone != zone) {
 		hpanic("bad zone %d/%d", layer2->zone, zone);
 	}
-	if (!hammer_crc_test_layer2(hmp->version, layer2)) {
-		hammer_lock_ex(&hmp->blkmap_lock);
-		if (!hammer_crc_test_layer2(hmp->version, layer2))
-			hpanic("CRC FAILED: LAYER2");
-		hammer_unlock(&hmp->blkmap_lock);
-	}
+	hammer_verify_layer2_crc(hmp, layer2);
 
 failed:
 	if (buffer)
