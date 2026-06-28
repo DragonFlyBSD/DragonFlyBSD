@@ -835,7 +835,7 @@ readtape(char *buf)
 	long rd, newvol, i;
 	int cnt, seek_failed;
 
-	if (blkcnt < numtrec) {
+	if (blkcnt < numtrec && blkcnt < ntrec) {
 		memmove(buf, &tapebuf[(blkcnt++ * TP_BSIZE)], (long)TP_BSIZE);
 		blksread++;
 		tapeaddr++;
