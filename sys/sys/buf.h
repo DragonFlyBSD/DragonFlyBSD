@@ -109,7 +109,7 @@ typedef enum buf_cmd {
  *	the device chain is allowed to clip b_bcount to accomodate the device
  *	EOF.  Note that this is different from the byte oriented file EOF.
  *	If B_NOBCLIP is set, the device chain is required to generate an
- *	error if it would othrewise have to clip the request.  Buffers 
+ *	error if it would otherwise have to clip the request.  Buffers
  *	obtained via getblk() automatically set B_NOBCLIP.  It is important
  *	to note that EOF clipping via b_bcount is different from EOF clipping
  *	via returning a b_actual < b_bcount.  B_NOBCLIP only effects block

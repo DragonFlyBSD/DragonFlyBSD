@@ -360,7 +360,7 @@ dev_dstrategy(cdev_t dev, struct bio *bio)
 	int needmplock = dev_needmplock(dev);
 
 	/*
-	 * If the device doe snot support KVABIO and the buffer is using
+	 * If the device does not support KVABIO and the buffer is using
 	 * KVABIO, we must synchronize b_data to all cpus before dispatching.
 	 */
 	if (dev_nokvabio(dev) && (bp->b_flags & B_KVABIO))
