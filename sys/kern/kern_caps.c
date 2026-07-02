@@ -310,7 +310,7 @@ caps_set_locked(struct proc *p, int cap, int flags)
 int
 caps_priv_check(struct ucred *cred, int cap)
 {
-	int res;
+	int res, gcap;
 
 	if (cred == NULL) {
 		if (cap & __SYSCAP_NULLCRED)
@@ -332,8 +332,8 @@ caps_priv_check(struct ucred *cred, int cap)
 
 	res = caps_check_cred(cred, cap);
 	if (cap & __SYSCAP_GROUP_MASK) {
-		cap = (cap & __SYSCAP_GROUP_MASK) >> __SYSCAP_GROUP_SHIFT;
-		res |= caps_check_cred(cred, cap);
+		gcap = (cap & __SYSCAP_GROUP_MASK) >> __SYSCAP_GROUP_SHIFT;
+		res |= caps_check_cred(cred, gcap);
 	}
 	if (res & __SYSCAP_SELF)
 		return EPERM;
