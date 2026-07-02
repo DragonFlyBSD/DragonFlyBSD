@@ -55,8 +55,9 @@ static int apple_ir_debug = 0;
 
 static SYSCTL_NODE(_hw_usb, OID_AUTO, apple_ir, CTLFLAG_RW, 0,
     "Apple IR Remote Control");
-SYSCTL_INT(_hw_usb_apple_ir, OID_AUTO, debug, CTLFLAG_RWTUN,
+SYSCTL_INT(_hw_usb_apple_ir, OID_AUTO, debug, CTLFLAG_RW,
     &apple_ir_debug, 0, "Debug level");
+TUNABLE_INT("hw.usb.apple_ir.debug", &apple_ir_debug);
 #endif
 
 /* Protocol constants */
