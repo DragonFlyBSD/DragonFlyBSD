@@ -1438,13 +1438,6 @@ main_Init(int argc, char **argv)
 		/* DragonFly BSD specific global variables */
 
 		/*
-		 * It was used to identify the compiler that built world so that
-		 * a c++ issue during an ABI change could be worked around.
-		 * More info on commit: 673bdc16bff3eec8
-		 */
-		Global_Set_ReadOnly(".MAKE.BUILT.BY", CCVER);
-
-		/*
 		 * Added to speed up dports builds since there would be no
 		 * evaluation needed if already defined.
 		 * More info on commit: a4cce4724800c918
