@@ -928,7 +928,7 @@ tunwrite(struct dev_write_args *ap)
 	if (sc->tun_flags & TUN_IFHEAD) {
 		if (top->m_len < sizeof(family) &&
 		    (top = m_pullup(top, sizeof(family))) == NULL)
-				return (ENOBUFS);
+			return (ENOBUFS);
 		family = ntohl(*mtod(top, u_int32_t *));
 		m_adj(top, sizeof(family));
 	} else {
@@ -950,7 +950,7 @@ tunwrite(struct dev_write_args *ap)
 		break;
 #endif
 	default:
-		m_freem(m);
+		m_freem(top);
 		return (EAFNOSUPPORT);
 	}
 
