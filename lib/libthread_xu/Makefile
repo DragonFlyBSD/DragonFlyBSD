@@ -30,6 +30,10 @@ CFLAGS+=-D_PTHREADS_DEBUGGING
 CFLAGS+=-D_PTHREADS_DEBUGGING2
 .endif
 
+# libthread_xu cannot be safely unloaded.
+# Loading it has irreversible process-wide effects: libc lazily binds its weak
+# stubs (e.g., pthread/_spinlock) to the strong definitions in this library.
+LDFLAGS+=	-Wl,-znodelete
 
 PRECIOUSLIB=	yes
 
