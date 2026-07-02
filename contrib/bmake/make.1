@@ -1257,15 +1257,6 @@ It is read-only.
 The parent process ID of
 .Nm .
 It is read-only.
-.It Va .MAKE.DF.OSREL
-The
-.Dx
-version when the world was built.  It is in the "<major>.<minor>"
-format and it used by DPorts.
-.It Va .MAKE.DF.VERSION
-The value of __DragonFly_version when the
-.Dx
-world was built.  It is used by DPorts.
 .It Va MAKE_PRINT_VAR_ON_ERROR
 When
 .Nm
@@ -1311,6 +1302,22 @@ treated as normal sources.
 The numeric ID of the user running
 .Nm .
 It is read-only.
+.It Va .MAKE.DF.OSREL
+The
+.Dx
+version when the world was built.
+It is in the
+.Dq <major>.<minor>
+(e.g., 6.5) format and it used by
+.Xr dports 7 .
+.It Va .MAKE.DF.VERSION
+The value of
+.Dv __DragonFly_version
+(e.g., 600519) when the
+.Dx
+world was built.
+It is used by
+.Xr dports 7 .
 .\" 'MAKE_VERSION' is intentionally undocumented
 .\" since it is only defined in the bmake distribution,
 .\" but not in NetBSD's native make.
