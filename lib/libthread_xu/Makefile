@@ -31,6 +31,16 @@ CFLAGS+=-D_PTHREADS_DEBUGGING2
 .endif
 
 
+# libthread_xu cannot be safely unloaded.  Loading it has irreversible
+# process-wide effects: libc lazily binds its weak pthread/_spinlock
+# stubs to the strong definitions in this library, __isthreaded stays
+# set, and _thr_signal_init() installs signal handlers pointing into
+# this library.  After a dlclose() unmaps it, the next locked malloc
+# operation (or signal delivery) jumps through a dangling pointer and
+# crashes.  Mark the library DF_1_NODELETE so dlclose() never unmaps
+# it, mirroring FreeBSD libthr.
+LDFLAGS+=	-Wl,-znodelete
+
 PRECIOUSLIB=	yes
 
 LIBDIR=	/usr/lib/thread
