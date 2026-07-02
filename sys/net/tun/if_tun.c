@@ -950,7 +950,7 @@ tunwrite(struct dev_write_args *ap)
 		break;
 #endif
 	default:
-		m_freem(m);
+		m_freem(top);
 		return (EAFNOSUPPORT);
 	}
 
