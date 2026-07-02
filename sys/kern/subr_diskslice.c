@@ -554,8 +554,18 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		return (0);
 
 	case DIOCGSLICEINFO:
-		bcopy(ssp, data, (char *)&ssp->dss_slices[ssp->dss_nslices] -
-				 (char *)ssp);
+		/*
+		 * The ioctl data buffer is sized sizeof(struct diskslices)
+		 * (i.e. MAX_SLICES slots) via _IOR in diskslice.h.  GPT disks
+		 * allocate up to BASE_SLICE + MAX_GPT_ENTRIES (130) slots, so
+		 * cap the copy at MAX_SLICES to avoid overrunning the buffer.
+		 */
+		{
+			u_int ncap = (ssp->dss_nslices > MAX_SLICES) ?
+			    MAX_SLICES : ssp->dss_nslices;
+			bcopy(ssp, data, (char *)&ssp->dss_slices[ncap] -
+				    (char *)ssp);
+		}
 		return (0);
 
 	case DIOCSDINFO32:
