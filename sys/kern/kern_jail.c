@@ -707,7 +707,15 @@ retry:
 		kfree(freepath, M_TEMP);
 		if (count < 0)
 			goto end;
-		jlsused += count;
+		/* ksnprintf() returns the would-be length, not the bytes
+		   actually written.  Clamp the cursor so the invariant
+		   jlsused <= jlssize always holds; otherwise the unsigned
+		   "jlssize - jlsused" arithmetic below (and the SYSCTL_OUT
+		   length) can underflow/overflow the buffer. */
+		if (count >= (int)(jlssize - jlsused))
+			jlsused = jlssize;
+		else
+			jlsused += count;
 
 		/* Copy the IPS */
 		SLIST_FOREACH(jip, &pr->pr_ips, entries) {
@@ -730,7 +738,11 @@ retry:
 				break;
 			}
 
-			if ((jlssize - jlsused) < (strlen(oip) + 1)) {
+			/* Guard explicitly against jlsused >= jlssize so the
+			   unsigned "jlssize - jlsused" subtraction cannot
+			   underflow to ~UINT_MAX and bypass this check. */
+			if (jlsused >= jlssize ||
+			    (jlssize - jlsused) < (strlen(oip) + 1)) {
 				error = ERANGE;
 				goto end;
 			}
@@ -738,7 +750,12 @@ retry:
 					  " %s", oip);
 			if (count < 0)
 				goto end;
-			jlsused += count;
+			/* ksnprintf() returns the would-be length; clamp to
+			   preserve jlsused <= jlssize (see comment above). */
+			if (count >= (int)(jlssize - jlsused))
+				jlsused = jlssize;
+			else
+				jlsused += count;
 		}
 	}
 
