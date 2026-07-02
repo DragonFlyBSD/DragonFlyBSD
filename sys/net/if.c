@@ -2109,7 +2109,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		 * terminating nul in.
 		 */
 		if (ifr->ifr_buffer.length > ifdescr_maxlen)
-			return (ENAMETOOLONG);
+			break;
 		else if (ifr->ifr_buffer.length == 0)
 			descrbuf = NULL;
 		else {
@@ -2386,24 +2386,24 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		ifgr = (struct ifgroupreq *)ifr;
 		error = caps_priv_check(cred, SYSCAP_NONET_IFCONFIG);
 		if (error)
-			return (error);
+			break;
 		if ((error = if_addgroup(ifp, ifgr->ifgr_group)))
-			return (error);
+			break;
 		break;
 
 	case SIOCDIFGROUP:
 		ifgr = (struct ifgroupreq *)ifr;
 		error = caps_priv_check(cred, SYSCAP_NONET_IFCONFIG);
 		if (error)
-			return (error);
+			break;
 		if ((error = if_delgroup(ifp, ifgr->ifgr_group)))
-			return (error);
+			break;
 		break;
 
 	case SIOCGIFGROUP:
 		ifgr = (struct ifgroupreq *)ifr;
 		if ((error = if_getgroups(ifgr, ifp)))
-			return (error);
+			break;
 		break;
 
 	default:
