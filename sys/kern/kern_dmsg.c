@@ -69,6 +69,24 @@ SYSCTL_INT(_kdmsg, OID_AUTO, debug, CTLFLAG_RW, &kdmsg_debug, 0,
 #define kdio_printf(iocom, level, ctl, ...)      \
         if (kdmsg_debug >= (level)) kprintf("kdmsg: " ctl, __VA_ARGS__)
 
+/*
+ * Maximum circuit nesting depth.  A DMSG peer builds parent->child
+ * circuit chains via CREATE messages; without a bound a maliciously
+ * deep chain overflows the kernel thread stack during the recursive
+ * teardown in kdmsg_simulate_failure()/kdmsg_state_dying().
+ *
+ * The per-level cost is large because kdmsg_state_abort() re-enters
+ * the receive path (kdmsg_msg_receive_handling -> kdmsg_state_msgrx
+ * -> kdmsg_state_cleanuprx -> kdmsg_simulate_failure), so each
+ * nesting level consumes a ~5-function call cycle.  Empirically, a
+ * 33-deep chain already overflows the 16 KB LWKT thread stack on
+ * this kernel (double-fault observed).  A cap of 8 keeps the worst-
+ * case recursion (~9 levels, ~4.4 KB) well within the 16 KB stack
+ * with a >3x safety margin, while remaining generous for legitimate
+ * use (typical DMSG/HAMMER2 circuit nesting is 1-3).
+ */
+#define DMSG_MAX_CIRCUIT_DEPTH	8
+
 static int kdmsg_msg_receive_handling(kdmsg_msg_t *msg);
 static int kdmsg_state_msgrx(kdmsg_msg_t *msg);
 static int kdmsg_state_msgtx(kdmsg_msg_t *msg);
@@ -889,6 +907,22 @@ again:
 		}
 
 		/*
+		 * Cap circuit nesting depth.  Without this a peer can build
+		 * an arbitrarily deep parent->child chain (CREATE with circuit
+		 * referencing the previously created state) that overflows the
+		 * kernel stack during recursive teardown.
+		 */
+		if (pstate != &iocom->state0 &&
+		    pstate->depth >= DMSG_MAX_CIRCUIT_DEPTH) {
+			kdio_printf(iocom, 1,
+				    "circuit nesting too deep (%d), "
+				    "rejecting CREATE\n",
+				    pstate->depth + 1);
+			error = EINVAL;
+			break;
+		}
+
+		/*
 		 * Allocate new state.
 		 *
 		 * msg->state becomes the owner of the ref we inherit from
@@ -900,6 +934,8 @@ again:
 
 		msg->state = state;		/* inherits freerd ref */
 		state->parent = pstate;
+		state->depth = (pstate == &iocom->state0) ?
+				0 : pstate->depth + 1;
 		KKASSERT(state->iocom == iocom);
 		state->flags |= KDMSG_STATE_RBINSERTED |
 				KDMSG_STATE_SUBINSERTED |
@@ -1797,6 +1833,8 @@ kdmsg_msg_alloc(kdmsg_state_t *state, uint32_t cmd,
 		TAILQ_INIT(&state->subq);
 		state->iocom = iocom;
 		state->parent = pstate;
+		state->depth = (pstate == &iocom->state0) ?
+				0 : pstate->depth + 1;
 		state->flags = KDMSG_STATE_DYNAMIC |
 			       KDMSG_STATE_NEW;
 		state->func = func;
