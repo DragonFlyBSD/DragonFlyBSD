@@ -12,3 +12,18 @@ sha1 = 49c2ae4c3827d85c9456bfbd8ece37e300113a14
 The file README.DELETED contains a list of deleted files and directories.
 
 Use "git diff vendor/BMAKE contrib/bmake" to see local modifications.
+
+Upgrade Notes
+-------------
+1. Configure with:
+   $ ./configure --disable-pwd-override ac_cv_lib_util_emalloc=no
+   bmake being a bootstrap tool, set 'ac_cv_lib_util_emalloc=no' to avoid
+   depending on libutil(3).
+2. Copy the generated 'config.h' to usr.bin/bmake/.
+3. Update Makefile if necessary by checking the vendor's Makefile and
+   generated 'make-bootstrap.sh'.
+
+Patched Files
+-------------
+* main.c		add global variables: .MAKE.DF.VERSION, .MAKE.DF.OSREL
+* make.1		document the above custom variables
