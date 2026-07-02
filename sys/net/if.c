@@ -2108,11 +2108,12 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		 * length parameter is supposed to count the
 		 * terminating nul in.
 		 */
-		if (ifr->ifr_buffer.length > ifdescr_maxlen)
-			return (ENAMETOOLONG);
-		else if (ifr->ifr_buffer.length == 0)
+		if (ifr->ifr_buffer.length > ifdescr_maxlen) {
+			error = ENAMETOOLONG;
+			break;
+		} else if (ifr->ifr_buffer.length == 0) {
 			descrbuf = NULL;
-		else {
+		} else {
 			descrbuf = kmalloc(ifr->ifr_buffer.length, M_IFDESCR,
 			    M_WAITOK | M_ZERO);
 			error = copyin(ifr->ifr_buffer.buffer, descrbuf,
@@ -2386,24 +2387,21 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		ifgr = (struct ifgroupreq *)ifr;
 		error = caps_priv_check(cred, SYSCAP_NONET_IFCONFIG);
 		if (error)
-			return (error);
-		if ((error = if_addgroup(ifp, ifgr->ifgr_group)))
-			return (error);
+			break;
+		error = if_addgroup(ifp, ifgr->ifgr_group);
 		break;
 
 	case SIOCDIFGROUP:
 		ifgr = (struct ifgroupreq *)ifr;
 		error = caps_priv_check(cred, SYSCAP_NONET_IFCONFIG);
 		if (error)
-			return (error);
-		if ((error = if_delgroup(ifp, ifgr->ifgr_group)))
-			return (error);
+			break;
+		error = if_delgroup(ifp, ifgr->ifgr_group);
 		break;
 
 	case SIOCGIFGROUP:
 		ifgr = (struct ifgroupreq *)ifr;
-		if ((error = if_getgroups(ifgr, ifp)))
-			return (error);
+		error = if_getgroups(ifgr, ifp);
 		break;
 
 	default:
