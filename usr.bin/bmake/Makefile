@@ -3,6 +3,7 @@
 #	$Id: Makefile.in,v 1.174 2012/10/10 18:46:24 sjg Exp $
 
 PROG=	make
+MAN=	make.1
 SRCS=	\
 	arch.c		\
 	buf.c		\
@@ -66,14 +67,5 @@ COPTS.parse.c=	-Wno-format-nonliteral
 COPTS.var.c=	-Wno-format-nonliteral
 
 .PATH:	${srcdir}
-
-MAN=	make.1
-make.1:	bmake.1
-	@sed -e '/^.Nm/s/bmake/${PROG}/' -e 's/Xr make 1/Nm bmake/' \
-	    -e 's/ $$//' -e 's/^make$$/.Nm/' -e 's/ NetBSD$$/\'$$'\n.Nx/' \
-	    -e '/^NetBSD .\..$$/s/NetBSD/.Nx/' \
-	    < ${.ALLSRC} > ${.TARGET}
-
-CLEANFILES+=	make.1
 
 .include <bsd.prog.mk>
