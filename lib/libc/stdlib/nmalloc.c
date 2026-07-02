@@ -126,12 +126,75 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <pthread.h>
 #include <machine/atomic.h>
+#include <machine/cpufunc.h>
 #include "un-namespace.h"
 
 #include "libc_private.h"
-#include "spinlock.h"
+
+/*
+ * Self-contained locks.
+ *
+ * malloc must not depend on the pthread spinlock API (_SPINLOCK et al).
+ * Those are weak stubs which rtld rebinds to the strong definitions
+ * inside the thread library once one is loaded.  If the thread library
+ * is later unmapped by a dlclose(), libc's GOT entries keep pointing
+ * into the unmapped object and the next locked malloc operation jumps
+ * through a dangling pointer.  Implement locking directly on top of
+ * umtx_sleep()/umtx_wakeup() instead, so the allocator never leaves
+ * libc.
+ *
+ * Lock word states: 0 unlocked, 1 locked, 2 locked with waiter(s).
+ * The uncontended paths are a single locked cmpxchg.
+ */
+typedef volatile u_int nmalloc_lock_t;
+
+#define NMALLOC_LOCK_SPIN	200	/* pause iterations before sleeping */
+
+static void
+nmalloc_lock_contended(nmalloc_lock_t *lk)
+{
+	int spin = NMALLOC_LOCK_SPIN;
+	u_int v;
+
+	for (;;) {
+		v = *lk;
+		if (v == 0) {
+			/*
+			 * Acquire in contended state so the unlocker
+			 * knows to issue a wakeup for any other waiter.
+			 */
+			if (atomic_cmpset_int(lk, 0, 2))
+				return;
+			continue;
+		}
+		if (spin > 0) {
+			--spin;
+			cpu_pause();
+			continue;
+		}
+		if (v == 1 && !atomic_cmpset_int(lk, 1, 2))
+			continue;
+		umtx_sleep((volatile const int *)lk, 2, 0);
+	}
+}
+
+static __inline void
+nmalloc_lock(nmalloc_lock_t *lk)
+{
+	if (__predict_false(!atomic_cmpset_int(lk, 0, 1)))
+		nmalloc_lock_contended(lk);
+}
+
+static __inline void
+nmalloc_unlock(nmalloc_lock_t *lk)
+{
+	if (__predict_false(!atomic_cmpset_int(lk, 1, 0))) {
+		/* was contended (2); release and wake one waiter */
+		atomic_store_rel_int(lk, 0);
+		umtx_wakeup((volatile const int *)lk, 1);
+	}
+}
 
 void __free(void *);
 void *__malloc(size_t);
@@ -196,7 +259,7 @@ typedef struct slzone {
 } *slzone_t;
 
 typedef struct slglobaldata {
-	spinlock_t	Spinlock;
+	nmalloc_lock_t	Spinlock;
 	slzone_t	ZoneAry[NZONES];/* linked list of zones NFree > 0 */
 } *slglobaldata_t;
 
@@ -213,10 +276,6 @@ typedef struct slglobaldata {
 #define MIN_CHUNK_MASK		(MIN_CHUNK_SIZE - 1)
 #define IN_SAME_PAGE_MASK	(~(intptr_t)PAGE_MASK | MIN_CHUNK_MASK)
 
-/*
- * WARNING: A limited number of spinlocks are available, BIGXSIZE should
- *	    not be larger then 64.
- */
 #define BIGHSHIFT	10			/* bigalloc hash table */
 #define BIGHSIZE	(1 << BIGHSHIFT)
 #define BIGHMASK	(BIGHSIZE - 1)
@@ -289,8 +348,8 @@ struct magazine {
 
 SLIST_HEAD(magazinelist, magazine);
 
-static spinlock_t zone_mag_lock;
-static spinlock_t depot_spinlock;
+static nmalloc_lock_t zone_mag_lock;
+static nmalloc_lock_t depot_spinlock;
 static struct magazine zone_magazine = {
 	.flags = 0,
 	.capacity = M_ZONE_INIT_ROUNDS,
@@ -316,7 +375,7 @@ typedef struct magazine_pair {
 typedef struct magazine_depot {
 	struct magazinelist full;
 	struct magazinelist empty;
-	spinlock_t	lock;
+	nmalloc_lock_t	lock;
 } magazine_depot;
 
 typedef struct thr_mags {
@@ -326,8 +385,6 @@ typedef struct thr_mags {
 } thr_mags;
 
 static __thread thr_mags thread_mags TLS_ATTRIBUTE;
-static pthread_key_t thread_mags_key;
-static pthread_once_t thread_mags_once = PTHREAD_ONCE_INIT;
 static magazine_depot depots[NZONES];
 
 /*
@@ -343,7 +400,7 @@ static int opt_utrace = 0;
 static int g_malloc_flags = 0;
 static struct slglobaldata SLGlobalData;
 static bigalloc_t bigalloc_array[BIGHSIZE];
-static spinlock_t bigspin_array[BIGXSIZE];
+static nmalloc_lock_t bigspin_array[BIGXSIZE];
 static volatile void *bigcache_array[BIGCACHE];		/* atomic swap */
 static volatile size_t bigcache_size_array[BIGCACHE];	/* SMP races ok */
 static volatile int bigcache_index;			/* SMP races ok */
@@ -361,7 +418,6 @@ static void *magazine_alloc(struct magazine *);
 static int magazine_free(struct magazine *, void *);
 static void *mtmagazine_alloc(int zi, int flags);
 static int mtmagazine_free(int zi, void *);
-static void mtmagazine_init(void);
 static void mtmagazine_destructor(void *);
 static slzone_t zone_alloc(int flags);
 static void zone_free(void *z);
@@ -409,36 +465,32 @@ malloc_init(void)
 }
 
 /*
- * We have to install a handler for nmalloc thread teardowns when
- * the thread is created.  We cannot delay this because destructors in
- * sophisticated userland programs can call malloc() for the first time
- * during their thread exit.
- *
- * This routine is called directly from pthreads.
+ * Thread setup/teardown hooks, called directly from pthreads on thread
+ * creation and exit.  These are direct calls rather than TSD destructors
+ * so that the allocator does not depend on the pthread TSD machinery
+ * (nmalloc must stay self-contained; see the lock comments above), and
+ * so that teardown ordering relative to application TSD destructors is
+ * explicit: pthreads runs the application's destructors first, then
+ * calls _nmalloc_thr_exit().
  */
 void
 _nmalloc_thr_init(void)
 {
-	thr_mags *tp;
+	thread_mags.init = 1;
+}
 
-	/*
-	 * Disallow mtmagazine operations until the mtmagazine is
-	 * initialized.
-	 */
-	tp = &thread_mags;
-	tp->init = -1;
-
-	_pthread_once(&thread_mags_once, mtmagazine_init);
-	_pthread_setspecific(thread_mags_key, tp);
-	tp->init = 1;
+void
+_nmalloc_thr_exit(void)
+{
+	mtmagazine_destructor(&thread_mags);
 }
 
 void
 _nmalloc_thr_prepfork(void)
 {
 	if (__isthreaded) {
-		_SPINLOCK(&zone_mag_lock);
-		_SPINLOCK(&depot_spinlock);
+		nmalloc_lock(&zone_mag_lock);
+		nmalloc_lock(&depot_spinlock);
 	}
 }
 
@@ -446,8 +498,8 @@ void
 _nmalloc_thr_parentfork(void)
 {
 	if (__isthreaded) {
-		_SPINUNLOCK(&depot_spinlock);
-		_SPINUNLOCK(&zone_mag_lock);
+		nmalloc_unlock(&depot_spinlock);
+		nmalloc_unlock(&zone_mag_lock);
 	}
 }
 
@@ -455,8 +507,8 @@ void
 _nmalloc_thr_childfork(void)
 {
 	if (__isthreaded) {
-		_SPINUNLOCK(&depot_spinlock);
-		_SPINUNLOCK(&zone_mag_lock);
+		nmalloc_unlock(&depot_spinlock);
+		nmalloc_unlock(&zone_mag_lock);
 	}
 }
 
@@ -489,42 +541,42 @@ static __inline void
 slgd_lock(slglobaldata_t slgd)
 {
 	if (__isthreaded)
-		_SPINLOCK(&slgd->Spinlock);
+		nmalloc_lock(&slgd->Spinlock);
 }
 
 static __inline void
 slgd_unlock(slglobaldata_t slgd)
 {
 	if (__isthreaded)
-		_SPINUNLOCK(&slgd->Spinlock);
+		nmalloc_unlock(&slgd->Spinlock);
 }
 
 static __inline void
 depot_lock(magazine_depot *dp __unused)
 {
 	if (__isthreaded)
-		_SPINLOCK(&depot_spinlock);
+		nmalloc_lock(&depot_spinlock);
 }
 
 static __inline void
 depot_unlock(magazine_depot *dp __unused)
 {
 	if (__isthreaded)
-		_SPINUNLOCK(&depot_spinlock);
+		nmalloc_unlock(&depot_spinlock);
 }
 
 static __inline void
 zone_magazine_lock(void)
 {
 	if (__isthreaded)
-		_SPINLOCK(&zone_mag_lock);
+		nmalloc_lock(&zone_mag_lock);
 }
 
 static __inline void
 zone_magazine_unlock(void)
 {
 	if (__isthreaded)
-		_SPINUNLOCK(&zone_mag_lock);
+		nmalloc_unlock(&zone_mag_lock);
 }
 
 static __inline void
@@ -564,7 +616,7 @@ bigalloc_lock(void *ptr)
 
 	bigp = &bigalloc_array[hv & BIGHMASK];
 	if (__isthreaded)
-		_SPINLOCK(&bigspin_array[hv & BIGXMASK]);
+		nmalloc_lock(&bigspin_array[hv & BIGXMASK]);
 	return(bigp);
 }
 
@@ -585,7 +637,7 @@ bigalloc_check_and_lock(const void *ptr)
 	if (*bigp == NULL)
 		return(NULL);
 	if (__isthreaded) {
-		_SPINLOCK(&bigspin_array[hv & BIGXMASK]);
+		nmalloc_lock(&bigspin_array[hv & BIGXMASK]);
 	}
 	return(bigp);
 }
@@ -597,7 +649,7 @@ bigalloc_unlock(const void *ptr)
 
 	if (__isthreaded) {
 		hv = _bigalloc_hash(ptr);
-		_SPINUNLOCK(&bigspin_array[hv & BIGXMASK]);
+		nmalloc_unlock(&bigspin_array[hv & BIGXMASK]);
 	}
 }
 
@@ -671,13 +723,13 @@ handle_excess_big(void)
 		if (*bigp == NULL)
 			continue;
 		if (__isthreaded)
-			_SPINLOCK(&bigspin_array[i & BIGXMASK]);
+			nmalloc_lock(&bigspin_array[i & BIGXMASK]);
 		for (big = *bigp; big; big = big->next) {
 			if (big->active < big->bytes) {
 				MASSERT_WTHUNLK((big->active & PAGE_MASK) == 0,
-				    _SPINUNLOCK(&bigspin_array[i & BIGXMASK]));
+				    nmalloc_unlock(&bigspin_array[i & BIGXMASK]));
 				MASSERT_WTHUNLK((big->bytes & PAGE_MASK) == 0,
-				    _SPINUNLOCK(&bigspin_array[i & BIGXMASK]));
+				    nmalloc_unlock(&bigspin_array[i & BIGXMASK]));
 				munmap((char *)big->base + big->active,
 				       big->bytes - big->active);
 				atomic_add_long(&excess_alloc,
@@ -686,7 +738,7 @@ handle_excess_big(void)
 			}
 		}
 		if (__isthreaded)
-			_SPINUNLOCK(&bigspin_array[i & BIGXMASK]);
+			nmalloc_unlock(&bigspin_array[i & BIGXMASK]);
 	}
 }
 
@@ -1929,13 +1981,6 @@ mtmagazine_free(int zi, void *ptr)
 	return rc;
 }
 
-static void
-mtmagazine_init(void)
-{
-	/* ignore error from stub if not threaded */
-	_pthread_key_create(&thread_mags_key, mtmagazine_destructor);
-}
-
 /*
  * This function is only used by the thread exit destructor
  */
@@ -1955,12 +2000,13 @@ mtmagazine_drain(struct magazine *mp)
 /*
  * mtmagazine_destructor()
  *
- * When a thread exits, we reclaim all its resources; all its magazines are
- * drained and the structures are freed.
+ * Called via _nmalloc_thr_exit() when a thread exits; all of the thread's
+ * magazines are drained and the structures are freed.
  *
- * WARNING!  The destructor can be called multiple times if the larger user
- *	     program has its own destructors which run after ours which
- *	     allocate or free memory.
+ * WARNING!  Allocations can still occur after this runs (for example from
+ *	     the threading library's own teardown), so tp->init is set to
+ *	     -1 to make later malloc/free operations bypass the (destroyed)
+ *	     magazine layer.
  */
 static void
 mtmagazine_destructor(void *thrp)
