@@ -237,14 +237,61 @@ begin:
 	}
 	memcpy(key_out, key_buf, ASMC_KEYLEN);
 	key_out[ASMC_KEYLEN] = '\0';
-	*len_out = info_buf[0];
-	memcpy(type_out, &info_buf[1], ASMC_TYPELEN);
-	type_out[ASMC_TYPELEN] = '\0';
+	if (len_out != NULL)
+		*len_out = info_buf[0];
+	if (type_out != NULL) {
+		memcpy(type_out, &info_buf[1], ASMC_TYPELEN);
+		type_out[ASMC_TYPELEN] = '\0';
+	}
 	error = 0;
 out:
 	if (error && ++try < ASMC_MAXRETRIES)
 		goto begin;
 	SMC_UNLOCK(sc);
+	return (error);
+}
+
+/*
+ * Retrieve key attributes byte (KEYINFO byte 5).
+ */
+int
+apple_smc_key_getattrs(device_t dev, const char *key, uint8_t *attrs)
+{
+	struct apple_smc_softc *sc = device_get_softc(dev);
+	uint8_t info[ASMC_KEYINFO_RESPLEN];
+	int i, error = EIO, try = 0;
+
+	if (sc->sc_is_mmio) {
+		/* MMIO does not expose attrs; assume writable. */
+		if (attrs != NULL)
+			*attrs = ASMC_ATTR_WRITABLE;
+		return (0);
+	}
+
+	SMC_LOCK(sc);
+
+begin:
+	if (apple_smc_command(dev, ASMC_CMDGETINFO))
+		goto out;
+	for (i = 0; i < ASMC_KEYLEN; i++) {
+		ASMC_DATAPORT_WRITE(sc, key[i]);
+		if (apple_smc_wait(dev, ASMC_STATUS_AWAIT_DATA))
+			goto out;
+	}
+	ASMC_DATAPORT_WRITE(sc, ASMC_KEYINFO_RESPLEN);
+	for (i = 0; i < ASMC_KEYINFO_RESPLEN; i++) {
+		if (apple_smc_wait(dev, ASMC_STATUS_DATA_READY))
+			goto out;
+		info[i] = ASMC_DATAPORT_READ(sc);
+	}
+	error = 0;
+out:
+	if (error && ++try < ASMC_MAXRETRIES)
+		goto begin;
+	SMC_UNLOCK(sc);
+
+	if (error == 0 && attrs != NULL)
+		*attrs = info[5];	/* byte 5 is the attribute/flags byte */
 	return (error);
 }
 

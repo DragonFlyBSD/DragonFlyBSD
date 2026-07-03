@@ -20,6 +20,23 @@
 
 #include "smc.h"
 
+#include <machine/specialreg.h>
+#include <machine/cpufunc.h>
+
+static int
+apple_smc_key_check_writable(device_t dev, const char *key)
+{
+	uint8_t attrs;
+
+	if (apple_smc_key_getattrs(dev, key, &attrs) == 0 &&
+	    (attrs & ASMC_ATTR_WRITABLE) == 0) {
+		device_printf(dev, "%s: attrs=0x%02x, not writable\n",
+		    key, attrs);
+		return (EPERM);
+	}
+	return (0);
+}
+
 /*
  * Module-scope cached keyboard backlight level.  Shared across all device
  * instances so suspend/resume can restore the last requested brightness even
@@ -353,24 +370,28 @@ apple_smc_mbp_sysctl_light_control(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
+/*
+ * Generic RW sysctl for single-byte flag keys (0 or 1).
+ * arg1 = device_t, arg2 = pointer to 4-char SMC key name.
+ */
 int
-apple_smc_aupo_sysctl(SYSCTL_HANDLER_ARGS)
+apple_smc_flag_sysctl(SYSCTL_HANDLER_ARGS)
 {
 	device_t dev = (device_t)arg1;
-	uint8_t aupo;
+	const char *key = (const char *)(intptr_t)arg2;
+	uint8_t raw;
 	int val, error;
 
-	if (apple_smc_key_read(dev, ASMC_KEY_AUPO, &aupo, 1) != 0) {
+	if (apple_smc_key_read(dev, key, &raw, 1) != 0)
 		return (EIO);
-	}
-	val = (aupo != 0) ? 1 : 0;
+	val = (raw != 0) ? 1 : 0;
 	error = sysctl_handle_int(oidp, &val, 0, req);
-	if (error != 0 || req->newptr == NULL) {
+	if (error != 0 || req->newptr == NULL)
 		return (error);
-	}
-	aupo = (val != 0) ? 1 : 0;
-	return (apple_smc_key_write(dev, ASMC_KEY_AUPO, &aupo, 1) != 0 ?
-	    EIO : 0);
+	if (val != 0 && val != 1)
+		return (EINVAL);
+	raw = (uint8_t)val;
+	return (apple_smc_key_write(dev, key, &raw, 1) != 0 ? EIO : 0);
 }
 
 int
@@ -477,6 +498,46 @@ apple_smc_clkt_sysctl(SYSCTL_HANDLER_ARGS)
 }
 
 int
+apple_smc_clwk_sysctl(SYSCTL_HANDLER_ARGS)
+{
+	device_t dev = (device_t)arg1;
+	uint8_t buf[2];
+	uint32_t secs;
+	int error;
+
+	if (apple_smc_key_read(dev, ASMC_KEY_CLWK, buf, 2) != 0)
+		return (EIO);
+
+	/* CLWK is ui16 BE; 0 = disabled. */
+	secs = be16dec(buf);
+	error = sysctl_handle_32(oidp, &secs, 0, req);
+	if (error != 0 || req->newptr == NULL)
+		return (error);
+
+	if (secs >= 86400)
+		return (EINVAL);
+
+	error = apple_smc_key_check_writable(dev, ASMC_KEY_CLWK);
+	if (error != 0)
+		return (error);
+
+	be16enc(buf, (uint16_t)secs);
+	if (apple_smc_key_write(dev, ASMC_KEY_CLWK, buf, 2) != 0)
+		return (EIO);
+
+	/* Verify write; retry as LE if readback mismatches. */
+	if (apple_smc_key_read(dev, ASMC_KEY_CLWK, buf, 2) == 0) {
+		uint16_t readback = be16dec(buf);
+		if (readback != (uint16_t)secs) {
+			le16enc(buf, (uint16_t)secs);
+			return (apple_smc_key_write(dev, ASMC_KEY_CLWK,
+			    buf, 2) != 0 ? EIO : 0);
+		}
+	}
+	return (0);
+}
+
+int
 apple_smc_msps_sysctl(SYSCTL_HANDLER_ARGS)
 {
 	device_t dev = (device_t)arg1;
@@ -517,7 +578,6 @@ apple_smc_rgen_sysctl(SYSCTL_HANDLER_ARGS)
 	return (sysctl_handle_32(oidp, &val, 0, req));
 }
 
-#ifdef APPLE_SMC_DEBUG
 int
 apple_smc_raw_key_sysctl(SYSCTL_HANDLER_ARGS)
 {
@@ -544,11 +604,9 @@ apple_smc_raw_key_sysctl(SYSCTL_HANDLER_ARGS)
 	strlcpy(sc->sc_rawkey, newkey, sizeof(sc->sc_rawkey));
 	sc->sc_rawlen = keylen;
 	memset(sc->sc_rawval, 0, sizeof(sc->sc_rawval));
-	error = apple_smc_key_read(dev, sc->sc_rawkey, sc->sc_rawval,
+	/* Read may fail; allow setting key for subsequent write. */
+	apple_smc_key_read(dev, sc->sc_rawkey, sc->sc_rawval,
 	    sc->sc_rawlen);
-	if (error != 0) {
-		return (error);
-	}
 	return (0);
 }
 
@@ -611,4 +669,147 @@ apple_smc_raw_type_sysctl(SYSCTL_HANDLER_ARGS)
 	return (sysctl_handle_string(oidp, sc->sc_rawtype,
 	    sizeof(sc->sc_rawtype), req));
 }
-#endif /* APPLE_SMC_DEBUG */
+
+int
+apple_smc_raw_index_sysctl(SYSCTL_HANDLER_ARGS)
+{
+	device_t dev = (device_t)arg1;
+	struct apple_smc_softc *sc = device_get_softc(dev);
+	int idx = -1, error;
+	char keyname[ASMC_KEYLEN + 1];
+	uint8_t keylen;
+
+	error = sysctl_handle_int(oidp, &idx, 0, req);
+	if (error || req->newptr == NULL)
+		return (error);
+	if (idx < 0 || idx >= sc->sc_nkeys)
+		return (EINVAL);
+
+	error = apple_smc_key_dump_by_index(dev, idx, keyname,
+	    sc->sc_rawtype, &keylen);
+	if (error != 0)
+		return (EIO);
+	strlcpy(sc->sc_rawkey, keyname, sizeof(sc->sc_rawkey));
+	sc->sc_rawlen = keylen;
+	memset(sc->sc_rawval, 0, sizeof(sc->sc_rawval));
+	apple_smc_key_read(dev, sc->sc_rawkey, sc->sc_rawval, sc->sc_rawlen);
+	return (0);
+}
+
+/* G3AO sysctl handler. */
+int
+apple_smc_g3ao_sysctl(SYSCTL_HANDLER_ARGS)
+{
+	device_t dev = (device_t)arg1;
+	uint8_t buf[4];
+	uint32_t ts;
+	int error;
+
+	if (apple_smc_key_read(dev, ASMC_KEY_G3AO, buf, 4) != 0)
+		return (EIO);
+	ts = be32dec(buf);
+	error = sysctl_handle_32(oidp, &ts, 0, req);
+	if (error != 0 || req->newptr == NULL)
+		return (error);
+
+	error = apple_smc_key_check_writable(dev, ASMC_KEY_G3AO);
+	if (error != 0)
+		return (error);
+
+	be32enc(buf, ts);
+	return (apple_smc_key_write(dev, ASMC_KEY_G3AO, buf, 4) != 0 ?
+	    EIO : 0);
+}
+
+
+/* AUWT sysctl handler. */
+int
+apple_smc_auwt_sysctl(SYSCTL_HANDLER_ARGS)
+{
+	device_t dev = (device_t)arg1;
+	uint8_t buf[2];
+	uint32_t secs;
+	int error;
+
+	if (apple_smc_key_read(dev, ASMC_KEY_AUWT, buf, 2) != 0)
+		return (EIO);
+	secs = be16dec(buf);
+	error = sysctl_handle_32(oidp, &secs, 0, req);
+	if (error != 0 || req->newptr == NULL)
+		return (error);
+	if (secs > 65535)
+		return (EINVAL);
+	be16enc(buf, (uint16_t)secs);
+	return (apple_smc_key_write(dev, ASMC_KEY_AUWT, buf, 2) != 0 ?
+	    EIO : 0);
+}
+
+/* DPBR sysctl handler. */
+int
+apple_smc_dpbr_sysctl(SYSCTL_HANDLER_ARGS)
+{
+	device_t dev = (device_t)arg1;
+	uint8_t buf[2];
+	uint32_t val;
+
+	if (apple_smc_key_read(dev, ASMC_KEY_DPBR, buf, 2) != 0)
+		return (EIO);
+	val = be16dec(buf);
+	return (sysctl_handle_32(oidp, &val, 0, req));
+}
+
+/* ENV0 sysctl handler. */
+int
+apple_smc_env0_sysctl(SYSCTL_HANDLER_ARGS)
+{
+	device_t dev = (device_t)arg1;
+	uint8_t val;
+	uint32_t v;
+
+	if (apple_smc_key_read(dev, ASMC_KEY_ENV0, &val, 1) != 0)
+		return (EIO);
+	v = val;
+	return (sysctl_handle_32(oidp, &v, 0, req));
+}
+
+
+int
+apple_smc_prochot_override_sysctl(SYSCTL_HANDLER_ARGS)
+{
+	device_t dev = (device_t)arg1;
+	struct apple_smc_softc *sc = device_get_softc(dev);
+	int val, error;
+	uint64_t msr;
+
+	val = sc->sc_prochot_override;
+	error = sysctl_handle_int(oidp, &val, 0, req);
+	if (error || req->newptr == NULL)
+		return (error);
+
+	if (val != 0 && val != 1)
+		return (EINVAL);
+	if (val == sc->sc_prochot_override)
+		return (0);
+
+	if (rdmsr_safe(MSR_IA32_POWER_CTL, &msr) != 0)
+		return (EIO);
+
+	if (val)
+		msr &= ~(uint64_t)IA32_POWER_CTL_BD_PROCHOT;
+	else
+		msr |= IA32_POWER_CTL_BD_PROCHOT;
+
+	if (wrmsr_safe(MSR_IA32_POWER_CTL, msr) != 0)
+		return (EIO);
+
+	if (!val) {
+		if (sc->sc_thermal_running) {
+			sc->sc_thermal_enabled = 0;
+			apple_smc_thermal_fans_to_max(dev);
+		}
+		apple_smc_fan_release_manual(dev);
+	}
+
+	sc->sc_prochot_override = val;
+	return (0);
+}

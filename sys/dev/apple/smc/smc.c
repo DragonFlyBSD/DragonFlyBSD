@@ -33,16 +33,20 @@ ACPI_MODULE_NAME("APPLE_SMC")
 static int	apple_smc_probe(device_t);
 static int	apple_smc_attach(device_t);
 static int	apple_smc_detach(device_t);
+static int	apple_smc_suspend(device_t);
 static int	apple_smc_resume(device_t);
 
 static int	apple_smc_init(device_t);
 static void	apple_smc_detect_capabilities(device_t);
 static int	apple_smc_detect_sensors(device_t);
+static void	apple_smc_check_prochot(device_t);
+static void	apple_smc_fan_override_headless(device_t);
 
 static const struct {
 	const char	*key;
 	const char	*desc;
 } apple_smc_temp_descs[] = {
+	/* Ambient / airflow */
 	{ "TA0P", "Ambient" },		{ "TA0S", "PCIe Slot 1 Ambient" },
 	{ "TA0p", "Ambient Air" },	{ "TA0V", "Ambient" },
 	{ "TA1P", "Ambient 2" },	{ "TA1S", "PCIe Slot 1 PCB" },
@@ -51,42 +55,114 @@ static const struct {
 	{ "TALP", "Ambient Light Proximity" },
 	{ "TaLC", "Airflow Left" },	{ "TaRC", "Airflow Right" },
 	{ "Ta0P", "Airflow Proximity" },
+	/* Battery / enclosure */
 	{ "TB0T", "Enclosure Bottom" },	{ "TB1T", "Battery 1" },
 	{ "TB2T", "Battery 2" },	{ "TB3T", "Battery 3" },
 	{ "TBXT", "Battery" },		{ "Tb0P", "BLC Proximity" },
+	/* CPU */
 	{ "TC0C", "CPU Core 1" },	{ "TC0D", "CPU Die" },
-	{ "TC0H", "CPU Heatsink" },	{ "TC0h", "CPU Heatsink" },
+	{ "TC0E", "CPU 1" },		{ "TC0F", "CPU 2" },
+	{ "TC0G", "CPU Package GPU" },	{ "TC0H", "CPU Heatsink" },
+	{ "TC0h", "CPU Heatsink" },	{ "TC0J", "CPU" },
 	{ "TC0P", "CPU Proximity" },	{ "TC0c", "CPU Core 1 PECI" },
 	{ "TC0d", "CPU Die PECI" },	{ "TC0p", "CPU Proximity" },
 	{ "TC1C", "CPU Core 2" },	{ "TC1c", "CPU Core 2 PECI" },
+	{ "TC1P", "CPU Proximity 2" },
 	{ "TC2C", "CPU Core 3" },	{ "TC2c", "CPU Core 3 PECI" },
+	{ "TC2P", "CPU Proximity 3" },
 	{ "TC3C", "CPU Core 4" },	{ "TC3c", "CPU Core 4 PECI" },
+	{ "TC3P", "CPU Proximity 4" },
 	{ "TC4C", "CPU Core 5" },	{ "TC5C", "CPU Core 6" },
 	{ "TC6C", "CPU Core 7" },	{ "TC7C", "CPU Core 8" },
 	{ "TC8C", "CPU Core 9" },
-	{ "TCGC", "PECI GPU" },		{ "TCGc", "PECI GPU" },
-	{ "TCSA", "PECI SA" },		{ "TCSc", "PECI SA" },
-	{ "TCXC", "PECI CPU" },		{ "TCXc", "PECI CPU" },
-	{ "TCPG", "CPU Package GPU" },
+	{ "TCGC", "PECI GPU" },	{ "TCGc", "PECI GPU" },
+	{ "TCHP", "Charger Proximity" },
+	{ "TCSA", "PECI SA" },		{ "TCSC", "PECI SA" },
+	{ "TCSc", "PECI SA" },
+	{ "TCTD", "CPU DTS" },
+	{ "TCXC", "PECI CPU" },	{ "TCXc", "PECI CPU" },
+	{ "TCPG", "CPU Package GPU" },	{ "TCXR", "CPU PECI DTS" },
+	/* CPU dual-socket (Mac Pro) */
 	{ "TCAG", "CPU A Package" },	{ "TCAH", "CPU A Heatsink" },
 	{ "TCBG", "CPU B Package" },	{ "TCBH", "CPU B Heatsink" },
-	{ "TG0D", "GPU Diode" },	{ "TG0H", "GPU Heatsink" },
-	{ "TG0P", "GPU Proximity" },	{ "TG0d", "GPU Die" },
+	/* GPU */
+	{ "TG0C", "GPU Core" },	{ "TG0D", "GPU Diode" },
+	{ "TG0H", "GPU Heatsink" },	{ "TG0M", "GPU Memory" },
+	{ "TG0P", "GPU Proximity" },	{ "TG0T", "GPU Diode" },
+	{ "TG0V", "GPU" },		{ "TG0d", "GPU Die" },
 	{ "TG0h", "GPU Heatsink" },	{ "TG0p", "GPU Proximity" },
+	{ "TGTV", "GPU" },
+	{ "TG1D", "GPU 2 Diode" },	{ "TG1H", "GPU 2 Heatsink" },
+	{ "TG1P", "GPU 2 Proximity" },	{ "TG1d", "GPU 2 Die" },
+	{ "TGVP", "GPU Memory Proximity" },
+	/* Storage */
+	{ "TH0A", "SSD A" },		{ "TH0B", "SSD B" },
+	{ "TH0C", "SSD C" },		{ "TH0F", "SSD" },
 	{ "TH0O", "HDD" },		{ "TH0P", "HDD Proximity" },
-	{ "TH1P", "HDD Bay 2" },	{ "TH2P", "HDD Bay 3" },
-	{ "TH3P", "HDD Bay 4" },
-	{ "TI0P", "Thunderbolt 1" },	{ "TI1P", "Thunderbolt 2" },
-	{ "TL0P", "LCD Proximity" },	{ "TL0p", "LCD Proximity" },
+	{ "TH0R", "SSD" },		{ "TH0V", "SSD" },
+	{ "TH0a", "SSD A" },		{ "TH0b", "SSD B" },
+	{ "TH0c", "SSD C" },
+	{ "TH1O", "HDD 2" },		{ "TH1P", "HDD Bay 2" },
+	{ "TH2P", "HDD Bay 3" },	{ "TH3P", "HDD Bay 4" },
+	{ "Th0H", "Heatpipe 1" },	{ "Th0N", "SSD" },
+	{ "Th1H", "Heatpipe 2" },	{ "Th2H", "Heatpipe 3" },
+	/* Thunderbolt */
+	{ "THSP", "Thunderbolt Proximity" },
+	{ "TI0P", "Thunderbolt 1" },	{ "TI0p", "Thunderbolt 1" },
+	{ "TI1P", "Thunderbolt 2" },	{ "TI1p", "Thunderbolt 2" },
+	{ "TTLD", "Thunderbolt Left" },	{ "TTRD", "Thunderbolt Right" },
+	{ "Te0T", "Thunderbolt Diode" }, { "Te0t", "Thunderbolt Diode" },
+	/* LCD */
+	{ "TL0P", "LCD Proximity" },	{ "TL0V", "LCD" },
+	{ "TL0p", "LCD Proximity" },
+	{ "TL1P", "LCD Panel 1" },	{ "TL1V", "LCD 1" },
+	{ "TL1p", "LCD Panel 1" },	{ "TL1v", "LCD 1" },
+	{ "TL2V", "LCD 2" },
+	{ "TLAV", "LCD" },		{ "TLBV", "LCD" },
+	{ "TLCV", "LCD" },
+	/* Memory */
 	{ "TM0P", "Memory Proximity" },	{ "TM0S", "Memory Slot 1" },
-	{ "TM1S", "Memory Slot 2" },
-	{ "TN0D", "Northbridge Diode" }, { "TN0H", "MCH Heatsink" },
-	{ "TN0P", "Northbridge Proximity" },
-	{ "TP0P", "PCH Proximity" },	{ "TPCD", "PCH Die" },
-	{ "TO0P", "Optical Drive" },
+	{ "TM0p", "Memory Proximity" },
+	{ "TM1P", "Memory Riser A 2" }, { "TM1S", "Memory Slot 2" },
+	{ "Tm0P", "Memory Proximity" },	{ "Tm0p", "Memory Proximity" },
+	{ "Tm1P", "Memory Proximity 2" },
+	{ "TMBS", "Memory Bank" },	{ "TMCD", "Memory DIMM" },
+	/* Northbridge / MCH */
+	{ "TN0C", "Northbridge Core" },	{ "TN0D", "Northbridge Diode" },
+	{ "TN0H", "MCH Heatsink" },	{ "TN0P", "Northbridge Proximity" },
+	{ "TN1D", "MCH Die 2" },	{ "TN1P", "Northbridge Proximity 2" },
+	/* PCH */
+	{ "TP0P", "PCH Proximity" },	{ "TP0p", "PCH Proximity" },
+	{ "TPCD", "PCH Die" },		{ "TPCd", "PCH Die" },
+	/* Optical drive */
+	{ "TO0P", "Optical Drive" },	{ "TO0p", "Optical Drive" },
+	/* Power supply */
 	{ "Tp0C", "Power Supply" },	{ "Tp0P", "Power Supply Proximity" },
-	{ "TW0P", "Wireless Proximity" },
-	{ "TTF0", "Fan" },
+	{ "Tp1C", "Power Supply 2" },	{ "Tp1P", "Power Supply Component" },
+	{ "Tp1p", "Power Supply Component" },
+	{ "Tp2P", "Power Supply 2" },	{ "Tp2h", "Power Supply 2" },
+	{ "Tp2H", "Power Supply 2" },
+	{ "Tp3P", "Power Supply 3 Inlet" },
+	{ "Tp3h", "Power Supply 3" },	{ "Tp3H", "Power Supply 3" },
+	{ "Tp4P", "Power Supply 4" },	{ "Tp5P", "Power Supply 5" },
+	/* Palm rest / trackpad */
+	{ "Ts0P", "Palm Rest" },	{ "Ts0S", "Memory Proximity" },
+	{ "Ts1P", "Palm Rest 2" },	{ "Ts1S", "Palm Rest 2" },
+	/* Wireless */
+	{ "TW0P", "Wireless Proximity" }, { "TW0p", "Wireless Proximity" },
+	{ "TBLR", "Bluetooth" },
+	/* Camera */
+	{ "TS2P", "Camera Proximity" },	{ "TS2V", "Camera" },
+	{ "TS2p", "Camera Proximity" },
+	/* Expansion */
+	{ "TS0C", "Expansion Slots" },	{ "TS0P", "Expansion Proximity" },
+	{ "TS0V", "Expansion" },	{ "TS0p", "Expansion Proximity" },
+	/* Air vent */
+	{ "TV0P", "Air Vent" },
+	/* VRM */
+	{ "Tv0S", "VRM 1" },		{ "Tv1S", "VRM 2" },
+	/* Misc */
+	{ "TTF0", "Fan" },		{ "TMLB", "Logic Board" },
 };
 
 static const char *
@@ -105,6 +181,7 @@ static device_method_t apple_smc_methods[] = {
 	DEVMETHOD(device_probe,		apple_smc_probe),
 	DEVMETHOD(device_attach,	apple_smc_attach),
 	DEVMETHOD(device_detach,	apple_smc_detach),
+	DEVMETHOD(device_suspend,	apple_smc_suspend),
 	DEVMETHOD(device_resume,	apple_smc_resume),
 	DEVMETHOD_END
 };
@@ -134,6 +211,10 @@ apple_smc_probe(device_t dev)
 	if (acpi_disabled("apple_smc"))
 		return (ENXIO);
 	if (ACPI_ID_PROBE(device_get_parent(dev), dev, apple_smc_ids) == NULL)
+		return (ENXIO);
+
+	/* Singleton: only unit 0. */
+	if (device_get_unit(dev) != 0)
 		return (ENXIO);
 
 	product = kgetenv("smbios.system.product");
@@ -207,6 +288,16 @@ apple_smc_attach(device_t dev)
 
 	apple_smc_detect_capabilities(dev);
 	apple_smc_detect_sensors(dev);
+
+	/* Thermal governor defaults (millidegrees). */
+	sc->sc_thermal_interval = 5;
+	sc->sc_thermal_temp_low = 55000;
+	sc->sc_thermal_temp_high = 80000;
+	sc->sc_thermal_hysteresis = 3000;
+	sc->sc_thermal_emergency = 90000;
+	sc->sc_thermal_enabled = 0;
+
+	apple_smc_check_prochot(dev);
 
 	/* fan tree */
 	sc->sc_fan_tree[0] = SYSCTL_ADD_NODE(sysctlctx,
@@ -339,7 +430,6 @@ apple_smc_attach(device_t dev)
 		    "I", "Keyboard backlight brightness control");
 	}
 
-#ifdef APPLE_SMC_DEBUG
 	sc->sc_raw_tree = SYSCTL_ADD_NODE(sysctlctx,
 	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO,
 	    "raw", CTLFLAG_RD, 0, "Raw SMC key access");
@@ -359,7 +449,11 @@ apple_smc_attach(device_t dev)
 	SYSCTL_ADD_PROC(sysctlctx, SYSCTL_CHILDREN(sc->sc_raw_tree),
 	    OID_AUTO, "type", CTLTYPE_STRING | CTLFLAG_RD,
 	    dev, 0, apple_smc_raw_type_sysctl, "A", "SMC key type (4 chars)");
-#endif
+
+	SYSCTL_ADD_PROC(sysctlctx, SYSCTL_CHILDREN(sc->sc_raw_tree),
+	    OID_AUTO, "index", CTLTYPE_INT | CTLFLAG_RW,
+	    dev, 0, apple_smc_raw_index_sysctl, "I",
+	    "Look up SMC key by index (0..nkeys-1)");
 
 	/* battery charge limit (T2) */
 	if (sc->sc_is_t2 &&
@@ -373,61 +467,175 @@ apple_smc_attach(device_t dev)
 
 	/* system state subtree */
 	{
-		static const struct {
-			const char	*smc_key;
-			const char	*name;
-			int		type;
-			int		arg2;
-			int		(*handler)(SYSCTL_HANDLER_ARGS);
-			const char	*fmt;
-			const char	*desc;
-		} sys_sysctls[] = {
-			{ ASMC_KEY_MSSD, "shutdown_cause",
-			    CTLTYPE_STRING | CTLFLAG_RD, 0,
-			    apple_smc_cause_sysctl, "A",
-			    "Last shutdown cause (MSSD)" },
-			{ ASMC_KEY_MSSP, "sleep_cause",
-			    CTLTYPE_STRING | CTLFLAG_RD, 1,
-			    apple_smc_cause_sysctl, "A",
-			    "Last sleep cause (MSSP)" },
-			{ ASMC_KEY_MSAL, "thermal_status",
-			    CTLTYPE_STRING | CTLFLAG_RD, 0,
-			    apple_smc_msal_sysctl, "A",
-			    "Thermal subsystem status (MSAL)" },
-			{ ASMC_KEY_CLKT, "time_of_day",
-			    CTLTYPE_UINT | CTLFLAG_RD, 0,
-			    apple_smc_clkt_sysctl, "IU",
-			    "Seconds since midnight (CLKT)" },
-			{ ASMC_KEY_MSPS, "power_state",
-			    CTLTYPE_UINT | CTLFLAG_RD, 0,
-			    apple_smc_msps_sysctl, "IU",
-			    "SMC power state index (MSPS)" },
-			{ ASMC_KEY_RPLT, "board_id",
-			    CTLTYPE_STRING | CTLFLAG_RD, 0,
-			    apple_smc_rplt_sysctl, "A",
-			    "Apple board codename (RPlt)" },
-			{ ASMC_KEY_RGEN, "chip_gen",
-			    CTLTYPE_UINT | CTLFLAG_RD, 0,
-			    apple_smc_rgen_sysctl, "IU",
-			    "Apple chip generation (RGEN; 3=T2)" },
-		};
 		struct sysctl_oid *sys_tree;
-		unsigned int si;
 
 		sys_tree = SYSCTL_ADD_NODE(sysctlctx,
 		    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO,
 		    "system", CTLFLAG_RD, 0, "System state and board identity");
 
-		for (si = 0; si < nitems(sys_sysctls); si++) {
-			if (apple_smc_key_getinfo(dev,
-			    sys_sysctls[si].smc_key, NULL, NULL) != 0)
-				continue;
+		if (apple_smc_key_getinfo(dev, ASMC_KEY_MSSD, NULL, NULL) == 0)
 			SYSCTL_ADD_PROC(sysctlctx,
 			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
-			    sys_sysctls[si].name, sys_sysctls[si].type,
-			    dev, sys_sysctls[si].arg2,
-			    sys_sysctls[si].handler, sys_sysctls[si].fmt,
-			    sys_sysctls[si].desc);
+			    "shutdown_cause", CTLTYPE_STRING | CTLFLAG_RD,
+			    dev, 0, apple_smc_cause_sysctl, "A",
+			    "Last shutdown cause (MSSD)");
+
+		if (apple_smc_key_getinfo(dev, ASMC_KEY_MSSP, NULL, NULL) == 0)
+			SYSCTL_ADD_PROC(sysctlctx,
+			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
+			    "sleep_cause", CTLTYPE_STRING | CTLFLAG_RD,
+			    dev, 1, apple_smc_cause_sysctl, "A",
+			    "Last sleep cause (MSSP)");
+
+		if (apple_smc_key_getinfo(dev, ASMC_KEY_MSAL, NULL, NULL) == 0)
+			SYSCTL_ADD_PROC(sysctlctx,
+			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
+			    "thermal_status", CTLTYPE_STRING | CTLFLAG_RD,
+			    dev, 0, apple_smc_msal_sysctl, "A",
+			    "Thermal subsystem status (MSAL)");
+
+		if (apple_smc_key_getinfo(dev, ASMC_KEY_CLKT, NULL, NULL) == 0)
+			SYSCTL_ADD_PROC(sysctlctx,
+			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
+			    "time_of_day", CTLTYPE_UINT | CTLFLAG_RD,
+			    dev, 0, apple_smc_clkt_sysctl, "IU",
+			    "Seconds since midnight (CLKT)");
+
+		if (apple_smc_key_getinfo(dev, ASMC_KEY_CLWK, NULL, NULL) == 0)
+			SYSCTL_ADD_PROC(sysctlctx,
+			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
+			    "wake_time", CTLTYPE_UINT | CTLFLAG_RW,
+			    dev, 0, apple_smc_clwk_sysctl, "IU",
+			    "Scheduled wake time: seconds since midnight (0=disabled)");
+
+		if (apple_smc_key_getinfo(dev, ASMC_KEY_MSPS, NULL, NULL) == 0)
+			SYSCTL_ADD_PROC(sysctlctx,
+			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
+			    "power_state", CTLTYPE_UINT | CTLFLAG_RD,
+			    dev, 0, apple_smc_msps_sysctl, "IU",
+			    "SMC power state index (MSPS)");
+
+		if (apple_smc_key_getinfo(dev, ASMC_KEY_RPLT, NULL, NULL) == 0)
+			SYSCTL_ADD_PROC(sysctlctx,
+			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
+			    "board_id", CTLTYPE_STRING | CTLFLAG_RD,
+			    dev, 0, apple_smc_rplt_sysctl, "A",
+			    "Apple board codename (RPlt)");
+
+		if (apple_smc_key_getinfo(dev, ASMC_KEY_RGEN, NULL, NULL) == 0)
+			SYSCTL_ADD_PROC(sysctlctx,
+			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
+			    "chip_gen", CTLTYPE_UINT | CTLFLAG_RD,
+			    dev, 0, apple_smc_rgen_sysctl, "IU",
+			    "Apple chip generation (RGEN; 3=T2)");
+
+		if (sc->sc_prochot_override)
+			SYSCTL_ADD_PROC(sysctlctx,
+			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
+			    "prochot_override", CTLTYPE_INT | CTLFLAG_RW,
+			    dev, 0, apple_smc_prochot_override_sysctl, "I",
+			    "BD_PROCHOT override (1=CPU ignores SMC PROCHOT#)");
+
+		if (apple_smc_key_getinfo(dev, ASMC_KEY_G3AO, NULL, NULL) == 0)
+			SYSCTL_ADD_PROC(sysctlctx,
+			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
+			    "g3_poweron_time", CTLTYPE_UINT | CTLFLAG_RW,
+			    dev, 0, apple_smc_g3ao_sysctl, "IU",
+			    "G3 scheduled power-on: Unix timestamp (0=disabled)");
+
+		if (apple_smc_key_getinfo(dev, ASMC_KEY_G3WD, NULL, NULL) == 0)
+			SYSCTL_ADD_PROC(sysctlctx,
+			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
+			    "g3_watchdog", CTLTYPE_INT | CTLFLAG_RW,
+			    dev, (intptr_t)ASMC_KEY_G3WD, apple_smc_flag_sysctl, "I",
+			    "G3 watchdog flag (paired with g3_poweron_time)");
+
+		if (apple_smc_key_getinfo(dev, ASMC_KEY_AUWT, NULL, NULL) == 0)
+			SYSCTL_ADD_PROC(sysctlctx,
+			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
+			    "ac_wake_timer", CTLTYPE_UINT | CTLFLAG_RW,
+			    dev, 0, apple_smc_auwt_sysctl, "IU",
+			    "AC wake timer: delay (seconds) before AUPO power-on");
+
+		if (apple_smc_key_getinfo(dev, ASMC_KEY_DPBR, NULL, NULL) == 0)
+			SYSCTL_ADD_PROC(sysctlctx,
+			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
+			    "display_brightness_raw", CTLTYPE_UINT | CTLFLAG_RD,
+			    dev, 0, apple_smc_dpbr_sysctl, "IU",
+			    "Display brightness raw SMC value (DPBR)");
+
+		if (apple_smc_key_getinfo(dev, ASMC_KEY_ENV0, NULL, NULL) == 0)
+			SYSCTL_ADD_PROC(sysctlctx,
+			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
+			    "chassis_state", CTLTYPE_UINT | CTLFLAG_RD,
+			    dev, 0, apple_smc_env0_sysctl, "IU",
+			    "Chassis/environment state byte (ENV0)");
+
+		if (apple_smc_key_getinfo(dev, ASMC_KEY_STFD, NULL, NULL) == 0)
+			SYSCTL_ADD_PROC(sysctlctx,
+			    SYSCTL_CHILDREN(sys_tree), OID_AUTO,
+			    "sw_thermal_throttle_disable", CTLTYPE_INT | CTLFLAG_RW,
+			    dev, (intptr_t)ASMC_KEY_STFD, apple_smc_flag_sysctl, "I",
+			    "Software thermal throttle disable flag (STFD)");
+	}
+
+	/* Thermal governor -- only when PROCHOT is overridden and fans exist. */
+	if (sc->sc_prochot_override && sc->sc_fan_manual_mask != 0) {
+		struct sysctl_oid *th_tree;
+
+		th_tree = SYSCTL_ADD_NODE(sysctlctx,
+		    SYSCTL_CHILDREN(sysctlnode), OID_AUTO, "thermal",
+		    CTLFLAG_RW, 0, "Thermal fan governor");
+
+		SYSCTL_ADD_PROC(sysctlctx, SYSCTL_CHILDREN(th_tree),
+		    OID_AUTO, "enabled", CTLTYPE_INT | CTLFLAG_RW,
+		    dev, 0, apple_smc_thermal_enabled_sysctl, "I",
+		    "Enable thermal fan curve (0=off, 1=on)");
+
+		SYSCTL_ADD_PROC(sysctlctx, SYSCTL_CHILDREN(th_tree),
+		    OID_AUTO, "interval", CTLTYPE_INT | CTLFLAG_RW,
+		    &sc->sc_thermal_interval, 0,
+		    apple_smc_thermal_int_sysctl, "I",
+		    "Poll interval in seconds");
+
+		SYSCTL_ADD_PROC(sysctlctx, SYSCTL_CHILDREN(th_tree),
+		    OID_AUTO, "temp_low", CTLTYPE_INT | CTLFLAG_RW,
+		    &sc->sc_thermal_temp_low, 0,
+		    apple_smc_thermal_int_sysctl, "I",
+		    "Temperature (mC) below which fans run at minimum");
+
+		SYSCTL_ADD_PROC(sysctlctx, SYSCTL_CHILDREN(th_tree),
+		    OID_AUTO, "temp_high", CTLTYPE_INT | CTLFLAG_RW,
+		    &sc->sc_thermal_temp_high, 0,
+		    apple_smc_thermal_int_sysctl, "I",
+		    "Temperature (mC) above which fans run at maximum");
+
+		SYSCTL_ADD_PROC(sysctlctx, SYSCTL_CHILDREN(th_tree),
+		    OID_AUTO, "hysteresis", CTLTYPE_INT | CTLFLAG_RW,
+		    &sc->sc_thermal_hysteresis, 0,
+		    apple_smc_thermal_int_sysctl, "I",
+		    "Temperature deadband (mC) to prevent oscillation");
+
+		SYSCTL_ADD_PROC(sysctlctx, SYSCTL_CHILDREN(th_tree),
+		    OID_AUTO, "emergency", CTLTYPE_INT | CTLFLAG_RW,
+		    &sc->sc_thermal_emergency, 0,
+		    apple_smc_thermal_int_sysctl, "I",
+		    "Emergency temperature (mC)");
+
+		sc->sc_thermal_enabled = 1;
+		if (apple_smc_thermal_start(dev) != 0) {
+			device_printf(dev,
+			    "thermal: failed to start governor, "
+			    "fans to max for safety\n");
+			apple_smc_thermal_fans_to_max(dev);
+		} else {
+			device_printf(dev,
+			    "thermal: governor started "
+			    "(low=%dC high=%dC emergency=%dC interval=%ds)\n",
+			    sc->sc_thermal_temp_low / 1000,
+			    sc->sc_thermal_temp_high / 1000,
+			    sc->sc_thermal_emergency / 1000,
+			    sc->sc_thermal_interval);
 		}
 	}
 
@@ -504,6 +712,14 @@ apple_smc_detach(device_t dev)
 {
 	struct apple_smc_softc *sc = device_get_softc(dev);
 
+	apple_smc_thermal_stop(dev);
+
+	/* Fail-hot: fans to max, restore BD_PROCHOT. */
+	if (sc->sc_prochot_override) {
+		apple_smc_thermal_fans_to_max(dev);
+		apple_smc_restore_prochot(dev);
+	}
+
 	apple_smc_free_sensors(sc->sc_temp_sensors,    sc->sc_temp_count);
 	apple_smc_free_sensors(sc->sc_dts_sensors,     sc->sc_dts_count);
 	apple_smc_free_sensors(sc->sc_voltage_sensors, sc->sc_voltage_count);
@@ -547,6 +763,15 @@ apple_smc_detach(device_t dev)
 }
 
 static int
+apple_smc_suspend(device_t dev)
+{
+
+	apple_smc_thermal_stop(dev);
+
+	return (0);
+}
+
+static int
 apple_smc_resume(device_t dev)
 {
 	struct apple_smc_softc *sc = device_get_softc(dev);
@@ -566,6 +791,24 @@ apple_smc_resume(device_t dev)
 	/* Re-initialize the Sudden Motion Sensor after resume. */
 	if (sc->sc_has_sms)
 		apple_smc_sms_init(dev);
+
+	/* MSR resets on S3 resume; re-apply override. */
+	if (sc->sc_prochot_override) {
+		uint64_t msr;
+
+		if (rdmsr_safe(MSR_IA32_POWER_CTL, &msr) == 0 &&
+		    (msr & IA32_POWER_CTL_BD_PROCHOT) != 0) {
+			msr &= ~(uint64_t)IA32_POWER_CTL_BD_PROCHOT;
+			wrmsr_safe(MSR_IA32_POWER_CTL, msr);
+		}
+
+		/* SMC resets fan mode on resume. */
+		apple_smc_fan_override_headless(dev);
+	}
+
+	/* Restart thermal governor. */
+	if (sc->sc_thermal_enabled)
+		apple_smc_thermal_start(dev);
 
 	return (0);
 }
@@ -598,13 +841,15 @@ apple_smc_init(device_t dev)
 	if (apple_smc_key_read(dev, ASMC_KEY_AUPO, buf, 1) == 0) {
 		SYSCTL_ADD_PROC(sysctlctx,
 		    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)),
-		    OID_AUTO, "auto_poweron",
-		    CTLTYPE_INT | CTLFLAG_RW, dev, 0,
-		    apple_smc_aupo_sysctl, "I",
-		    "Auto power-on after AC power loss");
+		    OID_AUTO, "always_up",
+		    CTLTYPE_INT | CTLFLAG_RW, dev, (intptr_t)ASMC_KEY_AUPO,
+		    apple_smc_flag_sysctl, "I",
+		    "Auto power-on after any shutdown");
 	}
 
 	sc->sc_nfan = apple_smc_fan_count(dev);
+	if (sc->sc_nfan < 0)
+		sc->sc_nfan = 0;
 	if (sc->sc_nfan > ASMC_MAXFANS) {
 		device_printf(dev, "clamping fan count to %d\n", ASMC_MAXFANS);
 		sc->sc_nfan = ASMC_MAXFANS;
@@ -656,6 +901,271 @@ apple_smc_detect_capabilities(device_t dev)
 	sc->sc_has_alsl =
 	    (apple_smc_key_getinfo(dev, ASMC_KEY_LIGHTSRC,
 	    &len, type) == 0);
+}
+
+/*
+ * Reassert manual mode for override fans.
+ */
+int
+apple_smc_fan_reassert_manual(device_t dev)
+{
+	struct apple_smc_softc *sc = device_get_softc(dev);
+	int error = 0;
+
+	if (sc->sc_fan_manual_mask == 0)
+		return (0);
+
+	if (sc->sc_is_t2) {
+		int i;
+		for (i = 0; i < sc->sc_nfan; i++) {
+			if (sc->sc_fan_manual_mask & (1 << i)) {
+				uint8_t v = 1;
+				char fmkey[5];
+				ksnprintf(fmkey, sizeof(fmkey),
+				    ASMC_KEY_FANMANUAL_T2, i);
+				error = apple_smc_key_write(dev,
+				    fmkey, &v, 1);
+				if (error)
+					break;
+			}
+		}
+	} else {
+		uint8_t buf[2];
+		uint16_t val;
+
+		error = apple_smc_key_read(dev, ASMC_KEY_FANMANUAL,
+		    buf, sizeof(buf));
+		if (error == 0) {
+			val = (buf[0] << 8) | buf[1];
+			val |= sc->sc_fan_manual_mask;
+			buf[0] = val >> 8;
+			buf[1] = val & 0xff;
+			error = apple_smc_key_write(dev,
+			    ASMC_KEY_FANMANUAL, buf, sizeof(buf));
+		}
+	}
+
+	return (error);
+}
+
+/*
+ * Release manual mode for override fans.
+ */
+void
+apple_smc_fan_release_manual(device_t dev)
+{
+	struct apple_smc_softc *sc = device_get_softc(dev);
+
+	if (sc->sc_fan_manual_mask == 0)
+		return;
+
+	if (sc->sc_is_t2) {
+		int i;
+		for (i = 0; i < sc->sc_nfan; i++) {
+			if (sc->sc_fan_manual_mask & (1 << i)) {
+				uint8_t v = 0;
+				char fmkey[5];
+				ksnprintf(fmkey, sizeof(fmkey),
+				    ASMC_KEY_FANMANUAL_T2, i);
+				apple_smc_key_write(dev, fmkey, &v, 1);
+			}
+		}
+	} else {
+		uint8_t buf[2];
+		uint16_t val;
+
+		/* Restore pre-override FS! state. */
+		if (apple_smc_key_read(dev, ASMC_KEY_FANMANUAL,
+		    buf, sizeof(buf)) == 0) {
+			val = (buf[0] << 8) | buf[1];
+			val &= ~sc->sc_fan_manual_mask;
+			val |= sc->sc_fan_manual_saved;
+			buf[0] = val >> 8;
+			buf[1] = val & 0xff;
+			apple_smc_key_write(dev, ASMC_KEY_FANMANUAL,
+			    buf, sizeof(buf));
+		}
+	}
+
+	sc->sc_fan_manual_mask = 0;
+}
+
+/*
+ * Override fans in SMC failsafe mode.
+ */
+static void
+apple_smc_fan_override_headless(device_t dev)
+{
+	struct apple_smc_softc *sc = device_get_softc(dev);
+	int i, cur, maxspd, minspd;
+	uint8_t fsbuf[2];
+
+	/* Save pre-override FS! mask. */
+	if (!sc->sc_is_t2 &&
+	    apple_smc_key_read(dev, ASMC_KEY_FANMANUAL,
+	    fsbuf, sizeof(fsbuf)) == 0)
+		sc->sc_fan_manual_saved = (fsbuf[0] << 8) | fsbuf[1];
+	else
+		sc->sc_fan_manual_saved = 0;
+
+	for (i = 0; i < sc->sc_nfan; i++) {
+		cur = apple_smc_fan_getvalue(dev, ASMC_KEY_FANSPEED, i);
+		maxspd = apple_smc_fan_getvalue(dev, ASMC_KEY_FANMAXSPEED, i);
+		minspd = apple_smc_fan_getvalue(dev, ASMC_KEY_FANMINSPEED, i);
+
+		if (cur <= 0 || maxspd <= 0 || minspd <= 0 || maxspd < minspd)
+			continue;
+
+		/* Below 90% of max -- not in failsafe. */
+		if (cur < maxspd * 90 / 100)
+			continue;
+
+		sc->sc_fan_manual_mask |= (1 << i);
+
+		device_printf(dev,
+		    "fan %d: failsafe detected (%d/%d RPM), "
+		    "override to %d RPM\n", i, cur, maxspd, minspd);
+	}
+
+	/* Write mask, then set targets to min RPM. */
+	if (sc->sc_fan_manual_mask != 0) {
+		if (apple_smc_fan_reassert_manual(dev) != 0) {
+			device_printf(dev,
+			    "WARNING: failed to set fan manual mode\n");
+			return;
+		}
+
+		for (i = 0; i < sc->sc_nfan; i++) {
+			if (!(sc->sc_fan_manual_mask & (1 << i)))
+				continue;
+			minspd = apple_smc_fan_getvalue(dev,
+			    ASMC_KEY_FANMINSPEED, i);
+			if (minspd > 0)
+				apple_smc_fan_setvalue(dev,
+				    ASMC_KEY_FANTARGETSPEED, i, minspd);
+		}
+	}
+}
+
+/*
+ * Return true if PROCHOT# is currently asserted.
+ */
+bool
+apple_smc_prochot_asserted(device_t dev)
+{
+	uint8_t buf[2];
+
+	if (apple_smc_key_read(dev, ASMC_KEY_SPHT, buf, sizeof(buf)) != 0)
+		return (0);
+	return (buf[0] == 0x01 && buf[1] == 0x01);
+}
+
+/*
+ * Restore BD_PROCHOT and release fan manual mode.
+ */
+void
+apple_smc_restore_prochot(device_t dev)
+{
+	struct apple_smc_softc *sc = device_get_softc(dev);
+	uint64_t msr;
+	int msr_ok = 0;
+
+	if (!sc->sc_prochot_override)
+		return;
+
+	if (rdmsr_safe(MSR_IA32_POWER_CTL, &msr) == 0) {
+		msr |= IA32_POWER_CTL_BD_PROCHOT;
+		if (wrmsr_safe(MSR_IA32_POWER_CTL, msr) == 0)
+			msr_ok = 1;
+		else
+			device_printf(dev,
+			    "WARNING: failed to restore BD_PROCHOT\n");
+	}
+
+	/* Only release fans if MSR write succeeded. */
+	if (msr_ok) {
+		apple_smc_fan_release_manual(dev);
+		sc->sc_prochot_override = 0;
+		device_printf(dev,
+		    "restored BD_PROCHOT and SMC fan control\n");
+	}
+}
+
+/*
+ * Return true if LCD temperature sensor is disconnected.
+ */
+static bool
+apple_smc_lcd_disconnected(device_t dev)
+{
+	uint8_t buf[2];
+
+	if (apple_smc_key_read(dev, "TL0P", buf, sizeof(buf)) != 0)
+		return (false);
+	return (buf[0] == 0x82 && buf[1] == 0x00);
+}
+
+/*
+ * Return true if battery is absent or flagged bad.
+ */
+static bool
+apple_smc_battery_dead(device_t dev)
+{
+	uint8_t buf[1];
+
+	if (apple_smc_key_read(dev, ASMC_KEY_BATP, buf, 1) == 0 &&
+	    buf[0] == 0)
+		return (true);
+	if (apple_smc_key_read(dev, ASMC_KEY_BBAD, buf, 1) == 0 &&
+	    buf[0] == 1)
+		return (true);
+	return (false);
+}
+
+static void
+apple_smc_check_prochot(device_t dev)
+{
+	struct apple_smc_softc *sc = device_get_softc(dev);
+	uint64_t msr;
+	const char *reason = NULL;
+
+	sc->sc_prochot_override = 0;
+
+	if (!apple_smc_prochot_asserted(dev))
+		return;
+
+	/* Only override for known-benign causes. */
+	if (apple_smc_lcd_disconnected(dev))
+		reason = "headless";
+	else if (apple_smc_battery_dead(dev))
+		reason = "no battery";
+
+	if (reason == NULL) {
+		device_printf(dev,
+		    "PROCHOT# asserted but no known benign cause, "
+		    "not overriding (possible real thermal event)\n");
+		return;
+	}
+
+	if (rdmsr_safe(MSR_IA32_POWER_CTL, &msr) != 0)
+		return;
+
+	if ((msr & IA32_POWER_CTL_BD_PROCHOT) == 0)
+		return;		/* already cleared by someone else */
+
+	msr &= ~(uint64_t)IA32_POWER_CTL_BD_PROCHOT;
+	if (wrmsr_safe(MSR_IA32_POWER_CTL, msr) != 0) {
+		device_printf(dev,
+		    "WARNING: PROCHOT active but MSR 0x1FC write failed\n");
+		return;
+	}
+
+	sc->sc_prochot_override = 1;
+	device_printf(dev,
+	    "PROCHOT# asserted by SMC (%s), "
+	    "disabled BD_PROCHOT via MSR 0x1FC\n", reason);
+
+	/* Override fans pinned to max by SMC failsafe. */
+	apple_smc_fan_override_headless(dev);
 }
 
 static void

@@ -1,7 +1,7 @@
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\" Copyright (c) 2026 Abdelkader Boudih <dragonflybsd@seuros.com>
 .\"
-.Dd June 22, 2026
+.Dd July 3, 2026
 .Dt APPLE_SMC 4
 .Os
 .Sh NAME
@@ -205,6 +205,12 @@ PROCHOT assertion, and power limits.
 .Pq read-only
 SMC clock: seconds since midnight
 .Pq Va CLKT .
+.It Va dev.apple_smc.0.system.wake_time
+Scheduled wake time: seconds since midnight, 0 to disable
+.Pq Va CLWK .
+On write, the driver verifies the value stuck by reading it back;
+if the SMC uses little-endian encoding on a particular model,
+a LE retry is attempted automatically.
 .It Va dev.apple_smc.0.system.power_state
 .Pq read-only
 SMC power state index
@@ -218,6 +224,41 @@ Apple board codename, e.g.\&
 .Pq read-only
 Apple chip generation; a value of 3 indicates a T2 coprocessor
 .Pq Va RGEN .
+.It Va dev.apple_smc.0.system.prochot_override
+Only present when the driver overrode a PROCHOT# assertion at
+attach time.
+Set to 1 to keep BD_PROCHOT cleared (CPU ignores external PROCHOT#),
+0 to restore it and return fans to SMC automatic control.
+See
+.Sx PROCHOT OVERRIDE
+below.
+.It Va dev.apple_smc.0.system.g3_poweron_time
+Scheduled power-on from S5 (mechanical-off) as a Unix timestamp;
+0 disables the timer
+.Pq Va G3AO .
+.It Va dev.apple_smc.0.system.g3_watchdog
+G3 watchdog flag paired with
+.Va g3_poweron_time
+.Pq Va G3WD .
+.It Va dev.apple_smc.0.system.ac_wake_timer
+Delay in seconds before auto power-on after AC reconnect
+.Pq Va AUWT .
+Only effective when
+.Va always_up
+is enabled.
+.It Va dev.apple_smc.0.system.display_brightness_raw
+.Pq read-only
+Raw display brightness value from the SMC
+.Pq Va DPBR .
+Returns 0xffff on machines without an internal display.
+.It Va dev.apple_smc.0.system.chassis_state
+.Pq read-only
+Chassis/environment state byte
+.Pq Va ENV0 .
+.It Va dev.apple_smc.0.system.sw_thermal_throttle_disable
+Software thermal throttle disable flag
+.Pq Va STFD .
+Set to 1 to disable SMC software thermal throttling.
 .El
 .Ss Battery Charge Limit (T2 only)
 .Bl -tag -width indent
@@ -226,21 +267,66 @@ Battery charge limit percentage, 0 to 100
 .Pq Va BCLM .
 Only present on T2 Macs.
 .El
-.Ss Auto Power-On
+.Ss Always-Up
 .Bl -tag -width indent
-.It Va dev.apple_smc.0.auto_poweron
-Auto power-on after AC power loss.
+.It Va dev.apple_smc.0.always_up
+Prevent the machine from staying powered off.
+The machine will automatically power on after any shutdown.
 Set to 1 to enable, 0 to disable
 .Pq Va AUPO .
 .El
-.Ss Debug Interface
-When the kernel is compiled with
-.Dv APPLE_SMC_DEBUG ,
-a raw key access interface is available under
-.Va dev.apple_smc.0.raw :
+.Ss Thermal Governor
+When the driver overrides PROCHOT and takes fans into manual mode
+(see
+.Sx PROCHOT OVERRIDE ) ,
+a thermal governor kernel thread is started to manage fan speeds
+based on CPU temperature.
+The governor is only active when fans are under manual override.
+.Pp
+The governor implements a linear fan curve between configurable
+low and high temperature thresholds.
+Below
+.Va temp_low ,
+fans run at their minimum speed.
+Above
+.Va temp_high ,
+fans run at their maximum speed.
+A hysteresis deadband prevents oscillation near the thresholds.
+Fan ramp-down is rate-limited to 200 RPM per governor tick to
+avoid abrupt speed changes, while ramp-up is immediate.
+.Pp
+An emergency threshold forces all fans to maximum speed regardless
+of the fan curve.
+If a temperature sensor read fails, the governor assumes the
+worst case and sets fans to maximum (fail-hot).
+.Bl -tag -width indent
+.It Va dev.apple_smc.0.thermal.enabled
+Enable (1) or disable (0) the thermal governor.
+Disabling it sets all override fans to maximum speed for safety.
+.It Va dev.apple_smc.0.thermal.interval
+Poll interval in seconds (default: 5).
+.It Va dev.apple_smc.0.thermal.temp_low
+Temperature in millidegrees Celsius below which fans run at
+minimum speed (default: 55000, i.e.\& 55\(deC).
+.It Va dev.apple_smc.0.thermal.temp_high
+Temperature in millidegrees Celsius above which fans run at
+maximum speed (default: 80000, i.e.\& 80\(deC).
+.It Va dev.apple_smc.0.thermal.hysteresis
+Hysteresis deadband in millidegrees Celsius to prevent fan speed
+oscillation (default: 3000, i.e.\& 3\(deC).
+.It Va dev.apple_smc.0.thermal.emergency
+Emergency temperature in millidegrees Celsius; if any sensor
+exceeds this, all fans are forced to maximum
+(default: 90000, i.e.\& 90\(deC).
+.El
+.Ss Raw Key Access
+A raw SMC key access interface is available under
+.Va dev.apple_smc.0.raw
+for diagnostics and exploration of undocumented keys.
 .Bl -tag -width indent
 .It Va dev.apple_smc.0.raw.key
 Write a 4-character SMC key name to select it.
+The key's value, length, and type are read automatically.
 .It Va dev.apple_smc.0.raw.value
 Read or write the selected key's value as a hexadecimal string.
 .It Va dev.apple_smc.0.raw.len
@@ -249,7 +335,43 @@ Length of the selected key's value in bytes.
 .It Va dev.apple_smc.0.raw.type
 .Pq read-only
 4-character type code of the selected key.
+.It Va dev.apple_smc.0.raw.index
+Write a numeric key index (0 to nkeys\-1) to look up the key at
+that position in the SMC key table.
+Sets the raw key, value, length, and type fields accordingly.
 .El
+.Sh PROCHOT OVERRIDE
+The SMC may assert the external PROCHOT# signal when temperature
+sensors report disconnect sentinel values, or when the battery is
+absent.
+This throttles the CPU to its minimum frequency even though no
+real thermal event has occurred.
+.Pp
+At attach time, the driver checks the
+.Va SPHT
+key for an active PROCHOT# assertion.
+If a known benign cause is found (disconnected LCD sensors or
+absent/dead battery), the driver clears BD_PROCHOT (bit 0) in
+MSR 0x1FC
+.Pq IA32_POWER_CTL
+so the CPU ignores the external throttle signal.
+All other thermal protections (TCC, thermal monitor) remain active.
+.Pp
+When PROCHOT is overridden, the driver also takes fans running at
+or above 90% of maximum (SMC failsafe) into manual mode.
+The
+.Va FS!\&
+bitmask is read-modify-written to preserve internal SMC flag bits.
+The thermal governor reasserts manual mode on every poll tick,
+as the SMC periodically reclaims automatic control.
+.Pp
+On S3 resume the driver re-applies the override (the MSR resets)
+and reasserts fan manual mode.
+.Pp
+The override can be toggled at runtime via
+.Va dev.apple_smc.0.system.prochot_override .
+Setting it to 0 restores BD_PROCHOT, sets fans to maximum,
+releases manual mode, and stops the thermal governor.
 .Sh HARDWARE
 The
 .Nm
@@ -276,6 +398,24 @@ Limit battery charge to 80% on a T2 Mac:
 .Bd -literal -offset indent
 sysctl dev.apple_smc.0.battery_charge_limit=80
 .Ed
+.Pp
+Schedule a power-on from S5 in one hour:
+.Bd -literal -offset indent
+sysctl dev.apple_smc.0.system.g3_poweron_time=$(date -v+1H +%s)
+.Ed
+.Pp
+Adjust the thermal governor temperature range:
+.Bd -literal -offset indent
+sysctl dev.apple_smc.0.thermal.temp_low=50000
+sysctl dev.apple_smc.0.thermal.temp_high=75000
+.Ed
+.Pp
+Look up SMC key by index:
+.Bd -literal -offset indent
+sysctl dev.apple_smc.0.raw.index=42
+sysctl dev.apple_smc.0.raw.key
+sysctl dev.apple_smc.0.raw.value
+.Ed
 .Sh SEE ALSO
 .Xr acpi 4 ,
 .Xr apple_fw 4 ,
@@ -293,12 +433,17 @@ The
 driver and this manual page were written by
 .An Abdelkader Boudih Aq Mt dragonflybsd@seuros.com .
 .Sh CAVEATS
-On headless iMacs with the LCD panel disconnected, the SMC may enter a
-thermal panic mode due to missing temperature sensors
-.Pq e.g.\& TL0P, TL1P ,
-asserting PROCHOT and throttling the CPU to its minimum frequency.
+The thermal governor is only started when a PROCHOT override is active
+and fans are detected in SMC failsafe mode.
+On machines where PROCHOT is not asserted, fans remain under full
+SMC automatic control.
+.Pp
 The
-.Va thermal_status
-sysctl can be used to diagnose this condition.
-Fan manual mode overrides can be used to manage fan speeds in this
-scenario.
+.Va CLWK
+key encoding (big-endian vs little-endian) varies by model.
+The driver attempts BE first and falls back to LE if the readback
+does not match.
+.Pp
+Disabling the thermal governor via
+.Va dev.apple_smc.0.thermal.enabled
+sets all override fans to maximum speed as a safety measure.
