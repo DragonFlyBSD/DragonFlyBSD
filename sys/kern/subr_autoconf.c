@@ -61,6 +61,15 @@ static void run_interrupt_driven_config_hooks (void *dummy);
 static int ran_config_hooks;
 static struct lock intr_config_lk = LOCK_INITIALIZER("intrcfg", 0, 0);
 
+/*
+ * Milliseconds to linger after the interrupt-driven config hooks have
+ * finished, historically to give USB a chance to enumerate before the
+ * root mount.  Pointless on systems that cannot boot from USB (e.g.
+ * virtual machines); set kern.intr_config_hook_delay_ms=0 to skip it.
+ */
+static int intr_config_hook_delay_ms = 5000;
+TUNABLE_INT("kern.intr_config_hook_delay_ms", &intr_config_hook_delay_ms);
+
 static void
 run_interrupt_driven_config_hooks(void *dummy)
 {
@@ -118,8 +127,8 @@ run_interrupt_driven_config_hooks(void *dummy)
 	 * before the usb ports are even registered.
 	 */
 #ifndef _KERNEL_VIRTUAL
-	if (save_count == 0) {
-		while (ticks - save_ticks < 5*hz)
+	if (save_count == 0 && intr_config_hook_delay_ms > 0) {
+		while (ticks - save_ticks < intr_config_hook_delay_ms * hz / 1000)
 			tsleep(&intr_config_hook_list, 0, "delay", hz / 10);
 	}
 #endif

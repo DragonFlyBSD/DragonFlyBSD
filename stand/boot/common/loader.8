@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
 .\"
-.Dd July 4, 2026
+.Dd July 5, 2026
 .Dt LOADER 8
 .Os
 .Sh NAME
@@ -674,6 +674,12 @@ The default is 10 (hz) to dissuade casual use.
 If you are doing real work
 with emergency interrupt polling mode enabled, it is recommended
 that you use a frequency between 100hz and 300hz.
+.It Va kern.intr_config_hook_delay_ms
+Specify how long to linger, in milliseconds, after the interrupt-driven
+device configuration hooks have finished but before mounting the root
+file system
+(default is 5000 if unspecified).
+It may be set to 0 to skip the delay entirely.
 .It Va kern.maxusers
 Set the size of a number of statically allocated system tables; see
 .Xr tuning 7
