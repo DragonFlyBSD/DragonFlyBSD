@@ -104,8 +104,12 @@ static int	setrootbyname(char *name);
 
 SYSINIT(mountroot, SI_SUB_MOUNT_ROOT, SI_ORDER_SECOND, vfs_mountroot, NULL);
 
-static int wakedelay = 2;	/* delay before mounting root in seconds */
-TUNABLE_INT("vfs.root.wakedelay", &wakedelay);
+/*
+ * Delay before mounting root, in milliseconds.  Gives better granularity
+ * for non-CAM kern confs than the old seconds-based tunable it supersedes.
+ */
+static int wakedelay_ms = 2000;	/* delay before mounting root in milliseconds */
+TUNABLE_INT("vfs.root.wakedelay_ms", &wakedelay_ms);
 
 /*
  * Find and mount the root filesystem
@@ -116,7 +120,7 @@ vfs_mountroot(void *junk)
 	cdev_t	save_rootdev = rootdev;
 	int	i;
 	int	dummy;
-	
+
 	/*
 	 * Make sure all disk devices created so far have also been probed,
 	 * and also make sure that the newly created device nodes for
@@ -130,7 +134,12 @@ vfs_mountroot(void *junk)
 	 *	 probe.
 	 */
 	sync_devs();
-	tsleep(&dummy, 0, "syncer", hz * wakedelay);
+
+	/*
+	 * Delay in milliseconds via vfs.root.wakedelay_ms.  The +1 tick
+	 * avoids a 0 timeout, which tsleep() would treat as "sleep forever".
+	 */
+	tsleep(&dummy, 0, "syncer", hz * wakedelay_ms / 1000 + 1);
 
 
 	/* 
