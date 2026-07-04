@@ -1,0 +1,178 @@
+.\" Copyright (c) 2026 Antonio Huete Jimenez
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd July 4, 2026
+.Dt VIRTIO_MMIO 4
+.Os
+.Sh NAME
+.Nm virtio_mmio
+.Nd VirtIO memory-mapped I/O transport driver
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device virtio"
+.Cd "device virtio_mmio"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+virtio_mmio_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver provides the memory-mapped I/O
+.Pq MMIO
+transport for
+.Xr virtio 4 ,
+as an alternative to the PCI transport used on emulated PCI buses.
+Instead of being discovered on a bus, each transport instance occupies a
+fixed window of physical address space and a single interrupt, on top of
+which the usual front-end drivers such as
+.Xr vtnet 4 ,
+.Xr virtio_blk 4
+and
+.Xr virtio_scsi 4
+attach.
+.Pp
+The driver implements the legacy
+.Pq version 1
+virtio-mmio register layout.
+It does not use FDT or ACPI for enumeration.
+Instead, the address, interrupt and optional unit number of each device
+are described by the kernel environment
+.Pq Xr kenv 1
+variables documented below, and the corresponding
+.Nm
+children are attached to the
+.Va nexus
+pseudo-bus.
+This makes the driver suitable for lightweight virtual machine monitors,
+such as QEMU
+.Fl M Ar microvm
+and Firecracker, that present virtio devices over MMIO rather than PCI.
+.Sh LOADER TUNABLES
+The following tunables describe the virtio-mmio devices to attach.
+They can be set at the
+.Xr loader 8
+prompt before booting the kernel or stored in
+.Xr loader.conf 5 .
+.Bl -tag -width ".Va hw.virtio.mmio.device_ Ns Ar N"
+.It Va hw.virtio.mmio.device
+Describes the first virtio-mmio device.
+.It Va hw.virtio.mmio.device_ Ns Ar N
+Describes an additional virtio-mmio device, where
+.Ar N
+is a decimal number starting at 1.
+The variables are consulted in order and enumeration stops at the first
+value of
+.Ar N
+that is not set, so the numbers must be contiguous.
+.El
+.Pp
+Each variable holds a device description of the form:
+.Bd -ragged -offset indent
+.Sm off
+.Ar size No @ Ar baseaddr : Ar irq Op : Ar unit
+.Sm on
+.Ed
+.Pp
+The fields are:
+.Bl -tag -width ".Ar baseaddr"
+.It Ar size
+Size of the device's MMIO register window in bytes.
+A single-letter binary suffix
+.Pq Cm K , M , G , T , P No or Cm E , case-insensitive
+may be appended, each multiplying the value by 1024.
+.It Ar baseaddr
+Physical base address of the register window.
+.It Ar irq
+Interrupt number
+.Pq GSI
+delivered by the device.
+.It Ar unit
+Optional device unit number.
+If omitted, the next available unit is assigned automatically.
+.El
+.Pp
+The
+.Ar size ,
+.Ar baseaddr ,
+.Ar irq
+and
+.Ar unit
+fields accept a leading
+.Ql 0x
+for hexadecimal or
+.Ql 0
+for octal, as in
+.Xr strtoul 3 .
+This is the same syntax used by the Linux
+.Va virtio_mmio.device
+kernel command-line parameter that many virtual machine monitors emit.
+.Sh EXAMPLES
+Attach a single virtio-mmio device with a 512-byte register window at
+physical address
+.Ad 0xd0000000
+on interrupt 5, by adding to
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+hw.virtio.mmio.device="0x200@0xd0000000:5"
+.Ed
+.Pp
+Attach two devices:
+.Bd -literal -offset indent
+hw.virtio.mmio.device="512@0xd0000000:5"
+hw.virtio.mmio.device_1="512@0xd0000200:6"
+.Ed
+.Sh SEE ALSO
+.Xr kenv 1 ,
+.Xr virtio 4 ,
+.Xr virtio_blk 4 ,
+.Xr virtio_scsi 4 ,
+.Xr vtnet 4 ,
+.Xr loader.conf 5 ,
+.Xr loader 8
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Dx 6.5 .
+.Sh AUTHORS
+The
+.Nm
+driver was adapted for
+.Dx
+from the
+.Fx
+virtio-mmio transport by
+.An Antonio Huete Jimenez Aq Mt tuxillo@quantumachine.net .
+The
+.Fx
+command-line and kenv device-discovery support it is based on was written by
+.An Colin Percival Aq Mt cperciva@FreeBSD.org .
