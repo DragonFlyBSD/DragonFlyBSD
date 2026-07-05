@@ -642,6 +642,11 @@ will be used.
 This variable should not be used if
 .Tn I/O APIC
 use is disabled.
+.It Va hw.isa.pnp_disabled
+If set to 1, skip the ISA PnP isolation scan.
+The scan takes several seconds on systems with no ISA PnP hardware,
+such as virtual machines.
+Default is 0.
 .It Va hw.physmem
 Limit the amount of physical memory the system will use.
 By default the size is in bytes, but the

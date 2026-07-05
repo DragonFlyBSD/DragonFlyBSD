@@ -678,6 +678,15 @@ pnp_isolation_protocol(device_t parent)
 
 
 /*
+ * The isolation scan probes several read-data ports, each running the full
+ * isolation protocol with mandatory DELAY()s; with no PnP cards present it
+ * finds nothing yet costs several seconds of boot time.  Allow it to be
+ * skipped on systems known to have no ISA PnP hardware.
+ */
+static int pnp_disabled = 0;
+TUNABLE_INT("hw.isa.pnp_disabled", &pnp_disabled);
+
+/*
  * pnp_identify()
  *
  * autoconfiguration of pnp devices. This routine just runs the
@@ -690,6 +699,9 @@ static int
 pnp_identify(driver_t *driver, device_t parent)
 {
 	int num_pnp_devs;
+
+	if (pnp_disabled)
+		return (0);
 
 	/*
 	 * We do not support rescanning PNP devices, just return
