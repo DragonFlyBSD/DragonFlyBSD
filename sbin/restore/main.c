@@ -330,7 +330,7 @@ obsolete(int *argcp, char **argvp[])
 				err(1, NULL);
 			nargv[0][0] = '-';
 			nargv[0][1] = *ap;
-			strcpy(&nargv[0][2], *argv);
+			strlcpy(&nargv[0][2], *argv, strlen(*argv) + 1);
 			++argv;
 			++nargv;
 			break;
