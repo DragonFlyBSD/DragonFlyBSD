@@ -1,9 +1,33 @@
 /*-
- * Regression test for TCP RST acceptance when delayed ACK state makes
+ * Regression test for TCP RST acceptance when delayed-ACK state makes
  * RCV.NXT lie beyond last_ack_sent + rcv_wnd.
  *
- * Requires root: uses BPF to observe the client's data sequence number and a
- * raw IPv4 socket to inject the final RST at exactly RCV.NXT.
+ * A RST whose sequence number is exactly RCV.NXT must reset the connection
+ * (RFC 793, RFC 5961 3.2).  DragonFly validated an incoming RST against a
+ * window anchored on last_ack_sent -- [last_ack_sent, last_ack_sent + rcv_wnd]
+ * -- and dropped anything outside it.  When the receiver has delayed-ACKed data
+ * (rcv_nxt > last_ack_sent) and its window has shrunk below that gap
+ * (rcv_nxt - last_ack_sent > rcv_wnd), a RST at rcv_nxt sits past the right
+ * edge and was silently dropped, leaving the connection half-open.
+ *
+ * To build that state deterministically the test drives a loopback connection
+ * whose receiving end never reads:
+ *
+ *   1. The client fills the receiver's socket buffer so the advertised window
+ *      shrinks to a small value W, and waits for that data to be ACKed (so
+ *      last_ack_sent == rcv_nxt, gap 0).
+ *   2. The client sends one more segment of FINAL bytes, larger than half of
+ *      W, so that once it arrives rcv_nxt - last_ack_sent (== FINAL) exceeds
+ *      the remaining window (W - FINAL).  With delayed ACK enabled the
+ *      receiver holds the ACK for ~100ms, so for that interval
+ *      rcv_nxt > last_ack_sent + rcv_wnd.
+ *   3. Within that interval the test injects a RST at rcv_nxt.
+ *
+ * A fixed kernel resets the connection (recv() -> ECONNRESET); the buggy kernel
+ * drops the RST and the connection stays ESTABLISHED (recv() -> EAGAIN).
+ *
+ * Requires root: uses BPF to observe the client's final data segment and a raw
+ * IPv4 socket to inject the RST at exactly RCV.NXT.
  */
 
 #include <sys/types.h>
@@ -34,8 +58,16 @@
 #endif
 
 #define LO_IFNAME "lo0"
-#define RCVBUF 1200
-#define DATALEN 900
+
+/*
+ * FINAL is the size of the delayed-ACKed segment that creates the gap; LEAVE is
+ * the advertised window the fill aims to leave just before it.  FINAL must be
+ * greater than LEAVE - FINAL (i.e. FINAL > LEAVE/2) so the gap exceeds the
+ * residual window, and LEAVE - FINAL must stay positive so the segment does not
+ * slam the window shut (which would force an immediate, non-delayed ACK).
+ */
+#define FINAL	1200
+#define LEAVE	1344
 
 struct tuple {
 	struct in_addr src, dst;
@@ -66,13 +98,14 @@ xsysctl(const char *name, int value, int *oldp)
 }
 
 static void
-restore_sysctls(int rfc1323, int delayed_ack)
+restore_sysctls(int rfc1323, int delayed_ack, int recvbuf_auto)
 {
-	char cmd[160];
+	char cmd[224];
 
 	snprintf(cmd, sizeof(cmd),
-	    "sysctl -q net.inet.tcp.rfc1323=%d net.inet.tcp.delayed_ack=%d",
-	    rfc1323, delayed_ack);
+	    "sysctl -q net.inet.tcp.rfc1323=%d net.inet.tcp.delayed_ack=%d "
+	    "net.inet.tcp.recvbuf_auto=%d",
+	    rfc1323, delayed_ack, recvbuf_auto);
 	(void)system(cmd);
 }
 
@@ -169,15 +202,13 @@ listener(uint16_t *portp)
 {
 	struct sockaddr_in sin;
 	socklen_t slen = sizeof(sin);
-	int s, one = 1, rcvbuf = RCVBUF;
+	int s, one = 1;
 
 	s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (s < 0)
 		err(1, "socket");
 	if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)) < 0)
 		err(1, "SO_REUSEADDR");
-	if (setsockopt(s, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0)
-		err(1, "SO_RCVBUF");
 
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_len = sizeof(sin);
@@ -193,14 +224,17 @@ listener(uint16_t *portp)
 	return (s);
 }
 
+/*
+ * Child: connect, then fill the receiver's buffer with `fill` bytes, let it be
+ * ACKed, and send one FINAL-byte segment that creates the delayed-ACK gap.
+ */
 static void
 client(uint16_t port, int gofd)
 {
 	struct sockaddr_in sin;
-	char go, buf[DATALEN];
-	int s;
+	char *buf;
+	int s, fill;
 
-	memset(buf, 'x', sizeof(buf));
 	s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (s < 0)
 		err(1, "client socket");
@@ -212,19 +246,34 @@ client(uint16_t port, int gofd)
 	sin.sin_port = htons(port);
 	if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) < 0)
 		err(1, "connect");
-	if (read(gofd, &go, 1) != 1)
-		err(1, "sync read");
-	if (write(s, buf, sizeof(buf)) != sizeof(buf))
-		err(1, "client write");
 
-	/* Keep the real socket from sending its own RST/FIN during the test. */
+	/* Parent hands us the fill size once it has accepted and measured. */
+	if (read(gofd, &fill, sizeof(fill)) != sizeof(fill))
+		err(1, "sync read");
+
+	buf = malloc(fill > FINAL ? fill : FINAL);
+	if (buf == NULL)
+		err(1, "malloc");
+	memset(buf, 'x', fill > FINAL ? fill : FINAL);
+
+	if (write(s, buf, fill) != fill)
+		err(1, "client fill write");
+	/* Let the fill be (fully) ACKed so last_ack_sent catches up to rcv_nxt. */
+	usleep(300000);
+	if (write(s, buf, FINAL) != FINAL)
+		err(1, "client final write");
+
+	/* Hold the connection open so the real socket sends no RST/FIN. */
 	sleep(3);
 	close(s);
 	_exit(0);
 }
 
+/*
+ * Match the client's final data segment (length == FINAL) and record its tuple.
+ */
 static int
-parse_data(const uint8_t *p, size_t n, int ipoff, uint16_t dport,
+parse_final(const uint8_t *p, size_t n, int ipoff, uint16_t dport,
     struct tuple *t)
 {
 	const struct ip *ip;
@@ -242,13 +291,13 @@ parse_data(const uint8_t *p, size_t n, int ipoff, uint16_t dport,
 	th = (const struct tcphdr *)(const void *)(p + ipoff + ihl);
 	thl = (size_t)th->th_off << 2;
 	iplen = ntohs(ip->ip_len);
-	if (iplen < ihl + thl + DATALEN)
+	if (iplen < ihl + thl)
 		return (0);
 	if (ntohs(th->th_dport) != dport)
 		return (0);
 	if ((th->th_flags & TH_ACK) == 0)
 		return (0);
-	if (iplen - ihl - thl != DATALEN)
+	if (iplen - ihl - thl != FINAL)
 		return (0);
 
 	t->src = ip->ip_src;
@@ -262,7 +311,7 @@ parse_data(const uint8_t *p, size_t n, int ipoff, uint16_t dport,
 }
 
 static void
-capture_data(int bpf, u_int blen, int ipoff, uint16_t port, struct tuple *t)
+capture_final(int bpf, u_int blen, int ipoff, uint16_t port, struct tuple *t)
 {
 	struct bpf_hdr *bh;
 	uint8_t *buf, *p, *end;
@@ -277,14 +326,14 @@ capture_data(int bpf, u_int blen, int ipoff, uint16_t port, struct tuple *t)
 		if (n < 0)
 			err(1, "read bpf");
 		if (n == 0)
-			errx(1, "timed out waiting for data packet");
+			errx(1, "timed out waiting for final packet");
 		p = buf;
 		end = buf + n;
 		while (p + sizeof(*bh) <= end) {
 			bh = (struct bpf_hdr *)(void *)p;
 			if (p + bh->bh_hdrlen + bh->bh_caplen > end)
 				break;
-			if (parse_data(p + bh->bh_hdrlen, bh->bh_caplen,
+			if (parse_final(p + bh->bh_hdrlen, bh->bh_caplen,
 			    ipoff, port, t)) {
 				free(buf);
 				return;
@@ -317,7 +366,7 @@ inject_rst(const struct tuple *t)
 
 	pkt.th.th_sport = htons(t->sport);
 	pkt.th.th_dport = htons(t->dport);
-	pkt.th.th_seq = htonl(t->seq + DATALEN);
+	pkt.th.th_seq = htonl(t->seq + FINAL);	/* == receiver's rcv_nxt */
 	pkt.th.th_ack = htonl(t->ack);
 	pkt.th.th_off = sizeof(struct tcphdr) >> 2;
 	pkt.th.th_flags = TH_RST | TH_ACK;
@@ -346,16 +395,24 @@ main(void)
 	struct tuple t;
 	uint16_t port;
 	u_int blen;
-	int old_rfc1323, old_delack, bpf, ipoff, ls, cs, pfd[2], flags, st;
+	int old_rfc1323, old_delack, old_rcvauto;
+	int bpf, ipoff, ls, cs, pfd[2], flags, st, hiwat, fill;
+	socklen_t slen;
 	pid_t pid;
-	char go = 1, buf[DATALEN];
+	char buf[4096];
 	ssize_t n;
 
 	if (geteuid() != 0)
 		errx(1, "must be run as root");
 
+	/*
+	 * rfc1323 off keeps the window unscaled so a small advertised window is
+	 * an exact byte count; delayed_ack on holds the final ACK; recvbuf_auto
+	 * off pins the receive buffer so the fill target is stable.
+	 */
 	if (xsysctl("net.inet.tcp.rfc1323", 0, &old_rfc1323) != 0 ||
-	    xsysctl("net.inet.tcp.delayed_ack", 1, &old_delack) != 0)
+	    xsysctl("net.inet.tcp.delayed_ack", 1, &old_delack) != 0 ||
+	    xsysctl("net.inet.tcp.recvbuf_auto", 0, &old_rcvauto) != 0)
 		errx(1, "failed to set required TCP sysctls");
 
 	bpf = open_bpf(&ipoff, &blen);
@@ -379,38 +436,55 @@ main(void)
 	if (flags < 0 || fcntl(cs, F_SETFL, flags | O_NONBLOCK) < 0)
 		err(1, "nonblock");
 
-	if (write(pfd[1], &go, 1) != 1)
+	/*
+	 * Fill enough to leave an advertised window of LEAVE bytes, so the
+	 * following FINAL-byte segment overshoots the residual window.
+	 */
+	slen = sizeof(hiwat);
+	if (getsockopt(cs, SOL_SOCKET, SO_RCVBUF, &hiwat, &slen) < 0)
+		err(1, "SO_RCVBUF");
+	fill = hiwat - LEAVE;
+	if (fill <= 0)
+		errx(1, "receive buffer %d too small", hiwat);
+	if (write(pfd[1], &fill, sizeof(fill)) != sizeof(fill))
 		err(1, "sync write");
 	close(pfd[1]);
 
-	capture_data(bpf, blen, ipoff, port, &t);
+	/* Capture the final segment and inject the RST at rcv_nxt at once. */
+	capture_final(bpf, blen, ipoff, port, &t);
 	inject_rst(&t);
-	usleep(20000);
+	usleep(50000);
 
-	n = read(cs, buf, sizeof(buf));
-	if (n != DATALEN) {
-		fprintf(stderr, "FAIL: first read %zd, expected %d: %s\n",
-		    n, DATALEN, strerror(errno));
-		goto fail;
+	/*
+	 * Drain any buffered data, then look at the connection state.  A kernel
+	 * that accepted the RST reports ECONNRESET; a kernel that dropped it
+	 * leaves the connection half-open, so recv() returns EAGAIN forever.
+	 */
+	for (;;) {
+		n = read(cs, buf, sizeof(buf));
+		if (n <= 0)
+			break;
 	}
 
-	n = read(cs, buf, sizeof(buf));
 	if (n < 0 && errno == ECONNRESET) {
 		fprintf(stderr, "PASS\n");
-		restore_sysctls(old_rfc1323, old_delack);
+		restore_sysctls(old_rfc1323, old_delack, old_rcvauto);
 		kill(pid, SIGTERM);
 		waitpid(pid, &st, 0);
 		return (0);
 	}
 
-	if (n < 0)
-		fprintf(stderr, "FAIL: second read got %s, expected ECONNRESET\n",
-		    strerror(errno));
+	if (n == 0)
+		fprintf(stderr, "FAIL: connection closed cleanly (EOF), "
+		    "expected ECONNRESET\n");
+	else if (errno == EAGAIN)
+		fprintf(stderr, "FAIL: connection still ESTABLISHED "
+		    "(RST at rcv_nxt was dropped), expected ECONNRESET\n");
 	else
-		fprintf(stderr, "FAIL: second read returned %zd\n", n);
+		fprintf(stderr, "FAIL: read got %s, expected ECONNRESET\n",
+		    strerror(errno));
 
-fail:
-	restore_sysctls(old_rfc1323, old_delack);
+	restore_sysctls(old_rfc1323, old_delack, old_rcvauto);
 	kill(pid, SIGTERM);
 	waitpid(pid, &st, 0);
 	return (1);
