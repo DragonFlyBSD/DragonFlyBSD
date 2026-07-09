@@ -1679,8 +1679,9 @@ after_listen:
 	 *	RFC 1337.
 	 */
 	if (thflags & TH_RST) {
-		if (SEQ_GEQ(th->th_seq, tp->last_ack_sent) &&
-		    SEQ_LEQ(th->th_seq, tp->last_ack_sent + tp->rcv_wnd)) {
+		if (th->th_seq == tp->rcv_nxt ||
+		    (SEQ_GEQ(th->th_seq, tp->last_ack_sent) &&
+		     SEQ_LEQ(th->th_seq, tp->last_ack_sent + tp->rcv_wnd))) {
 			switch (tp->t_state) {
 
 			case TCPS_SYN_RECEIVED:
