@@ -91,7 +91,7 @@ cksum(const void *data, size_t len)
 		sum += (uint16_t)(p[0] << 8);
 	while (sum >> 16)
 		sum = (sum & 0xffff) + (sum >> 16);
-	return ((uint16_t)~sum);
+	return (htons((uint16_t)~sum));
 }
 
 static uint16_t
