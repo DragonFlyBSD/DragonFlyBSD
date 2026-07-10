@@ -515,7 +515,6 @@ linker_file_unload(linker_file_t file)
 	    KLD_DPF(FILE, ("linker_file_unload: module %p vetoes unload\n",
 			   mod));
 	    lockmgr(&llf_lock, LK_RELEASE);
-	    file->refs--;
 	    goto out;
 	}
 	module_release(mod);
