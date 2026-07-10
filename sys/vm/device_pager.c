@@ -93,13 +93,46 @@ static struct cdev_pager_ops old_dev_pager_ops = {
 	.cdev_pg_fault = old_dev_pager_fault
 };
 
+static vm_object_t
+cdev_pager_lookup_locked(void *handle, vm_pindex_t pindex)
+{
+	vm_object_t object;
+
+again:
+	object = vm_pager_object_lookup(&dev_pager_object_list, handle);
+	if (object != NULL) {
+		if (object->un_pager.devp.ops == NULL) {
+			/* This object is reserved during the allocation. */
+			mtxsleep(&object->un_pager.devp.ops, &dev_pager_mtx, 0,
+				 "cdplkp", 0);
+			mtx_unlock(&dev_pager_mtx);
+			vm_object_deallocate(object);
+			mtx_lock(&dev_pager_mtx);
+			goto again;
+		}
+
+		if (pindex > 0) {
+			/*
+			 * Called from cdev_pager_allocate() and raced with
+			 * other thread with allocating object.
+			 */
+			vm_object_hold(object);
+			if (pindex > object->size)
+				object->size = pindex;
+			vm_object_drop(object);
+		}
+	}
+
+	return (object);
+}
+
 vm_object_t
 cdev_pager_lookup(void *handle)
 {
 	vm_object_t object;
 
 	mtx_lock(&dev_pager_mtx);
-	object = vm_pager_object_lookup(&dev_pager_object_list, handle);
+	object = cdev_pager_lookup_locked(handle, 0);
 	mtx_unlock(&dev_pager_mtx);
 
 	return (object);
@@ -110,9 +143,10 @@ cdev_pager_allocate(void *handle, enum obj_type tp, struct cdev_pager_ops *ops,
 	vm_ooffset_t size, vm_prot_t prot, vm_ooffset_t foff, struct ucred *cred)
 {
 	cdev_t dev;
-	vm_object_t object;
+	vm_object_t object, object1;
 	vm_pindex_t pindex;
 	u_short color;
+	int error;
 
 	/*
 	 * Offset should be page aligned.
@@ -123,44 +157,68 @@ cdev_pager_allocate(void *handle, enum obj_type tp, struct cdev_pager_ops *ops,
 	size = round_page64(size);
 	pindex = OFF_TO_IDX(foff + size);
 
-	if (ops->cdev_pg_ctor(handle, size, prot, foff, cred, &color) != 0)
-		return (NULL);
-
 	/*
-	 * Look up pager, creating as necessary.
+	 * Look up pager and handle races.
 	 */
 	mtx_lock(&dev_pager_mtx);
-	object = vm_pager_object_lookup(&dev_pager_object_list, handle);
-	if (object == NULL) {
-		/*
-		 * Allocate object and associate it with the pager.
-		 */
-		object = vm_object_allocate_hold(tp, pindex);
-		object->handle = handle;
-		object->un_pager.devp.ops = ops;
-		object->un_pager.devp.dev = handle;
-		TAILQ_INIT(&object->un_pager.devp.devp_pglist);
-
-		/*
-		 * handle is only a device for old_dev_pager_ctor.
-		 */
-		if (ops->cdev_pg_ctor == old_dev_pager_ctor) {
-			dev = handle;
-			dev->si_object = object;
-		}
-
-		TAILQ_INSERT_TAIL(&dev_pager_object_list, object,
-				  pager_object_entry);
-
-		vm_object_drop(object);
-	} else {
-		vm_object_hold(object);
-		if (pindex > object->size)
-			object->size = pindex;
+	object = cdev_pager_lookup_locked(handle, pindex);
+	mtx_unlock(&dev_pager_mtx);
+	if (object != NULL) {
 		KASSERT(object->type == tp,
 			("Inconsistent device pager type %p %d", object, tp));
-		vm_object_drop(object);
+		KKASSERT(object->un_pager.devp.ops == ops);
+		return (object);
 	}
+
+	/* Reserve an object before calling the constructor. */
+	object1 = vm_object_allocate_hold(tp, pindex);
+
+	mtx_lock(&dev_pager_mtx);
+	object = cdev_pager_lookup_locked(handle, pindex);
+	if (object != NULL) {
+		mtx_unlock(&dev_pager_mtx);
+		object1->type = OBJT_DEAD;
+		vm_object_drop(object1);
+		vm_object_deallocate(object1);
+		KASSERT(object->type == tp,
+			("Inconsistent device pager type %p %d", object, tp));
+		KKASSERT(object->un_pager.devp.ops == ops);
+		return (object);
+	}
+
+	object = object1;
+	object->handle = handle;
+	object->un_pager.devp.dev = handle;
+	object->un_pager.devp.ops = NULL; /* sentinel to detect race */
+	TAILQ_INIT(&object->un_pager.devp.devp_pglist);
+	TAILQ_INSERT_TAIL(&dev_pager_object_list, object, pager_object_entry);
+	vm_object_drop(object);
+
+	/* Only call the constructor once per object. */
+	mtx_unlock(&dev_pager_mtx);
+	error = ops->cdev_pg_ctor(handle, size, prot, foff, cred, &color);
+	mtx_lock(&dev_pager_mtx);
+	if (error != 0) {
+		TAILQ_REMOVE(&dev_pager_object_list, object,
+			     pager_object_entry);
+		vm_object_hold(object);
+		object->type = OBJT_DEAD;
+		vm_object_drop(object);
+		wakeup(&object->un_pager.devp.ops);
+		mtx_unlock(&dev_pager_mtx);
+		vm_object_deallocate(object);
+		return (NULL);
+	}
+
+	vm_object_hold(object);
+	object->un_pager.devp.ops = ops;
+	/* Handle is only a device for old_dev_pager_ctor. */
+	if (ops->cdev_pg_ctor == old_dev_pager_ctor) {
+		dev = handle;
+		dev->si_object = object;
+	}
+	vm_object_drop(object);
+	wakeup(&object->un_pager.devp.ops);
 	mtx_unlock(&dev_pager_mtx);
 
 	return (object);
