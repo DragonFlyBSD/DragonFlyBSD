@@ -29,6 +29,7 @@
 #include "libc_private.h"
 
 void	_nmalloc_thr_init(void);
+void	_nmalloc_thr_exit(void);
 void	_upmap_thr_init(void);
 #ifndef __LIBC_RTLD
 void	_pthread_init_early(void);
@@ -66,6 +67,16 @@ _libc_thr_init(void)
 {
 	_nmalloc_thr_init();
 	_upmap_thr_init();
+}
+
+/*
+ * Per-thread teardown, called by pthreads when a thread exits, after
+ * the application's TSD destructors have run.
+ */
+void
+_libc_thr_exit(void)
+{
+	_nmalloc_thr_exit();
 }
 
 __weak_reference(_thread_autoinit_dummy_decl_stub, _thread_autoinit_dummy_decl);

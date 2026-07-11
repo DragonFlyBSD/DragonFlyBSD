@@ -114,7 +114,9 @@ extern void (*__cleanup)(void);
 /* execve() with PATH processing to implement posix_spawnp() */
 int _execvpe(const char *, char * const *, char * const *);
 void _libc_thr_init(void);
+void _libc_thr_exit(void);
 void _nmalloc_thr_init(void);
+void _nmalloc_thr_exit(void);
 void _upmap_thr_init(void);
 void _nmalloc_thr_prepfork(void);
 void _nmalloc_thr_parentfork(void);
