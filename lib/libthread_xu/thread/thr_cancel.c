@@ -145,15 +145,18 @@ _thr_cancel_enter(pthread_t curthread)
 	int oldval;
 
 	/*
-	 * In a single-threaded process there is nobody to deliver a
-	 * cancellation request; skip the two atomic ops per syscall.
-	 * The decision is captured in the return value so that the
-	 * matching _thr_cancel_leave() stays coherent even if the
-	 * process goes multi-threaded between the two calls.
+	 * In a single-threaded process there is normally nobody to
+	 * deliver a cancellation request; skip the two atomic ops per
+	 * syscall.  The thread can still cancel itself
+	 * (pthread_cancel(pthread_self())), so a pending request forces
+	 * the full path.  The decision is captured in the return value
+	 * so that the matching _thr_cancel_leave() stays coherent even
+	 * if the process goes multi-threaded between the two calls.
 	 */
 	if (__predict_false(curthread == NULL))
 		return (THR_CANCEL_FASTPATH);
-	if (!__isthreaded)
+	if (!__isthreaded &&
+	    __predict_true(!(curthread->cancelflags & THR_CANCEL_NEEDED)))
 		return (THR_CANCEL_FASTPATH);
 
 	oldval = curthread->cancelflags;
