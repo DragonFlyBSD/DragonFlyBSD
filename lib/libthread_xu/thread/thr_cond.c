@@ -208,6 +208,7 @@ cond_cancel_handler(void *arg)
 	pthread_t curthread = tls_get_curthread();
 	struct cond_cancel_info *info = (struct cond_cancel_info *)arg;
 	pthread_cond_t cv;
+	int ret;
 
 	cv = *info->cond;
 	THR_LOCK_ACQUIRE(curthread, &cv->c_lock);
@@ -221,7 +222,15 @@ cond_cancel_handler(void *arg)
 	}
 	THR_LOCK_RELEASE(curthread, &cv->c_lock);
 
-	/* _mutex_cv_lock(info->mutex, info->count); */
+	/*
+	 * A canceled pthread_cond_wait() must reacquire the mutex before
+	 * user cleanup handlers run.  Otherwise a cleanup handler that
+	 * unlocks the mutex sees EPERM and the mutex keeps the condition
+	 * wait reference, so pthread_mutex_destroy() reports EBUSY.
+	 */
+	ret = _mutex_cv_lock(info->mutex, info->count);
+	if (ret != 0)
+		PANIC("Cannot relock mutex after condition wait cancellation");
 }
 
 /*
