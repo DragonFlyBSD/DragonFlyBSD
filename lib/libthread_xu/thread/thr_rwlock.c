@@ -181,10 +181,12 @@ _pthread_rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr)
 static int
 rwlock_rdlock_common(pthread_rwlock_t *rwlock, const struct timespec *abstime)
 {
-	pthread_t curthread = tls_get_curthread();
+	pthread_t curthread;
 	pthread_rwlock_t prwlock;
 	int ret;
 
+	_thr_check_init();
+	curthread = tls_get_curthread();
 	if (rwlock == NULL)
 		return (EINVAL);
 
@@ -285,10 +287,12 @@ _pthread_rwlock_timedrdlock (pthread_rwlock_t * __restrict rwlock,
 int
 _pthread_rwlock_tryrdlock (pthread_rwlock_t *rwlock)
 {
-	pthread_t curthread = tls_get_curthread();
+	pthread_t curthread;
 	pthread_rwlock_t prwlock;
 	int ret;
 
+	_thr_check_init();
+	curthread = tls_get_curthread();
 	if (rwlock == NULL)
 		return (EINVAL);
 
@@ -331,10 +335,12 @@ _pthread_rwlock_tryrdlock (pthread_rwlock_t *rwlock)
 int
 _pthread_rwlock_trywrlock (pthread_rwlock_t *rwlock)
 {
-	pthread_t curthread = tls_get_curthread();
+	pthread_t curthread;
 	pthread_rwlock_t prwlock;
 	int ret;
 
+	_thr_check_init();
+	curthread = tls_get_curthread();
 	if (rwlock == NULL)
 		return (EINVAL);
 
@@ -418,10 +424,12 @@ _pthread_rwlock_unlock (pthread_rwlock_t *rwlock)
 static int
 rwlock_wrlock_common (pthread_rwlock_t *rwlock, const struct timespec *abstime)
 {
-	pthread_t curthread = tls_get_curthread();
+	pthread_t curthread;
 	pthread_rwlock_t prwlock;
 	int ret;
 
+	_thr_check_init();
+	curthread = tls_get_curthread();
 	if (rwlock == NULL)
 		return (EINVAL);
 

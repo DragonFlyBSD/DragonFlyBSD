@@ -367,9 +367,11 @@ mutex_trylock_common(pthread_t curthread, pthread_mutex_t *mutex)
 int
 __pthread_mutex_trylock(pthread_mutex_t *m)
 {
-	pthread_t curthread = tls_get_curthread();
+	pthread_t curthread;
 	int ret;
 
+	_thr_check_init();
+	curthread = tls_get_curthread();
 	if (__predict_false(m == NULL))
 		return(EINVAL);
 	/*
@@ -387,9 +389,11 @@ __pthread_mutex_trylock(pthread_mutex_t *m)
 int
 _pthread_mutex_trylock(pthread_mutex_t *m)
 {
-	pthread_t curthread = tls_get_curthread();
+	pthread_t curthread;
 	int	ret = 0;
 
+	_thr_check_init();
+	curthread = tls_get_curthread();
 	/*
 	 * If the mutex is statically initialized, perform the dynamic
 	 * initialization marking the mutex private (delete safe):
@@ -454,6 +458,7 @@ __pthread_mutex_lock(pthread_mutex_t *m)
 	pthread_t curthread;
 	int	ret;
 
+	_thr_check_init();
 	if (__predict_false(m == NULL))
 		return(EINVAL);
 
@@ -526,6 +531,7 @@ _pthread_mutex_timedlock(pthread_mutex_t *m,
 	pthread_t curthread;
 	int	ret;
 
+	_thr_check_init();
 	if (__predict_false(m == NULL))
 		return(EINVAL);
 
@@ -546,6 +552,7 @@ _pthread_mutex_timedlock(pthread_mutex_t *m,
 int
 _pthread_mutex_unlock(pthread_mutex_t *m)
 {
+	_thr_check_init();
 	if (__predict_false(m == NULL))
 		return(EINVAL);
 	return (mutex_unlock_common(m));

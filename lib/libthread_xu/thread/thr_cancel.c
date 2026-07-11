@@ -35,11 +35,13 @@
 int
 _pthread_cancel(pthread_t pthread)
 {
-	pthread_t curthread = tls_get_curthread();
+	pthread_t curthread;
 	int oldval, newval = 0;
 	int oldtype;
 	int ret;
 
+	_thr_check_init();
+	curthread = tls_get_curthread();
 	/*
 	 * POSIX says _pthread_cancel should be async cancellation safe,
 	 * so we temporarily disable async cancellation.
@@ -78,9 +80,11 @@ testcancel(pthread_t curthread)
 int
 _pthread_setcancelstate(int state, int *oldstate)
 {
-	pthread_t curthread = tls_get_curthread();
+	pthread_t curthread;
 	int oldval;
 
+	_thr_check_init();
+	curthread = tls_get_curthread();
 	oldval = curthread->cancelflags;
 	if (oldstate != NULL)
 		*oldstate = ((oldval & THR_CANCEL_DISABLE) ?
@@ -103,9 +107,11 @@ _pthread_setcancelstate(int state, int *oldstate)
 int
 _pthread_setcanceltype(int type, int *oldtype)
 {
-	pthread_t curthread = tls_get_curthread();
+	pthread_t curthread;
 	int oldval;
 
+	_thr_check_init();
+	curthread = tls_get_curthread();
 	oldval = curthread->cancelflags;
 	if (oldtype != NULL)
 		*oldtype = ((oldval & THR_CANCEL_AT_POINT) ?
@@ -129,6 +135,7 @@ _pthread_setcanceltype(int type, int *oldtype)
 void
 _pthread_testcancel(void)
 {
+	_thr_check_init();
 	testcancel(tls_get_curthread());
 }
 
@@ -136,6 +143,18 @@ int
 _thr_cancel_enter(pthread_t curthread)
 {
 	int oldval;
+
+	/*
+	 * In a single-threaded process there is nobody to deliver a
+	 * cancellation request; skip the two atomic ops per syscall.
+	 * The decision is captured in the return value so that the
+	 * matching _thr_cancel_leave() stays coherent even if the
+	 * process goes multi-threaded between the two calls.
+	 */
+	if (__predict_false(curthread == NULL))
+		return (THR_CANCEL_FASTPATH);
+	if (!__isthreaded)
+		return (THR_CANCEL_FASTPATH);
 
 	oldval = curthread->cancelflags;
 	if (!(oldval & THR_CANCEL_AT_POINT)) {
@@ -148,6 +167,8 @@ _thr_cancel_enter(pthread_t curthread)
 void
 _thr_cancel_leave(pthread_t curthread, int previous)
 {
+	if (previous == THR_CANCEL_FASTPATH)
+		return;
 	if (!(previous & THR_CANCEL_AT_POINT))
 		atomic_clear_int(&curthread->cancelflags, THR_CANCEL_AT_POINT);
 }

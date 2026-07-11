@@ -502,10 +502,21 @@ __strong_reference(_raise, raise);
 ssize_t
 __read(int fd, void *buf, size_t nbytes)
 {
-	pthread_t curthread = tls_get_curthread();
+	pthread_t curthread;
 	int oldcancel;
 	ssize_t	ret;
 
+	/*
+	 * The common "pthread has never been used" case must stay near raw
+	 * syscall cost.  Entering the cancellation wrapper here requires a TLS
+	 * lookup and helper calls; b3_syscall measured read about 8% slower
+	 * without this guard.  Once pthread state exists, keep the full
+	 * cancellation-point semantics below.
+	 */
+	if (__predict_true(!_thr_is_inited()))
+		return (__sys_read(fd, buf, nbytes));
+
+	curthread = tls_get_curthread();
 	oldcancel = _thr_cancel_enter(curthread);
 	ret = __sys_read(fd, buf, nbytes);
 	_thr_cancel_leave(curthread, oldcancel);
@@ -517,10 +528,15 @@ __strong_reference(__read, read);
 ssize_t
 __readv(int fd, const struct iovec *iov, int iovcnt)
 {
-	pthread_t curthread = tls_get_curthread();
+	pthread_t curthread;
 	int oldcancel;
 	ssize_t ret;
 
+	/* Same cold-process cancellation-wrapper bypass as __read(). */
+	if (__predict_true(!_thr_is_inited()))
+		return (__sys_readv(fd, iov, iovcnt));
+
+	curthread = tls_get_curthread();
 	oldcancel = _thr_cancel_enter(curthread);
 	ret = __sys_readv(fd, iov, iovcnt);
 	_thr_cancel_leave(curthread, oldcancel);
@@ -729,10 +745,19 @@ __strong_reference(_waitpid, waitpid);
 ssize_t
 __write(int fd, const void *buf, size_t nbytes)
 {
-	pthread_t curthread = tls_get_curthread();
+	pthread_t curthread;
 	int	oldcancel;
 	ssize_t	ret;
 
+	/*
+	 * See __read(): ordinary single-threaded I/O should not pay the pthread
+	 * cancellation wrapper tax.  Without this fast path, b3_syscall measured
+	 * write about 7% slower than base.
+	 */
+	if (__predict_true(!_thr_is_inited()))
+		return (__sys_write(fd, buf, nbytes));
+
+	curthread = tls_get_curthread();
 	oldcancel = _thr_cancel_enter(curthread);
 	ret = __sys_write(fd, buf, nbytes);
 	_thr_cancel_leave(curthread, oldcancel);
@@ -744,10 +769,15 @@ __strong_reference(__write, write);
 ssize_t
 __writev(int fd, const struct iovec *iov, int iovcnt)
 {
-	pthread_t curthread = tls_get_curthread();
+	pthread_t curthread;
 	int	oldcancel;
 	ssize_t ret;
 
+	/* Same cold-process cancellation-wrapper bypass as __write(). */
+	if (__predict_true(!_thr_is_inited()))
+		return (__sys_writev(fd, iov, iovcnt));
+
+	curthread = tls_get_curthread();
 	oldcancel = _thr_cancel_enter(curthread);
 	ret = __sys_writev(fd, iov, iovcnt);
 	_thr_cancel_leave(curthread, oldcancel);

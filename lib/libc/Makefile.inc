@@ -43,6 +43,7 @@ LDFLAGS+=	-flto
 .include "${.CURDIR}/../libc/string/Makefile.inc"
 .include "${.CURDIR}/../libc/sys/Makefile.inc"
 .include "${.CURDIR}/../libc/sysvipc/Makefile.inc"
+.include "${.CURDIR}/../libc/thread/Makefile.inc"
 .include "${.CURDIR}/../libc/tre-regex/Makefile.inc"
 .include "${.CURDIR}/../libc/upmap/Makefile.inc"
 .include "${.CURDIR}/../libc/uuid/Makefile.inc"
