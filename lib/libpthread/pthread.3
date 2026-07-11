@@ -643,65 +643,24 @@ cancellation stack.
 .Sh IMPLEMENTATION NOTES
 The current
 .Dx
-POSIX thread implementation is built in the library
-.Sy libthread_xu
-which contains both thread-safe libc functions and the thread functions.
+POSIX thread implementation lives in
+.Pa libc.so.8 .
 .Pp
-In
-.Dx ,
-it is possible to switch the threading library used by dynamically linked
-binaries at execution time by re-linking
-.Pa /usr/lib/libpthread.so.x
-to a different library in
-.Pa /usr/lib/thread .
-At link time,
-.Xr ld 1
-reads the
-.Sy SONAME
-of
-.Pa libpthread.so ,
-which is set to
 .Pa libpthread.so.0
-(or a higher major, if there were ABI changes).
-For normal libraries
-.Pa libfoo.so
-is usually a symlink to
-.Pa libfoo.so.3
-which also has its
-.Sy SONAME
-set to
-.Pa libfoo.so.3 ,
-so that if
-.Pa libfoo.so.4
-is installed, programs will still continue to use
-.Pa libfoo.so.3
-and not follow the symlink
-.Pa libfoo.so
-to the newer (and possibly incompatible)
-.Pa libfoo.so.4 .
-What we do for
-.Pa libpthread.so
-is approximately the opposite:
-.Pa libpthread.so
-is not a symlink but nevertheless has its
-.Sy SONAME
-set to
-.Pa libpthread.so.0 .
-.Pa libpthread.so.0 ,
-however, is a symlink to the threading library of the user's choice.
-The linker will use the default threading library which
-.Pa libpthread.so
-is linked to, but the runtime linker will instead follow the symlink.
+and
+.Pa /usr/lib/thread/libthread_xu.so.2
+are compatibility shims kept so existing dynamically linked binaries with
+.Sy DT_NEEDED
+entries for either library name continue to load; the pthread symbols
+resolve from
+.Pa libc.so.8
+by name.
 .Pp
-.Pa libc.so
-defines all pthread functions as weak symbols except for
-.Fn pthread_create
-(which is defined by libpthread.so.x to satisfy
-.Xr ld 1 ) .
-At execution time,
-.Xr rtld 1
-will resolve all these references to the strong symbols from the thread
-library.
+.Pa libpthread.so
+and
+.Pa libpthread.a
+remain available for build systems that still link with
+.Fl lpthread .
 .Pp
 .\"
 .\".Xr make.conf 5
@@ -709,16 +668,15 @@ library.
 .\".Va THREAD_LIB ,
 .\"can be used to override the system's default threading library.
 .\".Pp
-A
+The
 .Dx
-specific option exists in
+specific
 .Xr gcc 1
-to simplify the linking of threaded processes.
+option
 .Nm gcc Fl pthread
-links a threaded process against
-.Pa libpthread.so
-instead of
-.Fa libc .
+adds the pthread compatibility link interface; the implementation still
+resolves from
+.Pa libc.so.8 .
 .Sh SEE ALSO
 .Xr pthread_atfork 3 ,
 .Xr pthread_attr_destroy 3 ,

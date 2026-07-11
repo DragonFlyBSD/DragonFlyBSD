@@ -1,9 +1,11 @@
-LIBNAME=	libpthread
+LIB=	pthread
 SHLIB_MAJOR=	0
-SHLIB_NAME=	${LIBNAME}.so
-SONAME=		${SHLIB_NAME}.${SHLIB_MAJOR}
 
+# The threading implementation has been merged into libc.  This directory
+# now builds only a compatibility shim for old DT_NEEDED entries and for
+# build systems that still use -lpthread.
 SRCS=		dummy.c
+NOPROFILE=	yes
 
 MAN+=	\
 	pthread.3 \
@@ -151,14 +153,5 @@ MLINKS+=pthread_yield.3 pthread_yield_np.3
 MLINKS+=sem_open.3 sem_close.3 \
 	sem_open.3 sem_unlink.3
 MLINKS+=sem_wait.3 sem_trywait.3
-
-realinstall: linkinstall
-linkinstall:
-	# Always overwrite existing symlinks.  If the user wants the
-	# library to point elsewhere he can set THREAD_LIB in /etc/make.conf.
-	${LN} -fs thread/lib${THREAD_LIB}.so \
-		${DESTDIR}${TARGET_SHLIBDIR}/${SONAME}; \
-	${LN} -fs thread/lib${THREAD_LIB}.a \
-		${DESTDIR}${TARGET_LIBDIR}/${LIBNAME}.a; \
 
 .include <bsd.lib.mk>

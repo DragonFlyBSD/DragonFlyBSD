@@ -93,6 +93,7 @@ _pthread_atfork(void (*prepare)(void), void (*parent)(void),
 	if (af == NULL)
 		return (ENOMEM);
 
+	_thr_check_init();
 	curthread = tls_get_curthread();
 	af->prepare = prepare;
 	af->parent = parent;
@@ -122,6 +123,7 @@ _thr_atfork_kern(void (*prepare)(void), void (*parent)(void),
 
 	af = __malloc(sizeof(struct pthread_atfork));
 
+	_thr_check_init();
 	curthread = tls_get_curthread();
 	af->prepare = prepare;
 	af->parent = parent;
@@ -156,6 +158,7 @@ __pthread_cxa_finalize(struct dl_phdr_info *phdr_info)
  */
 #pragma weak __malloc_lock
 
+pid_t __fork(void);
 pid_t _fork(void);
 
 pid_t
@@ -173,12 +176,22 @@ _fork(void)
 	int unlock_malloc;
 #endif
 
+	/*
+	 * Cold/single-threaded fork fast path.  When no pthread state or no
+	 * user atfork handlers exist, the full wrapper only adds pthread locks,
+	 * signal masking, and internal handler work.  During P4, the
+	 * unoptimized path regressed b9_forkonly from roughly 82-89us to about
+	 * 154us per cycle.  Call libc __fork(), not raw SYS_fork, so libc's own
+	 * cb_prepare/cb_parent/cb_child hooks still run.
+	 */
 	if (!_thr_is_inited())
-		return (__syscall(SYS_fork));
+		return (__fork());
 
-	errsave = errno;
+	if (!_thr_isthreaded() && TAILQ_EMPTY(&_thr_atfork_list))
+		return (__fork());
+
 	curthread = tls_get_curthread();
-
+	errsave = errno;
 	THR_UMTX_LOCK(curthread, &_thr_atfork_lock);
 	tmp = inprogress;
 	while (tmp) {
@@ -312,6 +325,24 @@ _fork(void)
 
 	/* Return the process ID: */
 	return (ret);
+}
+
+void
+_thr_check_forked_child(pthread_t curthread)
+{
+	int errsave;
+	pid_t pid;
+
+	if (curthread == NULL || _thr_isthreaded())
+		return;
+
+	errsave = errno;
+	pid = getpid();
+	if (_thr_pid != pid) {
+		_thr_pid = pid;
+		curthread->tid = _thr_get_tid();
+	}
+	errno = errsave;
 }
 
 __strong_reference(_fork, fork);

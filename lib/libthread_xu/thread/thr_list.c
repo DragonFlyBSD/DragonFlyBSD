@@ -306,6 +306,7 @@ _thr_ref_add(pthread_t curthread, pthread_t thread,
 		/* Invalid thread: */
 		return (EINVAL);
 
+	_thr_check_forked_child(curthread);
 	THREAD_LIST_LOCK(curthread);
 	if ((ret = _thr_find_thread(curthread, thread, include_dead)) == 0) {
 		thread->refcount++;
