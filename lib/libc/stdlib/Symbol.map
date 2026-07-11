@@ -147,4 +147,5 @@ DF604.0 {
 DFprivate_1.0 {
     __cleanup;
     __system;
+    _libc_thr_exit;
 };
