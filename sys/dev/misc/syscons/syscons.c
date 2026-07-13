@@ -940,6 +940,70 @@ scread(struct dev_read_args *ap)
     return ret;
 }
 
+/*
+ * Encode Unicode scalar to UTF-8 (max 4 bytes). Returns length.
+ * Used by keyboard input path when kern.syscons.utf8 is enabled.
+ */
+static int
+sc_utf8_encode(uint32_t cp, u_char *out)
+{
+	if (cp <= 0x7F) {
+		out[0] = (u_char)cp;
+		return (1);
+	}
+	if (cp <= 0x7FF) {
+		out[0] = (u_char)(0xC0 | (cp >> 6));
+		out[1] = (u_char)(0x80 | (cp & 0x3F));
+		return (2);
+	}
+	if (cp <= 0xFFFF) {
+		if (cp >= 0xD800 && cp <= 0xDFFF)
+			cp = 0xFFFD;
+		out[0] = (u_char)(0xE0 | (cp >> 12));
+		out[1] = (u_char)(0x80 | ((cp >> 6) & 0x3F));
+		out[2] = (u_char)(0x80 | (cp & 0x3F));
+		return (3);
+	}
+	if (cp > 0x10FFFF)
+		cp = 0xFFFD;
+	/* After clamping to FFFD, emit 3-byte form (not 4-byte overlong). */
+	if (cp <= 0xFFFF) {
+		out[0] = (u_char)(0xE0 | (cp >> 12));
+		out[1] = (u_char)(0x80 | ((cp >> 6) & 0x3F));
+		out[2] = (u_char)(0x80 | (cp & 0x3F));
+		return (3);
+	}
+	out[0] = (u_char)(0xF0 | (cp >> 18));
+	out[1] = (u_char)(0x80 | ((cp >> 12) & 0x3F));
+	out[2] = (u_char)(0x80 | ((cp >> 6) & 0x3F));
+	out[3] = (u_char)(0x80 | (cp & 0x3F));
+	return (4);
+}
+
+/*
+ * Inject one keymap character into the tty line discipline.
+ * When sc_utf8_enable: treat the byte as ISO-8859-1 / Latin-1
+ * (U+0000..U+00FF) and emit UTF-8. ASCII is unchanged (1 byte).
+ * When disabled: pass the raw 8-bit char (legacy).
+ *
+ * Caller must hold tp->t_token.
+ */
+static void
+sc_tty_rint_keychar(struct tty *tp, u_char ch)
+{
+	u_char buf[4];
+	int n, i;
+
+	if (!sc_utf8_enable || ch < 0x80) {
+		(*linesw[tp->t_line].l_rint)(ch, tp);
+		return;
+	}
+	n = sc_utf8_encode((uint32_t)ch, buf);
+	for (i = 0; i < n; i++)
+		(*linesw[tp->t_line].l_rint)(buf[i], tp);
+}
+
+
 static int
 sckbdevent(keyboard_t *thiskbd, int event, void *arg)
 {
@@ -1000,25 +1064,102 @@ sckbdevent(keyboard_t *thiskbd, int event, void *arg)
 
 	switch (KEYFLAGS(c)) {
 		case 0x0000: /* normal key */
-			(*linesw[cur_tty->t_line].l_rint)(KEYCHAR(c), cur_tty);
+			sc_tty_rint_keychar(cur_tty, (u_char)KEYCHAR(c));
 			break;
-		case FKEY:  /* function key, return string */
+		case FKEY:  /* function key string (usually ASCII ESC seq) */
 			cp = kbd_get_fkeystr(thiskbd, KEYCHAR(c), &len);
 			if (cp != NULL) {
-				while (len-- >  0)
-					(*linesw[cur_tty->t_line].l_rint)(*cp++, cur_tty);
+				while (len-- > 0)
+					(*linesw[cur_tty->t_line].l_rint)(
+					    *cp++, cur_tty);
 			}
 			break;
 		case MKEY:  /* meta is active, prepend ESC */
 			(*linesw[cur_tty->t_line].l_rint)(0x1b, cur_tty);
-			(*linesw[cur_tty->t_line].l_rint)(KEYCHAR(c), cur_tty);
+			sc_tty_rint_keychar(cur_tty, (u_char)KEYCHAR(c));
 			break;
 		case BKEY:  /* backtab fixed sequence (esc [ Z) */
 			(*linesw[cur_tty->t_line].l_rint)(0x1b, cur_tty);
 			(*linesw[cur_tty->t_line].l_rint)('[', cur_tty);
 			(*linesw[cur_tty->t_line].l_rint)('Z', cur_tty);
 			break;
-	}    }
+		}
+
+	lwkt_reltoken(&cur_tty->t_token);
+    }
+
+    syscons_lock();
+    sc->cur_scp->status |= MOUSE_HIDDEN;
+    syscons_unlock();
+
+    lwkt_reltoken(&vga_token);
+    return 0;
+}
+
+static int
+scparam(struct tty *tp, struct termios *t)
+{
+    lwkt_gettoken(&tp->t_token);
+    tp->t_ispeed = t->c_ispeed;
+    tp->t_ospeed = t->c_ospeed;
+    tp->t_cflag = t->c_cflag;
+    lwkt_reltoken(&tp->t_token);
+
+    return 0;
+}
+
+static int
+scioctl(struct dev_ioctl_args *ap)
+{
+    cdev_t dev = ap->a_head.a_dev;
+    u_long cmd = ap->a_cmd;
+    caddr_t data = ap->a_data;
+    int flag = ap->a_fflag;
+    int error;
+    int i;
+    struct tty *tp;
+    sc_softc_t *sc;
+    scr_stat *scp;
+
+    lwkt_gettoken(&vga_token);
+    tp = dev->si_tty;
+
+    error = sc_vid_ioctl(tp, cmd, data, flag);
+    if (error != ENOIOCTL) {
+        lwkt_reltoken(&vga_token);
+	return error;
+    }
+
+#ifndef SC_NO_HISTORY
+    error = sc_hist_ioctl(tp, cmd, data, flag);
+    if (error != ENOIOCTL) {
+        lwkt_reltoken(&vga_token);
+	return error;
+    }
+#endif
+
+#ifndef SC_NO_SYSMOUSE
+    error = sc_mouse_ioctl(tp, cmd, data, flag);
+    if (error != ENOIOCTL) {
+        lwkt_reltoken(&vga_token);
+	return error;
+    }
+#endif
+
+    scp = SC_STAT(tp->t_dev);
+    /* assert(scp != NULL) */
+    /* scp is sc_console, if SC_VTY(dev) == SC_CONSOLECTL. */
+    sc = scp->sc;
+
+    if (scp->tsw) {
+	syscons_lock();
+	error = (*scp->tsw->te_ioctl)(scp, tp, cmd, data, flag);
+	syscons_unlock();
+	if (error != ENOIOCTL) {
+	    lwkt_reltoken(&vga_token);
+	    return error;
+	}
+    }
 
     switch (cmd) {  		/* process console hardware related ioctl's */
 
