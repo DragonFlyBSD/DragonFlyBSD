@@ -150,6 +150,19 @@ MALLOC_DECLARE(M_SYSCONS);
 #ifndef SC_KMS_MAXROW
 #define SC_KMS_MAXROW	135
 #endif
+
+/* Limited Unicode (UTF-8) display — side table parallel to sc_vtb */
+typedef struct sc_ucell {
+	uint32_t	cp;	/* Unicode scalar; 0 = unused / legacy */
+	uint16_t	glyph;	/* bitmap glyph index in current font */
+	uint8_t		flags;
+#define SC_UCELL_REPLACEMENT	0x01	/* missing glyph → empty box */
+#define SC_UCELL_WIDE		0x02	/* first cell of double-width */
+#define SC_UCELL_WIDE_CONT	0x04	/* second cell of double-width */
+	uint8_t		_pad;
+} sc_ucell_t;
+
+
 #define PCBURST		128
 
 #ifndef BELL_DURATION
@@ -335,6 +348,13 @@ typedef struct scr_stat {
 	sc_vtb_t	*history;		/* circular history buffer */
 	int		history_pos;		/* position shown on screen */
 	int		history_size;		/* size of history buffer */
+	sc_ucell_t	*uside;	/* UTF-8 side cells, or NULL */
+	int		uside_size;	/* cells allocated in uside */
+	int		utf8_on;	/* side table active for this vty */
+	uint32_t	utf8_acc;	/* partial UTF-8 accumulator */
+	int		utf8_rem;	/* remaining cont. bytes */
+	int		utf8_seen;	/* bytes seen in current char */
+	u_char		utf8_lead;	/* lead byte of partial sequence */
 
 	int		splash_save_mode;	/* saved mode for splash scr */
 	int		splash_save_status;	/* saved status for splash scr*/
@@ -650,5 +670,22 @@ sc_softc_t	*sc_find_softc(struct video_adapter *adp, struct keyboard *kbd);
 int		sc_get_cons_priority(int *unit, int *flags);
 void		sc_get_bios_values(bios_values_t *values);
 int		sc_tone(int hertz);
+
+
+/* Limited Unicode display (scutf8) */
+void	sc_utf8_ensure(scr_stat *scp);
+void	sc_utf8_alloc(scr_stat *scp);
+void	sc_utf8_free(scr_stat *scp);
+void	sc_utf8_clear(scr_stat *scp, int at, int count);
+void	sc_utf8_delete(scr_stat *scp, int at, int count);
+void	sc_utf8_ins(scr_stat *scp, int at, int count);
+void	sc_utf8_move(scr_stat *scp, int from, int to, int count);
+void	sc_utf8_reset_decoder(scr_stat *scp);
+void	sc_utf8_put_cp(scr_stat *scp, int pos, uint32_t cp, int attr);
+int	sc_utf8_feed(scr_stat *scp, u_char byte, uint32_t *out_cp);
+int	sc_utf8_lookup_glyph(scr_stat *scp, uint32_t cp);
+int	sc_utf8_cp_cols(uint32_t cp);
+void	sc_term_utf8_print(scr_stat *scp, u_char **buf, int *len, int attr);
+extern int sc_utf8_enable;
 
 #endif /* !_DEV_SYSCONS_SYSCONS_H_ */

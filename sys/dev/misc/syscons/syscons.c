@@ -139,6 +139,7 @@ static struct lock	sc_asynctd_lk;
 #if !defined(SC_NO_FONT_LOADING) && defined(SC_DFLT_FONT)
 #include "font.h"
 #include "spleen16x32.h"
+#include "font_ext.h"
 #endif
 
 static	bios_values_t	bios_value;
@@ -159,6 +160,72 @@ SYSCTL_INT(_kern_syscons, OID_AUTO, enable_bell, CTLFLAG_RW, &enable_bell,
 static int desired_cols = 0;
 static int desired_cols_fetched;
 TUNABLE_INT("kern.kms_columns", &desired_cols);
+int sc_utf8_enable = 0;
+TUNABLE_INT("kern.syscons.utf8", &sc_utf8_enable);
+
+static void
+sc_utf8_apply_all_vtys(void)
+{
+	sc_softc_t *sc;
+	scr_stat *scp;
+	int i;
+
+	/*
+	 * Enabling: allocate/resize uside off the hot path.
+	 * Disabling: only clear utf8_on / decoder state — never kfree
+	 * here. Writers may hold syscons_lock and still load uside;
+	 * sc_utf8_enable gates use. Free only on resize in
+	 * sc_alloc_scr_buffer (same discipline as vtb).
+	 */
+	if (!sc_malloc)
+		return;
+	sc = sc_get_softc(0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
+	if (sc == NULL)
+		return;
+	if (sc->console_scp != NULL) {
+		if (sc_utf8_enable)
+			sc_utf8_alloc(sc->console_scp);
+		else {
+			sc->console_scp->utf8_on = 0;
+			sc_utf8_reset_decoder(sc->console_scp);
+		}
+	}
+	for (i = 0; i < sc->vtys; i++) {
+		if (sc->dev == NULL || sc->dev[i] == NULL)
+			continue;
+		scp = SC_STAT(sc->dev[i]);
+		if (scp == NULL)
+			continue;
+		if (sc_utf8_enable)
+			sc_utf8_alloc(scp);
+		else {
+			scp->utf8_on = 0;
+			sc_utf8_reset_decoder(scp);
+		}
+	}
+}
+
+static int
+sysctl_kern_syscons_utf8(SYSCTL_HANDLER_ARGS)
+{
+	int error, val;
+
+	val = sc_utf8_enable;
+	error = sysctl_handle_int(oidp, &val, 0, req);
+	if (error || req->newptr == NULL)
+		return (error);
+	val = val ? 1 : 0;
+	if (val == sc_utf8_enable)
+		return (0);
+	sc_utf8_enable = val;
+	sc_utf8_apply_all_vtys();
+	return (0);
+}
+
+SYSCTL_PROC(_kern_syscons, OID_AUTO, utf8,
+    CTLFLAG_RW | CTLTYPE_INT, NULL, 0, sysctl_kern_syscons_utf8, "I",
+    "UTF-8 console: display + Latin-1 keymap keys as UTF-8");
+
 
 #define SC_CONSOLECTL	255
 
@@ -678,6 +745,7 @@ scmeminit(void *arg)
     /* copy the temporary buffer to the final buffer */
     sc_alloc_scr_buffer(sc_console, TRUE, FALSE);
 
+
 #ifndef SC_NO_CUTPASTE
     sc_alloc_cut_buffer(sc_console, TRUE);
 #endif
@@ -931,101 +999,26 @@ sckbdevent(keyboard_t *thiskbd, int event, void *arg)
 	lwkt_gettoken(&cur_tty->t_token);
 
 	switch (KEYFLAGS(c)) {
-	case 0x0000: /* normal key */
-	    (*linesw[cur_tty->t_line].l_rint)(KEYCHAR(c), cur_tty);
-	    break;
-	case FKEY:  /* function key, return string */
-	    cp = kbd_get_fkeystr(thiskbd, KEYCHAR(c), &len);
-	    if (cp != NULL) {
-	    	while (len-- >  0)
-		    (*linesw[cur_tty->t_line].l_rint)(*cp++, cur_tty);
-	    }
-	    break;
-	case MKEY:  /* meta is active, prepend ESC */
-	    (*linesw[cur_tty->t_line].l_rint)(0x1b, cur_tty);
-	    (*linesw[cur_tty->t_line].l_rint)(KEYCHAR(c), cur_tty);
-	    break;
-	case BKEY:  /* backtab fixed sequence (esc [ Z) */
-	    (*linesw[cur_tty->t_line].l_rint)(0x1b, cur_tty);
-	    (*linesw[cur_tty->t_line].l_rint)('[', cur_tty);
-	    (*linesw[cur_tty->t_line].l_rint)('Z', cur_tty);
-	    break;
-	}
-	lwkt_reltoken(&cur_tty->t_token);
-    }
-
-    syscons_lock();
-    sc->cur_scp->status |= MOUSE_HIDDEN;
-    syscons_unlock();
-
-    lwkt_reltoken(&vga_token);
-    return 0;
-}
-
-static int
-scparam(struct tty *tp, struct termios *t)
-{
-    lwkt_gettoken(&tp->t_token);
-    tp->t_ispeed = t->c_ispeed;
-    tp->t_ospeed = t->c_ospeed;
-    tp->t_cflag = t->c_cflag;
-    lwkt_reltoken(&tp->t_token);
-
-    return 0;
-}
-
-static int
-scioctl(struct dev_ioctl_args *ap)
-{
-    cdev_t dev = ap->a_head.a_dev;
-    u_long cmd = ap->a_cmd;
-    caddr_t data = ap->a_data;
-    int flag = ap->a_fflag;
-    int error;
-    int i;
-    struct tty *tp;
-    sc_softc_t *sc;
-    scr_stat *scp;
-
-    lwkt_gettoken(&vga_token);
-    tp = dev->si_tty;
-
-    error = sc_vid_ioctl(tp, cmd, data, flag);
-    if (error != ENOIOCTL) {
-        lwkt_reltoken(&vga_token);
-	return error;
-    }
-
-#ifndef SC_NO_HISTORY
-    error = sc_hist_ioctl(tp, cmd, data, flag);
-    if (error != ENOIOCTL) {
-        lwkt_reltoken(&vga_token);
-	return error;
-    }
-#endif
-
-#ifndef SC_NO_SYSMOUSE
-    error = sc_mouse_ioctl(tp, cmd, data, flag);
-    if (error != ENOIOCTL) {
-        lwkt_reltoken(&vga_token);
-	return error;
-    }
-#endif
-
-    scp = SC_STAT(tp->t_dev);
-    /* assert(scp != NULL) */
-    /* scp is sc_console, if SC_VTY(dev) == SC_CONSOLECTL. */
-    sc = scp->sc;
-
-    if (scp->tsw) {
-	syscons_lock();
-	error = (*scp->tsw->te_ioctl)(scp, tp, cmd, data, flag);
-	syscons_unlock();
-	if (error != ENOIOCTL) {
-	    lwkt_reltoken(&vga_token);
-	    return error;
-	}
-    }
+		case 0x0000: /* normal key */
+			(*linesw[cur_tty->t_line].l_rint)(KEYCHAR(c), cur_tty);
+			break;
+		case FKEY:  /* function key, return string */
+			cp = kbd_get_fkeystr(thiskbd, KEYCHAR(c), &len);
+			if (cp != NULL) {
+				while (len-- >  0)
+					(*linesw[cur_tty->t_line].l_rint)(*cp++, cur_tty);
+			}
+			break;
+		case MKEY:  /* meta is active, prepend ESC */
+			(*linesw[cur_tty->t_line].l_rint)(0x1b, cur_tty);
+			(*linesw[cur_tty->t_line].l_rint)(KEYCHAR(c), cur_tty);
+			break;
+		case BKEY:  /* backtab fixed sequence (esc [ Z) */
+			(*linesw[cur_tty->t_line].l_rint)(0x1b, cur_tty);
+			(*linesw[cur_tty->t_line].l_rint)('[', cur_tty);
+			(*linesw[cur_tty->t_line].l_rint)('Z', cur_tty);
+			break;
+	}    }
 
     switch (cmd) {  		/* process console hardware related ioctl's */
 
@@ -3373,7 +3366,8 @@ scinit(int unit, int flags)
 	scp->xpos = col;
 	scp->ypos = row;
 	if (sc->fbi != NULL) {
-	    scp->cursor_pos = 0;
+	    /* Keep cursor_pos aligned with xpos/ypos (never force 0 alone). */
+	    scp->cursor_pos = scp->cursor_oldpos = row * scp->xsize + col;
 	    sc->cursor_base = 0;
 	    sc->cursor_height = scp->font_height;
 	} else {
@@ -3596,6 +3590,14 @@ sc_alloc_scr_buffer(scr_stat *scp, int wait, int discard)
     /* move the mouse cursor at the center of the screen */
     sc_mouse_move(scp, scp->xpixel / 2, scp->ypixel / 2);
 #endif
+    /*
+     * Keep UTF-8 side table sized to the live vtb. Font/mode changes
+     * re-enter here with a new xsize*ysize; free+realloc if needed.
+     */
+    if (sc_utf8_enable)
+	sc_utf8_alloc(scp);
+    else
+	sc_utf8_free(scp);
     lwkt_reltoken(&vga_token);
 }
 
@@ -3608,6 +3610,8 @@ alloc_scp(sc_softc_t *sc, int vty)
 
     scp = kmalloc(sizeof(scr_stat), M_SYSCONS, M_WAITOK);
     init_scp(sc, vty, scp);
+	if (sc_malloc && sc_utf8_enable)
+		sc_utf8_alloc(scp);
 
     sc_alloc_scr_buffer(scp, TRUE, TRUE);
     if (sc_init_emulator(scp, SC_DFLT_TERM))
@@ -3730,6 +3734,11 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
     scp->proc = NULL;
     scp->smode.mode = VT_AUTO;
     scp->history = NULL;
+	scp->uside = NULL;
+	scp->utf8_on = 0;
+	scp->utf8_rem = 0;
+	scp->utf8_acc = 0;
+	scp->utf8_seen = 0;
     scp->history_pos = 0;
     scp->history_size = 0;
 }
@@ -4445,3 +4454,585 @@ sc_allocate_keyboard(sc_softc_t *sc, int unit)
 
 	return (idx0);
 }
+
+
+
+/*
+ * Limited UTF-8 display (bypass side table).
+ * Active when sc_utf8_enable != 0 and the vty has a framebuffer.
+ */
+
+
+/*
+ * Limited UTF-8 display (bypass side table).
+ * Active when sc_utf8_enable != 0 and the vty has a framebuffer.
+ */
+
+/* Capacity of the allocated uside array (not live xsize*ysize). */
+static int
+sc_utf8_cells(scr_stat *scp)
+{
+	int live;
+
+	if (scp == NULL || scp->uside == NULL || scp->uside_size <= 0)
+		return (0);
+	live = scp->xsize * scp->ysize;
+	if (live < 0)
+		live = 0;
+	return (live < scp->uside_size ? live : scp->uside_size);
+}
+
+void
+sc_utf8_reset_decoder(scr_stat *scp)
+{
+	if (scp == NULL)
+		return;
+	scp->utf8_acc = 0;
+	scp->utf8_rem = 0;
+	scp->utf8_seen = 0;
+	scp->utf8_lead = 0;
+}
+
+void
+sc_utf8_free(scr_stat *scp)
+{
+	if (scp == NULL)
+		return;
+	if (scp->uside != NULL) {
+		kfree(scp->uside, M_SYSCONS);
+		scp->uside = NULL;
+	}
+	scp->uside_size = 0;
+	scp->utf8_on = 0;
+	sc_utf8_reset_decoder(scp);
+}
+
+void
+sc_utf8_ensure(scr_stat *scp)
+{
+	/*
+	 * Never allocate here — called from sc_puts under syscons_lock.
+	 * Allocation is only from sc_utf8_alloc() off the spinlock path.
+	 */
+	if (scp != NULL && scp->uside != NULL && sc_utf8_enable)
+		scp->utf8_on = 1;
+	else if (scp != NULL)
+		scp->utf8_on = 0;
+}
+
+void
+sc_utf8_alloc(scr_stat *scp)
+{
+	size_t n;
+	sc_ucell_t *p;
+
+	if (scp == NULL || scp->sc == NULL || scp->sc->fbi == NULL)
+		return;
+	if (!sc_malloc)
+		return;
+	if (!sc_utf8_enable) {
+		/* Keep buffer; free only via sc_utf8_free on resize. */
+		scp->utf8_on = 0;
+		return;
+	}
+	if (scp->xsize <= 0 || scp->ysize <= 0)
+		return;
+	n = (size_t)scp->xsize * (size_t)scp->ysize;
+	if (scp->uside != NULL && scp->uside_size == (int)n) {
+		scp->utf8_on = 1;
+		return;
+	}
+	/* Resize or first alloc: free old buffer (if any) first. */
+	if (scp->uside != NULL) {
+		kfree(scp->uside, M_SYSCONS);
+		scp->uside = NULL;
+		scp->uside_size = 0;
+	}
+	/* M_WAITOK cannot return NULL. */
+	p = kmalloc(n * sizeof(sc_ucell_t), M_SYSCONS, M_WAITOK | M_ZERO);
+	scp->uside = p;
+	scp->uside_size = (int)n;
+	scp->utf8_on = 1;
+	sc_utf8_reset_decoder(scp);
+}
+
+void
+sc_utf8_clear(scr_stat *scp, int at, int count)
+{
+	int size;
+
+	if (scp->uside == NULL || count <= 0)
+		return;
+	size = sc_utf8_cells(scp);
+	if (at < 0)
+		at = 0;
+	if (at >= size)
+		return;
+	if (at + count > size)
+		count = size - at;
+	if (count <= 0)
+		return;
+	bzero(scp->uside + at, (size_t)count * sizeof(sc_ucell_t));
+}
+
+void
+sc_utf8_delete(scr_stat *scp, int at, int count)
+{
+	int size, len;
+
+	if (scp->uside == NULL || count <= 0)
+		return;
+	size = sc_utf8_cells(scp);
+	if (at < 0)
+		at = 0;
+	if (at >= size)
+		return;
+	if (at + count > size)
+		count = size - at;
+	if (count <= 0)
+		return;
+	len = size - at - count;
+	if (len > 0) {
+		bcopy(scp->uside + at + count, scp->uside + at,
+		    (size_t)len * sizeof(sc_ucell_t));
+	}
+	bzero(scp->uside + at + len,
+	    (size_t)(size - at - len) * sizeof(sc_ucell_t));
+}
+
+void
+sc_utf8_ins(scr_stat *scp, int at, int count)
+{
+	int size, len;
+
+	if (scp->uside == NULL || count <= 0)
+		return;
+	size = sc_utf8_cells(scp);
+	if (at < 0)
+		at = 0;
+	if (at >= size)
+		return;
+	if (at + count > size)
+		count = size - at;
+	if (count <= 0)
+		return;
+	len = size - at - count;
+	if (len > 0) {
+		/* Kernel bcopy is memmove-safe for overlap. */
+		bcopy(scp->uside + at, scp->uside + at + count,
+		    (size_t)len * sizeof(sc_ucell_t));
+	}
+	bzero(scp->uside + at, (size_t)count * sizeof(sc_ucell_t));
+}
+
+void
+sc_utf8_move(scr_stat *scp, int from, int to, int count)
+{
+	int size;
+
+	if (scp->uside == NULL || count <= 0)
+		return;
+	size = sc_utf8_cells(scp);
+	if (from < 0 || to < 0)
+		return;
+	if (from >= size || to >= size)
+		return;
+	if (from + count > size)
+		count = size - from;
+	if (to + count > size)
+		count = size - to;
+	if (count <= 0 || from == to)
+		return;
+	/* Kernel bcopy is memmove-safe for overlap. */
+	bcopy(scp->uside + from, scp->uside + to,
+	    (size_t)count * sizeof(sc_ucell_t));
+}
+
+/*
+ * Display columns for a Unicode scalar (1 or 2).
+ * Approximate East Asian Width W/F as double-width so CJK tofu
+ * boxes match typical terminal layout.
+ *
+ * Non-goals (intentionally approximate):
+ * - Combining marks (e.g. U+0300) are treated as width 1, not 0.
+ * - No bidi / complex shaping.
+ */
+int
+sc_utf8_cp_cols(uint32_t cp)
+{
+	if (cp < 0x1100)
+		return (1);
+	/* Hangul Jamo */
+	if (cp <= 0x115F)
+		return (2);
+	if (cp == 0x2329 || cp == 0x232A)
+		return (2);
+	/* CJK radicals .. Yi */
+	if (cp >= 0x2E80 && cp <= 0xA4CF)
+		return (2);
+	/* Hangul syllables */
+	if (cp >= 0xAC00 && cp <= 0xD7A3)
+		return (2);
+	/* CJK compatibility ideographs */
+	if (cp >= 0xF900 && cp <= 0xFAFF)
+		return (2);
+	if (cp >= 0xFE10 && cp <= 0xFE19)
+		return (2);
+	if (cp >= 0xFE30 && cp <= 0xFE6F)
+		return (2);
+	/* Fullwidth forms */
+	if (cp >= 0xFF01 && cp <= 0xFF60)
+		return (2);
+	if (cp >= 0xFFE0 && cp <= 0xFFE6)
+		return (2);
+	/* CJK Ext B and beyond */
+	if (cp >= 0x20000 && cp <= 0x3FFFD)
+		return (2);
+
+	/* Emoji / pictographs: double-width mono cells. */
+	if (cp >= 0x1F000 && cp <= 0x1FAFF)
+		return (2);
+	if (cp >= 0x2600 && cp <= 0x27BF)
+		return (2);
+	if (cp >= 0x231A && cp <= 0x23FA) {
+		if (cp == 0x231A || cp == 0x231B ||
+		    (cp >= 0x23E9 && cp <= 0x23F3) ||
+		    (cp >= 0x23F8 && cp <= 0x23FA))
+			return (2);
+	}
+	if (cp == 0x2B50 || cp == 0x2B55 ||
+	    cp == 0x2B1B || cp == 0x2B1C)
+		return (2);
+	return (1);
+}
+
+int
+sc_utf8_lookup_glyph(scr_stat *scp, uint32_t cp)
+{
+	int g;
+
+	if (cp <= 0xFF)
+		return ((int)cp);
+	g = sc_ext_lookup_glyph(cp);
+	if (g >= 0)
+		return (g);
+	return (-1);
+}
+
+
+static void
+sc_utf8_clear_one(scr_stat *scp, int pos, int attr)
+{
+	sc_ucell_t *u;
+	int size;
+
+	size = sc_utf8_cells(scp);
+	if (pos < 0 || pos >= size)
+		return;
+	sc_vtb_putc(&scp->vtb, pos, 0x20, attr);
+	if (scp->uside == NULL)
+		return;
+	u = &scp->uside[pos];
+	u->cp = 0;
+	u->glyph = 0;
+	u->flags = 0;
+}
+
+/*
+ * Clear a cell and its wide pair so we never leave a stranded half-box.
+ */
+static void
+sc_utf8_invalidate_at(scr_stat *scp, int pos, int attr)
+{
+	sc_ucell_t *u;
+	int size;
+
+	if (scp->uside == NULL || pos < 0)
+		return;
+	size = sc_utf8_cells(scp);
+	if (pos >= size)
+		return;
+	u = &scp->uside[pos];
+	if (u->flags & SC_UCELL_WIDE_CONT) {
+		sc_utf8_clear_one(scp, pos - 1, attr);
+		sc_utf8_clear_one(scp, pos, attr);
+		return;
+	}
+	if (u->flags & SC_UCELL_WIDE) {
+		sc_utf8_clear_one(scp, pos, attr);
+		sc_utf8_clear_one(scp, pos + 1, attr);
+		return;
+	}
+	sc_utf8_clear_one(scp, pos, attr);
+}
+
+void
+sc_utf8_put_cp(scr_stat *scp, int pos, uint32_t cp, int attr)
+{
+	int glyph;
+	int missing;
+	int cols;
+	int size;
+	u_char fallback;
+	sc_ucell_t *u;
+
+	if (scp->uside == NULL || !sc_utf8_enable)
+		return;
+	size = sc_utf8_cells(scp);
+	if (pos < 0 || pos >= size)
+		return;
+
+	glyph = sc_utf8_lookup_glyph(scp, cp);
+	missing = (glyph < 0);
+	cols = sc_utf8_cp_cols(cp);
+	if (!missing && sc_glyph_is_emoji_left(glyph))
+		cols = 2;
+	if (cols > 1 && pos % scp->xsize + cols > scp->xsize)
+		cols = 1;/* no room: single-cell box */
+
+	sc_utf8_invalidate_at(scp, pos, attr);
+	if (cols > 1)
+		sc_utf8_invalidate_at(scp, pos + 1, attr);
+
+	if (missing) {
+		fallback = 0x20;
+		if (scp->sc != NULL)
+			fallback = scp->sc->scr_map[0x20];
+		sc_vtb_putc(&scp->vtb, pos, fallback, attr);
+		u = &scp->uside[pos];
+		u->cp = (cp == 0) ? 0 : cp;
+		u->glyph = 0;
+		u->flags = SC_UCELL_REPLACEMENT;
+		if (cols > 1 && pos + 1 < size) {
+			u->flags |= SC_UCELL_WIDE;
+			sc_vtb_putc(&scp->vtb, pos + 1, fallback, attr);
+			u = &scp->uside[pos + 1];
+			u->cp = 0;
+			u->glyph = 0;
+			u->flags = SC_UCELL_REPLACEMENT | SC_UCELL_WIDE_CONT;
+		}
+		return;
+	}
+
+	if (cp < 0x80)
+		fallback = (u_char)cp;
+	else if (cp <= 0xFF)
+		fallback = (u_char)cp;
+	else
+		fallback = 0x20;
+
+	if (scp->sc != NULL && cp < 0x80)
+		fallback = scp->sc->scr_map[fallback];
+
+	if (cols > 1 && sc_glyph_is_emoji_left(glyph)) {
+		int right = sc_ext_wide_right_glyph(glyph);
+
+		sc_vtb_putc(&scp->vtb, pos, fallback, attr);
+		u = &scp->uside[pos];
+		u->cp = (cp == 0) ? 0 : cp;
+		u->glyph = (uint16_t)glyph;
+		u->flags = SC_UCELL_WIDE;
+		if (right >= 0 && pos + 1 < size) {
+			sc_vtb_putc(&scp->vtb, pos + 1, fallback, attr);
+			u = &scp->uside[pos + 1];
+			u->cp = (cp == 0) ? 0 : cp;
+			u->glyph = (uint16_t)right;
+			u->flags = SC_UCELL_WIDE_CONT;
+		}
+		return;
+	}
+
+	sc_vtb_putc(&scp->vtb, pos, fallback, attr);
+	u = &scp->uside[pos];
+	u->cp = (cp == 0) ? 0 : cp;
+	u->glyph = (uint16_t)glyph;
+	u->flags = 0;
+}
+
+/*
+ * Scroll the screen up by one line if the cursor has left the buffer.
+ * Mirrors sc_term_gen_scroll (vtb + uside); used from the UTF-8 print path.
+ */
+static void
+sc_utf8_scroll_up_if_needed(scr_stat *scp, int attr)
+{
+	int pos;
+	int ypos;
+	int ch;
+
+	pos = scp->cursor_pos;
+	if (pos < scp->ysize * scp->xsize)
+		return;
+	sc_remove_cutmarking(scp);
+#ifndef SC_NO_HISTORY
+	if (scp->history != NULL)
+		sc_hist_save_one_line(scp, 0);
+#endif
+	ch = 0x20;
+	if (scp->sc != NULL)
+		ch = scp->sc->scr_map[0x20];
+	sc_vtb_delete(&scp->vtb, 0, scp->xsize, ch, attr);
+	if (scp->uside != NULL)
+		sc_utf8_delete(scp, 0, scp->xsize);
+	scp->cursor_pos = pos - scp->xsize;
+	ypos = scp->ypos - 1;
+	if (ypos <= 0)
+		ypos = 0;
+	scp->ypos = ypos;
+	mark_all(scp);
+}
+
+int
+sc_utf8_feed(scr_stat *scp, u_char byte, uint32_t *out_cp)
+{
+	uint32_t cp;
+
+	if (scp->utf8_rem == 0) {
+		if (byte < 0x80) {
+			*out_cp = byte;
+			return (1);
+		}
+		if ((byte & 0xe0) == 0xc0) {
+			/* Reject 2-byte overlong (C0/C1). */
+			if (byte < 0xc2) {
+				*out_cp = 0xFFFD;
+				return (1);
+			}
+			scp->utf8_acc = byte & 0x1f;
+			scp->utf8_rem = 1;
+			scp->utf8_seen = 1;
+			scp->utf8_lead = byte;
+			return (0);
+		}
+		if ((byte & 0xf0) == 0xe0) {
+			scp->utf8_acc = byte & 0x0f;
+			scp->utf8_rem = 2;
+			scp->utf8_seen = 1;
+			scp->utf8_lead = byte;
+			return (0);
+		}
+		if ((byte & 0xf8) == 0xf0) {
+			if (byte > 0xf4) {
+				*out_cp = 0xFFFD;
+				return (1);
+			}
+			scp->utf8_acc = byte & 0x07;
+			scp->utf8_rem = 3;
+			scp->utf8_seen = 1;
+			scp->utf8_lead = byte;
+			return (0);
+		}
+		*out_cp = 0xFFFD;
+		return (1);
+	}
+
+	if ((byte & 0xc0) != 0x80) {
+		sc_utf8_reset_decoder(scp);
+		return (sc_utf8_feed(scp, byte, out_cp));
+	}
+
+	/*
+	 * Overlong / out-of-range on first continuation (UTS #36):
+	 * E0 requires cont >= 0xA0; F0 requires cont >= 0x90.
+	 * ED cont > 0x9F and F4 cont > 0x8F are caught later
+	 * (surrogates / > U+10FFFF).
+	 */
+	if (scp->utf8_seen == 1) {
+		if (scp->utf8_lead == 0xE0 && byte < 0xA0) {
+			sc_utf8_reset_decoder(scp);
+			*out_cp = 0xFFFD;
+			return (1);
+		}
+		if (scp->utf8_lead == 0xF0 && byte < 0x90) {
+			sc_utf8_reset_decoder(scp);
+			*out_cp = 0xFFFD;
+			return (1);
+		}
+	}
+
+	scp->utf8_acc = (scp->utf8_acc << 6) | (byte & 0x3f);
+	scp->utf8_rem--;
+	scp->utf8_seen++;
+	if (scp->utf8_rem > 0)
+		return (0);
+
+	cp = scp->utf8_acc;
+	sc_utf8_reset_decoder(scp);
+
+	if (cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) {
+		*out_cp = 0xFFFD;
+		return (1);
+	}
+	*out_cp = cp;
+	return (1);
+}
+
+void
+sc_term_utf8_print(scr_stat *scp, u_char **buf, int *len, int attr)
+{
+	u_char *ptr;
+	int l;
+	uint32_t cp;
+	int pos;
+	int cols;
+	int size;
+
+	if (scp->uside == NULL || !sc_utf8_enable)
+		return;
+	ptr = *buf;
+	l = *len;
+	size = scp->xsize * scp->ysize;
+
+	while (l > 0) {
+		if (*ptr < 0x20 || *ptr == 0x7f)
+			break;
+
+		if (sc_utf8_feed(scp, *ptr, &cp)) {
+			cols = sc_utf8_cp_cols(cp);
+			if (scp->xpos >= scp->xsize) {
+				scp->xpos = 0;
+				scp->ypos++;
+				scp->cursor_pos = scp->ypos * scp->xsize +
+				    scp->xpos;
+			}
+			/* Wrap before a wide glyph that would not fit. */
+			if (cols > 1 && scp->xpos + cols > scp->xsize) {
+				scp->xpos = 0;
+				scp->ypos++;
+				scp->cursor_pos = scp->ypos * scp->xsize +
+				    scp->xpos;
+			}
+			if (cols > 1 && scp->xpos + cols > scp->xsize)
+				cols = 1;
+
+			/*
+			 * Bottom-line wrap must scroll before putting, same
+			 * as sc_term_gen_print + sc_term_gen_scroll.
+			 */
+			sc_utf8_scroll_up_if_needed(scp, attr);
+
+			pos = scp->cursor_pos;
+			if (pos >= 0 && pos < size) {
+				mark_for_update(scp, pos);
+				if (cols > 1 && pos + 1 < size)
+					mark_for_update(scp, pos + 1);
+				sc_utf8_put_cp(scp, pos, cp, attr);
+				scp->xpos += cols;
+				if (scp->xpos >= scp->xsize) {
+					scp->xpos = 0;
+					scp->ypos++;
+				}
+				scp->cursor_pos = scp->ypos * scp->xsize + scp->xpos;
+				mark_for_update(scp,
+				    scp->cursor_pos > 0 ?
+				    scp->cursor_pos - 1 : 0);
+			}
+		}
+		ptr++;
+		l--;
+	}
+
+	*buf = ptr;
+	*len = l;
+}
+
