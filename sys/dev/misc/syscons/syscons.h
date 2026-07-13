@@ -139,6 +139,17 @@ MALLOC_DECLARE(M_SYSCONS);
 #define TRUE		1
 #define	COL		80
 #define	ROW		25
+/*
+ * Early console (ttyv0) static cell buffer capacity.
+ * Sized to fill a 4K framebuffer with the default 8x16 bitmap font
+ * and kern.kms_columns < 0 (no scaling): 3840/8 x 2160/16.
+ */
+#ifndef SC_KMS_MAXCOL
+#define SC_KMS_MAXCOL	480
+#endif
+#ifndef SC_KMS_MAXROW
+#define SC_KMS_MAXROW	135
+#endif
 #define PCBURST		128
 
 #ifndef BELL_DURATION
@@ -246,6 +257,7 @@ typedef struct sc_softc {
 	u_char		*font_8;
 	u_char		*font_14;
 	u_char		*font_16;
+	u_char		*font_spleen;	/* Spleen 16x32 for KMS/EFI FB */
 #endif
 
 	u_char		cursor_char;

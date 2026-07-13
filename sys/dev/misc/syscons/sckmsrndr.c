@@ -156,6 +156,21 @@ get_pixel_size(uint16_t depth)
 #define BLIT_SET	0
 #define BLIT_MASK	1
 
+/* Bytes per glyph row / glyph for variable-width bitmap fonts (KMS). */
+static inline int
+sc_font_bpr(const scr_stat *scp)
+{
+	return ((scp->font_width + 7) >> 3);
+}
+
+static inline u_char *
+sc_font_glyph(scr_stat *scp, int c)
+{
+	int bpr = sc_font_bpr(scp);
+
+	return (&scp->font[c * scp->font_height * bpr]);
+}
+
 static inline void
 blit_blk32(scr_stat *scp, u_char *char_data, int sw, int sh,
 	   vm_offset_t draw_pos, int dw, int dh,
@@ -533,8 +548,7 @@ kms_draw(scr_stat *scp, int from, int count, int flip)
 
 	p = draw_pos + scp->blk_width * pixel_size * (from % scp->xsize);
 	for (i = from; count-- > 0; i++) {
-		char_data = &(scp->font[sc_vtb_getc(&scp->vtb, i) *
-					scp->font_height]);
+		char_data = sc_font_glyph(scp, sc_vtb_getc(&scp->vtb, i));
 
 		a = sc_vtb_geta(&scp->vtb, i);
 		if (flip) {
@@ -590,8 +604,8 @@ draw_kmscursor(scr_stat *scp, int at, int on, int flip)
 		bgidx = ((on) ? (a & 0x0f00) : ((a & 0xf000) >> 4)) >> 8;
 	}
 
-	char_data = &scp->font[sc_vtb_getc(&scp->vtb, at) * scp->font_height];
-	char_data += cursor_base;
+	char_data = sc_font_glyph(scp, sc_vtb_getc(&scp->vtb, at));
+	char_data += cursor_base * sc_font_bpr(scp);
 
 	blit_blk(scp, char_data,
 		 scp->font_width, scp->font_height - cursor_base,

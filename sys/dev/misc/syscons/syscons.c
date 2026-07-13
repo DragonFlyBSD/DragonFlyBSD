@@ -138,6 +138,7 @@ static struct lock	sc_asynctd_lk;
 
 #if !defined(SC_NO_FONT_LOADING) && defined(SC_DFLT_FONT)
 #include "font.h"
+#include "spleen16x32.h"
 #endif
 
 static	bios_values_t	bios_value;
@@ -156,6 +157,7 @@ SYSCTL_INT(_kern_syscons, OID_AUTO, enable_bell, CTLFLAG_RW, &enable_bell,
 	   0, "Enable bell");
 
 static int desired_cols = 0;
+static int desired_cols_fetched;
 TUNABLE_INT("kern.kms_columns", &desired_cols);
 
 #define SC_CONSOLECTL	255
@@ -460,6 +462,11 @@ void
 sc_font_scale(scr_stat *scp, int max_cols, int max_rows)
 {
 	int cols, rows;
+
+	if (!desired_cols_fetched &&
+	    TUNABLE_INT_FETCH("kern.kms_columns", &desired_cols)) {
+		desired_cols_fetched = 1;
+	}
 
 	/*
 	 * If columns not specified in /boot/loader.conf then
@@ -3227,11 +3234,12 @@ scinit(int unit, int flags)
      * but is necessry evil for the time being.  XXX
      */
     static scr_stat main_console;
-    static u_short sc_buffer[2*ROW*2*COL];	/* XXX */
+    static u_short sc_buffer[SC_KMS_MAXCOL * SC_KMS_MAXROW];	/* 4K@8x16 unscaled */
 #ifndef SC_NO_FONT_LOADING
     static u_char font_8[256*8];
     static u_char font_14[256*14];
     static u_char font_16[256*16];
+    static u_char font_spleen_16x32[32*2*256];
 #endif
 
     sc_softc_t *sc;
@@ -3300,11 +3308,13 @@ scinit(int unit, int flags)
 	    sc->font_8 = font_8;
 	    sc->font_14 = font_14;
 	    sc->font_16 = font_16;
+	    sc->font_spleen = font_spleen_16x32;
 	} else if (sc->font_8 == NULL) {
 	    /* assert(sc_malloc) */
 	    sc->font_8 = kmalloc(sizeof(font_8), M_SYSCONS, M_WAITOK);
 	    sc->font_14 = kmalloc(sizeof(font_14), M_SYSCONS, M_WAITOK);
 	    sc->font_16 = kmalloc(sizeof(font_16), M_SYSCONS, M_WAITOK);
+	    sc->font_spleen = kmalloc(sizeof(font_spleen_16x32), M_SYSCONS, M_WAITOK);
 	}
 #endif
 
@@ -3395,6 +3405,7 @@ scinit(int unit, int flags)
 	bcopy(dflt_font_8, sc->font_8, sizeof(dflt_font_8));
 	bcopy(dflt_font_14, sc->font_14, sizeof(dflt_font_14));
 	bcopy(dflt_font_16, sc->font_16, sizeof(dflt_font_16));
+	bcopy(dflt_font_spleen_16x32, sc->font_spleen, sizeof(dflt_font_spleen_16x32));
 	sc->fonts_loaded = FONT_16 | FONT_14 | FONT_8;
 #endif /* SC_DFLT_FONT */
 	if (sc->adp != NULL && ISFONTAVAIL(sc->adp->va_flags)) {
@@ -3504,6 +3515,8 @@ scterm(int unit, int flags)
 	kfree(sc->font_8, M_SYSCONS);
 	kfree(sc->font_14, M_SYSCONS);
 	kfree(sc->font_16, M_SYSCONS);
+	if (sc->font_spleen != NULL)
+		kfree(sc->font_spleen, M_SYSCONS);
 #endif
 	/* XXX vtb, history */
     }
@@ -3634,17 +3647,22 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
     if (scp->sc->fbi != NULL) {
 	scp->xpixel = sc->fbi->width;
 	scp->ypixel = sc->fbi->height;
-	scp->font_width = 8;
-	scp->font_height = 16;
+	/* Spleen 16x32 on KMS/EFI FB (native pixels, no soft scale). */
+	scp->font_width = 16;
+	scp->font_height = 32;
 
-	/* The first vty uses a statically allocated 160x50 buffer */
+	/* First vty: static buffer sized for 4K@8x16; enough for 16x32 too. */
 	if (vty == sc->first_vty)
-		sc_font_scale(scp, 2*COL, 2*ROW);
+		sc_font_scale(scp, SC_KMS_MAXCOL, SC_KMS_MAXROW);
 	else
 		sc_font_scale(scp, 0, 0);
 
 #ifndef SC_NO_FONT_LOADING
-	scp->font = sc->font_16;
+	scp->font = sc->font_spleen != NULL ? sc->font_spleen : sc->font_16;
+	if (scp->font == sc->font_16) {
+		scp->font_width = 8;
+		scp->font_height = 16;
+	}
 #else
 	scp->font = NULL;
 #endif
