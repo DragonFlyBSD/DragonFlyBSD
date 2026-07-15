@@ -507,11 +507,9 @@ __read(int fd, void *buf, size_t nbytes)
 	ssize_t	ret;
 
 	/*
-	 * The common "pthread has never been used" case must stay near raw
-	 * syscall cost.  Entering the cancellation wrapper here requires a TLS
-	 * lookup and helper calls; b3_syscall measured read about 8% slower
-	 * without this guard.  Once pthread state exists, keep the full
-	 * cancellation-point semantics below.
+	 * Before thread state exists, no cancellation can be pending.  Bypass
+	 * cancellation bookkeeping to keep unthreaded I/O at raw syscall cost;
+	 * the full path made read about 8% and write about 7% slower.
 	 */
 	if (__predict_true(!_thr_is_inited()))
 		return (__sys_read(fd, buf, nbytes));
@@ -532,7 +530,7 @@ __readv(int fd, const struct iovec *iov, int iovcnt)
 	int oldcancel;
 	ssize_t ret;
 
-	/* Same cold-process cancellation-wrapper bypass as __read(). */
+	/* Same fast path as __read(). */
 	if (__predict_true(!_thr_is_inited()))
 		return (__sys_readv(fd, iov, iovcnt));
 
@@ -749,11 +747,7 @@ __write(int fd, const void *buf, size_t nbytes)
 	int	oldcancel;
 	ssize_t	ret;
 
-	/*
-	 * See __read(): ordinary single-threaded I/O should not pay the pthread
-	 * cancellation wrapper tax.  Without this fast path, b3_syscall measured
-	 * write about 7% slower than base.
-	 */
+	/* Same fast path as __read(). */
 	if (__predict_true(!_thr_is_inited()))
 		return (__sys_write(fd, buf, nbytes));
 
@@ -773,7 +767,7 @@ __writev(int fd, const struct iovec *iov, int iovcnt)
 	int	oldcancel;
 	ssize_t ret;
 
-	/* Same cold-process cancellation-wrapper bypass as __write(). */
+	/* Same fast path as __read(). */
 	if (__predict_true(!_thr_is_inited()))
 		return (__sys_writev(fd, iov, iovcnt));
 

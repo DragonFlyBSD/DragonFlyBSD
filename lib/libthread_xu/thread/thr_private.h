@@ -377,6 +377,12 @@ struct __pthread_s {
 #define	THR_CANCEL_EXITING		0x0002
 #define THR_CANCEL_AT_POINT		0x0004
 #define THR_CANCEL_NEEDED		0x0008
+
+/*
+ * Sentinel returned by _thr_cancel_enter() when the single-threaded
+ * fast path was taken; never a valid cancelflags value.
+ */
+#define THR_CANCEL_FASTPATH		(-1)
 #define	SHOULD_CANCEL(val)					\
 	(((val) & (THR_CANCEL_DISABLE | THR_CANCEL_EXITING |	\
 		 THR_CANCEL_NEEDED)) == THR_CANCEL_NEEDED)
@@ -639,6 +645,7 @@ extern struct __pthread_mutexattr_s _pthread_mutexattr_default;
 extern struct __pthread_condattr_s _pthread_condattr_default;
 
 extern pid_t	_thr_pid;
+extern int	_thr_activated;
 extern size_t	_thr_guard_default;
 extern size_t	_thr_stack_default;
 extern size_t	_thr_stack_initial;
@@ -688,12 +695,6 @@ void	_thr_rtld_fini(void);
 void	_thr_activate(void);
 void	_thr_check_forked_child(pthread_t);
 
-/*
- * Sentinel returned by _thr_cancel_enter() when the single-threaded
- * fast path was taken; never a valid cancelflags value.
- */
-#define THR_CANCEL_FASTPATH	(-1)
-extern int _thr_activated;
 int	_thr_stack_alloc(pthread_attr_t);
 void	_thr_stack_free(pthread_attr_t);
 void	_thr_stack_cleanup(void);

@@ -177,12 +177,10 @@ _fork(void)
 #endif
 
 	/*
-	 * Cold/single-threaded fork fast path.  When no pthread state or no
-	 * user atfork handlers exist, the full wrapper only adds pthread locks,
-	 * signal masking, and internal handler work.  During P4, the
-	 * unoptimized path regressed b9_forkonly from roughly 82-89us to about
-	 * 154us per cycle.  Call libc __fork(), not raw SYS_fork, so libc's own
-	 * cb_prepare/cb_parent/cb_child hooks still run.
+	 * Skip pthread fork bookkeeping when it cannot matter.  Without this
+	 * path, fork-only latency nearly doubled and fork+exec slowed by about
+	 * 35%.  Use __fork() rather than the raw system call so libc fork
+	 * callbacks still run.
 	 */
 	if (!_thr_is_inited())
 		return (__fork());

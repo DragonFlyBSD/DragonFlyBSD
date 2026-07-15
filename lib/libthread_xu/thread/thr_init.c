@@ -192,6 +192,7 @@ size_t		_thr_guard_default;
 size_t		_thr_stack_default =	THR_STACK_DEFAULT;
 size_t		_thr_stack_initial =	THR_STACK_INITIAL;
 int		_thr_page_size;
+int		_thr_activated;
 
 static void	init_private(void);
 static void	_libpthread_uninit(void);
@@ -276,8 +277,6 @@ _libpthread_init(pthread_t curthread)
  * main-stack red zone, the rtld lock upgrade and the pid-1 console
  * setup.
  */
-int	_thr_activated;
-
 void
 _thr_activate(void)
 {
@@ -353,13 +352,6 @@ init_main_thread(pthread_t thread)
 	/* Setup the thread attributes. */
 	thread->tid = _thr_get_tid();
 	thread->attr = _pthread_attr_default;
-	/*
-	 * Set up the thread stack.
-	 *
-	 * The red zone below the main stack is mapped in _thr_activate()
-	 * when the process actually goes multi-threaded.
-	 */
-
 	/*
 	 * Mark the stack as an application supplied stack so that it
 	 * isn't deallocated.
