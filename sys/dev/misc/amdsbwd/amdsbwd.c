@@ -354,10 +354,56 @@ amdsbwd_probe_sb8xx(device_t dev, struct resource *pmres, uint32_t *addr)
 	device_set_desc(dev, "AMD SB8xx/SB9xx/Axx Watchdog Timer");
 }
 
-static void
-amdsbwd_probe_fch41(device_t dev, struct resource *pmres, uint32_t *addr)
+static int
+amdsbwd_probe_fch41(device_t dev, struct resource *pmres, uint32_t *addr,
+    int use_pm_mmio)
 {
 	uint8_t val;
+
+	if (use_pm_mmio) {
+		val = bus_read_1(pmres, AMDFCH41_PM_DECODE_EN0);
+		val |= AMDFCH41_WDT_EN;
+		bus_write_1(pmres, AMDFCH41_PM_DECODE_EN0, val);
+		val = bus_read_1(pmres, AMDFCH41_PM_DECODE_EN0);
+		if ((val & AMDFCH41_WDT_EN) == 0) {
+			device_printf(dev,
+			    "watchdog decode enable bit did not stick\n");
+			return (ENXIO);
+		}
+#ifdef AMDSBWD_DEBUG
+		device_printf(dev, "AMDFCH41_PM_DECODE_EN0 value = %#04x\n",
+		    val);
+#endif
+
+		val = bus_read_1(pmres, AMDFCH41_PM_ISA_CTRL);
+		if ((val & AMDFCH41_MMIO_EN) != 0) {
+			/* Fixed offset for the watchdog within ACPI MMIO range. */
+			amdsbwd_verbose_printf(dev,
+			    "ACPI MMIO range is enabled\n");
+			*addr = AMDFCH41_MMIO_ADDR + AMDFCH41_MMIO_WDT_OFF;
+		} else {
+			/* Special fixed MMIO range for the watchdog. */
+			*addr = AMDFCH41_WDT_FIXED_ADDR;
+		}
+
+		/*
+		 * Set watchdog timer tick to 1s and
+		 * enable the watchdog device (in stopped state).
+		 */
+		val = bus_read_1(pmres, AMDFCH41_PM_DECODE_EN3);
+		val &= ~AMDFCH41_WDT_RES_MASK;
+		val |= AMDFCH41_WDT_RES_1S;
+		val &= ~AMDFCH41_WDT_EN_MASK;
+		val |= AMDFCH41_WDT_ENABLE;
+		bus_write_1(pmres, AMDFCH41_PM_DECODE_EN3, val);
+#ifdef AMDSBWD_DEBUG
+		val = bus_read_1(pmres, AMDFCH41_PM_DECODE_EN3);
+		amdsbwd_verbose_printf(dev,
+		    "AMDFCH41_PM_DECODE_EN3 value = %#04x\n", val);
+#endif
+		device_set_desc(dev, "AMD FCH Rev 41h+ Watchdog Timer");
+		return (0);
+	}
 
 	val = pmio_read(pmres, AMDFCH41_PM_ISA_CTRL);
 	if ((val & AMDFCH41_MMIO_EN) != 0) {
@@ -397,6 +443,7 @@ amdsbwd_probe_fch41(device_t dev, struct resource *pmres, uint32_t *addr)
 	    val);
 #endif
 	device_set_desc(dev, "AMD FCH Rev 41h+ Watchdog Timer");
+	return (0);
 }
 
 static int
@@ -405,8 +452,11 @@ amdsbwd_probe(device_t dev)
 	struct resource		*res;
 	device_t		smb_dev;
 	uint32_t		addr;
+	uint32_t		pmaddr;
 	int			rid;
 	int			rc;
+	int			pmtype;
+	int			pmwidth;
 	uint32_t		devid;
 	uint8_t			revid;
 
@@ -414,36 +464,50 @@ amdsbwd_probe(device_t dev)
 	if (isa_get_logicalid(dev) != 0)
 		return (ENXIO);
 
-	rc = bus_set_resource(dev, SYS_RES_IOPORT, 0, AMDSB_PMIO_INDEX,
-			      AMDSB_PMIO_WIDTH, -1);
-	if (rc != 0) {
-		device_printf(dev, "bus_set_resource for IO failed\n");
-		return (ENXIO);
-	}
-	rid = 0;
-	res = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid, 0ul, ~0ul,
-	    AMDSB_PMIO_WIDTH, RF_ACTIVE | RF_SHAREABLE);
-	if (res == NULL) {
-		device_printf(dev, "bus_alloc_resource for IO failed\n");
-		return (ENXIO);
-	}
-
 	smb_dev = pci_find_bsf(0, 20, 0);
 	KASSERT(smb_dev != NULL, ("can't find SMBus PCI device\n"));
 	devid = pci_get_devid(smb_dev);
 	revid = pci_get_revid(smb_dev);
+	if (devid == AMDCZ_SMBUS_DEVID && revid >= AMDCZ51_SMBUS_REVID) {
+		pmtype = SYS_RES_MEMORY;
+		pmaddr = AMDFCH41_MMIO_ADDR + AMDFCH41_MMIO_PM_OFF;
+		pmwidth = AMDFCH41_MMIO_PM_WIDTH;
+	} else {
+		pmtype = SYS_RES_IOPORT;
+		pmaddr = AMDSB_PMIO_INDEX;
+		pmwidth = AMDSB_PMIO_WIDTH;
+	}
+
+	rc = bus_set_resource(dev, pmtype, 0, pmaddr, pmwidth, -1);
+	if (rc != 0) {
+		device_printf(dev, "bus_set_resource for PM failed\n");
+		return (ENXIO);
+	}
+	rid = 0;
+	res = bus_alloc_resource(dev, pmtype, &rid, 0ul, ~0ul, pmwidth,
+	    RF_ACTIVE | RF_SHAREABLE);
+	if (res == NULL) {
+		device_printf(dev, "bus_alloc_resource for PM failed\n");
+		return (ENXIO);
+	}
+
 	if (devid == AMDSB_SMBUS_DEVID && revid < AMDSB8_SMBUS_REVID) {
 		amdsbwd_probe_sb7xx(dev, res, &addr);
+		rc = 0;
 	} else if (devid == AMDSB_SMBUS_DEVID ||
 	     (devid == AMDFCH_SMBUS_DEVID && revid < AMDFCH41_SMBUS_REVID) ||
 	     (devid == AMDCZ_SMBUS_DEVID  && revid < AMDCZ49_SMBUS_REVID)) {
 		amdsbwd_probe_sb8xx(dev, res, &addr);
+		rc = 0;
 	} else {
-		amdsbwd_probe_fch41(dev, res, &addr);
+		rc = amdsbwd_probe_fch41(dev, res, &addr,
+		    pmtype == SYS_RES_MEMORY);
 	}
 
-	bus_release_resource(dev, SYS_RES_IOPORT, rid, res);
-	bus_delete_resource(dev, SYS_RES_IOPORT, rid);
+	bus_release_resource(dev, pmtype, rid, res);
+	bus_delete_resource(dev, pmtype, rid);
+	if (rc != 0)
+		return (rc);
 
 	amdsbwd_verbose_printf(dev, "memory base address = %#010x\n", addr);
 	rc = bus_set_resource(dev, SYS_RES_MEMORY, 0, addr + AMDSB_WD_CTRL,
