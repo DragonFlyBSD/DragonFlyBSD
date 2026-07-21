@@ -1986,8 +1986,6 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	short oif_flags;
 	int new_flags;
 	size_t namelen, onamelen;
-	size_t descrlen;
-	char *descrbuf, *odescrbuf;
 	char new_name[IFNAMSIZ];
 	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
@@ -2033,6 +2031,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		ifnet_unlock();
 		return (ENXIO);
 	}
+
 	error = 0;
 
 	switch (cmd) {
@@ -2079,8 +2078,9 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		break;
 
 	case SIOCGIFDESCR:
-		error = 0;
-		ifnet_lock();
+	{
+		size_t descrlen;
+
 		if (ifp->if_description == NULL) {
 			ifr->ifr_buffer.length = 0;
 			error = ENOMSG;
@@ -2094,10 +2094,13 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 				    ifr->ifr_buffer.buffer, descrlen);
 			ifr->ifr_buffer.length = descrlen;
 		}
-		ifnet_unlock();
 		break;
+	}
 
 	case SIOCSIFDESCR:
+	{
+		char *descrbuf, *odescrbuf;
+
 		error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
 		if (error)
 			break;
@@ -2124,13 +2127,13 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			}
 		}
 
-		ifnet_lock();
 		odescrbuf = ifp->if_description;
 		ifp->if_description = descrbuf;
-		ifnet_unlock();
 
-		if (odescrbuf)
+		if (odescrbuf != NULL)
 			kfree(odescrbuf, M_IFDESCR);
+		break;
+	}
 
 	case SIOCSIFFLAGS:
 		error = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
