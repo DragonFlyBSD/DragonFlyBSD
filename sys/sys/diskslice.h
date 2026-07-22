@@ -93,8 +93,8 @@
 				/* 104 - DIOCGPART (see below)		*/
 				/* 105 - compat disklabel DIOCGDVIRGIN	*/
 #define DIOCWLABEL		_IOW('d', 109, int)
-#define	DIOCGSLICEINFO		_IOR('d', 111, struct diskslices)
-#define	DIOCSYNCSLICEINFO	_IOW('d', 112, int)
+				/* 111 - DIOCGSLICEINFO */
+				/* 112 - DIOCSYNCSLICEINFO */
 #define DIOCGKERNELDUMP		_IOW('d', 133, u_int)   /* Set/Clear dumps */
 #define DIOCRECLUSTER		_IOWR('d', 134, struct disk_ioc_recluster)
 #define	DIOCGMEDIASIZE		_IOR('d', 135, off_t)

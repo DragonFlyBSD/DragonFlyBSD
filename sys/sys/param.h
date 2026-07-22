@@ -266,9 +266,10 @@
  * 600517 - add DSO_NOMBR to <sys/disk.h>
  * 600518 - remove DSO_NOMBR from <sys/disk.h>
  * 600519 - add cpuid member to 'struct u_rman' and 'struct devinfo_rman'
+ * 600520 - remove DIOCGSLICEINFO and DIOCSYNCSLICEINFO
  */
 #undef __DragonFly_version
-#define __DragonFly_version 600519	/* propagated to newvers */
+#define __DragonFly_version 600520	/* propagated to newvers */
 
 #include <sys/_null.h>
 
