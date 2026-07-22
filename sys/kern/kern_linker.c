@@ -98,7 +98,7 @@ linker_strdup(const char *str)
 static void
 linker_init(void* arg)
 {
-    lockinit(&llf_lock, "klink", 0, 0);
+    lockinit(&llf_lock, "klink", 0, LK_CANRECURSE);
     lockinit(&kld_lock, "kldlk", 0, LK_CANRECURSE);
     TAILQ_INIT(&classes);
     TAILQ_INIT(&linker_files);
@@ -492,9 +492,7 @@ linker_file_unload(linker_file_t file)
      * Inform any modules associated with this file.
      */
     mod = TAILQ_FIRST(&file->modules);
-    for (mod = TAILQ_FIRST(&file->modules); mod; mod = next) {
-	next = module_getfnext(mod);
-
+    while (mod) {
 	/*
 	 * Give the module a chance to veto the unload.  Note that the
 	 * act of unloading the module may cause other modules in the
@@ -506,7 +504,9 @@ linker_file_unload(linker_file_t file)
 	    lockmgr(&llf_lock, LK_RELEASE);
 	    goto out;
 	}
+	next = module_getfnext(mod);
 	module_release(mod);
+	mod = next;
     }
 
     TAILQ_FOREACH_MUTABLE(ml, &found_modules, link, nextml) {
@@ -519,19 +519,15 @@ linker_file_unload(linker_file_t file)
     /* Don't try to run SYSUNINITs if we are unloaded due to a link error */
     if (file->flags & LINKER_FILE_LINKED) {
 	file->flags &= ~LINKER_FILE_LINKED;
-	lockmgr(&llf_lock, LK_RELEASE);
 	linker_file_sysuninit(file);
 	linker_file_unregister_sysctls(file);
-	lockmgr(&llf_lock, LK_EXCLUSIVE);
     }
 
     TAILQ_REMOVE(&linker_files, file, link);
 
     if (file->deps) {
-	lockmgr(&llf_lock, LK_RELEASE);
 	for (i = 0; i < file->ndeps; i++)
 	    linker_file_unload(file->deps[i]);
-	lockmgr(&llf_lock, LK_EXCLUSIVE);
 	kfree(file->deps, M_LINKER);
 	file->deps = NULL;
     }
