@@ -192,18 +192,11 @@ size_t		_thr_guard_default;
 size_t		_thr_stack_default =	THR_STACK_DEFAULT;
 size_t		_thr_stack_initial =	THR_STACK_INITIAL;
 int		_thr_page_size;
+int		_thr_activated;
 
 static void	init_private(void);
 static void	_libpthread_uninit(void);
 static void	init_main_thread(pthread_t thread);
-
-void	_thread_init(void) __attribute__ ((constructor));
-void
-_thread_init(void)
-{
-	_libpthread_init(NULL);
-	_libc_thr_init();
-}
 
 void	_thread_uninit(void) __attribute__ ((destructor));
 void
@@ -237,34 +230,14 @@ _pthread_init_early(void)
 void
 _libpthread_init(pthread_t curthread)
 {
-	int fd, first = 0;
-	sigset_t sigset, oldset;
+	int first = 0;
 
 	/* Check if this function has already been called: */
 	if ((_thr_initial != NULL) && (curthread == NULL))
 		/* Only initialize the threaded application once. */
 		return;
 
-	/*
-	 * Check for the special case of this process running as
-	 * or in place of init as pid = 1:
-	 */
-	if ((_thr_pid = getpid()) == 1) {
-		/*
-		 * Setup a new session for this process which is
-		 * assumed to be running as root.
-		 */
-		if (setsid() == -1)
-			PANIC("Can't set session ID");
-		if (revoke(_PATH_CONSOLE) != 0)
-			PANIC("Can't revoke console");
-		if ((fd = __sys_open(_PATH_CONSOLE, O_RDWR)) < 0)
-			PANIC("Can't open console");
-		if (setlogin("root") == -1)
-			PANIC("Can't set login to root");
-		if (__sys_ioctl(fd, TIOCSCTTY, NULL) == -1)
-			PANIC("Can't set controlling terminal");
-	}
+	_thr_pid = getpid();
 
 	/* Initialize pthread private data. */
 	init_private();
@@ -288,18 +261,73 @@ _libpthread_init(pthread_t curthread)
 	tls_set_tcb(curthread->tcb);
 
 	if (first) {
-		SIGFILLSET(sigset);
-		__sys_sigprocmask(SIG_SETMASK, &sigset, &oldset);
-		_thr_signal_init();
 		_thr_initial = curthread;
-		SIGDELSET(oldset, SIGCANCEL);
-		__sys_sigprocmask(SIG_SETMASK, &oldset, NULL);
 		if (td_eventismember(&_thread_event_mask, TD_CREATE))
 			_thr_report_creation(curthread, curthread);
-		_thr_rtld_init();
 		_thr_malloc_init();
 		_thr_sem_init();
 	}
+}
+
+/*
+ * Full activation of the threading machinery, performed once when the
+ * process is about to create its first thread.  Everything with
+ * process-visible side effects that a single-threaded process must
+ * not pay for lives here: the SIGCANCEL/SIGCKPT signal handlers, the
+ * main-stack red zone, the rtld lock upgrade and the pid-1 console
+ * setup.
+ */
+void
+_thr_activate(void)
+{
+	sigset_t sigset, oldset;
+	int fd;
+
+	if (_thr_activated)
+		return;
+	_thr_activated = 1;
+	_libc_thr_init();
+
+	/*
+	 * Check for the special case of this process running as
+	 * or in place of init as pid = 1:
+	 */
+	if (_thr_pid == 1) {
+		/*
+		 * Setup a new session for this process which is
+		 * assumed to be running as root.
+		 */
+		if (setsid() == -1)
+			PANIC("Can't set session ID");
+		if (revoke(_PATH_CONSOLE) != 0)
+			PANIC("Can't revoke console");
+		if ((fd = __sys_open(_PATH_CONSOLE, O_RDWR)) < 0)
+			PANIC("Can't open console");
+		if (setlogin("root") == -1)
+			PANIC("Can't set login to root");
+		if (__sys_ioctl(fd, TIOCSCTTY, NULL) == -1)
+			PANIC("Can't set controlling terminal");
+	}
+
+	/*
+	 * Create a red zone below the main stack.  All other stacks
+	 * are constrained to a maximum size by the parameters
+	 * passed to mmap(), but this stack is only limited by
+	 * resource limits, so this stack needs an explicitly mapped
+	 * red zone to protect the thread stacks that are just beyond.
+	 */
+	_thr_main_redzone = mmap(_usrstack - _thr_stack_initial -
+				 _thr_guard_default, _thr_guard_default,
+				 0, MAP_ANON | MAP_TRYFIXED, -1, 0);
+	if (_thr_main_redzone == MAP_FAILED)
+		PANIC("Cannot allocate red zone for initial thread");
+
+	SIGFILLSET(sigset);
+	__sys_sigprocmask(SIG_SETMASK, &sigset, &oldset);
+	_thr_signal_init();
+	SIGDELSET(oldset, SIGCANCEL);
+	__sys_sigprocmask(SIG_SETMASK, &oldset, NULL);
+	_thr_rtld_init();
 }
 
 static void
@@ -324,22 +352,6 @@ init_main_thread(pthread_t thread)
 	/* Setup the thread attributes. */
 	thread->tid = _thr_get_tid();
 	thread->attr = _pthread_attr_default;
-	/*
-	 * Set up the thread stack.
-	 *
-	 * Create a red zone below the main stack.  All other stacks
-	 * are constrained to a maximum size by the parameters
-	 * passed to mmap(), but this stack is only limited by
-	 * resource limits, so this stack needs an explicitly mapped
-	 * red zone to protect the thread stack that is just beyond.
-	 */
-	_thr_main_redzone = mmap(_usrstack - _thr_stack_initial -
-				 _thr_guard_default, _thr_guard_default,
-				 0, MAP_ANON | MAP_TRYFIXED, -1, 0);
-	if (_thr_main_redzone == MAP_FAILED) {
-		PANIC("Cannot allocate red zone for initial thread");
-	}
-
 	/*
 	 * Mark the stack as an application supplied stack so that it
 	 * isn't deallocated.

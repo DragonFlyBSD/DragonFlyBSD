@@ -60,6 +60,15 @@ _pthread_create(pthread_t * __restrict thread,
 	int ret = 0, locked;
 
 	_thr_check_init();
+	curthread = tls_get_curthread();
+	_thr_check_forked_child(curthread);
+
+	/*
+	 * First thread of this process: turn on the machinery that only
+	 * multi-threaded processes pay for (signal handlers, main-stack
+	 * red zone, rtld locks).
+	 */
+	_thr_activate();
 
 	/*
 	 * Tell libc and others now they need lock to protect their data.
@@ -67,7 +76,6 @@ _pthread_create(pthread_t * __restrict thread,
 	if (_thr_isthreaded() == 0 && _thr_setthreaded(1))
 		return (EAGAIN);
 
-	curthread = tls_get_curthread();
 	if ((new_thread = _thr_alloc(curthread)) == NULL)
 		return (EAGAIN);
 

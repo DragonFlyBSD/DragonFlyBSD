@@ -285,11 +285,9 @@ lpmap_unmap(void **datap)
  * the __lpmap_blockallsigs pointer ASAP because it is used everywhere in
  * pthreads.
  *
- * If pthreads is not linked in, _pthread_once() still runs via a stub in
- * libc, and _pthread_key_create() is a NOP.
- *
- * NOTE: These pthreads calls are stubs when pthreads is not linked in.
- *	 The once routine will still be run once regardless.
+ * The pthread implementation now lives in libc, so _pthread_once() and
+ * _pthread_key_create() are always available here.  _pthread_once() keeps the
+ * mapping setup single-shot while each thread still maps its own lpmap state.
  */
 static
 void
