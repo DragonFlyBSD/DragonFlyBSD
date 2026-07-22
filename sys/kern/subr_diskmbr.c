@@ -147,8 +147,12 @@ reread_mbr:
 	/* Weakly verify it. */
 	cp = bp->b_data;
 	if (cp[0x1FE] != 0x55 || cp[0x1FF] != 0xAA) {
-		kprintf("%s: MBR magic not found; "
-			"assume a COMPATIBILITY_SLICE (s0)\n", sname);
+		/* Don't complain MBR missing for device mapper and CD. */
+		if ((info->d_dsflags & (DSO_DEVICEMAPPER | DSO_COMPATLABEL |
+					DSO_COMPATPARTA)) == 0) {
+			kprintf("%s: MBR magic not found; "
+				"assume a COMPATIBILITY_SLICE (s0)\n", sname);
+		}
 		goto done;
 	}
 
