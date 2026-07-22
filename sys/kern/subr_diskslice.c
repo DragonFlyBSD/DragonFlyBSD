@@ -553,11 +553,6 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		}
 		return (0);
 
-	case DIOCGSLICEINFO:
-		bcopy(ssp, data, (char *)&ssp->dss_slices[ssp->dss_nslices] -
-				 (char *)ssp);
-		return (0);
-
 	case DIOCSDINFO32:
 		ops = &disklabel32_ops;
 		/* fall through */
@@ -616,36 +611,6 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		free_ds_label(ssp, slice);
 		set_ds_label(ssp, slice, lp, ops);
 		return (0);
-
-	case DIOCSYNCSLICEINFO:
-		/*
-		 * This ioctl can only be done on the whole disk
-		 */
-		if (slice != WHOLE_DISK_SLICE || part != WHOLE_SLICE_PART)
-			return (EINVAL);
-
-		if (*(int *)data == 0) {
-			for (slice = 0; slice < ssp->dss_nslices; slice++) {
-				struct diskslice *ds = &ssp->dss_slices[slice];
-
-				switch(dscountmask(ds)) {
-				case 0:
-					break;
-				case 1:
-					if (slice != WHOLE_DISK_SLICE)
-						return (EBUSY);
-					if (!dschkmask(ds, RAW_PART))
-						return (EBUSY);
-					break;
-				default:
-					return (EBUSY);
-				}
-			}
-		}
-
-		disk_msg_send_sync(DISK_DISK_REPROBE, dev->si_disk, NULL);
-		devfs_config();
-		return 0;
 
 	case DIOCWDINFO32:
 	case DIOCWDINFO64:
