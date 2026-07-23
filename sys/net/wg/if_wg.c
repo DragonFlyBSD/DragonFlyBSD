@@ -2396,9 +2396,11 @@ wg_ioctl_get(struct wg_softc *sc, struct wg_data_io *data, bool privileged)
 
 	/* Determine the required data size. */
 	size = sizeof(struct wg_interface_io);
-	size += sizeof(struct wg_peer_io) * sc->sc_peers_num;
-	TAILQ_FOREACH(peer, &sc->sc_peers, p_entry)
-		size += sizeof(struct wg_aip_io) * peer->p_aips_num;
+	if (privileged) {
+		size += sizeof(struct wg_peer_io) * sc->sc_peers_num;
+		TAILQ_FOREACH(peer, &sc->sc_peers, p_entry)
+			size += sizeof(struct wg_aip_io) * peer->p_aips_num;
+	}
 
 	/* Return the required size for userland allocation. */
 	if (data->wgd_size < size) {
@@ -2432,6 +2434,9 @@ wg_ioctl_get(struct wg_softc *sc, struct wg_data_io *data, bool privileged)
 	}
 
 	peer_count = 0;
+	if (!privileged)
+		goto skip_peers;
+
 	peer_p = &iface_p->i_peers[0];
 	TAILQ_FOREACH(peer, &sc->sc_peers, p_entry) {
 		bzero(&peer_o, sizeof(peer_o));
@@ -2491,8 +2496,9 @@ wg_ioctl_get(struct wg_softc *sc, struct wg_data_io *data, bool privileged)
 		peer_count++;
 	}
 	KKASSERT(peer_count == sc->sc_peers_num);
-	iface_o.i_peers_count = peer_count;
 
+skip_peers:
+	iface_o.i_peers_count = peer_count;
 	ret = copyout(&iface_o, iface_p, sizeof(iface_o));
 
 out:
