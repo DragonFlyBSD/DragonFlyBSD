@@ -73,10 +73,6 @@ CTASSERT(WG_KEY_SIZE >= NOISE_SYMMETRIC_KEY_LEN);
 #define DEFAULT_MTU		(ETHERMTU - 80)
 #define MAX_MTU			(IF_MAXMTU - 80)
 
-#ifndef ENOKEY
-#define ENOKEY			ENOENT
-#endif
-
 /*
  * mbuf flags to clear after in-place encryption/decryption, so that the
  * mbuf can be reused for re-entering the network stack or delivering to
@@ -2336,7 +2332,7 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			      (void *)&mtod(m, struct ip *)->ip_dst :
 			      (void *)&mtod(m, struct ip6_hdr *)->ip6_dst));
 	if (__predict_false(peer == NULL)) {
-		ret = ENOKEY;
+		ret = ENETUNREACH;
 		goto error;
 	}
 	if (__predict_false(peer->p_endpoint.e_remote.r_sa.sa_family
