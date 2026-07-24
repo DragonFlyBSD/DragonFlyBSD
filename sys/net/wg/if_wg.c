@@ -2670,18 +2670,18 @@ wg_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 
 	switch (cmd) {
 	case SIOCSWG:
+	case SIOCGWG:
+		wgd = (struct wg_data_io *)data;
 		ret = caps_priv_check(cred, SYSCAP_RESTRICTEDROOT);
-		if (ret == 0) {
-			wgd = (struct wg_data_io *)data;
-			ret = wg_ioctl_set(sc, wgd);
+		privileged = (ret == 0);
+		if (cmd == SIOCSWG) {
+			if (privileged)
+				ret = wg_ioctl_set(sc, wgd);
+		} else {
+			ret = wg_ioctl_get(sc, wgd, privileged);
 		}
 		break;
-	case SIOCGWG:
-		privileged =
-		    (caps_priv_check(cred, SYSCAP_RESTRICTEDROOT) == 0);
-		wgd = (struct wg_data_io *)data;
-		ret = wg_ioctl_get(sc, wgd, privileged);
-		break;
+
 	/* Interface IOCTLs */
 	case SIOCSIFADDR:
 		/*
