@@ -98,8 +98,16 @@ cdev_pager_lookup(void *handle)
 {
 	vm_object_t object;
 
+again:
 	mtx_lock(&dev_pager_mtx);
 	object = vm_pager_object_lookup(&dev_pager_object_list, handle);
+	if (object != NULL && object->un_pager.devp.ops == NULL) {
+		mtxsleep(&object->un_pager.devp.ops, &dev_pager_mtx, 0,
+		    "cdplkp", 0);
+		mtx_unlock(&dev_pager_mtx);
+		vm_object_deallocate(object);
+		goto again;
+	}
 	mtx_unlock(&dev_pager_mtx);
 
 	return (object);
@@ -110,8 +118,10 @@ cdev_pager_allocate(void *handle, enum obj_type tp, struct cdev_pager_ops *ops,
 	vm_ooffset_t size, vm_prot_t prot, vm_ooffset_t foff, struct ucred *cred)
 {
 	cdev_t dev;
-	vm_object_t object;
+	vm_object_t object, object1;
+	vm_pindex_t pindex;
 	u_short color;
+	int error;
 
 	/*
 	 * Offset should be page aligned.
@@ -120,48 +130,76 @@ cdev_pager_allocate(void *handle, enum obj_type tp, struct cdev_pager_ops *ops,
 		return (NULL);
 
 	size = round_page64(size);
-
-	if (ops->cdev_pg_ctor(handle, size, prot, foff, cred, &color) != 0)
-		return (NULL);
+	pindex = OFF_TO_IDX(foff + size);
 
 	/*
 	 * Look up pager, creating as necessary.
 	 */
+again:
 	mtx_lock(&dev_pager_mtx);
 	object = vm_pager_object_lookup(&dev_pager_object_list, handle);
-	if (object == NULL) {
-		/*
-		 * Allocate object and associate it with the pager.
-		 */
-		object = vm_object_allocate_hold(tp,
-						 OFF_TO_IDX(foff + size));
-		object->handle = handle;
-		object->un_pager.devp.ops = ops;
-		object->un_pager.devp.dev = handle;
-		TAILQ_INIT(&object->un_pager.devp.devp_pglist);
-
-		/*
-		 * handle is only a device for old_dev_pager_ctor.
-		 */
-		if (ops->cdev_pg_ctor == old_dev_pager_ctor) {
-			dev = handle;
-			dev->si_object = object;
+	if (object != NULL) {
+		if (object->un_pager.devp.ops == NULL) {
+			mtxsleep(&object->un_pager.devp.ops, &dev_pager_mtx, 0,
+			    "cdplkp", 0);
+			mtx_unlock(&dev_pager_mtx);
+			vm_object_deallocate(object);
+			goto again;
 		}
-
-		TAILQ_INSERT_TAIL(&dev_pager_object_list, object,
-				  pager_object_entry);
-
-		vm_object_drop(object);
-	} else {
-		/*
-		 * Gain a reference to the object.
-		 */
 		vm_object_hold(object);
-		vm_object_reference_locked(object);
-		if (OFF_TO_IDX(foff + size) > object->size)
-			object->size = OFF_TO_IDX(foff + size);
+		if (pindex > object->size)
+			object->size = pindex;
+		KKASSERT(object->type == tp);
+		KKASSERT(object->un_pager.devp.ops == ops);
 		vm_object_drop(object);
+		mtx_unlock(&dev_pager_mtx);
+		return (object);
 	}
+	mtx_unlock(&dev_pager_mtx);
+
+	object1 = vm_object_allocate_hold(tp, pindex);
+
+	mtx_lock(&dev_pager_mtx);
+	object = vm_pager_object_lookup(&dev_pager_object_list, handle);
+	if (object != NULL) {
+		object1->type = OBJT_DEAD;
+		vm_object_drop(object1);
+		mtx_unlock(&dev_pager_mtx);
+		vm_object_deallocate(object1);
+		vm_object_deallocate(object);
+		goto again;
+	}
+
+	object = object1;
+	object->handle = handle;
+	object->un_pager.devp.dev = handle;
+	object->un_pager.devp.ops = NULL;
+	TAILQ_INIT(&object->un_pager.devp.devp_pglist);
+	TAILQ_INSERT_TAIL(&dev_pager_object_list, object, pager_object_entry);
+	vm_object_drop(object);
+	mtx_unlock(&dev_pager_mtx);
+
+	error = ops->cdev_pg_ctor(handle, size, prot, foff, cred, &color);
+	mtx_lock(&dev_pager_mtx);
+	if (error != 0) {
+		TAILQ_REMOVE(&dev_pager_object_list, object, pager_object_entry);
+		vm_object_hold(object);
+		object->type = OBJT_DEAD;
+		vm_object_drop(object);
+		wakeup(&object->un_pager.devp.ops);
+		mtx_unlock(&dev_pager_mtx);
+		vm_object_deallocate(object);
+		return (NULL);
+	}
+
+	vm_object_hold(object);
+	object->un_pager.devp.ops = ops;
+	if (ops->cdev_pg_ctor == old_dev_pager_ctor) {
+		dev = handle;
+		dev->si_object = object;
+	}
+	vm_object_drop(object);
+	wakeup(&object->un_pager.devp.ops);
 	mtx_unlock(&dev_pager_mtx);
 
 	return (object);
