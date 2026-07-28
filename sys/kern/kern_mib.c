@@ -96,6 +96,13 @@ SYSCTL_INT(_kern, KERN_OSRELDATE, osreldate, CTLFLAG_RD,
     &osreldate, 0, "Operating system release date");
 
 /*
+ * Disable build-id for vkernel(7) because it doesn't use a linker script,
+ * and it's not easy to implement it (e.g., need to parse the loaded ELF
+ * and walk the program headers).
+ */
+#ifndef _KERNEL_VIRTUAL
+
+/*
  * The build-id is copied from the ELF section .note.gnu.build-id.  The linker
  * script defines two variables to expose the beginning and end.
  */
@@ -138,6 +145,8 @@ sysctl_build_id(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_kern, OID_AUTO, build_id,
     CTLTYPE_STRING | CTLFLAG_RD,
     NULL, 0, sysctl_build_id, "A", "Operating system build-id");
+
+#endif /* _KERNEL_VIRTUAL */
 
 static int tls_extra = RTLD_STATIC_TLS_EXTRA_DEFAULT;
 SYSCTL_INT(_kern, KERN_STATIC_TLS_EXTRA, tls_extra, CTLFLAG_RW | CTLFLAG_NOLOCK,
