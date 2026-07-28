@@ -153,11 +153,7 @@ cdev_pager_allocate(void *handle, enum obj_type tp, struct cdev_pager_ops *ops,
 
 		vm_object_drop(object);
 	} else {
-		/*
-		 * Gain a reference to the object.
-		 */
 		vm_object_hold(object);
-		vm_object_reference_locked(object);
 		if (OFF_TO_IDX(foff + size) > object->size)
 			object->size = OFF_TO_IDX(foff + size);
 		vm_object_drop(object);
