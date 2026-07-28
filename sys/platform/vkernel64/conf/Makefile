@@ -12,20 +12,12 @@ S=	../..
 
 .include "$S/conf/kern.pre.mk"
 
-# Override the normal kernel link and link as a normal user program
-#
-# Note that the vkernel requires .hash section to be present as the kernel
-# linker uses it to resolve its symbols.
-#
-# Additionally, the max-page-size is set to 0x200000 regardless of the ld
-# default setting.
-#
-SYSTEM_LD= @${CC} ${DEBUG} -Wl,--export-dynamic -o ${.TARGET} ${SYSTEM_OBJS} vers.o -pthread
-SYSTEM_LD+= -Wl,--hash-style=sysv
-SYSTEM_LD+= -Wl,-z,max-page-size=0x200000
+# Override the normal kernel link and link as a normal user program.
+SYSTEM_LD= @${CC} ${ELDFLAGS} ${DEBUG} ${LDFLAGS} \
+	-o ${.TARGET} ${SYSTEM_OBJS} vers.o -pthread
 
 # Vkernel does not use a linker script.
-SYSTEM_DEP:= ${SYSTEM_DEP:N*/ldscript.*}
+SYSTEM_DEP:= ${SYSTEM_DEP:N${SYSTEM_LDSCRIPT}}
 
 %BEFORE_DEPEND
 

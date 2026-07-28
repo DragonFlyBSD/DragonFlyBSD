@@ -128,22 +128,22 @@ ELDFLAGS+= ${CFLAGS}
 # required.  The only application that needs such a large page size is the
 # kernel itself, so leave the gold default alone and treat the kernel
 # page size as an exception.
-.if ${P} == "pc64"
 ELDFLAGS+= -Wl,-z,max-page-size=0x200000
-.endif
 
+ELDFLAGS+= -Wl,--hash-style=sysv
 ELDFLAGS+= -Wl,--build-id=sha1
+ELDFLAGS+= -Wl,--export-dynamic
 
 GEN_CFILES= $S/platform/$P/$M/genassym.c
 SYSTEM_CFILES= ioconf.c config.c
 SYSTEM_SFILES= $S/platform/$P/$M/locore.s
 SYSTEM_OBJS= locore.o ${OBJS} ioconf.o config.o hack.So
-SYSTEM_DEP= Makefile ${SYSTEM_OBJS}
-SYSTEM_DEP+= $S/platform/$P/conf/ldscript.$M
-SYSTEM_LD= @${CC} ${ELDFLAGS} -nostdlib -ffreestanding -Wl,--hash-style=sysv \
-	-Wl,-Bdynamic -Wl,-L,$S/conf -Wl,-T,$S/platform/$P/conf/ldscript.$M \
-	-Wl,--export-dynamic -Wl,--dynamic-linker,/red/herring ${LDFLAGS} \
-	-o ${.TARGET} -Wl,-X ${SYSTEM_OBJS} vers.o
+SYSTEM_LDSCRIPT= $S/platform/$P/conf/ldscript.$M
+SYSTEM_DEP= Makefile ${SYSTEM_OBJS} ${SYSTEM_LDSCRIPT}
+SYSTEM_LD= @${CC} ${ELDFLAGS} -nostdlib -ffreestanding \
+	-Wl,-Bdynamic -Wl,-L,$S/conf -Wl,-T,${SYSTEM_LDSCRIPT} \
+	-Wl,--dynamic-linker,/red/herring ${LDFLAGS} \
+	-o ${.TARGET} ${SYSTEM_OBJS} vers.o
 SYSTEM_LD_TAIL= @${SIZE} ${.TARGET} ; chmod 755 ${.TARGET}
 
 # Normalize output files to make it absolutely crystal clear to
