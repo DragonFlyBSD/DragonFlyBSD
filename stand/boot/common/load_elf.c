@@ -218,6 +218,13 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
 	if (modlocal != NULL && strcmp(modlocal, "YES") == 0)
 	    strncat(mptr, ";/boot/modules.local", 255);
 
+	/*
+	 * Firmware a package installed for the loader to preload lives here.
+	 * The kernel wants it on the path too, so that firmware_get() can
+	 * fall back to a module of the same name if one is ever put there.
+	 */
+	strncat(mptr, ";/boot/firmware", 255);
+
 	/* this will be moved to "module_path" on boot */
 	setenv("exported_module_path", mptr, 1);
 	free(mptr);
