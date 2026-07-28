@@ -24,6 +24,9 @@ SYSTEM_LD= @${CC} ${DEBUG} -Wl,--export-dynamic -o ${.TARGET} ${SYSTEM_OBJS} ver
 SYSTEM_LD+= -Wl,--hash-style=sysv
 SYSTEM_LD+= -Wl,-z,max-page-size=0x200000
 
+# Vkernel does not use a linker script.
+SYSTEM_DEP:= ${SYSTEM_DEP:N*/ldscript.*}
+
 %BEFORE_DEPEND
 
 %OBJS
