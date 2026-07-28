@@ -111,6 +111,7 @@ cdev_pager_allocate(void *handle, enum obj_type tp, struct cdev_pager_ops *ops,
 {
 	cdev_t dev;
 	vm_object_t object;
+	vm_pindex_t pindex;
 	u_short color;
 
 	/*
@@ -120,6 +121,7 @@ cdev_pager_allocate(void *handle, enum obj_type tp, struct cdev_pager_ops *ops,
 		return (NULL);
 
 	size = round_page64(size);
+	pindex = OFF_TO_IDX(foff + size);
 
 	if (ops->cdev_pg_ctor(handle, size, prot, foff, cred, &color) != 0)
 		return (NULL);
@@ -133,8 +135,7 @@ cdev_pager_allocate(void *handle, enum obj_type tp, struct cdev_pager_ops *ops,
 		/*
 		 * Allocate object and associate it with the pager.
 		 */
-		object = vm_object_allocate_hold(tp,
-						 OFF_TO_IDX(foff + size));
+		object = vm_object_allocate_hold(tp, pindex);
 		object->handle = handle;
 		object->un_pager.devp.ops = ops;
 		object->un_pager.devp.dev = handle;
@@ -154,8 +155,10 @@ cdev_pager_allocate(void *handle, enum obj_type tp, struct cdev_pager_ops *ops,
 		vm_object_drop(object);
 	} else {
 		vm_object_hold(object);
-		if (OFF_TO_IDX(foff + size) > object->size)
-			object->size = OFF_TO_IDX(foff + size);
+		if (pindex > object->size)
+			object->size = pindex;
+		KASSERT(object->type == tp,
+			("Inconsistent device pager type %p %d", object, tp));
 		vm_object_drop(object);
 	}
 	mtx_unlock(&dev_pager_mtx);
