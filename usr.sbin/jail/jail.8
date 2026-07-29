@@ -32,7 +32,7 @@
 .\" ----------------------------------------------------------------------------
 .\"
 .\"
-.Dd March 19, 2025
+.Dd July 29, 2026
 .Dt JAIL 8
 .Os
 .Sh NAME
@@ -451,6 +451,30 @@ within a jail would be able to communicate with (and potentially interfere
 with) processes outside of the jail, and in other jails.
 As such, this functionality is disabled by default, but can be enabled
 by setting this MIB entry to 1.
+.It Va jail.defaults.vfs_mount_devfs
+This MIB entry determines whether or not prison root is allowed to mount the
+.Xr devfs 5
+device file system.
+This option is disabled by default.
+.It Va jail.defaults.vfs_mount_fusefs
+This MIB entry determines whether or not prison root is allowed to mount a
+FUSE file system.
+This option is disabled by default.
+.It Va jail.defaults.vfs_mount_nullfs
+This MIB entry determines whether or not prison root is allowed to mount a
+.Xr nullfs 5
+file system.
+This option is disabled by default.
+.It Va jail.defaults.vfs_mount_procfs
+This MIB entry determines whether or not prison root is allowed to mount the
+.Xr procfs 5
+process file system.
+This option is disabled by default.
+.It Va jail.defaults.vfs_mount_tmpfs
+This MIB entry determines whether or not prison root is allowed to mount a
+.Xr tmpfs 5
+memory file system.
+This option is disabled by default.
 .El
 .Sh SEE ALSO
 .Xr newaliases 1 ,
