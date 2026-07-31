@@ -59,7 +59,8 @@
 
 #include <stdarg.h>
 
-#include "pathnames.h"
+#define	_PATH_RUNCOM	"/etc/rc"
+#define	_PATH_NEWROOT	"/new_root"
 
 static int	setctty(const char *);
 static void	runcom(char **);
