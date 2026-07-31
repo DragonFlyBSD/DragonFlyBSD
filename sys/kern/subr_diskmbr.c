@@ -160,21 +160,15 @@ reread_mbr:
 	memcpy(&dpcopy[0], cp + DOSPARTOFF, sizeof(dpcopy));
 	dp0 = &dpcopy[0];
 
-	/*
-	 * Check for "Ontrack Disk Manager" or GPT.
-	 *
-	 * If a GPT is found in the first DOS partition, ignore the rest of the
-	 * MBR and go to GPT processing.
-	 */
-	for (dospart = 0, dp = dp0; dospart < NDOSPART; dospart++, dp++) {
-		if (dospart == 0 && dp->dp_typ == DOSPTYP_PMBR) {
-			if (bootverbose)
-				kprintf("%s: Found GPT in slice #%d\n",
-					sname, dospart + 1);
-			error = gptinit(dev, info, sspp);
-			goto done;
-		}
+	if (dp0->dp_typ == DOSPTYP_PMBR) {
+		if (bootverbose)
+			kprintf("%s: Found GPT\n", sname);
+		error = gptinit(dev, info, sspp);
+		goto done;
+	}
 
+	/* Check for "Ontrack Disk Manager". */
+	for (dospart = 0, dp = dp0; dospart < NDOSPART; dospart++, dp++) {
 		if (dp->dp_typ == DOSPTYP_ONTRACK) {
 			if (bootverbose)
 				kprintf("%s: Found \"Ontrack Disk Manager\" "

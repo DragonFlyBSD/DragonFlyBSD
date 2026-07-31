@@ -390,17 +390,16 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 
 	switch (cmd) {
 	case DIOCGDVIRGIN32:
-		ops = &disklabel32_ops;
-		/* fall through */
 	case DIOCGDVIRGIN64:
-		if (cmd != DIOCGDVIRGIN32)
+		if (cmd == DIOCGDVIRGIN32)
+			ops = &disklabel32_ops;
+		else
 			ops = &disklabel64_ops;
 		/*
 		 * You can only retrieve a virgin disklabel on the whole
 		 * disk slice or whole-slice partition.
 		 */
-		if (slice != WHOLE_DISK_SLICE &&
-		    part != WHOLE_SLICE_PART) {
+		if (slice != WHOLE_DISK_SLICE && part != WHOLE_SLICE_PART) {
 			return(EINVAL);
 		}
 
@@ -485,86 +484,85 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		return 0;
 
 	case DIOCGPART:
-		{
-			struct partinfo *dpart = (void *)data;
+	{
+		struct partinfo *dpart = (void *)data;
 
-			/*
-			 * The disk management layer may not have read the
-			 * disklabel yet because simply opening a slice no
-			 * longer 'probes' the disk that way.  Be sure we
-			 * have tried.
-			 *
-			 * We ignore any error.
-			 */
-			if (sp->ds_label.opaque == NULL &&
-			    part == WHOLE_SLICE_PART &&
-			    slice != WHOLE_DISK_SLICE) {
-				dsreadandsetlabel(dev, info->d_dsflags,
-						  ssp, sp, info);
-				ops = sp->ds_ops;	/* may be NULL */
-			}
-
-			bzero(dpart, sizeof(*dpart));
-			dpart->media_offset   = (u_int64_t)sp->ds_offset *
-						info->d_media_blksize;
-			dpart->media_size     = (u_int64_t)sp->ds_size *
-						info->d_media_blksize;
-			dpart->media_blocks   = sp->ds_size;
-			dpart->media_blksize  = info->d_media_blksize;
-			dpart->reserved_blocks= sp->ds_reserved;
-			dpart->fstype_uuid = sp->ds_type_uuid;
-			dpart->storage_uuid = sp->ds_stor_uuid;
-
-			if (slice != WHOLE_DISK_SLICE &&
-			    part != WHOLE_SLICE_PART) {
-				u_int64_t start;
-				u_int64_t blocks;
-				if (lp.opaque == NULL)
-					return(EINVAL);
-				if (ops->op_getpartbounds(ssp, lp, part,
-							  &start, &blocks)) {
-					return(EINVAL);
-				}
-				ops->op_loadpartinfo(lp, part, dpart);
-				dpart->media_offset += start *
-						       info->d_media_blksize;
-				dpart->media_size = blocks *
-						    info->d_media_blksize;
-				dpart->media_blocks = blocks;
-
-				/*
-				 * partition starting sector (p_offset)
-				 * requires slice's reserved areas to be
-				 * adjusted.
-				 */
-				if (dpart->reserved_blocks > start)
-					dpart->reserved_blocks -= start;
-				else
-					dpart->reserved_blocks = 0;
-			}
-
-			/*
-			 * Load remaining fields from the info structure
-			 */
-			dpart->d_nheads =	info->d_nheads;
-			dpart->d_ncylinders =	info->d_ncylinders;
-			dpart->d_secpertrack =	info->d_secpertrack;
-			dpart->d_secpercyl =	info->d_secpercyl;
+		/*
+		 * The disk management layer may not have read the
+		 * disklabel yet because simply opening a slice no
+		 * longer 'probes' the disk that way.  Be sure we
+		 * have tried.
+		 *
+		 * We ignore any error.
+		 */
+		if (sp->ds_label.opaque == NULL &&
+		    part == WHOLE_SLICE_PART &&
+		    slice != WHOLE_DISK_SLICE) {
+			dsreadandsetlabel(dev, info->d_dsflags,
+					  ssp, sp, info);
+			ops = sp->ds_ops;	/* may be NULL */
 		}
+
+		bzero(dpart, sizeof(*dpart));
+		dpart->media_offset   = (u_int64_t)sp->ds_offset *
+					info->d_media_blksize;
+		dpart->media_size     = (u_int64_t)sp->ds_size *
+					info->d_media_blksize;
+		dpart->media_blocks   = sp->ds_size;
+		dpart->media_blksize  = info->d_media_blksize;
+		dpart->reserved_blocks= sp->ds_reserved;
+		dpart->fstype_uuid = sp->ds_type_uuid;
+		dpart->storage_uuid = sp->ds_stor_uuid;
+
+		if (slice != WHOLE_DISK_SLICE &&
+		    part != WHOLE_SLICE_PART) {
+			u_int64_t start;
+			u_int64_t blocks;
+
+			if (lp.opaque == NULL)
+				return(EINVAL);
+			if (ops->op_getpartbounds(ssp, lp, part,
+						  &start, &blocks)) {
+				return(EINVAL);
+			}
+			ops->op_loadpartinfo(lp, part, dpart);
+			dpart->media_offset += start * info->d_media_blksize;
+			dpart->media_size = blocks * info->d_media_blksize;
+			dpart->media_blocks = blocks;
+
+			/*
+			 * partition starting sector (p_offset)
+			 * requires slice's reserved areas to be
+			 * adjusted.
+			 */
+			if (dpart->reserved_blocks > start)
+				dpart->reserved_blocks -= start;
+			else
+				dpart->reserved_blocks = 0;
+		}
+
+		/*
+		 * Load remaining fields from the info structure
+		 */
+		dpart->d_nheads =	info->d_nheads;
+		dpart->d_ncylinders =	info->d_ncylinders;
+		dpart->d_secpertrack =	info->d_secpertrack;
+		dpart->d_secpercyl =	info->d_secpercyl;
+
 		return (0);
+	}
 
 	case DIOCSDINFO32:
-		ops = &disklabel32_ops;
-		/* fall through */
 	case DIOCSDINFO64:
-		if (cmd != DIOCSDINFO32)
+		if (cmd == DIOCSDINFO32)
+			ops = &disklabel32_ops;
+		else
 			ops = &disklabel64_ops;
 		/*
 		 * You can write a disklabel on the whole disk slice or
 		 * whole-slice partition.
 		 */
-		if (slice != WHOLE_DISK_SLICE &&
-		    part != WHOLE_SLICE_PART) {
+		if (slice != WHOLE_DISK_SLICE && part != WHOLE_SLICE_PART) {
 			return(EINVAL);
 		}
 
@@ -591,13 +589,11 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		 * the new label.
 		 */
 		lp.opaque = kmalloc(ops->labelsize, M_DEVBUF, M_WAITOK);
-		if (sp->ds_label.opaque == NULL)
-			bzero(lp.opaque, ops->labelsize);
-		else
-			bcopy(sp->ds_label.opaque, lp.opaque, ops->labelsize);
 		if (sp->ds_label.opaque == NULL) {
+			bzero(lp.opaque, ops->labelsize);
 			bzero(openmask, sizeof(openmask));
 		} else {
+			bcopy(sp->ds_label.opaque, lp.opaque, ops->labelsize);
 			bcopy(sp->ds_openmask, openmask, sizeof(openmask));
 		}
 		lptmp.opaque = data;
@@ -682,8 +678,8 @@ dsmakeslicestruct(int nslices, struct disk_info *info)
 	struct diskslice *sp;
 	struct diskslices *ssp;
 
-	ssp = kmalloc(offsetof(struct diskslices, dss_slices) +
-		      nslices * sizeof(*sp), M_DEVBUF, M_WAITOK);
+	ssp = kmalloc(offsetof(struct diskslices, dss_slices[nslices]),
+		      M_DEVBUF, M_WAITOK);
 	ssp->dss_first_bsd_slice = COMPATIBILITY_SLICE;
 	ssp->dss_nslices = nslices;
 	ssp->dss_oflags = 0;
@@ -747,8 +743,7 @@ dsopen(cdev_t dev, int mode, u_int flags,
  * If we cannot read the disklabel and DSO_COMPATLABEL is set, we construct
  * a fake label covering the whole disk.
  */
-static
-int
+static int
 dsreadandsetlabel(cdev_t dev, u_int flags,
 		  struct diskslices *ssp, struct diskslice *sp,
 		  struct disk_info *info)
