@@ -123,10 +123,10 @@ imposes finer and more specific structure, generally renaming
 the variant, which is discussed in the protocol family manual
 page alluded to above.
 .Bd -literal -offset indent
-    struct sockaddr {
+struct sockaddr {
 	u_char	sa_len;
-    	u_char	sa_family;
-    	char	sa_data[14];
+	u_char	sa_family;
+	char	sa_data[14];
 };
 .Ed
 .Pp
