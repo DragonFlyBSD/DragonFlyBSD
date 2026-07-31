@@ -6,6 +6,7 @@
 # PROVIDE: devfs
 # REQUIRE: rcconf
 # BEFORE:  disks
+# KEYWORD: nojail
 
 . /etc/rc.subr
 
