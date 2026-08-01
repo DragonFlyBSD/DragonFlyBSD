@@ -16,7 +16,12 @@ CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 
 _cnowarnflags=	-Wno-pointer-sign
 
+_gccver=	0
 .if ${CCVER:Mgcc*}
+_gccver=	${CCVER:S/gcc//}
+.endif
+
+.if ${_gccver} > 0
 CWARNFLAGS+=	-Wold-style-declaration
 _cnowarnflags+=	-Wno-unused-but-set-variable
 .endif
