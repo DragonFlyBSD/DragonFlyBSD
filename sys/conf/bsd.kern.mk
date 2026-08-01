@@ -11,12 +11,19 @@ CSTD?=		gnu11
 
 CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wmissing-prototypes -Wpointer-arith -Wcast-qual \
-		-Wold-style-definition -Wmissing-include-dirs \
-		-Wno-pointer-sign -Winit-self -Wundef
+		-Wold-style-definition -Wmissing-include-dirs -Winit-self \
+		-Wundef
+
+_cnowarnflags=	-Wno-pointer-sign
 
 .if ${CCVER:Mgcc*}
-CFLAGS+=	-Wold-style-declaration
-CWARNFLAGS+=	-Wno-unused-but-set-variable
+CWARNFLAGS+=	-Wold-style-declaration
+_cnowarnflags+=	-Wno-unused-but-set-variable
+.endif
+
+# Add -Wno-foo flags last
+.if !defined(WARNS_AUDIT)
+CWARNFLAGS+=	${_cnowarnflags}
 .endif
 
 
