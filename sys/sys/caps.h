@@ -34,6 +34,8 @@
 #ifndef _SYS_CAPS_H_
 #define	_SYS_CAPS_H_
 
+#include <sys/types.h>
+
 #ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
 #endif
