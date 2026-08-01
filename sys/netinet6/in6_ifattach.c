@@ -657,10 +657,12 @@ in6_nigroup_attach_dispatch(netmsg_t msg)
 		in6m = IN6_LOOKUP_MULTI(&mltaddr.sin6_addr, ifp);
 		if (!in6m) {
 			if (!in6_addmulti(&mltaddr.sin6_addr, ifp, &error)) {
-				nd6log((LOG_ERR, "%s: failed to join %s "
-				    "(errno=%d)\n", if_name(ifp),
-				    ip6_sprintf(&mltaddr.sin6_addr),
-				    error));
+				char ip6buf[INET6_ADDRSTRLEN];
+
+				ip6_sprintf(ip6buf, &mltaddr.sin6_addr);
+				nd6log((LOG_ERR,
+					"%s: failed to join %s (errno=%d)\n",
+					if_name(ifp), ip6buf, error));
 			}
 		}
 	}

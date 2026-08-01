@@ -363,7 +363,7 @@ ip6fw_report(struct ip6_fw *f, struct ip6_hdr *ip6,
 	struct icmp6_hdr *const icmp6 = (struct icmp6_hdr *) ((caddr_t) ip6+ off);
 	int count;
 	char *action;
-	char action2[32], proto[102], name[18];
+	char action2[32], proto[102], name[18], ip6buf[INET6_ADDRSTRLEN];
 	int len;
 
 	count = f ? f->fw_pcnt : ++counter;
@@ -414,28 +414,28 @@ ip6fw_report(struct ip6_fw *f, struct ip6_hdr *ip6,
 	switch (nxt) {
 	case IPPROTO_TCP:
 		len = ksnprintf(SNPARGS(proto, 0), "TCP [%s]",
-		    ip6_sprintf(&ip6->ip6_src));
+		    ip6_sprintf(ip6buf, &ip6->ip6_src));
 		if (off > 0)
 			len += ksnprintf(SNPARGS(proto, len), ":%d ",
 			    ntohs(tcp6->th_sport));
 		else
 			len += ksnprintf(SNPARGS(proto, len), " ");
 		len += ksnprintf(SNPARGS(proto, len), "[%s]",
-		    ip6_sprintf(&ip6->ip6_dst));
+		    ip6_sprintf(ip6buf, &ip6->ip6_dst));
 		if (off > 0)
 			ksnprintf(SNPARGS(proto, len), ":%d",
 			    ntohs(tcp6->th_dport));
 		break;
 	case IPPROTO_UDP:
 		len = ksnprintf(SNPARGS(proto, 0), "UDP [%s]",
-		    ip6_sprintf(&ip6->ip6_src));
+		    ip6_sprintf(ip6buf, &ip6->ip6_src));
 		if (off > 0)
 			len += ksnprintf(SNPARGS(proto, len), ":%d ",
 			    ntohs(udp->uh_sport));
 		else
 		    len += ksnprintf(SNPARGS(proto, len), " ");
 		len += ksnprintf(SNPARGS(proto, len), "[%s]",
-		    ip6_sprintf(&ip6->ip6_dst));
+		    ip6_sprintf(ip6buf, &ip6->ip6_dst));
 		if (off > 0)
 			ksnprintf(SNPARGS(proto, len), ":%d",
 			    ntohs(udp->uh_dport));
@@ -447,15 +447,15 @@ ip6fw_report(struct ip6_fw *f, struct ip6_hdr *ip6,
 		else
 			len = ksnprintf(SNPARGS(proto, 0), "IPV6-ICMP ");
 		len += ksnprintf(SNPARGS(proto, len), "[%s]",
-		    ip6_sprintf(&ip6->ip6_src));
+		    ip6_sprintf(ip6buf, &ip6->ip6_src));
 		ksnprintf(SNPARGS(proto, len), " [%s]",
-		    ip6_sprintf(&ip6->ip6_dst));
+		    ip6_sprintf(ip6buf, &ip6->ip6_dst));
 		break;
 	default:
 		len = ksnprintf(SNPARGS(proto, 0), "P:%d [%s]", nxt,
-		    ip6_sprintf(&ip6->ip6_src));
+		    ip6_sprintf(ip6buf, &ip6->ip6_src));
 		ksnprintf(SNPARGS(proto, len), " [%s]",
-		    ip6_sprintf(&ip6->ip6_dst));
+		    ip6_sprintf(ip6buf, &ip6->ip6_dst));
 		break;
 	}
 

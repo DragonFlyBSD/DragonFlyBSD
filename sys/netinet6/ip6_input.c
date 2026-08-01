@@ -503,10 +503,12 @@ ip6_input(netmsg_t msg)
 			goto hbhcheck;
 		} else {
 			/* address is not ready, so discard the packet. */
+			char srcbuf[INET6_ADDRSTRLEN], dstbuf[INET6_ADDRSTRLEN];
+
 			nd6log((LOG_INFO,
 			    "ip6_input: packet to an unready address %s->%s\n",
-			    ip6_sprintf(&ip6->ip6_src),
-			    ip6_sprintf(&ip6->ip6_dst)));
+			    ip6_sprintf(srcbuf, &ip6->ip6_src),
+			    ip6_sprintf(dstbuf, &ip6->ip6_dst)));
 
 			goto bad;
 		}

@@ -711,10 +711,9 @@ retry:
 
 		/* Copy the IPS */
 		SLIST_FOREACH(jip, &pr->pr_ips, entries) {
-			char buf[INET_ADDRSTRLEN];
+			char buf[INET6_ADDRSTRLEN];
 
 			jsin = (struct sockaddr_in *)&jip->ip;
-
 			switch(jsin->sin_family) {
 			case AF_INET:
 				oip = kinet_ntoa(jsin->sin_addr, buf);
@@ -722,7 +721,7 @@ retry:
 #ifdef INET6
 			case AF_INET6:
 				jsin6 = (struct sockaddr_in6 *)&jip->ip;
-				oip = ip6_sprintf(&jsin6->sin6_addr);
+				oip = ip6_sprintf(buf, &jsin6->sin6_addr);
 				break;
 #endif
 			default:

@@ -340,9 +340,10 @@ gif_validate6(const struct ip6_hdr *ip6, struct gif_softc *sc,
 			--rt->rt_refcnt;
 		if (rt == NULL || rt->rt_ifp != ifp) {
 #if 0
+			char ip6buf[INET6_ADDRSTRLEN];
 			log(LOG_WARNING, "%s: packet from %s dropped "
 			    "due to ingress filter\n", if_name(&sc->gif_if),
-			    ip6_sprintf(&sin6.sin6_addr));
+			    ip6_sprintf(ip6buf, &sin6.sin6_addr));
 #endif
 			return 0;
 		}

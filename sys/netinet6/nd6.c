@@ -861,6 +861,7 @@ nd6_lookup(struct in6_addr *addr6, int create, struct ifnet *ifp)
 {
 	struct rtentry *rt;
 	struct sockaddr_in6 sin6;
+	char ip6buf[INET6_ADDRSTRLEN];
 
 	bzero(&sin6, sizeof(sin6));
 	sin6.sin6_len = sizeof(struct sockaddr_in6);
@@ -913,7 +914,7 @@ nd6_lookup(struct in6_addr *addr6, int create, struct ifnet *ifp)
 				log(LOG_ERR,
 				    "nd6_lookup: failed to add route for a "
 				    "neighbor(%s), errno=%d\n",
-				    ip6_sprintf(addr6), e);
+				    ip6_sprintf(ip6buf, addr6), e);
 			}
 			if (rt == NULL)
 				return (NULL);
@@ -932,7 +933,8 @@ nd6_lookup(struct in6_addr *addr6, int create, struct ifnet *ifp)
 		if (create) {
 			log(LOG_DEBUG,
 			    "nd6_lookup: failed to lookup %s (if = %s)\n",
-			    ip6_sprintf(addr6), ifp ? if_name(ifp) : "unspec");
+			    ip6_sprintf(ip6buf, addr6),
+			    ifp ? if_name(ifp) : "unspec");
 			/* xxx more logs... kazu */
 		}
 		return (NULL);
@@ -1366,6 +1368,7 @@ nd6_rtrequest(int req, struct rtentry *rt)
 			 */
 			if ((ifp->if_flags & IFF_MULTICAST) && mycpuid == 0) {
 				struct in6_addr llsol;
+				char ip6buf[INET6_ADDRSTRLEN];
 				int error;
 
 				llsol = SIN6(rt_key(rt))->sin6_addr;
@@ -1378,7 +1381,8 @@ nd6_rtrequest(int req, struct rtentry *rt)
 				if (!in6_addmulti(&llsol, ifp, &error)) {
 					nd6log((LOG_ERR, "%s: failed to join "
 					    "%s (errno=%d)\n", if_name(ifp),
-					    ip6_sprintf(&llsol), error));
+					    ip6_sprintf(ip6buf, &llsol),
+					    error));
 				}
 			}
 		}
@@ -1430,6 +1434,7 @@ nd6_ioctl(u_long cmd, caddr_t data, struct ifnet *ifp)
 	struct nd_defrouter *dr, any;
 	struct nd_prefix *pr;
 	struct rtentry *rt;
+	char ip6buf[INET6_ADDRSTRLEN];
 	int i = 0, error = 0;
 
 	switch (cmd) {
@@ -1445,11 +1450,13 @@ nd6_ioctl(u_long cmd, caddr_t data, struct ifnet *ifp)
 			if (IN6_IS_ADDR_LINKLOCAL(&drl->defrouter[i].rtaddr)) {
 				/* XXX: need to this hack for KAME stack */
 				drl->defrouter[i].rtaddr.s6_addr16[1] = 0;
-			} else
+			} else {
+				ip6_sprintf(ip6buf, &drl->defrouter[i].rtaddr);
 				log(LOG_ERR,
 				    "default router list contains a "
 				    "non-linklocal address(%s)\n",
-				    ip6_sprintf(&drl->defrouter[i].rtaddr));
+				    ip6buf);
+			}
 
 			drl->defrouter[i].flags = dr->flags;
 			drl->defrouter[i].rtlifetime = dr->rtlifetime;
@@ -1494,12 +1501,14 @@ nd6_ioctl(u_long cmd, caddr_t data, struct ifnet *ifp)
 					if (IN6_IS_ADDR_LINKLOCAL(&RTRADDR)) {
 						/* XXX: hack for KAME */
 						RTRADDR.s6_addr16[1] = 0;
-					} else
+					} else {
+						ip6_sprintf(ip6buf, &RTRADDR);
 						log(LOG_ERR,
 						    "a router(%s) advertises "
 						    "a prefix with "
 						    "non-link local address\n",
-						    ip6_sprintf(&RTRADDR));
+						    ip6buf);
+					}
 #undef RTRADDR
 				}
 				j++;
@@ -1977,6 +1986,7 @@ nd6_resolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 	struct sockaddr_in6 *dst = SIN6(dst0);
 	struct rtentry *rt = NULL;
 	struct llinfo_nd6 *ln = NULL;
+	char ip6buf[INET6_ADDRSTRLEN];
 	int error;
 
 	if (m->m_flags & M_MCAST) {
@@ -2024,7 +2034,7 @@ nd6_resolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 			log(LOG_DEBUG,
 			    "nd6_output: can't allocate llinfo for %s "
 			    "(ln=%p, rt=%p)\n",
-			    ip6_sprintf(&dst->sin6_addr), ln, rt);
+			    ip6_sprintf(ip6buf, &dst->sin6_addr), ln, rt);
 			error = ENOBUFS;
 			goto bad;
 		}
@@ -2157,7 +2167,7 @@ static int
 nd6_sysctl_drlist(SYSCTL_HANDLER_ARGS)
 {
 	int error;
-	char buf[1024];
+	char buf[1024], ip6buf[INET6_ADDRSTRLEN];
 	struct in6_defrouter *d, *de;
 	struct nd_defrouter *dr;
 
@@ -2175,11 +2185,12 @@ nd6_sysctl_drlist(SYSCTL_HANDLER_ARGS)
 			d->rtaddr.sin6_family = AF_INET6;
 			d->rtaddr.sin6_len = sizeof(d->rtaddr);
 			if (in6_recoverscope(&d->rtaddr, &dr->rtaddr,
-			    dr->ifp) != 0)
+			    dr->ifp) != 0) {
 				log(LOG_ERR,
 				    "scope error in "
 				    "default router list (%s)\n",
-				    ip6_sprintf(&dr->rtaddr));
+				    ip6_sprintf(ip6buf, &dr->rtaddr));
+			}
 			d->flags = dr->flags;
 			d->rtlifetime = dr->rtlifetime;
 			d->expire = dr->expire;
@@ -2198,7 +2209,7 @@ static int
 nd6_sysctl_prlist(SYSCTL_HANDLER_ARGS)
 {
 	int error;
-	char buf[1024];
+	char buf[1024], ip6buf[INET6_ADDRSTRLEN];
 	struct in6_prefix *p, *pe;
 	struct nd_prefix *pr;
 
@@ -2221,10 +2232,11 @@ nd6_sysctl_prlist(SYSCTL_HANDLER_ARGS)
 
 			p->prefix = pr->ndpr_prefix;
 			if (in6_recoverscope(&p->prefix,
-			    &p->prefix.sin6_addr, pr->ndpr_ifp) != 0)
+			    &p->prefix.sin6_addr, pr->ndpr_ifp) != 0) {
 				log(LOG_ERR,
 				    "scope error in prefix list (%s)\n",
-				    ip6_sprintf(&p->prefix.sin6_addr));
+				    ip6_sprintf(ip6buf, &p->prefix.sin6_addr));
+			}
 			p->raflags = pr->ndpr_raf;
 			p->prefixlen = pr->ndpr_plen;
 			p->vltime = pr->ndpr_vltime;
@@ -2246,11 +2258,13 @@ nd6_sysctl_prlist(SYSCTL_HANDLER_ARGS)
 				s6->sin6_family = AF_INET6;
 				s6->sin6_len = sizeof(*sin6);
 				if (in6_recoverscope(s6, &pfr->router->rtaddr,
-				    pfr->router->ifp) != 0)
+				    pfr->router->ifp) != 0) {
+					ip6_sprintf(ip6buf,
+					    &pfr->router->rtaddr);
 					log(LOG_ERR,
-					    "scope error in "
-					    "prefix list (%s)\n",
-					    ip6_sprintf(&pfr->router->rtaddr));
+					    "scope error in prefix list (%s)\n",
+					    ip6buf);
+				}
 				advrtrs++;
 			}
 			p->advrtrs = advrtrs;

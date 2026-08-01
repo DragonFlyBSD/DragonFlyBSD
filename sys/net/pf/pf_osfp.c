@@ -154,7 +154,9 @@ pf_osfp_fingerprint_hdr(const struct ip *ip, const struct ip6_hdr *ip6, const st
 	}
 #ifdef INET6
 	else if (ip6) {
-#ifndef _KERNEL
+#ifdef _KERNEL
+		char ip6buf[INET6_ADDRSTRLEN];
+#else
 		struct sockaddr_in6 sin6;
 #endif
 
@@ -164,7 +166,8 @@ pf_osfp_fingerprint_hdr(const struct ip *ip, const struct ip6_hdr *ip6, const st
 		fp.fp_flags |= PF_OSFP_DF;
 		fp.fp_flags |= PF_OSFP_INET6;
 #ifdef _KERNEL
-		strlcpy(srcname, ip6_sprintf(&ip6->ip6_src), sizeof(srcname));
+		strlcpy(srcname, ip6_sprintf(ip6buf, &ip6->ip6_src),
+			sizeof(srcname));
 #else
 		memset(&sin6, 0, sizeof(sin6));
 		sin6.sin6_family = AF_INET6;

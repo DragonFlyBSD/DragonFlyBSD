@@ -876,15 +876,18 @@ findpcb:
 		if (log_in_vain) {
 #ifdef INET6
 			char dbuf[INET6_ADDRSTRLEN+2], sbuf[INET6_ADDRSTRLEN+2];
+			char ip6buf[INET6_ADDRSTRLEN];
 #else
 			char dbuf[INET_ADDRSTRLEN], sbuf[INET_ADDRSTRLEN];
 #endif
 			if (isipv6) {
 				strcpy(dbuf, "[");
-				strcat(dbuf, ip6_sprintf(&ip6->ip6_dst));
+				strcat(dbuf,
+				       ip6_sprintf(ip6buf, &ip6->ip6_dst));
 				strcat(dbuf, "]");
 				strcpy(sbuf, "[");
-				strcat(sbuf, ip6_sprintf(&ip6->ip6_src));
+				strcat(sbuf,
+				       ip6_sprintf(ip6buf, &ip6->ip6_src));
 				strcat(sbuf, "]");
 			} else {
 				kinet_ntoa(ip->ip_dst, dbuf);

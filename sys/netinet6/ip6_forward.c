@@ -95,6 +95,7 @@ ip6_forward(struct mbuf *m, int srcrt)
 	struct mbuf *mcopy = NULL;
 	struct ifnet *origifp;	/* maybe unnecessary */
 	u_int32_t srczone, dstzone;
+	char ip6buf[INET6_ADDRSTRLEN], ip6buf2[INET6_ADDRSTRLEN];
 
 	/*
 	 * Do not forward packets to multicast destination (should be handled
@@ -112,8 +113,8 @@ ip6_forward(struct mbuf *m, int srcrt)
 			log(LOG_DEBUG,
 			    "cannot forward "
 			    "from %s to %s nxt %d received on %s\n",
-			    ip6_sprintf(&ip6->ip6_src),
-			    ip6_sprintf(&ip6->ip6_dst),
+			    ip6_sprintf(ip6buf, &ip6->ip6_src),
+			    ip6_sprintf(ip6buf2, &ip6->ip6_dst),
 			    ip6->ip6_nxt,
 			    if_name(m->m_pkthdr.rcvif));
 		}
@@ -207,8 +208,8 @@ ip6_forward(struct mbuf *m, int srcrt)
 			log(LOG_DEBUG,
 			    "cannot forward "
 			    "src %s, dst %s, nxt %d, rcvif %s, outif %s\n",
-			    ip6_sprintf(&ip6->ip6_src),
-			    ip6_sprintf(&ip6->ip6_dst),
+			    ip6_sprintf(ip6buf, &ip6->ip6_src),
+			    ip6_sprintf(ip6buf2, &ip6->ip6_dst),
 			    ip6->ip6_nxt,
 			    if_name(m->m_pkthdr.rcvif), if_name(rt->rt_ifp));
 		}
@@ -304,8 +305,8 @@ ip6_forward(struct mbuf *m, int srcrt)
 		{
 			kprintf("ip6_forward: outgoing interface is loopback. "
 				"src %s, dst %s, nxt %d, rcvif %s, outif %s\n",
-				ip6_sprintf(&ip6->ip6_src),
-				ip6_sprintf(&ip6->ip6_dst),
+				ip6_sprintf(ip6buf, &ip6->ip6_src),
+				ip6_sprintf(ip6buf2, &ip6->ip6_dst),
 				ip6->ip6_nxt, if_name(m->m_pkthdr.rcvif),
 				if_name(rt->rt_ifp));
 		}

@@ -694,6 +694,7 @@ add_m6fc(struct mf6cctl *mfccp)
 	u_long hash;
 	struct rtdetq *rte;
 	u_short nstl;
+	char ip6buf[INET6_ADDRSTRLEN], ip6buf2[INET6_ADDRSTRLEN];
 
 	MF6CFIND(mfccp->mf6cc_origin.sin6_addr,
 		 mfccp->mf6cc_mcastgrp.sin6_addr, rt);
@@ -701,12 +702,13 @@ add_m6fc(struct mf6cctl *mfccp)
 	/* If an entry already exists, just update the fields */
 	if (rt) {
 #ifdef MRT6DEBUG
-		if (mrt6debug & DEBUG_MFC)
+		if (mrt6debug & DEBUG_MFC) {
+			ip6_sprintf(ip6buf, &mfccp->mf6cc_origin.sin6_addr);
+			ip6_sprintf(ip6buf2, &mfccp->mf6cc_mcastgrp.sin6_addr);
 			log(LOG_DEBUG,
 			    "add_m6fc no upcall h %d o %s g %s p %x\n",
-			    ip6_sprintf(&mfccp->mf6cc_origin.sin6_addr),
-			    ip6_sprintf(&mfccp->mf6cc_mcastgrp.sin6_addr),
-			    mfccp->mf6cc_parent);
+			    ip6buf, ip6buf2, mfccp->mf6cc_parent);
+		}
 #endif
 
 		crit_enter();
@@ -729,21 +731,29 @@ add_m6fc(struct mf6cctl *mfccp)
 				       &mfccp->mf6cc_mcastgrp.sin6_addr) &&
 		    (rt->mf6c_stall != NULL)) {
 
-			if (nstl++)
+			if (nstl++) {
+				ip6_sprintf(ip6buf,
+				    &mfccp->mf6cc_origin.sin6_addr);
+				ip6_sprintf(ip6buf2,
+				    &mfccp->mf6cc_mcastgrp.sin6_addr);
 				log(LOG_ERR,
 				    "add_m6fc: %s o %s g %s p %x dbx %p\n",
 				    "multiple kernel entries",
-				    ip6_sprintf(&mfccp->mf6cc_origin.sin6_addr),
-				    ip6_sprintf(&mfccp->mf6cc_mcastgrp.sin6_addr),
+				    ip6buf, ip6buf2,
 				    mfccp->mf6cc_parent, rt->mf6c_stall);
+			}
 
 #ifdef MRT6DEBUG
-			if (mrt6debug & DEBUG_MFC)
+			if (mrt6debug & DEBUG_MFC) {
+				ip6_sprintf(ip6buf,
+				    &mfccp->mf6cc_origin.sin6_addr);
+				ip6_sprintf(ip6buf2,
+				    &mfccp->mf6cc_mcastgrp.sin6_addr);
 				log(LOG_DEBUG,
 				    "add_m6fc o %s g %s p %x dbg %x\n",
-				    ip6_sprintf(&mfccp->mf6cc_origin.sin6_addr),
-				    ip6_sprintf(&mfccp->mf6cc_mcastgrp.sin6_addr),
+				    ip6buf, ip6buf2,
 				    mfccp->mf6cc_parent, rt->mf6c_stall);
+			}
 #endif
 
 			rt->mf6c_origin     = mfccp->mf6cc_origin;
@@ -778,12 +788,12 @@ add_m6fc(struct mf6cctl *mfccp)
 	 */
 	if (nstl == 0) {
 #ifdef MRT6DEBUG
-		if (mrt6debug & DEBUG_MFC)
+		if (mrt6debug & DEBUG_MFC) {
+			ip6_sprintf(ip6buf, &mfccp->mf6cc_origin.sin6_addr);
+			ip6_sprintf(ip6buf2, &mfccp->mf6cc_mcastgrp.sin6_addr);
 			log(LOG_DEBUG,"add_mfc no upcall h %d o %s g %s p %x\n",
-			    hash,
-			    ip6_sprintf(&mfccp->mf6cc_origin.sin6_addr),
-			    ip6_sprintf(&mfccp->mf6cc_mcastgrp.sin6_addr),
-			    mfccp->mf6cc_parent);
+			    hash, ip6buf, ip6buf2, mfccp->mf6cc_parent);
+		}
 #endif
 
 		for (rt = mf6ctable[hash]; rt; rt = rt->mf6c_next) {
@@ -871,7 +881,7 @@ del_m6fc(struct mf6cctl *mfccp)
 	struct sockaddr_in6 	origin;
 	struct sockaddr_in6 	mcastgrp;
 	struct mf6c 		*rt;
-	struct mf6c	 	**nptr;
+	struct mf6c		**nptr;
 	u_long 		hash;
 
 	origin = mfccp->mf6cc_origin;
@@ -879,10 +889,13 @@ del_m6fc(struct mf6cctl *mfccp)
 	hash = MF6CHASH(origin.sin6_addr, mcastgrp.sin6_addr);
 
 #ifdef MRT6DEBUG
-	if (mrt6debug & DEBUG_MFC)
+	if (mrt6debug & DEBUG_MFC) {
+		char ip6buf[INET6_ADDRSTRLEN], ip6buf2[INET6_ADDRSTRLEN];
+
 		log(LOG_DEBUG,"del_m6fc orig %s mcastgrp %s\n",
-		    ip6_sprintf(&origin.sin6_addr),
-		    ip6_sprintf(&mcastgrp.sin6_addr));
+		    ip6_sprintf(ip6buf, &origin.sin6_addr),
+		    ip6_sprintf(ip6buf2, &mcastgrp.sin6_addr));
+	}
 #endif
 
 	crit_enter();
@@ -948,12 +961,15 @@ ip6_mforward(struct ip6_hdr *ip6, struct ifnet *ifp, struct mbuf *m)
 	struct mif6 *mifp;
 	struct mbuf *mm;
 	mifi_t mifi;
+	char ip6buf[INET6_ADDRSTRLEN], ip6buf2[INET6_ADDRSTRLEN];
 
 #ifdef MRT6DEBUG
-	if (mrt6debug & DEBUG_FORWARD)
+	if (mrt6debug & DEBUG_FORWARD) {
 		log(LOG_DEBUG, "ip6_mforward: src %s, dst %s, ifindex %d\n",
-		    ip6_sprintf(&ip6->ip6_src), ip6_sprintf(&ip6->ip6_dst),
+		    ip6_sprintf(ip6buf, &ip6->ip6_src),
+		    ip6_sprintf(ip6buf2, &ip6->ip6_dst),
 		    ifp->if_index);
+	}
 #endif
 
 	/*
@@ -979,10 +995,9 @@ ip6_mforward(struct ip6_hdr *ip6, struct ifnet *ifp, struct mbuf *m)
 			log(LOG_DEBUG,
 			    "cannot forward "
 			    "from %s to %s nxt %d received on %s\n",
-			    ip6_sprintf(&ip6->ip6_src),
-			    ip6_sprintf(&ip6->ip6_dst),
-			    ip6->ip6_nxt,
-			    if_name(m->m_pkthdr.rcvif));
+			    ip6_sprintf(ip6buf, &ip6->ip6_src),
+			    ip6_sprintf(ip6buf2, &ip6->ip6_dst),
+			    ip6->ip6_nxt, if_name(m->m_pkthdr.rcvif));
 		}
 		return 0;
 	}
@@ -1018,8 +1033,8 @@ ip6_mforward(struct ip6_hdr *ip6, struct ifnet *ifp, struct mbuf *m)
 #ifdef MRT6DEBUG
 		if (mrt6debug & (DEBUG_FORWARD | DEBUG_MFC))
 			log(LOG_DEBUG, "ip6_mforward: no rte s %s g %s\n",
-			    ip6_sprintf(&ip6->ip6_src),
-			    ip6_sprintf(&ip6->ip6_dst));
+			    ip6_sprintf(ip6buf, &ip6->ip6_src),
+			    ip6_sprintf(ip6buf2, &ip6->ip6_dst));
 #endif
 
 		/*
@@ -1232,10 +1247,17 @@ expire_upcalls_dispatch(netmsg_t nmsg)
 			    mfc->mf6c_expire != 0 &&
 			    --mfc->mf6c_expire == 0) {
 #ifdef MRT6DEBUG
-				if (mrt6debug & DEBUG_EXPIRE)
+				if (mrt6debug & DEBUG_EXPIRE) {
+					char origin[INET6_ADDRSTRLEN];
+					char mcastgrp[INET6_ADDRSTRLEN];
+
+					ip6_sprintf(origin,
+					    &mfc->mf6c_origin.sin6_addr);
+					ip6_sprintf(mcastgrp,
+					    &mfc->mf6c_mcastgrp.sin6_addr);
 					log(LOG_DEBUG, "expire_upcalls: expiring (%s %s)\n",
-					    ip6_sprintf(&mfc->mf6c_origin.sin6_addr),
-					    ip6_sprintf(&mfc->mf6c_mcastgrp.sin6_addr));
+					    origin, mcastgrp);
+				}
 #endif
 				/*
 				 * drop all the packets
@@ -1546,14 +1568,17 @@ phyint_send(struct ip6_hdr *ip6, struct mif6 *mifp, struct mbuf *m)
 		icmp6_error(mb_copy, ICMP6_PACKET_TOO_BIG, 0, linkmtu);
 #else
 #ifdef MRT6DEBUG
-		if (mrt6debug & DEBUG_XMIT)
+		if (mrt6debug & DEBUG_XMIT) {
+			char srcbuf[INET6_ADDRSTRLEN], dstbuf[INET6_ADDRSTRLEN];
+
 			log(LOG_DEBUG,
 			    "phyint_send: packet too big on %s o %s g %s"
 			    " size %d(discarded)\n",
 			    if_name(ifp),
-			    ip6_sprintf(&ip6->ip6_src),
-			    ip6_sprintf(&ip6->ip6_dst),
+			    ip6_sprintf(srcbuf, &ip6->ip6_src),
+			    ip6_sprintf(dstbuf, &ip6->ip6_dst),
 			    mb_copy->m_pkthdr.len);
+		}
 #endif /* MRT6DEBUG */
 		m_freem(mb_copy); /* simply discard the packet */
 #endif
@@ -1571,9 +1596,13 @@ register_send(struct ip6_hdr *ip6, struct mif6 *mif, struct mbuf *m)
 	struct mrt6msg *im6;
 
 #ifdef MRT6DEBUG
-	if (mrt6debug)
+	if (mrt6debug) {
+		char ip6buf[INET6_ADDRSTRLEN], ip6buf2[INET6_ADDRSTRLEN];
+
 		log(LOG_DEBUG, "** IPv6 register_send **\n src %s dst %s\n",
-		    ip6_sprintf(&ip6->ip6_src), ip6_sprintf(&ip6->ip6_dst));
+		    ip6_sprintf(ip6buf, &ip6->ip6_src),
+		    ip6_sprintf(ip6buf2, &ip6->ip6_dst));
+	}
 #endif
 	++pim6stat.pim6s_snd_registers;
 
@@ -1738,6 +1767,9 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 		struct mbuf *mcp;
 		struct ip6_hdr *eip6;
 		u_int32_t *reghdr;
+#ifdef MRT6DEBUG
+		char ip6buf[INET6_ADDRSTRLEN], ip6buf2[INET6_ADDRSTRLEN];
+#endif
 
 		++pim6stat.pim6s_rcv_registers;
 
@@ -1767,7 +1799,7 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 			log(LOG_ERR,
 			    "pim6_input: register packet size too "
 			    "small %d from %s\n",
-			    pimlen, ip6_sprintf(&ip6->ip6_src));
+			    pimlen, ip6_sprintf(ip6buf, &ip6->ip6_src));
 #endif
 			m_freem(m);
 			return (IPPROTO_DONE);
@@ -1779,8 +1811,8 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 			log(LOG_DEBUG,
 			    "pim6_input[register], eip6: %s -> %s, "
 			    "eip6 plen %d\n",
-			    ip6_sprintf(&eip6->ip6_src),
-			    ip6_sprintf(&eip6->ip6_dst),
+			    ip6_sprintf(ip6buf, &eip6->ip6_src),
+			    ip6_sprintf(ip6buf2, &eip6->ip6_dst),
 			    ntohs(eip6->ip6_plen));
 #endif
 
@@ -1804,7 +1836,7 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 				log(LOG_DEBUG,
 				    "pim6_input: inner packet of register "
 				    "is not multicast %s\n",
-				    ip6_sprintf(&eip6->ip6_dst));
+				    ip6_sprintf(ip6buf, &eip6->ip6_dst));
 #endif
 			m_freem(m);
 			return (IPPROTO_DONE);
@@ -1833,8 +1865,8 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 			log(LOG_DEBUG,
 			    "pim6_input: forwarding decapsulated register: "
 			    "src %s, dst %s, mif %d\n",
-			    ip6_sprintf(&eip6->ip6_src),
-			    ip6_sprintf(&eip6->ip6_dst),
+			    ip6_sprintf(ip6buf, &eip6->ip6_src),
+			    ip6_sprintf(ip6buf2, &eip6->ip6_dst),
 			    reg_mif_num);
 		}
 #endif
