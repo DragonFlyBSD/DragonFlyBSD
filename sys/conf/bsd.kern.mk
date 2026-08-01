@@ -25,6 +25,9 @@ _gccver=	${CCVER:S/gcc//}
 CWARNFLAGS+=	-Wold-style-declaration
 _cnowarnflags+=	-Wno-unused-but-set-variable
 .endif
+.if ${_gccver} >= 90
+_cnowarnflags+=	-Wno-address-of-packed-member
+.endif
 
 # Add -Wno-foo flags last
 .if !defined(WARNS_AUDIT)

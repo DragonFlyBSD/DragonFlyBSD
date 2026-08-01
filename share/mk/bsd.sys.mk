@@ -84,6 +84,9 @@ _cnowarnflags	+=	-Wno-stringop-truncation
 .  if ${WARNS} >= 1 && ${WARNS} <= 6 && ${_gccver} >= 80
 _cnowarnflags	+=	-Wno-stringop-overflow
 .  endif
+.  if ${WARNS} >= 1 && ${WARNS} <= 6 && ${_gccver} >= 90
+_cnowarnflags	+=	-Wno-address-of-packed-member
+.  endif
 # Activate GCC's -Wunused-but-set-variable (which is in -Wall) and
 # -Wunused-but-set-parameter (which is in -Wextra) only at WARNS >= 4
 # (which is the level when also -Wunused-parameter comes into play).
