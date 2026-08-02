@@ -694,8 +694,10 @@ retry:
 				 "%d %s %s",
 				 pr->pr_id, pr->pr_host, fullpath);
 		kfree(freepath, M_TEMP);
-		if (count < 0)
+		if (jlsused + count >= jlssize) {
+			error = ERANGE;
 			goto end;
+		}
 		jlsused += count;
 
 		/* Copy the IPS */
@@ -719,14 +721,12 @@ retry:
 				break;
 			}
 
-			if ((jlssize - jlsused) < (strlen(oip) + 1)) {
+			count = ksnprintf(jls + jlsused, (jlssize - jlsused),
+					  " %s", oip);
+			if (jlsused + count >= jlssize) {
 				error = ERANGE;
 				goto end;
 			}
-			count = ksnprintf(jls + jlsused, (jlssize - jlsused),
-					  " %s", oip);
-			if (count < 0)
-				goto end;
 			jlsused += count;
 		}
 	}
