@@ -6,7 +6,7 @@
 # The ``rm -rf''s used below are safe because rm doesn't follow symbolic
 # links.
 
-CLEANFILES= osreldate.h version vers.c vers.txt
+CLEANFILES= osreldate.h
 SUBDIR= arpa protocols rpc rpcsvc xlocale
 INCS=	a.out.h alloca.h ar.h assert.h bitstring.h byteswap.h \
 	cpio.h ctype.h db.h dirent.h disktab.h \
@@ -115,18 +115,18 @@ SHARED?=	copies
 
 INCS+=	osreldate.h
 
-osreldate.h:	${.CURDIR}/../sys/conf/newvers.sh \
+RELDATE!=	awk '/^\#define[[:space:]]*__DragonFly_version/ {print $$3}' \
 		${.CURDIR}/../sys/sys/param.h
-	@${ECHO} creating osreldate.h from newvers.sh
-	setvar PARAMFILE ${.CURDIR}/../sys/sys/param.h; \
-	. ${.CURDIR}/../sys/conf/newvers.sh "${.CURDIR}/.." ;	\
-	echo "$$COPYRIGHT" > osreldate.h;			\
-	echo "#ifdef _KERNEL" >> osreldate.h;			\
-	echo '#error "osreldate.h must not be used in the kernel, use sys/param.h"' >> osreldate.h; \
-	echo "#else" >> osreldate.h;				\
-	echo "#undef __DragonFly_version" >> osreldate.h;	\
-	echo "#define __DragonFly_version $$RELDATE" >> osreldate.h; \
-	echo "#endif" >> osreldate.h
+osreldate.h:	${.CURDIR}/../sys/sys/param.h
+	@${ECHO} "creating <osreldate.h> ..."
+	sh ${.CURDIR}/../tools/gencopyright.sh ${.CURDIR}/.. > ${.TARGET}
+	${ECHO} "#ifdef _KERNEL" >> ${.TARGET}
+	${ECHO} '#error "osreldate.h must not be used in the kernel, use sys/param.h"' \
+	    >> ${.TARGET}
+	${ECHO} "#else" >> ${.TARGET}
+	${ECHO} "#undef __DragonFly_version" >> ${.TARGET}
+	${ECHO} "#define __DragonFly_version ${RELDATE}" >> ${.TARGET}
+	${ECHO} "#endif" >> ${.TARGET}
 
 .for i in ${LHDRS}
 INCSLINKS+=	sys/$i ${INCLUDEDIR}/$i
