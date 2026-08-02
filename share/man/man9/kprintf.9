@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/printf.9,v 1.8 2006/09/08 14:05:03 ru Exp $
 .\"
-.Dd March 13, 2020
+.Dd August 2, 2026
 .Dt KPRINTF 9
 .Os
 .Sh NAME
@@ -174,15 +174,26 @@ to a negative value allows an initial burst.
 The
 .Fn kprintf ,
 .Fn ksprintf ,
-.Fn ksnprintf ,
 .Fn kvprintf ,
 .Fn kvsprintf ,
-.Fn kvsnprintf ,
 .Fn tprintf ,
 .Fn uprintf ,
 and
 .Fn log
-functions return the number of characters displayed.
+functions return the number of characters displayed
+(not including the terminating
+.Ql \e0 ) .
+.Pp
+The
+.Fn ksnprintf
+and
+.Fn kvsnprintf
+functions return the number of characters that would have been printed
+if the
+.Fa size
+were unlimited
+(not including the terminating
+.Ql \e0 ) .
 .Pp
 The
 .Fn krateprintf
