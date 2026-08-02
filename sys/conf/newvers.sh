@@ -30,87 +30,86 @@
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
 
-# The directory where the source resides
-#
-SRCDIR=$1
-if [ "${SRCDIR}" = "" ]; then
-    SRCDIR=$(dirname $0)/../..
-fi
+LC_ALL=C; export LC_ALL
 
-# Set the branch
-#
+OSTYPE="DragonFly"
+
+# Set the branch.
+# Examples: "DEVELOPMENT_6_5", "RELEASE_6_4"
 BRANCH="DEVELOPMENT_6_5"
 
-TYPE="DragonFly"
+# The directory where the source resides
+SRCDIR=$1
+if [ "${SRCDIR}" = "" ]; then
+	SRCDIR=$(dirname $0)/../..
+fi
+
+if [ "${KERN_IDENT}" = "" ]; then
+	echo "ERROR: environment variable KERN_IDENT is missing"
+	exit 1
+fi
+
+if [ "${PARAMFILE}" = "" ]; then
+	PARAMFILE="${SRCDIR}/sys/sys/param.h"
+fi
+if [ ! -r "${PARAMFILE}" ]; then
+	echo "ERROR: cannot read <sys/param.h> at ${PARAMFILE}"
+	exit 1
+fi
 
 # Figure out the revision and subversion, if any.  If the tag is in
 # the form NAME_X_Y the revision is extracted from X and Y and the branch
 # tag is truncated to just NAME.  Otherwise we are on the HEAD branch and
 # we are either HEAD or PREVIEW and the programmed revision is used.
-#
 REVISION=${BRANCH#*_}
 BRANCH=${BRANCH%%_*}
 
 if [ "${REVISION}" != "${BRANCH}" ]; then
-    REVISION=$(echo $REVISION | sed -e 's/_/./g')
+	REVISION=$(echo $REVISION | sed -e 's/_/./g')
 fi
-
-# obtain git commit name, like "v2.3.2.449.g84e97*"
-GITREV=$(${SRCDIR}/tools/gitrev.sh 2>/dev/null || true)
 
 RELEASE="${REVISION}-${BRANCH}"
-VERSION="${TYPE} ${RELEASE}"
-[ -n "$GITREV" ] && VERSION="${TYPE} ${GITREV}-${BRANCH}"
 
-if [ "X${PARAMFILE}" != "X" ]; then
-	RELDATE=$(awk '/__DragonFly_version.*propagated to newvers/ {print $3}' \
-		${PARAMFILE})
+# obtain git commit name, like "v2.3.2.449.g84e97*"
+GITREV=$(sh ${SRCDIR}/tools/gitrev.sh 2>/dev/null || true)
+if [ -n "$GITREV" ]; then
+	VERSION="${GITREV}-${BRANCH}"
 else
-	RELDATE=$(awk '/__DragonFly_version.*propagated to newvers/ {print $3}' \
-		${SRCDIR}/sys/sys/param.h)
+	VERSION="${RELEASE}"
 fi
 
+RELDATE=$(awk '/^\#define[[:space:]]*__DragonFly_version/ {print $3}' ${PARAMFILE})
 
-year=`date '+%Y'`
-COPYRIGHT="/*-
- * Copyright (c) $year The DragonFly Project
- * All rights reserved.
- */
-"
-
-LC_ALL=C; export LC_ALL
-if [ ! -r version ]
-then
+if [ ! -r version ]; then
 	echo 0 > version
 fi
+v=$(cat version)
+[ -n "$v" ] || v=1
 
-touch version
-v=`cat version`
 u=${USER:-root}
-d=`pwd`
-h=${HOSTNAME:-`hostname`}
-t=`date`
-if [ "$v" = "" ]; then
-    v=1
-fi
-i=`make -V KERN_IDENT`
-cat << EOF > vers.c
-$COPYRIGHT
-char version[] = "${VERSION} #${v}: ${t}\\n    ${u}@${h}:${d}\\n";
-char ostype[] = "${TYPE}";
+d=$(pwd)
+h=${HOSTNAME:-$(hostname)}
+t=$(date)
+
+sh ${SRCDIR}/tools/gencopyright.sh ${SRCDIR} > vers.c
+
+cat << EOF >> vers.c
+char version[] = "${OSTYPE} ${VERSION} #${v}: ${t}\\n    ${u}@${h}:${d}\\n";
+char ostype[] = "${OSTYPE}";
 char osrelease[] = "${RELEASE}";
 int osreldate = ${RELDATE};
-char kern_ident[] = "${i}";
+char kern_ident[] = "${KERN_IDENT}";
 EOF
 
-echo `expr ${v} + 1` > version
-
 if [ "${BRANCH}" = "DEVELOPMENT" ]; then
-    SBRANCH=DEV
-fi
-if [ "${BRANCH}" = "RELEASE" ]; then
-    SBRANCH=REL
+	SBRANCH=DEV
+elif [ "${BRANCH}" = "RELEASE" ]; then
+	SBRANCH=REL
+else
+	SBRANCH=${BRANCH}
 fi
 
-stamp=`date +%Y%m%d`
+stamp=$(date +%Y%m%d)
 echo DragonFly-${MACHINE}-${stamp}-${SBRANCH}-${GITREV} > vers.txt
+
+echo $((v + 1)) > version

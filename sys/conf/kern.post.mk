@@ -271,7 +271,8 @@ ioconf.o:
 	${NORMAL_C} ${WERROR}
 
 vers.c: $S/conf/newvers.sh $S/sys/param.h ${SYSTEM_DEP}
-	sh $S/conf/newvers.sh $S/..
+	env KERN_IDENT="${KERN_IDENT}" PARAMFILE="$S/sys/param.h" \
+	    sh $S/conf/newvers.sh $S/..
 
 vers.o:
 	${NORMAL_C} ${WERROR}
