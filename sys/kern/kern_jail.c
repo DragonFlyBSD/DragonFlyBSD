@@ -662,95 +662,88 @@ sysctl_jail_list(SYSCTL_HANDLER_ARGS)
 {
 	struct thread *td = curthread;
 	struct jail_ip_storage *jip;
-#ifdef INET6
-	struct sockaddr_in6 *jsin6;
-#endif
-	struct sockaddr_in *jsin;
+	struct sockaddr *jsa;
 	struct lwp *lp;
 	struct prison *pr;
 	unsigned int jlssize, jlsused;
 	int count, error;
 	char *jls; /* Jail list */
-	char *oip; /* Output ip */
 	char *fullpath, *freepath;
+	char ipbuf[INET6_ADDRSTRLEN];
 
+	lp = td->td_lwp;
 	jlsused = 0;
 
 	if (jailed(td->td_ucred))
 		return (0);
-	lp = td->td_lwp;
+
 retry:
 	count = prisoncount;
-
 	if (count == 0)
-		return(0);
+		return (0);
 
+	/*
+	 * The format is:
+	 * pr_id <SPC> hostname1 <SPC> PATH1 <SPC> IP1 <SPC> IP2\npr_id...
+	 */
 	jlssize = (count * 1024);
 	jls = kmalloc(jlssize + 1, M_TEMP, M_WAITOK | M_ZERO);
 	if (count < prisoncount) {
 		kfree(jls, M_TEMP);
 		goto retry;
 	}
-	count = prisoncount;
 
 	lockmgr(&jail_lock, LK_EXCLUSIVE);
 	LIST_FOREACH(pr, &allprison, pr_list) {
 		error = cache_fullpath(lp->lwp_proc, &pr->pr_root, NULL,
-					&fullpath, &freepath, 0);
+				       &fullpath, &freepath, 0);
 		if (error)
 			continue;
-		if (jlsused && jlsused < jlssize)
+		if (jlsused > 0 && jlsused < jlssize)
 			jls[jlsused++] = '\n';
 		count = ksnprintf(jls + jlsused, (jlssize - jlsused),
-				 "%d %s %s",
-				 pr->pr_id, pr->pr_host, fullpath);
+				  "%d %s %s", pr->pr_id, pr->pr_host, fullpath);
 		kfree(freepath, M_TEMP);
 		if (count < 0)
 			goto end;
 		jlsused += count;
 
-		/* Copy the IPS */
+		/* Copy the IPs */
 		SLIST_FOREACH(jip, &pr->pr_ips, entries) {
-			char buf[INET6_ADDRSTRLEN];
-
-			jsin = (struct sockaddr_in *)&jip->ip;
-			switch(jsin->sin_family) {
+			jsa = (struct sockaddr *)&jip->ip;
+			switch (jsa->sa_family) {
 			case AF_INET:
-				oip = kinet_ntoa(jsin->sin_addr, buf);
+				kinet_ntoa(satosin(jsa)->sin_addr, ipbuf);
 				break;
 #ifdef INET6
 			case AF_INET6:
-				jsin6 = (struct sockaddr_in6 *)&jip->ip;
-				oip = ip6_sprintf(buf, &jsin6->sin6_addr);
+				ip6_sprintf(ipbuf, &satosin6(jsa)->sin6_addr);
 				break;
 #endif
 			default:
-				oip = "?family?";
+				strlcpy(ipbuf, "?family?", sizeof(ipbuf));
 				break;
 			}
 
-			if ((jlssize - jlsused) < (strlen(oip) + 1)) {
+			if ((jlssize - jlsused) < (strlen(ipbuf) + 1)) {
 				error = ERANGE;
 				goto end;
 			}
 			count = ksnprintf(jls + jlsused, (jlssize - jlsused),
-					  " %s", oip);
+					  " %s", ipbuf);
 			if (count < 0)
 				goto end;
 			jlsused += count;
 		}
 	}
 
-	/* 
-	 * The format is:
-	 * pr_id <SPC> hostname1 <SPC> PATH1 <SPC> IP1 <SPC> IP2\npr_id...
-	 */
 	error = SYSCTL_OUT(req, jls, jlsused);
+
 end:
 	lockmgr(&jail_lock, LK_RELEASE);
 	kfree(jls, M_TEMP);
 
-	return(error);
+	return (error);
 }
 
 SYSCTL_OID(_jail, OID_AUTO, list, CTLTYPE_STRING | CTLFLAG_RD, NULL, 0,
@@ -919,8 +912,7 @@ prison_priv_check(struct ucred *cred, int cap)
 		/*
 		 * Conditionally allow creating raw sockets in jail.
 		 */
-		if (PRISON_CAP_ISSET(pr->pr_caps,
-			PRISON_CAP_NET_RAW_SOCKETS))
+		if (PRISON_CAP_ISSET(pr->pr_caps, PRISON_CAP_NET_RAW_SOCKETS))
 			return (0);
 		else
 			return (EPERM);
