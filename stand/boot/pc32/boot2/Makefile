@@ -55,6 +55,15 @@ CFLAGS=	-Os \
 	-Wmissing-declarations -Wmissing-prototypes -Wnested-externs \
 	-Wpointer-arith -Wshadow -Wstrict-prototypes -Wwrite-strings
 
+_gccver=	0
+.if ${CCVER:Mgcc*}
+_gccver=	${CCVER:S/gcc//}
+.endif
+
+.if ${_gccver} >= 113
+CFLAGS+=--param min-pagesize=1024
+.endif
+
 DEBUG_FLAGS=
 
 # Tell gcc that it shouldn't do fancy optimizations for newer processors.
