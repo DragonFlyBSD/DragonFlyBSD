@@ -798,8 +798,8 @@ sys_mincore(struct sysmsg *sysmsg, const struct mincore_args *uap)
 	 * Make sure that the addresses presented are valid for user
 	 * mode.
 	 */
-	first_addr = addr = trunc_page((vm_offset_t) uap->addr);
-	end = addr + (vm_size_t)round_page(uap->len);
+	first_addr = addr = trunc_page((vm_offset_t)uap->addr);
+	end = round_page((vm_offset_t)uap->addr + uap->len);
 	if (end < addr)
 		return (EINVAL);
 	if (VM_MAX_USER_ADDRESS > 0 && end > VM_MAX_USER_ADDRESS)
@@ -818,8 +818,11 @@ sys_mincore(struct sysmsg *sysmsg, const struct mincore_args *uap)
 RestartScan:
 	timestamp = map->timestamp;
 
-	if (!vm_map_lookup_entry(map, addr, &entry))
-		entry = RB_MIN(vm_map_rb_tree, &map->rb_root);
+	if (!vm_map_lookup_entry(map, addr, &entry)) {
+		vm_map_unlock_read(map);
+		error = ENOMEM;
+		goto done;
+	}
 
 	/*
 	 * Do this on a map entry basis so that if the pages are not
@@ -827,9 +830,20 @@ RestartScan:
 	 * up the pages elsewhere.
 	 */
 	lastvecindex = -1;
-	for (current = entry;
-	     current && current->ba.start < end;
-	     current = vm_map_rb_tree_RB_NEXT(current)) {
+	while (entry != NULL && entry->ba.start < end) {
+		current = entry;
+		entry = vm_map_rb_tree_RB_NEXT(current);
+
+		/*
+		 * check for contiguity
+		 */
+		if (current->ba.end < end &&
+		    (entry == NULL || entry->ba.start > current->ba.end)) {
+			vm_map_unlock_read(map);
+			error = ENOMEM;
+			goto done;
+		}
+
 		/*
 		 * ignore submaps (for now) or null objects
 		 */
@@ -917,13 +931,13 @@ RestartScan:
 			 * If we have skipped map entries, we need to make sure that
 			 * the byte vector is zeroed for those skipped entries.
 			 */
-			while((lastvecindex + 1) < vecindex) {
-				error = subyte( vec + lastvecindex, 0);
+			while ((lastvecindex + 1) < vecindex) {
+				++lastvecindex;
+				error = subyte(vec + lastvecindex, 0);
 				if (error) {
 					error = EFAULT;
 					goto done;
 				}
-				++lastvecindex;
 			}
 
 			/*
@@ -958,15 +972,15 @@ RestartScan:
 	 * Zero the last entries in the byte vector.
 	 */
 	vecindex = OFF_TO_IDX(end - first_addr);
-	while((lastvecindex + 1) < vecindex) {
-		error = subyte( vec + lastvecindex, 0);
+	while ((lastvecindex + 1) < vecindex) {
+		++lastvecindex;
+		error = subyte(vec + lastvecindex, 0);
 		if (error) {
 			error = EFAULT;
 			goto done;
 		}
-		++lastvecindex;
 	}
-	
+
 	/*
 	 * If the map has changed, due to the subyte, the previous
 	 * output may be invalid.
