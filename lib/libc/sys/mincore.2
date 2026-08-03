@@ -47,12 +47,13 @@ system call determines whether each of the pages in the region beginning at
 .Fa addr
 and continuing for
 .Fa len
-bytes is resident.
+bytes is resident or mapped, depending on the value of sysctl
+.Va vm.mincore_mapped .
 The status is returned in the
 .Fa vec
 array, one character per page.
-Each character is either 0 if the page is not resident, or a combination of
-the following flags (defined in
+Each character is either 0 if the page is not resident or mapped,
+or a combination of the following flags (defined in
 .In sys/mman.h ) :
 .Bl -tag -offset indent -width ".Dv MINCORE_REFERENCED_OTHER"
 .It Dv MINCORE_INCORE
@@ -74,6 +75,18 @@ The only way to ensure that a page is resident is to lock it into memory
 with the
 .Xr mlock 2
 system call.
+.Pp
+If the
+.Va vm.mincore_mapped
+sysctl is set to a non-zero value (default), only the current process'
+mappings of the pages in the specified virtual address range are examined.
+This does not preclude the system from returning
+.Dv MINCORE_REFERENCED_OTHER
+and
+.Dv MINCORE_MODIFIED_OTHER
+statuses.
+Otherwise, if the sysctl value is zero, all resident pages backing the
+specified address range are examined, regardless of the mapping state.
 .Sh RETURN VALUES
 .Rv -std mincore
 .Sh ERRORS

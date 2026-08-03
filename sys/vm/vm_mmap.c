@@ -78,10 +78,14 @@
 #include <sys/thread.h>
 #include <vm/vm_page2.h>
 
-static int max_proc_mmap = 1000000;
-SYSCTL_INT(_vm, OID_AUTO, max_proc_mmap, CTLFLAG_RW, &max_proc_mmap, 0, "");
 int vkernel_enable;
 SYSCTL_INT(_vm, OID_AUTO, vkernel_enable, CTLFLAG_RW, &vkernel_enable, 0, "");
+
+static int max_proc_mmap = 1000000;
+SYSCTL_INT(_vm, OID_AUTO, max_proc_mmap, CTLFLAG_RW, &max_proc_mmap, 0, "");
+static int mincore_mapped = 1;
+SYSCTL_INT(_vm, OID_AUTO, mincore_mapped, CTLFLAG_RW, &mincore_mapped, 0,
+	   "mincore(2) reports mappings, not residency");
 
 /*
  * sstk_args(int incr)
@@ -857,7 +861,7 @@ RestartScan:
 			 * with virtual page tables (XXX).
 			 */
 			mincoreinfo = pmap_mincore(pmap, addr);
-			if (mincoreinfo == 0 &&
+			if (!mincore_mapped && mincoreinfo == 0 &&
 			    current->maptype == VM_MAPTYPE_NORMAL) {
 				vm_pindex_t pindex;
 				vm_ooffset_t offset;
