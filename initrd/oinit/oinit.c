@@ -34,34 +34,24 @@
  * $FreeBSD: src/sbin/init/init.c,v 1.38.2.8 2001/10/22 11:27:32 des Exp $
  */
 
-#include <sys/param.h>
+#include <sys/types.h>
 #include <sys/ioctl.h>
-#include <sys/mount.h>
-#include <sys/sysctl.h>
 #include <sys/wait.h>
-#include <sys/stat.h>
 
-#include <db.h>
+#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <libutil.h>
 #include <paths.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
-#include <time.h>
-#include <ttyent.h>
 #include <unistd.h>
-#include <sys/reboot.h>
-#include <err.h>
-
-#include <stdarg.h>
 
 #define	_PATH_RUNCOM	"/etc/rc"
 #define	_PATH_NEWROOT	"/new_root"
 
+static int	login_tty(int);
 static int	setctty(const char *);
 static void	runcom(char **);
 
@@ -82,6 +72,21 @@ main(int argc __unused, char **argv)
 	return 1;
 }
 
+/* Copied from libutil/login_tty.c */
+static int
+login_tty(int fd)
+{
+	setsid();
+	if (ioctl(fd, TIOCSCTTY, NULL) == -1)
+		return (-1);
+	dup2(fd, 0);
+	dup2(fd, 1);
+	dup2(fd, 2);
+	if (fd > 2)
+		close(fd);
+	return (0);
+}
+
 static int
 setctty(const char *name)
 {
@@ -98,7 +103,6 @@ setctty(const char *name)
 
 	return fd;
 }
-
 
 static void
 runcom(char **argv_orig)
