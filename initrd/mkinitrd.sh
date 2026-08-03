@@ -49,7 +49,7 @@
 # Directory hierarchy on the initrd
 #
 # * 'new_root' will always be created
-# * 'sbin', 'usr.bin', and 'usr.sbin' will be symlinked to 'bin'
+# * 'sbin', 'usr/bin', and 'usr/sbin' will be symlinked to 'bin'
 # * 'tmp' will be symlinked to 'var/tmp'
 #
 INITRD_DIRS="bin dev etc mnt usr var"
@@ -105,42 +105,34 @@ calc_initrd_size() {
 	for _dir; do
 		csize=$(du -kst ${_dir} | awk '{ print $1 }')  # KB
 		log "* ${_dir}: ${csize} KB"
-		isize=$((${isize} + ${csize}))
+		isize=$((isize + csize))
 	done
 	# Round initrd size up by MB
-	isize_mb=$(echo ${isize} | awk '
-	    function ceil(x) {
-	        y = int(x);
-	        return (x>y ? y+1 : y);
-	    }
-	    {
-	        print ceil($1 / 1024);
-	    }')
+	isize_mb=$(bc -e "(${isize} + 1023) / 1024" -e quit)
 	# Reserve another 1 MB for advanced user to add custom files to the
 	# initrd without creating it from scratch.
-	echo $((${isize_mb} + 1))
+	echo $((isize_mb + 1))
 }
 
 make_img() {
-	makefs -m ${INITRD_SIZE}m -M ${INITRD_SIZE}m -t ffs -o density=131072 \
-	    -o minfree=0 ${INITRD_FILE} ${BUILD_DIR}
+	makefs -m ${INITRD_SIZE}m -M ${INITRD_SIZE}m -t ffs \
+	    -o density=131072 -o minfree=0 \
+	    ${INITRD_FILE} ${BUILD_DIR}
 }
 
 make_hier() {
 	mkdir -p ${BUILD_DIR}/new_root ||
 	    error 1 "Failed to mkdir ${BUILD_DIR}/new_root"
-	# Symlink 'sbin' to 'bin'
+	for _dir in ${INITRD_DIRS}; do
+		mkdir -p ${BUILD_DIR}/${_dir}
+	done
+	# Symlink 'sbin', 'usr/bin' and 'usr/sbin' to 'bin'
 	ln -sf bin ${BUILD_DIR}/sbin
+	ln -sf ../bin ${BUILD_DIR}/usr/bin
+	ln -sf ../bin ${BUILD_DIR}/usr/sbin
 	# Symlink 'tmp' to 'var/tmp', as '/var' will be mounted with
 	# tmpfs, saving a second tmpfs been mounted on '/tmp'.
 	ln -sf var/tmp ${BUILD_DIR}/tmp
-	for _dir in ${INITRD_DIRS}; do
-		[ ! -d "${BUILD_DIR}/${_dir}" ] &&
-		    mkdir -p ${BUILD_DIR}/${_dir}
-	done
-	# Symlink 'usr/bin' and 'usr/sbin' to 'bin'
-	ln -sf ../bin ${BUILD_DIR}/usr/bin
-	ln -sf ../bin ${BUILD_DIR}/usr/sbin
 	echo "Created directory structure"
 }
 
@@ -162,14 +154,12 @@ print_info() {
 	lt ${BUILD_DIR}
 }
 
-# Check the validity of the created initrd image before moving over.
-# This prevents creating an empty and broken initrd image by running
-# this tool but without ${CONTENT_DIRS} prepared.
+# Check the validity of the initrd content to help prevent creating an broken
+# initrd image.
 #
 # NOTE: Need more improvements.
 #
-check_initrd()
-{
+check_initrd() {
 	[ -x "${BUILD_DIR}/sbin/oinit" ] &&
 	[ -x "${BUILD_DIR}/bin/sh" ] &&
 	[ -x "${BUILD_DIR}/etc/rc" ] || {
@@ -252,6 +242,7 @@ make_hier
 copy_rescue
 copy_content
 print_info
+check_initrd
 make_img
 rm -rf ${BUILD_DIR}
 
