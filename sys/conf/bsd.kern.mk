@@ -28,6 +28,9 @@ _cnowarnflags+=	-Wno-unused-but-set-variable
 .if ${_gccver} >= 90
 _cnowarnflags+=	-Wno-address-of-packed-member
 .endif
+.if ${_gccver} >= 100
+_cnowarnflags+=	-Wno-zero-length-bounds
+.endif
 
 # Add -Wno-foo flags last
 .if !defined(WARNS_AUDIT)
