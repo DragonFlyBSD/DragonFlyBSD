@@ -150,6 +150,16 @@ copy_content() {
 	done
 }
 
+# Force strip to save space in case that debug symbols have been kept, e.g.,
+# by custom DEBUG_FLAGS in /etc/make.conf.
+strip_binary() {
+	echo -n "Stripping binaries in ${BUILD_DIR}/bin ..."
+	chmod -R u+w ${BUILD_DIR}/bin
+	strip -s ${BUILD_DIR}/bin/* 2>/dev/null
+	chmod -R u-w ${BUILD_DIR}/bin
+	echo " OK"
+}
+
 print_info() {
 	lt ${BUILD_DIR}
 }
@@ -222,7 +232,14 @@ echo "Initrd build directory: ${BUILD_DIR}"
 INITRD_FILE="${BUILD_DIR}.img"
 INITRD_DEST="${BOOT_DIR}/kernel/initrd.img.gz"
 
-CSIZE=$(calc_initrd_size ${RESCUE_DIR} ${CONTENT_DIRS})
+make_hier
+copy_rescue
+copy_content
+strip_binary
+print_info
+check_initrd
+
+CSIZE=$(calc_initrd_size ${BUILD_DIR})
 echo "Required initrd image size: ${CSIZE} MB"
 if [ -n "${INITRD_SIZE}" -a "${INITRD_SIZE}" != "0" ]; then
 	if [ ${CSIZE} -gt ${INITRD_SIZE} ]; then
@@ -238,11 +255,6 @@ if [ -n "${INITRD_SIZE_MAX}" -a "${INITRD_SIZE_MAX}" != "0" ] && \
 	error 1 "Exceeded the maximum size (${INITRD_SIZE_MAX} MB)"
 fi
 
-make_hier
-copy_rescue
-copy_content
-print_info
-check_initrd
 make_img
 rm -rf ${BUILD_DIR}
 
