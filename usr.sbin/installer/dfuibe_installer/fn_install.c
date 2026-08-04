@@ -325,7 +325,7 @@ fn_install_os(struct i_fn_args *a)
 	/*
 	 * Actually copy files now.
 	 */
-	for (i = 0; cp_src[i] != NULL && cp_src[i][0] != '\0'; i++) {
+	for (i = 0; cp_src[i][0] != '\0'; i++) {
 		char *src, *dest, *dn, *tmp_dest;
 
 		dest = cp_src[i];
@@ -434,7 +434,7 @@ fn_install_os(struct i_fn_args *a)
 		 */
 		seen_it = 0;
 		prefix = 0;
-		for (i = 0; cp_src[i] != NULL && cp_src[i][0] != '\0'; i++) {
+		for (i = 0; cp_src[i][0] != '\0'; i++) {
 			if (strncmp(mountpt, cp_src[i],
 			    strlen(mountpt)) == 0) {
 				seen_it = 1;
@@ -507,7 +507,7 @@ fn_install_os(struct i_fn_args *a)
 	 * Copy pristine versions over any files we might have installed.
 	 * This allows the resulting file tree to be customized.
 	 */
-	for (i = 0; cp_src[i] != NULL && cp_src[i][0] != '\0'; i++) {
+	for (i = 0; cp_src[i][0] != '\0'; i++) {
 		char *src, *dest, *dn, *tmp_dest;
 
 		src = cp_src[i];
