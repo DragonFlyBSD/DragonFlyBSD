@@ -43,8 +43,6 @@ INCSLINKS=libutil.h ${INCLUDEDIR}/util.h
 CFLAGS+= -DINET6
 CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../libc/gen/
 
-COPTS.snprintb.c= -Wno-format-nonliteral
-
 MAN+=	_secure_path.3 \
 	auth.3 \
 	efun.3 \
