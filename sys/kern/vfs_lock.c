@@ -108,10 +108,10 @@ SYSCTL_INT(_debug, OID_AUTO, batchfreevnodes, CTLFLAG_RW,
 
 static long auxrecovervnodes1;
 SYSCTL_INT(_debug, OID_AUTO, auxrecovervnodes1, CTLFLAG_RW,
-        &auxrecovervnodes1, 0, "vnlru auxillary vnodes recovered");
+        &auxrecovervnodes1, 0, "vnlru auxiliary vnodes recovered");
 static long auxrecovervnodes2;
 SYSCTL_INT(_debug, OID_AUTO, auxrecovervnodes2, CTLFLAG_RW,
-        &auxrecovervnodes2, 0, "vnlru auxillary vnodes recovered");
+        &auxrecovervnodes2, 0, "vnlru auxiliary vnodes recovered");
 
 #ifdef TRACKVNODE
 static u_long trackvnode;
