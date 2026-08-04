@@ -19,6 +19,11 @@ FILESDIR_${file}=	${BINDIR}
 FILESMODE_${file}=	444
 .endfor
 
+BINDIR=	/etc
+
+beforeinstall:
+	mkdir -p ${DESTDIR}${BINDIR}
+
 afterinstall:
 	pwd_mkdb -d ${DESTDIR}${BINDIR} ${DESTDIR}${BINDIR}/master.passwd
 

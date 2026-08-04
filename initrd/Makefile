@@ -1,7 +1,7 @@
 INITRD_MAKE=	LC_ALL=C \
 		make -m ${.CURDIR}/../share/mk
-INITRD_SUBDIRS=	etc
-RESCUE_SUBDIRS=	oinit rescue rescue.libcrypto
+INITRD_SUBDIRS=	etc oinit
+RESCUE_SUBDIRS=	rescue rescue.libcrypto
 
 # Temporary directory to stage the files for creating the initrd image.
 #
@@ -46,8 +46,7 @@ install:
 	rm -rf ${STAGEDIR}
 .for _dir in ${INITRD_SUBDIRS}
 	(cd ${.CURDIR}/${_dir}; \
-	    mkdir -p ${STAGEDIR}/${_dir} && \
-	    ${INITRD_MAKE} BINDIR=${STAGEDIR}/${_dir} DESTDIR="" install)
+	    ${INITRD_MAKE} DESTDIR=${STAGEDIR} install)
 .endfor
 	sh ${.CURDIR}/mkinitrd.sh \
 	    -b ${DESTDIR}/boot \
