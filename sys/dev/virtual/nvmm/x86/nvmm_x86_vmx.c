@@ -1465,7 +1465,7 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			cpudata->gprs[NVMM_X64_GPR_RAX] &=
 			    (CPUID_0_0D_ECX1_EAX_XSAVEOPT |
 			     CPUID_0_0D_ECX1_EAX_XSAVEC |
-			     CPUID_0_0D_ECX1_EAX_XGETBV);
+			     CPUID_0_0D_ECX1_EAX_XGETBV1);
 			cpudata->gprs[NVMM_X64_GPR_RBX] = 0;
 			cpudata->gprs[NVMM_X64_GPR_RCX] = 0;
 			cpudata->gprs[NVMM_X64_GPR_RDX] = 0;

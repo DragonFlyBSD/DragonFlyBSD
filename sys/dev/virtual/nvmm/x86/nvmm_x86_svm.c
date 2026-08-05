@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2026 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -50,6 +50,8 @@ svm_stgi(void)
 	__asm volatile ("stgi" ::: "memory");
 }
 
+#define MSR_UCODE_AMD_PATCHLEVEL 0x0000008B
+
 #define MSR_NB_CFG		0xC001001F	/* Northbridge Configuration */
 #define		NB_CFG_INITAPICCPUIDLO	__BIT(54)
 
@@ -57,7 +59,6 @@ svm_stgi(void)
 #define MSR_VM_HSAVE_PA		0xC0010117	/* Host Save Area Physical Address */
 #define MSR_IC_CFG		0xC0011021	/* Instruction Cache Configuration */
 #define MSR_DE_CFG		0xC0011029	/* Decode Configuration */
-#define MSR_UCODE_AMD_PATCHLEVEL 0x0000008B
 
 #define MSR_VM_CR	0xC0010114	/* Virtual Machine Control Register */
 #define		VM_CR_DPD	__BIT(0)	/* Debug port disable */
@@ -964,7 +965,7 @@ svm_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			cpudata->vmcb->state.rax &=
 			    (CPUID_0_0D_ECX1_EAX_XSAVEOPT |
 			     CPUID_0_0D_ECX1_EAX_XSAVEC |
-			     CPUID_0_0D_ECX1_EAX_XGETBV);
+			     CPUID_0_0D_ECX1_EAX_XGETBV1);
 			cpudata->gprs[NVMM_X64_GPR_RBX] = 0;
 			cpudata->gprs[NVMM_X64_GPR_RCX] = 0;
 			cpudata->gprs[NVMM_X64_GPR_RDX] = 0;
@@ -1379,6 +1380,13 @@ svm_exit_msr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	}
 }
 
+#define SVM_EXIT_NPF_P		__BIT(0)
+#define SVM_EXIT_NPF_RW		__BIT(1)
+#define SVM_EXIT_NPF_US		__BIT(2)
+#define SVM_EXIT_NPF_RSV	__BIT(3)
+#define SVM_EXIT_NPF_ID		__BIT(4)
+#define SVM_EXIT_NPF_SS		__BIT(6)
+
 static void
 svm_exit_npf(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
     struct nvmm_vcpu_exit *exit)
@@ -1387,9 +1395,9 @@ svm_exit_npf(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	gpaddr_t gpa = cpudata->vmcb->ctrl.exitinfo2;
 
 	exit->reason = NVMM_VCPU_EXIT_MEMORY;
-	if (cpudata->vmcb->ctrl.exitinfo1 & PGEX_W)
+	if (cpudata->vmcb->ctrl.exitinfo1 & SVM_EXIT_NPF_RW)
 		exit->u.mem.prot = PROT_WRITE;
-	else if (cpudata->vmcb->ctrl.exitinfo1 & PGEX_I)
+	else if (cpudata->vmcb->ctrl.exitinfo1 & SVM_EXIT_NPF_ID)
 		exit->u.mem.prot = PROT_EXEC;
 	else
 		exit->u.mem.prot = PROT_READ;

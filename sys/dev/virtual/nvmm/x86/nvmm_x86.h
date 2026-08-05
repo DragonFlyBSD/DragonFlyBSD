@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2026 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -485,28 +485,40 @@ struct nvmm_vcpu_conf_tpr {
 #define CPUID_0_07_ECX_VPCLMULQDQ	__BIT(10)
 #define CPUID_0_07_ECX_AVX512_VNNI	__BIT(11)
 #define CPUID_0_07_ECX_AVX512_BITALG	__BIT(12)
+#define CPUID_0_07_ECX_TME_EN		__BIT(13)
 #define CPUID_0_07_ECX_AVX512_VPOPCNTDQ __BIT(14)
 #define CPUID_0_07_ECX_LA57		__BIT(16)
 #define CPUID_0_07_ECX_MAWAU		__BITS(21, 17)
 #define CPUID_0_07_ECX_RDPID		__BIT(22)
-#define CPUID_0_07_ECX_KL		__BIT(23)
+#define CPUID_0_07_ECX_KEY_LOCKER	__BIT(23)
+#define CPUID_0_07_ECX_BUS_LOCK_DETECT	__BIT(24)
 #define CPUID_0_07_ECX_CLDEMOTE		__BIT(25)
 #define CPUID_0_07_ECX_MOVDIRI		__BIT(27)
 #define CPUID_0_07_ECX_MOVDIR64B	__BIT(28)
+#define CPUID_0_07_ECX_ENQCMD		__BIT(29)
 #define CPUID_0_07_ECX_SGXLC		__BIT(30)
 #define CPUID_0_07_ECX_PKS		__BIT(31)
 /* [ECX=0] Fn0000_0007:EDX (Structured Extended Features) */
+#define CPUID_0_07_EDX_SGX_KEYS		__BIT(1)
 #define CPUID_0_07_EDX_AVX512_4VNNIW	__BIT(2)
 #define CPUID_0_07_EDX_AVX512_4FMAPS	__BIT(3)
 #define CPUID_0_07_EDX_FSREP_MOV	__BIT(4)
+#define CPUID_0_07_EDX_UINTR		__BIT(5)
 #define CPUID_0_07_EDX_AVX512_VP2INTERSECT __BIT(8)
 #define CPUID_0_07_EDX_SRBDS_CTRL	__BIT(9)
 #define CPUID_0_07_EDX_MD_CLEAR		__BIT(10)
-#define CPUID_0_07_EDX_TSX_FORCE_ABORT	__BIT(13)
+#define CPUID_0_07_EDX_RTM_ALWAYS_ABORT	__BIT(11)
+#define CPUID_0_07_EDX_RTM_FORCE_ABORT	__BIT(13)
 #define CPUID_0_07_EDX_SERIALIZE	__BIT(14)
 #define CPUID_0_07_EDX_HYBRID		__BIT(15)
 #define CPUID_0_07_EDX_TSXLDTRK		__BIT(16)
+#define CPUID_0_07_EDX_PCONFIG		__BIT(18)
+#define CPUID_0_07_EDX_ARCH_LBRS	__BIT(19)
 #define CPUID_0_07_EDX_CET_IBT		__BIT(20)
+#define CPUID_0_07_EDX_AMX_BF16		__BIT(22)
+#define CPUID_0_07_EDX_AVX512_FP16	__BIT(23)
+#define CPUID_0_07_EDX_AMX_TILE		__BIT(24)
+#define CPUID_0_07_EDX_AMX_INT8		__BIT(25)
 #define CPUID_0_07_EDX_IBRS		__BIT(26)
 #define CPUID_0_07_EDX_STIBP		__BIT(27)
 #define CPUID_0_07_EDX_L1D_FLUSH	__BIT(28)
@@ -526,8 +538,9 @@ struct nvmm_vcpu_conf_tpr {
 /* [ECX=1] Fn0000_000D:EAX (Processor Extended State Enumeration) */
 #define CPUID_0_0D_ECX1_EAX_XSAVEOPT	__BIT(0)
 #define CPUID_0_0D_ECX1_EAX_XSAVEC	__BIT(1)
-#define CPUID_0_0D_ECX1_EAX_XGETBV	__BIT(2)
+#define CPUID_0_0D_ECX1_EAX_XGETBV1	__BIT(2)
 #define CPUID_0_0D_ECX1_EAX_XSAVES	__BIT(3)
+#define CPUID_0_0D_ECX1_EAX_XFD		__BIT(4)
 
 /* Fn8000_0001:ECX */
 #define CPUID_8_01_ECX_LAHF		__BIT(0)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2026 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -323,27 +323,40 @@ const struct nvmm_x86_cpuid_mask nvmm_cpuid_00000007 = {
 	    CPUID_0_07_ECX_VPCLMULQDQ |
 	    /* CPUID_0_07_ECX_AVX512_VNNI excluded */
 	    /* CPUID_0_07_ECX_AVX512_BITALG excluded */
+	    /* CPUID_0_07_ECX_TME_EN excluded */
 	    /* CPUID_0_07_ECX_AVX512_VPOPCNTDQ excluded */
 	    /* CPUID_0_07_ECX_LA57 excluded */
 	    /* CPUID_0_07_ECX_MAWAU excluded */
 	    /* CPUID_0_07_ECX_RDPID excluded */
+	    /* CPUID_0_07_ECX_KEY_LOCKER excluded */
+	    /* CPUID_0_07_ECX_BUS_LOCK_DETECT excluded */
 	    CPUID_0_07_ECX_CLDEMOTE |
 	    CPUID_0_07_ECX_MOVDIRI |
 	    CPUID_0_07_ECX_MOVDIR64B,
+	    /* CPUID_0_07_ECX_ENQCMD excluded */
 	    /* CPUID_0_07_ECX_SGXLC excluded */
 	    /* CPUID_0_07_ECX_PKS excluded */
 	.edx =
+	    /* CPUID_0_07_EDX_SGX_KEYS excluded */
 	    /* CPUID_0_07_EDX_AVX512_4VNNIW excluded */
 	    /* CPUID_0_07_EDX_AVX512_4FMAPS excluded */
 	    CPUID_0_07_EDX_FSREP_MOV |
+	    /* CPUID_0_07_EDX_UINTR excluded */
 	    /* CPUID_0_07_EDX_AVX512_VP2INTERSECT excluded */
 	    /* CPUID_0_07_EDX_SRBDS_CTRL excluded */
 	    CPUID_0_07_EDX_MD_CLEAR |
-	    /* CPUID_0_07_EDX_TSX_FORCE_ABORT excluded */
+	    /* CPUID_0_07_EDX_RTM_ALWAYS_ABORT excluded */
+	    /* CPUID_0_07_EDX_RTM_FORCE_ABORT excluded */
 	    CPUID_0_07_EDX_SERIALIZE |
 	    /* CPUID_0_07_EDX_HYBRID excluded */
 	    /* CPUID_0_07_EDX_TSXLDTRK excluded */
+	    /* CPUID_0_07_EDX_PCONFIG excluded */
+	    /* CPUID_0_07_EDX_ARCH_LBRS excluded */
 	    /* CPUID_0_07_EDX_CET_IBT excluded */
+	    /* CPUID_0_07_EDX_AMX_BF16 excluded */
+	    /* CPUID_0_07_EDX_AVX512_FP16 excluded */
+	    /* CPUID_0_07_EDX_AMX_TILE excluded */
+	    /* CPUID_0_07_EDX_AMX_INT8 excluded */
 	    /* CPUID_0_07_EDX_IBRS excluded */
 	    /* CPUID_0_07_EDX_STIBP excluded */
 	    /* CPUID_0_07_EDX_L1D_FLUSH excluded */

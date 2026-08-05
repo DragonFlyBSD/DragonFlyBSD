@@ -88,7 +88,7 @@ struct nvmm_machine {
 	os_vmobj_t *commvmobj;
 
 	/* Kernel */
-	struct vmspace *vm;
+	os_vmspace_t *vm;
 	gpaddr_t gpa_begin;
 	gpaddr_t gpa_end;
 
