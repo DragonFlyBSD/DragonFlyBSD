@@ -18,8 +18,6 @@
 #define _COMPONENT	ACPI_OEM
 ACPI_MODULE_NAME("APPLE_FW")
 
-MALLOC_DEFINE(M_APPLEFW, "apple_fw", "Apple EFI firmware driver");
-
 static int	apple_fw_identify(driver_t *, device_t);
 static int	apple_fw_probe(device_t);
 static int	apple_fw_attach(device_t);
