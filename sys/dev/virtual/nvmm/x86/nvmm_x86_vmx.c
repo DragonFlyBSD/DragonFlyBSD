@@ -3476,7 +3476,7 @@ vmx_ident(void)
 	vmx_cpu_has_arch_cap = false;
 	x86_get_cpuid(0x00000000, &descs);
 	if (descs.eax >= 7) {
-		x86_get_cpuid(0x00000007, &descs);
+		x86_get_cpuid2(0x00000007, 0, &descs);
 		if (descs.edx & CPUID_0_07_EDX_ARCH_CAP) {
 			vmx_cpu_has_arch_cap = true;
 		}
@@ -3544,7 +3544,7 @@ vmx_init_l1tf(void)
 		return;
 	}
 
-	x86_get_cpuid(0x00000007, &descs);
+	x86_get_cpuid2(0x00000007, 0, &descs);
 
 	if (descs.edx & CPUID_0_07_EDX_ARCH_CAP) {
 		msr = rdmsr(MSR_IA32_ARCH_CAPABILITIES);
