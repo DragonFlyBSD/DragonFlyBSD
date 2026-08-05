@@ -492,15 +492,16 @@ nvmm_x86_pat_validate(uint64_t val)
 }
 
 uint32_t
-nvmm_x86_xsave_size(uint64_t xcr0)
+nvmm_x86_xsave_size(uint64_t xcr0 __unused)
 {
 	uint32_t size;
 
-	if (xcr0 & XCR0_SSE) {
-		size = 512; /* x87 + SSE */
-	} else {
-		size = 108; /* x87 */
-	}
+	/*
+	 * x87/SSE are in the legacy region, and the size of that region is
+	 * constant regardless of whether SSE is enabled.
+	 */
+
+	size = 512; /* x87 + SSE */
 	size += 64; /* XSAVE header */
 
 	return size;
