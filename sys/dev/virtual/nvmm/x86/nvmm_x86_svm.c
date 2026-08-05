@@ -1015,6 +1015,7 @@ svm_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		ncpus = os_atomic_load_uint(&mach->ncpus);
 		cpudata->vmcb->state.rax &= nvmm_cpuid_80000008.eax;
 		cpudata->gprs[NVMM_X64_GPR_RBX] &= nvmm_cpuid_80000008.ebx;
+		cpudata->gprs[NVMM_X64_GPR_RBX] |= CPUID_8_08_EBX_EferLmsleUnsupp;
 		cpudata->gprs[NVMM_X64_GPR_RCX] =
 		    __SHIFTIN(ncpus - 1, CPUID_8_08_ECX_NC) |
 		    __SHIFTIN(ilog2(NVMM_MAX_VCPUS), CPUID_8_08_ECX_ApicIdSize);
