@@ -624,7 +624,8 @@ svm_vmcb_cache_default(struct vmcb *vmcb)
 	    VMCB_CTRL_VMCB_CLEAN_SEG |
 	    VMCB_CTRL_VMCB_CLEAN_CR2 |
 	    VMCB_CTRL_VMCB_CLEAN_LBR |
-	    VMCB_CTRL_VMCB_CLEAN_AVIC;
+	    VMCB_CTRL_VMCB_CLEAN_AVIC |
+	    VMCB_CTRL_VMCB_CLEAN_CET;
 }
 
 static void
