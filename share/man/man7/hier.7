@@ -28,7 +28,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd February 19, 2023
+.Dd August 5, 2026
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -116,6 +116,10 @@ see
 System and daemon startup/control scripts;
 see
 .Xr rc 8
+.It Pa rc.local.d/
+local sysadmin startup/control scripts;
+see
+.Xr rc 8
 .It Pa ssh/
 OpenSSH configuration files;
 see
@@ -124,6 +128,11 @@ see
 LibreSSL configuration files
 .It Pa upgrade/
 Files relevant to system upgrades
+.It Pa wireguard/
+.Xr wg 4
+configuration files;
+see
+.Xr wg.conf 5
 .El
 .It Pa /home/
 HOME directories of non-root users
@@ -172,6 +181,8 @@ contains the majority of user utilities and applications
 .Bl -tag -width ".Pa libdata/" -compact
 .It Pa bin/
 common utilities, programming tools, and applications
+.It Pa distfiles.base
+directory for storing distfiles during build-all (buildports)
 .It Pa dports/
 The
 .Dx
