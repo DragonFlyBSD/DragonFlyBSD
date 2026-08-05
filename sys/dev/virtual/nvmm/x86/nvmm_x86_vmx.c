@@ -1389,8 +1389,8 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			if (vmx_procbased_ctls2 & PROC_CTLS2_INVPCID_ENABLE) {
 				cpudata->gprs[NVMM_X64_GPR_RBX] |= CPUID_0_07_EBX_INVPCID;
 			}
-			if (vmx_cpu_has_arch_cap) {
-				cpudata->gprs[NVMM_X64_GPR_RDX] |= CPUID_0_07_EDX_ARCH_CAP;
+			if (!vmx_cpu_has_arch_cap) {
+				cpudata->gprs[NVMM_X64_GPR_RDX] &= ~CPUID_0_07_EDX_ARCH_CAP;
 			}
 			break;
 		default:
