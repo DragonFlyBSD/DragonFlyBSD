@@ -606,6 +606,7 @@ struct svm_cpudata {
 	/* VCPU configuration. */
 	bool cpuidpresent[SVM_NCPUIDS];
 	struct nvmm_vcpu_conf_cpuid cpuid[SVM_NCPUIDS];
+	struct nvmm_vcpu_conf_tpr tpr;
 };
 
 static void
@@ -1070,6 +1071,39 @@ svm_exit_insn(struct vmcb *vmcb, struct nvmm_vcpu_exit *exit, uint64_t reason)
 {
 	exit->u.insn.npc = vmcb->ctrl.nrip;
 	exit->reason = reason;
+}
+
+#define SVM_EXIT_CRDR_GPR	__BITS(3,0)
+#define SVM_EXIT_CRDR_CR	__BIT(63)
+
+static void
+svm_exit_wcr8(struct nvmm_cpu *vcpu, struct nvmm_vcpu_exit *exit)
+{
+	struct svm_cpudata *cpudata = vcpu->cpudata;
+	struct vmcb *vmcb = cpudata->vmcb;
+	uint64_t info, gpr, newval;
+
+	info = vmcb->ctrl.exitinfo1;
+	gpr = __SHIFTOUT(info, SVM_EXIT_CRDR_GPR);
+	if (gpr == NVMM_X64_GPR_RAX) {
+		newval = vmcb->state.rax;
+	} else if (gpr == NVMM_X64_GPR_RSP) {
+		newval = vmcb->state.rsp;
+	} else {
+		newval = cpudata->gprs[gpr];
+	}
+
+	vmcb->ctrl.v &= ~VMCB_CTRL_V_TPR;
+	vmcb->ctrl.v |= __SHIFTIN(newval, VMCB_CTRL_V_TPR);
+
+	svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_TPR);
+
+	svm_inkernel_advance(vmcb);
+	if (cpudata->tpr.exit_changed) {
+		exit->reason = NVMM_VCPU_EXIT_TPR_CHANGED;
+	} else {
+		exit->reason = NVMM_VCPU_EXIT_NONE;
+	}
 }
 
 static void
@@ -1721,6 +1755,9 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		svm_exit_evt(cpudata, vmcb);
 
 		switch (vmcb->ctrl.exitcode) {
+		case VMCB_EXITCODE_CR8_WRITE:
+			svm_exit_wcr8(vcpu, exit);
+			break;
 		case VMCB_EXITCODE_INTR:
 		case VMCB_EXITCODE_NMI:
 			exit->reason = NVMM_VCPU_EXIT_NONE;
@@ -2255,11 +2292,16 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	struct vmcb *vmcb = cpudata->vmcb;
 
 	/*
-	 * Allow reads/writes of Control Registers.
-	 * However, selective CR0 write is actually intercepted below with
-	 * VMCB_CTRL_INTERCEPT_CR0_SEL.
+	 * If DecodeAssist is supported, intercept writes to CR8 and deliver
+	 * TPR_CHANGED VMEXITs to the emulator. If not, then we have no way
+	 * to precisely track CR8 updates, and rely on the emulator to do
+	 * best-effort tracking based on the CR8 exitstate.
 	 */
-	vmcb->ctrl.intercept_cr = 0;
+	if (svm_decode_assist) {
+		vmcb->ctrl.intercept_cr = VMCB_CTRL_INTERCEPT_WCR(8);
+	} else {
+		vmcb->ctrl.intercept_cr = 0;
+	}
 
 	/* Allow reads/writes of Debug Registers. */
 	vmcb->ctrl.intercept_dr = 0;
@@ -2509,6 +2551,19 @@ svm_vcpu_configure_cpuid(struct svm_cpudata *cpudata, void *data)
 }
 
 static int
+svm_vcpu_configure_tpr(struct svm_cpudata *cpudata, void *data)
+{
+	struct nvmm_vcpu_conf_tpr *tpr = data;
+
+	if (!svm_decode_assist) {
+		return ENOTSUP;
+	}
+
+	memcpy(&cpudata->tpr, tpr, sizeof(*tpr));
+	return 0;
+}
+
+static int
 svm_vcpu_configure(struct nvmm_cpu *vcpu, uint64_t op, void *data)
 {
 	struct svm_cpudata *cpudata = vcpu->cpudata;
@@ -2516,6 +2571,8 @@ svm_vcpu_configure(struct nvmm_cpu *vcpu, uint64_t op, void *data)
 	switch (op) {
 	case NVMM_VCPU_CONF_MD(NVMM_VCPU_CONF_CPUID):
 		return svm_vcpu_configure_cpuid(cpudata, data);
+	case NVMM_VCPU_CONF_MD(NVMM_VCPU_CONF_TPR):
+		return svm_vcpu_configure_tpr(cpudata, data);
 	default:
 		return EINVAL;
 	}
@@ -2767,6 +2824,9 @@ svm_capability(struct nvmm_capability *cap)
 	cap->arch.mach_conf_support = 0;
 	cap->arch.vcpu_conf_support =
 	    NVMM_CAP_ARCH_VCPU_CONF_CPUID;
+	if (svm_decode_assist) {
+		cap->arch.vcpu_conf_support |= NVMM_CAP_ARCH_VCPU_CONF_TPR;
+	}
 	cap->arch.xcr0_mask = svm_xcr0_mask;
 	cap->arch.mxcsr_mask = x86_fpu_mxcsr_mask;
 	cap->arch.conf_cpuid_maxops = SVM_NCPUIDS;
