@@ -1,0 +1,150 @@
+UPGRADING GCC IN DRAGONFLY
+==========================
+
+The following steps document how to import GCC 12.5.0 as an alternative
+compiler based on GCC 8.3.0.
+
+1. Download the release tarball from: https://ftp.gnu.org/gnu/gcc/
+
+   $ fetch https://ftp.gnu.org/gnu/gcc/gcc-12.5.0/gcc-12.5.0.tar.xz
+
+2. Prepare the required libraries: gmp, mpfr, mpc
+
+   $ ( cd gnu/usr.bin/gmp; make obj; make depend; make all )
+   $ ( cd gnu/usr.bin/mpfr; make obj; make depend; make all )
+   $ ( cd gnu/usr.bin/mpc; make obj; make depend; make all )
+
+3. Extract the tarball into "contrib/" directory and make a copy:
+
+   $ cd contrib
+   $ tar -xf gcc-12.5.0.tar.xz
+   $ cp -a gcc-12.5.0 gcc-12
+
+4. Backport the local changes to GCC by checking the README.DRAGONFLY and
+   the commit history. Make a copy of the source for later use.
+
+   $ cp -a gcc-12 gcc-12-patched
+
+5. Configure the source and build:
+
+   $ mkdir gcc-build gcc-install
+   $ cd gcc-build
+   $ ../gcc-12/configure ${ARGS} \
+         --prefix=$(pwd)/../gcc-install \
+         --with-gmp-include=/usr/src/gnu/usr.bin/gmp \
+         --with-gmp-lib=/usr/obj/usr/src/gnu/usr.bin/gmp \
+         --with-mpfr-include=/usr/src/contrib/mpfr/src \
+         --with-mpfr-lib=/usr/obj/usr/src/gnu/usr.bin/mpfr \
+         --with-mpc-include=/usr/src/contrib/mpc/src \
+         --with-mpc-lib=/usr/obj/usr/src/gnu/usr.bin/mpc
+   $ gmake
+
+   Where ${ARGS} is the configure arguments inherited from GCC 8 and is
+   documented in README.DRAGONFLY.
+
+6. Create the makefiles based on GCC 8's:
+
+   $ ( cd gnu/usr.bin; cp -a cc80 cc120 )
+   $ ( cd gnu/lib; cp -a gcc80 gcc120 )
+   $ cp share/mk/bsd.cpu.gcc80.mk share/mk/bsd.cpu.gcc120.mk
+
+   Adjust the makefiles to work with GCC 12.  Check the comments in the
+   individual files to see how to correctly update them.
+
+   This involves with intensively cross-checking the GCC's vendor
+   makefiles/scripts and the various generated files during the above
+   configuration and building phases.
+
+7. Update the following files to include GCC 12:
+
+   * Makefile.inc1
+   * etc/mtree/BSD.include.dist
+   * etc/mtree/BSD.usr.dist
+   * gnu/lib/Makefile
+   * gnu/usr.bin/Makefile
+   * gnu/usr.bin/Makefile.cco
+   * share/man/man5/make.conf.5
+   * share/mk/Makefile
+   * share/mk/bsd.README
+   * share/mk/bsd.cpu.mk
+
+8. Set `gcc120` as the alternative compiler by editing `share/mk/sys.mk`:
+
+   WORLD_ALTCOMPILER?=gcc120
+
+9. Test `crossworld` and fix any issues:
+
+   $ make crossworld
+
+10. Now GCC 12 itself builds OK. Do a full world building and installation
+    to get it on the host system:
+
+    $ make buildworld
+    $ make installworld
+
+11. Set `gcc120` as the world compiler (i.e., default compiler) by editing
+    `/etc/make.conf`:
+
+    WORLD_CCVER=gcc120
+
+12. Fully test the new GCC and fix any issues, e.g.,
+
+    $ make buildworld
+    $ make buildkernel
+    $ make installworld
+    $ make initrd
+
+13. Fix or silence any new warnings and enable `-Werror` for the new GCC.
+
+------------------------------------------------------------------------------
+
+The following steps document how to properly import and merge the GCC source.
+
+1. Trim the source directory. A UFS atime trick is used here to find and
+   trim all the unused files.
+
+   a. Create a UFS filesystem on vn(4):
+
+      $ vnconfig -c -T -S 1g vn gcc12.img
+      $ newfs /dev/vn4s0
+      $ mount_ufs /dev/vn4s0 ./contrib/gcc-12
+
+   b. Copy the patched source and create an atime mark:
+
+      $ cp -a contrib/gcc-12-patched/* contrib/gcc-12/
+      $ cd contrib/gcc-12
+      $ find . | xargs touch
+      $ touch TMARK
+
+   c. Manually touch the files to keep them
+
+      $ touch README COPYING* LAST_UPDATED gcc/BASE-VER
+
+   d. Do a `buildworld` and then delete the unused files
+
+      $ find . -type f '!' -anewer TMARK -delete
+      $ find . -empty -delete
+
+2. Cross-check the original source to revert the patched files for vendor
+   import.
+
+3. Import the source to a vendor branch:
+
+   $ git checkout --orphan vendor/GCC120
+   $ git add contrib/gcc-12
+   $ git commit ...
+
+4. Merge the vendor branch into master:
+
+   $ git checkout master
+   $ git merge --allow-unrelated-histories vendor/GCC120
+
+5. Recover the patched files and commit them on the master branch.
+
+6. Generate `README.DELETED`:
+
+   $ ./tools/tools/genreadmedeleted/genreadmedeleted \
+         contrib/gcc-12.5.0 contrib/gcc-12
+
+7. Add `README.DRAGONFLY`, commit both READMEs, push both master and the
+   vendor branches.

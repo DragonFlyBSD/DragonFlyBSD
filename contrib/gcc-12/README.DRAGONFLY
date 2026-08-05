@@ -13,6 +13,8 @@ The file README.DELETED contains a list of deleted files and directories.
 
 Use "git diff vendor/GCC120 contrib/gcc-12" to see local modifications.
 
+See doc/upgrading_gcc.txt for the upgrade steps and notes.
+
 Configured with
 ===============
   --with-pkgversion=DragonFly
