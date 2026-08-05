@@ -85,12 +85,11 @@ typedef struct {
 } cpuid_desc_t;
 
 #if defined(__NetBSD__)
-#define x86_get_cpuid(l, d)	x86_cpuid(l, (uint32_t *)d)
 #define x86_get_cpuid2(l, c, d)	x86_cpuid2(l, c, (uint32_t *)d)
 #elif defined(__DragonFly__)
-#define x86_get_cpuid(l, d)	do_cpuid(l, (uint32_t *)d)
 #define x86_get_cpuid2(l, c, d)	cpuid_count(l, c, (uint32_t *)d)
 #endif
+#define x86_get_cpuid(l, d)	x86_get_cpuid2(l, 0, d)
 
 /* Control registers. */
 #if defined(__NetBSD__)
