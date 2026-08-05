@@ -311,7 +311,7 @@ struct vmcb_ctrl {
 	uint32_t intercept_misc3;
 #define VMCB_CTRL_INTERCEPT_INVLPGB_ALL	__BIT(0)
 #define VMCB_CTRL_INTERCEPT_INVLPGB_ILL	__BIT(1)
-#define VMCB_CTRL_INTERCEPT_PCID	__BIT(2)
+#define VMCB_CTRL_INTERCEPT_INVPCID	__BIT(2)
 #define VMCB_CTRL_INTERCEPT_MCOMMIT	__BIT(3)
 #define VMCB_CTRL_INTERCEPT_TLBSYNC	__BIT(4)
 
@@ -1839,7 +1839,6 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		case VMCB_EXITCODE_RDTSCP:
 		case VMCB_EXITCODE_RDPRU:
 		case VMCB_EXITCODE_INVLPGB:
-		case VMCB_EXITCODE_INVPCID:
 		case VMCB_EXITCODE_MCOMMIT:
 		case VMCB_EXITCODE_TLBSYNC:
 			svm_inject_ud(vcpu);
@@ -2348,7 +2347,7 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	    /* CR4_VMXE excluded */
 	    /* CR4_SMXE excluded */
 	    CR4_FSGSBASE |
-	    /* CR4_PCIDE excluded */
+	    CR4_PCIDE |
 	    CR4_OSXSAVE |
 	    CR4_SMEP |
 	    CR4_SMAP
@@ -2460,11 +2459,13 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	    VMCB_CTRL_INTERCEPT_RDPRU;
 
 	/*
-	 * Intercept everything.
+	 * Allow:
+	 *  - INVPCID [invpcid instruction]
+	 *
+	 * Intercept the rest below.
 	 */
 	vmcb->ctrl.intercept_misc3 =
 	    VMCB_CTRL_INTERCEPT_INVLPGB_ALL |
-	    VMCB_CTRL_INTERCEPT_PCID |
 	    VMCB_CTRL_INTERCEPT_MCOMMIT |
 	    VMCB_CTRL_INTERCEPT_TLBSYNC;
 

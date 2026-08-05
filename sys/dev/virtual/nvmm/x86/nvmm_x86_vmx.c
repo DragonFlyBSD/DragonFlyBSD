@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2026 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -1332,8 +1332,8 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 
 		cpudata->gprs[NVMM_X64_GPR_RCX] &= nvmm_cpuid_00000001.ecx;
 		cpudata->gprs[NVMM_X64_GPR_RCX] |= CPUID_0_01_ECX_RAZ;
-		if (vmx_procbased_ctls2 & PROC_CTLS2_INVPCID_ENABLE) {
-			cpudata->gprs[NVMM_X64_GPR_RCX] |= CPUID_0_01_ECX_PCID;
+		if (!(vmx_procbased_ctls2 & PROC_CTLS2_INVPCID_ENABLE)) {
+			cpudata->gprs[NVMM_X64_GPR_RCX] &= ~CPUID_0_01_ECX_PCID;
 		}
 
 		cpudata->gprs[NVMM_X64_GPR_RDX] &= nvmm_cpuid_00000001.edx;
@@ -1386,8 +1386,8 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			cpudata->gprs[NVMM_X64_GPR_RBX] &= nvmm_cpuid_00000007.ebx;
 			cpudata->gprs[NVMM_X64_GPR_RCX] &= nvmm_cpuid_00000007.ecx;
 			cpudata->gprs[NVMM_X64_GPR_RDX] &= nvmm_cpuid_00000007.edx;
-			if (vmx_procbased_ctls2 & PROC_CTLS2_INVPCID_ENABLE) {
-				cpudata->gprs[NVMM_X64_GPR_RBX] |= CPUID_0_07_EBX_INVPCID;
+			if (!(vmx_procbased_ctls2 & PROC_CTLS2_INVPCID_ENABLE)) {
+				cpudata->gprs[NVMM_X64_GPR_RBX] &= ~CPUID_0_07_EBX_INVPCID;
 			}
 			if (!vmx_cpu_has_arch_cap) {
 				cpudata->gprs[NVMM_X64_GPR_RDX] &= ~CPUID_0_07_EDX_ARCH_CAP;

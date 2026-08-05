@@ -228,7 +228,7 @@ const struct nvmm_x86_cpuid_mask nvmm_cpuid_00000001 = {
 	    CPUID_0_01_ECX_CX16 |
 	    /* CPUID_0_01_ECX_XTPR excluded */
 	    /* CPUID_0_01_ECX_PDCM excluded */
-	    /* CPUID_0_01_ECX_PCID excluded, but re-included in VMX */
+	    CPUID_0_01_ECX_PCID |
 	    /* CPUID_0_01_ECX_DCA excluded */
 	    CPUID_0_01_ECX_SSE41 |
 	    CPUID_0_01_ECX_SSE42 |
@@ -288,7 +288,7 @@ const struct nvmm_x86_cpuid_mask nvmm_cpuid_00000007 = {
 	    CPUID_0_07_EBX_SMEP |
 	    CPUID_0_07_EBX_BMI2 |
 	    CPUID_0_07_EBX_ERMS |
-	    /* CPUID_0_07_EBX_INVPCID excluded, but re-included in VMX */
+	    CPUID_0_07_EBX_INVPCID |
 	    /* CPUID_0_07_EBX_RTM excluded */
 	    /* CPUID_0_07_EBX_QM excluded */
 	    CPUID_0_07_EBX_FPUCSDS |
