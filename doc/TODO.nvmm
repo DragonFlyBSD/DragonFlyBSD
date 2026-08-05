@@ -6,8 +6,6 @@ Known issues in NVMM, low priority in most cases.
    install the PDPTEs, and currently we don't do it. In practice they don't
    misbehave because the emulator never has to interfere with CR3.
 
- * AMD: need to do filter CR4 like we already do on Intel.
-
  * It would be useful to expose a way for the guests to lock certain of their
    registers. Typically via a hypercall that locks CR4. Useful as exploit
    mitigation technique in certain cases.

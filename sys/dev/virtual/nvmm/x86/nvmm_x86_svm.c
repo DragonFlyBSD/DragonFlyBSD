@@ -603,6 +603,9 @@ struct svm_cpudata {
 	uint64_t gtsc_match;
 	struct nvmm_x86_xsave gxsave __aligned(64);
 
+	/* Limits. */
+	uint64_t cr4_valid;
+
 	/* VCPU configuration. */
 	bool cpuidpresent[SVM_NCPUIDS];
 	struct nvmm_vcpu_conf_cpuid cpuid[SVM_NCPUIDS];
@@ -1075,6 +1078,40 @@ svm_exit_insn(struct vmcb *vmcb, struct nvmm_vcpu_exit *exit, uint64_t reason)
 
 #define SVM_EXIT_CRDR_GPR	__BITS(3,0)
 #define SVM_EXIT_CRDR_CR	__BIT(63)
+
+static void
+svm_exit_wcr4(struct nvmm_cpu *vcpu, struct nvmm_vcpu_exit *exit)
+{
+	struct svm_cpudata *cpudata = vcpu->cpudata;
+	struct vmcb *vmcb = cpudata->vmcb;
+	uint64_t info, gpr, newval;
+
+	info = vmcb->ctrl.exitinfo1;
+	gpr = __SHIFTOUT(info, SVM_EXIT_CRDR_GPR);
+	if (gpr == NVMM_X64_GPR_RAX) {
+		newval = vmcb->state.rax;
+	} else if (gpr == NVMM_X64_GPR_RSP) {
+		newval = vmcb->state.rsp;
+	} else {
+		newval = cpudata->gprs[gpr];
+	}
+
+	if ((newval & ~cpudata->cr4_valid) != 0) {
+		svm_inject_gp(vcpu);
+		return;
+	}
+
+	if ((vmcb->state.cr4 ^ newval) & CR4_TLB_FLUSH) {
+		cpudata->gtlb_want_flush = true;
+	}
+
+	vmcb->state.cr4 = newval;
+
+	svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_CR);
+
+	svm_inkernel_advance(vmcb);
+	exit->reason = NVMM_VCPU_EXIT_NONE;
+}
 
 static void
 svm_exit_wcr8(struct nvmm_cpu *vcpu, struct nvmm_vcpu_exit *exit)
@@ -1755,6 +1792,9 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		svm_exit_evt(cpudata, vmcb);
 
 		switch (vmcb->ctrl.exitcode) {
+		case VMCB_EXITCODE_CR4_WRITE:
+			svm_exit_wcr4(vcpu, exit);
+			break;
 		case VMCB_EXITCODE_CR8_WRITE:
 			svm_exit_wcr8(vcpu, exit);
 			break;
@@ -2014,7 +2054,8 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 		    CR0_FORCE_ONE;
 		vmcb->state.cr2 = state->crs[NVMM_X64_CR_CR2];
 		vmcb->state.cr3 = state->crs[NVMM_X64_CR_CR3];
-		vmcb->state.cr4 = state->crs[NVMM_X64_CR_CR4];
+		vmcb->state.cr4 = state->crs[NVMM_X64_CR_CR4] &
+		    cpudata->cr4_valid;
 
 		vmcb->ctrl.v &= ~VMCB_CTRL_V_TPR;
 		vmcb->ctrl.v |= __SHIFTIN(state->crs[NVMM_X64_CR_CR8],
@@ -2291,14 +2332,47 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	struct vmcb *vmcb = cpudata->vmcb;
 
+	cpudata->cr4_valid =
+	    CR4_VME |
+	    CR4_PVI |
+	    CR4_TSD |
+	    CR4_DE |
+	    CR4_PSE |
+	    CR4_PAE |
+	    CR4_MCE |
+	    CR4_PGE |
+	    CR4_PCE |
+	    CR4_OSFXSR |
+	    CR4_OSXMMEXCPT |
+	    CR4_UMIP |
+	    /* CR4_LA57 excluded */
+	    /* CR4_VMXE excluded */
+	    /* CR4_SMXE excluded */
+	    CR4_FSGSBASE |
+	    /* CR4_PCIDE excluded */
+	    CR4_OSXSAVE |
+	    CR4_SMEP |
+	    CR4_SMAP
+	    /* CR4_PKE excluded */
+	    /* CR4_CET excluded */
+	    /* CR4_PKS excluded */;
+
 	/*
-	 * If DecodeAssist is supported, intercept writes to CR8 and deliver
-	 * TPR_CHANGED VMEXITs to the emulator. If not, then we have no way
-	 * to precisely track CR8 updates, and rely on the emulator to do
-	 * best-effort tracking based on the CR8 exitstate.
+	 * If DecodeAssist is supported:
+	 *
+	 *  - Intercept writes to CR4 to restrict access to unsupported CR4
+	 *    features. If not, then this is an old AMD CPU that doesn't have
+	 *    unsupported CR4 features, so we have nothing to do.
+	 *
+	 *  - Intercept writes to CR8 and deliver TPR_CHANGED VMEXITs to the
+	 *    emulator. If not, then we have no way to precisely track CR8
+	 *    updates, and rely on the emulator to do best-effort tracking
+	 *    based on the CR8 exitstate.
 	 */
 	if (svm_decode_assist) {
-		vmcb->ctrl.intercept_cr = VMCB_CTRL_INTERCEPT_WCR(8);
+		vmcb->ctrl.intercept_cr =
+		    VMCB_CTRL_INTERCEPT_WCR(4) |
+		    VMCB_CTRL_INTERCEPT_WCR(8);
 	} else {
 		vmcb->ctrl.intercept_cr = 0;
 	}
