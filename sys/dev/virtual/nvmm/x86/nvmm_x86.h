@@ -569,6 +569,7 @@ struct nvmm_vcpu_conf_tpr {
 #define CPUID_8_01_ECX_PERFTSC		__BIT(27)
 #define CPUID_8_01_ECX_PERFEXTLLC	__BIT(28)
 #define CPUID_8_01_ECX_MWAITX		__BIT(29)
+#define CPUID_8_01_ECX_AddrMaskExt	__BIT(30)
 /* Fn8000_0001:EDX */
 #define CPUID_8_01_EDX_FPU		__BIT(0)
 #define CPUID_8_01_EDX_VME		__BIT(1)
@@ -630,8 +631,12 @@ struct nvmm_vcpu_conf_tpr {
 #define CPUID_8_08_EBX_EferLmsleUnsupp	__BIT(20)
 #define CPUID_8_08_EBX_INVLPGBnestedPg	__BIT(21)
 #define CPUID_8_08_EBX_SSBD		__BIT(24)
-#define CPUID_8_08_EBX_VIRT_SSBD	__BIT(25)
-#define CPUID_8_08_EBX_SSB_NO		__BIT(26)
+#define CPUID_8_08_EBX_SsbdVirtSpecCtrl	__BIT(25)
+#define CPUID_8_08_EBX_SsbdNotRequired	__BIT(26)
+#define CPUID_8_08_EBX_CPPC		__BIT(27)
+#define CPUID_8_08_EBX_PSFD		__BIT(28)
+#define CPUID_8_08_EBX_BTC_NO		__BIT(29)
+#define CPUID_8_08_EBX_IBPB_RET		__BIT(30)
 /* Fn8000_0008:ECX */
 #define CPUID_8_08_ECX_NC		__BITS(7,0)
 #define CPUID_8_08_ECX_ApicIdSize	__BITS(15,12)

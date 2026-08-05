@@ -204,6 +204,29 @@ vmx_sti(void)
 #define		IA32_ARCH_IF_PSCHANGE_MC_NO	__BIT(6)
 #define		IA32_ARCH_TSX_CTRL		__BIT(7)
 #define		IA32_ARCH_TAA_NO		__BIT(8)
+#define		IA32_ARCH_MCU_CONTROL		__BIT(9)
+#define		IA32_ARCH_MISC_PACKAGE_CTLS	__BIT(10)
+#define		IA32_ARCH_ENERGY_FILTERING_CTL	__BIT(11)
+#define		IA32_ARCH_DOITM			__BIT(12)
+#define		IA32_ARCH_SBDR_SSDP_NO		__BIT(13)
+#define		IA32_ARCH_FBSDP_NO		__BIT(14)
+#define		IA32_ARCH_PSDP_NO		__BIT(15)
+#define		IA32_ARCH_MCU_ENUMERATION	__BIT(16)
+#define		IA32_ARCH_FB_CLEAR		__BIT(17)
+#define		IA32_ARCH_FB_CLEAR_CTRL		__BIT(18)
+#define		IA32_ARCH_RRSBA			__BIT(19)
+#define		IA32_ARCH_BHI_NO		__BIT(20)
+#define		IA32_ARCH_XAPIC_DISABLE_STATUS	__BIT(21)
+#define		IA32_ARCH_MCU_EXTENDED_SERVICE	__BIT(22)
+#define		IA32_ARCH_OVERCLOCKING_STATUS	__BIT(23)
+#define		IA32_ARCH_PBRSB_NO		__BIT(24)
+#define		IA32_ARCH_GDS_CTRL		__BIT(25)
+#define		IA32_ARCH_GDS_NO		__BIT(26)
+#define		IA32_ARCH_RFDS_NO		__BIT(27)
+#define		IA32_ARCH_RFDS_CLEAR		__BIT(28)
+#define		IA32_ARCH_IGN_UMONITOR_SUPPORT	__BIT(29)
+#define		IA32_ARCH_MON_UMON_MITG_SUPPORT	__BIT(30)
+#define		IA32_ARCH_PBOPT_SUPPORT		__BIT(32)
 
 #define MSR_IA32_FLUSH_CMD		0x010B
 #define		IA32_FLUSH_CMD_L1D_FLUSH	__BIT(0)
@@ -1912,7 +1935,14 @@ vmx_inkernel_handle_msr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			val &= (IA32_ARCH_RDCL_NO |
 			    IA32_ARCH_SSB_NO |
 			    IA32_ARCH_MDS_NO |
-			    IA32_ARCH_TAA_NO);
+			    IA32_ARCH_TAA_NO |
+			    IA32_ARCH_SBDR_SSDP_NO |
+			    IA32_ARCH_FBSDP_NO |
+			    IA32_ARCH_PSDP_NO |
+			    IA32_ARCH_BHI_NO |
+			    IA32_ARCH_PBRSB_NO |
+			    IA32_ARCH_GDS_NO |
+			    IA32_ARCH_RFDS_NO);
 			cpudata->gprs[NVMM_X64_GPR_RAX] = (val & 0xFFFFFFFF);
 			cpudata->gprs[NVMM_X64_GPR_RDX] = (val >> 32);
 			goto handled;

@@ -395,6 +395,7 @@ const struct nvmm_x86_cpuid_mask nvmm_cpuid_80000001 = {
 	    /* CPUID_8_01_ECX_PERFTSC excluded */
 	    /* CPUID_8_01_ECX_PERFEXTLLC excluded */
 	    /* CPUID_8_01_ECX_MWAITX excluded */
+	    /* CPUID_8_01_ECX_AddrMaskExt excluded */
 	.edx =
 	    CPUID_8_01_EDX_FPU |
 	    CPUID_8_01_EDX_VME |
@@ -457,7 +458,7 @@ const struct nvmm_x86_cpuid_mask nvmm_cpuid_80000008 = {
 	    /* CPUID_8_08_EBX_IBPB excluded */
 	    /* CPUID_8_08_EBX_INT_WBINVD excluded */
 	    /* CPUID_8_08_EBX_IBRS excluded */
-	    CPUID_8_08_EBX_EferLmsleUnsupp,
+	    CPUID_8_08_EBX_EferLmsleUnsupp |
 	    /* CPUID_8_08_EBX_INVLPGBnestedPg excluded */
 	    /* CPUID_8_08_EBX_STIBP excluded */
 	    /* CPUID_8_08_EBX_IBRS_ALWAYSON excluded */
@@ -465,7 +466,11 @@ const struct nvmm_x86_cpuid_mask nvmm_cpuid_80000008 = {
 	    /* CPUID_8_08_EBX_PREFER_IBRS excluded */
 	    /* CPUID_8_08_EBX_SSBD excluded */
 	    /* CPUID_8_08_EBX_VIRT_SSBD excluded */
-	    /* CPUID_8_08_EBX_SSB_NO excluded */
+	    CPUID_8_08_EBX_SsbdNotRequired |
+	    /* CPUID_8_08_EBX_CPPC excluded */
+	    /* CPUID_8_08_EBX_PSFD excluded */
+	    CPUID_8_08_EBX_BTC_NO,
+	    /* CPUID_8_08_EBX_IBPB_RET excluded */
 	.ecx = 0,
 	.edx = 0
 };
