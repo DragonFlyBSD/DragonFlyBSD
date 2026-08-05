@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2026 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -127,7 +127,6 @@ struct nvmm_impl {
 	int (*vcpu_configure)(struct nvmm_cpu *, uint64_t, void *);
 	void (*vcpu_setstate)(struct nvmm_cpu *);
 	void (*vcpu_getstate)(struct nvmm_cpu *);
-	int (*vcpu_inject)(struct nvmm_cpu *);
 	int (*vcpu_run)(struct nvmm_machine *, struct nvmm_cpu *,
 	    struct nvmm_vcpu_exit *);
 };

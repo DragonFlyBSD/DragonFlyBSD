@@ -2940,6 +2940,5 @@ const struct nvmm_impl nvmm_x86_svm = {
 	.vcpu_configure = svm_vcpu_configure,
 	.vcpu_setstate = svm_vcpu_setstate,
 	.vcpu_getstate = svm_vcpu_getstate,
-	.vcpu_inject = svm_vcpu_inject,
 	.vcpu_run = svm_vcpu_run
 };
