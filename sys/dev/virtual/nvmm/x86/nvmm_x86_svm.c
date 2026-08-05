@@ -536,10 +536,6 @@ static uint64_t svm_xcr0_mask __read_mostly;
 #define CR0_FORCE_ONE \
 	(CR0_ET | CR0_NE)
 
-/* Does not include EFER_LMSLE. */
-#define EFER_VALID \
-	(EFER_SCE|EFER_LME|EFER_LMA|EFER_NXE|EFER_SVME|EFER_FFXSR|EFER_TCE)
-
 #define EFER_TLB_FLUSH \
 	(EFER_NXE|EFER_LMA|EFER_LME)
 #define CR0_TLB_FLUSH \
@@ -605,6 +601,7 @@ struct svm_cpudata {
 
 	/* Limits. */
 	uint64_t cr4_valid;
+	uint64_t efer_valid;
 
 	/* VCPU configuration. */
 	bool cpuidpresent[SVM_NCPUIDS];
@@ -1362,7 +1359,8 @@ svm_inkernel_handle_msr(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		}
 	} else {
 		if (exit->u.wrmsr.msr == MSR_EFER) {
-			if (__predict_false(exit->u.wrmsr.val & ~EFER_VALID)) {
+			if (__predict_false(exit->u.wrmsr.val &
+			    ~cpudata->efer_valid)) {
 				goto error;
 			}
 			if ((vmcb->state.efer ^ exit->u.wrmsr.val) &
@@ -2078,10 +2076,11 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 	}
 
 	if (flags & NVMM_X64_STATE_MSRS) {
-		/*
-		 * EFER_SVME is mandatory.
-		 */
-		vmcb->state.efer = state->msrs[NVMM_X64_MSR_EFER] | EFER_SVME;
+		/* EFER_SVME is mandatory. */
+		vmcb->state.efer =
+		    state->msrs[NVMM_X64_MSR_EFER] & cpudata->efer_valid;
+		vmcb->state.efer |= EFER_SVME;
+
 		vmcb->state.star = state->msrs[NVMM_X64_MSR_STAR];
 		vmcb->state.lstar = state->msrs[NVMM_X64_MSR_LSTAR];
 		vmcb->state.cstar = state->msrs[NVMM_X64_MSR_CSTAR];
@@ -2356,6 +2355,20 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	    /* CR4_PKE excluded */
 	    /* CR4_CET excluded */
 	    /* CR4_PKS excluded */;
+
+	cpudata->efer_valid =
+	    EFER_SCE |
+	    EFER_LME |
+	    EFER_LMA |
+	    EFER_NXE |
+	    /* EFER_SVME excluded */
+	    /* EFER_LMSLE excluded */
+	    EFER_FFXSR |
+	    EFER_TCE
+	    /* EFER_MCOMMIT excluded */
+	    /* EFER_INTWB excluded */
+	    /* EFER_UAIE excluded */
+	    /* EFER_AIBRSE excluded */;
 
 	/*
 	 * If DecodeAssist is supported:
