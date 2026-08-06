@@ -580,9 +580,8 @@ struct svm_cpudata {
 	struct {
 		uint64_t fsbase;
 		uint64_t kernelgsbase;
-		uint64_t drs[NVMM_X64_NDR];
 #ifdef __DragonFly__
-		mcontext_t hmctx;  /* TODO: remove this like NetBSD */
+		uint64_t drs[NVMM_X64_NDR];
 #endif
 	} hstate;
 
@@ -1527,15 +1526,7 @@ svm_vcpu_guest_fpu_enter(struct nvmm_cpu *vcpu)
 {
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 
-#if defined(__NetBSD__)
 	x86_curthread_save_fpu();
-#elif defined(__DragonFly__)
-	/*
-	 * NOTE: Host FPU state depends on whether the user program used the
-	 *       FPU or not.  Need to use npxpush()/npxpop() to handle this.
-	 */
-	npxpush(&cpudata->hstate.hmctx);
-#endif
 
 	x86_restore_fpu(&cpudata->gxsave, svm_xcr0_mask);
 	if (svm_xcr0_mask != 0) {
@@ -1553,11 +1544,7 @@ svm_vcpu_guest_fpu_leave(struct nvmm_cpu *vcpu)
 	}
 	x86_save_fpu(&cpudata->gxsave, svm_xcr0_mask);
 
-#if defined(__NetBSD__)
 	x86_curthread_restore_fpu();
-#elif defined(__DragonFly__)
-	npxpop(&cpudata->hstate.hmctx);
-#endif
 }
 
 static void

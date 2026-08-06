@@ -188,8 +188,8 @@ x86_curthread_restore_dbregs(uint64_t *drs)
 #define x86_save_fpu(a, m)		fpu_area_save(a, m, true)
 #define x86_restore_fpu(a, m)		fpu_area_restore(a, m, true)
 #elif defined(__DragonFly__)
-#define x86_curthread_save_fpu()	/* TODO */
-#define x86_curthread_restore_fpu()	/* TODO */
+#define x86_curthread_save_fpu()	kernel_fpu_begin()
+#define x86_curthread_restore_fpu()	kernel_fpu_end()
 #define x86_save_fpu(a, m)				\
 	({						\
 		fpusave((union savefpu *)(a), m);	\
