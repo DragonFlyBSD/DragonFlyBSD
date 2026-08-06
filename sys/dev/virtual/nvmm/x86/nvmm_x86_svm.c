@@ -595,7 +595,7 @@ struct svm_cpudata {
 	uint64_t gprs[NVMM_X64_NGPR];
 	uint64_t drs[NVMM_X64_NDR];
 	uint64_t gtsc_offset;
-	uint64_t gtsc_match;
+	uint64_t gtsc_last;
 	struct nvmm_x86_xsave gxsave __aligned(64);
 
 	/* Limits. */
@@ -2083,16 +2083,14 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 		vmcb->state.g_pat = state->msrs[NVMM_X64_MSR_PAT];
 
 		/*
-		 * The emulator might NOT want to set the TSC, because doing
-		 * so would destroy TSC MP-synchronization across CPUs.  Try
-		 * to figure out what the emulator meant to do.
+		 * The emulator might not want to set the TSC, because doing so
+		 * would destroy TSC MP-synchronization across CPUs. Try to
+		 * figure out what the emulator meant to do.
 		 *
-		 * If writing the last TSC value we reported via getstate or
-		 * a zero value, assume that the emulator does not want to
-		 * write to the TSC.
+		 * If it's writing the last TSC value we reported via getstate,
+		 * assume that the emulator does not want to write to the TSC.
 		 */
-		if (state->msrs[NVMM_X64_MSR_TSC] != cpudata->gtsc_match &&
-		    state->msrs[NVMM_X64_MSR_TSC] != 0) {
+		if (state->msrs[NVMM_X64_MSR_TSC] != cpudata->gtsc_last) {
 			cpudata->gtsc_offset =
 			    state->msrs[NVMM_X64_MSR_TSC] - rdtsc();
 			cpudata->gtsc_want_update = true;
@@ -2224,7 +2222,7 @@ svm_vcpu_getstate(struct nvmm_cpu *vcpu)
 		state->msrs[NVMM_X64_MSR_EFER] &= ~EFER_SVME;
 
 		/* Save reported TSC value for later setstate check. */
-		cpudata->gtsc_match = state->msrs[NVMM_X64_MSR_TSC];
+		cpudata->gtsc_last = state->msrs[NVMM_X64_MSR_TSC];
 	}
 
 	if (flags & NVMM_X64_STATE_INTR) {
