@@ -2911,6 +2911,31 @@ sysctl_kern_ttys(SYSCTL_HANDLER_ARGS)
 		t = *tp;
 		if (t.t_dev)
 			t.t_dev = (cdev_t)(uintptr_t)devid_from_dev(t.t_dev);
+		/*
+		 * Zero every kernel-pointer field before copyout so we do not
+		 * leak kernel .text/.rodata/.heap addresses (KASLR defeat +
+		 * heap layout) to unprivileged readers of kern.ttys.  Only
+		 * t_dev is rewritten (to a devid) above; every other pointer-
+		 * bearing field is nulled here.  Mirrors the sanitized-export
+		 * pattern used by kinfo_file in kern_descrip.c.
+		 */
+		bzero(&t.t_token, sizeof(t.t_token));	/* lwkt_token: t_ref, t_desc */
+		t.t_rawq.c_data = NULL;
+		t.t_canq.c_data = NULL;
+		t.t_outq.c_data = NULL;
+		t.t_pgrp = NULL;
+		t.t_session = NULL;
+		t.t_sigio = NULL;
+		bzero(&t.t_rkq, sizeof(t.t_rkq));	/* kqinfo: ki_note (klist ptr) */
+		bzero(&t.t_wkq, sizeof(t.t_wkq));
+		t.t_oproc = NULL;
+		t.t_stop = NULL;
+		t.t_param = NULL;
+		t.t_unhold = NULL;
+		t.t_sc = NULL;
+		t.t_slsc = NULL;
+		t.t_list.tqe_next = NULL;		/* TAILQ_ENTRY: list linkage */
+		t.t_list.tqe_prev = NULL;
 		error = SYSCTL_OUT(req, (caddr_t)&t, sizeof(t));
 		if (error)
 			break;
