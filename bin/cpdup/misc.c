@@ -169,6 +169,13 @@ fatal(const char *ctl, ...)
 	puts("usage: cpdup [options] src dest");
 	puts("\n"
 	     "options:\n"
+#ifndef NOCHECKSUM
+	     "    -c digest   maintain/generate checksum file on source,\n"
+	     "                and compare with (optional) destination,\n"
+	     "                copying if compare fails.\n"
+	     "                Digest may be any message digest supported by\n"
+	     "                OpenSSL EVP e.g. md5, sha1, sha256, sha512\n"
+#endif
 	     "    -C          request compressed ssh link if remote operation\n"
 	     "    -d          print directories being traversed\n"
 	     "    -f          force update even if files look the same\n"
@@ -180,12 +187,10 @@ fatal(const char *ctl, ...)
 	     "    -j0         do not try to recreate CHR or BLK devices\n"
 	     "    -l          force line-buffered stdout/stderr"
 	);
-#ifndef NOMD5
-	puts("    -m          maintain/generate MD5 checkfile on source,\n"
-	     "                and compare with (optional) destination,\n"
-	     "                copying if the compare fails\n"
-	     "    -M file     -m+specify MD5 checkfile, else .MD5_CHECKSUMS\n"
-	     "                copy if md5 check fails"
+#ifndef NOCHECKSUM
+	puts("    -m          equals to -c md5 for compatibility purposes\n"
+	     "    -M file     checksum file name, default .[DIGEST].CHECKSUMS\n"
+	     "                where DIGEST is the name of the message digest used"
 	);
 #endif
 	puts("    -n          do not make any real changes to the target\n"
