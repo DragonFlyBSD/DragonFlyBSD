@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2026 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -41,7 +41,7 @@
 #endif
 
 #define ASM_NVMM
-#include "nvmm_x86.h"
+#include "nvmm_x86_internal.h"
 
 	.text
 
