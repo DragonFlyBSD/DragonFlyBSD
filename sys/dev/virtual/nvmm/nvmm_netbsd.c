@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2021-2026 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -169,7 +169,6 @@ os_pa_zalloc(void)
 	struct vm_page *pg;
 
 	pg = uvm_pagealloc(NULL, 0, NULL, UVM_PGA_ZERO);
-
 	return VM_PAGE_TO_PHYS(pg);
 }
 
@@ -237,8 +236,6 @@ os_contigpa_free(paddr_t pa, vaddr_t va, size_t npages)
 #include <sys/file.h>
 #include <sys/filedesc.h>
 #include <sys/module.h>
-
-#include "ioconf.h"
 
 static dev_type_open(nbsd_nvmm_open);
 static int nbsd_nvmm_ioctl(file_t *, u_long, void *);
@@ -325,7 +322,7 @@ nbsd_nvmm_close(file_t *fp)
 	return 0;
 }
 
-/* -------------------------------------------------------------------------- */
+#include "ioconf.h"
 
 static int nvmm_match(device_t, cfdata_t, void *);
 static void nvmm_attach(device_t, device_t, void *);
@@ -369,7 +366,7 @@ nvmm_attach(device_t parent, device_t self, void *aux)
 static int
 nvmm_detach(device_t self, int flags)
 {
-	if (os_atomic_load_uint(&nmachines) > 0)
+	if (os_atomic_load_uint(&nvmm_nmachines) > 0)
 		return EBUSY;
 	nvmm_fini();
 	return 0;

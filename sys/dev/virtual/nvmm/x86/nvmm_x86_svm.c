@@ -52,20 +52,20 @@ svm_stgi(void)
 
 #define MSR_UCODE_AMD_PATCHLEVEL 0x0000008B
 
-#define MSR_NB_CFG		0xC001001F	/* Northbridge Configuration */
+#define MSR_NB_CFG		0xC001001F
 #define		NB_CFG_INITAPICCPUIDLO	__BIT(54)
 
-#define MSR_CMPHALT		0xC0010055	/* Interrupt Pending and CMP-Halt */
-#define MSR_VM_HSAVE_PA		0xC0010117	/* Host Save Area Physical Address */
-#define MSR_IC_CFG		0xC0011021	/* Instruction Cache Configuration */
-#define MSR_DE_CFG		0xC0011029	/* Decode Configuration */
+#define MSR_CMPHALT		0xC0010055
+#define MSR_VM_HSAVE_PA		0xC0010117
+#define MSR_IC_CFG		0xC0011021
+#define MSR_DE_CFG		0xC0011029
 
-#define MSR_VM_CR	0xC0010114	/* Virtual Machine Control Register */
-#define		VM_CR_DPD	__BIT(0)	/* Debug port disable */
-#define		VM_CR_RINIT	__BIT(1)	/* Intercept init */
-#define		VM_CR_DISA20	__BIT(2)	/* Disable A20 masking */
-#define		VM_CR_LOCK	__BIT(3)	/* SVM Lock */
-#define		VM_CR_SVMED	__BIT(4)	/* SVME Disable */
+#define MSR_VM_CR		0xC0010114
+#define		VM_CR_DPD	__BIT(0)
+#define		VM_CR_RINIT	__BIT(1)
+#define		VM_CR_DISA20	__BIT(2)
+#define		VM_CR_LOCK	__BIT(3)
+#define		VM_CR_SVMED	__BIT(4)
 
 /* -------------------------------------------------------------------------- */
 
@@ -2507,7 +2507,6 @@ svm_vcpu_create(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	cpudata = (struct svm_cpudata *)os_pagemem_zalloc(sizeof(*cpudata));
 	if (cpudata == NULL)
 		return ENOMEM;
-
 	vcpu->cpudata = cpudata;
 
 	/* VMCB */
@@ -2675,15 +2674,14 @@ svm_tlb_flush(struct pmap *pm)
 static void
 svm_machine_create(struct nvmm_machine *mach)
 {
-	struct pmap *pmap = os_vmspace_pmap(mach->vm);
 	struct svm_machdata *machdata;
 
-	/* Transform pmap. */
+	/* Fill in pmap info. */
 #if defined(__NetBSD__)
-	os_pmap_mach(pmap) = (void *)mach;
-	pmap->pm_tlb_flush = svm_tlb_flush;
+	os_pmap_mach(mach->vm->vm_map.pmap) = (void *)mach;
+	mach->vm->vm_map.pmap->pm_tlb_flush = svm_tlb_flush;
 #elif defined(__DragonFly__)
-	pmap_npt_transform(pmap, 0);
+	pmap_npt_transform(vmspace_pmap(mach->vm), 0);
 #endif
 
 	machdata = os_mem_zalloc(sizeof(struct svm_machdata));

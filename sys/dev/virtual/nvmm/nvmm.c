@@ -37,7 +37,7 @@
 #include "nvmm_ioctl.h"
 
 static struct nvmm_machine machines[NVMM_MAX_MACHINES];
-volatile unsigned int nmachines __cacheline_aligned;
+volatile unsigned int nvmm_nmachines __cacheline_aligned;
 
 static const struct nvmm_impl *nvmm_impl_list[] = {
 #if defined(__x86_64__)
@@ -47,7 +47,6 @@ static const struct nvmm_impl *nvmm_impl_list[] = {
 };
 
 const struct nvmm_impl *nvmm_impl __read_mostly = NULL;
-
 struct nvmm_owner nvmm_root_owner;
 
 /* -------------------------------------------------------------------------- */
@@ -70,7 +69,7 @@ nvmm_machine_alloc(struct nvmm_machine **ret)
 		mach->present = true;
 		mach->time = time_second;
 		*ret = mach;
-		os_atomic_inc_uint(&nmachines);
+		os_atomic_inc_uint(&nvmm_nmachines);
 		return 0;
 	}
 
@@ -83,7 +82,7 @@ nvmm_machine_free(struct nvmm_machine *mach)
 	OS_ASSERT(os_rwl_wheld(&mach->lock));
 	OS_ASSERT(mach->present);
 	mach->present = false;
-	os_atomic_dec_uint(&nmachines);
+	os_atomic_dec_uint(&nvmm_nmachines);
 }
 
 static int
@@ -107,7 +106,7 @@ nvmm_machine_get(struct nvmm_owner *owner, nvmm_machid_t machid,
 		return ENOENT;
 	}
 	if (__predict_false(mach->owner != owner &&
-			    owner != &nvmm_root_owner)) {
+	    owner != &nvmm_root_owner)) {
 		os_rwl_unlock(&mach->lock);
 		return EPERM;
 	}

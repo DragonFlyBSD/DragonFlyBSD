@@ -336,7 +336,6 @@ uint32_t nvmm_x86_xsave_size(uint64_t);
 typedef struct {
 	uint32_t eax, ebx, ecx, edx;
 } cpuid_desc_t;
-
 #if defined(__NetBSD__)
 #define x86_get_cpuid2(l, c, d)	x86_cpuid2(l, c, (uint32_t *)d)
 #elif defined(__DragonFly__)
@@ -469,7 +468,6 @@ x86_get_xcr(uint32_t xcr)
 
 	return (low | ((uint64_t)high << 32));
 }
-
 static inline void
 x86_set_xcr(uint32_t xcr, uint64_t val)
 {

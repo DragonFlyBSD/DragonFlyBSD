@@ -366,7 +366,7 @@ nvmm_attach(void)
 static int
 nvmm_detach(void)
 {
-	if (os_atomic_load_uint(&nmachines) > 0)
+	if (os_atomic_load_uint(&nvmm_nmachines) > 0)
 		return EBUSY;
 
 	nvmm_fini();

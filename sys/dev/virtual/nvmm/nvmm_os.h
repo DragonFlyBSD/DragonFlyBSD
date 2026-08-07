@@ -177,12 +177,12 @@ MALLOC_DECLARE(M_NVMM);
 
 /* Pmap. */
 #if defined(__NetBSD__)
-extern bool pmap_ept_has_ad;
-#define os_vmspace_pmap(vm)	((vm)->vm_map.pmap)
+#if __NetBSD_Prereq__(10, 0, 0)
+#include <machine/pmap_private.h> /* TLBSHOOT_NVMM */
+#endif
 #define os_vmspace_pdirpa(vm)	((vm)->vm_map.pmap->pm_pdirpa[0])
 #define os_pmap_mach(pm)	((pm)->pm_data)
 #elif defined(__DragonFly__)
-#define os_vmspace_pmap(vm)	vmspace_pmap(vm)
 #define os_vmspace_pdirpa(vm)	(vtophys(vmspace_pmap(vm)->pm_pml4))
 #endif
 
@@ -270,8 +270,6 @@ typedef cpumask_t		os_cpuset_t;
 #define uimin(a, b)		((u_int)a < (u_int)b ? (u_int)a : (u_int)b)
 #endif
 
-/* -------------------------------------------------------------------------- */
-
 os_vmspace_t *	os_vmspace_create(vaddr_t, vaddr_t);
 void		os_vmspace_destroy(os_vmspace_t *);
 int		os_vmspace_fault(os_vmspace_t *, vaddr_t, vm_prot_t);
@@ -315,10 +313,7 @@ os_return_needed(void)
 #endif
 }
 
-/* -------------------------------------------------------------------------- */
-
 /* IPIs. */
-
 #if defined(__NetBSD__)
 
 #include <sys/xcall.h>
