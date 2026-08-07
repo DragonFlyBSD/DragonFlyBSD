@@ -96,6 +96,14 @@ nvmm_vcpu_dump(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 /* -------------------------------------------------------------------------- */
 
 /*
+ * x86 CR0/CR4/MSR_EFER bits in use.
+ */
+#define CR0_PG		__BIT(31)
+#define CR4_PSE		__BIT(4)
+#define CR4_PAE		__BIT(5)
+#define EFER_LMA	__BIT(10)
+
+/*
  * x86 page size.
  */
 #define PAGE_SIZE	0x1000
