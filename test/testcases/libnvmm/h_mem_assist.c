@@ -41,6 +41,19 @@
 
 #include <nvmm.h>
 
+/* CR0/CR4/MSR_EFER bits in use. */
+#define CR0_PE		__BIT(0)
+#define CR0_MP		__BIT(1)
+#define CR0_TS		__BIT(3)
+#define CR0_NE		__BIT(5)
+#define CR0_WP		__BIT(16)
+#define CR0_AM		__BIT(18)
+#define CR0_PG		__BIT(31)
+#define CR4_PAE		__BIT(5)
+#define EFER_SCE	__BIT(0)
+#define EFER_LME	__BIT(8)
+#define EFER_LMA	__BIT(10)
+
 #ifdef __NetBSD__
 
 #include <machine/pte.h>
