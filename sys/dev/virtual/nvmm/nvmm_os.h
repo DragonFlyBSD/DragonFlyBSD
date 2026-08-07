@@ -87,7 +87,7 @@ typedef vm_paddr_t		paddr_t;
 
 /* Macros. */
 #if defined(__DragonFly__)
-#define __arraycount(__x)	(sizeof(__x) / sizeof(__x[0]))
+#define __arraycount(__x)	NELEM(__x)
 #define __insn_barrier()	__asm __volatile("":::"memory")
 #endif
 
@@ -187,6 +187,7 @@ MALLOC_DECLARE(M_NVMM);
 #define os_pmap_mach(pm)	((pm)->pm_data)
 #elif defined(__DragonFly__)
 #define os_vmspace_pdirpa(vm)	(vtophys(vmspace_pmap(vm)->pm_pml4))
+/* os_pmap_mach() not used */
 #endif
 
 /* CPU. */
@@ -368,6 +369,8 @@ os_ipi_broadcast(void (*func)(void *), void *arg)
 		lwkt_cpusync_simple(mask, func, arg);
 	}
 }
+
+/* os_ipi_kickall() not used */
 
 /*
  * On DragonFly, no need to bind the thread, because any normal kernel

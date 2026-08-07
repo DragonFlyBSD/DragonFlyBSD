@@ -39,12 +39,10 @@
 #define NVMM_MAX_VCPUS		128
 #define NVMM_MAX_HMAPPINGS	32
 
-#if defined(__NetBSD__)
 #define NVMM_MAX_RAM		(128ULL * (1 << 30))
-#elif defined(__DragonFly__)
+#ifdef __DragonFly__
+#undef NVMM_MAX_RAM
 #define NVMM_MAX_RAM		(127ULL * 1024ULL * (1 << 30))
-#else
-#error "OS dependency for NVMM_MAX_RAM required"
 #endif
 
 #define NVMM_COMM_PAGE_SIZE	\
