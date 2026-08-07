@@ -35,6 +35,7 @@
 #ifndef _SYS_STATVFS_H_
 #define _SYS_STATVFS_H_
 
+#include <sys/cdefs.h>
 #include <machine/stdint.h>
 #include <sys/uuid.h>
 

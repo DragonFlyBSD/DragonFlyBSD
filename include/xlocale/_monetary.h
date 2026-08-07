@@ -29,6 +29,8 @@
  * $FreeBSD: head/include/xlocale/_monetary.h 231673 2012-02-14 12:03:23Z theraven $
  */
 
+#include <sys/cdefs.h>
+
 #ifndef _LOCALE_T_DEFINED
 #define _LOCALE_T_DEFINED
 typedef struct	_xlocale *locale_t;

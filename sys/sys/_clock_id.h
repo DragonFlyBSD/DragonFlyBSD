@@ -28,6 +28,8 @@
 #ifndef _SYS__CLOCK_ID_H_
 #define	_SYS__CLOCK_ID_H_
 
+#include <sys/cdefs.h>
+
 #if !defined(CLOCK_REALTIME) && __POSIX_VISIBLE >= 199309
 #define	CLOCK_REALTIME		0
 #if __BSD_VISIBLE

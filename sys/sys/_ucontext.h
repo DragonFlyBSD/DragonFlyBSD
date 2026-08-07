@@ -32,6 +32,7 @@
 #ifndef _SYS__UCONTEXT_H_
 #define	_SYS__UCONTEXT_H_
 
+#include <sys/cdefs.h>
 #include <sys/_sigset.h>
 
 #include <machine/ucontext.h>
