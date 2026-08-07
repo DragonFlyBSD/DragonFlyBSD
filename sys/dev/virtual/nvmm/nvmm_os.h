@@ -37,15 +37,18 @@
 #error "This file should not be included by userland programs."
 #endif
 
+#include <sys/param.h>
+#include <sys/systm.h>
+#include <sys/kernel.h>
+#include <sys/mman.h>
+#include <sys/proc.h>
+
 #if defined(__NetBSD__)
-#include <sys/cpu.h>
 #include <uvm/uvm_object.h>
 #include <uvm/uvm_extern.h>
 #include <uvm/uvm_page.h>
 #elif defined(__DragonFly__)
 #include <sys/lock.h>
-#include <sys/malloc.h> /* contigmalloc, contigfree */
-#include <sys/proc.h> /* LWP_MP_URETMASK */
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_map.h>
@@ -217,7 +220,6 @@ typedef struct globaldata	os_cpu_t;
 
 /* Cpusets. */
 #if defined(__NetBSD__)
-#include <sys/kcpuset.h>
 typedef kcpuset_t		os_cpuset_t;
 #define os_cpuset_init(s)	kcpuset_create(s, true)
 #define os_cpuset_destroy(s)	kcpuset_destroy(s)

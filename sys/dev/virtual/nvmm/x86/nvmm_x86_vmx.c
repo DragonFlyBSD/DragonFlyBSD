@@ -26,14 +26,8 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/kernel.h>
-#include <sys/mman.h>
-
 #include "../nvmm.h"
 #include "../nvmm_internal.h"
-#include "nvmm_x86.h"
 #include "nvmm_x86_internal.h"
 
 int vmx_vmlaunch(uint64_t *gprs);

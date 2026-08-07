@@ -320,18 +320,6 @@ uint32_t nvmm_x86_xsave_size(uint64_t);
 
 /* -------------------------------------------------------------------------- */
 
-/*
- * ASM defines. We mainly rely on the already-existing OS definitions.
- */
-
-#if defined(__NetBSD__)
-#include <x86/cpufunc.h>
-#include <x86/fpu.h>
-#elif defined(__DragonFly__)
-#include <machine/cpufunc.h>
-#include <machine/npx.h>
-#endif
-
 /* CPUID. */
 typedef struct {
 	uint32_t eax, ebx, ecx, edx;
@@ -388,7 +376,6 @@ x86_curthread_restore_dbregs(uint64_t *drs __unused)
 #define x86_set_dr6(v)		ldr6(v)
 #define x86_set_dr7(v)		ldr7(v)
 #elif defined(__DragonFly__)
-#include <sys/proc.h> /* struct lwp */
 static inline void
 x86_curthread_save_dbregs(uint64_t *drs)
 {
@@ -484,6 +471,7 @@ x86_set_xcr(uint32_t xcr, uint64_t val)
 }
 
 #if defined(__DragonFly__)
+#include <machine/npx.h>
 #define x86_xsave_features	npx_xcr0_mask
 #define x86_fpu_mxcsr_mask	npx_mxcsr_mask
 #endif

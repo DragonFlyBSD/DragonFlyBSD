@@ -26,12 +26,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/param.h>
-#include <sys/systm.h>
-
-#include <sys/kernel.h>
-#include <sys/mman.h>
-
 #include "nvmm.h"
 #include "nvmm_internal.h"
 #include "nvmm_ioctl.h"
