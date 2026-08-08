@@ -189,6 +189,56 @@ out:
 	return retval;
 }
 
+
+/*
+ * Prefer a GPT whole-partition Hammer2 volume for currdev when the
+ * loader was started from the ESP (or any non-H2 handle).
+ *
+ * Strategy (see project design):
+ *   - Do not override an explicit currdev= from the command line.
+ *   - Scan part0, part1, ... in unit order.
+ *   - Accept only partitions where open("partN:/") binds hammer2_fsops
+ *     (volume magic + BOOT or ROOT PFS via h2init).  Label64-nested H2
+ *     is not considered: h2init only sees LBA0 of the EFI partition.
+ *   - First match wins.  On no match, caller keeps DeviceHandle path.
+ */
+static int
+efi_hammer2_autoselect(void)
+{
+	char path[32];
+	struct efi_devdesc currdev;
+	const char *devname;
+	int unit, fd;
+
+	for (unit = 0; efi_find_handle(&efipart_dev, unit) != NULL; unit++) {
+		sprintf(path, "part%d:/", unit);
+		fd = open(path, O_RDONLY);
+		if (fd < 0)
+			continue;
+		/*
+		 * open() tries file_system[] in order.  FAT/ESP succeeds on
+		 * dosfs; only a true H2 volume leaves f_ops = hammer2.
+		 */
+		if (files[fd].f_ops == &hammer2_fsops) {
+			close(fd);
+			currdev.d_dev = &efipart_dev;
+			currdev.d_kind.efidisk.unit = unit;
+			currdev.d_kind.efidisk.data = NULL;
+			currdev.d_kind.efidisk.label_offset = 0;
+			currdev.d_type = efipart_dev.dv_type;
+			devname = efi_fmtdev(&currdev);
+			env_setenv("currdev", EV_VOLATILE, devname,
+			    efi_setcurrdev, env_nounset);
+			env_setenv("loaddev", EV_VOLATILE, devname,
+			    env_noset, env_nounset);
+			printf("hammer2: boot device %s\n", devname);
+			return (0);
+		}
+		close(fd);
+	}
+	return (ENOENT);
+}
+
 EFI_STATUS
 main(int argc, CHAR16 *argv[])
 {
@@ -388,6 +438,14 @@ main(int argc, CHAR16 *argv[])
 			goto currdev_done;
 		}
 	}
+
+	/*
+	 * No explicit currdev: prefer a whole-partition Hammer2 volume
+	 * (BOOT or ROOT PFS).  Fall back to the firmware DeviceHandle
+	 * (typically the ESP) when none is found.
+	 */
+	if (efi_hammer2_autoselect() == 0)
+		goto currdev_done;
 
 	if (efi_handle_lookup(img->DeviceHandle, &dev, &unit, &pool_guid) != 0)
 		return (EFI_NOT_FOUND);
