@@ -126,7 +126,6 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <pthread.h>
 #include <machine/atomic.h>
 #include "un-namespace.h"
 
@@ -326,8 +325,6 @@ typedef struct thr_mags {
 } thr_mags;
 
 static __thread thr_mags thread_mags TLS_ATTRIBUTE;
-static pthread_key_t thread_mags_key;
-static pthread_once_t thread_mags_once = PTHREAD_ONCE_INIT;
 static magazine_depot depots[NZONES];
 
 /*
@@ -361,7 +358,6 @@ static void *magazine_alloc(struct magazine *);
 static int magazine_free(struct magazine *, void *);
 static void *mtmagazine_alloc(int zi, int flags);
 static int mtmagazine_free(int zi, void *);
-static void mtmagazine_init(void);
 static void mtmagazine_destructor(void *);
 static slzone_t zone_alloc(int flags);
 static void zone_free(void *z);
@@ -409,28 +405,20 @@ malloc_init(void)
 }
 
 /*
- * We have to install a handler for nmalloc thread teardowns when
- * the thread is created.  We cannot delay this because destructors in
- * sophisticated userland programs can call malloc() for the first time
- * during their thread exit.
- *
- * This routine is called directly from pthreads.
+ * Thread setup and teardown hooks called directly from pthreads.  Application
+ * TSD destructors run before _nmalloc_thr_exit(), so their allocations can use
+ * magazines and the allocator can reclaim the final state afterwards.
  */
 void
 _nmalloc_thr_init(void)
 {
-	thr_mags *tp;
+	thread_mags.init = 1;
+}
 
-	/*
-	 * Disallow mtmagazine operations until the mtmagazine is
-	 * initialized.
-	 */
-	tp = &thread_mags;
-	tp->init = -1;
-
-	_pthread_once(&thread_mags_once, mtmagazine_init);
-	_pthread_setspecific(thread_mags_key, tp);
-	tp->init = 1;
+void
+_nmalloc_thr_exit(void)
+{
+	mtmagazine_destructor(&thread_mags);
 }
 
 void
@@ -1929,13 +1917,6 @@ mtmagazine_free(int zi, void *ptr)
 	return rc;
 }
 
-static void
-mtmagazine_init(void)
-{
-	/* ignore error from stub if not threaded */
-	_pthread_key_create(&thread_mags_key, mtmagazine_destructor);
-}
-
 /*
  * This function is only used by the thread exit destructor
  */
@@ -1955,12 +1936,13 @@ mtmagazine_drain(struct magazine *mp)
 /*
  * mtmagazine_destructor()
  *
- * When a thread exits, we reclaim all its resources; all its magazines are
- * drained and the structures are freed.
+ * Called via _nmalloc_thr_exit() when a thread exits; all of the thread's
+ * magazines are drained and the structures are freed.
  *
- * WARNING!  The destructor can be called multiple times if the larger user
- *	     program has its own destructors which run after ours which
- *	     allocate or free memory.
+ * WARNING!  Allocations can still occur after this runs (for example from
+ *	     the threading library's own teardown), so tp->init is set to
+ *	     -1 to make later malloc/free operations bypass the destroyed
+ *	     magazine layer.
  */
 static void
 mtmagazine_destructor(void *thrp)
