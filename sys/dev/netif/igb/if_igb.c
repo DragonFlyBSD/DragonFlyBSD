@@ -3998,6 +3998,10 @@ igb_init_unshared_intr(struct igb_softc *sc)
 			ivar_max = IGB_MAX_IVAR_I211;
 			break;
 
+		case e1000_i225:
+			ivar_max = IGB_MAX_IVAR_I225;
+			break;
+
 		default:
 			panic("unknown mac type %d\n", sc->hw.mac.type);
 		}
@@ -4025,6 +4029,7 @@ igb_init_unshared_intr(struct igb_softc *sc)
 	case e1000_vfadapt_i350:
 	case e1000_i210:
 	case e1000_i211:
+	case e1000_i225:
 		/* RX entries */
 		for (i = 0; i < sc->rx_ring_inuse; ++i) {
 			rxr = &sc->rx_rings[i];
