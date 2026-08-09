@@ -747,6 +747,7 @@ struct kdmsg_state {
 	uint64_t	msgid;			/* {parent,msgid} uniq */
 	int		flags;
 	int		error;
+	int		depth;			/* circuit nesting depth */
 	void		*chain;			/* (caller's state) */
 	int (*func)(struct kdmsg_state *, struct kdmsg_msg *);
 	union {
