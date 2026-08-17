@@ -1993,17 +1993,14 @@ node_immediate(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	const struct x86_opcode *opcode = instr->opcode;
 	struct x86_store *store;
 	uint8_t immsize;
-	size_t sesize = 0;
 
 	/* The immediate is the source */
 	store = &instr->src;
 	immsize = instr->operand_size;
 
 	if (opcode->flags & FLAG_imm8) {
-		sesize = immsize;
 		immsize = 1;
 	} else if ((opcode->flags & FLAG_immz) && (immsize == 8)) {
-		sesize = immsize;
 		immsize = 4;
 	}
 
@@ -2011,11 +2008,9 @@ node_immediate(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	if (fsm_read(fsm, (uint8_t *)&store->u.imm.data, immsize) == -1) {
 		return -1;
 	}
-	fsm_advance(fsm, immsize, NULL);
+	store->u.imm.data = sign_extend(store->u.imm.data, immsize);
 
-	if (sesize != 0) {
-		store->u.imm.data = sign_extend(store->u.imm.data, sesize);
-	}
+	fsm_advance(fsm, immsize, NULL);
 
 	return 0;
 }

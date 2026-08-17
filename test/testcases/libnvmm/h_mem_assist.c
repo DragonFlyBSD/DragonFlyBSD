@@ -175,6 +175,7 @@ extern uint8_t test14_begin, test14_end;
 extern uint8_t test_64bit_15_begin, test_64bit_15_end;
 extern uint8_t test_64bit_16_begin, test_64bit_16_end;
 extern uint8_t test_64bit_17_begin, test_64bit_17_end;
+extern uint8_t test_64bit_18_begin, test_64bit_18_end;
 extern uint8_t test_64bit_901_begin, test_64bit_902_end;
 extern uint8_t test_64bit_902_begin, test_64bit_901_end;
 
@@ -196,6 +197,7 @@ static const struct test tests64[] = {
 	{ "64bit test15 - XCHG", &test_64bit_15_begin, &test_64bit_15_end, 0x123456, 0 },
 	{ "64bit test16 - XCHG", &test_64bit_16_begin, &test_64bit_16_end, 0x123456, 0 },
 	{ "64bit test17 - REP", &test_64bit_17_begin, &test_64bit_17_end, 0x4, 0 },
+	{ "64bit test18 - Sign Extension", &test_64bit_18_begin, &test_64bit_18_end, 0x00000001, 0 },
 	{ "64bit test901 - RIP-relative MOV",
 	  &test_64bit_901_begin, &test_64bit_901_end, 0xAB1234, 0 },
 	{ "64bit test902 - RIP-relative OR",

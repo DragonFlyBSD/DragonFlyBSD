@@ -44,6 +44,7 @@
 	.globl	test_64bit_15_begin, test_64bit_15_end
 	.globl	test_64bit_16_begin, test_64bit_16_end
 	.globl	test_64bit_17_begin, test_64bit_17_end
+	.globl	test_64bit_18_begin, test_64bit_18_end
 	.globl	test_64bit_901_begin, test_64bit_901_end
 	.globl	test_64bit_902_begin, test_64bit_902_end
 	.text
@@ -339,6 +340,26 @@ test_64bit_17_begin:
 
 	TEST_END
 test_64bit_17_end:
+
+	.align	64
+test_64bit_18_begin:
+	movq	$0x1000,%rax
+	movq	$-1,(%rax)
+
+	cmpb	$-1,(%rax)
+	jne	.L18_failure
+	cmpw	$-1,(%rax)
+	jne	.L18_failure
+	cmpl	$-1,(%rax)
+	jne	.L18_failure
+
+.L18_success:
+	movq	$1,(%rax)
+	TEST_END
+.L18_failure:
+	movq	$0,(%rax)
+	TEST_END
+test_64bit_18_end:
 
 /*
  * Test: RIP-relative MOV write to MMIO
