@@ -69,17 +69,15 @@ mem_callback(struct nvmm_mem *mem)
 static int
 handle_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
-	int ret;
-
-	ret = nvmm_assist_mem(mach, vcpu);
-	if (ret == -1) {
-		err(errno, "nvmm_assist_mem");
+	if (nvmm_assist_mem(mach, vcpu) == -1) {
+		warn("nvmm_assist_mem");
+		return -1;
 	}
 
 	return 0;
 }
 
-static void
+static int
 run_machine(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
 	struct nvmm_vcpu_exit *exit = vcpu->exit;
@@ -94,21 +92,24 @@ run_machine(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 
 		case NVMM_VCPU_EXIT_RDMSR:
 			/* Stop here. */
-			return;
+			return 0;
 
 		case NVMM_VCPU_EXIT_MEMORY:
-			handle_memory(mach, vcpu);
+			if (handle_memory(mach, vcpu) == -1)
+				return -1;
 			break;
 
 		case NVMM_VCPU_EXIT_SHUTDOWN:
 			printf("Shutting down!\n");
-			return;
+			return 0;
 
 		default:
 			printf("Invalid VMEXIT: 0x%lx\n", exit->reason);
-			return;
+			return -1;
 		}
 	}
+
+	return -1;
 }
 
 static struct nvmm_assist_callbacks callbacks = {
@@ -138,15 +139,19 @@ run_test(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	memset(mmiobuf, 0, PAGE_SIZE);
 	memcpy(instbuf, test->code_begin, size);
 
-	run_machine(mach, vcpu);
+	if (run_machine(mach, vcpu) == -1) {
+		printf("*** Test '%s' failed, run_machine() error\n",
+		    test->name);
+		return 1;
+	}
 
 	res = (uint64_t *)(mmiobuf + test->off);
 	if (*res == test->wanted) {
 		printf("Test '%s' passed\n", test->name);
 		return 0;
 	} else {
-		printf("*** Test '%s' failed, wanted 0x%lx, got 0x%lx\n", test->name,
-		    test->wanted, *res);
+		printf("*** Test '%s' failed, wanted 0x%lx, got 0x%lx\n",
+		    test->name, test->wanted, *res);
 		return 1;
 	}
 }
