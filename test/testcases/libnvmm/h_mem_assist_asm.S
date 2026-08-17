@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2026 Maxime Villard, m00nbsd.net
  * Copyright (c) 2026 The DragonFly Project
  * All rights reserved.
  *
@@ -43,6 +43,7 @@
 	.globl	test14_begin, test14_end
 	.globl	test_64bit_15_begin, test_64bit_15_end
 	.globl	test_64bit_16_begin, test_64bit_16_end
+	.globl	test_64bit_17_begin, test_64bit_17_end
 	.globl	test_64bit_901_begin, test_64bit_901_end
 	.globl	test_64bit_902_begin, test_64bit_902_end
 	.text
@@ -324,6 +325,20 @@ test_64bit_16_begin:
 
 	TEST_END
 test_64bit_16_end:
+
+	.align	64
+test_64bit_17_begin:
+	movq	$0x1000,%rax
+	movq	$0x4,%rcx
+
+	/*
+	 * REP is a no-op on MOV, so this should only write 0x4 once.
+	 */
+	.byte	0xF3 /* REP prefix */
+	movq	%rcx,(%rax)
+
+	TEST_END
+test_64bit_17_end:
 
 /*
  * Test: RIP-relative MOV write to MMIO

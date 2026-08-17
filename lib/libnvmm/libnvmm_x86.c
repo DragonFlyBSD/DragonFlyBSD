@@ -3331,6 +3331,19 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	return 0;
 }
 
+static bool
+is_repeated_insn(struct x86_instr *instr)
+{
+	/*
+	 * MOVS/STOS/LODS are normally documented with the REP prefix. In
+	 * practice though, existing x86 processors also treat REPN as an
+	 * unconditional repeat prefix for these instructions, so emulate
+	 * that behavior as well.
+	 */
+	return (instr->legpref.rep || instr->legpref.repn) &&
+	    (instr->opcode->movs || instr->opcode->stos || instr->opcode->lods);
+}
+
 int
 nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
@@ -3338,6 +3351,7 @@ nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	struct nvmm_vcpu_exit *exit = vcpu->exit;
 	struct x86_instr instr;
 	uint64_t cnt = 0; /* GCC */
+	bool is_rep;
 	int ret;
 
 	if (__predict_false(exit->reason != NVMM_VCPU_EXIT_MEMORY)) {
@@ -3368,7 +3382,9 @@ nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 		return -1;
 	}
 
-	if (instr.legpref.rep || instr.legpref.repn) {
+	is_rep = is_repeated_insn(&instr);
+
+	if (is_rep) {
 		cnt = rep_get_cnt(state, instr.address_size);
 		if (__predict_false(cnt == 0)) {
 			state->gprs[NVMM_X64_GPR_RIP] += instr.len;
@@ -3386,15 +3402,11 @@ nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 		return -1;
 	}
 
-	if (instr.legpref.rep || instr.legpref.repn) {
+	if (is_rep) {
 		cnt -= 1;
 		rep_set_cnt(state, instr.address_size, cnt);
 		if (cnt == 0) {
 			state->gprs[NVMM_X64_GPR_RIP] += instr.len;
-		} else if (__predict_false(instr.legpref.repn)) {
-			if (state->gprs[NVMM_X64_GPR_RFLAGS] & PSL_Z) {
-				state->gprs[NVMM_X64_GPR_RIP] += instr.len;
-			}
 		}
 	} else {
 		state->gprs[NVMM_X64_GPR_RIP] += instr.len;
