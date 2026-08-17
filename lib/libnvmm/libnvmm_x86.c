@@ -484,12 +484,6 @@ nvmm_gva_to_gpa(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	} while (0);
 
 static inline bool
-is_long_mode(struct nvmm_x64_state *state)
-{
-	return (state->msrs[NVMM_X64_MSR_EFER] & EFER_LMA) != 0;
-}
-
-static inline bool
 is_64bit(struct nvmm_x64_state *state)
 {
 	return (state->segs[NVMM_X64_SEG_CS].attrib.l != 0);
@@ -805,7 +799,7 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 			}
 		}
 
-		if (__predict_true(is_long_mode(state))) {
+		if (__predict_true(is_64bit(state))) {
 			if (seg == NVMM_X64_SEG_GS || seg == NVMM_X64_SEG_FS) {
 				segment_apply(&state->segs[seg], &gva);
 			}
@@ -3048,7 +3042,7 @@ store_to_gva(struct nvmm_x64_state *state, struct x86_instr *instr,
 		}
 	}
 
-	if (__predict_true(is_long_mode(state))) {
+	if (__predict_true(is_64bit(state))) {
 		if (seg == NVMM_X64_SEG_GS || seg == NVMM_X64_SEG_FS) {
 			segment_apply(&state->segs[seg], &gva);
 		}
@@ -3075,7 +3069,7 @@ fetch_segment(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	fetchsize = sizeof(inst_bytes);
 
 	gva = state->gprs[NVMM_X64_GPR_RIP];
-	if (__predict_false(!is_long_mode(state))) {
+	if (__predict_false(!is_64bit(state))) {
 		ret = segment_check(&state->segs[NVMM_X64_SEG_CS], gva,
 		    fetchsize);
 		if (ret == -1)
@@ -3133,7 +3127,7 @@ fetch_instruction(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	fetchsize = sizeof(exit->u.mem.inst_bytes);
 
 	gva = state->gprs[NVMM_X64_GPR_RIP];
-	if (__predict_false(!is_long_mode(state))) {
+	if (__predict_false(!is_64bit(state))) {
 		ret = segment_check(&state->segs[NVMM_X64_SEG_CS], gva,
 		    fetchsize);
 		if (ret == -1)
