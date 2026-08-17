@@ -3,7 +3,7 @@ RELUP=	/../..
 SRCDIR=	${GCCDIR}/libstdc++-v3
 .include "Makefile.src"
 
-LIB=			cxx20convenience
+LIB=			c++20convenience
 INTERNALLIB=		yes
 INTERNALLIBPROF=	yes
 # build the PIC archive for libstdc++.so

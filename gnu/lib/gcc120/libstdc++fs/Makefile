@@ -1,4 +1,4 @@
-.include "../libstdcxx/Makefile.inc"
+.include "../libstdc++/Makefile.inc"
 
 SRCDIR=	${GCCDIR}/libstdc++-v3
 .PATH:	${SRCDIR}/src/filesystem
@@ -24,6 +24,6 @@ sources = \
 
 SRCS=	${sources}
 
-# Headers are installed by libstdcxx/headers/Makefile.
+# Headers are installed by libstdc++/headers/Makefile.
 
 .include <bsd.lib.mk>

@@ -1,6 +1,6 @@
 # csu and libgcc* are normally built earlier by the _startup_libs120 target
 
-SUBDIR_ORDERED=	libstdcxx libstdc++fs
+SUBDIR_ORDERED=	libstdc++ libstdc++fs
 
 SUBDIR+=	csu
 SUBDIR+=	libgcc
@@ -10,7 +10,7 @@ SUBDIR+=	libgcov
 SUBDIR+=	libgomp
 SUBDIR+=	libssp
 SUBDIR+=	libssp_nonshared
+SUBDIR+=	libstdc++
 SUBDIR+=	libstdc++fs
-SUBDIR+=	libstdcxx
 
 .include <bsd.subdir.mk>

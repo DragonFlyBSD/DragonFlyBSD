@@ -11,8 +11,8 @@ LDFLAGS+=	-flto
 CFLAGS+=	-I${.OBJDIR}/../headers
 .elif exists(${.OBJDIR}/../../headers)  # for components/libconv_*
 CFLAGS+=	-I${.OBJDIR}/../../headers
-.elif exists(${.OBJDIR}/../libstdcxx/headers)  # for libstdc++fs
-CFLAGS+=	-I${.OBJDIR}/../libstdcxx/headers
+.elif exists(${.OBJDIR}/../libstdc++/headers)  # for libstdc++fs
+CFLAGS+=	-I${.OBJDIR}/../libstdc++/headers
 .endif
 
 CFLAGS+=	-I${SRCDIR}/include \
