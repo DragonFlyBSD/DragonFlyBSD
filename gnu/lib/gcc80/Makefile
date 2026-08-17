@@ -10,6 +10,6 @@ SUBDIR+=	libgcov
 SUBDIR+=	libgomp
 SUBDIR+=	libssp
 SUBDIR+=	libssp_nonshared
-SUBDIR+=	libstdcxx
+SUBDIR+=	libstdc++
 
 .include <bsd.subdir.mk>

@@ -3,7 +3,7 @@ RELUP=	/../..
 SRCDIR=	${GCCDIR}/libstdc++-v3
 .include "Makefile.src"
 
-LIB=			cxx98convenience
+LIB=			c++98convenience
 INTERNALLIB=		yes
 INTERNALLIBPROF=	yes
 INSTALL_PIC_ARCHIVE=	yes
