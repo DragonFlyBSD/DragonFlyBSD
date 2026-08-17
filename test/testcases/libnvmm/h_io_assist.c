@@ -192,9 +192,11 @@ static void
 io_callback(struct nvmm_io *io)
 {
 	if (io->port != 123) {
-		printf("Wrong port\n");
-		exit(-1);
+		err(-1, "wrong port: %u", io->port);
 	}
+
+	printf("-> port = %u, size = %zu (%s)\n", io->port, io->size,
+	    io->in ? "in" : "out");
 
 	if (io->in) {
 		memcpy(io->data, iobuf + iobuf_off, io->size);
@@ -244,7 +246,7 @@ run_machine(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 			return;
 
 		default:
-			printf("Invalid!\n");
+			printf("Invalid VMEXIT: 0x%lx\n", exit->reason);
 			return;
 		}
 	}
@@ -260,7 +262,7 @@ struct test {
 	bool in;
 };
 
-static void
+static int
 run_test(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
     const struct test *test)
 {
@@ -292,10 +294,11 @@ run_test(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 
 	if (!strcmp(res, test->wanted)) {
 		printf("Test '%s' passed\n", test->name);
+		return 0;
 	} else {
-		printf("Test '%s' failed, wanted '%s', got '%s'\n", test->name,
+		printf("*** Test '%s' failed, wanted '%s', got '%s'\n", test->name,
 		    test->wanted, res);
-		errx(-1, "run_test failed");
+		return 1;
 	}
 }
 
@@ -352,6 +355,7 @@ int main(int argc __unused, char *argv[] __unused)
 	struct nvmm_machine mach;
 	struct nvmm_vcpu vcpu;
 	size_t i;
+	int nfail;
 
 	if (nvmm_init() == -1)
 		err(errno, "nvmm_init");
@@ -362,9 +366,17 @@ int main(int argc __unused, char *argv[] __unused)
 	nvmm_vcpu_configure(&mach, &vcpu, NVMM_VCPU_CONF_CALLBACKS, &callbacks);
 	map_pages(&mach);
 
+	nfail = 0;
 	for (i = 0; tests[i].name != NULL; i++) {
-		run_test(&mach, &vcpu, &tests[i]);
+		nfail += run_test(&mach, &vcpu, &tests[i]);
+	}
+	printf("\n");
+
+	if (nfail == 0) {
+		printf("All tests passed.\n");
+	} else {
+		printf("*** %d tests failed.\n", nfail);
 	}
 
-	return 0;
+	return (nfail == 0 ? 0 : -1);
 }

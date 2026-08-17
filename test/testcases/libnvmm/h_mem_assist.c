@@ -50,13 +50,14 @@ mem_callback(struct nvmm_mem *mem)
 	size_t off;
 
 	if (mem->gpa < 0x1000 || mem->gpa + mem->size > 0x1000 + PAGE_SIZE) {
-		printf("Out of page\n");
-		exit(-1);
+		err(-1, "out of page: gpa = %p, size = %zu",
+		    (void *)mem->gpa, mem->size);
 	}
 
 	off = mem->gpa - 0x1000;
 
-	printf("-> gpa = %p\n", (void *)mem->gpa);
+	printf("-> gpa = %p, size = %zu (%s)\n", (void *)mem->gpa, mem->size,
+	    mem->write ? "write" : "read");
 
 	if (mem->write) {
 		memcpy(mmiobuf + off, mem->data, mem->size);
@@ -125,7 +126,7 @@ struct test {
 	uint64_t off;
 };
 
-static void
+static int
 run_test(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
     const struct test *test)
 {
@@ -142,10 +143,11 @@ run_test(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	res = (uint64_t *)(mmiobuf + test->off);
 	if (*res == test->wanted) {
 		printf("Test '%s' passed\n", test->name);
+		return 0;
 	} else {
-		printf("Test '%s' failed, wanted 0x%lx, got 0x%lx\n", test->name,
+		printf("*** Test '%s' failed, wanted 0x%lx, got 0x%lx\n", test->name,
 		    test->wanted, *res);
-		errx(-1, "run_test failed");
+		return 1;
 	}
 }
 
@@ -334,12 +336,13 @@ map_pages64(struct nvmm_machine *mach)
  * 0x5000: L2
  * 0x6000: L1
  */
-static void
+static int
 test_vm64(void)
 {
 	struct nvmm_machine mach;
 	struct nvmm_vcpu vcpu;
 	size_t i;
+	int nfail;
 
 	if (nvmm_machine_create(&mach) == -1)
 		err(errno, "nvmm_machine_create");
@@ -348,15 +351,18 @@ test_vm64(void)
 	nvmm_vcpu_configure(&mach, &vcpu, NVMM_VCPU_CONF_CALLBACKS, &callbacks);
 	map_pages64(&mach);
 
+	nfail = 0;
 	for (i = 0; tests64[i].name != NULL; i++) {
 		reset_machine64(&mach, &vcpu);
-		run_test(&mach, &vcpu, &tests64[i]);
+		nfail += run_test(&mach, &vcpu, &tests64[i]);
 	}
 
 	if (nvmm_vcpu_destroy(&mach, &vcpu) == -1)
 		err(errno, "nvmm_vcpu_destroy");
 	if (nvmm_machine_destroy(&mach) == -1)
 		err(errno, "nvmm_machine_destroy");
+
+	return nfail;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -422,12 +428,13 @@ map_pages16(struct nvmm_machine *mach)
  * 0x1000: MMIO address, unmapped
  * 0x2000: Instructions, mapped
  */
-static void
+static int
 test_vm16(void)
 {
 	struct nvmm_machine mach;
 	struct nvmm_vcpu vcpu;
 	size_t i;
+	int nfail;
 
 	if (nvmm_machine_create(&mach) == -1)
 		err(errno, "nvmm_machine_create");
@@ -436,24 +443,40 @@ test_vm16(void)
 	nvmm_vcpu_configure(&mach, &vcpu, NVMM_VCPU_CONF_CALLBACKS, &callbacks);
 	map_pages16(&mach);
 
+	nfail = 0;
 	for (i = 0; tests16[i].name != NULL; i++) {
 		reset_machine16(&mach, &vcpu);
-		run_test(&mach, &vcpu, &tests16[i]);
+		nfail += run_test(&mach, &vcpu, &tests16[i]);
 	}
 
 	if (nvmm_vcpu_destroy(&mach, &vcpu) == -1)
 		err(errno, "nvmm_vcpu_destroy");
 	if (nvmm_machine_destroy(&mach) == -1)
 		err(errno, "nvmm_machine_destroy");
+
+	return nfail;
 }
 
 /* -------------------------------------------------------------------------- */
 
 int main(int argc __unused, char *argv[] __unused)
 {
+	int nfail;
+
 	if (nvmm_init() == -1)
 		err(errno, "nvmm_init");
-	test_vm64();
-	test_vm16();
-	return 0;
+
+	nfail = 0;
+	nfail += test_vm64();
+	printf("\n");
+	nfail += test_vm16();
+	printf("\n");
+
+	if (nfail == 0) {
+		printf("All tests passed.\n");
+	} else {
+		printf("*** %d tests failed.\n", nfail);
+	}
+
+	return (nfail == 0 ? 0 : -1);
 }
