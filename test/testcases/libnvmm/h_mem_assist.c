@@ -491,7 +491,7 @@ test_vm16(void)
 
 /* -------------------------------------------------------------------------- */
 
-int main(int argc, char *argv[])
+int main(int argc __unused, char *argv[] __unused)
 {
 	if (nvmm_init() == -1)
 		err(errno, "nvmm_init");

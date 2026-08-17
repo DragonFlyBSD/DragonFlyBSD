@@ -390,7 +390,7 @@ static struct nvmm_assist_callbacks callbacks = {
  * 0x5000: L2
  * 0x6000: L1
  */
-int main(int argc, char *argv[])
+int main(int argc __unused, char *argv[] __unused)
 {
 	struct nvmm_machine mach;
 	struct nvmm_vcpu vcpu;
