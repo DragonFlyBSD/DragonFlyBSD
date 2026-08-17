@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2026 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -134,6 +134,8 @@ nvmm_vcpu_dump(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 
 #define PTE_FRAME	PTE_4KFRAME
 
+#define PTE_READ(_p_)	__atomic_load_n((_p_), __ATOMIC_RELAXED)
+
 /* -------------------------------------------------------------------------- */
 
 #define PTE32_L1_SHIFT	12
@@ -169,7 +171,7 @@ x86_gva_to_gpa_32bit(struct nvmm_machine *mach, uint64_t cr3,
 	if (nvmm_gpa_to_hva(mach, L2gpa, &L2hva, &pageprot) == -1)
 		return -1;
 	pdir = (pte_32bit_t *)L2hva;
-	pte = pdir[pte32_l2idx(gva)];
+	pte = PTE_READ(&pdir[pte32_l2idx(gva)]);
 	if ((pte & PTE_P) == 0)
 		return -1;
 	if ((pte & PTE_U) == 0)
@@ -189,7 +191,7 @@ x86_gva_to_gpa_32bit(struct nvmm_machine *mach, uint64_t cr3,
 	if (nvmm_gpa_to_hva(mach, L1gpa, &L1hva, &pageprot) == -1)
 		return -1;
 	pdir = (pte_32bit_t *)L1hva;
-	pte = pdir[pte32_l1idx(gva)];
+	pte = PTE_READ(&pdir[pte32_l1idx(gva)]);
 	if ((pte & PTE_P) == 0)
 		return -1;
 	if ((pte & PTE_U) == 0)
@@ -242,7 +244,7 @@ x86_gva_to_gpa_32bit_pae(struct nvmm_machine *mach, uint64_t cr3,
 	if (nvmm_gpa_to_hva(mach, L3gpa, &L3hva, &pageprot) == -1)
 		return -1;
 	pdir = (pte_32bit_pae_t *)L3hva;
-	pte = pdir[pte32_pae_l3idx(gva)];
+	pte = PTE_READ(&pdir[pte32_pae_l3idx(gva)]);
 	if ((pte & PTE_P) == 0)
 		return -1;
 	if (pte & PTE_NX)
@@ -255,7 +257,7 @@ x86_gva_to_gpa_32bit_pae(struct nvmm_machine *mach, uint64_t cr3,
 	if (nvmm_gpa_to_hva(mach, L2gpa, &L2hva, &pageprot) == -1)
 		return -1;
 	pdir = (pte_32bit_pae_t *)L2hva;
-	pte = pdir[pte32_pae_l2idx(gva)];
+	pte = PTE_READ(&pdir[pte32_pae_l2idx(gva)]);
 	if ((pte & PTE_P) == 0)
 		return -1;
 	if ((pte & PTE_U) == 0)
@@ -275,7 +277,7 @@ x86_gva_to_gpa_32bit_pae(struct nvmm_machine *mach, uint64_t cr3,
 	if (nvmm_gpa_to_hva(mach, L1gpa, &L1hva, &pageprot) == -1)
 		return -1;
 	pdir = (pte_32bit_pae_t *)L1hva;
-	pte = pdir[pte32_pae_l1idx(gva)];
+	pte = PTE_READ(&pdir[pte32_pae_l1idx(gva)]);
 	if ((pte & PTE_P) == 0)
 		return -1;
 	if ((pte & PTE_U) == 0)
@@ -345,7 +347,7 @@ x86_gva_to_gpa_64bit(struct nvmm_machine *mach, uint64_t cr3,
 	if (nvmm_gpa_to_hva(mach, L4gpa, &L4hva, &pageprot) == -1)
 		return -1;
 	pdir = (pte_64bit_t *)L4hva;
-	pte = pdir[pte64_l4idx(gva)];
+	pte = PTE_READ(&pdir[pte64_l4idx(gva)]);
 	if ((pte & PTE_P) == 0)
 		return -1;
 	if ((pte & PTE_U) == 0)
@@ -362,7 +364,7 @@ x86_gva_to_gpa_64bit(struct nvmm_machine *mach, uint64_t cr3,
 	if (nvmm_gpa_to_hva(mach, L3gpa, &L3hva, &pageprot) == -1)
 		return -1;
 	pdir = (pte_64bit_t *)L3hva;
-	pte = pdir[pte64_l3idx(gva)];
+	pte = PTE_READ(&pdir[pte64_l3idx(gva)]);
 	if ((pte & PTE_P) == 0)
 		return -1;
 	if ((pte & PTE_U) == 0)
@@ -382,7 +384,7 @@ x86_gva_to_gpa_64bit(struct nvmm_machine *mach, uint64_t cr3,
 	if (nvmm_gpa_to_hva(mach, L2gpa, &L2hva, &pageprot) == -1)
 		return -1;
 	pdir = (pte_64bit_t *)L2hva;
-	pte = pdir[pte64_l2idx(gva)];
+	pte = PTE_READ(&pdir[pte64_l2idx(gva)]);
 	if ((pte & PTE_P) == 0)
 		return -1;
 	if ((pte & PTE_U) == 0)
@@ -402,7 +404,7 @@ x86_gva_to_gpa_64bit(struct nvmm_machine *mach, uint64_t cr3,
 	if (nvmm_gpa_to_hva(mach, L1gpa, &L1hva, &pageprot) == -1)
 		return -1;
 	pdir = (pte_64bit_t *)L1hva;
-	pte = pdir[pte64_l1idx(gva)];
+	pte = PTE_READ(&pdir[pte64_l1idx(gva)]);
 	if ((pte & PTE_P) == 0)
 		return -1;
 	if ((pte & PTE_U) == 0)
@@ -2716,7 +2718,7 @@ exec_##instr(uint64_t op1, uint64_t op2, uint64_t *rflags, size_t opsize) \
 	}								\
 }
 
-/* SUB: ret = op1 - op2 */
+/* SUB: ret = op2 - op1 */
 #define PSL_SUB_MASK	(PSL_V|PSL_C|PSL_Z|PSL_N|PSL_PF|PSL_AF)
 EXEC_INSTR(8, sub)
 EXEC_INSTR(16, sub)
@@ -2724,7 +2726,7 @@ EXEC_INSTR(32, sub)
 EXEC_INSTR(64, sub)
 EXEC_DISPATCHER(sub)
 
-/* OR:  ret = op1 | op2 */
+/* OR:  ret = op2 | op1 */
 #define PSL_OR_MASK	(PSL_V|PSL_C|PSL_Z|PSL_N|PSL_PF)
 EXEC_INSTR(8, or)
 EXEC_INSTR(16, or)
@@ -2732,7 +2734,7 @@ EXEC_INSTR(32, or)
 EXEC_INSTR(64, or)
 EXEC_DISPATCHER(or)
 
-/* AND: ret = op1 & op2 */
+/* AND: ret = op2 & op1 */
 #define PSL_AND_MASK	(PSL_V|PSL_C|PSL_Z|PSL_N|PSL_PF)
 EXEC_INSTR(8, and)
 EXEC_INSTR(16, and)
@@ -2740,7 +2742,7 @@ EXEC_INSTR(32, and)
 EXEC_INSTR(64, and)
 EXEC_DISPATCHER(and)
 
-/* XOR: ret = op1 ^ op2 */
+/* XOR: ret = op2 ^ op1 */
 #define PSL_XOR_MASK	(PSL_V|PSL_C|PSL_Z|PSL_N|PSL_PF)
 EXEC_INSTR(8, xor)
 EXEC_INSTR(16, xor)
