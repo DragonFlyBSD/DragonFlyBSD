@@ -862,9 +862,6 @@ struct vmx_cpudata {
 	/* Percpu host state, absent from VMCS. */
 	struct {
 		uint64_t kernelgsbase;
-#ifdef __DragonFly__
-		uint64_t drs[NVMM_X64_NDR];
-#endif
 	} hstate;
 
 	/* Intr state. */
@@ -2122,7 +2119,7 @@ vmx_vcpu_guest_dbregs_enter(struct nvmm_cpu *vcpu)
 {
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 
-	x86_curthread_save_dbregs(cpudata->hstate.drs);
+	x86_curthread_save_dbregs();
 
 	x86_set_dr7(0);
 
@@ -2144,7 +2141,7 @@ vmx_vcpu_guest_dbregs_leave(struct nvmm_cpu *vcpu)
 	cpudata->drs[NVMM_X64_DR_DR3] = x86_get_dr3();
 	cpudata->drs[NVMM_X64_DR_DR6] = x86_get_dr6();
 
-	x86_curthread_restore_dbregs(cpudata->hstate.drs);
+	x86_curthread_restore_dbregs();
 }
 
 static void

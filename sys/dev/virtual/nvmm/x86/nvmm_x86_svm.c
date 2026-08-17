@@ -574,9 +574,6 @@ struct svm_cpudata {
 	struct {
 		uint64_t fsbase;
 		uint64_t kernelgsbase;
-#ifdef __DragonFly__
-		uint64_t drs[NVMM_X64_NDR];
-#endif
 	} hstate;
 
 	/* Intr state. */
@@ -1546,7 +1543,7 @@ svm_vcpu_guest_dbregs_enter(struct nvmm_cpu *vcpu)
 {
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 
-	x86_curthread_save_dbregs(cpudata->hstate.drs);
+	x86_curthread_save_dbregs();
 
 	x86_set_dr7(0);
 
@@ -1566,7 +1563,7 @@ svm_vcpu_guest_dbregs_leave(struct nvmm_cpu *vcpu)
 	cpudata->drs[NVMM_X64_DR_DR2] = x86_get_dr2();
 	cpudata->drs[NVMM_X64_DR_DR3] = x86_get_dr3();
 
-	x86_curthread_restore_dbregs(cpudata->hstate.drs);
+	x86_curthread_restore_dbregs();
 }
 
 static void

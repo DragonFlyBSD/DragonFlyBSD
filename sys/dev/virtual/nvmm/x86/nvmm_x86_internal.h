@@ -353,16 +353,8 @@ typedef struct {
 /* Debug registers. */
 #if defined(__NetBSD__)
 #include <x86/dbregs.h>
-static inline void
-x86_curthread_save_dbregs(uint64_t *drs __unused)
-{
-	x86_dbregs_save(curlwp);
-}
-static inline void
-x86_curthread_restore_dbregs(uint64_t *drs __unused)
-{
-	x86_dbregs_restore(curlwp);
-}
+#define x86_curthread_save_dbregs()	x86_dbregs_save(curlwp)
+#define x86_curthread_restore_dbregs()	x86_dbregs_restore(curlwp)
 #define x86_get_dr0()		rdr0()
 #define x86_get_dr1()		rdr1()
 #define x86_get_dr2()		rdr2()
@@ -377,34 +369,34 @@ x86_curthread_restore_dbregs(uint64_t *drs __unused)
 #define x86_set_dr7(v)		ldr7(v)
 #elif defined(__DragonFly__)
 static inline void
-x86_curthread_save_dbregs(uint64_t *drs)
+x86_curthread_save_dbregs(void)
 {
 	struct pcb *pcb = curthread->td_lwp->lwp_thread->td_pcb;
 
 	if (__predict_true(!(pcb->pcb_flags & PCB_DBREGS)))
 		return;
 
-	drs[NVMM_X64_DR_DR0] = rdr0();
-	drs[NVMM_X64_DR_DR1] = rdr1();
-	drs[NVMM_X64_DR_DR2] = rdr2();
-	drs[NVMM_X64_DR_DR3] = rdr3();
-	drs[NVMM_X64_DR_DR6] = rdr6();
-	drs[NVMM_X64_DR_DR7] = rdr7();
+	pcb->pcb_dr0 = rdr0();
+	pcb->pcb_dr1 = rdr1();
+	pcb->pcb_dr2 = rdr2();
+	pcb->pcb_dr3 = rdr3();
+	pcb->pcb_dr6 = rdr6();
+	pcb->pcb_dr7 = rdr7();
 }
 static inline void
-x86_curthread_restore_dbregs(uint64_t *drs)
+x86_curthread_restore_dbregs(void)
 {
 	struct pcb *pcb = curthread->td_lwp->lwp_thread->td_pcb;
 
 	if (__predict_true(!(pcb->pcb_flags & PCB_DBREGS)))
 		return;
 
-	load_dr0(drs[NVMM_X64_DR_DR0]);
-	load_dr1(drs[NVMM_X64_DR_DR1]);
-	load_dr2(drs[NVMM_X64_DR_DR2]);
-	load_dr3(drs[NVMM_X64_DR_DR3]);
-	load_dr6(drs[NVMM_X64_DR_DR6]);
-	load_dr7(drs[NVMM_X64_DR_DR7]);
+	load_dr0(pcb->pcb_dr0);
+	load_dr1(pcb->pcb_dr1);
+	load_dr2(pcb->pcb_dr2);
+	load_dr3(pcb->pcb_dr3);
+	load_dr6(pcb->pcb_dr6);
+	load_dr7(pcb->pcb_dr7);
 }
 #define x86_get_dr0()		rdr0()
 #define x86_get_dr1()		rdr1()
