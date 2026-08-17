@@ -78,7 +78,7 @@ else
 	VERSION="${RELEASE}"
 fi
 
-RELDATE=$(awk '/^\#define[[:space:]]*__DragonFly_version/ {print $3}' ${PARAMFILE})
+RELDATE=$(awk '/^#define[[:space:]]+__DragonFly_version/ {print $3}' ${PARAMFILE})
 
 if [ ! -r version ]; then
 	echo 0 > version

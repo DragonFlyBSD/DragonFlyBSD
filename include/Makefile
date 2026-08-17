@@ -115,7 +115,7 @@ SHARED?=	copies
 
 INCS+=	osreldate.h
 
-RELDATE!=	awk '/^\#define[[:space:]]*__DragonFly_version/ {print $$3}' \
+RELDATE!=	awk '/^\#define[[:space:]]+__DragonFly_version/ {print $$3}' \
 		${.CURDIR}/../sys/sys/param.h
 osreldate.h:	${.CURDIR}/../sys/sys/param.h
 	@${ECHO} "creating <osreldate.h> ..."
