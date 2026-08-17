@@ -43,8 +43,8 @@
 	.globl	test14_begin, test14_end
 	.globl	test_64bit_15_begin, test_64bit_15_end
 	.globl	test_64bit_16_begin, test_64bit_16_end
-	.globl	test_64bit_17_begin, test_64bit_17_end
-	.globl	test_64bit_18_begin, test_64bit_18_end
+	.globl	test_64bit_901_begin, test_64bit_901_end
+	.globl	test_64bit_902_begin, test_64bit_902_end
 	.text
 	.code64
 
@@ -356,13 +356,13 @@ test_64bit_16_end:
  * decoder for RIP-relative addressing.
  */
 	.align	64
-test_64bit_17_begin:
+test_64bit_901_begin:
 	movq	$0xAB1234,%rax
 	.byte	0x48, 0x89, 0x05	/* REX.W MOV r/m64,r64 ModRM=05 */
-	.long	0x1000 - (0x2000 + (. - test_64bit_17_begin) + 4)
+	.long	0x1000 - (0x2000 + (. - test_64bit_901_begin) + 4)
 
 	TEST_END
-test_64bit_17_end:
+test_64bit_901_end:
 
 /*
  * Test: RIP-relative OR read-modify-write to MMIO
@@ -377,16 +377,16 @@ test_64bit_17_end:
  * Wanted: mmiobuf[0] == 0xFFAB
  */
 	.align	64
-test_64bit_18_begin:
+test_64bit_902_begin:
 	movq	$0x1000,%rcx
 	movq	$0xFF00,(%rcx)
 
 	movq	$0x00AB,%rbx
 	.byte	0x48, 0x09, 0x1d	/* REX.W OR r/m64,r64 ModRM=1d */
-	.long	0x1000 - (0x2000 + (. - test_64bit_18_begin) + 4)
+	.long	0x1000 - (0x2000 + (. - test_64bit_902_begin) + 4)
 
 	TEST_END
-test_64bit_18_end:
+test_64bit_902_end:
 
 /* -------------------------------------------------------------------------- */
 
