@@ -45,6 +45,7 @@
 	.globl	test_64bit_16_begin, test_64bit_16_end
 	.globl	test_64bit_17_begin, test_64bit_17_end
 	.globl	test_64bit_18_begin, test_64bit_18_end
+	.globl	test_64bit_19_begin, test_64bit_19_end
 	.globl	test_64bit_901_begin, test_64bit_901_end
 	.globl	test_64bit_902_begin, test_64bit_902_end
 	.text
@@ -361,6 +362,55 @@ test_64bit_18_begin:
 	TEST_END
 test_64bit_18_end:
 
+	.align	64
+test_64bit_19_begin:
+	movq	$0x1000,%rax
+
+	/* Test each operand size, and verify that BT does not modify memory. */
+	movw	$0x8001,8(%rax)
+	movl	$0x80000001,16(%rax)
+	movabsq	$0x8000000000000001,%rbx
+	movq	%rbx,24(%rax)
+
+	btw	$0,8(%rax)
+	jnc	.L19_failure
+	btw	$1,8(%rax)
+	jc	.L19_failure
+	btw	$255,8(%rax)
+	jnc	.L19_failure
+
+	btl	$0,16(%rax)
+	jnc	.L19_failure
+	btl	$1,16(%rax)
+	jc	.L19_failure
+	btl	$255,16(%rax)
+	jnc	.L19_failure
+
+	btq	$0,24(%rax)
+	jnc	.L19_failure
+	btq	$1,24(%rax)
+	jc	.L19_failure
+	btq	$255,24(%rax)
+	jnc	.L19_failure
+
+	movzwq	8(%rax),%rcx
+	cmpq	$0x8001,%rcx
+	jne	.L19_failure
+	movl	16(%rax),%ecx
+	cmpl	$0x80000001,%ecx
+	jne	.L19_failure
+	movq	24(%rax),%rcx
+	cmpq	%rbx,%rcx
+	jne	.L19_failure
+
+.L19_success:
+	movq	$1,(%rax)
+	TEST_END
+.L19_failure:
+	movq	$0,(%rax)
+	TEST_END
+test_64bit_19_end:
+
 /*
  * Test: RIP-relative MOV write to MMIO
  *
@@ -432,6 +482,7 @@ test_64bit_902_end:
 	.globl	test_16bit_4_begin, test_16bit_4_end
 	.globl	test_16bit_5_begin, test_16bit_5_end
 	.globl	test_16bit_6_begin, test_16bit_6_end
+	.globl	test_16bit_7_begin, test_16bit_7_end
 
 #define TEST16_END	\
 	rdmsr
@@ -507,3 +558,41 @@ test_16bit_6_begin:
 
 	TEST16_END
 test_16bit_6_end:
+
+	.align	64
+test_16bit_7_begin:
+	movw	$0x1240,%bx
+
+	/* Test the default and overridden operand sizes in 16-bit mode. */
+	movw	$0x8001,(%bx)
+	movl	$0x80000001,4(%bx)
+
+	btw	$0,(%bx)
+	jnc	.L16_7_failure
+	btw	$1,(%bx)
+	jc	.L16_7_failure
+	btw	$255,(%bx)
+	jnc	.L16_7_failure
+
+	btl	$0,4(%bx)
+	jnc	.L16_7_failure
+	btl	$1,4(%bx)
+	jc	.L16_7_failure
+	btl	$255,4(%bx)
+	jnc	.L16_7_failure
+
+	movw	(%bx),%cx
+	cmpw	$0x8001,%cx
+	jne	.L16_7_failure
+	movl	4(%bx),%ecx
+	cmpl	$0x80000001,%ecx
+	jne	.L16_7_failure
+
+.L16_7_success:
+	movw	$1,0x1234
+	TEST16_END
+.L16_7_failure:
+	movw	$0,0x1234
+	TEST16_END
+test_16bit_7_end:
+

@@ -892,6 +892,7 @@ static void x86_func_test(struct nvmm_vcpu *, struct nvmm_mem *, uint64_t *);
 static void x86_func_mov(struct nvmm_vcpu *, struct nvmm_mem *, uint64_t *);
 static void x86_func_stos(struct nvmm_vcpu *, struct nvmm_mem *, uint64_t *);
 static void x86_func_lods(struct nvmm_vcpu *, struct nvmm_mem *, uint64_t *);
+static void x86_func_bt(struct nvmm_vcpu *, struct nvmm_mem *, uint64_t *);
 
 static const struct x86_emul x86_emul_or = {
 	.readreg = true,
@@ -939,6 +940,11 @@ static const struct x86_emul x86_emul_stos = {
 
 static const struct x86_emul x86_emul_lods = {
 	.func = x86_func_lods
+};
+
+static const struct x86_emul x86_emul_bt = {
+	.notouch = true,
+	.func = x86_func_bt
 };
 
 /* Legacy prefixes. */
@@ -1072,6 +1078,7 @@ struct x86_opcode {
 	bool szoverride:1;
 	bool group1:1;
 	bool group3:1;
+	bool group8:1;
 	bool group11:1;
 	bool immediate:1;
 	uint8_t defsize;
@@ -1102,6 +1109,10 @@ static const struct x86_group_entry group1[8] __cacheline_aligned = {
 static const struct x86_group_entry group3[8] __cacheline_aligned = {
 	[0] = { .emul = &x86_emul_test },
 	[1] = { .emul = &x86_emul_test }
+};
+
+static const struct x86_group_entry group8[8] __cacheline_aligned = {
+	[4] = { .emul = &x86_emul_bt }
 };
 
 static const struct x86_group_entry group11[8] __cacheline_aligned = {
@@ -1522,6 +1533,22 @@ static const struct x86_opcode primary_opcode_table[256] __cacheline_aligned = {
 };
 
 static const struct x86_opcode secondary_opcode_table[256] __cacheline_aligned = {
+	/*
+	 * Group8
+	 */
+	[0xBA] = {
+		/* Ev, Ib */
+		.valid = true,
+		.regmodrm = true,
+		.regtorm = true,
+		.szoverride = true,
+		.defsize = -1,
+		.group8 = true,
+		.immediate = true,
+		.flags = FLAG_imm8,
+		.emul = NULL /* group8 */
+	},
+
 	/*
 	 * MOVZX
 	 */
@@ -2309,6 +2336,11 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 			return -1;
 		}
 		instr->emul = group3[instr->regmodrm.reg].emul;
+	} else if (opcode->group8) {
+		if (group8[instr->regmodrm.reg].emul == NULL) {
+			return -1;
+		}
+		instr->emul = group8[instr->regmodrm.reg].emul;
 	} else if (opcode->group11) {
 		if (group11[instr->regmodrm.reg].emul == NULL) {
 			return -1;
@@ -2733,6 +2765,31 @@ EXEC_INSTR(32, xor)
 EXEC_INSTR(64, xor)
 EXEC_DISPATCHER(xor)
 
+/* BT: RFLAGS.CF = (op2 >> op1) & 1 */
+#define PSL_BT_MASK	(PSL_C)
+EXEC_INSTR(16, bt)
+EXEC_INSTR(32, bt)
+EXEC_INSTR(64, bt)
+
+/*
+ * There is no 8bit form of BT, so we can't use EXEC_DISPATCHER here.
+ */
+static void
+exec_bt(uint64_t op1, uint64_t op2, uint64_t *rflags, size_t opsize)
+{
+	switch (opsize) {
+	case 2:
+		exec_bt16(op1, op2, rflags);
+		break;
+	case 4:
+		exec_bt32(op1, op2, rflags);
+		break;
+	default:
+		exec_bt64(op1, op2, rflags);
+		break;
+	}
+}
+
 /* -------------------------------------------------------------------------- */
 
 /*
@@ -2977,6 +3034,31 @@ x86_func_lods(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
 	} else {
 		gprs[NVMM_X64_GPR_RSI] += mem->size;
 	}
+}
+
+static void
+x86_func_bt(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
+{
+	uint64_t *op1, op2, fl;
+
+	/*
+	 * The bit base is always the RM operand, so mem->write is always true
+	 * here, and the bit offset (op1) has already been fetched in
+	 * mem->data by the caller, from the immediate.
+	 */
+	op1 = (uint64_t *)mem->data;
+	op2 = 0;
+
+	/* Fetch the bit base (op2). */
+	mem->data = (uint8_t *)&op2;
+	mem->write = false;
+	(*vcpu->cbs.mem)(mem);
+
+	/* Perform the BT. There is nothing to write back. */
+	exec_bt(*op1, op2, &fl, mem->size);
+
+	gprs[NVMM_X64_GPR_RFLAGS] &= ~PSL_BT_MASK;
+	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & PSL_BT_MASK);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3327,6 +3409,22 @@ is_repeated_insn(struct x86_instr *instr)
 	    (instr->opcode->movs || instr->opcode->stos || instr->opcode->lods);
 }
 
+#ifdef LIBNVMM_DEBUG
+
+static void
+nvmm_dump_instr(struct nvmm_vcpu_exit *exit)
+{
+	size_t i;
+
+	printf("Unrecognized instruction: ");
+	for (i = 0; i < exit->u.mem.inst_len; i++) {
+		printf("%02x ", exit->u.mem.inst_bytes[i]);
+	}
+	printf("\n");
+}
+
+#endif
+
 int
 nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
@@ -3361,6 +3459,9 @@ nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	ret = x86_decode(exit->u.mem.inst_bytes, exit->u.mem.inst_len,
 	    &instr, state);
 	if (ret == -1) {
+#ifdef LIBNVMM_DEBUG
+		nvmm_dump_instr(exit);
+#endif
 		errno = ENODEV;
 		return -1;
 	}
