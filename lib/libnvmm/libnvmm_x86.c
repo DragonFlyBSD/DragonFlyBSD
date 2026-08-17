@@ -198,8 +198,6 @@ x86_gva_to_gpa_32bit(struct nvmm_machine *mach, uint64_t cr3,
 		*prot &= ~NVMM_PROT_USER;
 	if ((pte & PTE_W) == 0)
 		*prot &= ~NVMM_PROT_WRITE;
-	if (pte & PTE_PS)
-		return -1;
 
 	*gpa = (pte & PTE_FRAME);
 	return 0;
@@ -286,8 +284,6 @@ x86_gva_to_gpa_32bit_pae(struct nvmm_machine *mach, uint64_t cr3,
 		*prot &= ~NVMM_PROT_WRITE;
 	if (pte & PTE_NX)
 		*prot &= ~NVMM_PROT_EXEC;
-	if (pte & PTE_PS)
-		return -1;
 
 	*gpa = (pte & PTE_FRAME);
 	return 0;
@@ -413,8 +409,6 @@ x86_gva_to_gpa_64bit(struct nvmm_machine *mach, uint64_t cr3,
 		*prot &= ~NVMM_PROT_WRITE;
 	if (pte & PTE_NX)
 		*prot &= ~NVMM_PROT_EXEC;
-	if (pte & PTE_PS)
-		return -1;
 
 	*gpa = (pte & PTE_FRAME);
 	return 0;
