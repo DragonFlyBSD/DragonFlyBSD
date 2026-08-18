@@ -137,6 +137,9 @@ exit_thread(void)
 		_thread_cleanupspecific();
 	}
 
+	/* Return this thread's allocator caches (magazines) to libc. */
+	_libc_thr_exit();
+
 	if (!_thr_isthreaded())
 		exit(0);
 

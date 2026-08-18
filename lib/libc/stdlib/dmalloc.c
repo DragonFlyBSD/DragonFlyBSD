@@ -446,6 +446,15 @@ _nmalloc_thr_init(void)
 	slglobal.masked = 0;
 }
 
+/*
+ * dmalloc reclaims its per-thread state via the TSD destructor installed
+ * by _nmalloc_thr_init(); nothing to do at direct thread-exit time.
+ */
+void
+_nmalloc_thr_exit(void)
+{
+}
+
 void
 _nmalloc_thr_prepfork(void)
 {
