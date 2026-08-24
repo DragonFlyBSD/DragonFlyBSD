@@ -31,35 +31,36 @@
 # $FreeBSD: src/usr.bin/mkdep/mkdep.gcc.sh,v 1.18 1999/08/28 01:04:04 peter Exp $
 
 D=.depend			# default dependency file is .depend
-append=0
-pflag=
+append=
+pflag_sed=
 
-while :
-	do case "$1" in
-		# -a appends to the depend file
-		-a)
-			append=1
-			shift ;;
+while : ; do
+	case "$1" in
+	# -a appends to the depend file
+	-a)
+		append=yes
+		shift ;;
 
-		# -f allows you to select a makefile name
-		-f)
-			D=$2
-			shift; shift ;;
+	# -f allows you to select a makefile name
+	-f)
+		D=$2
+		shift; shift ;;
 
-		# the -p flag produces "program: program.c" style dependencies
-		# so .o's don't get produced
-		-p)
-			pflag=p
-			shift ;;
-		*)
-			break ;;
+	# the -p flag produces "program: program.c" style dependencies
+	# so .o's don't get produced
+	-p)
+		pflag_sed='s;\.o:;:;'
+		shift ;;
+
+	*)
+		break ;;
 	esac
 done
 
-case $# in 0)
+if [ $# -eq 0 ]; then
 	echo 'usage: mkdep [-ap] [-f file] [flags] file ...' >&2
-	exit 1;;
-esac
+	exit 1
+fi
 
 TMP=_mkdep$$
 trap 'rm -f $TMP ; trap 2 ; kill -2 $$' 1 2 3 13 15
@@ -74,23 +75,15 @@ MKDEP_CPP_OPTS=${MKDEP_CPP_OPTS-"-M"};
 
 echo "# $@" > $TMP	# store arguments for debugging
 
-if $MKDEP_CPP $MKDEP_CPP_OPTS "$@" >> $TMP; then :
-else
+if ! $MKDEP_CPP $MKDEP_CPP_OPTS "$@" >> $TMP; then
 	echo 'mkdep: compile failed' >&2
 	exit 1
 fi
 
-case x$pflag in
-	x) case $append in
-		0) sed -e 's; \./; ;g' < $TMP >  $D;;
-		*) sed -e 's; \./; ;g' < $TMP >> $D;;
-	   esac
-	;;
-	*) case $append in
-		0) sed -e 's;\.o:;:;' -e 's; \./; ;g' < $TMP >  $D;;
-		*) sed -e 's;\.o:;:;' -e 's; \./; ;g' < $TMP >> $D;;
-	   esac
-	;;
-esac
+if [ "$append" = "" ]; then
+	sed -e "$pflag_sed" -e 's; \./; ;g' < $TMP > $D
+else
+	sed -e "$pflag_sed" -e 's; \./; ;g' < $TMP >> $D
+fi
 
 exit $?
