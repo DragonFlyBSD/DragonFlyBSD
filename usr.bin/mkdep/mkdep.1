@@ -27,9 +27,8 @@
 .\"
 .\"     @(#)mkdep.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/mkdep/mkdep.1,v 1.7.2.7 2002/12/29 16:35:40 schweikh Exp $
-.\" $DragonFly: src/usr.bin/mkdep/mkdep.1,v 1.3 2006/02/17 19:39:09 swildner Exp $
 .\"
-.Dd June 6, 1993
+.Dd August 24, 2026
 .Dt MKDEP 1
 .Os
 .Sh NAME
@@ -39,6 +38,7 @@
 .Nm
 .Op Fl ap
 .Op Fl f Ar file
+.Op Fl S Ar srcdir
 .Op Ar flags
 .Ar
 .Sh DESCRIPTION
@@ -46,7 +46,8 @@ The
 .Nm
 utility takes a set of flags for the C compiler and a list
 of C source files as arguments and constructs a set of include
-file dependencies which are written into the file ``.depend''.
+file dependencies which are written into the file
+.Pa .depend .
 An example of its use in a Makefile might be:
 .Bd -literal -offset indent
 CFLAGS= -O -I../include
@@ -56,12 +57,17 @@ depend:
 	mkdep ${CFLAGS} ${SRCS}
 .Ed
 .Pp
-where the macro SRCS is the list of C source files and the macro
-CFLAGS is the list of flags for the C compiler.
+where the macro
+.Dv SRCS
+is the list of C source files and the macro
+.Dv CFLAGS
+is the list of flags for the C compiler.
 .Pp
 The user has the ability to change the preprocessor and preprocessor options
-used.  For instance, to use gcc as the preprocessor and to ignore system
-headers, one would use
+used.
+For instance, to use
+.Cm gcc
+as the preprocessor and to ignore system headers, one would use
 .Bd -literal -offset indent
 depend:
 	env MKDEP_CPP="gcc -E" MKDEP_CPP_OPTS=-MM mkdep \\
@@ -75,10 +81,11 @@ Append to the output file,
 so that multiple
 .Nm Ns 's
 may be run from a single Makefile.
-.It Fl f
+.It Fl f Ar file
 Write the include file dependencies to
 .Ar file ,
-instead of the default ``.depend''.
+instead of the default
+.Pa .depend .
 .It Fl p
 Cause
 .Nm
@@ -94,17 +101,55 @@ directly from its C module rather than using an intermediate
 module.
 This is useful for programs whose source is contained in a single
 module.
+.It Fl S Ar srcdir
+Treat
+.Ar srcdir
+as the root of the source tree, and prefix each dependency target
+with the path of its source file relative to
+.Ar srcdir ,
+excluding the file name itself.
+A source file located directly in
+.Ar srcdir ,
+with no intervening subdirectory, is left unqualified.
+The match is
+.Em textual
+(i.e., no path normalization):
+.Ar srcdir
+must appear literally at the start of each source pathname given on
+the command line.
+.Pp
+Without specifying
+.Fl S ,
+sources that share a file name in different subdirectories produce
+identical targets, which can cause build failures or broken output.
+This option avoids this by qualifying each target with its subdirectory.
+.Pp
+For example, the command
+.Bd -literal -offset indent
+mkdep -S /src /src/abc.c /src/dir1/abc.c /src/dir2/abc.c
+.Ed
+.Pp
+generates:
+.Bd -literal -offset indent
+abc.o: /src/abc.c
+dir1/abc.o: /src/dir1/abc.c
+dir2/abc.o: /src/dir2/abc.c
+.Ed
 .El
 .Sh ENVIRONMENT
 .Bl -tag -width MKDEP_CPP_OPTS
 .It Ev CC
-Specifies the C compiler to use.  The specified compiler is expected to have
+Specifies the C compiler to use.
+The specified compiler is expected to have
 options consistent with the GNU C compiler.
 .It Ev MKDEP_CPP
-Specifies the preprocessor to use.  The default is "${CC} -E".
+Specifies the preprocessor to use.
+The default is
+.Dq ${CC} -E .
 .It Ev MKDEP_CPP_OPTS
-Specifies the non-CFLAGS options for the preprocessor.  The default is
-"-M".
+Specifies the non-CFLAGS options for the preprocessor.
+The default is
+.Dq -M .
 .El
 .Sh FILES
 .Bl -tag -width .depend -compact

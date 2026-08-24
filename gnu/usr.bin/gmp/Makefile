@@ -19,6 +19,8 @@ CFLAGS+=	-D__LONG_INT_BYTES=${LONG_INT_BYTES}
 CFLAGS+=	-D__INT_BITS=${INT_BITS}
 CFLAGS+=	-DHAVE_HOST_CPU_FAMILY_${CPU_FAMILY}=1
 
+# Preserve the subdirs in the targets in .depend.
+MKDEPSRCDIR=	${CONTRIBDIR}
 
 # The following comes verbatim from Makefile.am
 
@@ -228,7 +230,7 @@ CLEANFILES+=	${source}
 
 MPNSRC+=	${source}
 ${source:.c=.o}: ${source}
-	${CC} -o ${.TARGET} ${CFLAGS} -DOPERATION_${func} -c ${.ALLSRC}
+	${CC} -o ${.TARGET} ${CFLAGS} -DOPERATION_${func} -c ${.IMPSRC}
 .endif
 .endfor
 .endfor

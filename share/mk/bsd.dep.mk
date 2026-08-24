@@ -23,7 +23,10 @@
 #
 # MKDEPINTDEPS	Extra internal dependencies for intermediates [not set]
 #
-# SRCS          List of source files (c, c++, assembler)
+# MKDEPSRCDIR	The root directory of the source files [not set]
+#		Used to prepend the relative subdirs to dependency targets.
+#
+# SRCS		List of source files (c, c++, assembler)
 #
 #
 # +++ targets +++
@@ -59,6 +62,11 @@ DEPENDFILE?=	.depend
 _MKDEPENV=	${NXENV:NPATH=*}
 .else
 _MKDEPENV=	CCVER=${CCVER}
+.endif
+
+_MKDEPSRCDIR=
+.if defined(MKDEPSRCDIR) && !empty(MKDEPSRCDIR)
+_MKDEPSRCDIR=	-S ${MKDEPSRCDIR}
 .endif
 
 # Keep `tags' here, before SRCS are mangled below for `depend'.
@@ -155,6 +163,7 @@ _ALL_DEPENDS=${__FLAGS_FILES:N*.[csS]:N*.cc:N*.C:N*.cpp:N*.cxx:N*.m}
 	rm -f ${.TARGET}
 .if ${${_FG}_FLAGS_FILES:M*.[csS]} != ""
 	${_MKDEPENV} CC=${MKDEPCC} ${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
+	    ${_MKDEPSRCDIR} \
 	    ${${_FG}_FLAGS:M-I*} \
 	    ${CFLAGS:M--sysroot=*} \
 	    ${CFLAGS:M-nostdinc*} ${CFLAGS:M-[BID]*} \
@@ -167,6 +176,7 @@ _ALL_DEPENDS=${__FLAGS_FILES:N*.[csS]:N*.cc:N*.C:N*.cpp:N*.cxx:N*.m}
     ${${_FG}_FLAGS_FILES:M*.cpp} != "" || \
     ${${_FG}_FLAGS_FILES:M*.cxx} != ""
 	${_MKDEPENV} CC=${CXX} ${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
+	    ${_MKDEPSRCDIR} \
 	    ${${_FG}_FLAGS:M-I*} \
 	    ${CXXFLAGS:M--sysroot=*} \
 	    ${CXXFLAGS:M-nostdinc*} ${CXXFLAGS:M-[BID]*} \
@@ -176,6 +186,7 @@ _ALL_DEPENDS=${__FLAGS_FILES:N*.[csS]:N*.cc:N*.C:N*.cpp:N*.cxx:N*.m}
 .endif
 .if ${${_FG}_FLAGS_FILES:M*.m} != ""
 	${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
+	    ${_MKDEPSRCDIR} \
 	    ${${_FG}_FLAGS:M-I*} \
 	    ${OBJCFLAGS:M-nostdinc*} ${OBJCFLAGS:M-[BID]*} \
 	    ${OBJCFLAGS:M-Wno-import*} \
