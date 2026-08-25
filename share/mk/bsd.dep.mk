@@ -121,6 +121,16 @@ ${_YC}: ${_YSRC}
 . endfor
 .endif  # defined(SRCS)
 
+# Propagate the group flags to build commands via per-file variables,
+# where they'll be fetched via ${_${.TARGET:R}_FLAGS}.
+# Strip the filename suffix so it applies to all kinds of objects (e.g.,
+# .o, .po, .So).
+.for _FG in ${FLAGS_GROUPS}
+.for _FFILE in ${${_FG}_FLAGS_FILES}
+_${_FFILE:R}_FLAGS=	${${_FG}_FLAGS}
+.endfor
+.endfor
+
 .if !target(depend)
 .if defined(SRCS)
 depend: beforedepend _dependincs ${DEPENDFILE} afterdepend
