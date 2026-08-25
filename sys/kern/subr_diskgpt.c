@@ -77,7 +77,7 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	uint32_t entries;
 	uint32_t entsz;
 	uint32_t crc;
-	uint32_t table_lba;
+	uint64_t table_lba;
 	uint32_t table_blocks;
 	int i;
 	const char *dname;
@@ -130,17 +130,24 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	 */
 	entries = le32toh(gpt->hdr_entries);
 	entsz = le32toh(gpt->hdr_entsz);
-	table_lba = le32toh(gpt->hdr_lba_table);
+	table_lba = le64toh(gpt->hdr_lba_table);
 	table_blocks = (entries * entsz + info->d_media_blksize - 1) /
 		       info->d_media_blksize;
-	if (entries < 1 || entries > MAX_GPT_ENTRIES ||
-	    entsz < sizeof(struct gpt_ent) || (entsz & 7) ||
+	if (entries < 1 || entsz < sizeof(struct gpt_ent) || (entsz & 7) ||
 	    entsz > MAXBSIZE / entries ||
 	    table_lba < 2 || table_lba + table_blocks > info->d_media_blocks)
 	{
-		kprintf("%s: GPT partition table is out of bounds\n", dname);
+		kprintf("%s: Invalid GPT table: entries=%u, entsz=%u, "
+			"table_lba=%ju, table_blocks=%u, media_blocks=%ju\n",
+			dname, entries, entsz, (uintmax_t)table_lba,
+			table_blocks, (uintmax_t)info->d_media_blocks);
 		error = EINVAL;
 		goto done;
+	}
+	if (entries > MAX_GPT_ENTRIES) {
+		kprintf("%s: GPT entry count %u exceeds limit; "
+			"truncating to %u\n",
+			dname, entries, MAX_GPT_ENTRIES);
 	}
 
 	/*
@@ -156,10 +163,9 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	bp2->b_flags |= B_FAILONDIS;
 	dev_dstrategy(wdev, &bp2->b_bio1);
 	if (biowait(&bp2->b_bio1, "gptrd") != 0) {
-		kprintf("%s: reading GPT partition table @ %lld: error %d\n",
-			dname,
-			(long long)bp2->b_bio1.bio_offset,
-			bp2->b_error);
+		kprintf("%s: reading GPT table @ %lld,%d: error %d\n",
+			dname, (long long)bp2->b_bio1.bio_offset,
+			bp2->b_bcount, bp2->b_error);
 		error = EIO;
 		goto done;
 	}
@@ -169,7 +175,6 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	 * it with a maximal one (128 slices + special slices).  Well,
 	 * really there is only one special slice (the WHOLE_DISK_SLICE)
 	 * since we use the compatibility slice for s0, but don't quibble.
-	 *
 	 */
 	kfree(*sspp, M_DEVBUF);
 	ssp = *sspp = dsmakeslicestruct(BASE_SLICE + MAX_GPT_ENTRIES, info);
