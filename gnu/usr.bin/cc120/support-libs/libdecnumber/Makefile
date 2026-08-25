@@ -23,7 +23,7 @@ SRCS=	decContext.c \
 gstdint.h:
 	echo "#include <stdint.h>" > ${.TARGET}
 
-depend all: gstdint.h
+beforedepend: gstdint.h
 
 CLEANFILES+=	gstdint.h
 

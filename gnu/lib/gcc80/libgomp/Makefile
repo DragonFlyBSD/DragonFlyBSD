@@ -93,6 +93,6 @@ libgomp.spec:
 GEND_FILES=	libgomp_f.h omp.h omp_lib.h libgomp.ver libgomp.spec
 CLEANFILES=	${GEND_FILES}
 
-depend all:	${GEND_FILES}
+beforedepend:	${GEND_FILES}
 
 .include <bsd.lib.mk>

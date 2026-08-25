@@ -525,7 +525,7 @@ warn_FLAGS=	-Wno-narrowing
 warn_FLAGS=	-Wno-c++11-narrowing
 .endif
 
-depend: mkdirs
+beforedepend: mkdirs
 mkdirs:
 	mkdir -p analyzer rtl-ssa
 

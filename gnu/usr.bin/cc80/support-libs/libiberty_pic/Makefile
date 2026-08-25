@@ -38,6 +38,6 @@ SRCS=		argv.c \
 config.h: ${GOOD_CONFIG}
 	cp ${.ALLSRC} .
 
-depend all: config.h
+beforedepend: config.h
 
 .include <bsd.lib.mk>
