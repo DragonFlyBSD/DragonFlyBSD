@@ -18279,6 +18279,49 @@ print_v850_note (Elf_Internal_Note * pnote)
 }
 
 static bfd_boolean
+process_dragonfly_elf_note (Elf_Internal_Note * pnote)
+{
+  unsigned int version;
+
+  switch (pnote->type)
+    {
+    case NT_DRAGONFLY_ABI:
+      printf (_("  %-20s 0x%08lx\t%s\n"), "DragonFly", pnote->descsz,
+	      _("ABI (ABI version)"));
+      if (pnote->descsz < 4)
+	{
+	  printf (_("    <corrupt DRAGONFLY_ABI>\n"));
+	  break;
+	}
+      version = byte_get ((unsigned char *) pnote->descdata, 4);
+      printf (_("    ABI: %u (%u.%u.%u)\n"), version,
+	      version / 100000, (version / 100) % 100, version % 100);
+      break;
+
+    case NT_DRAGONFLY_NOINIT:
+      printf (_("  %-20s 0x%08lx\t%s\n"), "DragonFly", pnote->descsz,
+	      _("NOINIT (C runtime no init)"));
+      break;
+
+    default:
+      printf ("  %-20s 0x%08lx\tUnknown note type: (0x%08x)\n",
+	      "DragonFly", pnote->descsz, pnote->type);
+      if (pnote->descsz > 0)
+	{
+	  unsigned long i;
+
+	  printf (_("    Description data: "));
+	  for (i = 0; i < pnote->descsz; ++i)
+	    printf ("%02x ", pnote->descdata[i] & 0xff);
+	  printf ("\n");
+	}
+      break;
+    }
+
+  return TRUE;
+}
+
+static bfd_boolean
 process_netbsd_elf_note (Elf_Internal_Note * pnote)
 {
   unsigned int version;
@@ -19215,6 +19258,10 @@ process_note (Elf_Internal_Note *  pnote,
   else if (const_strneq (pnote->namedata, "GNU"))
     /* GNU-specific object file notes.  */
     nt = get_gnu_elf_note_type (pnote->type);
+
+  else if (const_strneq (pnote->namedata, "DragonFly"))
+    /* DragonFly-specific object file notes.  */
+    return process_dragonfly_elf_note (pnote);
 
   else if (const_strneq (pnote->namedata, "FreeBSD"))
     /* FreeBSD-specific core file notes.  */

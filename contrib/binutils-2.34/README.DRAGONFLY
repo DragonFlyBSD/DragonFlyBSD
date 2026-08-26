@@ -11,12 +11,14 @@ sha1 = 78f7ba4c0775ae75f5b906dc9af03d70b39b0785
 A list of files and directories removed is in README.DELETED
 
 Local modifications applied to following files:
+	binutils/readelf.c (process_dragonfly_elf_note)
 	bfd/config.bfd (x86_64_pei_vec)
 	bfd/bfdver.h (new)
 	bfd/elfxx-x86.c (linker path)
 	bfd/plugin.c (plugin dir path)
 	bfd/sysdep.h (offsetof)
 	gold/x86_64.cc (linker path)
+	include/elf/common.h (NT_DRAGONFLY_*)
 	ld/genscripts.sh (fix .deps checks)
 	ld/ldlex.l (sysdep.h)
 
