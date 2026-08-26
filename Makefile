@@ -100,7 +100,7 @@ TGTS=	all all-man buildkernel quickkernel realquickkernel nativekernel \
 	build-all install-all \
 	backup-clean backup-auto-clean \
 	_obj _includes _libraries _depend _worldtmp \
-	_bootstrap-tools _build-tools _cross-tools
+	_bootstrap-tools _cross-tools
 #TGTS+=	mandiff # XXX temporary target
 
 BITGTS=	files includes
