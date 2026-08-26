@@ -3,11 +3,7 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/11/93
 
 PROG=	mkdict
+
 CFLAGS+=-I${.CURDIR}/../boggle
-
-build-tools: mkdict.nx
-
-# this mkdict is used in place, it is not installed anywhere
-install:
 
 .include <bsd.hostprog.mk>

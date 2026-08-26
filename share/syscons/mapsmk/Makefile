@@ -12,13 +12,7 @@ ${SCRMAPS_MK}: ${.TARGET:R} mkscrfil.c
 
 CLEANFILES+=	${SCRMAPS_MK}
 
-genfiles: ${SCRMAPS_MK}
-depend all: genfiles
-
-build-tools: ${SCRMAPS_MK}
-
-# this tools are used in place, they are not installed anywhere
-install:
+depend all: ${SCRMAPS_MK}
 
 # Hint HOST_CCVER handling.
 __USE_HOST_CCVER=

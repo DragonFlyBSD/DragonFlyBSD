@@ -20,11 +20,6 @@ VER!=  grep -w VERSION ${.CURDIR}/../libmagic/config.h | awk -F\" '{print $$2}'
 # XXX -Wunused-function in apprentice.c
 WARNS= 1
 
-build-tools: mkmagic.nx
-
-# this mkmagic is used in place, it is not installed anywhere
-install:
-
 .for inc in ${INCS}
 ${inc}: ${inc}.in
 	sed -e 's,X.YY,${VER:S,",,g:S,.,,g},g' ${.ALLSRC} > ${.TARGET}

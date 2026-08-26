@@ -3,11 +3,7 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/11/93
 
 PROG=	mkindex
+
 CFLAGS+=-I${.CURDIR}/../boggle
-
-build-tools: mkindex.nx
-
-# this mkindex is used in place, it is not installed anywhere
-install:
 
 .include <bsd.hostprog.mk>
