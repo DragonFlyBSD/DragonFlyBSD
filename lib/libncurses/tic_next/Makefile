@@ -15,6 +15,7 @@ CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.OBJDIR}
 
 LDADD+=		../libtic/libtic.na
+DPADD+=		../libtic/libtic.na
 
 ncurses_def.h:	MKncurses_def.sh ncurses_defs
 	AWK=awk sh ${NCURSESDIR}/include/MKncurses_def.sh \
