@@ -127,7 +127,7 @@ ${_YC}: ${_YSRC}
 # .o, .po, .So).
 .for _FG in ${FLAGS_GROUPS}
 .for _FFILE in ${${_FG}_FLAGS_FILES}
-_${_FFILE:R}_FLAGS=	${${_FG}_FLAGS}
+_${_FFILE:R}_FLAGS+=	${${_FG}_FLAGS}
 .endfor
 .endfor
 
