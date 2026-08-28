@@ -1,6 +1,7 @@
 /* mpc_fr_div -- Divide a floating-point number by a complex number.
+   (Adapted version of mpc_div().)
 
-Copyright (C) 2008, 2009, 2011 INRIA
+Copyright (C) 2008, 2009, 2011, 2012 INRIA
 
 This file is part of GNU MPC.
 
@@ -20,20 +21,408 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 
 #include "mpc-impl.h"
 
+/* Recent drafts for upcoming C2Y standard introduce (N3460) definitions
+   for "real / complex" and "complex / complex" divisions.
+
+   For instance, in the draft N3685, section 6.5.6, paragraph 9:
+   > - The / operator where both operands are complex with values
+   >   x + iy and u + iv computes (xu + yv)/(u^2 + v^2) + i(yu - xv)/(u^2 + v^2).
+   > - The / operator where the first operand is real with value x
+   >   and the second operand is complex with value u + iv computes
+   >   (xu)/(u^2 + v^2) + i(-xv)/(u^2 + v^2).
+
+   Also, in Annex G, section 3.2, paragraph 2:
+   > if the second operand of the / operator is complex,
+   > the operator raises floating-point exceptions if appropriate
+   > for the calculation of the parts
+
+   On this ground, we set divide-by-zero exception in mpc_div_zero() if either
+   real or imaginary part of the dividend is a regular number.
+   */
+
+/* this routine deals with the case where w is zero */
+static int
+mpc_div_zero (mpc_ptr a, mpfr_srcptr z, mpc_srcptr w, mpc_rnd_t rnd)
+/* Assumes w==0, implementation according to C99 G.5.1.8 */
+{
+   int sign = MPFR_SIGNBIT (mpc_realref (w));
+   mpfr_t infty;
+
+   mpfr_init2 (infty, MPFR_PREC_MIN);
+   mpfr_set_inf (infty, sign);
+   mpfr_mul (mpc_realref (a), infty, z, MPC_RND_RE (rnd));
+   mpfr_clear (infty);
+   mpfr_set_nan (mpc_imagref (a));
+   if (mpfr_regular_p (z))
+     mpfr_set_divby0 ();
+   return MPC_INEX (0, 0); /* exact */
+}
+
+/* this routine deals with the case where z is infinite and w finite */
+static int
+mpc_div_inf_fin (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w)
+/* Assumes w finite and non-zero and z infinite; implementation
+   according to C99 G.5.1.8                                     */
+{
+   int a, x, y;
+
+   a = (mpfr_inf_p (z) ? MPFR_SIGNBIT (z) : 0);
+
+   /* a is -1 if Re(z) = -Inf, 1 if Re(z) = +Inf, 0 if Re(z) is finite */
+
+   x = a * MPC_MPFR_SIGN (mpc_realref (w));
+   y = -a * MPC_MPFR_SIGN (mpc_imagref (w));
+
+   if (x == 0)
+      mpfr_set_nan (mpc_realref (rop));
+   else
+      mpfr_set_inf (mpc_realref (rop), x);
+   if (y == 0)
+      mpfr_set_nan (mpc_imagref (rop));
+   else
+      mpfr_set_inf (mpc_imagref (rop), y);
+
+   return MPC_INEX (0, 0); /* exact */
+}
+
+
+/* this routine deals with the case where z if finite and w infinite */
+static int
+mpc_div_fin_inf (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w)
+/* Assumes z finite and w infinite; implementation according to
+   C99 G.5.1.8                                                  */
+{
+   mpfr_t c, d, x, y, zero;
+
+   mpfr_init2 (c, 2); /* needed to hold a signed zero, +1 or -1 */
+   mpfr_init2 (d, 2);
+   mpfr_init2 (x, 2);
+   mpfr_init2 (y, 2);
+   mpfr_init2 (zero, 2);
+   mpfr_set_ui (zero, 0ul, MPFR_RNDN);
+
+   mpfr_set_ui (c, (mpfr_inf_p (mpc_realref (w)) ? 1 : 0), MPFR_RNDN);
+   MPFR_COPYSIGN (c, c, mpc_realref (w), MPFR_RNDN);
+   mpfr_set_ui (d, (mpfr_inf_p (mpc_imagref (w)) ? 1 : 0), MPFR_RNDN);
+   MPFR_COPYSIGN (d, d, mpc_imagref (w), MPFR_RNDN);
+
+   mpfr_mul (x, z, c, MPFR_RNDN); /* exact */
+
+   mpfr_mul (y, z, d, MPFR_RNDN);
+   mpfr_neg (y, y, MPFR_RNDN);
+
+   MPFR_COPYSIGN (mpc_realref (rop), zero, x, MPFR_RNDN);
+   MPFR_COPYSIGN (mpc_imagref (rop), zero, y, MPFR_RNDN);
+
+   mpfr_clear (c);
+   mpfr_clear (d);
+   mpfr_clear (x);
+   mpfr_clear (y);
+   mpfr_clear (zero);
+
+   return MPC_INEX (0, 0); /* exact */
+}
+
+
+static int
+mpc_div_real (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w, mpc_rnd_t rnd)
+/* Assumes z finite and w finite and non-zero, with imaginary part
+   of w a signed zero.                                             */
+{
+   int inex_re, inex_im;
+   /* save sign of operand in case there are overlap */
+   int wis = MPFR_SIGNBIT (mpc_imagref (w));
+
+   inex_re = mpfr_div (mpc_realref(rop), z, mpc_realref(w), MPC_RND_RE(rnd));
+   inex_im = mpfr_set_ui (mpc_imagref(rop), 0, MPC_RND_IM(rnd));
+
+   /* correct sign of zero if necessary, which does not affect the
+      inexact flags                                                    */
+   if (mpfr_zero_p (mpc_imagref (rop)))
+      mpfr_setsign (mpc_imagref (rop), mpc_imagref (rop),
+         MPFR_SIGNBIT (z) == wis, MPFR_RNDN);
+
+   return MPC_INEX(inex_re, inex_im);
+}
+
+
+static int
+mpc_div_imag (mpc_ptr rop, mpfr_srcptr z, mpc_srcptr w, mpc_rnd_t rnd)
+/* Assumes z finite and w finite and non-zero, with real part
+   of w a signed zero.                                        */
+{
+   int inex_re, inex_im;
+   int overlap = (rop == w);
+   mpfr_t wloc;
+   mpc_t tmprop;
+   mpc_ptr dest = (overlap) ? tmprop : rop;
+   /* save sign of operand in case there are overlap */
+   int wrs = MPFR_SIGNBIT (mpc_realref (w));
+
+   if (overlap)
+      mpc_init3 (tmprop, MPC_PREC_RE (rop), MPC_PREC_IM (rop));
+
+   wloc[0] = mpc_imagref(w)[0]; /* copies mpfr struct IM(w) into wloc */
+   inex_re = mpfr_set_ui(mpc_realref(dest), 0, MPC_RND_RE(rnd));
+   mpfr_neg (wloc, wloc, MPFR_RNDN);
+   /* changes the sign only in wloc, not in w; no need to correct later */
+   inex_im = mpfr_div (mpc_imagref(dest), z, wloc, MPC_RND_IM(rnd));
+
+   if (overlap) {
+      /* Note: we could use mpc_swap here, but this might cause problems
+         if rop and tmprop have been allocated using different methods, since
+         it will swap the significands of rop and tmprop. See
+         https://sympa.inria.fr/sympa/arc/mpc-discuss/2009-08/msg00004.html */
+      mpc_set (rop, tmprop, MPC_RNDNN); /* exact */
+      mpc_clear (tmprop);
+   }
+
+   /* correct sign of zero if necessary, which does not affect the
+      inexact flags                                                    */
+   if (mpfr_zero_p (mpc_realref (rop)))
+      mpfr_setsign (mpc_realref (rop), mpc_realref (rop),
+         MPFR_SIGNBIT (z) != wrs, MPFR_RNDN); /* exact */
+
+   return MPC_INEX(inex_re, inex_im);
+}
+
 int
 mpc_fr_div (mpc_ptr a, mpfr_srcptr b, mpc_srcptr c, mpc_rnd_t rnd)
 {
-   mpc_t bc;
-   int inexact;
+   int ok_re = 0, ok_im = 0;
+   mpc_t res, c_conj;
+   mpfr_t q;
+   mpfr_prec_t prec;
+   int inex, inexact_prod, inexact_norm, inexact_re, inexact_im, loops = 0;
+   int underflow_norm, overflow_norm, underflow_prod, overflow_prod;
+   int underflow_re = 0, overflow_re = 0, underflow_im = 0, overflow_im = 0;
+   mpfr_rnd_t rnd_re = MPC_RND_RE (rnd), rnd_im = MPC_RND_IM (rnd);
+   int saved_underflow, saved_overflow;
+   int tmpsgn;
+   mpfr_exp_t saved_emin, saved_emax;
 
-   mpc_realref (bc)[0] = b [0];
-   mpfr_init (mpc_imagref (bc));
-   /* we consider the operand b to have imaginary part +0 */
-   mpfr_set_ui (mpc_imagref (bc), 0, GMP_RNDN);
+   /* According to the C standard G.3, there are three types of numbers:
+      finite (both parts are usual real numbers; contains 0), infinite
+      (at least one part is a real infinity) and all others; the latter
+      are numbers containing a nan, but no infinity, and could reasonably
+      be called nan.
+      By G.5.1.4, infinite/finite=infinite; finite/infinite=0;
+      all other divisions that are not finite/finite return nan+i*nan.
+      Division by 0 could be handled by the following case of division by
+      a real; we handle it separately instead. See also
+      https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1399.htm */
+   if (mpc_zero_p (c)) /* both Re(c) and Im(c) are zero */
+      return mpc_div_zero (a, b, c, rnd);
+   else if (mpfr_inf_p (b) && mpc_fin_p (c)) /* b is infinite and both Re(c)
+                                                and Im(c) are ordinary */
+         return mpc_div_inf_fin (a, b, c);
+   else if (mpfr_number_p (b) && mpc_inf_p (c))
+         return mpc_div_fin_inf (a, b, c);
+   else if (!mpfr_number_p (b) || !mpc_fin_p (c)) {
+      mpc_set_nan (a);
+      return MPC_INEX (0, 0);
+   }
+   else if (mpfr_zero_p(mpc_imagref(c)))
+      return mpc_div_real (a, b, c, rnd);
+   else if (mpfr_zero_p(mpc_realref(c)))
+      return mpc_div_imag (a, b, c, rnd);
 
-   inexact = mpc_div (a, bc, c, rnd);
+   prec = MPC_MAX_PREC(a);
 
-   mpfr_clear (mpc_imagref (bc));
+   mpc_init2 (res, 2);
+   mpfr_init (q);
 
-   return inexact;
+   /* we perform the division in the largest possible exponent range,
+      to avoid underflow/overflow in intermediate computations */
+   saved_emin = mpfr_get_emin ();
+   saved_emax = mpfr_get_emax ();
+   mpfr_set_emin (mpfr_get_emin_min ());
+   mpfr_set_emax (mpfr_get_emax_max ());
+
+   /* create the conjugate of c in c_conj without allocating new memory */
+   mpc_realref (c_conj)[0] = mpc_realref (c)[0];
+   mpc_imagref (c_conj)[0] = mpc_imagref (c)[0];
+   MPFR_CHANGE_SIGN (mpc_imagref (c_conj));
+
+   /* save the underflow or overflow flags from MPFR */
+   saved_underflow = mpfr_underflow_p ();
+   saved_overflow = mpfr_overflow_p ();
+
+   do {
+      loops ++;
+      prec += loops <= 2 ? mpc_ceil_log2 (prec) + 5 : prec / 2;
+
+      mpc_set_prec (res, prec);
+      mpfr_set_prec (q, prec);
+
+      /* first compute norm(c) */
+      mpfr_clear_underflow ();
+      mpfr_clear_overflow ();
+      inexact_norm = mpc_norm (q, c, MPFR_RNDU);
+      underflow_norm = mpfr_underflow_p ();
+      overflow_norm = mpfr_overflow_p ();
+      if (underflow_norm)
+         mpfr_set_ui (q, 0ul, MPFR_RNDN);
+         /* to obtain divisions by 0 later on */
+
+      /* now compute b*conjugate(c) */
+      mpfr_clear_underflow ();
+      mpfr_clear_overflow ();
+      inexact_prod = mpc_mul_fr (res, c_conj, b, MPC_RNDZZ);
+      inexact_re = MPC_INEX_RE (inexact_prod);
+      inexact_im = MPC_INEX_IM (inexact_prod);
+      underflow_prod = mpfr_underflow_p ();
+      overflow_prod = mpfr_overflow_p ();
+         /* unfortunately, does not distinguish between under-/overflow
+            in real or imaginary parts
+            hopefully, the side-effects of mpc_mul do indeed raise the
+            mpfr exceptions */
+      if (overflow_prod) {
+        /* FIXME: in case overflow_norm is also true, the code below is wrong,
+           since the after division by the norm, we might end up with finite
+           real and/or imaginary parts. A workaround would be to scale the
+           inputs (in case the exponents are within the same range). */
+         int isinf = 0;
+         /* determine if the real part of res is the maximum or the minimum
+            representable number */
+         tmpsgn = mpfr_sgn (mpc_realref(res));
+         if (tmpsgn > 0)
+           {
+             mpfr_nextabove (mpc_realref(res));
+             isinf = mpfr_inf_p (mpc_realref(res));
+             mpfr_nextbelow (mpc_realref(res));
+           }
+         else if (tmpsgn < 0)
+           {
+             mpfr_nextbelow (mpc_realref(res));
+             isinf = mpfr_inf_p (mpc_realref(res));
+             mpfr_nextabove (mpc_realref(res));
+           }
+         if (isinf)
+           {
+             mpfr_set_inf (mpc_realref(res), tmpsgn);
+             overflow_re = 1;
+           }
+         /* same for the imaginary part */
+         tmpsgn = mpfr_sgn (mpc_imagref(res));
+         isinf = 0;
+         if (tmpsgn > 0)
+           {
+             mpfr_nextabove (mpc_imagref(res));
+             isinf = mpfr_inf_p (mpc_imagref(res));
+             mpfr_nextbelow (mpc_imagref(res));
+           }
+         else if (tmpsgn < 0)
+           {
+             mpfr_nextbelow (mpc_imagref(res));
+             isinf = mpfr_inf_p (mpc_imagref(res));
+             mpfr_nextabove (mpc_imagref(res));
+           }
+         if (isinf)
+           {
+             mpfr_set_inf (mpc_imagref(res), tmpsgn);
+             overflow_im = 1;
+           }
+         mpc_set (a, res, rnd);
+         goto end;
+      }
+
+      /* divide the product by the norm */
+      if (inexact_norm == 0 && (inexact_re == 0 || inexact_im == 0)) {
+         /* The division has good chances to be exact in at least one part.  */
+         /* Since this can cause problems when not rounding to the nearest,  */
+         /* we use the division code of mpfr, which handles the situation.   */
+         mpfr_clear_underflow ();
+         mpfr_clear_overflow ();
+         inexact_re |= mpfr_div (mpc_realref (res), mpc_realref (res), q, MPFR_RNDZ);
+         underflow_re = mpfr_underflow_p ();
+         overflow_re = mpfr_overflow_p ();
+         ok_re = !inexact_re || underflow_re || overflow_re
+                 || mpfr_can_round (mpc_realref (res), prec - 4, MPFR_RNDN,
+                    MPFR_RNDZ, MPC_PREC_RE(a) + (rnd_re == MPFR_RNDN));
+
+         if (ok_re) /* compute imaginary part */ {
+            mpfr_clear_underflow ();
+            mpfr_clear_overflow ();
+            inexact_im |= mpfr_div (mpc_imagref (res), mpc_imagref (res), q, MPFR_RNDZ);
+            underflow_im = mpfr_underflow_p ();
+            overflow_im = mpfr_overflow_p ();
+            ok_im = !inexact_im || underflow_im || overflow_im
+                    || mpfr_can_round (mpc_imagref (res), prec - 4, MPFR_RNDN,
+                       MPFR_RNDZ, MPC_PREC_IM(a) + (rnd_im == MPFR_RNDN));
+         }
+      }
+      else {
+         /* The division is inexact, so for efficiency reasons we invert q */
+         /* only once and multiply by the inverse. */
+         if (mpfr_ui_div (q, 1ul, q, MPFR_RNDZ) || inexact_norm) {
+             /* if 1/q is inexact, the approximations of the real and
+                imaginary part below will be inexact, unless RE(res)
+                or IM(res) is zero */
+             inexact_re |= !mpfr_zero_p (mpc_realref (res));
+             inexact_im |= !mpfr_zero_p (mpc_imagref (res));
+         }
+         mpfr_clear_underflow ();
+         mpfr_clear_overflow ();
+         inexact_re |= mpfr_mul (mpc_realref (res), mpc_realref (res), q, MPFR_RNDZ);
+         underflow_re = mpfr_underflow_p ();
+         overflow_re = mpfr_overflow_p ();
+         ok_re = !inexact_re || underflow_re || overflow_re
+                 || mpfr_can_round (mpc_realref (res), prec - 4, MPFR_RNDN,
+                    MPFR_RNDZ, MPC_PREC_RE(a) + (rnd_re == MPFR_RNDN));
+
+         if (ok_re) /* compute imaginary part */ {
+            mpfr_clear_underflow ();
+            mpfr_clear_overflow ();
+            inexact_im |= mpfr_mul (mpc_imagref (res), mpc_imagref (res), q, MPFR_RNDZ);
+            underflow_im = mpfr_underflow_p ();
+            overflow_im = mpfr_overflow_p ();
+            ok_im = !inexact_im || underflow_im || overflow_im
+                    || mpfr_can_round (mpc_imagref (res), prec - 4, MPFR_RNDN,
+                       MPFR_RNDZ, MPC_PREC_IM(a) + (rnd_im == MPFR_RNDN));
+         }
+      }
+   } while ((!ok_re || !ok_im) && !underflow_norm && !overflow_norm
+                               && !underflow_prod && !overflow_prod);
+
+   inex = mpc_set (a, res, rnd);
+   inexact_re = MPC_INEX_RE (inex);
+   inexact_im = MPC_INEX_IM (inex);
+
+ end:
+   /* fix values and inexact flags in case of overflow/underflow */
+   /* FIXME: heuristic, certainly does not cover all cases */
+   if (overflow_re || (underflow_norm && !underflow_prod)) {
+      mpfr_set_inf (mpc_realref (a), mpfr_sgn (mpc_realref (res)));
+      inexact_re = mpfr_sgn (mpc_realref (res));
+   }
+   else if (underflow_re || (overflow_norm && !overflow_prod)) {
+      inexact_re = mpfr_signbit (mpc_realref (res)) ? 1 : -1;
+      mpfr_set_zero (mpc_realref (a), -inexact_re);
+   }
+   if (overflow_im || (underflow_norm && !underflow_prod)) {
+      mpfr_set_inf (mpc_imagref (a), mpfr_sgn (mpc_imagref (res)));
+      inexact_im = mpfr_sgn (mpc_imagref (res));
+   }
+   else if (underflow_im || (overflow_norm && !overflow_prod)) {
+      inexact_im = mpfr_signbit (mpc_imagref (res)) ? 1 : -1;
+      mpfr_set_zero (mpc_imagref (a), -inexact_im);
+   }
+
+   mpc_clear (res);
+   mpfr_clear (q);
+
+   /* restore underflow and overflow flags from MPFR */
+   if (saved_underflow)
+     mpfr_set_underflow ();
+   if (saved_overflow)
+     mpfr_set_overflow ();
+
+   /* restore the exponent range, and check the range of results */
+   mpfr_set_emin (saved_emin);
+   mpfr_set_emax (saved_emax);
+   inexact_re = mpfr_check_range (mpc_realref (a), inexact_re, rnd_re);
+   inexact_im = mpfr_check_range (mpc_imagref (a), inexact_im, rnd_im);
+
+   return MPC_INEX (inexact_re, inexact_im);
 }

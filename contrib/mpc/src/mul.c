@@ -1,11 +1,11 @@
 /* mpc_mul -- Multiply two complex numbers
 
-Copyright (C) 2002, 2004, 2005, 2008, 2009, 2010, 2011, 2012 INRIA
+Copyright (C) 2002, 2004, 2005, 2008, 2009, 2010, 2011, 2012, 2016, 2020, 2022 INRIA
 
 This file is part of GNU MPC.
 
 GNU MPC is free software; you can redistribute it and/or modify it under
-the terms of the GNU Lesser General Public License as published by the
+        he terms of the GNU Lesser General Public License as published by the
 Free Software Foundation; either version 3 of the License, or (at your
 option) any later version.
 
@@ -43,7 +43,7 @@ mul_infinite (mpc_ptr z, mpc_srcptr x, mpc_srcptr y)
    /* compute the sign of
       u = xrs * yrs * xr * yr - xis * yis * xi * yi
       v = xrs * yis * xr * yi + xis * yrs * xi * yr
-      +1 if positive, -1 if negatiye, 0 if NaN */
+      +1 if positive, -1 if negative, 0 if NaN */
    if (  mpfr_nan_p (mpc_realref (x)) || mpfr_nan_p (mpc_imagref (x))
       || mpfr_nan_p (mpc_realref (y)) || mpfr_nan_p (mpc_imagref (y))) {
       u = 0;
@@ -125,11 +125,11 @@ mul_real (mpc_ptr z, mpc_srcptr x, mpc_srcptr y, mpc_rnd_t rnd)
    /* Signs of zeroes may be wrong. Their correction does not change the
       inexact flag. */
    if (mpfr_zero_p (mpc_realref (z)))
-      mpfr_setsign (mpc_realref (z), mpc_realref (z), MPC_RND_RE(rnd) == GMP_RNDD
-                     || (xrs != yrs && xis == yis), GMP_RNDN);
+      mpfr_setsign (mpc_realref (z), mpc_realref (z), MPC_RND_RE(rnd) == MPFR_RNDD
+                     || (xrs != yrs && xis == yis), MPFR_RNDN);
    if (mpfr_zero_p (mpc_imagref (z)))
-      mpfr_setsign (mpc_imagref (z), mpc_imagref (z), MPC_RND_IM (rnd) == GMP_RNDD
-                     || (xrs != yis && xis != yrs), GMP_RNDN);
+      mpfr_setsign (mpc_imagref (z), mpc_imagref (z), MPC_RND_IM (rnd) == MPFR_RNDD
+                     || (xrs != yis && xis != yrs), MPFR_RNDN);
 
    return inex;
 }
@@ -154,15 +154,15 @@ mul_imag (mpc_ptr z, mpc_srcptr x, mpc_srcptr y, mpc_rnd_t rnd)
 
    inex_re = -mpfr_mul (mpc_realref (rop), mpc_imagref (x), mpc_imagref (y),
                         INV_RND (MPC_RND_RE (rnd)));
-   mpfr_neg (mpc_realref (rop), mpc_realref (rop), GMP_RNDN); /* exact */
+   mpfr_neg (mpc_realref (rop), mpc_realref (rop), MPFR_RNDN); /* exact */
    inex_im = mpfr_mul (mpc_imagref (rop), mpc_realref (x), mpc_imagref (y),
                        MPC_RND_IM (rnd));
    mpc_set (z, rop, MPC_RNDNN);
 
    /* Sign of zeroes may be wrong (note that Re(z) cannot be zero) */
    if (mpfr_zero_p (mpc_imagref (z)))
-      mpfr_setsign (mpc_imagref (z), mpc_imagref (z), MPC_RND_IM (rnd) == GMP_RNDD
-                     || sign, GMP_RNDN);
+      mpfr_setsign (mpc_imagref (z), mpc_imagref (z), MPC_RND_IM (rnd) == MPFR_RNDD
+                     || sign, MPFR_RNDN);
 
    if (overlap)
       mpc_clear (rop);
@@ -171,162 +171,12 @@ mul_imag (mpc_ptr z, mpc_srcptr x, mpc_srcptr y, mpc_rnd_t rnd)
 }
 
 
-static int
-mpfr_fmma (mpfr_ptr z, mpfr_srcptr a, mpfr_srcptr b, mpfr_srcptr c,
-           mpfr_srcptr d, int sign, mpfr_rnd_t rnd)
-{
-   /* Computes z = ab+cd if sign >= 0, or z = ab-cd if sign < 0.
-      Assumes that a, b, c, d are finite and non-zero; so any multiplication
-      of two of them yielding an infinity is an overflow, and a
-      multiplication yielding 0 is an underflow.
-      Assumes further that z is distinct from a, b, c, d. */
-
-   int inex;
-   mpfr_t u, v;
-
-   /* u=a*b, v=sign*c*d exactly */
-   mpfr_init2 (u, mpfr_get_prec (a) + mpfr_get_prec (b));
-   mpfr_init2 (v, mpfr_get_prec (c) + mpfr_get_prec (d));
-   mpfr_mul (u, a, b, GMP_RNDN);
-   mpfr_mul (v, c, d, GMP_RNDN);
-   if (sign < 0)
-      mpfr_neg (v, v, GMP_RNDN);
-
-   /* tentatively compute z as u+v; here we need z to be distinct
-      from a, b, c, d to not lose the latter */
-   inex = mpfr_add (z, u, v, rnd);
-
-   if (mpfr_inf_p (z)) {
-      /* replace by "correctly rounded overflow" */
-      mpfr_set_si (z, (mpfr_signbit (z) ? -1 : 1), GMP_RNDN);
-      inex = mpfr_mul_2ui (z, z, mpfr_get_emax (), rnd);
-   }
-   else if (mpfr_zero_p (u) && !mpfr_zero_p (v)) {
-      /* exactly u underflowed, determine inexact flag */
-      inex = (mpfr_signbit (u) ? 1 : -1);
-   }
-   else if (mpfr_zero_p (v) && !mpfr_zero_p (u)) {
-      /* exactly v underflowed, determine inexact flag */
-      inex = (mpfr_signbit (v) ? 1 : -1);
-   }
-   else if (mpfr_nan_p (z) || (mpfr_zero_p (u) && mpfr_zero_p (v))) {
-      /* In the first case, u and v are infinities with opposite signs.
-         In the second case, u and v are zeroes; their sum may be 0 or the
-         least representable number, with a sign to be determined.
-         Redo the computations with mpz_t exponents */
-      mpfr_exp_t ea, eb, ec, ed;
-      mpz_t eu, ev;
-         /* cheat to work around the const qualifiers */
-
-      /* Normalise the input by shifting and keep track of the shifts in
-         the exponents of u and v */
-      ea = mpfr_get_exp (a);
-      eb = mpfr_get_exp (b);
-      ec = mpfr_get_exp (c);
-      ed = mpfr_get_exp (d);
-
-      mpfr_set_exp ((mpfr_ptr) a, (mpfr_prec_t) 0);
-      mpfr_set_exp ((mpfr_ptr) b, (mpfr_prec_t) 0);
-      mpfr_set_exp ((mpfr_ptr) c, (mpfr_prec_t) 0);
-      mpfr_set_exp ((mpfr_ptr) d, (mpfr_prec_t) 0);
-
-      mpz_init (eu);
-      mpz_init (ev);
-      mpz_set_si (eu, (long int) ea);
-      mpz_add_si (eu, eu, (long int) eb);
-      mpz_set_si (ev, (long int) ec);
-      mpz_add_si (ev, ev, (long int) ed);
-
-      /* recompute u and v and move exponents to eu and ev */
-      mpfr_mul (u, a, b, GMP_RNDN);
-      /* exponent of u is non-positive */
-      mpz_sub_ui (eu, eu, (unsigned long int) (-mpfr_get_exp (u)));
-      mpfr_set_exp (u, (mpfr_prec_t) 0);
-      mpfr_mul (v, c, d, GMP_RNDN);
-      if (sign < 0)
-         mpfr_neg (v, v, GMP_RNDN);
-      mpz_sub_ui (ev, ev, (unsigned long int) (-mpfr_get_exp (v)));
-      mpfr_set_exp (v, (mpfr_prec_t) 0);
-
-      if (mpfr_nan_p (z)) {
-         mpfr_exp_t emax = mpfr_get_emax ();
-         int overflow;
-         /* We have a = ma * 2^ea with 1/2 <= |ma| < 1 and ea <= emax, and
-            analogously for b. So eu <= 2*emax, and eu > emax since we have
-            an overflow. The same holds for ev. Shift u and v by as much as
-            possible so that one of them has exponent emax and the
-            remaining exponents in eu and ev are the same. Then carry out
-            the addition. Shifting u and v prevents an underflow. */
-         if (mpz_cmp (eu, ev) >= 0) {
-            mpfr_set_exp (u, emax);
-            mpz_sub_ui (eu, eu, (long int) emax);
-            mpz_sub (ev, ev, eu);
-            mpfr_set_exp (v, (mpfr_exp_t) mpz_get_ui (ev));
-               /* remaining common exponent is now in eu */
-         }
-         else {
-            mpfr_set_exp (v, emax);
-            mpz_sub_ui (ev, ev, (long int) emax);
-            mpz_sub (eu, eu, ev);
-            mpfr_set_exp (u, (mpfr_exp_t) mpz_get_ui (eu));
-            mpz_set (eu, ev);
-               /* remaining common exponent is now also in eu */
-         }
-         inex = mpfr_add (z, u, v, rnd);
-            /* Result is finite since u and v have different signs. */
-         overflow = mpfr_mul_2ui (z, z, mpz_get_ui (eu), rnd);
-         if (overflow)
-            inex = overflow;
-      }
-      else {
-         int underflow;
-         /* Addition of two zeroes with same sign. We have a = ma * 2^ea
-            with 1/2 <= |ma| < 1 and ea >= emin and similarly for b.
-            So 2*emin < 2*emin+1 <= eu < emin < 0, and analogously for v. */
-         mpfr_exp_t emin = mpfr_get_emin ();
-         if (mpz_cmp (eu, ev) <= 0) {
-            mpfr_set_exp (u, emin);
-            mpz_add_ui (eu, eu, (unsigned long int) (-emin));
-            mpz_sub (ev, ev, eu);
-            mpfr_set_exp (v, (mpfr_exp_t) mpz_get_si (ev));
-         }
-         else {
-            mpfr_set_exp (v, emin);
-            mpz_add_ui (ev, ev, (unsigned long int) (-emin));
-            mpz_sub (eu, eu, ev);
-            mpfr_set_exp (u, (mpfr_exp_t) mpz_get_si (eu));
-            mpz_set (eu, ev);
-         }
-         inex = mpfr_add (z, u, v, rnd);
-         mpz_neg (eu, eu);
-         underflow = mpfr_div_2ui (z, z, mpz_get_ui (eu), rnd);
-         if (underflow)
-            inex = underflow;
-      }
-
-      mpz_clear (eu);
-      mpz_clear (ev);
-
-      mpfr_set_exp ((mpfr_ptr) a, ea);
-      mpfr_set_exp ((mpfr_ptr) b, eb);
-      mpfr_set_exp ((mpfr_ptr) c, ec);
-      mpfr_set_exp ((mpfr_ptr) d, ed);
-         /* works also when some of a, b, c, d are not all distinct */
-   }
-
-   mpfr_clear (u);
-   mpfr_clear (v);
-
-   return inex;
-}
-
-
 int
 mpc_mul_naive (mpc_ptr z, mpc_srcptr x, mpc_srcptr y, mpc_rnd_t rnd)
 {
    /* computes z=x*y by the schoolbook method, where x and y are assumed
       to be finite and without zero parts                                */
-   int overlap, inex;
+   int overlap, inex_re, inex_im;
    mpc_t rop;
 
    MPC_ASSERT (   mpfr_regular_p (mpc_realref (x)) && mpfr_regular_p (mpc_imagref (x))
@@ -337,16 +187,16 @@ mpc_mul_naive (mpc_ptr z, mpc_srcptr x, mpc_srcptr y, mpc_rnd_t rnd)
    else
       rop [0] = z [0];
 
-   inex = MPC_INEX (mpfr_fmma (mpc_realref (rop), mpc_realref (x), mpc_realref (y), mpc_imagref (x),
-                               mpc_imagref (y), -1, MPC_RND_RE (rnd)),
-                    mpfr_fmma (mpc_imagref (rop), mpc_realref (x), mpc_imagref (y), mpc_imagref (x),
-                               mpc_realref (y), +1, MPC_RND_IM (rnd)));
+   inex_re = mpfr_fmms (mpc_realref (rop), mpc_realref (x), mpc_realref (y),
+                        mpc_imagref (x), mpc_imagref (y), MPC_RND_RE (rnd));
+   inex_im = mpfr_fmma (mpc_imagref (rop), mpc_realref (x), mpc_imagref (y),
+                        mpc_imagref (x), mpc_realref (y), MPC_RND_IM (rnd));
 
    mpc_set (z, rop, MPC_RNDNN);
    if (overlap)
       mpc_clear (rop);
 
-   return inex;
+   return MPC_INEX (inex_re, inex_im);
 }
 
 
@@ -369,6 +219,7 @@ mpc_mul_karatsuba (mpc_ptr rop, mpc_srcptr op1, mpc_srcptr op2, mpc_rnd_t rnd)
         imaginary part is used). If this fails, we have to start again and
         need the correct values of op1 and op2.
         So we just create a new variable for the result in this case. */
+  mpfr_ptr ref;
   int loop;
   const int MAX_MUL_LOOP = 1;
 
@@ -426,23 +277,23 @@ mpc_mul_karatsuba (mpc_ptr rop, mpc_srcptr op1, mpc_srcptr op2, mpc_rnd_t rnd)
   mpfr_init2 (u, 2);
   mpfr_init2 (x, 2);
 
-  inexact = mpfr_mul (v, a, d, GMP_RNDN);
+  inexact = mpfr_mul (v, a, d, MPFR_RNDN);
   if (inexact) {
      /* over- or underflow */
     ok = 0;
     goto clear;
   }
   if (mul_a == -1)
-    mpfr_neg (v, v, GMP_RNDN);
+    mpfr_neg (v, v, MPFR_RNDN);
 
-  inexact = mpfr_mul (w, b, c, GMP_RNDN);
+  inexact = mpfr_mul (w, b, c, MPFR_RNDN);
   if (inexact) {
      /* over- or underflow */
      ok = 0;
      goto clear;
   }
   if (mul_c == -1)
-    mpfr_neg (w, w, GMP_RNDN);
+    mpfr_neg (w, w, MPFR_RNDN);
 
   /* compute sign(v-w) */
   sign_x = mpfr_cmp_abs (v, w);
@@ -477,51 +328,51 @@ mpc_mul_karatsuba (mpc_ptr rop, mpc_srcptr op1, mpc_srcptr op2, mpc_rnd_t rnd)
 
          /* first compute away(b +/- a) and store it in u */
          inexact = (mul_a == -1 ?
-                    ROUND_AWAY (mpfr_sub (u, b, a, MPFR_RNDA), u) :
-                    ROUND_AWAY (mpfr_add (u, b, a, MPFR_RNDA), u));
+                    mpfr_sub (u, b, a, MPFR_RNDA) :
+                    mpfr_add (u, b, a, MPFR_RNDA));
 
          /* then compute away(+/-c - d) and store it in x */
          inexact |= (mul_c == -1 ?
-                     ROUND_AWAY (mpfr_add (x, c, d, MPFR_RNDA), x) :
-                     ROUND_AWAY (mpfr_sub (x, c, d, MPFR_RNDA), x));
+                     mpfr_add (x, c, d, MPFR_RNDA) :
+                     mpfr_sub (x, c, d, MPFR_RNDA));
          if (mul_c == -1)
-           mpfr_neg (x, x, GMP_RNDN);
+           mpfr_neg (x, x, MPFR_RNDN);
 
          if (inexact == 0)
-            mpfr_prec_round (u, prec_u = 2 * prec, GMP_RNDN);
+            mpfr_prec_round (u, prec_u = 2 * prec, MPFR_RNDN);
 
          /* compute away(u*x) and store it in u */
-         inexact |= ROUND_AWAY (mpfr_mul (u, u, x, MPFR_RNDA), u);
+         inexact |= mpfr_mul (u, u, x, MPFR_RNDA);
             /* (a+b)*(c-d) */
 
-	 /* if all computations are exact up to here, it may be that
-	    the real part is exact, thus we need if possible to
-	    compute v - w exactly */
-	 if (inexact == 0)
-	   {
-	     mpfr_prec_t prec_x;
+         /* if all computations are exact up to here, it may be that
+            the real part is exact, thus we need if possible to
+            compute v - w exactly */
+         if (inexact == 0)
+           {
+             mpfr_prec_t prec_x;
              /* v and w are different from 0, so mpfr_get_exp is safe to use */
              prec_x = SAFE_ABS (mpfr_exp_t, mpfr_get_exp (v) - mpfr_get_exp (w))
                       + MPC_MAX (prec_v, prec_w) + 1;
                       /* +1 is necessary for a potential carry */
-	     /* ensure we do not use a too large precision */
-	     if (prec_x > prec_u)
+             /* ensure we do not use a too large precision */
+             if (prec_x > prec_u)
                prec_x = prec_u;
-	     if (prec_x > prec)
-	       mpfr_prec_round (x, prec_x, GMP_RNDN);
-	   }
+             if (prec_x > prec)
+               mpfr_prec_round (x, prec_x, MPFR_RNDN);
+           }
 
-         rnd_u = (sign_u > 0) ? GMP_RNDU : GMP_RNDD;
+         rnd_u = (sign_u > 0) ? MPFR_RNDU : MPFR_RNDD;
          inexact |= mpfr_sub (x, v, w, rnd_u); /* ad - bc */
 
          /* in case u=0, ensure that rnd_u rounds x away from zero */
          if (mpfr_sgn (u) == 0)
-           rnd_u = (mpfr_sgn (x) > 0) ? GMP_RNDU : GMP_RNDD;
+           rnd_u = (mpfr_sgn (x) > 0) ? MPFR_RNDU : MPFR_RNDD;
          inexact |= mpfr_add (u, u, x, rnd_u); /* ac - bd */
 
          ok = inexact == 0 ||
-           mpfr_can_round (u, prec_u - 3, rnd_u, GMP_RNDZ,
-                           prec_re + (rnd_re == GMP_RNDN));
+           mpfr_can_round (u, prec_u - 3, rnd_u, MPFR_RNDZ,
+                           prec_re + (rnd_re == MPFR_RNDN));
          /* this ensures both we can round correctly and determine the correct
             inexact flag (for rounding to nearest) */
      }
@@ -574,6 +425,18 @@ mpc_mul_karatsuba (mpc_ptr rop, mpc_srcptr op1, mpc_srcptr op2, mpc_rnd_t rnd)
             }
       }
 
+      /* Clear potential signs of 0. */
+      if (!inex_re) {
+         ref = mpc_realref (result);
+         if (mpfr_zero_p (ref) && mpfr_signbit (ref))
+            MPFR_CHANGE_SIGN (ref);
+      }
+      if (!inex_im) {
+         ref = mpc_imagref (result);
+         if (mpfr_zero_p (ref) && mpfr_signbit (ref))
+            MPFR_CHANGE_SIGN (ref);
+      }
+
       mpc_set (rop, result, MPC_RNDNN);
    }
 
@@ -597,7 +460,8 @@ mpc_mul (mpc_ptr a, mpc_srcptr b, mpc_srcptr c, mpc_rnd_t rnd)
 {
    /* Conforming to ISO C99 standard (G.5.1 multiplicative operators),
       infinities are treated specially if both parts are NaN when computed
-      naively. */
+      naively. See also
+      https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1399.htm */
    if (mpc_inf_p (b))
       return mul_infinite (a, b, c);
    if (mpc_inf_p (c))

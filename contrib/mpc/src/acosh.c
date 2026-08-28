@@ -20,6 +20,13 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 
 #include "mpc-impl.h"
 
+/* We compute acosh(z) using i*acos(z) if Im(z) > 0,
+                            -i*acos(z) if Im(z) < 0.
+   An alternate formula is Kahan's formula:
+   acosh(z) = 2*log(sqrt(0.5*(z+1))+sqrt(0.5*(z-1)))
+   (see Table 1 of https://people.freebsd.org/~das/kahan86branch.pdf)
+*/
+
 int
 mpc_acosh (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
 {

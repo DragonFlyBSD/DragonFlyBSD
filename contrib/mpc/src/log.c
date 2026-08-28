@@ -1,6 +1,6 @@
 /* mpc_log -- Take the logarithm of a complex number.
 
-Copyright (C) 2008, 2009, 2010, 2011, 2012 INRIA
+Copyright (C) 2008, 2009, 2010, 2011, 2012, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -27,7 +27,7 @@ mpc_log (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd){
    mpfr_srcptr x, y;
    mpfr_t v, w;
    mpfr_prec_t prec;
-   int loops;
+   int loop;
    int re_cmp, im_cmp;
    int inex_re, inex_im;
    int err;
@@ -68,6 +68,7 @@ mpc_log (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd){
          inex_im = mpfr_atan2 (mpc_imagref (rop), mpc_imagref (op), mpc_realref (op),
                                MPC_RND_IM (rnd));
          mpfr_set_inf (mpc_realref (rop), -1);
+         mpfr_set_divby0(); /* per the ISO C99 (G.6.3.2, The clog functions) */
          inex_re = 0; /* -Inf is exact */
       }
       else if (re_cmp > 0) {
@@ -100,7 +101,7 @@ mpc_log (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd){
          inex_re = mpfr_log (mpc_realref (rop), mpc_imagref (op), MPC_RND_RE (rnd));
          inex_im = mpfr_const_pi (mpc_imagref (rop), MPC_RND_IM (rnd));
          /* division by 2 does not change the ternary flag */
-         mpfr_div_2ui (mpc_imagref (rop), mpc_imagref (rop), 1, GMP_RNDN);
+         mpfr_div_2ui (mpc_imagref (rop), mpc_imagref (rop), 1, MPFR_RNDN);
       }
       else {
          w [0] = *mpc_imagref (op);
@@ -108,8 +109,8 @@ mpc_log (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd){
          inex_re = mpfr_log (mpc_realref (rop), w, MPC_RND_RE (rnd));
          inex_im = mpfr_const_pi (mpc_imagref (rop), INV_RND (MPC_RND_IM (rnd)));
          /* division by 2 does not change the ternary flag */
-         mpfr_div_2ui (mpc_imagref (rop), mpc_imagref (rop), 1, GMP_RNDN);
-         mpfr_neg (mpc_imagref (rop), mpc_imagref (rop), GMP_RNDN);
+         mpfr_div_2ui (mpc_imagref (rop), mpc_imagref (rop), 1, MPFR_RNDN);
+         mpfr_neg (mpc_imagref (rop), mpc_imagref (rop), MPFR_RNDN);
          inex_im = -inex_im; /* negate the ternary flag */
       }
       return MPC_INEX(inex_re, inex_im);
@@ -117,22 +118,35 @@ mpc_log (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd){
 
    prec = MPC_PREC_RE(rop);
    mpfr_init2 (w, 2);
-   /* let op = x + iy; log = 1/2 log (x^2 + y^2) + i atan2 (y, x)   */
-   /* loop for the real part: 1/2 log (x^2 + y^2), fast, but unsafe */
-   /* implementation                                                */
+   /* Let op = x + iy; log = 1/2 log (x^2 + y^2) + i atan2 (y, x)
+      Loop for the real part: 1/2 log (x^2 + y^2).
+      At precision p, this has a complexity of M(p)log(p) + O (M(p))
+      since it requires only one real logarithm, while the following,
+      alternative implementation uses two real logarithms with a complexity
+      of 2*M(p)log(p) + O (M(p)).
+      On the other hand, the computation of x^2 + y^2 may cause a spurious
+      overflow although the logarithm is always representable; this
+      explains the need for the later implementation.
+      Timings on a laptop yield the following time in s for the full
+      mpc_log function with x=\pi and y=e:
+               first     second implementation
+      p=10^3  0.000240   0.000211
+        10^4  0.002226   0.002451
+        10^5  0.074965   0.090478
+        10^6  2.000513   2.470727 */
    ok = 0;
-   for (loops = 1; !ok && loops <= 2; loops++) {
+   for (loop = 1; !ok && loop <= 2; loop++) {
       prec += mpc_ceil_log2 (prec) + 4;
       mpfr_set_prec (w, prec);
 
-      mpc_abs (w, op, GMP_RNDN);
+      mpc_abs (w, op, MPFR_RNDN);
          /* error 0.5 ulp */
       if (mpfr_inf_p (w))
          /* intermediate overflow; the logarithm may be representable.
             Intermediate underflow is impossible.                      */
          break;
 
-      mpfr_log (w, w, GMP_RNDN);
+      mpfr_log (w, w, MPFR_RNDN);
          /* generic error of log: (2^(- exp(w)) + 0.5) ulp */
 
       if (mpfr_zero_p (w))
@@ -141,8 +155,8 @@ mpc_log (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd){
 
       err = MPC_MAX (-mpfr_get_exp (w), 0) + 1;
          /* number of lost digits */
-      ok = mpfr_can_round (w, prec - err, GMP_RNDN, GMP_RNDZ,
-         mpfr_get_prec (mpc_realref (rop)) + (MPC_RND_RE (rnd) == GMP_RNDN));
+      ok = mpfr_can_round (w, prec - err, MPFR_RNDN, MPFR_RNDZ,
+         mpfr_get_prec (mpc_realref (rop)) + (MPC_RND_RE (rnd) == MPFR_RNDN));
    }
 
    if (!ok) {
@@ -159,26 +173,28 @@ mpc_log (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd){
          y = mpc_realref (op);
       }
 
+      loop = 0;
       do {
-         prec += mpc_ceil_log2 (prec) + 4;
+         MPC_LOOP_NEXT(loop, op, rop);
+         prec += (loop <= 2) ? mpc_ceil_log2 (prec) + 4 : prec / 2;
          mpfr_set_prec (v, prec);
          mpfr_set_prec (w, prec);
 
-         mpfr_div (v, y, x, GMP_RNDD); /* error 1 ulp */
-         mpfr_sqr (v, v, GMP_RNDD);
+         mpfr_div (v, y, x, MPFR_RNDD); /* error 1 ulp */
+         mpfr_sqr (v, v, MPFR_RNDD);
             /* generic error of multiplication:
                1 + 2*1*(2+1*2^(1-prec)) <= 5.0625 since prec >= 6 */
-         mpfr_log1p (v, v, GMP_RNDD);
+         mpfr_log1p (v, v, MPFR_RNDD);
             /* error 1 + 4*5.0625 = 21.25 , see algorithms.tex */
-         mpfr_div_2ui (v, v, 1, GMP_RNDD);
+         mpfr_div_2ui (v, v, 1, MPFR_RNDD);
             /* If the result is 0, then there has been an underflow somewhere. */
 
-         mpfr_abs (w, x, GMP_RNDN); /* exact */
-         mpfr_log (w, w, GMP_RNDN); /* error 0.5 ulp */
+         mpfr_abs (w, x, MPFR_RNDN); /* exact */
+         mpfr_log (w, w, MPFR_RNDN); /* error 0.5 ulp */
          expw = mpfr_get_exp (w);
          sgnw = mpfr_signbit (w);
 
-         mpfr_add (w, w, v, GMP_RNDN);
+         mpfr_add (w, w, v, MPFR_RNDN);
          if (!sgnw) /* v is positive, so no cancellation;
                        error 22.25 ulp; error counts lost bits */
             err = 5;
@@ -196,8 +212,8 @@ mpc_log (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd){
             underflow = 1;
 
       } while (!underflow &&
-               !mpfr_can_round (w, prec - err, GMP_RNDN, GMP_RNDZ,
-               mpfr_get_prec (mpc_realref (rop)) + (MPC_RND_RE (rnd) == GMP_RNDN)));
+               !mpfr_can_round (w, prec - err, MPFR_RNDN, MPFR_RNDZ,
+               mpfr_get_prec (mpc_realref (rop)) + (MPC_RND_RE (rnd) == MPFR_RNDN)));
       mpfr_clear (v);
    }
 
