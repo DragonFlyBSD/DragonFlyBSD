@@ -4,24 +4,35 @@
    ALMOST CERTAIN TO BE SUBJECT TO INCOMPATIBLE CHANGES OR DISAPPEAR
    COMPLETELY IN FUTURE GNU MP RELEASES.
 
-Copyright 2001, 2002, 2004, 2005 Free Software Foundation, Inc.
+Copyright 2001, 2002, 2004, 2005, 2012, 2021, 2022 Free Software
+Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 
@@ -75,8 +86,7 @@ mpz_aorsmul_1 (mpz_ptr w, mpz_srcptr x, mp_limb_t y, mp_size_t sub)
   if (wsize_signed == 0)
     {
       /* nothing to add to, just set x*y, "sub" gives the sign */
-      MPZ_REALLOC (w, xsize+1);
-      wp = PTR (w);
+      wp = MPZ_NEWALLOC (w, xsize+1);
       cy = mpn_mul_1 (wp, PTR(x), xsize, y);
       wp[xsize] = cy;
       xsize += (cy != 0);
@@ -88,8 +98,7 @@ mpz_aorsmul_1 (mpz_ptr w, mpz_srcptr x, mp_limb_t y, mp_size_t sub)
   wsize = ABS (wsize_signed);
 
   new_wsize = MAX (wsize, xsize);
-  MPZ_REALLOC (w, new_wsize+1);
-  wp = PTR (w);
+  wp = MPZ_REALLOC (w, new_wsize+1);
   xp = PTR (x);
   min_size = MIN (wsize, xsize);
 
@@ -104,25 +113,25 @@ mpz_aorsmul_1 (mpz_ptr w, mpz_srcptr x, mp_limb_t y, mp_size_t sub)
       dsize = xsize - wsize;
 #if HAVE_NATIVE_mpn_mul_1c
       if (dsize > 0)
-        cy = mpn_mul_1c (wp, xp, dsize, y, cy);
+	cy = mpn_mul_1c (wp, xp, dsize, y, cy);
       else if (dsize < 0)
-        {
-          dsize = -dsize;
-          cy = mpn_add_1 (wp, wp, dsize, cy);
-        }
+	{
+	  dsize = -dsize;
+	  cy = mpn_add_1 (wp, wp, dsize, cy);
+	}
 #else
       if (dsize != 0)
-        {
-          mp_limb_t  cy2;
-          if (dsize > 0)
-            cy2 = mpn_mul_1 (wp, xp, dsize, y);
-          else
-            {
-              dsize = -dsize;
-              cy2 = 0;
-            }
-          cy = cy2 + mpn_add_1 (wp, wp, dsize, cy);
-        }
+	{
+	  mp_limb_t  cy2;
+	  if (dsize > 0)
+	    cy2 = mpn_mul_1 (wp, xp, dsize, y);
+	  else
+	    {
+	      dsize = -dsize;
+	      cy2 = 0;
+	    }
+	  cy = cy2 + mpn_add_1 (wp, wp, dsize, cy);
+	}
 #endif
 
       wp[dsize] = cy;
@@ -134,52 +143,49 @@ mpz_aorsmul_1 (mpz_ptr w, mpz_srcptr x, mp_limb_t y, mp_size_t sub)
 
       cy = mpn_submul_1 (wp, xp, min_size, y);
       if (wsize >= xsize)
-        {
-          /* if w bigger than x, then propagate borrow through it */
-          if (wsize != xsize)
-            cy = mpn_sub_1 (wp+xsize, wp+xsize, wsize-xsize, cy);
+	{
+	  /* if w bigger than x, then propagate borrow through it */
+	  if (wsize != xsize)
+	    cy = mpn_sub_1 (wp+xsize, wp+xsize, wsize-xsize, cy);
 
-          if (cy != 0)
-            {
-              /* Borrow out of w, take twos complement negative to get
-                 absolute value, flip sign of w.  */
-              wp[new_wsize] = ~-cy;  /* extra limb is 0-cy */
-              mpn_com (wp, wp, new_wsize);
-              new_wsize++;
-              MPN_INCR_U (wp, new_wsize, CNST_LIMB(1));
-              wsize_signed = -wsize_signed;
-            }
-        }
+	  if (cy != 0)
+	    {
+	      /* Borrow out of w, take twos complement negative to get
+		 absolute value, flip sign of w.  */
+	      cy -= mpn_neg (wp, wp, new_wsize);
+	      wp[new_wsize] = cy;
+	      new_wsize += (cy != 0);
+	      wsize_signed = -wsize_signed;
+	    }
+	}
       else /* wsize < xsize */
-        {
-          /* x bigger than w, so want x*y-w.  Submul has given w-x*y, so
-             take twos complement and use an mpn_mul_1 for the rest.  */
+	{
+	  /* x bigger than w, so want x*y-w.  Submul has given w-x*y, so
+	     take twos complement and use an mpn_mul_1 for the rest.  */
 
-          mp_limb_t  cy2;
+	  mp_limb_t  cy2;
 
-          /* -(-cy*b^n + w-x*y) = (cy-1)*b^n + ~(w-x*y) + 1 */
-          mpn_com (wp, wp, wsize);
-          cy += mpn_add_1 (wp, wp, wsize, CNST_LIMB(1));
-          cy -= 1;
+	  /* -(-cy*b^n + w-x*y) = (cy-1)*b^n + ~(w-x*y) + 1 */
+	  cy -= mpn_neg (wp, wp, wsize);
 
-          /* If cy-1 == -1 then hold that -1 for latter.  mpn_submul_1 never
-             returns cy==MP_LIMB_T_MAX so that value always indicates a -1. */
-          cy2 = (cy == MP_LIMB_T_MAX);
-          cy += cy2;
-          MPN_MUL_1C (cy, wp+wsize, xp+wsize, xsize-wsize, y, cy);
-          wp[new_wsize] = cy;
-          new_wsize += (cy != 0);
+	  /* If cy-1 == -1 then hold that -1 for latter.  mpn_submul_1 never
+	     returns cy==MP_LIMB_T_MAX so that value always indicates a -1. */
+	  cy2 = (cy == MP_LIMB_T_MAX);
+	  cy += cy2;
+	  MPN_MUL_1C (cy, wp+wsize, xp+wsize, xsize-wsize, y, cy);
+	  wp[new_wsize] = cy;
+	  new_wsize += (cy != 0);
 
-          /* Apply any -1 from above.  The value at wp+wsize is non-zero
-             because y!=0 and the high limb of x will be non-zero.  */
-          if (cy2)
-            MPN_DECR_U (wp+wsize, new_wsize-wsize, CNST_LIMB(1));
+	  /* Apply any -1 from above.  The value at wp+wsize is non-zero
+	     because y!=0 and the high limb of x will be non-zero.  */
+	  if (cy2)
+	    MPN_DECR_U (wp+wsize, new_wsize-wsize, CNST_LIMB(1));
 
-          wsize_signed = -wsize_signed;
-        }
+	  wsize_signed = -wsize_signed;
+	}
 
       /* submul can produce high zero limbs due to cancellation, both when w
-         has more limbs or x has more  */
+	 has more limbs or x has more  */
       MPN_NORMALIZE (wp, new_wsize);
     }
 
@@ -193,7 +199,7 @@ void
 mpz_addmul_ui (mpz_ptr w, mpz_srcptr x, unsigned long y)
 {
 #if BITS_PER_ULONG > GMP_NUMB_BITS
-  if (UNLIKELY (y > GMP_NUMB_MAX && SIZ(x) != 0))
+  if (UNLIKELY (y > GMP_NUMB_MAX))
     {
       mpz_t t;
       mp_ptr tp;
@@ -201,6 +207,7 @@ mpz_addmul_ui (mpz_ptr w, mpz_srcptr x, unsigned long y)
       TMP_DECL;
       TMP_MARK;
       xn = SIZ (x);
+      if (xn == 0) return;
       MPZ_TMP_INIT (t, ABS (xn) + 1);
       tp = PTR (t);
       tp[0] = 0;
@@ -221,7 +228,7 @@ void
 mpz_submul_ui (mpz_ptr w, mpz_srcptr x, unsigned long y)
 {
 #if BITS_PER_ULONG > GMP_NUMB_BITS
-  if (y > GMP_NUMB_MAX && SIZ(x) != 0)
+  if (y > GMP_NUMB_MAX)
     {
       mpz_t t;
       mp_ptr tp;
@@ -229,6 +236,7 @@ mpz_submul_ui (mpz_ptr w, mpz_srcptr x, unsigned long y)
       TMP_DECL;
       TMP_MARK;
       xn = SIZ (x);
+      if (xn == 0) return;
       MPZ_TMP_INIT (t, ABS (xn) + 1);
       tp = PTR (t);
       tp[0] = 0;

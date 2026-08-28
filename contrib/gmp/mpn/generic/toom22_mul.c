@@ -7,25 +7,35 @@
    SAFE TO REACH IT THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT IT WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+Copyright 2006-2010, 2012, 2014, 2018, 2020 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 /* Evaluate in: -1, 0, +inf
@@ -41,7 +51,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
   vinf=      a1 *     b1   # A(inf)*B(inf)
 */
 
-#if TUNE_PROGRAM_BUILD
+#if TUNE_PROGRAM_BUILD || WANT_FAT_BINARY
 #define MAYBE_mul_toom22   1
 #else
 #define MAYBE_mul_toom22						\
@@ -80,6 +90,7 @@ mpn_toom22_mul (mp_ptr pp,
 		mp_srcptr bp, mp_size_t bn,
 		mp_ptr scratch)
 {
+  const int __gmpn_cpuvec_initialized = 1;
   mp_size_t n, s, t;
   int vm1_neg;
   mp_limb_t cy, cy2;
@@ -97,7 +108,7 @@ mpn_toom22_mul (mp_ptr pp,
 
   ASSERT (an >= bn);
 
-  ASSERT (0 < s && s <= n);
+  ASSERT (0 < s && s <= n && (n - s) == (an & 1));
   ASSERT (0 < t && t <= s);
 
   asm1 = pp;
@@ -106,7 +117,7 @@ mpn_toom22_mul (mp_ptr pp,
   vm1_neg = 0;
 
   /* Compute asm1.  */
-  if (s == n)
+  if ((an & 1) == 0) /* s == n */
     {
       if (mpn_cmp (a0, a1, n) < 0)
 	{
@@ -118,17 +129,17 @@ mpn_toom22_mul (mp_ptr pp,
 	  mpn_sub_n (asm1, a0, a1, n);
 	}
     }
-  else
+  else /* n - s == 1 */
     {
-      if (mpn_zero_p (a0 + s, n - s) && mpn_cmp (a0, a1, s) < 0)
+      if (a0[s] == 0 && mpn_cmp (a0, a1, s) < 0)
 	{
 	  mpn_sub_n (asm1, a1, a0, s);
-	  MPN_ZERO (asm1 + s, n - s);
+	  asm1[s] = 0;
 	  vm1_neg = 1;
 	}
       else
 	{
-	  mpn_sub (asm1, a0, n, a1, s);
+	  asm1[s] = a0[s] - mpn_sub_n (asm1, a0, a1, s);
 	}
     }
 
@@ -176,23 +187,36 @@ mpn_toom22_mul (mp_ptr pp,
   /* H(v0) + L(vinf) */
   cy = mpn_add_n (pp + 2 * n, v0 + n, vinf, n);
 
-  /* L(v0) + H(v0) */
+  /* L(v0) + (H(v0) + L(vinf)) */
   cy2 = cy + mpn_add_n (pp + n, pp + 2 * n, v0, n);
 
-  /* L(vinf) + H(vinf) */
+  /* (H(v0) + L(vinf)) + H(vinf) */
   cy += mpn_add (pp + 2 * n, pp + 2 * n, n, vinf + n, s + t - n);
 
   if (vm1_neg)
     cy += mpn_add_n (pp + n, pp + n, vm1, 2 * n);
-  else
+  else {
     cy -= mpn_sub_n (pp + n, pp + n, vm1, 2 * n);
+    if (UNLIKELY (cy + 1 == 0)) { /* cy is negative */
+      /* The total contribution of v0+vinf-vm1 can not be negative. */
+#if WANT_ASSERT
+      /* The borrow in cy stops the propagation of the carry cy2, */
+      ASSERT (cy2 == 1);
+      cy += mpn_add_1 (pp + 2 * n, pp + 2 * n, n, cy2);
+      ASSERT (cy == 0);
+#else
+      /* we simply fill the area with zeros. */
+      MPN_FILL (pp + 2 * n, n, 0);
+      /* ASSERT (s + t == n || mpn_zero_p (pp + 3 * n, s + t - n)); */
+#endif
+      return;
+    }
+  }
 
-  ASSERT (cy + 1  <= 3);
+  ASSERT (cy  <= 2);
   ASSERT (cy2 <= 2);
 
-  mpn_incr_u (pp + 2 * n, cy2);
-  if (LIKELY (cy <= 2))
-    mpn_incr_u (pp + 3 * n, cy);
-  else
-    mpn_decr_u (pp + 3 * n, 1);
+  MPN_INCR_U (pp + 2 * n, s + t, cy2);
+  /* if s+t==n, cy is zero, but we should not access pp[3*n] at all. */
+  MPN_INCR_U (pp + 3 * n, s + t - n, cy);
 }

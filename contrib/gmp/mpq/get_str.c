@@ -1,46 +1,58 @@
 /* mpq_get_str -- mpq to string conversion.
 
-Copyright 2001, 2002, 2006 Free Software Foundation, Inc.
+Copyright 2001, 2002, 2006, 2011, 2018 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 #include <stdio.h>
 #include <string.h>
-#include "gmp.h"
 #include "gmp-impl.h"
+#include "longlong.h"
 
 char *
 mpq_get_str (char *str, int base, mpq_srcptr q)
 {
   size_t  str_alloc, len;
 
-  ASSERT (ABS(base) >= 2);
-  ASSERT (ABS(base) <= 62);
+  if (base > 62 || base < -36)
+    return NULL;
 
   str_alloc = 0;
   if (str == NULL)
     {
       /* This is an overestimate since we don't bother checking how much of
-         the high limbs of num and den are used.  +2 for rounding up the
-         chars per bit of num and den.  +3 for sign, slash and '\0'.  */
-      str_alloc = ((size_t) ((ABS (q->_mp_num._mp_size) + q->_mp_den._mp_size)
-                             * GMP_LIMB_BITS
-                             * mp_bases[ABS(base)].chars_per_bit_exactly))
-                   + 5;
-      str = (char *) (*__gmp_allocate_func) (str_alloc);
+	 the high limbs of num and den are used.  +2 for rounding up the
+	 chars per bit of num and den.  +3 for sign, slash and '\0'.  */
+      if (ABS(base) < 2)
+	base = 10;
+      DIGITS_IN_BASE_PER_LIMB (str_alloc, ABSIZ(NUM(q)) + SIZ(DEN(q)), ABS(base));
+      str_alloc += 6;
+
+      str = __GMP_ALLOCATE_FUNC_TYPE (str_alloc, char);
     }
 
   mpz_get_str (str, base, mpq_numref(q));
@@ -54,9 +66,12 @@ mpq_get_str (char *str, int base, mpq_srcptr q)
 
   ASSERT (len == strlen(str));
   ASSERT (str_alloc == 0 || len+1 <= str_alloc);
-  ASSERT (len+1 <=  /* size recommended to applications */
-          mpz_sizeinbase (mpq_numref(q), ABS(base)) +
-          mpz_sizeinbase (mpq_denref(q), ABS(base)) + 3);
+  ASSERT (len+1 <= 3 + /* size recommended to applications */
+	  (ABS(base) < 2 ?
+	   mpz_sizeinbase (mpq_numref(q), 10) +
+	   mpz_sizeinbase (mpq_denref(q), 10)
+	   : mpz_sizeinbase (mpq_numref(q), ABS(base)) +
+	   mpz_sizeinbase (mpq_denref(q), ABS(base))));
 
   if (str_alloc != 0)
     __GMP_REALLOCATE_FUNC_MAYBE_TYPE (str, str_alloc, len+1, char);

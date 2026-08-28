@@ -1,61 +1,69 @@
 /* mpz_tdiv_r(rem, dividend, divisor) -- Set REM to DIVIDEND mod DIVISOR.
 
-Copyright 1991, 1993, 1994, 2000, 2001, 2005 Free Software Foundation, Inc.
+Copyright 1991, 1993, 1994, 2000, 2001, 2005, 2012, 2021 Free Software
+Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
 void
 mpz_tdiv_r (mpz_ptr rem, mpz_srcptr num, mpz_srcptr den)
 {
-  mp_size_t ql;
-  mp_size_t ns, ds, nl, dl;
+  mp_size_t ql, n0;
+  mp_size_t ns, nl, dl;
   mp_ptr np, dp, qp, rp;
   TMP_DECL;
 
   ns = SIZ (num);
-  ds = SIZ (den);
   nl = ABS (ns);
-  dl = ABS (ds);
+  dl = ABSIZ (den);
   ql = nl - dl + 1;
 
-  if (dl == 0)
+  if (UNLIKELY (dl == 0))
     DIVIDE_BY_ZERO;
-
-  MPZ_REALLOC (rem, dl);
 
   if (ql <= 0)
     {
       if (num != rem)
 	{
-	  mp_ptr np, rp;
+	  SIZ (rem) = ns;
+	  rp = MPZ_NEWALLOC (rem, nl);
 	  np = PTR (num);
-	  rp = PTR (rem);
 	  MPN_COPY (rp, np, nl);
-	  SIZ (rem) = SIZ (num);
 	}
       return;
     }
 
+  rp = MPZ_REALLOC (rem, dl);
+
   TMP_MARK;
   qp = TMP_ALLOC_LIMBS (ql);
-  rp = PTR (rem);
   np = PTR (num);
   dp = PTR (den);
 
@@ -80,7 +88,12 @@ mpz_tdiv_r (mpz_ptr rem, mpz_srcptr num, mpz_srcptr den)
       np = tp;
     }
 
-  mpn_tdiv_qr (qp, rp, 0L, np, nl, dp, dl);
+  for (n0 = 0; *dp == 0; ++dp)
+    {
+      rp [n0++] = *np++;
+      --nl;
+    }
+  mpn_tdiv_qr (qp, rp + n0, 0L, np, nl, dp, dl - n0);
 
   MPN_NORMALIZE (rp, dl);
 

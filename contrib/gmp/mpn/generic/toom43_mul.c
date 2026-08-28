@@ -10,25 +10,35 @@
    SAFE TO REACH IT THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT IT WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2009 Free Software Foundation, Inc.
+Copyright 2009, 2020 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 /* Evaluate in: -2, -1, 0, +1, +2, +inf
@@ -101,12 +111,16 @@ mpn_toom43_mul (mp_ptr pp,
 #define b1d   bsm1
 
   /* Compute as2 and asm2.  */
-  flags = toom6_vm2_neg & mpn_toom_eval_dgr3_pm2 (as2, asm2, ap, n, s, a1a3);
+  flags = (enum toom6_flags) (toom6_vm2_neg & mpn_toom_eval_dgr3_pm2 (as2, asm2, ap, n, s, a1a3));
 
   /* Compute bs2 and bsm2.  */
   b1d[n] = mpn_lshift (b1d, b1, n, 1);			/*       2b1      */
+#if HAVE_NATIVE_mpn_addlsh2_n
+  cy = mpn_addlsh2_n (b0b2, b0, b2, t);			/*  4b2      + b0 */
+#else
   cy  = mpn_lshift (b0b2, b2, t, 2);			/*  4b2           */
   cy += mpn_add_n (b0b2, b0b2, b0, t);			/*  4b2      + b0 */
+#endif
   if (t != n)
     cy = mpn_add_1 (b0b2 + t, b0 + t, n - t, cy);
   b0b2[n] = cy;
@@ -115,7 +129,7 @@ mpn_toom43_mul (mp_ptr pp,
   if (mpn_cmp (b0b2, b1d, n+1) < 0)
     {
       mpn_add_n_sub_n (bs2, bsm2, b1d, b0b2, n+1);
-      flags ^= toom6_vm2_neg;
+      flags = (enum toom6_flags) (flags ^ toom6_vm2_neg);
     }
   else
     {
@@ -126,7 +140,7 @@ mpn_toom43_mul (mp_ptr pp,
   if (mpn_cmp (b0b2, b1d, n+1) < 0)
     {
       mpn_sub_n (bsm2, b1d, b0b2, n+1);
-      flags ^= toom6_vm2_neg;
+      flags = (enum toom6_flags) (flags ^ toom6_vm2_neg);
     }
   else
     {
@@ -135,7 +149,7 @@ mpn_toom43_mul (mp_ptr pp,
 #endif
 
   /* Compute as1 and asm1.  */
-  flags ^= toom6_vm1_neg & mpn_toom_eval_dgr3_pm1 (as1, asm1, ap, n, s, a0a2);
+  flags = (enum toom6_flags) (flags ^ (toom6_vm1_neg & mpn_toom_eval_dgr3_pm1 (as1, asm1, ap, n, s, a0a2)));
 
   /* Compute bs1 and bsm1.  */
   bsm1[n] = mpn_add (bsm1, b0, n, b2, t);
@@ -144,7 +158,7 @@ mpn_toom43_mul (mp_ptr pp,
     {
       cy = mpn_add_n_sub_n (bs1, bsm1, b1, bsm1, n);
       bs1[n] = cy >> 1;
-      flags ^= toom6_vm1_neg;
+      flags = (enum toom6_flags) (flags ^ toom6_vm1_neg);
     }
   else
     {
@@ -157,7 +171,7 @@ mpn_toom43_mul (mp_ptr pp,
   if (bsm1[n] == 0 && mpn_cmp (bsm1, b1, n) < 0)
     {
       mpn_sub_n (bsm1, b1, bsm1, n);
-      flags ^= toom6_vm1_neg;
+      flags = (enum toom6_flags) (flags ^ toom6_vm1_neg);
     }
   else
     {
@@ -175,7 +189,8 @@ mpn_toom43_mul (mp_ptr pp,
   ASSERT (bsm2[n] <= 4);
 
   /* vm1, 2n+1 limbs */
-  mpn_mul_n (vm1, asm1, bsm1, n+1);  /* W4 */
+  vm1[2*n] = 0;
+  mpn_mul_n (vm1, asm1, bsm1, n + (asm1[n] | bsm1[n]));  /* W4 */
 
   /* vm2, 2n+1 limbs */
   mpn_mul_n (vm2, asm2, bsm2, n+1);  /* W2 */

@@ -4,35 +4,38 @@
    CERTAIN TO BE SUBJECT TO INCOMPATIBLE CHANGES OR DISAPPEAR COMPLETELY IN
    FUTURE GNU MP RELEASES.
 
-Copyright 2001, 2002 Free Software Foundation, Inc.
+Copyright 2001, 2002, 2018 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "config.h"
-
-#if HAVE_STDARG
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
-
 #include <stdio.h>
 #include <string.h>
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 
@@ -59,7 +62,8 @@ static int
 gmp_snprintf_format (struct gmp_snprintf_t *d, const char *fmt,
                      va_list orig_ap)
 {
-  int      ret, step, alloc, avail;
+  int      ret;
+  size_t   step, alloc, avail;
   va_list  ap;
   char     *p;
 
@@ -71,10 +75,7 @@ gmp_snprintf_format (struct gmp_snprintf_t *d, const char *fmt,
       va_copy (ap, orig_ap);
       ret = vsnprintf (d->buf, avail, fmt, ap);
       if (ret == -1)
-        {
-          ASSERT (strlen (d->buf) == avail-1);
-          ret = avail-1;
-        }
+        return ret;
 
       step = MIN (ret, avail-1);
       d->size -= step;
@@ -98,9 +99,9 @@ gmp_snprintf_format (struct gmp_snprintf_t *d, const char *fmt,
       p = __GMP_ALLOCATE_FUNC_TYPE (alloc, char);
       va_copy (ap, orig_ap);
       ret = vsnprintf (p, alloc, fmt, ap);
-      (*__gmp_free_func) (p, alloc);
+      __GMP_FREE_FUNC_TYPE (p, alloc, char);
     }
-  while (ret == alloc-1 || ret == -1);
+  while (ret == alloc-1);
 
   return ret;
 }

@@ -1,30 +1,40 @@
 /* mpz_fdiv_qr -- Division rounding the quotient towards -infinity.
    The remainder gets the same sign as the denominator.
 
-Copyright 1994, 1995, 1996, 2000, 2001, 2005 Free Software Foundation, Inc.
+Copyright 1994-1996, 2000, 2001, 2005, 2012 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 void
 mpz_fdiv_qr (mpz_ptr quot, mpz_ptr rem, mpz_srcptr dividend, mpz_srcptr divisor)
 {
-  mp_size_t divisor_size = divisor->_mp_size;
+  mp_size_t divisor_size = SIZ (divisor);
   mp_size_t xsize;
   mpz_t temp_divisor;		/* N.B.: lives until function returns! */
   TMP_DECL;
@@ -41,10 +51,10 @@ mpz_fdiv_qr (mpz_ptr quot, mpz_ptr rem, mpz_srcptr dividend, mpz_srcptr divisor)
       divisor = temp_divisor;
     }
 
-  xsize = dividend->_mp_size ^ divisor_size;;
+  xsize = SIZ (dividend) ^ divisor_size;;
   mpz_tdiv_qr (quot, rem, dividend, divisor);
 
-  if (xsize < 0 && rem->_mp_size != 0)
+  if (xsize < 0 && SIZ (rem) != 0)
     {
       mpz_sub_ui (quot, quot, 1L);
       mpz_add (rem, rem, divisor);

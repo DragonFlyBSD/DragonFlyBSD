@@ -10,25 +10,35 @@
    SAFE TO REACH IT THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT IT WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2006, 2007, 2008 Free Software Foundation, Inc.
+Copyright 2006-2008, 2012, 2014, 2015 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 /* Evaluate in: 0, +1, -1, +2, -2, 1/2, +inf
@@ -59,6 +69,7 @@ mpn_toom53_mul (mp_ptr pp,
   mp_ptr gp;
   mp_ptr as1, asm1, as2, asm2, ash;
   mp_ptr bs1, bsm1, bs2, bsm2, bsh;
+  mp_ptr tmp;
   enum toom7_flags flags;
   TMP_DECL;
 
@@ -81,25 +92,25 @@ mpn_toom53_mul (mp_ptr pp,
 
   TMP_MARK;
 
-  as1  = TMP_SALLOC_LIMBS (n + 1);
-  asm1 = TMP_SALLOC_LIMBS (n + 1);
-  as2  = TMP_SALLOC_LIMBS (n + 1);
-  asm2 = TMP_SALLOC_LIMBS (n + 1);
-  ash  = TMP_SALLOC_LIMBS (n + 1);
-
-  bs1  = TMP_SALLOC_LIMBS (n + 1);
-  bsm1 = TMP_SALLOC_LIMBS (n + 1);
-  bs2  = TMP_SALLOC_LIMBS (n + 1);
-  bsm2 = TMP_SALLOC_LIMBS (n + 1);
-  bsh  = TMP_SALLOC_LIMBS (n + 1);
+  tmp = TMP_ALLOC_LIMBS (10 * (n + 1));
+  as1  = tmp; tmp += n + 1;
+  asm1 = tmp; tmp += n + 1;
+  as2  = tmp; tmp += n + 1;
+  asm2 = tmp; tmp += n + 1;
+  ash  = tmp; tmp += n + 1;
+  bs1  = tmp; tmp += n + 1;
+  bsm1 = tmp; tmp += n + 1;
+  bs2  = tmp; tmp += n + 1;
+  bsm2 = tmp; tmp += n + 1;
+  bsh  = tmp; tmp += n + 1;
 
   gp = pp;
 
   /* Compute as1 and asm1.  */
-  flags = toom7_w3_neg & mpn_toom_eval_pm1 (as1, asm1, 4, ap, n, s, gp);
+  flags = (enum toom7_flags) (toom7_w3_neg & mpn_toom_eval_pm1 (as1, asm1, 4, ap, n, s, gp));
 
   /* Compute as2 and asm2. */
-  flags |= toom7_w1_neg & mpn_toom_eval_pm2 (as2, asm2, 4, ap, n, s, gp);
+  flags = (enum toom7_flags) (flags | (toom7_w1_neg & mpn_toom_eval_pm2 (as2, asm2, 4, ap, n, s, gp)));
 
   /* Compute ash = 16 a0 + 8 a1 + 4 a2 + 2 a3 + a4
      = 2*(2*(2*(2*a0 + a1) + a2) + a3) + a4  */
@@ -134,7 +145,7 @@ mpn_toom53_mul (mp_ptr pp,
     {
       bs1[n] = mpn_add_n_sub_n (bs1, bsm1, b1, bs1, n) >> 1;
       bsm1[n] = 0;
-      flags ^= toom7_w3_neg;
+      flags = (enum toom7_flags) (flags ^ toom7_w3_neg);
     }
   else
     {
@@ -147,7 +158,7 @@ mpn_toom53_mul (mp_ptr pp,
     {
       mpn_sub_n (bsm1, b1, bs1, n);
       bsm1[n] = 0;
-      flags ^= toom7_w3_neg;
+      flags = (enum toom7_flags) (flags ^ toom7_w3_neg);
     }
   else
     {
@@ -178,7 +189,7 @@ mpn_toom53_mul (mp_ptr pp,
   if (mpn_cmp (bs2, gp, n+1) < 0)
     {
       ASSERT_NOCARRY (mpn_add_n_sub_n (bs2, bsm2, gp, bs2, n+1));
-      flags ^= toom7_w1_neg;
+      flags = (enum toom7_flags) (flags ^ toom7_w1_neg);
     }
   else
     {
@@ -188,7 +199,7 @@ mpn_toom53_mul (mp_ptr pp,
   if (mpn_cmp (bs2, gp, n+1) < 0)
     {
       ASSERT_NOCARRY (mpn_sub_n (bsm2, gp, bs2, n+1));
-      flags ^= toom7_w1_neg;
+      flags = (enum toom7_flags) (flags ^ toom7_w1_neg);
     }
   else
     {
@@ -197,7 +208,7 @@ mpn_toom53_mul (mp_ptr pp,
   mpn_add_n (bs2, bs2, gp, n+1);
 #endif
 
-  /* Compute bsh = 4 b0 + 2 b1 + b0 = 2*(2*b0 + b1)+b0.  */
+  /* Compute bsh = 4 b0 + 2 b1 + b2 = 2*(2*b0 + b1)+b2.  */
 #if HAVE_NATIVE_mpn_addlsh1_n
   cy = mpn_addlsh1_n (bsh, b1, b0, n);
   if (t < n)
@@ -252,8 +263,8 @@ mpn_toom53_mul (mp_ptr pp,
     }
   else if (asm1[n] == 2)
     {
-#if HAVE_NATIVE_mpn_addlsh1_n
-      cy = 2 * bsm1[n] + mpn_addlsh1_n (vm1 + n, vm1 + n, bsm1, n);
+#if HAVE_NATIVE_mpn_addlsh1_n_ip1
+      cy = 2 * bsm1[n] + mpn_addlsh1_n_ip1 (vm1 + n, bsm1, n);
 #else
       cy = 2 * bsm1[n] + mpn_addmul_1 (vm1 + n, bsm1, n, CNST_LIMB(2));
 #endif
@@ -277,8 +288,8 @@ mpn_toom53_mul (mp_ptr pp,
     }
   else if (as1[n] == 2)
     {
-#if HAVE_NATIVE_mpn_addlsh1_n
-      cy = 2 * bs1[n] + mpn_addlsh1_n (v1 + n, v1 + n, bs1, n);
+#if HAVE_NATIVE_mpn_addlsh1_n_ip1
+      cy = 2 * bs1[n] + mpn_addlsh1_n_ip1 (v1 + n, bs1, n);
 #else
       cy = 2 * bs1[n] + mpn_addmul_1 (v1 + n, bs1, n, CNST_LIMB(2));
 #endif
@@ -295,8 +306,8 @@ mpn_toom53_mul (mp_ptr pp,
     }
   else if (bs1[n] == 2)
     {
-#if HAVE_NATIVE_mpn_addlsh1_n
-      cy += mpn_addlsh1_n (v1 + n, v1 + n, as1, n);
+#if HAVE_NATIVE_mpn_addlsh1_n_ip1
+      cy += mpn_addlsh1_n_ip1 (v1 + n, as1, n);
 #else
       cy += mpn_addmul_1 (v1 + n, as1, n, CNST_LIMB(2));
 #endif

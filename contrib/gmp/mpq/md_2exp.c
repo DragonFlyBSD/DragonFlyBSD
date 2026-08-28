@@ -1,24 +1,34 @@
 /* mpq_mul_2exp, mpq_div_2exp - multiply or divide by 2^N */
 
 /*
-Copyright 2000, 2002 Free Software Foundation, Inc.
+Copyright 2000, 2002, 2012, 2018 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
@@ -48,14 +58,13 @@ mord_2exp (mpz_ptr ldst, mpz_ptr rdst, mpz_srcptr lsrc, mpz_srcptr rsrc,
 
   /* no realloc here if rsrc==rdst, so p and rsrc_ptr remain valid */
   len -= (p - rsrc_ptr);
-  MPZ_REALLOC (rdst, len);
-  rdst_ptr = PTR(rdst);
+  rdst_ptr = MPZ_REALLOC (rdst, len);
 
   if ((plow & 1) || n == 0)
     {
-      /* need DECR when src==dst */
+      /* need INCR when src==dst */
       if (p != rdst_ptr)
-        MPN_COPY_DECR (rdst_ptr, p, len);
+        MPN_COPY_INCR (rdst_ptr, p, len);
     }
   else
     {
@@ -83,21 +92,19 @@ mord_2exp (mpz_ptr ldst, mpz_ptr rdst, mpz_srcptr lsrc, mpz_srcptr rsrc,
 void
 mpq_mul_2exp (mpq_ptr dst, mpq_srcptr src, mp_bitcnt_t n)
 {
-  mord_2exp (mpq_numref (dst), mpq_denref (dst),
-             mpq_numref (src), mpq_denref (src), n);
+  mord_2exp (NUM(dst), DEN(dst), NUM(src), DEN(src), n);
 }
 
 void
 mpq_div_2exp (mpq_ptr dst, mpq_srcptr src, mp_bitcnt_t n)
 {
-  if (SIZ (mpq_numref(src)) == 0)
+  if (SIZ(NUM(src)) == 0)
     {
-      dst->_mp_num._mp_size = 0;
-      dst->_mp_den._mp_size = 1;
-      dst->_mp_den._mp_d[0] = 1;
+      SIZ(NUM(dst)) = 0;
+      SIZ(DEN(dst)) = 1;
+      MPZ_NEWALLOC (DEN(dst), 1)[0] = 1;
       return;
     }
 
-  mord_2exp (mpq_denref (dst), mpq_numref (dst),
-             mpq_denref (src), mpq_numref (src), n);
+  mord_2exp (DEN(dst), NUM(dst), DEN(src), NUM(src), n);
 }

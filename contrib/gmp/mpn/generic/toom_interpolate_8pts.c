@@ -6,24 +6,34 @@
    SAFE TO REACH IT THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT IT WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2009 Free Software Foundation, Inc.
+Copyright 2009, 2011, 2012 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 #define BINVERT_3 MODLIMB_INVERSE_3
@@ -54,18 +64,24 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #endif
 #endif
 
+#if HAVE_NATIVE_mpn_sublsh2_n_ip1
+#define DO_mpn_sublsh2_n(dst,src,n,ws) mpn_sublsh2_n_ip1(dst,src,n)
+#else
+#define DO_mpn_sublsh2_n(dst,src,n,ws) DO_mpn_sublsh_n(dst,src,n,2,ws)
+#endif
+
 #if HAVE_NATIVE_mpn_sublsh_n
-#define DO_mpn_sublsh_n(dst,src,n,s,ws) mpn_sublsh_n (dst,src,n,s)
+#define DO_mpn_sublsh_n(dst,src,n,s,ws) mpn_sublsh_n (dst,dst,src,n,s)
 #else
 static mp_limb_t
 DO_mpn_sublsh_n (mp_ptr dst, mp_srcptr src, mp_size_t n, unsigned int s, mp_ptr ws)
 {
-#if USE_MUL_1
+#if USE_MUL_1 && 0
   return mpn_submul_1(dst,src,n,CNST_LIMB(1) <<(s));
 #else
   mp_limb_t __cy;
   __cy = mpn_lshift (ws,src,n,s);
-  return    __cy + mpn_sub_n (dst,dst,ws,n);
+  return __cy + mpn_sub_n (dst,dst,ws,n);
 #endif
 }
 #endif
@@ -146,7 +162,7 @@ mpn_toom_interpolate_8pts (mp_ptr pp, mp_size_t n,
 
   ASSERT_NOCARRY(mpn_divexact_by3 (r5, r5, 3 * n + 1));
 
-  ASSERT_NOCARRY(DO_mpn_sublsh_n (r5, r3, 3 * n + 1, 2, ws));
+  ASSERT_NOCARRY(DO_mpn_sublsh2_n (r5, r3, 3 * n + 1, ws));
 
   /* last interpolation steps... */
   /* ... are mixed with recomposition */
@@ -167,12 +183,12 @@ mpn_toom_interpolate_8pts (mp_ptr pp, mp_size_t n,
 
   cy = mpn_add_n (pp + n, pp + n, r7, n); /* Hr8+Lr7-Lr5 */
   cy-= mpn_sub_n (pp + n, pp + n, r5, n);
-  if (0 > cy)
-    MPN_DECR_U (r7 + n, 2*n + 1, 1);
-  else
-    MPN_INCR_U (r7 + n, 2*n + 1, cy);
+  if (cy > 0) {
+    MPN_INCR_U (r7 + n, 2*n + 1, 1);
+    cy = 0;
+  }
 
-  cy = mpn_sub_n (pp + 2*n, r7 + n, r5 + n, n); /* Mr7-Mr5 */
+  cy = mpn_sub_nc (pp + 2*n, r7 + n, r5 + n, n, -cy); /* Mr7-Mr5 */
   MPN_DECR_U (r7 + 2*n, n + 1, cy);
 
   cy = mpn_add_n (pp + 3*n, r5, r7+ 2*n, n+1); /* Hr7+Lr5 */
@@ -187,9 +203,9 @@ mpn_toom_interpolate_8pts (mp_ptr pp, mp_size_t n,
 
   cy = mpn_add_1 (pp + 6*n, r3 + n, n, pp[6*n]);
   MPN_INCR_U (r3 + 2*n, n + 1, cy);
-  cy = r3[3*n] + mpn_add_n (pp + 7*n, pp + 7*n, r3 + 2*n, n);
+  cy = mpn_add_n (pp + 7*n, pp + 7*n, r3 + 2*n, n);
   if (LIKELY(spt != n))
-    MPN_INCR_U (pp + 8*n, spt - n, cy);
+    MPN_INCR_U (pp + 8*n, spt - n, cy + r3[3*n]);
   else
-    ASSERT (cy == 0);
+    ASSERT (r3[3*n] + cy == 0);
 }

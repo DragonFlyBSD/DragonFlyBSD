@@ -2,34 +2,44 @@
    times as large as bn.  Or more accurately, bn < an < 3bn.
 
    Contributed to the GNU project by Torbjorn Granlund.
-   Improvements by Marco Bodrato and Niels Möller.
+   Improvements by Marco Bodrato and Niels MÃ¶ller.
 
-   The idea of applying toom to unbalanced multiplication is due to Marco
+   The idea of applying Toom to unbalanced multiplication is due to Marco
    Bodrato and Alberto Zanoni.
 
    THE FUNCTION IN THIS FILE IS INTERNAL WITH A MUTABLE INTERFACE.  IT IS ONLY
    SAFE TO REACH IT THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT IT WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+Copyright 2006-2010, 2020, 2021 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 /* Evaluate in: -1, 0, +1, +inf
@@ -60,7 +70,7 @@ mpn_toom32_mul (mp_ptr pp,
   mp_size_t n, s, t;
   int vm1_neg;
   mp_limb_t cy;
-  int hi;
+  mp_limb_signed_t hi;
   mp_limb_t ap1_hi, bp1_hi;
 
 #define a0  ap
@@ -72,7 +82,7 @@ mpn_toom32_mul (mp_ptr pp,
   /* Required, to ensure that s + t >= n. */
   ASSERT (bn + 2 <= an && an + 6 <= 3*bn);
 
-  n = 1 + (2 * an >= 3 * bn ? (an - 1) / (size_t) 3 : (bn - 1) >> 1);
+  n = 2 * an >= 3 * bn ? (an + 2) / (size_t) 3 : (bn + 1) >> 1;
 
   s = an - 2 * n;
   t = bn - n;
@@ -94,7 +104,7 @@ mpn_toom32_mul (mp_ptr pp,
 
   /* FIXME: Keep v1[2*n] and vm1[2*n] in scalar variables? */
 
-  /* Compute ap1 = a0 + a1 + a3, am1 = a0 - a1 + a3 */
+  /* Compute ap1 = a0 + a1 + a2, am1 = a0 - a1 + a2 */
   ap1_hi = mpn_add (ap1, a0, n, a2, s);
 #if HAVE_NATIVE_mpn_add_n_sub_n
   if (ap1_hi == 0 && mpn_cmp (ap1, a1, n) < 0)
@@ -173,20 +183,20 @@ mpn_toom32_mul (mp_ptr pp,
   TOOM32_MUL_N_REC (v1, ap1, bp1, n, scratch_out);
   if (ap1_hi == 1)
     {
-      cy = bp1_hi + mpn_add_n (v1 + n, v1 + n, bp1, n);
+      cy = mpn_add_n (v1 + n, v1 + n, bp1, n);
     }
-  else if (ap1_hi == 2)
+  else if (ap1_hi > 1) /* ap1_hi == 2 */
     {
-#if HAVE_NATIVE_mpn_addlsh1_n
-      cy = 2 * bp1_hi + mpn_addlsh1_n (v1 + n, v1 + n, bp1, n);
+#if HAVE_NATIVE_mpn_addlsh1_n_ip1
+      cy = mpn_addlsh1_n_ip1 (v1 + n, bp1, n);
 #else
-      cy = 2 * bp1_hi + mpn_addmul_1 (v1 + n, bp1, n, CNST_LIMB(2));
+      cy = mpn_addmul_1 (v1 + n, bp1, n, CNST_LIMB(2));
 #endif
     }
   else
     cy = 0;
   if (bp1_hi != 0)
-    cy += mpn_add_n (v1 + n, v1 + n, ap1, n);
+    cy += ap1_hi + mpn_add_n (v1 + n, v1 + n, ap1, n);
   v1[2 * n] = cy;
 
   TOOM32_MUL_N_REC (vm1, am1, bm1, n, scratch_out);
@@ -302,10 +312,8 @@ mpn_toom32_mul (mp_ptr pp,
     {
       hi -= mpn_sub (pp + 2*n, pp + 2*n, 2*n, pp + 4*n, s+t-n);
 
-      if (hi < 0)
-	MPN_DECR_U (pp + 4*n, s+t-n, -hi);
-      else
-	MPN_INCR_U (pp + 4*n, s+t-n, hi);
+      ASSERT (hi >= 0); /* contribution of the middle terms >= 0 */
+      MPN_INCR_U (pp + 4*n, s+t-n, hi);
     }
   else
     ASSERT (hi == 0);

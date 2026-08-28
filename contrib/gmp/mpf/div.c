@@ -1,24 +1,34 @@
 /* mpf_div -- Divide two floats.
 
-Copyright 1993, 1994, 1996, 2000, 2001, 2002, 2004, 2005, 2010 Free Software
+Copyright 1993, 1994, 1996, 2000-2002, 2004, 2005, 2010, 2012 Free Software
 Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 
@@ -37,7 +47,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    to save one limb in the division.
 
    If r==u but the size is enough bigger than prec that there won't be an
-   overlap between quotient and dividend in mpn_tdiv_qr, then we can avoid
+   overlap between quotient and dividend in mpn_div_q, then we can avoid
    copying up,usize.  This would only arise from a prec reduced with
    mpf_set_prec_raw and will be pretty unusual, but might be worthwhile if
    it could be worked into the copy_u decision cleanly.  */
@@ -55,12 +65,8 @@ mpf_div (mpf_ptr r, mpf_srcptr u, mpf_srcptr v)
 
   usize = SIZ(u);
   vsize = SIZ(v);
-  sign_quotient = usize ^ vsize;
-  usize = ABS (usize);
-  vsize = ABS (vsize);
-  prec = PREC(r);
 
-  if (vsize == 0)
+  if (UNLIKELY (vsize == 0))
     DIVIDE_BY_ZERO;
 
   if (usize == 0)
@@ -69,6 +75,11 @@ mpf_div (mpf_ptr r, mpf_srcptr u, mpf_srcptr v)
       EXP(r) = 0;
       return;
     }
+
+  sign_quotient = usize ^ vsize;
+  usize = ABS (usize);
+  vsize = ABS (vsize);
+  prec = PREC(r);
 
   TMP_MARK;
   rexp = EXP(u) - EXP(v) + 1;

@@ -4,25 +4,35 @@
    CERTAIN TO BE SUBJECT TO INCOMPATIBLE CHANGES OR DISAPPEAR COMPLETELY IN
    FUTURE GNU MP RELEASES.
 
-Copyright 2002 Free Software Foundation, Inc.
+Copyright 2002, 2014 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
-The GNU MP Library is free software; you can redistribute it and/or modify it
-under the terms of the GNU Lesser General Public License as published by the
-Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+The GNU MP Library is free software; you can redistribute it and/or modify
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
-with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
@@ -57,30 +67,34 @@ mpn_pow_1 (mp_ptr rp, mp_srcptr bp, mp_size_t bn, mp_limb_t exp, mp_ptr tp)
      so much time that the slowness of this code will be negligible.  */
   par = 0;
   cnt = GMP_LIMB_BITS;
-  for (x = exp; x != 0; x >>= 1)
+  x = exp;
+  do
     {
-      par ^= x & 1;
+      par ^= x;
       cnt--;
-    }
+      x >>= 1;
+    } while (x != 0);
   exp <<= cnt;
 
   if (bn == 1)
     {
-      mp_limb_t bl = bp[0];
+      mp_limb_t rl, rh, bl = bp[0];
 
       if ((cnt & 1) != 0)
 	MP_PTR_SWAP (rp, tp);
 
-      mpn_sqr (rp, bp, bn);
-      rn = 2 * bn; rn -= rp[rn - 1] == 0;
+      umul_ppmm (rh, rl, bl, bl << GMP_NAIL_BITS);
+      rp[0] = rl >> GMP_NAIL_BITS;
+      rp[1] = rh;
+      rn = 1 + (rh != 0);
 
       for (i = GMP_LIMB_BITS - cnt - 1;;)
 	{
 	  exp <<= 1;
 	  if ((exp & GMP_LIMB_HIGHBIT) != 0)
 	    {
-	      rp[rn] = mpn_mul_1 (rp, rp, rn, bl);
-	      rn += rp[rn] != 0;
+	      rp[rn] = rh = mpn_mul_1 (rp, rp, rn, bl);
+	      rn += rh != 0;
 	    }
 
 	  if (--i == 0)

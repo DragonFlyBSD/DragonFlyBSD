@@ -11,25 +11,35 @@
    SAFE TO REACH IT THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT IT WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2006, 2007, 2008 Free Software Foundation, Inc.
+Copyright 2006-2008, 2012, 2014 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 /* Evaluate in: -1, 0, +1, +2, +inf
@@ -61,9 +71,10 @@ mpn_toom42_mul (mp_ptr pp,
   mp_size_t n, s, t;
   int vm1_neg;
   mp_limb_t cy, vinf0;
-  mp_ptr a0_a2, a1_a3;
+  mp_ptr a0_a2;
   mp_ptr as1, asm1, as2;
   mp_ptr bs1, bsm1, bs2;
+  mp_ptr tmp;
   TMP_DECL;
 
 #define a0  ap
@@ -83,16 +94,15 @@ mpn_toom42_mul (mp_ptr pp,
 
   TMP_MARK;
 
-  as1 = TMP_SALLOC_LIMBS (n + 1);
-  asm1 = TMP_SALLOC_LIMBS (n + 1);
-  as2 = TMP_SALLOC_LIMBS (n + 1);
-
-  bs1 = TMP_SALLOC_LIMBS (n + 1);
-  bsm1 = TMP_SALLOC_LIMBS (n);
-  bs2 = TMP_SALLOC_LIMBS (n + 1);
+  tmp = TMP_ALLOC_LIMBS (6 * n + 5);
+  as1  = tmp; tmp += n + 1;
+  asm1 = tmp; tmp += n + 1;
+  as2  = tmp; tmp += n + 1;
+  bs1  = tmp; tmp += n + 1;
+  bsm1 = tmp; tmp += n;
+  bs2  = tmp; tmp += n + 1;
 
   a0_a2 = pp;
-  a1_a3 = pp + n + 1;
 
   /* Compute as1 and asm1.  */
   vm1_neg = mpn_toom_eval_dgr3_pm1 (as1, asm1, ap, n, s, a0_a2) & 1;
@@ -196,24 +206,24 @@ mpn_toom42_mul (mp_ptr pp,
   TOOM42_MUL_N_REC (v1, as1, bs1, n, scratch_out);
   if (as1[n] == 1)
     {
-      cy = bs1[n] + mpn_add_n (v1 + n, v1 + n, bs1, n);
+      cy = mpn_add_n (v1 + n, v1 + n, bs1, n);
     }
   else if (as1[n] == 2)
     {
-#if HAVE_NATIVE_mpn_addlsh1_n
-      cy = 2 * bs1[n] + mpn_addlsh1_n (v1 + n, v1 + n, bs1, n);
+#if HAVE_NATIVE_mpn_addlsh1_n_ip1
+      cy = mpn_addlsh1_n_ip1 (v1 + n, bs1, n);
 #else
-      cy = 2 * bs1[n] + mpn_addmul_1 (v1 + n, bs1, n, CNST_LIMB(2));
+      cy = mpn_addmul_1 (v1 + n, bs1, n, CNST_LIMB(2));
 #endif
     }
   else if (as1[n] == 3)
     {
-      cy = 3 * bs1[n] + mpn_addmul_1 (v1 + n, bs1, n, CNST_LIMB(3));
+      cy = mpn_addmul_1 (v1 + n, bs1, n, CNST_LIMB(3));
     }
   else
     cy = 0;
   if (bs1[n] != 0)
-    cy += mpn_add_n (v1 + n, v1 + n, as1, n);
+    cy += as1[n] + mpn_add_n (v1 + n, v1 + n, as1, n);
   v1[2 * n] = cy;
 
   TOOM42_MUL_N_REC (v0, ap, bp, n, scratch_out);	/* v0, 2n limbs */

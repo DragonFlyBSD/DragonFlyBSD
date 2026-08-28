@@ -1,29 +1,38 @@
 /* mpz_divexact -- finds quotient when known that quot * den == num && den != 0.
 
-Contributed to the GNU project by Niels Möller.
+Contributed to the GNU project by Niels MÃ¶ller.
 
-Copyright 1991, 1993, 1994, 1995, 1996, 1997, 1998, 2000, 2001, 2002, 2005,
-2006, 2007, 2009 Free Software Foundation, Inc.
+Copyright 1991, 1993-1998, 2000-2002, 2005-2007, 2009, 2012 Free Software
+Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 
-#include "gmp.h"
 #include "gmp-impl.h"
-#include "longlong.h"
 
 void
 mpz_divexact (mpz_ptr quot, mpz_srcptr num, mpz_srcptr den)
@@ -47,9 +56,6 @@ mpz_divexact (mpz_ptr quot, mpz_srcptr num, mpz_srcptr den)
   nn = ABSIZ (num);
   dn = ABSIZ (den);
 
-  qn = nn - dn + 1;
-  MPZ_REALLOC (quot, qn);
-
   if (nn < dn)
     {
       /* This special case avoids segfaults below when the function is
@@ -59,12 +65,14 @@ mpz_divexact (mpz_ptr quot, mpz_srcptr num, mpz_srcptr den)
       return;
     }
 
-  TMP_MARK;
+  qn = nn - dn + 1;
 
-  qp = PTR(quot);
+  TMP_MARK;
 
   if (quot == num || quot == den)
     qp = TMP_ALLOC_LIMBS (qn);
+  else
+    qp = MPZ_NEWALLOC (quot, qn);
 
   np = PTR(num);
   dp = PTR(den);
@@ -72,10 +80,10 @@ mpz_divexact (mpz_ptr quot, mpz_srcptr num, mpz_srcptr den)
   mpn_divexact (qp, np, nn, dp, dn);
   MPN_NORMALIZE (qp, qn);
 
-  SIZ(quot) = (SIZ(num) ^ SIZ(den)) >= 0 ? qn : -qn;
-
   if (qp != PTR(quot))
-    MPN_COPY (PTR(quot), qp, qn);
+    MPN_COPY (MPZ_NEWALLOC (quot, qn), qp, qn);
+
+  SIZ(quot) = (SIZ(num) ^ SIZ(den)) >= 0 ? qn : -qn;
 
   TMP_FREE;
 }

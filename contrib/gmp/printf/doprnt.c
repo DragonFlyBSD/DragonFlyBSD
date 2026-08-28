@@ -4,33 +4,39 @@
    CERTAIN TO BE SUBJECT TO INCOMPATIBLE CHANGES OR DISAPPEAR COMPLETELY IN
    FUTURE GNU MP RELEASES.
 
-Copyright 2001, 2002, 2003 Free Software Foundation, Inc.
+Copyright 2001-2003 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 #define _GNU_SOURCE    /* for DECIMAL_POINT in glibc langinfo.h */
 
-#include "config.h"
+#include "config.h"	/* needed for the HAVE_, could also move gmp incls */
 
-#if HAVE_STDARG
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
-
 #include <ctype.h>     /* for isdigit */
 #include <stddef.h>    /* for ptrdiff_t */
 #include <string.h>
@@ -39,10 +45,9 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
 #if HAVE_INTTYPES_H
 # include <inttypes.h> /* for intmax_t */
-#else
-# if HAVE_STDINT_H
-#  include <stdint.h>
-# endif
+#endif
+#if HAVE_STDINT_H
+# include <stdint.h>
 #endif
 
 #if HAVE_LANGINFO_H
@@ -57,7 +62,6 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include <sys/types.h> /* for quad_t */
 #endif
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 
@@ -94,7 +98,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
    In GMP 4.1.1 we documented "ll" and "L" as being equivalent, but in C99
    in fact "ll" is just for long long and "L" just for long double.
-   Apparentely GLIBC allows "L" for long long though.  This doesn't affect
+   Apparently GLIBC allows "L" for long long though.  This doesn't affect
    us as such, since both are passed through to the C library.  To be
    consistent with what we said before, the two are treated equivalently
    here, and it's left to the C library to do what it thinks with them.
@@ -154,7 +158,7 @@ __gmp_doprnt (const struct doprnt_funs_t *funs, void *data,
 	      const char *orig_fmt, va_list orig_ap)
 {
   va_list  ap, this_ap, last_ap;
-  size_t   alloc_fmt_size;
+  size_t   alloc_fmt_size, orig_fmt_size;
   char     *fmt, *alloc_fmt, *last_fmt, *this_fmt, *gmp_str;
   int      retval = 0;
   int      type, fchar, *value, seen_precision;
@@ -174,7 +178,7 @@ __gmp_doprnt (const struct doprnt_funs_t *funs, void *data,
      piece can be null-terminated.  We're not going to be very fast here, so
      use __gmp_allocate_func rather than TMP_ALLOC, to avoid overflowing the
      stack if a long output string is given.  */
-  alloc_fmt_size = strlen (orig_fmt) + 1;
+  alloc_fmt_size = orig_fmt_size = strlen (orig_fmt) + 1;
 #if _LONG_LONG_LIMB
   /* for a long long limb we change %Mx to %llx, so could need an extra 1
      char for every 3 existing */
@@ -182,7 +186,7 @@ __gmp_doprnt (const struct doprnt_funs_t *funs, void *data,
 #endif
   alloc_fmt = __GMP_ALLOCATE_FUNC_TYPE (alloc_fmt_size, char);
   fmt = alloc_fmt;
-  strcpy (fmt, orig_fmt);
+  memcpy (fmt, orig_fmt, orig_fmt_size);
 
   /* last_fmt and last_ap are just after the last output, and hence where
      the next output will begin, when that's done */
@@ -334,7 +338,7 @@ __gmp_doprnt (const struct doprnt_funs_t *funs, void *data,
 				       va_arg (ap, mpz_srcptr));
 	      gmp_integer:
 		ret = __gmp_doprnt_integer (funs, data, &param, gmp_str);
-		(*__gmp_free_func) (gmp_str, strlen(gmp_str)+1);
+		 __GMP_FREE_FUNC_TYPE (gmp_str, strlen(gmp_str)+1, char);
 		DOPRNT_ACCUMULATE (ret);
 		va_copy (last_ap, ap);
 		last_fmt = fmt;
@@ -612,7 +616,7 @@ __gmp_doprnt (const struct doprnt_funs_t *funs, void *data,
       goto error;
 
  done:
-  (*__gmp_free_func) (alloc_fmt, alloc_fmt_size);
+  __GMP_FREE_FUNC_TYPE (alloc_fmt, alloc_fmt_size, char);
   return retval;
 
  error:

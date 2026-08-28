@@ -6,28 +6,34 @@
    SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT THEY WILL CHANGE OR DISAPPEAR IN A FUTURE GMP RELEASE.
 
-Copyright (C) 2007, 2009, 2010 Free Software Foundation, Inc.
+Copyright (C) 2007, 2009, 2010, 2012, 2014-2016 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-/* FIXME: Remove NULL and TMP_*, as soon as all the callers properly
-   allocate and pass the scratch to the function. */
-#include <stdlib.h>		/* for NULL */
-
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
@@ -42,22 +48,14 @@ mpn_invert (mp_ptr ip, mp_srcptr dp, mp_size_t n, mp_ptr scratch)
 
   if (n == 1)
     invert_limb (*ip, *dp);
-  else {
-    TMP_DECL;
-
-    TMP_MARK;
-    if (scratch == NULL)
-      scratch = TMP_ALLOC_LIMBS (mpn_invert_itch (n));
-
-    if (BELOW_THRESHOLD (n, INV_APPR_THRESHOLD))
-      {
+  else if (BELOW_THRESHOLD (n, INV_APPR_THRESHOLD))
+    {
 	/* Maximum scratch needed by this branch: 2*n */
-	mp_size_t i;
 	mp_ptr xp;
 
 	xp = scratch;				/* 2 * n limbs */
-	for (i = n - 1; i >= 0; i--)
-	  xp[i] = GMP_NUMB_MAX;
+	/* n > 1 here */
+	MPN_FILL (xp, n, GMP_NUMB_MAX);
 	mpn_com (xp + n, dp, n);
 	if (n == 2) {
 	  mpn_divrem_2 (ip, 0, xp, 4, dp);
@@ -67,21 +65,22 @@ mpn_invert (mp_ptr ip, mp_srcptr dp, mp_size_t n, mp_ptr scratch)
 	  /* FIXME: should we use dcpi1_div_q, for big sizes? */
 	  mpn_sbpi1_div_q (ip, xp, 2 * n, dp, n, inv.inv32);
 	}
-      }
-    else { /* Use approximated inverse; correct the result if needed. */
+    }
+  else { /* Use approximated inverse; correct the result if needed. */
       mp_limb_t e; /* The possible error in the approximate inverse */
 
       ASSERT ( mpn_invert_itch (n) >= mpn_invertappr_itch (n) );
       e = mpn_ni_invertappr (ip, dp, n, scratch);
 
-      if (e) { /* Assume the error can only be "0" (no error) or "1". */
+      if (UNLIKELY (e)) { /* Assume the error can only be "0" (no error) or "1". */
 	/* Code to detect and correct the "off by one" approximation. */
 	mpn_mul_n (scratch, ip, dp, n);
-	ASSERT_NOCARRY (mpn_add_n (scratch + n, scratch + n, dp, n));
-	if (! mpn_add (scratch, scratch, 2*n, dp, n))
-	  MPN_INCR_U (ip, n, 1); /* The value was wrong, correct it.  */
+	e = mpn_add_n (scratch, scratch, dp, n); /* FIXME: we only need e.*/
+	if (LIKELY(e)) /* The high part can not give a carry by itself. */
+	  e = mpn_add_nc (scratch + n, scratch + n, dp, n, e); /* FIXME:e */
+	/* If the value was wrong (no carry), correct it (increment). */
+	e ^= CNST_LIMB (1);
+	MPN_INCR_U (ip, n, e);
       }
-    }
-    TMP_FREE;
   }
 }

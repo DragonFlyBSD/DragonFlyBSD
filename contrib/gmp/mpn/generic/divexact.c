@@ -8,25 +8,35 @@
    SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT THEY WILL CHANGE OR DISAPPEAR IN A FUTURE GMP RELEASE.
 
-Copyright 2006, 2007, 2009 Free Software Foundation, Inc.
+Copyright 2006, 2007, 2009, 2017 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
@@ -38,7 +48,7 @@ mpn_divexact (mp_ptr qp,
 {
   unsigned shift;
   mp_size_t qn;
-  mp_ptr tp, wp;
+  mp_ptr tp;
   TMP_DECL;
 
   ASSERT (dn > 0);
@@ -67,7 +77,9 @@ mpn_divexact (mp_ptr qp,
 
   if (shift > 0)
     {
-      mp_size_t ss = (dn > qn) ? qn + 1 : dn;
+      mp_ptr wp;
+      mp_size_t ss;
+      ss = (dn > qn) ? qn + 1 : dn;
 
       tp = TMP_ALLOC_LIMBS (ss);
       mpn_rshift (tp, dp, ss, shift);
@@ -77,19 +89,18 @@ mpn_divexact (mp_ptr qp,
 	 to shift one limb beyond qn. */
       wp = TMP_ALLOC_LIMBS (qn + 1);
       mpn_rshift (wp, np, qn + 1, shift);
-    }
-  else
-    {
-      wp = TMP_ALLOC_LIMBS (qn);
-      MPN_COPY (wp, np, qn);
+      np = wp;
     }
 
   if (dn > qn)
     dn = qn;
 
   tp = TMP_ALLOC_LIMBS (mpn_bdiv_q_itch (qn, dn));
-  mpn_bdiv_q (qp, wp, qn, dp, dn, tp);
+  mpn_bdiv_q (qp, np, qn, dp, dn, tp);
   TMP_FREE;
+
+  /* Since bdiv_q computes -N/D (mod B^{qn}), we must negate now. */
+  mpn_neg (qp, qp, qn);
 }
 
 #else

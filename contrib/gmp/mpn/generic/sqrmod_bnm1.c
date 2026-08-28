@@ -1,31 +1,41 @@
 /* sqrmod_bnm1.c -- squaring mod B^n-1.
 
-   Contributed to the GNU project by Niels Möller, Torbjorn Granlund and
+   Contributed to the GNU project by Niels MÃ¶ller, Torbjorn Granlund and
    Marco Bodrato.
 
    THE FUNCTIONS IN THIS FILE ARE INTERNAL WITH MUTABLE INTERFACES.  IT IS ONLY
    SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT THEY WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2009, 2010 Free Software Foundation, Inc.
+Copyright 2009, 2010, 2012, 2020, 2022 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
@@ -49,22 +59,38 @@ mpn_bc_sqrmod_bnm1 (mp_ptr rp, mp_srcptr ap, mp_size_t rn, mp_ptr tp)
 
 
 /* Input is {ap,rn+1}; output is {rp,rn+1}, in
-   semi-normalised representation, computation is mod B^rn + 1. Needs
-   a scratch area of 2rn + 2 limbs at tp; tp == rp is allowed.
+   normalised representation, computation is mod B^rn + 1. Needs
+   a scratch area of 2rn limbs at tp; tp == rp is allowed.
    Output is normalised. */
 static void
 mpn_bc_sqrmod_bnp1 (mp_ptr rp, mp_srcptr ap, mp_size_t rn, mp_ptr tp)
 {
   mp_limb_t cy;
+  unsigned k;
 
   ASSERT (0 < rn);
 
-  mpn_sqr (tp, ap, rn + 1);
-  ASSERT (tp[2*rn+1] == 0);
-  ASSERT (tp[2*rn] < GMP_NUMB_MAX);
-  cy = tp[2*rn] + mpn_sub_n (rp, tp, tp+rn, rn);
+  if (UNLIKELY (ap[rn]))
+    {
+      *rp = 1;
+      MPN_FILL (rp + 1, rn, 0);
+      return;
+    }
+  else if (MPN_SQRMOD_BKNP1_USABLE (rn, k, MUL_FFT_MODF_THRESHOLD))
+    {
+      mp_size_t n_k = rn / k;
+      TMP_DECL;
+
+      TMP_MARK;
+      mpn_sqrmod_bknp1 (rp, ap, n_k, k,
+			TMP_ALLOC_LIMBS (mpn_sqrmod_bknp1_itch (rn)));
+      TMP_FREE;
+      return;
+    }
+  mpn_sqr (tp, ap, rn);
+  cy = mpn_sub_n (rp, tp, tp + rn, rn);
   rp[rn] = 0;
-  MPN_INCR_U (rp, rn+1, cy );
+  MPN_INCR_U (rp, rn + 1, cy);
 }
 
 
@@ -221,7 +247,7 @@ mpn_sqrmod_bnm1 (mp_ptr rp, mp_size_t rn, mp_srcptr ap, mp_size_t an, mp_ptr tp)
 	 the rsh1add was a simple rshift: the top bit is 0. cy=1 => hi=0. */
 #endif
 #if GMP_NAIL_BITS == 0
-      add_ssaaaa(cy, rp[n-1], cy, rp[n-1], 0, hi);
+      add_ssaaaa(cy, rp[n-1], cy, rp[n-1], CNST_LIMB(0), hi);
 #else
       cy += (hi & rp[n-1]) >> (GMP_NUMB_BITS-1);
       rp[n-1] ^= hi;

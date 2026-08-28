@@ -1,24 +1,33 @@
 /* mpq_mul -- multiply two rational numbers.
 
-Copyright 1991, 1994, 1995, 1996, 2000, 2001, 2002 Free Software Foundation,
-Inc.
+Copyright 1991, 1994-1996, 2000-2002 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 
@@ -42,18 +51,18 @@ mpq_mul (mpq_ptr prod, mpq_srcptr op1, mpq_srcptr op2)
       return;
     }
 
-  op1_num_size = ABS (op1->_mp_num._mp_size);
-  op1_den_size =      op1->_mp_den._mp_size;
-  op2_num_size = ABS (op2->_mp_num._mp_size);
-  op2_den_size =      op2->_mp_den._mp_size;
+  op1_num_size = ABSIZ(NUM(op1));
+  op1_den_size =   SIZ(DEN(op1));
+  op2_num_size = ABSIZ(NUM(op2));
+  op2_den_size =   SIZ(DEN(op2));
 
   if (op1_num_size == 0 || op2_num_size == 0)
     {
       /* We special case this to simplify allocation logic; gcd(0,x) = x
 	 is a singular case for the allocations.  */
-      prod->_mp_num._mp_size = 0;
-      prod->_mp_den._mp_d[0] = 1;
-      prod->_mp_den._mp_size = 1;
+      SIZ(NUM(prod)) = 0;
+      MPZ_NEWALLOC (DEN(prod), 1)[0] = 1;
+      SIZ(DEN(prod)) = 1;
       return;
     }
 
@@ -76,18 +85,18 @@ mpq_mul (mpq_ptr prod, mpq_srcptr op1, mpq_srcptr op2)
      numerator of PROD when we are finished with the numerators of OP1 and
      OP2.  */
 
-  mpz_gcd (gcd1, &(op1->_mp_num), &(op2->_mp_den));
-  mpz_gcd (gcd2, &(op2->_mp_num), &(op1->_mp_den));
+  mpz_gcd (gcd1, NUM(op1), DEN(op2));
+  mpz_gcd (gcd2, NUM(op2), DEN(op1));
 
-  mpz_divexact_gcd (tmp1, &(op1->_mp_num), gcd1);
-  mpz_divexact_gcd (tmp2, &(op2->_mp_num), gcd2);
+  mpz_divexact_gcd (tmp1, NUM(op1), gcd1);
+  mpz_divexact_gcd (tmp2, NUM(op2), gcd2);
 
-  mpz_mul (&(prod->_mp_num), tmp1, tmp2);
+  mpz_mul (NUM(prod), tmp1, tmp2);
 
-  mpz_divexact_gcd (tmp1, &(op2->_mp_den), gcd1);
-  mpz_divexact_gcd (tmp2, &(op1->_mp_den), gcd2);
+  mpz_divexact_gcd (tmp1, DEN(op2), gcd1);
+  mpz_divexact_gcd (tmp2, DEN(op1), gcd2);
 
-  mpz_mul (&(prod->_mp_den), tmp1, tmp2);
+  mpz_mul (DEN(prod), tmp1, tmp2);
 
   TMP_FREE;
 }

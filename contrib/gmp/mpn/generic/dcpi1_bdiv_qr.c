@@ -1,30 +1,40 @@
 /* mpn_dcpi1_bdiv_qr -- divide-and-conquer Hensel division with precomputed
    inverse, returning quotient and remainder.
 
-   Contributed to the GNU project by Niels Möller and Torbjorn Granlund.
+   Contributed to the GNU project by Niels MÃ¶ller and Torbjorn Granlund.
 
    THE FUNCTIONS IN THIS FILE ARE INTERNAL WITH MUTABLE INTERFACES.  IT IS ONLY
    SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT THEY WILL CHANGE OR DISAPPEAR IN A FUTURE GMP RELEASE.
 
-Copyright 2006, 2007, 2009, 2010 Free Software Foundation, Inc.
+Copyright 2006, 2007, 2009, 2010, 2017 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 
@@ -32,12 +42,12 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
    Output:
 
-      q = n * d^{-1} mod 2^{qn * GMP_NUMB_BITS},
+      q = -n * d^{-1} mod 2^{qn * GMP_NUMB_BITS},
 
-      r = (n - q * d) * 2^{-qn * GMP_NUMB_BITS}
+      r = (n + q * d) * 2^{-qn * GMP_NUMB_BITS}
 
    Stores q at qp. Stores the n least significant limbs of r at the high half
-   of np, and returns the borrow from the subtraction n - q*d.
+   of np, and returns the carry from the addition n + q*d.
 
    d must be odd. dinv is (-d)^-1 mod 2^GMP_NUMB_BITS. */
 
@@ -66,7 +76,7 @@ mpn_dcpi1_bdiv_qr_n (mp_ptr qp, mp_ptr np, mp_srcptr dp, mp_size_t n,
   mpn_mul (tp, dp + lo, hi, qp, lo);
 
   mpn_incr_u (tp + lo, cy);
-  rh = mpn_sub (np + lo, np + lo, n + hi, tp, n);
+  rh = mpn_add (np + lo, np + lo, n + hi, tp, n);
 
   if (BELOW_THRESHOLD (hi, DC_BDIV_QR_THRESHOLD))
     cy = mpn_sbpi1_bdiv_qr (qp + lo, np + lo, 2 * hi, dp, hi, dinv);
@@ -76,7 +86,7 @@ mpn_dcpi1_bdiv_qr_n (mp_ptr qp, mp_ptr np, mp_srcptr dp, mp_size_t n,
   mpn_mul (tp, qp + lo, hi, dp + hi, lo);
 
   mpn_incr_u (tp + hi, cy);
-  rh += mpn_sub_n (np + n, np + n, tp, n);
+  rh += mpn_add_n (np + n, np + n, tp, n);
 
   return rh;
 }
@@ -122,7 +132,7 @@ mpn_dcpi1_bdiv_qr (mp_ptr qp, mp_ptr np, mp_size_t nn,
 	    mpn_mul (tp, dp + qn, dn - qn, qp, qn);
 	  mpn_incr_u (tp + qn, cy);
 
-	  rr = mpn_sub (np + qn, np + qn, nn - qn, tp, dn);
+	  rr = mpn_add (np + qn, np + qn, nn - qn, tp, dn);
 	  cy = 0;
 	}
 
@@ -132,7 +142,7 @@ mpn_dcpi1_bdiv_qr (mp_ptr qp, mp_ptr np, mp_size_t nn,
       qn = nn - dn - qn;
       do
 	{
-	  rr += mpn_sub_1 (np + dn, np + dn, qn, cy);
+	  rr += mpn_add_1 (np + dn, np + dn, qn, cy);
 	  cy = mpn_dcpi1_bdiv_qr_n (qp, np, dp, dn, dinv, tp);
 	  qp += dn;
 	  np += dn;
@@ -157,7 +167,7 @@ mpn_dcpi1_bdiv_qr (mp_ptr qp, mp_ptr np, mp_size_t nn,
 	mpn_mul (tp, dp + qn, dn - qn, qp, qn);
       mpn_incr_u (tp + qn, cy);
 
-      rr = mpn_sub (np + qn, np + qn, nn - qn, tp, dn);
+      rr = mpn_add (np + qn, np + qn, nn - qn, tp, dn);
       cy = 0;
     }
 
