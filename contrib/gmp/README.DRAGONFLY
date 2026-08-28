@@ -3,12 +3,18 @@
 ===========================================
 
 Original source can be downloaded from:
-ftp://ftp.gmplib.org/pub/gmp-5.0.5/
+https://gmplib.org/download/gmp/
 
-file = gmp-5.0.5.tar.bz2
-date = 6 May 2012
-size = 2052144
-sha1 = 12a662456033e21aed3e318aef4177f4000afe3b
+file = gmp-6.3.0.tar.xz
+date = 2023-07-29
+size = 2094196
+sha1 = b4043dd2964ab1a858109da85c44de224384f352
 
 A list of files and directories removed is in README.DELETED
 
+Configured with:
+---------------
+--enable-alloca=alloca		# alloca() is fast and recommended
+--disable-assembly		# be generic to work on all CPUs/targets
+--disable-shared
+--disable-cxx
