@@ -5,32 +5,34 @@
 .else
 
 # normal mode
-CONTRIBDIR=	${.CURDIR}/../../../contrib/mpc/src
-.PATH:		${CONTRIBDIR}
+SRCDIR=	${.CURDIR}/../../../contrib/mpc
+.PATH:	${SRCDIR}/src
 
 LIB=		mpc
-INTERNALLIB=	# yes
+INTERNALLIB=	YES
 
 CFLAGS+=	-I${.CURDIR}
-CFLAGS+=	-I${.OBJDIR}
-CFLAGS+=	-I${CONTRIBDIR}
+CFLAGS+=	-I${SRCDIR}/src
 CFLAGS+=	-I${.CURDIR}/../gmp
 CFLAGS+=	-I${.CURDIR}/../../../contrib/mpfr/src
-CFLAGS+=	-DHAVE_CONFIG_H
 
-# almost verbatim from mpc Makefile
-
-SRCS= mpc-impl.h abs.c acos.c acosh.c add.c add_fr.c                       \
-  add_si.c add_ui.c arg.c asin.c asinh.c atan.c atanh.c clear.c cmp.c      \
-  cmp_si_si.c conj.c cos.c cosh.c div_2si.c div_2ui.c div.c div_fr.c       \
-  div_ui.c exp.c fma.c fr_div.c fr_sub.c get_prec2.c get_prec.c            \
+# Verbatim copy from mpc/src/Makefile.am
+libmpc_la_SOURCES = mpc-impl.h abs.c acos.c acosh.c add.c add_fr.c         \
+  add_si.c add_ui.c agm.c arg.c asin.c asinh.c atan.c atanh.c clear.c      \
+  cmp.c cmp_abs.c cmp_si_si.c conj.c cos.c cosh.c                          \
+  div_2si.c div_2ui.c div.c div_fr.c div_ui.c				   \
+  dot.c eta.c exp.c fma.c fr_div.c fr_sub.c get_prec2.c get_prec.c	   \
   get_version.c get_x.c imag.c init2.c init3.c inp_str.c log.c log10.c     \
   mem.c mul_2si.c mul_2ui.c mul.c mul_fr.c mul_i.c mul_si.c mul_ui.c       \
   neg.c norm.c out_str.c pow.c pow_fr.c                                    \
-  pow_ld.c pow_d.c pow_si.c pow_ui.c pow_z.c proj.c real.c urandom.c set.c \
+  pow_ld.c pow_d.c pow_si.c pow_ui.c pow_z.c proj.c real.c rootofunity.c   \
+  urandom.c set.c 							   \
   set_prec.c set_str.c set_x.c set_x_x.c sin.c sin_cos.c sinh.c sqr.c      \
-  sqrt.c strtoc.c sub.c sub_fr.c sub_ui.c swap.c tan.c tanh.c uceil_log2.c \
-  ui_div.c ui_ui_sub.c
+  sqrt.c strtoc.c sub.c sub_fr.c sub_ui.c sum.c swap.c tan.c tanh.c        \
+  uceil_log2.c ui_div.c ui_ui_sub.c \
+  radius.c balls.c exp10.c exp2.c log2.c
+
+SRCS=	${libmpc_la_SOURCES}
 
 .include <bsd.lib.mk>
 .endif
