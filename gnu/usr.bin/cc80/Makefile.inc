@@ -82,7 +82,7 @@ LIBCOMMONTARG=	${OSLDIR}/libcommon-target/libcommon-target.a
 LIBBACKTRACE=	${OSLDIR}/libbacktrace/libbacktrace.a
 LIBBACKEND=	${OTOPDIR}/libbackend/libbackend.a
 
-LIBGMP=		${OTOPDIR}/../gmp/libgmp.a
+LIBGMP=		${OTOPDIR}/../gmp/lib/libgmp.a
 LIBMPFR=	${OTOPDIR}/../mpfr/libmpfr.a
 LIBMPC=		${OTOPDIR}/../mpc/libmpc.a
 LIBZ=		${OTOPDIR}/../../../lib/libz/libz.a
