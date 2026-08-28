@@ -2,24 +2,34 @@
    integer in the range 0 to N-1, using STATE as the random state
    previously initialized by a call to gmp_randinit().
 
-Copyright 2000, 2002  Free Software Foundation, Inc.
+Copyright 2000, 2002, 2012, 2015 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h" /* for count_leading_zeros */
 
@@ -27,32 +37,27 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #define MAX_URANDOMM_ITER  80
 
 void
-mpz_urandomm (mpz_ptr rop, gmp_randstate_t rstate, mpz_srcptr n)
+mpz_urandomm (mpz_ptr rop, gmp_randstate_ptr rstate, mpz_srcptr n)
 {
-  mp_ptr rp, np, nlast;
+  mp_ptr rp, np;
   mp_size_t nbits, size;
+  mp_limb_t nh;
   int count;
   int pow2;
   int cmp;
   TMP_DECL;
 
   size = ABSIZ (n);
-  if (size == 0)
+  if (UNLIKELY (size == 0))
     DIVIDE_BY_ZERO;
 
-  nlast = &PTR (n)[size - 1];
+  np = PTR (n);
+  nh = np[size - 1];
 
   /* Detect whether n is a power of 2.  */
-  pow2 = POW2_P (*nlast);
-  if (pow2 != 0)
-    for (np = PTR (n); np < nlast; np++)
-      if (*np != 0)
-	{
-	  pow2 = 0;		/* Mark n as `not a power of two'.  */
-	  break;
-	}
+  pow2 = POW2_P (nh) && (size == 1 || mpn_zero_p (np, size - 1));
 
-  count_leading_zeros (count, *nlast);
+  count_leading_zeros (count, nh);
   nbits = size * GMP_NUMB_BITS - (count - GMP_NAIL_BITS) - pow2;
   if (nbits == 0)		/* nbits == 0 means that n was == 1.  */
     {
@@ -61,7 +66,6 @@ mpz_urandomm (mpz_ptr rop, gmp_randstate_t rstate, mpz_srcptr n)
     }
 
   TMP_MARK;
-  np = PTR (n);
   if (rop == n)
     {
       mp_ptr tp;
@@ -72,7 +76,7 @@ mpz_urandomm (mpz_ptr rop, gmp_randstate_t rstate, mpz_srcptr n)
 
   /* Here the allocated size can be one too much if n is a power of
      (2^GMP_NUMB_BITS) but it's convenient for using mpn_cmp below.  */
-  rp = MPZ_REALLOC (rop, size);
+  rp = MPZ_NEWALLOC (rop, size);
   /* Clear last limb to prevent the case in which size is one too much.  */
   rp[size - 1] = 0;
 

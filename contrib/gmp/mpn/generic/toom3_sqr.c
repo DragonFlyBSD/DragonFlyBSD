@@ -7,25 +7,35 @@
    SAFE TO REACH IT THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT IT WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+Copyright 2006-2010, 2012, 2015, 2021 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 /* Evaluate in: -1, 0, +1, +2, +inf
@@ -41,7 +51,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
   vinf=          a2 ^2 # A(inf)^2
 */
 
-#if TUNE_PROGRAM_BUILD
+#if TUNE_PROGRAM_BUILD || WANT_FAT_BINARY
 #define MAYBE_sqr_basecase 1
 #define MAYBE_sqr_toom3   1
 #else
@@ -68,6 +78,7 @@ mpn_toom3_sqr (mp_ptr pp,
 	       mp_srcptr ap, mp_size_t an,
 	       mp_ptr scratch)
 {
+  const int __gmpn_cpuvec_initialized = 1;
   mp_size_t n, s;
   mp_limb_t cy, vinf0;
   mp_ptr gp;
@@ -156,14 +167,19 @@ mpn_toom3_sqr (mp_ptr pp,
   /* vm1, 2n+1 limbs */
 #ifdef SMALLER_RECURSION
   TOOM3_SQR_REC (vm1, asm1, n, scratch_out);
-  cy = 0;
-  if (asm1[n] != 0)
-    cy = asm1[n] + mpn_add_n (vm1 + n, vm1 + n, asm1, n);
-  if (asm1[n] != 0)
-    cy += mpn_add_n (vm1 + n, vm1 + n, asm1, n);
+  cy = asm1[n];
+  if (cy != 0)
+    {
+#if HAVE_NATIVE_mpn_addlsh1_n_ip1
+      cy += mpn_addlsh1_n_ip1 (vm1 + n, asm1, n);
+#else
+      cy += mpn_addmul_1 (vm1 + n, asm1, n, CNST_LIMB(2));
+#endif
+    }
   vm1[2 * n] = cy;
 #else
-  TOOM3_SQR_REC (vm1, asm1, n + 1, scratch_out);
+  vm1[2 * n] = 0;
+  TOOM3_SQR_REC (vm1, asm1, n + asm1[n], scratch_out);
 #endif
 
   TOOM3_SQR_REC (v2, as2, n + 1, scratch_out);	/* v2, 2n+1 limbs */
@@ -175,30 +191,21 @@ mpn_toom3_sqr (mp_ptr pp,
 #ifdef SMALLER_RECURSION
   /* v1, 2n+1 limbs */
   TOOM3_SQR_REC (v1, as1, n, scratch_out);
-  if (as1[n] == 1)
+  cy = as1[n];
+  if (cy == 1)
     {
-      cy = as1[n] + mpn_add_n (v1 + n, v1 + n, as1, n);
-    }
-  else if (as1[n] != 0)
-    {
-#if HAVE_NATIVE_mpn_addlsh1_n
-      cy = 2 * as1[n] + mpn_addlsh1_n (v1 + n, v1 + n, as1, n);
-#else
-      cy = 2 * as1[n] + mpn_addmul_1 (v1 + n, as1, n, CNST_LIMB(2));
-#endif
-    }
-  else
-    cy = 0;
-  if (as1[n] == 1)
-    {
-      cy += mpn_add_n (v1 + n, v1 + n, as1, n);
-    }
-  else if (as1[n] != 0)
-    {
-#if HAVE_NATIVE_mpn_addlsh1_n
-      cy += mpn_addlsh1_n (v1 + n, v1 + n, as1, n);
+#if HAVE_NATIVE_mpn_addlsh1_n_ip1
+      cy += mpn_addlsh1_n_ip1 (v1 + n, as1, n);
 #else
       cy += mpn_addmul_1 (v1 + n, as1, n, CNST_LIMB(2));
+#endif
+    }
+  else if (cy != 0)
+    {
+#if HAVE_NATIVE_mpn_addlsh2_n_ip1
+      cy = 4 + mpn_addlsh2_n_ip1 (v1 + n, as1, n);
+#else
+      cy = 4 + mpn_addmul_1 (v1 + n, as1, n, CNST_LIMB(4));
 #endif
     }
   v1[2 * n] = cy;

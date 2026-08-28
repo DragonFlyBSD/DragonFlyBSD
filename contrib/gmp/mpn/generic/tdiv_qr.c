@@ -5,30 +5,40 @@
    operands are unaffected.
 
    Preconditions:
-   1. The most significant limb of of the divisor must be non-zero.
+   1. The most significant limb of the divisor must be non-zero.
    2. nn >= dn, even if qxn is non-zero.  (??? relax this ???)
 
    The time complexity of this is O(qn*qn+M(dn,qn)), where M(m,n) is the time
    complexity of multiplication.
 
-Copyright 1997, 2000, 2001, 2002, 2005, 2009 Free Software Foundation, Inc.
+Copyright 1997, 2000-2002, 2005, 2009, 2015 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
@@ -58,17 +68,16 @@ mpn_tdiv_qr (mp_ptr qp, mp_ptr rp, mp_size_t qxn,
 
     case 2:
       {
-	mp_ptr n2p, d2p;
+	mp_ptr n2p;
 	mp_limb_t qhl, cy;
 	TMP_DECL;
 	TMP_MARK;
 	if ((dp[1] & GMP_NUMB_HIGHBIT) == 0)
 	  {
 	    int cnt;
-	    mp_limb_t dtmp[2];
+	    mp_limb_t d2p[2];
 	    count_leading_zeros (cnt, dp[1]);
 	    cnt -= GMP_NAIL_BITS;
-	    d2p = dtmp;
 	    d2p[1] = (dp[1] << cnt) | (dp[0] >> (GMP_NUMB_BITS - cnt));
 	    d2p[0] = (dp[0] << cnt) & GMP_NUMB_MASK;
 	    n2p = TMP_ALLOC_LIMBS (nn + 1);
@@ -83,10 +92,9 @@ mpn_tdiv_qr (mp_ptr qp, mp_ptr rp, mp_size_t qxn,
 	  }
 	else
 	  {
-	    d2p = (mp_ptr) dp;
 	    n2p = TMP_ALLOC_LIMBS (nn);
 	    MPN_COPY (n2p, np, nn);
-	    qhl = mpn_divrem_2 (qp, 0L, n2p, nn, d2p);
+	    qhl = mpn_divrem_2 (qp, 0L, n2p, nn, dp);
 	    qp[nn - 2] = qhl;	/* always store nn-2+1 quotient limbs */
 	    rp[0] = n2p[0];
 	    rp[1] = n2p[1];
@@ -172,7 +180,7 @@ mpn_tdiv_qr (mp_ptr qp, mp_ptr rp, mp_size_t qxn,
 		  by the qn most significant limbs from the denominator.  Call
 		  the result qest.  This is either the correct quotient, but
 		  might be 1 or 2 too large.  Compute the remainder from the
-		  division.  (This step is implemented by a mpn_divrem call.)
+		  division.  (This step is implemented by an mpn_divrem call.)
 
 	       2) Is the most significant limb from the remainder < p, where p
 		  is the product of the most significant limb from the quotient

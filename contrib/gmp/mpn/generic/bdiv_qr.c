@@ -7,29 +7,39 @@
    SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT THEY WILL CHANGE OR DISAPPEAR IN A FUTURE GMP RELEASE.
 
-Copyright 2006, 2007, 2009 Free Software Foundation, Inc.
+Copyright 2006, 2007, 2009, 2012 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 
 /* Computes Q = N / D mod B^n,
-	    R = N - QD.	 */
+	    R = N - QD.  */
 
 mp_limb_t
 mpn_bdiv_qr (mp_ptr qp, mp_ptr rp,
@@ -40,6 +50,7 @@ mpn_bdiv_qr (mp_ptr qp, mp_ptr rp,
   mp_limb_t di;
   mp_limb_t rh;
 
+  ASSERT (nn > dn);
   if (BELOW_THRESHOLD (dn, DC_BDIV_QR_THRESHOLD) ||
       BELOW_THRESHOLD (nn - dn, DC_BDIV_QR_THRESHOLD))
     {

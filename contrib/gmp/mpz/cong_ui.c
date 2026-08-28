@@ -1,23 +1,33 @@
 /* mpz_congruent_ui_p -- test congruence of mpz and ulong.
 
-Copyright 2000, 2001, 2002 Free Software Foundation, Inc.
+Copyright 2000-2002, 2012 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
@@ -42,9 +52,9 @@ mpz_congruent_ui_p (mpz_srcptr a, unsigned long cu, unsigned long du)
   if (asize == 0)
     {
       if (cu < du)
-        return cu == 0;
+	return cu == 0;
       else
-        return (cu % du) == 0;
+	return (cu % du) == 0;
     }
 
   /* For nails don't try to be clever if c or d is bigger than a limb, just
@@ -80,21 +90,21 @@ mpz_congruent_ui_p (mpz_srcptr a, unsigned long cu, unsigned long du)
     {
       r = mpn_mod_1 (ap, asize, d);
       if (c < d)
-        return r == c;
+	return r == c;
       else
-        return r == (c % d);
+	return r == (c % d);
     }
 
   if ((d & 1) == 0)
     {
       /* Strip low zero bits to get odd d required by modexact.  If
-         d==e*2^n then a==c mod d if and only if both a==c mod 2^n
-         and a==c mod e.  */
+	 d==e*2^n then a==c mod d if and only if both a==c mod 2^n
+	 and a==c mod e.  */
 
-      unsigned  twos;
+      unsigned	twos;
 
       if ((ap[0]-c) & LOW_ZEROS_MASK (d))
-        return 0;
+	return 0;
 
       count_trailing_zeros (twos, d);
       d >>= twos;

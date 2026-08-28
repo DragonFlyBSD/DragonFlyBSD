@@ -7,25 +7,35 @@
    SAFE TO REACH IT THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT IT WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2006, 2007, 2008 Free Software Foundation, Inc.
+Copyright 2006-2008, 2013 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 /* Evaluate in: 0, +1, -1, +2, -2, 1/2, +inf
@@ -40,7 +50,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
   v1  = ( a0+ a1+ a2+ a3)*( b0+ b1+ b2+ b3) #    A(1)*B(1)      ah  <= 3   bh  <= 3
   vm1 = ( a0- a1+ a2- a3)*( b0- b1+ b2- b3) #   A(-1)*B(-1)    |ah| <= 1  |bh| <= 1
   v2  = ( a0+2a1+4a2+8a3)*( b0+2b1+4b2+8b3) #    A(2)*B(2)      ah  <= 14  bh  <= 14
-  vm2 = ( a0-2a1+4a2-8a3)*( b0-2b1+4b2-8b3) #    A(2)*B(2)      ah  <= 9  |bh| <= 9
+  vm2 = ( a0-2a1+4a2-8a3)*( b0-2b1+4b2-8b3) #   A(-2)*B(-2)    |ah| <= 9  |bh| <= 9
   vh  = (8a0+4a1+2a2+ a3)*(8b0+4b1+2b2+ b3) #  A(1/2)*B(1/2)    ah  <= 14  bh  <= 14
   vinf=               a3 *          b2      #  A(inf)*B(inf)
 */
@@ -55,7 +65,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #define MAYBE_mul_toom22						\
   (MUL_TOOM44_THRESHOLD < 4 * MUL_TOOM33_THRESHOLD)
 #define MAYBE_mul_toom44						\
-  (MUL_FFT_THRESHOLD >= 4 * MUL_TOOM44_THRESHOLD)
+  (MUL_TOOM6H_THRESHOLD >= 4 * MUL_TOOM44_THRESHOLD)
 #endif
 
 #define TOOM44_MUL_N_REC(p, a, b, n, ws)				\
@@ -148,10 +158,10 @@ mpn_toom44_mul (mp_ptr pp,
      gives roughly 32 n/3 + log term. */
 
   /* Compute apx = a0 + 2 a1 + 4 a2 + 8 a3 and amx = a0 - 2 a1 + 4 a2 - 8 a3.  */
-  flags = toom7_w1_neg & mpn_toom_eval_dgr3_pm2 (apx, amx, ap, n, s, tp);
+  flags = (enum toom7_flags) (toom7_w1_neg & mpn_toom_eval_dgr3_pm2 (apx, amx, ap, n, s, tp));
 
   /* Compute bpx = b0 + 2 b1 + 4 b2 + 8 b3 and bmx = b0 - 2 b1 + 4 b2 - 8 b3.  */
-  flags ^= toom7_w1_neg & mpn_toom_eval_dgr3_pm2 (bpx, bmx, bp, n, t, tp);
+  flags = (enum toom7_flags) (flags ^ (toom7_w1_neg & mpn_toom_eval_dgr3_pm2 (bpx, bmx, bp, n, t, tp)));
 
   TOOM44_MUL_N_REC (v2, apx, bpx, n + 1, tp);	/* v2,  2n+1 limbs */
   TOOM44_MUL_N_REC (vm2, amx, bmx, n + 1, tp);	/* vm2,  2n+1 limbs */
@@ -206,12 +216,16 @@ mpn_toom44_mul (mp_ptr pp,
   TOOM44_MUL_N_REC (vh, apx, bpx, n + 1, tp);	/* vh,  2n+1 limbs */
 
   /* Compute apx = a0 + a1 + a2 + a3 and amx = a0 - a1 + a2 - a3.  */
-  flags |= toom7_w3_neg & mpn_toom_eval_dgr3_pm1 (apx, amx, ap, n, s, tp);
+  flags = (enum toom7_flags) (flags | (toom7_w3_neg & mpn_toom_eval_dgr3_pm1 (apx, amx, ap, n, s, tp)));
 
-  /* Compute bpx = b0 + b1 + b2 + b3 bnd bmx = b0 - b1 + b2 - b3.  */
-  flags ^= toom7_w3_neg & mpn_toom_eval_dgr3_pm1 (bpx, bmx, bp, n, t, tp);
+  /* Compute bpx = b0 + b1 + b2 + b3 and bmx = b0 - b1 + b2 - b3.  */
+  flags = (enum toom7_flags) (flags ^ (toom7_w3_neg & mpn_toom_eval_dgr3_pm1 (bpx, bmx, bp, n, t, tp)));
 
-  TOOM44_MUL_N_REC (vm1, amx, bmx, n + 1, tp);	/* vm1,  2n+1 limbs */
+  ASSERT (amx[n] <= 1);
+  ASSERT (bmx[n] <= 1);
+
+  vm1 [2 * n] = 0;
+  TOOM44_MUL_N_REC (vm1, amx, bmx, n + (bmx[n] | amx[n]), tp);	/* vm1,  2n+1 limbs */
   /* Clobbers amx, bmx. */
   TOOM44_MUL_N_REC (v1, apx, bpx, n + 1, tp);	/* v1,  2n+1 limbs */
 

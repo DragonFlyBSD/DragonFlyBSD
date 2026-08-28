@@ -1,25 +1,34 @@
 /* double mpq_get_d (mpq_t src) -- mpq to double, rounding towards zero.
 
-Copyright 1995, 1996, 2001, 2002, 2003, 2004, 2005 Free Software Foundation,
-Inc.
+Copyright 1995, 1996, 2001-2005, 2018, 2019 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 #include <stdio.h>  /* for NULL */
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
@@ -65,9 +74,6 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    If/when mpn_tdiv_qr supports its qxn parameter we can use that instead of
    padding n with zeros in temporary space.
 
-   If/when a quotient-only division exists it can be used here immediately.
-   remp is only to satisfy mpn_tdiv_qr, the remainder is not used.
-
    Alternatives:
 
    An alternative algorithm, that may be faster:
@@ -91,17 +97,17 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
    like to have helping everywhere that uses a quotient-only division. */
 
 double
-mpq_get_d (const MP_RAT *src)
+mpq_get_d (mpq_srcptr src)
 {
   double res;
   mp_srcptr np, dp;
-  mp_ptr remp, tp;
-  mp_size_t nsize = src->_mp_num._mp_size;
-  mp_size_t dsize = src->_mp_den._mp_size;
-  mp_size_t qsize, prospective_qsize, zeros, chop, tsize;
+  mp_ptr temp;
+  mp_size_t nsize = SIZ(NUM(src));
+  mp_size_t dsize = SIZ(DEN(src));
+  mp_size_t qsize, prospective_qsize, zeros;
   mp_size_t sign_quotient = nsize;
   long exp;
-#define N_QLIMBS (1 + (sizeof (double) + BYTES_PER_MP_LIMB-1) / BYTES_PER_MP_LIMB)
+#define N_QLIMBS (1 + (sizeof (double) + GMP_LIMB_BYTES-1) / GMP_LIMB_BYTES)
   mp_limb_t qarr[N_QLIMBS + 1];
   mp_ptr qp = qarr;
   TMP_DECL;
@@ -115,49 +121,40 @@ mpq_get_d (const MP_RAT *src)
   TMP_MARK;
   nsize = ABS (nsize);
   dsize = ABS (dsize);
-  np = src->_mp_num._mp_d;
-  dp = src->_mp_den._mp_d;
+  np = PTR(NUM(src));
+  dp = PTR(DEN(src));
 
-  prospective_qsize = nsize - dsize + 1;   /* from using given n,d */
-  qsize = N_QLIMBS + 1;                    /* desired qsize */
+  prospective_qsize = nsize - dsize;       /* from using given n,d */
+  qsize = N_QLIMBS;                        /* desired qsize */
 
   zeros = qsize - prospective_qsize;       /* padding n to get qsize */
   exp = (long) -zeros * GMP_NUMB_BITS;     /* relative to low of qp */
 
-  chop = MAX (-zeros, 0);                  /* negative zeros means shorten n */
-  np += chop;
-  nsize -= chop;
-  zeros += chop;                           /* now zeros >= 0 */
-
-  tsize = nsize + zeros;                   /* size for possible copy of n */
-
-  if (WANT_TMP_DEBUG)
-    {
-      /* separate blocks, for malloc debugging */
-      remp = TMP_ALLOC_LIMBS (dsize);
-      tp = (zeros > 0 ? TMP_ALLOC_LIMBS (tsize) : NULL);
-    }
-  else
-    {
-      /* one block with conditionalized size, for efficiency */
-      remp = TMP_ALLOC_LIMBS (dsize + (zeros > 0 ? tsize : 0));
-      tp = remp + dsize;
-    }
-
   /* zero extend n into temporary space, if necessary */
   if (zeros > 0)
     {
-      MPN_ZERO (tp, zeros);
-      MPN_COPY (tp+zeros, np, nsize);
-      np = tp;
+      mp_size_t tsize;
+      tsize = nsize + zeros;               /* size for copy of n */
+
+      temp = TMP_ALLOC_LIMBS (tsize + 1);
+      MPN_FILL (temp, zeros, 0);
+      MPN_COPY (temp + zeros, np, nsize);
+      np = temp;
       nsize = tsize;
     }
+  else /* negative zeros means shorten n */
+    {
+      np -= zeros;
+      nsize += zeros;
 
-  ASSERT (qsize == nsize - dsize + 1);
-  mpn_tdiv_qr (qp, remp, (mp_size_t) 0, np, nsize, dp, dsize);
+      temp = TMP_ALLOC_LIMBS (nsize + 1);
+    }
+
+  ASSERT (qsize == nsize - dsize);
+  mpn_div_q (qp, np, nsize, dp, dsize, temp);
 
   /* strip possible zero high limb */
-  qsize -= (qp[qsize-1] == 0);
+  qsize += (qp[qsize] != 0);
 
   res = mpn_get_d (qp, qsize, sign_quotient, exp);
   TMP_FREE;

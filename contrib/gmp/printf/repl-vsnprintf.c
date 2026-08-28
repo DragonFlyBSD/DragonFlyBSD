@@ -5,36 +5,39 @@
    CERTAIN TO BE SUBJECT TO INCOMPATIBLE CHANGES OR DISAPPEAR COMPLETELY IN
    FUTURE GNU MP RELEASES.
 
-Copyright 2001, 2002 Free Software Foundation, Inc.
+Copyright 2001, 2002, 2018 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 #include "config.h"
 
-#if ! HAVE_VSNPRINTF   /* only need this file if we don't have vsnprintf */
-
-
 #define _GNU_SOURCE    /* for strnlen prototype */
 
-#if HAVE_STDARG
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
-
 #include <ctype.h>     /* for isdigit */
 #include <stddef.h>    /* for ptrdiff_t */
 #include <string.h>
@@ -47,19 +50,19 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
 #if HAVE_INTTYPES_H
 # include <inttypes.h> /* for intmax_t */
-#else
-# if HAVE_STDINT_H
-#  include <stdint.h>
-# endif
+#endif
+#if HAVE_STDINT_H
+# include <stdint.h>
 #endif
 
 #if HAVE_SYS_TYPES_H
 #include <sys/types.h> /* for quad_t */
 #endif
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
+
+#if ! HAVE_VSNPRINTF   /* only need this file if we don't have vsnprintf */
 
 /* Autoconf notes that AIX 4.3 has a broken strnlen, but fortunately it
    doesn't affect us since __gmp_replacement_vsnprintf is not required on
@@ -238,7 +241,7 @@ __gmp_replacement_vsnprintf (char *buf, size_t buf_size,
 	      }
 	    else
 	      (void) va_arg (ap, double);
-	    break;
+	    goto next;
 
 	  case 'f':
 	    /* Requested decimals, sign and point, and a margin for error,
@@ -259,13 +262,14 @@ __gmp_replacement_vsnprintf (char *buf, size_t buf_size,
 		(void) va_arg (ap, double);
 		total_width += double_digits;
 	      }
-	    break;
+	    goto next;
 
 	  case 'h':  /* short or char */
 	  case 'j':  /* intmax_t */
 	  case 'L':  /* long long or long double */
 	  case 'q':  /* quad_t */
 	  case 't':  /* ptrdiff_t */
+	  case 'z':  /* size_t */
 	  set_type:
 	    type = fchar;
 	    break;
@@ -376,7 +380,7 @@ __gmp_replacement_vsnprintf (char *buf, size_t buf_size,
 	  memcpy (buf, s, copylen);
 	  buf[copylen] = '\0';
 	}
-      (*__gmp_free_func) (s, total_width);
+      __GMP_FREE_FUNC_TYPE (s, total_width, char);
     }
 
   /* If total_width was somehow wrong then chances are we've already

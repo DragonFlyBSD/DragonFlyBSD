@@ -6,30 +6,42 @@
    SAFE TO REACH IT THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT IT WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2009, 2010 Free Software Foundation, Inc.
+Copyright 2009, 2010, 2012 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
+
+#define BINVERT_3 MODLIMB_INVERSE_3
 
 /* For odd divisors, mpn_divexact_1 works fine with two's complement. */
 #ifndef mpn_divexact_by3
-#if HAVE_NATIVE_mpn_pi1_bdiv_q_1 && MODLIMB_INVERSE_3
-#define mpn_divexact_by3(dst,src,size) mpn_pi1_bdiv_q_1(dst,src,size,3,MODLIMB_INVERSE_3,0)
+#if HAVE_NATIVE_mpn_pi1_bdiv_q_1
+#define mpn_divexact_by3(dst,src,size) mpn_pi1_bdiv_q_1(dst,src,size,3,BINVERT_3,0)
 #else
 #define mpn_divexact_by3(dst,src,size) mpn_divexact_1(dst,src,size,3)
 #endif
@@ -167,11 +179,11 @@ mpn_toom_interpolate_6pts (mp_ptr pp, mp_size_t n, enum toom6_flags flags,
   MPN_INCR_U (pp + 3 * n + 1, n, cy);
 
   /* W2 -= W0<<2 */
-#if HAVE_NATIVE_mpn_sublsh_n || HAVE_NATIVE_mpn_sublsh2_n
-#if HAVE_NATIVE_mpn_sublsh2_n
-  cy = mpn_sublsh2_n(w2, w2, w0, w0n);
+#if HAVE_NATIVE_mpn_sublsh_n || HAVE_NATIVE_mpn_sublsh2_n_ip1
+#if HAVE_NATIVE_mpn_sublsh2_n_ip1
+  cy = mpn_sublsh2_n_ip1 (w2, w0, w0n);
 #else
-  cy = mpn_sublsh_n(w2, w2, w0, w0n, 2);
+  cy = mpn_sublsh_n (w2, w2, w0, w0n, 2);
 #endif
 #else
   /* {W4,2*n+1} is now free and can be overwritten. */
@@ -210,7 +222,7 @@ mpn_toom_interpolate_6pts (mp_ptr pp, mp_size_t n, enum toom6_flags flags,
   embankment = w0[w0n - 1] - 1;
   w0[w0n - 1] = 1;
   if (LIKELY (w0n > n)) {
-    if ( LIKELY(cy4 > cy6) )
+    if (cy4 > cy6)
       MPN_INCR_U (pp + 4 * n, w0n + n, cy4 - cy6);
     else
       MPN_DECR_U (pp + 4 * n, w0n + n, cy6 - cy4);

@@ -1,24 +1,34 @@
 /* mpz_import -- set mpz from word data.
 
-Copyright 2002 Free Software Foundation, Inc.
+Copyright 2002, 2012, 2021, 2022 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 #include <stdio.h>
-#include "gmp.h"
 #include "gmp-impl.h"
 
 
@@ -37,7 +47,7 @@ static const mp_limb_t  endian_test = (CNST_LIMB(1) << (GMP_LIMB_BITS-7)) - 1;
 
 void
 mpz_import (mpz_ptr z, size_t count, int order,
-            size_t size, int endian, size_t nail, const void *data)
+	    size_t size, int endian, size_t nail, const void *data)
 {
   mp_size_t  zsize;
   mp_ptr     zp;
@@ -46,47 +56,34 @@ mpz_import (mpz_ptr z, size_t count, int order,
   ASSERT (endian == 1 || endian == 0 || endian == -1);
   ASSERT (nail <= 8*size);
 
-  zsize = (count * (8*size - nail) + GMP_NUMB_BITS-1) / GMP_NUMB_BITS;
-  MPZ_REALLOC (z, zsize);
-  zp = PTR(z);
+  zsize = BITS_TO_LIMBS (count * (8*size - nail));
+  zp = MPZ_NEWALLOC (z, zsize);
 
   if (endian == 0)
     endian = HOST_ENDIAN;
 
   /* Can't use these special cases with nails currently, since they don't
      mask out the nail bits in the input data.  */
-  if (nail == 0 && GMP_NAIL_BITS == 0)
+  if (nail == 0 && GMP_NAIL_BITS == 0
+      && size == sizeof (mp_limb_t)
+      && (((char *) data - (char *) NULL) % sizeof (mp_limb_t)) == 0 /* align */)
     {
-      unsigned  align = ((char *) data - (char *) NULL) % sizeof (mp_limb_t);
-
-      if (order == -1
-          && size == sizeof (mp_limb_t)
-          && endian == HOST_ENDIAN
-          && align == 0)
-        {
-          MPN_COPY (zp, (mp_srcptr) data, (mp_size_t) count);
-          goto done;
-        }
-
-      if (order == -1
-          && size == sizeof (mp_limb_t)
-          && endian == - HOST_ENDIAN
-          && align == 0)
-        {
-          MPN_BSWAP (zp, (mp_srcptr) data, (mp_size_t) count);
-          goto done;
-        }
-
-      if (order == 1
-          && size == sizeof (mp_limb_t)
-          && endian == HOST_ENDIAN
-          && align == 0)
-        {
-          MPN_REVERSE (zp, (mp_srcptr) data, (mp_size_t) count);
-          goto done;
-        }
+      if (order == -1)
+	{
+	  if (endian == HOST_ENDIAN)
+	    MPN_COPY (zp, (mp_srcptr) data, (mp_size_t) count);
+	  else /* if (endian == - HOST_ENDIAN) */
+	    MPN_BSWAP (zp, (mp_srcptr) data, (mp_size_t) count);
+	}
+      else /* if (order == 1) */
+	{
+	  if (endian == HOST_ENDIAN)
+	    MPN_REVERSE (zp, (mp_srcptr) data, (mp_size_t) count);
+	  else /* if (endian == - HOST_ENDIAN) */
+	    MPN_BSWAP_REVERSE (zp, (mp_srcptr) data, (mp_size_t) count);
+	}
     }
-
+  else
   {
     mp_limb_t      limb, byte, wbitsmask;
     size_t         i, j, numb, wbytes;
@@ -132,38 +129,37 @@ mpz_import (mpz_ptr z, size_t count, int order,
     lbits = 0;
     for (i = 0; i < count; i++)
       {
-        for (j = 0; j < wbytes; j++)
-          {
-            byte = *dp;
-            dp -= endian;
-            ACCUMULATE (8);
-          }
-        if (wbits != 0)
-          {
-            byte = *dp & wbitsmask;
-            dp -= endian;
-            ACCUMULATE (wbits);
-          }
-        dp += woffset;
+	for (j = 0; j < wbytes; j++)
+	  {
+	    byte = *dp;
+	    dp -= endian;
+	    ACCUMULATE (8);
+	  }
+	if (wbits != 0)
+	  {
+	    byte = *dp & wbitsmask;
+	    dp -= endian;
+	    ACCUMULATE (wbits);
+	  }
+	dp += woffset;
       }
 
     if (lbits != 0)
       {
-        ASSERT (lbits <= GMP_NUMB_BITS);
-        ASSERT_LIMB (limb);
-        *zp++ = limb;
+	ASSERT (lbits <= GMP_NUMB_BITS);
+	ASSERT_LIMB (limb);
+	*zp++ = limb;
       }
 
     ASSERT (zp == PTR(z) + zsize);
 
     /* low byte of word after most significant */
     ASSERT (dp == (unsigned char *) data
-            + (order < 0 ? count*size : - (mp_size_t) size)
-            + (endian >= 0 ? (mp_size_t) size - 1 : 0));
+	    + (order < 0 ? count*size : - (mp_size_t) size)
+	    + (endian >= 0 ? (mp_size_t) size - 1 : 0));
 
   }
 
- done:
   zp = PTR(z);
   MPN_NORMALIZE (zp, zsize);
   SIZ(z) = zsize;

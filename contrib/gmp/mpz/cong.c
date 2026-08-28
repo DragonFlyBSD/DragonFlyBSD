@@ -5,19 +5,29 @@ Copyright 2001, 2002, 2005 Free Software Foundation, Inc.
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
@@ -94,53 +104,53 @@ mpz_congruent_p (mpz_srcptr a, mpz_srcptr c, mpz_srcptr d)
   if (csize == 1)
     {
       if (dsize == 1)
-        {
-        cong_1:
-          if (sign < 0)
-            NEG_MOD (clow, clow, dlow);
+	{
+	cong_1:
+	  if (sign < 0)
+	    NEG_MOD (clow, clow, dlow);
 
-          if (ABOVE_THRESHOLD (asize, BMOD_1_TO_MOD_1_THRESHOLD))
-            {
-              r = mpn_mod_1 (ap, asize, dlow);
-              if (clow < dlow)
-                return r == clow;
-              else
-                return r == (clow % dlow);
-            }
+	  if (ABOVE_THRESHOLD (asize, BMOD_1_TO_MOD_1_THRESHOLD))
+	    {
+	      r = mpn_mod_1 (ap, asize, dlow);
+	      if (clow < dlow)
+		return r == clow;
+	      else
+		return r == (clow % dlow);
+	    }
 
-          if ((dlow & 1) == 0)
-            {
-              /* Strip low zero bits to get odd d required by modexact.  If
-                 d==e*2^n then a==c mod d if and only if both a==c mod e and
-                 a==c mod 2^n, the latter having been done above.  */
-              unsigned  twos;
-              count_trailing_zeros (twos, dlow);
-              dlow >>= twos;
-            }
+	  if ((dlow & 1) == 0)
+	    {
+	      /* Strip low zero bits to get odd d required by modexact.  If
+		 d==e*2^n then a==c mod d if and only if both a==c mod e and
+		 a==c mod 2^n, the latter having been done above.  */
+	      unsigned	twos;
+	      count_trailing_zeros (twos, dlow);
+	      dlow >>= twos;
+	    }
 
-          r = mpn_modexact_1c_odd (ap, asize, dlow, clow);
-          return r == 0 || r == dlow;
-        }
+	  r = mpn_modexact_1c_odd (ap, asize, dlow, clow);
+	  return r == 0 || r == dlow;
+	}
 
       /* dlow==0 is avoided since we don't want to bother handling extra low
-         zero bits if dsecond is even (would involve borrow if a,c differ in
-         sign and alow,clow!=0).  */
+	 zero bits if dsecond is even (would involve borrow if a,c differ in
+	 sign and alow,clow!=0).  */
       if (dsize == 2 && dlow != 0)
-        {
-          mp_limb_t  dsecond = dp[1];
+	{
+	  mp_limb_t  dsecond = dp[1];
 
-          if (dsecond <= dmask)
-            {
-              unsigned   twos;
-              count_trailing_zeros (twos, dlow);
-              dlow = (dlow >> twos) | (dsecond << (GMP_NUMB_BITS-twos));
-              ASSERT_LIMB (dlow);
+	  if (dsecond <= dmask)
+	    {
+	      unsigned	 twos;
+	      count_trailing_zeros (twos, dlow);
+	      dlow = (dlow >> twos) | (dsecond << (GMP_NUMB_BITS-twos));
+	      ASSERT_LIMB (dlow);
 
-              /* dlow will be odd here, so the test for it even under cong_1
-                 is unnecessary, but the rest of that code is wanted. */
-              goto cong_1;
-            }
-        }
+	      /* dlow will be odd here, so the test for it even under cong_1
+		 is unnecessary, but the rest of that code is wanted. */
+	      goto cong_1;
+	    }
+	}
     }
 
   TMP_MARK;
@@ -151,9 +161,9 @@ mpz_congruent_p (mpz_srcptr a, mpz_srcptr c, mpz_srcptr d)
     {
       /* same signs, subtract */
       if (asize > csize || mpn_cmp (ap, cp, asize) >= 0)
-        ASSERT_NOCARRY (mpn_sub (xp, ap, asize, cp, csize));
+	ASSERT_NOCARRY (mpn_sub (xp, ap, asize, cp, csize));
       else
-        ASSERT_NOCARRY (mpn_sub_n (xp, cp, ap, asize));
+	ASSERT_NOCARRY (mpn_sub_n (xp, cp, ap, asize));
       MPN_NORMALIZE (xp, asize);
     }
   else

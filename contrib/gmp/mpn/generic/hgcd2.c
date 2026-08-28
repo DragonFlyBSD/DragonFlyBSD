@@ -4,202 +4,47 @@
    SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT THEY'LL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 1996, 1998, 2000, 2001, 2002, 2003, 2004, 2008 Free Software
-Foundation, Inc.
+Copyright 1996, 1998, 2000-2004, 2008, 2012, 2019 Free Software Foundation,
+Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
-#if GMP_NAIL_BITS == 0
+#include "mpn/generic/hgcd2-div.h"
 
-/* Copied from the old mpn/generic/gcdext.c, and modified slightly to return
-   the remainder. */
-
-/* Single-limb division optimized for small quotients. */
-static inline mp_limb_t
-div1 (mp_ptr rp,
-      mp_limb_t n0,
-      mp_limb_t d0)
-{
-  mp_limb_t q = 0;
-
-  if ((mp_limb_signed_t) n0 < 0)
-    {
-      int cnt;
-      for (cnt = 1; (mp_limb_signed_t) d0 >= 0; cnt++)
-	{
-	  d0 = d0 << 1;
-	}
-
-      q = 0;
-      while (cnt)
-	{
-	  q <<= 1;
-	  if (n0 >= d0)
-	    {
-	      n0 = n0 - d0;
-	      q |= 1;
-	    }
-	  d0 = d0 >> 1;
-	  cnt--;
-	}
-    }
-  else
-    {
-      int cnt;
-      for (cnt = 0; n0 >= d0; cnt++)
-	{
-	  d0 = d0 << 1;
-	}
-
-      q = 0;
-      while (cnt)
-	{
-	  d0 = d0 >> 1;
-	  q <<= 1;
-	  if (n0 >= d0)
-	    {
-	      n0 = n0 - d0;
-	      q |= 1;
-	    }
-	  cnt--;
-	}
-    }
-  *rp = n0;
-  return q;
-}
-
-/* Two-limb division optimized for small quotients.  */
-static inline mp_limb_t
-div2 (mp_ptr rp,
-      mp_limb_t nh, mp_limb_t nl,
-      mp_limb_t dh, mp_limb_t dl)
-{
-  mp_limb_t q = 0;
-
-  if ((mp_limb_signed_t) nh < 0)
-    {
-      int cnt;
-      for (cnt = 1; (mp_limb_signed_t) dh >= 0; cnt++)
-	{
-	  dh = (dh << 1) | (dl >> (GMP_LIMB_BITS - 1));
-	  dl = dl << 1;
-	}
-
-      while (cnt)
-	{
-	  q <<= 1;
-	  if (nh > dh || (nh == dh && nl >= dl))
-	    {
-	      sub_ddmmss (nh, nl, nh, nl, dh, dl);
-	      q |= 1;
-	    }
-	  dl = (dh << (GMP_LIMB_BITS - 1)) | (dl >> 1);
-	  dh = dh >> 1;
-	  cnt--;
-	}
-    }
-  else
-    {
-      int cnt;
-      for (cnt = 0; nh > dh || (nh == dh && nl >= dl); cnt++)
-	{
-	  dh = (dh << 1) | (dl >> (GMP_LIMB_BITS - 1));
-	  dl = dl << 1;
-	}
-
-      while (cnt)
-	{
-	  dl = (dh << (GMP_LIMB_BITS - 1)) | (dl >> 1);
-	  dh = dh >> 1;
-	  q <<= 1;
-	  if (nh > dh || (nh == dh && nl >= dl))
-	    {
-	      sub_ddmmss (nh, nl, nh, nl, dh, dl);
-	      q |= 1;
-	    }
-	  cnt--;
-	}
-    }
-
-  rp[0] = nl;
-  rp[1] = nh;
-
-  return q;
-}
-
-#if 0
-/* This div2 uses less branches, but it seems to nevertheless be
-   slightly slower than the above code. */
-static inline mp_limb_t
-div2 (mp_ptr rp,
-      mp_limb_t nh, mp_limb_t nl,
-      mp_limb_t dh, mp_limb_t dl)
-{
-  mp_limb_t q = 0;
-  int ncnt;
-  int dcnt;
-
-  count_leading_zeros (ncnt, nh);
-  count_leading_zeros (dcnt, dh);
-  dcnt -= ncnt;
-
-  dh = (dh << dcnt) + (-(dcnt > 0) & (dl >> (GMP_LIMB_BITS - dcnt)));
-  dl <<= dcnt;
-
-  do
-    {
-      mp_limb_t bit;
-      q <<= 1;
-      if (UNLIKELY (nh == dh))
-	bit = (nl >= dl);
-      else
-	bit = (nh > dh);
-
-      q |= bit;
-
-      sub_ddmmss (nh, nl, nh, nl, (-bit) & dh, (-bit) & dl);
-
-      dl = (dh << (GMP_LIMB_BITS - 1)) | (dl >> 1);
-      dh = dh >> 1;
-    }
-  while (dcnt--);
-
-  rp[0] = nl;
-  rp[1] = nh;
-
-  return q;
-}
+#if GMP_NAIL_BITS != 0
+#error Nails not implemented
 #endif
-
-#else /* GMP_NAIL_BITS != 0 */
-/* Check all functions for nail support. */
-/* hgcd2 should be defined to take inputs including nail bits, and
-   produce a matrix with elements also including nail bits. This is
-   necessary, for the matrix elements to be useful with mpn_mul_1,
-   mpn_addmul_1 and friends. */
-#error Not implemented
-#endif /* GMP_NAIL_BITS != 0 */
 
 /* Reduces a,b until |a-b| (almost) fits in one limb + 1 bit. Constructs
    matrix M. Returns 1 if we make progress, i.e. can perform at least
-   one subtraction. Otherwise returns zero.. */
+   one subtraction. Otherwise returns zero. */
 
 /* FIXME: Possible optimizations:
 
@@ -331,15 +176,12 @@ mpn_hgcd2 (mp_limb_t ah, mp_limb_t al, mp_limb_t bh, mp_limb_t bl,
 	}
     }
 
-  /* NOTE: Since we discard the least significant half limb, we don't
-     get a truly maximal M (corresponding to |a - b| <
-     2^{GMP_LIMB_BITS +1}). */
+  /* NOTE: Since we discard the least significant half limb, we don't get a
+     truly maximal M (corresponding to |a - b| < 2^{GMP_LIMB_BITS +1}). */
   /* Single precision loop */
   for (;;)
     {
       ASSERT (ah >= bh);
-      if (ah == bh)
-	break;
 
       ah -= bh;
       if (ah < (CNST_LIMB (1) << (GMP_LIMB_BITS / 2 + 1)))
@@ -353,9 +195,10 @@ mpn_hgcd2 (mp_limb_t ah, mp_limb_t al, mp_limb_t bh, mp_limb_t bl,
 	}
       else
 	{
-	  mp_limb_t r;
-	  mp_limb_t q = div1 (&r, ah, bh);
-	  ah = r;
+	  mp_double_limb_t rq = div1 (ah, bh);
+	  mp_limb_t q = rq.d1;
+	  ah = rq.d0;
+
 	  if (ah < (CNST_LIMB(1) << (GMP_LIMB_BITS / 2 + 1)))
 	    {
 	      /* A is too small, but q is correct. */
@@ -369,8 +212,6 @@ mpn_hgcd2 (mp_limb_t ah, mp_limb_t al, mp_limb_t bh, mp_limb_t bl,
 	}
     subtract_a1:
       ASSERT (bh >= ah);
-      if (ah == bh)
-	break;
 
       bh -= ah;
       if (bh < (CNST_LIMB (1) << (GMP_LIMB_BITS / 2 + 1)))
@@ -384,9 +225,10 @@ mpn_hgcd2 (mp_limb_t ah, mp_limb_t al, mp_limb_t bh, mp_limb_t bl,
 	}
       else
 	{
-	  mp_limb_t r;
-	  mp_limb_t q = div1 (&r, bh, ah);
-	  bh = r;
+	  mp_double_limb_t rq = div1 (bh, ah);
+	  mp_limb_t q = rq.d1;
+	  bh = rq.d0;
+
 	  if (bh < (CNST_LIMB(1) << (GMP_LIMB_BITS / 2 + 1)))
 	    {
 	      /* B is too small, but q is correct. */
@@ -437,33 +279,5 @@ mpn_hgcd_mul_matrix1_vector (const struct hgcd_matrix1 *M,
   bp[n] = bh;
 
   n += (ah | bh) > 0;
-  return n;
-}
-
-/* Sets (r;b) = M^{-1}(a;b), with M^{-1} = (u11, -u01; -u10, u00) from
-   the left. Uses three buffers, to avoid a copy. */
-mp_size_t
-mpn_hgcd_mul_matrix1_inverse_vector (const struct hgcd_matrix1 *M,
-				     mp_ptr rp, mp_srcptr ap, mp_ptr bp, mp_size_t n)
-{
-  mp_limb_t h0, h1;
-
-  /* Compute (r;b) <-- (u11 a - u01 b; -u10 a + u00 b) as
-
-     r  = u11 * a
-     r -= u01 * b
-     b *= u00
-     b -= u10 * a
-  */
-
-  h0 =    mpn_mul_1 (rp, ap, n, M->u[1][1]);
-  h1 = mpn_submul_1 (rp, bp, n, M->u[0][1]);
-  ASSERT (h0 == h1);
-
-  h0 =    mpn_mul_1 (bp, bp, n, M->u[0][0]);
-  h1 = mpn_submul_1 (bp, ap, n, M->u[1][0]);
-  ASSERT (h0 == h1);
-
-  n -= (rp[n-1] | bp[n-1]) == 0;
   return n;
 }

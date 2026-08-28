@@ -1,24 +1,33 @@
 /* mpn_gcdext -- Extended Greatest Common Divisor.
 
-Copyright 1996, 1998, 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009 Free Software
-Foundation, Inc.
+Copyright 1996, 1998, 2000-2005, 2008, 2009 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
@@ -30,20 +39,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #define GCDEXT_1_BINARY_METHOD 2
 #endif
 
-#ifndef USE_ZEROTAB
-#define USE_ZEROTAB 1
-#endif
-
 #if GCDEXT_1_USE_BINARY
-
-#if USE_ZEROTAB
-static unsigned char zerotab[0x40] = {
-  6, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-  4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-  5, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-  4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0
-};
-#endif
 
 mp_limb_t
 mpn_gcdext_1 (mp_limb_signed_t *sp, mp_limb_signed_t *tp,
@@ -55,7 +51,7 @@ mpn_gcdext_1 (mp_limb_signed_t *sp, mp_limb_signed_t *tp,
      V = s1 u + s0 v
 
      where U, V are the inputs (without any shared power of two),
-     and the matris has determinant ± 2^{shift}.
+     and the matrix has determinant ± 2^{shift}.
   */
   mp_limb_t s0 = 1;
   mp_limb_t t0 = 0;
@@ -101,48 +97,20 @@ mpn_gcdext_1 (mp_limb_signed_t *sp, mp_limb_signed_t *tp,
       if (u > v)
 	{
 	  u -= v;
-#if USE_ZEROTAB
-	  count = zerotab [u & 0x3f];
-	  u >>= count;
-	  if (UNLIKELY (count == 6))
-	    {
-	      unsigned c;
-	      do
-		{
-		  c = zerotab[u & 0x3f];
-		  u >>= c;
-		  count += c;
-		}
-	      while (c == 6);
-	    }
-#else
+
 	  count_trailing_zeros (count, u);
 	  u >>= count;
-#endif
+
 	  t0 += t1; t1 <<= count;
 	  s0 += s1; s1 <<= count;
 	}
       else
 	{
 	  v -= u;
-#if USE_ZEROTAB
-	  count = zerotab [v & 0x3f];
-	  v >>= count;
-	  if (UNLIKELY (count == 6))
-	    {
-	      unsigned c;
-	      do
-		{
-		  c = zerotab[v & 0x3f];
-		  v >>= c;
-		  count += c;
-		}
-	      while (c == 6);
-	    }
-#else
+
 	  count_trailing_zeros (count, v);
 	  v >>= count;
-#endif
+
 	  t1 += t0; t0 <<= count;
 	  s1 += s0; s0 <<= count;
 	}
@@ -184,22 +152,8 @@ mpn_gcdext_1 (mp_limb_signed_t *sp, mp_limb_signed_t *tp,
 
       /* Number of trailing zeros is the same no matter if we look at
        * d or u, but using d gives more parallelism. */
-#if USE_ZEROTAB
-      count = zerotab[d & 0x3f];
-      if (UNLIKELY (count == 6))
-	{
-	  unsigned c = 6;
-	  do
-	    {
-	      d >>= c;
-	      c = zerotab[d & 0x3f];
-	      count += c;
-	    }
-	  while (c == 6);
-	}
-#else
       count_trailing_zeros (count, d);
-#endif
+
       det_sign ^= vgtu;
 
       tx = vgtu & (t0 - t1);
@@ -228,7 +182,7 @@ mpn_gcdext_1 (mp_limb_signed_t *sp, mp_limb_signed_t *tp,
   ugh = ug/2 + (ug & 1);
   vgh = vg/2 + (vg & 1);
 
-  /* Now ±2^{shift} g = s0 U - t0 V. Get rid of the power of two, using
+  /* Now 2^{shift} g = s0 U - t0 V. Get rid of the power of two, using
      s0 U - t0 V = (s0 + V/g) U - (t0 + U/g) V. */
   for (i = 0; i < shift; i++)
     {
@@ -239,8 +193,11 @@ mpn_gcdext_1 (mp_limb_signed_t *sp, mp_limb_signed_t *tp,
       s0 += mask & vgh;
       t0 += mask & ugh;
     }
-  /* FIXME: Try simplifying this condition. */
-  if ( (s0 > 1 && 2*s0 >= vg) || (t0 > 1 && 2*t0 >= ug) )
+
+  ASSERT_ALWAYS (s0 <= vg);
+  ASSERT_ALWAYS (t0 <= ug);
+
+  if (s0 > vg - s0)
     {
       s0 -= vg;
       t0 -= ug;

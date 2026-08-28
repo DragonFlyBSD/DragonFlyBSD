@@ -1,31 +1,41 @@
 /* mulmod_bnm1.c -- multiplication mod B^n-1.
 
-   Contributed to the GNU project by Niels Möller, Torbjorn Granlund and
+   Contributed to the GNU project by Niels MÃ¶ller, Torbjorn Granlund and
    Marco Bodrato.
 
    THE FUNCTIONS IN THIS FILE ARE INTERNAL WITH MUTABLE INTERFACES.  IT IS ONLY
    SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT THEY WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2009, 2010 Free Software Foundation, Inc.
+Copyright 2009, 2010, 2012, 2013, 2020, 2022 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
@@ -50,23 +60,43 @@ mpn_bc_mulmod_bnm1 (mp_ptr rp, mp_srcptr ap, mp_srcptr bp, mp_size_t rn,
 
 
 /* Inputs are {ap,rn+1} and {bp,rn+1}; output is {rp,rn+1}, in
-   semi-normalised representation, computation is mod B^rn + 1. Needs
-   a scratch area of 2rn + 2 limbs at tp; tp == rp is allowed.
+   normalised representation, computation is mod B^rn + 1. Needs
+   a scratch area of 2rn limbs at tp; tp == rp is allowed.
    Output is normalised. */
 static void
 mpn_bc_mulmod_bnp1 (mp_ptr rp, mp_srcptr ap, mp_srcptr bp, mp_size_t rn,
 		    mp_ptr tp)
 {
   mp_limb_t cy;
+  unsigned k;
 
   ASSERT (0 < rn);
 
-  mpn_mul_n (tp, ap, bp, rn + 1);
-  ASSERT (tp[2*rn+1] == 0);
-  ASSERT (tp[2*rn] < GMP_NUMB_MAX);
-  cy = tp[2*rn] + mpn_sub_n (rp, tp, tp+rn, rn);
+  if (UNLIKELY (ap[rn] | bp [rn]))
+    {
+      if (ap[rn])
+	cy = bp [rn] + mpn_neg (rp, bp, rn);
+      else /* ap[rn] == 0 */
+	cy = mpn_neg (rp, ap, rn);
+    }
+  else if (MPN_MULMOD_BKNP1_USABLE (rn, k, MUL_FFT_MODF_THRESHOLD))
+    {
+      mp_size_t n_k = rn / k;
+      TMP_DECL;
+
+      TMP_MARK;
+      mpn_mulmod_bknp1 (rp, ap, bp, n_k, k,
+                       TMP_ALLOC_LIMBS (mpn_mulmod_bknp1_itch (rn)));
+      TMP_FREE;
+      return;
+    }
+  else
+    {
+      mpn_mul_n (tp, ap, bp, rn);
+      cy = mpn_sub_n (rp, tp, tp + rn, rn);
+    }
   rp[rn] = 0;
-  MPN_INCR_U (rp, rn+1, cy );
+  MPN_INCR_U (rp, rn + 1, cy);
 }
 
 
@@ -122,7 +152,7 @@ mpn_mulmod_bnm1 (mp_ptr rp, mp_size_t rn, mp_srcptr ap, mp_size_t an, mp_srcptr 
 
       /* We need at least an + bn >= n, to be able to fit one of the
 	 recursive products at rp. Requiring strict inequality makes
-	 the coded slightly simpler. If desired, we could avoid this
+	 the code slightly simpler. If desired, we could avoid this
 	 restriction by initially halving rn as long as rn is even and
 	 an + bn <= rn/2. */
 
@@ -151,25 +181,22 @@ mpn_mulmod_bnm1 (mp_ptr rp, mp_size_t rn, mp_srcptr ap, mp_size_t an, mp_srcptr 
 	mp_size_t anm, bnm;
 	mp_ptr so;
 
+	bm1 = b0;
+	bnm = bn;
 	if (LIKELY (an > n))
 	  {
 	    am1 = xp;
 	    cy = mpn_add (xp, a0, n, a1, an - n);
 	    MPN_INCR_U (xp, n, cy);
 	    anm = n;
+	    so = xp + n;
 	    if (LIKELY (bn > n))
 	      {
-		bm1 = xp + n;
-		cy = mpn_add (xp + n, b0, n, b1, bn - n);
-		MPN_INCR_U (xp + n, n, cy);
+		bm1 = so;
+		cy = mpn_add (so, b0, n, b1, bn - n);
+		MPN_INCR_U (so, n, cy);
 		bnm = n;
-		so = xp + 2*n;
-	      }
-	    else
-	      {
-		so = xp + n;
-		bm1 = b0;
-		bnm = bn;
+		so += n;
 	      }
 	  }
 	else
@@ -177,8 +204,6 @@ mpn_mulmod_bnm1 (mp_ptr rp, mp_size_t rn, mp_srcptr ap, mp_size_t an, mp_srcptr 
 	    so = xp;
 	    am1 = a0;
 	    anm = an;
-	    bm1 = b0;
-	    bnm = bn;
 	  }
 
 	mpn_mulmod_bnm1 (rp, n, am1, anm, bm1, bnm, so);
@@ -189,26 +214,24 @@ mpn_mulmod_bnm1 (mp_ptr rp, mp_size_t rn, mp_srcptr ap, mp_size_t an, mp_srcptr 
 	mp_srcptr ap1, bp1;
 	mp_size_t anp, bnp;
 
+	bp1 = b0;
+	bnp = bn;
 	if (LIKELY (an > n)) {
 	  ap1 = sp1;
 	  cy = mpn_sub (sp1, a0, n, a1, an - n);
 	  sp1[n] = 0;
 	  MPN_INCR_U (sp1, n + 1, cy);
 	  anp = n + ap1[n];
+	  if (LIKELY (bn > n)) {
+	    bp1 = sp1 + n + 1;
+	    cy = mpn_sub (sp1 + n + 1, b0, n, b1, bn - n);
+	    sp1[2*n+1] = 0;
+	    MPN_INCR_U (sp1 + n + 1, n + 1, cy);
+	    bnp = n + bp1[n];
+	  }
 	} else {
 	  ap1 = a0;
 	  anp = an;
-	}
-
-	if (LIKELY (bn > n)) {
-	  bp1 = sp1 + n + 1;
-	  cy = mpn_sub (sp1 + n + 1, b0, n, b1, bn - n);
-	  sp1[2*n+1] = 0;
-	  MPN_INCR_U (sp1 + n + 1, n + 1, cy);
-	  bnp = n + bp1[n];
-	} else {
-	  bp1 = b0;
-	  bnp = bn;
 	}
 
 	if (BELOW_THRESHOLD (n, MUL_FFT_MODF_THRESHOLD))
@@ -217,7 +240,7 @@ mpn_mulmod_bnm1 (mp_ptr rp, mp_size_t rn, mp_srcptr ap, mp_size_t an, mp_srcptr 
 	  {
 	    int mask;
 	    k = mpn_fft_best_k (n, 0);
-	    mask = (1<<k) -1;
+	    mask = (1<<k) - 1;
 	    while (n & mask) {k--; mask >>=1;};
 	  }
 	if (k >= FFT_FIRST_K)

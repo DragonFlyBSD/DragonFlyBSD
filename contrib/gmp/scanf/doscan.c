@@ -4,33 +4,39 @@
    CERTAIN TO BE SUBJECT TO INCOMPATIBLE CHANGES OR DISAPPEAR COMPLETELY IN
    FUTURE GNU MP RELEASES.
 
-Copyright 2001, 2002, 2003 Free Software Foundation, Inc.
+Copyright 2001-2003 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 #define _GNU_SOURCE    /* for DECIMAL_POINT in langinfo.h */
 
-#include "config.h"
+#include "config.h"	/* needed for the HAVE_, could also move gmp incls */
 
-#if HAVE_STDARG
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
-
 #include <ctype.h>
 #include <stddef.h>    /* for ptrdiff_t */
 #include <stdio.h>
@@ -47,17 +53,15 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 
 #if HAVE_INTTYPES_H
 # include <inttypes.h> /* for intmax_t */
-#else
-# if HAVE_STDINT_H
-#  include <stdint.h>
-# endif
+#endif
+#if HAVE_STDINT_H
+# include <stdint.h>
 #endif
 
 #if HAVE_SYS_TYPES_H
 #include <sys/types.h> /* for quad_t */
 #endif
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 
@@ -396,7 +400,7 @@ gmpscan (const struct gmp_doscan_funs_t *funs, void *data,
 	      if (exp >= 0)
 		mpf_mul_2exp (f, f, (unsigned long) exp);
 	      else
-		mpf_div_2exp (f, f, - (unsigned long) exp);
+		mpf_div_2exp (f, f, NEG_CAST (unsigned long, exp));
 	    }
 	}
 	break;
@@ -494,7 +498,7 @@ __gmp_doscan (const struct gmp_doscan_funs_t *funs, void *data,
   alloc_fmt = __GMP_ALLOCATE_FUNC_TYPE (alloc_fmt_size, char);
 
   fmt = orig_fmt;
-  end_fmt = orig_fmt + orig_fmt_len;
+  ASSERT_CODE (end_fmt = orig_fmt + orig_fmt_len);
 
   for (;;)
     {

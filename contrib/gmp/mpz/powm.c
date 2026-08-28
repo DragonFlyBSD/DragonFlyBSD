@@ -2,31 +2,38 @@
 
    Contributed to the GNU project by Torbjorn Granlund.
 
-Copyright 1991, 1993, 1994, 1996, 1997, 2000, 2001, 2002, 2005, 2008, 2009
-Free Software Foundation, Inc.
+Copyright 1991, 1993, 1994, 1996, 1997, 2000-2002, 2005, 2008, 2009,
+2011, 2012, 2015, 2019 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
-#ifdef BERKELEY_MP
-#include "mp.h"
-#endif
 
 
 /* TODO
@@ -52,21 +59,18 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #define HANDLE_NEGATIVE_EXPONENT 1
 
 void
-#ifndef BERKELEY_MP
 mpz_powm (mpz_ptr r, mpz_srcptr b, mpz_srcptr e, mpz_srcptr m)
-#else /* BERKELEY_MP */
-pow (mpz_srcptr b, mpz_srcptr e, mpz_srcptr m, mpz_ptr r)
-#endif /* BERKELEY_MP */
 {
   mp_size_t n, nodd, ncnt;
   int cnt;
   mp_ptr rp, tp;
   mp_srcptr bp, ep, mp;
   mp_size_t rn, bn, es, en, itch;
+  mpz_t new_b;			/* note: value lives long via 'b' */
   TMP_DECL;
 
   n = ABSIZ(m);
-  if (n == 0)
+  if (UNLIKELY (n == 0))
     DIVIDE_BY_ZERO;
 
   mp = PTR(m);
@@ -76,20 +80,19 @@ pow (mpz_srcptr b, mpz_srcptr e, mpz_srcptr m, mpz_ptr r)
   es = SIZ(e);
   if (UNLIKELY (es <= 0))
     {
-      mpz_t new_b;
       if (es == 0)
 	{
 	  /* b^0 mod m,  b is anything and m is non-zero.
 	     Result is 1 mod m, i.e., 1 or 0 depending on if m = 1.  */
 	  SIZ(r) = n != 1 || mp[0] != 1;
-	  PTR(r)[0] = 1;
+	  MPZ_NEWALLOC (r, 1)[0] = 1;
 	  TMP_FREE;	/* we haven't really allocated anything here */
 	  return;
 	}
 #if HANDLE_NEGATIVE_EXPONENT
       MPZ_TMP_INIT (new_b, n + 1);
 
-      if (! mpz_invert (new_b, b, m))
+      if (UNLIKELY (! mpz_invert (new_b, b, m)))
 	DIVIDE_BY_ZERO;
       b = new_b;
       es = -es;
@@ -122,11 +125,11 @@ pow (mpz_srcptr b, mpz_srcptr e, mpz_srcptr m, mpz_ptr r)
 	  rn = n;
 	  MPN_NORMALIZE (rp, rn);
 
-	  if (SIZ(b) < 0 && rn != 0)
+	  if (rn != 0 && SIZ(b) < 0)
 	    {
 	      mpn_sub (rp, mp, n, rp, rn);
 	      rn = n;
-	      MPN_NORMALIZE (rp, rn);
+	      MPN_NORMALIZE_NOT_ZERO (rp, rn);
 	    }
 	}
       else
@@ -135,7 +138,7 @@ pow (mpz_srcptr b, mpz_srcptr e, mpz_srcptr m, mpz_ptr r)
 	    {
 	      mpn_sub (rp, mp, n, bp, bn);
 	      rn = n;
-	      rn -= (rp[rn - 1] == 0);
+	      MPN_NORMALIZE_NOT_ZERO (rp, rn);
 	    }
 	  else
 	    {
@@ -158,11 +161,11 @@ pow (mpz_srcptr b, mpz_srcptr e, mpz_srcptr m, mpz_ptr r)
   cnt = 0;
   if (mp[0] % 2 == 0)
     {
-      mp_ptr new = TMP_ALLOC_LIMBS (nodd);
+      mp_ptr newmp = TMP_ALLOC_LIMBS (nodd);
       count_trailing_zeros (cnt, mp[0]);
-      mpn_rshift (new, mp, nodd, cnt);
-      nodd -= new[nodd - 1] == 0;
-      mp = new;
+      mpn_rshift (newmp, mp, nodd, cnt);
+      nodd -= newmp[nodd - 1] == 0;
+      mp = newmp;
       ncnt++;
     }
 
@@ -197,10 +200,10 @@ pow (mpz_srcptr b, mpz_srcptr e, mpz_srcptr m, mpz_ptr r)
 
       if (bn < ncnt)
 	{
-	  mp_ptr new = TMP_ALLOC_LIMBS (ncnt);
-	  MPN_COPY (new, bp, bn);
-	  MPN_ZERO (new + bn, ncnt - bn);
-	  bp = new;
+	  mp_ptr newbp = TMP_ALLOC_LIMBS (ncnt);
+	  MPN_COPY (newbp, bp, bn);
+	  MPN_ZERO (newbp + bn, ncnt - bn);
+	  bp = newbp;
 	}
 
       r2 = tp;
@@ -232,10 +235,10 @@ pow (mpz_srcptr b, mpz_srcptr e, mpz_srcptr m, mpz_ptr r)
     zero:
       if (nodd < ncnt)
 	{
-	  mp_ptr new = TMP_ALLOC_LIMBS (ncnt);
-	  MPN_COPY (new, mp, nodd);
-	  MPN_ZERO (new + nodd, ncnt - nodd);
-	  mp = new;
+	  mp_ptr newmp = TMP_ALLOC_LIMBS (ncnt);
+	  MPN_COPY (newmp, mp, nodd);
+	  MPN_ZERO (newmp + nodd, ncnt - nodd);
+	  mp = newmp;
 	}
 
       odd_inv_2exp = tp + n;
@@ -271,7 +274,7 @@ pow (mpz_srcptr b, mpz_srcptr e, mpz_srcptr m, mpz_ptr r)
     }
 
  ret:
-  MPZ_REALLOC (r, rn);
+  MPZ_NEWALLOC (r, rn);
   SIZ(r) = rn;
   MPN_COPY (PTR(r), rp, rn);
 

@@ -6,28 +6,38 @@
    SAFE TO REACH IT THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT IT WILL CHANGE OR DISAPPEAR IN A FUTURE GNU MP RELEASE.
 
-Copyright 2006, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
+Copyright 2006-2010, 2013, 2021 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
-/* Evaluate in: -1, -1/2, 0, +1/2, +1, +2, +inf
+/* Evaluate in: -2, -1, 0, +1/2, +1, +2, +inf
 
   <-s--><--n--><--n--><--n-->
    ____ ______ ______ ______
@@ -37,8 +47,8 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
   v1  = ( a0+ a1+ a2+ a3)^2 #    A(1)^2   ah  <= 3
   vm1 = ( a0- a1+ a2- a3)^2 #   A(-1)^2  |ah| <= 1
   v2  = ( a0+2a1+4a2+8a3)^2 #    A(2)^2   ah  <= 14
+  vm2 = ( a0-2a1+4a2-8a3)^2 #   A(-2)^2  -9<=ah<=4
   vh  = (8a0+4a1+2a2+ a3)^2 #  A(1/2)^2   ah  <= 14
-  vmh = (8a0-4a1+2a2- a3)^2 # A(-1/2)^2  -4<=ah<=9
   vinf=               a3 ^2 #  A(inf)^2
 */
 
@@ -52,7 +62,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #define MAYBE_sqr_toom2							\
   (SQR_TOOM4_THRESHOLD < 4 * SQR_TOOM3_THRESHOLD)
 #define MAYBE_sqr_toom4							\
-  (SQR_FFT_THRESHOLD >= 4 * SQR_TOOM4_THRESHOLD)
+  (SQR_TOOM6_THRESHOLD >= 4 * SQR_TOOM4_THRESHOLD)
 #endif
 
 #define TOOM4_SQR_REC(p, a, n, ws)					\
@@ -144,10 +154,11 @@ mpn_toom4_sqr (mp_ptr pp,
   mpn_toom_eval_dgr3_pm1 (apx, amx, ap, n, s, tp);
 
   TOOM4_SQR_REC (v1, apx, n + 1, tp);	/* v1,  2n+1 limbs */
-  TOOM4_SQR_REC (vm1, amx, n + 1, tp);	/* vm1,  2n+1 limbs */
+  vm1 [2 * n] = 0;
+  TOOM4_SQR_REC (vm1, amx, n + amx[n], tp);	/* vm1,  2n+1 limbs */
 
   TOOM4_SQR_REC (v0, a0, n, tp);
   TOOM4_SQR_REC (vinf, a3, s, tp);	/* vinf, 2s limbs */
 
-  mpn_toom_interpolate_7pts (pp, n, 0, vm2, vm1, v2, vh, 2*s, tp);
+  mpn_toom_interpolate_7pts (pp, n, (enum toom7_flags) 0, vm2, vm1, v2, vh, 2*s, tp);
 }

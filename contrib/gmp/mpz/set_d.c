@@ -1,22 +1,32 @@
 /* mpz_set_d(integer, val) -- Assign INTEGER with a double value VAL.
 
-Copyright 1995, 1996, 2000, 2001, 2002, 2003, 2006 Free Software Foundation,
-Inc.
+Copyright 1995, 1996, 2000-2003, 2006, 2015 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 #include "config.h"
 
@@ -24,7 +34,6 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include <float.h>  /* for DBL_MAX */
 #endif
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 
@@ -44,21 +53,18 @@ mpz_set_d (mpz_ptr r, double d)
   mp_size_t rn;
 
   DOUBLE_NAN_INF_ACTION (d,
-                         __gmp_invalid_operation (),
-                         __gmp_invalid_operation ());
+			 __gmp_invalid_operation (),
+			 __gmp_invalid_operation ());
 
   negative = d < 0;
   d = ABS (d);
 
   rn = __gmp_extract_double (tp, d);
 
-  if (ALLOC(r) < rn)
-    _mpz_realloc (r, rn);
-
   if (rn <= 0)
     rn = 0;
 
-  rp = PTR (r);
+  rp = MPZ_NEWALLOC (r, rn);
 
   switch (rn)
     {

@@ -2,29 +2,40 @@
    in base BASE to a float in dest.  If BASE is zero, the leading characters
    of STRING is used to figure out the base.
 
-Copyright 1993, 1994, 1995, 1996, 1997, 2000, 2001, 2002, 2003, 2005, 2007,
-2008 Free Software Foundation, Inc.
+Copyright 1993-1997, 2000-2003, 2005, 2007, 2008, 2011, 2013, 2019 Free
+Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 /*
   This still needs work, as suggested by some FIXME comments.
   1. Don't depend on superfluous mantissa digits.
   2. Allocate temp space more cleverly.
-  3. Use mpn_tdiv_qr instead of mpn_lshift+mpn_divrem.
+  3. Use mpn_div_q instead of mpn_lshift+mpn_divrem.
 */
 
 #define _GNU_SOURCE    /* for DECIMAL_POINT in langinfo.h */
@@ -43,11 +54,10 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #include <locale.h>    /* for localeconv */
 #endif
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
-extern const unsigned char __gmp_digit_value_tab[];
+
 #define digit_value_tab __gmp_digit_value_tab
 
 /* Compute base^exp and return the most significant prec limbs in rp[].
@@ -116,12 +126,15 @@ mpf_set_str (mpf_ptr x, const char *str, int base)
   size_t i, j;
   int c;
   int negative;
-  char *dotpos = 0;
+  char *dotpos;
   const char *expptr;
   int exp_base;
   const char  *point = GMP_DECIMAL_POINT;
   size_t      pointlen = strlen (point);
   const unsigned char *digit_value;
+  int incr;
+  size_t n_zeros_skipped;
+
   TMP_DECL;
 
   c = (unsigned char) *str;
@@ -154,19 +167,19 @@ mpf_set_str (mpf_ptr x, const char *str, int base)
     {
       /* For bases > 36, use the collating sequence
 	 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.  */
-      digit_value += 224;
+      digit_value += 208;
       if (base > 62)
 	return -1;		/* too large base */
     }
 
   /* Require at least one digit, possibly after an initial decimal point.  */
-  if (digit_value[c] >= (base == 0 ? 10 : base))
+  if (digit_value[c] >= base)
     {
       /* not a digit, must be a decimal point */
       for (i = 0; i < pointlen; i++)
-        if (str[i] != point[i])
-          return -1;
-      if (digit_value[(unsigned char) str[pointlen]] >= (base == 0 ? 10 : base))
+	if (str[i] != point[i])
+	  return -1;
+      if (digit_value[(unsigned char) str[pointlen]] >= base)
 	return -1;
     }
 
@@ -188,6 +201,10 @@ mpf_set_str (mpf_ptr x, const char *str, int base)
   TMP_MARK;
   s = begs = (char *) TMP_ALLOC (str_size + 1);
 
+  incr = 0;
+  n_zeros_skipped = 0;
+  dotpos = NULL;
+
   /* Loop through mantissa, converting it from ASCII to raw byte values.  */
   for (i = 0; i < str_size; i++)
     {
@@ -196,10 +213,10 @@ mpf_set_str (mpf_ptr x, const char *str, int base)
 	{
 	  int dig;
 
-          for (j = 0; j < pointlen; j++)
-            if (str[j] != point[j])
-              goto not_point;
-          if (1)
+	  for (j = 0; j < pointlen; j++)
+	    if (str[j] != point[j])
+	      goto not_point;
+	  if (1)
 	    {
 	      if (dotpos != 0)
 		{
@@ -213,14 +230,20 @@ mpf_set_str (mpf_ptr x, const char *str, int base)
 	    }
 	  else
 	    {
-            not_point:
+	    not_point:
 	      dig = digit_value[c];
 	      if (dig >= base)
 		{
 		  TMP_FREE;
 		  return -1;
 		}
-	      *s++ = dig;
+	      *s = dig;
+	      incr |= dig != 0;
+	      s += incr;	/* Increment after first non-0 digit seen. */
+	      if (dotpos != NULL)
+		/* Count skipped zeros between radix point and first non-0
+		   digit. */
+		n_zeros_skipped += 1 - incr;
 	    }
 	}
       c = (unsigned char) *++str;
@@ -241,27 +264,24 @@ mpf_set_str (mpf_ptr x, const char *str, int base)
 #if 0
     size_t n_chars_needed;
 
-    /* This breaks things like 0.000...0001.  To safely ignore superfluous
-       digits, we need to skip over leading zeros.  */
+    /* This needs careful testing.  Leave disabled for now.  */
     /* Just consider the relevant leading digits of the mantissa.  */
-    n_chars_needed = 2 + (size_t)
-      (((size_t) prec * GMP_NUMB_BITS) * mp_bases[base].chars_per_bit_exactly);
+    LIMBS_PER_DIGIT_IN_BASE (n_chars_needed, prec, base);
     if (str_size > n_chars_needed)
       str_size = n_chars_needed;
 #endif
 
-    ma = 2 + (mp_size_t)
-      (str_size / (GMP_NUMB_BITS * mp_bases[base].chars_per_bit_exactly));
-    mp = TMP_ALLOC_LIMBS (ma);
-    mn = mpn_set_str (mp, (unsigned char *) begs, str_size, base);
-
-    if (mn == 0)
+    if (str_size == 0)
       {
 	SIZ(x) = 0;
 	EXP(x) = 0;
 	TMP_FREE;
 	return 0;
       }
+
+    LIMBS_PER_DIGIT_IN_BASE (ma, str_size, base);
+    mp = TMP_ALLOC_LIMBS (ma);
+    mn = mpn_set_str (mp, (unsigned char *) begs, str_size, base);
 
     madj = 0;
     /* Ignore excess limbs in MP,MSIZE.  */
@@ -302,7 +322,7 @@ mpf_set_str (mpf_ptr x, const char *str, int base)
     else
       exp_in_base = 0;
     if (dotpos != 0)
-      exp_in_base -= s - dotpos;
+      exp_in_base -= s - dotpos + n_zeros_skipped;
     divflag = exp_in_base < 0;
     exp_in_base = ABS (exp_in_base);
 
@@ -316,15 +336,16 @@ mpf_set_str (mpf_ptr x, const char *str, int base)
       }
 
     ra = 2 * (prec + 1);
-    rp = TMP_ALLOC_LIMBS (ra);
-    tp = TMP_ALLOC_LIMBS (ra);
+    TMP_ALLOC_LIMBS_2 (rp, ra, tp, ra);
     rn = mpn_pow_1_highpart (rp, &radj, (mp_limb_t) base, exp_in_base, prec, tp);
 
     if (divflag)
       {
 #if 0
-	/* FIXME: Should use mpn_tdiv here.  */
-	mpn_tdiv_qr (qp, mp, 0L, mp, mn, rp, rn);
+	/* FIXME: Should use mpn_div_q here.  */
+	...
+	mpn_div_q (tp, mp, mn, rp, rn, scratch);
+	...
 #else
 	mp_ptr qp;
 	mp_limb_t qlimb;

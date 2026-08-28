@@ -6,24 +6,34 @@
    SAFE TO REACH IT THROUGH DOCUMENTED INTERFACES.  IN FACT, IT IS ALMOST
    GUARANTEED THAT IT WILL CHANGE OR DISAPPEAR IN A FUTURE GMP RELEASE.
 
-Copyright 2009, 2010 Free Software Foundation, Inc.
+Copyright 2009, 2010, 2015, 2018 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
@@ -108,9 +118,10 @@ mpn_div_q (mp_ptr qp,
 
   ASSERT_ALWAYS (FUDGE >= 2);
 
+  dh = dp[dn - 1];
   if (dn == 1)
     {
-      mpn_divrem_1 (qp, 0L, np, nn, dp[dn - 1]);
+      mpn_divrem_1 (qp, 0L, np, nn, dh);
       return;
     }
 
@@ -122,7 +133,6 @@ mpn_div_q (mp_ptr qp,
                           |_______|  */
       new_np = scratch;
 
-      dh = dp[dn - 1];
       if (LIKELY ((dh & GMP_NUMB_HIGHBIT) == 0))
 	{
 	  count_leading_zeros (cnt, dh);
@@ -160,16 +170,8 @@ mpn_div_q (mp_ptr qp,
 	    }
 	  if (cy == 0)
 	    qp[qn - 1] = qh;
-	  else if (UNLIKELY (qh != 0))
-	    {
-	      /* This happens only when the quotient is close to B^n and
-		 mpn_*_divappr_q returned B^n.  */
-	      mp_size_t i, n;
-	      n = new_nn - dn;
-	      for (i = 0; i < n; i++)
-		qp[i] = GMP_NUMB_MAX;
-	      qh = 0;		/* currently ignored */
-	    }
+	  else
+	    ASSERT (qh == 0);
 	}
       else  /* divisor is already normalised */
 	{
@@ -217,7 +219,6 @@ mpn_div_q (mp_ptr qp,
 	new_np = TMP_ALLOC_LIMBS (new_nn + 1);
 
 
-      dh = dp[dn - 1];
       if (LIKELY ((dh & GMP_NUMB_HIGHBIT) == 0))
 	{
 	  count_leading_zeros (cnt, dh);
@@ -266,7 +267,7 @@ mpn_div_q (mp_ptr qp,
 	}
       else  /* divisor is already normalised */
 	{
-	  MPN_COPY (new_np, np + nn - new_nn, new_nn); /* pointless of MU will be used */
+	  MPN_COPY (new_np, np + nn - new_nn, new_nn); /* pointless if MU will be used */
 
 	  new_dp = (mp_ptr) dp + dn - (qn + 1);
 
@@ -304,7 +305,7 @@ mpn_div_q (mp_ptr qp,
 	  rn -= rp[rn - 1] == 0;
 
           if (rn > nn || mpn_cmp (np, rp, nn) < 0)
-            mpn_decr_u (qp, 1);
+            MPN_DECR_U (qp, qn, 1);
         }
     }
 

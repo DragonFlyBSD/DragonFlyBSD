@@ -5,25 +5,35 @@
    SAFE TO REACH THIS FUNCTION THROUGH DOCUMENTED INTERFACES.
 
 
-Copyright 1991, 1992, 1993, 1994, 1996, 1997, 2000, 2001, 2002, 2003, 2004,
-2005, 2008 Free Software Foundation, Inc.
+Copyright 1991-1994, 1996, 1997, 2000-2005, 2008, 2010, 2011, 2017 Free
+Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
@@ -43,6 +53,30 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 	(rp)[2 * _i] = lpl >> GMP_NAIL_BITS;				\
       }									\
   } while (0)
+#endif
+
+#if HAVE_NATIVE_mpn_sqr_diag_addlsh1
+#define MPN_SQR_DIAG_ADDLSH1(rp, tp, up, n)				\
+  mpn_sqr_diag_addlsh1 (rp, tp, up, n)
+#else
+#if HAVE_NATIVE_mpn_addlsh1_n
+#define MPN_SQR_DIAG_ADDLSH1(rp, tp, up, n)				\
+  do {									\
+    mp_limb_t cy;							\
+    MPN_SQR_DIAGONAL (rp, up, n);					\
+    cy = mpn_addlsh1_n (rp + 1, rp + 1, tp, 2 * n - 2);			\
+    rp[2 * n - 1] += cy;						\
+  } while (0)
+#else
+#define MPN_SQR_DIAG_ADDLSH1(rp, tp, up, n)				\
+  do {									\
+    mp_limb_t cy;							\
+    MPN_SQR_DIAGONAL (rp, up, n);					\
+    cy = mpn_lshift (tp, tp, 2 * n - 2, 1);				\
+    cy += mpn_add_n (rp + 1, rp + 1, tp, 2 * n - 2);			\
+    rp[2 * n - 1] += cy;						\
+  } while (0)
+#endif
 #endif
 
 
@@ -84,9 +118,13 @@ mpn_sqr_basecase (mp_ptr rp, mp_srcptr up, mp_size_t n)
     {
       if (n == 2)
 	{
+#if HAVE_NATIVE_mpn_mul_2
+	  rp[3] = mpn_mul_2 (rp, up, 2, up);
+#else
 	  rp[0] = 0;
 	  rp[1] = 0;
 	  rp[3] = mpn_addmul_2 (rp, up, 2, up);
+#endif
 	  return;
 	}
 
@@ -101,15 +139,7 @@ mpn_sqr_basecase (mp_ptr rp, mp_srcptr up, mp_size_t n)
       tp[2 * n - 3] = cy;
     }
 
-  MPN_SQR_DIAGONAL (rp, up, n);
-
-#if HAVE_NATIVE_mpn_addlsh1_n
-  cy = mpn_addlsh1_n (rp + 1, rp + 1, tp, 2 * n - 2);
-#else
-  cy = mpn_lshift (tp, tp, 2 * n - 2, 1);
-  cy += mpn_add_n (rp + 1, rp + 1, tp, 2 * n - 2);
-#endif
-  rp[2 * n - 1] += cy;
+  MPN_SQR_DIAG_ADDLSH1 (rp, tp, up, n);
 }
 #define READY_WITH_mpn_sqr_basecase
 #endif
@@ -194,9 +224,13 @@ mpn_sqr_basecase (mp_ptr rp, mp_srcptr up, mp_size_t n)
 
       if (n == 2)
 	{
+#if HAVE_NATIVE_mpn_mul_2
+	  rp[3] = mpn_mul_2 (rp, up, 2, up);
+#else
 	  rp[0] = 0;
 	  rp[1] = 0;
 	  rp[3] = mpn_addmul_2 (rp, up, 2, up);
+#endif
 	  return;
 	}
 
@@ -248,10 +282,45 @@ mpn_sqr_basecase (mp_ptr rp, mp_srcptr up, mp_size_t n)
 #endif
 
 
+#if ! defined (READY_WITH_mpn_sqr_basecase) && HAVE_NATIVE_mpn_sqr_diag_addlsh1
+
+/* mpn_sqr_basecase using mpn_addmul_1 and mpn_sqr_diag_addlsh1, avoiding stack
+   allocation.  */
+void
+mpn_sqr_basecase (mp_ptr rp, mp_srcptr up, mp_size_t n)
+{
+  if (n == 1)
+    {
+      mp_limb_t ul, lpl;
+      ul = up[0];
+      umul_ppmm (rp[1], lpl, ul, ul << GMP_NAIL_BITS);
+      rp[0] = lpl >> GMP_NAIL_BITS;
+    }
+  else
+    {
+      mp_size_t i;
+      mp_ptr xp;
+
+      rp += 1;
+      rp[n - 1] = mpn_mul_1 (rp, up + 1, n - 1, up[0]);
+      for (i = n - 2; i != 0; i--)
+	{
+	  up += 1;
+	  rp += 2;
+	  rp[i] = mpn_addmul_1 (rp, up + 1, i, up[0]);
+	}
+
+      xp = rp - 2 * n + 3;
+      mpn_sqr_diag_addlsh1 (xp, xp + 1, up - n + 2, n);
+    }
+}
+#define READY_WITH_mpn_sqr_basecase
+#endif
+
+
 #if ! defined (READY_WITH_mpn_sqr_basecase)
 
 /* Default mpn_sqr_basecase using mpn_addmul_1.  */
-
 void
 mpn_sqr_basecase (mp_ptr rp, mp_srcptr up, mp_size_t n)
 {
@@ -260,13 +329,14 @@ mpn_sqr_basecase (mp_ptr rp, mp_srcptr up, mp_size_t n)
   ASSERT (n >= 1);
   ASSERT (! MPN_OVERLAP_P (rp, 2*n, up, n));
 
-  {
-    mp_limb_t ul, lpl;
-    ul = up[0];
-    umul_ppmm (rp[1], lpl, ul, ul << GMP_NAIL_BITS);
-    rp[0] = lpl >> GMP_NAIL_BITS;
-  }
-  if (n > 1)
+  if (n == 1)
+    {
+      mp_limb_t ul, lpl;
+      ul = up[0];
+      umul_ppmm (rp[1], lpl, ul, ul << GMP_NAIL_BITS);
+      rp[0] = lpl >> GMP_NAIL_BITS;
+    }
+  else
     {
       mp_limb_t tarr[2 * SQR_TOOM2_THRESHOLD];
       mp_ptr tp = tarr;
@@ -283,18 +353,9 @@ mpn_sqr_basecase (mp_ptr rp, mp_srcptr up, mp_size_t n)
 	  cy = mpn_addmul_1 (tp + 2 * i - 2, up + i, n - i, up[i - 1]);
 	  tp[n + i - 2] = cy;
 	}
-      MPN_SQR_DIAGONAL (rp + 2, up + 1, n - 1);
 
-      {
-	mp_limb_t cy;
-#if HAVE_NATIVE_mpn_addlsh1_n
-	cy = mpn_addlsh1_n (rp + 1, rp + 1, tp, 2 * n - 2);
-#else
-	cy = mpn_lshift (tp, tp, 2 * n - 2, 1);
-	cy += mpn_add_n (rp + 1, rp + 1, tp, 2 * n - 2);
-#endif
-	rp[2 * n - 1] += cy;
-      }
+      MPN_SQR_DIAG_ADDLSH1 (rp, tp, up, n);
     }
 }
+#define READY_WITH_mpn_sqr_basecase
 #endif

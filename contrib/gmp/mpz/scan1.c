@@ -1,23 +1,33 @@
 /* mpz_scan1 -- search for a 1 bit.
 
-Copyright 2000, 2001, 2002, 2004, 2012 Free Software Foundation, Inc.
+Copyright 2000-2002, 2004, 2012, 2015 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 #include "longlong.h"
 
@@ -33,7 +43,7 @@ mpz_scan1 (mpz_srcptr u, mp_bitcnt_t starting_bit) __GMP_NOTHROW
   mp_srcptr      u_ptr = PTR(u);
   mp_size_t      size = SIZ(u);
   mp_size_t      abs_size = ABS(size);
-  mp_srcptr      u_end = u_ptr + abs_size;
+  mp_srcptr      u_end = u_ptr + abs_size - 1;
   mp_size_t      starting_limb = starting_bit / GMP_NUMB_BITS;
   mp_srcptr      p = u_ptr + starting_limb;
   mp_limb_t      limb;
@@ -43,6 +53,10 @@ mpz_scan1 (mpz_srcptr u, mp_bitcnt_t starting_bit) __GMP_NOTHROW
      Notice this test picks up any u==0 too. */
   if (starting_limb >= abs_size)
     return (size >= 0 ? ~(mp_bitcnt_t) 0 : starting_bit);
+
+  /* This is an important case, where sign is not relevant! */
+  if (starting_bit == 0)
+    goto short_cut;
 
   limb = *p;
 
@@ -55,62 +69,35 @@ mpz_scan1 (mpz_srcptr u, mp_bitcnt_t starting_bit) __GMP_NOTHROW
 	{
 	  /* If it's the high limb which is zero after masking, then there's
 	     no 1 bits after starting_bit.  */
-	  p++;
 	  if (p == u_end)
 	    return ~(mp_bitcnt_t) 0;
 
 	  /* Otherwise search further for a non-zero limb.  The high limb is
 	     non-zero, if nothing else.  */
-	  for (;;)
+	search_nonzero:
+	  do
 	    {
-	      limb = *p;
-	      if (limb != 0)
-		break;
+	      ASSERT (p != u_end);
 	      p++;
-	      ASSERT (p < u_end);
+	    short_cut:
+	      limb = *p;
 	    }
+	  while (limb == 0);
 	}
     }
   else
     {
-      mp_srcptr  q;
-
       /* If there's a non-zero limb before ours then we're in the ones
-	 complement region.  Search from *(p-1) downwards since that might
-	 give better cache locality, and since a non-zero in the middle of a
-	 number is perhaps a touch more likely than at the end.  */
-      q = p;
-      while (q != u_ptr)
-	{
-	  q--;
-	  if (*q != 0)
-	    goto inverted;
-	}
+	 complement region.  */
+      if (starting_limb == 0 || mpn_zero_p (u_ptr, starting_limb)) {
+	if (limb == 0)
+	  /* Seeking for the first non-zero bit, it is the same for u and -u. */
+	  goto search_nonzero;
 
-      if (limb == 0)
-	{
-	  /* Skip zero limbs, to find the start of twos complement.  The
-	     high limb is non-zero, if nothing else.  This search is
-	     necessary so the -limb is applied at the right spot. */
-	  do
-	    {
-	      p++;
-	      ASSERT (p < u_end);
-	      limb = *p;
-	    }
-	  while (limb == 0);
+	/* Adjust so ~limb implied by searching for 0 bit becomes -limb.  */
+	limb--;
+      }
 
-	  /* Apply twos complement, and look for a 1 bit in that.  Since
-	     limb!=0 here, also have (-limb)!=0 so there's certainly a 1
-	     bit.  */
-	  limb = -limb;
-	  goto got_limb;
-	}
-
-      /* Adjust so ~limb implied by searching for 0 bit becomes -limb.  */
-      limb--;
-
-    inverted:
       /* Now seeking a 0 bit. */
 
       /* Mask to 1 all bits before starting_bit, thus ignoring them. */
@@ -120,9 +107,9 @@ mpz_scan1 (mpz_srcptr u, mp_bitcnt_t starting_bit) __GMP_NOTHROW
 	 then the zero immediately past the end is the result.  */
       while (limb == GMP_NUMB_MAX)
 	{
-	  p++;
 	  if (p == u_end)
 	    return (mp_bitcnt_t) abs_size * GMP_NUMB_BITS;
+	  p++;
 	  limb = *p;
 	}
 
@@ -130,7 +117,6 @@ mpz_scan1 (mpz_srcptr u, mp_bitcnt_t starting_bit) __GMP_NOTHROW
       limb = ~limb;
     }
 
- got_limb:
   ASSERT (limb != 0);
   count_trailing_zeros (cnt, limb);
   return (mp_bitcnt_t) (p - u_ptr) * GMP_NUMB_BITS + cnt;

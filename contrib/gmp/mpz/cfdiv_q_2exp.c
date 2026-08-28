@@ -1,30 +1,40 @@
 /* mpz_cdiv_q_2exp, mpz_fdiv_q_2exp -- quotient from mpz divided by 2^n.
 
-Copyright 1991, 1993, 1994, 1996, 1998, 1999, 2001, 2002, 2004 Free Software
-Foundation, Inc.
+Copyright 1991, 1993, 1994, 1996, 1998, 1999, 2001, 2002, 2004, 2012,
+2015 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
-#include "gmp.h"
 #include "gmp-impl.h"
 
 
 /* dir==1 for ceil, dir==-1 for floor */
 
-static void __gmpz_cfdiv_q_2exp __GMP_PROTO ((REGPARM_3_1 (mpz_ptr, mpz_srcptr, mp_bitcnt_t, int))) REGPARM_ATTR (1);
+static void __gmpz_cfdiv_q_2exp (REGPARM_3_1 (mpz_ptr, mpz_srcptr, mp_bitcnt_t, int)) REGPARM_ATTR (1);
 #define cfdiv_q_2exp(w,u,cnt,dir)  __gmpz_cfdiv_q_2exp (REGPARM_3_1 (w,u,cnt,dir))
 
 REGPARM_ATTR (1) static void
@@ -42,13 +52,13 @@ cfdiv_q_2exp (mpz_ptr w, mpz_srcptr u, mp_bitcnt_t cnt, int dir)
   if (wsize <= 0)
     {
       /* u < 2**cnt, so result 1, 0 or -1 according to rounding */
-      PTR(w)[0] = 1;
+      MPZ_NEWALLOC (w, 1)[0] = 1;
       SIZ(w) = (usize == 0 || (usize ^ dir) < 0 ? 0 : dir);
       return;
     }
 
   /* +1 limb to allow for mpn_add_1 below */
-  MPZ_REALLOC (w, wsize+1);
+  wp = MPZ_REALLOC (w, wsize+1);
 
   /* Check for rounding if direction matches u sign.
      Set round if we're skipping non-zero limbs.  */
@@ -59,7 +69,6 @@ cfdiv_q_2exp (mpz_ptr w, mpz_srcptr u, mp_bitcnt_t cnt, int dir)
     for (i = 0; i < limb_cnt && round == 0; i++)
       round = up[i];
 
-  wp = PTR(w);
   cnt %= GMP_NUMB_BITS;
   if (cnt != 0)
     {
@@ -73,7 +82,7 @@ cfdiv_q_2exp (mpz_ptr w, mpz_srcptr u, mp_bitcnt_t cnt, int dir)
     {
       if (wsize != 0)
 	{
-          mp_limb_t cy;
+	  mp_limb_t cy;
 	  cy = mpn_add_1 (wp, wp, wsize, CNST_LIMB(1));
 	  wp[wsize] = cy;
 	  wsize += cy;

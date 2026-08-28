@@ -1,26 +1,37 @@
 /* Generate perfect square testing data.
 
-Copyright 2002, 2003, 2004 Free Software Foundation, Inc.
+Copyright 2002-2004, 2012, 2014 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "dumbmp.c"
+#include "bootstrap.c"
 
 
 /* The aim of this program is to choose either mpn_mod_34lsub1 or mpn_mod_1
@@ -124,8 +135,8 @@ int
 f_cmp_divisor (const void *parg, const void *qarg)
 {
   const struct factor_t *p, *q;
-  p = parg;
-  q = qarg;
+  p = (const struct factor_t *) parg;
+  q = (const struct factor_t *) qarg;
   if (p->divisor > q->divisor)
     return 1;
   else if (p->divisor < q->divisor)
@@ -138,8 +149,8 @@ int
 f_cmp_fraction (const void *parg, const void *qarg)
 {
   const struct factor_t *p, *q;
-  p = parg;
-  q = qarg;
+  p = (const struct factor_t *) parg;
+  q = (const struct factor_t *) qarg;
   if (p->fraction > q->fraction)
     return 1;
   else if (p->fraction < q->fraction)
@@ -152,9 +163,9 @@ f_cmp_fraction (const void *parg, const void *qarg)
    accordingly.  */
 #define COLLAPSE_ELEMENT(array, idx, narray)                    \
   do {                                                          \
-    mem_copyi ((char *) &(array)[idx],                          \
-               (char *) &(array)[idx+1],                        \
-               ((narray)-((idx)+1)) * sizeof (array[0]));       \
+    memmove (&(array)[idx],					\
+	     &(array)[idx+1],					\
+	     ((narray)-((idx)+1)) * sizeof (array[0]));		\
     (narray)--;                                                 \
   } while (0)
 
@@ -163,8 +174,7 @@ f_cmp_fraction (const void *parg, const void *qarg)
 int
 mul_2exp_mod (int n, int p, int m)
 {
-  int  i;
-  for (i = 0; i < p; i++)
+  while (--p >= 0)
     n = (2 * n) % m;
   return n;
 }
@@ -173,7 +183,7 @@ mul_2exp_mod (int n, int p, int m)
 int
 neg_mod (int n, int m)
 {
-  ASSERT (n >= 0 && n < m);
+  assert (n >= 0 && n < m);
   return (n == 0 ? 0 : m-n);
 }
 
@@ -234,8 +244,7 @@ generate_mod (int limb_bits, int nail_bits)
      course in reality nothing like that many) */
   factor_alloc = limb_bits;
   factor = (struct factor_t *) xmalloc (factor_alloc * sizeof (*factor));
-  rawfactor = (struct rawfactor_t *)
-    xmalloc (factor_alloc * sizeof (*rawfactor));
+  rawfactor = (struct rawfactor_t *) xmalloc (factor_alloc * sizeof (*rawfactor));
 
   if (numb_bits % 4 != 0)
     {
@@ -279,7 +288,7 @@ generate_mod (int limb_bits, int nail_bits)
     mpz_init (q);
     mpz_init (r);
 
-    for (i = 3; i <= max_divisor; i++)
+    for (i = 3; i <= max_divisor; i+=2)
       {
         if (! isprime (i))
           continue;
@@ -301,7 +310,7 @@ generate_mod (int limb_bits, int nail_bits)
           }
         while (mpz_sgn (r) == 0);
 
-        ASSERT (nrawfactor < factor_alloc);
+        assert (nrawfactor < factor_alloc);
         rawfactor[nrawfactor].divisor = i;
         rawfactor[nrawfactor].multiplicity = multiplicity;
         nrawfactor++;
@@ -331,7 +340,7 @@ generate_mod (int limb_bits, int nail_bits)
 
       /* one copy of each small prime */
       mpz_set_ui (pp, 1L);
-      for (i = 3; i <= max_divisor; i++)
+      for (i = 3; i <= max_divisor; i+=2)
         {
           if (! isprime (i))
             continue;
@@ -341,7 +350,7 @@ generate_mod (int limb_bits, int nail_bits)
             break;
           mpz_set (pp, new_pp);
 
-          ASSERT (nrawfactor < factor_alloc);
+          assert (nrawfactor < factor_alloc);
           rawfactor[nrawfactor].divisor = i;
           rawfactor[nrawfactor].multiplicity = 1;
           nrawfactor++;
@@ -377,7 +386,7 @@ generate_mod (int limb_bits, int nail_bits)
   for (i = 0; i < nrawfactor; i++)
     {
       int  j;
-      ASSERT (nfactor < factor_alloc);
+      assert (nfactor < factor_alloc);
       factor[nfactor].divisor = 1;
       for (j = 0; j < rawfactor[i].multiplicity; j++)
         factor[nfactor].divisor *= rawfactor[i].divisor;

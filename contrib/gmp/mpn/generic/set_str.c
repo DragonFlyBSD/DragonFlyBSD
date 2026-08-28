@@ -4,28 +4,38 @@
 
    Contributed to the GNU project by Torbjorn Granlund.
 
-   THE FUNCTIONS IN THIS FILE, EXCEPT mpn_set_str, ARE INTERNAL WITH A MUTABLE
-   INTERFACE.  IT IS ONLY SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.  IN
-   FACT, IT IS ALMOST GUARANTEED THAT THEY WILL CHANGE OR DISAPPEAR IN A FUTURE
-   GNU MP RELEASE.
+   THE FUNCTIONS IN THIS FILE, EXCEPT mpn_set_str, ARE INTERNAL WITH MUTABLE
+   INTERFACES.  IT IS ONLY SAFE TO REACH THEM THROUGH DOCUMENTED INTERFACES.
+   IN FACT, IT IS ALMOST GUARANTEED THAT THEY WILL CHANGE OR DISAPPEAR IN A
+   FUTURE GNU MP RELEASE.
 
-Copyright 1991, 1992, 1993, 1994, 1996, 2000, 2001, 2002, 2004, 2006, 2007,
-2008 Free Software Foundation, Inc.
+Copyright 1991-2017 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
 The GNU MP Library is free software; you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
+it under the terms of either:
+
+  * the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version.
+
+or
+
+  * the GNU General Public License as published by the Free Software
+    Foundation; either version 2 of the License, or (at your option) any
+    later version.
+
+or both in parallel, as here.
 
 The GNU MP Library is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-License for more details.
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-You should have received a copy of the GNU Lesser General Public License
-along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
+You should have received copies of the GNU General Public License and the
+GNU Lesser General Public License along with the GNU MP Library.  If not,
+see https://www.gnu.org/licenses/.  */
 
 
 /* TODO:
@@ -53,9 +63,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
       cubes, not squares.
 */
 
-#include "gmp.h"
 #include "gmp-impl.h"
-#include "longlong.h"
 
 mp_size_t
 mpn_set_str (mp_ptr rp, const unsigned char *str, size_t str_len, int base)
@@ -109,103 +117,19 @@ mpn_set_str (mp_ptr rp, const unsigned char *str, size_t str_len, int base)
 
       chars_per_limb = mp_bases[base].chars_per_limb;
 
-      un = str_len / chars_per_limb + 1;
+      un = str_len / chars_per_limb + 1; /* FIXME: scalar integer division */
 
       /* Allocate one large block for the powers of big_base.  */
-      powtab_mem = TMP_BALLOC_LIMBS (mpn_dc_set_str_powtab_alloc (un));
+      powtab_mem = TMP_BALLOC_LIMBS (mpn_str_powtab_alloc (un));
 
-      mpn_set_str_compute_powtab (powtab, powtab_mem, un, base);
+      size_t n_pows = mpn_compute_powtab (powtab, powtab_mem, un, base);
+      powers_t *pt = powtab + n_pows;
 
       tp = TMP_BALLOC_LIMBS (mpn_dc_set_str_itch (un));
-      size = mpn_dc_set_str (rp, str, str_len, powtab, tp);
+      size = mpn_dc_set_str (rp, str, str_len, pt, tp);
 
       TMP_FREE;
       return size;
-    }
-}
-
-void
-mpn_set_str_compute_powtab (powers_t *powtab, mp_ptr powtab_mem, mp_size_t un, int base)
-{
-  mp_ptr powtab_mem_ptr;
-  long i, pi;
-  mp_size_t n;
-  mp_ptr p, t;
-  unsigned normalization_steps;
-  mp_limb_t big_base, big_base_inverted;
-  int chars_per_limb;
-  size_t digits_in_base;
-  mp_size_t shift;
-
-  powtab_mem_ptr = powtab_mem;
-
-  chars_per_limb = mp_bases[base].chars_per_limb;
-  big_base = mp_bases[base].big_base;
-  big_base_inverted = mp_bases[base].big_base_inverted;
-  count_leading_zeros (normalization_steps, big_base);
-
-  p = powtab_mem_ptr;
-  powtab_mem_ptr += 1;
-
-  digits_in_base = chars_per_limb;
-
-  p[0] = big_base;
-  n = 1;
-
-  count_leading_zeros (i, un - 1);
-  i = GMP_LIMB_BITS - 1 - i;
-
-  powtab[i].p = p;
-  powtab[i].n = n;
-  powtab[i].digits_in_base = digits_in_base;
-  powtab[i].base = base;
-  powtab[i].shift = 0;
-
-  shift = 0;
-  for (pi = i - 1; pi >= 0; pi--)
-    {
-      t = powtab_mem_ptr;
-      powtab_mem_ptr += 2 * n;
-
-      ASSERT_ALWAYS (powtab_mem_ptr < powtab_mem + mpn_dc_set_str_powtab_alloc (un));
-
-      mpn_sqr (t, p, n);
-      n = 2 * n - 1; n += t[n] != 0;
-      digits_in_base *= 2;
-#if 1
-      if ((((un - 1) >> pi) & 2) == 0)
-	{
-	  mpn_divexact_1 (t, t, n, big_base);
-	  n -= t[n - 1] == 0;
-	  digits_in_base -= chars_per_limb;
-	}
-#else
-      if (CLEVER_CONDITION_1 ())
-	{
-	  /* perform adjustment operation of previous */
-	  cy = mpn_mul_1 (p, p, n, big_base);
-	}
-      if (CLEVER_CONDITION_2 ())
-	{
-	  /* perform adjustment operation of new */
-	  cy = mpn_mul_1 (t, t, n, big_base);
-	}
-#endif
-      shift *= 2;
-      /* Strip low zero limbs, but be careful to keep the result divisible by
-	 big_base.  */
-      while (t[0] == 0 && (t[1] & ((big_base & -big_base) - 1)) == 0)
-	{
-	  t++;
-	  n--;
-	  shift++;
-	}
-      p = t;
-      powtab[pi].p = p;
-      powtab[pi].n = n;
-      powtab[pi].digits_in_base = digits_in_base;
-      powtab[pi].base = base;
-      powtab[pi].shift = shift;
     }
 }
 
@@ -224,7 +148,7 @@ mpn_dc_set_str (mp_ptr rp, const unsigned char *str, size_t str_len,
       if (BELOW_THRESHOLD (str_len, SET_STR_DC_THRESHOLD))
 	return mpn_bc_set_str (rp, str, str_len, powtab->base);
       else
-	return mpn_dc_set_str (rp, str, str_len, powtab + 1, tp);
+	return mpn_dc_set_str (rp, str, str_len, powtab - 1, tp);
     }
 
   len_hi = str_len - len_lo;
@@ -233,13 +157,15 @@ mpn_dc_set_str (mp_ptr rp, const unsigned char *str, size_t str_len,
   if (BELOW_THRESHOLD (len_hi, SET_STR_DC_THRESHOLD))
     hn = mpn_bc_set_str (tp, str, len_hi, powtab->base);
   else
-    hn = mpn_dc_set_str (tp, str, len_hi, powtab + 1, rp);
+    hn = mpn_dc_set_str (tp, str, len_hi, powtab - 1, rp);
 
   sn = powtab->shift;
 
   if (hn == 0)
     {
-      MPN_ZERO (rp, powtab->n + sn);
+      /* Zero +1 limb here, to avoid reading an allocated but uninitialised
+	 limb in mpn_incr_u below.  */
+      MPN_ZERO (rp, powtab->n + sn + 1);
     }
   else
     {
@@ -254,7 +180,7 @@ mpn_dc_set_str (mp_ptr rp, const unsigned char *str, size_t str_len,
   if (BELOW_THRESHOLD (len_lo, SET_STR_DC_THRESHOLD))
     ln = mpn_bc_set_str (tp, str, len_lo, powtab->base);
   else
-    ln = mpn_dc_set_str (tp, str, len_lo, powtab + 1, tp + powtab->n + sn + 1);
+    ln = mpn_dc_set_str (tp, str, len_lo, powtab - 1, tp + powtab->n + sn + 1);
 
   if (ln != 0)
     {
