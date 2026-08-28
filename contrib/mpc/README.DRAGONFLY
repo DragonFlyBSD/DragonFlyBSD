@@ -2,11 +2,20 @@ GNU MPC
 =======
 
 Original source can be downloaded from:
-http://www.multiprecision.org/mpc/download/
+https://www.multiprecision.org/mpc/download.html
 
-file = mpc-1.0.3.tar.gz
-date = 20 FEB 2015
-size = 669925
-sha1 = b8be66396c726fdc36ebb0f692ed8a8cca3bcc66
+file = mpc-1.4.1.tar.xz
+date = April 2026
+size = 531992
+sha1 = 3d9e196d973a822ae144d543c9d21023cef0870f
 
 A list of files and directories removed is in README.DELETED
+
+Configured with:
+---------------
+--disable-shared
+--disable-maintainer-mode
+--with-gmp-include=...
+--with-gmp-lib=...
+--with-mpfr-include=...
+--with-mpfr-lib=...
