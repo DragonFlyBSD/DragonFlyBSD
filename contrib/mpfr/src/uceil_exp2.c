@@ -1,7 +1,7 @@
 /* __gmpfr_ceil_exp2 - returns y >= 2^d
 
-Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 1999-2004, 2006-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #include "mpfr-impl.h"
 
@@ -29,8 +28,8 @@ double
 __gmpfr_ceil_exp2 (double d)
 {
   long exp;
-#if _GMP_IEEE_FLOATS
-  union ieee_double_extract x;
+#if _MPFR_IEEE_FLOATS
+  union mpfr_ieee_double_extract x;
 #else
   struct {double d;} x;
 #endif
@@ -41,7 +40,7 @@ __gmpfr_ceil_exp2 (double d)
     exp++;
   /* now exp = ceil(d) */
   x.d = 1.0;
-#if _GMP_IEEE_FLOATS
+#if _MPFR_IEEE_FLOATS
   x.s.exp = exp <= -1022 ? 1 : 1023 + exp;
 #else
   if (exp >= 0)
@@ -60,6 +59,6 @@ __gmpfr_ceil_exp2 (double d)
           exp++;
         }
     }
-#endif
+#endif /* _MPFR_IEEE_FLOATS */
   return x.d;
 }

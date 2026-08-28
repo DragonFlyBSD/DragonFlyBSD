@@ -1,7 +1,7 @@
 /* mpfr_acosh -- inverse hyperbolic cosine
 
-Copyright 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2001-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
@@ -27,15 +26,15 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
  *  acosh= ln(x + sqrt(x^2-1))           */
 
 int
-mpfr_acosh (mpfr_ptr y, mpfr_srcptr x , mpfr_rnd_t rnd_mode)
+mpfr_acosh (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
 {
   MPFR_SAVE_EXPO_DECL (expo);
   int inexact;
   int comp;
 
   MPFR_LOG_FUNC (
-    ("x[%Pu]=%.*Rg rnd=%d", mpfr_get_prec (x), mpfr_log_prec, x, rnd_mode),
-    ("y[%Pu]=%.*Rg inexact=%d", mpfr_get_prec (y), mpfr_log_prec, y,
+    ("x[%Pd]=%.*Rg rnd=%d", mpfr_get_prec (x), mpfr_log_prec, x, rnd_mode),
+    ("y[%Pd]=%.*Rg inexact=%d", mpfr_get_prec (y), mpfr_log_prec, y,
      inexact));
 
   /* Deal with special cases */
@@ -62,7 +61,7 @@ mpfr_acosh (mpfr_ptr y, mpfr_srcptr x , mpfr_rnd_t rnd_mode)
     }
   else if (MPFR_UNLIKELY (comp == 0))
     {
-      MPFR_SET_ZERO (y); /* acosh(1) = 0 */
+      MPFR_SET_ZERO (y); /* acosh(1) = +0 */
       MPFR_SET_POS (y);
       MPFR_RET (0);
     }
@@ -92,7 +91,7 @@ mpfr_acosh (mpfr_ptr y, mpfr_srcptr x , mpfr_rnd_t rnd_mode)
         MPFR_BLOCK_DECL (flags);
 
         /* compute acosh */
-        MPFR_BLOCK (flags, mpfr_mul (t, x, x, MPFR_RNDD));  /* x^2 */
+        MPFR_BLOCK (flags, mpfr_sqr (t, x, MPFR_RNDD));  /* x^2 */
         if (MPFR_OVERFLOW (flags))
           {
             mpfr_t ln2;

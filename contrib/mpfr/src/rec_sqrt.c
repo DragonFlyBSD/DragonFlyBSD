@@ -1,7 +1,7 @@
 /* mpfr_rec_sqrt -- inverse square root
 
-Copyright 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2008-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,12 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
-
-#include <stdio.h>
-#include <stdlib.h>
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H /* for umul_ppmm */
 #include "mpfr-impl.h"
@@ -29,11 +25,13 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 #define LIMB_SIZE(x) ((((x)-1)>>MPFR_LOG2_GMP_NUMB_BITS) + 1)
 
 #define MPFR_COM_N(x,y,n)                               \
-  {                                                     \
-    mp_size_t i;                                        \
-    for (i = 0; i < n; i++)                             \
-      *((x)+i) = ~*((y)+i);                             \
-  }
+  do                                                    \
+    {                                                   \
+      mp_size_t i;                                      \
+      for (i = 0; i < n; i++)                           \
+        *((x)+i) = ~*((y)+i);                           \
+    }                                                   \
+  while (0)
 
 /* Put in X a p-bit approximation of 1/sqrt(A),
    where X = {x, n}/B^n, n = ceil(p/GMP_NUMB_BITS),
@@ -68,7 +66,7 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 
    References:
    [1] Modern Computer Algebra, Richard Brent and Paul Zimmermann,
-   http://www.loria.fr/~zimmerma/mca/pub226.html
+   https://members.loria.fr/PZimmermann/mca/pub226.html
 */
 static void
 mpfr_mpn_rec_sqrt (mpfr_limb_ptr x, mpfr_prec_t p,
@@ -166,7 +164,7 @@ mpfr_mpn_rec_sqrt (mpfr_limb_ptr x, mpfr_prec_t p,
   MPFR_ASSERTD((a[an - 1] & MPFR_LIMB_HIGHBIT) != 0);
   /* We should have enough bits in one limb and GMP_NUMB_BITS should be even.
      Since that does not depend on MPFR, we always check this. */
-  MPFR_ASSERTN((GMP_NUMB_BITS >= 12) && ((GMP_NUMB_BITS & 1) == 0));
+  MPFR_STAT_STATIC_ASSERT ((GMP_NUMB_BITS & 1) == 0);
   /* {a, an} and {x, n} should not overlap */
   MPFR_ASSERTD((a + an <= x) || (x + n <= a));
   MPFR_ASSERTD(p >= 11);
@@ -180,15 +178,34 @@ mpfr_mpn_rec_sqrt (mpfr_limb_ptr x, mpfr_prec_t p,
   if (p == 11) /* should happen only from recursive calls */
     {
       unsigned long i, ab, ac;
-      mp_limb_t t;
+      unsigned int t;
 
       /* take the 12+as most significant bits of A */
+#if GMP_NUMB_BITS >= 16
       i = a[an - 1] >> (GMP_NUMB_BITS - (12 + as));
+#else
+      MPFR_STAT_STATIC_ASSERT (GMP_NUMB_BITS == 8);
+      {
+        unsigned int a12 = a[an - 1] << 8;
+        if (an >= 2)
+          a12 |= a[an - 2];
+        MPFR_ASSERTN(GMP_NUMB_BITS >= 4 + as);
+        i = a12 >> (GMP_NUMB_BITS - (4 + as));
+      }
+#endif
       /* if one wants faithful rounding for p=11, replace #if 0 by #if 1 */
       ab = i >> 4;
       ac = (ab & 0x3F0) | (i & 0x0F);
-      t = (mp_limb_t) T1[ab - 0x80] + (mp_limb_t) T2[ac - 0x80];
-      x[0] = t << (GMP_NUMB_BITS - p);
+      t = T1[ab - 0x80] + T2[ac - 0x80];  /* fits on 16 bits */
+#if GMP_NUMB_BITS >= 16
+      /* x has only one limb */
+      x[0] = (mp_limb_t) t << (GMP_NUMB_BITS - p);
+#else
+      MPFR_STAT_STATIC_ASSERT (GMP_NUMB_BITS == 8);
+      MPFR_ASSERTD (1024 <= t && t <= 2047);
+      x[1] = t >> 3; /* 128 <= x[1] <= 255 */
+      x[0] = MPFR_LIMB_LSHIFT(t, 5);
+#endif
     }
   else /* p >= 12 */
     {
@@ -226,7 +243,7 @@ mpfr_mpn_rec_sqrt (mpfr_limb_ptr x, mpfr_prec_t p,
 
       /* we need h+1+as bits of a */
       ahn = LIMB_SIZE(h + 1 + as); /* number of high limbs of A
-                                      needed for the recursive call*/
+                                      needed for the recursive call */
       if (MPFR_UNLIKELY(ahn > an))
         ahn = an;
       mpfr_mpn_rec_sqrt (x + ln, h, a + an - ahn, ahn * GMP_NUMB_BITS, as);
@@ -256,7 +273,7 @@ mpfr_mpn_rec_sqrt (mpfr_limb_ptr x, mpfr_prec_t p,
         umul_ppmm(r[1], r[0], x[ln], x[ln]);
       else
         {
-          mpn_mul_n (r, x + ln, x + ln, xn);
+          mpn_sqr (r, x + ln, xn);
           /* we have {r, 2*xn} = X_h^2 */
           if (rn < 2 * xn)
             r ++;
@@ -374,9 +391,10 @@ mpfr_mpn_rec_sqrt (mpfr_limb_ptr x, mpfr_prec_t p,
          thus we round u to nearest at bit pl-1 of u[0] */
       if (pl > 0)
         {
-          cu = mpn_add_1 (u, u, un, u[0] & (MPFR_LIMB_ONE << (pl - 1)));
+          cu = mpn_add_1 (u, u, un,
+                          u[0] & MPFR_LIMB_LSHIFT(MPFR_LIMB_ONE, pl - 1));
           /* mask bits 0..pl-1 of u[0] */
-          u[0] &= ~MPFR_LIMB_MASK(pl);
+          u[0] &= MPFR_LIMB(~MPFR_LIMB_MASK(pl));
         }
       else /* round bit is in u[-1] */
         cu = mpn_add_1 (u, u, un, u[-1] >> (GMP_NUMB_BITS - 1));
@@ -424,7 +442,7 @@ mpfr_mpn_rec_sqrt (mpfr_limb_ptr x, mpfr_prec_t p,
         }
 
       /* cy can be 1 when A=1, i.e., {a, n} = B^n. In that case we should
-         have X = B^n, and setting X to 1-2^{-p} satisties the error bound
+         have X = B^n, and setting X to 1-2^{-p} satisfies the error bound
          of 1 ulp. */
       if (MPFR_UNLIKELY(cy != 0))
         {
@@ -444,10 +462,11 @@ mpfr_rec_sqrt (mpfr_ptr r, mpfr_srcptr u, mpfr_rnd_t rnd_mode)
   int s, cy, inex;
   mpfr_limb_ptr x;
   MPFR_TMP_DECL(marker);
+  MPFR_ZIV_DECL (loop);
 
   MPFR_LOG_FUNC
-    (("x[%Pu]=%.*Rg rnd=%d", mpfr_get_prec (u), mpfr_log_prec, u, rnd_mode),
-     ("y[%Pu]=%.*Rg inexact=%d", mpfr_get_prec (r), mpfr_log_prec, r, inex));
+    (("x[%Pd]=%.*Rg rnd=%d", mpfr_get_prec (u), mpfr_log_prec, u, rnd_mode),
+     ("y[%Pd]=%.*Rg inexact=%d", mpfr_get_prec (r), mpfr_log_prec, r, inex));
 
   /* special values */
   if (MPFR_UNLIKELY(MPFR_IS_SINGULAR(u)))
@@ -459,10 +478,10 @@ mpfr_rec_sqrt (mpfr_ptr r, mpfr_srcptr u, mpfr_rnd_t rnd_mode)
         }
       else if (MPFR_IS_ZERO(u)) /* 1/sqrt(+0) = 1/sqrt(-0) = +Inf */
         {
-          /* 0+ or 0- */
+          /* +0 or -0 */
           MPFR_SET_INF(r);
           MPFR_SET_POS(r);
-          mpfr_set_divby0 ();
+          MPFR_SET_DIVBY0 ();
           MPFR_RET(0); /* Inf is exact */
         }
       else
@@ -511,6 +530,7 @@ mpfr_rec_sqrt (mpfr_ptr r, mpfr_srcptr u, mpfr_rnd_t rnd_mode)
   wp = rp + 11;
   if (wp < rn * GMP_NUMB_BITS)
     wp = rn * GMP_NUMB_BITS;
+  MPFR_ZIV_INIT (loop, wp);
   for (;;)
     {
       MPFR_TMP_MARK (marker);
@@ -542,8 +562,9 @@ mpfr_rec_sqrt (mpfr_ptr r, mpfr_srcptr u, mpfr_rnd_t rnd_mode)
         }
       MPFR_TMP_FREE(marker);
 
-      wp += GMP_NUMB_BITS;
+      MPFR_ZIV_NEXT (loop, wp);
     }
+  MPFR_ZIV_FREE (loop);
   cy = mpfr_round_raw (MPFR_MANT(r), x, wp, 0, rp, rnd_mode, &inex);
   MPFR_EXP(r) = - (MPFR_EXP(u) - 1 - s) / 2;
   if (MPFR_UNLIKELY(cy != 0))

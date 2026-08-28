@@ -1,7 +1,7 @@
 /* MPFR internal constant FP numbers
 
-Copyright 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2005-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #include "mpfr-impl.h"
 
@@ -26,3 +25,44 @@ static const mp_limb_t __gmpfr_limb1[1] = {MPFR_LIMB_HIGHBIT};
 const mpfr_t __gmpfr_one = {{2, MPFR_SIGN_POS, 1, (mp_limb_t*)__gmpfr_limb1}};
 const mpfr_t __gmpfr_two = {{2, MPFR_SIGN_POS, 2, (mp_limb_t*)__gmpfr_limb1}};
 const mpfr_t __gmpfr_four ={{2, MPFR_SIGN_POS, 3, (mp_limb_t*)__gmpfr_limb1}};
+const mpfr_t __gmpfr_mone ={{2, MPFR_SIGN_NEG, 1, (mp_limb_t*)__gmpfr_limb1}};
+
+#if 0
+#elif GMP_NUMB_BITS == 8
+static const mp_limb_t mpfr_l2_dd__tab[] = { 0xab, 0x79, 0xcf, 0xd1, 0xf7, 0x17, 0x72, 0xb1 };
+#elif GMP_NUMB_BITS == 16
+static const mp_limb_t mpfr_l2_dd__tab[] = { 0x79ab, 0xd1cf, 0x17f7, 0xb172 };
+#elif GMP_NUMB_BITS == 32
+static const mp_limb_t mpfr_l2_dd__tab[] = { 0xd1cf79ab, 0xb17217f7};
+#elif GMP_NUMB_BITS == 64
+static const mp_limb_t mpfr_l2_dd__tab[] = { 0xb17217f7d1cf79ab };
+#elif GMP_NUMB_BITS == 96
+static const mp_limb_t mpfr_l2_dd__tab[] = { 0xb17217f7d1cf79ab00000000 };
+#elif GMP_NUMB_BITS == 128
+static const mp_limb_t mpfr_l2_dd__tab[] = { 0xb17217f7d1cf79ab0000000000000000 };
+#elif GMP_NUMB_BITS == 256
+static const mp_limb_t mpfr_l2_dd__tab[] = { 0xb17217f7d1cf79ab000000000000000000000000000000000000000000000000 };
+#endif
+
+const mpfr_t __gmpfr_const_log2_RNDD =
+  {{64, MPFR_SIGN_POS, 0, (mp_limb_t*)mpfr_l2_dd__tab}};
+
+#if 0
+#elif GMP_NUMB_BITS == 8
+static const mp_limb_t mpfr_l2_du__tab[] = { 0xac, 0x79, 0xcf, 0xd1, 0xf7, 0x17, 0x72, 0xb1 };
+#elif GMP_NUMB_BITS == 16
+static const mp_limb_t mpfr_l2_du__tab[] = { 0x79ac, 0xd1cf, 0x17f7, 0xb172 };
+#elif GMP_NUMB_BITS == 32
+static const mp_limb_t mpfr_l2_du__tab[] = { 0xd1cf79ac, 0xb17217f7};
+#elif GMP_NUMB_BITS == 64
+static const mp_limb_t mpfr_l2_du__tab[] = { 0xb17217f7d1cf79ac };
+#elif GMP_NUMB_BITS == 96
+static const mp_limb_t mpfr_l2_du__tab[] = { 0xb17217f7d1cf79ac00000000 };
+#elif GMP_NUMB_BITS == 128
+static const mp_limb_t mpfr_l2_du__tab[] = { 0xb17217f7d1cf79ac0000000000000000 };
+#elif GMP_NUMB_BITS == 256
+static const mp_limb_t mpfr_l2_du__tab[] = { 0xb17217f7d1cf79ac000000000000000000000000000000000000000000000000 };
+#endif
+
+const mpfr_t __gmpfr_const_log2_RNDU =
+  {{64, MPFR_SIGN_POS, 0, (mp_limb_t*)mpfr_l2_du__tab}};

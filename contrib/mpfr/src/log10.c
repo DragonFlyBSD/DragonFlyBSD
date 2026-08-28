@@ -1,7 +1,7 @@
 /* mpfr_log10 -- logarithm in base 10.
 
-Copyright 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2001-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
@@ -35,8 +34,8 @@ mpfr_log10 (mpfr_ptr r, mpfr_srcptr a, mpfr_rnd_t rnd_mode)
   MPFR_SAVE_EXPO_DECL (expo);
 
   MPFR_LOG_FUNC
-    (("a[%Pu]=%.*Rg rnd=%d", mpfr_get_prec (a), mpfr_log_prec, a, rnd_mode),
-     ("r[%Pu]=%.*Rg inexact=%d",
+    (("a[%Pd]=%.*Rg rnd=%d", mpfr_get_prec (a), mpfr_log_prec, a, rnd_mode),
+     ("r[%Pd]=%.*Rg inexact=%d",
       mpfr_get_prec (r), mpfr_log_prec, r, inexact));
 
   /* If a is NaN, the result is NaN */
@@ -68,7 +67,7 @@ mpfr_log10 (mpfr_ptr r, mpfr_srcptr a, mpfr_rnd_t rnd_mode)
           MPFR_ASSERTD (MPFR_IS_ZERO (a));
           MPFR_SET_INF (r);
           MPFR_SET_NEG (r);
-          mpfr_set_divby0 ();
+          MPFR_SET_DIVBY0 ();
           MPFR_RET (0); /* log10(0) is an exact -infinity */
         }
     }
@@ -104,7 +103,7 @@ mpfr_log10 (mpfr_ptr r, mpfr_srcptr a, mpfr_rnd_t rnd_mode)
     /* the optimal number of bits : see algorithms.tex */
     Nt = Ny + 4 + MPFR_INT_CEIL_LOG2 (Ny);
 
-    /* initialise of intermediary variables */
+    /* initialize of intermediary variables */
     mpfr_init2 (t, Nt);
     mpfr_init2 (tt, Nt);
 
@@ -129,10 +128,10 @@ mpfr_log10 (mpfr_ptr r, mpfr_srcptr a, mpfr_rnd_t rnd_mode)
         if (MPFR_IS_POS (t)
             && mpfr_integer_p (t) && mpfr_fits_ulong_p (t, MPFR_RNDN)
             && !mpfr_ui_pow_ui (tt, 10, mpfr_get_ui (t, MPFR_RNDN), MPFR_RNDN)
-            && mpfr_cmp (a, tt) == 0)
+            && mpfr_equal_p (a, tt))
           break;
 
-        /* actualisation of the precision */
+        /* actualization of the precision */
         MPFR_ZIV_NEXT (loop, Nt);
         mpfr_set_prec (t, Nt);
         mpfr_set_prec (tt, Nt);

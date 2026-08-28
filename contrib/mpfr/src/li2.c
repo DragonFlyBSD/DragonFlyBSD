@@ -1,7 +1,7 @@
 /* mpfr_li2 -- Dilogarithm.
 
-Copyright 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2007-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
@@ -28,23 +27,22 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
    with 0 < z <= log(2) to the precision of s rounded in the direction
    rnd_mode.
    Return the maximum index of the truncature which is useful
-   for determinating the relative error.
+   for determining the relative error.
 */
 static int
-li2_series (mpfr_t sum, mpfr_srcptr z, mpfr_rnd_t rnd_mode)
+li2_series (mpfr_ptr sum, mpfr_srcptr z, mpfr_rnd_t rnd_mode)
 {
-  int i, Bm, Bmax;
+  int i;
   mpfr_t s, u, v, w;
   mpfr_prec_t sump, p;
   mpfr_exp_t se, err;
-  mpz_t *B;
   MPFR_ZIV_DECL (loop);
 
   /* The series converges for |z| < 2 pi, but in mpfr_li2 the argument is
-     reduced so that 0 < z <= log(2). Here is additionnal check that z is
-     (nearly) correct */
+     reduced so that 0 < z <= log(2). Here is an additional check that z
+     is (nearly) correct. */
   MPFR_ASSERTD (MPFR_IS_STRICTPOS (z));
-  MPFR_ASSERTD (mpfr_cmp_d (z, 0.6953125) <= 0);
+  MPFR_ASSERTD (mpfr_cmp_ui_2exp (z, 89, -7) <= 0); /* z <= 0.6953125 */
 
   sump = MPFR_PREC (sum);       /* target precision */
   p = sump + MPFR_INT_CEIL_LOG2 (sump) + 4;     /* the working precision */
@@ -52,9 +50,6 @@ li2_series (mpfr_t sum, mpfr_srcptr z, mpfr_rnd_t rnd_mode)
   mpfr_init2 (u, p);
   mpfr_init2 (v, p);
   mpfr_init2 (w, p);
-
-  B = mpfr_bernoulli_internal ((mpz_t *) 0, 0);
-  Bm = Bmax = 1;
 
   MPFR_ZIV_INIT (loop, p);
   for (;;)
@@ -67,9 +62,6 @@ li2_series (mpfr_t sum, mpfr_srcptr z, mpfr_rnd_t rnd_mode)
 
       for (i = 1;; i++)
         {
-          if (i >= Bmax)
-            B = mpfr_bernoulli_internal (B, Bmax++); /* B_2i*(2i+1)!, exact */
-
           mpfr_mul (v, u, v, MPFR_RNDU);
           mpfr_div_ui (v, v, 2 * i, MPFR_RNDU);
           mpfr_div_ui (v, v, 2 * i, MPFR_RNDU);
@@ -77,7 +69,7 @@ li2_series (mpfr_t sum, mpfr_srcptr z, mpfr_rnd_t rnd_mode)
           mpfr_div_ui (v, v, 2 * i + 1, MPFR_RNDU);
           /* here, v_2i = v_{2i-2} / (2i * (2i+1))^2 */
 
-          mpfr_mul_z (w, v, B[i], MPFR_RNDN);
+          mpfr_mul_z (w, v, mpfr_bernoulli_cache(i), MPFR_RNDN);
           /* here, w_2i = v_2i * B_2i * (2i+1)! with
              error(w_2i) < 2^(5 * i + 8) ulp(w_2i) (see algorithms.tex) */
 
@@ -107,10 +99,6 @@ li2_series (mpfr_t sum, mpfr_srcptr z, mpfr_rnd_t rnd_mode)
   MPFR_ZIV_FREE (loop);
   mpfr_set (sum, s, rnd_mode);
 
-  Bm = Bmax;
-  while (Bm--)
-    mpz_clear (B[Bm]);
-  (*__gmp_free_func) (B, Bmax * sizeof (mpz_t));
   mpfr_clears (s, u, v, w, (mpfr_ptr) 0);
 
   /* Let K be the returned value.
@@ -129,7 +117,7 @@ li2_series (mpfr_t sum, mpfr_srcptr z, mpfr_rnd_t rnd_mode)
    thus |Li2(x) - g(x)| <= 2/x.
    Assumes x >= 38, which ensures log(x)^2/2 >= 2*Pi^2/3, and g(x) <= -3.3.
    Return 0 if asymptotic expansion failed (unable to round), otherwise
-   returns correct ternary value.
+   returns 1 for RNDF, and correct ternary value otherwise.
 */
 static int
 mpfr_li2_asympt_pos (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
@@ -161,7 +149,11 @@ mpfr_li2_asympt_pos (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
                                    bounded by 16 ulp(g). */
   if ((MPFR_EXP (x) >= (mpfr_exp_t) w - MPFR_EXP (g)) &&
       MPFR_CAN_ROUND (g, w - 4, MPFR_PREC (y), rnd_mode))
-    inex = mpfr_set (y, g, rnd_mode);
+    {
+      inex = mpfr_set (y, g, rnd_mode);
+      if (rnd_mode == MPFR_RNDF)
+        inex = 1;
+    }
 
   mpfr_clear (g);
   mpfr_clear (h);
@@ -175,7 +167,7 @@ mpfr_li2_asympt_pos (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
    |Li2(x) - g(x)| <= 1/|x|.
    Assumes x <= -7, which ensures |log(-x)^2/2| >= Pi^2/6, and g(x) <= -3.5.
    Return 0 if asymptotic expansion failed (unable to round), otherwise
-   returns correct ternary value.
+   returns 1 for RNDF, and correct ternary value otherwise.
 */
 static int
 mpfr_li2_asympt_neg (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
@@ -204,7 +196,11 @@ mpfr_li2_asympt_neg (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
                                    total error is bounded by 16 ulp(g). */
   if ((MPFR_EXP (x) >= (mpfr_exp_t) (w - 2) - MPFR_EXP (g)) &&
       MPFR_CAN_ROUND (g, w - 4, MPFR_PREC (y), rnd_mode))
-    inex = mpfr_neg (y, g, rnd_mode);
+    {
+      inex = mpfr_neg (y, g, rnd_mode);
+      if (rnd_mode == MPFR_RNDF)
+        inex = 1;
+    }
 
   mpfr_clear (g);
   mpfr_clear (h);
@@ -224,8 +220,8 @@ mpfr_li2 (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
   MPFR_SAVE_EXPO_DECL (expo);
 
   MPFR_LOG_FUNC
-    (("x[%Pu]=%.*Rg rnd=%d", mpfr_get_prec (x), mpfr_log_prec, x, rnd_mode),
-     ("y[%Pu]=%.*Rg inexact=%d",
+    (("x[%Pd]=%.*Rg rnd=%d", mpfr_get_prec (x), mpfr_log_prec, x, rnd_mode),
+     ("y[%Pd]=%.*Rg inexact=%d",
       mpfr_get_prec (y), mpfr_log_prec, y, inexact));
 
   if (MPFR_UNLIKELY (MPFR_IS_SINGULAR (x)))
@@ -264,7 +260,7 @@ mpfr_li2 (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
   yp = MPFR_PREC (y);
   m = yp + MPFR_INT_CEIL_LOG2 (yp) + 13;
 
-  if (MPFR_LIKELY ((mpfr_cmp_ui (x, 0) > 0) && (mpfr_cmp_d (x, 0.5) <= 0)))
+  if (MPFR_LIKELY ((mpfr_cmp_ui (x, 0) > 0) && (mpfr_cmp_ui_2exp (x, 1, -1) <= 0)))
     /* 0 < x <= 1/2: Li2(x) = S(-log(1-x))-log^2(1-x)/4 */
     {
       mpfr_t s, u;
@@ -630,5 +626,5 @@ mpfr_li2 (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
       return mpfr_check_range (y, inexact, rnd_mode);
     }
 
-  MPFR_ASSERTN (0);             /* should never reach this point */
+  MPFR_RET_NEVER_GO_HERE ();
 }

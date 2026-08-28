@@ -1,8 +1,8 @@
 /* mpfr_y0, mpfr_y1, mpfr_yn -- Bessel functions of 2nd kind, integer order.
-   http://www.opengroup.org/onlinepubs/009695399/functions/y0.html
+   https://pubs.opengroup.org/onlinepubs/9699919799/functions/y0.html
 
-Copyright 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2007-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -17,9 +17,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
@@ -154,8 +153,8 @@ mpfr_yn (mpfr_ptr res, long n, mpfr_srcptr z, mpfr_rnd_t r)
   MPFR_SAVE_EXPO_DECL (expo);
 
   MPFR_LOG_FUNC
-    (("n=%ld x[%Pu]=%.*Rg rnd=%d", n, mpfr_get_prec (z), mpfr_log_prec, z, r),
-     ("y[%Pu]=%.*Rg inexact=%d", mpfr_get_prec (res), mpfr_log_prec, res, inex));
+    (("n=%ld x[%Pd]=%.*Rg rnd=%d", n, mpfr_get_prec (z), mpfr_log_prec, z, r),
+     ("y[%Pd]=%.*Rg inexact=%d", mpfr_get_prec (res), mpfr_log_prec, res, inex));
 
   absn = SAFE_ABS (unsigned long, n);
 
@@ -170,7 +169,7 @@ mpfr_yn (mpfr_ptr res, long n, mpfr_srcptr z, mpfr_rnd_t r)
          0. We choose to return +0 in that case. */
       else if (MPFR_IS_INF (z))
         {
-          if (MPFR_SIGN(z) > 0)
+          if (MPFR_IS_POS (z))
             return mpfr_set_ui (res, 0, r);
           else /* y(n,-Inf) = NaN */
             {
@@ -186,14 +185,14 @@ mpfr_yn (mpfr_ptr res, long n, mpfr_srcptr z, mpfr_rnd_t r)
             MPFR_SET_NEG(res);
           else
             MPFR_SET_POS(res);
-          mpfr_set_divby0 ();
+          MPFR_SET_DIVBY0 ();
           MPFR_RET(0);
         }
     }
 
   /* for z < 0, y(n,z) is imaginary except when j(n,|z|) = 0, which we
      assume does not happen for a rational z. */
-  if (MPFR_SIGN(z) < 0)
+  if (MPFR_IS_NEG (z))
     {
       MPFR_SET_NAN (res);
       MPFR_RET_NAN;
@@ -228,29 +227,29 @@ mpfr_yn (mpfr_ptr res, long n, mpfr_srcptr z, mpfr_rnd_t r)
       /* first enclose log(z) + euler - log(2) = log(z/2) + euler */
       mpfr_log (logz, z, MPFR_RNDD);    /* lower bound of log(z) */
       mpfr_set (h, logz, MPFR_RNDU);    /* exact */
-      mpfr_nextabove (h);              /* upper bound of log(z) */
+      mpfr_nextabove (h);               /* upper bound of log(z) */
       mpfr_const_euler (t, MPFR_RNDD);  /* lower bound of euler */
       mpfr_add (l, logz, t, MPFR_RNDD); /* lower bound of log(z) + euler */
-      mpfr_nextabove (t);              /* upper bound of euler */
+      mpfr_nextabove (t);               /* upper bound of euler */
       mpfr_add (h, h, t, MPFR_RNDU);    /* upper bound of log(z) + euler */
       mpfr_const_log2 (t, MPFR_RNDU);   /* upper bound of log(2) */
       mpfr_sub (l, l, t, MPFR_RNDD);    /* lower bound of log(z/2) + euler */
-      mpfr_nextbelow (t);              /* lower bound of log(2) */
+      mpfr_nextbelow (t);               /* lower bound of log(2) */
       mpfr_sub (h, h, t, MPFR_RNDU);    /* upper bound of log(z/2) + euler */
       mpfr_const_pi (t, MPFR_RNDU);     /* upper bound of Pi */
       mpfr_div (l, l, t, MPFR_RNDD);    /* lower bound of (log(z/2)+euler)/Pi */
-      mpfr_nextbelow (t);              /* lower bound of Pi */
+      mpfr_nextbelow (t);               /* lower bound of Pi */
       mpfr_div (h, h, t, MPFR_RNDD);    /* upper bound of (log(z/2)+euler)/Pi */
       mpfr_mul_2ui (l, l, 1, MPFR_RNDD); /* lower bound on g(z)*log(z) */
       mpfr_mul_2ui (h, h, 1, MPFR_RNDU); /* upper bound on g(z)*log(z) */
       /* we now have l <= g(z)*log(z) <= h, and we need to add -z^2/2*log(z)
          to h */
-      mpfr_mul (t, z, z, MPFR_RNDU);     /* upper bound on z^2 */
+      mpfr_sqr (t, z, MPFR_RNDU);        /* upper bound on z^2 */
       /* since logz is negative, a lower bound corresponds to an upper bound
          for its absolute value */
       mpfr_neg (t, t, MPFR_RNDD);
       mpfr_div_2ui (t, t, 1, MPFR_RNDD);
-      mpfr_mul (t, t, logz, MPFR_RNDU); /* upper bound on z^2/2*log(z) */
+      mpfr_mul (t, t, logz, MPFR_RNDU);  /* upper bound on z^2/2*log(z) */
       mpfr_add (h, h, t, MPFR_RNDU);
       inex = mpfr_prec_round (l, MPFR_PREC(res), r);
       inex2 = mpfr_prec_round (h, MPFR_PREC(res), r);
@@ -324,12 +323,13 @@ mpfr_yn (mpfr_ptr res, long n, mpfr_srcptr z, mpfr_rnd_t r)
     mpfr_t y, s1, s2, s3;
     MPFR_ZIV_DECL (loop);
 
-    mpfr_init (y);
-    mpfr_init (s1);
-    mpfr_init (s2);
-    mpfr_init (s3);
-
     prec = MPFR_PREC(res) + 2 * MPFR_INT_CEIL_LOG2 (MPFR_PREC (res)) + 13;
+
+    mpfr_init2 (y, prec);
+    mpfr_init2 (s1, prec);
+    mpfr_init2 (s2, prec);
+    mpfr_init2 (s3, prec);
+
     MPFR_ZIV_INIT (loop, prec);
     for (;;)
       {
@@ -338,7 +338,7 @@ mpfr_yn (mpfr_ptr res, long n, mpfr_srcptr z, mpfr_rnd_t r)
         mpfr_set_prec (s2, prec);
         mpfr_set_prec (s3, prec);
 
-        mpfr_mul (y, z, z, MPFR_RNDN);
+        mpfr_sqr (y, z, MPFR_RNDN);
         mpfr_div_2ui (y, y, 2, MPFR_RNDN); /* z^2/4 */
 
         /* store (z/2)^n temporarily in s2 */

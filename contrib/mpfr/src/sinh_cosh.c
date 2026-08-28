@@ -1,7 +1,7 @@
 /* mpfr_sinh_cosh -- hyperbolic sine and cosine
 
-Copyright 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2001-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,15 +16,11 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
-
-#define INEXPOS(y) ((y) == 0 ? 0 : (((y) > 0) ? 1 : 2))
-#define INEX(y,z) (INEXPOS(y) | (INEXPOS(z) << 2))
 
  /* The computations are done by
     cosh(x) = 1/2 [e^(x)+e^(-x)]
@@ -40,9 +36,9 @@ mpfr_sinh_cosh (mpfr_ptr sh, mpfr_ptr ch, mpfr_srcptr xt, mpfr_rnd_t rnd_mode)
   MPFR_ASSERTN (sh != ch);
 
   MPFR_LOG_FUNC
-    (("x[%Pu]=%.*Rg rnd=%d",
+    (("x[%Pd]=%.*Rg rnd=%d",
       mpfr_get_prec (xt), mpfr_log_prec, xt, rnd_mode),
-     ("sh[%Pu]=%.*Rg ch[%Pu]=%.*Rg",
+     ("sh[%Pd]=%.*Rg ch[%Pd]=%.*Rg",
       mpfr_get_prec (sh), mpfr_log_prec, sh,
       mpfr_get_prec (ch), mpfr_log_prec, ch));
 
@@ -95,7 +91,7 @@ mpfr_sinh_cosh (mpfr_ptr sh, mpfr_ptr ch, mpfr_srcptr xt, mpfr_rnd_t rnd_mode)
     /* the optimal number of bits : see algorithms.ps */
     N = N + MPFR_INT_CEIL_LOG2 (N) + 4;
 
-    /* initialise of intermediary variables */
+    /* initialize of intermediary variables */
     MPFR_GROUP_INIT_3 (group, N, s, c, ti);
 
     /* First computation of sinh_cosh */
@@ -143,7 +139,7 @@ mpfr_sinh_cosh (mpfr_ptr sh, mpfr_ptr ch, mpfr_srcptr xt, mpfr_rnd_t rnd_mode)
                 break;
               }
           }
-        /* actualisation of the precision */
+        /* actualization of the precision */
         N += err;
         MPFR_ZIV_NEXT (loop, N);
         MPFR_GROUP_REPREC_3 (group, N, s, c, ti);

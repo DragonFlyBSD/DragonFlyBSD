@@ -1,8 +1,8 @@
 /* mpfr_set_si_2exp -- set a MPFR number from a machine signed integer with
    a shift
 
-Copyright 2004, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2004, 2006-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -17,9 +17,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
@@ -33,14 +32,23 @@ mpfr_set_si_2exp (mpfr_ptr x, long i, mpfr_exp_t e, mpfr_rnd_t rnd_mode)
       MPFR_SET_POS (x);
       MPFR_RET (0);
     }
+#ifdef MPFR_LONG_WITHIN_LIMB
   else
     {
       mp_size_t xn;
-      unsigned int cnt, nbits;
+      int cnt, nbits;
       mp_limb_t ai, *xp;
       int inex = 0;
 
-      /* FIXME: support int limbs (e.g. 16-bit limbs on 16-bit proc) */
+      /* Early underflow/overflow checking is necessary to avoid
+         integer overflow or errors due to special exponent values. */
+      if (MPFR_UNLIKELY (e < __gmpfr_emin - (mpfr_exp_t)
+                         (sizeof (unsigned long) * CHAR_BIT + 1)))
+        return mpfr_underflow (x, rnd_mode == MPFR_RNDN ?
+                               MPFR_RNDZ : rnd_mode, i < 0 ? -1 : 1);
+      if (MPFR_UNLIKELY (e >= __gmpfr_emax))
+        return mpfr_overflow (x, rnd_mode, i < 0 ? -1 : 1);
+
       ai = SAFE_ABS (unsigned long, i);
       MPFR_ASSERTN (SAFE_ABS (unsigned long, i) == ai);
 
@@ -70,4 +78,15 @@ mpfr_set_si_2exp (mpfr_ptr x, long i, mpfr_exp_t e, mpfr_rnd_t rnd_mode)
       MPFR_EXP (x) = e;
       return mpfr_check_range (x, inex, rnd_mode);
     }
+#else
+  /* if a long does not fit into a limb, we use mpfr_set_z_2exp */
+  {
+    mpz_t z;
+    int inex;
+    mpz_init_set_si (z, i);
+    inex = mpfr_set_z_2exp (x, z, e, rnd_mode);
+    mpz_clear (z);
+    return inex;
+  }
+#endif
 }

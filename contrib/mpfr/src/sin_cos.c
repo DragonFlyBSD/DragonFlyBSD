@@ -1,7 +1,7 @@
 /* mpfr_sin_cos -- sine and cosine of a floating-point number
 
-Copyright 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2002-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
@@ -61,8 +60,8 @@ mpfr_sin_cos (mpfr_ptr y, mpfr_ptr z, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
     }
 
   MPFR_LOG_FUNC
-    (("x[%Pu]=%.*Rg rnd=%d", mpfr_get_prec (x), mpfr_log_prec, x, rnd_mode),
-     ("sin[%Pu]=%.*Rg cos[%Pu]=%.*Rg", mpfr_get_prec(y), mpfr_log_prec, y,
+    (("x[%Pd]=%.*Rg rnd=%d", mpfr_get_prec (x), mpfr_log_prec, x, rnd_mode),
+     ("sin[%Pd]=%.*Rg cos[%Pd]=%.*Rg", mpfr_get_prec(y), mpfr_log_prec, y,
       mpfr_get_prec (z), mpfr_log_prec, z));
 
   MPFR_SAVE_EXPO_MARK (expo);
@@ -131,8 +130,8 @@ mpfr_sin_cos (mpfr_ptr y, mpfr_ptr z, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
       return mpfr_sincos_fast (y, z, x, rnd_mode);
     }
 
-  mpfr_init (c);
-  mpfr_init (xr);
+  mpfr_init2 (c, m);
+  mpfr_init2 (xr, m);
 
   MPFR_ZIV_INIT (loop, m);
   for (;;)
@@ -141,13 +140,14 @@ mpfr_sin_cos (mpfr_ptr y, mpfr_ptr z, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
       if (expx >= 2) /* reduce the argument */
         {
           reduce = 1;
+          MPFR_ASSERTN (expx + m - 1 <= MPFR_PREC_MAX);
           mpfr_set_prec (c, expx + m - 1);
           mpfr_set_prec (xr, m);
           mpfr_const_pi (c, MPFR_RNDN);
           mpfr_mul_2ui (c, c, 1, MPFR_RNDN);
           mpfr_remainder (xr, x, c, MPFR_RNDN);
           mpfr_div_2ui (c, c, 1, MPFR_RNDN);
-          if (MPFR_SIGN (xr) > 0)
+          if (MPFR_IS_POS (xr))
             mpfr_sub (c, c, xr, MPFR_RNDZ);
           else
             mpfr_add (c, c, xr, MPFR_RNDZ);
@@ -174,13 +174,13 @@ mpfr_sin_cos (mpfr_ptr y, mpfr_ptr z, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
         err = m;
       else
         err = MPFR_GET_EXP (c) + (mpfr_exp_t) (m - 3);
-      if (!mpfr_can_round (c, err, MPFR_RNDN, MPFR_RNDZ,
-                           MPFR_PREC (z) + (rnd_mode == MPFR_RNDN)))
+      if (!MPFR_CAN_ROUND (c, err, MPFR_PREC (z), rnd_mode))
         goto next_step;
 
-      /* we can't set z now, because in case z = x, and the mpfr_can_round()
-         call below fails, we will have clobbered the input */
-      mpfr_set_prec (xr, MPFR_PREC(c));
+      /* We can't set z now, because in case z = x, and the MPFR_CAN_ROUND()
+         call below fails, we will have clobbered the input.
+         Note: m below is the precision of c; see above. */
+      mpfr_set_prec (xr, m);
       mpfr_swap (xr, c); /* save the approximation of the cosine in xr */
       mpfr_sqr (c, xr, MPFR_RNDU); /* the absolute error is bounded by
                                       2^(5-m) if reduce=1, and by 2^(2-m)
@@ -197,8 +197,7 @@ mpfr_sin_cos (mpfr_ptr y, mpfr_ptr z, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
       /* the absolute error on c is at most 2^(err-m), which we must put
          in the form 2^(EXP(c)-err). */
       err = MPFR_GET_EXP (c) + (mpfr_exp_t) m - err;
-      if (mpfr_can_round (c, err, MPFR_RNDN, MPFR_RNDZ,
-                          MPFR_PREC (y) + (rnd_mode == MPFR_RNDN)))
+      if (MPFR_CAN_ROUND (c, err, MPFR_PREC (y), rnd_mode))
         break;
       /* check for huge cancellation */
       if (err < (mpfr_exp_t) MPFR_PREC (y))
@@ -236,8 +235,9 @@ mpfr_sin_cos (mpfr_ptr y, mpfr_ptr z, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
 static mpfr_prec_t
 reduce (mpz_t Q, mpz_srcptr R, mpfr_prec_t prec)
 {
-  mpfr_prec_t l = mpz_sizeinbase (R, 2);
+  mpfr_prec_t l;
 
+  MPFR_MPZ_SIZEINBASE2(l, R);
   l = (l > prec) ? l - prec : 0;
   mpz_fdiv_q_2exp (Q, R, l);
   return l;
@@ -249,9 +249,12 @@ reduce (mpz_t Q, mpz_srcptr R, mpfr_prec_t prec)
 static unsigned long
 reduce2 (mpz_t S, mpz_t C, mpfr_prec_t prec)
 {
-  unsigned long ls = mpz_sizeinbase (S, 2);
-  unsigned long lc = mpz_sizeinbase (C, 2);
+  unsigned long ls;
+  unsigned long lc;
   unsigned long l;
+
+  MPFR_MPZ_SIZEINBASE2(ls, S);
+  MPFR_MPZ_SIZEINBASE2(lc, C);
 
   l = (ls < lc) ? ls : lc; /* smaller length */
   l = (l > prec) ? l - prec : 0;
@@ -280,16 +283,18 @@ reduce2 (mpz_t S, mpz_t C, mpfr_prec_t prec)
 
    Assumes prec >= 10.
 */
+
+#define KMAX 64
 static unsigned long
 sin_bs_aux (mpz_t Q0, mpz_t S0, mpz_t C0, mpz_srcptr p, mpfr_prec_t r,
             mpfr_prec_t prec)
 {
-  mpz_t T[GMP_NUMB_BITS], Q[GMP_NUMB_BITS], ptoj[GMP_NUMB_BITS], pp;
-  mpfr_prec_t log2_nb_terms[GMP_NUMB_BITS], mult[GMP_NUMB_BITS];
-  mpfr_prec_t accu[GMP_NUMB_BITS], size_ptoj[GMP_NUMB_BITS];
-  mpfr_prec_t prec_i_have, r0 = r;
-  unsigned long alloc, i, j, k;
-  mpfr_prec_t l;
+  mpz_t T[KMAX], Q[KMAX], ptoj[KMAX], pp;
+  mpfr_prec_t log2_nb_terms[KMAX], mult[KMAX];
+  mpfr_prec_t accu[KMAX], size_ptoj[KMAX];
+  mpfr_prec_t prec_i_have, h, r0 = r, pp_s, p_s;
+  unsigned long i, j, m;
+  int alloc, k, l;
 
   if (MPFR_UNLIKELY(mpz_cmp_ui (p, 0) == 0)) /* sin(x)/x -> 1 */
     {
@@ -305,10 +310,10 @@ sin_bs_aux (mpz_t Q0, mpz_t S0, mpz_t C0, mpz_srcptr p, mpfr_prec_t r,
   mpz_init (pp);
 
   /* normalize p (non-zero here) */
-  l = mpz_scan1 (p, 0);
-  mpz_fdiv_q_2exp (pp, p, l); /* p = pp * 2^l */
+  h = mpz_scan1 (p, 0);
+  mpz_fdiv_q_2exp (pp, p, h); /* p = pp * 2^h */
   mpz_mul (pp, pp, pp);
-  r = 2 * (r - l);            /* x^2 = (p/2^r0)^2 = pp / 2^r */
+  r = 2 * (r - h);            /* x^2 = (p/2^r0)^2 = pp / 2^r */
 
   /* now p is odd */
   alloc = 2;
@@ -319,14 +324,16 @@ sin_bs_aux (mpz_t Q0, mpz_t S0, mpz_t C0, mpz_srcptr p, mpfr_prec_t r,
   mpz_init (Q[1]);
   mpz_init (ptoj[1]);
   mpz_mul (ptoj[1], pp, pp);  /* ptoj[1] = pp^2 */
-  size_ptoj[1] = mpz_sizeinbase (ptoj[1], 2);
+  MPFR_MPZ_SIZEINBASE2(size_ptoj[1], ptoj[1]);
 
   mpz_mul_2exp (T[0], T[0], r);
   mpz_sub (T[0], T[0], pp);      /* 6*2^r - pp = 6*2^r*(1 - x^2/6) */
   log2_nb_terms[0] = 1;
 
   /* already take into account the factor x=p/2^r in sin(x) = x * (...) */
-  mult[0] = r  - mpz_sizeinbase (pp, 2) + r0 - mpz_sizeinbase (p, 2);
+  MPFR_MPZ_SIZEINBASE2(pp_s, pp);
+  MPFR_MPZ_SIZEINBASE2(p_s, p);
+  mult[0] = r - pp_s + r0 - p_s;
   /* we have x^3 < 1/2^mult[0] */
 
   for (i = 2, k = 0, prec_i_have = mult[0]; prec_i_have < prec; i += 2)
@@ -338,25 +345,31 @@ sin_bs_aux (mpz_t Q0, mpz_t S0, mpz_t C0, mpz_srcptr p, mpfr_prec_t r,
       k ++;
       if (k + 1 >= alloc) /* necessarily k + 1 = alloc */
         {
+          MPFR_ASSERTD (k + 1 == alloc);
           alloc ++;
+          MPFR_ASSERTN (k + 1 < KMAX);
           mpz_init (T[k+1]);
           mpz_init (Q[k+1]);
           mpz_init (ptoj[k+1]);
           mpz_mul (ptoj[k+1], ptoj[k], ptoj[k]); /* pp^(2^(k+1)) */
-          size_ptoj[k+1] = mpz_sizeinbase (ptoj[k+1], 2);
+          MPFR_MPZ_SIZEINBASE2(size_ptoj[k+1], ptoj[k+1]);
         }
       /* for i even, we have Q[k] = (2*i)*(2*i+1), T[k] = 1,
          then                Q[k+1] = (2*i+2)*(2*i+3), T[k+1] = 1,
          which reduces to T[k] = (2*i+2)*(2*i+3)*2^r-pp,
          Q[k] = (2*i)*(2*i+1)*(2*i+2)*(2*i+3). */
+      MPFR_ASSERTN (k < KMAX);
       log2_nb_terms[k] = 1;
-      mpz_set_ui (Q[k], (2 * i + 2) * (2 * i + 3));
+      mpz_set_ui (Q[k], 2 * i + 2);
+      mpz_mul_ui (Q[k], Q[k], 2 * i + 3);
       mpz_mul_2exp (T[k], Q[k], r);
       mpz_sub (T[k], T[k], pp);
-      mpz_mul_ui (Q[k], Q[k], (2 * i) * (2 * i + 1));
+      mpz_mul_ui (Q[k], Q[k], 2 * i);
+      mpz_mul_ui (Q[k], Q[k], 2 * i + 1);
       /* the next term of the series is divided by Q[k] and multiplied
          by pp^2/2^(2r), thus the mult. factor < 1/2^mult[k] */
-      mult[k] = mpz_sizeinbase (Q[k], 2) + 2 * r - size_ptoj[1] - 1;
+      MPFR_MPZ_SIZEINBASE2(mult[k], Q[k]);
+      mult[k] += 2 * r - size_ptoj[1] - 1;
       /* the absolute contribution of the next term is 1/2^accu[k] */
       accu[k] = (k == 0) ? mult[k] : mult[k] + accu[k-1];
       prec_i_have = accu[k]; /* the current term is < 1/2^accu[k] */
@@ -364,6 +377,7 @@ sin_bs_aux (mpz_t Q0, mpz_t S0, mpz_t C0, mpz_srcptr p, mpfr_prec_t r,
       l = 1;
       while ((j & 1) == 0) /* combine and reduce */
         {
+          MPFR_ASSERTN (k >= 1);
           mpz_mul (T[k], T[k], ptoj[l]);
           mpz_mul (T[k-1], T[k-1], Q[k]);
           mpz_mul_2exp (T[k-1], T[k-1], r << l);
@@ -371,7 +385,7 @@ sin_bs_aux (mpz_t Q0, mpz_t S0, mpz_t C0, mpz_srcptr p, mpfr_prec_t r,
           mpz_mul (Q[k-1], Q[k-1], Q[k]);
           log2_nb_terms[k-1] ++; /* number of terms in S[k-1]
                                     is a power of 2 by construction */
-          prec_i_have = mpz_sizeinbase (Q[k], 2);
+          MPFR_MPZ_SIZEINBASE2(prec_i_have, Q[k]);
           mult[k-1] += prec_i_have + (r << l) - size_ptoj[l] - 1;
           accu[k-1] = (k == 1) ? mult[k-1] : mult[k-1] + accu[k-2];
           prec_i_have = accu[k-1];
@@ -383,46 +397,45 @@ sin_bs_aux (mpz_t Q0, mpz_t S0, mpz_t C0, mpz_srcptr p, mpfr_prec_t r,
 
   /* accumulate all products in T[0] and Q[0]. Warning: contrary to above,
      here we do not have log2_nb_terms[k-1] = log2_nb_terms[k]+1. */
-  l = 0; /* number of accumulated terms in the right part T[k]/Q[k] */
+  h = 0; /* number of accumulated terms in the right part T[k]/Q[k] */
   while (k > 0)
     {
-      j = log2_nb_terms[k-1];
-      mpz_mul (T[k], T[k], ptoj[j]);
+      mpz_mul (T[k], T[k], ptoj[log2_nb_terms[k-1]]);
       mpz_mul (T[k-1], T[k-1], Q[k]);
-      l += 1 << log2_nb_terms[k];
-      mpz_mul_2exp (T[k-1], T[k-1], r * l);
+      h += (mpfr_prec_t) 1 << log2_nb_terms[k];
+      mpz_mul_2exp (T[k-1], T[k-1], r * h);
       mpz_add (T[k-1], T[k-1], T[k]);
       mpz_mul (Q[k-1], Q[k-1], Q[k]);
       k--;
     }
 
-  l = r0 + r * (i - 1); /* implicit multiplier 2^r for Q0 */
-  /* at this point T[0]/(2^l*Q[0]) is an approximation of sin(x) where the 1st
+  m = r0 + r * (i - 1); /* implicit multiplier 2^r for Q0 */
+  /* at this point T[0]/(2^m*Q[0]) is an approximation of sin(x) where the 1st
      neglected term has contribution < 1/2^prec, thus since the series has
      alternate signs, the error is < 1/2^prec */
 
   /* we truncate Q0 to prec bits: the relative error is at most 2^(1-prec),
      which means that Q0 = Q[0] * (1+theta) with |theta| <= 2^(1-prec)
      [up to a power of two] */
-  l += reduce (Q0, Q[0], prec);
-  l -= reduce (T[0], T[0], prec);
-  /* multiply by x = p/2^l */
+  m += reduce (Q0, Q[0], prec);
+  m -= reduce (T[0], T[0], prec);
+  /* multiply by x = p/2^m */
   mpz_mul (S0, T[0], p);
-  l -= reduce (S0, S0, prec); /* S0 = T[0] * (1 + theta)^2 up to power of 2 */
+  m -= reduce (S0, S0, prec); /* S0 = T[0] * (1 + theta)^2 up to power of 2 */
   /* sin(X) ~ S0/Q0*(1 + theta)^3 + err with |theta| <= 2^(1-prec) and
               |err| <= 2^(-prec), thus since |S0/Q0| <= 1:
      |sin(X) - S0/Q0| <= 4*|theta*S0/Q0| + |err| <= 9*2^(-prec) */
 
   mpz_clear (pp);
-  for (j = 0; j < alloc; j ++)
+  for (k = 0; k < alloc; k ++)
     {
-      mpz_clear (T[j]);
-      mpz_clear (Q[j]);
-      mpz_clear (ptoj[j]);
+      mpz_clear (T[k]);
+      mpz_clear (Q[k]);
+      mpz_clear (ptoj[k]);
     }
 
   /* compute cos(X) from sin(X): sqrt(1-(S/Q)^2) = sqrt(Q^2-S^2)/Q
-     = sqrt(Q0^2*2^(2l)-S0^2)/Q0.
+     = sqrt(Q0^2*2^(2m)-S0^2)/Q0.
      Write S/Q = sin(X) + eps with |eps| <= 9*2^(-prec),
      then sqrt(Q^2-S^2) = sqrt(Q^2-Q^2*(sin(X)+eps)^2)
                         = sqrt(Q^2*cos(X)^2-Q^2*(2*sin(X)*eps+eps^2))
@@ -436,14 +449,14 @@ sin_bs_aux (mpz_t Q0, mpz_t S0, mpz_t C0, mpz_srcptr p, mpfr_prec_t r,
                         = Q*cos(X)*(1+eps3+eps2/(Q*cos(X)))
                         = Q*cos(X)*(1+eps4) with |eps4| <= 9*2^(-prec)
                           since |Q| >= 2^(prec-1) */
-  /* we assume that Q0*2^l >= 2^(prec-1) */
-  MPFR_ASSERTN(l + mpz_sizeinbase (Q0, 2) >= prec);
+  /* we assume that Q0*2^m >= 2^(prec-1) */
+  MPFR_ASSERTN(m + mpz_sizeinbase (Q0, 2) >= prec);
   mpz_mul (C0, Q0, Q0);
-  mpz_mul_2exp (C0, C0, 2 * l);
+  mpz_mul_2exp (C0, C0, 2 * m);
   mpz_submul (C0, S0, S0);
   mpz_sqrt (C0, C0);
 
-  return l;
+  return m;
 }
 
 /* Put in s and c approximations of sin(x) and cos(x) respectively.
@@ -451,7 +464,7 @@ sin_bs_aux (mpz_t Q0, mpz_t S0, mpz_t C0, mpz_srcptr p, mpfr_prec_t r,
    Return err such that the relative error is bounded by 2^err ulps.
 */
 static int
-sincos_aux (mpfr_t s, mpfr_t c, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
+sincos_aux (mpfr_ptr s, mpfr_ptr c, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
 {
   mpfr_prec_t prec_s, sh;
   mpz_t Q, S, C, Q2, S2, C2, y;
@@ -496,8 +509,8 @@ sincos_aux (mpfr_t s, mpfr_t c, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
       else
         {
           /* y <- trunc(x2 * 2^sh) = trunc(x * 2^(2*sh-1)) */
-          mpfr_mul_2exp (x2, x2, sh, MPFR_RNDN); /* exact */
-          mpfr_get_z (y, x2, MPFR_RNDZ); /* round towards zero: now
+          mpfr_mul_2ui (x2, x2, sh, MPFR_RNDN); /* exact */
+          mpfr_get_z (y, x2, MPFR_RNDZ); /* round toward zero: now
                                            0 <= x2 < 2^sh, thus
                                            0 <= x2/2^(sh-1) < 2^(1-sh) */
           if (mpz_cmp_ui (y, 0) == 0)
@@ -542,11 +555,11 @@ sincos_aux (mpfr_t s, mpfr_t c, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
 
   mpfr_set_z (s, S, MPFR_RNDN);
   mpfr_div_z (s, s, Q, MPFR_RNDN);
-  mpfr_div_2exp (s, s, l, MPFR_RNDN);
+  mpfr_div_2ui (s, s, l, MPFR_RNDN);
 
   mpfr_set_z (c, C, MPFR_RNDN);
   mpfr_div_z (c, c, Q, MPFR_RNDN);
-  mpfr_div_2exp (c, c, l, MPFR_RNDN);
+  mpfr_div_2ui (c, c, l, MPFR_RNDN);
 
   mpz_clear (Q);
   mpz_clear (S);
@@ -565,12 +578,13 @@ sincos_aux (mpfr_t s, mpfr_t c, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
    Assumes s differs from c.
  */
 int
-mpfr_sincos_fast (mpfr_t s, mpfr_t c, mpfr_srcptr x, mpfr_rnd_t rnd)
+mpfr_sincos_fast (mpfr_ptr s, mpfr_ptr c, mpfr_srcptr x, mpfr_rnd_t rnd)
 {
   int inexs, inexc;
   mpfr_t x_red, ts, tc;
   mpfr_prec_t w;
   mpfr_exp_t err, errs, errc;
+  MPFR_GROUP_DECL (group);
   MPFR_ZIV_DECL (loop);
 
   MPFR_ASSERTN(s != c);
@@ -581,8 +595,8 @@ mpfr_sincos_fast (mpfr_t s, mpfr_t c, mpfr_srcptr x, mpfr_rnd_t rnd)
   else
     w = MPFR_PREC(s) >= MPFR_PREC(c) ? MPFR_PREC(s) : MPFR_PREC(c);
   w += MPFR_INT_CEIL_LOG2(w) + 9; /* ensures w >= 10 (needed by sincos_aux) */
-  mpfr_init2 (ts, w);
-  mpfr_init2 (tc, w);
+
+  MPFR_GROUP_INIT_2(group, w, ts, tc);
 
   MPFR_ZIV_INIT (loop, w);
   for (;;)
@@ -595,11 +609,9 @@ mpfr_sincos_fast (mpfr_t s, mpfr_t c, mpfr_srcptr x, mpfr_rnd_t rnd)
       /* if -Pi/4 <= x < 0, use sin(-x)=-sin(x) */
       else if (MPFR_IS_NEG(x) && mpfr_cmp_si_2exp (x, -1686629713, -31) >= 0)
         {
-          mpfr_init2 (x_red, MPFR_PREC(x));
-          mpfr_neg (x_red, x, rnd); /* exact */
+          MPFR_ALIAS(x_red, x, MPFR_SIGN_POS, MPFR_GET_EXP(x));
           err = sincos_aux (ts, tc, x_red, MPFR_RNDN);
-          mpfr_neg (ts, ts, MPFR_RNDN);
-          mpfr_clear (x_red);
+          MPFR_CHANGE_SIGN(ts);
         }
       else /* argument reduction is needed */
         {
@@ -610,7 +622,7 @@ mpfr_sincos_fast (mpfr_t s, mpfr_t c, mpfr_srcptr x, mpfr_rnd_t rnd)
           mpfr_init2 (x_red, w);
           mpfr_init2 (pi, (MPFR_EXP(x) > 0) ? w + MPFR_EXP(x) : w);
           mpfr_const_pi (pi, MPFR_RNDN);
-          mpfr_div_2exp (pi, pi, 1, MPFR_RNDN); /* Pi/2 */
+          mpfr_div_2ui (pi, pi, 1, MPFR_RNDN); /* Pi/2 */
           mpfr_remquo (x_red, &q, x, pi, MPFR_RNDN);
           /* x = q * (Pi/2 + eps1) + x_red + eps2,
              where |eps1| <= 1/2*ulp(Pi/2) = 2^(-w-MAX(0,EXP(x))),
@@ -648,15 +660,13 @@ mpfr_sincos_fast (mpfr_t s, mpfr_t c, mpfr_srcptr x, mpfr_rnd_t rnd)
           (c == NULL || MPFR_CAN_ROUND (tc, w - errc, MPFR_PREC(c), rnd)))
         break;
       MPFR_ZIV_NEXT (loop, w);
-      mpfr_set_prec (ts, w);
-      mpfr_set_prec (tc, w);
+      MPFR_GROUP_REPREC_2(group, w, ts, tc);
     }
   MPFR_ZIV_FREE (loop);
 
   inexs = (s == NULL) ? 0 : mpfr_set (s, ts, rnd);
   inexc = (c == NULL) ? 0 : mpfr_set (c, tc, rnd);
 
-  mpfr_clear (ts);
-  mpfr_clear (tc);
+  MPFR_GROUP_CLEAR (group);
   return INEX(inexs,inexc);
 }

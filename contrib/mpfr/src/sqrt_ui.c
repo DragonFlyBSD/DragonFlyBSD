@@ -1,7 +1,7 @@
 /* mpfr_sqrt_ui -- square root of a machine integer
 
-Copyright 2000, 2001, 2002, 2003, 2004, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2000-2004, 2006-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
@@ -26,12 +25,19 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 int
 mpfr_sqrt_ui (mpfr_ptr r, unsigned long u, mpfr_rnd_t rnd_mode)
 {
-  if (u)
+  int inex;
+
+  MPFR_LOG_FUNC
+    (("u=%lu rnd=%d", u, rnd_mode),
+     ("y[%Pd]=%.*Rg inexact=%d",
+      mpfr_get_prec(r), mpfr_log_prec, r, inex));
+
+  if (u != 0)
     {
       mpfr_t uu;
+#ifdef MPFR_LONG_WITHIN_LIMB
       mp_limb_t up[1];
-      unsigned long cnt;
-      int inex;
+      int cnt;
       MPFR_SAVE_EXPO_DECL (expo);
 
       MPFR_TMP_INIT1 (up, uu, GMP_NUMB_BITS);
@@ -41,9 +47,20 @@ mpfr_sqrt_ui (mpfr_ptr r, unsigned long u, mpfr_rnd_t rnd_mode)
 
       MPFR_SAVE_EXPO_MARK (expo);
       MPFR_SET_EXP (uu, GMP_NUMB_BITS - cnt);
-      inex = mpfr_sqrt(r, uu, rnd_mode);
+      inex = mpfr_sqrt (r, uu, rnd_mode);
+#else
+      MPFR_SAVE_EXPO_DECL (expo);
+
+      mpfr_init2 (uu, sizeof (unsigned long) * CHAR_BIT);
+      /* Warning: u might be outside the current exponent range! */
+      MPFR_SAVE_EXPO_MARK (expo);
+      mpfr_set_ui (uu, u, MPFR_RNDZ);
+      inex = mpfr_sqrt (r, uu, rnd_mode);
+      mpfr_clear (uu);
+#endif /* MPFR_LONG_WITHIN_LIMB */
       MPFR_SAVE_EXPO_FREE (expo);
-      return mpfr_check_range(r, inex, rnd_mode);
+      inex = mpfr_check_range (r, inex, rnd_mode);
+      return inex;
     }
   else /* sqrt(0) = 0 */
     {

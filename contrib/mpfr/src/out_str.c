@@ -1,7 +1,7 @@
 /* mpfr_out_str -- output a floating-point number to a stream
 
-Copyright 1999, 2001, 2002, 2004, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 1999, 2001-2002, 2004, 2006-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #include "mpfr-impl.h"
 
@@ -39,13 +38,9 @@ mpfr_out_str (FILE *stream, int base, size_t n_digits, mpfr_srcptr op,
   char *s, *s0;
   size_t l;
   mpfr_exp_t e;
-  int err;
+  int err, r;
 
-  MPFR_ASSERTN (base >= 2 && base <= 62);
-
-  /* when stream=NULL, output to stdout */
-  if (stream == NULL)
-    stream = stdout;
+  MPFR_ASSERTN ((base >= -36 && base <= -2) || (base >= 2 && base <= 62));
 
   if (MPFR_UNLIKELY (MPFR_IS_SINGULAR (op)))
     {
@@ -73,26 +68,20 @@ mpfr_out_str (FILE *stream, int base, size_t n_digits, mpfr_srcptr op,
     || fputc (*s++, stream) == EOF  /* leading digit */
     || fputc ((unsigned char) MPFR_DECIMAL_POINT, stream) == EOF
     || fputs (s, stream) == EOF;     /* trailing significand */
-  (*__gmp_free_func) (s0, l);
+  mpfr_free_func (s0, l);
   if (MPFR_UNLIKELY (err))
     return 0;
 
   e--;  /* due to the leading digit */
 
   /* outputs exponent */
-  if (e)
-    {
-      int r;
+  r = fprintf (stream, (base <= 10 ?
+                        "e%" MPFR_EXP_FSPEC "d" :
+                        "@%" MPFR_EXP_FSPEC "d"), (mpfr_eexp_t) e);
 
-      MPFR_ASSERTN(e >= LONG_MIN);
-      MPFR_ASSERTN(e <= LONG_MAX);
+  /* Check error from fprintf or integer overflow (wrapping) on size_t */
+  if (MPFR_UNLIKELY (r < 0 || l + r < l))
+    return 0;
 
-      r = fprintf (stream, (base <= 10 ? "e%ld" : "@%ld"), (long) e);
-      if (MPFR_UNLIKELY (r < 0))
-        return 0;
-
-      l += r;
-    }
-
-  return l;
+  return l + r;
 }
