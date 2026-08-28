@@ -1,12 +1,18 @@
-MULTIPLE PRECISION FLOATING POINT LIBRARY (MPFR)
-================================================
+GNU MPFR
+========
 
 Original Source can be downloaded from:
-http://www.mpfr.org
+https://www.mpfr.org/
 
-file = mpfr-3.1.2.tar.xz
-date = 13 March 2013
-size = 1074388
-sha1 = 03e593cc6e26639ef5e60be1af8dc527209e5172
+file = mpfr-4.2.2.tar.xz
+date = 2025-03-20
+size = 1505596
+sha1 = a63a264b273a652e27518443640e69567da498ce
 
 A list of files and directories removed is in README.DELETED
+
+Configured with:
+---------------
+--disable-shared
+--with-gmp-include=...
+--with-gmp-lib=...
