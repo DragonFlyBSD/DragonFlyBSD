@@ -11,8 +11,9 @@ CONTRIBDIR=	${.CURDIR}/../../../contrib/mpc/src
 LIB=		mpc
 INTERNALLIB=	# yes
 
-CFLAGS+=	-I${CONTRIBDIR}
+CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.OBJDIR}
+CFLAGS+=	-I${CONTRIBDIR}
 CFLAGS+=	-I${.CURDIR}/../gmp
 CFLAGS+=	-I${.CURDIR}/../../../contrib/mpfr/src
 CFLAGS+=	-DHAVE_CONFIG_H
