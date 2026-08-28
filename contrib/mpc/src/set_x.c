@@ -1,7 +1,7 @@
 /* mpc_set_x -- Set the real part of a complex number
    (imaginary part equals +0 regardless of rounding mode).
 
-Copyright (C) 2008, 2009, 2010, 2011 INRIA
+Copyright (C) 2008, 2009, 2010, 2011, 2022, 2023, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -20,18 +20,6 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 */
 
 #include "config.h"
-
-#ifdef HAVE_INTTYPES_H
-# include <inttypes.h> /* for intmax_t */
-#else
-# ifdef HAVE_STDINT_H
-#  include <stdint.h>
-# endif
-#endif
-
-#ifdef HAVE_COMPLEX_H
-# include <complex.h>
-#endif
 
 #include "mpc-impl.h"
 
@@ -85,14 +73,14 @@ mpc_set_sj (mpc_ptr a, intmax_t b, mpc_rnd_t rnd)
    MPC_SET_X (sj, a, b, rnd)
 #endif
 
-#ifdef HAVE_COMPLEX_H
+#ifdef _MPC_HAVE_COMPLEX_H
 int
-mpc_set_dc (mpc_ptr a, double _Complex b, mpc_rnd_t rnd) {
+mpc_set_dc (mpc_ptr a, DOUBLE_COMPLEX b, mpc_rnd_t rnd) {
    return mpc_set_d_d (a, creal (b), cimag (b), rnd);
 }
 
 int
-mpc_set_ldc (mpc_ptr a, long double _Complex b, mpc_rnd_t rnd) {
+mpc_set_ldc (mpc_ptr a, LONG_DOUBLE_COMPLEX b, mpc_rnd_t rnd) {
    return mpc_set_ld_ld (a, creall (b), cimagl (b), rnd);
 }
 #endif

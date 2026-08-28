@@ -1,6 +1,6 @@
-/* mpc_clear -- Clear a complex variable.
+/* mpc_exp10 -- base-10 exponential of a complex number.
 
-Copyright (C) 2002, 2009, 2011, 2022 INRIA
+Copyright (C) 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -20,9 +20,14 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 
 #include "mpc-impl.h"
 
-void
-mpc_clear (mpc_ptr x)
+int
+mpc_exp10 (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
 {
-  mpfr_clear (mpc_realref(x));
-  mpfr_clear (mpc_imagref(x));
+  mpc_t ten;
+  int ret;
+  mpc_init2 (ten, 4); // 4 bits is enough to store 10 exactly
+  mpc_set_ui (ten, 10, MPC_RNDNN);
+  ret = mpc_pow (rop, ten, op, rnd);
+  mpc_clear (ten);
+  return ret;
 }

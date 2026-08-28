@@ -28,6 +28,10 @@ mpc_atanh (mpc_ptr rop, mpc_srcptr op, mpc_rnd_t rnd)
   mpfr_t tmp;
   mpc_t z, a;
 
+  /* We follow the special values from the C standard, Annex G.4.3.3,
+     https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3435.pdf,
+     in particular atanh(1,0) = (+Inf,0) */
+
   mpc_realref (z)[0] = mpc_imagref (op)[0];
   mpc_imagref (z)[0] = mpc_realref (op)[0];
   MPFR_CHANGE_SIGN (mpc_realref (z));

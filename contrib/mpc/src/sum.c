@@ -1,6 +1,6 @@
-/* mpc_mul_fr -- Multiply a complex number by a floating-point number.
+/* mpc_sum -- Add an array of complex numbers.
 
-Copyright (C) 2002, 2008, 2009, 2010, 2011, 2012 INRIA
+Copyright (C) 2018 INRIA
 
 This file is part of GNU MPC.
 
@@ -18,26 +18,26 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program. If not, see http://www.gnu.org/licenses/ .
 */
 
+#include <stdio.h> /* for MPC_ASSERT */
 #include "mpc-impl.h"
 
 int
-mpc_mul_fr (mpc_ptr a, mpc_srcptr b, mpfr_srcptr c, mpc_rnd_t rnd)
+mpc_sum (mpc_ptr sum, const mpc_ptr *z, unsigned long n, mpc_rnd_t rnd)
 {
   int inex_re, inex_im;
-  mpfr_t real;
+  mpfr_ptr *t;
+  unsigned long i;
 
-  if (c == mpc_realref (a))
-    /* We have to use a temporary variable. */
-    mpfr_init2 (real, MPC_PREC_RE (a));
-  else
-    real [0] = mpc_realref (a) [0];
-
-  inex_re = mpfr_mul (real, mpc_realref(b), c, MPC_RND_RE(rnd));
-  inex_im = mpfr_mul (mpc_imagref(a), mpc_imagref(b), c, MPC_RND_IM(rnd));
-  mpfr_set (mpc_realref (a), real, MPFR_RNDN); /* exact */
-
-  if (c == mpc_realref (a))
-    mpfr_clear (real);
+  t = (mpfr_ptr *) malloc (n * sizeof(mpfr_t));
+  /* warning: when n=0, malloc() might return NULL (e.g., gcc119) */
+  MPC_ASSERT(n == 0 || t != NULL);
+  for (i = 0; i < n; i++)
+    t[i] = mpc_realref (z[i]);
+  inex_re = mpfr_sum (mpc_realref (sum), t, n, MPC_RND_RE (rnd));
+  for (i = 0; i < n; i++)
+    t[i] = mpc_imagref (z[i]);
+  inex_im = mpfr_sum (mpc_imagref (sum), t, n, MPC_RND_IM (rnd));
+  free (t);
 
   return MPC_INEX(inex_re, inex_im);
 }

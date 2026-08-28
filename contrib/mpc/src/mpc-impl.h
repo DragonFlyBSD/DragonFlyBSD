@@ -1,6 +1,6 @@
 /* mpc-impl.h -- Internal include file for mpc.
 
-Copyright (C) 2002, 2004, 2005, 2008, 2009, 2010, 2011, 2012 INRIA
+Copyright (C) 2002, 2004, 2005, 2008, 2009, 2010, 2011, 2012, 2020, 2022, 2024 INRIA
 
 This file is part of GNU MPC.
 
@@ -23,7 +23,20 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 #define __MPC_LIBRARY_BUILD
    /* to indicate we are inside the library build */
 
+// define MPC_DEBUG to enable debug routines
+// #define MPC_DEBUG
+
+#if 1
+#define _MPC_HAVE_COMPLEX_H
+#include <complex.h>
+#else
+#undef _MPC_HAVE_COMPLEX_H
+#endif
+
 #include "config.h"
+#ifdef MPC_DEBUG
+#include <stdio.h>
+#endif
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
 #endif
@@ -55,43 +68,17 @@ along with this program. If not, see http://www.gnu.org/licenses/ .
 #define MPFR_SIGNBIT(x) (mpfr_signbit (x) ? -1 : 1)
 #define MPC_MPFR_SIGN(x) (mpfr_zero_p (x) ? 0 : MPFR_SIGNBIT (x))
    /* should be called MPFR_SIGN, but this is taken in mpfr.h */
-#define MPFR_CHANGE_SIGN(x) mpfr_neg(x,x,GMP_RNDN)
+#define MPFR_CHANGE_SIGN(x) mpfr_neg(x,x,MPFR_RNDN)
 #define MPFR_COPYSIGN(x,y,z,rnd) (mpfr_nan_p (z) ? \
    mpfr_setsign (x, y, 0, rnd) : \
    mpfr_copysign (x, y, z, rnd))
    /* work around spurious signs in nan */
-#define MPFR_ADD_ONE_ULP(x) mpfr_add_one_ulp (x, GMP_RNDN)
-#define MPFR_SUB_ONE_ULP(x) mpfr_sub_one_ulp (x, GMP_RNDN)
-   /* drop unused rounding mode from macroes */
+#define MPFR_ADD_ONE_ULP(x) \
+  (MPFR_SIGN (x) > 0 ? mpfr_nextabove (x) : mpfr_nextbelow (x))
+#define MPFR_SUB_ONE_ULP(x) \
+  (MPFR_SIGN (x) > 0 ? mpfr_nextbelow (x) : mpfr_nextabove (x))
+   /* drop unused rounding mode from macros */
 #define MPFR_SWAP(a,b) do { mpfr_srcptr tmp; tmp = a; a = b; b = tmp; } while (0)
-
-
-/*
- * Macro implementing rounding away from zero, to ease compatibility with
- * mpfr < 3. f is the complete function call with a rounding mode of
- * MPFR_RNDA, rop the name of the variable containing the result; it is
- * already contained in f, but needs to be repeated so that the macro can
- * modify the variable.
- * Usage: replace each call to a function such as
- *    mpfr_add (rop, a, b, MPFR_RNDA)
- * by
- *    ROUND_AWAY (mpfr_add (rop, a, b, MPFR_RNDA), rop)
-*/
-#if MPFR_VERSION_MAJOR < 3
-   /* round towards zero, add 1 ulp if not exact */
-#define MPFR_RNDA GMP_RNDZ
-#define ROUND_AWAY(f,rop)                            \
-   ((f) ? MPFR_ADD_ONE_ULP (rop), MPFR_SIGNBIT (rop) : 0)
-#else
-#define ROUND_AWAY(f,rop) \
-   (f)
-#endif /* mpfr < 3 */
-
-#if MPFR_VERSION_MAJOR < 3
-/* declare missing functions, defined in get_version.c */
-__MPC_DECLSPEC void mpfr_set_zero (mpfr_ptr, int);
-__MPC_DECLSPEC int mpfr_regular_p (mpfr_srcptr);
-#endif /* mpfr < 3 */
 
 
 /*
@@ -103,7 +90,15 @@ __MPC_DECLSPEC int mpfr_regular_p (mpfr_srcptr);
 #define MPC_MAX_PREC(x) MPC_MAX(MPC_PREC_RE(x), MPC_PREC_IM(x))
 
 #define INV_RND(r) \
-   (((r) == GMP_RNDU) ? GMP_RNDD : (((r) == GMP_RNDD) ? GMP_RNDU : (r)))
+   (((r) == MPFR_RNDU) ? MPFR_RNDD : (((r) == MPFR_RNDD) ? MPFR_RNDU : (r)))
+
+/* Return non-zero if 'rnd' rounds towards zero, for a number of sign 'sgn' */
+#define MPC_IS_LIKE_RNDZ(rnd, sgn) \
+  ((rnd==MPFR_RNDZ) || (sgn<0 && rnd==MPFR_RNDU) || (sgn>0 && rnd==MPFR_RNDD))
+
+/* Return non-zero if 'rnd' rounds away from zero for a number of sign 'sgn' */
+#define MPC_IS_LIKE_RNDA(rnd, sgn) \
+  ((sgn<0 && rnd==MPFR_RNDD) || (sgn>0 && rnd==MPFR_RNDU))
 
 #define mpc_inf_p(z) (mpfr_inf_p(mpc_realref(z))||mpfr_inf_p(mpc_imagref(z)))
    /* Convention in C99 (G.3): z is regarded as an infinity if at least one of
@@ -153,9 +148,48 @@ do {                                                            \
 #define MPFR_OUT(x)                                             \
 do {                                                            \
   printf (#x "[%lu]=", (unsigned long int) mpfr_get_prec (x));  \
-  mpfr_out_str (stdout, 2, 0, x, GMP_RNDN);                     \
+  mpfr_out_str (stdout, 2, 0, x, MPFR_RNDN);                    \
   printf ("\n");                                                \
 } while (0)
+
+#define MPFR_OUT_Q(x)                                           \
+do {                                                            \
+  mpq_t q;                                                      \
+  mpq_init (q);                                                 \
+  mpfr_get_q (q, x);                                            \
+  mpq_out_str (stdout, 10, q);                                  \
+  mpq_clear (q);                                                \
+} while (0)
+
+#define MPC_OUT_PARI(x)                                         \
+do {                                                            \
+  printf (#x "=");                                              \
+  MPFR_OUT_Q (mpc_realref (x));                                 \
+  printf ("+I*(");                                              \
+  MPFR_OUT_Q (mpc_imagref (x));                                 \
+  printf (");\n");                                              \
+} while (0)
+
+// to debug Ziv's loop
+#ifndef MPC_DEBUG
+#define MPC_LOOP_NEXT(loop,op,rop)                                      \
+  do {                                                                  \
+  loop++;                                                               \
+  } while (0)
+#else // adjust condition to your needs
+#define MPC_LOOP_NEXT(loop,op,rop)                                      \
+  do {                                                                  \
+    loop++;                                                             \
+    if (loop >= 3) {                                                    \
+        fprintf (stderr, "loop=%d in file %s, line %d\n", loop, __FILE__, __LINE__); \
+        mpfr_fprintf (stderr, "op[%lu,%lu]=(%Ra,%Ra) rop:[%lu,%lu]\n",  \
+                      mpfr_get_prec (mpc_realref (op)), mpfr_get_prec (mpc_imagref (op)), \
+                      mpc_realref (op), mpc_imagref (op),               \
+                      mpfr_get_prec (mpc_realref (rop)), mpfr_get_prec (mpc_imagref (rop))); \
+        abort ();                                                       \
+    }                                                                   \
+  } while (0)
+#endif
 
 
 /*
@@ -175,7 +209,11 @@ do {                                                            \
 extern "C" {
 #endif
 
+/* Function for mpcb. */
+__MPC_DECLSPEC void mpcb_eta_err (mpcb_ptr eta, mpc_srcptr z,
+   unsigned long int err_re, unsigned long int err_im);
 
+/* Functions for mpc. */
 __MPC_DECLSPEC int  mpc_mul_naive (mpc_ptr, mpc_srcptr, mpc_srcptr, mpc_rnd_t);
 __MPC_DECLSPEC int  mpc_mul_karatsuba (mpc_ptr, mpc_srcptr, mpc_srcptr, mpc_rnd_t);
 __MPC_DECLSPEC int  mpc_fma_naive (mpc_ptr, mpc_srcptr, mpc_srcptr, mpc_srcptr, mpc_rnd_t);
@@ -185,6 +223,8 @@ __MPC_DECLSPEC char* mpc_realloc_str (char*, size_t, size_t);
 __MPC_DECLSPEC void mpc_free_str (char*);
 __MPC_DECLSPEC mpfr_prec_t mpc_ceil_log2 (mpfr_prec_t);
 __MPC_DECLSPEC int set_pi_over_2 (mpfr_ptr, int, mpfr_rnd_t);
+__MPC_DECLSPEC int mpc_fix_inf (mpfr_t x, mpfr_rnd_t rnd);
+__MPC_DECLSPEC int mpc_fix_zero (mpfr_t x, mpfr_rnd_t rnd);
 
 #if defined (__cplusplus)
 }

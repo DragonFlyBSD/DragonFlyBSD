@@ -25,12 +25,12 @@ int
 mpc_ui_div (mpc_ptr a, unsigned long int b, mpc_srcptr c, mpc_rnd_t rnd)
 {
   int inex;
-  mpc_t bb;
+  mpfr_t bb;
 
-  mpc_init2 (bb, sizeof(unsigned long int) * CHAR_BIT);
-  mpc_set_ui (bb, b, rnd); /* exact */
-  inex = mpc_div (a, bb, c, rnd);
-  mpc_clear (bb);
+  mpfr_init2 (bb, sizeof(unsigned long int) * CHAR_BIT);
+  mpfr_set_ui (bb, b, MPC_RND_RE(rnd)); /* exact */
+  inex = mpc_fr_div (a, bb, c, rnd);
+  mpfr_clear (bb);
 
   return inex;
 }
