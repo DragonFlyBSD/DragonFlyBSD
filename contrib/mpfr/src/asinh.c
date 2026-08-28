@@ -1,7 +1,7 @@
 /* mpfr_asinh -- inverse hyperbolic sine
 
-Copyright 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2001-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
@@ -38,8 +37,8 @@ mpfr_asinh (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
   MPFR_ZIV_DECL (loop);
 
   MPFR_LOG_FUNC (
-    ("x[%Pu]=%.*Rg rnd=%d", mpfr_get_prec (x), mpfr_log_prec, x, rnd_mode),
-    ("y[%Pu]=%.*Rg inexact=%d", mpfr_get_prec (y), mpfr_log_prec, y,
+    ("x[%Pd]=%.*Rg rnd=%d", mpfr_get_prec (x), mpfr_log_prec, x, rnd_mode),
+    ("y[%Pd]=%.*Rg inexact=%d", mpfr_get_prec (y), mpfr_log_prec, y,
      inexact));
 
   if (MPFR_UNLIKELY (MPFR_IS_SINGULAR (x)))
@@ -89,7 +88,7 @@ mpfr_asinh (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
   for (;;)
     {
       /* compute asinh */
-      mpfr_mul (t, x, x, MPFR_RNDD);                    /* x^2 */
+      mpfr_sqr (t, x, MPFR_RNDD);                       /* x^2 */
       mpfr_add_ui (t, t, 1, MPFR_RNDD);                 /* x^2+1 */
       mpfr_sqrt (t, t, MPFR_RNDN);                      /* sqrt(x^2+1) */
       (neg ? mpfr_sub : mpfr_add) (t, t, x, MPFR_RNDN); /* sqrt(x^2+1)+x */
@@ -104,7 +103,7 @@ mpfr_asinh (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
             break;
         }
 
-      /* actualisation of the precision */
+      /* actualization of the precision */
       MPFR_ZIV_NEXT (loop, Nt);
       mpfr_set_prec (t, Nt);
     }

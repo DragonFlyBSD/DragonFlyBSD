@@ -1,7 +1,7 @@
 /* mpfr_exp -- exponential of a floating-point number
 
-Copyright 1999, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 1999, 2001-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H /* for MPFR_MPZ_SIZEINBASE2 */
 #include "mpfr-impl.h"
@@ -42,7 +41,7 @@ static void
 mpfr_exp_rational (mpfr_ptr y, mpz_ptr p, long r, int m,
                    mpz_t *Q, mpfr_prec_t *mult)
 {
-  unsigned long n, i, j;
+  mp_bitcnt_t n, h, i, j;  /* unsigned type, which is >= unsigned long */
   mpz_t *S, *ptoj;
   mpfr_prec_t *log2_nb_terms;
   mpfr_exp_t diff, expo;
@@ -58,8 +57,9 @@ mpfr_exp_rational (mpfr_ptr y, mpz_ptr p, long r, int m,
   /* Normalize p */
   MPFR_ASSERTD (mpz_cmp_ui (p, 0) != 0);
   n = mpz_scan1 (p, 0); /* number of trailing zeros in p */
+  MPFR_ASSERTN (n <= LONG_MAX); /* This is a limitation. */
   mpz_tdiv_q_2exp (p, p, n);
-  r -= n; /* since |p/2^r| < 1 and p >= 1, r >= 1 */
+  r -= (long) n; /* since |p/2^r| < 1 and p >= 1, r >= 1 */
 
   /* Set initial var */
   mpz_set (ptoj[0], p);
@@ -75,6 +75,7 @@ mpfr_exp_rational (mpfr_ptr y, mpz_ptr p, long r, int m,
 
   /* Main Loop */
   n = 1UL << m;
+  MPFR_ASSERTN (n != 0);  /* no overflow */
   for (i = 1; (prec_i_have < precy) && (i < n); i++)
     {
       /* invariant: Q[0]*Q[1]*...*Q[k] equals i! */
@@ -112,14 +113,14 @@ mpfr_exp_rational (mpfr_ptr y, mpz_ptr p, long r, int m,
 
   /* accumulate all products in S[0] and Q[0]. Warning: contrary to above,
      here we do not have log2_nb_terms[k-1] = log2_nb_terms[k]+1. */
-  l = 0; /* number of accumulated terms in the right part S[k]/Q[k] */
+  h = 0; /* number of accumulated terms in the right part S[k]/Q[k] */
   while (k > 0)
     {
       j = log2_nb_terms[k-1];
       mpz_mul (S[k], S[k], ptoj[j]);
       mpz_mul (S[k-1], S[k-1], Q[k]);
-      l += 1 << log2_nb_terms[k];
-      mpz_mul_2exp (S[k-1], S[k-1], r * l);
+      h += (mp_bitcnt_t) 1 << log2_nb_terms[k];
+      mpz_mul_2exp (S[k-1], S[k-1], r * h);
       mpz_add (S[k-1], S[k-1], S[k]);
       mpz_mul (Q[k-1], Q[k-1], Q[k]);
       k--;
@@ -144,7 +145,9 @@ mpfr_exp_rational (mpfr_ptr y, mpz_ptr p, long r, int m,
 
   mpz_tdiv_q (S[0], S[0], Q[0]);
   mpfr_set_z (y, S[0], MPFR_RNDD);
-  MPFR_SET_EXP (y, MPFR_GET_EXP (y) + expo - r * (i - 1) );
+  /* TODO: Check/prove that the following expression doesn't overflow. */
+  expo = MPFR_GET_EXP (y) + expo - r * (i - 1);
+  MPFR_SET_EXP (y, expo);
 }
 
 #define shift (GMP_NUMB_BITS/2)
@@ -167,15 +170,15 @@ mpfr_exp_3 (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
   MPFR_ZIV_DECL (ziv_loop);
 
   MPFR_LOG_FUNC
-    (("x[%Pu]=%.*Rg rnd=%d", mpfr_get_prec(x), mpfr_log_prec, x, rnd_mode),
-     ("y[%Pu]=%.*Rg inexact=%d", mpfr_get_prec(y), mpfr_log_prec, y,
+    (("x[%Pd]=%.*Rg rnd=%d", mpfr_get_prec(x), mpfr_log_prec, x, rnd_mode),
+     ("y[%Pd]=%.*Rg inexact=%d", mpfr_get_prec(y), mpfr_log_prec, y,
       inexact));
 
   MPFR_SAVE_EXPO_MARK (expo);
 
   /* decompose x */
   /* we first write x = 1.xxxxxxxxxxxxx
-     ----- k bits -- */
+                        ----- k bits -- */
   prec_x = MPFR_INT_CEIL_LOG2 (MPFR_PREC (x)) - MPFR_LOG2_GMP_NUMB_BITS;
   if (prec_x < 0)
     prec_x = 0;
@@ -215,10 +218,10 @@ mpfr_exp_3 (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
       twopoweri = GMP_NUMB_BITS;
 
       /* Allocate tables */
-      P    = (mpz_t*) (*__gmp_allocate_func) (3*(k+2)*sizeof(mpz_t));
+      P    = (mpz_t*) mpfr_allocate_func (3*(k+2)*sizeof(mpz_t));
       for (i = 0; i < 3*(k+2); i++)
         mpz_init (P[i]);
-      mult = (mpfr_prec_t*) (*__gmp_allocate_func) (2*(k+2)*sizeof(mpfr_prec_t));
+      mult = (mpfr_prec_t*) mpfr_allocate_func (2*(k+2)*sizeof(mpfr_prec_t));
 
       /* Particular case for i==0 */
       mpfr_extract (uk, x_copy, 0);
@@ -245,8 +248,8 @@ mpfr_exp_3 (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
       /* Clear tables */
       for (i = 0; i < 3*(k+2); i++)
         mpz_clear (P[i]);
-      (*__gmp_free_func) (P, 3*(k+2)*sizeof(mpz_t));
-      (*__gmp_free_func) (mult, 2*(k+2)*sizeof(mpfr_prec_t));
+      mpfr_free_func (P, 3*(k+2)*sizeof(mpz_t));
+      mpfr_free_func (mult, 2*(k+2)*sizeof(mpfr_prec_t));
 
       if (shift_x > 0)
         {
@@ -283,8 +286,8 @@ mpfr_exp_3 (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
             }
         }
 
-      if (mpfr_can_round (shift_x > 0 ? t : tmp, realprec, MPFR_RNDD, MPFR_RNDZ,
-                          MPFR_PREC(y) + (rnd_mode == MPFR_RNDN)))
+      if (MPFR_CAN_ROUND (shift_x > 0 ? t : tmp, realprec,
+                          MPFR_PREC(y), rnd_mode))
         {
           inexact = mpfr_set (y, shift_x > 0 ? t : tmp, rnd_mode);
           if (MPFR_UNLIKELY (scaled && MPFR_IS_PURE_FP (y)))

@@ -1,7 +1,7 @@
 /* mpfr_modf -- Integral and fractional part.
 
-Copyright 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2007-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,14 +16,10 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #include "mpfr-impl.h"
-
-#define INEXPOS(y) ((y) == 0 ? 0 : (((y) > 0) ? 1 : 2))
-#define INEX(y,z) (INEXPOS(y) | (INEXPOS(z) << 2))
 
 /* Set iop to the integral part of op and fop to its fractional part */
 int
@@ -34,9 +30,9 @@ mpfr_modf (mpfr_ptr iop, mpfr_ptr fop, mpfr_srcptr op, mpfr_rnd_t rnd_mode)
   int inexi, inexf;
 
   MPFR_LOG_FUNC
-    (("op[%Pu]=%.*Rg rnd=%d",
+    (("op[%Pd]=%.*Rg rnd=%d",
       mpfr_get_prec (op), mpfr_log_prec, op, rnd_mode),
-     ("iop[%Pu]=%.*Rg fop[%Pu]=%.*Rg",
+     ("iop[%Pd]=%.*Rg fop[%Pd]=%.*Rg",
       mpfr_get_prec (iop), mpfr_log_prec, iop,
       mpfr_get_prec (fop), mpfr_log_prec, fop));
 

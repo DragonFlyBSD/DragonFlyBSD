@@ -1,7 +1,7 @@
 /* mpfr_reldiff -- compute relative difference of two floating-point numbers.
 
-Copyright 2000, 2001, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2000-2001, 2004-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #include "mpfr-impl.h"
 
@@ -30,31 +29,25 @@ mpfr_reldiff (mpfr_ptr a, mpfr_srcptr b, mpfr_srcptr c, mpfr_rnd_t rnd_mode)
 
   if (MPFR_ARE_SINGULAR (b, c))
     {
-      if (MPFR_IS_NAN(b) || MPFR_IS_NAN(c))
+      if (MPFR_IS_NAN (b) || MPFR_IS_INF (b) || MPFR_IS_NAN (c) ||
+          (MPFR_IS_ZERO (b) && MPFR_IS_ZERO (c)))
         {
-          MPFR_SET_NAN(a);
+          MPFR_SET_NAN (a);
           return;
         }
-      else if (MPFR_IS_INF(b))
-        {
-          if (MPFR_IS_INF (c) && (MPFR_SIGN (c) == MPFR_SIGN (b)))
-            MPFR_SET_ZERO(a);
-          else
-            MPFR_SET_NAN(a);
-          return;
-        }
-      else if (MPFR_IS_INF(c))
+      if (MPFR_IS_ZERO (b) || MPFR_IS_INF (c))
         {
           MPFR_SET_SAME_SIGN (a, b);
           MPFR_SET_INF (a);
           return;
         }
-      else if (MPFR_IS_ZERO(b)) /* reldiff = abs(c)/c = sign(c) */
-        {
-          mpfr_set_si (a, MPFR_INT_SIGN (c), rnd_mode);
-          return;
-        }
-      /* Fall through */
+      /* The case c = 0 with b regular, which should give sign(b) exactly,
+         cannot be optimized here as it is documented in the MPFR manual
+         that this function just computes abs(b-c)/b using the precision
+         of a and the rounding mode rnd_mode for all operations. So let's
+         prefer the potentially "incorrect" result. Note that the correct
+         result is not necessarily better because if could break properties
+         (like monotonicity?) implied by the documentation. */
     }
 
   if (a == b)
@@ -64,8 +57,8 @@ mpfr_reldiff (mpfr_ptr a, mpfr_srcptr b, mpfr_srcptr c, mpfr_rnd_t rnd_mode)
     }
 
   mpfr_sub (a, b, c, rnd_mode);
-  mpfr_abs (a, a, rnd_mode); /* for compatibility with MPF */
-  mpfr_div (a, a, (a == b) ? b_copy : b, rnd_mode);
+  MPFR_SET_SIGN (a, 1);
+  mpfr_div (a, a, a == b ? b_copy : b, rnd_mode);
 
   if (a == b)
     mpfr_clear (b_copy);

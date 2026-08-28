@@ -1,7 +1,7 @@
 /* mpfr_cot - cotangent function.
 
-Copyright 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2005-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 /* the cotangent is defined by cot(x) = 1/tan(x) = cos(x)/sin(x).
    cot (NaN) = NaN.
@@ -32,7 +31,7 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 #define ACTION_NAN(y) do { MPFR_SET_NAN(y); MPFR_RET_NAN; } while (1)
 #define ACTION_INF(y) do { MPFR_SET_NAN(y); MPFR_RET_NAN; } while (1)
 #define ACTION_ZERO(y,x) do { MPFR_SET_SAME_SIGN(y,x); MPFR_SET_INF(y); \
-                              mpfr_set_divby0 (); MPFR_RET(0); } while (1)
+                              MPFR_SET_DIVBY0 (); MPFR_RET(0); } while (1)
 
 /* (This analysis is adapted from that for mpfr_coth.)
    Near x=0, cot(x) = 1/x - x/3 + ..., more precisely we have
@@ -54,7 +53,7 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
     {                                                                   \
       int two2emin;                                                     \
       int signx = MPFR_SIGN(x);                                         \
-      MPFR_ASSERTN (MPFR_EMIN_MIN + MPFR_EMAX_MAX == 0);                \
+      MPFR_STAT_STATIC_ASSERT (MPFR_EMIN_MIN + MPFR_EMAX_MAX == 0);     \
       if ((two2emin = mpfr_get_exp (x) == __gmpfr_emin + 1 &&           \
            mpfr_powerof2_raw (x)))                                      \
         {                                                               \

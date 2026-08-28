@@ -1,6 +1,6 @@
 /* Various Thresholds of MPFR, not exported.  -*- mode: C -*-
 
-Copyright 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Copyright 2005-2025 Free Software Foundation, Inc.
 
 This file is part of the GNU MPFR Library.
 
@@ -15,9 +15,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #ifndef MPFR_MULHIGH_TAB
 # define MPFR_MULHIGH_TAB -1,-1,-1,-1,-1,-1,-1,-1,0,0,0,0,0,0,0,0,0
@@ -28,7 +27,8 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 #endif
 
 #ifndef MPFR_DIVHIGH_TAB
-# define MPFR_DIVHIGH_TAB 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16
+/* the value of divhigh_ktab[n] should be 0 or < n-1 */
+# define MPFR_DIVHIGH_TAB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 #endif
 
 #ifndef MPFR_MUL_THRESHOLD

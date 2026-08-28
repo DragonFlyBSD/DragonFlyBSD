@@ -1,7 +1,7 @@
 /* mpfr_ui_sub -- subtract a floating-point number from an integer
 
-Copyright 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2000-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
@@ -26,43 +25,71 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 int
 mpfr_ui_sub (mpfr_ptr y, unsigned long int u, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
 {
-  mpfr_t uu;
-  mp_limb_t up[1];
-  unsigned long cnt;
-
   MPFR_LOG_FUNC
-    (("u=%lu x[%Pu]=%.*Rg rnd=%d",
+    (("u=%lu x[%Pd]=%.*Rg rnd=%d",
       u, mpfr_get_prec(x), mpfr_log_prec, x, rnd_mode),
-     ("y[%Pu]=%.*Rg", mpfr_get_prec(y), mpfr_log_prec, y));
+     ("y[%Pd]=%.*Rg", mpfr_get_prec(y), mpfr_log_prec, y));
 
+  /* (unsigned long) 0 is assumed to be a real 0 (unsigned) */
   if (MPFR_UNLIKELY (u == 0))
     return mpfr_neg (y, x, rnd_mode);
 
-  if (MPFR_UNLIKELY(MPFR_IS_SINGULAR(x)))
+  if (MPFR_UNLIKELY (MPFR_IS_SINGULAR (x)))
     {
-      if (MPFR_IS_NAN(x))
+      if (MPFR_IS_NAN (x))
         {
-          MPFR_SET_NAN(y);
+          MPFR_SET_NAN (y);
           MPFR_RET_NAN;
         }
-      else if (MPFR_IS_INF(x))
+      if (MPFR_IS_INF (x))
         {
           /*  u - Inf = -Inf and u - -Inf = +Inf  */
-          MPFR_SET_INF(y);
-          MPFR_SET_OPPOSITE_SIGN(y,x);
-          MPFR_RET(0); /* +/-infinity is exact */
+          MPFR_SET_INF (y);
+          MPFR_SET_OPPOSITE_SIGN (y, x);
+          MPFR_RET (0); /* +/-infinity is exact */
         }
-      else /* x is zero */
-        /* u - 0 = u */
-        return mpfr_set_ui(y, u, rnd_mode);
+      MPFR_ASSERTD (MPFR_IS_ZERO (x) && u != 0);
+      /* Note: the fact that u != 0 is important due to signed zeros. */
+      /* u - 0 = u */
+      return mpfr_set_ui (y, u, rnd_mode);
     }
-  else
+
+  /* Main code */
+  {
+    int inex;
+    MPFR_SAVE_EXPO_DECL (expo);
+
+    /* Optimization note: Exponent save/restore operations may be
+       removed if mpfr_sub works even when uu is out-of-range. */
+    MPFR_SAVE_EXPO_MARK (expo);
+
+#ifdef MPFR_LONG_WITHIN_LIMB
     {
+      mpfr_t uu;
+      mp_limb_t up[1];
+      int cnt;
+
       MPFR_TMP_INIT1 (up, uu, GMP_NUMB_BITS);
-      MPFR_ASSERTN(u == (mp_limb_t) u);
+      /* So, u fits in a mp_limb_t, which justifies the casts below. */
+      MPFR_ASSERTD (u != 0);
       count_leading_zeros (cnt, (mp_limb_t) u);
-      *up = (mp_limb_t) u << cnt;
+      up[0] = (mp_limb_t) u << cnt;
       MPFR_SET_EXP (uu, GMP_NUMB_BITS - cnt);
-      return mpfr_sub (y, uu, x, rnd_mode);
+      inex = mpfr_sub (y, uu, x, rnd_mode);
     }
+#else
+    {
+      mpfr_t uu;
+
+      mpfr_init2 (uu, sizeof (unsigned long) * CHAR_BIT);
+      mpfr_set_ui (uu, u, MPFR_RNDZ);
+      inex = mpfr_sub (y, uu, x, rnd_mode);
+      mpfr_clear (uu);
+    }
+#endif
+
+    MPFR_SAVE_EXPO_UPDATE_FLAGS (expo, __gmpfr_flags);
+    MPFR_SAVE_EXPO_FREE (expo);
+    return mpfr_check_range (y, inex, rnd_mode);
+  }
 }

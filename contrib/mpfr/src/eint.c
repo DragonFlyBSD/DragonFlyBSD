@@ -1,7 +1,7 @@
 /* mpfr_eint, mpfr_eint1 -- the exponential integral
 
-Copyright 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2005-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
@@ -30,10 +29,13 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
    eint (x) is undefined for x < 0.
 */
 
-/* compute in y an approximation of sum(x^k/k/k!, k=1..infinity),
-   and return e such that the absolute error is bound by 2^e ulp(y) */
+/* Compute in y an approximation of sum(x^k/k/k!, k=1..infinity),
+   assuming x != 0, and return e such that the absolute error is
+   bounded by 2^e ulp(y).
+   Return PREC(y) when the truncated series does not converge.
+*/
 static mpfr_exp_t
-mpfr_eint_aux (mpfr_t y, mpfr_srcptr x)
+mpfr_eint_aux (mpfr_ptr y, mpfr_srcptr x)
 {
   mpfr_t eps; /* dynamic (absolute) error bound on t */
   mpfr_t erru, errs;
@@ -43,8 +45,12 @@ mpfr_eint_aux (mpfr_t y, mpfr_srcptr x)
   unsigned long k;
   MPFR_GROUP_DECL (group);
 
+  MPFR_LOG_FUNC (
+    ("x[%Pd]=%.*Rg", mpfr_get_prec (x), mpfr_log_prec, x),
+    ("y[%Pd]=%.*Rg", mpfr_get_prec (y), mpfr_log_prec, y));
+
   /* for |x| <= 1, we have S := sum(x^k/k/k!, k=1..infinity) = x + R(x)
-     where |R(x)| <= (x/2)^2/(1-x/2) <= 2*(x/2)^2
+     where |R(x)| <= (x/2)^2/(1-|x|/2) <= 2*(x/2)^2
      thus |R(x)/x| <= |x|/2
      thus if |x| <= 2^(-PREC(y)) we have |S - o(x)| <= ulp(y) */
 
@@ -59,32 +65,49 @@ mpfr_eint_aux (mpfr_t y, mpfr_srcptr x)
   mpz_init (u);
   mpz_init (m);
   MPFR_GROUP_INIT_3 (group, 31, eps, erru, errs);
-  e = mpfr_get_z_2exp (m, x); /* x = m * 2^e */
-  MPFR_ASSERTD (mpz_sizeinbase (m, 2) == MPFR_PREC (x));
+  e = mpfr_get_z_2exp (m, x);  /* x = m * 2^e with m != 0 */
+  MPFR_LOG_MSG (("e=%" MPFR_EXP_FSPEC "d\n", (mpfr_eexp_t) e));
+  MPFR_ASSERTD (mpz_sizeinbase (m, 2) == MPFR_PREC (x));  /* since m != 0 */
   if (MPFR_PREC (x) > w)
     {
       e += MPFR_PREC (x) - w;
-      mpz_tdiv_q_2exp (m, m, MPFR_PREC (x) - w);
+      mpz_tdiv_q_2exp (m, m, MPFR_PREC (x) - w);  /* one still has m != 0 */
+      MPFR_LOG_MSG (("e=%" MPFR_EXP_FSPEC "d\n", (mpfr_eexp_t) e));
     }
-  /* remove trailing zeroes from m: this will speed up much cases where
-     x is a small integer divided by a power of 2 */
-  k = mpz_scan1 (m, 0);
-  mpz_tdiv_q_2exp (m, m, k);
-  e += k;
+  /* Remove trailing zeroes from m: this will speed up much cases where
+     x is a small integer divided by a power of 2.
+     Note: As shown above, m != 0. This is needed for the "e += ..." below,
+     otherwise n would take the largest value of mp_bitcnt_t and could be
+     too large. */
+  {
+    mp_bitcnt_t n = mpz_scan1 (m, 0);
+    mpz_tdiv_q_2exp (m, m, n);
+    /* Since one initially has mpz_sizeinbase (m, 2) == MPFR_PREC (x)
+       and m has not increased, one can deduce that n <= MPFR_PREC (x),
+       so that the cast to mpfr_prec_t is valid. This cast is needed to
+       ensure that the operand e of the addition below is not converted
+       to an unsigned integer type, which could yield incorrect results
+       with some C implementations. */
+    MPFR_ASSERTD (n <= MPFR_PREC (x));
+    e += (mpfr_prec_t) n;
+  }
   /* initialize t to 2^w */
   mpz_set_ui (t, 1);
   mpz_mul_2exp (t, t, w);
   mpfr_set_ui (eps, 0, MPFR_RNDN); /* eps[0] = 0 */
-  mpfr_set_ui (errs, 0, MPFR_RNDN);
+  mpfr_set_ui (errs, 0, MPFR_RNDN); /* maximal error on s */
   for (k = 1;; k++)
     {
-      /* let eps[k] be the absolute error on t[k]:
+      /* let t[k] = x^k/k/k!, and eps[k] be the absolute error on t[k]:
          since t[k] = trunc(t[k-1]*m*2^e/k), we have
-         eps[k+1] <= 1 + eps[k-1]*m*2^e/k + t[k-1]*m*2^(1-w)*2^e/k
-                  =  1 + (eps[k-1] + t[k-1]*2^(1-w))*m*2^e/k
-                  = 1 + (eps[k-1]*2^(w-1) + t[k-1])*2^(1-w)*m*2^e/k */
+         eps[k+1] <= 1 + eps[k-1]*|m|*2^e/k + |t[k-1]|*|m|*2^(1-w)*2^e/k
+                  =  1 + (eps[k-1] + |t[k-1]|*2^(1-w))*|m|*2^e/k
+                  = 1 + (eps[k-1]*2^(w-1) + |t[k-1]|)*2^(1-w)*|m|*2^e/k */
       mpfr_mul_2ui (eps, eps, w - 1, MPFR_RNDU);
-      mpfr_add_z (eps, eps, t, MPFR_RNDU);
+      if (mpz_sgn (t) >= 0)
+        mpfr_add_z (eps, eps, t, MPFR_RNDU);
+      else
+        mpfr_sub_z (eps, eps, t, MPFR_RNDU);
       MPFR_MPZ_SIZEINBASE2 (sizeinbase, m);
       mpfr_mul_2si (eps, eps, sizeinbase - (w - 1) + e, MPFR_RNDU);
       mpfr_div_ui (eps, eps, k, MPFR_RNDU);
@@ -140,12 +163,13 @@ mpfr_eint_aux (mpfr_t y, mpfr_srcptr x)
   mpz_clear (t);
   mpz_clear (u);
   mpz_clear (m);
+  MPFR_LOG_MSG (("e=%" MPFR_EXP_FSPEC "d\n", (mpfr_eexp_t) e));
   return e;
 }
 
 /* Return in y an approximation of Ei(x) using the asymptotic expansion:
    Ei(x) = exp(x)/x * (1 + 1/x + 2/x^2 + ... + k!/x^k + ...)
-   Assumes x >= PREC(y) * log(2).
+   Assumes |x| >= PREC(y) * log(2).
    Returns the error bound in terms of ulp(y).
 */
 static mpfr_exp_t
@@ -155,6 +179,10 @@ mpfr_eint_asympt (mpfr_ptr y, mpfr_srcptr x)
   mpfr_t invx, t, err;
   unsigned long k;
   mpfr_exp_t err_exp;
+
+  MPFR_LOG_FUNC (
+    ("x[%Pd]=%.*Rg", mpfr_get_prec (x), mpfr_log_prec, x),
+    ("err_exp=%" MPFR_EXP_FSPEC "d", (mpfr_eexp_t) err_exp));
 
   mpfr_init2 (t, p);
   mpfr_init2 (invx, p);
@@ -190,96 +218,122 @@ mpfr_eint_asympt (mpfr_ptr y, mpfr_srcptr x)
   return err_exp;
 }
 
+/* mpfr_eint returns Ei(x) for x >= 0,
+   and -E1(-x) for x < 0, following https://dlmf.nist.gov/6.2 */
 int
 mpfr_eint (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd)
 {
   int inex;
-  mpfr_t tmp, ump;
+  mpfr_t tmp, ump, x_abs;
   mpfr_exp_t err, te;
   mpfr_prec_t prec;
   MPFR_SAVE_EXPO_DECL (expo);
   MPFR_ZIV_DECL (loop);
 
   MPFR_LOG_FUNC (
-    ("x[%Pu]=%.*Rg rnd=%d", mpfr_get_prec (x), mpfr_log_prec, x, rnd),
-    ("y[%Pu]=%.*Rg inexact=%d", mpfr_get_prec (y), mpfr_log_prec, y, inex));
+    ("x[%Pd]=%.*Rg rnd=%d", mpfr_get_prec (x), mpfr_log_prec, x, rnd),
+    ("y[%Pd]=%.*Rg inexact=%d", mpfr_get_prec (y), mpfr_log_prec, y, inex));
 
   if (MPFR_UNLIKELY (MPFR_IS_SINGULAR (x)))
     {
-      /* exp(NaN) = exp(-Inf) = NaN */
-      if (MPFR_IS_NAN (x) || (MPFR_IS_INF (x) && MPFR_IS_NEG(x)))
+      if (MPFR_IS_NAN (x))
         {
           MPFR_SET_NAN (y);
           MPFR_RET_NAN;
         }
-      /* eint(+inf) = +inf */
       else if (MPFR_IS_INF (x))
         {
-          MPFR_SET_INF(y);
-          MPFR_SET_POS(y);
+          /* eint(+inf) = +inf and eint(-inf) = -0 */
+          if (MPFR_IS_POS (x))
+            {
+              MPFR_SET_INF(y);
+              MPFR_SET_POS(y);
+            }
+          else
+            {
+              MPFR_SET_ZERO(y);
+              MPFR_SET_NEG(y);
+            }
           MPFR_RET(0);
         }
       else /* eint(+/-0) = -Inf */
         {
           MPFR_SET_INF(y);
           MPFR_SET_NEG(y);
-          mpfr_set_divby0 ();
+          MPFR_SET_DIVBY0 ();
           MPFR_RET(0);
         }
     }
 
-  /* eint(x) = NaN for x < 0 */
-  if (MPFR_IS_NEG(x))
-    {
-      MPFR_SET_NAN (y);
-      MPFR_RET_NAN;
-    }
+  MPFR_TMP_INIT_ABS (x_abs, x);
 
   MPFR_SAVE_EXPO_MARK (expo);
+
+  /* Init stuff */
+  prec = MPFR_PREC (y) + 2 * MPFR_INT_CEIL_LOG2 (MPFR_PREC (y)) + 6;
+  mpfr_init2 (tmp, 64);
+  mpfr_init2 (ump, 64);
 
   /* Since eint(x) >= exp(x)/x, we have log2(eint(x)) >= (x-log(x))/log(2).
      Let's compute k <= (x-log(x))/log(2) in a low precision. If k >= emax,
      then log2(eint(x)) >= emax, and eint(x) >= 2^emax, i.e. it overflows. */
-  mpfr_init2 (tmp, 64);
-  mpfr_init2 (ump, 64);
-  mpfr_log (tmp, x, MPFR_RNDU);
-  mpfr_sub (ump, x, tmp, MPFR_RNDD);
-  mpfr_const_log2 (tmp, MPFR_RNDU);
-  mpfr_div (ump, ump, tmp, MPFR_RNDD);
-  /* FIXME: We really need mpfr_set_exp_t and mpfr_cmpfr_exp_t functions. */
-  MPFR_ASSERTN (MPFR_EMAX_MAX <= LONG_MAX);
-  if (mpfr_cmp_ui (ump, __gmpfr_emax) >= 0)
+  if (MPFR_IS_POS(x))
     {
-      mpfr_clear (tmp);
-      mpfr_clear (ump);
-      MPFR_SAVE_EXPO_FREE (expo);
-      return mpfr_overflow (y, rnd, 1);
+      mpfr_log (tmp, x, MPFR_RNDU);
+      mpfr_sub (ump, x, tmp, MPFR_RNDD);
+      mpfr_div (ump, ump, __gmpfr_const_log2_RNDU, MPFR_RNDD);
+      /* FIXME: We really need a mpfr_cmp_exp_t function. */
+      MPFR_ASSERTN (MPFR_EMAX_MAX <= LONG_MAX);
+      if (mpfr_cmp_ui (ump, __gmpfr_emax) >= 0)
+        {
+          mpfr_clear (tmp);
+          mpfr_clear (ump);
+          MPFR_SAVE_EXPO_FREE (expo);
+          return mpfr_overflow (y, rnd, 1);
+        }
     }
 
-  /* Init stuff */
-  prec = MPFR_PREC (y) + 2 * MPFR_INT_CEIL_LOG2 (MPFR_PREC (y)) + 6;
-
-  /* eint() has a root 0.37250741078136663446..., so if x is near,
-     already take more bits */
-  /* FIXME: do not use native floating-point here. */
-  if (MPFR_GET_EXP(x) == -1) /* 1/4 <= x < 1/2 */
+  /* Since E1(x) <= exp(-x) for x >= 1, we have log2(E1(x)) <= -x/log(2).
+     Let's compute k >= -x/log(2) in a low precision. If k < emin
+     then log2(E1(x)) <= emin-1, and E1(x) <= 2^(emin-1): it underflows. */
+  if (MPFR_IS_NEG(x) && MPFR_GET_EXP(x) >= 1)
     {
-      double d;
-      d = mpfr_get_d (x, MPFR_RNDN) - 0.37250741078136663;
-      d = (d == 0.0) ? -53 : __gmpfr_ceil_log2 (d);
-      prec += -d;
+      mpfr_div (ump, x, __gmpfr_const_log2_RNDD, MPFR_RNDU);
+      MPFR_ASSERTN (MPFR_EMIN_MIN >= LONG_MIN);
+      if (mpfr_cmp_si (ump, __gmpfr_emin) < 0)
+        {
+          mpfr_clear (tmp);
+          mpfr_clear (ump);
+          MPFR_SAVE_EXPO_FREE (expo);
+          return mpfr_underflow (y, rnd, -1);
+        }
+    }
+
+  /* eint() has a root 0.37250741078136663446...,
+     so if x is near, already take more bits */
+  if (MPFR_IS_POS(x) && MPFR_GET_EXP(x) == -1) /* 1/4 <= x < 1/2 */
+    {
+      mpfr_t y;
+      mpfr_init2 (y, 32);
+      /* 1599907147/2^32 is a 32-bit approximation of 0.37250741078136663446 */
+      mpfr_set_ui_2exp (y, 1599907147UL, -32, MPFR_RNDN);
+      mpfr_sub (y, x, y, MPFR_RNDN);
+      prec += (mpfr_zero_p (y)) ? 32
+        : mpfr_get_exp (y) < 0 ? -mpfr_get_exp (y) : 0;
+      mpfr_clear (y);
     }
 
   mpfr_set_prec (tmp, prec);
   mpfr_set_prec (ump, prec);
 
-  MPFR_ZIV_INIT (loop, prec);            /* Initialize the ZivLoop controler */
-  for (;;)                               /* Infinite loop */
+  MPFR_ZIV_INIT (loop, prec);           /* Initialize the ZivLoop controller */
+  for (;;)                              /* Infinite loop */
     {
-      /* We need that the smallest value of k!/x^k is smaller than 2^(-p).
-         The minimum is obtained for x=k, and it is smaller than e*sqrt(x)/e^x
-         for x>=1. */
-      if (MPFR_GET_EXP (x) > 0 && mpfr_cmp_d (x, ((double) prec +
+      /* For the asymptotic expansion to work, we need that the smallest
+         value of k!/|x|^k is smaller than 2^(-p). The minimum is obtained for
+         x=k, and it is smaller than e*sqrt(x)/e^x for x>=1. */
+      if (MPFR_GET_EXP (x) > 0 &&
+          mpfr_cmp_d (x_abs, ((double) prec +
                             0.5 * (double) MPFR_GET_EXP (x)) * LOG2 + 1.0) > 0)
         err = mpfr_eint_asympt (tmp, x);
       else
@@ -288,29 +342,37 @@ mpfr_eint (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd)
           te = MPFR_GET_EXP(tmp);
           mpfr_const_euler (ump, MPFR_RNDN); /* 0.577 -> EXP(ump)=0 */
           mpfr_add (tmp, tmp, ump, MPFR_RNDN);
-          /* error <= 1/2 + 1/2*2^(EXP(ump)-EXP(tmp)) + 2^(te-EXP(tmp)+err)
+          /* If tmp <> 0:
+             error <= 1/2 + 1/2*2^(EXP(ump)-EXP(tmp)) + 2^(te-EXP(tmp)+err)
              <= 1/2 + 2^(MAX(EXP(ump), te+err+1) - EXP(tmp))
-             <= 2^(MAX(0, 1 + MAX(EXP(ump), te+err+1) - EXP(tmp))) */
-          err = MAX(1, te + err + 2) - MPFR_GET_EXP(tmp);
+             <= 2^(MAX(0, 1 + MAX(EXP(ump), te+err+1) - EXP(tmp))).
+             If tmp = 0 we can use the same bound, replacing
+             EXP(tmp) by EXP(ump). */
+          err = MAX(1, te + err + 2);
+          te = MPFR_IS_ZERO(tmp) ? MPFR_GET_EXP(ump) : MPFR_GET_EXP(tmp);
+          err = err - te;
           err = MAX(0, err);
-          te = MPFR_GET_EXP(tmp);
-          mpfr_log (ump, x, MPFR_RNDN);
+          mpfr_log (ump, x_abs, MPFR_RNDN);
           mpfr_add (tmp, tmp, ump, MPFR_RNDN);
           /* same formula as above, except now EXP(ump) is not 0 */
           err += te + 1;
           if (MPFR_LIKELY (!MPFR_IS_ZERO (ump)))
             err = MAX (MPFR_GET_EXP (ump), err);
-          err = MAX(0, err - MPFR_GET_EXP (tmp));
+          /* if tmp is zero, we surely cannot round correctly */
+          err = (MPFR_IS_ZERO(tmp)) ? prec :  MAX(0, err - MPFR_GET_EXP (tmp));
         }
+      /* Note: we assume here that MPFR_CAN_ROUND returns the same result
+         for rnd and MPFR_INVERT_RND(rnd) */
       if (MPFR_LIKELY (MPFR_CAN_ROUND (tmp, prec - err, MPFR_PREC (y), rnd)))
         break;
       MPFR_ZIV_NEXT (loop, prec);        /* Increase used precision */
       mpfr_set_prec (tmp, prec);
       mpfr_set_prec (ump, prec);
     }
-  MPFR_ZIV_FREE (loop);                  /* Free the ZivLoop Controler */
+  MPFR_ZIV_FREE (loop);                  /* Free the ZivLoop Controller */
 
-  inex = mpfr_set (y, tmp, rnd);    /* Set y to the computed value */
+  /* Set y to the computed value */
+  inex = mpfr_set (y, tmp, rnd);
   mpfr_clear (tmp);
   mpfr_clear (ump);
 

@@ -1,7 +1,7 @@
 /* mpfr_atan2 -- arc-tan 2 of a floating-point number
 
-Copyright 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2005-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
@@ -55,10 +54,10 @@ mpfr_atan2 (mpfr_ptr dest, mpfr_srcptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
   MPFR_ZIV_DECL (loop);
 
   MPFR_LOG_FUNC
-    (("y[%Pu]=%.*Rg x[%Pu]=%.*Rg rnd=%d",
+    (("y[%Pd]=%.*Rg x[%Pd]=%.*Rg rnd=%d",
       mpfr_get_prec (y), mpfr_log_prec, y,
       mpfr_get_prec (x), mpfr_log_prec, x, rnd_mode),
-     ("atan[%Pu]=%.*Rg inexact=%d",
+     ("atan[%Pd]=%.*Rg inexact=%d",
       mpfr_get_prec (dest), mpfr_log_prec, dest, inexact));
 
   /* Special cases */
@@ -130,9 +129,8 @@ mpfr_atan2 (mpfr_ptr dest, mpfr_srcptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
                   mpfr_const_pi (tmp2, MPFR_RNDN);
                   mpfr_mul_ui (tmp2, tmp2, 3, MPFR_RNDN); /* Error <= 2  */
                   mpfr_div_2ui (tmp2, tmp2, 2, MPFR_RNDN);
-                  if (mpfr_round_p (MPFR_MANT (tmp2), MPFR_LIMB_SIZE (tmp2),
-                                    MPFR_PREC (tmp2) - 2,
-                                    MPFR_PREC (dest) + (rnd_mode == MPFR_RNDN)))
+                  if (MPFR_CAN_ROUND (tmp2, MPFR_PREC (tmp2) - 2,
+                                      MPFR_PREC (dest), rnd_mode))
                     break;
                   MPFR_ZIV_NEXT (loop2, prec2);
                   mpfr_set_prec (tmp2, prec2);
@@ -155,11 +153,11 @@ mpfr_atan2 (mpfr_ptr dest, mpfr_srcptr y, mpfr_srcptr x, mpfr_rnd_t rnd_mode)
 
   /* When x is a power of two, we call directly atan(y/x) since y/x is
      exact. */
-  if (MPFR_UNLIKELY (MPFR_IS_POWER_OF_2 (x)))
+  if (MPFR_UNLIKELY (MPFR_IS_POS (x) && mpfr_powerof2_raw (x)))
     {
       int r;
       mpfr_t yoverx;
-      unsigned int saved_flags = __gmpfr_flags;
+      mpfr_flags_t saved_flags = __gmpfr_flags;
 
       mpfr_init2 (yoverx, MPFR_PREC (y));
       if (MPFR_LIKELY (mpfr_div_2si (yoverx, y, MPFR_GET_EXP (x) - 1,

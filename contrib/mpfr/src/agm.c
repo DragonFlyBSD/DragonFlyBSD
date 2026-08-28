@@ -1,7 +1,7 @@
 /* mpfr_agm -- arithmetic-geometric mean of two floating-point numbers
 
-Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 1999-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
@@ -39,10 +38,10 @@ mpfr_agm (mpfr_ptr r, mpfr_srcptr op2, mpfr_srcptr op1, mpfr_rnd_t rnd_mode)
   MPFR_SAVE_EXPO_DECL (expo);
 
   MPFR_LOG_FUNC
-    (("op2[%Pu]=%.*Rg op1[%Pu]=%.*Rg rnd=%d",
+    (("op2[%Pd]=%.*Rg op1[%Pd]=%.*Rg rnd=%d",
       mpfr_get_prec (op2), mpfr_log_prec, op2,
       mpfr_get_prec (op1), mpfr_log_prec, op1, rnd_mode),
-     ("r[%Pu]=%.*Rg inexact=%d",
+     ("r[%Pd]=%.*Rg inexact=%d",
       mpfr_get_prec (r), mpfr_log_prec, r, inexact));
 
   /* Deal with special values */
@@ -72,7 +71,10 @@ mpfr_agm (mpfr_ptr r, mpfr_srcptr op2, mpfr_srcptr op1, mpfr_rnd_t rnd_mode)
             }
         }
       else /* a and b are neither NaN nor Inf, and one is zero */
-        {  /* If a or b is 0, the result is +0 since a sqrt is positive */
+        {  /* If a or b is 0, the result is +0, in particular because the
+              result is always >= 0 with our definition (Maple sometimes
+              chooses a different sign for GaussAGM, but it uses another
+              definition, with possible negative results). */
           MPFR_ASSERTD (MPFR_IS_ZERO (op1) || MPFR_IS_ZERO (op2));
           MPFR_SET_POS (r);
           MPFR_SET_ZERO (r);
@@ -96,10 +98,7 @@ mpfr_agm (mpfr_ptr r, mpfr_srcptr op2, mpfr_srcptr op1, mpfr_rnd_t rnd_mode)
   /* b (op2) and a (op1) are the 2 operands but we want b >= a */
   compare = mpfr_cmp (op1, op2);
   if (MPFR_UNLIKELY( compare == 0 ))
-    {
-      mpfr_set (r, op1, rnd_mode);
-      MPFR_RET (0); /* exact */
-    }
+    return mpfr_set (r, op1, rnd_mode);
   else if (compare > 0)
     {
       mpfr_srcptr t = op1;
@@ -136,7 +135,7 @@ mpfr_agm (mpfr_ptr r, mpfr_srcptr op2, mpfr_srcptr op1, mpfr_rnd_t rnd_mode)
                   /* mpfr_add with !=prec is still good */);
       if (MPFR_UNLIKELY (MPFR_OVERFLOW (flags) || MPFR_UNDERFLOW (flags)))
         {
-          mpfr_exp_t e1 , e2;
+          mpfr_exp_t e1, e2;
 
           MPFR_ASSERTN (scaleop == 0);
           e1 = MPFR_GET_EXP (op1);
@@ -164,19 +163,27 @@ mpfr_agm (mpfr_ptr r, mpfr_srcptr op2, mpfr_srcptr op1, mpfr_rnd_t rnd_mode)
                       e1 > emin (see restriction below).
                       e1 + scale > emin - 1, thus e1 + scale >= emin.
                  3. e2 + scale <= emax, since scale < 0. */
-              if (e1 + e2 > MPFR_EXT_EMAX)
+              if (e1 + e2 > MPFR_EMAX_MAX)
                 {
-                  scaleop = - (((e1 + e2) - MPFR_EXT_EMAX + 1) / 2);
+                  scaleop = - (((e1 + e2) - MPFR_EMAX_MAX + 1) / 2);
                   MPFR_ASSERTN (scaleop < 0);
                 }
               else
                 {
                   /* The addition necessarily overflowed. */
-                  MPFR_ASSERTN (e2 == MPFR_EXT_EMAX);
+                  MPFR_ASSERTN (e2 == MPFR_EMAX_MAX);
                   /* The case where e1 = emin and e2 = emax is not supported
                      here. This would mean that the precision of e2 would be
                      huge (and possibly not supported in practice anyway). */
-                  MPFR_ASSERTN (e1 > MPFR_EXT_EMIN);
+                  MPFR_ASSERTN (e1 > MPFR_EMIN_MIN);
+                  /* Note: this case is probably impossible to have in practice
+                     since we need e2 = emax, and no overflow in the product.
+                     Since the product is >= 2^(e1+e2-2), it implies
+                     e1 + e2 - 2 <= emax, thus e1 <= 2. Now to get an overflow
+                     we need op1 >= 1/2 ulp(op2), which implies that the
+                     precision of op2 should be at least emax-2. On a 64-bit
+                     computer this is impossible to have, and would require
+                     a huge amount of memory on a 32-bit computer. */
                   scaleop = -1;
                 }
 
@@ -191,7 +198,7 @@ mpfr_agm (mpfr_ptr r, mpfr_srcptr op2, mpfr_srcptr op1, mpfr_rnd_t rnd_mode)
                  2. e1 + scale >= emin + 1 >= emin.
                  3. e2 + scale <= scale <= emax. */
               MPFR_ASSERTN (e1 <= e2 && e2 <= 0);
-              scaleop = (MPFR_EXT_EMIN + 2 - e1 - e2) / 2;
+              scaleop = (MPFR_EMIN_MIN + 2 - e1 - e2) / 2;
               MPFR_ASSERTN (scaleop > 0);
             }
 
@@ -204,7 +211,7 @@ mpfr_agm (mpfr_ptr r, mpfr_srcptr op2, mpfr_srcptr op1, mpfr_rnd_t rnd_mode)
           goto retry;
         }
 
-      mpfr_clear_flags ();
+      MPFR_CLEAR_FLAGS ();
       mpfr_sqrt (u, u, MPFR_RNDN);
       mpfr_div_2ui (v, v, 1, MPFR_RNDN);
 
@@ -220,7 +227,7 @@ mpfr_agm (mpfr_ptr r, mpfr_srcptr op2, mpfr_srcptr op1, mpfr_rnd_t rnd_mode)
           mpfr_add (vf, u, v, MPFR_RNDN);  /* No overflow? */
           mpfr_div_2ui (vf, vf, 1, MPFR_RNDN);
           /* See proof in algorithms.tex */
-          if (4*eq > p)
+          if (eq > p / 4)
             {
               mpfr_t w;
               MPFR_BLOCK_DECL (flags3);
@@ -248,7 +255,7 @@ mpfr_agm (mpfr_ptr r, mpfr_srcptr op2, mpfr_srcptr op1, mpfr_rnd_t rnd_mode)
                  method. */
               MPFR_LOG_MSG (("4*eq > p -> underflow\n", 0));
               mpfr_clear (w);
-              mpfr_clear_underflow ();
+              MPFR_CLEAR_UNDERFLOW ();
             }
           /* U(k) increases, so that U.V can overflow (but not underflow). */
           MPFR_BLOCK (flags2, mpfr_mul (uf, u, v, MPFR_RNDN););
@@ -257,14 +264,14 @@ mpfr_agm (mpfr_ptr r, mpfr_srcptr op2, mpfr_srcptr op1, mpfr_rnd_t rnd_mode)
               mpfr_exp_t scale2;
 
               scale2 = - (((MPFR_GET_EXP (u) + MPFR_GET_EXP (v))
-                           - MPFR_EXT_EMAX + 1) / 2);
+                           - MPFR_EMAX_MAX + 1) / 2);
               MPFR_EXP (u) += scale2;
               MPFR_EXP (v) += scale2;
               scaleit += scale2;
               MPFR_LOG_MSG (("Overflow in iteration n = %lu, scaleit = %"
                              MPFR_EXP_FSPEC "d (%" MPFR_EXP_FSPEC "d)\n",
                              n, scaleit, scale2));
-              mpfr_clear_overflow ();
+              MPFR_CLEAR_OVERFLOW ();
               goto retry2;
             }
           mpfr_sqrt (u, uf, MPFR_RNDN);

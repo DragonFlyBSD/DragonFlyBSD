@@ -1,7 +1,7 @@
 /* mpfr_frac -- Fractional part of a floating-point number.
 
-Copyright 2002, 2003, 2004, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2002-2004, 2006-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 
 #define MPFR_NEED_LONGLONG_H
@@ -108,9 +107,9 @@ mpfr_frac (mpfr_ptr r, mpfr_srcptr u, mpfr_rnd_t rnd_mode)
   t0 = tn - un;
   tp = MPFR_MANT(t);
   if (sh == 0)
-    MPN_COPY_DECR(tp + t0, up, un + 1);
+    mpn_copyd (tp + t0, up, un + 1);
   else /* warning: un may be 0 here */
-    tp[tn] = k | ((un) ? mpn_lshift (tp + t0, up, un, sh) : (mp_limb_t) 0);
+    tp[tn] = k | ((un) ? mpn_lshift (tp + t0, up, un, sh) : MPFR_LIMB_ZERO);
   if (t0 > 0)
     MPN_ZERO(tp, t0);
 

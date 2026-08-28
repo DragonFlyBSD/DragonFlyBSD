@@ -1,7 +1,7 @@
 /* mpfr_erfc -- The Complementary Error Function of a floating-point number
 
-Copyright 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2005-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -16,9 +16,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
@@ -43,7 +42,7 @@ mpfr_erfc_asympt (mpfr_ptr y, mpfr_srcptr x)
   mpfr_init2 (err, 31);
   /* let u = 2^(1-p), and let us represent the error as (1+u)^err
      with a bound for err */
-  mpfr_mul (xx, x, x, MPFR_RNDD); /* err <= 1 */
+  mpfr_sqr (xx, x, MPFR_RNDD); /* err <= 1 */
   mpfr_ui_div (xx, 1, xx, MPFR_RNDU); /* upper bound for 1/(2x^2), err <= 2 */
   mpfr_div_2ui (xx, xx, 1, MPFR_RNDU); /* exact */
   mpfr_set_ui (t, 1, MPFR_RNDN); /* current term, exact */
@@ -72,7 +71,7 @@ mpfr_erfc_asympt (mpfr_ptr y, mpfr_srcptr x)
         mpfr_add (y, y, t, MPFR_RNDN);
     }
   /* the error on y is bounded by err*ulp(y) */
-  mpfr_mul (t, x, x, MPFR_RNDU); /* rel. err <= 2^(1-p) */
+  mpfr_sqr (t, x, MPFR_RNDU);             /* rel. err <= 2^(1-p) */
   mpfr_div_2ui (err, err, 3, MPFR_RNDU);  /* err/8 */
   mpfr_add (err, err, t, MPFR_RNDU);      /* err/8 + xx */
   mpfr_mul_2ui (err, err, 3, MPFR_RNDU);  /* err + 8*xx */
@@ -97,7 +96,7 @@ mpfr_erfc_asympt (mpfr_ptr y, mpfr_srcptr x)
          using the fact that erfc(x) <= exp(-x^2)/sqrt(Pi)/x for x >= 0.
          We compute an upper approximation of exp(-x^2)/sqrt(Pi)/x.
       */
-      mpfr_mul (t, x, x, MPFR_RNDD); /* t <= x^2 */
+      mpfr_sqr (t, x, MPFR_RNDD);    /* t <= x^2 */
       mpfr_neg (t, t, MPFR_RNDU);    /* -x^2 <= t */
       mpfr_exp (t, t, MPFR_RNDU);    /* exp(-x^2) <= t */
       mpfr_const_pi (xx, MPFR_RNDD); /* xx <= sqrt(Pi), cached */
@@ -132,8 +131,8 @@ mpfr_erfc (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd)
   MPFR_ZIV_DECL (loop);
 
   MPFR_LOG_FUNC
-    (("x[%Pu]=%.*Rg rnd=%d", mpfr_get_prec (x), mpfr_log_prec, x, rnd),
-     ("y[%Pu]=%.*Rg inexact=%d", mpfr_get_prec (y), mpfr_log_prec, y, inex));
+    (("x[%Pd]=%.*Rg rnd=%d", mpfr_get_prec (x), mpfr_log_prec, x, rnd),
+     ("y[%Pd]=%.*Rg inexact=%d", mpfr_get_prec (y), mpfr_log_prec, y, inex));
 
   if (MPFR_UNLIKELY (MPFR_IS_SINGULAR (x)))
     {
@@ -149,7 +148,7 @@ mpfr_erfc (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd)
         return mpfr_set_ui (y, 1, rnd);
     }
 
-  if (MPFR_SIGN (x) > 0)
+  if (MPFR_IS_POS (x))
     {
       /* by default, emin = 1-2^30, thus the smallest representable
          number is 1/2*2^emin = 2^(-2^30):
@@ -160,7 +159,7 @@ mpfr_erfc (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd)
           mpfr_cmp_ui (x, 1787897414) >= 0)
         {
           /* May be incorrect if MPFR_EMAX_MAX >= 2^62. */
-          MPFR_ASSERTN ((MPFR_EMAX_MAX >> 31) >> 31 == 0);
+          MPFR_STAT_STATIC_ASSERT ((MPFR_EMAX_MAX >> 31) >> 31 == 0);
           return mpfr_underflow (y, (rnd == MPFR_RNDN) ? MPFR_RNDZ : rnd, 1);
         }
     }
@@ -168,7 +167,7 @@ mpfr_erfc (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd)
   /* Init stuff */
   MPFR_SAVE_EXPO_MARK (expo);
 
-  if (MPFR_SIGN (x) < 0)
+  if (MPFR_IS_NEG (x))
     {
       mpfr_exp_t e = MPFR_EXP(x);
       /* For x < 0 going to -infinity, erfc(x) tends to 2 by below.
@@ -185,7 +184,7 @@ mpfr_erfc (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd)
         {
         near_two:
           mpfr_set_ui (y, 2, MPFR_RNDN);
-          mpfr_set_inexflag ();
+          MPFR_SET_INEXFLAG ();
           if (rnd == MPFR_RNDZ || rnd == MPFR_RNDD)
             {
               mpfr_nextbelow (y);
@@ -220,7 +219,7 @@ mpfr_erfc (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd)
 
   /* erfc(x) ~ 1, with error < 2^(EXP(x)+1) */
   MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, __gmpfr_one, - MPFR_GET_EXP (x) - 1,
-                                    0, MPFR_SIGN(x) < 0,
+                                    0, MPFR_IS_NEG (x),
                                     rnd, inex = _inexact; goto end);
 
   prec = MPFR_PREC (y) + MPFR_INT_CEIL_LOG2 (MPFR_PREC (y)) + 3;
@@ -229,12 +228,12 @@ mpfr_erfc (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd)
 
   mpfr_init2 (tmp, prec);
 
-  MPFR_ZIV_INIT (loop, prec);            /* Initialize the ZivLoop controler */
+  MPFR_ZIV_INIT (loop, prec);            /* Initialize the ZivLoop controller */
   for (;;)                               /* Infinite loop */
     {
       /* use asymptotic formula only whenever x^2 >= p*log(2),
          otherwise it will not converge */
-      if (MPFR_SIGN (x) > 0 &&
+      if (MPFR_IS_POS (x) &&
           2 * MPFR_GET_EXP (x) - 2 >= MPFR_INT_CEIL_LOG2 (prec))
         /* we have x^2 >= p in that case */
         {
@@ -266,7 +265,7 @@ mpfr_erfc (mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd)
       MPFR_ZIV_NEXT (loop, prec);        /* Increase used precision */
       mpfr_set_prec (tmp, prec);
     }
-  MPFR_ZIV_FREE (loop);                  /* Free the ZivLoop Controler */
+  MPFR_ZIV_FREE (loop);                  /* Free the ZivLoop Controller */
 
   inex = mpfr_set (y, tmp, rnd);    /* Set y to the computed value */
   mpfr_clear (tmp);

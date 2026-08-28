@@ -1,8 +1,8 @@
 /* mpfr_j0, mpfr_j1, mpfr_jn -- Bessel functions of 1st kind, integer order.
-   http://www.opengroup.org/onlinepubs/009695399/functions/j0.html
+   https://pubs.opengroup.org/onlinepubs/9699919799/functions/j0.html
 
-Copyright 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2007-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -17,9 +17,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
@@ -95,8 +94,8 @@ mpfr_jn (mpfr_ptr res, long n, mpfr_srcptr z, mpfr_rnd_t r)
   MPFR_ZIV_DECL (loop);
 
   MPFR_LOG_FUNC
-    (("n=%d x[%Pu]=%.*Rg rnd=%d", n, mpfr_get_prec (z), mpfr_log_prec, z, r),
-     ("res[%Pu]=%.*Rg inexact=%d",
+    (("n=%d x[%Pd]=%.*Rg rnd=%d", n, mpfr_get_prec (z), mpfr_log_prec, z, r),
+     ("res[%Pd]=%.*Rg inexact=%d",
       mpfr_get_prec (res), mpfr_log_prec, res, inex));
 
   absn = SAFE_ABS (unsigned long, n);
@@ -158,12 +157,12 @@ mpfr_jn (mpfr_ptr res, long n, mpfr_srcptr z, mpfr_rnd_t r)
          but in rounding to nearest, res/2 will yield 0 iff |res| is the
          minimum positive number, so that we just need to test the result
          of the division and the sign of _inexact. */
-      mpfr_clear_flags ();
+      MPFR_CLEAR_FLAGS ();
       MPFR_FAST_COMPUTE_IF_SMALL_INPUT
         (res, z, -2 * MPFR_GET_EXP (z), 3, 0, r, {
           int inex2 = mpfr_div_2ui (res, res, 1, r);
           if (MPFR_UNLIKELY (r == MPFR_RNDN && MPFR_IS_ZERO (res)) &&
-              (MPFR_ASSERTN (inex2 != 0), SIGN (_inexact) != MPFR_SIGN (z)))
+              (MPFR_ASSERTN (inex2 != 0), VSIGN (_inexact) != MPFR_SIGN (z)))
             {
               mpfr_nexttoinf (res);
               inex = - inex2;
@@ -197,7 +196,7 @@ mpfr_jn (mpfr_ptr res, long n, mpfr_srcptr z, mpfr_rnd_t r)
     {
       /* the following is an upper 32-bit approximation to exp(1)/2 */
       mpfr_set_str_binary (y, "1.0101101111110000101010001011001");
-      if (MPFR_SIGN(z) > 0)
+      if (MPFR_IS_POS (z))
         mpfr_mul (y, y, z, MPFR_RNDU);
       else
         {
@@ -245,11 +244,11 @@ mpfr_jn (mpfr_ptr res, long n, mpfr_srcptr z, mpfr_rnd_t r)
       MPFR_GROUP_REPREC_3 (g, prec, y, s, t);
       MPFR_BLOCK (flags, {
       mpfr_pow_ui (t, z, absn, MPFR_RNDN); /* z^|n| */
-      mpfr_mul (y, z, z, MPFR_RNDN);       /* z^2 */
-      mpfr_clear_erangeflag ();
+      mpfr_sqr (y, z, MPFR_RNDN);          /* z^2 */
+      MPFR_CLEAR_ERANGEFLAG ();
       zz = mpfr_get_ui (y, MPFR_RNDU);
       /* FIXME: The error analysis is incorrect in case of range error. */
-      MPFR_ASSERTN (! mpfr_erangeflag_p ()); /* since mpfr_clear_erangeflag */
+      MPFR_ASSERTN (! mpfr_erangeflag_p ()); /* since MPFR_CLEAR_ERANGEFLAG */
       mpfr_div_2ui (y, y, 2, MPFR_RNDN);   /* z^2/4 */
       mpfr_fac_ui (s, absn, MPFR_RNDN);    /* |n|! */
       mpfr_div (t, t, s, MPFR_RNDN);
@@ -311,6 +310,11 @@ mpfr_jn (mpfr_ptr res, long n, mpfr_srcptr z, mpfr_rnd_t r)
           MPFR_ASSERTN (! exception);
           exception = 1;
         }
+      /* the expected number of lost bits is k0, if err is larger than k0
+         most probably there is a cancellation in the series, thus we add
+         err - k0 bits to prec */
+      if (err > k0)
+        MPFR_INC_PREC (prec, err - k0);
       MPFR_ZIV_NEXT (loop, prec);
     }
   MPFR_ZIV_FREE (loop);

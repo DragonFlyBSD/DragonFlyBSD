@@ -1,8 +1,8 @@
 /* mpfr_subnormalize -- Subnormalize a floating point number
    emulating sub-normal numbers.
 
-Copyright 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2005-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -17,9 +17,8 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
 #include "mpfr-impl.h"
 
@@ -32,7 +31,7 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
      1            |   0         | -1       | AddOneUlp |
      1            |   1         |  ?       | AddOneUlp |
 
-   For other rounding mode, there isn't such a problem.
+   For other rounding modes, there isn't such a problem.
    Just round it again and merge the ternary values.
 
    Set the inexact flag if the returned ternary value is non-zero.
@@ -54,7 +53,7 @@ mpfr_subnormalize (mpfr_ptr y, int old_inexact, mpfr_rnd_t rnd)
                        __gmpfr_emin + (mpfr_exp_t) MPFR_PREC (y) - 1)))
     MPFR_RET (old_inexact);
 
-  mpfr_set_underflow ();
+  MPFR_SET_UNDERFLOW ();
   sign = MPFR_SIGN (y);
 
   /* We have to emulate one bit rounding if EXP(y) = emin */
@@ -70,9 +69,9 @@ mpfr_subnormalize (mpfr_ptr y, int old_inexact, mpfr_rnd_t rnd)
          and since y is not a power of 2:  0.5*2^emin < Y < 1*2^emin
          We also know the direction of the error thanks to ternary value. */
 
-      if (rnd == MPFR_RNDN)
+      if (rnd == MPFR_RNDN || rnd == MPFR_RNDNA)
         {
-          mp_limb_t *mant, rb ,sb;
+          mp_limb_t *mant, rb, sb;
           mp_size_t s;
           /* We need the rounding bit and the sticky bit. Read them
              and use the previous table to conclude. */
@@ -95,7 +94,7 @@ mpfr_subnormalize (mpfr_ptr y, int old_inexact, mpfr_rnd_t rnd)
              Otherwise, rounding bit = 1, sticky bit = 0 and inexact = 0
              So we have 0.1100000000000000000000000*2^emin exactly.
              We return 0.1*2^(emin+1) according to the even-rounding
-             rule on subnormals. */
+             rule on subnormals. Note the same holds for RNDNA. */
           goto set_min_p1;
         }
       else if (MPFR_IS_LIKE_RNDZ (rnd, MPFR_IS_NEG (y)))
@@ -112,10 +111,11 @@ mpfr_subnormalize (mpfr_ptr y, int old_inexact, mpfr_rnd_t rnd)
           MPFR_RET (sign);
         }
     }
-  else /* Hard case: It is more or less the same problem than mpfr_cache */
+  else /* Hard case: It is more or less the same problem as mpfr_cache */
     {
       mpfr_t dest;
       mpfr_prec_t q;
+      mpfr_rnd_t rnd2;
       int inexact, inex2;
 
       MPFR_ASSERTD (MPFR_GET_EXP (y) > __gmpfr_emin);
@@ -129,28 +129,47 @@ mpfr_subnormalize (mpfr_ptr y, int old_inexact, mpfr_rnd_t rnd)
       /* Round y in dest */
       MPFR_SET_EXP (dest, MPFR_GET_EXP (y));
       MPFR_SET_SIGN (dest, sign);
+      rnd2 = rnd == MPFR_RNDNA ? MPFR_RNDN : rnd;
       MPFR_RNDRAW_EVEN (inexact, dest,
-                        MPFR_MANT (y), MPFR_PREC (y), rnd, sign,
+                        MPFR_MANT (y), MPFR_PREC (y), rnd2, sign,
                         MPFR_SET_EXP (dest, MPFR_GET_EXP (dest) + 1));
       if (MPFR_LIKELY (old_inexact != 0))
         {
-          if (MPFR_UNLIKELY (rnd == MPFR_RNDN &&
+          if (MPFR_UNLIKELY (rnd2 == MPFR_RNDN &&
                              (inexact == MPFR_EVEN_INEX ||
                               inexact == -MPFR_EVEN_INEX)))
             {
-              /* if both roundings are in the same direction, we have to go
-                 back in the other direction */
+              /* If both roundings are in the same direction,
+                 we have to go back in the other direction.
+                 For MPFR_RNDNA it is the same, since we are not
+                 exactly in the middle case (old_inexact != 0). */
               if (SAME_SIGN (inexact, old_inexact))
                 {
                   if (SAME_SIGN (inexact, MPFR_INT_SIGN (y)))
                     mpfr_nexttozero (dest);
-                  else
-                    mpfr_nexttoinf (dest);
+                  else  /* subnormal range, thus no overflow */
+                    {
+                      mpfr_nexttoinf (dest);
+                      MPFR_ASSERTD(!MPFR_IS_INF (dest));
+                    }
                   inexact = -inexact;
                 }
             }
           else if (MPFR_UNLIKELY (inexact == 0))
             inexact = old_inexact;
+        }
+      else if (rnd == MPFR_RNDNA &&
+               (inexact == MPFR_EVEN_INEX || inexact == -MPFR_EVEN_INEX))
+        {
+          /* We are in the middle case: since we used RNDN to round, we should
+             round in the opposite direction when inexact has the opposite
+             sign of y. */
+          if (!SAME_SIGN (inexact, MPFR_INT_SIGN (y)))
+            {
+              mpfr_nexttoinf (dest);
+              MPFR_ASSERTD(!MPFR_IS_INF (dest));
+              inexact = -inexact;
+            }
         }
 
       inex2 = mpfr_set (y, dest, rnd);

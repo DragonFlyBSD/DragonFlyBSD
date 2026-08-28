@@ -2,8 +2,8 @@
    mpfr_fmod -- compute the floating-point remainder of x/y
    mpfr_remquo and mpfr_remainder -- argument reduction functions
 
-Copyright 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
-Contributed by the AriC and Caramel projects, INRIA.
+Copyright 2007-2025 Free Software Foundation, Inc.
+Contributed by the Pascaline and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -18,11 +18,10 @@ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
-51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
+along with the GNU MPFR Library; see the file COPYING.LESSER.
+If not, see <https://www.gnu.org/licenses/>. */
 
-# include "mpfr-impl.h"
+#include "mpfr-impl.h"
 
 /* we return as many bits as we can, keeping just one bit for the sign */
 # define WANTED_BITS (sizeof(long) * CHAR_BIT - 1)
@@ -40,10 +39,10 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
   If rem is zero, then it has the sign of x.
   The returned 'int' is the inexact flag giving the place of rem wrt x - q*y.
 
-  If x or y is NaN: *quo is undefined, rem is NaN.
-  If x is Inf, whatever y: *quo is undefined, rem is NaN.
+  If x or y is NaN: *quo is unspecified, rem is NaN.
+  If x is Inf, whatever y: *quo is unspecified, rem is NaN.
   If y is Inf, x not NaN nor Inf: *quo is 0, rem is x.
-  If y is 0, whatever x: *quo is undefined, rem is NaN.
+  If y is 0, whatever x: *quo is unspecified, rem is NaN.
   If x is 0, whatever y (not NaN nor 0): *quo is 0, rem is x.
 
   Otherwise if x and y are neither NaN, Inf nor 0, q is always defined,
@@ -59,6 +58,7 @@ mpfr_rem1 (mpfr_ptr rem, long *quo, mpfr_rnd_t rnd_q,
   mpfr_exp_t ex, ey;
   int compare, inex, q_is_odd, sign, signx = MPFR_SIGN (x);
   mpz_t mx, my, r;
+  int tiny = 0;
 
   MPFR_ASSERTD (rnd_q == MPFR_RNDN || rnd_q == MPFR_RNDZ);
 
@@ -67,7 +67,7 @@ mpfr_rem1 (mpfr_ptr rem, long *quo, mpfr_rnd_t rnd_q,
       if (MPFR_IS_NAN (x) || MPFR_IS_NAN (y) || MPFR_IS_INF (x)
           || MPFR_IS_ZERO (y))
         {
-          /* for remquo, quo is undefined */
+          /* for remquo, *quo is unspecified */
           MPFR_SET_NAN (rem);
           MPFR_RET_NAN;
         }
@@ -99,9 +99,11 @@ mpfr_rem1 (mpfr_ptr rem, long *quo, mpfr_rnd_t rnd_q,
   mpz_abs (my, my);
   q_is_odd = 0;
 
-  /* divide my by 2^k if possible to make operations mod my easier */
+  /* Divide my by 2^k if possible to make operations mod my easier.
+     Since my comes from a regular MPFR number, due to the constraints on the
+     exponent and the precision, there can be no integer overflow below. */
   {
-    unsigned long k = mpz_scan1 (my, 0);
+    mpfr_exp_t k = mpz_scan1 (my, 0);
     ey += k;
     mpz_fdiv_q_2exp (my, my, k);
   }
@@ -109,13 +111,27 @@ mpfr_rem1 (mpfr_ptr rem, long *quo, mpfr_rnd_t rnd_q,
   if (ex <= ey)
     {
       /* q = x/y = mx/(my*2^(ey-ex)) */
-      mpz_mul_2exp (my, my, ey - ex);   /* divide mx by my*2^(ey-ex) */
-      if (rnd_q == MPFR_RNDZ)
-        /* 0 <= |r| <= |my|, r has the same sign as mx */
-        mpz_tdiv_qr (mx, r, mx, my);
+
+      /* First detect cases where q=0, to avoid creating a huge number
+         my*2^(ey-ex): if sx = mpz_sizeinbase (mx, 2) and sy =
+         mpz_sizeinbase (my, 2), we have x < 2^(ex + sx) and
+         y >= 2^(ey + sy - 1), thus if ex + sx <= ey + sy - 1
+         the quotient is 0 */
+      if (ex + (mpfr_exp_t) mpz_sizeinbase (mx, 2) <
+          ey + (mpfr_exp_t) mpz_sizeinbase (my, 2))
+        {
+          tiny = 1;
+          mpz_set (r, mx);
+          mpz_set_ui (mx, 0);
+        }
       else
-        /* 0 <= |r| <= |my|, r has the same sign as my */
-        mpz_fdiv_qr (mx, r, mx, my);
+        {
+          mpz_mul_2exp (my, my, ey - ex);   /* divide mx by my*2^(ey-ex) */
+
+          /* since mx > 0 and my > 0, we can use mpz_tdiv_qr in all cases */
+          mpz_tdiv_qr (mx, r, mx, my);
+          /* 0 <= |r| <= |my|, r has the same sign as mx */
+        }
 
       if (rnd_q == MPFR_RNDN)
         q_is_odd = mpz_tstbit (mx, 0);
@@ -142,8 +158,18 @@ mpfr_rem1 (mpfr_ptr rem, long *quo, mpfr_rnd_t rnd_q,
            which is obtained by dividing by 2Y. */
         mpz_mul_2exp (my, my, 1);       /* 2Y */
 
-      mpz_set_ui (r, 2);
-      mpz_powm_ui (r, r, ex - ey, my);  /* 2^(ex-ey) mod my */
+      /* Warning: up to GMP 6.2.0, mpz_powm_ui is not optimized when BASE^EXP
+         has about the same size as MOD, in which case it should first compute
+         BASE^EXP exactly, then reduce it modulo MOD:
+         https://gmplib.org/list-archives/gmp-bugs/2020-February/004736.html
+         Thus when 2^(ex-ey) is less than my^3, we use this algorithm. */
+      if (ex - ey > 3 * mpz_sizeinbase (my, 2))
+        {
+          mpz_set_ui (r, 2);
+          mpz_powm_ui (r, r, ex - ey, my);  /* 2^(ex-ey) mod my */
+        }
+      else
+        mpz_ui_pow_ui (r, 2, ex - ey);
       mpz_mul (r, r, mx);
       mpz_mod (r, r, my);
 
@@ -181,7 +207,20 @@ mpfr_rem1 (mpfr_ptr rem, long *quo, mpfr_rnd_t rnd_q,
           /* FIXME: the comparison 2*r < my could be done more efficiently
              at the mpn level */
           mpz_mul_2exp (r, r, 1);
-          compare = mpz_cmpabs (r, my);
+          /* if tiny=1, we should compare r with my*2^(ey-ex) */
+          if (tiny)
+            {
+              if (ex + (mpfr_exp_t) mpz_sizeinbase (r, 2) <
+                  ey + (mpfr_exp_t) mpz_sizeinbase (my, 2))
+                compare = 0; /* r*2^ex < my*2^ey */
+              else
+                {
+                  mpz_mul_2exp (my, my, ey - ex);
+                  compare = mpz_cmpabs (r, my);
+                }
+            }
+          else
+            compare = mpz_cmpabs (r, my);
           mpz_fdiv_q_2exp (r, r, 1);
           compare = ((compare > 0) ||
                      ((rnd_q == MPFR_RNDN) && (compare == 0) && q_is_odd));
@@ -226,4 +265,11 @@ int
 mpfr_fmod (mpfr_ptr rem, mpfr_srcptr x, mpfr_srcptr y, mpfr_rnd_t rnd)
 {
   return mpfr_rem1 (rem, (long *) 0, MPFR_RNDZ, x, y, rnd);
+}
+
+int
+mpfr_fmodquo (mpfr_ptr rem, long *quo, mpfr_srcptr x, mpfr_srcptr y,
+              mpfr_rnd_t rnd)
+{
+  return mpfr_rem1 (rem, quo, MPFR_RNDZ, x, y, rnd);
 }
