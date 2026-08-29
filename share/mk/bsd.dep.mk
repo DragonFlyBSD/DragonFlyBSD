@@ -172,8 +172,8 @@ _ALL_DEPENDS=${__FLAGS_FILES:N*.[csS]:N*.cc:N*.C:N*.cpp:N*.cxx:N*.m}
 .depend${_FG:S/^/_/:N__}: ${${_FG}_FLAGS_FILES} ${_ALL_DEPENDS}
 	rm -f ${.TARGET}
 .if ${${_FG}_FLAGS_FILES:M*.[csS]} != ""
-	${_MKDEPENV} CC=${MKDEPCC} ${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
-	    ${_MKDEPSRCDIR} \
+	${_MKDEPENV} CC=${MKDEPCC} ${MKDEPCMD} -f ${.TARGET} -a \
+	    ${_MKDEPSRCDIR} ${MKDEP} \
 	    ${${_FG}_FLAGS:M-I*} \
 	    ${CFLAGS:M--sysroot=*} \
 	    ${CFLAGS:M-nostdinc*} ${CFLAGS:M-[BID]*} \
@@ -185,8 +185,8 @@ _ALL_DEPENDS=${__FLAGS_FILES:N*.[csS]:N*.cc:N*.C:N*.cpp:N*.cxx:N*.m}
     ${${_FG}_FLAGS_FILES:M*.C} != "" || \
     ${${_FG}_FLAGS_FILES:M*.cpp} != "" || \
     ${${_FG}_FLAGS_FILES:M*.cxx} != ""
-	${_MKDEPENV} CC=${CXX} ${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
-	    ${_MKDEPSRCDIR} \
+	${_MKDEPENV} CC=${CXX} ${MKDEPCMD} -f ${.TARGET} -a \
+	    ${_MKDEPSRCDIR} ${MKDEP} \
 	    ${${_FG}_FLAGS:M-I*} \
 	    ${CXXFLAGS:M--sysroot=*} \
 	    ${CXXFLAGS:M-nostdinc*} ${CXXFLAGS:M-[BID]*} \
@@ -195,8 +195,8 @@ _ALL_DEPENDS=${__FLAGS_FILES:N*.[csS]:N*.cc:N*.C:N*.cpp:N*.cxx:N*.m}
 	    ${.ALLSRC:M*.cc} ${.ALLSRC:M*.C} ${.ALLSRC:M*.cpp} ${.ALLSRC:M*.cxx}
 .endif
 .if ${${_FG}_FLAGS_FILES:M*.m} != ""
-	${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
-	    ${_MKDEPSRCDIR} \
+	${MKDEPCMD} -f ${.TARGET} -a \
+	    ${_MKDEPSRCDIR} ${MKDEP} \
 	    ${${_FG}_FLAGS:M-I*} \
 	    ${OBJCFLAGS:M-nostdinc*} ${OBJCFLAGS:M-[BID]*} \
 	    ${OBJCFLAGS:M-Wno-import*} \
