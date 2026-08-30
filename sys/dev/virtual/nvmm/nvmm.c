@@ -541,12 +541,6 @@ nvmm_do_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	int ret;
 
 	while (1) {
-		/* Got a signal? Or pending resched? Leave. */
-		if (__predict_false(os_return_needed())) {
-			exit->reason = NVMM_VCPU_EXIT_NONE;
-			return 0;
-		}
-
 		/* Run the VCPU. */
 		ret = (*nvmm_impl->vcpu_run)(mach, vcpu, exit);
 		if (__predict_false(ret != 0)) {
@@ -562,6 +556,12 @@ nvmm_do_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		}
 		if (os_vmspace_fault(vm, exit->u.mem.gpa, exit->u.mem.prot)) {
 			break;
+		}
+
+		/* Got a signal? Or pending resched? Leave. */
+		if (__predict_false(os_return_needed())) {
+			exit->reason = NVMM_VCPU_EXIT_NONE;
+			return 0;
 		}
 	}
 
