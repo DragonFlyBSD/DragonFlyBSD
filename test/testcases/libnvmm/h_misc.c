@@ -317,6 +317,62 @@ done:
 
 /* -------------------------------------------------------------------------- */
 
+static int
+test_ram(void)
+{
+	const char *test_name = "RAM";
+	struct nvmm_capability cap;
+	struct nvmm_machine mach;
+	gpaddr_t last_gpa;
+	void *page;
+	int ret;
+
+	if (nvmm_capability(&cap) == -1)
+		err(errno, "nvmm_capability");
+
+	if (nvmm_machine_create(&mach) == -1)
+		err(errno, "nvmm_machine_create");
+
+	page = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE,
+	    -1, 0);
+	if (page == MAP_FAILED)
+		err(errno, "mmap");
+	if (nvmm_hva_map(&mach, (uintptr_t)page, PAGE_SIZE) == -1)
+		err(errno, "nvmm_hva_map");
+
+	/*
+	 * Attempt to map/unmap the last GPA.
+	 */
+
+	last_gpa = cap.max_ram - PAGE_SIZE;
+
+	ret = nvmm_gpa_map(&mach, (uintptr_t)page, last_gpa, PAGE_SIZE,
+	    PROT_READ|PROT_EXEC);
+	if (ret == -1) {
+		printf("*** Test '%s' failed, mapping failed\n", test_name);
+		ret = 1;
+		goto done;
+	}
+
+	ret = nvmm_gpa_unmap(&mach, (uintptr_t)page, last_gpa, PAGE_SIZE);
+	if (ret == -1) {
+		printf("*** Test '%s' failed, unmapping failed\n", test_name);
+		ret = 1;
+		goto done;
+	}
+
+	printf("Test '%s' passed\n", test_name);
+	ret = 0;
+
+done:
+	if (nvmm_machine_destroy(&mach) == -1)
+		err(errno, "nvmm_machine_destroy");
+
+	return ret;
+}
+
+/* -------------------------------------------------------------------------- */
+
 int main(int argc __unused, char *argv[] __unused)
 {
 	int nfail = 0;
@@ -325,6 +381,7 @@ int main(int argc __unused, char *argv[] __unused)
 		err(errno, "nvmm_init");
 
 	nfail += test_tpr();
+	nfail += test_ram();
 
 	if (nfail == 0) {
 		printf("All tests passed.\n");

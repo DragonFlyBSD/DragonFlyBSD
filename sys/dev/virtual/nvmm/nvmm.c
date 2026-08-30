@@ -856,7 +856,7 @@ nvmm_gpa_unmap(struct nvmm_owner *owner, struct nvmm_ioc_gpa_unmap *args)
 		error = EINVAL;
 		goto out;
 	}
-	if (gpa_end >= mach->gpa_end) {
+	if (gpa_end > mach->gpa_end) {
 		error = EINVAL;
 		goto out;
 	}
