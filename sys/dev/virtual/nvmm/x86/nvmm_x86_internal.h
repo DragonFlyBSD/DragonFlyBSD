@@ -103,6 +103,11 @@
 #undef EFER_LMSLE
 #undef EFER_FFXSR
 #undef EFER_TCE
+#undef EFER_MCOMMIT
+#undef EFER_INTWB
+#undef EFER_UAIE
+#undef EFER_AIBRSE
+#undef EFER_ETLBI
 #undef MSR_UCODE_AMD_PATCHLEVEL
 #undef MSR_NB_CFG
 #undef NB_CFG_INITAPICCPUIDLO
@@ -283,6 +288,11 @@
 #define		EFER_LMSLE	__BIT(13)
 #define		EFER_FFXSR	__BIT(14)
 #define		EFER_TCE	__BIT(15)
+#define		EFER_MCOMMIT	__BIT(17)
+#define		EFER_INTWB	__BIT(18)
+#define		EFER_UAIE	__BIT(20)
+#define		EFER_AIBRSE	__BIT(21)
+#define		EFER_ETLBI	__BIT(24)
 
 /* -------------------------------------------------------------------------- */
 

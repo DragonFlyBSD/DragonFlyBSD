@@ -373,10 +373,10 @@ vmx_sti(void)
 #define		PROC_CTLS_MWAIT_EXITING		__BIT(10)
 #define		PROC_CTLS_RDPMC_EXITING		__BIT(11)
 #define		PROC_CTLS_RDTSC_EXITING		__BIT(12)
-#define		PROC_CTLS_RCR3_EXITING		__BIT(15)
-#define		PROC_CTLS_LCR3_EXITING		__BIT(16)
-#define		PROC_CTLS_RCR8_EXITING		__BIT(19)
-#define		PROC_CTLS_LCR8_EXITING		__BIT(20)
+#define		PROC_CTLS_WCR3_EXITING		__BIT(15)
+#define		PROC_CTLS_RCR3_EXITING		__BIT(16)
+#define		PROC_CTLS_WCR8_EXITING		__BIT(19)
+#define		PROC_CTLS_RCR8_EXITING		__BIT(20)
 #define		PROC_CTLS_USE_TPR_SHADOW	__BIT(21)
 #define		PROC_CTLS_NMI_WINDOW_EXITING	__BIT(22)
 #define		PROC_CTLS_DR_EXITING		__BIT(23)
@@ -726,16 +726,16 @@ static uint64_t vmx_cr4_fixed1 __read_mostly;
 	 PROC_CTLS_HLT_EXITING| \
 	 PROC_CTLS_MWAIT_EXITING | \
 	 PROC_CTLS_RDPMC_EXITING | \
+	 PROC_CTLS_WCR8_EXITING | \
 	 PROC_CTLS_RCR8_EXITING | \
-	 PROC_CTLS_LCR8_EXITING | \
 	 PROC_CTLS_UNCOND_IO_EXITING | /* no I/O bitmap */ \
 	 PROC_CTLS_USE_MSR_BITMAPS | \
 	 PROC_CTLS_MONITOR_EXITING | \
 	 PROC_CTLS_ACTIVATE_CTLS2)
 
 #define VMX_PROCBASED_CTLS_ZERO	\
-	(PROC_CTLS_RCR3_EXITING| \
-	 PROC_CTLS_LCR3_EXITING)
+	(PROC_CTLS_WCR3_EXITING| \
+	 PROC_CTLS_RCR3_EXITING)
 
 #define VMX_PROCBASED_CTLS2_ONE	\
 	(PROC_CTLS2_ENABLE_EPT| \
@@ -1639,7 +1639,7 @@ vmx_exit_hlt(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 #define		CR_TYPE_LMSW	3
 #define VMX_QUAL_CR_LMSW_OPMEM	__BIT(6)
 #define VMX_QUAL_CR_GPR		__BITS(11,8)
-#define VMX_QUAL_CR_LMSW_SRC	__BIT(31,16)
+#define VMX_QUAL_CR_LMSW_SRC	__BITS(31,16)
 
 static inline int
 vmx_check_cr(uint64_t crval, uint64_t fixed0, uint64_t fixed1)
@@ -1855,9 +1855,6 @@ vmx_exit_io(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	exit->u.io.in = (qual & VMX_QUAL_IO_IN) != 0;
 	exit->u.io.port = __SHIFTOUT(qual, VMX_QUAL_IO_PORT);
 
-	OS_ASSERT(__SHIFTOUT(info, VMX_INFO_IO_SEG) < 6);
-	exit->u.io.seg = __SHIFTOUT(info, VMX_INFO_IO_SEG);
-
 	if (__SHIFTOUT(info, VMX_INFO_IO_ADRSIZE) == IO_ADRSIZE_64) {
 		exit->u.io.address_size = 8;
 	} else if (__SHIFTOUT(info, VMX_INFO_IO_ADRSIZE) == IO_ADRSIZE_32) {
@@ -1877,8 +1874,13 @@ vmx_exit_io(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	exit->u.io.rep = (qual & VMX_QUAL_IO_REP) != 0;
 	exit->u.io.str = (qual & VMX_QUAL_IO_STR) != 0;
 
-	if (exit->u.io.in && exit->u.io.str) {
-		exit->u.io.seg = NVMM_X64_SEG_ES;
+	if (exit->u.io.str) {
+		if (exit->u.io.in) {
+			exit->u.io.seg = NVMM_X64_SEG_ES;
+		} else {
+			OS_ASSERT(__SHIFTOUT(info, VMX_INFO_IO_SEG) < 6);
+			exit->u.io.seg = __SHIFTOUT(info, VMX_INFO_IO_SEG);
+		}
 	}
 
 	inslen = vmx_vmread(VMCS_EXIT_INSTRUCTION_LENGTH);
@@ -2213,12 +2215,14 @@ vmx_htlb_catchup(struct nvmm_cpu *vcpu, int hcpu)
 static inline uint64_t
 vmx_htlb_flush(struct nvmm_machine *mach, struct vmx_cpudata *cpudata)
 {
+	struct vmx_machdata *machdata = mach->machdata;
 	struct ept_desc ept_desc;
 	uint64_t machgen;
 
 #if defined(__NetBSD__)
-	machgen = ((struct vmx_machdata *)mach->machdata)->mach_htlb_gen;
+	machgen = machdata->mach_htlb_gen;
 #elif defined(__DragonFly__)
+	(void)machdata;
 	clear_xinvltlb();
 	machgen = vmspace_pmap(mach->vm)->pm_invgen;
 #endif

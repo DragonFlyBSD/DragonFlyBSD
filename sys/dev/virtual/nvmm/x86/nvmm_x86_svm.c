@@ -1614,12 +1614,14 @@ svm_htlb_catchup(struct nvmm_cpu *vcpu, int hcpu)
 static inline uint64_t
 svm_htlb_flush(struct nvmm_machine *mach, struct svm_cpudata *cpudata)
 {
+	struct svm_machdata *machdata = mach->machdata;
 	struct vmcb *vmcb = cpudata->vmcb;
 	uint64_t machgen;
 
 #if defined(__NetBSD__)
-	machgen = ((struct svm_machdata *)mach->machdata)->mach_htlb_gen;
+	machgen = machdata->mach_htlb_gen;
 #elif defined(__DragonFly__)
+	(void)machdata;
 	clear_xinvltlb();
 	machgen = vmspace_pmap(mach->vm)->pm_invgen;
 #endif
@@ -2340,7 +2342,8 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	    /* EFER_MCOMMIT excluded */
 	    /* EFER_INTWB excluded */
 	    /* EFER_UAIE excluded */
-	    /* EFER_AIBRSE excluded */;
+	    /* EFER_AIBRSE excluded */
+	    /* EFER_ETLBI excluded */;
 
 	/*
 	 * If DecodeAssists are supported:
