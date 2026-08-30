@@ -646,8 +646,17 @@ nvmm_hmapping_alloc(struct nvmm_machine *mach)
 	return NULL;
 }
 
+static void
+nvmm_hmapping_free(struct nvmm_hmapping *hmapping)
+{
+	os_vmobj_rel(hmapping->vmobj);
+
+	hmapping->present = false;
+	hmapping->vmobj = NULL;
+}
+
 static int
-nvmm_hmapping_free(struct nvmm_machine *mach, uintptr_t hva, size_t size)
+nvmm_hmapping_unmap(struct nvmm_machine *mach, uintptr_t hva, size_t size)
 {
 	struct nvmm_hmapping *hmapping;
 	size_t i;
@@ -661,11 +670,8 @@ nvmm_hmapping_free(struct nvmm_machine *mach, uintptr_t hva, size_t size)
 
 		os_vmobj_unmap(os_curproc_map, hmapping->hva,
 		    hmapping->hva + hmapping->size, false);
-		os_vmobj_rel(hmapping->vmobj);
 
-		hmapping->vmobj = NULL;
-		hmapping->present = false;
-
+		nvmm_hmapping_free(hmapping);
 		return 0;
 	}
 
@@ -703,6 +709,9 @@ nvmm_hva_map(struct nvmm_owner *owner, struct nvmm_ioc_hva_map *args)
 	error = os_vmobj_map(os_curproc_map, &uva, hmapping->size,
 	    hmapping->vmobj, 0, false /* !wired */, true /* fixed */,
 	    true /* shared */, PROT_READ | PROT_WRITE, PROT_READ | PROT_WRITE);
+	if (error) {
+		nvmm_hmapping_free(hmapping);
+	}
 
 out:
 	nvmm_machine_put(mach);
@@ -719,7 +728,7 @@ nvmm_hva_unmap(struct nvmm_owner *owner, struct nvmm_ioc_hva_unmap *args)
 	if (error)
 		return error;
 
-	error = nvmm_hmapping_free(mach, args->hva, args->size);
+	error = nvmm_hmapping_unmap(mach, args->hva, args->size);
 
 	nvmm_machine_put(mach);
 	return error;
