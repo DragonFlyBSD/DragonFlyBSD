@@ -1124,11 +1124,7 @@ svm_exit_wcr8(struct nvmm_cpu *vcpu, struct nvmm_vcpu_exit *exit)
 	svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_TPR);
 
 	svm_inkernel_advance(vmcb);
-	if (cpudata->tpr.exit_changed) {
-		exit->reason = NVMM_VCPU_EXIT_TPR_CHANGED;
-	} else {
-		exit->reason = NVMM_VCPU_EXIT_NONE;
-	}
+	exit->reason = NVMM_VCPU_EXIT_TPR_CHANGED;
 }
 
 static void
@@ -2347,21 +2343,14 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	    /* EFER_AIBRSE excluded */;
 
 	/*
-	 * If DecodeAssist is supported:
+	 * If DecodeAssists are supported:
 	 *
 	 *  - Intercept writes to CR4 to restrict access to unsupported CR4
 	 *    features. If not, then this is an old AMD CPU that doesn't have
 	 *    unsupported CR4 features, so we have nothing to do.
-	 *
-	 *  - Intercept writes to CR8 and deliver TPR_CHANGED VMEXITs to the
-	 *    emulator. If not, then we have no way to precisely track CR8
-	 *    updates, and rely on the emulator to do best-effort tracking
-	 *    based on the CR8 exitstate.
 	 */
 	if (svm_decode_assist) {
-		vmcb->ctrl.intercept_cr =
-		    VMCB_CTRL_INTERCEPT_WCR(4) |
-		    VMCB_CTRL_INTERCEPT_WCR(8);
+		vmcb->ctrl.intercept_cr = VMCB_CTRL_INTERCEPT_WCR(4);
 	} else {
 		vmcb->ctrl.intercept_cr = 0;
 	}
@@ -2618,12 +2607,35 @@ static int
 svm_vcpu_configure_tpr(struct svm_cpudata *cpudata, void *data)
 {
 	struct nvmm_vcpu_conf_tpr *tpr = data;
+	struct vmcb *vmcb = cpudata->vmcb;
+
+	/*
+	 * If DecodeAssists are supported:
+	 *
+	 *  - Intercept writes to CR8 and deliver TPR_CHANGED VMEXITs to the
+	 *    emulator. If not, then we have no way to precisely track CR8
+	 *    updates, and rely on the emulator to do best-effort tracking
+	 *    based on the CR8 exitstate.
+	 */
 
 	if (!svm_decode_assist) {
 		return ENOTSUP;
 	}
 
-	memcpy(&cpudata->tpr, tpr, sizeof(*tpr));
+	if (cpudata->tpr.exit_changed == tpr->exit_changed) {
+		return 0;
+	}
+
+	cpudata->tpr.exit_changed = tpr->exit_changed;
+
+	if (cpudata->tpr.exit_changed) {
+		vmcb->ctrl.intercept_cr |= VMCB_CTRL_INTERCEPT_WCR(8);
+	} else {
+		vmcb->ctrl.intercept_cr &= ~VMCB_CTRL_INTERCEPT_WCR(8);
+	}
+
+	svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_I);
+
 	return 0;
 }
 
