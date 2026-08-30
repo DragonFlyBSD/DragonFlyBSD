@@ -397,9 +397,7 @@ malloc_uninit(void *data)
     struct malloc_type *type = data;
     struct malloc_type *t;
     int i;
-#ifdef INVARIANTS
-    long ttl;
-#endif
+    long ttl __debugvar;
 
     if (type->ks_magic != M_MAGIC)
 	panic("malloc type lacks magic");
@@ -445,13 +443,9 @@ malloc_uninit(void *data)
      * on one cpu and freed on another individual array entries may be
      * negative or positive (canceling each other out).
      */
-#ifdef INVARIANTS
     ttl = 0;
-#endif
     for (i = 0; i < ncpus; ++i) {
-#ifdef INVARIANTS
 	ttl += type->ks_use[i].memuse;
-#endif
 	if (type->ks_flags & KSF_OBJSIZE)
 	    malloc_mgt_uninit(type, &type->ks_use[i].mgt);
     }
@@ -459,8 +453,8 @@ malloc_uninit(void *data)
 	malloc_mgt_uninit(type, &type->ks_mgt);
 #ifdef INVARIANTS
     if (ttl) {
-	kprintf("malloc_uninit: %ld bytes of '%s' still allocated on cpu %d\n",
-	    ttl, type->ks_shortdesc, i);
+	kprintf("%s: %ld bytes of '%s' still allocated\n",
+	    __func__, ttl, type->ks_shortdesc);
     }
 #endif
 
