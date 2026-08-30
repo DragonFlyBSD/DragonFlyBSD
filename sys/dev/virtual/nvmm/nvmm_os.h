@@ -63,11 +63,13 @@
 
 /* Types. */
 #if defined(__NetBSD__)
+typedef struct vm_map		os_vmmap_t;
 typedef struct vmspace		os_vmspace_t;
 typedef struct uvm_object	os_vmobj_t;
 typedef krwlock_t		os_rwl_t;
 typedef kmutex_t		os_mtx_t;
 #elif defined(__DragonFly__)
+typedef struct vm_map		os_vmmap_t;
 typedef struct vmspace		os_vmspace_t;
 typedef struct vm_object	os_vmobj_t;
 typedef struct lock		os_rwl_t;
@@ -268,6 +270,11 @@ typedef cpumask_t		os_cpuset_t;
 #define OS_ASSERT		KKASSERT
 #endif
 
+/* Vmspace. */
+#if defined(__NetBSD__) || defined(__DragonFly__)
+#define os_vmspace_get_vmmap(_vm_)	(&(_vm_)->vm_map)
+#endif
+
 /* Misc. */
 #if defined(__DragonFly__)
 #define uimin(a, b)		((u_int)a < (u_int)b ? (u_int)a : (u_int)b)
@@ -281,9 +288,9 @@ os_vmobj_t *	os_vmobj_create(voff_t);
 void		os_vmobj_ref(os_vmobj_t *);
 void		os_vmobj_rel(os_vmobj_t *);
 
-int		os_vmobj_map(struct vm_map *, vaddr_t *, vsize_t, os_vmobj_t *,
+int		os_vmobj_map(os_vmmap_t *, vaddr_t *, vsize_t, os_vmobj_t *,
 		    voff_t, bool, bool, bool, int, int);
-void		os_vmobj_unmap(struct vm_map *map, vaddr_t, vaddr_t, bool);
+void		os_vmobj_unmap(os_vmmap_t *, vaddr_t, vaddr_t, bool);
 
 void *		os_pagemem_zalloc(size_t);
 void		os_pagemem_free(void *, size_t);
@@ -293,6 +300,8 @@ void		os_pa_free(paddr_t);
 
 int		os_contigpa_zalloc(paddr_t *, vaddr_t *, size_t);
 void		os_contigpa_free(paddr_t, vaddr_t, size_t);
+
+time_t		os_time(void);
 
 static inline bool
 os_return_needed(void)

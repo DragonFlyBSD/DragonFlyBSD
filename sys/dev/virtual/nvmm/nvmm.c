@@ -61,7 +61,7 @@ nvmm_machine_alloc(struct nvmm_machine **ret)
 		}
 
 		mach->present = true;
-		mach->time = time_second;
+		mach->time = os_time();
 		*ret = mach;
 		os_atomic_inc_uint(&nvmm_nmachines);
 		return 0;
@@ -741,6 +741,7 @@ nvmm_gpa_map(struct nvmm_owner *owner, struct nvmm_ioc_gpa_map *args)
 {
 	struct nvmm_machine *mach;
 	os_vmobj_t *vmobj;
+	os_vmmap_t *vmmap;
 	gpaddr_t gpa;
 	gpaddr_t gpa_end;
 	size_t off;
@@ -792,7 +793,8 @@ nvmm_gpa_map(struct nvmm_owner *owner, struct nvmm_ioc_gpa_map *args)
 	}
 
 	/* Map the vmobj into the machine address space, as pageable. */
-	error = os_vmobj_map(&mach->vm->vm_map, &gpa, args->size, vmobj, off,
+	vmmap = os_vmspace_get_vmmap(mach->vm);
+	error = os_vmobj_map(vmmap, &gpa, args->size, vmobj, off,
 	    false /* !wired */, true /* fixed */, false /* !shared */,
 	    args->prot, PROT_READ | PROT_WRITE | PROT_EXEC);
 
@@ -805,6 +807,7 @@ static int
 nvmm_gpa_unmap(struct nvmm_owner *owner, struct nvmm_ioc_gpa_unmap *args)
 {
 	struct nvmm_machine *mach;
+	os_vmmap_t *vmmap;
 	gpaddr_t gpa;
 	gpaddr_t gpa_end;
 	int error;
@@ -838,7 +841,8 @@ nvmm_gpa_unmap(struct nvmm_owner *owner, struct nvmm_ioc_gpa_unmap *args)
 	}
 
 	/* Unmap the memory from the machine. */
-	os_vmobj_unmap(&mach->vm->vm_map, gpa, gpa + args->size, false);
+	vmmap = os_vmspace_get_vmmap(mach->vm);
+	os_vmobj_unmap(vmmap, gpa, gpa + args->size, false);
 
 out:
 	nvmm_machine_put(mach);

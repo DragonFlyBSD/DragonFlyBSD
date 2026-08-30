@@ -497,7 +497,7 @@ struct svm_hsave {
 	paddr_t pa;
 };
 
-static struct svm_hsave hsave[OS_MAXCPUS];
+static struct svm_hsave *hsave;
 
 static uint8_t *svm_asidmap __read_mostly;
 static uint32_t svm_maxasid __read_mostly;
@@ -2829,6 +2829,10 @@ svm_init(void)
 {
 	cpuid_desc_t descs;
 	os_cpu_t *cpu;
+	size_t maxcpus;
+
+	maxcpus = OS_MAXCPUS;
+	hsave = os_mem_zalloc(maxcpus * sizeof(struct svm_hsave));
 
 	x86_get_cpuid(0x8000000a, &descs);
 
@@ -2862,7 +2866,6 @@ svm_init(void)
 	svm_global_hstate.cstar = rdmsr(MSR_CSTAR);
 	svm_global_hstate.sfmask = rdmsr(MSR_SFMASK);
 
-	memset(hsave, 0, sizeof(hsave));
 	OS_CPU_FOREACH(cpu) {
 		hsave[os_cpu_number(cpu)].pa = os_pa_zalloc();
 	}
@@ -2884,14 +2887,17 @@ svm_fini_asid(void)
 static void
 svm_fini(void)
 {
-	size_t i;
+	size_t i, maxcpus;
 
 	os_ipi_broadcast(svm_change_cpu, (void *)false);
 
-	for (i = 0; i < OS_MAXCPUS; i++) {
+	maxcpus = OS_MAXCPUS;
+	for (i = 0; i < maxcpus; i++) {
 		if (hsave[i].pa != 0)
 			os_pa_free(hsave[i].pa);
 	}
+
+	os_mem_free(hsave, maxcpus * sizeof(struct svm_hsave));
 
 	svm_fini_asid();
 }

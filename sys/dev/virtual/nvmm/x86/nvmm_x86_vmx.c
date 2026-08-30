@@ -673,7 +673,7 @@ struct vmxoncpu {
 	paddr_t pa;
 };
 
-static struct vmxoncpu vmxoncpu[OS_MAXCPUS];
+static struct vmxoncpu *vmxoncpu;
 
 struct vmcs {
 	uint32_t ident;
@@ -3579,9 +3579,13 @@ vmx_init(void)
 	cpuid_desc_t descs;
 	os_cpu_t *cpu;
 	uint64_t msr;
+	size_t maxcpus;
 	paddr_t pa;
 	vaddr_t va;
 	int error;
+
+	maxcpus = OS_MAXCPUS;
+	vmxoncpu = os_mem_zalloc(maxcpus * sizeof(struct vmxoncpu));
 
 	/* Init the ASID bitmap (VPID). */
 	vmx_init_asid(VPID_MAX);
@@ -3627,7 +3631,6 @@ vmx_init(void)
 	vmx_global_hstate.cstar = rdmsr(MSR_CSTAR);
 	vmx_global_hstate.sfmask = rdmsr(MSR_SFMASK);
 
-	memset(vmxoncpu, 0, sizeof(vmxoncpu));
 	revision = vmx_get_revision();
 
 	OS_CPU_FOREACH(cpu) {
@@ -3659,14 +3662,17 @@ vmx_fini_asid(void)
 static void
 vmx_fini(void)
 {
-	size_t i;
+	size_t i, maxcpus;
 
 	os_ipi_broadcast(vmx_change_cpu, (void *)false);
 
-	for (i = 0; i < OS_MAXCPUS; i++) {
+	maxcpus = OS_MAXCPUS;
+	for (i = 0; i < maxcpus; i++) {
 		if (vmxoncpu[i].pa != 0)
 			os_contigpa_free(vmxoncpu[i].pa, vmxoncpu[i].va, 1);
 	}
+
+	os_mem_free(vmxoncpu, maxcpus * sizeof(struct vmxoncpu));
 
 	vmx_fini_asid();
 }

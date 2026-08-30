@@ -111,7 +111,7 @@ os_vmobj_rel(os_vmobj_t *vmobj)
 }
 
 int
-os_vmobj_map(struct vm_map *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
+os_vmobj_map(os_vmmap_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
     voff_t offset, bool wired, bool fixed, bool shared, int prot, int maxprot)
 {
 	vm_prot_t vmprot, vmmaxprot;
@@ -197,7 +197,7 @@ os_vmobj_map(struct vm_map *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
 }
 
 void
-os_vmobj_unmap(struct vm_map *map, vaddr_t start, vaddr_t end, bool wired)
+os_vmobj_unmap(os_vmmap_t *map, vaddr_t start, vaddr_t end, bool wired)
 {
 	if (wired) {
 		/* Unwire kernel mappings before removing. */
@@ -262,6 +262,12 @@ void
 os_contigpa_free(paddr_t pa __unused, vaddr_t va, size_t npages)
 {
 	contigfree((void *)va, npages * PAGE_SIZE, M_NVMM);
+}
+
+time_t
+os_time(void)
+{
+	return time_second;
 }
 
 /* -------------------------------------------------------------------------- */
