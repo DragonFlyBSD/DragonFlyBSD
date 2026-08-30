@@ -186,51 +186,6 @@ nvmm_vcpu_put(struct nvmm_cpu *vcpu)
 
 /* -------------------------------------------------------------------------- */
 
-void
-nvmm_kill_machines(struct nvmm_owner *owner)
-{
-	struct nvmm_machine *mach;
-	struct nvmm_cpu *vcpu;
-	size_t i, j;
-	int error;
-
-	for (i = 0; i < NVMM_MAX_MACHINES; i++) {
-		mach = &machines[i];
-
-		os_rwl_wlock(&mach->lock);
-		if (!mach->present || mach->owner != owner) {
-			os_rwl_unlock(&mach->lock);
-			continue;
-		}
-
-		/* Kill it. */
-		for (j = 0; j < NVMM_MAX_VCPUS; j++) {
-			error = nvmm_vcpu_get(mach, j, &vcpu);
-			if (error)
-				continue;
-			(*nvmm_impl->vcpu_destroy)(mach, vcpu);
-			nvmm_vcpu_free(mach, vcpu);
-			nvmm_vcpu_put(vcpu);
-			os_atomic_dec_uint(&mach->ncpus);
-		}
-		(*nvmm_impl->machine_destroy)(mach);
-		os_vmspace_destroy(mach->vm);
-
-		/* Drop the kernel vmobj refs. */
-		for (j = 0; j < NVMM_MAX_HMAPPINGS; j++) {
-			if (!mach->hmap[j].present)
-				continue;
-			os_vmobj_rel(mach->hmap[j].vmobj);
-		}
-
-		nvmm_machine_free(mach);
-
-		os_rwl_unlock(&mach->lock);
-	}
-}
-
-/* -------------------------------------------------------------------------- */
-
 static int
 nvmm_capability(struct nvmm_owner *owner, struct nvmm_ioc_capability *args)
 {
@@ -280,18 +235,12 @@ nvmm_machine_create(struct nvmm_owner *owner,
 	return 0;
 }
 
-static int
-nvmm_machine_destroy(struct nvmm_owner *owner,
-    struct nvmm_ioc_machine_destroy *args)
+static void
+nvmm_do_machine_destroy(struct nvmm_machine *mach)
 {
-	struct nvmm_machine *mach;
 	struct nvmm_cpu *vcpu;
 	int error;
 	size_t i;
-
-	error = nvmm_machine_get(owner, args->machid, &mach, true);
-	if (error)
-		return error;
 
 	for (i = 0; i < NVMM_MAX_VCPUS; i++) {
 		error = nvmm_vcpu_get(mach, i, &vcpu);
@@ -309,6 +258,9 @@ nvmm_machine_destroy(struct nvmm_owner *owner,
 	/* Free the machine vmspace. */
 	os_vmspace_destroy(mach->vm);
 
+	/* Free the comm vmobj. */
+	os_vmobj_rel(mach->commvmobj);
+
 	/* Drop the kernel vmobj refs. */
 	for (i = 0; i < NVMM_MAX_HMAPPINGS; i++) {
 		if (!mach->hmap[i].present)
@@ -317,6 +269,21 @@ nvmm_machine_destroy(struct nvmm_owner *owner,
 	}
 
 	nvmm_machine_free(mach);
+}
+
+static int
+nvmm_machine_destroy(struct nvmm_owner *owner,
+    struct nvmm_ioc_machine_destroy *args)
+{
+	struct nvmm_machine *mach;
+	int error;
+
+	error = nvmm_machine_get(owner, args->machid, &mach, true);
+	if (error)
+		return error;
+
+	nvmm_do_machine_destroy(mach);
+
 	nvmm_machine_put(mach);
 
 	return 0;
@@ -1014,5 +981,29 @@ nvmm_ioctl(struct nvmm_owner *owner, unsigned long cmd, void *data)
 		return nvmm_ctl(owner, data);
 	default:
 		return EINVAL;
+	}
+}
+
+/* -------------------------------------------------------------------------- */
+
+void
+nvmm_kill_machines(struct nvmm_owner *owner)
+{
+	struct nvmm_machine *mach;
+	size_t i;
+
+	for (i = 0; i < NVMM_MAX_MACHINES; i++) {
+		mach = &machines[i];
+
+		os_rwl_wlock(&mach->lock);
+
+		if (!mach->present || mach->owner != owner) {
+			os_rwl_unlock(&mach->lock);
+			continue;
+		}
+
+		nvmm_do_machine_destroy(mach);
+
+		os_rwl_unlock(&mach->lock);
 	}
 }
