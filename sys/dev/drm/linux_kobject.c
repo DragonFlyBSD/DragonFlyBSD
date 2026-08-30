@@ -25,6 +25,7 @@
  */
 
 #include <linux/gfp.h>
+#include <linux/slab.h>
 #include <linux/kobject.h>
 
 int kobject_init_and_add(struct kobject *kobj, struct kobj_type *ktype,
@@ -36,7 +37,7 @@ int kobject_init_and_add(struct kobject *kobj, struct kobj_type *ktype,
 	kref_init(&kobj->kref);
 
 	va_start(ap, fmt);
-	kobj->name = kvasprintf(M_WAITOK, fmt, ap);
+	kobj->name = kvasprintf(GFP_KERNEL, fmt, ap);
 	va_end(ap);
 
 	return 0;
@@ -48,4 +49,7 @@ void kobject_release(struct kref *kref)
 
 	if (kobj->ktype && kobj->ktype->release)
 		kobj->ktype->release(kobj);
+
+	if (kobj->name)
+		kfree(kobj->name);
 }
