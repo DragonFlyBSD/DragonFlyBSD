@@ -60,9 +60,8 @@ fb_get_options(const char *connector_name, char **option)
 }
 
 /*
- * Implement simplified version of kvasnprintf() for drm needs using
- * M_DRM and kvsnprintf(). Since it is unclear what string size is
- * optimal thus use of an actual length.
+ * Similar to kvsprintf() but call kmalloc(M_DRM) to auto allocate a string
+ * buffer that's large enough.
  */
 char *kvasprintf(int flags, const char *format, va_list ap)
 {

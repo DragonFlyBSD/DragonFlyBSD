@@ -374,14 +374,13 @@ int
 make_dev_alias(cdev_t target, const char *fmt, ...)
 {
 	__va_list ap;
-	char *name;
+	char name[PATH_MAX];
 
 	__va_start(ap, fmt);
-	kvasnprintf(&name, PATH_MAX, fmt, ap);
+	kvsnprintf(name, sizeof(name), fmt, ap);
 	__va_end(ap);
 
 	devfs_make_alias(name, target);
-	kvasfree(&name);
 
 	return 0;
 }
@@ -390,14 +389,13 @@ int
 destroy_dev_alias(cdev_t target, const char *fmt, ...)
 {
 	__va_list ap;
-	char *name;
+	char name[PATH_MAX];
 
 	__va_start(ap, fmt);
-	kvasnprintf(&name, PATH_MAX, fmt, ap);
+	kvsnprintf(name, sizeof(name), fmt, ap);
 	__va_end(ap);
 
 	devfs_destroy_alias(name, target);
-	kvasfree(&name);
 
 	return 0;
 }
@@ -410,10 +408,10 @@ make_autoclone_dev(struct dev_ops *ops, struct devfs_bitmap *bitmap,
 {
 	__va_list ap;
 	cdev_t dev;
-	char *name;
+	char name[PATH_MAX];
 
 	__va_start(ap, fmt);
-	kvasnprintf(&name, PATH_MAX, fmt, ap);
+	kvsnprintf(name, sizeof(name), fmt, ap);
 	__va_end(ap);
 
 	if (bitmap != NULL)
@@ -422,7 +420,6 @@ make_autoclone_dev(struct dev_ops *ops, struct devfs_bitmap *bitmap,
 	devfs_clone_handler_add(name, nhandler);
 	dev = make_dev_covering(&default_dev_ops, ops, 0xffff00ff,
 		       uid, gid, perms, "%s", name);
-	kvasfree(&name);
 	return dev;
 }
 

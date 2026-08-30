@@ -912,14 +912,14 @@ devfs_find_device_by_name(const char *fmt, ...)
 {
 	cdev_t found = NULL;
 	devfs_msg_t msg;
-	char *target;
+	char target[PATH_MAX];
 	__va_list ap;
 
 	if (fmt == NULL)
 		return NULL;
 
 	__va_start(ap, fmt);
-	kvasnprintf(&target, PATH_MAX, fmt, ap);
+	kvsnprintf(target, sizeof(target), fmt, ap);
 	__va_end(ap);
 
 	msg = devfs_msg_get();
@@ -927,7 +927,6 @@ devfs_find_device_by_name(const char *fmt, ...)
 	devfs_msg_send_sync(DEVFS_FIND_DEVICE_BY_NAME, msg);
 	found = msg->mdv_cdev;
 	devfs_msg_put(msg);
-	kvasfree(&target);
 
 	return found;
 }
@@ -2083,8 +2082,9 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 		*existsp = 0;
 
 	if (path_fmt != NULL) {
+		path = kmalloc(PATH_MAX, M_TEMP, M_WAITOK);
 		__va_start(ap, path_fmt);
-		kvasnprintf(&path, PATH_MAX, path_fmt, ap);
+		kvsnprintf(path, PATH_MAX, path_fmt, ap);
 		__va_end(ap);
 	}
 
@@ -2097,7 +2097,6 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 
 	if (create_path)
 		parent = devfs_resolve_or_create_path(parent, create_path, 1);
-
 
 	node = devfs_find_device_node_by_name(parent, name);
 	if (node) {
@@ -2152,7 +2151,8 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 
 out:
 	kfree(name_buf, M_TEMP);
-	kvasfree(&path);
+	if (path != NULL)
+		kfree(path, M_TEMP);
 	return node;
 }
 

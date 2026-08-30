@@ -225,8 +225,6 @@ int	uprintf (const char *, ...) __printflike(1, 2);
 int	kvprintf (const char *, __va_list) __printflike(1, 0);
 int	kvsnprintf (char *, size_t, const char *,
 			__va_list) __printflike(3, 0);
-int	kvasnprintf (char **, size_t, const char *,
-			__va_list) __printflike(3, 0);
 int	kvsprintf (char *buf, const char *,
 			__va_list) __printflike(2, 0);
 int	ttyprintf (struct tty *, const char *, ...) __printflike(2, 3);
@@ -241,7 +239,6 @@ int	ksscanf(const char *, char const *, ...)
 	    __nonnull(1, 2) __scanflike(2, 3);
 int	kvsscanf(const char *, char const *, __va_list)
 	    __nonnull(1, 2) __scanflike(2, 0);
-void	kvasfree(char **);
 
 long	strtol(const char *, char **, int) __nonnull(1);
 u_long	strtoul(const char *, char **, int) __nonnull(1);

@@ -466,30 +466,6 @@ kvsnprintf(char *str, size_t size, const char *format, __va_list ap)
 	return (retval);
 }
 
-int
-kvasnprintf(char **strp, size_t size, const char *format, __va_list ap)
-{
-	struct snprintf_arg info;
-	int retval;
-
-	*strp = kmalloc(size, M_TEMP, M_WAITOK);
-	info.str = *strp;
-	info.remain = size;
-	retval = kvcprintf(format, snprintf_func, &info, ap);
-	if (info.remain >= 1)
-		*info.str++ = '\0';
-	return (retval);
-}
-
-void
-kvasfree(char **strp)
-{
-	if (*strp) {
-		kfree(*strp, M_TEMP);
-		*strp = NULL;
-	}
-}
-
 static void
 snprintf_func(int ch, void *arg)
 {

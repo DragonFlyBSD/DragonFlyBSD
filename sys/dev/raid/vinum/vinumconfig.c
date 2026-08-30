@@ -111,10 +111,11 @@ throw_rude_remark(int error, char *msg,...)
 	 * We can't just format to ioctl_reply, since it
 	 * may contain our input parameters
 	 */
-	    kvasnprintf(&text, MSG_MAX, msg, ap);
-	    strcpy(ioctl_reply->msg, text);
-	    ioctl_reply->error = error;			    /* first byte is the error number */
-	    kvasfree(&text);
+	text = kmalloc(MSG_MAX, M_TEMP, M_WAITOK);
+	kvsnprintf(text, MSG_MAX, msg, ap);
+	strcpy(ioctl_reply->msg, text);
+	ioctl_reply->error = error;			    /* first byte is the error number */
+	kfree(text, M_TEMP);
     } else {
 	kprintf("vinum: ");
 	kvprintf(msg, ap);				    /* print to the console */
