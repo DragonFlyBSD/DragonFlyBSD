@@ -854,7 +854,7 @@ svm_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
     uint32_t eax, uint32_t ecx)
 {
 	struct svm_cpudata *cpudata = vcpu->cpudata;
-	unsigned int ncpus;
+	unsigned int nvcpus;
 	uint64_t cr4;
 
 	if (eax < 0x40000000) {
@@ -885,9 +885,9 @@ svm_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		cpudata->gprs[NVMM_X64_GPR_RBX] |= __SHIFTIN(vcpu->cpuid,
 		    CPUID_0_01_EBX_LOCAL_APIC_ID);
 
-		ncpus = os_atomic_load_uint(&mach->ncpus);
+		nvcpus = os_atomic_load_uint(&mach->ncpus);
 		cpudata->gprs[NVMM_X64_GPR_RBX] &= ~CPUID_0_01_EBX_HTT_CORES;
-		cpudata->gprs[NVMM_X64_GPR_RBX] |= __SHIFTIN(ncpus,
+		cpudata->gprs[NVMM_X64_GPR_RBX] |= __SHIFTIN(nvcpus,
 		    CPUID_0_01_EBX_HTT_CORES);
 
 		cpudata->gprs[NVMM_X64_GPR_RCX] &= nvmm_cpuid_00000001.ecx;
@@ -1002,12 +1002,12 @@ svm_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		cpudata->gprs[NVMM_X64_GPR_RDX] &= nvmm_cpuid_80000007.edx;
 		break;
 	case 0x80000008: /* Processor Capacity Parameters and Ext Feat Ident */
-		ncpus = os_atomic_load_uint(&mach->ncpus);
+		nvcpus = os_atomic_load_uint(&mach->ncpus);
 		cpudata->vmcb->state.rax &= nvmm_cpuid_80000008.eax;
 		cpudata->gprs[NVMM_X64_GPR_RBX] &= nvmm_cpuid_80000008.ebx;
 		cpudata->gprs[NVMM_X64_GPR_RBX] |= CPUID_8_08_EBX_EferLmsleUnsupp;
 		cpudata->gprs[NVMM_X64_GPR_RCX] =
-		    __SHIFTIN(ncpus - 1, CPUID_8_08_ECX_NC) |
+		    __SHIFTIN(nvcpus - 1, CPUID_8_08_ECX_NC) |
 		    __SHIFTIN(ilog2(NVMM_MAX_VCPUS), CPUID_8_08_ECX_ApicIdSize);
 		cpudata->gprs[NVMM_X64_GPR_RDX] &= nvmm_cpuid_80000008.edx;
 		break;

@@ -1306,7 +1306,7 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
     uint32_t eax, uint32_t ecx)
 {
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
-	unsigned int ncpus;
+	unsigned int nvcpus;
 	uint32_t clevel;
 	uint64_t cr4;
 
@@ -1338,9 +1338,9 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		cpudata->gprs[NVMM_X64_GPR_RBX] |= __SHIFTIN(vcpu->cpuid,
 		    CPUID_0_01_EBX_LOCAL_APIC_ID);
 
-		ncpus = os_atomic_load_uint(&mach->ncpus);
+		nvcpus = os_atomic_load_uint(&mach->ncpus);
 		cpudata->gprs[NVMM_X64_GPR_RBX] &= ~CPUID_0_01_EBX_HTT_CORES;
-		cpudata->gprs[NVMM_X64_GPR_RBX] |= __SHIFTIN(ncpus,
+		cpudata->gprs[NVMM_X64_GPR_RBX] |= __SHIFTIN(nvcpus,
 		    CPUID_0_01_EBX_HTT_CORES);
 
 		cpudata->gprs[NVMM_X64_GPR_RCX] &= nvmm_cpuid_00000001.ecx;
@@ -1366,7 +1366,7 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		cpudata->gprs[NVMM_X64_GPR_RDX] = 0;
 		break;
 	case 0x00000004: /* Deterministic Cache Parameters */
-		ncpus = os_atomic_load_uint(&mach->ncpus);
+		nvcpus = os_atomic_load_uint(&mach->ncpus);
 		clevel = __SHIFTOUT(cpudata->gprs[NVMM_X64_GPR_RAX],
 		    CPUID_0_04_EAX_CACHELEVEL);
 
@@ -1374,7 +1374,7 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		if (clevel >= 3) {
 			/* L3 and above: all CPUs. */
 			cpudata->gprs[NVMM_X64_GPR_RAX] |=
-			    __SHIFTIN(ncpus - 1, CPUID_0_04_EAX_SHARING);
+			    __SHIFTIN(nvcpus - 1, CPUID_0_04_EAX_SHARING);
 		} else {
 			/* L2 and below: one LP per CPU. */
 			cpudata->gprs[NVMM_X64_GPR_RAX] |=
@@ -1383,7 +1383,7 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 
 		cpudata->gprs[NVMM_X64_GPR_RAX] &= ~CPUID_0_04_EAX_CORE_P_PKG;
 		cpudata->gprs[NVMM_X64_GPR_RAX] |=
-		    __SHIFTIN(ncpus - 1, CPUID_0_04_EAX_CORE_P_PKG);
+		    __SHIFTIN(nvcpus - 1, CPUID_0_04_EAX_CORE_P_PKG);
 		break;
 	case 0x00000005: /* MONITOR/MWAIT */
 	case 0x00000006: /* Thermal and Power Management */
@@ -1438,9 +1438,9 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			cpudata->gprs[NVMM_X64_GPR_RDX] = vcpu->cpuid;
 			break;
 		case 1: /* Cores */
-			ncpus = os_atomic_load_uint(&mach->ncpus);
-			cpudata->gprs[NVMM_X64_GPR_RAX] = ilog2(ncpus);
-			cpudata->gprs[NVMM_X64_GPR_RBX] = ncpus;
+			nvcpus = os_atomic_load_uint(&mach->ncpus);
+			cpudata->gprs[NVMM_X64_GPR_RAX] = ilog2(nvcpus);
+			cpudata->gprs[NVMM_X64_GPR_RBX] = nvcpus;
 			cpudata->gprs[NVMM_X64_GPR_RCX] =
 			    __SHIFTIN(ecx, CPUID_0_0B_ECX_LVLNUM) |
 			    __SHIFTIN(CPUID_0_0B_ECX_LVLTYPE_CORE, CPUID_0_0B_ECX_LVLTYPE);
