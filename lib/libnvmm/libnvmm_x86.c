@@ -128,11 +128,7 @@ nvmm_vcpu_dump(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 #define PTE_LGPAT	0x0000000000001000	/* PAT on Large Pages */
 #define PTE_NX		0x8000000000000000	/* No Execute */
 
-#define PTE_4KFRAME	0x000ffffffffff000
-#define PTE_2MFRAME	0x000fffffffe00000
-#define PTE_1GFRAME	0x000fffffc0000000
-
-#define PTE_FRAME	PTE_4KFRAME
+#define PTE_FRAME	0x000ffffffffff000
 
 #define PTE_READ(_p_)	__atomic_load_n((_p_), __ATOMIC_RELAXED)
 
@@ -213,7 +209,7 @@ x86_gva_to_gpa_32bit(struct nvmm_machine *mach, uint64_t cr3,
 #define	PTE32_PAE_L2_MASK	0x3fe00000
 #define	PTE32_PAE_L1_MASK	0x001ff000
 
-#define	PTE32_PAE_L3_FRAME	(PTE32_PAE_L3_MASK)
+#define	PTE32_PAE_L3_FRAME	(0x000fffff00000000|PTE32_PAE_L3_MASK)
 #define	PTE32_PAE_L2_FRAME	(PTE32_PAE_L3_FRAME|PTE32_PAE_L2_MASK)
 #define	PTE32_PAE_L1_FRAME	(PTE32_PAE_L2_FRAME|PTE32_PAE_L1_MASK)
 
