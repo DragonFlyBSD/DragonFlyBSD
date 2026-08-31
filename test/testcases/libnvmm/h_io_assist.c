@@ -321,6 +321,7 @@ extern uint8_t test9_begin, test9_end;
 extern uint8_t test10_begin, test10_end;
 extern uint8_t test11_begin, test11_end;
 extern uint8_t test12_begin, test12_end;
+extern uint8_t test13_begin, test13_end;
 
 static const struct test tests[] = {
 	{ "test1 - INB", &test1_begin, &test1_end, "12", true },
@@ -339,6 +340,8 @@ static const struct test tests[] = {
 	  "Ah, Herr Bramard", false },
 	{ "test12 - OUTSL+REP", &test12_begin, &test12_end,
 	  "123456789abcdefghijklmnopqrs", false },
+	{ "test13 - addr32 INSB+REP", &test13_begin, &test13_end,
+	  "Y", true },
 	{ NULL, NULL, NULL, NULL, false }
 };
 

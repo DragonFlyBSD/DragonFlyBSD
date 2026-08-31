@@ -883,11 +883,8 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 
 done:
 	if (exit->u.io.str) {
-		if (__predict_false(psld)) {
-			state->gprs[reg] -= iocnt * io.size;
-		} else {
-			state->gprs[reg] += iocnt * io.size;
-		}
+		gpr_advance_address(state, reg, exit->u.io.address_size,
+		    iocnt * io.size, psld);
 	}
 
 	if (exit->u.io.rep) {
@@ -2963,33 +2960,25 @@ x86_func_mov(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs __unus
 }
 
 static void
-x86_func_stos(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
+x86_func_stos(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem,
+    uint64_t *gprs __unused)
 {
 	/*
-	 * Just move, and update RDI.
+	 * Just move. RDI is updated by assist_mem_single(), which has the
+	 * instruction's address size.
 	 */
 	(*vcpu->cbs.mem)(mem);
-
-	if (gprs[NVMM_X64_GPR_RFLAGS] & PSL_D) {
-		gprs[NVMM_X64_GPR_RDI] -= mem->size;
-	} else {
-		gprs[NVMM_X64_GPR_RDI] += mem->size;
-	}
 }
 
 static void
-x86_func_lods(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
+x86_func_lods(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem,
+    uint64_t *gprs __unused)
 {
 	/*
-	 * Just move, and update RSI.
+	 * Just move. RSI is updated by assist_mem_single(), which has the
+	 * instruction's address size.
 	 */
 	(*vcpu->cbs.mem)(mem);
-
-	if (gprs[NVMM_X64_GPR_RFLAGS] & PSL_D) {
-		gprs[NVMM_X64_GPR_RSI] -= mem->size;
-	} else {
-		gprs[NVMM_X64_GPR_RSI] += mem->size;
-	}
 }
 
 static void
@@ -3284,6 +3273,14 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	}
 
 	(*instr->emul->func)(vcpu, &mem, state->gprs);
+
+	if (instr->opcode->stos) {
+		gpr_advance_address(state, NVMM_X64_GPR_RDI, instr->address_size,
+		    mem.size, (state->gprs[NVMM_X64_GPR_RFLAGS] & PSL_D) != 0);
+	} else if (instr->opcode->lods) {
+		gpr_advance_address(state, NVMM_X64_GPR_RSI, instr->address_size,
+		    mem.size, (state->gprs[NVMM_X64_GPR_RFLAGS] & PSL_D) != 0);
+	}
 
 	if (instr->emul->notouch) {
 		/* We're done. */

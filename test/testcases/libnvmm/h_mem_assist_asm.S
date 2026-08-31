@@ -413,14 +413,21 @@ test_64bit_19_end:
 	.align	64
 test_64bit_20_begin:
 	movq	$0x5a,%rax
-	movabsq	$0x1000,%rdi
+	movabsq	$0xdeadbeef00001000,%rdi
 	movabsq	$0xfeedface00000001,%rcx
 
-	/* addr32 rep stosb must update ECX and zero-extend it. */
+	/* addr32 rep stosb must update EDI/ECX and zero-extend both. */
 	.byte	0x67
 	rep stosb
 
+	cmpq	$0x1001,%rdi
+	jne	.L20_failure
+
+.L20_success:
 	movq	%rcx,0x1008
+	TEST_END
+.L20_failure:
+	movq	$-1,0x1008
 	TEST_END
 test_64bit_20_end:
 
