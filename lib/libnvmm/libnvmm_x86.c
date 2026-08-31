@@ -506,22 +506,31 @@ is_16bit(struct nvmm_x64_state *state)
 static int
 segment_check(struct nvmm_x64_state_seg *seg, gvaddr_t gva, size_t size)
 {
-	uint64_t limit;
+	uint64_t lower, upper;
 
-	/*
-	 * This is incomplete. We should check topdown, etc, really that's
-	 * tiring.
-	 */
 	if (__predict_false(!seg->attrib.p)) {
 		goto error;
 	}
 
-	limit = (uint64_t)seg->limit + 1;
-	if (__predict_true(seg->attrib.g)) {
-		limit *= PAGE_SIZE;
+	/*
+	 * TODO: check R/W/X.
+	 */
+
+	upper = (uint64_t)seg->limit + 1;
+
+	/*
+	 * For expand-down data segments, the descriptor limit is the lower
+	 * boundary. The D/B bit selects a maximum offset of 64KB or 4GB.
+	 */
+	if (__predict_false(seg->attrib.s &&
+	    ((seg->attrib.type & 0b1100) == 0b0100))) {
+		lower = upper;
+		upper = seg->attrib.def ? 0x100000000ULL : 0x10000ULL;
+	} else {
+		lower = 0;
 	}
 
-	if (__predict_false(gva + size > limit)) {
+	if (__predict_false(gva < lower || gva > upper || size > upper - gva)) {
 		goto error;
 	}
 

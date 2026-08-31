@@ -410,6 +410,25 @@ test_64bit_19_end:
 
 /* -------------------------------------------------------------------------- */
 
+	.globl	test_32bit_1_begin, test_32bit_1_end
+
+#define TEST32_END	\
+	rdmsr
+
+	.code32
+
+	.align	64
+test_32bit_1_begin:
+	movl	$0x1000,%esi
+	movl	$0x1008,%edi
+
+	movsl
+
+	TEST32_END
+test_32bit_1_end:
+
+/* -------------------------------------------------------------------------- */
+
 	.globl	test_16bit_1_begin, test_16bit_1_end
 	.globl	test_16bit_2_begin, test_16bit_2_end
 	.globl	test_16bit_3_begin, test_16bit_3_end
