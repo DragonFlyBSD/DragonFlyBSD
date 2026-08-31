@@ -999,11 +999,6 @@ enum x86_disp_type {
 	DISP_4
 };
 
-struct x86_disp {
-	enum x86_disp_type type;
-	uint64_t data; /* 4 bytes, but can be sign-extended */
-};
-
 struct x86_regmodrm {
 	uint8_t mod:2;
 	uint8_t reg:3;
@@ -1012,12 +1007,6 @@ struct x86_regmodrm {
 
 struct x86_immediate {
 	uint64_t data;
-};
-
-struct x86_sib {
-	uint8_t scale;
-	const struct x86_reg *idx;
-	const struct x86_reg *bas;
 };
 
 enum x86_store_type {
@@ -1035,10 +1024,9 @@ struct x86_store {
 		const struct x86_reg *reg;
 		struct x86_dualreg dualreg;
 		struct x86_immediate imm;
-		struct x86_sib sib;
 		uint64_t dmo;
 	} u;
-	struct x86_disp disp;
+	enum x86_disp_type disptype;
 	int hardseg;
 };
 
@@ -1907,12 +1895,10 @@ node_movs(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	/* DS:RSI */
 	instr->src.type = STORE_REG;
 	instr->src.u.reg = &gpr_map__special[1][2][adrsize-1];
-	instr->src.disp.type = DISP_0;
 
 	/* ES:RDI, force ES */
 	instr->dst.type = STORE_REG;
 	instr->dst.u.reg = &gpr_map__special[1][3][adrsize-1];
-	instr->dst.disp.type = DISP_0;
 	instr->dst.hardseg = NVMM_X64_SEG_ES;
 
 	fsm_advance(fsm, 0, NULL);
@@ -1954,7 +1940,7 @@ node_stlo(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 		/* DS:RSI */
 		stlo->u.reg = &gpr_map__special[1][2][adrsize-1];
 	}
-	stlo->disp.type = DISP_0;
+	stlo->disptype = DISP_0;
 
 	fsm_advance(fsm, 0, NULL);
 
@@ -2039,28 +2025,17 @@ static int
 node_disp(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 {
 	const struct x86_opcode *opcode = instr->opcode;
-	uint64_t data = 0;
 	size_t n;
 
-	if (instr->strm->disp.type == DISP_1) {
+	if (instr->strm->disptype == DISP_1) {
 		n = 1;
-	} else if (instr->strm->disp.type == DISP_2) {
+	} else if (instr->strm->disptype == DISP_2) {
 		n = 2;
-	} else if (instr->strm->disp.type == DISP_4) {
+	} else if (instr->strm->disptype == DISP_4) {
 		n = 4;
 	} else {
 		DISASSEMBLER_BUG();
 	}
-
-	if (fsm_read(fsm, (uint8_t *)&data, n) == -1) {
-		return -1;
-	}
-
-	if (__predict_true(fsm->is64bit)) {
-		data = sign_extend(data, n);
-	}
-
-	instr->strm->disp.data = data;
 
 	if (opcode->immediate) {
 		fsm_advance(fsm, n, node_immediate);
@@ -2096,9 +2071,9 @@ node_dual(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	instr->strm->u.dualreg.reg1 = reg1;
 	instr->strm->u.dualreg.reg2 = reg2;
 
-	if (instr->strm->disp.type == DISP_NONE) {
+	if (instr->strm->disptype == DISP_NONE) {
 		DISASSEMBLER_BUG();
-	} else if (instr->strm->disp.type == DISP_0) {
+	} else if (instr->strm->disptype == DISP_0) {
 		/* Indirect register addressing mode */
 		if (instr->opcode->immediate) {
 			fsm_advance(fsm, 1, node_immediate);
@@ -2112,84 +2087,30 @@ node_dual(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	return 0;
 }
 
-static const struct x86_reg *
-get_register_idx(struct x86_instr *instr, uint8_t index)
-{
-	uint8_t enc = index;
-	const struct x86_reg *reg;
-	size_t regsize;
-
-	regsize = instr->address_size;
-	reg = &gpr_map[instr->rexpref.x][enc][regsize-1];
-
-	if (reg->num == -1) {
-		reg = resolve_special_register(instr, enc, regsize);
-	}
-
-	return reg;
-}
-
-static const struct x86_reg *
-get_register_bas(struct x86_instr *instr, uint8_t base)
-{
-	uint8_t enc = base;
-	const struct x86_reg *reg;
-	size_t regsize;
-
-	regsize = instr->address_size;
-	reg = &gpr_map[instr->rexpref.b][enc][regsize-1];
-	if (reg->num == -1) {
-		reg = resolve_special_register(instr, enc, regsize);
-	}
-
-	return reg;
-}
-
 static int
 node_sib(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 {
-	const struct x86_opcode *opcode;
-	uint8_t scale, index, base;
-	bool noindex, nobase;
-	uint8_t byte;
+	uint8_t base, byte;
 
 	if (fsm_read(fsm, &byte, sizeof(byte)) == -1) {
 		return -1;
 	}
 
-	scale = ((byte & 0b11000000) >> 6);
-	index = ((byte & 0b00111000) >> 3);
-	base  = ((byte & 0b00000111) >> 0);
-
-	opcode = instr->opcode;
-
-	noindex = false;
-	nobase = false;
-
-	if (index == 0b100 && !instr->rexpref.x) {
-		/* Special case: the index is null */
-		noindex = true;
-	}
+	base = (byte & 0b00000111);
 
 	if (instr->regmodrm.mod == 0b00 && base == 0b101) {
 		/* Special case: the base is null + disp32 */
-		instr->strm->disp.type = DISP_4;
-		nobase = true;
+		instr->strm->disptype = DISP_4;
 	}
 
 	instr->strm->type = STORE_SIB;
-	instr->strm->u.sib.scale = (1 << scale);
-	if (!noindex)
-		instr->strm->u.sib.idx = get_register_idx(instr, index);
-	if (!nobase)
-		instr->strm->u.sib.bas = get_register_bas(instr, base);
 
 	/* May have a displacement, or an immediate */
-	if (instr->strm->disp.type == DISP_1 ||
-	    instr->strm->disp.type == DISP_2 ||
-	    instr->strm->disp.type == DISP_4) {
+	if (instr->strm->disptype == DISP_1 ||
+	    instr->strm->disptype == DISP_2 ||
+	    instr->strm->disptype == DISP_4) {
 		fsm_advance(fsm, 1, node_disp);
-	} else if (opcode->immediate) {
+	} else if (instr->opcode->immediate) {
 		fsm_advance(fsm, 1, node_immediate);
 	} else {
 		fsm_advance(fsm, 1, NULL);
@@ -2222,7 +2143,7 @@ get_register_rm(struct x86_instr *instr)
 	const struct x86_reg *reg;
 	size_t regsize;
 
-	if (instr->strm->disp.type == DISP_NONE) {
+	if (instr->strm->disptype == DISP_NONE) {
 		regsize = instr->operand_size;
 	} else {
 		/* Indirect access, the size is that of the address. */
@@ -2363,7 +2284,7 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	}
 
 	/* The displacement applies to RM. */
-	strm->disp.type = get_disp_type(instr);
+	strm->disptype = get_disp_type(instr);
 
 	if (has_sib(instr)) {
 		/* Overwrites RM */
@@ -2375,7 +2296,7 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 		/* Overwrites RM */
 		strm->type = STORE_REG;
 		strm->u.reg = &gpr_map__rip;
-		strm->disp.type = DISP_4;
+		strm->disptype = DISP_4;
 		fsm_advance(fsm, 1, node_disp);
 		return 0;
 	}
@@ -2384,7 +2305,7 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 		/* Overwrites RM */
 		strm->type = STORE_REG;
 		strm->u.reg = NULL;
-		strm->disp.type = DISP_4;
+		strm->disptype = DISP_4;
 		fsm_advance(fsm, 1, node_disp);
 		return 0;
 	}
@@ -2393,7 +2314,7 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 		/* Overwrites RM */
 		strm->type = STORE_REG;
 		strm->u.reg = NULL;
-		strm->disp.type = DISP_2;
+		strm->disptype = DISP_2;
 		fsm_advance(fsm, 1, node_disp);
 		return 0;
 	}
@@ -2411,14 +2332,14 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	strm->type = STORE_REG;
 	strm->u.reg = reg;
 
-	if (strm->disp.type == DISP_NONE) {
+	if (strm->disptype == DISP_NONE) {
 		/* Direct register addressing mode */
 		if (opcode->immediate) {
 			fsm_advance(fsm, 1, node_immediate);
 		} else {
 			fsm_advance(fsm, 1, NULL);
 		}
-	} else if (strm->disp.type == DISP_0) {
+	} else if (strm->disptype == DISP_0) {
 		/* Indirect register addressing mode */
 		if (opcode->immediate) {
 			fsm_advance(fsm, 1, node_immediate);
@@ -3080,44 +3001,17 @@ gpr_read_address(struct x86_instr *instr, struct nvmm_x64_state *state, int gpr)
 }
 
 static int
-store_to_gva(struct nvmm_x64_state *state, struct x86_instr *instr,
+store_to_gva_movs(struct nvmm_x64_state *state, struct x86_instr *instr,
     struct x86_store *store, gvaddr_t *gvap, size_t size)
 {
-	struct x86_sib *sib;
-	gvaddr_t gva = 0;
-	uint64_t reg;
+	gvaddr_t gva;
 	int ret, seg;
 
-	if (store->type == STORE_SIB) {
-		sib = &store->u.sib;
-		if (sib->bas != NULL)
-			gva += gpr_read_address(instr, state, sib->bas->num);
-		if (sib->idx != NULL) {
-			reg = gpr_read_address(instr, state, sib->idx->num);
-			gva += sib->scale * reg;
-		}
-	} else if (store->type == STORE_REG) {
-		if (store->u.reg == NULL) {
-			/* The base is null. Happens with disp32-only and
-			 * disp16-only. */
-		} else {
-			gva = gpr_read_address(instr, state, store->u.reg->num);
-			if (store->u.reg == &gpr_map__rip) {
-				/* RIP-relative addressing: the base is the
-				 * start of the next instruction. */
-				gva += instr->len;
-			}
-		}
-	} else if (store->type == STORE_DUALREG) {
-		gva = gpr_read_address(instr, state, store->u.dualreg.reg1) +
-		    gpr_read_address(instr, state, store->u.dualreg.reg2);
-	} else {
-		gva = store->u.dmo;
+	if (store->type != STORE_REG) {
+		DISASSEMBLER_BUG();
 	}
 
-	if (store->disp.type != DISP_NONE) {
-		gva += store->disp.data;
-	}
+	gva = gpr_read_address(instr, state, store->u.reg->num);
 
 	if (store->hardseg != -1) {
 		seg = store->hardseg;
@@ -3248,7 +3142,7 @@ assist_mem_double_movs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	size = instr->operand_size;
 
 	/* Source. */
-	ret = store_to_gva(state, instr, &instr->src, &gva, size);
+	ret = store_to_gva_movs(state, instr, &instr->src, &gva, size);
 	if (ret == -1)
 		return -1;
 	ret = read_guest_memory(mach, vcpu, gva, data, size);
@@ -3256,7 +3150,7 @@ assist_mem_double_movs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		return -1;
 
 	/* Destination. */
-	ret = store_to_gva(state, instr, &instr->dst, &gva, size);
+	ret = store_to_gva_movs(state, instr, &instr->dst, &gva, size);
 	if (ret == -1)
 		return -1;
 	ret = write_guest_memory(mach, vcpu, gva, data, size);
@@ -3298,7 +3192,7 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	/* Determine the direction. */
 	switch (instr->src.type) {
 	case STORE_REG:
-		if (instr->src.disp.type != DISP_NONE) {
+		if (instr->src.disptype != DISP_NONE) {
 			/* Indirect access. */
 			mem.write = false;
 		} else {
@@ -3307,7 +3201,7 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		}
 		break;
 	case STORE_DUALREG:
-		if (instr->src.disp.type == DISP_NONE) {
+		if (instr->src.disptype == DISP_NONE) {
 			DISASSEMBLER_BUG();
 		}
 		mem.write = false;
@@ -3330,7 +3224,7 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		case STORE_REG:
 			/* The instruction was "reg -> mem". Fetch the register
 			 * in membuf. */
-			if (__predict_false(instr->src.disp.type != DISP_NONE)) {
+			if (__predict_false(instr->src.disptype != DISP_NONE)) {
 				DISASSEMBLER_BUG();
 			}
 			val = state->gprs[instr->src.u.reg->num];
@@ -3351,7 +3245,7 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		if (__predict_false(instr->dst.type != STORE_REG)) {
 			DISASSEMBLER_BUG();
 		}
-		if (__predict_false(instr->dst.disp.type != DISP_NONE)) {
+		if (__predict_false(instr->dst.disptype != DISP_NONE)) {
 			DISASSEMBLER_BUG();
 		}
 		val = state->gprs[instr->dst.u.reg->num];
@@ -3373,7 +3267,7 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		if (__predict_false(instr->dst.type != STORE_REG)) {
 			DISASSEMBLER_BUG();
 		}
-		if (__predict_false(instr->dst.disp.type != DISP_NONE)) {
+		if (__predict_false(instr->dst.disptype != DISP_NONE)) {
 			DISASSEMBLER_BUG();
 		}
 		memcpy(&val, membuf, sizeof(uint64_t));
@@ -3388,7 +3282,7 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		if (__predict_false(instr->src.type != STORE_REG)) {
 			DISASSEMBLER_BUG();
 		}
-		if (__predict_false(instr->src.disp.type != DISP_NONE)) {
+		if (__predict_false(instr->src.disptype != DISP_NONE)) {
 			DISASSEMBLER_BUG();
 		}
 		memcpy(&val, membuf, sizeof(uint64_t));
