@@ -178,6 +178,8 @@ extern uint8_t test_64bit_16_begin, test_64bit_16_end;
 extern uint8_t test_64bit_17_begin, test_64bit_17_end;
 extern uint8_t test_64bit_18_begin, test_64bit_18_end;
 extern uint8_t test_64bit_19_begin, test_64bit_19_end;
+extern uint8_t test_64bit_20_begin, test_64bit_20_end;
+extern uint8_t test_64bit_21_begin, test_64bit_21_end;
 
 static const struct test tests64[] = {
 	{ "64bit test1 - MOV", &test1_begin, &test1_end, 0x3004, 0 },
@@ -199,6 +201,8 @@ static const struct test tests64[] = {
 	{ "64bit test17 - REP", &test_64bit_17_begin, &test_64bit_17_end, 0x4, 0 },
 	{ "64bit test18 - Sign Extension", &test_64bit_18_begin, &test_64bit_18_end, 0x00000001, 0 },
 	{ "64bit test19 - BT", &test_64bit_19_begin, &test_64bit_19_end, 0x00000001, 0 },
+	{ "64bit test20 - addr32 REP/STOS", &test_64bit_20_begin, &test_64bit_20_end, 0x00000000, 8 },
+	{ "64bit test21 - addr32 MOVS", &test_64bit_21_begin, &test_64bit_21_end, 0x00000001, 8 },
 	{ NULL, NULL, NULL, -1, 0 }
 };
 

@@ -559,6 +559,41 @@ size_to_mask(size_t size)
 	}
 }
 
+static inline void
+gpr_write_address(struct nvmm_x64_state *state, int gpr, size_t adsize,
+    uint64_t val)
+{
+	uint64_t mask;
+
+	mask = size_to_mask(adsize);
+	val &= mask;
+
+	if (adsize == 4) {
+		state->gprs[gpr] = val;
+	} else {
+		state->gprs[gpr] &= ~mask;
+		state->gprs[gpr] |= val;
+	}
+}
+
+static void
+gpr_advance_address(struct nvmm_x64_state *state, int gpr, size_t adsize,
+    uint64_t amount, bool backwards)
+{
+	uint64_t mask, val;
+
+	mask = size_to_mask(adsize);
+	val = state->gprs[gpr] & mask;
+
+	if (__predict_false(backwards)) {
+		val -= amount;
+	} else {
+		val += amount;
+	}
+
+	gpr_write_address(state, gpr, adsize, val);
+}
+
 static uint64_t
 rep_get_cnt(struct nvmm_x64_state *state, size_t adsize)
 {
@@ -573,12 +608,7 @@ rep_get_cnt(struct nvmm_x64_state *state, size_t adsize)
 static void
 rep_set_cnt(struct nvmm_x64_state *state, size_t adsize, uint64_t cnt)
 {
-	uint64_t mask;
-
-	/* XXX: should we zero-extend? */
-	mask = size_to_mask(adsize);
-	state->gprs[NVMM_X64_GPR_RCX] &= ~mask;
-	state->gprs[NVMM_X64_GPR_RCX] |= cnt;
+	gpr_write_address(state, NVMM_X64_GPR_RCX, adsize, cnt);
 }
 
 static int
@@ -3137,6 +3167,7 @@ assist_mem_double_movs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	uint8_t data[8];
 	gvaddr_t gva;
 	size_t size;
+	bool psld;
 	int ret;
 
 	size = instr->operand_size;
@@ -3157,13 +3188,12 @@ assist_mem_double_movs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	if (ret == -1)
 		return -1;
 
-	if (state->gprs[NVMM_X64_GPR_RFLAGS] & PSL_D) {
-		state->gprs[NVMM_X64_GPR_RSI] -= size;
-		state->gprs[NVMM_X64_GPR_RDI] -= size;
-	} else {
-		state->gprs[NVMM_X64_GPR_RSI] += size;
-		state->gprs[NVMM_X64_GPR_RDI] += size;
-	}
+	psld = (state->gprs[NVMM_X64_GPR_RFLAGS] & PSL_D) != 0;
+
+	gpr_advance_address(state, NVMM_X64_GPR_RSI, instr->address_size, size,
+	    psld);
+	gpr_advance_address(state, NVMM_X64_GPR_RDI, instr->address_size, size,
+	    psld);
 
 	return 0;
 }

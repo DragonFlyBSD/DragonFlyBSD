@@ -45,6 +45,8 @@
 	.globl	test_64bit_17_begin, test_64bit_17_end
 	.globl	test_64bit_18_begin, test_64bit_18_end
 	.globl	test_64bit_19_begin, test_64bit_19_end
+	.globl	test_64bit_20_begin, test_64bit_20_end
+	.globl	test_64bit_21_begin, test_64bit_21_end
 	.text
 	.code64
 
@@ -407,6 +409,46 @@ test_64bit_19_begin:
 	movq	$0,(%rax)
 	TEST_END
 test_64bit_19_end:
+
+	.align	64
+test_64bit_20_begin:
+	movq	$0x5a,%rax
+	movabsq	$0x1000,%rdi
+	movabsq	$0xfeedface00000001,%rcx
+
+	/* addr32 rep stosb must update ECX and zero-extend it. */
+	.byte	0x67
+	rep stosb
+
+	movq	%rcx,0x1008
+	TEST_END
+test_64bit_20_end:
+
+	.align	64
+test_64bit_21_begin:
+	movq	$0x1010,%rbx
+	movb	$0x5a,(%rbx)
+	movabsq	$0xdeadbeef00001010,%rsi
+	movabsq	$0xfeedface00001000,%rdi
+
+	/* addr32 movsb must update ESI/EDI and zero-extend both. */
+	.byte	0x67
+	movsb
+
+	cmpq	$0x1011,%rsi
+	jne	.L21_failure
+	cmpq	$0x1001,%rdi
+	jne	.L21_failure
+	cmpb	$0x5a,0x1000
+	jne	.L21_failure
+
+.L21_success:
+	movq	$1,0x1008
+	TEST_END
+.L21_failure:
+	movq	$0,0x1008
+	TEST_END
+test_64bit_21_end:
 
 /* -------------------------------------------------------------------------- */
 
