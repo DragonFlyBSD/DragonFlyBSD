@@ -92,11 +92,9 @@
  * gdtstore[] table. */
 #define HOST_RESTORE_TR				\
 	popq	%rax				;\
-	movzwq	%ax,%rdx			;\
-	movq	PCPU(tss_gdt),%rax		;\
-	/* Clear the busy bit for reloading. */	\
-	andq	$~0x0200,4(%rax)		;\
-	ltrw	%dx
+	movq	PCPU(tss_gdt),%rdx		;\
+	andq	$~0x0200,4(%rdx)		;\
+	ltrw	%ax
 #endif
 
 #define HOST_SAVE_LDT		\
