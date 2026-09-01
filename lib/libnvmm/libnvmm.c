@@ -50,6 +50,10 @@ static struct nvmm_capability __capability;
 #define LIST_FOREACH_SAFE	LIST_FOREACH_MUTABLE
 #endif
 
+/*
+ * TODO: consider protecting area_list_t with an rwlock?
+ */
+
 typedef struct __area {
 	LIST_ENTRY(__area) list;
 	gpaddr_t gpa;
@@ -171,7 +175,7 @@ nvmm_init(void)
 	if (__capability.version != NVMM_KERN_VERSION) {
 		close(nvmm_fd);
 		nvmm_fd = -1;
-		errno = EPROGMISMATCH;
+		errno = ENOSYS;
 		return -1;
 	}
 
@@ -194,7 +198,7 @@ nvmm_root_init(void)
 	if (__capability.version != NVMM_KERN_VERSION) {
 		close(nvmm_fd);
 		nvmm_fd = -1;
-		errno = EPROGMISMATCH;
+		errno = ENOSYS;
 		return -1;
 	}
 

@@ -132,6 +132,11 @@ nvmm_vcpu_dump(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 
 #define PTE_READ(_p_)	__atomic_load_n((_p_), __ATOMIC_RELAXED)
 
+/*
+ * TODO: set the PTE_A and PTE_D bits when emulating guest-initiated page
+ * table walks.
+ */
+
 /* -------------------------------------------------------------------------- */
 
 #define PTE32_L1_SHIFT	12
@@ -898,6 +903,10 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 		}
 
 		if (exit->u.io.rep && !psld) {
+			/*
+			 * TODO: the segment check should be applied to the
+			 * whole batched range.
+			 */
 			iocnt = assist_io_batch(mach, vcpu, &io, gva, cnt);
 			if (iocnt == -1)
 				return -1;
@@ -2663,7 +2672,9 @@ node_legacy_prefix(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	} else if (byte == LEG_REPN) {
 		instr->legpref.repn = 1;
 	} else if (byte == LEG_LOCK) {
-		/* ignore */
+		/*
+		 * TODO: don't ignore the lock bit, emulate it correctly.
+		 */
 	} else {
 		/* not a legacy prefix */
 		fsm_advance(fsm, 0, node_rex_prefix);
