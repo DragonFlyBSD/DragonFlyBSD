@@ -116,7 +116,6 @@ static	int	nfs_sillyrename (struct vnode *,struct vnode *,struct componentname *
 static int	nfs_laccess (struct vop_access_args *);
 static int	nfs_readlink (struct vop_readlink_args *);
 static int	nfs_print (struct vop_print_args *);
-static int	nfs_advlock (struct vop_advlock_args *);
 static int	nfs_kqfilter (struct vop_kqfilter_args *ap);
 
 static	int	nfs_nresolve (struct vop_nresolve_args *);
@@ -126,7 +125,7 @@ static	int	nfs_nresolve (struct vop_nresolve_args *);
 struct vop_ops nfsv2_vnode_vops = {
 	.vop_default =		vop_defaultop,
 	.vop_access =		nfs_access,
-	.vop_advlock =		nfs_advlock,
+	.vop_advlock =		vop_stdadvlock,
 	.vop_bmap =		nfs_bmap,
 	.vop_close =		nfs_close,
 	.vop_old_create =	nfs_create,
@@ -3588,27 +3587,6 @@ nfs_flush_docommit(struct nfs_flush_info *info, int error)
 		info->bvsize = 0;
 	}
 	return (error);
-}
-
-/*
- * NFS advisory byte-level locks.
- * Currently unsupported.
- *
- * nfs_advlock(struct vnode *a_vp, caddr_t a_id, int a_op, struct flock *a_fl,
- *		int a_flags)
- */
-static int
-nfs_advlock(struct vop_advlock_args *ap)
-{
-	struct nfsnode *np = VTONFS(ap->a_vp);
-
-	/* no token lock currently required */
-	/*
-	 * The following kludge is to allow diskless support to work
-	 * until a real NFS lockd is implemented. Basically, just pretend
-	 * that this is a local lock.
-	 */
-	return (lf_advlock(ap, &(np->n_lockf), np->n_size));
 }
 
 /*

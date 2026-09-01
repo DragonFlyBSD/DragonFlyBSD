@@ -117,7 +117,6 @@ struct nfsnode {
 	struct ucred		*n_rucred;
 	struct ucred		*n_wucred;
 	struct vnode		*n_vnode;	/* associated vnode */
-	struct lockf		n_lockf;	/* Locking record of file */
 	int			n_error;	/* Save write error value */
 	union {
 		struct timespec	nf_atim;	/* Special file times */

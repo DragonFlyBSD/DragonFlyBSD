@@ -1516,20 +1516,6 @@ hammer2_vop_open(struct vop_open_args *ap)
 	return vop_stdopen(ap);
 }
 
-/*
- * hammer2_vop_advlock { vp, id, op, fl, flags }
- */
-static
-int
-hammer2_vop_advlock(struct vop_advlock_args *ap)
-{
-	hammer2_inode_t *ip = VTOI(ap->a_vp);
-	hammer2_off_t size;
-
-	size = ip->meta.size;
-	return (lf_advlock(ap, &ip->advlock, size));
-}
-
 static
 int
 hammer2_vop_close(struct vop_close_args *ap)
@@ -2432,7 +2418,7 @@ struct vop_ops hammer2_vnode_vops = {
 	.vop_getpages	= vop_stdgetpages,
 	.vop_putpages	= vop_stdputpages,
 	.vop_access	= hammer2_vop_access,
-	.vop_advlock	= hammer2_vop_advlock,
+	.vop_advlock	= vop_stdadvlock,
 	.vop_close	= hammer2_vop_close,
 	.vop_nlink	= hammer2_vop_nlink,
 	.vop_ncreate	= hammer2_vop_ncreate,

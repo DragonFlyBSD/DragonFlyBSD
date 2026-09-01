@@ -46,7 +46,6 @@ static int hammer_vop_fsync(struct vop_fsync_args *);
 static int hammer_vop_read(struct vop_read_args *);
 static int hammer_vop_write(struct vop_write_args *);
 static int hammer_vop_access(struct vop_access_args *);
-static int hammer_vop_advlock(struct vop_advlock_args *);
 static int hammer_vop_close(struct vop_close_args *);
 static int hammer_vop_ncreate(struct vop_ncreate_args *);
 static int hammer_vop_getattr(struct vop_getattr_args *);
@@ -85,7 +84,7 @@ struct vop_ops hammer_vnode_vops = {
 	.vop_read =		hammer_vop_read,
 	.vop_write =		hammer_vop_write,
 	.vop_access =		hammer_vop_access,
-	.vop_advlock =		hammer_vop_advlock,
+	.vop_advlock =		vop_stdadvlock,
 	.vop_close =		hammer_vop_close,
 	.vop_ncreate =		hammer_vop_ncreate,
 	.vop_getattr =		hammer_vop_getattr,
@@ -869,20 +868,6 @@ hammer_vop_access(struct vop_access_args *ap)
 	error = vop_helper_access(ap, uid, gid, ip->ino_data.mode,
 				  ip->ino_data.uflags);
 	return (error);
-}
-
-/*
- * hammer_vop_advlock { vp, id, op, fl, flags }
- *
- * MPSAFE - does not require fs_token
- */
-static
-int
-hammer_vop_advlock(struct vop_advlock_args *ap)
-{
-	hammer_inode_t ip = VTOI(ap->a_vp);
-
-	return (lf_advlock(ap, &ip->advlock, ip->ino_data.size));
 }
 
 /*

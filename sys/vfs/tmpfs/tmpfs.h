@@ -198,7 +198,6 @@ struct tmpfs_node {
 	long			tn_ctime;
 	long			tn_ctimensec;
 	unsigned long		tn_gen;
-	struct lockf		tn_advlock;
 
 	/* As there is a single vnode for each active file within the
 	 * system, care has to be taken to avoid allocating more than one

@@ -148,7 +148,6 @@ struct dirfs_node {
 	char *			dn_name;
 	int			dn_namelen;
 
-        struct lockf            dn_advlock;
 	struct lock		dn_lock;
 
 	uint32_t		dn_st_dev;	/* Device number */

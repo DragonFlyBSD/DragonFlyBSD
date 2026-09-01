@@ -351,7 +351,6 @@ typedef struct hammer_inode {
 	int			rsv_recs;
 	struct vnode		*vp;
 	hammer_pseudofs_inmem_t	pfsm;
-	struct lockf		advlock;
 	struct hammer_lock	lock;		/* sync copy interlock */
 	off_t			trunc_off;
 	struct hammer_btree_leaf_elm ino_leaf;  /* in-memory cache */

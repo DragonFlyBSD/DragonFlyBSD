@@ -942,19 +942,6 @@ done:
 	return(error);
 }
 
-static int
-tmpfs_advlock(struct vop_advlock_args *ap)
-{
-	struct tmpfs_node *node;
-	struct vnode *vp = ap->a_vp;
-	int error;
-
-	node = VP_TO_TMPFS_NODE(vp);
-	error = (lf_advlock(ap, &node->tn_advlock, node->tn_size));
-
-	return (error);
-}
-
 /*
  * The strategy function is typically only called when memory pressure
  * forces the system to attempt to pageout pages.  It can also be called
@@ -2234,6 +2221,6 @@ struct vop_ops tmpfs_vnode_vops = {
 	.vop_pathconf =			tmpfs_pathconf,
 	.vop_bmap =			tmpfs_bmap,
 	.vop_strategy =			tmpfs_strategy,
-	.vop_advlock =			tmpfs_advlock,
+	.vop_advlock =			vop_stdadvlock,
 	.vop_kqfilter =			tmpfs_kqfilter
 };

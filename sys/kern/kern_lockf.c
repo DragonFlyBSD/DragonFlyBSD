@@ -94,6 +94,30 @@ static int	lf_getlock(struct flock *, struct lockf *, struct proc *,
 static int	lf_count_change(struct proc *, int);
 
 /*
+ * Standard VOP for flock and lockf operations
+ */
+int
+vop_stdadvlock(struct vop_advlock_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+	struct flock *fl = ap->a_fl;
+	off_t size;
+
+	if (fl->l_whence == SEEK_END) {
+		int error;
+		struct vattr_lite lva;
+
+		error = VOP_GETATTR_LITE(vp, &lva);
+		if (error)
+			return error;
+		size = lva.va_size;
+	} else {
+		size = 0;
+	}
+	return (lf_advlock(ap, &vp->v_lockf, size));
+}
+
+/*
  * Return TRUE (non-zero) if the type and posix flags match.
  */
 static __inline
@@ -192,8 +216,9 @@ lf_count_change(struct proc *owner, int diff)
  * Advisory record locking support
  */
 int
-lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
+lf_advlock(struct vop_advlock_args *ap, struct lockf **lockfp, u_quad_t size)
 {
+	struct lockf *lockf;
 	struct flock *fl = ap->a_fl;
 	struct proc *owner;
 	off_t start, end;
@@ -243,14 +268,33 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 	owner = (struct proc *)ap->a_id;
 
 	/*
+	 * Optimize F_GETLK when no lockf structure is present, avoiding
+	 * allocations for programs which scan files for locks.
+	 */
+	if (*lockfp == NULL && ap->a_op == F_GETLK) {
+		fl->l_type = F_UNLCK;
+		return 0;
+	}
+
+	/*
+	 * Allocate structure if necessary
+	 */
+	while ((lockf = *lockfp) == NULL) {
+		lockf = kmalloc(sizeof(struct lockf), M_LOCKF, M_WAITOK|M_ZERO);
+		if (atomic_cmpset_ptr(lockfp, NULL, lockf))
+			break;
+		kfree(lockf, M_LOCKF);
+	}
+
+	/*
 	 * Do the requested operation.
 	 */
-	token = lwkt_getpooltoken(lock);
+	token = lwkt_getpooltoken(lockf);
 
-	if (lock->init_done == 0) {
-		TAILQ_INIT(&lock->lf_range);
-		TAILQ_INIT(&lock->lf_blocked);
-		lock->init_done = 1;
+	if (lockf->init_done == 0) {
+		TAILQ_INIT(&lockf->lf_range);
+		TAILQ_INIT(&lockf->lf_blocked);
+		lockf->init_done = 1;
 	}
 
 	switch(ap->a_op) {
@@ -262,27 +306,27 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 		 * be set after the lf_setlock() operation completes rather
 		 * then before.
 		 */
-		error = lf_setlock(lock, owner, type, flags, start, end);
+		error = lf_setlock(lockf, owner, type, flags, start, end);
 		if ((ap->a_vp->v_flag & VMAYHAVELOCKS) == 0)
 			vsetflags(ap->a_vp, VMAYHAVELOCKS);
 		break;
 
 	case F_UNLCK:
-		error = lf_setlock(lock, owner, type, flags, start, end);
+		error = lf_setlock(lockf, owner, type, flags, start, end);
 #if 0
 		/*
 		 * XXX REMOVED. don't bother doing this in the critical path.
 		 * close() overhead is minimal.
 		 */
-		if (TAILQ_EMPTY(&lock->lf_range) &&
-		    TAILQ_EMPTY(&lock->lf_blocked)) {
+		if (TAILQ_EMPTY(&lockf->lf_range) &&
+		    TAILQ_EMPTY(&lockf->lf_blocked)) {
 			vclrflags(ap->a_vp, VMAYHAVELOCKS);
 		}
 #endif
 		break;
 
 	case F_GETLK:
-		error = lf_getlock(fl, lock, owner, type, flags, start, end);
+		error = lf_getlock(fl, lockf, owner, type, flags, start, end);
 		break;
 
 	default:
@@ -290,11 +334,23 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 		break;
 	}
 	lwkt_reltoken(token);
+
 	return(error);
 }
 
+void
+lf_lockf_cleanup(struct lockf **lockfp)
+{
+	struct lockf *lockf;
+
+	if ((lockf = *lockfp) != NULL) {
+		*lockfp = NULL;
+		kfree(lockf, M_LOCKF);
+	}
+}
+
 static int
-lf_setlock(struct lockf *lock, struct proc *owner, int type, int flags,
+lf_setlock(struct lockf *lockf, struct proc *owner, int type, int flags,
 	   off_t start, off_t end)
 {
 	struct lockf_range *range;
@@ -330,7 +386,7 @@ restart:
 	insert_point = NULL;
 	wakeup_needed = 0;
 
-	lf_print_lock(lock);
+	lf_print_lock(lockf);
 
 	/*
 	 * Locate the insertion point for the new lock (the first range
@@ -339,7 +395,7 @@ restart:
 	 * Locate the first and latch ranges owned by us that overlap
 	 * the requested range.
 	 */
-	TAILQ_FOREACH(range, &lock->lf_range, lf_link) {
+	TAILQ_FOREACH(range, &lockf->lf_range, lf_link) {
 		if (insert_point == NULL && range->lf_start >= start)
 			insert_point = range;
 
@@ -404,7 +460,7 @@ restart:
 		 * Handle existing locks of flock-style like POSIX locks.
 		 */
 		if (flags & F_POSIX) {
-			TAILQ_FOREACH(brange, &lock->lf_blocked, lf_link) {
+			TAILQ_FOREACH(brange, &lockf->lf_blocked, lf_link) {
 				if (brange->lf_owner == range->lf_owner) {
 					error = EDEADLK;
 					goto do_cleanup;
@@ -418,12 +474,12 @@ restart:
 		 * waiting for an exclusive lock.
 		 */
 		if ((flags & F_POSIX) == 0 && type == F_WRLCK)
-			lf_setlock(lock, owner, F_UNLCK, 0, start, end);
+			lf_setlock(lockf, owner, F_UNLCK, 0, start, end);
 
 		brange = new_range1;
 		new_range1 = NULL;
 		lf_create_range(brange, owner, type, 0, start, end);
-		TAILQ_INSERT_TAIL(&lock->lf_blocked, brange, lf_link);
+		TAILQ_INSERT_TAIL(&lockf->lf_blocked, brange, lf_link);
 		error = tsleep(brange, PCATCH, "lockf", 0);
 
 		/*
@@ -437,7 +493,7 @@ restart:
 		 * Sleep if it looks like we might be livelocking.
 		 */
 		if (brange->lf_flags == 0)
-			TAILQ_REMOVE(&lock->lf_blocked, brange, lf_link);
+			TAILQ_REMOVE(&lockf->lf_blocked, brange, lf_link);
 		if (error == 0 && count == 2)
 			tsleep(brange, 0, "lockfz", 2);
 		else
@@ -465,7 +521,7 @@ restart:
 		range = new_range1;
 		new_range1 = NULL;
 		lf_create_range(range, owner, type, flags, start, end);
-		lf_insert(&lock->lf_range, range, insert_point);
+		lf_insert(&lockf->lf_range, range, insert_point);
 		goto do_wakeup;
 	}
 
@@ -535,7 +591,7 @@ restart:
 		brange = new_range1;
 		new_range1 = NULL;
 		lf_create_range(brange, owner, type, flags, start, end);
-		lf_insert(&lock->lf_range, brange, insert_point);
+		lf_insert(&lockf->lf_range, brange, insert_point);
 		insert_point = brange;
 		if (flags & F_POSIX)
 			++count;
@@ -560,7 +616,7 @@ restart:
 		/*
 		 * Figure out where to insert the right side clip.
 		 */
-		lf_insert(&lock->lf_range, last_match, first_match);
+		lf_insert(&lockf->lf_range, last_match, first_match);
 		if (last_match->lf_flags & F_POSIX)
 			++count;
 	}
@@ -623,7 +679,7 @@ restart:
 				 */
 				if (next == brange)
 					next = TAILQ_NEXT(next, lf_link);
-				TAILQ_REMOVE(&lock->lf_range, brange, lf_link);
+				TAILQ_REMOVE(&lockf->lf_range, brange, lf_link);
 				if (brange->lf_flags & F_POSIX)
 					--count;
 				TAILQ_INSERT_TAIL(&deadlist, brange, lf_link);
@@ -658,14 +714,14 @@ restart:
 			    lf_match(range, type, flags)) {
 				brange->lf_end = range->lf_end;
 				brange->lf_flags |= range->lf_flags & F_NOEND;
-				TAILQ_REMOVE(&lock->lf_range, range, lf_link);
+				TAILQ_REMOVE(&lockf->lf_range, range, lf_link);
 				if (range->lf_flags & F_POSIX)
 					--count;
 				TAILQ_INSERT_TAIL(&deadlist, range, lf_link);
 			} else if (range->lf_start <= end) {
 				range->lf_start = end + 1;
-				TAILQ_REMOVE(&lock->lf_range, range, lf_link);
-				lf_insert(&lock->lf_range, range, next);
+				TAILQ_REMOVE(&lockf->lf_range, range, lf_link);
+				lf_insert(&lockf->lf_range, range, next);
 			}
 			/* range == last_match, we are done */
 			break;
@@ -677,7 +733,7 @@ restart:
 		 * deleted.
 		 */
 		KKASSERT(range->lf_start >= start && range->lf_end <= end);
-		TAILQ_REMOVE(&lock->lf_range, range, lf_link);
+		TAILQ_REMOVE(&lockf->lf_range, range, lf_link);
 		if (range->lf_flags & F_POSIX)
 			--count;
 		TAILQ_INSERT_TAIL(&deadlist, range, lf_link);
@@ -710,7 +766,7 @@ restart:
 			 */
 			range->lf_end = brange->lf_end;
 			range->lf_flags |= brange->lf_flags & F_NOEND;
-			TAILQ_REMOVE(&lock->lf_range, brange, lf_link);
+			TAILQ_REMOVE(&lockf->lf_range, brange, lf_link);
 			if (brange->lf_flags & F_POSIX)
 				--count;
 			TAILQ_INSERT_TAIL(&deadlist, brange, lf_link);
@@ -727,7 +783,7 @@ restart:
 			 */
 			brange->lf_end = range->lf_end;
 			brange->lf_flags |= range->lf_flags & F_NOEND;
-			TAILQ_REMOVE(&lock->lf_range, range, lf_link);
+			TAILQ_REMOVE(&lockf->lf_range, range, lf_link);
 			if (range->lf_flags & F_POSIX)
 				--count;
 			TAILQ_INSERT_TAIL(&deadlist, range, lf_link);
@@ -750,9 +806,9 @@ restart:
 	if (count < 0)
 		lf_count_change(owner, count);
 do_wakeup:
-	lf_print_lock(lock);
+	lf_print_lock(lockf);
 	if (wakeup_needed)
-		lf_wakeup(lock, start, end);
+		lf_wakeup(lockf, start, end);
 	error = 0;
 do_cleanup:
 	if (new_range1 != NULL)
@@ -767,16 +823,19 @@ do_cleanup:
  * and if so return its process identifier.
  */
 static int
-lf_getlock(struct flock *fl, struct lockf *lock, struct proc *owner,
+lf_getlock(struct flock *fl, struct lockf *lockf, struct proc *owner,
 	   int type, int flags, off_t start, off_t end)
 {
 	struct lockf_range *range;
 
-	TAILQ_FOREACH(range, &lock->lf_range, lf_link)
+	TAILQ_FOREACH(range, &lockf->lf_range, lf_link) {
 		if (range->lf_owner != owner &&
 		    lf_overlap(range, start, end) &&
 		    (type == F_WRLCK || range->lf_type == F_WRLCK))
+		{
 			break;
+		}
+	}
 	if (range == NULL) {
 		fl->l_type = F_UNLCK;
 		return(0);
@@ -803,14 +862,14 @@ lf_getlock(struct flock *fl, struct lockf *lock, struct proc *owner,
  * requests.  XXX
  */
 static void
-lf_wakeup(struct lockf *lock, off_t start, off_t end)
+lf_wakeup(struct lockf *lockf, off_t start, off_t end)
 {
 	struct lockf_range *range, *nrange;
 
-	TAILQ_FOREACH_MUTABLE(range, &lock->lf_blocked, lf_link, nrange) {
+	TAILQ_FOREACH_MUTABLE(range, &lockf->lf_blocked, lf_link, nrange) {
 		if (lf_overlap(range, start, end) == 0)
 			continue;
-		TAILQ_REMOVE(&lock->lf_blocked, range, lf_link);
+		TAILQ_REMOVE(&lockf->lf_blocked, range, lf_link);
 		range->lf_flags = 1;
 		wakeup(range);
 	}
@@ -911,28 +970,28 @@ _lf_printf(const char *ctl, ...)
 }
 
 static void
-_lf_print_lock(const struct lockf *lock)
+_lf_print_lock(const struct lockf *lockf)
 {
 	struct lockf_range *range;
 
 	if (lf_print_ranges == 0)
 		return;
 
-	if (TAILQ_EMPTY(&lock->lf_range)) {
-		lf_printf("lockf %p: no ranges locked\n", lock);
+	if (TAILQ_EMPTY(&lockf->lf_range)) {
+		lf_printf("lockf %p: no ranges locked\n", lockf);
 	} else {
-		lf_printf("lockf %p:\n", lock);
+		lf_printf("lockf %p:\n", lockf);
 	}
-	TAILQ_FOREACH(range, &lock->lf_range, lf_link)
+	TAILQ_FOREACH(range, &lockf->lf_range, lf_link)
 		kprintf("\t%jd..%jd type %s owned by %d\n",
 		       (uintmax_t)range->lf_start, (uintmax_t)range->lf_end,
 		       range->lf_type == F_RDLCK ? "shared" : "exclusive",
 		       range->lf_flags & F_POSIX ? range->lf_owner->p_pid : -1);
-	if (TAILQ_EMPTY(&lock->lf_blocked))
+	if (TAILQ_EMPTY(&lockf->lf_blocked))
 		kprintf("no process waiting for range\n");
 	else
 		kprintf("blocked locks:");
-	TAILQ_FOREACH(range, &lock->lf_blocked, lf_link)
+	TAILQ_FOREACH(range, &lockf->lf_blocked, lf_link)
 		kprintf("\t%jd..%jd type %s waiting on %p\n",
 		       (uintmax_t)range->lf_start, (uintmax_t)range->lf_end,
 		       range->lf_type == F_RDLCK ? "shared" : "exclusive",

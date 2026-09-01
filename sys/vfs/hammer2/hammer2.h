@@ -700,7 +700,6 @@ struct hammer2_inode {
 	hammer2_cluster_t	cluster;
 	hammer2_cluster_item_t	ccache[HAMMER2_MAXCLUSTER];
 	int			ccache_nchains;
-	struct lockf		advlock;
 	u_int			flags;
 	u_int			refs;		/* +vpref, +flushref */
 	int			ihash;		/* xop worker distribution */

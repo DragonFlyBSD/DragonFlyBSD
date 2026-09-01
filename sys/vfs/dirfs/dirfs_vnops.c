@@ -764,17 +764,6 @@ dirfs_write (struct vop_write_args *ap)
 }
 
 static int
-dirfs_advlock (struct vop_advlock_args *ap)
-{
-	struct vnode *vp = ap->a_vp;
-	dirfs_node_t dnp = VP_TO_NODE(vp);
-
-	dbg(3, "called\n");
-
-	return (lf_advlock(ap, &dnp->dn_advlock, dnp->dn_size));
-}
-
-static int
 dirfs_strategy(struct vop_strategy_args *ap)
 {
 	dirfs_node_t dnp;
@@ -1580,7 +1569,7 @@ struct vop_ops dirfs_vnode_vops = {
 	.vop_pathconf =			vop_stdpathconf,
 	.vop_bmap =			dirfs_bmap,
 	.vop_strategy =			dirfs_strategy,
-	.vop_advlock =			dirfs_advlock,
+	.vop_advlock =			vop_stdadvlock,
 	.vop_kqfilter =			dirfs_kqfilter,
 	.vop_getpages =			vop_stdgetpages,
 	.vop_putpages =			vop_stdputpages

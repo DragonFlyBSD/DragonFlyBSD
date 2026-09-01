@@ -1721,18 +1721,6 @@ fuse_bmap(struct vop_bmap_args *ap)
 }
 
 static int
-fuse_advlock(struct vop_advlock_args *ap)
-{
-	struct vnode *vp = ap->a_vp;
-	struct fuse_node *fnp = VTOI(vp);
-	int error;
-
-	error = lf_advlock(ap, &fnp->advlock, fnp->size);
-
-	return error;
-}
-
-static int
 fuse_vop_print(struct vop_print_args *ap)
 {
 	struct fuse_node *fnp = VTOI(ap->a_vp);
@@ -2188,7 +2176,7 @@ struct vop_ops fuse_vnode_vops = {
 	.vop_write =		fuse_vop_write,
 	.vop_strategy =		fuse_vop_strategy,
 	.vop_bmap =		fuse_bmap,
-	.vop_advlock =		fuse_advlock,
+	.vop_advlock =		vop_stdadvlock,
 	.vop_print =		fuse_vop_print,
 	.vop_inactive =		fuse_vop_inactive,
 	.vop_reclaim =		fuse_vop_reclaim,

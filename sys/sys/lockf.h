@@ -61,7 +61,7 @@ struct lockf_range {
 	short		 lf_flags;	/* Lock flags: F_NOEND */
 	off_t		 lf_start;	/* Byte # of the start of the lock */
 	off_t		 lf_end;	/* Byte # of the end of the lock, */
-	struct proc	*lf_owner;	/* owning process, NULL for flock locks */
+	struct proc	*lf_owner;	/* NULL for flock locks */
 	TAILQ_ENTRY(lockf_range) lf_link;
 };
 
@@ -74,7 +74,9 @@ struct lockf {
 };
 
 #ifdef _KERNEL
-int	lf_advlock(struct vop_advlock_args *, struct lockf *, u_quad_t);
+int	lf_advlock(struct vop_advlock_args *, struct lockf **, u_quad_t);
+void	lf_lockf_cleanup(struct lockf **lockfp);
+
 void	lf_count_adjust(struct proc *, int);
 
 extern int maxposixlocksperuid;

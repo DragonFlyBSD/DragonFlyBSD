@@ -82,6 +82,11 @@
  */
 
 /*
+ * Forward-declare lockf for pointer
+ */
+struct lockf;
+
+/*
  * Each underlying filesystem allocates its own private area and hangs
  * it from v_data.  If non-null, this area is freed in getnewvnode().
  */
@@ -164,6 +169,7 @@ struct vnode {
 	struct buf_rb_tree v_rbclean_tree;	/* RB tree of clean bufs */
 	struct buf_rb_tree v_rbdirty_tree;	/* RB tree of dirty bufs */
 	struct buf_rb_hash v_rbhash_tree;	/* RB tree general lookup */
+	struct lockf	*v_lockf;		/* flock/advlock support */
 	enum vtype	v_type;			/* vnode type */
 	int16_t		v_act;			/* use heuristic */
 	int16_t		v_state;		/* active/free/cached */
@@ -525,6 +531,7 @@ int	vn_writechk (struct vnode *vp);
 int	ncp_writechk(struct nchandle *nch);
 int	vop_stdopen (struct vop_open_args *ap);
 int	vop_stdclose (struct vop_close_args *ap);
+int	vop_stdadvlock (struct vop_advlock_args *ap);
 int	vop_stdgetattr_lite (struct vop_getattr_lite_args *ap);
 int	vop_stdmountctl(struct vop_mountctl_args *ap);
 int	vop_stdgetpages(struct vop_getpages_args *ap);

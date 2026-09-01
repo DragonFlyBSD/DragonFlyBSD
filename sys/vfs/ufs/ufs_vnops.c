@@ -79,7 +79,6 @@
 #endif
 
 static int ufs_access (struct vop_access_args *);
-static int ufs_advlock (struct vop_advlock_args *);
 static int ufs_chmod (struct vnode *, int, struct ucred *);
 static int ufs_chown (struct vnode *, uid_t, gid_t, struct ucred *);
 static int ufs_close (struct vop_close_args *);
@@ -1928,21 +1927,6 @@ ufsfifo_kqfilter(struct vop_kqfilter_args *ap)
 }
 
 /*
- * Advisory record locking support
- *
- * ufs_advlock(struct vnode *a_vp, caddr_t a_id, int a_op, struct flock *a_fl,
- *	       int a_flags)
- */
-static
-int
-ufs_advlock(struct vop_advlock_args *ap)
-{
-	struct inode *ip = VTOI(ap->a_vp);
-
-	return (lf_advlock(ap, &(ip->i_lockf), ip->i_size));
-}
-
-/*
  * Initialize the vnode associated with a new inode, handle aliased
  * vnodes.
  *
@@ -2258,7 +2242,7 @@ static struct vop_ops ufs_vnode_vops = {
 	.vop_reallocblks =	(void *)ufs_missingop,
 	.vop_write =		(void *)ufs_missingop,
 	.vop_access =		ufs_access,
-	.vop_advlock =		ufs_advlock,
+	.vop_advlock =		vop_stdadvlock,
 	.vop_bmap =		ufs_bmap,
 	.vop_old_lookup =	ufs_lookup,
 	.vop_close =		ufs_close,

@@ -86,7 +86,7 @@ struct inode {
 	struct fs *i_fs;	/* Associated filesystem */
 	struct	 ufs_dquot *i_dquot[MAXQUOTAS]; /* Dquot structures. */
 	u_quad_t i_modrev;	/* Revision level for NFS lease. */
-	struct	 lockf i_lockf;/* Head of byte-level lock list. */
+
 	/*
 	 * Side effects; used during directory lookup.
 	 */

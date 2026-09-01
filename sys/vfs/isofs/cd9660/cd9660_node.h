@@ -70,7 +70,6 @@ struct iso_node {
 	ino_t	i_number;	/* the identity of the inode */
 				/* we use the actual starting block of the file */
 	struct	iso_mnt *i_mnt;	/* filesystem associated with this inode */
-	struct	lockf i_lockf;	/* head of byte-level lock list */
 	doff_t	i_endoff;	/* end of useful stuff in directory */
 	doff_t	i_diroff;	/* offset in dir, where we found last entry */
 	doff_t	i_offset;	/* offset of free space in directory */

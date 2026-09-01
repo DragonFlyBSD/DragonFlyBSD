@@ -111,7 +111,6 @@ struct fuse_node {
 	struct fuse_mount *fmp;
 	struct fuse_node *pfnp;
 	struct mtx node_lock;
-	struct lockf	advlock;
 
 	uint64_t ino;
 	enum vtype type;

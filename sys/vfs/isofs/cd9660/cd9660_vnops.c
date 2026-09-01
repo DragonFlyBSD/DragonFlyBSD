@@ -63,7 +63,6 @@
 #include "iso_rrip.h"
 
 static int cd9660_access(struct vop_access_args *);
-static int cd9660_advlock(struct vop_advlock_args *);
 static int cd9660_getattr(struct vop_getattr_args *);
 static int cd9660_ioctl(struct vop_ioctl_args *);
 static int cd9660_pathconf(struct vop_pathconf_args *);
@@ -794,23 +793,13 @@ cd9660_pathconf(struct vop_pathconf_args *ap)
 }
 
 /*
- * Advisory lock support
- */
-static int
-cd9660_advlock(struct vop_advlock_args *ap)
-{
-	struct iso_node *ip = VTOI(ap->a_vp);
-	return (lf_advlock(ap, &(ip->i_lockf), ip->i_size));
-}
-
-/*
  * Global vfs data structures for cd9660
  */
 struct vop_ops cd9660_vnode_vops = {
 	.vop_default =		vop_defaultop,
 	.vop_open =		cd9660_open,
 	.vop_access =		cd9660_access,
-	.vop_advlock =		cd9660_advlock,
+	.vop_advlock =		vop_stdadvlock,
 	.vop_bmap =		cd9660_bmap,
 	.vop_old_lookup =	cd9660_lookup,
 	.vop_getattr =		cd9660_getattr,
