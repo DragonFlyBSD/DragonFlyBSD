@@ -2711,15 +2711,14 @@ x86_decode(uint8_t *inst_bytes, size_t inst_len, struct x86_instr *instr,
 static uint##sz##_t							\
 exec_##instr##sz(uint##sz##_t op1, uint##sz##_t op2, uint64_t *rflags)	\
 {									\
-	uint##sz##_t res;						\
 	__asm __volatile (						\
-		#instr"	%2, %3;"					\
-		"mov	%3, %1;"					\
+		#instr"	%2, %1;"					\
 		"pushfq;"						\
 		"popq	%0"						\
-	    : "=r" (*rflags), "=r" (res)				\
-	    : "r" (op1), "r" (op2));					\
-	return res;							\
+	    : "=r" (*rflags), "+r" (op2)				\
+	    : "r" (op1)							\
+	    : "cc", "memory");						\
+	return op2;							\
 }
 
 #define EXEC_DISPATCHER(instr)						\
