@@ -479,6 +479,22 @@ nvmm_gva_to_gpa(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		return -1;	\
 	} while (0);
 
+static inline uint64_t
+size_to_mask(size_t size)
+{
+	switch (size) {
+	case 1:
+		return 0x00000000000000FF;
+	case 2:
+		return 0x000000000000FFFF;
+	case 4:
+		return 0x00000000FFFFFFFF;
+	case 8:
+	default:
+		return 0xFFFFFFFFFFFFFFFF;
+	}
+}
+
 static inline bool
 is_64bit(struct nvmm_x64_state *state)
 {
@@ -538,24 +554,11 @@ error:
 }
 
 static inline void
-segment_apply(struct nvmm_x64_state_seg *seg, gvaddr_t *gva)
+segment_apply(struct nvmm_x64_state_seg *seg, gvaddr_t *gva, bool truncate32)
 {
 	*gva += seg->base;
-}
-
-static inline uint64_t
-size_to_mask(size_t size)
-{
-	switch (size) {
-	case 1:
-		return 0x00000000000000FF;
-	case 2:
-		return 0x000000000000FFFF;
-	case 4:
-		return 0x00000000FFFFFFFF;
-	case 8:
-	default:
-		return 0xFFFFFFFFFFFFFFFF;
+	if (truncate32) {
+		*gva &= size_to_mask(4);
 	}
 }
 
@@ -885,13 +888,13 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 
 		if (__predict_true(is_64bit(state))) {
 			if (seg == NVMM_X64_SEG_GS || seg == NVMM_X64_SEG_FS) {
-				segment_apply(&state->segs[seg], &gva);
+				segment_apply(&state->segs[seg], &gva, false);
 			}
 		} else {
 			ret = segment_check(&state->segs[seg], gva, io.size);
 			if (ret == -1)
 				return -1;
-			segment_apply(&state->segs[seg], &gva);
+			segment_apply(&state->segs[seg], &gva, true);
 		}
 
 		if (exit->u.io.rep && !psld) {
@@ -3093,13 +3096,13 @@ store_to_gva_movs(struct nvmm_x64_state *state, struct x86_instr *instr,
 
 	if (__predict_true(is_64bit(state))) {
 		if (seg == NVMM_X64_SEG_GS || seg == NVMM_X64_SEG_FS) {
-			segment_apply(&state->segs[seg], &gva);
+			segment_apply(&state->segs[seg], &gva, false);
 		}
 	} else {
 		ret = segment_check(&state->segs[seg], gva, size);
 		if (ret == -1)
 			return -1;
-		segment_apply(&state->segs[seg], &gva);
+		segment_apply(&state->segs[seg], &gva, true);
 	}
 
 	*gvap = gva;
@@ -3125,7 +3128,7 @@ fetch_segment_outs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 		 * an IO VMEXIT in the first place. Just apply the segment
 		 * base.
 		 */
-		segment_apply(&state->segs[NVMM_X64_SEG_CS], &gva);
+		segment_apply(&state->segs[NVMM_X64_SEG_CS], &gva, true);
 	}
 
 	fetchsize = read_guest_memory(mach, vcpu, gva, inst_bytes, fetchsize);
@@ -3182,7 +3185,7 @@ fetch_instruction(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		 * an MMIO VMEXIT in the first place. Just apply the segment
 		 * base.
 		 */
-		segment_apply(&state->segs[NVMM_X64_SEG_CS], &gva);
+		segment_apply(&state->segs[NVMM_X64_SEG_CS], &gva, true);
 	}
 
 	fetchsize = read_guest_memory(mach, vcpu, gva, exit->u.mem.inst_bytes,
