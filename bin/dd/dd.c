@@ -31,13 +31,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)dd.c	8.5 (Berkeley) 4/2/94
- * $FreeBSD: head/bin/dd/dd.c 341257 2018-11-29 19:28:01Z sobomax $
  */
 
 #include <sys/param.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #ifndef BOOTSTRAPPING
 #include <sys/conf.h>
 #include <sys/device.h>
@@ -48,34 +46,28 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <locale.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <signal.h>
 #include <time.h>
 #include <unistd.h>
 
 #include "dd.h"
 #include "extern.h"
 
-#ifndef SIGINFO
-#define	SIGINFO	SIGUSR1
-#endif
-
 static void dd_close(void);
 static void dd_in(void);
 static void getfdtype(IO *);
-static int  parity(u_char);
 static void setup(void);
-static void speed_limit(void);
-static void swapbytes(void *, size_t);
 
 IO	in, out;		/* input/output state */
 STAT	st;			/* statistics */
 void	(*cfunc)(void);		/* conversion function */
 uintmax_t cpy_cnt;		/* # of blocks to copy */
-u_int	ddflags = 0;		/* conversion options */
+uint64_t ddflags = 0;		/* conversion options */
 size_t	cbsz;			/* conversion block size */
 uintmax_t files_cnt = 1;	/* # of files to copy */
 const	u_char *ctab;		/* conversion table */
@@ -83,6 +75,7 @@ char	fill_char;		/* Character to fill with if defined */
 size_t	speed = 0;		/* maximum speed, in bytes per second */
 volatile sig_atomic_t need_summary;
 volatile sig_atomic_t need_progress;
+volatile sig_atomic_t kill_signal;
 
 static off_t pending = 0;	/* pending seek if sparse */
 
@@ -91,6 +84,8 @@ main(int argc __unused, char *argv[])
 {
 	/* SIGALRM every second, if needed */
 	struct itimerval itv = { { 1, 0 }, { 1, 0 } };
+
+	prepare_io();
 
 	setlocale(LC_CTYPE, "");
 	jcl(argv);
@@ -101,7 +96,6 @@ main(int argc __unused, char *argv[])
 		signal(SIGALRM, sigalarm_handler);
 		setitimer(ITIMER_REAL, &itv, NULL);
 	}
-	signal(SIGINT, terminate);
 
 	atexit(summary);
 
@@ -115,7 +109,8 @@ main(int argc __unused, char *argv[])
 	 * descriptor explicitly so that the summary handler (called
 	 * from an atexit() hook) includes this work.
 	 */
-	close(out.fd);
+	if (close(out.fd) == -1 && errno != EINTR)
+		err(1, "close");
 	exit(0);
 }
 
@@ -133,12 +128,18 @@ static void
 setup(void)
 {
 	u_int cnt;
+	int iflags, oflags;
 
 	if (in.name == NULL) {
 		in.name = "stdin";
 		in.fd = STDIN_FILENO;
 	} else {
-		in.fd = open(in.name, O_RDONLY, 0);
+		iflags = 0;
+		if (ddflags & C_IDIRECT)
+			iflags |= O_DIRECT;
+		before_io();
+		in.fd = open(in.name, O_RDONLY | iflags, 0);
+		after_io();
 		if (in.fd == -1)
 			err(1, "%s", in.name);
 	}
@@ -152,17 +153,34 @@ setup(void)
 		/* No way to check for read access here. */
 		out.fd = STDOUT_FILENO;
 		out.name = "stdout";
+		if (ddflags & C_OFSYNC) {
+			oflags = fcntl(out.fd, F_GETFL);
+			if (oflags == -1)
+				err(1, "unable to get fd flags for stdout");
+			oflags |= O_FSYNC;
+			if (fcntl(out.fd, F_SETFL, oflags) == -1)
+				err(1, "unable to set fd flags for stdout");
+		}
 	} else {
-#define	OFLAGS \
-    (O_CREAT | (ddflags & (C_SEEK | C_NOTRUNC) ? 0 : O_TRUNC))
-		out.fd = open(out.name, O_RDWR | OFLAGS, DEFFILEMODE);
+		oflags = O_CREAT;
+		if (!(ddflags & (C_SEEK | C_NOTRUNC)))
+			oflags |= O_TRUNC;
+		if (ddflags & C_OFSYNC)
+			oflags |= O_FSYNC;
+		if (ddflags & C_ODIRECT)
+			oflags |= O_DIRECT;
+		before_io();
+		out.fd = open(out.name, O_RDWR | oflags, DEFFILEMODE);
+		after_io();
 		/*
 		 * May not have read access, so try again with write only.
 		 * Without read we may have a problem if output also does
 		 * not support seeks.
 		 */
 		if (out.fd == -1) {
-			out.fd = open(out.name, O_WRONLY | OFLAGS, DEFFILEMODE);
+			before_io();
+			out.fd = open(out.name, O_WRONLY | oflags, DEFFILEMODE);
+			after_io();
 			out.flags |= NOREAD;
 		}
 		if (out.fd == -1)
@@ -363,13 +381,17 @@ dd_in(void)
 				memset(in.dbp, 0, in.dbsz);
 		}
 
-		n = read(in.fd, in.dbp, in.dbsz);
-		if (n == 0) {
-			in.dbrcnt = 0;
-			return;
-		}
+		in.dbrcnt = 0;
+fill:
+		before_io();
+		n = read(in.fd, in.dbp + in.dbrcnt, in.dbsz - in.dbrcnt);
+		after_io();
 
-		/* Read error. */
+		/* EOF */
+		if (n == 0 && in.dbrcnt == 0)
+			return;
+
+		/* Read error */
 		if (n == -1) {
 			/*
 			 * If noerror not specified, die.  POSIX requires that
@@ -393,25 +415,25 @@ dd_in(void)
 			/* If sync not specified, omit block and continue. */
 			if (!(ddflags & C_SYNC))
 				continue;
-
-			/* Read errors count as full blocks. */
-			in.dbcnt += in.dbrcnt = in.dbsz;
-			++st.in_full;
-
-		/* Handle full input blocks. */
-		} else if (n == in.dbsz) {
-			in.dbcnt += in.dbrcnt = n;
-			++st.in_full;
-
-		/* Handle partial input blocks. */
-		} else {
-			/* If sync, use the entire block. */
-			if (ddflags & C_SYNC)
-				in.dbcnt += in.dbrcnt = in.dbsz;
-			else
-				in.dbcnt += in.dbrcnt = n;
-			++st.in_part;
 		}
+
+		/* If conv=sync, use the entire block. */
+		if (ddflags & C_SYNC)
+			n = in.dbsz;
+
+		/* Count the bytes read for this block. */
+		in.dbrcnt += n;
+
+		/* Count the number of full and partial blocks. */
+		if (in.dbrcnt == in.dbsz)
+			++st.in_full;
+		else if (ddflags & C_IFULLBLOCK && n != 0)
+			goto fill; /* these don't count */
+		else
+			++st.in_part;
+
+		/* Count the total bytes read for this file. */
+		in.dbcnt += in.dbrcnt;
 
 		/*
 		 * POSIX states that if bs is set and no other conversions
@@ -433,6 +455,7 @@ dd_in(void)
 			swapbytes(in.dbp, (size_t)n);
 		}
 
+		/* Advance to the next block. */
 		in.dbp += in.dbrcnt;
 		(*cfunc)();
 		if (need_summary)
@@ -474,6 +497,14 @@ dd_close(void)
 	if (out.seek_offset > 0 && (out.flags & ISTRUNC)) {
 		if (ftruncate(out.fd, out.seek_offset) == -1)
 			err(1, "truncating %s", out.name);
+	}
+
+	if (ddflags & C_FSYNC) {
+		if (fsync(out.fd) == -1)
+			err(1, "fsyncing %s", out.name);
+	} else if (ddflags & C_FDATASYNC) {
+		if (fdatasync(out.fd) == -1)
+			err(1, "fdatasyncing %s", out.name);
 	}
 }
 
@@ -535,7 +566,9 @@ dd_out(int force)
 					pending = 0;
 				}
 				if (cnt) {
+					before_io();
 					nw = write(out.fd, outp, cnt);
+					after_io();
 					out.seek_offset = 0;
 				} else {
 					return;

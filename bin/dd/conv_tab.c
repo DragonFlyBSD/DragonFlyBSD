@@ -31,12 +31,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)conv_tab.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: head/bin/dd/conv_tab.c 326025 2017-11-20 19:49:47Z pfg $
  */
 
 #include <sys/types.h>
+
+#include <signal.h>
+#include <stdint.h>
 
 #include "dd.h"
 #include "extern.h"

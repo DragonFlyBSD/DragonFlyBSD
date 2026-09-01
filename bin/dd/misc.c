@@ -31,16 +31,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)misc.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: head/bin/dd/misc.c 338646 2018-09-13 14:54:46Z kevans $
  */
 
 #include <sys/types.h>
 
 #include <err.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <libutil.h>
+#include <signal.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -137,9 +137,58 @@ sigalarm_handler(int signo __unused)
 	need_progress = 1;
 }
 
-void
-terminate(int sig)
+static void terminate(int signo) __dead2;
+static void
+terminate(int signo)
 {
+	kill_signal = signo;
 	summary();
-	_exit(sig == 0 ? 0 : 1);
+	(void)fflush(stderr);
+	raise(kill_signal);
+	/* NOT REACHED */
+	_exit(1);
+}
+
+static sig_atomic_t in_io = 0;
+static sig_atomic_t sigint_seen = 0;
+
+static void
+sigint_handler(int signo __unused)
+{
+	atomic_signal_fence(memory_order_acquire);
+	if (in_io)
+		terminate(SIGINT);
+	sigint_seen = 1;
+}
+
+void
+prepare_io(void)
+{
+	struct sigaction sa;
+	int error;
+
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_flags = SA_NODEFER | SA_RESETHAND;
+	sa.sa_handler = sigint_handler;
+	error = sigaction(SIGINT, &sa, 0);
+	if (error != 0)
+		err(1, "sigaction");
+}
+
+void
+before_io(void)
+{
+	in_io = 1;
+	atomic_signal_fence(memory_order_seq_cst);
+	if (sigint_seen)
+		terminate(SIGINT);
+}
+
+void
+after_io(void)
+{
+	in_io = 0;
+	atomic_signal_fence(memory_order_seq_cst);
+	if (sigint_seen)
+		terminate(SIGINT);
 }

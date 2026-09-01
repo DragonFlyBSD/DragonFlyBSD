@@ -31,13 +31,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	@(#)extern.h	8.3 (Berkeley) 4/2/94
- * $FreeBSD: head/bin/dd/extern.h 337869 2018-08-15 20:50:38Z kevans $
  */
-
-#include <sys/cdefs.h>
-#include <signal.h>
 
 void block(void);
 void block_close(void);
@@ -47,12 +41,14 @@ void def_close(void);
 void jcl(char **);
 void pos_in(void);
 void pos_out(void);
-void progress(void);
 double secs_elapsed(void);
+void progress(void);
+void summary(void);
 void sigalarm_handler(int);
 void siginfo_handler(int);
-void summary(void);
-void terminate(int) __dead2;
+void prepare_io(void);
+void before_io(void);
+void after_io(void);
 void unblock(void);
 void unblock_close(void);
 
@@ -61,7 +57,7 @@ extern STAT st;
 extern void (*cfunc)(void);
 extern uintmax_t cpy_cnt;
 extern size_t cbsz;
-extern u_int ddflags;
+extern uint64_t ddflags;
 extern size_t speed;
 extern uintmax_t files_cnt;
 extern const u_char *ctab;
@@ -72,3 +68,4 @@ extern u_char casetab[];
 extern char fill_char;
 extern volatile sig_atomic_t need_summary;
 extern volatile sig_atomic_t need_progress;
+extern volatile sig_atomic_t kill_signal;

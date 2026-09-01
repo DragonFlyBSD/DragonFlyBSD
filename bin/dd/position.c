@@ -31,9 +31,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)position.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: head/bin/dd/position.c 337865 2018-08-15 19:46:13Z kevans $
  */
 
 #include <sys/types.h>
@@ -41,13 +38,13 @@
 
 #include <err.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
+#include <signal.h>
 #include <unistd.h>
 
 #include "dd.h"
 #include "extern.h"
-
-static off_t seek_offset(IO *);
 
 static off_t
 seek_offset(IO *io)
@@ -187,9 +184,11 @@ pos_out(void)
 
 	/* Read it. */
 	for (cnt = 0; cnt < out.offset; ++cnt) {
-		if ((n = read(out.fd, out.db, out.dbsz)) > 0)
+		before_io();
+		n = read(out.fd, out.db, out.dbsz);
+		after_io();
+		if (n > 0)
 			continue;
-
 		if (n == -1)
 			err(1, "%s", out.name);
 
@@ -204,7 +203,9 @@ pos_out(void)
 			err(1, "%s", out.name);
 
 		while (cnt++ < out.offset) {
+			before_io();
 			n = write(out.fd, out.db, out.dbsz);
+			after_io();
 			if (n == -1)
 				err(1, "%s", out.name);
 			if (n != out.dbsz)

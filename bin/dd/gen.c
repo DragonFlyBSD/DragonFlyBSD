@@ -1,7 +1,5 @@
 /*-
  * This program is in the public domain
- *
- * $FreeBSD: head/bin/dd/gen.c 295749 2016-02-18 08:44:16Z thomas $
  */
 
 #include <stdio.h>

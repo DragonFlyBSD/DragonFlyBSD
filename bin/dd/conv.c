@@ -31,14 +31,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)conv.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: head/bin/dd/conv.c 326025 2017-11-20 19:49:47Z pfg $
  */
 
 #include <sys/param.h>
 
 #include <err.h>
+#include <inttypes.h>
 #include <string.h>
 
 #include "dd.h"
