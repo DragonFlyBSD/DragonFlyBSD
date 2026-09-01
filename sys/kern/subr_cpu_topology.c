@@ -60,7 +60,7 @@ struct per_cpu_sysctl_info {
 typedef struct per_cpu_sysctl_info per_cpu_sysctl_info_t;
 
 /* Memory for topology */
-__read_frequently static cpu_node_t cpu_topology_nodes[MAXCPU];
+__read_frequently static cpu_node_t cpu_topology_nodes[MAXCPU*2];
 /* Root node pointer */
 __read_frequently static cpu_node_t *cpu_root_node;
 
@@ -137,6 +137,9 @@ build_topology_tree(int *children_no_per_level,
 		root_cpu_node = node;
 
 	for (i = 0; i < node->child_no; i++) {
+		KKASSERT((*last_free_node - &cpu_topology_nodes[0]) <
+			  sizeof(cpu_topology_nodes) / sizeof(cpu_topology_nodes[0]));
+
 		node->child_node[i] = *last_free_node;
 		(*last_free_node)++;
 
