@@ -727,7 +727,7 @@ write_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 
 /* -------------------------------------------------------------------------- */
 
-static int fetch_segment(struct nvmm_machine *, struct nvmm_vcpu *);
+static int fetch_segment_outs(struct nvmm_machine *, struct nvmm_vcpu *);
 
 #define NVMM_IO_BATCH_SIZE	32
 
@@ -828,7 +828,7 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 			if (io.in) {
 				seg = NVMM_X64_SEG_ES;
 			} else {
-				seg = fetch_segment(mach, vcpu);
+				seg = fetch_segment_outs(mach, vcpu);
 				if (seg == -1)
 					return -1;
 			}
@@ -3058,7 +3058,7 @@ store_to_gva_movs(struct nvmm_x64_state *state, struct x86_instr *instr,
 }
 
 static int
-fetch_segment(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
+fetch_segment_outs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
 	struct nvmm_x64_state *state = vcpu->state;
 	uint8_t inst_bytes[5], byte;
@@ -3070,10 +3070,12 @@ fetch_segment(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 
 	gva = state->gprs[NVMM_X64_GPR_RIP];
 	if (__predict_false(!is_64bit(state))) {
-		ret = segment_check(&state->segs[NVMM_X64_SEG_CS], gva,
-		    fetchsize);
-		if (ret == -1)
-			return -1;
+		/*
+		 * No need to check the CS attributes: if they did not allow
+		 * the instruction to execute, then we wouldn't have received
+		 * an IO VMEXIT in the first place. Just apply the segment
+		 * base.
+		 */
 		segment_apply(&state->segs[NVMM_X64_SEG_CS], &gva);
 	}
 
@@ -3128,10 +3130,12 @@ fetch_instruction(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 
 	gva = state->gprs[NVMM_X64_GPR_RIP];
 	if (__predict_false(!is_64bit(state))) {
-		ret = segment_check(&state->segs[NVMM_X64_SEG_CS], gva,
-		    fetchsize);
-		if (ret == -1)
-			return -1;
+		/*
+		 * No need to check the CS attributes: if they did not allow
+		 * the instruction to execute, then we wouldn't have received
+		 * an MMIO VMEXIT in the first place. Just apply the segment
+		 * base.
+		 */
 		segment_apply(&state->segs[NVMM_X64_SEG_CS], &gva);
 	}
 
