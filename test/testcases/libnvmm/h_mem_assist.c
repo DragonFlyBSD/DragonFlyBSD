@@ -265,6 +265,54 @@ reset_machine64(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 		err(errno, "nvmm_vcpu_setstate");
 }
 
+static int
+run_test64_insn_lastpage(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
+{
+	struct nvmm_x64_state *state = vcpu->state;
+	struct nvmm_vcpu_exit *exit = vcpu->exit;
+	/* movb $0x5a,(%rax) */
+	static const uint8_t insn[] = { 0xc6, 0x00, 0x5a };
+	size_t off = PAGE_SIZE - sizeof(insn);
+	int ret;
+
+	reset_machine64(mach, vcpu);
+	memset(instbuf, 0, PAGE_SIZE);
+	memcpy(instbuf + off, insn, sizeof(insn));
+	memset(mmiobuf, 0, PAGE_SIZE);
+
+	state->gprs[NVMM_X64_GPR_RIP] = 0x2000 + off;
+	state->gprs[NVMM_X64_GPR_RAX] = 0x1000;
+	if (nvmm_vcpu_setstate(mach, vcpu, NVMM_X64_STATE_GPRS) == -1)
+		err(errno, "nvmm_vcpu_setstate");
+
+	if (nvmm_vcpu_run(mach, vcpu) == -1)
+		err(errno, "nvmm_vcpu_run");
+	if (exit->reason != NVMM_VCPU_EXIT_MEMORY ||
+	    exit->u.mem.gpa != 0x1000) {
+		printf("*** Test '64bit MMIO instruction at page end' failed: "
+		    "unexpected VMEXIT 0x%lx, gpa %p\n", exit->reason,
+		    (void *)exit->u.mem.gpa);
+		return 1;
+	}
+
+	/* Force nvmm_assist_mem() to fetch the instruction from guest memory. */
+	exit->u.mem.inst_len = 0;
+	ret = nvmm_assist_mem(mach, vcpu);
+	if (ret == -1) {
+		printf("*** Test '64bit MMIO instruction at page end' failed\n");
+		return 1;
+	}
+
+	if (mmiobuf[0] != 0x5a) {
+		printf("*** Test '64bit MMIO instruction at page end' failed: "
+		    "wanted 0x5a, got 0x%x\n", mmiobuf[0]);
+		return 1;
+	}
+
+	printf("Test '64bit MMIO instruction at page end' passed\n");
+	return 0;
+}
+
 static void
 map_pages64(struct nvmm_machine *mach)
 {
@@ -366,6 +414,8 @@ test_vm64(void)
 		reset_machine64(&mach, &vcpu);
 		nfail += run_test(&mach, &vcpu, &tests64[i]);
 	}
+	printf("\n");
+	nfail += run_test64_insn_lastpage(&mach, &vcpu);
 
 	if (nvmm_vcpu_destroy(&mach, &vcpu) == -1)
 		err(errno, "nvmm_vcpu_destroy");

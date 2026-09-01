@@ -657,7 +657,7 @@ memcpy_to_guest(void *dst, void *src, size_t size)
 	}
 }
 
-static int
+static size_t
 read_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
     gvaddr_t gva, uint8_t *data, size_t size)
 {
@@ -667,15 +667,16 @@ read_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	gpaddr_t gpa;
 	uintptr_t hva;
 	bool is_mmio;
-	int ret, remain;
+	size_t done, remain;
+	int ret;
 
 	ret = x86_gva_to_gpa(mach, state, gva, &gpa, &prot);
 	if (__predict_false(ret == -1)) {
-		return -1;
+		return 0;
 	}
 	if (__predict_false(!(prot & NVMM_PROT_READ))) {
 		errno = EFAULT;
-		return -1;
+		return 0;
 	}
 
 	if ((gva & PAGE_MASK) + size > PAGE_SIZE) {
@@ -699,23 +700,22 @@ read_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	} else {
 		if (__predict_false(!(prot & NVMM_PROT_READ))) {
 			errno = EFAULT;
-			return -1;
+			return 0;
 		}
 
 		memcpy_from_guest(data, (void *)hva, size);
 	}
 
+	done = size;
 	if (remain > 0) {
-		ret = read_guest_memory(mach, vcpu, gva + size,
+		done += read_guest_memory(mach, vcpu, gva + size,
 		    data + size, remain);
-	} else {
-		ret = 0;
 	}
 
-	return ret;
+	return done;
 }
 
-static int
+static size_t
 write_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
     gvaddr_t gva, uint8_t *data, size_t size)
 {
@@ -725,15 +725,16 @@ write_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	gpaddr_t gpa;
 	uintptr_t hva;
 	bool is_mmio;
-	int ret, remain;
+	size_t done, remain;
+	int ret;
 
 	ret = x86_gva_to_gpa(mach, state, gva, &gpa, &prot);
 	if (__predict_false(ret == -1)) {
-		return -1;
+		return 0;
 	}
 	if (__predict_false(!(prot & NVMM_PROT_WRITE))) {
 		errno = EFAULT;
-		return -1;
+		return 0;
 	}
 
 	if ((gva & PAGE_MASK) + size > PAGE_SIZE) {
@@ -757,20 +758,19 @@ write_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	} else {
 		if (__predict_false(!(prot & NVMM_PROT_WRITE))) {
 			errno = EFAULT;
-			return -1;
+			return 0;
 		}
 
 		memcpy_to_guest((void *)hva, data, size);
 	}
 
+	done = size;
 	if (remain > 0) {
-		ret = write_guest_memory(mach, vcpu, gva + size,
+		done += write_guest_memory(mach, vcpu, gva + size,
 		    data + size, remain);
-	} else {
-		ret = 0;
 	}
 
-	return ret;
+	return done;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -785,7 +785,7 @@ assist_io_batch(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 {
 	uint8_t iobuf[NVMM_IO_BATCH_SIZE];
 	size_t i, iosize, iocnt;
-	int ret;
+	size_t done;
 
 	cnt = MIN(cnt, NVMM_IO_BATCH_SIZE);
 	iosize = MIN(io->size * cnt, NVMM_IO_BATCH_SIZE);
@@ -794,8 +794,8 @@ assist_io_batch(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	io->data = iobuf;
 
 	if (!io->in) {
-		ret = read_guest_memory(mach, vcpu, gva, iobuf, iosize);
-		if (ret == -1)
+		done = read_guest_memory(mach, vcpu, gva, iobuf, iosize);
+		if (done != iosize)
 			return -1;
 	}
 
@@ -805,8 +805,8 @@ assist_io_batch(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	}
 
 	if (io->in) {
-		ret = write_guest_memory(mach, vcpu, gva, iobuf, iosize);
-		if (ret == -1)
+		done = write_guest_memory(mach, vcpu, gva, iobuf, iosize);
+		if (done != iosize)
 			return -1;
 	}
 
@@ -825,6 +825,7 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	gvaddr_t gva = 0; /* GCC */
 	int reg = 0; /* GCC */
 	int ret, seg;
+	size_t done;
 	bool psld = false;
 
 	if (__predict_false(exit->reason != NVMM_VCPU_EXIT_IO)) {
@@ -905,9 +906,9 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 		if (!exit->u.io.str) {
 			memcpy(io.data, &state->gprs[NVMM_X64_GPR_RAX], io.size);
 		} else {
-			ret = read_guest_memory(mach, vcpu, gva, io.data,
+			done = read_guest_memory(mach, vcpu, gva, io.data,
 			    io.size);
-			if (ret == -1)
+			if (done != io.size)
 				return -1;
 		}
 	}
@@ -922,9 +923,9 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 				state->gprs[NVMM_X64_GPR_RAX] &= size_to_mask(4);
 			}
 		} else {
-			ret = write_guest_memory(mach, vcpu, gva, io.data,
+			done = write_guest_memory(mach, vcpu, gva, io.data,
 			    io.size);
-			if (ret == -1)
+			if (done != io.size)
 				return -1;
 		}
 	}
@@ -3112,7 +3113,7 @@ fetch_segment_outs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	uint8_t inst_bytes[5], byte;
 	size_t i, fetchsize;
 	gvaddr_t gva;
-	int ret, seg;
+	int seg;
 
 	fetchsize = sizeof(inst_bytes);
 
@@ -3127,8 +3128,8 @@ fetch_segment_outs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 		segment_apply(&state->segs[NVMM_X64_SEG_CS], &gva);
 	}
 
-	ret = read_guest_memory(mach, vcpu, gva, inst_bytes, fetchsize);
-	if (ret == -1)
+	fetchsize = read_guest_memory(mach, vcpu, gva, inst_bytes, fetchsize);
+	if (fetchsize == 0)
 		return -1;
 
 	seg = NVMM_X64_SEG_DS;
@@ -3172,9 +3173,6 @@ fetch_instruction(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	struct nvmm_x64_state *state = vcpu->state;
 	size_t fetchsize;
 	gvaddr_t gva;
-	int ret;
-
-	fetchsize = sizeof(exit->u.mem.inst_bytes);
 
 	gva = state->gprs[NVMM_X64_GPR_RIP];
 	if (__predict_false(!is_64bit(state))) {
@@ -3187,9 +3185,9 @@ fetch_instruction(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		segment_apply(&state->segs[NVMM_X64_SEG_CS], &gva);
 	}
 
-	ret = read_guest_memory(mach, vcpu, gva, exit->u.mem.inst_bytes,
-	    fetchsize);
-	if (ret == -1)
+	fetchsize = read_guest_memory(mach, vcpu, gva, exit->u.mem.inst_bytes,
+	    sizeof(exit->u.mem.inst_bytes));
+	if (fetchsize == 0)
 		return -1;
 
 	exit->u.mem.inst_len = fetchsize;
@@ -3207,7 +3205,7 @@ assist_mem_double_movs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	struct nvmm_x64_state *state = vcpu->state;
 	uint8_t data[8];
 	gvaddr_t gva;
-	size_t size;
+	size_t size, done;
 	bool psld;
 	int ret;
 
@@ -3217,16 +3215,16 @@ assist_mem_double_movs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	ret = store_to_gva_movs(state, instr, &instr->src, &gva, size);
 	if (ret == -1)
 		return -1;
-	ret = read_guest_memory(mach, vcpu, gva, data, size);
-	if (ret == -1)
+	done = read_guest_memory(mach, vcpu, gva, data, size);
+	if (done != size)
 		return -1;
 
 	/* Destination. */
 	ret = store_to_gva_movs(state, instr, &instr->dst, &gva, size);
 	if (ret == -1)
 		return -1;
-	ret = write_guest_memory(mach, vcpu, gva, data, size);
-	if (ret == -1)
+	done = write_guest_memory(mach, vcpu, gva, data, size);
+	if (done != size)
 		return -1;
 
 	psld = (state->gprs[NVMM_X64_GPR_RFLAGS] & PSL_D) != 0;
