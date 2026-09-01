@@ -611,6 +611,52 @@ rep_set_cnt(struct nvmm_x64_state *state, size_t adsize, uint64_t cnt)
 	gpr_write_address(state, NVMM_X64_GPR_RCX, adsize, cnt);
 }
 
+static void
+memcpy_from_guest(void *dst, void *src, size_t size)
+{
+	/* Use volatile accesses to preserve implicit atomicity. */
+	switch (size) {
+	case 1:
+		*(uint8_t *)dst = *(volatile uint8_t *)src;
+		break;
+	case 2:
+		*(uint16_t *)dst = *(volatile uint16_t *)src;
+		break;
+	case 4:
+		*(uint32_t *)dst = *(volatile uint32_t *)src;
+		break;
+	case 8:
+		*(uint64_t *)dst = *(volatile uint64_t *)src;
+		break;
+	default:
+		memcpy(dst, (uint8_t *)src, size);
+		break;
+	}
+}
+
+static void
+memcpy_to_guest(void *dst, void *src, size_t size)
+{
+	/* Use volatile accesses to preserve implicit atomicity. */
+	switch (size) {
+	case 1:
+		*(volatile uint8_t *)dst = *(uint8_t *)src;
+		break;
+	case 2:
+		*(volatile uint16_t *)dst = *(uint16_t *)src;
+		break;
+	case 4:
+		*(volatile uint32_t *)dst = *(uint32_t *)src;
+		break;
+	case 8:
+		*(volatile uint64_t *)dst = *(uint64_t *)src;
+		break;
+	default:
+		memcpy((uint8_t *)dst, src, size);
+		break;
+	}
+}
+
 static int
 read_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
     gvaddr_t gva, uint8_t *data, size_t size)
@@ -655,7 +701,8 @@ read_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 			errno = EFAULT;
 			return -1;
 		}
-		memcpy(data, (uint8_t *)hva, size);
+
+		memcpy_from_guest(data, (void *)hva, size);
 	}
 
 	if (remain > 0) {
@@ -712,7 +759,8 @@ write_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 			errno = EFAULT;
 			return -1;
 		}
-		memcpy((uint8_t *)hva, data, size);
+
+		memcpy_to_guest((void *)hva, data, size);
 	}
 
 	if (remain > 0) {
