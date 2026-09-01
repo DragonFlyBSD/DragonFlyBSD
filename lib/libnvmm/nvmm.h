@@ -38,8 +38,6 @@
 #elif defined(__DragonFly__)
 #include <dev/virtual/nvmm/nvmm.h>
 #include <dev/virtual/nvmm/nvmm_ioctl.h>
-#else
-#error "Unsupported OS."
 #endif
 
 #define NVMM_USER_VERSION	1

@@ -32,7 +32,6 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <machine/segments.h>
-#include <machine/psl.h>
 
 /* CR0/CR4/MSR_EFER bits in use. */
 #define CR0_PE		__BIT(0)

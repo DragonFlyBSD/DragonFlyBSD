@@ -83,8 +83,7 @@
 	popq	%rax				;\
 	movzwq	%ax,%rdx			;\
 	movq	CPUVAR(GDT),%rax		;\
-	/* Clear the busy bit for reloading. */	\
-	andq	$~0x0200,4(%rax,%rdx, 1)	;\
+	andq	$~0x0200,4(%rax,%rdx,1)		;\
 	ltrw	%dx
 #elif defined(__DragonFly__)
 /* In DragonFly, PCPU(tss_gdt) points directly to the gdt[] entry for the
