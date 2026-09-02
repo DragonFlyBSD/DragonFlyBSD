@@ -1728,7 +1728,6 @@ hammer2_unmount_helper(struct mount *mp, hammer2_pfs_t *pmp, hammer2_dev_t *hmp)
 {
 	hammer2_cluster_t *cluster;
 	hammer2_chain_t *rchain;
-	int dumpcnt;
 	int i;
 
 	/*
@@ -1860,10 +1859,16 @@ again:
 		atomic_clear_int(&hmp->fchain.flags, HAMMER2_CHAIN_UPDATE);
 	}
 
-	dumpcnt = 50;
-	hammer2_dump_chain(&hmp->vchain, 0, 0, &dumpcnt, 'v', (u_int)-1);
-	dumpcnt = 50;
-	hammer2_dump_chain(&hmp->fchain, 0, 0, &dumpcnt, 'f', (u_int)-1);
+#if 0 /* kept for future debug */
+	{
+		int dumpcnt;
+
+		dumpcnt = 50;
+		hammer2_dump_chain(&hmp->vchain, 0, 0, &dumpcnt, 'v', (u_int)-1);
+		dumpcnt = 50;
+		hammer2_dump_chain(&hmp->fchain, 0, 0, &dumpcnt, 'f', (u_int)-1);
+	}
+#endif
 
 	/*
 	 * Final drop of embedded freemap root chain to
