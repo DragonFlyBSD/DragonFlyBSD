@@ -1188,8 +1188,7 @@ prog_makefile_rules(FILE *outmk, prog_t *p)
 		fprintf(outmk, " ${%s_LIBS}", p->ident);
 	fprintf(outmk, "\n");
 
-	fprintf(outmk, "\t${CC} -nostdlib -Wl,-dc -r "
-	    "-o ${.TARGET} ${.ALLSRC}\n");
+	fprintf(outmk, "\t${CC} -nostdlib -r -o ${.TARGET} ${.ALLSRC}\n");
 	fprintf(outmk, "\tcrunchide -k _crunched_%s_stub ", p->ident);
 	for (lst = p->keeplist; lst != NULL; lst = lst->next)
 		fprintf(outmk, "-k %s ", lst->str);
