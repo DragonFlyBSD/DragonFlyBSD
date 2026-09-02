@@ -1,3 +1,4 @@
 # Testcase			type		Options		Command line arguments
 h_io_assist/h_io_assist		userland	defaults
 h_mem_assist/h_mem_assist	userland	defaults
+h_misc/h_misc			userland	defaults

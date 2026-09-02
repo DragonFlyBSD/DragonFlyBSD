@@ -294,14 +294,14 @@ See
 below for details.
 .Pp
 .Fn nvmm_assist_mem
-emulates the Mem operation described in
+emulates the memory operation described in
 .Fa vcpu->exit
 on CPU
 .Fa vcpu
 from machine
 .Fa mach .
 See
-.Sx Mem Assist
+.Sx Memory Assist
 below for details.
 .Ss NVMM Initialization
 NVMM initialization is performed by the
@@ -311,7 +311,9 @@ function.
 .Pp
 .Fn nvmm_init
 opens the NVMM device, and expects to have the proper permissions to do so.
-In a default configuration, this implies being part of the "nvmm" group.
+In a default configuration, this implies being part of the
+.Sy nvmm
+group.
 If using a special configuration, emulator software should arrange to have the
 proper permissions before invoking
 .Fn nvmm_init ,
@@ -679,7 +681,7 @@ will indicate the I/O port,
 will indicate if the operation is an input, and
 .Va size
 will indicate the size of the access.
-.Ss Mem Assist
+.Ss Memory Assist
 When a VM exit occurs with reason
 .Dv NVMM_VCPU_EXIT_MEMORY ,
 it is necessary for emulator software to emulate the associated memory
@@ -694,7 +696,7 @@ will call the registered
 callback function and give it a
 .Vt nvmm_mem
 structure as argument.
-This structure describes a Mem transaction:
+This structure describes a memory transaction:
 .Bd -literal
 struct nvmm_mem {
 	struct nvmm_machine *mach;
@@ -731,8 +733,7 @@ will indicate if the access is a write, and
 will indicate the size of the access.
 .Sh RETURN VALUES
 Upon successful completion, each of these functions returns zero.
-Otherwise, a value of \-1 is returned and the global
-variable
+Otherwise, a value of \-1 is returned and the global variable
 .Va errno
 is set to indicate the error.
 .Sh FILES

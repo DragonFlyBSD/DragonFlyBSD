@@ -38,8 +38,6 @@
 #elif defined(__DragonFly__)
 #include <dev/virtual/nvmm/nvmm.h>
 #include <dev/virtual/nvmm/nvmm_ioctl.h>
-#else
-#error "Unsupported OS."
 #endif
 
 #define NVMM_USER_VERSION	1
@@ -116,8 +114,8 @@ int nvmm_gpa_unmap(struct nvmm_machine *, uintptr_t, gpaddr_t, size_t);
 int nvmm_hva_map(struct nvmm_machine *, uintptr_t, size_t);
 int nvmm_hva_unmap(struct nvmm_machine *, uintptr_t, size_t);
 
-int nvmm_gva_to_gpa(struct nvmm_machine *, struct nvmm_vcpu *, gvaddr_t, gpaddr_t *,
-    nvmm_prot_t *);
+int nvmm_gva_to_gpa(struct nvmm_machine *, struct nvmm_vcpu *, gvaddr_t,
+    gpaddr_t *, nvmm_prot_t *);
 int nvmm_gpa_to_hva(struct nvmm_machine *, gpaddr_t, uintptr_t *,
     nvmm_prot_t *);
 

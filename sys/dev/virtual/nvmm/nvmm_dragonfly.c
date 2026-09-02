@@ -34,11 +34,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/kernel.h>
-#include <sys/mman.h>
-
 #include "nvmm.h"
 #include "nvmm_os.h"
 #include "nvmm_internal.h"
@@ -116,7 +111,7 @@ os_vmobj_rel(os_vmobj_t *vmobj)
 }
 
 int
-os_vmobj_map(struct vm_map *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
+os_vmobj_map(os_vmmap_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
     voff_t offset, bool wired, bool fixed, bool shared, int prot, int maxprot)
 {
 	vm_prot_t vmprot, vmmaxprot;
@@ -202,7 +197,7 @@ os_vmobj_map(struct vm_map *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
 }
 
 void
-os_vmobj_unmap(struct vm_map *map, vaddr_t start, vaddr_t end, bool wired)
+os_vmobj_unmap(os_vmmap_t *map, vaddr_t start, vaddr_t end, bool wired)
 {
 	if (wired) {
 		/* Unwire kernel mappings before removing. */
@@ -269,6 +264,12 @@ os_contigpa_free(paddr_t pa __unused, vaddr_t va, size_t npages)
 	contigfree((void *)va, npages * PAGE_SIZE, M_NVMM);
 }
 
+time_t
+os_time(void)
+{
+	return time_second;
+}
+
 /* -------------------------------------------------------------------------- */
 
 #include <sys/conf.h>
@@ -300,17 +301,22 @@ dfbsd_nvmm_open(struct dev_open_args *ap)
 	if (!(flags & O_CLOEXEC))
 		return EINVAL;
 
+	fp = ap->a_fpp ? *ap->a_fpp : NULL;
+	if (fp == NULL)
+		return ENOENT;
+
 	if (OFLAGS(flags) & O_WRONLY) {
+		/* Opened by the nvmmctl(8) utility. */
 		owner = &nvmm_root_owner;
 	} else {
 		owner = os_mem_alloc(sizeof(*owner));
 		owner->pid = curthread->td_proc->p_pid;
 	}
 
-	fp = ap->a_fpp ? *ap->a_fpp : NULL;
 	error = devfs_set_cdevpriv(fp, owner, dfbsd_nvmm_dtor);
 	if (error) {
-		dfbsd_nvmm_dtor(owner);
+		if (owner != &nvmm_root_owner)
+			os_mem_free(owner, sizeof(*owner));
 		return error;
 	}
 
@@ -361,7 +367,7 @@ nvmm_attach(void)
 static int
 nvmm_detach(void)
 {
-	if (os_atomic_load_uint(&nmachines) > 0)
+	if (os_atomic_load_uint(&nvmm_nmachines) > 0)
 		return EBUSY;
 
 	nvmm_fini();

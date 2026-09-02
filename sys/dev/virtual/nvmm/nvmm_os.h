@@ -37,15 +37,18 @@
 #error "This file should not be included by userland programs."
 #endif
 
+#include <sys/param.h>
+#include <sys/systm.h>
+#include <sys/kernel.h>
+#include <sys/mman.h>
+#include <sys/proc.h>
+
 #if defined(__NetBSD__)
-#include <sys/cpu.h>
 #include <uvm/uvm_object.h>
 #include <uvm/uvm_extern.h>
 #include <uvm/uvm_page.h>
 #elif defined(__DragonFly__)
 #include <sys/lock.h>
-#include <sys/malloc.h> /* contigmalloc, contigfree */
-#include <sys/proc.h> /* LWP_MP_URETMASK */
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_map.h>
@@ -60,11 +63,13 @@
 
 /* Types. */
 #if defined(__NetBSD__)
+typedef struct vm_map		os_vmmap_t;
 typedef struct vmspace		os_vmspace_t;
 typedef struct uvm_object	os_vmobj_t;
 typedef krwlock_t		os_rwl_t;
 typedef kmutex_t		os_mtx_t;
 #elif defined(__DragonFly__)
+typedef struct vm_map		os_vmmap_t;
 typedef struct vmspace		os_vmspace_t;
 typedef struct vm_object	os_vmobj_t;
 typedef struct lock		os_rwl_t;
@@ -84,7 +89,7 @@ typedef vm_paddr_t		paddr_t;
 
 /* Macros. */
 #if defined(__DragonFly__)
-#define __arraycount(__x)	(sizeof(__x) / sizeof(__x[0]))
+#define __arraycount(__x)	NELEM(__x)
 #define __insn_barrier()	__asm __volatile("":::"memory")
 #endif
 
@@ -171,19 +176,20 @@ MALLOC_DECLARE(M_NVMM);
 #include <machine/atomic.h>
 #define os_atomic_inc_uint(x)	atomic_add_int(x, 1)
 #define os_atomic_dec_uint(x)	atomic_subtract_int(x, 1)
-#define os_atomic_load_uint(x)	atomic_load_acq_int(x)
+#define os_atomic_load_uint(x)	atomic_load_int(x)
 #define os_atomic_inc_64(x)	atomic_add_64(x, 1)
 #endif
 
 /* Pmap. */
 #if defined(__NetBSD__)
-extern bool pmap_ept_has_ad;
-#define os_vmspace_pmap(vm)	((vm)->vm_map.pmap)
+#if __NetBSD_Prereq__(10, 0, 0)
+#include <machine/pmap_private.h> /* TLBSHOOT_NVMM */
+#endif
 #define os_vmspace_pdirpa(vm)	((vm)->vm_map.pmap->pm_pdirpa[0])
 #define os_pmap_mach(pm)	((pm)->pm_data)
 #elif defined(__DragonFly__)
-#define os_vmspace_pmap(vm)	vmspace_pmap(vm)
 #define os_vmspace_pdirpa(vm)	(vtophys(vmspace_pmap(vm)->pm_pml4))
+/* os_pmap_mach() not used */
 #endif
 
 /* CPU. */
@@ -217,7 +223,6 @@ typedef struct globaldata	os_cpu_t;
 
 /* Cpusets. */
 #if defined(__NetBSD__)
-#include <sys/kcpuset.h>
 typedef kcpuset_t		os_cpuset_t;
 #define os_cpuset_init(s)	kcpuset_create(s, true)
 #define os_cpuset_destroy(s)	kcpuset_destroy(s)
@@ -265,12 +270,15 @@ typedef cpumask_t		os_cpuset_t;
 #define OS_ASSERT		KKASSERT
 #endif
 
+/* Vmspace. */
+#if defined(__NetBSD__) || defined(__DragonFly__)
+#define os_vmspace_get_vmmap(_vm_)	(&(_vm_)->vm_map)
+#endif
+
 /* Misc. */
 #if defined(__DragonFly__)
 #define uimin(a, b)		((u_int)a < (u_int)b ? (u_int)a : (u_int)b)
 #endif
-
-/* -------------------------------------------------------------------------- */
 
 os_vmspace_t *	os_vmspace_create(vaddr_t, vaddr_t);
 void		os_vmspace_destroy(os_vmspace_t *);
@@ -280,9 +288,9 @@ os_vmobj_t *	os_vmobj_create(voff_t);
 void		os_vmobj_ref(os_vmobj_t *);
 void		os_vmobj_rel(os_vmobj_t *);
 
-int		os_vmobj_map(struct vm_map *, vaddr_t *, vsize_t, os_vmobj_t *,
+int		os_vmobj_map(os_vmmap_t *, vaddr_t *, vsize_t, os_vmobj_t *,
 		    voff_t, bool, bool, bool, int, int);
-void		os_vmobj_unmap(struct vm_map *map, vaddr_t, vaddr_t, bool);
+void		os_vmobj_unmap(os_vmmap_t *, vaddr_t, vaddr_t, bool);
 
 void *		os_pagemem_zalloc(size_t);
 void		os_pagemem_free(void *, size_t);
@@ -292,6 +300,8 @@ void		os_pa_free(paddr_t);
 
 int		os_contigpa_zalloc(paddr_t *, vaddr_t *, size_t);
 void		os_contigpa_free(paddr_t, vaddr_t, size_t);
+
+time_t		os_time(void);
 
 static inline bool
 os_return_needed(void)
@@ -315,10 +325,7 @@ os_return_needed(void)
 #endif
 }
 
-/* -------------------------------------------------------------------------- */
-
 /* IPIs. */
-
 #if defined(__NetBSD__)
 
 #include <sys/xcall.h>
@@ -371,6 +378,8 @@ os_ipi_broadcast(void (*func)(void *), void *arg)
 		lwkt_cpusync_simple(mask, func, arg);
 	}
 }
+
+/* os_ipi_kickall() not used */
 
 /*
  * On DragonFly, no need to bind the thread, because any normal kernel

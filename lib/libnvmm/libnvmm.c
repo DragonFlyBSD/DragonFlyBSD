@@ -50,6 +50,10 @@ static struct nvmm_capability __capability;
 #define LIST_FOREACH_SAFE	LIST_FOREACH_MUTABLE
 #endif
 
+/*
+ * TODO: consider protecting area_list_t with an rwlock?
+ */
+
 typedef struct __area {
 	LIST_ENTRY(__area) list;
 	gpaddr_t gpa;
@@ -171,7 +175,7 @@ nvmm_init(void)
 	if (__capability.version != NVMM_KERN_VERSION) {
 		close(nvmm_fd);
 		nvmm_fd = -1;
-		errno = EPROGMISMATCH;
+		errno = ENOSYS;
 		return -1;
 	}
 
@@ -194,7 +198,7 @@ nvmm_root_init(void)
 	if (__capability.version != NVMM_KERN_VERSION) {
 		close(nvmm_fd);
 		nvmm_fd = -1;
-		errno = EPROGMISMATCH;
+		errno = ENOSYS;
 		return -1;
 	}
 
@@ -293,20 +297,25 @@ nvmm_vcpu_create(struct nvmm_machine *mach, nvmm_cpuid_t cpuid,
 	struct nvmm_ioc_vcpu_create args;
 	int ret;
 
+	vcpu->exit = malloc(sizeof(*vcpu->exit));
+	if (vcpu->exit == NULL)
+		return -1;
+
 	args.machid = mach->machid;
 	args.cpuid = cpuid;
 	args.comm = NULL;
 
 	ret = ioctl(nvmm_fd, NVMM_IOC_VCPU_CREATE, &args);
-	if (ret == -1)
+	if (ret == -1) {
+		free(vcpu->exit);
 		return -1;
+	}
 
 	mach->pages[cpuid] = args.comm;
 
 	vcpu->cpuid = cpuid;
 	vcpu->state = &args.comm->state;
 	vcpu->event = &args.comm->event;
-	vcpu->exit = malloc(sizeof(*vcpu->exit));
 
 	return 0;
 }

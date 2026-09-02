@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2026 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -39,12 +39,10 @@
 #define NVMM_MAX_VCPUS		128
 #define NVMM_MAX_HMAPPINGS	32
 
-#if defined(__NetBSD__)
 #define NVMM_MAX_RAM		(128ULL * (1 << 30))
-#elif defined(__DragonFly__)
+#ifdef __DragonFly__
+#undef NVMM_MAX_RAM
 #define NVMM_MAX_RAM		(127ULL * 1024ULL * (1 << 30))
-#else
-#error "OS dependency for NVMM_MAX_RAM required"
 #endif
 
 #define NVMM_COMM_PAGE_SIZE	\
@@ -88,7 +86,7 @@ struct nvmm_machine {
 	os_vmobj_t *commvmobj;
 
 	/* Kernel */
-	struct vmspace *vm;
+	os_vmspace_t *vm;
 	gpaddr_t gpa_begin;
 	gpaddr_t gpa_end;
 
@@ -127,7 +125,6 @@ struct nvmm_impl {
 	int (*vcpu_configure)(struct nvmm_cpu *, uint64_t, void *);
 	void (*vcpu_setstate)(struct nvmm_cpu *);
 	void (*vcpu_getstate)(struct nvmm_cpu *);
-	int (*vcpu_inject)(struct nvmm_cpu *);
 	int (*vcpu_run)(struct nvmm_machine *, struct nvmm_cpu *,
 	    struct nvmm_vcpu_exit *);
 };
@@ -138,13 +135,13 @@ extern const struct nvmm_impl nvmm_x86_vmx;
 #endif
 
 extern struct nvmm_owner nvmm_root_owner;
-extern volatile unsigned int nmachines;
+extern volatile unsigned int nvmm_nmachines;
 extern const struct nvmm_impl *nvmm_impl;
 
 const struct nvmm_impl *nvmm_ident(void);
-int	nvmm_init(void);
-void	nvmm_fini(void);
-int	nvmm_ioctl(struct nvmm_owner *, unsigned long, void *);
-void	nvmm_kill_machines(struct nvmm_owner *);
+int nvmm_init(void);
+void nvmm_fini(void);
+int nvmm_ioctl(struct nvmm_owner *, unsigned long, void *);
+void nvmm_kill_machines(struct nvmm_owner *);
 
 #endif /* _NVMM_INTERNAL_H_ */

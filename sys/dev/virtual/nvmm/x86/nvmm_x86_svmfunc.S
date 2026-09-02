@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2018-2026 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -42,7 +42,7 @@
 #include <machine/segments.h>
 
 #define ASM_NVMM
-#include "nvmm_x86.h"
+#include "nvmm_x86_internal.h"
 
 	.text
 
@@ -83,8 +83,7 @@
 	popq	%rax				;\
 	movzwq	%ax,%rdx			;\
 	movq	CPUVAR(GDT),%rax		;\
-	/* Clear the busy bit for reloading. */	\
-	andq	$~0x0200,4(%rax,%rdx, 1)	;\
+	andq	$~0x0200,4(%rax,%rdx,1)		;\
 	ltrw	%dx
 #elif defined(__DragonFly__)
 /* In DragonFly, PCPU(tss_gdt) points directly to the gdt[] entry for the
@@ -92,11 +91,9 @@
  * gdtstore[] table. */
 #define HOST_RESTORE_TR				\
 	popq	%rax				;\
-	movzwq	%ax,%rdx			;\
-	movq	PCPU(tss_gdt),%rax		;\
-	/* Clear the busy bit for reloading. */	\
-	andq	$~0x0200,4(%rax)		;\
-	ltrw	%dx
+	movq	PCPU(tss_gdt),%rdx		;\
+	andq	$~0x0200,4(%rdx)		;\
+	ltrw	%ax
 #endif
 
 #define HOST_SAVE_LDT		\

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2021-2026 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -25,11 +25,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/kernel.h>
-#include <sys/mman.h>
 
 #include "nvmm.h"
 #include "nvmm_os.h"
@@ -72,7 +67,7 @@ os_vmobj_rel(os_vmobj_t *vmobj)
 }
 
 int
-os_vmobj_map(struct vm_map *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
+os_vmobj_map(os_vmmap_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
     voff_t offset, bool wired, bool fixed, bool shared, int prot, int maxprot)
 {
 	uvm_flag_t uflags, uprot, umaxprot;
@@ -137,7 +132,7 @@ os_vmobj_map(struct vm_map *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
 }
 
 void
-os_vmobj_unmap(struct vm_map *map, vaddr_t start, vaddr_t end,
+os_vmobj_unmap(os_vmmap_t *map, vaddr_t start, vaddr_t end,
     bool wired __unused)
 {
 	uvm_unmap(map, start, end);
@@ -169,7 +164,6 @@ os_pa_zalloc(void)
 	struct vm_page *pg;
 
 	pg = uvm_pagealloc(NULL, 0, NULL, UVM_PGA_ZERO);
-
 	return VM_PAGE_TO_PHYS(pg);
 }
 
@@ -230,6 +224,12 @@ os_contigpa_free(paddr_t pa, vaddr_t va, size_t npages)
 	}
 }
 
+time_t
+os_time(void)
+{
+	return time_second;
+}
+
 /* -------------------------------------------------------------------------- */
 
 #include <sys/conf.h>
@@ -237,8 +237,6 @@ os_contigpa_free(paddr_t pa, vaddr_t va, size_t npages)
 #include <sys/file.h>
 #include <sys/filedesc.h>
 #include <sys/module.h>
-
-#include "ioconf.h"
 
 static dev_type_open(nbsd_nvmm_open);
 static int nbsd_nvmm_ioctl(file_t *, u_long, void *);
@@ -290,6 +288,7 @@ nbsd_nvmm_open(dev_t dev, int flags, int type, struct lwp *l)
 		return error;
 
 	if (OFLAGS(flags) & O_WRONLY) {
+		/* Opened by the nvmmctl(8) utility. */
 		owner = &nvmm_root_owner;
 	} else {
 		owner = os_mem_alloc(sizeof(*owner));
@@ -324,7 +323,7 @@ nbsd_nvmm_close(file_t *fp)
 	return 0;
 }
 
-/* -------------------------------------------------------------------------- */
+#include "ioconf.h"
 
 static int nvmm_match(device_t, cfdata_t, void *);
 static void nvmm_attach(device_t, device_t, void *);
@@ -368,7 +367,7 @@ nvmm_attach(device_t parent, device_t self, void *aux)
 static int
 nvmm_detach(device_t self, int flags)
 {
-	if (os_atomic_load_uint(&nmachines) > 0)
+	if (os_atomic_load_uint(&nvmm_nmachines) > 0)
 		return EBUSY;
 	nvmm_fini();
 	return 0;

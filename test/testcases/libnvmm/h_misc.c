@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
+ * Copyright (c) 2026 Maxime Villard, m00nbsd.net
  * All rights reserved.
  *
  * This code is part of the NVMM hypervisor.
@@ -39,11 +39,28 @@
 
 #include "h_os.h"
 
-#define IO_SIZE 128
-static char iobuf[IO_SIZE];
-
-static char *databuf;
 static uint8_t *instbuf;
+
+static uint64_t
+run_machine(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
+{
+	struct nvmm_vcpu_exit *exit = vcpu->exit;
+
+	while (1) {
+		if (nvmm_vcpu_run(mach, vcpu) == -1)
+			err(errno, "nvmm_vcpu_run");
+
+		switch (exit->reason) {
+		case NVMM_VCPU_EXIT_NONE:
+			break;
+
+		default:
+			return exit->reason;
+		}
+	}
+}
+
+/* -------------------------------------------------------------------------- */
 
 static void
 init_seg(struct nvmm_x64_state_seg *seg, int type, int sel)
@@ -62,9 +79,12 @@ init_seg(struct nvmm_x64_state_seg *seg, int type, int sel)
 }
 
 static void
-reset_machine(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
+reset_machine64(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
 	struct nvmm_x64_state *state = vcpu->state;
+
+	if (nvmm_vcpu_getstate(mach, vcpu, NVMM_X64_STATE_ALL) == -1)
+		err(errno, "nvmm_vcpu_getstate");
 
 	memset(state, 0, sizeof(*state));
 
@@ -90,6 +110,9 @@ reset_machine(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	state->crs[NVMM_X64_CR_CR4] = CR4_PAE;
 	state->msrs[NVMM_X64_MSR_EFER] = EFER_LME | EFER_SCE | EFER_LMA;
 
+	/* Reset TPR. */
+	state->crs[NVMM_X64_CR_CR8] = 0;
+
 	state->msrs[NVMM_X64_MSR_PAT] = MSR_PAT_VALUE;
 
 	/* Page tables. */
@@ -102,7 +125,7 @@ reset_machine(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 }
 
 static void
-map_pages(struct nvmm_machine *mach)
+map_pages64(struct nvmm_machine *mach)
 {
 	pt_entry_t *L4, *L3, *L2, *L1;
 	int ret;
@@ -111,21 +134,11 @@ map_pages(struct nvmm_machine *mach)
 	    -1, 0);
 	if (instbuf == MAP_FAILED)
 		err(errno, "mmap");
-	databuf = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE,
-	    -1, 0);
-	if (databuf == MAP_FAILED)
-		err(errno, "mmap");
 
 	if (nvmm_hva_map(mach, (uintptr_t)instbuf, PAGE_SIZE) == -1)
 		err(errno, "nvmm_hva_map");
-	if (nvmm_hva_map(mach, (uintptr_t)databuf, PAGE_SIZE) == -1)
-		err(errno, "nvmm_hva_map");
 	ret = nvmm_gpa_map(mach, (uintptr_t)instbuf, 0x2000, PAGE_SIZE,
 	    PROT_READ|PROT_EXEC);
-	if (ret == -1)
-		err(errno, "nvmm_gpa_map");
-	ret = nvmm_gpa_map(mach, (uintptr_t)databuf, 0x1000, PAGE_SIZE,
-	    PROT_READ|PROT_WRITE);
 	if (ret == -1)
 		err(errno, "nvmm_gpa_map");
 
@@ -186,199 +199,189 @@ map_pages(struct nvmm_machine *mach)
 
 /* -------------------------------------------------------------------------- */
 
-static size_t iobuf_off = 0;
-
-static void
-io_callback(struct nvmm_io *io)
-{
-	if (io->port != 123) {
-		err(-1, "wrong port: %u", io->port);
-	}
-
-	printf("-> port = %u, size = %zu (%s)\n", io->port, io->size,
-	    io->in ? "in" : "out");
-
-	if (io->in) {
-		memcpy(io->data, iobuf + iobuf_off, io->size);
-	} else {
-		memcpy(iobuf + iobuf_off, io->data, io->size);
-	}
-	iobuf_off += io->size;
-
-}
-
-static int
-handle_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
-{
-	if (nvmm_assist_io(mach, vcpu) == -1) {
-		warn("nvmm_assist_io");
-		return -1;
-	}
-
-	return 0;
-}
-
-static int
-run_machine(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
-{
-	struct nvmm_vcpu_exit *exit = vcpu->exit;
-
-	while (1) {
-		if (nvmm_vcpu_run(mach, vcpu) == -1)
-			err(errno, "nvmm_vcpu_run");
-
-		switch (exit->reason) {
-		case NVMM_VCPU_EXIT_NONE:
-			break;
-
-		case NVMM_VCPU_EXIT_RDMSR:
-			/* Stop here. */
-			return 0;
-
-		case NVMM_VCPU_EXIT_IO:
-			if (handle_io(mach, vcpu) == -1)
-				return -1;
-			break;
-
-		case NVMM_VCPU_EXIT_SHUTDOWN:
-			printf("Shutting down!\n");
-			return 0;
-
-		default:
-			printf("Invalid VMEXIT: 0x%lx\n", exit->reason);
-			return -1;
-		}
-	}
-
-	return -1;
-}
-
-/* -------------------------------------------------------------------------- */
-
-struct test {
-	const char *name;
-	uint8_t *code_begin;
-	uint8_t *code_end;
-	const char *wanted;
-	bool in;
-};
-
-static int
-run_test(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
-    const struct test *test)
-{
-	size_t size;
-	char *res;
-
-	size = (size_t)test->code_end - (size_t)test->code_begin;
-
-	reset_machine(mach, vcpu);
-
-	iobuf_off = 0;
-	memset(iobuf, 0, IO_SIZE);
-	memset(databuf, 0, PAGE_SIZE);
-	memcpy(instbuf, test->code_begin, size);
-
-	if (test->in) {
-		strcpy(iobuf, test->wanted);
-	} else {
-		strcpy(databuf, test->wanted);
-	}
-
-	if (run_machine(mach, vcpu) == -1) {
-		printf("*** Test '%s' failed, run_machine() error\n",
-		    test->name);
-		return 1;
-	}
-
-	if (test->in) {
-		res = databuf;
-	} else {
-		res = iobuf;
-	}
-
-	if (!strcmp(res, test->wanted)) {
-		printf("Test '%s' passed\n", test->name);
-		return 0;
-	} else {
-		printf("*** Test '%s' failed, wanted '%s', got '%s'\n",
-		    test->name, test->wanted, res);
-		return 1;
-	}
-}
-
-/* -------------------------------------------------------------------------- */
-
-extern uint8_t test1_begin, test1_end;
-extern uint8_t test2_begin, test2_end;
-extern uint8_t test3_begin, test3_end;
-extern uint8_t test4_begin, test4_end;
-extern uint8_t test5_begin, test5_end;
-extern uint8_t test6_begin, test6_end;
-extern uint8_t test7_begin, test7_end;
-extern uint8_t test8_begin, test8_end;
-extern uint8_t test9_begin, test9_end;
-extern uint8_t test10_begin, test10_end;
-extern uint8_t test11_begin, test11_end;
-extern uint8_t test12_begin, test12_end;
-extern uint8_t test13_begin, test13_end;
-
-static const struct test tests[] = {
-	{ "test1 - INB", &test1_begin, &test1_end, "12", true },
-	{ "test2 - INW", &test2_begin, &test2_end, "1234", true },
-	{ "test3 - INL", &test3_begin, &test3_end, "12345678", true },
-	{ "test4 - INSB+REP", &test4_begin, &test4_end, "12345", true },
-	{ "test5 - INSW+REP", &test5_begin, &test5_end,
-	  "Comment est votre blanquette", true },
-	{ "test6 - INSL+REP", &test6_begin, &test6_end,
-	  "123456789abcdefghijklmnopqrs", true },
-	{ "test7 - OUTB", &test7_begin, &test7_end, "12", false },
-	{ "test8 - OUTW", &test8_begin, &test8_end, "1234", false },
-	{ "test9 - OUTL", &test9_begin, &test9_end, "12345678", false },
-	{ "test10 - OUTSB+REP", &test10_begin, &test10_end, "12345", false },
-	{ "test11 - OUTSW+REP", &test11_begin, &test11_end,
-	  "Ah, Herr Bramard", false },
-	{ "test12 - OUTSL+REP", &test12_begin, &test12_end,
-	  "123456789abcdefghijklmnopqrs", false },
-	{ "test13 - addr32 INSB+REP", &test13_begin, &test13_end,
-	  "Y", true },
-	{ NULL, NULL, NULL, NULL, false }
-};
-
-static struct nvmm_assist_callbacks callbacks = {
-	.io = io_callback,
-	.mem = NULL
-};
+extern uint8_t test_tpr_begin, test_tpr_next_rip, test_tpr_end;
 
 /*
- * 0x1000: Data, mapped
  * 0x2000: Instructions, mapped
  * 0x3000: L4
  * 0x4000: L3
  * 0x5000: L2
  * 0x6000: L1
  */
-int main(int argc __unused, char *argv[] __unused)
+static int
+test_tpr(void)
 {
+	const char *test_name = "TPR";
+	struct nvmm_capability cap;
 	struct nvmm_machine mach;
 	struct nvmm_vcpu vcpu;
-	size_t i;
-	int nfail;
+	struct nvmm_vcpu_conf_tpr tpr;
+	size_t size;
+	uint64_t next_rip;
+	uint64_t reason;
+	int ret;
 
-	if (nvmm_init() == -1)
-		err(errno, "nvmm_init");
+	if (nvmm_capability(&cap) == -1)
+		err(errno, "nvmm_capability");
+
+	if ((cap.arch.vcpu_conf_support & NVMM_CAP_ARCH_VCPU_CONF_TPR) == 0) {
+		printf("Test '%s' skipped\n", test_name);
+		return 0;
+	}
+
 	if (nvmm_machine_create(&mach) == -1)
 		err(errno, "nvmm_machine_create");
 	if (nvmm_vcpu_create(&mach, 0, &vcpu) == -1)
 		err(errno, "nvmm_vcpu_create");
-	nvmm_vcpu_configure(&mach, &vcpu, NVMM_VCPU_CONF_CALLBACKS, &callbacks);
-	map_pages(&mach);
 
-	nfail = 0;
-	for (i = 0; tests[i].name != NULL; i++) {
-		nfail += run_test(&mach, &vcpu, &tests[i]);
+	map_pages64(&mach);
+
+	size = (size_t)&test_tpr_end - (size_t)&test_tpr_begin;
+	memcpy(instbuf, &test_tpr_begin, size);
+
+	memset(&tpr, 0, sizeof(tpr));
+
+	/*
+	 * Set exit_changed and ensure we get a NVMM_VCPU_EXIT_TPR_CHANGED at
+	 * the expected RIP.
+	 */
+
+	tpr.exit_changed = 1;
+	if (nvmm_vcpu_configure(&mach, &vcpu, NVMM_VCPU_CONF_TPR, &tpr) == -1)
+		err(errno, "nvmm_vcpu_configure");
+
+	reset_machine64(&mach, &vcpu);
+	reason = run_machine(&mach, &vcpu);
+
+	if (reason != NVMM_VCPU_EXIT_TPR_CHANGED) {
+		printf("*** Test '%s' failed, did not get VMEXIT\n", test_name);
+		ret = 1;
+		goto done;
 	}
-	printf("\n");
+
+	if (nvmm_vcpu_getstate(&mach, &vcpu, NVMM_X64_STATE_ALL) == -1)
+		err(errno, "nvmm_vcpu_getstate");
+	if (vcpu.state->crs[NVMM_X64_CR_CR8] != 0x3) {
+		printf("*** Test '%s' failed, CR8=%#lx\n", test_name,
+		    vcpu.state->crs[NVMM_X64_CR_CR8]);
+		ret = 1;
+		goto done;
+	}
+
+	next_rip = 0x2000 + (size_t)&test_tpr_next_rip - (size_t)&test_tpr_begin;
+
+	if (vcpu.state->gprs[NVMM_X64_GPR_RIP] != next_rip) {
+		printf("*** Test '%s' failed, RIP=%#lx\n", test_name,
+		    vcpu.state->gprs[NVMM_X64_GPR_RIP]);
+		ret = 1;
+		goto done;
+	}
+
+	/*
+	 * Now unset exit_changed and ensure the VM just finishes.
+	 */
+
+	tpr.exit_changed = 0;
+	if (nvmm_vcpu_configure(&mach, &vcpu, NVMM_VCPU_CONF_TPR, &tpr) == -1)
+		err(errno, "nvmm_vcpu_configure");
+
+	reset_machine64(&mach, &vcpu);
+	reason = run_machine(&mach, &vcpu);
+
+	if (reason != NVMM_VCPU_EXIT_RDMSR) {
+		printf("*** Test '%s' failed, VM did not finish\n", test_name);
+		ret = 1;
+		goto done;
+	}
+
+	if (nvmm_vcpu_getstate(&mach, &vcpu, NVMM_X64_STATE_ALL) == -1)
+		err(errno, "nvmm_vcpu_getstate");
+	if (vcpu.state->crs[NVMM_X64_CR_CR8] != 0x3) {
+		printf("*** Test '%s' failed, CR8=%#lx\n", test_name,
+		    vcpu.state->crs[NVMM_X64_CR_CR8]);
+		ret = 1;
+		goto done;
+	}
+
+	printf("Test '%s' passed\n", test_name);
+	ret = 0;
+
+done:
+	if (nvmm_vcpu_destroy(&mach, &vcpu) == -1)
+		err(errno, "nvmm_vcpu_destroy");
+	if (nvmm_machine_destroy(&mach) == -1)
+		err(errno, "nvmm_machine_destroy");
+
+	return ret;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static int
+test_ram(void)
+{
+	const char *test_name = "RAM";
+	struct nvmm_capability cap;
+	struct nvmm_machine mach;
+	gpaddr_t last_gpa;
+	void *page;
+	int ret;
+
+	if (nvmm_capability(&cap) == -1)
+		err(errno, "nvmm_capability");
+
+	if (nvmm_machine_create(&mach) == -1)
+		err(errno, "nvmm_machine_create");
+
+	page = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE,
+	    -1, 0);
+	if (page == MAP_FAILED)
+		err(errno, "mmap");
+	if (nvmm_hva_map(&mach, (uintptr_t)page, PAGE_SIZE) == -1)
+		err(errno, "nvmm_hva_map");
+
+	/*
+	 * Attempt to map/unmap the last GPA.
+	 */
+
+	last_gpa = cap.max_ram - PAGE_SIZE;
+
+	ret = nvmm_gpa_map(&mach, (uintptr_t)page, last_gpa, PAGE_SIZE,
+	    PROT_READ|PROT_EXEC);
+	if (ret == -1) {
+		printf("*** Test '%s' failed, mapping failed\n", test_name);
+		ret = 1;
+		goto done;
+	}
+
+	ret = nvmm_gpa_unmap(&mach, (uintptr_t)page, last_gpa, PAGE_SIZE);
+	if (ret == -1) {
+		printf("*** Test '%s' failed, unmapping failed\n", test_name);
+		ret = 1;
+		goto done;
+	}
+
+	printf("Test '%s' passed\n", test_name);
+	ret = 0;
+
+done:
+	if (nvmm_machine_destroy(&mach) == -1)
+		err(errno, "nvmm_machine_destroy");
+
+	return ret;
+}
+
+/* -------------------------------------------------------------------------- */
+
+int main(int argc __unused, char *argv[] __unused)
+{
+	int nfail = 0;
+
+	if (nvmm_init() == -1)
+		err(errno, "nvmm_init");
+
+	nfail += test_tpr();
+	nfail += test_ram();
 
 	if (nfail == 0) {
 		printf("All tests passed.\n");
