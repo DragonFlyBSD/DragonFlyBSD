@@ -41,6 +41,9 @@ CONF=	${PROG}.conf
 OUTMK=	${PROG}.mk
 OUTC=	${PROG}.c
 OUTPUTS=${OUTMK} ${OUTC} ${PROG}.cache
+
+CRUNCHGEN?= crunchgen
+CRUNCHENV?= # empty
 CRUNCHOBJS= ${.OBJDIR}
 CRUNCH_GENERATE_LINKS?= yes
 CRUNCH_LINKTYPE?= hard
@@ -82,6 +85,15 @@ LINKS+= ${BINDIR}/${PROG} ${BINDIR}/${A}
 .endif   # CRUNCH_GENERATE_LINKS
 .endfor  # CRUNCH_PROGS_${D}
 .endfor  # CRUNCH_SRCDIRS
+
+# Internal libraires
+_CRUNCH_INTLIBS= ${CRUNCH_INTLIBS}
+.for D in ${CRUNCH_SRCDIRS}
+.for P in ${CRUNCH_PROGS_${D}}
+_CRUNCH_INTLIBS+= ${CRUNCH_INTLIB_${P}}
+.endfor
+.endfor
+_CRUNCH_INTLIBS:= ${_CRUNCH_INTLIBS:O:u}  # remove duplicates
 
 .if !defined(_SKIP_BUILD)
 all: ${PROG}
@@ -137,9 +149,6 @@ ${CONF}: Makefile
 .endfor  # CRUNCH_PROGS_${D}
 .endfor  # CRUNCH_SRCDIRS
 
-CRUNCHGEN?= crunchgen
-CRUNCHENV?=	# empty
-.ORDER: ${OUTPUTS} objs
 ${OUTPUTS:[1]}: .META
 ${OUTPUTS:[2..-1]}: .NOMETA
 ${OUTPUTS}: ${CONF}
@@ -157,6 +166,7 @@ ${PROG}: ${OUTPUTS} objs .NOMETA .PHONY
 	    .MAKE.META.IGNORE_PATHS="${.MAKE.META.IGNORE_PATHS}" \
 	    -f ${OUTMK} exe
 
+.ORDER: ${OUTPUTS} objs
 objs: ${OUTMK} .META
 	${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS} \
 	    ${MAKE} -f ${OUTMK} objs
@@ -176,18 +186,6 @@ ${__target}_crunchdir_${P}: .PHONY .MAKE
 ${__target}: ${__target}_crunchdir_${P}
 .endfor
 .endfor
-.endfor
-
-# Internal libraires
-_CRUNCH_INTLIBS= ${CRUNCH_INTLIBS}
-.for D in ${CRUNCH_SRCDIRS}
-.for P in ${CRUNCH_PROGS_${D}}
-_CRUNCH_INTLIBS+= ${CRUNCH_INTLIB_${P}}
-.endfor
-.endfor
-_CRUNCH_INTLIBS:= ${_CRUNCH_INTLIBS:O:u}  # remove duplicates
-
-.for __target in ${__targets}
 .for L in ${_CRUNCH_INTLIBS}
 ${__target}_crunchdir_${L:T}: .PHONY .MAKE
 	(cd ${L:H} && \
