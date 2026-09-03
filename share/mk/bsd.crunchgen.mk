@@ -23,6 +23,7 @@
 # CRUNCH_INTLIB_${P}	Additional internal libraries to be built
 #			and statically linked for ${P}
 # CRUNCH_KEEP_${P}	Additional symbols to be kept for ${P}
+# CRUNCH_HOSTPROGS_${P}	Directories of the host programs to build for ${P}
 #
 # By default, any name appearing in CRUNCH_PROGS or CRUNCH_ALIAS_${P}
 # will be used to generate a hard/soft link to the resulting binary.
@@ -193,6 +194,25 @@ ${__target}_crunchdir_${L:T}: .PHONY .MAKE
 	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
 		DIRPRFX=${DIRPRFX}${L:T}/ ${CRUNCH_BUILDOPTS} ${__target})
 ${__target}: ${__target}_crunchdir_${L:T}
+.endfor
+.endfor
+
+# Build the required host programs if any.
+.for D in ${CRUNCH_SRCDIRS}
+.for P in ${CRUNCH_PROGS_${D}}
+.for HP in ${CRUNCH_HOSTPROGS_${P}}
+.for __target in obj depend all clean
+${__target}_crunchdir_${P}_${HP:T}: .PHONY .MAKE
+	(cd ${HP} && \
+	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
+		DIRPRFX=${DIRPRFX}${P}/${HP:T}/ ${CRUNCH_BUILDOPTS} \
+		${__target:C/clean/clean cleandepend/})
+.endfor
+clean: clean_crunchdir_${P}_${HP:T}
+depend_crunchdir_${P}: all_crunchdir_${P}_${HP:T}
+all_crunchdir_${P}_${HP:T}: depend_crunchdir_${P}_${HP:T}
+depend_crunchdir_${P}_${HP:T}: obj_crunchdir_${P}_${HP:T}
+.endfor
 .endfor
 .endfor
 
