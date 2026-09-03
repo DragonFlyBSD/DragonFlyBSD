@@ -103,6 +103,9 @@ CRUNCH_PROGS_usr.bin=	\
 	xz		\
 	yes
 
+CRUNCH_SRCDIR_awk= ${.CURDIR}/../../usr.bin/awk/awk
+CRUNCH_HOSTPROGS_awk= ${.CURDIR}/../../usr.bin/awk/maketab
+
 CRUNCH_ALIAS_bzip2= bunzip2 bzcat
 CRUNCH_ALIAS_gzip= gunzip gzcat zcat
 CRUNCH_ALIAS_hexdump= hd od
