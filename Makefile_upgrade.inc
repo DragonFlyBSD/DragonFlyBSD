@@ -4000,6 +4000,7 @@ TO_REMOVE+=/usr/share/mk/bsd.cpu.gcc47.mk
 TO_REMOVE+=/usr/include/sys/priv.h
 TO_REMOVE+=/usr/share/man/man9/BACKLIGHT_SET_STATUS.9.gz
 TO_REMOVE+=/rescue/oinit
+TO_REMOVE+=/rescue/rescue.libcrypto
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

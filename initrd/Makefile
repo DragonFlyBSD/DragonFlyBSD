@@ -1,7 +1,7 @@
 INITRD_MAKE=	LC_ALL=C \
 		make -m ${.CURDIR}/../share/mk
 INITRD_SUBDIRS=	etc oinit
-RESCUE_SUBDIRS=	rescue rescue.libcrypto
+RESCUE_SUBDIRS=	rescue
 
 # Temporary directory to stage the files for creating the initrd image.
 #
