@@ -27,7 +27,8 @@ CRUNCH_PROGS_usr.bin=	\
 CRUNCH_ALIAS_ssh= slogin
 
 # telnet requires the 'libtelnet.a' internal library
-CRUNCH_INTLIB_telnet= ${.CURDIR}/../../lib/libtelnet/libtelnet.a
+CRUNCH_INTLIB_telnet= libtelnet.a
+CRUNCH_SRCDIR_libtelnet.a= ${.CURDIR}/../../lib/libtelnet
 
 # Programs from 'sbin'
 #

@@ -9,6 +9,7 @@
 # CRUNCH_LIBS		Libraries to be statically linked with
 # CRUNCH_SHLIBS		Libraries to be dynamically linked with
 # CRUNCH_INTLIBS	Internal libraries to be built and linked with
+#			(names only; source dir set by CRUNCH_SRCDIR_${L})
 # CRUNCH_BUILDOPTS	Build options to be added for every program
 # CRUNCH_CFLAGS		Compiler flags to be added for every program
 # CRUNCH_LINKOPTS	Options to be added for linking the final binary
@@ -22,8 +23,15 @@
 # CRUNCH_LIB_${P}	Additional libraries to be statically linked for ${P}
 # CRUNCH_INTLIB_${P}	Additional internal libraries to be built
 #			and statically linked for ${P}
+#			(names only; source dir set by CRUNCH_SRCDIR_${L})
 # CRUNCH_KEEP_${P}	Additional symbols to be kept for ${P}
 # CRUNCH_HOSTPROGS_${P}	Directories of the host programs to build for ${P}
+#
+# Special options can be specified for internal libraries:
+#
+# CRUNCH_SRCDIR_${L}	Base source directory for library ${L}
+# CRUNCH_BUILDOPTS_${L}	Additional build options for ${L}
+# CRUNCH_CFLAGS_${L}	Additional compiler flags for ${L}
 #
 # By default, any name appearing in CRUNCH_PROGS or CRUNCH_ALIAS_${P}
 # will be used to generate a hard/soft link to the resulting binary.
@@ -54,17 +62,19 @@ CRUNCH_LINKTYPE= soft
 
 CLEANFILES+= ${CONF} *.o *.lo *.c *.mk *.cache *.a *.h
 
+_CRUNCH_PROGS=
+
 # Set a default SRCDIR for each for simpler handling below.
 .for D in ${CRUNCH_SRCDIRS}
 .for P in ${CRUNCH_PROGS_${D}}
 CRUNCH_SRCDIR_${P}?=	${CRUNCH_PATH_${D}}/${D}/${P}
 .endfor
+_CRUNCH_PROGS+= ${CRUNCH_PROGS_${D}}
 .endfor
 
 # Program names and their aliases that contribute links to crunched
 # executable, except for the suppressed ones.
-.for D in ${CRUNCH_SRCDIRS}
-.for P in ${CRUNCH_PROGS_${D}}
+.for P in ${_CRUNCH_PROGS}
 ${OUTPUTS}: ${CRUNCH_SRCDIR_${P}}/Makefile
 .if ${CRUNCH_GENERATE_LINKS} == "yes"
 .ifndef CRUNCH_SUPPRESS_LINK_${P}
@@ -84,17 +94,19 @@ LINKS+= ${BINDIR}/${PROG} ${BINDIR}/${A}
 .endif   # !CRUNCH_SUPPRESS_LINK_${A}
 .endfor  # CRUNCH_ALIAS_${P}
 .endif   # CRUNCH_GENERATE_LINKS
-.endfor  # CRUNCH_PROGS_${D}
-.endfor  # CRUNCH_SRCDIRS
+.endfor  # _CRUNCH_PROGS
 
 # Internal libraires
 _CRUNCH_INTLIBS= ${CRUNCH_INTLIBS}
-.for D in ${CRUNCH_SRCDIRS}
-.for P in ${CRUNCH_PROGS_${D}}
+.for P in ${_CRUNCH_PROGS}
 _CRUNCH_INTLIBS+= ${CRUNCH_INTLIB_${P}}
 .endfor
-.endfor
 _CRUNCH_INTLIBS:= ${_CRUNCH_INTLIBS:O:u}  # remove duplicates
+.for L in ${_CRUNCH_INTLIBS}
+.ifndef CRUNCH_SRCDIR_${L}
+.error CRUNCH_SRCDIR_${L} is missing for internal library ${L}
+.endif
+.endfor
 
 .if !defined(_SKIP_BUILD)
 all: ${PROG}
@@ -121,8 +133,7 @@ ${CONF}: Makefile
 .ifdef CRUNCH_INTLIBS
 	echo "libs_int ${CRUNCH_INTLIBS}" >>${.TARGET}
 .endif
-.for D in ${CRUNCH_SRCDIRS}
-.for P in ${CRUNCH_PROGS_${D}}
+.for P in ${_CRUNCH_PROGS}
 	echo "progs ${P}" >>${.TARGET}
 	echo "special ${P} srcdir ${CRUNCH_SRCDIR_${P}}" >>${.TARGET}
 .ifdef CRUNCH_CFLAGS_${P}
@@ -147,8 +158,20 @@ ${CONF}: Makefile
 .for A in ${CRUNCH_ALIAS_${P}}
 	echo "ln ${P} ${A}" >>${.TARGET}
 .endfor
-.endfor  # CRUNCH_PROGS_${D}
-.endfor  # CRUNCH_SRCDIRS
+.endfor  # _CRUNCH_PROGS
+.for L in ${_CRUNCH_INTLIBS}
+	echo "special ${L} srcdir ${CRUNCH_SRCDIR_${L}}" >>${.TARGET}
+.ifdef CRUNCH_CFLAGS_${L}
+	echo "special ${L} buildopts \
+	    DIRPRFX=${DIRPRFX}${L}/ \
+	    ${CRUNCH_BUILDOPTS_${L}} \
+	    CRUNCH_CFLAGS=\"${CRUNCH_CFLAGS_${L}}\"" >>${.TARGET}
+.else
+	echo "special ${L} buildopts \
+	    DIRPRFX=${DIRPRFX}${L}/ \
+	    ${CRUNCH_BUILDOPTS_${L}}" >>${.TARGET}
+.endif
+.endfor
 
 ${OUTPUTS:[1]}: .META
 ${OUTPUTS:[2..-1]}: .NOMETA
@@ -179,27 +202,17 @@ objs: ${OUTMK} .META
 # targets should NOT be propagated into the components.
 __targets= clean cleandepend cleandir obj objlink depend
 .for __target in ${__targets}
-.for D in ${CRUNCH_SRCDIRS}
-.for P in ${CRUNCH_PROGS_${D}}
-${__target}_crunchdir_${P}: .PHONY .MAKE
-	(cd ${CRUNCH_SRCDIR_${P}} && \
+.for E in ${_CRUNCH_PROGS} ${_CRUNCH_INTLIBS}
+${__target}_crunchdir_${E}: .PHONY .MAKE
+	(cd ${CRUNCH_SRCDIR_${E}} && \
 	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
-		DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${__target})
-${__target}: ${__target}_crunchdir_${P}
-.endfor
-.endfor
-.for L in ${_CRUNCH_INTLIBS}
-${__target}_crunchdir_${L:T}: .PHONY .MAKE
-	(cd ${L:H} && \
-	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
-		DIRPRFX=${DIRPRFX}${L:T}/ ${CRUNCH_BUILDOPTS} ${__target})
-${__target}: ${__target}_crunchdir_${L:T}
+		DIRPRFX=${DIRPRFX}${E}/ ${CRUNCH_BUILDOPTS} ${__target})
+${__target}: ${__target}_crunchdir_${E}
 .endfor
 .endfor
 
 # Build the required host programs if any.
-.for D in ${CRUNCH_SRCDIRS}
-.for P in ${CRUNCH_PROGS_${D}}
+.for P in ${_CRUNCH_PROGS}
 .for HP in ${CRUNCH_HOSTPROGS_${P}}
 .for __target in obj depend all clean
 ${__target}_crunchdir_${P}_${HP:T}: .PHONY .MAKE
@@ -212,7 +225,6 @@ clean: clean_crunchdir_${P}_${HP:T}
 depend_crunchdir_${P}: all_crunchdir_${P}_${HP:T}
 all_crunchdir_${P}_${HP:T}: depend_crunchdir_${P}_${HP:T}
 depend_crunchdir_${P}_${HP:T}: obj_crunchdir_${P}_${HP:T}
-.endfor
 .endfor
 .endfor
 

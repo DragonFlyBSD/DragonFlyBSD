@@ -24,7 +24,7 @@
 .\"			   University of Maryland at College Park
 .\" $FreeBSD: head/usr.sbin/crunch/crunchgen/crunchgen.1 213573 2010-10-08 12:40:16Z uqs $
 .\"
-.Dd June 23, 2026
+.Dd September 4, 2026
 .Dt CRUNCHGEN 1
 .Os
 .Sh NAME
@@ -212,11 +212,18 @@ The
 directive overrides a library specified gratuitously on a
 .Ic libs
 line.
-.It Ic libs_int Ar library-fullpath ...
-A list of full paths to the internal libraries that will be built and
-statically linked for the crunched binary.
-The library paths are specified like
-.Dq Pa <source-dir>/lib<name>.a .
+.It Ic libs_int Ar libname ...
+A list of internal libraries that will be built and statically linked
+into the crunched binary.
+Each
+.Ar libname
+specifies the library file name (e.g.,
+.Pa libfoo.a )
+and must have a corresponding
+.Ic special Ar libname Ic srcdir Ar pathname
+command telling
+.Nm
+where to find and build it.
 .It Ic buildopts Ar buildopts ...
 A list of build options to be added to every make target.
 .It Ic linkopts Ar linkopts ...
@@ -244,6 +251,11 @@ the following
 commands can be used to set
 .Nm
 parameters for a component program.
+A subset of these commands can also be used to set parameters for
+an internal library specified with
+.Ic libs_int
+or
+.Ic lib_int .
 .Bl -tag -width indent
 .It Ic special Ar progname Ic srcdir Ar pathname
 Set the source directory for
@@ -252,11 +264,24 @@ This is normally calculated by searching the specified
 .Ic srcdirs
 for a directory named
 .Ar progname .
-.It Ic special Ar progname Ic objdir Ar pathname
+.It Ic special Ar libname Ic srcdir Ar pathname
+Set the source directory for
+.Ar libname .
+This is
+.Em mandatory
+for every
+.Ar libname
+referenced by
+.Ic libs_int
+or a program's
+.Ic lib_int .
+.It Ic special Ar progname Ns / Ns Ar libname Ic objdir Ar pathname
 Set the
 .Pa obj
 directory for
-.Ar progname .
+.Ar progname
+or
+.Ar libname .
 The
 .Pa obj
 directory is normally calculated by looking for a directory
@@ -273,20 +298,22 @@ If the directory is not found, the
 .Ic srcdir
 itself becomes the
 .Ic objdir .
-.It Ic special Ar progname Ic buildopts Ar buildopts
+.It Ic special Ar progname Ns / Ns Ar libname Ic buildopts Ar buildopts
 Define a set of build options that should be added to
 .Xr make 1
 targets in addition to those specified using
 .Ic buildopts
 when processing
-.Ar progname .
+.Ar progname
+or
+.Ar libname .
 .It Ic special Ar progname Ic objs Ar object-file-name ...
 Set the list of object files for program
 .Ar progname .
 This is normally calculated by constructing a temporary makefile that includes
 .Dq Ic srcdir Ns / Ns Pa Makefile
 and outputs the value of
-.Va $(OBJS) .
+.Va ${OBJS} .
 .It Ic special Ar progname Ic objpaths Ar full-pathname-to-object-file ...
 Sets the pathnames of the object files for program
 .Ar progname .
@@ -314,10 +341,19 @@ Specifies libraries to be linked with object files to produce
 This can be useful with libraries which redefine routines in
 the standard libraries, or poorly written libraries which
 reference symbols in the object files.
-.It Ic special Ar progname Ic lib_int Ar library-fullpath ...
-A list of full paths to the internal libraries to be built and
+.It Ic special Ar progname Ic lib_int Ar libname ...
+A list of internal libraries to be built and
 statically linked to create
 .Ar progname Ns Pa .lo .
+Similar to the
+.Ic libs_int
+command, each
+.Ar libname
+is a library file name (e.g.,
+.Pa libfoo.a )
+and requires its own
+.Ic special Ar libname Ic srcdir Ar pathname
+command to specify the source directory.
 .It Ic special Ar progname Ic keep Ar symbol-name ...
 Add specified list of symbols to the keep list for program
 .Ar progname .
@@ -348,7 +384,7 @@ and
 to map to the same identifier.
 .El
 .Pp
-Only the
+For component programs, only the
 .Ic objpaths
 parameter is actually needed by
 .Nm ,
@@ -361,6 +397,10 @@ which are in turn calculated from
 so is sometimes convenient to specify the earlier parameters and let
 .Nm
 calculate forward from there if it can.
+.Pp
+For internal libraries, the
+.Ic srcdir
+parameter is mandatory and must be explicitly specified.
 .Pp
 The makefile produced by
 .Nm
@@ -389,14 +429,19 @@ srcdirs /usr/src/bin /usr/src/sbin
 
 progs test cp echo sh fsck halt init mount umount myinstall
 progs anotherprog
-ln test [       # test can be invoked via [
-ln sh -sh       # init invokes the shell with "-sh" in argv[0]
+ln test [	# test can be invoked via [
+ln sh -sh	# init invokes the shell with "-sh" in argv[0]
 
-special myprog objpaths /homes/leroy/src/myinstall.o # no sources
+special myinstall objpaths /homes/leroy/src/myinstall.o	# no sources
+
+special myinstall lib_int libmyutil.a
 
 special anotherprog buildopts -DNO_FOO WITHOUT_BAR=YES
 
 libs -lutil -lcrypt
+
+libs_int libmyutil.a
+special libmyutil.a /path/to/libmyutil/source
 .Ed
 .Pp
 This conf file specifies a small crunched binary consisting of some
@@ -415,11 +460,17 @@ is built the arguments
 .Pp
 are added to all build targets.
 .Pp
+Finally, an internal library
+.Dq Pa libmyutil.a
+will be built from
+.Pa /path/to/libmyutil/source
+and statically linked into the final crunched binary.
+.Pp
 The crunched binary
 .Dq Pa kcopy
 can be built as follows:
 .Bd -literal -offset indent
-% crunchgen -m Makefile kcopy.conf    # gen Makefile and kcopy.c
+% crunchgen -m Makefile kcopy.conf	# gen Makefile and kcopy.c
 % make objs		# build the component programs' .o files
 % make			# build the crunched binary kcopy
 % ./kcopy sh		# test that this invokes the sh shell

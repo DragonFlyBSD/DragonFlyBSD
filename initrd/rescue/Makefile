@@ -220,7 +220,8 @@ CRUNCH_ALIAS_lvm= \
 CRUNCH_SRCDIRS+= grep
 CRUNCH_PATH_grep= ${.CURDIR}/../../gnu/usr.bin
 CRUNCH_PROGS_grep= grep
-CRUNCH_INTLIB_grep= ${CRUNCH_PATH_grep}/grep/libgreputils/libgreputils.a
+CRUNCH_INTLIB_grep= libgreputils.a
+CRUNCH_SRCDIR_libgreputils.a= ${CRUNCH_PATH_grep}/grep/libgreputils
 SCRIPTS+= \
 	${CRUNCH_PATH_grep}/grep/egrep/egrep \
 	${CRUNCH_PATH_grep}/grep/fgrep/fgrep
