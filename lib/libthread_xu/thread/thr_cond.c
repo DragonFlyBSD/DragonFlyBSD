@@ -154,9 +154,11 @@ int
 _pthread_cond_destroy(pthread_cond_t *cond)
 {
 	pthread_cond_t	cv;
-	pthread_t	curthread = tls_get_curthread();
+	pthread_t	curthread;
 	int		rval = 0;
 
+	_thr_check_init();
+	curthread = tls_get_curthread();
 	if (cond == NULL) {
 		rval = EINVAL;
 	} else if (*cond == NULL) {
@@ -206,6 +208,7 @@ cond_cancel_handler(void *arg)
 	pthread_t curthread = tls_get_curthread();
 	struct cond_cancel_info *info = (struct cond_cancel_info *)arg;
 	pthread_cond_t cv;
+	int ret;
 
 	cv = *info->cond;
 	THR_LOCK_ACQUIRE(curthread, &cv->c_lock);
@@ -219,7 +222,15 @@ cond_cancel_handler(void *arg)
 	}
 	THR_LOCK_RELEASE(curthread, &cv->c_lock);
 
-	/* _mutex_cv_lock(info->mutex, info->count); */
+	/*
+	 * A canceled pthread_cond_wait() must reacquire the mutex before
+	 * user cleanup handlers run.  Otherwise a cleanup handler that
+	 * unlocks the mutex sees EPERM and the mutex keeps the condition
+	 * wait reference, so pthread_mutex_destroy() reports EBUSY.
+	 */
+	ret = _mutex_cv_lock(info->mutex, info->count);
+	if (ret != 0)
+		PANIC("Cannot relock mutex after condition wait cancellation");
 }
 
 /*
@@ -231,13 +242,15 @@ static int
 cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 		 const struct timespec *abstime, int cancel)
 {
-	pthread_t curthread = tls_get_curthread();
+	pthread_t curthread;
 	struct timespec ts, ts2, *tsp;
 	struct cond_cancel_info info;
 	pthread_cond_t  cv;
 	int		oldcancel;
 	int		ret;
 
+	_thr_check_init();
+	curthread = tls_get_curthread();
 	/*
 	 * If the condition variable is statically initialized,
 	 * perform the dynamic initialization:
@@ -360,11 +373,13 @@ __pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
 static int
 cond_signal_common(pthread_cond_t *cond, int broadcast)
 {
-	pthread_t	curthread = tls_get_curthread();
+	pthread_t	curthread;
 	struct cond_cancel_info *info;
 	pthread_cond_t	cv;
 	int		ret = 0;
 
+	_thr_check_init();
+	curthread = tls_get_curthread();
 	cond_log("cond_signal_common %p broad=%d\n", *cond, broadcast);
 
 	/*

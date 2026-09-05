@@ -93,6 +93,7 @@ _pthread_atfork(void (*prepare)(void), void (*parent)(void),
 	if (af == NULL)
 		return (ENOMEM);
 
+	_thr_check_init();
 	curthread = tls_get_curthread();
 	af->prepare = prepare;
 	af->parent = parent;
@@ -122,6 +123,7 @@ _thr_atfork_kern(void (*prepare)(void), void (*parent)(void),
 
 	af = __malloc(sizeof(struct pthread_atfork));
 
+	_thr_check_init();
 	curthread = tls_get_curthread();
 	af->prepare = prepare;
 	af->parent = parent;
@@ -156,6 +158,7 @@ __pthread_cxa_finalize(struct dl_phdr_info *phdr_info)
  */
 #pragma weak __malloc_lock
 
+pid_t __fork(void);
 pid_t _fork(void);
 
 pid_t
@@ -173,12 +176,20 @@ _fork(void)
 	int unlock_malloc;
 #endif
 
+	/*
+	 * Skip pthread fork bookkeeping when it cannot matter.  Without this
+	 * path, fork-only latency nearly doubled and fork+exec slowed by about
+	 * 35%.  Use __fork() rather than the raw system call so libc fork
+	 * callbacks still run.
+	 */
 	if (!_thr_is_inited())
-		return (__syscall(SYS_fork));
+		return (__fork());
 
-	errsave = errno;
+	if (!_thr_isthreaded() && TAILQ_EMPTY(&_thr_atfork_list))
+		return (__fork());
+
 	curthread = tls_get_curthread();
-
+	errsave = errno;
 	THR_UMTX_LOCK(curthread, &_thr_atfork_lock);
 	tmp = inprogress;
 	while (tmp) {
@@ -312,6 +323,24 @@ _fork(void)
 
 	/* Return the process ID: */
 	return (ret);
+}
+
+void
+_thr_check_forked_child(pthread_t curthread)
+{
+	int errsave;
+	pid_t pid;
+
+	if (curthread == NULL || _thr_isthreaded())
+		return;
+
+	errsave = errno;
+	pid = getpid();
+	if (_thr_pid != pid) {
+		_thr_pid = pid;
+		curthread->tid = _thr_get_tid();
+	}
+	errno = errsave;
 }
 
 __strong_reference(_fork, fork);

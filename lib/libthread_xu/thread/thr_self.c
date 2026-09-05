@@ -38,8 +38,13 @@
 pthread_t
 _pthread_self(void)
 {
+	pthread_t curthread;
+
+	_thr_check_init();
+	curthread = tls_get_curthread();
+	_thr_check_forked_child(curthread);
 	/* Return the running thread pointer: */
-	return (tls_get_curthread());
+	return (curthread);
 }
 
 __strong_reference(_pthread_self, pthread_self);
