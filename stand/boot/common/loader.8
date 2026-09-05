@@ -71,6 +71,32 @@ are located in
 on the boot file system, which is mounted as
 .Pa /boot
 on the root file system when the kernel is running.
+
+.Pp
+On UEFI systems the
+.Nm
+binary is typically installed on the ESP as
+.Pa EFI/BOOT/BOOTX64.EFI .
+The EFI
+.Nm
+will prefer a GPT whole-partition
+.Nm HAMMER2
+volume (with a
+.Ql BOOT
+or
+.Ql ROOT
+PFS) over the ESP when choosing
+.Va currdev ,
+unless
+.Va currdev
+was set explicitly on the command line.
+The
+.Ql BOOT
+PFS is treated as the boot file system root; if only
+.Ql ROOT
+exists, files are resolved under
+.Pa /boot
+on that PFS.
 .Pp
 During initialization,
 .Nm
@@ -789,6 +815,32 @@ multi volume example:
 .Pp
 Several file systems, boot list, example:
 .Dl ufs:da0s1a;hammer2:ad1s1d
+.Pp
+.Nm HAMMER2
+PFS label on a GPT whole-disk partition (recommended for UEFI):
+.Dl hammer2:da0s1@ROOT
+.Dl hammer2:da0s1@SYSROOT
+.Pp
+The
+.Ql @label
+suffix selects a named PFS.
+If
+.Ql @label
+is omitted, the last character of the device name is treated as a
+partition letter:
+.Ql a
+defaults to
+.Ql BOOT ,
+.Ql d
+to
+.Ql ROOT ,
+and any other letter to
+.Ql DATA .
+On pure GPT partitions such as
+.Pa da0s1
+the last character is a digit, so an explicit
+.Ql @label
+is required.
 .Pp
 Each file system in the list will be tried in the order specified
 until the mount succeeds.
