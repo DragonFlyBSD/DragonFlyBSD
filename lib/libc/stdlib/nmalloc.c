@@ -147,7 +147,7 @@ int __posix_memalign(void **, size_t, size_t);
 typedef struct bigalloc {
 	struct bigalloc *next;	/* hash link */
 	void	*base;		/* base pointer */
-	u_long	active;		/* bytes active */
+	u_long	unused02;	/* (previously bytes active) */
 	u_long	bytes;		/* bytes allocated */
 } *bigalloc_t;
 
@@ -348,7 +348,9 @@ static volatile void *bigcache_array[BIGCACHE];		/* atomic swap */
 static volatile size_t bigcache_size_array[BIGCACHE];	/* SMP races ok */
 static volatile int bigcache_index;			/* SMP races ok */
 static int malloc_panic;
-static size_t excess_alloc;				/* excess big allocs */
+#if 0
+static size_t excess_alloc;				/* REMOVED */
+#endif
 
 static void *_slaballoc(size_t size, int flags);
 static void *_slabrealloc(void *ptr, size_t size);
@@ -655,10 +657,23 @@ bigcache_find_free(bigalloc_t big)
 	return big;
 }
 
+/*
+ * NOTE ON (excess_alloc) optimizations.  We had code which munmap()s excess
+ * portions of large allocations that are not used.  However, many applications
+ * now use malloc_usable_size() without issuing a realloc to actually tell
+ * the malloc system that the additional space is being used.  This can result
+ * in a crash due to the related memory not being mapped.
+ *
+ * We're just going to remove this optimization for now and let the swapper
+ * deal with any dead pages.  Adjusting malloc_usable_size() to use
+ * big->active instead of big->bytes doesn't fix the problem because the
+ * unmapping is asynchronous (so it can occur before or after the call).
+ */
 static __inline
 void
 handle_excess_big(void)
 {
+#if 0
 	int i;
 	bigalloc_t big;
 	bigalloc_t *bigp;
@@ -673,6 +688,7 @@ handle_excess_big(void)
 		if (__isthreaded)
 			_SPINLOCK(&bigspin_array[i & BIGXMASK]);
 		for (big = *bigp; big; big = big->next) {
+#if 0
 			if (big->active < big->bytes) {
 				MASSERT_WTHUNLK((big->active & PAGE_MASK) == 0,
 				    _SPINUNLOCK(&bigspin_array[i & BIGXMASK]));
@@ -684,10 +700,12 @@ handle_excess_big(void)
 						big->active - big->bytes);
 				big->bytes = big->active;
 			}
+#endif
 		}
 		if (__isthreaded)
 			_SPINUNLOCK(&bigspin_array[i & BIGXMASK]);
 	}
+#endif
 }
 
 /*
@@ -1013,11 +1031,13 @@ _slabmemalign(void **memptr, size_t alignment, size_t size)
 		}
 		if (big) {
 			*memptr = big->base;
+#if 0
 			big->active = size;
 			if (big->active < big->bytes) {
 				atomic_add_long(&excess_alloc,
 						big->bytes - big->active);
 			}
+#endif
 			bigp = bigalloc_lock(*memptr);
 			big->next = *bigp;
 			*bigp = big;
@@ -1038,7 +1058,9 @@ _slabmemalign(void **memptr, size_t alignment, size_t size)
 	}
 	bigp = bigalloc_lock(*memptr);
 	big->base = *memptr;
+#if 0
 	big->active = size;
+#endif
 	big->bytes = size;		/* no excess */
 	big->next = *bigp;
 	*bigp = big;
@@ -1168,13 +1190,17 @@ _slaballoc(size_t size, int flags)
 			big->base = chunk;
 			big->bytes = size;
 		}
+#if 0
 		big->active = size;
+#endif
 
 		bigp = bigalloc_lock(chunk);
+#if 0
 		if (big->active < big->bytes) {
 			atomic_add_long(&excess_alloc,
 					big->bytes - big->active);
 		}
+#endif
 		big->next = *bigp;
 		*bigp = big;
 		bigalloc_unlock(chunk);
@@ -1399,12 +1425,14 @@ _slabrealloc(void *ptr, size_t size)
 				 */
 				if (size >= (bigbytes >> 1) &&
 				    size <= bigbytes) {
+#if 0
 					if (big->active != size) {
 						atomic_add_long(&excess_alloc,
 								big->active -
 								size);
 					}
 					big->active = size;
+#endif
 					bigalloc_unlock(ptr);
 					return(ptr);
 				}
@@ -1439,13 +1467,17 @@ _slabrealloc(void *ptr, size_t size)
 						    -1, 0);
 					errno = errno_save;
 					if (addr == (char *)ptr + bigbytes) {
+#if 0
 						atomic_add_long(&excess_alloc,
 								big->active -
 								big->bytes +
 								chunking -
 								size);
+#endif
 						big->bytes = chunking;
+#if 0
 						big->active = size;
+#endif
 						bigalloc_unlock(ptr);
 
 						return(ptr);
@@ -1473,8 +1505,10 @@ _slabrealloc(void *ptr, size_t size)
 				if (size > bigbytes)
 					size = bigbytes;
 				bcopy(ptr, nptr, size);
+#if 0
 				atomic_add_long(&excess_alloc, big->active -
 							       big->bytes);
+#endif
 				_slabfree(ptr, FASTSLABREALLOC, &big);
 
 				return(nptr);
@@ -1618,8 +1652,10 @@ _slabfree(void *ptr, int flags, bigalloc_t *rbigp)
 		while ((big = *bigp) != NULL) {
 			if (big->base == ptr) {
 				*bigp = big->next;
+#if 0
 				atomic_add_long(&excess_alloc, big->active -
 							       big->bytes);
+#endif
 				bigalloc_unlock(ptr);
 
 				/*
