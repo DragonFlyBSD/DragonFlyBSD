@@ -37,7 +37,6 @@ _pthread_getthreadid_np(void)
 {
 	pthread_t curthread;
 
-	_thr_check_init();
 	curthread = tls_get_curthread();
 	_thr_check_forked_child(curthread);
 	return curthread->tid;

@@ -93,7 +93,6 @@ _pthread_atfork(void (*prepare)(void), void (*parent)(void),
 	if (af == NULL)
 		return (ENOMEM);
 
-	_thr_check_init();
 	curthread = tls_get_curthread();
 	af->prepare = prepare;
 	af->parent = parent;
@@ -123,7 +122,6 @@ _thr_atfork_kern(void (*prepare)(void), void (*parent)(void),
 
 	af = __malloc(sizeof(struct pthread_atfork));
 
-	_thr_check_init();
 	curthread = tls_get_curthread();
 	af->prepare = prepare;
 	af->parent = parent;

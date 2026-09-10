@@ -157,7 +157,6 @@ _pthread_cond_destroy(pthread_cond_t *cond)
 	pthread_t	curthread;
 	int		rval = 0;
 
-	_thr_check_init();
 	curthread = tls_get_curthread();
 	if (cond == NULL) {
 		rval = EINVAL;
@@ -249,7 +248,6 @@ cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 	int		oldcancel;
 	int		ret;
 
-	_thr_check_init();
 	curthread = tls_get_curthread();
 	/*
 	 * If the condition variable is statically initialized,
@@ -378,7 +376,6 @@ cond_signal_common(pthread_cond_t *cond, int broadcast)
 	pthread_cond_t	cv;
 	int		ret = 0;
 
-	_thr_check_init();
 	curthread = tls_get_curthread();
 	cond_log("cond_signal_common %p broad=%d\n", *cond, broadcast);
 

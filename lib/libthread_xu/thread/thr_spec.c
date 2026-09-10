@@ -50,7 +50,6 @@ _pthread_key_create(pthread_key_t *key, void (*destructor) (void *))
 	int i;
 
 	/* User program might be preparing to call pthread_create() */
-	_thr_check_init();
 
 	curthread = tls_get_curthread();
 
@@ -80,7 +79,6 @@ _pthread_key_delete(pthread_key_t key)
 	pthread_t curthread;
 	int ret = 0;
 
-	_thr_check_init();
 	curthread = tls_get_curthread();
 	if ((unsigned int)key < PTHREAD_KEYS_MAX) {
 		/* Lock the key table: */
@@ -195,7 +193,6 @@ _pthread_setspecific(pthread_key_t key, const void *value)
 	int		ret = 0;
 
 	/* Point to the running thread: */
-	_thr_check_init();
 	pthread = tls_get_curthread();
 
 	if (pthread->specific ||
@@ -230,7 +227,6 @@ _pthread_getspecific(pthread_key_t key)
 	const void	*data;
 
 	/* Point to the running thread: */
-	_thr_check_init();
 	pthread = tls_get_curthread();
 
 	/* Check if there is specific data: */

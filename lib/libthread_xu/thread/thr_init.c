@@ -221,8 +221,8 @@ _pthread_init_early(void)
  *
  * This is only called under two conditions:
  *
- *   1) Some thread routines have detected that the library hasn't yet
- *      been initialized (_thr_initial == NULL && curthread == NULL), or
+ *   1) libc has installed the initial TLS during program startup
+ *      (curthread == NULL), or
  *
  *   2) An explicit call to reinitialize after a fork (indicated
  *      by curthread != NULL)

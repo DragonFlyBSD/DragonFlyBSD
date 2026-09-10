@@ -48,7 +48,6 @@ _pthread_kill(pthread_t pthread, int sig)
 		/* Invalid signal: */
 		return (EINVAL);
 
-	_thr_check_init();
 	curthread = tls_get_curthread();
 
 	/*

@@ -304,7 +304,6 @@ _sem_wait(sem_t *sem)
 		return (-1);
 	}
 
-	_thr_check_init();
 	curthread = tls_get_curthread();
 	_pthread_testcancel();
 
@@ -345,7 +344,6 @@ _sem_timedwait(sem_t * __restrict sem, const struct timespec * __restrict abstim
 	if (sem_check_validity(sem) != 0)
 		return (-1);
 
-	_thr_check_init();
 	curthread = tls_get_curthread();
 	_pthread_testcancel();
 	sem_log("sem_timedwait %p %d (begin)\n", *sem, (*sem)->count);

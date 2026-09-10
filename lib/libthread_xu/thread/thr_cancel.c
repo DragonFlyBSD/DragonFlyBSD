@@ -40,7 +40,6 @@ _pthread_cancel(pthread_t pthread)
 	int oldtype;
 	int ret;
 
-	_thr_check_init();
 	curthread = tls_get_curthread();
 	/*
 	 * POSIX says _pthread_cancel should be async cancellation safe,
@@ -83,7 +82,6 @@ _pthread_setcancelstate(int state, int *oldstate)
 	pthread_t curthread;
 	int oldval;
 
-	_thr_check_init();
 	curthread = tls_get_curthread();
 	oldval = curthread->cancelflags;
 	if (oldstate != NULL)
@@ -110,7 +108,6 @@ _pthread_setcanceltype(int type, int *oldtype)
 	pthread_t curthread;
 	int oldval;
 
-	_thr_check_init();
 	curthread = tls_get_curthread();
 	oldval = curthread->cancelflags;
 	if (oldtype != NULL)
@@ -135,7 +132,6 @@ _pthread_setcanceltype(int type, int *oldtype)
 void
 _pthread_testcancel(void)
 {
-	_thr_check_init();
 	testcancel(tls_get_curthread());
 }
 

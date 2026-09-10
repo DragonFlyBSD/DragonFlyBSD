@@ -59,7 +59,6 @@ _pthread_create(pthread_t * __restrict thread,
 	const cpu_set_t *cpumask = NULL;
 	int ret = 0, locked;
 
-	_thr_check_init();
 	curthread = tls_get_curthread();
 	_thr_check_forked_child(curthread);
 

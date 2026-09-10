@@ -41,7 +41,6 @@ int
 _pthread_main_np(void)
 {
 
-	_thr_check_init();
 	if (!_thr_initial)
 		return (-1);
 	else

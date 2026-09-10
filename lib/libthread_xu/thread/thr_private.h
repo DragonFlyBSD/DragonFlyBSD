@@ -791,13 +791,6 @@ _thr_is_inited(void)
 	return (_thr_initial != NULL);
 }
 
-static inline void
-_thr_check_init(void)
-{
-	if (_thr_initial == NULL)
-		_libpthread_init(NULL);
-}
-
 struct dl_phdr_info;
 void __pthread_cxa_finalize(struct dl_phdr_info *phdr_info);
 
