@@ -271,11 +271,14 @@ Setting
 to a negative value turns off scaling.
 Please note that
 .Pa ttyv0
-is restricted to 160 columns and any setting of
+uses a static early-console cell buffer sized to fill a 4K
+framebuffer with the default 8x16 font and no scaling
+(480 columns by 135 rows).
+Settings of
 .Va kern.kms_columns
-resulting in a higher number of columns will be ignored for
+that would require a larger geometry are clamped for
 .Pa ttyv0 ,
-but applied to other virtual terminals.
+but still apply to other virtual terminals which allocate dynamically.
 .El
 .Ss Sysctl Variables
 The following

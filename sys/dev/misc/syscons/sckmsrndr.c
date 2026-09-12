@@ -40,6 +40,7 @@
 #include <machine/framebuffer.h>
 
 #include "syscons.h"
+#include "font_ext.h"
 
 #include <bus/isa/isareg.h>
 
@@ -155,6 +156,40 @@ get_pixel_size(uint16_t depth)
  */
 #define BLIT_SET	0
 #define BLIT_MASK	1
+
+/* Bytes per glyph row / glyph for variable-width bitmap fonts (KMS). */
+static inline int
+sc_font_bpr(const scr_stat *scp)
+{
+	return ((scp->font_width + 7) >> 3);
+}
+
+static inline u_char *
+sc_font_glyph(scr_stat *scp, int c)
+{
+	int bpr = sc_font_bpr(scp);
+	const u_char *ext;
+	int ew, eh;
+
+	if (c >= SC_GLYPH_EXT_BASE) {
+		ext = sc_ext_glyph_bits(c, &ew, &eh);
+		if (ext != NULL &&
+		    ew == scp->font_width && eh == scp->font_height)
+			return ((u_char *)(uintptr_t)ext);
+		/* Wrong metrics or missing: blank from base font. */
+		c = 0x20;
+	}
+	if (c < 0)
+		c = 0x20;
+	if (scp->font == NULL)
+		return (NULL);
+	/* Base Spleen / VGA font plane is 0..255. */
+	if (c > 255)
+		c = 0x20;
+	return (&scp->font[c * scp->font_height * bpr]);
+}
+
+
 
 static inline void
 blit_blk32(scr_stat *scp, u_char *char_data, int sw, int sh,
@@ -460,6 +495,94 @@ fill_rect16(scr_stat *scp, vm_offset_t draw_pos, int width, int height,
 	}
 }
 
+
+/*
+ * Draw an empty box (tofu) spanning ncells (1 or 2) starting at cell 'at'.
+ * Border thickness scales with cell size so 8x16 and 16x32 both look clean.
+ */
+static void
+kms_fill(scr_stat *scp, vm_offset_t pos, int width, int height,
+    int line_width, int pixel_size, uint32_t color32, uint16_t color16)
+{
+	if (pixel_size == 2)
+		fill_rect16(scp, pos, width, height, line_width, color16);
+	else if (pixel_size == 3)
+		fill_rect24(scp, pos, width, height, line_width, color32);
+	else
+		fill_rect32(scp, pos, width, height, line_width, color32);
+}
+
+static void
+kms_draw_tofu_box(scr_stat *scp, int at, int ncells, int flip)
+{
+	sc_softc_t *sc = scp->sc;
+	int line_width, pixel_size;
+	int col, row;
+	int dw, dh, inset, t;
+	int a;
+	uint8_t fgidx, bgidx;
+	uint32_t fg32, bg32;
+	uint16_t fg16, bg16;
+	vm_offset_t base, p;
+
+	if (sc->fbi->vaddr == 0 || ncells < 1)
+		return;
+	if (at < 0 || at >= scp->xsize * scp->ysize)
+		return;
+	if (at % scp->xsize + ncells > scp->xsize)
+		ncells = scp->xsize - (at % scp->xsize);
+	if (ncells < 1)
+		return;
+
+	line_width = sc->fbi->stride;
+	pixel_size = get_pixel_size(sc->fbi->depth);
+	col = at % scp->xsize;
+	row = at / scp->xsize;
+	dw = scp->blk_width * ncells;
+	dh = scp->blk_height;
+	/* ~1/8 cell, at least 1px, at most 3px for fine Spleen cells */
+	inset = scp->blk_width / 8;
+	if (inset < 1)
+		inset = 1;
+	if (inset > 3)
+		inset = 3;
+	t = inset;	/* stroke thickness */
+
+	a = sc_vtb_geta(&scp->vtb, at);
+	if (flip) {
+		fgidx = ((a & 0xf000) >> 4) >> 8;
+		bgidx = (a & 0x0f00) >> 8;
+	} else {
+		fgidx = (a & 0x0f00) >> 8;
+		bgidx = ((a & 0xf000) >> 4) >> 8;
+	}
+	fg32 = colormap24[fgidx & 0xf];
+	bg32 = colormap24[bgidx & 0xf];
+	fg16 = colormap565[fgidx & 0xf];
+	bg16 = colormap565[bgidx & 0xf];
+
+	base = sc->fbi->vaddr +
+	    scp->blk_width * pixel_size * col +
+	    scp->blk_height * line_width * row;
+
+	/* background fill */
+	kms_fill(scp, base, dw, dh, line_width, pixel_size, bg32, bg16);
+
+	/* top */
+	p = base + inset * line_width + inset * pixel_size;
+	kms_fill(scp, p, dw - 2 * inset, t, line_width, pixel_size, fg32, fg16);
+	/* bottom */
+	p = base + (dh - inset - t) * line_width + inset * pixel_size;
+	kms_fill(scp, p, dw - 2 * inset, t, line_width, pixel_size, fg32, fg16);
+	/* left */
+	p = base + inset * line_width + inset * pixel_size;
+	kms_fill(scp, p, t, dh - 2 * inset, line_width, pixel_size, fg32, fg16);
+	/* right */
+	p = base + inset * line_width + (dw - inset - t) * pixel_size;
+	kms_fill(scp, p, t, dh - 2 * inset, line_width, pixel_size, fg32, fg16);
+}
+
+
 /* KMS renderer */
 
 static void
@@ -533,8 +656,77 @@ kms_draw(scr_stat *scp, int from, int count, int flip)
 
 	p = draw_pos + scp->blk_width * pixel_size * (from % scp->xsize);
 	for (i = from; count-- > 0; i++) {
-		char_data = &(scp->font[sc_vtb_getc(&scp->vtb, i) *
-					scp->font_height]);
+		int ncells = 1;
+
+		/* Double-width CONT: tofu drawn with lead; emoji draws right half. */
+		if (sc_utf8_enable && scp->uside != NULL &&
+		    i < scp->xsize * scp->ysize &&
+		    (scp->uside[i].flags & SC_UCELL_WIDE_CONT) &&
+		    (scp->uside[i].flags & SC_UCELL_REPLACEMENT)) {
+			if (i == from && i > 0 &&
+			    (scp->uside[i - 1].flags & SC_UCELL_WIDE))
+				kms_draw_tofu_box(scp, i - 1, 2, flip);
+			p += scp->blk_width * pixel_size;
+			if ((i % scp->xsize) == scp->xsize - 1) {
+				draw_pos += scp->blk_height * line_width;
+				p = draw_pos;
+			}
+			continue;
+		}
+
+		if (sc_utf8_enable && scp->uside != NULL &&
+		    i < scp->xsize * scp->ysize &&
+		    (scp->uside[i].flags & SC_UCELL_REPLACEMENT)) {
+			int col0 = i % scp->xsize;
+
+			ncells = (scp->uside[i].flags & SC_UCELL_WIDE) ? 2 : 1;
+			kms_draw_tofu_box(scp, i, ncells, flip);
+			if (ncells == 2 && count > 0 &&
+			    i + 1 < scp->xsize * scp->ysize &&
+			    (scp->uside[i + 1].flags & SC_UCELL_WIDE_CONT)) {
+				i++;
+				count--;
+			}
+			p += scp->blk_width * pixel_size * ncells;
+			/* End of row after this cell or wide pair. */
+			if (col0 + ncells >= scp->xsize) {
+				draw_pos += scp->blk_height * line_width;
+				p = draw_pos;
+			}
+			continue;
+		}
+
+
+		{
+			int gch = sc_vtb_getc(&scp->vtb, i);
+			/*
+			 * Prefer uside only for true Unicode / wide / extension
+			 * glyphs.  Pure ASCII follows vtb so libedit insert/delete
+			 * and gen_print stay correct when uside is stale.
+			 */
+			if (sc_utf8_enable && scp->uside != NULL &&
+			    i < scp->xsize * scp->ysize &&
+			    !(scp->uside[i].flags & SC_UCELL_REPLACEMENT)) {
+				sc_ucell_t *u = &scp->uside[i];
+				if ((u->flags & (SC_UCELL_WIDE | SC_UCELL_WIDE_CONT)) ||
+				    u->cp > 0x7f ||
+				    (int)u->glyph >= SC_GLYPH_EXT_BASE)
+					gch = (int)u->glyph;
+			}
+			char_data = sc_font_glyph(scp, gch);
+			/*
+			 * font is non-NULL on KMS; if missing, skip blit but
+			 * still advance the draw cursor.
+			 */
+			if (char_data == NULL) {
+				p += scp->blk_width * pixel_size;
+				if ((i % scp->xsize) == scp->xsize - 1) {
+					draw_pos += scp->blk_height * line_width;
+					p = draw_pos;
+				}
+				continue;
+			}
+		}
 
 		a = sc_vtb_geta(&scp->vtb, i);
 		if (flip) {
@@ -545,8 +737,8 @@ kms_draw(scr_stat *scp, int from, int count, int flip)
 			bgidx = ((a & 0xf000) >> 4) >> 8;
 		}
 		blit_blk(scp, char_data, scp->font_width, scp->font_height,
-			 p, scp->blk_width, scp->blk_height, line_width,
-			 fgidx, bgidx, BLIT_SET, pixel_size);
+		    p, scp->blk_width, scp->blk_height, line_width,
+		    fgidx, bgidx, BLIT_SET, pixel_size);
 
 		p += scp->blk_width * pixel_size;
 		if ((i % scp->xsize) == scp->xsize - 1) {
@@ -554,6 +746,7 @@ kms_draw(scr_stat *scp, int from, int count, int flip)
 			p = draw_pos;
 		}
 	}
+
 }
 
 static void
@@ -590,8 +783,35 @@ draw_kmscursor(scr_stat *scp, int at, int on, int flip)
 		bgidx = ((on) ? (a & 0x0f00) : ((a & 0xf000) >> 4)) >> 8;
 	}
 
-	char_data = &scp->font[sc_vtb_getc(&scp->vtb, at) * scp->font_height];
-	char_data += cursor_base;
+	{
+		int gch = sc_vtb_getc(&scp->vtb, at);
+		if (sc_utf8_enable && scp->uside != NULL &&
+		    at < scp->xsize * scp->ysize &&
+		    (scp->uside[at].flags & SC_UCELL_REPLACEMENT)) {
+			int ncells = 1;
+			int lead = at;
+
+			if (scp->uside[at].flags & SC_UCELL_WIDE_CONT) {
+				lead = at - 1;
+				ncells = 2;
+			} else if (scp->uside[at].flags & SC_UCELL_WIDE) {
+				ncells = 2;
+			}
+			kms_draw_tofu_box(scp, lead, ncells, flip);
+			/* Cursor invert still needs a glyph; use space. */
+			gch = (int)' ';
+		} else if (sc_utf8_enable && scp->uside != NULL &&
+		    at < scp->xsize * scp->ysize &&
+		    !(scp->uside[at].flags & SC_UCELL_REPLACEMENT)) {
+			sc_ucell_t *u = &scp->uside[at];
+			if ((u->flags & (SC_UCELL_WIDE | SC_UCELL_WIDE_CONT)) ||
+			    u->cp > 0x7f ||
+			    (int)u->glyph >= SC_GLYPH_EXT_BASE)
+				gch = (int)u->glyph;
+		}
+		char_data = sc_font_glyph(scp, gch);
+	}
+	char_data += cursor_base * sc_font_bpr(scp);
 
 	blit_blk(scp, char_data,
 		 scp->font_width, scp->font_height - cursor_base,
