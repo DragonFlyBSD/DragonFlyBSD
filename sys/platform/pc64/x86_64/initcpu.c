@@ -39,6 +39,7 @@
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
 #include <machine/specialreg.h>
+#include <machine/ucode.h>
 #include <machine/smp.h>
 
 #include <vm/vm.h>
@@ -220,6 +221,8 @@ void
 initializecpu(int cpu)
 {
 	uint64_t msr;
+
+	ucode_apply();
 
 	/*
 	 * Check for FXSR and SSE support and enable if available

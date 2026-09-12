@@ -17,11 +17,11 @@ unset boot_serial
 # Re-CD into the originally calculated base directory and set the
 # module_path.
 #
-# The module_path is a bit fragile, we want to set it to the current h
-# directory and ./modules subdirectory only, which is "<empty>;modules"
+# The module_path is relative to the boot filesystem: the current
+# directory, ./modules, and its firmware directory.
 #
 cd ${base}
-set module_path=";modules"
+set module_path=";modules;${base}firmware"
 
 acpi_load="YES"
 ahci_load="YES"

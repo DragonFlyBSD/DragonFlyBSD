@@ -96,6 +96,7 @@
 #include <machine/cpu.h>
 #include <machine/clock.h>
 #include <machine/specialreg.h>
+#include <machine/ucode.h>
 #if 0 /* JG */
 #include <machine/bootinfo.h>
 #endif
@@ -2791,6 +2792,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 		Debugger("Boot flags requested debugger");
 #endif
 
+	ucode_load_bsp();	/* Microcode, before the features are read */
 	identify_cpu();		/* Final stage of CPU initialization */
 	initializecpu(0);	/* Initialize CPU registers */
 

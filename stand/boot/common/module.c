@@ -59,6 +59,7 @@ static int			file_load_dependencies(struct preloaded_file *base_mod);
 static char *			file_search(const char *name, char **extlist);
 static struct kernel_module *	file_findmodule(struct preloaded_file *fp, char *modname, struct mod_depend *verinfo);
 static int			file_havepath(const char *name);
+static int			file_havedev(const char *name);
 static char			*mod_searchmodule(char *name, struct mod_depend *verinfo);
 static void			file_insert_tail(struct preloaded_file *mp);
 static struct file_metadata*	metadata_next(struct file_metadata *base_mp, int type);
@@ -718,6 +719,18 @@ file_havepath(const char *name)
 }
 
 /*
+ * True if the name carries a device prefix, e.g. "disk0s1a:/boot/kernel".
+ */
+static int
+file_havedev(const char *name)
+{
+    const char		*cp;
+
+    archsw.arch_getdev(NULL, name, &cp);
+    return (cp != name);
+}
+
+/*
  * Attempt to find the file (name) on the module searchpath.
  * If (name) is qualified in any way, we simply check it and
  * return it or NULL.  If it is not qualified, then we attempt
@@ -742,8 +755,13 @@ file_search(const char *name, char **extlist)
     /*
      * Qualified name.  If it is a directory tag on
      * a "/kernel" to it.
+     *
+     * A relative name may still contain directories - firmware is named by
+     * the path the driver asks for, such as "amdgpu/polaris10_pfp.bin" -
+     * and has to be searched for along module_path like any other, so only
+     * an absolute path or a device prefix counts as qualified here.
      */
-    if (file_havepath(name)) {
+    if (file_havepath(name) && (*name == '/' || file_havedev(name))) {
 	/* Qualified, so just see if it exists */
 	if (rel_stat(name, &sb) == 0) {
 	    if (S_ISDIR(sb.st_mode)) {

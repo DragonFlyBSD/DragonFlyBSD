@@ -124,6 +124,15 @@ Defines the module's type.
 If none is given, it defaults to a
 .Xr kld 4
 module.
+.Pp
+Setting a type is what makes the loader read a file that is not a module at
+all, such as a firmware image or a CPU microcode container.
+The kernel then finds it with
+.Fn preload_search_by_type .
+A file loaded without a type is parsed as an ELF module, so leaving the type
+out of an entry that names a raw image produces
+.Dq Li "Unable to load"
+at boot rather than a working preload.
 .It Ao Ar module Ac Ns Ar _flags
 Flags and parameters to be passed to the module.
 .It Ao Ar module Ac Ns Ar _before
@@ -233,6 +242,36 @@ then install the bootcode to the partition via
 .Pp
 Note that in comconsole mode the kernel will pick up the baud rate
 from the boot loader, so no kernel recompile is needed.
+.It Va cpu_microcode_load
+.Pq Dq NO
+If set to
+.Dq YES ,
+a CPU microcode image is preloaded and applied to each processor before the
+kernel reads what the processor can do.
+This is the only point at which an update can affect that: a microcode update
+may add or remove CPU features, and by the time
+.Xr cpucontrol 8
+can run from
+.Xr rc 8
+the kernel has long since made up its mind.
+.Pp
+Only AMD processors are handled.
+.It Va cpu_microcode_name
+.Pq Dq amd-ucode.bin
+Name of the microcode image, searched for along
+.Va module_path .
+The images are installed in
+.Pa /boot/firmware
+by the
+.Pa sysutils/cpu-microcode-amd
+and
+.Pa sysutils/cpu-microcode-intel
+packages.
+.It Va cpu_microcode_type
+.Pq Dq cpu_microcode
+Do not change this.
+Without it the loader would treat the image as a kernel module and fail to
+load it.
 .It Va kernel
 .Pq Dq kernel .
 .It Va loader_plain
@@ -282,6 +321,48 @@ If set to
 will load the splash screen module, making it possible to display a pcx image
 on the screen while booting.
 .El
+.Sh FIRMWARE
+Most firmware needs no entry here.
+The kernel reads it from
+.Pa /usr/local/lib/firmware
+once the root file system is mounted, which is soon enough for a graphics
+adapter or a wireless interface, and a package installs it there.
+.Pp
+An entry is needed only for an image that must be in memory before there is
+a file system to read it from - firmware for the device the root file system
+is on, or CPU microcode.
+Such an image is installed in
+.Pa /boot/firmware ,
+and is listed in the whitespace-separated
+.Va firmware
+variable:
+.Bd -literal -offset indent
+firmware="nvidia/tu102/gsp/gsp-570.144.bin another/image.bin"
+.Ed
+.Pp
+The loader preloads every entry with the
+.Dq Li firmware
+type, which is what the kernel looks for; without that type the loader would
+try to parse an image as a module and fail.
+.Pp
+The older
+.Ao Ar module Ac Ns Ar _load ,
+.Ao Ar module Ac Ns Ar _type ,
+and
+.Ao Ar module Ac Ns Ar _name
+form remains supported for compatibility, but new configurations should use
+.Va firmware .
+.Pp
+The name is the name the driver asks for, not a path chosen here.
+It is searched for along
+.Va module_path ,
+which includes
+.Pa /boot/firmware ,
+and the kernel matches the image against the name a driver requests.
+.Pp
+See
+.Xr firmware 9
+for the three places the kernel looks and the order it looks in.
 .Sh IPMI
 Generally speaking machines with IPMI capabilities are capable of
 redirecting the BIOS POST to a fake serial port controlled by the BMC.
@@ -318,7 +399,8 @@ contains the instructions to automatically process.
 .El
 .Sh SEE ALSO
 .Xr boot 8 ,
-.Xr loader 8
+.Xr loader 8 ,
+.Xr firmware 9
 .Sh HISTORY
 The file
 .Nm
