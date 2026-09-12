@@ -646,6 +646,12 @@ arpintr(netmsg_t msg)
 		return;
 	}
 
+	if (ar->ar_hln != ETHER_ADDR_LEN) {
+		log(LOG_ERR, "arp: invalid address length %d\n", ar->ar_hln);
+		m_freem(m);
+		return;
+	}
+
 	if (m->m_pkthdr.len < arphdr_len(ar)) {
 		if ((m = m_pullup(m, arphdr_len(ar))) == NULL) {
 			log(LOG_ERR, "arp: runt packet\n");
@@ -899,6 +905,21 @@ in_arpinput(struct mbuf *m)
 	}
 
 	ah = mtod(m, struct arphdr *);
+
+	/*
+	 * ARP is only for IPv4 so we can reject packets with
+	 * a protocol length not equal to an IPv4 address.
+	 */
+	if (ah->ar_pln != sizeof(struct in_addr)) {
+		log(LOG_ERR, "in_arp: requested protocol length %d invalid\n",
+		    ah->ar_pln);
+		goto drop;
+	}
+	if (ETHER_IS_MULTICAST(ar_sha(ah))) {
+		log(LOG_ERR, "in_arp: source hardware address is multicast.");
+		goto drop;
+	}
+
 	memcpy(&isaddr, ar_spa(ah), sizeof isaddr);
 	memcpy(&itaddr, ar_tpa(ah), sizeof itaddr);
 
@@ -1027,6 +1048,7 @@ in_arpinput(struct mbuf *m)
 		}
 	}
 
+drop:
 	/*
 	 * If we got here, we didn't find any suitable interface,
 	 * so drop the packet.
