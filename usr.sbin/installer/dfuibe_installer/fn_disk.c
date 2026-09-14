@@ -321,7 +321,7 @@ fn_format_disk_uefi(struct i_fn_args *a)
 		command_add(cmds, "%s%s -p %smnt/EFI/BOOT",
 		    a->os_root, cmd_name(a, "MKDIR"), a->os_root);
 		command_add(cmds,
-		    "%s%s %s/boot/boot1.efi %smnt/EFI/BOOT/BOOTX64.EFI",
+		    "%s%s %s/boot/loader.efi %smnt/EFI/BOOT/BOOTX64.EFI",
 		    a->os_root, cmd_name(a, "CP"),
 		    a->os_root, a->os_root);
 		command_add(cmds, "%s%s %smnt",

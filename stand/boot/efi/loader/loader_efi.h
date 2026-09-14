@@ -31,11 +31,19 @@
 #ifndef	_LOADER_EFI_COPY_H_
 #define	_LOADER_EFI_COPY_H_
 
+#include <efi.h>
 #include <stand.h>
 #include <machine/types.h>	/* XXX for vm_offset_t */
 
-int	efi_autoload(void);
+struct efi_devdesc;
 
+int	efi_get_args(const void *, size_t, CHAR16 *, int *, CHAR16 ***, CHAR16 **);
+void	efi_apply_args(int, CHAR16 **);
+int	efi_autoload(void);
+int	efi_bootdev_entry(EFI_HANDLE);
+int	efi_bootdev_select(EFI_HANDLE, char **, const char **);
+
+int	efi_parsedev(struct efi_devdesc **, const char *, const char **);
 int	efi_getdev(void **vdev, const char *devspec, const char **path);
 char	*efi_fmtdev(void *vdev);
 int	efi_setcurrdev(struct env_var *ev, int flags, const void *value);

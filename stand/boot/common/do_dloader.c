@@ -87,10 +87,6 @@ perform(int argc, char *argv[])
 void
 interact(void)
 {
-    char	input[256];			/* big enough? */
-    int		argc;
-    char	**argv;
-
     /*
      * We may be booting from the boot partition, or we may be booting
      * from the root partition with a /boot sub-directory.  If the latter
@@ -98,29 +94,58 @@ interact(void)
      * info.
      */
     chdir("/boot");
-    setenv("base", DirBase, 1);
+    interact_boot();
+}
 
-    /*
-     * Read our default configuration
-     */
+/* Both entries run the same scripts and autoboot from their boot directory. */
+void
+interact_boot(void)
+{
+    const char *device;
+    char *initial_device, *initial_directory;
+    int error;
+
+    device = getenv("currdev");
+    initial_device = device != NULL ? strdup(device) : NULL;
+    initial_directory = strdup(DirBase);
+    error = ENOMEM;
+    if ((device != NULL && initial_device == NULL) ||
+        initial_directory == NULL)
+        goto out;
+    error = setenv("base", DirBase, 1);
+    if (error != 0)
+        goto out;
     if (include("dloader.rc") != CMD_OK)
-	include("boot.conf");
+        include("boot.conf");
 
-    /*
-     * Re-evaluate base after dloader.rc may have changed currdev.
-     * When loader.efi lives on the ESP and dloader.rc redirects
-     * currdev to the real boot partition, the initial chdir("/boot")
-     * resolved against the ESP.  Now that currdev points to the
-     * correct device, re-resolve so paths work.
-     */
-    chdir("/boot");
-    setenv("base", DirBase, 1);
+    /* Re-resolve /boot when the startup script has changed devices. */
+    device = getenv("currdev");
+    if (device != NULL && (initial_device == NULL ||
+        strcmp(device, initial_device) != 0)) {
+        chdir("/boot");
+    } else {
+        chdir(initial_directory);
+    }
+    error = setenv("base", DirBase, 1);
+out:
+    free(initial_directory);
+    free(initial_device);
+    if (error != 0) {
+        printf("Unable to prepare boot directory: %s\n", strerror(error));
+    } else {
+        printf("\n");
+        autoboot_maybe();
+    }
+    interact_prompt();
+}
 
-    printf("\n");
-    /*
-     * Before interacting, we might want to autoboot.
-     */
-    autoboot_maybe();
+/* Enter recovery without executing configuration or trying autoboot. */
+void
+interact_prompt(void)
+{
+    char input[256];
+    int argc;
+    char **argv;
 
     dloader_init_cmds();
 

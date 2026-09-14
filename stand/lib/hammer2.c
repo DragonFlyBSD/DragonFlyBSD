@@ -685,13 +685,7 @@ h2init(struct hammer2_fs *hfs)
 	h2lookup(hfs, NULL, 0, 0, NULL, NULL);
 
 	/*
-	 * Select a boot-related PFS under the super-root.
-	 *
-	 * Prefer BOOT (PFS root is the /boot tree).  If BOOT is absent,
-	 * fall back to ROOT so chdir("/boot") works.  When both exist,
-	 * BOOT wins strictly — no fallback if BOOT is empty/broken.
-	 *
-	 * Save SUPER-ROOT first: a failed h2lookup() overwrites *bref_ret.
+	 * Lookup sroot/BOOT and clear the cache again.
 	 */
 	r = h2lookup(hfs, &hfs->sroot,
 		     HAMMER2_SROOT_KEY, HAMMER2_SROOT_KEY,
@@ -699,36 +693,15 @@ h2init(struct hammer2_fs *hfs)
 	if (r <= 0)
 		return(-1);
 	h2lookup(hfs, NULL, 0, 0, NULL, NULL);
+	r = h2lookup(hfs, &hfs->sroot,
+		     HAMMER2_BOOT_KEY,
+		     HAMMER2_BOOT_KEY | HAMMER2_DIRHASH_LOMASK,
+		     &hfs->sroot, &data);
+	if (r <= 0)
+		return(-1);
+	h2lookup(hfs, NULL, 0, 0, NULL, NULL);
 
-	{
-		hammer2_blockref_t sroot_super = hfs->sroot;
-		hammer2_key_t key;
-
-		r = h2lookup(hfs, &hfs->sroot,
-			     HAMMER2_BOOT_KEY,
-			     HAMMER2_BOOT_KEY | HAMMER2_DIRHASH_LOMASK,
-			     &hfs->sroot, &data);
-		if (r > 0) {
-			h2lookup(hfs, NULL, 0, 0, NULL, NULL);
-			return (0);
-		}
-
-		/* Restore SUPER-ROOT; BOOT miss clobbered sroot. */
-		hfs->sroot = sroot_super;
-		h2lookup(hfs, NULL, 0, 0, NULL, NULL);
-
-		key = hammer2_dirhash((const unsigned char *)"ROOT", 4);
-		r = h2lookup(hfs, &hfs->sroot,
-			     key, key | HAMMER2_DIRHASH_LOMASK,
-			     &hfs->sroot, &data);
-		if (r > 0) {
-			h2lookup(hfs, NULL, 0, 0, NULL, NULL);
-			return (0);
-		}
-	}
-
-	printf("hammer2: neither BOOT nor ROOT PFS found\n");
-	return(-1);
+	return (0);
 }
 
 /************************************************************************

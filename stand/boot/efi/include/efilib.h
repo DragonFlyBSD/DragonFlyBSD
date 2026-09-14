@@ -71,6 +71,8 @@ EFI_HANDLE efi_find_handle(struct devsw *, int);
 int efi_handle_lookup(EFI_HANDLE, struct devsw **, int *,  uint64_t *);
 int efi_handle_update_dev(EFI_HANDLE, struct devsw *, int, uint64_t);
 
+BOOLEAN efi_device_paths_match(EFI_DEVICE_PATH *, EFI_DEVICE_PATH *);
+
 int efi_status_to_errno(EFI_STATUS);
 
 EFI_STATUS efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table);

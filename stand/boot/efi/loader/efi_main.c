@@ -29,6 +29,7 @@
 #include <efi.h>
 #include <eficonsctl.h>
 #include <efilib.h>
+#include "loader_efi.h"
 
 static EFI_PHYSICAL_ADDRESS heap;
 static UINTN heapsize;
@@ -74,9 +75,9 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	    EFI_CONSOLE_CONTROL_PROTOCOL_GUID;
 	EFI_CONSOLE_CONTROL_PROTOCOL *console_control = NULL;
 	EFI_LOADED_IMAGE *img;
-	CHAR16 *argp, *args, **argv;
+	CHAR16 *args, **argv, *program;
 	EFI_STATUS status;
-	int argc, addprog;
+	int argc;
 
 	IH = image_handle;
 	ST = system_table;
@@ -107,6 +108,32 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	if (status != EFI_SUCCESS)
 		efi_exit(status);
 
+	/* Preserve the firmware entry's existing program-name detection. */
+	program = (CHAR16 *)L"loader.efi";
+	if (img->LoadOptionsSize > 0 && img->LoadOptions != NULL &&
+	    img->ParentHandle != NULL &&
+	    img->FilePath != NULL &&
+	    DevicePathType(img->FilePath) == MEDIA_DEVICE_PATH &&
+	    DevicePathSubType(img->FilePath) == MEDIA_FILEPATH_DP &&
+	    DevicePathNodeLength(img->FilePath) > sizeof(FILEPATH_DEVICE_PATH))
+		program = NULL;
+	if (efi_get_args(img->LoadOptions, img->LoadOptionsSize, program,
+	    &argc, &argv, &args) != 0)
+		efi_exit(EFI_OUT_OF_RESOURCES);
+
+	status = main(argc, argv);
+	efi_exit(status);
+	return (status);
+}
+
+/* Share the existing LoadOptions conversion and tokenization. */
+int
+efi_get_args(const void *options, size_t size, CHAR16 *program,
+    int *count, CHAR16 ***vector, CHAR16 **storage)
+{
+	CHAR16 *argp, *args, **argv;
+	int argc;
+
 	/*
 	 * Pre-process the (optional) load options. If the option string
 	 * is given as an ASCII string, we use a poor man's ASCII to
@@ -119,14 +146,18 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	 * If the string is already in Unicode-16, we make a copy so that
 	 * we know we can always modify the string.
 	 */
-	if (img->LoadOptionsSize > 0 && img->LoadOptions != NULL) {
-		if (img->LoadOptionsSize == strlen(img->LoadOptions) + 1) {
-			args = malloc(img->LoadOptionsSize << 1);
-			for (argc = 0; argc < (int)img->LoadOptionsSize; argc++)
-				args[argc] = ((char*)img->LoadOptions)[argc];
+	if (size > 0 && options != NULL) {
+		if (size == strlen(options) + 1) {
+			args = malloc(size << 1);
+			if (args == NULL)
+				return (ENOMEM);
+			for (argc = 0; argc < (int)size; argc++)
+				args[argc] = ((char*)options)[argc];
 		} else {
-			args = malloc(img->LoadOptionsSize);
-			memcpy(args, img->LoadOptions, img->LoadOptionsSize);
+			args = malloc(size);
+			if (args == NULL)
+				return (ENOMEM);
+			memcpy(args, options, size);
 		}
 	} else
 		args = NULL;
@@ -143,21 +174,8 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	 * there can be a function (=image) that will perform the task
 	 * for the boot manager.
 	 */
-	/* Part 1: Figure out if we need to add our program name. */
-	addprog = (args == NULL || img->ParentHandle == NULL ||
-	    img->FilePath == NULL) ? 1 : 0;
-	if (!addprog) {
-		addprog =
-		    (DevicePathType(img->FilePath) != MEDIA_DEVICE_PATH ||
-		     DevicePathSubType(img->FilePath) != MEDIA_FILEPATH_DP ||
-		     DevicePathNodeLength(img->FilePath) <=
-			sizeof(FILEPATH_DEVICE_PATH)) ? 1 : 0;
-		if (!addprog) {
-			/* XXX todo. */
-		}
-	}
 	/* Part 2: count words. */
-	argc = (addprog) ? 1 : 0;
+	argc = program != NULL ? 1 : 0;
 	argp = args;
 	while (argp != NULL && *argp != 0) {
 		argp = arg_skipsep(argp);
@@ -168,9 +186,13 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	}
 	/* Part 3: build vector. */
 	argv = malloc((argc + 1) * sizeof(CHAR16*));
+	if (argv == NULL) {
+		free(args);
+		return (ENOMEM);
+	}
 	argc = 0;
-	if (addprog)
-		argv[argc++] = (CHAR16 *)L"loader.efi";
+	if (program != NULL)
+		argv[argc++] = program;
 	argp = args;
 	while (argp != NULL && *argp != 0) {
 		argp = arg_skipsep(argp);
@@ -184,7 +206,8 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table)
 	}
 	argv[argc] = NULL;
 
-	status = main(argc, argv);
-	efi_exit(status);
-	return (status);
+	*count = argc;
+	*vector = argv;
+	*storage = args;
+	return (0);
 }

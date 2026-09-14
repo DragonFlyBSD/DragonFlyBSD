@@ -59,6 +59,8 @@ extern int	CurrentCondition;
 
 /* interp.c */
 void	interact(void);
+void	interact_prompt(void);
+void	interact_boot(void);
 int	include(const char *filename);
 
 /* interp_backslash.c */

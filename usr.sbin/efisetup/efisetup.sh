@@ -140,7 +140,7 @@ if [ $? != 0 ]; then fail "mkdir -p /efimnt"; fi
 newfs_msdos ${drive}s0
 mount_msdos ${drive}s0 /efimnt
 mkdir -p /efimnt/efi/boot
-cp /boot/boot1.efi /efimnt/efi/boot/bootx64.efi
+cp /boot/loader.efi /efimnt/efi/boot/bootx64.efi
 umount /efimnt
 
 # GPT s1 - DragonFlyBSD disklabel setup

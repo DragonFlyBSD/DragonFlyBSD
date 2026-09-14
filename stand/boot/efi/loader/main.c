@@ -190,93 +190,13 @@ out:
 }
 
 
-/*
- * Prefer a GPT whole-partition Hammer2 volume for currdev when the
- * loader was started from the ESP (or any non-H2 handle).
- *
- * Strategy (see project design):
- *   - Do not override an explicit currdev= from the command line.
- *   - Scan part0, part1, ... in unit order.
- *   - Accept only partitions where open("partN:/") binds hammer2_fsops
- *     (volume magic + BOOT or ROOT PFS via h2init).  Label64-nested H2
- *     is not considered: h2init only sees LBA0 of the EFI partition.
- *   - First match wins.  On no match, caller keeps DeviceHandle path.
- */
-static int
-efi_hammer2_autoselect(void)
-{
-	char path[32];
-	struct efi_devdesc currdev;
-	const char *devname;
-	int unit, fd;
-
-	for (unit = 0; efi_find_handle(&efipart_dev, unit) != NULL; unit++) {
-		sprintf(path, "part%d:/", unit);
-		fd = open(path, O_RDONLY);
-		if (fd < 0)
-			continue;
-		/*
-		 * open() tries file_system[] in order.  FAT/ESP succeeds on
-		 * dosfs; only a true H2 volume leaves f_ops = hammer2.
-		 */
-		if (files[fd].f_ops == &hammer2_fsops) {
-			close(fd);
-			currdev.d_dev = &efipart_dev;
-			currdev.d_kind.efidisk.unit = unit;
-			currdev.d_kind.efidisk.data = NULL;
-			currdev.d_kind.efidisk.label_offset = 0;
-			currdev.d_type = efipart_dev.dv_type;
-			devname = efi_fmtdev(&currdev);
-			env_setenv("currdev", EV_VOLATILE, devname,
-			    efi_setcurrdev, env_nounset);
-			env_setenv("loaddev", EV_VOLATILE, devname,
-			    env_noset, env_nounset);
-			printf("hammer2: boot device %s\n", devname);
-			return (0);
-		}
-		close(fd);
-	}
-	return (ENOENT);
-}
-
-EFI_STATUS
-main(int argc, CHAR16 *argv[])
+void
+efi_apply_args(int argc, CHAR16 *argv[])
 {
 	char var[128];
-	EFI_LOADED_IMAGE *img;
-	EFI_GUID *guid;
-	int i, j, vargood, unit, howto;
-	struct devsw *dev;
-	uint64_t pool_guid;
-	UINTN k;
-	int has_kbd;
+	int i, j, k, vargood, howto;
+	int has_kbd = has_keyboard();
 
-	archsw.arch_autoload = efi_autoload;
-	archsw.arch_getdev = efi_getdev;
-	archsw.arch_copyin = efi_copyin;
-	archsw.arch_copyout = efi_copyout;
-	archsw.arch_readin = efi_readin;
-
-	has_kbd = has_keyboard();
-
-	/*
-	 * XXX Chicken-and-egg problem; we want to have console output
-	 * early, but some console attributes may depend on reading from
-	 * eg. the boot device, which we can't do yet.  We can use
-	 * printf() etc. once this is done.
-	 */
-	cons_probe();
-
-	/*
-	 * Parse the args to set the console settings, etc
-	 * boot1.efi passes these in, if it can read /boot.config or /boot/config
-	 * or iPXE may be setup to pass these in.
-	 *
-	 * Loop through the args, and for each one that contains an '=' that is
-	 * not the first character, add it to the environment.  This allows
-	 * loader and kernel env vars to be passed on the command line.  Convert
-	 * args from UCS-2 to ASCII (16 to 8 bit) as they are copied.
-	 */
 	howto = 0;
 	for (i = 0; i < argc; i++) {
 		/*
@@ -376,6 +296,47 @@ main(int argc, CHAR16 *argv[])
 		setenv("console", "comconsole" , 1);
 	}
 
+}
+
+EFI_STATUS
+main(int argc, CHAR16 *argv[])
+{
+	char *boot_device = NULL;
+	const char *boot_directory = NULL, *configured_device;
+	EFI_LOADED_IMAGE *img;
+	EFI_GUID *guid;
+	int i, unit, entry, boot_error;
+	struct devsw *dev;
+	uint64_t pool_guid;
+	UINTN k;
+
+	archsw.arch_autoload = efi_autoload;
+	archsw.arch_getdev = efi_getdev;
+	archsw.arch_copyin = efi_copyin;
+	archsw.arch_copyout = efi_copyout;
+	archsw.arch_readin = efi_readin;
+
+
+	/*
+	 * XXX Chicken-and-egg problem; we want to have console output
+	 * early, but some console attributes may depend on reading from
+	 * eg. the boot device, which we can't do yet.  We can use
+	 * printf() etc. once this is done.
+	 */
+	cons_probe();
+
+	/*
+	 * Parse the args to set the console settings, etc
+	 * boot1.efi passes these in, if it can read /boot.config or /boot/config
+	 * or iPXE may be setup to pass these in.
+	 *
+	 * Loop through the args, and for each one that contains an '=' that is
+	 * not the first character, add it to the environment.  This allows
+	 * loader and kernel env vars to be passed on the command line.  Convert
+	 * args from UCS-2 to ASCII (16 to 8 bit) as they are copied.
+	 */
+	efi_apply_args(argc, argv);
+
 	if (efi_copy_init()) {
 		printf("failed to allocate staging area\n");
 		return (EFI_BUFFER_TOO_SMALL);
@@ -422,50 +383,46 @@ main(int argc, CHAR16 *argv[])
 	 */
 	BS->SetWatchdogTimer(0, 0, 0, NULL);
 
-	/*
-	 * If currdev was set via command line args (e.g. from a UEFI boot
-	 * manager like rEFInd), honor it instead of deriving from
-	 * DeviceHandle.  This supports placing loader.efi directly on the
-	 * ESP with an explicit boot partition override.
-	 */
-	{
-		const char *cdev = getenv("currdev");
-		if (cdev != NULL) {
-			env_setenv("currdev", EV_VOLATILE, cdev,
-				   efi_setcurrdev, env_nounset);
-			env_setenv("loaddev", EV_VOLATILE, cdev,
-				   env_noset, env_nounset);
-			goto currdev_done;
+	/* Classify the original image handle before resolving CD aliases. */
+	entry = efi_bootdev_entry(img->DeviceHandle);
+	boot_error = entry < 0 ? -entry : 0;
+	if (entry > 0) {
+		boot_error = efi_bootdev_select(img->DeviceHandle,
+		    &boot_device, &boot_directory);
+	} else if (entry == 0) {
+		configured_device = getenv("currdev");
+		if (configured_device != NULL) {
+			boot_device = strdup(configured_device);
+		} else {
+			struct efi_devdesc currdev;
+
+			if (efi_handle_lookup(img->DeviceHandle, &dev, &unit,
+			    &pool_guid) != 0)
+				return (EFI_NOT_FOUND);
+			bzero(&currdev, sizeof(currdev));
+			currdev.d_dev = dev;
+			currdev.d_kind.efidisk.unit = unit;
+			currdev.d_type = dev->dv_type;
+			boot_device = strdup(efi_fmtdev(&currdev));
 		}
 	}
-
-	/*
-	 * No explicit currdev: prefer a whole-partition Hammer2 volume
-	 * (BOOT or ROOT PFS).  Fall back to the firmware DeviceHandle
-	 * (typically the ESP) when none is found.
-	 */
-	if (efi_hammer2_autoselect() == 0)
-		goto currdev_done;
-
-	if (efi_handle_lookup(img->DeviceHandle, &dev, &unit, &pool_guid) != 0)
-		return (EFI_NOT_FOUND);
-
-	switch (dev->dv_type) {
-	default: {
-		struct efi_devdesc currdev;
-
-		currdev.d_dev = dev;
-		currdev.d_kind.efidisk.unit = unit;
-		currdev.d_kind.efidisk.data = NULL;
-		currdev.d_type = currdev.d_dev->dv_type;
-		env_setenv("currdev", EV_VOLATILE, efi_fmtdev(&currdev),
-			   efi_setcurrdev, env_nounset);
-		env_setenv("loaddev", EV_VOLATILE, efi_fmtdev(&currdev), env_noset,
-			   env_nounset);
-		break;
+	if (boot_error == 0 && boot_device == NULL)
+		boot_error = ENOMEM;
+	if (boot_error == 0)
+		boot_error = env_setenv("currdev", EV_VOLATILE, boot_device,
+		    efi_setcurrdev, env_nounset);
+	if (boot_error == 0)
+		boot_error = env_setenv("loaddev", EV_VOLATILE, boot_device,
+		    env_noset, env_nounset);
+	if (boot_error == 0 && boot_directory != NULL) {
+		if (chdir(boot_directory) != CMD_OK)
+			boot_error = ENOENT;
+		else
+			printf("Boot filesystem: %s%s\n", boot_device,
+			    boot_directory);
 	}
-	}
-currdev_done:
+	free(boot_device);
+
 
 	/* enable EHCI */
 	setenv("ehci_load", "YES", 1);
@@ -489,7 +446,14 @@ currdev_done:
 		}
 	}
 
-	interact();			/* doesn't return */
+	if (boot_error != 0) {
+		printf("Boot device selection failed: %s\n", strerror(boot_error));
+		interact_prompt();
+	} else if (entry > 0) {
+		interact_boot();
+	} else {
+		interact();
+	}
 
 	return (EFI_SUCCESS);		/* keep compiler happy */
 }

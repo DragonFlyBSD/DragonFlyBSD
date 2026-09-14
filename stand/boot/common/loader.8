@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
 .\"
-.Dd August 22, 2025
+.Dd September 15, 2026
 .Dt LOADER 8
 .Os
 .Sh NAME
@@ -37,19 +37,20 @@ The program called
 is the final stage of
 .Dx Ns 's
 kernel bootstrapping process.
-It is implemented as a
+The BIOS version is implemented as a
 .Tn BTX
-client and is linked statically to
+client; the UEFI version is an EFI application.
+Both are linked statically to
 .Xr libstand 3
-and located in the
+and use boot files located in the
 .Pa /boot
 or
 .Pa /
 directory.
 .Pp
-If a
+Except for the UEFI HAMMER2 BOOT layout described below, if a
 .Pa /boot
-directory exist on the boot file system, then
+directory exists on the boot file system, then
 .Dq /boot/
 is prepended to all relative file names used by
 .Nm .
@@ -71,33 +72,144 @@ are located in
 on the boot file system, which is mounted as
 .Pa /boot
 on the root file system when the kernel is running.
-
-.Pp
-On UEFI systems the
-.Nm
-binary is typically installed on the ESP as
-.Pa EFI/BOOT/BOOTX64.EFI .
-The EFI
-.Nm
-will prefer a GPT whole-partition
-.Nm HAMMER2
-volume (with a
-.Ql BOOT
-or
-.Ql ROOT
-PFS) over the ESP when choosing
-.Va currdev ,
-unless
+.Ss UEFI boot device selection
+The firmware loads
+.Pa loader.efi
+from the EFI System Partition (ESP), normally as
+.Pa /EFI/BOOT/BOOTX64.EFI .
+It supplies the image's source device handle and optional load arguments.
+The firmware does not interpret the loader's
 .Va currdev
-was set explicitly on the command line.
-The
-.Ql BOOT
-PFS is treated as the boot file system root; if only
-.Ql ROOT
-exists, files are resolved under
-.Pa /boot
-on that PFS.
+argument.
+.Va currdev
+identifies the device used to read boot files; it does not select the
+kernel's root filesystem, which is configured separately with
+.Va vfs.root.mountfrom .
 .Pp
+A loader started from an ESP or an EFI CD boot image first selects its
+boot filesystem.
+An explicit
+.Va currdev
+in the load arguments selects the initial device without scanning or
+requiring a startup marker.
+An unavailable explicit device enters the command prompt instead of
+falling back to another disk.
+.Pp
+Without an explicit device, candidates are examined in this order:
+.Bl -enum -compact
+.It
+The source filesystem, resolving an EFI CD boot image to its containing
+ISO9660 filesystem.
+.It
+Other partitions on the source disk, in EFI enumeration order.
+.It
+The remaining devices, in EFI enumeration order.
+.El
+.Pp
+Automatic selection supports the following layouts:
+.Bl -tag -width "HAMMER2"
+.It HAMMER2
+A GPT whole partition containing a
+.Ql BOOT
+PFS.
+The boot directory is the root of that PFS, even if it contains a
+.Pa /boot
+subdirectory.
+There is no fallback to a ROOT PFS and no support for disklabel64-nested
+HAMMER2 boot files.
+Boot files must be stored without compression; the loader does not
+support HAMMER2 block decompression.
+New BOOT PFSs disable data compression by default.
+.It UFS
+A GPT partition or the existing disklabel64 UFS
+.Ql a
+partition.
+The boot directory is
+.Pa /boot
+when that directory is accessible, and the filesystem root otherwise.
+.It ISO9660
+The boot directory is
+.Pa /boot ,
+which must be accessible.
+An installation CD is preferred because it is the source device,
+not because all CD devices precede hard disks.
+.El
+.Pp
+A startup marker is a regular
+.Pa dloader.rc
+file in the boot directory, or a regular configuration file at
+.Pa /boot.config
+in the filesystem root.
+Only if
+.Pa /boot.config
+does not exist is
+.Pa /boot/config
+considered instead.
+These configuration paths are independent of the boot directory;
+.Pa /boot/boot.config
+is not a configuration path or a marker.
+.Pp
+The first candidate with a marker is selected.
+The first accessible supported candidate without a marker is remembered,
+but is used only if no candidate has a marker.
+Thus a marker on another disk takes precedence over an earlier candidate
+without a marker.
+Neither
+.Pa loader.conf
+nor
+.Pa boot.conf
+is a selection marker, and a marker does not guarantee that a kernel can
+be loaded successfully.
+If no candidate is accessible, the loader enters the command prompt.
+Failure during subsequent kernel loading does not restart device selection.
+.Ss UEFI boot arguments and configuration
+After selecting the initial device, the loader reads
+.Pa /boot.config ,
+or
+.Pa /boot/config
+if the former does not exist.
+The paths are relative to that filesystem's root; for HAMMER2 this is
+the BOOT PFS root.
+The file is optional, and read failures are ignored as in
+.Pa boot1.efi .
+A file containing a NUL byte is rejected and enters the command prompt.
+.Pp
+The contents use the existing EFI load-argument syntax:
+arguments are separated by spaces, tabs or newlines; environment
+assignments and boot options are processed as load arguments.
+For example:
+.Bd -literal -offset indent
+currdev=part1: -v
+.Ed
+.Pp
+This syntax does not provide shell quoting, comment processing or spaces
+around the equals sign.
+It is different from the syntax of
+.Xr loader.conf 5 .
+.Pp
+A
+.Va currdev
+assignment in this file may replace the initial device once, including
+when the initial device was explicitly supplied by the firmware.
+The target is opened and its boot directory determined without requiring
+a marker; neither configuration path is read again on the target.
+An invalid target enters the command prompt without rescanning or
+returning to the initial device.
+.Ss Existing UEFI installations
+When started from a non-ESP device, including a
+.Pa boot1.efi
+handoff, the loader uses the inherited device and arguments and enters
+the existing startup flow directly.
+It does not perform the automatic selection or additional configuration
+read described above.
+.Pp
+For the ESP/CD entry, the restrictions on filesystem types for automatic
+selection are not a new whitelist for explicitly supplied devices.
+Such devices still require a working registered filesystem reader;
+HAMMER2 still requires the supported GPT/BOOT layout.
+For installation and ESP file updates, see
+.Xr uefi 8 .
+.Ss Startup scripts
 During initialization,
 .Nm
 will probe for a console and set the
@@ -523,8 +635,22 @@ The default is
 .It Va console
 Defines the current console.
 .It Va currdev
-Selects the default device.
-Syntax for devices is odd.
+Selects the default device for file access.
+On UEFI systems a partition is named
+.Ql partN\&: ,
+where
+.Ar N
+is the unit shown by
+.Ic lsdev .
+For example,
+.Ql currdev=part1\&:
+selects unit 1.
+These numbers follow EFI enumeration and are not kernel disk names
+such as
+.Pa da0s1 .
+They may change when firmware device enumeration changes.
+Changing this variable at the command prompt does not rerun automatic
+selection or read boot.config.
 .It Va default_kernel
 Selects default kernel loaded by
 .Ic menu

@@ -39,7 +39,6 @@ __FBSDID("$FreeBSD: head/sys/boot/efi/loader/devicename.c 294068 2016-01-15 02:3
 
 #include "loader_efi.h"
 
-static int efi_parsedev(struct efi_devdesc **, const char *, const char **);
 
 /*
  * Point (dev) at an allocated device specifier for the device matching the
@@ -80,7 +79,7 @@ efi_getdev(void **vdev, const char *devspec, const char **path)
  *
  * fs<unit>:
  */
-static int
+int
 efi_parsedev(struct efi_devdesc **dev, const char *devspec, const char **path)
 {
 	struct efi_devdesc *idev;
@@ -88,9 +87,10 @@ efi_parsedev(struct efi_devdesc **dev, const char *devspec, const char **path)
 	char *cp;
 	const char *np;
 	int i;
+	long unit;
 
-	/* minimum length check */
-	if (strlen(devspec) < 2)
+	/* A recovery prompt may not have a current device yet. */
+	if (devspec == NULL || strlen(devspec) < 2)
 		return (EINVAL);
 
 	/* look for a device that matches */
@@ -103,6 +103,8 @@ efi_parsedev(struct efi_devdesc **dev, const char *devspec, const char **path)
 		return (ENOENT);
 
 	np = devspec + strlen(dv->dv_name);
+	if (*np < '0' || *np > '9')
+		return (EUNIT);
 
 	{
 		idev = malloc(sizeof(struct efi_devdesc));
@@ -113,7 +115,13 @@ efi_parsedev(struct efi_devdesc **dev, const char *devspec, const char **path)
 		idev->d_type = dv->dv_type;
 		idev->d_kind.efidisk.unit = -1;
 		if (*np != '\0' && *np != ':') {
-			idev->d_kind.efidisk.unit = strtol(np, &cp, 0);
+			errno = 0;
+			unit = strtol(np, &cp, 0);
+			if (errno == ERANGE || unit < 0 || unit > 0x7fffffff) {
+				free(idev);
+				return (EUNIT);
+			}
+			idev->d_kind.efidisk.unit = (int)unit;
 			if (cp == np) {
 				idev->d_kind.efidisk.unit = -1;
 				free(idev);

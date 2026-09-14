@@ -10,6 +10,7 @@ WARNS?=		3
 
 # architecture-specific loader code
 SRCS=	autoload.c \
+	bootdev.c \
 	bootinfo.c \
 	conf.c \
 	copy.c \

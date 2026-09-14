@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man8/uefi.8 295522 2016-02-11 14:45:18Z emaste $
 .\"
-.Dd June 13, 2020
+.Dd September 15, 2026
 .Dt UEFI 8
 .Os
 .Sh NAME
@@ -51,71 +51,87 @@ FAT file system with a specified file hierarchy.
 .It GPT Ta C12A7328-F81F-11D2-BA4B-00A0C93EC93B
 .It MBR Ta 0xEF
 .El
+.Ss Direct loading
+Firmware boot entries identify an EFI executable and may supply load
+arguments to it.
+For x86-64 removable media the fallback executable path is
+.Pa /EFI/BOOT/BOOTX64.EFI .
+The current installation tools and installation images place
+.Pa loader.efi
+at this path.
+The firmware starts the executable and supplies its source device
+handle; interpretation of arguments such as
+.Va currdev
+is the loader's responsibility.
 .Pp
-The
-.Nm
-boot process proceeds as follows:
-.Bl -enum -offset indent -compact
-.It
-.Nm
-firmware runs at power up and searches for an OS loader in the EFI system
-partition.
-The path to the loader may be set by an EFI environment variable.
-If not set, the default is
-.Pa /EFI/BOOT/BOOTX64.EFI .
-The default
-.Nm
-boot configuration for
-.Dx
-installs
+A loader started from an ESP or an EFI CD boot image selects a boot
+filesystem before reading startup scripts.
+An explicit
+.Va currdev
+bypasses automatic scanning; an unavailable target enters the loader
+command prompt.
+Otherwise the loader searches the source filesystem, other partitions on
+the same disk, and other EFI devices in enumeration order.
+It prefers a startup or configuration marker over merely accessible
+filesystems.
+See
+.Xr loader 8
+for the marker paths, supported layouts and one-time configuration
+redirection rules.
+.Pp
+Automatic selection supports GPT whole-partition HAMMER2 with an
+uncompressed BOOT PFS, UFS (including disklabel64 UFS partition
+.Ql a ) ,
+and ISO9660.
+An EFI CD boot image is mapped to its outer ISO filesystem, whose
+.Pa /boot
+directory contains the boot files; the kernel need not be in the EFI
+FAT image.
+The chosen boot filesystem and the kernel's root filesystem are separate:
+.Va currdev
+locates boot files, while
+.Va vfs.root.mountfrom
+selects the root filesystem used by the kernel.
+.Ss Existing boot1 installations
+Existing installations may retain
 .Pa boot1.efi
-as
-.Pa /EFI/BOOT/BOOTX64.EFI .
-.It
-.Pa boot1.efi
-reads boot configuration from
+on the ESP.
+It searches for a UFS filesystem containing
+.Pa /loader.efi
+or
+.Pa /boot/loader.efi ,
+loads that executable, and passes its filesystem handle and optional
 .Pa /boot.config
 or
-.Pa /boot/config .
-Unlike other first-stage boot loaders,
-.Pa boot1.efi
-passes the configuration to the next stage boot loader and does not
-itself act on the contents of the file.
-.It
-.Pa boot1.efi
-searches partitions of type
-.Sq DragonFly UFS1
-and the first
-.Xr disklabel64 5
-partition in GPT partitions of type
-.Sq DragonFly Label64
-for
-.Pa loader.efi .
-The search begins with partitions on the device from which
-.Pa boot1.efi
-was loaded, and continues with other available partitions.
-.\"If both
-.\".Li DragonFly UFS1
-.\"and
-.\".Li DragonFly Label64
-.\"partitions exist on the same device
-.\"...
-.Pa boot1.efi
-then loads and executes
-.Pa loader.efi .
-.It
-.Pa loader.efi
-loads and boots the kernel, as described in
-.Xr loader 8 .
-.El
+.Pa /boot/config
+contents as load arguments.
+A loader started from this non-ESP device enters its existing startup
+flow without another scan or configuration redirection.
+.Ss Updating an ESP executable
+Updating
+.Pa /boot/loader.efi
+does not replace the EFI executable stored on the ESP.
+An existing boot1 installation can continue using its two-stage path.
+To switch to direct loading, or update an existing direct loader,
+mount the correct ESP and replace the executable at the path used by
+the firmware boot entry.
+For example, if the ESP is already mounted at
+.Pa /mnt/esp
+and the firmware uses the fallback path:
+.Bd -literal -offset indent
+cp /boot/loader.efi /mnt/esp/EFI/BOOT/BOOTX64.EFI
+.Ed
+.Pp
+Use the actual executable path when the boot entry names a different one.
+Do not rerun
+.Xr efisetup 8
+for this update: it reformats and repartitions the target drive.
 .Sh FILES
 .Bl -tag -width /boot/loader -compact
 .It Pa /boot/boot1.efi
-First stage
-.Nm
-bootstrap
+Optional first-stage bootstrap for existing installations
 .It Pa /boot/loader.efi
-Final stage bootstrap
+EFI loader executable
 .It Pa /boot/kernel/kernel
 default kernel
 .It Pa /boot/kernel.old/kernel
@@ -131,6 +147,7 @@ typical non-default kernel (optional)
 .Xr efidp 8 ,
 .Xr efisetup 8 ,
 .Xr efivar 8 ,
+.Xr loader 8 ,
 .Xr uefisign 8
 .Sh HISTORY
 .Nm
@@ -149,7 +166,3 @@ and
 The
 .Fx
 Foundation sponsored portions of the work.
-.Sh CAVEATS
-EFI environment variables are not supported by
-.Xr loader 8
-or the kernel.

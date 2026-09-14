@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/sys/boot/forth/loader.conf.5,v 1.18 2002/08/27 01:02:56 trhodes Exp $
 .\"
-.Dd October 29, 2020
+.Dd September 15, 2026
 .Dt LOADER.CONF 5
 .Os
 .Sh NAME
@@ -53,6 +53,27 @@ to be automatically processed:
 If no
 .Pa /boot/dloader.rc
 exists at installworld time, one with the above lines will be installed.
+.Pp
+On UEFI systems, the boot device has already been selected when these
+startup scripts read
+.Nm .
+Settings in this file therefore cannot select the initial device from
+which the file itself is read.
+Use EFI load arguments or the one-time
+.Pa /boot.config
+configuration described in
+.Xr loader 8
+for initial device selection and redirection.
+.Pp
+.Pa boot.config
+contains EFI load arguments;
+.Pa boot.conf
+is a fallback loader command script.
+Neither is another name for
+.Nm ,
+and the syntax rules below apply to
+.Nm ,
+not to EFI load arguments.
 .Sh SYNTAX
 Though
 .Nm Ns 's
@@ -199,7 +220,8 @@ Some IPMI environments do not enable sio1 during the BIOS boot,
 which can cause the loader to get confused and not pass RB_SERIAL
 to the kernel.
 Setting console=comconsole in this situation also does not work because
-then the loader is inacessible.  Instead, set the sioX fields as shown
+then the loader is inaccessible.
+Instead, set the sioX fields as shown
 above and also add
 .Va set boot_serial="YES"
 to cause the kernel to use the serial port without also forcing the
@@ -245,20 +267,24 @@ is set to
 .Dq comconsole
 in
 .Pa loader.conf
-or in the environment. If set to
+or in the environment.
+If set to
 .Dq YES ,
 Fred will always be displayed in monochrome.
 .It Va fred_is_red
 .Pq Dq NO
 Under color mode, Fred is depicted as a blue dragonfly with cyan wings
-by default.  If set to
+by default.
+If set to
 .Dq YES ,
 Fred will be shown as a red dragonfly with red wings instead.
 .It Va fred_disable
 .Pq Dq NO
-Fred is displayed with the menu by default.  If set to
+Fred is displayed with the menu by default.
+If set to
 .Dq YES ,
-Fred will not be shown.  The area will simply be blank.
+Fred will not be shown.
+The area will simply be blank.
 .It Va fred_on_left
 .Pq Dq NO
 If set to

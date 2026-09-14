@@ -496,7 +496,7 @@ mkimg:
 	newfs_msdos -F 32 -c 2 -L EFI -m 0xf8 `cat ${ISODIR}/vn.which`s1
 	mount_msdos /dev/`cat ${ISODIR}/vn.which`s1 ${IMGMNT}
 	mkdir -p ${IMGMNT}/EFI/BOOT
-	cp ${ISOROOT}/boot/boot1.efi ${IMGMNT}/EFI/BOOT/BOOTX64.EFI
+	cp ${ISOROOT}/boot/loader.efi ${IMGMNT}/EFI/BOOT/BOOTX64.EFI
 	umount ${IMGMNT}
 	@echo "STEP: write standard disklabel"
 	disklabel -w -r `cat ${ISODIR}/vn.which`s2 auto ${LABEL}
