@@ -354,6 +354,7 @@ reswitch:	switch (ch) {
 		case 'e':
 		case 'E':
 		case 'f':
+		case 'F':
 		case 'g':
 		case 'G':
 			error = addtype(&types,
@@ -542,6 +543,7 @@ reswitch:	switch (ch) {
 		case 'e':
 		case 'E':
 		case 'f':
+		case 'F':
 		case 'g':
 		case 'G':
 			error = addtype(&types,
