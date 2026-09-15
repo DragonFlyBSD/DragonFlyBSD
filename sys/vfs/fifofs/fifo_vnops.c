@@ -294,10 +294,11 @@ fifo_open(struct vop_open_args *ap)
 	 */
 	if ((ap->a_mode & FREAD) && (ap->a_mode & O_NONBLOCK) == 0) {
 		if (fip->fi_writers == 0) {
+			tsleep_interlock(&fip->fi_readers, PCATCH);
 			fifo_unlock(vp);
 			vn_unlock(vp);
 			error = tsleep((caddr_t)&fip->fi_readers,
-				       PCATCH, "fifoor", 0);
+				       PCATCH | PINTERLOCKED, "fifoor", 0);
 			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 			fifo_lock(vp);
 			if (error)
@@ -317,10 +318,11 @@ fifo_open(struct vop_open_args *ap)
 			}
 		} else {
 			if (fip->fi_readers == 0) {
+				tsleep_interlock(&fip->fi_writers, PCATCH);
 				fifo_unlock(vp);
 				vn_unlock(vp);
 				error = tsleep((caddr_t)&fip->fi_writers,
-					       PCATCH, "fifoow", 0);
+					       PCATCH | PINTERLOCKED, "fifoow", 0);
 				vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 				fifo_lock(vp);
 				if (error)
