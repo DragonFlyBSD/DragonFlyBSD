@@ -508,8 +508,7 @@ __read(int fd, void *buf, size_t nbytes)
 
 	/*
 	 * Before thread state exists, no cancellation can be pending.  Bypass
-	 * cancellation bookkeeping to keep unthreaded I/O at raw syscall cost;
-	 * the full path made read about 8% and write about 7% slower.
+	 * cancellation bookkeeping to keep unthreaded I/O at raw syscall cost.
 	 */
 	if (__predict_true(!_thr_is_inited()))
 		return (__sys_read(fd, buf, nbytes));

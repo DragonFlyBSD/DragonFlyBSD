@@ -39,9 +39,8 @@ void	_pthread_init_early(void);
 int	_thread_autoinit_dummy_decl_stub = 0;
 
 /*
- * Threading bootstrap, run for every process.
- * Keep this constructor as a no-op so processes that never use pthreads do
- * not initialize thread state.  The first pthread API initializes it lazily.
+ * Historical constructor retained for ABI compatibility.  Thread state is
+ * now initialized by _libc_init_tls() before constructors run.
  */
 void _thread_init(void) __constructor(101);
 /* Old name of the early-init constructor, kept for ABI compatibility. */

@@ -367,10 +367,9 @@ mutex_trylock_common(pthread_t curthread, pthread_mutex_t *mutex)
 int
 __pthread_mutex_trylock(pthread_mutex_t *m)
 {
-	pthread_t curthread;
+	pthread_t curthread = tls_get_curthread();
 	int ret;
 
-	curthread = tls_get_curthread();
 	if (__predict_false(m == NULL))
 		return(EINVAL);
 	/*
@@ -388,10 +387,9 @@ __pthread_mutex_trylock(pthread_mutex_t *m)
 int
 _pthread_mutex_trylock(pthread_mutex_t *m)
 {
-	pthread_t curthread;
+	pthread_t curthread = tls_get_curthread();
 	int	ret = 0;
 
-	curthread = tls_get_curthread();
 	/*
 	 * If the mutex is statically initialized, perform the dynamic
 	 * initialization marking the mutex private (delete safe):

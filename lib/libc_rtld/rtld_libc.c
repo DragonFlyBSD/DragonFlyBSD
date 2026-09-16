@@ -1,3 +1,37 @@
+/*
+ * Copyright (c) 2026 The DragonFly Project.  All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Leding Li <lileding@gmail.com>
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
 #include <sys/param.h>
 
 #include <errno.h>
@@ -47,61 +81,20 @@ abort(void)
 void
 exit(int status)
 {
-	(void)status;
 	_exit(status);
 	__builtin_unreachable();
 }
 
-unsigned long
-strtoul(const char *string, char **endp, int base)
-{
-	const char *start;
-	unsigned long value;
-	unsigned long digit;
-	int negative;
-	int digit_value;
+/* Use the locale-independent Citrus parser with unsigned long limits. */
+#include "../libc/citrus/citrus_bcs.h"
 
-	while (*string == ' ' || *string == '\t' || *string == '\n' ||
-	    *string == '\r' || *string == '\f' || *string == '\v')
-		++string;
-	start = string;
-	negative = 0;
-	if (*string == '+' || *string == '-') {
-		negative = *string == '-';
-		++string;
-	}
-	if ((base == 0 || base == 16) && string[0] == '0' &&
-	    (string[1] == 'x' || string[1] == 'X')) {
-		base = 16;
-		string += 2;
-	} else if (base == 0 && string[0] == '0') {
-		base = 8;
-	} else if (base == 0) {
-		base = 10;
-	}
-	value = 0;
-	while (*string != '\0') {
-		if (*string >= '0' && *string <= '9')
-			digit_value = *string - '0';
-		else if (*string >= 'a' && *string <= 'z')
-			digit_value = *string - 'a' + 10;
-		else if (*string >= 'A' && *string <= 'Z')
-			digit_value = *string - 'A' + 10;
-		else
-			break;
-		if (digit_value >= base)
-			break;
-		digit = (unsigned long)digit_value;
-		if (value > (ULONG_MAX - digit) / (unsigned long)base) {
-			value = ULONG_MAX;
-			while (*string != '\0')
-				++string;
-			break;
-		}
-		value = value * (unsigned long)base + digit;
-		++string;
-	}
-	if (endp != NULL)
-		*endp = (char *)(uintptr_t)(string == start ? start : string);
-	return (negative ? (unsigned long)(-value) : value);
-}
+#define _FUNCNAME strtoul
+#define __UINT unsigned long
+#undef UINT_MAX
+#define UINT_MAX ULONG_MAX
+#define isspace(c) _citrus_bcs_isspace(c)
+#define isxdigit(c) _citrus_bcs_isxdigit(c)
+#define isdigit(c) _citrus_bcs_isdigit(c)
+#define isalpha(c) _citrus_bcs_isalpha(c)
+#define isupper(c) _citrus_bcs_isupper(c)
+#include "../libc/citrus/_strtoul.h"

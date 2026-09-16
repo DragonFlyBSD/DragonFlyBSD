@@ -67,7 +67,7 @@ _readdir_unlocked(DIR *dirp, int skipdeleted)
 				return (NULL);
 		}
 		dp = (struct dirent *)(dirp->dd_buf + dirp->dd_loc);
-		if (_DIRENT_DIRSIZ(dp) > dirp->dd_len + 1 - dirp->dd_loc)
+		if ((long)_DIRENT_DIRSIZ(dp) > dirp->dd_len + 1 - dirp->dd_loc)
 			return (NULL);
 		dirp->dd_loc += _DIRENT_DIRSIZ(dp);
 

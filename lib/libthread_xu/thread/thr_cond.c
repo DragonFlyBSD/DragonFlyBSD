@@ -154,10 +154,9 @@ int
 _pthread_cond_destroy(pthread_cond_t *cond)
 {
 	pthread_cond_t	cv;
-	pthread_t	curthread;
+	pthread_t	curthread = tls_get_curthread();
 	int		rval = 0;
 
-	curthread = tls_get_curthread();
 	if (cond == NULL) {
 		rval = EINVAL;
 	} else if (*cond == NULL) {
@@ -241,14 +240,13 @@ static int
 cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 		 const struct timespec *abstime, int cancel)
 {
-	pthread_t curthread;
+	pthread_t curthread = tls_get_curthread();
 	struct timespec ts, ts2, *tsp;
 	struct cond_cancel_info info;
 	pthread_cond_t  cv;
 	int		oldcancel;
 	int		ret;
 
-	curthread = tls_get_curthread();
 	/*
 	 * If the condition variable is statically initialized,
 	 * perform the dynamic initialization:
@@ -371,12 +369,11 @@ __pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
 static int
 cond_signal_common(pthread_cond_t *cond, int broadcast)
 {
-	pthread_t	curthread;
+	pthread_t	curthread = tls_get_curthread();
 	struct cond_cancel_info *info;
 	pthread_cond_t	cv;
 	int		ret = 0;
 
-	curthread = tls_get_curthread();
 	cond_log("cond_signal_common %p broad=%d\n", *cond, broadcast);
 
 	/*

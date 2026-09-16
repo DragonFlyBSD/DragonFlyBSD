@@ -76,10 +76,9 @@ _pthread_key_create(pthread_key_t *key, void (*destructor) (void *))
 int
 _pthread_key_delete(pthread_key_t key)
 {
-	pthread_t curthread;
+	pthread_t curthread = tls_get_curthread();
 	int ret = 0;
 
-	curthread = tls_get_curthread();
 	if ((unsigned int)key < PTHREAD_KEYS_MAX) {
 		/* Lock the key table: */
 		THR_LOCK_ACQUIRE(curthread, &_keytable_lock);

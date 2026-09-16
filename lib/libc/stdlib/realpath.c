@@ -124,7 +124,7 @@ realpath(const char * __restrict path, char * __restrict resolved)
 		 */
 		p = strchr(left, '/');
 		s = p ? p : left + left_len;
-		if (s - left >= sizeof(next_token)) {
+		if ((size_t)(s - left) >= sizeof(next_token)) {
 			if (m)
 				free(resolved);
 			errno = ENAMETOOLONG;

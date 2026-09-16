@@ -58,7 +58,6 @@ CFLAGS+= -DHESIOD
 .if !defined(NO_NS_CACHING)
 CFLAGS+= -DNS_CACHING
 .endif
-.elif ${LIB} == "c_rtld"
 .endif
 
 # If there are no machine dependent sources, append all the

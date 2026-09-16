@@ -35,12 +35,11 @@
 int
 _pthread_cancel(pthread_t pthread)
 {
-	pthread_t curthread;
+	pthread_t curthread = tls_get_curthread();
 	int oldval, newval = 0;
 	int oldtype;
 	int ret;
 
-	curthread = tls_get_curthread();
 	/*
 	 * POSIX says _pthread_cancel should be async cancellation safe,
 	 * so we temporarily disable async cancellation.
@@ -79,10 +78,9 @@ testcancel(pthread_t curthread)
 int
 _pthread_setcancelstate(int state, int *oldstate)
 {
-	pthread_t curthread;
+	pthread_t curthread = tls_get_curthread();
 	int oldval;
 
-	curthread = tls_get_curthread();
 	oldval = curthread->cancelflags;
 	if (oldstate != NULL)
 		*oldstate = ((oldval & THR_CANCEL_DISABLE) ?
@@ -105,10 +103,9 @@ _pthread_setcancelstate(int state, int *oldstate)
 int
 _pthread_setcanceltype(int type, int *oldtype)
 {
-	pthread_t curthread;
+	pthread_t curthread = tls_get_curthread();
 	int oldval;
 
-	curthread = tls_get_curthread();
 	oldval = curthread->cancelflags;
 	if (oldtype != NULL)
 		*oldtype = ((oldval & THR_CANCEL_AT_POINT) ?

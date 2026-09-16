@@ -42,7 +42,7 @@ strrchr(const char *p, int ch)
 	c = ch;
 	for (save = NULL;; ++p) {
 		if (*p == c)
-			save = (char *)p;
+			save = __DECONST(char *, p);
 		if (*p == '\0')
 			return (save);
 	}
