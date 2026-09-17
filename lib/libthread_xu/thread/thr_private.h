@@ -639,6 +639,7 @@ extern struct __pthread_mutexattr_s _pthread_mutexattr_default;
 extern struct __pthread_condattr_s _pthread_condattr_default;
 
 extern pid_t	_thr_pid;
+extern int	_thr_activated;
 extern size_t	_thr_guard_default;
 extern size_t	_thr_stack_default;
 extern size_t	_thr_stack_initial;
@@ -685,6 +686,9 @@ void	_thr_malloc_init(void);
 void	_rtld_setthreaded(int);
 void	_thr_rtld_init(void);
 void	_thr_rtld_fini(void);
+void	_thr_activate(void);
+void	_thr_check_forked_child(pthread_t);
+
 int	_thr_stack_alloc(pthread_attr_t);
 void	_thr_stack_free(pthread_attr_t);
 void	_thr_stack_cleanup(void);
@@ -779,13 +783,6 @@ static inline int
 _thr_is_inited(void)
 {
 	return (_thr_initial != NULL);
-}
-
-static inline void
-_thr_check_init(void)
-{
-	if (_thr_initial == NULL)
-		_libpthread_init(NULL);
 }
 
 struct dl_phdr_info;

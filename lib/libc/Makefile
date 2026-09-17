@@ -43,6 +43,7 @@ LDFLAGS+=	-flto
 .include "string/Makefile.inc"
 .include "sys/Makefile.inc"
 .include "sysvipc/Makefile.inc"
+.include "thread/Makefile.inc"
 .include "tre-regex/Makefile.inc"
 .include "upmap/Makefile.inc"
 .include "uuid/Makefile.inc"

@@ -22,7 +22,7 @@ DF306.0 {
 };
 
 DF404.0 {
-	/* pthread stubs */
+	/* pthread compatibility ABI */
     pthread_atfork;
     pthread_attr_destroy;
     pthread_attr_get_np;
@@ -454,7 +454,7 @@ DF404.0 {
 
 DF410.0 {
     clock_getcpuclockid;
-	/* pthread stubs */
+	/* pthread compatibility ABI */
     pthread_getcpuclockid;
     pthread_getthreadid_np;
 };
@@ -491,6 +491,7 @@ DF506.0 {
 
 DF508.0 {
     __errno_location;
+    _libc_thr_init;	/* should really in DFprivate_1.0 */
     getutxuser;
 };
 
@@ -508,7 +509,7 @@ DF602.0 {
 };
 
 DFprivate_1.0 {
-	/* pthread stubs */
+	/* pthread private compatibility ABI */
     _pthread_atfork;
     _pthread_attr_destroy;
     _pthread_attr_get_np;
@@ -659,6 +660,7 @@ DFprivate_1.0 {
     _spinunlock;
 
 	/* thread init stubs */
+    _libc_thr_exit;
     _thread_autoinit_dummy_decl;
     _thread_init;
 

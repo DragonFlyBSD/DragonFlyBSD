@@ -132,10 +132,29 @@ _pthread_testcancel(void)
 	testcancel(tls_get_curthread());
 }
 
+/*
+ * Sentinel returned by _thr_cancel_enter() when the single-threaded
+ * fast path was taken; never a valid cancelflags value.
+ */
+#define	THR_CANCEL_FASTPATH		(-1)
+
 int
 _thr_cancel_enter(pthread_t curthread)
 {
 	int oldval;
+
+	/*
+	 * In a single-threaded process there is normally nobody to deliver a
+	 * cancellation request; skip the two atomic ops per syscall.
+	 *
+	 * The thread can still cancel itself (pthread_cancel(pthread_self())),
+	 * so a pending request forces the full path.
+	 */
+	if (__predict_false(curthread == NULL))
+		return (THR_CANCEL_FASTPATH);
+	if (!__isthreaded &&
+	    __predict_true(!(curthread->cancelflags & THR_CANCEL_NEEDED)))
+		return (THR_CANCEL_FASTPATH);
 
 	oldval = curthread->cancelflags;
 	if (!(oldval & THR_CANCEL_AT_POINT)) {
@@ -148,6 +167,8 @@ _thr_cancel_enter(pthread_t curthread)
 void
 _thr_cancel_leave(pthread_t curthread, int previous)
 {
+	if (previous == THR_CANCEL_FASTPATH)
+		return;
 	if (!(previous & THR_CANCEL_AT_POINT))
 		atomic_clear_int(&curthread->cancelflags, THR_CANCEL_AT_POINT);
 }

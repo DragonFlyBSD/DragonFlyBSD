@@ -1,20 +1,8 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <sys/cdefs.h>
 
-static void __attribute__((__used__))
-dummy_pthread_create(void)
-{
-	fprintf(stderr, "libpthread.so: dummy weak symbol executed\n");
-	abort();
-}
-
-__weak_reference(dummy_pthread_create, pthread_create);
-
-static void __attribute__((__used__))
-dummy_pthread_cancel(void)
-{
-	fprintf(stderr, "libpthread.so: dummy weak symbol executed\n");
-	abort();
-}
-
-__weak_reference(dummy_pthread_cancel, pthread_cancel);
+/*
+ * The pthread implementation now lives in libc.  This shim only exists so
+ * that old binaries carrying a DT_NEEDED entry for libpthread.so.0 keep
+ * loading.
+ */
+static int dummy_pthread __used;

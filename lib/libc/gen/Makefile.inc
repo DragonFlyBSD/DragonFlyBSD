@@ -9,8 +9,8 @@ CFLAGS+=-I${.CURDIR}/../../sys/crypto/chacha20
 
 CMAPS+=	${.CURDIR}/gen/Symbol.map
 
-SRCS+=  __errno_location.c _once_stub.c _pthread_stubs.c _rand48.c \
-	_spinlock_stub.c _thread_init.c \
+SRCS+=  __errno_location.c _atomic_lock.c _once_stub.c _rand48.c \
+	_thread_init.c \
 	alarm.c arc4random.c arc4random-compat.c arc4random_uniform.c \
 	assert.c basename.c \
 	clock.c clock_getcpuclockid.c closedir.c confstr.c creat.c \
@@ -32,7 +32,7 @@ SRCS+=  __errno_location.c _once_stub.c _pthread_stubs.c _rand48.c \
 	nlist.c nrand48.c ntp_gettime.c opendir.c \
 	pause.c pmadvise.c popen.c posix_spawn.c posixshm.c \
 	psignal.c pw_scan.c pwcache.c \
-	raise.c readdir.c readpassphrase.c rewinddir.c ovsbrk.c signbit.c \
+	readdir.c readpassphrase.c rewinddir.c ovsbrk.c signbit.c \
 	sysvipc.c sysvipc_shmget.c sysvipc_shmctl.c \
 	sysvipc_shmdt.c sysvipc_shmat.c\
 	scandir.c seed48.c seekdir.c sysvipc_semctl.c sysvipc_semget.c sysvipc_semop.c \

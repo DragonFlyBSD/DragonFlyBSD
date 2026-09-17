@@ -247,6 +247,7 @@ _libc_init_tls(void)
 	 */
 	tcb = _libc_allocate_tls();
 	tls_set_tcb(tcb);
+	_libpthread_init(NULL);
 	return(tcb);
 }
 

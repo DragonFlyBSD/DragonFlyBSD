@@ -476,8 +476,6 @@ _pthread_mutex_lock(pthread_mutex_t *m)
 	pthread_t curthread;
 	int	ret;
 
-	_thr_check_init();
-
 	if (__predict_false(m == NULL))
 		return(EINVAL);
 
@@ -500,8 +498,6 @@ __pthread_mutex_timedlock(pthread_mutex_t * __restrict m,
 {
 	pthread_t curthread;
 	int	ret;
-
-	_thr_check_init();
 
 	if (__predict_false(m == NULL))
 		return(EINVAL);

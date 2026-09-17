@@ -127,7 +127,6 @@ DF506.0 {
 DF508.0 {
     abort_handler_s;
     ignore_handler_s;
-    _libc_thr_init;
     set_constraint_handler_s;
 };
 
