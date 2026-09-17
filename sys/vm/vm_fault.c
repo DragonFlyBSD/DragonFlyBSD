@@ -374,15 +374,16 @@ virtual_copy_ok(struct faultstate *fs)
  *
  * Determine if the pager for the current object *might* contain the page.
  *
- * We only need to try the pager if this is not a default object (default
- * objects are zero-fill and have no real pager), and if we are not taking
- * a wiring fault forcing backing operation.
+ * We only need to try the pager if this is not a default object.  Default
+ * objects are zero-fill and have no real pager.
  *
- * Regular faults on wired areas do not force pager operation.
+ * NOTE: We previously also returned FALSE for wiring operations under
+ *	 the mistaken belief that regular faults on wired areas do not
+ *	 force pager operations, but this was incorrect.  Wiring operations
+ *	 have to fault in missing pages.  It was causing wiring operations
+ *	 to zero-fill the missing areas instead.
  */
-#define TRYPAGER(fs)	\
-		(fs->ba->object->type != OBJT_DEFAULT &&		\
-		(((fs->fault_flags & VM_FAULT_WIRE_MASK) == 0)))
+#define TRYPAGER(fs)	(fs->ba->object->type != OBJT_DEFAULT)
 
 /*
  * vm_fault:
