@@ -117,9 +117,13 @@
  *	(1) Any change to m->object or m->pindex (also requires the
  *	    related object to be exclusively locked).
  *
- *	(2) Any transition of m->wire_count to 0 or from 0.  Other
+ *	(2) Any transition of m->wire_count from 0 to 1.  Other
  *	    transitions (e.g. 2->1, 1->2, etc) are allowed without
- *	    locks.
+ *	    locks.  And transitions 1->0 are allowed as long as the
+ *	    page is still referenced by other means.  For example,
+ *	    the pmap system can transition the wire count to 0 because
+ *	    the page will still be associated with its related VM object
+ *	    at that point in time.
  *
  *	(3) Any change to m->valid.
  *
