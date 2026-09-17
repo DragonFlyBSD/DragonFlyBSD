@@ -46,9 +46,6 @@ threaded_FLAGS+=-I${LZMADIR}/rangecoder -I${LZMADIR}/delta -I${LZMADIR}/simple
 threaded_FLAGS_FILES+=	${XZMT_SRCS}
 .PATH: ${LZMADIR}/common ${LZMADIR}/check ${LZMADIR}/lz ${LZMADIR}/lzma
 .PATH: ${LZMADIR}/rangecoder ${LZMADIR}/delta ${LZMADIR}/simple
-
-DPADD+=	${LIBPTHREAD}
-LDADD+=	-lpthread
 .endif
 
 # Subset of liblzma with threading enabled.

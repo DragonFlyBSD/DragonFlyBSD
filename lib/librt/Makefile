@@ -3,9 +3,6 @@ SHLIB_MAJOR=0
 
 WARNS?=2
 
-LDADD+=-pthread
-DPADD+=${LIBPTHREAD}
-
 SRCS+=	aio.c mq.c
 
 MAN+=	aio_cancel.3 aio_error.3 aio_read.3 aio_return.3 \

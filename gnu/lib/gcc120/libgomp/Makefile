@@ -16,9 +16,6 @@ VERSION_MAP=	libgomp.ver
 LIB=		gomp
 SHLIB_MAJOR=	1
 
-LDADD=		-lpthread
-DPADD=		${LIBPTHREAD}
-
 # From libgomp/Makefile.am
 libgomp_la_SOURCES = alloc.c atomic.c barrier.c critical.c env.c error.c \
 	icv.c icv-device.c iter.c iter_ull.c loop.c loop_ull.c ordered.c \

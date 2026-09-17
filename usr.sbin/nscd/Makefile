@@ -9,8 +9,8 @@ SRCS=	agent.c cachelib.c cacheplcs.c config.c debug.c log.c \
 	mp_rs_query.c mp_ws_query.c nscd.c nscdcli.c parser.c \
 	protocol.c query.c singletons.c
 CFLAGS+= -DCONFIG_PATH="\"${PREFIX}/etc/nscd.conf\""
-DPADD=	${LIBM} ${LIBPTHREAD} ${LIBUTIL}
-LDADD=	-lm -lpthread -lutil
+DPADD=	${LIBM} ${LIBUTIL}
+LDADD=	-lm -lutil
 
 .PATH: ${.CURDIR}/agents
 .include "${.CURDIR}/agents/Makefile.inc"

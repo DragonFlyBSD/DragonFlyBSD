@@ -33,7 +33,7 @@
 odir=`pwd`
 cd /tmp
 sed '1,/^EOF/d' < $odir/$0 > mmap3.c
-cc -o mmap3 -Wall mmap3.c -lpthread
+cc -o mmap3 -Wall mmap3.c
 rm -f mmap3.c
 
 for i in `jot 20`; do

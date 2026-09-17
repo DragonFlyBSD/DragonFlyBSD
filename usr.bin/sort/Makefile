@@ -18,8 +18,6 @@ DPADD+=		${LIBCRYPTO}
 LDADD+=		-lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
-DPADD+=	${LIBPTHREAD}
-LDADD+=	-lpthread
 CFLAGS+= -DSORT_THREADS
 .endif
 

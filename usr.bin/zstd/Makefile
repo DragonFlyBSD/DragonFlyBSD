@@ -54,8 +54,6 @@ WARNS?=	2
 .PATH: ${ZSTDCONTRIB}/lib/dictBuilder
 SRCS+=	${ZSMT_SRCS}
 CFLAGS+=-DZSTD_MULTITHREAD=1
-DPADD+=	${LIBPTHREAD}
-LDADD+=	-lpthread
 #.endif
 
 .PATH: ${ZSTDCONTRIB}/programs

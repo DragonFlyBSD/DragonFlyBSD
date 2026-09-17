@@ -36,7 +36,7 @@
 odir=`pwd`
 cd /tmp
 sed '1,/^EOF/d' < $odir/$0 > mmap2.c
-cc -o mmap2 -Wall mmap2.c -lpthread
+cc -o mmap2 -Wall mmap2.c
 rm -f mmap2.c
 
 for i in `jot 10`; do

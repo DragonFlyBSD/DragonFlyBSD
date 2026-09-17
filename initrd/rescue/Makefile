@@ -295,7 +295,6 @@ CRUNCH_LIBS+= -lprivate_zstd
 CRUNCH_LIBS+= -lutil
 CRUNCH_LIBS+= -lz  # cpio, savecore, ssh, tar
 CRUNCH_LIBS+= -lm  # awk, hammer, hammer2, ping, ping6, ps
-CRUNCH_LIBS+= -lpthread  # hammer2
 
 CRUNCH_LINKOPTS+= ${PRIVATELIB_LDFLAGS}
 

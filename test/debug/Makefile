@@ -5,7 +5,7 @@ TARGETS+= wildcardinfo kmapinfo kwrite kshowprocs mbufinfo ncptrace
 TARGETS+= vnodeinfo zallocinfo evfilt_user bufqueues testvblank
 
 CFLAGS= -O0 -Wall -g -I../../sys -I../../sys/dev/drm/include
-LDFLAGS= -lkvm -lpthread
+LDFLAGS= -lkvm
 
 all: ${TARGETS}
 

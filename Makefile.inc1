@@ -139,8 +139,6 @@ TARGET_PLATFORM= pc64
 .endif
 .endif
 
-THREAD_LIB?=	thread_xu
-
 # BTOOLS	(Natively built) All non-cross-development tools that the
 #		main build needs.  This includes things like 'mkdir' and 'rm'.
 #		We will not use the native system's exec path once we start
@@ -1121,19 +1119,18 @@ _prebuild_libs+=	lib/libpcap
 
 _generic_libs=	gnu/lib
 
-_prebuild_libs+= lib/libcrypt lib/libncurses/libncurses
+_prebuild_libs+=	lib/libcrypt lib/libncurses/libncurses
 
 _generic_libs+=	lib
 
 _prebuild_libs+=	lib/librecrypto lib/libressl
 lib/libressl__L: lib/librecrypto__L
 
-_prebuild_libs+=       lib/libldns
+_prebuild_libs+=	lib/libldns
 lib/libldns__L: lib/librecrypto__L
 
-_prebuild_libs+= lib/libsbuf lib/libm \
-		lib/libpam/libpam lib/libypclnt lib/lib${THREAD_LIB} \
-		lib/libpthread lib/libprop
+_prebuild_libs+=	lib/libsbuf lib/libm \
+			lib/libpam/libpam lib/libypclnt lib/libprop
 
 _generic_libs+=	usr.bin/flex/lib
 

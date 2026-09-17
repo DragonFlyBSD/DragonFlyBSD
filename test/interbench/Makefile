@@ -1,7 +1,7 @@
 TARGETS= hackbench.o interbench.o interbench
 
 CFLAGS= -W -Wall -g -O2 -s -pipe -Werror
-LDFLAGS= -lpthread -lrt -lm
+LDFLAGS= -lrt -lm
 
 all:	${TARGETS}
 

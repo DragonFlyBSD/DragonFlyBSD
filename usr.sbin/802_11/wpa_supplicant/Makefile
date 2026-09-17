@@ -134,8 +134,7 @@ NEED_FIPS186_2_PRF=y
 #
 .if !empty(CFLAGS:M*-DPCSC_FUNCS)
 SRCS+=	pcsc_funcs.c
-DPADD+=${LIBPTHREAD}
-LDADD+=-lpcsclite -lpthread
+LDADD+=-lpcsclite
 .endif
 
 .if !empty(CFLAGS:M*-DEAP_GPSK)

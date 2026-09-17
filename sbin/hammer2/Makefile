@@ -22,9 +22,6 @@ DPADD+=		${LIBCRYPTO}
 LDADD+=		-lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
-DPADD+=		${LIBPTHREAD}
-LDADD+=		-lpthread
-
 .PATH: ${.CURDIR}/../../sys/libkern ${.CURDIR}/../../sys/vfs/hammer2/xxhash ${.CURDIR}/zlib ${.CURDIR}/lz4
 
 # Hash functions

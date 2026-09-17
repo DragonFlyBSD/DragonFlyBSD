@@ -19,8 +19,8 @@ FILES= favicon.png progress.html progress.css progress.js dsynth.png
 # CFLAGS+=	-DSYSCAP_UNAVAILABLE
 CFLAGS+=	-pthread
 CFLAGS+=	-DSCRIPTDIR=${SHAREDIR}/dsynth
-LDADD+=		-lpthread -lutil
-DPADD+=		${LIBPTHREAD} ${LIBUTIL}
+LDADD+=		-lutil
+DPADD+=		${LIBUTIL}
 
 # ncurses, md5, for DragonFlyBSD
 #

@@ -37,7 +37,7 @@
 here=`pwd`
 cd /tmp
 sed '1,/^EOF/d' < $here/$0 > dl.c
-cc -o dl -Wall dl.c -lpthread
+cc -o dl -Wall dl.c
 rm -f dl.c
 
 n=5
