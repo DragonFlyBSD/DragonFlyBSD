@@ -3,7 +3,7 @@
 CMAPS+=	${.CURDIR}/thread/Symbol.map
 
 thread_CFLAGS=	-DPTHREAD_KERNEL -D_THREAD_SAFE
-thread_CFLAGS+=	-I${.CURDIR}/../libthread_xu/arch/${MACHINE_ARCH}/include
+thread_CFLAGS+=	-I${.CURDIR}/thread/${MACHINE_ARCH}
 thread_CFLAGS+=	-I${.CURDIR}/../libthread_db
 thread_CFLAGS+=	-I${.CURDIR}/../../libexec/rtld-elf
 
@@ -18,7 +18,7 @@ thread_CFLAGS+=	-D_PTHREADS_DEBUGGING
 thread_CFLAGS+=	-D_PTHREADS_DEBUGGING2
 .endif
 
-.PATH: ${.CURDIR}/../libthread_xu/thread
+.PATH: ${.CURDIR}/thread
 thread_SRCS=	thr_affinity.c thr_attr.c \
 		thr_barrier.c thr_barrierattr.c \
 		thr_cancel.c thr_clean.c thr_concurrency.c thr_cond.c \
@@ -44,7 +44,7 @@ thread_SRCS=	thr_affinity.c thr_attr.c \
 		thr_umtx.c \
 		thr_yield.c
 
-.PATH: ${.CURDIR}/../libthread_xu/arch/${MACHINE_ARCH}/${MACHINE_ARCH}
+.PATH: ${.CURDIR}/thread/${MACHINE_ARCH}
 thread_SRCS+=	_umtx_sleep_wakeup_err.S
 
 SRCS+=		${thread_SRCS}
