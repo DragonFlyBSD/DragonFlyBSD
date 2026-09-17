@@ -1,11 +1,11 @@
 #	@(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: head/lib/libc/string/Makefile.inc 247899 2013-03-06 19:59:42Z zeising $
 
-.PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/string ${.CURDIR}/../libc/string
+.PATH: ${.CURDIR}/${MACHINE_ARCH}/string ${.CURDIR}/string
 
 CMAPS+=	${.CURDIR}/string/Symbol.map
 
-CFLAGS+= -I${.CURDIR}/../libc/locale
+CFLAGS+= -I${.CURDIR}/locale
 
 # machine-independent string sources
 MISRCS+=bcmp.c bcopy.c bzero.c explicit_bzero.c \
@@ -26,8 +26,8 @@ MISRCS+=bcmp.c bcopy.c bzero.c explicit_bzero.c \
 	wmemchr.c wmemcmp.c wmemcpy.c wmemmove.c wmemset.c
 
 # machine-dependent string sources
-.if exists(${.CURDIR}/../libc/${MACHINE_ARCH}/string/Makefile.inc)
-.include "${.CURDIR}/../libc/${MACHINE_ARCH}/string/Makefile.inc"
+.if exists(${.CURDIR}/${MACHINE_ARCH}/string/Makefile.inc)
+.include "${.CURDIR}/${MACHINE_ARCH}/string/Makefile.inc"
 .endif
 
 MAN+=	bcopy.3 bstring.3 bzero.3 ffs.3 index.3 memccpy.3 memchr.3 \

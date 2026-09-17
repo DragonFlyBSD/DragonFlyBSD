@@ -1,7 +1,4 @@
-# Makefile.inc
-#
-
-.PATH: ${.CURDIR}/../libc/upmap
+.PATH: ${.CURDIR}/upmap
 
 CMAPS+=	${.CURDIR}/upmap/Symbol.map
 

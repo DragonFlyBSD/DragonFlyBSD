@@ -1,6 +1,6 @@
 # libc sources related to security
 
-.PATH: ${.CURDIR}/../libc/secure
+.PATH: ${.CURDIR}/secure
 
 SRCS+=	stack_protector.c \
 	stack_protector_compat.c

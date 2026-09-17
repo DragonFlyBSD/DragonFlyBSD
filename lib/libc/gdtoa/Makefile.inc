@@ -1,7 +1,7 @@
 # $FreeBSD: src/lib/libc/gdtoa/Makefile.inc,v 1.10 2008/04/12 03:11:36 das Exp $
 
 # netlib gdtoa sources
-.PATH: ${.CURDIR}/../libc/gdtoa
+.PATH: ${.CURDIR}/gdtoa
 
 CMAPS+=	${.CURDIR}/gdtoa/Symbol.map
 

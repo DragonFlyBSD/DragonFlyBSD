@@ -1,7 +1,7 @@
 #	@(#)Makefile    5.11 (Berkeley) 9/6/90
 # $FreeBSD: src/lib/libc/rpc/Makefile.inc,v 1.27 2005/09/11 20:59:52 stefanf Exp $
 
-.PATH: ${.CURDIR}/../libc/rpc ${.CURDIR}/.
+.PATH: ${.CURDIR}/rpc
 
 CMAPS+=	${.CURDIR}/rpc/Symbol.map
 

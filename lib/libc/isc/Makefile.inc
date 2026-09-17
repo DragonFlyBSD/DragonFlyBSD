@@ -1,4 +1,4 @@
-.PATH: ${.CURDIR}/../libc/isc
+.PATH: ${.CURDIR}/isc
 
 CMAPS+=	${.CURDIR}/isc/Symbol.map
 

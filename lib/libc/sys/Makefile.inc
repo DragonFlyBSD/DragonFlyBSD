@@ -2,7 +2,7 @@
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
 
 # sys sources
-.PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
+.PATH: ${.CURDIR}/${MACHINE_ARCH}/sys ${.CURDIR}/sys
 
 CMAPS+=	${.CURDIR}/sys/Symbol.map
 
@@ -15,7 +15,7 @@ CMAPS+=	${.CURDIR}/sys/Symbol.map
 # MDASM names override the default syscall names in MIASM.
 # NOASM will prevent the default syscall code from being generated.
 #
-.include "${.CURDIR}/../libc/${MACHINE_ARCH}/sys/Makefile.inc"
+.include "${.CURDIR}/${MACHINE_ARCH}/sys/Makefile.inc"
 
 SRCS+=	fork.c
 

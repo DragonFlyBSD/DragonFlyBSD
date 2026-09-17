@@ -1,4 +1,4 @@
-.PATH: ${.CURDIR}/../libc/citrus
+.PATH: ${.CURDIR}/citrus
 
 CMAPS+=	${.CURDIR}/citrus/Symbol.map
 

@@ -1,4 +1,4 @@
-.PATH: ${.CURDIR}/../libc/resolv
+.PATH: ${.CURDIR}/resolv
 
 SRCS+=	h_errno.c herror.c mtctxres.c res_comp.c res_data.c res_debug.c \
 	res_findzonecut.c res_init.c res_mkquery.c res_mkupdate.c \

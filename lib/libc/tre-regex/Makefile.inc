@@ -1,6 +1,6 @@
 TRESRC=	${.CURDIR}/../../contrib/tre/lib
 
-.PATH: ${TRESRC} ${.CURDIR}/../libc/tre-regex
+.PATH: ${TRESRC} ${.CURDIR}/tre-regex
 
 CMAPS+=	${.CURDIR}/tre-regex/Symbol.map
 
@@ -15,14 +15,12 @@ SRCS+=	tre-ast.c \
 	regerror.c \
 	regexec.c
 
-CFLAGS+=	-I${.CURDIR}/../libc/tre-regex
-CFLAGS+=	-I${.CURDIR}/../libc/locale
+CFLAGS+=	-I${.CURDIR}/tre-regex
+CFLAGS+=	-I${.CURDIR}/locale
 CFLAGS+=	-I${TRESRC}
 CFLAGS+=	-DHAVE_CONFIG_H
 
-.if ${LIB} == "c"
-INCS=	${.CURDIR}/../libc/tre-regex/regex.h
-.endif
+INCS=	${.CURDIR}/tre-regex/regex.h
 
 MAN+=	regex.3
 MAN+=	re_format.7

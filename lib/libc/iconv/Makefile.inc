@@ -1,4 +1,4 @@
-.PATH: ${.CURDIR}/../libc/iconv
+.PATH: ${.CURDIR}/iconv
 
 CMAPS+=	${.CURDIR}/iconv/Symbol.map
 

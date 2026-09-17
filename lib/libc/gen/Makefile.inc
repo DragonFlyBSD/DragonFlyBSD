@@ -2,9 +2,9 @@
 # $FreeBSD: head/lib/libc/gen/Makefile.inc 214680 2010-11-02 17:00:56Z ed $
 
 # machine-independent gen sources
-.PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
+.PATH: ${.CURDIR}/${MACHINE_ARCH}/gen ${.CURDIR}/gen
 
-CFLAGS+=-I${.CURDIR}/../libc/sysvipc
+CFLAGS+=-I${.CURDIR}/sysvipc
 CFLAGS+=-I${.CURDIR}/../../sys/crypto/chacha20
 
 CMAPS+=	${.CURDIR}/gen/Symbol.map
@@ -41,18 +41,14 @@ SRCS+=  __errno_location.c _once_stub.c _pthread_stubs.c _rand48.c \
 	siginterrupt.c siglist.c signal.c \
 	sigsetops.c sigwait.c sleep.c srand48.c \
 	stringlist.c strtofflags.c sysconf.c sysctl.c sysctlbyname.c \
-	sysctlnametomib.c syslog.c telldir.c termios.c time.c times.c \
-	ttyname.c ttyslot.c \
+	sysctlnametomib.c syslog.c \
+	telldir.c termios.c time.c times.c tls.c ttyname.c ttyslot.c \
 	ualarm.c ucontext.c ulimit.c uname.c unvis.c usleep.c utime.c \
 	utmp.c utmpx.c \
 	valloc.c vis.c wait.c wait3.c waitpid.c waitid.c wordexp.c
 
-.if ${LIB} != {c_rtld}
-SRCS+=	tls.c
-.endif
-
 # machine-dependent gen sources
-.include "${.CURDIR}/../libc/${MACHINE_ARCH}/gen/Makefile.inc"
+.include "${.CURDIR}/${MACHINE_ARCH}/gen/Makefile.inc"
 
 MAN+=	alarm.3 arc4random.3 clock.3 \
 	basename.3 \

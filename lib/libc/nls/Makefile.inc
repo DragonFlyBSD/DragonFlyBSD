@@ -1,7 +1,7 @@
 #	from $NetBSD: Makefile.inc,v 1.7 1995/02/27 13:06:20 cgd Exp $
 # $FreeBSD: head/lib/libc/nls/Makefile.inc 244757 2012-12-28 01:23:12Z delphij $
 
-.PATH: ${.CURDIR}/../libc/nls
+.PATH: ${.CURDIR}/nls
 
 CMAPS+=	${.CURDIR}/nls/Symbol.map
 
@@ -12,7 +12,6 @@ MAN+=	catclose.3 catgets.3 catopen.3
 # NOTE: C.msg should not be processed here, it's used as a template
 #       for translators.
 
-.if ${LIB} == "c"
 .if !defined(NO_SHARE)
 NLSNAME=	libc
 NLS+=	be_BY.UTF-8
@@ -41,5 +40,4 @@ NLS+=	uk_UA.UTF-8
 NLS+=	zh_Hans_CN.GB18030
 NLS+=	zh_Hans_CN.GB2312
 NLS+=	zh_Hans_CN.UTF-8
-.endif
 .endif

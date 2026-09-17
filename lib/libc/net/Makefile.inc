@@ -2,7 +2,7 @@
 # $FreeBSD: src/lib/libc/net/Makefile.inc,v 1.36.2.5 2002/07/29 18:33:18 ume Exp $
 
 # machine-independent net sources
-.PATH: ${.CURDIR}/../libc/net
+.PATH: ${.CURDIR}/net
 
 CMAPS+=	${.CURDIR}/net/Symbol.map
 
@@ -23,7 +23,7 @@ SRCS+=	base64.c ether_addr.c eui64.c \
 SRCS+=	nscache.c nscachedcli.c
 .endif
 
-CFLAGS+=-DINET6 -I${.OBJDIR} -I${.CURDIR}/../libc/resolv
+CFLAGS+=-DINET6 -I${.OBJDIR} -I${.CURDIR}/resolv
 
 YFLAGS+=-p_nsyy
 LFLAGS+=-P_nsyy

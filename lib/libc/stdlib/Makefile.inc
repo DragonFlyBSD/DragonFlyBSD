@@ -2,7 +2,7 @@
 # $FreeBSD: src/lib/libc/stdlib/Makefile.inc,v 1.56 2008/10/17 08:30:20 netchild Exp $
 
 # machine-independent stdlib sources
-.PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/stdlib ${.CURDIR}/../libc/stdlib
+.PATH: ${.CURDIR}/${MACHINE_ARCH}/stdlib ${.CURDIR}/stdlib
 
 CMAPS+=	${.CURDIR}/stdlib/Symbol.map
 
@@ -31,8 +31,8 @@ MISRCS+= nmalloc.c
 #.endif
 
 # machine-dependent stdlib sources
-.if exists(${.CURDIR}/../libc/${MACHINE_ARCH}/stdlib/Makefile.inc)
-.include "${.CURDIR}/../libc/${MACHINE_ARCH}/stdlib/Makefile.inc"
+.if exists(${.CURDIR}/${MACHINE_ARCH}/stdlib/Makefile.inc)
+.include "${.CURDIR}/${MACHINE_ARCH}/stdlib/Makefile.inc"
 .endif
 
 MAN+=	a64l.3 abort.3 abs.3 alloca.3 atexit.3 atof.3 atoi.3 atol.3 \

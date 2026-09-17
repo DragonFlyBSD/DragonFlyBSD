@@ -2,7 +2,7 @@
 # $FreeBSD: src/lib/libc/gmon/Makefile.inc,v 1.12 2006/10/28 13:34:35 bde Exp $
 
 # gmon sources
-.PATH: ${.CURDIR}/../libc/gmon
+.PATH: ${.CURDIR}/gmon
 
 CMAPS+=	${.CURDIR}/gmon/Symbol.map
 

@@ -1,7 +1,7 @@
 #	from @(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: head/lib/libc/locale/Makefile.inc 251314 2013-06-03 17:17:56Z ed $
 
-.PATH: ${.CURDIR}/../libc/locale
+.PATH: ${.CURDIR}/locale
 
 CMAPS+=	${.CURDIR}/locale/Symbol.map
 

@@ -1,4 +1,4 @@
-.PATH: ${.CURDIR}/../libc/nameser
+.PATH: ${.CURDIR}/nameser
 
 CMAPS+=	${.CURDIR}/nameser/Symbol.map
 

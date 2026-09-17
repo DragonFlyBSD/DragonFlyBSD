@@ -1,7 +1,7 @@
 #	@(#)Makefile	5.11 (Berkeley) 9/6/90
 # $FreeBSD: src/lib/libc/xdr/Makefile.inc,v 1.15 2006/03/13 01:15:01 deischen Exp $
 
-.PATH: ${.CURDIR}/../libc/xdr ${.CURDIR}/.
+.PATH: ${.CURDIR}/xdr
 
 CMAPS+=	${.CURDIR}/xdr/Symbol.map
 

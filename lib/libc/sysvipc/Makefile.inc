@@ -1,4 +1,4 @@
-.PATH: ${.CURDIR}/../libc/sysvipc
+.PATH: ${.CURDIR}/sysvipc
 
 CMAPS+=	${.CURDIR}/sysvipc/Symbol.map
 
