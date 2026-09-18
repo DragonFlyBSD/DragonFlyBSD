@@ -173,14 +173,19 @@ ${CONF}: Makefile
 .endif
 .endfor
 
-${OUTPUTS:[1]}: .META
-${OUTPUTS:[2..-1]}: .NOMETA
-${OUTPUTS}: ${CONF}
+# A cookie file that ${OUTPUTS} depend on to avoid executing the rules multiple
+# times under parallel make (-jN).
+CRUNCHGEN_COOKIE=	${PROG}.crunchgen_done
+CLEANFILES+=		${CRUNCHGEN_COOKIE}
+
+${OUTPUTS}: ${CRUNCHGEN_COOKIE}
+${CRUNCHGEN_COOKIE}: ${CONF}
 	MAKE="${MAKE}" ${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS} \
 	    ${CRUNCHGEN} -fq -m ${OUTMK} -c ${OUTC} ${CONF}
 	# Avoid redundantly calling 'make objs' which we've done by our
 	# own dependencies.
 	sed -i '' -e "/^${PROG}:/s/\$$[({]SUBMAKE_TARGETS[})]//" ${OUTMK}
+	touch ${.TARGET}
 
 # These 2 targets cannot use .MAKE since they depend on the generated
 # ${OUTMK} above.
