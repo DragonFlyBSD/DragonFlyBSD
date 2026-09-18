@@ -19,7 +19,8 @@ all:
 .for _dir in ${RESCUE_SUBDIRS} ${INITRD_SUBDIRS}
 	(cd ${.CURDIR}/${_dir}; \
 	    ${INITRD_MAKE} obj && \
-	    ${INITRD_MAKE} depend all)
+	    ${INITRD_MAKE} depend && \
+	    ${INITRD_MAKE} all)
 .endfor
 	@echo "--------------------------------------------------------------"
 	@echo ">>> complete building rescue and initrd"
