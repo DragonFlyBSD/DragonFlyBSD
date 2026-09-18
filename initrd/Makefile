@@ -35,7 +35,7 @@ install:
 	@echo "--------------------------------------------------------------"
 .for _dir in ${RESCUE_SUBDIRS}
 	(cd ${.CURDIR}/${_dir}; \
-	    ${INITRD_MAKE} BINDIR=/rescue install)
+	    ${INITRD_MAKE} install)
 .endfor
 .endif
 

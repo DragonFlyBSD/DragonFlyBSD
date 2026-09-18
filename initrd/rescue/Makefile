@@ -3,6 +3,8 @@
 
 PROG=		rescue
 
+BINDIR=		/rescue
+
 SCRIPTS=	dowpa \
 		${.CURDIR}/../../sbin/dhclient/dhclient-script
 
