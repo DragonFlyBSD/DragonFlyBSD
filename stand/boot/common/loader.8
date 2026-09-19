@@ -258,6 +258,24 @@ format.
 Any arguments passed after the name of the file to be loaded
 will be passed as arguments to that file.
 .Pp
+A file loaded with
+.Fl t
+is not parsed at all; it is placed in memory and left for the kernel to
+find with
+.Fn preload_search_by_type .
+This is how a CPU microcode image, an ACPI table override or a firmware
+image reaches a kernel that will need it before there is a filesystem to
+read it from.
+Without
+.Fl t
+the file is parsed as a module and a raw image fails to load.
+See
+.Xr loader.conf 5
+for the settings that do this at boot, and
+.Xr firmware 9
+for what becomes of an image tagged
+.Dq Li firmware .
+.Pp
 .It Ic loadall
 Load the kernel and all modules specified by MODULE_load variables.
 .Pp
@@ -565,9 +583,23 @@ Sets the list of directories which will be searched for modules named in a
 .Nm load
 command or implicitly required by a dependency.
 The default value for this variable is
-.Dq Li ;modules ,
-which first searches the current working directory and then
-.Pa modules .
+.Dq Li ;modules;/boot/firmware ,
+which first searches the current working directory, then
+.Pa modules ,
+and then
+.Pa /boot/firmware .
+.Pp
+The last of those holds firmware that has to be read before the root file
+system is mounted: CPU microcode, and firmware for whatever device the root
+file system lives on.
+It is on
+.Pa /boot
+because that is a file system the loader can read on every platform; the
+EFI loader in particular cannot read a HAMMER2 root.
+Firmware that is only needed once the system is running belongs under
+.Pa /usr/local/lib/firmware ,
+where the kernel finds it; see
+.Xr firmware 9 .
 .It Va num_ide_disks
 Sets the number of IDE disks as a workaround for some problems in
 finding the root disk at boot.
@@ -897,7 +929,8 @@ boot kernel
 .Xr lvm 8 ,
 .Xr pxeboot 8 ,
 .Xr pxeboot_tftp 8 ,
-.Xr sysctl 8
+.Xr sysctl 8 ,
+.Xr firmware 9
 .Sh HISTORY
 The
 .Nm
