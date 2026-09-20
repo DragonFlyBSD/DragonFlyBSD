@@ -589,13 +589,11 @@ which first searches the current working directory, then
 and then
 .Pa /boot/firmware .
 .Pp
-The last of those holds firmware that has to be read before the root file
+The directory
+.Pa /boot/firmware
+holds firmware that has to be read before the root file
 system is mounted: CPU microcode, and firmware for whatever device the root
 file system lives on.
-It is on
-.Pa /boot
-because that is a file system the loader can read on every platform; the
-EFI loader in particular cannot read a HAMMER2 root.
 Firmware that is only needed once the system is running belongs under
 .Pa /usr/local/lib/firmware ,
 where the kernel finds it; see

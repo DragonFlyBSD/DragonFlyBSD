@@ -125,14 +125,16 @@ If none is given, it defaults to a
 .Xr kld 4
 module.
 .Pp
-Setting a type is what makes the loader read a file that is not a module at
-all, such as a firmware image or a CPU microcode container.
-The kernel then finds it with
-.Fn preload_search_by_type .
-A file loaded without a type is parsed as an ELF module, so leaving the type
-out of an entry that names a raw image produces
-.Dq Li "Unable to load"
-at boot rather than a working preload.
+An explicit type loads a raw file instead of an ELF module.
+Types used by the kernel include
+.Dq firmware
+for firmware images,
+.Dq cpu_microcode
+for CPU microcode,
+.Dq acpi_dsdt
+for an ACPI DSDT override, and
+.Dq md_image
+for a memory disk image.
 .It Ao Ar module Ac Ns Ar _flags
 Flags and parameters to be passed to the module.
 .It Ao Ar module Ac Ns Ar _before
@@ -257,9 +259,11 @@ the kernel has long since made up its mind.
 .Pp
 Only AMD processors are handled.
 .It Va cpu_microcode_name
-.Pq Dq amd-ucode.bin
 Name of the microcode image, searched for along
 .Va module_path .
+For example, set this to
+.Dq amd-ucode.bin
+for an AMD processor.
 The images are installed in
 .Pa /boot/firmware
 by the
@@ -267,11 +271,9 @@ by the
 and
 .Pa sysutils/cpu-microcode-intel
 packages.
-.It Va cpu_microcode_type
-.Pq Dq cpu_microcode
-Do not change this.
-Without it the loader would treat the image as a kernel module and fail to
-load it.
+The loader automatically uses the
+.Dq cpu_microcode
+type for this image.
 .It Va kernel
 .Pq Dq kernel .
 .It Va loader_plain
@@ -325,8 +327,8 @@ on the screen while booting.
 Most firmware needs no entry here.
 The kernel reads it from
 .Pa /usr/local/lib/firmware
-once the root file system is mounted, which is soon enough for a graphics
-adapter or a wireless interface, and a package installs it there.
+once the file system containing that directory is mounted.
+Firmware packages normally install their images there.
 .Pp
 An entry is needed only for an image that must be in memory before there is
 a file system to read it from - firmware for the device the root file system

@@ -36,8 +36,7 @@
  *	cpu_microcode_name="amd-ucode.bin"
  *
  * and applied to the BSP before identify_cpu(), then to each AP as it comes
- * up.  Only the AMD container format is understood; Intel needs its own
- * parser and nobody has one to test against yet.
+ * up.  Only the AMD container format is currently supported.
  */
 
 #include <sys/param.h>
@@ -92,31 +91,30 @@ struct amd_patch_header {
 /*
  * The patch has to be 16-byte aligned when its address is handed to the CPU,
  * and there is no allocator this early, so it is staged here.  AMD patches
- * run to a few kilobytes; a page is generous and costs nothing that is not
- * already reserved.
+ * larger than this buffer are rejected rather than passed to the CPU.
  */
 #define	UCODE_STAGE_SIZE	PAGE_SIZE
 static uint8_t ucode_stage[UCODE_STAGE_SIZE] __aligned(16);
 static size_t ucode_stage_len;
 static uint32_t ucode_stage_rev;
+static u_int ucode_vendor_id;
 
 /*
  * identify_cpu() has not run when the BSP stages microcode, so this must
  * not rely on cpu_vendor_id.
  */
-static bool
-ucode_is_amd_cpu(void)
+static void
+ucode_identify_vendor(void)
 {
 	uint32_t regs[4];
 
 	do_cpuid(0, regs);
-	return (regs[1] == 0x68747541 && regs[3] == 0x69746e65 &&
-		regs[2] == 0x444d4163);
-}
-static uint64_t
-ucode_amd_rev(void)
-{
-	return (rdmsr(MSR_AMD_PATCH_LEVEL));
+	if (regs[1] == 0x68747541 && regs[3] == 0x69746e65 &&
+	    regs[2] == 0x444d4163)
+		ucode_vendor_id = CPU_VENDOR_AMD;
+	else if (regs[1] == 0x756e6547 && regs[3] == 0x49656e69 &&
+	    regs[2] == 0x6c65746e)
+		ucode_vendor_id = CPU_VENDOR_INTEL;
 }
 
 /*
@@ -243,16 +241,16 @@ ucode_apply(void)
 	uint64_t before, after;
 	uint32_t regs[4];
 
-	if (ucode_stage_len == 0 || !ucode_is_amd_cpu())
+	if (ucode_stage_len == 0 || ucode_vendor_id != CPU_VENDOR_AMD)
 		return;
 
-	before = ucode_amd_rev();
+	before = rdmsr(MSR_AMD_PATCH_LEVEL);
 	if (before >= ucode_stage_rev)
 		return;
 
 	wrmsr(MSR_AMD_PATCH_LOADER, (uintptr_t)ucode_stage);
 	do_cpuid(0, regs);		/* serialize */
-	after = ucode_amd_rev();
+	after = rdmsr(MSR_AMD_PATCH_LEVEL);
 
 	if (after != before) {
 		kprintf("ucode: cpu%d microcode %#jx -> %#jx\n", mycpuid,
@@ -270,8 +268,13 @@ ucode_apply(void)
 void
 ucode_load_bsp(void)
 {
-	if (!ucode_is_amd_cpu())
-		return;
-	ucode_amd_stage();
-	ucode_apply();
+	ucode_identify_vendor();
+	switch (ucode_vendor_id) {
+	case CPU_VENDOR_AMD:
+		ucode_amd_stage();
+		ucode_apply();
+		break;
+	default:
+		break;
+	}
 }

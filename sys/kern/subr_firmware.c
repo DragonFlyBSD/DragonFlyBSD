@@ -27,6 +27,7 @@
  */
 
 #include <sys/param.h>
+#include <sys/limits.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
@@ -95,7 +96,7 @@ struct priv_fw {
 
 	int 		flags;	/* record FIRMWARE_UNLOAD requests */
 #define FW_UNLOAD	0x100
-#define FW_FROMFILE	0x200	/* fw.data is ours to free */
+#define FW_FROMFILE	0x200	/* fw.name and fw.data are ours to free */
 
 	/*
 	 * 'file' is private info managed by the autoload/unload code.
@@ -143,6 +144,8 @@ static struct task firmware_unload_task;
  */
 static struct lock firmware_lock;
 
+static MALLOC_DEFINE(M_FIRMWARE, "firmware", "Firmware images and names");
+
 /*
  * Where to look for firmware files, in order, before falling back to loading
  * a module of the same name.  /usr/local comes first because that is where a
@@ -155,7 +158,7 @@ static struct lock firmware_lock;
  * and loads its module as before.
  */
 static char firmware_path[MAXPATHLEN] =
-    "/usr/local/lib/firmware;/lib/firmware";
+    "/usr/local/lib/firmware;/usr/lib/firmware";
 SYSCTL_STRING(_hw, OID_AUTO, firmware_path, CTLFLAG_RW, firmware_path,
 	      sizeof(firmware_path), "firmware image search path");
 TUNABLE_STR("hw.firmware_path", firmware_path, sizeof(firmware_path));
@@ -193,96 +196,93 @@ lookup(const char *name, struct priv_fw **empty_slot)
 }
 
 /*
- * Register a firmware image with the specified name.  The
- * image name must not already be registered.  If this is a
- * subimage then parent refers to a previously registered
- * image that this should be associated with.
+ * Called with firmware_lock held.  The caller retains ownership on failure;
+ * FW_FROMFILE transfers the allocated name and data to the registry on success.
+ * Other sources must keep their name and data valid until unregistered.
  */
-const struct firmware *
-firmware_register(const char *imagename, const void *data, size_t datasize,
-    unsigned int version, const struct firmware *parent)
+static int
+firmware_register_locked(const char *imagename, const void *data,
+    size_t datasize, unsigned int version, const struct firmware *parent,
+    int flags, const struct firmware **result)
 {
 	struct priv_fw *match, *frp;
 
-	lockmgr(&firmware_lock, LK_EXCLUSIVE);
-	/*
-	 * Do a lookup to make sure the name is unique or find a free slot.
-	 */
 	match = lookup(imagename, &frp);
-	if (match != NULL) {
-		lockmgr(&firmware_lock, LK_RELEASE);
-		kprintf("%s: image %s already registered!\n",
-			__func__, imagename);
-		return NULL;
-	}
-	if (frp == NULL) {
-		lockmgr(&firmware_lock, LK_RELEASE);
-		kprintf("%s: cannot register image %s, firmware table full!\n",
-		    __func__, imagename);
-		return NULL;
-	}
-	bzero(frp, sizeof(*frp));	/* start from a clean record */
+	if (match != NULL)
+		return (EEXIST);
+	if (frp == NULL)
+		return (ENOSPC);
+
+	bzero(frp, sizeof(*frp));
 	frp->fw.name = imagename;
 	frp->fw.data = data;
 	frp->fw.datasize = datasize;
 	frp->fw.version = version;
+	frp->flags = flags;
 	if (parent != NULL) {
 		frp->parent = PRIV_FW(parent);
 		frp->parent->refcnt++;
 	}
+	*result = &frp->fw;
+	return (0);
+}
+
+/* The module retains ownership of the name and data until unregistered. */
+const struct firmware *
+firmware_register(const char *imagename, const void *data, size_t datasize,
+    unsigned int version, const struct firmware *parent)
+{
+	const struct firmware *fw;
+	int error;
+
+	lockmgr(&firmware_lock, LK_EXCLUSIVE);
+	error = firmware_register_locked(imagename, data, datasize, version,
+	    parent, 0, &fw);
 	lockmgr(&firmware_lock, LK_RELEASE);
+	if (error != 0) {
+		kprintf("%s: cannot register image %s, %s\n", __func__,
+		    imagename, error == EEXIST ? "already registered" : "table full");
+		return (NULL);
+	}
 	if (bootverbose)
 		kprintf("firmware: '%s' version %u: %zu bytes loaded at %p\n",
 		    imagename, version, datasize, data);
-	return &frp->fw;
+	return (fw);
 }
 
-/*
- * Unregister/remove a firmware image.  If there are outstanding
- * references an error is returned and the image is not removed
- * from the registry.
- */
+/* Called with firmware_lock held; an autoloaded module keeps its slot. */
+static int
+firmware_unregister_locked(struct priv_fw *fp)
+{
+	linker_file_t file;
+
+	if (fp == NULL)
+		return (0);
+	if (fp->refcnt != 0)
+		return (EBUSY);
+
+	file = fp->file;
+	if (fp->parent != NULL)
+		fp->parent->refcnt--;
+	if (fp->flags & FW_FROMFILE) {
+		kfree(__DECONST(void *, fp->fw.data), M_FIRMWARE);
+		kfree(__DECONST(char *, fp->fw.name), M_FIRMWARE);
+	}
+	bzero(fp, sizeof(*fp));
+	fp->file = file;
+	return (0);
+}
+
+/* Outstanding references prevent unregistering an image. */
 int
 firmware_unregister(const char *imagename)
 {
-	struct priv_fw *fp;
-	int err;
+	int error;
 
 	lockmgr(&firmware_lock, LK_EXCLUSIVE);
-	fp = lookup(imagename, NULL);
-	if (fp == NULL) {
-		/*
-		 * It is ok for the lookup to fail; this can happen
-		 * when a module is unloaded on last reference and the
-		 * module unload handler unregister's each of it's
-		 * firmware images.
-		 */
-		err = 0;
-	} else if (fp->refcnt != 0) {	/* cannot unregister */
-		err = EBUSY;
-	}  else {
-		linker_file_t x = fp->file;	/* save value */
-
-		if (fp->parent != NULL)	/* release parent reference */
-			fp->parent->refcnt--;
-		if (fp->flags & FW_FROMFILE) {
-			/*
-			 * No module owns this image, so the registry does.
-			 * Free it here, while the entry still points at it.
-			 */
-			kfree(__DECONST(void *, fp->fw.data), M_TEMP);
-		}
-		/*
-		 * Clear the whole entry with bzero to make sure we
-		 * do not forget anything. Then restore 'file' which is
-		 * non-null for autoloaded images.
-		 */
-		bzero(fp, sizeof(struct priv_fw));
-		fp->file = x;
-		err = 0;
-	}
+	error = firmware_unregister_locked(lookup(imagename, NULL));
 	lockmgr(&firmware_lock, LK_RELEASE);
-	return err;
+	return (error);
 }
 
 /*
@@ -294,10 +294,8 @@ firmware_unregister(const char *imagename)
  * boundary, which is the same rule preload_search_by_name() applies one
  * component in.
  *
- * Called with firmware_lock held.  firmware_register() cannot be used from
- * here because it takes that lock itself, so the slot is filled in place;
- * the caller has just failed a lookup, and this one repeats it only to find
- * the free slot beside it.
+ * Called with firmware_lock held.  The registered name is borrowed from
+ * the preload metadata, not from the caller's temporary query string.
  *
  * The image belongs to the preload area and is neither ours to free nor
  * backed by a module, so the entry gets no file and no FW_FROMFILE, and
@@ -306,11 +304,12 @@ firmware_unregister(const char *imagename)
 static int
 loadpreloaded(const char *imagename)
 {
-	struct priv_fw *match, *frp;
+	const struct firmware *fw;
 	caddr_t mod, info;
 	const char *recorded;
 	void *data;
 	size_t datasize, namelen;
+	int error;
 
 	namelen = strlen(imagename);
 
@@ -345,20 +344,12 @@ loadpreloaded(const char *imagename)
 		if (data == NULL || datasize == 0)
 			continue;
 
-		match = lookup(imagename, &frp);
-		if (match != NULL || frp == NULL)
-			return (EEXIST);
-
-		bzero(frp, sizeof(*frp));
-		frp->fw.name = imagename;
-		frp->fw.data = data;
-		frp->fw.datasize = datasize;
-		frp->fw.version = 0;
-		if (bootverbose) {
+		error = firmware_register_locked(recorded + reclen - namelen,
+		    data, datasize, 0, NULL, 0, &fw);
+		if (error == 0 && bootverbose)
 			kprintf("firmware: '%s' preloaded, %zu bytes at %p\n",
-				imagename, datasize, data);
-		}
-		return (0);
+			    imagename, datasize, data);
+		return (error);
 	}
 
 	return (ENOENT);
@@ -377,23 +368,26 @@ loadfile(const char *imagename)
 	struct nlookupdata nd;
 	struct vnode *vp = NULL;
 	struct vattr vattr;
-	struct priv_fw *match, *frp;
-	char *path, *data = NULL;
+	const struct firmware *fw;
+	char *path, *name, *data = NULL;
 	const char *cp, *ep;
 	size_t datasize = 0;
 	int error, resid;
 	int found = 0;
 
-	path = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
+	path = kmalloc(MAXPATHLEN, M_FIRMWARE, M_WAITOK | M_NULLOK);
+	if (path == NULL)
+		return (ENOMEM);
 
 	for (cp = firmware_path; *cp != '\0'; cp = (*ep == '\0') ? ep : ep + 1) {
 		for (ep = cp; *ep != '\0' && *ep != ';'; ep++)
-			continue;
+			;
 		if (ep == cp)
 			continue;
 
-		ksnprintf(path, MAXPATHLEN, "%.*s/%s", (int)(ep - cp), cp,
-			  imagename);
+		if (ksnprintf(path, MAXPATHLEN, "%.*s/%s", (int)(ep - cp),
+		    cp, imagename) >= MAXPATHLEN)
+			continue;
 
 		error = nlookup_init(&nd, path, UIO_SYSSPACE,
 				     NLC_FOLLOW | NLC_LOCKVP);
@@ -411,60 +405,63 @@ loadfile(const char *imagename)
 			goto next;
 		if (VOP_GETATTR(vp, &vattr) != 0)
 			goto next;
-		if (vattr.va_size == 0 || vattr.va_size > firmware_max_size) {
+		if (vattr.va_size <= 0 ||
+		    (uintmax_t)vattr.va_size > firmware_max_size ||
+		    vattr.va_size > INT_MAX) {
 			kprintf("firmware: %s is %ju bytes, refusing\n",
 				path, (uintmax_t)vattr.va_size);
 			goto next;
 		}
 
 		datasize = vattr.va_size;
-		data = kmalloc(datasize, M_TEMP, M_WAITOK);
+		data = kmalloc(datasize, M_FIRMWARE, M_WAITOK | M_NULLOK);
+		if (data == NULL) {
+			vn_unlock(vp);
+			if (vn_close(vp, FREAD, NULL) != 0)
+				kprintf("firmware: %s: close failed\n", path);
+			kfree(path, M_FIRMWARE);
+			return (ENOMEM);
+		}
+		/* The taskqueue has no process; nlookup uses proc0 as well. */
 		error = vn_rdwr(UIO_READ, vp, data, datasize, 0, UIO_SYSSPACE,
 				IO_NODELOCKED, proc0.p_ucred, &resid);
 		if (error != 0 || resid != 0) {
 			kprintf("firmware: %s: read failed (%d)\n", path,
 				error);
-			kfree(data, M_TEMP);
+			kfree(data, M_FIRMWARE);
 			data = NULL;
 			goto next;
 		}
 		found = 1;
 next:
 		vn_unlock(vp);
-		vn_close(vp, FREAD, NULL);
+		error = vn_close(vp, FREAD, NULL);
+		if (error != 0)
+			kprintf("firmware: %s: close failed (%d)\n", path, error);
 		vp = NULL;
 		if (found)
 			break;
 	}
 
-	kfree(path, M_TEMP);
+	kfree(path, M_FIRMWARE);
 	if (!found)
 		return (ENOENT);
 
-	/*
-	 * Fill the slot under one lock rather than calling
-	 * firmware_register() and setting FW_FROMFILE afterwards.  Between
-	 * those two points the entry would describe memory as borrowed that
-	 * is in fact ours, and a firmware_put() landing in the window would
-	 * mark it for unload without the flag that says how to release it.
-	 */
-	lockmgr(&firmware_lock, LK_EXCLUSIVE);
-	match = lookup(imagename, &frp);
-	if (match != NULL || frp == NULL) {
-		lockmgr(&firmware_lock, LK_RELEASE);
-		kprintf("%s: cannot register image %s, %s\n", __func__,
-			imagename,
-			match != NULL ? "already registered" : "table full");
-		kfree(data, M_TEMP);
-		return (match != NULL ? EEXIST : ENOSPC);
+	name = kmalloc(strlen(imagename) + 1, M_FIRMWARE, M_WAITOK | M_NULLOK);
+	if (name == NULL) {
+		kfree(data, M_FIRMWARE);
+		return (ENOMEM);
 	}
-	bzero(frp, sizeof(*frp));
-	frp->fw.name = imagename;
-	frp->fw.data = data;
-	frp->fw.datasize = datasize;
-	frp->fw.version = 0;
-	frp->flags = FW_FROMFILE;
+	strcpy(name, imagename);
+	lockmgr(&firmware_lock, LK_EXCLUSIVE);
+	error = firmware_register_locked(name, data, datasize, 0, NULL,
+	    FW_FROMFILE, &fw);
 	lockmgr(&firmware_lock, LK_RELEASE);
+	if (error != 0) {
+		kfree(name, M_FIRMWARE);
+		kfree(data, M_FIRMWARE);
+		return (error);
+	}
 
 	if (bootverbose) {
 		kprintf("firmware: '%s' from a file, %zu bytes at %p\n",
@@ -687,32 +684,20 @@ unloadentry(void *unused1, int unused2)
 		    (fp->flags & FW_UNLOAD) == 0)
 			continue;
 
-		if (fp->flags & FW_FROMFILE) {
-			/* Ours, and nothing to unload: just let it go. */
-			const char *name = fp->fw.name;
-
-			fp->flags &= ~FW_UNLOAD;
-			lockmgr(&firmware_lock, LK_RELEASE);
-			firmware_unregister(name);
-			lockmgr(&firmware_lock, LK_EXCLUSIVE);
-			limit = i + FIRMWARE_MAX;
-			continue;
-		}
-		if (fp->file == NULL)
+		if (fp->file == NULL && (fp->flags & FW_FROMFILE) == 0)
 			continue;
 
-		/*
-		 * Found an entry. Now:
-		 * 1. bump up limit to make sure we make another full round;
-		 * 2. clear FW_UNLOAD so we don't try this entry again.
-		 * 3. release the lock while trying to unload the module.
-		 * 'file' remains set so that the entry cannot be reused
-		 * in the meantime (it also means that fp->file will
-		 * not change while we release the lock).
-		 */
 		limit = i + FIRMWARE_MAX;	/* make another full round */
 		fp->flags &= ~FW_UNLOAD;	/* do not try again */
 
+		if (fp->flags & FW_FROMFILE) {
+			/* Keep the zero-reference check and removal atomic. */
+			err = firmware_unregister_locked(fp);
+			KKASSERT(err == 0);
+			continue;
+		}
+
+		/* The module reference pins this slot while the lock is dropped. */
 		lockmgr(&firmware_lock, LK_RELEASE);
 		err = linker_release_module(NULL, NULL, fp->file);
 		lockmgr(&firmware_lock, LK_EXCLUSIVE);
