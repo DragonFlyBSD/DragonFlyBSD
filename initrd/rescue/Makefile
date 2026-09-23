@@ -274,28 +274,28 @@ CRUNCH_SRCDIR_libtelnet.a=	${.CURDIR}/../../lib/libtelnet
 CRUNCH_LIB_cryptsetup=		${LIBDM}
 CRUNCH_LIB_tcplay=		${LIBDM}
 CRUNCH_LIB_scp=			${LIBSSH}
-CRUNCH_LIB_ssh=			${LIBSSH}
+CRUNCH_LIB_ssh=			${LIBSSH} ${LIBLDNS}
+CRUNCH_LIB_camcontrol=		${LIBCAM}
+CRUNCH_LIB_fetch=		${LIBFETCH}
+CRUNCH_LIB_hammer=		${LIBHAMMER}
+CRUNCH_LIB_hammer2=		${LIBDMSG}
+CRUNCH_LIB_ifconfig=		${LIBBSDXML}
+CRUNCH_LIB_lvm=			${LIBLVM} ${LIBDEVATTR}
+CRUNCH_LIB_vinum=		${LIBDEVSTAT}
+CRUNCH_LIB_wpa_supplicant=	${LIBPCAP}
 
 # System libraries
 #
-CRUNCH_LIBS+= -llvm -ldevmapper -ldevattr  # lvm
-CRUNCH_LIBS+= -lprop  # cryptsetup, lvm, tcplay
-CRUNCH_LIBS+= -ldevstat  # vinum
-CRUNCH_LIBS+= -lbsdxml  # ifconfig
-CRUNCH_LIBS+= -lcam # camcontrol
+CRUNCH_LIBS+= -ldevmapper  # dmsetup, lvm
+CRUNCH_LIBS+= -lprop  # cryptsetup, dmsetup, lvm, tcplay
 CRUNCH_LIBS+= -lsbuf  # camcontrol, ifconfig
 CRUNCH_LIBS+= -lkiconv  # mount_{cd9660,msdos,ntfs}
-CRUNCH_LIBS+= -lpcap  # wpa_supplicant
-CRUNCH_LIBS+= -ldmsg  # hammer2
-CRUNCH_LIBS+= -lhammer  # hammer
-CRUNCH_LIBS+= -lfetch  # fetch
 CRUNCH_LIBS+= -larchive  # cpio, tar
 CRUNCH_LIBS+= -llzma  # cpio, tar, xz
 CRUNCH_LIBS+= -lbz2  # bzip2, cpio, tar
 CRUNCH_LIBS+= -lkvm  # ccdconfig, dmesg, pkill, ps
 CRUNCH_LIBS+= -lcrypt  # pw, telnet
 CRUNCH_LIBS+= -lprivate_ssl  # fetch, wpa_supplicant
-CRUNCH_LIBS+= -lprivate_ldns  # ssh (must go before libcrypto)
 CRUNCH_LIBS+= -lprivate_crypto # cpio, hammer2, md5, ping6, tar
 CRUNCH_LIBS+= -lprivate_edit  # bc, sh, vinum
 #CRUNCH_LIBS+= -lprivate_ncurses  # bc, less, ls, telnet, tput, vinum (=> ncursesw)
