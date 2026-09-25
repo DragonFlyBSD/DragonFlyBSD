@@ -338,7 +338,7 @@ _UTF8_wcrtomb(char * __restrict s, wchar_t wc, mbstate_t * __restrict ps)
 	} else if ((wc & ~0xffff) == 0) {
 		lead = 0xe0;
 		len = 3;
-	} else if (wc <= 0x10ffff) {
+	} else if (wc >= 0 && wc <= 0x10ffff) {
 		lead = 0xf0;
 		len = 4;
 	} else {
@@ -665,7 +665,7 @@ _UTF8_wcrtombin(char * __restrict dst, const wchar_t * __restrict src,
 			}
 			lead = 0xe0;
 			len = 3;
-		} else if (wc <= 0x10ffff) {
+		} else if (wc >= 0 && wc <= 0x10ffff) {
 			lead = 0xf0;
 			len = 4;
 		} else if ((flags & WCSBIN_LONGCODES) && wc < 0x200000) {
