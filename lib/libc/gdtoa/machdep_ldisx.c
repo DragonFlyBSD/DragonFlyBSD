@@ -1,9 +1,11 @@
 /*-
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Copyright (c) 2003 David Schultz <das@FreeBSD.ORG>
  * All rights reserved.
  *
  * Copyright (c) 2011 The FreeBSD Foundation
- * All rights reserved.
+ *
  * Portions of this software were developed by David Chisnall
  * under sponsorship from the FreeBSD Foundation.
  *
@@ -27,8 +29,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: head/lib/libc/gdtoa/machdep_ldisx.c 227753 2011-11-20 14:45:42Z theraven $
  */
 
 /*
@@ -36,7 +36,6 @@
  * package into libc for architectures where a long double
  * is an IEEE extended precision number.
  */
-
 
 #include <float.h>
 
