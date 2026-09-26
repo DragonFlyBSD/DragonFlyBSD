@@ -65,9 +65,13 @@ static void sko_push(bool dc)
         sko_len = 0;
     }
     if(sko_len >= sko_sz){
-        sko_sz *= 2;
-        sko_stack = realloc(sko_stack,
+        if (sko_sz > INT_MAX / 2)
+            flexfatal(_("sko_stack size overflow"));
+        else {
+            sko_sz *= 2;
+            sko_stack = realloc(sko_stack,
 			sizeof(struct sko_state) * (size_t) sko_sz);
+        }
     }
     
     /* initialize to zero and push */
