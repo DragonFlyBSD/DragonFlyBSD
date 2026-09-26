@@ -11,5 +11,8 @@ sha1 = fafece095a0d9890ebd618adb1f242d8908076e1
 
 A list of files and directories removed is in README.DELETED
 
+Use "git diff vendor/FLEX contrib/flex" to see local modifications.
+
 Local modifications applied to following files:
 	flexdef.h   (declare yylval)
+	misc.c      (guard sko_push() against int overflow)
