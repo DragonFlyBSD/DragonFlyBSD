@@ -1144,11 +1144,11 @@ evtr_dump_string(evtr_t evtr, uint64_t ts, const char *str, int ns)
 	int err;
 	uint16_t id;
 
-	assert((0 <= ns) && (ns < EVTR_NS_MAX));
-	if (!strhash_find(evtr->strings[ns], str, &id)) {
+	assert(ns > 0 && ns < EVTR_NS_MAX);
+	if (!strhash_find(evtr->strings[ns - 1], str, &id)) {
 		return id;
 	}
-	if ((err = strhash_insert(evtr->strings[ns], str, &id))) {
+	if ((err = strhash_insert(evtr->strings[ns - 1], str, &id))) {
 		evtr->err = err;
 		return 0;
 	}
@@ -1396,7 +1396,7 @@ evtr_open_write(FILE *f)
 	evtr->flags = EVTRF_WR;
 	if (!(evtr->fmts = strhash_new()))
 		goto free_evtr;
-	for (i = 0; i < EVTR_NS_MAX; ++i) {
+	for (i = 0; i < EVTR_NS_MAX - 1; ++i) {
 		evtr->strings[i] = strhash_new();
 		if (!evtr->strings[i]) {
 			for (j = 0; j < i; ++j) {
@@ -1551,7 +1551,7 @@ evtr_load_string(evtr_t evtr, char *buf)
 		return !0;
 	}
 	sbuf[evh->len] = 0;
-	if (evh->ns >= EVTR_NS_MAX) {
+	if (evh->ns == 0 || evh->ns >= EVTR_NS_MAX) {
 		evtr->errmsg = "invalid namespace (corrupt input)";
 		return !0;
 	}
