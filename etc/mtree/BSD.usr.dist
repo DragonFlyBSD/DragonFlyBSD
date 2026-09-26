@@ -16,6 +16,8 @@
     lib
         debug
         ..
+        firmware
+        ..
         gcc120
             profile
             ..
