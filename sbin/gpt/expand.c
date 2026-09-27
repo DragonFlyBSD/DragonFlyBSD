@@ -27,6 +27,7 @@
 #include <sys/types.h>
 
 #include <err.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,7 +36,7 @@
 
 #include "gpt.h"
 
-static void expand(int fd);
+static void expand(int fd, bool extend_last);
 
 static void
 usage_expand(void)
@@ -48,9 +49,13 @@ int
 cmd_expand(int argc, char *argv[])
 {
 	int ch, fd;
+	bool extend_last = true;
 
-	while ((ch = getopt(argc, argv, "h")) != -1) {
+	while ((ch = getopt(argc, argv, "nh")) != -1) {
 		switch(ch) {
+		case 'n':
+			extend_last = false;
+			break;
 		case 'h':
 		default:
 			usage_expand();
@@ -67,7 +72,7 @@ cmd_expand(int argc, char *argv[])
 			continue;
 		}
 
-		expand(fd);
+		expand(fd, extend_last);
 
 		gpt_close(fd);
 	}
@@ -76,7 +81,7 @@ cmd_expand(int argc, char *argv[])
 }
 
 static void
-expand(int fd)
+expand(int fd, bool extend_last)
 {
 	map_t *pmbr;
 	map_t *gpt, *tpg;
@@ -146,7 +151,7 @@ expand(int fd)
 	/*
 	 * Expand the last partition.
 	 */
-	if (last_ent != NULL) {
+	if (extend_last && last_ent != NULL) {
 		off_t new_size, new_end;
 
 		new_size = last - blocks - le64toh(last_ent->ent_lba_start);
@@ -170,7 +175,7 @@ expand(int fd)
 			      (uintmax_t)new_end);
 			return;
 		}
-	} else {
+	} else if (extend_last) {
 		printf("%s: no partition to expand\n", device_name);
 	}
 

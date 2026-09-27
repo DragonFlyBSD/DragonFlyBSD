@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
 .\"
-.Dd February 22, 2026
+.Dd September 27, 2026
 .Dt GPT 8
 .Os
 .Sh NAME
@@ -329,18 +329,25 @@ option instructs
 .Nm
 to destroy the table in a way that it can be recovered.
 .\" ==== expand ====
-.It Nm Ic expand Ar device
+.It Nm Ic expand Oo Fl n Oc Ar device
 The
 .Ic expand
-command will expand an existing GPT table to cover a device which
-has grown in size, and will also expand the size of the last GPT
-partition to fit.
-This is typically the first step when expanding a HAMMER2 filesystem,
-after which commands
+command expands the GPT to cover a device that has grown in size,
+and expands the last partition in the GPT to fill the additional space.
+.Pp
+If the
+.Fl n
+option is specified, the last partition is left untouched.
+.Pp
+This is typically the first step in expanding a HAMMER2 filesystem.
+If the GPT partition contains a
+.Xr disklabel64 5 ,
+first run the
 .Cm disklabel -x
-and
+command to expand the disklabel.
+Then run the
 .Cm hammer2 growfs
-are run.
+command to expand the filesystem.
 .\" ==== init ====
 .It Nm Ic init Fl f Oo Fl B Oc Oo Fl E Oc Ar device ...
 The
