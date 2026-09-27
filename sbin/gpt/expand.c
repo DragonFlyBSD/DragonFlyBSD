@@ -186,31 +186,52 @@ expand(int fd)
 		       delta > 0 ? (uintmax_t)delta : (uintmax_t)-delta);
 		hdr->hdr_lba_alt = htole64(last);
 	}
+	hdr->hdr_lba_end = htole64(last - blocks - 1LL);
 	hdr->hdr_crc_table = htole32(crc32(tbl->map_data,
 	    le32toh(hdr->hdr_entries) * le32toh(hdr->hdr_entsz)));
 	hdr->hdr_crc_self = 0;
 	hdr->hdr_crc_self = htole32(crc32(hdr, le32toh(hdr->hdr_size)));
 
 	/*
-	 * Update or create the secondary GPT table.
+	 * Recreate the secondary GPT header and table at the new end
+	 * of the device.
+	 *
+	 * NOTE! Directly modify the 'map_start' to move the existing secondary
+	 *	 GPT header and table to the correct position. It's a hack as
+	 *	 there is no map_delete().
 	 */
 	tpg = map_find(MAP_TYPE_GPT_SEC_HDR);
 	lbt = map_find(MAP_TYPE_GPT_SEC_TBL);
 	if (tpg == NULL) {
-		warnx("%s: no secondary GPT header; creating\n", device_name);
+		warnx("%s: no secondary GPT header; creating", device_name);
 		tpg = map_add(last, 1LL, MAP_TYPE_GPT_SEC_HDR,
 			      calloc(1, secsz));
+		if (tpg == NULL) {
+			warnx("%s: error: cannot create secondary GPT header",
+			      device_name);
+			return;
+		}
 		memcpy(tpg->map_data, gpt->map_data, secsz);
 	}
 	if (lbt == NULL) {
-		warnx("%s: no secondary GPT table; creating\n", device_name);
+		warnx("%s: no secondary GPT table; creating", device_name);
 		lbt = map_add(last - blocks, blocks, MAP_TYPE_GPT_SEC_TBL,
 			      tbl->map_data);
+		if (lbt == NULL) {
+			warnx("%s: error: cannot create secondary GPT table",
+			      device_name);
+			return;
+		}
 	}
+	/* Hack: directly modify map_start to ensure the correct position */
+	tpg->map_start = last;
+	lbt->map_start = last - blocks;
+
 	hdr = tpg->map_data;
 	hdr->hdr_lba_self = htole64(tpg->map_start);
 	hdr->hdr_lba_table = htole64(lbt->map_start);
 	hdr->hdr_lba_alt = htole64(gpt->map_start);
+	hdr->hdr_lba_end = htole64(last - blocks - 1LL);
 	hdr->hdr_crc_table = htole32(crc32(lbt->map_data,
 	    le32toh(hdr->hdr_entries) * le32toh(hdr->hdr_entsz)));
 	hdr->hdr_crc_self = 0;
