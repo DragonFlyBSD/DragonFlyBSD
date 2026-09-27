@@ -479,10 +479,8 @@ gpt_gpt(int fd, off_t lba)
 	crc = le32toh(hdr->hdr_crc_self);
 	hdr->hdr_crc_self = 0;
 	if (crc32(hdr, le32toh(hdr->hdr_size)) != crc) {
-		if (verbose) {
-			warnx("%s: Bad CRC in GPT header at sector %ju",
-			      device_name, (uintmax_t)lba);
-		}
+		warnx("%s: Bad CRC in GPT header at sector %ju",
+		      device_name, (uintmax_t)lba);
 		goto fail_hdr;
 	}
 
@@ -497,11 +495,8 @@ gpt_gpt(int fd, off_t lba)
 	}
 
 	if (crc32(p, tblsz) != le32toh(hdr->hdr_crc_table)) {
-		if (verbose) {
-			warnx("%s: Bad CRC in GPT table at sector %ju",
-			      device_name,
-			      (uintmax_t)le64toh(hdr->hdr_lba_table));
-		}
+		warnx("%s: Bad CRC in GPT table at sector %ju",
+		      device_name, (uintmax_t)le64toh(hdr->hdr_lba_table));
 		goto fail_ent;
 	}
 
@@ -537,7 +532,7 @@ gpt_read_table(bool primary)
 	struct gpt_ent *ent;
 	map_t *map, *tbl;
 	uuid_t type;
-	off_t size;
+	off_t ent_size, ent_start, ent_end, lba_start, lba_end;
 	uint32_t i;
 	char *s;
 
@@ -551,6 +546,13 @@ gpt_read_table(bool primary)
 		tbl = map_find(MAP_TYPE_GPT_SEC_TBL);
 	}
 
+	lba_start = (off_t)le64toh(hdr->hdr_lba_start);
+	lba_end = (off_t)le64toh(hdr->hdr_lba_end);
+	if (verbose) {
+		warnx("%s: Usable LBA: %ju to %ju (sectors)", device_name,
+		      (uintmax_t)lba_start, (uintmax_t)lba_end);
+	}
+
 	for (i = 0; i < le32toh(hdr->hdr_entries); i++) {
 		/*
 		 * Use generic pointer to deal with
@@ -561,21 +563,33 @@ gpt_read_table(bool primary)
 		if (uuid_is_nil(&ent->ent_type, NULL))
 			continue;
 
-		size = le64toh(ent->ent_lba_end) -
-		    le64toh(ent->ent_lba_start) + 1LL;
+		ent_start = (off_t)le64toh(ent->ent_lba_start);
+		ent_end = (off_t)le64toh(ent->ent_lba_end);
+		ent_size = ent_end - ent_start + 1LL;
 		if (verbose > 2) {
 			uuid_dec_le(&ent->ent_type, &type);
 			uuid_to_string(&type, &s, NULL);
 			warnx("%s: GPT partition %d: type=%s, start=%ju, "
-			      "size=%ju",
-			      device_name, i, s,
-			      (uintmax_t)le64toh(ent->ent_lba_start),
-			      (uintmax_t)size);
+			      "end=%ju, size=%ju",
+			      device_name, i, s, (uintmax_t)ent_start,
+			      (uintmax_t)ent_end, (uintmax_t)ent_size);
 			free(s);
 		}
+		if (ent_start > ent_end) {
+			warnx("%s: warning: GPT partition %d: first LBA (%ju) "
+			      "> last LBA (%ju)",
+			      device_name, i,
+			      (uintmax_t)ent_start, (uintmax_t)ent_end);
+		}
+		if (ent_start < lba_start || ent_end > lba_end) {
+			warnx("%s: warning: GPT partition %d: LBA [%ju, %ju] "
+			      "extends beyond usuable LBA [%ju, %ju]",
+			      device_name, i,
+			      (uintmax_t)ent_start, (uintmax_t)ent_end,
+			      (uintmax_t)lba_start, (uintmax_t)lba_end);
+		}
 
-		map = map_add(le64toh(ent->ent_lba_start), size,
-		    MAP_TYPE_GPT_PART, ent);
+		map = map_add(ent_start, ent_size, MAP_TYPE_GPT_PART, ent);
 		if (map == NULL)
 			return (-1);
 
