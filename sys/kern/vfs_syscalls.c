@@ -681,10 +681,12 @@ sys_unmount(struct sysmsg *sysmsg, const struct unmount_args *uap)
 	}
 
 	/* Check if this mount belongs to this prison */
-	if (jailed(cred) && mp->mnt_cred && (!mp->mnt_cred->cr_prison ||
-		mp->mnt_cred->cr_prison != cred->cr_prison)) {
+	if (jailed(cred) && mp->mnt_cred &&
+	    (!mp->mnt_cred->cr_prison ||
+	     mp->mnt_cred->cr_prison != cred->cr_prison))
+	{
 		kprintf("mountpoint %s does not belong to this jail\n",
-		    uap->path);
+		    nd.nl_path);
 		error = EPERM;
 		goto out;
 	}
