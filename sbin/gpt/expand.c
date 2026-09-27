@@ -136,6 +136,7 @@ expand(int fd __unused)
 	hdr = gpt->map_data;
 	delta = last - hdr->hdr_lba_alt;
 	hdr->hdr_lba_alt = htole64(last);
+	hdr->hdr_lba_end = htole64(last - blocks - 1LL);
 
 	/*
 	 * Update the secondary gpt header.
@@ -155,6 +156,7 @@ expand(int fd __unused)
 	hdr->hdr_lba_self = htole64(gpt2->map_start);
 	hdr->hdr_lba_table = htole64(tbl2->map_start);
 	hdr->hdr_lba_alt = htole64(1);
+	hdr->hdr_lba_end = htole64(last - blocks - 1LL);
 
 	lent = NULL;
 	li = 0;
