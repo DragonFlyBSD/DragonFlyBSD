@@ -22,7 +22,7 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * $FreeBSD: src/sys/kern/subr_firmware.c,v 1.13.2.2 2010/02/11 18:34:06 mjacob Exp $
  */
 
@@ -96,7 +96,7 @@ struct priv_fw {
 	 * firmware_unload_task, so the latter can depend on its value even
 	 * while the lock is not held.
 	 */
-	linker_file_t   file;	/* module file, if autoloaded */
+	linker_file_t	file;	/* module file, if autoloaded */
 
 	/*
 	 * 'fw' is the externally visible image information.
@@ -252,7 +252,7 @@ firmware_unregister(const char *imagename)
 static void
 loadimage(void *arg, int npending)
 {
-#ifdef notyet
+#if 0 /* not yet */
 	struct thread *td = curthread;
 #endif
 	char *imagename = arg;
@@ -264,13 +264,13 @@ loadimage(void *arg, int npending)
 	lockmgr(&firmware_lock, LK_EXCLUSIVE);
 	lockmgr(&firmware_lock, LK_RELEASE);
 
-/* JAT
+#if 0 /* not yet (JAT) */
 	if (td->td_proc->p_fd->fd_rdir == NULL) {
 		kprintf("%s: root not mounted yet, no way to load image\n",
 		    imagename);
 		goto done;
 	}
-*/
+#endif
 	error = linker_reference_module(imagename, NULL, &result);
 	if (error != 0) {
 		kprintf("%s: could not load firmware image, error %d\n",
@@ -285,7 +285,7 @@ loadimage(void *arg, int npending)
 		if (fp == NULL)
 			kprintf("%s: firmware image loaded, "
 			    "but did not register\n", imagename);
-		(void) linker_release_module(imagename, NULL, NULL);
+		linker_release_module(imagename, NULL, NULL);
 		goto done;
 	}
 	fp->file = result;	/* record the module identity */
@@ -326,8 +326,8 @@ firmware_get(const char *imagename)
 	 * Also we must not hold any lock's over this call which is problematic.
 	 */
 	if (!cold) {
-		TASK_INIT(&fwload_task, 0, loadimage, __DECONST(void *,
-		    imagename));
+		TASK_INIT(&fwload_task, 0, loadimage,
+		    __DECONST(void *, imagename));
 		taskqueue_enqueue(firmware_tq, &fwload_task);
 		lksleep(__DECONST(void *, imagename), &firmware_lock, 0,
 		    "fwload", 0);
@@ -371,7 +371,7 @@ firmware_put(const struct firmware *p, int flags)
 	lockmgr(&firmware_lock, LK_RELEASE);
 }
 
-#ifdef notyet
+#if 0 /* not yet */
 /*
  * Setup directory state for the firmware_tq thread so we can do i/o.
  */
@@ -415,7 +415,7 @@ firmware_mountroot(void *arg)
 		kprintf("%s: no memory for task!\n", __func__);
 }
 EVENTHANDLER_DECLARE(mountroot, firmware_mountroot);
-#endif
+#endif /* not yet */
 
 /*
  * The body of the task in charge of unloading autoloaded modules
@@ -490,14 +490,14 @@ firmware_modevent(module_t mod, int type, void *unused)
 		firmware_tq = taskqueue_create("taskqueue_firmware", M_WAITOK,
 		    taskqueue_thread_enqueue, &firmware_tq);
 		/* NB: use our own loop routine that sets up context */
-		(void) taskqueue_start_threads(&firmware_tq, 1, TDPRI_KERN_DAEMON,
+		taskqueue_start_threads(&firmware_tq, 1, TDPRI_KERN_DAEMON,
 		    -1, "firmware taskq");
 		if (rootvnode != NULL) {
 			/*
 			 * Root is already mounted so we won't get an event;
 			 * simulate one here.
 			 */
-#ifdef notyet
+#if 0 /* not yet */
 			firmware_mountroot(NULL);
 #endif
 		}
@@ -517,7 +517,8 @@ firmware_modevent(module_t mod, int type, void *unused)
 		for (i = 0; i < FIRMWARE_MAX; i++) {
 			fp = &firmware_table[i];
 			if (fp->fw.name != NULL) {
-				kprintf("%s: image %p ref %d still active slot %d\n",
+				kprintf("%s: image %p ref %d still active "
+					"slot %d\n",
 					__func__, fp->fw.name,
 					fp->refcnt,  i);
 				err = EINVAL;
