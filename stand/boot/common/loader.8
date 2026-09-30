@@ -252,9 +252,7 @@ returns an error itself.
 Loads a kernel, kernel loadable module (kld), or file of opaque
 contents tagged as being of the type
 .Ar type .
-Kernel and modules can be either in a.out or
-.Tn ELF
-format.
+Kernel and modules must be ELF format.
 Any arguments passed after the name of the file to be loaded
 will be passed as arguments to that file.
 .Pp
