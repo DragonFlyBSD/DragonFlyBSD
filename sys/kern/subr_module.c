@@ -49,7 +49,7 @@ preload_search_by_name(const char *name)
     caddr_t	curp;
     u_int32_t	*hdr;
     int		next;
-    int		i;
+    size_t	len, namelen;
     char	*scanname;
 
     if (preload_metadata == NULL)
@@ -62,19 +62,23 @@ preload_search_by_name(const char *name)
 	    break;
 
 	/*
-	 * Search for a MODINFO_NAME field.  the boot loader really
-	 * ought to strip the path names
+	 * Search for a MODINFO_NAME field.
+	 *
+	 * The boot loader records the resolved path in MODINFO_NAME.
+	 * For example, a firmware specified as "xxx/yyy.bin" may be
+	 * recorded as "/boot/firmware/xxx/yyy.bin".
+	 * XXX: It really ought to strip the appended path.
 	 */
 	if (hdr[0] == MODINFO_NAME) {
 	    scanname = curp + sizeof(u_int32_t) * 2;
-	    i = strlen(scanname);
-	    while (i > 0 && scanname[i-1] != '/')
-		--i;
+	    len = strlen(scanname);
+	    namelen = strlen(name);
+	    if (len > namelen && scanname[len - namelen - 1] == '/')
+		scanname += len - namelen;
 	    if (strcmp(name, scanname) == 0)
 		return(curp);
-	    if (strcmp(name, scanname + i) == 0)
-		return(curp);
 	}
+
 	/* skip to next field */
 	next = sizeof(u_int32_t) * 2 + hdr[1];
 	next = roundup(next, sizeof(u_long));
