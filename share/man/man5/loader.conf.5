@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/sys/boot/forth/loader.conf.5,v 1.18 2002/08/27 01:02:56 trhodes Exp $
 .\"
-.Dd October 29, 2020
+.Dd September 30, 2026
 .Dt LOADER.CONF 5
 .Os
 .Sh NAME
@@ -124,6 +124,15 @@ Defines the module's type.
 If none is given, it defaults to a
 .Xr kld 4
 module.
+.Pp
+An explicit type loads a raw file instead of an ELF module.
+Types used by the kernel include
+.Dq firmware
+for firmware images,
+.Dq acpi_dsdt
+for an ACPI DSDT override, and
+.Dq md_image
+for a memory disk image.
 .It Ao Ar module Ac Ns Ar _flags
 Flags and parameters to be passed to the module.
 .It Ao Ar module Ac Ns Ar _before
@@ -290,6 +299,27 @@ If set to
 will load the splash screen module, making it possible to display a pcx image
 on the screen while booting.
 .El
+.Sh FIRMWARE
+Most firmware does not need an entry here because the kernel can load a
+requested firmware from the filesystem.
+.Pp
+An entry is needed only for an image that must be in memory before there is
+a filesystem to read it from, for example, firmware for the device of the
+root filesystem, or CPU microcode.
+Such firmware images are listed in the whitespace-separated
+.Va firmware
+variable, for example:
+.Bd -literal -offset indent
+firmware="nvidia/tu102/gsp/gsp-570.144.bin another/image.bin"
+.Ed
+.Pp
+Each entry is the name of the firmware file, with an optional
+relative directory.
+The loader searches every entry along the locations specified in the
+.Va module_path
+variable and preloads them for the
+.Xr firmware 9
+subsystem to register.
 .Sh IPMI
 Generally speaking machines with IPMI capabilities are capable of
 redirecting the BIOS POST to a fake serial port controlled by the BMC.
@@ -326,7 +356,8 @@ contains the instructions to automatically process.
 .El
 .Sh SEE ALSO
 .Xr boot 8 ,
-.Xr loader 8
+.Xr loader 8 ,
+.Xr firmware 9
 .Sh HISTORY
 The file
 .Nm

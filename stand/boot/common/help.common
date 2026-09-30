@@ -399,7 +399,7 @@
 	Sets the list of directories which will be searched in for modules
 	named in a load command or implicitly required by a dependency.  An
 	empty <path> specifies the current directory.  The default value is
-	";modules".
+	";modules;${base}firmware".
 
 ################################################################################
 # Tset Sprompt DSet the command prompt

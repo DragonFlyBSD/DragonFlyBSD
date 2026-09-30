@@ -82,6 +82,7 @@ static char *kenv_vars[] = {
 	"default_kernel",
 	"dumpdev",
 	"ehci_load",
+	"firmware",
 	"interpret",
 	"init_chroot",
 	"init_path",
@@ -210,7 +211,7 @@ command_lunsetif(int ac, char **av)
 }
 
 /*
- * Load the kernel + all modules specified with MODULE_load="YES"
+ * Load the kernel, firmware, and all modules specified with MODULE_load="YES".
  */
 static int
 command_loadall(int ac, char **av)
@@ -220,6 +221,8 @@ command_loadall(int ac, char **av)
 	char *mod_fname;
 	char *mod_type;
 	char *tmp_str;
+	char *firmware_list;
+	char *firmware_name;
 	dvar_t dvar, dvar2;
 	int len;
 	int argc;
@@ -236,15 +239,40 @@ command_loadall(int ac, char **av)
 	argv[1] = getenv("kernelname");
 	argv[2] = getenv("kernel_options");
 	if (argv[1] == NULL)
-		argv[1] = strdup("kernel");
+		argv[1] = "kernel";
 	res = perform((argv[2] == NULL)?2:3, argv);
-	free(argv[1]);
-	if (argv[2])
-		free(argv[2]);
-
 	if (res != CMD_OK) {
-		printf("Unable to load %s%s\n", DirBase, argv[1]);
+		printf("Unable to load kernel %s%s\n", DirBase, argv[1]);
 		return(res);
+	}
+
+	/*
+	 * Load firmware listed in firmware="path/name ..."
+	 */
+	firmware_list = getenv("firmware");
+	if (firmware_list != NULL && *firmware_list != '\0') {
+		firmware_list = strdup(firmware_list);
+		if (firmware_list == NULL) {
+			printf("Unable to allocate firmware list\n");
+			return (CMD_ERROR);
+		}
+		firmware_name = strtok(firmware_list, " \t");
+		while (firmware_name != NULL) {
+			argv[0] = "load";
+			argv[1] = "-t";
+			argv[2] = "firmware";	/* type */
+			argv[3] = firmware_name;
+			tmp = perform(4, argv);
+			if (tmp != CMD_OK) {
+				time_t t = time(NULL);
+				printf("Unable to load firmware %s%s\n",
+				       DirBase, firmware_name);
+				while (time(NULL) == t)
+					;
+			}
+			firmware_name = strtok(NULL, " \t");
+		}
+		free(firmware_list);
 	}
 
 	/*
@@ -277,6 +305,12 @@ command_loadall(int ac, char **av)
 				mod_type = dvar2->data[0];
 
 			free(tmp_str);
+		}
+		if (mod_type == NULL) {
+			if (strcmp(mod_name, "cpu_microcode") == 0)
+				mod_type = "cpu_microcode";
+			else if (strcmp(mod_name, "acpi_dsdt") == 0)
+				mod_type = "acpi_dsdt";
 		}
 
 		/* Check if there's a matching foo_name */

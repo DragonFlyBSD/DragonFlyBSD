@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
 .\"
-.Dd July 5, 2026
+.Dd September 30, 2026
 .Dt LOADER 8
 .Os
 .Sh NAME
@@ -559,13 +559,26 @@ to be included after
 directories list and passed to kernel for
 .Xr kldload 8 .
 .It Va module_path
-Sets the list of directories which will be searched for modules named in a
+Sets the list of directories searched for modules and files
+specified by
 .Nm load
-command or implicitly required by a dependency.
-The default value for this variable is
-.Dq Li ;modules ,
-which first searches the current working directory and then
-.Pa modules .
+commands or implicitly required dependencies.
+The default value is
+.Dq Li ;modules;${base}firmware ,
+which searches the current directory, then
+.Pa modules
+relative to the current directory, and finally
+.Pa firmware
+relative to
+.Va base .
+The
+.Va base
+variable specifies the directory containing the
+.Nm :
+.Dq Pa /
+when booting from a separate boot filesystem, or
+.Dq Pa /boot
+when it is integrated into the root filesystem.
 .It Va num_ide_disks
 Sets the number of IDE disks as a workaround for some problems in
 finding the root disk at boot.
@@ -831,13 +844,13 @@ Deprecated
 .It Pa /boot/defaults/dloader.menu
 .Nm
 menu setup commands.
-.Sy Note:
+.Sy Note :
 do not change this file.
 .It Pa /boot/defaults/loader.conf
 .Nm
 configuration file, see
 .Xr loader.conf 5 .
-.Sy Note:
+.Sy Note :
 do not change this file.
 .It Pa /boot/dloader.menu
 .Nm
@@ -895,7 +908,8 @@ boot kernel
 .Xr lvm 8 ,
 .Xr pxeboot 8 ,
 .Xr pxeboot_tftp 8 ,
-.Xr sysctl 8
+.Xr sysctl 8 ,
+.Xr firmware 9
 .Sh HISTORY
 The
 .Nm

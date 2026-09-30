@@ -58,7 +58,7 @@ static int			file_loadraw(char *type, char *name);
 static int			file_load_dependencies(struct preloaded_file *base_mod);
 static char *			file_search(const char *name, char **extlist);
 static struct kernel_module *	file_findmodule(struct preloaded_file *fp, char *modname, struct mod_depend *verinfo);
-static int			file_havepath(const char *name);
+static int			file_qualified(const char *name);
 static char			*mod_searchmodule(char *name, struct mod_depend *verinfo);
 static void			file_insert_tail(struct preloaded_file *mp);
 static struct file_metadata*	metadata_next(struct file_metadata *base_mp, int type);
@@ -139,7 +139,7 @@ command_load(int argc, char *argv[])
     /*
      * Do we have explicit KLD load ?
      */
-    if (dokld || file_havepath(argv[1])) {
+    if (dokld || file_qualified(argv[1])) {
 	error = mod_loadkld(argv[1], argc - 2, argv + 2);
 	if (error == EEXIST) {
 	    snprintf(command_errbuf, sizeof(command_errbuf),
@@ -469,8 +469,9 @@ mod_load(char *modname, struct mod_depend *verinfo, int argc, char *argv[])
     int				err;
     char			*filename;
 
-    if (file_havepath(modname)) {
-	printf("Warning: mod_load() called instead of mod_loadkld() for module '%s'\n", modname);
+    if (file_qualified(modname)) {
+	printf("Warning: mod_load() called instead of mod_loadkld() "
+	       "for module '%s'\n", modname);
 	return (mod_loadkld(modname, argc, argv));
     }
     /* see if module is already loaded */
@@ -707,14 +708,25 @@ file_lookup(const char *path, const char *name, int namelen, char **extlist)
 
 /*
  * Check if file name have any qualifiers
+ *
+ * - carries a device prefix, e.g. "disk0s1a:/boot/kernel"
+ * - is an absolute path, e.g., "/boot/kernel/foo.ko"
+ * - is a relative path, e.g., "./kernel/foo.ko"
+ *
+ * Note: Can't simply check the existence of '/', because a firmware may be
+ * named by the path the driver asks for, e.g., "amdgpu/polaris10_pfp.bin".
  */
 static int
-file_havepath(const char *name)
+file_qualified(const char *name)
 {
     const char		*cp;
 
     archsw.arch_getdev(NULL, name, &cp);
-    return (cp != name || strchr(name, '/') != NULL);
+    if (cp != name)
+	return (1);
+    if (name[0] == '/' || (name[0] == '.' && name[1] == '/'))
+	return (1);
+    return (0);
 }
 
 /*
@@ -739,14 +751,11 @@ file_search(const char *name, char **extlist)
     if (name == NULL || *name == 0)
 	return(NULL);
 
-    /*
-     * Qualified name.  If it is a directory tag on
-     * a "/kernel" to it.
-     */
-    if (file_havepath(name)) {
+    if (file_qualified(name)) {
 	/* Qualified, so just see if it exists */
 	if (rel_stat(name, &sb) == 0) {
 	    if (S_ISDIR(sb.st_mode)) {
+		/* Is a directory, tag on a "/kernel" to it. */
 		result = malloc(strlen(name) + 7 + 1);
 		sprintf(result, "%s/kernel", name);
 		return(result);

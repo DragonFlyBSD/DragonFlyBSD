@@ -14,14 +14,19 @@ unset boot_verbose
 unset boot_vidcons
 unset boot_serial
 
-# Re-CD into the originally calculated base directory and set the
-# module_path.
+# Re-CD to the loader's base directory and set the search path for modules
+# and files.
 #
-# The module_path is a bit fragile, we want to set it to the current h
-# directory and ./modules subdirectory only, which is "<empty>;modules"
+# ${base} is the directory containing the loader: "/" when booting from
+# a separate boot filesystem, or "/boot" when integrated into the root
+# filesystem.
+#
+# module_path is a semicolon-separated list of directories to search:
+# the current directory, "modules" under the current directory, and
+# "firmware" under ${base}.
 #
 cd ${base}
-set module_path=";modules"
+set module_path=";modules;${base}firmware"
 
 acpi_load="YES"
 ahci_load="YES"
