@@ -33,6 +33,8 @@
 #include <sys/linker.h>
 #include <string.h>
 #include <machine/elf.h>
+#include <machine/cpufunc.h>
+#include <machine/specialreg.h>
 #include <stand.h>
 
 #include <efi.h>
@@ -95,6 +97,12 @@ elf64_exec(struct preloaded_file *fp)
 	ACPI_TABLE_RSDP		*rsdp;
 	char			buf[24];
 	int			revision;
+
+	/* CR0.WP cannot be cleared while CR4.CET is set. */
+	if (rcr4() & CR4_CET) {
+		printf("EFI relocation does not support active CET\n");
+		return (ENOTSUP);
+	}
 
 	rsdp = efi_get_table(&acpi20_guid);
 	if (rsdp == NULL) {
