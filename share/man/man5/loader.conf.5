@@ -196,11 +196,14 @@ If you do not specify the port the console will still operate on
 the serial port but only after the kernel has started init.
 .Pp
 Some IPMI environments do not enable sio1 during the BIOS boot,
-which can cause the loader to get confused and not pass RB_SERIAL
+which can cause the loader to get confused and not pass
+.Dv RB_SERIAL
 to the kernel.
-Setting console=comconsole in this situation also does not work because
-then the loader is inacessible.  Instead, set the sioX fields as shown
-above and also add
+Setting
+.Va console=comconsole
+in this situation also does not work because
+then the loader is inacessible.
+Instead, set the sioX fields as shown above and also add
 .Va set boot_serial="YES"
 to cause the kernel to use the serial port without also forcing the
 boot loader to use the serial port.
@@ -209,11 +212,12 @@ In contrast to the above, if you wish to place your serial console
 on a late-configuring serial port (such as one from a PCIe card),
 that serial port will not be available to the loader or for half
 the boot and it is probably best to leave
-.Va boot_serial unset .
-In
-this situation, syscons may have already taken the console, so
+.Va boot_serial
+unset.
+In this situation, syscons may have already taken the console, so
 you need to override it using (for example)
-.Va sio4.flags=0x30 instead of 0x10.
+.Va sio4.flags=0x30
+instead of 0x10.
 .Pp
 The boot1/boot2 code uses BIOS calls to read and write the screen but also
 mirrors output to and monitors COM1 @ 9600.
@@ -245,20 +249,24 @@ is set to
 .Dq comconsole
 in
 .Pa loader.conf
-or in the environment. If set to
+or in the environment.
+If set to
 .Dq YES ,
 Fred will always be displayed in monochrome.
 .It Va fred_is_red
 .Pq Dq NO
 Under color mode, Fred is depicted as a blue dragonfly with cyan wings
-by default.  If set to
+by default.
+If set to
 .Dq YES ,
 Fred will be shown as a red dragonfly with red wings instead.
 .It Va fred_disable
 .Pq Dq NO
-Fred is displayed with the menu by default.  If set to
+Fred is displayed with the menu by default.
+If set to
 .Dq YES ,
-Fred will not be shown.  The area will simply be blank.
+Fred will not be shown.
+The area will simply be blank.
 .It Va fred_on_left
 .Pq Dq NO
 If set to
@@ -302,9 +310,9 @@ default console parameters and baud rate will not work.
 .Sh FILES
 .Bl -tag -width ".Pa /boot/defaults/dloader.menu" -compact
 .It Pa /boot/defaults/dloader.menu
-default settings for menu setup -- do not change this file.
+default settings for menu setup \(em do not change this file.
 .It Pa /boot/defaults/loader.conf
-default settings -- do not change this file.
+default settings \(em do not change this file.
 .It Pa /boot/dloader.menu
 defines the commands used by
 .Nm loader
