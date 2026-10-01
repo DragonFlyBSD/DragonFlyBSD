@@ -129,6 +129,8 @@ An explicit type loads a raw file instead of an ELF module.
 Types used by the kernel include
 .Dq firmware
 for firmware images,
+.Dq cpu_microcode
+for CPU microcode,
 .Dq acpi_dsdt
 for an ACPI DSDT override, and
 .Dq md_image
@@ -246,6 +248,31 @@ then install the bootcode to the partition via
 .Pp
 Note that in comconsole mode the kernel will pick up the baud rate
 from the boot loader, so no kernel recompile is needed.
+.It Va cpu_microcode_load
+.Pq Dq NO
+If set to
+.Dq YES ,
+a CPU microcode image is preloaded and applied to each processor before the
+kernel reads what the processor can do.
+.It Va cpu_microcode_name
+Name of the microcode image, searched for along
+.Va module_path .
+For example, set this to
+.Dq amd-ucode.bin
+for an AMD processor.
+The images are installed in
+.Pa /boot/firmware
+by the
+.Pa sysutils/cpu-microcode-amd
+and
+.Pa sysutils/cpu-microcode-intel
+packages.
+The loader automatically uses the
+.Dq cpu_microcode
+type for this image.
+.Pp
+.Em Note :
+Only AMD processes are supported now.
 .It Va kernel
 .Pq Dq kernel .
 .It Va loader_plain

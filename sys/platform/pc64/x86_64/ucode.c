@@ -1,0 +1,294 @@
+/*
+ * Copyright (c) 2026 The DragonFly Project.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Apply a CPU microcode update before identify_cpu(), where the kernel
+ * determines what the CPU can do.
+ *
+ * cpuctl(4) can do the same thing from userland, but only long after
+ * identify_cpu() has cached the feature words and the APs have started, so
+ * anything a microcode update adds or removes is missed.
+ *
+ * See thye loader.conf(5) man page for how to preload the CPU microcode.
+ *
+ * TODO: Support Intel CPUs.
+ */
+
+#include <sys/param.h>
+#include <sys/systm.h>
+#include <sys/linker.h>
+
+#include <machine/cputypes.h>
+#include <machine/md_var.h>
+#include <machine/specialreg.h>
+#include <machine/ucode.h>
+
+/*
+ * AMD container format.  A file is one or more containers back to back; each
+ * is a magic word, an equivalence table mapping CPUID signatures to a patch
+ * id, and then the patches themselves.
+ */
+#define	AMD_CONTAINER_MAGIC	0x00414d44	/* "DMA\0" */
+#define	AMD_SECTION_EQUIV	0x00000000
+#define	AMD_SECTION_PATCH	0x00000001
+
+struct amd_section_header {
+	uint32_t	type;
+	uint32_t	size;
+} __packed;
+
+struct amd_equiv_entry {
+	uint32_t	installed_cpu;
+	uint32_t	fixed_errata_mask;
+	uint32_t	fixed_errata_compare;
+	uint16_t	equiv_id;
+	uint16_t	reserved;
+} __packed;
+
+struct amd_patch_header {
+	uint32_t	date;
+	uint32_t	patch_id;
+	uint16_t	mc_patch_data_id;
+	uint8_t		mc_patch_data_len;
+	uint8_t		init_flag;
+	uint32_t	mc_patch_data_checksum;
+	uint32_t	nb_dev_id;
+	uint32_t	sb_dev_id;
+	uint16_t	processor_rev_id;
+	uint8_t		nb_rev_id;
+	uint8_t		sb_rev_id;
+	uint8_t		bios_api_rev;
+	uint8_t		reserved1[3];
+	uint32_t	match_reg[8];
+} __packed;
+
+/*
+ * The patch has to be 16-byte aligned when its address is handed to the CPU,
+ * and there is no allocator this early, so use a static buffer here.
+ */
+#define	UCODE_STAGE_SIZE	PAGE_SIZE
+static uint8_t ucode_stage[UCODE_STAGE_SIZE] __aligned(16);
+static size_t ucode_stage_len;
+static uint32_t ucode_stage_rev;
+static u_int ucode_vendor_id;
+
+/*
+ * identify_cpu() has not run when the BSP stages microcode, so this must
+ * not rely on cpu_vendor_id.
+ */
+static void
+ucode_identify_vendor(void)
+{
+	uint32_t regs[4];
+
+	do_cpuid(0, regs);
+	if (regs[1] == 0x68747541 && regs[3] == 0x69746e65 &&
+	    regs[2] == 0x444d4163)
+		ucode_vendor_id = CPU_VENDOR_AMD;
+	else if (regs[1] == 0x756e6547 && regs[3] == 0x49656e69 &&
+		 regs[2] == 0x6c65746e)
+		ucode_vendor_id = CPU_VENDOR_INTEL;
+}
+
+/*
+ * Walk one container looking for a patch whose processor_rev_id matches the
+ * equivalence entry for this CPU.  Returns the end of the container so the
+ * caller can move on to the next one, or NULL if the data stops making sense.
+ */
+static const uint8_t *
+ucode_amd_scan(const uint8_t *p, const uint8_t *end, uint32_t sig,
+	       const struct amd_patch_header **bestp, size_t *bestlen)
+{
+	const struct amd_section_header *sh;
+	const struct amd_patch_header *ph;
+	const struct amd_equiv_entry *eq;
+	uint32_t magic;
+	uint16_t want = 0;
+	bool found = false;
+
+	if ((size_t)(end - p) < sizeof(magic) + sizeof(*sh))
+		return (NULL);
+	memcpy(&magic, p, sizeof(magic));
+	if (magic != AMD_CONTAINER_MAGIC)
+		return (NULL);
+	p += sizeof(magic);
+
+	sh = (const struct amd_section_header *)p;
+	if (sh->type != AMD_SECTION_EQUIV)
+		return (NULL);
+	p += sizeof(*sh);
+	if (sh->size > (size_t)(end - p))
+		return (NULL);
+
+	for (eq = (const struct amd_equiv_entry *)p;
+	     (const uint8_t *)(eq + 1) <= p + sh->size;
+	     eq++)
+	{
+		if (eq->installed_cpu == 0)
+			break;
+		if (eq->installed_cpu == sig) {
+			want = eq->equiv_id;
+			found = true;
+			break;
+		}
+	}
+	p += sh->size;
+
+	while ((size_t)(end - p) >= sizeof(*sh)) {
+		sh = (const struct amd_section_header *)p;
+		if (sh->type != AMD_SECTION_PATCH)
+			break;
+		p += sizeof(*sh);
+		if (sh->size > (size_t)(end - p) || sh->size < sizeof(*ph))
+			return (NULL);
+
+		ph = (const struct amd_patch_header *)p;
+		if (found && ph->processor_rev_id == want &&
+		    (*bestp == NULL || ph->patch_id > (*bestp)->patch_id)) {
+			*bestp = ph;
+			*bestlen = sh->size;
+		}
+		p += sh->size;
+	}
+
+	return (p);
+}
+
+/*
+ * Find the image the loader preloaded, pick the patch for this CPU and stage
+ * it.
+ */
+static void
+ucode_amd_stage(void)
+{
+	const struct amd_patch_header *best = NULL;
+	const uint8_t *p, *end;
+	size_t bestlen = 0;
+	caddr_t mod, info;
+	uint32_t sig, regs[4];
+	size_t len;
+
+	KKASSERT(ucode_vendor_id == CPU_VENDOR_AMD);
+
+	mod = preload_search_by_type("cpu_microcode");
+	if (mod == NULL)
+		return;
+	info = preload_search_info(mod, MODINFO_ADDR);
+	if (info == NULL)
+		return;
+	p = *(const uint8_t **)info;
+	info = preload_search_info(mod, MODINFO_SIZE);
+	if (info == NULL)
+		return;
+	len = *(const size_t *)info;
+	if (p == NULL || len == 0)
+		return;
+	end = p + len;
+
+	do_cpuid(1, regs);
+	sig = regs[0];
+
+	while (p != NULL && p < end)
+		p = ucode_amd_scan(p, end, sig, &best, &bestlen);
+
+	if (best == NULL) {
+		kprintf("ucode: no AMD microcode for CPU signature %#x\n", sig);
+		return;
+	}
+	if (bestlen > sizeof(ucode_stage)) {
+		kprintf("ucode: AMD patch %#x is %zu bytes, larger than the "
+			"staging buffer\n", best->patch_id, bestlen);
+		return;
+	}
+
+	memcpy(ucode_stage, best, bestlen);
+	ucode_stage_len = bestlen;
+	ucode_stage_rev = best->patch_id;
+}
+
+static void
+ucode_amd_apply(void)
+{
+	uint64_t before, after;
+	uint32_t regs[4];
+
+	KKASSERT(ucode_vendor_id == CPU_VENDOR_AMD);
+
+	before = rdmsr(MSR_AMD_PATCH_LEVEL);
+	if (before >= ucode_stage_rev)
+		return;
+
+	wrmsr(MSR_AMD_PATCH_LOADER, (uintptr_t)ucode_stage);
+	do_cpuid(0, regs);		/* serialize */
+	after = rdmsr(MSR_AMD_PATCH_LEVEL);
+
+	if (after != before) {
+		kprintf("ucode: cpu%d microcode %#jx -> %#jx\n",
+			mycpuid, (uintmax_t)before, (uintmax_t)after);
+	} else {
+		kprintf("ucode: cpu%d microcode %#jx unchanged, wanted %#x\n",
+			mycpuid, (uintmax_t)before, ucode_stage_rev);
+	}
+}
+
+/*
+ * Hand the staged patch to this CPU.
+ */
+void
+ucode_apply(void)
+{
+	if (ucode_stage_len == 0)
+		return;
+
+	switch (ucode_vendor_id) {
+	case CPU_VENDOR_AMD:
+		ucode_amd_apply();
+		break;
+	default:
+		break;
+	}
+}
+
+/*
+ * Called from the BSP before identify_cpu(), which is the last moment at
+ * which an update can still change what the kernel believes the CPU can do.
+ */
+void
+ucode_load_bsp(void)
+{
+	ucode_identify_vendor();
+
+	switch (ucode_vendor_id) {
+	case CPU_VENDOR_AMD:
+		ucode_amd_stage();
+		break;
+	default:
+		break;
+	}
+
+	ucode_apply();
+}
