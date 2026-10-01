@@ -482,7 +482,7 @@ mmioctl(struct dev_ioctl_args *ap)
 				     ap->a_fflag, ap->a_cred);
 		break;
 	default:
-		error = ENODEV;
+		error = ENOTTY;
 		break;
 	}
 
