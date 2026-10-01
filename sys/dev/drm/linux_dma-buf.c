@@ -160,7 +160,12 @@ dma_buf_fd(struct dma_buf *dmabuf, int flags)
 	if (error != 0)
 		return -error;
 
+	/*
+	 * fsetfd() installs the fp and adds a ref.  We must
+	 * drop the ref we obtained from fdalloc() to finish up.
+	 */
 	fsetfd(curproc->p_fd, dmabuf->file, fd);
+	fdrop(dmabuf->file);
 
 	return fd;
 }
@@ -181,6 +186,7 @@ dma_buf_get(int fd)
 	}
 
 	dmabuf = fp->private_data;
+	fhold(fp);	/* for dma_buf_put() */
 	dropfp(curthread, fd, fp);
 
 	return dmabuf;
