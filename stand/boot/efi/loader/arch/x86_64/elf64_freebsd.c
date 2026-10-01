@@ -128,7 +128,7 @@ elf64_exec(struct preloaded_file *fp)
 	ehdr = (Elf_Ehdr *)&(md->md_data);
 
 	trampcode = (vm_offset_t)0x0000000040000000;
-	err = BS->AllocatePages(AllocateMaxAddress, EfiLoaderData, 1,
+	err = BS->AllocatePages(AllocateMaxAddress, EfiLoaderCode, 1,
 	    (EFI_PHYSICAL_ADDRESS *)&trampcode);
 	bzero((void *)trampcode, EFI_PAGE_SIZE);
 	trampstack = trampcode + EFI_PAGE_SIZE - 8;
