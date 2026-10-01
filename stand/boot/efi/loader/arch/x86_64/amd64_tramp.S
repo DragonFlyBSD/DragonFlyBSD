@@ -29,6 +29,7 @@
  */
 
 #include <machine/asmacros.h>
+#include <machine/specialreg.h>
 
 	.text
 	.globl	amd64_tramp
@@ -46,7 +47,17 @@ amd64_tramp:
 	movq	%r8,%r14
 	movq	%r9,%r15
 
+	/*
+	 * Reclaimed boot memory may still have read-only firmware mappings.
+	 * Preserve CR0 across the copy in a callee-saved register.  Boot
+	 * services have exited and maskable interrupts are disabled here.
+	 */
+	movq	%cr0,%rbp
+	movq	%rbp,%rax
+	andq	$~CR0_WP,%rax
+	movq	%rax,%cr0
 	callq	*%rsi		/* Call copy_finish so we're all ready to go. */
+	movq	%rbp,%cr0	/* Restore before switching to kernel mappings. */
 
 	pushq	%r12		/* Push kernend. */
 	salq	$32,%r13	/* Shift modulep and push it. */
