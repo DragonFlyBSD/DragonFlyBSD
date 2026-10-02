@@ -98,7 +98,7 @@ loader.efi: ${PROG}
 
 LIBEFI=		${.OBJDIR}/../libefi/libefi.a
 
-DPADD=		${LIBEFI} ${LIBSTAND} ${LIBDLOADER} ${LDSCRIPT}
-LDADD=		${LIBEFI} ${LIBSTAND} ${LIBDLOADER}
+DPADD=		${LIBEFI} ${LIBDLOADER} ${LIBSTAND} ${LDSCRIPT}
+LDADD=		${LIBEFI} ${LIBDLOADER} ${LIBSTAND}
 
 .include <bsd.prog.mk>
