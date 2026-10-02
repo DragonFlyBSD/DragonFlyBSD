@@ -65,6 +65,12 @@ FILESMODE_loader.efi=	${BINMODE}
 
 LDSCRIPT=	${.CURDIR}/arch/${MACHINE}/ldscript.${MACHINE}
 LDFLAGS+=	-Wl,-T${LDSCRIPT} -Wl,-Bsymbolic -shared
+# This is a shared link, but the loader has no dynamic linker to resolve
+# symbols, so fail instead of emitting a PLT/dynamic reference.
+LDFLAGS+=	-Wl,-z,defs
+# loader.sym never unwinds and .eh_frame_hdr is not copied to loader.efi;
+# so skip it.
+LDFLAGS+=	-Wl,--no-eh-frame-hdr
 
 CLEANFILES+=	vers.c loader.efi
 

@@ -7,7 +7,7 @@ SECTIONS
   /* Read-only sections, merged into text segment: */
   . = 0;
   ImageBase = .;
-  .hash : { *(.hash) }  /* this MUST come first! */
+  .hash : { *(.hash) }
   . = ALIGN(4096);
   .eh_frame :
   {
@@ -18,7 +18,7 @@ SECTIONS
     *(.text .stub .text.* .gnu.linkonce.t.*)
     /* .gnu.warning sections are handled specially by elf32.em. */
     *(.gnu.warning)
-    *(.plt)
+    *(.plt .plt.got .plt.sec .iplt)
   } =0xCCCCCCCC
   . = ALIGN(4096);
   .data		: {
