@@ -3,18 +3,18 @@
 BINDIR?=	/boot
 
 # Options used when building app-specific efi components
-# See conf/kern.mk for the correct set of these
+# See sys/platform/*/conf/kern.mk for the correct set of these
 CFLAGS+=	-O
 CFLAGS+=	-D_STANDALONE
 CFLAGS+=	-ffreestanding -Wformat
-CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3 -msoft-float
-LDFLAGS+=	-nostdlib
+CFLAGS+=	-mno-mmx -mno-sse -msoft-float -mno-fp-ret-in-387
 
 .if ${MACHINE_ARCH} == "x86_64"
 CFLAGS+=	-fshort-wchar
 CFLAGS+=	-mno-red-zone
-CFLAGS+=	-mno-aes
 .endif
+
+LDFLAGS+=	-nostdlib
 
 # post binutils-2.27 ld.gold workaround for linker script handling
 EFI_GOLD_OBJCOPY_FLAGS=	-j .got -j .got.plt -j .bss

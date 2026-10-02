@@ -1,6 +1,4 @@
 # The DragonFly Loader
-#
-#
 
 SRCS=	subs.c cmds.c
 
@@ -17,7 +15,8 @@ CFLAGS+=	-D_STANDALONE
 .endif
 
 .if ${MACHINE_ARCH} == "x86_64"
-CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3 -msoft-float
+# From: sys/platform/*/conf/kern.mk
+CFLAGS+=	-mno-mmx -mno-sse -msoft-float -mno-fp-ret-in-387
 .endif
 
 .if HAVE_PNP

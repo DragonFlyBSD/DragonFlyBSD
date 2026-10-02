@@ -44,7 +44,8 @@ CFLAGS+=	-m32
 .endif
 
 .if ${LIBSTAND_ARCH} == "i386" || ${LIBSTAND_ARCH} == "x86_64"
-CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3 -msoft-float
+# From: sys/platform/*/conf/kern.mk
+CFLAGS+=	-mno-mmx -mno-sse -msoft-float -mno-fp-ret-in-387
 .endif
 
 # standalone components and stuff we have modified locally
