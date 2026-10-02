@@ -43,6 +43,9 @@ FILESMODE_boot1.efi=	${BINMODE}
 
 LDSCRIPT=	${.CURDIR}/../loader/arch/${MACHINE}/ldscript.${MACHINE}
 LDFLAGS+=	-Wl,-T${LDSCRIPT} -Wl,-Bsymbolic -shared
+# see also: ../loader/Makefile
+LDFLAGS+=	-Wl,-z,defs
+LDFLAGS+=	-Wl,--no-eh-frame-hdr
 
 .if ${MACHINE_ARCH} == "aarch64"
 CFLAGS+=	-msoft-float -mgeneral-regs-only
