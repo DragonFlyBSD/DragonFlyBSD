@@ -37,6 +37,7 @@
 #define DKTYPENAMES
 #include <sys/dtype.h>
 #include <sys/diskslice.h>
+#include <sys/gpt.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
@@ -797,6 +798,32 @@ iscdmedia(const char *path, int fd __unused)
 }
 
 /*
+ * Map a GPT partition type to a filesystem name mount(8) understands.
+ * Returns NULL if the type is unknown.
+ */
+static const char *
+gpt_fstype(const struct uuid *type)
+{
+	static const struct {
+		struct uuid	type;
+		const char	*vfs;
+	} tbl[] = {
+		{ GPT_ENT_TYPE_EFI,			"msdos" },
+		{ GPT_ENT_TYPE_DRAGONFLY_UFS1,		"ufs" },
+		{ GPT_ENT_TYPE_DRAGONFLY_HAMMER,	"hammer" },
+		{ GPT_ENT_TYPE_DRAGONFLY_HAMMER2,	"hammer2" },
+		{ GPT_ENT_TYPE_FREEBSD_UFS,		"ufs" },
+	};
+	size_t i;
+
+	for (i = 0; i < NELEM(tbl); ++i) {
+		if (memcmp(type, &tbl[i].type, sizeof(*type)) == 0)
+			return (tbl[i].vfs);
+	}
+	return (NULL);
+}
+
+/*
  * If the device path is a cdev attempt to access the disklabel to determine
  * the filesystem type.  Adjust *vfstypep if we can figure it out
  * definitively.
@@ -808,6 +835,7 @@ checkdisklabel(const char *devpath, const char **vfstypep)
 {
 	struct stat st;
 	struct partinfo info;
+	const char *fstype;
 	char *path = strdup(devpath);
 	int fd;
 
@@ -824,18 +852,21 @@ checkdisklabel(const char *devpath, const char **vfstypep)
 	if (fd < 0)
 		goto done;
 	if (ioctl(fd, DIOCGPART, &info) == 0) {
-		if (info.fstype >= 0 && info.fstype < (int)FSMAXTYPES) {
-			if (fstype_to_vfsname[info.fstype]) {
-				*vfstypep = fstype_to_vfsname[info.fstype];
-			} else if (iscdmedia(path, fd)) {
-				*vfstypep = "cd9660";
-			} else {
-				fprintf(stderr,
-					"mount: warning: fstype in disklabel "
-					"not set to anything I understand\n");
-				fprintf(stderr,
-					"attempting to mount with -t ufs\n");
-			}
+		fstype = NULL;
+		if (info.fstype >= 0 && info.fstype < (int)FSMAXTYPES)
+			fstype = fstype_to_vfsname[info.fstype];
+		if (fstype == NULL)
+			fstype = gpt_fstype(&info.fstype_uuid);
+		if (fstype != NULL) {
+			*vfstypep = fstype;
+		} else if (iscdmedia(path, fd)) {
+			*vfstypep = "cd9660";
+		} else if (info.fstype >= 0 && info.fstype < (int)FSMAXTYPES) {
+			fprintf(stderr,
+				"mount: warning: fstype in disklabel "
+				"not set to anything I understand\n");
+			fprintf(stderr,
+				"attempting to mount with -t ufs\n");
 		}
 	}
 	close(fd);
