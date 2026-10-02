@@ -1233,7 +1233,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	vm_prot_t maxprot, int flags, void *handle, vm_ooffset_t foff,
 	struct file *fp)
 {
-	boolean_t fitit;
+	boolean_t fitit, replace;
 	vm_object_t object;
 	vm_offset_t eaddr;
 	vm_size_t   esize;
@@ -1309,6 +1309,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		align = PAGE_SIZE;
 	}
 
+	replace = FALSE;
 	if ((flags & (MAP_FIXED | MAP_TRYFIXED)) == 0) {
 		fitit = TRUE;
 		*addr = round_page(*addr);
@@ -1324,7 +1325,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		}
 		fitit = FALSE;
 		if ((flags & MAP_TRYFIXED) == 0)
-			vm_map_remove(map, *addr, *addr + size);
+			replace = TRUE;
 	}
 
 	uksmap = NULL;
@@ -1465,33 +1466,43 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		*addr = pmap_addr_hint(object, *addr, size);
 	}
 
-	/*
-	 * Stack mappings need special attention.
-	 *
-	 * Mappings that use virtual page tables will default to storing
-	 * the page table at offset 0.
-	 */
 	if (uksmap) {
+		if (replace)
+			vm_map_remove(map, *addr, *addr + size);
 		rv = vm_map_find(map, uksmap, vp->v_rdev,
 				 foff, addr, size,
 				 align, fitit,
 				 VM_MAPTYPE_UKSMAP, VM_SUBSYS_MMAP,
 				 prot, maxprot, docow);
 	} else if (flags & MAP_STACK) {
+		/*
+		 * Stack mappings need special attention.
+		 */
+		if (replace)
+			vm_map_remove(map, *addr, *addr + size);
 		rv = vm_map_stack(map, addr, size, flags,
 				  prot, maxprot, docow);
 	} else if (flags & MAP_VPAGETABLE) {
+		/*
+		 * Mappings that use virtual page tables will default to
+		 * storing the page table at offset 0.
+		 */
 		++vpagetable_mmap_count;
 		if (debug_vpagetable) {
 			kprintf("MAP_VPAGETABLE: addr=%lx size=%lx pid=%d\n",
 				*addr, size,
 				(curproc ? curproc->p_pid : -1));
 		}
+		if (replace)
+			vm_map_remove(map, *addr, *addr + size);
 		rv = vm_map_find(map, object, NULL,
 				 foff, addr, size,
 				 align, fitit,
 				 VM_MAPTYPE_VPAGETABLE, VM_SUBSYS_MMAP,
 				 prot, maxprot, docow);
+	} else if (replace) {
+		rv = vm_map_replace(map, object, foff, *addr, size,
+				    prot, maxprot, docow);
 	} else {
 		rv = vm_map_find(map, object, NULL,
 				 foff, addr, size,

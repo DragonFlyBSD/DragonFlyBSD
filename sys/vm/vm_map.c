@@ -1699,6 +1699,60 @@ vm_map_find(vm_map_t map, void *map_object, void *map_aux,
 }
 
 /*
+ * The caller supplies an object reference for the new entry.
+ * On failure the caller keeps ownership of the reference.
+ */
+int
+vm_map_replace(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
+	       vm_offset_t addr, vm_size_t length, vm_prot_t prot,
+	       vm_prot_t max, int cow)
+{
+	vm_map_entry_t entry;
+	vm_offset_t end = addr + length;
+	int count, result;
+
+	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
+	vm_map_lock(map);
+	if (addr < vm_map_min(map) || end > vm_map_max(map) || addr >= end) {
+		result = KERN_INVALID_ADDRESS;
+		goto done;
+	}
+
+again:
+	/* A transition wait unlocks the map, so wait before deleting anything. */
+	if (!vm_map_lookup_entry(map, addr, &entry)) {
+		if (entry)
+			entry = vm_map_rb_tree_RB_NEXT(entry);
+		else
+			entry = RB_MIN(vm_map_rb_tree, &map->rb_root);
+	}
+	for (; entry && entry->ba.start < end;
+	     entry = vm_map_rb_tree_RB_NEXT(entry))
+	{
+		if (entry->eflags & MAP_ENTRY_IN_TRANSITION) {
+			entry->eflags |= MAP_ENTRY_NEEDS_WAKEUP;
+			++mycpu->gd_cnt.v_intrans_coll;
+			++mycpu->gd_cnt.v_intrans_wait;
+			vm_map_transition_wait(map, 1);
+			goto again;
+		}
+	}
+	vm_map_delete(map, addr, end, &count);
+	if (object)
+		vm_object_hold_shared(object);
+	result = vm_map_insert(map, &count, object, NULL, offset, NULL,
+			       addr, end, VM_MAPTYPE_NORMAL, VM_SUBSYS_MMAP,
+			       prot, max, cow);
+	if (object)
+		vm_object_drop(object);
+
+done:
+	vm_map_unlock(map);
+	vm_map_entry_release(count);
+	return (result);
+}
+
+/*
  * Simplify the given map entry by merging with either neighbor.  This
  * routine also has the ability to merge with both neighbors.
  *
