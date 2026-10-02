@@ -1648,12 +1648,31 @@ svm_htlb_flush_ack(struct svm_cpudata *cpudata, uint64_t machgen)
 static inline void
 svm_exit_evt(struct svm_cpudata *cpudata, struct vmcb *vmcb)
 {
+	uint64_t exitintinfo = vmcb->ctrl.exitintinfo;
+
 	cpudata->evt_pending = false;
 
-	if (__predict_false(vmcb->ctrl.exitintinfo & VMCB_CTRL_EXITINTINFO_V)) {
-		vmcb->ctrl.eventinj = vmcb->ctrl.exitintinfo;
-		cpudata->evt_pending = true;
+	if (__predict_true(!(exitintinfo & VMCB_CTRL_EXITINTINFO_V))) {
+		return;
 	}
+
+	/*
+	 * Pathological case: if a VMEXIT occurs while delivering a software
+	 * interrupt, the hardware may leave nrip=0, making the event unsafe
+	 * to reinject.
+	 *
+	 * In practice NVMM doesn't allow software interrupts to be injected,
+	 * so it must have originated from the guest executing an INT
+	 * instruction. Ignore the event, and let the guest re-execute that
+	 * instruction on the next entry.
+	 */
+	if (__SHIFTOUT(exitintinfo, VMCB_CTRL_EXITINTINFO_TYPE) ==
+	    SVM_EVENT_TYPE_SW_INT && vmcb->ctrl.nrip == 0) {
+		return;
+	}
+
+	vmcb->ctrl.eventinj = exitintinfo;
+	cpudata->evt_pending = true;
 }
 
 static int
