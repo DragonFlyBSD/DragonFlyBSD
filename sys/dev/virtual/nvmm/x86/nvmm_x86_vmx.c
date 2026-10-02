@@ -2340,7 +2340,6 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		}
 
 		vmx_cli();
-		vmx_vcpu_guest_fpu_enter(vcpu);
 		machgen = vmx_htlb_flush(mach, cpudata);
 
 #ifdef __DragonFly__
@@ -2357,7 +2356,6 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		if (__predict_false(mycpu->gd_reqflags & RQF_HVM_MASK)) {
 			/* INVEPT executed, so ack hTLB flush. */
 			vmx_htlb_flush_ack(cpudata, machgen);
-			vmx_vcpu_guest_fpu_leave(vcpu);
 			vmx_sti();
 			exit->reason = NVMM_VCPU_EXIT_NONE;
 			error = ERESTART;
@@ -2371,7 +2369,6 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		if (__predict_false(vmx_vcpu_event_commit(vcpu) != 0)) {
 			/* INVEPT executed, so ack hTLB flush. */
 			vmx_htlb_flush_ack(cpudata, machgen);
-			vmx_vcpu_guest_fpu_leave(vcpu);
 			vmx_sti();
 			exit->reason = NVMM_VCPU_EXIT_NONE;
 			error = EINVAL;
@@ -2379,6 +2376,7 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		}
 #endif
 
+		vmx_vcpu_guest_fpu_enter(vcpu);
 		x86_set_cr2(cpudata->gcr2);
 		if (launched) {
 			ret = vmx_vmresume(cpudata->gprs);
