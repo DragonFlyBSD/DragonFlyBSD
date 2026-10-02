@@ -618,28 +618,6 @@ svm_vmcb_cache_default(struct vmcb *vmcb)
 	    VMCB_CTRL_VMCB_CLEAN_CET;
 }
 
-static void
-svm_vmcb_cache_update(struct vmcb *vmcb, uint64_t flags)
-{
-	if (flags & NVMM_X64_STATE_SEGS) {
-		vmcb->ctrl.vmcb_clean &=
-		    ~(VMCB_CTRL_VMCB_CLEAN_SEG | VMCB_CTRL_VMCB_CLEAN_DT);
-	}
-	if (flags & NVMM_X64_STATE_CRS) {
-		vmcb->ctrl.vmcb_clean &=
-		    ~(VMCB_CTRL_VMCB_CLEAN_CR | VMCB_CTRL_VMCB_CLEAN_CR2 |
-		      VMCB_CTRL_VMCB_CLEAN_TPR);
-	}
-	if (flags & NVMM_X64_STATE_DRS) {
-		vmcb->ctrl.vmcb_clean &= ~VMCB_CTRL_VMCB_CLEAN_DR;
-	}
-	if (flags & NVMM_X64_STATE_MSRS) {
-		/* CR for EFER, NP for PAT. */
-		vmcb->ctrl.vmcb_clean &=
-		    ~(VMCB_CTRL_VMCB_CLEAN_CR | VMCB_CTRL_VMCB_CLEAN_NP);
-	}
-}
-
 static inline void
 svm_vmcb_cache_flush(struct vmcb *vmcb, uint64_t flags)
 {
@@ -2052,6 +2030,9 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 		    &vmcb->state.tr);
 
 		vmcb->state.cpl = state->segs[NVMM_X64_SEG_SS].attrib.dpl;
+
+		svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_SEG |
+		                           VMCB_CTRL_VMCB_CLEAN_DT);
 	}
 
 	CTASSERT(sizeof(cpudata->gprs) == sizeof(state->gprs));
@@ -2083,6 +2064,10 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 			cpudata->gxcr0 &= svm_xcr0_mask;
 			cpudata->gxcr0 |= XCR0_X87;
 		}
+
+		svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_CR |
+		                           VMCB_CTRL_VMCB_CLEAN_CR2 |
+		                           VMCB_CTRL_VMCB_CLEAN_TPR);
 	}
 
 	CTASSERT(sizeof(cpudata->drs) == sizeof(state->drs));
@@ -2091,6 +2076,8 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 
 		vmcb->state.dr6 = state->drs[NVMM_X64_DR_DR6];
 		vmcb->state.dr7 = state->drs[NVMM_X64_DR_DR7];
+
+		svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_DR);
 	}
 
 	if (flags & NVMM_X64_STATE_MSRS) {
@@ -2126,6 +2113,10 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 			    state->msrs[NVMM_X64_MSR_TSC] - rdtsc();
 			cpudata->gtsc_want_update = true;
 		}
+
+		/* CR for EFER, NP for PAT. */
+		svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_CR |
+		                           VMCB_CTRL_VMCB_CLEAN_NP);
 	}
 
 	if (flags & NVMM_X64_STATE_INTR) {
@@ -2161,8 +2152,6 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 			cpudata->gxsave.xstate_bv = svm_xcr0_mask;
 		}
 	}
-
-	svm_vmcb_cache_update(vmcb, flags);
 
 	comm->state_wanted = 0;
 	comm->state_cached |= flags;
