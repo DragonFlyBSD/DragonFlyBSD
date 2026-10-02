@@ -737,7 +737,7 @@ svm_vcpu_inject(struct nvmm_cpu *vcpu)
 	u_int evtype;
 	uint8_t vector;
 	uint64_t error;
-	int type = 0, err = 0;
+	int type = 0, has_error = 0;
 
 	evtype = comm->event.type;
 	vector = comm->event.vector;
@@ -754,7 +754,9 @@ svm_vcpu_inject(struct nvmm_cpu *vcpu)
 		if (svm_excp_has_rf(vector)) {
 			vmcb->state.rflags |= PSL_RF;
 		}
-		err = svm_excp_has_error(vector);
+		if ((vmcb->state.cr0 & CR0_PE) != 0) {
+			has_error = svm_excp_has_error(vector);
+		}
 		break;
 	case NVMM_VCPU_EVENT_INTR:
 		type = SVM_EVENT_TYPE_HW_INT;
@@ -762,7 +764,6 @@ svm_vcpu_inject(struct nvmm_cpu *vcpu)
 			type = SVM_EVENT_TYPE_NMI;
 			svm_event_waitexit_enable(vcpu, true);
 		}
-		err = 0;
 		break;
 	default:
 		return EINVAL;
@@ -771,7 +772,7 @@ svm_vcpu_inject(struct nvmm_cpu *vcpu)
 	vmcb->ctrl.eventinj =
 	    __SHIFTIN((uint64_t)vector, VMCB_CTRL_EVENTINJ_VECTOR) |
 	    __SHIFTIN((uint64_t)type, VMCB_CTRL_EVENTINJ_TYPE) |
-	    __SHIFTIN((uint64_t)err, VMCB_CTRL_EVENTINJ_EV) |
+	    __SHIFTIN((uint64_t)has_error, VMCB_CTRL_EVENTINJ_EV) |
 	    __SHIFTIN((uint64_t)1, VMCB_CTRL_EVENTINJ_V) |
 	    __SHIFTIN((uint64_t)error, VMCB_CTRL_EVENTINJ_ERRORCODE);
 

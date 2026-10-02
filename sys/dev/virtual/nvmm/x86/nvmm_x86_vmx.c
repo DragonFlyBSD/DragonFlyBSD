@@ -1140,7 +1140,7 @@ vmx_vcpu_inject(struct nvmm_cpu *vcpu)
 {
 	struct nvmm_comm_page *comm = vcpu->comm;
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
-	int type = 0, err = 0, ret = EINVAL;
+	int type = 0, has_error = 0, ret = EINVAL;
 	uint64_t rflags, info, error;
 	u_int evtype;
 	uint8_t vector;
@@ -1163,7 +1163,9 @@ vmx_vcpu_inject(struct nvmm_cpu *vcpu)
 			vmx_vmwrite(VMCS_GUEST_RFLAGS, rflags | PSL_RF);
 		}
 		type = INTR_TYPE_HW_EXC;
-		err = vmx_excp_has_error(vector);
+		if ((vmx_vmread(VMCS_GUEST_CR0) & CR0_PE) != 0) {
+			has_error = vmx_excp_has_error(vector);
+		}
 		break;
 	case NVMM_VCPU_EVENT_INTR:
 		type = INTR_TYPE_EXT_INT;
@@ -1171,7 +1173,6 @@ vmx_vcpu_inject(struct nvmm_cpu *vcpu)
 			type = INTR_TYPE_NMI;
 			vmx_event_waitexit_enable(vcpu, true);
 		}
-		err = 0;
 		break;
 	default:
 		goto out;
@@ -1180,10 +1181,12 @@ vmx_vcpu_inject(struct nvmm_cpu *vcpu)
 	info =
 	    __SHIFTIN((uint64_t)vector, INTR_INFO_VECTOR) |
 	    __SHIFTIN((uint64_t)type, INTR_INFO_TYPE) |
-	    __SHIFTIN((uint64_t)err, INTR_INFO_ERROR) |
+	    __SHIFTIN((uint64_t)has_error, INTR_INFO_ERROR) |
 	    __SHIFTIN((uint64_t)1, INTR_INFO_VALID);
 	vmx_vmwrite(VMCS_ENTRY_INTR_INFO, info);
-	vmx_vmwrite(VMCS_ENTRY_EXCEPTION_ERROR, error);
+	if (has_error) {
+		vmx_vmwrite(VMCS_ENTRY_EXCEPTION_ERROR, error);
+	}
 
 	cpudata->evt_pending = true;
 	ret = 0;
