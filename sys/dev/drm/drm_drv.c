@@ -1126,9 +1126,8 @@ drm_modevent(module_t mod, int type, void *data)
 		linux_proc_drop_callback = linux_proc_drop;
 		break;
 	case MOD_UNLOAD:
-		linux_task_drop_callback = NULL;
-		linux_proc_drop_callback = NULL;
-		break;
+		/* Worker threads and callbacks cannot yet be torn down. */
+		return (EBUSY);
 	}
 	return (0);
 }
