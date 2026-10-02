@@ -663,6 +663,20 @@ struct nvmm_vcpu_conf_tpr {
 #define CPUID_8_0A_EDX_SpecCtrl		__BIT(20)
 #define CPUID_8_0A_EDX_TlbiCtl		__BIT(24)
 
+/* Fn8000_001D:EAX (Cache Topology Information) */
+#define CPUID_8_1D_EAX_CacheType	__BITS(4,0)
+#define CPUID_8_1D_EAX_CacheLevel	__BITS(7,5)
+#define CPUID_8_1D_EAX_SelfInit		__BIT(8)
+#define CPUID_8_1D_EAX_FullyAssociative	__BIT(9)
+#define CPUID_8_1D_EAX_NumSharingCache	__BITS(25,14)
+
+/* Fn8000_001E:EBX (Processor Topology Information) */
+#define CPUID_8_1E_EBX_ComputeUnitId	__BITS(7,0)
+#define CPUID_8_1E_EBX_ThreadsPerCU	__BITS(15,8)
+/* Fn8000_001E:ECX (Processor Topology Information) */
+#define CPUID_8_1E_ECX_NodeId		__BITS(7,0)
+#define CPUID_8_1E_ECX_NodesPerProc	__BITS(10,8)
+
 #endif /* ASM_NVMM */
 
 #endif /* _NVMM_X86_H_ */

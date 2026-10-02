@@ -856,6 +856,7 @@ svm_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 {
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	unsigned int nvcpus;
+	uint32_t clevel;
 	uint64_t cr4;
 
 	if (eax < 0x40000000) {
@@ -1044,8 +1045,31 @@ svm_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		cpudata->gprs[NVMM_X64_GPR_RDX] = 0;
 		break;
 	case 0x8000001D: /* Cache Topology Information */
+		nvcpus = os_atomic_load_uint(&mach->ncpus);
+		clevel = __SHIFTOUT(cpudata->vmcb->state.rax,
+		    CPUID_8_1D_EAX_CacheLevel);
+
+		cpudata->vmcb->state.rax &= ~CPUID_8_1D_EAX_NumSharingCache;
+		if (clevel >= 3) {
+			/* L3 and above: all CPUs. */
+			cpudata->vmcb->state.rax |=
+			    __SHIFTIN(nvcpus - 1, CPUID_8_1D_EAX_NumSharingCache);
+		} else {
+			/* L2 and below: one LP per CPU. */
+			cpudata->vmcb->state.rax |=
+			    __SHIFTIN(0, CPUID_8_1D_EAX_NumSharingCache);
+		}
+		break;
 	case 0x8000001E: /* Processor Topology Information */
-		break; /* TODO? */
+		cpudata->vmcb->state.rax = vcpu->cpuid;
+		cpudata->gprs[NVMM_X64_GPR_RBX] =
+		    __SHIFTIN(vcpu->cpuid, CPUID_8_1E_EBX_ComputeUnitId) |
+		    __SHIFTIN(0, CPUID_8_1E_EBX_ThreadsPerCU);
+		cpudata->gprs[NVMM_X64_GPR_RCX] =
+		    __SHIFTIN(0, CPUID_8_1E_ECX_NodeId) |
+		    __SHIFTIN(0, CPUID_8_1E_ECX_NodesPerProc);
+		cpudata->gprs[NVMM_X64_GPR_RDX] = 0;
+		break;
 	case 0x8000001F: /* Encrypted Memory Capabilities */
 		cpudata->vmcb->state.rax = 0;
 		cpudata->gprs[NVMM_X64_GPR_RBX] = 0;
