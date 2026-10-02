@@ -113,6 +113,7 @@
 #undef NB_CFG_INITAPICCPUIDLO
 #undef MSR_CMPHALT
 #undef MSR_VM_HSAVE_PA
+#undef MSR_LS_CFG
 #undef MSR_IC_CFG
 #undef MSR_DE_CFG
 #undef MSR_VM_CR

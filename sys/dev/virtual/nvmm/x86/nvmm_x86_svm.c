@@ -51,6 +51,7 @@ svm_stgi(void)
 
 #define MSR_CMPHALT		0xC0010055
 #define MSR_VM_HSAVE_PA		0xC0010117
+#define MSR_LS_CFG		0xC0011020
 #define MSR_IC_CFG		0xC0011021
 #define MSR_DE_CFG		0xC0011029
 
@@ -1311,10 +1312,11 @@ svm_exit_io(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 }
 
 static const uint64_t msr_ignore_list[] = {
+	MSR_UCODE_AMD_PATCHLEVEL,
 	MSR_CMPHALT,
-	MSR_DE_CFG,
+	MSR_LS_CFG,
 	MSR_IC_CFG,
-	MSR_UCODE_AMD_PATCHLEVEL
+	MSR_DE_CFG
 };
 
 static bool
