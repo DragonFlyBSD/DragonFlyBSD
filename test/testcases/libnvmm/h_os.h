@@ -31,7 +31,6 @@
 
 #include <sys/types.h>
 #include <sys/mman.h>
-#include <machine/segments.h>
 
 /* CR0/CR4/MSR_EFER bits in use. */
 #define CR0_PE		__BIT(0)
@@ -46,8 +45,20 @@
 #define EFER_LME	__BIT(8)
 #define EFER_LMA	__BIT(10)
 
-#define PSL_MBO		0x00000002	/* Must be one bits */
+#define RFLAGS_MBO	0x00000002	/* Must be one bits */
+#define RFLAGS_AC	0x00040000	/* Alignment check flag */
+
+#define GSEL(s,r)	(((s) << 3) | r)
+#define GCODE_SEL	1
+#define GDATA_SEL	2
+#define SEL_RING0	0
+
+#define SDT_SYSLDT	2		/* System LDT */
 #define SDT_SYS386BSY	11		/* System 386 TSS busy */
+
+#define SDT_MEMRWA	19		/* Memory read write accessed */
+#define SDT_MEMRWDA	23		/* Memory read write expand-down accessed */
+#define SDT_MEMERA	27		/* Memory execute read accessed */
 
 typedef uint64_t pt_entry_t;
 
