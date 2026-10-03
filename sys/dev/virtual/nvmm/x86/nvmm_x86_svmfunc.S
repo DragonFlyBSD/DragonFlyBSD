@@ -46,7 +46,7 @@
 	popq	%rbx
 
 #define HOST_SAVE_MSR(msr)	\
-	movq	$msr,%rcx	;\
+	movl	$msr,%ecx	;\
 	rdmsr			;\
 	pushq	%rdx		;\
 	pushq	%rax
@@ -54,7 +54,7 @@
 #define HOST_RESTORE_MSR(msr)	\
 	popq	%rax		;\
 	popq	%rdx		;\
-	movq	$msr,%rcx	;\
+	movl	$msr,%ecx	;\
 	wrmsr
 
 #define HOST_SAVE_TR		\
