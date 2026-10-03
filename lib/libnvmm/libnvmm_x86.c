@@ -1125,6 +1125,7 @@ struct x86_instr {
 	struct x86_regmodrm regmodrm;
 	uint8_t operand_size;
 	uint8_t address_size;
+	uint8_t reg_size;
 	uint64_t zeroextend_mask;
 
 	const struct x86_opcode *opcode;
@@ -2214,7 +2215,7 @@ get_register_reg(struct x86_instr *instr)
 	const struct x86_reg *reg;
 	size_t regsize;
 
-	regsize = instr->operand_size;
+	regsize = instr->reg_size;
 
 	reg = &gpr_map[instr->rexpref.r][enc][regsize-1];
 	if (reg->num == -1) {
@@ -2514,6 +2515,7 @@ node_primary_opcode(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	instr->emul = opcode->emul;
 	instr->operand_size = get_operand_size(fsm, instr);
 	instr->address_size = get_address_size(fsm, instr);
+	instr->reg_size = instr->operand_size;
 
 	if (fsm->is64bit && (instr->operand_size == 4)) {
 		/* Zero-extend to 64 bits. */
@@ -2555,6 +2557,7 @@ node_secondary_opcode(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	instr->emul = opcode->emul;
 	instr->operand_size = get_operand_size(fsm, instr);
 	instr->address_size = get_address_size(fsm, instr);
+	instr->reg_size = instr->operand_size;
 
 	if (fsm->is64bit && (instr->operand_size == 4)) {
 		/* Zero-extend to 64 bits. */
