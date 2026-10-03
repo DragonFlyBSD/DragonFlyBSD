@@ -3084,67 +3084,36 @@ gpr_read_address(struct x86_instr *instr, struct nvmm_x64_state *state, int gpr)
 	return val;
 }
 
-static int
-store_to_gva_movs(struct nvmm_x64_state *state, struct x86_instr *instr,
-    struct x86_store *store, gvaddr_t *gvap, size_t size)
-{
-	gvaddr_t gva;
-	int ret, seg;
-
-	if (store->type != STORE_REG) {
-		DISASSEMBLER_BUG();
-	}
-
-	gva = gpr_read_address(instr, state, store->u.reg->num);
-
-	if (store->hardseg != -1) {
-		seg = store->hardseg;
-	} else {
-		if (__predict_false(instr->legpref.seg != -1)) {
-			seg = instr->legpref.seg;
-		} else {
-			seg = NVMM_X64_SEG_DS;
-		}
-	}
-
-	if (__predict_true(is_64bit(state))) {
-		if (seg == NVMM_X64_SEG_GS || seg == NVMM_X64_SEG_FS) {
-			segment_apply(&state->segs[seg], &gva, false);
-		}
-	} else {
-		ret = segment_check(&state->segs[seg], gva, size);
-		if (ret == -1)
-			return -1;
-		segment_apply(&state->segs[seg], &gva, true);
-	}
-
-	*gvap = gva;
-	return 0;
-}
-
-static int
-fetch_segment_outs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
+static size_t
+fetch_instruction_bytes(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
+    uint8_t *bytes, size_t size)
 {
 	struct nvmm_x64_state *state = vcpu->state;
-	uint8_t inst_bytes[5], byte;
-	size_t i, fetchsize;
 	gvaddr_t gva;
-	int seg;
-
-	fetchsize = sizeof(inst_bytes);
 
 	gva = state->gprs[NVMM_X64_GPR_RIP];
 	if (__predict_false(!is_64bit(state))) {
 		/*
 		 * No need to check the CS attributes: if they did not allow
 		 * the instruction to execute, then we wouldn't have received
-		 * an IO VMEXIT in the first place. Just apply the segment
+		 * an (MM)IO VMEXIT in the first place. Just apply the segment
 		 * base.
 		 */
 		segment_apply(&state->segs[NVMM_X64_SEG_CS], &gva, true);
 	}
 
-	fetchsize = read_guest_memory(mach, vcpu, gva, inst_bytes, fetchsize);
+	return read_guest_memory(mach, vcpu, gva, bytes, size);
+}
+
+static int
+fetch_segment_outs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
+{
+	uint8_t inst_bytes[5], byte;
+	size_t i, fetchsize;
+	int seg;
+
+	fetchsize = fetch_instruction_bytes(mach, vcpu, inst_bytes,
+	    sizeof(inst_bytes));
 	if (fetchsize == 0)
 		return -1;
 
@@ -3183,31 +3152,40 @@ fetch_segment_outs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 }
 
 static int
-fetch_instruction(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
-    struct nvmm_vcpu_exit *exit)
+store_to_gva_movs(struct nvmm_x64_state *state, struct x86_instr *instr,
+    struct x86_store *store, gvaddr_t *gvap, size_t size)
 {
-	struct nvmm_x64_state *state = vcpu->state;
-	size_t fetchsize;
 	gvaddr_t gva;
+	int ret, seg;
 
-	gva = state->gprs[NVMM_X64_GPR_RIP];
-	if (__predict_false(!is_64bit(state))) {
-		/*
-		 * No need to check the CS attributes: if they did not allow
-		 * the instruction to execute, then we wouldn't have received
-		 * an MMIO VMEXIT in the first place. Just apply the segment
-		 * base.
-		 */
-		segment_apply(&state->segs[NVMM_X64_SEG_CS], &gva, true);
+	if (store->type != STORE_REG) {
+		DISASSEMBLER_BUG();
 	}
 
-	fetchsize = read_guest_memory(mach, vcpu, gva, exit->u.mem.inst_bytes,
-	    sizeof(exit->u.mem.inst_bytes));
-	if (fetchsize == 0)
-		return -1;
+	gva = gpr_read_address(instr, state, store->u.reg->num);
 
-	exit->u.mem.inst_len = fetchsize;
+	if (store->hardseg != -1) {
+		seg = store->hardseg;
+	} else {
+		if (__predict_false(instr->legpref.seg != -1)) {
+			seg = instr->legpref.seg;
+		} else {
+			seg = NVMM_X64_SEG_DS;
+		}
+	}
 
+	if (__predict_true(is_64bit(state))) {
+		if (seg == NVMM_X64_SEG_GS || seg == NVMM_X64_SEG_FS) {
+			segment_apply(&state->segs[seg], &gva, false);
+		}
+	} else {
+		ret = segment_check(&state->segs[seg], gva, size);
+		if (ret == -1)
+			return -1;
+		segment_apply(&state->segs[seg], &gva, true);
+	}
+
+	*gvap = gva;
 	return 0;
 }
 
@@ -3443,8 +3421,9 @@ nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 		 * The instruction was not fetched from the kernel. Fetch
 		 * it ourselves.
 		 */
-		ret = fetch_instruction(mach, vcpu, exit);
-		if (ret == -1)
+		exit->u.mem.inst_len = fetch_instruction_bytes(mach, vcpu,
+		    exit->u.mem.inst_bytes, sizeof(exit->u.mem.inst_bytes));
+		if (exit->u.mem.inst_len == 0)
 			return -1;
 	}
 
