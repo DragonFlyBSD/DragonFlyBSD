@@ -63,7 +63,7 @@ nvmm_vcpu_dump(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	};
 
 	ret = nvmm_vcpu_getstate(mach, vcpu, NVMM_X64_STATE_ALL);
-	if (ret == -1)
+	if (ret != 0)
 		return -1;
 
 	printf("+ VCPU id=%u\n", vcpu->cpuid);
@@ -290,7 +290,7 @@ x86_gva_to_gpa_32bit(struct nvmm_machine *mach, walk_ctx_t *ctx,
 
 	/* Parse L2. */
 	L2gpa = (ctx->cr3 & CR3_FRAME_32BIT);
-	if (nvmm_gpa_to_hva(mach, L2gpa, &L2hva, &pageprot) == -1)
+	if (nvmm_gpa_to_hva(mach, L2gpa, &L2hva, &pageprot) != 0)
 		return WALK_ERROR;
 	pdir = (pte_32bit_t *)L2hva;
 	ptep = &pdir[pte32_l2idx(gva)];
@@ -309,7 +309,7 @@ x86_gva_to_gpa_32bit(struct nvmm_machine *mach, walk_ctx_t *ctx,
 
 	/* Parse L1. */
 	L1gpa = (pte & PTE_FRAME);
-	if (nvmm_gpa_to_hva(mach, L1gpa, &L1hva, &pageprot) == -1)
+	if (nvmm_gpa_to_hva(mach, L1gpa, &L1hva, &pageprot) != 0)
 		return WALK_ERROR;
 	pdir = (pte_32bit_t *)L1hva;
 	ptep = &pdir[pte32_l1idx(gva)];
@@ -385,7 +385,7 @@ x86_gva_to_gpa_32bit_pae(struct nvmm_machine *mach, walk_ctx_t *ctx,
 
 	/* Parse L3. */
 	L3gpa = (ctx->cr3 & CR3_FRAME_32BIT_PAE);
-	if (nvmm_gpa_to_hva(mach, L3gpa, &L3hva, &pageprot) == -1)
+	if (nvmm_gpa_to_hva(mach, L3gpa, &L3hva, &pageprot) != 0)
 		return WALK_ERROR;
 	pdir = (pte_32bit_pae_t *)L3hva;
 	pte = PTE_READ(&pdir[pte32_pae_l3idx(gva)]);
@@ -396,7 +396,7 @@ x86_gva_to_gpa_32bit_pae(struct nvmm_machine *mach, walk_ctx_t *ctx,
 
 	/* Parse L2. */
 	L2gpa = (pte & PTE_FRAME);
-	if (nvmm_gpa_to_hva(mach, L2gpa, &L2hva, &pageprot) == -1)
+	if (nvmm_gpa_to_hva(mach, L2gpa, &L2hva, &pageprot) != 0)
 		return WALK_ERROR;
 	pdir = (pte_32bit_pae_t *)L2hva;
 	ptep = &pdir[pte32_pae_l2idx(gva)];
@@ -415,7 +415,7 @@ x86_gva_to_gpa_32bit_pae(struct nvmm_machine *mach, walk_ctx_t *ctx,
 
 	/* Parse L1. */
 	L1gpa = (pte & PTE_FRAME);
-	if (nvmm_gpa_to_hva(mach, L1gpa, &L1hva, &pageprot) == -1)
+	if (nvmm_gpa_to_hva(mach, L1gpa, &L1hva, &pageprot) != 0)
 		return WALK_ERROR;
 	pdir = (pte_32bit_pae_t *)L1hva;
 	ptep = &pdir[pte32_pae_l1idx(gva)];
@@ -505,7 +505,7 @@ x86_gva_to_gpa_64bit(struct nvmm_machine *mach, walk_ctx_t *ctx,
 
 	/* Parse L4. */
 	L4gpa = (ctx->cr3 & CR3_FRAME_64BIT);
-	if (nvmm_gpa_to_hva(mach, L4gpa, &L4hva, &pageprot) == -1)
+	if (nvmm_gpa_to_hva(mach, L4gpa, &L4hva, &pageprot) != 0)
 		return WALK_ERROR;
 	pdir = (pte_64bit_t *)L4hva;
 	ptep = &pdir[pte64_l4idx(gva)];
@@ -522,7 +522,7 @@ x86_gva_to_gpa_64bit(struct nvmm_machine *mach, walk_ctx_t *ctx,
 
 	/* Parse L3. */
 	L3gpa = (pte & PTE_FRAME);
-	if (nvmm_gpa_to_hva(mach, L3gpa, &L3hva, &pageprot) == -1)
+	if (nvmm_gpa_to_hva(mach, L3gpa, &L3hva, &pageprot) != 0)
 		return WALK_ERROR;
 	pdir = (pte_64bit_t *)L3hva;
 	ptep = &pdir[pte64_l3idx(gva)];
@@ -542,7 +542,7 @@ x86_gva_to_gpa_64bit(struct nvmm_machine *mach, walk_ctx_t *ctx,
 
 	/* Parse L2. */
 	L2gpa = (pte & PTE_FRAME);
-	if (nvmm_gpa_to_hva(mach, L2gpa, &L2hva, &pageprot) == -1)
+	if (nvmm_gpa_to_hva(mach, L2gpa, &L2hva, &pageprot) != 0)
 		return WALK_ERROR;
 	pdir = (pte_64bit_t *)L2hva;
 	ptep = &pdir[pte64_l2idx(gva)];
@@ -561,7 +561,7 @@ x86_gva_to_gpa_64bit(struct nvmm_machine *mach, walk_ctx_t *ctx,
 
 	/* Parse L1. */
 	L1gpa = (pte & PTE_FRAME);
-	if (nvmm_gpa_to_hva(mach, L1gpa, &L1hva, &pageprot) == -1)
+	if (nvmm_gpa_to_hva(mach, L1gpa, &L1hva, &pageprot) != 0)
 		return WALK_ERROR;
 	pdir = (pte_64bit_t *)L1hva;
 	ptep = &pdir[pte64_l1idx(gva)];
@@ -594,7 +594,7 @@ handle_pf(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu, gvaddr_t gva,
 		state->crs[NVMM_X64_CR_CR2] = gva;
 
 		ret = nvmm_vcpu_setstate(mach, vcpu, NVMM_X64_STATE_CRS);
-		if (__predict_false(ret == -1))
+		if (__predict_false(ret != 0))
 			return EMUL_ERROR;
 
 		event->type = NVMM_VCPU_EVENT_EXCP;
@@ -611,7 +611,7 @@ handle_pf(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu, gvaddr_t gva,
 		}
 
 		ret = nvmm_vcpu_inject(mach, vcpu);
-		if (__predict_false(ret == -1))
+		if (__predict_false(ret != 0))
 			return EMUL_ERROR;
 
 		return EMUL_FAULTED;
@@ -716,7 +716,7 @@ nvmm_gva_to_gpa(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	ret = nvmm_vcpu_getstate(mach, vcpu,
 	    NVMM_X64_STATE_SEGS | NVMM_X64_STATE_GPRS |
 	    NVMM_X64_STATE_CRS | NVMM_X64_STATE_MSRS);
-	if (ret == -1)
+	if (ret != 0)
 		return -1;
 
 	es = x86_gva_to_gpa(mach, vcpu, gva, gpa, NVMM_PROT_READ, prot, false);
@@ -730,15 +730,13 @@ nvmm_gva_to_gpa(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 
 /* -------------------------------------------------------------------------- */
 
-#define DISASSEMBLER_BUG()	\
+#define DISASSEMBLER_BUG_BOOL()	\
 	do {			\
-		errno = EINVAL;	\
-		return -1;	\
+		return false;	\
 	} while (0);
 
 #define DISASSEMBLER_BUG_ES()	\
 	do {			\
-		errno = EINVAL;	\
 		return EMUL_ERROR;	\
 	} while (0);
 
@@ -778,13 +776,13 @@ is_16bit(struct nvmm_x64_state *state)
 	    (state->segs[NVMM_X64_SEG_CS].attrib.def == 0);
 }
 
-static int
+static bool
 segment_check(struct nvmm_x64_state_seg *seg, gvaddr_t gva, size_t size)
 {
 	uint64_t lower, upper;
 
 	if (__predict_false(!seg->attrib.p)) {
-		goto error;
+		return false;
 	}
 
 	/*
@@ -806,14 +804,10 @@ segment_check(struct nvmm_x64_state_seg *seg, gvaddr_t gva, size_t size)
 	}
 
 	if (__predict_false(gva < lower || gva > upper || size > upper - gva)) {
-		goto error;
+		return false;
 	}
 
-	return 0;
-
-error:
-	errno = EFAULT;
-	return -1;
+	return true;
 }
 
 static inline void
@@ -953,7 +947,7 @@ read_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	size -= remain;
 
 	ret = nvmm_gpa_to_hva(mach, gpa, &hva, &prot);
-	is_mmio = (ret == -1);
+	is_mmio = (ret != 0);
 
 	if (is_mmio) {
 		mem.mach = mach;
@@ -1009,7 +1003,7 @@ write_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	size -= remain;
 
 	ret = nvmm_gpa_to_hva(mach, gpa, &hva, &prot);
-	is_mmio = (ret == -1);
+	is_mmio = (ret != 0);
 
 	if (is_mmio) {
 		mem.mach = mach;
@@ -1110,7 +1104,7 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	ret = nvmm_vcpu_getstate(mach, vcpu,
 	    NVMM_X64_STATE_GPRS | NVMM_X64_STATE_SEGS |
 	    NVMM_X64_STATE_CRS | NVMM_X64_STATE_MSRS);
-	if (ret == -1)
+	if (ret != 0)
 		return -1;
 
 	if (exit->u.io.rep) {
@@ -1155,9 +1149,9 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 				segment_apply(&state->segs[seg], &gva, false);
 			}
 		} else {
-			ret = segment_check(&state->segs[seg], gva, io.size);
-			if (ret == -1)
+			if (!segment_check(&state->segs[seg], gva, io.size)) {
 				goto error;
+			}
 			segment_apply(&state->segs[seg], &gva, true);
 		}
 
@@ -1219,7 +1213,7 @@ done:
 
 out:
 	ret = nvmm_vcpu_setstate(mach, vcpu, NVMM_X64_STATE_GPRS);
-	if (ret == -1)
+	if (ret != 0)
 		return -1;
 
 	return 0;
@@ -1399,6 +1393,24 @@ struct x86_instr {
 	struct x86_store *strm;
 };
 
+enum x86_decode_node {
+	NODE_DONE = 0,
+	NODE_OVERFLOW,
+	NODE_LEGACY_PREFIX,
+	NODE_REX_PREFIX,
+	NODE_MAIN,
+	NODE_PRIMARY_OPCODE,
+	NODE_SECONDARY_OPCODE,
+	NODE_REGMODRM,
+	NODE_SIB,
+	NODE_DISP,
+	NODE_DUAL,
+	NODE_IMMEDIATE,
+	NODE_DMO,
+	NODE_STLO,
+	NODE_MOVS,
+};
+
 struct x86_decode_fsm {
 	/* vcpu */
 	bool is64bit;
@@ -1406,7 +1418,7 @@ struct x86_decode_fsm {
 	bool is16bit;
 
 	/* fsm */
-	int (*fn)(struct x86_decode_fsm *, struct x86_instr *);
+	enum x86_decode_node node;
 	uint8_t *buf;
 	uint8_t *end;
 };
@@ -2193,32 +2205,31 @@ static const int gpr_dual_reg1_rm[8] __cacheline_aligned = {
 	[0b111] = NVMM_X64_GPR_RBX, /* BX */
 };
 
-static int
+static bool
 node_overflow(struct x86_decode_fsm *fsm, struct x86_instr *instr __unused)
 {
-	fsm->fn = NULL;
-	return -1;
+	fsm->node = NODE_DONE;
+	return false;
 }
 
-static int
+static bool
 fsm_read(struct x86_decode_fsm *fsm, uint8_t *bytes, size_t n)
 {
 	if (fsm->buf + n > fsm->end) {
-		return -1;
+		return false;
 	}
 	memcpy(bytes, fsm->buf, n);
-	return 0;
+	return true;
 }
 
 static inline void
-fsm_advance(struct x86_decode_fsm *fsm, size_t n,
-    int (*fn)(struct x86_decode_fsm *, struct x86_instr *))
+fsm_advance(struct x86_decode_fsm *fsm, size_t n, enum x86_decode_node node)
 {
 	fsm->buf += n;
 	if (fsm->buf > fsm->end) {
-		fsm->fn = node_overflow;
+		fsm->node = NODE_OVERFLOW;
 	} else {
-		fsm->fn = fn;
+		fsm->node = node;
 	}
 }
 
@@ -2237,7 +2248,7 @@ resolve_special_register(struct x86_instr *instr, uint8_t enc, size_t regsize)
  * Special node, for MOVS. Fake two displacements of zero on the source and
  * destination registers.
  */
-static int
+static bool
 node_movs(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 {
 	size_t adrsize;
@@ -2253,16 +2264,16 @@ node_movs(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	instr->dst.u.reg = &gpr_map__special[1][3][adrsize-1];
 	instr->dst.hardseg = NVMM_X64_SEG_ES;
 
-	fsm_advance(fsm, 0, NULL);
+	fsm_advance(fsm, 0, NODE_DONE);
 
-	return 0;
+	return true;
 }
 
 /*
  * Special node, for STOS and LODS. Fake a displacement of zero on the
  * destination register.
  */
-static int
+static bool
 node_stlo(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 {
 	const struct x86_opcode *opcode = instr->opcode;
@@ -2294,12 +2305,12 @@ node_stlo(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	}
 	stlo->disptype = DISP_0;
 
-	fsm_advance(fsm, 0, NULL);
+	fsm_advance(fsm, 0, NODE_DONE);
 
-	return 0;
+	return true;
 }
 
-static int
+static bool
 node_dmo(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 {
 	const struct x86_opcode *opcode = instr->opcode;
@@ -2321,12 +2332,12 @@ node_dmo(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	streg->u.reg = &gpr_map[0][0][regsize-1]; /* ?AX */
 
 	stdmo->type = STORE_DMO;
-	if (fsm_read(fsm, (uint8_t *)&stdmo->u.dmo, adrsize) == -1) {
-		return -1;
+	if (!fsm_read(fsm, (uint8_t *)&stdmo->u.dmo, adrsize)) {
+		return false;
 	}
-	fsm_advance(fsm, adrsize, NULL);
+	fsm_advance(fsm, adrsize, NODE_DONE);
 
-	return 0;
+	return true;
 }
 
 static inline uint64_t
@@ -2345,7 +2356,7 @@ sign_extend(uint64_t val, int size)
 	return val;
 }
 
-static int
+static bool
 node_immediate(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 {
 	const struct x86_opcode *opcode = instr->opcode;
@@ -2363,17 +2374,17 @@ node_immediate(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	}
 
 	store->type = STORE_IMM;
-	if (fsm_read(fsm, (uint8_t *)&store->u.imm.data, immsize) == -1) {
-		return -1;
+	if (!fsm_read(fsm, (uint8_t *)&store->u.imm.data, immsize)) {
+		return false;
 	}
 	store->u.imm.data = sign_extend(store->u.imm.data, immsize);
 
-	fsm_advance(fsm, immsize, NULL);
+	fsm_advance(fsm, immsize, NODE_DONE);
 
-	return 0;
+	return true;
 }
 
-static int
+static bool
 node_disp(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 {
 	const struct x86_opcode *opcode = instr->opcode;
@@ -2386,23 +2397,23 @@ node_disp(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	} else if (instr->strm->disptype == DISP_4) {
 		n = 4;
 	} else {
-		DISASSEMBLER_BUG();
+		DISASSEMBLER_BUG_BOOL();
 	}
 
 	if (opcode->immediate) {
-		fsm_advance(fsm, n, node_immediate);
+		fsm_advance(fsm, n, NODE_IMMEDIATE);
 	} else {
-		fsm_advance(fsm, n, NULL);
+		fsm_advance(fsm, n, NODE_DONE);
 	}
 
-	return 0;
+	return true;
 }
 
 /*
  * Special node to handle 16bit addressing encoding, which can reference two
  * registers at once.
  */
-static int
+static bool
 node_dual(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 {
 	int reg1, reg2;
@@ -2416,7 +2427,7 @@ node_dual(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	    instr->regmodrm.rm == 0b011) {
 		reg2 = NVMM_X64_GPR_RDI;
 	} else {
-		DISASSEMBLER_BUG();
+		DISASSEMBLER_BUG_BOOL();
 	}
 
 	instr->strm->type = STORE_DUALREG;
@@ -2424,28 +2435,28 @@ node_dual(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	instr->strm->u.dualreg.reg2 = reg2;
 
 	if (instr->strm->disptype == DISP_NONE) {
-		DISASSEMBLER_BUG();
+		DISASSEMBLER_BUG_BOOL();
 	} else if (instr->strm->disptype == DISP_0) {
 		/* Indirect register addressing mode */
 		if (instr->opcode->immediate) {
-			fsm_advance(fsm, 1, node_immediate);
+			fsm_advance(fsm, 1, NODE_IMMEDIATE);
 		} else {
-			fsm_advance(fsm, 1, NULL);
+			fsm_advance(fsm, 1, NODE_DONE);
 		}
 	} else {
-		fsm_advance(fsm, 1, node_disp);
+		fsm_advance(fsm, 1, NODE_DISP);
 	}
 
-	return 0;
+	return true;
 }
 
-static int
+static bool
 node_sib(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 {
 	uint8_t base, byte;
 
-	if (fsm_read(fsm, &byte, sizeof(byte)) == -1) {
-		return -1;
+	if (!fsm_read(fsm, &byte, sizeof(byte))) {
+		return false;
 	}
 
 	base = (byte & 0b00000111);
@@ -2461,14 +2472,14 @@ node_sib(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	if (instr->strm->disptype == DISP_1 ||
 	    instr->strm->disptype == DISP_2 ||
 	    instr->strm->disptype == DISP_4) {
-		fsm_advance(fsm, 1, node_disp);
+		fsm_advance(fsm, 1, NODE_DISP);
 	} else if (instr->opcode->immediate) {
-		fsm_advance(fsm, 1, node_immediate);
+		fsm_advance(fsm, 1, NODE_IMMEDIATE);
 	} else {
-		fsm_advance(fsm, 1, NULL);
+		fsm_advance(fsm, 1, NODE_DONE);
 	}
 
-	return 0;
+	return true;
 }
 
 static const struct x86_reg *
@@ -2571,7 +2582,7 @@ get_disp_type(struct x86_instr *instr)
 	__unreachable();
 }
 
-static int
+static bool
 node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 {
 	struct x86_store *strg, *strm;
@@ -2579,8 +2590,8 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	const struct x86_reg *reg;
 	uint8_t byte;
 
-	if (fsm_read(fsm, &byte, sizeof(byte)) == -1) {
-		return -1;
+	if (!fsm_read(fsm, &byte, sizeof(byte))) {
+		return false;
 	}
 
 	opcode = instr->opcode;
@@ -2606,22 +2617,22 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	 */
 	if (opcode->group1) {
 		if (group1[instr->regmodrm.reg].emul == NULL) {
-			return -1;
+			return false;
 		}
 		instr->emul = group1[instr->regmodrm.reg].emul;
 	} else if (opcode->group3) {
 		if (group3[instr->regmodrm.reg].emul == NULL) {
-			return -1;
+			return false;
 		}
 		instr->emul = group3[instr->regmodrm.reg].emul;
 	} else if (opcode->group8) {
 		if (group8[instr->regmodrm.reg].emul == NULL) {
-			return -1;
+			return false;
 		}
 		instr->emul = group8[instr->regmodrm.reg].emul;
 	} else if (opcode->group11) {
 		if (group11[instr->regmodrm.reg].emul == NULL) {
-			return -1;
+			return false;
 		}
 		instr->emul = group11[instr->regmodrm.reg].emul;
 	}
@@ -2629,7 +2640,7 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	if (!opcode->immediate) {
 		reg = get_register_reg(instr);
 		if (reg == NULL) {
-			return -1;
+			return false;
 		}
 		strg->type = STORE_REG;
 		strg->u.reg = reg;
@@ -2640,8 +2651,8 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 
 	if (has_sib(instr)) {
 		/* Overwrites RM */
-		fsm_advance(fsm, 1, node_sib);
-		return 0;
+		fsm_advance(fsm, 1, NODE_SIB);
+		return true;
 	}
 
 	if (is_rip_relative(fsm, instr)) {
@@ -2649,8 +2660,8 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 		strm->type = STORE_REG;
 		strm->u.reg = &gpr_map__rip;
 		strm->disptype = DISP_4;
-		fsm_advance(fsm, 1, node_disp);
-		return 0;
+		fsm_advance(fsm, 1, NODE_DISP);
+		return true;
 	}
 
 	if (is_disp32_only(fsm, instr)) {
@@ -2658,8 +2669,8 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 		strm->type = STORE_REG;
 		strm->u.reg = NULL;
 		strm->disptype = DISP_4;
-		fsm_advance(fsm, 1, node_disp);
-		return 0;
+		fsm_advance(fsm, 1, NODE_DISP);
+		return true;
 	}
 
 	if (__predict_false(is_disp16_only(fsm, instr))) {
@@ -2667,19 +2678,19 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 		strm->type = STORE_REG;
 		strm->u.reg = NULL;
 		strm->disptype = DISP_2;
-		fsm_advance(fsm, 1, node_disp);
-		return 0;
+		fsm_advance(fsm, 1, NODE_DISP);
+		return true;
 	}
 
 	if (__predict_false(is_dual(fsm, instr))) {
 		/* Overwrites RM */
-		fsm_advance(fsm, 0, node_dual);
-		return 0;
+		fsm_advance(fsm, 0, NODE_DUAL);
+		return true;
 	}
 
 	reg = get_register_rm(instr);
 	if (reg == NULL) {
-		return -1;
+		return false;
 	}
 	strm->type = STORE_REG;
 	strm->u.reg = reg;
@@ -2687,22 +2698,22 @@ node_regmodrm(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	if (strm->disptype == DISP_NONE) {
 		/* Direct register addressing mode */
 		if (opcode->immediate) {
-			fsm_advance(fsm, 1, node_immediate);
+			fsm_advance(fsm, 1, NODE_IMMEDIATE);
 		} else {
-			fsm_advance(fsm, 1, NULL);
+			fsm_advance(fsm, 1, NODE_DONE);
 		}
 	} else if (strm->disptype == DISP_0) {
 		/* Indirect register addressing mode */
 		if (opcode->immediate) {
-			fsm_advance(fsm, 1, node_immediate);
+			fsm_advance(fsm, 1, NODE_IMMEDIATE);
 		} else {
-			fsm_advance(fsm, 1, NULL);
+			fsm_advance(fsm, 1, NODE_DONE);
 		}
 	} else {
-		fsm_advance(fsm, 1, node_disp);
+		fsm_advance(fsm, 1, NODE_DISP);
 	}
 
-	return 0;
+	return true;
 }
 
 static size_t
@@ -2759,19 +2770,19 @@ get_address_size(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	return 2;
 }
 
-static int
+static bool
 node_primary_opcode(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 {
 	const struct x86_opcode *opcode;
 	uint8_t byte;
 
-	if (fsm_read(fsm, &byte, sizeof(byte)) == -1) {
-		return -1;
+	if (!fsm_read(fsm, &byte, sizeof(byte))) {
+		return false;
 	}
 
 	opcode = &primary_opcode_table[byte];
 	if (__predict_false(!opcode->valid)) {
-		return -1;
+		return false;
 	}
 
 	instr->opcode = opcode;
@@ -2786,34 +2797,34 @@ node_primary_opcode(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	}
 
 	if (opcode->regmodrm) {
-		fsm_advance(fsm, 1, node_regmodrm);
+		fsm_advance(fsm, 1, NODE_REGMODRM);
 	} else if (opcode->dmo) {
 		/* Direct-Memory Offsets */
-		fsm_advance(fsm, 1, node_dmo);
+		fsm_advance(fsm, 1, NODE_DMO);
 	} else if (opcode->stos || opcode->lods) {
-		fsm_advance(fsm, 1, node_stlo);
+		fsm_advance(fsm, 1, NODE_STLO);
 	} else if (opcode->movs) {
-		fsm_advance(fsm, 1, node_movs);
+		fsm_advance(fsm, 1, NODE_MOVS);
 	} else {
-		return -1;
+		return false;
 	}
 
-	return 0;
+	return true;
 }
 
-static int
+static bool
 node_secondary_opcode(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 {
 	const struct x86_opcode *opcode;
 	uint8_t byte;
 
-	if (fsm_read(fsm, &byte, sizeof(byte)) == -1) {
-		return -1;
+	if (!fsm_read(fsm, &byte, sizeof(byte))) {
+		return false;
 	}
 
 	opcode = &secondary_opcode_table[byte];
 	if (__predict_false(!opcode->valid)) {
-		return -1;
+		return false;
 	}
 
 	instr->opcode = opcode;
@@ -2838,15 +2849,15 @@ node_secondary_opcode(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	}
 
 	if (opcode->regmodrm) {
-		fsm_advance(fsm, 1, node_regmodrm);
+		fsm_advance(fsm, 1, NODE_REGMODRM);
 	} else {
-		return -1;
+		return false;
 	}
 
-	return 0;
+	return true;
 }
 
-static int
+static bool
 node_main(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 {
 	uint8_t byte;
@@ -2856,8 +2867,8 @@ node_main(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 #define VEX_2	0xC4
 #define XOP	0x8F
 
-	if (fsm_read(fsm, &byte, sizeof(byte)) == -1) {
-		return -1;
+	if (!fsm_read(fsm, &byte, sizeof(byte))) {
+		return false;
 	}
 
 	/*
@@ -2865,36 +2876,36 @@ node_main(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 	 * after being introduced.
 	 */
 	if (byte == ESCAPE) {
-		fsm_advance(fsm, 1, node_secondary_opcode);
+		fsm_advance(fsm, 1, NODE_SECONDARY_OPCODE);
 	} else if (!instr->rexpref.present) {
 		if (byte == VEX_1) {
-			return -1;
+			return false;
 		} else if (byte == VEX_2) {
-			return -1;
+			return false;
 		} else {
-			fsm->fn = node_primary_opcode;
+			fsm_advance(fsm, 0, NODE_PRIMARY_OPCODE);
 		}
 	} else {
-		fsm->fn = node_primary_opcode;
+		fsm_advance(fsm, 0, NODE_PRIMARY_OPCODE);
 	}
 
-	return 0;
+	return true;
 }
 
-static int
+static bool
 node_rex_prefix(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 {
 	struct x86_rexpref *rexpref = &instr->rexpref;
 	uint8_t byte;
 	size_t n = 0;
 
-	if (fsm_read(fsm, &byte, sizeof(byte)) == -1) {
-		return -1;
+	if (!fsm_read(fsm, &byte, sizeof(byte))) {
+		return false;
 	}
 
 	if (byte >= 0x40 && byte <= 0x4F) {
 		if (__predict_false(!fsm->is64bit)) {
-			return -1;
+			return false;
 		}
 		rexpref->b = ((byte & 0x1) != 0);
 		rexpref->x = ((byte & 0x2) != 0);
@@ -2904,17 +2915,17 @@ node_rex_prefix(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 		n = 1;
 	}
 
-	fsm_advance(fsm, n, node_main);
-	return 0;
+	fsm_advance(fsm, n, NODE_MAIN);
+	return true;
 }
 
-static int
+static bool
 node_legacy_prefix(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 {
 	uint8_t byte;
 
-	if (fsm_read(fsm, &byte, sizeof(byte)) == -1) {
-		return -1;
+	if (!fsm_read(fsm, &byte, sizeof(byte))) {
+		return false;
 	}
 
 	if (byte == LEG_OPR_OVR) {
@@ -2943,12 +2954,12 @@ node_legacy_prefix(struct x86_decode_fsm *fsm, struct x86_instr *instr)
 		 */
 	} else {
 		/* not a legacy prefix */
-		fsm_advance(fsm, 0, node_rex_prefix);
-		return 0;
+		fsm_advance(fsm, 0, NODE_REX_PREFIX);
+		return true;
 	}
 
-	fsm_advance(fsm, 1, node_legacy_prefix);
-	return 0;
+	fsm_advance(fsm, 1, NODE_LEGACY_PREFIX);
+	return true;
 }
 
 static int
@@ -2956,7 +2967,7 @@ x86_decode(uint8_t *inst_bytes, size_t inst_len, struct x86_instr *instr,
     struct nvmm_x64_state *state)
 {
 	struct x86_decode_fsm fsm;
-	int ret;
+	bool ret;
 
 	memset(instr, 0, sizeof(*instr));
 	instr->legpref.seg = -1;
@@ -2967,14 +2978,60 @@ x86_decode(uint8_t *inst_bytes, size_t inst_len, struct x86_instr *instr,
 	fsm.is32bit = is_32bit(state);
 	fsm.is16bit = is_16bit(state);
 
-	fsm.fn = node_legacy_prefix;
+	fsm.node = NODE_LEGACY_PREFIX;
 	fsm.buf = inst_bytes;
 	fsm.end = inst_bytes + inst_len;
 
-	while (fsm.fn != NULL) {
-		ret = (*fsm.fn)(&fsm, instr);
-		if (ret == -1)
+	while (fsm.node != NODE_DONE) {
+		switch (fsm.node) {
+		case NODE_OVERFLOW:
+			ret = node_overflow(&fsm, instr);
+			break;
+		case NODE_LEGACY_PREFIX:
+			ret = node_legacy_prefix(&fsm, instr);
+			break;
+		case NODE_REX_PREFIX:
+			ret = node_rex_prefix(&fsm, instr);
+			break;
+		case NODE_MAIN:
+			ret = node_main(&fsm, instr);
+			break;
+		case NODE_PRIMARY_OPCODE:
+			ret = node_primary_opcode(&fsm, instr);
+			break;
+		case NODE_SECONDARY_OPCODE:
+			ret = node_secondary_opcode(&fsm, instr);
+			break;
+		case NODE_REGMODRM:
+			ret = node_regmodrm(&fsm, instr);
+			break;
+		case NODE_SIB:
+			ret = node_sib(&fsm, instr);
+			break;
+		case NODE_DISP:
+			ret = node_disp(&fsm, instr);
+			break;
+		case NODE_DUAL:
+			ret = node_dual(&fsm, instr);
+			break;
+		case NODE_IMMEDIATE:
+			ret = node_immediate(&fsm, instr);
+			break;
+		case NODE_DMO:
+			ret = node_dmo(&fsm, instr);
+			break;
+		case NODE_STLO:
+			ret = node_stlo(&fsm, instr);
+			break;
+		case NODE_MOVS:
+			ret = node_movs(&fsm, instr);
+			break;
+		default:
+			__unreachable();
+		}
+		if (!ret) {
 			return -1;
+		}
 	}
 
 	instr->len = fsm.buf - inst_bytes;
@@ -3418,15 +3475,15 @@ fetch_segment_outs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	return seg;
 }
 
-static int
+static bool
 store_to_gva_movs(struct nvmm_x64_state *state, struct x86_instr *instr,
     struct x86_store *store, gvaddr_t *gvap, size_t size)
 {
 	gvaddr_t gva;
-	int ret, seg;
+	int seg;
 
 	if (store->type != STORE_REG) {
-		DISASSEMBLER_BUG();
+		DISASSEMBLER_BUG_BOOL();
 	}
 
 	gva = gpr_read_address(instr, state, store->u.reg->num);
@@ -3446,14 +3503,14 @@ store_to_gva_movs(struct nvmm_x64_state *state, struct x86_instr *instr,
 			segment_apply(&state->segs[seg], &gva, false);
 		}
 	} else {
-		ret = segment_check(&state->segs[seg], gva, size);
-		if (ret == -1)
-			return -1;
+		if (!segment_check(&state->segs[seg], gva, size)) {
+			return false;
+		}
 		segment_apply(&state->segs[seg], &gva, true);
 	}
 
 	*gvap = gva;
-	return 0;
+	return true;
 }
 
 /*
@@ -3469,13 +3526,13 @@ assist_mem_double_movs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	gvaddr_t gva;
 	size_t size;
 	bool psld;
-	int ret;
+	bool ret;
 
 	size = instr->operand_size;
 
 	/* Source. */
 	ret = store_to_gva_movs(state, instr, &instr->src, &gva, size);
-	if (ret == -1)
+	if (!ret)
 		return EMUL_ERROR;
 	es = read_guest_memory(mach, vcpu, gva, data, size, NULL, false);
 	if (__predict_false(es != EMUL_SUCCESS))
@@ -3483,7 +3540,7 @@ assist_mem_double_movs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 
 	/* Destination. */
 	ret = store_to_gva_movs(state, instr, &instr->dst, &gva, size);
-	if (ret == -1)
+	if (!ret)
 		return EMUL_ERROR;
 	es = write_guest_memory(mach, vcpu, gva, data, size, NULL);
 	if (__predict_false(es != EMUL_SUCCESS))
@@ -3682,7 +3739,7 @@ nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	ret = nvmm_vcpu_getstate(mach, vcpu,
 	    NVMM_X64_STATE_GPRS | NVMM_X64_STATE_SEGS |
 	    NVMM_X64_STATE_CRS | NVMM_X64_STATE_MSRS);
-	if (ret == -1)
+	if (ret != 0)
 		return -1;
 
 	if (exit->u.mem.inst_len == 0) {
@@ -3692,18 +3749,18 @@ nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 		 */
 		exit->u.mem.inst_len = fetch_instruction_bytes(mach, vcpu,
 		    exit->u.mem.inst_bytes, sizeof(exit->u.mem.inst_bytes));
-		if (exit->u.mem.inst_len == 0)
-			return -1;
+		if (exit->u.mem.inst_len == 0) {
+			goto error;
+		}
 	}
 
 	ret = x86_decode(exit->u.mem.inst_bytes, exit->u.mem.inst_len,
 	    &instr, state);
-	if (ret == -1) {
+	if (ret != 0) {
 #ifdef LIBNVMM_DEBUG
 		nvmm_dump_instr(exit);
 #endif
-		errno = ENODEV;
-		return -1;
+		goto error;
 	}
 
 	is_rep = is_repeated_insn(&instr);
@@ -3724,8 +3781,7 @@ nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	if (__predict_false(es != EMUL_SUCCESS)) {
 		if (es == EMUL_FAULTED)
 			return 0;
-		errno = ENODEV;
-		return -1;
+		goto error;
 	}
 
 	if (is_rep) {
@@ -3740,8 +3796,12 @@ nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 
 out:
 	ret = nvmm_vcpu_setstate(mach, vcpu, NVMM_X64_STATE_GPRS);
-	if (ret == -1)
+	if (ret != 0)
 		return -1;
 
 	return 0;
+
+error:
+	errno = ENODEV;
+	return -1;
 }
