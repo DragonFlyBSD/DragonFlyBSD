@@ -5,6 +5,9 @@ MAN=	libnvmm.3
 SRCS=	libnvmm.c
 INCS=	nvmm.h
 
+# Use -O2 for significant performance improvement.
+WORLD_CCOPTLEVEL=	2
+
 MLINKS= \
 	libnvmm.3 nvmm_assist_io.3 \
 	libnvmm.3 nvmm_assist_mem.3 \
