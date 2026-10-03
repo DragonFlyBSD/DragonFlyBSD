@@ -282,6 +282,9 @@ axge_miibus_readreg(device_t dev, int phy, int reg)
 	int locked;
 
 	sc = device_get_softc(dev);
+	/* The device aliases reads at other addresses to its single PHY. */
+	if (sc->sc_phyno != phy)
+		return (0);
 	locked = lockowned(&sc->sc_lock);
 	if (!locked)
 		AXGE_LOCK(sc);
