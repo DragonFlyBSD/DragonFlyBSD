@@ -4515,14 +4515,6 @@ RetryLookup:
 		goto done;
 	}
 
-	if ((entry->eflags & MAP_ENTRY_USER_WIRED) &&
-	    (entry->eflags & MAP_ENTRY_COW) &&
-	    (fault_type & VM_PROT_WRITE) &&
-	    (fault_typea & VM_PROT_OVERRIDE_WRITE) == 0) {
-		rv = KERN_PROTECTION_FAILURE;
-		goto done;
-	}
-
 	/*
 	 * Flag regular pages that are supposed to be wired.  Wired pages
 	 * are just like regular pages and simply prevent the pageout code
