@@ -39,6 +39,12 @@
 #define MIN(X, Y)		(((X) < (Y)) ? (X) : (Y))
 #define __cacheline_aligned	__attribute__((__aligned__(64)))
 
+typedef enum {
+	EMUL_SUCCESS,
+	EMUL_ERROR,
+	EMUL_FAULTED
+} emul_status_t;
+
 /* -------------------------------------------------------------------------- */
 
 /*
@@ -136,18 +142,108 @@ nvmm_vcpu_dump(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 
 #define PTE_READ(_p_)	__atomic_load_n((_p_), __ATOMIC_RELAXED)
 
-/*
- * TODO: set the PTE_A and PTE_D bits when emulating guest-initiated page
- * table walks.
- */
+/* If the CAS fails due to a concurrent write, do nothing. */
+#define PTE_SET_ATOMIC(_ptep_, _pte_, _bit_)	\
+	do { \
+		__typeof__(_pte_) _pte_expected_ = (_pte_); \
+		__atomic_compare_exchange_n((_ptep_), &(_pte_expected_), \
+		    (_pte_) | (_bit_), false, __ATOMIC_SEQ_CST, \
+		    __ATOMIC_SEQ_CST); \
+	} while (0);
+
+typedef uint64_t pte_common_t;
+typedef uint32_t pte_32bit_t;
+typedef uint64_t pte_32bit_pae_t;
+typedef uint64_t pte_64bit_t;
 
 typedef struct {
+	/* in */
 	uint64_t cr3;
 	nvmm_prot_t want_prot;
 	bool skip_w:1;
 	bool has_pse:1;
 	bool has_nxe:1;
-} x86_walk_ctx;
+	/* out */
+	void *leaf_ptep;
+	pte_common_t leaf_pte;
+	nvmm_prot_t leaf_pageprot;
+	void (*pte_setbit)(void *, pte_common_t, pte_common_t);
+} walk_ctx_t;
+
+typedef enum {
+	WALK_SUCCESS = 0,
+	WALK_ERROR,
+	WALK_PF_NOT_PRESENT
+} walk_status_t;
+
+static void
+x86_32bit_pte_setbit(void *ptep, pte_common_t pte, pte_common_t bit)
+{
+	pte_32bit_t *ptep32, pte32, bit32;
+
+	ptep32 = ptep;
+	pte32 = pte;
+	bit32 = bit;
+
+	PTE_SET_ATOMIC(ptep32, pte32, bit32);
+}
+
+static void
+x86_64bit_pte_setbit(void *ptep, pte_common_t pte, pte_common_t bit)
+{
+	pte_64bit_t *ptep64, pte64, bit64;
+
+	ptep64 = ptep;
+	pte64 = pte;
+	bit64 = bit;
+
+	PTE_SET_ATOMIC(ptep64, pte64, bit64);
+}
+
+static inline walk_status_t
+x86_pte_set_a(bool is32bit, void *ptep, pte_common_t pte, nvmm_prot_t pageprot)
+{
+	/* If PTE_A is already set, nothing to do. */
+	if (__predict_true(pte & PTE_A)) {
+		return WALK_SUCCESS;
+	}
+
+	/* The page table page must be writable. */
+	if (__predict_false((pageprot & NVMM_PROT_WRITE) == 0)) {
+		return WALK_ERROR;
+	}
+
+	if (is32bit) {
+		x86_32bit_pte_setbit(ptep, pte, PTE_A);
+	} else {
+		x86_64bit_pte_setbit(ptep, pte, PTE_A);
+	}
+
+	return WALK_SUCCESS;
+}
+
+static inline walk_status_t
+x86_pte_set_d(const walk_ctx_t *ctx)
+{
+	/* If not a write, nothing to do. */
+	if ((ctx->want_prot & NVMM_PROT_WRITE) == 0) {
+		return WALK_SUCCESS;
+	}
+
+	/* If PTE_D is already set, nothing to do. */
+	if (__predict_true(ctx->leaf_pte & PTE_D)) {
+		return WALK_SUCCESS;
+	}
+
+	/* The page table page must be writable. */
+	if (__predict_false((ctx->leaf_pageprot & NVMM_PROT_WRITE) == 0)) {
+		return WALK_ERROR;
+	}
+
+	ctx->pte_setbit(ctx->leaf_ptep, ctx->leaf_pte, PTE_D);
+
+	return WALK_SUCCESS;
+}
 
 /* -------------------------------------------------------------------------- */
 
@@ -165,31 +261,29 @@ typedef struct {
 
 #define CR3_FRAME_32BIT	0xfffff000
 
-typedef uint32_t pte_32bit_t;
-
-static inline int
-x86_parse_32bit_pte(pte_32bit_t pte, const x86_walk_ctx *ctx, nvmm_prot_t *prot)
+static inline bool
+x86_32bit_pte_parse(pte_32bit_t pte, const walk_ctx_t *ctx, nvmm_prot_t *prot)
 {
-	if ((pte & PTE_P) == 0)
-		return -1;
 	if ((pte & PTE_U) == 0)
 		*prot &= ~NVMM_PROT_USER;
 	if (((pte & PTE_W) == 0) && !ctx->skip_w)
 		*prot &= ~NVMM_PROT_WRITE;
 	if (__predict_false((*prot & ctx->want_prot) != ctx->want_prot))
-		return -1;
+		return false;
 
-	return 0;
+	return true;
 }
 
-static int
-x86_gva_to_gpa_32bit(struct nvmm_machine *mach, const x86_walk_ctx *ctx,
+static walk_status_t
+x86_gva_to_gpa_32bit(struct nvmm_machine *mach, walk_ctx_t *ctx,
     gvaddr_t gva, gpaddr_t *gpa, nvmm_prot_t *prot)
 {
 	gpaddr_t L2gpa, L1gpa;
 	uintptr_t L2hva, L1hva;
-	pte_32bit_t *pdir, pte;
+	pte_32bit_t *pdir, *ptep, pte;
 	nvmm_prot_t pageprot;
+
+	ctx->pte_setbit = x86_32bit_pte_setbit;
 
 	/* We begin with an RWXU access. */
 	*prot = NVMM_PROT_ALL;
@@ -197,28 +291,43 @@ x86_gva_to_gpa_32bit(struct nvmm_machine *mach, const x86_walk_ctx *ctx,
 	/* Parse L2. */
 	L2gpa = (ctx->cr3 & CR3_FRAME_32BIT);
 	if (nvmm_gpa_to_hva(mach, L2gpa, &L2hva, &pageprot) == -1)
-		return -1;
+		return WALK_ERROR;
 	pdir = (pte_32bit_t *)L2hva;
-	pte = PTE_READ(&pdir[pte32_l2idx(gva)]);
-	if (x86_parse_32bit_pte(pte, ctx, prot) == -1)
-		return -1;
+	ptep = &pdir[pte32_l2idx(gva)];
+	pte = PTE_READ(ptep);
+	if (__predict_false((pte & PTE_P) == 0))
+		return WALK_PF_NOT_PRESENT;
+	if (x86_pte_set_a(true, ptep, pte, pageprot) != WALK_SUCCESS)
+		return WALK_ERROR;
+	pte |= PTE_A;
+	if (!x86_32bit_pte_parse(pte, ctx, prot))
+		return WALK_ERROR;
 	if ((pte & PTE_PS) != 0 && ctx->has_pse) {
-		*gpa = (pte & PTE32_L2_FRAME);
-		*gpa = *gpa + (gva & PTE32_L1_MASK);
-		return 0;
+		*gpa = (pte & PTE32_L2_FRAME) + (gva & PTE32_L1_MASK);
+		goto out;
 	}
 
 	/* Parse L1. */
 	L1gpa = (pte & PTE_FRAME);
 	if (nvmm_gpa_to_hva(mach, L1gpa, &L1hva, &pageprot) == -1)
-		return -1;
+		return WALK_ERROR;
 	pdir = (pte_32bit_t *)L1hva;
-	pte = PTE_READ(&pdir[pte32_l1idx(gva)]);
-	if (x86_parse_32bit_pte(pte, ctx, prot) == -1)
-		return -1;
-
+	ptep = &pdir[pte32_l1idx(gva)];
+	pte = PTE_READ(ptep);
+	if (__predict_false((pte & PTE_P) == 0))
+		return WALK_PF_NOT_PRESENT;
+	if (x86_pte_set_a(true, ptep, pte, pageprot) != WALK_SUCCESS)
+		return WALK_ERROR;
+	pte |= PTE_A;
+	if (!x86_32bit_pte_parse(pte, ctx, prot))
+		return WALK_ERROR;
 	*gpa = (pte & PTE_FRAME);
-	return 0;
+
+out:
+	ctx->leaf_ptep = ptep;
+	ctx->leaf_pte = pte;
+	ctx->leaf_pageprot = pageprot;
+	return WALK_SUCCESS;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -241,37 +350,35 @@ x86_gva_to_gpa_32bit(struct nvmm_machine *mach, const x86_walk_ctx *ctx,
 
 #define CR3_FRAME_32BIT_PAE	0xffffffe0
 
-typedef uint64_t pte_32bit_pae_t;
-
-static inline int
-x86_parse_32bitpae_pte(pte_32bit_pae_t pte, const x86_walk_ctx *ctx,
+static inline bool
+x86_32bit_pae_pte_parse(pte_32bit_pae_t pte, const walk_ctx_t *ctx,
     nvmm_prot_t *prot)
 {
-	if ((pte & PTE_P) == 0)
-		return -1;
 	if ((pte & PTE_U) == 0)
 		*prot &= ~NVMM_PROT_USER;
 	if (((pte & PTE_W) == 0) && !ctx->skip_w)
 		*prot &= ~NVMM_PROT_WRITE;
 	if (pte & PTE_NX) {
 		if (__predict_false(!ctx->has_nxe))
-			return -1;
+			return false;
 		*prot &= ~NVMM_PROT_EXEC;
 	}
 	if (__predict_false((*prot & ctx->want_prot) != ctx->want_prot))
-		return -1;
+		return false;
 
-	return 0;
+	return true;
 }
 
-static int
-x86_gva_to_gpa_32bit_pae(struct nvmm_machine *mach, const x86_walk_ctx *ctx,
+static walk_status_t
+x86_gva_to_gpa_32bit_pae(struct nvmm_machine *mach, walk_ctx_t *ctx,
     gvaddr_t gva, gpaddr_t *gpa, nvmm_prot_t *prot)
 {
 	gpaddr_t L3gpa, L2gpa, L1gpa;
 	uintptr_t L3hva, L2hva, L1hva;
-	pte_32bit_pae_t *pdir, pte;
+	pte_32bit_pae_t *pdir, *ptep, pte;
 	nvmm_prot_t pageprot;
+
+	ctx->pte_setbit = x86_64bit_pte_setbit;
 
 	/* We begin with an RWXU access. */
 	*prot = NVMM_PROT_ALL;
@@ -279,39 +386,54 @@ x86_gva_to_gpa_32bit_pae(struct nvmm_machine *mach, const x86_walk_ctx *ctx,
 	/* Parse L3. */
 	L3gpa = (ctx->cr3 & CR3_FRAME_32BIT_PAE);
 	if (nvmm_gpa_to_hva(mach, L3gpa, &L3hva, &pageprot) == -1)
-		return -1;
+		return WALK_ERROR;
 	pdir = (pte_32bit_pae_t *)L3hva;
 	pte = PTE_READ(&pdir[pte32_pae_l3idx(gva)]);
-	if ((pte & PTE_P) == 0)
-		return -1;
+	if (__predict_false((pte & PTE_P) == 0))
+		return WALK_PF_NOT_PRESENT;
 	if (pte & PTE_PS)
-		return -1;
+		return WALK_ERROR;
 
 	/* Parse L2. */
 	L2gpa = (pte & PTE_FRAME);
 	if (nvmm_gpa_to_hva(mach, L2gpa, &L2hva, &pageprot) == -1)
-		return -1;
+		return WALK_ERROR;
 	pdir = (pte_32bit_pae_t *)L2hva;
-	pte = PTE_READ(&pdir[pte32_pae_l2idx(gva)]);
-	if (x86_parse_32bitpae_pte(pte, ctx, prot) == -1)
-		return -1;
+	ptep = &pdir[pte32_pae_l2idx(gva)];
+	pte = PTE_READ(ptep);
+	if (__predict_false((pte & PTE_P) == 0))
+		return WALK_PF_NOT_PRESENT;
+	if (x86_pte_set_a(false, ptep, pte, pageprot) != WALK_SUCCESS)
+		return WALK_ERROR;
+	pte |= PTE_A;
+	if (!x86_32bit_pae_pte_parse(pte, ctx, prot))
+		return WALK_ERROR;
 	if (pte & PTE_PS) {
-		*gpa = (pte & PTE32_PAE_L2_FRAME);
-		*gpa = *gpa + (gva & PTE32_PAE_L1_MASK);
-		return 0;
+		*gpa = (pte & PTE32_PAE_L2_FRAME) + (gva & PTE32_PAE_L1_MASK);
+		goto out;
 	}
 
 	/* Parse L1. */
 	L1gpa = (pte & PTE_FRAME);
 	if (nvmm_gpa_to_hva(mach, L1gpa, &L1hva, &pageprot) == -1)
-		return -1;
+		return WALK_ERROR;
 	pdir = (pte_32bit_pae_t *)L1hva;
-	pte = PTE_READ(&pdir[pte32_pae_l1idx(gva)]);
-	if (x86_parse_32bitpae_pte(pte, ctx, prot) == -1)
-		return -1;
-
+	ptep = &pdir[pte32_pae_l1idx(gva)];
+	pte = PTE_READ(ptep);
+	if (__predict_false((pte & PTE_P) == 0))
+		return WALK_PF_NOT_PRESENT;
+	if (x86_pte_set_a(false, ptep, pte, pageprot) != WALK_SUCCESS)
+		return WALK_ERROR;
+	pte |= PTE_A;
+	if (!x86_32bit_pae_pte_parse(pte, ctx, prot))
+		return WALK_ERROR;
 	*gpa = (pte & PTE_FRAME);
-	return 0;
+
+out:
+	ctx->leaf_ptep = ptep;
+	ctx->leaf_pte = pte;
+	ctx->leaf_pageprot = pageprot;
+	return WALK_SUCCESS;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -338,8 +460,6 @@ x86_gva_to_gpa_32bit_pae(struct nvmm_machine *mach, const x86_walk_ctx *ctx,
 
 #define CR3_FRAME_64BIT	0x000ffffffffff000
 
-typedef uint64_t pte_64bit_t;
-
 static inline bool
 x86_gva_64bit_canonical(gvaddr_t gva)
 {
@@ -348,107 +468,174 @@ x86_gva_64bit_canonical(gvaddr_t gva)
 	return (gva & SIGN_EXTEND) == 0 || (gva & SIGN_EXTEND) == SIGN_EXTEND;
 }
 
-static inline int
-x86_parse_64bit_pte(pte_64bit_t pte, const x86_walk_ctx *ctx, nvmm_prot_t *prot)
+static inline bool
+x86_parse_64bit_pte(pte_64bit_t pte, const walk_ctx_t *ctx, nvmm_prot_t *prot)
 {
-	if ((pte & PTE_P) == 0)
-		return -1;
 	if ((pte & PTE_U) == 0)
 		*prot &= ~NVMM_PROT_USER;
 	if (((pte & PTE_W) == 0) && !ctx->skip_w)
 		*prot &= ~NVMM_PROT_WRITE;
 	if (pte & PTE_NX) {
 		if (__predict_false(!ctx->has_nxe))
-			return -1;
+			return false;
 		*prot &= ~NVMM_PROT_EXEC;
 	}
 	if (__predict_false((*prot & ctx->want_prot) != ctx->want_prot))
-		return -1;
+		return false;
 
-	return 0;
+	return true;
 }
 
-static int
-x86_gva_to_gpa_64bit(struct nvmm_machine *mach, const x86_walk_ctx *ctx,
+static walk_status_t
+x86_gva_to_gpa_64bit(struct nvmm_machine *mach, walk_ctx_t *ctx,
     gvaddr_t gva, gpaddr_t *gpa, nvmm_prot_t *prot)
 {
 	gpaddr_t L4gpa, L3gpa, L2gpa, L1gpa;
 	uintptr_t L4hva, L3hva, L2hva, L1hva;
-	pte_64bit_t *pdir, pte;
+	pte_64bit_t *pdir, *ptep, pte;
 	nvmm_prot_t pageprot;
+
+	ctx->pte_setbit = x86_64bit_pte_setbit;
 
 	/* We begin with an RWXU access. */
 	*prot = NVMM_PROT_ALL;
 
 	if (!x86_gva_64bit_canonical(gva))
-		return -1;
+		return WALK_ERROR;
 
 	/* Parse L4. */
 	L4gpa = (ctx->cr3 & CR3_FRAME_64BIT);
 	if (nvmm_gpa_to_hva(mach, L4gpa, &L4hva, &pageprot) == -1)
-		return -1;
+		return WALK_ERROR;
 	pdir = (pte_64bit_t *)L4hva;
-	pte = PTE_READ(&pdir[pte64_l4idx(gva)]);
-	if (x86_parse_64bit_pte(pte, ctx, prot) == -1)
-		return -1;
+	ptep = &pdir[pte64_l4idx(gva)];
+	pte = PTE_READ(ptep);
+	if (__predict_false((pte & PTE_P) == 0))
+		return WALK_PF_NOT_PRESENT;
+	if (x86_pte_set_a(false, ptep, pte, pageprot) != WALK_SUCCESS)
+		return WALK_ERROR;
+	pte |= PTE_A;
+	if (!x86_parse_64bit_pte(pte, ctx, prot))
+		return WALK_ERROR;
 	if (pte & PTE_PS)
-		return -1;
+		return WALK_ERROR;
 
 	/* Parse L3. */
 	L3gpa = (pte & PTE_FRAME);
 	if (nvmm_gpa_to_hva(mach, L3gpa, &L3hva, &pageprot) == -1)
-		return -1;
+		return WALK_ERROR;
 	pdir = (pte_64bit_t *)L3hva;
-	pte = PTE_READ(&pdir[pte64_l3idx(gva)]);
-	if (x86_parse_64bit_pte(pte, ctx, prot) == -1)
-		return -1;
+	ptep = &pdir[pte64_l3idx(gva)];
+	pte = PTE_READ(ptep);
+	if (__predict_false((pte & PTE_P) == 0))
+		return WALK_PF_NOT_PRESENT;
+	if (x86_pte_set_a(false, ptep, pte, pageprot) != WALK_SUCCESS)
+		return WALK_ERROR;
+	pte |= PTE_A;
+	if (!x86_parse_64bit_pte(pte, ctx, prot))
+		return WALK_ERROR;
 	if (pte & PTE_PS) {
 		*gpa = (pte & PTE64_L3_FRAME);
 		*gpa = *gpa + (gva & (PTE64_L2_MASK|PTE64_L1_MASK));
-		return 0;
+		goto out;
 	}
 
 	/* Parse L2. */
 	L2gpa = (pte & PTE_FRAME);
 	if (nvmm_gpa_to_hva(mach, L2gpa, &L2hva, &pageprot) == -1)
-		return -1;
+		return WALK_ERROR;
 	pdir = (pte_64bit_t *)L2hva;
-	pte = PTE_READ(&pdir[pte64_l2idx(gva)]);
-	if (x86_parse_64bit_pte(pte, ctx, prot) == -1)
-		return -1;
+	ptep = &pdir[pte64_l2idx(gva)];
+	pte = PTE_READ(ptep);
+	if (__predict_false((pte & PTE_P) == 0))
+		return WALK_PF_NOT_PRESENT;
+	if (x86_pte_set_a(false, ptep, pte, pageprot) != WALK_SUCCESS)
+		return WALK_ERROR;
+	pte |= PTE_A;
+	if (!x86_parse_64bit_pte(pte, ctx, prot))
+		return WALK_ERROR;
 	if (pte & PTE_PS) {
-		*gpa = (pte & PTE64_L2_FRAME);
-		*gpa = *gpa + (gva & PTE64_L1_MASK);
-		return 0;
+		*gpa = (pte & PTE64_L2_FRAME) + (gva & PTE64_L1_MASK);
+		goto out;
 	}
 
 	/* Parse L1. */
 	L1gpa = (pte & PTE_FRAME);
 	if (nvmm_gpa_to_hva(mach, L1gpa, &L1hva, &pageprot) == -1)
-		return -1;
+		return WALK_ERROR;
 	pdir = (pte_64bit_t *)L1hva;
-	pte = PTE_READ(&pdir[pte64_l1idx(gva)]);
-	if (x86_parse_64bit_pte(pte, ctx, prot) == -1)
-		return -1;
-
+	ptep = &pdir[pte64_l1idx(gva)];
+	pte = PTE_READ(ptep);
+	if (__predict_false((pte & PTE_P) == 0))
+		return WALK_PF_NOT_PRESENT;
+	if (x86_pte_set_a(false, ptep, pte, pageprot) != WALK_SUCCESS)
+		return WALK_ERROR;
+	pte |= PTE_A;
+	if (!x86_parse_64bit_pte(pte, ctx, prot))
+		return WALK_ERROR;
 	*gpa = (pte & PTE_FRAME);
-	return 0;
+
+out:
+	ctx->leaf_ptep = ptep;
+	ctx->leaf_pte = pte;
+	ctx->leaf_pageprot = pageprot;
+	return WALK_SUCCESS;
 }
 
-static inline int
-x86_gva_to_gpa(struct nvmm_machine *mach, struct nvmm_x64_state *state,
-    gvaddr_t gva, gpaddr_t *gpa, nvmm_prot_t want_prot, nvmm_prot_t *prot)
+static emul_status_t
+handle_pf(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu, gvaddr_t gva,
+    nvmm_prot_t want_prot, walk_status_t ws)
 {
-	bool is_user, is_pae, is_lng, has_smep, has_smap;
-	x86_walk_ctx ctx;
-	size_t off;
+	struct nvmm_x64_state *state = vcpu->state;
+	struct nvmm_vcpu_event *event = vcpu->event;
 	int ret;
+
+	if (ws == WALK_PF_NOT_PRESENT) {
+		state->crs[NVMM_X64_CR_CR2] = gva;
+
+		ret = nvmm_vcpu_setstate(mach, vcpu, NVMM_X64_STATE_CRS);
+		if (__predict_false(ret == -1))
+			return EMUL_ERROR;
+
+		event->type = NVMM_VCPU_EVENT_EXCP;
+		event->vector = 14;
+		event->u.excp.error = 0;
+		if (want_prot & NVMM_PROT_WRITE) {
+			event->u.excp.error |= __BIT(1);
+		}
+		if (want_prot & NVMM_PROT_USER) {
+			event->u.excp.error |= __BIT(2);
+		}
+		if (want_prot & NVMM_PROT_EXEC) {
+			event->u.excp.error |= __BIT(4);
+		}
+
+		ret = nvmm_vcpu_inject(mach, vcpu);
+		if (__predict_false(ret == -1))
+			return EMUL_ERROR;
+
+		return EMUL_FAULTED;
+	}
+
+	return EMUL_ERROR;
+}
+
+static inline emul_status_t
+x86_gva_to_gpa(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
+    gvaddr_t gva, gpaddr_t *gpa, nvmm_prot_t want_prot, nvmm_prot_t *prot,
+    bool handle_faults)
+{
+	struct nvmm_x64_state *state = vcpu->state;
+	bool is_user, is_pae, is_lng, has_smep, has_smap;
+	walk_ctx_t ctx;
+	walk_status_t ws;
+	size_t off;
 
 	if ((state->crs[NVMM_X64_CR_CR0] & CR0_PG) == 0) {
 		/* No paging. */
 		*prot = NVMM_PROT_ALL;
 		*gpa = gva;
-		return 0;
+		return EMUL_SUCCESS;
 	}
 
 	off = (gva & PAGE_MASK);
@@ -472,18 +659,22 @@ x86_gva_to_gpa(struct nvmm_machine *mach, struct nvmm_x64_state *state,
 
 	if (is_pae && is_lng) {
 		/* 64bit */
-		ret = x86_gva_to_gpa_64bit(mach, &ctx, gva, gpa, prot);
+		ws = x86_gva_to_gpa_64bit(mach, &ctx, gva, gpa, prot);
 	} else if (is_pae && !is_lng) {
 		/* 32bit PAE */
-		ret = x86_gva_to_gpa_32bit_pae(mach, &ctx, gva, gpa, prot);
+		ws = x86_gva_to_gpa_32bit_pae(mach, &ctx, gva, gpa, prot);
 	} else if (!is_pae && !is_lng) {
 		/* 32bit */
-		ret = x86_gva_to_gpa_32bit(mach, &ctx, gva, gpa, prot);
+		ws = x86_gva_to_gpa_32bit(mach, &ctx, gva, gpa, prot);
 	} else {
-		ret = -1;
+		ws = WALK_ERROR;
 	}
 
-	if (ret == -1) {
+	if (ws != WALK_SUCCESS) {
+		if (handle_faults) {
+			return handle_pf(mach, vcpu, gva + off, ctx.want_prot,
+			    ws);
+		}
 		goto error;
 	}
 
@@ -501,21 +692,25 @@ x86_gva_to_gpa(struct nvmm_machine *mach, struct nvmm_x64_state *state,
 		goto error;
 	}
 
-	*gpa = *gpa + off;
+	/* Set the D bit. */
+	ws = x86_pte_set_d(&ctx);
+	if (__predict_false(ws != WALK_SUCCESS)) {
+		goto error;
+	}
 
-	return ret;
+	*gpa = *gpa + off;
+	return EMUL_SUCCESS;
 
 error:
-	errno = EFAULT;
 	*gpa = 0;
-	return -1;
+	return EMUL_ERROR;
 }
 
 int
 nvmm_gva_to_gpa(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
     gvaddr_t gva, gpaddr_t *gpa, nvmm_prot_t *prot)
 {
-	struct nvmm_x64_state *state = vcpu->state;
+	emul_status_t es;
 	int ret;
 
 	ret = nvmm_vcpu_getstate(mach, vcpu,
@@ -524,7 +719,13 @@ nvmm_gva_to_gpa(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	if (ret == -1)
 		return -1;
 
-	return x86_gva_to_gpa(mach, state, gva, gpa, NVMM_PROT_READ, prot);
+	es = x86_gva_to_gpa(mach, vcpu, gva, gpa, NVMM_PROT_READ, prot, false);
+	if (es != EMUL_SUCCESS) {
+		errno = EFAULT;
+		return -1;
+	}
+
+	return 0;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -533,6 +734,12 @@ nvmm_gva_to_gpa(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	do {			\
 		errno = EINVAL;	\
 		return -1;	\
+	} while (0);
+
+#define DISASSEMBLER_BUG_ES()	\
+	do {			\
+		errno = EINVAL;	\
+		return EMUL_ERROR;	\
 	} while (0);
 
 static inline uint64_t
@@ -716,17 +923,17 @@ memcpy_to_guest(void *dst, void *src, size_t size)
 	}
 }
 
-static size_t
+static emul_status_t
 read_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
-    gvaddr_t gva, uint8_t *data, size_t size, bool for_exec)
+    gvaddr_t gva, uint8_t *data, size_t size, size_t *done, bool for_exec)
 {
-	struct nvmm_x64_state *state = vcpu->state;
 	struct nvmm_mem mem;
 	nvmm_prot_t want_prot, prot;
+	emul_status_t es;
 	gpaddr_t gpa;
 	uintptr_t hva;
 	bool is_mmio;
-	size_t done, remain;
+	size_t remain;
 	int ret;
 
 	want_prot = NVMM_PROT_READ;
@@ -734,10 +941,9 @@ read_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		want_prot |= NVMM_PROT_EXEC;
 	}
 
-	ret = x86_gva_to_gpa(mach, state, gva, &gpa, want_prot, &prot);
-	if (__predict_false(ret == -1)) {
-		return 0;
-	}
+	es = x86_gva_to_gpa(mach, vcpu, gva, &gpa, want_prot, &prot, !for_exec);
+	if (__predict_false(es != EMUL_SUCCESS))
+		return es;
 
 	if ((gva & PAGE_MASK) + size > PAGE_SIZE) {
 		remain = ((gva & PAGE_MASK) + size - PAGE_SIZE);
@@ -759,39 +965,41 @@ read_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		(*vcpu->cbs.mem)(&mem);
 	} else {
 		if (__predict_false(!(prot & NVMM_PROT_READ))) {
-			errno = EFAULT;
-			return 0;
+			return EMUL_ERROR;
 		}
 
 		memcpy_from_guest(data, (void *)hva, size);
 	}
 
-	done = size;
-	if (remain > 0) {
-		done += read_guest_memory(mach, vcpu, gva + size,
-		    data + size, remain, for_exec);
+	if (done != NULL) {
+		*done += size;
 	}
 
-	return done;
+	if (remain > 0) {
+		return read_guest_memory(mach, vcpu, gva + size,
+		    data + size, remain, done, for_exec);
+	}
+
+	return EMUL_SUCCESS;
 }
 
-static size_t
+static emul_status_t
 write_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
-    gvaddr_t gva, uint8_t *data, size_t size)
+    gvaddr_t gva, uint8_t *data, size_t size, size_t *done)
 {
-	struct nvmm_x64_state *state = vcpu->state;
 	struct nvmm_mem mem;
+	emul_status_t es;
 	nvmm_prot_t prot;
 	gpaddr_t gpa;
 	uintptr_t hva;
 	bool is_mmio;
-	size_t done, remain;
+	size_t remain;
 	int ret;
 
-	ret = x86_gva_to_gpa(mach, state, gva, &gpa, NVMM_PROT_WRITE, &prot);
-	if (__predict_false(ret == -1)) {
-		return 0;
-	}
+	es = x86_gva_to_gpa(mach, vcpu, gva, &gpa, NVMM_PROT_WRITE, &prot,
+	    true);
+	if (__predict_false(es != EMUL_SUCCESS))
+		return es;
 
 	if ((gva & PAGE_MASK) + size > PAGE_SIZE) {
 		remain = ((gva & PAGE_MASK) + size - PAGE_SIZE);
@@ -813,20 +1021,22 @@ write_guest_memory(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		(*vcpu->cbs.mem)(&mem);
 	} else {
 		if (__predict_false(!(prot & NVMM_PROT_WRITE))) {
-			errno = EFAULT;
-			return 0;
+			return EMUL_ERROR;
 		}
 
 		memcpy_to_guest((void *)hva, data, size);
 	}
 
-	done = size;
-	if (remain > 0) {
-		done += write_guest_memory(mach, vcpu, gva + size,
-		    data + size, remain);
+	if (done != NULL) {
+		*done += size;
 	}
 
-	return done;
+	if (remain > 0) {
+		return write_guest_memory(mach, vcpu, gva + size,
+		    data + size, remain, done);
+	}
+
+	return EMUL_SUCCESS;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -841,7 +1051,7 @@ assist_io_batch(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 {
 	uint8_t iobuf[NVMM_IO_BATCH_SIZE];
 	size_t i, iosize, iocnt;
-	size_t done;
+	emul_status_t es;
 
 	cnt = MIN(cnt, NVMM_IO_BATCH_SIZE);
 	iosize = MIN(io->size * cnt, NVMM_IO_BATCH_SIZE);
@@ -850,8 +1060,9 @@ assist_io_batch(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	io->data = iobuf;
 
 	if (!io->in) {
-		done = read_guest_memory(mach, vcpu, gva, iobuf, iosize, false);
-		if (done != iosize)
+		es = read_guest_memory(mach, vcpu, gva, iobuf, iosize, NULL,
+		    false);
+		if (es != EMUL_SUCCESS)
 			return -1;
 	}
 
@@ -861,8 +1072,8 @@ assist_io_batch(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	}
 
 	if (io->in) {
-		done = write_guest_memory(mach, vcpu, gva, iobuf, iosize);
-		if (done != iosize)
+		es = write_guest_memory(mach, vcpu, gva, iobuf, iosize, NULL);
+		if (es != EMUL_SUCCESS)
 			return -1;
 	}
 
@@ -881,8 +1092,8 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	gvaddr_t gva = 0; /* GCC */
 	int reg = 0; /* GCC */
 	int ret, seg;
-	size_t done;
 	bool psld = false;
+	emul_status_t es;
 
 	if (__predict_false(exit->reason != NVMM_VCPU_EXIT_IO)) {
 		errno = EINVAL;
@@ -935,7 +1146,7 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 			} else {
 				seg = fetch_segment_outs(mach, vcpu);
 				if (seg == -1)
-					return -1;
+					goto error;
 			}
 		}
 
@@ -946,7 +1157,7 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 		} else {
 			ret = segment_check(&state->segs[seg], gva, io.size);
 			if (ret == -1)
-				return -1;
+				goto error;
 			segment_apply(&state->segs[seg], &gva, true);
 		}
 
@@ -957,7 +1168,7 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 			 */
 			iocnt = assist_io_batch(mach, vcpu, &io, gva, cnt);
 			if (iocnt == -1)
-				return -1;
+				goto error;
 			goto done;
 		}
 	}
@@ -966,10 +1177,10 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 		if (!exit->u.io.str) {
 			memcpy(io.data, &state->gprs[NVMM_X64_GPR_RAX], io.size);
 		} else {
-			done = read_guest_memory(mach, vcpu, gva, io.data,
-			    io.size, false);
-			if (done != io.size)
-				return -1;
+			es = read_guest_memory(mach, vcpu, gva, io.data,
+			    io.size, NULL, false);
+			if (es != EMUL_SUCCESS)
+				goto error;
 		}
 	}
 
@@ -983,10 +1194,10 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 				state->gprs[NVMM_X64_GPR_RAX] &= size_to_mask(4);
 			}
 		} else {
-			done = write_guest_memory(mach, vcpu, gva, io.data,
-			    io.size);
-			if (done != io.size)
-				return -1;
+			es = write_guest_memory(mach, vcpu, gva, io.data,
+			    io.size, NULL);
+			if (es != EMUL_SUCCESS)
+				goto error;
 		}
 	}
 
@@ -1012,6 +1223,10 @@ out:
 		return -1;
 
 	return 0;
+
+error:
+	errno = EFAULT;
+	return -1;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3138,6 +3353,7 @@ fetch_instruction_bytes(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 {
 	struct nvmm_x64_state *state = vcpu->state;
 	gvaddr_t gva;
+	size_t done;
 
 	gva = state->gprs[NVMM_X64_GPR_RIP];
 	if (__predict_false(!is_64bit(state))) {
@@ -3150,7 +3366,10 @@ fetch_instruction_bytes(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		segment_apply(&state->segs[NVMM_X64_SEG_CS], &gva, true);
 	}
 
-	return read_guest_memory(mach, vcpu, gva, bytes, size, true);
+	done = 0;
+	(void)read_guest_memory(mach, vcpu, gva, bytes, size, &done, true);
+
+	return done;
 }
 
 static int
@@ -3240,14 +3459,15 @@ store_to_gva_movs(struct nvmm_x64_state *state, struct x86_instr *instr,
 /*
  * Double memory operand, MOVS only.
  */
-static int
+static emul_status_t
 assist_mem_double_movs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
     struct x86_instr *instr)
 {
 	struct nvmm_x64_state *state = vcpu->state;
+	emul_status_t es;
 	uint8_t data[8];
 	gvaddr_t gva;
-	size_t size, done;
+	size_t size;
 	bool psld;
 	int ret;
 
@@ -3256,18 +3476,18 @@ assist_mem_double_movs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	/* Source. */
 	ret = store_to_gva_movs(state, instr, &instr->src, &gva, size);
 	if (ret == -1)
-		return -1;
-	done = read_guest_memory(mach, vcpu, gva, data, size, false);
-	if (done != size)
-		return -1;
+		return EMUL_ERROR;
+	es = read_guest_memory(mach, vcpu, gva, data, size, NULL, false);
+	if (__predict_false(es != EMUL_SUCCESS))
+		return es;
 
 	/* Destination. */
 	ret = store_to_gva_movs(state, instr, &instr->dst, &gva, size);
 	if (ret == -1)
-		return -1;
-	done = write_guest_memory(mach, vcpu, gva, data, size);
-	if (done != size)
-		return -1;
+		return EMUL_ERROR;
+	es = write_guest_memory(mach, vcpu, gva, data, size, NULL);
+	if (__predict_false(es != EMUL_SUCCESS))
+		return es;
 
 	psld = (state->gprs[NVMM_X64_GPR_RFLAGS] & PSL_D) != 0;
 
@@ -3276,13 +3496,13 @@ assist_mem_double_movs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	gpr_advance_address(state, NVMM_X64_GPR_RDI, instr->address_size, size,
 	    psld);
 
-	return 0;
+	return EMUL_SUCCESS;
 }
 
 /*
  * Single memory operand, covers most instructions.
  */
-static int
+static emul_status_t
 assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
     struct x86_instr *instr)
 {
@@ -3313,7 +3533,7 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		break;
 	case STORE_DUALREG:
 		if (instr->src.disptype == DISP_NONE) {
-			DISASSEMBLER_BUG();
+			DISASSEMBLER_BUG_ES();
 		}
 		mem.write = false;
 		break;
@@ -3327,7 +3547,7 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		mem.write = false;
 		break;
 	default:
-		DISASSEMBLER_BUG();
+		DISASSEMBLER_BUG_ES();
 	}
 
 	if (mem.write) {
@@ -3336,7 +3556,7 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 			/* The instruction was "reg -> mem". Fetch the register
 			 * in membuf. */
 			if (__predict_false(instr->src.disptype != DISP_NONE)) {
-				DISASSEMBLER_BUG();
+				DISASSEMBLER_BUG_ES();
 			}
 			val = state->gprs[instr->src.u.reg->num];
 			val = __SHIFTOUT(val, instr->src.u.reg->mask);
@@ -3348,16 +3568,16 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 			memcpy(mem.data, &instr->src.u.imm.data, mem.size);
 			break;
 		default:
-			DISASSEMBLER_BUG();
+			DISASSEMBLER_BUG_ES();
 		}
 	} else if (instr->emul->readreg) {
 		/* The instruction was "mem -> reg", but the value of the
 		 * register matters for the emul func. Fetch it in membuf. */
 		if (__predict_false(instr->dst.type != STORE_REG)) {
-			DISASSEMBLER_BUG();
+			DISASSEMBLER_BUG_ES();
 		}
 		if (__predict_false(instr->dst.disptype != DISP_NONE)) {
-			DISASSEMBLER_BUG();
+			DISASSEMBLER_BUG_ES();
 		}
 		val = state->gprs[instr->dst.u.reg->num];
 		val = __SHIFTOUT(val, instr->dst.u.reg->mask);
@@ -3376,7 +3596,7 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 
 	if (instr->emul->notouch) {
 		/* We're done. */
-		return 0;
+		return EMUL_SUCCESS;
 	}
 
 	if (!mem.write) {
@@ -3384,10 +3604,10 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		 * membuf with the memory content. Install membuf in the
 		 * register. */
 		if (__predict_false(instr->dst.type != STORE_REG)) {
-			DISASSEMBLER_BUG();
+			DISASSEMBLER_BUG_ES();
 		}
 		if (__predict_false(instr->dst.disptype != DISP_NONE)) {
-			DISASSEMBLER_BUG();
+			DISASSEMBLER_BUG_ES();
 		}
 		memcpy(&val, membuf, sizeof(uint64_t));
 		val = __SHIFTIN(val, instr->dst.u.reg->mask);
@@ -3399,10 +3619,10 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		 * back-propagated to the register. Install membuf in the
 		 * register. */
 		if (__predict_false(instr->src.type != STORE_REG)) {
-			DISASSEMBLER_BUG();
+			DISASSEMBLER_BUG_ES();
 		}
 		if (__predict_false(instr->src.disptype != DISP_NONE)) {
-			DISASSEMBLER_BUG();
+			DISASSEMBLER_BUG_ES();
 		}
 		memcpy(&val, membuf, sizeof(uint64_t));
 		val = __SHIFTIN(val, instr->src.u.reg->mask);
@@ -3411,7 +3631,7 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 		state->gprs[instr->src.u.reg->num] &= ~instr->zeroextend_mask;
 	}
 
-	return 0;
+	return EMUL_SUCCESS;
 }
 
 static bool
@@ -3449,6 +3669,7 @@ nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	struct nvmm_x64_state *state = vcpu->state;
 	struct nvmm_vcpu_exit *exit = vcpu->exit;
 	struct x86_instr instr;
+	emul_status_t es;
 	uint64_t cnt = 0; /* GCC */
 	bool is_rep;
 	int ret;
@@ -3496,11 +3717,13 @@ nvmm_assist_mem(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	}
 
 	if (instr.opcode->movs) {
-		ret = assist_mem_double_movs(mach, vcpu, &instr);
+		es = assist_mem_double_movs(mach, vcpu, &instr);
 	} else {
-		ret = assist_mem_single(mach, vcpu, &instr);
+		es = assist_mem_single(mach, vcpu, &instr);
 	}
-	if (ret == -1) {
+	if (__predict_false(es != EMUL_SUCCESS)) {
+		if (es == EMUL_FAULTED)
+			return 0;
 		errno = ENODEV;
 		return -1;
 	}
