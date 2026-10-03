@@ -36,8 +36,12 @@
 
 #include <machine/psl.h>
 
+#undef MIN
 #define MIN(X, Y)		(((X) < (Y)) ? (X) : (Y))
+#undef __cacheline_aligned
 #define __cacheline_aligned	__attribute__((__aligned__(64)))
+#undef __always_inline
+#define __always_inline		inline __attribute__((__always_inline__))
 
 typedef enum {
 	EMUL_SUCCESS,
@@ -261,7 +265,7 @@ x86_pte_set_d(const walk_ctx_t *ctx)
 
 #define CR3_FRAME_32BIT	0xfffff000
 
-static inline bool
+static __always_inline bool
 x86_32bit_pte_parse(pte_32bit_t pte, const walk_ctx_t *ctx, nvmm_prot_t *prot)
 {
 	if ((pte & PTE_U) == 0)
@@ -350,7 +354,7 @@ out:
 
 #define CR3_FRAME_32BIT_PAE	0xffffffe0
 
-static inline bool
+static __always_inline bool
 x86_32bit_pae_pte_parse(pte_32bit_pae_t pte, const walk_ctx_t *ctx,
     nvmm_prot_t *prot)
 {
@@ -468,7 +472,7 @@ x86_gva_64bit_canonical(gvaddr_t gva)
 	return (gva & SIGN_EXTEND) == 0 || (gva & SIGN_EXTEND) == SIGN_EXTEND;
 }
 
-static inline bool
+static __always_inline bool
 x86_parse_64bit_pte(pte_64bit_t pte, const walk_ctx_t *ctx, nvmm_prot_t *prot)
 {
 	if ((pte & PTE_U) == 0)
@@ -620,7 +624,7 @@ handle_pf(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu, gvaddr_t gva,
 	return EMUL_ERROR;
 }
 
-static inline emul_status_t
+static __always_inline emul_status_t
 x86_gva_to_gpa(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
     gvaddr_t gva, gpaddr_t *gpa, nvmm_prot_t want_prot, nvmm_prot_t *prot,
     bool handle_faults)
