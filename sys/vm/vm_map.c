@@ -3605,9 +3605,13 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 	KKASSERT(dst_entry->maptype == VM_MAPTYPE_NORMAL ||
 		 dst_entry->maptype == VM_MAPTYPE_VPAGETABLE);
 
-	if (src_entry->wired_count) {
+	if (src_entry->wired_count &&
+	    !(src_entry->wired_count == 1 &&
+	      (src_entry->eflags & MAP_ENTRY_USER_WIRED) &&
+	      src_entry->maptype == VM_MAPTYPE_NORMAL))
+	{
 		/*
-		 * Of course, wired down pages can't be set copy-on-write.
+		 * Hard-wired pages can't be set copy-on-write.
 		 * Cause wired pages to be copied into the new map by
 		 * simulating faults (the new pages are pageable)
 		 *
