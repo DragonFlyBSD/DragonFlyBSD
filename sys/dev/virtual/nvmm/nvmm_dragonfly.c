@@ -111,8 +111,9 @@ os_vmobj_rel(os_vmobj_t *vmobj)
 }
 
 int
-os_vmobj_map(os_vmmap_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
-    voff_t offset, bool wired, bool fixed, bool shared, int prot, int maxprot)
+os_vmobj_map_user(os_vmmap_t *map, vaddr_t *addr, vsize_t size,
+    os_vmobj_t *vmobj, voff_t offset, bool wired, bool fixed, bool shared,
+    int prot, int maxprot)
 {
 	vm_prot_t vmprot, vmmaxprot;
 	vm_inherit_t inherit;
@@ -194,6 +195,15 @@ os_vmobj_map(os_vmmap_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
 
 	*addr = start;
 	return 0;
+}
+
+int
+os_vmobj_map_kern(os_vmmap_t *map, vaddr_t *addr, vsize_t size,
+    os_vmobj_t *vmobj, voff_t offset, bool wired, bool fixed, bool shared,
+    int prot, int maxprot)
+{
+	return os_vmobj_map_user(map, addr, size, vmobj, offset, wired, fixed,
+	    shared, prot, maxprot);
 }
 
 void

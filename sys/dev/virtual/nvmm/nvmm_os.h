@@ -270,6 +270,12 @@ typedef cpumask_t		os_cpuset_t;
 #define OS_ASSERT		KKASSERT
 #endif
 
+/* Userspace access. */
+#if defined(__NetBSD__) || defined(__DragonFly__)
+#define os_copy_from_user	copyin
+#define os_copy_to_user		copyout
+#endif
+
 /* Vmspace. */
 #if defined(__NetBSD__) || defined(__DragonFly__)
 #define os_vmspace_get_vmmap(_vm_)	(&(_vm_)->vm_map)
@@ -288,8 +294,10 @@ os_vmobj_t *	os_vmobj_create(voff_t);
 void		os_vmobj_ref(os_vmobj_t *);
 void		os_vmobj_rel(os_vmobj_t *);
 
-int		os_vmobj_map(os_vmmap_t *, vaddr_t *, vsize_t, os_vmobj_t *,
-		    voff_t, bool, bool, bool, int, int);
+int		os_vmobj_map_user(os_vmmap_t *, vaddr_t *, vsize_t,
+		    os_vmobj_t *, voff_t, bool, bool, bool, int, int);
+int		os_vmobj_map_kern(os_vmmap_t *, vaddr_t *, vsize_t,
+		    os_vmobj_t *, voff_t, bool, bool, bool, int, int);
 void		os_vmobj_unmap(os_vmmap_t *, vaddr_t, vaddr_t, bool);
 
 void *		os_pagemem_zalloc(size_t);

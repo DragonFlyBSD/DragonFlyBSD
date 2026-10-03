@@ -313,7 +313,7 @@ nvmm_machine_configure(struct nvmm_owner *owner,
 		return error;
 	}
 
-	error = copyin(args->conf, data, allocsz);
+	error = os_copy_from_user(args->conf, data, allocsz);
 	if (error) {
 		goto out;
 	}
@@ -342,7 +342,7 @@ nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
 		goto out;
 
 	/* Map the comm page on the kernel side, as wired. */
-	error = os_vmobj_map(os_kernel_map, (vaddr_t *)&vcpu->comm,
+	error = os_vmobj_map_kern(os_kernel_map, (vaddr_t *)&vcpu->comm,
 	    NVMM_COMM_PAGE_SIZE, mach->commvmobj,
 	    args->cpuid * NVMM_COMM_PAGE_SIZE, true /* wired */,
 	    false /* !fixed */, true /* shared */, PROT_READ | PROT_WRITE,
@@ -356,7 +356,7 @@ nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
 	memset(vcpu->comm, 0, NVMM_COMM_PAGE_SIZE);
 
 	/* Map the comm page on the user side, as pageable. */
-	error = os_vmobj_map(os_curproc_map, (vaddr_t *)&args->comm,
+	error = os_vmobj_map_user(os_curproc_map, (vaddr_t *)&args->comm,
 	    NVMM_COMM_PAGE_SIZE, mach->commvmobj,
 	    args->cpuid * NVMM_COMM_PAGE_SIZE, false /* !wired */,
 	    false /* !fixed */, true /* shared */, PROT_READ | PROT_WRITE,
@@ -438,7 +438,7 @@ nvmm_vcpu_configure(struct nvmm_owner *owner,
 		return error;
 	}
 
-	error = copyin(args->conf, data, allocsz);
+	error = os_copy_from_user(args->conf, data, allocsz);
 	if (error) {
 		goto out;
 	}
@@ -706,7 +706,7 @@ nvmm_hva_map(struct nvmm_owner *owner, struct nvmm_ioc_hva_map *args)
 	uva = hmapping->hva;
 
 	/* Map the vmobj into the user address space, as pageable. */
-	error = os_vmobj_map(os_curproc_map, &uva, hmapping->size,
+	error = os_vmobj_map_user(os_curproc_map, &uva, hmapping->size,
 	    hmapping->vmobj, 0, false /* !wired */, true /* fixed */,
 	    true /* shared */, PROT_READ | PROT_WRITE, PROT_READ | PROT_WRITE);
 	if (error) {
@@ -794,7 +794,7 @@ nvmm_gpa_map(struct nvmm_owner *owner, struct nvmm_ioc_gpa_map *args)
 
 	/* Map the vmobj into the machine address space, as pageable. */
 	vmmap = os_vmspace_get_vmmap(mach->vm);
-	error = os_vmobj_map(vmmap, &gpa, args->size, vmobj, off,
+	error = os_vmobj_map_user(vmmap, &gpa, args->size, vmobj, off,
 	    false /* !wired */, true /* fixed */, false /* !shared */,
 	    args->prot, PROT_READ | PROT_WRITE | PROT_EXEC);
 
@@ -861,7 +861,7 @@ nvmm_ctl_mach_info(struct nvmm_owner *owner, struct nvmm_ioc_ctl *args)
 
 	if (args->size != sizeof(ctl))
 		return EINVAL;
-	error = copyin(args->data, &ctl, sizeof(ctl));
+	error = os_copy_from_user(args->data, &ctl, sizeof(ctl));
 	if (error)
 		return error;
 
@@ -883,7 +883,7 @@ nvmm_ctl_mach_info(struct nvmm_owner *owner, struct nvmm_ioc_ctl *args)
 
 	nvmm_machine_put(mach);
 
-	error = copyout(&ctl, args->data, sizeof(ctl));
+	error = os_copy_to_user(&ctl, args->data, sizeof(ctl));
 	if (error)
 		return error;
 
