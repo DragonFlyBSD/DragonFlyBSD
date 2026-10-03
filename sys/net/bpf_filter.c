@@ -432,12 +432,22 @@ bpf_filter(const struct bpf_insn *pc, u_char *p, u_int wirelen, u_int buflen)
 			A /= X;
 			continue;
 
+		case BPF_ALU|BPF_MOD|BPF_X:
+			if (X == 0)
+				return 0;
+			A %= X;
+			continue;
+
 		case BPF_ALU|BPF_AND|BPF_X:
 			A &= X;
 			continue;
 
 		case BPF_ALU|BPF_OR|BPF_X:
 			A |= X;
+			continue;
+
+		case BPF_ALU|BPF_XOR|BPF_X:
+			A ^= X;
 			continue;
 
 		case BPF_ALU|BPF_LSH|BPF_X:
@@ -464,12 +474,22 @@ bpf_filter(const struct bpf_insn *pc, u_char *p, u_int wirelen, u_int buflen)
 			A /= pc->k;
 			continue;
 
+		case BPF_ALU|BPF_MOD|BPF_K:
+			if (pc->k == 0)
+				return 0;
+			A %= pc->k;
+			continue;
+
 		case BPF_ALU|BPF_AND|BPF_K:
 			A &= pc->k;
 			continue;
 
 		case BPF_ALU|BPF_OR|BPF_K:
 			A |= pc->k;
+			continue;
+
+		case BPF_ALU|BPF_XOR|BPF_K:
+			A ^= pc->k;
 			continue;
 
 		case BPF_ALU|BPF_LSH|BPF_K:
@@ -559,13 +579,15 @@ bpf_validate(const struct bpf_insn *f, int len)
 			case BPF_MUL:
 			case BPF_OR:
 			case BPF_AND:
+			case BPF_XOR:
 			case BPF_LSH:
 			case BPF_RSH:
 			case BPF_NEG:
 				break;
 			case BPF_DIV:
+			case BPF_MOD:
 				/*
-				 * Check for constant division by 0.
+				 * Check for constant division/modulo by 0.
 				 */
 				if (BPF_SRC(p->code) == BPF_K && p->k == 0)
 					return 0;

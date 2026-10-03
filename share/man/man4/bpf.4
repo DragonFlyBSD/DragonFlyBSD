@@ -22,7 +22,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/bpf.4,v 1.21.2.11 2002/04/07 04:57:13 dd Exp $
 .\"
-.Dd March 14, 2008
+.Dd October 5, 2026
 .Dt BPF 4
 .Os
 .Sh NAME
@@ -591,10 +591,14 @@ A <- A - k
 A <- A * k
 .It Li BPF_ALU+BPF_DIV+BPF_K
 A <- A / k
+.It Li BPF_ALU+BPF_MOD+BPF_K
+A <- A % k
 .It Li BPF_ALU+BPF_AND+BPF_K
 A <- A & k
 .It Li BPF_ALU+BPF_OR+BPF_K
 A <- A | k
+.It Li BPF_ALU+BPF_XOR+BPF_K
+A <- A ^ k
 .It Li BPF_ALU+BPF_LSH+BPF_K
 A <- A << k
 .It Li BPF_ALU+BPF_RSH+BPF_K
@@ -607,10 +611,14 @@ A <- A - X
 A <- A * X
 .It Li BPF_ALU+BPF_DIV+BPF_X
 A <- A / X
+.It Li BPF_ALU+BPF_MOD+BPF_X
+A <- A % X
 .It Li BPF_ALU+BPF_AND+BPF_X
 A <- A & X
 .It Li BPF_ALU+BPF_OR+BPF_X
 A <- A | X
+.It Li BPF_ALU+BPF_XOR+BPF_X
+A <- A ^ X
 .It Li BPF_ALU+BPF_LSH+BPF_X
 A <- A << X
 .It Li BPF_ALU+BPF_RSH+BPF_X
