@@ -23,7 +23,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/firmware.9,v 1.9 2010/04/14 19:08:06 uqs Exp $
 .\"
-.Dd July 4, 2013
+.Dd July 27, 2026
 .Dt FIRMWARE 9
 .Os
 .Sh NAME
@@ -91,18 +91,26 @@ The modules can be statically compiled in the kernel, or loaded by
 .Nm /boot/loader ,
 manually at runtime, or on demand by the firmware subsystem.
 .Pp
+The firmware subsystem can also obtain an image on its own: from one the
+loader preloaded, or by reading a regular file.
+See
+.Sx FIRMWARE LOADING MECHANISMS
+below.
+.Pp
 .Nm Clients
 of the firmware subsystem can request access to a given image
 by calling the function
 .Fn firmware_get
 with the
 .Nm imagename
-they want as an argument. If a matching image is not already registered,
-the firmware subsystem will try to load it using the
-mechanisms specified below (typically, a kernel module
-with
-.Nm the same name
-as the image).
+they want as an argument.
+If a matching image is not already registered, the firmware subsystem goes
+looking for one.
+.Pp
+Drivers request images by name.
+Administrators select the source by installing firmware packages or
+configuring preloaded images in
+.Xr loader.conf 5 .
 .Sh API DESCRIPTION
 The kernel
 .Nm firmware API
@@ -115,6 +123,7 @@ located at address
 .Nm data ,
 under the name
 .Nm imagename .
+The caller must keep the name and data valid until the image is unregistered.
 .Pp
 The function returns NULL on error (e.g. because an
 image with the same name already exists, or the image
@@ -134,15 +143,18 @@ it does not unregister the image and returns
 returns the requested firmware image.
 If the image is not yet registered with the system,
 the function tries to load it.
-This involves the linker subsystem and disk access, so
+File and module loading runs on a
+.Xr taskqueue 9
+thread; the caller sleeps until the load attempt completes.
+The query name need only remain valid until the call returns.
+Loading can involve filesystem I/O and the linker subsystem, so
 .Fn firmware_get
 must not be called with any locks (except for
 .Va Giant ) .
-Note also that if the firmware image is loaded from a filesystem
-it must already be mounted.
-In particular this means that it may be necessary to defer requests
-from a driver attach method unless it is known the root filesystem is
-already mounted.
+Note also that the filesystem holding the firmware image must already
+be mounted.
+A driver may need to defer requests until that file system is available,
+or use an image preloaded by the loader.
 .Pp
 On success,
 .Fn firmware_get
@@ -158,49 +170,129 @@ argument may be set to
 to indicate that
 firmware_put is free to reclaim resources associated with
 the firmware image if this is the last reference.
-By default a firmware image will be deferred to a
+Reclamation is deferred to a
 .Xr taskqueue 9
-thread so the call may be done while holding a lock.
-In certain cases, such as on driver detach, this cannot be allowed.
+thread and is not guaranteed to have completed when the call returns.
+Other references can prevent reclamation.
+Without
+.Dv FIRMWARE_UNLOAD ,
+the call only drops the caller's reference.
 .Sh FIRMWARE LOADING MECHANISMS
-As mentioned before, any component of the system can register
-firmware images at any time by simply calling
-.Fn firmware_register .
-.Pp
-This is typically done when a module containing
-a firmware image is given control,
-whether compiled in, or preloaded by
-.Nm /boot/loader ,
-or manually loaded with
+Any component of the system can register firmware images at any time by
+calling
+.Fn firmware_register ,
+and a module containing an image does exactly that when it is given
+control, whether compiled in, preloaded by
+.Xr loader 8 ,
+or loaded with
 .Xr kldload 8 .
-However, a system can implement additional mechanisms to bring
-these images in memory before calling
-.Fn firmware_register .
 .Pp
 When
 .Fn firmware_get
-does not find the requested image, it tries to load it using
-one of the available loading mechanisms.
-At the moment, there is only one, namely
-.Nm Loadable kernel modules :
+does not find the image already registered, it tries three sources in the
+order below.
+.Bl -tag -width "Loadable Kernel Modules"
+.It Preloaded Images
+Images already in memory, including those needed before a file system
+is available.
+.It Firmware Files
+Images read from a mounted file system.
+.It Loadable Kernel Modules
+Images registered by loadable modules.
+.El
 .Pp
+An administrator normally installs the images once, as a package, and
+writes a line in
+.Xr loader.conf 5
+only for the few that are wanted before the root filesystem exists.
+.Ss Preloaded Images
+An image the loader was told to preload is already in memory and is used
+before anything that has to go and find one:
+.Bd -literal -offset indent
+firmware="nvidia/tu102/gsp/gsp-570.144.bin"
+.Ed
+.Pp
+The name in
+.Xr loader.conf 5
+is the name the driver asks for.
+The loader searches
+.Va module_path ,
+which includes
+.Pa /boot/firmware ,
+and records the path it resolved; the image is matched by that name or by
+the tail of it at a path boundary.
+.Pp
+This is the only source that works before the root file system is mounted,
+which is what it is for: firmware for the device the root file system lives
+on cannot come from the root file system.
+.Pp
+The memory belongs to the loader, not to the firmware subsystem, so such an
+image is never unloaded.
+.Ss Firmware Files
 A firmware image named
 .Nm foo
-is looked up by trying to load the module named
+is first looked up as a regular file named
+.Nm foo
+under each directory listed in the sysctl variable
+.Va hw.firmware_path ,
+a semicolon-separated list of directories which defaults to
+.Pa /usr/local/lib/firmware;/usr/lib/firmware .
+The variable is also a tunable and may be set from
+.Xr loader.conf 5 .
+.Pp
+The image name is used as a path relative to each directory in turn,
+so a driver requesting the image
+.Nm amdgpu/raven_vcn.bin
+is served from
+.Pa /usr/local/lib/firmware/amdgpu/raven_vcn.bin
+when that file exists.
+The first readable regular file wins.
+.Pp
+The contents of the file are copied into kernel memory and registered
+under the image name.
+Unlike a module-backed image, which merely borrows the module's memory,
+this memory belongs to the firmware subsystem and is released when the
+image is unregistered after its last reference is released with
+.Dv FIRMWARE_UNLOAD .
+.Pp
+Images larger than the sysctl variable
+.Va hw.firmware_max_size ,
+which defaults to 256 MB, are refused.
+.Ss Loadable Kernel Modules
+If no file was found, the image is looked up by trying to load the
+module named
 .Nm foo.ko ,
 using the facilities described in
 .Xr kld 4 .
-In particular, images are looked up in the directories specified
+In particular, modules are looked up in the directories specified
 by the sysctl variable
-.Nm kern.module_path
+.Va kern.module_path
 which on most systems defaults to
-.Nm /boot/kernel;/boot/modules .
+.Pa /boot/kernel;/boot/modules .
 .Pp
 Note that in case a module contains multiple images,
 the caller should first request a
 .Fn firmware_get
 for the first image contained in the module, followed by requests
 for the other images.
+.Pp
+Because a file takes precedence over a module of the same name, a driver
+requesting a flat image name such as
+.Nm radeonkmsfw_BONAIRE_uvd
+continues to be served by its module, while a driver requesting a
+path-style name such as
+.Nm amdgpu/raven_vcn.bin
+is served from the filesystem.
+This lets a system carry both conventions at once, and lets an
+administrator override a module-backed image by installing a file of
+the same name.
+.Pp
+Some firmware modules require license acknowledgement before loading;
+see
+.Xr urtwn 4
+and
+.Xr iwi 4 .
+These checks remain part of the module-loading path.
 .Sh BUILDING FIRMWARE LOADABLE MODULES
 A firmware module is built by embedding the
 .Nm firmware image
@@ -216,12 +308,23 @@ by simply writing a Makefile with the following entries:
 
         KMOD=   imagename
         FIRMWS= image_file:imagename[:version]
+        FIRMWARE_LICENSE= license
         .include <bsd.kmod.mk>
 
 .Ed
 where KMOD is the basename of the module; FIRMWS is a list of
 colon-separated tuples indicating the image_file's to be embedded
 in the module, the imagename and version of each firmware image.
+.Pp
+FIRMWARE_LICENSE is optional.
+When it is set, the module refuses to register anything until
+.Va legal.NAME.license_ack
+is set, and directs the reader to the matching directory under
+.Pa /usr/share/doc/legal .
+It exists because a firmware image built this way arrives with the system
+source, so the user receives it without having been shown any terms.
+An image that comes from a package does not have that problem, and no such
+check is made on the other two paths.
 .Pp
 If you need to embed firmware images into a system, you should write
 appropriate entries in the
@@ -255,6 +358,10 @@ the availability of the following tools:
 the compiler and the linker.
 .Sh SEE ALSO
 .Xr kld 4 ,
+.Xr loader.conf 5 ,
+.Xr kldload 8 ,
+.Xr loader 8 ,
+.Xr sysctl 8 ,
 .Xr module 9
 .Pp
 .Pa /usr/share/examples/kld/firmware
@@ -263,6 +370,10 @@ The
 .Nm firmware
 system was introduced in
 .Fx 6.1 .
+.Pp
+Support for loading firmware images from the filesystem first appeared
+in
+.Dx 6.5 .
 .Sh AUTHORS
 This manual page was written by
 .An Max Laier Aq Mt mlaier@FreeBSD.org .

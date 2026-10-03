@@ -220,6 +220,9 @@ command_loadall(int ac, char **av)
 	char *mod_fname;
 	char *mod_type;
 	char *tmp_str;
+	char *firmware_list;
+	char *firmware_name;
+	char *firmware_next;
 	dvar_t dvar, dvar2;
 	int len;
 	int argc;
@@ -236,15 +239,52 @@ command_loadall(int ac, char **av)
 	argv[1] = getenv("kernelname");
 	argv[2] = getenv("kernel_options");
 	if (argv[1] == NULL)
-		argv[1] = strdup("kernel");
+		argv[1] = "kernel";
 	res = perform((argv[2] == NULL)?2:3, argv);
-	free(argv[1]);
-	if (argv[2])
-		free(argv[2]);
 
 	if (res != CMD_OK) {
 		printf("Unable to load %s%s\n", DirBase, argv[1]);
 		return(res);
+	}
+
+	/*
+	 * Firmware needed before the root filesystem is available is listed
+	 * directly in firmware="name ...".  Raw images need an explicit type;
+	 * otherwise the loader would try to parse them as ELF modules.
+	 */
+	firmware_list = getenv("firmware");
+	if (firmware_list != NULL && *firmware_list != '\0') {
+		firmware_list = strdup(firmware_list);
+		if (firmware_list == NULL) {
+			printf("Unable to allocate firmware list\n");
+			return (CMD_ERROR);
+		}
+		firmware_next = firmware_list;
+		while (*firmware_next != '\0') {
+			firmware_name = firmware_next + strspn(firmware_next, " \t");
+			if (*firmware_name == '\0')
+				break;
+			firmware_next = firmware_name;
+			while (*firmware_next != '\0' &&
+			    *firmware_next != ' ' && *firmware_next != '\t')
+				++firmware_next;
+			if (*firmware_next != '\0')
+				*firmware_next++ = '\0';
+
+			argv[0] = "load";
+			argv[1] = "-t";
+			argv[2] = "firmware";
+			argv[3] = firmware_name;
+			tmp = perform(4, argv);
+			if (tmp != CMD_OK) {
+				time_t t = time(NULL);
+				printf("Unable to load %s%s\n", DirBase,
+				    firmware_name);
+				while (time(NULL) == t)
+					;
+			}
+		}
+		free(firmware_list);
 	}
 
 	/*
@@ -261,7 +301,9 @@ command_loadall(int ac, char **av)
 
 		mod_name = strdup(dvar->name);
 		mod_name[len - 5] = 0;
-		mod_type = NULL;
+		/* Microcode is always a raw image, never an ELF module. */
+		mod_type = strcmp(mod_name, "cpu_microcode") == 0 ?
+		    "cpu_microcode" : NULL;
 		mod_fname = NULL;
 
 		/* Check if there's a matching foo_type */
