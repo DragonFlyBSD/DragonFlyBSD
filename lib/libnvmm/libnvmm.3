@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (c) 2018-2021 Maxime Villard, m00nbsd.net
+.\" Copyright (c) 2018-2026 Maxime Villard, m00nbsd.net
 .\" All rights reserved.
 .\"
 .\" This code is part of the NVMM hypervisor.
@@ -25,7 +25,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd July 20, 2021
+.Dd October 3, 2026
 .Dt LIBNVMM 3
 .Os
 .Sh NAME
@@ -257,7 +257,7 @@ from the machine
 .Fa mach .
 .Pp
 .Fn nvmm_gva_to_gpa
-translates, on the CPU
+translates, as a read access on the CPU
 .Fa vcpu
 from the machine
 .Fa mach ,
@@ -265,7 +265,13 @@ the guest virtual address given in
 .Fa gva
 into a guest physical address returned in
 .Fa gpa .
-The associated page permissions are returned in
+The translation is performed according to the current state of
+.Fa vcpu ,
+including the current privilege level and applicable memory protections.
+If the CPU would not be permitted to read the guest virtual address,
+the translation fails with
+.Er EFAULT .
+The page permissions determined during the translation are returned in
 .Fa prot .
 .Fa gva
 must be page-aligned.

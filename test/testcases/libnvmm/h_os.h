@@ -41,9 +41,12 @@
 #define CR0_AM		__BIT(18)
 #define CR0_PG		__BIT(31)
 #define CR4_PAE		__BIT(5)
+#define CR4_SMEP	__BIT(20)
+#define CR4_SMAP	__BIT(21)
 #define EFER_SCE	__BIT(0)
 #define EFER_LME	__BIT(8)
 #define EFER_LMA	__BIT(10)
+#define EFER_NXE	__BIT(11)
 
 #define RFLAGS_MBO	0x00000002	/* Must be one bits */
 #define RFLAGS_AC	0x00040000	/* Alignment check flag */
