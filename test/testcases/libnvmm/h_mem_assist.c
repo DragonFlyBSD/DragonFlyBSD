@@ -223,12 +223,20 @@ init_seg(struct nvmm_x64_state_seg *seg, int type, int sel)
 }
 
 static void
-reset_machine64(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
+reset_vcpu64(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
-	struct nvmm_x64_state *state = vcpu->state;
+	struct nvmm_x64_state *state;
+
+	if (nvmm_vcpu_destroy(mach, vcpu) == -1)
+		err(errno, "nvmm_vcpu_destroy");
+	if (nvmm_vcpu_create(mach, 0, vcpu) == -1)
+		err(errno, "nvmm_vcpu_create");
+	nvmm_vcpu_configure(mach, vcpu, NVMM_VCPU_CONF_CALLBACKS, &callbacks);
 
 	if (nvmm_vcpu_getstate(mach, vcpu, NVMM_X64_STATE_ALL) == -1)
 		err(errno, "nvmm_vcpu_getstate");
+
+	state = vcpu->state;
 
 	memset(state, 0, sizeof(*state));
 
@@ -268,14 +276,18 @@ reset_machine64(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 static int
 run_test64_insn_lastpage(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 {
-	struct nvmm_x64_state *state = vcpu->state;
-	struct nvmm_vcpu_exit *exit = vcpu->exit;
+	struct nvmm_x64_state *state;
+	struct nvmm_vcpu_exit *exit;
 	/* movb $0x5a,(%rax) */
 	static const uint8_t insn[] = { 0xc6, 0x00, 0x5a };
 	size_t off = PAGE_SIZE - sizeof(insn);
 	int ret;
 
-	reset_machine64(mach, vcpu);
+	reset_vcpu64(mach, vcpu);
+
+	state = vcpu->state;
+	exit = vcpu->exit;
+
 	memset(instbuf, 0, PAGE_SIZE);
 	memcpy(instbuf + off, insn, sizeof(insn));
 	memset(mmiobuf, 0, PAGE_SIZE);
@@ -411,7 +423,7 @@ test_vm64(void)
 
 	nfail = 0;
 	for (i = 0; tests64[i].name != NULL; i++) {
-		reset_machine64(&mach, &vcpu);
+		reset_vcpu64(&mach, &vcpu);
 		nfail += run_test(&mach, &vcpu, &tests64[i]);
 	}
 	printf("\n");
