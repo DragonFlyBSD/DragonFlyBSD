@@ -30,7 +30,7 @@
 #include "../nvmm_internal.h"
 #include "nvmm_x86_internal.h"
 
-void svm_vmrun(paddr_t, uint64_t *);
+void svm_vmrun(paddr_t, uint64_t *, void *);
 
 static inline void
 svm_clgi(void)
@@ -1688,6 +1688,7 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	struct vmcb *vmcb = cpudata->vmcb;
 	uint64_t machgen;
+	void *hgdt;
 	int hcpu;
 	int error = 0;
 
@@ -1701,7 +1702,9 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 #endif
 
 	os_preempt_disable();
+
 	hcpu = os_curcpu_number();
+	hgdt = os_curcpu_gdt();
 
 	svm_gtlb_catchup(vcpu, hcpu);
 	svm_htlb_catchup(vcpu, hcpu);
@@ -1774,7 +1777,7 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 #endif
 
 		svm_vcpu_guest_fpu_enter(vcpu);
-		svm_vmrun(cpudata->vmcb_pa, cpudata->gprs);
+		svm_vmrun(cpudata->vmcb_pa, cpudata->gprs, hgdt);
 		svm_htlb_flush_ack(cpudata, machgen);
 		svm_vcpu_guest_fpu_leave(vcpu);
 		svm_stgi();

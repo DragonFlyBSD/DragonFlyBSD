@@ -35,6 +35,31 @@
 
 #include "nvmm_x86.h"
 
+#ifdef ASM_NVMM
+
+#define ASM_FUNCTION(_symname_)		\
+	.text;				\
+	.align 16, 0xCC;		\
+	.globl _symname_;		\
+	.type _symname_, @function;	\
+	_symname_:
+
+#define ASM_END(_symname_)		\
+	.size _symname_, . - _symname_
+
+#if defined(__NetBSD__)
+#include "assym.h"
+#include <machine/asm.h>
+#include <machine/segments.h>
+#define DS_ES_VALUE	GSEL(GUDATA_SEL, SEL_UPL)
+#elif defined(__DragonFly__)
+#include "assym.s"
+#include <machine/segments.h>
+#define DS_ES_VALUE	GSEL(GUDATA_SEL, SEL_UPL)
+#endif
+
+#endif /* ASM_NVMM */
+
 /*
  * Undefine all the macros to avoid redefinition warnings.
  *

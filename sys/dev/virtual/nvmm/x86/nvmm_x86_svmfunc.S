@@ -26,25 +26,8 @@
  * SUCH DAMAGE.
  */
 
-#if defined(__NetBSD__)
-/* Override user-land alignment before including asm.h */
-#define ALIGN_DATA	.align	8
-#define ALIGN_TEXT	.align 16,0x90
-#define _ALIGN_TEXT	ALIGN_TEXT
-#define _LOCORE
-#include "assym.h"
-#include <machine/asm.h>
-#elif defined(__DragonFly__)
-#include <machine/asmacros.h>
-#include "assym.s"
-#endif
-
-#include <machine/segments.h>
-
 #define ASM_NVMM
 #include "nvmm_x86_internal.h"
-
-	.text
 
 #define HOST_SAVE_GPRS		\
 	pushq	%rbx		;\
@@ -75,26 +58,16 @@
 	wrmsr
 
 #define HOST_SAVE_TR		\
+	pushq	%rdx		;\
 	strw	%ax		;\
 	pushq	%rax
 
-#if defined(__NetBSD__)
 #define HOST_RESTORE_TR				\
 	popq	%rax				;\
 	movzwq	%ax,%rdx			;\
-	movq	CPUVAR(GDT),%rax		;\
-	andq	$~0x0200,4(%rax,%rdx,1)		;\
-	ltrw	%dx
-#elif defined(__DragonFly__)
-/* In DragonFly, PCPU(tss_gdt) points directly to the gdt[] entry for the
- * current CPU's TSS descriptor; while NetBSD's CPUVAR(GDT) points to the
- * gdtstore[] table. */
-#define HOST_RESTORE_TR				\
 	popq	%rax				;\
-	movq	PCPU(tss_gdt),%rdx		;\
-	andq	$~0x0200,4(%rdx)		;\
-	ltrw	%ax
-#endif
+	andq	$~0x0200,4(%rax,%rdx, 1)	;\
+	ltrw	%dx
 
 #define HOST_SAVE_LDT		\
 	sldtw	%ax		;\
@@ -143,8 +116,9 @@
 /*
  * %rdi = PA of VMCB
  * %rsi = VA of guest GPR state
+ * %rdx = VA of host GDT
  */
-ENTRY(svm_vmrun)
+ASM_FUNCTION(svm_vmrun)
 	/* Save the Host GPRs. */
 	HOST_SAVE_GPRS
 
@@ -155,7 +129,7 @@ ENTRY(svm_vmrun)
 	HOST_SAVE_MSR(MSR_GSBASE)
 
 	/* Reset DS and ES. */
-	movq	$GSEL(GUDATA_SEL, SEL_UPL),%rax
+	movq	$DS_ES_VALUE,%rax
 	movw	%ax,%ds
 	movw	%ax,%es
 
@@ -202,4 +176,4 @@ ENTRY(svm_vmrun)
 	HOST_RESTORE_GPRS
 
 	retq
-END(svm_vmrun)
+ASM_END(svm_vmrun)
