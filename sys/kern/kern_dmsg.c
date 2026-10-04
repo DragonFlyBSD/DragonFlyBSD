@@ -139,6 +139,8 @@ kdmsg_iocom_reconnect(kdmsg_iocom_t *iocom, struct file *fp,
 	lockmgr(&iocom->msglk, LK_EXCLUSIVE);
 	atomic_set_int(&iocom->msg_ctl, KDMSG_CLUSTERCTL_KILLRX);
 	while (iocom->msgrd_td || iocom->msgwr_td) {
+		if (iocom->msg_fp)
+			fp_shutdown(iocom->msg_fp, SHUT_RDWR);
 		wakeup(&iocom->msg_ctl);
 		lksleep(iocom, &iocom->msglk, 0, "clstrkl", hz);
 	}
