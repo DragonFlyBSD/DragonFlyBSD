@@ -27,7 +27,7 @@
 .\" ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd May 1, 2022
+.Dd October 4, 2026
 .Dt PF.CONF 5
 .Os
 .Sh NAME
@@ -2531,8 +2531,15 @@ Once this limit is reached, fragments that would have to be cached
 are dropped until other entries time out.
 The timeout value can also be adjusted.
 .Pp
-Currently, only IPv4 fragments are supported and IPv6 fragments
-are blocked unconditionally.
+Fragment reassembly is implemented only for IPv4.
+IPv6 fragments are filtered as the fragment header protocol,
+not the encapsulated transport protocol.
+TCP/UDP port rules and ICMPv6 type rules do not pass them;
+an IP-header-only rule or the default rule may do so.
+The
+.Ar fragment reassemble
+modifier does not change this for IPv6.
+A broad pass rule does not enforce transport port or ICMPv6 type restrictions.
 .Sh ANCHORS
 Besides the main ruleset,
 .Xr pfctl 8
