@@ -22,6 +22,8 @@
  * IN THE SOFTWARE.
  */
 
+#include <sys/bus.h>
+
 #include <linux/device.h>
 
 #include <drm/drm_sysfs.h>
@@ -55,6 +57,13 @@ void drm_sysfs_connector_remove(struct drm_connector *connector)
 
 void drm_sysfs_hotplug_event(struct drm_device *dev)
 {
+	char data[32];
+
+	if (dev->primary == NULL)
+		return;
+
+	ksnprintf(data, sizeof(data), "cdev=dri/card%d", dev->primary->index);
+	devctl_notify("DRM", "CONNECTOR", "HOTPLUG", data);
 }
 
 int drm_class_device_register(struct device *dev)
