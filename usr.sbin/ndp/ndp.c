@@ -279,8 +279,7 @@ main(int argc, char **argv)
 	if (dflag) {
 		if (argc != 1)
 			usage();
-		delete(argv[0]);
-		exit(0);
+		exit(delete(argv[0]) ? 1 : 0);
 	}
 	if (pflag) {
 		plist();
@@ -524,25 +523,22 @@ delete(char *host)
 	}
 	sin = (struct sockaddr_in6 *)(rtm + 1);
 	sdl = (struct sockaddr_dl *)(RT_ROUNDUP(sin->sin6_len) + (char *)sin);
-	if (IN6_ARE_ADDR_EQUAL(&sin->sin6_addr, &sin_m.sin6_addr)) {
-		if (sdl->sdl_family == AF_LINK &&
-		    (rtm->rtm_flags & RTF_LLINFO) &&
-		    !(rtm->rtm_flags & RTF_GATEWAY)) {
-			goto delete;
-		}
-		/*
-		 * IPv4 arp command retries with sin_other = SIN_PROXY here.
-		 */
-		fprintf(stderr, "delete: cannot delete non-NDP entry\n");
-		return 1;
-	}
-
-delete:
-	if (sdl->sdl_family != AF_LINK) {
-		printf("cannot locate %s\n", host);
+	if (!IN6_ARE_ADDR_EQUAL(&sin->sin6_addr, &sin_m.sin6_addr)) {
+		fprintf(stderr, "cannot locate %s\n", host);
 		return (1);
 	}
-	if (rtmsg(RTM_DELETE) == 0) {
+	if (sdl->sdl_family != AF_LINK ||
+	    !(rtm->rtm_flags & RTF_LLINFO) ||
+	    (rtm->rtm_flags & RTF_GATEWAY))
+	{
+		fprintf(stderr, "delete: cannot delete non-NDP entry\n");
+		return (1);
+	}
+	if (rtmsg(RTM_DELETE) < 0) {
+		perror(host);
+		return (1);
+	}
+	{
 		struct sockaddr_in6 s6 = *sin; /* XXX: for safety */
 
 #ifdef __KAME__
@@ -890,19 +886,40 @@ doit:
 	l = rtm->rtm_msglen;
 	rtm->rtm_seq = ++seq;
 	rtm->rtm_type = cmd;
-	if ((rlen = write(s, (char *)&m_rtmsg, l)) < 0) {
-		if (errno != ESRCH || cmd != RTM_DELETE) {
-			perror("writing to routing socket");
+	do {
+		rlen = write(s, (char *)&m_rtmsg, l);
+	} while (rlen < 0 && errno == EINTR);
+	if (rlen < 0)
+		return (-1);
+	if (rlen != l) {
+		errno = EIO;
+		return (-1);
+	}
+	for (;;) {
+		l = read(s, (char *)&m_rtmsg, sizeof(m_rtmsg));
+		if (l < 0) {
+			if (errno == EINTR)
+				continue;
 			return (-1);
 		}
+		if (l == 0) {
+			errno = EIO;
+			return (-1);
+		}
+		if (l < (int)sizeof(*rtm) || rtm->rtm_version != RTM_VERSION ||
+		    rtm->rtm_type != cmd || rtm->rtm_seq != seq ||
+		    rtm->rtm_pid != pid)
+			continue;
+		if (rtm->rtm_msglen < sizeof(*rtm) || rtm->rtm_msglen > l) {
+			errno = EIO;
+			return (-1);
+		}
+		if (rtm->rtm_errno) {
+			errno = rtm->rtm_errno;
+			return (-1);
+		}
+		return (0);
 	}
-	do {
-		l = read(s, (char *)&m_rtmsg, sizeof(m_rtmsg));
-	} while (l > 0 && (rtm->rtm_seq != seq || rtm->rtm_pid != pid));
-	if (l < 0)
-		fprintf(stderr, "ndp: read from routing socket: %s\n",
-		    strerror(errno));
-	return (0);
 }
 
 void
