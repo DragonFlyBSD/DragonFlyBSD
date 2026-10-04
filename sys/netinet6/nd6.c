@@ -1321,10 +1321,12 @@ nd6_rtrequest(int req, struct rtentry *rt)
 			ln->ln_expire = time_uptime;
 		}
 		rt->rt_flags |= RTF_LLINFO;
-		ln->ln_next = llinfo_nd6.ln_next;
-		llinfo_nd6.ln_next = ln;
-		ln->ln_prev = &llinfo_nd6;
-		ln->ln_next->ln_prev = ln;
+		if (mycpuid == 0) {
+			ln->ln_next = llinfo_nd6.ln_next;
+			llinfo_nd6.ln_next = ln;
+			ln->ln_prev = &llinfo_nd6;
+			ln->ln_next->ln_prev = ln;
+		}
 
 		/*
 		 * check if rt_key(rt) is one of my address assigned
@@ -1412,9 +1414,11 @@ nd6_rtrequest(int req, struct rtentry *rt)
 				in6_delmulti(in6m);
 		}
 		nd6_inuse--;
-		ln->ln_next->ln_prev = ln->ln_prev;
-		ln->ln_prev->ln_next = ln->ln_next;
-		ln->ln_prev = NULL;
+		if (ln->ln_prev != NULL) {
+			ln->ln_next->ln_prev = ln->ln_prev;
+			ln->ln_prev->ln_next = ln->ln_next;
+			ln->ln_prev = NULL;
+		}
 		rt->rt_llinfo = 0;
 		rt->rt_flags &= ~RTF_LLINFO;
 		if (ln->ln_hold)
