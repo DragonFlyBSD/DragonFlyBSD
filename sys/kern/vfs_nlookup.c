@@ -921,7 +921,7 @@ nlookup_start:
 		 * POSIX junk
 		 */
 		if (nd->nl_flags & NLC_CREATE)
-			error = EEXIST;
+			error = EISDIR;
 		else if (nd->nl_flags & NLC_DELETE)
 			error = (wasdotordotdot == 1) ? EINVAL : ENOTEMPTY;
 		else
