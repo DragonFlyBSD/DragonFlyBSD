@@ -124,10 +124,20 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, host_down_time, CTLFLAG_RW,
 
 #define	rt_expire	rt_rmx.rmx_expire
 
+/*
+ * The rt_expire for a cloned and unresolved ARP entry.
+ *
+ * Can't directly use 'time_uptime' because it's zero during the first second
+ * after boot, which gives rt_expire = 0, denoting a permanent route.  Adding
+ * one to 'time_uptime' to avoid this edge case.
+ */
+#define	arp_expire_unresolved	(time_uptime + 1)
+
 struct llinfo_arp {
 	LIST_ENTRY(llinfo_arp) la_le;
 	struct	rtentry *la_rt;
 	struct	mbuf *la_hold;	/* last packet until resolved/timeout */
+	time_t	la_last_request; /* valid only when la_asked != 0 */
 	u_short	la_preempt;	/* countdown for pre-expiry arps */
 	u_short	la_asked;	/* #times we QUERIED following expiration */
 };
@@ -249,7 +259,7 @@ arp_rtrequest(int req, struct rtentry *rt)
 			gate = rt->rt_gateway;
 			SDL(gate)->sdl_type = rt->rt_ifp->if_type;
 			SDL(gate)->sdl_index = rt->rt_ifp->if_index;
-			rt->rt_expire = time_uptime;
+			rt->rt_expire = 0;	/* parent routes never expire */
 			break;
 		}
 		/*
@@ -286,6 +296,8 @@ arp_rtrequest(int req, struct rtentry *rt)
 		bzero(la, sizeof *la);
 		la->la_rt = rt;
 		rt->rt_flags |= RTF_LLINFO;
+		if (rt->rt_flags & RTF_WASCLONED)
+			rt->rt_expire = arp_expire_unresolved;
 		LIST_INSERT_HEAD(&arp_data[mycpuid]->llinfo_list, la, la_le);
 
 #ifdef INET
@@ -511,6 +523,7 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 	struct rtentry *rt = NULL;
 	struct llinfo_arp *la = NULL;
 	struct sockaddr_dl *sdl;
+	time_t now;
 	int error;
 
 	if (m->m_flags & M_BCAST) {	/* broadcast */
@@ -603,14 +616,17 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 
 	if (rt->rt_expire || ((rt->rt_flags & RTF_STATIC) && !sdl->sdl_alen)) {
 		rt->rt_flags &= ~RTF_REJECT;
-		if (la->la_asked == 0 || rt->rt_expire != time_uptime) {
-			rt->rt_expire = time_uptime;
+		now = time_uptime;
+		if (la->la_asked == 0 || la->la_last_request != now) {
+			la->la_last_request = now;
+			rt->rt_expire = arp_expire_unresolved;
 			arprequest(ifp,
 				   &SIN(rt->rt_ifa->ifa_addr)->sin_addr,
 				   &SIN(dst)->sin_addr,
 				   NULL);
 			if (la->la_asked++ >= arp_maxtries) {
-				rt->rt_expire += arpt_down;
+				if (rt->rt_expire != 0)
+					rt->rt_expire = now + arpt_down;
 				la->la_preempt = arp_maxtries;
 				rt_rtmsg(RTM_MISS, rt, rt->rt_ifp, 0);
 			}
