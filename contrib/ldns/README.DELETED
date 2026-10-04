@@ -1,15 +1,12 @@
-.gitlab-ci.yml
-.travis.yml
 Changelog
 Makefile.in
-README
 README.git
 README.snapshots
-README-Travis.md
 aclocal.m4
 acx_nlnetlabs.m4
 ax_pkg_swig.m4
 ax_python_devel.m4
+compat/asctime_r.c
 compat/calloc.c
 compat/ctime_r.c
 compat/fake-rfc2553.c
@@ -36,7 +33,6 @@ doc/
 drill/ChangeLog.22-nov-2005
 drill/README
 drill/REGRESSIONS
-drill/drill.1.in
 drill/install-sh
 examples/
 install-sh
@@ -44,9 +40,8 @@ ldns/common.h.in
 ldns/config.h.in
 ldns/net.h.in
 ldns/util.h.in
-libdns.doxygen
-libdns.vim
 libdns.doxygen.in
+libdns.vim
 linktest.c
 ltmain.sh
 m4/
