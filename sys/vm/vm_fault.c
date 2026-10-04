@@ -952,8 +952,9 @@ vm_fault_bypass(struct faultstate *fs, vm_pindex_t first_pindex,
 	 * This will try to wire/unwire a page, which can't be done with
 	 * a soft-busied page.
 	 */
-	if (fs->fault_flags & VM_FAULT_WIRE_MASK)
+	if ((fs->fault_flags & VM_FAULT_WIRE_MASK) || (fs->wflags & FW_WIRED)) {
 		return KERN_FAILURE;
+	}
 
 	/*
 	 * Can't handle VPAGETABLE - requires vm_fault_vpagetable() to

@@ -5266,9 +5266,17 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		vm_page_wire_quick(pt_pv->pv_m);
 		atomic_add_long(&pt_pv->pv_pmap->pm_stats.resident_count, 1);
 	}
-	if (wired && (origpte & pmap->pmap_bits[PG_W_IDX]) == 0) {
+	if (wired) {
 		atomic_add_long(&pmap->pm_stats.wired_count, 1);
-		vm_page_wire(m);
+		if ((m->flags & PG_FICTITIOUS) == 0) {
+			if (oldm == m &&
+			    (origpte & pmap->pmap_bits[PG_W_IDX]))
+			{
+				vm_page_wire_quick(m);
+			} else {
+				vm_page_wire(m);
+			}
+		}
 	}
 
 	/*
