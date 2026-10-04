@@ -1,12 +1,8 @@
-# $FreeBSD: src/lib/libexpat/Makefile,v 1.9 2010/01/02 09:58:07 ed Exp $
-
 LDNS=		${.CURDIR}/../../contrib/ldns
 
 LIB=		private_ldns
 SHLIB_MAJOR=	3
 PRIVATELIB=	shpub
-
-NO_STRICT_ALIASING=
 
 SRCS+=		buffer.c dname.c dnssec.c dnssec_verify.c dnssec_zone.c \
 		error.c higher.c host2str.c host2wire.c keys.c net.c \
@@ -28,6 +24,7 @@ INCS+=		buffer.h \
 		dnssec_verify.h \
 		dnssec_zone.h \
 		duration.h \
+		edns.h \
 		error.h \
 		higher.h \
 		host2str.h \
@@ -57,7 +54,7 @@ CFLAGS+= 	-I${.CURDIR} -I${LDNS}
 LDADD=		-lprivate_crypto
 DPADD=		${LIBCRYPTO}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-LDFLAGS+=       -rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
+LDFLAGS+=       ${PRIVATELIB_LDFLAGS}
 
 WARNS?=		2
 
