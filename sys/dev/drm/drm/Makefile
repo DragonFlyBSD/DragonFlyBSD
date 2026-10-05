@@ -37,6 +37,7 @@ SRCS	= \
 	drm_hashtab.c \
 	drm_ioctl.c \
 	drm_irq.c \
+	drm_lease.c \
 	drm_lock.c \
 	drm_memory.c \
 	drm_mipi_dsi.c \

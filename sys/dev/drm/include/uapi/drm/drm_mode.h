@@ -854,7 +854,7 @@ struct drm_mode_list_lessees {
 	__u32 pad;
 
 	/** Pointer to lessees.
-	 * pointer to __u64 array of lessee ids
+	 * pointer to __u32 array of lessee ids
 	 */
 	__u64 lessees_ptr;
 };
