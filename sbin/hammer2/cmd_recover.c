@@ -81,7 +81,7 @@ typedef struct dirent_entry {
 
 typedef struct inode_entry {
 	struct inode_entry *next;
-	struct inode_entry *next2;	/* secondary (ino ^ data_off) hash */
+	struct inode_entry *next2;	/* secondary (inode, offset) hash */
 	hammer2_off_t	data_off;
 	hammer2_key_t	inum;		/* from bref or inode meta */
 	//hammer2_inode_data_t inode;	/* (removed, too expensive) */
@@ -735,6 +735,14 @@ topology_check_duplicate_indirect(topology_entry_t *topo,
 	return 0;
 }
 
+static uint32_t
+inode_hash2(hammer2_key_t inum, hammer2_off_t data_off)
+{
+	uint64_t key[2] = { inum, data_off };
+
+	return XXH64(key, sizeof(key), XXH_HAMMER2_SEED) & HTABLE_MASK;
+}
+
 /*
  * Valid and record an inode found on media.  There can be many versions
  * of the same inode number present on the media.
@@ -749,8 +757,7 @@ enter_inode(hammer2_blockref_t *bref)
 	size_t psize;
 
 	hv = (bref->key ^ (bref->key >> 16)) & HTABLE_MASK;
-	hv2 = (bref->key ^ (bref->key >> 16) ^ (bref->data_off >> 10)) &
-	      HTABLE_MASK;
+	hv2 = inode_hash2(bref->key, bref->data_off);
 
 	/*
 	 * Ignore duplicate inodes, use the secondary inode hash table's
@@ -858,8 +865,7 @@ enter_inode_untested(hammer2_inode_data_t *ip, hammer2_off_t loff)
 	inode_entry_t *scan;
 
 	hv = (ip->meta.inum ^ (ip->meta.inum >> 16)) & HTABLE_MASK;
-	hv2 = (ip->meta.inum ^ (ip->meta.inum >> 16) ^ (loff >> 10)) &
-	      HTABLE_MASK;
+	hv2 = inode_hash2(ip->meta.inum, loff);
 
 	for (scan = InodeHash2[hv2]; scan; scan = scan->next2) {
 		if (ip->meta.inum == scan->inum &&
