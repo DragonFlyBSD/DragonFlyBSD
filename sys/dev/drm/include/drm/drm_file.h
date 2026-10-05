@@ -43,6 +43,7 @@
 #include <sys/event.h>
 /* for d_open_t, d_close_t, and d_read_t */
 #include <sys/device.h>
+#include <sys/spinlock.h>
 #endif
 
 struct dma_fence;
@@ -84,6 +85,12 @@ struct drm_minor {
 
 	struct list_head debugfs_list;
 	struct lock debugfs_lock; /* Protects debugfs_list. */
+
+#ifdef __DragonFly__
+	/* devfs node created by drm_sysfs_minor_alloc(); destroyed by
+	 * drm_minor_free() so unload leaves no stale /dev/dri entry. */
+	struct cdev *devnode;
+#endif
 };
 
 /**
@@ -229,6 +236,7 @@ struct drm_file {
 	 * primary nodes and authentication <drm_primary_node>`.
 	 */
 	struct drm_master *master;
+	struct spinlock master_lookup_lock;
 
 	/** @pid: Process that opened this file. */
 	pid_t pid;
@@ -331,9 +339,20 @@ struct drm_file {
 	 */
 	int event_space;
 
+#ifdef __DragonFly__
+	/**
+	 * @event_bytes:
+	 *
+	 * Bytes currently ready in @event_list for DragonFly kqueue readiness.
+	 * Protected by &drm_device.event_lock for updates. Readers in kqueue
+	 * filters use this as a best-effort readiness hint and must not take
+	 * event_lock because KNOTE can run while drm_send_event_locked() holds it.
+	 */
+	int event_bytes;
+#endif
+
 	/** @event_read_lock: Serializes drm_read(). */
 	struct lock event_read_lock;
-
 	/**
 	 * @prime:
 	 *

@@ -785,6 +785,18 @@ long drm_ioctl_kernel(struct file *file, drm_ioctl_t *func, void *kdata,
 EXPORT_SYMBOL(drm_ioctl_kernel);
 #endif
 
+#ifdef __DragonFly__
+static int
+drm_ioctl_bsd_errno(int retcode)
+{
+	if (retcode < 0)
+		retcode = -retcode;
+	if (retcode == ERESTARTSYS)
+		retcode = EINTR;
+	return retcode;
+}
+#endif
+
 /**
  * drm_ioctl - ioctl callback implementation for DRM drivers
  * @filp: file this ioctl is called on
@@ -814,7 +826,11 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	dev = file_priv->minor->dev;
 
 	if (drm_dev_is_unplugged(dev))
+#ifdef __DragonFly__
+		return drm_ioctl_bsd_errno(-ENODEV);
+#else
 		return -ENODEV;
+#endif
 
 	is_driver_ioctl = nr >= DRM_COMMAND_BASE && nr < DRM_COMMAND_END;
 
@@ -838,7 +854,11 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	/* Do not trust userspace, use our own definition */
 	func = ioctl->func;
 
+#ifdef __DragonFly__
+	if (unlikely(!func && ioctl->func_ext == NULL)) {
+#else
 	if (unlikely(!func)) {
+#endif
 		DRM_DEBUG("no function\n");
 		retcode = EINVAL;
 		goto err_i1;
@@ -850,18 +870,35 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 
 	/* Enforce sane locking for modern driver ioctls. */
 	if (!drm_core_check_feature(dev, DRIVER_LEGACY) ||
-	    (ioctl->flags & DRM_UNLOCKED))
-		retcode = -func(dev, data, file_priv);
-	else {
+	    (ioctl->flags & DRM_UNLOCKED)) {
+#ifdef __DragonFly__
+		if (ioctl->func_ext != NULL)
+			retcode = -ioctl->func_ext(dev, data, file_priv,
+			    IOCPARM_LEN(cmd));
+		else
+#endif
+			retcode = -func(dev, data, file_priv);
+	} else {
 		mutex_lock(&drm_global_mutex);
-		retcode = -func(dev, data, file_priv);
+#ifdef __DragonFly__
+		if (ioctl->func_ext != NULL)
+			retcode = -ioctl->func_ext(dev, data, file_priv,
+			    IOCPARM_LEN(cmd));
+		else
+#endif
+			retcode = -func(dev, data, file_priv);
 		mutex_unlock(&drm_global_mutex);
 	}
 
+#ifndef __DragonFly__
 	if (retcode == ERESTARTSYS)
-			retcode = EINTR;
+		retcode = EINTR;
+#endif
 
       err_i1:
+#ifdef __DragonFly__
+	retcode = drm_ioctl_bsd_errno(retcode);
+#endif
 	if (!ioctl)
 		DRM_DEBUG_FIOCTL("invalid ioctl: pid=%d, dev=0x%lx, auth=%d, cmd=0x%02lx, nr=0x%02x\n",
 			  DRM_CURRENTPID,

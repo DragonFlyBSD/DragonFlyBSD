@@ -187,6 +187,21 @@ static void drm_minor_free(struct drm_device *dev, unsigned int type)
 	put_device(minor->kdev);
 #endif
 
+#ifdef __DragonFly__
+	/*
+	 * Destroy the devfs node created by drm_sysfs_minor_alloc().
+	 * Without this the /dev/dri entry outlives the DRM device: it
+	 * stays visible after unload and a re-registration would create a
+	 * duplicate node with the same name.
+	 */
+	DRM_DEBUG("minor=%d type=%d devnode=%p\n",
+		  minor->index, minor->type, minor->devnode);
+	if (minor->devnode != NULL) {
+		destroy_dev(minor->devnode);
+		minor->devnode = NULL;
+	}
+#endif
+
 	spin_lock_irqsave(&drm_minor_lock, flags);
 	idr_remove(&drm_minors_idr, minor->index);
 	spin_unlock_irqrestore(&drm_minor_lock, flags);
@@ -738,6 +753,7 @@ static void drm_dev_release(struct kref *ref)
 {
 	struct drm_device *dev = container_of(ref, struct drm_device, ref);
 
+	DRM_DEBUG("dev=%p driver=%s\n", dev, dev->driver->name);
 	if (dev->driver->release) {
 		dev->driver->release(dev);
 	} else {

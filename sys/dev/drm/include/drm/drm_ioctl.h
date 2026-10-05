@@ -55,6 +55,10 @@ struct file;
  */
 typedef int drm_ioctl_t(struct drm_device *dev, void *data,
 			struct drm_file *file_priv);
+#ifdef __DragonFly__
+typedef int drm_ioctl_ext_t(struct drm_device *dev, void *data,
+			struct drm_file *file_priv, size_t data_size);
+#endif
 
 /**
  * drm_ioctl_compat_t - compatibility DRM ioctl function type.
@@ -144,6 +148,9 @@ struct drm_ioctl_desc {
 	unsigned int cmd;
 	enum drm_ioctl_flags flags;
 	drm_ioctl_t *func;
+#ifdef __DragonFly__
+	drm_ioctl_ext_t *func_ext;
+#endif
 	const char *name;
 };
 
