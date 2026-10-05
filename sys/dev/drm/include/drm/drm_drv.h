@@ -65,6 +65,7 @@ struct drm_printer;
 #define DRIVER_ATOMIC			0x10000
 #define DRIVER_KMS_LEGACY_CONTEXT	0x20000
 #define DRIVER_SYNCOBJ                  0x40000
+#define DRIVER_SYNCOBJ_TIMELINE         0x80000
 
 /**
  * struct drm_driver - DRM driver structure
