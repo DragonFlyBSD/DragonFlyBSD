@@ -566,6 +566,18 @@ struct drm_driver {
 	 */
 	struct cdev_pager_ops *gem_vm_ops;
 
+	/**
+	 * @mmap_single: DragonFly-only optional mmap routing hook.
+	 *
+	 * When set, drm_mmap_single() calls this instead of the generic
+	 * ttm_bo_mmap_single()/drm_gem_mmap_single() routing, so a driver
+	 * can own the pager ops (and with them the mapping lifetime)
+	 * without changing the shared TTM/GEM paths other drivers use.
+	 */
+	int (*mmap_single)(struct file *fp, struct drm_device *dev,
+			   vm_ooffset_t *offset, vm_size_t size,
+			   struct vm_object **obj_res, int nprot);
+
 	/** @major: driver major number */
 	int major;
 	/** @minor: driver minor number */

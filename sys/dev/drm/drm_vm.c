@@ -58,9 +58,13 @@ drm_mmap(struct dev_mmap_args *ap)
 	 * NOTE: If ddev->drm_ttm_bdev is not setup properly, this path
 	 *	 may be hit with a NULL filp and panic.
 	 */
+	if (dev == NULL || filp == NULL)
+		return (ENODEV);
 	priv = filp->private_data;
+	if (priv == NULL)
+		return (EACCES);
 	if (!priv->authenticated)
-		return -EACCES;
+		return (EACCES);
 
 	DRM_DEBUG("called with offset %016jx\n", (uintmax_t)offset);
 	if (dev->dma && offset < ptoa(dev->dma->page_count)) {

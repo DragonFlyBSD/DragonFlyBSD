@@ -1278,7 +1278,11 @@ drm_mmap_single(struct dev_mmap_single_args *ap)
 	int nprot = ap->a_nprot;
 
 	dev = drm_get_device_from_kdev(kdev);
-	if (dev->drm_ttm_bdev != NULL) {
+	if (dev->driver->mmap_single != NULL) {
+		/* Driver owns mmap routing (and the pager ops with it). */
+		return (dev->driver->mmap_single(ap->a_fp, dev,
+						 offset, size, obj_res, nprot));
+	} else if (dev->drm_ttm_bdev != NULL) {
 		return (ttm_bo_mmap_single(ap->a_fp, dev,
 					   offset, size, obj_res, nprot));
 	} else if ((dev->driver->driver_features & DRIVER_GEM) != 0) {

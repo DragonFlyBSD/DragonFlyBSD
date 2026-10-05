@@ -326,12 +326,16 @@ int ttm_mem_global_init(struct ttm_mem_global *glob)
 	}
 
 	/*
-	 * Managed contiguous memory for TTM.  Only use kernel-reserved
-	 * dma memory for TTM, which can be controlled via /boot/loader.conf
-	 * (e.g. vm.dma_reserved=256m).  This is the only truly dependable
-	 * DMA memory.
+	 * TTM accounts page-granular TT allocations, not only the small
+	 * physically-contiguous DMA reserve.  vm_contig_avail_pages() tracks
+	 * that reserve and can be far below the memory pci_map_page() can use
+	 * for scatter/gather TT backing, which makes long-running DRI3/Present
+	 * workloads fail after a few dozen MiB.  Keep the old dma32 caution by
+	 * capping the accounting window at 4 GiB; zone max is still half that.
 	 */
-	mem = (uint64_t)vm_contig_avail_pages() * PAGE_SIZE;
+	mem = (uint64_t)physmem * PAGE_SIZE;
+	if (mem > (4ULL << 30))
+		mem = 4ULL << 30;
 
 	ret = ttm_mem_init_kernel_zone(glob, mem);
 	if (unlikely(ret != 0))
