@@ -166,7 +166,7 @@ EXPORT_SYMBOL(dma_fence_array_ops);
  */
 struct dma_fence_array *dma_fence_array_create(int num_fences,
 					       struct dma_fence **fences,
-					       u64 context, unsigned seqno,
+					       u64 context, u64 seqno,
 					       bool signal_on_any)
 {
 	struct dma_fence_array *array;

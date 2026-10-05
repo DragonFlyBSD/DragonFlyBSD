@@ -72,6 +72,7 @@ SRCS	= \
 	linux_dmi.c \
 	linux_fence.c \
 	linux_fence-array.c \
+	linux_fence-chain.c \
 	linux_hdmi.c \
 	linux_hrtimer.c \
 	linux_i2c.c \
