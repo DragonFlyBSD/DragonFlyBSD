@@ -76,6 +76,35 @@
  */
 #define DRM_REDUNDANT_VBLIRQ_THRESH_NS 1000000
 
+#ifdef __DragonFly__
+SYSCTL_DECL(_hw_dri);
+static uint64_t drm_vblank_event_send_count;
+static uint64_t drm_vblank_event_wait_queue_count;
+static uint64_t drm_vblank_event_crtc_queue_count;
+static uint64_t drm_vblank_event_immediate_count;
+static uint64_t drm_vblank_event_queued_count;
+static uint64_t drm_vblank_event_handle_count;
+static uint64_t drm_vblank_event_handle_deliver_count;
+static uint64_t drm_vblank_event_disable_flush_count;
+
+SYSCTL_UQUAD(_hw_dri, OID_AUTO, drm_vblank_event_send_count, CTLFLAG_RD,
+    &drm_vblank_event_send_count, 0, "DRM vblank event send count");
+SYSCTL_UQUAD(_hw_dri, OID_AUTO, drm_vblank_event_wait_queue_count, CTLFLAG_RD,
+    &drm_vblank_event_wait_queue_count, 0, "DRM wait-vblank event queue count");
+SYSCTL_UQUAD(_hw_dri, OID_AUTO, drm_vblank_event_crtc_queue_count, CTLFLAG_RD,
+    &drm_vblank_event_crtc_queue_count, 0, "DRM CRTC sequence event queue count");
+SYSCTL_UQUAD(_hw_dri, OID_AUTO, drm_vblank_event_immediate_count, CTLFLAG_RD,
+    &drm_vblank_event_immediate_count, 0, "DRM vblank event immediate send count");
+SYSCTL_UQUAD(_hw_dri, OID_AUTO, drm_vblank_event_queued_count, CTLFLAG_RD,
+    &drm_vblank_event_queued_count, 0, "DRM vblank event queued count");
+SYSCTL_UQUAD(_hw_dri, OID_AUTO, drm_vblank_event_handle_count, CTLFLAG_RD,
+    &drm_vblank_event_handle_count, 0, "DRM vblank handler count");
+SYSCTL_UQUAD(_hw_dri, OID_AUTO, drm_vblank_event_handle_deliver_count, CTLFLAG_RD,
+    &drm_vblank_event_handle_deliver_count, 0, "DRM vblank handler delivery count");
+SYSCTL_UQUAD(_hw_dri, OID_AUTO, drm_vblank_event_disable_flush_count, CTLFLAG_RD,
+    &drm_vblank_event_disable_flush_count, 0, "DRM vblank disable flush count");
+#endif
+
 static bool
 drm_get_last_vbltimestamp(struct drm_device *dev, unsigned int pipe,
 			  ktime_t *tvblank, bool in_vblank_irq);
@@ -815,6 +844,9 @@ static void send_vblank_event(struct drm_device *dev,
 {
 	struct timespec64 tv;
 
+#ifdef __DragonFly__
+	drm_vblank_event_send_count++;
+#endif
 	switch (e->event.base.type) {
 	case DRM_EVENT_VBLANK:
 	case DRM_EVENT_FLIP_COMPLETE:
@@ -1151,6 +1183,9 @@ void drm_crtc_vblank_off(struct drm_crtc *crtc)
 
 	/* Send any queued vblank events, lest the natives grow disquiet */
 	seq = drm_vblank_count_and_time(dev, pipe, &now);
+#ifdef __DragonFly__
+	drm_vblank_event_handle_count++;
+#endif
 
 	list_for_each_entry_safe(e, t, &dev->vblank_event_list, base.link) {
 		if (e->pipe != pipe)
@@ -1158,6 +1193,9 @@ void drm_crtc_vblank_off(struct drm_crtc *crtc)
 		DRM_DEBUG("Sending premature vblank event on disable: "
 			  "wanted %llu, current %llu\n",
 			  e->sequence, seq);
+#ifdef __DragonFly__
+		drm_vblank_event_disable_flush_count++;
+#endif
 		list_del(&e->base.link);
 		drm_vblank_put(dev, pipe);
 		send_vblank_event(dev, e, seq, now);
@@ -1453,13 +1491,22 @@ static int drm_queue_vblank_event(struct drm_device *dev, unsigned int pipe,
 		  req_seq, seq, pipe);
 
 	trace_drm_vblank_event_queued(file_priv, pipe, req_seq);
+#ifdef __DragonFly__
+	drm_vblank_event_wait_queue_count++;
+#endif
 
 	e->sequence = req_seq;
 	if (vblank_passed(seq, req_seq)) {
+#ifdef __DragonFly__
+		drm_vblank_event_immediate_count++;
+#endif
 		drm_vblank_put(dev, pipe);
 		send_vblank_event(dev, e, seq, now);
 		vblwait->reply.sequence = seq;
 	} else {
+#ifdef __DragonFly__
+		drm_vblank_event_queued_count++;
+#endif
 		/* drm_handle_vblank_events will call drm_vblank_put */
 		list_add_tail(&e->base.link, &dev->vblank_event_list);
 		vblwait->reply.sequence = req_seq;
@@ -1652,6 +1699,9 @@ static void drm_handle_vblank_events(struct drm_device *dev, unsigned int pipe)
 	assert_spin_locked(&dev->event_lock);
 
 	seq = drm_vblank_count_and_time(dev, pipe, &now);
+#ifdef __DragonFly__
+	drm_vblank_event_handle_count++;
+#endif
 
 	list_for_each_entry_safe(e, t, &dev->vblank_event_list, base.link) {
 		if (e->pipe != pipe)
@@ -1661,6 +1711,9 @@ static void drm_handle_vblank_events(struct drm_device *dev, unsigned int pipe)
 
 		DRM_DEBUG("vblank event on %llu, current %llu\n",
 			  e->sequence, seq);
+#ifdef __DragonFly__
+		drm_vblank_event_handle_deliver_count++;
+#endif
 
 		list_del(&e->base.link);
 		drm_vblank_put(dev, pipe);
@@ -1890,14 +1943,23 @@ int drm_crtc_queue_sequence_ioctl(struct drm_device *dev, void *data,
 
 	if (ret)
 		goto err_unlock;
+#ifdef __DragonFly__
+	drm_vblank_event_crtc_queue_count++;
+#endif
 
 	e->sequence = req_seq;
 
 	if (vblank_passed(seq, req_seq)) {
+#ifdef __DragonFly__
+		drm_vblank_event_immediate_count++;
+#endif
 		drm_crtc_vblank_put(crtc);
 		send_vblank_event(dev, e, seq, now);
 		queue_seq->sequence = seq;
 	} else {
+#ifdef __DragonFly__
+		drm_vblank_event_queued_count++;
+#endif
 		/* drm_handle_vblank_events will call drm_vblank_put */
 		list_add_tail(&e->base.link, &dev->vblank_event_list);
 		queue_seq->sequence = req_seq;

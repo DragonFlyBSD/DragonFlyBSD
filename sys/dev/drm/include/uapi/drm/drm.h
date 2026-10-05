@@ -644,6 +644,7 @@ struct drm_gem_open {
 #define DRM_CAP_CRTC_IN_VBLANK_EVENT	0x12
 #define DRM_CAP_SYNCOBJ		0x13
 #define DRM_CAP_SYNCOBJ_TIMELINE	0x14
+#define DRM_CAP_ATOMIC_ASYNC_PAGE_FLIP	0x15
 
 /** DRM_IOCTL_GET_CAP ioctl argument type */
 struct drm_get_cap {
@@ -690,6 +691,15 @@ struct drm_get_cap {
  * also supporting DRM_CLIENT_CAP_ATOMIC
  */
 #define DRM_CLIENT_CAP_WRITEBACK_CONNECTORS	5
+
+/**
+ * DRM_CLIENT_CAP_CURSOR_PLANE_HOTSPOT
+ *
+ * If set to 1, the DRM core will expose virtualized cursor-plane hotspot
+ * semantics. Non-virtualized drivers which do not special-case cursor planes
+ * must reject this with EOPNOTSUPP.
+ */
+#define DRM_CLIENT_CAP_CURSOR_PLANE_HOTSPOT	6
 
 /** DRM_IOCTL_SET_CLIENT_CAP ioctl argument type */
 struct drm_set_client_cap {
@@ -960,6 +970,8 @@ extern "C" {
 #define DRM_IOCTL_SYNCOBJ_QUERY		DRM_IOWR(0xCB, struct drm_syncobj_timeline_array)
 #define DRM_IOCTL_SYNCOBJ_TRANSFER	DRM_IOWR(0xCC, struct drm_syncobj_transfer)
 #define DRM_IOCTL_SYNCOBJ_TIMELINE_SIGNAL DRM_IOWR(0xCD, struct drm_syncobj_timeline_array)
+#define DRM_IOCTL_MODE_GETFB2		DRM_IOWR(0xCE, struct drm_mode_fb_cmd2)
+#define DRM_IOCTL_MODE_CLOSEFB		DRM_IOWR(0xD0, struct drm_mode_closefb)
 
 /**
  * Device specific ioctls should only be in their respective headers
