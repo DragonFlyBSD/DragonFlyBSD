@@ -1,0 +1,216 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd October 5, 2026
+.Dt NVGPU 4
+.Os
+.Sh NAME
+.Nm nvgpu
+.Nd NVIDIA Turing graphics driver
+.Sh SYNOPSIS
+To load the driver at run time:
+.Bd -literal -offset indent
+kldload nvgpu
+.Ed
+To load the driver during system startup after filesystems are mounted,
+add the following line to
+.Xr rc.conf 5 :
+.Bd -literal -offset indent
+nvgpu_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver provides graphics and compute command submission, GPU virtual
+memory, and kernel mode setting for supported NVIDIA Turing GPUs.
+It uses NVIDIA's GPU System Processor (GSP) firmware to initialize and
+manage the hardware.
+The driver implements the nouveau DRM userspace ABI so that Mesa's NVK
+Vulkan driver can use it.
+Mesa's Zink driver provides OpenGL through Vulkan.
+The kernel driver does not itself implement either graphics API.
+.Pp
+The driver supplies primary and render nodes through
+.Xr drm 4 .
+Wayland compositors and X servers use the primary node for display
+configuration and page flips.
+Rendering and compute applications can use the render node without
+becoming the DRM master.
+Access to either node is subject to device permissions and, where
+applicable, the desktop's seat management policy.
+.Pp
+Supported interfaces include GEM buffer objects, memory mapping, PRIME
+buffer sharing, explicit VM_BIND and EXEC synchronization, binary and
+timeline synchronization objects, and atomic mode setting.
+Userspace must supply the dependencies between VM_BIND and EXEC
+operations; the driver does not insert a process-wide implicit barrier
+between them.
+.Ss Hardware
+The PCI device table contains TU102, TU104, and TU106 devices in the
+GeForce RTX 20-series, TITAN RTX, and Quadro RTX families.
+The GeForce RTX 2080 Ti (TU102) has been tested.
+A PCI ID match for another board does not imply equivalent validation,
+particularly for laptop display routing.
+.Pp
+Other GPU generations, including Ampere, Ada, and Blackwell, are not
+supported by this version.
+Video decoding and encoding engines are not exposed.
+HDMI or DisplayPort audio also requires the appropriate audio driver,
+normally
+.Xr snd_hda 4 .
+.Ss Firmware
+The driver requires the file-backed firmware loading support provided by
+.Xr firmware 9
+and an installed NVIDIA firmware package.
+It requests the following names:
+.Bd -literal -offset indent
+nvidia/tu102/acr/bl.bin
+nvidia/tu102/gsp/booter_load-570.144.bin
+nvidia/tu102/gsp/booter_unload-570.144.bin
+nvidia/tu102/gsp/bootloader-570.144.bin
+nvidia/tu102/gsp/gsp-570.144.bin
+.Ed
+.Pp
+Names are relative to the firmware search path, whose default includes
+.Pa /usr/local/lib/firmware
+and
+.Pa /usr/lib/firmware .
+TU104 and TU106 use the same
+.Pa tu102
+firmware directory.
+Version 570.144 is selected by the driver; there is no runtime firmware
+version selector.
+Firmware files are distributed separately from the kernel module and
+remain subject to NVIDIA's firmware license.
+.Pp
+Install all five files.
+The unload booter is needed to release protected firmware memory during
+detach so that a later attach can succeed.
+Although an initial attach can proceed without it, a missing unload
+booter is not a configuration suitable for unload and reload testing.
+Do not substitute a different firmware version by renaming files.
+.Ss Initialization
+Loading
+.Pa nvgpu.ko
+also loads its DRM module dependency; it is not necessary to load
+.Pa drm.ko
+explicitly.
+Firmware is obtained through
+.Xr firmware 9 ,
+not by explicitly loading a firmware kernel module.
+.Pp
+GPU initialization runs in a dedicated boot thread.
+Successful return from
+.Xr kldload 8
+does not by itself mean that firmware initialization and DRM registration
+have completed.
+Check the kernel messages for initialization errors before starting a
+display server.
+The existence of a device node alone is not a readiness notification.
+.Ss Memory and Synchronization
+Each client has GPU virtual memory and command channels.
+EXEC operations are scheduled when their input fences complete.
+Hardware completion wakes the corresponding work, which signals the
+completion fence used by synchronization objects.
+Display commits wait for their input fences before programming scanout.
+.Pp
+Buffer mappings may outlive the file descriptor used to create them.
+Closing a GEM handle or DRM descriptor does not release an outstanding
+userspace mapping.
+The driver does not implement eviction or live migration of bound
+buffers; an allocation that cannot be satisfied fails rather than
+evicting an existing buffer.
+.Ss Unloading
+To unload the GPU driver:
+.Bd -literal -offset indent
+kldunload nvgpu
+.Ed
+.Pp
+Active DRM clients, outstanding work, and surviving memory mappings can
+cause unloading to fail with
+.Er EBUSY .
+Stop display servers and rendering applications and release their
+mappings before retrying.
+Unloading is intended for development and driver replacement.
+It can remove the active display; restoration of the firmware console
+is not guaranteed.
+.Pp
+The shared DRM module remains resident because its Linux compatibility
+objects cannot currently be quiesced reliably for module unload.
+Unload only
+.Nm ;
+do not attempt to force removal of its dependencies.
+.Sh SYSCTL VARIABLES
+.Bl -tag -width "hw.nvgpu.debug"
+.It Va hw.nvgpu.debug
+Enable verbose driver messages when nonzero.
+The default is zero.
+This variable can be changed with
+.Xr sysctl 8
+after loading the module.
+To capture early initialization messages, set
+.Bd -literal -offset indent
+hw.nvgpu.debug="1"
+.Ed
+in
+.Xr loader.conf 5
+before booting.
+Console logging can perturb interrupt and scheduling timing;
+disable it when measuring performance.
+.El
+.Pp
+For lower-overhead tracing, the driver supplies
+.Xr ktr 4
+records under the
+.Li nvgpu
+name, with related shared-framework records under
+.Li drm .
+The module follows the kernel's KTR build configuration; it does not
+require KTR in a kernel built without it.
+NVGPU tracing is disabled by default, independently of
+.Va hw.nvgpu.debug .
+On a KTR-enabled kernel, use
+.Va debug.ktr.nvgpu_enable
+to select an event mask, then use
+.Xr ktrdump 8
+to inspect the records.
+Set the mask back to zero after the diagnostic window.
+Continuous tracing and frequent dumps can affect the workload being measured;
+do not run a permanent collector for normal desktop use.
+Do not assume that tracing is available merely because the module was
+built with trace points.
+.Sh FILES
+.Bl -tag -width "/dev/dri/renderD*"
+.It Pa /dev/dri/card*
+Primary DRM nodes for display control and rendering.
+.It Pa /dev/dri/renderD*
+Render nodes for unprivileged rendering, subject to device permissions.
+Minor numbers start at 128 and need not identify the first GPU.
+.It Pa /usr/local/lib/firmware/nvidia/tu102
+Usual location of the separately installed firmware files.
+.El
+.Sh DIAGNOSTICS
+When reporting a fault, include the PCI device ID, kernel and module
+versions, Mesa version, relevant kernel messages, and a reproducer.
+Distinguish successful device enumeration from successful rendering:
+Vulkan extension enumeration alone does not exercise GPU execution.
+.Pp
+An initialization failure involving a firmware name should first be
+checked against the installed files and the firmware search path.
+An unload failure should first be checked for open DRM clients and
+live mappings, including mappings whose original descriptor was closed.
+.Sh SEE ALSO
+.Xr drm 4 ,
+.Xr ktr 4 ,
+.Xr snd_hda 4 ,
+.Xr loader.conf 5 ,
+.Xr rc.conf 5 ,
+.Xr kldload 8 ,
+.Xr kldstat 8 ,
+.Xr kldunload 8 ,
+.Xr ktrdump 8 ,
+.Xr sysctl 8 ,
+.Xr firmware 9
+.Sh AUTHORS
+The
+.Nm
+driver was developed by
+.An "Leding Li" .
