@@ -461,9 +461,9 @@ do_io(char *path, u_long cmd, struct ccd_ioctl *cciop)
 }
 
 #define KVM_ABORT(kd, str) {						\
-	kvm_close((kd));						\
-	warnx("%s", (str));							\
+	warnx("%s", (str));						\
 	warnx("%s", kvm_geterr((kd)));					\
+	kvm_close((kd));						\
 	return (1);							\
 }
 
