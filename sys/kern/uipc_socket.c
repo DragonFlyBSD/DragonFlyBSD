@@ -2346,6 +2346,7 @@ sogetopt(struct socket *so, struct sockopt *sopt)
 		case SO_REUSEPORT:
 		case SO_BROADCAST:
 		case SO_OOBINLINE:
+		case SO_ACCEPTCONN:
 		case SO_TIMESTAMP:
 		case SO_NOSIGPIPE:
 		case SO_RERROR:
