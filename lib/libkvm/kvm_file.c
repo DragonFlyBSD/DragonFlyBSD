@@ -207,6 +207,7 @@ kvm_getfiles(kvm_t *kd, int op __unused, int arg __unused, int *cnt)
 		struct kinfo_proc *kproc0, *kproc;
 		int kproc_cnt, kproc_len;
 		struct nlist nl[2];
+		int ret;
 
 		/*
 		 * Get all processes and save them in kproc.
@@ -228,9 +229,11 @@ kvm_getfiles(kvm_t *kd, int op __unused, int arg __unused, int *cnt)
 		 */
 		memset(nl, 0, sizeof(nl));
 		nl[0].n_name = "_nfiles";
-		if (kvm_nlist(kd, nl) != 0) {
-			_kvm_err(kd, kd->program, "%s: no such symbol",
-			    nl[0].n_name);
+		ret = kvm_nlist(kd, nl);
+		if (ret != 0) {
+			if (ret > 0)
+				_kvm_err(kd, kd->program, "%s: no such symbol",
+				    nl[0].n_name);
 			free(kproc);
 			return NULL;
 		}
