@@ -925,7 +925,7 @@ found:
 		if (dc->kd == NULL)
 			errx(1, "kvm_open");
 
-		if (kvm_nlist(dc->kd, nl) < 0)
+		if (kvm_nlist(dc->kd, nl) != 0)
 			errx(1, "kvm_nlist: %s", kvm_geterr(dc->kd));
 
 		if (kvm_read(dc->kd, nl[0].n_value, &dcons_buf,

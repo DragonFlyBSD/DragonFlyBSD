@@ -33,6 +33,7 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <kvm.h>
+#include <limits.h>
 #include <nlist.h>
 #include <paths.h>
 #include <pwd.h>
@@ -59,6 +60,7 @@ struct shmid_ds	*shmsegs;
 static void	usage(void);
 static uid_t	user2uid(const char *);
 static gid_t	grp2gid(const char *);
+static void	kread(u_long, void *, size_t);
 
 static struct nlist symbols[] = {
 	{ .n_name = "_sema" },
@@ -129,6 +131,7 @@ main(int argc, char **argv)
 {
 	int     display = SHMINFO | MSGINFO | SEMINFO;
 	int     option = 0;
+	char	errbuf[_POSIX2_LINE_MAX];
 	char   *core, *namelist;
 	char	*user, *grp;
 	int     i;
@@ -206,15 +209,18 @@ main(int argc, char **argv)
 	if (namelist != NULL || core != NULL)
 		setgid(getgid());
 
-	if ((kd = kvm_open(namelist, core, NULL, O_RDONLY, "ipcs")) == NULL)
-		exit(1);
+	kd = kvm_openfiles(namelist, core, NULL, O_RDONLY, errbuf);
+	if (kd == NULL)
+		errx(1, "%s", errbuf);
 
 	switch (kvm_nlist(kd, symbols)) {
 	case 0:
 		break;
 	case -1:
-		errx(1, "unable to read kernel symbol table");
+		errx(1, "unable to read kernel symbol table: %s",
+		    kvm_geterr(kd));
 	default:
+		warnx("%s", kvm_geterr(kd));
 #ifdef notdef		/* they'll be told more civilly later */
 		warnx("nlist failed");
 		for (i = 0; symbols[i].n_name != NULL; i++)
@@ -226,7 +232,9 @@ main(int argc, char **argv)
 	}
 
 	if ((display & (MSGINFO | MSGTOTAL)) &&
-	    kvm_read(kd, symbols[X_MSGINFO].n_value, &msginfo, sizeof(msginfo))== sizeof(msginfo)) {
+	    symbols[X_MSGINFO].n_type != 0 &&
+	    (!(display & MSGINFO) || symbols[X_MSQIDS].n_type != 0)) {
+		kread(symbols[X_MSGINFO].n_value, &msginfo, sizeof(msginfo));
 
 		if (display & MSGTOTAL) {
 			printf("msginfo:\n");
@@ -246,9 +254,12 @@ main(int argc, char **argv)
 		if (display & MSGINFO) {
 			struct msqid_ds *xmsqids;
 
-			kvm_read(kd, symbols[X_MSQIDS].n_value, &msqids, sizeof(msqids));
-			xmsqids = malloc(sizeof(struct msqid_ds) * msginfo.msgmni);
-			kvm_read(kd, (u_long) msqids, xmsqids, sizeof(struct msqid_ds) * msginfo.msgmni);
+			kread(symbols[X_MSQIDS].n_value, &msqids, sizeof(msqids));
+			xmsqids = calloc(msginfo.msgmni, sizeof(*xmsqids));
+			if (xmsqids == NULL && msginfo.msgmni != 0)
+				err(1, "calloc");
+			kread((u_long)msqids, xmsqids,
+			    sizeof(*xmsqids) * msginfo.msgmni);
 
 			printf("Message Queues:\n");
 			printf("T     ID     KEY        MODE       OWNER    GROUP");
@@ -321,7 +332,10 @@ main(int argc, char **argv)
 			    "SVID messages facility not configured in the system\n");
 		}
 	if ((display & (SHMINFO | SHMTOTAL)) &&
-	    kvm_read(kd, symbols[X_SHMINFO].n_value, &shminfo, sizeof(shminfo))) {
+	    symbols[X_SHMINFO].n_type != 0 &&
+	    (!(display & SHMINFO) || symbols[X_SHMSEGS].n_type != 0))
+	{
+		kread(symbols[X_SHMINFO].n_value, &shminfo, sizeof(shminfo));
 		if (display & SHMTOTAL) {
 			printf("shminfo:\n");
 			printf("\tshmmax: %12ld\t(max shared memory segment size)\n",
@@ -338,10 +352,12 @@ main(int argc, char **argv)
 		if (display & SHMINFO) {
 			struct shmid_ds *xshmids;
 
-			kvm_read(kd, symbols[X_SHMSEGS].n_value, &shmsegs, sizeof(shmsegs));
-			xshmids = malloc(sizeof(struct shmid_ds) * shminfo.shmmni);
-			kvm_read(kd, (u_long) shmsegs, xshmids, sizeof(struct shmid_ds) *
-			    shminfo.shmmni);
+			kread(symbols[X_SHMSEGS].n_value, &shmsegs, sizeof(shmsegs));
+			xshmids = calloc(shminfo.shmmni, sizeof(*xshmids));
+			if (xshmids == NULL && shminfo.shmmni != 0)
+				err(1, "calloc");
+			kread((u_long)shmsegs, xshmids,
+			    sizeof(*xshmids) * shminfo.shmmni);
 
 			printf("Shared Memory:\n");
 			printf("T     ID     KEY        MODE       OWNER    GROUP");
@@ -414,8 +430,12 @@ main(int argc, char **argv)
 			    "SVID shared memory facility not configured in the system\n");
 		}
 	if ((display & (SEMINFO | SEMTOTAL)) &&
-	    kvm_read(kd, symbols[X_SEMINFO].n_value, &seminfo, sizeof(seminfo))) {
+	    symbols[X_SEMINFO].n_type != 0 &&
+	    (!(display & SEMINFO) || symbols[X_SEMA].n_type != 0))
+	{
 		struct semid_pool *xsema;
+
+		kread(symbols[X_SEMINFO].n_value, &seminfo, sizeof(seminfo));
 
 		if (display & SEMTOTAL) {
 			printf("seminfo:\n");
@@ -441,9 +461,12 @@ main(int argc, char **argv)
 			    seminfo.semaem);
 		}
 		if (display & SEMINFO) {
-			kvm_read(kd, symbols[X_SEMA].n_value, &sema, sizeof(sema));
-			xsema = malloc(sizeof(struct semid_pool) * seminfo.semmni);
-			kvm_read(kd, (u_long) sema, xsema, sizeof(struct semid_pool) * seminfo.semmni);
+			kread(symbols[X_SEMA].n_value, &sema, sizeof(sema));
+			xsema = calloc(seminfo.semmni, sizeof(*xsema));
+			if (xsema == NULL && seminfo.semmni != 0)
+				err(1, "calloc");
+			kread((u_long)sema, xsema,
+			    sizeof(*xsema) * seminfo.semmni);
 
 			printf("Semaphores:\n");
 			printf("T     ID     KEY        MODE       OWNER    GROUP");
@@ -502,6 +525,18 @@ main(int argc, char **argv)
 	kvm_close(kd);
 
 	exit(0);
+}
+
+static void
+kread(u_long addr, void *buf, size_t len)
+{
+	ssize_t nread;
+
+	nread = kvm_read(kd, addr, buf, len);
+	if (nread < 0)
+		errx(1, "kvm_read: %s", kvm_geterr(kd));
+	if ((size_t)nread != len)
+		errx(1, "kvm_read: short read (%zd of %zu bytes)", nread, len);
 }
 
 static uid_t

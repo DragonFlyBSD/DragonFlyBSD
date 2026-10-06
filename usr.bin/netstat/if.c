@@ -132,6 +132,10 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 	short link_layer;
 	int ncpus;
 
+	if (ncpusaddr == 0) {
+		printf("ncpus: symbol not defined\n");
+		return;
+	}
 	if (kread(ncpusaddr, (char *)&ncpus, sizeof(ncpus)))
 		return;
 
