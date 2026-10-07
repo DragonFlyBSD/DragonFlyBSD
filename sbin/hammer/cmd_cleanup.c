@@ -813,8 +813,15 @@ check_period(const char *snapshots_path, const char *cmd, int arg1,
 		tp2.tm_hour = 0;
 	}
 
-	baset = mktime(&tp1);
-	lastt = mktime(&tp2);
+	/*
+	 * Use timegm() rather than mktime() so the interval is measured in
+	 * local wall-clock seconds and is not affected by DST transitions.
+	 * The fields are local values built from localtime_r(); interpreting
+	 * them as UTC makes every local day exactly 24 hours long, even the
+	 * spring-forward day.
+	 */
+	baset = timegm(&tp1);
+	lastt = timegm(&tp2);
 
 #if 0
 	printf("%lld vs %lld\n", (long long)(baset - lastt), (long long)arg1);
