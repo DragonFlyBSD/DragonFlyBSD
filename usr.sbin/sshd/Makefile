@@ -46,4 +46,14 @@ DPADD+=		${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
 LDADD+=		-lprivate_ssh -lprivate_crypto -lutil -lz
 LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
 
+# Explicitly disable PasswordAuthentication
+GENFILES+=	sshd_config
+sshd_config: ${.CURDIR}/../../crypto/openssh/sshd_config
+	sed -E -e 's|^#?PasswordAuthentication.*$$|PasswordAuthentication no|' \
+	    ${.ALLSRC} > ${.TARGET}
+
+CLEANFILES+=	${GENFILES}
+
+buildfiles: ${GENFILES}
+
 .include <bsd.prog.mk>
