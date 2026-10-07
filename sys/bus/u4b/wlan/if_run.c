@@ -5461,7 +5461,7 @@ run_rt3070_rf_init(struct run_softc *sc)
 		/* save default BBP registers 25 and 26 values */
 		run_bbp_read(sc, 25, &sc->bbp25);
 		run_bbp_read(sc, 26, &sc->bbp26);
-	} else if (sc->mac_rev < 0x0201 || sc->mac_rev < 0x0211)
+	} else if (sc->mac_rev < 0x0211)
 		run_rt3070_rf_write(sc, 27, 0x03);
 
 	run_read(sc, RT3070_OPT_14, &tmp);
