@@ -25,11 +25,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     @(#)nlist.3	8.3 (Berkeley) 4/19/94
-.\" $FreeBSD: src/lib/libc/gen/nlist.3,v 1.4.2.3 2001/12/14 18:33:51 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/nlist.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
-.\"
-.Dd April 19, 1994
+.Dd October 7, 2026
 .Dt NLIST 3
 .Os
 .Sh NAME
@@ -45,9 +41,16 @@
 The
 .Fn nlist
 function
-retrieves name list entries from the symbol table of an
-executable file (see
-.Xr a.out 5 ) .
+retrieves name list entries from
+.Xr elf 5
+sections with type
+.Dv SHT_DYNSYM
+or
+.Dv SHT_SYMTAB
+in an ELF object (for example, an executable file or shared library).
+This function is provided for compatibility with legacy applications.
+Its use is discouraged.
+.Pp
 The argument
 .Fa \&nl
 is set to reference the
@@ -70,7 +73,7 @@ if the file
 .Fa filename
 does not exist or is not executable, the returned value is \-1.
 .Sh SEE ALSO
-.Xr a.out 5
+.Xr elf 5
 .Sh HISTORY
 A
 .Fn nlist

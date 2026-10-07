@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  * (c) UNIX System Laboratories, Inc.
@@ -30,18 +32,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	@(#)nlist.h	8.2 (Berkeley) 1/21/94
- *
- * $FreeBSD: src/include/nlist.h,v 1.7 1999/08/27 23:44:51 peter Exp $
- * $DragonFly: src/include/nlist.h,v 1.4 2004/11/18 12:38:43 joerg Exp $
  */
 
 #ifndef _NLIST_H_
 #define	_NLIST_H_
 
+#include <sys/cdefs.h>
+
 /*
- * Symbol table entries in a.out files.
+ * Symbol table entries in a.out and ELF files.
  */
 
 /*
@@ -109,10 +108,8 @@ struct nlist {
 
 #define	N_FORMAT	"%08x"	/* namelist value format; XXX */
 
-#include <sys/cdefs.h>
-
 __BEGIN_DECLS
-int nlist (const char *, struct nlist *);
+int nlist(const char *, struct nlist *);
 __END_DECLS
 
 #endif /* !_NLIST_H_ */
