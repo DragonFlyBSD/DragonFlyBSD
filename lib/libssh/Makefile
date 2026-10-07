@@ -85,12 +85,15 @@ MAN=	moduli.5
 WARNS?=	2
 NO_STRICT_ALIASING=
 
+# Fix misdetection in config.h so xcrypt.c correctly choose crypt().
+CFLAGS+=	-DHAVE_CRYPT
+
 CFLAGS+=	-I${.CURDIR} -I${.CURDIR}/../../crypto/openssh
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 CFLAGS+=	-I${.CURDIR}/../../contrib/ldns
 CFLAGS+=	-I${.CURDIR}/../libldns
-DPADD=		${LIBCRYPTO} ${LIBLDNS} ${LIBUTIL} ${LIBZ}
-LDADD=		-lprivate_crypto -lprivate_ldns -lutil -lz
+DPADD=		${LIBCRYPTO} ${LIBLDNS} ${LIBCRYPT} ${LIBUTIL} ${LIBZ}
+LDADD=		-lprivate_crypto -lprivate_ldns -lcrypt -lutil -lz
 LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
 
 .include <bsd.lib.mk>

@@ -17,8 +17,7 @@ SRCS+=  auth-rhosts.c auth-passwd.c \
         sandbox-seccomp-filter.c sandbox-capsicum.c sandbox-pledge.c \
         sandbox-solaris.c uidswap.c
 
-SRCS+=	auth-passwd-custom.c
-CFLAGS+= -DCUSTOM_SYS_AUTH_PASSWD
+# Fix misdetection in config.h to use utmpx/wtmpx.
 CFLAGS+= -DWTMPX_FILE=_PATH_WTMPX -DUTMPX_FILE=_PATH_UTMPX
 CFLAGS+= -DUTXDB_LASTLOGIN=UTX_DB_LASTLOGX
 
