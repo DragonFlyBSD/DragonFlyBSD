@@ -669,9 +669,6 @@ the page tables are usually wired into memory.
 This can create problems when a large number of processes are
 .Fn mmap Ns ing
 very large files.
-Sometimes turning on
-.Va machdep.pmap_mmu_optimize
-suffices to reduce overhead.
 Page table kernel memory use can be observed by using 'vmstat -z'
 .It Va kern.ipc.shm_use_phys
 It is sometimes necessary to force shared memory to use physical memory
