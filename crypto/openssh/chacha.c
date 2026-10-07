@@ -1,3 +1,4 @@
+/* $OpenBSD: chacha.c,v 1.3 2026/05/18 04:14:57 tb Exp $ */
 /*
 chacha-merged.c version 20080118
 D. J. Bernstein
@@ -7,8 +8,6 @@ Public domain.
 #include "includes.h"
 
 #include "chacha.h"
-
-/* $OpenBSD: chacha.c,v 1.1 2013/11/21 00:45:44 djm Exp $ */
 
 typedef unsigned char u8;
 typedef unsigned int u32;
@@ -49,8 +48,8 @@ typedef struct chacha_ctx chacha_ctx;
   a = PLUS(a,b); d = ROTATE(XOR(d,a), 8); \
   c = PLUS(c,d); b = ROTATE(XOR(b,c), 7);
 
-static const char sigma[16] = "expand 32-byte k";
-static const char tau[16] = "expand 16-byte k";
+static const char sigma[] = "expand 32-byte k";
+static const char tau[] = "expand 16-byte k";
 
 void
 chacha_keysetup(chacha_ctx *x,const u8 *k,u32 kbits)

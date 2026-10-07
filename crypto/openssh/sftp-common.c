@@ -1,4 +1,4 @@
-/* $OpenBSD: sftp-common.c,v 1.33 2022/09/19 10:41:58 djm Exp $ */
+/* $OpenBSD: sftp-common.c,v 1.36 2026/02/11 17:05:32 dtucker Exp $ */
 /*
  * Copyright (c) 2001 Markus Friedl.  All rights reserved.
  * Copyright (c) 2001 Damien Miller.  All rights reserved.
@@ -32,14 +32,12 @@
 #include <grp.h>
 #include <pwd.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <stdarg.h>
+#include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
-#ifdef HAVE_UTIL_H
 #include <util.h>
-#endif
 
 #include "xmalloc.h"
 #include "ssherr.h"
@@ -137,6 +135,8 @@ decode_attrib(struct sshbuf *b, Attrib *a)
 
 		if ((r = sshbuf_get_u32(b, &count)) != 0)
 			return r;
+		if (count > 0x100000)
+			return SSH_ERR_INVALID_FORMAT;
 		for (i = 0; i < count; i++) {
 			if ((r = sshbuf_get_cstring(b, &type, NULL)) != 0 ||
 			    (r = sshbuf_get_string(b, &data, &dlen)) != 0)
