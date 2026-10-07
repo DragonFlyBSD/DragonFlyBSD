@@ -5,9 +5,9 @@ PROG=	ssh-keysign
 SRCS=	ssh-keysign.c
 SRCS+=	misc.c readconf.c uidswap.c
 MAN=	ssh-keysign.8
-.if defined(ENABLE_SUID_SSH)
-BINMODE=4511
-.endif
+
+BINOWN=	root
+BINMODE=4555
 
 WARNS=	3
 
