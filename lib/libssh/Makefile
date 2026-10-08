@@ -63,7 +63,7 @@ SRCS=   ssh_api.c \
 
 # Portability layer
 .PATH: ${.CURDIR}/openbsd-compat
-SRCS+=	bcrypt_pbkdf.c blowfish.c bsd-misc.c bsd-signal.c fmt_scaled.c \
+SRCS+=	bcrypt_pbkdf.c blowfish.c bsd-misc.c fmt_scaled.c \
 	getrrsetbyname-ldns.c glob.c openssl-compat.c port-net.c xcrypt.c
 
 # not needed compat:
