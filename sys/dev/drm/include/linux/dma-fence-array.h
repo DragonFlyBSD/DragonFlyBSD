@@ -91,7 +91,7 @@ to_dma_fence_array(struct dma_fence *fence)
 
 struct dma_fence_array *dma_fence_array_create(int num_fences,
                                                struct dma_fence **fences,
-                                               u64 context, unsigned seqno,
+                                               u64 context, u64 seqno,
                                                bool signal_on_any);
 
 #endif	/* _LINUX_DMA_FENCE_ARRAY_H_ */

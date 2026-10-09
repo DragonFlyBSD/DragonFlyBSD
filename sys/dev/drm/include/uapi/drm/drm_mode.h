@@ -514,6 +514,11 @@ struct drm_mode_fb_cmd2 {
 	__u64 modifier[4]; /* ie, tiling, compress */
 };
 
+struct drm_mode_closefb {
+	__u32 fb_id;
+	__u32 pad;
+};
+
 #define DRM_MODE_FB_DIRTY_ANNOTATE_COPY 0x01
 #define DRM_MODE_FB_DIRTY_ANNOTATE_FILL 0x02
 #define DRM_MODE_FB_DIRTY_FLAGS         0x03
@@ -854,7 +859,7 @@ struct drm_mode_list_lessees {
 	__u32 pad;
 
 	/** Pointer to lessees.
-	 * pointer to __u64 array of lessee ids
+	 * pointer to __u32 array of lessee ids
 	 */
 	__u64 lessees_ptr;
 };

@@ -136,11 +136,9 @@ struct drm_mode_object *__drm_mode_object_find(struct drm_device *dev,
 	if (obj && obj->id != id)
 		obj = NULL;
 
-#if 0
 	if (obj && drm_mode_object_lease_required(obj->type) &&
 	    !_drm_lease_held(file_priv, obj->id))
 		obj = NULL;
-#endif
 
 	if (obj && obj->free_cb) {
 		if (!kref_get_unless_zero(&obj->refcount))

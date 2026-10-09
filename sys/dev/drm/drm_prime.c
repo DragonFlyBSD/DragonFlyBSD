@@ -200,6 +200,7 @@ int drm_gem_map_attach(struct dma_buf *dma_buf,
 	struct drm_prime_attachment *prime_attach;
 	struct drm_gem_object *obj = dma_buf->priv;
 	struct drm_device *dev = obj->dev;
+	int ret;
 
 	prime_attach = kzalloc(sizeof(*prime_attach), GFP_KERNEL);
 	if (!prime_attach)
@@ -211,7 +212,12 @@ int drm_gem_map_attach(struct dma_buf *dma_buf,
 	if (!dev->driver->gem_prime_pin)
 		return 0;
 
-	return dev->driver->gem_prime_pin(obj);
+	ret = dev->driver->gem_prime_pin(obj);
+	if (ret != 0) {
+		attach->priv = NULL;
+		kfree(prime_attach);
+	}
+	return ret;
 }
 EXPORT_SYMBOL(drm_gem_map_attach);
 
@@ -584,22 +590,37 @@ static struct dma_buf *export_and_register_object(struct drm_device *dev,
 }
 
 /**
- * drm_gem_prime_handle_to_fd - PRIME export function for GEM drivers
+ * drm_gem_prime_handle_to_dmabuf - return a referenced dma-buf for a GEM handle
  * @dev: dev to export the buffer from
  * @file_priv: drm file-private structure
  * @handle: buffer handle to export
  * @flags: flags like DRM_CLOEXEC
- * @prime_fd: pointer to storage for the fd id of the create dma-buf
+ *
+ * Ownership:
+ *   On success, returns a dma-buf reference owned by the caller. The caller
+ *   must either install that reference into an fd with fd_install() or release
+ *   it with dma_buf_put(). On failure, returns an ERR_PTR and transfers no
+ *   ownership.
+ *
+ * Lifetime:
+ *   The returned dma-buf remains valid until the caller drops the returned
+ *   reference. The GEM object lookup reference is released before return.
+ *
+ * Threading:
+ *   Serializes the per-file PRIME cache with file_priv->prime.lock, and holds
+ *   dev->object_name_lock only while linking a newly exported object into that
+ *   cache. fd allocation and installation are deliberately outside these locks,
+ *   matching Linux's current helper structure.
  *
  * This is the PRIME export function which must be used mandatorily by GEM
  * drivers to ensure correct lifetime management of the underlying GEM object.
  * The actual exporting from GEM object to a dma-buf is done through the
  * gem_prime_export driver callback.
  */
-int drm_gem_prime_handle_to_fd(struct drm_device *dev,
+static struct dma_buf *
+drm_gem_prime_handle_to_dmabuf(struct drm_device *dev,
 			       struct drm_file *file_priv, uint32_t handle,
-			       uint32_t flags,
-			       int *prime_fd)
+			       uint32_t flags)
 {
 	struct drm_gem_object *obj;
 	int ret = 0;
@@ -611,6 +632,7 @@ int drm_gem_prime_handle_to_fd(struct drm_device *dev,
 	obj = drm_gem_object_lookup(file_priv, handle);
 	if (!obj)  {
 		ret = -ENOENT;
+		dmabuf = ERR_PTR(ret);
 		goto out_unlock;
 	}
 
@@ -618,23 +640,23 @@ int drm_gem_prime_handle_to_fd(struct drm_device *dev,
 
 	dmabuf = drm_prime_lookup_buf_by_handle(&file_priv->prime, handle);
 	if (dmabuf) {
-	  DRM_DEBUG("existing dmabuf=%p\n", dmabuf);
+		DRM_DEBUG("existing dmabuf=%p\n", dmabuf);
 		get_dma_buf(dmabuf);
-		goto out_have_handle;
+		goto out;
 	}
 	DRM_DEBUG("dmabuf=%p\n", dmabuf);
 
 	mutex_lock(&dev->object_name_lock);
 	/* re-export the original imported object */
 	if (obj->import_attach) {
-	  DRM_DEBUG("obj->import_attach\n");
+		DRM_DEBUG("obj->import_attach\n");
 		dmabuf = obj->import_attach->dmabuf;
 		get_dma_buf(dmabuf);
 		goto out_have_obj;
 	}
 
 	if (obj->dma_buf) {
-	  DRM_DEBUG("obj->dma_buf\n");
+		DRM_DEBUG("obj->dma_buf\n");
 		get_dma_buf(obj->dma_buf);
 		dmabuf = obj->dma_buf;
 		goto out_have_obj;
@@ -665,36 +687,47 @@ out_have_obj:
 	if (ret)
 		goto fail_put_dmabuf;
 
-out_have_handle:
-	ret = dma_buf_fd(dmabuf, flags);
-
-	/*
-	 * We must _not_ remove the buffer from the handle cache since the newly
-	 * created dma buf is already linked in the global obj->dma_buf pointer,
-	 * and that is invariant as long as a userspace gem handle exists.
-	 * Closing the handle will clean out the cache anyway, so we don't leak.
-	 */
-	if (ret < 0) {
-		goto fail_put_dmabuf;
-	} else {
-		*prime_fd = ret;
-		DRM_DEBUG("prime_fd=%d\n", *prime_fd);
-		ret = 0;
-	}
-
 	goto out;
 
 fail_put_dmabuf:
 	dma_buf_put(dmabuf);
+	dmabuf = ERR_PTR(ret);
 out:
 	drm_gem_object_put_unlocked(obj);
 out_unlock:
 	mutex_unlock(&file_priv->prime.lock);
-	
-	DRM_DEBUG("[out] ret=%d\n", ret);
-	return ret;
+
+	DRM_DEBUG("[out] dmabuf=%p\n", dmabuf);
+	return dmabuf;
+}
+
+int drm_gem_prime_handle_to_fd(struct drm_device *dev,
+			       struct drm_file *file_priv, uint32_t handle,
+			       uint32_t flags,
+			       int *prime_fd)
+{
+	struct dma_buf *dmabuf;
+	int fd;
+
+	DRM_DEBUG("[in] handle=%u\n", handle);
+
+	fd = get_unused_fd_flags(flags);
+	if (fd < 0)
+		return fd;
+
+	dmabuf = drm_gem_prime_handle_to_dmabuf(dev, file_priv, handle, flags);
+	if (IS_ERR(dmabuf)) {
+		put_unused_fd(fd);
+		return PTR_ERR(dmabuf);
+	}
+
+	fd_install(fd, dmabuf->file);
+	*prime_fd = fd;
+	DRM_DEBUG("prime_fd=%d\n", *prime_fd);
+	return 0;
 }
 EXPORT_SYMBOL(drm_gem_prime_handle_to_fd);
+
 
 /**
  * drm_gem_prime_import_dev - core implementation of the import callback

@@ -27,7 +27,10 @@
 #ifndef LINUX_DMA_BUF_H
 #define LINUX_DMA_BUF_H
 
+#include <sys/ioccom.h>
+
 #include <linux/err.h>
+#include <linux/types.h>
 #include <linux/scatterlist.h>
 #include <linux/list.h>
 #include <linux/dma-mapping.h>
@@ -36,6 +39,26 @@
 #include <linux/wait.h>
 
 #include <linux/slab.h>
+
+#define DMA_BUF_SYNC_READ	(1 << 0)
+#define DMA_BUF_SYNC_WRITE	(2 << 0)
+#define DMA_BUF_SYNC_RW		(DMA_BUF_SYNC_READ | DMA_BUF_SYNC_WRITE)
+
+struct dma_buf_export_sync_file {
+	uint32_t flags;
+	int32_t fd;
+};
+
+struct dma_buf_import_sync_file {
+	uint32_t flags;
+	int32_t fd;
+};
+
+#define DMA_BUF_BASE			'b'
+#define DMA_BUF_IOCTL_EXPORT_SYNC_FILE	\
+	_IOWR(DMA_BUF_BASE, 2, struct dma_buf_export_sync_file)
+#define DMA_BUF_IOCTL_IMPORT_SYNC_FILE	\
+	_IOW(DMA_BUF_BASE, 3, struct dma_buf_import_sync_file)
 
 struct dma_buf;
 struct dma_buf_attachment;
@@ -93,12 +116,25 @@ struct sg_table * dma_buf_map_attachment(struct dma_buf_attachment *,
 void dma_buf_unmap_attachment(struct dma_buf_attachment *,
 				struct sg_table *, enum dma_data_direction);
 
-static inline struct dma_buf_attachment *
-dma_buf_attach(struct dma_buf *dmabuf, struct device *dev)
-{
-	STUB();
-	return NULL;
-}
+/*
+ * dma_buf_attach()
+ *
+ * Ownership:
+ *   The caller keeps ownership of the dma-buf reference it already holds.
+ *   The returned attachment is owned by the caller and must be released with
+ *   dma_buf_detach().
+ *
+ * Lifetime:
+ *   dmabuf and dev must remain valid until dma_buf_detach() returns.  The
+ *   attachment does not take an extra dma-buf file reference; this matches the
+ *   Linux dma-buf contract where the importer owns the reference separately.
+ *
+ * Threading:
+ *   Exporter-specific attach hooks may sleep.  Callers must not hold locks
+ *   that the exporter's attach path can re-enter.
+ */
+struct dma_buf_attachment *dma_buf_attach(struct dma_buf *dmabuf,
+    struct device *dev);
 
 static inline void
 get_dma_buf(struct dma_buf *dmabuf)
@@ -122,11 +158,21 @@ int dma_buf_fd(struct dma_buf *dmabuf, int flags);
 
 struct dma_buf *dma_buf_get(int fd);
 
-static inline void
-dma_buf_detach(struct dma_buf *dmabuf,
-	       struct dma_buf_attachment *dmabuf_attach)
-{
-	panic("dma_buf_attach is not implemented");
-}
+/*
+ * dma_buf_detach()
+ *
+ * Ownership:
+ *   Consumes and frees the attachment returned by dma_buf_attach().  It does
+ *   not drop the caller's dma-buf reference; the importer must call
+ *   dma_buf_put() for any reference it owns.
+ *
+ * Lifetime:
+ *   dmabuf must be the same object used for dma_buf_attach().
+ *
+ * Threading:
+ *   Exporter-specific detach hooks may sleep and must not be called from IRQ.
+ */
+void dma_buf_detach(struct dma_buf *dmabuf,
+    struct dma_buf_attachment *dmabuf_attach);
 
 #endif /* LINUX_DMA_BUF_H */

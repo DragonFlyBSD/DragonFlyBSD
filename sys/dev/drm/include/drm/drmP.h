@@ -194,6 +194,11 @@ unsigned long drm_get_resource_len(struct drm_device *dev,
 int ttm_bo_mmap_single(struct file *fp, struct drm_device *dev, vm_ooffset_t *offset,
     vm_size_t size, struct vm_object **obj_res, int nprot);
 
+/* Fault core shared with driver pagers; the generic TTM pager wraps it. */
+struct ttm_buffer_object;
+int ttm_bo_vm_fault_bo_dfly(struct ttm_buffer_object *bo, vm_object_t vm_obj,
+    vm_ooffset_t offset, int prot, vm_page_t *mres);
+
 int drm_gem_mmap_single(struct drm_device *dev, vm_ooffset_t *offset,
     vm_size_t size, struct vm_object **obj_res, int nprot);
 

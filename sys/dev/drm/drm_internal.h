@@ -33,6 +33,7 @@ struct dma_buf;
 extern struct lock drm_global_mutex;
 struct drm_file *drm_file_alloc(struct drm_minor *minor);
 void drm_file_free(struct drm_file *file);
+void drm_file_close_counted(struct drm_file *file);
 void drm_lastclose(struct drm_device *dev);
 
 /* drm_pci.c */
@@ -187,10 +188,18 @@ int drm_syncobj_fd_to_handle_ioctl(struct drm_device *dev, void *data,
 				   struct drm_file *file_private);
 int drm_syncobj_wait_ioctl(struct drm_device *dev, void *data,
 			   struct drm_file *file_private);
+int drm_syncobj_timeline_wait_ioctl(struct drm_device *dev, void *data,
+				    struct drm_file *file_private);
 int drm_syncobj_reset_ioctl(struct drm_device *dev, void *data,
 			    struct drm_file *file_private);
 int drm_syncobj_signal_ioctl(struct drm_device *dev, void *data,
 			     struct drm_file *file_private);
+int drm_syncobj_query_ioctl(struct drm_device *dev, void *data,
+			    struct drm_file *file_private);
+int drm_syncobj_transfer_ioctl(struct drm_device *dev, void *data,
+			       struct drm_file *file_private);
+int drm_syncobj_timeline_signal_ioctl(struct drm_device *dev, void *data,
+				      struct drm_file *file_private);
 
 /* drm_framebuffer.c */
 void drm_framebuffer_print_info(struct drm_printer *p, unsigned int indent,

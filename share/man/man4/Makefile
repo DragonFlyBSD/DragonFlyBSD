@@ -228,6 +228,7 @@ MAN=	aac.4 \
 	nmdm.4 \
 	nsclpcsio.4 \
 	null.4 \
+	nvgpu.4 \
 	nvme.4 \
 	nvmm.4 \
 	oce.4 \

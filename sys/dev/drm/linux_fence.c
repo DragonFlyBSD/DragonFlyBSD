@@ -27,7 +27,7 @@
 
 void
 dma_fence_init(struct dma_fence *fence, const struct dma_fence_ops *ops,
-    spinlock_t *lock, u64 context, unsigned seqno)
+    spinlock_t *lock, u64 context, u64 seqno)
 {
 	fence->ops = ops;
 	fence->lock = lock;

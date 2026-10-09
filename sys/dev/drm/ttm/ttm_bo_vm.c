@@ -48,6 +48,30 @@
 
 #define TTM_BO_VM_NUM_PREFAULT 16
 
+/*
+ * ttm_bo_io_mem_pfn()
+ *
+ * Ownership:
+ *   Borrows the BO and its already-reserved io memory state.  The returned PFN
+ *   is a translation result, not a new reference to the backing memory.
+ *
+ * Lifetime:
+ *   Driver-provided PFNs are valid for the current io_mem_reserve lifetime.
+ *   Drivers without a callback keep the historical linear bus mapping.
+ *
+ * Threading:
+ *   Called from the TTM fault path while the BO is reserved and the memory
+ *   manager io_reserve_mutex is held.
+ */
+static unsigned long
+ttm_bo_io_mem_pfn(struct ttm_buffer_object *bo, unsigned long page_offset)
+{
+	if (bo->bdev->driver->io_mem_pfn != NULL)
+		return (bo->bdev->driver->io_mem_pfn(bo, page_offset));
+	return (((bo->mem.bus.base + bo->mem.bus.offset) >> PAGE_SHIFT) +
+	    page_offset);
+}
+
 static int ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
 				struct vm_fault *vmf)
 {
@@ -495,12 +519,15 @@ EXPORT_SYMBOL(ttm_fbdev_mmap);
 /*
  * NOTE: This code is fragile.  This code can only be entered with *mres
  *	 not NULL when *mres is a placeholder page allocated by the kernel.
+ *
+ * The BO is passed explicitly so a driver pager (nvkm) can guard the
+ * fault without duplicating this algorithm; the generic pager wrapper
+ * below keeps reading it from the VM object handle.
  */
-static int
-ttm_bo_vm_fault_dfly(vm_object_t vm_obj, vm_ooffset_t offset,
-		     int prot, vm_page_t *mres)
+int
+ttm_bo_vm_fault_bo_dfly(struct ttm_buffer_object *bo, vm_object_t vm_obj,
+			vm_ooffset_t offset, int prot, vm_page_t *mres)
 {
-	struct ttm_buffer_object *bo = vm_obj->handle;
 	struct ttm_bo_device *bdev = bo->bdev;
 	struct ttm_tt *ttm = NULL;
 	vm_page_t m;
@@ -509,6 +536,9 @@ ttm_bo_vm_fault_dfly(vm_object_t vm_obj, vm_ooffset_t offset,
 	struct ttm_mem_type_manager *man =
 		&bdev->man[bo->mem.mem_type];
 	struct vm_area_struct cvma;
+	unsigned long page_offset;
+	unsigned long pfn;
+	bool io_locked;
 
 /*
    The Linux code expects to receive these arguments:
@@ -542,6 +572,7 @@ retry:
 	down_read(&vma->vm_mm->mmap_sem);
 
 	m = NULL;
+	io_locked = false;
 
 	/*
 	 * Work around locking order reversal in fault / nopfn
@@ -619,15 +650,18 @@ retry:
 		}
 	}
 
-	ret = ttm_mem_io_lock(man, true);
-	if (unlikely(ret != 0)) {
-		retval = VM_PAGER_ERROR;
-		goto out_unlock1;
-	}
-	ret = ttm_mem_io_reserve_vm(bo);
-	if (unlikely(ret != 0)) {
-		retval = VM_PAGER_ERROR;
-		goto out_io_unlock1;
+	if (!bo->mem.bus.io_reserved_vm) {
+		ret = ttm_mem_io_lock(man, false);
+		if (unlikely(ret != 0)) {
+			retval = VM_PAGER_ERROR;
+			goto out_unlock1;
+		}
+		io_locked = true;
+		ret = ttm_mem_io_reserve_vm(bo);
+		if (unlikely(ret != 0)) {
+			retval = VM_PAGER_ERROR;
+			goto out_io_unlock1;
+		}
 	}
 	if (unlikely(OFF_TO_IDX(offset) >= bo->num_pages)) {
 		retval = VM_PAGER_ERROR;
@@ -664,8 +698,17 @@ retry:
 
 	if (bo->mem.bus.is_iomem) {
 #ifdef __DragonFly__
-		m = vm_phys_fictitious_to_vm_page(bo->mem.bus.base +
-						  bo->mem.bus.offset + offset);
+		page_offset = OFF_TO_IDX(offset);
+		pfn = ttm_bo_io_mem_pfn(bo, page_offset);
+		if (pfn == 0) {
+			retval = VM_PAGER_ERROR;
+			goto out_io_unlock1;
+		}
+		m = vm_phys_fictitious_to_vm_page((vm_paddr_t)pfn << PAGE_SHIFT);
+		if (m == NULL) {
+			retval = VM_PAGER_ERROR;
+			goto out_io_unlock1;
+		}
 		pmap_page_set_memattr(m, ttm_io_prot(bo->mem.placement, 0));
 #endif
 		cvma.vm_page_prot = ttm_io_prot(bo->mem.placement,
@@ -698,11 +741,11 @@ retry:
 	}
 
 	if (vm_page_busy_try(m, FALSE)) {
-		kprintf("r");
-		vm_page_sleep_busy(m, FALSE, "ttmvmf");
-		ttm_mem_io_unlock(man);
+		if (io_locked)
+			ttm_mem_io_unlock(man);
 		ttm_bo_unreserve(bo);
 		up_read(&vma->vm_mm->mmap_sem);
+		vm_page_sleep_busy(m, FALSE, "ttmvmf");
 		goto retry;
 	}
 
@@ -714,7 +757,8 @@ retry:
 	*mres = m;
 
 out_io_unlock1:
-	ttm_mem_io_unlock(man);
+	if (io_locked)
+		ttm_mem_io_unlock(man);
 out_unlock1:
 	ttm_bo_unreserve(bo);
 out_unlock2:
@@ -722,6 +766,14 @@ out_unlock2:
 	up_read(&vma->vm_mm->mmap_sem);
 
 	return (retval);
+}
+
+static int
+ttm_bo_vm_fault_dfly(vm_object_t vm_obj, vm_ooffset_t offset,
+		     int prot, vm_page_t *mres)
+{
+	return (ttm_bo_vm_fault_bo_dfly(vm_obj->handle, vm_obj, offset,
+					prot, mres));
 }
 
 static int
@@ -749,7 +801,13 @@ static void
 ttm_bo_vm_dtor(void *handle)
 {
 	struct ttm_buffer_object *bo = handle;
+	int ret;
 
+	ret = ttm_bo_reserve(bo, false, true, NULL);
+	if (ret == 0) {
+		ttm_bo_unmap_virtual(bo);
+		ttm_bo_unreserve(bo);
+	}
 	ttm_bo_unref(&bo);
 }
 
@@ -817,38 +875,32 @@ EXPORT_SYMBOL(ttm_bo_mmap_single);
 #ifdef __DragonFly__
 void ttm_bo_release_mmap(struct ttm_buffer_object *bo);
 
+/* Remove CPU mappings from real TTM pages while the BO and io manager are locked. */
 void
 ttm_bo_release_mmap(struct ttm_buffer_object *bo)
 {
-	vm_object_t vm_obj;
-
-	vm_obj = cdev_pager_lookup(bo);
-	if (vm_obj == NULL)
-		return;
-
-	VM_OBJECT_LOCK(vm_obj);
-#if 1
-	vm_object_page_remove(vm_obj, 0, 0, false);
-#else
-	/*
-	 * XXX REMOVED
-	 *
-	 * We no longer manage the vm pages inside the MGTDEVICE
-	 * objects.
-	 */
 	vm_page_t m;
-	int i;
+	unsigned long pfn;
 
-	for (i = 0; i < bo->num_pages; i++) {
-		m = vm_page_lookup_busy_wait(vm_obj, i, TRUE, "ttm_unm");
-		if (m == NULL)
+	reservation_object_assert_held(bo->resv);
+	for (unsigned long i = 0; i < bo->num_pages; i++) {
+		if (bo->mem.bus.is_iomem) {
+			pfn = ttm_bo_io_mem_pfn(bo, i);
+			if (pfn == 0)
+				continue;
+			m = vm_phys_fictitious_to_vm_page((vm_paddr_t)pfn << PAGE_SHIFT);
+		} else {
+			if (bo->ttm == NULL || bo->ttm->pages == NULL)
+				return;
+			m = (vm_page_t)bo->ttm->pages[i];
+		}
+		if (m == NULL ||
+		    (pmap_mapped_sync(m) & (PG_MAPPED | PG_WRITEABLE)) == 0)
 			continue;
-		cdev_pager_free_page(vm_obj, m);
+		vm_page_busy_wait(m, TRUE, "ttmunm");
+		vm_page_protect(m, VM_PROT_NONE);
+		vm_page_wakeup(m);
 	}
-#endif
-	VM_OBJECT_UNLOCK(vm_obj);
-
-	vm_object_deallocate(vm_obj);
 }
 #endif
 

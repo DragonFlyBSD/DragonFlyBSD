@@ -104,7 +104,8 @@ reservation_object_add_shared_inplace(struct reservation_object *obj,
 				      struct reservation_object_list *fobj,
 				      struct dma_fence *fence)
 {
-	u32 i;
+	struct dma_fence *signaled = NULL;
+	u32 i, signaled_idx = 0;
 
 	dma_fence_get(fence);
 
@@ -126,17 +127,29 @@ reservation_object_add_shared_inplace(struct reservation_object *obj,
 			dma_fence_put(old_fence);
 			return;
 		}
+
+		if (!signaled && dma_fence_is_signaled(old_fence)) {
+			signaled = old_fence;
+			signaled_idx = i;
+		}
 	}
 
 	/*
 	 * memory barrier is added by write_seqcount_begin,
 	 * fobj->shared_count is protected by this lock too
 	 */
-	RCU_INIT_POINTER(fobj->shared[fobj->shared_count], fence);
-	fobj->shared_count++;
+	if (signaled) {
+		RCU_INIT_POINTER(fobj->shared[signaled_idx], fence);
+	} else {
+		BUG_ON(fobj->shared_count >= fobj->shared_max);
+		RCU_INIT_POINTER(fobj->shared[fobj->shared_count], fence);
+		fobj->shared_count++;
+	}
 
 	write_seqcount_end(&obj->seq);
 	preempt_enable();
+
+	dma_fence_put(signaled);
 }
 
 static void
@@ -145,8 +158,7 @@ reservation_object_add_shared_replace(struct reservation_object *obj,
 				      struct reservation_object_list *fobj,
 				      struct dma_fence *fence)
 {
-	unsigned i;
-	struct dma_fence *old_fence = NULL;
+	unsigned i, j, k;
 
 	dma_fence_get(fence);
 
@@ -162,24 +174,21 @@ reservation_object_add_shared_replace(struct reservation_object *obj,
 	 * references from the old struct are carried over to
 	 * the new.
 	 */
-	fobj->shared_count = old->shared_count;
-
-	for (i = 0; i < old->shared_count; ++i) {
+	for (i = 0, j = 0, k = fobj->shared_max; i < old->shared_count; ++i) {
 		struct dma_fence *check;
 
 		check = rcu_dereference_protected(old->shared[i],
 						reservation_object_held(obj));
 
-		if (!old_fence && check->context == fence->context) {
-			old_fence = check;
-			RCU_INIT_POINTER(fobj->shared[i], fence);
-		} else
-			RCU_INIT_POINTER(fobj->shared[i], check);
+		if (check->context == fence->context ||
+		    dma_fence_is_signaled(check))
+			RCU_INIT_POINTER(fobj->shared[--k], check);
+		else
+			RCU_INIT_POINTER(fobj->shared[j++], check);
 	}
-	if (!old_fence) {
-		RCU_INIT_POINTER(fobj->shared[fobj->shared_count], fence);
-		fobj->shared_count++;
-	}
+	fobj->shared_count = j;
+	RCU_INIT_POINTER(fobj->shared[fobj->shared_count], fence);
+	fobj->shared_count++;
 
 done:
 	preempt_disable();
@@ -192,10 +201,17 @@ done:
 	write_seqcount_end(&obj->seq);
 	preempt_enable();
 
-	if (old)
-		kfree_rcu(old, NULL);
+	if (!old)
+		return;
 
-	dma_fence_put(old_fence);
+	for (i = k; i < fobj->shared_max; ++i) {
+		struct dma_fence *old_fence;
+
+		old_fence = rcu_dereference_protected(fobj->shared[i],
+						reservation_object_held(obj));
+		dma_fence_put(old_fence);
+	}
+	kfree_rcu(old, NULL);
 }
 
 /**
@@ -205,6 +221,19 @@ done:
  *
  * Add a fence to a shared slot, obj->lock must be held, and
  * reservation_object_reserve_shared() has been called.
+ *
+ * Ownership:
+ *   Borrows @fence. The reservation object takes its own reference before
+ *   publishing it; the caller retains ownership of its reference.
+ *
+ * Lifetime:
+ *   Replaces an older fence from the same context, or one already-signaled
+ *   shared fence, when possible. Otherwise appends into the space reserved by
+ *   reservation_object_reserve_shared().
+ *
+ * Threading:
+ *   Must be called with obj->lock held. RCU readers may run concurrently and
+ *   observe either the old or new shared list, coordinated by obj->seq.
  */
 void reservation_object_add_shared_fence(struct reservation_object *obj,
 					 struct dma_fence *fence)
@@ -214,10 +243,9 @@ void reservation_object_add_shared_fence(struct reservation_object *obj,
 	old = reservation_object_get_list(obj);
 	obj->staged = NULL;
 
-	if (!fobj) {
-		BUG_ON(old->shared_count >= old->shared_max);
+	if (!fobj)
 		reservation_object_add_shared_inplace(obj, old, fence);
-	} else
+	else
 		reservation_object_add_shared_replace(obj, old, fobj, fence);
 }
 EXPORT_SYMBOL(reservation_object_add_shared_fence);
@@ -266,8 +294,20 @@ EXPORT_SYMBOL(reservation_object_add_excl_fence);
 * @dst: the destination reservation object
 * @src: the source reservation object
 *
-* Copy all fences from src to dst. Both src->lock as well as dst-lock must be
-* held.
+* Copy all fences from src to dst. dst->lock must be held. The source
+* reservation object is read under RCU.
+*
+* Ownership:
+*   Borrows @src and @dst. The destination object takes references to copied
+*   fences; old destination fences are released after publication.
+*
+* Lifetime:
+*   Copies the current exclusive fence and unsignaled shared fences from a
+*   source snapshot. Already-signaled shared fences are pruned.
+*
+* Threading:
+*   The caller must hold dst->lock. The source is sampled under RCU, so callers
+*   do not need to hold src->lock.
 */
 int reservation_object_copy_fences(struct reservation_object *dst,
 				   struct reservation_object *src)
@@ -277,23 +317,61 @@ int reservation_object_copy_fences(struct reservation_object *dst,
 	size_t size;
 	unsigned i;
 
-	src_list = reservation_object_get_list(src);
+	rcu_read_lock();
+	src_list = rcu_dereference(src->fence);
 
+retry:
 	if (src_list) {
-		size = offsetof(typeof(*src_list),
-				shared[src_list->shared_count]);
+		unsigned shared_count = src_list->shared_count;
+
+		size = offsetof(typeof(*src_list), shared[shared_count]);
+		rcu_read_unlock();
+
 		dst_list = kmalloc(size, M_DRM, GFP_KERNEL);
 		if (!dst_list)
 			return -ENOMEM;
 
-		dst_list->shared_count = src_list->shared_count;
-		dst_list->shared_max = src_list->shared_count;
-		for (i = 0; i < src_list->shared_count; ++i)
-			dst_list->shared[i] =
-				dma_fence_get(src_list->shared[i]);
+		rcu_read_lock();
+		src_list = rcu_dereference(src->fence);
+		if (!src_list || src_list->shared_count > shared_count) {
+			kfree(dst_list);
+			goto retry;
+		}
+
+		dst_list->shared_count = 0;
+		dst_list->shared_max = shared_count;
+		for (i = 0; i < src_list->shared_count; ++i) {
+			struct dma_fence *fence;
+
+			fence = rcu_dereference(src_list->shared[i]);
+			if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT,
+				     &fence->flags))
+				continue;
+
+			if (!dma_fence_get_rcu(fence)) {
+				while (dst_list->shared_count--)
+					dma_fence_put(dst_list->shared[
+					    dst_list->shared_count]);
+				kfree(dst_list);
+				src_list = rcu_dereference(src->fence);
+				goto retry;
+			}
+
+			if (dma_fence_is_signaled(fence)) {
+				dma_fence_put(fence);
+				continue;
+			}
+
+			RCU_INIT_POINTER(dst_list->shared[dst_list->shared_count],
+			    fence);
+			dst_list->shared_count++;
+		}
 	} else {
 		dst_list = NULL;
 	}
+
+	new = dma_fence_get_rcu_safe(&src->fence_excl);
+	rcu_read_unlock();
 
 	kfree(dst->staged);
 	dst->staged = NULL;
@@ -301,9 +379,6 @@ int reservation_object_copy_fences(struct reservation_object *dst,
 	src_list = reservation_object_get_list(dst);
 
 	old = reservation_object_get_excl(dst);
-	new = reservation_object_get_excl(src);
-
-	dma_fence_get(new);
 
 	preempt_disable();
 	write_seqcount_begin(&dst->seq);
@@ -332,6 +407,20 @@ EXPORT_SYMBOL(reservation_object_copy_fences);
  *
  * RETURNS
  * Zero or -errno
+ *
+ * Ownership:
+ *   Borrows @obj. Returned fences have references owned by the caller. The
+ *   caller must dma_fence_put() @pfence_excl and every entry in @pshared, then
+ *   kfree() the shared array. If @pfence_excl is NULL, the exclusive fence is
+ *   returned as an extra shared-array entry.
+ *
+ * Lifetime:
+ *   Returns a self-consistent RCU snapshot. If a concurrent writer overlaps,
+ *   the snapshot is discarded and retried.
+ *
+ * Threading:
+ *   Does not require obj->lock. May allocate with GFP_KERNEL after dropping
+ *   the RCU read lock.
  */
 int reservation_object_get_fences_rcu(struct reservation_object *obj,
 				      struct dma_fence **pfence_excl,
@@ -347,6 +436,7 @@ int reservation_object_get_fences_rcu(struct reservation_object *obj,
 		struct reservation_object_list *fobj;
 		unsigned seq;
 		unsigned int i;
+		size_t sz = 0;
 
 		shared_count = i = 0;
 
@@ -358,9 +448,13 @@ int reservation_object_get_fences_rcu(struct reservation_object *obj,
 			goto unlock;
 
 		fobj = rcu_dereference(obj->fence);
-		if (fobj) {
+		if (fobj)
+			sz += sizeof(*shared) * fobj->shared_max;
+		if (!pfence_excl && fence_excl)
+			sz += sizeof(*shared);
+
+		if (sz) {
 			struct dma_fence **nshared;
-			size_t sz = sizeof(*shared) * fobj->shared_max;
 
 			nshared = krealloc(shared, sz, M_DRM,
 					   GFP_NOWAIT | __GFP_NOWARN);
@@ -373,16 +467,25 @@ int reservation_object_get_fences_rcu(struct reservation_object *obj,
 					continue;
 				}
 
+				dma_fence_put(fence_excl);
+				fence_excl = NULL;
 				ret = -ENOMEM;
 				break;
 			}
 			shared = nshared;
-			shared_count = fobj->shared_count;
+			shared_count = fobj ? fobj->shared_count : 0;
 
 			for (i = 0; i < shared_count; ++i) {
 				shared[i] = rcu_dereference(fobj->shared[i]);
 				if (!dma_fence_get_rcu(shared[i]))
 					break;
+			}
+
+			if (!pfence_excl && fence_excl) {
+				shared[i] = fence_excl;
+				fence_excl = NULL;
+				i++;
+				shared_count++;
 			}
 		}
 
@@ -397,6 +500,17 @@ int reservation_object_get_fences_rcu(struct reservation_object *obj,
 unlock:
 		rcu_read_unlock();
 	} while (ret);
+
+	if (ret) {
+		kfree(shared);
+		if (pshared_count)
+			*pshared_count = 0;
+		if (pshared)
+			*pshared = NULL;
+		if (pfence_excl)
+			*pfence_excl = NULL;
+		return ret;
+	}
 
 	if (!shared_count) {
 		kfree(shared);
@@ -424,7 +538,19 @@ EXPORT_SYMBOL_GPL(reservation_object_get_fences_rcu);
  *
  * RETURNS
  * Returns -ERESTARTSYS if interrupted, 0 if the wait timed out, or
- * greater than zer on success.
+ * greater than zero on success.
+ *
+ * Ownership:
+ *   Borrows @obj and takes temporary fence references while waiting.
+ *
+ * Lifetime:
+ *   If @wait_all is false, waits only the exclusive/write fence. If @wait_all
+ *   is true, waits the exclusive fence first when present, then retries and
+ *   waits every pending shared/read fence.
+ *
+ * Threading:
+ *   Does not require obj->lock. May sleep while waiting on fences. RCU protects
+ *   fence lookup; obj->seq detects overlapping writers.
  */
 long reservation_object_wait_timeout_rcu(struct reservation_object *obj,
 					 bool wait_all, bool intr,
@@ -433,11 +559,13 @@ long reservation_object_wait_timeout_rcu(struct reservation_object *obj,
 	struct dma_fence *fence;
 	unsigned seq, shared_count, i = 0;
 	long ret = timeout ? timeout : 1;
+	int idx;
 
 retry:
 	shared_count = 0;
 	seq = read_seqcount_begin(&obj->seq);
 	rcu_read_lock();
+	idx = -1;
 
 	fence = rcu_dereference(obj->fence_excl);
 	if (fence && !test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags)) {
@@ -453,14 +581,14 @@ retry:
 		fence = NULL;
 	}
 
-	if (!fence && wait_all) {
+	if (wait_all) {
 		struct reservation_object_list *fobj =
 						rcu_dereference(obj->fence);
 
 		if (fobj)
 			shared_count = fobj->shared_count;
 
-		for (i = 0; i < shared_count; ++i) {
+		for (i = 0; !fence && i < shared_count; ++i) {
 			struct dma_fence *lfence = rcu_dereference(fobj->shared[i]);
 
 			if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT,
@@ -476,6 +604,7 @@ retry:
 			}
 
 			fence = lfence;
+			idx = i;
 			break;
 		}
 	}
@@ -489,7 +618,7 @@ retry:
 
 		ret = dma_fence_wait_timeout(fence, intr, ret);
 		dma_fence_put(fence);
-		if (ret > 0 && wait_all && (i + 1 < shared_count))
+		if (ret > 0 && wait_all && (idx + 1 < shared_count))
 			goto retry;
 	}
 	return ret;
@@ -527,6 +656,18 @@ reservation_object_test_signaled_single(struct dma_fence *passed_fence)
  *
  * RETURNS
  * true if all fences signaled, else false
+ *
+ * Ownership:
+ *   Borrows @obj and takes temporary fence references only while probing
+ *   signaled state.
+ *
+ * Lifetime:
+ *   If @test_all is false, tests only the exclusive/write fence. If @test_all
+ *   is true, tests both shared/read fences and the exclusive/write fence.
+ *
+ * Threading:
+ *   Non-sleeping and does not require obj->lock. RCU protects fence lookup;
+ *   obj->seq detects overlapping writers.
  */
 bool reservation_object_test_signaled_rcu(struct reservation_object *obj,
 					  bool test_all)
@@ -563,7 +704,7 @@ retry:
 			goto retry;
 	}
 
-	if (!shared_count) {
+	if (ret) {
 		struct dma_fence *fence_excl = rcu_dereference(obj->fence_excl);
 
 		if (fence_excl) {

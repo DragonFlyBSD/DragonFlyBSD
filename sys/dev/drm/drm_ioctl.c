@@ -245,6 +245,9 @@ static int drm_getcap(struct drm_device *dev, void *data, struct drm_file *file_
 	case DRM_CAP_SYNCOBJ:
 		req->value = drm_core_check_feature(dev, DRIVER_SYNCOBJ);
 		return 0;
+	case DRM_CAP_SYNCOBJ_TIMELINE:
+		req->value = drm_core_check_feature(dev, DRIVER_SYNCOBJ_TIMELINE);
+		return 0;
 	}
 
 	/* Other caps only work with KMS drivers */
@@ -293,6 +296,10 @@ static int drm_getcap(struct drm_device *dev, void *data, struct drm_file *file_
 	case DRM_CAP_CRTC_IN_VBLANK_EVENT:
 		req->value = 1;
 		break;
+	case DRM_CAP_ATOMIC_ASYNC_PAGE_FLIP:
+		req->value = drm_core_check_feature(dev, DRIVER_ATOMIC) &&
+		    dev->mode_config.async_page_flip;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -327,14 +334,16 @@ drm_setclientcap(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	case DRM_CLIENT_CAP_ATOMIC:
 		if (!drm_core_check_feature(dev, DRIVER_ATOMIC))
 			return -EOPNOTSUPP;
-		if (req->value > 1)
+		if (req->value > 2)
 			return -EINVAL;
-		file_priv->atomic = req->value;
-		file_priv->universal_planes = req->value;
+		file_priv->atomic = req->value != 0;
+		file_priv->universal_planes = req->value != 0;
 		/*
 		 * No atomic user-space blows up on aspect ratio mode bits.
+		 * Linux accepts value 2 for Xorg/modesetting compatibility;
+		 * drm_file stores the resulting state as a boolean.
 		 */
-		file_priv->aspect_ratio_allowed = req->value;
+		file_priv->aspect_ratio_allowed = req->value != 0;
 		break;
 	case DRM_CLIENT_CAP_ASPECT_RATIO:
 		if (req->value > 1)
@@ -348,6 +357,8 @@ drm_setclientcap(struct drm_device *dev, void *data, struct drm_file *file_priv)
 			return -EINVAL;
 		file_priv->writeback_connectors = req->value;
 		break;
+	case DRM_CLIENT_CAP_CURSOR_PLANE_HOTSPOT:
+		return -EOPNOTSUPP;
 	default:
 		return -EINVAL;
 	}
@@ -667,9 +678,11 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_SETPROPERTY, drm_connector_property_set_ioctl, DRM_MASTER|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_GETPROPBLOB, drm_mode_getblob_ioctl, DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_GETFB, drm_mode_getfb, DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_IOCTL_MODE_GETFB2, drm_mode_getfb2_ioctl, DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_ADDFB, drm_mode_addfb_ioctl, DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_ADDFB2, drm_mode_addfb2_ioctl, DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_RMFB, drm_mode_rmfb_ioctl, DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_IOCTL_MODE_CLOSEFB, drm_mode_closefb_ioctl, DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_PAGE_FLIP, drm_mode_page_flip_ioctl, DRM_MASTER|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_DIRTYFB, drm_mode_dirtyfb_ioctl, DRM_MASTER|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_CREATE_DUMB, drm_mode_create_dumb_ioctl, DRM_UNLOCKED|DRM_RENDER_ALLOW),
@@ -696,14 +709,20 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 		      DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF(DRM_IOCTL_SYNCOBJ_SIGNAL, drm_syncobj_signal_ioctl,
 		      DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF(DRM_IOCTL_SYNCOBJ_TIMELINE_WAIT, drm_syncobj_timeline_wait_ioctl,
+		      DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF(DRM_IOCTL_SYNCOBJ_QUERY, drm_syncobj_query_ioctl,
+		      DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF(DRM_IOCTL_SYNCOBJ_TRANSFER, drm_syncobj_transfer_ioctl,
+		      DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF(DRM_IOCTL_SYNCOBJ_TIMELINE_SIGNAL, drm_syncobj_timeline_signal_ioctl,
+		      DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF(DRM_IOCTL_CRTC_GET_SEQUENCE, drm_crtc_get_sequence_ioctl, DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_CRTC_QUEUE_SEQUENCE, drm_crtc_queue_sequence_ioctl, DRM_UNLOCKED),
-#if 0
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_CREATE_LEASE, drm_mode_create_lease_ioctl, DRM_MASTER|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_LIST_LESSEES, drm_mode_list_lessees_ioctl, DRM_MASTER|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_GET_LEASE, drm_mode_get_lease_ioctl, DRM_MASTER|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_REVOKE_LEASE, drm_mode_revoke_lease_ioctl, DRM_MASTER|DRM_UNLOCKED),
-#endif
 };
 
 #define DRM_CORE_IOCTL_COUNT	ARRAY_SIZE( drm_ioctls )
@@ -785,6 +804,18 @@ long drm_ioctl_kernel(struct file *file, drm_ioctl_t *func, void *kdata,
 EXPORT_SYMBOL(drm_ioctl_kernel);
 #endif
 
+#ifdef __DragonFly__
+static int
+drm_ioctl_bsd_errno(int retcode)
+{
+	if (retcode < 0)
+		retcode = -retcode;
+	if (retcode == ERESTARTSYS)
+		retcode = EINTR;
+	return retcode;
+}
+#endif
+
 /**
  * drm_ioctl - ioctl callback implementation for DRM drivers
  * @filp: file this ioctl is called on
@@ -814,7 +845,11 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	dev = file_priv->minor->dev;
 
 	if (drm_dev_is_unplugged(dev))
+#ifdef __DragonFly__
+		return drm_ioctl_bsd_errno(-ENODEV);
+#else
 		return -ENODEV;
+#endif
 
 	is_driver_ioctl = nr >= DRM_COMMAND_BASE && nr < DRM_COMMAND_END;
 
@@ -838,7 +873,11 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	/* Do not trust userspace, use our own definition */
 	func = ioctl->func;
 
+#ifdef __DragonFly__
+	if (unlikely(!func && ioctl->func_ext == NULL)) {
+#else
 	if (unlikely(!func)) {
+#endif
 		DRM_DEBUG("no function\n");
 		retcode = EINVAL;
 		goto err_i1;
@@ -850,18 +889,35 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 
 	/* Enforce sane locking for modern driver ioctls. */
 	if (!drm_core_check_feature(dev, DRIVER_LEGACY) ||
-	    (ioctl->flags & DRM_UNLOCKED))
-		retcode = -func(dev, data, file_priv);
-	else {
+	    (ioctl->flags & DRM_UNLOCKED)) {
+#ifdef __DragonFly__
+		if (ioctl->func_ext != NULL)
+			retcode = -ioctl->func_ext(dev, data, file_priv,
+			    IOCPARM_LEN(cmd));
+		else
+#endif
+			retcode = -func(dev, data, file_priv);
+	} else {
 		mutex_lock(&drm_global_mutex);
-		retcode = -func(dev, data, file_priv);
+#ifdef __DragonFly__
+		if (ioctl->func_ext != NULL)
+			retcode = -ioctl->func_ext(dev, data, file_priv,
+			    IOCPARM_LEN(cmd));
+		else
+#endif
+			retcode = -func(dev, data, file_priv);
 		mutex_unlock(&drm_global_mutex);
 	}
 
+#ifndef __DragonFly__
 	if (retcode == ERESTARTSYS)
-			retcode = EINTR;
+		retcode = EINTR;
+#endif
 
       err_i1:
+#ifdef __DragonFly__
+	retcode = drm_ioctl_bsd_errno(retcode);
+#endif
 	if (!ioctl)
 		DRM_DEBUG_FIOCTL("invalid ioctl: pid=%d, dev=0x%lx, auth=%d, cmd=0x%02lx, nr=0x%02x\n",
 			  DRM_CURRENTPID,

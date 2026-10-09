@@ -105,6 +105,8 @@ struct device *drm_sysfs_minor_alloc(struct drm_minor *minor)
 
 	devnode = make_dev(&drm_cdevsw, minor->index,
 		DRM_DEV_UID, DRM_DEV_GID, DRM_DEV_MODE, "dri/%s", dev_str);
+	/* drm_minor_free() destroys this node at device teardown. */
+	minor->devnode = devnode;
 
 	kdev->parent = minor->dev->dev;
 	dev_set_drvdata(kdev, minor);
@@ -118,4 +120,3 @@ struct device *drm_sysfs_minor_alloc(struct drm_minor *minor)
 err_free:
 	return ERR_PTR(r);
 }
-
