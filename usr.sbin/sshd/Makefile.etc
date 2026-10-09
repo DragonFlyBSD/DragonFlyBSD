@@ -4,4 +4,11 @@ FILESMODE=	644
 FILESOWN=	${BINOWN}
 FILESGRP=	${BINGRP}
 
+# Explicitly disable PasswordAuthentication
+sshd_config: ${.CURDIR}/../../crypto/openssh/sshd_config
+	sed -E -e 's|^#?PasswordAuthentication.*$$|PasswordAuthentication no|' \
+	    ${.ALLSRC} > ${.TARGET}
+
+CLEANFILES+=	sshd_config
+
 .include <bsd.prog.mk>
