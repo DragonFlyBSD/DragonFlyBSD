@@ -335,6 +335,8 @@ time_t timegm(struct tm *);
 char *xcrypt(const char *password, const char *salt);
 char *shadow_pw(struct passwd *pw);
 
+#include "port-net.h"
+
 /* _FORTIFY_SOURCE breaks FD_ISSET(n)/FD_SET(n) for n > FD_SETSIZE. Avoid. */
 #if defined(HAVE_FEATURES_H) && defined(_FORTIFY_SOURCE)
 # include <features.h>

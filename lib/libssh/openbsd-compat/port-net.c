@@ -200,6 +200,7 @@ sys_tun_open(int tun, int mode, char **ifname)
 #ifdef SSH_TUN_FREEBSD
 #include <sys/socket.h>
 #include <net/if.h>
+#include <net/tun/if_tun.h> /* DragonFly */
 
 #ifdef HAVE_NET_IF_TUN_H
 #include <net/if_tun.h>
