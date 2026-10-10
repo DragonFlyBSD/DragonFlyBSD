@@ -2,7 +2,7 @@
 .\" $FreeBSD: src/share/man/man4/tun.4,v 1.9.2.4 2001/08/17 13:08:39 ru Exp $
 .\" Based on PR#2411
 .\"
-.Dd August 3, 2018
+.Dd October 10, 2026
 .Dt TUN 4
 .Os
 .Sh NAME
@@ -50,51 +50,70 @@ interface.
 The network interfaces are named
 .Dq Li tun0 ,
 .Dq Li tun1 ,
-etc., one for each control device that has been opened.
-These network interfaces persist until the
+etc.
+Each interface has one control device,
+.Pa /dev/tun Ns Ar N .
+Interfaces are created in one of two ways:
+.Bl -tag -width indent
+.It Executing Dq Cm ifconfig Ar tunN Cm create
+This command creates interface
+.Ar tunN
+with
+.Pa /dev/tunN
+as its control device.
+This is the preferred method.
+The interface persists until it is removed with
+.Dq Cm ifconfig Ar tunN Cm destroy
+or until the
 .Pa if_tun.ko
-module is unloaded, or until removed with the
-.Xr ifconfig 8
-command (see below).
-.Pp
-The
-.Nm
-devices are created using interface cloning.
-This is done using the
-.Dq ifconfig tun Ns Sy N No create
-command.
-This is the preferred method of creating
-.Nm
-devices.
-The same method allows removal of interfaces by using the
-.Dq ifconfig tun Ns Sy N No destroy
-command.
-.Pp
-The
-.Nm
-interface permits opens on the special control device
-.Pa /dev/tun .
-When this device is opened,
-.Nm
-will return a handle for the lowest unused
-.Nm
-device (use
+module is unloaded.
+.It Opening Pa /dev/tun
+Opening the auto-cloning device
+.Pa /dev/tun
+creates a new interface using the lowest unused unit number and returns a
+handle to its control device (use
 .Xr devname 3
 to determine which).
+Such an interface is automatically destroyed on the last close of its
+control device.
+.El
+.Ss Access Control
+Opening the auto-cloning device
+.Pa /dev/tun
+requires super-user privileges, since it creates a new interface.
 .Pp
-Control devices (once successfully opened) persist until the
-.Pa if_tun.ko
-module is unloaded or the interface is destroyed.
+Access to the per-interface control devices
+.Pa /dev/tun Ns Ar N
+is governed by the file permissions of the device node,
+which are created owned by
+.Dq root:wheel
+with mode
+.Li 0600
+by default.
+To delegate an interface to an unprivileged user, the administrator creates
+it and changes the ownership or mode of its device node, for example:
+.Bd -literal -offset indent
+ifconfig tun0 create
+chown user /dev/tun0
+.Ed
 .Pp
+The node is removed when the interface is destroyed and created afresh with
+the default ownership the next time, so use
+.Xr devfs 5
+rules to make a permission change persistent.
+The owner of a control device can read and write packets and change the
+per-interface settings described below.
+.Ss Operation
 Each interface supports the usual network-interface
 .Xr ioctl 2 Ns s
 and thus can be used with
 .Xr ifconfig 8
 like any other interface.
-At boot time, they are
+By default, they are
 .Dv POINTOPOINT
-interfaces, but this can be changed; see the description of the control
-device, below.
+interfaces, but this can be changed; see the description of
+.Dv TUNSIFMODE
+below.
 When the system chooses to transmit a packet on the
 network interface, the packet can be read from the control device
 (it appears as
@@ -104,9 +123,7 @@ writing a packet to the control device generates an input
 packet on the network interface, as if the (non-existent)
 hardware had just received it.
 .Pp
-The tunnel device
-.Pq Pa /dev/tun Ns Ar N
-is exclusive-open
+The control device is exclusive-open
 (it cannot be opened if it is already open).
 A
 .Xr read 2
@@ -185,10 +202,10 @@ ioctl has been set (i.e.,
 mode), the address family must be prepended, otherwise the
 packet is assumed to be of type
 .Dv AF_INET .
-.Pp
+.Ss Ioctl Requests
 The following
 .Xr ioctl 2
-calls are supported
+requests are supported
 (defined in
 .In net/tun/if_tun.h ) :
 .Bl -tag -width ".Dv TUNSIFMODE"
@@ -196,8 +213,15 @@ calls are supported
 The argument should be a pointer to an
 .Vt int ;
 this sets the internal debugging variable to that value.
-What, if anything, this variable controls is not documented here; see
-the source code.
+The variable is global: it applies to all
+.Nm
+devices, not only the one the request was made on, and it is the same
+variable that is exposed as the
+.Va net.link.tun.debug
+sysctl.
+.Pp
+.Em Note :
+This request requires super-user privileges.
 .It Dv TUNGDEBUG
 The argument should be a pointer to an
 .Vt int ;
@@ -304,17 +328,29 @@ The control device also supports
 for read; selecting for write is pointless, and always succeeds, since
 writes are always non-blocking.
 .Pp
-On the last close of the data device, by default, the interface is
+On the last close of the control device, the interface is
 brought down
 (as if with
-.Nm ifconfig Ar tunN Cm down ) .
-All queued packets are thrown away.
-If the interface is up when the data device is not open
-output packets are always thrown away rather than letting
-them pile up.
+.Dq Cm ifconfig Ar tunN Cm down ) ,
+and all queued packets are thrown away.
+An interface that was created by opening
+.Pa /dev/tun
+is then destroyed; one created with
+.Xr ifconfig 8
+remains and can be opened again.
+.Sh FILES
+.Bl -tag -width ".Pa /dev/tun Ns Ar N" -compact
+.It Pa /dev/tun
+auto-cloning device, super-user only
+.It Pa /dev/tun Ns Ar N
+control device of interface
+.Dq Li tun Ns Ar N ,
+access governed by its file permissions
+.El
 .Sh SEE ALSO
 .Xr ioctl 2 ,
 .Xr devname 3 ,
 .Xr inet 4 ,
 .Xr tap 4 ,
+.Xr devfs 5 ,
 .Xr ifconfig 8

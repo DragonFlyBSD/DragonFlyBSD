@@ -153,7 +153,7 @@ tunmodevent(module_t mod, int type, void *data)
 	switch (type) {
 	case MOD_LOAD:
 		dev = make_autoclone_dev(&tun_ops, &DEVFS_CLONE_BITMAP(tun),
-					 tunclone, UID_UUCP, GID_DIALER,
+					 tunclone, UID_ROOT, GID_WHEEL,
 					 0600, TUN);
 
 		SLIST_INIT(&tun_listhead);
@@ -180,15 +180,24 @@ tunmodevent(module_t mod, int type, void *data)
 	return (0);
 }
 
+/*
+ * Create a new interface and the /dev/tunN per-interface device.
+ *
+ * Called by devfs when /dev/tun is opened.
+ */
 static int
 tunclone(struct dev_clone_args *ap)
 {
 	char ifname[IFNAMSIZ];
-	int unit;
+	int unit, error;
+
+	error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT);
+	if (error != 0)
+		return (error);
 
 	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(tun), 0);
 	ksnprintf(ifname, IFNAMSIZ, "%s%d", TUN, unit);
-	ap->a_dev = make_only_dev(&tun_ops, unit, UID_UUCP, GID_DIALER,
+	ap->a_dev = make_only_dev(&tun_ops, unit, UID_ROOT, GID_WHEEL,
 				  0600, "%s", ifname);
 
 	/*
@@ -271,21 +280,19 @@ tundestroy(struct tun_softc *sc)
 }
 
 /*
- * tunnel open - must be superuser & the device must be configured in
+ * Open the per-interface device node /dev/tunN.
+ *
+ * Access is controlled by the file permissions of the device node.
  */
 static int
 tunopen(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct tun_softc *sc;
-	int error;
-
-	if ((error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT)) != 0)
-		return (error);
 
 	sc = dev->si_drv1;
-	if (sc == NULL && (sc = tuncreate(dev, 0)) == NULL)
-		return (ENOMEM);
+	if (sc == NULL)
+		return (ENXIO);
 	if (sc->tun_flags & TUN_OPEN)
 		return (EBUSY);
 
@@ -388,7 +395,7 @@ tun_clone_create(struct if_clone *ifc __unused, int unit,
 	if (dev == NULL) {
 		if (!devfs_clone_bitmap_chk(&DEVFS_CLONE_BITMAP(tun), unit)) {
 			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tun), unit);
-			dev = make_dev(&tun_ops, unit, UID_UUCP, GID_DIALER,
+			dev = make_dev(&tun_ops, unit, UID_ROOT, GID_WHEEL,
 				       0600, "%s%d", TUN, unit);
 		} else {
 			dev = devfs_find_device_by_name("%s%d", TUN, unit);
@@ -697,11 +704,15 @@ tunioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case TUNSDEBUG:
-		tundebug = *(int *)data;
+		error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT);
+		if (error == 0)
+			tundebug = *(int *)data;
 		break;
 
 	case TUNGDEBUG:
-		*(int *)data = tundebug;
+		error = caps_priv_check(ap->a_cred, SYSCAP_RESTRICTEDROOT);
+		if (error == 0)
+			*(int *)data = tundebug;
 		break;
 
 	case TUNSLMODE:
