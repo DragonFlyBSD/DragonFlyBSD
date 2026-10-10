@@ -1,5 +1,3 @@
-/*	$NetBSD: if_tun.c,v 1.14 1994/06/29 06:36:25 cgd Exp $	*/
-
 /*
  * Copyright (c) 1988, Julian Onions <jpo@cs.nott.ac.uk>
  * Nottingham University 1987.
@@ -13,6 +11,7 @@
  * UCL. This driver is based much more on read/write/poll mode of
  * operation though.
  *
+ * $NetBSD: if_tun.c,v 1.14 1994/06/29 06:36:25 cgd Exp $
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
  */
 
@@ -63,7 +62,7 @@
 static int		tunmodevent(module_t, int, void *);
 
 /* device */
-static struct tun_softc *tuncreate(cdev_t, int);
+static struct tun_softc *tuncreate(cdev_t);
 static void		tundestroy(struct tun_softc *sc);
 
 /* clone */
@@ -122,6 +121,7 @@ static int		tunrefcnt = 0;	/* module reference counter */
 static MALLOC_DEFINE(M_TUN, TUN, "Tunnel Interface");
 
 static DEVFS_DEFINE_CLONE_BITMAP(tun);
+#define TUN_BITMAP	&DEVFS_CLONE_BITMAP(tun)
 
 struct if_clone tun_cloner = IF_CLONE_INITIALIZER(
 	TUN, tun_clone_create, tun_clone_destroy, 0, IF_MAXUNIT);
@@ -152,9 +152,8 @@ tunmodevent(module_t mod, int type, void *data)
 
 	switch (type) {
 	case MOD_LOAD:
-		dev = make_autoclone_dev(&tun_ops, &DEVFS_CLONE_BITMAP(tun),
-					 tunclone, UID_ROOT, GID_WHEEL,
-					 0600, TUN);
+		dev = make_autoclone_dev(&tun_ops, TUN_BITMAP, tunclone,
+					 UID_ROOT, GID_WHEEL, 0600, TUN);
 
 		SLIST_INIT(&tun_listhead);
 		if_clone_attach(&tun_cloner);
@@ -170,7 +169,7 @@ tunmodevent(module_t mod, int type, void *data)
 			tundestroy(sc);
 
 		dev_ops_remove_all(&tun_ops);
-		destroy_autoclone_dev(dev, &DEVFS_CLONE_BITMAP(tun));
+		destroy_autoclone_dev(dev, TUN_BITMAP);
 		break;
 
 	default:
@@ -195,15 +194,15 @@ tunclone(struct dev_clone_args *ap)
 	if (error != 0)
 		return (error);
 
-	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(tun), 0);
+	unit = devfs_clone_bitmap_get(TUN_BITMAP, 0);
 	ksnprintf(ifname, IFNAMSIZ, "%s%d", TUN, unit);
 	ap->a_dev = make_only_dev(&tun_ops, unit, UID_ROOT, GID_WHEEL,
 				  0600, "%s", ifname);
 
 	/*
 	 * Use the if_clone framework to create cloned device/interface,
-	 * so the two clone methods (autoclone device /dev/tun; ifconfig
-	 * clone) are consistent and can be mix used.
+	 * so the two creation methods (opening /dev/tun; ifconfig create)
+	 * are consistent and can be mixed.
 	 *
 	 * Need to pass the cdev_t because the device created by
 	 * 'make_only_dev()' doesn't appear in '/dev' yet so that it can't
@@ -213,7 +212,7 @@ tunclone(struct dev_clone_args *ap)
 }
 
 static struct tun_softc *
-tuncreate(cdev_t dev, int flags)
+tuncreate(cdev_t dev)
 {
 	struct tun_softc *sc;
 	struct ifnet *ifp;
@@ -223,7 +222,6 @@ tuncreate(cdev_t dev, int flags)
 	dev->si_drv1 = sc;
 	sc->tun_dev = dev;
 	sc->tun_flags = TUN_INITED;
-	sc->tun_flags |= flags;
 
 	reference_dev(dev);  /* device association */
 
@@ -248,8 +246,7 @@ tuncreate(cdev_t dev, int flags)
 	bpfattach(ifp, DLT_NULL, sizeof(uint32_t));
 
 	SLIST_INSERT_HEAD(&tun_listhead, sc, tun_link);
-	TUNDEBUG(ifp, "created, minor = %#x, flags = 0x%x\n",
-		 unit, sc->tun_flags);
+	TUNDEBUG(ifp, "created, minor = %#x\n", unit);
 	return (sc);
 }
 
@@ -273,7 +270,7 @@ tundestroy(struct tun_softc *sc)
 
 	/* Also destroy the cloned device */
 	destroy_dev(dev);
-	devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(tun), unit);
+	devfs_clone_bitmap_put(TUN_BITMAP, unit);
 
 	SLIST_REMOVE(&tun_listhead, sc, tun_softc, tun_link);
 	kfree(sc, M_TUN);
@@ -392,7 +389,10 @@ tun_clone_create(struct if_clone *ifc __unused, int unit,
 	if (tunfind(unit) != NULL)
 		return (EEXIST);
 
+	flags = TUN_CLONE;
 	if (dev == NULL) {
+		/* The interface clone case. */
+		flags |= TUN_MANUALMAKE;
 		if (!devfs_clone_bitmap_chk(&DEVFS_CLONE_BITMAP(tun), unit)) {
 			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tun), unit);
 			dev = make_dev(&tun_ops, unit, UID_ROOT, GID_WHEEL,
@@ -402,15 +402,14 @@ tun_clone_create(struct if_clone *ifc __unused, int unit,
 			if (dev == NULL)
 				return (ENOENT);
 		}
-		flags = TUN_MANUALMAKE;
-	} else {
-		flags = 0;
 	}
 
-	if ((sc = tuncreate(dev, flags)) == NULL)
+	sc = tuncreate(dev);
+	if (sc == NULL) {
 		return (ENOMEM);
+	}
 
-	sc->tun_flags |= TUN_CLONE;
+	sc->tun_flags |= flags;
 
 	TUNDEBUG(sc->tun_ifp, "clone created, minor = %#x, flags = 0x%x\n",
 		 minor(sc->tun_dev), sc->tun_flags);
@@ -443,36 +442,12 @@ tun_clone_destroy(struct ifnet *ifp)
 static int
 tunifinit(struct ifnet *ifp)
 {
-#ifdef INET
-	struct tun_softc *sc = ifp->if_softc;
-#endif
-	struct ifaddr_container *ifac;
-	int error = 0;
-
 	TUNDEBUG(ifp, "initialize\n");
 
 	ifp->if_flags |= IFF_UP | IFF_RUNNING;
 	getmicrotime(&ifp->if_lastchange);
 
-	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
-		struct ifaddr *ifa = ifac->ifa;
-
-		if (ifa->ifa_addr == NULL) {
-			error = EFAULT;
-			/* XXX: Should maybe return straight off? */
-		} else {
-#ifdef INET
-			if (ifa->ifa_addr->sa_family == AF_INET) {
-				struct sockaddr_in *si;
-
-				si = (struct sockaddr_in *)ifa->ifa_addr;
-				if (si->sin_addr.s_addr)
-					sc->tun_flags |= TUN_IASET;
-			}
-#endif
-		}
-	}
-	return (error);
+	return (0);
 }
 
 /*
@@ -496,12 +471,10 @@ tunifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			    "\tOpened by PID %d\n", sc->tun_pid);
 		break;
 	case SIOCSIFADDR:
-		error = tunifinit(ifp);
-		TUNDEBUG(ifp, "address set, error=%d\n", error);
-		break;
 	case SIOCSIFDSTADDR:
 		error = tunifinit(ifp);
-		TUNDEBUG(ifp, "destination address set, error=%d\n", error);
+		TUNDEBUG(ifp, "%saddress set, error=%d\n",
+			 cmd == SIOCSIFDSTADDR ? "destination " : "", error);
 		break;
 	case SIOCSIFMTU:
 		ifp->if_mtu = ifr->ifr_mtu;
@@ -583,14 +556,11 @@ tunifoutput_serialized(struct ifnet *ifp, struct mbuf *m0,
 		m0->m_data += sizeof(int);
 	}
 
-	if (ifp->if_bpf) {
+	if (ifp->if_bpf != NULL) {
 		bpf_gettoken();
-		if (ifp->if_bpf) {
-			/*
-			 * We need to prepend the address family as
-			 * a four byte field.
-			 */
-			uint32_t af = dst->sa_family;
+		if (ifp->if_bpf != NULL) {
+			/* Prepend the address family as a 4-byte field. */
+			const uint32_t af = (uint32_t)dst->sa_family;
 
 			bpf_ptap(ifp->if_bpf, m0, &af, sizeof(af));
 		}
@@ -666,9 +636,6 @@ tunifoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 }
 
 
-/*
- * the ops interface is now pretty minimal.
- */
 static int
 tunioctl(struct dev_ioctl_args *ap)
 {
@@ -683,10 +650,14 @@ tunioctl(struct dev_ioctl_args *ap)
 	switch (ap->a_cmd) {
 	case TUNSIFINFO:
 		tunp = (struct tuninfo *)data;
-		if (ifp->if_type != tunp->type)
-			return (EPROTOTYPE);
-		if (tunp->mtu < IF_MINMTU)
-			return (EINVAL);
+		if (ifp->if_type != tunp->type) {
+			error = EPROTOTYPE;
+			break;
+		}
+		if (tunp->mtu < IF_MINMTU) {
+			error = EINVAL;
+			break;
+		}
 		ifp->if_mtu = tunp->mtu;
 		ifp->if_baudrate = tunp->baudrate;
 		break;
@@ -739,9 +710,10 @@ tunioctl(struct dev_ioctl_args *ap)
 
 	case TUNSIFMODE:
 		/* deny this if UP */
-		if (ifp->if_flags & IFF_UP)
-			return (EBUSY);
-
+		if (ifp->if_flags & IFF_UP) {
+			error = EBUSY;
+			break;
+		}
 		switch (*(int *)data & ~IFF_MULTICAST) {
 		case IFF_POINTOPOINT:
 		case IFF_BROADCAST:
@@ -749,7 +721,8 @@ tunioctl(struct dev_ioctl_args *ap)
 			ifp->if_flags |= *(int *)data;
 			break;
 		default:
-			return (EINVAL);
+			error = EINVAL;
+			break;
 		}
 		break;
 
@@ -799,7 +772,7 @@ tunioctl(struct dev_ioctl_args *ap)
  * The ops read interface - reads a packet at a time, or at
  * least as much of a packet as can be read.
  */
-static	int
+static int
 tunread(struct dev_read_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
@@ -851,7 +824,7 @@ tunread(struct dev_read_args *ap)
 /*
  * the ops write interface - an atomic write is a packet - or else!
  */
-static	int
+static int
 tunwrite(struct dev_write_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
@@ -901,10 +874,9 @@ tunwrite(struct dev_write_args *ap)
 	top->m_pkthdr.len = (int)tlen;
 	top->m_pkthdr.rcvif = ifp;
 
-	if (ifp->if_bpf) {
+	if (ifp->if_bpf != NULL) {
 		bpf_gettoken();
-
-		if (ifp->if_bpf) {
+		if (ifp->if_bpf != NULL) {
 			if (sc->tun_flags & TUN_IFHEAD) {
 				/*
 				 * Conveniently, we already have a 4-byte
@@ -923,16 +895,12 @@ tunwrite(struct dev_write_args *ap)
 				*mtod(top, u_int32_t *) =
 				    htonl(*mtod(top, u_int32_t *));
 			} else {
-				/*
-				 * We need to prepend the address family as
-				 * a four byte field.
-				 */
-				static const uint32_t af = AF_INET;
+				/* Prepend the address family. */
+				const uint32_t af = AF_INET;
 
 				bpf_ptap(ifp->if_bpf, top, &af, sizeof(af));
 			}
 		}
-
 		bpf_reltoken();
 	}
 

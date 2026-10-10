@@ -35,9 +35,9 @@ struct tun_softc {
 	u_short		tun_flags;	/* misc flags */
 #define	TUN_OPEN	0x0001
 #define	TUN_INITED	0x0002
-#define	TUN_RCOLL	0x0004
-#define	TUN_IASET	0x0008
-#define	TUN_DSTADDR	0x0010		/* unused */
+			/* 0x0004: was TUN_RCOLL */
+			/* 0x0008: was TUN_IASET */
+			/* 0x0010: was TUN_DSTADDR */
 #define	TUN_LMODE	0x0020
 #define	TUN_RWAIT	0x0040
 #define	TUN_ASYNC	0x0080
