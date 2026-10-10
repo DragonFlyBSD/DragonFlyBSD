@@ -71,7 +71,6 @@ static int		tun_clone_create(struct if_clone *, int,
 static int		tun_clone_destroy(struct ifnet *);
 
 /* network interface */
-static int		tunifinit(struct ifnet *);
 static void		tunifstart(struct ifnet *, struct ifaltq_subque *);
 static int		tunifoutput(struct ifnet *, struct mbuf *,
 				    struct sockaddr *, struct rtentry *rt);
@@ -436,21 +435,6 @@ tun_clone_destroy(struct ifnet *ifp)
 
 
 /*
- * Network interface functions
- */
-
-static int
-tunifinit(struct ifnet *ifp)
-{
-	TUNDEBUG(ifp, "initialize\n");
-
-	ifp->if_flags |= IFF_UP | IFF_RUNNING;
-	getmicrotime(&ifp->if_lastchange);
-
-	return (0);
-}
-
-/*
  * Process an ioctl request.
  *
  * MPSAFE
@@ -472,9 +456,8 @@ tunifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 	case SIOCSIFADDR:
 	case SIOCSIFDSTADDR:
-		error = tunifinit(ifp);
-		TUNDEBUG(ifp, "%saddress set, error=%d\n",
-			 cmd == SIOCSIFDSTADDR ? "destination " : "", error);
+		ifp->if_flags |= IFF_UP | IFF_RUNNING;
+		/* Everything else is done at a higher level. */
 		break;
 	case SIOCSIFMTU:
 		ifp->if_mtu = ifr->ifr_mtu;
@@ -511,10 +494,12 @@ tunifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	if (m != NULL) {
 		if (sc->tun_flags & TUN_RWAIT) {
 			sc->tun_flags &= ~TUN_RWAIT;
-			wakeup((caddr_t)sc);
+			wakeup(sc);
 		}
-		if (sc->tun_flags & TUN_ASYNC && sc->tun_sigio)
+
+		if ((sc->tun_flags & TUN_ASYNC) && sc->tun_sigio != NULL)
 			pgsigio(sc->tun_sigio, SIGIO, 0);
+
 		ifsq_deserialize_hw(ifsq);
 		KNOTE(&sc->tun_rkq.ki_note, 0);
 		ifsq_serialize_hw(ifsq);
@@ -531,8 +516,9 @@ tunifoutput_serialized(struct ifnet *ifp, struct mbuf *m0,
 		       struct sockaddr *dst, struct rtentry *rt)
 {
 	struct tun_softc *sc = ifp->if_softc;
-	int error;
 	struct altq_pktattr pktattr;
+	uint32_t family;
+	int error;
 
 	TUNDEBUG(ifp, "output\n");
 
@@ -556,23 +542,13 @@ tunifoutput_serialized(struct ifnet *ifp, struct mbuf *m0,
 		m0->m_data += sizeof(int);
 	}
 
-	if (ifp->if_bpf != NULL) {
-		bpf_gettoken();
-		if (ifp->if_bpf != NULL) {
-			/* Prepend the address family as a 4-byte field. */
-			const uint32_t af = (uint32_t)dst->sa_family;
+	/* Prepend the address family as a 4-byte field. */
+	family = (uint32_t)dst->sa_family;
+	bpf_ptap(ifp->if_bpf, m0, &family, sizeof(family));
 
-			bpf_ptap(ifp->if_bpf, m0, &af, sizeof(af));
-		}
-		bpf_reltoken();
-	}
-
-	/* prepend sockaddr? this may abort if the mbuf allocation fails */
 	if (sc->tun_flags & TUN_LMODE) {
-		/* allocate space for sockaddr */
+		/* Allocate space for sockaddr */
 		M_PREPEND(m0, dst->sa_len, M_NOWAIT);
-
-		/* if allocation failed drop packet */
 		if (m0 == NULL){
 			IFNET_STAT_INC(ifp, oerrors, 1);
 			return (ENOBUFS);
@@ -583,14 +559,12 @@ tunifoutput_serialized(struct ifnet *ifp, struct mbuf *m0,
 
 	if (sc->tun_flags & TUN_IFHEAD) {
 		/* Prepend the address family */
-		M_PREPEND(m0, 4, M_NOWAIT);
-
-		/* if allocation failed drop packet */
+		M_PREPEND(m0, sizeof(uint32_t), M_NOWAIT);
 		if (m0 == NULL){
 			IFNET_STAT_INC(ifp, oerrors, 1);
 			return (ENOBUFS);
 		} else {
-			*(u_int32_t *)m0->m_data = htonl(dst->sa_family);
+			*(uint32_t *)m0->m_data = htonl(dst->sa_family);
 		}
 	} else {
 #ifdef INET
@@ -603,34 +577,39 @@ tunifoutput_serialized(struct ifnet *ifp, struct mbuf *m0,
 	}
 
 	error = ifq_handoff(ifp, m0, &pktattr);
-	if (error) {
+	if (error != 0) {
 		IFNET_STAT_INC(ifp, collisions, 1);
-	} else {
-		IFNET_STAT_INC(ifp, opackets, 1);
-		if (sc->tun_flags & TUN_RWAIT) {
-			sc->tun_flags &= ~TUN_RWAIT;
-			wakeup((caddr_t)sc);
-		}
-		get_mplock();
-		if (sc->tun_flags & TUN_ASYNC && sc->tun_sigio)
-			pgsigio(sc->tun_sigio, SIGIO, 0);
-		rel_mplock();
-		ifnet_deserialize_all(ifp);
-		KNOTE(&sc->tun_rkq.ki_note, 0);
-		ifnet_serialize_all(ifp);
+		return (error);
 	}
-	return (error);
+
+	IFNET_STAT_INC(ifp, opackets, 1);
+	if (sc->tun_flags & TUN_RWAIT) {
+		sc->tun_flags &= ~TUN_RWAIT;
+		wakeup(sc);
+	}
+
+	get_mplock();
+	if ((sc->tun_flags & TUN_ASYNC) && sc->tun_sigio != NULL)
+		pgsigio(sc->tun_sigio, SIGIO, 0);
+	rel_mplock();
+
+	return (0);
 }
 
 static int
 tunifoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	    struct rtentry *rt)
 {
+	struct tun_softc *sc = ifp->if_softc;
 	int error;
 
 	ifnet_serialize_all(ifp);
 	error = tunifoutput_serialized(ifp, m0, dst, rt);
 	ifnet_deserialize_all(ifp);
+
+	if (error == 0) {
+		KNOTE(&sc->tun_rkq.ki_note, 0);
+	}
 
 	return (error);
 }
@@ -781,7 +760,8 @@ tunread(struct dev_read_args *ap)
 	struct ifnet *ifp = sc->tun_ifp;
 	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	struct mbuf *m0;
-	int error=0, len;
+	size_t len;
+	int error;
 
 	TUNDEBUG(ifp, "read\n");
 	if ((sc->tun_flags & TUN_READY) != TUN_READY) {
@@ -807,14 +787,15 @@ tunread(struct dev_read_args *ap)
 
 	ifnet_deserialize_all(ifp);
 
-	while (m0 && uio->uio_resid > 0 && error == 0) {
-		len = (int)szmin(uio->uio_resid, m0->m_len);
+	error = 0;
+	while (m0 != NULL && uio->uio_resid > 0 && error == 0) {
+		len = szmin(uio->uio_resid, (size_t)m0->m_len);
 		if (len != 0)
-			error = uiomove(mtod(m0, caddr_t), (size_t)len, uio);
+			error = uiomove(mtod(m0, caddr_t), len, uio);
 		m0 = m_free(m0);
 	}
 
-	if (m0) {
+	if (m0 != NULL) {
 		TUNDEBUG(ifp, "dropping mbuf\n");
 		m_freem(m0);
 	}
@@ -832,8 +813,9 @@ tunwrite(struct dev_write_args *ap)
 	struct tun_softc *sc = dev->si_drv1;
 	struct ifnet *ifp = sc->tun_ifp;
 	struct mbuf *top, **mp, *m;
-	size_t tlen;
-	uint32_t family, mru;
+	size_t tlen, mru;
+	uint32_t family;
+	bool ifhead;
 	int error = 0;
 	int isr;
 
@@ -842,11 +824,12 @@ tunwrite(struct dev_write_args *ap)
 	if (uio->uio_resid == 0)
 		return (0);
 
-	mru = TUNMRU;
-	if (sc->tun_flags & TUN_IFHEAD)
-		mru += sizeof(family);
+	ifhead = ((sc->tun_flags & TUN_IFHEAD) != 0);
+
+	mru = ifhead ? (TUNMRU + sizeof(family)) : TUNMRU;
 	if (uio->uio_resid > mru) {
-		TUNDEBUG(ifp, "len = %zd!\n", uio->uio_resid);
+		TUNDEBUG(ifp, "packet too big: len=%zu, mru=%zu\n",
+			 uio->uio_resid, mru);
 		return (EIO);
 	}
 
@@ -874,45 +857,17 @@ tunwrite(struct dev_write_args *ap)
 	top->m_pkthdr.len = (int)tlen;
 	top->m_pkthdr.rcvif = ifp;
 
-	if (ifp->if_bpf != NULL) {
-		bpf_gettoken();
-		if (ifp->if_bpf != NULL) {
-			if (sc->tun_flags & TUN_IFHEAD) {
-				/*
-				 * Conveniently, we already have a 4-byte
-				 * address family prepended to our packet !
-				 * Inconveniently, it's in the wrong byte
-				 * order !
-				 */
-				if ((top = m_pullup(top, sizeof(family)))
-				    == NULL) {
-					bpf_reltoken();
-					return (ENOBUFS);
-				}
-				*mtod(top, u_int32_t *) =
-				    ntohl(*mtod(top, u_int32_t *));
-				bpf_mtap(ifp->if_bpf, top);
-				*mtod(top, u_int32_t *) =
-				    htonl(*mtod(top, u_int32_t *));
-			} else {
-				/* Prepend the address family. */
-				const uint32_t af = AF_INET;
-
-				bpf_ptap(ifp->if_bpf, top, &af, sizeof(af));
-			}
-		}
-		bpf_reltoken();
-	}
-
-	if (sc->tun_flags & TUN_IFHEAD) {
+	if (ifhead) {
 		if (top->m_len < sizeof(family) &&
 		    (top = m_pullup(top, sizeof(family))) == NULL)
 			return (ENOBUFS);
-		family = ntohl(*mtod(top, u_int32_t *));
+		family = ntohl(*mtod(top, uint32_t *));
 		m_adj(top, sizeof(family));
 	} else {
 		family = AF_INET;
 	}
+
+	bpf_ptap(ifp->if_bpf, top, &family, sizeof(family));
 
 	IFNET_STAT_INC(ifp, ibytes, top->m_pkthdr.len);
 	IFNET_STAT_INC(ifp, ipackets, 1);
@@ -948,7 +903,6 @@ tunkqfilter(struct dev_kqfilter_args *ap)
 	struct tun_softc *sc = dev->si_drv1;
 	struct ifnet *ifp = sc->tun_ifp;
 	struct knote *kn = ap->a_kn;
-	struct klist *klist;
 
 	ap->a_result = 0;
 	ifnet_serialize_all(ifp);
@@ -963,13 +917,14 @@ tunkqfilter(struct dev_kqfilter_args *ap)
 		kn->kn_hook = (caddr_t)sc;
 		break;
 	default:
-		ifnet_deserialize_all(ifp);
 		ap->a_result = EOPNOTSUPP;
-		return (0);
+		break;
 	}
 
-	klist = &sc->tun_rkq.ki_note;
-	knote_insert(klist, kn);
+	if (ap->a_result == 0) {
+		knote_insert(&sc->tun_rkq.ki_note, kn);
+	}
+
 	ifnet_deserialize_all(ifp);
 
 	return (0);
