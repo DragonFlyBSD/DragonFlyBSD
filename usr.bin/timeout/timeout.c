@@ -374,8 +374,12 @@ main(int argc, char **argv)
 		if (sig == SIGKILL || sig == SIGSTOP || sig == SIGCONT ||
 		    sig == SIGTTIN || sig == SIGTTOU)
 			continue;
+#ifdef SIGTHR
+		if (sig == SIGTHR)
+			continue;
+#endif
 		if (sigaction(sig, &sa, NULL) == -1)
-			err(EXIT_FAILURE, "sigaction(%d)", sig);
+			warn("sigaction(%d)", sig);
 	}
 
 	/* Don't stop if background child needs TTY */
