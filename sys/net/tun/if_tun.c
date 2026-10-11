@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 1988, Julian Onions <jpo@cs.nott.ac.uk>
  * Nottingham University 1987.
+ * Copyright (c) 2026 The DragonFly Project
  *
  * This source may be freely distributed, however I would be interested
  * in any changes that are made.
@@ -194,7 +195,10 @@ tunclone(struct dev_clone_args *ap)
 		return (error);
 
 	unit = devfs_clone_bitmap_get(TUN_BITMAP, 0);
-	ksnprintf(ifname, IFNAMSIZ, "%s%d", TUN, unit);
+	if (unit < 0)
+		return (ENOSPC);
+
+	ksnprintf(ifname, sizeof(ifname), "%s%d", TUN, unit);
 	ap->a_dev = make_only_dev(&tun_ops, unit, UID_ROOT, GID_WHEEL,
 				  0600, "%s", ifname);
 
@@ -207,7 +211,15 @@ tunclone(struct dev_clone_args *ap)
 	 * 'make_only_dev()' doesn't appear in '/dev' yet so that it can't
 	 * be found by 'devfs_find_device_by_name()' in 'tun_clone_create()'.
 	 */
-	return (if_clone_create(ifname, IFNAMSIZ, NULL, (caddr_t)ap->a_dev));
+	error = if_clone_create(ifname, sizeof(ifname), NULL,
+				(caddr_t)ap->a_dev);
+	if (error != 0) {
+		destroy_dev(ap->a_dev);
+		ap->a_dev = NULL;
+		devfs_clone_bitmap_put(TUN_BITMAP, unit);
+	}
+
+	return (error);
 }
 
 static struct tun_softc *
@@ -217,19 +229,20 @@ tuncreate(cdev_t dev)
 	struct ifnet *ifp;
 	int unit = minor(dev);
 
-	sc = kmalloc(sizeof(*sc), M_TUN, M_WAITOK | M_ZERO);
-	dev->si_drv1 = sc;
-	sc->tun_dev = dev;
-	sc->tun_flags = TUN_INITED;
-
-	reference_dev(dev);  /* device association */
-
-	ifp = sc->tun_ifp = if_alloc(IFT_PPP);
+	ifp = if_alloc(IFT_PPP);
 	if (ifp == NULL) {
-		kprintf("%s: failed to if_alloc() interface for %s%d",
+		kprintf("%s: if_alloc() failed for %s%d\n",
 			__func__, TUN, unit);
 		return (NULL);
 	}
+
+	sc = kmalloc(sizeof(*sc), M_TUN, M_WAITOK | M_ZERO);
+	sc->tun_dev = dev;
+	sc->tun_ifp = ifp;
+	sc->tun_flags = TUN_INITED;
+
+	dev->si_drv1 = sc;
+	reference_dev(dev);  /* device association */
 
 	if_initname(ifp, TUN, unit);
 	ifp->if_mtu = TUNMTU;
@@ -392,19 +405,22 @@ tun_clone_create(struct if_clone *ifc __unused, int unit,
 	if (dev == NULL) {
 		/* The interface clone case. */
 		flags |= TUN_MANUALMAKE;
-		if (!devfs_clone_bitmap_chk(&DEVFS_CLONE_BITMAP(tun), unit)) {
-			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tun), unit);
-			dev = make_dev(&tun_ops, unit, UID_ROOT, GID_WHEEL,
-				       0600, "%s%d", TUN, unit);
-		} else {
-			dev = devfs_find_device_by_name("%s%d", TUN, unit);
-			if (dev == NULL)
-				return (ENOENT);
+		if (devfs_clone_bitmap_chk(TUN_BITMAP, unit)) {
+			kprintf("%s: bitmap out-of-sync (unit=%d allocated)\n",
+				__func__, unit);
+			return (EEXIST);
 		}
+		devfs_clone_bitmap_set(TUN_BITMAP, unit);
+		dev = make_dev(&tun_ops, unit, UID_ROOT, GID_WHEEL,
+			       0600, "%s%d", TUN, unit);
 	}
 
 	sc = tuncreate(dev);
 	if (sc == NULL) {
+		if (flags & TUN_MANUALMAKE) {
+			destroy_dev(dev);
+			devfs_clone_bitmap_put(TUN_BITMAP, unit);
+		}
 		return (ENOMEM);
 	}
 
@@ -445,14 +461,17 @@ tunifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct tun_softc *sc = ifp->if_softc;
 	struct ifstat *ifs;
+	size_t len;
 	int error = 0;
 
 	switch (cmd) {
 	case SIOCGIFSTATUS:
 		ifs = (struct ifstat *)data;
-		if (sc->tun_pid)
-			ksprintf(ifs->ascii + strlen(ifs->ascii),
-			    "\tOpened by PID %d\n", sc->tun_pid);
+		if (sc->tun_pid) {
+			len = strlen(ifs->ascii);
+			ksnprintf(ifs->ascii + len, IFSTATMAX - len,
+				  "\tOpened by PID %d\n", sc->tun_pid);
+		}
 		break;
 	case SIOCSIFADDR:
 	case SIOCSIFDSTADDR:
@@ -497,8 +516,11 @@ tunifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			wakeup(sc);
 		}
 
-		if ((sc->tun_flags & TUN_ASYNC) && sc->tun_sigio != NULL)
+		if ((sc->tun_flags & TUN_ASYNC) && sc->tun_sigio != NULL) {
+			get_mplock();
 			pgsigio(sc->tun_sigio, SIGIO, 0);
+			rel_mplock();
+		}
 
 		ifsq_deserialize_hw(ifsq);
 		KNOTE(&sc->tun_rkq.ki_note, 0);
@@ -518,33 +540,52 @@ tunifoutput_serialized(struct ifnet *ifp, struct mbuf *m0,
 	struct tun_softc *sc = ifp->if_softc;
 	struct altq_pktattr pktattr;
 	uint32_t family;
+	size_t len;
 	int error;
 
 	TUNDEBUG(ifp, "output\n");
 
-	if ((sc->tun_flags & TUN_READY) != TUN_READY) {
-		TUNDEBUG(ifp, "not ready, flags = 0x%x\n", sc->tun_flags);
+	if ((ifp->if_flags & IFF_UP) == 0 ||
+	    (sc->tun_flags & TUN_READY) != TUN_READY)
+	{
+		TUNDEBUG(ifp, "not up or ready, flags = 0x%x\n", sc->tun_flags);
 		m_freem(m0);
 		return (EHOSTDOWN);
 	}
 
 	/*
-	 * if the queueing discipline needs packet classification,
-	 * do it before prepending link headers.
+	 * BPF write needs to be handled specially: the address family is in
+	 * the first 4 bytes of the packet.
+	 *
+	 * The packet comes from userland, so it may be shorter than that or
+	 * fragmented. Handle both cases.
 	 */
-	ifq_classify(&ifp->if_snd, m0, dst->sa_family, &pktattr);
-
-	/* BPF write needs to be handled specially */
 	if (dst->sa_family == AF_UNSPEC) {
-		dst->sa_family = *(mtod(m0, int *));
-		m0->m_len -= sizeof(int);
-		m0->m_pkthdr.len -= sizeof(int);
-		m0->m_data += sizeof(int);
+		if (m0->m_pkthdr.len < (int)sizeof(uint32_t)) {
+			m_freem(m0);
+			IFNET_STAT_INC(ifp, oerrors, 1);
+			return (EINVAL);
+		}
+		if (m0->m_len < (int)sizeof(uint32_t) &&
+		    (m0 = m_pullup(m0, sizeof(uint32_t))) == NULL)
+		{
+			IFNET_STAT_INC(ifp, oerrors, 1);
+			return (ENOBUFS);
+		}
+
+		dst->sa_family = (sa_family_t)*mtod(m0, uint32_t *);
+		m_adj(m0, sizeof(uint32_t));
 	}
 
 	/* Prepend the address family as a 4-byte field. */
 	family = (uint32_t)dst->sa_family;
 	bpf_ptap(ifp->if_bpf, m0, &family, sizeof(family));
+
+	/*
+	 * Classify the packet after striping the BPF header (so it sees
+	 * the IP header) and before prepending LMODE/IFHEAD header.
+	 */
+	ifq_classify(&ifp->if_snd, m0, dst->sa_family, &pktattr);
 
 	if (sc->tun_flags & TUN_LMODE) {
 		/* Allocate space for sockaddr */
@@ -576,6 +617,7 @@ tunifoutput_serialized(struct ifnet *ifp, struct mbuf *m0,
 		}
 	}
 
+	len = m0->m_pkthdr.len;
 	error = ifq_handoff(ifp, m0, &pktattr);
 	if (error != 0) {
 		IFNET_STAT_INC(ifp, collisions, 1);
@@ -583,15 +625,18 @@ tunifoutput_serialized(struct ifnet *ifp, struct mbuf *m0,
 	}
 
 	IFNET_STAT_INC(ifp, opackets, 1);
+	IFNET_STAT_INC(ifp, obytes, len);
+
 	if (sc->tun_flags & TUN_RWAIT) {
 		sc->tun_flags &= ~TUN_RWAIT;
 		wakeup(sc);
 	}
 
-	get_mplock();
-	if ((sc->tun_flags & TUN_ASYNC) && sc->tun_sigio != NULL)
+	if ((sc->tun_flags & TUN_ASYNC) && sc->tun_sigio != NULL) {
+		get_mplock();
 		pgsigio(sc->tun_sigio, SIGIO, 0);
-	rel_mplock();
+		rel_mplock();
+	}
 
 	return (0);
 }
@@ -633,7 +678,7 @@ tunioctl(struct dev_ioctl_args *ap)
 			error = EPROTOTYPE;
 			break;
 		}
-		if (tunp->mtu < IF_MINMTU) {
+		if (tunp->mtu < IF_MINMTU || tunp->mtu > IF_MAXMTU) {
 			error = EINVAL;
 			break;
 		}
@@ -696,7 +741,8 @@ tunioctl(struct dev_ioctl_args *ap)
 		switch (*(int *)data & ~IFF_MULTICAST) {
 		case IFF_POINTOPOINT:
 		case IFF_BROADCAST:
-			ifp->if_flags &= ~(IFF_BROADCAST | IFF_POINTOPOINT);
+			ifp->if_flags &= ~(IFF_BROADCAST | IFF_POINTOPOINT |
+					   IFF_MULTICAST);
 			ifp->if_flags |= *(int *)data;
 			break;
 		default:
@@ -812,11 +858,10 @@ tunwrite(struct dev_write_args *ap)
 	struct uio *uio = ap->a_uio;
 	struct tun_softc *sc = dev->si_drv1;
 	struct ifnet *ifp = sc->tun_ifp;
-	struct mbuf *top, **mp, *m;
-	size_t tlen, mru;
+	struct mbuf *top;
+	size_t mru;
 	uint32_t family;
 	bool ifhead;
-	int error = 0;
 	int isr;
 
 	TUNDEBUG(ifp, "tunwrite\n");
@@ -832,29 +877,17 @@ tunwrite(struct dev_write_args *ap)
 			 uio->uio_resid, mru);
 		return (EIO);
 	}
-
-	/* get a header mbuf */
-	MGETHDR(m, M_WAITOK, MT_DATA);
-
-	tlen = uio->uio_resid;
-	top = NULL;
-	mp = &top;
-	while (error == 0 && uio->uio_resid > 0) {
-		m->m_len = (int)szmin(MHLEN, uio->uio_resid);
-		error = uiomove(mtod(m, caddr_t), (size_t)m->m_len, uio);
-		*mp = m;
-		mp = &m->m_next;
-		if (uio->uio_resid > 0)
-			MGET(m, M_WAITOK, MT_DATA);
+	if (ifhead && uio->uio_resid <= sizeof(family)) {
+		TUNDEBUG(ifp, "short packet: len=%zu\n", uio->uio_resid);
+		return (EINVAL);
 	}
-	if (error) {
-		if (top)
-			m_freem(top);
+
+	top = m_uiomove(uio);
+	if (top == NULL) {
 		IFNET_STAT_INC(ifp, ierrors, 1);
-		return (error);
+		return (EFAULT);
 	}
 
-	top->m_pkthdr.len = (int)tlen;
 	top->m_pkthdr.rcvif = ifp;
 
 	if (ifhead) {

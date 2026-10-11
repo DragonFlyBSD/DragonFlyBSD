@@ -125,48 +125,22 @@ hardware had just received it.
 .Pp
 The control device is exclusive-open
 (it cannot be opened if it is already open).
+Packets output on the interface are queued for reading only while the
+control device is open and the interface is up; otherwise they are
+dropped.
+.Pp
 A
 .Xr read 2
-call will return an error
-.Pq Er EHOSTDOWN
-if the interface is not
-.Dq ready
-(which means that the control device is open and the interface's
-address has been set).
-.Pp
-Once the interface is ready,
-.Xr read 2
-will return a packet if one is available; if not, it will either block
-until one is or return
+will return a packet if one is available;
+if not, it will either block until one is or return
 .Er EWOULDBLOCK ,
 depending on whether non-blocking I/O has been enabled.
+Each
+.Xr read 2
+returns exactly one packet.
 If the packet is longer than is allowed for in the buffer passed to
 .Xr read 2 ,
 the extra data will be silently dropped.
-.Pp
-If the
-.Dv TUNSLMODE
-ioctl has been set (i.e.,
-.Dq link-layer
-mode), packets read from the control device will be prepended
-with the destination address as presented to the network interface output
-routine.
-The destination address is in
-.Vt struct sockaddr
-format.
-The actual length of the prepended address is in the member
-.Va sa_len .
-If the
-.Dv TUNSIFHEAD
-ioctl has been set (i.e.,
-.Dq multi-af
-mode), packets will be prepended with a 4-byte address
-family in network byte order.
-.Dv TUNSLMODE
-and
-.Dv TUNSIFHEAD
-are mutually exclusive.
-In any case, the packet data follows immediately.
 .Pp
 A
 .Xr write 2
@@ -175,10 +149,9 @@ call passes a packet in to be
 on the pseudo-interface.
 Each
 .Xr write 2
-call supplies exactly one packet; the packet length is taken from the
-amount of data provided to
-.Xr write 2
-(minus any supplied address family).
+call supplies exactly one packet;
+the packet length is determined from the amount of data provided to
+.Xr write 2 .
 Writes will not block; if the packet cannot be accepted for a
 transient reason
 (e.g., no buffer space available),
@@ -186,22 +159,72 @@ it is silently dropped; if the reason is not transient
 (e.g., packet too large),
 an error is returned.
 .Pp
-If the
-.Dv TUNSLMODE
-ioctl has been set (i.e.,
-.Dq link-layer
-mode), the actual packet data must be preceded by a
-.Vt struct sockaddr .
-The driver currently only inspects the
-.Va sa_family
-field.
-If the
+In both directions, the packet data may be preceded by a header,
+depending on the mode of the control device as described in the
+.Sx Modes
+section.
+.Pp
+The control device also supports
+.Xr kqueue 2 ,
+and thereby
+.Xr select 2
+and
+.Xr poll 2 ,
+for read; selecting for write is pointless, and always succeeds, since
+writes are always non-blocking.
+.Pp
+On the last close of the control device, the interface is
+brought down
+(as if with
+.Dq Cm ifconfig Ar tunN Cm down ) ,
+and all queued packets are thrown away.
+An interface that was created by opening
+.Pa /dev/tun
+is then destroyed; one created with
+.Xr ifconfig 8
+remains and can be opened again.
+.Ss Modes
+The mode of the control device determines which header, if any, precedes
+the packet data.
+It is selected with the
 .Dv TUNSIFHEAD
-ioctl has been set (i.e.,
-.Dq multi-af
-mode), the address family must be prepended, otherwise the
-packet is assumed to be of type
+and
+.Dv TUNSLMODE
+ioctls, which are mutually exclusive: enabling one turns the other off.
+.Bl -tag -width "link-layer"
+.It default
+When neither ioctl has been set, packets are exchanged as bare IP packets
+without a header.
+Since a packet then carries no address family, a written packet is assumed
+to be of type
+.Dv AF_INET ,
+and only IPv4 packets are passed to the control device;
+output packets of other address families are discarded.
+.It multi-af
+Selected by
+.Dv TUNSIFHEAD .
+Every packet is preceded by a 4-byte address family in network byte order.
+Packets read from the control device carry the address family of the
+packet.
+Packets written must be prepended with the address family and must contain
+at least one byte of data after it, otherwise
+.Er EINVAL
+is returned.
+This is the mode to use to carry IPv6, or a mix of address families.
+.It link-layer
+Selected by
+.Dv TUNSLMODE .
+Packets read from the control device are prepended with the destination
+address in
+.Vt struct sockaddr
+format; its actual length is in the member
+.Va sa_len .
+Only reads are affected: packets written carry no header and are handled
+as in the
+.Dq default
+mode, i.e., they are assumed to be of type
 .Dv AF_INET .
+.El
 .Ss Ioctl Requests
 The following
 .Xr ioctl 2
@@ -230,13 +253,12 @@ this stores the internal debugging variable's value into it.
 The argument should be a pointer to an
 .Vt struct tuninfo
 and allows setting the MTU and the baudrate of the tunnel device.
-The type must be the same as returned by
-.Dv TUNGIFINFO
-or set to
-.Dv IFT_PPP ,
-otherwise the
-.Xr ioctl 2
-call will fail.
+The type must match the type returned by
+.Dv TUNGIFINFO ,
+otherwise the call fails with
+.Er EPROTOTYPE .
+An MTU outside the range supported by the driver is rejected with
+.Er EINVAL .
 .Vt struct tuninfo
 is declared in
 .In net/tun/if_tun.h .
@@ -245,8 +267,8 @@ The argument should be a pointer to an
 .Vt struct tuninfo ,
 where the current MTU, type, and baudrate will be stored.
 .It Dv TUNGIFNAME
-Retrieve the name of the network interface that is associated with the
-control device.
+Retrieve the name of the network interface, which may be renamed,
+that is associated with the control device.
 The argument should be a pointer to a
 .Va struct ifreq .
 The interface name will be returned in the
@@ -262,9 +284,9 @@ or
 and should have
 .Dv IFF_MULTICAST
 OR'd into the value if multicast support is required.
-The type of the corresponding
+The corresponding flags of the
 .Dq Li tun Ns Ar N
-interface is set to the supplied type.
+interface are set accordingly.
 If the value is anything else, an
 .Er EINVAL
 error is returned.
@@ -278,8 +300,8 @@ a non-zero value turns off
 .Dq multi-af
 mode and turns on
 .Dq link-layer
-mode, causing packets read from the tunnel device to be prepended with
-the network destination address (see above).
+mode; see
+.Sx Modes .
 .It Dv TUNSIFPID
 Will set the PID owning the tunnel device to the current process's PID.
 .It Dv TUNSIFHEAD
@@ -289,7 +311,8 @@ a non-zero value turns off
 .Dq link-layer
 mode, and enables
 .Dq multi-af
-mode, where every packet is preceded with a 4-byte address family.
+mode; see
+.Sx Modes .
 .It Dv TUNGIFHEAD
 The argument should be a pointer to an
 .Vt int ;
@@ -309,35 +332,20 @@ If any packets are queued to be read, store the size of the first one
 into the argument
 .Vt int ;
 otherwise, store zero.
-.It Dv TIOCSPGRP
-Set the process group to receive
+.It Dv FIOSETOWN
+Set the process or process group to receive
 .Dv SIGIO
 signals, when asynchronous I/O is enabled, to the argument
 .Vt int
 value.
-.It Dv TIOCGPGRP
-Retrieve the process group value for
+A negative value denotes a process group.
+.It Dv FIOGETOWN
+Retrieve the process or process group value for
 .Dv SIGIO
 signals into the argument
 .Vt int
 value.
 .El
-.Pp
-The control device also supports
-.Xr select 2
-for read; selecting for write is pointless, and always succeeds, since
-writes are always non-blocking.
-.Pp
-On the last close of the control device, the interface is
-brought down
-(as if with
-.Dq Cm ifconfig Ar tunN Cm down ) ,
-and all queued packets are thrown away.
-An interface that was created by opening
-.Pa /dev/tun
-is then destroyed; one created with
-.Xr ifconfig 8
-remains and can be opened again.
 .Sh FILES
 .Bl -tag -width ".Pa /dev/tun Ns Ar N" -compact
 .It Pa /dev/tun
@@ -349,8 +357,10 @@ access governed by its file permissions
 .El
 .Sh SEE ALSO
 .Xr ioctl 2 ,
+.Xr kqueue 2 ,
 .Xr devname 3 ,
 .Xr inet 4 ,
+.Xr inet6 4 ,
 .Xr tap 4 ,
 .Xr devfs 5 ,
 .Xr ifconfig 8
