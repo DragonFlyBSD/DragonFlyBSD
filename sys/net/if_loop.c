@@ -203,19 +203,27 @@ if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen)
 {
 	int isr;
 
-	KASSERT((m->m_flags & M_PKTHDR) != 0, ("if_simloop: no HDR"));
+	M_ASSERTPKTHDR(m);
+
 	m->m_pkthdr.rcvif = ifp;
 
-	/* BPF write needs to be handled specially */
+	/*
+	 * BPF write needs to be handled specially: the address family is in
+	 * the first 4 bytes of the packet.
+	 */
 	if (af == AF_UNSPEC) {
-		KASSERT(m->m_len >= sizeof(int), ("if_simloop: m_len"));
-		af = *(mtod(m, int *));
-		m->m_len -= sizeof(int);
-		m->m_pkthdr.len -= sizeof(int);
-		m->m_data += sizeof(int);
+		if (m->m_len < (int)sizeof(uint32_t)) {
+			kprintf("%s: packet too short: m_len=%d\n",
+				__func__, m->m_len);
+			m_freem(m);
+			return (EINVAL);
+		}
+
+		af = (int)*mtod(m, uint32_t *);
+		m_adj(m, sizeof(uint32_t));
 	}
 
-	if (ifp->if_bpf) {
+	if (ifp->if_bpf != NULL) {
 		bpf_gettoken();
 
 		/* Re-check */
@@ -276,7 +284,7 @@ rel:
 		break;
 #endif
 	default:
-		kprintf("if_simloop: can't handle af=%d\n", af);
+		kprintf("%s: can't handle af=%d\n", __func__, af);
 		m_freem(m);
 		return (EAFNOSUPPORT);
 	}
