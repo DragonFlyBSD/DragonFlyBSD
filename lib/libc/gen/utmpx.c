@@ -278,6 +278,7 @@ pututxline(const struct utmpx *utx)
 		return NULL;
 
 	if (utx->ut_type == USER_PROCESS) {
+		memset(&ll, 0, sizeof(ll));
 		ll.ll_tv = utx->ut_tv;
 		strcpy(ll.ll_host, utx->ut_host);
 		strcpy(ll.ll_line, utx->ut_line);
