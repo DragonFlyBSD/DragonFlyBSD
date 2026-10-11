@@ -53,11 +53,36 @@
 #include <netinet/in.h>
 #endif
 
-#include "if_tunvar.h"
 #include "if_tun.h"
 
 #define TUN		"tun"
 #define TUNDEBUG	if (tundebug) if_printf
+
+struct tun_softc {
+	cdev_t		tun_dev;	/* device */
+
+	u_short		tun_flags;	/* misc flags */
+#define	TUN_OPEN	0x0001
+#define	TUN_INITED	0x0002
+			/* 0x0004: was TUN_RCOLL */
+			/* 0x0008: was TUN_IASET */
+			/* 0x0010: was TUN_DSTADDR */
+#define	TUN_LMODE	0x0020
+#define	TUN_RWAIT	0x0040
+#define	TUN_ASYNC	0x0080
+#define	TUN_IFHEAD	0x0100
+#define	TUN_CLONE	0x0200
+#define	TUN_MANUALMAKE	0x0400
+#define	TUN_READY	(TUN_OPEN | TUN_INITED)
+
+	pid_t		 tun_pid;	/* PID of process to open */
+	struct ifnet	*tun_ifp;	/* the interface */
+	struct sigio	*tun_sigio;	/* information for async I/O */
+	struct kqinfo	 tun_rkq;	/* read select/poll/kq */
+	struct kqinfo	 tun_wkq;	/* write select/poll/kq (not used) */
+
+	SLIST_ENTRY(tun_softc)	tun_link;	/* local tun list */
+};
 
 /* module */
 static int		tunmodevent(module_t, int, void *);

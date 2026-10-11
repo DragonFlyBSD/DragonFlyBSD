@@ -4001,6 +4001,8 @@ TO_REMOVE+=/usr/include/sys/priv.h
 TO_REMOVE+=/usr/share/man/man9/BACKLIGHT_SET_STATUS.9.gz
 TO_REMOVE+=/rescue/oinit
 TO_REMOVE+=/rescue/rescue.libcrypto
+TO_REMOVE+=/usr/include/net/tun/if_tunvar.h
+TO_REMOVE+=/usr/include/net/tap/if_tapvar.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
