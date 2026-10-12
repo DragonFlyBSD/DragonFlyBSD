@@ -280,8 +280,9 @@ pututxline(const struct utmpx *utx)
 	if (utx->ut_type == USER_PROCESS) {
 		memset(&ll, 0, sizeof(ll));
 		ll.ll_tv = utx->ut_tv;
-		strcpy(ll.ll_host, utx->ut_host);
-		strcpy(ll.ll_line, utx->ut_line);
+		ll.ll_ss = utx->ut_ss;
+		strlcpy(ll.ll_host, utx->ut_host, sizeof(ll.ll_host));
+		strlcpy(ll.ll_line, utx->ut_line, sizeof(ll.ll_line));
 		pw = getpwnam(utx->ut_name);
 		if (pw != NULL)
 			updlastlogx(_PATH_LASTLOGX, pw->pw_uid, &ll);
