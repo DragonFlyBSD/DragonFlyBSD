@@ -53,13 +53,12 @@ static FILE *fp;
 static int readonly = 0;
 static struct utmpx ut;
 static char utfile[MAXPATHLEN] = _PATH_UTMPX;
-
-static struct utmpx *utmp_update(const struct utmpx *);
-
 static const char vers[] = "utmpx-2.00";
 static utx_db_t dbtype = UTX_DB_UTMPX;
 static DB *lastlogx_db = NULL;
 static int lastlogx_first = 1;
+
+static struct utmpx *utmp_update(const struct utmpx *);
 
 void past_getutmp(void *, void *);
 void past_getutmpx(void *, void *);
@@ -82,13 +81,14 @@ _open_db(const char *fname, utx_db_t type)
 		return 0;
 	}
 
-	if ((fp = fopen(fname, "re+")) == NULL)
+	if ((fp = fopen(fname, "re+")) == NULL) {
 		if ((fp = fopen(fname, "we+")) == NULL) {
 			if ((fp = fopen(fname, "re")) == NULL)
 				goto fail;
 			else
 				readonly = 1;
 		}
+	}
 
 	/* get file size in order to check if new file */
 	if (_fstat(fileno(fp), &st) == -1)
@@ -96,9 +96,9 @@ _open_db(const char *fname, utx_db_t type)
 
 	if (st.st_size == 0) {
 		/* new file, add signature record */
-		(void)memset(&ut, 0, sizeof(ut));
+		memset(&ut, 0, sizeof(ut));
 		ut.ut_type = SIGNATURE;
-		(void)memcpy(ut.ut_user, vers, sizeof(vers));
+		memcpy(ut.ut_user, vers, sizeof(vers));
 		if (fwrite(&ut, sizeof(ut), 1, fp) != 1)
 			goto failclose;
 	} else {
@@ -115,9 +115,9 @@ _open_db(const char *fname, utx_db_t type)
 	dbtype = type;
 	return 0;
 failclose:
-	(void)fclose(fp);
+	fclose(fp);
 fail:
-	(void)memset(&ut, 0, sizeof(ut));
+	memset(&ut, 0, sizeof(ut));
 	return -1;
 }
 
@@ -190,20 +190,20 @@ setutxdb(utx_db_t db_type, const char *fname)
 void
 setutxent(void)
 {
-	(void)memset(&ut, 0, sizeof(ut));
+	memset(&ut, 0, sizeof(ut));
 	if (dbtype == UTX_DB_LASTLOGX) {
 		lastlogx_first = 1;
 		return;
 	}
 	if (fp == NULL)
 		return;
-	(void)fseeko(fp, (off_t)sizeof(ut), SEEK_SET);
+	fseeko(fp, (off_t)sizeof(ut), SEEK_SET);
 }
 
 void
 endutxent(void)
 {
-	(void)memset(&ut, 0, sizeof(ut));
+	memset(&ut, 0, sizeof(ut));
 	_close_db();
 }
 
@@ -239,14 +239,13 @@ getutxent(void)
 
 	return &ut;
 fail:
-	(void)memset(&ut, 0, sizeof(ut));
+	memset(&ut, 0, sizeof(ut));
 	return NULL;
 }
 
 struct utmpx *
 getutxid(const struct utmpx *utx)
 {
-
 	_DIAGASSERT(utx != NULL);
 
 	if (utx->ut_type == EMPTY)
@@ -292,7 +291,6 @@ getutxid(const struct utmpx *utx)
 struct utmpx *
 getutxline(const struct utmpx *utx)
 {
-
 	_DIAGASSERT(utx != NULL);
 
 	do {
@@ -373,15 +371,15 @@ pututxline(const struct utmpx *utx)
 			updlastlogx(_PATH_LASTLOGX, pw->pw_uid, &ll);
 	}
 
-	if (strcmp(_PATH_UTMPX, utfile) == 0)
+	if (strcmp(_PATH_UTMPX, utfile) == 0) {
 		if ((fp != NULL && readonly) || (fp == NULL && geteuid() != 0))
 			return utmp_update(utx);
+	}
 
-
-	(void)memcpy(&temp, utx, sizeof(temp));
+	memcpy(&temp, utx, sizeof(temp));
 
 	if (fp == NULL) {
-		(void)getutxent();
+		getutxent();
 		if (fp == NULL || readonly)
 			return NULL;
 	}
@@ -427,11 +425,11 @@ utmp_update(const struct utmpx *utx)
 
 	_DIAGASSERT(utx != NULL);
 
-	(void)strvisx(buf, (const char *)(const void *)utx, sizeof(*utx),
+	strvisx(buf, (const char *)(const void *)utx, sizeof(*utx),
 	    VIS_WHITE | VIS_NOLOCALE);
 	switch (pid = fork()) {
 	case 0:
-		(void)execl(_PATH_UTMP_UPDATE,
+		execl(_PATH_UTMP_UPDATE,
 		    strrchr(_PATH_UTMP_UPDATE, '/') + 1, buf, NULL);
 		_exit(1);
 		/*NOTREACHED*/
@@ -444,7 +442,6 @@ utmp_update(const struct utmpx *utx)
 			return memcpy(&ut, utx, sizeof(ut));
 		return NULL;
 	}
-
 }
 
 /*
@@ -453,7 +450,7 @@ utmp_update(const struct utmpx *utx)
 void
 updwtmpx(const char *file, const struct utmpx *utx)
 {
-	(void)_updwtmpx(file, utx);
+	_updwtmpx(file, utx);
 }
 
 int
@@ -467,18 +464,19 @@ _updwtmpx(const char *file, const struct utmpx *utx)
 	_DIAGASSERT(utx != NULL);
 
 	fd = _open(file, O_WRONLY|O_APPEND|O_SHLOCK|O_CLOEXEC);
-
 	if (fd == -1) {
-		if ((fd = _open(file, O_CREAT|O_WRONLY|O_EXLOCK|O_CLOEXEC, 0644)) == -1)
+		fd = _open(file, O_CREAT|O_WRONLY|O_EXLOCK|O_CLOEXEC, 0644);
+		if (fd == -1)
 			goto fail;
 	}
+
 	if (_fstat(fd, &st) == -1)
 		goto failclose;
 	if (st.st_size == 0) {
 		/* new file, add signature record */
-		(void)memset(&ut, 0, sizeof(ut));
+		memset(&ut, 0, sizeof(ut));
 		ut.ut_type = SIGNATURE;
-		(void)memcpy(ut.ut_user, vers, sizeof(vers));
+		memcpy(ut.ut_user, vers, sizeof(vers));
 		if (_write(fd, &ut, sizeof(ut)) == -1)
 			goto failclose;
 	}
@@ -490,7 +488,7 @@ _updwtmpx(const char *file, const struct utmpx *utx)
 
 failclose:
 	saved_errno = errno;
-	(void) _close(fd);
+	_close(fd);
 	errno = saved_errno;
 fail:
 	return -1;
@@ -504,7 +502,6 @@ utmpxname(const char *fname)
 	_DIAGASSERT(fname != NULL);
 
 	len = strlen(fname);
-
 	if (len >= sizeof(utfile))
 		return 0;
 
@@ -512,7 +509,8 @@ utmpxname(const char *fname)
 	if (fname[len - 1] != 'x')
 		return 0;
 
-	(void)strlcpy(utfile, fname, sizeof(utfile));
+	strlcpy(utfile, fname, sizeof(utfile));
+	dbtype = UTX_DB_UTMPX;
 	endutxent();
 	return 1;
 }
@@ -540,7 +538,6 @@ getlastlogx(const char *fname, uid_t uid, struct lastlogx *ll)
 	_DIAGASSERT(ll != NULL);
 
 	db = dbopen(fname, O_RDONLY|O_SHLOCK|O_CLOEXEC, 0, DB_HASH, NULL);
-
 	if (db == NULL)
 		return NULL;
 
@@ -555,11 +552,12 @@ getlastlogx(const char *fname, uid_t uid, struct lastlogx *ll)
 		goto error;
 	}
 
-	if (ll == NULL)
+	if (ll == NULL) {
 		if ((ll = malloc(sizeof(*ll))) == NULL)
 			goto done;
+	}
 
-	(void)memcpy(ll, data.data, sizeof(*ll));
+	memcpy(ll, data.data, sizeof(*ll));
 	goto done;
 error:
 	ll = NULL;
@@ -578,8 +576,8 @@ updlastlogx(const char *fname, uid_t uid, struct lastlogx *ll)
 	_DIAGASSERT(fname != NULL);
 	_DIAGASSERT(ll != NULL);
 
-	db = dbopen(fname, O_RDWR|O_CREAT|O_EXLOCK|O_CLOEXEC, 0644, DB_HASH, NULL);
-
+	db = dbopen(fname, O_RDWR|O_CREAT|O_EXLOCK|O_CLOEXEC, 0644,
+	    DB_HASH, NULL);
 	if (db == NULL)
 		return -1;
 
