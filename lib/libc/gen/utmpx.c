@@ -58,15 +58,29 @@ static struct utmpx *utmp_update(const struct utmpx *);
 
 static const char vers[] = "utmpx-2.00";
 static utx_db_t dbtype = UTX_DB_UTMPX;
-DB *lastlogx_db = NULL;
+static DB *lastlogx_db = NULL;
+static int lastlogx_first = 1;
 
 void past_getutmp(void *, void *);
 void past_getutmpx(void *, void *);
 
 static int
-_open_db(const char *fname)
+_open_db(const char *fname, utx_db_t type)
 {
 	struct stat st;
+	DB *db;
+
+	if (type == UTX_DB_LASTLOGX) {
+		db = dbopen(fname, O_RDONLY|O_SHLOCK|O_CLOEXEC,
+		    0, DB_HASH, NULL);
+		if (db == NULL)
+			return -1;
+
+		lastlogx_db = db;
+		lastlogx_first = 1;
+		dbtype = type;
+		return 0;
+	}
 
 	if ((fp = fopen(fname, "re+")) == NULL)
 		if ((fp = fopen(fname, "we+")) == NULL) {
@@ -98,12 +112,48 @@ _open_db(const char *fname)
 		}
 	}
 
+	dbtype = type;
 	return 0;
 failclose:
 	(void)fclose(fp);
 fail:
 	(void)memset(&ut, 0, sizeof(ut));
 	return -1;
+}
+
+static void
+_close_db(void)
+{
+	if (fp != NULL) {
+		fclose(fp);
+		fp = NULL;
+		readonly = 0;
+	}
+	if (lastlogx_db != NULL) {
+		(lastlogx_db->close)(lastlogx_db);
+		lastlogx_db = NULL;
+		lastlogx_first = 1;
+	}
+	dbtype = UTX_DB_UTMPX;
+}
+
+/*
+ * Convert a lastlogx record to the utmpx form returned by getutxent() and
+ * getutxuser().
+ */
+static struct utmpx *
+lastlogx_to_utmpx(const struct lastlogx *ll, const struct passwd *pw)
+{
+	memset(&ut, 0, sizeof(ut));
+	ut.ut_type = USER_PROCESS;
+	ut.ut_tv = ll->ll_tv;
+	ut.ut_ss = ll->ll_ss;
+	strlcpy(ut.ut_line, ll->ll_line, sizeof(ut.ut_line));
+	strlcpy(ut.ut_host, ll->ll_host, sizeof(ut.ut_host));
+	if (pw != NULL)
+		strlcpy(ut.ut_user, pw->pw_name, sizeof(ut.ut_user));
+
+	return &ut;
 }
 
 int
@@ -120,20 +170,20 @@ setutxdb(utx_db_t db_type, const char *fname)
 			fname = _PATH_WTMPX;
 		break;
 
+	case UTX_DB_LASTLOGX:
+		if (fname == NULL)
+			fname = _PATH_LASTLOGX;
+		break;
+
 	default:
 		errno = EINVAL;
 		return -1;
 	}
 
-	/* A previous db file is still open */
-	if (fp != NULL) {
-		fclose(fp);
-		fp = NULL;
-	}
-	if ((_open_db(fname)) == -1)
+	_close_db();
+	if ((_open_db(fname, db_type)) == -1)
 		return -1;
 
-	dbtype = db_type;
 	return 0;
 }
 
@@ -141,6 +191,10 @@ void
 setutxent(void)
 {
 	(void)memset(&ut, 0, sizeof(ut));
+	if (dbtype == UTX_DB_LASTLOGX) {
+		lastlogx_first = 1;
+		return;
+	}
 	if (fp == NULL)
 		return;
 	(void)fseeko(fp, (off_t)sizeof(ut), SEEK_SET);
@@ -150,19 +204,33 @@ void
 endutxent(void)
 {
 	(void)memset(&ut, 0, sizeof(ut));
-
-	if (fp != NULL) {
-		(void)fclose(fp);
-		fp = NULL;
-		readonly = 0;
-	}
+	_close_db();
 }
 
 struct utmpx *
 getutxent(void)
 {
+	struct lastlogx ll;
+	DBT key, data;
+	uid_t uid;
+	int r;
+
+	if (dbtype == UTX_DB_LASTLOGX) {
+		if (lastlogx_db == NULL)
+			return NULL;
+		r = (lastlogx_db->seq)(lastlogx_db, &key, &data,
+		    lastlogx_first ? R_FIRST : R_NEXT);
+		lastlogx_first = 0;
+		if (r != 0 || key.size != sizeof(uid) ||
+		    data.size != sizeof(ll))
+			return NULL;
+		memcpy(&uid, key.data, sizeof(uid));
+		memcpy(&ll, data.data, sizeof(ll));
+		return lastlogx_to_utmpx(&ll, getpwuid(uid));
+	}
+
 	if (fp == NULL) {
-		if ((_open_db(utfile)) == -1)
+		if ((_open_db(utfile, dbtype)) == -1)
 			goto fail;
 	}
 
@@ -247,7 +315,24 @@ getutxline(const struct utmpx *utx)
 struct utmpx *
 getutxuser(const char *user)
 {
-	_DIAGASSERT(utx != NULL);
+	struct lastlogx ll;
+	struct passwd *pw;
+	DBT key, data;
+
+	_DIAGASSERT(user != NULL);
+
+	if (dbtype == UTX_DB_LASTLOGX) {
+		if (lastlogx_db == NULL || (pw = getpwnam(user)) == NULL)
+			return NULL;
+		key.data = &pw->pw_uid;
+		key.size = sizeof(pw->pw_uid);
+		if ((lastlogx_db->get)(lastlogx_db, &key, &data, 0) != 0)
+			return NULL;
+		if (data.size != sizeof(ll))
+			return NULL;
+		memcpy(&ll, data.data, sizeof(ll));
+		return lastlogx_to_utmpx(&ll, pw);
+	}
 
 	do {
 		switch (ut.ut_type) {
