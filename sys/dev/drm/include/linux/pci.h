@@ -315,7 +315,7 @@ static inline void __iomem *pci_iomap(struct pci_dev *dev, int bar, unsigned lon
 static inline int
 pci_bus_read_config_byte(struct pci_bus *bus, unsigned int devfn, int where, u8 *val)
 {
-	const struct pci_dev *pdev = container_of(&bus, struct pci_dev, bus);
+	const struct pci_dev *pdev = bus->self;
 
 	*val = (u8)pci_read_config(pdev->dev.bsddev, where, 1);
 	return 0;
@@ -324,7 +324,7 @@ pci_bus_read_config_byte(struct pci_bus *bus, unsigned int devfn, int where, u8 
 static inline int
 pci_bus_read_config_word(struct pci_bus *bus, unsigned int devfn, int where, u16 *val)
 {
-	const struct pci_dev *pdev = container_of(&bus, struct pci_dev, bus);
+	const struct pci_dev *pdev = bus->self;
 
 	*val = (u16)pci_read_config(pdev->dev.bsddev, where, 2);
 	return 0;
