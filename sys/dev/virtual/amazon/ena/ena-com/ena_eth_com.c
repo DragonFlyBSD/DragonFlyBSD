@@ -285,13 +285,16 @@ static inline bool ena_com_meta_desc_changed(struct ena_com_io_sq *io_sq,
 	return false;
 }
 
-static inline void ena_com_create_and_store_tx_meta_desc(struct ena_com_io_sq *io_sq,
-							 struct ena_com_tx_ctx *ena_tx_ctx)
+static inline int ena_com_create_and_store_tx_meta_desc(struct ena_com_io_sq *io_sq,
+							struct ena_com_tx_ctx *ena_tx_ctx)
 {
 	struct ena_eth_io_tx_meta_desc *meta_desc = NULL;
 	struct ena_com_tx_meta *ena_meta = &ena_tx_ctx->ena_meta;
 
 	meta_desc = get_sq_desc(io_sq);
+	if (unlikely(!meta_desc))
+		return EFAULT;
+
 	memset(meta_desc, 0x0, sizeof(struct ena_eth_io_tx_meta_desc));
 
 	meta_desc->len_ctrl |= ENA_ETH_IO_TX_META_DESC_META_DESC_MASK;
@@ -332,6 +335,8 @@ static inline void ena_com_create_and_store_tx_meta_desc(struct ena_com_io_sq *i
 	       sizeof(struct ena_com_tx_meta));
 
 	ena_com_sq_update_tail(io_sq);
+
+	return 0;
 }
 
 static inline void ena_com_rx_set_flags(struct ena_com_rx_ctx *ena_rx_ctx,
@@ -405,8 +410,13 @@ int ena_com_prepare_tx(struct ena_com_io_sq *io_sq,
 
 	have_meta = ena_tx_ctx->meta_valid && ena_com_meta_desc_changed(io_sq,
 			ena_tx_ctx);
-	if (have_meta)
-		ena_com_create_and_store_tx_meta_desc(io_sq, ena_tx_ctx);
+	if (have_meta) {
+		rc = ena_com_create_and_store_tx_meta_desc(io_sq, ena_tx_ctx);
+		if (unlikely(rc)) {
+			ena_trc_err("Failed to create and store tx meta desc\n");
+			return rc;
+		}
+	}
 
 	/* If the caller doesn't want send packets */
 	if (unlikely(!num_bufs && !header_len)) {
