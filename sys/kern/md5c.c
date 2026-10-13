@@ -43,7 +43,7 @@
 #include <sys/endian.h>
 #include <sys/md5.h>
 
-static void __kern__MD5Transform(MD5_CTX *, const unsigned char [64]);
+static void MD5Transform(MD5_CTX *, const unsigned char [64]);
 
 #if (BYTE_ORDER == LITTLE_ENDIAN)
 #define Encode memcpy
@@ -51,12 +51,12 @@ static void __kern__MD5Transform(MD5_CTX *, const unsigned char [64]);
 #else
 
 /*
- * Encodes input (u_int32_t) into output (unsigned char). Assumes len is
+ * Encodes input (uint32_t) into output (unsigned char). Assumes len is
  * a multiple of 4.
  */
 
 static void
-Encode (unsigned char *output, u_int32_t *input, unsigned int len)
+Encode (unsigned char *output, uint32_t *input, unsigned int len)
 {
 	unsigned int i;
 	uint32_t ip;
@@ -71,16 +71,16 @@ Encode (unsigned char *output, u_int32_t *input, unsigned int len)
 }
 
 /*
- * Decodes input (unsigned char) into output (u_int32_t). Assumes len is
+ * Decodes input (unsigned char) into output (uint32_t). Assumes len is
  * a multiple of 4.
  */
 
 static void
-Decode (u_int32_t *output, const unsigned char *input, unsigned int len)
+Decode (uint32_t *output, const unsigned char *input, unsigned int len)
 {
 	unsigned int i;
 
-	for (i = 0; i < len; i += 4) { 
+	for (i = 0; i < len; i += 4) {
 		*output++ = input[i] | (input[i+1] << 8) | (input[i+2] << 16) |
 		    (input[i+3] << 24);
 	}
@@ -107,22 +107,22 @@ static unsigned char PADDING[64] = {
  * Rotation is separate from addition to prevent recomputation.
  */
 #define FF(a, b, c, d, x, s, ac) { \
-	(a) += F ((b), (c), (d)) + (x) + (u_int32_t)(ac); \
+	(a) += F ((b), (c), (d)) + (x) + (uint32_t)(ac); \
 	(a) = ROTATE_LEFT ((a), (s)); \
 	(a) += (b); \
 	}
 #define GG(a, b, c, d, x, s, ac) { \
-	(a) += G ((b), (c), (d)) + (x) + (u_int32_t)(ac); \
+	(a) += G ((b), (c), (d)) + (x) + (uint32_t)(ac); \
 	(a) = ROTATE_LEFT ((a), (s)); \
 	(a) += (b); \
 	}
 #define HH(a, b, c, d, x, s, ac) { \
-	(a) += H ((b), (c), (d)) + (x) + (u_int32_t)(ac); \
+	(a) += H ((b), (c), (d)) + (x) + (uint32_t)(ac); \
 	(a) = ROTATE_LEFT ((a), (s)); \
 	(a) += (b); \
 	}
 #define II(a, b, c, d, x, s, ac) { \
-	(a) += I ((b), (c), (d)) + (x) + (u_int32_t)(ac); \
+	(a) += I ((b), (c), (d)) + (x) + (uint32_t)(ac); \
 	(a) = ROTATE_LEFT ((a), (s)); \
 	(a) += (b); \
 	}
@@ -160,30 +160,28 @@ MD5Update (MD5_CTX *context, const void *in, unsigned int inputLen)
 	index = (unsigned int)((context->Nl >> 3) & 0x3F);
 
 	/* Update number of bits */
-	if ((context->Nl += ((u_int32_t)inputLen << 3))
-	    < ((u_int32_t)inputLen << 3))
+	if ((context->Nl += ((uint32_t)inputLen << 3))
+	    < ((uint32_t)inputLen << 3))
 		context->Nh++;
-	context->Nh += ((u_int32_t)inputLen >> 29);
+	context->Nh += ((uint32_t)inputLen >> 29);
 
 	partLen = 64 - index;
 
 	/* Transform as many times as possible. */
 	if (inputLen >= partLen) {
-		memcpy((void *)&((char *)context->data)[index], (const void *)input,
-		    partLen);
-		__kern__MD5Transform (context, (char *)context->data);
+		memcpy(&((char *)context->data)[index], input, partLen);
+		MD5Transform (context, (char *)context->data);
 
 		for (i = partLen; i + 63 < inputLen; i += 64)
-			__kern__MD5Transform (context, &input[i]);
+			MD5Transform (context, &input[i]);
 
 		index = 0;
-	}
-	else
+	} else {
 		i = 0;
+	}
 
 	/* Buffer remaining input */
-	memcpy ((void *)&((char *)context->data)[index], (const void *)&input[i],
-	    inputLen-i);
+	memcpy (&((char *)context->data)[index], &input[i], inputLen-i);
 }
 
 /*
@@ -191,7 +189,7 @@ MD5Update (MD5_CTX *context, const void *in, unsigned int inputLen)
  */
 
 static void
-__kern__MD5Pad (MD5_CTX *context)
+MD5Pad (MD5_CTX *context)
 {
 	unsigned char bits[8];
 	unsigned int index, padLen;
@@ -217,19 +215,19 @@ void
 MD5Final (unsigned char digest[16], MD5_CTX *context)
 {
 	/* Do padding. */
-	__kern__MD5Pad (context);
+	MD5Pad (context);
 
 	/* Store state in digest */
 	Encode (digest, &context->A, 16);
 
 	/* Zeroize sensitive information. */
-	memset ((void *)context, 0, sizeof (*context));
+	memset (context, 0, sizeof (*context));
 }
 
 /* MD5 basic transformation. Transforms state based on block. */
 
 static void
-__kern__MD5Transform (MD5_CTX *context, const unsigned char block[64])
+MD5Transform (MD5_CTX *context, const unsigned char block[64])
 {
 	uint32_t a = context->A;
 	uint32_t b = context->B;
@@ -333,5 +331,5 @@ __kern__MD5Transform (MD5_CTX *context, const unsigned char block[64])
 	context->D += d;
 
 	/* Zeroize sensitive information. */
-	memset ((void *)x, 0, sizeof (x));
+	explicit_bzero (x, sizeof (x));
 }
