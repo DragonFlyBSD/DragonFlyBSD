@@ -43,7 +43,7 @@
 #include <sys/endian.h>
 #include <sys/md5.h>
 
-static void __kern__MD5Transform(u_int32_t [4], const unsigned char [64]);
+static void __kern__MD5Transform(MD5_CTX *, const unsigned char [64]);
 
 #if (BYTE_ORDER == LITTLE_ENDIAN)
 #define Encode memcpy
@@ -171,10 +171,10 @@ MD5Update (MD5_CTX *context, const void *in, unsigned int inputLen)
 	if (inputLen >= partLen) {
 		memcpy((void *)&((char *)context->data)[index], (const void *)input,
 		    partLen);
-		__kern__MD5Transform (&context->A, (char *)context->data);
+		__kern__MD5Transform (context, (char *)context->data);
 
 		for (i = partLen; i + 63 < inputLen; i += 64)
-			__kern__MD5Transform (&context->A, &input[i]);
+			__kern__MD5Transform (context, &input[i]);
 
 		index = 0;
 	}
@@ -229,9 +229,13 @@ MD5Final (unsigned char digest[16], MD5_CTX *context)
 /* MD5 basic transformation. Transforms state based on block. */
 
 static void
-__kern__MD5Transform (u_int32_t state[4], const unsigned char block[64])
+__kern__MD5Transform (MD5_CTX *context, const unsigned char block[64])
 {
-	u_int32_t a = state[0], b = state[1], c = state[2], d = state[3], x[16];
+	uint32_t a = context->A;
+	uint32_t b = context->B;
+	uint32_t c = context->C;
+	uint32_t d = context->D;
+	uint32_t x[16];
 
 	Decode (x, block, 64);
 
@@ -323,10 +327,10 @@ __kern__MD5Transform (u_int32_t state[4], const unsigned char block[64])
 	II (c, d, a, b, x[ 2], S43, 0x2ad7d2bb); /* 63 */
 	II (b, c, d, a, x[ 9], S44, 0xeb86d391); /* 64 */
 
-	state[0] += a;
-	state[1] += b;
-	state[2] += c;
-	state[3] += d;
+	context->A += a;
+	context->B += b;
+	context->C += c;
+	context->D += d;
 
 	/* Zeroize sensitive information. */
 	memset ((void *)x, 0, sizeof (x));
