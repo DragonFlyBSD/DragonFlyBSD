@@ -1193,7 +1193,7 @@ diskioctl(struct dev_ioctl_args *ap)
 		return error;
 	}
 
-	if (&dp->d_slice == NULL || dp->d_slice == NULL ||
+	if (dp->d_slice == NULL ||
 	    ((dp->d_info.d_dsflags & DSO_DEVICEMAPPER) &&
 	     dkslice(dev) == WHOLE_DISK_SLICE)) {
 		error = ENOIOCTL;
