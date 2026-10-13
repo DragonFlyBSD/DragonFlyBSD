@@ -96,7 +96,7 @@ _lockmgr_assert(struct lock *lkp, u_int flags)
 	) {
 		panic("lockmgr %s from %p: called from interrupt, ipi, "
 		      "or hard code section",
-		      lkp->lk_wmesg, ((int **)&lkp)[-1]);
+		      lkp->lk_wmesg, __builtin_return_address(0));
 	}
 }
 
