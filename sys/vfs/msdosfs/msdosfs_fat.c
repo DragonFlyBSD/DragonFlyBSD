@@ -816,8 +816,8 @@ freeclusterchain(struct msdosfsmount *pmp, u_long cluster)
 {
 	int error;
 	struct buf *bp = NULL;
-	u_long bn, bo, bsize, byteoffset;
-	u_long readcn, lbn = -1;
+	u_long bo, bsize, byteoffset, readcn;
+	u_long bn = 0, lbn = -1;
 
 	MSDOSFS_LOCK_MP(pmp);
 	while (cluster >= CLUST_FIRST && cluster <= pmp->pm_maxcluster) {
