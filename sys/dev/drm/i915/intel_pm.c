@@ -2805,7 +2805,7 @@ hsw_compute_linetime_wm(const struct intel_crtc_state *cstate)
 }
 
 static void intel_read_wm_latency(struct drm_i915_private *dev_priv,
-				  uint16_t wm[8])
+				  uint16_t wm[])
 {
 	if (INTEL_GEN(dev_priv) >= 9) {
 		uint32_t val;
@@ -2951,7 +2951,7 @@ int ilk_wm_max_level(const struct drm_i915_private *dev_priv)
 
 static void intel_print_wm_latency(struct drm_i915_private *dev_priv,
 				   const char *name,
-				   const uint16_t wm[8])
+				   const uint16_t wm[])
 {
 	int level, max_level = ilk_wm_max_level(dev_priv);
 
