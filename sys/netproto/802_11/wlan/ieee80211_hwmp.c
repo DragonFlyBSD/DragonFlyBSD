@@ -2134,12 +2134,12 @@ hwmp_discover(struct ieee80211vap *vap,
 			rt = ieee80211_mesh_rt_add(vap, dest);
 			if (rt == NULL) {
 #if defined(__DragonFly__)
-				IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP,
-				    ni, "unable to add discovery path to %s",
+				IEEE80211_DPRINTF(vap, IEEE80211_MSG_HWMP,
+				    "unable to add discovery path to %s",
 				    ether_sprintf(dest));
 #else
-				IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP,
-				    ni, "unable to add discovery path to %6D",
+				IEEE80211_DPRINTF(vap, IEEE80211_MSG_HWMP,
+				    "unable to add discovery path to %6D",
 				    dest, ":");
 #endif
 				vap->iv_stats.is_mesh_rtaddfailed++;
