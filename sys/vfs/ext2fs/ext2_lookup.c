@@ -1138,28 +1138,25 @@ ext2_dirrewrite(struct inode *dp, struct inode *ip, struct componentname *cnp)
  * Check if a directory is empty or not.
  * Inode supplied must be locked.
  *
- * Using a struct dirtemplate here is not precisely
- * what we want, but better than using a struct direct.
- *
  * NB: does not handle corrupted directories.
  */
 int
 ext2_dirempty(struct inode *ip, ino_t parentino, struct ucred *cred)
 {
 	off_t off;
-	struct dirtemplate dbuf;
-	struct ext2fs_direct_2 *dp = (struct ext2fs_direct_2 *)&dbuf;
-	int error, count, namlen;
-#define	MINDIRSIZ (sizeof(struct dirtemplate) / 2)
+	struct ext2fs_direct_2 dbuf;
+	struct ext2fs_direct_2 *dp = &dbuf;
+	int error, resid, namlen;
+#define	MINDIRSIZ offsetof(struct ext2fs_direct_2, e2d_name[4])
 
 	for (off = 0; off < ip->i_size; off += le16toh(dp->e2d_reclen)) {
 		error = vn_rdwr(UIO_READ, ITOV(ip), (caddr_t)dp, MINDIRSIZ,
-		    off, UIO_SYSSPACE, IO_NODELOCKED, cred, &count);
+		    off, UIO_SYSSPACE, IO_NODELOCKED, cred, &resid);
 		/*
 		 * Since we read MINDIRSIZ, residual must
 		 * be 0 unless we're at end of file.
 		 */
-		if (error || count != 0)
+		if (error || resid != 0)
 			return (0);
 		/* avoid infinite loops */
 		if (dp->e2d_reclen == 0)
