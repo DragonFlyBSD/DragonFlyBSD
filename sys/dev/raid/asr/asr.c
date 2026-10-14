@@ -1456,7 +1456,7 @@ ASR_acquireLct(Asr_softc_t *sc)
 	PI2O_SGE_SIMPLE_ELEMENT		sg;
 	int				MessageSizeInBytes;
 	caddr_t				v;
-	int				len;
+	int				len, bufsize;
 	I2O_LCT				Table, *TableP = &Table;
 	PI2O_LCT_ENTRY			Entry;
 
@@ -1465,8 +1465,10 @@ ASR_acquireLct(Asr_softc_t *sc)
 	 */
 	MessageSizeInBytes = sizeof(I2O_EXEC_LCT_NOTIFY_MESSAGE) -
 	    sizeof(I2O_SG_ELEMENT) + sizeof(I2O_SGE_SIMPLE_ELEMENT);
+	/* Allocate a few more bytes to avoid GCC's -Warray-bounds warnings */
+	bufsize = sizeof(I2O_EXEC_LCT_NOTIFY_MESSAGE);
 	if ((Message_Ptr = (PI2O_EXEC_LCT_NOTIFY_MESSAGE)kmalloc(
-	    MessageSizeInBytes, M_TEMP, M_WAITOK)) == NULL) {
+	    bufsize, M_TEMP, M_WAITOK)) == NULL) {
 		return (ENOMEM);
 	}
 	(void)ASR_fillMessage((void *)Message_Ptr, MessageSizeInBytes);
@@ -1572,7 +1574,7 @@ ASR_acquireLct(Asr_softc_t *sc)
 		  I2O_MESSAGE_FRAME_getMessageSize(
 		    &(Message_Ptr->StdMessageFrame))
 		  + (sizeof(*sg) / sizeof(U32)));
-		{
+		if (MessageSizeInBytes > bufsize) {
 			PI2O_EXEC_LCT_NOTIFY_MESSAGE NewMessage_Ptr;
 
 			if ((NewMessage_Ptr = (PI2O_EXEC_LCT_NOTIFY_MESSAGE)
@@ -1583,12 +1585,12 @@ ASR_acquireLct(Asr_softc_t *sc)
 				kfree(Message_Ptr, M_TEMP);
 				return (ENOMEM);
 			}
-			span = ((caddr_t)sg) - (caddr_t)Message_Ptr;
-			bcopy(Message_Ptr, NewMessage_Ptr, span);
+			bcopy(Message_Ptr, NewMessage_Ptr, bufsize);
 			kfree(Message_Ptr, M_TEMP);
 			sg = (PI2O_SGE_SIMPLE_ELEMENT)
-			  (((caddr_t)NewMessage_Ptr) + span);
+			  (((caddr_t)NewMessage_Ptr) + bufsize);
 			Message_Ptr = NewMessage_Ptr;
+			bufsize = MessageSizeInBytes;
 		}
 	}
 	{	int retval;
@@ -1707,7 +1709,7 @@ ASR_init_message(union asr_ccb *ccb, PI2O_MESSAGE_FRAME	Message)
 	vm_size_t		size, len;
 	caddr_t			v;
 	U32			MessageSize;
-	int			next, span, base, rw;
+	int			next, span, base, rw, count;
 	int			target = ccb->ccb_h.target_id;
 	int			lun = ccb->ccb_h.target_lun;
 	int			bus =cam_sim_bus(xpt_path_sim(ccb->ccb_h.path));
@@ -1802,6 +1804,7 @@ ASR_init_message(union asr_ccb *ccb, PI2O_MESSAGE_FRAME	Message)
 	 * Given a transfer described by a `data', fill in the SG list.
 	 */
 	sg = &((PPRIVATE_SCSI_SCB_EXECUTE_MESSAGE)Message_Ptr)->SGL.u.Simple[0];
+	count = 0;
 
 	len = ccb->csio.dxfer_len;
 	v = ccb->csio.data_ptr;
@@ -1809,8 +1812,7 @@ ASR_init_message(union asr_ccb *ccb, PI2O_MESSAGE_FRAME	Message)
 	MessageSize = I2O_MESSAGE_FRAME_getMessageSize(Message_Ptr);
 	PRIVATE_SCSI_SCB_EXECUTE_MESSAGE_setByteCount(
 	  (PPRIVATE_SCSI_SCB_EXECUTE_MESSAGE)Message_Ptr, len);
-	while ((len > 0) && (sg < &((PPRIVATE_SCSI_SCB_EXECUTE_MESSAGE)
-	  Message_Ptr)->SGL.u.Simple[SG_SIZE])) {
+	while ((len > 0) && (count < SG_SIZE)) {
 		span = 0;
 		next = base = KVTOPHYS(v);
 		I2O_SGE_SIMPLE_ELEMENT_setPhysicalAddress(sg, base);
@@ -1836,6 +1838,7 @@ ASR_init_message(union asr_ccb *ccb, PI2O_MESSAGE_FRAME	Message)
 		  I2O_SGL_FLAGS_SIMPLE_ADDRESS_ELEMENT | rw);
 		++sg;
 		MessageSize += sizeof(*sg) / sizeof(U32);
+		++count;
 	}
 	/* We always do the request sense ... */
 	if ((span = ccb->csio.sense_len) == 0) {
@@ -3350,7 +3353,7 @@ ASR_queue_i(Asr_softc_t	*sc, PI2O_MESSAGE_FRAME	Packet)
 			}
 			SLIST_INSERT_HEAD(&sgList, elm, link);
 			elm->FlagsCount = sg->FlagsCount;
-			elm->UserSpace = (caddr_t)
+			elm->UserSpace = (caddr_t)(uintptr_t)
 			  (I2O_SGE_SIMPLE_ELEMENT_getPhysicalAddress(sg));
 			v = elm->KernelSpace;
 			/* Copy in outgoing data (DIR bit could be invalid) */
