@@ -41,7 +41,7 @@ struct toc {
 struct dvd_miscauth {
     u_int16_t   length;
     u_int16_t   reserved;
-    u_int8_t    data[2048];
+    u_int8_t    data[];
 };
 
 /* CDROM Audio Control Parameters Page */
