@@ -84,10 +84,6 @@ devfs_rule_alloc(struct devfs_rule_ioctl *templ)
 	rule = objcache_get(devfs_rule_cache, M_WAITOK);
 	memset(rule, 0, sizeof(struct devfs_rule));
 
-	if (templ->mntpoint == NULL)
-		goto error_out;
-		/* NOTREACHED */
-
 	len = strlen(templ->mntpoint);
 	if (len == 0)
 		goto error_out;
@@ -97,10 +93,6 @@ devfs_rule_alloc(struct devfs_rule_ioctl *templ)
 	rule->mntpointlen = len;
 
 	if (templ->rule_type & DEVFS_RULE_NAME) {
-		if (templ->name == NULL)
-			goto error_out;
-			/* NOTREACHED */
-
 		len = strlen(templ->name);
 		if (len == 0)
 			goto error_out;
@@ -111,10 +103,6 @@ devfs_rule_alloc(struct devfs_rule_ioctl *templ)
 	}
 
 	if (templ->rule_cmd & DEVFS_RULE_LINK) {
-		if (templ->linkname == NULL)
-			goto error_out;
-			/* NOTREACHED */
-
 		len = strlen(templ->linkname);
 		if (len == 0)
 			goto error_out;
@@ -187,9 +175,6 @@ devfs_rule_clear(struct devfs_rule_ioctl *templ)
 {
 	struct devfs_rule *rule1, *rule2;
 	size_t mntpointlen;
-
-	if (templ->mntpoint == NULL)
-		return EINVAL;
 
 	mntpointlen = strlen(templ->mntpoint);
 	if (mntpointlen == 0)
@@ -430,10 +415,7 @@ devfs_dev_ioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case DEVFS_RULE_APPLY:
-		if (rule->mntpoint == NULL)
-			error = EINVAL;
-		else
-			devfs_apply_rules(rule->mntpoint);
+		devfs_apply_rules(rule->mntpoint);
 		break;
 
 	case DEVFS_RULE_CLEAR:
@@ -441,10 +423,7 @@ devfs_dev_ioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case DEVFS_RULE_RESET:
-		if (rule->mntpoint == NULL)
-			error = EINVAL;
-		else
-			devfs_reset_rules(rule->mntpoint);
+		devfs_reset_rules(rule->mntpoint);
 		break;
 
 	default:
