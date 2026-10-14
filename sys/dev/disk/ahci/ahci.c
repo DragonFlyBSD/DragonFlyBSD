@@ -1026,12 +1026,10 @@ ahci_port_free(struct ahci_softc *sc, u_int port)
 		ahci_dmamem_free(sc, ap->ap_dmamem_cmd_table);
 		ap->ap_dmamem_cmd_table = NULL;
 	}
-	if (ap->ap_ata) {
-		for (i = 0; i < AHCI_MAX_PMPORTS; ++i) {
-			if (ap->ap_ata[i]) {
-				kfree(ap->ap_ata[i], M_DEVBUF);
-				ap->ap_ata[i] = NULL;
-			}
+	for (i = 0; i < AHCI_MAX_PMPORTS; ++i) {
+		if (ap->ap_ata[i]) {
+			kfree(ap->ap_ata[i], M_DEVBUF);
+			ap->ap_ata[i] = NULL;
 		}
 	}
 	if (ap->ap_err_scratch) {
@@ -1828,7 +1826,7 @@ ahci_port_hardstop(struct ahci_port *ap)
 	/*
 	 * Clean up AT sub-ports on SATA port.
 	 */
-	for (i = 0; ap->ap_ata && i < AHCI_MAX_PMPORTS; ++i) {
+	for (i = 0; i < AHCI_MAX_PMPORTS; ++i) {
 		at = ap->ap_ata[i];
 		at->at_type = ATA_PORT_T_NONE;
 		at->at_probe = ATA_PROBE_FAILED;
