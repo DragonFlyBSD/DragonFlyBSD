@@ -2583,17 +2583,20 @@ static int
 fwohci_arcv_swap(struct fw_pkt *fp, int len)
 {
 	struct fw_pkt *fp0;
-	u_int32_t ld0;
+	union {
+		uint32_t ld0;
+		struct fw_pkt pkt;
+	} pktu;
 	int hlen;
 #if BYTE_ORDER == BIG_ENDIAN
 	int slen, i;
 #endif
 
-	ld0 = FWOHCI_DMA_READ(fp->mode.ld[0]);
+	pktu.ld0 = FWOHCI_DMA_READ(fp->mode.ld[0]);
 #if 0
-	kprintf("ld0: x%08x\n", ld0);
+	kprintf("ld0: x%08x\n", pktu.ld0);
 #endif
-	fp0 = (struct fw_pkt *)&ld0;
+	fp0 = (struct fw_pkt *)&pktu.pkt;
 	/* determine length to swap */
 	switch (fp0->mode.common.tcode) {
 	case FWTCODE_RREQQ:
