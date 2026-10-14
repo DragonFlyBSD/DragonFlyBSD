@@ -96,7 +96,7 @@ prt_attach_devices(ACPI_PCI_ROUTING_TABLE *entry, void *arg)
     int error;
 
     /* We only care about entries that reference a link device. */
-    if (entry->Source == NULL || entry->Source[0] == '\0')
+    if (entry->Source[0] == '\0')
 	return;
 
     /*
@@ -236,7 +236,7 @@ acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
     if (bootverbose) {
 	device_printf(pcib, "matched entry for %d.%d.INT%c",
 	    pci_get_bus(dev), pci_get_slot(dev), 'A' + pin);
-	if (prt->Source != NULL && prt->Source[0] != '\0')
+	if (prt->Source[0] != '\0')
 		kprintf(" (src %s:%u)", prt->Source, prt->SourceIndex);
 	kprintf("\n");
     }
@@ -248,8 +248,7 @@ acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
      * XXX: If the source index is non-zero, ignore the source device and
      * assume that this is a hardwired entry.
      */
-    if (prt->Source == NULL || prt->Source[0] == '\0' ||
-	prt->SourceIndex != 0) {
+    if (prt->Source[0] == '\0' || prt->SourceIndex != 0) {
 	if (prt->SourceIndex) {
 	    interrupt = machintr_legacy_intr_find_bygsi(prt->SourceIndex,
 	        INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
