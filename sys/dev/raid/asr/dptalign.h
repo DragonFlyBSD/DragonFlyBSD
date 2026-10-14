@@ -62,10 +62,12 @@
 #endif
 
 
-#if (defined(sun)) && (!defined(_ILP32))
+#if defined(__LP64__) || defined(_LP64)
 #  define DPT_4_BYTES int	/* 64 bit OS */
-#else
+#elif defined(__LP32__) || defined(_LP32)
 #  define DPT_4_BYTES long
+#else
+#  error "unknown data model"
 #endif
 
 #if (!defined(osdSwap2))

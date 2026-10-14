@@ -3350,7 +3350,7 @@ ASR_queue_i(Asr_softc_t	*sc, PI2O_MESSAGE_FRAME	Packet)
 			}
 			SLIST_INSERT_HEAD(&sgList, elm, link);
 			elm->FlagsCount = sg->FlagsCount;
-			elm->UserSpace = (caddr_t)
+			elm->UserSpace = (caddr_t)(uintptr_t)
 			  (I2O_SGE_SIMPLE_ELEMENT_getPhysicalAddress(sg));
 			v = elm->KernelSpace;
 			/* Copy in outgoing data (DIR bit could be invalid) */
