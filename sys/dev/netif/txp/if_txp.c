@@ -1079,8 +1079,6 @@ txp_rxring_empty(struct txp_softc *sc)
 		return;
 
 	for (i = 0; i < RXBUF_ENTRIES; i++) {
-		if (&sc->sc_rxbufs[i] == NULL)
-			continue;
 		sd = sc->sc_rxbufs[i].rb_sd;
 		if (sd == NULL)
 			continue;
