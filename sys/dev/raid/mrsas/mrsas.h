@@ -2375,8 +2375,9 @@ struct mrsas_softc {
     struct mrsas_mfi_cmd *map_update_cmd;
     struct mrsas_mfi_cmd *aen_cmd;	
     u_int8_t           fast_path_io;
-    void*              chan;
-    void*              ocr_chan;
+    u_int8_t           int_chan;	// int_cmd_wait_q
+    u_int8_t           abort_chan;	// abort_cmd_wait_q
+    u_int8_t           ocr_chan;
     u_int8_t           adprecovery;
     u_int8_t           remove_in_progress;
     u_int8_t           ocr_thread_active;

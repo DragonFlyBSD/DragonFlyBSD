@@ -2877,15 +2877,9 @@ int mrsas_issue_blocked_cmd(struct mrsas_softc *sc, struct mrsas_mfi_cmd *cmd)
         return(1);
     }
 
-    sc->chan = (void*)&cmd;
-
-    /* The following is for debug only... */
-    //device_printf(sc->mrsas_dev,"DCMD issued to FW, about to sleep-wait...\n");
-    //device_printf(sc->mrsas_dev,"sc->chan = %p\n", sc->chan);
-
     while (1) {
        if (cmd->cmd_status == ECONNREFUSED){
-           tsleep((void *)&sc->chan, 0, "mrsas_sleep", hz);
+           tsleep(&sc->int_chan, 0, "mrsas_int", hz);
        }
        else
            break;
@@ -3005,11 +2999,7 @@ void mrsas_wakeup(struct mrsas_softc *sc, struct mrsas_mfi_cmd *cmd)
     if (cmd->cmd_status == ECONNREFUSED) 
         cmd->cmd_status = 0;
 
-    /* For debug only ... */ 
-    //device_printf(sc->mrsas_dev,"DCMD rec'd for wakeup, sc->chan=%p\n", sc->chan);
-
-    sc->chan = (void*)&cmd;
-    wakeup_one((void *)&sc->chan);
+    wakeup(&sc->int_chan);
     return;
 }
 
@@ -3496,10 +3486,9 @@ static int mrsas_issue_blocked_abort_cmd(struct mrsas_softc *sc,
     }
 
     /* Wait for this cmd to complete */
-    sc->chan = (void*)&cmd;
     while (1) {
        if (cmd->cmd_status == 0xFF){
-           tsleep((void *)&sc->chan, 0, "mrsas_sleep", hz);
+           tsleep(&sc->abort_chan, 0, "mrsas_abort", hz);
        }
        else
            break;
@@ -3530,8 +3519,7 @@ void mrsas_complete_abort(struct mrsas_softc *sc, struct mrsas_mfi_cmd *cmd)
     if (cmd->sync_cmd) {
         cmd->sync_cmd = 0;
         cmd->cmd_status = 0;
-        sc->chan = (void*)&cmd;
-        wakeup_one((void *)&sc->chan);
+        wakeup(&sc->abort_chan);
     }
     return;
 }
