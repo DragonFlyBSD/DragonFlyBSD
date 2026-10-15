@@ -903,10 +903,9 @@ acpi_hp_get_cmi_block(device_t wmi_dev, const char* guid, UINT8 instance,
 	ACPI_BUFFER	out = { ACPI_ALLOCATE_BUFFER, NULL };
 	int		i;
 	int		outlen;
-	int		size = 255;
 	int		has_enums = 0;
 	int		valuebase = 0;
-	char		string_buffer[size];
+	char		string_buffer[255];
 	int		enumbase;
 
 	*sequence = 0;	/* whack gcc warning */
@@ -944,22 +943,21 @@ acpi_hp_get_cmi_block(device_t wmi_dev, const char* guid, UINT8 instance,
 		enumbase = valuebase + 1;
 		if (detail & ACPI_HP_CMI_DETAIL_PATHS) {
 			strlcat(outbuf, acpi_hp_get_string_from_object(
-				&obj->Package.Elements[2], string_buffer, size),
-				outsize);
+			    &obj->Package.Elements[2],
+			    string_buffer, sizeof(string_buffer)), outsize);
 			outlen += 48;
 			while (strlen(outbuf) < outlen)
 				strlcat(outbuf, " ", outsize);
 		}
 		strlcat(outbuf, acpi_hp_get_string_from_object(
-				&obj->Package.Elements[0], string_buffer, size),
-				outsize);
+		    &obj->Package.Elements[0],
+		    string_buffer, sizeof(string_buffer)), outsize);
 		outlen += 43;
 		while (strlen(outbuf) < outlen)
 			strlcat(outbuf, " ", outsize);
 		strlcat(outbuf, acpi_hp_get_string_from_object(
-				&obj->Package.Elements[valuebase], string_buffer, 
-				size),
-				outsize);
+		    &obj->Package.Elements[valuebase],
+		    string_buffer, sizeof(string_buffer)), outsize);
 		outlen += 21;
 		while (strlen(outbuf) < outlen)
 			strlcat(outbuf, " ", outsize);
@@ -971,8 +969,8 @@ acpi_hp_get_cmi_block(device_t wmi_dev, const char* guid, UINT8 instance,
 			    obj->Package.Elements[enumbase].Integer.Value;
 			    ++i) {
 				acpi_hp_get_string_from_object(
-				    &obj->Package.Elements[i], string_buffer,
-				    size);
+				    &obj->Package.Elements[i],
+				    string_buffer, sizeof(string_buffer));
 				if (strlen(string_buffer) > 1 ||
 				    (strlen(string_buffer) == 1 &&
 				    string_buffer[0] != ' ')) {
@@ -1145,8 +1143,7 @@ acpi_hp_hpcmi_read(struct dev_read_args *ap)
 	UINT8			instance;
 	UINT8			maxInstance;
 	UINT32			sequence;
-	int			linesize = 1025;
-	char			line[linesize];
+	char			line[1025];
 	struct cdev *dev = ap->a_head.a_dev;
 	struct uio *buf = ap->a_uio;
 
@@ -1173,7 +1170,7 @@ acpi_hp_hpcmi_read(struct dev_read_args *ap)
 				    ++instance) {
 					if (acpi_hp_get_cmi_block(sc->wmi_dev,
 						ACPI_HP_WMI_CMI_GUID, instance,
-						line, linesize, &sequence,
+						line, sizeof(line), &sequence,
 						sc->cmi_detail)) {
 						instance = maxInstance;
 					}
@@ -1206,7 +1203,7 @@ acpi_hp_hpcmi_read(struct dev_read_args *ap)
 			for (i=0; i<sc->cmi_order_size; ++i) {
 				if (!acpi_hp_get_cmi_block(sc->wmi_dev,
 				    ACPI_HP_WMI_CMI_GUID,
-				    sc->cmi_order[i].instance, line, linesize,
+				    sc->cmi_order[i].instance, line, sizeof(line),
 				    &sequence, sc->cmi_detail)) {
 					sbuf_printf(&sc->hpcmi_sbuf, "%s\n", line);
 				}
