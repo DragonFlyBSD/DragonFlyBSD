@@ -82,9 +82,8 @@ i_strdupin(char *s, size_t maxlen)
 int
 i_setopt(isc_session_t *sp, isc_opt_t *opt)
 {
-     const int	digsize = 6;
      size_t	len;
-     char	hdigest[digsize], ddigest[digsize];
+     char	hdigest[6], ddigest[6];
 
      debug_called(8);
      if(opt->maxRecvDataSegmentLength > 0) {
@@ -129,7 +128,9 @@ i_setopt(isc_session_t *sp, isc_opt_t *opt)
 
      /* Try to copy the userland pointer containing the header digest */
      if(opt->headerDigest != NULL) {
-	  if ((copyinstr(opt->headerDigest, &hdigest, digsize, &len)) != EFAULT) {
+	  if ((copyinstr(opt->headerDigest, &hdigest, sizeof(hdigest), &len))
+	      != EFAULT)
+	  {
 	       sdebug(2, "opt.headerDigest='%s'", hdigest);
 	       if(strcmp(hdigest, "CRC32C") == 0) {
 		    sp->hdrDigest = (digest_t *)crc32_ext;
@@ -139,7 +140,9 @@ i_setopt(isc_session_t *sp, isc_opt_t *opt)
      }
      /* Try to copy the userland pointer containing the data digest */
      if(opt->dataDigest != NULL) {
-	  if ((copyinstr(opt->dataDigest, &ddigest, digsize, &len)) != EFAULT) {
+	  if ((copyinstr(opt->dataDigest, &ddigest, sizeof(ddigest), &len))
+	      != EFAULT)
+	  {
 	       if (strcmp(ddigest, "CRC32C") == 0) {
 		    sp->dataDigest = (digest_t *)crc32_ext;
 		    sdebug(2, "dataDigest set");
