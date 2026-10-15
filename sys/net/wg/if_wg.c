@@ -1763,24 +1763,6 @@ wg_handshake_worker(void *arg, int pending __unused)
 /*----------------------------------------------------------------------------*/
 /* Transport Packet Functions */
 
-static inline void
-wg_bpf_ptap(struct ifnet *ifp, struct mbuf *m, sa_family_t af)
-{
-	uint32_t bpf_af;
-
-	if (ifp->if_bpf == NULL)
-		return;
-
-	bpf_gettoken();
-	/* Double check after obtaining the token. */
-	if (ifp->if_bpf != NULL) {
-		/* Prepend the AF as a 4-byte field for DLT_NULL. */
-		bpf_af = (uint32_t)af;
-		bpf_ptap(ifp->if_bpf, m, &bpf_af, sizeof(bpf_af));
-	}
-	bpf_reltoken();
-}
-
 static inline unsigned int
 calculate_padding(struct wg_packet *pkt)
 {
@@ -2038,6 +2020,7 @@ wg_deliver_in(void *arg, int pending __unused)
 	struct wg_packet	*pkt;
 	struct ifnet		*ifp;
 	struct mbuf		*m;
+	uint32_t		 bpf_af;
 	size_t			 rx_bytes;
 	int			 cpu;
 
@@ -2086,7 +2069,9 @@ wg_deliver_in(void *arg, int pending __unused)
 			m->m_flags &= ~MBUF_CLEARFLAGS;
 			m->m_pkthdr.rcvif = ifp;
 
-			wg_bpf_ptap(ifp, m, pkt->p_af);
+			/* Prepend the AF as a 4-byte field for DLT_NULL. */
+			bpf_af = (uint32_t)pkt->p_af;
+			bpf_ptap(ifp->if_bpf, m, &bpf_af, sizeof(bpf_af));
 
 			netisr_queue((pkt->p_af == AF_INET ?
 				      NETISR_IP : NETISR_IPV6), m);
@@ -2274,6 +2259,7 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	struct wg_peer		*peer = NULL;
 	struct mbuf		*defragged;
 	sa_family_t		 af = AF_UNSPEC;
+	uint32_t		 bpf_af;
 	int			 ret;
 
 	if (dst->sa_family == AF_UNSPEC) {
@@ -2282,7 +2268,7 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		 * The packets have the same DLT_NULL link-layer type
 		 * (i.e., 4-byte link-layer header in host byte order).
 		 */
-		dst->sa_family = *(mtod(m, uint32_t *));
+		dst->sa_family = (sa_family_t)*mtod(m, uint32_t *);
 		m_adj(m, sizeof(uint32_t));
 	}
 	if (dst->sa_family == AF_UNSPEC) {
@@ -2290,7 +2276,9 @@ wg_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		goto error;
 	}
 
-	wg_bpf_ptap(ifp, m, dst->sa_family);
+	/* Prepend the address family as a 4-byte field for DLT_NULL. */
+	bpf_af = (uint32_t)dst->sa_family;
+	bpf_ptap(ifp->if_bpf, m, &bpf_af, sizeof(bpf_af));
 
 	if (__predict_false(if_tunnel_check_nesting(ifp, m, MTAG_WGLOOP,
 						    MAX_LOOPS) != 0)) {
