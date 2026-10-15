@@ -5708,6 +5708,7 @@ iwm_notif_intr(struct iwm_softc *sc)
 	}
 
 	hw = le16toh(sc->rxq.stat->closed_rb_num) & 0xfff;
+	hw &= (count - 1);
 
 	/*
 	 * Process responses
