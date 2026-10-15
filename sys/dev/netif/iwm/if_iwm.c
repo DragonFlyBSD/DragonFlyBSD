@@ -3343,6 +3343,13 @@ iwm_rx_mpdu_mq(struct iwm_softc *sc, struct mbuf *m, uint32_t offset,
 	phy_info = le16toh(desc->phy_info);
 	rate_n_flags = desc->v1.rate_n_flags;
 
+	/* replenish ring for the buffer we're going to feed to the sharks */
+	if (!stolen && iwm_rx_addbuf(sc, IWM_RBUF_SIZE, sc->rxq.cur) != 0) {
+		device_printf(sc->sc_dev, "%s: unable to add more buffers\n",
+		    __func__);
+		return false;
+	}
+
 	wh = mtodo(m, sizeof(*desc));
 	m->m_data = pkt->data + sizeof(*desc);
 	m->m_pkthdr.len = m->m_len = len;
@@ -3359,13 +3366,6 @@ iwm_rx_mpdu_mq(struct iwm_softc *sc, struct mbuf *m, uint32_t offset,
 	/* Map it to relative value */
 	rssi = iwm_rxmq_get_signal_strength(sc, desc);
 	rssi = rssi - sc->sc_noise;
-
-	/* replenish ring for the buffer we're going to feed to the sharks */
-	if (!stolen && iwm_rx_addbuf(sc, IWM_RBUF_SIZE, sc->rxq.cur) != 0) {
-		device_printf(sc->sc_dev, "%s: unable to add more buffers\n",
-		    __func__);
-		return false;
-	}
 
 	IWM_DPRINTF(sc, IWM_DEBUG_RECV,
 	    "%s: rssi=%d, noise=%d\n", __func__, rssi, sc->sc_noise);
