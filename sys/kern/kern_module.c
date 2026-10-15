@@ -82,6 +82,10 @@ module_shutdown(void* arg1, int arg2)
 {
     module_t mod;
 
+    /* Other CPUs are stopped; handlers may block forever. */
+    if (panicstr != NULL)
+	return;
+
     for (mod = TAILQ_FIRST(&modules); mod; mod = TAILQ_NEXT(mod, link))
 	MOD_EVENT(mod, MOD_SHUTDOWN);
 }
