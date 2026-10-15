@@ -998,7 +998,7 @@ iwm_alloc_rx_ring(struct iwm_softc *sc, struct iwm_rx_ring *ring)
 #if defined(__DragonFly__)
 	error = bus_dma_tag_create(sc->sc_dmat, PAGE_SIZE,
 				   0,
-				   BUS_SPACE_MAXADDR_32BIT,
+				   0xfffffffff,
 				   BUS_SPACE_MAXADDR,
 				   IWM_RBUF_SIZE, 1, IWM_RBUF_SIZE,
 				   BUS_DMA_NOWAIT, &ring->data_dmat);
@@ -1149,7 +1149,7 @@ iwm_alloc_tx_ring(struct iwm_softc *sc, struct iwm_tx_ring *ring, int qid)
 #if defined(__DragonFly__)
 	error = bus_dma_tag_create(sc->sc_dmat, PAGE_SIZE,
 				   0,
-				   BUS_SPACE_MAXADDR_32BIT,
+				   0xfffffffff,
 				   BUS_SPACE_MAXADDR,
 				   maxsize, nsegments, maxsize,
 				   BUS_DMA_NOWAIT, &ring->data_dmat);
