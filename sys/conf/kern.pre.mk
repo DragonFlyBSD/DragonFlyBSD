@@ -107,7 +107,7 @@ NORMAL_M= awk -f $S/tools/makeobjops.awk -- -c ${.IMPSRC}; \
 NORMAL_FW= uudecode -o ${.TARGET} ${.ALLSRC}
 NORMAL_FWO= ${LD} -b binary -d -warn-common -r -o ${.TARGET} ${.ALLSRC:M*.fw}
 
-.if !defined(NO_WERROR) && ${CCVER} == "gcc80"
+.if !defined(NO_WERROR) && (${CCVER} == "gcc80" || ${CCVER} == "gcc120")
 WERROR=-Werror
 .endif
 
