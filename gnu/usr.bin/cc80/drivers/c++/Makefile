@@ -14,11 +14,9 @@ CFLAGS+=	-DCONFIGURE_SPECS="\"\"" \
 		-DACCEL_DIR_SUFFIX="\"\"" \
 		-DDEFAULT_REAL_TARGET_MACHINE="\"${target_machine}\""
 
-# hack to force c++ compiler to compile *.c files to create program
-MKDEPCC=	${CXX}
-.for cfile in ${SRCS}
-${cfile:.c=.o}: ${cfile}
-	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
-.endfor
-
 .include <bsd.prog.mk>
+
+# hack to force c++ compiler to compile *.c files to create program
+MKDEPCC:=	${CXX}
+CC:=		${CXX}
+CFLAGS:=	${CXXFLAGS}
