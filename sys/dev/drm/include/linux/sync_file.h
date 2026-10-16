@@ -36,20 +36,11 @@
 
 struct sync_file {
 	struct file	*file;
+	struct dma_fence *fence;
 };
 
-static inline struct dma_fence *
-sync_file_get_fence(int fd)
-{
-	/* sync_file_get_fence not implemented */
-	return NULL;
-}
+struct dma_fence *sync_file_get_fence(int fd);
 
-static inline struct sync_file *
-sync_file_create(struct dma_fence *fence)
-{
-	kprintf("sync_file_create(): not implemented\n");
-	return NULL;
-}
+struct sync_file *sync_file_create(struct dma_fence *fence);
 
 #endif	/* _LINUX_SYNC_FILE_H_ */

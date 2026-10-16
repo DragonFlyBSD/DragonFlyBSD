@@ -33,6 +33,18 @@
 #include "drm_legacy.h"
 #include <drm/drm_lease.h>
 
+#include <sys/ktr.h>
+
+#ifndef KTR_DRM
+#define KTR_DRM KTR_ALL
+#endif
+
+KTR_INFO_MASTER_EXTERN(drm);
+KTR_INFO(KTR_DRM, drm, dropmaster, 4,
+    "dropmaster stage=%u file=%p dev=%p file_master=%p dev_master=%p ret=%d",
+    u_int stage, void *file, void *dev, void *file_master, void *dev_master,
+    int ret);
+
 /**
  * DOC: master and authentication
  *
@@ -54,6 +66,23 @@
  * this allows controlled access to the device for an entire group of mutually
  * trusted clients.
  */
+
+static struct drm_master *
+drm_master_owner(struct drm_master *master)
+{
+	while (master != NULL && master->lessor != NULL)
+		master = master->lessor;
+	return master;
+}
+
+static bool
+drm_is_current_master_locked(struct drm_file *fpriv)
+{
+	struct drm_device *dev = fpriv->minor->dev;
+
+	return fpriv->is_master &&
+	    drm_master_owner(fpriv->master) == dev->master;
+}
 
 int drm_getmagic(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
@@ -135,6 +164,35 @@ static int drm_set_master(struct drm_device *dev, struct drm_file *fpriv,
 	return ret;
 }
 
+
+static struct drm_master *
+drm_file_replace_master(struct drm_file *file_priv, struct drm_master *master)
+{
+	struct drm_master *old;
+
+	spin_lock(&file_priv->master_lookup_lock);
+	old = file_priv->master;
+	file_priv->master = master;
+	spin_unlock(&file_priv->master_lookup_lock);
+	return old;
+}
+
+struct drm_master *
+drm_file_get_master(struct drm_file *file_priv)
+{
+	struct drm_master *master;
+
+	if (file_priv == NULL)
+		return NULL;
+	spin_lock(&file_priv->master_lookup_lock);
+	master = file_priv->master;
+	if (master != NULL)
+		drm_master_get(master);
+	spin_unlock(&file_priv->master_lookup_lock);
+	return master;
+}
+EXPORT_SYMBOL(drm_file_get_master);
+
 static int drm_new_set_master(struct drm_device *dev, struct drm_file *fpriv)
 {
 	struct drm_master *old_master;
@@ -145,10 +203,9 @@ static int drm_new_set_master(struct drm_device *dev, struct drm_file *fpriv)
 #endif
 
 	WARN_ON(fpriv->is_master);
-	old_master = fpriv->master;
-	fpriv->master = drm_master_create(dev);
+	old_master = drm_file_replace_master(fpriv, drm_master_create(dev));
 	if (!fpriv->master) {
-		fpriv->master = old_master;
+		(void)drm_file_replace_master(fpriv, old_master);
 		return -ENOMEM;
 	}
 
@@ -171,8 +228,13 @@ static int drm_new_set_master(struct drm_device *dev, struct drm_file *fpriv)
 
 out_err:
 	/* drop references and restore old master on failure */
-	drm_master_put(&fpriv->master);
-	fpriv->master = old_master;
+	{
+		struct drm_master *failed_master;
+
+		failed_master = drm_file_replace_master(fpriv, old_master);
+		if (failed_master != NULL)
+			drm_master_put(&failed_master);
+	}
 	fpriv->is_master = 0;
 
 	return ret;
@@ -184,7 +246,7 @@ int drm_setmaster_ioctl(struct drm_device *dev, void *data,
 	int ret = 0;
 
 	mutex_lock(&dev->master_mutex);
-	if (drm_is_current_master(file_priv))
+	if (drm_is_current_master_locked(file_priv))
 		goto out_unlock;
 
 	/*
@@ -239,8 +301,9 @@ int drm_dropmaster_ioctl(struct drm_device *dev, void *data,
 	int ret = -EINVAL;
 
 	kprintf("drm_dropmaster_ioctl\n");
+	KTR_LOG(drm_dropmaster, 0u, file_priv, dev, file_priv->master, dev->master, ret);
 	mutex_lock(&dev->master_mutex);
-	if (!drm_is_current_master(file_priv))
+	if (!drm_is_current_master_locked(file_priv))
 		goto out_unlock;
 
 	if (!dev->master)
@@ -255,6 +318,7 @@ int drm_dropmaster_ioctl(struct drm_device *dev, void *data,
 	ret = 0;
 	drm_drop_master(dev, file_priv);
 out_unlock:
+	KTR_LOG(drm_dropmaster, 1u, file_priv, dev, file_priv->master, dev->master, ret);
 	mutex_unlock(&dev->master_mutex);
 	return ret;
 }
@@ -270,7 +334,7 @@ int drm_master_open(struct drm_file *file_priv)
 	if (!dev->master)
 		ret = drm_new_set_master(dev, file_priv);
 	else
-		file_priv->master = drm_master_get(dev->master);
+		(void)drm_file_replace_master(file_priv, drm_master_get(dev->master));
 	mutex_unlock(&dev->master_mutex);
 
 	return ret;
@@ -279,16 +343,18 @@ int drm_master_open(struct drm_file *file_priv)
 void drm_master_release(struct drm_file *file_priv)
 {
 	struct drm_device *dev = file_priv->minor->dev;
-	struct drm_master *master = file_priv->master;
+	struct drm_master *master;
+	struct drm_master *file_master;
 
+	master = drm_file_get_master(file_priv);
 	mutex_lock(&dev->master_mutex);
-	if (file_priv->magic)
-		idr_remove(&file_priv->master->magic_map, file_priv->magic);
+	if (file_priv->magic && master != NULL)
+		idr_remove(&master->magic_map, file_priv->magic);
 
-	if (!drm_is_current_master(file_priv))
+	if (!drm_is_current_master_locked(file_priv))
 		goto out;
 
-	if (drm_core_check_feature(dev, DRIVER_LEGACY)) {
+	if (drm_core_check_feature(dev, DRIVER_LEGACY) && master != NULL) {
 		/*
 		 * Since the master is disappearing, so is the
 		 * possibility to lock.
@@ -304,10 +370,11 @@ void drm_master_release(struct drm_file *file_priv)
 		mutex_unlock(&dev->struct_mutex);
 	}
 
-	if (dev->master == file_priv->master)
+	if (dev->master == master)
 		drm_drop_master(dev, file_priv);
 out:
-	if (drm_core_check_feature(dev, DRIVER_MODESET) && file_priv->is_master) {
+	if (drm_core_check_feature(dev, DRIVER_MODESET) && file_priv->is_master &&
+	    master != NULL) {
 		/* Revoke any leases held by this or lessees, but only if
 		 * this is the "real" master
 		 */
@@ -315,9 +382,12 @@ out:
 	}
 
 	/* drop the master reference held by the file priv */
-	if (file_priv->master)
-		drm_master_put(&file_priv->master);
+	file_master = drm_file_replace_master(file_priv, NULL);
+	if (file_master != NULL)
+		drm_master_put(&file_master);
 	mutex_unlock(&dev->master_mutex);
+	if (master != NULL)
+		drm_master_put(&master);
 }
 
 /**
@@ -332,7 +402,14 @@ out:
  */
 bool drm_is_current_master(struct drm_file *fpriv)
 {
-	return fpriv->is_master;
+	struct drm_device *dev = fpriv->minor->dev;
+	bool ret;
+
+	mutex_lock(&dev->master_mutex);
+	ret = drm_is_current_master_locked(fpriv);
+	mutex_unlock(&dev->master_mutex);
+
+	return ret;
 }
 EXPORT_SYMBOL(drm_is_current_master);
 

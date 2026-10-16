@@ -24,12 +24,25 @@
 #include <drm/drmP.h>
 #include <drm/drm_auth.h>
 #include <drm/drm_framebuffer.h>
+#include <drm/drm_gem.h>
 #include <drm/drm_atomic.h>
 #include <drm/drm_atomic_uapi.h>
 #include <drm/drm_print.h>
 
+#include <sys/ktr.h>
+
 #include "drm_internal.h"
 #include "drm_crtc_internal.h"
+
+#ifndef KTR_DRM
+#define KTR_DRM KTR_ALL
+#endif
+
+KTR_INFO_MASTER_EXTERN(drm);
+KTR_INFO(KTR_DRM, drm, fb_release, 3,
+    "fb release stage=%u file=%p fb=%p ref=%u moved=%u dropped=%u",
+    u_int stage, void *file, void *fb, u_int refcount, u_int moved,
+    u_int dropped);
 
 /**
  * DOC: overview
@@ -420,6 +433,46 @@ static void drm_mode_rmfb_work_fn(struct work_struct *w)
 	}
 }
 
+/*
+ * Ownership:
+ *   Consumes only the framebuffer reference stored in file_priv->fbs. The
+ *   caller keeps ownership of any lookup reference it already holds.
+ *
+ * Lifetime:
+ *   Detaches the framebuffer ID from this drm_file so close/release will not
+ *   reap it again. Plane, CRTC, or other driver references continue to keep
+ *   the framebuffer alive and scanout is not disabled.
+ *
+ * Threading:
+ *   Serializes with other per-file framebuffer list operations using
+ *   file_priv->fbs_lock. It does not take modeset locks or submit display
+ *   work, so it is safe for CLOSEFB-style metadata lifetime changes.
+ */
+static int
+drm_mode_closefb(struct drm_framebuffer *fb, struct drm_file *file_priv)
+{
+	struct drm_framebuffer *iter;
+	bool found = false;
+
+	mutex_lock(&file_priv->fbs_lock);
+	list_for_each_entry(iter, &file_priv->fbs, filp_head) {
+		if (iter == fb) {
+			found = true;
+			break;
+		}
+	}
+	if (!found) {
+		mutex_unlock(&file_priv->fbs_lock);
+		return -ENOENT;
+	}
+
+	list_del_init(&fb->filp_head);
+	mutex_unlock(&file_priv->fbs_lock);
+
+	drm_framebuffer_put(fb);
+	return 0;
+}
+
 /**
  * drm_mode_rmfb - remove an FB from the configuration
  * @dev: drm device
@@ -437,8 +490,7 @@ int drm_mode_rmfb(struct drm_device *dev, u32 fb_id,
 		  struct drm_file *file_priv)
 {
 	struct drm_framebuffer *fb = NULL;
-	struct drm_framebuffer *fbl = NULL;
-	int found = 0;
+	int ret;
 
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		return -EOPNOTSUPP;
@@ -447,23 +499,13 @@ int drm_mode_rmfb(struct drm_device *dev, u32 fb_id,
 	if (!fb)
 		return -ENOENT;
 
-	mutex_lock(&file_priv->fbs_lock);
-	list_for_each_entry(fbl, &file_priv->fbs, filp_head)
-		if (fb == fbl)
-			found = 1;
-	if (!found) {
-		mutex_unlock(&file_priv->fbs_lock);
+	ret = drm_mode_closefb(fb, file_priv);
+	if (ret != 0)
 		goto fail_unref;
-	}
-
-	list_del_init(&fb->filp_head);
-	mutex_unlock(&file_priv->fbs_lock);
-
-	/* drop the reference we picked up in framebuffer lookup */
-	drm_framebuffer_put(fb);
 
 	/*
-	 * we now own the reference that was stored in the fbs list
+	 * The file-list reference has been dropped by drm_mode_closefb(); this
+	 * path still owns the lookup reference and uses it for RMFB removal.
 	 *
 	 * drm_framebuffer_remove may fail with -EINTR on pending signals,
 	 * so run this in a separate stack as there's no way to correctly
@@ -486,7 +528,7 @@ int drm_mode_rmfb(struct drm_device *dev, u32 fb_id,
 
 fail_unref:
 	drm_framebuffer_put(fb);
-	return -ENOENT;
+	return ret;
 }
 
 int drm_mode_rmfb_ioctl(struct drm_device *dev,
@@ -495,6 +537,27 @@ int drm_mode_rmfb_ioctl(struct drm_device *dev,
 	uint32_t *fb_id = data;
 
 	return drm_mode_rmfb(dev, *fb_id, file_priv);
+}
+
+int drm_mode_closefb_ioctl(struct drm_device *dev,
+			   void *data, struct drm_file *file_priv)
+{
+	struct drm_mode_closefb *r = data;
+	struct drm_framebuffer *fb;
+	int ret;
+
+	if (!drm_core_check_feature(dev, DRIVER_MODESET))
+		return -EOPNOTSUPP;
+	if (r->pad != 0)
+		return -EINVAL;
+
+	fb = drm_framebuffer_lookup(dev, file_priv, r->fb_id);
+	if (!fb)
+		return -ENOENT;
+
+	ret = drm_mode_closefb(fb, file_priv);
+	drm_framebuffer_put(fb);
+	return ret;
 }
 
 /**
@@ -555,6 +618,122 @@ int drm_mode_getfb(struct drm_device *dev,
 	ret = fb->funcs->create_handle(fb, file_priv, &r->handle);
 
 out:
+	drm_framebuffer_put(fb);
+
+	return ret;
+}
+
+/**
+ * drm_mode_getfb2_ioctl - get extended FB metadata
+ * @dev: DRM device for the ioctl
+ * @data: borrowed pointer to a struct drm_mode_fb_cmd2 request/response
+ * @file_priv: DRM file that owns any returned GEM handles
+ *
+ * Ownership:
+ * The caller owns @data.  The lookup borrows a framebuffer reference for the
+ * duration of the ioctl.  When the caller is the current DRM master or has
+ * CAP_SYS_ADMIN, each non-zero returned handle is a fresh GEM handle owned by
+ * @file_priv; userspace must close it with GEM_CLOSE.  On internal failure,
+ * every handle created by this function is deleted before return.
+ *
+ * Lifetime:
+ * The returned framebuffer metadata is a snapshot.  Returned GEM handles keep
+ * the backing objects alive independently of the framebuffer after the ioctl
+ * returns.  No plane, CRTC, or display transaction is started by this query.
+ *
+ * Threading:
+ * The framebuffer lookup and final put follow the DRM mode-object refcounting
+ * rules.  GEM handle creation/deletion use the normal per-file handle table
+ * locking.  This function does not sleep while holding display locks.
+ *
+ * Returns:
+ * Zero on success, negative errno on failure.
+ */
+int drm_mode_getfb2_ioctl(struct drm_device *dev,
+			  void *data, struct drm_file *file_priv)
+{
+	struct drm_mode_fb_cmd2 *r = data;
+	struct drm_framebuffer *fb;
+	unsigned int i;
+	int ret = 0;
+
+	if (!drm_core_check_feature(dev, DRIVER_MODESET))
+		return -EOPNOTSUPP;
+
+	fb = drm_framebuffer_lookup(dev, file_priv, r->fb_id);
+	if (!fb)
+		return -ENOENT;
+
+	if (fb->format->num_planes > ARRAY_SIZE(r->handles)) {
+		ret = -EINVAL;
+		goto out_put;
+	}
+	if (fb->obj[0] == NULL && (fb->format->num_planes > 1 ||
+	    fb->funcs->create_handle == NULL)) {
+		ret = -ENODEV;
+		goto out_put;
+	}
+
+	r->height = fb->height;
+	r->width = fb->width;
+	r->pixel_format = fb->format->format;
+	r->flags = fb->flags & DRM_MODE_FB_MODIFIERS;
+
+	for (i = 0; i < ARRAY_SIZE(r->handles); i++) {
+		r->handles[i] = 0;
+		r->pitches[i] = 0;
+		r->offsets[i] = 0;
+		r->modifier[i] = 0;
+	}
+
+	for (i = 0; i < fb->format->num_planes; i++) {
+		r->pitches[i] = fb->pitches[i];
+		r->offsets[i] = fb->offsets[i];
+		if ((r->flags & DRM_MODE_FB_MODIFIERS) != 0)
+			r->modifier[i] = fb->modifier;
+	}
+
+	if (!drm_is_current_master(file_priv) && !capable(CAP_SYS_ADMIN))
+		goto out_put;
+
+	for (i = 0; i < fb->format->num_planes; i++) {
+		unsigned int j;
+
+		for (j = 0; j < i; j++) {
+			if (fb->obj[i] != NULL && fb->obj[i] == fb->obj[j]) {
+				r->handles[i] = r->handles[j];
+				break;
+			}
+		}
+		if (r->handles[i] != 0)
+			continue;
+
+		if (fb->obj[i] != NULL)
+			ret = drm_gem_handle_create(file_priv, fb->obj[i],
+			    &r->handles[i]);
+		else
+			ret = fb->funcs->create_handle(fb, file_priv,
+			    &r->handles[i]);
+		if (ret != 0)
+			goto out_delete_handles;
+	}
+
+	goto out_put;
+
+out_delete_handles:
+	for (i = 0; i < ARRAY_SIZE(r->handles); i++) {
+		unsigned int j;
+
+		if (r->handles[i] == 0)
+			continue;
+		drm_gem_handle_delete(file_priv, r->handles[i]);
+		for (j = i + 1; j < ARRAY_SIZE(r->handles); j++) {
+			if (r->handles[j] == r->handles[i])
+				r->handles[j] = 0;
+		}
+		r->handles[i] = 0;
+	}
+out_put:
 	drm_framebuffer_put(fb);
 
 	return ret;
@@ -662,37 +841,46 @@ void drm_fb_release(struct drm_file *priv)
 {
 	struct drm_framebuffer *fb, *tfb;
 	struct drm_mode_rmfb_work arg;
+	u_int moved = 0;
+	u_int dropped = 0;
 
 	INIT_LIST_HEAD(&arg.fbs);
+	KTR_LOG(drm_fb_release, 0u, priv, NULL, 0u, moved, dropped);
 
 	/*
-	 * When the file gets released that means no one else can access the fb
-	 * list any more, so no need to grab fpriv->fbs_lock. And we need to
-	 * avoid upsetting lockdep since the universal cursor code adds a
-	 * framebuffer while holding mutex locks.
-	 *
-	 * Note that a real deadlock between fpriv->fbs_lock and the modeset
-	 * locks is impossible here since no one else but this function can get
-	 * at it any more.
+	 * DragonFly close can race with another thread still issuing framebuffer
+	 * ioctls on the same drm_file.  Serialize the per-file framebuffer list
+	 * against RMFB/CLOSEFB/ADDFB while only moving entries to the local work
+	 * list; modeset cleanup still runs after dropping fbs_lock.
 	 */
+	mutex_lock(&priv->fbs_lock);
 	list_for_each_entry_safe(fb, tfb, &priv->fbs, filp_head) {
-		if (drm_framebuffer_read_refcount(fb) > 1) {
+		u_int refcount = drm_framebuffer_read_refcount(fb);
+
+		KTR_LOG(drm_fb_release, 1u, priv, fb, refcount, moved, dropped);
+		if (refcount > 1) {
+			moved++;
 			list_move_tail(&fb->filp_head, &arg.fbs);
 		} else {
+			dropped++;
 			list_del_init(&fb->filp_head);
 
 			/* This drops the fpriv->fbs reference. */
 			drm_framebuffer_put(fb);
 		}
 	}
+	mutex_unlock(&priv->fbs_lock);
 
+	KTR_LOG(drm_fb_release, 2u, priv, NULL, 0u, moved, dropped);
 	if (!list_empty(&arg.fbs)) {
 		INIT_WORK_ONSTACK(&arg.work, drm_mode_rmfb_work_fn);
 
+		KTR_LOG(drm_fb_release, 3u, priv, NULL, 0u, moved, dropped);
 		schedule_work(&arg.work);
 		flush_work(&arg.work);
 		destroy_work_on_stack(&arg.work);
 	}
+	KTR_LOG(drm_fb_release, 4u, priv, NULL, 0u, moved, dropped);
 }
 
 void drm_framebuffer_free(struct kref *kref)

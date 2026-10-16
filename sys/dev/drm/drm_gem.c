@@ -64,11 +64,31 @@
 #include <linux/pagemap.h>
 #include <linux/shmem_fs.h>
 #include <linux/dma-buf.h>
+#include <sys/sysctl.h>
 #include <drm/drmP.h>
 #include <drm/drm_vma_manager.h>
 #include <drm/drm_gem.h>
 #include <drm/drm_print.h>
 #include "drm_internal.h"
+
+SYSCTL_DECL(_hw_dri);
+
+static uint64_t gem_close_ioctl_count;
+static uint64_t gem_handle_delete_count;
+static uint64_t gem_handle_delete_ok_count;
+static uint64_t gem_handle_delete_error_count;
+static uint64_t gem_release_handle_count;
+
+SYSCTL_UQUAD(_hw_dri, OID_AUTO, gem_close_ioctl_count, CTLFLAG_RD,
+    &gem_close_ioctl_count, 0, "GEM_CLOSE ioctl count");
+SYSCTL_UQUAD(_hw_dri, OID_AUTO, gem_handle_delete_count, CTLFLAG_RD,
+    &gem_handle_delete_count, 0, "GEM handle delete count");
+SYSCTL_UQUAD(_hw_dri, OID_AUTO, gem_handle_delete_ok_count, CTLFLAG_RD,
+    &gem_handle_delete_ok_count, 0, "GEM handle delete success count");
+SYSCTL_UQUAD(_hw_dri, OID_AUTO, gem_handle_delete_error_count, CTLFLAG_RD,
+    &gem_handle_delete_error_count, 0, "GEM handle delete error count");
+SYSCTL_UQUAD(_hw_dri, OID_AUTO, gem_release_handle_count, CTLFLAG_RD,
+    &gem_release_handle_count, 0, "GEM release handle count");
 
 #ifdef __DragonFly__
 struct drm_gem_mm {
@@ -311,6 +331,8 @@ drm_gem_object_release_handle(int id, void *ptr, void *data)
 	struct drm_gem_object *obj = ptr;
 	struct drm_device *dev = obj->dev;
 
+	gem_release_handle_count++;
+
 	if (dev->driver->gem_close_object)
 		dev->driver->gem_close_object(obj, file_priv);
 
@@ -337,6 +359,8 @@ drm_gem_handle_delete(struct drm_file *filp, u32 handle)
 {
 	struct drm_gem_object *obj;
 
+	gem_handle_delete_count++;
+
 	/* This is gross. The idr system doesn't let us try a delete and
 	 * return an error code.  It just spews if you fail at deleting.
 	 * So, we have to grab a lock around finding the object and then
@@ -351,8 +375,10 @@ drm_gem_handle_delete(struct drm_file *filp, u32 handle)
 	/* Check if we currently have a reference on the object */
 	obj = idr_replace(&filp->object_idr, NULL, handle);
 	lockmgr(&filp->table_lock, LK_RELEASE);
-	if (IS_ERR_OR_NULL(obj))
+	if (IS_ERR_OR_NULL(obj)) {
+		gem_handle_delete_error_count++;
 		return -EINVAL;
+	}
 
 	/* Release driver's reference and decrement refcount. */
 	drm_gem_object_release_handle(handle, obj, filp);
@@ -361,6 +387,7 @@ drm_gem_handle_delete(struct drm_file *filp, u32 handle)
 	lockmgr(&filp->table_lock, LK_EXCLUSIVE);
 	idr_remove(&filp->object_idr, handle);
 	lockmgr(&filp->table_lock, LK_RELEASE);
+	gem_handle_delete_ok_count++;
 	return 0;
 }
 EXPORT_SYMBOL(drm_gem_handle_delete);
@@ -653,6 +680,7 @@ drm_gem_close_ioctl(struct drm_device *dev, void *data,
 	if (!drm_core_check_feature(dev, DRIVER_GEM))
 		return -EOPNOTSUPP;
 
+	gem_close_ioctl_count++;
 	ret = drm_gem_handle_delete(file_priv, args->handle);
 
 	return ret;
