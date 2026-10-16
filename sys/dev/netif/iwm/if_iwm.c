@@ -399,6 +399,7 @@ static int	iwm_is_valid_ether_addr(uint8_t *);
 static void	iwm_preinit(void *);
 static int	iwm_detach_local(struct iwm_softc *sc, int);
 static void	iwm_init_task(void *);
+static void	iwm_restart_task(void *, int);
 static void	iwm_radiotap_attach(struct iwm_softc *);
 static struct ieee80211vap *
 		iwm_vap_create(struct ieee80211com *,
@@ -5833,7 +5834,7 @@ iwm_intr(void *arg)
 		device_printf(sc->sc_dev, "%s: controller panicked, iv_state = %d; "
 		    "restarting\n", __func__, vap->iv_state);
 
-		ieee80211_restart_all(ic);
+		taskqueue_enqueue(sc->sc_tq, &sc->init_task);
 		return;
 	}
 
@@ -6084,6 +6085,7 @@ iwm_attach(device_t dev)
 	callout_init_lk(&sc->sc_led_blink_to, &sc->sc_lk);
 	TASK_INIT(&sc->sc_es_task, 0, iwm_endscan_cb, sc);
 	TASK_INIT(&sc->sc_rftoggle_task, 0, iwm_rftoggle_task, sc);
+	TASK_INIT(&sc->init_task, 0, iwm_restart_task, sc);
 
 	sc->sc_tq = taskqueue_create("iwm_taskq", M_WAITOK,
 	    taskqueue_thread_enqueue, &sc->sc_tq);
@@ -6582,6 +6584,35 @@ iwm_scan_curchan(struct ieee80211_scan_state *ss, unsigned long maxdwell)
 static void
 iwm_scan_mindwell(struct ieee80211_scan_state *ss)
 {
+}
+
+static void
+iwm_restart_task(void *arg, int npending __unused)
+{
+	struct iwm_softc *sc = arg;
+	struct ieee80211com *ic = &sc->sc_ic;
+	struct ieee80211vap *vap;
+	int rescan = 0;
+
+	IWM_LOCK(sc);
+	while (sc->sc_flags & IWM_FLAG_BUSY)
+		lksleep(&sc->sc_flags, &sc->sc_lk, 0, "iwmpwr", 0);
+	sc->sc_flags |= IWM_FLAG_BUSY;
+	iwm_stop(sc);
+	if (ic->ic_nrunning > 0) {
+		iwm_init(sc);
+		if (sc->sc_flags & IWM_FLAG_HW_INITED)
+			rescan = 1;
+	}
+	sc->sc_flags &= ~IWM_FLAG_BUSY;
+	wakeup(&sc->sc_flags);
+	IWM_UNLOCK(sc);
+
+	if (!rescan)
+		return;
+
+	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next)
+		ieee80211_new_state(vap, IEEE80211_S_SCAN, 0);
 }
 
 void
