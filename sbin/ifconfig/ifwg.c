@@ -63,20 +63,24 @@ wg_data_init(void)
 
 	strlcpy(wg_data.wgd_name, IfName, sizeof(wg_data.wgd_name));
 	wg_data.wgd_size = sizeof(*wg_interface);
-	wg_data.wgd_interface = wg_interface = calloc(1, wg_data.wgd_size);
-	if (wg_interface == NULL)
+	wg_data.wgd_interface = calloc(1, wg_data.wgd_size);
+	if (wg_data.wgd_interface == NULL)
 		err(1, "calloc");
+
+	wg_interface = wg_data.wgd_interface;
 }
 
 static void
 wg_data_grow(size_t by)
 {
-	ptrdiff_t peer_offset, aip_offset;
+	uintptr_t peer_offset, aip_offset;
 
 	wg_data_init();
 
-	peer_offset = (char *)wg_peer - (char *)wg_interface;
-	aip_offset = (char *)wg_aip - (char *)wg_interface;
+	if (wg_peer != NULL)
+		peer_offset = (uintptr_t)wg_peer - (uintptr_t)wg_interface;
+	if (wg_aip != NULL)
+		aip_offset = (uintptr_t)wg_aip - (uintptr_t)wg_interface;
 
 	wg_data.wgd_size += by;
 	wg_data.wgd_interface = realloc(wg_interface, wg_data.wgd_size);
