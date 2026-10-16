@@ -17,7 +17,8 @@ common_out_object_file=	i386-common.o
 OBJS-libcommon-target+=	selftest.o
 .endif
 
-OBJS=		${OBJS-libcommon-target}
+SRCS=		${OBJS-libcommon-target:.o=.c}
+
 CFLAGS+=	-DPREFIX=\"${TOOLS_PREFIX}/usr\"
 
 # for opts-common.c
@@ -27,10 +28,9 @@ CXXFLAGS+=	-Wno-narrowing
 CXXFLAGS+=	-Wno-c++11-narrowing
 .endif
 
-# hack to force c++ compiler to compile *.c files to create library
-.for ofile in ${OBJS-libcommon-target}
-${ofile}: ${ofile:.o=.c}
-	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
-.endfor
-
 .include <bsd.lib.mk>
+
+# hack to force c++ compiler to compile *.c files
+MKDEPCC:=	${CXX}
+CC:=		${CXX}
+CFLAGS:=	${CXXFLAGS}

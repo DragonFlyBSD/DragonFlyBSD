@@ -1,7 +1,3 @@
-# If we defined SRCS, the mkdep fails because it evaluates files with .c
-# extension with cc instead of c++ (go figure).  To avoid that, we need
-# to define OBJS directly
-
 GCC_LANG_DIR=	gcc/cp
 TOP_PREFIX=	../../
 
@@ -13,9 +9,13 @@ NOMAN=		yes
 NOSHARED?=	yes
 
 CXX_OBJS=	cp/cp-lang.o cp/stub-objc.o
-CXXXX_OBJS=	${CXX_OBJS:T}
-OBJS=		${CXXXX_OBJS} cc1plus-checksum.o
-SRCS=
+CXX_OBJS_T=	${CXX_OBJS:T}
+
+SRCS=		${CXX_OBJS_T:.c=.c}
+# Skip calling 'mkdep' on the to-be-generated 'cc1plus-checksum.c'.
+.if !make(depend)
+SRCS+=		cc1plus-checksum.c
+.endif
 
 GUTS=		../../guts/guts-cxx/libguts-cxx.a \
 		../../guts/guts-common/libguts-common.a \
@@ -30,16 +30,15 @@ DPADD=		${GUTS} ${BACKEND} ${LIBS} ${BACKENDLIBS}
 checksum-options:
 	echo "${LD} ${LDFLAGS}" > ${.TARGET}
 
-cc1plus-checksum.c: ${CXXXX_OBJS} ${GUTS} ${BACKEND} checksum-options
-	${TOOLDIR}/genchecksum.nx ${CXXXX_OBJS} ${GUTS} ${BACKEND} \
+cc1plus-checksum.c: ${CXX_OBJS_T} ${GUTS} ${BACKEND} checksum-options
+	${TOOLDIR}/genchecksum.nx ${CXX_OBJS_T} ${GUTS} ${BACKEND} \
 	    checksum-options > ${.TARGET}
 
-# hack to force c++ compiler to compile *.c files to create library
-.for ofile in ${OBJS}
-${ofile}: ${ofile:.o=.c}
-	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
-.endfor
-
-CLEANFILES=	cc1plus-checksum.* checksum-options
+CLEANFILES=	cc1plus-checksum.c checksum-options
 
 .include <bsd.prog.mk>
+
+# hack to force c++ compiler to compile *.c files
+MKDEPCC:=	${CXX}
+CC:=		${CXX}
+CFLAGS:=	${CXXFLAGS}

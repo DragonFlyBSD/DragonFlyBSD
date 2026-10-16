@@ -9,14 +9,11 @@ TOP_PREFIX=	../../
 LIB=		guts-target
 INTERNALLIB=
 
-GUTS_TARGETO=	${C_TARGET_OBJS:T}
-
-OBJS=		${GUTS_TARGETO}
-
-# hack to force c++ compiler to compile *.c files to create library
-.for ofile in ${GUTS_TARGETO}
-${ofile}: ${ofile:.o=.c}
-	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
-.endfor
+SRCS=		${C_TARGET_OBJS:T:.o=.c}
 
 .include <bsd.lib.mk>
+
+# hack to force c++ compiler to compile *.c files
+MKDEPCC:=	${CXX}
+CC:=		${CXX}
+CFLAGS:=	${CXXFLAGS}

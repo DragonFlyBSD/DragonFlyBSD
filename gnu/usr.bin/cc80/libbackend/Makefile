@@ -418,8 +418,8 @@ BACKEND_OBJS+=	fibonacci_heap.o function-tests.o \
 #BACKEND_OBJS+= \
 	xcoffout.o
 
-OBJS=	${BACKEND_OBJS}
 SRCS=	gimple-loop-interchange.cc wide-int.cc wide-int-print.cc
+SRCS+=	${BACKEND_OBJS:.o=.c}
 
 .if ${CFLAGS:M-DTOOLCHAIN_CHECKING}
 SRCS+=	unique-ptr-tests.cc
@@ -432,12 +432,6 @@ CXXFLAGS+=	-Wno-narrowing
 CXXFLAGS+=	-Wno-c++11-narrowing
 .endif
 
-# hack to force c++ compiler to compile *.c files to create library
-.for ofile in ${BACKEND_OBJS}
-${ofile}: ${ofile:.o=.c}
-	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
-.endfor
-
 dfp.o: gstdint.h
 
 gstdint.h:
@@ -446,3 +440,8 @@ gstdint.h:
 CLEANFILES=	gstdint.h
 
 .include <bsd.lib.mk>
+
+# hack to force c++ compiler to compile *.c files
+MKDEPCC:=	${CXX}
+CC:=		${CXX}
+CFLAGS:=	${CXXFLAGS}

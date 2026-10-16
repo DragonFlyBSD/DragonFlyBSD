@@ -19,13 +19,12 @@ GUTS_CXXO+=	${object:T}
 . endif
 .endfor
 
-OBJS=		${GUTS_CXXO}
 SRCS=		${CXX_COMMON_SRCS}
-
-# hack to force c++ compiler to compile *.c files to create library
-.for ofile in ${GUTS_CXXO}
-${ofile}: ${ofile:.o=.c}
-	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
-.endfor
+SRCS+=		${GUTS_CXXO:.o=.c}
 
 .include <bsd.lib.mk>
+
+# hack to force c++ compiler to compile *.c files
+MKDEPCC:=	${CXX}
+CC:=		${CXX}
+CFLAGS:=	${CXXFLAGS}

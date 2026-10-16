@@ -12,8 +12,9 @@ OBJS-libcommon= diagnostic.o diagnostic-color.o diagnostic-show-locus.o \
 OBJS-libcommon+=	selftest.o selftest-diagnostic.o
 .endif
 
+SRCS=		${OBJS-libcommon:.o=.c}
 SRCS+=		memory-block.cc
-OBJS+=		${OBJS-libcommon}
+
 CFLAGS+=	-I${GCCDIR}/libbacktrace
 
 # for pretty-print.c
@@ -23,10 +24,9 @@ CXXFLAGS+=	-Wno-narrowing
 CXXFLAGS+=	-Wno-c++11-narrowing
 .endif
 
-# hack to force c++ compiler to compile *.c files to create library
-.for ofile in ${OBJS-libcommon}
-${ofile}: ${ofile:.o=.c}
-	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
-.endfor
-
 .include <bsd.lib.mk>
+
+# hack to force c++ compiler to compile *.c files
+MKDEPCC:=	${CXX}
+CC:=		${CXX}
+CFLAGS:=	${CXXFLAGS}

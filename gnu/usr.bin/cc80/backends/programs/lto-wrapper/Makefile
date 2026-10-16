@@ -1,7 +1,3 @@
-# If we defined SRCS, the mkdep fails because it evaluates files with .c
-# extension with cc instead of c++ (go figure).  To avoid that, we need
-# to define OBJS directly
-
 TOP_PREFIX=	../../
 
 .include "../../../Makefile.inc"
@@ -9,10 +5,9 @@ TOP_PREFIX=	../../
 PROG_CXX=	lto-wrapper
 NOMAN=		yes
 
-SRCS=
-OBJS=		lto-wrapper.o \
-		collect-utils.o \
-		ggc-none.o
+SRCS=		lto-wrapper.c \
+		collect-utils.c \
+		ggc-none.c
 
 GUTS=		../../guts/guts-common/libguts-common.a \
 		../../guts/guts-target/libguts-target.a
@@ -21,11 +16,9 @@ LIBS=		${LIBCOMMONTARG} ${LIBCOMMON} ${LIBCPP} \
 LDADD=		${LIBS}
 DPADD=		${LIBS}
 
-
-# hack to force c++ compiler to compile *.c files to create library
-.for ofile in ${OBJS}
-${ofile}: ${ofile:.o=.c}
-	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
-.endfor
-
 .include <bsd.prog.mk>
+
+# hack to force c++ compiler to compile *.c files
+MKDEPCC:=	${CXX}
+CC:=		${CXX}
+CFLAGS:=	${CXXFLAGS}
