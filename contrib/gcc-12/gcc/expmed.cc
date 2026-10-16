@@ -19,7 +19,7 @@ along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
 /* Work around tree-optimization/91825.  */
-#pragma GCC diagnostic warning "-Wmaybe-uninitialized"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 
 #include "config.h"
 #include "system.h"
