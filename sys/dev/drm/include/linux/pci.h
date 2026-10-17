@@ -44,6 +44,7 @@
 #include <linux/pci_ids.h>
 #include <linux/pci_regs.h>
 
+#include <sys/param.h>
 #include <sys/pciio.h>
 #include <sys/rman.h>
 #include <bus/pci/pcivar.h>
@@ -217,13 +218,19 @@ pci_dev_put(struct pci_dev *dev)
 static inline int
 pci_set_dma_mask(struct pci_dev *dev, u64 mask)
 {
-	return -EIO;
+	if (mask < 0xFFFFFFFFULL || ptoa(Maxmem) > mask)
+		return -EIO;
+
+	return 0;
 }
 
 static inline int
 pci_set_consistent_dma_mask(struct pci_dev *dev, u64 mask)
 {
-	return -EIO;
+	if (mask < 0xFFFFFFFFULL)
+		return -EIO;
+
+	return 0;
 }
 
 typedef int pci_power_t;
