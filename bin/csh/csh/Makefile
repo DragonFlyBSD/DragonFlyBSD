@@ -46,6 +46,14 @@ FLAGS_GROUPS=	calloc
 calloc_FLAGS=	-fno-builtin-malloc
 calloc_FLAGS_FILES= tc.alloc.c
 
+# gcc120 gives -Wuse-after-free warnings, which are all false positives,
+# so silence them instead of fixing the vendor source.
+.if ${CCVER:Mgcc*} && ${CCVER:S/gcc//} >= 120
+FLAGS_GROUPS+=	uaf
+uaf_FLAGS=	-Wno-use-after-free
+uaf_FLAGS_FILES= sh.func.c sh.proc.c tw.init.c
+.endif
+
 # XXX hmmm
 .if defined(BOOTSTRAPPING)
 . if ${CFLAGS:M-flto}
