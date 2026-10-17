@@ -622,8 +622,8 @@ probe_adapters(void)
 #endif
     int i;
 
-    /* do this test only once */
-    if (vga_init_done)
+    /* do this test only once (retry while the adapter is unverified) */
+    if (vga_init_done && (biosadapter.va_flags & V_ADP_PROBED))
 	return 1;
     vga_init_done = TRUE;
 
@@ -843,7 +843,9 @@ vga_probe(int unit, video_adapter_t **adpp, void *arg, int flags)
 
     /* XXX Also abort if VGA isn't present according to ACPI FADT BootFlags */
 
-    probe_adapters();
+    /* Do not pretend success when the adapter could not be verified */
+    if (probe_adapters() == 0)
+	return (ENXIO);
     if (unit != 0)
 	return ENXIO;
 
