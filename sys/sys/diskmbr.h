@@ -71,7 +71,7 @@ static const struct dos_ptype
 	{ 0x04, "Primary DOS with 16 bit FAT (<= 32MB)" },
 	{ DOSPTYP_EXT, "Extended DOS" },
 	{ 0x06, "Primary 'big' DOS (> 32MB)" },
-	{ 0x07, "OS/2 HPFS, NTFS, QNX-2 (16 bit) or Advanced UNIX" },
+	{ 0x07, "HPFS, NTFS, exFAT, QNX or Advanced UNIX" },
 	{ 0x08, "AIX filesystem" },
 	{ 0x09, "AIX boot partition or Coherent" },
 	{ 0x0A, "OS/2 Boot Manager or OPUS" },
