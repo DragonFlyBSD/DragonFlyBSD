@@ -1,52 +1,84 @@
 OPENSSH
 =======
 
-Original source can be downloaded from OpenBSD at
-ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/
+Original source can be downloaded from:
+https://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/
 
-file = openssh-9.8p1.tar.gz
-date = 01 July 2024
-size = 1910393
-sha1 = a0bb501b11349f5c5c33a269351be091dc2c2727
+file = openssh-10.6p1.tar.gz
+date = 2026-10-06
+size = 2355244
+sha1 = e6a34f5625e20172b214c50ebd4e0dcb4fd18013
 
 A list of deleted files is in README.DELETED.
 
-Modified configure script to adjust two -lcrypto lines to:
+No local modifications.
 
-    LIBS="-L/usr/lib/priv -lprivate_crypto $LIBS"
-    CHANNELLIBS="-L/usr/lib/priv -lprivate_crypto $CHANNELLIBS"
+Used In
+-------
+* lib/libssh/
+* libexec/sftp-server/
+* libexec/ssh-keysign/
+* libexec/ssh-pkcs11-helper/
+* libexec/ssh-sk-helper/
+* libexec/sshd-auth/
+* libexec/sshd-session/
+* usr.bin/scp/
+* usr.bin/sftp/
+* usr.bin/ssh-add/
+* usr.bin/ssh-agent/
+* usr.bin/ssh-copy-id/
+* usr.bin/ssh-keygen/
+* usr.bin/ssh-keyscan/
+* usr.bin/ssh/
+* usr.sbin/sshd/
 
-Configured with
-===============
-./configure --prefix=/usr --sysconfdir=/etc/ssh --with-sandbox=rlimit --with-pam \
-	    --with-libedit --without-ssl-engine --without-rpath \
-	    --with-privsep-path=/var/empty --with-xauth=/usr/local/bin/xauth \
-	    --disable-pkcs11 ac_cv_lib_dl_dlopen=no
+Upgrade Notes
+-------------
+1. Hide libraries from DPorts:
 
-The following files have been patched (* planned)
-=================================================
-  session.c			do_nologin function declaration of nl needs to be
-				const char *nl;
-  sshd_config			PasswordAuthentication no
+   mv /usr/local/include /usr/local/include.hide
+   mv /usr/local/libdata/pkgconfig /usr/local/libdata/pkgconfig.hide
 
-Prior adjustments (don't appear to be needed for 9.8):
-  platform.h			pledge dummies
-  servconf.c			PAM defaults
+2. Expose base private libraries:
 
-NOTE: The configure script misdetects few things.
-Update config.h and openbsd-compat in lib/libssh.
+   ln -s priv/openssl /usr/include/openssl
+   ln -s libprivate_ssl.so /usr/lib/priv/libssl.so
+   ln -s libprivate_crypto.so /usr/lib/priv/libcrypto.so
+   ln -s libprivate_edit.so /usr/lib/priv/libedit.so
+   ln -s libprivate_ncurses.so /usr/lib/priv/libcurses.so
+   ln -s libprivate_ldns.so /usr/lib/priv/libldns.so
 
-Used in:
-lib/libssh/
-libexec/sftp-server/
-libexec/ssh-keysign/
-libexec/sshd-session/
-libexec/ssh-pkcs11-helper/
-usr.bin/scp/
-usr.bin/sftp/
-usr.bin/ssh-add/
-usr.bin/ssh-agent/
-usr.bin/ssh-keygen/
-usr.bin/ssh-keyscan/
-usr.bin/ssh/
-usr.sbin/sshd/
+3. Configure the source:
+
+   ./configure --prefix=/usr --sysconfdir=/etc/ssh \
+       --with-sandbox=rlimit \
+       --with-privsep-path=/var/empty \
+       --with-xauth="/usr/local/bin/xauth" \
+       --with-pam \
+       --with-libedit \
+       --with-ldns \
+       --without-rpath \
+       --without-ssl-engine \
+       CFLAGS="-I/usr/include/priv" \
+       LDFLAGS="-L/usr/lib/priv"
+
+4. Copy the generated config.h:
+
+   cp config.h /usr/src/lib/libssh/config.h.auto
+
+5. Check the config.h corrections in lib/libssh/Makefile and update
+   if necessary.
+
+6. Restore the libraries changes:
+
+   mv /usr/local/include.hide /usr/local/include
+   mv /usr/local/libdata/pkgconfig.hide /usr/local/libdata/pkgconfig
+   rm /usr/include/openssl \
+       /usr/lib/priv/libssl.so \
+       /usr/lib/priv/libcrypto.so \
+       /usr/lib/priv/libedit.so \
+       /usr/lib/priv/libcurses.so \
+       /usr/lib/priv/libldns.so
+
+7. Update the makefiles of all components, test building and installation,
+   fix issues, and test the final programs.
