@@ -216,6 +216,13 @@ ${__target}: ${__target}_crunchdir_${E}
 .endfor
 .endfor
 
+# Make "depend" for internal libraries before the programs.
+.for P in ${_CRUNCH_PROGS}
+.for L in ${CRUNCH_INTLIB_${P}}
+depend_crunchdir_${P}: depend_crunchdir_${L}
+.endfor
+.endfor
+
 # Build the required host programs if any.
 .for P in ${_CRUNCH_PROGS}
 .for HP in ${CRUNCH_HOSTPROGS_${P}}
@@ -224,7 +231,7 @@ ${__target}_crunchdir_${P}_${HP:T}: .PHONY .MAKE
 	(cd ${HP} && \
 	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
 		DIRPRFX=${DIRPRFX}${P}/${HP:T}/ ${CRUNCH_BUILDOPTS} \
-		${__target:C/clean/clean cleandepend/})
+		${__target:S/clean/clean cleandepend/})
 .endfor
 clean: clean_crunchdir_${P}_${HP:T}
 depend_crunchdir_${P}: all_crunchdir_${P}_${HP:T}
