@@ -1,44 +1,35 @@
+LIBSSH_RELDIR=	../../lib/libssh
+.include "${LIBSSH_RELDIR}/Makefile.common"
+
 PROG=	sshd-session
-SRCS=	sshd-session.c
-
-.PATH: ${.CURDIR}/../../crypto/openssh
-SRCS+=  auth-rhosts.c auth-passwd.c \
-        audit.c audit-bsm.c audit-linux.c platform.c \
-        sshpty.c sshlogin.c servconf.c serverloop.c \
-        auth.c auth2.c auth2-methods.c auth-options.c session.c \
-        auth2-chall.c groupaccess.c \
-        auth-bsdauth.c auth2-hostbased.c auth2-kbdint.c \
-        auth2-none.c auth2-passwd.c auth2-pubkey.c auth2-pubkeyfile.c \
-        monitor.c monitor_wrap.c auth-krb5.c \
-        auth2-gss.c gss-serv.c gss-serv-krb5.c \
-        loginrec.c auth-pam.c auth-shadow.c auth-sia.c \
-        sftp-server.c sftp-common.c \
-        sandbox-null.c sandbox-rlimit.c sandbox-systrace.c sandbox-darwin.c \
-        sandbox-seccomp-filter.c sandbox-capsicum.c sandbox-pledge.c \
-        sandbox-solaris.c uidswap.c
-
-# Fix misdetection in config.h to use utmpx/wtmpx.
-CFLAGS+= -DWTMPX_FILE=_PATH_WTMPX -DUTMPX_FILE=_PATH_UTMPX
-CFLAGS+= -DUTXDB_LASTLOGIN=UTX_DB_LASTLOGX
+NOMAN=
 
 WARNS?=	3
 
-MAN=	sshd.8 sshd_config.5
+# From vendor's Makefile
+P11OBJS= ssh-pkcs11-client.o
+SKOBJS=	ssh-sk-client.o
+SSHD_SESSION_OBJS=sshd-session.o auth-rhosts.o auth-passwd.o \
+	audit.o audit-bsm.o audit-linux.o platform.o \
+	sshpty.o sshlogin.o servconf.o serverloop.o \
+	auth.o auth2.o auth2-methods.o auth-options.o session.o \
+	auth2-chall.o groupaccess.o \
+	auth-bsdauth.o auth2-hostbased.o auth2-kbdint.o \
+	auth2-none.o auth2-passwd.o auth2-pubkey.o auth2-pubkeyfile.o \
+	monitor.o monitor_wrap.o auth-krb5.o \
+	auth2-gss.o gss-serv.o gss-serv-krb5.o \
+	loginrec.o auth-pam.o auth-shadow.o auth-sia.o \
+	sftp-server.o sftp-common.o \
+	uidswap.o platform-listen.o $(P11OBJS) $(SKOBJS)
 
-CFLAGS+= -DUSE_PAM
-#CFLAGS+= -DHAVE_SECURITY_PAM_APPL_H -DHAVE_PAM_GETENVLIST -DHAVE_PAM_PUTENV
+SRCS=	${SSHD_SESSION_OBJS:.o=.c}
 
-.if defined(XAUTH_PATH)
-CFLAGS+= -DXAUTH_PATH=\"${XAUTH_PATH}\"
-.endif
+DPADD+=		${LIBCRYPT} ${LIBPAM} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
+LDADD+=		-lcrypt ${MINUSLPAM} -lprivate_crypto -lutil -lz
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
-LDADD+=	-lcrypt ${MINUSLPAM}
-DPADD+=	${LIBCRYPT} ${LIBPAM}
-
-CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh
-CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-DPADD+=		${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
-LDADD+=		-lprivate_ssh -lprivate_crypto -lutil -lz
-LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
+FLAGS_GROUPS=		warn
+warn_FLAGS=		-Wno-discarded-qualifiers
+warn_FLAGS_FILES=	session.c
 
 .include <bsd.prog.mk>

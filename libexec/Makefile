@@ -25,6 +25,8 @@ SUBDIR=	atrun \
 	sftp-server \
 	ssh-keysign \
 	ssh-pkcs11-helper \
+	ssh-sk-helper \
+	sshd-auth \
 	sshd-session \
 	talkd \
 	tcpd \

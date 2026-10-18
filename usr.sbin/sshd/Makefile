@@ -1,49 +1,24 @@
+LIBSSH_RELDIR=	../../lib/libssh
+.include "${LIBSSH_RELDIR}/Makefile.common"
+
 PROG=	sshd
-SRCS=	sshd.c
-
-.PATH: ${.CURDIR}/../../crypto/openssh
-SRCS+=	platform-listen.c \
-        servconf.c sshpty.c srclimit.c groupaccess.c auth2-methods.c \
-	dns.c fatal.c compat.c utf8.c authfd.c canohost.c
-
-#SRCS+=	auth.c auth-options.c auth-pam.c auth-passwd.c auth-rhosts.c \
-#	auth2.c auth2-chall.c auth2-hostbased.c auth2-kbdint.c auth2-none.c \
-#	auth2-passwd.c auth2-methods.c auth2-pubkey.c auth2-pubkeyfile.c \
-#	channels.c \
-#	groupaccess.c loginrec.c misc.c monitor.c monitor_wrap.c packet.c \
-#	platform.c \
-#	sandbox-rlimit.c servconf.c serverloop.c session.c \
-#	sftp-common.c sftp-realpath.c sftp-server.c sshbuf-misc.c sshlogin.c \
-#	sshpty.c sshkey.c uidswap.c \
-
-# not needed:
-# audit-bsm.c audit-linux.c audit.c auth-bsdauth.c auth-krb5.c auth-shadow.c auth-sia.c
-# auth2-gss.c gss-serv-krb5.c gss-serv.c md5crypt.c
-# sandbox-capsicum.c sandbox-darwin.c sandbox-null.c sandbox-pledge.c
-# sandbox-seccomp-filter.c sandbox-solaris.c sandbox-systrace.c
-
-# Fix misdetection in config.h to use utmpx/wtmpx.
-CFLAGS+= -DWTMPX_FILE=_PATH_WTMPX -DUTMPX_FILE=_PATH_UTMPX
-CFLAGS+= -DUTXDB_LASTLOGIN=UTX_DB_LASTLOGX
+MAN=	sshd.8 sshd_config.5 moduli.5
 
 WARNS?=	3
 
-MAN=	sshd.8 sshd_config.5
+# From vendor's Makefile
+P11OBJS= ssh-pkcs11-client.o
+SKOBJS=	ssh-sk-client.o
+SSHDOBJS=sshd.o \
+	platform-listen.o \
+	servconf.o sshpty.o srclimit.o groupaccess.o auth2-methods.o \
+	dns.o fatal.o compat.o utf8.o authfd.o canohost.o \
+	$(P11OBJS) $(SKOBJS)
 
-CFLAGS+= -DUSE_PAM
-#CFLAGS+= -DHAVE_SECURITY_PAM_APPL_H -DHAVE_PAM_GETENVLIST -DHAVE_PAM_PUTENV
+SRCS=	${SSHDOBJS:.o=.c}
 
-.if defined(XAUTH_PATH)
-CFLAGS+= -DXAUTH_PATH=\"${XAUTH_PATH}\"
-.endif
-
-LDADD+=	-lcrypt ${MINUSLPAM}
-DPADD+=	${LIBCRYPT} ${LIBPAM}
-
-CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh
-CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-DPADD+=		${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
-LDADD+=		-lprivate_ssh -lprivate_crypto -lutil -lz
-LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
+DPADD+=		${LIBCRYPT} ${LIBPAM} ${LIBLDNS} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
+LDADD+=		-lcrypt ${MINUSLPAM} -lprivate_ldns -lprivate_crypto -lutil -lz
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

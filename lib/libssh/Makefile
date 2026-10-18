@@ -1,99 +1,119 @@
-LIB=	private_ssh
-SHLIB_MAJOR= 5
-PRIVATELIB= shpub
+.include "Makefile.common"
 
-.PATH: ${.CURDIR}/../../crypto/openssh
+LIB=		ssh
+INTERNALLIB=	YES
 
-# SRCS built from /usr/src/crypto/openssh/Makefile.inc,
-#	XMSS_OBJS
-#	LIBOPENSSH_OBJS
-#	LIBSHS_OBJS
-#	+ ssh-sk-client.c
-#
-#	ssh-sk-client.c is used by sshkey.c from LIBOPENSSH_OBJS and had
-#	to be included in libssh in order for initrd rescue to build.
-#
-SRCS=   ssh_api.c \
-        ssherr.c \
-        sshbuf.c \
-        sshkey.c \
-        sshbuf-getput-basic.c \
-        sshbuf-misc.c \
-        sshbuf-getput-crypto.c \
-        krl.c \
-        bitmap.c \
-	\
-        ssh-xmss.c \
-        sshkey-xmss.c \
-        xmss_commons.c \
-        xmss_fast.c \
-        xmss_hash.c \
-        xmss_hash_address.c \
-        xmss_wots.c \
-	\
-        authfd.c authfile.c \
-        canohost.c channels.c cipher.c cipher-aes.c cipher-aesctr.c \
-        cleanup.c \
-        compat.c fatal.c hostfile.c \
-        log.c match.c moduli.c nchan.c packet.c \
-        readpass.c ttymodes.c xmalloc.c addr.c addrmatch.c \
-        atomicio.c dispatch.c mac.c misc.c utf8.c \
-        monitor_fdpass.c rijndael.c ssh-dss.c ssh-ecdsa.c ssh-ecdsa-sk.c \
-        ssh-ed25519-sk.c ssh-rsa.c dh.c \
-        msg.c progressmeter.c dns.c entropy.c gss-genr.c umac.c umac128.c \
-        ssh-pkcs11.c smult_curve25519_ref.c \
-        poly1305.c chacha.c cipher-chachapoly.c cipher-chachapoly-libcrypto.c \
-        ssh-ed25519.c digest-openssl.c digest-libc.c \
-        hmac.c ed25519.c hash.c \
-        kex.c kex-names.c kexdh.c kexgex.c kexecdh.c kexc25519.c \
-        kexgexc.c kexgexs.c \
-        kexsntrup761x25519.c sntrup761.c kexgen.c \
-        sftp-realpath.c platform-pledge.c platform-tracing.c platform-misc.c \
-        sshbuf-io.c \
-	\
-	ssh-sk-client.c
+# From vendor's Makefile
+LIBOPENSSH_OBJS=\
+	ssh_api.o \
+	ssherr.o \
+	sshbuf.o \
+	sshkey.o \
+	sshbuf-getput-basic.o \
+	sshbuf-misc.o \
+	sshbuf-getput-crypto.o \
+	krl.o \
+	bitmap.o
+LIBSSH_OBJS=${LIBOPENSSH_OBJS} \
+	authfd.o authfile.o \
+	canohost.o channels.o cipher.o cipher-aes.o cipher-aesctr.o \
+	cleanup.o \
+	compat.o fatal.o hostfile.o \
+	log.o match.o moduli.o nchan.o packet.o \
+	readpass.o ttymodes.o xmalloc.o addr.o addrmatch.o \
+	atomicio.o dispatch.o mac.o misc.o utf8.o \
+	monitor_fdpass.o rijndael.o ssh-ecdsa.o ssh-ecdsa-sk.o \
+	ssh-ed25519-sk.o ssh-rsa.o dh.o \
+	msg.o dns.o entropy.o gss-genr.o umac.o umac128.o \
+	smult_curve25519_ref.o \
+	poly1305.o chacha.o cipher-chachapoly.o cipher-chachapoly-libcrypto.o \
+	ssh-ed25519.o digest-openssl.o digest-libc.o \
+	libcrux-mlkem-mldsa.o ssh-mldsa-eddsa.o \
+	hmac.o ed25519.o ed25519-openssl.o \
+	kex.o kex-names.o kexdh.o kexgex.o kexecdh.o kexc25519.o \
+	kexgexc.o kexgexs.o kexmlkem768ecdh.o \
+	kexsntrup761x25519.o kexmlkem768x25519.o sntrup761.o kexgen.o \
+	sftp-realpath.o platform-pledge.o platform-tracing.o platform-misc.o \
+	sshbuf-io.o misc-agent.o ssherr-libcrypto.o
 
-# not implemented: platform-pledge.c platform-tracing.c
-# only for scp/sftp: progressmeter.c
-# disabled: ssh-pkcs11.c
-# no GSSAPI: gss-genr.c
-# no openssl: cipher-aes.c cipher-aesctr.c cipher-ctr.c crc32.c digest-libc.c rijndael.c
-# no xmss: ssh-xmss.c sshkey-xmss.c xmss_commons.c xmss_fast.c xmss_hash.c
-#	   xmss_hash_address.c xmss_wots.c
+# Necessary sources from the portability layer (openbsd-compat)
+.PATH: ${OPENSSHDIR}/openbsd-compat
+COMPAT_SRCS= \
+	bcrypt_pbkdf.c blowfish.c bsd-misc.c fmt_scaled.c \
+	getrrsetbyname-ldns.c glob.c mktemp.c openssl-compat.c \
+	port-net.c xcrypt.c
 
-# Portability layer
-.PATH: ${.CURDIR}/openbsd-compat
-SRCS+=	bcrypt_pbkdf.c blowfish.c bsd-misc.c fmt_scaled.c \
-	getrrsetbyname-ldns.c glob.c openssl-compat.c port-net.c xcrypt.c
-
-# not needed compat:
-# arc4random.c base64.c basename.c bindresvport.c bsd-asprintf.c
-# bsd-closefrom.c bsd-cygwin_util.c bsd-err.c bsd-flock.c bsd-getline.c
-# bsd-getpagesize.c bsd-getpeereid.c bsd-malloc.c bsd-nextstep.c bsd-openpty.c
-# bsd-poll.c bsd-setres_id.c bsd-snprintf.c bsd-statvfs.c bsd-waitpid.c
-# daemon.c dirname.c explicit_bzero.c fake-rfc2553.c freezero.c getcwd.c
-# getgrouplist.c getopt_long.c inet_aton.c inet_ntoa.c inet_ntop.c
-# kludge-fd_set.c libressl-api-compat.c md5.c mktemp.c
-# port-aix.c port-irix.c port-linux.c port-solaris.c port-uw.c
-# pwcache.c readpassphrase.c reallocarray.c recallocarray.c rmd160.c
-# rresvport.c setenv.c setproctitle.c sha1.c sha2.c sigact.c
-# strcasestr.c strlcat.c strlcpy.c strmode.c strndup.c strnlen.c strptime.c
-# strsep.c strtoll.c strtonum.c strtoul.c strtoull.c timingsafe_bcmp.c vis.c
-
-MAN=	moduli.5
+SRCS=	${LIBSSH_OBJS:.o=.c}
+SRCS+=	${COMPAT_SRCS}
 
 WARNS?=	2
 NO_STRICT_ALIASING=
 
-# Fix misdetection in config.h so xcrypt.c correctly choose crypt().
-CFLAGS+=	-DHAVE_CRYPT
+CFLAGS+=	-DTAILQ_FOREACH_SAFE=TAILQ_FOREACH_MUTABLE
 
-CFLAGS+=	-I${.CURDIR} -I${.CURDIR}/../../crypto/openssh
-CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-CFLAGS+=	-I${.CURDIR}/../../contrib/ldns
-CFLAGS+=	-I${.CURDIR}/../libldns
-DPADD=		${LIBCRYPTO} ${LIBLDNS} ${LIBCRYPT} ${LIBUTIL} ${LIBZ}
-LDADD=		-lprivate_crypto -lprivate_ldns -lcrypt -lutil -lz
-LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
+FLAGS_GROUPS=		warn
+warn_FLAGS=		-Wno-discarded-qualifiers
+warn_FLAGS_FILES=	misc.c
+
+# NOTE: The 'configure' script misdetects a few things, so apply the following
+# corrections.  Although some of the changes are unnecessary, keep them to be
+# more future-proof.
+#
+# - HAVE_CRYPT: ensure xcrypt.c correctly choose crypt() other than DES_crypt()
+# - SSH_TUN_FREEBSD, SSH_TUN_COMPAT_AF, HAVE_NET_IF_TUN_H: make port-net.c work
+# - LOCKED_PASSWD_PREFIX: account lock check
+# - DISABLE_LASTLOG: undefine to enable last login record handling
+# - UTXDB_LASTLOGIN: compat with FreeBSD's last login database
+#
+XAUTH_PATH?=	/usr/local/bin/xauth
+CONFIGSUBS=	\
+	-e 's@^.*[[:space:]]+XAUTH_PATH[[:space:]]+.*$$@\#define XAUTH_PATH "${XAUTH_PATH}"@' \
+	-e 's@^.*[[:space:]]+HAVE_CRYPT[[:space:]]+.*$$@\#define HAVE_CRYPT 1@' \
+	-e 's@^.*[[:space:]]+LOCKED_PASSWD_PREFIX[[:space:]]+.*$$@\#define LOCKED_PASSWD_PREFIX "*LOCKED*"@' \
+	-e 's@^.*[[:space:]]+SSH_TUN_FREEBSD[[:space:]]+.*$$@\#define SSH_TUN_FREEBSD 1@' \
+	-e 's@^.*[[:space:]]+SSH_TUN_COMPAT_AF[[:space:]]+.*$$@\#define SSH_TUN_COMPAT_AF 1@' \
+	-e 's@^.*[[:space:]]+HAVE_NET_IF_TUN_H[[:space:]]+.*$$@\#define HAVE_NET_IF_TUN_H 1@' \
+	-e 's@^.*[[:space:]]+DISABLE_LASTLOG[[:space:]]+.*$$@/* \#undef DISABLE_LASTLOG */@' \
+	-e '$$a\${.newline}\#define UTXDB_LASTLOGIN UTX_DB_LASTLOGX'
+
+GENFILES+=	config.h
+config.h: ${.CURDIR}/config.h.auto
+	sed -E ${CONFIGSUBS} ${.ALLSRC} > ${.TARGET}
+
+GENFILES+=	sys/tree.h glob.h netgroup.h
+sys/tree.h:
+	mkdir -p sys
+	echo '#include "openbsd-compat/sys-tree.h"' > ${.TARGET}
+glob.h:
+	echo '#include "openbsd-compat/glob.h"' > ${.TARGET}
+netgroup.h:
+	touch ${.TARGET}
+
+# XXX: FreeBSD compat for openbsd-compat/port-net.c
+GENFILES+=	net/if_tun.h
+net/if_tun.h:
+	mkdir -p net
+	echo '#include <net/tun/if_tun.h>' > ${.TARGET}
+
+# Derived from vendor's Makefile
+PATHSUBS=	\
+	-e 's|/etc/shosts.equiv|/etc/ssh/shosts.equiv|g' \
+	-e 's|/etc/moduli|/etc/ssh/moduli|g' \
+	-e 's|/usr/X11R6/bin/xauth|$(XAUTH_PATH)|g'
+MANPAGES_IN=	\
+	moduli.5 scp.1 ssh-add.1 ssh-agent.1 ssh-keygen.1 ssh-keyscan.1 \
+	ssh.1 sshd.8 sftp-server.8 sftp.1 ssh-keysign.8 ssh-pkcs11-helper.8 \
+	ssh-sk-helper.8 sshd_config.5 ssh_config.5
+
+GENFILES+=	${MANPAGES_IN}
+.for F in ${MANPAGES_IN}
+${F}: ${OPENSSHDIR}/${F}
+	sed ${PATHSUBS} ${.ALLSRC} > ${.TARGET}
+.endfor
+
+CLEANFILES+=	${GENFILES}
+CLEANDIRS+=	sys net
+
+beforedepend: ${GENFILES}
 
 .include <bsd.lib.mk>

@@ -1,14 +1,19 @@
-# $FreeBSD: src/secure/usr.bin/ssh-agent/Makefile,v 1.2.2.3 2002/07/03 22:20:31 des Exp $
-.PATH: ${.CURDIR}/../../crypto/openssh
+LIBSSH_RELDIR=	../../lib/libssh
+.include "${LIBSSH_RELDIR}/Makefile.common"
 
 PROG=	ssh-agent
-SRCS=	ssh-agent.c ssh-pkcs11-client.c
+
 WARNS?=	3
 
-CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh
-CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-DPADD=		${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
-LDADD=		-lprivate_ssh -lprivate_crypto -lutil -lz
-LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
+# From vendor's Makefile
+P11OBJS= ssh-pkcs11-client.o
+SKOBJS=	ssh-sk-client.o
+SSHAGENT_OBJS=	ssh-agent.o $(P11OBJS) $(SKOBJS)
+
+SRCS=	${SSHAGENT_OBJS:.o=.c}
+
+DPADD+=		${LIBCRYPTO}
+LDADD+=		-lprivate_crypto
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

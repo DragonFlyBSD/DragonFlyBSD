@@ -1,21 +1,18 @@
-# $FreeBSD: src/secure/usr.bin/sftp/Makefile,v 1.1.2.3 2002/07/03 22:20:30 des Exp $
-.PATH: ${.CURDIR}/../../crypto/openssh
+LIBSSH_RELDIR=	../../lib/libssh
+.include "${LIBSSH_RELDIR}/Makefile.common"
 
 PROG=	sftp
-SRCS=	sftp.c
-SRCS+=	progressmeter.c sftp-client.c sftp-common.c sftp-glob.c \
-	sftp-usergroup.c
+
 WARNS?=	3
 
-CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh
+# From vendor's Makefile
+SFTP_CLIENT_OBJS=sftp-common.o sftp-client.o sftp-glob.o ssherr-nolibcrypto.o
+SFTP_OBJS=	sftp.o sftp-usergroup.o progressmeter.o $(SFTP_CLIENT_OBJS)
 
-DPADD=		${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
-LDADD=		-lprivate_ssh -lprivate_crypto -lutil -lz
-
-CFLAGS+=	${PRIVATELIB_CFLAGS}
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+SRCS=	${SFTP_OBJS:.o=.c}
 
 DPADD+=		${LIBEDIT} ${LIBNCURSES}
 LDADD+=		-lprivate_edit -lprivate_ncurses
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

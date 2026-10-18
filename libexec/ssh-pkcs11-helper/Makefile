@@ -1,19 +1,19 @@
-.PATH: ${.CURDIR}/../../crypto/openssh
+LIBSSH_RELDIR=	../../lib/libssh
+.include "${LIBSSH_RELDIR}/Makefile.common"
 
 PROG=	ssh-pkcs11-helper
-SRCS=	ssh-pkcs11-helper.c
-# disabled:
-#SRCS+=	ssh-pkcs11.c
 MAN=	ssh-pkcs11-helper.8
 
 WARNS=	3
 
-.PATH: ${.CURDIR}/../../crypto/openssh
+# From vendor's Makefile
+SKOBJS=	ssh-sk-client.o
+P11HELPER_OBJS=	ssh-pkcs11-helper.o ssh-pkcs11.o $(SKOBJS)
 
-CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh
-CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-DPADD=		${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
-LDADD=		-lprivate_ssh -lprivate_crypto -lutil -lz
-LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
+SRCS=	${P11HELPER_OBJS:.o=.c}
+
+DPADD+=		${LIBCRYPTO}
+LDADD+=		-lprivate_crypto
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

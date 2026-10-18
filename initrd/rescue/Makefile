@@ -262,19 +262,18 @@ CRUNCH_INTLIB_grep=		libgreputils.a
 CRUNCH_SRCDIR_libgreputils.a=	${CRUNCH_PATH_grep}/grep/libgreputils
 CRUNCH_INTLIB_telnet=		libtelnet.a
 CRUNCH_SRCDIR_libtelnet.a=	${.CURDIR}/../../lib/libtelnet
+CRUNCH_INTLIB_scp=		libssh.a
+CRUNCH_INTLIB_ssh=		libssh.a
+CRUNCH_SRCDIR_libssh.a=		${.CURDIR}/../../lib/libssh
 
 # Per-program system libraries
 #
 # NOTE: Separately link ${LIBDM} for cryptsetup/tcplay to avoid symbols
 # being hidden by libdevmapper.
 #
-# NOTE: Separately link ${LIBSSH} for scp/ssh to avoid the tilde_expand()
-# symbol conflict with libprivate_edit.a.
-#
 CRUNCH_LIB_cryptsetup=		${LIBDM}
 CRUNCH_LIB_tcplay=		${LIBDM}
-CRUNCH_LIB_scp=			${LIBSSH}
-CRUNCH_LIB_ssh=			${LIBSSH} ${LIBLDNS}
+CRUNCH_LIB_ssh=			${LIBLDNS}
 CRUNCH_LIB_camcontrol=		${LIBCAM}
 CRUNCH_LIB_fetch=		${LIBFETCH}
 CRUNCH_LIB_hammer=		${LIBHAMMER}

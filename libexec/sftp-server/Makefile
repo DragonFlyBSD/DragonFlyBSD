@@ -1,16 +1,14 @@
-# $FreeBSD: src/secure/libexec/sftp-server/Makefile,v 1.1.2.3 2002/07/03 22:13:22 des Exp $
-.PATH: ${.CURDIR}/../../crypto/openssh
+LIBSSH_RELDIR=	../../lib/libssh
+.include "${LIBSSH_RELDIR}/Makefile.common"
 
 PROG=	sftp-server
-SRCS=	sftp-server.c
-SRCS+=	sftp-common.c sftp-realpath.c sftp-server-main.c
 MAN=	sftp-server.8
+
 WARNS?=	3
 
-CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh
-CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-DPADD=		${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
-LDADD=		-lprivate_ssh -lprivate_crypto -lutil -lz
-LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
+# From vendor's Makefile
+SFTPSERVER_OBJS=sftp-common.o sftp-server.o sftp-server-main.o ssherr-nolibcrypto.o
+
+SRCS=	${SFTPSERVER_OBJS:.o=.c}
 
 .include <bsd.prog.mk>

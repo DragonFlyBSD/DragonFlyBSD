@@ -1,14 +1,18 @@
-# $FreeBSD: src/secure/usr.bin/ssh-keygen/Makefile,v 1.2.2.4 2002/07/03 22:20:31 des Exp $
-.PATH: ${.CURDIR}/../../crypto/openssh
+LIBSSH_RELDIR=	../../lib/libssh
+.include "${LIBSSH_RELDIR}/Makefile.common"
 
 PROG=	ssh-keygen
-SRCS=	ssh-keygen.c sshsig.c
+
 WARNS?=	3
 
-CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh
-CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-DPADD=		${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
-LDADD=		-lprivate_ssh -lprivate_crypto -lutil -lz
-LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
+# From vendor's Makefile
+SKOBJS=	ssh-sk-client.o
+SSHKEYGEN_OBJS=	ssh-keygen.o sshsig.o ssh-pkcs11.o $(SKOBJS)
+
+SRCS=	${SSHKEYGEN_OBJS:.o=.c}
+
+DPADD+=		${LIBLDNS} ${LIBCRYPTO}
+LDADD+=		-lprivate_ldns -lprivate_crypto
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

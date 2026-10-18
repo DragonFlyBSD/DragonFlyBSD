@@ -1,4 +1,4 @@
-.PATH: ${.CURDIR}/../../crypto/openssh
+.include "Makefile.common"
 
 NOOBJ=
 FILES=		moduli

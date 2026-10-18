@@ -1,9 +1,7 @@
-# $FreeBSD: src/secure/libexec/ssh-keysign/Makefile,v 1.1.2.2 2003/02/03 17:31:12 des Exp $
-.PATH: ${.CURDIR}/../../crypto/openssh
+LIBSSH_RELDIR=	../../lib/libssh
+.include "${LIBSSH_RELDIR}/Makefile.common"
 
 PROG=	ssh-keysign
-SRCS=	ssh-keysign.c
-SRCS+=	misc.c readconf.c uidswap.c
 MAN=	ssh-keysign.8
 
 BINOWN=	root
@@ -11,14 +9,15 @@ BINMODE=4555
 
 WARNS=	3
 
-.if defined(XAUTH_PATH)
-CFLAGS+= -DXAUTH_PATH=\"${XAUTH_PATH}\"
-.endif
+# From vendor's Makefile
+P11OBJS= ssh-pkcs11-client.o
+SKOBJS=	ssh-sk-client.o
+SSHKEYSIGN_OBJS=ssh-keysign.o readconf.o uidswap.o $(P11OBJS) $(SKOBJS)
 
-CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh
-CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-DPADD=		${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
-LDADD=		-lprivate_ssh -lprivate_crypto -lutil -lz
-LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
+SRCS=	${SSHKEYSIGN_OBJS:.o=.c}
+
+DPADD+=		${LIBCRYPTO}
+LDADD+=		-lprivate_crypto
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

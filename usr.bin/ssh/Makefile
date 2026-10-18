@@ -1,25 +1,24 @@
-# $FreeBSD: src/secure/usr.bin/ssh/Makefile,v 1.4.2.8 2003/02/03 17:31:12 des Exp $
-.PATH: ${.CURDIR}/../../crypto/openssh
+LIBSSH_RELDIR=	../../lib/libssh
+.include "${LIBSSH_RELDIR}/Makefile.common"
 
 PROG=	ssh
 LINKS=	${BINDIR}/ssh ${BINDIR}/slogin
 MAN=	ssh.1 ssh_config.5
 MLINKS=	ssh.1 slogin.1
-WARNS?=	2
 
-SRCS=	ssh.c
-SRCS+=	authfd.c channels.c clientloop.c mux.c readconf.c misc.c \
-	packet.c sshbuf-misc.c sshconnect.c sshconnect2.c sshkey.c sshtty.c
+WARNS?=	3
 
+# From vendor's Makefile
+SKOBJS=	ssh-sk-client.o
+SSHOBJS= ssh.o readconf.o clientloop.o sshtty.o \
+	sshconnect.o sshconnect2.o mux.o ssh-pkcs11.o $(SKOBJS)
 
-.if defined(XAUTH_PATH)
-CFLAGS+= -DXAUTH_PATH=\"${XAUTH_PATH}\"
-.endif
+SRCS=	${SSHOBJS:.o=.c}
 
-CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh
-CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-DPADD=		${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
-LDADD=		-lprivate_ssh -lprivate_crypto -lutil -lz
-LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
+DPADD+=		${LIBLDNS} ${LIBCRYPTO} ${LIBZ}
+LDADD+=		-lprivate_ldns -lprivate_crypto -lz
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+
+CFLAGS+=	-DTAILQ_FOREACH_SAFE=TAILQ_FOREACH_MUTABLE
 
 .include <bsd.prog.mk>

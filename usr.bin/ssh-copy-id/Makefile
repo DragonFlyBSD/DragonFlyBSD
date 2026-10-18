@@ -1,6 +1,7 @@
-# $FreeBSD: head/usr.bin/ssh-copy-id/Makefile 298107 2016-04-16 07:45:30Z gjb $
+LIBSSH_RELDIR=	../../lib/libssh
+.include "${LIBSSH_RELDIR}/Makefile.common"
 
-.PATH:	${.CURDIR}/../../crypto/openssh/contrib
+.PATH: ${OPENSSHDIR}/contrib
 
 SCRIPTS= ssh-copy-id
 MAN=	ssh-copy-id.1
