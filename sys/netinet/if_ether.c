@@ -128,6 +128,7 @@ struct llinfo_arp {
 	LIST_ENTRY(llinfo_arp) la_le;
 	struct	rtentry *la_rt;
 	struct	mbuf *la_hold;	/* last packet until resolved/timeout */
+	time_t	la_last_request; /* valid when la_asked is nonzero */
 	u_short	la_preempt;	/* countdown for pre-expiry arps */
 	u_short	la_asked;	/* #times we QUERIED following expiration */
 };
@@ -224,6 +225,7 @@ arp_rtrequest(int req, struct rtentry *rt)
 {
 	struct sockaddr *gate = rt->rt_gateway;
 	struct llinfo_arp *la = rt->rt_llinfo;
+	time_t now;
 
 	struct sockaddr_dl null_sdl = { sizeof null_sdl, AF_LINK };
 
@@ -249,7 +251,9 @@ arp_rtrequest(int req, struct rtentry *rt)
 			gate = rt->rt_gateway;
 			SDL(gate)->sdl_type = rt->rt_ifp->if_type;
 			SDL(gate)->sdl_index = rt->rt_ifp->if_index;
-			rt->rt_expire = time_uptime;
+			/* Zero denotes a permanent route, even during boot. */
+			now = time_uptime;
+			rt->rt_expire = now == 0 ? 1 : now;
 			break;
 		}
 		/*
@@ -511,6 +515,7 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 	struct rtentry *rt = NULL;
 	struct llinfo_arp *la = NULL;
 	struct sockaddr_dl *sdl;
+	time_t now;
 	int error;
 
 	if (m->m_flags & M_BCAST) {	/* broadcast */
@@ -603,8 +608,11 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 
 	if (rt->rt_expire || ((rt->rt_flags & RTF_STATIC) && !sdl->sdl_alen)) {
 		rt->rt_flags &= ~RTF_REJECT;
-		if (la->la_asked == 0 || rt->rt_expire != time_uptime) {
-			rt->rt_expire = time_uptime;
+		now = time_uptime;
+		if (la->la_asked == 0 || la->la_last_request != now) {
+			la->la_last_request = now;
+			/* Keep expiry nonzero; rate limiting uses the real time. */
+			rt->rt_expire = now == 0 ? 1 : now;
 			arprequest(ifp,
 				   &SIN(rt->rt_ifa->ifa_addr)->sin_addr,
 				   &SIN(dst)->sin_addr,
