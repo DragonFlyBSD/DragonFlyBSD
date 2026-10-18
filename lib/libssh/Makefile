@@ -46,13 +46,13 @@ COMPAT_SRCS= \
 SRCS=	${LIBSSH_OBJS:.o=.c}
 SRCS+=	${COMPAT_SRCS}
 
-WARNS?=	2
+WARNS?=	3
 NO_STRICT_ALIASING=
 
 CFLAGS+=	-DTAILQ_FOREACH_SAFE=TAILQ_FOREACH_MUTABLE
 
 FLAGS_GROUPS=		warn
-warn_FLAGS=		-Wno-discarded-qualifiers
+warn_FLAGS=		-Wno-discarded-qualifiers -Wno-pointer-compare
 warn_FLAGS_FILES=	misc.c
 
 # NOTE: The 'configure' script misdetects a few things, so apply the following
