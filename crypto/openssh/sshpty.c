@@ -1,4 +1,4 @@
-/* $OpenBSD: sshpty.c,v 1.34 2019/07/04 16:20:10 deraadt Exp $ */
+/* $OpenBSD: sshpty.c,v 1.36 2026/09/15 06:30:58 djm Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -17,23 +17,19 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
-#include <signal.h>
 
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
-#ifdef HAVE_PATHS_H
-# include <paths.h>
-#endif
+#include <paths.h>
 #include <pwd.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <termios.h>
-#ifdef HAVE_UTIL_H
-# include <util.h>
-#endif
 #include <unistd.h>
+#include <util.h>
 
 #include "sshpty.h"
 #include "log.h"
@@ -41,10 +37,6 @@
 
 #ifdef HAVE_PTY_H
 # include <pty.h>
-#endif
-
-#ifndef O_NOCTTY
-#define O_NOCTTY 0
 #endif
 
 #ifdef __APPLE__
@@ -173,7 +165,7 @@ pty_setowner(struct passwd *pw, const char *tty)
 	/* Determine the group to make the owner of the tty. */
 	grp = getgrnam("tty");
 	if (grp == NULL)
-		debug("%s: no tty group", __func__);
+		debug_f("no tty group");
 	gid = (grp != NULL) ? grp->gr_gid : pw->pw_gid;
 	mode = (grp != NULL) ? 0620 : 0600;
 
@@ -215,18 +207,4 @@ pty_setowner(struct passwd *pw, const char *tty)
 				    tty, (u_int)mode, strerror(errno));
 		}
 	}
-}
-
-/* Disconnect from the controlling tty. */
-void
-disconnect_controlling_tty(void)
-{
-#ifdef TIOCNOTTY
-	int fd;
-
-	if ((fd = open(_PATH_TTY, O_RDWR | O_NOCTTY)) >= 0) {
-		(void) ioctl(fd, TIOCNOTTY, NULL);
-		close(fd);
-	}
-#endif /* TIOCNOTTY */
 }

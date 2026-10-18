@@ -1,4 +1,4 @@
-/* $OpenBSD: auth2-pubkey.c,v 1.120 2024/05/17 00:30:23 djm Exp $ */
+/* $OpenBSD: auth2-pubkey.c,v 1.131 2026/10/01 02:01:51 djm Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  * Copyright (c) 2010 Damien Miller.  All rights reserved.
@@ -30,10 +30,9 @@
 
 #include <stdlib.h>
 #include <errno.h>
-#ifdef HAVE_PATHS_H
-# include <paths.h>
-#endif
+#include <paths.h>
 #include <pwd.h>
+#include <glob.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -85,16 +84,41 @@ format_key(const struct sshkey *key)
 	return ret;
 }
 
+/*
+ * Verify that the hostkey in a publickey-hostbound-v00@openssh.com userauth
+ * request matches the hostkey that was negotiated during initial KEX.
+ */
+static void
+check_hostbound_hostkey(struct ssh *ssh)
+{
+	int r;
+	struct sshbuf *our_hostkey_blob, *their_hostkey_blob;
+
+	if (ssh->kex->initial_hostkey == NULL)
+		fatal_f("internal error: initial hostkey not recorded");
+	if ((our_hostkey_blob = sshbuf_new()) == NULL)
+		fatal_f("sshbuf_new failed");
+	if ((r = sshpkt_getb_froms(ssh, &their_hostkey_blob)) != 0)
+		fatal_fr(r, "parse hostkey");
+	if ((r = sshkey_putb(ssh->kex->initial_hostkey, our_hostkey_blob)) != 0)
+		fatal_fr(r, "serialise hostkey");
+	if ((r = sshbuf_equals(our_hostkey_blob, their_hostkey_blob)) != 0)
+		fatal_f("packet contained wrong host key");
+	sshbuf_free(our_hostkey_blob);
+	sshbuf_free(their_hostkey_blob);
+}
+
 static int
 userauth_pubkey(struct ssh *ssh, const char *method)
 {
 	Authctxt *authctxt = ssh->authctxt;
 	struct passwd *pw = authctxt->pw;
-	struct sshbuf *b = NULL;
+	struct sshbuf *keyblob = NULL, *b = NULL;
 	struct sshkey *key = NULL, *hostkey = NULL;
 	char *pkalg = NULL, *userstyle = NULL, *key_s = NULL, *ca_s = NULL;
-	u_char *pkblob = NULL, *sig = NULL, have_sig;
-	size_t blen, slen;
+	char *keystring = NULL;
+	u_char *sig = NULL, have_sig;
+	size_t slen;
 	int hostbound, r, pktype;
 	int req_presence = 0, req_verify = 0, authenticated = 0;
 	struct sshauthopt *authopts = NULL;
@@ -104,35 +128,23 @@ userauth_pubkey(struct ssh *ssh, const char *method)
 
 	if ((r = sshpkt_get_u8(ssh, &have_sig)) != 0 ||
 	    (r = sshpkt_get_cstring(ssh, &pkalg, NULL)) != 0 ||
-	    (r = sshpkt_get_string(ssh, &pkblob, &blen)) != 0)
+	    (r = sshpkt_getb_froms(ssh, &keyblob)) != 0)
 		fatal_fr(r, "parse %s packet", method);
 
 	/* hostbound auth includes the hostkey offered at initial KEX */
-	if (hostbound) {
-		if ((r = sshpkt_getb_froms(ssh, &b)) != 0 ||
-		    (r = sshkey_fromb(b, &hostkey)) != 0)
-			fatal_fr(r, "parse %s hostkey", method);
-		if (ssh->kex->initial_hostkey == NULL)
-			fatal_f("internal error: initial hostkey not recorded");
-		if (!sshkey_equal(hostkey, ssh->kex->initial_hostkey))
-			fatal_f("%s packet contained wrong host key", method);
-		sshbuf_free(b);
-		b = NULL;
-	}
+	if (hostbound)
+		check_hostbound_hostkey(ssh); /* fatals on error */
 
 	if (log_level_get() >= SYSLOG_LEVEL_DEBUG2) {
-		char *keystring;
-		struct sshbuf *pkbuf;
-
-		if ((pkbuf = sshbuf_from(pkblob, blen)) == NULL)
-			fatal_f("sshbuf_from failed");
-		if ((keystring = sshbuf_dtob64_string(pkbuf, 0)) == NULL)
+		if ((b = sshbuf_fromb(keyblob)) == NULL)
+			fatal_f("sshbuf_fromb failed");
+		if ((keystring = sshbuf_dtob64_string(b, 0)) == NULL)
 			fatal_f("sshbuf_dtob64 failed");
 		debug2_f("%s user %s %s public key %s %s",
 		    authctxt->valid ? "valid" : "invalid", authctxt->user,
 		    have_sig ? "attempting" : "querying", pkalg, keystring);
-		sshbuf_free(pkbuf);
-		free(keystring);
+		sshbuf_free(b);
+		b = NULL;
 	}
 
 	pktype = sshkey_type_from_name(pkalg);
@@ -141,33 +153,43 @@ userauth_pubkey(struct ssh *ssh, const char *method)
 		verbose_f("unsupported public key algorithm: %s", pkalg);
 		goto done;
 	}
-	if ((r = sshkey_from_blob(pkblob, blen, &key)) != 0) {
-		error_fr(r, "parse key");
-		goto done;
-	}
-	if (key == NULL) {
-		error_f("cannot decode key: %s", pkalg);
-		goto done;
-	}
-	if (key->type != pktype) {
-		error_f("type mismatch for decoded key "
-		    "(received %d, expected %d)", key->type, pktype);
-		goto done;
-	}
-	if (auth2_key_already_used(authctxt, key)) {
-		logit("refusing previously-used %s key", sshkey_type(key));
-		goto done;
-	}
 	if (match_pattern_list(pkalg, options.pubkey_accepted_algos, 0) != 1) {
 		logit_f("signature algorithm %s not in "
 		    "PubkeyAcceptedAlgorithms", pkalg);
 		goto done;
 	}
-	if ((r = sshkey_check_cert_sigtype(key,
-	    options.ca_sign_algorithms)) != 0) {
-		logit_fr(r, "certificate signature algorithm %s",
-		    (key->cert == NULL || key->cert->signature_type == NULL) ?
-		    "(null)" : key->cert->signature_type);
+	if ((b = sshbuf_fromb(keyblob)) == NULL)
+		fatal_f("sshbuf_fromb failed");
+	switch ((r = sshkey_fromb_allowlist(b, &key,
+	    options.pubkey_accepted_algos, options.ca_sign_algorithms))) {
+	case 0:
+		/* ok */
+		break;
+	case SSH_ERR_KEY_ALG_UNSUPPORTED:
+		/* This shouldn't happen unless the client is being weird */
+		logit_f("key algorithm differs from signature algorithm %s and "
+		    "is not in PubkeyAcceptedAlgorithms", pkalg);
+		goto done;
+	case SSH_ERR_SIGN_ALG_UNSUPPORTED:
+		logit_fr(r, "certificate signature algorithm not in "
+		    "CASignatureAlgorithm");
+		goto done;
+	default:
+		error_fr(r, "parse key");
+		goto done;
+	}
+	sshbuf_free(b);
+	b = NULL;
+
+	/* USERAUTH_REQUEST signature type should match key's type */
+	if (key->type != pktype || (sshkey_type_plain(pktype) == KEY_ECDSA &&
+	    sshkey_ecdsa_nid_from_name(pkalg) != key->ecdsa_nid)) {
+		error_f("key type mismatch for decoded key "
+		    "(received %s, expected %s)", sshkey_ssh_name(key), pkalg);
+		goto done;
+	}
+	if (auth2_key_already_used(authctxt, key)) {
+		logit("refusing previously-used %s key", sshkey_type(key));
 		goto done;
 	}
 	if ((r = sshkey_check_rsa_length(key,
@@ -210,7 +232,7 @@ userauth_pubkey(struct ssh *ssh, const char *method)
 		    (r = sshbuf_put_cstring(b, method)) != 0 ||
 		    (r = sshbuf_put_u8(b, have_sig)) != 0 ||
 		    (r = sshbuf_put_cstring(b, pkalg)) != 0 ||
-		    (r = sshbuf_put_string(b, pkblob, blen)) != 0)
+		    (r = sshbuf_put_stringb(b, keyblob)) != 0)
 			fatal_fr(r, "reconstruct %s packet", method);
 		if (hostbound &&
 		    (r = sshkey_puts(ssh->kex->initial_hostkey, b)) != 0)
@@ -270,10 +292,6 @@ userauth_pubkey(struct ssh *ssh, const char *method)
 		if ((r = sshpkt_get_end(ssh)) != 0)
 			fatal_fr(r, "parse packet");
 
-		if (!authctxt->valid || authctxt->user == NULL) {
-			debug2_f("disabled because of invalid user");
-			goto done;
-		}
 		/* XXX fake reply and always send PK_OK ? */
 		/*
 		 * XXX this allows testing whether a user is allowed
@@ -282,16 +300,34 @@ userauth_pubkey(struct ssh *ssh, const char *method)
 		 * if a user is not allowed to login. is this an
 		 * issue? -markus
 		 */
-		if (mm_user_key_allowed(ssh, pw, key, 0, NULL)) {
+		if (authctxt->valid && authctxt->user != NULL &&
+		    mm_user_key_allowed(ssh, pw, key, 0, NULL)) {
 			if ((r = sshpkt_start(ssh, SSH2_MSG_USERAUTH_PK_OK))
 			    != 0 ||
 			    (r = sshpkt_put_cstring(ssh, pkalg)) != 0 ||
-			    (r = sshpkt_put_string(ssh, pkblob, blen)) != 0 ||
+			    (r = sshpkt_put_stringb(ssh, keyblob)) != 0 ||
 			    (r = sshpkt_send(ssh)) != 0 ||
 			    (r = ssh_packet_write_wait(ssh)) != 0)
 				fatal_fr(r, "send packet");
 			authctxt->postponed = 1;
-		}
+		} else {
+			/*
+			 * NB. invalid users must be accounted for in exactly
+			 * the same way as valid users whose key was refused,
+			 * otherwise MaxAuthTries becomes a username oracle.
+			 */
+			/*
+			 * Don't count this as an authentication failure
+			 * unless we have already used up the separate
+			 * max-pk-ok budget (if any).
+			 */
+			if (authctxt->pk_ok_failures++ < options.max_pubkey_ok)
+				authctxt->auth_failure_already_counted = 1;
+			debug3_f("pubkey test %d of %d%s",
+			    authctxt->pk_ok_failures, options.max_pubkey_ok,
+			    authctxt->auth_failure_already_counted ?
+			    "" : ": treating as authentication failure");
+		 }
 	}
 done:
 	if (authenticated == 1 && auth_activate_options(ssh, authopts) != 0) {
@@ -301,12 +337,13 @@ done:
 	debug2_f("authenticated %d pkalg %s", authenticated, pkalg);
 
 	sshbuf_free(b);
+	sshbuf_free(keyblob);
 	sshauthopt_free(authopts);
 	sshkey_free(key);
 	sshkey_free(hostkey);
+	free(keystring);
 	free(userstyle);
 	free(pkalg);
-	free(pkblob);
 	free(key_s);
 	free(ca_s);
 	free(sig);
@@ -319,20 +356,51 @@ match_principals_file(struct passwd *pw, char *file,
     struct sshkey_cert *cert, struct sshauthopt **authoptsp)
 {
 	FILE *f;
-	int success;
+	int r, success = 0;
+	size_t i;
+	glob_t gl;
+	struct sshauthopt *opts = NULL;
 
 	if (authoptsp != NULL)
 		*authoptsp = NULL;
 
 	temporarily_use_uid(pw);
-	debug("trying authorized principals file %s", file);
-	if ((f = auth_openprincipals(file, pw, options.strict_modes)) == NULL) {
-		restore_uid();
-		return 0;
-	}
-	success = auth_process_principals(f, file, cert, authoptsp);
-	fclose(f);
+	r = glob(file, 0, NULL, &gl);
 	restore_uid();
+	if (r != 0) {
+		if (r != GLOB_NOMATCH) {
+			logit_f("glob \"%s\" failed", file);
+		}
+		return 0;
+	} else if (gl.gl_pathc > INT_MAX) {
+		fatal_f("too many glob results for \"%s\"", file);
+	} else if (gl.gl_pathc > 1) {
+		debug2_f("glob \"%s\" returned %zu matches", file,
+		    gl.gl_pathc);
+	}
+	for (i = 0; !success && i < gl.gl_pathc; i++) {
+		temporarily_use_uid(pw);
+		debug("trying authorized principals file %s", file);
+		if ((f = auth_openprincipals(gl.gl_pathv[i], pw,
+		    options.strict_modes)) == NULL) {
+			restore_uid();
+			continue;
+		}
+		success = auth_process_principals(f, gl.gl_pathv[i],
+		    cert, &opts);
+		fclose(f);
+		restore_uid();
+		if (!success) {
+			sshauthopt_free(opts);
+			opts = NULL;
+		}
+	}
+	globfree(&gl);
+	if (success && authoptsp != NULL) {
+		*authoptsp = opts;
+		opts = NULL;
+	}
+	sshauthopt_free(opts);
 	return success;
 }
 
@@ -528,7 +596,7 @@ user_cert_trusted_ca(struct passwd *pw, struct sshkey *key,
 	}
 	if (use_authorized_principals && principals_opts == NULL)
 		fatal_f("internal error: missing principals_opts");
-	if (sshkey_cert_check_authority_now(key, 0, 1, 0,
+	if (sshkey_cert_check_authority_now(key, 0, 0,
 	    use_authorized_principals ? NULL : pw->pw_name, &reason) != 0)
 		goto fail_reason;
 
@@ -554,8 +622,14 @@ user_cert_trusted_ca(struct passwd *pw, struct sshkey *key,
 		if ((final_opts = sshauthopt_merge(principals_opts,
 		    cert_opts, &reason)) == NULL) {
  fail_reason:
-			error("%s", reason);
-			auth_debug_add("%s", reason);
+			error("Refusing certificate ID \"%s\" serial=%llu "
+			    "signed by %s CA %s: %s", key->cert->key_id,
+			    (unsigned long long)key->cert->serial,
+			    sshkey_type(key->cert->signature_key), ca_fp,
+			    reason);
+			auth_debug_add("Refused Certificate ID \"%s\" "
+			    "serial=%llu: %s", key->cert->key_id,
+			    (unsigned long long)key->cert->serial, reason);
 			goto out;
 		}
 	}
@@ -753,8 +827,8 @@ int
 user_key_allowed(struct ssh *ssh, struct passwd *pw, struct sshkey *key,
     int auth_attempt, struct sshauthopt **authoptsp)
 {
-	u_int success = 0, i;
-	char *file, *conn_id;
+	u_int success = 0, i, j;
+	char *file = NULL, *conn_id;
 	struct sshauthopt *opts = NULL;
 	const char *rdomain, *remote_ip, *remote_host;
 
@@ -776,17 +850,40 @@ user_key_allowed(struct ssh *ssh, struct passwd *pw, struct sshkey *key,
 	    remote_ip, ssh_remote_port(ssh));
 
 	for (i = 0; !success && i < options.num_authkeys_files; i++) {
+		int r;
+		glob_t gl;
+
 		if (strcasecmp(options.authorized_keys_files[i], "none") == 0)
 			continue;
 		file = expand_authorized_keys(
 		    options.authorized_keys_files[i], pw);
-		success = user_key_allowed2(pw, key, file,
-		    remote_ip, remote_host, &opts);
-		free(file);
-		if (!success) {
-			sshauthopt_free(opts);
-			opts = NULL;
+		temporarily_use_uid(pw);
+		r = glob(file, 0, NULL, &gl);
+		restore_uid();
+		if (r != 0) {
+			if (r != GLOB_NOMATCH) {
+				logit_f("glob \"%s\" failed", file);
+			}
+			free(file);
+			file = NULL;
+			continue;
+		} else if (gl.gl_pathc > INT_MAX) {
+			fatal_f("too many glob results for \"%s\"", file);
+		} else if (gl.gl_pathc > 1) {
+			debug2_f("glob \"%s\" returned %zu matches", file,
+			    gl.gl_pathc);
 		}
+		for (j = 0; !success && j < gl.gl_pathc; j++) {
+			success = user_key_allowed2(pw, key, gl.gl_pathv[j],
+			    remote_ip, remote_host, &opts);
+			if (!success) {
+				sshauthopt_free(opts);
+				opts = NULL;
+			}
+		}
+		free(file);
+		file = NULL;
+		globfree(&gl);
 	}
 	if (success)
 		goto out;

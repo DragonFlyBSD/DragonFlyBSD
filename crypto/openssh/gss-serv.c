@@ -1,4 +1,4 @@
-/* $OpenBSD: gss-serv.c,v 1.32 2020/03/13 03:17:07 djm Exp $ */
+/* $OpenBSD: gss-serv.c,v 1.39 2026/09/16 00:37:52 djm Exp $ */
 
 /*
  * Copyright (c) 2001-2003 Simon Wilkinson. All rights reserved.
@@ -29,12 +29,14 @@
 #ifdef GSSAPI
 
 #include <sys/types.h>
+#include <sys/param.h>
+#include <sys/queue.h>
 
+#include <netdb.h>
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
 
-#include "openbsd-compat/sys-queue.h"
 #include "xmalloc.h"
 #include "sshkey.h"
 #include "hostfile.h"
@@ -51,7 +53,7 @@ extern ServerOptions options;
 
 static ssh_gssapi_client gssapi_client =
     { GSS_C_EMPTY_BUFFER, GSS_C_EMPTY_BUFFER,
-    GSS_C_NO_CREDENTIAL, NULL, {NULL, NULL, NULL, NULL}};
+    GSS_C_NO_CREDENTIAL, NULL, {NULL, NULL, NULL, NULL}, 0};
 
 ssh_gssapi_mech gssapi_null_mech =
     { NULL, NULL, {0, NULL}, NULL, NULL, NULL, NULL};
@@ -105,7 +107,7 @@ ssh_gssapi_acquire_cred(Gssctxt *ctx)
 		gss_create_empty_oid_set(&status, &oidset);
 		gss_add_oid_set_member(&status, ctx->oid, &oidset);
 
-		if (gethostname(lname, HOST_NAME_MAX)) {
+		if (gethostname(lname, sizeof(lname))) {
 			gss_release_oid_set(&status, &oidset);
 			return (-1);
 		}
@@ -279,6 +281,7 @@ ssh_gssapi_getclient(Gssctxt *ctx, ssh_gssapi_client *client)
 
 	gss_buffer_desc ename;
 
+	client->userok = 0;
 	client->mech = NULL;
 
 	while (supported_mechs[i]->name != NULL) {
@@ -331,6 +334,16 @@ ssh_gssapi_cleanup_creds(void)
 void
 ssh_gssapi_storecreds(void)
 {
+	if (!gssapi_client.userok) {
+		debug_f("GSSAPI client was not authorized, doing nothing");
+		return;
+	}
+
+	if (options.gss_deleg_creds == 0) {
+		debug_f("delegate credential is disabled, doing nothing");
+		return;
+	}
+
 	if (gssapi_client.mech && gssapi_client.mech->storecreds) {
 		(*gssapi_client.mech->storecreds)(&gssapi_client);
 	} else
@@ -354,27 +367,33 @@ ssh_gssapi_do_child(char ***envp, u_int *envsizep)
 	}
 }
 
+void
+ssh_gssapi_cleanup_global_client()
+{
+	OM_uint32 lmin;
+
+	gss_release_buffer(&lmin, &gssapi_client.displayname);
+	gss_release_buffer(&lmin, &gssapi_client.exportedname);
+	gss_release_cred(&lmin, &gssapi_client.creds);
+	explicit_bzero(&gssapi_client, sizeof(ssh_gssapi_client));
+}
+
 /* Privileged */
 int
 ssh_gssapi_userok(char *user)
 {
-	OM_uint32 lmin;
-
 	if (gssapi_client.exportedname.length == 0 ||
 	    gssapi_client.exportedname.value == NULL) {
 		debug("No suitable client data");
 		return 0;
 	}
 	if (gssapi_client.mech && gssapi_client.mech->userok)
-		if ((*gssapi_client.mech->userok)(&gssapi_client, user))
+		if ((*gssapi_client.mech->userok)(&gssapi_client, user)) {
+			gssapi_client.userok = 1;
 			return 1;
-		else {
+		} else {
 			/* Destroy delegated credentials if userok fails */
-			gss_release_buffer(&lmin, &gssapi_client.displayname);
-			gss_release_buffer(&lmin, &gssapi_client.exportedname);
-			gss_release_cred(&lmin, &gssapi_client.creds);
-			explicit_bzero(&gssapi_client,
-			    sizeof(ssh_gssapi_client));
+			ssh_gssapi_cleanup_global_client();
 			return 0;
 		}
 	else

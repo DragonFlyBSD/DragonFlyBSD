@@ -1,4 +1,4 @@
-/* $OpenBSD: sshkey.h,v 1.63 2024/05/17 06:42:04 jsg Exp $ */
+/* $OpenBSD: sshkey.h,v 1.75 2026/09/16 00:31:27 djm Exp $ */
 
 /*
  * Copyright (c) 2000, 2001 Markus Friedl.  All rights reserved.
@@ -30,23 +30,17 @@
 
 #ifdef WITH_OPENSSL
 #include <openssl/rsa.h>
-#include <openssl/dsa.h>
-# ifdef OPENSSL_HAS_ECC
-#  include <openssl/ec.h>
-#  include <openssl/ecdsa.h>
-# else /* OPENSSL_HAS_ECC */
-#  define EC_KEY	void
-#  define EC_GROUP	void
-#  define EC_POINT	void
-# endif /* OPENSSL_HAS_ECC */
+#include <openssl/ec.h>
+#include <openssl/ecdsa.h>
+#include <openssl/evp.h>
 #define SSH_OPENSSL_VERSION OpenSSL_version(OPENSSL_VERSION)
-#else /* WITH_OPENSSL */
-# define BIGNUM		void
-# define RSA		void
-# define DSA		void
-# define EC_KEY		void
-# define EC_GROUP	void
-# define EC_POINT	void
+#else /* OPENSSL */
+#define BIGNUM		void
+#define RSA		void
+#define EC_KEY		void
+#define EC_GROUP	void
+#define EC_POINT	void
+#define EVP_PKEY	void
 #define SSH_OPENSSL_VERSION "without OpenSSL"
 #endif /* WITH_OPENSSL */
 
@@ -58,19 +52,17 @@ struct sshbuf;
 /* Key types */
 enum sshkey_types {
 	KEY_RSA,
-	KEY_DSA,
 	KEY_ECDSA,
 	KEY_ED25519,
 	KEY_RSA_CERT,
-	KEY_DSA_CERT,
 	KEY_ECDSA_CERT,
 	KEY_ED25519_CERT,
-	KEY_XMSS,
-	KEY_XMSS_CERT,
 	KEY_ECDSA_SK,
 	KEY_ECDSA_SK_CERT,
 	KEY_ED25519_SK,
 	KEY_ED25519_SK_CERT,
+	KEY_MLDSA44_ED25519,
+	KEY_MLDSA44_ED25519_CERT,
 	KEY_UNSPEC
 };
 
@@ -89,10 +81,6 @@ enum sshkey_fp_rep {
 /* Private key serialisation formats, used on the wire */
 enum sshkey_serialize_rep {
 	SSHKEY_SERIALIZE_DEFAULT = 0,
-	SSHKEY_SERIALIZE_STATE = 1,	/* only state is serialized */
-	SSHKEY_SERIALIZE_FULL = 2,	/* include keys for saving to disk */
-	SSHKEY_SERIALIZE_SHIELD = 3,	/* everything, for encrypting in ram */
-	SSHKEY_SERIALIZE_INFO = 254,	/* minimal information */
 };
 
 /* Private key disk formats */
@@ -106,41 +94,35 @@ enum sshkey_private_format {
 #define SSHKEY_FLAG_EXT		0x0001
 
 #define SSHKEY_CERT_MAX_PRINCIPALS	256
-/* XXX opaquify? */
+/* XXX opacify? */
 struct sshkey_cert {
 	struct sshbuf	*certblob; /* Kept around for use on wire */
 	u_int		 type; /* SSH2_CERT_TYPE_USER or SSH2_CERT_TYPE_HOST */
-	u_int64_t	 serial;
+	uint64_t	 serial;
 	char		*key_id;
 	u_int		 nprincipals;
 	char		**principals;
-	u_int64_t	 valid_after, valid_before;
+	uint64_t	 valid_after, valid_before;
 	struct sshbuf	*critical;
 	struct sshbuf	*extensions;
 	struct sshkey	*signature_key;
 	char		*signature_type;
 };
 
-/* XXX opaquify? */
+/* XXX opacify? */
 struct sshkey {
 	int	 type;
 	int	 flags;
-	/* KEY_RSA */
-	RSA	*rsa;
-	/* KEY_DSA */
-	DSA	*dsa;
 	/* KEY_ECDSA and KEY_ECDSA_SK */
 	int	 ecdsa_nid;	/* NID of curve */
-	EC_KEY	*ecdsa;
+	/* libcrypto-backed keys */
+	EVP_PKEY *pkey;
 	/* KEY_ED25519 and KEY_ED25519_SK */
 	u_char	*ed25519_sk;
 	u_char	*ed25519_pk;
-	/* KEY_XMSS */
-	char	*xmss_name;
-	char	*xmss_filename;	/* for state file updates */
-	void	*xmss_state;	/* depends on xmss_name, opaque */
-	u_char	*xmss_sk;
-	u_char	*xmss_pk;
+	/* KEY_MLDSA44_ED25519 */
+	u_char	*mldsa_ed25519_sk;
+	u_char	*mldsa_ed25519_pk;
 	/* KEY_ECDSA_SK and KEY_ED25519_SK */
 	char	*sk_application;
 	uint8_t	sk_flags;
@@ -223,6 +205,7 @@ int		 sshkey_shield_private(struct sshkey *);
 int		 sshkey_unshield_private(struct sshkey *);
 
 int	 sshkey_type_from_name(const char *);
+int	 sshkey_type_from_shortname(const char *);
 int	 sshkey_is_cert(const struct sshkey *);
 int	 sshkey_is_sk(const struct sshkey *);
 int	 sshkey_type_is_cert(int);
@@ -234,12 +217,12 @@ int	 sshkey_match_keyname_to_sigalgs(const char *, const char *);
 int	 sshkey_to_certified(struct sshkey *);
 int	 sshkey_drop_cert(struct sshkey *);
 int	 sshkey_cert_copy(const struct sshkey *, struct sshkey *);
-int	 sshkey_cert_check_authority(const struct sshkey *, int, int, int,
+int	 sshkey_cert_check_authority(const struct sshkey *, int, int,
     uint64_t, const char *, const char **);
-int	 sshkey_cert_check_authority_now(const struct sshkey *, int, int, int,
+int	 sshkey_cert_check_authority_now(const struct sshkey *, int, int,
     const char *, const char **);
 int	 sshkey_cert_check_host(const struct sshkey *, const char *,
-    int , const char *, const char **);
+    const char *, const char **);
 size_t	 sshkey_format_cert_validity(const struct sshkey_cert *,
     char *, size_t) __attribute__((__bounded__(__string__, 2, 3)));
 int	 sshkey_check_cert_sigtype(const struct sshkey *, const char *);
@@ -258,7 +241,8 @@ int		 sshkey_curve_name_to_nid(const char *);
 const char *	 sshkey_curve_nid_to_name(int);
 u_int		 sshkey_curve_nid_to_bits(int);
 int		 sshkey_ecdsa_bits_to_nid(int);
-int		 sshkey_ecdsa_key_to_nid(EC_KEY *);
+int		 sshkey_ecdsa_key_to_nid(const EC_KEY *);
+int		 sshkey_ecdsa_pkey_to_nid(EVP_PKEY *);
 int		 sshkey_ec_nid_to_hash_alg(int nid);
 int		 sshkey_ec_validate_public(const EC_GROUP *, const EC_POINT *);
 int		 sshkey_ec_validate_private(const EC_KEY *);
@@ -269,15 +253,16 @@ char		*sshkey_alg_list(int, int, int, char);
 
 int	 sshkey_from_blob(const u_char *, size_t, struct sshkey **);
 int	 sshkey_fromb(struct sshbuf *, struct sshkey **);
+int	 sshkey_fromb_allowlist(struct sshbuf *, struct sshkey **,
+    const char *, const char *);
 int	 sshkey_froms(struct sshbuf *, struct sshkey **);
 int	 sshkey_to_blob(const struct sshkey *, u_char **, size_t *);
 int	 sshkey_to_base64(const struct sshkey *, char **);
 int	 sshkey_putb(const struct sshkey *, struct sshbuf *);
 int	 sshkey_puts(const struct sshkey *, struct sshbuf *);
-int	 sshkey_puts_opts(const struct sshkey *, struct sshbuf *,
-    enum sshkey_serialize_rep);
 int	 sshkey_plain_to_blob(const struct sshkey *, u_char **, size_t *);
 int	 sshkey_putb_plain(const struct sshkey *, struct sshbuf *);
+int	 sshkey_puts_plain(const struct sshkey *, struct sshbuf *);
 
 int	 sshkey_sign(struct sshkey *, u_char **, size_t *,
     const u_char *, size_t, const char *, const char *, const char *, u_int);
@@ -287,14 +272,18 @@ int	 sshkey_check_sigtype(const u_char *, size_t, const char *);
 const char *sshkey_sigalg_by_name(const char *);
 int	 sshkey_get_sigtype(const u_char *, size_t, char **);
 
+/* Signing and verification backend for libcrypto-backed keys */
+int	sshkey_pkey_digest_sign(EVP_PKEY*, int, u_char **,
+    size_t *, const u_char *, size_t);
+int	sshkey_pkey_digest_verify(EVP_PKEY *, int, const u_char *,
+    size_t, u_char *, size_t);
+
 /* for debug */
 void	sshkey_dump_ec_point(const EC_GROUP *, const EC_POINT *);
 void	sshkey_dump_ec_key(const EC_KEY *);
 
 /* private key parsing and serialisation */
 int	sshkey_private_serialize(struct sshkey *key, struct sshbuf *buf);
-int	sshkey_private_serialize_opt(struct sshkey *key, struct sshbuf *buf,
-    enum sshkey_serialize_rep);
 int	sshkey_private_deserialize(struct sshbuf *buf,  struct sshkey **keyp);
 
 /* private key file format parsing and serialisation */
@@ -309,17 +298,23 @@ int	sshkey_parse_pubkey_from_private_fileblob_type(struct sshbuf *blob,
     int type, struct sshkey **pubkeyp);
 
 int sshkey_check_rsa_length(const struct sshkey *, int);
+int	ssh_rsa_hash_id_from_keyname(const char *);
+const char *ssh_rsa_hash_alg_ident(int);
+int	ssh_rsa_encode_store_sig(int, const u_char *, size_t,
+	    u_char **, size_t *);
+int	ssh_ecdsa_encode_store_sig(const struct sshkey *,
+	    const BIGNUM *, const BIGNUM *, u_char **, size_t *);
+int	ssh_ed25519_encode_store_sig(const u_char *, size_t,
+	    u_char **, size_t *);
 /* XXX should be internal, but used by ssh-keygen */
-int ssh_rsa_complete_crt_parameters(struct sshkey *, const BIGNUM *);
-
-/* stateful keys (e.g. XMSS) */
-int	 sshkey_set_filename(struct sshkey *, const char *);
-int	 sshkey_enable_maxsign(struct sshkey *, u_int32_t);
-u_int32_t sshkey_signatures_left(const struct sshkey *);
-int	 sshkey_private_serialize_maxsign(struct sshkey *key,
-    struct sshbuf *buf, u_int32_t maxsign, int);
+int ssh_rsa_complete_crt_parameters(const BIGNUM *, const BIGNUM *,
+    const BIGNUM *, const BIGNUM *, BIGNUM **, BIGNUM **);
 
 void	 sshkey_sig_details_free(struct sshkey_sig_details *);
+
+#ifdef WITH_OPENSSL
+int	sshkey_ecdsa_fixup_group(EVP_PKEY *k); /* ssh-ecdsa.c */
+#endif
 
 #ifdef SSHKEY_INTERNAL
 int	sshkey_sk_fields_equal(const struct sshkey *a, const struct sshkey *b);
@@ -335,16 +330,12 @@ int	check_rsa_length(const RSA *rsa); /* XXX remove */
 #endif
 #endif
 
-#if !defined(WITH_OPENSSL)
-# undef RSA
-# undef DSA
-# undef EC_KEY
-# undef EC_GROUP
-# undef EC_POINT
-#elif !defined(OPENSSL_HAS_ECC)
-# undef EC_KEY
-# undef EC_GROUP
-# undef EC_POINT
-#endif
+#ifndef WITH_OPENSSL
+#undef RSA
+#undef EC_KEY
+#undef EC_GROUP
+#undef EC_POINT
+#undef EVP_PKEY
+#endif /* WITH_OPENSSL */
 
 #endif /* SSHKEY_H */

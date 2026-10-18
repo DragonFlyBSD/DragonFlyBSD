@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-ecdsa-sk.c,v 1.18 2023/03/08 04:43:12 guenther Exp $ */
+/* $OpenBSD: ssh-ecdsa-sk.c,v 1.21 2026/02/06 22:59:18 dtucker Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  * Copyright (c) 2010 Damien Miller.  All rights reserved.
@@ -32,34 +32,20 @@
 #include <sys/types.h>
 
 #ifdef WITH_OPENSSL
+#include "openbsd-compat/openssl-compat.h"
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
 #include <openssl/evp.h>
-#endif
 
 #include <string.h>
 #include <stdio.h> /* needed for DEBUG_SK only */
-
-#include "openbsd-compat/openssl-compat.h"
 
 #include "sshbuf.h"
 #include "ssherr.h"
 #include "digest.h"
 #define SSHKEY_INTERNAL
 #include "sshkey.h"
-
-#ifndef OPENSSL_HAS_ECC
-/* ARGSUSED */
-int
-ssh_ecdsa_sk_verify(const struct sshkey *key,
-    const u_char *signature, size_t signaturelen,
-    const u_char *data, size_t datalen, u_int compat,
-    struct sshkey_sig_details **detailsp)
-{
-	return SSH_ERR_FEATURE_UNSUPPORTED;
-}
-#else /* OPENSSL_HAS_ECC */
 
 /* Reuse some ECDSA internals */
 extern struct sshkey_impl_funcs sshkey_ecdsa_funcs;
@@ -210,7 +196,7 @@ webauthn_check_prepare_hash(const u_char *data, size_t datalen,
 	fprintf(stderr, "%s: received origin: %s\n", __func__, origin);
 	fprintf(stderr, "%s: received clientData:\n", __func__);
 	sshbuf_dump(wrapper, stderr);
-	fprintf(stderr, "%s: expected clientData premable:\n", __func__);
+	fprintf(stderr, "%s: expected clientData preamble:\n", __func__);
 	sshbuf_dump(m, stderr);
 #endif
 	/* Check that the supplied clientData has the preamble we expect */
@@ -237,11 +223,13 @@ ssh_ecdsa_sk_verify(const struct sshkey *key,
     struct sshkey_sig_details **detailsp)
 {
 	ECDSA_SIG *esig = NULL;
+	EVP_MD_CTX *md_ctx = NULL;
 	BIGNUM *sig_r = NULL, *sig_s = NULL;
 	u_char sig_flags;
-	u_char msghash[32], apphash[32], sighash[32];
+	u_char msghash[32], apphash[32];
 	u_int sig_counter;
-	int is_webauthn = 0, ret = SSH_ERR_INTERNAL_ERROR;
+	u_char *sigb = NULL, *cp;
+	int is_webauthn = 0, ret = SSH_ERR_INTERNAL_ERROR, len = 0;
 	struct sshbuf *b = NULL, *sigbuf = NULL, *original_signed = NULL;
 	struct sshbuf *webauthn_wrapper = NULL, *webauthn_exts = NULL;
 	char *ktype = NULL, *webauthn_origin = NULL;
@@ -252,7 +240,7 @@ ssh_ecdsa_sk_verify(const struct sshkey *key,
 
 	if (detailsp != NULL)
 		*detailsp = NULL;
-	if (key == NULL || key->ecdsa == NULL ||
+	if (key == NULL || key->pkey == NULL ||
 	    sshkey_type_plain(key->type) != KEY_ECDSA_SK ||
 	    sig == NULL || siglen == 0)
 		return SSH_ERR_INVALID_ARGUMENT;
@@ -271,7 +259,9 @@ ssh_ecdsa_sk_verify(const struct sshkey *key,
 		ret = SSH_ERR_INVALID_FORMAT;
 		goto out;
 	}
-	if (strcmp(ktype, "webauthn-sk-ecdsa-sha2-nistp256@openssh.com") == 0)
+	if (strcmp(ktype, "webauthn-sk-ecdsa-sha2-nistp256@openssh.com") == 0 ||
+	    strcmp(ktype, "webauthn-sk-ecdsa-sha2-nistp256-cert-v01@openssh.com")
+	      == 0)
 		is_webauthn = 1;
 	else if (strcmp(ktype, "sk-ecdsa-sha2-nistp256@openssh.com") != 0) {
 		ret = SSH_ERR_INVALID_FORMAT;
@@ -308,7 +298,7 @@ ssh_ecdsa_sk_verify(const struct sshkey *key,
 	}
 
 #ifdef DEBUG_SK
-	fprintf(stderr, "%s: data: (len %zu)\n", __func__, datalen);
+	fprintf(stderr, "%s: data: (len %zu)\n", __func__, dlen);
 	/* sshbuf_dump_data(data, datalen, stderr); */
 	fprintf(stderr, "%s: sig_r: %s\n", __func__, (tmp = BN_bn2hex(sig_r)));
 	free(tmp);
@@ -363,21 +353,43 @@ ssh_ecdsa_sk_verify(const struct sshkey *key,
 	    (ret = sshbuf_putb(original_signed, webauthn_exts)) != 0 ||
 	    (ret = sshbuf_put(original_signed, msghash, sizeof(msghash))) != 0)
 		goto out;
-	/* Signature is over H(original_signed) */
-	if ((ret = ssh_digest_buffer(SSH_DIGEST_SHA256, original_signed,
-	    sighash, sizeof(sighash))) != 0)
-		goto out;
 	details->sk_counter = sig_counter;
 	details->sk_flags = sig_flags;
 #ifdef DEBUG_SK
 	fprintf(stderr, "%s: signed buf:\n", __func__);
 	sshbuf_dump(original_signed, stderr);
-	fprintf(stderr, "%s: signed hash:\n", __func__);
-	sshbuf_dump_data(sighash, sizeof(sighash), stderr);
 #endif
 
+	if ((md_ctx = EVP_MD_CTX_new()) == NULL) {
+		ret = SSH_ERR_ALLOC_FAIL;
+		goto out;
+	}
+	if ((len = i2d_ECDSA_SIG(esig, NULL)) <= 0) {
+		len = 0;
+		ret = SSH_ERR_LIBCRYPTO_ERROR;
+		goto out;
+	}
+	if ((sigb = calloc(1, len)) == NULL) {
+		ret = SSH_ERR_ALLOC_FAIL;
+		goto out;
+	}
+	cp = sigb; /* ASN1_item_i2d increments the pointer past the object */
+	if (i2d_ECDSA_SIG(esig, &cp) != len) {
+		ret = SSH_ERR_LIBCRYPTO_ERROR;
+		goto out;
+	}
+#ifdef DEBUG_SK
+	fprintf(stderr, "%s: signed hash:\n", __func__);
+	sshbuf_dump_data(sigb, len, stderr);
+#endif
 	/* Verify it */
-	switch (ECDSA_do_verify(sighash, sizeof(sighash), esig, key->ecdsa)) {
+	if (EVP_DigestVerifyInit(md_ctx, NULL, EVP_sha256(), NULL,
+	    key->pkey) != 1) {
+		ret = SSH_ERR_LIBCRYPTO_ERROR;
+		goto out;
+	}
+	switch (EVP_DigestVerify(md_ctx, sigb, len,
+	    sshbuf_ptr(original_signed), sshbuf_len(original_signed))) {
 	case 1:
 		ret = 0;
 		break;
@@ -397,7 +409,6 @@ ssh_ecdsa_sk_verify(const struct sshkey *key,
 	explicit_bzero(&sig_flags, sizeof(sig_flags));
 	explicit_bzero(&sig_counter, sizeof(sig_counter));
 	explicit_bzero(msghash, sizeof(msghash));
-	explicit_bzero(sighash, sizeof(msghash));
 	explicit_bzero(apphash, sizeof(apphash));
 	sshkey_sig_details_free(details);
 	sshbuf_free(webauthn_wrapper);
@@ -410,6 +421,8 @@ ssh_ecdsa_sk_verify(const struct sshkey *key,
 	BN_clear_free(sig_r);
 	BN_clear_free(sig_s);
 	free(ktype);
+	freezero(sigb, len);
+	EVP_MD_CTX_free(md_ctx);
 	return ret;
 }
 
@@ -464,4 +477,15 @@ const struct sshkey_impl sshkey_ecdsa_sk_webauthn_impl = {
 	/* .funcs = */		&sshkey_ecdsa_sk_funcs,
 };
 
-#endif /* OPENSSL_HAS_ECC */
+const struct sshkey_impl sshkey_ecdsa_sk_webauthn_cert_impl = {
+	/* .name = */		"webauthn-sk-ecdsa-sha2-nistp256-cert-v01@openssh.com",
+	/* .shortname = */	"ECDSA-SK-CERT",
+	/* .sigalg = */		NULL,
+	/* .type = */		KEY_ECDSA_SK_CERT,
+	/* .nid = */		NID_X9_62_prime256v1,
+	/* .cert = */		1,
+	/* .sigonly = */	1,
+	/* .keybits = */	256,
+	/* .funcs = */		&sshkey_ecdsa_sk_funcs,
+};
+#endif /* WITH_OPENSSL */

@@ -1,4 +1,4 @@
-/* $OpenBSD: sshsig.c,v 1.35 2024/03/08 22:16:32 djm Exp $ */
+/* $OpenBSD: sshsig.c,v 1.41 2025/12/22 01:49:03 djm Exp $ */
 /*
  * Copyright (c) 2019 Google LLC
  *
@@ -40,9 +40,9 @@
 #define MAGIC_PREAMBLE_LEN	(sizeof(MAGIC_PREAMBLE) - 1)
 #define BEGIN_SIGNATURE		"-----BEGIN SSH SIGNATURE-----"
 #define END_SIGNATURE		"-----END SSH SIGNATURE-----"
-#define RSA_SIGN_ALG		"rsa-sha2-512" /* XXX maybe make configurable */
+#define RSA_SIGN_ALG		"rsa-sha2-512"
 #define RSA_SIGN_ALLOWED	"rsa-sha2-512,rsa-sha2-256"
-#define HASHALG_DEFAULT		"sha512" /* XXX maybe make configurable */
+#define HASHALG_DEFAULT		"sha512"
 #define HASHALG_ALLOWED		"sha256,sha512"
 
 int
@@ -190,8 +190,13 @@ sshsig_wrap_sign(struct sshkey *key, const char *hashalg,
 	}
 
 	/* If using RSA keys then default to a good signature algorithm */
-	if (sshkey_type_plain(key->type) == KEY_RSA)
+	if (sshkey_type_plain(key->type) == KEY_RSA) {
 		sign_alg = RSA_SIGN_ALG;
+		if (strcmp(hashalg, "sha256") == 0)
+			sign_alg = "rsa-sha2-256";
+		else if (strcmp(hashalg, "sha512") == 0)
+			sign_alg = "rsa-sha2-512";
+	}
 
 	if (signer != NULL) {
 		if ((r = signer(key, &sig, &slen,
@@ -849,8 +854,8 @@ cert_filter_principals(const char *path, u_long linenum,
 
 	while ((cp = strsep(&principals, ",")) != NULL && *cp != '\0') {
 		/* Check certificate validity */
-		if ((r = sshkey_cert_check_authority(cert, 0, 1, 0,
-		    verify_time, NULL, &reason)) != 0) {
+		if ((r = sshkey_cert_check_authority(cert, 0, 0, verify_time,
+		    NULL, &reason)) != 0) {
 			debug("%s:%lu: principal \"%s\" not authorized: %s",
 			    path, linenum, cp, reason);
 			continue;
@@ -874,6 +879,7 @@ cert_filter_principals(const char *path, u_long linenum,
 	}
 	if ((principals = sshbuf_dup_string(nprincipals)) == NULL) {
 		error_f("buffer error");
+		r = SSH_ERR_ALLOC_FAIL;
 		goto out;
 	}
 	/* success */
@@ -914,7 +920,7 @@ check_allowed_keys_line(const char *path, u_long linenum, char *line,
 	    sshkey_equal_public(sign_key->cert->signature_key, found_key)) {
 		if (principal) {
 			/* Match certificate CA key with specified principal */
-			if ((r = sshkey_cert_check_authority(sign_key, 0, 1, 0,
+			if ((r = sshkey_cert_check_authority(sign_key, 0, 0,
 			    verify_time, principal, &reason)) != 0) {
 				error("%s:%lu: certificate not authorized: %s",
 				    path, linenum, reason);
@@ -1117,11 +1123,12 @@ sshsig_match_principals(const char *path, const char *principal,
 		linesize = 0;
 	}
 	fclose(f);
+	free(line);
 
 	if (ret == 0) {
 		if (nprincipals == 0)
 			ret = SSH_ERR_KEY_NOT_FOUND;
-		if (nprincipalsp != 0)
+		if (nprincipalsp != NULL)
 			*nprincipalsp = nprincipals;
 		if (principalsp != NULL) {
 			*principalsp = principals;

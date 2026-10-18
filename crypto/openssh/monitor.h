@@ -1,4 +1,4 @@
-/* $OpenBSD: monitor.h,v 1.24 2024/05/17 00:30:24 djm Exp $ */
+/* $OpenBSD: monitor.h,v 1.28 2026/03/02 02:40:15 djm Exp $ */
 
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
@@ -39,6 +39,7 @@ enum monitor_reqtype {
 	MONITOR_REQ_AUTHPASSWORD = 12, MONITOR_ANS_AUTHPASSWORD = 13,
 	MONITOR_REQ_BSDAUTHQUERY = 14, MONITOR_ANS_BSDAUTHQUERY = 15,
 	MONITOR_REQ_BSDAUTHRESPOND = 16, MONITOR_ANS_BSDAUTHRESPOND = 17,
+	MONITOR_REQ_SETCOMPAT = 18,
 	MONITOR_REQ_KEYALLOWED = 22, MONITOR_ANS_KEYALLOWED = 23,
 	MONITOR_REQ_KEYVERIFY = 24, MONITOR_ANS_KEYVERIFY = 25,
 	MONITOR_REQ_KEYEXPORT = 26,
@@ -54,6 +55,7 @@ enum monitor_reqtype {
 	MONITOR_REQ_GSSUSEROK = 46, MONITOR_ANS_GSSUSEROK = 47,
 	MONITOR_REQ_GSSCHECKMIC = 48, MONITOR_ANS_GSSCHECKMIC = 49,
 	MONITOR_REQ_TERM = 50,
+	MONITOR_REQ_STATE = 51, MONITOR_ANS_STATE = 52,
 
 	MONITOR_REQ_PAM_START = 100,
 	MONITOR_REQ_PAM_ACCOUNT = 102, MONITOR_ANS_PAM_ACCOUNT = 103,
@@ -87,6 +89,9 @@ void monitor_child_postauth(struct ssh *, struct monitor *);
 void monitor_clear_keystate(struct ssh *, struct monitor *);
 void monitor_apply_keystate(struct ssh *, struct monitor *);
 
+int  monitor_auth_attempted(void);
+int  monitor_invalid_user(void);
+
 /* Prototypes for request sending and receiving */
 void mm_request_send(int, enum monitor_reqtype, struct sshbuf *);
 void mm_request_receive(int, struct sshbuf *);
@@ -95,5 +100,7 @@ void mm_get_keystate(struct ssh *, struct monitor *);
 
 /* XXX: should be returned via a monitor call rather than config_fd */
 void mm_encode_server_options(struct sshbuf *);
+
+struct sshbuf *pack_hostkeys(void);
 
 #endif /* _MONITOR_H_ */

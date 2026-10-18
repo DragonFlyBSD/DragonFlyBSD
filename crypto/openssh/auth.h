@@ -1,4 +1,4 @@
-/* $OpenBSD: auth.h,v 1.108 2024/05/17 06:42:04 jsg Exp $ */
+/* $OpenBSD: auth.h,v 1.111 2026/09/16 00:16:52 djm Exp $ */
 
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
@@ -59,6 +59,8 @@ struct Authctxt {
 	int		 valid;		/* user exists and is allowed to login */
 	int		 attempt;
 	int		 failures;
+	int		 pk_ok_failures;
+	int		 auth_failure_already_counted;
 	int		 server_caused_failure;
 	int		 force_pwchange;
 	char		*user;		/* username sent by the client */
@@ -175,14 +177,13 @@ void	auth_log(struct ssh *, int, int, const char *, const char *);
 void	auth_maxtries_exceeded(struct ssh *) __attribute__((noreturn));
 void	userauth_finish(struct ssh *, int, const char *, const char *);
 int	auth_root_allowed(struct ssh *, const char *);
+void	auth_failure_delay(Authctxt *, double);
 
 char	*auth2_read_banner(void);
 int	 auth2_methods_valid(const char *, int);
 int	 auth2_update_methods_lists(Authctxt *, const char *, const char *);
 int	 auth2_setup_methods_lists(Authctxt *);
 int	 auth2_method_allowed(Authctxt *, const char *, const char *);
-
-void	privsep_challenge_enable(void);
 
 int	auth2_challenge(struct ssh *, char *);
 void	auth2_challenge_stop(struct ssh *);

@@ -33,8 +33,8 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $OpenBSD: sshd_config.5,v 1.365 2024/06/24 06:59:39 jmc Exp $
-.Dd $Mdocdate: June 24 2024 $
+.\" $OpenBSD: sshd_config.5,v 1.410 2026/09/17 15:32:07 schwarze Exp $
+.Dd $Mdocdate: September 17 2026 $
 .Dt SSHD_CONFIG 5
 .Os
 .Sh NAME
@@ -97,6 +97,32 @@ Valid arguments are
 (use IPv4 only), or
 .Cm inet6
 (use IPv6 only).
+.It Cm AgentSocketPath
+Specifies the filesystem path used for forwarded
+.Xr ssh-agent 1
+sockets.
+Sockets may be created in either a shared location or a user-specific
+directory.
+User-specific directories are specified by prefixing the path name with
+.Cm user:\& .
+.Xr sshd 8
+will ensure the directory exists and create the listening socket
+directly in it.
+Relative user-specific directory paths will be created relative to the user's
+.Pf $ Ev HOME
+directory.
+.Pp
+Shared directories may be specified by prefixing an absolute path name with
+.Cm shared:\& .
+In this case, a temporary subdirectory will be created under the specified
+directory and the listening agent socket will be created in that.
+.Pp
+.Cm AgentSocketPath
+accepts the tokens described in the
+.Sx TOKENS
+section.
+The default path specification is
+.Pa user:.ssh/agent .
 .It Cm AllowAgentForwarding
 Specifies whether
 .Xr ssh-agent 1
@@ -113,9 +139,9 @@ If specified, login is allowed only for users whose primary
 group or supplementary group list matches one of the patterns.
 Only group names are valid; a numerical group ID is not recognized.
 By default, login is allowed for all groups.
-The allow/deny groups directives are processed in the following order:
-.Cm DenyGroups ,
-.Cm AllowGroups .
+.Cm AllowGroups
+is not consulted for groups matched by
+.Cm DenyGroups .
 .Pp
 See PATTERNS in
 .Xr ssh_config 5
@@ -173,9 +199,9 @@ are separately checked, restricting logins to particular
 users from particular hosts.
 HOST criteria may additionally contain addresses to match in CIDR
 address/masklen format.
-The allow/deny users directives are processed in the following order:
-.Cm DenyUsers ,
-.Cm AllowUsers .
+.Cm AllowUsers
+is not consulted for users matched by
+.Cm DenyUsers .
 .Pp
 See PATTERNS in
 .Xr ssh_config 5
@@ -250,7 +276,7 @@ If no arguments are specified then the username of the target user is used.
 .Pp
 The program should produce on standard output zero or
 more lines of authorized_keys output (see
-.Sx AUTHORIZED_KEYS
+.Cm AUTHORIZED_KEYS
 in
 .Xr sshd 8 ) .
 .Cm AuthorizedKeysCommand
@@ -260,6 +286,7 @@ files and will not be executed if a matching key is found there.
 By default, no
 .Cm AuthorizedKeysCommand
 is run.
+This command is only executed for valid users.
 .It Cm AuthorizedKeysCommandUser
 Specifies the user under whose account the
 .Cm AuthorizedKeysCommand
@@ -279,7 +306,7 @@ The format is described in the AUTHORIZED_KEYS FILE FORMAT section of
 .Xr sshd 8 .
 Arguments to
 .Cm AuthorizedKeysFile
-accept the tokens described in the
+may include wildcards and accept the tokens described in the
 .Sx TOKENS
 section.
 After expansion,
@@ -292,6 +319,7 @@ Alternately this option may be set to
 to skip checking for user keys in files.
 The default is
 .Qq .ssh/authorized_keys .ssh/authorized_keys2 .
+These files are only checked for valid users.
 .It Cm AuthorizedPrincipalsCommand
 Specifies a program to be used to generate the list of allowed
 certificate principals as per
@@ -318,6 +346,7 @@ must contain a principal that is listed.
 By default, no
 .Cm AuthorizedPrincipalsCommand
 is run.
+This command is only executed for valid users.
 .It Cm AuthorizedPrincipalsCommandUser
 Specifies the user under whose account the
 .Cm AuthorizedPrincipalsCommand
@@ -339,7 +368,7 @@ When using certificates signed by a key listed in
 this file lists names, one of which must appear in the certificate for it
 to be accepted for authentication.
 Names are listed one per line preceded by key options (as described in
-.Sx AUTHORIZED_KEYS FILE FORMAT
+.Cm AUTHORIZED_KEYS FILE FORMAT
 in
 .Xr sshd 8 ) .
 Empty lines and comments starting with
@@ -348,7 +377,7 @@ are ignored.
 .Pp
 Arguments to
 .Cm AuthorizedPrincipalsFile
-accept the tokens described in the
+may include wildcards and accept the tokens described in the
 .Sx TOKENS
 section.
 After expansion,
@@ -359,6 +388,7 @@ The default is
 i.e. not to use a principals file \(en in this case, the username
 of the user must appear in a certificate's principals list for it to be
 accepted.
+This file is only checked for valid users.
 .Pp
 Note that
 .Cm AuthorizedPrincipalsFile
@@ -387,7 +417,8 @@ ssh-ed25519,ecdsa-sha2-nistp256,
 ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,
 sk-ssh-ed25519@openssh.com,
 sk-ecdsa-sha2-nistp256@openssh.com,
-rsa-sha2-512,rsa-sha2-256
+rsa-sha2-512,rsa-sha2-256,
+ssh-mldsa44-ed25519
 .Ed
 .Pp
 If the specified list begins with a
@@ -440,7 +471,7 @@ Open connections to
 .Xr ssh-agent 1 .
 .It Cm direct-tcpip , Cm direct-streamlocal@openssh.com
 Open TCP or Unix socket (respectively) connections that have
-been established from a
+been established from an
 .Xr ssh 1
 local forwarding, i.e.\&
 .Cm LocalForward
@@ -448,9 +479,9 @@ or
 .Cm DynamicForward .
 .It Cm forwarded-tcpip , Cm forwarded-streamlocal@openssh.com
 Open TCP or Unix socket (respectively) connections that have been
-established to a
+established to an
 .Xr sshd 8
-listening on behalf of a
+listening on behalf of an
 .Xr ssh 1
 remote forwarding, i.e.\&
 .Cm RemoteForward .
@@ -576,8 +607,8 @@ chacha20-poly1305@openssh.com
 The default is:
 .Bd -literal -offset indent
 chacha20-poly1305@openssh.com,
-aes128-ctr,aes192-ctr,aes256-ctr,
-aes128-gcm@openssh.com,aes256-gcm@openssh.com
+aes128-gcm@openssh.com,aes256-gcm@openssh.com,
+aes128-ctr,aes192-ctr,aes256-ctr
 .Ed
 .Pp
 The list of available ciphers may also be obtained using
@@ -624,11 +655,18 @@ The argument must be
 .Cm yes ,
 .Cm delayed
 (a legacy synonym for
-.Cm yes )
+.Cm yes ) ,
 or
 .Cm no .
 The default is
 .Cm yes .
+.Pp
+Compression applies to all traffic that flows over the SSH connection.
+If untrusted traffic (such as an open port-forward) is permitted over the
+connection alongside trusted traffic, then compression may leak information
+about session contents.
+For this reason, it is not recommended to enable compression for connections
+that share trusted and untrusted traffic.
 .It Cm DenyGroups
 This keyword can be followed by a list of group name patterns, separated
 by spaces.
@@ -636,9 +674,9 @@ Login is disallowed for users whose primary group or supplementary
 group list matches one of the patterns.
 Only group names are valid; a numerical group ID is not recognized.
 By default, login is allowed for all groups.
-The allow/deny groups directives are processed in the following order:
-.Cm DenyGroups ,
-.Cm AllowGroups .
+.Cm AllowGroups
+is not consulted for groups matched by
+.Cm DenyGroups .
 .Pp
 See PATTERNS in
 .Xr ssh_config 5
@@ -657,9 +695,9 @@ are separately checked, restricting logins to particular
 users from particular hosts.
 HOST criteria may additionally contain addresses to match in CIDR
 address/masklen format.
-The allow/deny users directives are processed in the following order:
-.Cm DenyUsers ,
-.Cm AllowUsers .
+.Cm AllowUsers
+is not consulted for users matched by
+.Cm DenyUsers .
 .Pp
 See PATTERNS in
 .Xr ssh_config 5
@@ -710,6 +748,14 @@ files when used with
 .Cm ChrootDirectory .
 The default is
 .Cm none .
+.Pp
+This directive does not limit other kinds of access that a
+client may request via their connection, such as TCP, agent, socket or
+X11 forwarding.
+If these are not desired, then they must be explicitly disabled, either
+individually via their respective options or all together using the
+.Cm DisableForwarding
+option.
 .It Cm GatewayPorts
 Specifies whether remote hosts are allowed to connect to ports
 forwarded for the client.
@@ -739,6 +785,10 @@ Specifies whether to automatically destroy the user's credentials cache
 on logout.
 The default is
 .Cm yes .
+.It Cm GSSAPIDelegateCredentials
+Accept delegated credentials on the server side.
+The default is
+.Cm yes .
 .It Cm GSSAPIStrictAcceptorCheck
 Determines whether to be strict about the identity of the GSSAPI acceptor
 a client authenticates against.
@@ -753,6 +803,7 @@ machine's default store.
 This facility is provided to assist with operation on multi homed machines.
 The default is
 .Cm yes .
+This option may not be effective in Windows Active Directory environments.
 .It Cm HostbasedAcceptedAlgorithms
 Specifies the signature algorithms that will be accepted for hostbased
 authentication as a list of comma-separated patterns.
@@ -776,13 +827,17 @@ ecdsa-sha2-nistp384-cert-v01@openssh.com,
 ecdsa-sha2-nistp521-cert-v01@openssh.com,
 sk-ssh-ed25519-cert-v01@openssh.com,
 sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,
+webauthn-sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,
 rsa-sha2-512-cert-v01@openssh.com,
 rsa-sha2-256-cert-v01@openssh.com,
+ssh-mldsa44-ed25519-cert,
 ssh-ed25519,
 ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,
 sk-ssh-ed25519@openssh.com,
 sk-ecdsa-sha2-nistp256@openssh.com,
-rsa-sha2-512,rsa-sha2-256
+webauthn-sk-ecdsa-sha2-nistp256@openssh.com,
+rsa-sha2-512,rsa-sha2-256,
+ssh-mldsa44-ed2551
 .Ed
 .Pp
 The list of available signature algorithms may also be obtained using
@@ -824,7 +879,8 @@ Specifies a file containing a private host key
 used by SSH.
 The defaults are
 .Pa /etc/ssh/ssh_host_ecdsa_key ,
-.Pa /etc/ssh/ssh_host_ed25519_key
+.Pa /etc/ssh/ssh_host_ed25519_key ,
+.Pa /etc/ssh/ssh_host_mldsa44_ed25519_key ,
 and
 .Pa /etc/ssh/ssh_host_rsa_key .
 .Pp
@@ -860,13 +916,17 @@ ecdsa-sha2-nistp384-cert-v01@openssh.com,
 ecdsa-sha2-nistp521-cert-v01@openssh.com,
 sk-ssh-ed25519-cert-v01@openssh.com,
 sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,
+webauthn-sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,
 rsa-sha2-512-cert-v01@openssh.com,
 rsa-sha2-256-cert-v01@openssh.com,
+ssh-mldsa44-ed25519-cert,
 ssh-ed25519,
 ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,
 sk-ssh-ed25519@openssh.com,
 sk-ecdsa-sha2-nistp256@openssh.com,
-rsa-sha2-512,rsa-sha2-256
+webauthn-sk-ecdsa-sha2-nistp256@openssh.com,
+rsa-sha2-512,rsa-sha2-256,
+ssh-mldsa44-ed25519
 .Ed
 .Pp
 The list of available signature algorithms may also be obtained using
@@ -923,7 +983,9 @@ directive may appear inside a
 block
 to perform conditional inclusion.
 .It Cm IPQoS
-Specifies the IPv4 type-of-service or DSCP class for the connection.
+Specifies the
+.Em Differentiated Services Field Codepoint Pq DSCP
+value for the connection.
 Accepted values are
 .Cm af11 ,
 .Cm af12 ,
@@ -947,9 +1009,6 @@ Accepted values are
 .Cm cs7 ,
 .Cm ef ,
 .Cm le ,
-.Cm lowdelay ,
-.Cm throughput ,
-.Cm reliability ,
 a numeric value, or
 .Cm none
 to use the operating system default.
@@ -958,11 +1017,11 @@ If one argument is specified, it is used as the packet class unconditionally.
 If two values are specified, the first is automatically selected for
 interactive sessions and the second for non-interactive sessions.
 The default is
-.Cm af21
-(Low-Latency Data)
+.Cm ef
+(Expedited Forwarding)
 for interactive sessions and
-.Cm cs1
-(Lower Effort)
+.Cm none
+(the operating system default)
 for non-interactive sessions.
 .It Cm KbdInteractiveAuthentication
 Specifies whether to allow keyboard-interactive authentication.
@@ -1050,17 +1109,21 @@ ecdh-sha2-nistp384
 .It
 ecdh-sha2-nistp521
 .It
+mlkem768nistp256-sha256
+.It
+mlkem768x25519-sha256
+.It
+sntrup761x25519-sha512
+.It
 sntrup761x25519-sha512@openssh.com
 .El
 .Pp
 The default is:
 .Bd -literal -offset indent
-sntrup761x25519-sha512@openssh.com,
+mlkem768x25519-sha256,
+sntrup761x25519-sha512,sntrup761x25519-sha512@openssh.com,
 curve25519-sha256,curve25519-sha256@libssh.org,
-ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,
-diffie-hellman-group-exchange-sha256,
-diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,
-diffie-hellman-group14-sha256
+ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521
 .Ed
 .Pp
 The list of supported key exchange algorithms may also be obtained using
@@ -1133,8 +1196,8 @@ Logging with a DEBUG level violates the privacy of users and is not recommended.
 .It Cm LogVerbose
 Specify one or more overrides to
 .Cm LogLevel .
-An override consists of a pattern lists that matches the source file, function
-and line number to force detailed logging for.
+An override consists of one or more pattern lists that matches the
+source file, function and line number to force detailed logging for.
 For example, an override pattern of:
 .Bd -literal -offset indent
 kex.c:*:1000,*:kex_exchange_identification():*,packet.c:*
@@ -1232,15 +1295,18 @@ applied.
 .Pp
 The arguments to
 .Cm Match
-are one or more criteria-pattern pairs or the single token
-.Cm All
-which matches all criteria.
+are one or more criteria-pattern pairs or one of the single token criteria:
+.Cm All ,
+which matches all criteria, or
+.Cm Invalid-User ,
+which matches when the requested user-name does not match any known account.
 The available criteria are
 .Cm User ,
 .Cm Group ,
 .Cm Host ,
 .Cm LocalAddress ,
 .Cm LocalPort ,
+.Cm Version ,
 .Cm RDomain ,
 and
 .Cm Address
@@ -1265,6 +1331,13 @@ Note that the mask length provided must be consistent with the address -
 it is an error to specify a mask length that is too long for the address
 or one with bits set in this host portion of the address.
 For example, 192.0.2.0/33 and 192.0.2.0/8, respectively.
+.Pp
+The
+.Cm Version
+keyword matches against the version string of
+.Xr sshd 8 ,
+for example
+.Dq OpenSSH_10.0 .
 .Pp
 Only a subset of keywords may be used on the lines following a
 .Cm Match
@@ -1319,6 +1392,7 @@ Available keywords are
 .Cm PubkeyAcceptedAlgorithms ,
 .Cm PubkeyAuthentication ,
 .Cm PubkeyAuthOptions ,
+.Cm RefuseConnection ,
 .Cm RekeyLimit ,
 .Cm RevokedKeys ,
 .Cm RDomain ,
@@ -1328,7 +1402,7 @@ Available keywords are
 .Cm TrustedUserCAKeys ,
 .Cm UnusedConnectionTimeout ,
 .Cm X11DisplayOffset ,
-.Cm X11Forwarding
+.Cm X11Forwarding ,
 and
 .Cm X11UseLocalhost .
 .It Cm MaxAuthTries
@@ -1354,11 +1428,11 @@ SSH daemon.
 Additional connections will be dropped until authentication succeeds or the
 .Cm LoginGraceTime
 expires for a connection.
-The default is 10:30:100.
 .Pp
 Alternatively, random early drop can be enabled by specifying
 the three colon separated values
 start:rate:full (e.g. "10:30:60").
+The default is 10:30:100.
 .Xr sshd 8
 will refuse connection attempts with a probability of rate/100 (30%)
 if there are currently start (10) unauthenticated connections.
@@ -1384,7 +1458,7 @@ The default is
 .It Cm PasswordAuthentication
 Specifies whether password authentication is allowed.
 The default is
-.Cm sshd .
+.Cm yes .
 .It Cm PermitEmptyPasswords
 When password authentication is allowed, it specifies whether the
 server allows login to accounts with empty password strings.
@@ -1586,7 +1660,7 @@ accumulated.
 .Pp
 Penalties are enabled by default with the default settings listed below
 but may disabled using the
-.Cm off
+.Cm no
 keyword.
 The defaults may be overridden by specifying one or more of the keywords below,
 separated by whitespace.
@@ -1599,6 +1673,14 @@ Specifies how long to refuse clients that cause a crash of
 .It Cm authfail:duration
 Specifies how long to refuse clients that disconnect after making one or more
 unsuccessful authentication attempts (default: 5s).
+.It Cm invaliduser:duration
+Specifies how long to refuse clients that attempt to log in with an invalid
+user (default: 5s).
+.It Cm refuseconnection:duration
+Specifies how long to refuse clients that were administratively prohibited
+connection via the
+.Cm RefuseConnection
+option (default: 10s).
 .It Cm noauth:duration
 Specifies how long to refuse clients that disconnect without attempting
 authentication (default: 1s).
@@ -1608,7 +1690,7 @@ scanning tools such as
 .It Cm grace-exceeded:duration
 Specifies how long to refuse clients that fail to authenticate after
 .Cm LoginGraceTime
-(default: 20s).
+(default: 10s).
 .It Cm max:duration
 Specifies the maximum time a particular source address range will be refused
 access for (default: 10m).
@@ -1706,13 +1788,17 @@ ecdsa-sha2-nistp384-cert-v01@openssh.com,
 ecdsa-sha2-nistp521-cert-v01@openssh.com,
 sk-ssh-ed25519-cert-v01@openssh.com,
 sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,
+webauthn-sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,
 rsa-sha2-512-cert-v01@openssh.com,
 rsa-sha2-256-cert-v01@openssh.com,
+ssh-mldsa44-ed25519-cert,
 ssh-ed25519,
 ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,
 sk-ssh-ed25519@openssh.com,
 sk-ecdsa-sha2-nistp256@openssh.com,
-rsa-sha2-512,rsa-sha2-256
+webauthn-sk-ecdsa-sha2-nistp256@openssh.com,
+rsa-sha2-512,rsa-sha2-256,
+ssh-mldsa44-ed25519
 .Ed
 .Pp
 The list of available signature algorithms may also be obtained using
@@ -1722,9 +1808,10 @@ Sets one or more public key authentication options.
 The supported keywords are:
 .Cm none
 (the default; indicating no additional options are enabled),
-.Cm touch-required
+.Cm touch-required ,
+.Cm verify-required ,
 and
-.Cm verify-required .
+.Cm max-pk-ok .
 .Pp
 The
 .Cm touch-required
@@ -1752,10 +1839,35 @@ Neither the
 or
 .Cm verify-required
 options have any effect for other, non-FIDO, public key types.
+.Pp
+The
+.Cm max-pk-ok
+option takes a numeric argument separated by a colon character, e.g.\&
+.Sq max-pk-ok:4
+to specify the number of public key query attempts are permitted
+before the attempts are considered failed authentications that count against
+.Cm MaxAuthTries .
+Public key queries are a SSH protocol mechanism that allow a client to test
+whether a server accepts a given public key before an actual authentication
+attempt, to avoid the need to enter PINs/key passphrases or touch FIDO
+authenticators unnecessarily.
+The default is 6.
 .It Cm PubkeyAuthentication
 Specifies whether public key authentication is allowed.
 The default is
 .Cm yes .
+.It Cm RefuseConnection
+Indicates that
+.Xr sshd 8
+should unconditionally terminate the connection.
+Additionally, a
+.Cm refuseconnection
+penalty may be recorded against the source of the connection if
+.Cm PerSourcePenalties
+are enabled.
+This option is only really useful in a
+.Cm Match
+block.
 .It Cm RekeyLimit
 Specifies the maximum amount of data that may be transmitted or received
 before the session key is renegotiated, optionally followed by a maximum
@@ -1801,6 +1913,11 @@ be refused for all users.
 Keys may be specified as a text file, listing one public key per line, or as
 an OpenSSH Key Revocation List (KRL) as generated by
 .Xr ssh-keygen 1 .
+This file may be consulted for each public key authentication attempt
+received by
+.Xr sshd 8
+and its contents must be consistent at all times, therefore it should only
+be atomically replaced and never modified in place while the server is running.
 For more information on KRLs, see the KEY REVOCATION LISTS section in
 .Xr ssh-keygen 1 .
 .It Cm RDomain
@@ -1831,6 +1948,13 @@ via
 .Cm AcceptEnv
 or
 .Cm PermitUserEnvironment .
+.It Cm SshdAuthPath
+Overrides the default path to the
+.Cm sshd-auth
+binary that is invoked to complete user authentication.
+The default is
+.Pa /usr/libexec/sshd-auth .
+This option is intended for use by tests.
 .It Cm SshdSessionPath
 Overrides the default path to the
 .Cm sshd-session
@@ -1909,26 +2033,32 @@ The possible values are: DAEMON, USER, AUTH, LOCAL0, LOCAL1, LOCAL2,
 LOCAL3, LOCAL4, LOCAL5, LOCAL6, LOCAL7.
 The default is AUTH.
 .It Cm TCPKeepAlive
-Specifies whether the system should send TCP keepalive messages to the
-other side.
-If they are sent, death of the connection or crash of one
-of the machines will be properly noticed.
+Specifies whether the system should send keepalive messages on TCP sockets it
+has opened.
+If they are sent, failure of the connection or crash of one
+of the endpoints may be more promptly detected.
 However, this means that
-connections will die if the route is down temporarily, and some people
-find it annoying.
-On the other hand, if TCP keepalives are not sent,
-sessions may hang indefinitely on the server, leaving
-.Qq ghost
-users and consuming server resources.
+connections may terminate if the connection is suffers a transient disruption.
 .Pp
-The default is
+The argument must be
+.Cm transport
+to enable TCP keepalive messages on the SSH transport connection to the client,
 .Cm yes
-(to send TCP keepalive messages), and the server will notice
-if the network goes down or the client host crashes.
-This avoids infinitely hanging sessions.
+which is an alias for
+.Cm transport ,
+.Cm all
+to enable TCP keepalive messages on all sockets opened by
+.Xr sshd 8 ,
+including sockets created for X11 or port forwarding, or
+.Cm no
+to disable TCP keepalive messages.
+The default is
+.Cm transport .
 .Pp
-To disable TCP keepalive messages, the value should be set to
-.Cm no .
+See also
+.Cm ClientAliveInterval
+for a more robust connection failure detection mechanism that works at the
+SSH protocol level.
 .It Cm TrustedUserCAKeys
 Specifies a file containing public keys of certificate authorities that are
 trusted to sign user certificates for authentication, or
@@ -2018,6 +2148,20 @@ Optionally specifies additional text to append to the SSH protocol banner
 sent by the server upon connection.
 The default is
 .Cm none .
+.It Cm WarnWeakCrypto
+Controls whether warnings are logged when the cryptographic algorithms
+negotiated for the connection are weak or otherwise recommended against.
+Warnings may be disabled by turning off a specific warning or by disabling
+all warnings.
+Warnings about connections that don't use a post-quantum key exchange
+may be disabled using the
+.Cm no-pq-kex
+flag.
+.Cm no
+will disable all warnings.
+The default, equivalent to
+.Cm yes ,
+is to enable all warnings.
 .It Cm X11DisplayOffset
 Specifies the first display number available for
 .Xr sshd 8 Ns 's
@@ -2132,7 +2276,14 @@ Time format examples:
 .El
 .Sh TOKENS
 Arguments to some keywords can make use of tokens,
-which are expanded at runtime:
+which are expanded at runtime.
+Tokens are expanded without quoting or escaping of shell characters.
+It is the administrator's responsibility to ensure they are safe in the
+context of their use.
+.Pp
+The supported tokens in
+.Nm
+are:
 .Pp
 .Bl -tag -width XXXX -offset indent -compact
 .It %%
@@ -2168,6 +2319,9 @@ The numeric user ID of the target user.
 The username.
 .El
 .Pp
+.Cm AgentSocketPath
+accepts the tokens %%, %h, %U, and %u.
+.Pp
 .Cm AuthorizedKeysCommand
 accepts the tokens %%, %C, %D, %f, %h, %k, %t, %U, and %u.
 .Pp
@@ -2202,7 +2356,7 @@ OpenSSH is a derivative of the original and free
 ssh 1.2.12 release by
 .An Tatu Ylonen .
 .An Aaron Campbell , Bob Beck , Markus Friedl , Niels Provos ,
-.An Theo de Raadt
+.An Theo de Raadt ,
 and
 .An Dug Song
 removed many bugs, re-added newer features and

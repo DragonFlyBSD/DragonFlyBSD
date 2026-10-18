@@ -1,4 +1,4 @@
-/* $OpenBSD: auth-options.c,v 1.101 2023/07/14 07:44:21 dtucker Exp $ */
+/* $OpenBSD: auth-options.c,v 1.103 2026/09/16 00:33:44 djm Exp $ */
 /*
  * Copyright (c) 2018 Damien Miller <djm@mindrot.org>
  *
@@ -18,20 +18,17 @@
 #include "includes.h"
 
 #include <sys/types.h>
+#include <sys/queue.h>
 
 #include <stdlib.h>
 #include <netdb.h>
 #include <pwd.h>
 #include <string.h>
 #include <stdio.h>
-#ifdef HAVE_STDINT_H
-# include <stdint.h>
-#endif
+#include <stdint.h>
 #include <stdarg.h>
 #include <ctype.h>
 #include <limits.h>
-
-#include "openbsd-compat/sys-queue.h"
 
 #include "xmalloc.h"
 #include "ssherr.h"
@@ -157,6 +154,7 @@ cert_option_list(struct sshauthopt *opts, struct sshbuf *oblob,
 				if (addr_match_cidr_list(NULL, allowed) == -1) {
 					error("Certificate source-address "
 					    "contents invalid");
+					free(allowed);
 					goto out;
 				}
 				opts->required_from_host_cert = allowed;
@@ -606,6 +604,7 @@ sshauthopt_merge(const struct sshauthopt *primary,
 	OPTFLAG_AND(no_require_user_presence);
 	/* Restrictive flags are logical-OR (i.e. must be set in either) */
 	OPTFLAG_OR(require_verify);
+	OPTFLAG_OR(restricted);
 #undef OPTFLAG_AND
 
 	/* Earliest expiry time should win */
