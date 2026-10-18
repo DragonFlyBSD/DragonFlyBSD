@@ -93,6 +93,7 @@ CRUNCH_PROGS_usr.bin=	\
 	scp		\
 	sdiff		\
 	sed		\
+	sftp		\
 	sort		\
 	ssh		\
 	stat		\
@@ -263,6 +264,7 @@ CRUNCH_SRCDIR_libgreputils.a=	${CRUNCH_PATH_grep}/grep/libgreputils
 CRUNCH_INTLIB_telnet=		libtelnet.a
 CRUNCH_SRCDIR_libtelnet.a=	${.CURDIR}/../../lib/libtelnet
 CRUNCH_INTLIB_scp=		libssh.a
+CRUNCH_INTLIB_sftp=		libssh.a
 CRUNCH_INTLIB_ssh=		libssh.a
 CRUNCH_SRCDIR_libssh.a=		${.CURDIR}/../../lib/libssh
 
