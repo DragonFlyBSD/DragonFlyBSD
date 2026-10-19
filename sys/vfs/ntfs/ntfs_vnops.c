@@ -609,6 +609,9 @@ ntfs_readdir(struct vop_readdir_args *ap)
 				continue;
 			for(i=0, j=0; i < iep->ie_fnamelen; i++, j++) {
 				c = NTFS_U28(iep->ie_fname[i]);
+				if (j + ((c&0xFF00) > 0 ? 2 : 1) >=
+				    sizeof(convname))
+					break;
 				if (c&0xFF00)
 					convname[j++] = (char)(c>>8);
 				convname[j] = (char)c&0xFF;
