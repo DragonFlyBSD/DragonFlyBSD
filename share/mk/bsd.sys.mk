@@ -95,8 +95,6 @@ _cnowarnflags	+=	-Wno-unused-but-set-variable
 .  endif
 .  if ${WARNS} == 3 && ${_WCCVER:Mgcc*}
 _cnowarnflags	+=	-Wno-unused-but-set-parameter
-.  endif
-.  if ${WARNS} == 3 && ${_gccver} >= 49
 _cnowarnflags	+=	-Wno-unused-value
 .  endif
 .  if ${WARNS} == 3 && ${_gccver} >= 80
@@ -118,13 +116,8 @@ CWARNFLAGS	+=	-Wno-error=maybe-uninitialized
 . if defined(FORMAT_AUDIT)
 WFORMAT		=	1
 . endif
-. if defined(WFORMAT)
-.  if ${WFORMAT} > 0
+. if defined(WFORMAT) && ${WFORMAT} > 0
 CWARNFLAGS	+=	-Wformat=2
-.   if !defined(NO_WERROR) && (${_WCCVER} == "gcc80" || ${_WCCVER} == "gcc120")
-CWARNFLAGS	+=	-Werror
-.   endif
-.  endif
 . endif
 .endif
 
