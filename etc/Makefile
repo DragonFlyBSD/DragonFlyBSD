@@ -150,7 +150,7 @@ upgrade_check:
 
 upgrade_base:	upgrade_check preinstall remove-obsolete-files
 	# files that should be dirs (not possible with Makefile_upgrade.inc)
-.for f in usr/include/dev/misc/ppi usr/share/initrd/sbin var/db/entropy
+.for f in usr/include/dev/misc/ppi var/db/entropy
 	[ -d ${DESTDIR}/${f} ] || rm -f ${DESTDIR}/${f}
 .endfor
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these files
