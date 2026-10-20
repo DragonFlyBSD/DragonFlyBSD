@@ -136,14 +136,8 @@ typedef struct tre_backtrack_struct {
 	  s = tre_bt_mem_alloc(mem, sizeof(*s));			      \
 	  if (!s)							      \
 	    {								      \
-	      tre_bt_mem_destroy(mem);					      \
-	      if (tags)							      \
-		xfree(tags);						      \
-	      if (pmatch)						      \
-		xfree(pmatch);						      \
-	      if (states_seen)						      \
-		xfree(states_seen);					      \
-	      return REG_ESPACE;					      \
+	      ret = REG_ESPACE;						      \
+	      goto error_exit;						      \
 	    }								      \
 	  s->prev = stack;						      \
 	  s->next = NULL;						      \
@@ -151,14 +145,8 @@ typedef struct tre_backtrack_struct {
 					  num_tags * sizeof(*tags));          \
 	  if (!s->item.tags)						      \
 	    {								      \
-	      tre_bt_mem_destroy(mem);					      \
-	      if (tags)							      \
-		xfree(tags);						      \
-	      if (pmatch)						      \
-		xfree(pmatch);						      \
-	      if (states_seen)						      \
-		xfree(states_seen);					      \
-	      return REG_ESPACE;					      \
+	      ret = REG_ESPACE;						      \
+	      goto error_exit;						      \
 	    }								      \
 	  stack->next = s;						      \
 	  stack = s;							      \
@@ -294,7 +282,10 @@ tre_tnfa_run_backtrack(const tre_tnfa_t *tnfa, const void *string,
     buf = xmalloc((unsigned)total_bytes);
 #endif /* !TRE_USE_ALLOCA */
     if (buf == NULL)
-      return REG_ESPACE;
+      {
+	ret = REG_ESPACE;
+	goto error_exit;
+      }
 
     /* Get the various pointers within tmp_buf (properly aligned). */
     tags = (void *)buf;

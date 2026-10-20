@@ -14,3 +14,6 @@ A list of files and directories removed is in README.DELETED
 Local modifications applied all files.  The collation, equivalence, and
 legacy character-name table support came from modifications by Apple
 (opensource.apple.com)
+
+Extra modifications over Apple's version:
+- lib/tre-match-backtrack.c	fix 'mem' leak; fix use-after-free bug
