@@ -39,7 +39,7 @@ _cnowarnflags=
 . if defined(WARNS)
 .  if ${WARNS} >= 1
 CWARNFLAGS	+=	-Wmissing-include-dirs -Wsystem-headers
-.   if !defined(NO_WERROR) && ${_WCCVER} == "gcc80"
+.   if !defined(NO_WERROR) && (${_WCCVER} == "gcc80" || ${_WCCVER} == "gcc120")
 CWARNFLAGS	+=	-Werror
 .   endif
 .  endif
@@ -121,7 +121,7 @@ WFORMAT		=	1
 . if defined(WFORMAT)
 .  if ${WFORMAT} > 0
 CWARNFLAGS	+=	-Wformat=2
-.   if !defined(NO_WERROR) && ${_WCCVER} == "gcc80"
+.   if !defined(NO_WERROR) && (${_WCCVER} == "gcc80" || ${_WCCVER} == "gcc120")
 CWARNFLAGS	+=	-Werror
 .   endif
 .  endif
