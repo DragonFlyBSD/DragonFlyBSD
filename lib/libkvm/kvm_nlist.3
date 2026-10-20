@@ -31,9 +31,8 @@
 .\"
 .\"     @(#)kvm_nlist.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libkvm/kvm_nlist.3,v 1.5.2.3 2001/12/17 10:08:30 ru Exp $
-.\" $DragonFly: src/lib/libkvm/kvm_nlist.3,v 1.2 2003/06/17 04:26:49 dillon Exp $
 .\"
-.Dd June 4, 1993
+.Dd October 7, 2026
 .Dt KVM_NLIST 3
 .Os
 .Sh NAME
@@ -68,6 +67,18 @@ The
 .Fn kvm_nlist
 function returns the number of invalid entries found.
 If the kernel symbol table was unreadable, -1 is returned.
+The entries must not be used after a return value of -1.
+.Pp
+For a live kernel, each failed
+.Xr kldsym 2
+lookup is counted as an invalid entry, and the remaining entries are
+still looked up.
+A positive return value does not necessarily mean that every failed
+lookup was caused by a missing symbol.
+An error message describing a lookup failure can be obtained using
+.Xr kvm_geterr 3
+when the descriptor was opened using
+.Xr kvm_openfiles 3 .
 .Sh SEE ALSO
 .Xr kldsym 2 ,
 .Xr kvm 3 ,

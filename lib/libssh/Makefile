@@ -49,8 +49,6 @@ SRCS+=	${COMPAT_SRCS}
 WARNS?=	3
 NO_STRICT_ALIASING=
 
-CFLAGS+=	-DTAILQ_FOREACH_SAFE=TAILQ_FOREACH_MUTABLE
-
 FLAGS_GROUPS=		warn
 warn_FLAGS=		-Wno-discarded-qualifiers -Wno-pointer-compare
 warn_FLAGS_FILES=	misc.c
@@ -80,10 +78,13 @@ GENFILES+=	config.h
 config.h: ${.CURDIR}/config.h.auto
 	sed -E ${CONFIGSUBS} ${.ALLSRC} > ${.TARGET}
 
-GENFILES+=	sys/tree.h glob.h netgroup.h
+GENFILES+=	sys/tree.h sys/queue.h glob.h netgroup.h
 sys/tree.h:
 	mkdir -p sys
 	echo '#include "openbsd-compat/sys-tree.h"' > ${.TARGET}
+sys/queue.h:
+	mkdir -p sys
+	echo '#include "openbsd-compat/sys-queue.h"' > ${.TARGET}
 glob.h:
 	echo '#include "openbsd-compat/glob.h"' > ${.TARGET}
 netgroup.h:

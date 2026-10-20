@@ -506,17 +506,25 @@ kvm_getprocs(kvm_t *kd, int op, int arg, int *cnt)
 	} else {
 		struct nlist nl[4], *p;
 		u_long procglob;
+		int ret;
 
+		memset(nl, 0, sizeof(nl));
 		nl[0].n_name = "_nprocs";
 		nl[1].n_name = "_procglob";
 		nl[2].n_name = "_allproc_hsize";
-		nl[3].n_name = 0;
+		nl[3].n_name = NULL;
 
-		if (kvm_nlist(kd, nl) != 0) {
-			for (p = nl; p->n_type != 0; ++p)
-				;
-			_kvm_err(kd, kd->program,
-				 "%s: no such symbol", p->n_name);
+		ret = kvm_nlist(kd, nl);
+		if (ret < 0)
+			return (0);
+		if (ret > 0) {
+			for (p = nl; p->n_name != NULL; ++p) {
+				if (p->n_type == 0) {
+					_kvm_err(kd, kd->program,
+					    "%s: no such symbol", p->n_name);
+					break;
+				}
+			}
 			return (0);
 		}
 		if (KREAD(kd, nl[0].n_value, &nprocs)) {

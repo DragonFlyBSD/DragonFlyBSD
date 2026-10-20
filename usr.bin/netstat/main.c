@@ -211,10 +211,14 @@ int	af;		/* address family */
 int
 main(int argc, char **argv)
 {
+	const int mbuf_symbols[] = {
+		N_MBSTAT, N_MBTYPES, N_NMBCLUSTERS, N_NMBJCLUSTERS,
+		N_NMBUFS, N_NCPUS,
+	};
 	struct protox *tp = NULL;  /* for printing cblocks & stats */
 	int ch;
 	int n;
-	size_t nsz;
+	size_t nsz, i;
 
 	af = AF_UNSPEC;
 
@@ -376,13 +380,19 @@ main(int argc, char **argv)
 
 	if (mflag) {
 		if (memf != NULL) {
-			if (kread(0, 0, 0) == 0)
+			if (kread(0, 0, 0) == 0) {
+				for (i = 0; i < NELEM(mbuf_symbols); ++i) {
+					if (nl[mbuf_symbols[i]].n_type == 0)
+						errx(1, "undefined symbol: %s",
+						    nl[mbuf_symbols[i]].n_name);
+				}
 				mbpr(nl[N_MBSTAT].n_value,
 				    nl[N_MBTYPES].n_value,
 				    nl[N_NMBCLUSTERS].n_value,
 				    nl[N_NMBJCLUSTERS].n_value,
 				    nl[N_NMBUFS].n_value,
 				    nl[N_NCPUS].n_value);
+			}
 		} else {
 			mbpr(0, 0, 0, 0, 0, 0);
 		}

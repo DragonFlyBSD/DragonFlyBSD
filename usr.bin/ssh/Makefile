@@ -19,6 +19,4 @@ DPADD+=		${LIBLDNS} ${LIBCRYPTO} ${LIBZ}
 LDADD+=		-lprivate_ldns -lprivate_crypto -lz
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
-CFLAGS+=	-DTAILQ_FOREACH_SAFE=TAILQ_FOREACH_MUTABLE
-
 .include <bsd.prog.mk>

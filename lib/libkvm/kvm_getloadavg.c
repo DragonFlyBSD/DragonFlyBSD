@@ -63,15 +63,22 @@ kvm_getloadavg(kvm_t *kd, double loadavg[], int nelem)
 {
 	struct loadavg loadinfo;
 	struct nlist *p;
-	int fscale, i;
+	int fscale, i, ret;
 
 	if (kvm_ishost(kd))
 		return (getloadavg(loadavg, nelem));
 
-	if (kvm_nlist(kd, nl) != 0) {
-		for (p = nl; p->n_type != 0; ++p);
-		_kvm_err(kd, kd->program,
-		    "%s: no such symbol", p->n_name);
+	ret = kvm_nlist(kd, nl);
+	if (ret < 0)
+		return (-1);
+	if (ret > 0) {
+		for (p = nl; p->n_name && p->n_name[0]; ++p) {
+			if (p->n_type == 0) {
+				_kvm_err(kd, kd->program,
+				    "%s: no such symbol", p->n_name);
+				break;
+			}
+		}
 		return (-1);
 	}
 

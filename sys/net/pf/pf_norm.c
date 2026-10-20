@@ -1122,7 +1122,7 @@ pf_normalize_ip6(struct mbuf **m0, int dir, struct pfi_kif *kif,
 	struct ip6_opt		 opt;
 	struct ip6_opt_jumbo	 jumbo;
 	struct ip6_frag		 frag;
-	u_int32_t		 jumbolen = 0, plen;
+	u_int32_t		 jumbolen = 0, plen, fraglen;
 	u_int16_t		 fragoff = 0;
 	int			 optend;
 	int			 ooff;
@@ -1258,10 +1258,16 @@ pf_normalize_ip6(struct mbuf **m0, int dir, struct pfi_kif *kif,
 		goto drop;
 	plen = ntohs(h->ip6_plen);
 
+	if (sizeof(struct ip6_hdr) + plen > m->m_pkthdr.len ||
+	    off + sizeof(frag) > sizeof(struct ip6_hdr) + plen)
+		goto shortpkt;
 	if (!pf_pull_hdr(m, off, &frag, sizeof(frag), NULL, NULL, AF_INET6))
 		goto shortpkt;
 	fragoff = ntohs(frag.ip6f_offlg & IP6F_OFF_MASK);
-	if (fragoff + (plen - off - sizeof(frag)) > IPV6_MAXPACKET)
+	fraglen = sizeof(struct ip6_hdr) + plen - off - sizeof(frag);
+	if ((frag.ip6f_offlg & IP6F_MORE_FRAG) && (fraglen & 7))
+		goto badfrag;
+	if (fragoff + plen - sizeof(frag) > IPV6_MAXPACKET)
 		goto badfrag;
 
 	/* do something about it */

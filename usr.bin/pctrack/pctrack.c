@@ -86,7 +86,7 @@ main(int ac, char **av)
 	int ncpus;
 	int cpu;
 	int repeat;
-	int c;
+	int c, ret;
 
 	/*
 	 * Parse commandline arguments.
@@ -158,8 +158,14 @@ main(int ac, char **av)
 	if ((kd = kvm_openfiles(Nflag ? execfile : NULL,
 	    Mflag ? corefile : NULL, NULL, O_RDONLY, errbuf)) == NULL)
 		errx(1, "%s", errbuf);
-	if (kvm_nlist(kd, nl) != 0)
+	ret = kvm_nlist(kd, nl);
+	if (ret != 0) {
+		if (ret > 0 && (nl[1].n_type == 0 || nl[2].n_type == 0))
+			errx(1, "required tracking symbols are unresolved (%s); "
+			    "check the kernel build for \"options DEBUG_PCTRACK\"",
+			    kvm_geterr(kd));
 		errx(1, "%s", kvm_geterr(kd));
+	}
 
 	if (kvm_read(kd, nl[0].n_value, &ncpus, sizeof(ncpus)) == -1)
 		errx(1, "%s", kvm_geterr(kd));

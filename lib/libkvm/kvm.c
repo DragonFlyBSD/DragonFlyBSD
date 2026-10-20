@@ -314,22 +314,38 @@ int
 kvm_nlist(kvm_t *kd, struct nlist *nl)
 {
 	struct nlist *p;
-	int nvalid;
+	const char *lookup_name = NULL;
+	int nmissing, lookup_error = 0;
 	struct kld_sym_lookup lookup;
-	int error;
+
+	for (p = nl; p->n_name && p->n_name[0]; ++p) {
+		p->n_type = 0;
+		p->n_value = 0;
+	}
 
 	/*
 	 * If we can't use the kld symbol lookup, revert to the
 	 * slow library call.
 	 */
-	if (!kvm_ishost(kd))
-		return (__fdnlist(kd->nlfd, nl));
+	if (!kvm_ishost(kd)) {
+		errno = 0;
+		nmissing = __fdnlist(kd->nlfd, nl);
+		if (nmissing < 0) {
+			if (errno != 0)
+				_kvm_syserr(kd, kd->program, "kvm_nlist");
+			else
+				_kvm_err(kd, kd->program,
+				    "kvm_nlist: cannot read symbol table");
+			return (-1);
+		}
+		goto done;
+	}
 
 	/*
 	 * We can use the kld lookup syscall.  Go through each nlist entry
 	 * and look it up with a kldsym(2) syscall.
 	 */
-	nvalid = 0;
+	nmissing = 0;
 	for (p = nl; p->n_name && p->n_name[0]; ++p) {
 		lookup.version = sizeof(lookup);
 		lookup.symname = p->n_name;
@@ -344,18 +360,23 @@ kvm_nlist(kvm_t *kd, struct nlist *nl)
 			p->n_other = 0;
 			p->n_desc = 0;
 			p->n_value = lookup.symvalue;
-			++nvalid;
 			/* lookup.symsize */
+		} else {
+			++nmissing;
+			if (errno != ENOENT && lookup_name == NULL) {
+				lookup_name = p->n_name;
+				lookup_error = errno;
+			}
 		}
 	}
-	/*
-	 * Return the number of entries that weren't found. If they exist,
-	 * also fill internal error buffer.
-	 */
-	error = ((p - nl) - nvalid);
-	if (error)
-		_kvm_syserr(kd, kd->program, "kvm_nlist");
-	return (error);
+done:
+	if (lookup_name != NULL)
+		_kvm_err(kd, kd->program, "kvm_nlist: %s: %s", lookup_name,
+		    lookup_error != 0 ? strerror(lookup_error) : "lookup failed");
+	else if (nmissing != 0)
+		_kvm_err(kd, kd->program, "kvm_nlist: %d unresolved symbol%s",
+		    nmissing, nmissing == 1 ? "" : "s");
+	return (nmissing);
 }
 
 ssize_t

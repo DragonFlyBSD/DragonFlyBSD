@@ -494,8 +494,10 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		 * have tried.
 		 *
 		 * We ignore any error.
+		 * Use the cached slice bounds while dumping; a label read
+		 * would require normal buffered I/O.
 		 */
-		if (sp->ds_label.opaque == NULL &&
+		if (!dumping && sp->ds_label.opaque == NULL &&
 		    part == WHOLE_SLICE_PART &&
 		    slice != WHOLE_DISK_SLICE) {
 			dsreadandsetlabel(dev, info->d_dsflags,

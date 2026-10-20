@@ -738,6 +738,10 @@ ttytype(struct tty *tty, const char *name, int type, int number, int indir)
 
 	if (tty == NULL)
 		return;
+	if (nl[type].n_type == 0 || nl[number].n_type == 0) {
+		warnx("%s: required tty symbols not found", name);
+		return;
+	}
 	KGET(number, ntty);
 	printf("%d %s %s\n", ntty, name, (ntty == 1) ? "line" : "lines");
 	if (ntty > ttyspace) {
