@@ -1,7 +1,5 @@
 .include "Makefile.inc"
 
-COMPVERSION=	gcc80
-
 optionsfiles=		${GCCDIR}/gcc/ada/gcc-interface/lang.opt
 optionsfiles+=		${GCCDIR}/gcc/brig/lang.opt
 optionsfiles+=		${GCCDIR}/gcc/fortran/lang.opt

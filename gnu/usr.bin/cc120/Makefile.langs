@@ -1,7 +1,5 @@
 .include "Makefile.inc"
 
-COMPVERSION=	gcc120
-
 srcdir=		${GCCDIR}/gcc
 
 # header_name values for generating 'options.cc' and 'options-save.cc'.

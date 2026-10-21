@@ -1,7 +1,3 @@
-# include helpers to decide if lto plugin needs to be installed and where
-.include "../../../Makefile.buo"
-.include "../../../Makefile.cco"
-
 # liblto_plugin.so needs to linked to a PIC version of libiberty.
 # A special tailored version of libiberty has been created for this purpose.
 
@@ -55,8 +51,11 @@ LVL2_4_=	${PLUGIN_HEADERS_CONFIG}
 LVL3_=		${PLUGIN_HEADERS_CONFIG_I386}
 LVL3_ADA_=	${PLUGIN_HEADERS_ADA_GCC}
 
+# include helpers to decide if lto plugin needs to be installed and where
+.include "../../../Makefile.buo"
+.include "../../../Makefile.cco"
 # SYMLINK lto plugin to primary/backup binutils bfd-plugin dirs
-.if ${CC_PRIMARY} == "gcc80" # we are default gcc compiler
+.if defined(IS_PRIMARY)
 LTOPLUGIN=	liblto_plugin.so
 .if exists(${DESTDIR}/usr/libexec/${BU_PRIMARY}/bfd-plugins)
 BFDPLUGINS=	/usr/libexec/${BU_PRIMARY}/bfd-plugins

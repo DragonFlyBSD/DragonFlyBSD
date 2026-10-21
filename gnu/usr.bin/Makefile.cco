@@ -7,6 +7,8 @@
 CC_PRIMARY=	gcc120
 CC_BACKUP=	gcc80
 
-.if defined(COMPVERSION) && ${COMPVERSION} == ${CC_PRIMARY}
+.if !defined(GCCSHORTVER) || ${GCCSHORTVER} == ""
+.error GCCSHORTVER undefined or empty
+.elif "gcc${GCCSHORTVER}" == ${CC_PRIMARY}
 IS_PRIMARY=	1
 .endif

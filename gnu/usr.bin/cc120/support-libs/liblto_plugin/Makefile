@@ -27,7 +27,7 @@ DPADD=		${LIBIBERTY}
 .include "../../../Makefile.buo"
 .include "../../../Makefile.cco"
 # SYMLINK lto plugin to primary/backup binutils bfd-plugin dirs
-.if ${CC_PRIMARY} == "gcc${GCCSHORTVER}" # we are default gcc compiler
+.if defined(IS_PRIMARY)
 LTOPLUGIN=	liblto_plugin.so
 .if exists(${DESTDIR}/usr/libexec/${BU_PRIMARY}/bfd-plugins)
 BFDPLUGINS=	/usr/libexec/${BU_PRIMARY}/bfd-plugins
