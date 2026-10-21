@@ -32,39 +32,53 @@
 #include <linux/posix_types.h>
 
 #ifdef __DragonFly__
+#include <sys/file.h>
 #include <sys/filedesc.h>
+#include <sys/fcntl.h>
+#include <sys/proc.h>
+#include <sys/spinlock2.h>
 #endif
 
 static inline int
 get_unused_fd_flags(unsigned flags)
 {
-kprintf("get_unused_fd_flags: is incomplete\n");
-	struct file *file;
+	struct filedesc *fdp = curthread->td_proc->p_fd;
 	int error;
 	int fd;
 
-	error = falloc(curthread->td_lwp, &file, &fd);
+	error = fdalloc(curthread->td_proc, 0, &fd);
 	if (error)
 		return -error;
+
+	if (flags & O_CLOEXEC) {
+		spin_lock(&fdp->fd_spin);
+		if ((unsigned)fd < fdp->fd_nfiles &&
+		    fdp->fd_files[fd].reserved)
+			fdp->fd_files[fd].fileflags |= UF_EXCLOSE;
+		spin_unlock(&fdp->fd_spin);
+	}
+
 	return fd;
 }
 
 static inline void
 fd_install(unsigned int fd, struct file *file)
 {
-	kprintf("fd_install(): not implemented\n");
+	fsetfd(curthread->td_proc->p_fd, file, fd);
+	fdrop(file);
 }
 
 static inline void
 fput(struct file *file)
 {
-	kprintf("fput(): not implemented\n");
+	if (file)
+		fdrop(file);
 }
 
 static inline void
 put_unused_fd(unsigned int fd)
 {
-	kprintf("put_unused_fd(): not implemented\n");
+	fsetfd(curthread->td_proc->p_fd, NULL, fd);
 }
 
 #endif	/* _LINUX_FILE_H_ */

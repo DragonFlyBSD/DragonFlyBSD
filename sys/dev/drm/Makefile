@@ -1,7 +1,7 @@
 SUBDIR = drm amd radeon radeonfw
 
 .if ${MACHINE_ARCH} == "x86_64"
-SUBDIR+= i915
+SUBDIR+= i915 nvgpu
 .endif
 
 # empty to allow concurrent building

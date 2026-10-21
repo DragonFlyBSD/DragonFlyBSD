@@ -65,6 +65,7 @@ struct drm_printer;
 #define DRIVER_ATOMIC			0x10000
 #define DRIVER_KMS_LEGACY_CONTEXT	0x20000
 #define DRIVER_SYNCOBJ                  0x40000
+#define DRIVER_SYNCOBJ_TIMELINE         0x80000
 
 /**
  * struct drm_driver - DRM driver structure
@@ -565,6 +566,18 @@ struct drm_driver {
 	 * @gem_vm_ops: Driver private ops for this object
 	 */
 	struct cdev_pager_ops *gem_vm_ops;
+
+	/**
+	 * @mmap_single: DragonFly-only optional mmap routing hook.
+	 *
+	 * When set, drm_mmap_single() calls this instead of the generic
+	 * ttm_bo_mmap_single()/drm_gem_mmap_single() routing, so a driver
+	 * can own the pager ops (and with them the mapping lifetime)
+	 * without changing the shared TTM/GEM paths other drivers use.
+	 */
+	int (*mmap_single)(struct file *fp, struct drm_device *dev,
+			   vm_ooffset_t *offset, vm_size_t size,
+			   struct vm_object **obj_res, int nprot);
 
 	/** @major: driver major number */
 	int major;

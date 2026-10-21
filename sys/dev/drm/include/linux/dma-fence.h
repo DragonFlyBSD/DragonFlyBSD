@@ -45,7 +45,7 @@ struct dma_fence {
 	struct rcu_head rcu;
 	struct list_head cb_list;
 	u64 context;
-	unsigned seqno;
+	u64 seqno;
 	unsigned long flags;
 	ktime_t timestamp;
 	int error;
@@ -82,7 +82,7 @@ struct dma_fence_ops {
 };
 
 void dma_fence_init(struct dma_fence *fence, const struct dma_fence_ops *ops,
-		    spinlock_t *lock, u64 context, unsigned seqno);
+		    spinlock_t *lock, u64 context, u64 seqno);
 
 void dma_fence_release(struct kref *kref);
 
@@ -182,7 +182,7 @@ static inline void
 dma_fence_set_error(struct dma_fence *fence, int error)
 {
 	fence->error = error;
-kprintf("fence error: context=%llx, seqno=%d, error=%d\n", fence->context, fence->seqno, error);
+kprintf("fence error: context=%llx, seqno=%llu, error=%d\n", fence->context, (unsigned long long)fence->seqno, error);
 print_backtrace(-1);
 }
 

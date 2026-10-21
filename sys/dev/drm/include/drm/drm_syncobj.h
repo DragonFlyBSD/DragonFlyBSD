@@ -110,9 +110,9 @@ drm_syncobj_put(struct drm_syncobj *obj)
  * drm_syncobj_fence_get - get a reference to a fence in a sync object
  * @syncobj: sync object.
  *
- * This acquires additional reference to &drm_syncobj.fence contained in @obj,
- * if not NULL. It is illegal to call this without already holding a reference.
- * No locks required.
+ * This acquires an additional reference to &drm_syncobj.fence contained in
+ * @obj, if not NULL.  DragonFly protects the pointer with syncobj->lock
+ * because dma_fence_get_rcu_safe() is not a real try-get RCU primitive here.
  *
  * Returns:
  * Either the fence of @obj or NULL if there's none.
@@ -122,9 +122,10 @@ drm_syncobj_fence_get(struct drm_syncobj *syncobj)
 {
 	struct dma_fence *fence;
 
-	rcu_read_lock();
-	fence = dma_fence_get_rcu_safe(&syncobj->fence);
-	rcu_read_unlock();
+	lockmgr(&syncobj->lock, LK_EXCLUSIVE);
+	fence = dma_fence_get(rcu_dereference_protected(syncobj->fence,
+	    lockdep_is_held(&syncobj->lock)));
+	lockmgr(&syncobj->lock, LK_RELEASE);
 
 	return fence;
 }
@@ -133,6 +134,10 @@ struct drm_syncobj *drm_syncobj_find(struct drm_file *file_private,
 				     u32 handle);
 void drm_syncobj_replace_fence(struct drm_syncobj *syncobj, u64 point,
 			       struct dma_fence *fence);
+struct dma_fence_chain;
+void drm_syncobj_add_point(struct drm_syncobj *syncobj,
+			   struct dma_fence_chain *chain,
+			   struct dma_fence *fence, uint64_t point);
 int drm_syncobj_find_fence(struct drm_file *file_private,
 			   u32 handle, u64 point,
 			   struct dma_fence **fence);

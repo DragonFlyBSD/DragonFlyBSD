@@ -525,6 +525,7 @@ KTR_TOKENS			opt_ktr.h
 KTR_TSLEEP			opt_ktr.h
 KTR_USCHED_BSD4			opt_ktr.h
 KTR_USCHED_DFLY			opt_ktr.h
+KTR_NVGPU			opt_ktr.h
 KTR_VERBOSE			opt_ktr.h
 KTR_IF_POLL			opt_ktr.h
 KTR_UDP				opt_ktr.h
