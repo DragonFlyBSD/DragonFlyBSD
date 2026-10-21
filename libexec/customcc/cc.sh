@@ -31,7 +31,7 @@
 # SUCH DAMAGE.
 #
 
-CNAME=$(basename $0)
+CNAME=${0##*/}
 
 # In order to improve the wrapper script efficiency, pre-determine these
 # variables at build time instead of at runtime.
