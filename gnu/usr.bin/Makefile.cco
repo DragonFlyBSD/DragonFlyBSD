@@ -4,11 +4,9 @@
 # hardlink a generic man pages for the selected primary compiler.
 # The same approach is used for the two sets of binutils
 
-CC_PRIMARY=	gcc80
-CC_BACKUP=	gcc120
+CC_PRIMARY=	gcc120
+CC_BACKUP=	gcc80
 
-.if defined(COMPVERSION)
-.if (${COMPVERSION} == ${CC_PRIMARY})
+.if defined(COMPVERSION) && ${COMPVERSION} == ${CC_PRIMARY}
 IS_PRIMARY=	1
-.endif
 .endif

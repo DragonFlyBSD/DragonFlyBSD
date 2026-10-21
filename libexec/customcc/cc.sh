@@ -39,6 +39,9 @@ INCPREFIX=@@INCPREFIX@@	# e.g., /
 MACHARCH=@@MACHARCH@@	# e.g., x86_64
 MACHREL=@@MACHREL@@	# e.g., 6.5
 
+CCVER_DEFAULT=gcc120
+CXXINC_DEFAULT="/usr/include/c++/12.0"
+
 . /etc/defaults/compilers.conf
 [ -f /etc/compilers.conf ] && . /etc/compilers.conf
 
@@ -50,7 +53,7 @@ case ${CNAME} in
 			COMPILER=${CUSTOM_GCC}
 			eval 'INCOPT=${'${CCVER}'_INCOPT}'
 		else
-			COMPILER=/usr/libexec/gcc80/gcc
+			COMPILER=/usr/libexec/${CCVER_DEFAULT}/gcc
 			INCOPT=${STD_INCOPT}
 		fi
 		;;
@@ -61,9 +64,9 @@ case ${CNAME} in
 			eval 'INCOPT=${'${CCVER}'_INCOPT}'
 			eval 'INCOPTCXX=${'${CCVER}'_INCOPTCXX}'
 		else
-			COMPILER=/usr/libexec/gcc80/g++
+			COMPILER=/usr/libexec/${CCVER_DEFAULT}/g++
 			INCOPT=${GCC_INCOPT}
-			INCOPTCXX="-isystem /usr/include/c++/8.0"
+			INCOPTCXX="-isystem ${CXXINC_DEFAULT}"
 		fi
 		;;
 	clang)
@@ -85,7 +88,7 @@ case ${CNAME} in
 		else
 			COMPILER=/usr/libexec/clangbase/clang++
 			INCOPT=${CLANG_INCOPT}
-			INCOPTCXX="-isystem /usr/include/c++/8.0"
+			INCOPTCXX="-isystem ${CXXINC_DEFAULT}"
 		fi
 		;;
 	cc)
@@ -134,7 +137,7 @@ case ${CNAME} in
 		if [ -n  "${CUSTOM_GCOV}" ]; then
 			exec ${CUSTOM_GCOV} "$@"
 		else
-			exec /usr/libexec/gcc80/gcov "$@"
+			exec /usr/libexec/${CCVER_DEFAULT}/gcov "$@"
 		fi
 		;;
 	*)

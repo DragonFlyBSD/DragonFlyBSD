@@ -21,15 +21,15 @@ SUBDIR+= gmp
 SUBDIR+= mpfr
 SUBDIR+= mpc
 
-# gcc80 is now the default, see sys.mk for WORLD_ALTCOMPILER default
+# gcc120 is now the default, see sys.mk for WORLD_ALTCOMPILER default
 #
-SUBDIR+= cc80
-_compiler_dir= cc80
+SUBDIR+= cc120
+_compiler_dir= cc120
 
 .if !defined(NO_ALTCOMPILER) && defined(WORLD_ALTCOMPILER)
-. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc120}
-SUBDIR+= cc120
-_altcompiler_dirs+= cc120
+. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc80}
+SUBDIR+= cc80
+_altcompiler_dirs+= cc80
 . endif
 .endif
 

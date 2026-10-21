@@ -36,7 +36,7 @@
 #include <unistd.h>
 
 #ifndef CCVER_DEFAULT
-#define CCVER_DEFAULT "gcc80"
+#define CCVER_DEFAULT "gcc120"
 #endif
 
 #ifndef BINUTILSVER_DEFAULT

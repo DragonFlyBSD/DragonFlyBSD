@@ -100,7 +100,7 @@ DESTDIRBASE:=		${OBJTREE}${.CURDIR}
 .MAKEFLAGS:=	${.MAKEFLAGS:NDESTDIR=*}
 
 # This section sets the tools used to build the world/kernel
-WORLD_CCVER?=		gcc80
+WORLD_CCVER?=		gcc120
 WORLD_LDVER?=		ld.bfd
 WORLD_BINUTILSVER?=	binutils234
 
@@ -1018,14 +1018,13 @@ _gcc80_cross= gnu/usr.bin/cc80
 _gcc120_cross= gnu/usr.bin/cc120
 _gcc_common_cross= lib/libz gnu/usr.bin/gmp gnu/usr.bin/mpfr gnu/usr.bin/mpc
 
+_basecompiler_cross= ${_gcc120_cross}
+
 .if !defined(NO_ALTCOMPILER) && defined(WORLD_ALTCOMPILER)
-. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc120}
-_altcompiler_cross+= ${_gcc120_cross}
+. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc80}
+_altcompiler_cross+= ${_gcc80_cross}
 . endif
 .endif
-
-# gcc80 is now the default compiler.
-_basecompiler_cross= ${_gcc80_cross}
 
 _custom_cross= libexec/customcc
 _binutils= gnu/usr.bin/${WORLD_BINUTILSVER}
@@ -1067,13 +1066,13 @@ hierarchy:
 #
 libraries:
 	cd ${.CURDIR}; \
-	    HOST_CCVER=${HOST_CCVER} CCVER=gcc80 \
-		make -f Makefile.inc1 _startup_libs80 -DSYSBUILD -DLIBGCC_ONLY;
-.if !defined(NO_ALTCOMPILER) && defined(WORLD_ALTCOMPILER)
-. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc120}
-	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc120 \
-		make -f Makefile.inc1 _startup_libs120 -DSYSBUILD -DLIBGCC_ONLY;
+		make -f Makefile.inc1 _startup_libs120 -DSYSBUILD -DLIBGCC_ONLY
+.if !defined(NO_ALTCOMPILER) && defined(WORLD_ALTCOMPILER)
+. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc80}
+	cd ${.CURDIR}; \
+	    HOST_CCVER=${HOST_CCVER} CCVER=gcc80 \
+		make -f Makefile.inc1 _startup_libs80 -DSYSBUILD -DLIBGCC_ONLY
 . endif
 .endif
 	cd ${.CURDIR}; \
@@ -1101,13 +1100,13 @@ _startup_libs120=	gnu/usr.bin/cc120/cc_prep \
 			gnu/lib/gcc120/libgcc_eh \
 			gnu/lib/gcc120/libgcc_pic
 
+_startup_libs_base=	_startup_libs120
+
 .if !defined(NO_ALTCOMPILER) && defined(WORLD_ALTCOMPILER)
-. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc120}
-_startup_libs_alt+=	_startup_libs120
+. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc80}
+_startup_libs_alt+=	_startup_libs80
 . endif
 .endif
-
-_startup_libs_base=	_startup_libs80
 
 _startup_libs=		lib/csu lib/libc lib/libc_rtld
 lib/libc__L: lib/csu__L
