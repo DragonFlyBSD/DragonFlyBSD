@@ -190,7 +190,7 @@ ParsePackageList(int n, char **ary, int debugstop)
 	 * Always include ports-mgmt/pkg.  s4 is "x" meaning not a manual
 	 * selection, "d" meaning DEBUGSTOP mode, or NULL.
 	 */
-	queuebulk("ports-mgmt", "pkg", NULL, "x");
+	queuebulk("ports-mgmt", "pkg", NULL, (debugstop ? "xd" : "x"));
 
 	for (i = 0; i < n; ++i) {
 		char *l1;
@@ -437,8 +437,11 @@ processPackageListBulk(int total)
 			*list_tail = bulk->list;
 			bulk->list = NULL;
 			while ((scan = *list_tail) != NULL) {
-				if (bulk->s4 == NULL || bulk->s4[0] != 'x')
+				if (bulk->s4 == NULL ||
+				    strchr(bulk->s4, 'x') == NULL)
+				{
 					scan->flags |= PKGF_MANUALSEL;
+				}
 				pkg_enter(scan);
 				list_tail = &scan->bnext;
 			}
@@ -1127,7 +1130,7 @@ childGetPackageInfo(bulk_t *bulk)
 	/*
 	 * DEBUGSTOP mode
 	 */
-	if (bulk->s4 && bulk->s4[0] == 'd')
+	if (bulk->s4 && strchr(bulk->s4, 'd') != NULL)
 		pkg->flags |= PKGF_DEBUGSTOP;
 
 	/*
