@@ -1039,8 +1039,8 @@ abortit:
 			ext2_dec_nlink(dp);
 			dp->i_flag |= IN_CHANGE;
 			dirbuf = malloc(dp->i_e2fs->e2fs_bsize, M_TEMP, M_WAITOK | M_ZERO);
-			error = vn_rdwr(UIO_READ, fvp, (caddr_t)&dirbuf,
-			    sizeof (struct dirtemplate), (off_t)0,
+			error = vn_rdwr(UIO_READ, fvp, (caddr_t)dirbuf,
+			    ip->i_e2fs->e2fs_bsize, (off_t)0,
 			    UIO_SYSSPACE, IO_NODELOCKED,
 			    tcnp->cn_cred, NULL);
 			if (error == 0) {
@@ -1071,8 +1071,8 @@ abortit:
 					ext2_dx_csum_set(ip,
 					    (struct ext2fs_direct_2 *)dirbuf);
 					vn_rdwr(UIO_WRITE, fvp,
-					    (caddr_t)&dirbuf,
-					    sizeof (struct dirtemplate),
+					    (caddr_t)dirbuf,
+					    ip->i_e2fs->e2fs_bsize,
 					    (off_t)0, UIO_SYSSPACE,
 					    IO_NODELOCKED | IO_SYNC,
 					    tcnp->cn_cred, NULL);
