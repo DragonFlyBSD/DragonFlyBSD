@@ -316,6 +316,13 @@ ext2_check_sb_compat(struct ext2fs *es, struct cdev *dev, int ronly)
 			printf("\n");
 			return (1);
 		}
+		if (!ronly && (le32toh(es->e2fs_features_incompat) &
+		    EXT2F_INCOMPAT_EXTENTS)) {
+			printf("WARNING: R/W mount of %s denied: write support "
+			    "for the extents feature is not implemented\n",
+			    devtoname(dev));
+			return (1);
+		}
 		mask = le32toh(es->e2fs_features_rocompat) & ~EXT2F_ROCOMPAT_SUPP;
 		if (!ronly && mask) {
 			printf("WARNING: R/W mount of %s denied due to "
@@ -811,7 +818,8 @@ ext2_reload(struct mount *mp)
 		return (error);
 	}
 	es = (struct ext2fs *)bp->b_data;
-	if (ext2_check_sb_compat(es, devvp->v_rdev, 0) != 0) {
+	if (ext2_check_sb_compat(es, devvp->v_rdev,
+	    (mp->mnt_flag & MNT_RDONLY) != 0) != 0) {
 		brelse(bp);
 		return (EIO);		/* XXX needs translation */
 	}
