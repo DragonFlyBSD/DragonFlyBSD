@@ -1083,9 +1083,19 @@ ext2_unmount(struct mount *mp, int mntflags)
 static int
 ext2_flushfiles(struct mount *mp, int flags)
 {
+	struct ext2mount *ump;
 	int error;
 
 	error = vflush(mp, 0, flags);
+	if (error)
+		return (error);
+
+	ump = VFSTOEXT2(mp);
+	if (ump->um_e2fs->e2fs_ronly == 0) {
+		vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY);
+		error = VOP_FSYNC(ump->um_devvp, MNT_WAIT, 0);
+		vn_unlock(ump->um_devvp);
+	}
 	return (error);
 }
 
