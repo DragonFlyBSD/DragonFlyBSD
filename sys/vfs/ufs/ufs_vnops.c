@@ -1225,6 +1225,7 @@ bad:
 		vput(ITOV(xp));
 	vput(ITOV(dp));
 out:
+	vrele(fdvp);
 	if (doingdirectory)
 		ip->i_flag &= ~IN_RENAME;
 	if (vn_lock(fvp, LK_EXCLUSIVE | LK_FAILRECLAIM) == 0) {
