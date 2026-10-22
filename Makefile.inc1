@@ -106,7 +106,6 @@ WORLD_BINUTILSVER?=	binutils234
 
 .if !defined(NO_BACKUP)
 # Set the backup parameters if they are not already defined
-#
 WORLD_BACKUP?=		/var/backups/world_backup
 AUTO_BACKUP?=		${OBJTREE}/world_backup/${DESTDIR}
 .endif
@@ -119,12 +118,6 @@ TARGET?=	${TARGET_ARCH}
 .endif
 .if make(buildworld)
 BUILD_ARCH!=	sysctl -n hw.machine_arch
-
-# temporary until everybody has converted to x86_64
-.if ${BUILD_ARCH} == "amd64"
-BUILD_ARCH=	x86_64
-.endif
-
 .if ${MACHINE_ARCH} != ${BUILD_ARCH}
 .error To cross-build, set TARGET_ARCH.
 .endif
@@ -490,9 +483,12 @@ buildports: umountports mountports
 #	we are installing relative to the real root and not the chroot.
 #
 installports: umountports mountports
-	cd ${WORLDDEST} && tar xvzpf ${WORLDDEST}/chroot/build/synth/live_packages/All/pkg-*.pkg > /dev/null 2>&1
-	cat ${.CURDIR}/dports.base/pkg.conf | sed -e 's#/build#${WORLDDEST}/chroot/build#' > ${WORLDDEST}/chroot/build/pkg.conf
-	${WORLDDEST}/usr/local/sbin/pkg-static --rootdir ${DESTDIR}/ -R ${WORLDDEST}/chroot/build install -y dragonfly-base
+	cd ${WORLDDEST} && \
+		tar xzpf ${WORLDDEST}/chroot/build/synth/live_packages/All/pkg-*.pkg
+	cat ${.CURDIR}/dports.base/pkg.conf | \
+		sed -e 's#/build#${WORLDDEST}/chroot/build#' > ${WORLDDEST}/chroot/build/pkg.conf
+	${WORLDDEST}/usr/local/sbin/pkg-static --rootdir ${DESTDIR}/ \
+		-R ${WORLDDEST}/chroot/build install -y dragonfly-base
 	@(cd ${.CURDIR}; ${MAKE} umountports)
 
 .ORDER: build-all install-all
@@ -1029,12 +1025,12 @@ _altcompiler_cross+= ${_gcc80_cross}
 _custom_cross= libexec/customcc
 _binutils= gnu/usr.bin/${WORLD_BINUTILSVER}
 
-CTOOLSDIRS= usr.bin/objformat
-
+CTOOLSDIRS=	usr.bin/objformat
 CTOOLSDIRS+=	${_binutils} \
 		${_gcc_common_cross} \
+		${_basecompiler_cross} \
 		${_altcompiler_cross} \
-		${_basecompiler_cross} ${_custom_cross}
+		${_custom_cross}
 
 cross-tools: cross-tools-targets
 	touch ${CTOOLSDEST}/.cross_done
@@ -1055,7 +1051,7 @@ ctools-${_tool}!
 # hierarchy - ensure that all the needed directories are present
 #
 hierarchy:
-	cd ${.CURDIR}/etc;		make distrib-dirs
+	cd ${.CURDIR}/etc; make distrib-dirs
 
 #
 # libraries - build all libraries, and install them under ${DESTDIR}.
@@ -1113,14 +1109,8 @@ lib/libc__L: lib/csu__L
 
 _prebuild_libs=		lib/libbz2 lib/liblzma lib/libz lib/libzstd
 _prebuild_libs+=	lib/libutil
-
 _prebuild_libs+=	lib/libpcap
-
-_generic_libs=	gnu/lib
-
 _prebuild_libs+=	lib/libcrypt lib/libncurses/libncurses
-
-_generic_libs+=	lib
 
 _prebuild_libs+=	lib/librecrypto lib/libressl
 lib/libressl__L: lib/librecrypto__L
@@ -1131,7 +1121,9 @@ lib/libldns__L: lib/librecrypto__L
 _prebuild_libs+=	lib/libsbuf lib/libm \
 			lib/libpam/libpam lib/libypclnt lib/libprop
 
-_generic_libs+=	usr.bin/flex/lib
+_generic_libs=		gnu/lib
+_generic_libs+=		lib
+_generic_libs+=		usr.bin/flex/lib
 
 .for _alib in ${_startup_libs_alt} ${_startup_libs_base}
 __startup_alibs+= ${${_alib}}
