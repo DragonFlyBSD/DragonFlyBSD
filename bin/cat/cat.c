@@ -29,25 +29,17 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cat.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/bin/cat/cat.c,v 1.14.2.8 2002/06/29 05:09:26 tjr Exp $
- * $DragonFly: src/bin/cat/cat.c,v 1.16 2007/02/04 21:06:34 pavalos Exp $
  */
 
 #include <sys/param.h>
 #include <sys/stat.h>
-#ifndef NO_UDOM_SUPPORT
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <errno.h>
-#endif
 
 #include <ctype.h>
 #include <err.h>
 #include <fcntl.h>
 #include <locale.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,10 +51,6 @@ static const char *filename;
 static void	scanfiles(char **, int);
 static void	cook_cat(FILE *);
 static void	raw_cat(int);
-
-#ifndef NO_UDOM_SUPPORT
-static int	udom_open(const char *, int);
-#endif
 
 static void
 usage(void)
@@ -135,10 +123,6 @@ scanfiles(char **argv, int cooked)
 		} else {
 			filename = path;
 			fd = open(path, O_RDONLY);
-#ifndef NO_UDOM_SUPPORT
-			if (fd < 0 && errno == EOPNOTSUPP)
-				fd = udom_open(path, O_RDONLY);
-#endif
 		}
 		if (fd < 0) {
 			warn("%s", path);
@@ -276,55 +260,3 @@ raw_cat(int rfd)
 		rval = 1;
 	}
 }
-
-#ifndef NO_UDOM_SUPPORT
-
-static int
-udom_open(const char *path, int flags)
-{
-	struct sockaddr_un sou;
-	int fd;
-	unsigned int len;
-
-	bzero(&sou, sizeof(sou));
-
-	/*
-	 * Construct the unix domain socket address and attempt to connect
-	 */
-	fd = socket(AF_UNIX, SOCK_STREAM, 0);
-	if (fd >= 0) {
-		sou.sun_family = AF_UNIX;
-		if ((len = strlcpy(sou.sun_path, path,
-		    sizeof(sou.sun_path))) >= sizeof(sou.sun_path)) {
-			errno = ENAMETOOLONG;
-			return (-1);
-		}
-		len = offsetof(struct sockaddr_un, sun_path[len+1]);
-
-		if (connect(fd, (void *)&sou, len) < 0) {
-			close(fd);
-			fd = -1;
-		}
-	}
-
-	/*
-	 * handle the open flags by shutting down appropriate directions
-	 */
-	if (fd >= 0) {
-		switch (flags & O_ACCMODE) {
-		case O_RDONLY:
-			if (shutdown(fd, SHUT_WR) == -1)
-				warn(NULL);
-			break;
-		case O_WRONLY:
-			if (shutdown(fd, SHUT_RD) == -1)
-				warn(NULL);
-			break;
-		default:
-			break;
-		}
-	}
-	return(fd);
-}
-
-#endif

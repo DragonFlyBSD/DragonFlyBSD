@@ -32,7 +32,7 @@
 .\"     @(#)cat.1	8.3 (Berkeley) 5/2/95
 .\" $FreeBSD: src/bin/cat/cat.1,v 1.27 2006/12/23 09:25:23 ru Exp $
 .\"
-.Dd June 20, 2020
+.Dd October 21, 2026
 .Dt CAT 1
 .Os
 .Sh NAME
@@ -56,18 +56,6 @@ is a single dash
 or absent,
 .Nm
 reads from the standard input.
-If
-.Ar file
-is a
-.Ux
-domain socket,
-.Nm
-connects to it and then reads it until
-.Dv EOF .
-This complements the
-.Ux
-domain binding capability available in
-.Xr inetd 8 .
 .Pp
 The options are as follows:
 .Bl -tag -width indent
