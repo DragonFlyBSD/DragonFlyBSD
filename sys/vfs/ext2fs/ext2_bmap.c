@@ -53,6 +53,7 @@
 #include <vfs/ext2fs/ext2fs.h>
 #include <vfs/ext2fs/ext2_dinode.h>
 #include <vfs/ext2fs/ext2_extern.h>
+#include <vfs/ext2fs/ext2_extents.h>
 #include <vfs/ext2fs/ext2_mount.h>
 
 /*
@@ -105,9 +106,77 @@ ext2_bmap(struct vop_bmap_args *ap)
  * on the disk within ext4 extents.
  */
 int
-ext4_bmapext(struct vnode *vp, int32_t bn, daddr_t/*int64_t*/ *bnp, int *runp, int *runb)
+ext4_bmapext(struct vnode *vp, e2fs_lbn_t bn, daddr_t *bnp, int *runp,
+    int *runb)
 {
-	return (EINVAL);
+	struct inode *ip;
+	struct m_ext2fs *fs;
+	struct mount *mp;
+	struct ext2mount *ump;
+	struct ext4_extent_header *ehp;
+	struct ext4_extent *ep;
+	struct ext4_extent_path *path = NULL;
+	daddr_t lbn;
+	uint32_t e_len;
+	int error, depth, maxrun = 0, bsize, uninit;
+
+	ip = VTOI(vp);
+	fs = ip->i_e2fs;
+	mp = vp->v_mount;
+	ump = VFSTOEXT2(mp);
+	lbn = bn;
+	ehp = (struct ext4_extent_header *)ip->i_data;
+	depth = le16toh(ehp->eh_depth);
+	bsize = EXT2_BLOCK_SIZE(ump->um_e2fs);
+
+	*bnp = -1;
+	if (runp != NULL) {
+		maxrun = mp->mnt_iosize_max / bsize - 1;
+		*runp = 0;
+	}
+	if (runb != NULL)
+		*runb = 0;
+
+	error = ext4_ext_find_extent(ip, lbn, &path);
+	if (error)
+		return (error);
+
+	ep = path[depth].ep_ext;
+	if (ep) {
+		e_len = le16toh(ep->e_len);
+		uninit = e_len > EXT_INIT_MAX_LEN;
+		if (uninit)
+			e_len -= EXT_INIT_MAX_LEN;
+		if (lbn < le32toh(ep->e_blk)) {
+			if (runp != NULL) {
+				*runp = min(maxrun,
+				    le32toh(ep->e_blk) - lbn - 1);
+			}
+		} else if (le32toh(ep->e_blk) <= lbn &&
+			    lbn < le32toh(ep->e_blk) + e_len) {
+			if (!uninit) {
+				*bnp = fsbtodb(fs, lbn - le32toh(ep->e_blk) +
+				    (le32toh(ep->e_start_lo) |
+				    (e4fs_daddr_t)le16toh(ep->e_start_hi)
+				    << 32));
+			}
+			if (runp != NULL) {
+				*runp = min(maxrun,
+				    e_len -
+				    (lbn - le32toh(ep->e_blk)) - 1);
+			}
+			if (runb != NULL)
+				*runb = min(maxrun, lbn - le32toh(ep->e_blk));
+		} else {
+			if (runb != NULL)
+				*runb = min(maxrun, le32toh(ep->e_blk) + lbn -
+				    e_len);
+		}
+	}
+
+	ext4_ext_path_free(path);
+
+	return (error);
 }
 
 static int
