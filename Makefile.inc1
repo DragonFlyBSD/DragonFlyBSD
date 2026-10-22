@@ -99,11 +99,6 @@ DESTDIRBASE:=		${OBJTREE}${.CURDIR}
 # anyhow, and we need to be able to override it for stage installs
 .MAKEFLAGS:=	${.MAKEFLAGS:NDESTDIR=*}
 
-# This section sets the tools used to build the world/kernel
-WORLD_CCVER?=		gcc120
-WORLD_LDVER?=		ld.bfd
-WORLD_BINUTILSVER?=	binutils234
-
 .if !defined(NO_BACKUP)
 # Set the backup parameters if they are not already defined
 WORLD_BACKUP?=		/var/backups/world_backup
@@ -131,6 +126,30 @@ TARGET_PLATFORM= pc64
 .error Unknown target architecture.
 .endif
 .endif
+
+# Make sure Makefile.inc1 logic is intact.
+# See sys.mk for WORLD_ALTCOMPILER default.
+.if !defined(WORLD_ALTCOMPILER)
+.error undefined WORLD_ALTCOMPILER
+.endif
+
+_default_compiler=	gcc120
+_alt_compilers=		gcc80
+
+# List of compilers to build.
+_build_compilers=	${_default_compiler}
+.if !defined(NO_ALTCOMPILER)
+. for _cc in ${_alt_compilers}
+.  if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:M${_cc}}
+_build_compilers+=	${_cc}
+.  endif
+. endfor
+.endif
+
+# This section sets the tools used to build the world/kernel
+WORLD_CCVER?=		${_default_compiler}
+WORLD_LDVER?=		ld.bfd
+WORLD_BINUTILSVER?=	binutils234
 
 # BTOOLS	(Natively built) All non-cross-development tools that the
 #		main build needs.  This includes things like 'mkdir' and 'rm'.
@@ -1004,33 +1023,23 @@ bstrap-${_tool}!
 # cross-tools: Build cross-building tools
 #
 
-# Make sure Makefile.inc1 logic is intact.
-# See sys.mk for WORLD_ALTCOMPILER default.
-.if !defined(WORLD_ALTCOMPILER)
-.warning undefined WORLD_ALTCOMPILER
-.endif
+_cross_gcc80=	gnu/usr.bin/cc80
+_cross_gcc120=	gnu/usr.bin/cc120
 
-_gcc80_cross= gnu/usr.bin/cc80
-_gcc120_cross= gnu/usr.bin/cc120
-_gcc_common_cross= lib/libz gnu/usr.bin/gmp gnu/usr.bin/mpfr gnu/usr.bin/mpc
+# Common libraries required by compilers.
+_cross_ccreqs=	lib/libz \
+		gnu/usr.bin/gmp \
+		gnu/usr.bin/mpfr \
+		gnu/usr.bin/mpc
 
-_basecompiler_cross= ${_gcc120_cross}
+CTOOLSDIRS=	usr.bin/objformat \
+		libexec/customcc \
+		gnu/usr.bin/${WORLD_BINUTILSVER}
 
-.if !defined(NO_ALTCOMPILER) && defined(WORLD_ALTCOMPILER)
-. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc80}
-_altcompiler_cross+= ${_gcc80_cross}
-. endif
-.endif
-
-_custom_cross= libexec/customcc
-_binutils= gnu/usr.bin/${WORLD_BINUTILSVER}
-
-CTOOLSDIRS=	usr.bin/objformat
-CTOOLSDIRS+=	${_binutils} \
-		${_gcc_common_cross} \
-		${_basecompiler_cross} \
-		${_altcompiler_cross} \
-		${_custom_cross}
+CTOOLSDIRS+=	${_cross_ccreqs}
+.for _cc in ${_build_compilers}
+CTOOLSDIRS+=	${_cross_${_cc}}
+.endfor
 
 cross-tools: cross-tools-targets
 	touch ${CTOOLSDEST}/.cross_done
@@ -1061,16 +1070,11 @@ hierarchy:
 # ${.CURDIR}/tools/make_libdeps.sh script.
 #
 libraries:
+.for _cc in ${_build_compilers}
 	cd ${.CURDIR}; \
-	    HOST_CCVER=${HOST_CCVER} CCVER=gcc120 \
-		make -f Makefile.inc1 _startup_libs120 -DSYSBUILD -DLIBGCC_ONLY
-.if !defined(NO_ALTCOMPILER) && defined(WORLD_ALTCOMPILER)
-. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc80}
-	cd ${.CURDIR}; \
-	    HOST_CCVER=${HOST_CCVER} CCVER=gcc80 \
-		make -f Makefile.inc1 _startup_libs80 -DSYSBUILD -DLIBGCC_ONLY
-. endif
-.endif
+	    HOST_CCVER=${HOST_CCVER} CCVER=${_cc} \
+		make -f Makefile.inc1 _compiler_libs_${_cc} -DSYSBUILD -DLIBGCC_ONLY
+.endfor
 	cd ${.CURDIR}; \
 	    make -f Makefile.inc1 _startup_libs -DSYSBUILD && \
 	    make -f Makefile.inc1 _prebuild_libs -DSYSBUILD && \
@@ -1080,57 +1084,51 @@ libraries:
 # These dependencies are not automatically generated:
 #
 # gnu/lib/${CCVER}/libgcc and gnu/lib/${CCVER}/csu must be built before all
-# shared libraries for ELF.  The target for _startup_libsXX is
-# specifically built using gccXX.
+# shared libraries.  The target for _compiler_libs_${CCVER} is specifically
+# built using ${CCVER}.
 #
-_startup_libs80=	gnu/usr.bin/cc80/cc_prep \
+_compiler_libs_gcc80=	gnu/usr.bin/cc80/cc_prep \
 			gnu/usr.bin/cc80/cc_tools \
 			gnu/lib/gcc80/csu \
 			gnu/lib/gcc80/libgcc \
 			gnu/lib/gcc80/libgcc_eh \
 			gnu/lib/gcc80/libgcc_pic
-_startup_libs120=	gnu/usr.bin/cc120/cc_prep \
+_compiler_libs_gcc120=	gnu/usr.bin/cc120/cc_prep \
 			gnu/usr.bin/cc120/cc_tools \
 			gnu/lib/gcc120/csu \
 			gnu/lib/gcc120/libgcc \
 			gnu/lib/gcc120/libgcc_eh \
 			gnu/lib/gcc120/libgcc_pic
 
-_startup_libs_base=	_startup_libs120
-
-.if !defined(NO_ALTCOMPILER) && defined(WORLD_ALTCOMPILER)
-. if ${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc80}
-_startup_libs_alt+=	_startup_libs80
-. endif
-.endif
+.for _cc in ${_build_compilers}
+_compiler_libs+=	${_compiler_libs_${_cc}}
+_compiler_libs_${_cc}: ${_compiler_libs_${_cc}:S/$/__L/}
+# Order the compiler libraries because there are inter-library races
+# (e.g., generation of tconfig.h).
+.ORDER: ${_compiler_libs_${_cc}:S/$/__L/}
+.endfor
 
 _startup_libs=		lib/csu lib/libc lib/libc_rtld
-lib/libc__L: lib/csu__L
 
 _prebuild_libs=		lib/libbz2 lib/liblzma lib/libz lib/libzstd
 _prebuild_libs+=	lib/libutil
 _prebuild_libs+=	lib/libpcap
 _prebuild_libs+=	lib/libcrypt lib/libncurses/libncurses
-
 _prebuild_libs+=	lib/librecrypto lib/libressl
-lib/libressl__L: lib/librecrypto__L
-
 _prebuild_libs+=	lib/libldns
-lib/libldns__L: lib/librecrypto__L
-
-_prebuild_libs+=	lib/libsbuf lib/libm \
-			lib/libpam/libpam lib/libypclnt lib/libprop
+_prebuild_libs+=	lib/libsbuf lib/libm
+_prebuild_libs+=	lib/libpam/libpam lib/libypclnt lib/libprop
 
 _generic_libs=		gnu/lib
 _generic_libs+=		lib
 _generic_libs+=		usr.bin/flex/lib
 
-.for _alib in ${_startup_libs_alt} ${_startup_libs_base}
-__startup_alibs+= ${${_alib}}
-.endfor
+# Explicit dependencies
+lib/libc__L: lib/csu__L
+lib/libressl__L: lib/librecrypto__L
+lib/libldns__L: lib/librecrypto__L
 
-.for _lib in ${__startup_alibs} \
-		${_startup_libs} ${_prebuild_libs} ${_generic_libs}
+.for _lib in ${_compiler_libs} ${_startup_libs} ${_prebuild_libs} ${_generic_libs}
 ${_lib}__L: .PHONY
 .if exists(${.CURDIR}/${_lib})
 	@${ECHODIR} "===> ${_lib}"; \
@@ -1148,18 +1146,8 @@ ${_lib}__L: .PHONY
 .endfor
 
 _startup_libs: ${_startup_libs:S/$/__L/}
-.for _alib in ${_startup_libs_alt} ${_startup_libs_base}
-${_alib}: ${${_alib}:C/$/__L/}
-.endfor
 _prebuild_libs: ${_prebuild_libs:S/$/__L/}
 _generic_libs: ${_generic_libs:S/$/__L/}
-
-# library targets must be ordered because there are inter-library
-# races (e.g. generation of tconfig.h)
-#
-.for _alib in ${_startup_libs_base} ${_startup_libs_alt}
-.ORDER: ${${_alib}:C/$/__L/}
-.endfor
 
 # uncomment if there are missing dependencies
 .if 0
