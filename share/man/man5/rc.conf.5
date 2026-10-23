@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd December 3, 2024
+.Dd October 23, 2026
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -1145,9 +1145,12 @@ will be mounted at
 .Pa /tmp .
 .It Va syslogd_enable
 .Pq Vt bool
-If set to
-.Dq Li YES ,
-run the
+Set to
+.Dq Li YES
+by default.
+Setting this to
+.Dq Li NO
+disables the
 .Xr syslogd 8
 daemon.
 .It Va syslogd_program
@@ -1408,9 +1411,12 @@ is set to
 .Dq Li YES .
 .It Va dntpd_enable
 .Pq Vt bool
-If set to
-.Dq Li YES ,
-run
+Set to
+.Dq Li YES
+by default.
+Setting this to
+.Dq Li NO
+disables running
 .Xr dntpd 8
 at system boot time.
 .It Va dntpd_program
