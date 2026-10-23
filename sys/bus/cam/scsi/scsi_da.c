@@ -500,13 +500,11 @@ daopen(struct dev_open_args *ap)
 
 	unit = dkunit(dev);
 	periph = cam_extend_get(daperiphs, unit);
-	if (periph == NULL) {
+	if (periph == NULL)
 		return (ENXIO);	
-	}
 
-	if (cam_periph_acquire(periph) != CAM_REQ_CMP) {
+	if (cam_periph_acquire(periph) != CAM_REQ_CMP)
 		return(ENXIO);
-	}
 
 	cam_periph_lock(periph);
 	if ((error = cam_periph_hold(periph, PCATCH)) != 0) {
@@ -1031,9 +1029,8 @@ dasysctlinit(void *context, int pending)
 	char tmpstr[80], tmpstr2[80];
 
 	periph = (struct cam_periph *)context;
-	if (cam_periph_acquire(periph) != CAM_REQ_CMP) {
+	if (cam_periph_acquire(periph) != CAM_REQ_CMP)
 		return;
-	}
 
 	softc = (struct da_softc *)periph->softc;
 	ksnprintf(tmpstr, sizeof(tmpstr),
@@ -1086,8 +1083,7 @@ dacmdsizesysctl(SYSCTL_HANDLER_ARGS)
 
 	error = sysctl_handle_int(oidp, &value, 0, req);
 
-	if ((error != 0)
-	 || (req->newptr == NULL))
+	if ((error != 0) || (req->newptr == NULL))
 		return (error);
 
 	/*
@@ -1306,22 +1302,23 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 					  periph_links.sle);
 			periph->immediate_priority = CAM_PRIORITY_NONE;
 			wakeup(&periph->ccb_list);
-			if (bio_rd || bio_wr) {
-				/*
-				 * Have more work to do, so ensure we stay
-				 * scheduled
-				 */
-				xpt_schedule(periph, /* XXX priority */1);
-			}
-			break;
+			goto check_bioq_reschedule;
 		}
 
 		/* Run the trim command if not already running */
 		if (!softc->trim_running &&
-		   (bio = bioq_first(&softc->bio_queue_trim)) != NULL) {
+		   (bio = bioq_first(&softc->bio_queue_trim)) != NULL)
+		{
 			struct trim_request *req = &softc->trim_req;
 			struct bio *bio1;
 			int bps = 0, ranges = 0;
+
+#if 0
+			kprintf("TRIM (struct da_softc *)%p "
+				"(struct cam_periph *)%p\n",
+				softc,
+				periph);
+#endif
 
 			softc->trim_running = 1;
 			bzero(req, sizeof(*req));
@@ -1358,9 +1355,10 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 				if (bio1 == NULL ||
 				    bio1->bio_buf->b_bcount / softc->params.secsize >
 				    (softc->trim_max_ranges - ranges) * 0xffff)
+				{
 					break;
+				}
 			}
-
 
 			cam_fill_csio(&start_ccb->csio,
 			    1/*retries*/,
@@ -1380,8 +1378,7 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 			start_ccb->ccb_h.ccb_bio = bio;
 			devstat_start_transaction(&softc->device_stats);
 			xpt_action(start_ccb);
-			xpt_schedule(periph, 1);
-			break;
+			goto check_bioq_reschedule;
 		}
 
 		/*
@@ -1421,10 +1418,12 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 		    periph->sim->max_tagged_dev_openings >= 8 &&
 		    (bio_rd || softc->outstanding_cmds_rd) &&
 		    (bio_wr || softc->outstanding_cmds_wr) &&
-		    softc->tps_rd * 100 < softc->tps_wr * da_balance_ratio) {
+		    softc->tps_rd * 100 < softc->tps_wr * da_balance_ratio)
+		{
 			wr_limit = 0;
 		} else if (bio_rd == NULL && softc->outstanding_cmds_rd == 0 &&
-			   softc->tps_rd < softc->tps_wr * 2) {
+			   softc->tps_rd < softc->tps_wr * 2)
+	        {
 			softc->tps_rd += 100;
 		}
 		if (softc->tps_ticks != ticks) {
@@ -1457,12 +1456,18 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 			bioq_remove(&softc->bio_queue_wr, bio);
 			softc->tps_wr += 100;
 		} else {
+			/*
+			 * Can't schedule reads and/or writes.  Only
+			 * reschedule immediately if there is a TRIM
+			 * pending (endless loop if we also check rd/wr
+			 * here).
+			 */
 			if (bio_rd)
 				softc->flags |= DA_FLAG_RD_LIMIT;
 			if (bio_wr)
 				softc->flags |= DA_FLAG_WR_LIMIT;
 			xpt_release_ccb(start_ccb);
-			break;
+			goto check_bioq_reschedule_trim;
 		}
 
 		/*
@@ -1527,6 +1532,7 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 				start_ccb->csio.ccb_h.func_code = XPT_TRIM;
 				break;
 			}
+			/* fall through */
 		default:
 			xpt_release_ccb(start_ccb);
 			start_ccb = NULL;
@@ -1545,7 +1551,7 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 			if (bp->b_cmd == BUF_CMD_WRITE ||
 			    bp->b_cmd == BUF_CMD_FLUSH) {
 				++softc->outstanding_cmds_wr;
-			} else {
+			} else if (bp->b_cmd == BUF_CMD_READ) {
 				++softc->outstanding_cmds_rd;
 			}
 
@@ -1562,10 +1568,17 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 		/*
 		 * Be sure we stay scheduled if we have more work to do.
 		 */
+check_bioq_reschedule:
 		if (bioq_first(&softc->bio_queue_rd) ||
-		    bioq_first(&softc->bio_queue_wr)) {
+		    bioq_first(&softc->bio_queue_wr))
+		{
+			xpt_schedule(periph, 1);
+		} else {
+check_bioq_reschedule_trim:
+		    if (bioq_first(&softc->bio_queue_trim))
 			xpt_schedule(periph, 1);
 		}
+
 		break;
 	}
 	case DA_STATE_PROBE:
@@ -1627,7 +1640,9 @@ cmd6workaround(union ccb *ccb)
 	/* Translation only possible if CDB is an array and cmd is R/W6 */
 	if ((ccb->ccb_h.flags & CAM_CDB_POINTER) != 0 ||
 	    (*cdb != READ_6 && *cdb != WRITE_6))
+	{
 		return 0;
+	}
 
 	xpt_print(ccb->ccb_h.path, "READ(6)/WRITE(6) not supported, "
 	    "increasing minimum_cmd_size to 10.\n");
@@ -1756,10 +1771,11 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 				softc->flags &= ~DA_FLAG_WR_LIMIT;
 				mustsched = 1;
 			}
-		} else {
+		} else if (bp->b_cmd == BUF_CMD_READ) {
 			--softc->outstanding_cmds_rd;
 			if (softc->flags &
-			    (DA_FLAG_RD_LIMIT | DA_FLAG_WR_LIMIT)) {
+			    (DA_FLAG_RD_LIMIT | DA_FLAG_WR_LIMIT))
+			{
 				softc->flags &=
 					~(DA_FLAG_RD_LIMIT | DA_FLAG_WR_LIMIT);
 				mustsched = 1;
@@ -1768,13 +1784,15 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 
 		devstat_end_transaction_buf(&softc->device_stats, bp);
 		if ((csio->ccb_h.ccb_state & DA_CCB_TYPE_MASK) ==
-		    DA_CCB_TRIM) {
+		    DA_CCB_TRIM)
+		{
 			struct trim_request *req =
 			    (struct trim_request *) csio->data_ptr;
 			int i;
 
 			for (i = 1; i < softc->trim_max_ranges &&
-			    req->bios[i]; i++) {
+			    req->bios[i]; i++)
+			{
 				struct bio *bp1 = req->bios[i];
 
 				bp1->bio_buf->b_resid = bp->b_resid;
@@ -1786,8 +1804,9 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 			softc->trim_running = 0;
 			biodone(bio);
 			xpt_schedule(periph,1);
-		} else
+		} else {
 			biodone(bio);
+		}
 
 
 		if (mustsched)
@@ -2071,7 +2090,8 @@ daprevent(struct cam_periph *periph, int action)
 	if (((action == PR_ALLOW)
 	  && (softc->flags & DA_FLAG_PACK_LOCKED) == 0)
 	 || ((action == PR_PREVENT)
-	  && (softc->flags & DA_FLAG_PACK_LOCKED) != 0)) {
+	  && (softc->flags & DA_FLAG_PACK_LOCKED) != 0))
+        {
 		return;
 	}
 
