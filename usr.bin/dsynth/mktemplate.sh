@@ -30,7 +30,7 @@ mkdir -p $template
 mkdir -m 1777 -p $template/tmp
 mkdir -m 1777 -p $template/var/tmp
 mkdir -p $template/etc
-cp -Rp $sysbase/etc/. $template/etc
+cp -Rpx $sysbase/etc/. $template/etc
 
 foreach i ( `(cd $sysbase; find /var -type d)` )
 	mkdir -p $template/$i
