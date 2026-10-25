@@ -230,9 +230,16 @@ tmpfs_nmknod(struct vop_nmknod_args *ap)
 	struct ucred *cred = ap->a_cred;
 	int error;
 
-	if (vap->va_type != VBLK && vap->va_type != VCHR &&
-	    vap->va_type != VFIFO) {
-		return (EINVAL);
+	switch (vap->va_type) {
+	case VBLK:
+	case VCHR:
+	    if (vap->va_rmajor == VNOVAL)
+		return EINVAL;
+	    break;
+	case VFIFO:
+	    break;
+	default:
+	    return EINVAL;
 	}
 
 	error = tmpfs_alloc_file(dvp, vpp, vap, ncp, cred, NULL);
