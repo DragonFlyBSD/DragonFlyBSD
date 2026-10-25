@@ -383,10 +383,17 @@ KCFLAGS+= -include ${SYSDIR}/dev/drm/kconfig.h
 .include <bsd.kmod.mk>
 
 # Code require double precision floating-point instructions.
-# Note: '-mpreferred-stack-boundary=4' is omitted as it's the default for us.
+#
+# NOTE: '-mpreferred-stack-boundary=3' is required because our kernel stack is
+# only 8-byte aligned (the trap frame is TF_SIZE = 200 bytes, so C code is
+# entered with %rsp 8 bytes off the 16-byte ABI boundary).  Without this, GCC
+# emits 16-byte aligned SSE spills (e.g. 'movaps %xmm0,-176(%rbp)') for the
+# zero-initialized locals of these sources, which take a #GP in kernel mode.
+# Tell GCC about the real alignment so it realigns the stack where needed.
 sse2_objects=	dcn_calcs.o dcn_calc_auto.o dcn_calc_math.o \
 		dml_common_defs.o dml1_display_rq_dlg_calc.o
 .for F in ${sse2_objects}
 ${F}:
-	${CC} ${CFLAGS} ${KCFLAGS} -mhard-float -msse -msse2 -c ${.IMPSRC}
+	${CC} ${CFLAGS} ${KCFLAGS} -mhard-float -msse -msse2 \
+	    -mpreferred-stack-boundary=3 -c ${.IMPSRC}
 .endfor
