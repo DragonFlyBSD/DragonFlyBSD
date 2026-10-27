@@ -2054,10 +2054,13 @@ sysctl_kern_proc_cwd(SYSCTL_HANDLER_ARGS)
 
 	if (p->p_fd != NULL && p->p_fd->fd_ncdir.ncp) {
 		struct nchandle nch;
+		struct nchandle rdir;
 
 		cache_copy(&p->p_fd->fd_ncdir, &nch);
-		error = cache_fullpath(p, &nch, NULL,
+		cache_copy(&p->p_fd->fd_nrdir, &rdir);
+		error = cache_fullpath(p, &nch, &rdir,
 				       &fullpath, &freepath, 0);
+		cache_drop(&rdir);
 		cache_drop(&nch);
 		if (error)
 			goto done;
@@ -2086,6 +2089,7 @@ sysctl_kern_proc_pathname(SYSCTL_HANDLER_ARGS)
 	char *retbuf, *freebuf;
 	int error = 0;
 	struct nchandle nch;
+	struct nchandle rdir;
 
 	if (arglen != 1)
 		return (EINVAL);
@@ -2097,9 +2101,16 @@ sysctl_kern_proc_pathname(SYSCTL_HANDLER_ARGS)
 			return (ESRCH);
 	}
 	lwkt_gettoken_shared(&p->p_token);	/* deal with exit race */
-	if (p->p_textnch.ncp) {
+	/*
+	 * exit1() clears p_fd well before it drops p_textnch.  Reference
+	 * the root directory while the token is still held, because
+	 * cache_fullpath() can block before it would read p->p_fd.
+	 */
+	if (p->p_textnch.ncp && p->p_fd) {
 		cache_copy(&p->p_textnch, &nch);
-		error = cache_fullpath(p, &nch, NULL, &retbuf, &freebuf, 0);
+		cache_copy(&p->p_fd->fd_nrdir, &rdir);
+		error = cache_fullpath(p, &nch, &rdir, &retbuf, &freebuf, 0);
+		cache_drop(&rdir);
 		cache_drop(&nch);
 	} else {
 		error = EINVAL;
