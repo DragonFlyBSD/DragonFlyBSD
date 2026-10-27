@@ -934,8 +934,7 @@ trap_fatal(struct trapframe *frame, int usermode, vm_offset_t eva)
 	kprintf("current process		= ");
 	if (curproc) {
 		kprintf("%lu (%s)\n",
-		    (u_long)curproc->p_pid, curproc->p_comm ?
-		    curproc->p_comm : "");
+		    (u_long)curproc->p_pid, curproc->p_comm);
 	} else {
 		kprintf("Idle\n");
 	}
