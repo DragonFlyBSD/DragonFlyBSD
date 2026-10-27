@@ -12,6 +12,16 @@
 +         UPGRADING DRAGONFLY FROM 6.4 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+PXE BOOTS NO LONGER ASSUME AN NFS ROOT PATH
+-------------------------------------------
+
+When the DHCP/PXE server does not provide a root path (option 17), the
+loader used to invent "/pxeroot".  It now leaves the root path empty and
+does not export "boot.nfsroot.server" or "boot.nfsroot.path" at all.
+
+A PXE setup that relied on the implicit "/pxeroot" NFS root must now
+provide a root path from the server (option root-path).
+
 AESNI DRIVER REMOVED
 --------------------
 
