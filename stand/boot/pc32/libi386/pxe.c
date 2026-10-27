@@ -279,13 +279,12 @@ pxe_open(struct open_file *f, ...)
 		 * Do a bootp/dhcp request to find out where our
 		 * NFS/TFTP server is.  Even if we dont get back
 		 * the proper information, fall back to the server
-		 * which brought us to life and a default rootpath.
+		 * which brought us to life.
 		 */
+		rootpath[0] = '\0';
 		bootp(pxe_sock, BOOTP_PXE);
 		if (rootip.s_addr == 0)
 			rootip.s_addr = bootplayer.sip;
-		if (!rootpath[1])
-			strcpy(rootpath, PXENFSROOTPATH);
 
 		for (i = 0; i < FNAME_SIZE && rootpath[i] != '\0'; i++) {
 			if (rootpath[i] == ':')
@@ -309,8 +308,10 @@ pxe_open(struct open_file *f, ...)
 		if (bootplayer.Hardware == ETHER_TYPE)
 			setenv("boot.netif.hwaddr", ether_sprintf(bootplayer.CAddr), 1);
 
-		setenv("boot.nfsroot.server", inet_ntoa(rootip), 1);
-		setenv("boot.nfsroot.path", rootpath, 1);
+		if (rootpath[0] != '\0') {
+			setenv("boot.nfsroot.server", inet_ntoa(rootip), 1);
+			setenv("boot.nfsroot.path", rootpath, 1);
+		}
 
 		if (bootplayer.yip != INADDR_ANY &&
 		    bootplayer.yip != myip.s_addr) {
