@@ -145,7 +145,6 @@ struct llinfo_arp {
 static int	arp_maxtries = 5;
 static int	useloopback = 1; /* use loopback interface for local traffic */
 static int	arp_proxyall = 0;
-static int	arp_refresh = 60; /* refresh arp cache ~60 (not impl yet) */
 static int	arp_restricted_match = 0;
 static int	arp_ignore_probes = 1;
 
@@ -157,8 +156,6 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
 	   &arp_proxyall, 0, "Enable proxy ARP for all suitable requests");
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, restricted_match, CTLFLAG_RW,
 	   &arp_restricted_match, 0, "Only match against the sender");
-SYSCTL_INT(_net_link_ether_inet, OID_AUTO, refresh, CTLFLAG_RW,
-	   &arp_refresh, 0, "Preemptively refresh the ARP");
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, ignore_probes, CTLFLAG_RW,
 	   &arp_ignore_probes, 0, "Ignore ARP probes");
 
