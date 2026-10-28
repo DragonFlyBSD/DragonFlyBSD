@@ -5173,6 +5173,31 @@ int
 cache_fullpath(struct proc *p, struct nchandle *nchp, struct nchandle *nchbase,
 	       char **retbuf, char **freebuf, int guess)
 {
+	struct nchandle nch_file;
+	int error;
+
+	cache_copy(nchp, &nch_file);
+	if (nchbase) {
+		struct nchandle nch_root;
+
+		cache_copy(nchbase, &nch_root);
+		error = cache_fullpath_refd(p, &nch_file, &nch_root,
+					    retbuf, freebuf, guess);
+		cache_drop(&nch_root);
+	} else {
+		error = cache_fullpath_refd(p, &nch_file, NULL,
+					    retbuf, freebuf, guess);
+	}
+	cache_drop(&nch_file);
+
+	return error;
+}
+
+int
+cache_fullpath_refd(struct proc *p, struct nchandle *nchp,
+		    struct nchandle *nchbase,
+		    char **retbuf, char **freebuf, int guess)
+{
 	struct nchandle fd_nrdir;
 	struct nchandle nch;
 	struct namecache *ncp;
@@ -5325,7 +5350,7 @@ vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf,
 
 	nch.ncp = ncp;
 	nch.mount = vn->v_mount;
-	error = cache_fullpath(p, &nch, NULL, retbuf, freebuf, guess);
+	error = cache_fullpath_refd(p, &nch, NULL, retbuf, freebuf, guess);
 	_cache_drop(ncp);
 	return (error);
 }

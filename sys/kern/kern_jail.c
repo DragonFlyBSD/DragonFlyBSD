@@ -695,7 +695,7 @@ retry:
 
 	lockmgr(&jail_lock, LK_EXCLUSIVE);
 	LIST_FOREACH(pr, &allprison, pr_list) {
-		error = cache_fullpath(lp->lwp_proc, &pr->pr_root, NULL,
+		error = cache_fullpath_refd(lp->lwp_proc, &pr->pr_root, NULL,
 				       &fullpath, &freepath, 0);
 		if (error)
 			continue;

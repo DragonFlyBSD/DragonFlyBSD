@@ -916,7 +916,7 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 		 * do not need an explicit length check, but we do have
 		 * to munge the error to ERANGE as per fcntl.2
 		 */
-		error = cache_fullpath(p, &fp->f_nchandle, NULL,
+		error = cache_fullpath_refd(p, &fp->f_nchandle, NULL,
 				       &dat->fc_path.ptr, &dat->fc_path.buf, 1);
 		if (error == ENOMEM)
 			error = ERANGE;

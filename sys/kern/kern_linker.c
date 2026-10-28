@@ -1437,7 +1437,7 @@ linker_search_path(const char *name)
 		nd.nl_flags &= ~NLC_NCPISLOCKED;
 		cache_unlock(&nd.nl_nch);
 	    }
-	    error = cache_fullpath(curproc, &nd.nl_nch, NULL,
+	    error = cache_fullpath_refd(curproc, &nd.nl_nch, NULL,
 				   &retbuf, &freebuf, 0);
 	    if (error == 0) {
 		result = linker_strdup(retbuf);

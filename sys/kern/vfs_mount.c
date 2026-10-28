@@ -448,8 +448,8 @@ vfs_getnewfsid(struct mount *mp)
 
 	mtype = mp->mnt_vfc->vfc_typenum;
 	tfsid.val[1] = mtype;
-	error = cache_fullpath(NULL, &mp->mnt_ncmounton, NULL,
-			       &retbuf, &freebuf, 0);
+	error = cache_fullpath_refd(NULL, &mp->mnt_ncmounton, NULL,
+				    &retbuf, &freebuf, 0);
 	if (error) {
 		tfsid.val[0] = makeudev(255, 0);
 	} else {

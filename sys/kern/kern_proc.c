@@ -2053,12 +2053,8 @@ sysctl_kern_proc_cwd(SYSCTL_HANDLER_ARGS)
 		goto done;
 
 	if (p->p_fd != NULL && p->p_fd->fd_ncdir.ncp) {
-		struct nchandle nch;
-
-		cache_copy(&p->p_fd->fd_ncdir, &nch);
-		error = cache_fullpath(p, &nch, NULL,
+		error = cache_fullpath(p, &p->p_fd->fd_ncdir, NULL,
 				       &fullpath, &freepath, 0);
-		cache_drop(&nch);
 		if (error)
 			goto done;
 		error = SYSCTL_OUT(req, fullpath, strlen(fullpath) + 1);
@@ -2085,7 +2081,6 @@ sysctl_kern_proc_pathname(SYSCTL_HANDLER_ARGS)
 	struct proc *p;
 	char *retbuf, *freebuf;
 	int error = 0;
-	struct nchandle nch;
 
 	if (arglen != 1)
 		return (EINVAL);
@@ -2098,9 +2093,7 @@ sysctl_kern_proc_pathname(SYSCTL_HANDLER_ARGS)
 	}
 	lwkt_gettoken_shared(&p->p_token);	/* deal with exit race */
 	if (p->p_textnch.ncp) {
-		cache_copy(&p->p_textnch, &nch);
-		error = cache_fullpath(p, &nch, NULL, &retbuf, &freebuf, 0);
-		cache_drop(&nch);
+		error = cache_fullpath(p, &p->p_textnch, NULL, &retbuf, &freebuf, 0);
 	} else {
 		error = EINVAL;
 	}

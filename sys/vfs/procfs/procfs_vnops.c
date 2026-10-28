@@ -599,6 +599,10 @@ procfs_getattr(struct vop_getattr_args *ap)
 	 * dependent data into this machine-independent code.  If it
 	 * becomes important then this function should break out into
 	 * a per-file stat function in the corresponding .c file.
+	 *
+	 * When obtaining the path, get it relative to the calling
+	 * process rather than the target process, so the path can
+	 * actually be used by the calling process.
 	 */
 
 	vap->va_nlink = 1;
@@ -643,12 +647,11 @@ procfs_getattr(struct vop_getattr_args *ap)
 		char *fullpath, *freepath;
 
 		if (procp->p_textnch.ncp) {
-			struct nchandle nch;
+			struct nchandle *rdir;
 
-			cache_copy(&procp->p_textnch, &nch);
-			error = cache_fullpath(procp, &nch, NULL,
+			rdir = curproc->p_fd ? &curproc->p_fd->fd_nrdir : NULL;
+			error = cache_fullpath(procp, &procp->p_textnch, rdir,
 					       &fullpath, &freepath, 0);
-			cache_drop(&nch);
 		} else {
 			error = EINVAL;
 		}
@@ -1144,12 +1147,11 @@ procfs_readlink(struct vop_readlink_args *ap)
 					ap->a_uio));
 		}
 		if (procp->p_textnch.ncp) {
-			struct nchandle nch;
+			struct nchandle *rdir;
 
-			cache_copy(&procp->p_textnch, &nch);
-			error = cache_fullpath(procp, &nch, NULL,
+			rdir = curproc->p_fd ? &curproc->p_fd->fd_nrdir : NULL;
+			error = cache_fullpath(procp, &procp->p_textnch, rdir,
 					       &fullpath, &freepath, 0);
-			cache_drop(&nch);
 		} else {
 			error = EINVAL;
 		}

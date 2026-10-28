@@ -248,6 +248,8 @@ int	cache_vref(struct nchandle *, struct ucred *, struct vnode **);
 int	cache_fromdvp(struct vnode *, struct ucred *, int, struct nchandle *);
 int	cache_fullpath(struct proc *, struct nchandle *, struct nchandle *,
 			char **, char **, int);
+int	cache_fullpath_refd(struct proc *, struct nchandle *, struct nchandle *,
+			char **, char **, int);
 void	vfscache_rollup_cpu(struct globaldata *gd);
 struct vnode *cache_dvpref(struct namecache *ncp);
 
