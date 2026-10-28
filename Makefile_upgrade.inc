@@ -4051,3 +4051,9 @@ TO_REMOVE_LATE+=/usr/lib/gcc47
 
 # XXX Remove when pfsync(4) has been fixed
 TO_REMOVE+=/usr/share/man/man4/pfsync.4.gz
+
+# NFS and TFTP are in one loader now
+TO_REMOVE+=/boot/loader_tftp
+TO_REMOVE+=/boot/loader_tftp.help
+TO_REMOVE+=/boot/pxeboot_tftp
+TO_REMOVE+=/usr/share/man/man8/pxeboot_tftp.8.gz

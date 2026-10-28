@@ -254,9 +254,7 @@ pxe_open(struct open_file *f, ...)
 {
     va_list args;
     char *devname;		/* Device part of file name (or NULL). */
-    char temp[FNAME_SIZE];
     int error = 0;
-    int i;
 	
     va_start(args, f);
     devname = va_arg(args, char*);
@@ -286,20 +284,16 @@ pxe_open(struct open_file *f, ...)
 		if (rootip.s_addr == 0)
 			rootip.s_addr = bootplayer.sip;
 
-		for (i = 0; i < FNAME_SIZE && rootpath[i] != '\0'; i++) {
-			if (rootpath[i] == ':')
-				break;
-		}
-		if (i && i != FNAME_SIZE && rootpath[i] == ':') {
-			rootpath[i++] = '\0';
-			if (inet_addr(&rootpath[0]) != INADDR_NONE)
-				rootip.s_addr = inet_addr(&rootpath[0]);
-			bcopy(&rootpath[i], &temp[0], strlen(&rootpath[i])+1);
-			bcopy(&temp[0], &rootpath[0], strlen(&rootpath[i])+1);
-		}
+		net_parse_rootpath();
+		/* proxyDHCP leaves servip unset: TFTP goes to the boot server */
+		if (netproto == NET_TFTP && servip.s_addr == 0)
+			servip = rootip;
 		printf("pxe_open: ip address : %s\n", inet_ntoa(myip));
 		printf("pxe_open: ip netmask : %s\n", intoa(netmask));
-		printf("pxe_open: nfs root mount: %s:%s\n", inet_ntoa(rootip), rootpath);
+		printf("pxe_open: %s: %s:%s\n",
+		    netproto == NET_TFTP ? "tftp server" : "nfs root mount",
+		    inet_ntoa(netproto == NET_TFTP ? servip : rootip),
+		    rootpath);
 		printf("pxe_open: gateway ip:  %s\n", inet_ntoa(gateip));
 
 		setenv("boot.netif.ip", inet_ntoa(myip), 1);
@@ -308,7 +302,7 @@ pxe_open(struct open_file *f, ...)
 		if (bootplayer.Hardware == ETHER_TYPE)
 			setenv("boot.netif.hwaddr", ether_sprintf(bootplayer.CAddr), 1);
 
-		if (rootpath[0] != '\0') {
+		if (netproto == NET_NFS) {
 			setenv("boot.nfsroot.server", inet_ntoa(rootip), 1);
 			setenv("boot.nfsroot.path", rootpath, 1);
 		}

@@ -17,9 +17,13 @@ INSTALLFLAGS=	-b
 # architecture-specific loader code
 SRCS=		main.c conf.c
 
-# Enable PXE TFTP or NFS support, not both.
-#CFLAGS+=	-DLOADER_TFTP_SUPPORT
+# One loader for both kinds of server; the protocol comes from the root path.
+.if !defined(LOADER_NO_NFS_SUPPORT)
 CFLAGS+=	-DLOADER_NFS_SUPPORT
+.endif
+.if !defined(LOADER_NO_TFTP_SUPPORT)
+CFLAGS+=	-DLOADER_TFTP_SUPPORT
+.endif
 
 # Enable PnP and ISA-PnP code.
 HAVE_PNP=	yes

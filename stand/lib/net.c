@@ -124,6 +124,86 @@ sendrecv(struct iodesc *d, ssize_t (*sproc)(struct iodesc *, void *, size_t),
 }
 
 /*
+ * Select the protocol from the root path and reduce rootpath to a path.
+ * No root path selects TFTP; callers without TFTP turn that into NFS.
+ */
+void
+net_parse_rootpath(void)
+{
+	static const struct {
+		const char *scheme;
+		int	    proto;
+	} schemes[] = {
+		{ "tftp:", NET_TFTP },
+		{ "nfs:",  NET_NFS  },
+	};
+	char temp[FNAME_SIZE];
+	char *cp, *hp;
+	size_t n;
+	int i, len;
+
+	netproto = NET_NONE;
+	for (i = 0; i < (int)(sizeof(schemes) / sizeof(schemes[0])); i++) {
+		len = strlen(schemes[i].scheme);
+		if (strncmp(rootpath, schemes[i].scheme, len) != 0)
+			continue;
+		netproto = schemes[i].proto;
+		cp = rootpath + len;
+		if (cp[0] == '/' && cp[1] == '/') {
+			/* <scheme>://server/path, empty server = boot server */
+			hp = cp + 2;
+			cp = strchr(hp, '/');
+			n = (cp != NULL) ? (size_t)(cp - hp) : strlen(hp);
+			if (n > 0 && n < sizeof(temp)) {
+				bcopy(hp, temp, n);
+				temp[n] = '\0';
+				if (inet_addr(temp) != INADDR_NONE) {
+					rootip.s_addr = inet_addr(temp);
+					if (netproto == NET_TFTP)
+						servip = rootip;
+				}
+			}
+			if (cp != NULL)
+				bcopy(cp, rootpath, strlen(cp) + 1);
+			else
+				bcopy("/", rootpath, 2);
+		} else if (*cp == '/') {
+			/* <scheme>:/path */
+			bcopy(cp, rootpath, strlen(cp) + 1);
+		} else if (*cp == '\0') {
+			/* <scheme>: is the root directory */
+			bcopy("/", rootpath, 2);
+		} else {
+			/* <scheme>:path: add the missing slash */
+			n = strlen(cp);
+			if (n > sizeof(temp) - 2)
+				n = sizeof(temp) - 2;
+			temp[0] = '/';
+			bcopy(cp, temp + 1, n);
+			temp[n + 1] = '\0';
+			bcopy(temp, rootpath, n + 2);
+		}
+		break;
+	}
+
+	if (netproto == NET_NONE) {
+		/* Legacy "server:/path"; the server is optional. */
+		for (i = 0; i < FNAME_SIZE && rootpath[i] != '\0'; i++)
+			if (rootpath[i] == ':')
+				break;
+		if (i && i != FNAME_SIZE && rootpath[i] == ':') {
+			rootpath[i++] = '\0';
+			if (inet_addr(&rootpath[0]) != INADDR_NONE)
+				rootip.s_addr = inet_addr(&rootpath[0]);
+			bcopy(&rootpath[i], temp,
+			    strlen(&rootpath[i]) + 1);
+			bcopy(temp, rootpath, strlen(&rootpath[i]) + 1);
+		}
+		netproto = rootpath[0] ? NET_NFS : NET_TFTP;
+	}
+}
+
+/*
  * Like inet_addr() in the C library, but we only accept base-10.
  * Return values are in network order.
  */
