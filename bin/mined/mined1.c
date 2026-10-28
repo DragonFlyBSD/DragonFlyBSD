@@ -487,11 +487,7 @@ VI(int u __unused)
 
 /* Free old linked list, initialize global variables and load new file */
   initialize();
-#ifdef UNIX
-  tputs(CL, 0, _putchar);
-#else
   string_print (enter_string);
-#endif /* UNIX */
   load_file(new_file[0] == '\0' ? NIL_PTR : new_file);
 }
 
@@ -654,11 +650,7 @@ bottom_line(FLAG revfl, const char *s1, const char *s2, char *inbuf,
 	clear_status ();
   set_cursor(0, ymax);
   if (revfl == ON) {		/* Print rev. start sequence */
-#ifdef UNIX
-	tputs(SO, 0, _putchar);
-#else
 	string_print(rev_video);
-#endif /* UNIX */
 	stat_visible = TRUE;
   }
   else				/* Used as clear_status() */
@@ -670,13 +662,8 @@ bottom_line(FLAG revfl, const char *s1, const char *s2, char *inbuf,
 	ret = input(inbuf, statfl);
 
   /* Print normal video */
-#ifdef UNIX
-  tputs(SE, 0, _putchar);
-  tputs(CE, 0, _putchar);
-#else
   string_print(normal_video);
   string_print(blank_line);	/* Clear the rest of the line */
-#endif /* UNIX */
   if (inbuf != NIL_PTR)
 	set_cursor(0, ymax);
   else
@@ -901,14 +888,10 @@ reset(LINE *head_line, int screen_y)
 void
 set_cursor(int nx, int ny)
 {
-#ifdef UNIX
-  tputs(tgoto(CM, nx, ny), 0, _putchar);
-#else
   char text_buf[10];
 
   build_string(text_buf, pos_string, ny+1, nx+1);
   string_print(text_buf);
-#endif /* UNIX */
 }
 
 /*
@@ -928,16 +911,12 @@ open_device(void)
 int
 getchar(void)
 {
-#ifdef UNIX
-  return (_getchar() & 0377);
-#else
   char c;
 
   if (read(input_fd, &c, 1) != 1 && quit == FALSE)
 	panic("Can't read one char from fd #0");
 
   return c & 0377;
-#endif /* UNIX */
 }
 
 /*
@@ -967,11 +946,7 @@ display(int x_coord, int y_coord, LINE *line, int count)
 /* Print the blank lines (if any) */
   if (loading == FALSE) {
 	while (count-- >= 0) {
-#ifdef UNIX
-		tputs(CE, 0, _putchar);
-#else
 		string_print(blank_line);
-#endif /* UNIX */
 		putchar('\n');
 	}
   }
@@ -1038,17 +1013,9 @@ put_line(LINE *line, int offset, FLAG clear_line)
 	}
 	else {
 		if (*textp >= '\01' && *textp <= '\037') {
-#ifdef UNIX
-			tputs(SO, 0, _putchar);
-#else
 			string_print (rev_video);
-#endif /* UNIX */
 			putchar(*textp++ + '\100');
-#ifdef UNIX
-			tputs(SE, 0, _putchar);
-#else
 			string_print (normal_video);
-#endif /* UNIX */
 		}
 		else
 			putchar(*textp++);
@@ -1062,11 +1029,7 @@ put_line(LINE *line, int offset, FLAG clear_line)
 
 /* Clear the rest of the line is clear_line is TRUE */
   if (clear_line == TRUE) {
-#ifdef	UNIX
-	tputs(CE, 0, _putchar);
-#else
 	string_print(blank_line);
-#endif /* UNIX */
 	putchar('\n');
   }
 }
@@ -1079,13 +1042,6 @@ flush_buffer(int fd)
 {
   if (out_count <= 0)		/* There is nothing to flush */
 	return FINE;
-#ifdef UNIX
-  if (fd == STD_OUT) {
-	printf("%.*s", out_count, screen);
-	_flush();
-  }
-  else
-#endif /* UNIX */
   if (write(fd, screen, out_count) != out_count) {
 	bad_write(fd);
 	return ERRORS;
@@ -1141,11 +1097,7 @@ abort_mined(void)
   set_cursor(0, ymax);
   putchar('\n');
   flush();
-#ifdef UNIX
-  abort();
-#else
   exit(1);
-#endif /* UNIX */
 }
 
 #define UNDEF	_POSIX_VDISABLE
@@ -1190,12 +1142,7 @@ raw_mode(FLAG state)
 void
 panic(const char *message)
 {
-#ifdef UNIX
-  tputs(CL, 0, _putchar);
-  build_string(text_buffer, "%s\nError code %d\n", message, errno);
-#else
   build_string(text_buffer, "%s%s\nError code %d\n", enter_string, message, errno);
-#endif /* UNIX */
   write(STD_OUT, text_buffer, length_of(text_buffer));
 
   if (loading == FALSE)
@@ -1204,11 +1151,7 @@ panic(const char *message)
 	unlink(yank_file);
   raw_mode(OFF);
 
-#ifdef UNIX
-  abort();
-#else
   exit(1);
-#endif /* UNIX */
 }
 
 void *
@@ -1280,16 +1223,12 @@ char file_name[LINE_LEN];	/* Name of file in use */
 char text_buffer[MAX_CHARS];	/* Buffer for modifying text */
 
 /* Escape sequences. */
-#ifdef UNIX
-char *CE, *VS, *SO, *SE, *CL, *AL, *CM;
-#else
 const char	*enter_string = "\033[H\033[J";	/* String printed on entering mined */
 const char	*pos_string = "\033[%d;%dH";	/* Absolute cursor position */
 const char	*rev_scroll = "\033M";		/* String for reverse scrolling */
 const char	*rev_video = "\033[7m";		/* String for starting reverse video */
 const char	*normal_video = "\033[m";	/* String for leaving reverse video */
 const char	*blank_line = "\033[K";		/* Clear line to end */
-#endif /* UNIX */
 
 /*
  * Yank variables.
@@ -1474,13 +1413,7 @@ main(int argc, char *argv[])
   int index;		/* Index in key table */
   struct winsize winsize;
 
-#ifdef UNIX
-  get_term();
-  tputs(VS, 0, _putchar);
-  tputs(CL, 0, _putchar);
-#else
   string_print(enter_string);			/* Hello world */
-#endif /* UNIX */
   if (ioctl(STD_OUT, TIOCGWINSZ, &winsize) == 0 && winsize.ws_row != 0) {
 	ymax = winsize.ws_row - 1;
 	screenmax = ymax - 1;
@@ -1538,23 +1471,14 @@ void
 RD(int u __unused)
 {
 /* Clear screen */
-#ifdef UNIX
-  tputs(VS, 0, _putchar);
-  tputs(CL, 0, _putchar);
-#else
   string_print(enter_string);
-#endif /* UNIX */
 
 /* Print first page */
   display(0, 0, top_line, last_y);
 
 /* Clear last line */
   set_cursor(0, ymax);
-#ifdef UNIX
-  tputs(CE, 0, _putchar);
-#else
   string_print(blank_line);
-#endif /* UNIX */
   move_to(x, y);
 }
 
@@ -1595,7 +1519,6 @@ static void
 	case 'B': return(DN);
 	case 'C': return(RT);
 	case 'D': return(LF);
-#ifdef ASSUME_CONS25
 	case 'G': return(PD);
 	case 'I': return(PU);
 	case 'F': return(EF);
@@ -1611,18 +1534,9 @@ static void
 	case 'P': return(GR);
 	/* Shift-F4 - line replace */
 	case 'b': return(LR);
-#else
-	case 'G': return(FS);
-	case 'S': return(SR);
-	case 'T': return(SF);
-	case 'U': return(PD);
-	case 'V': return(PU);
-	case 'Y': return(EF);
-#endif
 	}
 	return(I);
   }
-#ifdef ASSUME_XTERM
   if (c == 'O') {
 	/* Start of ASCII function key escape sequence. */
 	switch (getchar()) {
@@ -1637,7 +1551,6 @@ static void
 		break;
 	}
     }
-#endif
   return(I);
 }
 
@@ -1891,20 +1804,12 @@ input(char *inbuf, FLAG clearfl)
 		case '\b' :		/* Erase previous char */
 			if (ptr > inbuf) {
 				ptr--;
-#ifdef UNIX
-				tputs(SE, 0, _putchar);
-#else
 				string_print(normal_video);
-#endif /* UNIX */
 				if (is_tab(*ptr))
 					string_print(" \b\b\b  \b\b");
 				else
 					string_print(" \b\b \b");
-#ifdef UNIX
-				tputs(SO, 0, _putchar);
-#else
 				string_print(rev_video);
-#endif /* UNIX */
 				string_print(" \b");
 				*ptr = '\0';
 			}
@@ -1948,61 +1853,3 @@ get_file(const char *message, char *file)
   }
   return ret;
 }
-
-/*  ========================================================================  *
- *				UNIX I/O Routines			      *
- *  ========================================================================  */
-
-#ifdef UNIX
-#undef putchar
-
-int
-_getchar(void)
-{
-  char c;
-
-  if (read(input_fd, &c, 1) != 1 && quit == FALSE)
-	panic ("Cannot read 1 byte from input");
-  return c & 0377;
-}
-
-void
-_flush(void)
-{
-  fflush(stdout);
-}
-
-void
-_putchar(char c)
-{
-  write_char(STD_OUT, c);
-}
-
-void
-get_term(void)
-{
-  static char termbuf[50];
-  char *loc = termbuf;
-  char entry[1024];
-
-  if (tgetent(entry, getenv("TERM")) <= 0) {
-	printf("Unknown terminal.\n");
-	exit(1);
-  }
-
-  AL = tgetstr("al", &loc);
-  CE = tgetstr("ce", &loc);
-  VS = tgetstr("vs", &loc);
-  CL = tgetstr("cl", &loc);
-  SO = tgetstr("so", &loc);
-  SE = tgetstr("se", &loc);
-  CM = tgetstr("cm", &loc);
-  ymax = tgetnum("li") - 1;
-  screenmax = ymax - 1;
-
-  if (!CE || !SO || !SE || !CL || !AL || !CM) {
-	printf("Sorry, no mined on this type of terminal\n");
-	exit(1);
-  }
-}
-#endif /* UNIX */

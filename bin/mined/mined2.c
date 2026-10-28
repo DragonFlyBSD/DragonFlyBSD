@@ -251,11 +251,7 @@ PU(int u __unused)
   	if (reverse_scroll() == ERRORS)
   		break;			/* Top of file reached */
   set_cursor(0, ymax);			/* Erase very bottom line */
-#ifdef UNIX
-  tputs(CE, 0, _putchar);
-#else
   string_print(blank_line);
-#endif /* UNIX */
   if (y + i > screenmax)			/* line no longer on screen */
   	move_to(0, screenmax >> 1);
   else
@@ -305,11 +301,7 @@ SU(int u __unused)
 
   reverse_scroll();
   set_cursor(0, ymax);		/* Erase very bottom line */
-#ifdef UNIX
-  tputs(CE, 0, _putchar);
-#else
   string_print(blank_line);
-#endif /* UNIX */
   move_to(x, (y == screenmax) ? screenmax : y + 1);
 }
 
@@ -362,11 +354,7 @@ reverse_scroll(void)
 
 /* Perform the scroll */
   set_cursor(0, 0);
-#ifdef UNIX
-  tputs(AL, 0, _putchar);
-#else
   string_print(rev_scroll);
-#endif /* UNIX */
   set_cursor(0, 0);
   line_print(top_line);
 

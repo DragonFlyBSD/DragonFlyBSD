@@ -38,27 +38,12 @@
  *				Mined.h					  *
  *========================================================================*/
 
-#define INTEL	1
-#define CHIP	INTEL
-#define ASSUME_CONS25
-#define ASSUME_XTERM
-
 #include <sys/param.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <limits.h>
 
-#ifndef YMAX
-#ifdef UNIX
-#include <stdio.h>
-#undef putchar
-#undef getchar
-#undef NULL
-#undef EOF
-extern char *CE, *VS, *SO, *SE, *CL, *AL, *CM;
-#define YMAX		49
-#else
 #define YMAX		24		/* Maximum y coordinate starting at 0 */
 /* Escape sequences. */
 extern const char *enter_string;	/* String printed on entering mined */
@@ -68,7 +53,6 @@ extern const char *rev_scroll;		/* String for reverse scrolling */
 extern const char *pos_string;		/* Absolute cursor positioning */
 #define X_PLUS	' '		/* To be added to x for cursor sequence */
 #define Y_PLUS	' '		/* To be added to y for cursor sequence */
-#endif /* UNIX */
 
 #define XMAX		79		/* Maximum x coordinate starting at 0*/
 #define SCREENMAX	(YMAX - 1)	/* Number of lines displayed */
@@ -92,10 +76,6 @@ extern const char *pos_string;		/* Absolute cursor positioning */
 #define NO_INPUT	(ERRORS + 2)
 
 #define STD_OUT	 	1		/* File descriptor for terminal */
-
-#if (CHIP == INTEL)
-#define MEMORY_SIZE	(50 * 1024)	/* Size of data space to malloc */
-#endif
 
 #define REPORT	2			/* Report change of lines on # lines */
 
@@ -275,8 +255,6 @@ extern long chars_saved;		/* Nr of chars saved in buffer */
  * Get real shift value.
  */
 #define get_shift(cnt)		((cnt) & DUMMY_MASK)
-
-#endif /* YMAX */
 
 /* mined1.c */
 
