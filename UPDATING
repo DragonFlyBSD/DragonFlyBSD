@@ -12,6 +12,44 @@
 +         UPGRADING DRAGONFLY FROM 6.4 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+PXEBOOT_TFTP AND LOADER_TFTP REMOVED
+------------------------------------
+
+The separate /boot/pxeboot_tftp and /boot/loader_tftp binaries have been
+removed.  /boot/pxeboot and /boot/loader now support both NFS and TFTP,
+so /boot/pxeboot can be used regardless of how the PXE server provides
+its files.  Update DHCP/PXE configurations that name pxeboot_tftp to use
+pxeboot instead; the old files are removed by "make upgrade".
+
+The protocol is selected from the root path: "tftp:/" or "tftp:/dir"
+(and "tftp://server/dir") selects TFTP, where "dir" is the TFTP
+directory that files are fetched from, and "nfs:/path" or
+"nfs://server/path" selects NFS.  Without a prefix a root path selects
+NFS and no root path selects TFTP from the boot server; the two file
+systems are no longer both tried in turn.  This is the BIOS loader: the
+EFI loader has no TFTP file system, so it always uses NFS and falls back
+to "/" (the export root) when the server sends no root path.
+
+A setup that served /boot over TFTP while using root-path only for the
+kernel's NFS root (the old pxeboot_tftp setup) should drop the root path
+from DHCP and give the kernel its root information in the loader.conf of
+the tree served over TFTP (the loader asks for /loader.conf relative to
+the TFTP root, or under tftp:/<dir>; it cannot change into /boot over
+TFTP):
+
+    # no option root-path: no root path selects TFTP from next-server
+    boot.nfsroot.server="10.0.0.1"          # loader.conf in the TFTP tree
+    boot.nfsroot.path="/netbootroot"
+
+Use "tftp:/<directory>" only when the boot tree lives in a subdirectory of
+the TFTP root.  Note that iPXE-based PXE ROMs treat option 17 as a SAN-boot
+URI and try to boot from it instead of the boot filename, so a DHCP server
+that hands out a root path to such clients has to send option 17 only to
+the loader's own request, i.e. not to requests carrying option 93 (client
+system architecture).
+
+The loader only exports boot.nfsroot.* itself for NFS boots.
+
 PXE BOOTS NO LONGER ASSUME AN NFS ROOT PATH
 -------------------------------------------
 

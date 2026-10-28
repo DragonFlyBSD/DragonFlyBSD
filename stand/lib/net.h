@@ -72,6 +72,14 @@
 
 extern	u_char bcea[6];
 extern	char rootpath[FNAME_SIZE];
+
+/* Network file system protocol, selected from the root path. */
+void	net_parse_rootpath(void);
+#define	NET_NONE	0
+#define	NET_NFS		1
+#define	NET_TFTP	2
+extern	int netproto;
+
 extern	char bootfile[FNAME_SIZE];
 extern	char hostname[FNAME_SIZE];
 extern	int hostnamelen;
@@ -82,6 +90,7 @@ extern	char ifname[IFNAME_SIZE];
 /* All of these are in network order. */
 extern	struct in_addr myip;
 extern	struct in_addr rootip;
+extern	struct in_addr servip;
 extern	struct in_addr swapip;
 extern	struct in_addr gateip;
 extern	struct in_addr nameip;
