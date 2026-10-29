@@ -178,14 +178,12 @@ main(int ac, char **av)
 	int j;
 	int n;
 	int isq;
-	int pos;
-	int eflag;
+	int kenv_pos;
 	int real_vkernel_enable;
 	int supports_sse;
 	size_t vsize;
 	size_t msize;
 	size_t kenv_size;
-	size_t kenv_size2;
 	int status;
 	struct sigaction sa;
 
@@ -234,9 +232,9 @@ main(int ac, char **av)
 	 */
 	save_ac = ac;
 	save_av = av;
-	eflag = 0;
-	pos = 0;
+	kenv_pos = 0;
 	kenv_size = 0;
+	kern_envp = NULL;
 
 	/*
 	 * Process options
@@ -278,21 +276,21 @@ main(int ac, char **av)
 			n = strlen(optarg);
 			isq = 0;
 
-			if (eflag == 0) {
-				kenv_size = n + 2;
-				kern_envp = malloc(kenv_size);
-				if (kern_envp == NULL)
-					errx(1, "Couldn't allocate %zd bytes for kern_envp", kenv_size);
-			} else {
-				kenv_size2 = kenv_size + n + 1;
-				pos = kenv_size - 1;
-				if ((tmp = realloc(kern_envp, kenv_size2)) == NULL)
-					errx(1, "Couldn't reallocate %zd bytes for kern_envp", kenv_size2);
+			/*
+			 * Room for the entry, and two NULs.  Quotes are
+			 * stripped so the entry can be shorter than optarg.
+			 */
+			if (kenv_size < (size_t)(kenv_pos + n + 2)) {
+				kenv_size = kenv_pos + n + 2;
+				tmp = realloc(kern_envp, kenv_size);
+				if (tmp == NULL) {
+					errx(1, "Couldn't reallocate %zd bytes "
+					     "for kern_envp", kenv_size);
+				}
 				kern_envp = tmp;
-				kenv_size = kenv_size2;
 			}
 
-			for (i = 0, j = pos; i < n; ++i) {
+			for (i = 0, j = kenv_pos; i < n; ++i) {
 				if (optarg[i] == '"')
 					isq ^= 1;
 				else if (optarg[i] == '\'')
@@ -302,9 +300,9 @@ main(int ac, char **av)
 				else
 					kern_envp[j++] = optarg[i];
 			}
-			kern_envp[j++] = 0;
-			kern_envp[j++] = 0;
-			eflag++;
+			kern_envp[j++] = 0;	/* end of the entry */
+			kern_envp[j] = 0;	/* end of the environment */
+			kenv_pos = j;
 			break;
 		case 's':
 			boothowto |= RB_SINGLE;
