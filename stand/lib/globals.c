@@ -17,6 +17,7 @@
 u_char	bcea[6] = BA;			/* broadcast ethernet address */
 
 char	rootpath[FNAME_SIZE] = "/";	/* root mount path */
+int	netproto = NET_NONE;		/* network file system protocol */
 char	bootfile[FNAME_SIZE];		/* bootp says to boot this */
 char	hostname[FNAME_SIZE];		/* our hostname */
 int	hostnamelen;

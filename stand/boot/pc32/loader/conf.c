@@ -61,11 +61,11 @@ struct fs_ops *file_system[] = {
     &hammer1_fsops,
 #endif
     &cd9660_fsops,
-#ifdef LOADER_TFTP_SUPPORT
-    &tftp_fsops,
-#endif
 #ifdef LOADER_NFS_SUPPORT
     &nfs_fsops,
+#endif
+#ifdef LOADER_TFTP_SUPPORT
+    &tftp_fsops,
 #endif
 #ifdef LOADER_GZIP_SUPPORT
     &gzipfs_fsops,
