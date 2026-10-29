@@ -35,6 +35,7 @@
 #define COMC_FMT	0x3		/* 8N1 */
 #define COMC_TXWAIT	0x40000		/* transmit timeout */
 #define COMC_BPS(x)	(115200 / (x))	/* speed to DLAB divisor */
+#define COMC_DIV2BPS(x)	(115200 / (x))	/* DLAB divisor to speed */
 
 #ifndef	COMPORT
 #define COMPORT		0x3f8
@@ -47,9 +48,16 @@ static void	comc_probe(struct console *cp);
 static int	comc_init(int arg);
 static void	comc_putchar(int c);
 static int	comc_getchar(void);
+static int	comc_getspeed(void);
 static int	comc_ischar(void);
+static int	comc_parseint(const char *string);
+static int	comc_port_set(struct env_var *ev, int flags, const void *value);
+static int	comc_setup(int speed, int port);
+static int	comc_speed_set(struct env_var *ev, int flags, const void *value);
 
 static int	comc_started;
+static int	comc_curspeed;
+static int	comc_port = COMPORT;
 
 struct console comconsole = {
     "comconsole",
@@ -74,14 +82,52 @@ struct console comconsole = {
 static void
 comc_probe(struct console *cp)
 {
-    int i;
+    char intbuf[16];
+    char *env;
+    int fromboot, i, speed, port;
 
-    if (inb(COMPORT + com_lsr) == 0xFF)
+    if (comc_curspeed == 0) {
+	comc_curspeed = COMSPEED;
+
+	env = getenv("comconsole_port");
+	if (env != NULL) {
+	    port = comc_parseint(env);
+	    if (port > 0)
+		comc_port = port;
+	}
+
+	/* comconsole_boot is loader-only; see main.c. */
+	fromboot = getenv("comconsole_boot") != NULL;
+	if (fromboot)
+	    unsetenv("comconsole_boot");
+	if (fromboot && getenv("comconsole_speed") == NULL &&
+	    inb(comc_port + com_lsr) != 0xFF)
+		comc_curspeed = comc_getspeed();
+
+	env = getenv("comconsole_speed");
+	if (env != NULL) {
+	    speed = comc_parseint(env);
+	    if (speed > 0)
+		comc_curspeed = speed;
+	}
+
+	sprintf(intbuf, "%d", comc_curspeed);
+	unsetenv("comconsole_speed");
+	env_setenv("comconsole_speed", EV_VOLATILE, intbuf, comc_speed_set,
+	    env_nounset);
+
+	sprintf(intbuf, "%d", comc_port);
+	unsetenv("comconsole_port");
+	env_setenv("comconsole_port", EV_VOLATILE, intbuf, comc_port_set,
+	    env_nounset);
+    }
+
+    if (inb(comc_port + com_lsr) == 0xFF)
 	return;
     for (i = 255; i >= 0; --i) {
 	if (comc_ischar() == 0)
 	    break;
-        inb(COMPORT + com_data);
+        inb(comc_port + com_data);
     }
     if (i < 0)
 	return;
@@ -89,17 +135,22 @@ comc_probe(struct console *cp)
 }
 
 static int
-comc_init(int arg)
+comc_setup(int speed, int port)
 {
-    if (comc_started && arg == 0)
-	return 0;
-    comc_started = 1;
+    if (inb(port + com_lsr) == 0xFF)
+	return (-1);
 
-    outb(COMPORT + com_cfcr, CFCR_DLAB | COMC_FMT);
-    outb(COMPORT + com_dlbl, COMC_BPS(COMSPEED) & 0xff);
-    outb(COMPORT + com_dlbh, COMC_BPS(COMSPEED) >> 8);
-    outb(COMPORT + com_cfcr, COMC_FMT);
-    outb(COMPORT + com_mcr, MCR_RTS | MCR_DTR);
+    comc_curspeed = speed;
+    comc_port = port;
+
+    if ((comconsole.c_flags & (C_ACTIVEIN | C_ACTIVEOUT)) == 0)
+	return (0);
+
+    outb(comc_port + com_cfcr, CFCR_DLAB | COMC_FMT);
+    outb(comc_port + com_dlbl, COMC_BPS(speed) & 0xff);
+    outb(comc_port + com_dlbh, COMC_BPS(speed) >> 8);
+    outb(comc_port + com_cfcr, COMC_FMT);
+    outb(comc_port + com_mcr, MCR_RTS | MCR_DTR);
 
 #if 0
     /*
@@ -109,8 +160,20 @@ comc_init(int arg)
      * DISABLED - apparently many new laptops implement only the base 8250,
      * writing to this port can crash them.
      */
-    outb(COMPORT + com_fifo, FIFO_ENABLE);
+    outb(comc_port + com_fifo, FIFO_ENABLE);
 #endif
+
+    return (0);
+}
+
+static int
+comc_init(int arg)
+{
+    if (comc_started && arg == 0)
+	return 0;
+    comc_started = 1;
+
+    comc_setup(comc_curspeed, comc_port);
 
     /*
      * Give the serial port a little time to settle after asserting RTS and
@@ -118,7 +181,7 @@ comc_init(int arg)
      */
     delay(1000000 / 10);
     while (comc_ischar())
-        inb(COMPORT + com_data);
+        inb(comc_port + com_data);
 
     return(0);
 }
@@ -129,8 +192,8 @@ comc_putchar(int c)
     int wait;
 
     for (wait = COMC_TXWAIT; wait > 0; wait--) {
-        if (inb(COMPORT + com_lsr) & LSR_TXRDY) {
-	    outb(COMPORT + com_data, (u_char)c);
+        if (inb(comc_port + com_lsr) & LSR_TXRDY) {
+	    outb(comc_port + com_data, (u_char)c);
 	    break;
 	}
     }
@@ -139,11 +202,85 @@ comc_putchar(int c)
 static int
 comc_getchar(void)
 {
-    return(comc_ischar() ? inb(COMPORT + com_data) : -1);
+    return(comc_ischar() ? inb(comc_port + com_data) : -1);
 }
 
 static int
 comc_ischar(void)
 {
-    return(inb(COMPORT + com_lsr) & LSR_RXRDY);
+    return(inb(comc_port + com_lsr) & LSR_RXRDY);
+}
+
+static int
+comc_speed_set(struct env_var *ev, int flags, const void *value)
+{
+    int speed;
+
+    if (value == NULL || (speed = comc_parseint(value)) <= 0) {
+	printf("Invalid speed\n");
+	return (CMD_ERROR);
+    }
+
+    if (comc_curspeed != speed)
+	comc_setup(speed, comc_port);
+
+    env_setenv(ev->ev_name, flags | EV_NOHOOK, value, NULL, NULL);
+
+    return (CMD_OK);
+}
+
+static int
+comc_port_set(struct env_var *ev, int flags, const void *value)
+{
+    int port;
+
+    if (value == NULL || (port = comc_parseint(value)) <= 0) {
+	printf("Invalid port\n");
+	return (CMD_ERROR);
+    }
+
+    if (comc_port != port && comc_setup(comc_curspeed, port) != 0) {
+	printf("Invalid port\n");
+	return (CMD_ERROR);
+    }
+
+    env_setenv(ev->ev_name, flags | EV_NOHOOK, value, NULL, NULL);
+
+    return (CMD_OK);
+}
+
+static int
+comc_parseint(const char *string)
+{
+    char *p;
+    int speed;
+
+    speed = strtol(string, &p, 0);
+    if (p == string || *p != '\0' || speed <= 0)
+	return (-1);
+
+    return (speed);
+}
+
+static int
+comc_getspeed(void)
+{
+    u_int divisor;
+    u_char dlbh;
+    u_char dlbl;
+    u_char cfcr;
+
+    cfcr = inb(comc_port + com_cfcr);
+    outb(comc_port + com_cfcr, CFCR_DLAB | cfcr);
+
+    dlbl = inb(comc_port + com_dlbl);
+    dlbh = inb(comc_port + com_dlbh);
+
+    outb(comc_port + com_cfcr, cfcr);
+
+    divisor = dlbh << 8 | dlbl;
+
+    if (divisor == 0 || divisor == 0xffff)
+	return (COMSPEED);
+    return (COMC_DIV2BPS(divisor));
 }

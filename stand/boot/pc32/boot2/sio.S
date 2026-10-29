@@ -17,7 +17,6 @@
  */
 		.set SIO_PRT,SIOPRT		# Base port
 		.set SIO_FMT,SIOFMT		# 8N1
-		.set SIO_DIV,(115200/SIOSPD)	# 115200 / SPD
 
 		.globl sio_init
 		.globl sio_flush
@@ -26,7 +25,7 @@
 		.globl sio_ischar
 
 		/*
-		 * int sio_init(void)
+		 * int sio_init(int divisor)
 		 * 
 		 * returns non-zero if we couldn't init, which can happen if
 		 * the serial port is unmapped and the inb's all return
@@ -35,8 +34,8 @@
 sio_init:	movw $SIO_PRT+0x3,%dx		# Data format reg
 		movb $SIO_FMT|0x80,%al		# Set format and DLAB
 		outb %al,(%dx)			# BASE+3
+		movl 4(%esp,1),%eax		# divisor
 		subb $0x3,%dl
-		movw $SIO_DIV,%ax		# divisor
 		outw %ax,(%dx)			# BASE+0 (divisor w/ DLAB set)
 		movw $SIO_PRT+0x2,%dx
 		movb $0x01,%al			# Enable FIFO
