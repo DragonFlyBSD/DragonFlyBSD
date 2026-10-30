@@ -48,10 +48,8 @@ TARGET_SHLIBDIR?=	${SHLIBDIR}/priv
 PRIVATELIB_CFLAGS?=	-I${_SHLIBDIRPREFIX}/usr/include/priv
 PRIVATELIB_LDFLAGS?=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
-# prefer .s to a .c, add .po, remove stuff not used in the BSD libraries
-# .So used for PIC object files
-.SUFFIXES:
-.SUFFIXES: .out .o .po .So .S .s .c .cc .cpp .cxx .m .C .f .y .l
+# Add .po (profiling object) and .So (PIC shared object)
+.SUFFIXES: .po .So
 
 .if !defined(PICFLAG)
 PICFLAG=-fpic
@@ -61,10 +59,6 @@ PO_FLAG=-pg
 PO_CFLAGS=${CFLAGS:N-ffunction-sections}
 PO_CXXFLAGS=${CXXFLAGS:N-ffunction-sections}
 
-.c.o:
-	${CC} ${_${.TARGET:R}_FLAGS:M-I*} ${STATIC_CFLAGS} ${CFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
-
 .c.po:
 	${CC} ${_${.TARGET:R}_FLAGS:M-I*} ${PO_FLAG} ${STATIC_CFLAGS} \
 	    ${PO_CFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
@@ -72,10 +66,6 @@ PO_CXXFLAGS=${CXXFLAGS:N-ffunction-sections}
 .c.So:
 	${CC} ${_${.TARGET:R}_FLAGS:M-I*} ${PICFLAG} -DPIC ${SHARED_CFLAGS} \
 	    ${CFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
-
-.cc.o .C.o .cpp.o .cxx.o:
-	${CXX} ${_${.TARGET:R}_FLAGS:M-I*} ${STATIC_CXXFLAGS} ${CXXFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
 
 .cc.po .C.po .cpp.po .cxx.po:
 	${CXX} ${_${.TARGET:R}_FLAGS:M-I*} ${PO_FLAG} ${STATIC_CXXFLAGS} \
@@ -85,10 +75,6 @@ PO_CXXFLAGS=${CXXFLAGS:N-ffunction-sections}
 	${CXX} ${_${.TARGET:R}_FLAGS:M-I*} ${PICFLAG} -DPIC ${SHARED_CXXFLAGS} \
 	    ${CXXFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
 
-.f.o:
-	${FC} ${_${.TARGET:R}_FLAGS:M-I*} ${FFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} \
-	    -o ${.TARGET} -c ${.IMPSRC}
-
 .f.po:
 	${FC} ${_${.TARGET:R}_FLAGS:M-I*} ${PO_FLAG} ${FFLAGS} \
 	    ${_${.TARGET:R}_FLAGS:N-I*} -o ${.TARGET} -c ${.IMPSRC}
@@ -96,10 +82,6 @@ PO_CXXFLAGS=${CXXFLAGS:N-ffunction-sections}
 .f.So:
 	${FC} ${_${.TARGET:R}_FLAGS:M-I*} ${PICFLAG} -DPIC ${FFLAGS} \
 	    ${_${.TARGET:R}_FLAGS:N-I*} -o ${.TARGET} -c ${.IMPSRC}
-
-.m.o:
-	${OBJC} ${_${.TARGET:R}_FLAGS:M-I*} ${OBJCFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
 
 .m.po:
 	${OBJC} ${_${.TARGET:R}_FLAGS:M-I*} ${OBJCFLAGS} ${PO_FLAG} \
@@ -109,29 +91,22 @@ PO_CXXFLAGS=${CXXFLAGS:N-ffunction-sections}
 	${OBJC} ${_${.TARGET:R}_FLAGS:M-I*} ${PICFLAG} -DPIC ${OBJCFLAGS} \
 	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
 
-.s.o:
-	${CC} ${_${.TARGET:R}_FLAGS:M-I*} -x assembler-with-cpp \
-	    ${CFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
-
 .s.po:
-	${CC} ${_${.TARGET:R}_FLAGS:M-I*} -x assembler-with-cpp -DPROF \
-	    ${CFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
+	${AS} -DPROF ${AFLAGS} ${_${.TARGET:R}_FLAGS} \
+	    -o ${.TARGET} ${.IMPSRC}
 
 .s.So:
-	${CC} ${_${.TARGET:R}_FLAGS:M-I*} -x assembler-with-cpp ${PICFLAG} -DPIC \
-	    ${CFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
-
-.S.o:
-	${CC} ${_${.TARGET:R}_FLAGS:M-I*} ${CFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
+	${AS} ${PICFLAG} -DPIC ${AFLAGS} ${_${.TARGET:R}_FLAGS} \
+	    -o ${.TARGET} ${.IMPSRC}
 
 .S.po:
-	${CC} ${_${.TARGET:R}_FLAGS:M-I*} -DPROF ${CFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
+	${CC} -x assembler-with-cpp ${_${.TARGET:R}_FLAGS:M-I*} -DPROF \
+	    ${CFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
 
 .S.So:
-	${CC} ${_${.TARGET:R}_FLAGS:M-I*} ${PICFLAG} -DPIC ${CFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
+	${CC} -x assembler-with-cpp ${_${.TARGET:R}_FLAGS:M-I*} \
+	    ${PICFLAG} -DPIC ${CFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} \
+	    -c ${.IMPSRC} -o ${.TARGET}
 
 all: objwarn
 

@@ -212,24 +212,24 @@ MACHINE_PLATFORM!=/sbin/sysctl -n hw.platform
 	    ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
 
 .c.o:
-	${CC} ${_${.TARGET:R}_FLAGS:M-I*} ${CFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} \
-	    -c ${.IMPSRC}
+	${CC} ${_${.TARGET:R}_FLAGS:M-I*} ${STATIC_CFLAGS} ${CFLAGS} \
+	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
 
 .cc .cpp .cxx .C:
 	${CXX} ${_${.TARGET:R}_FLAGS:M-I*} ${CXXFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} \
 	    ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
 
 .cc.o .cpp.o .cxx.o .C.o:
-	${CXX} ${_${.TARGET:R}_FLAGS:M-I*} ${CXXFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} \
-	    -c ${.IMPSRC}
+	${CXX} ${_${.TARGET:R}_FLAGS:M-I*} ${STATIC_CXXFLAGS} ${CXXFLAGS} \
+	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
 
 .m.o:
 	${OBJC} ${_${.TARGET:R}_FLAGS:M-I*} ${OBJCFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC}
+	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
 
 .p.o:
 	${PC} ${_${.TARGET:R}_FLAGS:M-I*} ${PFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} \
-	    -c ${.IMPSRC}
+	    -c ${.IMPSRC} -o ${.TARGET}
 
 .e .r .F .f:
 	${FC} ${_${.TARGET:R}_FLAGS:M-I*} ${RFLAGS} ${EFLAGS} ${FFLAGS} \
@@ -238,11 +238,11 @@ MACHINE_PLATFORM!=/sbin/sysctl -n hw.platform
 
 .e.o .r.o .F.o .f.o:
 	${FC} ${_${.TARGET:R}_FLAGS:M-I*} ${RFLAGS} ${EFLAGS} ${FFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC}
+	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
 
 .S.o:
-	${CC} ${_${.TARGET:R}_FLAGS:M-I*} ${CFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} \
-	    -c ${.IMPSRC}
+	${CC} -x assembler-with-cpp ${_${.TARGET:R}_FLAGS:M-I*} ${CFLAGS} \
+	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
 
 .s.o:
 	${AS} ${AFLAGS} ${_${.TARGET:R}_FLAGS} -o ${.TARGET} ${.IMPSRC}
