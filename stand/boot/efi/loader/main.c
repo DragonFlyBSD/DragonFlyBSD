@@ -196,6 +196,7 @@ main(int argc, CHAR16 *argv[])
 	EFI_LOADED_IMAGE *img;
 	EFI_GUID *guid;
 	int i, j, vargood, unit, howto;
+	struct efi_devdesc currdev;
 	struct devsw *dev;
 	uint64_t pool_guid;
 	UINTN k;
@@ -392,21 +393,15 @@ main(int argc, CHAR16 *argv[])
 	if (efi_handle_lookup(img->DeviceHandle, &dev, &unit, &pool_guid) != 0)
 		return (EFI_NOT_FOUND);
 
-	switch (dev->dv_type) {
-	default: {
-		struct efi_devdesc currdev;
+	currdev.d_dev = dev;
+	currdev.d_kind.efidisk.unit = unit;
+	currdev.d_kind.efidisk.data = NULL;
+	currdev.d_type = currdev.d_dev->dv_type;
+	env_setenv("currdev", EV_VOLATILE, efi_fmtdev(&currdev),
+		   efi_setcurrdev, env_nounset);
+	env_setenv("loaddev", EV_VOLATILE, efi_fmtdev(&currdev),
+		   env_noset, env_nounset);
 
-		currdev.d_dev = dev;
-		currdev.d_kind.efidisk.unit = unit;
-		currdev.d_kind.efidisk.data = NULL;
-		currdev.d_type = currdev.d_dev->dv_type;
-		env_setenv("currdev", EV_VOLATILE, efi_fmtdev(&currdev),
-			   efi_setcurrdev, env_nounset);
-		env_setenv("loaddev", EV_VOLATILE, efi_fmtdev(&currdev), env_noset,
-			   env_nounset);
-		break;
-	}
-	}
 currdev_done:
 
 	/* enable EHCI */

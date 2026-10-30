@@ -18,7 +18,7 @@ ISODIR?=	/usr/obj/release
 ISOROOT?=	${ISODIR}/root
 GITURL_SRC?=	git://git.dragonflybsd.org/dragonfly.git
 GITURL_DPORTS?=	git://mirror-master.dragonflybsd.org/dports.git
-NREL_MAKE_JOBS?= $$(sysctl -n hw.ncpu)
+NREL_MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 .if !defined(NOFSCHG)
 MTREE_FSCHG=	-i
 .endif

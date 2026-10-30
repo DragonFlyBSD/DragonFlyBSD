@@ -387,9 +387,7 @@ if_clone_createif(struct if_clone *ifc, int unit, caddr_t params, caddr_t data)
 	if (ifp != NULL)
 		return (EEXIST);
 
-	/*ifnet_unlock();*/
 	err = (*ifc->ifc_create)(ifc, unit, params, data);
-	/*ifnet_lock();*/
 	if (err != 0)
 		return (err);
 

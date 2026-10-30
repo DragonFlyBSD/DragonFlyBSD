@@ -377,8 +377,6 @@ distribution:
 	cd ${.CURDIR}/../share/man; ${MAKE} makedb
 .endif
 
-#
-#
 distrib-dirs:
 	mtree ${MTREE_FSCHG} -deU -f ${.CURDIR}/mtree/BSD.root.dist \
 		-p ${DESTDIR}/
@@ -389,14 +387,14 @@ distrib-dirs:
 	mtree ${MTREE_FSCHG} -deU -f ${.CURDIR}/mtree/BSD.include.dist \
 		-p ${DESTDIR}/usr/include
 	-chflags xlink ${DESTDIR}/* ${DESTDIR}/usr/* ${DESTDIR}/var/* \
-			${DESTDIR}/home/*
+		${DESTDIR}/home/*
 	cd ${DESTDIR}/; test -e sys || (rm -f sys;  ${LN} -s usr/src/sys sys)
 .if !defined(NO_SHARE)
 	cd ${DESTDIR}/usr/share/nls; \
-	rm -rf "POSIX"; \
-	rm -rf "en_US.US-ASCII"; \
-	${LN} -s "C" "POSIX"; \
-	${LN} -s "C" "en_US.US-ASCII"
+		rm -rf "POSIX" && \
+		rm -rf "en_US.US-ASCII" && \
+		${LN} -s "C" "POSIX" && \
+		${LN} -s "C" "en_US.US-ASCII"
 .endif
 
 etc-examples:

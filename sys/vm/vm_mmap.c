@@ -132,7 +132,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 	  int uprot, int uflags, int fd, off_t upos, void **res)
 {
 	struct thread *td = curthread;
- 	struct proc *p = td->td_proc;
+	struct proc *p = td->td_proc;
 	struct file *fp = NULL;
 	struct vnode *vp;
 	vm_offset_t addr;

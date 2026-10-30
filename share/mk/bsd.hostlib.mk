@@ -8,7 +8,7 @@ all: objwarn
 
 .if defined(LIB) && !empty(LIB)
 . if !empty(SRCS)
-OBJS+=  ${SRCS:N*.h:R:S/$/.no/g}
+OBJS+=		${SRCS:N*.h:R:S/$/.no/g}
 . endif
 .endif
 
@@ -51,6 +51,4 @@ clean:
 .endif
 
 .include <bsd.obj.mk>
-
 .include <bsd.sys.mk>
-

@@ -3151,7 +3151,7 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 			 */
 			if (pprot & VM_PROT_WRITE)
 				vm_set_nosync(m, entry);
-			pmap_enter(pmap, addr, m, pprot, 0, entry);
+			pmap_enter(pmap, addr, m, pprot, FALSE, entry);
 #if 0
 			/* REMOVE ME, a burst counts as one fault */
 			mycpu->gd_cnt.v_vm_faults++;
@@ -3193,7 +3193,7 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 			}
 			if (pprot & VM_PROT_WRITE)
 				vm_set_nosync(m, entry);
-			pmap_enter(pmap, addr, m, pprot, 0, entry);
+			pmap_enter(pmap, addr, m, pprot, FALSE, entry);
 #if 0
 			/* REMOVE ME, a burst counts as one fault */
 			mycpu->gd_cnt.v_vm_faults++;
@@ -3332,7 +3332,7 @@ vm_prefault_quick(pmap_t pmap, vm_offset_t addra,
 			if (m == NULL)
 				break;
 			if ((m->queue - m->pc) != PQ_CACHE) {
-				pmap_enter(pmap, addr, m, prot, 0, entry);
+				pmap_enter(pmap, addr, m, prot, FALSE, entry);
 #if 0
 			/* REMOVE ME, a burst counts as one fault */
 				mycpu->gd_cnt.v_vm_faults++;
@@ -3384,7 +3384,7 @@ vm_prefault_quick(pmap_t pmap, vm_offset_t addra,
 				/* swap_pager_unswapped(m); */
 			}
 		}
-		pmap_enter(pmap, addr, m, prot, 0, entry);
+		pmap_enter(pmap, addr, m, prot, FALSE, entry);
 #if 0
 		/* REMOVE ME, a burst counts as one fault */
 		mycpu->gd_cnt.v_vm_faults++;

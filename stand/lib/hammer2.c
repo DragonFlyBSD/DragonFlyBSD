@@ -34,7 +34,7 @@
  */
 
 #if !defined(BOOT2) && !defined(TESTING)
-#define LIBSTAND        1
+#define LIBSTAND	1
 #endif
 
 #ifdef BOOT2
@@ -63,19 +63,19 @@
 #include <machine/param.h>	/* for DEV_BSHIFT */
 #include <vfs/hammer2/hammer2_disk.h>
 
-uint32_t iscsi_crc32(const void *buf, size_t size);
-uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);
+/* from sys/libkern/icrc32.c */
+extern uint32_t iscsi_crc32(const void *buf, size_t size);
+
+#define hammer2_icrc32(buf, size)	iscsi_crc32(buf, size)
 
 static hammer2_media_data_t media;
 static hammer2_blockref_t saved_base;
-
-#define hammer2_icrc32(buf, size)	iscsi_crc32(buf, size)
 
 struct hammer2_fs {
 	hammer2_blockref_t		sroot;
 	hammer2_blockset_t		sroot_blockset;
 #if defined(TESTING)
-	int 				fd;
+	int				fd;
 #elif defined(LIBSTAND)
 	struct open_file		*f;
 #elif defined(BOOT2)
@@ -104,17 +104,6 @@ bcopy(void *src, void *dst, size_t size)
 {
 	memcpy(dst, src, size);
 }
-
-#if 0
-static size_t
-strlen(const char *s)
-{
-	size_t l = 0;
-	for (; *s != 0; s++)
-		l++;
-	return (l);
-}
-#endif
 
 static int
 memcmp(const void *a, const void *b, size_t len)
@@ -267,7 +256,7 @@ h2read(struct hammer2_fs *hfs, void *buf, size_t nbytes, off_t off)
  *
  * NOTE! When reading file data, the returned bref's key will be the nearest
  *	 data block we looked up.  The file read procedure must handle any
- *       zero-fill or skip.  However, we will truncate the return value to
+ *	 zero-fill or skip.  However, we will truncate the return value to
  *	 the file size.
  */
 static int
@@ -327,9 +316,9 @@ again:
 		 */
 		if (base->type != HAMMER2_BREF_TYPE_VOLUME &&
 		    base->data_off != saved_base.data_off) {
-			if (blocksize(base) && h2read(hfs, &media,
-						      blocksize(base),
-						      blockoff(base))) {
+			if (blocksize(base) &&
+			    h2read(hfs, &media, blocksize(base),
+				   blockoff(base))) {
 				bref_ret->type = 0;
 				return(-1);
 			}
@@ -442,7 +431,7 @@ h2resolve(struct hammer2_fs *hfs, const char *path,
 	size_t len;
 
 	/*
-	 * Start point (superroot)
+	 * Start point (super-root)
 	 */
 	ino = NULL;
 	*bref = hfs->sroot;
@@ -564,7 +553,7 @@ h2readfile(struct hammer2_fs *hfs, hammer2_blockref_t *bref,
 		len = filesize - off;
 
 	/*
-	 * Loop until done 
+	 * Loop until done
 	 */
 	total = 0;
 	while (len) {
@@ -632,9 +621,6 @@ static
 int
 h2init(struct hammer2_fs *hfs)
 {
-#if 0
-	uint32_t crc0;
-#endif
 	hammer2_tid_t best_tid = 0;
 	void *data;
 	off_t off;
@@ -685,7 +671,7 @@ h2init(struct hammer2_fs *hfs)
 	h2lookup(hfs, NULL, 0, 0, NULL, NULL);
 
 	/*
-	 * Lookup sroot/BOOT and clear the cache again.
+	 * Lookup the BOOT PFS, and clear the cache again.
 	 */
 	r = h2lookup(hfs, &hfs->sroot,
 		     HAMMER2_SROOT_KEY, HAMMER2_SROOT_KEY,
@@ -707,10 +693,8 @@ h2init(struct hammer2_fs *hfs)
 }
 
 /************************************************************************
- * 				BOOT2 SUPPORT				*
- ************************************************************************
- *
- */
+ *				BOOT2 SUPPORT				*
+ ************************************************************************/
 #ifdef BOOT2
 
 static struct hammer2_fs hfs;
@@ -749,18 +733,16 @@ boot2_hammer2_read(boot2_ino_t ino, void *buf, size_t len)
 }
 
 const struct boot2_fsapi boot2_hammer2_api = {
-        .fsinit = boot2_hammer2_init,
-        .fslookup = boot2_hammer2_lookup,
-        .fsread = boot2_hammer2_read
+	.fsinit = boot2_hammer2_init,
+	.fslookup = boot2_hammer2_lookup,
+	.fsread = boot2_hammer2_read
 };
 
 #endif
 
 /************************************************************************
- * 				LIBSTAND SUPPORT			*
- ************************************************************************
- *
- */
+ *				LIBSTAND SUPPORT			*
+ ************************************************************************/
 #ifdef LIBSTAND
 
 struct hfile {
@@ -839,7 +821,7 @@ hammer2_open(const char *path, struct open_file *f)
 	h2resolve(&hf->hfs, path, &hf->bref, &ipdata);
 	if (hf->bref.data_off == (hammer2_off_t)-1 ||
 	    (hf->bref.type != HAMMER2_BREF_TYPE_INODE &&
-	    hf->bref.type != HAMMER2_BREF_TYPE_VOLUME)) {
+	     hf->bref.type != HAMMER2_BREF_TYPE_VOLUME)) {
 		f->f_fsdata = NULL;
 		free(hf);
 		errno = ENOENT;
@@ -934,7 +916,7 @@ hammer2_readdir(struct open_file *f, struct dirent *den)
 
 	for (;;) {
 		bytes = h2lookup(&hf->hfs, &hf->bref,
-				 f->f_offset | HAMMER2_DIRHASH_VISIBLE, 
+				 f->f_offset | HAMMER2_DIRHASH_VISIBLE,
 				 HAMMER2_KEY_MAX,
 				 &bres, (void **)&data);
 		if (bytes < 0)

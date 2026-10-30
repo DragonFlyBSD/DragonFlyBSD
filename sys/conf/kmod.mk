@@ -151,8 +151,7 @@ CFLAGS+=	-I${DESTDIR}/usr/include
 CFLAGS+=	-Idragonfly/../include -I${DESTDIR}/usr/include
 .endif
 
-.if defined(KERNBUILDDIR) && \
-    exists(${KERNBUILDDIR}/opt_global.h)
+.if defined(KERNBUILDDIR) && exists(${KERNBUILDDIR}/opt_global.h)
 CFLAGS+=	-DHAVE_KERNEL_OPTION_HEADERS -include ${KERNBUILDDIR}/opt_global.h
 .endif
 
@@ -258,8 +257,6 @@ SYSDIR=	${_dir}
 .error "can't find kernel source tree"
 .endif
 S=	${SYSDIR}
-
-#	path=`(cd $$path && /bin/pwd)` ;
 
 ${_ILINKS}:
 	@case ${.TARGET} in \

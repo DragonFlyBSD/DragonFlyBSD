@@ -1838,7 +1838,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	 */
 	m->valid = VM_PAGE_BITS_ALL;
 	pmap_enter(kernel_pmap, addr + i, m,
-		   VM_PROT_ALL | VM_PROT_NOSYNC, 1, NULL);
+		   VM_PROT_ALL | VM_PROT_NOSYNC, TRUE, NULL);
 	if (flags & M_ZERO)
 		pagezero((char *)addr + i);
 	KKASSERT(m->flags & (PG_WRITEABLE | PG_MAPPED));

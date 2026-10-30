@@ -229,10 +229,9 @@ arptimer(void *xnm)
 static void
 arp_rtrequest(int req, struct rtentry *rt)
 {
+	struct sockaddr_dl null_sdl = { sizeof null_sdl, AF_LINK };
 	struct sockaddr *gate = rt->rt_gateway;
 	struct llinfo_arp *la = rt->rt_llinfo;
-
-	struct sockaddr_dl null_sdl = { sizeof null_sdl, AF_LINK };
 
 	if (rt->rt_flags & RTF_GATEWAY)
 		return;
@@ -527,7 +526,7 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 		memcpy(desten, ifp->if_broadcastaddr, ifp->if_addrlen);
 		return 0;
 	}
-	if (m->m_flags & M_MCAST) {/* multicast */
+	if (m->m_flags & M_MCAST) {	/* multicast */
 		ETHER_MAP_IP_MULTICAST(&SIN(dst)->sin_addr, desten);
 		return 0;
 	}

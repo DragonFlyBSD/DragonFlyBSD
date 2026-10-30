@@ -22,9 +22,9 @@ SONAME?=	${SHLIB_NAME}
 .endif
 
 .if defined(DEBUG_FLAGS)
-CFLAGS+= ${DEBUG_FLAGS}
+CFLAGS+=	${DEBUG_FLAGS}
 .else
-STRIP?=	-s
+STRIP?=		-s
 .endif
 
 .include <bsd.libnames.mk>
@@ -52,12 +52,12 @@ PRIVATELIB_LDFLAGS?=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 .SUFFIXES: .po .So
 
 .if !defined(PICFLAG)
-PICFLAG=-fpic
+PICFLAG=	-fpic
 .endif
 
-PO_FLAG=-pg
-PO_CFLAGS=${CFLAGS:N-ffunction-sections}
-PO_CXXFLAGS=${CXXFLAGS:N-ffunction-sections}
+PO_FLAG=	-pg
+PO_CFLAGS=	${CFLAGS:N-ffunction-sections}
+PO_CXXFLAGS=	${CXXFLAGS:N-ffunction-sections}
 
 # Flags that distinguish the kind of object being built.
 _CFLAGS_MODE.po=	${PO_FLAG} ${STATIC_CFLAGS} ${PO_CFLAGS}
@@ -121,7 +121,7 @@ LDFLAGS+=	-Wl,--version-script=${VERSION_MAP}
 
 .if defined(LIB) && !empty(LIB) || defined(SHLIB_NAME)
 . if !empty(SRCS)
-OBJS+=  ${SRCS:N*.h:R:S/$/.o/g}
+OBJS+=		${SRCS:N*.h:R:S/$/.o/g}
 . endif
 .endif
 
@@ -325,6 +325,4 @@ clean:
 .endif
 
 .include <bsd.obj.mk>
-
 .include <bsd.sys.mk>
-

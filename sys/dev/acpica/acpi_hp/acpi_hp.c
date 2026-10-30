@@ -910,7 +910,7 @@ acpi_hp_get_cmi_block(device_t wmi_dev, const char* guid, UINT8 instance,
 
 	*sequence = 0;	/* whack gcc warning */
 	outlen = 0;
-	outbuf[0] = 0;	
+	outbuf[0] = 0;
 	if (ACPI_FAILURE(ACPI_WMI_GET_BLOCK(wmi_dev, guid, instance, &out))) {
 		acpi_hp_free_buffer(&out);
 		return (-EINVAL);
@@ -937,7 +937,7 @@ acpi_hp_get_cmi_block(device_t wmi_dev, const char* guid, UINT8 instance,
 	    obj->Package.Elements[6].Type == ACPI_TYPE_INTEGER &&
 	    obj->Package.Elements[valuebase].Type == ACPI_TYPE_STRING &&
 	    obj->Package.Elements[valuebase+1].Type == ACPI_TYPE_INTEGER &&
-	    obj->Package.Count > valuebase + 
+	    obj->Package.Count > valuebase +
 	        obj->Package.Elements[valuebase+1].Integer.Value
 	   ) {
 		enumbase = valuebase + 1;
@@ -1053,8 +1053,8 @@ acpi_hp_hex_decode(char* buffer)
 		}
 		else
 			if (!((buffer[i] >= '0' && buffer[i] <= '9') ||
-		    	    (buffer[i] >= 'A' && buffer[i] <= 'F')))
-				return;			
+			    (buffer[i] >= 'A' && buffer[i] <= 'F')))
+				return;
 	}
 
 	for (i = 0; i<length; i += 3) {
@@ -1160,7 +1160,7 @@ acpi_hp_hpcmi_read(struct dev_read_args *ap)
 		if (!sbuf_done(&sc->hpcmi_sbuf)) {
 			if (sc->cmi_order_size < 0) {
 				maxInstance = sc->has_cmi;
-				if (!(sc->cmi_detail & 
+				if (!(sc->cmi_detail &
 				    ACPI_HP_CMI_DETAIL_SHOW_MAX_INSTANCE) &&
 				    maxInstance > 0) {
 					maxInstance--;
@@ -1173,24 +1173,23 @@ acpi_hp_hpcmi_read(struct dev_read_args *ap)
 						line, sizeof(line), &sequence,
 						sc->cmi_detail)) {
 						instance = maxInstance;
-					}
-					else {
+					} else {
 						pos = sc->cmi_order_size;
-						for (i=0;
-						  i<sc->cmi_order_size && i<127;
+						for (i = 0;
+						     i < sc->cmi_order_size && i < 127;
 						     ++i) {
-				if (sc->cmi_order[i].sequence > sequence) {
+							if (sc->cmi_order[i].sequence > sequence) {
 								pos = i;
-								break; 							
+								break;
 							}
 						}
-						for (i=sc->cmi_order_size;
-						    i>pos;
-						    --i) {
-						sc->cmi_order[i].sequence =
-						    sc->cmi_order[i-1].sequence;
-						sc->cmi_order[i].instance =
-						    sc->cmi_order[i-1].instance;
+						for (i = sc->cmi_order_size;
+						     i > pos;
+						     --i) {
+							sc->cmi_order[i].sequence =
+							    sc->cmi_order[i-1].sequence;
+							sc->cmi_order[i].instance =
+							    sc->cmi_order[i-1].instance;
 						}
 						sc->cmi_order[pos].sequence =
 						    sequence;

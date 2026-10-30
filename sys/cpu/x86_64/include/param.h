@@ -189,7 +189,7 @@
 #define	x86_64_btop(x)	((vm_pindex_t)((x) >> PAGE_SHIFT))
 #define	x86_64_ptob(x)	((vm_paddr_t)(x) << PAGE_SHIFT)
 
-#define	pgtok(x)		((x) * (PAGE_SIZE / 1024))
+#define	pgtok(x)	((x) * (PAGE_SIZE / 1024))
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
 
 #ifdef _KERNEL

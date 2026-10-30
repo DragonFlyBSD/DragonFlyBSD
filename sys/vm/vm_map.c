@@ -1439,7 +1439,7 @@ vm_map_insert(vm_map_t map, int *countp,
 	if ((cow & (COWF_PREFAULT | COWF_PREFAULT_PARTIAL)) &&
 	    maptype != VM_MAPTYPE_VPAGETABLE &&
 	    maptype != VM_MAPTYPE_UKSMAP)
-    {
+	{
 		int dorelock = 0;
 		if (vm_map_relock_enable && (cow & COWF_PREFAULT_RELOCK)) {
 			dorelock = 1;

@@ -375,7 +375,7 @@ void ttm_mem_global_release(struct ttm_mem_global *glob)
 		zone = glob->zones[i];
 		kobject_del(&zone->kobj);
 		kobject_put(&zone->kobj);
-			}
+	}
 	kobject_del(&glob->kobj);
 	kobject_put(&glob->kobj);
 }
