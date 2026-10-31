@@ -30,13 +30,10 @@ CXX_BUILD=	charset.c \
 		symtab.c \
 		traditional.c
 
-OBJS=		${CXX_BUILD:.c=.o}
+SRCS=		${CXX_BUILD}
 
-# hack to force c++ compiler to compile *.c files to create library
-.for cfile in ${CXX_BUILD}
-${cfile:.c=.o}: ${cfile} localedir.h
-	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
-.endfor
+# generated
+SRCS+= localedir.h
 
 localedir.h:
 	touch $@
@@ -44,3 +41,8 @@ localedir.h:
 CLEANFILES=	localedir.h
 
 .include <bsd.lib.mk>
+
+# hack to force c++ compiler to compile *.c files
+MKDEPCC:=	${CXX}
+CC:=		${CXX}
+CFLAGS:=	${CXXFLAGS}
