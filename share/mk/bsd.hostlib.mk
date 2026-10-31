@@ -4,23 +4,6 @@
 __USE_HOST_CCVER=
 NO_WERROR=
 
-# prefer .s to a .c, add .po, remove stuff not used in the BSD libraries
-# .So used for PIC object files
-.SUFFIXES:
-.SUFFIXES: .out .no .c .cc .cpp .cxx .C .y .l
-
-.c.no:
-	${NXCC} ${_${.TARGET:R}_FLAGS:M-I*} ${NXCFLAGS:N-flto} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
-	@${NXLD} -o ${.TARGET}.tmp -x -r ${.TARGET}
-	@mv ${.TARGET}.tmp ${.TARGET}
-
-.cc.no .C.no .cpp.no .cxx.no:
-	${NXCXX} ${_${.TARGET:R}_FLAGS:M-I*} ${NXCXXFLAGS:N-flto} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
-	@${NXLD} -o ${.TARGET}.tmp -x -r ${.TARGET}
-	@mv ${.TARGET}.tmp ${.TARGET}
-
 all: objwarn
 
 .if defined(LIB) && !empty(LIB)
