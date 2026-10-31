@@ -27,4 +27,6 @@ CFLAGS+=	-I${GCCDIR}/gcc/config/i386
 CFLAGS+=	-I${CCDIR}/../gmp
 .endif
 
+WARNS?=	2
+
 .endif

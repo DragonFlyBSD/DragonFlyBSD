@@ -7,6 +7,8 @@ NOPROFILE=	YES
 # Mimic libgcc_s.so, this is a special case
 NOSHARED=	YES
 
+WARNS=		1
+
 CFLAGS+=	-fpic
 
 CFLAGS+=	-I${.CURDIR}

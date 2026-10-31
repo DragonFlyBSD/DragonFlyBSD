@@ -16,6 +16,8 @@ LIB=		gcc
 # this is a special case
 NOSHARED=	YES
 
+WARNS=		1
+
 CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.OBJDIR}
 CFLAGS+=	-I${GCCDIR}/libgcc

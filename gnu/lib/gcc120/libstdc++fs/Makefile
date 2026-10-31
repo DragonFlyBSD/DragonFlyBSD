@@ -7,6 +7,8 @@ LIB=		stdc++fs
 
 NOSHARED=	yes
 
+WARNS=		1
+
 CXXFLAGS+=	-std=gnu++17
 # build as PIC to allow being linked with shared libraries
 CXXFLAGS+=	-fPIC -DPIC -D_GLIBCXX_SHARED

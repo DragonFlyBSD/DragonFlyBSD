@@ -9,6 +9,9 @@ INTERNALLIBPROF=	yes
 # build the PIC archive for libstdc++.so
 INSTALL_PIC_ARCHIVE=	yes
 
+# XXX: -Werror=attributes
+WARNS=	0
+
 .PATH:	${GCCDIR}/libiberty
 .PATH:	${SRCDIR}/libsupc++
 

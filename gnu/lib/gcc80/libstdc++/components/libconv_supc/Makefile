@@ -8,6 +8,9 @@ INTERNALLIB=		yes
 INTERNALLIBPROF=	yes
 INSTALL_PIC_ARCHIVE=	yes
 
+# XXX: -Werror=attributes
+WARNS=	0
+
 .PATH:	${GCCDIR}/libiberty
 .PATH:	${GCCDIR}/libgcc
 .PATH:	${SRCDIR}/libsupc++

@@ -9,6 +9,9 @@ INTERNALLIBPROF=	yes
 # build the PIC archive for libstdc++.so
 INSTALL_PIC_ARCHIVE=	yes
 
+# XXX: -Werror=c++11-extensions
+WARNS=	0
+
 .PATH:	${SRCDIR}/src/c++98
 
 SRCS=	${libc__98convenience_la_SOURCES}
