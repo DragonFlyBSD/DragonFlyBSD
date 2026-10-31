@@ -354,10 +354,13 @@ LDADD		Additional loader objects.
 
 MAN		The manual pages to be installed (use a .1 - .9 suffix).
 
-SRCS		List of source files to build the library.  Suffix types
-		.s, .c, and .f are supported.  Note, .s files are preferred
-		to .c files of the same name.  (This is not the default for
-		versions of make.)
+SRCS		List of source files to build the library.
+
+FLAGS.<target>.o Additional compiler flags for a specific target.
+		FLAGS.foo.o applies to foo.o, foo.po and foo.So.
+
+SRC.<target>.o	Source file for a library object.  SRC.foo.o applies to
+		foo.o, foo.po and foo.So.
 
 The include file <bsd.lib.mk> includes the file named "../Makefile.inc"
 if it exists, as well as the include file <bsd.man.mk>.

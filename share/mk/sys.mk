@@ -121,13 +121,15 @@ YFLAGS		?=
 YFLAGS		?=	-d
 .endif
 
-# Per-target flags
+# Per-target flags use the target's .o name, e.g. FLAGS.foo.o applies to
+# foo.o, foo.po, foo.So and foo.no.
 #
 # Include flags are placed before the global flags; all other per-target flags
 # are placed after them so that they can override the global flags.
 #
-_FLAGS_PRE=		${_${.TARGET:R}_FLAGS:M-I*}
-_FLAGS_POST=		${_${.TARGET:R}_FLAGS:N-I*}
+_FLAGS_TARGET=		${FLAGS.${.TARGET:R}.o}
+_FLAGS_PRE=		${_FLAGS_TARGET:M-I*} ${_${.TARGET:R}_FLAGS:M-I*}
+_FLAGS_POST=		${_${.TARGET:R}_FLAGS:N-I*} ${_FLAGS_TARGET:N-I*}
 
 # Per-mode (.o, .po, .So) flags; making the compile commands reusable
 # in <bsd.lib.mk>.
@@ -152,7 +154,7 @@ COMPILE.f=	${FC} ${_FLAGS_PRE} ${RFLAGS} ${EFLAGS} \
 COMPILE.S=	${CC} -x assembler-with-cpp ${_FLAGS_PRE} \
 		${_ASMFLAGS_MODE.${.TARGET:E}} ${_FLAGS_POST} -c
 COMPILE.s=	${AS} ${_AFLAGS_MODE.${.TARGET:E}} \
-		${_${.TARGET:R}_FLAGS}
+		${_${.TARGET:R}_FLAGS} ${_FLAGS_TARGET}
 
 # The 'make' program is expected to define the following.
 #

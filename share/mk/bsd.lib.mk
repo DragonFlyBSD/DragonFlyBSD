@@ -93,6 +93,21 @@ _AFLAGS_MODE.So=	${PICFLAG} -DPIC ${AFLAGS}
 .s.po .s.So:
 	${COMPILE.s} -o ${.TARGET} ${.IMPSRC}
 
+# Compile commands for targets with an explicit SRC.<target-root>.o mapping.
+# Use the first prerequisite for explicit rules where .IMPSRC is empty.
+_LIB_COMPILE.c: .USE
+	${COMPILE.c} ${.IMPSRC:U${.ALLSRC:[1]}} -o ${.TARGET}
+_LIB_COMPILE.cc _LIB_COMPILE.C _LIB_COMPILE.cpp _LIB_COMPILE.cxx: .USE
+	${COMPILE.cc} ${.IMPSRC:U${.ALLSRC:[1]}} -o ${.TARGET}
+_LIB_COMPILE.f: .USE
+	${COMPILE.f} ${.IMPSRC:U${.ALLSRC:[1]}} -o ${.TARGET}
+_LIB_COMPILE.m: .USE
+	${COMPILE.m} ${.IMPSRC:U${.ALLSRC:[1]}} -o ${.TARGET}
+_LIB_COMPILE.S: .USE
+	${COMPILE.S} ${.IMPSRC:U${.ALLSRC:[1]}} -o ${.TARGET}
+_LIB_COMPILE.s: .USE
+	${COMPILE.s} -o ${.TARGET} ${.IMPSRC:U${.ALLSRC:[1]}}
+
 all: objwarn
 
 .include <bsd.symver.mk>
@@ -141,6 +156,21 @@ lib${LIB}_p.a: ${POBJS}
     (defined(INSTALL_PIC_ARCHIVE) && defined(LIB) && !empty(LIB))
 SOBJS+=		${OBJS:.o=.So}
 .endif
+
+# SRC.<target-root>.o provides a source for targets that are not derived from
+# SRCS.  OBJS, POBJS and SOBJS share the same target root, so an .o-only OBJS
+# entry automatically gets .po and .So mappings as well.
+_LIB_SRC_EXTS=	c cc C cpp cxx m f s S
+
+.for _o in ${OBJS} ${POBJS} ${SOBJS}
+. if !empty(SRC.${_o:R}.o)
+_ext:=	${SRC.${_o:R}.o:[1]:E}
+.  if empty(_LIB_SRC_EXTS:M${_ext})
+.error Unsupported source suffix "${_ext}" for ${_o}
+.  endif
+${_o}: ${SRC.${_o:R}.o} _LIB_COMPILE.${_ext}
+. endif
+.endfor
 
 .if !defined(INTERNALLIB) && defined(SHLIB_NAME)
 _LIBS+=		${SHLIB_NAME}
