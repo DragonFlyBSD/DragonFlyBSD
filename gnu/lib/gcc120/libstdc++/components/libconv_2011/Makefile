@@ -29,26 +29,12 @@ char8_FLAGS_FILES=	codecvt.cc limits.cc
 # Rewrite the type info for __ios_failure.
 rewrite_ios_failure_typeinfo = sed -e '/^_*_ZTISt13__ios_failure:/,/_ZTVN10__cxxabiv120__si_class_type_infoE/s/_ZTVN10__cxxabiv120__si_class_type_infoE/_ZTVSt19__iosfail_type_info/'
 
-cxx11-ios_failure.o: cxx11-ios_failure.cc
-	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} \
-		-gno-as-loc-support -S -o ${.TARGET}.s.tmp ${.ALLSRC}
+_COMPILE_IOS_FAILURE: .USE
+	${COMPILE.cc} ${.IMPSRC} -gno-as-loc-support -S -o ${.TARGET}.s.tmp
 	${rewrite_ios_failure_typeinfo} < ${.TARGET}.s.tmp > ${.TARGET}.s
-	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} \
-		-g0 -c ${.TARGET}.s -o ${.TARGET}
+	${COMPILE.cc} ${.TARGET}.s -g0 -o ${.TARGET}
 
-cxx11-ios_failure.po: cxx11-ios_failure.cc
-	${CXX} ${PO_FLAG} ${STATIC_CXXFLAGS} ${PO_CXXFLAGS} \
-		-gno-as-loc-support -S -o ${.TARGET}.s.tmp ${.ALLSRC}
-	${rewrite_ios_failure_typeinfo} < ${.TARGET}.s.tmp > ${.TARGET}.s
-	${CXX} ${PO_FLAG} ${STATIC_CXXFLAGS} ${PO_CXXFLAGS} \
-		-g0 -c ${.TARGET}.s -o ${.TARGET}
-
-cxx11-ios_failure.So: cxx11-ios_failure.cc
-	${CXX} ${PICFLAG} -DPIC ${SHARED_CXXFLAGS} ${CXXFLAGS} \
-		-gno-as-loc-support -S -o ${.TARGET}.s.tmp ${.ALLSRC}
-	${rewrite_ios_failure_typeinfo} < ${.TARGET}.s.tmp > ${.TARGET}.s
-	${CXX} ${PICFLAG} -DPIC ${SHARED_CXXFLAGS} ${CXXFLAGS} \
-		-g0 -c ${.TARGET}.s -o ${.TARGET}
+cxx11-ios_failure.o cxx11-ios_failure.po cxx11-ios_failure.So: _COMPILE_IOS_FAILURE
 
 CLEANFILES+=	${GENFILES}
 beforedepend:	${GENFILES}

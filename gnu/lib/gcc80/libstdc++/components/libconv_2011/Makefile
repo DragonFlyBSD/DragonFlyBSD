@@ -37,24 +37,16 @@ explicit_FLAGS=		-fno-implicit-templates
 explicit_FLAGS_FILES=	${SRCS:Nhashtable_c++0x.cc}
 
 # PR libstdc++/85222 needs intermediate manipulation
-OBJS+=	cxx11-ios_failure_sed.o
+OBJS+=	cxx11-ios_failure.o
 S1DUAL=	'/^_*_ZTISt13__ios_failure:/,/_ZTVN10__cxxabiv120__si_class_type_infoE/s/_ZTVN10__cxxabiv120__si_class_type_infoE/_ZTVSt19__iosfail_type_info/'
-IOSTMP=	ios_static.s ios_static.tmp ios_po.s ios_po.tmp ios_sh.s ios_sh.tmp
+IOSTMP=	cxx11-ios_failure.*.s*
 
-cxx11-ios_failure_sed.o: cxx11-ios_failure.cc
-	${CXX} ${explicit_FLAGS} ${STATIC_CXXFLAGS} ${CXXFLAGS} -S -o ios_static.tmp ${.ALLSRC}
-	sed -e ${S1DUAL} < ios_static.tmp > ios_static.s
-	${CXX} ${explicit_FLAGS} ${STATIC_CXXFLAGS} ${CXXFLAGS} -g0 -c ios_static.s -o ${.TARGET}
+_COMPILE_IOS_FAILURE: .USE
+	${COMPILE.cc} ${.IMPSRC} ${explicit_FLAGS} -S -o ${.TARGET}.s.tmp
+	sed -e ${S1DUAL} < ${.TARGET}.s.tmp > ${.TARGET}.s
+	${COMPILE.cc} ${.TARGET}.s ${explicit_FLAGS} -g0 -o ${.TARGET}
 
-cxx11-ios_failure_sed.po: cxx11-ios_failure.cc
-	${CXX} ${explicit_FLAGS} ${PO_FLAG} ${STATIC_CXXFLAGS} ${PO_CXXFLAGS} -S -o ios_po.tmp ${.ALLSRC}
-	sed -e ${S1DUAL} < ios_po.tmp > ios_po.s
-	${CXX} ${explicit_FLAGS} ${PO_FLAG} ${STATIC_CXXFLAGS} ${PO_CXXFLAGS} -g0 -c ios_po.s -o ${.TARGET}
-
-cxx11-ios_failure_sed.So: cxx11-ios_failure.cc
-	${CXX} ${explicit_FLAGS} ${PICFLAG} -DPIC ${SHARED_CXXFLAGS} ${CXXFLAGS} -S -o ios_sh.tmp ${.ALLSRC}
-	sed -e ${S1DUAL} < ios_sh.tmp > ios_sh.s
-	${CXX} ${explicit_FLAGS} ${PICFLAG} -DPIC ${SHARED_CXXFLAGS} ${CXXFLAGS} -g0 -c ios_sh.s -o ${.TARGET}
+cxx11-ios_failure.o cxx11-ios_failure.po cxx11-ios_failure.So: _COMPILE_IOS_FAILURE
 
 cxxabi_forced.h: ${SRCDIR}/libsupc++/cxxabi_forced.h
 	cp ${.ALLSRC} ${.TARGET}
