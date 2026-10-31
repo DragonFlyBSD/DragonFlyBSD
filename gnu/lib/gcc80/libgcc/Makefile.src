@@ -46,26 +46,10 @@ CFLAGS+=	-fno-lto
 LDFLAGS+=	-flto
 .endif
 
-FLAG_GROUPS=		raise
-raise_FLAGS=		-fexceptions -fnon-call-exceptions
-raise_FLAGS_FILES=	${LIB2_DIVMOD_FUNCS:S/$/.c/}
-
-${FUNCS_ST:S/$/.o/}: ${GCCDIR}/libgcc/libgcc2.c
-	${CC} ${STATIC_CFLAGS} ${CFLAGS} -DL${.TARGET:R} -c ${.ALLSRC} \
-		-o ${.TARGET}
-
-${FUNCS_ST:S/$/.po/}: ${GCCDIR}/libgcc/libgcc2.c
-	${CC} ${PO_FLAG} ${STATIC_CFLAGS} ${PO_CFLAGS} -DL${.TARGET:R} \
-		-c ${.ALLSRC} -o ${.TARGET}
-
-${FUNCS:S/$/.o/}: ${GCCDIR}/libgcc/libgcc2.c
-	${CC} ${STATIC_CFLAGS} ${CFLAGS} -DL${.TARGET:R} -c ${.ALLSRC} \
-		-o ${.TARGET}
-
-${FUNCS:S/$/.po/}: ${GCCDIR}/libgcc/libgcc2.c
-	${CC} ${PO_FLAG} ${STATIC_CFLAGS} ${PO_CFLAGS} -DL${.TARGET:R} \
-		-c ${.ALLSRC} -o ${.TARGET}
-
-${FUNCS:S/$/.So/}: ${GCCDIR}/libgcc/libgcc2.c
-	${CC} ${PICFLAG} -DPIC ${SHARED_CFLAGS} ${CFLAGS} -DL${.TARGET:R} \
-		-c ${.ALLSRC} -o ${.TARGET}
+.for f in ${lib2funcs} ${LIB2FUNCS_ST} ${LIB2_DIVMOD_FUNCS}
+SRC.${f}.o=	${GCCDIR}/libgcc/libgcc2.c
+FLAGS.${f}.o+=	-DL${f}
+.endfor
+.for f in ${LIB2_DIVMOD_FUNCS}
+FLAGS.${f}.o+=	-fexceptions -fnon-call-exceptions
+.endfor

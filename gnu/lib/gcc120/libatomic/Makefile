@@ -34,29 +34,15 @@ IFUNC_ALTS_16 = 1 2
 .for f in ${SIZEOBJS}
 . for s in ${SIZES}
 libatomic_la_LIBADD+=	${f}_${s}_.o
-SRC.${f}_${s}_=		${GCCDIR}/libatomic/${f}_n.c
-FLAGS.${f}_${s}_=	-DN=${s}
+SRC.${f}_${s}_.o=	${GCCDIR}/libatomic/${f}_n.c
+FLAGS.${f}_${s}_.o=	-DN=${s}
 
 .  for alt in ${IFUNC_ALTS_${s}}
-libatomic_la_LIBADD+=	${f}_${s}_${alt}_.o
-SRC.${f}_${s}_${alt}_=	${GCCDIR}/libatomic/${f}_n.c
-FLAGS.${f}_${s}_${alt}_= -DN=${s} -DIFUNC_ALT=${alt} ${IFUNC_OPTIONS}
+libatomic_la_LIBADD+=		${f}_${s}_${alt}_.o
+SRC.${f}_${s}_${alt}_.o=	${GCCDIR}/libatomic/${f}_n.c
+FLAGS.${f}_${s}_${alt}_.o=	-DN=${s} -DIFUNC_ALT=${alt} ${IFUNC_OPTIONS}
 .  endfor
 . endfor
-.endfor
-
-.for f in ${libatomic_la_LIBADD:R}
-${f}.o: ${SRC.${f}}
-	${CC} ${STATIC_CFLAGS} ${CFLAGS} ${FLAGS.${f}} \
-		-c ${.ALLSRC} -o ${.TARGET}
-
-${f}.po: ${SRC.${f}}
-	${CC} ${PO_FLAG} ${STATIC_CFLAGS} ${PO_CFLAGS} ${FLAGS.${f}} \
-		-c ${.ALLSRC} -o ${.TARGET}
-
-${f}.So: ${SRC.${f}}
-	${CC} ${PICFLAG} -DPIC ${SHARED_CFLAGS} ${CFLAGS} ${FLAGS.${f}} \
-		-c ${.ALLSRC} -o ${.TARGET}
 .endfor
 
 .include <bsd.lib.mk>

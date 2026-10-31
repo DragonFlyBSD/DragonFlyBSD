@@ -40,60 +40,20 @@ LIBGCOV=	${LIBGCOV_MERGE} ${LIBGCOV_PROFILER} ${LIBGCOV_INTERFACE} \
 
 OBJS=	${LIBGCOV:S/$/.o/}
 
+LIBGCOV_SRC_MERGE=	${GCCDIR}/libgcc/libgcov-merge.c
+LIBGCOV_SRC_PROFILER=	${GCCDIR}/libgcc/libgcov-profiler.c
+LIBGCOV_SRC_INTERFACE=	${GCCDIR}/libgcc/libgcov-interface.c gthr-default.h
+LIBGCOV_SRC_DRIVER=	${GCCDIR}/libgcc/libgcov-driver.c
+
+.for _g in MERGE PROFILER INTERFACE DRIVER
+. for f in ${LIBGCOV_${_g}}
+SRC.${f}.o=	${LIBGCOV_SRC_${_g}}
+FLAGS.${f}.o=	-DL${f}
+. endfor
+.endfor
+
 gthr-default.h: gthr-posix.h
 	cp ${.ALLSRC} ${.TARGET}
-
-${LIBGCOV_MERGE:S/$/.o/}: ${GCCDIR}/libgcc/libgcov-merge.c
-	${CC} ${STATIC_CFLAGS} ${CFLAGS} -DL${.TARGET:R} -c ${.ALLSRC} \
-		-o ${.TARGET}
-
-${LIBGCOV_PROFILER:S/$/.o/}: ${GCCDIR}/libgcc/libgcov-profiler.c
-	${CC} ${STATIC_CFLAGS} ${CFLAGS} -DL${.TARGET:R} -c ${.ALLSRC} \
-		-o ${.TARGET}
-
-${LIBGCOV_INTERFACE:S/$/.o/}: ${GCCDIR}/libgcc/libgcov-interface.c gthr-default.h
-	${CC} ${STATIC_CFLAGS} ${CFLAGS} -DL${.TARGET:R} -c ${.ALLSRC:M*.c} \
-		-o ${.TARGET}
-
-${LIBGCOV_DRIVER:S/$/.o/}: ${GCCDIR}/libgcc/libgcov-driver.c
-	${CC} ${STATIC_CFLAGS} ${CFLAGS} -DL${.TARGET:R} -c ${.ALLSRC} \
-		-o ${.TARGET}
-
-# profile versions follow
-
-${LIBGCOV_MERGE:S/$/.po/}: ${GCCDIR}/libgcc/libgcov-merge.c
-	${CC} ${PO_FLAG} ${STATIC_CFLAGS} ${PO_CFLAGS} -DL${.TARGET:R} \
-		-c ${.ALLSRC} -o ${.TARGET}
-
-${LIBGCOV_PROFILER:S/$/.po/}: ${GCCDIR}/libgcc/libgcov-profiler.c
-	${CC} ${PO_FLAG} ${STATIC_CFLAGS} ${PO_CFLAGS} -DL${.TARGET:R} \
-		-c ${.ALLSRC} -o ${.TARGET}
-
-${LIBGCOV_INTERFACE:S/$/.po/}: ${GCCDIR}/libgcc/libgcov-interface.c gthr-default.h
-	${CC} ${PO_FLAG} ${STATIC_CFLAGS} ${PO_CFLAGS} -DL${.TARGET:R} \
-		-c ${.ALLSRC:M*.c} -o ${.TARGET}
-
-${LIBGCOV_DRIVER:S/$/.po/}: ${GCCDIR}/libgcc/libgcov-driver.c
-	${CC} ${PO_FLAG} ${STATIC_CFLAGS} ${PO_CFLAGS} -DL${.TARGET:R} \
-		-c ${.ALLSRC} -o ${.TARGET}
-
-# pic versions follow
-
-${LIBGCOV_MERGE:S/$/.So/}: ${GCCDIR}/libgcc/libgcov-merge.c
-	${CC} ${PICFLAG} -DPIC ${SHARED_CFLAGS} ${CFLAGS} -DL${.TARGET:R} -c ${.ALLSRC} \
-		-o ${.TARGET}
-
-${LIBGCOV_PROFILER:S/$/.So/}: ${GCCDIR}/libgcc/libgcov-profiler.c
-	${CC} ${PICFLAG} -DPIC ${SHARED_CFLAGS} ${CFLAGS} -DL${.TARGET:R} -c ${.ALLSRC} \
-		-o ${.TARGET}
-
-${LIBGCOV_INTERFACE:S/$/.So/}: ${GCCDIR}/libgcc/libgcov-interface.c gthr-default.h
-	${CC} ${PICFLAG} -DPIC ${SHARED_CFLAGS} ${CFLAGS} -DL${.TARGET:R} -c ${.ALLSRC:M*.c} \
-		-o ${.TARGET}
-
-${LIBGCOV_DRIVER:S/$/.So/}: ${GCCDIR}/libgcc/libgcov-driver.c
-	${CC} ${PICFLAG} -DPIC ${SHARED_CFLAGS} ${CFLAGS} -DL${.TARGET:R} -c ${.ALLSRC} \
-		-o ${.TARGET}
 
 auto-target.h: ${.CURDIR}/../libgcc/auto-target.h
 	cp ${.ALLSRC} ${.TARGET}

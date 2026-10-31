@@ -158,26 +158,13 @@ LIB2FUNCS_ST:=		${LIB2FUNCS_ST:N${f}}
 .endfor
 
 .for f in ${lib2funcs} ${LIB2FUNCS_ST} ${LIB2_DIVMOD_FUNCS}
-FLAGS_${f}+=	-DL${f}
+SRC.${f}.o=	${srcdir}/libgcc2.c
+FLAGS.${f}.o+=	-DL${f}
 .endfor
 .for f in ${LIB2_DIVMOD_FUNCS}
-FLAGS_${f}+=	-fexceptions -fnon-call-exceptions
+FLAGS.${f}.o+=	-fexceptions -fnon-call-exceptions
 .endfor
 # }}}
-
-.for f in ${lib2funcs} ${LIB2FUNCS_ST} ${LIB2_DIVMOD_FUNCS}
-${f}.o: ${srcdir}/libgcc2.c
-	${CC} ${STATIC_CFLAGS} ${CFLAGS} ${FLAGS_${f}} \
-		-c ${.ALLSRC} -o ${.TARGET}
-
-${f}.po: ${srcdir}/libgcc2.c
-	${CC} ${PO_FLAG} ${STATIC_CFLAGS} ${PO_CFLAGS} ${FLAGS_${f}} \
-		-c ${.ALLSRC} -o ${.TARGET}
-
-${f}.So: ${srcdir}/libgcc2.c
-	${CC} ${PICFLAG} -DPIC ${SHARED_CFLAGS} ${CFLAGS} ${FLAGS_${f}} \
-		-c ${.ALLSRC} -o ${.TARGET}
-.endfor
 
 LIB2OBJS=	${lib2funcs:S/$/.o/} ${LIB2_DIVMOD_FUNCS:S/$/.o/}
 LIB2OBJS_ST=	${LIB2FUNCS_ST:S/$/.o/}
