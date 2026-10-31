@@ -21,8 +21,6 @@ LDADD+= -lprivate_ncurses -lm -lz -lkvm -llzma
 CFLAGS+=	${PRIVATELIB_CFLAGS}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
-WARNS?=	2
-
 .include <bsd.prog.mk>
 
 .PATH:	${BASEDIR}/gdb

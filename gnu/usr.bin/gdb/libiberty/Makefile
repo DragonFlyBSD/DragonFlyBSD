@@ -2,6 +2,7 @@
 
 LIB=	iberty
 INTERNALLIB=	true
+WARNS=		1
 
 CONTRIBDIR=	${BASEDIR}/libiberty
 .PATH:	${CONTRIBDIR}

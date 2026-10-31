@@ -2,6 +2,7 @@
 
 LIB=		common
 INTERNALLIB=	YES
+WARNS=		1
 
 # verbatim from Makefile
 OBJS-libcommon= diagnostic.o diagnostic-color.o diagnostic-show-locus.o \

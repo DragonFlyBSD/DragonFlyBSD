@@ -2,6 +2,7 @@
 
 LIB=		readline
 INTERNALLIB=	YES
+WARNS=		1
 
 .PATH:		${BASEDIR}/readline
 CFLAGS+=	-I${.CURDIR} -I${.OBJDIR} -I${BASEDIR}

@@ -11,6 +11,8 @@ SRCDIR=	${.CURDIR}/../../../contrib/mpfr
 LIB=		mpfr
 INTERNALLIB=	YES
 
+WARNS=		1
+
 CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.OBJDIR}
 CFLAGS+=	-I${SRCDIR}/src

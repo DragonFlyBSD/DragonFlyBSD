@@ -57,4 +57,6 @@ SRCS=	archive.cc \
 # extra sources
 SRCS+=	yyscript.c mremap.c
 
+WARNS=	1
+
 .include <bsd.lib.mk>

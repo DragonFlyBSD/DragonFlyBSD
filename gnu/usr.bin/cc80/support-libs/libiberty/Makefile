@@ -6,6 +6,7 @@ LOCAL_CONFIG=	yes
 
 LIB=		iberty
 INTERNALLIB=	YES
+WARNS=		1
 
 # Object files present after vendor-built libiberty created.
 REQUIRED_OFILES= \

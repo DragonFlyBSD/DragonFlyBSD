@@ -9,6 +9,7 @@ CXXFLAGS+=	${NOEXCEPTION_FLAGS}
 
 LIB=		backend
 INTERNALLIB=	YES
+WARNS=		1
 
 host_hook_obj=host-default.o
 out_object_file=${out_file:T:.cc=.o}

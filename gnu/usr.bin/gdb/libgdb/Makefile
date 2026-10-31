@@ -5,6 +5,9 @@ TARGET_ARCH?=	${MACHINE_ARCH}
 LIB=		gdb
 INTERNALLIB=	yes
 
+# XXX: -Werror=unused-result
+WARNS=	0
+
 CONTRIBDIR=	${BASEDIR}/gdb
 .PATH:	${CONTRIBDIR} ${CONTRIBDIR}/cli ${CONTRIBDIR}/mi
 .PATH:	${CONTRIBDIR}/common ${CONTRIBDIR}/python ${CONTRIBDIR}/features

@@ -13,4 +13,6 @@ NOMAN=
 .undef NOSHARED
 .endif
 
+WARNS=	1
+
 .include <bsd.prog.mk>

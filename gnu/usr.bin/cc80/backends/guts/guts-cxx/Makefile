@@ -9,6 +9,7 @@ TOP_PREFIX=	../../
 
 LIB=		guts-cxx
 INTERNALLIB=
+WARNS=		1
 
 # note C_TARGET_OBJS == CXX_TARGET_OBJS
 .for object in ${CXX_OBJS}

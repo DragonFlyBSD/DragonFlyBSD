@@ -17,4 +17,6 @@ CFLAGS+=	-I${.OBJDIR}
 MLINKS+=	${MFILE} readelf.1
 .endif
 
+WARNS=	1
+
 .include <bsd.prog.mk>

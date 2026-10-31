@@ -97,4 +97,6 @@ LDADD+=	${STDLIBS}
 DPADD+=	${STDLIBS}
 .endif
 
+WARNS=	2
+
 .endif

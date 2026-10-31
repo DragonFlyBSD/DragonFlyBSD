@@ -8,6 +8,7 @@ TOP_PREFIX=	../../
 
 LIB=		guts-common
 INTERNALLIB=
+WARNS=		1
 
 SRCS=		${C_COMMON_SRCS}
 SRCS+=		${C_COMMON_OBJS:T:.o=.c}

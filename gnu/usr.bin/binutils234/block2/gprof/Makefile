@@ -30,4 +30,7 @@ CLEANFILES+=	flat_bl.c bsd_callg_bl.c fsf_callg_bl.c
 MLINKS+=	${MFILE} gprof.1
 .endif
 
+# XXX: offsetof redefined
+WARNS=	0
+
 .include <bsd.prog.mk>

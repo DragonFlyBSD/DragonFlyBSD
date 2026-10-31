@@ -9,6 +9,7 @@ CXXFLAGS+=	${NOEXCEPTION_FLAGS}
 
 LIB=		backend
 INTERNALLIB=	YES
+WARNS=		1
 
 # almost verbatim from Makefile, objects from cc files have been pulled out
 # because the .o=.c is wrong for them

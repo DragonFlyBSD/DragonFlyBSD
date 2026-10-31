@@ -1,3 +1,3 @@
 BASEDIR=	${.CURDIR}/../../../../contrib/grep
 
-CSTD=	c11
+WARNS?=	1

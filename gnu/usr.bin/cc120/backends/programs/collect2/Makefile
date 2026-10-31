@@ -4,6 +4,7 @@ TOP_PREFIX=	../../
 
 PROG_CXX=	collect2
 NOMAN=		yes
+WARNS=		1
 
 ## LDFLAGS+=	-static-libstdc++
 

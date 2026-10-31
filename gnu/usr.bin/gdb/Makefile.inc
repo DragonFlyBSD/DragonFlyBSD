@@ -8,4 +8,6 @@ GDBLIBS+=	${.OBJDIR}/../libdecnumber/libdecnumber.a
 GDBLIBS+=	${.OBJDIR}/../libgdb/libgdb.a
 GDBLIBS+=	${.OBJDIR}/../libgnu/libgnu.a
 
+WARNS?=	2
+
 .include "../Makefile.inc"

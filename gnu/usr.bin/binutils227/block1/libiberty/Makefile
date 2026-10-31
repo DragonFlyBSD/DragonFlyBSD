@@ -67,4 +67,6 @@ SRCS=	alloca.c \
 CFLAGS+=	-DHAVE_CONFIG_H
 INTERNALLIB=	true
 
+WARNS=	1
+
 .include <bsd.lib.mk>

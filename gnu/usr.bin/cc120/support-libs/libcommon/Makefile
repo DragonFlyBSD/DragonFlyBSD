@@ -2,6 +2,7 @@
 
 LIB=		common
 INTERNALLIB=	YES
+WARNS=		1
 
 # Verbatim from gcc/Makefile.in, except that 'selftest.o' and
 # 'selftest-diagnostic.o' are moved under -DTOOLCHAIN_CHECKING.

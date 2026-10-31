@@ -88,4 +88,7 @@ afterinstall: install-ldscripts
 CLEANDIRS+=	ldscripts tmpdir
 CLEANFILES+=	ldemul-list.h stringify.sed
 
+# XXX: offsetof redefined
+WARNS=	0
+
 .include <bsd.prog.mk>

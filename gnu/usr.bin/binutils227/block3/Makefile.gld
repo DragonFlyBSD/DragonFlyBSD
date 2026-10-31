@@ -4,6 +4,8 @@
 
 RELTOP:= ../..
 
+WARNS?=	2
+
 # RELTOP is the relative path to this point in the source or object
 # tree, from any subdirectory of same.  It gets extra "../" prefixes
 # added to it as we descend into subdirectories.

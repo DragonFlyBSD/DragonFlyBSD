@@ -2,6 +2,7 @@
 
 LIB=	bfd
 INTERNALLIB=	true
+WARNS=		1
 
 CONTRIBDIR=	${BASEDIR}/bfd
 .PATH:	${CONTRIBDIR}

@@ -6,6 +6,7 @@ TOP_PREFIX=	../../
 
 LIB=		guts-common
 INTERNALLIB=	yes
+WARNS=		1
 
 SRCS=		${C_COMMON_OBJS:T:.o=.cc}
 SRCS+=		main.cc

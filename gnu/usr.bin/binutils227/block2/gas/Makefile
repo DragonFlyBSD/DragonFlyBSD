@@ -70,4 +70,6 @@ CLEANFILES+=	${MFILE}
 MLINKS+=	${MFILE} as.1
 .endif
 
+WARNS=	1
+
 .include <bsd.prog.mk>

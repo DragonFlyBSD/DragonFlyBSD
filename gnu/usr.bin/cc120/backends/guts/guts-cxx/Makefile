@@ -7,6 +7,7 @@ TOP_PREFIX=	../../
 
 LIB=		guts-cxx
 INTERNALLIB=	yes
+WARNS=		1
 
 excluded=	${C_COMMON_OBJS} ${CXX_TARGET_OBJS}
 .for object in ${CXX_AND_OBJCXX_OBJS}

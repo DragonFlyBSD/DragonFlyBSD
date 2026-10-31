@@ -6,6 +6,7 @@ LOCAL_CONFIG=	yes
 
 LIB=		cpp
 INTERNALLIB=	YES
+WARNS=		1
 
 CFLAGS+=	-Duchar="unsigned char"
 CXXFLAGS+=	${NOEXCEPTION_FLAGS}

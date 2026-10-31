@@ -4,6 +4,7 @@ TOP_PREFIX=	../../
 
 PROG_CXX=	lto-wrapper
 NOMAN=		yes
+WARNS=		1
 
 # verbatim from gcc/Makefile.in
 LTO_WRAPPER_OBJS = lto-wrapper.o collect-utils.o ggc-none.o
