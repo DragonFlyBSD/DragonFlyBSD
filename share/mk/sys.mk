@@ -121,6 +121,39 @@ YFLAGS		?=
 YFLAGS		?=	-d
 .endif
 
+# Per-target flags
+#
+# Include flags are placed before the global flags; all other per-target flags
+# are placed after them so that they can override the global flags.
+#
+_FLAGS_PRE=		${_${.TARGET:R}_FLAGS:M-I*}
+_FLAGS_POST=		${_${.TARGET:R}_FLAGS:N-I*}
+
+# Per-mode (.o, .po, .So) flags; making the compile commands reusable
+# in <bsd.lib.mk>.
+#
+_CFLAGS_MODE.o=		${STATIC_CFLAGS} ${CFLAGS}
+_CXXFLAGS_MODE.o=	${STATIC_CXXFLAGS} ${CXXFLAGS}
+_FFLAGS_MODE.o=		${FFLAGS}
+_OBJCFLAGS_MODE.o=	${OBJCFLAGS}
+_ASMFLAGS_MODE.o=	${CFLAGS}
+_AFLAGS_MODE.o=		${AFLAGS}
+
+# Compile commands
+#
+COMPILE.c=	${CC} ${_FLAGS_PRE} ${_CFLAGS_MODE.${.TARGET:E}} \
+		${_FLAGS_POST} -c
+COMPILE.cc=	${CXX} ${_FLAGS_PRE} ${_CXXFLAGS_MODE.${.TARGET:E}} \
+		${_FLAGS_POST} -c
+COMPILE.m=	${OBJC} ${_FLAGS_PRE} ${_OBJCFLAGS_MODE.${.TARGET:E}} \
+		${_FLAGS_POST} -c
+COMPILE.f=	${FC} ${_FLAGS_PRE} ${RFLAGS} ${EFLAGS} \
+		${_FFLAGS_MODE.${.TARGET:E}} ${_FLAGS_POST} -c
+COMPILE.S=	${CC} -x assembler-with-cpp ${_FLAGS_PRE} \
+		${_ASMFLAGS_MODE.${.TARGET:E}} ${_FLAGS_POST} -c
+COMPILE.s=	${AS} ${_AFLAGS_MODE.${.TARGET:E}} \
+		${_${.TARGET:R}_FLAGS}
+
 # The 'make' program is expected to define the following.
 #
 # MACHINE_PLATFORM	platform architecture (pc64, vkernel64, etc.)
@@ -208,44 +241,39 @@ MACHINE_PLATFORM!=/sbin/sysctl -n hw.platform
 	chmod a+x ${.TARGET}
 
 .c:
-	${CC} ${_${.TARGET:R}_FLAGS:M-I*} ${CFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} \
+	${CC} ${_FLAGS_PRE} ${CFLAGS} ${_FLAGS_POST} \
 	    ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
 
 .c.o:
-	${CC} ${_${.TARGET:R}_FLAGS:M-I*} ${STATIC_CFLAGS} ${CFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
+	${COMPILE.c} ${.IMPSRC} -o ${.TARGET}
 
 .cc .cpp .cxx .C:
-	${CXX} ${_${.TARGET:R}_FLAGS:M-I*} ${CXXFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} \
+	${CXX} ${_FLAGS_PRE} ${CXXFLAGS} ${_FLAGS_POST} \
 	    ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
 
 .cc.o .cpp.o .cxx.o .C.o:
-	${CXX} ${_${.TARGET:R}_FLAGS:M-I*} ${STATIC_CXXFLAGS} ${CXXFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
+	${COMPILE.cc} ${.IMPSRC} -o ${.TARGET}
 
 .m.o:
-	${OBJC} ${_${.TARGET:R}_FLAGS:M-I*} ${OBJCFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
-
-.p.o:
-	${PC} ${_${.TARGET:R}_FLAGS:M-I*} ${PFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} \
-	    -c ${.IMPSRC} -o ${.TARGET}
+	${COMPILE.m} ${.IMPSRC} -o ${.TARGET}
 
 .e .r .F .f:
-	${FC} ${_${.TARGET:R}_FLAGS:M-I*} ${RFLAGS} ${EFLAGS} ${FFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} \
+	${FC} ${_FLAGS_PRE} ${RFLAGS} ${EFLAGS} ${FFLAGS} \
+	    ${_FLAGS_POST} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} \
 	    -o ${.TARGET}
 
 .e.o .r.o .F.o .f.o:
-	${FC} ${_${.TARGET:R}_FLAGS:M-I*} ${RFLAGS} ${EFLAGS} ${FFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
+	${COMPILE.f} ${.IMPSRC} -o ${.TARGET}
 
 .S.o:
-	${CC} -x assembler-with-cpp ${_${.TARGET:R}_FLAGS:M-I*} ${CFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
+	${COMPILE.S} ${.IMPSRC} -o ${.TARGET}
 
 .s.o:
-	${AS} ${AFLAGS} ${_${.TARGET:R}_FLAGS} -o ${.TARGET} ${.IMPSRC}
+	${COMPILE.s} -o ${.TARGET} ${.IMPSRC}
+
+.p.o:
+	${PC} ${_FLAGS_PRE} ${PFLAGS} ${_FLAGS_POST} \
+	    -c ${.IMPSRC} -o ${.TARGET}
 
 # XXX not -j safe
 .y.o:
@@ -261,12 +289,12 @@ MACHINE_PLATFORM!=/sbin/sysctl -n hw.platform
 # .no == native object file, for helper code when cross building.
 #
 .c.no:
-	${NXCC} ${_${.TARGET:R}_FLAGS:M-I*} ${NXCFLAGS:N-flto} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
+	${NXCC} ${_FLAGS_PRE} ${NXCFLAGS:N-flto} ${_FLAGS_POST} \
+	    -c ${.IMPSRC} -o ${.TARGET}
 
 .cc.no .C.no .cpp.no .cxx.no:
-	${NXCXX} ${_${.TARGET:R}_FLAGS:M-I*} ${NXCXXFLAGS:N-flto} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
+	${NXCXX} ${_FLAGS_PRE} ${NXCXXFLAGS:N-flto} ${_FLAGS_POST} \
+	    -c ${.IMPSRC} -o ${.TARGET}
 
 .y.no:
 	${YACC} ${YFLAGS} ${.IMPSRC}
@@ -279,9 +307,8 @@ MACHINE_PLATFORM!=/sbin/sysctl -n hw.platform
 	rm -f ${.TARGET}.c
 
 .no.nx .c.nx:
-	${NXCC} ${_${.TARGET:R}_FLAGS:M-I*} ${NXCFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} ${NXLDFLAGS} ${.IMPSRC} \
-	    ${NXLDLIBS} -o ${.TARGET}
+	${NXCC} ${_FLAGS_PRE} ${NXCFLAGS} ${_FLAGS_POST} \
+	    ${NXLDFLAGS} ${.IMPSRC} ${NXLDLIBS} -o ${.TARGET}
 
 # XXX not -j safe
 .y.c:
@@ -292,13 +319,12 @@ MACHINE_PLATFORM!=/sbin/sysctl -n hw.platform
 	${LEX} -t ${LFLAGS} ${.IMPSRC} > ${.TARGET}
 
 .s.out .c.out .o.out:
-	${CC} ${_${.TARGET:R}_FLAGS:M-I*} ${CFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} \
-	    -o ${.TARGET}
+	${CC} ${_FLAGS_PRE} ${CFLAGS} ${_FLAGS_POST} \
+	    ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
 
 .f.out .F.out .r.out .e.out:
-	${FC} ${_${.TARGET:R}_FLAGS:M-I*} ${EFLAGS} ${RFLAGS} ${FFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} \
+	${FC} ${_FLAGS_PRE} ${EFLAGS} ${RFLAGS} ${FFLAGS} \
+	    ${_FLAGS_POST} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} \
 	    -o ${.TARGET}
 	rm -f ${.PREFIX}.o
 
@@ -313,7 +339,7 @@ MACHINE_PLATFORM!=/sbin/sysctl -n hw.platform
 	${CC} ${CFLAGS} ${LDFLAGS} ${.PREFIX}.tmp.c ${LDLIBS} -ll -o ${.TARGET}
 	rm -f ${.PREFIX}.tmp.c
 
-.endif
+.endif # defined(%POSIX)
 
 # Include base system defaults.
 .if exists(/etc/defaults/make.conf)

@@ -59,54 +59,39 @@ PO_FLAG=-pg
 PO_CFLAGS=${CFLAGS:N-ffunction-sections}
 PO_CXXFLAGS=${CXXFLAGS:N-ffunction-sections}
 
-.c.po:
-	${CC} ${_${.TARGET:R}_FLAGS:M-I*} ${PO_FLAG} ${STATIC_CFLAGS} \
-	    ${PO_CFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
+# Flags that distinguish the kind of object being built.
+_CFLAGS_MODE.po=	${PO_FLAG} ${STATIC_CFLAGS} ${PO_CFLAGS}
+_CFLAGS_MODE.So=	${PICFLAG} -DPIC ${SHARED_CFLAGS} ${CFLAGS}
+_CXXFLAGS_MODE.po=	${PO_FLAG} ${STATIC_CXXFLAGS} ${PO_CXXFLAGS}
+_CXXFLAGS_MODE.So=	${PICFLAG} -DPIC ${SHARED_CXXFLAGS} ${CXXFLAGS}
+_FFLAGS_MODE.po=	${PO_FLAG} ${FFLAGS}
+_FFLAGS_MODE.So=	${PICFLAG} -DPIC ${FFLAGS}
+_OBJCFLAGS_MODE.po=	${PO_FLAG} ${OBJCFLAGS}
+_OBJCFLAGS_MODE.So=	${PICFLAG} -DPIC ${OBJCFLAGS}
+_ASMFLAGS_MODE.po=	-DPROF ${CFLAGS}
+_ASMFLAGS_MODE.So=	${PICFLAG} -DPIC ${CFLAGS}
+_AFLAGS_MODE.po=	-DPROF ${AFLAGS}
+_AFLAGS_MODE.So=	${PICFLAG} -DPIC ${AFLAGS}
 
-.c.So:
-	${CC} ${_${.TARGET:R}_FLAGS:M-I*} ${PICFLAG} -DPIC ${SHARED_CFLAGS} \
-	    ${CFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
+.c.po .c.So:
+	${COMPILE.c} ${.IMPSRC} -o ${.TARGET}
 
 .cc.po .C.po .cpp.po .cxx.po:
-	${CXX} ${_${.TARGET:R}_FLAGS:M-I*} ${PO_FLAG} ${STATIC_CXXFLAGS} \
-	    ${PO_CXXFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
-
+	${COMPILE.cc} ${.IMPSRC} -o ${.TARGET}
 .cc.So .C.So .cpp.So .cxx.So:
-	${CXX} ${_${.TARGET:R}_FLAGS:M-I*} ${PICFLAG} -DPIC ${SHARED_CXXFLAGS} \
-	    ${CXXFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
+	${COMPILE.cc} ${.IMPSRC} -o ${.TARGET}
 
-.f.po:
-	${FC} ${_${.TARGET:R}_FLAGS:M-I*} ${PO_FLAG} ${FFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -o ${.TARGET} -c ${.IMPSRC}
+.f.po .f.So:
+	${COMPILE.f} ${.IMPSRC} -o ${.TARGET}
 
-.f.So:
-	${FC} ${_${.TARGET:R}_FLAGS:M-I*} ${PICFLAG} -DPIC ${FFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -o ${.TARGET} -c ${.IMPSRC}
+.m.po .m.So:
+	${COMPILE.m} ${.IMPSRC} -o ${.TARGET}
 
-.m.po:
-	${OBJC} ${_${.TARGET:R}_FLAGS:M-I*} ${OBJCFLAGS} ${PO_FLAG} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
+.S.po .S.So:
+	${COMPILE.S} ${.IMPSRC} -o ${.TARGET}
 
-.m.So:
-	${OBJC} ${_${.TARGET:R}_FLAGS:M-I*} ${PICFLAG} -DPIC ${OBJCFLAGS} \
-	    ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
-
-.s.po:
-	${AS} -DPROF ${AFLAGS} ${_${.TARGET:R}_FLAGS} \
-	    -o ${.TARGET} ${.IMPSRC}
-
-.s.So:
-	${AS} ${PICFLAG} -DPIC ${AFLAGS} ${_${.TARGET:R}_FLAGS} \
-	    -o ${.TARGET} ${.IMPSRC}
-
-.S.po:
-	${CC} -x assembler-with-cpp ${_${.TARGET:R}_FLAGS:M-I*} -DPROF \
-	    ${CFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} -c ${.IMPSRC} -o ${.TARGET}
-
-.S.So:
-	${CC} -x assembler-with-cpp ${_${.TARGET:R}_FLAGS:M-I*} \
-	    ${PICFLAG} -DPIC ${CFLAGS} ${_${.TARGET:R}_FLAGS:N-I*} \
-	    -c ${.IMPSRC} -o ${.TARGET}
+.s.po .s.So:
+	${COMPILE.s} -o ${.TARGET} ${.IMPSRC}
 
 all: objwarn
 
