@@ -2002,8 +2002,11 @@ fuse_io_thread(void *arg)
 	struct bio *bio;
 
 	while (fmp->dead == 0) {
-		tsleep(&fmp->helper_td, 0, "fuse_wio", 0);
 		spin_lock(&fmp->helper_spin);
+		if (TAILQ_EMPTY(&fmp->bioq)) {
+			ssleep(&fmp->helper_td, &fmp->helper_spin, 0,
+			       "fuse_wio", 0);
+		}
 		while ((bio = TAILQ_FIRST(&fmp->bioq)) != NULL) {
 			TAILQ_REMOVE(&fmp->bioq, bio, bio_act);
 			spin_unlock(&fmp->helper_spin);
