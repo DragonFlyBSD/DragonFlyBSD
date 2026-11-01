@@ -92,8 +92,6 @@ _cnowarnflags	+=	-Wno-address-of-packed-member
 # (which is the level when also -Wunused-parameter comes into play).
 .  if ${WARNS} >= 2 && ${WARNS} <= 3 && ${_WCCVER:Mgcc*}
 _cnowarnflags	+=	-Wno-unused-but-set-variable
-.  endif
-.  if ${WARNS} == 3 && ${_WCCVER:Mgcc*}
 _cnowarnflags	+=	-Wno-unused-but-set-parameter
 _cnowarnflags	+=	-Wno-unused-value
 .  endif
