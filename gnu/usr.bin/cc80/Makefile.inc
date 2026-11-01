@@ -97,6 +97,12 @@ LDADD+=	${STDLIBS}
 DPADD+=	${STDLIBS}
 .endif
 
+# gcc-8 can't be built with gcc-8 at WARNS=2
+#
+.if ${CCVER:Mgcc*} && ${CCVER:S/gcc//} > 80
 WARNS=	2
+.else
+WARNS=	0
+.endif
 
 .endif
