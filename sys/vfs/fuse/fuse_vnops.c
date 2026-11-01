@@ -476,6 +476,8 @@ fuse_vop_setattr(struct vop_setattr_args *ap)
 		return EINVAL;
 	}
 	mtx_lock(&fnp->node_lock);
+	if (arg.valid & FATTR_SIZE)
+		fnp->sizeoverride = 0;
 	fuse_set_attr(fnp, &fao->attr);
 	/* unused */
 	//fao->attr_valid;
