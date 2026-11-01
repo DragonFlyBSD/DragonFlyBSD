@@ -73,7 +73,9 @@
 	{ "sync", 0, 0, 1 }, \
 	{ "dirsync", 0, 0, 1 }, \
 	{ "atime", 0, 0, 1 }, \
-	{ "noatime", 0, 0, 1 }
+	{ "noatime", 0, 0, 1 }, \
+	/* "nonempty", just the first two chars are stripped off during parsing */ \
+	{ "nempty", 0, 0, 1 }
 
 static struct mntopt mopts[] = {
 	MOPT_FUSE_LINUX_OPTS,
