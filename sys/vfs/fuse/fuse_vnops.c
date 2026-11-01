@@ -172,7 +172,7 @@ fuse_vop_open(struct vop_open_args *ap)
 	 * file-handle.  This can occur if the vnode is new or if it
 	 * was previously deactivated.
 	 */
-	if (fnp->fh == 0) {
+	if (!fnp->fh_valid) {
 		if (vp->v_type == VDIR)
 			op = FUSE_OPENDIR;
 		else
@@ -204,6 +204,7 @@ fuse_vop_open(struct vop_open_args *ap)
 
 		fnp->closed = false;
 		fnp->fh = foo->fh;
+		fnp->fh_valid = true;
 		fuse_ipc_put(fip);
 	}
 
@@ -276,7 +277,7 @@ fuse_vop_fsync(struct vop_fsync_args *ap)
 	if (vp->v_opencount == 0)
 		vfinalize(vp);
 
-	if (fnp->fh) {
+	if (fnp->fh_valid) {
 		if (vp->v_type == VDIR)
 			op = FUSE_FSYNCDIR;
 		else
@@ -724,7 +725,7 @@ fuse_vop_ncreate(struct vop_ncreate_args *ap)
 		fuse_set_attr(fnp, &feo->attr);
 		mtx_unlock(&fnp->node_lock);
 		fnp->fh = foo->fh;
-
+		fnp->fh_valid = true;
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, vp);
 		*(ap->a_vpp) = vp;
@@ -2109,7 +2110,7 @@ fuse_release(struct fuse_mount *fmp, struct fuse_node *fnp)
 	struct fuse_release_in *fri;
 	int error, op;
 
-	if (fnp->fh) {
+	if (fnp->fh_valid) {
 		/*
 		 * Release the file-handle to clean-up the userland side.
 		 */
@@ -2139,6 +2140,7 @@ fuse_release(struct fuse_mount *fmp, struct fuse_node *fnp)
 			fuse_ipc_put(fip);
 #endif
 		fnp->fh = 0;
+		fnp->fh_valid = false;
 	}
 	if (fnp->nlookup && fnp->ino != 1) {
 #if 0

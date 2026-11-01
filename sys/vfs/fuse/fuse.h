@@ -117,6 +117,7 @@ struct fuse_node {
 	size_t size;
 	uint64_t nlookup;
 	uint64_t fh;
+	bool fh_valid;
 	bool closed; /* XXX associated with closed fh */
 	int modified : 1;	/* file modified */
 	int changed : 1;	/* file inode changed */
