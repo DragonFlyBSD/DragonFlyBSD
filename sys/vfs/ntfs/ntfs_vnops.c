@@ -587,10 +587,14 @@ ntfs_readdir(struct vop_readdir_args *ap)
 		{
 			if(!ntfs_isnamepermitted(ntmp,iep))
 				continue;
-			for(i=0, j=0; i < iep->ie_fnamelen; i++, j++) {
+			for(i=0, j=0; i < iep->ie_fnamelen &&
+			    j < sizeof(convname) - 1; i++, j++) {
 				c = NTFS_U28(iep->ie_fname[i]);
-				if (c&0xFF00)
+				if (c&0xFF00) {
+					if (j >= sizeof(convname) - 2)
+						break;
 					convname[j++] = (char)(c>>8);
+				}
 				convname[j] = (char)c&0xFF;
 			}
 			convname[j] = '\0';
