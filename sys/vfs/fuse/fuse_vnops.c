@@ -2040,8 +2040,16 @@ fuse_io_execute(struct fuse_mount *fmp, struct bio *bio)
 		error = fuse_ipc_tx(fip);
 
 		if (error == 0) {
-			memcpy(bp->b_data, fuse_out_data(fip),
-			       fuse_out_data_size(fip));
+			size_t n = fuse_out_data_size(fip);
+
+			if (n > (size_t)bp->b_bcount)
+				n = bp->b_bcount;
+			if (n)
+				memcpy(bp->b_data, fuse_out_data(fip), n);
+			if (n < (size_t)bp->b_bcount) {
+				memset((char *)bp->b_data + n, 0,
+				       bp->b_bcount - n);
+			}
 			fuse_ipc_put(fip);
 			bp->b_resid = 0;
 			bp->b_error = 0;
