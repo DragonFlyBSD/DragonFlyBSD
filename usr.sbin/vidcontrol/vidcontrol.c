@@ -570,7 +570,7 @@ video_mode(int argc, char **argv, int *mode_index)
 			}
 
 			if (modes[i].name == NULL)
-				errx(1, "invalid video mode name");
+				return;
 		}
 
 		/*
@@ -1185,11 +1185,6 @@ main(int argc, char **argv)
 		}
 	}
 
-	if (optind < argc && !strcmp(argv[optind], "show")) {
-		test_frame();
-		optind++;
-	}
-
 	video_mode(argc, argv, &optind);
 
 	get_normal_colors(argc, argv, &optind);
@@ -1205,6 +1200,11 @@ main(int argc, char **argv)
 		} else {
 			set_colors();
 		}
+	}
+
+	if (optind < argc && !strcmp(argv[optind], "show")) {
+		test_frame();
+		optind++;
 	}
 
 	if ((optind != argc) || (argc == 1))
