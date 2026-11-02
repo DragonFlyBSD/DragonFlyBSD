@@ -91,10 +91,6 @@ COPTFLAGS?=-O2 -pipe
 COPTFLAGS+=	-no-integrated-as
 .endif
 
-# useful for debugging
-#.warning "KMOD-PREFILTER ${CFLAGS}"
-
-WORLD_CCOPTLEVEL=	# XXX prevent world opt level affecting kernel modules
 CFLAGS=		${COPTFLAGS} ${KCFLAGS} ${COPTS} -D_KERNEL
 CFLAGS+=	${CWARNFLAGS} -std=${CSTD} ${WERROR}
 CFLAGS+=	-DKLD_MODULE
@@ -125,13 +121,11 @@ CFLAGS+=	-Idragonfly
 .if defined(KERNBUILDDIR)
 CFLAGS+=	-I${KERNBUILDDIR}
 _MACHINE_FWD=	${KERNBUILDDIR}
-.else
-.if defined(MAKEOBJDIRPREFIX)
+.elif defined(MAKEOBJDIRPREFIX)
 _MACHINE_FWD=	${MAKEOBJDIRPREFIX}/${SYSDIR}/forwarder_${MACHINE_ARCH}
 .else
 _MACHINE_FWD=	${.OBJDIR}/forwarder_${MACHINE_ARCH}
 CLEANDIRS+=	${_MACHINE_FWD}
-.endif
 .endif
 CFLAGS+=	-I${_MACHINE_FWD}/include
 
@@ -158,7 +152,6 @@ CFLAGS+=	-DHAVE_KERNEL_OPTION_HEADERS -include ${KERNBUILDDIR}/opt_global.h
 CFLAGS+=	${DEBUG_FLAGS}
 
 .if defined(FIRMWS)
-#AWK=/usr/bin/awk
 .if !exists(dragonfly)
 ${KMOD:S/$/.c/}: dragonfly
 .else
@@ -172,7 +165,8 @@ SRCS+=	${KMOD:S/$/.c/}
 CLEANFILES+=	${KMOD:S/$/.c/}
 
 .for _firmw in ${FIRMWS}
-${_firmw:C/\:.*$/.fwo/}:	${_firmw:C/\:.*$//}
+OBJS+=	${_firmw:C/\:.*$/.fwo/}
+${_firmw:C/\:.*$/.fwo/}: ${_firmw:C/\:.*$//}
 	@${ECHO} ${_firmw:C/\:.*$//} ${.ALLSRC:M*${_firmw:C/\:.*$//}}
 	@if [ -e ${_firmw:C/\:.*$//} ]; then			\
 		${LD} -b binary --no-warn-mismatch ${LDFLAGS}	\
@@ -183,12 +177,10 @@ ${_firmw:C/\:.*$/.fwo/}:	${_firmw:C/\:.*$//}
 		    -r -d -o ${.TARGET}	${_firmw:C/\:.*$//};	\
 		rm ${_firmw:C/\:.*$//};				\
 	fi
-
-OBJS+=	${_firmw:C/\:.*$/.fwo/}
 .endfor
 .endif
 
-OBJS+=  ${SRCS:N*.h:R:S/$/.o/g}
+OBJS+=	${SRCS:N*.h:R:S/$/.o/g}
 
 .if !defined(PROG)
 PROG=	${KMOD}.ko
@@ -200,18 +192,17 @@ ELDFLAGS+= ${CFLAGS}
 .endif
 
 ELDFLAGS+= -Wl,--build-id=sha1
+ELDFLAGS+= -Wl,--hash-style=sysv
 
 .if ${MACHINE_ARCH} == x86_64
 ${PROG}: ${OBJS}
-	${CC} ${ELDFLAGS} -nostdlib -Wl,--hash-style=sysv \
-	    ${LDFLAGS} -r -Wl,-d -o ${.TARGET} ${OBJS}
+	${CC} -nostdlib ${ELDFLAGS} ${LDFLAGS} -r -Wl,-d -o ${.TARGET} ${OBJS}
 .else
 ${PROG}: ${KMOD}.kld
-	${CC} ${ELDFLAGS} -nostdlib -Wl,--hash-style=sysv \
-	    -Wl,-Bshareable ${LDFLAGS} -o ${.TARGET} ${KMOD}.kld
+	${CC} -nostdlib ${ELDFLAGS} -Wl,-Bshareable ${LDFLAGS} \
+	    -o ${.TARGET} ${KMOD}.kld
 ${KMOD}.kld: ${OBJS}
-	${CC} ${ELDFLAGS} -nostdlib -Wl,--hash-style=sysv \
-	    ${LDFLAGS} -r -o ${.TARGET} ${OBJS}
+	${CC} -nostdlib ${ELDFLAGS} ${LDFLAGS} -r -o ${.TARGET} ${OBJS}
 .endif
 
 # links to platform and cpu architecture include files.  If we are
@@ -289,13 +280,10 @@ _INSTALLFLAGS:=	${_INSTALLFLAGS${ie}}
 realinstall: _kmodinstall
 .ORDER: beforeinstall _kmodinstall
 _kmodinstall:
+	${INSTALL} -o ${KMODOWN} -g ${KMODGRP} -m ${KMODMODE} \
+	    ${_INSTALLFLAGS} ${PROG} ${DESTDIR}${KMODDIR}
 .if defined(INSTALLSTRIPPEDMODULES)
-	${INSTALL} -o ${KMODOWN} -g ${KMODGRP} -m ${KMODMODE} \
-	    ${_INSTALLFLAGS} ${PROG} ${DESTDIR}${KMODDIR}
 	${OBJCOPY} --strip-debug ${DESTDIR}${KMODDIR}/${PROG}
-.else
-	${INSTALL} -o ${KMODOWN} -g ${KMODGRP} -m ${KMODMODE} \
-	    ${_INSTALLFLAGS} ${PROG} ${DESTDIR}${KMODDIR}
 .endif
 .endif # !target(realinstall)
 
@@ -320,7 +308,6 @@ CLEANFILES+=	${_src}
 ${_src}: ${KERNBUILDDIR}/${_src}
 # we do not have to copy these files any more, the kernel build
 # directory is included in the path now.
-#	cp ${KERNBUILDDIR}/${_src} ${.TARGET}
 .else
 ${_src}:
 	touch ${.TARGET}
@@ -328,24 +315,41 @@ ${_src}:
 .endif
 .endfor
 
-MFILES?= kern/bus_if.m kern/device_if.m bus/iicbus/iicbb_if.m \
-    bus/iicbus/iicbus_if.m bus/isa/isa_if.m dev/netif/mii_layer/miibus_if.m \
-    bus/pccard/card_if.m bus/pccard/power_if.m bus/pci/pci_if.m \
-    bus/pci/pcib_if.m \
-    bus/ppbus/ppbus_if.m bus/smbus/smbus_if.m bus/u4b/usb_if.m \
-    dev/acpica/acpi_if.m dev/acpica/acpi_wmi_if.m dev/disk/nata/ata_if.m \
-    dev/disk/sdhci/sdhci_if.m \
-    dev/sound/pci/hda/hdac_if.m \
-    dev/sound/pcm/ac97_if.m dev/sound/pcm/channel_if.m \
-    dev/sound/pcm/feeder_if.m dev/sound/pcm/mixer_if.m \
-    dev/sound/midi/mpu_if.m dev/sound/midi/mpufoi_if.m \
-    dev/sound/midi/synth_if.m  \
-    libiconv/iconv_converter_if.m dev/agp/agp_if.m \
-    bus/mmc/mmcbus_if.m bus/mmc/mmcbr_if.m \
-    dev/virtual/virtio/virtio/virtio_bus_if.m \
-    dev/misc/backlight/backlight_if.m dev/misc/coremctl/coremctl_if.m kern/cpu_if.m \
-    bus/gpio/gpio_if.m \
-    freebsd/net/ifdi_if.m
+MFILES?= \
+	bus/gpio/gpio_if.m \
+	bus/iicbus/iicbb_if.m \
+	bus/iicbus/iicbus_if.m \
+	bus/isa/isa_if.m \
+	bus/mmc/mmcbr_if.m \
+	bus/mmc/mmcbus_if.m \
+	bus/pccard/card_if.m \
+	bus/pccard/power_if.m \
+	bus/pci/pci_if.m \
+	bus/pci/pcib_if.m \
+	bus/ppbus/ppbus_if.m \
+	bus/smbus/smbus_if.m \
+	bus/u4b/usb_if.m \
+	dev/acpica/acpi_if.m \
+	dev/acpica/acpi_wmi_if.m \
+	dev/agp/agp_if.m \
+	dev/disk/nata/ata_if.m \
+	dev/disk/sdhci/sdhci_if.m \
+	dev/misc/backlight/backlight_if.m \
+	dev/misc/coremctl/coremctl_if.m \
+	dev/netif/mii_layer/miibus_if.m \
+	dev/sound/midi/mpu_if.m \
+	dev/sound/midi/mpufoi_if.m \
+	dev/sound/midi/synth_if.m \
+	dev/sound/pci/hda/hdac_if.m \
+	dev/sound/pcm/ac97_if.m \
+	dev/sound/pcm/channel_if.m \
+	dev/sound/pcm/feeder_if.m \
+	dev/sound/pcm/mixer_if.m \
+	dev/virtual/virtio/virtio/virtio_bus_if.m \
+	kern/bus_if.m \
+	kern/cpu_if.m \
+	kern/device_if.m \
+	libiconv/iconv_converter_if.m
 
 .for _srcsrc in ${MFILES}
 .for _ext in c h
@@ -356,11 +360,8 @@ ${_src}: dragonfly
 .if exists(dragonfly)
 ${_src}: dragonfly/tools/makeobjops.awk dragonfly/${_srcsrc}
 .endif
-
-.if defined(KERNBUILDDIR) && \
-    exists(${KERNBUILDDIR}/${_src})
-.else
-	awk -f dragonfly/tools/makeobjops.awk -- -${_ext} dragonfly/${_srcsrc}
+.if !defined(KERNBUILDDIR) || !exists(${KERNBUILDDIR}/${_src})
+	${AWK} -f dragonfly/tools/makeobjops.awk -- -${_ext} dragonfly/${_srcsrc}
 .endif
 .endif
 .endfor # _src
@@ -429,16 +430,18 @@ acpi_quirks.h: dragonfly/tools/acpi_quirks2h.awk dragonfly/dev/acpica/acpi_quirk
 
 .if !empty(SRCS:Massym.s)
 CLEANFILES+=	assym.s genassym.o
+
 assym.s: genassym.o
-.if defined(KERNBUILDDIR)
-genassym.o: opt_global.h
-.endif
 .if !exists(dragonfly)
 assym.s: dragonfly
 .else
 assym.s: dragonfly/kern/genassym.sh
 .endif
 	sh dragonfly/kern/genassym.sh genassym.o > ${.TARGET}
+
+.if defined(KERNBUILDDIR)
+genassym.o: opt_global.h
+.endif
 .if exists(dragonfly)
 genassym.o: dragonfly/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c
 .endif
@@ -446,8 +449,6 @@ genassym.o: dragonfly ${SRCS:Mopt_*.h}
 	${CC} -c ${CFLAGS:N-fno-common:N-flto:N-mcmodel=small} -fcommon \
 	${WERROR} dragonfly/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c
 .endif
-
-regress:
 
 .include <bsd.dep.mk>
 

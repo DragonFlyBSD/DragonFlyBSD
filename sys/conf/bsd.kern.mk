@@ -15,6 +15,7 @@ CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wundef
 
 _cnowarnflags=	-Wno-pointer-sign
+_cnowarnflags+=	-Wno-unused-but-set-variable
 
 _gccver=	0
 .if ${CCVER:Mgcc*}
@@ -23,7 +24,6 @@ _gccver=	${CCVER:S/gcc//}
 
 .if ${_gccver} > 0
 CWARNFLAGS+=	-Wold-style-declaration
-_cnowarnflags+=	-Wno-unused-but-set-variable
 .endif
 .if ${_gccver} >= 90
 _cnowarnflags+=	-Wno-address-of-packed-member
@@ -37,14 +37,14 @@ _cnowarnflags+=	-Wno-zero-length-bounds
 CWARNFLAGS+=	${_cnowarnflags}
 .endif
 
-
 # Require the proper use of 'extern' for variables.  -fno-common will
 # cause duplicate declarations to generate a link error.
-#
+# This is the default since GCC 10.
+.if ${_gccver} < 100
 CFLAGS+=	-fno-common
+.endif
 
 # Prevent GCC 3.x from making certain libc based inline optimizations
-#
 CFLAGS+=	-ffreestanding
 
 .include "../platform/${MACHINE_PLATFORM}/conf/kern.mk"

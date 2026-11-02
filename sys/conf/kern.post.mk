@@ -13,9 +13,9 @@ _MACHINE_FWD=	${.OBJDIR}
 depend kernel-depend modules-depend: ${FORWARD_HEADERS_COOKIE}
 
 depend: kernel-depend
-clean:  kernel-clean
-cleandepend:  kernel-cleandepend
-tags:  kernel-tags
+clean: kernel-clean
+cleandepend: kernel-cleandepend
+tags: kernel-tags
 install: kernel-install
 reinstall: kernel-reinstall
 
@@ -63,9 +63,7 @@ locore.o: $S/platform/$P/$M/locore.s assym.s
 # dynamic references.  We could probably do a '-Bforcedynamic' mode like
 # in the a.out ld.  For now, this works.
 hack.So: Makefile
-	touch hack.c
-	${CC} -shared -nostdlib hack.c -o hack.So
-	rm -f hack.c
+	echo | ${CC} -shared -nostdlib -x c - -o hack.So
 
 # this rule stops ./assym.s in .depend from causing problems
 ./assym.s: assym.s
@@ -92,10 +90,10 @@ kernel-depend: assym.s ${BEFORE_DEPEND} \
 .endif
 .else
 	rm -f .newdep
-	${MAKE} -V CFILES -V SYSTEM_CFILES -V GEN_CFILES | xargs \
-		mkdep -a -f .newdep ${CFLAGS}
-	${MAKE} -V SFILES -V SYSTEM_SFILES | xargs \
-	    env MKDEP_CPP="${CC} -E" mkdep -a -f .newdep ${ASM_CFLAGS}
+	${MAKE} -V CFILES -V SYSTEM_CFILES -V GEN_CFILES | \
+	    xargs mkdep -a -f .newdep ${CFLAGS}
+	${MAKE} -V SFILES -V SYSTEM_SFILES | \
+	    xargs env MKDEP_CPP="${CC} -E" mkdep -a -f .newdep ${ASM_CFLAGS}
 	rm -f .depend
 	mv -f .newdep .depend
 .endif
@@ -132,9 +130,11 @@ kernel-install: kernel-installable
 	-chflags noschg ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME}
 .endif
 .    ifdef NO_KERNEL_OLD_STRIP
-	cp -p ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME} ${DESTDIR}${DESTKERNDIR}.old/${DESTKERNNAME}
+	cp -p ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME} \
+	    ${DESTDIR}${DESTKERNDIR}.old/${DESTKERNNAME}
 .    else
-	${OBJCOPY} --strip-debug ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME} ${DESTDIR}${DESTKERNDIR}.old/${DESTKERNNAME}
+	${OBJCOPY} --strip-debug ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME} \
+	    ${DESTDIR}${DESTKERNDIR}.old/${DESTKERNNAME}
 .    endif
 .endif
 	@if [ -f ${DESTDIR}${DESTKERNDIR} ]; then		\
@@ -180,24 +180,24 @@ kernel-installable:
 .endif
 
 .if !defined(MODULES_WITH_WORLD) && !defined(NO_MODULES)
-all:	modules
+all: modules
 depend: modules-depend
-clean:  modules-clean
-cleandepend:  modules-cleandepend
-cleandir:  modules-cleandir
-tags:  modules-tags
+clean: modules-clean
+cleandepend: modules-cleandepend
+cleandir: modules-cleandir
+tags: modules-tags
 install: modules-install
 reinstall: modules-reinstall
 .endif
 
 modules:
 	@mkdir -p ${.OBJDIR}
-	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules obj ; \
+	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules obj && \
 	    env ${MKMODULESENV} ${MAKE} -f Makefile.modules all
 
 modules-depend:
 	@mkdir -p ${.OBJDIR}
-	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules obj ; \
+	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules obj && \
 	    env ${MKMODULESENV} ${MAKE} -f Makefile.modules depend
 
 modules-clean:
@@ -205,10 +205,6 @@ modules-clean:
 
 modules-cleandepend:
 	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules cleandepend
-
-# XXX huh?
-#modules-clobber:	modules-clean
-#	rm -rf ${MKMODULESENV}
 
 modules-cleandir:
 	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules cleandir
@@ -228,22 +224,23 @@ modules-install: kernel-installable
 	set -- ${DESTDIR}${DESTKERNDIR}/*.ko;			\
 	if [ -f "$$1" ]; then					\
 		if [ -f ${DESTDIR}${DESTKERNDIR}.old ]; then	\
-		    rm -f ${DESTDIR}${DESTKERNDIR}.old; 	\
+			rm -f ${DESTDIR}${DESTKERNDIR}.old; 	\
 		fi;						\
 		mkdir -p ${DESTDIR}${DESTKERNDIR}.old;		\
 		for file; do					\
-		cp -p $$file ${DESTDIR}${DESTKERNDIR}.old;	\
+			cp -p $$file ${DESTDIR}${DESTKERNDIR}.old; \
 		done;						\
 	fi
 .  else
 	set -- ${DESTDIR}${DESTKERNDIR}/*.ko;			\
 	if [ -f "$$1" ]; then					\
 		if [ -f ${DESTDIR}${DESTKERNDIR}.old ]; then	\
-		    rm -f ${DESTDIR}${DESTKERNDIR}.old; 	\
+			rm -f ${DESTDIR}${DESTKERNDIR}.old; 	\
 		fi;						\
 		mkdir -p ${DESTDIR}${DESTKERNDIR}.old;		\
 		for file; do					\
-		${OBJCOPY} --strip-debug $$file ${DESTDIR}${DESTKERNDIR}.old/$${file##*/}; \
+			${OBJCOPY} --strip-debug $$file \
+			    ${DESTDIR}${DESTKERNDIR}.old/$${file##*/}; \
 		done;						\
 	fi
 .  endif

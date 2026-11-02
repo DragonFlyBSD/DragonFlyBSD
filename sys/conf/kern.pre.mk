@@ -32,10 +32,10 @@ OBJCOPY?=	objcopy
 
 COPTFLAGS?=-O2 -pipe
 #COPTFLAGS?=-O -pipe -flto -fno-fat-lto-objects
-#COPTFLAGS?=-O -fthread-jumps -fcse-follow-jumps -fcrossjumping -frerun-cse-after-loop -fno-guess-branch-probability --param min-crossjump-insns=1 -pipe
-#COPTFLAGS?=-O -fcrossjumping -pipe
-#COPTFLAGS?=-Os -fno-strict-aliasing -pipe
-#COPTFLAGS?=-O2 -fno-strict-aliasing -pipe
+
+.if !defined(NO_WERROR) && (${CCVER} == "gcc80" || ${CCVER} == "gcc120")
+WERROR=-Werror
+.endif
 
 # always use external as(1)
 .if ${CCVER:Mclang*}
@@ -59,8 +59,8 @@ COPTFLAGS+= ${_CPUCFLAGS}
 #	  the platform to trivially override the cpu header files.
 #
 INCLUDES= -nostdinc -I. -Iinclude -I$S
+
 # Real kernel builds do not need /usr/include, but vkernel builds do.
-#
 .if ${MACHINE_PLATFORM} == "vkernel64"
 .if exists($S/../include)
 INCLUDES+= -I$S/../include
@@ -86,30 +86,23 @@ INCLUDES+= -I$S/dev/drm/amd/include
 COPTS=	${INCLUDES} ${IDENT} -D_KERNEL -DHAVE_KERNEL_OPTION_HEADERS -include opt_global.h
 CFLAGS=	${COPTFLAGS} ${KCFLAGS} ${CWARNFLAGS} -std=${CSTD} ${DEBUG} ${COPTS}
 
-# XXX LOCORE means "don't declare C stuff" not "for locore.s".
-ASM_CFLAGS= -x assembler-with-cpp -DLOCORE ${CFLAGS:N-flto}
-
-# Put configuration-specific C flags last so that they
-# can override the others.
+# Put configuration-specific CFLAGS last so that they can override the others.
 CFLAGS+=	${CONF_CFLAGS}
 
 # XXX handle this explicitly, fw wrappers use implicit .c.o: rule (LINT64)
 .if defined(FASTER_DEPEND)
-CFLAGS+= -MD
+CFLAGS+=	-MD
 .endif
 
-NORMAL_C= ${CC} -c ${CFLAGS} ${.IMPSRC}
-NORMAL_S= ${CC} -c ${ASM_CFLAGS} ${.IMPSRC}
+# XXX LOCORE means "don't declare C stuff" not "for locore.s".
+ASM_CFLAGS=	-x assembler-with-cpp -DLOCORE ${CFLAGS:N-flto}
 
-NORMAL_M= awk -f $S/tools/makeobjops.awk -- -c ${.IMPSRC}; \
-	${CC} -c ${CFLAGS} ${.PREFIX}.c
-
-NORMAL_FW= uudecode -o ${.TARGET} ${.ALLSRC}
-NORMAL_FWO= ${LD} -b binary -d -warn-common -r -o ${.TARGET} ${.ALLSRC:M*.fw}
-
-.if !defined(NO_WERROR) && (${CCVER} == "gcc80" || ${CCVER} == "gcc120")
-WERROR=-Werror
-.endif
+NORMAL_C=	${CC} -c ${CFLAGS} ${.IMPSRC}
+NORMAL_S=	${CC} -c ${ASM_CFLAGS} ${.IMPSRC}
+NORMAL_M=	awk -f $S/tools/makeobjops.awk -- -c ${.IMPSRC}; \
+		    ${CC} -c ${CFLAGS} ${.PREFIX}.c
+NORMAL_FW=	uudecode -o ${.TARGET} ${.ALLSRC}
+NORMAL_FWO=	${LD} -b binary -d -warn-common -r -o ${.TARGET} ${.ALLSRC:M*.fw}
 
 # In case of LTO provide all standard CFLAGS!
 .if ${CFLAGS:M-flto}
@@ -134,17 +127,17 @@ ELDFLAGS+= -Wl,--hash-style=sysv
 ELDFLAGS+= -Wl,--build-id=sha1
 ELDFLAGS+= -Wl,--export-dynamic
 
-GEN_CFILES= $S/platform/$P/$M/genassym.c
-SYSTEM_CFILES= ioconf.c config.c
-SYSTEM_SFILES= $S/platform/$P/$M/locore.s
-SYSTEM_OBJS= locore.o ${OBJS} ioconf.o config.o hack.So
+GEN_CFILES=	$S/platform/$P/$M/genassym.c
+SYSTEM_CFILES=	ioconf.c config.c
+SYSTEM_SFILES=	$S/platform/$P/$M/locore.s
+SYSTEM_OBJS=	locore.o ${OBJS} ioconf.o config.o hack.So
 SYSTEM_LDSCRIPT= $S/platform/$P/conf/ldscript.$M
-SYSTEM_DEP= Makefile ${SYSTEM_OBJS} ${SYSTEM_LDSCRIPT}
-SYSTEM_LD= @${CC} ${ELDFLAGS} -nostdlib -ffreestanding \
-	-Wl,-Bdynamic -Wl,-L,$S/conf -Wl,-T,${SYSTEM_LDSCRIPT} \
-	-Wl,--dynamic-linker,/red/herring ${LDFLAGS} \
-	-o ${.TARGET} ${SYSTEM_OBJS} vers.o
-SYSTEM_LD_TAIL= @${SIZE} ${.TARGET} ; chmod 755 ${.TARGET}
+SYSTEM_DEP=	Makefile ${SYSTEM_OBJS} ${SYSTEM_LDSCRIPT}
+SYSTEM_LD=	@${CC} ${ELDFLAGS} -nostdlib -ffreestanding \
+		    -Wl,-Bdynamic -Wl,-L,$S/conf -Wl,-T,${SYSTEM_LDSCRIPT} \
+		    -Wl,--dynamic-linker,/red/herring ${LDFLAGS} \
+		    -o ${.TARGET} ${SYSTEM_OBJS} vers.o
+SYSTEM_LD_TAIL=	@${SIZE} ${.TARGET}; chmod 755 ${.TARGET}
 
 # Normalize output files to make it absolutely crystal clear to
 # anyone examining the build directory.
