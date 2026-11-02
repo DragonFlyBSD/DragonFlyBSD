@@ -38,25 +38,25 @@ _cnowarnflags=
 .if !defined(NO_WARNS)
 . if defined(WARNS)
 .  if ${WARNS} >= 1
-CWARNFLAGS	+=	-Wmissing-include-dirs -Wsystem-headers
+CFLAGS		+=	-Wmissing-include-dirs -Wsystem-headers
 .   if !defined(NO_WERROR) && (${_WCCVER} == "gcc80" || ${_WCCVER} == "gcc120")
-CWARNFLAGS	+=	-Werror
+CFLAGS		+=	-Werror
 .   endif
 .  endif
 .  if ${WARNS} >= 2
-CWARNFLAGS	+=	-Wall -Wformat-security -Winit-self
+CFLAGS		+=	-Wall -Wformat-security -Winit-self
 .  endif
 .  if ${WARNS} >= 3
-CWARNFLAGS	+=	-Wextra -Wstrict-prototypes\
-			-Wmissing-prototypes -Wpointer-arith\
+CFLAGS		+=	-Wextra -Wstrict-prototypes \
+			-Wmissing-prototypes -Wpointer-arith \
 			-Wold-style-definition
 .  endif
 .  if ${WARNS} >= 4
-CWARNFLAGS	+=	-Wreturn-type -Wcast-qual -Wwrite-strings -Wswitch\
+CFLAGS		+=	-Wreturn-type -Wcast-qual -Wwrite-strings -Wswitch \
 			-Wshadow -Wcast-align -Wunused-parameter
 .  endif
 .  if ${WARNS} >= 6
-CWARNFLAGS	+=	-Wchar-subscripts -Winline -Wnested-externs\
+CFLAGS		+=	-Wchar-subscripts -Winline -Wnested-externs \
 			-Wredundant-decls
 .  endif
 .  if ${WARNS} >= 2 && ${WARNS} <= 6
@@ -101,10 +101,10 @@ _cnowarnflags	+=	-Wno-implicit-fallthrough
 # These are still useful diagnostics while investigating compilation issues.
 .  if defined(WORLD_CCOPTLEVEL) && (${WORLD_CCOPTLEVEL:Mg} || ${WORLD_CCOPTLEVEL:Ms})
 .   if ${WARNS} >= 6
-CWARNFLAGS	+=	-Wno-error=inline
+CFLAGS		+=	-Wno-error=inline
 .   endif
 .   if ${WARNS} >= 5 && ${_WCCVER:Mgcc*}
-CWARNFLAGS	+=	-Wno-error=maybe-uninitialized
+CFLAGS		+=	-Wno-error=maybe-uninitialized
 .   endif
 .  endif
 . endif
@@ -113,7 +113,7 @@ CWARNFLAGS	+=	-Wno-error=maybe-uninitialized
 WFORMAT		=	1
 . endif
 . if defined(WFORMAT) && ${WFORMAT} > 0
-CWARNFLAGS	+=	-Wformat=2
+CFLAGS		+=	-Wformat=2
 . endif
 .endif
 
@@ -138,7 +138,7 @@ CFLAGS		+=	-fno-strict-aliasing
 
 # Add -Wno-foo flags last
 .if !defined(WARNS_AUDIT)
-CWARNFLAGS	+=	${_cnowarnflags}
+CFLAGS		+=	${_cnowarnflags}
 .endif
 
 # Allow user-specified additional warning flags
