@@ -390,7 +390,8 @@ main(int ac, char **av)
 		DoUpgradePkgs(pkgs, 0);
 		dfatal("NOTE: you have to pkg upgrade manually");
 	} else if (strcmp(av[0], "prepare-system") == 0) {
-		DeleteObsoletePkgs = 1;
+		// Do NOT purge on partial scans
+		//DeleteObsoletePkgs = 1;
 		DoCleanBuild(1);
 		OptimizeEnv();
 		pkgs = GetLocalPackageList();
