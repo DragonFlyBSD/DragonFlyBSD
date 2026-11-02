@@ -549,6 +549,7 @@ video_mode(int argc, char **argv, int *mode_index)
 
 	int new_mode_num = 0;
 	int size[3];
+	int ioerr;
 	int i;
 
 	/*
@@ -580,8 +581,9 @@ video_mode(int argc, char **argv, int *mode_index)
 		new_mode_info.vi_mode = new_mode_num;
 
 		if (ioctl(0, CONS_MODEINFO, &new_mode_info) == -1) {
+			ioerr = errno;
 			revert();
-			errc(1, errno, "obtaining new video mode parameters");
+			errc(1, ioerr, "obtaining new video mode parameters");
 		}
 
 		/*
@@ -589,8 +591,9 @@ video_mode(int argc, char **argv, int *mode_index)
 		 */
 
 		if (ioctl(0, CONS_SET, &new_mode_num) == -1) {
+			ioerr = errno;
 			revert();
-			errc(1, errno, "setting video mode");
+			errc(1, ioerr, "setting video mode");
 		}
 
 		/*
@@ -628,8 +631,9 @@ video_mode(int argc, char **argv, int *mode_index)
 			/* set raster mode */
 
 			if (ioctl(0, KDRASTER, size)) {
+				ioerr = errno;
 				revert();
-				errc(1, errno, "activating raster display");
+				errc(1, ioerr, "activating raster display");
 			}
 		}
 
