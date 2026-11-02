@@ -29,6 +29,10 @@ _gccver=	0
 _gccver=	${_WCCVER:S/gcc//}
 .endif
 
+.if !defined(NO_WERROR) && (${_WCCVER} == "gcc80" || ${_WCCVER} == "gcc120")
+WERROR=		-Werror
+.endif
+
 # Explicitly clear _cnowarnflags (should not be used in Makefiles).
 _cnowarnflags=
 
@@ -38,10 +42,8 @@ _cnowarnflags=
 .if !defined(NO_WARNS)
 . if defined(WARNS)
 .  if ${WARNS} >= 1
+CFLAGS		+=	${WERROR}
 CFLAGS		+=	-Wmissing-include-dirs -Wsystem-headers
-.   if !defined(NO_WERROR) && (${_WCCVER} == "gcc80" || ${_WCCVER} == "gcc120")
-CFLAGS		+=	-Werror
-.   endif
 .  endif
 .  if ${WARNS} >= 2
 CFLAGS		+=	-Wall -Wformat-security -Winit-self
@@ -107,7 +109,7 @@ CFLAGS		+=	-Wno-error=inline
 CFLAGS		+=	-Wno-error=maybe-uninitialized
 .   endif
 .  endif
-. endif
+. endif # defined(WARNS)
 
 . if defined(FORMAT_AUDIT)
 WFORMAT		=	1
@@ -115,12 +117,7 @@ WFORMAT		=	1
 . if defined(WFORMAT) && ${WFORMAT} > 0
 CFLAGS		+=	-Wformat=2
 . endif
-.endif
-
-# Build world with -fno-common. This will be default with GCC 10.
-.if ${_gccver} < 100
-CFLAGS		+=	-fno-common
-.endif
+.endif # !defined(NO_WARNS)
 
 .if defined(NO_WCAST_FUNCTION_TYPE) && ${WARNS} >= 3 && ${_gccver} >= 80
 _cnowarnflags	+=	-Wno-cast-function-type
@@ -128,13 +125,6 @@ _cnowarnflags	+=	-Wno-cast-function-type
 .if defined(NO_WARRAY_BOUNDS)
 _cnowarnflags	+=	-Wno-array-bounds
 .endif
-.if defined(NO_STRICT_OVERFLOW)
-CFLAGS		+=	-fno-strict-overflow
-.endif
-.if defined(NO_STRICT_ALIASING)
-CFLAGS		+=	-fno-strict-aliasing
-.endif
-
 
 # Add -Wno-foo flags last
 .if !defined(WARNS_AUDIT)
@@ -144,6 +134,17 @@ CFLAGS		+=	${_cnowarnflags}
 # Allow user-specified additional warning flags
 CFLAGS		+=	${CWARNFLAGS}
 
+# Build world with -fno-common. This will be default with GCC 10.
+.if ${_gccver} < 100
+CFLAGS		+=	-fno-common
+.endif
+
+.if defined(NO_STRICT_OVERFLOW)
+CFLAGS		+=	-fno-strict-overflow
+.endif
+.if defined(NO_STRICT_ALIASING)
+CFLAGS		+=	-fno-strict-aliasing
+.endif
 
 # Tell bmake not to mistake standard targets for things to be searched for
 # or expect to ever be up-to-date
