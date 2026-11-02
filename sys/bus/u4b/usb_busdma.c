@@ -402,8 +402,10 @@ usb_pc_common_mem_cb(void *arg, bus_dma_segment_t *segs,
 	struct usb_dma_parent_tag *uptag;
 	struct usb_page_cache *pc;
 	struct usb_page *pg;
+	bus_size_t seg_start;
+	int npages, pgi;
 	usb_size_t rem;
-	bus_size_t off;
+	bus_size_t boff;
 	uint8_t owned;
 
 	pc = arg;
@@ -420,7 +422,6 @@ usb_pc_common_mem_cb(void *arg, bus_dma_segment_t *segs,
 		goto done;
 	}
 
-	off = 0;
 	pg = pc->page_start;
 	pg->physaddr = rounddown2(segs->ds_addr, USB_PAGE_SIZE);
 	rem = segs->ds_addr & (USB_PAGE_SIZE - 1);
@@ -445,19 +446,27 @@ usb_pc_common_mem_cb(void *arg, bus_dma_segment_t *segs,
 		}
 	}
 #endif
-	while (pc->ismultiseg) {
-		off += USB_PAGE_SIZE;
-		if (off >= (segs->ds_len + rem)) {
-			/* page crossing */
-			nseg--;
-			segs++;
-			off = 0;
-			rem = 0;
+	/*
+	 * Page entry j covers buffer byte position j * USB_PAGE_SIZE - rem;
+	 * segments may begin and end at any in-page offset.
+	 */
+	if (pc->ismultiseg) {
+		seg_start = 0;
+		npages = (pc->page_offset_end + USB_PAGE_SIZE - 1) /
+		    USB_PAGE_SIZE;
+
+		for (pgi = 1; pgi < npages; pgi++) {
+			boff = (bus_size_t)pgi * USB_PAGE_SIZE - rem;
+			while (nseg > 0 && seg_start + segs->ds_len <= boff) {
+				seg_start += segs->ds_len;
+				nseg--;
+				segs++;
+			}
 			if (nseg == 0)
 				break;
+			pg[pgi].physaddr = rounddown2(segs->ds_addr +
+			    (boff - seg_start), USB_PAGE_SIZE);
 		}
-		pg++;
-		pg->physaddr = rounddown2(segs->ds_addr + off, USB_PAGE_SIZE);
 	}
 
 done:
