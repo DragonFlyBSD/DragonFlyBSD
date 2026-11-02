@@ -72,10 +72,6 @@ _cnowarnflags	+=	-Wno-maybe-uninitialized
 _cnowarnflags	+=	-Wno-uninitialized
 .   endif
 .  endif
-.  if ${WARNS} == 3
-# Delete -Wno-unused-parameter from -Wextra by default only if WARNS < 4.
-_cnowarnflags	+=	-Wno-unused-parameter
-.  endif
 # Delete -Wformat-* family that give little benefits, same for stringop.
 .  if ${WARNS} >= 2 && ${WARNS} <= 6 && ${_gccver} >= 80
 _cnowarnflags	+=	-Wno-format-overflow -Wno-format-truncation
@@ -87,16 +83,18 @@ _cnowarnflags	+=	-Wno-stringop-overflow
 .  if ${WARNS} >= 1 && ${WARNS} <= 6 && ${_gccver} >= 90
 _cnowarnflags	+=	-Wno-address-of-packed-member
 .  endif
-# Activate GCC's -Wunused-but-set-variable (which is in -Wall) and
-# -Wunused-but-set-parameter (which is in -Wextra) only at WARNS >= 4
-# (which is the level when also -Wunused-parameter comes into play).
+# Move some warnings enabled by -Wall to WARNS >= 4.
 .  if ${WARNS} >= 2 && ${WARNS} <= 3 && ${_WCCVER:Mgcc*}
 _cnowarnflags	+=	-Wno-unused-but-set-variable
-_cnowarnflags	+=	-Wno-unused-but-set-parameter
 _cnowarnflags	+=	-Wno-unused-value
 .  endif
-.  if ${WARNS} == 3 && ${_gccver} >= 80
+# Move some warnings enabled by -Wextra to WARNS >= 4.
+.  if ${WARNS} == 3
+_cnowarnflags	+=	-Wno-unused-parameter
+_cnowarnflags	+=	-Wno-unused-but-set-parameter
+.   if ${_gccver} >= 80
 _cnowarnflags	+=	-Wno-implicit-fallthrough
+.   endif
 .  endif
 # Disable -Werror selectively for -Os and -Og compilations.  Both -Winline and
 # -Wmaybe-uninitialized are noisy and should be caught by standard -O and -O2.
