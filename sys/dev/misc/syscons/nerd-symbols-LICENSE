@@ -1,0 +1,53 @@
+Nerd Fonts Symbols (curated subset embedded in syscons)
+=======================================================
+
+This directory embeds monochrome bitmap glyphs rasterized from:
+
+  Nerd Fonts "Symbols Only" — SymbolsNerdFontMono-Regular.ttf
+  Package: nerd-fonts (SymbolsOnly)
+  Upstream: https://github.com/ryanoasis/nerd-fonts
+
+The Symbols Only distribution is labeled MIT:
+
+  Copyright (c) 2014 Ryan L McIntyre
+  MIT License (see NerdFontsSymbolsOnly/LICENSE on the host font package)
+
+Nerd Fonts aggregates glyphs from many FOSS icon fonts (MIT, SIL OFL 1.1,
+Apache-2.0, etc.). Those component licenses permit redistribution and use
+in FreeBSD/DragonFly-style BSD systems when attribution is preserved.
+
+Embed policy (S2):
+  - BMP private-use / symbol ranges through Font Awesome legacy band
+    (approximately U+E000–U+F2FF plus a few misc symbols), monochrome
+    16x32 bitmaps only — not the full TTF and not the plane-1 mega set.
+  - Bitmaps are derived works (rasterizations).
+  - This NOTICE must be retained when redistributing the kernel image
+    or source that includes font_ext_nerd16x32.h.
+
+BSD compatibility: MIT and OFL/Apache icon sources used by Nerd Fonts are
+generally compatible with 2/3-clause BSD distribution of a larger work
+(kernel). Do NOT add icon sets that are proprietary or NC-only.
+
+Regenerate:
+  python3 scripts/raster_nerd_symbols.py --profile s2
+
+Mono emoji subset (S3)
+----------------------
+Bitmaps also derived from Google Noto Color Emoji, licensed under the
+SIL Open Font License 1.1 (see host package noto-emoji OFL11). Rasterized
+to monochrome 32x32 and split into 16x32 cell halves for the console.
+Regenerate: python3 scripts/raster_emoji_mono.py --max-glyphs 400
+
+Spleen Unicode + letter fill
+----------------------------
+Additional monochrome glyphs extracted from Spleen 16x32 BDF (BSD-2-Clause,
+Frederic Cambus). Gaps in Greek/Cyrillic/Latin-Extended filled from
+DejaVu Sans Mono (Bitstream Vera / Arev free fonts).
+
+Non-CJK multi-script letters (Spleen Unicode + Noto/DejaVu fill)
+----------------------------------------------------------------
+font_ext_letters16x32.h embeds:
+  - Spleen 16x32 BDF Unicode above U+00FF (BSD-2-Clause)
+  - Gap fill rasterized from DejaVu Sans Mono and Noto Sans* families
+    (OFL-1.1 / Bitstream Vera free licenses), excluding CJK blocks.
+Hebrew/Arabic/Indic/etc. are isolated glyphs only (no bidi or shaping).
