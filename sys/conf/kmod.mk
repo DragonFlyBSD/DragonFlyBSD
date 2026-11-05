@@ -85,6 +85,7 @@ CFLAGS+=	${CWARNFLAGS} ${WERROR}
 CFLAGS+=	-D_KERNEL -DKLD_MODULE
 CFLAGS+=	${KCFLAGS}
 CFLAGS+=	${DEBUG_FLAGS}
+CFLAGS+=	${CONF_CFLAGS}
 
 # Don't use any standard include directories.
 # Since -nostdinc will annull any previous -I paths, we repeat all
