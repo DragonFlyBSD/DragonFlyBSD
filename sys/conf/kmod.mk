@@ -80,20 +80,11 @@ KMODMODE?=	${BINMODE}
 
 .SUFFIXES: .out .o .c .cc .cxx .C .y .l .s .S
 
-.if !defined(NO_WERROR) && (${CCVER} == "gcc80" || ${CCVER} == "gcc120")
-WERROR=-Werror
-.endif
-
-COPTFLAGS?=-O2 -pipe
-
-# always use external as(1)
-.if ${CCVER:Mclang*}
-COPTFLAGS+=	-no-integrated-as
-.endif
-
-CFLAGS=		${COPTFLAGS} ${KCFLAGS} ${COPTS} -D_KERNEL
-CFLAGS+=	${CWARNFLAGS} -std=${CSTD} ${WERROR}
-CFLAGS+=	-DKLD_MODULE
+CFLAGS=		${COPTFLAGS} -std=${CSTD}
+CFLAGS+=	${CWARNFLAGS} ${WERROR}
+CFLAGS+=	-D_KERNEL -DKLD_MODULE
+CFLAGS+=	${KCFLAGS}
+CFLAGS+=	${DEBUG_FLAGS}
 
 # Don't use any standard include directories.
 # Since -nostdinc will annull any previous -I paths, we repeat all
@@ -148,8 +139,6 @@ CFLAGS+=	-Idragonfly/../include -I${DESTDIR}/usr/include
 .if defined(KERNBUILDDIR) && exists(${KERNBUILDDIR}/opt_global.h)
 CFLAGS+=	-DHAVE_KERNEL_OPTION_HEADERS -include ${KERNBUILDDIR}/opt_global.h
 .endif
-
-CFLAGS+=	${DEBUG_FLAGS}
 
 .if defined(FIRMWS)
 .if !exists(dragonfly)
@@ -446,8 +435,8 @@ genassym.o: opt_global.h
 genassym.o: dragonfly/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c
 .endif
 genassym.o: dragonfly ${SRCS:Mopt_*.h}
-	${CC} -c ${CFLAGS:N-fno-common:N-flto:N-mcmodel=small} -fcommon \
-	${WERROR} dragonfly/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c
+	${CC} -c ${CFLAGS:N-flto} -fcommon \
+	    dragonfly/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c
 .endif
 
 .include <bsd.dep.mk>

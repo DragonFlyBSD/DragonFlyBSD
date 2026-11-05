@@ -1,13 +1,22 @@
-# $FreeBSD: src/share/mk/bsd.kern.mk,v 1.17.2.1 2001/08/01 16:56:56 obrien Exp $
-
-# Warning flags for compiling the kernel and components of the kernel.
-#
-# Note that -Werror is on by default. To turn it off, e.g. when working
-# on adding new warning options, NO_WERROR in make.conf (or on make(1)'s
-# command line) should be of material assistance.
-#
+# Common flags for compiling the kernel and kernel modules.
 
 CSTD?=		gnu11
+
+COPTFLAGS?=	-O2 -pipe
+#COPTFLAGS?=	-O -pipe -flto -fno-fat-lto-objects
+
+# always use external as(1)
+.if ${CCVER:Mclang*}
+COPTFLAGS+=	-no-integrated-as
+.endif
+
+.if !defined(NO_CPU_COPTFLAGS)
+COPTFLAGS+=	${_CPUCFLAGS}
+.endif
+
+.if !defined(NO_WERROR) && (${CCVER} == "gcc80" || ${CCVER} == "gcc120")
+WERROR=		-Werror
+.endif
 
 CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wmissing-prototypes -Wpointer-arith -Wcast-qual \

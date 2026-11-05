@@ -30,22 +30,6 @@ M=	${MACHINE_ARCH}
 SIZE?=		size
 OBJCOPY?=	objcopy
 
-COPTFLAGS?=-O2 -pipe
-#COPTFLAGS?=-O -pipe -flto -fno-fat-lto-objects
-
-.if !defined(NO_WERROR) && (${CCVER} == "gcc80" || ${CCVER} == "gcc120")
-WERROR=-Werror
-.endif
-
-# always use external as(1)
-.if ${CCVER:Mclang*}
-COPTFLAGS+=	-no-integrated-as
-.endif
-
-.if !defined(NO_CPU_COPTFLAGS)
-COPTFLAGS+= ${_CPUCFLAGS}
-.endif
-
 # don't use -I- so we can use proper source-relative locality for local
 # includes.
 #
@@ -83,8 +67,11 @@ INCLUDES+= -I$S/dev/drm/include/drm
 INCLUDES+= -I$S/dev/drm/include/uapi
 INCLUDES+= -I$S/dev/drm/amd/include
 
-COPTS=	${INCLUDES} ${IDENT} -D_KERNEL -DHAVE_KERNEL_OPTION_HEADERS -include opt_global.h
-CFLAGS=	${COPTFLAGS} ${KCFLAGS} ${CWARNFLAGS} -std=${CSTD} ${DEBUG} ${COPTS}
+CFLAGS=		${COPTFLAGS} -std=${CSTD} ${DEBUG} ${IDENT}
+CFLAGS+=	${CWARNFLAGS}
+CFLAGS+=	-D_KERNEL -DHAVE_KERNEL_OPTION_HEADERS
+CFLAGS+=	${INCLUDES} -include opt_global.h
+CFLAGS+=	${KCFLAGS}
 
 # Put configuration-specific CFLAGS last so that they can override the others.
 CFLAGS+=	${CONF_CFLAGS}
@@ -133,7 +120,7 @@ SYSTEM_SFILES=	$S/platform/$P/$M/locore.s
 SYSTEM_OBJS=	locore.o ${OBJS} ioconf.o config.o hack.So
 SYSTEM_LDSCRIPT= $S/platform/$P/conf/ldscript.$M
 SYSTEM_DEP=	Makefile ${SYSTEM_OBJS} ${SYSTEM_LDSCRIPT}
-SYSTEM_LD=	@${CC} ${ELDFLAGS} -nostdlib -ffreestanding \
+SYSTEM_LD=	@${CC} -nostdlib -ffreestanding ${ELDFLAGS} \
 		    -Wl,-Bdynamic -Wl,-L,$S/conf -Wl,-T,${SYSTEM_LDSCRIPT} \
 		    -Wl,--dynamic-linker,/red/herring ${LDFLAGS} \
 		    -o ${.TARGET} ${SYSTEM_OBJS} vers.o
