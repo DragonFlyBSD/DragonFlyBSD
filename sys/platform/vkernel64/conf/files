@@ -19,7 +19,7 @@ vfs/smbfs/smbfs_vnops.c		optional	smbfs
 cpu/x86_64/misc/cputimer_tsc.c	standard
 platform/vkernel64/x86_64/autoconf.c	standard
 platform/vkernel64/x86_64/mp.c		standard			\
-	compile-with	"${NORMAL_C} -pthread -I/usr/include ${WERROR}"
+	compile-with	"${NORMAL_C} -pthread -I/usr/include"
 #
 # DDB XXX
 cpu/x86_64/misc/elf_machdep.c		standard

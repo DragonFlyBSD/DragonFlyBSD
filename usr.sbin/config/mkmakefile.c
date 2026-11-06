@@ -730,7 +730,7 @@ do_rules(FILE *f)
 			snprintf(cmd, sizeof(cmd), "${%s_%c%s}%s",
 			    ftype, toupper(och),
 			    ftp->f_flags & CONFIGDEP ? "_C" : "",
-			    ftp->f_flags & NOWERROR ? "" : " ${WERROR}");
+			    ftp->f_flags & NOWERROR ? " -Wno-error" : "");
 			special = cmd;
 		}
 		*cp = och;

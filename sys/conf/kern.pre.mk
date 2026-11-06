@@ -68,7 +68,7 @@ INCLUDES+= -I$S/dev/drm/include/uapi
 INCLUDES+= -I$S/dev/drm/amd/include
 
 CFLAGS=		${COPTFLAGS} -std=${CSTD} ${DEBUG} ${IDENT}
-CFLAGS+=	${CWARNFLAGS}
+CFLAGS+=	${CWARNFLAGS} ${WERROR}
 CFLAGS+=	-D_KERNEL -DHAVE_KERNEL_OPTION_HEADERS
 CFLAGS+=	${INCLUDES} -include opt_global.h
 CFLAGS+=	${KCFLAGS}

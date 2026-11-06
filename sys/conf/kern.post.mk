@@ -73,8 +73,7 @@ assym.s: $S/kern/genassym.sh genassym.o
 
 genassym.o: $S/platform/$P/$M/genassym.c ${FORWARD_HEADERS_COOKIE} \
 	    ${MFILES:T:S/.m$/.h/}
-	${CC} -c ${CFLAGS:N-flto} -fcommon \
-	    ${WERROR} $S/platform/$P/$M/genassym.c
+	${CC} -c ${CFLAGS:N-flto} -fcommon $S/platform/$P/$M/genassym.c
 
 ${SYSTEM_OBJS} genassym.o vers.o: opt_global.h
 
@@ -261,17 +260,11 @@ modules-reinstall:
 	mkdir -p ${DESTDIR}/${DESTKERNDIR} # Ensure that the modules directory exists!
 	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules install
 
-config.o:
-	${NORMAL_C} ${WERROR}
-
-ioconf.o:
-	${NORMAL_C} ${WERROR}
+config.o ioconf.o vers.o:
+	${NORMAL_C}
 
 vers.c: $S/conf/newvers.sh $S/sys/param.h ${SYSTEM_DEP}
 	env KERN_IDENT="${KERN_IDENT}" PARAMFILE="$S/sys/param.h" \
 	    sh $S/conf/newvers.sh $S/..
-
-vers.o:
-	${NORMAL_C} ${WERROR}
 
 .include "$S/conf/bsd.kern.mk"
