@@ -162,16 +162,26 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 }
 
 /*
- * This is the same as uiomove() except (cp, n) is within the bounds of
- * the passed, locked buffer.  Under certain circumstances a VM fault
- * occuring with a locked buffer held can result in a deadlock or an
- * attempt to recursively lock the buffer.
+ * uiomovebp() is the same as uiomove() except (cp, n) is within the bounds
+ * of the passed, locked buffer.  In addition, uiomovebp() will make the
+ * related pages presentable to mmap().  DragonFlyBSD requires direct-mapping
+ * of the file's buffer representation to the VM system.
  *
- * This procedure deals with these cases.
+ * In particular, the last page in the buffer in situations where the
+ * buffer is not a multiple of PAGE_SIZE.  When the buffer is B_CACHE
+ * and the last page is not fully valid, the trailing portion of the page
+ * will be zero'd and made valid.
  *
- * If the buffer represents a regular file, is B_CACHE, but the last VM page
- * is not fully valid we fix-up the last VM page.  This should handle the
- * recursive lock issue.
+ * This scenario can occur with UFS's default 2K fragment size
+ *
+ * Certain filesystems with a small native fragment size, such as MSDOSFS,
+ * where more than just the last part of the file may utilize smaller
+ * blocks, cannot be handled by this function and the related pages can't
+ * really be mmap()d.   A possible solution for MSDOSFS is to force the
+ * buffer to be sized in multiples of PAGE_SIZE and then deal with the
+ * cluster-f*ck in the strategy code.
+ *
+ * --
  *
  * Deadlocks are another issue.  We are holding the vp and the bp locked
  * and could deadlock against a different vp and/or bp if another thread is
