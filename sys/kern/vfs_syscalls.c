@@ -4219,6 +4219,7 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	struct namecache *ncp;
 	struct vnode *fdvp;
 	struct vnode *tdvp;
+	struct vnode *fvp;
 	struct mount *mp;
 	struct mount *userenlk;
 	int error;
@@ -4385,6 +4386,24 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	 */
 	if ((error = ncp_writechk(&tond->nl_nch)) != 0) {
 		goto finish;
+	}
+
+	/*
+	 * If the source is a directory and it gets a new parent, then its
+	 * ".." entry is modified, which requires write permission on the
+	 * source directory itself.
+	 */
+	if (fnchd.ncp != tnchd.ncp &&
+	    fromnd->nl_nch.ncp->nc_vp != NULL &&
+	    fromnd->nl_nch.ncp->nc_vp->v_type == VDIR)
+	{
+		error = cache_vref(&fromnd->nl_nch, fromnd->nl_cred, &fvp);
+		if (error == 0) {
+			error = VOP_EACCESS(fvp, VWRITE, fromnd->nl_cred);
+			vrele(fvp);
+		}
+		if (error)
+			goto finish;
 	}
 
 	/*
