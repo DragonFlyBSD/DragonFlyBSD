@@ -581,6 +581,8 @@ msdosfs_write(struct vop_write_args *ap)
 	int n;
 	int croffset;
 	size_t resid;
+	size_t start_resid;
+	off_t curoff;
 	u_long osize;
 	int error = 0;
 	u_long count;
@@ -595,6 +597,8 @@ msdosfs_write(struct vop_write_args *ap)
 	struct denode *dep = VTODE(vp);
 	struct msdosfsmount *pmp = dep->de_pmp;
 	struct proc *p = (td ? td->td_proc : NULL);
+	int dowrite;
+	caddr_t bsrc;
 	struct lwp *lp = (td ? td->td_lwp : NULL);
 
 	mprintf("msdosfs_write(vp %p, uio %p, ioflag %x, cred %p\n",
@@ -683,11 +687,7 @@ msdosfs_write(struct vop_write_args *ap)
 
 		croffset = uio->uio_offset & pmp->pm_crbomask;
 		n = (int)szmin(uio->uio_resid, pmp->pm_bpcluster - croffset);
-		if (uio->uio_offset + n > dep->de_FileSize) {
-			dep->de_FileSize = uio->uio_offset + n;
-			/* The object size needs to be set before buffer is allocated */
-			vnode_pager_setsize(vp, dep->de_FileSize);
-		}
+		curoff = uio->uio_offset;
 
 		/*
 		 * If either the whole cluster gets written, or we write
@@ -698,12 +698,33 @@ msdosfs_write(struct vop_write_args *ap)
 		 * to fill in any missing pieces of the buffer since no
 		 * actual overwrite will occur.
 		 */
-		cn = de_cluster(pmp, uio->uio_offset);
-		if ((uio->uio_offset & pmp->pm_crbomask) == 0
+		cn = de_cluster(pmp, curoff);
+		dowrite = ((curoff & pmp->pm_crbomask) == 0
 		    && uio->uio_segflg != UIO_NOCOPY
-		    && (de_cluster(pmp, uio->uio_offset + uio->uio_resid)
-		        > de_cluster(pmp, uio->uio_offset)
-			|| uio->uio_offset + uio->uio_resid >= dep->de_FileSize)) {
+		    && (de_cluster(pmp, curoff + uio->uio_resid) >
+			de_cluster(pmp, curoff)
+			|| curoff + uio->uio_resid >= dep->de_FileSize));
+
+		/* Stage before the size is raised; the copy may fault. */
+		bsrc = NULL;
+		if (pmp->pm_bpcluster < PAGE_SIZE &&
+		    uio->uio_segflg != UIO_NOCOPY) {
+			start_resid = uio->uio_resid;
+			bsrc = kmalloc((size_t)n, M_TEMP, M_WAITOK);
+			error = uiomove(bsrc, (size_t)n, uio);
+			if (error) {
+				uio->uio_offset -= start_resid - uio->uio_resid;
+				uio->uio_resid = start_resid;
+				kfree(bsrc, M_TEMP);
+				break;
+			}
+		}
+		if (curoff + n > dep->de_FileSize) {
+			dep->de_FileSize = curoff + n;
+			/* Set the object size before the buffer is allocated */
+			vnode_pager_setsize(vp, dep->de_FileSize);
+		}
+		if (dowrite) {
 			bp = getblk(thisvp, de_cn2doff(pmp, cn),
 				    pmp->pm_bpcluster, 0, 0);
 			clrbuf(bp);
@@ -726,6 +747,11 @@ msdosfs_write(struct vop_write_args *ap)
 			}
 			if (bp->b_bio2.bio_offset == NOOFFSET) {
 				brelse(bp);
+				if (bsrc != NULL) {
+					uio->uio_offset -= n;
+					uio->uio_resid += n;
+					kfree(bsrc, M_TEMP);
+				}
 				if (!error)
 					error = EIO;		/* XXX */
 				break;
@@ -739,6 +765,11 @@ msdosfs_write(struct vop_write_args *ap)
 				      pmp->pm_bpcluster, &bp);
 			if (error) {
 				brelse(bp);
+				if (bsrc != NULL) {
+					uio->uio_offset -= n;
+					uio->uio_resid += n;
+					kfree(bsrc, M_TEMP);
+				}
 				break;
 			}
 		}
@@ -748,13 +779,19 @@ msdosfs_write(struct vop_write_args *ap)
 		 * files?
 		 */
 
-		/*
-		 * Copy the data from user space into the buf header.
-		 */
-		error = uiomovebp(bp, bp->b_data + croffset, (size_t)n, uio);
-		if (error) {
-			brelse(bp);
-			break;
+		if (bsrc != NULL) {
+			bcopy(bsrc, bp->b_data + croffset, (size_t)n);
+			kfree(bsrc, M_TEMP);
+		} else if (uio->uio_segflg == UIO_NOCOPY) {
+			/* Page-out: nothing is copied and cannot fail. */
+			uiomove(bp->b_data + croffset, (size_t)n, uio);
+		} else {
+			error = uiomovebp(bp, bp->b_data + croffset,
+			    (size_t)n, uio);
+			if (error) {
+				brelse(bp);
+				break;
+			}
 		}
 
 		/* Prepare for clustered writes in some else clauses. */
