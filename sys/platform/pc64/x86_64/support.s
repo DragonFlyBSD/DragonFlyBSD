@@ -693,7 +693,7 @@ ENTRY(std_copyinstr)
 3:
 	/* rdx is zero - return ENAMETOOLONG or EFAULT */
 	movq	$VM_MAX_USER_ADDRESS,%rax
-	cmpq	%rax,%rsi
+	cmpq	%rax,%rdi
 	jae	cpystrflt
 4:
 	movq	$ENAMETOOLONG,%rax
