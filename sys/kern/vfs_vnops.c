@@ -901,7 +901,18 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 		sb->st_nlink = vap->va_nlink;
 	sb->st_uid = vap->va_uid;
 	sb->st_gid = vap->va_gid;
-	sb->st_rdev = devid_from_dev(vp->v_rdev);
+	/*
+	 * st_rdev is only meaningful for character and block devices.
+	 * Prefer the device numbers reported by VOP_GETATTR, and fall
+	 * back to the cdev.
+	 */
+	if ((vp->v_type == VCHR || vp->v_type == VBLK) &&
+	    vap->va_rmajor != VNOVAL)
+	{
+		sb->st_rdev = makeudev(vap->va_rmajor, vap->va_rminor);
+	} else {
+		sb->st_rdev = devid_from_dev(vp->v_rdev);
+	}
 	sb->st_size = vap->va_size;
 	sb->st_atimespec = vap->va_atime;
 	sb->st_mtimespec = vap->va_mtime;

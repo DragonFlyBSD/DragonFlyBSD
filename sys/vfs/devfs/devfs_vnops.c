@@ -594,6 +594,7 @@ devfs_vop_getattr(struct vop_getattr_args *ap)
 
 	if ((node->node_type == Ndev) && node->d_dev)  {
 		reference_dev(node->d_dev);
+		vap->va_rmajor = node->d_dev->si_umajor;
 		vap->va_rminor = node->d_dev->si_uminor;
 		release_dev(node->d_dev);
 	}

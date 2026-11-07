@@ -333,8 +333,8 @@ retry:
 	vap->va_nlink = ip->meta.nlinks;
 	vap->va_uid = hammer2_to_unix_xid(&ip->meta.uid);
 	vap->va_gid = hammer2_to_unix_xid(&ip->meta.gid);
-	vap->va_rmajor = 0;
-	vap->va_rminor = 0;
+	vap->va_rmajor = ip->meta.rmajor;
+	vap->va_rminor = ip->meta.rminor;
 	vap->va_size = ip->meta.size;	/* protected by shared lock */
 	vap->va_blocksize = HAMMER2_PBUFSIZE;
 	vap->va_flags = ip->meta.uflags;
