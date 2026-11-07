@@ -2805,7 +2805,13 @@ kern_unlink(struct nlookupdata *nd)
 	if ((error = nlookup(nd)) != 0)
 		return (error);
 	if (nd->nl_dvp == NULL)
-		return EINVAL;
+		return (EINVAL);
+	if (nd->nl_nch.ncp->nc_vp != NULL &&
+	    nd->nl_nch.ncp->nc_vp->v_type == VDIR)
+	{
+		/* POSIX: unlink() of a directory fails with EPERM. */
+		return (EPERM);
+	}
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 		return (error);
 	error = VOP_NREMOVE(&nd->nl_nch, nd->nl_dvp, nd->nl_cred);
