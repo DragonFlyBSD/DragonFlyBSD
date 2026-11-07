@@ -120,6 +120,7 @@ ntfs_read(struct vop_read_args *ap)
 	struct uio *uio = ap->a_uio;
 	struct ntfsmount *ntmp = ip->i_mp;
 	struct buf *bp;
+	caddr_t bnc;
 	daddr_t cn;
 	int resid, off, toread;
 	int error;
@@ -151,12 +152,31 @@ ntfs_read(struct vop_read_args *ap)
 			break;
 		}
 
-		error = uiomovebp(bp, bp->b_data + off, toread - off, uio);
-		if(error) {
+		if (uio->uio_segflg == UIO_NOCOPY) {
+			/* Page-in: nothing is copied and the fix-up is moot. */
+			error = uiomove(bp->b_data + off, toread - off, uio);
 			brelse(bp);
-			break;
+			if (error)
+				break;
+		} else if (ntfs_cntob(1) < PAGE_SIZE) {
+			/* uiomovebp() would validate the whole last page. */
+			bnc = kmalloc((size_t)(toread - off), M_TEMP,
+			    M_WAITOK);
+			bcopy(bp->b_data + off, bnc, (size_t)(toread - off));
+			brelse(bp);
+			error = uiomove(bnc, (size_t)(toread - off), uio);
+			kfree(bnc, M_TEMP);
+			if (error)
+				break;
+		} else {
+			error = uiomovebp(bp, bp->b_data + off,
+			    toread - off, uio);
+			if (error) {
+				brelse(bp);
+				break;
+			}
+			brelse(bp);
 		}
-		brelse(bp);
 
 		resid -= toread - off;
 	}
