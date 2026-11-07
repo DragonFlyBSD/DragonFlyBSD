@@ -59,8 +59,8 @@ static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 
 #if 0
 struct nlist Nl[] = {
-    { "_rootnch" },
-    { "_mountlist" },
+    { "rootnch" },
+    { "mountlist" },
     { NULL }
 };
 #endif

@@ -141,19 +141,19 @@ closekre(WINDOW *w)
 
 static struct nlist namelist[] = {
 #define	X_BUFFERSPACE	0
-	{ .n_name = "_bufspace" },
+	{ .n_name = "bufspace" },
 #define	X_NCHSTATS	1
-	{ .n_name = "_nchstats" },
+	{ .n_name = "nchstats" },
 #define	X_DESIREDVNODES	2
-	{ .n_name = "_maxvnodes" },
+	{ .n_name = "maxvnodes" },
 #define	X_CACHEDVNODES	3
-	{ .n_name = "_cachedvnodes" },
+	{ .n_name = "cachedvnodes" },
 #define	X_INACTIVEVNODES 4
-	{ .n_name = "_inactivevnodes" },
+	{ .n_name = "inactivevnodes" },
 #define	X_ACTIVEVNODES	5
-	{ .n_name = "_activevnodes" },
+	{ .n_name = "activevnodes" },
 #define X_NUMDIRTYBUFFERS 6
-	{ .n_name = "_dirtybufspace" },
+	{ .n_name = "dirtybufspace" },
 	{ .n_name = "" },
 };
 

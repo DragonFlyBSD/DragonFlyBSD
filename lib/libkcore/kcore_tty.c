@@ -49,7 +49,7 @@ int
 kcore_get_tty_tk_nin(struct kcore_data *kc, uint64_t *tk_nin)
 {
 	static struct nlist nl[] = {
-		{ "_tk_nin", 0, 0, 0, 0},
+		{ "tk_nin", 0, 0, 0, 0},
 		{ NULL, 0, 0, 0, 0}
 	};
 
@@ -60,7 +60,7 @@ int
 kcore_get_tty_tk_nout(struct kcore_data *kc, uint64_t *tk_nout)
 {
 	static struct nlist nl[] = {
-		{ "_tk_nout", 0, 0, 0, 0},
+		{ "tk_nout", 0, 0, 0, 0},
 		{ NULL, 0, 0, 0, 0}
 	};
 

@@ -58,7 +58,7 @@ kvm_t	*kvmd;
 
 struct	nlist nl[] = {
 #define	N_IFNET	0
-	{ .n_name = "_ifnet" },
+	{ .n_name = "ifnet" },
 	{ .n_name = "" },
 };
 

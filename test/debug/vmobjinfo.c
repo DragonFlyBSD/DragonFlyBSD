@@ -70,9 +70,9 @@
 TAILQ_HEAD(object_q, vm_object);
 
 struct nlist Nl[] = {
-    { "_vm_object_lists" },
-    { "_nswdev" },
-    { "_dmmax" },
+    { "vm_object_lists" },
+    { "nswdev" },
+    { "dmmax" },
     { NULL }
 };
 

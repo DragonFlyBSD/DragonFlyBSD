@@ -69,8 +69,8 @@
 #include <getopt.h>
 
 struct nlist Nl[] = {
-    { "_ncpus" },
-    { "_tcbinfo" },
+    { "ncpus" },
+    { "tcbinfo" },
     { NULL }
 };
 

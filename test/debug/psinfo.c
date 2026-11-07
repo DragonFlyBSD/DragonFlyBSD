@@ -66,7 +66,7 @@
 #include <getopt.h>
 
 struct nlist Nl[] = {
-    { "_kernel_map" },
+    { "kernel_map" },
     { NULL }
 };
 

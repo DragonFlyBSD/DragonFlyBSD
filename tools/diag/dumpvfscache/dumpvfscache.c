@@ -41,8 +41,8 @@ wlpsacrc(u_char *buf, u_int len)
 
 /*----------------------------------*/
 struct nlist nl[] = {
-	{ "_nchash", 0},
-	{ "_nchashtbl", 0},
+	{ "nchash", 0},
+	{ "nchashtbl", 0},
 	{ 0, 0 },
 };
 

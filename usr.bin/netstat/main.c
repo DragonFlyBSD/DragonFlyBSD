@@ -57,49 +57,49 @@
 
 static struct nlist nl[] = {
 #define	N_IFNET		0
-	{ .n_name = "_ifnet" },
+	{ .n_name = "ifnet" },
 #define	N_UNIXSW	1
-	{ .n_name = "_localsw" },
+	{ .n_name = "localsw" },
 #define N_RTREE		2
-	{ .n_name = "_rt_tables"},
+	{ .n_name = "rt_tables"},
 #define N_CLTPSTAT	3
-	{ .n_name = "_cltpstat"},
+	{ .n_name = "cltpstat"},
 #define N_MRTSTAT	4
-	{ .n_name = "_mrtstat" },
+	{ .n_name = "mrtstat" },
 #define N_MFCTABLE	5
-	{ .n_name = "_mfctable" },
+	{ .n_name = "mfctable" },
 #define N_VIFTABLE	6
-	{ .n_name = "_viftable" },
+	{ .n_name = "viftable" },
 #define N_NGSOCKS	7
-	{ .n_name = "_ngsocklist"},
+	{ .n_name = "ngsocklist"},
 #define N_IP6STAT	8
-	{ .n_name = "_ip6stat" },
+	{ .n_name = "ip6stat" },
 #define N_ICMP6STAT	9
-	{ .n_name = "_icmp6stat" },
+	{ .n_name = "icmp6stat" },
 #define N_PIM6STAT	10
-	{ .n_name = "_pim6stat" },
+	{ .n_name = "pim6stat" },
 #define N_MRT6PROTO	11
-	{ .n_name = "_ip6_mrtproto" },
+	{ .n_name = "ip6_mrtproto" },
 #define N_MRT6STAT	12
-	{ .n_name = "_mrt6stat" },
+	{ .n_name = "mrt6stat" },
 #define N_MF6CTABLE	13
-	{ .n_name = "_mf6ctable" },
+	{ .n_name = "mf6ctable" },
 #define N_MIF6TABLE	14
-	{ .n_name = "_mif6table" },
+	{ .n_name = "mif6table" },
 #define N_MBSTAT	15
-	{ .n_name = "_mbstat" },
+	{ .n_name = "mbstat" },
 #define N_MBTYPES	16
-	{ .n_name = "_mbtypes" },
+	{ .n_name = "mbtypes" },
 #define N_NMBCLUSTERS	17
-	{ .n_name = "_nmbclusters" },
+	{ .n_name = "nmbclusters" },
 #define N_NMBUFS	18
-	{ .n_name = "_nmbufs" },
+	{ .n_name = "nmbufs" },
 #define	N_NCPUS		19
-	{ .n_name = "_ncpus" },
+	{ .n_name = "ncpus" },
 #define	N_CARPSTAT	20
-	{ .n_name = "_carpstats" },
+	{ .n_name = "carpstats" },
 #define N_NMBJCLUSTERS	21
-	{ .n_name = "_nmbjclusters" },
+	{ .n_name = "nmbjclusters" },
 	{ .n_name = NULL },
 };
 

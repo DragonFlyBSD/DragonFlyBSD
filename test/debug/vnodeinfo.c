@@ -71,9 +71,9 @@
 #include <getopt.h>
 
 struct nlist Nl[] = {
-    { "_mountlist" },
-    { "_vnode_list_hash" },
-    { "_ncpus" },
+    { "mountlist" },
+    { "vnode_list_hash" },
+    { "ncpus" },
     { NULL }
 };
 

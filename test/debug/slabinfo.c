@@ -67,8 +67,8 @@
 #include <getopt.h>
 
 struct nlist Nl[] = {
-    { "_CPU_prvspace" },
-    { "_ncpus" },
+    { "CPU_prvspace" },
+    { "ncpus" },
     { NULL }
 };
 

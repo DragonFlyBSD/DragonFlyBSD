@@ -49,7 +49,7 @@ int
 kcore_get_cpus(struct kcore_data *kc, int *ncpus)
 {
 	static struct nlist nl[] = {
-		{ "_ncpus", 0, 0, 0, 0},
+		{ "ncpus", 0, 0, 0, 0},
 		{ NULL, 0, 0, 0, 0}
 	};
 
@@ -103,7 +103,7 @@ int
 kcore_get_sched_hz(struct kcore_data *kc, int *hz)
 {
 	static struct nlist nl[] = {
-		{ "_hz", 0, 0, 0, 0},
+		{ "hz", 0, 0, 0, 0},
 		{ NULL, 0, 0, 0, 0}
 	};
 
@@ -114,7 +114,7 @@ int
 kcore_get_sched_profhz(struct kcore_data *kc, int *profhz)
 {
 	static struct nlist nl[] = {
-		{ "_profhz", 0, 0, 0, 0},
+		{ "profhz", 0, 0, 0, 0},
 		{ NULL, 0, 0, 0, 0}
 	};
 
@@ -125,7 +125,7 @@ int
 kcore_get_sched_stathz(struct kcore_data *kc, int *stathz)
 {
 	static struct nlist nl[] = {
-		{ "_stathz", 0, 0, 0, 0},
+		{ "stathz", 0, 0, 0, 0},
 		{ NULL, 0, 0, 0, 0}
 	};
 	int retval;

@@ -65,28 +65,28 @@
 
 static struct nlist namelist[] = {
 #define	X_BOOTTIME	0
-	{ "_boottime",	0, 0, 0, 0 },
+	{ "boottime",	0, 0, 0, 0 },
 #define X_NCHSTATS	1
-	{ "_nchstats",	0, 0, 0, 0 },
+	{ "nchstats",	0, 0, 0, 0 },
 #define	X_KMEMSTATISTICS 2
-	{ "_kmemstatistics",	0, 0, 0, 0 },
+	{ "kmemstatistics",	0, 0, 0, 0 },
 #define	X_NCPUS		3
-	{ "_ncpus",	0, 0, 0, 0 },
+	{ "ncpus",	0, 0, 0, 0 },
 #define	X_ZLIST		4
-	{ "_zlist",	0, 0, 0, 0 },
+	{ "zlist",	0, 0, 0, 0 },
 #define	X_KSLAB_DUMMY	5
-	{ "_kslab_dummy", 0, 0, 0, 0 },
+	{ "kslab_dummy", 0, 0, 0, 0 },
 #ifdef notyet
 #define	X_DEFICIT	6
-	{ "_deficit",	0, 0, 0, 0 },
+	{ "deficit",	0, 0, 0, 0 },
 #define	X_FORKSTAT	7
-	{ "_forkstat",	0, 0, 0, 0 },
+	{ "forkstat",	0, 0, 0, 0 },
 #define X_REC		8
-	{ "_rectime",	0, 0, 0, 0 },
+	{ "rectime",	0, 0, 0, 0 },
 #define X_PGIN		9
-	{ "_pgintime",	0, 0, 0, 0 },
+	{ "pgintime",	0, 0, 0, 0 },
 #define	X_XSTATS	10
-	{ "_xstats",	0, 0, 0, 0 },
+	{ "xstats",	0, 0, 0, 0 },
 #define X_END		11
 #else
 #define X_END		6

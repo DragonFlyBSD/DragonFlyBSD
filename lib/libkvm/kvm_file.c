@@ -228,7 +228,7 @@ kvm_getfiles(kvm_t *kd, int op __unused, int arg __unused, int *cnt)
 		 * Get the # of files
 		 */
 		memset(nl, 0, sizeof(nl));
-		nl[0].n_name = "_nfiles";
+		nl[0].n_name = "nfiles";
 		ret = kvm_nlist(kd, nl);
 		if (ret != 0) {
 			if (ret > 0)

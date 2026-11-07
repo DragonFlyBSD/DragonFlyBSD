@@ -72,9 +72,9 @@
 
 struct nlist nl[] = {
 #define	N_TCP_DEBUG	0
-	{ .n_name = "_tcp_debug" },
+	{ .n_name = "tcp_debug" },
 #define	N_TCP_DEBX	1
-	{ .n_name = "_tcp_debx" },
+	{ .n_name = "tcp_debx" },
 	{ .n_name = "" },
 };
 

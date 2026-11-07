@@ -59,9 +59,9 @@
 #include <math.h>
 
 struct nlist Nl[] = {
-    { "_bufpcpu" },
-    { "_ncpus" },
-    { "_nbuf" },
+    { "bufpcpu" },
+    { "ncpus" },
+    { "nbuf" },
     { NULL }
 };
 

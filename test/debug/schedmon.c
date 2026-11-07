@@ -67,8 +67,8 @@
 #include <sys/usched_dfly.h>
 
 struct nlist Nl[] = {
-    { "_ncpus" },
-    { "_dfly_pcpu" },
+    { "ncpus" },
+    { "dfly_pcpu" },
     { NULL }
 };
 

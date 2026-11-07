@@ -38,7 +38,7 @@
 #include <nlist.h>
 
 /* Default version symbol. */
-#define	VRS_SYM		"_version"
+#define	VRS_SYM		"version"
 #define	VRS_KEY		"VERSION"
 
 typedef struct __kvm kvm_t;

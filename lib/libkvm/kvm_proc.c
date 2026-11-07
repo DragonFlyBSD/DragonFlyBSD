@@ -509,9 +509,9 @@ kvm_getprocs(kvm_t *kd, int op, int arg, int *cnt)
 		int ret;
 
 		memset(nl, 0, sizeof(nl));
-		nl[0].n_name = "_nprocs";
-		nl[1].n_name = "_procglob";
-		nl[2].n_name = "_allproc_hsize";
+		nl[0].n_name = "nprocs";
+		nl[1].n_name = "procglob";
+		nl[2].n_name = "allproc_hsize";
 		nl[3].n_name = NULL;
 
 		ret = kvm_nlist(kd, nl);

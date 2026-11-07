@@ -63,17 +63,17 @@ static gid_t	grp2gid(const char *);
 static void	kread(u_long, void *, size_t);
 
 static struct nlist symbols[] = {
-	{ .n_name = "_sema" },
+	{ .n_name = "sema" },
 #define X_SEMA		0
-	{ .n_name = "_seminfo" },
+	{ .n_name = "seminfo" },
 #define X_SEMINFO	1
-	{ .n_name = "_msginfo" },
+	{ .n_name = "msginfo" },
 #define X_MSGINFO	2
-	{ .n_name = "_msqids" },
+	{ .n_name = "msqids" },
 #define X_MSQIDS	3
-	{ .n_name = "_shminfo" },
+	{ .n_name = "shminfo" },
 #define X_SHMINFO	4
-	{ .n_name = "_shmsegs" },
+	{ .n_name = "shmsegs" },
 #define X_SHMSEGS	5
 	{ .n_name = NULL }
 };

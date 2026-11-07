@@ -49,7 +49,7 @@ int
 kcore_get_vfs_bufspace(struct kcore_data *kc, long *bufspace)
 {
 	static struct nlist nl[] = {
-		{ "_bufspace", 0, 0, 0, 0},
+		{ "bufspace", 0, 0, 0, 0},
 		{ NULL, 0, 0, 0, 0}
 	};
 

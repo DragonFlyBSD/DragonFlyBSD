@@ -82,7 +82,7 @@ RB_HEAD(mbuf_rb_tree, mbtrack);
 RB_PROTOTYPE2(mbuf_rb_tree, mbtrack, rb_node, mbtrack_cmp, struct mbuf *);
 
 struct nlist Nl[] = {
-    { "_mbuf_track_root" },
+    { "mbuf_track_root" },
     { NULL }
 };
 

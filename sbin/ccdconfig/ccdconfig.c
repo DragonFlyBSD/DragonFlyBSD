@@ -74,9 +74,9 @@ static struct flagval {
 };
 
 static	struct nlist nl[] = {
-	{ "_ccd_softc", 0, 0, 0, 0 },
+	{ "ccd_softc", 0, 0, 0, 0 },
 #define SYM_CCDSOFTC		0
-	{ "_numccd", 0, 0, 0, 0 },
+	{ "numccd", 0, 0, 0, 0 },
 #define SYM_NUMCCD		1
 	{ NULL , 0, 0, 0, 0 },
 };

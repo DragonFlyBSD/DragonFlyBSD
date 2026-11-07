@@ -67,10 +67,10 @@
 
 struct nlist Nl[] = {
 #if 0
-    { "_vm_page_buckets" },
-    { "_vm_page_hash_mask" },
+    { "vm_page_buckets" },
+    { "vm_page_hash_mask" },
 #endif
-    { "_vm_page_queues" },
+    { "vm_page_queues" },
     { NULL }
 };
 

@@ -69,8 +69,8 @@
 #include <getopt.h>
 
 struct nlist Nl[] = {
-    { "_rootnch" },
-    { "_mountlist" },
+    { "rootnch" },
+    { "mountlist" },
     { NULL }
 };
 

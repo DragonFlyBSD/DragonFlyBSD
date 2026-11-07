@@ -129,7 +129,7 @@ int
 kcore_get_maxfiles(struct kcore_data *kc, int *maxfiles)
 {
 	static struct nlist nl[] = {
-		{ "_maxfiles", 0, 0, 0, 0},
+		{ "maxfiles", 0, 0, 0, 0},
 		{ NULL, 0, 0, 0, 0}
 	};
 
@@ -140,7 +140,7 @@ int
 kcore_get_openfiles(struct kcore_data *kc, int *openfiles)
 {
 	static struct nlist nl[] = {
-		{ "_nfiles", 0, 0, 0, 0},
+		{ "nfiles", 0, 0, 0, 0},
 		{ NULL, 0, 0, 0, 0}
 	};
 

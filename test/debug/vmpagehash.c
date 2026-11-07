@@ -72,11 +72,11 @@ struct vm_page_hash_elm {
 
 
 struct nlist Nl[] = {
-    { "_vm_page_hash" },
-    { "_vm_page_hash_size" },
-    { "_ticks" },
-    { "_vm_page_array" },
-    { "_vm_page_array_size" },
+    { "vm_page_hash" },
+    { "vm_page_hash_size" },
+    { "ticks" },
+    { "vm_page_array" },
+    { "vm_page_array_size" },
     { NULL }
 };
 

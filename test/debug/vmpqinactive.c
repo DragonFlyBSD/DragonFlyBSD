@@ -66,14 +66,14 @@
 #include <getopt.h>
 
 struct nlist Nl[] = {
-    { "_vm_page_array" },
-    { "_vm_page_array_size" },
-    { "_kernel_object" },
-    { "_nbuf" },
-    { "_nswbuf_mem" },
-    { "_nswbuf_kva" },
-    { "_nswbuf_raw" },
-    { "_kernbase" },
+    { "vm_page_array" },
+    { "vm_page_array_size" },
+    { "kernel_object" },
+    { "nbuf" },
+    { "nswbuf_mem" },
+    { "nswbuf_kva" },
+    { "nswbuf_raw" },
+    { "kernbase" },
     { "__end" },
     { NULL }
 };

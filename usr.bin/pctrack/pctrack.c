@@ -54,9 +54,9 @@ static void read_symbols(const char *);
 static const char *address_to_symbol(void *);
 
 static struct nlist nl[] = {
-	{ .n_name = "_ncpus" },
-	{ .n_name = "_cputime_pcheader" },
-	{ .n_name = "_cputime_pctrack" },
+	{ .n_name = "ncpus" },
+	{ .n_name = "cputime_pcheader" },
+	{ .n_name = "cputime_pctrack" },
 	{ .n_name = NULL }
 };
 

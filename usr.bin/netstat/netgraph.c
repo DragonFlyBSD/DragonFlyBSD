@@ -77,7 +77,7 @@ netgraphprotopr(u_long off, const char *name, int af1 __unused)
 		const char *const modname = "ng_socket.ko";
 /* XXX We should get "mpath" from "sysctl kern.module_path" */
 		const char *mpath[] = { "/", "/boot/", "/boot/modules/", NULL };
-		struct nlist sym[] = { { .n_name = "_ngsocklist" },
+		struct nlist sym[] = { { .n_name = "ngsocklist" },
 				       { .n_name = NULL } };
 		const char **pre;
 		struct kld_file_stat ks;

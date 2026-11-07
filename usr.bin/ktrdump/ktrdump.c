@@ -58,25 +58,25 @@ struct ktr_buffer {
 };
 
 static struct nlist nl1[] = {
-	{ .n_name = "_ktr_version" },
-	{ .n_name = "_ktr_entries" },
-	{ .n_name = "_ncpus" },
+	{ .n_name = "ktr_version" },
+	{ .n_name = "ktr_entries" },
+	{ .n_name = "ncpus" },
 	{ .n_name = NULL }
 };
 
 static struct nlist nl2[] = {
-	{ .n_name = "_tsc_frequency" },
+	{ .n_name = "tsc_frequency" },
 	{ .n_name = NULL }
 };
 
 static struct nlist nl_version_ktr_idx[] = {
-	{ .n_name = "_ktr_idx" },
-	{ .n_name = "_ktr_buf" },
+	{ .n_name = "ktr_idx" },
+	{ .n_name = "ktr_buf" },
 	{ .n_name = NULL }
 };
 
 static struct nlist nl_version_ktr_cpu[] = {
-	{ .n_name = "_ktr_cpu" },
+	{ .n_name = "ktr_cpu" },
 	{ .n_name = NULL }
 };
 

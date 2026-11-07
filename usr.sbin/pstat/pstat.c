@@ -94,14 +94,14 @@ enum {
 const size_t NL_LAST_MANDATORY = NL_NUMVNODES;
 
 struct nlist nl[] = {
-	{ "_mountlist", 0, 0, 0, 0 },	/* address of head of mount list. */
-	{ "_numvnodes", 0, 0, 0, 0 },
-	{ "_rc_tty", 0, 0, 0, 0 },
-	{ "_nrc_tty", 0, 0, 0, 0 },
-	{ "_cy_tty", 0, 0, 0, 0 },
-	{ "_ncy_tty", 0, 0, 0, 0 },
-	{ "_si__tty", 0, 0, 0, 0 },
-	{ "_si_Nports", 0, 0, 0, 0 },
+	{ "mountlist", 0, 0, 0, 0 },	/* address of head of mount list. */
+	{ "numvnodes", 0, 0, 0, 0 },
+	{ "rc_tty", 0, 0, 0, 0 },
+	{ "nrc_tty", 0, 0, 0, 0 },
+	{ "cy_tty", 0, 0, 0, 0 },
+	{ "ncy_tty", 0, 0, 0, 0 },
+	{ "si__tty", 0, 0, 0, 0 },
+	{ "si_Nports", 0, 0, 0, 0 },
 	{ "", 0, 0, 0, 0 }
 };
 

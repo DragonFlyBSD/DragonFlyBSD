@@ -89,20 +89,20 @@ kgdb_thr_init(void)
 		free(kt);
 	}
 
-	addr = kgdb_lookup("_ncpus");
+	addr = kgdb_lookup("ncpus");
 	if (addr == 0)
 		return (NULL);
 	kvm_read(kvm, addr, &ncpus, sizeof(ncpus));
 
-	dumppcb = kgdb_lookup("_dumppcb");
+	dumppcb = kgdb_lookup("dumppcb");
 	if (dumppcb == 0)
 		return (NULL);
 
-	prvspace = kgdb_lookup("_CPU_prvspace");
+	prvspace = kgdb_lookup("CPU_prvspace");
 	if (prvspace == 0)
 		return (NULL);
 
-	addr = kgdb_lookup("_dumpthread");
+	addr = kgdb_lookup("dumpthread");
 	if (addr != 0) {
 		kvm_read(kvm, addr, &dumptid, sizeof(dumptid));
 	} else {
@@ -117,7 +117,7 @@ kgdb_thr_init(void)
 		 */
 		int dumping = 0;
 
-		addr = kgdb_lookup("_dumping");
+		addr = kgdb_lookup("dumping");
 		kvm_read(kvm, addr, &dumping, sizeof(dumping));
 		if (dumping) {
 			kvm_read(kvm, prvspace + 0, &gdptr, sizeof(gdptr));
