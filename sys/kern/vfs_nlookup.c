@@ -602,7 +602,8 @@ nlookup_start:
 	     * We might already be at the root as a pre-optimization
 	     */
 	    if (nd->nl_nch.mount != nd->nl_rootnch.mount ||
-		nd->nl_nch.ncp != nd->nl_rootnch.ncp) {
+		nd->nl_nch.ncp != nd->nl_rootnch.ncp)
+	    {
 		cache_drop_and_cache(&nd->nl_nch, 0);
 		cache_copy(&nd->nl_rootnch, &nd->nl_nch);
 		nl_gen = nd->nl_nch.ncp->nc_generation & ~3;
@@ -692,7 +693,7 @@ nlookup_start:
 	 * This subsection returns a referenced and possibly locked 'nch'.
 	 * The locking status is based on the last_element flag.
 	 *
-	 * The namecache topology is not allowed to be disconnected, so 
+	 * The namecache topology is not allowed to be disconnected, so
 	 * encountering a NULL parent will generate EINVAL.  This typically
 	 * occurs when a directory is removed out from under a process.
 	 *
@@ -709,7 +710,7 @@ nlookup_start:
 	    }
 	    nch_gen = nch.ncp->nc_generation & ~3;
 	    wasdotordotdot = 1;
-	} else if (nlc.nlc_namelen == 2 && 
+	} else if (nlc.nlc_namelen == 2 &&
 		   nlc.nlc_nameptr[0] == '.' && nlc.nlc_nameptr[1] == '.') {
 	    if (nd->nl_nch.mount == nd->nl_rootnch.mount &&
 		nd->nl_nch.ncp == nd->nl_rootnch.ncp

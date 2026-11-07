@@ -4225,9 +4225,9 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 		return (error);
 
 	/*
-	 * Attempt to rename a mount point (from or to)
+	 * Attempt to rename a mount point (from)
 	 */
-	if (error == 0 && fromnd->nl_dvp == NULL)
+	if (fromnd->nl_dvp == NULL)
 		return (EINVAL);
 
 	if ((fnchd.ncp = fromnd->nl_nch.ncp->nc_parent) == NULL)
@@ -4269,9 +4269,9 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	tncp_gen = tond->nl_nch.ncp->nc_generation;
 
 	/*
-	 * Attempt to rename a mount point (from or to)
+	 * Attempt to rename a mount point (to)
 	 */
-	if (error == 0 && tond->nl_dvp == NULL) {
+	if (tond->nl_dvp == NULL) {
 		cache_drop(&fnchd);
 		error = ENOENT;
 		goto done;
@@ -4385,7 +4385,7 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	 * If the target exists and either the source or target is a directory,
 	 * then both must be directories.
 	 *
-	 * Due to relocking of the source, fromnd->nl_nch.ncp->nc_vp might h
+	 * Due to relocking of the source, fromnd->nl_nch.ncp->nc_vp might
 	 * have become NULL.
 	 */
 	if (tond->nl_nch.ncp->nc_vp) {

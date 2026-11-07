@@ -98,8 +98,8 @@ static struct rtstatistics rtstatistics_percpu[MAXCPU] __cachealign;
 
 struct radix_node_head *rt_tables[MAXCPU][AF_MAX+1];
 
-static void	rt_maskedcopy (struct sockaddr *, struct sockaddr *,
-			       struct sockaddr *);
+static void rt_maskedcopy(struct sockaddr *, struct sockaddr *,
+			  struct sockaddr *);
 static void rtable_init(void);
 static void rtinit_rtrequest_callback(int, int, struct rt_addrinfo *,
 				      struct rtentry *, void *);
@@ -138,7 +138,8 @@ route_init(void)
 
 	for (cpu = 0; cpu < netisr_ncpus; ++cpu)
 		bzero(&rtstatistics_percpu[cpu], sizeof(struct rtstatistics));
-	rn_init();      /* initialize all zeroes, all ones, mask table */
+
+	rn_init();	/* initialize all zeroes, all ones, mask table */
 	rtable_init();	/* call dom_rtattach() on each cpu */
 }
 
@@ -823,6 +824,7 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 #endif
 
 	crit_enter();
+
 	/*
 	 * Find the correct routing tree to use for this Address Family
 	 */
@@ -949,11 +951,12 @@ makeroute:
 		}
 
 		ndst = rt_key(rt);
-		if (rtinfo->rti_info[RTAX_NETMASK] != NULL)
+		if (rtinfo->rti_info[RTAX_NETMASK] != NULL) {
 			rt_maskedcopy(dst, ndst,
 				      rtinfo->rti_info[RTAX_NETMASK]);
-		else
+		} else {
 			bcopy(dst, ndst, dst->sa_len);
+		}
 
 		if (rtinfo->rti_info[RTAX_MPLS1] != NULL) {
 			error = rt_setshims(rt, rtinfo->rti_info);
@@ -1025,7 +1028,7 @@ makeroute:
 			rt->rt_rmx = (*ret_nrt)->rt_rmx;    /* copy metrics */
 			rt->rt_rmx.rmx_pksent = 0;  /* reset packet counter */
 			if ((*ret_nrt)->rt_flags &
-				       (RTF_CLONING | RTF_PRCLONING)) {
+			    (RTF_CLONING | RTF_PRCLONING)) {
 				rt->rt_parent = *ret_nrt;
 				(*ret_nrt)->rt_refcnt++;
 			}
@@ -1079,6 +1082,7 @@ makeroute:
 	default:
 		error = EOPNOTSUPP;
 	}
+
 bad:
 #ifdef ROUTE_DEBUG
 	if (route_debug) {
@@ -1176,18 +1180,20 @@ rt_fixchange(struct radix_node *rn, void *vp)
 	mlen = rt_key(rt->rt_parent)->sa_len;
 	if (mlen > rt_key(rt0)->sa_len) {
 #ifdef DEBUG
-		if (rtfcdebug)
-			kprintf("rt_fixchange: inserting a less "
-			       "specific route\n");
+		if (rtfcdebug) {
+			kprintf("%s: inserting a less specific route\n",
+				__func__);
+		}
 #endif
 		return 0;
 	}
 	for (i = rnh->rnh_treetop->rn_offset; i < mlen; i++) {
 		if ((xmp[i] & ~(xmp[i] ^ xm1[i])) != xmp[i]) {
 #ifdef DEBUG
-			if (rtfcdebug)
-				kprintf("rt_fixchange: inserting a less "
-				       "specific route\n");
+			if (rtfcdebug) {
+				kprintf("%s: inserting a less specific route\n",
+					__func__);
+			}
 #endif
 			return 0;
 		}
@@ -1196,7 +1202,8 @@ rt_fixchange(struct radix_node *rn, void *vp)
 	for (i = rnh->rnh_treetop->rn_offset; i < len; i++) {
 		if ((xk2[i] & xm1[i]) != xk1[i]) {
 #ifdef DEBUG
-			if (rtfcdebug) kprintf("no match\n");
+			if (rtfcdebug)
+				kprintf("%s: no match\n", __func__);
 #endif
 			return 0;
 		}
@@ -1207,7 +1214,8 @@ rt_fixchange(struct radix_node *rn, void *vp)
 	 * changed/added under the node's mask.  So, get rid of it.
 	 */
 #ifdef DEBUG
-	if (rtfcdebug) kprintf("deleting\n");
+	if (rtfcdebug)
+		kprintf("%s: deleting\n", __func__);
 #endif
 	return rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt),
 			 rt->rt_flags, NULL);
@@ -1410,13 +1418,12 @@ rt_purgecloned(struct ifnet *ifp, int af)
 }
 
 static int
-rt_setshims(struct rtentry *rt, struct sockaddr **rt_shim){
-	int i;
+rt_setshims(struct rtentry *rt, struct sockaddr **rt_shim) {
+	struct sockaddr *shim;
+	int i, shimlen;
 
-	for (i=0; i<3; i++) {
-		struct sockaddr *shim = rt_shim[RTAX_MPLS1 + i];
-		int shimlen;
-
+	for (i = 0; i < 3; i++) {
+		shim = rt_shim[RTAX_MPLS1 + i];
 		if (shim == NULL)
 			break;
 
@@ -1802,8 +1809,8 @@ rtsearch_msghandler(netmsg_t msg)
 		 *    modification fails.
 		 */
 		if (rmsg->req != RTM_GET && rmsg->found_cnt > 1) {
-			panic("rtsearch_msghandler: unrecoverable error "
-			      "cpu %d", mycpuid);
+			panic("%s: unrecoverable error cpu %d",
+			      __func__, mycpuid);
 		}
 		netisr_replymsg(&rmsg->base, error);
 	} else {
@@ -1840,7 +1847,8 @@ _rtmask_lookup(struct sockaddr *mask, boolean_t search)
 	if (n != NULL &&
 	    mask->sa_len >= clen(n->rn_key) &&
 	    bcmp((const u_char *)mask + 1,
-		 n->rn_key + 1, clen(n->rn_key) - 1) == 0) {
+		 n->rn_key + 1, clen(n->rn_key) - 1) == 0)
+	{
 		return __DECONST(struct sockaddr *, n->rn_key);
 	} else {
 		return NULL;

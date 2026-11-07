@@ -226,7 +226,7 @@ again:
 				error = EEXIST;
 			} else {
 				error = cache_vget(&nd->nl_nch, cred,
-						    LK_EXCLUSIVE, &vp);
+						   LK_EXCLUSIVE, &vp);
 			}
 			if (error)
 				return (error);

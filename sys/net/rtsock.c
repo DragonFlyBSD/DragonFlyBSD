@@ -667,9 +667,9 @@ fillrtmsg(struct rtm_arg *arg, struct rtentry *rt,
 }
 
 static void route_output_add_callback(int, int, struct rt_addrinfo *,
-					struct rtentry *, void *);
+				      struct rtentry *, void *);
 static void route_output_delete_callback(int, int, struct rt_addrinfo *,
-					struct rtentry *, void *);
+					 struct rtentry *, void *);
 static int route_output_get_callback(int, struct rt_addrinfo *,
 				     struct rtentry *, void *, int);
 static int route_output_change_callback(int, struct rt_addrinfo *,
@@ -677,7 +677,6 @@ static int route_output_change_callback(int, struct rt_addrinfo *,
 static int route_output_lock_callback(int, struct rt_addrinfo *,
 				      struct rtentry *, void *, int);
 
-/*ARGSUSED*/
 static int
 route_output(struct mbuf *m, struct socket *so, ...)
 {
