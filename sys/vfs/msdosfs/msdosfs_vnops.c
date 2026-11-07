@@ -465,6 +465,7 @@ msdosfs_read(struct vop_read_args *ap)
 	off_t loffset;
 	int rasize;
 	int seqcount;
+	caddr_t bnc;
 	struct buf *bp;
 	struct vnode *vp = ap->a_vp;
 	struct denode *dep = VTODE(vp);
@@ -548,8 +549,21 @@ msdosfs_read(struct vop_read_args *ap)
 		diff = blsize - bp->b_resid;
 		if (diff < n)
 			n = diff;
-		error = uiomovebp(bp, bp->b_data + on, (size_t)n, uio);
-		bqrelse(bp);
+		if (uio->uio_segflg == UIO_NOCOPY) {
+			/* Page-in: nothing is copied and the fix-up is moot. */
+			error = uiomove(bp->b_data + on, (size_t)n, uio);
+			bqrelse(bp);
+		} else if (!isadir && pmp->pm_bpcluster < PAGE_SIZE) {
+			/* uiomovebp() would validate the whole last page. */
+			bnc = kmalloc((size_t)n, M_TEMP, M_WAITOK);
+			bcopy(bp->b_data + on, bnc, (size_t)n);
+			bqrelse(bp);
+			error = uiomove(bnc, (size_t)n, uio);
+			kfree(bnc, M_TEMP);
+		} else {
+			error = uiomovebp(bp, bp->b_data + on, (size_t)n, uio);
+			bqrelse(bp);
+		}
 	} while (error == 0 && uio->uio_resid > 0 && n != 0);
 
 	if (!isadir && (error == 0 || uio->uio_resid != orig_resid) &&
