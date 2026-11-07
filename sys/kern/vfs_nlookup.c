@@ -615,12 +615,19 @@ nlookup_start:
 	     * the caller so return EACCES if NLC_REFDVP is specified,
 	     * and EEXIST if NLC_CREATE is also specified.
 	     * e.g. 'rmdir /' or 'mkdir /' are not allowed.
+	     *
+	     * An open() is the exception: it does not need the parent
+	     * directory and vn_open() has to decide the error for an
+	     * existing target (EISDIR for a directory), so let it through.
 	     */
 	    if (*ptr == 0) {
-		if (nd->nl_flags & NLC_REFDVP)
+		if ((nd->nl_flags & NLC_REFDVP) &&
+		    (nd->nl_flags & NLC_OPEN) == 0)
+		{
 			error = (nd->nl_flags & NLC_CREATE) ? EEXIST : EACCES;
-		else
+		} else {
 			error = 0;
+		}
 		nd->nl_flags |= NLC_NCPISLOCKED;
 		cache_lock_maybe_shared(&nd->nl_nch,
 					wantsexcllock(nd, islastelement(ptr)));
@@ -899,8 +906,10 @@ nlookup_start:
 	 * case, which we check later on.
 	 *
 	 * Also handle invalid '.' or '..' components terminating a path
-	 * for a create/rename/delete.  The standard requires this and pax
-	 * pretty stupidly depends on it.
+	 * for a create/rename/delete.  The standard requires this and pax(1)
+	 * pretty stupidly depends on it.  open(2) is the exception: it needs
+	 * vn_open() to report EISDIR for an existing directory, so skip the
+	 * special handling when NLC_OPEN is set.
 	 */
 	if (last_element) {
 	    if (error == ENOENT &&
@@ -915,6 +924,7 @@ nlookup_start:
 		}
 	    }
 	    if (error == 0 && wasdotordotdot &&
+		(nd->nl_flags & NLC_OPEN) == 0 &&
 		(nd->nl_flags & (NLC_CREATE | NLC_DELETE |
 				 NLC_RENAME_SRC | NLC_RENAME_DST)))
 	    {

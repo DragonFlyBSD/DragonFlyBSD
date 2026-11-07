@@ -175,9 +175,15 @@ vn_open(struct nlookupdata *nd, struct file **fpp, int fmode, int cmode)
 		 * a mount-point or cross-mount situation.  e.g.
 		 * open("/var/cache", O_CREAT), where /var/cache is a
 		 * mount point or a null-mount point.
+		 *
+		 * If the target already exists, we'll handle it normally,
+		 * so only fail when there is nothing to create.
 		 */
-		if (error == 0 && nd->nl_dvp == NULL)
+		if (error == 0 && nd->nl_dvp == NULL &&
+		    nd->nl_nch.ncp->nc_vp == NULL)
+		{
 			error = EINVAL;
+		}
 	} else {
 		/*
 		 * NORMAL OPEN FILE CASE
@@ -273,13 +279,19 @@ again:
 		error = ENOTDIR;
 		goto bad;
 	}
+	/*
+	 * A directory can only be opened read-only and without O_CREAT.
+	 * O_CREAT|O_EXCL on an existing directory was turned into EEXIST
+	 * above.
+	 */
+	if (vp->v_type == VDIR &&
+	    ((nd->nl_flags & NLC_CREATE) || (fmode & (FWRITE | O_TRUNC))))
+	{
+		error = EISDIR;
+		goto bad;
+	}
 	if ((fmode & O_CREAT) == 0) {
 		if (fmode & (FWRITE | O_TRUNC)) {
-			if (vp->v_type == VDIR) {
-				error = EISDIR;
-				goto bad;
-			}
-
 			/*
 			 * Additional checks on vnode (does not substitute
 			 * for ncp_writechk()).
