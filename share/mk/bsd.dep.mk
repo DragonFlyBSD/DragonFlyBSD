@@ -211,9 +211,7 @@ _ALL_DEPENDS=${__FLAGS_FILES:N*.[csS]:N*.cc:N*.C:N*.cpp:N*.cxx:N*.m}
 .endif
 .if defined(MKDEPINTDEPS) && !empty(MKDEPINTDEPS)
 . for _ITD in ${MKDEPINTDEPS:O:u}
-	TMP=_depend$$$$; \
-	sed -e "s,${_ITD:C/^(.*:)(.*)/\1,\2 \1/},g" < ${.TARGET} > $$TMP; \
-	mv $$TMP ${.TARGET}
+	sed -i '' -e "s,${_ITD:C/^(.*:)(.*)/\1,\2 \1/},g" ${.TARGET}
 . endfor
 .endif
 .endfor

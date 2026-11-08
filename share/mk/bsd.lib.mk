@@ -204,10 +204,7 @@ all: _manpages
 
 _EXTRADEPEND:
 .if !defined(NOIMPLICITDEPEND)
-	@TMP=_depend$$$$; \
-	sed -e 's/^\([^\.]*\).o[ ]*:/\1.o \1.po \1.So:/' < ${DEPENDFILE} \
-	    > $$TMP; \
-	mv $$TMP ${DEPENDFILE}
+	sed -i '' -e 's/^\([^\.]*\).o[ ]*:/\1.o \1.po \1.So:/' ${DEPENDFILE}
 .endif
 .if !defined(NOEXTRADEPEND) && defined(SHLIB_NAME)
 .if defined(DPADD) && !empty(DPADD)
