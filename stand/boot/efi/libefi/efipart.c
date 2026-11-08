@@ -312,8 +312,12 @@ efipart_strategy(void *devdata, int rw, daddr_t blk, size_t size, char *buf,
 		return (efipart_readwrite(blkio, rw, blk, size / 512, buf));
 
 	/*
-	 * The block size of the media is not 512B per sector.
+	 * The block size of the media is not 512B per sector.  The
+	 * read-modify-write below only handles reads, so refuse to write.
 	 */
+	if (rw == F_WRITE)
+		return (EROFS);
+
 	blkbuf = malloc(blkio->Media->BlockSize);
 	if (blkbuf == NULL)
 		return (ENOMEM);
