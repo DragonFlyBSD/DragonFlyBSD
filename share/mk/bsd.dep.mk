@@ -221,6 +221,28 @@ _EXTRADEPEND: .USE
 ${DEPENDFILE}: _EXTRADEPEND
 .endif
 
+# Bootstrap and cross tools link against host libraries for target libraries
+# that the stage does not build into ${DESTDIR}.  Skip those missing entries;
+# otherwise, bmake would complain with "ignoring stale .depend".
+#
+# _EXTRADEPLIBS_VARS names the variables holding the dependency lists.
+# <bsd.prog.mk> and <bsd.lib.mk> use the default _EXTRADEPLIBS;
+# <bsd.hostprog.mk> sets one list per program.
+.if defined(BOOTSTRAPPING)
+. if !defined(_EXTRADEPLIBS_VARS)
+_EXTRADEPLIBS_VARS=	_EXTRADEPLIBS
+. endif
+. for _var in ${_EXTRADEPLIBS_VARS}
+__DEPLIBS=
+.  for _lib in ${${_var}}
+.   if exists(${_lib})
+__DEPLIBS+=	${_lib}
+.   endif
+.  endfor
+${_var}:=	${__DEPLIBS}
+. endfor
+.endif
+
 .else  # !defined(SRCS)
 
 depend: beforedepend _dependincs afterdepend

@@ -112,11 +112,20 @@ _prog_${_p}_FLAGS_FILES=${SRCS_${_p}}
 . endfor
 .endif
 
+.if !defined(NOEXTRADEPEND)
+. for _p in ${_ALL_PROGS}
+_EXTRADEPLIBS_${_p}=	${DPADD} ${DPADD_${_p}} ${LIBC}
+. endfor
+_EXTRADEPLIBS_VARS=	${_ALL_PROGS:S/^/_EXTRADEPLIBS_/}
+.endif
+
 _EXTRADEPEND:
 	sed -i '' -Ee 's/^([^.]+)\.o:/\1.no:/' ${DEPENDFILE}
-.for _p in ${_ALL_PROGS}
-	echo ${_p}.nx: ${DPADD} ${DPADD_${_p}} ${LIBC} >> ${DEPENDFILE}
-.endfor
+.if !defined(NOEXTRADEPEND)
+. for _p in ${_ALL_PROGS}
+	echo ${_p}.nx: ${_EXTRADEPLIBS_${_p}} >> ${DEPENDFILE}
+. endfor
+.endif
 
 .include <bsd.dep.mk>
 

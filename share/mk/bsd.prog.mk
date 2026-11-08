@@ -91,12 +91,14 @@ all: _manpages
 
 CLEANFILES+= ${PROG} ${OBJS}
 
-.if defined(PROG)
-_EXTRADEPEND:
-	echo ${PROG}: ${LIBC} ${DPADD} >> ${DEPENDFILE}
+.if !defined(NOEXTRADEPEND) && defined(PROG)
+_EXTRADEPLIBS=	${LIBC} ${DPADD}
 .if defined(PROG_CXX)
-	echo ${PROG}: ${LIBSTDCPLUSPLUS} >> ${DEPENDFILE}
+_EXTRADEPLIBS+=	${LIBSTDCPLUSPLUS}
 .endif
+
+_EXTRADEPEND:
+	echo ${PROG}: ${_EXTRADEPLIBS} >> ${DEPENDFILE}
 .endif
 
 .if !target(install)

@@ -202,14 +202,14 @@ all: ${_LIBS}
 all: _manpages
 .endif
 
+_EXTRADEPLIBS=	${DPADD}
+
 _EXTRADEPEND:
 .if !defined(NOIMPLICITDEPEND)
 	sed -i '' -e 's/^\([^\.]*\).o[ ]*:/\1.o \1.po \1.So:/' ${DEPENDFILE}
 .endif
 .if !defined(NOEXTRADEPEND) && defined(SHLIB_NAME)
-.if defined(DPADD) && !empty(DPADD)
-	echo ${SHLIB_NAME}: ${DPADD} >> ${DEPENDFILE}
-.endif
+	echo ${SHLIB_NAME}: ${_EXTRADEPLIBS} >> ${DEPENDFILE}
 .endif
 
 .if !target(install)
