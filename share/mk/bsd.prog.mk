@@ -70,9 +70,9 @@ ${PROG}: ${OBJS}
 .else
 	${CC_LINK} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${OBJS} ${LDADD}
 .endif
-.endif
+.endif # !target(${PROG})
 
-.endif
+.endif # defined(SRCS)
 
 .if	!defined(NOMAN) && !defined(MAN) && \
 	!defined(MAN1) && !defined(MAN2) && !defined(MAN3) && \
@@ -81,7 +81,8 @@ ${PROG}: ${OBJS}
 MAN=	${PROG}.1
 MAN1=	${MAN}
 .endif
-.endif
+
+.endif # defined(PROG)
 
 all: objwarn ${PROG} ${SCRIPTS}
 .if !defined(NOMAN)
@@ -146,7 +147,7 @@ _SCRIPTSINS_${script:T}: ${script}
 	    ${.ALLSRC} \
 	    ${DESTDIR}${SCRIPTSDIR_${.ALLSRC:T}}/${SCRIPTSNAME_${.ALLSRC:T}}
 .endfor
-.endif
+.endif # defined(SCRIPTS) && !empty(SCRIPTS)
 
 NLSNAME?=	${PROG}
 
@@ -160,7 +161,7 @@ realinstall: _maninstall
 .ORDER: beforeinstall _maninstall
 .endif
 
-.endif
+.endif # !target(install)
 
 .if !target(lint)
 lint: ${SRCS}
@@ -184,6 +185,4 @@ ${OBJS}: ${SRCS:M*.h}
 .endif
 
 .include <bsd.obj.mk>
-
 .include <bsd.sys.mk>
-
