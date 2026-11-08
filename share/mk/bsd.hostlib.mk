@@ -26,6 +26,9 @@ all: ${_LIBS}
 
 afterdepend: all
 
+_EXTRADEPEND:
+	sed -i '' -Ee 's/^([^.]+)\.o:/\1.no:/' ${DEPENDFILE}
+
 .include <bsd.dep.mk>
 
 .if !exists(${.OBJDIR}/${DEPENDFILE})
