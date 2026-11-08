@@ -36,3 +36,5 @@ sysv/sysvmsg/msgtest			userland	defaults		./msgtest
 sysv/sysvsem/semtest			userland	defaults		./semtest
 sysv/sysvshm/shmtest			userland	defaults		./shmtest
 
+vfs/dotdot/run.sh			userland	interpreter=/bin/sh
+vfs/openat/run.sh			userland	interpreter=/bin/sh

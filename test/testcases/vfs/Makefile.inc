@@ -1,0 +1,2 @@
+NOMAN=
+WARNS?=	6
