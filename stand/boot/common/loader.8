@@ -72,6 +72,26 @@ on the boot file system, which is mounted as
 .Pa /boot
 on the root file system when the kernel is running.
 .Pp
+If
+.Pa nextboot.conf
+is present and its first line is
+.Li nextboot_enable=\(dqYES\(dq ,
+the settings in it are applied to this boot only.
+The file is marked as used before the kernel is loaded, so a kernel
+that fails to boot cannot make the entry stick.
+A manual menu selection, or
+.Ic loadall
+typed at the prompt, marks the file as used without applying it.
+If
+.Pa /boot
+is not a writable UFS file system (HAMMER2, dosfs, PXE), the file
+cannot be marked and is ignored.
+Boots that do not go through
+.Ic loadall ,
+for example
+.Ic boot
+typed at the prompt, do not read the file.
+.Pp
 During initialization,
 .Nm
 will probe for a console and set the
@@ -870,6 +890,8 @@ configuration files, see
 help messages, used by the
 .Ic help
 command
+.It Pa /boot/nextboot.conf
+one-shot boot configuration
 .El
 .Sh EXAMPLES
 Boot in single user mode:
