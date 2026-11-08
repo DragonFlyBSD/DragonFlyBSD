@@ -31,14 +31,18 @@
  * $FreeBSD: src/sbin/reboot/reboot.c,v 1.9.2.4 2002/04/28 22:50:00 wes Exp $
  */
 
+#include <sys/kenv.h>
 #include <sys/reboot.h>
 #include <sys/types.h>
+#include <sys/mount.h>
+#include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <signal.h>
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <libutil.h>
+#include <limits.h>
 #include <pwd.h>
 #include <syslog.h>
 #include <stdio.h>
@@ -47,30 +51,210 @@
 #include <unistd.h>
 #include <utmpx.h>
 
+#define PATH_NEXTBOOT "/boot/nextboot.conf"
+
+/*
+ * The loader reads at most this many bytes of nextboot.conf.
+ */
+#define NEXTBOOT_MAX_SIZE	1024
+
 static void usage(void) __dead2;
 static u_int get_pageins(void);
+static void write_nextboot(const char *, const char *, int);
+static char *split_kv(char *);
+static void add_env(char **, const char *, const char *);
 
 static int dohalt;
+
+#define E(...) do {				\
+		if (force) {			\
+			warn(__VA_ARGS__);	\
+			return;			\
+		}				\
+		err(1, __VA_ARGS__);		\
+	} while (0)
+
+/*
+ * Report a failed write of the nextboot configuration: remove the
+ * temporary file, close the stream, then report.  With -f the caller
+ * only warns and returns.
+ */
+#define NEXTBOOT_E(...) do {					\
+		int e_;						\
+								\
+		e_ = errno;					\
+		if (unlink(tmp) != 0)				\
+			warn("unlink %s", tmp);			\
+		if (fp != NULL)					\
+			fclose(fp);				\
+		errno = e_;					\
+		E(__VA_ARGS__);					\
+	} while (0)
+
+/*
+ * Names and values are written into a file the loader parses, so only
+ * accept what fits a loader.conf line.
+ */
+static int
+valid_name(const char *name)
+{
+	if (*name == '\0')
+		return (0);
+	for (; *name != '\0'; ++name) {
+		if ((*name >= 'A' && *name <= 'Z') ||
+		    (*name >= 'a' && *name <= 'z') ||
+		    (*name >= '0' && *name <= '9') ||
+		    *name == '_' || *name == '.')
+			continue;
+		return (0);
+	}
+	return (1);
+}
+
+static void
+add_env(char **env, const char *key, const char *value)
+{
+	char *oldenv;
+
+	if (!valid_name(key))
+		errx(1, "Invalid variable name '%s'", key);
+	if (*value == '\0')
+		errx(1, "Invalid empty value for '%s'", key);
+	if (strlen(key) >= KENV_MNAMELEN || strlen(value) >= KENV_MVALLEN)
+		errx(1, "'%s' or its value exceeds the kernel environment "
+		    "limit of %d bytes", key, KENV_MVALLEN);
+	if (strchr(value, '"') != NULL || strchr(value, '\n') != NULL)
+		errx(1, "Invalid value '%s'", value);
+	oldenv = *env;
+	if (asprintf(env, "%s%s=\"%s\"\n", oldenv != NULL ? oldenv : "",
+	    key, value) == -1)
+		errx(1, "No memory to build env array");
+	free(oldenv);
+}
+
+static char *
+split_kv(char *raw)
+{
+	char *eq;
+	int len;
+
+	eq = strchr(raw, '=');
+	if (eq == NULL)
+		errx(1, "No = in environment string %s", raw);
+	*eq++ = '\0';
+	len = strlen(eq);
+	if (len == 0)
+		errx(1, "Invalid null value %s=", raw);
+	if (eq[0] == '"') {
+		if (len < 2 || eq[len - 1] != '"')
+			errx(1, "Invalid string '%s'", eq);
+		eq[len - 1] = '\0';
+		return (eq + 1);
+	}
+	return (eq);
+}
+
+/*
+ * Write the nextboot configuration.  The enabling line goes first, so
+ * the loader always sees it, and the file keeps the same size when the
+ * loader rewrites that line.  Nothing is installed unless the whole
+ * file was written, is not larger than what the loader reads, and has
+ * reached the disk.
+ */
+static void
+write_nextboot(const char *fn, const char *env, int force)
+{
+	char tmp[PATH_MAX];
+	FILE *fp;
+	struct stat st;
+	struct statfs sfs;
+	int tmpfd;
+
+	if (statfs("/boot", &sfs) != 0)
+		err(1, "statfs /boot");
+	if (strcmp(sfs.f_fstypename, "ufs") != 0) {
+		if (!force)
+			errx(1, "/boot is %s, not ufs", sfs.f_fstypename);
+		warnx("/boot is %s, not ufs", sfs.f_fstypename);
+	}
+
+	if (strlcpy(tmp, fn, sizeof(tmp)) >= sizeof(tmp))
+		E("Path too long %s", fn);
+	if (strlcat(tmp, ".XXXXXX", sizeof(tmp)) >= sizeof(tmp))
+		E("Path too long %s", fn);
+
+	tmpfd = mkstemp(tmp);
+	if (tmpfd == -1)
+		E("mkstemp %s", tmp);
+
+	fp = fdopen(tmpfd, "w");
+	if (fp == NULL) {
+		close(tmpfd);
+		unlink(tmp);
+		E("fdopen %s", tmp);
+	}
+
+	if (fprintf(fp, "nextboot_enable=\"YES\"\n") < 0)
+		NEXTBOOT_E("Can't write %s", tmp);
+
+	if (env != NULL && fprintf(fp, "%s", env) < 0)
+		NEXTBOOT_E("Can't write %s", tmp);
+	if (fflush(fp) != 0)
+		NEXTBOOT_E("Can't write %s", tmp);
+	if (fstat(tmpfd, &st) != 0)
+		NEXTBOOT_E("fstat %s", tmp);
+	if (st.st_size > NEXTBOOT_MAX_SIZE) {
+		if (unlink(tmp) != 0)
+			warn("unlink %s", tmp);
+		fclose(fp);
+		fp = NULL;
+		errx(1, "%s is larger than %d bytes", fn, NEXTBOOT_MAX_SIZE);
+	}
+	if (fsync(fileno(fp)) != 0)
+		NEXTBOOT_E("Can't fsync %s", tmp);
+	if (fclose(fp) != 0) {
+		fp = NULL;	/* the error path must not close it again */
+		NEXTBOOT_E("Can't close %s", tmp);
+	}
+	fp = NULL;
+	if (rename(tmp, fn) != 0)
+		NEXTBOOT_E("Can't rename %s to %s", tmp, fn);
+}
 
 int
 main(int argc, char *argv[])
 {
 	struct passwd *pw;
 	int ch, howto, i, lflag, nflag, qflag, sverrno;
+	int Dflag, fflag;
 	u_int pageins;
-	char *p;
-	const char *user;
+	char *env = NULL, *p, *v;
+	const char *kernel = NULL, *user;
 
 	if (strstr((p = strrchr(*argv, '/')) ? p + 1 : *argv, "halt")) {
 		dohalt = 1;
 		howto = RB_HALT;
 	} else
 		howto = 0;
+	Dflag = fflag = 0;
 	lflag = nflag = qflag = 0;
-	while ((ch = getopt(argc, argv, "dlnpq")) != -1)
+	while ((ch = getopt(argc, argv, "Dde:fk:lno:pq")) != -1)
 		switch(ch) {
+		case 'D':
+			Dflag = 1;
+			break;
 		case 'd':
 			howto |= RB_DUMP;
+			break;
+		case 'e':
+			v = split_kv(optarg);
+			add_env(&env, optarg, v);
+			break;
+		case 'f':
+			fflag = 1;
+			break;
+		case 'k':
+			kernel = optarg;
 			break;
 		case 'l':
 			lflag = 1;
@@ -78,6 +262,9 @@ main(int argc, char *argv[])
 		case 'n':
 			nflag = 1;
 			howto |= RB_NOSYNC;
+			break;
+		case 'o':
+			add_env(&env, "kernel_options", optarg);
 			break;
 		case 'p':
 			howto |= (RB_POWEROFF | RB_HALT);
@@ -94,13 +281,50 @@ main(int argc, char *argv[])
 	if (argc != 0)
 		usage();
 
+	if (Dflag && ((howto & ~RB_HALT) != 0 || kernel != NULL ||
+	    env != NULL))
+		errx(1, "cannot delete existing nextboot config and do "
+		    "anything else");
 	if ((howto & (RB_DUMP | RB_HALT)) == (RB_DUMP | RB_HALT))
 		errx(1, "cannot dump (-d) when halting; must reboot instead");
+
+	if (Dflag) {
+		struct stat sb;
+
+		if (stat(PATH_NEXTBOOT, &sb) != 0 && errno == ENOENT)
+			exit(0);
+		if (unlink(PATH_NEXTBOOT) != 0) {
+			if (errno == ENOENT)
+				exit(0);
+			warn("unlink " PATH_NEXTBOOT);
+			exit(1);
+		}
+		exit(0);
+	}
+
 	if (geteuid()) {
 		errno = EPERM;
 		err(1, NULL);
 	}
 
+	if (kernel != NULL) {
+		if (!fflag) {
+			char *k;
+			struct stat sb;
+
+			if (asprintf(&k, "/boot/%s/kernel", kernel) == -1)
+				errx(1, "No memory to check %s", kernel);
+			if (stat(k, &sb) != 0)
+				err(1, "stat %s", k);
+			if (!S_ISREG(sb.st_mode))
+				errx(1, "%s is not a file", k);
+			free(k);
+		}
+		add_env(&env, "kernel", kernel);
+	}
+
+	if (env != NULL)
+		write_nextboot(PATH_NEXTBOOT, env, fflag);
 	if (qflag) {
 		reboot(howto);
 		err(1, NULL);
@@ -196,7 +420,8 @@ restart:
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: %s [-dnpq]\n", dohalt ? "halt" : "reboot");
+	fprintf(stderr, "usage: %s [-Ddflnpq] [-e var=value] [-k kernel] "
+	    "[-o options]\n", dohalt ? "halt" : "reboot");
 	exit(1);
 }
 
