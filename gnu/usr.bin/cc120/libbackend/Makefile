@@ -505,6 +505,7 @@ BACKEND_OBJS= \
 	xcoffout.o
 
 SRCS=	${BACKEND_OBJS:.o=.cc}
+SRCS+=	main.cc
 
 FLAGS_GROUPS=		tname tmachine warn
 
