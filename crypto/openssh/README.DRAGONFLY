@@ -4,10 +4,10 @@ OPENSSH
 Original source can be downloaded from:
 https://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/
 
-file = openssh-10.6p1.tar.gz
-date = 2026-10-06
-size = 2355244
-sha1 = e6a34f5625e20172b214c50ebd4e0dcb4fd18013
+file = openssh-10.6p2.tar.gz
+date = 2026-11-05
+size = 2355372
+sha1 = c91a0b7860c80f29db874044af4d1a6f906231d9
 
 A list of deleted files is in README.DELETED.
 
