@@ -352,9 +352,6 @@ kvm_nlist(kvm_t *kd, struct nlist *nl)
 		lookup.symvalue = 0;
 		lookup.symsize = 0;
 
-		if (lookup.symname[0] == '_')
-			lookup.symname++;
-
 		if (kldsym(0, KLDSYM_LOOKUP, &lookup) != -1) {
 			p->n_type = N_TEXT;
 			p->n_other = 0;
