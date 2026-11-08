@@ -205,7 +205,7 @@ _ALL_DEPENDS=${__FLAGS_FILES:N*.[csS]:N*.cc:N*.C:N*.cpp:N*.cxx:N*.m}
 .endif
 	# In case that the custom ${MKDEPCMD} does not create the depend file
 	# for empty dependency.
-	>> ${.TARGET}
+	@[ -e ${.TARGET} ] || touch ${.TARGET}
 .if ${_FG} == "_" && !empty(_DEPENDFILES)
 	cat ${_DEPENDFILES} >> ${.TARGET}
 .endif
