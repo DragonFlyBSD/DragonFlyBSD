@@ -188,7 +188,7 @@ _kvm_initvtop(kvm_t *kd)
 	}
 
 	nlists[0].n_name = "kernbase";
-	nlists[1].n_name = 0;
+	nlists[1].n_name = NULL;
 
 	if (kvm_nlist(kd, nlists) != 0) {
 		_kvm_err(kd, kd->program, "bad namelist - no kernbase");
@@ -197,7 +197,7 @@ _kvm_initvtop(kvm_t *kd)
 	kernbase = nlists[0].n_value;
 
 	nlists[0].n_name = "dumppcb";
-	nlists[1].n_name = 0;
+	nlists[1].n_name = NULL;
 
 	if (kvm_nlist(kd, nlists) != 0) {
 		_kvm_err(kd, kd->program, "bad namelist - no dumppcb");

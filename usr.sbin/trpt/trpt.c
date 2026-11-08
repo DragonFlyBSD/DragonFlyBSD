@@ -75,7 +75,7 @@ struct nlist nl[] = {
 	{ .n_name = "tcp_debug" },
 #define	N_TCP_DEBX	1
 	{ .n_name = "tcp_debx" },
-	{ .n_name = "" },
+	{ .n_name = NULL },
 };
 
 static caddr_t tcp_pcbs[TCP_NDEBUG];

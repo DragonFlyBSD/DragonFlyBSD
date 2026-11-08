@@ -154,7 +154,7 @@ static struct nlist namelist[] = {
 	{ .n_name = "activevnodes" },
 #define X_NUMDIRTYBUFFERS 6
 	{ .n_name = "dirtybufspace" },
-	{ .n_name = "" },
+	{ .n_name = NULL },
 };
 
 /*

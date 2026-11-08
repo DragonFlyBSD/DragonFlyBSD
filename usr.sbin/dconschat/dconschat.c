@@ -917,7 +917,7 @@ found:
 		break;
 	case TYPE_KVM:
 	{
-		struct nlist nl[] = {{.n_name = "dcons_buf"}, {.n_name = ""}};
+		struct nlist nl[] = {{.n_name = "dcons_buf"}, {.n_name = NULL}};
 		void *dcons_buf;
 
 		dc->kd = kvm_open(sysfile, core, NULL,

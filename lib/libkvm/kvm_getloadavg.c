@@ -49,7 +49,7 @@ static struct nlist nl[] = {
 #define	X_AVERUNNABLE	0
 	{ .n_name = "fscale" },
 #define	X_FSCALE	1
-	{ .n_name = "" },
+	{ .n_name = NULL },
 };
 
 /*

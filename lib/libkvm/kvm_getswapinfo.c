@@ -63,7 +63,7 @@ static struct nlist kvm_swap_nl[] = {
 	{ .n_name = "swdevt" },	/* list of swap devices and sizes */
 	{ .n_name = "nswdev" },	/* number of swap devices */
 	{ .n_name = "dmmax" },		/* maximum size of a swap block */
-	{ .n_name = "" }
+	{ .n_name = NULL }
 };
 
 #define NL_SWAPBLIST	0
