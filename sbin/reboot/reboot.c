@@ -58,13 +58,17 @@
  */
 #define NEXTBOOT_MAX_SIZE	1024
 
+#define GETOPT_REBOOT	"Dde:fk:lno:pq"
+#define GETOPT_NEXTBOOT	"aDe:fk:o:"
+
 static void usage(void) __dead2;
 static u_int get_pageins(void);
-static void write_nextboot(const char *, const char *, int);
+static void write_nextboot(const char *, const char *, int, int);
 static char *split_kv(char *);
 static void add_env(char **, const char *, const char *);
 
 static int dohalt;
+static int donextboot;
 
 #define E(...) do {				\
 		if (force) {			\
@@ -162,13 +166,15 @@ split_kv(char *raw)
  * reached the disk.
  */
 static void
-write_nextboot(const char *fn, const char *env, int force)
+write_nextboot(const char *fn, const char *env, int append, int force)
 {
+	char buf[1024];
 	char tmp[PATH_MAX];
-	FILE *fp;
+	FILE *fp, *ofp;
 	struct stat st;
 	struct statfs sfs;
-	int tmpfd;
+	size_t blen;
+	int endnl, fd, tmpfd;
 
 	if (statfs("/boot", &sfs) != 0)
 		err(1, "statfs /boot");
@@ -196,6 +202,35 @@ write_nextboot(const char *fn, const char *env, int force)
 
 	if (fprintf(fp, "nextboot_enable=\"YES\"\n") < 0)
 		NEXTBOOT_E("Can't write %s", tmp);
+
+	/*
+	 * Appending keeps the old settings, but drops the old enabling
+	 * line: a consumed one would otherwise follow the new one.
+	 */
+	if (append) {
+		fd = open(fn, O_RDONLY);
+		if (fd < 0) {
+			if (errno != ENOENT)
+				NEXTBOOT_E("open %s", fn);
+		} else if ((ofp = fdopen(fd, "r")) == NULL) {
+			warn("fdopen %s", fn);
+			close(fd);
+		} else {
+			endnl = 1;
+			while (fgets(buf, sizeof(buf), ofp) != NULL) {
+				if (strncmp(buf, "nextboot_enable", 15) == 0)
+					continue;
+				if (fputs(buf, fp) < 0)
+					break;
+				blen = strlen(buf);
+				if (blen != 0)
+					endnl = buf[blen - 1] == '\n';
+			}
+			fclose(ofp);
+			if (!endnl && fputc('\n', fp) == EOF)
+				NEXTBOOT_E("Can't write %s", tmp);
+		}
+	}
 
 	if (env != NULL && fprintf(fp, "%s", env) < 0)
 		NEXTBOOT_E("Can't write %s", tmp);
@@ -225,21 +260,30 @@ int
 main(int argc, char *argv[])
 {
 	struct passwd *pw;
-	int ch, howto, i, lflag, nflag, qflag, sverrno;
-	int Dflag, fflag;
+	int ch, howto = 0, i, lflag, nflag, qflag, sverrno;
+	int aflag, Dflag, fflag;
 	u_int pageins;
-	char *env = NULL, *p, *v;
-	const char *kernel = NULL, *user;
+	char *env = NULL, *v;
+	const char *getopts = GETOPT_REBOOT, *kernel = NULL, *progname;
+	const char *user;
 
-	if (strstr((p = strrchr(*argv, '/')) ? p + 1 : *argv, "halt")) {
+	progname = getprogname();
+	if (strncmp(progname, "fast", 4) == 0)
+		progname += 4;
+	if (strcmp(progname, "halt") == 0) {
 		dohalt = 1;
 		howto = RB_HALT;
-	} else
-		howto = 0;
-	Dflag = fflag = 0;
+	} else if (strcmp(progname, "nextboot") == 0) {
+		donextboot = 1;
+		getopts = GETOPT_NEXTBOOT;
+	}
+	aflag = Dflag = fflag = 0;
 	lflag = nflag = qflag = 0;
-	while ((ch = getopt(argc, argv, "Dde:fk:lno:pq")) != -1)
+	while ((ch = getopt(argc, argv, getopts)) != -1)
 		switch(ch) {
+		case 'a':
+			aflag = 1;
+			break;
 		case 'D':
 			Dflag = 1;
 			break;
@@ -282,7 +326,7 @@ main(int argc, char *argv[])
 		usage();
 
 	if (Dflag && ((howto & ~RB_HALT) != 0 || kernel != NULL ||
-	    env != NULL))
+	    env != NULL || aflag))
 		errx(1, "cannot delete existing nextboot config and do "
 		    "anything else");
 	if ((howto & (RB_DUMP | RB_HALT)) == (RB_DUMP | RB_HALT))
@@ -302,7 +346,7 @@ main(int argc, char *argv[])
 		exit(0);
 	}
 
-	if (geteuid()) {
+	if (!donextboot && geteuid()) {
 		errno = EPERM;
 		err(1, NULL);
 	}
@@ -324,7 +368,9 @@ main(int argc, char *argv[])
 	}
 
 	if (env != NULL)
-		write_nextboot(PATH_NEXTBOOT, env, fflag);
+		write_nextboot(PATH_NEXTBOOT, env, aflag, fflag);
+	if (donextboot)
+		exit(0);
 	if (qflag) {
 		reboot(howto);
 		err(1, NULL);
@@ -420,8 +466,13 @@ restart:
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: %s [-Ddflnpq] [-e var=value] [-k kernel] "
-	    "[-o options]\n", dohalt ? "halt" : "reboot");
+	if (donextboot)
+		fprintf(stderr, "usage: nextboot [-aDf] [-e var=value] "
+		    "[-k kernel] [-o options]\n");
+	else
+		fprintf(stderr, "usage: %s [-Ddflnpq] [-e var=value] "
+		    "[-k kernel] [-o options]\n",
+		    dohalt ? "halt" : "reboot");
 	exit(1);
 }
 
