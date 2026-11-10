@@ -744,10 +744,12 @@ lwp_fork1(struct lwp *lp1, struct proc *destproc, int flags,
 	lp2->lwp_proc = destproc;
 	lp2->lwp_stat = LSRUN;
 	bcopy(&lp1->lwp_startcopy, &lp2->lwp_startcopy,
-	    (unsigned) ((caddr_t)&lp2->lwp_endcopy -
-			(caddr_t)&lp2->lwp_startcopy));
-	if (mask != NULL)
-		lp2->lwp_cpumask = *mask;
+	      (unsigned) ((caddr_t)&lp2->lwp_endcopy -
+			  (caddr_t)&lp2->lwp_startcopy));
+
+	if (mask == NULL)
+		mask = &lp1->lwp_cpumask;
+	lp2->lwp_cpumask = *mask;
 
 	lwkt_token_init(&lp2->lwp_token, "lwp_token");
 	TAILQ_INIT(&lp2->lwp_lpmap_backing_list);
