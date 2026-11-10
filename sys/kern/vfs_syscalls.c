@@ -1138,7 +1138,7 @@ mount_warning(struct mount *mp, const char *ctl, ...)
 	__va_list va;
 
 	__va_start(va, ctl);
-	if (cache_fullpath(NULL, &mp->mnt_ncmounton, NULL,
+	if (cache_fullpath_refd(NULL, &mp->mnt_ncmounton, NULL,
 			   &ptr, &buf, 0) == 0) {
 		kprintf("unmount(%s): ", ptr);
 		kvprintf(ctl, va);

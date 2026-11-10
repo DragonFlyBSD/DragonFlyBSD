@@ -1090,7 +1090,8 @@ void
 cache_drop(struct nchandle *nch)
 {
 	_cache_mntrel(nch->mount);
-	_cache_drop(nch->ncp);
+	if (nch->ncp)
+		_cache_drop(nch->ncp);
 	nch->ncp = NULL;
 	nch->mount = NULL;
 }
