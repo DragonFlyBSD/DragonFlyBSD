@@ -579,6 +579,12 @@ kenv_init(void *dummy)
 	/* copy the static environment to our dynamic environment */
 	for (i = 0, cp = kern_envp; cp != NULL; cp = kernenv_next(cp)) {
 		len = strlen(cp) + 1;
+		if (len > KENV_MNAMELEN + KENV_MVALLEN + 2) {
+			kprintf("WARNING: kenv: entry too long, "
+				"ignoring string %.*s\n",
+				KENV_MNAMELEN, cp);
+			continue;
+		}
 		if (i < (KENV_DYNMAXNUM - 1)) {
 			kenv_dynp[i] = kmalloc(len, M_KENV, M_WAITOK);
 			strcpy(kenv_dynp[i++], cp);
