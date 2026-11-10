@@ -201,9 +201,9 @@ struct lwp {
 
 	union usched_data lwp_usdata;	/* User scheduler specific */
 
-#define lwp_startcopy	lwp_cpumask
 	cpumask_t	lwp_cpumask;
 	sigset_t	lwp_siglist;	/* Signals arrived but not delivered. */
+#define lwp_startcopy	lwp_oldsigmask
 	sigset_t	lwp_oldsigmask;	/* saved mask from before sigpause */
 	sigset_t	lwp_sigmask;	/* Current signal mask. */
 	stack_t		lwp_sigstk;	/* sp & on stack state variable */
