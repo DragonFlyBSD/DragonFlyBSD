@@ -36,22 +36,23 @@ MPN_MFUNCS=	logops_n.c,and_n \
 		sec_pi1_div.c,sec_pi1_div_qr \
 		sec_pi1_div.c,sec_pi1_div_r
 
-# Populate mpn sources.
-.for src in ${mpn_objs_in_libgmp:.lo=.c}
-sfile:=	${src:T}
-. if ${MPN_MFUNCS:M*,${sfile:R}} != ""
-sfile:=	${MPN_MFUNCS:M*,${sfile:R}:S/,${sfile:R}//}
+# Populate mpn sources and set per-target flags.
+.for obj in ${mpn_objs_in_libgmp:R}
+func:=	${obj:T}
+sfile:=	${func}.c
+mfunc:=	${MPN_MFUNCS:M*,${func}}
+. if ${mfunc} != ""
+sfile:=	${mfunc:S/,${func}//}
 . endif
-${src}: ${SRCDIR}/mpn/generic/${sfile}
+
+${obj}.c: ${SRCDIR}/mpn/generic/${sfile}
 	cp ${.ALLSRC} ${.TARGET}
+
+FLAGS.${obj}.o:=	-DOPERATION_${func}
 .endfor
 
-FLAGS_GROUPS=		operation
-operation_FLAGS_FILES=	${mpn_objs_in_libgmp:.lo=.c}
-operation_FLAGS=	-DOPERATION_${.TARGET:T:R}
-
 GENFILES+=	gmp-mparam.h
-gmp-mparam.h: mpn/generic/gmp-mparam.h
+gmp-mparam.h: ${SRCDIR}/mpn/generic/gmp-mparam.h
 	cp ${.ALLSRC} ${.TARGET}
 
 TOOLSDIR=	${.OBJDIR}/../tools
@@ -84,7 +85,7 @@ mpn/jacobitab.h: ${TOOLSDIR}/gen-jacobitab.nx
 mpn/perfsqr.h: ${TOOLSDIR}/gen-psqr.nx
 	${TOOLSDIR}/gen-psqr.nx ${GMP_LIMB_BITS} ${GMP_NAIL_BITS} > ${.TARGET}
 
-GENDIRS=	mpf mpz mpq mpn mpn/generic printf scanf rand
+GENDIRS=	mpf mpz mpq mpn printf scanf rand
 mkdirs:
 	mkdir -p ${GENDIRS}
 
