@@ -1671,8 +1671,18 @@ s32 e1000_get_speed_and_duplex_copper_generic(struct e1000_hw *hw, u16 *speed,
 
 	status = E1000_READ_REG(hw, E1000_STATUS);
 	if (status & E1000_STATUS_SPEED_1000) {
-		*speed = SPEED_1000;
-		DEBUGOUT("1000 Mbs, ");
+		/* For I225, STATUS will indicate 1G speed in both 1 Gbps
+		 * and 2.5 Gbps link modes. An additional bit is used
+		 * to differentiate between 1 Gbps and 2.5 Gbps.
+		 */
+		if ((hw->mac.type == e1000_i225) &&
+		    (status & E1000_STATUS_SPEED_2500)) {
+			*speed = SPEED_2500;
+			DEBUGOUT("2500 Mbs, ");
+		} else {
+			*speed = SPEED_1000;
+			DEBUGOUT("1000 Mbs, ");
+		}
 	} else if (status & E1000_STATUS_SPEED_100) {
 		*speed = SPEED_100;
 		DEBUGOUT("100 Mbs, ");

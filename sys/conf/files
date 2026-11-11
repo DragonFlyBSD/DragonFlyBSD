@@ -355,6 +355,7 @@ dev/netif/ig_hal/e1000_82571.c	optional ig_hal
 dev/netif/ig_hal/e1000_82575.c	optional ig_hal
 dev/netif/ig_hal/e1000_api.c	optional ig_hal
 dev/netif/ig_hal/e1000_i210.c	optional ig_hal
+dev/netif/ig_hal/e1000_i225.c	optional ig_hal
 dev/netif/ig_hal/e1000_ich8lan.c	optional ig_hal
 dev/netif/ig_hal/e1000_mac.c	optional ig_hal
 dev/netif/ig_hal/e1000_manage.c	optional ig_hal
@@ -363,6 +364,7 @@ dev/netif/ig_hal/e1000_nvm.c	optional ig_hal
 dev/netif/ig_hal/e1000_osdep.c	optional ig_hal
 dev/netif/ig_hal/e1000_phy.c	optional ig_hal
 dev/netif/ig_hal/e1000_vf.c	optional ig_hal
+dev/netif/ig_hal/igc_base.c	optional ig_hal
 dev/netif/et/if_et.c		optional et
 bus/firewire/firewire.c		optional firewire
 bus/firewire/fwcrom.c		optional firewire
