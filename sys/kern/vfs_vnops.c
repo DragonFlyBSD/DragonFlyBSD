@@ -1022,6 +1022,10 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred,
 				error = ENOTTY;
 				break;
 			}
+			if (vp->v_rdev == NULL) {
+				error = ENODEV;
+				break;
+			}
 			*(int *)data = dev_dflags(vp->v_rdev) & D_TYPEMASK;
 			error = 0;
 			break;
