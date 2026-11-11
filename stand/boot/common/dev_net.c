@@ -208,9 +208,7 @@ static int
 net_getparams(int sock)
 {
     char buf[MAXHOSTNAMELEN];
-    char temp[FNAME_SIZE];
     struct iodesc *d;
-    int i;
     n_long smask;
 
 #ifdef	SUPPORT_BOOTP
@@ -220,8 +218,10 @@ net_getparams(int sock)
      * be initialized.  If any remain uninitialized, we will
      * use RARP and RPC/bootparam (the Sun way) to get them.
      */
-    if (try_bootp)
+    if (try_bootp) {
+	rootpath[0] = '\0';
 	bootp(sock, BOOTP_NONE);
+    }
     if (myip.s_addr != 0)
 	goto exit;
     if (debug)
@@ -268,21 +268,21 @@ net_getparams(int sock)
 	return (EIO);
     }
  exit:
-    /*  
-     * If present, strip the server's address off of the rootpath
-     * before passing it along.  This allows us to be compatible with
-     * the kernel's diskless (BOOTP_NFSROOT) booting conventions
+    /*
+     * Select the network file system protocol from the root path and
+     * strip it down to a path.  This also strips the server's address
+     * off the rootpath, which keeps us compatible with the kernel's
+     * diskless (BOOTP_NFSROOT) booting conventions.
      */
-    for (i = 0; i < FNAME_SIZE && rootpath[i] != '\0'; i++)
-	    if (rootpath[i] == ':')
-		    break;
-    if (i && i != FNAME_SIZE && rootpath[i] == ':') {
-	    rootpath[i++] = '\0';
-	    if (inet_addr(&rootpath[0]) != INADDR_NONE)
-		    rootip.s_addr = inet_addr(&rootpath[0]);
-	    bcopy(&rootpath[i], &temp[0], strlen(&rootpath[i])+1);
-	    bcopy(&temp[0], &rootpath[0], strlen(&rootpath[i])+1);	    
+    net_parse_rootpath();
+    if (netproto == NET_TFTP) {
+	/* This loader has no TFTP file system; NFS is the only option. */
+	printf("net_open: no tftp support, using nfs\n");
+	netproto = NET_NFS;
+	if (rootpath[0] == '\0')
+	    bcopy("/", rootpath, 2);
     }
+    printf("net_open: proto: nfs\n");
     printf("net_open: server addr: %s\n", inet_ntoa(rootip));
     printf("net_open: server path: %s\n", rootpath);	    
 
@@ -291,8 +291,10 @@ net_getparams(int sock)
     setenv("boot.netif.netmask", intoa(netmask), 1);
     setenv("boot.netif.gateway", inet_ntoa(gateip), 1);
     setenv("boot.netif.hwaddr", ether_sprintf(d->myea), 1);
-    setenv("boot.nfsroot.server", inet_ntoa(rootip), 1);
-    setenv("boot.nfsroot.path", rootpath, 1);
+    if (netproto == NET_NFS) {
+	setenv("boot.nfsroot.server", inet_ntoa(rootip), 1);
+	setenv("boot.nfsroot.path", rootpath, 1);
+    }
 
     return (0);
 }

@@ -403,14 +403,15 @@ nfs_open(const char *upath, struct open_file *f)
 	int error;
 	char *path;
 
+	if (netproto != NET_NFS)
+		return (EINVAL);
+
 #ifdef NFS_DEBUG
  	if (debug)
  	    printf("nfs_open: %s (rootpath=%s)\n", path, rootpath);
 #endif
-	if (!rootpath[0]) {
-		printf("no rootpath, no nfs\n");
-		return (ENXIO);
-	}
+	if (!rootpath[0])
+		return (EINVAL);
 
 	/* Avoid trying out nfs_open for disk devices in the EFI loader */
 #ifndef __i386__
