@@ -179,6 +179,22 @@ on any console and output will be routed to all of them.  This is the
 default.
 .It Fl h
 Use the serial console as the system console.
+This flag toggles, so give
+.Fl S
+after it.
+.It Fl S Ns Ar baud
+Use the serial console at
+.Ar baud
+bits per second, and set
+.Fl h .
+The value must not exceed
+.Li 115200 ;
+the default comes from
+.Va BOOT_COMCONSOLE_SPEED
+at build time.
+The boot loader reads the programmed divisor back unless
+.Va comconsole_speed
+is set, and the kernel adopts the same divisor.
 .It Fl V
 Use the video console as the system console.
 .It Fl m
