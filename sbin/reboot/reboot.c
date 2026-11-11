@@ -63,6 +63,9 @@
 
 static void usage(void) __dead2;
 static u_int get_pageins(void);
+static int read_nextboot(const char *, char *, size_t, size_t *, int);
+static char *build_nextboot(const char *, const char *, size_t *);
+static void write_nextboot_file(const char *, const char *, size_t, int);
 static void write_nextboot(const char *, const char *, int, int);
 static char *split_kv(char *);
 static void add_env(char **, const char *, const char *);
@@ -158,23 +161,106 @@ split_kv(char *raw)
 	return (eq);
 }
 
-/*
- * Write the nextboot configuration.  The enabling line goes first, so
- * the loader always sees it, and the file keeps the same size when the
- * loader rewrites that line.  Nothing is installed unless the whole
- * file was written, is not larger than what the loader reads, and has
- * reached the disk.
- */
-static void
-write_nextboot(const char *fn, const char *env, int append, int force)
+static int
+read_nextboot(const char *fn, char *buf, size_t bufsz, size_t *lenp,
+    int force)
 {
-	char buf[1024];
+	size_t len;
+	int c, fd, n;
+
+	fd = open(fn, O_RDONLY);
+	if (fd < 0) {
+		if (errno == ENOENT)
+			return (0);
+		if (!force)
+			err(1, "open %s", fn);
+		warn("open %s", fn);
+		return (-1);
+	}
+	len = 0;
+	while (len < bufsz) {
+		n = read(fd, buf + len, bufsz - len);
+		if (n < 0) {
+			close(fd);
+			if (!force)
+				err(1, "read %s", fn);
+			warn("read %s", fn);
+			return (-1);
+		}
+		if (n == 0)
+			break;
+		len += n;
+	}
+	c = 0;
+	if (len == bufsz && read(fd, &c, 1) == 1) {
+		close(fd);
+		if (!force)
+			errx(1, "%s is larger than %d bytes", fn,
+			    NEXTBOOT_MAX_SIZE);
+		warnx("%s is larger than %d bytes, replacing it", fn,
+		    NEXTBOOT_MAX_SIZE);
+		return (0);
+	}
+	close(fd);
+	buf[len] = '\0';
+	*lenp = len;
+	return (1);
+}
+
+static char *
+build_nextboot(const char *old, const char *env, size_t *lenp)
+{
+	const char *nl, *p;
+	char *buf;
+	size_t len, linelen;
+
+	if (asprintf(&buf, "nextboot_enable=\"YES\"\n") == -1)
+		err(1, NULL);
+	len = strlen(buf);
+
+	for (p = old; p != NULL && *p != '\0'; p = nl + 1) {
+		nl = strchr(p, '\n');
+		if (nl == NULL)
+			nl = p + strlen(p);
+		linelen = nl - p;
+		if (linelen >= 15 &&
+		    strncmp(p, "nextboot_enable", 15) == 0) {
+			if (*nl == '\0')
+				break;
+			continue;
+		}
+		buf = realloc(buf, len + linelen + 2);
+		if (buf == NULL)
+			err(1, NULL);
+		memcpy(buf + len, p, linelen);
+		len += linelen;
+		buf[len++] = '\n';
+		buf[len] = '\0';
+		if (*nl == '\0')
+			break;
+	}
+	if (env != NULL) {
+		linelen = strlen(env);
+		buf = realloc(buf, len + linelen + 1);
+		if (buf == NULL)
+			err(1, NULL);
+		memcpy(buf + len, env, linelen + 1);
+		len += linelen;
+	}
+	*lenp = len;
+	return (buf);
+}
+
+static void
+write_nextboot_file(const char *fn, const char *text, size_t len, int force)
+{
 	char tmp[PATH_MAX];
-	FILE *fp, *ofp;
-	struct stat st;
 	struct statfs sfs;
-	size_t blen;
-	int endnl, fd, tmpfd;
+	FILE *fp;
+	int tmpfd;
+
+	if (len > NEXTBOOT_MAX_SIZE)
+		errx(1, "%s is larger than %d bytes", fn, NEXTBOOT_MAX_SIZE);
 
 	if (statfs("/boot", &sfs) != 0)
 		err(1, "statfs /boot");
@@ -199,52 +285,10 @@ write_nextboot(const char *fn, const char *env, int append, int force)
 		unlink(tmp);
 		E("fdopen %s", tmp);
 	}
-
-	if (fprintf(fp, "nextboot_enable=\"YES\"\n") < 0)
-		NEXTBOOT_E("Can't write %s", tmp);
-
-	/*
-	 * Appending keeps the old settings, but drops the old enabling
-	 * line: a consumed one would otherwise follow the new one.
-	 */
-	if (append) {
-		fd = open(fn, O_RDONLY);
-		if (fd < 0) {
-			if (errno != ENOENT)
-				NEXTBOOT_E("open %s", fn);
-		} else if ((ofp = fdopen(fd, "r")) == NULL) {
-			warn("fdopen %s", fn);
-			close(fd);
-		} else {
-			endnl = 1;
-			while (fgets(buf, sizeof(buf), ofp) != NULL) {
-				if (strncmp(buf, "nextboot_enable", 15) == 0)
-					continue;
-				if (fputs(buf, fp) < 0)
-					break;
-				blen = strlen(buf);
-				if (blen != 0)
-					endnl = buf[blen - 1] == '\n';
-			}
-			fclose(ofp);
-			if (!endnl && fputc('\n', fp) == EOF)
-				NEXTBOOT_E("Can't write %s", tmp);
-		}
-	}
-
-	if (env != NULL && fprintf(fp, "%s", env) < 0)
+	if (fwrite(text, 1, len, fp) != len)
 		NEXTBOOT_E("Can't write %s", tmp);
 	if (fflush(fp) != 0)
 		NEXTBOOT_E("Can't write %s", tmp);
-	if (fstat(tmpfd, &st) != 0)
-		NEXTBOOT_E("fstat %s", tmp);
-	if (st.st_size > NEXTBOOT_MAX_SIZE) {
-		if (unlink(tmp) != 0)
-			warn("unlink %s", tmp);
-		fclose(fp);
-		fp = NULL;
-		errx(1, "%s is larger than %d bytes", fn, NEXTBOOT_MAX_SIZE);
-	}
 	if (fsync(fileno(fp)) != 0)
 		NEXTBOOT_E("Can't fsync %s", tmp);
 	if (fclose(fp) != 0) {
@@ -254,6 +298,25 @@ write_nextboot(const char *fn, const char *env, int append, int force)
 	fp = NULL;
 	if (rename(tmp, fn) != 0)
 		NEXTBOOT_E("Can't rename %s to %s", tmp, fn);
+}
+
+static void
+write_nextboot(const char *fn, const char *env, int append, int force)
+{
+	static char old[NEXTBOOT_MAX_SIZE + 1];
+	size_t len, oldlen;
+	char *text;
+	int rv;
+
+	oldlen = 0;
+	if (append) {
+		rv = read_nextboot(fn, old, sizeof(old) - 1, &oldlen, force);
+		if (rv == -1)
+			return;
+	}
+	text = build_nextboot(oldlen != 0 ? old : NULL, env, &len);
+	write_nextboot_file(fn, text, len, force);
+	free(text);
 }
 
 int

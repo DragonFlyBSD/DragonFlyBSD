@@ -61,6 +61,11 @@ Append to an existing configuration in
 instead of replacing it.
 The enabling line is written first, so a file that an earlier boot has
 consumed is applied as well.
+An existing entry larger than 1024 bytes is refused with a hint to use
+.Fl D
+first, and with
+.Fl f
+it is replaced instead of extended.
 .It Fl D
 Remove an existing
 .Nm
