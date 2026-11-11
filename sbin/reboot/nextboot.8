@@ -56,11 +56,11 @@ the entry is still marked as used, but it is not applied.
 The options are as follows:
 .Bl -tag -width ".Fl o Ar options"
 .It Fl a
-Append to an existing configuration in
-.Pa /boot/nextboot.conf
-instead of replacing it.
-The enabling line is written first, so a file that an earlier boot has
-consumed is applied as well.
+Append to the configuration that is waiting for its boot instead of
+replacing it.
+The enabling line is still written first.
+A configuration that an earlier boot has consumed is not carried over,
+because its lines describe the boot that used it.
 An existing entry larger than 1024 bytes is refused with a hint to use
 .Fl D
 first, and with

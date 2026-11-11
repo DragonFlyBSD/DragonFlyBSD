@@ -64,6 +64,7 @@
 static void usage(void) __dead2;
 static u_int get_pageins(void);
 static int read_nextboot(const char *, char *, size_t, size_t *, int);
+static int nextboot_enabled(const char *);
 static char *build_nextboot(const char *, const char *, size_t *);
 static void write_nextboot_file(const char *, const char *, size_t, int);
 static void write_nextboot(const char *, const char *, int, int);
@@ -207,6 +208,56 @@ read_nextboot(const char *fn, char *buf, size_t bufsz, size_t *lenp,
 	return (1);
 }
 
+static int
+nv_enable_line(const char *text, size_t len)
+{
+	const char *end, *eq, *nl, *p, *value;
+	size_t nlen;
+
+	p = text;
+	while (len > 0 && (*p == ' ' || *p == '\t')) {
+		++p;
+		--len;
+	}
+	if (len == 0 || *p == '#')
+		return (0);
+	end = p + len;
+	eq = memchr(p, '=', len);
+	if (eq == NULL)
+		return (0);
+	nlen = eq - p;
+	while (nlen > 0 && (p[nlen - 1] == ' ' || p[nlen - 1] == '\t'))
+		--nlen;
+	if (nlen != 15 || strncmp(p, "nextboot_enable", 15) != 0)
+		return (0);
+	value = eq + 1;
+	while (value < end && (*value == ' ' || *value == '\t'))
+		++value;
+	nl = memchr(value, '\n', end - value);
+	if (nl != NULL)
+		end = nl;
+	while (end > value && (end[-1] == '\n' || end[-1] == '\r' ||
+	    end[-1] == ' ' || end[-1] == '\t'))
+		--end;
+	nlen = end - value;
+	if (*value == '"' && nlen >= 2 && end[-1] == '"') {
+		++value;
+		nlen -= 2;
+	}
+	return (nlen == 3 &&
+	    (strncmp(value, "YES", 3) == 0 || strncmp(value, "yes", 3) == 0));
+}
+
+static int
+nextboot_enabled(const char *text)
+{
+	const char *nl;
+
+	nl = strchr(text, '\n');
+	return (nv_enable_line(text, nl != NULL ? (size_t)(nl - text) :
+	    strlen(text)));
+}
+
 static char *
 build_nextboot(const char *old, const char *env, size_t *lenp)
 {
@@ -218,13 +269,14 @@ build_nextboot(const char *old, const char *env, size_t *lenp)
 		err(1, NULL);
 	len = strlen(buf);
 
+	if (old != NULL && !nextboot_enabled(old))
+		old = NULL;
 	for (p = old; p != NULL && *p != '\0'; p = nl + 1) {
 		nl = strchr(p, '\n');
 		if (nl == NULL)
 			nl = p + strlen(p);
 		linelen = nl - p;
-		if (linelen >= 15 &&
-		    strncmp(p, "nextboot_enable", 15) == 0) {
+		if (nv_enable_line(p, linelen)) {
 			if (*nl == '\0')
 				break;
 			continue;
