@@ -313,6 +313,11 @@ struct arch_switch
     /* Perform ISA byte port I/O (only for systems with ISA) */
     int		(*arch_isainb)(int port);
     void	(*arch_isaoutb)(int port, int value);
+    /* buf holds bufsz + 1 bytes and is NUL-terminated on success. */
+    int		(*arch_nextboot_read)(const char *base, char *buf,
+			       size_t bufsz, size_t *lenp, int *truncp,
+			       const char **srcp);
+    int		(*arch_nextboot_consume)(size_t len_first);
 };
 extern struct arch_switch archsw;
 

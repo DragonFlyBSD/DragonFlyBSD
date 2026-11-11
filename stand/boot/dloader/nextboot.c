@@ -116,25 +116,104 @@ nextboot_name_ok(const char *name)
 	return (1);
 }
 
+static void
+nextboot_file_path(const char *base, char *path, size_t pathsz)
+{
+	snprintf(path, pathsz, "%snextboot.conf", base);
+}
+
 /*
- * Apply /boot/nextboot.conf for one boot.  The file is marked as used
- * before anything from it takes effect, so a kernel that hangs or
- * panics cannot make the entry stick.  If the file cannot be marked,
- * nothing is applied and the boot is a normal one.
+ * Read the entry from ${base}nextboot.conf.
  */
+static int
+nextboot_file_read(const char *base, char *buf, size_t bufsz, size_t *lenp,
+    int *truncp, const char **srcp)
+{
+	static char path[MAXPATHLEN];
+	size_t len;
+	int c, error, fd, n;
+
+	nextboot_file_path(base, path, sizeof(path));
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		error = errno;
+		if (error != ENOENT)
+			printf("nextboot: cannot open %s: %s\n", path,
+			    strerror(error));
+		return (error);
+	}
+
+	len = 0;
+	while (len < bufsz) {
+		n = read(fd, buf + len, bufsz - len);
+		if (n < 0) {
+			error = errno;
+			printf("nextboot: cannot read %s: %s\n", path,
+			    strerror(error));
+			close(fd);
+			return (error);
+		}
+		if (n == 0)
+			break;
+		len += n;
+	}
+	c = 0;
+	*truncp = 0;
+	if (len == bufsz && read(fd, &c, 1) == 1)
+		*truncp = 1;	/* the file continues past the buffer */
+	close(fd);
+	buf[len] = '\0';
+	*lenp = len;
+	*srcp = path;
+	return (0);
+}
+
+static int
+nextboot_file_consume(const char *base, size_t len_first)
+{
+	static char path[MAXPATHLEN];
+	static char first[NEXTBOOT_BUFSZ + 1];
+	int error, fd;
+
+	nextboot_file_path(base, path, sizeof(path));
+	if (len_first < sizeof(nextboot_marker) - 1) {
+		printf("nextboot: %s: first line must be "
+		    "nextboot_enable=\"YES\", ignoring\n", path);
+		return (EINVAL);
+	}
+	memcpy(first, nextboot_marker, sizeof(nextboot_marker) - 1);
+	memset(first + sizeof(nextboot_marker) - 1, ' ',
+	    len_first - (sizeof(nextboot_marker) - 1));
+
+	fd = open(path, O_RDWR);
+	if (fd < 0) {
+		printf("nextboot: cannot open %s for writing: %s, ignoring\n",
+		    path, strerror(errno));
+		return (errno);
+	}
+	if (write(fd, first, len_first) < 0) {
+		error = errno;
+		printf("nextboot: cannot consume %s: %s, ignoring\n", path,
+		    strerror(error));
+		close(fd);
+		return (error);
+	}
+	close(fd);
+	return (0);
+}
+
 void
 nextboot_check(void)
 {
 	static char assign[NEXTBOOT_BUFSZ + 1];
 	static char base[MAXPATHLEN];
 	static char buf[NEXTBOOT_BUFSZ + 1];
-	static char first[NEXTBOOT_BUFSZ + 1];
-	static char path[MAXPATHLEN];
+	static char kpath[MAXPATHLEN];
 	char *kernel, *name, *nl, *p, *value;
+	const char *src;
 	size_t len, len_first;
-	int c, fd, n, truncated;
+	int error, truncated;
 
-	/* Only one shot: never apply the same file twice in one session. */
 	if (getenv("nextboot_enable") != NULL &&
 	    strcmp(getenv("nextboot_enable"), "NO") == 0)
 		return;
@@ -143,35 +222,17 @@ nextboot_check(void)
 	if (p == NULL)
 		p = "/";
 	snprintf(base, sizeof(base), "%s", p);
-	snprintf(path, sizeof(path), "%snextboot.conf", base);
 
-	fd = open(path, O_RDONLY);
-	if (fd < 0) {
-		if (errno != ENOENT)
-			printf("nextboot: cannot open %s: %s\n", path,
-			    strerror(errno));
-		return;
-	}
-
-	len = 0;
-	while (len < NEXTBOOT_BUFSZ) {
-		n = read(fd, buf + len, NEXTBOOT_BUFSZ - len);
-		if (n < 0) {
-			printf("nextboot: cannot read %s: %s\n", path,
-			    strerror(errno));
-			close(fd);
-			return;
-		}
-		if (n == 0)
-			break;
-		len += n;
-	}
-	c = 0;
+	src = NULL;
 	truncated = 0;
-	if (len == NEXTBOOT_BUFSZ && read(fd, &c, 1) == 1)
-		truncated = 1;	/* the file continues past the buffer */
-	close(fd);
-	buf[len] = '\0';
+	if (archsw.arch_nextboot_read != NULL)
+		error = archsw.arch_nextboot_read(base, buf, NEXTBOOT_BUFSZ,
+		    &len, &truncated, &src);
+	else
+		error = nextboot_file_read(base, buf, NEXTBOOT_BUFSZ, &len,
+		    &truncated, &src);
+	if (error != 0)
+		return;
 
 	/*
 	 * Only the first line decides whether nextboot is enabled.  It is
@@ -201,7 +262,7 @@ nextboot_check(void)
 	 */
 	if (truncated) {
 		printf("nextboot: %s: longer than %d bytes, "
-		    "ignoring the rest\n", path, NEXTBOOT_BUFSZ);
+		    "ignoring the rest\n", src, NEXTBOOT_BUFSZ);
 		nl = strrchr(p, '\n');
 		if (nl != NULL)
 			*nl = '\0';
@@ -210,32 +271,15 @@ nextboot_check(void)
 	}
 
 	/*
-	 * Consume the entry first: overwrite the first line, and only
-	 * the first line.  If that fails, boot normally: applying it
-	 * would repeat the same boot on every reset.
+	 * Consume the entry first.  If that fails, boot normally: applying
+	 * it would repeat the same boot on every reset.
 	 */
-	if (len_first < sizeof(nextboot_marker) - 1) {
-		printf("nextboot: %s: first line must be "
-		    "nextboot_enable=\"YES\", ignoring\n", path);
+	if (archsw.arch_nextboot_consume != NULL)
+		error = archsw.arch_nextboot_consume(len_first);
+	else
+		error = nextboot_file_consume(base, len_first);
+	if (error != 0)
 		return;
-	}
-	memcpy(first, nextboot_marker, sizeof(nextboot_marker) - 1);
-	memset(first + sizeof(nextboot_marker) - 1, ' ',
-	    len_first - (sizeof(nextboot_marker) - 1));
-
-	fd = open(path, O_RDWR);
-	if (fd < 0) {
-		printf("nextboot: cannot open %s for writing: %s, ignoring\n",
-		    path, strerror(errno));
-		return;
-	}
-	if (write(fd, first, len_first) < 0) {
-		printf("nextboot: cannot consume %s: %s, ignoring\n", path,
-		    strerror(errno));
-		close(fd);
-		return;
-	}
-	close(fd);
 	setenv("nextboot_enable", "NO", 1);
 
 	if (!nextboot_autoboot) {
@@ -244,7 +288,7 @@ nextboot_check(void)
 	}
 
 	/*
-	 * Apply the var="value" lines.  Nothing else from the file is
+	 * Apply the var="value" lines.  Nothing else from the entry is
 	 * executed.
 	 */
 	kernel = NULL;
@@ -274,14 +318,14 @@ nextboot_check(void)
 	}
 
 	if (kernel != NULL && *kernel != '\0') {
-		snprintf(path, sizeof(path), "%s%s", base, kernel);
-		if (chdir(path) != CMD_OK) {
-			printf("nextboot: cannot change to %s: %s\n", path,
+		snprintf(kpath, sizeof(kpath), "%s%s", base, kernel);
+		if (chdir(kpath) != CMD_OK) {
+			printf("nextboot: cannot change to %s: %s\n", kpath,
 			    command_errmsg);
-			snprintf(path, sizeof(path), "%s", DirBase);
+			snprintf(kpath, sizeof(kpath), "%s", DirBase);
 		}
 	} else {
-		snprintf(path, sizeof(path), "%s", DirBase);
+		snprintf(kpath, sizeof(kpath), "%s", DirBase);
 	}
-	printf("nextboot: one-shot boot of %s (entry consumed)\n", path);
+	printf("nextboot: one-shot boot of %s (entry consumed)\n", kpath);
 }
