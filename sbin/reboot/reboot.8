@@ -79,9 +79,14 @@ The
 .Fl k
 and
 .Fl o
-options write
-.Pa /boot/nextboot.conf ,
-which the loader applies to the next boot only.
+options store a configuration that the loader applies to the next boot
+only.
+It is kept in
+.Pa /boot/nextboot.conf
+on a BIOS boot and in an EFI variable when the machine was booted by
+.Pa loader.efi ;
+see
+.Xr nextboot 8 .
 This makes it possible to try an alternate kernel and fall back to the
 previous one if it does not boot.
 See
@@ -93,6 +98,8 @@ The options are as follows:
 Delete an existing
 .Nm nextboot
 configuration and exit.
+On a UEFI boot this removes the EFI variable as well (root needed); it
+exits nonzero when something could not be removed.
 .It Fl d
 The system is requested to create a crash dump.
 This option is
@@ -118,8 +125,8 @@ Forced mode.
 Normally the alternate kernel is checked for before the configuration
 is written,
 .Pa /boot
-must be a UFS file system, and a failure writing the configuration
-aborts the operation.
+must be a UFS file system on a BIOS boot, and a failure writing the
+configuration aborts the operation.
 With this flag, failed checks and write failures only produce
 warnings.
 .It Fl k Ar kernel

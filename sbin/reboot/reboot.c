@@ -51,12 +51,9 @@
 #include <unistd.h>
 #include <utmpx.h>
 
-#define PATH_NEXTBOOT "/boot/nextboot.conf"
+#include "nextboot_efi.h"
 
-/*
- * The loader reads at most this many bytes of nextboot.conf.
- */
-#define NEXTBOOT_MAX_SIZE	1024
+#define PATH_NEXTBOOT "/boot/nextboot.conf"
 
 #define GETOPT_REBOOT	"Dde:fk:lno:pq"
 #define GETOPT_NEXTBOOT	"aDe:fk:o:"
@@ -65,6 +62,7 @@ static void usage(void) __dead2;
 static u_int get_pageins(void);
 static int read_nextboot(const char *, char *, size_t, size_t *, int);
 static int nextboot_enabled(const char *);
+static int armed_file_status(void);
 static char *build_nextboot(const char *, const char *, size_t *);
 static void write_nextboot_file(const char *, const char *, size_t, int);
 static void write_nextboot(const char *, const char *, int, int);
@@ -303,6 +301,30 @@ build_nextboot(const char *old, const char *env, size_t *lenp)
 	return (buf);
 }
 
+static int
+armed_file_status(void)
+{
+	static char buf[NEXTBOOT_MAX_SIZE + 1];
+	int fd, n;
+
+	fd = open(PATH_NEXTBOOT, O_RDONLY);
+	if (fd < 0) {
+		n = errno;
+		if (n != ENOENT)
+			warn("open " PATH_NEXTBOOT);
+		return (n == ENOENT ? 0 : -1);
+	}
+	/* The loader reads this many bytes and asks for the first line. */
+	n = read(fd, buf, NEXTBOOT_MAX_SIZE);
+	close(fd);
+	if (n < 0) {
+		warn("read " PATH_NEXTBOOT);
+		return (-1);
+	}
+	buf[n] = '\0';
+	return (nextboot_enabled(buf) ? 1 : 0);
+}
+
 static void
 write_nextboot_file(const char *fn, const char *text, size_t len, int force)
 {
@@ -361,6 +383,56 @@ write_nextboot(const char *fn, const char *env, int append, int force)
 	int rv;
 
 	oldlen = 0;
+	if (booted_uefi()) {
+		if (geteuid() != 0) {
+			if (!force)
+				errx(1, "must be root to write EFI variables");
+			warnx("must be root to write EFI variables");
+			return;
+		}
+		if (!nextboot_backend_known())
+			warnx("the loader that started this system does not "
+			    "read NextBootConf (kenv nextboot_backend is not "
+			    "efivar); the entry will be applied only once "
+			    "loader.efi is updated");
+		if (append) {
+			rv = nextboot_efi_read(old, NEXTBOOT_MAX_SIZE,
+			    &oldlen, force);
+			if (rv == -1)
+				return;
+			if (rv != 0)
+				oldlen = 0;
+		}
+		text = build_nextboot(oldlen != 0 ? old : NULL, env, &len);
+		if (len > NEXTBOOT_MAX_SIZE)
+			errx(1, "the entry is larger than %d bytes",
+			    NEXTBOOT_MAX_SIZE);
+		if (nextboot_efi_write(text, len, force) == 0) {
+			switch (armed_file_status()) {
+			case 1:
+				if (unlink(PATH_NEXTBOOT) != 0) {
+					warn("unlink " PATH_NEXTBOOT);
+					warnx("an armed " PATH_NEXTBOOT
+					    " remains and would be applied "
+					    "by a BIOS boot");
+				} else {
+					warnx("removed an armed "
+					    PATH_NEXTBOOT ", which would "
+					    "have been applied by a BIOS "
+					    "boot");
+				}
+				break;
+			case -1:
+				warnx("if " PATH_NEXTBOOT " is armed, a "
+				    "BIOS boot of this disk would apply "
+				    "it");
+				break;
+			}
+		}
+		free(text);
+		return;
+	}
+
 	if (append) {
 		rv = read_nextboot(fn, old, sizeof(old) - 1, &oldlen, force);
 		if (rv == -1)
@@ -448,17 +520,22 @@ main(int argc, char *argv[])
 		errx(1, "cannot dump (-d) when halting; must reboot instead");
 
 	if (Dflag) {
-		struct stat sb;
+		int error = 0;
 
-		if (stat(PATH_NEXTBOOT, &sb) != 0 && errno == ENOENT)
-			exit(0);
-		if (unlink(PATH_NEXTBOOT) != 0) {
-			if (errno == ENOENT)
-				exit(0);
-			warn("unlink " PATH_NEXTBOOT);
-			exit(1);
+		if (booted_uefi()) {
+			if (geteuid() != 0) {
+				warnx("must be root to remove the EFI "
+				    "variable; the entry stays in place");
+				error = 1;
+			} else if (nextboot_efi_clear() != 0) {
+				error = 1;
+			}
 		}
-		exit(0);
+		if (unlink(PATH_NEXTBOOT) != 0 && errno != ENOENT) {
+			warn("unlink " PATH_NEXTBOOT);
+			error = 1;
+		}
+		exit(error);
 	}
 
 	if (!donextboot && geteuid()) {

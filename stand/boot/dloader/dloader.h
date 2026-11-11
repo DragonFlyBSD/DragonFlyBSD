@@ -59,3 +59,4 @@ void dloader_set_var(char *assign);
 
 extern int nextboot_autoboot;
 void nextboot_check(void);
+int nextboot_file_armed(const char *base, char *path, size_t pathsz);

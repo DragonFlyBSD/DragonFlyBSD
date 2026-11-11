@@ -17,6 +17,7 @@ SRCS=	autoload.c \
 	efi_main.c \
 	i386_module.c \
 	main.c \
+	nextboot_efi.c \
 	self_reloc.c \
 	smbios.c \
 	vers.c

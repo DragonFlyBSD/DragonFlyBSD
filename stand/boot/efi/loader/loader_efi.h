@@ -49,4 +49,8 @@ void * efi_translate(vm_offset_t ptr);
 
 void	efi_copy_finish(void);
 
+int	efi_nextboot_read(const char *base, char *buf, size_t bufsz,
+	    size_t *lenp, int *truncp, const char **srcp);
+int	efi_nextboot_consume(size_t len_first);
+
 #endif	/* _LOADER_EFI_COPY_H_ */

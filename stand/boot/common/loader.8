@@ -91,6 +91,21 @@ Boots that do not go through
 for example
 .Ic boot
 typed at the prompt, do not read the file.
+.Pp
+When the machine was booted by
+.Pa loader.efi ,
+the entry is kept in the EFI variable
+.Va NextBootConf
+under the DragonFly vendor GUID
+.Li c185c676-2cc3-4582-bcb8-63e1c419e766
+instead, and the file system that
+.Pa /boot
+is on does not matter.
+The loader deletes the variable and checks that the firmware no longer
+reports it before it applies anything; if it cannot, nothing is applied
+and the boot is a normal one.
+.Pa nextboot.conf
+is not applied in that case, and the loader says so when it is armed.
 See
 .Xr nextboot 8 .
 .Pp

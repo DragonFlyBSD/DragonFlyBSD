@@ -2,6 +2,7 @@
 # $FreeBSD: src/sbin/reboot/Makefile,v 1.6.8.3 2002/02/20 15:26:14 ru Exp $
 
 PROG=	reboot
+SRCS=	reboot.c nextboot_efi.c
 DPADD=	${LIBUTIL}
 LDADD=	-lutil
 MAN=	reboot.8 nextboot.8

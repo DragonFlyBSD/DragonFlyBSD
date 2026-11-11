@@ -202,6 +202,30 @@ nextboot_file_consume(const char *base, size_t len_first)
 	return (0);
 }
 
+int
+nextboot_file_armed(const char *base, char *path, size_t pathsz)
+{
+	static char buf[NEXTBOOT_BUFSZ + 1];
+	char *name, *nl, *value;
+	int fd, n;
+
+	nextboot_file_path(base, path, pathsz);
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return (0);
+	n = read(fd, buf, NEXTBOOT_BUFSZ);
+	close(fd);
+	if (n <= 0)
+		return (0);
+	buf[n] = '\0';
+	nl = strchr(buf, '\n');
+	if (nl != NULL)
+		*nl = '\0';
+	return (nextboot_parse_line(buf, &name, &value) == 0 &&
+	    strcmp(name, "nextboot_enable") == 0 &&
+	    (strcmp(value, "YES") == 0 || strcmp(value, "yes") == 0));
+}
+
 void
 nextboot_check(void)
 {

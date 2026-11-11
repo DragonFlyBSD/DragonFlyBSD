@@ -43,15 +43,51 @@ utility allows specifying some combination of an alternate kernel, boot
 flags, and kernel environment for the next time the machine is booted.
 The
 .Xr loader 8
-reads the settings from
-.Pa /boot/nextboot.conf
-and marks the file as used before the kernel is loaded, so if the new
-kernel hangs the machine, the next boot reverts to the previous
-configuration.
+reads the settings and marks the entry as used before the kernel is
+loaded, so if the new kernel hangs the machine, the next boot reverts to
+the previous configuration.
 .Pp
 A manual selection from the loader menu wins over
 .Nm :
 the entry is still marked as used, but it is not applied.
+.Pp
+The settings are kept in
+.Pa /boot/nextboot.conf
+when the machine was booted by the BIOS loader, and in the EFI variable
+.Va NextBootConf
+with NV|BS|RT attributes and vendor GUID
+.Li c185c676-2cc3-4582-bcb8-63e1c419e766
+when it was booted by
+.Pa loader.efi .
+On UEFI the file system that
+.Pa /boot
+is on does not matter and
+.Pa /boot/nextboot.conf
+is not applied; an armed one, also one larger than 1024 bytes, is
+removed when a new entry is stored, so that a later BIOS boot of the
+same disk cannot apply it.
+The variable needs
+.Xr efidev 4 ,
+and this utility loads
+.Pa efirt.ko
+when it is missing.
+If that is not possible, for example because the securelevel does not
+allow loading modules, nothing is stored and it says why; an entry that
+is already armed and valid stays armed.
+An entry that the firmware accepts but does not return unchanged is
+removed again, so that a fresh machine cannot boot into something the
+utility did not intend.
+Writing the variable needs root.
+A
+.Pa loader.efi
+without the EFI backend ignores the variable; this utility warns when
+the running loader does not export the
+.Va nextboot_backend
+marker, and the entry fires at the first boot with an updated loader.
+The variable belongs to the machine, not to a disk: any
+.Pa loader.efi
+with this support that boots next applies it, including one from
+another medium.
 .Pp
 The options are as follows:
 .Bl -tag -width ".Fl o Ar options"
@@ -69,8 +105,13 @@ it is replaced instead of extended.
 .It Fl D
 Remove an existing
 .Nm
-configuration.
-It cannot be combined with any other option.
+configuration: on UEFI the EFI variable and then
+.Pa /boot/nextboot.conf ,
+on a BIOS boot the file only.
+An entry with foreign attributes is removed with the attributes it has.
+Removing the variable needs root.
+It cannot be combined with any other option and exits nonzero when
+something could not be removed.
 .It Fl e Ar variable=value
 Set
 .Va variable
@@ -87,9 +128,10 @@ The value is quoted when it is written to the
 configuration.
 .It Fl f
 Disable the sanity checks.
-Without this flag, a kernel directory that does not exist and a
+Without this flag, a kernel directory that does not exist, a
 .Pa /boot
-that is not a UFS file system are rejected.
+that is not a UFS file system on a BIOS boot, and a failed write are
+rejected.
 With this flag those checks and write failures only produce warnings
 and
 .Nm
@@ -110,9 +152,10 @@ on the next boot.
 .Sh FILES
 .Bl -tag -width ".Pa /boot/nextboot.conf" -compact
 .It Pa /boot/nextboot.conf
-The configuration file that the
-.Nm
-configuration is written into.
+The configuration file that is used on a BIOS boot.
+.It Va NextBootConf
+The EFI variable that is used when the machine was booted by
+.Pa loader.efi .
 .El
 .Sh EXAMPLES
 To boot the
@@ -157,22 +200,34 @@ The
 .Nm
 code is implemented in the
 .Xr loader 8 ,
-which can only mark the entry as used on a UFS
+which can mark an entry in
+.Pa /boot/nextboot.conf
+as used only on a UFS
 .Pa /boot
 and only on media the firmware can write.
 A
 .Pa /boot
-on another file system is refused by this tool; on media whose block
-size the firmware reports as something other than 512 bytes (some EFI
-disks), the
+on another file system is refused by this tool on a BIOS boot; on media
+whose block size the firmware reports as something other than 512 bytes
+(some EFI disks), the
 .Xr loader 8
 cannot mark the entry as used and ignores the file entirely, so the
 boot proceeds normally.
+None of this applies when the entry is kept in the EFI variable.
+.Pp
+The EFI variable cannot be seen or removed from a BIOS boot, so an
+entry stored before a switch to BIOS stays until the next UEFI boot,
+where it is applied.
+.Pp
+After storing the variable this tool reads it back and compares it, but
+that only shows what the firmware reports at run time, not that the
+value reached the flash.
 .Pp
 Only
 .Va variable Ns = Ns Va value
-lines are read from the file; the
+lines are read from the configuration; the
 .Va loader_conf_files
 variable is not supported.
 A configuration larger than 1024 bytes is rejected, because the loader
-applies only that much.
+applies only that much, and so is one that the firmware refuses as too
+large for its variable store.
