@@ -71,6 +71,8 @@ sc_term_ins_line(scr_stat *scp, int y, int n, int ch, int attr, int tail)
 	if (n > tail - y)
 		n = tail - y;
 	sc_vtb_ins(&scp->vtb, y*scp->xsize, n*scp->xsize, ch, attr);
+	if (scp->uside != NULL)
+		sc_utf8_ins(scp, y * scp->xsize, n * scp->xsize);
 	mark_for_update(scp, y*scp->xsize);
 	mark_for_update(scp, scp->xsize*tail - 1);
 }
@@ -85,6 +87,8 @@ sc_term_del_line(scr_stat *scp, int y, int n, int ch, int attr, int tail)
 	if (n > tail - y)
 		n = tail - y;
 	sc_vtb_delete(&scp->vtb, y*scp->xsize, n*scp->xsize, ch, attr);
+	if (scp->uside != NULL)
+		sc_utf8_delete(scp, y * scp->xsize, n * scp->xsize);
 	mark_for_update(scp, y*scp->xsize);
 	mark_for_update(scp, scp->xsize*tail - 1);
 }
@@ -101,6 +105,10 @@ sc_term_ins_char(scr_stat *scp, int n, int ch, int attr)
 	count = scp->xsize - (scp->xpos + n);
 	sc_vtb_move(&scp->vtb, scp->cursor_pos, scp->cursor_pos + n, count);
 	sc_vtb_erase(&scp->vtb, scp->cursor_pos, n, ch, attr);
+	if (scp->uside != NULL) {
+		sc_utf8_move(scp, scp->cursor_pos, scp->cursor_pos + n, count);
+		sc_utf8_clear(scp, scp->cursor_pos, n);
+	}
 	mark_for_update(scp, scp->cursor_pos);
 	mark_for_update(scp, scp->cursor_pos + n + count - 1);
 }
@@ -117,6 +125,10 @@ sc_term_del_char(scr_stat *scp, int n, int ch, int attr)
 	count = scp->xsize - (scp->xpos + n);
 	sc_vtb_move(&scp->vtb, scp->cursor_pos + n, scp->cursor_pos, count);
 	sc_vtb_erase(&scp->vtb, scp->cursor_pos + count, n, ch, attr);
+	if (scp->uside != NULL) {
+		sc_utf8_move(scp, scp->cursor_pos + n, scp->cursor_pos, count);
+		sc_utf8_clear(scp, scp->cursor_pos + count, n);
+	}
 	mark_for_update(scp, scp->cursor_pos);
 	mark_for_update(scp, scp->cursor_pos + n + count - 1);
 }
@@ -212,55 +224,71 @@ sc_term_down_scroll(scr_stat *scp, int n, int ch, int attr, int head, int tail)
 static __inline void
 sc_term_clr_eos(scr_stat *scp, int n, int ch, int attr)
 {
+	int count;
+
 	switch (n) {
 	case 0: /* clear form cursor to end of display */
-		sc_vtb_erase(&scp->vtb, scp->cursor_pos,
-			     scp->xsize*scp->ysize - scp->cursor_pos,
-			     ch, attr);
+		count = scp->xsize * scp->ysize - scp->cursor_pos;
+		sc_vtb_erase(&scp->vtb, scp->cursor_pos, count, ch, attr);
+		sc_utf8_clear(scp, scp->cursor_pos, count);
 		mark_for_update(scp, scp->cursor_pos);
-		mark_for_update(scp, scp->xsize*scp->ysize - 1);
+		mark_for_update(scp, scp->xsize * scp->ysize - 1);
 		sc_remove_cutmarking(scp);
 		break;
 	case 1: /* clear from beginning of display to cursor */
-		sc_vtb_erase(&scp->vtb, 0, scp->cursor_pos + 1, ch, attr);
+		count = scp->cursor_pos + 1;
+		sc_vtb_erase(&scp->vtb, 0, count, ch, attr);
+		sc_utf8_clear(scp, 0, count);
 		mark_for_update(scp, 0);
 		mark_for_update(scp, scp->cursor_pos);
 		sc_remove_cutmarking(scp);
 		break;
 	case 2: /* clear entire display */
-		sc_vtb_erase(&scp->vtb, 0, scp->xsize*scp->ysize, ch, attr);
+		count = scp->xsize * scp->ysize;
+		sc_vtb_erase(&scp->vtb, 0, count, ch, attr);
+		sc_utf8_clear(scp, 0, count);
 		mark_for_update(scp, 0);
-		mark_for_update(scp, scp->xsize*scp->ysize - 1);
+		mark_for_update(scp, scp->xsize * scp->ysize - 1);
 		sc_remove_cutmarking(scp);
 		break;
 	}
 }
 
+
 static __inline void
 sc_term_clr_eol(scr_stat *scp, int n, int ch, int attr)
 {
+	int count;
+	int at;
+
 	switch (n) {
 	case 0: /* clear form cursor to end of line */
-		sc_vtb_erase(&scp->vtb, scp->cursor_pos,
-			     scp->xsize - scp->xpos, ch, attr);
+		count = scp->xsize - scp->xpos;
+		sc_vtb_erase(&scp->vtb, scp->cursor_pos, count, ch, attr);
+		sc_utf8_clear(scp, scp->cursor_pos, count);
 		mark_for_update(scp, scp->cursor_pos);
 		mark_for_update(scp, scp->cursor_pos +
-				scp->xsize - 1 - scp->xpos);
+		    scp->xsize - 1 - scp->xpos);
 		break;
 	case 1: /* clear from beginning of line to cursor */
-		sc_vtb_erase(&scp->vtb, scp->cursor_pos - scp->xpos,
-			     scp->xpos + 1, ch, attr);
-		mark_for_update(scp, scp->ypos*scp->xsize);
+		at = scp->cursor_pos - scp->xpos;
+		count = scp->xpos + 1;
+		sc_vtb_erase(&scp->vtb, at, count, ch, attr);
+		sc_utf8_clear(scp, at, count);
+		mark_for_update(scp, scp->ypos * scp->xsize);
 		mark_for_update(scp, scp->cursor_pos);
 		break;
 	case 2: /* clear entire line */
-		sc_vtb_erase(&scp->vtb, scp->cursor_pos - scp->xpos,
-			     scp->xsize, ch, attr);
-		mark_for_update(scp, scp->ypos*scp->xsize);
-		mark_for_update(scp, (scp->ypos + 1)*scp->xsize - 1);
+		at = scp->cursor_pos - scp->xpos;
+		count = scp->xsize;
+		sc_vtb_erase(&scp->vtb, at, count, ch, attr);
+		sc_utf8_clear(scp, at, count);
+		mark_for_update(scp, scp->ypos * scp->xsize);
+		mark_for_update(scp, (scp->ypos + 1) * scp->xsize - 1);
 		break;
 	}
 }
+
 
 static __inline void
 sc_term_tab(scr_stat *scp, int n)
@@ -334,14 +362,26 @@ sc_term_gen_print(scr_stat *scp, u_char **buf, int *len, int attr)
 
 		l -= cnt - i;
 		mark_for_update(scp, scp->cursor_pos);
-		scp->cursor_pos += cnt - i;
-		mark_for_update(scp, scp->cursor_pos - 1);
-		scp->xpos += cnt - i;
+		{
+			int written = cnt - i;
+			int at = scp->cursor_pos;
 
-		if (scp->xpos >= scp->xsize) {
-			scp->xpos = 0;
-			scp->ypos++;
-			/* we may have to scroll the screen */
+			/*
+			 * gen_print owns vtb; drop any stale uside glyphs in the
+			 * written span so KMS cannot paint leftover history cells.
+			 */
+			if (scp->uside != NULL && written > 0)
+				sc_utf8_clear(scp, at, written);
+
+			scp->xpos += written;
+			if (scp->xpos >= scp->xsize) {
+				scp->xpos = 0;
+				scp->ypos++;
+				/* we may have to scroll the screen */
+			}
+			scp->cursor_pos = scp->ypos * scp->xsize + scp->xpos;
+			if (written > 0)
+				mark_for_update(scp, at + written - 1);
 		}
 	} else {
 		switch(*ptr) {
@@ -350,22 +390,18 @@ sc_term_gen_print(scr_stat *scp, u_char **buf, int *len, int attr)
 			break;
 
 		case 0x08:	/* non-destructive backspace */
-			/* XXX */
-			if (scp->cursor_pos > 0) {
-#if 0
-				mark_for_update(scp, scp->cursor_pos);
-				scp->cursor_pos--;
-				mark_for_update(scp, scp->cursor_pos);
-#else
-				scp->cursor_pos--;
-#endif
-				if (scp->xpos > 0) {
-					scp->xpos--;
-				} else {
-					scp->xpos += scp->xsize - 1;
-					scp->ypos--;
-				}
+			/*
+			 * xpos/ypos are authoritative. Relative cursor_pos-- can leave
+			 * the write head stuck when cursor_pos and xpos desync; libedit
+			 * history refresh relies on \b / CR to reseek within the line.
+			 */
+			if (scp->xpos > 0) {
+				scp->xpos--;
+			} else if (scp->ypos > 0) {
+				scp->ypos--;
+				scp->xpos = scp->xsize - 1;
 			}
+			scp->cursor_pos = scp->ypos * scp->xsize + scp->xpos;
 			break;
 
 		case 0x09:	/* non-destructive tab */
@@ -384,15 +420,9 @@ sc_term_gen_print(scr_stat *scp, u_char **buf, int *len, int attr)
 			break;
 
 		case 0x0a:	/* newline, same pos */
-#if 0
-			mark_for_update(scp, scp->cursor_pos);
-			scp->cursor_pos += scp->xsize;
-			mark_for_update(scp, scp->cursor_pos);
-#else
-			scp->cursor_pos += scp->xsize;
-			/* we may have to scroll the screen */
-#endif
 			scp->ypos++;
+			scp->cursor_pos = scp->ypos * scp->xsize + scp->xpos;
+			/* we may have to scroll the screen */
 			break;
 
 		case 0x0c:	/* form feed, clears screen */
@@ -400,14 +430,13 @@ sc_term_gen_print(scr_stat *scp, u_char **buf, int *len, int attr)
 			break;
 
 		case 0x0d:	/* return, return to pos 0 */
-#if 0
-			mark_for_update(scp, scp->cursor_pos);
-			scp->cursor_pos -= scp->xpos;
-			mark_for_update(scp, scp->cursor_pos);
-#else
-			scp->cursor_pos -= scp->xpos;
-#endif
+			/*
+			 * Absolute CR.  Never cursor_pos -= xpos: if the two fields
+			 * desync, relative CR leaves the write head at the end of the
+			 * line and shell history appears to append instead of replace.
+			 */
 			scp->xpos = 0;
+			scp->cursor_pos = scp->ypos * scp->xsize;
 			break;
 		}
 		ptr++; l--;
@@ -437,6 +466,8 @@ sc_term_gen_scroll(scr_stat *scp, int ch, int attr)
 			sc_hist_save_one_line(scp, 0);	/* XXX */
 #endif
 		sc_vtb_delete(&scp->vtb, 0, scp->xsize, ch, attr);
+		if (scp->uside != NULL)
+			sc_utf8_delete(scp, 0, scp->xsize);
 		scp->cursor_pos = pos - scp->xsize;
 		ypos = scp->ypos - 1;
 		if (ypos <= 0)
