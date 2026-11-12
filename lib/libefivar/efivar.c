@@ -70,6 +70,7 @@ static struct uuid_table guid_tbl [] =
 	{ "a7d8d9a6-6ab0-4aeb-ad9d-163e59a7a380", "lenovo_diag_splash", Z },
 	{ "ade9e48f-9cb8-98e6-31af-b4e6009e2fe3", "redhat_2", Z },
 	{ "bc7838d2-0f82-4d60-8316-c068ee79d25b", "lenovo_msg", Z },
+	{ "c185c676-2cc3-4582-bcb8-63e1c419e766", "dragonfly", Z },
 	{ "c1c41626-504c-4092-aca9-41f936934328", "sha256", Z },
 	{ "c57ad6b7-0515-40a8-9d21-551652854e37", "shell", Z },
 	{ "d719b2cb-3d3a-4596-a3bc-dad00e67656f", "security", Z },
