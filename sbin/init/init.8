@@ -31,7 +31,7 @@
 .\"     @(#)init.8	8.3 (Berkeley) 4/18/94
 .\" $FreeBSD: src/sbin/init/init.8,v 1.22.2.11 2003/05/03 22:19:20 keramida Exp $
 .\"
-.Dd September 11, 2019
+.Dd November 13, 2026
 .Dt INIT 8
 .Os
 .Sh NAME
@@ -218,6 +218,9 @@ On receipt of this signal,
 re-reads the
 .Xr ttys 5
 file.
+The signal is ignored in single-user mode, while
+.Pa /etc/rc
+runs and during shutdown.
 When a line is turned off in
 .Xr ttys 5 ,
 .Nm
@@ -272,6 +275,10 @@ This hook is used by
 .Xr reboot 8
 and
 .Xr halt 8 .
+In single-user mode, this signal leaves the shell running; if the shell
+is killed afterwards,
+.Nm
+starts no new one and ignores all signals until the system reboots.
 .Pp
 The
 .Nm

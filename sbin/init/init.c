@@ -757,12 +757,18 @@ f_single_user(void)
 			kill(pid, SIGCONT);
 			wpid = -1;
 		}
-	} while (wpid != pid && !requested_transition);
+	} while (wpid != pid && requested_transition != death);
 
-	if (requested_transition)
-		return requested_transition;
+	if (requested_transition == death)
+		return death;
 
 	if (!WIFEXITED(status)) {
+		if (requested_transition == catatonia) {
+			/* shell killed after SIGTSTP; wait for the end */
+			sigfillset(&mask);
+			for (;;)
+				sigsuspend(&mask);
+		}
 		if (WTERMSIG(status) == SIGKILL) {
 			/*
 			 *  reboot(8) killed shell?
@@ -1338,7 +1344,9 @@ transition_handler(int sig)
 
 	switch (sig) {
 	case SIGHUP:
-		requested_transition = clean_ttys;
+		if (current_state == read_ttys || current_state == multi_user ||
+		    current_state == clean_ttys || current_state == catatonia)
+			requested_transition = clean_ttys;
 		break;
 	case SIGUSR2:
 		howto = RB_POWEROFF;
