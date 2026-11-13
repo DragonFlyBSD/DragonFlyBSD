@@ -305,6 +305,9 @@ nullfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 
 	bzero(&mstat, sizeof(mstat));
 
+	if (MOUNTTONULLMOUNT(mp) == NULL)
+		return ENOENT;
+
 	error = VFS_STATFS(MOUNTTONULLMOUNT(mp)->nullm_vfs, &mstat, cred);
 	if (error)
 		return (error);
