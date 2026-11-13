@@ -85,6 +85,67 @@ static void	in_rtqtimo(void *);
 
 static struct in_rtq_pcpu in_rtq_pcpu[MAXCPU];
 
+static struct in_ifaddr *
+in_matchlocal(struct in_addr addr)
+{
+	struct in_ifaddr_container *iac;
+	struct in_ifaddr *ia;
+
+	LIST_FOREACH(iac, INADDR_HASH(addr.s_addr), ia_hash) {
+		ia = iac->ia;
+		if (ia->ia_addr.sin_addr.s_addr == addr.s_addr)
+			return (ia);
+	}
+	return (NULL);
+}
+
+/*
+ * Point a host route at the interface address owning its destination.
+ *
+ * RTF_LOCAL is derived from the destination, so both the flag and the owner
+ * are recomputed from scratch.  The explicit loopback route for a local
+ * address owned by another interface is preserved: it intentionally uses
+ * lo0 as its IFA/IFP.
+ */
+static void
+in_rtlocalize(struct rtentry *rt)
+{
+	struct sockaddr_in *sin = (struct sockaddr_in *)rt_key(rt);
+	struct in_ifaddr *ia;
+
+	KKASSERT(sin->sin_family == AF_INET);
+
+	if (!(rt->rt_flags & RTF_HOST))
+		return;
+
+	rt->rt_flags &= ~RTF_LOCAL;
+
+	if (rt->rt_ifa != NULL &&
+	    satosin(rt->rt_ifa->ifa_addr)->sin_addr.s_addr ==
+	    sin->sin_addr.s_addr)
+	{
+		ia = ifatoia(rt->rt_ifa);
+	} else {
+		ia = in_matchlocal(sin->sin_addr);
+	}
+	if (ia == NULL)
+		return;
+
+	rt->rt_flags |= RTF_LOCAL;
+
+	/* Skip explicit loopback routes added by ifa_add_loopback_route(). */
+	if (rt->rt_ifp == loif && ia->ia_ifp != loif)
+		return;
+
+	if (rt->rt_ifa != &ia->ia_ifa) {
+		if (rt->rt_ifa != NULL)
+			IFAFREE(rt->rt_ifa);
+		IFAREF(&ia->ia_ifa);
+		rt->rt_ifa = &ia->ia_ifa;
+	}
+	rt->rt_ifp = rt->rt_ifa->ifa_ifp;
+}
+
 /*
  * Do what we need to do when inserting a route.
  */
@@ -95,8 +156,6 @@ in_addroute(const void *key, const void *mask, struct radix_node_head *head,
 	struct rtentry *rt = (struct rtentry *)nodes;
 	struct sockaddr_in *sin = (struct sockaddr_in *)rt_key(rt);
 	struct radix_node *ret;
-	struct in_ifaddr_container *iac;
-	struct in_ifaddr *ia;
 
 	/*
 	 * For IP, mark routes to multicast addresses as such, because
@@ -114,43 +173,25 @@ in_addroute(const void *key, const void *mask, struct radix_node_head *head,
 	/*
 	 * Try to set RTF_BROADCAST or RTF_LOCAL for a host route.
 	 *
-	 * Skip this process if a host route already has RTF_LOCAL set,
-	 * for example by ifa_maintain_loopback_route().
-	 *
 	 * For host routes, we make sure that RTF_BROADCAST is set for
 	 * anything that looks like a broadcast address.  This way, we can
 	 * avoid an expensive call to in_broadcast() in ip_output() most of
 	 * the time (because the route passed to ip_output() is almost always
 	 * a host route).
 	 *
-	 * For local routes, we set RTF_LOCAL to allow various shortcuts.
+	 * For local routes, in_rtlocalize() sets RTF_LOCAL and repoints the
+	 * route to the destination's address owner.
 	 *
 	 * A cloned network route will point to one of several possible
 	 * addresses if an interface has aliases and must be repointed back to
 	 * the correct address or arp_rtrequest() will not properly detect the
 	 * local IP.
 	 */
-	if ((rt->rt_flags & (RTF_HOST | RTF_LOCAL)) == RTF_HOST) {
-		if (in_broadcast(sin->sin_addr, rt->rt_ifp)) {
+	if (rt->rt_flags & RTF_HOST) {
+		if (in_broadcast(sin->sin_addr, rt->rt_ifp))
 			rt->rt_flags |= RTF_BROADCAST;
-		} else if (satosin(rt->rt_ifa->ifa_addr)->sin_addr.s_addr ==
-			   sin->sin_addr.s_addr) {
-			rt->rt_flags |= RTF_LOCAL;
-		} else {
-			LIST_FOREACH(iac, INADDR_HASH(sin->sin_addr.s_addr),
-				     ia_hash) {
-				ia = iac->ia;
-				if (sin->sin_addr.s_addr ==
-				    ia->ia_addr.sin_addr.s_addr) {
-					rt->rt_flags |= RTF_LOCAL;
-					IFAREF(&ia->ia_ifa);
-					IFAFREE(rt->rt_ifa);
-					rt->rt_ifa = &ia->ia_ifa;
-					rt->rt_ifp = rt->rt_ifa->ifa_ifp;
-					break;
-				}
-			}
-		}
+		else
+			in_rtlocalize(rt);
 	}
 
 	if (rt->rt_rmx.rmx_mtu == 0 &&
@@ -192,6 +233,7 @@ in_addroute(const void *key, const void *mask, struct radix_node_head *head,
 	    (rt->rt_flags &
 	     (RTF_MULTICAST | RTF_BROADCAST | RTF_WASCLONED)) == 0)
 		ipflow_flush_oncpu();
+
 	return ret;
 }
 

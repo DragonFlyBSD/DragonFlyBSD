@@ -1413,12 +1413,7 @@ ifa_maintain_loopback_route(int cmd, struct ifaddr *ifa, struct sockaddr *ia)
 	}
 	info.rti_info[RTAX_DST] = ia;
 	info.rti_info[RTAX_GATEWAY] = (struct sockaddr *)&null_sdl;
-	/*
-	 * Manually set RTF_LOCAL so that the IFA and IFP wouldn't be
-	 * overrided to be the owner of the destination address (ia)
-	 * by in_addroute().
-	 */
-	info.rti_flags = ifa->ifa_flags | RTF_HOST | RTF_LOCAL;
+	info.rti_flags = ifa->ifa_flags | RTF_HOST;
 
 	error = rtrequest1_global(cmd, &info, NULL, NULL, RTREQ_PRIO_NORM);
 
