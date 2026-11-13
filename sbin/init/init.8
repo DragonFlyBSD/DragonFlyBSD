@@ -279,6 +279,22 @@ In single-user mode, this signal leaves the shell running; if the shell
 is killed afterwards,
 .Nm
 starts no new one and ignores all signals until the system reboots.
+Until
+.Nm
+has acted on it, a pending
+.Dv TERM ,
+.Dv INT ,
+.Dv USR1
+or
+.Dv USR2
+request is not replaced by a later signal, and a pending
+.Dv TSTP
+request only by one of these four.
+A
+.Dv TSTP
+request still pending when
+.Pa /etc/rc
+exits successfully is discarded.
 .Pp
 The
 .Nm
