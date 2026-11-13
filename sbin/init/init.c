@@ -1422,7 +1422,7 @@ f_clean_ttys(void)
 	int devlen;
 	char *old_getty, *old_window, *old_type;
 
-	if (! sessions)
+	if (session_db == NULL)
 		return multi_user;
 
 	/*
