@@ -1,6 +1,6 @@
 # The DragonFly Loader
 
-SRCS=	subs.c cmds.c
+SRCS=	subs.c cmds.c nextboot.c
 
 WORLD_CCOPTLEVEL=	1	# Force -O1, -O2 implodes
 

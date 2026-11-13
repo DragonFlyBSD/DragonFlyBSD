@@ -39,13 +39,25 @@
 .Nd stopping and restarting the system
 .Sh SYNOPSIS
 .Nm halt
-.Op Fl lnqp
+.Op Fl Dflnpq
+.Op Fl e Ar variable=value
+.Op Fl k Ar kernel
+.Op Fl o Ar options
 .Nm
-.Op Fl dlnqp
+.Op Fl Ddflnpq
+.Op Fl e Ar variable=value
+.Op Fl k Ar kernel
+.Op Fl o Ar options
 .Nm fasthalt
-.Op Fl lnqp
+.Op Fl Dflnpq
+.Op Fl e Ar variable=value
+.Op Fl k Ar kernel
+.Op Fl o Ar options
 .Nm fastboot
-.Op Fl dlnqp
+.Op Fl Ddflnpq
+.Op Fl e Ar variable=value
+.Op Fl k Ar kernel
+.Op Fl o Ar options
 .Sh DESCRIPTION
 The
 .Nm halt
@@ -61,14 +73,70 @@ The action is logged, including entering a shutdown record into the
 .Xr wtmpx 5
 file.
 .Pp
+The
+.Fl D ,
+.Fl e ,
+.Fl k
+and
+.Fl o
+options write
+.Pa /boot/nextboot.conf ,
+which the loader applies to the next boot only.
+This makes it possible to try an alternate kernel and fall back to the
+previous one if it does not boot.
+See
+.Xr nextboot 8 .
+.Pp
 The options are as follows:
 .Bl -tag -width indent
+.It Fl D
+Delete an existing
+.Nm nextboot
+configuration and exit.
 .It Fl d
 The system is requested to create a crash dump.
 This option is
 supported only when rebooting, and it has no effect unless a dump
 device has previously been specified with
 .Xr dumpon 8 .
+.It Fl e Ar variable=value
+Set
+.Va variable
+to
+.Va value
+for the next boot.
+The assignment is applied like a
+.Pa loader.conf
+line: tunables (names containing a dot) and variables that the loader
+exports are placed in the kernel environment, other names stay loader
+variables.
+The value is quoted when it is written to the
+.Nm nextboot
+configuration.
+.It Fl f
+Forced mode.
+Normally the alternate kernel is checked for before the configuration
+is written,
+.Pa /boot
+must be a UFS file system, and a failure writing the configuration
+aborts the operation.
+With this flag, failed checks and write failures only produce
+warnings.
+.It Fl k Ar kernel
+Boot the specified kernel
+.Ar kernel
+on the next system boot.
+This is a one-shot option; the default kernel is booted on successive
+boots.
+No
+.Nm
+or
+.Nm halt
+is performed if
+.Pa /boot/ Ns Ar kernel Ns Pa /kernel
+does not exist unless the
+.Fl f
+flag is specified.
 .It Fl l
 The halt or reboot is
 .Em not
@@ -83,6 +151,10 @@ and log this themselves.
 .It Fl n
 The file system cache is not flushed.
 This option should probably not be used.
+.It Fl o Ar options
+Pass
+.Ar options
+to the kernel on the next boot.
 .It Fl p
 The system will turn off the power if it can.
 If the power down action fails, the system
@@ -118,6 +190,7 @@ specific programs.
 .Xr wtmpx 5 ,
 .Xr boot 8 ,
 .Xr dumpon 8 ,
+.Xr nextboot 8 ,
 .Xr savecore 8 ,
 .Xr shutdown 8 ,
 .Xr sync 8

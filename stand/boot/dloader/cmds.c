@@ -179,6 +179,20 @@ command_local(int ac, char **av)
 }
 
 /*
+ * Apply one "name=value" assignment the same way a loader.conf line
+ * is applied.
+ */
+void
+dloader_set_var(char *assign)
+{
+	char *av[2];
+
+	av[0] = assign;
+	av[1] = NULL;
+	command_local(1, av);
+}
+
+/*
  * Unset local variables
  */
 static int
@@ -228,6 +242,8 @@ command_loadall(int ac, char **av)
 	int argc;
 	int res;
 	int tmp;
+
+	nextboot_check();
 
 	argv[0] = "unload";
 	(void)perform(1, argv);
@@ -478,7 +494,9 @@ command_menu(int ac, char **av)
 			}
 		}
 	}
+	nextboot_autoboot = 1;
 	res = menu_execute(c);
+	nextboot_autoboot = 0;
 	if (res != CMD_OK)
 		setenv("autoboot_delay", "NO", 1);
 	return (res);

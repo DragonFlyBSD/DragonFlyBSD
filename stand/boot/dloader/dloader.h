@@ -54,3 +54,8 @@ dvar_t dvar_copy(dvar_t var);
 void dvar_free(dvar_t *lastp);
 
 int perform(int ac, char **av);
+
+void dloader_set_var(char *assign);
+
+extern int nextboot_autoboot;
+void nextboot_check(void);
