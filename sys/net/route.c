@@ -1447,7 +1447,7 @@ rt_freeshims(struct rtentry *rt, struct sockaddr **rt_shim) {
 	for (i = 0; i < 3; i++) {
 		if (rt_shim[RTAX_MPLS1 + i] != NULL && rt->rt_shim[i] != NULL) {
 			R_Free(rt->rt_shim[i]);
-			rt->rt_shim[i] == NULL;
+			rt->rt_shim[i] = NULL;
 		}
 	}
 }
