@@ -483,8 +483,8 @@ loop:
 
 		if (__predict_false(lport < first || lport > last)) {
 			lport = first;
-			KKASSERT(lport % step == portinfo->offset);
 		}
+		KKASSERT(lport % step == portinfo->offset);
 
 		if (in6_pcbporthash_update(portinfo, inp, htons(lport),
 		    cred, wild)) {
@@ -493,7 +493,6 @@ loop:
 		}
 
 		lport += step;
-		KKASSERT(lport % step == portinfo->offset);
 	}
 
 	if (error) {
