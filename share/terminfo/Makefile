@@ -9,6 +9,13 @@ TSOURCE=	${MISCDIR}/terminfo.src
 TICBOOTSTRAP=	${.OBJDIR}/../../lib/libncurses/tic_next/tic_next.nx
 
 TERMINFO_ENTRIES!=	LC_ALL=C awk -f ${.CURDIR}/entries.awk ${TSOURCE}
+TINFO_SUBDIRS=		${TERMINFO_ENTRIES:H:O:u}
+
+FILESGROUPS=	${TINFO_SUBDIRS:S/^/TINFO_/}
+.for dir in ${TINFO_SUBDIRS}
+TINFO_${dir}=		${TERMINFO_ENTRIES:M${dir}/*:S|^|terminfo/|}
+TINFO_${dir}DIR=	${TINFODIR}/${dir}
+.endfor
 
 # Allow to override to reduce breakage surface (just in case)
 .if exists(${TICBOOTSTRAP})
@@ -16,8 +23,6 @@ TIC?=	${TICBOOTSTRAP}
 .else
 TIC?=	tic
 .endif
-
-all: terminfo
 
 run_tic.sed:
 	WHICH_XTERM=xterm-new \
@@ -48,10 +53,6 @@ terminfo.tmp: run_tic.sed ${TSOURCE}
 terminfo: run_tic.sh terminfo.tmp
 	sh run_tic.sh
 
-install:
-	for ITEM in ${TERMINFO_ENTRIES}; do \
-		${INSTALL} -m 644 -o ${BINOWN} -g ${BINGRP}  \
-		terminfo/$${ITEM} ${DESTDIR}${TINFODIR}/$${ITEM}; \
-	done
+all buildfiles: terminfo
 
-.include <bsd.lib.mk>
+.include <bsd.prog.mk>
