@@ -56,11 +56,9 @@ CFLAGS+=	-DHAVE_CONFIG_H \
 		-DUSE_META \
 		-DMAKE_NATIVE
 
-FLAGS_GROUPS=	dfly
-dfly_FLAGS=	-DMAKE_VERSION=\"${_MAKE_VERSION}\" \
+FLAGS.main.o=	-DMAKE_VERSION=\"${_MAKE_VERSION}\" \
 		-D_PATH_DEFSYSPATH=\"${DEFAULT_SYS_PATH}\" \
 		-DDFVER=\"${DFLYVERSION}\" \
 		-DOSREL=\"${OSREL}\"
-dfly_FLAGS_FILES=main.c
 
 .include <bsd.prog.mk>
