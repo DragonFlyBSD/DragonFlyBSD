@@ -773,6 +773,34 @@ rtrequest1_msghandler(netmsg_t msg)
 	}
 }
 
+/*
+ * Normalize an IPv4 /32 route to a host route.
+ */
+static void
+rt_hostroute_normalize(struct rt_addrinfo *rtinfo)
+{
+	struct sockaddr *dst, *netmask;
+	struct sockaddr_in *sin;
+
+	dst = rtinfo->rti_dst;
+	netmask = rtinfo->rti_netmask;
+	if (dst == NULL || dst->sa_family != AF_INET || netmask == NULL)
+		return;
+
+	/* A userland client (e.g., route(8)) may set sa_family = 0. */
+	if (netmask->sa_family != AF_INET && netmask->sa_family != 0)
+		return;
+
+	/* A client trims the trailing zero bytes. */
+	if (netmask->sa_len < offsetof(struct sockaddr_in, sin_addr) +
+	    sizeof(struct in_addr))
+		return;
+
+	sin = (struct sockaddr_in *)netmask;
+	if (sin->sin_addr.s_addr == INADDR_BROADCAST)
+		rtinfo->rti_flags |= RTF_HOST;
+}
+
 int
 rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 {
@@ -799,6 +827,8 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 	 */
 	if ((rnh = rt_tables[mycpuid][dst->sa_family]) == NULL)
 		gotoerr(EAFNOSUPPORT);
+
+	rt_hostroute_normalize(rtinfo);
 
 	/*
 	 * If we are adding a host route then we don't want to put
@@ -1681,6 +1711,8 @@ rtsearch_msghandler(netmsg_t msg)
 	 * path will see a different rtinfo than what this CPU has seen.
 	 */
 	rtinfo = *rmsg->rtinfo;
+
+	rt_hostroute_normalize(&rtinfo);
 
 	/*
 	 * Find the correct routing tree to use for this Address Family
