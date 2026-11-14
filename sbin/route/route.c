@@ -838,6 +838,10 @@ newroute(int argc, char **argv)
 	}
 	if (forcenet)
 		ishost = 0;
+	/* Normalize an IPv4 /32 route to a host route. */
+	if (af == AF_INET && (rtm_addrs & RTA_NETMASK) &&
+	    so_mask.sin.sin_addr.s_addr == INADDR_BROADCAST)
+		ishost = 1;
 	flags |= RTF_UP;
 	if (ishost)
 		flags |= RTF_HOST;
