@@ -239,14 +239,10 @@ arp_rtrequest(int req, struct rtentry *rt)
 	switch (req) {
 	case RTM_ADD:
 		/*
-		 * XXX: If this is a manually added route to interface
-		 * such as older version of routed or gated might provide,
-		 * restore cloning bit.
+		 * Both RTF_CLONING and RTF_PRCLONING mark a route that can be
+		 * resolved into a cloned route.
 		 */
-		if (!(rt->rt_flags & RTF_HOST) &&
-		    SIN(rt_mask(rt))->sin_addr.s_addr != 0xffffffff)
-			rt->rt_flags |= RTF_CLONING;
-		if (rt->rt_flags & RTF_CLONING) {
+		if (rt->rt_flags & (RTF_CLONING | RTF_PRCLONING)) {
 			/*
 			 * Case 1: This route should come from a route to iface.
 			 */
