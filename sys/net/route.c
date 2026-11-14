@@ -110,6 +110,7 @@ static void rtsearch_msghandler(netmsg_t msg);
 static void rtmask_add_msghandler(netmsg_t msg);
 
 static int rt_setshims(struct rtentry *, struct sockaddr **);
+static void rt_freeshims(struct rtentry *, struct sockaddr **);
 
 SYSCTL_NODE(_net, OID_AUTO, route, CTLFLAG_RW, 0, "Routing");
 
@@ -954,8 +955,13 @@ makeroute:
 		else
 			bcopy(dst, ndst, dst->sa_len);
 
-		if (rtinfo->rti_info[RTAX_MPLS1] != NULL)
-			rt_setshims(rt, rtinfo->rti_info);
+		if (rtinfo->rti_info[RTAX_MPLS1] != NULL) {
+			error = rt_setshims(rt, rtinfo->rti_info);
+			if (error != 0) {
+				R_Free(rt);
+				gotoerr(error);
+			}
+		}
 
 		/*
 		 * Note that we now have a reference to the ifa.
@@ -1000,6 +1006,8 @@ makeroute:
 		 * then un-make it (this should be a function).
 		 */
 		if (rn == NULL) {
+			if (rtinfo->rti_info[RTAX_MPLS1] != NULL)
+				rt_freeshims(rt, rtinfo->rti_info);
 			if (rt->rt_gwroute != NULL)
 				rtfree(rt->rt_gwroute);
 			IFAFREE(ifa);
@@ -1414,10 +1422,27 @@ rt_setshims(struct rtentry *rt, struct sockaddr **rt_shim){
 
 		shimlen = RT_ROUNDUP(shim->sa_len);
 		R_Malloc(rt->rt_shim[i], struct sockaddr *, shimlen);
+		if (rt->rt_shim[i] == NULL) {
+			rt_freeshims(rt, rt_shim);
+			return (ENOBUFS);
+		}
+
 		bcopy(shim, rt->rt_shim[i], shimlen);
 	}
 
 	return 0;
+}
+
+static void
+rt_freeshims(struct rtentry *rt, struct sockaddr **rt_shim) {
+	int i;
+
+	for (i = 0; i < 3; i++) {
+		if (rt_shim[RTAX_MPLS1 + i] != NULL && rt->rt_shim[i] != NULL) {
+			R_Free(rt->rt_shim[i]);
+			rt->rt_shim[i] == NULL;
+		}
+	}
 }
 
 #ifdef ROUTE_DEBUG
