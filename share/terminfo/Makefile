@@ -1,5 +1,3 @@
-.include "Makefile.entries"
-
 NOMAN=
 
 CLEANFILES+=	run_tic.sed run_tic.sh terminfo.tmp
@@ -9,6 +7,8 @@ TINFODIR=	${SHAREDIR}/terminfo
 MISCDIR=	${.CURDIR}/../../contrib/ncurses/misc
 TSOURCE=	${MISCDIR}/terminfo.src
 TICBOOTSTRAP=	${.OBJDIR}/../../lib/libncurses/tic_next/tic_next.nx
+
+TERMINFO_ENTRIES!=	LC_ALL=C awk -f ${.CURDIR}/entries.awk ${TSOURCE}
 
 # Allow to override to reduce breakage surface (just in case)
 .if exists(${TICBOOTSTRAP})
