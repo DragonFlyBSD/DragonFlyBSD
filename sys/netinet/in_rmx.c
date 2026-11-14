@@ -107,7 +107,7 @@ in_matchlocal(struct in_addr addr)
  * address owned by another interface is preserved: it intentionally uses
  * lo0 as its IFA/IFP.
  */
-static void
+void
 in_rtlocalize(struct rtentry *rt)
 {
 	struct sockaddr_in *sin = (struct sockaddr_in *)rt_key(rt);

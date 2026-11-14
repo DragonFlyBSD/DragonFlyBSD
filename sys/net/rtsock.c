@@ -62,6 +62,7 @@
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
  */
 
+#include "opt_inet.h"
 #include "opt_inet6.h"
 
 #include <sys/param.h>
@@ -88,15 +89,14 @@
 #include <net/netmsg2.h>
 #include <net/netisr2.h>
 
-#ifdef INET6
 #include <netinet/in_var.h>
-#endif
 
 /* sa_family is after sa_len, rest is data */
 #define	_SA_MINSIZE	(offsetof(struct sockaddr, sa_family) + \
 			 sizeof(((struct sockaddr *)0)->sa_family))
 
-#define	PRESERVED_RTF	(RTF_UP | RTF_GATEWAY | RTF_HOST | RTF_DONE)
+#define	PRESERVED_RTF	(RTF_UP | RTF_GATEWAY | RTF_HOST | RTF_DONE | \
+			 RTF_LOCAL)
 
 MALLOC_DEFINE(M_RTABLE, "routetbl", "routing tables");
 
@@ -724,6 +724,11 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	if (rt_xaddrs((char *)(rtm + 1), (char *)rtm + len, &rtinfo) != 0)
 		gotoerr(EINVAL);
 
+	/*
+	 * RTF_LOCAL is maintained by the kernel, so do not accept it from
+	 * userspace.
+	 */
+	rtm->rtm_flags &= ~RTF_LOCAL;
 	rtinfo.rti_flags = rtm->rtm_flags;
 	if (rtinfo.rti_dst == NULL || rtinfo.rti_dst->sa_family >= AF_MAX ||
 	    (rtinfo.rti_gateway && rtinfo.rti_gateway->sa_family >= AF_MAX))
@@ -910,6 +915,7 @@ route_output_change_callback(int cmd, struct rt_addrinfo *rtinfo,
 {
 	struct rt_msghdr *rtm = arg;
 	struct ifaddr *ifa;
+	boolean_t ifa_changed = FALSE;
 	int error = 0;
 
 	/*
@@ -944,6 +950,7 @@ route_output_change_callback(int cmd, struct rt_addrinfo *rtinfo,
 			IFAREF(ifa);
 			rt->rt_ifa = ifa;
 			rt->rt_ifp = rtinfo->rti_ifp;
+			ifa_changed = TRUE;
 		}
 	}
 	rt_setmetrics(rtm->rtm_inits, &rtm->rtm_rmx, &rt->rt_rmx);
@@ -951,6 +958,10 @@ route_output_change_callback(int cmd, struct rt_addrinfo *rtinfo,
 		rt->rt_flags = (rtinfo->rti_flags & ~PRESERVED_RTF) |
 			(rt->rt_flags & PRESERVED_RTF);
 	}
+#ifdef INET
+	if (ifa_changed && rt_key(rt)->sa_family == AF_INET)
+		in_rtlocalize(rt);
+#endif
 	if (rt->rt_ifa && rt->rt_ifa->ifa_rtrequest)
 		rt->rt_ifa->ifa_rtrequest(RTM_ADD, rt);
 	if (rtinfo->rti_genmask != NULL) {

@@ -328,12 +328,8 @@ arp_rtrequest(int req, struct rtentry *rt)
 		 *	 net.link.ether.inet.useloopback to 0 will force
 		 *	 packets for local addresses out the hardware (and
 		 *	 it is expected to receive its own packet).
-		 *
-		 * XXX We should just be able to test RTF_LOCAL here instead
-		 *     of having to compare IPs.
 		 */
-		if (SIN(rt_key(rt))->sin_addr.s_addr ==
-		    (IA_SIN(rt->rt_ifa))->sin_addr.s_addr) {
+		if (rt->rt_flags & RTF_LOCAL) {
 			rt->rt_expire = 0;
 			SDL(gate)->sdl_alen = rt->rt_ifp->if_addrlen;
 			bcopy(IF_LLADDR(rt->rt_ifp), LLADDR(SDL(gate)),

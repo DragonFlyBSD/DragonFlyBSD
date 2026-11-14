@@ -244,6 +244,7 @@ do { \
 } while(0)
 
 struct	route;
+struct	rtentry;
 struct	lwkt_serialize;
 union	netmsg;
 
@@ -254,6 +255,7 @@ void	in_delmulti (struct in_multi *);
 int	in_control (u_long, caddr_t, struct ifnet *, struct thread *);
 void	in_control_dispatch(union netmsg *);
 void	in_rtqdrain (void);
+void	in_rtlocalize (struct rtentry *);
 void	ip_input (struct mbuf *);
 void	ip_forward (struct mbuf *, boolean_t, struct sockaddr_in *);
 int	in_ifadown (struct ifaddr *ifa, int);
