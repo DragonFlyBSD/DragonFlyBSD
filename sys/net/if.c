@@ -34,8 +34,6 @@
 #include "opt_inet.h"
 #include "opt_ifpoll.h"
 
-#include "use_loop.h"
-
 #include <sys/param.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
@@ -1367,81 +1365,6 @@ if_getgroupmembers(struct ifgroupreq *ifgr)
 failed:
 	kfree(ifgrq, M_TEMP);
 	return error;
-}
-
-static int
-ifa_maintain_loopback_route(int cmd, struct ifaddr *ifa, struct sockaddr *ia)
-{
-#if NLOOP == 0
-	/* The loopback interface was not compiled in kernel. */
-	return (0);
-#else
-	struct sockaddr_dl null_sdl;
-	struct rt_addrinfo info;
-	struct ifaddr *rti_ifa;
-	struct ifnet *ifp;
-	int error;
-
-	/* RTM_CHANGE is unsupported in rtrequest1() yet. */
-	KKASSERT(cmd == RTM_DELETE || cmd == RTM_ADD);
-
-	rti_ifa = NULL;
-	ifp = ifa->ifa_ifp;
-
-	bzero(&null_sdl, sizeof(null_sdl));
-	null_sdl.sdl_len = sizeof(null_sdl);
-	null_sdl.sdl_family = AF_LINK;
-	null_sdl.sdl_index = ifp->if_index;
-	null_sdl.sdl_type = ifp->if_type;
-
-	bzero(&info, sizeof(info));
-	if (cmd != RTM_DELETE)
-		info.rti_ifp = loif;
-	if (cmd == RTM_ADD) {
-		/*
-		 * Explicitly specify the loopback IFA.
-		 */
-		rti_ifa = ifaof_ifpforaddr(ifa->ifa_addr, info.rti_ifp);
-		if (rti_ifa != NULL) {
-			/*
-			 * The loopback IFA wouldn't disappear, but ref it
-			 * for safety.
-			 */
-			IFAREF(rti_ifa);
-			info.rti_ifa = rti_ifa;
-		}
-	}
-	info.rti_info[RTAX_DST] = ia;
-	info.rti_info[RTAX_GATEWAY] = (struct sockaddr *)&null_sdl;
-	info.rti_flags = ifa->ifa_flags | RTF_HOST;
-
-	error = rtrequest1_global(cmd, &info, NULL, NULL, RTREQ_PRIO_NORM);
-
-	if (rti_ifa != NULL)
-		IFAFREE(rti_ifa);
-
-	if (error == 0 ||
-	    (cmd == RTM_ADD && error == EEXIST) ||
-	    (cmd == RTM_DELETE && (error == ESRCH || error == ENOENT)))
-		return (error);
-
-	log(LOG_DEBUG, "%s: %s failed for interface %s: %d\n",
-	    __func__, (cmd == RTM_ADD ? "insertion" : "deletion"),
-	    ifp->if_xname, error);
-	return (error);
-#endif
-}
-
-int
-ifa_add_loopback_route(struct ifaddr *ifa, struct sockaddr *ia)
-{
-	return ifa_maintain_loopback_route(RTM_ADD, ifa, ia);
-}
-
-int
-ifa_del_loopback_route(struct ifaddr *ifa, struct sockaddr *ia)
-{
-	return ifa_maintain_loopback_route(RTM_DELETE, ifa, ia);
 }
 
 /*

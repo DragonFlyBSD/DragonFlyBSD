@@ -41,12 +41,14 @@
 #include <sys/caps.h>
 #include <sys/msgport.h>
 #include <sys/socket.h>
+#include <sys/syslog.h>
 
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
+#include <net/if_dl.h> /* struct sockaddr_dl */
 #include <net/if_types.h>
 #include <net/route.h>
 #include <net/netmsg2.h>
@@ -1099,6 +1101,76 @@ fail:
 	return (error);
 }
 
+static int
+in_maintain_loopback_route(int cmd, struct ifaddr *ifa, struct sockaddr *ia)
+{
+	struct sockaddr_dl null_sdl;
+	struct rt_addrinfo info;
+	struct ifaddr *rti_ifa;
+	struct ifnet *ifp;
+	int error;
+
+	/* RTM_CHANGE is unsupported in rtrequest1() yet. */
+	KKASSERT(cmd == RTM_DELETE || cmd == RTM_ADD);
+
+	rti_ifa = NULL;
+	ifp = ifa->ifa_ifp;
+
+	bzero(&null_sdl, sizeof(null_sdl));
+	null_sdl.sdl_len = sizeof(null_sdl);
+	null_sdl.sdl_family = AF_LINK;
+	null_sdl.sdl_index = ifp->if_index;
+	null_sdl.sdl_type = ifp->if_type;
+
+	bzero(&info, sizeof(info));
+	if (cmd != RTM_DELETE)
+		info.rti_ifp = loif;
+	if (cmd == RTM_ADD) {
+		/*
+		 * Explicitly specify the loopback IFA.
+		 */
+		rti_ifa = ifaof_ifpforaddr(ifa->ifa_addr, info.rti_ifp);
+		if (rti_ifa != NULL) {
+			/*
+			 * The loopback IFA wouldn't disappear, but ref it
+			 * for safety.
+			 */
+			IFAREF(rti_ifa);
+			info.rti_ifa = rti_ifa;
+		}
+	}
+	info.rti_info[RTAX_DST] = ia;
+	info.rti_info[RTAX_GATEWAY] = (struct sockaddr *)&null_sdl;
+	info.rti_flags = ifa->ifa_flags | RTF_HOST;
+
+	error = rtrequest1_global(cmd, &info, NULL, NULL, RTREQ_PRIO_NORM);
+
+	if (rti_ifa != NULL)
+		IFAFREE(rti_ifa);
+
+	if (error == 0 ||
+	    (cmd == RTM_ADD && error == EEXIST) ||
+	    (cmd == RTM_DELETE && (error == ESRCH || error == ENOENT)))
+		return (error);
+
+	log(LOG_DEBUG, "%s: %s failed for interface %s: %d\n",
+	    __func__, (cmd == RTM_ADD ? "insertion" : "deletion"),
+	    ifp->if_xname, error);
+	return (error);
+}
+
+static int
+in_add_loopback_route(struct ifaddr *ifa, struct sockaddr *ia)
+{
+	return in_maintain_loopback_route(RTM_ADD, ifa, ia);
+}
+
+static int
+in_del_loopback_route(struct ifaddr *ifa, struct sockaddr *ia)
+{
+	return in_maintain_loopback_route(RTM_DELETE, ifa, ia);
+}
+
 #define rtinitflags(x) \
 	((((x)->ia_ifp->if_flags & (IFF_LOOPBACK | IFF_POINTOPOINT)) != 0) \
 	    ? RTF_HOST : 0)
@@ -1129,9 +1201,10 @@ in_addprefix(struct in_ifaddr *target, int flags)
 	/*
 	 * Add a loopback route to the interface address.
 	 */
-	if ((target->ia_ifp->if_flags & IFF_LOOPBACK) == 0)
-		ifa_add_loopback_route(&target->ia_ifa,
+	if ((target->ia_ifp->if_flags & IFF_LOOPBACK) == 0) {
+		in_add_loopback_route(&target->ia_ifa,
 		    (struct sockaddr *)&target->ia_addr);
+	}
 
 	mask = target->ia_sockmask.sin_addr;
 	if (flags & RTF_HOST) {
@@ -1223,7 +1296,7 @@ in_scrubprefix(struct in_ifaddr *target)
 		 * RTM_CHANGE), so always delete the old one and then add
 		 * the new one if needed.
 		 */
-		ifa_del_loopback_route(&target->ia_ifa,
+		in_del_loopback_route(&target->ia_ifa,
 		    (struct sockaddr *)&target->ia_addr);
 
 		/*
@@ -1237,7 +1310,7 @@ in_scrubprefix(struct in_ifaddr *target)
 			if (ia != target &&
 			    ia->ia_addr.sin_addr.s_addr == addr.s_addr) {
 				IFAREF(&ia->ia_ifa);
-				ifa_add_loopback_route(&ia->ia_ifa,
+				in_add_loopback_route(&ia->ia_ifa,
 				    (struct sockaddr *)&target->ia_addr);
 				IFAFREE(&ia->ia_ifa);
 				break;

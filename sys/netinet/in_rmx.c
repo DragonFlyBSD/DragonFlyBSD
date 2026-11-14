@@ -133,7 +133,7 @@ in_rtlocalize(struct rtentry *rt)
 
 	rt->rt_flags |= RTF_LOCAL;
 
-	/* Skip explicit loopback routes added by ifa_add_loopback_route(). */
+	/* Skip explicit loopback routes added by in_add_loopback_route(). */
 	if (rt->rt_ifp == loif && ia->ia_ifp != loif)
 		return;
 
