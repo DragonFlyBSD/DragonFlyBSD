@@ -10,10 +10,6 @@ MAN=		${MFILE}
 objs=		${GCC_OBJS} gccspec.o ${EXTRA_GCC_OBJS}
 SRCS=		${objs:.o=.cc}
 
-CFLAGS+=	-DCONFIGURE_SPECS="\"\"" \
-		-DACCEL_DIR_SUFFIX="\"\"" \
-		-DDEFAULT_REAL_TARGET_MACHINE="\"${target_machine}\""
-
 ${MFILE}: ${GCCDIR}/gcc/doc/gcc.1
 	cp ${.ALLSRC} ${.TARGET}
 
