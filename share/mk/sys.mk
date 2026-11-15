@@ -3,11 +3,8 @@
 
 unix		?=	We run DragonFly, not UNIX.
 
-# Set any local definitions first.  Place this early, it needs
-# MACHINE_CPUARCH to be defined
-.if defined(.PARSEDIR)
+# Set any local definitions first.
 .sinclude <local.sys.mk>
-.endif
 
 # If the special target .POSIX appears (without prerequisites or
 # commands) before the first noncomment line in the makefile, make shall
