@@ -1,8 +1,3 @@
-NOMAN=
-
-CLEANFILES+=	run_tic.sed run_tic.sh terminfo.tmp
-CLEANDIRS+=	terminfo
-
 TINFODIR=	${SHAREDIR}/terminfo
 MISCDIR=	${.CURDIR}/../../contrib/ncurses/misc
 TSOURCE=	${MISCDIR}/terminfo.src
@@ -24,10 +19,6 @@ TIC?=	${TICBOOTSTRAP}
 TIC?=	tic
 .endif
 
-run_tic.sed:
-	WHICH_XTERM=xterm-new ticdir=${.OBJDIR}/terminfo \
-	    sh ${MISCDIR}/gen_edit.sh > ${.TARGET}
-
 run_tic.sh: ${MISCDIR}/run_tic.in
 	sed -e 's;@PROG_EXT@;;g' \
 	    -e 's;@DESTDIR@;;g' \
@@ -44,11 +35,11 @@ run_tic.sh: ${MISCDIR}/run_tic.in
 	    -e 's;@srcdir@;.;g' \
 	    < ${.ALLSRC} > ${.TARGET}
 
-terminfo.tmp: run_tic.sed ${TSOURCE}
-	sed -f run_tic.sed ${TSOURCE} > ${.TARGET}
-
-terminfo: run_tic.sh terminfo.tmp
+terminfo: run_tic.sh ${TSOURCE}
 	DESTDIR= sh run_tic.sh
+
+CLEANFILES+=	run_tic.sh
+CLEANDIRS+=	terminfo
 
 all buildfiles: terminfo
 
