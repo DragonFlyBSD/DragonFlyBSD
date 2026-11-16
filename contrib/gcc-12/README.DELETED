@@ -559,7 +559,6 @@ gcc/doc/invoke.texi
 gcc/doc/languages.texi
 gcc/doc/libgcc.texi
 gcc/doc/loop.texi
-gcc/doc/lto-dump.1
 gcc/doc/lto-dump.texi
 gcc/doc/lto.texi
 gcc/doc/makefile.texi
@@ -584,7 +583,6 @@ gcc/doc/ux.texi
 gcc/exec-tool.in
 gcc/fortran/
 gcc/fp-test.cc
-gcc/gcc-ar.cc
 gcc/gcc-plugin.h
 gcc/gcc-symtab.h
 gcc/gcov-dump.cc
