@@ -118,6 +118,10 @@ setup_prefixes (const char *exec_path)
 				dir_separator, NULL);
   prefix_from_string (self_libexec_prefix, &target_path);
 
+#if 1  /* DragonFly base: LTO plugin lives in the same common location */
+  prefix_from_string (standard_libexec_prefix, &target_path);
+#endif
+
   /* Add path as a last resort.  */
   prefix_from_env ("PATH", &path);
 }

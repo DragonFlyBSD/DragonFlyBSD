@@ -32,6 +32,7 @@ The following files have been patched
   gcc/common.opt			set dwarf_version=4 and dwarf_strict=1
   gcc/config/dragonfly.h		default dynamic linker path
   gcc/doc/gcc.1				document -save-temps=objects
+  gcc/gcc-ar.cc				add search path for the LTO plugin
   gcc/gcc.cc				default paths for base tools
 					add -save-temps=objects option
   libgcc/gthr-posix.h			avoid weakref (ld.gold issue)
