@@ -6,6 +6,7 @@ SUBDIR+=	cc1
 SUBDIR+=	cc1plus
 SUBDIR+=	collect2
 SUBDIR+=	lto1
+SUBDIR+=	lto-dump
 SUBDIR+=	lto-wrapper
 
 .include <bsd.subdir.mk>

@@ -44,5 +44,6 @@ LINKS+=	${BINDIR}/objformat ${BINDIR}/cc
 LINKS+=	${BINDIR}/objformat ${BINDIR}/g++
 LINKS+=	${BINDIR}/objformat ${BINDIR}/gcc
 LINKS+=	${BINDIR}/objformat ${BINDIR}/gcov
+LINKS+=	${BINDIR}/objformat ${BINDIR}/lto-dump
 
 .include <bsd.prog.mk>

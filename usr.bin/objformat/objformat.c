@@ -67,6 +67,7 @@ static struct command commands[] = {
 	{"g++",			COMPILER},
 	{"gcc",			COMPILER},
 	{"gcov",		COMPILER},
+	{"lto-dump",		COMPILER},
 	{"ld",			LINKER},
 	{"addr2line",		BINUTILS},
 	{"ar",			BINUTILS},
