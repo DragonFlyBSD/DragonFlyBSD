@@ -3,63 +3,14 @@ __<cc.Makefile.inc>__:
 
 .include "Makefile.version"
 
-# needed to complile hsa/brig stubs
-NOEXCEPTION_FLAGS= -fno-exceptions -fno-rtti
-
-FLAGS=		-DGCCPOINTVER=\"${GCCPOINTVER}\"
-FLAGS+=		-DGCCSHORTVER=\"${GCCSHORTVER}\"
-FLAGS+=		-DBASEVER=\"${GCCCOMPLETEVER}\"
-FLAGS+=		-DDATESTAMP=\"${GCCDATESTAMP}\"
-
-FLAGS+=		-DDEFAULT_TARGET_VERSION=\"${version}\"
-FLAGS+=		-DDEFAULT_TARGET_MACHINE=\"${target_machine}\"
-
-BINDIR?=	/usr/libexec/gcc${GCCSHORTVER}
-
 GCCDIR=		${.CURDIR}/${TOP_PREFIX}../../../../contrib/gcc-12
 OTOPDIR=	${.OBJDIR}/${TOP_PREFIX}..
 STOPDIR=	${.CURDIR}/${TOP_PREFIX}..
-OSLDIR=		${OTOPDIR}/support-libs
 
+OSLDIR=		${OTOPDIR}/support-libs
 TOOLDIR=	${OTOPDIR}/cc_tools/tools
 
-.if defined(LOCAL_CONFIG)
-FLAGS+=		-I${.CURDIR}
-FLAGS+=		-I${.OBJDIR}
-.endif
-FLAGS+=		-I${OTOPDIR}/cc_prep
-FLAGS+=		-I${STOPDIR}/cc_prep
-FLAGS+=		-I${STOPDIR}/cc_prep/config
-FLAGS+=		-I${GCCDIR}/gcc
-FLAGS+=		-I${GCCDIR}/gcc/config
-FLAGS+=		-I${GCCDIR}/include
-FLAGS+=		-I${GCCDIR}/libcody
-FLAGS+=		-I${GCCDIR}/libcpp/include
-FLAGS+=		-I${GCCDIR}/libdecnumber
-FLAGS+=		-I${GCCDIR}/libdecnumber/dpd
-FLAGS+=		-I${OSLDIR}/libdecnumber
-FLAGS+=		-I${STOPDIR}/../gmp
-FLAGS+=		-I${STOPDIR}/../../../contrib/mpfr/src
-FLAGS+=		-I${STOPDIR}/../mpfr
-FLAGS+=		-I${STOPDIR}/../../../contrib/mpc/src
-FLAGS+=		-I${GCCDIR}/gcc/config/i386
-FLAGS+=		-I${TOOLDIR}
-
-FLAGS+=		-DIN_GCC -DHAVE_CONFIG_H
-FLAGS+=		-DPREFIX1=\"${TOOLS_PREFIX}/usr\"
-FLAGS+=		-DPREFIX2=\"${USRDATA_PREFIX}/usr\"
-
-.if defined(BOOTSTRAPPING)
-FLAGS+=		-DCTOOLS
-.endif
-
-CFLAGS+=	${FLAGS}
-
-.include "Makefile.tgt"
-
-.if ${TARGET_ARCH} != ${MACHINE_ARCH}
-CFLAGS+= -DCROSS_COMPILE
-.endif
+BINDIR?=	/usr/libexec/gcc${GCCSHORTVER}
 
 .if defined(GCC_LANG_DIR)
 .PATH: ${GCCDIR}/${GCC_LANG_DIR}
@@ -75,6 +26,56 @@ CFLAGS+= -DCROSS_COMPILE
 .PATH: ${GCCDIR}/gcc/config/i386
 .PATH: ${TOOLDIR}
 .endif
+
+FLAGS=		-DGCCPOINTVER=\"${GCCPOINTVER}\"
+FLAGS+=		-DGCCSHORTVER=\"${GCCSHORTVER}\"
+FLAGS+=		-DBASEVER=\"${GCCCOMPLETEVER}\"
+FLAGS+=		-DDATESTAMP=\"${GCCDATESTAMP}\"
+
+FLAGS+=		-DDEFAULT_TARGET_VERSION=\"${version}\"
+FLAGS+=		-DDEFAULT_TARGET_MACHINE=\"${target_machine}\"
+
+.if defined(LOCAL_CONFIG)
+FLAGS+=		-I${.CURDIR}
+FLAGS+=		-I${.OBJDIR}
+.endif
+
+FLAGS+=		-I${OTOPDIR}/cc_prep
+FLAGS+=		-I${STOPDIR}/cc_prep
+FLAGS+=		-I${STOPDIR}/cc_prep/config
+FLAGS+=		-I${GCCDIR}/gcc
+FLAGS+=		-I${GCCDIR}/gcc/config
+FLAGS+=		-I${GCCDIR}/gcc/config/i386
+FLAGS+=		-I${TOOLDIR}
+FLAGS+=		-I${GCCDIR}/include
+FLAGS+=		-I${GCCDIR}/libcody
+FLAGS+=		-I${GCCDIR}/libcpp/include
+FLAGS+=		-I${GCCDIR}/libdecnumber
+FLAGS+=		-I${GCCDIR}/libdecnumber/dpd
+FLAGS+=		-I${OSLDIR}/libdecnumber
+FLAGS+=		-I${STOPDIR}/../gmp
+FLAGS+=		-I${STOPDIR}/../../../contrib/mpfr/src
+FLAGS+=		-I${STOPDIR}/../mpfr
+FLAGS+=		-I${STOPDIR}/../../../contrib/mpc/src
+
+FLAGS+=		-DIN_GCC -DHAVE_CONFIG_H
+FLAGS+=		-DPREFIX1=\"${TOOLS_PREFIX}/usr\"
+FLAGS+=		-DPREFIX2=\"${USRDATA_PREFIX}/usr\"
+
+.if defined(BOOTSTRAPPING)
+FLAGS+=		-DCTOOLS
+.endif
+
+CFLAGS+=	${FLAGS}
+
+.include "Makefile.tgt"
+
+.if ${TARGET_ARCH} != ${MACHINE_ARCH}
+CFLAGS+=	-DCROSS_COMPILE
+.endif
+
+# needed to complile hsa/brig stubs
+NOEXCEPTION_FLAGS=	-fno-exceptions -fno-rtti
 
 LIBIBERTY=	${OSLDIR}/libiberty/libiberty.a
 LIBCODY=	${OSLDIR}/libcody/libcody.a
