@@ -1,16 +1,26 @@
 /*
- * Copied from cc80/cc_prep/config/dragonfly-native.h without change.
+ * DragonFly-specific GCC native configuration.
+ *
+ * This file is NOT part of upstream GCC.  It supplements the
+ * upstream DragonFly target configuration with DragonFly's
+ * base-system compiler installation layout.
+ *
+ * It configures:
+ *   - executable and data installation prefixes
+ *   - linker specifications and runtime library paths
+ *   - compiler internal executable locations
+ *   - system and C++ header search paths
+ *
+ * PREFIX1 and PREFIX2 are supplied by the DragonFly makefiles.
+ * CTOOLS is defined when building bootstrap tools.
+ *
+ * This file is included through TARGET_INC when generating tm.h.
  */
 
-#undef  PREFIX
-#define PREFIX  PREFIX1
+#undef	PREFIX
+#define PREFIX	PREFIX1
 #ifndef PREFIX2
 #define PREFIX2	PREFIX1
-#endif
-#ifdef CTOOLS
-#define RUNPATH "-rpath"
-#else
-#define RUNPATH "--enable-new-dtags -rpath"
 #endif
 
 #define LIBGCC_SPEC \
@@ -23,6 +33,12 @@
    } \
   } \
  }"
+
+#ifdef CTOOLS
+#define RUNPATH "-rpath"
+#else
+#define RUNPATH "--enable-new-dtags -rpath"
+#endif
 
 #undef	LINK_SPEC
 #define LINK_SPEC DFBSD_LINK_SPEC \
@@ -55,20 +71,21 @@
 		       "|fstack-protector-strong|fstack-protector-explicit" \
 		       ":-lssp_nonshared}"
 
+/*
+ * List of locations to find the start files (e.g., crt*.o)
+ *
+ * This supercedes STANDARD_STARTFILE_PREFIX{,_1,_2}.
+ */
+#define STARTFILE_PREFIX_SPEC \
+	PREFIX2 "/lib/gcc" GCCSHORTVER "/ " \
+	PREFIX2 "/lib/ "
+
 #define NATIVE_SYSTEM_HEADER_DIR	PREFIX2 "/include"
-#define STD_EXEC_PATH			PREFIX1 "/libexec/gcc" GCCSHORTVER
-#define STANDARD_EXEC_PREFIX		STD_EXEC_PATH "/"
+#define STANDARD_EXEC_PREFIX		PREFIX1 "/libexec/gcc" GCCSHORTVER "/"
 #define STANDARD_LIBEXEC_PREFIX 	STANDARD_EXEC_PREFIX
 #define STANDARD_BINDIR_PREFIX		STANDARD_EXEC_PREFIX
-#define STANDARD_STARTFILE_PREFIX	STANDARD_EXEC_PREFIX
-#define STANDARD_STARTFILE_PREFIX_1	""
-#define STANDARD_STARTFILE_PREFIX_2	""
-#define MD_EXEC_PREFIX			""
-#define MD_STARTFILE_PREFIX		""
-#define MD_STARTFILE_PREFIX_1		""
+#define STANDARD_STARTFILE_PREFIX	"*dummy*"
 #define TOOLDIR_BASE_PREFIX		"./"
-
-#define STARTFILE_PREFIX_SPEC		PREFIX2 "/lib/gcc" GCCSHORTVER "/ " PREFIX2 "/lib/"
 
 #define GPLUSPLUS_INCLUDE_DIR		PREFIX2 "/include/c++/" GCCPOINTVER
 #define GPLUSPLUS_INCLUDE_DIR_ADD_SYSROOT 0
