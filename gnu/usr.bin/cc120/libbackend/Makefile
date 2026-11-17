@@ -507,6 +507,8 @@ BACKEND_OBJS= \
 SRCS=	${BACKEND_OBJS:.o=.cc}
 SRCS+=	main.cc
 
+FLAGS.cppdefault.o=	${PREPROCESSOR_DEFINES}
+
 FLAGS_GROUPS=		tname tmachine warn
 
 tname_FLAGS_FILES=	toplev.cc optinfo-emit-json.cc

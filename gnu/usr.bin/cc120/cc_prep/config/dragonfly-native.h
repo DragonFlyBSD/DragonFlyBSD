@@ -8,8 +8,6 @@
  * It configures:
  *   - executable and data installation prefixes
  *   - linker specifications and runtime library paths
- *   - compiler internal executable locations
- *   - system and C++ header search paths
  *
  * PREFIX1 and PREFIX2 are supplied by the DragonFly makefiles.
  * CTOOLS is defined when building bootstrap tools.
@@ -79,20 +77,3 @@
 #define STARTFILE_PREFIX_SPEC \
 	PREFIX2 "/lib/gcc" GCCSHORTVER "/ " \
 	PREFIX2 "/lib/ "
-
-#define NATIVE_SYSTEM_HEADER_DIR	PREFIX2 "/include"
-#define STANDARD_EXEC_PREFIX		PREFIX1 "/libexec/gcc" GCCSHORTVER "/"
-#define STANDARD_LIBEXEC_PREFIX 	STANDARD_EXEC_PREFIX
-#define STANDARD_BINDIR_PREFIX		STANDARD_EXEC_PREFIX
-#define STANDARD_STARTFILE_PREFIX	"*dummy*"
-#define TOOLDIR_BASE_PREFIX		"./"
-
-#define GPLUSPLUS_INCLUDE_DIR		PREFIX2 "/include/c++/" GCCPOINTVER
-#define GPLUSPLUS_INCLUDE_DIR_ADD_SYSROOT 0
-#undef	GPLUSPLUS_TOOL_INCLUDE_DIR
-#define	GPLUSPLUS_BACKWARD_INCLUDE_DIR	PREFIX2 "/include/c++/" GCCPOINTVER "/backward"
-#undef	LOCAL_INCLUDE_DIR
-#define	GCC_INCLUDE_DIR			PREFIX2 "/libdata/gcc" GCCSHORTVER
-#undef	FIXED_INCLUDE_DIR
-#undef	CROSS_INCLUDE_DIR
-#undef	TOOL_INCLUDE_DIR
