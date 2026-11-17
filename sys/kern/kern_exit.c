@@ -451,13 +451,15 @@ exit1(int rv)
 			 *
 			 * NOTE: Force a timeout of one second when draining
 			 *	 the controlling terminal.  PCATCH won't work
-			 *	 in exit1().
+			 *	 in exit1().  Then reset it to 0 (the default),
+			 *	 the tty outlives the session.
 			 */
 			if (sp->s_ttyp && (sp->s_ttyp->t_session == sp)) {
 				if (sp->s_ttyp->t_pgrp)
 					pgsignal(sp->s_ttyp->t_pgrp, SIGHUP, 1);
 				sp->s_ttyp->t_timeout = hz;
 				ttywait(sp->s_ttyp);
+				sp->s_ttyp->t_timeout = 0;
 				ttyclosesession(sp, 1); /* also revoke */
 			}
 
