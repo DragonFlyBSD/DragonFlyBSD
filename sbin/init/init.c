@@ -1521,7 +1521,8 @@ f_clean_ttys(void)
 			if ((typ->ty_status & TTY_ON) == 0 ||
 			    typ->ty_getty == 0) {
 				sp->se_flags |= SE_SHUTDOWN;
-				kill(sp->se_process, SIGHUP);
+				if (sp->se_process)
+					kill(sp->se_process, SIGHUP);
 				continue;
 			}
 			sp->se_flags &= ~SE_SHUTDOWN;
@@ -1532,7 +1533,8 @@ f_clean_ttys(void)
 				warning("can't parse getty for port %s",
 					sp->se_device);
 				sp->se_flags |= SE_SHUTDOWN;
-				kill(sp->se_process, SIGHUP);
+				if (sp->se_process)
+					kill(sp->se_process, SIGHUP);
 			}
 			else if (   !old_getty
 				 || (!old_type && sp->se_type)
@@ -1546,7 +1548,8 @@ f_clean_ttys(void)
 				/* Don't set SE_SHUTDOWN here */
 				sp->se_nspace = 0;
 				sp->se_started.tv_sec = sp->se_started.tv_usec = 0;
-				kill(sp->se_process, SIGHUP);
+				if (sp->se_process)
+					kill(sp->se_process, SIGHUP);
 			}
 			if (old_getty)
 				free(old_getty);
@@ -1569,7 +1572,8 @@ f_clean_ttys(void)
 	for (sp = sessions; sp != NULL; sp = sp->se_next) {
 		if ((sp->se_flags & SE_PRESENT) == 0) {
 			sp->se_flags |= SE_SHUTDOWN;
-			kill(sp->se_process, SIGHUP);
+			if (sp->se_process)
+				kill(sp->se_process, SIGHUP);
 		}
 	}
 
@@ -1618,7 +1622,8 @@ f_death(void)
 
 	for (sp = sessions; sp; sp = sp->se_next) {
 		sp->se_flags |= SE_SHUTDOWN;
-		kill(sp->se_process, SIGHUP);
+		if (sp->se_process)
+			kill(sp->se_process, SIGHUP);
 	}
 
 	/* Try to run the rc.shutdown script within a period of time */
