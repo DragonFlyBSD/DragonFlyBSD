@@ -681,8 +681,9 @@ do_os_note(struct magic_set *ms, unsigned char *nbuf, uint32_t type,
 			return -1;
 		memcpy(&desc, &nbuf[doff], sizeof(desc));
 		desc = elf_getu32(swap, desc);
+		/* __DragonFly_version: major * 100000 + minor * 100 + rev. */
 		if (file_printf(ms, " %d.%d.%d", desc / 100000,
-		    desc / 10000 % 10, desc % 10000) == -1)
+		    (desc / 100) % 100, desc % 100) == -1)
 			return -1;
 		return 1;
 	}

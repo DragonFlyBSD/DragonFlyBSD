@@ -11,8 +11,9 @@ date = 13 September 2022
 size = 1162786
 sha1 = 8cb1a01257e9d9b15bb58dae409e1cb6710c5947
 
-A list of the omitted files and directories can be found in
-README.DELETED.
+A list of the omitted files and directories can be found in README.DELETED.
+
+Use "git diff vendor/FILE contrib/file" to see local modifications.
 
 This is used in lib/libmagic and usr.bin/file.  When upgrading, remember
 to update config.h in lib/libmagic/libmagic.
