@@ -195,19 +195,16 @@ int drm_setmaster_ioctl(struct drm_device *dev, void *data,
 	 * XXX fixme
 	 */
 	if (dev->master) {
-		kprintf("drm_setmaster_ioctl: already has one XXX ignored\n");
 		//ret = -EINVAL;
 		//goto out_unlock;
 	}
 
 	if (!file_priv->master) {
-		kprintf("drm_setmaster_ioctl: file_priv->master already\n");
 		ret = -EINVAL;
 		goto out_unlock;
 	}
 
 	if (!file_priv->is_master) {
-		kprintf("drm_setmaster_ioctl: is_not master, set master");
 		ret = drm_new_set_master(dev, file_priv);
 		goto out_unlock;
 	}
@@ -219,7 +216,6 @@ int drm_setmaster_ioctl(struct drm_device *dev, void *data,
 	}
 
 	ret = drm_set_master(dev, file_priv, false);
-	kprintf("drm_setmaster_ioctl: fall-through set master ret=%d\n", ret);
 out_unlock:
 	mutex_unlock(&dev->master_mutex);
 	return ret;
@@ -238,7 +234,6 @@ int drm_dropmaster_ioctl(struct drm_device *dev, void *data,
 {
 	int ret = -EINVAL;
 
-	kprintf("drm_dropmaster_ioctl\n");
 	mutex_lock(&dev->master_mutex);
 	if (!drm_is_current_master(file_priv))
 		goto out_unlock;
