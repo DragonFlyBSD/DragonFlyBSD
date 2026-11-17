@@ -48,6 +48,8 @@ FLAGS+=		-I${GCCDIR}/gcc/config
 FLAGS+=		-I${GCCDIR}/gcc/config/i386
 FLAGS+=		-I${TOOLDIR}
 FLAGS+=		-I${GCCDIR}/include
+
+.if !defined(GCC_NO_INCS)
 FLAGS+=		-I${GCCDIR}/libcody
 FLAGS+=		-I${GCCDIR}/libcpp/include
 FLAGS+=		-I${GCCDIR}/libdecnumber
@@ -57,6 +59,7 @@ FLAGS+=		-I${STOPDIR}/../gmp
 FLAGS+=		-I${STOPDIR}/../../../contrib/mpfr/src
 FLAGS+=		-I${STOPDIR}/../mpfr
 FLAGS+=		-I${STOPDIR}/../../../contrib/mpc/src
+.endif
 
 FLAGS+=		-DIN_GCC -DHAVE_CONFIG_H
 FLAGS+=		-DPREFIX1=\"${TOOLS_PREFIX}/usr\"

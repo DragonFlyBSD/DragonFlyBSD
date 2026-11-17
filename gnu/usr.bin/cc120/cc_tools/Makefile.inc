@@ -9,7 +9,8 @@ __USE_HOST_CCVER=
 NO_WERROR=
 
 TOP_PREFIX=	../
-GCC_NO_LIBS=	# yes
+GCC_NO_INCS=	yes
+GCC_NO_LIBS=	yes
 
 .include "../Makefile.inc"
 .endif

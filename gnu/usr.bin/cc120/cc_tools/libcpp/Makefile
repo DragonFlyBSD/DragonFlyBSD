@@ -5,6 +5,7 @@ LOCAL_CONFIG=	yes
 
 LIB=		cpp
 
+CFLAGS+=	-I${GCCDIR}/libcpp/include
 CFLAGS+=	-DBOOTSTRAPPING
 CFLAGS+=	-Duchar="unsigned char"
 CXXFLAGS+=	${NOEXCEPTION_FLAGS}

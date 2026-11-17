@@ -2,6 +2,7 @@
 .include "../../Makefile.langs"
 
 NXCXXFLAGS+=		-DGENERATOR_FILE -I${.OBJDIR}
+NXCXXFLAGS+=		-I${GCCDIR}/libcpp/include
 BUILD_LIBS=		../libiberty/libiberty.na
 BUILD_LIBS_genmatch=	../libcpp/libcpp.na
 NXLD_genautomata=	-lm
