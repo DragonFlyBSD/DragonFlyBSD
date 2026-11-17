@@ -43,6 +43,9 @@ LINKS+=	${BINDIR}/objformat ${BINDIR}/c++
 LINKS+=	${BINDIR}/objformat ${BINDIR}/cc
 LINKS+=	${BINDIR}/objformat ${BINDIR}/g++
 LINKS+=	${BINDIR}/objformat ${BINDIR}/gcc
+LINKS+=	${BINDIR}/objformat ${BINDIR}/gcc-ar
+LINKS+=	${BINDIR}/objformat ${BINDIR}/gcc-nm
+LINKS+=	${BINDIR}/objformat ${BINDIR}/gcc-ranlib
 LINKS+=	${BINDIR}/objformat ${BINDIR}/gcov
 LINKS+=	${BINDIR}/objformat ${BINDIR}/lto-dump
 
