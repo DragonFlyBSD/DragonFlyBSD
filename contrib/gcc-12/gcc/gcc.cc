@@ -4789,6 +4789,7 @@ process_command (unsigned int decoded_options_count,
   lang_specific_driver (&decoded_options, &decoded_options_count,
 			&added_libraries);
 
+#if 0  /* DragonFly base: Bad Paths */
   if (gcc_exec_prefix)
     {
       int len = strlen (gcc_exec_prefix);
@@ -4804,14 +4805,13 @@ process_command (unsigned int decoded_options_count,
 	    len -= sizeof ("/lib/gcc/") - 1;
 	}
 
-#if 0  /* DragonFly base: Bad Paths */
       set_std_prefix (gcc_exec_prefix, len);
       add_prefix (&exec_prefixes, gcc_libexec_prefix, "GCC",
 		  PREFIX_PRIORITY_LAST, 0, 0);
       add_prefix (&startfile_prefixes, gcc_exec_prefix, "GCC",
 		  PREFIX_PRIORITY_LAST, 0, 0);
-#endif
     }
+#endif
 
   /* COMPILER_PATH and LIBRARY_PATH have values
      that are lists of directory names with colons.  */
@@ -5411,12 +5411,11 @@ process_command (unsigned int decoded_options_count,
      configured-in locations.  */
   if (!gcc_exec_prefix)
     {
-#ifndef OS2
 #if 1  /* DragonFly base: All tools in the same common location */
       add_prefix (&exec_prefixes, standard_libexec_prefix, NULL,
-                 PREFIX_PRIORITY_LAST, 0, 0);
-#endif
-#if 0  /* DragonFly base: Bad paths */
+		  PREFIX_PRIORITY_LAST, 0, 0);
+#else  /* DragonFly base: Bad paths */
+#ifndef OS2
       add_prefix (&exec_prefixes, standard_libexec_prefix, "GCC",
 		  PREFIX_PRIORITY_LAST, 1, 0);
       add_prefix (&exec_prefixes, standard_libexec_prefix, "BINUTILS",
@@ -5424,13 +5423,12 @@ process_command (unsigned int decoded_options_count,
       add_prefix (&exec_prefixes, standard_exec_prefix, "BINUTILS",
 		  PREFIX_PRIORITY_LAST, 2, 0);
 #endif
-#endif
-#if 0  /* DragonFly base: Bad paths */
       add_prefix (&startfile_prefixes, standard_exec_prefix, "BINUTILS",
 		  PREFIX_PRIORITY_LAST, 1, 0);
 #endif
     }
 
+#if 0  /* DragonFly base: Bad paths */
   gcc_assert (!IS_ABSOLUTE_PATH (tooldir_base_prefix));
   tooldir_prefix2 = concat (tooldir_base_prefix, spec_machine,
 			    dir_separator_str, NULL);
@@ -5443,15 +5441,17 @@ process_command (unsigned int decoded_options_count,
 	      accel_dir_suffix, dir_separator_str, tooldir_prefix2, NULL);
   free (tooldir_prefix2);
 
-#if 0  /* DragonFly base: Bad paths */
   add_prefix (&exec_prefixes,
 	      concat (tooldir_prefix, "bin", dir_separator_str, NULL),
 	      "BINUTILS", PREFIX_PRIORITY_LAST, 0, 0);
   add_prefix (&startfile_prefixes,
 	      concat (tooldir_prefix, "lib", dir_separator_str, NULL),
 	      "BINUTILS", PREFIX_PRIORITY_LAST, 0, 1);
-#endif
   free (tooldir_prefix);
+#else
+  (void)tooldir_prefix;
+  (void)tooldir_prefix2;
+#endif
 
 #if defined(TARGET_SYSTEM_ROOT_RELOCATABLE) && !defined(VMS)
   /* If the normal TARGET_SYSTEM_ROOT is inside of $exec_prefix,
