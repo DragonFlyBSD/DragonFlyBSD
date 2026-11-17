@@ -6,7 +6,6 @@ LOCAL_CONFIG=	yes
 LIB=		cody
 
 CFLAGS+=	-DSRCDIR="\"${GCCDIR}\""
-GOOD_CONFIG=	${.CURDIR}/../../support-libs/libcody/config.h
 
 # From libcody/Makefile.in
 LIBCODY.O=	\
@@ -15,11 +14,10 @@ LIBCODY.O=	\
 
 SRCS=	${LIBCODY.O:.o=.cc}
 
-config.h: ${GOOD_CONFIG}
-	cp ${.ALLSRC} .
+CLEANFILES+=	config.h
+config.h: ${.CURDIR}/../../support-libs/libcody/config.h
+	cp ${.ALLSRC} ${.TARGET}
 
 beforedepend: config.h
-
-CLEANFILES=	config.h
 
 .include <bsd.hostlib.mk>

@@ -5,11 +5,9 @@ LOCAL_CONFIG=	yes
 
 LIB=		cpp
 
+CFLAGS+=	-DBOOTSTRAPPING
 CFLAGS+=	-Duchar="unsigned char"
 CXXFLAGS+=	${NOEXCEPTION_FLAGS}
-GOOD_CONFIG=	${.CURDIR}/../../support-libs/libcpp/config.h
-
-CFLAGS+=	-DBOOTSTRAPPING
 
 # From libcpp/Makefile.in
 libcpp_a_SOURCES = charset.cc directives.cc errors.cc \
@@ -22,8 +20,8 @@ SRCS=	${libcpp_a_SOURCES}
 localedir.h:
 	touch ${.TARGET}
 
-config.h: ${GOOD_CONFIG}
-	cp ${.ALLSRC} .
+config.h: ${.CURDIR}/../../support-libs/libcpp/config.h
+	cp ${.ALLSRC} ${.TARGET}
 
 beforedepend: localedir.h config.h
 afterdepend: libcpp.na

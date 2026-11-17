@@ -12,9 +12,6 @@ INTERNALLIB=	yes
 NOSHARED=	YES
 CFLAGS+=	-fpic
 
-GOOD_CONFIG=	${.CURDIR}/../libiberty/config.h
-CLEANFILES=	config.h
-
 SRCS=		argv.c \
 		concat.c \
 		hashtab.c \
@@ -36,8 +33,9 @@ SRCS=		argv.c \
 		xstrerror.c \
 		xvasprintf.c
 
-config.h: ${GOOD_CONFIG}
-	cp ${.ALLSRC} .
+CLEANFILES+=	config.h
+config.h: ${.CURDIR}/../libiberty/config.h
+	cp ${.ALLSRC} ${.TARGET}
 
 beforedepend: config.h
 

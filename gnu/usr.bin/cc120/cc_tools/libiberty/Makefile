@@ -8,14 +8,11 @@ LOCAL_CONFIG=	yes
 
 LIB=		iberty
 
-GOOD_CONFIG=	${.CURDIR}/../../support-libs/libiberty/config.h
-
-config.h: ${GOOD_CONFIG}
-	cp ${.ALLSRC} .
+CLEANFILES+=	config.h
+config.h: ${.CURDIR}/../../support-libs/libiberty/config.h
+	cp ${.ALLSRC} ${.TARGET}
 
 beforedepend: config.h
 afterdepend: libiberty.na
-
-CLEANFILES=	config.h
 
 .include <bsd.hostlib.mk>
