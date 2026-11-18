@@ -1656,6 +1656,7 @@ static inline void
 svm_exit_evt(struct svm_cpudata *cpudata, struct vmcb *vmcb)
 {
 	uint64_t exitintinfo = vmcb->ctrl.exitintinfo;
+	uint64_t type, vector;
 
 	cpudata->evt_pending = false;
 
@@ -1663,22 +1664,24 @@ svm_exit_evt(struct svm_cpudata *cpudata, struct vmcb *vmcb)
 		return;
 	}
 
+	type = __SHIFTOUT(exitintinfo, VMCB_CTRL_EXITINTINFO_TYPE);
+	vector = __SHIFTOUT(exitintinfo, VMCB_CTRL_EXITINTINFO_VECTOR);
+
 	/*
-	 * Pathological case: if a VMEXIT occurs while delivering a software
-	 * interrupt, the hardware may leave nrip=0, making the event unsafe
-	 * to reinject.
-	 *
-	 * In practice NVMM doesn't allow software interrupts to be injected,
-	 * so it must have originated from the guest executing an INT
-	 * instruction. Ignore the event, and let the guest re-execute that
-	 * instruction on the next entry.
+	 * Software events originate from an instruction executed by the guest.
+	 * Don't reinject them, rather let the guest re-execute the instruction
+	 * on the next entry.
 	 */
-	if (__SHIFTOUT(exitintinfo, VMCB_CTRL_EXITINTINFO_TYPE) ==
-	    SVM_EVENT_TYPE_SW_INT && vmcb->ctrl.nrip == 0) {
+	if (type == SVM_EVENT_TYPE_SW_INT ||
+	    (type == SVM_EVENT_TYPE_EXC && (vector == 3 || vector == 4))) {
 		return;
 	}
 
+	/*
+	 * Re-inject the event.
+	 */
 	vmcb->ctrl.eventinj = exitintinfo;
+
 	cpudata->evt_pending = true;
 }
 

@@ -2254,7 +2254,7 @@ vmx_htlb_flush_ack(struct vmx_cpudata *cpudata, uint64_t machgen)
 static inline void
 vmx_exit_evt(struct vmx_cpudata *cpudata)
 {
-	uint64_t info, err, inslen;
+	uint64_t info, err;
 
 	cpudata->evt_pending = false;
 
@@ -2262,18 +2262,25 @@ vmx_exit_evt(struct vmx_cpudata *cpudata)
 	if (__predict_true((info & INTR_INFO_VALID) == 0)) {
 		return;
 	}
-	err = vmx_vmread(VMCS_IDT_VECTORING_ERROR);
 
-	vmx_vmwrite(VMCS_ENTRY_INTR_INFO, info);
-	vmx_vmwrite(VMCS_ENTRY_EXCEPTION_ERROR, err);
-
+	/*
+	 * Software events originate from an instruction executed by the guest.
+	 * Don't reinject them, rather let the guest re-execute the instruction
+	 * on the next entry.
+	 */
 	switch (__SHIFTOUT(info, INTR_INFO_TYPE)) {
 	case INTR_TYPE_SW_INT:
 	case INTR_TYPE_PRIV_SW_EXC:
 	case INTR_TYPE_SW_EXC:
-		inslen = vmx_vmread(VMCS_EXIT_INSTRUCTION_LENGTH);
-		vmx_vmwrite(VMCS_ENTRY_INSTRUCTION_LENGTH, inslen);
+		return;
 	}
+
+	/*
+	 * Re-inject the event.
+	 */
+	err = vmx_vmread(VMCS_IDT_VECTORING_ERROR);
+	vmx_vmwrite(VMCS_ENTRY_INTR_INFO, info);
+	vmx_vmwrite(VMCS_ENTRY_EXCEPTION_ERROR, err);
 
 	cpudata->evt_pending = true;
 }
