@@ -207,6 +207,8 @@ main(int argc, CHAR16 *argv[])
 	archsw.arch_copyin = efi_copyin;
 	archsw.arch_copyout = efi_copyout;
 	archsw.arch_readin = efi_readin;
+	archsw.arch_nextboot_read = efi_nextboot_read;
+	archsw.arch_nextboot_consume = efi_nextboot_consume;
 
 	has_kbd = has_keyboard();
 
@@ -417,6 +419,8 @@ currdev_done:
 	}
 
 	setenv("LINES", "24", 1);	/* optional */
+
+	setenv("nextboot_backend", "efivar", 1);
 
 	for (k = 0; k < ST->NumberOfTableEntries; k++) {
 		guid = &ST->ConfigurationTable[k].VendorGuid;

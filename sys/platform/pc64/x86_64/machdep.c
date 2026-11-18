@@ -1612,6 +1612,10 @@ efi_map_sysctl_handler(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_machdep, OID_AUTO, efi_map, CTLTYPE_OPAQUE|CTLFLAG_RD, NULL, 0,
     efi_map_sysctl_handler, "S,efi_map_header", "Raw EFI Memory Map");
 
+static char bootmethod[16];
+SYSCTL_STRING(_machdep, OID_AUTO, bootmethod, CTLFLAG_RD, bootmethod, 0,
+    "System firmware boot method");
+
 /*
  * Initialize x86 and configure to run kernel
  */
@@ -2263,10 +2267,13 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 	if (smapbase == NULL && efihdrbase == NULL)
 		panic("No BIOS smap or EFI map info from loader!");
 
-	if (efihdrbase == NULL)
+	if (efihdrbase == NULL) {
 		add_smap_entries(&physmap_idx);
-	else
+		strlcpy(bootmethod, "BIOS", sizeof(bootmethod));
+	} else {
 		add_efi_map_entries(&physmap_idx);
+		strlcpy(bootmethod, "UEFI", sizeof(bootmethod));
+	}
 
 	base_memory = physmap[1] / 1024;
 	/* make hole for AP bootstrap code */
