@@ -778,10 +778,6 @@ static uint64_t vmx_xcr0_mask __read_mostly;
 #define MSRBM_NPAGES	1
 #define MSRBM_SIZE	(MSRBM_NPAGES * PAGE_SIZE)
 
-/* Guest/host CR0 mask: bits owned by the host */
-#define CR0_STATIC_MASK \
-	(CR0_ET | CR0_NW | CR0_CD)
-
 /*
  * Guest real CR0 bits that must be handled specially:
  * - CR0_ET: hardwired to 1 in modern CPUs; must always be 1
@@ -792,6 +788,10 @@ static uint64_t vmx_xcr0_mask __read_mostly;
 	(CR0_NW | CR0_CD)
 #define CR0_FORCE_ONE \
 	(CR0_ET | CR0_NE)
+
+/* Guest/host CR0 mask: bits owned by the host */
+#define CR0_STATIC_MASK \
+	(CR0_FORCE_ZERO | CR0_FORCE_ONE)
 
 #define CR4_VALID \
 	(CR4_VME |			\
