@@ -10,7 +10,13 @@ header_name_save=	config.h system.h coretypes.h tm.h
 # derived from gcc-build/gcc/Makefile
 lang_specs_files=	cp/lang-specs.h \
 			lto/lang-specs.h
-lang_tree_files=	cp/cp-tree.def
+# LTO tags are numbered after all tree codes, so all-tree.def must list
+# every front end's tree codes and in the same order, as GCC own configure
+# does.
+lang_tree_files=	ada/gcc-interface/ada-tree.def \
+			cp/cp-tree.def \
+			d/d-tree.def \
+			objc/objc-tree.def
 
 # This is directly from gcc-build/gcc/Makefile; beware evil.
 GTFILES = $(CPPLIB_H) $(srcdir)/input.h $(srcdir)/coretypes.h \
