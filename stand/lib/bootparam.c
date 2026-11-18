@@ -81,10 +81,10 @@ struct xdr_inaddr {
 };
 
 int xdr_inaddr_encode(char **p, struct in_addr ia);
-int xdr_inaddr_decode(char **p, struct in_addr *ia);
+int xdr_inaddr_decode(char **p, char *end, struct in_addr *ia);
 
 int xdr_string_encode(char **p, char *str, int len);
-int xdr_string_decode(char **p, char *str, int *len_p);
+int xdr_string_decode(char **p, char *end, char *str, int *len_p);
 
 
 /*
@@ -128,7 +128,7 @@ bp_whoami(int sockfd)
 		n_long	h[RPC_HEADER_WORDS];
 		struct repl d;
 	} rdata;
-	char *send_tail, *recv_head;
+	char *send_tail, *recv_head, *recv_end;
 	struct iodesc *d;
 	int len, x;
 
@@ -191,29 +191,33 @@ bp_whoami(int sockfd)
 	/*
 	 * Parse the encapsulated results from bootparam/whoami
 	 */
+	if ((size_t)len > sizeof(*repl))
+		len = sizeof(*repl);
 	x = ntohl(repl->encap_len);
-	if (len < x) {
+	if (x < 0 || x > len - (int)(sizeof(*repl) - sizeof(repl->capsule))) {
 		printf("bp_whoami: short reply, %d < %d\n", len, x);
 		return (-1);
 	}
 	recv_head = (char*) repl->capsule;
+	recv_end = recv_head + x;
 
 	/* client name */
 	hostnamelen = sizeof(hostname) - 1;
-	if (xdr_string_decode(&recv_head, hostname, &hostnamelen)) {
+	if (xdr_string_decode(&recv_head, recv_end, hostname, &hostnamelen)) {
 		RPC_PRINTF(("bp_whoami: bad hostname\n"));
 		return (-1);
 	}
 
 	/* domain name */
 	domainnamelen = sizeof(domainname) - 1;
-	if (xdr_string_decode(&recv_head, domainname, &domainnamelen)) {
+	if (xdr_string_decode(&recv_head, recv_end, domainname,
+	    &domainnamelen)) {
 		RPC_PRINTF(("bp_whoami: bad domainname\n"));
 		return (-1);
 	}
 
 	/* gateway address */
-	if (xdr_inaddr_decode(&recv_head, &gateip)) {
+	if (xdr_inaddr_decode(&recv_head, recv_end, &gateip)) {
 		RPC_PRINTF(("bp_whoami: bad gateway\n"));
 		return (-1);
 	}
@@ -242,7 +246,7 @@ bp_getfile(int sockfd, char *key, struct in_addr *serv_addr, char *pathname)
 		n_long  d[128];
 	} rdata;
 	char serv_name[FNAME_SIZE];
-	char *send_tail, *recv_head;
+	char *send_tail, *recv_head, *recv_end;
 	/* misc... */
 	struct iodesc *d;
 	int sn_len, path_len, rlen;
@@ -285,7 +289,10 @@ bp_getfile(int sockfd, char *key, struct in_addr *serv_addr, char *pathname)
 		errno = EBADRPC;
 		return (-1);
 	}
+	if ((size_t)rlen > sizeof(rdata.d))
+		rlen = sizeof(rdata.d);
 	recv_head = (char*) rdata.d;
+	recv_end = recv_head + rlen;
 
 	/*
 	 * Parse result message.
@@ -293,20 +300,20 @@ bp_getfile(int sockfd, char *key, struct in_addr *serv_addr, char *pathname)
 
 	/* server name */
 	sn_len = FNAME_SIZE-1;
-	if (xdr_string_decode(&recv_head, serv_name, &sn_len)) {
+	if (xdr_string_decode(&recv_head, recv_end, serv_name, &sn_len)) {
 		RPC_PRINTF(("bp_getfile: bad server name\n"));
 		return (-1);
 	}
 
 	/* server IP address (mountd/NFS) */
-	if (xdr_inaddr_decode(&recv_head, serv_addr)) {
+	if (xdr_inaddr_decode(&recv_head, recv_end, serv_addr)) {
 		RPC_PRINTF(("bp_getfile: bad server addr\n"));
 		return (-1);
 	}
 
 	/* server pathname */
 	path_len = FNAME_SIZE - 1;
-	if (xdr_string_decode(&recv_head, pathname, &path_len)) {
+	if (xdr_string_decode(&recv_head, recv_end, pathname, &path_len)) {
 		RPC_PRINTF(("bp_getfile: bad server path\n"));
 		return (-1);
 	}
@@ -346,7 +353,7 @@ xdr_string_encode(char **pkt, char *str, int len)
  *	len_p:	bufsize - 1
  */
 int
-xdr_string_decode(char **pkt, char *str, int *len_p)
+xdr_string_decode(char **pkt, char *end, char *str, int *len_p)
 {
 	u_int32_t *lenp;
 	char *datap;
@@ -354,12 +361,16 @@ xdr_string_decode(char **pkt, char *str, int *len_p)
 	int plen;	/* padded length */
 
 	/* The data will be int aligned. */
+	if (end - *pkt < (int)sizeof(*lenp))
+		return (-1);
 	lenp = (u_int32_t*) *pkt;
 	*pkt += sizeof(*lenp);
 	slen = ntohl(*lenp);
-	if (slen < 0)
+	if (slen < 0 || slen > end - *pkt)
 		return (-1);
 	plen = (slen + 3) & ~3;
+	if (plen > end - *pkt)
+		plen = end - *pkt;
 
 	if (slen > *len_p)
 		slen = *len_p;
@@ -413,7 +424,7 @@ xdr_inaddr_encode(char **pkt, struct in_addr ia)
  *	ia:	network order
  */
 int
-xdr_inaddr_decode(char **pkt, struct in_addr *ia)
+xdr_inaddr_decode(char **pkt, char *end, struct in_addr *ia)
 {
 	struct xdr_inaddr *xi;
 	u_char *cp;
@@ -424,6 +435,8 @@ xdr_inaddr_decode(char **pkt, struct in_addr *ia)
 	} uia;
 
 	/* The data will be int aligned. */
+	if (end - *pkt < (int)sizeof(*xi))
+		return (-1);
 	xi = (struct xdr_inaddr *) *pkt;
 	*pkt += sizeof(*xi);
 	if (xi->atype != htonl(1)) {
