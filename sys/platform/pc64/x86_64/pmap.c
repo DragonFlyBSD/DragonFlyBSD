@@ -5060,6 +5060,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	vm_paddr_t pa;
 	int flags;
 	int nflags;
+	int memattr;
 
 	if (pmap == NULL)
 		return;
@@ -5141,7 +5142,12 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		newpte |= pmap->pmap_bits[PG_MANAGED_IDX];
 //	if (pmap == kernel_pmap)
 //		newpte |= pgeflag;
-	newpte |= pmap->pmap_cache_bits_pte[m->pat_mode];
+	memattr = m->pat_mode;
+	if (entry != NULL && m->object != NULL &&
+	    m->object == entry->ba.object &&
+	    entry->ba.object->memattr != VM_MEMATTR_DEFAULT)
+		memattr = entry->ba.object->memattr;
+	newpte |= pmap->pmap_cache_bits_pte[memattr];
 
 	/*
 	 * It is possible for multiple faults to occur in threaded
