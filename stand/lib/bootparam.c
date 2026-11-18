@@ -199,14 +199,14 @@ bp_whoami(int sockfd)
 	recv_head = (char*) repl->capsule;
 
 	/* client name */
-	hostnamelen = MAXHOSTNAMELEN-1;
+	hostnamelen = sizeof(hostname) - 1;
 	if (xdr_string_decode(&recv_head, hostname, &hostnamelen)) {
 		RPC_PRINTF(("bp_whoami: bad hostname\n"));
 		return (-1);
 	}
 
 	/* domain name */
-	domainnamelen = MAXHOSTNAMELEN-1;
+	domainnamelen = sizeof(domainname) - 1;
 	if (xdr_string_decode(&recv_head, domainname, &domainnamelen)) {
 		RPC_PRINTF(("bp_whoami: bad domainname\n"));
 		return (-1);
@@ -305,7 +305,7 @@ bp_getfile(int sockfd, char *key, struct in_addr *serv_addr, char *pathname)
 	}
 
 	/* server pathname */
-	path_len = MAXPATHLEN-1;
+	path_len = FNAME_SIZE - 1;
 	if (xdr_string_decode(&recv_head, pathname, &path_len)) {
 		RPC_PRINTF(("bp_getfile: bad server path\n"));
 		return (-1);
@@ -357,6 +357,8 @@ xdr_string_decode(char **pkt, char *str, int *len_p)
 	lenp = (u_int32_t*) *pkt;
 	*pkt += sizeof(*lenp);
 	slen = ntohl(*lenp);
+	if (slen < 0)
+		return (-1);
 	plen = (slen + 3) & ~3;
 
 	if (slen > *len_p)
