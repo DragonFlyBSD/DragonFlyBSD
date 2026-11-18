@@ -2024,14 +2024,16 @@ vmx_exit_xsetbv(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
     struct nvmm_vcpu_exit *exit)
 {
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
+	uint32_t ecx;
 	uint64_t val;
 
 	exit->reason = NVMM_VCPU_EXIT_NONE;
 
+	ecx = cpudata->gprs[NVMM_X64_GPR_RCX] & 0xFFFFFFFF;
 	val = (cpudata->gprs[NVMM_X64_GPR_RDX] << 32) |
 	    (cpudata->gprs[NVMM_X64_GPR_RAX] & 0xFFFFFFFF);
 
-	if (__predict_false(cpudata->gprs[NVMM_X64_GPR_RCX] != 0)) {
+	if (__predict_false(ecx != 0)) {
 		goto error;
 	} else if (__predict_false((val & ~cpudata->xcr0_valid) != 0)) {
 		goto error;
