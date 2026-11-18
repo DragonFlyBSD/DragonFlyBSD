@@ -1154,10 +1154,12 @@ vmx_vcpu_inject(struct nvmm_cpu *vcpu)
 
 	switch (evtype) {
 	case NVMM_VCPU_EVENT_EXCP:
-		if (vector == 2 || vector >= 32)
+		if (vector == 2 || vector == 3 || vector == 4) {
 			goto out;
-		if (vector == 3 || vector == 0)
+		}
+		if (vector >= 32) {
 			goto out;
+		}
 		if (vmx_excp_has_rf(vector)) {
 			rflags = vmx_vmread(VMCS_GUEST_RFLAGS);
 			vmx_vmwrite(VMCS_GUEST_RFLAGS, rflags | PSL_RF);

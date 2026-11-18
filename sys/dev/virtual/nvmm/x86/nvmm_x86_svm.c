@@ -726,10 +726,12 @@ svm_vcpu_inject(struct nvmm_cpu *vcpu)
 	switch (evtype) {
 	case NVMM_VCPU_EVENT_EXCP:
 		type = SVM_EVENT_TYPE_EXC;
-		if (vector == 2 || vector >= 32)
+		if (vector == 2 || vector == 3 || vector == 4) {
 			return EINVAL;
-		if (vector == 3 || vector == 0)
+		}
+		if (vector >= 32) {
 			return EINVAL;
+		}
 		if (svm_excp_has_rf(vector)) {
 			vmcb->state.rflags |= PSL_RF;
 		}
