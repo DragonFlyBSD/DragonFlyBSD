@@ -163,6 +163,8 @@ TUNABLE_INT("kern.kms_columns", &desired_cols);
 #define VIRTUAL_TTY(sc, x) ((SC_DEV((sc),(x)) != NULL) ?	\
 	(SC_DEV((sc),(x))->si_tty) : NULL)
 #define ISTTYOPEN(tp)	((tp) && ((tp)->t_state & TS_ISOPEN))
+/* VT_WAITACTIVE sleep channel, valid whether or not the vty was opened */
+#define VTY_WCHAN(sc, vty) (&(sc)->dev[(vty) - (sc)->first_vty])
 
 static	int	debugger;
 static	cdev_t	cctl_dev;
@@ -1342,17 +1344,11 @@ scioctl(struct dev_ioctl_args *ap)
 	    return error;
 	}
 
-	/*
-	 * scp might be NULL, we aren't sure why.  Check for NULL.
-	 *
-	 * http://bugs.dragonflybsd.org/issues/2481
-	 */
-	scp = SC_STAT(SC_DEV(sc, i));
-	if (scp == NULL || scp == scp->sc->cur_scp) {
+	if (i == sc->cur_scp->index) {
 	    lwkt_reltoken(&vga_token);
 	    return 0;
 	}
-	error = tsleep((caddr_t)&scp->smode, PCATCH, "waitvt", 0);
+	error = tsleep(VTY_WCHAN(sc, i), PCATCH, "waitvt", 0);
 	/* May return ERESTART */
 	lwkt_reltoken(&vga_token);
 	/* Wait for drm modesetting callback to finish. */
@@ -2938,7 +2934,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
     sc->new_scp = SC_STAT(SC_DEV(sc, next_scr));
     if (sc->new_scp == sc->old_scp) {
 	sc->switch_in_progress = 0;
-	wakeup((caddr_t)&sc->new_scp->smode);
+	wakeup(VTY_WCHAN(sc, next_scr));
 	DPRINTF(5, ("switch done (new == old)\n"));
 	return 0;
     }
@@ -2956,7 +2952,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
     exchange_scr(sc);
 
     /* wake up processes waiting for this vty */
-    wakeup((caddr_t)&sc->cur_scp->smode);
+    wakeup(VTY_WCHAN(sc, sc->cur_scp->index));
 
     /* wait for the controlling process to acknowledge, if necessary */
     if (signal_vt_acq(sc->cur_scp)) {
@@ -2979,7 +2975,7 @@ do_switch_scr(sc_softc_t *sc)
 
     exchange_scr(sc);
     /* sc->cur_scp == sc->new_scp */
-    wakeup((caddr_t)&sc->cur_scp->smode);
+    wakeup(VTY_WCHAN(sc, sc->cur_scp->index));
 
     /* wait for the controlling process to acknowledge, if necessary */
     if (!signal_vt_acq(sc->cur_scp)) {
