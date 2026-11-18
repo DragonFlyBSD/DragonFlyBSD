@@ -57,7 +57,7 @@ command_ls(int argc, char *argv[])
     struct stat	sb;
     struct 	dirent *d;
     char	*buf, *path;
-    char	lbuf[128];		/* one line */
+    char	lbuf[320];		/* one line */
     int		result, ch;
     int		verbose;
 	
@@ -109,10 +109,11 @@ command_ls(int argc, char *argv[])
 		if (rel_stat(buf, &sb))
 		    sb.st_size = 0;
 		free(buf);
-		sprintf(lbuf, " %c %8d %s\n", typestr[d->d_type],
-		    (int)sb.st_size, d->d_name);
+		snprintf(lbuf, sizeof(lbuf), " %c %8d %s\n",
+		    typestr[d->d_type], (int)sb.st_size, d->d_name);
 	    } else {
-		sprintf(lbuf, " %c  %s\n", typestr[d->d_type], d->d_name);
+		snprintf(lbuf, sizeof(lbuf), " %c  %s\n",
+		    typestr[d->d_type], d->d_name);
 	    }
 	    if (pager_output(lbuf))
 		goto out;
