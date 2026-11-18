@@ -593,6 +593,7 @@ struct svm_cpudata {
 	/* Limits. */
 	uint64_t cr4_valid;
 	uint64_t efer_valid;
+	uint64_t xcr0_valid;
 
 	/* VCPU configuration. */
 	bool cpuidpresent[SVM_NCPUIDS];
@@ -921,20 +922,20 @@ svm_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		cpudata->gprs[NVMM_X64_GPR_RDX] = 0;
 		break;
 	case 0x0000000D: /* Processor Extended State Enumeration */
-		if (svm_xcr0_mask == 0) {
+		if (cpudata->xcr0_valid == 0) {
 			break;
 		}
 		switch (ecx) {
 		case 0:
 			/* Supported XCR0 bits. */
-			cpudata->vmcb->state.rax = svm_xcr0_mask & 0xFFFFFFFF;
-			cpudata->gprs[NVMM_X64_GPR_RDX] = svm_xcr0_mask >> 32;
+			cpudata->vmcb->state.rax = cpudata->xcr0_valid & 0xFFFFFFFF;
+			cpudata->gprs[NVMM_X64_GPR_RDX] = cpudata->xcr0_valid >> 32;
 			/* XSAVE size for currently enabled XCR0 features. */
 			cpudata->gprs[NVMM_X64_GPR_RBX] =
 			    nvmm_x86_xsave_size(cpudata->gxcr0);
 			/* XSAVE size for all supported XCR0 features. */
 			cpudata->gprs[NVMM_X64_GPR_RCX] =
-			    nvmm_x86_xsave_size(svm_xcr0_mask);
+			    nvmm_x86_xsave_size(cpudata->xcr0_valid);
 			break;
 		case 1:
 			cpudata->vmcb->state.rax &=
@@ -1491,7 +1492,7 @@ svm_exit_xsetbv(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		goto error;
 	} else if (__predict_false(vmcb->state.cpl != 0)) {
 		goto error;
-	} else if (__predict_false((val & ~svm_xcr0_mask) != 0)) {
+	} else if (__predict_false((val & ~cpudata->xcr0_valid) != 0)) {
 		goto error;
 	} else if (__predict_false((val & XCR0_X87) == 0)) {
 		goto error;
@@ -1522,8 +1523,8 @@ svm_vcpu_guest_fpu_enter(struct nvmm_cpu *vcpu)
 
 	x86_curthread_save_fpu();
 
-	x86_restore_fpu(&cpudata->gxsave, svm_xcr0_mask);
-	if (svm_xcr0_mask != 0) {
+	x86_restore_fpu(&cpudata->gxsave, cpudata->xcr0_valid);
+	if (cpudata->xcr0_valid != 0) {
 		x86_set_xcr(0, cpudata->gxcr0);
 	}
 }
@@ -1533,10 +1534,10 @@ svm_vcpu_guest_fpu_leave(struct nvmm_cpu *vcpu)
 {
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 
-	if (svm_xcr0_mask != 0) {
+	if (cpudata->xcr0_valid != 0) {
 		x86_set_xcr(0, svm_global_hstate.xcr0);
 	}
-	x86_save_fpu(&cpudata->gxsave, svm_xcr0_mask);
+	x86_save_fpu(&cpudata->gxsave, cpudata->xcr0_valid);
 
 	x86_curthread_restore_fpu();
 }
@@ -2068,10 +2069,10 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 		vmcb->ctrl.v |= __SHIFTIN(state->crs[NVMM_X64_CR_CR8],
 		    VMCB_CTRL_V_TPR);
 
-		if (svm_xcr0_mask != 0) {
+		if (cpudata->xcr0_valid != 0) {
 			/* Clear illegal XCR0 bits, set mandatory X87 bit. */
 			cpudata->gxcr0 = state->crs[NVMM_X64_CR_XCR0];
-			cpudata->gxcr0 &= svm_xcr0_mask;
+			cpudata->gxcr0 &= cpudata->xcr0_valid;
 			cpudata->gxcr0 |= XCR0_X87;
 		}
 
@@ -2157,9 +2158,9 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 		fpustate->fx_mxcsr_mask &= x86_fpu_mxcsr_mask;
 		fpustate->fx_mxcsr &= fpustate->fx_mxcsr_mask;
 
-		if (svm_xcr0_mask != 0) {
+		if (cpudata->xcr0_valid != 0) {
 			/* Reset XSTATE_BV, to force a reload. */
-			cpudata->gxsave.xstate_bv = svm_xcr0_mask;
+			cpudata->gxsave.xstate_bv = cpudata->xcr0_valid;
 		}
 	}
 
@@ -2386,6 +2387,8 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	    /* EFER_AIBRSE excluded */
 	    /* EFER_ETLBI excluded */;
 
+	cpudata->xcr0_valid = svm_xcr0_mask;
+
 	/*
 	 * If DecodeAssists are supported:
 	 *
@@ -2510,7 +2513,7 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	vmcb->ctrl.n_cr3 = os_vmspace_pdirpa(mach->vm);
 
 	/* Init XSAVE header. */
-	cpudata->gxsave.xstate_bv = svm_xcr0_mask;
+	cpudata->gxsave.xstate_bv = cpudata->xcr0_valid;
 	cpudata->gxsave.xcomp_bv = 0;
 
 	/* Install the RESET state. */
