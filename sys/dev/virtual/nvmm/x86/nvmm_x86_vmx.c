@@ -793,33 +793,6 @@ static uint64_t vmx_xcr0_mask __read_mostly;
 #define CR0_STATIC_MASK \
 	(CR0_FORCE_ZERO | CR0_FORCE_ONE)
 
-#define CR4_VALID \
-	(CR4_VME |			\
-	 CR4_PVI |			\
-	 CR4_TSD |			\
-	 CR4_DE |			\
-	 CR4_PSE |			\
-	 CR4_PAE |			\
-	 CR4_MCE |			\
-	 CR4_PGE |			\
-	 CR4_PCE |			\
-	 CR4_OSFXSR |			\
-	 CR4_OSXMMEXCPT |		\
-	 CR4_UMIP |			\
-	 /* CR4_LA57 excluded */	\
-	 /* CR4_VMXE excluded */	\
-	 /* CR4_SMXE excluded */	\
-	 CR4_FSGSBASE |			\
-	 CR4_PCIDE |			\
-	 CR4_OSXSAVE |			\
-	 CR4_SMEP |			\
-	 CR4_SMAP			\
-	 /* CR4_PKE excluded */		\
-	 /* CR4_CET excluded */		\
-	 /* CR4_PKS excluded */)
-#define CR4_INVALID \
-	(0xFFFFFFFFFFFFFFFFULL & ~CR4_VALID)
-
 #define EFER_TLB_FLUSH \
 	(EFER_NXE|EFER_LMA|EFER_LME)
 #define CR0_TLB_FLUSH \
@@ -881,6 +854,10 @@ struct vmx_cpudata {
 	uint64_t gtsc_offset;
 	uint64_t gtsc_last;
 	struct nvmm_x86_xsave gxsave __aligned(64);
+
+	/* Limits. */
+	uint64_t cr4_valid;
+	uint64_t efer_valid;
 
 	/* VCPU configuration. */
 	bool cpuidpresent[VMX_NCPUIDS];
@@ -1740,7 +1717,7 @@ vmx_inkernel_handle_cr4(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		gpr = cpudata->gprs[gpr];
 	}
 
-	if (gpr & CR4_INVALID) {
+	if ((gpr & ~cpudata->cr4_valid) != 0) {
 		return -1;
 	}
 	cr4 = gpr | CR4_VMXE;
@@ -2686,7 +2663,8 @@ vmx_vcpu_setstate(struct nvmm_cpu *vcpu)
 
 		/* CR4_VMXE is mandatory. */
 		vmx_vmwrite(VMCS_GUEST_CR4,
-		    (state->crs[NVMM_X64_CR_CR4] & CR4_VALID) | CR4_VMXE);
+		    (state->crs[NVMM_X64_CR_CR4] & cpudata->cr4_valid) |
+		    CR4_VMXE);
 
 		cpudata->gcr8 = state->crs[NVMM_X64_CR_CR8];
 
@@ -2719,7 +2697,7 @@ vmx_vcpu_setstate(struct nvmm_cpu *vcpu)
 		    state->msrs[NVMM_X64_MSR_KERNELGSBASE];
 
 		vmx_vmwrite(VMCS_GUEST_IA32_EFER,
-		    state->msrs[NVMM_X64_MSR_EFER]);
+		    state->msrs[NVMM_X64_MSR_EFER] & cpudata->efer_valid);
 		vmx_vmwrite(VMCS_GUEST_IA32_PAT,
 		    state->msrs[NVMM_X64_MSR_PAT]);
 		vmx_vmwrite(VMCS_GUEST_IA32_SYSENTER_CS,
@@ -2967,6 +2945,46 @@ vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	struct msr_entry *gmsr = cpudata->gmsr;
 	uint64_t rev, eptp;
 
+	cpudata->cr4_valid =
+	    CR4_VME |
+	    CR4_PVI |
+	    CR4_TSD |
+	    CR4_DE |
+	    CR4_PSE |
+	    CR4_PAE |
+	    CR4_MCE |
+	    CR4_PGE |
+	    CR4_PCE |
+	    CR4_OSFXSR |
+	    CR4_OSXMMEXCPT |
+	    CR4_UMIP |
+	    /* CR4_LA57 excluded */
+	    /* CR4_VMXE excluded */
+	    /* CR4_SMXE excluded */
+	    CR4_FSGSBASE |
+	    CR4_PCIDE |
+	    CR4_OSXSAVE |
+	    CR4_SMEP |
+	    CR4_SMAP
+	    /* CR4_PKE excluded */
+	    /* CR4_CET excluded */
+	    /* CR4_PKS excluded */;
+
+	cpudata->efer_valid =
+	    EFER_SCE |
+	    EFER_LME |
+	    EFER_LMA |
+	    EFER_NXE
+	    /* EFER_SVME excluded */
+	    /* EFER_LMSLE excluded */
+	    /* EFER_FFXSR excluded */
+	    /* EFER_TCE excluded */
+	    /* EFER_MCOMMIT excluded */
+	    /* EFER_INTWB excluded */
+	    /* EFER_UAIE excluded */
+	    /* EFER_AIBRSE excluded */
+	    /* EFER_ETLBI excluded */;
+
 	rev = vmx_get_revision();
 
 	memset(vmcs, 0, VMCS_SIZE);
@@ -3026,7 +3044,7 @@ vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	vmx_vmwrite(VMCS_CR0_MASK, CR0_STATIC_MASK);
 
 	/* Force unsupported CR4 fields to zero. */
-	vmx_vmwrite(VMCS_CR4_MASK, CR4_INVALID);
+	vmx_vmwrite(VMCS_CR4_MASK, ~cpudata->cr4_valid);
 	vmx_vmwrite(VMCS_CR4_SHADOW, 0);
 
 	/* Set the Host state for resuming. */
