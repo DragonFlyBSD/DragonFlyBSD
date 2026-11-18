@@ -1293,23 +1293,6 @@ vmx_inkernel_handle_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	uint32_t clevel;
 	uint64_t cr4;
 
-	if (eax < 0x40000000) {
-		if (__predict_false(eax > vmx_cpuid_max_basic)) {
-			eax = vmx_cpuid_max_basic;
-			vmx_inkernel_exec_cpuid(cpudata, eax, ecx);
-		}
-	} else if (eax < 0x80000000) {
-		if (__predict_false(eax > VMX_CPUID_MAX_HYPERVISOR)) {
-			eax = vmx_cpuid_max_basic;
-			vmx_inkernel_exec_cpuid(cpudata, eax, ecx);
-		}
-	} else {
-		if (__predict_false(eax > vmx_cpuid_max_extended)) {
-			eax = vmx_cpuid_max_basic;
-			vmx_inkernel_exec_cpuid(cpudata, eax, ecx);
-		}
-	}
-
 	switch (eax) {
 	case 0x00000000:
 		cpudata->gprs[NVMM_X64_GPR_RAX] = vmx_cpuid_max_basic;
@@ -1548,6 +1531,25 @@ vmx_exit_insn(struct nvmm_vcpu_exit *exit, uint64_t reason)
 	exit->reason = reason;
 }
 
+static struct nvmm_vcpu_conf_cpuid *
+vmx_find_cpuid_conf(struct vmx_cpudata *cpudata, uint32_t eax)
+{
+	struct nvmm_vcpu_conf_cpuid *cpuid;
+	size_t i;
+
+	for (i = 0; i < VMX_NCPUIDS; i++) {
+		if (!cpudata->cpuidpresent[i]) {
+			continue;
+		}
+		cpuid = &cpudata->cpuid[i];
+		if (cpuid->leaf == eax) {
+			return cpuid;
+		}
+	}
+
+	return NULL;
+}
+
 static void
 vmx_exit_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
     struct nvmm_vcpu_exit *exit)
@@ -1555,28 +1557,34 @@ vmx_exit_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 	struct nvmm_vcpu_conf_cpuid *cpuid;
 	uint32_t eax, ecx;
-	size_t i;
 
 	eax = (cpudata->gprs[NVMM_X64_GPR_RAX] & 0xFFFFFFFF);
 	ecx = (cpudata->gprs[NVMM_X64_GPR_RCX] & 0xFFFFFFFF);
+
+	cpuid = vmx_find_cpuid_conf(cpudata, eax);
+	if (__predict_false(cpuid != NULL && cpuid->exit)) {
+		vmx_exit_insn(exit, NVMM_VCPU_EXIT_CPUID);
+		return;
+	}
+
+	if (eax < 0x40000000) {
+		if (__predict_false(eax > vmx_cpuid_max_basic)) {
+			eax = vmx_cpuid_max_basic;
+		}
+	} else if (eax < 0x80000000) {
+		if (__predict_false(eax > VMX_CPUID_MAX_HYPERVISOR)) {
+			eax = vmx_cpuid_max_basic;
+		}
+	} else {
+		if (__predict_false(eax > vmx_cpuid_max_extended)) {
+			eax = vmx_cpuid_max_basic;
+		}
+	}
+
 	vmx_inkernel_exec_cpuid(cpudata, eax, ecx);
 	vmx_inkernel_handle_cpuid(mach, vcpu, eax, ecx);
 
-	for (i = 0; i < VMX_NCPUIDS; i++) {
-		if (!cpudata->cpuidpresent[i]) {
-			continue;
-		}
-		cpuid = &cpudata->cpuid[i];
-		if (cpuid->leaf != eax) {
-			continue;
-		}
-
-		if (cpuid->exit) {
-			vmx_exit_insn(exit, NVMM_VCPU_EXIT_CPUID);
-			return;
-		}
-		OS_ASSERT(cpuid->mask);
-
+	if (__predict_false(cpuid != NULL)) {
 		/* del */
 		cpudata->gprs[NVMM_X64_GPR_RAX] &= ~cpuid->u.mask.del.eax;
 		cpudata->gprs[NVMM_X64_GPR_RBX] &= ~cpuid->u.mask.del.ebx;
@@ -1588,8 +1596,6 @@ vmx_exit_cpuid(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		cpudata->gprs[NVMM_X64_GPR_RBX] |= cpuid->u.mask.set.ebx;
 		cpudata->gprs[NVMM_X64_GPR_RCX] |= cpuid->u.mask.set.ecx;
 		cpudata->gprs[NVMM_X64_GPR_RDX] |= cpuid->u.mask.set.edx;
-
-		break;
 	}
 
 	vmx_inkernel_advance();
