@@ -2865,10 +2865,10 @@ svm_init(void)
 {
 	cpuid_desc_t descs;
 	os_cpu_t *cpu;
-	size_t maxcpus;
+	size_t max_cpus;
 
-	maxcpus = OS_MAXCPUS;
-	hsave = os_mem_zalloc(maxcpus * sizeof(struct svm_hsave));
+	max_cpus = OS_MAXCPUS;
+	hsave = os_mem_zalloc(max_cpus * sizeof(struct svm_hsave));
 
 	x86_get_cpuid(0x8000000a, &descs);
 
@@ -2923,17 +2923,17 @@ svm_fini_asid(void)
 static void
 svm_fini(void)
 {
-	size_t i, maxcpus;
+	size_t i, max_cpus;
 
 	os_ipi_broadcast(svm_change_cpu, (void *)false);
 
-	maxcpus = OS_MAXCPUS;
-	for (i = 0; i < maxcpus; i++) {
+	max_cpus = OS_MAXCPUS;
+	for (i = 0; i < max_cpus; i++) {
 		if (hsave[i].pa != 0)
 			os_pa_free(hsave[i].pa);
 	}
 
-	os_mem_free(hsave, maxcpus * sizeof(struct svm_hsave));
+	os_mem_free(hsave, max_cpus * sizeof(struct svm_hsave));
 
 	svm_fini_asid();
 }

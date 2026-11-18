@@ -3580,13 +3580,13 @@ vmx_init(void)
 	cpuid_desc_t descs;
 	os_cpu_t *cpu;
 	uint64_t msr;
-	size_t maxcpus;
+	size_t max_cpus;
 	paddr_t pa;
 	vaddr_t va;
 	int error;
 
-	maxcpus = OS_MAXCPUS;
-	vmxoncpu = os_mem_zalloc(maxcpus * sizeof(struct vmxoncpu));
+	max_cpus = OS_MAXCPUS;
+	vmxoncpu = os_mem_zalloc(max_cpus * sizeof(struct vmxoncpu));
 
 	/* Init the ASID bitmap (VPID). */
 	vmx_init_asid(VPID_MAX);
@@ -3663,17 +3663,17 @@ vmx_fini_asid(void)
 static void
 vmx_fini(void)
 {
-	size_t i, maxcpus;
+	size_t i, max_cpus;
 
 	os_ipi_broadcast(vmx_change_cpu, (void *)false);
 
-	maxcpus = OS_MAXCPUS;
-	for (i = 0; i < maxcpus; i++) {
+	max_cpus = OS_MAXCPUS;
+	for (i = 0; i < max_cpus; i++) {
 		if (vmxoncpu[i].pa != 0)
 			os_contigpa_free(vmxoncpu[i].pa, vmxoncpu[i].va, 1);
 	}
 
-	os_mem_free(vmxoncpu, maxcpus * sizeof(struct vmxoncpu));
+	os_mem_free(vmxoncpu, max_cpus * sizeof(struct vmxoncpu));
 
 	vmx_fini_asid();
 }
