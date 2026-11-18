@@ -1832,6 +1832,8 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 		error = 0;
 		bzero(info, sizeof(*info));
 		info->si_signo = sig;
+		info->si_pid = p->p_sigacts->ps_frominfo[sig].pid;
+		info->si_uid = p->p_sigacts->ps_frominfo[sig].uid;
 		spin_lock(&lp->lwp_spin);
 		lwp_delsig(lp, sig, 1);	/* take the signal! */
 		spin_unlock(&lp->lwp_spin);
