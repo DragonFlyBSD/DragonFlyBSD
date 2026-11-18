@@ -144,7 +144,7 @@ nvmm_vcpu_alloc(struct nvmm_machine *mach, nvmm_cpuid_t cpuid,
 static void
 nvmm_vcpu_free(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 {
-	OS_ASSERT(os_mtx_owned(&vcpu->lock));
+	OS_ASSERT_MTX_OWNED(&vcpu->lock);
 	vcpu->present = false;
 	if (vcpu->comm != NULL) {
 		os_vmobj_unmap(os_kernel_map, (vaddr_t)vcpu->comm,

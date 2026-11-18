@@ -135,13 +135,11 @@ typedef vm_paddr_t		paddr_t;
 #define os_mtx_destroy(lock)	mutex_destroy(lock)
 #define os_mtx_lock(lock)	mutex_enter(lock)
 #define os_mtx_unlock(lock)	mutex_exit(lock)
-#define os_mtx_owned(lock)	mutex_owned(lock)
 #elif defined(__DragonFly__)
 #define os_mtx_init(lock)	lockinit(lock, "nvmmmtx", 0, 0)
 #define os_mtx_destroy(lock)	lockuninit(lock)
 #define os_mtx_lock(lock)	lockmgr(lock, LK_EXCLUSIVE)
 #define os_mtx_unlock(lock)	lockmgr(lock, LK_RELEASE)
-#define os_mtx_owned(lock)	(lockstatus(lock, curthread) == LK_EXCLUSIVE)
 #endif
 
 /* Malloc. */
@@ -266,8 +264,11 @@ typedef cpumask_t		os_cpuset_t;
 /* Asserts. */
 #if defined(__NetBSD__)
 #define OS_ASSERT		KASSERT
+#define OS_ASSERT_MTX_OWNED(m)	OS_ASSERT(mutex_owned(m))
 #elif defined(__DragonFly__)
 #define OS_ASSERT		KKASSERT
+#define OS_ASSERT_MTX_OWNED(m)	\
+	OS_ASSERT(lockstatus(m, curthread) == LK_EXCLUSIVE)
 #endif
 
 /* Userspace access. */
@@ -397,6 +398,6 @@ os_ipi_broadcast(void (*func)(void *), void *arg)
 #define curlwp_bind()		((int)0)
 #define curlwp_bindx(bound)	/* nothing */
 
-#endif /* __NetBSD__ */
+#endif
 
 #endif /* _NVMM_OS_H_ */
