@@ -89,7 +89,7 @@ reset_machine64(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	memset(state, 0, sizeof(*state));
 
 	/* Default. */
-	state->gprs[NVMM_X64_GPR_RFLAGS] = RFLAGS_MBO;
+	state->gprs[NVMM_X64_GPR_RFLAGS] = RFLAGS_MBO | RFLAGS_IF;
 	init_seg(&state->segs[NVMM_X64_SEG_CS], SDT_MEMERA, GSEL(GCODE_SEL, SEL_RING0));
 	init_seg(&state->segs[NVMM_X64_SEG_SS], SDT_MEMRWA, GSEL(GDATA_SEL, SEL_RING0));
 	init_seg(&state->segs[NVMM_X64_SEG_DS], SDT_MEMRWA, GSEL(GDATA_SEL, SEL_RING0));
@@ -110,8 +110,8 @@ reset_machine64(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	state->crs[NVMM_X64_CR_CR4] = CR4_PAE;
 	state->msrs[NVMM_X64_MSR_EFER] = EFER_LME | EFER_SCE | EFER_LMA;
 
-	/* Reset TPR. */
-	state->crs[NVMM_X64_CR_CR8] = 0;
+	/* Start above the CR8=3 write, to exercise a TPR lowering. */
+	state->crs[NVMM_X64_CR_CR8] = 4;
 
 	state->msrs[NVMM_X64_MSR_PAT] = MSR_PAT_VALUE;
 

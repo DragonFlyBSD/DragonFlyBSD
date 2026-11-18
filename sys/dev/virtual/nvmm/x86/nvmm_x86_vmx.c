@@ -1747,7 +1747,7 @@ vmx_inkernel_handle_cr8(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
     uint64_t qual, struct nvmm_vcpu_exit *exit)
 {
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
-	uint64_t type, gpr;
+	uint64_t type, gpr, newval;
 	bool write;
 
 	type = __SHIFTOUT(qual, VMX_QUAL_CR_TYPE);
@@ -1764,13 +1764,14 @@ vmx_inkernel_handle_cr8(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 
 	if (write) {
 		if (gpr == NVMM_X64_GPR_RSP) {
-			cpudata->gcr8 = vmx_vmread(VMCS_GUEST_RSP);
+			newval = vmx_vmread(VMCS_GUEST_RSP);
 		} else {
-			cpudata->gcr8 = cpudata->gprs[gpr];
+			newval = cpudata->gprs[gpr];
 		}
-		if (cpudata->tpr.exit_changed) {
+		if (cpudata->tpr.exit_changed && (newval < cpudata->gcr8)) {
 			exit->reason = NVMM_VCPU_EXIT_TPR_CHANGED;
 		}
+		cpudata->gcr8 = newval;
 	} else {
 		if (gpr == NVMM_X64_GPR_RSP) {
 			vmx_vmwrite(VMCS_GUEST_RSP, cpudata->gcr8);

@@ -49,6 +49,7 @@
 #define EFER_NXE	__BIT(11)
 
 #define RFLAGS_MBO	0x00000002	/* Must be one bits */
+#define RFLAGS_IF	0x00000200	/* Interrupt flag */
 #define RFLAGS_AC	0x00040000	/* Alignment check flag */
 
 #define GSEL(s,r)	(((s) << 3) | r)

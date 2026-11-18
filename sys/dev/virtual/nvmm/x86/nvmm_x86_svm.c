@@ -666,13 +666,40 @@ svm_event_waitexit_disable(struct nvmm_cpu *vcpu, bool nmi)
 		vmcb->ctrl.intercept_misc1 &= ~VMCB_CTRL_INTERCEPT_IRET;
 		cpudata->nmi_window_exit = false;
 	} else {
-		vmcb->ctrl.intercept_misc1 &= ~VMCB_CTRL_INTERCEPT_VINTR;
+		if (!cpudata->tpr.exit_changed) {
+			vmcb->ctrl.intercept_misc1 &= ~VMCB_CTRL_INTERCEPT_VINTR;
+		}
 		vmcb->ctrl.v &= ~(VMCB_CTRL_V_IRQ | VMCB_CTRL_V_IGN_TPR);
 		svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_TPR);
 		cpudata->int_window_exit = false;
 	}
 
 	svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_I);
+}
+
+static inline void
+svm_tprtrap_arm(struct svm_cpudata *cpudata)
+{
+	struct vmcb *vmcb = cpudata->vmcb;
+	uint64_t tpr, v;
+
+	if (!cpudata->tpr.exit_changed || cpudata->int_window_exit) {
+		return;
+	}
+
+	/*
+	 * Set V_INTR_PRIO = V_TPR, so that we get a VINTR VMEXIT if the guest
+	 * lowers its TPR.
+	 */
+
+	tpr = __SHIFTOUT(vmcb->ctrl.v, VMCB_CTRL_V_TPR);
+	v = vmcb->ctrl.v;
+	v &= ~(VMCB_CTRL_V_IGN_TPR | VMCB_CTRL_V_INTR_PRIO);
+	v |= VMCB_CTRL_V_IRQ | __SHIFTIN(tpr, VMCB_CTRL_V_INTR_PRIO);
+	if (vmcb->ctrl.v != v) {
+		vmcb->ctrl.v = v;
+		svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_TPR);
+	}
 }
 
 static inline bool
@@ -1089,32 +1116,6 @@ svm_exit_wcr4(struct nvmm_cpu *vcpu, struct nvmm_vcpu_exit *exit)
 
 	svm_inkernel_advance(vmcb);
 	exit->reason = NVMM_VCPU_EXIT_NONE;
-}
-
-static void
-svm_exit_wcr8(struct nvmm_cpu *vcpu, struct nvmm_vcpu_exit *exit)
-{
-	struct svm_cpudata *cpudata = vcpu->cpudata;
-	struct vmcb *vmcb = cpudata->vmcb;
-	uint64_t info, gpr, newval;
-
-	info = vmcb->ctrl.exitinfo1;
-	gpr = __SHIFTOUT(info, SVM_EXIT_CRDR_GPR);
-	if (gpr == NVMM_X64_GPR_RAX) {
-		newval = vmcb->state.rax;
-	} else if (gpr == NVMM_X64_GPR_RSP) {
-		newval = vmcb->state.rsp;
-	} else {
-		newval = cpudata->gprs[gpr];
-	}
-
-	vmcb->ctrl.v &= ~VMCB_CTRL_V_TPR;
-	vmcb->ctrl.v |= __SHIFTIN(newval, VMCB_CTRL_V_TPR);
-
-	svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_TPR);
-
-	svm_inkernel_advance(vmcb);
-	exit->reason = NVMM_VCPU_EXIT_TPR_CHANGED;
 }
 
 static struct nvmm_vcpu_conf_cpuid *
@@ -1746,6 +1747,8 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 #endif
 	}
 
+	svm_tprtrap_arm(cpudata);
+
 	svm_vcpu_guest_dbregs_enter(vcpu);
 	svm_vcpu_guest_misc_enter(vcpu);
 
@@ -1818,16 +1821,18 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		case VMCB_EXITCODE_CR4_WRITE:
 			svm_exit_wcr4(vcpu, exit);
 			break;
-		case VMCB_EXITCODE_CR8_WRITE:
-			svm_exit_wcr8(vcpu, exit);
-			break;
 		case VMCB_EXITCODE_INTR:
 		case VMCB_EXITCODE_NMI:
 			exit->reason = NVMM_VCPU_EXIT_NONE;
 			break;
 		case VMCB_EXITCODE_VINTR:
-			svm_event_waitexit_disable(vcpu, false);
-			exit->reason = NVMM_VCPU_EXIT_INT_READY;
+			if (cpudata->int_window_exit) {
+				svm_event_waitexit_disable(vcpu, false);
+				exit->reason = NVMM_VCPU_EXIT_INT_READY;
+			} else {
+				/* TPR trap: the guest lowered its TPR. */
+				exit->reason = NVMM_VCPU_EXIT_TPR_CHANGED;
+			}
 			break;
 		case VMCB_EXITCODE_CR0_SEL_WRITE:
 			svm_exit_cr0(mach, vcpu, exit);
@@ -2673,19 +2678,6 @@ svm_vcpu_configure_tpr(struct svm_cpudata *cpudata, void *data)
 	struct nvmm_vcpu_conf_tpr *tpr = data;
 	struct vmcb *vmcb = cpudata->vmcb;
 
-	/*
-	 * If DecodeAssists are supported:
-	 *
-	 *  - Intercept writes to CR8 and deliver TPR_CHANGED VMEXITs to the
-	 *    emulator. If not, then we have no way to precisely track CR8
-	 *    updates, and rely on the emulator to do best-effort tracking
-	 *    based on the CR8 exitstate.
-	 */
-
-	if (!svm_decode_assist) {
-		return ENOTSUP;
-	}
-
 	if (cpudata->tpr.exit_changed == tpr->exit_changed) {
 		return 0;
 	}
@@ -2693,9 +2685,11 @@ svm_vcpu_configure_tpr(struct svm_cpudata *cpudata, void *data)
 	cpudata->tpr.exit_changed = tpr->exit_changed;
 
 	if (cpudata->tpr.exit_changed) {
-		vmcb->ctrl.intercept_cr |= VMCB_CTRL_INTERCEPT_WCR(8);
-	} else {
-		vmcb->ctrl.intercept_cr &= ~VMCB_CTRL_INTERCEPT_WCR(8);
+		vmcb->ctrl.intercept_misc1 |= VMCB_CTRL_INTERCEPT_VINTR;
+	} else if (!cpudata->int_window_exit) {
+		vmcb->ctrl.intercept_misc1 &= ~VMCB_CTRL_INTERCEPT_VINTR;
+		vmcb->ctrl.v &= ~VMCB_CTRL_V_IRQ;
+		svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_TPR);
 	}
 
 	svm_vmcb_cache_flush(vmcb, VMCB_CTRL_VMCB_CLEAN_I);
@@ -2968,10 +2962,8 @@ svm_capability(struct nvmm_capability *cap)
 {
 	cap->arch.mach_conf_support = 0;
 	cap->arch.vcpu_conf_support =
-	    NVMM_CAP_ARCH_VCPU_CONF_CPUID;
-	if (svm_decode_assist) {
-		cap->arch.vcpu_conf_support |= NVMM_CAP_ARCH_VCPU_CONF_TPR;
-	}
+	    NVMM_CAP_ARCH_VCPU_CONF_CPUID |
+	    NVMM_CAP_ARCH_VCPU_CONF_TPR;
 	cap->arch.xcr0_mask = svm_xcr0_mask;
 	cap->arch.mxcsr_mask = x86_fpu_mxcsr_mask;
 	cap->arch.conf_cpuid_maxops = SVM_NCPUIDS;
