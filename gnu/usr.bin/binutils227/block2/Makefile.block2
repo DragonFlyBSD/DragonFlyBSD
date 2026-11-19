@@ -2,18 +2,13 @@
 # use the normal "Makefile.inc" mechanism, because we need some of these
 # definitions before the sub-Makefile is processed.
 
-RELTOP:= ../..
+.include <bsd.dragonfly.mk>
 
 WARNS?=	2
 
-# RELTOP is the relative path to this point in the source or object
-# tree, from any subdirectory of same.  It gets extra "../" prefixes
-# added to it as we descend into subdirectories.
-
-RELSRC=	${RELTOP}/../../../contrib/binutils-2.27
-SRCDIR=	${.CURDIR}/${RELSRC}
-BINTOP=	${.CURDIR}/${RELTOP}
-OBJTOP=	${.OBJDIR}/${RELTOP}
+SRCDIR=	${DF.SRCTOP}/contrib/binutils-2.27
+BINTOP=	${DF.SRCTOP}/gnu/usr.bin/binutils227
+OBJTOP=	${DF.OBJTOP}/gnu/usr.bin/binutils227
 
 # Keep these, block2/ld and block2/gas will want to override BULIBS_INC.
 _BULIBS_INC=	-I${OBJTOP}/block1/bulibs -I${BINTOP}/block1/bulibs
