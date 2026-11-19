@@ -32,5 +32,4 @@ bfd.h:	${SRCDIR}/bfd/bfd-in2.h
 	    -e "s/@BFD_HOST_64_BIT_DEFINED@/${BFD_HOST_64_BIT_DEFINED}/g" \
 	    -e "s/@bfd_file_ptr@/${BFD_HOST_64_BIT}/g" \
 	    -e "s/@BFD_HOSTPTR_T@/${BFD_HOSTPTR_T}/g" \
-	    < ${.ALLSRC} > bfd.h.new
-	mv -f bfd.h.new bfd.h
+	    < ${.ALLSRC} > ${.TARGET}

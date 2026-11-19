@@ -1,3 +1,1 @@
-.if exists(${.CURDIR}/../../Makefile.inc)
-.include "${.CURDIR}/../../Makefile.inc"
-.endif
+.include "../Makefile.inc"
