@@ -1,5 +1,3 @@
-TOP_PREFIX=	../../
-
 .include "../../../Makefile.inc"
 .include "../../../Makefile.langs"
 

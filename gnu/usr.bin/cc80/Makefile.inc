@@ -1,6 +1,7 @@
 .if !target(__<cc.Makefile.inc>__)
 __<cc.Makefile.inc>__:
 
+.include <bsd.dragonfly.mk>
 .include "Makefile.version"
 
 # needed to complile hsa/brig stubs
@@ -15,9 +16,9 @@ FLAGS+=		-DDEFAULT_TARGET_MACHINE=\"${target_machine}\"
 
 BINDIR?=	/usr/libexec/gcc${GCCSHORTVER}
 
-GCCDIR=		${.CURDIR}/${TOP_PREFIX}../../../../contrib/gcc-8.0
-OTOPDIR=	${.OBJDIR}/${TOP_PREFIX}..
-STOPDIR=	${.CURDIR}/${TOP_PREFIX}..
+GCCDIR=		${DF.SRCTOP}/contrib/gcc-8.0
+STOPDIR=	${DF.SRCTOP}/gnu/usr.bin/cc80
+OTOPDIR=	${DF.OBJTOP}/gnu/usr.bin/cc80
 OSLDIR=		${OTOPDIR}/support-libs
 
 TOOLDIR=	${OTOPDIR}/cc_tools/tools
@@ -36,10 +37,10 @@ FLAGS+=		-I${GCCDIR}/libcpp/include
 FLAGS+=		-I${GCCDIR}/libdecnumber
 FLAGS+=		-I${GCCDIR}/libdecnumber/dpd
 FLAGS+=		-I${OSLDIR}/libdecnumber
-FLAGS+=		-I${STOPDIR}/../gmp
-FLAGS+=		-I${STOPDIR}/../../../contrib/mpfr/src
-FLAGS+=		-I${STOPDIR}/../mpfr
-FLAGS+=		-I${STOPDIR}/../../../contrib/mpc/src
+FLAGS+=		-I${DF.SRCTOP}/gnu/usr.bin/gmp
+FLAGS+=		-I${DF.SRCTOP}/contrib/mpfr/src
+FLAGS+=		-I${DF.SRCTOP}/gnu/usr.bin/mpfr
+FLAGS+=		-I${DF.SRCTOP}/contrib/mpc/src
 FLAGS+=		-I${GCCDIR}/gcc/config/i386
 FLAGS+=		-I${TOOLDIR}
 
@@ -82,10 +83,10 @@ LIBCOMMONTARG=	${OSLDIR}/libcommon-target/libcommon-target.a
 LIBBACKTRACE=	${OSLDIR}/libbacktrace/libbacktrace.a
 LIBBACKEND=	${OTOPDIR}/libbackend/libbackend.a
 
-LIBGMP=		${OTOPDIR}/../gmp/lib/libgmp.a
-LIBMPFR=	${OTOPDIR}/../mpfr/libmpfr.a
-LIBMPC=		${OTOPDIR}/../mpc/libmpc.a
-LIBZ=		${OTOPDIR}/../../../lib/libz/libz.a
+LIBGMP=		${DF.OBJTOP}/gnu/usr.bin/gmp/lib/libgmp.a
+LIBMPFR=	${DF.OBJTOP}/gnu/usr.bin/mpfr/libmpfr.a
+LIBMPC=		${DF.OBJTOP}/gnu/usr.bin/mpc/libmpc.a
+LIBZ=		${DF.OBJTOP}/lib/libz/libz.a
 
 GMPLIBS=	${LIBMPC} ${LIBMPFR} ${LIBGMP}
 STDLIBS=	${LIBCOMMONTARG} ${LIBCOMMON} ${LIBCPP} \

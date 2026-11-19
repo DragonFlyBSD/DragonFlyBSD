@@ -1,6 +1,4 @@
 GCC_LANG_DIR=	gcc/cp
-TOP_PREFIX=	../../
-
 .include "../../../Makefile.inc"
 .include "../../../Makefile.langs"
 
