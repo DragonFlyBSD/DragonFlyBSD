@@ -10,11 +10,11 @@ GDTOASRCS+=dmisc.c dtoa.c gdtoa.c gethex.c gmisc.c \
 	hd_init.c hexnan.c misc.c smisc.c \
 	strtod.c strtodg.c strtof.c strtord.c sum.c ulp.c
 
-CFLAGS+=-I${.CURDIR}/../../contrib/gdtoa
+CFLAGS+=-I${DF.SRCTOP}/contrib/gdtoa
 
 .for src in ${GDTOASRCS}
 MISRCS+=gdtoa_${src}
 CLEANFILES+=gdtoa_${src}
 gdtoa_${src}:
-	${LN} -sf ${.CURDIR}/../../contrib/gdtoa/${src} ${.TARGET}
+	${LN} -sf ${DF.SRCTOP}/contrib/gdtoa/${src} ${.TARGET}
 .endfor

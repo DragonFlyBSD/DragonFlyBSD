@@ -1,9 +1,11 @@
 #	@(#)Makefile	8.2 (Berkeley) 2/3/94
 # $FreeBSD: src/lib/libc/Makefile,v 1.24 1999/09/29 15:18:29 marcel Exp $
 
-LIB=c
-SHLIB_MAJOR= 8
-SHLIBDIR?= /lib
+.include <bsd.dragonfly.mk>
+
+LIB=		c
+SHLIB_MAJOR=	8
+SHLIBDIR?=	/lib
 
 PRECIOUSLIB=	yes
 WARNS=	2

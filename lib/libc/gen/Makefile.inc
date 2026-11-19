@@ -5,7 +5,7 @@
 .PATH: ${.CURDIR}/${MACHINE_ARCH}/gen ${.CURDIR}/gen
 
 CFLAGS+=-I${.CURDIR}/sysvipc
-CFLAGS+=-I${.CURDIR}/../../sys/crypto/chacha20
+CFLAGS+=-I${DF.SRCTOP}/sys/crypto/chacha20
 
 CMAPS+=	${.CURDIR}/gen/Symbol.map
 

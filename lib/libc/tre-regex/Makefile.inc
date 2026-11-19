@@ -1,4 +1,4 @@
-TRESRC=	${.CURDIR}/../../contrib/tre/lib
+TRESRC=	${DF.SRCTOP}/contrib/tre/lib
 
 .PATH: ${TRESRC} ${.CURDIR}/tre-regex
 

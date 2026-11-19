@@ -8,7 +8,7 @@ CMAPS+=	${.CURDIR}/sys/Symbol.map
 
 # Include the generated makefile containing the *complete* list
 # of syscall names in MIASM.
-.include "${.CURDIR}/../../sys/sys/syscall.mk"
+.include "${DF.SRCTOP}/sys/sys/syscall.mk"
 
 # Include machine dependent definitions.
 #

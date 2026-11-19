@@ -4,8 +4,8 @@ CMAPS+=	${.CURDIR}/thread/Symbol.map
 
 thread_CFLAGS=	-DPTHREAD_KERNEL -D_THREAD_SAFE
 thread_CFLAGS+=	-I${.CURDIR}/thread/${MACHINE_ARCH}
-thread_CFLAGS+=	-I${.CURDIR}/../libthread_db
-thread_CFLAGS+=	-I${.CURDIR}/../../libexec/rtld-elf
+thread_CFLAGS+=	-I${DF.SRCTOP}/lib/libthread_db
+thread_CFLAGS+=	-I${DF.SRCTOP}/libexec/rtld-elf
 
 # enable extra internal consistancy checks
 thread_CFLAGS+=	-D_PTHREADS_INVARIANTS
