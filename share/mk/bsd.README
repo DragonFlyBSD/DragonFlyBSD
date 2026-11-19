@@ -22,6 +22,7 @@ bsd.cpu.gcc120.mk	- handle GCC 12.0 specific CPU flags & variables
 bsd.cpu.mk		- handle CPU flags & variables
 bsd.crunchgen.mk	- building crunched binaries using crunchgen(1)
 bsd.dep.mk		- handle Makefile dependencies
+bsd.dragonfly.mk	- DragonFly source tree path variables
 bsd.files.mk		- install of general purpose files
 bsd.hostlib.mk		- handle libraries built with host tools and libraries
 bsd.hostprog.mk		- handle programs built with host tools and libraries
@@ -110,6 +111,25 @@ object.
 
 The include file <sys.mk> has the default rules for all makes, in the BSD
 environment or otherwise.  You probably don't want to touch this file.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+The include file <bsd.dragonfly.mk> sets variables that describe the location
+of the current directory in the source and object trees.
+
+DF.SRCTOP	Absolute path to the top of the DragonFly source tree.  It is
+		found by walking up from .CURDIR, so the tree may be located
+		anywhere.
+
+DF.RELDIR	The current directory relative to DF.SRCTOP, and "." at the
+		top of the tree.  For example, "gnu/usr.bin/cc120" in
+		gnu/usr.bin/cc120.
+
+DF.RELTOP	The relative path from the current directory back to
+		DF.SRCTOP.  For example, "../../.." in gnu/usr.bin/cc120.
+
+DF.OBJTOP	The absolute path to the top of the object tree, i.e.
+		${.OBJDIR}/${DF.RELOBJTOP}.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 

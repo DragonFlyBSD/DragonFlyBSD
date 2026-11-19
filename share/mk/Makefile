@@ -8,6 +8,7 @@ FILES+=	bsd.cpu.gcc80.mk
 FILES+=	bsd.cpu.gcc120.mk
 FILES+=	bsd.crunchgen.mk
 FILES+=	bsd.dep.mk
+FILES+=	bsd.dragonfly.mk
 FILES+=	bsd.files.mk
 FILES+=	bsd.incs.mk
 FILES+=	bsd.init.mk
