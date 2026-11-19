@@ -1,5 +1,4 @@
-LIBSSH_RELDIR=	../../lib/libssh
-.include "${LIBSSH_RELDIR}/Makefile.common"
+.include "../../lib/libssh/Makefile.common"
 
 PROG=	ssh-pkcs11-helper
 MAN=	ssh-pkcs11-helper.8

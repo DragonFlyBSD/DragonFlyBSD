@@ -1,5 +1,4 @@
-LIBSSH_RELDIR=	../../lib/libssh
-.include "${LIBSSH_RELDIR}/Makefile.common"
+.include "../../lib/libssh/Makefile.common"
 
 PROG=	sshd
 MAN=	sshd.8 sshd_config.5 moduli.5

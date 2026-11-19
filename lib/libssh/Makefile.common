@@ -1,8 +1,9 @@
-LIBSSH_RELDIR?=
-LIBSSH_SDIR=	${.CURDIR}/${LIBSSH_RELDIR}
-LIBSSH_ODIR=	${.OBJDIR}/${LIBSSH_RELDIR}
+.include <bsd.dragonfly.mk>
 
-OPENSSHDIR=	${LIBSSH_SDIR}/../../crypto/openssh
+LIBSSH_SDIR=	${DF.SRCTOP}/lib/libssh
+LIBSSH_ODIR=	${DF.OBJTOP}/lib/libssh
+
+OPENSSHDIR=	${DF.SRCTOP}/crypto/openssh
 
 .PATH: ${LIBSSH_ODIR}	# find the generated manpages here
 .PATH: ${OPENSSHDIR}
@@ -13,7 +14,7 @@ CFLAGS+=	-I${OPENSSHDIR}
 # for includes.h including <openssl/opensslv.h>
 CFLAGS+=	${PRIVATELIB_CFLAGS}
 
-.if ${LIBSSH_RELDIR} != ""
+.if ${.CURDIR} != ${LIBSSH_SDIR}
 LIBSSH=		${LIBSSH_ODIR}/libssh.a
 DPADD+=		${LIBSSH}
 LDADD+=		${LIBSSH}
