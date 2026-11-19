@@ -1,25 +1,23 @@
 #	$Id: Makefile,v 9.0 2012/10/19 15:13:11 zy Exp $
 # $FreeBSD: head/usr.bin/vi/catalog/Makefile 254244 2013-08-12 09:56:52Z peter $
 
-.include <bsd.own.mk>
-
-V=	${.CURDIR}/../../../contrib/nvi2
-.PATH: ${V}/catalog
+.include "../Makefile.inc"
+.PATH: ${SRCDIR}/catalog
 
 CAT=	dutch english french german polish ru_RU.KOI8-R spanish swedish \
 	tr_TR.ISO8859-9 uk_UA.KOI8-U zh_CN.GB2312
 
-SCAN=	${V}/cl/*.c ${V}/common/*.c ${V}/ex/*.c ${V}/vi/*.c
+SCAN=	${SRCDIR}/cl/*.c ${SRCDIR}/common/*.c ${SRCDIR}/ex/*.c ${SRCDIR}/vi/*.c
 
 # Helper since iconv(1) is non-trivial to make a build tool
 utf8convert: .PHONY
 .for c in dutch french german spanish swedish
-	iconv -f ISO8859-1 -t UTF-8 $V/catalog/$c.base > $c.UTF-8.base
+	iconv -f ISO8859-1 -t UTF-8 ${SRCDIR}/catalog/$c.base > $c.UTF-8.base
 .endfor
-	iconv -f ISO8859-2 -t UTF-8 $V/catalog/polish.base > polish.UTF-8.base
-	iconv -f GB2312 -t UTF-8 $V/catalog/zh_CN.GB2312.base > zh_CN.UTF-8.base
-	iconv -f KOI8-R -t UTF-8 $V/catalog/ru_RU.KOI8-R.base > ru_RU.UTF-8.base
-	iconv -f KOI8-U -t UTF-8 $V/catalog/uk_UA.KOI8-U.base > uk_UA.UTF-8.base
+	iconv -f ISO8859-2 -t UTF-8 $SRCDIR}/catalog/polish.base > polish.UTF-8.base
+	iconv -f GB2312 -t UTF-8 ${SRCDIR}/catalog/zh_CN.GB2312.base > zh_CN.UTF-8.base
+	iconv -f KOI8-R -t UTF-8 ${SRCDIR}/catalog/ru_RU.KOI8-R.base > ru_RU.UTF-8.base
+	iconv -f KOI8-U -t UTF-8 ${SRCDIR}/catalog/uk_UA.KOI8-U.base > uk_UA.UTF-8.base
 
 .for c in dutch french german polish spanish swedish ru_RU tr_TR uk_UA zh_CN
 CAT+=	$c.UTF-8

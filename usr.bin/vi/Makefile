@@ -2,7 +2,7 @@
 # $FreeBSD: head/usr.bin/vi/Makefile 254225 2013-08-11 20:03:12Z peter $
 #
 
-SRCDIR=	${.CURDIR}/../../contrib/nvi2
+.include "Makefile.inc"
 
 PROG=	nvi
 
