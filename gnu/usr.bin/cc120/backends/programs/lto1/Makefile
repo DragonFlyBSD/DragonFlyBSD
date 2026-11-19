@@ -1,6 +1,4 @@
 GCC_LANG_DIR=	gcc/lto
-TOP_PREFIX=	../../
-
 .include "../../../Makefile.inc"
 
 PROG_CXX=	lto1

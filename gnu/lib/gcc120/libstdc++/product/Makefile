@@ -1,4 +1,3 @@
-RELUP=	/..
 .include "../Makefile.inc"
 SRCDIR=	${GCCDIR}/libstdc++-v3
 PREDIR=	${SRCDIR}/config/abi/pre

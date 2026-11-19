@@ -1,6 +1,4 @@
 GCC_NO_LIBS=	yes
-TOP_PREFIX=	../../
-
 .include "../../../Makefile.inc"
 .include "../../../Makefile.langs"
 

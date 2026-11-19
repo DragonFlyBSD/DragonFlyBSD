@@ -38,7 +38,7 @@ crtendS.o:	${ENDSRC}
 CLEANFILES+=	tm.h options.h auto-host.h
 beforedepend: tm.h options.h auto-host.h
 tm.h: ${CCDIR}/cc_prep/Makefile
-	${MAKE} -f ${.ALLSRC} GCCDIR=${GCCDIR} ${.TARGET}
+	cd ${.CURDIR} && ${MAKE} -f ${.ALLSRC} GCCDIR=${GCCDIR} ${.TARGET}
 
 options.h:
 	touch ${.TARGET}
