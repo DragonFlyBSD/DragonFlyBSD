@@ -1,10 +1,6 @@
-.if exists (${.CURDIR}/../../Makefile.inc1)
-LIBRESSL_SRC=	${.CURDIR}/../../crypto/libressl
-.elif exists (${.CURDIR}/../../../Makefile.inc1)
-LIBRESSL_SRC=	${.CURDIR}/../../../crypto/libressl
-.else
-.error "Cannot find base directory"
-.endif
+.include <bsd.dragonfly.mk>
+
+LIBRESSL_SRC=	${DF.SRCTOP}/crypto/libressl
 LCRYPTO_SRC=	${LIBRESSL_SRC}/crypto
 LSSL_SRC=	${LIBRESSL_SRC}/ssl
 

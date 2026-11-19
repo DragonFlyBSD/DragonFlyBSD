@@ -1,7 +1,8 @@
 # decompression functionality from libz for libstand
 
-# relative to stand/lib
-ZLIBDIR= ${LIBSTAND_SRC}/../../contrib/zlib
+.include <bsd.dragonfly.mk>
+
+ZLIBDIR= ${DF.SRCTOP}/contrib/zlib
 .PATH: ${ZLIBDIR}
 
 # Define Z_SOLO to avoid pulling in <unistd.h> that would conflict with

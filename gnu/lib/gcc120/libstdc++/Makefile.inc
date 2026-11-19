@@ -7,14 +7,7 @@ CFLAGS+=	-fno-lto
 LDFLAGS+=	-flto
 .endif
 
-.if exists(${.OBJDIR}/../headers)  # for product
-CFLAGS+=	-I${.OBJDIR}/../headers
-.elif exists(${.OBJDIR}/../../headers)  # for components/libconv_*
-CFLAGS+=	-I${.OBJDIR}/../../headers
-.elif exists(${.OBJDIR}/../libstdc++/headers)  # for libstdc++fs
-CFLAGS+=	-I${.OBJDIR}/../libstdc++/headers
-.endif
-
+CFLAGS+=	-I${DF.OBJTOP}/gnu/lib/${CCVER}/libstdc++/headers
 CFLAGS+=	-I${SRCDIR}/include \
 		-I${SRCDIR}/include/std \
 		-I${SRCDIR}/include/c_global \
