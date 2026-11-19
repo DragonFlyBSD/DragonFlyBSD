@@ -1,6 +1,12 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
 
+# The sub-makes read makefiles from this source tree, which may need mk
+# files the installed /usr/share/mk lacks (e.g., <bsd.dragonfly.mk>)
+# when this is run directly, as in "cd /usr/src/etc; make distribution".
+# Use the source tree's mk files, as the top-level Makefile does.
+.MAKEFLAGS: -m ${.CURDIR}/../share/mk
+
 SUBDIR=	sendmail
 
 # Files that should be installed read-only (444)
