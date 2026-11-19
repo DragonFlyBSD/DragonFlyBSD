@@ -1,3 +1,5 @@
+.include <bsd.dragonfly.mk>
+SRCDIR=	${DF.SRCTOP}/contrib/openpam
 
 #
 # Only build shared lib here, libpam.a is built by static_libpam.
@@ -6,8 +8,6 @@
 .if !defined(LIB)
 SHLIB_NAME=	libpam.so.${SHLIB_MAJOR}
 .endif
-
-SRCDIR=	${.CURDIR}/../../../contrib/openpam
 
 MODULE_DIR=	${LIBDIR}/security
 

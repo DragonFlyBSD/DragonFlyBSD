@@ -7,6 +7,8 @@
 #   quite large.
 #
 
+.include <bsd.dragonfly.mk>
+
 LIB?=		stand
 INTERNALLIB=
 NOPIC=		YES
@@ -17,7 +19,7 @@ NO_STRICT_ALIASING=
 
 LIBSTAND_SRC?=	${.CURDIR}
 LIBSTAND_ARCH?=	${MACHINE_ARCH}
-LIBC_SRC=	${LIBSTAND_SRC}/../../lib/libc
+LIBC_SRC=	${DF.SRCTOP}/lib/libc
 
 CFLAGS+=	-D_STANDALONE
 
@@ -58,7 +60,7 @@ SRCS+=	__main.c assert.c bcd.c bswap.c environment.c getopt.c gets.c \
 SRCS+=	strcasecmp.c
 
 # string functions from libc
-.PATH:	${LIBSTAND_SRC}/../../lib/libc/string
+.PATH:	${LIBC_SRC}/string
 .if ${LIBSTAND_ARCH} == "x86_64" || ${LIBSTAND_ARCH} == "i386"
 SRCS+=	bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
         memcpy.c memmove.c memset.c qdivrem.c rindex.c strcat.c strchr.c \
@@ -74,20 +76,20 @@ qdivrem.o:	qdivrem.c
 .PATH:	${LIBSTAND_SRC}/${LIBSTAND_ARCH}
 .if ${LIBSTAND_ARCH} == "x86_64" || ${LIBSTAND_ARCH} == "i386"
 # really only required for i386
-CFLAGS+=-I${LIBSTAND_SRC}/../../lib/libc/${MACHINE_ARCH}
+CFLAGS+=-I${LIBC_SRC}/${MACHINE_ARCH}
 .endif
 SRCS+=	_setjmp.S
 
 # decompression functionality from libz
 # NOTE: crc32.c is used from libz and not libkern
-.include "../../lib/libz/Makefile.stand"
+.include "${DF.SRCTOP}/lib/libz/Makefile.stand"
 
 # iscsi_crc32() for hammer2
-.PATH:	${LIBSTAND_SRC}/../../sys/libkern
+.PATH:	${DF.SRCTOP}/sys/libkern
 SRCS+=  icrc32.c
 
 # decompression functionality from libbz2
-BZ2DIR=	${LIBSTAND_SRC}/../../contrib/bzip2
+BZ2DIR=	${DF.SRCTOP}/contrib/bzip2
 .PATH:	${BZ2DIR}
 CFLAGS+=-I${BZ2DIR} -DBZ_NO_STDIO -DBZ_NO_COMPRESS
 SRCS+=	bzlib.c crctable.c decompress.c huffman.c randtable.c

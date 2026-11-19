@@ -1,4 +1,6 @@
-BASEDIR=	${.CURDIR}/../../../../contrib/gdb-7
+.include <bsd.dragonfly.mk>
+
+BASEDIR=	${DF.SRCTOP}/contrib/gdb-7
 
 GDBLIBS+=	${.OBJDIR}/../libreadline/libreadline.a
 GDBLIBS+=	${.OBJDIR}/../libopcodes/libopcodes.a

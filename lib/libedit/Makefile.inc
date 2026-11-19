@@ -1,1 +1,3 @@
-BASEDIR=	${.CURDIR}/../../../contrib/libedit
+.include <bsd.dragonfly.mk>
+
+BASEDIR=	${DF.SRCTOP}/contrib/libedit

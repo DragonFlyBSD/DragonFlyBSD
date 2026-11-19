@@ -5,7 +5,9 @@
 .else
 
 # normal mode
-SRCDIR=	${.CURDIR}/../../../contrib/mpfr
+.include <bsd.dragonfly.mk>
+
+SRCDIR=	${DF.SRCTOP}/contrib/mpfr
 .PATH:	${SRCDIR}/src
 
 LIB=		mpfr

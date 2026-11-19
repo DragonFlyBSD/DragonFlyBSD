@@ -1,5 +1,7 @@
 # The DragonFly Loader
 
+.include <bsd.dragonfly.mk>
+
 SRCS=	subs.c cmds.c
 
 WORLD_CCOPTLEVEL=	1	# Force -O1, -O2 implodes
@@ -36,7 +38,7 @@ OBJS+=		stack_protector.o
 LIB?=		dloader
 INTERNALLIB=	yes
 
-stack_protector.o: ../../../sys/libkern/stack_protector.c
+stack_protector.o: ${DF.SRCTOP}/sys/libkern/stack_protector.c
 
 .include <bsd.lib.mk>
 .endif
