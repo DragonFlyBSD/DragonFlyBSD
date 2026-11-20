@@ -19,6 +19,3 @@ CFLAGS+=	-mno-fp-ret-in-387
 .if ${CCVER:Mgcc*} && ${CCVER:S/gcc//} >= 80
 CFLAGS+=	-mindirect-branch=thunk-inline
 .endif
-
-# Remove the dynamic library hack for now
-SYSTEM_OBJS:= ${SYSTEM_OBJS:Nhack.So}

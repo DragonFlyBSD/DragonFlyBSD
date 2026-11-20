@@ -117,7 +117,7 @@ ELDFLAGS+= -Wl,--export-dynamic
 GEN_CFILES=	$S/platform/$P/$M/genassym.c
 SYSTEM_CFILES=	ioconf.c config.c
 SYSTEM_SFILES=	$S/platform/$P/$M/locore.s
-SYSTEM_OBJS=	locore.o ${OBJS} ioconf.o config.o hack.So
+SYSTEM_OBJS=	locore.o ${OBJS} ioconf.o config.o
 SYSTEM_LDSCRIPT= $S/platform/$P/conf/ldscript.$M
 SYSTEM_DEP=	Makefile ${SYSTEM_OBJS} ${SYSTEM_LDSCRIPT}
 SYSTEM_LD=	@${CC} -nostdlib -ffreestanding ${ELDFLAGS} \
@@ -125,6 +125,10 @@ SYSTEM_LD=	@${CC} -nostdlib -ffreestanding ${ELDFLAGS} \
 		    -Wl,--dynamic-linker,/red/herring ${LDFLAGS} \
 		    -o ${.TARGET} ${SYSTEM_OBJS} vers.o
 SYSTEM_LD_TAIL=	@${SIZE} ${.TARGET}; chmod 755 ${.TARGET}
+
+.if ${MACHINE_PLATFORM} != "vkernel64"
+SYSTEM_OBJS+=	hack.So
+.endif
 
 # Normalize output files to make it absolutely crystal clear to
 # anyone examining the build directory.
