@@ -3,11 +3,13 @@
 # Common rules for building firmware.  Note this gets auto-included
 # by the subdir Makefile's as a consequence of included bsd.kmod.mk.
 
+.include <bsd.dragonfly.mk>
+
 _FIRM=	${IMG}.bin
 
 CLEANFILES+=	${_FIRM}
 
 FIRMWS=	${_FIRM}:${KMOD}
 
-${_FIRM}: ${SYSDIR}/contrib/dev/drm/radeonfw/${_FIRM}.uu
-	uudecode -p $? > ${.TARGET}
+${_FIRM}: ${DF.SRCTOP}/sys/contrib/dev/drm/radeonfw/${_FIRM}.uu
+	${NORMAL_FW}

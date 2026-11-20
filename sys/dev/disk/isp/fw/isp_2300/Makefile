@@ -1,13 +1,11 @@
-FWDIR=	${.CURDIR}/../../../../../contrib/dev/isp
-
-.PATH: ${FWDIR}
+.include <bsd.dragonfly.mk>
 
 KMOD=	isp_2300
 FIRMWS=	isp_2300.fw:isp_2300:1
 
 CLEANFILES=	isp_2300.fw
 
-isp_2300.fw: ${FWDIR}/isp_2300.fw.uu
-	uudecode -p ${FWDIR}/isp_2300.fw.uu > ${.TARGET}
+isp_2300.fw: ${DF.SRCTOP}/sys/contrib/dev/isp/isp_2300.fw.uu
+	${NORMAL_FW}
 
 .include <bsd.kmod.mk>
