@@ -144,16 +144,7 @@ CLEANFILES+=	${KMOD:S/$/.c/}
 .for _firmw in ${FIRMWS}
 OBJS+=	${_firmw:C/\:.*$/.fwo/}
 ${_firmw:C/\:.*$/.fwo/}: ${_firmw:C/\:.*$//}
-	@${ECHO} ${_firmw:C/\:.*$//} ${.ALLSRC:M*${_firmw:C/\:.*$//}}
-	@if [ -e ${_firmw:C/\:.*$//} ]; then			\
-		${LD} -b binary --no-warn-mismatch ${LDFLAGS}	\
-		    -r -d -o ${.TARGET}	${_firmw:C/\:.*$//};	\
-	else							\
-		ln -s ${.ALLSRC:M*${_firmw:C/\:.*$//}} ${_firmw:C/\:.*$//}; \
-		${LD} -b binary --no-warn-mismatch ${LDFLAGS}	\
-		    -r -d -o ${.TARGET}	${_firmw:C/\:.*$//};	\
-		rm ${_firmw:C/\:.*$//};				\
-	fi
+	${NORMAL_FWO}
 .endfor
 .endif
 

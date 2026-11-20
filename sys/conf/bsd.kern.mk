@@ -79,13 +79,16 @@ CFLAGS+=	${KCFLAGS}
 # LOCORE means "don't declare C stuff", not "for locore.s".
 ASM_CFLAGS=	-x assembler-with-cpp -DLOCORE ${CFLAGS:N-flto}
 
-NORMAL_C=	${CC} ${CFLAGS} -c ${.IMPSRC}
-NORMAL_S=	${CC} ${ASM_CFLAGS} -c ${.IMPSRC}
-NORMAL_M=	awk -f $S/tools/makeobjops.awk -- -c ${.IMPSRC}; \
+NORMAL_C=	${CC} ${CFLAGS} -c ${.IMPSRC:U${.ALLSRC:[1]}}
+NORMAL_S=	${CC} ${ASM_CFLAGS} -c ${.IMPSRC:U${.ALLSRC:[1]}}
+NORMAL_M=	awk -f $S/tools/makeobjops.awk -- -c \
+		    ${.IMPSRC:U${.ALLSRC:[1]}}; \
 		    ${CC} ${CFLAGS} -c ${.PREFIX}.c
 NORMAL_FW=	uudecode -o ${.TARGET} ${.ALLSRC}
+# Link a firmware blob: prefer a .fw source, otherwise fall back to the
+# first prerequisite (module firmware is not always named *.fw).
 NORMAL_FWO=	${LD} -b binary -d -warn-common -r -o ${.TARGET} \
-		    ${.ALLSRC:M*.fw}
+		    ${.ALLSRC:M*.fw:S,^$,${.ALLSRC:[1]},}
 
 # Suffix rules for compiling modules.
 .SUFFIXES: .o .s .S .c .m .fw .uu
