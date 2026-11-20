@@ -50,7 +50,7 @@ ${OSACPI_MD_DIR}/acpi_pstate_machdep.c	optional	acpi
 ${OSACPI_MD_DIR}/acpi_cstate_machdep.c	optional	acpi
 ${OSACPI_MD_DIR}/acpi_wakeup.c		optional        acpi
 #acpi_wakecode.o				optional	acpi		\
-#	dependency	"$S/platform/pc64/acpica/acpi_wakecode.S assym.s" \
+#	dependency	"$S/platform/pc64/acpica/acpi_wakecode.S assym.h" \
 #	compile-with	"${NORMAL_S}"					\
 #	no-obj no-implicit-rule before-depend				\
 #	clean		"acpi_wakecode.o"

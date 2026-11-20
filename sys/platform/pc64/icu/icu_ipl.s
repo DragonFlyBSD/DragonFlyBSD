@@ -76,7 +76,7 @@
 
 #include <bus/isa/isareg.h>
 
-#include "assym.s"
+#include "assym.h"
 
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.

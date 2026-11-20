@@ -35,7 +35,7 @@
 #include <machine/psl.h>
 #include <machine/trap.h>
 
-#include "assym.s"
+#include "assym.h"
 
 	.text
 

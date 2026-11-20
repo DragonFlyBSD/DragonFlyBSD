@@ -396,26 +396,23 @@ acpi_quirks.h: dragonfly/tools/acpi_quirks2h.awk dragonfly/dev/acpica/acpi_quirk
 	${AWK} -f dragonfly/tools/acpi_quirks2h.awk dragonfly/dev/acpica/acpi_quirks
 .endif
 
-.if !empty(SRCS:Massym.s)
-CLEANFILES+=	assym.s genassym.o
+.if !empty(SRCS:Massym.h)
+CLEANFILES+=	assym.h
 
-assym.s: genassym.o
+assym.h:
 .if !exists(dragonfly)
-assym.s: dragonfly
+assym.h: dragonfly
 .else
-assym.s: dragonfly/kern/genassym.sh
+assym.h: dragonfly/tools/genassym.sh
+assym.h: dragonfly/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.cf
 .endif
-	sh dragonfly/kern/genassym.sh genassym.o > ${.TARGET}
-
 .if defined(KERNBUILDDIR)
-genassym.o: opt_global.h
+assym.h: opt_global.h
 .endif
-.if exists(dragonfly)
-genassym.o: dragonfly/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c
-.endif
-genassym.o: dragonfly ${SRCS:Mopt_*.h}
-	${CC} -c ${CFLAGS:N-flto} -fcommon \
-	    dragonfly/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c
+assym.h: ${SRCS:Mopt_*.h}
+	sh dragonfly/tools/genassym.sh ${CC} ${CFLAGS} \
+	    < dragonfly/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.cf \
+	    > ${.TARGET}
 .endif
 
 .include <bsd.dep.mk>

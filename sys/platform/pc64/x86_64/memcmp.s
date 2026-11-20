@@ -38,7 +38,7 @@
 #include <machine/asm_mjgmacros.h>
 #include <machine/pmap.h>
 
-#include "assym.s"
+#include "assym.h"
 
 	ALIGN_DATA
 

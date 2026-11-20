@@ -104,7 +104,6 @@ ELDFLAGS+= -Wl,--hash-style=sysv
 ELDFLAGS+= -Wl,--build-id=sha1
 ELDFLAGS+= -Wl,--export-dynamic
 
-GEN_CFILES=	$S/platform/$P/$M/genassym.c
 SYSTEM_CFILES=	ioconf.c config.c
 SYSTEM_SFILES=	$S/platform/$P/$M/locore.s
 SYSTEM_OBJS=	locore.o ${OBJS} ioconf.o config.o

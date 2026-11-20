@@ -43,7 +43,7 @@
 #include <machine/trap.h>
 #include <machine/segments.h>
 
-#include "assym.s"
+#include "assym.h"
 
 	.text
 

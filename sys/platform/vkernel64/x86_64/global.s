@@ -29,7 +29,7 @@
 #include <machine/asmacros.h>
 #include <machine/pmap.h>
 
-#include "assym.s"
+#include "assym.h"
 
 	/*
 	 * Define the layout of the per-cpu address space.  This is

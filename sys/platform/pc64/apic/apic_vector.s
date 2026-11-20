@@ -16,7 +16,7 @@
 #include <machine_base/icu/icu.h>
 #include <bus/isa/isa.h>
 
-#include "assym.s"
+#include "assym.h"
 
 #include "apicreg.h"
 #include <machine_base/apic/ioapic_ipl.h>

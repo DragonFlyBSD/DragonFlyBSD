@@ -35,7 +35,7 @@
 #include <sys/syscall.h>
 #include <machine/asmacros.h>
 #include <machine/psl.h>
-#include "assym.s"
+#include "assym.h"
 
 	/*
 	 * The sysinit and sysuninit sections have to be read-write data

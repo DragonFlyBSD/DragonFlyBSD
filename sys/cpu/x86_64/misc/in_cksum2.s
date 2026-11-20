@@ -34,7 +34,7 @@
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
 
-#include "assym.s"
+#include "assym.h"
 
 	.text
 

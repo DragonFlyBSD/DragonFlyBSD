@@ -64,7 +64,7 @@
 
 #include "apicreg.h"
 #include <machine_base/apic/ioapic_ipl.h>
-#include "assym.s"
+#include "assym.h"
 
 	.text
 	SUPERALIGN_TEXT

@@ -18,12 +18,10 @@ PSEUDO=	_getlogin.o _exit.o
 #
 # XXX this should be moved to a non-arch directory
 SRCS+= asmcontext.h
-CLEANFILES+= asmcontext.h asmcontext.o
+CLEANFILES+= asmcontext.h
 
-asmcontext.o: asmcontext.c
-	${CC} ${CFLAGS} -fcommon -c ${.IMPSRC}
-
-asmcontext.h: asmcontext.o
-	NM=nm sh ${DF.SRCTOP}/sys/kern/genassym.sh \
-	    ${.ALLSRC} > ${.TARGET}
+asmcontext.h: asmcontext.cf
+	sh ${DF.SRCTOP}/sys/tools/genassym.sh \
+	    ${CC} ${CFLAGS} -D_KERNEL_STRUCTURES \
+	    < ${.ALLSRC} > ${.TARGET}
 

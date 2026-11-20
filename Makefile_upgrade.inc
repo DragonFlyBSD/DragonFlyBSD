@@ -4007,6 +4007,7 @@ TO_REMOVE+=/usr/lib/libprivate_ssh.so.5
 TO_REMOVE+=/usr/lib/priv/libprivate_ssh.a
 TO_REMOVE+=/usr/lib/priv/libprivate_ssh.so
 TO_REMOVE+=/usr/lib/priv/profile/libprivate_ssh.a
+TO_REMOVE+=/usr/include/sys/assym.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

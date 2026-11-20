@@ -50,13 +50,13 @@ ${mfile:T:S/.m$/.h/}: ${mfile}
 .endfor
 
 kernel-clean:
-	rm -f *.o *.so *.So *.ko *.s errs \
+	rm -f *.o *.so *.So *.ko *.s assym.h errs \
 	      ${KERNEL} ${KERNEL}.debug ${KERNEL}.nodebug ${KERNEL}.stripped \
 	      tags vers.c \
 	      ${MFILES:T:S/.m$/.c/} ${MFILES:T:S/.m$/.h/} \
 	      ${CLEAN}
 
-locore.o: $S/platform/$P/$M/locore.s assym.s
+locore.o: $S/platform/$P/$M/locore.s assym.h
 	${NORMAL_S}
 
 # This is a hack.  BFD "optimizes" away dynamic mode if there are no
@@ -65,31 +65,26 @@ locore.o: $S/platform/$P/$M/locore.s assym.s
 hack.So: Makefile
 	echo | ${CC} -shared -nostdlib -x c - -o hack.So
 
-# this rule stops ./assym.s in .depend from causing problems
-./assym.s: assym.s
+assym.h: $S/tools/genassym.sh $S/platform/$P/$M/genassym.cf \
+	    ${FORWARD_HEADERS_COOKIE} ${MFILES:T:S/.m$/.h/}
+	sh $S/tools/genassym.sh ${CC} ${CFLAGS} \
+	    < $S/platform/$P/$M/genassym.cf > ${.TARGET}
 
-assym.s: $S/kern/genassym.sh genassym.o
-	sh $S/kern/genassym.sh genassym.o > ${.TARGET}
-
-genassym.o: $S/platform/$P/$M/genassym.c ${FORWARD_HEADERS_COOKIE} \
-	    ${MFILES:T:S/.m$/.h/}
-	${CC} -c ${CFLAGS:N-flto} -fcommon $S/platform/$P/$M/genassym.c
-
-${SYSTEM_OBJS} genassym.o vers.o: opt_global.h
+${SYSTEM_OBJS} vers.o: opt_global.h
 
 # The argument list can be very long, use make -V and xargs to
 # pass it to mkdep.
-kernel-depend: assym.s ${BEFORE_DEPEND} \
-	    ${CFILES} ${SYSTEM_CFILES} ${GEN_CFILES} ${SFILES} \
+kernel-depend: assym.h ${BEFORE_DEPEND} \
+	    ${CFILES} ${SYSTEM_CFILES} ${SFILES} \
 	    ${SYSTEM_SFILES} ${MFILES:T:S/.m$/.h/}
 .if defined(FASTER_DEPEND)
 .if exists(hack.So)
-	@cat ${SYSTEM_OBJS:M*\.o$:S/.o$/.d/} genassym.d > .depend || \
+	@cat ${SYSTEM_OBJS:M*\.o$:S/.o$/.d/} > .depend || \
 	    echo "There were missing deps"
 .endif
 .else
 	rm -f .newdep
-	${MAKE} -V CFILES -V SYSTEM_CFILES -V GEN_CFILES | \
+	${MAKE} -V CFILES -V SYSTEM_CFILES | \
 	    xargs mkdep -a -f .newdep ${CFLAGS}
 	${MAKE} -V SFILES -V SYSTEM_SFILES | \
 	    xargs env MKDEP_CPP="${CC} -E" mkdep -a -f .newdep ${ASM_CFLAGS}

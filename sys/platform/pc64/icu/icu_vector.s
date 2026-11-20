@@ -47,7 +47,7 @@
 
 #include <bus/isa/isa.h>
 
-#include "assym.s"
+#include "assym.h"
 
 #define	ICU_EOI			0x20	/* XXX - define elsewhere */
 

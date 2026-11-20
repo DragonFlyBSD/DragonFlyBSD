@@ -53,7 +53,7 @@
 #include <machine/segments.h>
 #define DS_ES_VALUE	GSEL(GUDATA_SEL, SEL_UPL)
 #elif defined(__DragonFly__)
-#include "assym.s"
+#include "assym.h"
 #include <machine/segments.h>
 #define DS_ES_VALUE	GSEL(GUDATA_SEL, SEL_UPL)
 #endif

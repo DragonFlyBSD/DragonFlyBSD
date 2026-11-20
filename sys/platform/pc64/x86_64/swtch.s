@@ -76,7 +76,7 @@
 #endif
 #include <machine/lock.h>
 
-#include "assym.s"
+#include "assym.h"
 
 #define	MPLOCKED	lock ;
 

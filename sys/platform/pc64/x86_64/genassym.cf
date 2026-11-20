@@ -1,0 +1,269 @@
+#
+# Copyright (c) 1982, 1990 The Regents of the University of California.
+# Copyright (c) 2008 The DragonFly Project.
+# All rights reserved.
+#
+# This code is derived from software contributed to Berkeley by
+# William Jolitz.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+# notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+# notice, this list of conditions and the following disclaimer in the
+# documentation and/or other materials provided with the distribution.
+# 3. Neither the name of the University nor the names of its contributors
+# may be used to endorse or promote products derived from this software
+# without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+# OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGE.
+#
+# from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
+# $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
+#
+
+include <sys/param.h>
+include <sys/systm.h>
+include <sys/interrupt.h>
+include <sys/buf.h>
+include <sys/proc.h>
+include <sys/errno.h>
+include <sys/mount.h>
+include <sys/socket.h>
+include <sys/lock.h>
+include <sys/resourcevar.h>
+include <machine/frame.h>
+include <machine/bootinfo.h>
+include <machine/tss.h>
+include <sys/vmmeter.h>
+include <sys/machintr.h>
+include <vm/vm.h>
+include <vm/vm_param.h>
+include <vm/pmap.h>
+include <vm/vm_map.h>
+include <net/if.h>
+include <netinet/in.h>
+include <vfs/nfs/nfsv2.h>
+include <vfs/nfs/rpcv2.h>
+include <vfs/nfs/nfs.h>
+include <vfs/nfs/nfsdiskless.h>
+
+include <machine_base/apic/apicreg.h>
+include <machine_base/apic/ioapic_abi.h>
+include <machine/segments.h>
+include <machine/sigframe.h>
+include <machine/globaldata.h>
+include <machine/specialreg.h>
+include <machine/pcb.h>
+include <machine/pmap.h>
+
+define VM_PMAP offsetof(struct vmspace, vm_pmap)
+define PM_ACTIVE offsetof(struct pmap, pm_active)
+define PM_ACTIVE_LOCK offsetof(struct pmap, pm_active_lock)
+
+define LWP_VMSPACE offsetof(struct lwp, lwp_vmspace)
+define V_IPI offsetof(struct vmmeter, v_ipi)
+define V_TIMER offsetof(struct vmmeter, v_timer)
+define UPAGES UPAGES
+define PAGE_SIZE PAGE_SIZE
+define NPTEPG NPTEPG
+define NPDEPG NPDEPG
+define PAGE_SHIFT PAGE_SHIFT
+define PAGE_MASK PAGE_MASK
+define PDRSHIFT PDRSHIFT
+define USRSTACK USRSTACK
+define KERNBASE KERNBASE
+
+define MAXCOMLEN MAXCOMLEN
+define EFAULT EFAULT
+define ENAMETOOLONG ENAMETOOLONG
+define VM_MAX_USER_ADDRESS VM_MAX_USER_ADDRESS
+
+define GD_CURTHREAD offsetof(struct mdglobaldata, mi.gd_curthread)
+define GD_CNT offsetof(struct mdglobaldata, mi.gd_cnt)
+define GD_CPUID offsetof(struct mdglobaldata, mi.gd_cpuid)
+define GD_CPUMASK offsetof(struct mdglobaldata, mi.gd_cpumask)
+define GD_NPOLL offsetof(struct mdglobaldata, mi.gd_npoll)
+define GD_SAMPLE_PC offsetof(struct mdglobaldata, mi.gd_sample_pc)
+define GD_SAMPLE_SP offsetof(struct mdglobaldata, mi.gd_sample_sp)
+define GD_CPUMASK_SIMPLE offsetof(struct mdglobaldata, mi.gd_cpumask_simple)
+define GD_CPUMASK_OFFSET offsetof(struct mdglobaldata, mi.gd_cpumask_offset)
+define GD_IRESERVED offsetof(struct mdglobaldata, mi.gd_ireserved[0])
+
+define PCB_CR3_ISO offsetof(struct pcb, pcb_cr3_iso)
+define PCB_CR3 offsetof(struct pcb, pcb_cr3)
+define PCB_R15 offsetof(struct pcb, pcb_r15)
+define PCB_R14 offsetof(struct pcb, pcb_r14)
+define PCB_R13 offsetof(struct pcb, pcb_r13)
+define PCB_R12 offsetof(struct pcb, pcb_r12)
+define PCB_RSI offsetof(struct pcb, pcb_rsi)
+define PCB_RBP offsetof(struct pcb, pcb_rbp)
+define PCB_RSP offsetof(struct pcb, pcb_rsp)
+define PCB_RBX offsetof(struct pcb, pcb_rbx)
+define PCB_RIP offsetof(struct pcb, pcb_rip)
+define TSS_RSP0 offsetof(struct x86_64tss, tss_rsp0)
+
+define PCB_DR0 offsetof(struct pcb, pcb_dr0)
+define PCB_DR1 offsetof(struct pcb, pcb_dr1)
+define PCB_DR2 offsetof(struct pcb, pcb_dr2)
+define PCB_DR3 offsetof(struct pcb, pcb_dr3)
+define PCB_DR6 offsetof(struct pcb, pcb_dr6)
+define PCB_DR7 offsetof(struct pcb, pcb_dr7)
+
+define PCB_DBREGS PCB_DBREGS
+define PCB_ISOMMU PCB_ISOMMU
+
+define SPEC_CTRL_DUMMY_IBPB SPEC_CTRL_DUMMY_IBPB
+define SPEC_CTRL_DUMMY_ENABLE SPEC_CTRL_DUMMY_ENABLE
+define SPEC_CTRL_MDS_ENABLE SPEC_CTRL_MDS_ENABLE
+
+define PCB_EXT offsetof(struct pcb, pcb_ext)
+define PCB_FLAGS offsetof(struct pcb, pcb_flags)
+define PCB_ONFAULT offsetof(struct pcb, pcb_onfault)
+define PCB_ONFAULT_SP offsetof(struct pcb, pcb_onfault_sp)
+define PCB_FSBASE offsetof(struct pcb, pcb_fsbase)
+define PCB_GSBASE offsetof(struct pcb, pcb_gsbase)
+define PCB_SAVEFPU offsetof(struct pcb, pcb_save)
+
+define PCB_SIZE sizeof(struct pcb)
+define PCB_SAVEFPU_SIZE sizeof(union savefpu)
+
+define TF_R15 offsetof(struct trapframe, tf_r15)
+define TF_R14 offsetof(struct trapframe, tf_r14)
+define TF_R13 offsetof(struct trapframe, tf_r13)
+define TF_R12 offsetof(struct trapframe, tf_r12)
+define TF_R11 offsetof(struct trapframe, tf_r11)
+define TF_R10 offsetof(struct trapframe, tf_r10)
+define TF_R9 offsetof(struct trapframe, tf_r9)
+define TF_R8 offsetof(struct trapframe, tf_r8)
+define TF_RDI offsetof(struct trapframe, tf_rdi)
+define TF_RSI offsetof(struct trapframe, tf_rsi)
+define TF_RBP offsetof(struct trapframe, tf_rbp)
+define TF_RBX offsetof(struct trapframe, tf_rbx)
+define TF_RDX offsetof(struct trapframe, tf_rdx)
+define TF_RCX offsetof(struct trapframe, tf_rcx)
+define TF_RAX offsetof(struct trapframe, tf_rax)
+
+define TF_TRAPNO offsetof(struct trapframe, tf_trapno)
+define TF_XFLAGS offsetof(struct trapframe, tf_xflags)
+define TF_ADDR offsetof(struct trapframe, tf_addr)
+define TF_ERR offsetof(struct trapframe, tf_err)
+define TF_FLAGS offsetof(struct trapframe, tf_flags)
+
+define TF_RIP offsetof(struct trapframe, tf_rip)
+define TF_CS offsetof(struct trapframe, tf_cs)
+define TF_RFLAGS offsetof(struct trapframe, tf_rflags)
+define TF_RSP offsetof(struct trapframe, tf_rsp)
+define TF_SS offsetof(struct trapframe, tf_ss)
+define TF_SIZE sizeof(struct trapframe)
+
+define SIGF_HANDLER offsetof(struct sigframe, sf_ahu.sf_handler)
+define SIGF_UC offsetof(struct sigframe, sf_uc)
+
+define TD_PROC offsetof(struct thread, td_proc)
+define TD_LWP offsetof(struct thread, td_lwp)
+define TD_PCB offsetof(struct thread, td_pcb)
+define TD_SP offsetof(struct thread, td_sp)
+define TD_PRI offsetof(struct thread, td_pri)
+define TD_CRITCOUNT offsetof(struct thread, td_critcount)
+define TD_MACH offsetof(struct thread, td_mach)
+define TD_WCHAN offsetof(struct thread, td_wchan)
+define TD_NEST_COUNT offsetof(struct thread, td_nest_count)
+define TD_FLAGS offsetof(struct thread, td_flags)
+define TD_TYPE offsetof(struct thread, td_type)
+define TD_PREEMPTED offsetof(struct thread, td_preempted)
+
+define TD_SAVEFPU offsetof(struct thread, td_savefpu)
+define TDF_RUNNING TDF_RUNNING
+define TDF_USINGFP TDF_USINGFP
+define TDF_KERNELFP TDF_KERNELFP
+define TDF_PREEMPT_DONE TDF_PREEMPT_DONE
+
+define FIRST_SOFTINT FIRST_SOFTINT
+define MDGLOBALDATA_BASEALLOC_PAGES MDGLOBALDATA_BASEALLOC_PAGES
+
+define GD_PRIVATE_TSS offsetof(struct mdglobaldata, gd_private_tss)
+define GD_COMMON_TSS offsetof(struct privatespace, common_tss)
+define GD_TRAMPOLINE offsetof(struct privatespace, trampoline)
+define GD_DEBUG1 offsetof(struct mdglobaldata, mi.gd_debug1)
+define GD_DEBUG2 offsetof(struct mdglobaldata, mi.gd_debug2)
+define GD_USER_FS offsetof(struct mdglobaldata, gd_user_fs)
+define GD_USER_GS offsetof(struct mdglobaldata, gd_user_gs)
+define GD_INTR_NESTING_LEVEL offsetof(struct mdglobaldata, mi.gd_intr_nesting_level)
+
+define TR_CR2 offsetof(struct trampframe, tr_cr2)
+define TR_RAX offsetof(struct trampframe, tr_rax)
+define TR_RCX offsetof(struct trampframe, tr_rcx)
+define TR_RDX offsetof(struct trampframe, tr_rdx)
+define TR_ERR offsetof(struct trampframe, tr_err)
+define TR_RIP offsetof(struct trampframe, tr_rip)
+define TR_CS offsetof(struct trampframe, tr_cs)
+define TR_RFLAGS offsetof(struct trampframe, tr_rflags)
+define TR_RSP offsetof(struct trampframe, tr_rsp)
+define TR_SS offsetof(struct trampframe, tr_ss)
+define TR_PCB_RSP offsetof(struct trampframe, tr_pcb_rsp)
+define TR_PCB_FLAGS offsetof(struct trampframe, tr_pcb_flags)
+define TR_PCB_CR3_ISO offsetof(struct trampframe, tr_pcb_cr3_iso)
+define TR_PCB_CR3 offsetof(struct trampframe, tr_pcb_cr3)
+define TR_PCB_SPEC_CTRL offsetof(struct trampframe, tr_pcb_spec_ctrl[0])
+define TR_PCB_GS_KERNEL offsetof(struct trampframe, tr_pcb_gs_kernel)
+define TR_PCB_GS_SAVED offsetof(struct trampframe, tr_pcb_gs_saved)
+define TR_PCB_CR3_SAVED offsetof(struct trampframe, tr_pcb_cr3_saved)
+
+define GD_IPENDING offsetof(struct mdglobaldata, gd_ipending)
+define GD_SPENDING offsetof(struct mdglobaldata, gd_spending)
+define GD_COMMON_TSSD offsetof(struct mdglobaldata, gd_common_tssd)
+define GD_TSS_GDT offsetof(struct mdglobaldata, gd_tss_gdt)
+define GD_NPXTHREAD offsetof(struct mdglobaldata, gd_npxthread)
+define GD_FPU_LOCK offsetof(struct mdglobaldata, gd_fpu_lock)
+define GD_SAVEFPU offsetof(struct mdglobaldata, gd_savefpu)
+define GD_OTHER_CPUS offsetof(struct mdglobaldata, mi.gd_other_cpus)
+define GD_SS_EFLAGS offsetof(struct mdglobaldata, gd_ss_eflags)
+define GD_REQFLAGS offsetof(struct mdglobaldata, mi.gd_reqflags)
+
+define RQF_IPIQ RQF_IPIQ
+define RQF_INTPEND RQF_INTPEND
+define RQF_AST_OWEUPC RQF_AST_OWEUPC
+define RQF_AST_SIGNAL RQF_AST_SIGNAL
+define RQF_AST_USER_RESCHED RQF_AST_USER_RESCHED
+define RQF_AST_LWKT_RESCHED RQF_AST_LWKT_RESCHED
+define RQF_XINVLTLB RQF_XINVLTLB
+define RQF_HVM_MASK RQF_HVM_MASK
+define RQF_TIMER RQF_TIMER
+define RQF_AST_MASK RQF_AST_MASK
+define RQF_QUICKRET RQF_QUICKRET
+
+define KCSEL GSEL(GCODE_SEL, SEL_KPL)
+define KDSEL GSEL(GDATA_SEL, SEL_KPL)
+define KUCSEL GSEL(GUCODE_SEL, SEL_UPL)
+define KUDSEL GSEL(GUDATA_SEL, SEL_UPL)
+
+define MACHINTR_INTREN offsetof(struct machintr_abi, intr_enable)
+
+define TDPRI_INT_SUPPORT TDPRI_INT_SUPPORT
+define CPULOCK_EXCLBIT CPULOCK_EXCLBIT
+define CPULOCK_EXCL CPULOCK_EXCL
+define CPULOCK_INCR CPULOCK_INCR
+define CPULOCK_CNTMASK CPULOCK_CNTMASK
+
+define CPUMASK_ELEMENTS CPUMASK_ELEMENTS
+
+define IOAPIC_IRQI_ADDR offsetof(struct ioapic_irqinfo, io_addr)
+define IOAPIC_IRQI_IDX offsetof(struct ioapic_irqinfo, io_idx)
+define IOAPIC_IRQI_FLAGS offsetof(struct ioapic_irqinfo, io_flags)
+define IOAPIC_IRQI_SIZE sizeof(struct ioapic_irqinfo)
+define IOAPIC_IRQI_SZSHIFT IOAPIC_IRQI_SZSHIFT
+define IOAPIC_IRQI_FLAG_LEVEL IOAPIC_IRQI_FLAG_LEVEL
+define IOAPIC_IRQI_FLAG_MASKED IOAPIC_IRQI_FLAG_MASKED

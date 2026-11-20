@@ -76,7 +76,7 @@
 #define CHECKNZ(expr, scratch_reg) \
 	movq expr, scratch_reg; testq scratch_reg, scratch_reg; jnz 7f; int $3; 7:
 
-#include "assym.s"
+#include "assym.h"
 
 #define	MPLOCKED	lock ;
 
