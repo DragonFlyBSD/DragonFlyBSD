@@ -77,24 +77,11 @@ KMODGRP?=	${BINGRP}
 KMODMODE?=	${BINMODE}
 
 .include <bsd.init.mk>
+.include "bsd.kern.mk"
 
-.SUFFIXES: .out .o .c .cc .cxx .C .y .l .s .S
-
-CFLAGS=		${COPTFLAGS} -std=${CSTD}
-CFLAGS+=	${CWARNFLAGS} ${WERROR}
-CFLAGS+=	-D_KERNEL -DKLD_MODULE
-CFLAGS+=	${KCFLAGS}
+CFLAGS+=	-DKLD_MODULE
 CFLAGS+=	${DEBUG_FLAGS}
 CFLAGS+=	${CONF_CFLAGS}
-
-# Don't use any standard include directories.
-# Since -nostdinc will annull any previous -I paths, we repeat all
-# such paths after -nostdinc.  It doesn't seem to be possible to
-# add to the front of `make' variable.
-#
-# Don't use -I- anymore, source-relative includes are desireable.
-_ICFLAGS:=	${CFLAGS:M-I*}
-CFLAGS+=	-nostdinc ${_ICFLAGS}
 
 # Add -I paths for system headers.  Individual KLD makefiles don't
 # need any -I paths for this.  Similar defaults for .PATH can't be
@@ -447,7 +434,6 @@ ${OBJS}: ${SRCS:M*.h}
 .endif
 
 .include <bsd.obj.mk>
-.include "bsd.kern.mk"
 
 # Behaves like MODULE_OVERRIDE
 .if defined(KLD_DEPS)

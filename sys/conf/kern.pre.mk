@@ -2,6 +2,8 @@
 # This Makefile covers the top part of the MI kernel build instructions
 #
 
+.include "bsd.kern.mk"
+
 # Can be overridden by makeoptions or /etc/make.conf
 KERNEL?=	kernel
 
@@ -42,7 +44,7 @@ OBJCOPY?=	objcopy
 #	  exist in the platform (machine/) architecture.  This allows
 #	  the platform to trivially override the cpu header files.
 #
-INCLUDES= -nostdinc -I. -Iinclude -I$S
+INCLUDES= -I. -Iinclude -I$S
 
 # Real kernel builds do not need /usr/include, but vkernel builds do.
 .if ${MACHINE_PLATFORM} == "vkernel64"
@@ -67,11 +69,9 @@ INCLUDES+= -I$S/dev/drm/include/drm
 INCLUDES+= -I$S/dev/drm/include/uapi
 INCLUDES+= -I$S/dev/drm/amd/include
 
-CFLAGS=		${COPTFLAGS} -std=${CSTD} ${DEBUG} ${IDENT}
-CFLAGS+=	${CWARNFLAGS} ${WERROR}
-CFLAGS+=	-D_KERNEL -DHAVE_KERNEL_OPTION_HEADERS
-CFLAGS+=	${INCLUDES} -include opt_global.h
-CFLAGS+=	${KCFLAGS}
+CFLAGS+=	${DEBUG} ${IDENT}
+CFLAGS+=	${INCLUDES}
+CFLAGS+=	-DHAVE_KERNEL_OPTION_HEADERS -include opt_global.h
 
 # Put configuration-specific CFLAGS last so that they can override the others.
 CFLAGS+=	${CONF_CFLAGS}
@@ -80,16 +80,6 @@ CFLAGS+=	${CONF_CFLAGS}
 .if defined(FASTER_DEPEND)
 CFLAGS+=	-MD
 .endif
-
-# XXX LOCORE means "don't declare C stuff" not "for locore.s".
-ASM_CFLAGS=	-x assembler-with-cpp -DLOCORE ${CFLAGS:N-flto}
-
-NORMAL_C=	${CC} -c ${CFLAGS} ${.IMPSRC}
-NORMAL_S=	${CC} -c ${ASM_CFLAGS} ${.IMPSRC}
-NORMAL_M=	awk -f $S/tools/makeobjops.awk -- -c ${.IMPSRC}; \
-		    ${CC} -c ${CFLAGS} ${.PREFIX}.c
-NORMAL_FW=	uudecode -o ${.TARGET} ${.ALLSRC}
-NORMAL_FWO=	${LD} -b binary -d -warn-common -r -o ${.TARGET} ${.ALLSRC:M*.fw}
 
 # In case of LTO provide all standard CFLAGS!
 .if ${CFLAGS:M-flto}
