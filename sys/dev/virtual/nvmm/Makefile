@@ -11,7 +11,7 @@ nvmm_x86_svmfunc.o nvmm_x86_vmxfunc.o:
 	${CC} -c -x assembler-with-cpp -DLOCORE ${CFLAGS:N-flto} ${.IMPSRC}
 
 .if !defined(KERNBUILDDIR)
-SRCS+=	bus_if.h device_if.h opt_nfs.h  # required by 'genassym.cf'
+SRCS+=	bus_if.h device_if.h  # required by 'genassym.cf'
 SRCS+=	assym.h
 nvmm_x86_svmfunc.o nvmm_x86_vmxfunc.o: assym.h
 .endif # !KERNBUILDDIR
