@@ -21,6 +21,7 @@ MAN=	acct.5 \
 	forward.5 \
 	fs.5 \
 	fstab.5 \
+	genassym.cf.5 \
 	group.5 \
 	hammer.5 \
 	hosts.5 \

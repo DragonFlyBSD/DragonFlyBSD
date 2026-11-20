@@ -4,6 +4,7 @@
 MAN=	crash.8 \
 	dhcp.8 \
 	diskless.8 \
+	genassym.sh.8 \
 	intro.8 \
 	rc.8 \
 	rc.sendmail.8 \
