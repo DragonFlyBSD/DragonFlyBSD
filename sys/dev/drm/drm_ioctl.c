@@ -814,7 +814,7 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	dev = file_priv->minor->dev;
 
 	if (drm_dev_is_unplugged(dev))
-		return -ENODEV;
+		return ENODEV;
 
 	is_driver_ioctl = nr >= DRM_COMMAND_BASE && nr < DRM_COMMAND_END;
 
@@ -844,7 +844,7 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 		goto err_i1;
 	}
 
-	retcode = drm_ioctl_permit(ioctl->flags, file_priv);
+	retcode = -drm_ioctl_permit(ioctl->flags, file_priv);
 	if (unlikely(retcode))
 		goto err_i1;
 
