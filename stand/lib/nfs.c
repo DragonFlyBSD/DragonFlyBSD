@@ -134,6 +134,8 @@ static off_t	nfs_seek(struct open_file *f, off_t offset, int where);
 static int	nfs_stat(struct open_file *f, struct stat *sb);
 static int	nfs_readdir(struct open_file *f, struct dirent *d);
 
+static struct open_file *nfs_readdir_f;	/* directory being listed */
+
 struct	nfs_iodesc nfs_root_node;
 
 struct fs_ops nfs_fsops = {
@@ -577,6 +579,8 @@ nfs_close(struct open_file *f)
 #endif
 
 	f->f_fsdata = NULL;
+	if (f == nfs_readdir_f)
+		nfs_readdir_f = NULL;
 	if (fp && fp != &nfs_root_node)
 		free(fp);
 	
@@ -698,9 +702,11 @@ nfs_readdir(struct open_file *f, struct dirent *d)
 	struct nfs_readdir_data *rd;
 	struct nfs_readdir_off  *roff = NULL;
 	static char *buf;
+	static char *bufend;
 	static n_long cookie = 0;
-	size_t cc;
+	ssize_t cc;
 	n_long eof;
+	n_long namlen;
 	
 	struct {
 		n_long h[RPC_HEADER_WORDS];
@@ -710,6 +716,11 @@ nfs_readdir(struct open_file *f, struct dirent *d)
 		n_long h[RPC_HEADER_WORDS];
 		u_char d[NFS_READDIRSIZE];
 	} rdata;
+
+	if (f != nfs_readdir_f) {
+		nfs_readdir_f = f;
+		cookie = 0;
+	}
 
 	if (cookie == 0) {
 	refill:
@@ -723,12 +734,18 @@ nfs_readdir(struct open_file *f, struct dirent *d)
 		cc = rpc_call(fp->iodesc, NFS_PROG, NFS_VER2, NFSPROC_READDIR,
 			      args, sizeof(*args),
 			      rdata.d, sizeof(rdata.d));
+		if (cc < (ssize_t)(sizeof(*roff) + sizeof(eof)) ||
+		    cc > (ssize_t)sizeof(rdata.d))
+			goto bad;
 		buf  = rdata.d;
+		bufend = rdata.d + cc;
 		roff = (struct nfs_readdir_off *)buf;
 		if (ntohl(roff->cookie) != 0)
-			return 1;
+			goto bad;
 	}
 	roff = (struct nfs_readdir_off *)buf;
+	if ((size_t)(bufend - buf) < sizeof(*roff) + sizeof(eof))
+		goto bad;
 
 	if (ntohl(roff->follows) == 0) {
 		eof = ntohl((roff+1)->cookie);
@@ -736,17 +753,30 @@ nfs_readdir(struct open_file *f, struct dirent *d)
 			cookie = 0;
 			return 1;
 		}
+		if (buf == rdata.d)
+			goto bad;
 		goto refill;
 	}
 
 	buf += sizeof(struct nfs_readdir_off);
 	rd = (struct nfs_readdir_data *)buf;
-	d->d_namlen = ntohl(rd->len);
-	bcopy(rd->name, d->d_name, d->d_namlen);
-	d->d_name[d->d_namlen] = '\0';
+	if ((size_t)(bufend - buf) < sizeof(*rd))
+		goto bad;
+	namlen = ntohl(rd->len);
+	if (namlen > NFS_MAXNAMLEN ||
+	    (size_t)(bufend - buf) <
+	    sizeof(*rd) + roundup(namlen, 4) + sizeof(*roff))
+		goto bad;
+	d->d_namlen = namlen;
+	bcopy(rd->name, d->d_name, namlen);
+	d->d_name[namlen] = '\0';
 
-	buf += (sizeof(struct nfs_readdir_data) + roundup(htonl(rd->len),4));
+	buf += (sizeof(struct nfs_readdir_data) + roundup(namlen, 4));
 	roff = (struct nfs_readdir_off *)buf;
 	cookie = ntohl(roff->cookie);
 	return 0;
+
+bad:
+	cookie = 0;
+	return 1;
 }
