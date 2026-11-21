@@ -105,7 +105,8 @@ extern	char bootprog_name[], bootprog_rev[], bootprog_date[], bootprog_maker[];
 /* XXX debugging */
 extern char _end[];
 
-#define COMCONSOLE_DEBUG
+/* Early trace; must stay off, it resets the UART and writes the FIFO. */
+/* #define COMCONSOLE_DEBUG */
 #ifdef COMCONSOLE_DEBUG
 
 static void
@@ -211,6 +212,9 @@ main(void)
 	if (initial_howto & RB_SERIAL)
 	    setenv("console", "comconsole", 1);
     }
+    /* loader-only hint: boot_serial would also force the kernel onto serial */
+    if (initial_howto & RB_SERIAL)
+	setenv("comconsole_boot", "YES", 1);
     cons_probe();
 
     /*

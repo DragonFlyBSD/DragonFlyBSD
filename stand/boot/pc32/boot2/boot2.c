@@ -160,6 +160,7 @@ static struct dsk {
 static char cmd[512];
 static const char *kname;
 static uint32_t opts = RBF_VIDEO;
+static int comspeed = SIOSPD;
 static struct bootinfo bootinfo;
 
 /*
@@ -312,7 +313,7 @@ main(void)
     if ((opts & (RBF_MUTE|RBF_SERIAL|RBF_VIDEO)) == 0)
 	opts |= RBF_SERIAL|RBF_VIDEO;
     if (opts & RBF_SERIAL) {
-	if (sio_init())
+	if (sio_init(115200 / comspeed))
 	    opts = RBF_VIDEO;
     }
 
@@ -440,7 +441,7 @@ parse(void)
     char *arg = cmd;
     char *p, *q;
     unsigned int drv;
-    int c, i;
+    int c, i, j;
 
     while ((c = *arg++)) {
 	if (c == ' ' || c == '\t' || c == '\n')
@@ -451,6 +452,19 @@ parse(void)
 	    *p++ = 0;
 	if (c == '-') {
 	    while ((c = *arg++)) {
+		if (c == 'S') {
+		    j = 0;
+		    while ((unsigned)(i = *arg++ - '0') <= 9)
+			j = j * 10 + i;
+		    if (j > 0 && j <= 115200 && i == -'0') {
+			comspeed = j;
+			opts |= RBF_SERIAL;
+			if (sio_init(115200 / comspeed))
+			    opts &= ~RBF_SERIAL;
+			break;
+		    }
+		    return (-1);
+		}
 		for (i = NOPT - 1; i >= 0; --i) {
 		    if (optstr[i] == c) {
 			opts ^= 1 << flags[i];
