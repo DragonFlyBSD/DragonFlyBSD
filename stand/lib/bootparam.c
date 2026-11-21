@@ -199,7 +199,7 @@ bp_whoami(int sockfd)
 	recv_head = (char*) repl->capsule;
 
 	/* client name */
-	hostnamelen = MAXHOSTNAMELEN-1;
+	hostnamelen = sizeof(hostname) - 1;
 	if (xdr_string_decode(&recv_head, hostname, &hostnamelen)) {
 		RPC_PRINTF(("bp_whoami: bad hostname\n"));
 		return (-1);

@@ -273,7 +273,12 @@ tftp_open(const char *path, struct open_file *f)
 {
 	struct tftp_handle *tftpfile;
 	struct iodesc  *io;
+	char		*pathbuf;
+	size_t		len;
 	int             res;
+
+	if (netproto != NET_TFTP)
+		return (EINVAL);
 
 	/* Avoid trying out tftp_open for disk devices in the EFI loader */
 #ifndef __i386__
@@ -291,13 +296,38 @@ tftp_open(const char *path, struct open_file *f)
 		return (EINVAL);
 	}
 
+	/* A root-path directory (tftp:/dir) prefixes the file name. */
 	io->destip = servip;
 	tftpfile->off = 0;
-	tftpfile->path = strdup(path);
-	if (tftpfile->path == NULL) {
-	    free(tftpfile);
-	    return(ENOMEM);
+	len = strlen(rootpath);
+	while (len > 1 && rootpath[len - 1] == '/')
+		len--;
+	if (len > 0 && (len > 1 || rootpath[0] != '/')) {
+		if (len + strlen(path) + 2 > FNAME_SIZE) {
+			free(tftpfile);
+			return (ENAMETOOLONG);
+		}
+		pathbuf = malloc(len + strlen(path) + 2);
+		if (pathbuf == NULL) {
+			free(tftpfile);
+			return (ENOMEM);
+		}
+		bcopy(rootpath, pathbuf, len);
+		if (path[0] != '/')
+			pathbuf[len++] = '/';
+		strcpy(pathbuf + len, path);
+	} else {
+		if (strlen(path) + 1 > FNAME_SIZE) {
+			free(tftpfile);
+			return (ENAMETOOLONG);
+		}
+		pathbuf = strdup(path);
+		if (pathbuf == NULL) {
+			free(tftpfile);
+			return (ENOMEM);
+		}
 	}
+	tftpfile->path = pathbuf;
 
 	res = tftp_makereq(tftpfile);
 

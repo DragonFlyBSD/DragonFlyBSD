@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/sys/boot/i386/pxeldr/pxeboot.8,v 1.7 2002/12/12 17:25:59 ru Exp $
 .\"
-.Dd November 1, 2019
+.Dd October 27, 2026
 .Dt PXEBOOT 8
 .Os
 .Sh NAME
@@ -42,7 +42,7 @@ PXE supports DHCP configuration and provides low-level NIC access services.
 The
 .Nm
 bootloader retrieves the kernel, modules,
-and other files either via NFS over UDP.
+and other files either via NFS over UDP or via TFTP.
 In combination with a NFS-mounted root file system,
 .Nm
 allows for easy,
@@ -85,34 +85,51 @@ recognizes
 .Va next-server
 and
 .Va option root-path
-directives as the server and path to NFS mount for file requests,
-respectively, or the server to make TFTP requests to.
+directives as the server and path for file requests.
+The same binary loads files over NFS or TFTP.
+A
+.Li tftp:/
+or
+.Li nfs:/
+prefix on the root path selects the protocol explicitly.
+The remainder is either
+.Ar path
+on the server that booted us, or
+.Li // Ns Ar server Ns Li / Ns Ar path
+where
+.Ar server
+is an IP address; for TFTP,
+.Ar path
+is the directory that files are fetched from.
+Without a prefix, a root path selects NFS and no root path selects TFTP
+from the
+.Va next-server .
+.Pp
 Note that
 .Nm
-expects to fetch
+fetches
 .Pa /boot/dloader.rc
-from the specified server before loading any other files.
+from the root of the file system it is using.
+With NFS that is the exported root, so the file is
+.Pa /boot/dloader.rc
+inside the export.
+TFTP has no notion of changing directory, so files are fetched relative to
+the TFTP root (or to the directory a
+.Li tftp:/ Ns Ar dir
+root path names), and the configuration files live under that same root.
+Over TFTP there is no
+.Pa /boot
+prefix: all path names below are relative to that TFTP root, and the
+.Pa /boot Ns / Ns Ar ...
+file names in
+.Sx FILES
+only apply to NFS.
 .Pp
-.Nm
-uses
-.Pa /boot/kernel.BOOTP
-and
-.Pa /boot/loader-bootp.conf
-instead of
+It reads the standard
 .Pa /boot/kernel
 and
-.Pa /boot/loader.conf .
-Note that the TFTP version
-.Xr pxeboot_tftp 8
-uses the standard boot loader files.
-The NFS version uses different files to allow BOOTP boots via NFS to
-be overloaded onto the same directory structure as a normal boot,
-though many other changes would have to be made to actually make
-that work.
-However, this is more for historical reasons.
-Current day PXE boot code can handle complex root-path specifications
-allowing the root image to be contained in a sub-directory of the NFS
-export.
+.Pa /boot/loader.conf
+names, so the same directory tree can serve both PXE and disk boots.
 .Pp
 In all other respects,
 .Nm
@@ -132,14 +149,17 @@ For further information on Intel's PXE specifications and Wired for
 Management (WfM) systems, see
 .Pa http://developer.intel.com/ial/wfm/ .
 .Sh FILES
-.Bl -tag -width ".Pa /boot/defaults/loader-bootp.conf" -compact
-.It Pa /boot/kernel.BOOTP
+.Bl -tag -width ".Pa /boot/defaults/loader.conf" -compact
+.It Pa /boot/kernel/kernel
 Default kernel for
-.Nm .
-.It Pa /boot/defaults/loader-bootp.conf
+.Nm ,
+as named by
+.Va kernel
+in the configuration file.
+.It Pa /boot/defaults/loader.conf
 .Nm
 configuration file -- do not change this file.
-.It Pa /boot/loader-bootp.conf
+.It Pa /boot/loader.conf
 .Nm
 configuration file.
 .El
@@ -148,7 +168,6 @@ configuration file.
 .Xr diskless 8 ,
 .Xr loader 8 ,
 .Xr nfsd 8 ,
-.Xr pxeboot_tftp 8 ,
 .Xr tftpd 8
 .Sh HISTORY
 The

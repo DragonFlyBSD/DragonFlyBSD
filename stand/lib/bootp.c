@@ -328,6 +328,7 @@ vend_rfc1048(u_char *cp, u_int len)
 {
 	u_char *ep;
 	int size;
+	size_t copylen;
 	u_char tag;
 
 #ifdef BOOTP_DEBUG
@@ -356,12 +357,16 @@ vend_rfc1048(u_char *cp, u_int len)
 			bcopy(cp, &rootip.s_addr, sizeof(swapip.s_addr));
 		}
 		if (tag == TAG_ROOTPATH) {
-			strncpy(rootpath, (char *)cp, sizeof(rootpath));
-			rootpath[size] = '\0';
+			copylen = size < sizeof(rootpath) ? size :
+			    sizeof(rootpath) - 1;
+			strncpy(rootpath, (char *)cp, copylen);
+			rootpath[copylen] = '\0';
 		}
 		if (tag == TAG_HOSTNAME) {
-			strncpy(hostname, (char *)cp, sizeof(hostname));
-			hostname[size] = '\0';
+			copylen = size < sizeof(hostname) ? size :
+			    sizeof(hostname) - 1;
+			strncpy(hostname, (char *)cp, copylen);
+			hostname[copylen] = '\0';
 		}
 #ifdef SUPPORT_DHCP
 		if (tag == TAG_DHCP_MSGTYPE) {
