@@ -2750,6 +2750,7 @@ DRM_DEBUG("dfly: registering framebuffer\n");
 	ret = register_framebuffer(info);
 	if (ret < 0) {
 		DRM_ERROR("framebuffer registration failed: %d\n", ret);
+		fb_helper->deferred_setup = true;
 	}
 #if 0
 	dev_info(dev->dev, "fb%d: %s frame buffer device\n",
