@@ -4818,6 +4818,17 @@ inflate_codes(inflate_blocks_statef *s, z_streamp z, int r)
       c->sub.copy.dist += (uInt)b & inflate_mask[j];
       DUMPBITS(j)
       Tracevv((stderr, "inflate:         distance %u\n", c->sub.copy.dist));
+      /* Reject distances that exceed the sliding window. The
+       * back-reference can only ever reach inside [s->window, s->end);
+       * a decoded distance larger than the window is an attempt to read
+       * memory before the allocation. Modern zlib checks dist <= dmax. */
+      if (c->sub.copy.dist > (uInt)(s->end - s->window))
+      {
+        z->msg = (char *)"invalid distance too far back";
+        c->mode = BADCODE;
+        r = Z_DATA_ERROR;
+        LEAVE
+      }
       c->mode = COPY;
     case COPY:          /* o: copying bytes in window, waiting for space */
 #ifndef __TURBOC__ /* Turbo C bug for following expression */
@@ -5061,6 +5072,17 @@ inflate_fast(uInt bl, uInt bd, inflate_huft *tl, inflate_huft *td,
             d = t->base + ((uInt)b & inflate_mask[e]);
             DUMPBITS(e)
             Tracevv((stderr, "inflate:         * distance %u\n", d));
+
+            /* Reject distances that exceed the sliding window
+             * (mirror of the inflate_codes check above). Without this,
+             * the copy below dereferences memory before s->window. */
+            if (d > (uInt)(s->end - s->window))
+            {
+              z->msg = (char *)"invalid distance too far back";
+              UNGRAB
+              UPDATE
+              return Z_DATA_ERROR;
+            }
 
             /* do the copy */
             m -= c;
