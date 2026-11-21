@@ -249,6 +249,24 @@
  * Register defines.
  */
 
+/* Bits in RFLAGS */
+#define RFLAGS_CF	__BIT(0)
+#define RFLAGS_PF	__BIT(2)
+#define RFLAGS_AF	__BIT(4)
+#define RFLAGS_ZF	__BIT(6)
+#define RFLAGS_SF	__BIT(7)
+#define RFLAGS_TF	__BIT(8)
+#define RFLAGS_IF	__BIT(9)
+#define RFLAGS_DF	__BIT(10)
+#define RFLAGS_OF	__BIT(11)
+#define RFLAGS_NT	__BIT(14)
+#define RFLAGS_RF	__BIT(16)
+#define RFLAGS_VM	__BIT(17)
+#define RFLAGS_AC	__BIT(18)
+#define RFLAGS_VIF	__BIT(19)
+#define RFLAGS_VIP	__BIT(20)
+#define RFLAGS_ID	__BIT(21)
+
 /* Bits in CR0 control register */
 #define CR0_PE		__BIT(0)
 #define CR0_MP		__BIT(1)

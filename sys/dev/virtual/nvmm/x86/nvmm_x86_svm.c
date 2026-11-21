@@ -761,7 +761,7 @@ svm_vcpu_inject(struct nvmm_cpu *vcpu)
 			return EINVAL;
 		}
 		if (svm_excp_has_rf(vector)) {
-			vmcb->state.rflags |= PSL_RF;
+			vmcb->state.rflags |= RFLAGS_RF;
 		}
 		if ((vmcb->state.cr0 & CR0_PE) != 0) {
 			has_error = svm_excp_has_error(vector);
@@ -837,7 +837,7 @@ svm_inkernel_advance(struct vmcb *vmcb)
 	 * debugger.
 	 */
 	vmcb->state.rip = vmcb->ctrl.nrip;
-	vmcb->state.rflags &= ~PSL_RF;
+	vmcb->state.rflags &= ~RFLAGS_RF;
 	vmcb->ctrl.intr &= ~VMCB_CTRL_INTR_SHADOW;
 }
 
@@ -1205,7 +1205,7 @@ svm_exit_hlt(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 	struct vmcb *vmcb = cpudata->vmcb;
 
-	if (cpudata->int_window_exit && (vmcb->state.rflags & PSL_I)) {
+	if (cpudata->int_window_exit && (vmcb->state.rflags & RFLAGS_IF)) {
 		svm_event_waitexit_disable(vcpu, false);
 	}
 

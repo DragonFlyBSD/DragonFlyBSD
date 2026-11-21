@@ -1140,7 +1140,7 @@ vmx_vcpu_inject(struct nvmm_cpu *vcpu)
 		}
 		if (vmx_excp_has_rf(vector)) {
 			rflags = vmx_vmread(VMCS_GUEST_RFLAGS);
-			vmx_vmwrite(VMCS_GUEST_RFLAGS, rflags | PSL_RF);
+			vmx_vmwrite(VMCS_GUEST_RFLAGS, rflags | RFLAGS_RF);
 		}
 		type = INTR_TYPE_HW_EXC;
 		if ((vmx_vmread(VMCS_GUEST_CR0) & CR0_PE) != 0) {
@@ -1230,7 +1230,7 @@ vmx_inkernel_advance(void)
 	vmx_vmwrite(VMCS_GUEST_RIP, rip + inslen);
 
 	rflags = vmx_vmread(VMCS_GUEST_RFLAGS);
-	vmx_vmwrite(VMCS_GUEST_RFLAGS, rflags & ~PSL_RF);
+	vmx_vmwrite(VMCS_GUEST_RFLAGS, rflags & ~RFLAGS_RF);
 
 	intstate = vmx_vmread(VMCS_GUEST_INTERRUPTIBILITY);
 	vmx_vmwrite(VMCS_GUEST_INTERRUPTIBILITY,
@@ -1611,7 +1611,7 @@ vmx_exit_hlt(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 
 	if (cpudata->int_window_exit) {
 		rflags = vmx_vmread(VMCS_GUEST_RFLAGS);
-		if (rflags & PSL_I) {
+		if (rflags & RFLAGS_IF) {
 			vmx_event_waitexit_disable(vcpu, false);
 		}
 	}

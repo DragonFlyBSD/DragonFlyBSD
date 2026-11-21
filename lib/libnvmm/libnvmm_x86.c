@@ -34,8 +34,6 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#include <machine/psl.h>
-
 #undef MIN
 #define MIN(X, Y)		(((X) < (Y)) ? (X) : (Y))
 #undef __cacheline_aligned
@@ -114,6 +112,18 @@ nvmm_vcpu_dump(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 #define CR4_SMAP	__BIT(21)
 #define EFER_LMA	__BIT(10)
 #define EFER_NXE	__BIT(11)
+
+/*
+ * x86 RFLAGS bits in use.
+ */
+#define RFLAGS_CF	__BIT(0)
+#define RFLAGS_PF	__BIT(2)
+#define RFLAGS_AF	__BIT(4)
+#define RFLAGS_ZF	__BIT(6)
+#define RFLAGS_SF	__BIT(7)
+#define RFLAGS_DF	__BIT(10)
+#define RFLAGS_OF	__BIT(11)
+#define RFLAGS_AC	__BIT(18)
 
 /*
  * x86 page size.
@@ -648,7 +658,7 @@ x86_gva_to_gpa(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	is_lng = (state->msrs[NVMM_X64_MSR_EFER] & EFER_LMA) != 0;
 	has_smep = (state->crs[NVMM_X64_CR_CR4] & CR4_SMEP) != 0;
 	has_smap = (state->crs[NVMM_X64_CR_CR4] & CR4_SMAP) != 0 &&
-	    (state->gprs[NVMM_X64_GPR_RFLAGS] & PSL_AC) == 0;
+	    (state->gprs[NVMM_X64_GPR_RFLAGS] & RFLAGS_AC) == 0;
 
 	ctx.cr3 = state->crs[NVMM_X64_CR_CR3];
 	ctx.want_prot = want_prot;
@@ -1088,7 +1098,7 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 	gvaddr_t gva = 0; /* GCC */
 	int reg = 0; /* GCC */
 	int ret, seg;
-	bool psld = false;
+	bool df = false;
 	emul_status_t es;
 
 	if (__predict_false(exit->reason != NVMM_VCPU_EXIT_IO)) {
@@ -1117,8 +1127,8 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 		}
 	}
 
-	if (__predict_false(state->gprs[NVMM_X64_GPR_RFLAGS] & PSL_D)) {
-		psld = true;
+	if (__predict_false(state->gprs[NVMM_X64_GPR_RFLAGS] & RFLAGS_DF)) {
+		df = true;
 	}
 
 	/*
@@ -1157,7 +1167,7 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 			segment_apply(&state->segs[seg], &gva, true);
 		}
 
-		if (exit->u.io.rep && !psld) {
+		if (exit->u.io.rep && !df) {
 			/*
 			 * TODO: the segment check should be applied to the
 			 * whole batched range.
@@ -1200,7 +1210,7 @@ nvmm_assist_io(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu)
 done:
 	if (exit->u.io.str) {
 		gpr_advance_address(state, reg, exit->u.io.address_size,
-		    iocnt * io.size, psld);
+		    iocnt * io.size, df);
 	}
 
 	if (exit->u.io.rep) {
@@ -3074,7 +3084,7 @@ exec_##instr(uint64_t op1, uint64_t op2, uint64_t *rflags, size_t opsize) \
 }
 
 /* SUB: ret = op2 - op1 */
-#define PSL_SUB_MASK	(PSL_V|PSL_C|PSL_Z|PSL_N|PSL_PF|PSL_AF)
+#define RFLAGS_SUB_MASK	(RFLAGS_OF|RFLAGS_CF|RFLAGS_ZF|RFLAGS_SF|RFLAGS_PF|RFLAGS_AF)
 EXEC_INSTR(8, sub)
 EXEC_INSTR(16, sub)
 EXEC_INSTR(32, sub)
@@ -3082,7 +3092,7 @@ EXEC_INSTR(64, sub)
 EXEC_DISPATCHER(sub)
 
 /* OR:  ret = op2 | op1 */
-#define PSL_OR_MASK	(PSL_V|PSL_C|PSL_Z|PSL_N|PSL_PF)
+#define RFLAGS_OR_MASK	(RFLAGS_OF|RFLAGS_CF|RFLAGS_ZF|RFLAGS_SF|RFLAGS_PF)
 EXEC_INSTR(8, or)
 EXEC_INSTR(16, or)
 EXEC_INSTR(32, or)
@@ -3090,7 +3100,7 @@ EXEC_INSTR(64, or)
 EXEC_DISPATCHER(or)
 
 /* AND: ret = op2 & op1 */
-#define PSL_AND_MASK	(PSL_V|PSL_C|PSL_Z|PSL_N|PSL_PF)
+#define RFLAGS_AND_MASK	(RFLAGS_OF|RFLAGS_CF|RFLAGS_ZF|RFLAGS_SF|RFLAGS_PF)
 EXEC_INSTR(8, and)
 EXEC_INSTR(16, and)
 EXEC_INSTR(32, and)
@@ -3098,7 +3108,7 @@ EXEC_INSTR(64, and)
 EXEC_DISPATCHER(and)
 
 /* XOR: ret = op2 ^ op1 */
-#define PSL_XOR_MASK	(PSL_V|PSL_C|PSL_Z|PSL_N|PSL_PF)
+#define RFLAGS_XOR_MASK	(RFLAGS_OF|RFLAGS_CF|RFLAGS_ZF|RFLAGS_SF|RFLAGS_PF)
 EXEC_INSTR(8, xor)
 EXEC_INSTR(16, xor)
 EXEC_INSTR(32, xor)
@@ -3106,7 +3116,7 @@ EXEC_INSTR(64, xor)
 EXEC_DISPATCHER(xor)
 
 /* BT: RFLAGS.CF = (op2 >> op1) & 1 */
-#define PSL_BT_MASK	(PSL_C)
+#define RFLAGS_BT_MASK	(RFLAGS_CF)
 EXEC_INSTR(16, bt)
 EXEC_INSTR(32, bt)
 EXEC_INSTR(64, bt)
@@ -3166,8 +3176,8 @@ x86_func_or(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
 		*retval = ret;
 	}
 
-	gprs[NVMM_X64_GPR_RFLAGS] &= ~PSL_OR_MASK;
-	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & PSL_OR_MASK);
+	gprs[NVMM_X64_GPR_RFLAGS] &= ~RFLAGS_OR_MASK;
+	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & RFLAGS_OR_MASK);
 }
 
 static void
@@ -3198,8 +3208,8 @@ x86_func_and(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
 		*retval = ret;
 	}
 
-	gprs[NVMM_X64_GPR_RFLAGS] &= ~PSL_AND_MASK;
-	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & PSL_AND_MASK);
+	gprs[NVMM_X64_GPR_RFLAGS] &= ~RFLAGS_AND_MASK;
+	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & RFLAGS_AND_MASK);
 }
 
 static void
@@ -3255,8 +3265,8 @@ x86_func_sub(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
 		*retval = ret;
 	}
 
-	gprs[NVMM_X64_GPR_RFLAGS] &= ~PSL_SUB_MASK;
-	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & PSL_SUB_MASK);
+	gprs[NVMM_X64_GPR_RFLAGS] &= ~RFLAGS_SUB_MASK;
+	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & RFLAGS_SUB_MASK);
 }
 
 static void
@@ -3287,8 +3297,8 @@ x86_func_xor(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
 		*retval = ret;
 	}
 
-	gprs[NVMM_X64_GPR_RFLAGS] &= ~PSL_XOR_MASK;
-	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & PSL_XOR_MASK);
+	gprs[NVMM_X64_GPR_RFLAGS] &= ~RFLAGS_XOR_MASK;
+	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & RFLAGS_XOR_MASK);
 }
 
 static void
@@ -3310,8 +3320,8 @@ x86_func_cmp(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
 	/* Perform the CMP. */
 	exec_sub(*op1, *op2, &fl, mem->size);
 
-	gprs[NVMM_X64_GPR_RFLAGS] &= ~PSL_SUB_MASK;
-	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & PSL_SUB_MASK);
+	gprs[NVMM_X64_GPR_RFLAGS] &= ~RFLAGS_SUB_MASK;
+	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & RFLAGS_SUB_MASK);
 }
 
 static void
@@ -3333,8 +3343,8 @@ x86_func_test(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
 	/* Perform the TEST. */
 	exec_and(*op1, *op2, &fl, mem->size);
 
-	gprs[NVMM_X64_GPR_RFLAGS] &= ~PSL_AND_MASK;
-	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & PSL_AND_MASK);
+	gprs[NVMM_X64_GPR_RFLAGS] &= ~RFLAGS_AND_MASK;
+	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & RFLAGS_AND_MASK);
 }
 
 static void
@@ -3389,8 +3399,8 @@ x86_func_bt(struct nvmm_vcpu *vcpu, struct nvmm_mem *mem, uint64_t *gprs)
 	/* Perform the BT. There is nothing to write back. */
 	exec_bt(*op1, op2, &fl, mem->size);
 
-	gprs[NVMM_X64_GPR_RFLAGS] &= ~PSL_BT_MASK;
-	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & PSL_BT_MASK);
+	gprs[NVMM_X64_GPR_RFLAGS] &= ~RFLAGS_BT_MASK;
+	gprs[NVMM_X64_GPR_RFLAGS] |= (fl & RFLAGS_BT_MASK);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3527,7 +3537,7 @@ assist_mem_double_movs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	uint8_t data[8];
 	gvaddr_t gva;
 	size_t size;
-	bool psld;
+	bool df;
 	bool ret;
 
 	size = instr->operand_size;
@@ -3548,12 +3558,12 @@ assist_mem_double_movs(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 	if (__predict_false(es != EMUL_SUCCESS))
 		return es;
 
-	psld = (state->gprs[NVMM_X64_GPR_RFLAGS] & PSL_D) != 0;
+	df = (state->gprs[NVMM_X64_GPR_RFLAGS] & RFLAGS_DF) != 0;
 
 	gpr_advance_address(state, NVMM_X64_GPR_RSI, instr->address_size, size,
-	    psld);
+	    df);
 	gpr_advance_address(state, NVMM_X64_GPR_RDI, instr->address_size, size,
-	    psld);
+	    df);
 
 	return EMUL_SUCCESS;
 }
@@ -3647,10 +3657,10 @@ assist_mem_single(struct nvmm_machine *mach, struct nvmm_vcpu *vcpu,
 
 	if (instr->opcode->stos) {
 		gpr_advance_address(state, NVMM_X64_GPR_RDI, instr->address_size,
-		    mem.size, (state->gprs[NVMM_X64_GPR_RFLAGS] & PSL_D) != 0);
+		    mem.size, (state->gprs[NVMM_X64_GPR_RFLAGS] & RFLAGS_DF) != 0);
 	} else if (instr->opcode->lods) {
 		gpr_advance_address(state, NVMM_X64_GPR_RSI, instr->address_size,
-		    mem.size, (state->gprs[NVMM_X64_GPR_RFLAGS] & PSL_D) != 0);
+		    mem.size, (state->gprs[NVMM_X64_GPR_RFLAGS] & RFLAGS_DF) != 0);
 	}
 
 	if (instr->emul->notouch) {
