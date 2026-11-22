@@ -47,12 +47,7 @@
 #define ASM_END(_symname_)		\
 	.size _symname_, . - _symname_
 
-#if defined(__NetBSD__)
-#include "assym.h"
-#include <machine/asm.h>
-#include <machine/segments.h>
-#define DS_ES_VALUE	GSEL(GUDATA_SEL, SEL_UPL)
-#elif defined(__DragonFly__)
+#if defined(__NetBSD__) || defined(__DragonFly__)
 #include "assym.h"
 #include <machine/segments.h>
 #define DS_ES_VALUE	GSEL(GUDATA_SEL, SEL_UPL)
