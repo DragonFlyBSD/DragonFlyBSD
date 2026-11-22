@@ -190,6 +190,11 @@ corepower_probe(device_t dev)
 		case 0x4d:
 		case 0x5a:
 		case 0x5d:
+		case 0x5c:	/* Apollo Lake */
+		case 0x5f:	/* Denverton */
+		case 0x7a:	/* Gemini Lake */
+		case 0x96:	/* Elkhart Lake */
+		case 0x9c:	/* Jasper Lake */
 			break;
 		default:
 			return (ENXIO);
@@ -264,6 +269,14 @@ corepower_attach(device_t dev)
 			sc->sc_have_sens = 0x5;
 			/* use quirk for Valleyview Atom CPUs */
 			sc->sc_is_atom = 1;
+			break;
+		/* Atom CPUs with Goldmont(Plus) and Tremont cores */
+		case 0x5c:	/* Apollo Lake */
+		case 0x5f:	/* Denverton */
+		case 0x7a:	/* Gemini Lake */
+		case 0x96:	/* Elkhart Lake */
+		case 0x9c:	/* Jasper Lake */
+			sc->sc_have_sens = 0xf;
 			break;
 		default:
 			return (ENXIO);
