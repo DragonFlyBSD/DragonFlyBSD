@@ -347,13 +347,18 @@ struct nvmm_x86_cpuid_mask {
 	uint32_t edx;
 };
 
-/* FPU area + XSAVE header. */
-struct nvmm_x86_xsave {
-	struct nvmm_x64_state_fpu fpu;
+struct nvmm_x86_xsave_hdr {
 	uint64_t xstate_bv;
 	uint64_t xcomp_bv;
 	uint8_t rsvd0[8];
 	uint8_t rsvd[40];
+};
+CTASSERT(sizeof(struct nvmm_x86_xsave_hdr) == 64);
+
+/* FPU area + XSAVE header. */
+struct nvmm_x86_xsave {
+	struct nvmm_x64_state_fpu fpu;
+	struct nvmm_x86_xsave_hdr hdr;
 };
 CTASSERT(sizeof(struct nvmm_x86_xsave) == 512 + 64);
 

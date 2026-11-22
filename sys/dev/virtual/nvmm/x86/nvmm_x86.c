@@ -500,8 +500,8 @@ nvmm_x86_xsave_size(uint64_t xcr0 __unused)
 	 * constant regardless of whether SSE is enabled.
 	 */
 
-	size = 512; /* x87 + SSE */
-	size += 64; /* XSAVE header */
+	size = sizeof(struct nvmm_x64_state_fpu); /* x87 + SSE */
+	size += sizeof(struct nvmm_x86_xsave_hdr); /* XSAVE header */
 
 	return size;
 }

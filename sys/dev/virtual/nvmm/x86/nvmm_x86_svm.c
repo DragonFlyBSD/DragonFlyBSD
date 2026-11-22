@@ -507,8 +507,9 @@ static os_mtx_t svm_asidlock __cacheline_aligned;
 static bool svm_decode_assist __read_mostly;
 static uint32_t svm_ctrl_tlb_flush __read_mostly;
 
-#define SVM_XCR0_MASK_DEFAULT	(XCR0_X87|XCR0_SSE)
-static uint64_t svm_xcr0_mask __read_mostly;
+#define SVM_XCR0_MASK_INIT	(XCR0_X87 | XCR0_SSE)
+#define SVM_XCR0_MASK_SUPPORTED	(XCR0_X87 | XCR0_SSE)
+static uint64_t svm_xcr0_mask_supported __read_mostly;
 
 #define SVM_NCPUIDS	32
 
@@ -2182,7 +2183,7 @@ svm_vcpu_setstate(struct nvmm_cpu *vcpu)
 
 		if (cpudata->xcr0_valid != 0) {
 			/* Reset XSTATE_BV, to force a reload. */
-			cpudata->gxsave.xstate_bv = cpudata->xcr0_valid;
+			cpudata->gxsave.hdr.xstate_bv = cpudata->xcr0_valid;
 		}
 	}
 
@@ -2409,7 +2410,7 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	    /* EFER_AIBRSE excluded */
 	    /* EFER_ETLBI excluded */;
 
-	cpudata->xcr0_valid = svm_xcr0_mask;
+	cpudata->xcr0_valid = SVM_XCR0_MASK_INIT & svm_xcr0_mask_supported;
 
 	/*
 	 * If DecodeAssists are supported:
@@ -2535,8 +2536,8 @@ svm_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	vmcb->ctrl.n_cr3 = os_vmspace_pdirpa(mach->vm);
 
 	/* Init XSAVE header. */
-	cpudata->gxsave.xstate_bv = cpudata->xcr0_valid;
-	cpudata->gxsave.xcomp_bv = 0;
+	cpudata->gxsave.hdr.xstate_bv = cpudata->xcr0_valid;
+	cpudata->gxsave.hdr.xcomp_bv = 0;
 
 	/* Install the RESET state. */
 	memcpy(&vcpu->comm->state, &nvmm_x86_reset_state,
@@ -2902,7 +2903,7 @@ svm_init(void)
 	svm_init_asid(descs.ebx);
 
 	/* Init the XCR0 mask. */
-	svm_xcr0_mask = SVM_XCR0_MASK_DEFAULT & x86_xsave_features;
+	svm_xcr0_mask_supported = SVM_XCR0_MASK_SUPPORTED & x86_xsave_features;
 
 	/* Init the max basic CPUID leaf. */
 	x86_get_cpuid(0x00000000, &descs);
@@ -2913,7 +2914,7 @@ svm_init(void)
 	svm_cpuid_max_extended = uimin(descs.eax, SVM_CPUID_MAX_EXTENDED);
 
 	/* Init the global host state. */
-	if (svm_xcr0_mask != 0) {
+	if (svm_xcr0_mask_supported != 0) {
 		svm_global_hstate.xcr0 = x86_get_xcr(0);
 	}
 	svm_global_hstate.star = rdmsr(MSR_STAR);
@@ -2964,7 +2965,7 @@ svm_capability(struct nvmm_capability *cap)
 	cap->arch.vcpu_conf_support =
 	    NVMM_CAP_ARCH_VCPU_CONF_CPUID |
 	    NVMM_CAP_ARCH_VCPU_CONF_TPR;
-	cap->arch.xcr0_mask = svm_xcr0_mask;
+	cap->arch.xcr0_mask = svm_xcr0_mask_supported;
 	cap->arch.mxcsr_mask = x86_fpu_mxcsr_mask;
 	cap->arch.conf_cpuid_maxops = SVM_NCPUIDS;
 }

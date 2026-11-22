@@ -767,8 +767,9 @@ static uint8_t *vmx_asidmap __read_mostly;
 static uint32_t vmx_maxasid __read_mostly;
 static os_mtx_t vmx_asidlock __cacheline_aligned;
 
-#define VMX_XCR0_MASK_DEFAULT	(XCR0_X87|XCR0_SSE)
-static uint64_t vmx_xcr0_mask __read_mostly;
+#define VMX_XCR0_MASK_INIT	(XCR0_X87 | XCR0_SSE)
+#define VMX_XCR0_MASK_SUPPORTED	(XCR0_X87 | XCR0_SSE)
+static uint64_t vmx_xcr0_mask_supported __read_mostly;
 
 #define VMX_NCPUIDS	32
 
@@ -2772,7 +2773,7 @@ vmx_vcpu_setstate(struct nvmm_cpu *vcpu)
 
 		if (cpudata->xcr0_valid != 0) {
 			/* Reset XSTATE_BV, to force a reload. */
-			cpudata->gxsave.xstate_bv = cpudata->xcr0_valid;
+			cpudata->gxsave.hdr.xstate_bv = cpudata->xcr0_valid;
 		}
 	}
 
@@ -2995,7 +2996,7 @@ vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	    /* EFER_AIBRSE excluded */
 	    /* EFER_ETLBI excluded */;
 
-	cpudata->xcr0_valid = vmx_xcr0_mask;
+	cpudata->xcr0_valid = VMX_XCR0_MASK_INIT & vmx_xcr0_mask_supported;
 
 	rev = vmx_get_revision();
 
@@ -3093,8 +3094,8 @@ vmx_vcpu_init(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	    (IA32_MISC_BTS_UNAVAIL|IA32_MISC_PEBS_UNAVAIL);
 
 	/* Init XSAVE header. */
-	cpudata->gxsave.xstate_bv = cpudata->xcr0_valid;
-	cpudata->gxsave.xcomp_bv = 0;
+	cpudata->gxsave.hdr.xstate_bv = cpudata->xcr0_valid;
+	cpudata->gxsave.hdr.xcomp_bv = 0;
 
 	/* Install the RESET state. */
 	memcpy(&vcpu->comm->state, &nvmm_x86_reset_state,
@@ -3631,7 +3632,7 @@ vmx_init(void)
 	vmx_init_asid(VPID_MAX);
 
 	/* Init the XCR0 mask. */
-	vmx_xcr0_mask = VMX_XCR0_MASK_DEFAULT & x86_xsave_features;
+	vmx_xcr0_mask_supported = VMX_XCR0_MASK_SUPPORTED & x86_xsave_features;
 
 	/* Init the max basic CPUID leaf. */
 	x86_get_cpuid(0x00000000, &descs);
@@ -3663,7 +3664,7 @@ vmx_init(void)
 	vmx_init_l1tf();
 
 	/* Init the global host state. */
-	if (vmx_xcr0_mask != 0) {
+	if (vmx_xcr0_mask_supported != 0) {
 		vmx_global_hstate.xcr0 = x86_get_xcr(0);
 	}
 	vmx_global_hstate.star = rdmsr(MSR_STAR);
@@ -3724,7 +3725,7 @@ vmx_capability(struct nvmm_capability *cap)
 	cap->arch.vcpu_conf_support =
 	    NVMM_CAP_ARCH_VCPU_CONF_CPUID |
 	    NVMM_CAP_ARCH_VCPU_CONF_TPR;
-	cap->arch.xcr0_mask = vmx_xcr0_mask;
+	cap->arch.xcr0_mask = vmx_xcr0_mask_supported;
 	cap->arch.mxcsr_mask = x86_fpu_mxcsr_mask;
 	cap->arch.conf_cpuid_maxops = VMX_NCPUIDS;
 }
