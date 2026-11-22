@@ -56,8 +56,14 @@
 #define ATOM_MSR_PKG_C4_RESIDENCY	MSR_PKG_C6_RESIDENCY
 #define ATOM_MSR_PKG_C6_RESIDENCY	MSR_PKG_C7_RESIDENCY
 
+/* TODO: Add Core C1 for Cores from Cannon Lake onwards */
 #define ATOM_MSR_CORE_C1_RESIDENCY	0x660
 #define ATOM_MSR_CORE_C6_RESIDENCY	MSR_CORE_C6_RESIDENCY
+
+/*
+ * Goldmont (Plus) and Tremont Atom CPUs (e.g. Apollo Lake,
+ * Gemini Lake, and Jasper Lake) are like Core CPUs.
+ */
 
 struct corecstat_sensor {
 	uint64_t	tsc_count;
@@ -72,11 +78,13 @@ struct corecstat_softc {
 	device_t		sc_dev;
 
 	int			sc_is_atom;
+
 	/*
 	 * sc_is_atom == 0
 	 *   0 ==> Nehalem/Westmere
 	 *   1 ==> Sandy Bridge / Ivy Bridge / Haswell / Broadwell / Skylake
 	 *   2 ==> Haswell/Broadwell - low-power
+	 *   3 ==> Atom: Goldmont / Goldmont Plus / Tremont
 	 *
 	 * sc_is_atom == 1
 	 *   0 ==> Original Atom
@@ -196,6 +204,11 @@ corecstat_probe(device_t dev)
 		case 0x4d:
 		case 0x5a:
 		case 0x5d:
+		case 0x5c:	/* Apollo Lake */
+		case 0x5f:	/* Denverton */
+		case 0x7a:	/* Gemini Lake */
+		case 0x96:	/* Elkhart Lake */
+		case 0x9c:	/* Jasper Lake */
 			break;
 		/* Nehalem */
 		case 0x1a:
@@ -277,6 +290,16 @@ corecstat_attach(device_t dev)
 		case 0x5d:
 			sc->sc_is_atom = 1;
 			sc->sc_version = 1;
+			break;
+		/* Late Atom CPUs from Apollo Lake onwards */
+		case 0x5c: /* Apollo Lake */
+		case 0x5f: /* Denverton */
+		case 0x7a: /* Gemini Lake */
+		case 0x96: /* Elkhart Lake */
+		case 0x9c: /* Jasper Lake */
+			/* PKG_C2, PKG_C3, PKG_C6, PKG_C10 */
+			/* CORE_C3, CORE_C6 */
+			sc->sc_version = 3;
 			break;
 		/* Nehalem */
 		case 0x1a:
@@ -434,7 +457,8 @@ corecstat_init_core_pkg(struct corecstat_softc *sc, int cpu)
 {
 	sc->sc_pkg_sens = kmalloc(7 * sizeof(struct corecstat_sensor),
 	    M_DEVBUF, M_WAITOK | M_ZERO);
-	if (sc->sc_version == 1 || sc->sc_version == 2) {
+	if (sc->sc_version == 1 || sc->sc_version == 2 ||
+	    sc->sc_version == 3) {
 		corecstat_pkg_sens_init(sc, cpu, "node%d PC2 residency",
 		    MSR_PKG_C2_RESIDENCY, 64);
 	}
@@ -443,8 +467,10 @@ corecstat_init_core_pkg(struct corecstat_softc *sc, int cpu)
 	    MSR_PKG_C3_RESIDENCY, 64);
 	corecstat_pkg_sens_init(sc, cpu, "node%d PC6 residency",
 	    MSR_PKG_C6_RESIDENCY, 64);
-	corecstat_pkg_sens_init(sc, cpu, "node%d PC7 residency",
-	    MSR_PKG_C7_RESIDENCY, 64);
+	if (sc->sc_version != 3) {
+		corecstat_pkg_sens_init(sc, cpu, "node%d PC7 residency",
+		    MSR_PKG_C7_RESIDENCY, 64);
+	}
 
 	if (sc->sc_version == 2) {
 		corecstat_pkg_sens_init(sc, cpu, "node%d PC8 residency",
@@ -453,12 +479,23 @@ corecstat_init_core_pkg(struct corecstat_softc *sc, int cpu)
 		    MSR_PKG_C9_RESIDENCY, 60);
 		corecstat_pkg_sens_init(sc, cpu, "node%d PC10 residency",
 		    MSR_PKG_C10_RESIDENCY, 60);
+	} else if (sc->sc_version == 3) {
+		corecstat_pkg_sens_init(sc, cpu, "node%d PC10 residency",
+		    MSR_PKG_C10_RESIDENCY, 60);
 	}
 }
 
 static void
 corecstat_init_core_cpu(struct corecstat_softc *sc, int cpu)
 {
+	if (sc->sc_version == 3) {
+		/*
+		 * TODO: Cannon Lake and onwards Core CPUs also have the
+		 * C1 Residency counter.
+		 */
+		corecstat_core_sens_init(sc, cpu, "node%d core%d C1 res.",
+		    ATOM_MSR_CORE_C1_RESIDENCY, 64);
+	}
 	corecstat_core_sens_init(sc, cpu, "node%d core%d C3 res.",
 	    MSR_CORE_C3_RESIDENCY, 64);
 	corecstat_core_sens_init(sc, cpu, "node%d core%d C6 res.",
