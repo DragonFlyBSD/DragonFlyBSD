@@ -102,7 +102,6 @@ static char *ksprintn (char *nbuf, uintmax_t num, int base, int *lenp,
 		       int upper);
 static void  snprintf_func (int ch, void *arg);
 
-static int consintr = 1;		/* Ok to handle console interrupts? */
 static int msgbufmapped;		/* Set when safe to use msgbuf */
 static struct spinlock cons_spin = SPINLOCK_INITIALIZER(cons_spin, "cons_spin");
 static thread_t constty_td = NULL;
@@ -305,12 +304,9 @@ int
 kprintf(const char *fmt, ...)
 {
 	__va_list ap;
-	int savintr;
 	struct putchar_arg pca;
 	int retval;
 
-	savintr = consintr;		/* disable interrupts */
-	consintr = 0;
 	__va_start(ap, fmt);
 	pca.tty = NULL;
 	pca.flags = kprintf_logging & ~TOTTY;
@@ -319,26 +315,21 @@ kprintf(const char *fmt, ...)
 	__va_end(ap);
 	if (!panicstr)
 		msgbuftrigger = 1;
-	consintr = savintr;		/* reenable interrupts */
 	return (retval);
 }
 
 int
 kvprintf(const char *fmt, __va_list ap)
 {
-	int savintr;
 	struct putchar_arg pca;
 	int retval;
 
-	savintr = consintr;		/* disable interrupts */
-	consintr = 0;
 	pca.tty = NULL;
 	pca.flags = kprintf_logging & ~TOTTY;
 	pca.pri = -1;
 	retval = kvcprintf(fmt, kputchar, &pca, ap);
 	if (!panicstr)
 		msgbuftrigger = 1;
-	consintr = savintr;		/* reenable interrupts */
 	return (retval);
 }
 
