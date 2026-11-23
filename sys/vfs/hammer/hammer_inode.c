@@ -907,6 +907,16 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	else if (dip)
 		ip->ino_data.gid = dip->ino_data.gid;
 
+	/*
+	 * Drop S_ISGID if the creator is not a member of the new inode's
+	 * group, as ufs_makeinode() does.
+	 */
+	if ((ip->ino_data.mode & S_ISGID) &&
+	    !groupmember(hammer_to_unix_xid(&ip->ino_data.gid), cred) &&
+	    caps_priv_check(cred, SYSCAP_NOVFS_SETGID)) {
+		ip->ino_data.mode &= ~S_ISGID;
+	}
+
 	hammer_ref(&ip->lock);
 
 	if (pfsm) {

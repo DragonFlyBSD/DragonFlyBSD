@@ -1205,6 +1205,16 @@ hammer2_inode_create_normal(hammer2_inode_t *pip,
 		nip->meta.gid = pip_gid;
 
 	/*
+	 * Drop S_ISGID if the creator is not a member of the new inode's
+	 * group, as ufs_makeinode() does.
+	 */
+	if ((nip->meta.mode & S_ISGID) &&
+	    !groupmember(hammer2_to_unix_xid(&nip->meta.gid), cred) &&
+	    caps_priv_check(cred, SYSCAP_NOVFS_SETGID)) {
+		nip->meta.mode &= ~S_ISGID;
+	}
+
+	/*
 	 * Regular files and softlinks allow a small amount of data to be
 	 * directly embedded in the inode.  This flag will be cleared if
 	 * the size is extended past the embedded limit.

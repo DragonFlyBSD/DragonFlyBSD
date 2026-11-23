@@ -523,6 +523,7 @@ tmpfs_alloc_file(struct vnode *dvp, struct vnode **vpp, struct vattr *vap,
 		 struct namecache *ncp, struct ucred *cred, char *target)
 {
 	int error;
+	mode_t mode;
 	struct tmpfs_dirent *de;
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *dnode;
@@ -553,9 +554,20 @@ tmpfs_alloc_file(struct vnode *dvp, struct vnode **vpp, struct vattr *vap,
 		return EMLINK;
 	}
 
+	/*
+	 * The new file gets the directory's group.  Drop S_ISGID if the
+	 * creator is not a member of that group, as ufs_makeinode() does.
+	 */
+	mode = vap->va_mode;
+	if ((mode & S_ISGID) && !groupmember(dnode->tn_gid, cred) &&
+	    caps_priv_check(cred, SYSCAP_NOVFS_SETGID))
+	{
+		mode &= ~S_ISGID;
+	}
+
 	/* Allocate a node that represents the new file. */
 	error = tmpfs_alloc_node(tmp, vap->va_type, cred->cr_uid,
-				 dnode->tn_gid, vap->va_mode, target,
+				 dnode->tn_gid, mode, target,
 				 vap->va_rmajor, vap->va_rminor, &node);
 	if (error != 0) {
 		TMPFS_NODE_UNLOCK(dnode);
