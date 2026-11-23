@@ -1402,7 +1402,7 @@ restart_cpus(cpumask_t map)
 	CPUMASK_ANDMASK(mask, smp_active_mask);
 	cpu_ccfence();
 	started_cpus = mask;
-	cpu_mfence();
+	cpu_ccfence();
 
 	if ((cpu_mi_feature & CPU_MI_MONITOR) == 0) {
 		/* wakeup the target cpus from halt */

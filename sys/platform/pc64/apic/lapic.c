@@ -138,14 +138,17 @@ static struct deadlines *tsc_deadlines = NULL;
 static void	lapic_mem_eoi(void);
 static int	lapic_mem_ipi(int dest_type, int vector, int delivery_mode);
 static void	lapic_mem_single_ipi(int cpu, int vector, int delivery_mode);
+static void	lapic_mem_single_ipi_no_mfence(int cpu, int vector, int delivery_mode);
 
 static void	lapic_msr_eoi(void);
 static int	lapic_msr_ipi(int dest_type, int vector, int delivery_mode);
 static void	lapic_msr_single_ipi(int cpu, int vector, int delivery_mode);
+static void	lapic_msr_single_ipi_no_mfence(int cpu, int vector, int delivery_mode);
 
 void		(*lapic_eoi)(void);
 int		(*apic_ipi)(int dest_type, int vector, int delivery_mode);
 void		(*single_apic_ipi)(int cpu, int vector, int delivery_mode);
+void		(*single_apic_ipi_no_mfence)(int cpu, int vector, int delivery_mode);
 
 static __inline void
 lapic_mem_icr_set(uint32_t apic_id, uint32_t icr_lo_val)
@@ -950,7 +953,7 @@ lapic_msr_ipi(int dest_type, int vector, int delivery_mode)
  * Interrupts must be hard-disabled by caller
  */
 static void
-lapic_mem_single_ipi(int cpu, int vector, int delivery_mode)
+lapic_mem_single_ipi_no_mfence(int cpu, int vector, int delivery_mode)
 {
 	lapic_mem_icr_unpend(__func__);
 	lapic_mem_icr_set(CPUID_TO_APICID(cpu),
@@ -958,8 +961,25 @@ lapic_mem_single_ipi(int cpu, int vector, int delivery_mode)
 }
 
 static void
+lapic_mem_single_ipi(int cpu, int vector, int delivery_mode)
+{
+	cpu_mfence();
+	lapic_mem_icr_unpend(__func__);
+	lapic_mem_icr_set(CPUID_TO_APICID(cpu),
+	    APIC_DEST_DESTFLD | APIC_LEVEL_ASSERT | delivery_mode | vector);
+}
+
+static void
+lapic_msr_single_ipi_no_mfence(int cpu, int vector, int delivery_mode)
+{
+	lapic_msr_icr_set(CPUID_TO_APICID(cpu),
+	    APIC_DEST_DESTFLD | APIC_LEVEL_ASSERT | delivery_mode | vector);
+}
+
+static void
 lapic_msr_single_ipi(int cpu, int vector, int delivery_mode)
 {
+	cpu_mfence();
 	lapic_msr_icr_set(CPUID_TO_APICID(cpu),
 	    APIC_DEST_DESTFLD | APIC_LEVEL_ASSERT | delivery_mode | vector);
 }
@@ -976,10 +996,11 @@ lapic_msr_single_ipi(int cpu, int vector, int delivery_mode)
 void
 selected_apic_ipi(cpumask_t target, int vector, int delivery_mode)
 {
+	cpu_mfence();
 	while (CPUMASK_TESTNZERO(target)) {
 		int n = BSFCPUMASK(target);
 		CPUMASK_NANDBIT(target, n);
-		single_apic_ipi(n, vector, delivery_mode);
+		single_apic_ipi_no_mfence(n, vector, delivery_mode);
 	}
 }
 
@@ -1104,6 +1125,7 @@ lapic_x2apic_enter(boolean_t bsp)
 		lapic_eoi = lapic_msr_eoi;
 		apic_ipi = lapic_msr_ipi;
 		single_apic_ipi = lapic_msr_single_ipi;
+		single_apic_ipi_no_mfence = lapic_msr_single_ipi_no_mfence;
 		lapic_cputimer_intr.reload = lapic_msr_timer_intr_reload;
 	}
 }
@@ -1123,6 +1145,7 @@ lapic_config(void)
 	lapic_eoi = lapic_mem_eoi;
 	apic_ipi = lapic_mem_ipi;
 	single_apic_ipi = lapic_mem_single_ipi;
+	single_apic_ipi_no_mfence = lapic_mem_single_ipi_no_mfence;
 
 	TUNABLE_INT_FETCH("hw.x2apic_enable", &x2apic_enable);
 	if (x2apic_enable < 0)

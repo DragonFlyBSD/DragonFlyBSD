@@ -60,6 +60,7 @@ extern int			x2apic_enable;
 extern void			(*lapic_eoi)(void);
 extern int			(*apic_ipi)(int, int, int);
 extern void			(*single_apic_ipi)(int, int, int);
+extern void			(*single_apic_ipi_no_mfence)(int, int, int);
 
 void	apic_dump(char*);
 void	lapic_init(boolean_t);
