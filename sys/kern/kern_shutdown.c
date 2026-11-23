@@ -494,13 +494,13 @@ shutdown_halt(void *junk, int howto)
 		kprintf("\n");
 		kprintf("The operating system has halted.\n");
 #ifdef _KERNEL_VIRTUAL
-		cpu_halt();
+		cpu_halt_forever();
 #else
 		kprintf("Please press any key to reboot.\n\n");
 		cnpoll(TRUE);
 		switch (cngetc()) {
 		case -1:		/* No console, just die */
-			cpu_halt();
+			cpu_halt_forever();
 			/* NOTREACHED */
 		default:
 			howto &= ~RB_HALT;

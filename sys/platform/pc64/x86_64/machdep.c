@@ -1075,10 +1075,10 @@ cpu_boot(int howto)
  * Shutdown the CPU as much as possible
  */
 void
-cpu_halt(void)
+cpu_halt_forever(void)
 {
 	for (;;)
-		__asm__ __volatile("hlt");
+		cpu_halt();
 }
 
 /*
@@ -1441,9 +1441,9 @@ cpu_smp_stopped(void)
 	__uint64_t ovalue;
 
 	ptr = CPUMASK_ADDR(started_cpus, gd->gd_cpuid);
-	ovalue = *ptr;
-	if ((ovalue & CPUMASK_SIMPLE(gd->gd_cpuid & 63)) == 0) {
-		if (cpu_mi_feature & CPU_MI_MONITOR) {
+	if (cpu_mi_feature & CPU_MI_MONITOR) {
+		ovalue = *ptr;
+		if ((ovalue & CPUMASK_SIMPLE(gd->gd_cpuid & 63)) == 0) {
 			if (cpu_mwait_hints) {
 				cpu_mmw_pause_long(__DEVOLATILE(void *, ptr),
 					   ovalue,
@@ -1453,9 +1453,14 @@ cpu_smp_stopped(void)
 				cpu_mmw_pause_long(__DEVOLATILE(void *, ptr),
 					   ovalue, 0, 0);
 			}
-		} else {
-			cpu_halt();	/* depend on lapic timer */
 		}
+	} else {
+		cpu_disable_intr();
+		ovalue = *ptr;
+		if ((ovalue & CPUMASK_SIMPLE(gd->gd_cpuid & 63)) == 0)
+			cpu_halt_and_enable_intr();
+		else
+			cpu_enable_intr();
 	}
 }
 

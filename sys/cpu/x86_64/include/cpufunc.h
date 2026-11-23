@@ -306,9 +306,15 @@ flsll(long long mask)
 #endif /* _KERNEL */
 
 static __inline void
-halt(void)
+cpu_halt(void)
 {
 	__asm __volatile("hlt");
+}
+
+static __inline void
+cpu_halt_and_enable_intr(void)
+{
+	__asm __volatile("sti; hlt");
 }
 
 /*
@@ -941,7 +947,8 @@ void	cpu_enable_intr(void);
 void	cpu_invlpg(u_long addr);
 void	cpu_invlpg_range(u_long start, u_long end);
 void	do_cpuid(u_int ax, u_int *p);
-void	halt(void);
+void	cpu_halt(void);
+void	cpu_halt_and_enable_intr(void);
 u_char	inb(u_int port);
 u_int	inl(u_int port);
 void	insb(u_int port, void *addr, size_t cnt);

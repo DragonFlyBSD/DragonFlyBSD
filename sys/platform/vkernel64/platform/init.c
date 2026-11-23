@@ -1478,7 +1478,7 @@ cpu_reset(void)
 }
 
 void
-cpu_halt(void)
+cpu_halt_forever(void)
 {
 	kprintf("cpu halt, exiting vkernel\n");
 	cleanpid();

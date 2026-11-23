@@ -1402,10 +1402,15 @@ restart_cpus(cpumask_t map)
 	CPUMASK_ANDMASK(mask, smp_active_mask);
 	cpu_ccfence();
 	started_cpus = mask;
-	cpu_ccfence();
+	cpu_mfence();
+
+	if ((cpu_mi_feature & CPU_MI_MONITOR) == 0) {
+		/* wakeup the target cpus from halt */
+		selected_apic_ipi(started_cpus, XIPIQ_OFFSET, APIC_DELMODE_FIXED);
+	}
 
 	/* wait for each to clear its bit */
-	while (CPUMASK_CMPMASKNEQ(stopped_cpus, map))
+	while (CPUMASK_TESTMASK(stopped_cpus, map))
 		cpu_pause();
 
 	return 1;
