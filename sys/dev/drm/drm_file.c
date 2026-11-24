@@ -324,7 +324,7 @@ int drm_open(struct dev_open_args *ap)
 
 	minor = drm_minor_acquire(iminor(inode));
 	if (IS_ERR(minor))
-		return PTR_ERR(minor);
+		return -PTR_ERR(minor);
 
 	dev = minor->dev;
 	if (!dev->open_count++)
@@ -355,7 +355,7 @@ int drm_open(struct dev_open_args *ap)
 err_undo:
 	dev->open_count--;
 	drm_minor_release(minor);
-	return retcode;
+	return -retcode;
 }
 EXPORT_SYMBOL(drm_open);
 
