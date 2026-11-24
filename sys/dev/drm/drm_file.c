@@ -667,7 +667,7 @@ int drm_read(struct dev_read_args *ap)
 
 	ret = mutex_lock_interruptible(&file_priv->event_read_lock);
 	if (ret)
-		return ret;
+		return -ret;
 
 	for (;;) {
 		struct drm_pending_event *e = NULL;
@@ -698,7 +698,7 @@ int drm_read(struct dev_read_args *ap)
 			if (ret >= 0)
 				ret = mutex_lock_interruptible(&file_priv->event_read_lock);
 			if (ret)
-				return ret;
+				return ret == -ERESTARTSYS ? EINTR : -ret;
 		} else {
 			unsigned length = e->event->length;
 
@@ -723,7 +723,7 @@ put_back_event:
 	}
 	mutex_unlock(&file_priv->event_read_lock);
 
-	return ret;
+	return ret < 0 ? -ret : 0;
 }
 EXPORT_SYMBOL(drm_read);
 
