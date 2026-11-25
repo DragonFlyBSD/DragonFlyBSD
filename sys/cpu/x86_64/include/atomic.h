@@ -52,6 +52,7 @@
  *
  * atomic_set_long(P, V)	(*(u_long*)(P) |= (V))
  * atomic_clear_long(P, V)	(*(u_long*)(P) &= ~(V))
+ * atomic_and_long(P, V)	(*(u_long*)(P) &= (V))
  * atomic_add_long(P, V)	(*(u_long*)(P) += (V))
  * atomic_subtract_long(P, V)	(*(u_long*)(P) -= (V))
  * atomic_readandclear_long(P)	(return (*(u_long*)(P)); *(u_long*)(P) = 0;)
@@ -132,6 +133,7 @@ ATOMIC_ASM(subtract, int,   "subl %1,%0", "iq",   v)
 
 ATOMIC_ASM(set,      long,  "orq %1,%0",  "r",   v)
 ATOMIC_ASM(clear,    long,  "andq %1,%0", "r",  ~v)
+ATOMIC_ASM(and,      long,  "andq %1,%0",  "r",  v)
 ATOMIC_ASM(add,      long,  "addq %1,%0", "r",   v)
 ATOMIC_ASM(subtract, long,  "subq %1,%0", "r",   v)
 
@@ -763,6 +765,7 @@ ATOMIC_STORE_LOAD(long, "cmpxchgq %0,%1",  "xchgq %1,%0");
 /* cpumask_t is 64-bits on x86-64 */
 #define	atomic_set_cpumask		atomic_set_long
 #define	atomic_clear_cpumask		atomic_clear_long
+#define	atomic_and_cpumask		atomic_and_long
 #define	atomic_cmpset_cpumask		atomic_cmpset_long
 #define	atomic_store_rel_cpumask	atomic_store_rel_long
 #define	atomic_load_acq_cpumask		atomic_load_acq_long

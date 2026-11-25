@@ -296,6 +296,13 @@ typedef struct {
 			atomic_clear_cpumask(&(mask).ary[3], (val).ary[3]); \
 					 } while(0)
 
+#define ATOMIC_CPUMASK_ANDMASK(mask, val) do {				    \
+			atomic_and_cpumask(&(mask).ary[0], (val).ary[0]); \
+			atomic_and_cpumask(&(mask).ary[1], (val).ary[1]); \
+			atomic_and_cpumask(&(mask).ary[2], (val).ary[2]); \
+			atomic_and_cpumask(&(mask).ary[3], (val).ary[3]); \
+					 } while(0)
+
 #define ATOMIC_CPUMASK_COPY(mask, val) do {				    \
 			atomic_store_rel_cpumask(&(mask).ary[0], (val).ary[0]);\
 			atomic_store_rel_cpumask(&(mask).ary[1], (val).ary[1]);\

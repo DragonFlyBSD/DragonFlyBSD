@@ -241,6 +241,34 @@ Xcpustop:
 	movq	lapic_eoi, %rax
 	callq	*%rax			/* End Of Interrupt to APIC */
 
+	/*
+	 * Don't interrupt an interrupt.  Because we are actually stopping
+	 * the CPU, this would cause no end of trouble.  Instead, inform
+	 * stop_cpus() that we couldn't stop by setting our bit in
+	 * started_cpus().  stop_cpus() will reissue the IPI after a delay.
+	 *
+	 * Don't interrupt the originating cpu of a TLB shootdown (which
+	 * is in a critical section but does not bump intr_neting_level).
+	 * Just check the xinvaltlb flag for that.
+	 */
+	testl   $-1,PCPU(intr_nesting_level)
+	jnz	4f
+	testl   $-1,PCPU(xinvaltlb)
+	jz	1f
+4:
+
+	movq	PCPU(cpumask)+0,%rax	/* stopped_cpus |= 1 << cpuid */
+	MPLOCKED orq %rax, started_cpus+0
+	movq	PCPU(cpumask)+8,%rax
+	MPLOCKED orq %rax, started_cpus+8
+	movq	PCPU(cpumask)+16,%rax
+	MPLOCKED orq %rax, started_cpus+16
+	movq	PCPU(cpumask)+24,%rax
+	MPLOCKED orq %rax, started_cpus+24
+	incl	PCPU(debug1);
+	jmp	3f;
+
+1:
 	movl	PCPU(cpuid), %eax
 	imull	$PCB_SIZE, %eax
 	leaq	CNAME(stoppcbs), %rdi
@@ -322,6 +350,7 @@ Xcpustop:
 2:
 	decl	TD_CRITCOUNT(%rbx)
 	decl	PCPU(intr_nesting_level)
+3:
 	MEXITCOUNT
 	/*APIC_POP_FRAME*/
 	jmp	doreti

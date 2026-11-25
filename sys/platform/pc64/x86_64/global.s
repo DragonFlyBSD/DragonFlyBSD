@@ -70,6 +70,9 @@
 	.set	gd_fpu_lock, globaldata + GD_FPU_LOCK
 	.set	gd_savefpu, globaldata + GD_SAVEFPU
 
+	.globl	gd_xinvaltlb
+	.set	gd_xinvaltlb, globaldata + GD_XINVALTLB
+
 	.globl	gd_ireserved
 	.set	gd_ireserved, globaldata + GD_IRESERVED
 

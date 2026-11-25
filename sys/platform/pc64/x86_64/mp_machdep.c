@@ -1363,17 +1363,67 @@ int
 stop_cpus(cpumask_t map)
 {
 	cpumask_t mask;
+	int i;
+	int delay_ticks = 10;
 
+	/*
+	 * Mask so we stop only running cpus, then send Xcpustop to those cpus.
+	 * Clear started_cpus, this is used by the targets to signal us when
+	 * they are unable to stop.
+	 *
+	 * All cpus are running as-of when this routine is called, but for
+	 * the API to be entirely correct, remove any cpus that are already
+	 * stopped.
+	 */
 	CPUMASK_ANDMASK(map, smp_active_mask);
+	CPUMASK_ASSZERO(started_cpus);
+	mask = map;
+	CPUMASK_NANDMASK(mask, stopped_cpus);
+	selected_apic_ipi(mask, XCPUSTOP_OFFSET, APIC_DELMODE_FIXED);
 
-	/* send the Xcpustop IPI to all CPUs in map */
-	selected_apic_ipi(map, XCPUSTOP_OFFSET, APIC_DELMODE_FIXED);
+	/*
+	 * Spin waiting for the cpus to stop.  Any cpu which cannot
+	 * stop at this time sets its bit in started_cpus and continues
+	 * running.
+	 */
+	for (;;) {
+		/*
+		 * Reissue any stops that failed
+		 */
+		cpu_lfence();
+		if (CPUMASK_TESTMASK(map, started_cpus)) {
+			/*
+			 * Pause
+			 */
+			if (delay_ticks > 1000000) {
+				kprintf("stop_cpus: Unable to stop some cpus\n");
+				break;
+			}
+			for (i = 0; i < delay_ticks; ++i)
+				cpu_pause();
+			delay_ticks += 10;
 
-	do {
+			/*
+			 * Calculate mask = cpus to reissue, clear those specific
+			 * bits in started_cpus (other bits in started_cpus may be
+			 * set at the same time so don't just zero-out started_cpus),
+			 * and re-issue.
+			 */
+			mask = started_cpus;
+			ATOMIC_CPUMASK_NANDMASK(started_cpus, mask);
+			selected_apic_ipi(mask, XCPUSTOP_OFFSET, APIC_DELMODE_FIXED);
+		}
+
+		/*
+		 * Break out when (stopped_cpus & map) == map,
+		 * else pause and loop.
+		 */
 		mask = stopped_cpus;
 		CPUMASK_ANDMASK(mask, map);
-		/* spin */
-	} while (CPUMASK_CMPMASKNEQ(mask, map));
+		if (CPUMASK_CMPMASKEQ(mask, map))
+			break;
+		cpu_pause();
+	}
 
 	return 1;
 }
@@ -1397,20 +1447,27 @@ restart_cpus(cpumask_t map)
 {
 	cpumask_t mask;
 
-	/* signal other cpus to restart */
+	/*
+	 * Figure out which cpus to restart
+	 */
 	mask = map;
 	CPUMASK_ANDMASK(mask, smp_active_mask);
-	cpu_ccfence();
-	started_cpus = mask;
+	CPUMASK_ANDMASK(mask, stopped_cpus);
 	cpu_ccfence();
 
-	if ((cpu_mi_feature & CPU_MI_MONITOR) == 0) {
-		/* wakeup the target cpus from halt */
+	/*
+	 * Set their bits in started_cpus.  If using
+	 * HLT, issue an IPI to break out of the HLT.
+	 */
+	ATOMIC_CPUMASK_ORMASK(started_cpus, mask);
+
+	if ((cpu_mi_feature & CPU_MI_MONITOR) == 0)
 		selected_apic_ipi(started_cpus, XIPIQ_OFFSET, APIC_DELMODE_FIXED);
-	}
 
-	/* wait for each to clear its bit */
-	while (CPUMASK_TESTMASK(stopped_cpus, map))
+	/*
+	 * Wait for bits in stopped_cpus to be cleared
+	 */
+	while (CPUMASK_TESTMASK(stopped_cpus, mask))
 		cpu_pause();
 
 	return 1;
