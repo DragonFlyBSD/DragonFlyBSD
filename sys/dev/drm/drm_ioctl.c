@@ -807,14 +807,14 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	const struct drm_ioctl_desc *ioctl = NULL;
 	drm_ioctl_t *func;
 	unsigned int nr = DRM_IOCTL_NR(cmd);
-	int retcode = EINVAL;
+	int retcode = -EINVAL;
 	caddr_t data = ap->a_data;
 	bool is_driver_ioctl;
 
 	dev = file_priv->minor->dev;
 
 	if (drm_dev_is_unplugged(dev))
-		return ENODEV;
+		return -ENODEV;
 
 	is_driver_ioctl = nr >= DRM_COMMAND_BASE && nr < DRM_COMMAND_END;
 
@@ -840,26 +840,23 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 
 	if (unlikely(!func)) {
 		DRM_DEBUG("no function\n");
-		retcode = EINVAL;
+		retcode = -EINVAL;
 		goto err_i1;
 	}
 
-	retcode = -drm_ioctl_permit(ioctl->flags, file_priv);
+	retcode = drm_ioctl_permit(ioctl->flags, file_priv);
 	if (unlikely(retcode))
 		goto err_i1;
 
 	/* Enforce sane locking for modern driver ioctls. */
 	if (!drm_core_check_feature(dev, DRIVER_LEGACY) ||
 	    (ioctl->flags & DRM_UNLOCKED))
-		retcode = -func(dev, data, file_priv);
+		retcode = func(dev, data, file_priv);
 	else {
 		mutex_lock(&drm_global_mutex);
-		retcode = -func(dev, data, file_priv);
+		retcode = func(dev, data, file_priv);
 		mutex_unlock(&drm_global_mutex);
 	}
-
-	if (retcode == ERESTARTSYS)
-			retcode = EINTR;
 
       err_i1:
 	if (!ioctl)

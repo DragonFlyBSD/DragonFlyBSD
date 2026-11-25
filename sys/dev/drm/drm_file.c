@@ -324,7 +324,7 @@ int drm_open(struct dev_open_args *ap)
 
 	minor = drm_minor_acquire(iminor(inode));
 	if (IS_ERR(minor))
-		return -PTR_ERR(minor);
+		return PTR_ERR(minor);
 
 	dev = minor->dev;
 	if (!dev->open_count++)
@@ -355,7 +355,7 @@ int drm_open(struct dev_open_args *ap)
 err_undo:
 	dev->open_count--;
 	drm_minor_release(minor);
-	return -retcode;
+	return retcode;
 }
 EXPORT_SYMBOL(drm_open);
 
@@ -667,7 +667,7 @@ int drm_read(struct dev_read_args *ap)
 
 	ret = mutex_lock_interruptible(&file_priv->event_read_lock);
 	if (ret)
-		return -ret;
+		return ret;
 
 	for (;;) {
 		struct drm_pending_event *e = NULL;
@@ -682,10 +682,8 @@ int drm_read(struct dev_read_args *ap)
 		spin_unlock_irq(&dev->event_lock);
 
 		if (e == NULL) {
-			if (ret) {
-				ret = 0;	/* DragonFly expects a zero return value on success */
+			if (ret)
 				break;
-			}
 
 			if (filp->f_flag & O_NONBLOCK) {
 				ret = -EAGAIN;
@@ -698,7 +696,7 @@ int drm_read(struct dev_read_args *ap)
 			if (ret >= 0)
 				ret = mutex_lock_interruptible(&file_priv->event_read_lock);
 			if (ret)
-				return ret == -ERESTARTSYS ? EINTR : -ret;
+				return ret;
 		} else {
 			unsigned length = e->event->length;
 
@@ -723,7 +721,7 @@ put_back_event:
 	}
 	mutex_unlock(&file_priv->event_read_lock);
 
-	return ret < 0 ? -ret : 0;
+	return ret;
 }
 EXPORT_SYMBOL(drm_read);
 
