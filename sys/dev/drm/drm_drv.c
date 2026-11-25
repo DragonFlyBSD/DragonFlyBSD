@@ -1143,12 +1143,47 @@ MODULE_DEPEND(drm, agp, 1, 1, 1);
 MODULE_DEPEND(drm, pci, 1, 1, 1);
 MODULE_DEPEND(drm, iicbus, 1, 1, 1);
 
+/*
+ * The DRM core file operations follow the Linux error convention: a negative
+ * errno, and for drm_read() the amount read.  The dev_ops methods convert the
+ * result for the cdev layer, which expects zero or a positive errno.
+ */
+static int
+drm_cdev_errno(int error)
+{
+	if (error == -ERESTARTSYS)
+		return (EINTR);
+	return (error < 0 ? -error : error);
+}
+
+static int
+drm_cdev_open(struct dev_open_args *ap)
+{
+	return (drm_cdev_errno(drm_open(ap)));
+}
+
+static int
+drm_cdev_read(struct dev_read_args *ap)
+{
+	int error;
+
+	error = drm_read(ap);
+	/* The amount read is in uio_resid */
+	return (error > 0 ? 0 : drm_cdev_errno(error));
+}
+
+static int
+drm_cdev_ioctl(struct dev_ioctl_args *ap)
+{
+	return (drm_cdev_errno(drm_ioctl(ap)));
+}
+
 struct dev_ops drm_cdevsw = {
 	{ "drm", 0, D_TRACKCLOSE | D_MPSAFE },
-	.d_open =	drm_open,
+	.d_open =	drm_cdev_open,
 	.d_close =	drm_close,
-	.d_read =	drm_read,
-	.d_ioctl =	drm_ioctl,
+	.d_read =	drm_cdev_read,
+	.d_ioctl =	drm_cdev_ioctl,
 	.d_kqfilter =	drm_kqfilter,
 	.d_mmap =	drm_mmap,
 	.d_mmap_single = drm_mmap_single,
