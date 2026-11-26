@@ -1301,16 +1301,19 @@ drm_mmap_single(struct dev_mmap_single_args *ap)
 	vm_size_t size = ap->a_size;
 	struct vm_object **obj_res = ap->a_object;
 	int nprot = ap->a_nprot;
+	int error;
 
 	dev = drm_get_device_from_kdev(kdev);
 	if (dev->drm_ttm_bdev != NULL) {
-		return (ttm_bo_mmap_single(ap->a_fp, dev,
-					   offset, size, obj_res, nprot));
+		error = ttm_bo_mmap_single(ap->a_fp, dev,
+		    offset, size, obj_res, nprot);
 	} else if ((dev->driver->driver_features & DRIVER_GEM) != 0) {
-		return (drm_gem_mmap_single(dev, offset, size, obj_res, nprot));
+		error = drm_gem_mmap_single(dev, offset, size, obj_res, nprot);
 	} else {
-		return (ENODEV);
+		error = ENODEV;
 	}
+
+	return (drm_cdev_errno(error));
 }
 
 #include <linux/dmi.h>
