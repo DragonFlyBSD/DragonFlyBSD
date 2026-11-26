@@ -2871,7 +2871,7 @@ phaseReapAll(void)
 {
 	int status;
 
-#if __DragonFly_version >= 600510
+#if defined(PROC_REAP_KILL)
 	struct reaper_kill rk;
 
 	memset(&rk, 0, sizeof(rk));
