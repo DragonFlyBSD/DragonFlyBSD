@@ -31,6 +31,7 @@
 #include <linux/list.h>
 #include <linux/lockdep.h>
 #include <linux/atomic.h>
+#include <linux/printk.h>
 #include <asm/processor.h>
 
 #define mutex_is_locked(lock)	(lockinuse(lock))
@@ -43,8 +44,16 @@
 static inline int
 mutex_lock_interruptible(struct lock *lock)
 {
-	if (lockmgr(lock, LK_EXCLUSIVE|LK_SLEEPFAIL|LK_PCATCH))
+	int error;
+
+	error = lockmgr(lock, LK_EXCLUSIVE|LK_PCATCH);
+	if (error == EINTR || error == ERESTART)
 		return -EINTR;
+	if (error) {
+		pr_warning("mutex_lock_interruptible: lockmgr() error %d\n",
+		    error);
+		return -error;
+	}
 
 	return 0;
 }
