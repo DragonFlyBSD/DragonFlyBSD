@@ -146,6 +146,26 @@ int i915_mutex_lock_interruptible(struct drm_device *dev)
 	return 0;
 }
 
+#ifdef __DragonFly__
+/* The fault keeps the previous sleep-then-fail acquisition. */
+static int
+i915_gem_fault_mutex_lock(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = to_i915(dev);
+	int ret;
+
+	ret = i915_gem_wait_for_error(&dev_priv->gpu_error);
+	if (ret)
+		return ret;
+
+	ret = lockmgr(&dev->struct_mutex, LK_EXCLUSIVE|LK_SLEEPFAIL|LK_PCATCH);
+	if (ret)
+		return -EINTR;
+
+	return 0;
+}
+#endif
+
 static u32 __i915_gem_park(struct drm_i915_private *i915)
 {
 	GEM_TRACE("\n");
@@ -2295,7 +2315,11 @@ retry:
 
 	intel_runtime_pm_get(dev_priv);
 
+#ifdef __DragonFly__
+	ret = i915_gem_fault_mutex_lock(dev);
+#else
 	ret = i915_mutex_lock_interruptible(dev);
+#endif
 	if (ret) {
 		if (ret != -EINTR)
 		    kprintf("i915: caught bug(%d) (mutex_lock_inter)\n", ret);
