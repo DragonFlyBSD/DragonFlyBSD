@@ -32,6 +32,7 @@
 #include <linux/list.h>
 #include <linux/spinlock.h>
 #include <linux/atomic.h>
+#include <linux/printk.h>
 
 #include <sys/lock.h>
 
@@ -52,8 +53,16 @@ down_read_trylock(struct lock *sem) {
 static inline int
 down_write_killable(struct lock *sem)
 {
-	if (lockmgr(sem, LK_EXCLUSIVE|LK_SLEEPFAIL|LK_PCATCH))
+	int error;
+
+	error = lockmgr(sem, LK_EXCLUSIVE|LK_PCATCH);
+	if (error == EINTR || error == ERESTART)
 		return -EINTR;
+	if (error) {
+		pr_warning("down_write_killable: lockmgr() error %d\n",
+		    error);
+		return -error;
+	}
 
 	return 0;
 }
