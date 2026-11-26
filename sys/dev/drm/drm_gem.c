@@ -1091,7 +1091,7 @@ drm_gem_mmap_single(struct drm_device *dev, vm_ooffset_t *offset, vm_size_t size
 	DRM_DEBUG("gem_obj=%p, offset=0x%lx\n", gem_obj, *offset);
 	if (gem_obj == NULL) {
 		DRM_UNLOCK(dev);
-		return (ENODEV);
+		return (EINVAL);
 	}
 
 	drm_gem_object_reference(gem_obj);

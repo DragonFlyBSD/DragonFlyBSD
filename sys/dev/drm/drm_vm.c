@@ -54,10 +54,8 @@ drm_mmap(struct dev_mmap_args *ap)
 	enum drm_map_type type;
 	vm_paddr_t phys;
 
-	/*
-	 * NOTE: If ddev->drm_ttm_bdev is not setup properly, this path
-	 *	 may be hit with a NULL filp and panic.
-	 */
+	if (filp == NULL)
+		return -EINVAL;
 	priv = filp->private_data;
 	if (!priv->authenticated)
 		return -EACCES;
