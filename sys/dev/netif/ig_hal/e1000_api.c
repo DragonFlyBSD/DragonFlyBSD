@@ -402,6 +402,24 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_I354_BACKPLANE_2_5GBPS:
 		mac->type = e1000_i354;
 		break;
+	case E1000_DEV_ID_I225_LM:
+	case E1000_DEV_ID_I225_V:
+	case E1000_DEV_ID_I225_K:
+	case E1000_DEV_ID_I225_I:
+	case E1000_DEV_ID_I220_V:
+	case E1000_DEV_ID_I225_K2:
+	case E1000_DEV_ID_I225_LMVP:
+	case E1000_DEV_ID_I226_K:
+	case E1000_DEV_ID_I226_LMVP:
+	case E1000_DEV_ID_I225_IT:
+	case E1000_DEV_ID_I226_LM:
+	case E1000_DEV_ID_I226_V:
+	case E1000_DEV_ID_I226_IT:
+	case E1000_DEV_ID_I221_V:
+	case E1000_DEV_ID_I226_BLANK_NVM:
+	case E1000_DEV_ID_I225_BLANK_NVM:
+		mac->type = e1000_i225;
+		break;
 	default:
 		/* Should never have loaded on this device */
 		ret_val = -E1000_ERR_MAC_INIT;
@@ -512,6 +530,9 @@ s32 e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device)
 		break;
 	case e1000_vfadapt_i350:
 		e1000_init_function_pointers_vf(hw);
+		break;
+	case e1000_i225:
+	    e1000_init_function_pointers_i225(hw);
 		break;
 	default:
 		DEBUGOUT("Hardware not supported\n");

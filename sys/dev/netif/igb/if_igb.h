@@ -64,6 +64,7 @@
  */
 #define IGB_MAX_IVAR_I210	4
 #define IGB_MAX_IVAR_I211	4
+#define IGB_MAX_IVAR_I225	4
 #define IGB_MAX_IVAR_I350	4
 #define IGB_MAX_IVAR_I354	4
 #define IGB_MAX_IVAR_82580	4
