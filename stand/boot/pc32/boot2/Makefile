@@ -21,6 +21,9 @@ B1FLAGS=	0x80
 
 BOOT_COMCONSOLE_PORT?= 0x3f8
 BOOT_COMCONSOLE_SPEED?= 115200
+.if ${BOOT_COMCONSOLE_SPEED} == 0
+.error BOOT_COMCONSOLE_SPEED=0 would divide by zero; 0 is only valid for boot0sio, use BOOT_BOOT0_COMCONSOLE_SPEED=0
+.endif
 B2SIOFMT?=	0x3
 
 .if exists(${.OBJDIR}/../btx)
@@ -55,6 +58,7 @@ CFLAGS=	-Os \
 	-Wmissing-declarations -Wmissing-prototypes -Wnested-externs \
 	-Wpointer-arith -Wshadow -Wstrict-prototypes -Wwrite-strings
 
+CFLAGS+=	-DSIOSPD=${BOOT_COMCONSOLE_SPEED}
 _gccver=	0
 .if ${CCVER:Mgcc*}
 _gccver=	${CCVER:S/gcc//}
@@ -173,7 +177,6 @@ scrc32$s.o: scrc32.c
 
 sio.o: sio.S
 	${CC} ${CFLAGS} -DSIOPRT=${BOOT_COMCONSOLE_PORT} -DSIOFMT=${B2SIOFMT} \
-		-DSIOSPD=${BOOT_COMCONSOLE_SPEED} \
 		${.ALLSRC} -o ${.TARGET} -c
 
 install:

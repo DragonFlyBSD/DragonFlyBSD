@@ -77,6 +77,8 @@ static char *kenv_vars[] = {
 	"boot_verbose",
 	"boot_vidcons",
 	"bootfile",
+	"comconsole_port",
+	"comconsole_speed",
 	"console",
 	"currdev",
 	"default_kernel",
