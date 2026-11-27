@@ -39,6 +39,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/bus.h>
 #include <sys/eventhandler.h>
 #include <sys/reboot.h>
 #include <sys/caps.h>
@@ -329,27 +330,91 @@ sc_probe_unit(int unit, int flags)
     return 0;
 }
 
+static int
+sc_late_attach_fb(struct fb_info *info)
+{
+	device_t nexus, child;
+	sc_softc_t *sc;
+	int error;
+
+	nexus = devclass_get_device(devclass_find("nexus"), 0);
+	if (nexus == NULL)
+		return (ENXIO);
+
+	child = device_add_child(nexus, "sc", 0);
+	if (child == NULL)
+		return (ENXIO);
+	device_set_flags(child, SC_EFI_FB);
+
+	sc_console_unit = 0;
+	sc = sc_get_softc(0, SC_KERNEL_CONSOLE);
+	if (sc == NULL) {
+		sc_console_unit = -1;
+		device_delete_child(nexus, child);
+		return (ENXIO);
+	}
+	sc->fbi = info;	/* scinit() must see the framebuffer */
+
+	error = sc_attach_unit(0, SC_KERNEL_CONSOLE | SC_EFI_FB);
+	if (error) {
+		sc->fbi = NULL;
+		sc_console_unit = -1;
+		device_delete_child(nexus, child);
+		return (error);
+	}
+
+	/*
+	 * scmeminit() ran at SI_BOOT1_POST when syscons was still dead,
+	 * so allocate the console buffers now.
+	 */
+	sc_alloc_scr_buffer(sc_console, TRUE, FALSE);
+#ifndef SC_NO_CUTPASTE
+	sc_alloc_cut_buffer(sc_console, TRUE);
+#endif
+#ifndef SC_NO_HISTORY
+	sc_alloc_history_buffer(sc_console, 0, 0, TRUE);
+#endif
+	/* Fill initial terminal border, like scmeminit() would have */
+	if (!sc_filled_border && sc_console->sc->fbi->vaddr != 0) {
+		sc_filled_border = TRUE;
+		sc_set_border(sc_console, sc_console->border);
+	}
+	return (0);
+}
+
 int
 register_framebuffer(struct fb_info *info)
 {
 	sc_softc_t *sc;
+	int error;
 
 	KKASSERT(info->depth <= 32);
 
 	lwkt_gettoken(&vga_token);
 	sc = sc_get_softc(0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
-	if (sc == NULL) {
-		lwkt_reltoken(&vga_token);
-		kprintf("%s: sc_get_softc(%d, %d) returned NULL\n", __func__,
-		    0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
-		return 0;
-	}
 
 	/* Ignore this framebuffer if we already switched to KMS framebuffer */
-	if (sc->fbi != NULL && sc->fbi != &efi_fb_info &&
+	if (sc != NULL && sc->fbi != NULL && sc->fbi != &efi_fb_info &&
 	    sc->fbi != sc->dummy_fb_info) {
 		lwkt_reltoken(&vga_token);
 		return 0;
+	}
+
+	if (sc == NULL) {
+		error = sc_late_attach_fb(info);
+		if (error) {
+			lwkt_reltoken(&vga_token);
+			kprintf("%s: syscons late-attach failed: %d\n",
+			    __func__, error);
+			return -error;
+		}
+		sc = sc_get_softc(0, SC_KERNEL_CONSOLE);
+		if (sc == NULL) {
+			lwkt_reltoken(&vga_token);
+			return -ENXIO;
+		}
+		kprintf("%s: syscons attached late on the DRM framebuffer\n",
+		    __func__);
 	}
 
 	if (sc->fb_set_par_task == NULL) {
@@ -551,20 +616,27 @@ sc_attach_unit(int unit, int flags)
     flags &= ~SC_KERNEL_CONSOLE;
     char tbuf[MAKEDEV_MINNBUF];
 
-    if ((flags & SC_EFI_FB) && probe_efi_fb(0) != 0)
-	flags &= ~SC_EFI_FB;
+    if (sc_console_unit == unit)
+	flags |= SC_KERNEL_CONSOLE;
+
+    /* A registered DRM fb counts as an EFI-style framebuffer. */
+    if ((flags & SC_EFI_FB) && probe_efi_fb(0) != 0) {
+	sc = sc_get_softc(unit, flags & SC_KERNEL_CONSOLE);
+	if (sc == NULL || sc->fbi == NULL)
+	    flags &= ~SC_EFI_FB;
+    }
 
     if (sc_console_unit == unit) {
 	/*
 	 * If this unit is being used as the system console, we need to
 	 * adjust some variables and buffers before and after scinit().
 	 */
-	/* assert(sc_console != NULL) */
-	flags |= SC_KERNEL_CONSOLE;
 	scmeminit(NULL);
 
 	scinit(unit, flags);
 
+	if (sc_console == NULL)
+	    sc_console = sc_get_softc(unit, SC_KERNEL_CONSOLE)->console_scp;
 	if (sc_console->tsw->te_size > 0) {
 	    /* assert(sc_console->ts != NULL); */
 	    kernel_console_ts = sc_console->ts;

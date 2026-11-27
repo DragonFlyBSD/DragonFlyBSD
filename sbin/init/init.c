@@ -180,6 +180,10 @@ static void	start_window_system(session_t *);
 static void	collect_child(pid_t, int);
 static pid_t	start_getty(session_t *);
 static void	transition_handler(int);
+static int	transition_rank(state_t);
+static void	request_transition(state_t);
+static void	request_transition_masked(state_t);
+static state_t	take_transition(state_t);
 static void	alrm_handler(int);
 static void	setsecuritylevel(int);
 static int	getsecuritylevel(void);
@@ -757,12 +761,18 @@ f_single_user(void)
 			kill(pid, SIGCONT);
 			wpid = -1;
 		}
-	} while (wpid != pid && !requested_transition);
+	} while (wpid != pid && requested_transition != death);
 
-	if (requested_transition)
-		return requested_transition;
+	if (requested_transition == death)
+		return death;
 
 	if (!WIFEXITED(status)) {
+		if (requested_transition == catatonia) {
+			/* shell killed after SIGTSTP; wait for the end */
+			sigfillset(&mask);
+			for (;;)
+				sigsuspend(&mask);
+		}
 		if (WTERMSIG(status) == SIGKILL) {
 			/*
 			 *  reboot(8) killed shell?
@@ -867,6 +877,7 @@ f_runcom(void)
 	if (WEXITSTATUS(status))
 		return single_user;
 
+	(void)take_transition(catatonia);
 	runcom_mode = AUTOBOOT;		/* the default */
 	logwtmpx("~", "reboot", "", 0, INIT_PROCESS);
 	return read_ttys;
@@ -1320,13 +1331,77 @@ collect_child(pid_t pid, int status)
 
 	if ((pid = start_getty(sp)) == -1) {
 		/* serious trouble */
-		requested_transition = clean_ttys;
+		request_transition_masked(clean_ttys);
 		return;
 	}
 
 	sp->se_process = pid;
 	gettimeofday(&sp->se_started, NULL);
 	add_session(sp);
+}
+
+/*
+ * A pending transition request is only replaced by one of the same or a
+ * higher rank, so that a later, lesser request cannot undo a shutdown.
+ */
+static int
+transition_rank(state_t s)
+{
+
+	switch (s) {
+	case death:
+		return (3);
+	case catatonia:
+		return (2);
+	case clean_ttys:
+		return (1);
+	default:
+		return (0);
+	}
+}
+
+/*
+ * Request a state transition.  All signals must be blocked, as they are
+ * in transition_handler().
+ */
+static void
+request_transition(state_t s)
+{
+
+	if (transition_rank(s) >= transition_rank(requested_transition))
+		requested_transition = s;
+}
+
+static void
+request_transition_masked(state_t s)
+{
+	sigset_t mask, omask;
+
+	sigfillset(&mask);
+	sigprocmask(SIG_BLOCK, &mask, &omask);
+	request_transition(s);
+	sigprocmask(SIG_SETMASK, &omask, NULL);
+}
+
+/*
+ * Return and clear the pending request, if it is 'only' or 'only' is
+ * invalid_state.
+ */
+static state_t
+take_transition(state_t only)
+{
+	sigset_t mask, omask;
+	state_t s;
+
+	sigfillset(&mask);
+	sigprocmask(SIG_BLOCK, &mask, &omask);
+	s = requested_transition;
+	if (only == invalid_state || s == only)
+		requested_transition = invalid_state;
+	else
+		s = invalid_state;
+	sigprocmask(SIG_SETMASK, &omask, NULL);
+	return (s);
 }
 
 /*
@@ -1338,7 +1413,9 @@ transition_handler(int sig)
 
 	switch (sig) {
 	case SIGHUP:
-		requested_transition = clean_ttys;
+		if (current_state == read_ttys || current_state == multi_user ||
+		    current_state == clean_ttys || current_state == catatonia)
+			request_transition(clean_ttys);
 		break;
 	case SIGUSR2:
 		howto = RB_POWEROFF;
@@ -1350,13 +1427,10 @@ transition_handler(int sig)
 		Reboot = TRUE;
 		/* FALLTHROUGH */
 	case SIGTERM:
-		requested_transition = death;
+		request_transition(death);
 		break;
 	case SIGTSTP:
-		requested_transition = catatonia;
-		break;
-	default:
-		requested_transition = 0;
+		request_transition(catatonia);
 		break;
 	}
 }
@@ -1371,8 +1445,6 @@ f_multi_user(void)
 	int status;
 	session_t *sp;
 
-	requested_transition = 0;
-
 	/*
 	 * If the administrator has not set the security level to -1
 	 * to indicate that the kernel should not run multiuser in secure
@@ -1382,12 +1454,15 @@ f_multi_user(void)
 	if (getsecuritylevel() == 0)
 		setsecuritylevel(1);
 
+	if (requested_transition)
+		return take_transition(invalid_state);
+
 	for (sp = sessions; sp; sp = sp->se_next) {
 		if (sp->se_process)
 			continue;
 		if ((pid = start_getty(sp)) == -1) {
 			/* serious trouble */
-			requested_transition = clean_ttys;
+			request_transition_masked(clean_ttys);
 			break;
 		}
 		sp->se_process = pid;
@@ -1399,7 +1474,7 @@ f_multi_user(void)
 		if ((pid = waitpid(-1, &status, 0)) != -1)
 			collect_child(pid, status);
 
-	return requested_transition;
+	return take_transition(invalid_state);
 }
 
 /*
@@ -1413,9 +1488,6 @@ f_clean_ttys(void)
 	int session_index = 0;
 	int devlen;
 	char *old_getty, *old_window, *old_type;
-
-	if (! sessions)
-		return multi_user;
 
 	/*
 	 * mark all sessions for death, (!SE_PRESENT)
@@ -1446,7 +1518,8 @@ f_clean_ttys(void)
 			if ((typ->ty_status & TTY_ON) == 0 ||
 			    typ->ty_getty == 0) {
 				sp->se_flags |= SE_SHUTDOWN;
-				kill(sp->se_process, SIGHUP);
+				if (sp->se_process)
+					kill(sp->se_process, SIGHUP);
 				continue;
 			}
 			sp->se_flags &= ~SE_SHUTDOWN;
@@ -1457,7 +1530,8 @@ f_clean_ttys(void)
 				warning("can't parse getty for port %s",
 					sp->se_device);
 				sp->se_flags |= SE_SHUTDOWN;
-				kill(sp->se_process, SIGHUP);
+				if (sp->se_process)
+					kill(sp->se_process, SIGHUP);
 			}
 			else if (   !old_getty
 				 || (!old_type && sp->se_type)
@@ -1471,7 +1545,8 @@ f_clean_ttys(void)
 				/* Don't set SE_SHUTDOWN here */
 				sp->se_nspace = 0;
 				sp->se_started.tv_sec = sp->se_started.tv_usec = 0;
-				kill(sp->se_process, SIGHUP);
+				if (sp->se_process)
+					kill(sp->se_process, SIGHUP);
 			}
 			if (old_getty)
 				free(old_getty);
@@ -1494,7 +1569,8 @@ f_clean_ttys(void)
 	for (sp = sessions; sp != NULL; sp = sp->se_next) {
 		if ((sp->se_flags & SE_PRESENT) == 0) {
 			sp->se_flags |= SE_SHUTDOWN;
-			kill(sp->se_process, SIGHUP);
+			if (sp->se_process)
+				kill(sp->se_process, SIGHUP);
 		}
 	}
 
@@ -1536,11 +1612,15 @@ f_death(void)
 	int status;
 	static const int death_sigs[2] = { SIGTERM, SIGKILL };
 
+	/* Let runshutdown() see a SIGTSTP from reboot(8) */
+	(void)take_transition(death);
+
 	logwtmpx("~", "shutdown", "", 0, INIT_PROCESS);
 
 	for (sp = sessions; sp; sp = sp->se_next) {
 		sp->se_flags |= SE_SHUTDOWN;
-		kill(sp->se_process, SIGHUP);
+		if (sp->se_process)
+			kill(sp->se_process, SIGHUP);
 	}
 
 	/* Try to run the rc.shutdown script within a period of time */
